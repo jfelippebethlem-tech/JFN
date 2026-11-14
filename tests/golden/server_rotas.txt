@@ -157,6 +157,7 @@ GET /api/pncp/conluio -> api_pncp_conluio
 GET /api/poder/nomeados_candidatos -> api_nomeados_candidatos
 GET /api/ppp/triagem -> api_ppp_triagem
 GET /api/processo -> api_processo
+GET /api/qualidade/conformidade -> api_qualidade_conformidade
 GET /api/radar/status -> api_radar_status
 GET /api/requerimentos -> api_requerimentos
 GET /api/requerimentos/minuta -> api_requerimentos_minuta

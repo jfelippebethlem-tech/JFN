@@ -1,0 +1,1204 @@
+# qualidade_regras.yaml — FONTE ÚNICA das regras de qualidade do ecossistema JFN (painel, detectores, perícias,
+# relatórios, Lex, Yoda/Hermes, AO VIVO, vault).
+#
+# Pedido do dono (13/11/2026): "criar as regras de padrão, conformidade, correção, constância e também os
+# subjetivos de tudo do painel e dos sistemas do jfn lex yoda hermes" · "não pode ter margem pra erro em nada.
+# esse é um projeto de governo" · "rever tudo com olhar cauteloso, desconfiando de tudo… nas fontes primárias".
+#
+# `docs/REGRAS-DE-QUALIDADE.md` é GERADO deste arquivo (`python -m compliance_agent.qualidade doc`); a catraca
+# `tests/test_regra_registro.py` barra o commit se o documento divergir, se uma regra não tiver verificador, ou se
+# o verificador apontado não existir. Regra que não roda é enfeite: por isso `verificadores` é obrigatório.
+#
+# Campos de cada regra
+#   id          família + número (PAD · CNF · COR · CST · SUB). Estável: nunca reutilizar um id aposentado.
+#   titulo      o enunciado curto.
+#   enunciado   a regra, em forma verificável (o que tem de ser verdade).
+#   porque      o caso real que a motivou (sem dado pessoal: o repositório é público).
+#   medida      como se mede a violação.
+#   aplica      sistemas: painel · detectores · pericias · relatorios · lex · yoda · aovivo · vault · coletores · llm · infra
+#   severidade  bloqueante (barra commit/push ou tira a afirmação do ar) · alta (abre item e marca EM REVISÃO)
+#               · media (abre item na fila de automelhoria)
+#   acao        o que acontece quando viola.
+#   verificadores  lista de {tipo, ref}. tipo = catraca (pytest; ref = arquivo[::teste]) · sensor (produção;
+#               ref = nome em compliance_agent/qualidade/sensores.py) · juiz (rubrica; ref = critério) ·
+#               existente (verificação que já havia na casa; ref = arquivo) · manual (ainda sem automação:
+#               `ref` diz o que falta — conta como DÍVIDA no painel de conformidade, nunca como "ok").
+#
+# Estados de toda afirmação (PAD-02): VERIFICADO · PENDENTE · INDISPONIVEL · REFUTADO.
+# Régua de veredito da revisão cética (COR-01): CONFIRMADA · PARCIAL · REFUTADA · INCONCLUSIVA.
+
+versao: 1
+atualizado: "2026-11-13"
+
+familias:
+  PAD: {nome: Padrão, pergunta: "A afirmação tem a forma obrigatória?"}
+  CNF: {nome: Conformidade, pergunta: "Respeita a norma e as regras da casa?"}
+  COR: {nome: Correção, pergunta: "É verdade, e foi provado?"}
+  CST: {nome: Constância, pergunta: "Diz a mesma coisa em todo lugar e continua dizendo amanhã?"}
+  SUB: {nome: Subjetivas, pergunta: "Um leitor exigente aceitaria?"}
+
+regras:
+  # ══════════════════════════════════ PADRÃO ══════════════════════════════════
+  - id: PAD-01
+    titulo: Proveniência em toda afirmação numérica
+    enunciado: >-
+      Todo número exibido ao dono (card, manchete, tabela, mensagem, relatório) traz, no mesmo lugar ou a um
+      clique, a FONTE (sistema e tabela/documento), a DATA DE REFERÊNCIA do dado e a COBERTURA (que fração do
+      universo a fonte enxerga). No painel, o payload da rota carrega o bloco `proveniencia` com `fonte`,
+      `data_ref` e `cobertura`.
+    porque: >-
+      Revisão cética de 13/11/2026: "economia potencial R$ 5,98 mi" era teto teórico, 89% de outra esfera, e a
+      tela não dizia de onde vinha; a base de OB cobria 21% do universo quando as primeiras somas foram lidas
+      como total.
+    medida: >-
+      Sensor lê o payload de cada rota de manchete inventariada e conta as que não têm `proveniencia` completa.
+      Meta: 0 manchete sem proveniência.
+    aplica: [painel, relatorios, yoda, lex, vault]
+    severidade: alta
+    acao: Abre item por rota; a manchete passa a ser exibida com o selo "sem proveniência" até a rota declarar.
+    verificadores:
+      - {tipo: sensor, ref: proveniencia}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_proveniencia_incompleta_e_acusada"}
+
+  - id: PAD-02
+    titulo: Estado explícito — VERIFICADO, PENDENTE, INDISPONÍVEL ou REFUTADO
+    enunciado: >-
+      Toda afirmação sobre terceiros carrega um estado. VERIFICADO só com prova primária conferida (COR-01);
+      o que saiu de detector e ainda não foi conferido é PENDENTE; o que a fonte não permite saber é
+      INDISPONÍVEL — nunca zero, nunca "limpo", nunca "sem irregularidade". Ausência de dado jamais vira número.
+    porque: >-
+      Perícia contábil de 13/11/2026: 452 contratos (R$ 771,27 mi, 98,4% do "pago a menor") eram "credor sem OB
+      na base" — lacuna de coleta apresentada como déficit de pagamento.
+    medida: >-
+      Sensor conta manchetes cujo payload não traz `estado` em {VERIFICADO, PENDENTE, INDISPONIVEL, REFUTADO};
+      catraca prova que o verificador recusa estado ausente ou fora do vocabulário.
+    aplica: [painel, detectores, pericias, relatorios, yoda, lex, vault]
+    severidade: alta
+    acao: Abre item; afirmação sem estado é tratada como PENDENTE em qualquer entregável.
+    verificadores:
+      - {tipo: sensor, ref: proveniencia}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_estado_fora_do_vocabulario_e_acusado"}
+      - {tipo: existente, ref: compliance_agent/llm/verificacao.py}
+
+  - id: PAD-03
+    titulo: Moeda com separador de milhar e duas casas
+    enunciado: >-
+      Valor em reais sai como "R$ 1.234.567,89". Forma abreviada (mi, bi) só em manchete e sempre com o valor
+      exato a um clique ou entre parênteses. Nunca ponto decimal, nunca valor sem "R$", nunca arredondamento
+      que mude a ordem de grandeza.
+    porque: >-
+      Regra permanente do dono (estética de consultoria). Um número abreviado sem o exato impediu conferir a
+      manchete "empresa morta" contra a base (R$ 592,8 mi → ~R$ 16,4 mi).
+    medida: Verificador de texto acusa "R$" seguido de número fora do padrão; sensor aplica em entregáveis e respostas amostradas.
+    aplica: [painel, relatorios, yoda, lex, vault]
+    severidade: media
+    acao: Abre item com o trecho; em relatório, o gate de entrega recusa.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_moeda_fora_do_padrao_e_acusada"}
+      - {tipo: existente, ref: tests/test_moeda_padrao_brasileiro.py}
+      - {tipo: sensor, ref: texto_entregue}
+
+  - id: PAD-04
+    titulo: CPF sempre mascarado e pessoa física só com vínculo documentado
+    enunciado: >-
+      CPF aparece como "***.123.456-**" em qualquer superfície. Pessoa física só é nominada quando há documento
+      que a liga ao fato (ato de nomeação, QSA, assinatura nos autos); soma ou inferência estatística nunca
+      nomeia pessoa.
+    porque: >-
+      13/11/2026: 58.253 alertas "de gravidade alta" nomeavam servidores por soma de remunerações de pessoas
+      diferentes agrupadas pelo mesmo CPF mascarado — erro de fato e risco de LGPD ao mesmo tempo.
+    medida: >-
+      Verificador acusa CPF com 11 dígitos visíveis (formatado ou não, com dígito verificador válido) em texto
+      servido; sensor aplica nos payloads amostrados, nos JSON do painel e nas respostas do Yoda.
+    aplica: [painel, detectores, relatorios, yoda, lex, vault]
+    severidade: bloqueante
+    acao: Tira a afirmação do ar (a rota é marcada EM REVISÃO), abre item 🆘 e avisa o dono.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_cpf_exposto_e_acusado"}
+      - {tipo: sensor, ref: texto_entregue}
+      - {tipo: sensor, ref: payloads_painel}
+
+  - id: PAD-05
+    titulo: '"N de M" em toda lista cortada'
+    enunciado: >-
+      Lista que não mostra tudo diz quantos mostra e de quantos ("10 de 146"), e por qual critério cortou. Total
+      exibido ao lado de lista cortada é o total do UNIVERSO, com a lista completa acessível. Pergunta-se quais
+      N, nunca só quantos.
+    porque: >-
+      O PDF de órgão perdia ~55% do conteúdo sem avisar; a leitura do SEI informava "40 documentos" sem dizer
+      quais; o sinal `fenix` do radar truncava em 120 em silêncio.
+    medida: Sensor acusa payload com lista de tamanho igual a um limite conhecido (COR-07) sem campo de total; gate de entregável existente.
+    aplica: [painel, relatorios, yoda, lex]
+    severidade: alta
+    acao: Abre item; em relatório, o gate de integridade recusa a entrega.
+    verificadores:
+      - {tipo: existente, ref: tests/test_entregavel_integro.py}
+      - {tipo: sensor, ref: payloads_painel}
+
+  - id: PAD-06
+    titulo: Esfera e Poder explícitos
+    enunciado: >-
+      Toda afirmação diz de que ente e Poder trata: Executivo estadual, Prefeitura do Rio, outro município,
+      União, Judiciário, Legislativo. Somas nunca misturam esferas; card que soma mais de uma mostra a quebra.
+    porque: >-
+      13/11/2026: o herói "economia" somava Estado e Prefeitura (89% Prefeitura); um "cluster de fachada" era
+      do Fundo do Tribunal de Justiça (outro Poder); um 🔴 10/10 era contrato federal; outro, municipal.
+    medida: Sensor acusa manchete sem `esfera` no bloco de proveniência; juiz avalia mistura de esferas (SUB-02).
+    aplica: [painel, detectores, pericias, relatorios, yoda, lex, vault]
+    severidade: alta
+    acao: Abre item; afirmação de outro Poder/ente sai das manchetes do Executivo estadual.
+    verificadores:
+      - {tipo: sensor, ref: proveniencia}
+      - {tipo: juiz, ref: moldura}
+
+  - id: PAD-07
+    titulo: Natureza do valor declarada
+    enunciado: >-
+      Todo valor diz o que é: estimado, teto de ata, contratado, empenhado, liquidado ou PAGO. "Pago" é reservado
+      a Ordem Bancária do SIAFE (CNF-01, CNF-02). O rótulo acompanha o número na mesma frase ou coluna.
+    porque: >-
+      13/11/2026: "contrato de R$ 43 mi assinado no 3º dia" era ata de registro de preços (teto), sem nenhuma OB;
+      "R$ 2,47 bi pagos" a ME/EPP era soma de picos anuais.
+    medida: >-
+      Verificador acusa frase com "pago/pagou/recebeu" e valor cuja natureza declarada na proveniência não é OB;
+      sensor confere `natureza` no bloco de proveniência das manchetes.
+    aplica: [painel, detectores, pericias, relatorios, yoda, lex, vault]
+    severidade: alta
+    acao: Abre item; manchete sem natureza ganha o selo "natureza não declarada".
+    verificadores:
+      - {tipo: sensor, ref: proveniencia}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_natureza_ausente_e_acusada"}
+
+  - id: PAD-08
+    titulo: Linguagem de indício, nunca de acusação
+    enunciado: >-
+      Rótulo, título, card, ticker e texto fixo usam linguagem de indício ("indício de", "a verificar", "sinal").
+      Os termos fraude, fantasma, fachada, laranja, desvio, corrupção, crime, criminoso, quadrilha e esquema só
+      aparecem quando (a) citam literalmente documento oficial que usa a palavra, ou (b) nomeiam a hipótese com
+      qualificador de indício na mesma frase. Nunca como predicado de pessoa ou empresa.
+    porque: >-
+      13/11/2026: card "concentra fraude 2,12×" media sanção de qualquer época e ente; "fachada/fantasma já
+      registrados: R$ 103,4 mi" não tinha nenhuma fachada documentada.
+    medida: >-
+      Catraca-catraca: contagem de termos acusatórios sem qualificador em `static/js/src`, `static/*.html` e
+      textos fixos de detectores só pode diminuir. Sensor aplica o mesmo verificador no que é servido.
+    aplica: [painel, detectores, relatorios, yoda, lex, vault]
+    severidade: bloqueante
+    acao: Catraca barra o commit que aumenta a contagem; em produção, abre item e o gate de neutralidade recusa o entregável.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_linguagem_painel_so_desce"}
+      - {tipo: existente, ref: compliance_agent/reporting/neutralidade.py}
+      - {tipo: sensor, ref: texto_entregue}
+      - {tipo: juiz, ref: presuncao}
+
+  - id: PAD-09
+    titulo: Data rotulada pelo que é
+    enunciado: >-
+      Data de assinatura, de publicação, de registro no tribunal, de emissão, de competência e de coleta são
+      campos diferentes e são rotulados como tais. "Assinado em" só com a data do ato (diário oficial ou
+      instrumento); data de registro nunca é apresentada como data do ato.
+    porque: >-
+      13/11/2026: `data_contratacao` (registro no TCE-RJ) foi lida como assinatura — "assinado no 3º dia da
+      gestão" para atos de fevereiro e março, do governo anterior.
+    medida: Juiz confere a moldura temporal das afirmações amostradas; revisão por caso quando a afirmação atribui o ato a uma gestão.
+    aplica: [detectores, pericias, relatorios, vault, painel]
+    severidade: alta
+    acao: Abre item; afirmação de autoria temporal sem data do ato volta a PENDENTE.
+    verificadores:
+      - {tipo: juiz, ref: moldura}
+      - {tipo: manual, ref: "falta dicionário de colunas de data por tabela (qual é ato, qual é registro) para a catraca cobrar o rótulo"}
+
+  - id: PAD-10
+    titulo: Achado com identidade — código, período, unidade
+    enunciado: >-
+      Todo achado tem código de regra/detector, período, unidade gestora e chave do objeto (contrato, processo,
+      OB). Achado "sem código" ou em balde genérico não é exibido.
+    porque: Fila de achados sem código virou balde anônimo — impossível medir falso positivo por detector ou retificar.
+    medida: Sensor conta alertas abertos sem tipo/código ou sem chave de objeto.
+    aplica: [detectores, pericias, painel, lex]
+    severidade: media
+    acao: Abre item com a contagem por origem.
+    verificadores:
+      - {tipo: sensor, ref: alertas_base}
+
+  - id: PAD-11
+    titulo: Entregável com acabamento de consultoria e sem corte silencioso
+    enunciado: >-
+      Relatório, dossiê e parecer saem com capa, seções numeradas, tabelas alinhadas, escala de risco explícita,
+      fontes e normas citadas, e o MESMO conteúdo em md, PDF e planilha. Nada é cortado para caber.
+    porque: Regra permanente do dono; o PDF de órgão perdia mais da metade do conteúdo sem avisar.
+    medida: Gate de integridade do entregável (existente) e nota do juiz no critério de acabamento.
+    aplica: [relatorios, lex, vault]
+    severidade: alta
+    acao: O gate recusa a entrega; nota baixa do juiz abre item.
+    verificadores:
+      - {tipo: existente, ref: tests/test_entregavel_integro.py}
+      - {tipo: juiz, ref: acabamento}
+
+  - id: PAD-12
+    titulo: Grau de risco com escala e critério, nunca fixado à mão
+    enunciado: >-
+      🔴🟡🟢 e score saem de critério escrito e aplicado por código, com a escala visível (ex.: 0–10). É proibido
+      fixar grau por CNPJ, nome ou processo dentro de código ou de gerador. Mudança manual de grau é registro
+      datado no caso, com o motivo.
+    porque: >-
+      13/11/2026: o gerador da análise de gestão tinha 🔴 fixado por CNPJ; casos do vault mantinham `grau: alto`
+      com desfecho 🟢 no corpo.
+    medida: >-
+      Catraca-catraca: literais de CNPJ (14 dígitos) em código de detector/gerador só podem diminuir; sensor do
+      vault acusa caso com grau no frontmatter em conflito com o desfecho do corpo (CST-08).
+    aplica: [detectores, pericias, relatorios, vault, painel]
+    severidade: bloqueante
+    acao: Catraca barra; no vault, abre item por caso incoerente.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_cnpj_literal_no_codigo_so_desce"}
+      - {tipo: sensor, ref: vault_casos}
+
+  # ══════════════════════════════ CONFORMIDADE ══════════════════════════════
+  - id: CNF-01
+    titulo: Empenho ≠ liquidação ≠ pagamento
+    enunciado: >-
+      Os três estágios da despesa (Lei 4.320/1964, arts. 58 a 65) nunca se confundem. Empenho é valor bruto que
+      pode ser anulado; liquidação reconhece o direito; só a Ordem Bancária é pagamento. Nenhuma superfície
+      apresenta empenho ou liquidação como "pago", nem soma estágios diferentes.
+    porque: Regra de ouro do dono desde o início do projeto; empenho citado como "total pago" já inflou relatório.
+    medida: Verificador de texto (PAD-07) e juiz no critério de moldura; catraca do verificador.
+    aplica: [painel, detectores, pericias, relatorios, yoda, lex, vault]
+    severidade: bloqueante
+    acao: Entregável recusado; no painel, a afirmação sai do ar até a correção.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_empenho_apresentado_como_pago_e_acusado"}
+      - {tipo: juiz, ref: moldura}
+
+  - id: CNF-02
+    titulo: "Pago = OB do SIAFE, Contabilizada, não devolvida e não anulada"
+    enunciado: >-
+      Soma de pagamento usa só OB do SIAFE com status Contabilizado, exclui OB com Guia de Devolução ou
+      `status_envio` de erro no pagamento, descarta linha sem número de OB e conta uma única vez a reemissão
+      para a mesma nota de liquidação. O espelho de transparência não é fonte de pagamento.
+    porque: >-
+      13/11/2026: a perícia somou OB devolvida pelo banco e a reemissão — dos 10 maiores "pago a maior", 0 se
+      confirmaram; 174 de 208 "duplicidades" eram devolução + reemissão. Em 24/09/2026, 7 detectores somavam OB
+      anulada (R$ 13,99 bi na base).
+    medida: >-
+      Catraca-catraca em TODO o repositório (não em lista fixa de arquivos): consulta a `ob_orcamentaria_siafe`
+      sem o filtro de OB paga só pode diminuir, e arquivo novo nasce em zero.
+    aplica: [detectores, pericias, relatorios, painel, yoda]
+    severidade: bloqueante
+    acao: Catraca barra o commit; número já exibido que dependia da consulta volta a PENDENTE.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_ob_sem_filtro_de_paga_so_desce"}
+      - {tipo: existente, ref: tests/test_catraca_ob_so_contabilizada.py}
+
+  - id: CNF-03
+    titulo: Sanção só se vigente na data do ato e com alcance sobre o ente
+    enunciado: >-
+      Sanção só sustenta achado quando (a) estava vigente na data do ato examinado (contratação ou pagamento, o
+      que a norma vedar) e (b) tem alcance sobre o ente contratante: declaração de inidoneidade alcança todos os
+      entes; impedimento alcança o ente sancionador; suspensão alcança o órgão sancionador (Lei 14.133/2021, art.
+      156, §§ 4º e 5º; Lei 8.666/1993, art. 87, III e IV; Lei 13.019/2014, art. 73). Classifica-se pela
+      fundamentação legal antes da categoria; sem data de fim ≠ vigente.
+    porque: >-
+      13/11/2026: "sancionada paga na vigência — R$ 333,3 mi" tinha 56% de sanção de outro ente sem alcance no
+      Estado; "caro + suspeito" tinha 0 de 5 sancionados à época; uma suspensão "no órgão sancionador" federal foi
+      lida como impedimento do Estado.
+    medida: >-
+      Catraca-catraca: módulo que lê tabela de sanções (CEIS/CNEP/TCE) sem passar por `sancao_abrangencia` só
+      pode diminuir.
+    aplica: [detectores, pericias, relatorios, painel, lex]
+    severidade: bloqueante
+    acao: Catraca barra; achado de sanção sem alcance provado vira sinal de peso baixo e PENDENTE.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_sancao_sem_alcance_so_desce"}
+
+  - id: CNF-04
+    titulo: Ata de registro de preços não é compra
+    enunciado: >-
+      Ata de registro de preços (Lei 14.133/2021, arts. 82 a 86) é teto, sem obrigação de contratar. Nunca entra
+      em soma de "contratado", "gasto" ou "economia"; o valor só conta pelo que foi efetivamente contratado ou
+      pago.
+    porque: >-
+      13/11/2026: ata de R$ 43 mi apresentada como contrato assinado; os maiores certames da "economia
+      potencial" eram atas — efetivamente pago: INDISPONÍVEL.
+    medida: Juiz no critério de moldura; revisão por caso em toda manchete de valor contratado.
+    aplica: [detectores, pericias, relatorios, painel, lex]
+    severidade: alta
+    acao: Abre item; valor de ata é reclassificado como "teto de ata" (PAD-07).
+    verificadores:
+      - {tipo: juiz, ref: moldura}
+      - {tipo: manual, ref: "falta marcador de ata SRP na tabela de contratos/certames para a catraca cobrar a exclusão nas somas"}
+
+  - id: CNF-05
+    titulo: Preço só se compara na mesma unidade e no mesmo objeto
+    enunciado: >-
+      Comparação de preço exige mesma unidade de fornecimento, mesmo objeto e mesma época (Lei 14.133/2021, art.
+      23). Descrição genérica não é mesmo objeto. Inexigibilidade e compra da agricultura familiar não entram em
+      comparador de mercado.
+    porque: >-
+      25/07/2026: 60% da "economia potencial" comparava produtos diferentes sob rótulo genérico (R$ 15,6 mi →
+      R$ 6,2 mi); 13/11/2026: caiu de R$ 5,98 mi para R$ 13 mil no conjunto confirmado.
+    medida: Controle negativo do comparador (par de unidades diferentes não gera economia) e juiz nas manchetes de economia.
+    aplica: [detectores, painel, relatorios]
+    severidade: alta
+    acao: Abre item; economia só vira manchete no conjunto de pares confirmados.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+      - {tipo: juiz, ref: moldura}
+
+  - id: CNF-06
+    titulo: Teto legal de fonte única, do ano do ato, com limite inclusivo
+    enunciado: >-
+      Tetos legais (dispensa da Lei 14.133/2021, art. 75, e seus decretos de atualização; receita de ME/EPP da
+      LC 123/2006, art. 3º; limites de aditivo do art. 125) vivem em UM módulo, indexados por ano, e são
+      aplicados com o valor do ano do ato. "Até" é inclusivo. Nenhuma cópia literal do valor em outro arquivo.
+    porque: >-
+      Três cópias divergentes do teto de dispensa; um teste travava o valor errado; nove centavos de diferença
+      num teto legal mudavam a lista de fracionamento.
+    medida: "Catraca-catraca: literal de teto legal fora do módulo canônico só pode diminuir."
+    aplica: [detectores, pericias, lex]
+    severidade: bloqueante
+    acao: Catraca barra o commit.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_teto_legal_copiado_so_desce"}
+
+  - id: CNF-07
+    titulo: Acúmulo de cargos respeita as exceções constitucionais
+    enunciado: >-
+      Alerta de acúmulo exclui, antes de alertar, as hipóteses lícitas da Constituição (art. 37, XVI: dois cargos
+      de professor; professor com técnico ou científico; dois de profissional de saúde) e exige identidade
+      provada (COR-06).
+    porque: 13/11/2026 — os alertas de acúmulo não excluíam as exceções e agrupavam pessoas diferentes.
+    medida: Controle negativo do detector de acúmulo (dois vínculos de professor não alertam).
+    aplica: [detectores, painel]
+    severidade: alta
+    acao: Abre item; alertas da regra voltam a PENDENTE.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: CNF-08
+    titulo: Repositório público sem dado pessoal
+    enunciado: >-
+      O repositório do JFN é público. Nenhum arquivo versionado contém CPF, nome de pessoa física investigada,
+      endereço residencial, telefone ou e-mail pessoal (LGPD, Lei 13.709/2018, arts. 6º e 7º). Testes usam dados
+      sintéticos. Casos, eleição e material pessoal vivem fora do repositório.
+    porque: O repositório é público; material de eleição já teve de ser retirado; fixture escrita com dado real já ocorreu.
+    medida: "Catraca-catraca: CPF com dígito verificador válido em arquivo versionado só pode diminuir (arquivo novo nasce em zero)."
+    aplica: [infra, detectores, relatorios]
+    severidade: bloqueante
+    acao: Catraca barra o commit.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_cpf_versionado_so_desce"}
+
+  - id: CNF-09
+    titulo: Acesso ao SEI e ao SIAFE nunca é culpado
+    enunciado: >-
+      Falha de coleta no SEI ou no SIAFE é defeito nosso até um controle positivo (consulta que sabidamente
+      retorna) provar o contrário na mesma sessão. Nenhuma superfície escreve "acesso negado", "WAF" ou
+      "indisponível na fonte" sem o controle registrado.
+    porque: Em quatro ocasiões o "bloqueio" era bug nosso (corrida de espera, índice de menu, popup engolido, senha expirada).
+    medida: Verificador de texto acusa mensagem de culpa ao acesso sem a marca de controle positivo; sensor nos logs de coleta amostrados.
+    aplica: [coletores, yoda, aovivo, relatorios]
+    severidade: alta
+    acao: Abre item; a afirmação de bloqueio é substituída por INDISPONÍVEL com o motivo técnico medido.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_culpa_ao_acesso_sem_controle_e_acusada"}
+      - {tipo: sensor, ref: texto_entregue}
+
+  - id: CNF-10
+    titulo: Nenhuma API paga sem teto; juízo do Claude só pela assinatura
+    enunciado: >-
+      Nenhum código chama API paga sem teto em dinheiro, registro de gasto e chave fora do código. Nunca se supõe
+      camada gratuita. O juiz de qualidade e toda chamada feita em nome do Fable saem pela assinatura (CLI), com
+      `backend="cli"`, sem chave no ambiente e sem `--bare`; se a assinatura não comporta o volume, reduz-se a
+      amostra pelo valor e pelo risco.
+    porque: >-
+      Cobrança real em chave que o comentário do código dizia ser gratuita (25/06/2026); ordem do dono em
+      13/11/2026: "fable tem que usar assinatura só".
+    medida: >-
+      Catraca: variável de chave paga só é lida no módulo de API com teto; o juiz chama o motor com
+      `backend="cli"`. Sensor acusa gasto acumulado ≥ 80% do teto.
+    aplica: [llm, infra, yoda]
+    severidade: bloqueante
+    acao: Catraca barra; em produção, o sensor avisa e o kill-switch do motor é a ação.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_chave_paga_fora_do_teto_so_desce"}
+      - {tipo: catraca, ref: "tests/test_regra_juiz.py::test_juiz_so_chama_o_claude_pela_assinatura"}
+      - {tipo: sensor, ref: gasto_api}
+
+  - id: CNF-11
+    titulo: Régua contratual não se aplica a parceria, repasse ou sob demanda
+    enunciado: >-
+      Parceria com organização da sociedade civil (Lei 13.019/2014), repasse a agência ou fundo, ata sob demanda
+      e contrato em moeda estrangeira não são medidos por pró-rata linear de contrato de serviço contínuo. Fora
+      do domínio da régua, o resultado é INDETERMINADO.
+    porque: 13/11/2026 — pró-rata aplicado a parceria, repasse a agência de bacia e ata sob demanda gerou "pago a maior" refutado.
+    medida: Controle negativo da perícia (instrumento fora do domínio sai INDETERMINADO).
+    aplica: [pericias, detectores]
+    severidade: alta
+    acao: Abre item; resultados fora do domínio são reclassificados.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: CNF-12
+    titulo: Competência do mandato — o que é do Executivo estadual e o que se encaminha
+    enunciado: >-
+      O mandato fiscaliza o Executivo estadual. Achado de outro Poder ou ente é marcado como tal e tem destino
+      próprio (encaminhar ao órgão de controle competente); nunca entra em manchete, ranking ou soma do Executivo
+      estadual.
+    porque: 13/11/2026 — casos 🔴 de município, União e Judiciário apareciam ao lado dos do Executivo estadual.
+    medida: Sensor do vault acusa caso aberto sem `esfera` no frontmatter; juiz no critério de utilidade.
+    aplica: [vault, painel, relatorios, lex]
+    severidade: media
+    acao: Abre item por caso.
+    verificadores:
+      - {tipo: sensor, ref: vault_casos}
+      - {tipo: juiz, ref: utilidade}
+
+  - id: CNF-13
+    titulo: Limite anual se mede no exercício do ato
+    enunciado: >-
+      Todo limite anual (receita bruta de ME/EPP, teto de dispensa por exercício, limites da LRF) é comparado com
+      valores do MESMO exercício e do MESMO fato gerador. Não se somam anos, nem se usa porte atual para ato
+      passado.
+    porque: 13/11/2026 — "ME/EPP acima do teto" somava OB de anos misturados e usava o porte atual, não o do ano do certame.
+    medida: Controle negativo do detector (valores em exercícios diferentes não somam contra o teto).
+    aplica: [detectores, pericias]
+    severidade: alta
+    acao: Abre item; a manchete volta a PENDENTE.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: CNF-14
+    titulo: Segredo nunca em código, log, mensagem ou commit
+    enunciado: >-
+      Chaves, tokens e senhas vivem só em arquivos de ambiente fora do git e entram por variável de ambiente.
+      Nenhum log, mensagem ou payload exibe segredo.
+    porque: Chave fixa em script de cron e token exposto em ferramenta de índice já ocorreram.
+    medida: "Catraca-catraca: padrões de chave em arquivo versionado só podem diminuir."
+    aplica: [infra, llm, yoda, coletores]
+    severidade: bloqueante
+    acao: Catraca barra o commit; segredo exposto é revogado.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_segredo_versionado_so_desce"}
+
+  - id: CNF-15
+    titulo: Presunção de legitimidade e gate de neutralidade em tudo que sai da casa
+    enunciado: >-
+      Atos administrativos presumem-se legítimos e ninguém é tratado como culpado (Constituição, art. 5º, LVII).
+      Todo entregável que pode sair da casa (relatório, dossiê, parecer, minuta de requerimento) passa pelo gate
+      de neutralidade antes de ser entregue.
+    porque: O que o painel e os dossiês afirmam vira ato parlamentar; erro expõe o mandato.
+    medida: "Catraca: todo ponto de entrega inventariado como \"relatório\" chama o gate; juiz no critério de presunção."
+    aplica: [relatorios, lex, yoda, vault]
+    severidade: bloqueante
+    acao: Entrega recusada.
+    verificadores:
+      - {tipo: existente, ref: tests/test_neutralidade.py}
+      - {tipo: catraca, ref: tests/test_regra_inventario.py}
+      - {tipo: juiz, ref: presuncao}
+
+  - id: CNF-16
+    titulo: Operação que não derruba a casa
+    enunciado: >-
+      Um processo pesado por vez na VM-1; suíte de testes sempre em lotes; processo se mata por PID, nunca por
+      padrão de nome; a sessão do SIAFE é única; escrita em massa no banco principal só fora do horário de uso
+      do painel; o serviço do painel só é reiniciado por quem integra.
+    porque: A VM caiu quatro vezes com suíte monolítica; matar por padrão de nome já matou a própria sessão.
+    medida: "Catraca-catraca: `pkill -f` em script versionado só pode diminuir."
+    aplica: [infra, coletores, aovivo]
+    severidade: alta
+    acao: Catraca barra o commit.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_pkill_por_padrao_so_desce"}
+
+  - id: CNF-17
+    titulo: Yoda/Hermes — personalização que sobrevive a atualização
+    enunciado: >-
+      Toda personalização do JFN no Hermes fica commitada na branch do fork E salva em arquivo de diff antes de
+      qualquer atualização; atualiza-se pelo script seguro (merge com reversão automática), nunca pelo comando de
+      atualização direto. Prefere-se plugin a patch em arquivo do upstream.
+    porque: Em 31/07/2026 a atualização direta apagou as quatro personalizações já commitadas; o que salvou foi o diff em arquivo.
+    medida: Sensor confere os marcadores das personalizações no adapter do Telegram e a existência do script seguro.
+    aplica: [yoda, infra]
+    severidade: alta
+    acao: Abre item 🆘 (o Yoda perde o menu e o teto de imagem).
+    verificadores:
+      - {tipo: sensor, ref: hermes_personalizacoes}
+
+  # ══════════════════════════════════ CORREÇÃO ══════════════════════════════════
+  - id: COR-01
+    titulo: Conclusão acusatória só com prova primária citada e conferida por código
+    enunciado: >-
+      Toda conclusão 🔴 ou 🟡 exibida como achado traz a prova primária — documento, trecho literal, data — e a
+      citação é conferida por código contra o texto da fonte (`verificacao.citacao_existe`,
+      `verificacao.numero_no_trecho`). Banco de dados é base, não prova. Sem prova primária conferida o estado é
+      PENDENTE e a superfície diz "a verificar". Qualquer dúvida residual é INCONCLUSIVA, nunca CONFIRMADA.
+    porque: >-
+      Revisão cética de 13/11/2026: de 56 conclusões sobre terceiros, nenhuma se confirmou no sentido estrito;
+      21 foram refutadas e 27 tinham o número ou a moldura errados.
+    medida: >-
+      Sensor do vault conta casos 🔴 abertos sem bloco de prova primária (documento + trecho + data); catraca
+      prova que a conferência recusa citação que não está na fonte.
+    aplica: [detectores, pericias, relatorios, vault, painel, lex, yoda]
+    severidade: bloqueante
+    acao: O achado é rebaixado a PENDENTE em todas as superfícies e abre item de revisão por caso.
+    verificadores:
+      - {tipo: sensor, ref: vault_casos}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_citacao_ausente_da_fonte_nao_verifica"}
+      - {tipo: juiz, ref: auditor}
+
+  - id: COR-02
+    titulo: Dupla leitura independente; divergência é PENDENTE
+    enunciado: >-
+      Extração ou juízo que sustenta achado é feito duas vezes por leitores independentes (Claude e cascata, ou
+      dois modelos de famílias diferentes). Só vale o que concorda. Divergência fica registrada lado a lado, vira
+      PENDENTE e exemplo de calibração para o outro modelo — nunca é resolvida em silêncio nem por média.
+    porque: Diretriz do dono de 13/11/2026 (Claude co-motor; os vereditos se cruzam); modelo barato decidindo sozinho já produziu vereditos vazios.
+    medida: "Sensor lê o banco de cruzamento: divergências graves sem revisão há mais de 7 dias e taxa de concordância por tarefa."
+    aplica: [llm, detectores, pericias, lex]
+    severidade: alta
+    acao: Abre item com a fila de revisão; tarefa com concordância abaixo do piso perde o direito de exibir veredito.
+    verificadores:
+      - {tipo: sensor, ref: cruzamento_motores}
+      - {tipo: existente, ref: compliance_agent/llm/cruzamento.py}
+
+  - id: COR-03
+    titulo: Controle positivo e controle negativo por detector
+    enunciado: >-
+      Todo detector, perícia ou regra tem ao menos um teste de controle positivo (caso sintético em que o fato
+      existe e o detector acusa) e um de controle negativo (caso sintético com a explicação inocente mais comum,
+      em que o detector NÃO acusa). O inventário aponta os dois testes.
+    porque: >-
+      O filtro que a fonte ignorava só foi percebido pelo controle positivo; os detectores refutados em
+      13/11/2026 não tinham controle negativo para a hipótese inocente que os derrubou.
+    medida: "Catraca-catraca: nº de detectores do inventário sem os dois controles só pode diminuir; detector novo nasce com os dois."
+    aplica: [detectores, pericias]
+    severidade: bloqueante
+    acao: Catraca barra detector novo sem controles; os antigos ficam listados como dívida no painel de conformidade.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: COR-04
+    titulo: Taxa de falso positivo medida em fonte primária antes de virar manchete
+    enunciado: >-
+      Detector só alimenta manchete, ranking ou alerta ao dono depois de ter a precisão medida em amostra
+      conferida contra fonte primária (tamanho da amostra, data, taxa e quem conferiu, registrados no
+      inventário). Sem medição, o que ele produz aparece como "não calibrado", fora das manchetes. Medição com
+      mais de 180 dias ou anterior a mudança de lógica não vale.
+    porque: >-
+      13/11/2026: 8 manchetes do cockpit, 0 confirmadas; dois detectores eram anti-preditivos; calibrar a taxa
+      não calibrou a lógica.
+    medida: "Catraca-catraca: nº de detectores ligados a manchete sem medição válida só pode diminuir; sensor lista as manchetes servidas por detector não calibrado."
+    aplica: [detectores, pericias, painel]
+    severidade: bloqueante
+    acao: Manchete de detector não calibrado ganha o selo "não calibrado"; detector novo não entra em manchete sem medição.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+      - {tipo: sensor, ref: calibragem_manchetes}
+
+  - id: COR-05
+    titulo: Hipótese inocente testada, não só nomeada
+    enunciado: >-
+      Para cada achado, as explicações inocentes são listadas E testadas com o documento que as confirmaria ou
+      afastaria (devolução bancária, sucessão empresarial, homônimo, prorrogação não publicada, competência
+      anterior, mesma família econômica). Escrever "pode haver explicação" não conta. Cada detector declara as
+      hipóteses inocentes que exclui por código.
+    porque: >-
+      13/11/2026: 174 "duplicidades" eram devolução + reemissão; "empresa morta" incluía sucessão e órgão
+      público; "sócio agente público" de R$ 125,9 mi era homônimo.
+    medida: "Inventário: campo `hipoteses_inocentes` por detector (catraca-catraca do nº sem); juiz no critério de hipótese inocente."
+    aplica: [detectores, pericias, relatorios, vault, lex]
+    severidade: alta
+    acao: Abre item; achado sem teste de hipótese inocente fica PENDENTE.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+      - {tipo: juiz, ref: inocente}
+
+  - id: COR-06
+    titulo: Identidade provada — nunca só nome, nunca só CPF mascarado
+    enunciado: >-
+      Pessoa jurídica casa por CNPJ (raiz de 8 dígitos para grupo/filial; 14 para estabelecimento). Pessoa física
+      casa por CPF completo quando disponível, ou pelos dígitos visíveis do CPF mascarado E nome normalizado. Nome
+      sozinho ou CPF mascarado sozinho geram no máximo "candidato a verificar", nunca achado.
+    porque: >-
+      13/11/2026: 99,57% dos grupos por CPF mascarado juntavam pessoas diferentes; "credor sem histórico" medido
+      no CNPJ de 14 dígitos tratava filial e sucessora como empresa nova.
+    medida: Controle negativo (homônimo não casa; mesmo mascarado com nomes diferentes não agrupa); catraca-catraca de agrupamento por CPF mascarado sem nome.
+    aplica: [detectores, pericias, painel]
+    severidade: bloqueante
+    acao: Catraca barra; alertas produzidos por casamento fraco são arquivados como "a verificar".
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_grupo_por_cpf_mascarado_so_desce"}
+      - {tipo: catraca, ref: "tests/test_regra_controles_sinteticos.py"}
+
+  - id: COR-07
+    titulo: Teto de coleta não é total
+    enunciado: >-
+      Contagem igual ao limite de página, de consulta ou de parâmetro (50, 100, 500, 1.000, 10.000; ou platô
+      logo abaixo) é INCOMPLETA até prova em contrário. Nenhuma soma ou "total" sai de coleta que bateu no teto.
+    porque: O teto do parâmetro foi lido como limite da fonte; dias do SIAFE paravam entre 975 e 999 OBs; contagem redonda era teto de coleta.
+    medida: Sensor acusa lista/contagem em payload ou tabela de coleta igual a limite conhecido sem marca de completude.
+    aplica: [coletores, detectores, painel, yoda]
+    severidade: alta
+    acao: Abre item; o número ganha o selo "parcial (teto de coleta)".
+    verificadores:
+      - {tipo: sensor, ref: payloads_painel}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_contagem_no_teto_e_acusada"}
+
+  - id: COR-08
+    titulo: Ausência não é fato
+    enunciado: >-
+      "Não há", "zero", "sem contrato", "sem OB" só se afirma depois de um controle positivo da MESMA consulta
+      (um caso que sabidamente existe e retorna). Sem o controle, a resposta é INDISPONÍVEL.
+    porque: Busca por nome disse "sem contrato" onde havia; o manifesto afirmou vazio sobre 0,93 GB no disco; "0 OB" desatualizado ficou em caso.
+    medida: Verificador de texto acusa afirmação de ausência sem marca de controle em respostas e entregáveis amostrados; juiz.
+    aplica: [coletores, detectores, yoda, relatorios, vault, lex]
+    severidade: alta
+    acao: Abre item; a frase vira INDISPONÍVEL.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_ausencia_sem_controle_e_acusada"}
+      - {tipo: juiz, ref: auditor}
+
+  - id: COR-09
+    titulo: Atributo cadastral se avalia na data do ato
+    enunciado: >-
+      Situação cadastral, sanção, porte, quadro societário e vínculo funcional são avaliados na data do ato
+      examinado, não na data da consulta. Sem histórico, o atributo é INDISPONÍVEL para aquela data.
+    porque: >-
+      "Pago a empresa morta" (R$ 4 bi → R$ 18,3 mi em julho; R$ 592,8 mi → ~R$ 16,4 mi em novembro) não checava
+      se o pagamento era posterior à baixa.
+    medida: Controle negativo por detector (fato anterior ao atributo não acusa); catraca de controles.
+    aplica: [detectores, pericias]
+    severidade: bloqueante
+    acao: Catraca barra detector novo sem o controle de época.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: COR-10
+    titulo: Detector declara o domínio e devolve INDETERMINADO fora dele
+    enunciado: >-
+      Cada detector declara para que tipo de instrumento, ente e período vale. Fora do domínio, o resultado é
+      INDETERMINADO com o motivo — nunca um valor.
+    porque: 13/11/2026 — régua de contrato contínuo aplicada a parceria, repasse e contrato em dólar.
+    medida: Inventário com campo `dominio` por detector (catraca-catraca do nº sem).
+    aplica: [detectores, pericias]
+    severidade: alta
+    acao: Dívida listada no painel de conformidade; detector novo sem domínio é barrado.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+
+  - id: COR-11
+    titulo: Manchete refém de poucos registros diz isso
+    enunciado: >-
+      Quando até 3 registros respondem por 50% ou mais de uma soma em destaque, a manchete informa a
+      concentração ("95% em um credor") e os registros são conferidos na fonte primária antes da exibição.
+    porque: 13/11/2026 — 95% do "pago a empresa morta" era um único credor; em julho, 4 registros valiam 38% de uma manchete.
+    medida: Sensor calcula a participação dos 3 maiores itens nos payloads de manchete que trazem lista.
+    aplica: [painel, relatorios, detectores]
+    severidade: media
+    acao: Abre item; a manchete ganha a nota de concentração.
+    verificadores:
+      - {tipo: sensor, ref: payloads_painel}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_concentracao_alta_e_acusada"}
+
+  - id: COR-12
+    titulo: Soma sem dupla contagem
+    enunciado: >-
+      Antes de somar: uma linha por fato (sem chave vazia), responsabilidade solidária conta uma vez, devolução
+      e reemissão contam uma vez, picos anuais não se somam, e o mesmo fato vindo de duas coletas é deduplicado
+      pela chave natural.
+    porque: >-
+      57 linhas sem número de OB dobravam R$ 11,47 mi em todas as somas; débito solidário contado N vezes
+      (R$ 66 mi → R$ 28,5 mi); reconstrução que salvou páginas alheias levou a soma a 10¹⁷.
+    medida: "Sensor de base: linhas de OB com chave vazia ou duplicada na chave natural; catraca de OB paga."
+    aplica: [detectores, pericias, coletores]
+    severidade: bloqueante
+    acao: Abre item 🆘; somas dependentes voltam a PENDENTE.
+    verificadores:
+      - {tipo: sensor, ref: alertas_base}
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_ob_sem_filtro_de_paga_so_desce"}
+
+  - id: COR-13
+    titulo: Todo número exibido é reprodutível por código versionado
+    enunciado: >-
+      Todo arquivo de dados que alimenta o painel ou um relatório tem gerador versionado no repositório, e o
+      inventário aponta para ele. Nada do que o dono vê nasce de script em pasta temporária ou de edição à mão.
+    porque: 13/11/2026 — o gerador da análise de gestão vivia em pasta temporária; o que o painel mostrava não era reprodutível.
+    medida: "Catraca: todo arquivo de dados inventariado como fonte de rota tem `gerador` existente no repositório."
+    aplica: [painel, relatorios, detectores, vault]
+    severidade: bloqueante
+    acao: Catraca barra superfície nova sem gerador; as antigas ficam como dívida.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_inventario.py}
+
+  - id: COR-14
+    titulo: Modelo barato extrai; quem julga é o modelo de juízo
+    enunciado: >-
+      Modelo gratuito ou barato só extrai e tria, com citação literal conferida por código. Todo veredito 🔴 ou
+      🟡 exibido foi relido pelo modelo de juízo da assinatura. Resposta de modelo sem o JSON pedido, cortada ou
+      vazia é falha — nunca veredito "sem achado".
+    porque: 616 vereditos vazios por corte de saída; 28% dos vereditos de execução negavam OB que a base tinha.
+    medida: "Sensor do cruzamento: vereditos 🔴/🟡 exibidos sem leitura do modelo de juízo; vereditos vazios."
+    aplica: [llm, pericias, lex, detectores]
+    severidade: alta
+    acao: Abre item; vereditos sem releitura ficam PENDENTE.
+    verificadores:
+      - {tipo: sensor, ref: cruzamento_motores}
+
+  - id: COR-15
+    titulo: Catraca provada — ela fica vermelha com o defeito
+    enunciado: >-
+      Toda catraca e todo verificador novo têm, no próprio teste, a prova de que acusam: o defeito é
+      reintroduzido em dado sintético e o verificador responde vermelho. Catraca com falso positivo é corrigida,
+      não ignorada.
+    porque: Cinco catracas da casa já mentiram (mediam a coisa errada, varriam a pasta errada ou quebravam quando o problema era resolvido).
+    medida: "Catraca do registro: cada catraca de regra tem um teste com \"prova\" no nome que injeta o defeito."
+    aplica: [infra, detectores]
+    severidade: bloqueante
+    acao: Catraca barra.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_registro.py::test_toda_catraca_de_regra_tem_prova"}
+
+  - id: COR-16
+    titulo: Taxa alta de detector é defeito de leitura até prova em contrário
+    enunciado: >-
+      Detector que acusa mais de 20% da base examinada, ou cujo volume multiplica por 3 entre execuções, fica
+      EM REVISÃO: nada dele entra em manchete até uma amostra ser conferida na fonte primária.
+    porque: O motor de regras gravou 85.229 alertas ao ser consertado; 58.253 eram colisão de CPF mascarado.
+    medida: Sensor compara a contagem de alertas por tipo com o snapshot anterior e com o tamanho da base.
+    aplica: [detectores, painel]
+    severidade: alta
+    acao: Abre item; o tipo de alerta é segurado fora das manchetes.
+    verificadores:
+      - {tipo: sensor, ref: alertas_base}
+
+  - id: COR-17
+    titulo: Menção não é fonte; norma não é fato
+    enunciado: >-
+      Texto que MENCIONA um objeto não é o objeto; cláusula que PREVÊ um ato não é o ato praticado; metadado
+      dentro do documento não prova o documento. Extração por janela em volta de marcador exige a âncora do
+      próprio registro.
+    porque: Cláusula tratada como ato praticado; extrator de janela simétrica fabricou tuplas híbridas (75% dos extratos eram do vizinho).
+    medida: Controles negativos dos extratores (texto que só menciona não gera achado); juiz.
+    aplica: [detectores, coletores, lex, pericias]
+    severidade: alta
+    acao: Abre item.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_controles_detector.py}
+      - {tipo: juiz, ref: auditor}
+
+  # ══════════════════════════════════ CONSTÂNCIA ══════════════════════════════════
+  - id: CST-01
+    titulo: O mesmo número é o mesmo em todo lugar
+    enunciado: >-
+      Uma métrica tem UMA definição e UM gerador. Painel, PDF, Yoda e vault leem do mesmo lugar; divergência
+      entre superfícies acima de R$ 0,01 (valor) ou 1 unidade (contagem), na mesma data de referência, é
+      violação.
+    porque: >-
+      13/11/2026: o card "órgão que mais economiza" contradizia o herói da mesma tela; um caso do vault dizia
+      "R$ 375 mi canônico" e R$ 568,2 mi no mesmo arquivo.
+    medida: Sensor compara cada métrica do mapa de métricas entre as superfícies declaradas.
+    aplica: [painel, relatorios, yoda, vault]
+    severidade: alta
+    acao: Abre item com os dois valores e as duas fontes; as superfícies ficam EM REVISÃO.
+    verificadores:
+      - {tipo: sensor, ref: constancia_superficies}
+
+  - id: CST-02
+    titulo: Variação brusca de manchete dispara revisão
+    enunciado: >-
+      Manchete que varia mais de 25% (ou muda de ordem de grandeza, ou zera) entre duas execuções sem mudança
+      de lógica registrada fica EM REVISÃO até alguém explicar a causa. Mudança de lógica registra antes e
+      depois.
+    porque: Manchetes já caíram de R$ 4 bi para R$ 18 mi e de 59 mil para 771 — o sistema não percebeu nenhuma das quedas, e nem as subidas.
+    medida: Sensor guarda o histórico de cada manchete e compara com a leitura anterior.
+    aplica: [painel, detectores]
+    severidade: alta
+    acao: Abre item com valor anterior e atual; reincidência vira 🆘.
+    verificadores:
+      - {tipo: sensor, ref: manchetes_variacao}
+      - {tipo: catraca, ref: "tests/test_regra_verificadores.py::test_variacao_brusca_e_acusada"}
+
+  - id: CST-03
+    titulo: Motor que roda sem efeito é falha
+    enunciado: >-
+      Todo motor do AO VIVO declara onde seu trabalho aparece (`efeito`). Rodar sem avanço dentro da janela é
+      falha, não "agendado". Motor sem efeito declarado é dívida.
+    porque: 255 execuções "ok" em 7 dias com 48 de 48 capturas vazias; o motor de regras rodou 84 vezes com erro e código de saída zero.
+    medida: "Catraca-catraca: nº de motores sem `efeito` só pode diminuir; sensor lê o estado do AO VIVO e acusa efeito parado."
+    aplica: [aovivo, coletores, detectores]
+    severidade: alta
+    acao: Abre item; remédio automático quando o motor declara um.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_motores.py}
+      - {tipo: sensor, ref: motores_sem_efeito}
+
+  - id: CST-04
+    titulo: Todo produtor tem consumidor e todo consumidor tem produtor
+    enunciado: >-
+      O que é produzido (tabela, arquivo, fila) tem quem leia, com agenda; o que é lido tem quem produza, com
+      agenda. Detector novo confere se já existe e se tem chamador. Instrução enviada a outro sistema confere se
+      há quem a trate do outro lado.
+    porque: Seis casos de "construído, testado, nunca rodado"; produtor com cron e consumidor sem; instrução sem tratador do outro lado.
+    medida: "Catraca do inventário: detector inventariado tem chamador em produção (rota, cron, timer ou motor); SLO de frescor existente."
+    aplica: [detectores, coletores, aovivo, yoda, lex]
+    severidade: alta
+    acao: Catraca barra detector novo sem chamador; os órfãos antigos ficam como dívida.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_inventario.py}
+      - {tipo: existente, ref: config/pipelines.yaml}
+
+  - id: CST-05
+    titulo: Regressão de catraca bloqueia; a linha de base só desce
+    enunciado: >-
+      Catraca vermelha barra commit e push. Linha de base de dívida só diminui; aumentá-la exige motivo escrito
+      no commit e no arquivo de base. Portão que não mediu declara que não mediu.
+    porque: O CI ficou vermelho 12 dias sem ninguém ver; um portão que declarava não ter medido guardou defeito.
+    medida: As catracas de regra entram no portão de pre-push e no sensor de catracas da automelhoria.
+    aplica: [infra]
+    severidade: bloqueante
+    acao: Push barrado; em produção, item aberto.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_registro.py::test_catracas_de_regra_estao_no_portao"}
+      - {tipo: existente, ref: tests/test_pre_push_gate_catracas.py}
+
+  - id: CST-06
+    titulo: Rotina idempotente
+    enunciado: >-
+      Rodar duas vezes dá o mesmo resultado que rodar uma: gravação por chave natural, sem duplicar linha, sem
+      destruir progresso anterior, sem reenviar a mesma mensagem.
+    porque: Chave primária incompleta apagava OB de outra unidade; guarda de invalidação destruía o próprio progresso a cada passada; fila de 3.074 itens era 9.
+    medida: Os sensores e o juiz de qualidade têm teste de idempotência; para as rotinas da casa, revisão por caso.
+    aplica: [coletores, detectores, aovivo, lex, yoda]
+    severidade: alta
+    acao: Abre item.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_sensores.py::test_rodar_duas_vezes_nao_duplica"}
+      - {tipo: manual, ref: "falta harness que rode cada coletor duas vezes sobre base sintética e compare"}
+
+  - id: CST-07
+    titulo: Cache não serve lógica antiga
+    enunciado: >-
+      Todo cache de número exibido tem prazo, e a correção de lógica invalida o cache (chave com versão da
+      lógica, ou limpeza explícita no mesmo commit). Depois de corrigir, confere-se o número SERVIDO, não o
+      código.
+    porque: Correções de manchete continuaram invisíveis até o cache ser regenerado; consertar o artefato em vez da fonte fez oito correções sumirem num rebuild.
+    medida: Sensor compara o número servido pela rota com o recalculado pela função de origem nas métricas do mapa (CST-01).
+    aplica: [painel, relatorios]
+    severidade: alta
+    acao: Abre item com remédio de regeneração do cache.
+    verificadores:
+      - {tipo: sensor, ref: constancia_superficies}
+      - {tipo: manual, ref: "falta versão de lógica na chave dos caches de rota; hoje só o prazo protege"}
+
+  - id: CST-08
+    titulo: Caso do vault coerente consigo e com o que foi refutado
+    enunciado: >-
+      Frontmatter (grau, status, valor) e resumo de um caso dizem o mesmo que o corpo. Caso com desfecho no
+      corpo não fica "aberto/alto". Achado REFUTADO é rebaixado em todas as superfícies que o exibem, com nota
+      do que o derrubou.
+    porque: "13/11/2026 — casos com `grau: alto` e desfecho 🟢 no corpo; resumo com valor antigo; quatro casos refutados ainda exibidos como 🔴."
+    medida: Sensor lê os casos do vault e acusa conflito grau × desfecho e valores divergentes entre resumo e corpo.
+    aplica: [vault, painel]
+    severidade: alta
+    acao: Abre item por caso.
+    verificadores:
+      - {tipo: sensor, ref: vault_casos}
+
+  - id: CST-09
+    titulo: Constante e lista em fonte única
+    enunciado: >-
+      Constante legal, lista de termos, mapa de órgãos e tabela de modelos existem em um lugar; os demais
+      importam. Derivado é regenerado, nunca editado à mão.
+    porque: Cópias divergentes de teto, de lista de detectores e de capacidades; derivado editado à mão sumiu no rebuild.
+    medida: Catracas de constantes legais (CNF-06) e de derivados regenerados (existente).
+    aplica: [detectores, infra, painel, yoda]
+    severidade: alta
+    acao: Catraca barra.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_catracas.py::test_teto_legal_copiado_so_desce"}
+
+  - id: CST-10
+    titulo: Nada falha calado
+    enunciado: >-
+      Todo job mede o próprio efeito e sai com código diferente de zero quando não produz. Sensor que não
+      consegue medir vira problema `sensor:<nome>`, nunca "ok". Zero vem sempre com o motivo.
+    porque: Coleta diária morta quatro dias em silêncio; drenador parado 16 dias por um número gravado como texto; tratador de popup zerou a coleta por 7 dias.
+    medida: O laço de automelhoria trata sensor cego como problema (existente); os sensores de qualidade seguem o mesmo contrato e têm teste.
+    aplica: [infra, coletores, aovivo, yoda, lex]
+    severidade: alta
+    acao: Abre item `sensor:<nome>`.
+    verificadores:
+      - {tipo: catraca, ref: "tests/test_regra_sensores.py::test_sensor_cego_vira_problema"}
+      - {tipo: existente, ref: tools/automelhoria_geral.py}
+
+  - id: CST-11
+    titulo: Inventário vivo — nada afirma ao dono sem estar inventariado
+    enunciado: >-
+      Toda rota, card, detector, relatório, motor, comando do Yoda e peça do Lex que afirma algo ao dono está no
+      inventário, com o que afirma, a fonte e quem consome. Superfície nova sem entrada é barrada.
+    porque: As conclusões erradas de 13/11/2026 estavam em superfícies que ninguém listava juntas; o que não está listado não é conferido.
+    medida: Catraca enumera rotas, cards, detectores e motores por código e compara com o inventário.
+    aplica: [painel, detectores, pericias, relatorios, lex, yoda, aovivo]
+    severidade: bloqueante
+    acao: Catraca barra o commit.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_inventario.py}
+
+  - id: CST-12
+    titulo: Regra com verificador; documento gerado da fonte
+    enunciado: >-
+      Toda regra deste arquivo tem verificador que existe e roda; o que ainda é manual aparece como dívida. O
+      documento canônico é gerado deste arquivo e não diverge dele.
+    porque: Regra que não roda é enfeite (pedido do dono de 13/11/2026).
+    medida: Catraca do registro.
+    aplica: [infra]
+    severidade: bloqueante
+    acao: Catraca barra.
+    verificadores:
+      - {tipo: catraca, ref: tests/test_regra_registro.py}
+
+  - id: CST-13
+    titulo: Número e lista vêm do mesmo universo
+    enunciado: >-
+      O total de um card e a lista que abre ao clicar nele saem da mesma consulta e do mesmo filtro. Card com
+      número tem lista auditável atrás.
+    porque: Número e lista vinham de universos diferentes; KPI sem clique não podia ser conferido.
+    medida: Catraca de KPI clicável (existente); sensor confere total × soma da lista nas métricas do mapa.
+    aplica: [painel]
+    severidade: alta
+    acao: Abre item.
+    verificadores:
+      - {tipo: existente, ref: tests/test_painel_kpi_clicavel.py}
+      - {tipo: sensor, ref: constancia_superficies}
+
+  - id: CST-14
+    titulo: Afirmação refutada já entregue gera errata
+    enunciado: >-
+      Quando uma afirmação já mostrada ao dono é refutada ou rebaixada, registra-se a errata (o que foi dito,
+      onde, o que a fonte mostra, data) e o dono é avisado pelo mesmo canal. Mensagem antiga não se retifica
+      sozinha.
+    porque: 13/11/2026 — 48 conclusões refutadas ou parciais já tinham sido mostradas no painel, em relatórios e em mensagens.
+    medida: "Sensor do vault: nota de revisão com vereditos REFUTADA/PARCIAL sem a errata correspondente registrada."
+    aplica: [vault, yoda, relatorios, painel]
+    severidade: alta
+    acao: Abre item pedindo a errata.
+    verificadores:
+      - {tipo: sensor, ref: vault_casos}
+
+  - id: CST-15
+    titulo: O juiz de qualidade roda, e o silêncio dele é falha
+    enunciado: >-
+      O juiz subjetivo roda todo dia sobre amostra escolhida por valor e risco. Mais de 48 h sem rodada concluída
+      é problema; nota que cai entre rodadas sobre a mesma afirmação é variação a explicar.
+    porque: Sensores que ninguém olhava; verificador "anti-teto" que nunca disparou.
+    medida: Sensor confere a data da última rodada e a tendência das notas.
+    aplica: [llm, infra]
+    severidade: alta
+    acao: Abre item `sensor:juiz`.
+    verificadores:
+      - {tipo: sensor, ref: juiz_qualidade}
+
+  # ══════════════════════════════════ SUBJETIVAS ══════════════════════════════════
+  # Rubricas do juiz (Claude pela assinatura, como juiz e co-motor). Escala 0–4 por critério, com âncoras em
+  # `rubricas` abaixo. Nota ≤ 1 em qualquer critério = violação; nota 2 = ressalva. Ver `escalar_humano`.
+  - id: SUB-01
+    titulo: Proporcionalidade
+    enunciado: O destaque dado à afirmação (cor, posição, adjetivo, grau) é proporcional à força da prova e à materialidade do valor.
+    porque: 13/11/2026 — 🔴 em itens de R$ 1,32 mi sem prova de alcance da sanção; cluster 🔴 com 0 fachadas comprovadas.
+    medida: Nota do juiz no critério `proporcao`.
+    aplica: [painel, relatorios, vault, yoda, lex]
+    severidade: alta
+    acao: Nota ≤ 1 abre item e rebaixa o destaque; nota 2 abre ressalva.
+    verificadores: [{tipo: juiz, ref: proporcao}]
+
+  - id: SUB-02
+    titulo: A moldura não afirma mais que o dado
+    enunciado: Título, rótulo e frase dizem exatamente o que o número mede — universo, natureza do valor, época, esfera — e nada além.
+    porque: Julho e novembro de 2026 — em todas as manchetes auditadas o dado estava certo e a moldura afirmava mais do que ele sustentava.
+    medida: Nota do juiz no critério `moldura`.
+    aplica: [painel, relatorios, vault, yoda, lex]
+    severidade: bloqueante
+    acao: Nota ≤ 1 tira a manchete das afirmações VERIFICADAS e abre item 🆘.
+    verificadores: [{tipo: juiz, ref: moldura}]
+
+  - id: SUB-03
+    titulo: A explicação inocente foi realmente descartada
+    enunciado: As explicações inocentes plausíveis foram testadas com documento, e o texto diz qual documento afastou cada uma.
+    porque: 13/11/2026 — devolução bancária, sucessão, homônimo e prorrogação não publicada derrubaram dezenas de achados.
+    medida: Nota do juiz no critério `inocente`.
+    aplica: [relatorios, vault, lex, pericias, painel]
+    severidade: bloqueante
+    acao: Nota ≤ 1 rebaixa o achado a PENDENTE.
+    verificadores: [{tipo: juiz, ref: inocente}]
+
+  - id: SUB-04
+    titulo: Um auditor do tribunal de contas ou da controladoria aceitaria
+    enunciado: A afirmação resistiria como achado de auditoria — critério, condição, causa, efeito e evidência identificados; fonte primária citada.
+    porque: O destino dos achados é representação e requerimento; o padrão de prova é o do controle externo.
+    medida: Nota do juiz no critério `auditor`.
+    aplica: [relatorios, vault, lex, pericias]
+    severidade: alta
+    acao: Nota ≤ 1 abre item; o achado não vira minuta.
+    verificadores: [{tipo: juiz, ref: auditor}]
+
+  - id: SUB-05
+    titulo: Um jornalista hostil não derrubaria
+    enunciado: Lida por quem quer desmentir o mandato, a afirmação não tem ponto fraco evidente — número conferível, sem exagero, sem alvo errado.
+    porque: O que sai do painel vira fala pública; uma única manchete inflada desmoraliza as corretas.
+    medida: Nota do juiz no critério `hostil`.
+    aplica: [painel, relatorios, vault, yoda]
+    severidade: alta
+    acao: Nota ≤ 1 abre item e marca "não usar em público".
+    verificadores: [{tipo: juiz, ref: hostil}]
+
+  - id: SUB-06
+    titulo: A linguagem respeita a presunção de inocência
+    enunciado: O texto descreve fatos e indícios, atribui condutas só com documento, e não qualifica pessoa ou empresa.
+    porque: Constituição, art. 5º, LVII; risco jurídico e reputacional do mandato.
+    medida: Nota do juiz no critério `presuncao`.
+    aplica: [painel, relatorios, vault, yoda, lex]
+    severidade: bloqueante
+    acao: Nota ≤ 1 recusa o entregável e abre item 🆘.
+    verificadores: [{tipo: juiz, ref: presuncao}]
+
+  - id: SUB-07
+    titulo: É útil para ato parlamentar
+    enunciado: "A afirmação diz o que o mandato pode fazer com ela — requerimento de informação, representação, encaminhamento, ou \"nada ainda: falta o documento X\"."
+    porque: O dono usa o sistema para fiscalizar o Executivo; achado sem próximo passo é ruído.
+    medida: Nota do juiz no critério `utilidade`.
+    aplica: [relatorios, vault, lex, yoda, painel]
+    severidade: media
+    acao: Nota ≤ 1 abre item de melhoria.
+    verificadores: [{tipo: juiz, ref: utilidade}]
+
+  - id: SUB-08
+    titulo: O dono entende sem contexto
+    enunciado: A afirmação é compreensível por quem não acompanhou a apuração — sem jargão interno, sem sigla não explicada, com o período e o órgão ditos.
+    porque: O dono lê pelo celular, entre compromissos; resposta do Yoda com jargão de código já falhou com ele.
+    medida: Nota do juiz no critério `clareza`.
+    aplica: [yoda, painel, relatorios, lex]
+    severidade: media
+    acao: Nota ≤ 1 abre item de melhoria.
+    verificadores: [{tipo: juiz, ref: clareza}]
+
+  - id: SUB-09
+    titulo: Acabamento de entregável corporativo
+    enunciado: O entregável seria aceito por cliente corporativo — hierarquia visual, tabelas alinhadas, escala explícita, fontes e normas citadas.
+    porque: Regra permanente do dono (padrão de consultoria de topo).
+    medida: Nota do juiz no critério `acabamento`.
+    aplica: [relatorios, lex, vault]
+    severidade: media
+    acao: Nota ≤ 1 abre item de melhoria.
+    verificadores: [{tipo: juiz, ref: acabamento}]
+
+# ══════════════════════════════════ RUBRICAS DO JUIZ ══════════════════════════════════
+escala:
+  0: "Inaceitável — afirma o que o dado desmente, ou expõe pessoa. Sai do ar."
+  1: "Falha — a afirmação central não se sustenta do jeito que foi dita."
+  2: "Ressalva — o núcleo se sustenta; número, moldura ou linguagem precisam de ajuste."
+  3: "Bom — sustenta-se; melhorias de forma."
+  4: "Exemplar — um auditor assinaria embaixo."
+
+rubricas:
+  proporcao:
+    regra: SUB-01
+    pergunta: O destaque é proporcional à prova e ao valor?
+    ancora_ruim: >-
+      Quatro itens somando R$ 1,32 mi marcados 🔴 por "sanção vigente" sem alcance provado sobre o Estado; um
+      "cluster de fachada" 🔴 com oito fornecedores e nenhuma fachada documentada. (nota 1)
+    ancora_boa: >-
+      "Indício 🟡 — R$ 15,59 mi em 32 OB a um credor declarado INAPTO pela Receita em 28/01/2026; 95% do total
+      da métrica; a irregularidade em si ainda é inconclusiva." (nota 4)
+  moldura:
+    regra: SUB-02
+    pergunta: O título e a frase dizem só o que o número mede?
+    ancora_ruim: >-
+      "Pago a empresa morta: R$ 592,8 mi / 146 empresas" — o número somava pagamentos ANTERIORES à baixa,
+      sucessões e órgãos públicos; "Contrato de R$ 43 mi assinado no 3º dia da gestão" — era ata de registro de
+      preços de fevereiro, sem pagamento. (nota 0–1)
+    ancora_boa: >-
+      "Pago após a baixa ou inaptidão do CNPJ (Receita): ~R$ 16,4 mi em 14 CNPJs, OB do SIAFE contabilizadas e
+      não devolvidas, Executivo estadual, até 12/11/2026 — 95% em um credor." (nota 4)
+  inocente:
+    regra: SUB-03
+    pergunta: As explicações inocentes foram testadas com documento?
+    ancora_ruim: >-
+      "208 contratos com duplicidade (R$ 17,6 mi)" sem checar Guia de Devolução — 174 eram devolução bancária
+      seguida de reemissão; "sócio é agente público" casado só pelo nome — era homônimo. (nota 0–1)
+    ancora_boa: >-
+      "Par de OB de mesmo valor para a mesma nota de liquidação; a primeira tem Guia de Devolução e status de
+      erro no pagamento, a segunda diz 'paga por ofício' — não é duplicidade. Restam 14 pares sem explicação na
+      base: pedir extrato e notas fiscais." (nota 4)
+  auditor:
+    regra: SUB-04
+    pergunta: Um auditor do tribunal de contas ou da controladoria aceitaria como achado?
+    ancora_ruim: >-
+      "Pagamento sem prova de execução é padrão na saúde estadual — R$ 2,66 bi" — nas três âncoras de maior
+      score a evidência de execução estava nos autos. (nota 0)
+    ancora_boa: >-
+      "Nenhum dos 64 processos examinados pela controladoria tinha os autos lidos pelo sistema" — afirmação
+      sobre o próprio sistema, conferida processo a processo. (nota 4)
+  hostil:
+    regra: SUB-05
+    pergunta: Um jornalista hostil derrubaria?
+    ancora_ruim: >-
+      "59.024 alertas de gravidade alta" — 58.253 eram pessoas diferentes agrupadas pelo CPF mascarado; uma
+      checagem de dez minutos desmonta. (nota 0)
+    ancora_boa: >-
+      "Limpeza escolar paga por termo de ajuste de contas quase todo mês em 2026, sem contrato vigente; os
+      termos estão publicados no diário oficial (datas e números citados)." (nota 4)
+  presuncao:
+    regra: SUB-06
+    pergunta: A linguagem respeita a presunção de inocência?
+    ancora_ruim: '"Melhor detector: concentra fraude 2,12×"; "fachada/fantasma já registrados". (nota 0–1)'
+    ancora_boa: '"Detector com 2,1× mais fornecedores sancionados (qualquer época e ente), n = 88 — sinal para priorizar leitura, não conclusão." (nota 4)'
+  utilidade:
+    regra: SUB-07
+    pergunta: Diz o que o mandato pode fazer com isso?
+    ancora_ruim: '"🔴 10/10 — sobrepreço" em contrato federal, sem comparador de preço e sem destino. (nota 1)'
+    ancora_boa: >-
+      "Inconclusivo: falta saber se o par de OB é duplicidade ou regularização. Resolve: requerimento à
+      secretaria pedindo extrato da conta pagadora de março/2026 e a guia de devolução." (nota 4)
+  clareza:
+    regra: SUB-08
+    pergunta: O dono entende sem contexto?
+    ancora_ruim: '"D14: 100 no Executivo, 4 itens 🔴 do JSON" — código interno, sem período nem órgão. (nota 1)'
+    ancora_boa: '"Entre março e novembro de 2026, o Estado pagou R$ X a N fornecedores que estavam impedidos de contratar com o próprio Estado." (nota 4)'
+  acabamento:
+    regra: SUB-09
+    pergunta: Seria aceito como entregável corporativo?
+    ancora_ruim: "Relatório em texto corrido, valores sem separador, sem fonte nem data. (nota 1)"
+    ancora_boa: "Capa, placar, fichas por conclusão com fonte e trecho, tabela-resumo, o que falta e o que resolve. (nota 4)"
+
+escalar_humano:
+  - "Qualquer critério com nota 0."
+  - "Afirmação 🔴 de valor igual ou superior a R$ 10.000.000,00 com nota ≤ 2 em moldura, inocente ou auditor."
+  - "Pessoa física nominada."
+  - "Outro Poder ou outro ente."
+  - "Claude e a cascata divergem em 2 pontos ou mais no mesmo critério."
+  - "A mesma afirmação reprovada em duas rodadas seguidas."
+  - "Qualquer minuta que vá sair da casa (requerimento, representação, fala pública)."
+
+# ══════════════════════════════════ FOTOGRAFIA DO INVENTÁRIO ══════════════════════════════════
+# Entra no documento canônico (seção 2). É uma fotografia datada — a contagem viva sai de
+# `python -m compliance_agent.qualidade inventario`, e as catracas barram o que surgir sem entrada.
+fotografia_inicial:
+  data: "2026-11-13"
+  itens:
+    - {o_que: "Rotas `/api` do painel", quantos: "224 (159 afirmam algo sobre terceiros ou sobre o dado; 65 operacionais)",
+       fonte: "`rotas/*.py`, `server.py`, território e AO VIVO", consome: "painel; Yoda (capacidades)"}
+    - {o_que: "Abas do painel", quantos: "72", fonte: "`static/js/src/entrada.js` (TABS)", consome: "dono"}
+    - {o_que: "Manchetes do cockpit", quantos: "12 cards e 7 chips da mesa", fonte: "rotas de cruzamento, comparador de preços, alertas e frescor",
+       consome: "dono (primeira tela); Yoda"}
+    - {o_que: "Indicadores (KPI) nas demais abas", quantos: "290", fonte: "`static/js/src/abas/`", consome: "dono"}
+    - {o_que: "Detectores, perícias e regras que produzem afirmação sobre terceiros", quantos: "134 (42 detectores do registro, 23 cruzamentos, 17 regras do motor de alertas, 20 regras da análise de gestão, 32 módulos e ferramentas)",
+       fonte: "`config/qualidade_detectores.yaml`", consome: "painel, relatórios, Lex, Yoda"}
+    - {o_que: "Relatórios, dossiês e pareceres", quantos: "13 produtos", fonte: "`compliance_agent/reporting/`, `dossie*.py`, `lex_render.py`, `pericia_contabil.py`",
+       consome: "dono (PDF, md, planilha); Yoda"}
+    - {o_que: "Arquivos de dados que alimentam rotas", quantos: "19", fonte: "`data/` (cada um com gerador versionado)", consome: "painel"}
+    - {o_que: "Peças do Lex", quantos: "14", fonte: "`compliance_agent/lex*.py`, `tools/lex_*.py`", consome: "parecer 🟢🟡🔴 em relatório; Telegram"}
+    - {o_que: "Yoda/Hermes", quantos: "93 capacidades (91 ferramentas), 4 plugins com 18 comandos", fonte: "`capabilities.yaml`; plugins `jfn-*` do Hermes",
+       consome: "dono (Telegram, texto e voz)"}
+    - {o_que: "Motores do AO VIVO", quantos: "33 (27 motores, 6 de infraestrutura)", fonte: "`compliance_agent/aovivo/motores.yaml`", consome: "painel (reator); automelhoria"}
+    - {o_que: "Agendamentos que entregam algo ao dono", quantos: "12", fonte: "cron e timers do usuário", consome: "dono (Telegram)"}

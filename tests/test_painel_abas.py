@@ -40,8 +40,10 @@ from tools.painel_abas import abas, abas_por_esfera
 # governador em exercício desde 23/03/2026 (atos DOERJ, contratações, OB SIAFE, controle, pontos de atenção) — pedido do dono.
 # 2026-11-13: entraram "Perícia contábil" (`e_pcont`) e "CGE × JFN" (`e_cge`) — rotinas automáticas; e Íntegras
 # (Município do Rio) foi de estado para prefeitura.
-TOTAL = 72
-POR_ESFERA = {"inicio": 1, "estado": 22, "prefeitura": 16, "geral": 33}
+# 2026-11-13: 72 → 73 e geral 33 → 34. Entrou "Conformidade" (`g_conform`): o painel de conformidade das regras de
+# qualidade do próprio JFN (por sistema: regras, violações abertas, tendência, juiz, dívida) — /api/qualidade/conformidade.
+TOTAL = 73
+POR_ESFERA = {"inicio": 1, "estado": 22, "prefeitura": 16, "geral": 34}
 
 
 def test_le_todas_as_abas_do_painel():

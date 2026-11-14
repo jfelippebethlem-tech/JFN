@@ -1,0 +1,3042 @@
+# Registro de quem produz afirmação sobre terceiros (detectores, regras, perícias, ferramentas).
+# Regras: COR-03 (controles positivo e negativo), COR-04 (FP medida antes de manchete), COR-05 (hipótese
+# inocente excluída por código), COR-09, COR-10 (domínio), CNF-05/07/11/13, COR-17.
+# Controle só aponta teste ABERTO e conferido; na dúvida, null (dívida honesta). fp_medida só com medição
+# REGISTRADA no repo contra fonte primária (lift contra sanção posterior NÃO é FP). A revisão cética de
+# 13/11/2026 (amostra conferida em fonte primária, fora do repo) vai em `revisao_2026_11_13`.
+# Código: compliance_agent/qualidade/detectores.py · catracas: tests/test_regra_controles_detector.py
+detectores:
+  acima_do_teto:
+    modulo: compliance_agent/acima_do_teto.py
+    simbolo: classificar
+    afirma: Indício de remuneração acima do teto do art. 37, XI
+    fonte:
+    - registros_folha (via chamador)
+    grava: não grava (sob demanda)
+    consome:
+    - relatório de teto
+    manchete: false
+    controle_positivo: tests/test_acima_do_teto.py::test_indicio_supersalario_mesmo_sem_indenizatorias
+    controle_negativo: tests/test_acima_do_teto.py::test_dentro_apos_excluir_indenizatorias
+    hipoteses_inocentes:
+    - hipotese: verbas indenizatórias fora do teto
+      excluida_por: compliance_agent/acima_do_teto.py:classificar
+    - hipotese: RRA/retroativo
+      excluida_por: compliance_agent/acima_do_teto.py:classificar
+    dominio: null
+    fp_medida: null
+  acumulo_cargos:
+    modulo: compliance_agent/acumulo_cargos.py
+    simbolo: cruzar
+    afirma: Indício de acúmulo de vínculo ALERJ × Executivo estadual
+    fonte:
+    - alerj_folha
+    - registros_folha
+    grava: sob demanda
+    consome:
+    - relatório de acúmulo
+    manchete: false
+    controle_positivo: tests/test_acumulo_cargos.py::test_cruzamento_detecta_acumulo
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: aposentadoria acumula (CF 37 §10)
+      excluida_por: compliance_agent/acumulo_cargos.py:classificar_legalidade
+    - hipotese: sem remuneração no Estado (afastado)
+      excluida_por: compliance_agent/acumulo_cargos.py:classificar_legalidade
+    - hipotese: exceções do art. 37, XVI (dois de professor, professor + técnico, dois de saúde)
+      excluida_por: null
+    - hipotese: homônimo
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  anomalias:
+    modulo: compliance_agent/anomalias.py
+    simbolo: rodar
+    afirma: Anomalia estatística em OB (isolation forest + regras)
+    fonte:
+    - ordens_bancarias
+    grava: ob_anomaly, ob_redflag
+    consome:
+    - painel (top anomalias)
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: pagamento intragovernamental ou tributo
+      excluida_por: compliance_agent/entidades_gov.py:eh_nao_fornecedor
+    dominio: null
+    fp_medida: null
+  cge_confronto:
+    modulo: compliance_agent/cge_confronto.py
+    simbolo: confrontar
+    afirma: Recall do sistema contra irregularidades apontadas pela CGE
+    fonte:
+    - achado_detector
+    - caso
+    - lex_execucao
+    - ob_orcamentaria_siafe
+    - sei_arvore
+    grava: relatório de confronto
+    consome:
+    - vault
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+  comparador.caro_e_suspeito:
+    modulo: compliance_agent/comparador_precos.py
+    simbolo: caro_e_suspeito
+    afirma: Item ≥ 3× a mediana comprado de fornecedor com sinal (sanção à época ou fachada)
+    fonte:
+    - pncp_ente
+    - sancoes_federais
+    - fantasma_score
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/comparador/dossie
+    - static/js/src/abas/cockpit.js (card Caro + suspeito)
+    manchete: true
+    controle_positivo: tests/test_caro_e_suspeito.py::test_dossie_cruza_caro_com_sancionado
+    controle_negativo: tests/test_caro_e_suspeito.py::test_sancao_posterior_a_compra_nao_e_sancionada
+    hipoteses_inocentes:
+    - hipotese: sanção posterior à compra
+      excluida_por: compliance_agent/sancao_abrangencia.py:vigente_em
+    - hipotese: sanção de outro ente sem alcance
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    dominio: null
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: 5 compras caras de fornecedores sancionados
+      sustentado: 0 sancionadas à época
+  comparador.economia_potencial:
+    modulo: compliance_agent/comparador_precos.py
+    simbolo: economia_potencial
+    afirma: Indício de sobrepreço conferido no PNCP (≥ 2× a mediana do mesmo item e unidade)
+    fonte:
+    - pncp_resultado
+    - pncp_ente
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/comparador/economia
+    - static/js/src/abas/cockpit.js (herói)
+    manchete: true
+    controle_positivo: tests/test_economia_potencial.py::test_soma_so_compra_verificada_fora_de_ata
+    controle_negativo: tests/test_economia_potencial.py::test_ata_de_registro_de_precos_vai_para_o_teto
+    hipoteses_inocentes:
+    - hipotese: ata de registro de preços (quantidade estimada)
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    - hipotese: unidade diferente/ambígua
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    - hipotese: inexigibilidade e agricultura familiar
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    - hipotese: comodato embutido no preço
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    - hipotese: compra não conferida no PNCP
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    dominio: compras homologadas do Estado do RJ e da Prefeitura do Rio, fora de ata; não é OB paga
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: R$ 5.976.128,58 de economia potencial
+      sustentado: ≤ R$ 5,02 mi como teto teórico; pago INDISPONÍVEL
+  comparador.economia_vedada:
+    modulo: compliance_agent/comparador_precos.py
+    simbolo: economia_vedada
+    afirma: Indício de sobrepreço pago a fornecedor com sanção vigente e com alcance
+    fonte:
+    - pncp_resultado
+    - pncp_ente
+    - sancoes_federais
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/comparador/vedada
+    - static/js/src/abas/cockpit.js (caixa vedada)
+    manchete: true
+    controle_positivo: tests/test_economia_vedada.py::test_soma_sobrepreco_a_inidoneo_vigente
+    controle_negativo: tests/test_economia_vedada.py::test_impedimento_federal_nao_veda_comprador_estadual
+    hipoteses_inocentes:
+    - hipotese: sanção fora da vigência
+      excluida_por: compliance_agent/sancao_abrangencia.py:vigente_em
+    - hipotese: sanção sem alcance sobre o comprador
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    dominio: null
+    fp_medida: null
+  comparador.orgao_que_mais_economiza:
+    modulo: compliance_agent/comparador_precos.py
+    simbolo: economia_potencial (por_orgao)
+    afirma: Órgão com maior soma de indícios de sobrepreço conferidos
+    fonte:
+    - pncp_resultado
+    - pncp_ente
+    grava: sob demanda
+    consome:
+    - static/js/src/abas/cockpit.js (card Órgão)
+    manchete: true
+    controle_positivo: null
+    controle_negativo: tests/test_economia_potencial.py::test_nao_verificada_fica_pendente_e_fora_da_manchete
+    hipoteses_inocentes:
+    - hipotese: compra não conferida fica fora da quebra por órgão
+      excluida_por: compliance_agent/comparador_precos.py:economia_potencial
+    dominio: mesma base do herói (conferido, homogêneo)
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: R$ 25.873.309,21 no órgão que mais economiza (conjunto genérico)
+      sustentado: R$ 5.336.162,40 na base homogênea
+  competencia_futura:
+    modulo: compliance_agent/pagamento_competencia_futura.py
+    simbolo: pagamento_competencia_futura
+    afirma: Indício de pagamento antecipado (OB com competência futura)
+    fonte:
+    - ob_orcamentaria_siafe
+    - empresas
+    - estabelecimentos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/competencia_futura
+    manchete: false
+    controle_positivo: tests/test_pagamento_competencia_futura.py::test_classifica_por_antecedencia_e_exclui_o_que_nao_e_fornecedor
+    controle_negativo: tests/test_pagamento_competencia_futura.py::test_classifica_por_antecedencia_e_exclui_o_que_nao_e_fornecedor
+    hipoteses_inocentes:
+    - hipotese: repasse de contrato de gestão (OS)
+      excluida_por: compliance_agent/pagamento_competencia_futura.py:pagamento_competencia_futura
+    - hipotese: concessionária (Dec. 49.134 art. 9º)
+      excluida_por: compliance_agent/pagamento_competencia_futura.py:pagamento_competencia_futura
+    - hipotese: restos a pagar com ano trocado
+      excluida_por: compliance_agent/pagamento_competencia_futura.py:pagamento_competencia_futura
+    dominio: null
+    fp_medida: null
+  couto.D01:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d01_02_17
+    afirma: Indício de salto da contratação direta por unidade (>= R$ 10 mi diretos, >= 50% do valor, +20 p.p. sobre o ano
+      anterior)
+    fonte:
+    - contratos_tcerj
+    - compras_diretas_tcerj
+    - publicacoes_doerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    - compliance_agent/aovivo/motores.yaml
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: ata de registro de preços, pedido de empenho ou contrato cancelado contado como contrato
+      excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
+    - hipotese: contrato assinado fora da janela (data de registro no TCE-RJ ≠ data da assinatura no DOERJ)
+      excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
+    - hipotese: contratação direta legítima (concessionária, inexigibilidade real) ou mudança de mix de objetos
+      excluida_por: null
+    dominio: contratos do espelho TCE-RJ assinados de 23/03/2026 ao último mês completo ingerido das compras diretas × mesmo
+      intervalo do ano anterior
+    fp_medida: null
+  couto.D02:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d01_02_17
+    afirma: Indício de contratação emergencial na gestão ao fornecedor que já era contratado da mesma unidade
+    fonte:
+    - contratos_tcerj
+    - compras_diretas_tcerj
+    - publicacoes_doerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: transição decidida antes da gestão (assinatura anterior a 23/03/2026 pelo DOERJ)
+      excluida_por: compliance_agent/governo_couto_regras.py:contrato_da_gestao
+    - hipotese: ata de registro de preços, empenho ou contrato cancelado
+      excluida_por: compliance_agent/governo_couto_regras.py:contrato_da_gestao
+    - hipotese: continuidade do serviço essencial enquanto a licitação corre
+      excluida_por: null
+    dominio: contratos do espelho TCE-RJ assinados a partir de 23/03/2026 com processo no espelho de compras diretas de
+      caráter emergencial
+    fp_medida: null
+  couto.D03:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d03
+    afirma: Indício de empresa recém-aberta (<= 365 dias até a 1a OB) ou de pago >= 20x o capital social entre os credores
+      estreantes na gestão
+    fonte:
+    - ob_orcamentaria_siafe
+    - receita_estab.estabelecimentos
+    - empresas_cadastro
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: ente público ou não fornecedor como credor
+      excluida_por: compliance_agent/entidades_gov.py:eh_nao_fornecedor
+    - hipotese: empresa nova de grupo antigo (cisão, SPE) ou capital social desatualizado no cadastro
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE a credor cuja 1a OB (desde 2021) cai na gestão iniciada em 23/03/2026, >= R$ 500
+      mil
+    fp_medida: null
+  couto.D04:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d04
+    afirma: Indício de credor com porte ME/EPP no cadastro atual cujo pago no ano-calendário ou contrato da gestão excede
+      o teto da LC 123
+    fonte:
+    - ob_orcamentaria_siafe
+    - empresas_cadastro
+    - contratos_tcerj
+    - publicacoes_doerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: ata de registro de preços, pedido de empenho, contrato cancelado ou registro repetido
+      excluida_por: compliance_agent/governo_couto_regras.py:d04
+    - hipotese: contrato assinado antes da gestão (data da assinatura no DOERJ)
+      excluida_por: compliance_agent/governo_couto_regras.py:contrato_da_gestao
+    - hipotese: anos diferentes somando contra o teto anual
+      excluida_por: compliance_agent/governo_couto_regras.py:d04
+    - hipotese: porte desatualizado na Receita (porte atual ≠ porte do ano do certame)
+      excluida_por: null
+    - hipotese: certame sem benefício de ME/EPP
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE no ano-calendário corrente (com algum pago desde 23/03/2026) e contratos do espelho
+      TCE-RJ assinados na gestão
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: 239 credores, R$ 638,6 mi em OB × porte atual
+      sustentado: contratos 112 / R$ 270,5 mi após retirar empenhos, ARP, cancelados e duplicatas; mede porte atual, não
+        o do ano do certame
+  couto.D05:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d05
+    afirma: 'Indício de concentração: credor PJ com >= 30% do pago pela UG na gestão (UG >= R$ 10 mi, credor >= R$ 5 mi),
+      comparado ao ano anterior'
+    fonte:
+    - ob_orcamentaria_siafe
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_rotinas_automaticas.py::test_regras_calculam_e_fonte_ausente_e_indisponivel
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: pagador de outro Poder (tribunal, assembleia, MP, defensoria)
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx.executivo
+    - hipotese: ente público ou não fornecedor como credor
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx.fornecedor
+    - hipotese: contrato único grande (concessão/programa) ou licitação ampla vencida por um só
+      excluida_por: null
+    dominio: OB contabilizada do Executivo estadual (SIAFE) de 23/03/2026 ao último mês completo × mesmo intervalo do ano
+      anterior
+    fp_medida: null
+  couto.D06:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d06
+    afirma: Indício de termo aditivo assinado na gestão com acréscimo > 25% do valor inicial em contrato de órgão estadual
+      (fonte parcial)
+    fonte:
+    - contrato_aditivo
+    - pcrj_contratos
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: prorrogação, renovação, reajuste ou repactuação lançados como acréscimo
+      excluida_por: compliance_agent/governo_couto_regras.py:d06
+    - hipotese: contrato municipal ou de outro Poder
+      excluida_por: compliance_agent/governo_couto_regras.py:d06
+    - hipotese: acréscimo dentro do teto legal de reforma (50%)
+      excluida_por: null
+    dominio: termos aditivos do PNCP assinados a partir de 23/03/2026 em contratos de órgão estadual (Executivo)
+    fp_medida: null
+  couto.D07:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d07
+    afirma: 'Indício de fracionamento: séries da régua siafe_fracionamento do exercício iniciadas na gestão'
+    fonte:
+    - siafe_fracionamento
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: compras de objetos distintos ao mesmo credor; série de pequenas despesas legítimas
+      excluida_por: null
+    dominio: séries de OB do exercício corrente (siafe_fracionamento) com 1a OB a partir de 23/03/2026
+    fp_medida: null
+  couto.D08:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d08_09
+    afirma: Indício de volume atípico de contratos nos 15 primeiros dias da gestão e de dias de OB >= 4x a mediana pré-gestão
+    fonte:
+    - contratos_tcerj
+    - publicacoes_doerj
+    - ob_orcamentaria_siafe
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_governo_couto_revisao.py::test_contrato_da_gestao_usa_a_data_do_doerj_e_tira_ata
+    controle_negativo: tests/test_governo_couto_revisao.py::test_contrato_da_gestao_usa_a_data_do_doerj_e_tira_ata
+    hipoteses_inocentes:
+    - hipotese: ata de registro de preços ou empenho registrado como contrato
+      excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
+    - hipotese: registro no TCE-RJ na janela de contrato assinado antes da gestão
+      excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
+    - hipotese: continuidade administrativa ordinária na transição; folha e previdência
+      excluida_por: null
+    dominio: contratos assinados de 23/03/2026 a 06/04/2026 × mesmo intervalo de 2025; OB contabilizada diária desde 01/01/2026
+    fp_medida: null
+  couto.D09:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d08_09
+    afirma: Indício de pico de pagamento na última semana do governo anterior (>= R$ 3 mi e >= 5x a média semanal do credor)
+    fonte:
+    - ob_orcamentaria_siafe
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: ente público ou não fornecedor como credor
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx.fornecedor
+    - hipotese: pagamento de obrigações vencidas antes da troca de governo
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE de 16/03/2026 a 22/03/2026 × média semanal desde 01/01/2026
+    fp_medida: null
+  couto.D10:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d10
+    afirma: 'Indício de credor sem histórico: raiz do CNPJ sem OB desde 2021 que recebeu >= R$ 5 mi na gestão'
+    fonte:
+    - ob_orcamentaria_siafe
+    - ordens_bancarias
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_governo_couto_revisao.py::test_ob_sem_numero_e_devolvida_nao_somam
+    controle_negativo: tests/test_governo_couto_revisao.py::test_sem_historico_pela_raiz_do_cnpj_desde_2021
+    hipoteses_inocentes:
+    - hipotese: filial de fornecedora antiga (mesma raiz do CNPJ)
+      excluida_por: compliance_agent/governo_couto_regras.py:d10
+    - hipotese: credor que recebeu em 2021-2023 (histórico fora de 2024+)
+      excluida_por: compliance_agent/governo_couto_regras.py:d10
+    - hipotese: OB sem número ou devolvida pelo banco somando em dobro
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx._abater_devolucoes
+    - hipotese: sucessora, empresa do mesmo grupo ou consórcio de incumbente
+      excluida_por: null
+    - hipotese: mudança estrutural (nova concessão, nova OS, compra de bens)
+      excluida_por: null
+    dominio: OB contabilizada do Executivo estadual (SIAFE) na gestão iniciada em 23/03/2026, histórico desde 01/01/2021
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: 22 credores sem histórico, R$ 1,02 bi
+      sustentado: 'sem histórico falso em >= 8 dos 22 (63,3% do valor): filial, sucessora, grupo, consórcio'
+  couto.D11:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d11
+    afirma: Indício de volume de créditos adicionais (suplementar/especial/extraordinário) abertos por decreto na gestão;
+      crédito aberto ≠ gasto
+    fonte:
+    - publicacoes_doerj
+    - fts_doerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_rotinas_automaticas.py::test_extrair_creditos_do_texto_do_doerj
+    controle_negativo: tests/test_rotinas_automaticas.py::test_extrair_creditos_do_texto_do_doerj
+    hipoteses_inocentes:
+    - hipotese: decreto que não abre crédito citado no mesmo texto
+      excluida_por: compliance_agent/governo_couto_regras.py:extrair_creditos
+    - hipotese: sazonalidade do 2º semestre e remanejamento por anulação sem gasto novo
+      excluida_por: null
+    dominio: decretos publicados no DOERJ a partir de 23/03/2026 × 01/01-22/03/2026
+    fp_medida: null
+  couto.D12:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d12
+    afirma: Registro das nomeações/exonerações de secretário de Estado e presidente de entidade na gestão (contexto, não
+      irregularidade)
+    fonte:
+    - publicacoes_doerj
+    - fts_doerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: cargos de segundo escalão (adjunto, subsecretário, chefe, assessor, vice)
+      excluida_por: compliance_agent/governo_couto_regras.py:d12
+    - hipotese: troca de comando é prerrogativa do governador
+      excluida_por: null
+    dominio: atos publicados no DOERJ a partir de 23/03/2026
+    fp_medida: null
+  couto.D13:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d13
+    afirma: Indício de credor com sócio agente público da folha do Estado (nome e dígitos visíveis do CPF conferem) que
+      recebeu >= R$ 100 mil na gestão
+    fonte:
+    - agente_publico_societario
+    - registros_folha
+    - ob_orcamentaria_siafe
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_governo_couto_revisao.py::test_d13_exige_digitos_visiveis_do_cpf
+    controle_negativo: tests/test_governo_couto_revisao.py::test_d13_exige_digitos_visiveis_do_cpf
+    hipoteses_inocentes:
+    - hipotese: homônimo (dígitos visíveis do CPF divergem)
+      excluida_por: compliance_agent/governo_couto_regras.py:cpf_confere
+    - hipotese: agente da ALERJ ou folha sem CPF (não testável)
+      excluida_por: compliance_agent/governo_couto_regras.py:d13
+    - hipotese: pagador de outro Poder
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx.executivo
+    - hipotese: agente público pode ser sócio quando não há vedação nem participação na contratação
+      excluida_por: null
+    dominio: OB contabilizada do Executivo estadual (SIAFE) na gestão iniciada em 23/03/2026
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: 282 credores, R$ 330,4 mi sócio agente público, por nome
+      sustentado: dos 9 comissionados, 7 coincidem em nome + 6 dígitos do CPF; 1 no mesmo órgão pagador
+  couto.D14:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d14
+    afirma: Indício de OB na gestão a CNPJ com sanção CEIS/CNEP restritiva vigente na data da OB e com alcance sobre o Estado
+      do RJ
+    fonte:
+    - ob_orcamentaria_siafe
+    - sancoes_federais
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_rotinas_automaticas.py::test_regras_calculam_e_fonte_ausente_e_indisponivel
+    controle_negativo: tests/test_governo_couto_revisao.py::test_d14_so_conta_sancao_vigente_com_alcance_sobre_o_estado
+    hipoteses_inocentes:
+    - hipotese: sanção de outro ente sem alcance sobre o Estado do RJ
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    - hipotese: sanção não vigente na data da OB (efeito ex nunc, prazo determinado sem data final)
+      excluida_por: compliance_agent/sancao_abrangencia.py:vigente_em
+    - hipotese: pagador de outro Poder (fora da soma do Executivo)
+      excluida_por: compliance_agent/governo_couto_regras.py:d14
+    - hipotese: OB anulada ou devolvida
+      excluida_por: compliance_agent/governo_couto_regras.py:Ctx._abater_devolucoes
+    - hipotese: pagamento de serviço anterior à sanção (OB de competência anterior)
+      excluida_por: null
+    dominio: OB contabilizada do Executivo estadual (SIAFE) na gestão iniciada em 23/03/2026
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: 100 credores, R$ 333,3 mi sancionada paga na vigência
+      sustentado: núcleo com alcance sobre o RJ ≈ R$ 146,7 mi / 16 credores; 56% era sanção de outro ente
+  couto.D15:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d15
+    afirma: 'Indício de vínculo eleitoral: sócio PF de credor (>= R$ 1 mi na gestão) presente como doador nas prestações
+      de contas do TSE'
+    fonte:
+    - ob_orcamentaria_siafe
+    - socios_receita
+    - doacao_tse
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: homônimo (nome + 6 dígitos centrais do CPF exigidos)
+      excluida_por: compliance_agent/governo_couto_regras.py:d15
+    - hipotese: doação eleitoral lícita e declarada
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE na gestão iniciada em 23/03/2026
+    fp_medida: null
+  couto.D16:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d16
+    afirma: Indício de aceleração de Termos de Ajuste de Contas (serviço sem cobertura contratual) por dia na gestão; valor
+      reconhecido, não OB
+    fonte:
+    - doerj_tac
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: serviço contínuo essencial sem contrato vigente durante a licitação
+      excluida_por: null
+    dominio: extratos de TAC no DOERJ desde 01/01/2026 (pré-gestão × gestão iniciada em 23/03/2026)
+    fp_medida: null
+  couto.D17:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d01_02_17
+    afirma: 'Indício de emergência recorrente: >= 3 contratações emergenciais na mesma unidade no exercício'
+    fonte:
+    - compras_diretas_tcerj
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: emergências reais e distintas na mesma unidade
+      excluida_por: null
+    dominio: processos do exercício corrente no espelho de compras diretas do TCE-RJ (não recorta pela data de início da
+      gestão)
+    fp_medida: null
+  couto.D18:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d18
+    afirma: 'Indício: credor pago na gestão (>= R$ 100 mil) com fantasma_score alto ou veredito de fachada registrado'
+    fonte:
+    - ob_orcamentaria_siafe
+    - fantasma_score
+    - fachada_veredito
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_governo_couto_revisao.py::test_d18_veredito_fachada_sem_registro_do_juizo_nao_e_confirmado
+    controle_negativo: tests/test_governo_couto_revisao.py::test_d18_score_alto_sem_fachada_registrada_nao_e_vermelho
+    hipoteses_inocentes:
+    - hipotese: marcação de fachada sem registro do juízo (veredito_raw vazio) não é fachada confirmada
+      excluida_por: compliance_agent/governo_couto_regras.py:d18
+    - hipotese: sede administrativa diversa do local de execução
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE na gestão iniciada em 23/03/2026
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: 6 credores, R$ 103,4 mi fachada/fantasma
+      sustentado: 0 com fachada documentada
+  couto.D19:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d19
+    afirma: Contagem de remunerações brutas acima do teto CF 37 XI na gestão, sem composição de verbas (inconclusivo)
+    fonte:
+    - registros_folha
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: verbas indenizatórias, abono e retroativos não entram no teto (sem composição não se conclui)
+      excluida_por: null
+    dominio: competências da folha de 2026-03 ao último mês completo
+    fp_medida: null
+  couto.D20:
+    modulo: compliance_agent/governo_couto_regras.py
+    simbolo: d20
+    afirma: Indício de aumento de OB anulada/excluída na gestão × ano anterior (não é pagamento)
+    fonte:
+    - ob_orcamentaria_siafe
+    - despesa_execucao
+    grava: data/governo_couto_suspeitas.json e data/governo_couto_regras.json (rotina semanal governo_couto_regras)
+    consome:
+    - static/js/src/abas/governo_couto.js
+    - rotas/governo_couto.py
+    - compliance_agent/governo_couto.py
+    manchete: true
+    controle_positivo: tests/test_rotinas_automaticas.py::test_regras_calculam_e_fonte_ausente_e_indisponivel
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: reemissão (OB anulada e reemitida) ou correção de domicílio bancário
+      excluida_por: null
+    dominio: OB do SIAFE com status Anulado/Excluído de 23/03/2026 ao último mês completo × mesmo intervalo do ano anterior
+    fp_medida: null
+  dea_recorrente:
+    modulo: compliance_agent/dea_recorrente.py
+    simbolo: dea_recorrente
+    afirma: Indício de despesa de exercício anterior recorrente
+    fonte:
+    - ne_siafe
+    - empresas
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/dea_recorrente
+    manchete: false
+    controle_positivo: tests/test_dea_recorrente.py::test_dea_recorrente_e_forte_e_o_resto_fica_fora
+    controle_negativo: tests/test_dea_recorrente.py::test_dea_recorrente_e_forte_e_o_resto_fica_fora
+    hipoteses_inocentes:
+    - hipotese: DEA única (legal pelo art. 37 da Lei 4.320)
+      excluida_por: compliance_agent/dea_recorrente.py:dea_recorrente
+    - hipotese: ente público credor
+      excluida_por: compliance_agent/dea_recorrente.py:dea_recorrente
+    dominio: null
+    fp_medida: null
+  det.C6VinculoPolitico:
+    modulo: compliance_agent/detectores/c6_vinculo_politico.py
+    simbolo: C6VinculoPolitico
+    afirma: Indício (multiplicador de prioridade, teto 'medio') de sócio do contratado que doou a beneficiário com poder
+      sobre o órgão contratante
+    fonte:
+    - socios_fornecedor
+    - doacoes_eleitorais
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_fornecedor)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/test_detector_c6.py::test_c6_confirma_medio_decisor_direto
+    controle_negativo: tests/test_detector_c6.py::test_c6_sem_poder_nao_pontua
+    hipoteses_inocentes:
+    - hipotese: homonímia de doador (nome igual sem CPF/município)
+      excluida_por: compliance_agent/detectores/c6_vinculo_politico.py:C6VinculoPolitico._mesmo_doador
+    - hipotese: beneficiário sem poder sobre o contrato (doação lícita)
+      excluida_por: compliance_agent/detectores/c6_vinculo_politico.py:C6VinculoPolitico.avaliar
+    - hipotese: doação fora dos 2 ciclos eleitorais anteriores ao contrato
+      excluida_por: compliance_agent/detectores/c6_vinculo_politico.py:C6VinculoPolitico.avaliar
+    - hipotese: doação + contrato sem irregularidade no certame = coincidência protegida por lei
+      excluida_por: null
+    dominio: contratos com QSA do contratado e doações TSE nos 2 ciclos eleitorais anteriores ao contrato
+    fp_medida: null
+  det.C7SancionadaContratada:
+    modulo: compliance_agent/detectores/c7_sancionada_contratada.py
+    simbolo: C7SancionadaContratada
+    afirma: Indício de contratação de empresa com sanção impeditiva vigente na data de referência
+    fonte:
+    - sancoes_federais
+    - siga_sancoes
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_fornecedor)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/detectores/test_c7_sancionada_contratada.py::test_sancao_impeditiva_vigente_na_data_e_critica
+    controle_negativo: tests/detectores/test_c7_sancionada_contratada.py::test_sancao_que_comecou_depois_do_ato_nao_conta
+    hipoteses_inocentes:
+    - hipotese: sanção posterior ou já encerrada na data do ato
+      excluida_por: compliance_agent/detectores/c7_sancionada_contratada.py:C7SancionadaContratada.avaliar
+    - hipotese: sanção sem vedação de contratar (multa, interdição de atividade)
+      excluida_por: compliance_agent/detectores/c7_sancionada_contratada.py:_eh_impeditiva
+    - hipotese: data de referência é proxy (1ª OB), não a assinatura
+      excluida_por: compliance_agent/detectores/c7_sancionada_contratada.py:C7SancionadaContratada.avaliar
+    dominio: contratados com data de referência conhecida, sanções CEIS/CNEP e SIGA-RJ
+    fp_medida: null
+  det.C8ServidorSocio:
+    modulo: compliance_agent/detectores/c8_servidor_socio.py
+    simbolo: C8ServidorSocio
+    afirma: Indício de agente público no quadro societário da contratada (art. 9º da Lei 14.133 ou vedação de gerência)
+    fonte:
+    - socios_fornecedor
+    - registros_folha
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_fornecedor)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/detectores/test_c8_servidor_socio.py::test_gerencia_no_PROPRIO_orgao_contratante_e_critico_e_objetivo
+    controle_negativo: tests/detectores/test_c8_servidor_socio.py::test_fragmento_CONFLITANTE_e_homonimo_descartado
+    hipoteses_inocentes:
+    - hipotese: homônimo (fragmento de CPF conflitante)
+      excluida_por: compliance_agent/detectores/c8_servidor_socio.py:casa_fragmento
+    - hipotese: mero quotista sem gerência em órgão diverso (participação lícita) — limitado a 'medio', não excluído
+      excluida_por: null
+    - hipotese: casamento só por nome, sem fragmento de CPF — rebaixa um nível
+      excluida_por: compliance_agent/detectores/c8_servidor_socio.py:C8ServidorSocio.avaliar
+    dominio: fornecedores com QSA da RFB e folhas de pagamento coletadas
+    fp_medida: null
+  det.C9TacFornecedor:
+    modulo: compliance_agent/detectores/c9_tac_fornecedor.py
+    simbolo: C9TacFornecedor
+    afirma: Indício de fornecedor pago majoritariamente por TAC/indenização, fora de contrato regular
+    fonte:
+    - ordens_bancarias
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_fornecedor)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/test_detector_c9.py::test_pct_alto_confirma_critico
+    controle_negativo: tests/test_detector_c9.py::test_pct_baixo_descarta
+    hipoteses_inocentes:
+    - hipotese: regularização pontual (TAC abaixo de 10% sem reforço absoluto)
+      excluida_por: compliance_agent/detectores/c9_tac_fornecedor.py:C9TacFornecedor.avaliar
+    - hipotese: taxa de TAC é a norma da unidade (vício do órgão, não do fornecedor) — rebaixa
+      excluida_por: compliance_agent/detectores/c9_tac_fornecedor.py:C9TacFornecedor.avaliar
+    - hipotese: passivo legítimo de serviço prestado sem cobertura por falha do órgão
+      excluida_por: null
+    dominio: credores com observação de OB legível no espelho TFE (ordens_bancarias.observacao)
+    fp_medida: null
+  det.CFachada:
+    modulo: compliance_agent/detectores/c_fachada.py
+    simbolo: CFachada
+    afirma: Indício de empresa de fachada/laranja (C1-C4), traduzido das hipóteses de investigacao_dd
+    fonte:
+    - investigacao_dd.investigar (cadastro Receita/QSA/pagamentos; tabelas não conferidas)
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_fornecedor)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/detectores/test_c_fachada.py::test_confirmado_alto_vira_forte
+    controle_negativo: tests/test_c_fachada_sem_hipotese.py::test_olhada_e_limpa_vira_descartado_dizendo_o_que_nao_viu
+    hipoteses_inocentes:
+    - hipotese: filial nova de grupo consolidado / MEI-ME em cota reservada
+      excluida_por: null
+    - hipotese: comércio/representação ou entidade sem fins lucrativos com capital baixo
+      excluida_por: null
+    - hipotese: sanção expirada / CNAE impreciso
+      excluida_por: null
+    - hipotese: homonímia, família empresária, contador compartilhado
+      excluida_por: null
+    dominio: fornecedores por CNPJ
+    fp_medida: null
+  det.E1Barreira:
+    modulo: compliance_agent/detectores/e1_barreira.py
+    simbolo: E1Barreira
+    afirma: Indício de exigência de habilitação desproporcional que restringe a competição
+    fonte:
+    - edital_clausula
+    - edital_documento
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_e1_barreira.py::test_capital_acima_de_10_por_cento_estoura_o_teto_do_art_69
+    controle_negativo: tests/detectores/test_e1_barreira.py::test_capital_dentro_do_teto_legal_nao_pontua
+    hipoteses_inocentes:
+    - hipotese: exigência igual à praxe dos editais análogos
+      excluida_por: compliance_agent/detectores/e1_barreira.py:E1Barreira._exigencias_sob_medida
+    - hipotese: objeto crítico (UTI/segurança/dados sensíveis) — rebaixa
+      excluida_por: compliance_agent/detectores/e1_barreira.py:E1Barreira.avaliar
+    - hipotese: exigência proporcional ao risco (rubrica) — rebaixa
+      excluida_por: compliance_agent/detectores/e1_barreira.py:E1Barreira.avaliar
+    dominio: editais com exigências de habilitação e valor estimado/quantitativo ou ≥3 análogos
+    fp_medida: null
+  det.E2Prazos:
+    modulo: compliance_agent/detectores/e2_prazos.py
+    simbolo: E2Prazos
+    afirma: Indício de prazo de publicidade abaixo do mínimo do art. 55 ou em data de baixa atenção
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_edital; fora de varredura_certames por falta de
+      data_abertura)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_e2_prazos.py::test_prazo_abaixo_do_minimo_pontua_forte
+    controle_negativo: tests/detectores/test_e2_prazos.py::test_prazo_folgado_nao_inventa_indicio
+    hipoteses_inocentes:
+    - hipotese: prazo no piso legal é lícito (só 'fraco')
+      excluida_por: compliance_agent/detectores/e2_prazos.py:E2Prazos.avaliar
+    - hipotese: abertura antes da publicação = dado sujo, não violação
+      excluida_por: compliance_agent/detectores/e2_prazos.py:E2Prazos.avaliar
+    - hipotese: urgência orçamentária de fim de exercício (dezembro)
+      excluida_por: null
+    dominio: editais com modalidade na tabela do art. 55 e datas de publicação/abertura
+    fp_medida: null
+  det.E3LotePacote:
+    modulo: compliance_agent/detectores/e3_lote_pacote.py
+    simbolo: E3LotePacote
+    afirma: Indício de agregação anticompetitiva de itens heterogêneos em lote único sem justificativa demonstrada
+    fonte:
+    - edital_documento
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_e3_lote_pacote.py::test_cinco_mercados_e_fortemente_heterogeneo
+    controle_negativo: tests/detectores/test_e3_lote_pacote.py::test_lote_coeso_nao_e_indicio
+    hipoteses_inocentes:
+    - hipotese: integração técnica real (sistema único) — rebaixa
+      excluida_por: compliance_agent/detectores/e3_lote_pacote.py:E3LotePacote.avaliar
+    - hipotese: economia de escala demonstrada com números — rebaixa
+      excluida_por: compliance_agent/detectores/e3_lote_pacote.py:E3LotePacote.avaliar
+    - hipotese: justificativa existe mas não foi ingerida
+      excluida_por: compliance_agent/detectores/e3_lote_pacote.py:E3LotePacote._avaliar_justificativa
+    dominio: editais com lotes e itens classificados CATMAT/CATSER
+    fp_medida: null
+  det.E4VisitaTecnica:
+    modulo: compliance_agent/detectores/e4_visita_tecnica.py
+    simbolo: E4VisitaTecnica
+    afirma: Indício de visita técnica obrigatória usada como filtro de licitantes
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_edital)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_e4.py::test_e4_confirma_obrigatoria_objeto_padronizado_dispensavel
+    controle_negativo: tests/test_detector_e4.py::test_e4_descartado_alternativa_declaracao
+    hipoteses_inocentes:
+    - hipotese: visita facultativa ou substituível por declaração de conhecimento do local
+      excluida_por: compliance_agent/detectores/e4_visita_tecnica.py:E4VisitaTecnica.avaliar
+    - hipotese: engenharia em local peculiar (visita indispensável) — rebaixa
+      excluida_por: compliance_agent/detectores/e4_visita_tecnica.py:E4VisitaTecnica._avaliar_necessidade
+    - hipotese: evasão em amostra pequena — rebaixa
+      excluida_por: compliance_agent/detectores/e4_visita_tecnica.py:E4VisitaTecnica.avaliar
+    dominio: editais com cláusula de visita técnica
+    fp_medida: null
+  det.E5EditalIterado:
+    modulo: compliance_agent/detectores/e5_edital_iterado.py
+    simbolo: E5EditalIterado
+    afirma: Indício de edital republicado/retificado iterativamente até favorecer um perfil ou justificar dispensa
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_edital)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_e5.py::test_e5_confirma_ciclo_termina_em_dispensa
+    controle_negativo: tests/test_detector_e5.py::test_e5_descartado_origem_tce_legitima
+    hipoteses_inocentes:
+    - hipotese: retificação por determinação do TCE ou erro material
+      excluida_por: compliance_agent/detectores/e5_edital_iterado.py:E5EditalIterado.avaliar
+    - hipotese: esclarecimento não é republicação
+      excluida_por: compliance_agent/detectores/e5_edital_iterado.py:E5EditalIterado._conta_no_volume
+    - hipotese: impugnação atendida ampliando a competição
+      excluida_por: compliance_agent/detectores/e5_edital_iterado.py:E5EditalIterado.avaliar
+    dominio: editais com histórico de versões/retificações
+    fp_medida: null
+  det.E6PontuacaoDirigida:
+    modulo: compliance_agent/detectores/e6_pontuacao_dirigida.py
+    simbolo: E6PontuacaoDirigida
+    afirma: Indício de matriz de pontuação técnica subjetiva capaz de decidir o vencedor
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_edital)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_e6.py::test_e6_confirma_subjetivo_e_simulacao_muda_vencedor
+    controle_negativo: tests/test_detector_e6.py::test_e6_descartado_matriz_objetiva
+    hipoteses_inocentes:
+    - hipotese: serviço predominantemente intelectual com critérios objetivos
+      excluida_por: compliance_agent/detectores/e6_pontuacao_dirigida.py:E6PontuacaoDirigida.avaliar
+    - hipotese: simulação sem troca do vencedor (subjetividade não decisiva)
+      excluida_por: compliance_agent/detectores/e6_pontuacao_dirigida.py:E6PontuacaoDirigida._simular_troca_vencedor
+    dominio: certames de técnica/técnica e preço com matriz de pontuação
+    fp_medida: null
+  det.E7ClausulaRestritiva:
+    modulo: compliance_agent/detectores/e7_clausula_restritiva.py
+    simbolo: E7ClausulaRestritiva
+    afirma: Indício de cláusula restritiva no edital (marca sem equivalente, capital acima do teto, visita sem declaração
+      etc.)
+    fonte:
+    - edital_clausula
+    - edital_documento
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_e7.py::test_marca_sem_ou_equivalente_forte
+    controle_negativo: tests/test_detector_e7.py::test_marca_com_ou_equivalente_descartado
+    hipoteses_inocentes:
+    - hipotese: marca de referência com 'ou equivalente'
+      excluida_por: compliance_agent/detectores/e7_clausula_restritiva.py:E7ClausulaRestritiva.avaliar
+    - hipotese: objeto crítico justifica exigência alta — rebaixa
+      excluida_por: compliance_agent/detectores/e7_clausula_restritiva.py:E7ClausulaRestritiva.avaliar
+    - hipotese: cláusula pertinente ao objeto (rubrica) — rebaixa
+      excluida_por: compliance_agent/detectores/e7_clausula_restritiva.py:E7ClausulaRestritiva._pertinencia
+    dominio: editais com cláusulas extraídas (edital_clausula)
+    fp_medida: null
+  det.E8DesertoDirigido:
+    modulo: compliance_agent/detectores/e8_deserto_dirigido.py
+    simbolo: E8DesertoDirigido
+    afirma: Indício de certames desertos/fracassados recorrentes que desembocam em contratação direta
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_edital)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_e8.py::test_um_deserto_com_dispensa_e_forte
+    controle_negativo: tests/test_detector_e8.py::test_sem_falhas_descarta
+    hipoteses_inocentes:
+    - hipotese: órgão ajustou exigências entre tentativas (diligência + mercado raso) — rebaixa
+      excluida_por: compliance_agent/detectores/e8_deserto_dirigido.py:E8DesertoDirigido.avaliar
+    - hipotese: desfecho competitivo após deserto
+      excluida_por: compliance_agent/detectores/e8_deserto_dirigido.py:E8DesertoDirigido.avaliar
+    - hipotese: preço de referência baixo / mercado aquecido
+      excluida_por: null
+    dominio: série de certames do mesmo objeto com campo de situação
+    fp_medida: null
+  det.J1Cartel:
+    modulo: compliance_agent/detectores/j1_cartel.py
+    simbolo: J1Cartel
+    afirma: Indício de conluio por concentração de grupo societário e rodízio de vencedores numa UG
+    fonte:
+    - grafo_cartel.concentracao_por_grupo e rodizio_temporal.rodizio_orgao (tabelas não conferidas)
+    grava: achado_detector (via compliance_agent/varredura_orgaos.py → detectores.rodar_orgao)
+    consome:
+    - reporting/inteligencia_orgao.py
+    - rotas/vinculos.py
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/detectores/test_j1_cartel.py::test_socio_elo_entre_raizes_distintas_e_critico
+    controle_negativo: tests/detectores/test_j1_cartel.py::test_share_abaixo_do_minimo_e_descartado
+    hipoteses_inocentes:
+    - hipotese: participação abaixo do mínimo / raiz única não é grupo
+      excluida_por: compliance_agent/detectores/j1_cartel.py:J1Cartel.avaliar
+    - hipotese: mercado concentrado natural sem sócio-elo — limitado a 'medio'
+      excluida_por: compliance_agent/detectores/j1_cartel.py:J1Cartel.avaliar
+    - hipotese: consórcio legítimo formalizado
+      excluida_por: null
+    dominio: unidades gestoras estaduais com pagamentos a fornecedores
+    fp_medida: null
+  det.J2PropostasCobertura:
+    modulo: compliance_agent/detectores/j2_propostas_cobertura.py
+    simbolo: J2PropostasCobertura
+    afirma: Indício de propostas de cobertura (perdedores com sobrepreço constante sobre o vencedor)
+    fonte:
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_j2_propostas_cobertura.py::test_percentuais_constantes_com_tres_perdedores_e_forte
+    controle_negativo: tests/detectores/test_j2_propostas_cobertura.py::test_competicao_real_nao_vira_achado
+    hipoteses_inocentes:
+    - hipotese: mercado homogêneo (poucos players, custos similares) — não pontua sozinho
+      excluida_por: compliance_agent/detectores/j2_propostas_cobertura.py:J2PropostasCobertura.avaliar
+    - hipotese: apenas dois perdedores (amostra curta) — teto 'medio'
+      excluida_por: compliance_agent/detectores/j2_propostas_cobertura.py:J2PropostasCobertura.avaliar
+    dominio: certames com ≥3 propostas classificadas (PNCP)
+    fp_medida: null
+  det.J3DescontoAnomalo:
+    modulo: compliance_agent/detectores/j3_desconto_anomalo.py
+    simbolo: J3DescontoAnomalo
+    afirma: Indício de desconto irrisório ou homologação acima do estimado
+    fonte:
+    - edital_documento
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_j3_desconto_anomalo.py::test_desconto_irrisorio_pontua_medio
+    controle_negativo: tests/detectores/test_j3_desconto_anomalo.py::test_item_de_preco_regulado_e_exculpatoria_e_nao_pontua
+    hipoteses_inocentes:
+    - hipotese: item de preço regulado/commodity (combustível, CMED)
+      excluida_por: compliance_agent/detectores/j3_desconto_anomalo.py:J3DescontoAnomalo.avaliar
+    - hipotese: certame isolado não é recorrência
+      excluida_por: compliance_agent/detectores/j3_desconto_anomalo.py:J3DescontoAnomalo._recorrencia
+    dominio: certames com valor estimado e homologado
+    fp_medida: null
+  det.J4SupressaoPropostas:
+    modulo: compliance_agent/detectores/j4_supressao_propostas.py
+    simbolo: J4SupressaoPropostas
+    afirma: Indício de supressão de propostas (afunilamento de inscritos para um classificado)
+    fonte:
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py)
+    consome:
+    - rotas/vinculos.py
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_j4_supressao_propostas.py::test_afunilamento_de_muitos_para_um_pontua_forte
+    controle_negativo: tests/detectores/test_j4_supressao_propostas.py::test_inabilitacao_fundada_e_uniforme_e_exculpatoria
+    hipoteses_inocentes:
+    - hipotese: inabilitação fundada e uniforme (saneamento art. 64)
+      excluida_por: compliance_agent/detectores/j4_supressao_propostas.py:J4SupressaoPropostas.avaliar
+    - hipotese: motivo legítimo de inabilitação não é erro grosseiro
+      excluida_por: compliance_agent/detectores/j4_supressao_propostas.py:J4SupressaoPropostas.avaliar
+    - hipotese: licitante único sem ninguém barrado
+      excluida_por: compliance_agent/detectores/j4_supressao_propostas.py:J4SupressaoPropostas.avaliar
+    dominio: certames com contagem de licitantes classificados
+    fp_medida: null
+  det.J5DigitaisCompartilhadas:
+    modulo: compliance_agent/detectores/j5_digitais_compartilhadas.py
+    simbolo: J5DigitaisCompartilhadas
+    afirma: Indício de propostas de concorrentes com digitais comuns (autor, contato, IP, hash, horário)
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_julgamento)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_j5.py::test_j5_confirma_author_nao_generico_compartilhado
+    controle_negativo: tests/test_detector_j5.py::test_j5_descartado_author_generico_compartilhado
+    hipoteses_inocentes:
+    - hipotese: metadado genérico universal (Windows User, Microsoft Word)
+      excluida_por: compliance_agent/detectores/j5_digitais_compartilhadas.py:J5DigitaisCompartilhadas.avaliar
+    - hipotese: dois arquivos do mesmo licitante
+      excluida_por: compliance_agent/detectores/j5_digitais_compartilhadas.py:J5DigitaisCompartilhadas.avaliar
+    - hipotese: despachante/consultoria de licitação legítima compartilhada
+      excluida_por: null
+    dominio: certames com arquivos de proposta e metadados de ≥2 licitantes
+    fp_medida: null
+  det.J6SubcontratacaoCruzada:
+    modulo: compliance_agent/detectores/j6_subcontratacao_cruzada.py
+    simbolo: J6SubcontratacaoCruzada
+    afirma: Indício de subcontratação ou consórcio com quem disputou o mesmo certame (repartição)
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_julgamento)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_j6.py::test_j6_confirma_subcontratada_disputou_certame
+    controle_negativo: tests/test_detector_j6.py::test_j6_descartado_especialidade_real_fora_dos_licitantes
+    hipoteses_inocentes:
+    - hipotese: subcontratada de especialidade real fora dos licitantes
+      excluida_por: compliance_agent/detectores/j6_subcontratacao_cruzada.py:J6SubcontratacaoCruzada.avaliar
+    - hipotese: consórcio sem consorciada autossuficiente (cooperação legítima)
+      excluida_por: compliance_agent/detectores/j6_subcontratacao_cruzada.py:J6SubcontratacaoCruzada.avaliar
+    dominio: contratos com subcontratadas ou consórcio e lista de licitantes
+    fp_medida: null
+  det.J7InabilitacaoSeletiva:
+    modulo: compliance_agent/detectores/j7_inabilitacao_seletiva.py
+    simbolo: J7InabilitacaoSeletiva
+    afirma: Indício de dois pesos na habilitação (falha equivalente inabilita um e é saneada para outro)
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_julgamento)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_j7.py::test_j7_confirma_par_critico_certidao_vencida
+    controle_negativo: tests/test_detector_j7.py::test_j7_descartado_falhas_distintas
+    hipoteses_inocentes:
+    - hipotese: saneamento ou inabilitação uniforme (art. 64)
+      excluida_por: compliance_agent/detectores/j7_inabilitacao_seletiva.py:J7InabilitacaoSeletiva.avaliar
+    - hipotese: falhas distintas pareadas por engano
+      excluida_por: compliance_agent/detectores/j7_inabilitacao_seletiva.py:J7InabilitacaoSeletiva._avaliar_equivalencia
+    - hipotese: mesma empresa em momentos distintos
+      excluida_por: compliance_agent/detectores/j7_inabilitacao_seletiva.py:J7InabilitacaoSeletiva.avaliar
+    dominio: atas de habilitação com ≥2 decisões da mesma comissão
+    fp_medida: null
+  det.J9PropostasGemeas:
+    modulo: compliance_agent/detectores/j9_propostas_gemeas.py
+    simbolo: J9PropostasGemeas
+    afirma: Indício de propostas gêmeas (markup uniforme, preços idênticos ou texto copiado entre concorrentes)
+    fonte: []
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_julgamento)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/detectores/test_j9_propostas_gemeas.py::test_markup_de_5_por_cento_confirma_e_traz_evidencia
+    controle_negativo: tests/detectores/test_j9_propostas_gemeas.py::test_dispersao_de_concorrencia_real_e_DESCARTADO_nao_nao_avaliavel
+    hipoteses_inocentes:
+    - hipotese: mercado homogêneo — rebaixa um degrau
+      excluida_por: compliance_agent/detectores/j9_propostas_gemeas.py:J9PropostasGemeas.avaliar
+    - hipotese: dispersão de concorrência real
+      excluida_por: compliance_agent/sei/conluio_propostas.py:markup_uniforme
+    dominio: certames com ≥2 propostas itemizadas
+    fp_medida: null
+  det.JAtestadoCruzado:
+    modulo: compliance_agent/detectores/j_atestado_cruzado.py
+    simbolo: JAtestadoCruzado
+    afirma: Indício de atestado de capacidade técnica emitido por empresa vinculada ao licitante (sócio ou endereço comum)
+    fonte:
+    - socios_receita
+    - socios_fornecedor
+    - endereco_fornecedor
+    grava: 'não grava (sob demanda: detectores/coletor_edital.py → rodar_julgamento)'
+    consome:
+    - processo_360
+    manchete: false
+    controle_positivo: tests/test_detector_j8.py::test_j8_pipeline_real_socio_comum
+    controle_negativo: tests/detectores/test_atestado_cruzado.py::test_j8_descartado_sem_vinculo
+    hipoteses_inocentes:
+    - hipotese: emissor igual ao licitante (auto-atestado não é cruzado)
+      excluida_por: compliance_agent/detectores/j_atestado_cruzado.py:atestado_cruzado
+    - hipotese: CNPJ inválido / sem vínculo verificável
+      excluida_por: compliance_agent/detectores/j_atestado_cruzado.py:vinculos_emissor_licitante
+    dominio: habilitação com texto de atestados e CNPJ do licitante (Ac. TCU 725/2026)
+    fp_medida: null
+  det.P1EspecificacaoDirigida:
+    modulo: compliance_agent/detectores/p1_especificacao_dirigida.py
+    simbolo: P1EspecificacaoDirigida
+    afirma: Indício de termo de referência redigido sob medida para um produto (marca/modelo sem 'ou equivalente', valores
+      de datasheet)
+    fonte:
+    - edital_documento
+    - pncp_resultado
+    - sei_arquivo
+    grava: achado_certame (via compliance_agent/varredura_certames.py); processo_avaliacao (via compliance_agent/processo_360.py
+      → coletor_edital.rodar_planejamento)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_p1_especificacao_dirigida.py::test_marca_sem_ou_equivalente_e_critico
+    controle_negativo: tests/detectores/test_p1_especificacao_dirigida.py::test_especificacao_neutra_nao_inventa_indicio
+    hipoteses_inocentes:
+    - hipotese: marca citada como referência com 'ou equivalente/similar/superior' (art. 41)
+      excluida_por: compliance_agent/detectores/p1_especificacao_dirigida.py:P1EspecificacaoDirigida.avaliar
+    - hipotese: cláusula que VEDA a indicação de marca
+      excluida_por: compliance_agent/detectores/p1_especificacao_dirigida.py:_pista_nominativa
+    - hipotese: homônimo (termo de referência, modelo de formulário, modelo digital, campo marca da proposta)
+      excluida_por: compliance_agent/detectores/p1_especificacao_dirigida.py:_pista_nominativa
+    - hipotese: padronização formal (art. 43) — rebaixa
+      excluida_por: compliance_agent/detectores/p1_especificacao_dirigida.py:P1EspecificacaoDirigida.avaliar
+    - hipotese: item único real (carta de exclusividade)
+      excluida_por: null
+    - hipotese: valor não-redondo vindo de norma técnica (ABNT/Anvisa)
+      excluida_por: null
+    dominio: certames com termo de referência/requisitos (Lei 14.133/2021, art. 41)
+    fp_medida: null
+  det.P2CotacoesCombinadas:
+    modulo: compliance_agent/detectores/p2_cotacoes_combinadas.py
+    simbolo: P2CotacoesCombinadas
+    afirma: Indício de pesquisa de preços montada com cotações de empresas vinculadas entre si ou ao vencedor
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_p2_cotacoes_combinadas.py::test_telefone_comum_entre_cotantes_e_vinculo_forte
+    controle_negativo: tests/detectores/test_p2_cotacoes_combinadas.py::test_pesquisa_independente_nao_inventa_indicio
+    hipoteses_inocentes:
+    - hipotese: mercado regional pequeno (contador comum isolado = fraco)
+      excluida_por: compliance_agent/detectores/p2_cotacoes_combinadas.py:P2CotacoesCombinadas.avaliar
+    - hipotese: template de ERP (só Producer do PDF idêntico = fraco)
+      excluida_por: compliance_agent/detectores/p2_cotacoes_combinadas.py:P2CotacoesCombinadas.avaliar
+    - hipotese: commodity de preço regulado (CV baixo natural)
+      excluida_por: compliance_agent/detectores/p2_cotacoes_combinadas.py:P2CotacoesCombinadas.avaliar
+    dominio: pesquisa de preços da fase de planejamento (IN SEGES 65/2021)
+    fp_medida: null
+  det.P3Sobrepreco:
+    modulo: compliance_agent/detectores/p3_sobrepreco.py
+    simbolo: P3Sobrepreco
+    afirma: 'Indício de sobrepreço: o mesmo item custou múltiplas vezes mais entre contratos/órgãos, corroborado pelo desvio
+      da mediana'
+    fonte:
+    - pncp_resultado
+    grava: achado_certame (via compliance_agent/varredura_certames.py); achado_detector (via compliance_agent/varredura_orgaos.py
+      → rodar_fornecedor)
+    consome:
+    - rotas/vinculos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_p3_sobrepreco.py::test_sobrepreco_forte_com_sinal_robusto
+    controle_negativo: tests/detectores/test_p3_sobrepreco.py::test_amostra_suficiente_sem_dispersao_e_descartado
+    hipoteses_inocentes:
+    - hipotese: outlier baixo / erro de unidade no menor preço
+      excluida_por: compliance_agent/detectores/p3_sobrepreco.py:_nivel_por_razao
+    - hipotese: item sem referencial (amostra insuficiente)
+      excluida_por: compliance_agent/detectores/p3_sobrepreco.py:P3Sobrepreco.avaliar
+    - hipotese: urgência real, lote pequeno, logística difícil
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  det.P4Fracionamento:
+    modulo: compliance_agent/detectores/p4_fracionamento.py
+    simbolo: P4Fracionamento
+    afirma: 'Indício de fracionamento: dispensas por valor do mesmo ramo, na mesma UG e exercício, somam acima do limite
+      do ano ou se agrupam rente ao teto'
+    fonte:
+    - compras_diretas_tcerj
+    - ordens_bancarias
+    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento); JSON avulso (tools/sweep_fracionamento_tcerj.py);
+      não está em varredura_certames nem varredura_execucao
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_p4_fracionamento.py::test_tres_dispensas_mesma_natureza_acima_do_limite_confirma
+    controle_negativo: tests/test_p4_fracionamento.py::test_soma_sob_o_limite_descartado
+    hipoteses_inocentes:
+    - hipotese: somar exercícios distintos contra o limite de um só ano
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
+    - hipotese: unidades gestoras distintas (art. 75, §1º, I)
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
+    - hipotese: dispensa por outro inciso (emergência, inexigibilidade etc.) não soma para o teto de valor
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:_dispensa_por_valor
+    - hipotese: consórcio público / agência executiva (limite duplicado, art. 75, §2º)
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:limite_dispensa
+    - hipotese: objetos de ramos distintos
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:clusterizar
+    - hipotese: demandas imprevisíveis independentes (rubrica LLM, teto 0,3)
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento._avaliar_previsibilidade
+    - hipotese: UGs autônomas com orçamento próprio (rebaixa a médio, só se o contexto declarar)
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
+    - hipotese: soma igual ao teto não excede (comparação estrita soma > limite)
+      excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
+    dominio: dispensas por valor (art. 75, I/II, Lei 14.133/2021), por unidade gestora e exercício; limites 2021–2026 de
+      compliance_agent/limites_dispensa.py
+    fp_medida: null
+  det.P5EmergenciaFabricada:
+    modulo: compliance_agent/detectores/p5_emergencia_fabricada.py
+    simbolo: P5EmergenciaFabricada
+    afirma: 'Indício de emergência fabricada: dispensa emergencial aberta após/às vésperas do vencimento conhecido, com
+      pré-escolha ou recorrência'
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_p5_emergencia_fabricada.py::test_dispensa_aberta_depois_do_vencimento_e_inercia_forte
+    controle_negativo: tests/detectores/test_p5_emergencia_fabricada.py::test_emergencia_tempestiva_nao_inventa_indicio
+    hipoteses_inocentes:
+    - hipotese: desastre real confirmado (rebaixa)
+      excluida_por: compliance_agent/detectores/p5_emergencia_fabricada.py:P5EmergenciaFabricada.avaliar
+    - hipotese: certame anterior fracassado/deserto documentado (exculpatória parcial)
+      excluida_por: compliance_agent/detectores/p5_emergencia_fabricada.py:P5EmergenciaFabricada.avaliar
+    - hipotese: planejamento com folga antes do vencimento
+      excluida_por: compliance_agent/detectores/p5_emergencia_fabricada.py:P5EmergenciaFabricada.avaliar
+    - hipotese: evento imprevisível genuíno (rubrica LLM)
+      excluida_por: compliance_agent/detectores/p5_emergencia_fabricada.py:P5EmergenciaFabricada.avaliar
+    dominio: dispensa emergencial (art. 75, VIII, Lei 14.133/2021)
+    fp_medida: null
+  det.P6DiretaIndevida:
+    modulo: compliance_agent/detectores/p6_direta_indevida.py
+    simbolo: P6DiretaIndevida
+    afirma: Indício de dispensa por valor acima do teto legal do exercício, sem outro amparo declarado
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_p6_direta_indevida.py::test_acima_do_teto_de_obras_e_critico
+    controle_negativo: tests/detectores/test_p6_direta_indevida.py::test_valor_dentro_do_teto_do_exercicio_e_descartado
+    hipoteses_inocentes:
+    - hipotese: amparo em outro inciso (III, VIII etc.)
+      excluida_por: compliance_agent/detectores/p6_direta_indevida.py:P6DiretaIndevida.avaliar
+    - hipotese: valor igual ao teto do exercício não excede (<= teto descarta)
+      excluida_por: compliance_agent/detectores/p6_direta_indevida.py:P6DiretaIndevida.avaliar
+    - hipotese: objeto de engenharia (entre os dois tetos = médio com dúvida declarada)
+      excluida_por: compliance_agent/detectores/p6_direta_indevida.py:P6DiretaIndevida.avaliar
+    - hipotese: inexigibilidade (sem teto de valor)
+      excluida_por: compliance_agent/detectores/p6_direta_indevida.py:P6DiretaIndevida.avaliar
+    dominio: dispensa PNCP (modalidade 8), teto do exercício da publicação (limites_dispensa 2021–2026)
+    fp_medida: null
+  det.P7DiretaDeRisco:
+    modulo: compliance_agent/detectores/p7_direta_de_risco.py
+    simbolo: P7DiretaDeRisco
+    afirma: Indício de contratação direta de risco (inexigibilidade para evento/patrocínio, dispensa de serviço contínuo
+      acima do teto, inexigibilidade de vulto) — valor empenhado, não pago
+    fonte:
+    - cge_ne_credor
+    grava: achado_detector (via python -m compliance_agent.detectores.p7_direta_de_risco --gravar); fora do REGISTRO
+    consome:
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/test_detector_p7_direta_de_risco.py::test_dispara_em_pelo_menos_4_dos_5_casos_da_cge
+    controle_negativo: tests/test_detector_p7_direta_de_risco.py::test_controles_nao_disparam
+    hipoteses_inocentes:
+    - hipotese: dispensa abaixo do teto do exercício
+      excluida_por: compliance_agent/detectores/p7_direta_de_risco.py:P7DiretaDeRisco.avaliar
+    - hipotese: inexigibilidade a fornecedor exclusivo fora de evento e abaixo do vulto
+      excluida_por: compliance_agent/detectores/p7_direta_de_risco.py:P7DiretaDeRisco.avaliar
+    - hipotese: ausência de NE não prova ausência de contrato
+      excluida_por: null
+    dominio: notas de empenho do painel CGE (06/02/2023 a 01/06/2026, 99 UGs)
+    fp_medida: null
+  det.X10AditivoDesinstruido:
+    modulo: compliance_agent/detectores/x10_aditivo_desinstruido.py
+    simbolo: X10AditivoDesinstruido
+    afirma: Indício de aditivo sem a instrução obrigatória nos autos (parecer jurídico, justificativa, publicação)
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x10_aditivo_desinstruido.py::test_falta_de_parecer_juridico_confirma
+    controle_negativo: tests/detectores/test_x10_aditivo_desinstruido.py::test_instrucao_completa_e_descartada
+    hipoteses_inocentes:
+    - hipotese: anuência não exigida sai da conta
+      excluida_por: compliance_agent/detectores/x10_aditivo_desinstruido.py:X10AditivoDesinstruido.avaliar
+    - hipotese: item não capturado não é item faltante
+      excluida_por: compliance_agent/detectores/x10_aditivo_desinstruido.py:X10AditivoDesinstruido.avaliar
+    - hipotese: instrução dispersa / parecer referencial
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  det.X11ObjetoDescaracterizado:
+    modulo: compliance_agent/detectores/x11_objeto_descaracterizado.py
+    simbolo: X11ObjetoDescaracterizado
+    afirma: Indício de transfiguração do objeto por aditivo (categoria diferente ou item novo dissimilar)
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x11_objeto_descaracterizado.py::test_mudanca_de_CATEGORIA_confirma_sozinha
+    controle_negativo: tests/detectores/test_x11_objeto_descaracterizado.py::test_detalhamento_do_mesmo_objeto_nao_dispara
+    hipoteses_inocentes:
+    - hipotese: aditivo descreve o delta, não o todo (dissimilaridade sozinha não confirma)
+      excluida_por: compliance_agent/detectores/x11_objeto_descaracterizado.py:X11ObjetoDescaracterizado.avaliar
+    - hipotese: mão de obra não é obra
+      excluida_por: compliance_agent/detectores/x11_objeto_descaracterizado.py:categoria
+    - hipotese: item já previsto na planilha original
+      excluida_por: compliance_agent/detectores/x11_objeto_descaracterizado.py:X11ObjetoDescaracterizado.avaliar
+    dominio: alterações contratuais (art. 126, Lei 14.133/2021)
+    fp_medida: null
+  det.X12BenfordQuantitativos:
+    modulo: compliance_agent/detectores/x12_benford_quantitativos.py
+    simbolo: X12BenfordQuantitativos
+    afirma: 'Sinal de triagem: quantitativos da planilha fora de Benford e/ou excessivamente redondos (fila, não achado)'
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x12_benford_quantitativos.py::test_convergencia_dos_dois_sinais_vira_forte
+    controle_negativo: tests/detectores/test_x12_benford_quantitativos.py::test_serie_benfordiana_e_descartada
+    hipoteses_inocentes:
+    - hipotese: amostra pequena (abaixo do limiar medido de Nigrini)
+      excluida_por: compliance_agent/detectores/x12_benford_quantitativos.py:X12BenfordQuantitativos.avaliar
+    - hipotese: série benfordiana
+      excluida_por: compliance_agent/detectores/x12_benford_quantitativos.py:X12BenfordQuantitativos.avaliar
+    dominio: null
+    fp_medida: null
+  det.X13SubRogacao:
+    modulo: compliance_agent/detectores/x13_sub_rogacao.py
+    simbolo: X13SubRogacao
+    afirma: Indício de sub-rogação de fato (cessão, subcontratação total/principal sem previsão, troca de controle pós-receita)
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x13_sub_rogacao.py::test_cessao_do_contrato_e_critico_e_objetivo
+    controle_negativo: tests/detectores/test_x13_sub_rogacao.py::test_subcontratacao_PREVISTA_no_edital_nao_e_achado
+    hipoteses_inocentes:
+    - hipotese: subcontratação prevista no edital
+      excluida_por: compliance_agent/detectores/x13_sub_rogacao.py:X13SubRogacao.avaliar
+    - hipotese: fusão/cisão/incorporação com habilitação mantida
+      excluida_por: compliance_agent/detectores/x13_sub_rogacao.py:X13SubRogacao.avaliar
+    - hipotese: troca de sócios abaixo do controle
+      excluida_por: compliance_agent/detectores/x13_sub_rogacao.py:X13SubRogacao.avaliar
+    dominio: contratos em execução (art. 137, Lei 14.133/2021)
+    fp_medida: null
+  det.X1CrescimentoAditivo:
+    modulo: compliance_agent/detectores/x1_crescimento_aditivo.py
+    simbolo: X1CrescimentoAditivo
+    afirma: Indício de acréscimos por aditivo acima ou rente ao teto do art. 125 (25%; 50% em reforma)
+    fonte:
+    - pcrj_contratos
+    - contrato_aditivo
+    grava: achado_execucao (via compliance_agent/varredura_execucao.py); processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x1.py::test_x1_confirma_critico_estouro_teto
+    controle_negativo: tests/test_detector_x1.py::test_x1_descartado_superveniente_documentado
+    hipoteses_inocentes:
+    - hipotese: reajuste/repactuação não é acréscimo
+      excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:_conta_no_teto
+    - hipotese: aditivo só de prazo
+      excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:_conta_no_teto
+    - hipotese: reforma tem teto de 50%
+      excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:teto_art125
+    - hipotese: fato superveniente documentado (rubrica)
+      excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:X1CrescimentoAditivo.avaliar
+    dominio: contratos com aditivos de valor (art. 125, Lei 14.133/2021)
+    fp_medida: null
+  det.X2ProrrogacaoPerpetua:
+    modulo: compliance_agent/detectores/x2_prorrogacao_perpetua.py
+    simbolo: X2ProrrogacaoPerpetua
+    afirma: Indício de prorrogação perpétua do mesmo objeto sem teste de vantajosidade
+    fonte:
+    - pcrj_contratos
+    - contrato_aditivo
+    grava: achado_execucao (via compliance_agent/varredura_execucao.py); processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x2.py::test_x2_confirma_10anos_critico
+    controle_negativo: tests/test_detector_x2.py::test_x2_descartado_tempo_curto_sem_indicio
+    hipoteses_inocentes:
+    - hipotese: vantajosidade real documentada em todas as renovações
+      excluida_por: compliance_agent/detectores/x2_prorrogacao_perpetua.py:X2ProrrogacaoPerpetua.avaliar
+    - hipotese: contrato novo / tempo curto
+      excluida_por: compliance_agent/detectores/x2_prorrogacao_perpetua.py:X2ProrrogacaoPerpetua.avaliar
+    dominio: null
+    fp_medida: null
+  det.X3ExecucaoFinanceira:
+    modulo: compliance_agent/detectores/x3_execucao_financeira.py
+    simbolo: X3ExecucaoFinanceira
+    afirma: Indício de execução financeira anômala (pagamento antes do atesto, tríade comprimida, concentração em dezembro,
+      fila invertida)
+    fonte:
+    - sei_arquivo
+    - ob_orcamentaria_siafe
+    grava: processo_avaliacao (via compliance_agent/processo_360.py); fora de varredura_execucao (sem ponte contrato↔OB)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x3.py::test_x3_confirma_pagamento_antes_do_atesto
+    controle_negativo: tests/test_detector_x3.py::test_x3_descartado_pronto_pagamento_legitimo
+    hipoteses_inocentes:
+    - hipotese: objeto de pronto pagamento comprime a tríade
+      excluida_por: compliance_agent/detectores/x3_execucao_financeira.py:_is_pronto_pagamento
+    - hipotese: dezembro com cronograma físico-financeiro (só médio)
+      excluida_por: compliance_agent/detectores/x3_execucao_financeira.py:X3ExecucaoFinanceira.avaliar
+    - hipotese: empenho e pagamento na mesma data não é tríade comprimida
+      excluida_por: compliance_agent/detectores/x3_execucao_financeira.py:X3ExecucaoFinanceira.avaliar
+    dominio: null
+    fp_medida: null
+  det.X4CaronaAbusiva:
+    modulo: compliance_agent/detectores/x4_carona_abusiva.py
+    simbolo: X4CaronaAbusiva
+    afirma: Indício de adesões a ata de registro de preços acima dos limites do art. 86 ou em rede coordenada
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x4.py::test_x4_confirma_violacao_individual_50pct
+    controle_negativo: tests/test_detector_x4.py::test_x4_descartado_dentro_dos_limites_sem_rede
+    hipoteses_inocentes:
+    - hipotese: ata centralizada bem precificada atrai adesões legítimas (discriminador de preço)
+      excluida_por: compliance_agent/detectores/x4_carona_abusiva.py:X4CaronaAbusiva.avaliar
+    - hipotese: adesão exatamente no limite não viola
+      excluida_por: compliance_agent/detectores/x4_carona_abusiva.py:X4CaronaAbusiva.avaliar
+    dominio: atas de registro de preços (art. 86, §§4º-5º, Lei 14.133/2021)
+    fp_medida: null
+  det.X5JogoDePlanilha:
+    modulo: compliance_agent/detectores/x5_jogo_planilha.py
+    simbolo: X5JogoDePlanilha
+    afirma: 'Indício de jogo de planilha: itens sobreprecificados crescem e subcotados encolhem na execução'
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x5.py::test_x5_confirma_forte_correlacao_direcional
+    controle_negativo: tests/test_detector_x5.py::test_x5_descartado_sem_desequilibrio
+    hipoteses_inocentes:
+    - hipotese: margens heterogêneas sem correlação direcional
+      excluida_por: compliance_agent/detectores/x5_jogo_planilha.py:X5JogoDePlanilha.avaliar
+    - hipotese: variação superveniente documentada (só rebaixa sem correlação forte)
+      excluida_por: compliance_agent/detectores/x5_jogo_planilha.py:X5JogoDePlanilha.avaliar
+    - hipotese: desvio dentro da tolerância de 5%
+      excluida_por: compliance_agent/detectores/x5_jogo_planilha.py:X5JogoDePlanilha.avaliar
+    dominio: null
+    fp_medida: null
+  det.X6EntregaFantasma:
+    modulo: compliance_agent/detectores/x6_entrega_fantasma.py
+    simbolo: X6EntregaFantasma
+    afirma: 'Indício de entrega fantasma: pagamento sem nota fiscal/recebimento, atesto genérico ou medições idênticas'
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/test_detector_x6.py::test_x6_confirma_triade_incompleta_sem_nf
+    controle_negativo: tests/test_detector_x6.py::test_x6_triade_completa_sem_anomalia_descartado
+    hipoteses_inocentes:
+    - hipotese: objeto de valor fixo mensal (locação/assinatura) tem medições idênticas
+      excluida_por: compliance_agent/detectores/x6_entrega_fantasma.py:_is_valor_fixo
+    - hipotese: fornecedor com estrutura compatível
+      excluida_por: compliance_agent/detectores/x6_entrega_fantasma.py:X6EntregaFantasma.avaliar
+    dominio: null
+    fp_medida: null
+  det.X7ReequilibrioIndevido:
+    modulo: compliance_agent/detectores/x7_reequilibrio_indevido.py
+    simbolo: X7ReequilibrioIndevido
+    afirma: Indício de reequilíbrio indevido (dupla correção no exercício, índice trocado, álea ordinária disfarçada)
+    fonte:
+    - pcrj_contratos
+    - contrato_aditivo
+    grava: achado_execucao (via compliance_agent/varredura_execucao.py); processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x7_reequilibrio.py::test_duas_recomposicoes_no_mesmo_exercicio_e_critico
+    controle_negativo: tests/detectores/test_x7_reequilibrio.py::test_recomposicao_isolada_e_regular_e_descartada
+    hipoteses_inocentes:
+    - hipotese: recomposições em anos distintos
+      excluida_por: compliance_agent/detectores/x7_reequilibrio_indevido.py:X7ReequilibrioIndevido.avaliar
+    - hipotese: variação de grafia do índice
+      excluida_por: compliance_agent/detectores/x7_reequilibrio_indevido.py:_norm_indice
+    - hipotese: álea extraordinária documentada (rubrica)
+      excluida_por: compliance_agent/detectores/x7_reequilibrio_indevido.py:X7ReequilibrioIndevido.avaliar
+    dominio: aditivos de recomposição (art. 124, Lei 14.133/2021)
+    fp_medida: null
+  det.X8AditivoRetroativo:
+    modulo: compliance_agent/detectores/x8_aditivo_retroativo.py
+    simbolo: X8AditivoRetroativo
+    afirma: Indício de termo aditivo assinado após o fim da vigência corrente do contrato
+    fonte:
+    - pcrj_contratos
+    - contrato_aditivo
+    grava: achado_execucao (via compliance_agent/varredura_execucao.py); processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/vinculos.py
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x8_aditivo_retroativo.py::test_termo_apos_vigencia_JA_prorrogada_e_critico
+    controle_negativo: tests/detectores/test_x8_aditivo_retroativo.py::test_termo_dentro_da_vigencia_e_descartado
+    hipoteses_inocentes:
+    - hipotese: vigência avançada por prorrogação anterior
+      excluida_por: compliance_agent/detectores/x8_aditivo_retroativo.py:X8AditivoRetroativo.avaliar
+    - hipotese: data de publicação não é data de assinatura
+      excluida_por: compliance_agent/detectores/x8_aditivo_retroativo.py:X8AditivoRetroativo.avaliar
+    - hipotese: falha de instrução documental, não contratação irregular
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  det.X9SupressaoAbusiva:
+    modulo: compliance_agent/detectores/x9_supressao_abusiva.py
+    simbolo: X9SupressaoAbusiva
+    afirma: Indício de supressão acima do teto de 25% ou que esvazia o objeto contratado
+    fonte:
+    - sei_arquivo
+    grava: processo_avaliacao (via compliance_agent/processo_360.py)
+    consome:
+    - processo_360
+    - rotas/produtos.py
+    manchete: false
+    controle_positivo: tests/detectores/test_x9_supressao_abusiva.py::test_supressao_acima_de_25_por_cento_e_critica
+    controle_negativo: tests/detectores/test_x9_supressao_abusiva.py::test_supressao_dentro_do_teto_e_DIREITO_da_administracao
+    hipoteses_inocentes:
+    - hipotese: supressão até 25% é direito da Administração
+      excluida_por: compliance_agent/detectores/x9_supressao_abusiva.py:X9SupressaoAbusiva.avaliar
+    - hipotese: anuência ausente no dado é lacuna, não falta de acordo
+      excluida_por: compliance_agent/detectores/x9_supressao_abusiva.py:X9SupressaoAbusiva.avaliar
+    - hipotese: supressão > 100% é leitura quebrada
+      excluida_por: compliance_agent/detectores/x9_supressao_abusiva.py:X9SupressaoAbusiva.avaliar
+    dominio: supressões contratuais (arts. 125 e 126, Lei 14.133/2021)
+    fp_medida: null
+  duplicidade_competencia:
+    modulo: compliance_agent/duplicidade_competencia.py
+    simbolo: detectar
+    afirma: Indício de mês pago duas vezes em contrato contínuo
+    fonte:
+    - ob_orcamentaria_siafe (via chamador)
+    grava: não grava (sob demanda)
+    consome:
+    - tools/resolver_duplicidade_nf.py
+    manchete: false
+    controle_positivo: tests/test_regra_controles_sinteticos.py::test_mes_dobrado_com_res_distintos_e_vizinhos_presentes_acusa
+    controle_negativo: tests/test_regra_controles_sinteticos.py::test_parcela_do_mesmo_re_nao_e_duplicidade
+    hipoteses_inocentes:
+    - hipotese: split de desembolso do mesmo RE
+      excluida_por: compliance_agent/duplicidade_competencia.py:detectar
+    - hipotese: reajuste-complemento (parcela pequena)
+      excluida_por: compliance_agent/duplicidade_competencia.py:detectar
+    - hipotese: mês atrasado pago junto (vizinho ausente) → severidade baixa
+      excluida_por: compliance_agent/duplicidade_competencia.py:detectar
+    - hipotese: devolução bancária + reemissão
+      excluida_por: null
+    dominio: contrato contínuo com pagamento mensal
+    fp_medida: null
+  editais.indice_certame:
+    modulo: compliance_agent/editais/indice_certame.py
+    simbolo: calcular
+    afirma: Índice de risco do certame (0-100) por famílias de flags
+    fonte:
+    - certame_ata
+    - pncp_resultado
+    - fantasma_score
+    grava: indice_certame; caso (se alto)
+    consome:
+    - vault/casos
+    - painel
+    manchete: false
+    controle_positivo: tests/editais/test_indice_certame.py::test_certame_podre_extremo_com_drivers
+    controle_negativo: tests/editais/test_indice_certame.py::test_certame_limpo_baixo
+    hipoteses_inocentes:
+    - hipotese: vários flags da mesma família não somam
+      excluida_por: compliance_agent/editais/indice_certame.py:calcular
+    dominio: null
+    fp_medida: null
+  empresa_fantasma:
+    modulo: compliance_agent/empresa_fantasma.py
+    simbolo: avaliar_cnpj
+    afirma: Escore de perfil de empresa de fachada
+    fonte:
+    - empresas
+    - empresa_socios
+    - endereco_fornecedor
+    - ordens_bancarias
+    - verificacao_sede_real
+    grava: fantasma_score
+    consome:
+    - intel.ranking_fantasmas
+    - intel.radar_risco
+    - comparador.caro_e_suspeito
+    manchete: false
+    controle_positivo: tests/test_empresa_fantasma.py::test_situacao_irregular_e_forte
+    controle_negativo: tests/test_empresa_fantasma.py::test_capital_proporcional_nao_dispara
+    hipoteses_inocentes:
+    - hipotese: entidade sem fins lucrativos com capital ínfimo
+      excluida_por: compliance_agent/empresa_fantasma.py:avaliar_perfil
+    - hipotese: dado cadastral indisponível
+      excluida_por: compliance_agent/empresa_fantasma.py:avaliar_perfil
+    - hipotese: CNAE aderente ao objeto
+      excluida_por: compliance_agent/empresa_fantasma.py:avaliar_perfil
+    dominio: null
+    fp_medida: null
+  fachada_doubt:
+    modulo: compliance_agent/fachada_doubt.py
+    simbolo: candidatos
+    afirma: Fila de verificação humana de fachada por foto da rua
+    fonte:
+    - endereco_fornecedor
+    - endereco_verificacao
+    - fachada_veredito
+    - ordens_bancarias
+    grava: fachada_veredito
+    consome:
+    - Telegram (dono responde)
+    - dossiê DD
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: endereço comercial/blocklist
+      excluida_por: compliance_agent/fachada_doubt.py:candidatos
+    dominio: credores com endereço residencial geocodificado
+    fp_medida: null
+  fracionamento_emergencia:
+    modulo: compliance_agent/fracionamento_emergencia.py
+    simbolo: agrupar_emergencias
+    afirma: Indício de emergência recorrente na mesma unidade (fuga à licitação)
+    fonte:
+    - contratações diretas (via chamador)
+    grava: não grava (sob demanda)
+    consome:
+    - relatórios de emergência
+    manchete: false
+    controle_positivo: tests/test_emergencia_recorrente.py::test_so_conta_o_que_e_emergencial
+    controle_negativo: tests/test_emergencia_recorrente.py::test_emergencia_pontual_nao_vira_achado
+    hipoteses_inocentes:
+    - hipotese: emergência isolada (uso legítimo do art. 75, VIII)
+      excluida_por: compliance_agent/fracionamento_emergencia.py:agrupar_emergencias
+    - hipotese: emergências reais e distintas na mesma unidade
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  fracionamento_siafe:
+    modulo: compliance_agent/fracionamento_siafe.py
+    simbolo: triagem
+    afirma: 'Indício de fracionamento: OBs ao mesmo fornecedor na mesma UG somando acima do teto do exercício'
+    fonte:
+    - ob_orcamentaria_siafe
+    - compras_diretas_tcerj
+    grava: fila de fracionamento
+    consome:
+    - tools/sweep_fracionamento
+    manchete: false
+    controle_positivo: tests/test_fracionamento_siafe.py::test_tres_pagamentos_pequenos_que_somam_acima_do_limite_viram_candidato
+    controle_negativo: tests/test_fracionamento_siafe.py::test_varias_obs_do_MESMO_processo_nao_sao_fracionamento
+    hipoteses_inocentes:
+    - hipotese: várias OBs do mesmo processo (parcelas)
+      excluida_por: compliance_agent/fracionamento_siafe.py:triagem
+    - hipotese: UGs diferentes não somam
+      excluida_por: compliance_agent/fracionamento_siafe.py:triagem
+    - hipotese: folha, tributo, ente público, concessionária
+      excluida_por: compliance_agent/fracionamento_siafe.py:triagem
+    - hipotese: OB excluída/anulada
+      excluida_por: compliance_agent/fracionamento_siafe.py:triagem
+    dominio: OB do Estado por exercício e UG; teto de compliance_agent/limites_dispensa.py do exercício
+    fp_medida: null
+  intel.aditivos_estouro:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: aditivos_estouro
+    afirma: Indício de acréscimo contratual acima do limite do art. 125 da Lei 14.133/2021
+    fonte:
+    - contrato_aditivo
+    - pcrj_contratos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/aditivos
+    manchete: false
+    controle_positivo: tests/test_cruzamentos_intel_aditivos.py::test_um_centavo_acima_do_teto_E_estouro
+    controle_negativo: tests/test_cruzamentos_intel_aditivos.py::test_no_teto_exato_NAO_e_estouro
+    hipoteses_inocentes:
+    - hipotese: reajuste lançado como aditivo (não é acréscimo)
+      excluida_por: compliance_agent/cruzamentos_intel.py:aditivos_estouro
+    - hipotese: acréscimo exatamente no teto (limite inclusivo)
+      excluida_por: compliance_agent/cruzamentos_intel.py:aditivos_estouro
+    dominio: contratos com termos aditivos no PNCP; base = valor inicial cru (não atualizado)
+    fp_medida: null
+  intel.capital_incompativel:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: capital_incompativel
+    afirma: Indício de capital social irrisório diante do valor recebido
+    fonte:
+    - empresas_cadastro
+    - favorecido_resumo
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/capital_incompativel
+    manchete: false
+    controle_positivo: tests/test_capital_incompativel.py::test_flagra_capital_irrisorio
+    controle_negativo: tests/test_capital_incompativel.py::test_capital_robusto_e_zero_nao_flagram
+    hipoteses_inocentes:
+    - hipotese: capital não declarado (zero)
+      excluida_por: compliance_agent/cruzamentos_intel.py:capital_incompativel
+    - hipotese: capital ATUAL difere do da época do pagamento
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.comunidades:
+    modulo: compliance_agent/grafo_comunidades.py
+    simbolo: detectar_comunidades
+    afirma: Comunidades (Louvain) família-empresa-órgão pontuadas por sinais de risco
+    fonte:
+    - empresas_min
+    - socios_receita
+    - pncp_resultado
+    - ob_orcamentaria_siafe
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/comunidades
+    - static/js/src/abas/cockpit.js (card comunidades)
+    manchete: true
+    controle_positivo: tests/test_grafo_comunidades.py::test_louvain_separa_os_clas_e_pontua_risco
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: coparticipação em certames de mercado concentrado
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.concentracao_municipio:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: concentracao_municipio
+    afirma: Indício de concentração de contratos municipais num fornecedor por órgão
+    fonte:
+    - pcrj_contratos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/concentracao_municipio
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: fornecedor único legítimo (exclusividade, concessão)
+      excluida_por: null
+    dominio: contratos da Prefeitura do Rio
+    fp_medida: null
+  intel.conluio_qsa:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: conluio_qsa
+    afirma: Indício de vencedora e perdedora do mesmo certame com sócio em comum
+    fonte:
+    - socios_fornecedor
+    - socios_receita
+    - empresas_min
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/conluio_qsa
+    - intel.radar_risco
+    manchete: false
+    controle_positivo: tests/test_conluio_qsa.py::test_detecta_par_alta_com_2_certames
+    controle_negativo: tests/test_conluio_qsa.py::test_homonimo_com_cpf_conflitante_descartado
+    hipoteses_inocentes:
+    - hipotese: homônimo com CPF conflitante
+      excluida_por: compliance_agent/cruzamentos_intel.py:conluio_qsa
+    - hipotese: vencedora de um item não é perdedora do certame
+      excluida_por: compliance_agent/cruzamentos_intel.py:_certames_vencedor_perdedora
+    dominio: certames com resultado no PNCP ou ata e QSA dos dois lados
+    fp_medida: null
+  intel.corrida_dezembro:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: corrida_dezembro
+    afirma: Indício de concentração atípica de pagamentos em dezembro
+    fonte:
+    - ob_orcamentaria_siafe
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/corrida_dezembro
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: fechamento de exercício e restos a pagar
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.empresa_fenix:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: empresa_fenix
+    afirma: Indício de pagamento a empresa depois da baixa na Receita, ou aberta pouco antes de faturar
+    fonte:
+    - empresas
+    - favorecido_resumo
+    - ob_orcamentaria_siafe
+    - receita_estab.estabelecimentos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/fenix
+    - static/js/src/abas/cockpit.js (card Pago a empresa morta)
+    - intel.radar_risco
+    manchete: true
+    controle_positivo: tests/test_empresa_fenix.py::test_pago_apos_baixa_soma_so_ob_contabilizada
+    controle_negativo: tests/test_regra_controles_sinteticos.py::test_pagamento_antes_da_baixa_nao_e_pago_a_empresa_morta
+    hipoteses_inocentes:
+    - hipotese: pagamento anterior à baixa
+      excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
+    - hipotese: dump diz ATIVA (data_situacao é a data em que ficou ativa)
+      excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
+    - hipotese: sucessão empresarial (motivos 02/03/04)
+      excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
+    - hipotese: consórcio/SPE recém-criados
+      excluida_por: compliance_agent/cruzamentos_intel.py:empresa_fenix
+    - hipotese: natureza jurídica pública, cartório, filial com matriz ativa
+      excluida_por: null
+    dominio: credores PJ (14 dígitos) do Estado do RJ com data de baixa no dump da Receita
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: R$ 592,8 mi pagos a 146 empresas mortas
+      sustentado: ~R$ 16,4 mi em 14 CNPJs
+  intel.escalada_preco:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: escalada_preco
+    afirma: Indício de escalada de preço do mesmo item ao mesmo fornecedor ao longo do tempo
+    fonte:
+    - pncp_resultado
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/escalada
+    manchete: false
+    controle_positivo: tests/test_escalada_preco.py::test_detecta_escalada_com_serie_e_mercado
+    controle_negativo: tests/test_escalada_preco.py::test_inicio_artefato_e_descartado
+    hipoteses_inocentes:
+    - hipotese: preço inicial artefato de cadastro
+      excluida_por: compliance_agent/cruzamentos_intel.py:escalada_preco
+    - hipotese: reajuste contratual legítimo
+      excluida_por: null
+    dominio: séries de compras do mesmo item no PNCP com span mínimo
+    fp_medida: null
+  intel.fornecedor_dependente:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: fornecedor_dependente
+    afirma: Indício de fornecedor que depende de uma única UG
+    fonte:
+    - ob_orcamentaria_siafe
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/fornecedor_dependente
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: contrato único de grande porte; concessionária
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.fracionamento:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: fracionamento
+    afirma: 'Indício de fracionamento: OBs pequenas coladas ao mesmo credor somando acima do teto'
+    fonte:
+    - ob_orcamentaria_siafe
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/fracionamento
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: credor ente público/intragovernamental
+      excluida_por: compliance_agent/cruzamentos_intel.py:_SQL_NAO_PUBLICO
+    - hipotese: parcelas de um mesmo contrato licitado
+      excluida_por: null
+    dominio: OB do Estado do RJ; teto de dispensa de compliance_agent/limites_dispensa.py
+    fp_medida: null
+  intel.grafo_familias:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: grafo_familias
+    afirma: Grafo de famílias (sobrenome raro) com cargo de confiança e empresa fornecedora
+    fonte:
+    - registros_folha
+    - socios_fornecedor
+    - favorecido_resumo
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/grafo_familias
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: sobrenome igual sem parentesco
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.hub_compartilhado:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: hub_compartilhado
+    afirma: Indício de muitos CNPJs no mesmo endereço/telefone/e-mail recebendo do Estado
+    fonte:
+    - estab.estabelecimentos
+    - favorecido_resumo
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/hub_compartilhado
+    manchete: false
+    controle_positivo: tests/intel/test_hub_compartilhado.py::test_endereco_ninho_alto
+    controle_negativo: tests/intel/test_hub_compartilhado.py::test_ente_publico_e_info
+    hipoteses_inocentes:
+    - hipotese: prédio de governo (CNAE 84)
+      excluida_por: compliance_agent/cruzamentos_intel.py:_hub_risco
+    - hipotese: torre comercial multi-inquilino
+      excluida_por: compliance_agent/cruzamentos_intel.py:_hub_risco
+    - hipotese: matriz e filiais da mesma raiz
+      excluida_por: compliance_agent/cruzamentos_intel.py:_hub_risco
+    - hipotese: contador de massa
+      excluida_por: compliance_agent/cruzamentos_intel.py:_hub_risco
+    dominio: null
+    fp_medida: null
+  intel.nepotismo:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: nepotismo
+    afirma: Indício de concentração de sobrenome raro na folha de um órgão
+    fonte:
+    - registros_folha
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/nepotismo
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: sobrenome comum na região; parentesco não provado
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.nepotismo_cruzado:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: nepotismo_cruzado
+    afirma: Indício de parentes nomeados em órgãos cruzados
+    fonte:
+    - registros_folha
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/nepotismo_cruzado
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: sobrenome igual sem parentesco
+      excluida_por: null
+    - hipotese: cargo efetivo por concurso
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.perdedoras_contumazes:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: perdedoras_contumazes
+    afirma: Indício de empresa de cobertura (participa muito e nunca vence)
+    fonte:
+    - pncp_resultado
+    - favorecido_resumo
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/perdedoras
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: empresa pequena que disputa e perde por preço (mercado normal)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.porta_giratoria:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: porta_giratoria
+    afirma: Indício de ex-servidor que virou sócio de fornecedor do mesmo órgão
+    fonte:
+    - registros_folha
+    - socios_fornecedor
+    - favorecido_resumo
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/porta_giratoria
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: homônimo
+      excluida_por: null
+    - hipotese: quarentena legal cumprida
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.prioridade_valor:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: prioridade_valor
+    afirma: Fila de fornecedores com sinal de risco E economia potencial
+    fonte:
+    - fantasma_score
+    - pncp_resultado
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/prioridade_valor
+    manchete: false
+    controle_positivo: tests/test_prioridade_valor.py::test_intersecao_ordena_por_economia
+    controle_negativo: tests/test_prioridade_valor.py::test_so_risco_e_so_economia_ficam_de_fora
+    hipoteses_inocentes:
+    - hipotese: risco sem economia ou economia sem risco
+      excluida_por: compliance_agent/cruzamentos_intel.py:prioridade_valor
+    dominio: null
+    fp_medida: null
+  intel.radar_risco:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: radar_risco
+    afirma: Ranking de fornecedores por soma de sinais de risco (sanção à época, fênix, fachada, conluio)
+    fonte:
+    - fantasma_score
+    - favorecido_resumo
+    - pncp_resultado
+    - socios_fornecedor
+    - sancoes_federais
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/radar
+    - static/js/src/abas/cockpit.js (card Radar, nível crítico)
+    manchete: true
+    controle_positivo: tests/test_cruzamentos_sancao_alcance.py::test_radar_so_marca_sancao_a_epoca_com_alcance
+    controle_negativo: tests/test_cruzamentos_sancao_alcance.py::test_radar_so_marca_sancao_a_epoca_com_alcance
+    hipoteses_inocentes:
+    - hipotese: sanção sem alcance sobre o Estado ou posterior
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    - hipotese: empresa baixada que só recebeu antes da baixa
+      excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
+    - hipotese: sucessão empresarial (incorporação/fusão/cisão)
+      excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
+    dominio: fornecedores pagos pelo Estado do RJ
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: top 10 com 9 sinais de sanção à época; 3 críticos
+      sustentado: 2 sinais alcançam o Estado; críticos 3 → 1 (sem sanção)
+  intel.ranking_fantasmas:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: ranking_fantasmas
+    afirma: Ranking de fornecedores por escore de perfil de fachada
+    fonte:
+    - fantasma_score
+    grava: fantasma_score (avaliar_fantasmas)
+    consome:
+    - rotas/investigacao.py /api/intel/fantasmas
+    - intel.radar_risco
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: natureza jurídica sem fins lucrativos/ente público com capital ínfimo
+      excluida_por: null
+    - hipotese: cadastro ausente (lacuna nossa, não sinal)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.sancionadas_contratadas:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: sancionadas_contratadas
+    afirma: Indício de pagamento a fornecedor com sanção vigente e com alcance sobre o ente
+    fonte:
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    - pncp_resultado
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/sancionadas
+    - intel.radar_risco
+    manchete: false
+    controle_positivo: tests/test_cruzamentos_sancao_alcance.py::test_sancao_sem_alcance_ou_posterior_nao_conta_a_epoca
+    controle_negativo: tests/test_cruzamentos_sancao_alcance.py::test_sancao_sem_alcance_ou_posterior_nao_conta_a_epoca
+    hipoteses_inocentes:
+    - hipotese: sanção sem alcance sobre o Estado (órgão/ente de outra esfera)
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    - hipotese: sanção iniciada depois do pagamento
+      excluida_por: compliance_agent/sancao_abrangencia.py:vigente_em
+    - hipotese: OB anulada/excluída
+      excluida_por: compliance_agent/cruzamentos_intel.py:sancionadas_contratadas
+    dominio: OB do Estado do RJ (SIAFE-Rio, 2021+) × CEIS/CNEP; sanção avaliada na data de cada OB
+    fp_medida: null
+  intel.sancionadas_municipio:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: sancionadas_municipio
+    afirma: Indício de contrato da Prefeitura do Rio com fornecedor sancionado à época
+    fonte:
+    - pcrj_contratos
+    - sancoes_federais
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/sancionadas_municipio
+    manchete: false
+    controle_positivo: tests/test_sancionadas_municipio.py::test_sancionadas_municipio_guardas
+    controle_negativo: tests/test_sancionadas_municipio.py::test_sancionadas_municipio_guardas
+    hipoteses_inocentes:
+    - hipotese: sanção de órgão federal/estadual sem alcance no município
+      excluida_por: compliance_agent/cruzamentos_intel.py:sancionadas_municipio
+    - hipotese: contrato anterior à sanção
+      excluida_por: compliance_agent/cruzamentos_intel.py:sancionadas_municipio
+    dominio: contratos da Prefeitura do Rio (competência TCM-RJ)
+    fp_medida: null
+  intel.sobrepreco:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: sobrepreco
+    afirma: Indício de preço homologado acima da mediana do mesmo item, na mesma unidade
+    fonte:
+    - pncp_resultado
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/sobrepreco
+    manchete: false
+    controle_positivo: tests/test_sobrepreco_unidade.py::test_achado_traz_grupo_unidade_link_e_estado
+    controle_negativo: tests/test_sobrepreco_unidade.py::test_galao_caro_nao_vira_sobrepreco_contra_copinho
+    hipoteses_inocentes:
+    - hipotese: unidade de fornecimento diferente
+      excluida_por: compliance_agent/cruzamentos_intel.py:comparabilidade_item
+    - hipotese: preço de caixa lançado como unidade (salto)
+      excluida_por: compliance_agent/cruzamentos_intel.py:sobrepreco
+    dominio: itens homologados no PNCP com unidade comparável e amostra mínima
+    fp_medida: null
+  intel.socio_oculto:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: socio_oculto
+    afirma: Indício de pessoa sócia de várias fornecedoras
+    fonte:
+    - socios_fornecedor
+    - favorecido_resumo
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/socio_oculto
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: homônimo
+      excluida_por: null
+    - hipotese: grupo econômico declarado
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  intel.socio_servidor:
+    modulo: compliance_agent/cruzamentos_intel.py
+    simbolo: socio_servidor
+    afirma: Indício de sócio de fornecedor que é servidor do órgão pagador
+    fonte:
+    - socios_fornecedor
+    - registros_folha
+    - favorecido_resumo
+    - ob_orcamentaria_siafe
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/socio_servidor
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: homônimo (nome igual, pessoa diferente)
+      excluida_por: compliance_agent/cruzamentos_intel.py:_frag6
+    - hipotese: servidor sem participação na contratação
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  lex.redflags:
+    modulo: compliance_agent/lex_conflito.py
+    simbolo: achado_sancao_siga
+    afirma: Red flags do parecer Lex (sanção, lista suja, regime de emergência)
+    fonte:
+    - sancoes (SIGA)
+    - lista suja
+    - contratações
+    grava: parecer Lex
+    consome:
+    - Lex (pareceres ao dono)
+    manchete: true
+    controle_positivo: tests/test_lex_redflags_dd_especificos.py::test_sancao_siga_alcance_e_grau
+    controle_negativo: tests/test_lex_redflags_dd_especificos.py::test_sancao_siga_alcance_e_grau
+    hipoteses_inocentes:
+    - hipotese: sanção decorrida (fora da vigência)
+      excluida_por: compliance_agent/lex_conflito.py:achado_sancao_siga
+    - hipotese: pagamento antes da inclusão na lista suja
+      excluida_por: compliance_agent/lex_conflito.py:achado_lista_suja
+    dominio: null
+    fp_medida: null
+  ninho_sala:
+    modulo: compliance_agent/ninho_sala.py
+    simbolo: ninhos_por_sala
+    afirma: Indício de vários CNPJs recebedores na mesma sala
+    fonte:
+    - estabelecimentos
+    - favorecido_resumo
+    grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/ninho_sala
+    - static/js/src/abas/cockpit.js (card Ninhos de fachada)
+    manchete: true
+    controle_positivo: tests/test_ninho_sala.py::test_mesma_sala_com_dois_recebendo_e_varios_fatores_e_ALTO
+    controle_negativo: tests/test_ninho_sala.py::test_matriz_e_filiais_da_mesma_raiz_nao_e_ninho
+    hipoteses_inocentes:
+    - hipotese: matriz e filiais da mesma raiz
+      excluida_por: compliance_agent/ninho_sala.py:ninhos_por_sala
+    - hipotese: escritório virtual/caixa postal
+      excluida_por: compliance_agent/ninho_sala.py:ninhos_por_sala
+    - hipotese: salas diferentes do mesmo prédio
+      excluida_por: compliance_agent/ninho_sala.py:norm_complemento
+    - hipotese: mesmo grupo econômico com sócio em comum
+      excluida_por: null
+    dominio: CNPJs com complemento que identifica unidade (sala/andar) no dump da Receita
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: 6 grupos, R$ 1,77 bi no conjunto
+      sustentado: R$ 17,76 mi nos 6; 70% num par do mesmo grupo econômico
+  ordem_cronologica:
+    modulo: compliance_agent/ordem_cronologica_siafe.py
+    simbolo: ordem_cronologica
+    afirma: Indício de quebra da ordem cronológica de pagamentos (Lei 14.133, art. 141)
+    fonte:
+    - nl_siafe
+    - ob_orcamentaria_siafe
+    - empresas
+    - estabelecimentos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/ordem_cronologica
+    manchete: false
+    controle_positivo: tests/test_ordem_cronologica_siafe.py::test_nl_liquidada_depois_e_paga_antes_fura_a_fila
+    controle_negativo: tests/test_ordem_cronologica_siafe.py::test_preterida_sem_ob_na_base_nao_vira_quebra
+    hipoteses_inocentes:
+    - hipotese: fonte de recurso diferente
+      excluida_por: compliance_agent/ordem_cronologica_siafe.py:ordem_cronologica
+    - hipotese: restos a pagar têm fila própria
+      excluida_por: compliance_agent/ordem_cronologica_siafe.py:ordem_cronologica
+    - hipotese: inversão de poucos dias (agenda do Tesouro)
+      excluida_por: compliance_agent/ordem_cronologica_siafe.py:ordem_cronologica
+    - hipotese: UG com coleta de NL incompleta
+      excluida_por: compliance_agent/ordem_cronologica_siafe.py:ordem_cronologica
+    dominio: UGs do Estado com NL e OB completas na base
+    fp_medida: null
+  pericia_contabil:
+    modulo: compliance_agent/pericia_contabil.py
+    simbolo: avaliar_estado
+    afirma: Indício de pagamento a maior/menor que o devido por contrato (devido × pago)
+    fonte:
+    - contratos_tcerj
+    - ob_orcamentaria_siafe
+    - ordens_bancarias
+    - contrato_aditivo
+    grava: relatório da perícia (PDF/CSV)
+    consome:
+    - tools/pericia_contabil (relatório)
+    - vault
+    manchete: true
+    controle_positivo: tests/test_pericia_contabil.py::test_estado_fim_a_fim
+    controle_negativo: tests/test_regra_controles_sinteticos.py::test_ob_devolvida_e_reemitida_soma_uma_vez
+    hipoteses_inocentes:
+    - hipotese: OB devolvida pelo banco e reemitida
+      excluida_por: compliance_agent/pericia_contabil.py:valor_efetivo_ob
+    - hipotese: parcelas da mesma NL em competências distintas
+      excluida_por: compliance_agent/pericia_contabil.py:sinais_duplicidade
+    - hipotese: credor sem OB na base (ausência de medida)
+      excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
+    - hipotese: registro que é termo aditivo, não contrato
+      excluida_por: compliance_agent/pericia_contabil.py:e_registro_de_termo
+    - hipotese: vigência anterior à cobertura do SIAFE
+      excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
+    - hipotese: parceria/repasse/contrato de gestão (desembolso antecipado) — sai ADIANTADO, não "a maior"
+      excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
+    - hipotese: prorrogação não publicada
+      excluida_por: null
+    dominio: contratos contínuos e pontuais do Estado (TCE-RJ) com OB no SIAFE-Rio desde 2021; parceria fora
+    fp_medida: null
+    controles_extras:
+    - tests/test_regra_controles_sinteticos.py::test_contrato_de_gestao_com_repasse_antecipado_nao_e_a_maior
+    - tests/test_regra_controles_sinteticos.py::test_pago_a_frente_do_pro_rata_dentro_do_valor_nao_e_a_maior
+    - tests/test_regra_controles_sinteticos.py::test_parcelas_do_mesmo_dia_e_ob_sem_confirmacao_do_banco_nao_sao_duplicidade
+    - tests/test_regra_controles_sinteticos.py::test_servico_continuo_pago_acima_do_valor_contratado_e_a_maior
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: 293 pagos a maior / R$ 29,67 mi; 208 duplicidades
+      sustentado: 0 confirmados nos 10 maiores; 174 de 208 eram devolução + reemissão
+  processo_360:
+    modulo: compliance_agent/processo_360.py
+    simbolo: avaliar
+    afirma: Grau de risco de um processo SEI agregando todos os detectores
+    fonte:
+    - sei_arvore
+    - achado_certame
+    - achado_execucao
+    grava: processo_360 / fila do fiscal
+    consome:
+    - rotas/vinculos.py
+    - Yoda
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: captura parcial da pasta rebaixa o grau
+      excluida_por: compliance_agent/processo_360.py:grau_com_captura
+    dominio: null
+    fp_medida: null
+  radar:
+    modulo: compliance_agent/radar.py
+    simbolo: ciclo
+    afirma: Alerta de evento novo sobre alvo vigiado (edital restritivo, sanção)
+    fonte:
+    - watchlist
+    - editais
+    grava: radar_alertas
+    consome:
+    - Telegram ao dono
+    manchete: true
+    controle_positivo: tests/test_jfn2_onda6.py::test_ciclo_gera_alerta_de_edital_aberto_restritivo
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+  rede_fachada:
+    modulo: compliance_agent/rede_fachada.py
+    simbolo: pacote_sinais
+    afirma: Pacote de sinais de fachada (sede, cadastro, rede de sócios)
+    fonte:
+    - verificacao_sede
+    - socios_receita
+    - rede_socios_fornecedores
+    grava: não grava (insumo do juízo)
+    consome:
+    - compliance_agent/pericia_fornecedor (juízo de fachada)
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: sede administrativa diversa do local de execução
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  retro.lift:
+    modulo: compliance_agent/retro_auditoria.py
+    simbolo: avaliar_lift
+    afirma: Quanto cada detector concentra sancionados acima da taxa-base (lift)
+    fonte:
+    - pncp_resultado
+    - sancoes_federais
+    - sinal_ledger
+    grava: cache de 1 h na rota
+    consome:
+    - rotas/investigacao.py /api/intel/lift
+    - static/js/src/abas/cockpit.js (card Melhor detector)
+    manchete: true
+    controle_positivo: tests/test_retro_lift.py::test_lift_calcula_taxa_base_e_circularidade
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: circularidade (detector que usa a própria sanção)
+      excluida_por: compliance_agent/retro_auditoria.py:avaliar_lift
+    dominio: fornecedores do PNCP com sinal registrado; gabarito = sanção CEIS/CNEP de qualquer época/ente
+    fp_medida: null
+    lift:
+      gabarito: sanção posterior no CEIS/CNEP (qualquer época/ente) — NÃO é taxa de falso positivo
+      valor_cockpit: 2.12
+      n: 88
+      onde: /api/intel/lift
+    revisao_2026_11_13:
+      veredito: PARCIAL
+      afirmado: melhor detector concentra fraude 2,12×
+      sustentado: 2,1× mais sancionados (qualquer época/ente), n=88
+  rules.acumulacao:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: 'MotorCompliance (alertas tipo ''acumulacao'': _regra_acumulo_cargo, _regra_cpf_duplicado_fontes, _regra_emprego_multiplo_orgaos)'
+    afirma: Indício de acúmulo de vínculos remunerados
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_regra_emprego_multiplo_mesma_pessoa.py::test_mesma_pessoa_em_dois_orgaos_vira_alerta_media_a_verificar
+    controle_negativo: tests/test_regra_emprego_multiplo_mesma_pessoa.py::test_mesmo_cpf_mascarado_nomes_diferentes_nao_vira_alerta
+    hipoteses_inocentes:
+    - hipotese: CPF mascarado igual, pessoa diferente
+      excluida_por: compliance_agent/rules/engine.py:_regra_emprego_multiplo_orgaos
+    - hipotese: exceções do art. 37, XVI (dois de professor, professor + técnico, dois de saúde)
+      excluida_por: null
+    dominio: folha estadual de uma competência (CPF mascarado)
+    fp_medida: null
+    revisao_2026_11_13:
+      veredito: REFUTADA
+      afirmado: 59.024 alertas de gravidade alta
+      sustentado: ~771 (58.253 eram colisão de CPF mascarado)
+  rules.acumulo_cargo:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_acumulo_cargo
+    afirma: 'Indício de acúmulo ilegal: mesmo CPF em mais de 2 órgãos na competência'
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_regra_controles_sinteticos.py::test_acumulo_cargo_mesma_pessoa_em_tres_orgaos_acusa
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: CPF mascarado igual, pessoa diferente
+      excluida_por: null
+    - hipotese: exceções do art. 37, XVI (dois de professor, professor + técnico, dois de saúde)
+      excluida_por: null
+    dominio: folha estadual de uma competência
+    fp_medida: null
+    controle_xfail:
+    - tests/test_regra_controles_sinteticos.py::test_acumulo_cargo_cpf_mascarado_nomes_diferentes_nao_agrupa
+  rules.cnpj_abertura_recente_contrato:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_cnpj_abertura_recente_contrato
+    afirma: Indício de empresa aberta pouco antes do contrato
+    fonte:
+    - empresas
+    - contratos
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: SPE/consórcio criado para o contrato
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  rules.cpf_duplicado_fontes:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_cpf_duplicado_fontes
+    afirma: Indício de CPF em várias fontes de remuneração pública
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: combinação lícita de fontes
+      excluida_por: compliance_agent/collectors/terceirizados.py:detectar_cpf_duplicado_entre_fontes
+    dominio: null
+    fp_medida: null
+  rules.emprego_multiplo_orgaos:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_emprego_multiplo_orgaos
+    afirma: 'Emprego múltiplo a verificar: mesma pessoa (CPF parcial + nome) em 2+ órgãos'
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_regra_emprego_multiplo_mesma_pessoa.py::test_mesma_pessoa_em_dois_orgaos_vira_alerta_media_a_verificar
+    controle_negativo: tests/test_regra_emprego_multiplo_mesma_pessoa.py::test_mesmo_cpf_mascarado_nomes_diferentes_nao_vira_alerta
+    hipoteses_inocentes:
+    - hipotese: CPF mascarado igual, pessoa diferente
+      excluida_por: compliance_agent/rules/engine.py:_regra_emprego_multiplo_orgaos
+    - hipotese: exceções do art. 37, XVI (dois de professor, professor + técnico, dois de saúde)
+      excluida_por: null
+    dominio: folha estadual de uma competência (CPF mascarado)
+    fp_medida: null
+  rules.empresa_mesmo_cep_servidor:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_empresa_mesmo_cep_servidor
+    afirma: Indício de empresa no mesmo CEP de servidor
+    fonte:
+    - empresas
+    - pessoas
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: CEP de grande condomínio ou centro comercial
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  rules.empresa_parente:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_empresa_parente
+    afirma: Indício de empresa de parente de servidor recebendo contrato
+    fonte:
+    - empresa_socios
+    - pessoas
+    - contratos
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: homônimo/sobrenome comum
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  rules.engine:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance.executar_todas_as_regras
+    afirma: Todas as regras do motor (agregado; ver rules.<nome>)
+    fonte:
+    - registros_folha
+    - contratos
+    - ordens_bancarias
+    - publicacoes_doerj
+    - empresas
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+  rules.fracionamento_contrato:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_fracionamento_contrato
+    afirma: Indício de fracionamento por contratos abaixo do limite
+    fonte:
+    - contratos
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: objetos de naturezas distintas
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  rules.funcionario_fantasma:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_funcionario_fantasma
+    afirma: Indício de servidor sem movimentação real
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+  rules.ob_empresa_nova:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_empresa_nova
+    afirma: OB a empresa recém-aberta
+    fonte:
+    - ordens_bancarias
+    - empresas
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: SPE/consórcio
+      excluida_por: null
+    dominio: OB recente (janela de 90 dias)
+    fp_medida: null
+  rules.ob_favorecido_doerj_cruzado:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_favorecido_doerj_cruzado
+    afirma: OB a favorecido citado no DOERJ com termo suspeito
+    fonte:
+    - ordens_bancarias
+    - publicacoes_doerj
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: menção não é o ato (citação neutra)
+      excluida_por: null
+    dominio: OB recente (janela de 90 dias)
+    fp_medida: null
+  rules.ob_favorecido_multiplas_ugs:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_favorecido_multiplas_ugs
+    afirma: Favorecido pago por muitas UGs
+    fonte:
+    - ordens_bancarias
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: concessionária ou fornecedor de ata corporativa
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  rules.ob_fracionamento:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_fracionamento
+    afirma: Indício de fracionamento por soma mensal de OBs acima do teto de dispensa
+    fonte:
+    - ordens_bancarias
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: ente público credor
+      excluida_por: compliance_agent/rules/engine.py:_eh_ente_publico
+    dominio: OB recente (janela de 90 dias); teto de compliance_agent/limites_dispensa.py do exercício
+    fp_medida: null
+  rules.ob_sem_processo_sei:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_sem_processo_sei
+    afirma: OB sem processo SEI vinculado
+    fonte:
+    - ordens_bancarias
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: OB recente (janela de 90 dias)
+    fp_medida: null
+  rules.ob_valor_redondo:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_ob_valor_redondo
+    afirma: OB de valor redondo
+    fonte:
+    - ordens_bancarias
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: OB recente (janela de 90 dias)
+    fp_medida: null
+  rules.remuneracao_acima_teto:
+    modulo: compliance_agent/rules/engine.py
+    simbolo: MotorCompliance._regra_remuneracao_acima_teto
+    afirma: Indício de remuneração acima do teto
+    fonte:
+    - registros_folha
+    grava: alertas
+    consome:
+    - tabela alertas
+    - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
+    - triagem_alertas
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: verbas indenizatórias fora do teto
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  sancao_abrangencia:
+    modulo: compliance_agent/sancao_abrangencia.py
+    simbolo: veda_ente
+    afirma: Se a sanção veda contratar com o ente-alvo na data do ato
+    fonte:
+    - sancoes_federais
+    grava: não grava (função usada por outros detectores)
+    consome:
+    - rotas/investigacao.py /api/sancoes/detalhar
+    - intel.sancionadas_contratadas
+    - comparador.*
+    manchete: false
+    controle_positivo: tests/test_sancao_abrangencia.py::test_veda_ente_inidoneidade_sempre_veda_rj
+    controle_negativo: tests/test_sancao_abrangencia.py::test_veda_ente_impedimento_federal_nao_veda_estado_rj
+    hipoteses_inocentes:
+    - hipotese: suspensão restrita ao órgão sancionador
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    - hipotese: impedimento de outro ente
+      excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
+    - hipotese: sanção fora da vigência
+      excluida_por: compliance_agent/sancao_abrangencia.py:vigente_em
+    - hipotese: categoria contradiz a fundamentação legal
+      excluida_por: compliance_agent/sancao_abrangencia.py:classificar_sancao
+    - hipotese: abrangência declarada além do teto legal
+      excluida_por: compliance_agent/sancao_abrangencia.py:teto_legal
+    dominio: sanções CEIS/CNEP contra o Executivo do Estado do RJ (alvo configurável)
+    fp_medida: null
+  sobrepreco:
+    modulo: compliance_agent/sobrepreco.py
+    simbolo: sobrepreco
+    afirma: Indício de sobrepreço contra amostra de preços CATMAT/CATSER
+    fonte:
+    - API de compras (rede)
+    grava: não grava (sob demanda)
+    consome:
+    - Lex/dossiê
+    manchete: false
+    controle_positivo: tests/test_jfn2_onda3.py::test_sobrepreco_com_amostra
+    controle_negativo: tests/test_jfn2_onda3.py::test_sobrepreco_classificar
+    hipoteses_inocentes:
+    - hipotese: variação usual de mercado (até +15%)
+      excluida_por: compliance_agent/sobrepreco.py:_classificar
+    - hipotese: amostra pequena/dispersa
+      excluida_por: compliance_agent/sobrepreco.py:_classificar
+    dominio: null
+    fp_medida: null
+  socio_de_sancionada:
+    modulo: compliance_agent/socio_de_sancionada.py
+    simbolo: socio_de_sancionada
+    afirma: Indício de empresa que herdou sócio de sancionada e recebeu na janela da sanção
+    fonte:
+    - sancoes_federais
+    - socio_historico
+    - empresas
+    - estabelecimentos
+    grava: sob demanda
+    consome:
+    - rotas/investigacao.py /api/intel/socio_sancionada
+    manchete: false
+    controle_positivo: tests/test_socio_de_sancionada.py::test_padrao_guarailha_forte_e_so_a_janela
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: pagamento fora da janela da sanção
+      excluida_por: compliance_agent/socio_de_sancionada.py:socio_de_sancionada
+    - hipotese: homônimo do sócio
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  tools.contrato_acima_do_porte:
+    modulo: tools/contrato_acima_do_porte.py
+    simbolo: acima_do_porte
+    afirma: Indício de contrato celebrado com ME/EPP (porte do cadastro atual) de valor acima do teto anual do porte
+    fonte:
+    - contratos_tcerj
+    - empresas_cadastro
+    grava: data/lentes_estado.json (tools/lentes_materializar.py)
+    consome:
+    - tools/convergencia.py
+    - tools/lentes_materializar.py
+    - rotas/investigacao.py
+    - vault/casos/contrato-acima-do-porte-me-epp.md
+    manchete: true
+    controle_positivo: tests/test_contrato_acima_do_porte.py::test_microempresa_acima_do_teto_entra
+    controle_negativo: tests/test_contrato_acima_do_porte.py::test_abaixo_do_teto_do_proprio_porte_nao_entra
+    hipoteses_inocentes:
+    - hipotese: porte Demais (sem teto legal)
+      excluida_por: tools/contrato_acima_do_porte.py:acima_do_porte
+    - hipotese: contrato sem valor
+      excluida_por: tools/contrato_acima_do_porte.py:acima_do_porte
+    - hipotese: valor igual ao teto não excede
+      excluida_por: tools/contrato_acima_do_porte.py:acima_do_porte
+    - hipotese: ata de registro de preços com valor global rateado
+      excluida_por: null
+    - hipotese: contrato cancelado
+      excluida_por: null
+    - hipotese: porte atual do cadastro ≠ porte no ano do contrato
+      excluida_por: null
+    - hipotese: contrato plurianual (valor não rateado por exercício)
+      excluida_por: null
+    - hipotese: certame sem benefício de ME/EPP
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+  tools.porte_declarado_certame:
+    modulo: tools/porte_declarado_certame.py
+    simbolo: declaracoes_incompativeis
+    afirma: Indício de declaração de ME/EPP/MEI em certame publicado depois de a empresa já ter recebido do Estado, no mesmo
+      ano, acima do teto de EPP
+    fonte:
+    - pncp_resultado
+    - ob_orcamentaria_siafe
+    grava: data/lentes_estado.json (tools/lentes_materializar.py)
+    consome:
+    - tools/convergencia.py
+    - tools/lentes_materializar.py
+    - rotas/investigacao.py
+    - vault/casos/declaracao-me-epp-no-certame-rc-card.md
+    manchete: true
+    controle_positivo: tests/test_porte_declarado_certame.py::test_estrito_pega_certame_POSTERIOR_ao_estouro
+    controle_negativo: tests/test_porte_declarado_certame.py::test_ano_anterior_nao_conta_no_ano_do_certame
+    hipoteses_inocentes:
+    - hipotese: estouro posterior ao certame (empresa podia não saber)
+      excluida_por: tools/porte_declarado_certame.py:_acumulado_no_ano
+    - hipotese: pago de ano anterior somando contra o teto do ano do certame
+      excluida_por: tools/porte_declarado_certame.py:_acumulado_no_ano
+    - hipotese: OB não contabilizada (anulada/excluída)
+      excluida_por: tools/porte_declarado_certame.py:_pagamentos
+    - hipotese: empresa declarada Demais (sem benefício)
+      excluida_por: tools/porte_declarado_certame.py:declaracoes_incompativeis
+    - hipotese: valor igual ao teto não excede
+      excluida_por: tools/porte_declarado_certame.py:declaracoes_incompativeis
+    - hipotese: benefício de ME/EPP não aplicado no certame (empate ficto, cota, exclusividade)
+      excluida_por: null
+    dominio: certames do PNCP-RJ 2024-2026 × OB contabilizada do SIAFE no ano-calendário do certame
+    fp_medida: null
+  tools.porte_incompativel:
+    modulo: tools/porte_incompativel.py
+    simbolo: incompativeis
+    afirma: Indício de CNPJ×ano em que o pago (OB contabilizada) supera o teto da LC 123 do porte que consta hoje no cadastro
+    fonte:
+    - ob_orcamentaria_siafe
+    - empresas_cadastro
+    - socios_receita
+    grava: data/lentes_estado.json (tools/lentes_materializar.py)
+    consome:
+    - tools/convergencia.py
+    - tools/lentes_materializar.py
+    - rotas/investigacao.py
+    - vault/casos/me-epp-acima-do-teto-fruicao-indevida.md
+    manchete: true
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: OB anulada ou excluída somando como pago
+      excluida_por: tools/porte_incompativel.py:incompativeis
+    - hipotese: anos diferentes somando contra o teto anual
+      excluida_por: tools/porte_incompativel.py:incompativeis
+    - hipotese: porte Demais (sem teto legal)
+      excluida_por: tools/porte_incompativel.py:incompativeis
+    - hipotese: empresa cresceu e não atualizou o porte na Receita (cadastro é foto de 2026-05)
+      excluida_por: null
+    - hipotese: certame sem benefício de ME/EPP
+      excluida_por: null
+    dominio: OB contabilizada do SIAFE (todos os exercícios coletados), por ano-calendário
+    fp_medida: null
+  triagem_alertas:
+    modulo: compliance_agent/triagem_alertas.py
+    simbolo: triar_lote
+    afirma: Triagem por LLM dos alertas do motor de regras
+    fonte:
+    - alertas
+    grava: alertas_triagem
+    consome:
+    - painel de alertas
+    - Yoda
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null

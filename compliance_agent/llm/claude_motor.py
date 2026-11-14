@@ -69,6 +69,7 @@ TETOS_TAREFA = {
     "camada_subjetiva": 20,
     "investigacao_risco": 10,
     "verificacao_opus": 30,      # todo 🔴/🟡 da triagem relido pelo Opus (diretriz "sem margem pra erro")
+    "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
 }
 
 SISTEMA_PADRAO = (

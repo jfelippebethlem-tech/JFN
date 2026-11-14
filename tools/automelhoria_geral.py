@@ -44,7 +44,12 @@ DATA = _REPO / "data"
 FILA = DATA / "automelhoria_fila.json"
 RELATORIOS = Path.home() / "vault" / "aprendizados" / "automelhoria"
 CATRACAS = ["tests/test_catraca_excepts.py", "tests/test_divida_except_pass.py",
-            "tests/test_catraca_nao_pode_ser_tolerada.py", "tests/test_capacidade_pronta_tem_superficie.py"]
+            "tests/test_catraca_nao_pode_ser_tolerada.py", "tests/test_capacidade_pronta_tem_superficie.py",
+            # regras de qualidade (docs/REGRAS-DE-QUALIDADE.md) — `test_regra_registro` cobra que todas estejam aqui
+            "tests/test_regra_registro.py", "tests/test_regra_catracas.py", "tests/test_regra_inventario.py",
+            "tests/test_regra_motores.py", "tests/test_regra_controles_detector.py",
+            "tests/test_regra_controles_sinteticos.py", "tests/test_regra_verificadores.py",
+            "tests/test_regra_sensores.py", "tests/test_regra_juiz.py"]
 # unidades do desktop gráfico da VM que falham sem efeito sobre o JFN — não são problema da casa
 _SYSTEMD_RUIDO = {"xfce4-notifyd.service"}
 
@@ -421,10 +426,21 @@ def sensor_voz(hermes: Path = _HERMES, stt_py: Path = _STT_PY, agora: float | No
     return out
 
 
+def sensor_qualidade() -> list[dict]:
+    """Regras de qualidade (docs/REGRAS-DE-QUALIDADE.md) sobre o DADO SERVIDO: proveniência e variação das
+    manchetes, constância entre superfícies, casos do vault, respostas do Yoda, motores sem efeito, juiz subjetivo.
+    Um item por (regra, sistema) — o detalhe fica em data/qualidade_estado.json e no painel de conformidade.
+    Sensor de qualidade cego vira `sensor:qualidade.<nome>` (INDISPONÍVEL ≠ 0)."""
+    from compliance_agent.qualidade import sensores as _q
+    return [_p(i["area"], i["chave"], i["titulo"], i["detalhe"], acao_humana=i["acao_humana"])
+            for i in _q.para_automelhoria(_q.rodar())]
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
-            "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres}
+            "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
+            "qualidade": sensor_qualidade}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:

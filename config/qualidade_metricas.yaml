@@ -1,0 +1,70 @@
+# qualidade_metricas.yaml — o MAPA DE MÉTRICAS das regras de constância (CST-01, CST-07, CST-13).
+# Lido por `compliance_agent/qualidade/sensores.py::sensor_constancia_superficies`, que roda em produção.
+#
+# Cada métrica compara o MESMO número em dois lugares. Fonte = {rota, campo} (o que a API do painel serve) ou
+# {arquivo, campo} (arquivo em data/ que alimenta a rota). `campo` é caminho pontilhado ("a.b.0.c").
+#   tipo: igual        a == b (tolerância R$ 0,01)        — duas superfícies, ou o cache servido × o arquivo de origem
+#   tipo: parte_todo   parte ≤ todo                        — parcela exibida não excede o total exibido na mesma tela
+#   tipo: total_lista  total == soma(lista[item])          — número do card × lista que abre ao clicar (só se a
+#                                                             lista veio completa: len(lista) == `completa_se`)
+# Métrica nova entra aqui quando um número passa a ser exibido em mais de um lugar.
+metricas:
+  - id: economia-orgao-x-total
+    regra: CST-01
+    tipo: parte_todo
+    titulo: '"Órgão que mais economiza" maior que a economia total da mesma tela'
+    parte: {rota: /api/comparador/economia, campo: por_orgao.0.economia}
+    todo: {rota: /api/comparador/economia, campo: economia_total}
+    acao: o card do órgão deve usar a mesma base (homogênea) do herói
+  - id: economia-esferas-x-total
+    regra: CST-01
+    tipo: parte_todo
+    titulo: economia de uma esfera maior que a economia total
+    parte: {rota: /api/comparador/economia, campo: por_esfera.prefeitura.economia}
+    todo: {rota: /api/comparador/economia, campo: economia_total}
+  - id: fenix-confirmado-x-contexto
+    regra: CST-01
+    tipo: parte_todo
+    titulo: '"pago após a baixa" maior que o total recebido pelas mesmas empresas'
+    parte: {rota: /api/intel/fenix, campo: total_apos_baixa}
+    todo: {rota: /api/intel/fenix, campo: total_defunta}
+  - id: radar-servido-x-cache
+    regra: CST-07
+    tipo: igual
+    titulo: radar de risco — nº servido pela rota diferente do arquivo de origem
+    a: {rota: "/api/intel/radar?limite=6", campo: n}
+    b: {arquivo: cache/radar_risco.json, campo: n}
+    acao: o cache da rota está servindo cálculo antigo — regenerar (tools/prewarm_painel.sh)
+  - id: radar-criticos-servido-x-cache
+    regra: CST-07
+    tipo: igual
+    titulo: radar de risco — nº de críticos servido diferente do arquivo de origem
+    a: {rota: "/api/intel/radar?limite=6", campo: n_vermelho}
+    b: {arquivo: cache/radar_risco.json, campo: n_vermelho}
+    acao: o cache da rota está servindo cálculo antigo — regenerar (tools/prewarm_painel.sh)
+  - id: ninho-servido-x-cache
+    regra: CST-07
+    tipo: igual
+    titulo: ninhos — nº de grupos de grau alto servido diferente do arquivo de origem
+    a: {rota: "/api/intel/ninho_sala?limite=60", campo: n_alto}
+    b: {arquivo: cache/ninho_sala.json, campo: n_alto}
+    acao: o cache da rota está servindo cálculo antigo — regenerar (tools/prewarm_painel.sh)
+  - id: comunidades-servido-x-cache
+    regra: CST-07
+    tipo: igual
+    titulo: comunidades — nº servido diferente do arquivo de origem
+    a: {rota: /api/intel/comunidades, campo: n}
+    b: {arquivo: cache/comunidades.json, campo: n}
+  - id: pericia-a-maior-servido-x-arquivo
+    regra: CST-01
+    tipo: igual
+    titulo: perícia contábil — "pago a maior" do Estado servido diferente do resumo gravado
+    a: {rota: /api/pericia_contabil, campo: esferas.Estado do RJ.excesso_a_maior}
+    b: {arquivo: pericia_contabil_resumo.json, campo: esferas.Estado do RJ.excesso_a_maior}
+  - id: ninho-valor-x-lista
+    regra: CST-13
+    tipo: total_lista
+    titulo: ninhos — valor exibido no card diferente da soma dos grupos de grau alto
+    total: {arquivo: cache/ninho_sala.json, campo: total_recebido_ob_alto}
+    lista: {arquivo: cache/ninho_sala.json, lista: grupos, item: total_recebido_ob, filtro: {grau: alto}}
+    acao: o valor do card deve ser a soma dos grupos de grau alto, não do conjunto inteiro
