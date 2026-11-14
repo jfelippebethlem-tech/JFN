@@ -103,7 +103,7 @@ def test_d14_vermelho_so_com_contrato_novo_na_vigencia_e_prova_dentro_dela(base,
     a = {x["id"]: x for x in GR.achados_deterministicos(res)}
     assert a[f"D14-{inid}-2026-06-01"]["grau"] == "🟡" and "ex nunc" in a[f"D14-{inid}-2026-06-01"]["regra_ou_hipotese"]
     assert a[f"D14-{inid_novo}-2026-06-01"]["grau"] == "🔴"
-    assert a["D14"]["grau"] == "🔴"                                                # há um caso com contrato novo
+    assert a["D14"]["grau"] == "🟡"            # a regra soma pagamentos; o vermelho é do caso com contrato novo
 
 
 def test_d14_regra_sem_caso_de_contrato_novo_nao_e_vermelha(base, tmp_path):

@@ -61,8 +61,10 @@ _MESES = {m: i + 1 for i, m in enumerate("JANEIRO FEVEREIRO MARÇO ABRIL MAIO JU
 
 # Grau da RÉGUA (atribuído na análise de 13/11/2026 ao tipo de sinal). Regra sem caso sai ⚪.
 GRAU_REGRA = {"D01": "⚪", "D02": "🟡", "D03": "🟡", "D04": "🟡", "D05": "🟡", "D06": "⚪", "D07": "🟡", "D08": "⚪",
-              "D09": "🟡", "D10": "🟡", "D11": "⚪", "D12": "⚪", "D13": "🟡", "D14": "🔴", "D15": "⚪", "D16": "🔴",
+              "D09": "🟡", "D10": "🟡", "D11": "⚪", "D12": "⚪", "D13": "🟡", "D14": "🟡", "D15": "⚪", "D16": "🔴",
               "D17": "🟡", "D18": "🟡", "D19": "⚪", "D20": "⚪"}
+# D14 (regra agregada) é 🟡: ela soma PAGAMENTOS na vigência, e o que a sanção veda é contratar. O 🔴 fica no CASO
+# que tem contrato com ato na vigência (`_d14_vermelho`) — verificação independente de 13/11/2026.
 # D18 rebaixado a 🟡 na revisão cética de 13/11/2026: "fantasma_score alto" não é fachada documentada (0 de 6 eram);
 # 🔴 só com veredito de fachada registrado (ver achados_deterministicos).
 
@@ -1247,8 +1249,6 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
                            explicacao_inocente=INOCENTE_REGRA[rid], proximo_passo="restabelecer a fonte", tipo="regra"))
             continue
         grau = GRAU_REGRA[rid] if (r.get("n") or 0) > 0 else "⚪"
-        if rid == "D14" and grau == "🔴" and not any(_d14_vermelho(x) for x in r.get("casos") or []):
-            grau = "🟡"       # nenhum caso com contrato novo na vigência: pagamento, por si, não é a vedação
         A.append(_base(id=rid, camada="deterministica", regra_ou_hipotese=f"{rid} · {r.get('resumo') or ''}", grau=grau,
                        valor_ob=r.get("valor_ob"), fonte=r.get("criterio"), explicacao_inocente=INOCENTE_REGRA[rid],
                        proximo_passo=PASSO_REGRA[rid], tipo="regra", prova_primaria=r.get("prova_primaria") or []))
