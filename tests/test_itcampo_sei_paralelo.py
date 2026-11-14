@@ -98,3 +98,17 @@ def test_fila_de_varredura_esgotada_pede_mais_ate_o_teto():
     assert P.proxima_fila_v(P.FILA_V_MAX) == 480
     assert P.proxima_fila_v(480) == P.FILA_V_TETO
     assert P.proxima_fila_v(P.FILA_V_TETO) is None
+
+
+def test_sessao_so_reabre_por_commit_que_mexe_no_codigo_da_captura(monkeypatch):
+    def git(saida, rc=0):
+        return lambda cmd, **kw: subprocess.CompletedProcess(cmd, rc, stdout=saida, stderr="")
+    monkeypatch.setattr(P, "_run", git("static/js/painel.js\ncompliance_agent/pericia_contabil.py\ndocs/X.md\n"))
+    assert P.codigo_da_captura_mudou("aaa", "bbb") is False
+    monkeypatch.setattr(P, "_run", git("docs/X.md\ntools/sei_reader.py\n"))
+    assert P.codigo_da_captura_mudou("aaa", "bbb") is True
+    monkeypatch.setattr(P, "_run", git("compliance_agent/sei/ocr_docs.py\n"))
+    assert P.codigo_da_captura_mudou("aaa", "bbb") is True
+    monkeypatch.setattr(P, "_run", git("", rc=128))            # git não soube dizer: reabre, como antes
+    assert P.codigo_da_captura_mudou("aaa", "bbb") is True
+    assert P.codigo_da_captura_mudou("aaa", "aaa") is False

@@ -233,6 +233,24 @@ def _head(arvore: Path) -> str:
     return _run(["git", "-C", str(arvore), "rev-parse", "HEAD"]).stdout.strip()
 
 
+# O QUE FAZ UMA SESSÃO REABRIR. A branch viva recebe commits de várias sessões do Claude o dia todo (9 versões
+# em 3 h em 14/11/2026): com "qualquer commit reabre", toda volta terminava em janela fechada, checkout e novo
+# login — por mudança em painel, perícia ou documentação, que a captura nem importa.
+CODIGO_DA_CAPTURA = ("tools/sei_", "tools/vm2_", "tools/itcampo_", "tools/vm_guard.py", "compliance_agent/sei/",
+                     "compliance_agent/collectors/sei_cdp.py", "compliance_agent/recursos.py",
+                     "compliance_agent/envfile.py")
+
+
+def codigo_da_captura_mudou(meu: str, novo: str) -> bool:
+    """A base andou de `meu` para `novo` mexendo em código que a captura usa? Sem conseguir saber, reabre."""
+    if meu == novo:
+        return False
+    r = _run(["git", "-C", str(BASE), "diff", "--name-only", meu, novo], timeout=120)
+    if r.returncode != 0:
+        return True
+    return any(ln.startswith(CODIGO_DA_CAPTURA) for ln in r.stdout.splitlines())
+
+
 def preparar_worktree(k: int, head: str, modo: str = "integras") -> Path:
     """Cria (ou põe no commit `head`) o worktree da sessão k, com venv/.env da base e trava do SIAFE."""
     s = _dir(modo, k)
@@ -468,8 +486,8 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
         if k > limite():
             print(f"sessão {k} acima de N={limite()} — fechando", flush=True)
             return 0
-        if _head(BASE) != meu:
-            print("código novo na base — fechando para reabrir atualizada", flush=True)
+        if codigo_da_captura_mudou(meu, _head(BASE)):
+            print("código de captura novo na base — fechando para reabrir atualizada", flush=True)
             return 3
         if PAUSA.exists():
             titulo(f"JFN SEI sessão {k} — PAUSADA (.pause_itcampo)")
