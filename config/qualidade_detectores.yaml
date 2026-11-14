@@ -2423,14 +2423,17 @@ detectores:
       excluida_por: compliance_agent/pericia_contabil.py:e_registro_de_termo
     - hipotese: vigência anterior à cobertura do SIAFE
       excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
-    - hipotese: parceria/repasse/contrato de gestão (desembolso antecipado)
-      excluida_por: null
+    - hipotese: parceria/repasse/contrato de gestão (desembolso antecipado) — sai ADIANTADO, não "a maior"
+      excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
     - hipotese: prorrogação não publicada
       excluida_por: null
     dominio: contratos contínuos e pontuais do Estado (TCE-RJ) com OB no SIAFE-Rio desde 2021; parceria fora
     fp_medida: null
-    controle_xfail:
-    - tests/test_regra_controles_sinteticos.py::test_contrato_de_gestao_com_repasse_antecipado_e_indeterminado
+    controles_extras:
+    - tests/test_regra_controles_sinteticos.py::test_contrato_de_gestao_com_repasse_antecipado_nao_e_a_maior
+    - tests/test_regra_controles_sinteticos.py::test_pago_a_frente_do_pro_rata_dentro_do_valor_nao_e_a_maior
+    - tests/test_regra_controles_sinteticos.py::test_parcelas_do_mesmo_dia_e_ob_sem_confirmacao_do_banco_nao_sao_duplicidade
+    - tests/test_regra_controles_sinteticos.py::test_servico_continuo_pago_acima_do_valor_contratado_e_a_maior
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: 293 pagos a maior / R$ 29,67 mi; 208 duplicidades

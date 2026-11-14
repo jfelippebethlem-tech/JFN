@@ -46,6 +46,9 @@ def _log(msg: str) -> None:
         f.write(linha + "\n")
 
 
+from compliance_agent.sei.cache_arquivo import localizar, ler_json  # noqa: E402
+
+
 def _cdp_path(sei: str) -> Path:
     return CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', sei)}.json"
 
@@ -107,15 +110,16 @@ def main() -> None:
             forn = x.get("forn") or x.get("fornecedor") or ""
             valor = float(x.get("valor") or 0)
             score = x.get("score") or ""
-            cdp = _cdp_path(sei)
-            if not cdp.exists():
+            # `.json` OU `.json.zst` (13/11/2026): o cache é comprimido aos poucos (8.671 .zst contra 1.341
+            # .json medidos), e procurar só o cru contava como "não coletado" tudo o que já fora comprimido.
+            cdp = localizar(_cdp_path(sei))
+            if cdp is None:
                 n_nao += 1
                 cob_rows.append((sei, forn, f"{valor:.2f}", score, "nao_coletado", 0, 0))
                 continue
-            try:
-                d = json.loads(cdp.read_text(encoding="utf-8"))
-            except Exception as e:  # noqa: BLE001
-                _log(f"  {sei}: cdp ilegível ({type(e).__name__})")
+            d = ler_json(cdp)
+            if not isinstance(d, dict):
+                _log(f"  {sei}: cdp ilegível ({cdp.name})")
                 n_nao += 1
                 cob_rows.append((sei, forn, f"{valor:.2f}", score, "cdp_ilegivel", 0, 0))
                 continue

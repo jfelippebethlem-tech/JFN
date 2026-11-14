@@ -88,7 +88,6 @@ def test_legivel():
 
 def test_lote_sweep_importa_cdp_e_nao_sobrescreve_leitura_boa_com_vazia(monkeypatch, tmp_path):
     d = _isolar(monkeypatch, tmp_path)
-    monkeypatch.setattr(C, "_sweep_vm1_vivo", lambda: False)
     src = tmp_path / "vm2"
     src.mkdir()
     bom = {"numero": "SEI-100000/000007/2025", "documentos": [{"titulo": "Despacho 1"}],
@@ -110,3 +109,17 @@ def test_lote_sweep_importa_cdp_e_nao_sobrescreve_leitura_boa_com_vazia(monkeypa
     assert json.loads((d / "sei_cache" / nomes[1]).read_text())["documentos"] == [{"titulo": "X"}]
     prog = json.loads((d / "sei_cache" / "sei_sweep_progress.json").read_text())
     assert prog["feitos"]["SEI-100000/000007/2025"]["n_docs"] == 1
+
+
+def test_cdp_com_teor_de_40_de_105_nao_e_reprovado(monkeypatch, tmp_path):
+    d = _isolar(monkeypatch, tmp_path)
+    titulos = [f"Documento {i}" for i in range(105)]
+    (d / "sei_cache" / "cdp_SEI_100000_000009_2025.json").write_text(json.dumps(
+        {"documentos": [{"titulo": t} for t in titulos],
+         "conteudo_documentos": [{"doc": t, "conteudo": TEXTO} for t in titulos]}), encoding="utf-8")
+    novo = tmp_path / "cdp_SEI_100000_000009_2025.json"
+    novo.write_text(json.dumps({"documentos": [{"titulo": t} for t in titulos],
+                                "conteudo_documentos": [{"doc": t, "conteudo": TEXTO} for t in titulos[:40]]}),
+                    encoding="utf-8")
+    ok, motivos, _ = C.conferir_cdp(novo, None)
+    assert ok, motivos

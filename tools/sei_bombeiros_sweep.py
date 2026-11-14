@@ -9,6 +9,7 @@ Sem Gemini (GEMINI_DISABLED=1 global; ficha usa stepfun:free/nous). Honestidade:
 import asyncio
 import argparse
 import json
+import os
 import pathlib
 import tools.sei_sweep as S
 
@@ -42,7 +43,14 @@ def _carregar_fila():
     # para o fim (laudo dos motores: < 20% das leituras abaixo de R$ 1.000,00) — também rebaixado, não
     # excluído; item sem valor (0) é INDISPONÍVEL, não ínfimo, e não é rebaixado por isso.
     tipo = {x.get("sei"): x.get("tipo") for x in itens}
-    itens = sorted(itens, key=lambda x: (_cascata(x, tipo), 0 < _valor(x) < PISO_VALOR))
+    if os.environ.get("BBM_INCLUIR_CASCATA", "").strip() in ("1", "true", "sim"):
+        itens = sorted(itens, key=lambda x: (_cascata(x, tipo), 0 < _valor(x) < PISO_VALOR))
+    else:
+        # SÓ CONTRATOS (decisão do dono, 13/11/2026 noite): a cascata sai da lane — 7.108 itens (74% da fila)
+        # enquanto 1.037 contratos nunca tinham sido lidos. Contrato (LICITADO/DIRETA/CONTRATO) primeiro, a
+        # licitação de 1ª geração (citada por um contrato) depois. `BBM_INCLUIR_CASCATA=1` desfaz.
+        itens = sorted((x for x in itens if not _cascata(x, tipo)),
+                       key=lambda x: (x.get("tipo") == "LICITACAO", 0 < _valor(x) < PISO_VALOR))
     # (proc, nob, tot) — nob fica 1 (só p/ log); tot=valor do contrato (ordena o log, prioridade já no arquivo)
     return [(x["sei"], 1, float(x.get("valor") or 0)) for x in itens]
 

@@ -24,6 +24,7 @@ def _fila(tmp_path, itens):
 
 
 def test_cascata_vai_para_o_fim_contrato_e_1a_geracao_na_frente(tmp_path, monkeypatch):
+    monkeypatch.setenv("BBM_INCLUIR_CASCATA", "1")          # a ordem com a cascata incluída (opt-in)
     itens = [
         {"sei": "SEI-270000/000003/2023", "valor": 617.1, "tipo": "LICITACAO",
          "flags": ["LICITACAO_DE:SEI-270000/000002/2023"]},                  # pai é LICITACAO → 2ª geração
@@ -40,6 +41,7 @@ def test_cascata_vai_para_o_fim_contrato_e_1a_geracao_na_frente(tmp_path, monkey
 
 
 def test_valor_infimo_vai_para_o_fim_do_proprio_grupo(tmp_path, monkeypatch):
+    monkeypatch.setenv("BBM_INCLUIR_CASCATA", "1")
     itens = [
         {"sei": "A", "valor": 617.1, "tipo": "LICITADO"},
         {"sei": "B", "valor": 0, "tipo": "LICITADO"},            # sem valor = INDISPONÍVEL, não ínfimo
@@ -50,11 +52,30 @@ def test_valor_infimo_vai_para_o_fim_do_proprio_grupo(tmp_path, monkeypatch):
     assert [p for p, _, _ in B._carregar_fila()] == ["B", "C", "A", "D"]
 
 
-def test_nada_e_excluido(tmp_path, monkeypatch):
+def test_com_opt_in_nada_e_excluido(tmp_path, monkeypatch):
+    monkeypatch.setenv("BBM_INCLUIR_CASCATA", "1")
     itens = [{"sei": f"SEI-270000/{i:06d}/2023", "valor": 1, "tipo": "LICITACAO",
               "flags": [f"LICITACAO_DE:SEI-270000/{i + 1:06d}/2023"]} for i in range(5)]
     monkeypatch.setattr(B, "FILA", _fila(tmp_path, itens))
     assert len(B._carregar_fila()) == 5
+
+
+def test_padrao_e_so_contratos_e_licitacao_de_1a_geracao(tmp_path, monkeypatch):
+    """Decisão do dono (13/11/2026, "continue tudo" sobre a proposta): a lane fica nos CONTRATOS; a
+    "licitação de licitação" (2ª geração ou mais, 7.108 itens = 74% da fila) sai. `BBM_INCLUIR_CASCATA=1`
+    devolve o comportamento anterior (rebaixada, não excluída)."""
+    monkeypatch.delenv("BBM_INCLUIR_CASCATA", raising=False)
+    itens = [
+        {"sei": "SEI-270000/000003/2023", "valor": 617.1, "tipo": "LICITACAO",
+         "flags": ["LICITACAO_DE:SEI-270000/000002/2023"]},                  # cascata → fora
+        {"sei": "SEI-270000/000002/2023", "valor": 617.1, "tipo": "LICITACAO",
+         "flags": ["LICITACAO_DE:SEI-270000/000001/2023"]},                  # licitação do contrato → fica
+        {"sei": "SEI-270000/000001/2023", "valor": 617.1, "tipo": "LICITADO", "flags": []},
+        {"sei": "SEI-270000/000009/2024", "valor": 77_000_000, "tipo": "DIRETA", "flags": []},
+    ]
+    monkeypatch.setattr(B, "FILA", _fila(tmp_path, itens))
+    assert [p for p, _, _ in B._carregar_fila()] == [
+        "SEI-270000/000009/2024", "SEI-270000/000001/2023", "SEI-270000/000002/2023"]
 
 
 def test_formato_da_tupla_mantido(tmp_path, monkeypatch):

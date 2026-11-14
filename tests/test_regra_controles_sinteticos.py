@@ -24,8 +24,8 @@ from compliance_agent.duplicidade_competencia import detectar
 from compliance_agent.limites_dispensa import limite_dispensa
 from compliance_agent.rules.engine import MotorCompliance
 
-CNPJ_A = "00000000000191"   # fictícios, só para teste
-CNPJ_B = "00000000000272"
+CNPJ_A = "11222333000181"   # sintéticos (o par clássico de documentação), só para teste
+CNPJ_B = "11444777000161"
 
 
 # ───────────── a. OB devolvida pelo banco + reemissão não soma duas vezes ─────────────
@@ -41,8 +41,8 @@ def _base_obs(tmp_path, linhas):
     return con
 
 
-def _ob(num, valor, gd="", envio="", status="Contabilizado", comp="03/2026"):
-    return (num, 2026, "900900", "10/03/2026", "SEI-990001/000001/2026", CNPJ_A, valor, "2026NL00001", comp, gd,
+def _ob(num, valor, gd="", envio="", status="Contabilizado", comp="03/2026", data="10/03/2026"):
+    return (num, 2026, "900900", data, "SEI-990001/000001/2026", CNPJ_A, valor, "2026NL00001", comp, gd,
             envio, status)
 
 
@@ -55,11 +55,27 @@ def test_ob_devolvida_e_reemitida_soma_uma_vez(tmp_path):
 
 
 def test_duas_obs_pagas_para_a_mesma_nl_e_competencia_sao_sinal(tmp_path):
-    # controle positivo: sem devolução, duas OBs para a mesma NL/competência/valor somam e sinalizam
-    con = _base_obs(tmp_path, [_ob("2026OB90001", 10_000.0), _ob("2026OB90002", 10_000.0)])
+    # controle positivo: duas OBs para a mesma NL/competência/valor, em DIAS distintos, as duas com o crédito
+    # confirmado pelo banco e nenhuma devolvida — somam e são o único caso que se chama "possível duplicidade"
+    con = _base_obs(tmp_path, [_ob("2026OB90001", 10_000.0, envio=pc.PAGO_CONFIRMADO),
+                               _ob("2026OB90002", 10_000.0, envio=pc.PAGO_CONFIRMADO, data="24/03/2026")])
     obs, _ = pc._obs_por_credor(con, {CNPJ_A})
     assert sum(o[3] for o in obs[CNPJ_A]) == pytest.approx(20_000.0)
     assert pc.sinais_duplicidade(obs[CNPJ_A])["obs_mesma_nl"] == 1
+
+
+def test_parcelas_do_mesmo_dia_e_ob_sem_confirmacao_do_banco_nao_sao_duplicidade(tmp_path):
+    # controles negativos (verificação de 13/11/2026: 0 de 19 "duplicidades" se sustentaram):
+    # N OBs no MESMO dia para a mesma NL são parcelas; sem confirmação do banco nada se afirma (INDISPONÍVEL)
+    con = _base_obs(tmp_path, [_ob("2026OB90011", 10_000.0, envio=pc.PAGO_CONFIRMADO),
+                               _ob("2026OB90012", 10_000.0, envio=pc.PAGO_CONFIRMADO)])
+    obs, _ = pc._obs_por_credor(con, {CNPJ_A})
+    s = pc.sinais_duplicidade(obs[CNPJ_A])
+    assert s["obs_mesma_nl"] == 0 and s["obs_mesma_nl_mesmo_dia"] == 1
+    con = _base_obs(tmp_path / "b", [_ob("2026OB90013", 10_000.0, envio="Enviado ao Banco"),
+                                     _ob("2026OB90014", 10_000.0, envio=pc.PAGO_CONFIRMADO, data="24/03/2026")])
+    obs, _ = pc._obs_por_credor(con, {CNPJ_A})
+    assert pc.sinais_duplicidade(obs[CNPJ_A])["obs_mesma_nl"] == 0
 
 
 def test_lixo_na_coluna_gd_nao_e_devolucao(tmp_path):
@@ -225,7 +241,7 @@ def test_dispensas_de_exercicios_diferentes_nao_somam_contra_o_teto():
 
 # ───────────── CNF-11: parceria/repasse fora do domínio da régua pró-rata ─────────────
 
-def _pericia_um(tmp_path, objeto):
+def _pericia_um(tmp_path, objeto, valor_ob=900_000.0):
     db = tmp_path / "p.db"
     con = sqlite3.connect(db)
     con.executescript("""
@@ -242,19 +258,26 @@ def _pericia_um(tmp_path, objeto):
                 "1200000.0,'Ativo','ORG',?,'ENTIDADE TESTE',?,'01/01/2026','31/12/2026')", (objeto, CNPJ_A))
     con.execute("INSERT INTO ob_orcamentaria_siafe (numero_ob,ug_emitente,ug_pagadora,data_emissao,status,credor,"
                 "nome_credor,processo,valor,exercicio) VALUES ('2026OB90009','900900','900900','15/01/2026',"
-                "'Contabilizado',?,'ENTIDADE TESTE','SEI-990001/000009/2026',900000.0,2026)", (CNPJ_A,))
+                "'Contabilizado',?,'ENTIDADE TESTE','SEI-990001/000009/2026',?,2026)", (CNPJ_A, valor_ob))
     con.commit()
     con.close()
     return pc.avaliar_estado(db, corte=date(2026, 4, 1))[0]
 
 
-def test_servico_continuo_pago_muito_acima_do_pro_rata_e_a_maior(tmp_path):
-    r = _pericia_um(tmp_path, "PRESTAÇÃO DE SERVIÇOS DE VIGILÂNCIA CONTÍNUA")
+def test_servico_continuo_pago_acima_do_valor_contratado_e_a_maior(tmp_path):
+    # controle positivo: R$ 1,3 mi pagos num contrato de R$ 1,2 mi
+    r = _pericia_um(tmp_path, "PRESTAÇÃO DE SERVIÇOS DE VIGILÂNCIA CONTÍNUA", valor_ob=1_300_000.0)
     assert r["categoria"] == "A_MAIOR", r
 
 
-@pytest.mark.xfail(strict=True, reason="ACHADO (CNF-11): parceria/contrato de gestão recebe só ressalva e continua "
-                                       "medida por pró-rata — o desembolso antecipado sai A_MAIOR, não INDETERMINADO")
-def test_contrato_de_gestao_com_repasse_antecipado_e_indeterminado(tmp_path):
+def test_pago_a_frente_do_pro_rata_dentro_do_valor_nao_e_a_maior(tmp_path):
+    # controle negativo: 75% pagos no 1º trimestre, DENTRO do valor contratado — classe própria, não "pago a maior"
+    r = _pericia_um(tmp_path, "PRESTAÇÃO DE SERVIÇOS DE VIGILÂNCIA CONTÍNUA")
+    assert r["categoria"] == "ADIANTADO", r
+
+
+def test_contrato_de_gestao_com_repasse_antecipado_nao_e_a_maior(tmp_path):
+    # CNF-11: parceria/contrato de gestão com desembolso antecipado não pode sair "pago a maior" por pró-rata.
+    # (Até 13/11/2026 saía A_MAIOR — achado desta catraca; a verificação independente criou a classe ADIANTADO.)
     r = _pericia_um(tmp_path, "CONTRATO DE GESTÃO COM ORGANIZAÇÃO SOCIAL - GERENCIAMENTO DE UNIDADE DE SAÚDE")
-    assert r["categoria"] == "INDETERMINADO", r
+    assert r["categoria"] in ("ADIANTADO", "INDETERMINADO"), r

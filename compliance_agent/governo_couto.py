@@ -334,8 +334,16 @@ def _execucao(con: sqlite3.Connection, con_ab: sqlite3.Connection | None) -> dic
     """UMA varredura por exercício (a VM tem 2 vCPU): agrupa por UG × credor × status e agrega em Python."""
     from compliance_agent.comissao_orcamento import nomes_orgao, ug_para_orgao
     ano = int(INICIO[:4])
+    # Verificação de 13/11/2026: a OB devolvida pelo banco segue 'Contabilizado' com status_envio 'Erro no
+    # Pagamento', e a coleta deixou linhas sem número de OB que repetem uma OB numerada. Nenhuma das duas é
+    # pagamento — saem do "pago" e aparecem em "fora da soma", nos DOIS períodos comparados.
+    cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+    env = "coalesce(status_envio,'')" if "status_envio" in cols else "''"
+    st_ef = (f"CASE WHEN status='Contabilizado' AND {env}='Erro no Pagamento' THEN 'Devolvida pelo banco (erro no "
+             "pagamento)' WHEN status='Contabilizado' AND trim(coalesce(numero_ob,''))='' THEN 'Linha sem número de OB' "
+             "ELSE status END")
     grupos = con.execute(
-        f"SELECT ug_emitente, credor, MAX(nome_credor), status, COUNT(*), SUM(valor), MAX({_OB_ISO}), MAX(coletado_em) "
+        f"SELECT ug_emitente, credor, MAX(nome_credor), {st_ef}, COUNT(*), SUM(valor), MAX({_OB_ISO}), MAX(coletado_em) "
         f"FROM ob_orcamentaria_siafe WHERE exercicio=? AND {_OB_ISO} >= ? GROUP BY 1, 2, 4",
         (ano, INICIO)).fetchall()
     contab = [g for g in grupos if g[3] == "Contabilizado"]
@@ -346,7 +354,7 @@ def _execucao(con: sqlite3.Connection, con_ab: sqlite3.Connection | None) -> dic
     ini_ant, fim_ant = f"{ano - 1}{INICIO[4:]}", f"{ano - 1}{fim[4:]}"
     por_ug_ant = con.execute(
         f"SELECT ug_emitente, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe WHERE exercicio=? AND "
-        f"status='Contabilizado' AND {_OB_ISO} BETWEEN ? AND ? GROUP BY 1", (ano - 1, ini_ant, fim_ant)).fetchall()
+        f"({st_ef})='Contabilizado' AND {_OB_ISO} BETWEEN ? AND ? GROUP BY 1", (ano - 1, ini_ant, fim_ant)).fetchall()
     tot_ant = (sum(r[1] for r in por_ug_ant), sum(r[2] or 0 for r in por_ug_ant))
     ug_ag: dict = defaultdict(lambda: [0, 0.0])
     cr_ag: dict = defaultdict(lambda: ["", 0, 0.0])
