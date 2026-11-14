@@ -1,8 +1,5 @@
 /* 14/11/2026 — Início: reator + mapa + números + GRANDES PREOCUPAÇÕES (pedido do dono).
-   O funcionamento foi para a esfera Sistema: a legenda de motores e os nomes em órbita saem do
-   reator do Início (a animação fica — os nós continuam como pontos). */
-html.v61 .ck61 .rt-leg{display:none}
-html.v61 .ck61 .rt-no span{display:none}
+   O reator mantém os nomes em órbita e a legenda do que está rodando (o dono pediu de volta em 14/11). */
 html.v61 .c61-preoc{margin-top:4px}
 @media (min-width:1000px){
   html.v61 .ck61 .c61-preoc{grid-column:1 / -1;grid-row:3}
