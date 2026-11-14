@@ -113,7 +113,7 @@ export async function renderCockpit(){
      resto; a mesa de vigília antiga segue no DOM, oculta pelo CSS, e o laço dela não é iniciado. */
   const v61=_v61?`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
-</aside>
+      <button type="button" class="chip c61-ir-motores" onclick="ir('s_motores')">Motores · ver todos</button></aside>
     <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`:'';
   const html=`<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
