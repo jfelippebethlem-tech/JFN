@@ -154,16 +154,19 @@ def test_cascata_derivado_recalculado_suja_o_dependente_no_mesmo_ciclo(con):
     cfg = _cfg(a=_der(["f"], debounce_s=0), b=_der(["a"], debounce_s=9999))
     P.emitir(con, cfg, "f", "mudou")
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda did, d: (True, None))
-    assert [x["id"] for x in feitos] == ["a", "b"]     # o evento do derivado já nasce assentado
+    assert [x["id"] for x in feitos] == ["a", "b"]     # o evento do derivado não abre janela de junção
 
 
-def test_debounce_espera_a_fonte_assentar_mas_tem_teto(con):
-    cfg = _cfg(a=_der(["f"], debounce_s=600, espera_max_s=3600))
+def test_janela_de_juncao_conta_do_primeiro_evento_e_fonte_que_nao_para_nao_adia(con):
+    cfg = _cfg(a=_der(["f"], debounce_s=600))
     P.emitir(con, cfg, "f", "agora")
     assert P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None)) == []
-    assert con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0] == "aguardando a fonte assentar"
-    P.emitir(con, cfg, "f", "antigo", quando=time.time() - 4000)   # fonte que não para: o teto libera
-    assert len(P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))) == 1
+    assert con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0] == "juntando eventos da fonte"
+    con.execute("UPDATE evento SET quando = quando - 700")          # o 1º evento já tem 700 s…
+    con.commit()
+    P.emitir(con, cfg, "f", "a fonte segue emitindo")              # …e chega outro agora: não reabre a janela
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["a"] and P._sujos(con) == {}   # um recálculo cobre os dois eventos
 
 
 def test_falha_mantem_sujo_registra_erro_e_recua(con):
@@ -207,8 +210,8 @@ def test_derivado_espera_o_de_que_depende_quando_esse_esta_pronto(con):
     assert con.execute("SELECT adiado FROM derivado WHERE id='b'").fetchone()[0] == "aguardando derivado de que depende"
 
 
-def test_derivado_nao_espera_o_de_que_depende_se_esse_ainda_aguarda_a_fonte(con):
-    """A captura SEI não para: o vínculo assenta em horas, e a perícia não pode ficar esse tempo sem a correção."""
+def test_derivado_nao_espera_o_de_que_depende_se_esse_ainda_junta_eventos(con):
+    """O vínculo junta lotes SEI por 30 min; a perícia não fica esse tempo sem a correção que já chegou."""
     cfg = _cfg(a=_der(["f"], debounce_s=9999), b=_der(["f", "a"]))
     P.emitir(con, cfg, "f", "mudou")
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))

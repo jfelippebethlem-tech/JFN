@@ -14,9 +14,9 @@ Agora há UM mecanismo, com três peças, todas declaradas em `config/propagacao
   · DERIVADOS — o que fica velho. Cada evento marca como SUJO todo derivado que depende daquela fonte. Um derivado
     recalculado vira, ele mesmo, evento para os que dependem dele (vínculo → perícia → caches do painel).
   · DESPACHANTE — `ciclo`, pelo cron a cada 5 min, FORA do processo do painel. Recalcula só o que está sujo, com:
-    trava de arquivo (um ciclo por vez), espera de assentamento (debounce) e teto de espera (fonte que não para
-    não mata o derivado de fome), intervalo mínimo entre execuções, UM pesado por ciclo e só com carga abaixo do
-    teto, prioridade, recuo exponencial após falha. Os comandos são as rotinas que já existem, idempotentes.
+    trava de arquivo (um ciclo por vez), janela de junção de eventos (debounce, contada do 1º evento — fonte que
+    não para não mata o derivado de fome), intervalo mínimo entre execuções, UM pesado por ciclo e só com carga
+    abaixo do teto, prioridade, recuo exponencial após falha. Os comandos são as rotinas que já existem, idempotentes.
 
 O que o despachante NÃO faz: não grava no compliance.db, não chama API paga, não gradua nada (🔴/🟡 continuam
 saindo só das réguas de cada rotina), e não dá um recálculo por feito sem medir o EFEITO (o arquivo que o painel
@@ -59,7 +59,9 @@ CONFIG = Path(os.environ.get("JFN_PROPAGACAO_YAML") or RAIZ / "config" / "propag
 BASE_PAINEL = os.environ.get("JFN_BASE", "http://127.0.0.1:8000")
 
 ORCAMENTO_CICLO_S = 1200          # um ciclo não começa execução nova depois disto
-CARGA_MAX = {"leve": 10.0, "pesado": 7.0}
+# leve = segundos de CPU ou um pedido de rota que o pré-aquecimento já faz a cada 30 min sem olhar a carga; com
+# teto 10 os leves ficaram dois ciclos parados em 14/11/2026 (carga 11–14 por captura SEI + OCR + análise).
+CARGA_MAX = {"leve": 14.0, "pesado": 7.0}
 # A VM vive entre carga 5 e 9: sem válvula, um pesado poderia esperar o dia inteiro. Sujo há mais de 2 h, o teto
 # sobe (os mesmos comandos já rodam pelo cron, com `nice`, sem olhar a carga).
 CARGA_PACIENCIA_S, CARGA_TETO_FINAL = 7200, 12.0
@@ -489,12 +491,12 @@ def _rodar_cache(did: str, d: dict) -> tuple[bool, str | None]:
 
 
 def _sujos(con: sqlite3.Connection, derivados=()) -> dict[str, dict]:
-    """Derivados com pendência. `ultimo` (base do debounce) só conta evento de FONTE: o evento "derivado X
-    recalculado" já nasce assentado — sem isso cada elo da cadeia esperaria um ciclo à toa."""
+    """Derivados com pendência. `primeiro_fonte` (base da janela de junção) só conta evento de FONTE: o evento
+    "derivado X recalculado" não abre janela — sem isso cada elo da cadeia esperaria um ciclo à toa."""
     ids = list(derivados)
     marca = ",".join("?" * len(ids)) or "''"
-    return {d: {"primeiro": p, "ultimo": u or 0.0, "n": n, "max_id": m} for d, p, u, n, m in con.execute(
-        f"SELECT p.derivado, MIN(e.quando), MAX(CASE WHEN e.fonte IN ({marca}) THEN 0 ELSE e.quando END), "
+    return {d: {"primeiro": p, "primeiro_fonte": pf or 0.0, "n": n, "max_id": m} for d, p, pf, n, m in con.execute(
+        f"SELECT p.derivado, MIN(e.quando), MIN(CASE WHEN e.fonte IN ({marca}) THEN NULL ELSE e.quando END), "
         "COUNT(*), MAX(e.id) FROM pendencia p JOIN evento e ON e.id=p.evento_id GROUP BY p.derivado", ids)}
 
 
@@ -518,12 +520,13 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
         sujos, agora, escolhido = _sujos(con, ders), time.time(), None
         ordem = sorted((i for i in sujos if i in ders), key=lambda i: (ders[i].get("prioridade", 5), sujos[i]["primeiro"]))
         def relogio(did: str) -> str | None:
-            """Motivo PRÓPRIO do derivado para ainda não rodar (assentamento, recuo, intervalo) — ou None."""
+            """Motivo PRÓPRIO do derivado para ainda não rodar (janela de junção, recuo, intervalo) — ou None."""
             d, s, lin = ders[did], sujos[did], _linha(con, did)
-            assentou = agora - s["ultimo"] >= d.get("debounce_s", 120)
-            cansou = agora - s["primeiro"] >= d.get("espera_max_s", 6 * d.get("debounce_s", 120) + 600)
-            if not (assentou or cansou):
-                return "aguardando a fonte assentar"
+            # janela de JUNÇÃO contada do 1º evento de fonte pendente — não "silêncio da fonte": captura SEI, dreno
+            # do SIAFE e análise emitem a cada poucos minutos e um silêncio nunca chegaria (medido em 14/11/2026:
+            # 3 ciclos seguidos sem recalcular nada). Quem limita a frequência é o `intervalo_min_s`.
+            if agora - s["primeiro_fonte"] < d.get("debounce_s", 120):
+                return "juntando eventos da fonte"
             if lin["proxima_tentativa"] and agora < lin["proxima_tentativa"]:
                 return f"recuo após {lin['falhas']} falha(s)"
             if lin["ultimo_fim"] and agora - lin["ultimo_fim"] < d.get("intervalo_min_s", 0):
@@ -538,8 +541,8 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             motivo = relogio(did)
             if motivo:
                 pass
-            # só espera o derivado de que depende se ESSE está pronto para rodar; se ele ainda aguarda a fonte
-            # assentar (captura SEI não para), este roda já e será sujo de novo quando o outro terminar
+            # só espera o derivado de que depende se ESSE está pronto para rodar; se ele ainda junta eventos ou
+            # está no intervalo mínimo, este roda já e será sujo de novo quando o outro terminar
             elif any(dep in sujos and dep in ders and relogio(dep) is None and not any(x["id"] == dep for x in feitos)
                      for dep in d.get("depende", [])):
                 motivo = "aguardando derivado de que depende"

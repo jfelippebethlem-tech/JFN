@@ -17,8 +17,8 @@
 #   depende          fontes e/ou outros derivados (derivado recalculado vira evento para os seus dependentes)
 #   comando          argv (`{py}` = python do venv); rotina JÁ EXISTENTE, idempotente, sem API paga
 #   tipo: cache      vence chaves do cache do painel (`prefixos`) e pede as rotas (`urls: {rota: prefixo-da-chave}`)
-#   peso             leve | pesado (um pesado por ciclo, só com carga ≤ 7)
-#   debounce_s       silêncio da fonte antes de recalcular · espera_max_s = teto dessa espera
+#   peso             leve (carga ≤ 14) | pesado (um por ciclo, carga ≤ 7; sujo há mais de 2 h, ≤ 12)
+#   debounce_s       janela de junção: espera contada do 1º evento pendente, para recalcular uma vez só
 #   intervalo_min_s  mínimo entre duas execuções · timeout_s · prioridade (menor = antes)
 #   efeito.arquivo   arquivo que TEM de ser regravado para o recálculo valer (rodou sem efeito = falha)
 #   antes            como se atualizava antes da propagação (só documentação — os crons antigos seguem como rede)
@@ -115,7 +115,6 @@ derivados:
     comando: ["{py}", "-m", "compliance_agent.vinculo_ob_contrato", "regra", "--gravar", "--cache", "data/vinculo_ob_modelo_cache.json"]
     peso: pesado
     debounce_s: 1800
-    espera_max_s: 10800
     intervalo_min_s: 10800
     timeout_s: 1800
     prioridade: 2
