@@ -138,3 +138,11 @@ def test_batida_de_qualquer_no_faz_a_vm1_ceder(monkeypatch, tmp_path):
     assert not F._delegado_vm2()
     (tmp_path / ".integras_na_itcampo").write_text("x")
     assert F._delegado_vm2()
+
+
+def test_restrito_confirmado_nao_vai_para_a_fila(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    (tmp_path / "data" / "sei_restritos.json").write_text(json.dumps({
+        "3000000000032025": {"numero": "300000/000003/2025", "status": "RESTRITO"},
+        "3000000000042025": {"numero": "300000/000004/2025", "status": "RESTRITO?"}}))
+    assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000004/2025"]

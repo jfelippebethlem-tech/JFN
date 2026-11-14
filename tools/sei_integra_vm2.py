@@ -87,10 +87,25 @@ def _pre() -> dict | None:
         return None
 
 
+def _restritos_confirmados() -> set[str]:
+    """Processos com status RESTRITO CONFIRMADO no registro da casa (`tools/sei_restritos.py`, ≥2 leituras
+    consistentes). A conta tem UMA unidade: reabrir não traz documento (o caminho é a requisição formal,
+    `tools/gerar_requisicoes.py`). Medido em 14/11/2026 no it-campo: processo restrito gasta ~3 min de sessão
+    para devolver "Unidade atual não possui acesso". `RESTRITO?` (não confirmado) continua na fila."""
+    try:
+        d = json.loads((RAIZ / "data" / "sei_restritos.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    if not isinstance(d, dict):
+        return set()
+    return {F._proc_limpo(str(v.get("numero") or "")) for v in d.values()
+            if isinstance(v, dict) and v.get("status") == "RESTRITO"} - {""}
+
+
 def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | None = None) -> list[dict]:
     """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral.
     `excluir` = processos reservados por OUTRO nó (nenhum processo é capturado por dois nós ao mesmo tempo)."""
-    excluir = excluir or set()
+    excluir = set(excluir or set()) | _restritos_confirmados()
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
     pre = _pre()
