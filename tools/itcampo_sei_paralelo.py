@@ -313,7 +313,7 @@ def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
     estado = {"atual": "", "feitos": 0}
     parar = threading.Event()
     threading.Thread(target=_progresso, args=(s, estado, parar), daemon=True).start()
-    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 11100), str(s / ".venv/bin/python"),
+    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 14700), str(s / ".venv/bin/python"),
                           "-u", "tools/sei_integra_fila.py", "--fila", "data/fila_itcampo.json",
                           "--segundos", str(segundos)], cwd=s, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          text=True, encoding="utf-8", errors="replace")
@@ -477,6 +477,7 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     os.environ.setdefault("MALLOC_ARENA_MAX", "2")
     # processos de 478 a 2.379 documentos morreram no teto de 900 s (14/11); 2.379 × 2,5 s ≈ 100 min. 3 h = a validade
     # da reserva: o processo gigante termina dentro dela, na mesma sessão (outra árvore recomeçaria do zero)
+    os.environ.setdefault("INTEGRA_TETO_ARQUIVAR_S", "3600")       # ver sei_integra_fila.TETO_ARQUIVAR_S
     os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "10800")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
     os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
     meu = _head(BASE)

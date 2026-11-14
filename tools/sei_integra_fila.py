@@ -453,6 +453,11 @@ def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
 # worktree por sessão a próxima tentativa cai em OUTRA árvore e recomeça do zero — processo grande nunca terminaria.
 # O nó paralelo usa INTEGRA_TETO_PROCESSO_S=3600; o padrão segue 900.
 TETO_PROCESSO_S = int(os.environ.get("INTEGRA_TETO_PROCESSO_S", "900"))
+# TETO DO ARQUIVAMENTO (texto + OCR de cada PDF). Eram 900 s cravados: em 14/11/2026 dois processos com a captura
+# COMPLETA (1.071 e 812 documentos, ~30 min de captura cada) morreram aqui como "timeout" e nada foi entregue —
+# o arquivador refaz o OCR dos escaneados capturados antes do `.ocr.txt`. O que ele já gravou é reaproveitado
+# na passada seguinte, mas a volta inteira se perde. O nó paralelo usa 3600; o padrão segue 900.
+TETO_ARQUIVAR_S = int(os.environ.get("INTEGRA_TETO_ARQUIVAR_S", "900"))
 
 
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
@@ -481,7 +486,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
             return "adiado"
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
-                             cwd=RAIZ, env=env, timeout=900,
+                             cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
         if rc == RC_SEM_ARVORE or (rc == 0 and rc2 == 0 and _captura_vazia(ARQUIVO / proc.replace("/", "_"))):
             # o arquivar acima já gravou o manifesto `captura_vazia` — é ele que dá o intervalo

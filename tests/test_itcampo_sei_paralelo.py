@@ -112,3 +112,12 @@ def test_sessao_so_reabre_por_commit_que_mexe_no_codigo_da_captura(monkeypatch):
     monkeypatch.setattr(P, "_run", git("", rc=128))            # git não soube dizer: reabre, como antes
     assert P.codigo_da_captura_mudou("aaa", "bbb") is True
     assert P.codigo_da_captura_mudou("aaa", "aaa") is False
+
+
+def test_teto_do_arquivamento_e_configuravel_e_o_no_usa_uma_hora():
+    """14/11/2026: capturas completas de 1.071 e 812 documentos perdidas no teto cravado de 900 s do arquivador."""
+    from pathlib import Path
+    assert F.TETO_ARQUIVAR_S == int(os.environ.get("INTEGRA_TETO_ARQUIVAR_S", "900"))
+    fila = Path(F.__file__).read_text(encoding="utf-8")
+    assert "timeout=TETO_ARQUIVAR_S" in fila and "timeout=900," not in fila
+    assert '"INTEGRA_TETO_ARQUIVAR_S", "3600"' in Path(P.__file__).read_text(encoding="utf-8")
