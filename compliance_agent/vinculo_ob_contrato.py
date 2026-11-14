@@ -118,8 +118,26 @@ def trecho(texto: str, m: re.Match, janela: int = JANELA_TRECHO) -> str:
 
 
 # ── índice dos contratos e pares candidatos ──────────────────────────────────────────────────────────
+# Processo do contrato com SUFIXO de letra (SEI-080007/011667-D/2023, …/000277D/2022): o registro do TCE-RJ é um
+# DESDOBRAMENTO de ata de registro de preços/licitação cujo processo-base é comum a várias compras e fornecedores.
+# A citação do processo-base nos autos de pagamento não identifica qual compra é paga (medido em 14/11/2026: 4 dos
+# 10 "acima do valor" novos eram OB de compra por ata atribuída ao único desdobramento registrado do credor).
+_RE_DESDOBRAMENTO = re.compile(r"/\s*\d{3,6}\s*-?\s*[A-Za-z]{1,2}\s*/")
+_RE_ATA_RP = re.compile(r"REGISTRO\s+DE\s+PRE[ÇC]OS|\bARP\b", re.I)
+
+
+def motivo_rebaixa(processo_contrato_bruto: str | None, trecho_citado: str) -> str:
+    """Motivo para um vínculo NÃO ser VERIFICADO apesar da citação conferida ('' = nenhum)."""
+    if _RE_DESDOBRAMENTO.search(processo_contrato_bruto or ""):
+        return ("o contrato é desdobramento (processo com sufixo) de ata/licitação — a citação do processo-base não "
+                "identifica qual compra é paga")
+    if _RE_ATA_RP.search(trecho_citado or ""):
+        return "a citação está em contexto de ata de registro de preços — processo comum a várias compras"
+    return ""
+
+
 def indice_contratos(con) -> tuple[dict, dict]:
-    """({cnpj: {chave_processo: [ids]}}, {id: (inicio_ref, fim)}) — sem registro cancelado."""
+    """({cnpj: {chave_processo: [ids]}}, {id: (inicio_ref, fim, processo bruto)}) — sem registro cancelado."""
     por_cred: dict[str, dict] = defaultdict(lambda: defaultdict(list))
     info = {}
     for cid, proc, sn, dc, st, cnpj, vi, vf in con.execute(
@@ -128,7 +146,8 @@ def indice_contratos(con) -> tuple[dict, dict]:
         if not (k and c) or (st or "").strip() == "Cancelado":
             continue
         por_cred[c][k].append(cid)
-        info[cid] = (min([d for d in (P.parse_data(vi), P.parse_data(dc)) if d], default=None), P.parse_data(vf))
+        info[cid] = (min([d for d in (P.parse_data(vi), P.parse_data(dc)) if d], default=None), P.parse_data(vf),
+                     proc or "")
     return por_cred, info
 
 
@@ -193,8 +212,10 @@ def linhas_do_par(proc_pag: str, credor: str, obs: list, cid: str | None, chave_
     """Uma linha por OB. VERIFICADO só sobrevive se nenhuma OB do par antecede o contrato (folga de 30 dias)."""
     hoje = datetime.now().isoformat(timespec="seconds")
     if estado == V.VERIFICADO and cid:
-        ini = info.get(cid, (None, None))[0]
-        if ini is None:
+        ini, _fim, bruto = info.get(cid, (None, None, ""))
+        if (m := motivo_rebaixa(bruto, tr)):
+            estado, motivo = V.PENDENTE, m
+        elif ini is None:
             estado, motivo = V.PENDENTE, "contrato sem data de início registrada"
         elif any(o[3] and o[3] < ini - timedelta(days=FOLGA_INICIO_DIAS) for o in obs):
             estado, motivo = V.PENDENTE, ("OB do processo de pagamento anterior ao início do contrato citado — "
@@ -411,6 +432,22 @@ def gravar(db: str | Path, linhas: list[tuple], *, preservar_regra: bool = True)
         con.close()
 
 
+def reconferir(db: str | Path) -> dict:
+    """Aplica `motivo_rebaixa` às linhas VERIFICADO já gravadas (regra nova não exige reler o acervo)."""
+    con = sqlite3.connect(str(db), timeout=120)
+    try:
+        bruto = {cid: proc or "" for cid, proc in con.execute("SELECT id, processo FROM contratos_tcerj")}
+        rebaixar = [(m, ob, ug, ex) for ob, ug, ex, cid, tr in con.execute(
+            "SELECT ob, ug, exercicio, contrato_tcerj_id, trecho FROM vinculo_ob_contrato WHERE estado='VERIFICADO'")
+            if (m := motivo_rebaixa(bruto.get(cid), tr))]
+        with con:
+            con.executemany("UPDATE vinculo_ob_contrato SET estado='PENDENTE', motivo=? WHERE ob=? AND ug=? AND "
+                            "exercicio=?", rebaixar)
+        return {"rebaixadas": len(rebaixar)}
+    finally:
+        con.close()
+
+
 def vinculos_verificados(con) -> dict[tuple, str]:
     """{(ob, exercicio, ug): contrato_tcerj_id} — só VERIFICADO. Sem a tabela: {} (a perícia segue como antes)."""
     if not P._tem(con, "vinculo_ob_contrato"):
@@ -481,7 +518,7 @@ MOTIVOS_FORA = ("ob_do_credor_fora_do_processo", "a_menor_com_ob_fora_do_process
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("acao", choices=("regra", "modelo", "fila"))
+    ap.add_argument("acao", choices=("regra", "modelo", "fila", "reconferir"))
     ap.add_argument("--db", default=P._DB)
     ap.add_argument("--gravar", action="store_true")
     ap.add_argument("--limite", type=int, default=0, help="modelo: nº máximo de pares (por valor pago)")
@@ -490,6 +527,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--top", type=int, default=0)
     ap.add_argument("--cache", help="regra grava aqui o que vai ao modelo; modelo lê daqui (evita reler o acervo)")
     a = ap.parse_args(argv)
+    if a.acao == "reconferir":
+        print(json.dumps(reconferir(a.db), ensure_ascii=False))
+        return 0
     con = P._con_ro(a.db)
     por_cred, info = indice_contratos(con)
     pares = pares_candidatos(con, por_cred)
@@ -499,7 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         valor_de = {r["id"]: r["valor_atualizado"] for r in res if r["motivo"] in MOTIVOS_FORA}
         indet: dict[str, list] = {}
         for c, procs in por_cred.items():
-            js = [(*info[i], valor_de[i]) for ids in procs.values() for i in ids if i in valor_de]
+            js = [(info[i][0], info[i][1], valor_de[i]) for ids in procs.values() for i in ids if i in valor_de]
             if js:
                 indet[c] = js
         fila = fila_captura(pares, indet)

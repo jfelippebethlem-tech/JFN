@@ -199,3 +199,32 @@ def test_custom_id_do_lote_identifica_o_par_e_nao_a_posicao(tmp_path, monkeypatc
     b, cb = vo.montar_itens({("1000010000012024", "1"): CAND, (PAG, CNPJ_D): CAND})
     assert dict(a) == dict(b) and ca.keys() == cb.keys()
     assert all(len(cid) <= 64 and cid.replace("_", "").isalnum() for cid, _ in a)
+
+
+@pytest.mark.parametrize("bruto,trecho,rebaixa", [
+    ("SEI-080007/011667-D/2023", "Processo SEI-080007/011667/2023", True),     # desdobramento de ata
+    ("SEI-360343/000277D/2022", "Processo SEI-360343/000277/2022", True),
+    ("SEI-100001/000004/2024", "ATA DE REGISTRO DE PREÇOS Nº 1/2024 - SEI-100001/000004/2024", True),
+    ("SEI-100001/000004/2024", "referente ao contrato celebrado no processo SEI-100001/000004/2024", False),
+])
+def test_desdobramento_de_ata_e_citacao_em_ata_nao_verificam(bruto, trecho, rebaixa):
+    assert bool(vo.motivo_rebaixa(bruto, trecho)) is rebaixa
+
+
+def test_reconferir_rebaixa_o_ja_gravado(base, tmp_path):
+    con = sqlite3.connect(base)
+    con.execute("UPDATE contratos_tcerj SET processo='SEI-100001/000004-B/2024' WHERE id='D'")
+    con.commit()
+    con.close()
+    _autos(tmp_path / "arq", PAG, {"000_despacho.txt": DESPACHO})
+    con = pc._con_ro(base)
+    por_cred, info = vo.indice_contratos(con)
+    con.close()
+    linhas = vo.linhas_do_par(PAG, CNPJ_D, [("2024OB00011", "300300", 2024, date(2024, 4, 10), 60_000.0)], "D",
+                              "1000010000042024", {**info, "D": (info["D"][0], info["D"][1], "SEI-100001/000004/2024")},
+                              "f", DESPACHO, vo.REGRA, V.VERIFICADO)
+    assert linhas[0][10] == V.VERIFICADO
+    vo.gravar(base, linhas)
+    assert vo.reconferir(base) == {"rebaixadas": 1}
+    d = {r["id"]: r for r in pc.avaliar_estado(base, corte=date(2026, 7, 1))}["D"]
+    assert d["categoria"] == "INDETERMINADO"
