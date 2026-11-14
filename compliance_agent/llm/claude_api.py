@@ -428,10 +428,15 @@ def enviar_lote(tarefa: str, itens: list[tuple[str, str]], *, sistema: str = "",
 
 def colher_lote(lote_id: str, *, cliente=None) -> dict | None:
     """Lote terminado: {custom_id: texto|None} (recusa, corte e erro = None), custo real lançado, reserva
-    liberada. Em curso ou desconhecido: None."""
+    liberada. Em curso ou desconhecido: None.
+
+    IDEMPOTENTE: o resultado é guardado em `data/claude_api_lotes/<id>.json` ANTES de liquidar; colher de
+    novo um lote já liquidado devolve o guardado sem cobrar outra vez (a colheita do chamador pode morrer no
+    meio — o cron a mata em 900 s — e precisa retomar os grupos que faltaram)."""
+    guardado = _dados() / "claude_api_lotes" / f"{lote_id}.json"
     info = ler_gasto()["lotes"].get(lote_id)
     if not info:
-        return None
+        return json.loads(guardado.read_text(encoding="utf-8")) if guardado.is_file() else None
     cli = cliente or _cliente(300.0)
     if cli.messages.batches.retrieve(lote_id).processing_status != "ended":
         return None
@@ -447,6 +452,8 @@ def colher_lote(lote_id: str, *, cliente=None) -> dict | None:
             soma[k] += _uso(msg.usage, k)
         texto = _texto(msg)
         saida[r.custom_id] = texto if (msg.stop_reason not in ("refusal", "max_tokens") and texto.strip()) else None
+    guardado.parent.mkdir(parents=True, exist_ok=True)
+    guardado.write_text(json.dumps(saida, ensure_ascii=False), encoding="utf-8")
     _liquidar(info["tarefa"], info["modelo"], info["reservado"], usd, soma, itens=int(info.get("decisoes") or 0))
     _mutar(lambda d: d["lotes"].pop(lote_id, None))
     return saida

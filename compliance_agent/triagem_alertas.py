@@ -295,7 +295,11 @@ def colher_lotes_api(con: sqlite3.Connection, *, cliente=None, gerar_b=None) -> 
         grupos = json.loads(grupos_js)
         modelo = motor_lote()
         for gid, ids in grupos.items():
-            alertas = _por_ids(con, ids)
+            ja = {r[0] for r in con.execute(f"SELECT alerta_id FROM alertas_triagem WHERE alerta_id IN "
+                                            f"({','.join('?' * len(ids))})", ids)}
+            alertas = [a for a in _por_ids(con, ids) if a["id"] not in ja]   # colheita retomada: só o que falta
+            if not alertas:
+                continue
             from compliance_agent.llm.json_resposta import parse_json_llm
             d = parse_json_llm(res.get(gid) or "")
             lidos = {}

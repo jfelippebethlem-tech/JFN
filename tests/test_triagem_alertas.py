@@ -136,6 +136,35 @@ def test_lote_api_grava_com_dupla_leitura_e_contabiliza(con):
     assert p["gasto_usd"] > 0 and p["cache"]["claude-haiku-5-5"]["cache_lido"] == 400
 
 
+def test_colheita_interrompida_retoma_sem_perder_grupo_nem_pagar_duas_vezes(con):
+    # 14/11/2026: lote de 607 grupos; a colheita (2ª leitura pela cascata em cada grupo) leva horas e o cron
+    # a mata em 900 s. O custo era liquidado e o lote apagado do registro ANTES dos grupos: a 2ª rodada não
+    # achava mais o lote e os grupos restantes ficavam órfãos para sempre.
+    r2 = {"itens": [{"id": 2, "prioridade": "provavel_falso_positivo", "nota": 2,
+                     "citacao": "empresa aberta 106 dias antes", "justificativa": "j"}]}
+    r3 = {"itens": [{"id": 3, "prioridade": "monitorar", "nota": 5, "citacao": "Fracionamento", "justificativa": "j"}]}
+    cli = LoteDuble({"g0": json.dumps(r2), "g1": json.dumps(r3)})
+    assert T.enviar_lote_api(con, 2, por_chamada=1, cliente=cli) == "msgbatch_x"
+    ids_g = json.loads(con.execute("SELECT grupos FROM alertas_triagem_lote").fetchone()[0])
+    vistos = []
+
+    def morre_no_segundo(p, s):
+        vistos.append(p)
+        if len(vistos) == 2:
+            raise SystemExit("timeout do cron")
+        return json.dumps({"itens": []})
+    with pytest.raises(SystemExit):
+        T.colher_lotes_api(con, cliente=cli, gerar_b=morre_no_segundo)
+    from compliance_agent.llm import claude_api
+    gasto = claude_api.ler_gasto()["total_usd"]
+    assert con.execute("SELECT COUNT(*) FROM alertas_triagem").fetchone()[0] == 1
+    assert T.colher_lotes_api(con, cliente=cli, gerar_b=lambda p, s: json.dumps({"itens": []})) == 1
+    assert con.execute("SELECT COUNT(*) FROM alertas_triagem").fetchone()[0] == 2
+    assert con.execute("SELECT COUNT(*) FROM alertas_triagem_lote").fetchone()[0] == 0
+    assert claude_api.ler_gasto()["total_usd"] == gasto                  # não paga duas vezes
+    assert set(ids_g) == {"g0", "g1"}
+
+
 def test_opus_verifica_achado_e_pausa_api_se_haiku_discorda(con, monkeypatch):
     monkeypatch.setattr(T, "AMOSTRA_MINIMA", 1)
     T.triar_lote(con, 2, gerar=_gerar(_r("aprofundar"), _r("aprofundar")))
