@@ -85,3 +85,54 @@ function _cruz(c) {
     <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Quando</th><th>Tarefa</th><th>Item</th><th>Claude</th><th>Outro motor</th></tr></thead><tbody>${rv || '<tr><td colspan="5" class="dim">nenhuma divergência grave pendente</td></tr>'}</tbody></table></div>`);
   return h;
 }
+
+/* CONFERÊNCIA DO OPUS — o que os outros modelos produziram enquanto o Claude da assinatura estava no limite.
+
+   Pedido do dono (14/11/2026): "quando chegar perto de 100% do uso do limite claude, coloque tudo pros outros
+   modelos de ai continuarem… o que for feito por eles depois tem conferência sempre pelo claude opus".
+   Mostra o ESTADO (em contingência até que horas, e por quê) e a FILA (pendentes por tarefa × modelo, o que o
+   Opus já conferiu, quantas vezes divergiu). Nada de custo nem de contagem de chamadas da assinatura. */
+export function conferenciaMontar(host) {
+  if (!host) return;
+  host.innerHTML = `${sec('Conferência do Opus')}<div class="dim">Lendo a fila de conferência…</div>`;
+  const ler = async () => {
+    if (!host.isConnected) { clearInterval(relogio); return; }
+    const c = await J('/api/ao-vivo/conferencia-opus');
+    host.innerHTML = sec('Conferência do Opus') + _conf(c);
+  };
+  const relogio = setInterval(ler, 120000);
+  ler();
+}
+
+const _ORIGEM = {limite_assinatura: 'a conta do Claude chegou ao limite de uso', teto_proprio: 'o orçamento diário do motor passou de 90%', forcada: 'contingência ligada à mão'};
+const _hora = iso => (iso ? String(iso).slice(11, 16) + ' de ' + String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7) : '—');
+const _n = v => (v == null ? 'INDISPONÍVEL' : fmtN(v));
+
+function _conf(c) {
+  if (!c || c.erro) return indisp('/api/ao-vivo/conferencia-opus');
+  const k = c.contingencia || {};
+  const estado = k.ativa
+    ? card(`<b>🟡 Em contingência</b> — ${esc(_ORIGEM[k.origem] || k.origem || 'motivo não informado')}${k.ate_iso ? `; o Claude da assinatura volta às <b>${esc(_hora(k.ate_iso))}</b>` : ''}. O JFN segue produzindo com os outros modelos; o que eles fizerem entra na fila abaixo e não vira VERIFICADO antes de o Opus conferir.`)
+    : card(`<b>🟢 Claude da assinatura respondendo</b> — sem contingência agora.${c.ultima_contingencia ? ` Última: ${esc(String(c.ultima_contingencia.desde || '').replace('T', ' ').slice(0, 16))} até ${esc(_hora(c.ultima_contingencia.ate))}.` : ''}${(k.tarefas_perto_do_teto || []).length ? ` Tarefas a mais de 90% do teto do dia: ${esc(k.tarefas_perto_do_teto.join(', ').replace(/_/g, ' '))}.` : ''}`);
+  let h = estado + `<div class="grid g4">
+    ${kpi(c.disponivel ? _n(c.pendentes) : 'INDISPONÍVEL', 'Aguardando o Opus', c.pendentes ? 'var(--amber, var(--accent))' : 'var(--green)', null,
+      {sobre: 'Resultados entregues por outro modelo (cascata gratuita ou Claude barato) enquanto o Claude da assinatura não podia responder. Cada um fica PENDENTE até o Opus reler a mesma entrada. Fonte: data/conferencia_opus.db.'})}
+    ${kpi(_n(c.triagem_pendente), 'Alertas da triagem aguardando o Opus', 'var(--accent)', null,
+      {sobre: 'Fila irmã, mais antiga: alertas da triagem com leitura 🔴/🟡, descartada ou feita sem o Claude da assinatura (alertas_triagem.opus_pendente). O Opus relê em lotes a cada hora.'})}
+    ${kpi(c.disponivel ? _n(c.conferidos) : 'INDISPONÍVEL', 'Já conferidos pelo Opus', 'var(--accent)', null,
+      {sobre: 'Itens da fila que o Opus releu. Cada par Opus × outro modelo entra no cruzamento de motores abaixo.'})}
+    ${kpi(c.disponivel ? _n(c.divergencias) : 'INDISPONÍVEL', 'Opus divergiu', c.divergencias ? 'var(--rose)' : 'var(--green)', null,
+      {sobre: 'Conferências em que o Opus NÃO deu o mesmo nível que o modelo de contingência (ou a tarefa é texto, sem régua). Nesses casos vale o resultado do Opus; a leitura anterior fica registrada. Divergência de dois níveis (🔴×⚪) vira também revisão humana.'})}
+  </div>`;
+  if (!c.disponivel) return h + card('<b>INDISPONÍVEL</b> — a fila de conferência não pôde ser lida. Sem leitura não há número: INDISPONÍVEL ≠ 0.');
+  const tab = (c.por_tarefa || []).map(x => `<tr><td style="text-align:left">${esc(String(x.tarefa).replace(/_/g, ' '))}</td><td style="text-align:left">${esc(x.motor)}</td>
+    <td class="num">${fmtN(x.pendentes)}</td><td class="num">${fmtN(x.graves)}</td><td class="num">${fmtN(x.conferidos)}</td><td class="num">${fmtN(x.concordou)}</td><td class="num">${fmtN(x.divergiu)}</td><td class="num">${fmtN(x.erro)}</td></tr>`).join('');
+  h += card(`<div style="font-weight:700;margin-bottom:6px">Fila por tarefa × modelo que produziu</div>
+    <div class="dim" style="margin-bottom:6px">${esc(c.legenda || '')} Ordem de conferência: 🔴 primeiro, depois 🟡, indeterminado e ⚪; dentro do nível, maior valor.</div>
+    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Tarefa</th><th>Modelo que produziu</th><th>Pendentes</th><th>🔴 pendentes</th><th>Conferidos</th><th>Opus concordou</th><th>Opus divergiu</th><th>Sem conferência válida</th></tr></thead><tbody>${tab || '<tr><td colspan="8" class="dim">fila vazia — nada foi produzido sem o Claude da assinatura</td></tr>'}</tbody></table></div>`);
+  const its = (c.itens || []).map(r => `<tr><td class="num">${esc(String(r.desde || '').slice(0, 16).replace('T', ' '))}</td><td style="text-align:left">${esc(String(r.tarefa).replace(/_/g, ' '))}</td>
+    <td style="text-align:left">${esc(r.item || '—')}</td><td>${NIV[r.nivel] || '?'} ${esc(r.veredito || '')}</td><td style="text-align:left">${esc(r.motor || '')}</td><td style="text-align:left" class="dim">${esc(r.motivo || '')}</td></tr>`).join('');
+  if (its) h += card(`<div style="font-weight:700;margin-bottom:6px">Próximos ${fmtN((c.itens || []).length)} da fila</div>
+    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Desde</th><th>Tarefa</th><th>Item</th><th>Leitura do outro modelo (pendente)</th><th>Modelo</th><th>Por que o Claude não respondeu</th></tr></thead><tbody>${its}</tbody></table></div>`);
+  return h;
+}

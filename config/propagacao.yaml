@@ -106,6 +106,10 @@ fontes:
     nome: Decisão do dono ou lição registrada na memória dos agentes
     sonda: {pasta: "~/.claude/projects/-home-ubuntu/memory", glob: "*.md", ignorar: [MEMORY.md]}
     cerebro: {de: memoria}
+  conferencia_opus:
+    # sem sonda: quem emite é `llm/conferencia_opus.conferir` quando o Opus DIVERGE do modelo de contingência e o
+    # aplicador regrava o registro (UPDATE não muda o MAX(rowid) que a sonda `sei_lex` olha)
+    nome: Conferência do Opus corrigiu resultado produzido em contingência (Claude da assinatura no limite)
   decisao_dono:
     nome: Decisão do dono que muda requisito (manual)
 
@@ -182,7 +186,7 @@ derivados:
   cge_confronto:
     nome: Confronto CGE × JFN
     onde: Estado › CGE × JFN
-    depende: [sei_lote, sei_arquivado, sei_ficha, sei_lex, siafe_ob, triagem]
+    depende: [sei_lote, sei_arquivado, sei_ficha, sei_lex, siafe_ob, triagem, conferencia_opus]
     comando: ["{py}", "-m", "compliance_agent.cge_confronto"]
     peso: leve
     debounce_s: 900

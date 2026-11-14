@@ -319,7 +319,7 @@ def julgar(a: Afirmacao, *, pensar: Callable | None = None, cascata: Callable | 
     texto_claude = None
     if a.publica and cruzar_com_cascata():
         gerar = comotor.juizo(TAREFA, modelo=claude_motor.MODELO_JUIZO, normalizar=normalizar, pensar=pensar_cli,
-                              cascata=cascata, timeout_claude=300.0)
+                              cascata=cascata, timeout_claude=300.0, conferencia=False)
         try:
             texto = gerar(prompt, sistema=SISTEMA, timeout=90.0, json_saida=True, item=a.id)
         except _FALHAS as e:

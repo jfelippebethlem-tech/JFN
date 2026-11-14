@@ -259,6 +259,43 @@ def _gravar(con, numero_sei, objeto, fl, r, nota, modelo):
     con.commit()
 
 
+def aplicar_conferencia(item: str, resposta: str, modelo: str, concorda, con: sqlite3.Connection | None = None) -> bool:
+    """Aplicador da fila de conferência do Opus (`llm/conferencia_opus.APLICADORES`): o parecer do processo foi
+    feito por outro modelo enquanto o Claude da assinatura não respondia e o Opus releu a MESMA entrada.
+    Concordou ⇒ só a proveniência muda; divergiu ⇒ o veredito do Opus substitui o gravado (o anterior fica na
+    fila e no cruzamento). Resposta do Opus sem veredito válido nunca sobrescreve (mesma regra do upsert)."""
+    if not str(item or "").startswith("sei:"):
+        return False
+    numero_sei = item[4:]
+    proprio = con is None
+    con = con or _con()
+    try:
+        ant = con.execute("SELECT modelo FROM lex_execucao WHERE numero_sei=?", (numero_sei,)).fetchone()
+        if not ant:
+            return False
+        antes = (ant[0] or "desconhecido").split(" · conferido")[0]
+        if concorda == 1:
+            con.execute("UPDATE lex_execucao SET modelo=? WHERE numero_sei=?",
+                        (f"{antes} · conferido claude:{modelo}", numero_sei))
+            con.commit()
+            return True
+        r = _parse_json(resposta) or {}
+        r["execucao_comprovada"] = _exec_norm(r.get("execucao_comprovada"))
+        if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
+            return False
+        con.execute("UPDATE lex_execucao SET execucao_comprovada=?, coerencia=?, nota_risco=?, indicios=?, duvidas=?, "
+                    "resumo=?, modelo=?, em=? WHERE numero_sei=?",
+                    (r["execucao_comprovada"], r.get("coerencia_objeto_evidencia"), _nota_0a10(r.get("nota_risco_execucao")),
+                     json.dumps(r.get("indicios") or [], ensure_ascii=False),
+                     json.dumps(r.get("duvidas") or [], ensure_ascii=False), r.get("resumo"),
+                     f"claude:{modelo} (conferência; antes {antes})"[:200], _agora(), numero_sei))
+        con.commit()
+        return True
+    finally:
+        if proprio:
+            con.close()
+
+
 def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valores: str,
                      documentos: list[dict], red_flags: list, gerar, obs_siafe: dict | None = None) -> dict | None:
     fl = _flags(documentos)
@@ -305,7 +342,10 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         f"Responda SOMENTE o JSON: {_SCHEMA}"
     )
     try:
-        txt = gerar(prompt, _SYS, 60.0)
+        try:   # `item` liga o parecer à fila de conferência do Opus (llm/conferencia_opus) quando sai sem o Claude
+            txt = gerar(prompt, _SYS, 60.0, item=f"sei:{numero_sei}")
+        except TypeError:          # gerar dublê/antigo sem `item`
+            txt = gerar(prompt, _SYS, 60.0)
     except Exception as e:
         # TimeoutError do futuro (60 s) vem sem argumentos: str(e) == "" e o log
         # dizia só "erro LLM: ". O tipo é o que identifica a falha.

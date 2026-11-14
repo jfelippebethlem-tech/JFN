@@ -53,7 +53,8 @@ _ultima: dict = {}
 
 
 def ultima_chamada() -> dict:
-    """{"par", "exibido", "outro", "divergencia", "grave"} da última chamada do co-motor neste processo."""
+    """{"par", "exibido", "outro", "divergencia", "grave", "conferencia_pendente"} da última chamada do co-motor
+    neste processo. `conferencia_pendente` = saiu sem o Claude da assinatura e está na fila do Opus."""
     return dict(_ultima)
 
 
@@ -172,11 +173,16 @@ def _gerar_sync_padrao(prompt, sistema="", timeout=45.0, json_saida=True):
 
 def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Callable | None = None,
           normalizar: Callable | None = None, pensar: Callable | None = None, sorteio: Callable | None = None,
-          espera: float | None = None, timeout_claude: float = 180.0):
+          espera: float | None = None, timeout_claude: float = 180.0, conferencia: bool = True):
     """Fábrica do `gerar` co-motor de uma tarefa. `cascata`/`pensar`/`sorteio` são injetáveis para teste.
 
     `espera` = quanto aguardar a trava do único `claude` da VM (produto interativo: curto, ex. 15 s — passou
     disso, a resposta sai da cascata em vez de deixar o dono esperando). `timeout_claude` = prazo da chamada.
+
+    `conferencia` (14/11/2026 — "nunca ficar sem produzir; o que for feito por eles tem conferência sempre pelo
+    claude opus"): resposta devolvida SEM o Claude da assinatura (cascata, ou Claude barato `@api`) entra na fila
+    `llm/conferencia_opus`; entrada que o Opus já conferiu volta com a resposta DELE, sem nova chamada. Desligue
+    só em quem tem fila própria de Opus (triagem) ou descarta o veredito sem Claude (juiz de qualidade).
     """
     normalizar = normalizar or NORMALIZADORES.get(tarefa)
     _pensar = pensar or claude_motor.pensar
@@ -211,6 +217,23 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
               item: str | None = None) -> str:
         sufixo = "\n\nResponda APENAS com o JSON pedido, sem texto fora dele." if json_saida else ""
         item = item or hashlib.sha1((prompt or "").encode("utf-8", "replace")).hexdigest()[:16]
+        if conferencia:
+            try:
+                from compliance_agent.llm import conferencia_opus
+                ja = conferencia_opus.resposta_conferida(tarefa, prompt + sufixo, sistema)
+            except _FALHAS + (ImportError,) as e:  # fila ilegível: segue o caminho normal
+                logger.debug("comotor: fila de conferência indisponível (%s)", e)
+                ja = None
+            if ja:
+                _ultima.clear()
+                _ultima.update(par=None, divergencia=None, grave=None, exibido=f"claude:{ja[1]} (conferência)",
+                               outro=None, conferencia_pendente=False)
+                try:
+                    from compliance_agent import direcionamento_cerebro as dc
+                    dc.ultimo_provedor, dc.ultimo_modelo = "claude", ja[1]
+                except ImportError:
+                    logger.debug("comotor: direcionamento_cerebro indisponível — proveniência só em ultima_chamada()")
+                return ja[0]
         t0 = time.monotonic()
         r_claude = r_casc = None
         erro_casc: Exception | None = None
@@ -263,7 +286,22 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
         _ultima.clear()
         _ultima.update(par=cz["par"], divergencia=cz["divergencia"], grave=cz["grave"],
                        exibido=(f"claude:{r_claude.modelo}" if r_claude else (r_casc[1] if r_casc else None)),
-                       outro=(r_casc[1] if (r_claude and r_casc) else None))
+                       outro=(r_casc[1] if (r_claude and r_casc) else None), conferencia_pendente=False)
+        # produzido sem o Claude da assinatura (cascata sozinha, ou Claude barato pela API) ⇒ o Opus confere depois
+        sem_assinatura = (r_claude is None and r_casc is not None) or (
+            r_claude is not None and str(r_claude.modelo).endswith("@api"))
+        if conferencia and sem_assinatura:
+            try:
+                from compliance_agent.llm import conferencia_opus
+                lado = lado_c if r_claude is not None else lado_o
+                _ultima["conferencia_pendente"] = conferencia_opus.enfileirar(
+                    tarefa, item, prompt + sufixo, sistema=sistema, motor=_ultima["exibido"],
+                    resposta=(r_claude.texto if r_claude is not None else r_casc[0]),
+                    veredito=lado.veredito, nivel=lado.nivel,
+                    motivo=("Claude barato pela API (assinatura indisponível)" if r_claude is not None
+                            else claude_motor.ultimo_motivo))
+            except _FALHAS + (ImportError,) as e:  # a fila nunca derruba o juízo; sem marca, o item fica sem VERIFICADO
+                logger.warning("comotor: resultado sem Claude não entrou na fila de conferência (%s)", type(e).__name__)
         try:
             from compliance_agent import direcionamento_cerebro as dc
             if r_claude is not None:

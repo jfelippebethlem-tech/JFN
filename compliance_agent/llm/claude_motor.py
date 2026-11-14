@@ -22,7 +22,10 @@ TRAVAS (nenhuma depende de nome de processo):
     `JFN_CLAUDE_MAX_<TAREFA>`); a chamada é RESERVADA antes de rodar (processo que morre no meio conta);
   · kill-switch: `JFN_CLAUDE_MOTOR=0` ou o arquivo `data/.pause_claude_motor`;
   · canário diário (`--canario`): falhou ⇒ motor desligado até o próximo canário OK, aviso no Telegram;
-  · erro de limite de uso ⇒ motor em pausa por `JFN_CLAUDE_PAUSA_LIMITE_S` (padrão 1 h).
+  · erro de limite de uso da conta ("You've hit your 5-hour limit · resets 2:30am") ⇒ CONTINGÊNCIA até a hora
+    de volta lida da mensagem (`llm/contingencia`; sem hora legível, `JFN_CLAUDE_PAUSA_LIMITE_S`, padrão 1 h);
+    a 90% do orçamento diário o resto fica reservado ao Opus. Em contingência os consumidores seguem com os
+    outros modelos e o resultado vai para a fila `conferencia_opus`.
 
 CONTRATO: `pensar()` nunca levanta. Sucesso ⇒ `Pensamento`; qualquer falha ⇒ `None`, com o motivo em
 `ultimo_motivo` — o chamador cai na cascata atual. O registro de uso guarda tarefa, modelo, segundos e
@@ -70,6 +73,7 @@ TETOS_TAREFA = {
     "investigacao_risco": 10,
     "verificacao_opus": 200,     # todo 🔴/🟡 da triagem relido pelo Opus; 30→200 em 14/11/2026 a pedido do dono
     "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
+    "conferencia_opus": 60,      # Opus relê o que os outros modelos produziram em contingência (llm/conferencia_opus)
 }
 
 SISTEMA_PADRAO = (
@@ -251,7 +255,7 @@ def _log(linha: str) -> None:
 
 
 # ── portões ───────────────────────────────────────────────────────────────────────────────────────
-def motivo_desligado(*, canario: bool = False) -> str | None:
+def motivo_desligado(*, canario: bool = False, tarefa: str = "") -> str | None:
     """Por que o motor NÃO pode rodar agora (None = pode)."""
     if (os.environ.get("JFN_CLAUDE_MOTOR", "1").strip().lower() in ("0", "false", "off", "no")):
         return "desligado (JFN_CLAUDE_MOTOR=0)"
@@ -261,6 +265,10 @@ def motivo_desligado(*, canario: bool = False) -> str | None:
     ate = est.get("bloqueado_ate")
     if isinstance(ate, (int, float)) and ate > time.time():
         return f"limite de uso da assinatura — pausa até {datetime.fromtimestamp(ate):%H:%M}"
+    from compliance_agent.llm import contingencia
+    m = contingencia.motivo_bloqueio(tarefa)
+    if m:
+        return m
     if not canario and est.get("canario_ok") is False:
         return f"desligado pelo canário de {est.get('canario_em', '?')}: {est.get('canario_motivo', '?')}"
     return None
@@ -305,13 +313,11 @@ def _executar_cli(cmd: list[str], entrada: str, env: dict, cwd: Path, timeout: f
         raise
 
 
-_RE_LIMITE = re.compile(r"usage limit|rate limit|limit reached|limite de uso|out of extra usage|quota", re.I)
-
-
 def classificar_erro(texto: str) -> str:
     """'limite' (cota da assinatura) | 'auth' (login) | 'outro'."""
     t = texto or ""
-    if _RE_LIMITE.search(t) or ("limit" in t.lower() and "usage" in t.lower()):
+    from compliance_agent.llm import contingencia
+    if contingencia.eh_limite(t):     # inclui "You've hit your 5-hour limit" e 429/rate_limit (antes: "outro")
         return "limite"
     if re.search(r"api key|log ?in|authenticat|oauth|unauthorized|401", t, re.I):
         return "auth"
@@ -406,7 +412,7 @@ def _pensar_cli(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_V
     executar = executar or _executar_cli
     espera = float(os.environ.get("JFN_CLAUDE_ESPERA_S", "90")) if espera is None else espera
     try:
-        m = motivo_desligado(canario=_canario)
+        m = motivo_desligado(canario=_canario, tarefa=tarefa)
         if m:
             _falhar(tarefa, m, contar_erro=False)
             return None
@@ -465,7 +471,7 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
     if not isinstance(corpo, dict):
         motivo = _sem_eco(f"saída sem JSON (rc={rc}) {(err or out or '')[:160]}", prompt)
         tipo = classificar_erro(err + " " + (out or ""))
-        _tratar_tipo(tipo, motivo)
+        _tratar_tipo(tipo, motivo, (err or "") + " " + (out or ""))
         _falhar(tarefa, motivo, contar_erro=True, segundos=seg, tipo=tipo)
         return None
     resultado = corpo.get("result")
@@ -473,7 +479,7 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
         bruto = str(resultado or corpo.get("subtype") or "resultado vazio")
         tipo = classificar_erro(bruto + " " + (err or ""))
         motivo = _sem_eco(f"o claude respondeu com erro ({tipo}): {bruto[:160]}", prompt)
-        _tratar_tipo(tipo, motivo)
+        _tratar_tipo(tipo, motivo, bruto + " " + (err or ""))
         _falhar(tarefa, motivo, contar_erro=True, segundos=seg, tipo=tipo)
         return None
     dados = None
@@ -500,11 +506,13 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
                       extras={k: corpo.get(k) for k in ("num_turns", "duration_ms") if k in corpo})
 
 
-def _tratar_tipo(tipo: str, motivo: str) -> None:
+def _tratar_tipo(tipo: str, motivo: str, bruto: str = "") -> None:
     if tipo == "limite":
-        pausa = _int_env("JFN_CLAUDE_PAUSA_LIMITE_S", 3600)
-        _mutar_estado(bloqueado_ate=time.time() + pausa, bloqueio_motivo=motivo[:200])
-        _log(f"limite de uso: motor em pausa por {pausa} s")
+        from compliance_agent.llm import contingencia
+        ate = contingencia.hora_de_volta(bruto or motivo) or time.time() + _int_env("JFN_CLAUDE_PAUSA_LIMITE_S", 3600)
+        _mutar_estado(bloqueado_ate=ate, bloqueio_motivo=motivo[:200])
+        contingencia.entrar(motivo, ate)       # arquivo único: os consumidores passam aos outros modelos
+        _log(f"limite de uso da assinatura: contingência até {datetime.fromtimestamp(ate):%d/%m %H:%M}")
 
 
 # ── canário diário ────────────────────────────────────────────────────────────────────────────────
@@ -526,6 +534,13 @@ def canario(*, executar=None, avisar=None) -> dict:
     Falha ⇒ `canario_ok=False` (o motor fica desligado) + aviso ao dono. Volta a funcionar ⇒ religa e avisa.
     """
     avisar = avisar or _avisar_telegram
+    from compliance_agent.llm import contingencia
+    em_limite = contingencia.motivo_bloqueio("canario")
+    if em_limite:
+        # conta no limite não é assinatura quebrada: o canário NÃO reprova (reprovar desligava o motor até o
+        # canário do dia seguinte, mesmo com a conta de volta em 2 h) — fica para depois da hora de volta
+        _log(f"canário adiado: {em_limite}")
+        return {"ok": None, "motivo": em_limite, "segundos": None}
     antes = ler_estado().get("canario_ok")
     chave_no_ambiente = [k for k in VARIAVEIS_PROIBIDAS if k in ambiente_limpo()]
     if chave_no_ambiente:            # impossível pelo código — mas é exatamente o que o canário existe para pegar
@@ -563,7 +578,17 @@ def painel() -> dict:
         "ultimo_erro": u.get("ultimo_erro"), "ultima_ok": u.get("ultima_ok"),
         "canario": {"ok": e.get("canario_ok"), "em": e.get("canario_em"), "motivo": e.get("canario_motivo")},
         "modelos": {"volume": MODELO_VOLUME, "juizo": MODELO_JUIZO},
+        "contingencia": _contingencia_painel(),
     }
+
+
+def _contingencia_painel() -> dict | None:
+    try:
+        from compliance_agent.llm import contingencia
+        e = contingencia.estado()
+        return {k: e.get(k) for k in ("ativa", "origem", "ate_iso", "motivo")}
+    except (ImportError, OSError, ValueError, TypeError, KeyError):
+        return None
 
 
 def _main(argv=None) -> int:
@@ -574,7 +599,7 @@ def _main(argv=None) -> int:
     if a.canario:
         r = canario()
         print(json.dumps(r, ensure_ascii=False))
-        return 0 if r["ok"] else 1
+        return 1 if r["ok"] is False else 0
     print(json.dumps(painel(), ensure_ascii=False, indent=1))
     return 0
 

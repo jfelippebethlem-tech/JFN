@@ -1444,9 +1444,13 @@ def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, mo
     det = achados_deterministicos(res)
     if hipoteses:
         mod = ctx_info.get("modelo") or "modelo não informado"
-        subj = [dict(h, fonte=f"motor Claude ({mod}) sobre a camada determinística de {ctx_info['gerado_em'][:10]}",
+        quem = ("modelo de contingência (Claude da assinatura indisponível) — conferência do Opus pendente"
+                if ctx_info.get("contingencia") else "motor Claude")
+        subj = [dict(h, fonte=f"{quem} ({mod}) sobre a camada determinística de {ctx_info['gerado_em'][:10]}",
                      modelo=mod) for h in hipoteses]
         estado_subj = {"estado": "ok", "gerado_em": ctx_info["gerado_em"], "modelo": mod}
+        if ctx_info.get("contingencia"):
+            estado_subj["conferencia_opus"] = "pendente"
     else:
         subj = [dict(x, pendente=True) for x in ant if x.get("camada") == "subjetiva"]
         estado_subj = {"estado": "pendente", "motivo": motivo_subj or "motor indisponível",
@@ -1484,6 +1488,7 @@ def _rodar(log, saida: Path, detalhe: Path, usar_motor: bool) -> int:
         bruto, motivo = pensar("camada_subjetiva", prompt_hipoteses(res, det), schema=ESQUEMA_H,
                                modelo="claude-opus-5-5", timeout=600.0)
         info["modelo"] = rotina_base.ULTIMO_MODELO
+        info["contingencia"] = rotina_base.ULTIMA_EM_CONTINGENCIA
         hip = hipoteses_validas(bruto) if bruto is not None else None
         if bruto is not None and not hip:
             motivo = "motor respondeu sem hipótese válida (faltou explicação inocente ou próximo passo)"

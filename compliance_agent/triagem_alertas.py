@@ -183,9 +183,12 @@ def _agora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _gravar(con, a: dict, r: dict, *, motor: str, estado: str, leitura_b=None, motor_b=None, motivo: str = "") -> None:
-    # 🔴/🟡 sempre ao Opus; leitura descartada (fora da rubrica, citação que não confere) escala para o Opus
-    opus = int(r.get("prioridade") in ACHADO or r.get("prioridade") is None or motivo.startswith("citação"))
+def _gravar(con, a: dict, r: dict, *, motor: str, estado: str, leitura_b=None, motor_b=None, motivo: str = "",
+            contingencia: bool = False) -> None:
+    # 🔴/🟡 sempre ao Opus; leitura descartada (fora da rubrica, citação que não confere) escala para o Opus;
+    # `contingencia` = feito sem o Claude da assinatura ⇒ o Opus confere SEMPRE (dono, 14/11/2026)
+    opus = int(r.get("prioridade") in ACHADO or r.get("prioridade") is None or motivo.startswith("citação")
+               or contingencia)
     con.execute("INSERT OR REPLACE INTO alertas_triagem(alerta_id,prioridade,nota,justificativa,proximo_passo,valor,"
                 "motor,em,estado,citacao,leitura_b,motor_b,opus_pendente,motivo) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (a["id"], r.get("prioridade"), r.get("nota"), r.get("justificativa"), r.get("proximo_passo"),
@@ -208,7 +211,7 @@ def triar_lote(con: sqlite3.Connection, n: int = 8, *, gerar=None) -> list[dict]
     vão ao Opus); divergiram ou citação falhou ⇒ PENDENTE. Falha do motor num alerta não aborta o lote."""
     if gerar is None:
         from compliance_agent.llm.comotor import juizo
-        gerar = juizo(TAREFA)
+        gerar = juizo(TAREFA, conferencia=False)   # a fila de Opus da triagem é a própria coluna opus_pendente
     from compliance_agent.llm.comotor import ultima_chamada
     feitos = []
     for a in selecionar(con, n):
@@ -226,8 +229,13 @@ def triar_lote(con: sqlite3.Connection, n: int = 8, *, gerar=None) -> list[dict]
         estado = VERIFICADO if (not motivo and concordou and r["prioridade"] not in ACHADO) else PENDENTE
         if not motivo and not concordou:
             motivo = "sem segunda leitura concordante"
+        exibido = str(u.get("exibido") or "")
+        sem_assinatura = not exibido.startswith("claude:") or "@api" in exibido
+        if sem_assinatura:            # contingência: nunca VERIFICADO sem o Opus, mesmo ⚪ com duas leituras
+            estado = PENDENTE
+            motivo = motivo or "feito sem o Claude da assinatura — aguarda conferência do Opus"
         _gravar(con, a, r, motor=u.get("exibido") or "desconhecido", estado=estado, motor_b=u.get("outro"),
-                motivo=motivo)
+                motivo=motivo, contingencia=sem_assinatura)
         feitos.append({"id": a["id"], **r, "motor": u.get("exibido") or "desconhecido", "estado": estado})
     return feitos
 
@@ -369,6 +377,14 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
                     "motivo=? WHERE alerta_id=?",
                     (r["prioridade"], p.modelo, estado, None if estado == VERIFICADO else "Opus divergiu — revisão humana",
                      aid))
+        if estado == PENDENTE and r["prioridade"] is not None:
+            # divergência com leitura válida do Opus: o resultado do Opus PREVALECE (dono, 14/11/2026); o item
+            # segue PENDENTE de revisão humana e a leitura anterior fica registrada no motivo e no cruzamento
+            con.execute("UPDATE alertas_triagem SET prioridade=?, nota=?, justificativa=?, proximo_passo=?, citacao=?, "
+                        "motivo=? WHERE alerta_id=?",
+                        (r["prioridade"], r["nota"], r["justificativa"], r["proximo_passo"], r["citacao"],
+                         f"Opus divergiu de {motor or '?'} (dizia {prio or 'indeterminado'}) — prevalece o Opus; "
+                         "revisão humana", aid))
         con.commit()
         feitos.append({"id": aid, "anterior": prio, "opus": r["prioridade"], "estado": estado})
     vigiar_qualidade(avisar=avisar)

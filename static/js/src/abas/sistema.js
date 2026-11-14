@@ -10,7 +10,7 @@
 import {cover} from '../nucleo/dom.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {motoresMontar} from '../ui/aovivo.js';
-import {cruzamentoMontar} from './motores_cruzamento.js';
+import {cruzamentoMontar, conferenciaMontar} from './motores_cruzamento.js';
 import {frescorMontar, blocoComandosMestres} from './cockpit.js';
 
 /* O `ir()` pinta o HTML depois que o render resolve (às vezes dentro de uma View Transition), e só
@@ -24,12 +24,14 @@ function _quandoExistir(id, fn, tentativas = 180) {
 export async function renderMotoresSistema() {
   aoVivoLigar();
   _quandoExistir('s-motores', motoresMontar);
+  _quandoExistir('s-conf', conferenciaMontar);
   _quandoExistir('s-cruz', cruzamentoMontar);
   _quandoExistir('s-fontes', frescorMontar);
   return cover('sistema', 'Motores — o que está rodando e se os modelos concordam',
     'Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.', '⚙️')
     + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section>'
     + '<div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div>'
+    + '<section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section>'
     + '<section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
 }
 

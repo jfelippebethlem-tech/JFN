@@ -49,6 +49,21 @@ def ao_vivo_cruzamento(dias: int = 30):
     return resumo_painel(max(1, min(int(dias), 365)))
 
 
+@router.get("/api/ao-vivo/conferencia-opus")
+def ao_vivo_conferencia_opus():
+    """Bloco "Conferência Opus" (Sistema): a assinatura está em contingência? o que os outros modelos produziram
+    e ainda espera o Opus conferir, por tarefa × modelo; concordâncias e divergências já conferidas. Sem custo."""
+    from compliance_agent.aovivo.saneamento import sanear
+    from compliance_agent.llm.conferencia_opus import painel
+    p = painel()
+    if isinstance(p.get("contingencia"), dict) and p["contingencia"].get("motivo"):
+        p["contingencia"] = dict(p["contingencia"], motivo=sanear(p["contingencia"]["motivo"]))
+    for it in p.get("itens") or []:
+        if it.get("motivo"):
+            it["motivo"] = sanear(it["motivo"])
+    return p
+
+
 def _sse(evento: str, dado: dict, id_: int | None = None) -> str:
     cab = f"id: {id_}\n" if id_ is not None else ""
     return f"{cab}event: {evento}\ndata: {json.dumps(dado, ensure_ascii=False, separators=(',', ':'))}\n\n"

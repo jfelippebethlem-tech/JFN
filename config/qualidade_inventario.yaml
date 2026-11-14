@@ -423,6 +423,7 @@ rotas:
   "/api/agenda": {classe: operacional, afirma: "Observabilidade central: timers systemd + crons + pausas num relatório só (determinístico, leitura-só).", fonte: "compliance_agent.agenda_jobs"}
   "/api/anomalias": {classe: afirma, afirma: "Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas.", fonte: "compliance_agent.analysis.benford, compliance_agent.anomalias"}
   "/api/ao-vivo/claude": {classe: operacional, afirma: "Uso do co-motor Claude hoje: chamadas, por tarefa, tetos, último erro, canário (sem conteúdo).", fonte: "compliance_agent.aovivo.coleta"}
+  "/api/ao-vivo/conferencia-opus": {classe: operacional, afirma: "Fila de conferência do Opus: resultados produzidos por outros modelos enquanto o Claude da assinatura estava em contingência, por tarefa × modelo, e o que o Opus já conferiu (sem custo).", fonte: "compliance_agent.llm.conferencia_opus"}
   "/api/ao-vivo/cruzamento": {classe: operacional, afirma: "Bloco \"Cruzamento de motores\": concordância com o Claude por tarefa × modelo, matriz ⚪🟡🔴, A/B do few-shot, revisões pendentes (divergência grave).", fonte: "compliance_agent.llm.cruzamento"}
   "/api/ao-vivo/estado": {classe: operacional, afirma: "Estado dos motores do AO VIVO (rodando, parado, sem efeito).", fonte: "A DECLARAR"}
   "/api/ao-vivo/stream": {classe: operacional, afirma: "SSE dos eventos dos motores do AO VIVO.", fonte: "A DECLARAR"}
