@@ -33,6 +33,7 @@ Fonte única de capacidades: **`capabilities.yaml`** — derivados (`data/jfn_to
 - **Sweep SEI** (volume) → **nous `MODELOS_SWEEP`** (`sei_ficha`: beam-1.0:free → longcat-2.5:free, troca sozinha se um morrer).
 - **Produtos** (/relatorio, /orgao, Lex) → **gemini** 3-flash-preview→3.6→3.5→2.5 (flash-lite fora do parecer) → groq → openrouter:free → nvidia → cohere.
 - **Pool free_llm** → gemini → groq qwen3.8 (só curto, 413 >8k) → openrouter:free → nvidia (reserva) → cloudflare → cohere → zai.
+- **Claude no limite → contingência** (`llm/contingencia.py`, estado único `data/claude_contingencia.json`; forçar: `JFN_CLAUDE_CONTINGENCIA=1`): os consumidores seguem com a cascata e TUDO o que sair sem o Claude da assinatura entra na fila `llm/conferencia_opus.py` (cron :25, Opus só assinatura; divergiu → vale o Opus). Nunca VERIFICADO antes disso. Sistema › Conferência do Opus.
 - **Mortos/pagos fora** (`FREE_LLM_DESLIGADOS`): cerebras, github_models, sambanova, siliconflow, wisdomgate, mistral. Chaves em `.env`/`auth.json`.
 
 ## FATOS-CHAVE (invariantes; resto sob demanda)
