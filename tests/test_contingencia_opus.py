@@ -55,6 +55,12 @@ def test_erro_real_de_limite_e_reconhecido_e_a_hora_de_volta_e_lida():
     volta = datetime.fromtimestamp(ate, ZoneInfo("America/Sao_Paulo"))
     assert (volta.day, volta.hour, volta.minute) == (14, 2, 32)  # 2:30 do dia seguinte + 2 min de margem
     assert C.hora_de_volta("resets 3pm", datetime(2026, 11, 14, 12, 30).timestamp()) > agora
+    # 14/11/2026 16:31 — o texto REAL que derrubou a própria conferência (e o agente que a escrevia)
+    real = "You've hit your 5-hour limit · resets 5:30pm (America/Sao_Paulo)"
+    assert M.classificar_erro(real) == "limite"
+    v = datetime.fromtimestamp(C.hora_de_volta(real, datetime(2026, 11, 14, 16, 31, 21).timestamp()),
+                               ZoneInfo("America/Sao_Paulo"))
+    assert (v.day, v.hour, v.minute) == (14, 17, 32)             # mesmo dia, 17:30 + 2 min
     assert C.hora_de_volta("erro qualquer sem hora") is None      # sem hora legível não se inventa hora
 
 

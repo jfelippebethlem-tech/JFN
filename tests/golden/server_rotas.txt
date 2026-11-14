@@ -8,6 +8,7 @@ GET /api/acervo/regras -> api_acervo_regras
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
 GET /api/ao-vivo/claude -> ao_vivo_claude
+GET /api/ao-vivo/conferencia-opus -> ao_vivo_conferencia_opus
 GET /api/ao-vivo/cruzamento -> ao_vivo_cruzamento
 GET /api/ao-vivo/estado -> ao_vivo_estado
 GET /api/ao-vivo/stream -> ao_vivo_stream
