@@ -90,3 +90,58 @@ def test_inicio_artefato_e_descartado(tmp_path):
 def test_ressalva_presente(db):
     d = escalada_preco(db_path=db)
     assert "Indício" in d["ressalva"] and "reajuste" in d["ressalva"].lower()
+
+
+def _db_series(tmp_path, rows):
+    p = str(tmp_path / "s.db")
+    con = sqlite3.connect(p)
+    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_nome TEXT, unidade_nome TEXT,
+        municipio TEXT, item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
+        quantidade REAL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, ordem_classificacao INTEGER,
+        data_pub TEXT)""")
+    con.executemany("INSERT INTO pncp_resultado (certame, orgao_nome, unidade_nome, item_descricao, "
+                    "unidade_medida, valor_unitario, quantidade, fornecedor_cnpj, fornecedor_nome, "
+                    "ordem_classificacao, data_pub) VALUES (?,?,?,?,?,?,?,?,?,1,?)", rows)
+    con.commit()
+    con.close()
+    return p
+
+
+def test_apresentacao_diferente_nao_e_escalada(tmp_path):
+    # galão de 5 L a R$ 5 e galão de 20 L a R$ 20: o agrupamento antigo ('galaol' = 'galaol') via 4×;
+    # na unidade normalizada são apresentações diferentes — nenhuma série de 3
+    A = "11111111000111"
+    p = _db_series(tmp_path, [
+        ("C1", "S", "S", "Agua mineral", "Galão 5 L", 5.0, 10, A, "ALFA", "2025-01-10"),
+        ("C2", "S", "S", "Agua mineral", "Galão 5 L", 5.5, 10, A, "ALFA", "2025-02-10"),
+        ("C3", "S", "S", "Agua mineral", "Galão 20 L", 20.0, 10, A, "ALFA", "2025-04-10"),
+    ])
+    d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
+    assert d["n"] == 0
+
+
+def test_unidade_ambigua_sai_da_serie_e_e_contada(tmp_path):
+    # a 3ª compra em 'Caixa' (sem conteúdo) não pode virar o "preço final" da escalada
+    A = "11111111000111"
+    p = _db_series(tmp_path, [
+        ("C1", "S", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
+        ("C2", "S", "S", "Lampada LED", "UN", 2.2, 100, A, "ALFA", "2025-02-20"),
+        ("C3", "S", "S", "Lampada LED", "Caixa", 40.0, 5, A, "ALFA", "2025-04-15"),
+    ])
+    d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
+    assert d["n"] == 0
+    assert d["indeterminados"]["n"] == 1
+
+
+def test_caixa_com_contagem_vira_preco_por_unidade(tmp_path):
+    # 'Caixa 10 UN' a R$ 100 = R$ 10/un: a série por unidade é 2 → 4 → 10 (5×)
+    A = "11111111000111"
+    p = _db_series(tmp_path, [
+        ("C1", "S", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
+        ("C2", "S", "S", "Lampada LED", "UN", 4.0, 100, A, "ALFA", "2025-02-20"),
+        ("C3", "S", "S", "Lampada LED", "Caixa 10 UN", 100.0, 10, A, "ALFA", "2025-04-15"),
+    ])
+    d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
+    assert d["n"] == 1
+    a = d["achados"][0]
+    assert a["preco_final"] == 10.0 and a["razao"] == 5.0 and a["unidade_normalizada"] == "unidade"
