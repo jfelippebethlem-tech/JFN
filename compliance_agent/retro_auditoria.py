@@ -247,7 +247,7 @@ def avaliar_lift(db_path: str | None = None) -> dict:
         sanc, base, n_univ = gabarito(con)
         if not n_univ:
             return {"ok": False, "erro": "universo de fornecedores vazio (PNCP não coletado)"}
-        linhas = []
+        linhas, circulares = [], []
         for nome, circular in _LIFT_DETECTORES:
             try:
                 cnpjs = _cnpjs_detector(con, nome, db_path)
@@ -256,6 +256,13 @@ def avaliar_lift(db_path: str | None = None) -> dict:
                 continue
             if not cnpjs:
                 continue
+            if circular:
+                # Revisão cética de 13/11/2026 (D8): o detector usa sanção como insumo, então "concentra
+                # sancionados" por construção (o radar mostrava 16,68×). Fora do cálculo: só o tamanho, à parte.
+                circulares.append({"detector": nome, "n": len(cnpjs),
+                                   "motivo": "usa sanção como insumo — o lift contra sanção seria circular "
+                                             "e não foi calculado"})
+                continue
             marc = len(cnpjs & sanc)
             taxa = marc / len(cnpjs)
             linhas.append({
@@ -263,15 +270,16 @@ def avaliar_lift(db_path: str | None = None) -> dict:
                 "taxa": round(taxa, 4), "lift": round(taxa / base, 2) if base else None,
                 "circular": circular,
                 "n_pequeno": len(cnpjs) < 10})
-        # ranking: independentes (não-circular) por lift; circulares ao fim (só sanidade)
-        linhas.sort(key=lambda x: (x["circular"], -(x["lift"] or 0)))
+        linhas.sort(key=lambda x: -(x["lift"] or 0))
         return {"ok": True, "taxa_base": round(base, 4), "universo": n_univ,
                 "sancionados_universo": round(base * n_univ), "detectores": linhas,
-                "explicacao": ("Gabarito OBJETIVO = sanções impeditivas (CEIS/CNEP). Para cada "
-                               "detector, o LIFT é a razão entre a taxa de sancionados no que ele "
-                               "marca e a taxa-base do universo. lift>1 = concentra risco real; "
-                               "~1 = ruído; <1 = anti-sinal. 'circular' = o detector usa sanção "
-                               "como input (lift não é corroboração independente)."),
+                "circulares": circulares,
+                "explicacao": ("Gabarito = fornecedores com sanção impeditiva no CEIS/CNEP, de qualquer época "
+                               "e de qualquer ente (não mede irregularidade nem sanção vigente à época do ato). "
+                               "Para cada detector, o LIFT é a razão entre a taxa de sancionados no que ele "
+                               "marca e a taxa-base do universo: lift>1 = marca mais sancionados que a base; "
+                               "~1 = ruído; <1 = anti-sinal. Detectores que usam sanção como insumo ficam "
+                               "fora do cálculo (seriam circulares) e aparecem à parte, sem lift."),
                 "ressalva": ("Sanção é uma prova PARCIAL (nem toda fraude vira sanção; sanção pode "
                              "ter causa alheia ao sinal). n pequeno = lift instável. É calibração "
                              "relativa entre detectores, não veredito sobre empresa. Indício ≠ acusação.")}
@@ -287,8 +295,10 @@ if __name__ == "__main__":
             print(d); sys.exit(1)
         print(f"taxa-base: {d['taxa_base']*100:.2f}% ({d['sancionados_universo']}/{d['universo']})")
         for x in d["detectores"]:
-            tag = "🔁circular" if x["circular"] else ("⚠️n<10" if x["n_pequeno"] else "")
+            tag = "⚠️n<10" if x["n_pequeno"] else ""
             print(f"  {x['detector']:22} n={x['n']:4} lift={x['lift']:5}x taxa={x['taxa']*100:5.1f}% {tag}")
+        for x in d["circulares"]:
+            print(f"  {x['detector']:22} n={x['n']:4} 🔁circular — fora do cálculo")
     elif len(sys.argv) > 1 and sys.argv[1] == "registrar":
         print(json.dumps(registrar_sinais(), ensure_ascii=False))
     else:

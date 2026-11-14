@@ -241,17 +241,23 @@ def api_painel():
                 logger.warning("último dia do SIAFE indisponível: %s", exc)
                 ultimo_dia, n_ultimo_dia, v_ultimo_dia = None, 0, 0.0
 
+            # Só alerta NÃO descartado (13/11/2026): os 58.253 de emprego múltiplo por CPF mascarado foram
+            # descartados, mas o card seguia contando a tabela inteira ("59.024 de gravidade alta").
+            ativo = sa.or_(Alerta.status.is_(None), Alerta.status != "descartado")
             sev = {}
-            for r in s.query(Alerta.severidade, sa.func.count(Alerta.id)).group_by(Alerta.severidade).all():
-                sev[r[0] or "baixa"] = r[1]
+            for r in (s.query(Alerta.severidade, sa.func.count(Alerta.id)).filter(ativo)
+                      .group_by(Alerta.severidade).all()):
+                k = r[0] or "baixa"
+                sev[k] = sev.get(k, 0) + r[1]
             alta = sev.get("alta", 0)
             media = sev.get("média", 0) + sev.get("media", 0)
+            total_ativos = sum(sev.values())
 
             alertas = [
                 {"tipo": a.tipo, "severidade": a.severidade, "titulo": a.titulo,
                  "descricao": (a.descricao or "")[:300], "data": str(a.data_referencia or ""),
                  "criado": str(a.created_at)[:16]}
-                for a in s.query(Alerta).order_by(desc(Alerta.created_at)).limit(40).all()
+                for a in s.query(Alerta).filter(ativo).order_by(desc(Alerta.created_at)).limit(40).all()
             ]
             top = [
                 {"nome": r[0], "total": float(r[1] or 0), "n": r[2]}
@@ -297,8 +303,8 @@ def api_painel():
                 "obs": {"total": total_obs, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia, "valor_ultimo_dia": v_ultimo_dia,
                         "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
                         "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
-                "alertas": {"alta": alta, "media": media,
-                            "total": s.query(Alerta).count()},
+                "alertas": {"alta": alta, "media": media, "baixa": total_ativos - alta - media,
+                            "total": total_ativos, "criterio": "não descartados (status ≠ descartado)"},
                 "ultima_coleta": ultima_coleta,
                 "lista_alertas": alertas,
                 "top_favorecidos": top,
@@ -532,17 +538,21 @@ def api_compliance_stats():
         init_db()
         session = get_session()
 
+        from sqlalchemy import or_
+        ativo = or_(Alerta.status.is_(None), Alerta.status != "descartado")   # descartado não é alerta
+
         # Alert counts by severity
         sev_counts = {}
-        for row in session.query(Alerta.severidade, func.count(Alerta.id)).group_by(Alerta.severidade).all():
+        for row in (session.query(Alerta.severidade, func.count(Alerta.id)).filter(ativo)
+                    .group_by(Alerta.severidade).all()):
             sev_counts[row[0] or "desconhecida"] = row[1]
 
         # Alert counts by tipo
         tipo_counts = {}
-        for row in session.query(Alerta.tipo, func.count(Alerta.id)).group_by(Alerta.tipo).all():
+        for row in session.query(Alerta.tipo, func.count(Alerta.id)).filter(ativo).group_by(Alerta.tipo).all():
             tipo_counts[row[0] or "outros"] = row[1]
 
-        total_alertas   = session.query(Alerta).count()
+        total_alertas   = session.query(Alerta).filter(ativo).count()
         total_contratos = session.query(Contrato).count()
         total_empresas  = session.query(Empresa).count()
         total_pessoas   = session.query(Pessoa).count()

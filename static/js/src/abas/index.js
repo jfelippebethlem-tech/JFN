@@ -2148,13 +2148,15 @@ export async function _liftBloco(){
   const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,var(--green))'));
     return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
   let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
-  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base*100,1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base*100,1)}%</b> dos ${fmtN(d.universo)} fornecedores têm sanção impeditiva (de qualquer época ou ente). <b>Lift</b> = quantas vezes o detector marca sancionados acima disso — não mede irregularidade. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal. Detector que usa sanção como insumo é <b>circular</b> e fica fora do cálculo.</div>`;
   h+=`<div class="grid">`+det.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:700">${rot(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">circular</span>':''}${x.n_pequeno?'<span class="tag amber">n<10</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${fmtD(x.taxa*100,1)}%)</div>
       ${barra(x.lift,x.circular)}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${fmtN(x.lift)}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+  const circ=d.circulares||[];
+  if(circ.length)h+=`<div class="note" style="margin-top:8px">Fora do cálculo (circulares — usam sanção como insumo, o lift contra sanção não informa nada): ${circ.map(x=>`<b>${rot(x.detector)}</b> (${fmtN(x.n)} marcados)`).join(' · ')}.</div>`;
   return h;
 }
 
@@ -2205,6 +2207,10 @@ export async function renderNepotismo(){
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
 // ═══ EMPRESA FÊNIX ═══
+const _FENIX_FORA={natureza_publica:'é órgão ou ente público, não empresa',
+  cartorio:'é cartório extinto na reorganização das serventias (a serventia foi sucedida)',
+  filial_de_matriz_ativa:'é filial baixada de matriz ATIVA — a pessoa jurídica segue viva',
+  pagamento_judicial:'é pagamento por decisão judicial ou restituição (Encargos Gerais, processo da PGE)'};
 export async function renderFenix(){
   const d=await J('/api/intel/fenix?limite=150');
   if(!d.ok)return sec('Fênix')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
@@ -2219,7 +2225,10 @@ export async function renderFenix(){
     if(x.pagou_apos_baixa===true)
       return `${quem} desde <b>${esc(x.data_baixa)}</b> e ainda assim recebeu `
         +`<b>${fmtRc(x.valor_apos_baixa)}</b> em <b>${fmtN(x.n_ob_apos_baixa)} OB posteriores à baixa</b> `
-        +`(de ${fmtRc(x.total_recebido)} no total). Pagamento a empresa baixada/inapta é irregular — indício forte.`;
+        +`(de ${fmtRc(x.total_recebido)} no total). Indício a conferir no processo de pagamento — inapta não é o mesmo que extinta, e cadastro irregular não prova inexecução.`;
+    if(x.fora_da_manchete)
+      return `${quem} desde <b>${esc(x.data_baixa)}</b> e recebeu ${fmtRc(x.valor_fora_da_manchete)} depois, mas <b>não entra na soma</b>: `
+        +`${esc(_FENIX_FORA[x.fora_da_manchete]||x.fora_da_manchete)}.`;
     if(x.pagou_apos_baixa===false)
       return `${quem} desde <b>${esc(x.data_baixa)}</b>, mas <b>todos</b> os ${fmtRc(x.total_recebido)} `
         +`foram pagos <b>antes</b> da baixa — situação comum, <b>não é</b> pagamento a empresa morta. `
@@ -2235,9 +2244,11 @@ export async function renderFenix(){
         {sobre:'Empresas com baixa no cadastro da Receita que aparecem no fluxo de pagamento do Estado. O rótulo sozinho não acusa nada — o que separa achado de ruído é a <b>ordem das datas</b>, e ela está nos dois KPIs seguintes.'})}${kpi(fmtN(d.n_defunta_confirmada||0),'Recebeu DEPOIS da baixa',(d.n_defunta_confirmada?'var(--rose)':null),'💀',
         {sobre:'O ACHADO de verdade: ordem bancária emitida em data POSTERIOR à baixa. Uma versão anterior desta tela somava tudo que empresa hoje baixada já recebeu — e anunciava bilhões que eram pagamentos regulares feitos quando a empresa estava viva; o erro foi de ~218×. Situação cadastral vale <b>na data do ato</b>, nunca hoje.'})}
       ${kpi(fmtRc(d.total_apos_baixa||0),'Pago após a baixa',(d.total_apos_baixa?'var(--rose)':null),'💰',
-        {sobre:'Soma das OB emitidas depois da baixa — só destas, não do histórico da empresa. Fonte: <b>SIAFE</b>, ordem bancária, que é o único registro de pagamento efetivo; empenho e liquidação não entram porque empenho pode ser cancelado.'})}${kpi(fmtN(d.n_defunta||0),'Baixada hoje (recebeu antes)',null,'🗓️',
+        {sobre:'Soma das OB emitidas depois da baixa — só destas, não do histórico da empresa. Fonte: <b>SIAFE</b>, ordem bancária, que é o único registro de pagamento efetivo; empenho e liquidação não entram porque empenho pode ser cancelado.'})}${kpi(fmtN(d.n_pagou_so_antes!=null?d.n_pagou_so_antes:(d.n_defunta||0)),'Baixada hoje (recebeu antes)',null,'🗓️',
         {sobre:'Empresas hoje baixadas cujos pagamentos são TODOS anteriores à baixa. Ficam listadas e fora do achado de propósito: encerrar atividade depois de cumprir contrato é o curso normal das coisas, e contá-las como irregularidade é o erro que esta tela já cometeu.'})}</div>`;
-  h+=`<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.</div>`;
+  h+=`<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.`
+    +(d.n_fora_da_manchete?` Fora da soma, contados à parte: <b>${fmtN(d.n_fora_da_manchete)}</b> CNPJs (${fmtRc(d.total_fora_da_manchete||0)}) de órgão público, cartório, filial baixada de matriz ativa ou pagamento judicial — a baixa desses CNPJs não indica pagamento indevido.`:'')
+    +` O que fica na soma é <b>indício a conferir</b> no processo de pagamento, não acusação.</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
   h+=`<div id="fenix-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>

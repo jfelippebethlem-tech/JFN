@@ -143,10 +143,61 @@ def test_contrato_da_gestao_usa_a_data_do_doerj_e_tira_ata(ctx):
 
 
 def test_curadoria_manual_nao_carrega_vermelho_fixo_e_refutado_vira_branco():
-    t01 = GR.rebaixar_curadoria({"id": "T01", "top10": True, "grau": "🔴"})
-    assert t01["grau"] == "🟡" and t01["grau_proposto"] == "🔴" and t01["revisao_cetica"]["veredito"] == "PARCIAL"
-    t05 = GR.rebaixar_curadoria({"id": "T05", "top10": True, "grau": "🟡"})
-    assert t05["grau"] == "⚪" and t05["revisao_cetica"]["veredito"] == "REFUTADA"
+    t01 = GR.curar_top10({"id": "T01", "grau": "🔴", "estado_verificacao": "PARCIAL", "regra_ou_hipotese": "D14 · X"})
+    assert t01["grau"] == "🟡" and t01["grau_proposto"] == "🔴" and t01["top10"] is True
+    assert t01["regra_ou_hipotese"] == "PARCIAL · D14 · X"                 # o estado vai no próprio título
+    t05 = GR.curar_top10({"id": "T05", "grau": "🟡", "estado_verificacao": "REFUTADO", "regra_ou_hipotese": "D14 · Y"})
+    assert t05["grau"] == "⚪" and t05["regra_ou_hipotese"].startswith("REFUTADO · ")
+    # mesmo SUSTENTADO não vira 🔴 por curadoria: o 🔴 é da régua determinística (caso D14 com contrato na vigência)
+    t03 = GR.curar_top10({"id": "T03", "grau": "🔴", "estado_verificacao": "SUSTENTADO", "regra_ou_hipotese": "Z",
+                          "prova_primaria": ["DOERJ 01/01/2026"]})
+    assert t03["grau"] == "🟡"
+
+
+def test_curadoria_sem_estado_de_verificacao_e_pendente_e_branca():
+    x = GR.curar_top10({"id": "T09", "grau": "🟡", "regra_ou_hipotese": "título antigo com número"})
+    assert x["estado_verificacao"] == "PENDENTE" and x["grau"] == "⚪"
+    assert x["regra_ou_hipotese"].startswith("PENDENTE · ")
+    assert GR.curar_top10({"id": "T1", "estado_verificacao": "INVENTADO", "grau": "🟡"})["estado_verificacao"] == "PENDENTE"
+
+
+def test_verificacao_do_top10_segue_o_estado_e_nao_o_numero_do_processo():
+    par = GR.aplicar_verificacao(GR.curar_top10({"id": "T02", "grau": "🟡", "estado_verificacao": "PARCIAL",
+                                                 "processo": "SEI-1/2026", "regra_ou_hipotese": "A"}))
+    assert par["verificacao"] == "PENDENTE" and par["regra_ou_hipotese"] == "PARCIAL · A"
+    assert par["prova_primaria"] == []                      # processo citado não é prova primária
+    sus = GR.aplicar_verificacao(GR.curar_top10({"id": "T03", "grau": "🟡", "estado_verificacao": "SUSTENTADO",
+                                                 "regra_ou_hipotese": "B", "prova_primaria": ["OB 1 (SIAFE)"]}))
+    assert sus["verificacao"] == "VERIFICADO" and sus["regra_ou_hipotese"] == "SUSTENTADO · B"
+    assert GR.aplicar_verificacao(sus) == sus               # idempotente
+
+
+def test_montar_le_a_curadoria_e_nao_preserva_titulo_antigo():
+    anterior = {"achados": [{"id": "T01", "top10": True, "grau": "🟡", "regra_ou_hipotese": "R$ 999 mi refutado"}]}
+    info = dict(gerado_em="2026-11-15T03:00:00", GFIM="2026-11-10", G1="2026-10-31", B0="2025-03-23", B1="2025-10-31")
+    sem = GR.montar({}, anterior=anterior, hipoteses=None, motivo_subj="x", ctx_info=info, curadoria=None)
+    assert not [x for x in sem["achados"] if x.get("top10")] and sem["curadoria"]["estado"] == "ausente"
+    cur = [{"id": "T01", "grau": "🟡", "estado_verificacao": "PARCIAL", "regra_ou_hipotese": "novo",
+            "explicacao_inocente": "i", "proximo_passo": "p"}]
+    com = GR.montar({}, anterior=anterior, hipoteses=None, motivo_subj="x", ctx_info=info, curadoria=cur)
+    t = [x for x in com["achados"] if x.get("top10")]
+    assert [x["regra_ou_hipotese"] for x in t] == ["PARCIAL · novo"] and com["curadoria"]["estado"] == "ok"
+
+
+def test_reaplicar_curadoria_troca_so_o_top10(tmp_path):
+    saida = tmp_path / "s.json"
+    GR.gravar_json(saida, {"achados": [{"id": "T01", "top10": True, "grau": "🟡", "regra_ou_hipotese": "velho"},
+                                       {"id": "D05", "camada": "deterministica", "grau": "🟡", "verificacao": "VERIFICADO",
+                                        "regra_ou_hipotese": "regra"}],
+                           "por_verificacao": {"VERIFICADO": 2}, "n_achados": 2})
+    cur = tmp_path / "c.json"
+    GR.gravar_json(cur, {"itens": [{"id": "T01", "grau": "🟡", "estado_verificacao": "REFUTADO",
+                                    "regra_ou_hipotese": "novo", "explicacao_inocente": "i", "proximo_passo": "p"}]})
+    assert GR.reaplicar_curadoria(saida, cur) == 1
+    d = GR.ler_json(saida)
+    assert [x["id"] for x in d["achados"]] == ["T01", "D05"]
+    assert d["achados"][0]["regra_ou_hipotese"] == "REFUTADO · novo" and d["achados"][0]["grau"] == "⚪"
+    assert d["por_verificacao"] == {"PENDENTE": 1, "VERIFICADO": 1} and d["n_achados"] == 2
 
 
 def test_d18_veredito_fachada_sem_registro_do_juizo_nao_e_confirmado(base, tmp_path):
@@ -170,3 +221,15 @@ def test_d18_score_alto_sem_fachada_registrada_nao_e_vermelho():
                                       "fachada_confirmada": False}]}}
     a = [x for x in GR.achados_deterministicos(res) if x["id"].startswith("D18")]
     assert all(x["grau"] != "🔴" for x in a)
+
+
+def test_aba_le_o_estado_da_curadoria_e_nao_o_rebaixa_a_agregado():
+    from compliance_agent import governo_couto as G
+    par = GR.aplicar_verificacao(GR.curar_top10({"id": "T02", "grau": "🟡", "estado_verificacao": "PARCIAL",
+                                                 "regra_ou_hipotese": "A", "revisao": {"nota": "valor reduzido"}}))
+    v, motivo = G._verificacao(par)
+    assert v == "PENDENTE" and "PARCIAL" in motivo and "valor reduzido" in motivo
+    sus = GR.aplicar_verificacao(GR.curar_top10({"id": "T03", "estado_verificacao": "SUSTENTADO", "grau": "🟡",
+                                                 "regra_ou_hipotese": "B", "prova_primaria": ["DOERJ"]}))
+    v, motivo = G._verificacao(sus)
+    assert v == "VERIFICADO" and "SUSTENTADO" in motivo

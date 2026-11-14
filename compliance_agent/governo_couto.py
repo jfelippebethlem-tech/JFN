@@ -519,6 +519,12 @@ _RE_SO_NOME = re.compile(r"hom[ôo]nim|doa[çc][ãa]o eleitoral|mesmo nome|por n
 def _verificacao(it: dict) -> tuple[str, str]:
     """VERIFICADO só quando a ligação do indício ao credor é por CHAVE (CNPJ de 14 dígitos) numa análise
     determinística de caso. Verificado = o FATO está na fonte; continua sendo indício, não acusação."""
+    if it.get("top10") and it.get("estado_verificacao"):
+        # curadoria T01..T10: o estado vem da verificação declarada no item (governo_couto_regras.curar_top10)
+        est, nota = it["estado_verificacao"], str((it.get("revisao") or {}).get("nota") or "")
+        if est == "SUSTENTADO" and it.get("verificacao") == "VERIFICADO":
+            return "VERIFICADO", f"SUSTENTADO na verificação com prova primária citada{' — ' + nota if nota else ''}"
+        return "PENDENTE", f"{est} na verificação{' — ' + nota if nota else ''}"
     txt = " ".join(str(it.get(k) or "") for k in ("regra_ou_hipotese", "explicacao_inocente", "fonte"))
     if _RE_SO_NOME.search(txt):
         return "PENDENTE", "possível homônimo — não verificado: o casamento é por nome, sem segundo atributo"

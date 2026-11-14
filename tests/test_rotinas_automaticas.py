@@ -207,8 +207,10 @@ def test_montar_preserva_top10_e_marca_hipoteses_pendentes(base_couto, tmp_path)
          "explicacao_inocente": "x", "proximo_passo": "y"},
         {"id": "D05", "camada": "deterministica", "grau": "🟡"},
     ]}
+    curadoria = [{"id": "T01", "camada": "deterministica", "grau": "🔴", "estado_verificacao": "PARCIAL",
+                  "regra_ou_hipotese": "curado"}]
     info = dict(gerado_em="2026-11-15T03:00:00", GFIM="2026-11-10", G1="2026-10-31", B0="2025-03-23", B1="2025-10-31")
-    doc = GR.montar(res, anterior=anterior, hipoteses=None, motivo_subj="sem cota", ctx_info=info)
+    doc = GR.montar(res, anterior=anterior, hipoteses=None, motivo_subj="sem cota", ctx_info=info, curadoria=curadoria)
     ids = [x["id"] for x in doc["achados"]]
     assert ids[0] == "T01" and "curadoria" in doc["achados"][0]
     assert ids.count("D05") == 1                                         # regra recalculada, não duplicada

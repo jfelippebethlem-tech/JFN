@@ -179,7 +179,7 @@ export function ckBoot(){
      para o chip da mesa — é o mesmo número, agora também em cartão). */
   if(_v60)g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
     ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
-    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
@@ -190,7 +190,7 @@ export function ckBoot(){
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
-    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
@@ -221,8 +221,9 @@ export function ckPull(first){
       if(m){m.textContent='indisponível — '+erroHumano(d&&d.erro);m.classList.remove('esperando');}
       return;}
     nuSet('alertas',a.total);
-    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
-    if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média`
+    // só alerta NÃO descartado (o servidor filtra desde 13/11/2026); as três gravidades somam o total
+    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
+    if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média${a.baixa!=null?' · '+fmtN(a.baixa)+' baixa':''} (descartados fora)`
       +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
   if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
     /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".
@@ -277,8 +278,11 @@ export function ckPull(first){
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ ${_v60?'Radar':'RADAR'} ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
+  // Revisão D8 (13/11/2026): circulares (usam sanção como insumo) saem do CÁLCULO no servidor; o filtro aqui
+  // fica como segunda trava. O rótulo diz o que o número mede: sancionados de qualquer época ou ente, com n.
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra sanção ${b.lift}× acima da base (sanção de qualquer época ou ente)`:'—'});});
+    ckFill('lift',{txt:b?fmtD(b.lift,2)+'×':'—',meta:b?`<b>${rot(b.detector)}</b> marca ${fmtD(b.lift,2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)`
+      +((d.circulares||[]).length?` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo`:''):'—'});});
   // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
   // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
   // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.
@@ -292,10 +296,14 @@ export function ckPull(first){
     // R$ 2,56 bi são pagamentos anteriores à morte, que não têm nada de irregular (a Cruz
     // Vermelha, baixada em 2005, sozinha respondia por R$ 305 mi). O número da manchete
     // passa a ser o confirmado; o amplo vira contexto na linha de baixo, sem sumir.
+    // Verificação de 13/11/2026: a soma ainda trazia cartório extinto, órgão público, filial baixada de matriz
+    // ATIVA e pagamento judicial. O servidor os tira da soma e os conta à parte (`fora_da_manchete`); o card diz
+    // isso e diz que é INDÍCIO A CONFERIR — inapta não é extinta, e cadastro irregular não prova inexecução.
+    const _fm=d.fora_da_manchete||{},_fmN=k=>fmtN((_fm[k]||{}).n||0);
     ckFill('fenix',{txt:fmtRc(d.total_apos_baixa||0),
-      meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> empresas receberam <b>depois</b> da baixa na Receita`
-           +` · outras ${fmtN((d.n_defunta||0)-(d.n_defunta_confirmada||0))} estão baixadas hoje mas só receberam antes`});
-    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita`}]);});
+      meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo`
+           +(d.n_fora_da_manchete?` · fora da conta: ${_fmN('natureza_publica')} órgãos públicos, ${_fmN('cartorio')} cartórios, ${_fmN('filial_de_matriz_ativa')} filiais de matriz ativa, ${_fmN('pagamento_judicial')} pagamentos judiciais`:'')});
+    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir`}]);});
   J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
     const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
       if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';
