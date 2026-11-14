@@ -139,7 +139,7 @@ def test_lote_api_grava_com_dupla_leitura_e_contabiliza(con):
 def test_opus_verifica_achado_e_pausa_api_se_haiku_discorda(con, monkeypatch):
     monkeypatch.setattr(T, "AMOSTRA_MINIMA", 1)
     T.triar_lote(con, 2, gerar=_gerar(_r("aprofundar"), _r("aprofundar")))
-    con.execute("UPDATE alertas_triagem SET motor='claude-haiku-5-5@api-lote'")
+    con.execute("UPDATE alertas_triagem SET motor=?", (T.motor_lote(),))
     con.commit()
     opus = lambda t, p, **k: Pensamento(texto=_r("provavel_falso_positivo"), modelo="claude-opus-5-5", segundos=1, tarefa=t)
     avisos = []
@@ -147,6 +147,20 @@ def test_opus_verifica_achado_e_pausa_api_se_haiku_discorda(con, monkeypatch):
     assert {f["estado"] for f in feitos} == {"PENDENTE"}          # Opus divergiu: vai para gente
     from compliance_agent.llm import claude_api
     assert "triagem_alertas" in claude_api.ler_gasto()["pausadas"] and avisos
+
+
+def test_vigia_so_conta_pares_do_prompt_vigente(con, monkeypatch):
+    # 14/11/2026: o vigia somava os 36 pares do prompt ANTIGO (44%) aos do prompt medido no A/B — a tarefa
+    # seria repausada pelo erro que o A/B já corrigiu. O motor do lote leva a versão do prompt.
+    monkeypatch.setattr(T, "AMOSTRA_MINIMA", 1)
+    T.triar_lote(con, 2, gerar=_gerar(_r("aprofundar"), _r("aprofundar")))
+    con.execute("UPDATE alertas_triagem SET motor='claude-haiku-5-5@api-lote'")    # prompt antigo, sem versão
+    con.commit()
+    opus = lambda t, p, **k: Pensamento(texto=_r("provavel_falso_positivo"), modelo="claude-opus-5-5", segundos=1, tarefa=t)
+    T.verificar_com_opus(con, 5, pensar=opus, avisar=lambda *_: None)
+    from compliance_agent.llm import claude_api
+    assert "triagem_alertas" not in claude_api.ler_gasto()["pausadas"]
+    assert T.motor_lote().endswith("#" + T.VERSAO_PROMPT) and T.VERSAO_PROMPT == _HASH_SYS_MEDIDO
 
 
 def test_prompt_medido_no_ab_nao_muda_sem_novo_ab():

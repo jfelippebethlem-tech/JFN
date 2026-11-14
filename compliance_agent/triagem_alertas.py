@@ -27,6 +27,7 @@ CPF vai MASCARADO no prompt (LGPD).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import re
@@ -78,6 +79,15 @@ _ITEM_SCHEMA = {"type": "object", "additionalProperties": False,
                                "justificativa": {"type": "string"}}}
 FORMATO_LOTE = {"type": "object", "additionalProperties": False, "required": ["itens"],
                 "properties": {"itens": {"type": "array", "items": _ITEM_SCHEMA}}}
+
+# Versão do prompt no nome do motor do lote: o vigia de qualidade só soma pares do prompt VIGENTE (os pares do
+# prompt antigo, 44% de acordo com o Opus, repausariam a tarefa pelo erro que o A/B de 14/11 já corrigiu).
+VERSAO_PROMPT = hashlib.sha256(_SYS.encode()).hexdigest()[:12]
+
+
+def motor_lote() -> str:
+    from compliance_agent.llm import claude_api
+    return f"{claude_api.MODELO_API_PADRAO}@api-lote#{VERSAO_PROMPT}"
 
 _DDL = """CREATE TABLE IF NOT EXISTS alertas_triagem(
   alerta_id INTEGER PRIMARY KEY, prioridade TEXT, nota INTEGER, justificativa TEXT, proximo_passo TEXT,
@@ -283,7 +293,7 @@ def colher_lotes_api(con: sqlite3.Connection, *, cliente=None, gerar_b=None) -> 
         if res is None:
             continue
         grupos = json.loads(grupos_js)
-        modelo = f"{claude_api.MODELO_API_PADRAO}@api-lote"
+        modelo = motor_lote()
         for gid, ids in grupos.items():
             alertas = _por_ids(con, ids)
             from compliance_agent.llm.json_resposta import parse_json_llm
@@ -364,7 +374,7 @@ def vigiar_qualidade(*, avisar=None) -> dict | None:
     """Concordância Opus × Haiku (API) na triagem. Abaixo do piso com amostra mínima ⇒ pausa na API + aviso."""
     from compliance_agent.llm import claude_api, cruzamento
     c = cruzamento.concordancia(dias=30, tarefa=TAREFA)
-    linhas = [x for x in c["por_tarefa_modelo"] if "@api" in (x["modelo"] or "")]
+    linhas = [x for x in c["por_tarefa_modelo"] if (x["modelo"] or "").endswith(f"#{VERSAO_PROMPT}")]
     n = sum(x["n"] for x in linhas)
     if n < AMOSTRA_MINIMA:
         return None
