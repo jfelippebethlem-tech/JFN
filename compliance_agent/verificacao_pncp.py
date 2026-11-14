@@ -176,7 +176,7 @@ def verificar(db_path: str | None, linhas: list[dict], pausa: float = 1.0,
                     con.commit()
                     certs_feitos.add(cert)
                     cont["certames"] += 1
-                except Exception as exc:  # noqa: BLE001 — sem resposta: srp segue desconhecido
+                except (OSError, ValueError, sqlite3.Error) as exc:  # rede/HTTP (URLError é OSError), JSON inválido, banco: srp segue desconhecido
                     log(f"  certame {cert} sem resposta: {exc}")
             k = (ln["certame"], ln["item"], ln["fornecedor_cnpj"])
             if k in feitos:
@@ -191,7 +191,7 @@ def verificar(db_path: str | None, linhas: list[dict], pausa: float = 1.0,
                 time.sleep(pausa)
                 res_api = _get(url + "/resultados")
                 time.sleep(pausa)
-            except Exception as exc:  # noqa: BLE001 — rede/HTTP: fica PENDENTE, nunca verificado
+            except (OSError, ValueError) as exc:  # rede/HTTP (URLError/HTTPError/timeout são OSError) ou JSON inválido: fica PENDENTE
                 log(f"  PENDENTE {k}: {exc}")
                 cont[PENDENTE] += 1
                 time.sleep(pausa * 3)
