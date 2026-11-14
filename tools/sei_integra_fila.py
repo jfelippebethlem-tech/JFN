@@ -448,6 +448,13 @@ def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
     return sorted(out)
 
 
+# TETO POR PROCESSO da captura. 900 s cabem ~330 documentos (2,7 s/doc medidos no it-campo em 14/11/2026); os de 338
+# e 707 documentos morreram no teto. Na VM-1 a retomada parcial salva o trabalho (mesmo cache), mas num nó com um
+# worktree por sessão a próxima tentativa cai em OUTRA árvore e recomeça do zero — processo grande nunca terminaria.
+# O nó paralelo usa INTEGRA_TETO_PROCESSO_S=3600; o padrão segue 900.
+TETO_PROCESSO_S = int(os.environ.get("INTEGRA_TETO_PROCESSO_S", "900"))
+
+
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
     """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'adiado' | 'erro'.
 
@@ -460,7 +467,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         # stdout capturado (antes DEVNULL): a captura imprime POR QUE não abriu a árvore, e essa
         # causa morria aqui — o log da fila dizia "ok" para um processo sem nenhum documento.
         r1 = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
-                            cwd=RAIZ, env=env, timeout=900, text=True,
+                            cwd=RAIZ, env=env, timeout=TETO_PROCESSO_S, text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         rc = r1.returncode
         causas = _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]

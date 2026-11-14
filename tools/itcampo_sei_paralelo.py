@@ -262,7 +262,7 @@ def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
     estado = {"atual": "", "feitos": 0}
     parar = threading.Event()
     threading.Thread(target=_progresso, args=(s, estado, parar), daemon=True).start()
-    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 1200), str(s / ".venv/bin/python"),
+    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 3900), str(s / ".venv/bin/python"),
                           "-u", "tools/sei_integra_fila.py", "--fila", "data/fila_itcampo.json",
                           "--segundos", str(segundos)], cwd=s, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          text=True, encoding="utf-8", errors="replace")
@@ -391,7 +391,8 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     # PISO DE MEMÓRIA (1,5 GB) fica como válvula — o Windows do dono tinha só 3 GB livres, o WSL não cresce.
     os.environ.setdefault("VM_GUARD_MAX_LOAD", "28")
     os.environ.setdefault("VM_GUARD_MIN_FREE_GB", "1.5")
-    os.environ.setdefault("OMP_THREAD_LIMIT", "1")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
+    os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+    os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "3600")   # 707 docs × 2,7 s ≈ 32 min (o padrão 900 s os matava)      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
     os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
     meu = _head(BASE)
     preparar_worktree(k, meu, modo)
