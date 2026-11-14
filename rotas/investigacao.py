@@ -1254,9 +1254,27 @@ async def _com_teto(coro, rotulo: str):
                       "não é ausência de resultado. Tente de novo ou reduza o período.")
 
 
+# Propagação automática (14/11/2026): o despachante (`compliance_agent/propagacao.py`, FORA deste processo) grava
+# em `_invalidar.json` {prefixo da chave: instante}. Valor calculado ANTES da marca conta como vencido — o
+# `_cache_calc` entrega o anterior na hora e recalcula em 2º plano (SWR). Sem o arquivo, nada muda.
+_INVALIDAR = {"mtime": None, "marcas": {}}
+
+
+def _cache_invalidado_em(chave: str) -> float:
+    arq = _CACHE_DIR / "_invalidar.json"
+    try:
+        mt = arq.stat().st_mtime_ns
+        if mt != _INVALIDAR["mtime"]:
+            marcas = json.loads(arq.read_text(encoding="utf-8"))
+            _INVALIDAR.update(mtime=mt, marcas={str(p): float(t) for p, t in marcas.items()})
+    except (OSError, ValueError, TypeError, AttributeError):
+        return 0.0                                    # marca ausente/ilegível: vale só o TTL
+    return max((t for p, t in _INVALIDAR["marcas"].items() if chave.startswith(p)), default=0.0)
+
+
 def _cache_get(chave: str, ttl: int):
     v = _cache.get(chave)
-    if v and (_time.time() - v[0]) < ttl:
+    if v and (_time.time() - v[0]) < ttl and v[0] >= _cache_invalidado_em(chave):
         return v[1]
     return None
 

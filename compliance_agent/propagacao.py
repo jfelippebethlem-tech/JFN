@@ -1,0 +1,729 @@
+# -*- coding: utf-8 -*-
+"""PROPAGAÇÃO AUTOMÁTICA — pedido do dono, 14/11/2026: "uma alteração ou leitura tem que puxar outras para
+atualizar tudo automaticamente".
+
+Antes: cada derivado (perícia contábil, vínculo OB↔contrato, mapa por município, CGE × JFN, caches do painel…)
+tinha o SEU cron — diário, semanal ou nenhum — e ficava velho entre uma rodada e outra sem ninguém saber. A
+correção das Guias de Devolução de 14/11 09:25 só chegaria à perícia contábil publicada na madrugada seguinte.
+
+Agora há UM mecanismo, com três peças, todas declaradas em `config/propagacao.yaml` (o mapa de dependências):
+
+  · FONTES — o que muda no mundo. Os produtores NÃO foram tocados: cada fonte tem uma SONDA barata que percebe a
+    mudança de fora (MAX(rowid) de tabela, mtime de arquivo, linha nova de log, commit que toca um caminho, arquivo
+    novo numa pasta). Mudou → vira EVENTO. O que não dá para sondar entra por `emitir` (revisão humana, decisão).
+  · DERIVADOS — o que fica velho. Cada evento marca como SUJO todo derivado que depende daquela fonte. Um derivado
+    recalculado vira, ele mesmo, evento para os que dependem dele (vínculo → perícia → caches do painel).
+  · DESPACHANTE — `ciclo`, pelo cron a cada 5 min, FORA do processo do painel. Recalcula só o que está sujo, com:
+    trava de arquivo (um ciclo por vez), espera de assentamento (debounce) e teto de espera (fonte que não para
+    não mata o derivado de fome), intervalo mínimo entre execuções, UM pesado por ciclo e só com carga abaixo do
+    teto, prioridade, recuo exponencial após falha. Os comandos são as rotinas que já existem, idempotentes.
+
+O que o despachante NÃO faz: não grava no compliance.db, não chama API paga, não gradua nada (🔴/🟡 continuam
+saindo só das réguas de cada rotina), e não dá um recálculo por feito sem medir o EFEITO (o arquivo que o painel
+lê avançou? a chave do cache foi regravada?). Sonda que falha é erro declarado da fonte — nunca "sem mudança".
+
+Estado em `data/propagacao.db` (base própria, pequena); o painel lê em Sistema › Propagação
+(`/api/sistema/propagacao`). Descobertas duráveis seguem para o segundo cérebro (`cerebro_compartilhado`).
+
+CLI:
+    python -m compliance_agent.propagacao ciclo                 # o que o cron chama
+    python -m compliance_agent.propagacao estado                # JSON do painel
+    python -m compliance_agent.propagacao mapa                  # mapa de dependências em Markdown
+    python -m compliance_agent.propagacao emitir <fonte> "<detalhe>"
+    python -m compliance_agent.propagacao sujar <derivado> "<motivo>"
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import fcntl
+import json
+import os
+import re
+import signal
+import sqlite3
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+import yaml
+
+from compliance_agent import cerebro_compartilhado as cerebro
+
+RAIZ = Path(__file__).resolve().parents[1]
+DATA = Path(os.environ.get("JFN_DATA_DIR") or RAIZ / "data")
+CONFIG = Path(os.environ.get("JFN_PROPAGACAO_YAML") or RAIZ / "config" / "propagacao.yaml")
+BASE_PAINEL = os.environ.get("JFN_BASE", "http://127.0.0.1:8000")
+
+ORCAMENTO_CICLO_S = 1200          # um ciclo não começa execução nova depois disto
+CARGA_MAX = {"leve": 10.0, "pesado": 7.0}
+# A VM vive entre carga 5 e 9: sem válvula, um pesado poderia esperar o dia inteiro. Sujo há mais de 2 h, o teto
+# sobe (os mesmos comandos já rodam pelo cron, com `nice`, sem olhar a carga).
+CARGA_PACIENCIA_S, CARGA_TETO_FINAL = 7200, 12.0
+RECUO_BASE_S, RECUO_MAX_S = 1800, 6 * 3600
+EVENTOS_GUARDADOS = 3000
+
+DDL = """
+CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS sonda(fonte TEXT PRIMARY KEY, assinatura TEXT, visto_em REAL, mudou_em REAL, erro TEXT);
+CREATE TABLE IF NOT EXISTS evento(id INTEGER PRIMARY KEY AUTOINCREMENT, fonte TEXT, quando REAL, detalhe TEXT);
+CREATE TABLE IF NOT EXISTS pendencia(derivado TEXT, evento_id INTEGER, PRIMARY KEY(derivado, evento_id));
+CREATE TABLE IF NOT EXISTS derivado(id TEXT PRIMARY KEY, ultimo_inicio REAL, ultimo_fim REAL, ultimo_estado TEXT,
+  ultimo_erro TEXT, falhas INTEGER DEFAULT 0, proxima_tentativa REAL, adiado TEXT, execucoes INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS execucao(id INTEGER PRIMARY KEY AUTOINCREMENT, derivado TEXT, inicio REAL, fim REAL,
+  estado TEXT, motivos TEXT, erro TEXT);
+"""
+
+
+# ───────────────────────────── configuração ─────────────────────────────
+def carregar(caminho: Path | None = None) -> dict:
+    cfg = yaml.safe_load((caminho or CONFIG).read_text(encoding="utf-8")) or {}
+    cfg.setdefault("fontes", {})
+    cfg.setdefault("derivados", {})
+    cfg.setdefault("cerebro", [])
+    return cfg
+
+
+def validar(cfg: dict) -> list[str]:
+    """Erros do mapa: dependência inexistente, derivado sem comando, ciclo. Lista vazia = mapa são."""
+    erros, fontes, ders = [], cfg["fontes"], cfg["derivados"]
+    for i, d in ders.items():
+        if d.get("tipo", "comando") == "comando" and not d.get("comando"):
+            erros.append(f"{i}: sem comando")
+        if d.get("tipo") == "cache" and not (d.get("prefixos") and d.get("urls")):
+            erros.append(f"{i}: cache sem prefixos/urls")
+        if not d.get("depende"):
+            erros.append(f"{i}: não depende de nada (nunca ficaria sujo)")
+        for dep in d.get("depende", []):
+            if dep not in fontes and dep not in ders:
+                erros.append(f"{i}: depende de '{dep}', que não existe")
+    cor: dict[str, int] = {}
+
+    def visita(n: str, trilha: tuple) -> None:
+        if cor.get(n) == 2:
+            return
+        if cor.get(n) == 1:
+            erros.append("ciclo: " + " → ".join(trilha + (n,)))
+            return
+        cor[n] = 1
+        for dep in ders.get(n, {}).get("depende", []):
+            if dep in ders:
+                visita(dep, trilha + (n,))
+        cor[n] = 2
+
+    for i in ders:
+        visita(i, ())
+    return erros
+
+
+def dependentes(cfg: dict, origem: str) -> list[str]:
+    return [i for i, d in cfg["derivados"].items() if origem in d.get("depende", [])]
+
+
+# ───────────────────────────── base de estado ─────────────────────────────
+def conectar(db: Path | None = None) -> sqlite3.Connection:
+    alvo = db or DATA / "propagacao.db"
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(alvo, timeout=30)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.executescript(DDL)
+    con.execute(cerebro.DDL)
+    return con
+
+
+def emitir(con: sqlite3.Connection, cfg: dict, fonte: str, detalhe: str, quando: float | None = None) -> int:
+    """Registra o evento e suja todo derivado que depende da fonte. Devolve o id do evento."""
+    eid = con.execute("INSERT INTO evento(fonte, quando, detalhe) VALUES (?,?,?)",
+                      (fonte, quando or time.time(), (detalhe or "")[:400])).lastrowid
+    for d in dependentes(cfg, fonte):
+        con.execute("INSERT OR IGNORE INTO pendencia(derivado, evento_id) VALUES (?,?)", (d, eid))
+    con.commit()
+    return eid
+
+
+# ───────────────────────────── sondas ─────────────────────────────
+class SondaFalhou(RuntimeError):
+    """A sonda não conseguiu medir a fonte (isto NÃO é 'sem mudança')."""
+
+
+def _extrair_siafe_status(linhas: list) -> str | None:
+    """Linhas (data_emissao, transicoes 'k=v;k=v') de `ob_status_recoleta` recoletadas desde a última leitura →
+    transições somadas. None = nenhum status saiu do estado intermediário (nada a propagar).
+
+    Lê a TABELA e não o log: o `siafe_runner` corta a linha do log em 400 caracteres e o JSON chega pela metade."""
+    tot: dict[str, int] = {}
+    for _, trans in linhas:
+        for par in (trans or "").split(";"):
+            k, _, v = par.partition("=")
+            if v.strip().isdigit():
+                tot[k.strip()] = tot.get(k.strip(), 0) + int(v)
+    mudou = {k: v for k, v in tot.items() if k not in ("Enviado ao Banco", "Aguardando Envio", "Aguardando Geração RE")}
+    if not mudou:
+        return None
+    return (f"status de OB recoletado em {len(linhas)} dia(s) de emissão: "
+            + ", ".join(f"{v} → {k}" for k, v in sorted(mudou.items(), key=lambda x: -x[1])))
+
+
+EXTRATORES = {"siafe_status": _extrair_siafe_status}
+
+
+def _sonda_sql(s: dict, anterior: str | None) -> tuple[str, list[str]]:
+    db = RAIZ / s.get("db", "data/compliance.db")
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+        try:
+            lin = con.execute(s["sql"]).fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error as exc:
+        raise SondaFalhou(f"{type(exc).__name__}: {exc}") from exc
+    nova = json.dumps(lin, ensure_ascii=False, default=str)
+    if anterior is None or nova == anterior:
+        return nova, []
+    if s.get("detalhe"):                               # consulta do QUE mudou desde a assinatura anterior
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+            try:
+                novas = con.execute(s["detalhe"], (json.loads(anterior)[0][0],)).fetchall()
+            finally:
+                con.close()
+        except (sqlite3.Error, ValueError, IndexError) as exc:
+            raise SondaFalhou(f"detalhe: {type(exc).__name__}: {exc}") from exc
+        txt = EXTRATORES[s["extrator"]](novas)
+        return nova, ([txt] if txt else [])
+    try:
+        a, b = json.loads(anterior)[0][0], lin[0][0]
+        if len(lin) == 1 and len(lin[0]) == 1 and isinstance(a, int) and isinstance(b, int) and b > a:
+            return nova, [f"+{b - a:,}".replace(",", ".") + f" {s.get('unidade', 'linha(s)')}"]
+    except (ValueError, IndexError, TypeError):
+        pass
+    return nova, [s.get("mudanca", "conteúdo mudou")]
+
+
+def _sonda_arquivo(s: dict, anterior: str | None) -> tuple[str, list[str]]:
+    try:
+        st = (RAIZ / s["arquivo"]).stat()
+        nova = f"{st.st_mtime_ns}:{st.st_size}"
+    except FileNotFoundError:
+        nova = "ausente"
+    except OSError as exc:
+        raise SondaFalhou(str(exc)) from exc
+    return nova, ([] if anterior is None or nova == anterior else [s.get("mudanca", "arquivo regravado")])
+
+
+def _sonda_pasta(s: dict, anterior: str | None) -> tuple[str, list[str]]:
+    pasta = Path(os.path.expanduser(s["pasta"]))
+    if not pasta.is_dir():
+        raise SondaFalhou(f"pasta ausente: {s['pasta']}")
+    arqs = [(f.stat().st_mtime, f.name) for f in pasta.glob(s.get("glob", "*"))
+            if f.is_file() and f.name not in s.get("ignorar", ())]
+    nova = repr(max((m for m, _ in arqs), default=0.0))
+    if anterior is None:
+        return nova, []
+    corte = float(anterior)
+    return nova, [n for m, n in sorted(arqs) if m > corte][-30:]
+
+
+def _sonda_log(s: dict, anterior: str | None) -> tuple[str, list[str]]:
+    arq = RAIZ / s["log"]
+    try:
+        st = arq.stat()
+    except FileNotFoundError:
+        return "ausente", []
+    if anterior in (None, "ausente"):
+        return f"{st.st_ino}:{st.st_size}", []
+    ino, pos = (int(x) for x in anterior.split(":"))
+    if ino != st.st_ino or st.st_size < pos:          # log rodado/truncado: recomeça do zero
+        pos = 0
+    rx = re.compile(s["regex"])
+    eventos: list[str] = []
+    with arq.open("rb") as f:
+        f.seek(pos)
+        bloco = f.read(8_000_000)
+    fim = bloco.rfind(b"\n") + 1                       # só linhas inteiras
+    for linha in bloco[:fim].decode("utf-8", "replace").splitlines():
+        m = rx.search(linha)
+        if not m:
+            continue
+        mn = s.get("minimo")
+        if mn and int(m.group(mn[0])) < mn[1]:
+            continue
+        txt = s.get("texto", "{0}")
+        for i, g in enumerate((m.group(0),) + m.groups()):
+            txt = txt.replace("{%d}" % i, str(g))
+        eventos.append(txt)
+    return f"{st.st_ino}:{pos + fim}", eventos[-40:]
+
+
+def _git(*args: str) -> str:
+    try:
+        r = subprocess.run(["git", "-C", str(RAIZ), *args], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise SondaFalhou(f"git: {exc}") from exc
+    if r.returncode != 0:
+        raise SondaFalhou(f"git {args[0]}: {r.stderr.strip()[:200]}")
+    return r.stdout
+
+
+def _sonda_git(s: dict, anterior: str | None) -> tuple[str, list[str]]:
+    head = _git("rev-parse", "HEAD").strip()
+    if anterior is None or anterior == head:
+        return head, []
+    try:
+        _git("merge-base", "--is-ancestor", anterior, head)
+    except SondaFalhou:                                # história reescrita/branch trocada: nova linha de base
+        return head, []
+    saida = _git("log", "--reverse", "--format=%h%x09%s", f"{anterior}..{head}", "--", *s["git"])
+    rx = re.compile(s["assunto"]) if s.get("assunto") else None
+    return head, [ln.replace("\t", " ", 1) for ln in saida.splitlines()
+                  if ln.strip() and (rx is None or rx.search(ln.split("\t", 1)[-1]))][-30:]
+
+
+_SONDAS = {"sql": _sonda_sql, "arquivo": _sonda_arquivo, "pasta": _sonda_pasta, "log": _sonda_log, "git": _sonda_git}
+
+
+def sondar(con: sqlite3.Connection, cfg: dict) -> int:
+    """Roda todas as sondas; cada mudança vira evento. Devolve quantos eventos nasceram."""
+    n = 0
+    for fid, f in cfg["fontes"].items():
+        s = f.get("sonda") or {}
+        tipo = next((t for t in _SONDAS if t in s), None)
+        if tipo is None:                               # fonte manual (só `emitir`)
+            continue
+        ant = con.execute("SELECT assinatura FROM sonda WHERE fonte=?", (fid,)).fetchone()
+        agora = time.time()
+        try:
+            nova, detalhes = _SONDAS[tipo](s, ant[0] if ant else None)
+        except (SondaFalhou, OSError, ValueError, KeyError, re.error) as exc:
+            con.execute("INSERT INTO sonda(fonte, visto_em, erro) VALUES (?,?,?) "
+                        "ON CONFLICT(fonte) DO UPDATE SET visto_em=excluded.visto_em, erro=excluded.erro",
+                        (fid, agora, f"{type(exc).__name__}: {exc}"[:300]))
+            con.commit()
+            continue
+        mudou = bool(ant) and nova != ant[0]
+        con.execute("INSERT INTO sonda(fonte, assinatura, visto_em, mudou_em, erro) VALUES (?,?,?,NULL,NULL) "
+                    "ON CONFLICT(fonte) DO UPDATE SET assinatura=excluded.assinatura, visto_em=excluded.visto_em, "
+                    "erro=NULL, mudou_em=CASE WHEN ? THEN excluded.visto_em ELSE mudou_em END",
+                    (fid, nova, agora, 1 if (mudou and detalhes) else 0))
+        con.commit()
+        for det in detalhes:
+            emitir(con, cfg, fid, det)
+            _descoberta_da_fonte(con, f, fid, det)
+            n += 1
+    return n
+
+
+# ───────────────────────────── descobertas → cérebro ─────────────────────────────
+def _descoberta_da_fonte(con: sqlite3.Connection, f: dict, fid: str, det: str) -> None:
+    """Fonte com bloco `cerebro:` manda cada evento como descoberta (ex.: correção de regra, memória nova)."""
+    c = f.get("cerebro")
+    if not c:
+        return
+    if c.get("de") == "memoria":                       # arquivo de memória do Claude: 1 fato = a descrição
+        fato = _fato_da_memoria(Path(os.path.expanduser(f["sonda"]["pasta"])) / det)
+        if fato:
+            cerebro.registrar(f"memoria:{det.removesuffix('.md')}", fato[1], fato[0], det.removesuffix(".md"), con=con)
+        return
+    if c.get("de") == "commit":
+        h, _, assunto = det.partition(" ")
+        # lição = correção (`fix`); e o commit que toca dois caminhos entra uma vez só, pela 1ª fonte que o viu
+        if not re.match(c.get("so", "fix"), assunto) or con.execute(
+                "SELECT 1 FROM cerebro WHERE chave=?", (f"commit:{h}",)).fetchone():
+            return
+        try:
+            corpo = " ".join(_git("show", "-s", "--format=%b", h).split("Co-Authored-By")[0].split())[:900]
+            data = _git("show", "-s", "--format=%cd", "--date=format:%d/%m/%Y", h).strip()
+        except SondaFalhou:
+            corpo, data = "", ""
+        cerebro.registrar(f"commit:{h}", f"JFN — {c.get('rotulo', 'correção')} em {data} ({h}): {assunto}. {corpo}".strip(),
+                          c.get("kind", "experiencial"), c.get("assunto", fid), con=con)
+
+
+def _fato_da_memoria(arq: Path) -> tuple[str, str] | None:
+    """(kind, fato) de um arquivo de memória: a `description` do cabeçalho, ou o 1º parágrafo."""
+    try:
+        txt = arq.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    cab, _, corpo = txt.partition("\n---\n") if txt.startswith("---") else ("", "", txt)
+    m = re.search(r'^description:\s*"?(.+?)"?\s*$', cab, re.M)
+    fato = m.group(1) if m else next((p for p in corpo.split("\n\n") if len(p.strip()) > 40), "")
+    fato = " ".join(fato.split())
+    if len(fato) < 30:
+        return None
+    baixo = (cab + corpo[:600]).lower()
+    kind = ("decisoria" if re.search(r"palavras do dono|dito pelo dono|decis[ãa]o do dono|o dono (pediu|mandou|decidiu)", baixo)
+            else "procedural" if "type: reference" in baixo else "experiencial")
+    return kind, f"{arq.stem}: {fato}"
+
+
+def _valor(obj, caminho: str):
+    for p in caminho.split("."):
+        obj = obj[p] if isinstance(obj, dict) else obj[int(p)]
+    return obj
+
+
+def _descoberta_do_derivado(con: sqlite3.Connection, did: str, d: dict) -> None:
+    """Derivado com `cerebro:` manda o número de manchete; se mudou desde o último envio, vai como correção."""
+    c = d.get("cerebro")
+    if not c:
+        return
+    try:
+        obj = json.loads((RAIZ / c["arquivo"]).read_text(encoding="utf-8"))
+        partes = [f"{rot} = {_valor(obj, cam)}" for rot, cam in c["campos"].items()]
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return                                          # sem leitura do resumo não há o que afirmar
+    cerebro.registrar(f"derivado:{did}", f"{d['nome']} (JFN, {c['arquivo']}) — " + "; ".join(partes)
+                      + f". {c.get('ressalva', 'Contagem da rotina; indício interno, não acusação.')}",
+                      "semantica", c.get("assunto", d["nome"]), con=con)
+
+
+def descobertas_sql(con: sqlite3.Connection, cfg: dict) -> int:
+    """Blocos `cerebro:` do topo do yaml: consultas (só leitura) cujas linhas são descobertas VERIFICADAS."""
+    n = 0
+    for b in cfg["cerebro"]:
+        try:
+            src = sqlite3.connect(f"file:{RAIZ / b.get('db', 'data/compliance.db')}?mode=ro", uri=True, timeout=20)
+            src.row_factory = sqlite3.Row
+            try:
+                linhas = [dict(r) for r in src.execute(b["sql"])]
+            finally:
+                src.close()
+        except sqlite3.Error as exc:
+            con.execute("INSERT OR REPLACE INTO meta(k, v) VALUES (?,?)", (f"cerebro_erro:{b['id']}", str(exc)[:300]))
+            con.commit()
+            continue
+        for r in linhas:
+            limpo = {k: ("" if v is None else v) for k, v in r.items()}
+            st = cerebro.registrar(b["chave"].format(**limpo), b["texto"].format(**limpo), b.get("kind", "semantica"),
+                                   b.get("assunto", "").format(**limpo) or None, con=con)
+            n += st in ("novo", "corrigido")
+    return n
+
+
+# ───────────────────────────── execução ─────────────────────────────
+def _log_do(did: str) -> Path:
+    (DATA / "propagacao").mkdir(parents=True, exist_ok=True)
+    return DATA / "propagacao" / f"{did}.log"
+
+
+def _rodar_comando(did: str, d: dict) -> tuple[bool, str | None]:
+    argv = [a.replace("{py}", str(RAIZ / ".venv" / "bin" / "python")) for a in d["comando"]]
+    env = dict(os.environ, PYTHONPATH=str(RAIZ), HOME=os.path.expanduser("~"))
+    env.update({k: str(v) for k, v in (d.get("env") or {}).items()})
+    inicio = time.time()
+    with _log_do(did).open("ab") as log:
+        log.write(f"\n== {time.strftime('%F %T')} {' '.join(argv)}\n".encode())
+        log.flush()
+        p = subprocess.Popen(["nice", "-n", "15", *argv], cwd=RAIZ, env=env, stdout=log, stderr=subprocess.STDOUT,
+                             start_new_session=True)
+        try:
+            rc = p.wait(timeout=int(d.get("timeout_s", 1800)))
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(p.pid, signal.SIGTERM)
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                p.wait(timeout=20)
+            if p.poll() is None:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(p.pid, signal.SIGKILL)
+            return False, f"estourou o teto de {d.get('timeout_s', 1800)} s"
+    if rc != 0:
+        return False, f"saiu com código {rc} (ver data/propagacao/{did}.log)"
+    ef = d.get("efeito") or {}
+    if ef.get("arquivo"):
+        try:
+            if (RAIZ / ef["arquivo"]).stat().st_mtime < inicio - 2:
+                return False, f"rodou sem efeito: {ef['arquivo']} não foi regravado (outra execução com a trava?)"
+        except OSError:
+            return False, f"rodou sem efeito: {ef['arquivo']} não existe"
+    return True, None
+
+
+_RX_CACHE = re.compile(rb'^\{"k": "((?:[^"\\]|\\.)*)", "t": ([0-9.]+)')
+
+
+def _cache_renovado(prefixo: str, desde: float) -> bool:
+    for f in (DATA / "cache_painel").glob("*.json"):
+        try:
+            with f.open("rb") as fh:
+                m = _RX_CACHE.match(fh.read(400))
+        except OSError:
+            continue
+        if m and json.loads(b'"' + m.group(1) + b'"').startswith(prefixo) and float(m.group(2)) >= desde:
+            return True
+    return False
+
+
+def _rodar_cache(did: str, d: dict) -> tuple[bool, str | None]:
+    """Vence as chaves do cache do painel (marca em `_invalidar.json`) e pede as rotas, UMA por vez: o painel
+    entrega o valor anterior na hora e recalcula em 2º plano (SWR). Efeito = a chave regravada em disco."""
+    pasta = DATA / "cache_painel"
+    pasta.mkdir(parents=True, exist_ok=True)
+    marca_arq, agora = pasta / "_invalidar.json", time.time()
+    try:
+        marcas = json.loads(marca_arq.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        marcas = {}
+    marcas.update({p: agora for p in d["prefixos"]})
+    tmp = marca_arq.with_suffix(".tmp")
+    tmp.write_text(json.dumps(marcas), encoding="utf-8")
+    tmp.replace(marca_arq)
+    falhas, teto = [], int(d.get("espera_s", 240))
+    for url, prefixo in d["urls"].items():
+        try:
+            with urllib.request.urlopen(f"{BASE_PAINEL}/api/{url}", timeout=teto) as r:
+                r.read()
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            falhas.append(f"{url}: {type(exc).__name__}")
+            continue
+        limite = time.time() + teto
+        while not _cache_renovado(prefixo, agora) and time.time() < limite:
+            time.sleep(3)
+        if not _cache_renovado(prefixo, agora):
+            falhas.append(f"{url}: chave '{prefixo}' não foi regravada em {teto} s")
+    return (not falhas), ("; ".join(falhas)[:380] if falhas else None)
+
+
+def _sujos(con: sqlite3.Connection, derivados=()) -> dict[str, dict]:
+    """Derivados com pendência. `ultimo` (base do debounce) só conta evento de FONTE: o evento "derivado X
+    recalculado" já nasce assentado — sem isso cada elo da cadeia esperaria um ciclo à toa."""
+    ids = list(derivados)
+    marca = ",".join("?" * len(ids)) or "''"
+    return {d: {"primeiro": p, "ultimo": u or 0.0, "n": n, "max_id": m} for d, p, u, n, m in con.execute(
+        f"SELECT p.derivado, MIN(e.quando), MAX(CASE WHEN e.fonte IN ({marca}) THEN 0 ELSE e.quando END), "
+        "COUNT(*), MAX(e.id) FROM pendencia p JOIN evento e ON e.id=p.evento_id GROUP BY p.derivado", ids)}
+
+
+def _motivos(con: sqlite3.Connection, did: str, limite: int = 6) -> list[str]:
+    return [f"{f}: {t}" for f, t in con.execute(
+        "SELECT e.fonte, e.detalhe FROM pendencia p JOIN evento e ON e.id=p.evento_id "
+        "WHERE p.derivado=? ORDER BY e.id DESC LIMIT ?", (did, limite))]
+
+
+def _linha(con: sqlite3.Connection, did: str) -> dict:
+    con.execute("INSERT OR IGNORE INTO derivado(id) VALUES (?)", (did,))
+    cur = con.execute("SELECT * FROM derivado WHERE id=?", (did,))
+    return dict(zip([c[0] for c in cur.description], cur.fetchone()))
+
+
+def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None) -> list[dict]:
+    """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo."""
+    t0, feitos, pesado_feito = time.time(), [], False
+    ders = cfg["derivados"]
+    while time.time() - t0 < ORCAMENTO_CICLO_S:
+        sujos, agora, escolhido = _sujos(con, ders), time.time(), None
+        ordem = sorted((i for i in sujos if i in ders), key=lambda i: (ders[i].get("prioridade", 5), sujos[i]["primeiro"]))
+        def relogio(did: str) -> str | None:
+            """Motivo PRÓPRIO do derivado para ainda não rodar (assentamento, recuo, intervalo) — ou None."""
+            d, s, lin = ders[did], sujos[did], _linha(con, did)
+            assentou = agora - s["ultimo"] >= d.get("debounce_s", 120)
+            cansou = agora - s["primeiro"] >= d.get("espera_max_s", 6 * d.get("debounce_s", 120) + 600)
+            if not (assentou or cansou):
+                return "aguardando a fonte assentar"
+            if lin["proxima_tentativa"] and agora < lin["proxima_tentativa"]:
+                return f"recuo após {lin['falhas']} falha(s)"
+            if lin["ultimo_fim"] and agora - lin["ultimo_fim"] < d.get("intervalo_min_s", 0):
+                return "intervalo mínimo entre execuções"
+            return None
+
+        for did in ordem:
+            d, s = ders[did], sujos[did]
+            peso = d.get("peso", "leve")
+            if any(x["id"] == did for x in feitos):
+                continue                                # um derivado roda no máximo uma vez por ciclo
+            motivo = relogio(did)
+            if motivo:
+                pass
+            # só espera o derivado de que depende se ESSE está pronto para rodar; se ele ainda aguarda a fonte
+            # assentar (captura SEI não para), este roda já e será sujo de novo quando o outro terminar
+            elif any(dep in sujos and dep in ders and relogio(dep) is None and not any(x["id"] == dep for x in feitos)
+                     for dep in d.get("depende", [])):
+                motivo = "aguardando derivado de que depende"
+            elif peso == "pesado" and pesado_feito:
+                motivo = "um pesado por ciclo"
+            elif carga()[0] > (teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL):
+                motivo = f"carga {carga()[0]:.1f} acima do teto {teto:.0f}"
+            con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
+            if motivo is None:
+                escolhido = did
+                break
+        con.commit()
+        if escolhido is None:
+            break
+        did, d, s = escolhido, ders[escolhido], sujos[escolhido]
+        motivos, inicio = _motivos(con, did), time.time()
+        con.execute("UPDATE derivado SET ultimo_inicio=?, ultimo_estado='rodando', adiado=NULL WHERE id=?", (inicio, did))
+        con.commit()
+        rodar = executar or (_rodar_cache if d.get("tipo") == "cache" else _rodar_comando)
+        try:
+            ok, erro = rodar(did, d)
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError) as exc:
+            ok, erro = False, f"{type(exc).__name__}: {exc}"[:300]
+        fim = time.time()
+        pesado_feito = pesado_feito or d.get("peso") == "pesado"
+        if ok:
+            # só saem as pendências que existiam quando começou: evento que chegou durante o cálculo fica
+            con.execute("DELETE FROM pendencia WHERE derivado=? AND evento_id<=?", (did, s["max_id"]))
+            con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='ok', ultimo_erro=NULL, falhas=0, "
+                        "proxima_tentativa=NULL, execucoes=execucoes+1 WHERE id=?", (fim, did))
+            con.commit()
+            emitir(con, cfg, did, f"recalculado em {fim - inicio:.0f} s")
+            _descoberta_do_derivado(con, did, d)
+        else:
+            falhas = _linha(con, did)["falhas"] + 1
+            con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='falhou', ultimo_erro=?, falhas=?, "
+                        "proxima_tentativa=?, execucoes=execucoes+1 WHERE id=?",
+                        (fim, erro, falhas, fim + min(RECUO_BASE_S * 2 ** (falhas - 1), RECUO_MAX_S), did))
+        con.execute("INSERT INTO execucao(derivado, inicio, fim, estado, motivos, erro) VALUES (?,?,?,?,?,?)",
+                    (did, inicio, fim, "ok" if ok else "falhou", json.dumps(motivos, ensure_ascii=False), erro))
+        con.commit()
+        feitos.append({"id": did, "ok": ok, "erro": erro, "segundos": round(fim - inicio, 1)})
+    return feitos
+
+
+def ciclo(cfg: dict | None = None, db: Path | None = None) -> dict:
+    """Um ciclo completo sob trava de arquivo. Trava ocupada = outro ciclo trabalhando; sai sem fazer nada."""
+    cfg = cfg or carregar()
+    erros = validar(cfg)
+    if erros:
+        raise ValueError("config/propagacao.yaml inválido: " + "; ".join(erros))
+    DATA.mkdir(parents=True, exist_ok=True)
+    trava = open(DATA / ".propagacao.lock", "w")
+    try:
+        fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return {"ocupado": True}
+    con = conectar(db)
+    try:
+        t0 = time.time()
+        eventos = sondar(con, cfg)
+        feitos = despachar(con, cfg)
+        achados = descobertas_sql(con, cfg)
+        envio = cerebro.enviar_pendentes(con=con)
+        con.execute("DELETE FROM evento WHERE id < (SELECT MAX(id) FROM evento) - ? "
+                    "AND id NOT IN (SELECT evento_id FROM pendencia)", (EVENTOS_GUARDADOS,))
+        con.execute("DELETE FROM execucao WHERE id < (SELECT MAX(id) FROM execucao) - 2000")
+        r = {"quando": time.time(), "segundos": round(time.time() - t0, 1), "eventos": eventos, "feitos": feitos,
+             "descobertas": achados, "cerebro": envio, "carga": round(os.getloadavg()[0], 2)}
+        con.execute("INSERT OR REPLACE INTO meta(k, v) VALUES ('ultimo_ciclo', ?)", (json.dumps(r, ensure_ascii=False),))
+        con.commit()
+        return r
+    finally:
+        con.close()
+        trava.close()
+
+
+# ───────────────────────────── leitura (painel) ─────────────────────────────
+def estado(cfg: dict | None = None, db: Path | None = None) -> dict:
+    """Fotografia para o painel. Só leitura; base ausente = INDISPONÍVEL (o despachante nunca rodou)."""
+    cfg = cfg or carregar()
+    alvo = db or DATA / "propagacao.db"
+    if not alvo.exists():
+        return {"ok": False, "estado": "INDISPONIVEL", "motivo": "o despachante de propagação ainda não rodou nesta máquina"}
+    con = sqlite3.connect(f"file:{alvo}?mode=ro", uri=True, timeout=10)
+    try:
+        agora = time.time()
+        m = con.execute("SELECT v FROM meta WHERE k='ultimo_ciclo'").fetchone()
+        ult = json.loads(m[0]) if m else None
+        sujos = _sujos(con)
+        sondas = {f: {"visto_em": v, "mudou_em": mu, "erro": e} for f, v, mu, e in
+                  con.execute("SELECT fonte, visto_em, mudou_em, erro FROM sonda")}
+        linhas = {r[0]: r for r in con.execute(
+            "SELECT id, ultimo_inicio, ultimo_fim, ultimo_estado, ultimo_erro, falhas, proxima_tentativa, adiado, execucoes FROM derivado")}
+        ders = []
+        for did, d in cfg["derivados"].items():
+            ln, s = linhas.get(did), sujos.get(did)
+            ders.append({
+                "id": did, "nome": d["nome"], "onde": d.get("onde"), "peso": d.get("peso", "leve"),
+                "tipo": d.get("tipo", "comando"), "depende": d.get("depende", []), "antes": d.get("antes"),
+                "sujo": bool(s), "sujo_desde": s["primeiro"] if s else None, "eventos_pendentes": s["n"] if s else 0,
+                "motivos": _motivos(con, did, 4) if s else [],
+                "ultimo_inicio": ln[1] if ln else None, "ultimo_fim": ln[2] if ln else None,
+                "ultimo_estado": ln[3] if ln else None, "ultimo_erro": ln[4] if ln else None,
+                "falhas": ln[5] if ln else 0, "proxima_tentativa": ln[6] if ln else None,
+                "adiado": ln[7] if ln else None, "execucoes": ln[8] if ln else 0})
+        fontes = [{"id": fid, "nome": f["nome"], "manual": not any(t in (f.get("sonda") or {}) for t in _SONDAS),
+                   "alimenta": dependentes(cfg, fid), **(sondas.get(fid) or {"visto_em": None, "mudou_em": None, "erro": None})}
+                  for fid, f in cfg["fontes"].items()]
+        eventos = [{"id": i, "fonte": f, "quando": q, "detalhe": t} for i, f, q, t in
+                   con.execute("SELECT id, fonte, quando, detalhe FROM evento ORDER BY id DESC LIMIT 40")]
+        execs = [{"derivado": d, "inicio": i, "fim": f, "estado": e, "motivos": json.loads(mo or "[]"), "erro": er}
+                 for d, i, f, e, mo, er in con.execute(
+                     "SELECT derivado, inicio, fim, estado, motivos, erro FROM execucao ORDER BY id DESC LIMIT 30")]
+        cer = cerebro.resumo(con)
+        parado = ult is None or agora - ult["quando"] > 20 * 60
+        return {"ok": True, "estado": "PARADO" if parado else "ok", "gerado_em": agora,
+                "ultimo_ciclo": ult, "derivados": ders, "fontes": fontes, "eventos": eventos, "execucoes": execs,
+                "cerebro": cer,
+                "resumo": {"derivados": len(ders), "sujos": sum(1 for x in ders if x["sujo"]),
+                           "com_falha": sum(1 for x in ders if x["ultimo_estado"] == "falhou"),
+                           "fontes": len(fontes), "fontes_com_erro": sum(1 for x in fontes if x["erro"])}}
+    finally:
+        con.close()
+
+
+def mapa_md(cfg: dict | None = None) -> str:
+    cfg = cfg or carregar()
+    nome = lambda x: (cfg["fontes"].get(x) or cfg["derivados"].get(x) or {}).get("nome", x)  # noqa: E731
+    out = ["| Fonte / evento | Como é percebida | Derivados que ficam velhos |", "|---|---|---|"]
+    for fid, f in cfg["fontes"].items():
+        s = f.get("sonda") or {}
+        tipo = next((t for t in _SONDAS if t in s), "manual (`emitir`)")
+        out.append(f"| {f['nome']} | {tipo} | {', '.join(nome(d) for d in dependentes(cfg, fid)) or '—'} |")
+    out += ["", "| Derivado | Onde aparece | Depende de | Antes (agenda própria) | Peso |", "|---|---|---|---|---|"]
+    for d in cfg["derivados"].values():
+        out.append(f"| {d['nome']} | {d.get('onde', '—')} | {', '.join(nome(x) for x in d.get('depende', []))} | "
+                   f"{d.get('antes', '—')} | {d.get('peso', 'leve')} |")
+    return "\n".join(out)
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="Propagação automática do JFN")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("ciclo")
+    sub.add_parser("estado")
+    sub.add_parser("mapa")
+    for nome in ("emitir", "sujar"):
+        p = sub.add_parser(nome)
+        p.add_argument("alvo")
+        p.add_argument("detalhe")
+    a = ap.parse_args(argv)
+    cfg = carregar()
+    if a.cmd == "ciclo":
+        r = ciclo(cfg)
+        print(time.strftime("%F %T"), json.dumps(r, ensure_ascii=False), flush=True)
+        return 0
+    if a.cmd == "estado":
+        print(json.dumps(estado(cfg), ensure_ascii=False, indent=1))
+        return 0
+    if a.cmd == "mapa":
+        print(mapa_md(cfg))
+        return 0
+    con = conectar()
+    try:
+        if a.cmd == "emitir":
+            if a.alvo not in cfg["fontes"]:
+                print(f"fonte desconhecida: {a.alvo} (ver config/propagacao.yaml)", file=sys.stderr)
+                return 2
+            eid = emitir(con, cfg, a.alvo, a.detalhe)
+            print(f"evento {eid}: sujou {dependentes(cfg, a.alvo)}")
+        else:
+            if a.alvo not in cfg["derivados"]:
+                print(f"derivado desconhecido: {a.alvo}", file=sys.stderr)
+                return 2
+            eid = con.execute("INSERT INTO evento(fonte, quando, detalhe) VALUES ('manual', ?, ?)",
+                              (time.time(), a.detalhe[:400])).lastrowid
+            con.execute("INSERT OR IGNORE INTO pendencia(derivado, evento_id) VALUES (?,?)", (a.alvo, eid))
+            con.commit()
+            print(f"evento {eid}: {a.alvo} marcado como sujo")
+    finally:
+        con.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

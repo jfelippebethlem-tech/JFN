@@ -284,6 +284,22 @@ motores:
     classe: infra
     descricao: Segura o WAL do compliance.db (proteção contra corrupção)
     unidade: jfn-wal-keeper
+  # 14/11/2026 (dono: "uma alteração ou leitura tem que puxar outras"): despachante da propagação automática.
+  # Efeito = último ciclo completo (uma linha por ciclo no log do cron).
+  - id: propagacao
+    nome: Propagação
+    classe: motor
+    descricao: Recalcula o que ficou desatualizado quando uma fonte muda (config/propagacao.yaml) e manda descobertas ao segundo cérebro
+    trava: data/.propagacao.lock
+    log: data/propagacao_cron.log
+    efeito: {log: data/propagacao_cron.log, regex: '^(\S+ \S+) \{"quando"', horas: 1}
+    eventos:
+      - regex: '"feitos": \[\{"id": "([a-z_]+)", "ok": true'
+        texto: 'recalculado: {1}'
+        tipo: dado
+      - regex: '"feitos": \[\{"id": "([a-z_]+)", "ok": false'
+        texto: 'recálculo falhou: {1}'
+        tipo: falha
   - id: massare
     nome: Massare (VM2)
     classe: motor

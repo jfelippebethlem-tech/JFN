@@ -50,8 +50,11 @@ from tools.painel_abas import abas, abas_por_esfera
 # 2026-11-14: 75 → 76 e estado 22 → 23. Entrou "Orçamento por órgão" (`e_orcorg`): por órgão, unidade orçamentária e
 # UG, dotação inicial e atualizada, empenhado, liquidado, pago por OB do SIAFE e taxas de execução, com ranking e
 # filtro por exercício e mês (`/api/orcamento_orgao`) — pedido do dono ("quais órgãos têm orçamento e quanto executou").
-TOTAL = 76
-POR_ESFERA = {"inicio": 1, "estado": 23, "prefeitura": 16, "geral": 29, "sistema": 7}
+# 2026-11-14: 76 → 77 e sistema 7 → 8. Entrou "Propagação" (`s_propag`): o que ficou desatualizado quando uma fonte
+# mudou, o que o despachante recalculou, o que falhou e o que seguiu para o segundo cérebro
+# (`/api/sistema/propagacao`) — pedido do dono ("uma alteração ou leitura tem que puxar outras").
+TOTAL = 77
+POR_ESFERA = {"inicio": 1, "estado": 23, "prefeitura": 16, "geral": 29, "sistema": 8}
 
 
 def test_le_todas_as_abas_do_painel():

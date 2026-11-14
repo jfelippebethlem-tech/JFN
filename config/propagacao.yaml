@@ -1,0 +1,312 @@
+# propagacao.yaml — MAPA DE DEPENDÊNCIAS do JFN (fonte única; lido por compliance_agent/propagacao.py).
+# Medido em 14/11/2026 no código, no crontab, nos timers e nas tabelas. `python -m compliance_agent.propagacao mapa`
+# imprime este mapa em tabela; o painel mostra o estado em Sistema › Propagação.
+#
+# FONTES — o que muda. `sonda` percebe a mudança DE FORA (o produtor não é tocado):
+#   sql:     consulta só-leitura; o resultado é a assinatura (1 inteiro que cresce → evento "+N"); `detalhe` =
+#            consulta do que mudou desde a 1ª coluna anterior, resumida por `extrator` (propagacao.EXTRATORES)
+#   arquivo: mtime+tamanho
+#   log:     linhas novas que casam `regex` → 1 evento cada (`texto` com {1},{2}; `minimo: [grupo, valor]` filtra)
+#   git:     commits novos que tocam os caminhos (`assunto` = regex do título)
+#   pasta:   arquivos com mtime novo (`glob`)
+#   (sem sonda) = fonte manual: `python -m compliance_agent.propagacao emitir <fonte> "<detalhe>"`
+#   `cerebro: {de: commit|memoria, …}` = o evento da fonte também é DESCOBERTA para o segundo cérebro
+#            (commit: só `fix`, uma vez por commit; memoria: a descrição do arquivo de memória).
+#
+# DERIVADOS — o que fica velho. Campos:
+#   depende          fontes e/ou outros derivados (derivado recalculado vira evento para os seus dependentes)
+#   comando          argv (`{py}` = python do venv); rotina JÁ EXISTENTE, idempotente, sem API paga
+#   tipo: cache      vence chaves do cache do painel (`prefixos`) e pede as rotas (`urls: {rota: prefixo-da-chave}`)
+#   peso             leve | pesado (um pesado por ciclo, só com carga ≤ 7)
+#   debounce_s       silêncio da fonte antes de recalcular · espera_max_s = teto dessa espera
+#   intervalo_min_s  mínimo entre duas execuções · timeout_s · prioridade (menor = antes)
+#   efeito.arquivo   arquivo que TEM de ser regravado para o recálculo valer (rodou sem efeito = falha)
+#   antes            como se atualizava antes da propagação (só documentação — os crons antigos seguem como rede)
+#   cerebro          número de manchete que vira memória no cérebro; se mudar, a nova SUBSTITUI a anterior
+#                    (sem data nos campos: recálculo que não muda o número não gera memória nova)
+
+fontes:
+  siafe_ob:
+    nome: OB nova ou regravada no SIAFE
+    sonda: {sql: "SELECT MAX(rowid) FROM ob_orcamentaria_siafe", unidade: "OB(s) gravada(s) (novas ou recoletadas)"}
+  siafe_status:
+    nome: Status de envio de OB recoletado (devolvida pelo banco, paga)
+    # a TABELA, não o log: o siafe_runner corta a linha do log em 400 caracteres
+    sonda: {sql: "SELECT COALESCE(MAX(recoletado_em), ''), COUNT(*) FROM ob_status_recoleta",
+            detalhe: "SELECT data_emissao, transicoes FROM ob_status_recoleta WHERE recoletado_em > ? AND sem_mudanca = 0",
+            extrator: siafe_status}
+  siafe_gd:
+    nome: Guia de Devolução ingerida
+    sonda: {log: data/siafe_runner.log, regex: 'pós-coleta (\d{4}) gd: .*"ingeridas": (\d+)', minimo: [2, 1],
+            texto: "{2} Guia(s) de Devolução ingerida(s) no exercício {1}"}
+  sei_lote:
+    nome: Lote SEI de outro nó (VM-2 / it-campo) aprovado na conferência
+    sonda: {log: data/vm2_conferencia.log, regex: 'LOTE (\S+) \((\w+)\): (\d+) aprovado\(s\), (\d+) em quarentena',
+            minimo: [3, 1], texto: "lote {1} ({2}): {3} processo(s) aprovado(s), {4} em quarentena"}
+  sei_arquivado:
+    nome: Processo SEI capturado ou recapturado na VM-1 (arquivado)
+    sonda: {log: data/arquivar_cache.log, regex: '^arquivados: (\d+) processos', minimo: [1, 1],
+            texto: "{1} processo(s) arquivado(s) do cache"}
+  sei_ficha:
+    nome: Ficha de processo SEI nova
+    sonda: {sql: "SELECT MAX(rowid) FROM sei_ficha", unidade: "ficha(s)"}
+  sei_lex:
+    nome: Parecer de execução (Lex) novo
+    sonda: {sql: "SELECT MAX(rowid) FROM lex_execucao", unidade: "parecer(es) de execução"}
+  sei_leitura_dupla:
+    nome: Leitura dupla nova
+    sonda: {sql: "SELECT MAX(rowid) FROM sei_leitura_dupla", unidade: "leitura(s) dupla(s)"}
+  contratos_tcerj:
+    nome: Contrato novo no TCE-RJ / PNCP / SIGA
+    sonda: {sql: "SELECT (SELECT MAX(rowid) FROM contratos_tcerj), (SELECT MAX(rowid) FROM siga_contratos), (SELECT MAX(rowid) FROM contrato_aditivo), (SELECT MAX(rowid) FROM pncp_resultado)",
+            mudanca: "contratos, aditivos ou resultados novos na base"}
+  sancoes:
+    nome: Sanção nova (CEIS/CNEP/CEPIM)
+    sonda: {sql: "SELECT MAX(rowid) FROM sancoes_federais", unidade: "sanção(ões)"}
+  doerj:
+    nome: Ato novo no DOERJ (contratação, TAC)
+    sonda: {sql: "SELECT (SELECT MAX(rowid) FROM contrato_doe_evento), (SELECT MAX(rowid) FROM doerj_tac)",
+            mudanca: "atos novos do DOERJ na base"}
+  triagem:
+    nome: Veredito novo na triagem de alertas (leituras, Opus)
+    sonda: {sql: "SELECT COUNT(*), SUM(estado='VERIFICADO'), SUM(verificado_por IS NOT NULL) FROM alertas_triagem",
+            mudanca: "triagem avançou (novas leituras ou verificações do Opus)"}
+  revisao_humana:
+    nome: Revisão humana de alerta (confirmado / descartado)
+    sonda: {sql: "SELECT status, COUNT(*) FROM alertas GROUP BY status ORDER BY status",
+            mudanca: "situação de alertas mudou (confirmação ou descarte)"}
+  regra_pericia:
+    nome: Correção na régua da perícia contábil / Guia de Devolução
+    sonda: {git: [compliance_agent/pericia_contabil.py, compliance_agent/pericia_contabil_rotina.py, compliance_agent/siafe_gd.py]}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção de regra da perícia contábil", assunto: "perícia contábil"}
+  regra_vinculo:
+    nome: Correção na regra do vínculo OB↔contrato
+    sonda: {git: [compliance_agent/vinculo_ob_contrato.py]}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção de regra do vínculo OB↔contrato", assunto: "vínculo OB↔contrato"}
+  regra_territorio:
+    nome: Correção no motor território (mapa por município)
+    sonda: {git: [compliance_agent/territorio]}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção no mapa por município", assunto: "território"}
+  regra_governo_couto:
+    nome: Correção nas regras da gestão Couto
+    sonda: {git: [compliance_agent/governo_couto.py, compliance_agent/governo_couto_regras.py]}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção nas regras da gestão Couto", assunto: "governo Couto"}
+  regra_orcamento:
+    nome: Correção no orçamento por órgão
+    sonda: {git: [compliance_agent/orcamento_orgao.py, compliance_agent/comissao_orcamento.py]}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção no orçamento por órgão", assunto: "orçamento por órgão"}
+  regra_detectores:
+    nome: Correção de detector ou de regra de qualidade
+    sonda: {git: [compliance_agent/detectores, compliance_agent/qualidade, config/qualidade_regras.yaml, config/qualidade_detectores.yaml, config/qualidade_inventario.yaml],
+            assunto: '^(fix|feat|perf)'}
+    cerebro: {de: commit, kind: experiencial, rotulo: "correção de detector/regra de qualidade", assunto: "detectores e regras de qualidade"}
+  memoria_claude:
+    nome: Decisão do dono ou lição registrada na memória dos agentes
+    sonda: {pasta: "~/.claude/projects/-home-ubuntu/memory", glob: "*.md", ignorar: [MEMORY.md]}
+    cerebro: {de: memoria}
+  decisao_dono:
+    nome: Decisão do dono que muda requisito (manual)
+
+derivados:
+  vinculo_ob_contrato:
+    nome: Vínculo OB↔contrato (regra determinística)
+    onde: Estado › Perícia contábil (reduz indeterminados)
+    depende: [sei_lote, sei_arquivado, contratos_tcerj, regra_vinculo]
+    comando: ["{py}", "-m", "compliance_agent.vinculo_ob_contrato", "regra", "--gravar", "--cache", "data/vinculo_ob_modelo_cache.json"]
+    peso: pesado
+    debounce_s: 1800
+    espera_max_s: 10800
+    intervalo_min_s: 10800
+    timeout_s: 1800
+    prioridade: 2
+    antes: "diário 00:30 (cron). A leitura por modelo (01:50, API paga) NÃO é propagada"
+  pericia_contabil:
+    nome: Perícia contábil de todos os contratos
+    onde: Estado › Perícia contábil · Início › Sinais críticos
+    depende: [siafe_ob, siafe_status, siafe_gd, contratos_tcerj, regra_pericia, vinculo_ob_contrato]
+    comando: ["{py}", "-m", "compliance_agent.pericia_contabil_rotina"]
+    peso: pesado
+    debounce_s: 600
+    intervalo_min_s: 3600
+    timeout_s: 3600
+    prioridade: 3
+    efeito: {arquivo: data/pericia_contabil_resumo.json}
+    antes: "diário 01:30 (cron)"
+    cerebro:
+      arquivo: data/pericia_contabil_resumo.json
+      assunto: "perícia contábil — placar"
+      campos:
+        "Estado: contratos avaliados": "esferas.Estado do RJ.n"
+        "Estado: placar": "esferas.Estado do RJ.placar"
+        "Estado: pago acima do valor contratado (R$)": "esferas.Estado do RJ.excesso_a_maior"
+        "Prefeitura: contratos avaliados": "esferas.Prefeitura do Rio.n"
+        "Prefeitura: placar": "esferas.Prefeitura do Rio.placar"
+      ressalva: "Pago do Estado = só OB Contabilizada do SIAFE. Indício interno para requerer documentos, não acusação."
+  governo_couto_regras:
+    nome: Gestão Couto — regras D01–D20 e hipóteses
+    onde: Estado › Governo Couto · Início › Sinais críticos
+    depende: [siafe_status, siafe_gd, regra_pericia, regra_governo_couto]
+    comando: ["{py}", "-m", "compliance_agent.governo_couto_regras"]
+    env: {PATH: "/home/ubuntu/.local/bin:/home/ubuntu/.npm-global/bin:/usr/bin:/bin"}
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 86400
+    timeout_s: 5400
+    prioridade: 6
+    efeito: {arquivo: data/governo_couto_suspeitas.json}
+    antes: "semanal, domingo 08:10 (cron)"
+  territorio:
+    nome: Mapa por município / AP (territorio.db)
+    onde: Estado › Mapa por município · Prefeitura › Mapa por AP
+    depende: [contratos_tcerj, regra_territorio]
+    comando: ["{py}", "-m", "compliance_agent.territorio.cli", "--incremental"]
+    peso: pesado
+    debounce_s: 900
+    intervalo_min_s: 7200
+    timeout_s: 1800
+    prioridade: 5
+    antes: "a cada 6 h (timer jfn-territorio)"
+  cge_confronto:
+    nome: Confronto CGE × JFN
+    onde: Estado › CGE × JFN
+    depende: [sei_lote, sei_arquivado, sei_ficha, sei_lex, siafe_ob, triagem]
+    comando: ["{py}", "-m", "compliance_agent.cge_confronto"]
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 7200
+    timeout_s: 1800
+    prioridade: 5
+    efeito: {arquivo: data/cge_confronto.json}
+    antes: "semanal, domingo 08:40 (cron)"
+    cerebro:
+      arquivo: data/cge_confronto.json
+      assunto: "CGE × JFN — cobertura"
+      campos:
+        "contratações examinadas pela CGE": metricas.todas.n
+        "com autos lidos pelo JFN": metricas.todas.autos_lidos
+        "com artefato do JFN": metricas.todas.com_artefato
+        "com OB no SIAFE": metricas.todas.com_ob
+        "G1+G2 com sinal do JFN": "metricas.G1+G2.com_sinal"
+      ressalva: "Métrica interna de cobertura do JFN contra a auditoria da CGE; não é peça de acusação."
+  lentes:
+    nome: Lentes de detecção materializadas
+    onde: Transversal › Lentes
+    depende: [siafe_ob, siafe_status]
+    comando: ["{py}", "tools/lentes_materializar.py"]
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 1800
+    prioridade: 7
+    efeito: {arquivo: data/lentes_estado.json}
+    antes: "diário 04:17 (cron)"
+  vault_casos:
+    nome: Casos e estado do sistema no vault (blocos cerebro:dados)
+    onde: vault ~/vault (casos/, dados/estado-do-sistema.md) → segundo cérebro (indexa a cada 10 min)
+    depende: [siafe_ob, siafe_status, pericia_contabil]
+    comando: ["{py}", "tools/cerebro_sync.py"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 900
+    prioridade: 8
+    antes: "diário 06:25 (cron)"
+  conformidade:
+    nome: Conformidade — sensores das regras de qualidade
+    onde: Sistema › Conformidade
+    depende: [regra_detectores, pericia_contabil, governo_couto_regras, cge_confronto]
+    comando: ["{py}", "-m", "compliance_agent.qualidade", "sensores"]
+    peso: leve
+    debounce_s: 300
+    intervalo_min_s: 3600
+    timeout_s: 1200
+    prioridade: 8
+    efeito: {arquivo: data/qualidade_estado.json}
+    antes: "a cada 3 h, dentro da automelhoria (cron 40 */3)"
+  painel_ob:
+    nome: Painel — caches que somam OB (por ano e mês, orçamento por órgão, Governo Couto, frescor)
+    onde: Estado › Orçamento por órgão · Estado › Governo Couto · filtro Ano/Mês · Sistema › Motores (frescor)
+    tipo: cache
+    depende: [siafe_ob, siafe_status, siafe_gd, regra_orcamento, regra_pericia, governo_couto_regras]
+    prefixos: ["periodo:ob_siafe", "orcamento_orgao:", "governo_couto:base", "fontes:frescor"]
+    urls:
+      "periodo/ob_siafe": "periodo:ob_siafe"
+      "orcamento_orgao": "orcamento_orgao:"
+      "governo_couto": "governo_couto:base"
+      "fontes/frescor": "fontes:frescor"
+    peso: leve
+    debounce_s: 600
+    intervalo_min_s: 1800
+    prioridade: 4
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min (o valor velho durava até 1 h 30)"
+  painel_contratos:
+    nome: Painel — caches de contratos, aditivos e TAC por período
+    onde: filtro Ano/Mês das abas de contratos (Estado e Prefeitura)
+    tipo: cache
+    depende: [contratos_tcerj, doerj]
+    prefixos: ["periodo:contratos_estado", "periodo:contratacoes_tcerj", "periodo:aditivos_estado", "periodo:tac_estado"]
+    urls:
+      "periodo/contratos_estado": "periodo:contratos_estado"
+      "periodo/contratacoes_tcerj": "periodo:contratacoes_tcerj"
+      "periodo/aditivos_estado": "periodo:aditivos_estado"
+      "periodo/tac_estado": "periodo:tac_estado"
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    prioridade: 6
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  painel_sancoes:
+    nome: Painel — caches de sanções
+    onde: Transversal › Sancionadas · filtro Ano/Mês
+    tipo: cache
+    depende: [sancoes]
+    prefixos: ["periodo:sancoes_estado", "intel:socio_sancionada"]
+    urls:
+      "periodo/sancoes_estado": "periodo:sancoes_estado"
+      "intel/socio_sancionada": "intel:socio_sancionada"
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    prioridade: 6
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  painel_alertas:
+    nome: Painel — alertas por período
+    onde: Transversal › Alertas (filtro Ano/Mês)
+    tipo: cache
+    depende: [triagem, revisao_humana]
+    prefixos: ["periodo:alertas"]
+    urls: {"periodo/alertas": "periodo:alertas"}
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    prioridade: 6
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+
+# Descobertas VERIFICADAS que vão ao segundo cérebro (consultas só-leitura; 1 linha = 1 memória; mudou = substitui).
+# Só entra o que já passou pela verificação da casa (duas leituras + Opus, ou ato humano) e NÃO tem pessoa física
+# vinculada (pessoa_id nulo). Texto com CPF/e-mail/segredo é recusado pelo cliente antes de sair da máquina.
+cerebro:
+  - id: triagem_verificada
+    kind: semantica
+    chave: "alerta:{id}"
+    assunto: "alerta {tipo}"
+    # `emendas_d2_*` fica fora: o título traz o NOME do parlamentar autor (pessoa física) — decisão do dono pendente.
+    sql: >-
+      SELECT a.id AS id, a.tipo AS tipo, substr(a.titulo,1,220) AS titulo, t.prioridade AS prioridade,
+             COALESCE('nota ' || t.nota || '/10', 'sem nota registrada') AS nota,
+             CASE WHEN COALESCE(t.proximo_passo,'') <> '' THEN ' Próximo passo: ' || substr(t.proximo_passo,1,300) ELSE '' END AS proximo_passo,
+             substr(t.em,1,10) AS em
+      FROM alertas_triagem t JOIN alertas a ON a.id = t.alerta_id
+      WHERE t.estado = 'VERIFICADO' AND t.verificado_por IS NOT NULL
+        AND t.prioridade IN ('aprofundar', 'monitorar') AND a.pessoa_id IS NULL
+        AND a.tipo NOT LIKE 'emendas_d2%'
+    texto: >-
+      JFN — alerta #{id} ({tipo}) com triagem VERIFICADA em {em} (duas leituras + Opus): {prioridade}, {nota}.
+      {titulo}.{proximo_passo} Indício interno, não acusação; a confirmação é ato humano.
+  - id: alerta_confirmado
+    kind: decisoria
+    chave: "alerta-humano:{id}"
+    assunto: "alerta {tipo}"
+    sql: >-
+      SELECT id, tipo, substr(titulo,1,220) AS titulo FROM alertas WHERE status = 'confirmado' AND pessoa_id IS NULL
+    texto: "JFN — alerta #{id} ({tipo}) CONFIRMADO por revisão humana: {titulo}."

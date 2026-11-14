@@ -183,6 +183,7 @@ GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status
 GET /api/siafe/truncamento -> api_siafe_truncamento
 GET /api/sistema/atividade -> api_sistema_atividade
+GET /api/sistema/propagacao -> api_sistema_propagacao
 GET /api/skill -> api_skill
 GET /api/skills -> api_skills
 GET /api/skills/validate -> api_skills_validate

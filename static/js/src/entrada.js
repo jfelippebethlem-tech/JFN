@@ -57,6 +57,7 @@ import {ligarPeriodo} from './abas/periodo.js';
 import {renderPericiaContabil, renderCgeJfn} from './abas/rotinas.js';
 import {renderMotoresSistema, renderComandosSistema} from './abas/sistema.js';
 import {renderConformidade} from './abas/conformidade.js';
+import {renderPropagacao} from './abas/propagacao.js';
 import {renderRequerimentos, ligarRequerimentos} from './abas/requerimentos.js';
 import {ligarVinculos, ligarFila, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, sinteseProcesso, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
 import {renderLai, ligarLai} from './abas/lai.js';
@@ -170,6 +171,7 @@ const TABS={
   sistema:[
     {id:'s_motores',  ic:'⚙️',tl:'Motores', render:renderMotoresSistema},
     {id:'g_sweeps',   ic:'🛰️',tl:'Coletas e rotinas', render:renderSweeps},
+    {id:'s_propag',   ic:'🔁',tl:'Propagação', render:renderPropagacao},
     {id:'g_instr',    ic:'🔧',tl:'Instrumentação',render:renderInstrumentacao},
     {id:'g_conform',  ic:'✅',tl:'Conformidade',render:renderConformidade},
     {id:'g_acuracia', ic:'🎯',tl:'Acurácia', render:renderAcuracia},

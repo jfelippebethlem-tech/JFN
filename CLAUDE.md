@@ -46,6 +46,8 @@ Fonte única de capacidades: **`capabilities.yaml`** — derivados (`data/jfn_to
   6. **Pacote completo por CNPJ = `/api/dossie/completo`**. TODO entregável passa pelo gate `reporting/neutralidade.garantir_neutro`.
   7. **Limite de fonte → `compliance_agent/limites_de_fonte.py`** ANTES de reprogramar coleta: diz o que a fonte não tem e o que já falhou (LexML/TCU respondem **200 com HTML de WAF**; PNCP não publica ata nem proposta de perdedor; DataJud só tem metadado).
   8. **Detector novo → conferir se já existe e tem caller.** `grep` por callers + `COUNT(*)` na tabela que ele consome: já houve 6 casos de "construído, testado, nunca rodado".
+  9. **Reabrir caso/fornecedor/processo/órgão → segundo cérebro PRIMEIRO**: `python -m compliance_agent.cerebro_compartilhado caso "<termo>"` (ou `brain_search`/`brain_recall` do MCP `jfn-brain`). Fechou algo durável → `… lembrar --chave K --kind <kind> "<um fato>"` (mesma chave com texto novo = `supersedes`; CPF/e-mail/segredo é recusado).
+  10. **Derivado velho → não rodar à mão nem criar cron novo**: o mapa é `config/propagacao.yaml`, o despachante (`compliance_agent/propagacao.py`, cron */5) recalcula o que a fonte sujou; estado em Sistema › Propagação. Mudança que sonda nenhuma vê → `python -m compliance_agent.propagacao emitir <fonte> "<detalhe>"`.
 - **Enxame** (`editais_direcionamento --so-rj`) **só OFF-HOURS** — escrever no compliance.db TRAVA as rotas de leitura do painel.
 - Schema/colunas · dupla numeração de UG · SIAFE-Rio 2/WAF · sweep SEI → `docs/INDEX.md` e `docs/CLAUDE-REFERENCIA-COMPLETA.md` sob demanda.
 

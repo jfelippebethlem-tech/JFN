@@ -118,6 +118,16 @@ pipelines:
       método, hipóteses do vault, RAG, backup). Grava o resultado da rodada; passo degradado vira item da
       fila de automelhoria (sensor `rem`).
 
+  - nome: propagacao
+    remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.propagacao ciclo >> data/propagacao_cron.log 2>&1"
+    arquivo: data/propagacao_cron.log
+    max_stale_h: 1
+    grupo: base
+    nota: >-
+      cron */5 — despachante da propagação automática (config/propagacao.yaml): sonda as fontes, recalcula os
+      derivados sujos (um pesado por ciclo) e manda descobertas ao segundo cérebro. Escreve uma linha por ciclo;
+      silêncio de 1 h = despachante morto e TODO derivado volta a depender só do cron antigo.
+
   - nome: automelhoria-geral
     arquivo: data/automelhoria_geral.log
     max_stale_h: 30
