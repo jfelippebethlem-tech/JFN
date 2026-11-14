@@ -333,7 +333,8 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
     pensar = pensar or claude_motor.pensar
     garantir(con)
     rows = con.execute("SELECT alerta_id, prioridade, motor FROM alertas_triagem WHERE opus_pendente=1 "
-                       "ORDER BY valor DESC LIMIT ?", (n,)).fetchall()
+                       "ORDER BY CASE prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 ELSE 2 END, valor DESC "
+                       "LIMIT ?", (n,)).fetchall()   # 🔴 primeiro: são 273 de 5.145 na fila do Opus (14/11)
     feitos = []
     for aid, prio, motor in rows:
         a = (_por_ids(con, [aid]) or [None])[0]
