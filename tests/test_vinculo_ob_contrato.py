@@ -277,3 +277,17 @@ def test_fila_fecha_contrato_so_o_que_a_captura_pode_fechar():
     assert [(e["sei"], e["score"], e["n_contratos"]) for e in fila] == [
         ("SEI-111111/000001/2024", 750.0, 2), ("SEI-111111/000002/2024", 450.0, 1)]
     assert all("FECHA_CONTRATO" in e["flags"] for e in fila)
+
+
+def test_ob_sem_processo_na_base_tem_motivo_proprio_e_nao_vai_a_fila(base):
+    # controle: com a OB do credor D num processo de pagamento, o motivo é "fora do processo";
+    # tirado o processo da OB (como no SIAFE 1, 2021–2023), nenhuma captura resolve — motivo próprio
+    con = sqlite3.connect(base)
+    con.execute("UPDATE ob_orcamentaria_siafe SET processo='' WHERE credor=?", (CNPJ_D,))
+    con.commit()
+    con.close()
+    d = {r["id"]: r for r in pc.avaliar_estado(base, corte=date(2026, 7, 1))}["D"]
+    assert d["categoria"] == "INDETERMINADO" and d["motivo"] == "ob_do_credor_sem_processo_na_base"
+    assert d["processos_fora"] == {"processos": [], "obs_sem_processo": 1}
+    assert "ob_do_credor_sem_processo_na_base" in pc.MOTIVOS
+    assert vo.fila_fecha_contrato([d], capturado=lambda k: False) == []

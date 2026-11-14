@@ -99,6 +99,9 @@ MOTIVOS = {
     "vigencia_nao_registrada": "contrato contínuo sem vigência registrada — pró-rata inaferível",
     "ob_do_credor_fora_do_processo": "o credor recebeu OB, mas só em processo diverso do contrato — "
                                      "pagamento possivelmente em processo próprio; vínculo indeterminável",
+    "ob_do_credor_sem_processo_na_base": "o credor recebeu OB na vigência, mas sem número de processo na base "
+                                         "(SIAFE 1 não trouxe o campo em 2021–2023) — sem chave para ligar a OB "
+                                         "ao contrato; só recoleta do SIAFE resolve",
     "a_menor_com_ob_fora_do_processo": "pago no processo abaixo do devido, mas o credor recebeu outras OBs na "
                                        "mesma UG em outro processo — o 'a menor' não se sustenta",
     "cobertura_siafe_parcial": "pago no processo abaixo do devido, mas a coleta do SIAFE está parcial na "
@@ -723,9 +726,13 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
 
     if not no_proc:
         if fora:
-            return {**r, "motivo": "ob_do_credor_fora_do_processo",
-                    "processos_fora": _processos_fora([o for o in fora if id(o) not in alheia_vinculada],
-                                                      procs_do_credor.get(k_cred, set()) - {k_proc})}
+            pf = _processos_fora([o for o in fora if id(o) not in alheia_vinculada],
+                                 procs_do_credor.get(k_cred, set()) - {k_proc})
+            # só OB SEM processo na base como candidata (SIAFE 1, 2021–2023): nenhuma captura do SEI resolve —
+            # motivo próprio, para o painel dizer o que falta (limites_de_fonte: "Processo da OB do SIAFE")
+            motivo = ("ob_do_credor_sem_processo_na_base" if pf["obs_sem_processo"] and not pf["processos"]
+                      else "ob_do_credor_fora_do_processo")
+            return {**r, "motivo": motivo, "processos_fora": pf}
         # Sem OB na base não é "pago a menor": é ausência de medida (revisão 13/11/2026 — 452 contratos /
         # R$ 771,27 mi, 98,4% do "déficit", eram isso). INDISPONÍVEL ≠ zero.
         return {**r, "vinculo": "credor_sem_ob", "motivo": "credor_sem_ob_na_base"}
