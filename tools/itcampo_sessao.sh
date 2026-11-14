@@ -20,6 +20,10 @@ export VM_GUARD_MAX_LOAD="${VM_GUARD_MAX_LOAD:-20}" VM_GUARD_MIN_FREE_GB="${VM_G
 export JFN_CLAUDE_MAX_CONFERENCIA_VM2=0      # sem Claude Code aqui: a conferência da VM-1 decide sozinha
 unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && export SEI_HEADED=1
+# navegador da sessão k num lugar FIXO (mosaico 3 colunas na metade direita, janelas pequenas) — instância própria
+# do Chromium do Playwright no WSL, perfil temporário em $TMPDIR; nunca o Chrome/perfil do dono
+C=$(( (K - 1) % 3 )); L=$(( (K - 1) / 3 % 3 ))
+export SEI_CHROMIUM_ARGS="--window-position=$((1100 + C * 480)),$((40 + L * 330)) --window-size=480,330"
 mkdir -p "$TMPDIR" data
 rm -f data/itcampo_sessao_fim.json
 FILA=data/fila_itcampo.json

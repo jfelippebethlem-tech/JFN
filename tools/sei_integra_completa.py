@@ -101,7 +101,9 @@ async def main():
     from compliance_agent.recursos import browser_lock_async
     async with browser_lock_async(espera_max=1800), async_playwright() as pw:
         # SEI_HEADED=1: janela do navegador VISÍVEL (it-campo, pedido do dono 14/11/2026: "nada de janelas ocultas")
-        b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=G.guarded_launch_args())
+        # SEI_CHROMIUM_ARGS: posição/tamanho da janela por sessão (it-campo: mosaico fixo, sem cobrir o trabalho do dono)
+        b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1",
+                                     args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
         ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
               user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
