@@ -64,6 +64,12 @@ FATIA_S = int(os.environ.get("JFN_ITCAMPO_FATIA", "1800"))
 POR_SESSAO = int(os.environ.get("JFN_ITCAMPO_POR_SESSAO", "12"))   # ~2,5 min/processo medidos → folga
 VALIDADE_H = 3.0
 N_MAX = 12
+# PISO DE MEMÓRIA DO WSL. Em 14/11/2026 às 17:22 o WSL (22 GB + 8 GB de swap) esgotou com 8 íntegras + 5 varreduras:
+# OOM global, a distro caiu e ficou em laço de reinício (cada sessão vivia 106 s) até um `wsl --shutdown`. Vinha
+# de 1–2 GB disponíveis havia horas. Abaixo do piso o orquestrador não abre sessão nova e, se durar, tira uma.
+PISO_MEM_GB = float(os.environ.get("JFN_ITCAMPO_PISO_MEM_GB", "3.0"))
+MINUTOS_ABAIXO_DO_PISO = 3
+N_MIN = 2
 
 _RX_INI = re.compile(r"^\[([^\]]+)\] ÍNTEGRA (\d{6}/\d{6}/\d{4})")
 _RX_FIM = re.compile(r"^\[([^\]]+)\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
@@ -190,6 +196,33 @@ def n_varredura() -> int:
         return max(0, min(N_MAX, int(CFG_V.read_text().strip())))
     except (OSError, ValueError):
         return 0
+
+
+def mem_disponivel_gb() -> float | None:
+    """MemAvailable do WSL em GB (None = não deu para ler: não se freia às cegas)."""
+    try:
+        for ln in Path("/proc/meminfo").read_text().splitlines():
+            if ln.startswith("MemAvailable:"):
+                return int(ln.split()[1]) / 1048576
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def freio_de_memoria(disp_gb: float | None, n: int, v: int, minutos_baixos: int) -> tuple[int, int, int]:
+    """Decide o nº de sessões diante da memória: (n, v, minutos_baixos). Abaixo do piso por
+    `MINUTOS_ABAIXO_DO_PISO` leituras seguidas, sai UMA sessão — primeiro de varredura (a volta dela é curta e
+    não deixa processo pela metade), depois de íntegras, nunca abaixo de `N_MIN`. Só desce: subir é decisão medida."""
+    if disp_gb is None or disp_gb >= PISO_MEM_GB:
+        return n, v, 0
+    minutos_baixos += 1
+    if minutos_baixos < MINUTOS_ABAIXO_DO_PISO:
+        return n, v, minutos_baixos
+    if v > 0:
+        return n, v - 1, 0
+    if n > N_MIN:
+        return n - 1, v, 0
+    return n, v, 0
 
 
 def _dir(modo: str, k: int) -> Path:
@@ -472,18 +505,28 @@ def lancar(k: int, n: int, modo: str = "integras") -> None:
 
 def rodar() -> int:
     ultimo_pull = 0.0
+    minutos_baixos = 0
     while True:
         n = n_sessoes()
+        disp = mem_disponivel_gb()
+        n2, v2, minutos_baixos = freio_de_memoria(disp, n, n_varredura(), minutos_baixos)
+        if (n2, v2) != (n, n_varredura()):
+            painel(f"MEMÓRIA: {disp:.1f} GB disponíveis no WSL há {MINUTOS_ABAIXO_DO_PISO} min (piso {PISO_MEM_GB:g}) — "
+                   f"sessões {n}+{n_varredura()} → {n2}+{v2} (a que sobra termina a volta e fecha)")
+            CFG_N.write_text(f"{n2}\n")
+            CFG_V.write_text(f"{v2}\n")
+            n = n2
         if time.time() - ultimo_pull > 600:
             r = _run(["git", "-C", str(BASE), "pull", "--ff-only", "-q"], timeout=300)
             if r.returncode != 0:
                 painel(f"git pull falhou ({r.stderr.strip()[:120]}) — seguindo com o código que há")
             ultimo_pull = time.time()
         head = _head(BASE)
+        sem_folga = disp is not None and disp < PISO_MEM_GB      # abaixo do piso não se abre sessão nova
         slots = [("integras", k, n) for k in range(1, n + 1)] + \
                 [("varredura", k, n_varredura()) for k in range(1, n_varredura() + 1)]
         for modo, k, tot in slots:
-            if PAUSA.exists() or viva(k, modo):
+            if PAUSA.exists() or viva(k, modo) or sem_folga:
                 continue
             try:
                 preparar_worktree(k, head, modo)
@@ -501,7 +544,9 @@ def rodar() -> int:
                 estados.append(f"{_dir(modo, k).name}:-")
         vivas = sum(1 for modo, k, _ in slots if viva(k, modo))
         titulo(f"JFN SEI orquestrador — {vivas}/{len(slots)} sessões vivas" + (" — PAUSADO" if PAUSA.exists() else ""))
-        print(f"[{time.strftime('%T')}] {vivas}/{len(slots)} vivas  " + "  ".join(estados), flush=True)
+        print(f"[{time.strftime('%T')}] {vivas}/{len(slots)} vivas  " + "  ".join(estados)
+              + (f"  — memória {disp:.1f} GB < piso {PISO_MEM_GB:g}: não abro sessão nova" if sem_folga else ""),
+              flush=True)
         time.sleep(60)
 
 

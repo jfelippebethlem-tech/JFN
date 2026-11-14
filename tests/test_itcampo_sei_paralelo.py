@@ -73,3 +73,21 @@ def test_subfatias_da_varredura_cobrem_a_metade_da_vm1_sem_sobrepor():
     for p in procs:
         donos = [k for k in range(1, m + 1) if na_minha_fatia(p, 2 * (k - 1), 2 * m)]
         assert len(donos) == (1 if na_minha_fatia(p, 0, 2) else 0)
+
+
+def test_freio_de_memoria_tira_uma_sessao_so_depois_de_minutos_seguidos_abaixo_do_piso():
+    """14/11/2026 17:22: OOM global no WSL com 8+5 sessões. Varredura sai primeiro; íntegras nunca abaixo de N_MIN."""
+    piso = P.PISO_MEM_GB
+    n, v, baixos = 8, 5, 0
+    for _ in range(P.MINUTOS_ABAIXO_DO_PISO - 1):
+        n, v, baixos = P.freio_de_memoria(piso - 1, n, v, baixos)
+        assert (n, v) == (8, 5)
+    assert P.freio_de_memoria(piso - 1, n, v, baixos) == (8, 4, 0)
+    assert P.freio_de_memoria(piso - 1, 8, 0, P.MINUTOS_ABAIXO_DO_PISO - 1) == (7, 0, 0)
+    assert P.freio_de_memoria(piso - 1, P.N_MIN, 0, P.MINUTOS_ABAIXO_DO_PISO - 1) == (P.N_MIN, 0, 0)
+
+
+def test_freio_de_memoria_nao_age_com_folga_nem_sem_leitura():
+    """Controle negativo: com folga, ou sem conseguir ler a memória, nada muda e a contagem zera."""
+    assert P.freio_de_memoria(P.PISO_MEM_GB + 0.1, 8, 5, 2) == (8, 5, 0)
+    assert P.freio_de_memoria(None, 8, 5, 2) == (8, 5, 0)
