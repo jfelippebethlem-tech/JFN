@@ -228,3 +228,24 @@ def test_reconferir_rebaixa_o_ja_gravado(base, tmp_path):
     assert vo.reconferir(base) == {"rebaixadas": 1}
     d = {r["id"]: r for r in pc.avaliar_estado(base, corte=date(2026, 7, 1))}["D"]
     assert d["categoria"] == "INDETERMINADO"
+
+
+# ── modelo diário: não reler o par já lido (14/11/2026) ────────────────────────────────────────────────
+def test_modelo_diario_nao_rele_o_par_ja_decidido():
+    """O `modelo` agendado depois da `regra` noturna só manda ao lote o que NUNCA foi lido; INDISPONÍVEL volta
+    depois de `DIAS_RELER_INDISPONIVEL` (o acervo cresce com a captura da VM-2)."""
+    ao = {("1", "C1"): ["a", "b"], ("2", "C1"): ["a", "b"], ("3", "C2"): ["x", "y"], ("4", "C2"): ["x", "y"]}
+    lidos = {vo.id_par("1", "C1"): {"em": "2026-11-13", "estado": V.VERIFICADO},
+             vo.id_par("2", "C1"): {"em": "2026-11-13", "estado": V.PENDENTE},
+             vo.id_par("3", "C2"): {"em": "2026-11-13", "estado": V.INDISPONIVEL},
+             vo.id_par("4", "C2"): {"em": "2026-10-01", "estado": V.INDISPONIVEL}}
+    assert set(vo.pares_nao_lidos(ao, lidos, date(2026, 11, 14))) == {("4", "C2")}
+    assert set(vo.pares_nao_lidos(ao, {}, date(2026, 11, 14))) == set(ao)
+
+
+def test_registro_de_lidos_ilegivel_nao_quebra(tmp_path):
+    arq = tmp_path / "lidos.json"
+    arq.write_text("{quebrado", encoding="utf-8")
+    assert vo.ler_lidos(arq) == {}
+    vo.registrar_lidos(arq, {("9", "C9"): (None, "", V.INDISPONIVEL, "x")}, date(2026, 11, 14))
+    assert vo.ler_lidos(arq)[vo.id_par("9", "C9")] == {"em": "2026-11-14", "estado": V.INDISPONIVEL}

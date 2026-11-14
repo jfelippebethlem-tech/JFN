@@ -414,7 +414,93 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         antes = len(rows)
         rows = _aplicar_fatia(rows, indice, total, dirigidos_norm | diretas_grandes)
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
+    # VÍNCULO OB↔CONTRATO (14/11/2026): processos de PAGAMENTO que tiram contrato de INDETERMINADO na perícia
+    # contábil (`vinculo_ob_contrato fila`). Estrato próprio logo abaixo do enfileirado à mão e da contratação
+    # direta grande, INTERCALADO com o resto até o teto — depois da fatia, para o teto valer na fila da máquina.
+    topo = dirigidos_norm | diretas_grandes
+    estrato = [] if (ug or cnpj) else _fila_vinculo_ob()
+    presentes = {_norm_proc(r[0]) for r in rows}
+    _ESTRATOS["topo"] = topo
+    _ESTRATOS["vinculo"] = {k for k in estrato if k in presentes and k not in topo}
+    if _ESTRATOS["vinculo"] and TETO_VINCULO_OB > 0:
+        rows = _intercalar_estrato(rows, estrato, topo, TETO_VINCULO_OB)
+        _log(f"fila: {len(_ESTRATOS['vinculo'])} processos de PAGAMENTO do vínculo OB↔contrato intercalados "
+             f"logo abaixo da contratação direta (teto {TETO_VINCULO_OB:.0%} do lote)")
     return rows
+
+
+# Estrato VÍNCULO OB↔CONTRATO. Teto = fração máxima de cada lote (0 desliga). `_ESTRATOS` guarda os conjuntos da
+# última `_fila` desta máquina; na VM-2 quem os preenche é `vm2_sweep_geral.carregar_fila` (a fila vem exportada).
+FILA_VINCULO_OB = REPO / "data" / "sei_fila_vinculo_ob.json"
+TETO_VINCULO_OB = float(os.environ.get("SEI_TETO_VINCULO_OB", "0.5"))
+_ESTRATOS: dict[str, set[str]] = {"topo": set(), "vinculo": set()}
+
+
+def _fila_vinculo_ob() -> list[str]:
+    """Processos (só dígitos) de `sei_fila_vinculo_ob.json`, na ordem do escore dele. Sem arquivo ou ilegível:
+    vazio — a fila volta a ser a de antes, nunca quebra."""
+    try:
+        corpo = json.loads(Path(FILA_VINCULO_OB).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(corpo, list):
+        return []
+    out, vistos = [], set()
+    for e in corpo:
+        k = _norm_proc_global(e.get("sei", "")) if isinstance(e, dict) else ""
+        if k and k not in vistos:
+            vistos.add(k)
+            out.append(k)
+    return out
+
+
+def _intercalar_estrato(rows: list, estrato, topo, fracao: float) -> list:
+    """`topo` na frente (ordem original); depois o ESTRATO (na ordem de `estrato`) intercalado com o resto de
+    modo que nenhum prefixo do trecho tenha mais que ⌈fracao·k⌉ do estrato. Acabou o resto, o estrato segue
+    (a cota limita concorrência, não trabalho). Só reordena — nunca tira processo."""
+    if fracao <= 0:
+        return rows
+    ordem = {k: i for i, k in enumerate(estrato)}
+    cab = [r for r in rows if _norm_proc_global(r[0]) in topo]
+    vs = sorted((r for r in rows if _norm_proc_global(r[0]) not in topo and _norm_proc_global(r[0]) in ordem),
+                key=lambda r: ordem[_norm_proc_global(r[0])])
+    resto = [r for r in rows if _norm_proc_global(r[0]) not in topo and _norm_proc_global(r[0]) not in ordem]
+    out, vi, oi = list(cab), 0, 0
+    while vi < len(vs) or oi < len(resto):
+        k = len(out) - len(cab) + 1
+        if vi < len(vs) and (oi >= len(resto) or vi < -(-fracao * k // 1)):
+            out.append(vs[vi])
+            vi += 1
+        else:
+            out.append(resto[oi])
+            oi += 1
+    return out
+
+
+def _teto_estrato_no_lote(fila: list, candidatos: list, estrato: set[str], max_n: int, fracao: float) -> list:
+    """Teto no LOTE de fato: o `_pular` tira o resto já lido e deixa o estrato (nunca arquivado), então a
+    intercalação da fila sozinha não garante a metade. Excedente do estrato sai; entra o próximo do resto
+    ainda não escolhido; sem resto, o estrato completa a vaga."""
+    if fracao <= 0 or not estrato:
+        return fila
+    teto = int(max_n * fracao)
+    out, fora, nv = [], [], 0
+    for c in fila:
+        if _norm_proc_global(c[0]) in estrato:
+            if nv >= teto:
+                fora.append(c)
+                continue
+            nv += 1
+        out.append(c)
+    ja = {c[0] for c in fila}
+    for c in candidatos:
+        if len(out) >= max_n:
+            break
+        if c[0] not in ja and _norm_proc_global(c[0]) not in estrato:
+            out.append(c)
+            ja.add(c[0])
+    out.extend(fora[:max(0, max_n - len(out))])
+    return out
 
 
 PISO_DIRETA = float(os.environ.get("SEI_PISO_CONTRATACAO_DIRETA", "1000000"))
@@ -1011,6 +1097,8 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         ja = set(fila)
         fila.extend(x for x in velhos if x not in ja)
     fila = fila[:max_n]
+    if not (ug or cnpj):
+        fila = _teto_estrato_no_lote(fila, candidatos, _ESTRATOS["vinculo"], max_n, TETO_VINCULO_OB)
     if usar_velhos:
         _log(f"fila: {len(novos)} nunca lidos + {len(usar_velhos)} de {len(velhos)} "
              f"retentativas (cota de 1/3, intercaladas)")

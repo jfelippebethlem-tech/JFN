@@ -22,7 +22,6 @@ import argparse
 import asyncio
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
@@ -46,7 +45,12 @@ def exportar(limite: int) -> list:
     import tools.sei_sweep as S
     with contextlib.redirect_stdout(sys.stderr):        # o `_log` do sweep imprime: o stdout é só o JSON
         rows = S._fila(None, limite)
-    return [list(x) for x in rows[:limite]]
+    # 4º campo = estrato ("topo" | "vinculo" | ""): sem ele o teto do vínculo OB↔contrato não valeria no lote
+    # da VM-2 (ela não tem o banco nem a lista). `carregar_fila` aceita também a linha antiga de 3 campos.
+    def _marca(p) -> str:
+        k = S._norm_proc_global(p)
+        return "topo" if k in S._ESTRATOS["topo"] else "vinculo" if k in S._ESTRATOS["vinculo"] else ""
+    return [list(x[:3]) + [_marca(x[0])] for x in rows[:limite]]
 
 
 def _ler(p: Path, padrao):
@@ -62,10 +66,19 @@ def _entregues_recentes() -> set[str]:
     return {p for p, t in d.items() if agora - float(t) < 86400}
 
 
+def carregar_fila(linhas: list) -> list[tuple]:
+    """Linhas exportadas → tuplas (processo, nob, tot) do sweep; o 4º campo, quando há, repõe os estratos em
+    `S._ESTRATOS` (o teto do vínculo OB↔contrato no lote depende deles)."""
+    import tools.sei_sweep as S
+    S._ESTRATOS["topo"] = {S._norm_proc_global(x[0]) for x in linhas if len(x) > 3 and x[3] == "topo"}
+    S._ESTRATOS["vinculo"] = {S._norm_proc_global(x[0]) for x in linhas if len(x) > 3 and x[3] == "vinculo"}
+    return [tuple(x[:3]) for x in linhas]
+
+
 def rodar(max_n: int) -> None:
     """(VM-2) Um lote do sweep canônico sobre a fila exportada pela VM-1."""
     import tools.sei_sweep as S
-    fila = [tuple(x) for x in _ler(FILA, []) if x and x[0] not in _entregues_recentes()]
+    fila = carregar_fila([x for x in _ler(FILA, []) if x and x[0] not in _entregues_recentes()])
     S._fila = lambda ug, limite, cnpj=None: fila
     S._log(f"[vm2] fila da VM-1 (fatia 1/2): {len(fila)} processos; lote --max {max_n}")
     asyncio.run(S.run(max_n=max_n, ug=None))

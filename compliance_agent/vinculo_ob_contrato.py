@@ -29,6 +29,7 @@ O que não está no acervo vira FILA DE CAPTURA (lista priorizada por valor pago
 CLI:
   python -m compliance_agent.vinculo_ob_contrato regra [--gravar]
   python -m compliance_agent.vinculo_ob_contrato modelo --limite N [--controle K] [--gravar]
+      (com --gravar: só pares que o modelo ainda não leu — `data/vinculo_ob_modelo_lidos.json`)
   python -m compliance_agent.vinculo_ob_contrato fila [--top N]
 """
 from __future__ import annotations
@@ -412,6 +413,60 @@ def rodar_modelo(pares: dict, *, modelo: str | None = None, espera_max: int = 36
     return decidir_modelo(saida, contexto), {"lote": lote, "leituras": len(itens)}
 
 
+# ── modelo diário: registro do que já foi lido (14/11/2026) ─────────────────────────────────────────────
+# O `modelo` roda todo dia depois da `regra` noturna; sem isto ele mandaria ao lote os MESMOS pares por valor
+# todo dia (custo sem ganho) e os novos — recém-capturados pela VM-2 — nunca chegariam ao topo do `--limite`.
+LIDOS_MODELO = Path(P._DB).parent / "vinculo_ob_modelo_lidos.json"
+DIAS_RELER_INDISPONIVEL = 30
+
+
+def ler_lidos(arq: str | Path = LIDOS_MODELO) -> dict:
+    try:
+        d = json.loads(Path(arq).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def pares_nao_lidos(ao_modelo: dict, lidos: dict, hoje: date) -> dict:
+    """Pares que o modelo ainda não decidiu. INDISPONÍVEL (nenhuma leitura afirmou nada) volta depois de
+    `DIAS_RELER_INDISPONIVEL` dias; VERIFICADO e PENDENTE já estão na tabela e não voltam."""
+    out = {}
+    for par, cand in ao_modelo.items():
+        e = lidos.get(id_par(*par))
+        if isinstance(e, dict) and e.get("estado") == V.INDISPONIVEL:
+            try:
+                if (hoje - date.fromisoformat(str(e.get("em")))).days < DIAS_RELER_INDISPONIVEL:
+                    continue
+            except ValueError:
+                logger.debug("registro de lidos: data ilegível em %s — par volta ao modelo", id_par(*par))
+        elif e:
+            continue
+        out[par] = cand
+    return out
+
+
+def _ja_na_tabela_pelo_modelo(db) -> list[tuple]:
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
+        try:
+            return con.execute("SELECT DISTINCT processo_pagamento, credor, estado FROM vinculo_ob_contrato "
+                               "WHERE metodo<>?", (REGRA,)).fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return []
+
+
+def registrar_lidos(arq: str | Path, decisoes: dict, hoje: date) -> None:
+    d = ler_lidos(arq)
+    for par, (_k, _cit, estado, _m) in decisoes.items():
+        d[id_par(*par)] = {"em": hoje.isoformat(), "estado": estado}
+    tmp = Path(arq).with_suffix(".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(arq)
+
+
 # ── gravação ─────────────────────────────────────────────────────────────────────────────────────────
 def gravar(db: str | Path, linhas: list[tuple], *, preservar_regra: bool = True) -> int:
     """INSERT OR REPLACE, numa transação curta. Linha do modelo nunca sobrescreve linha da regra."""
@@ -574,6 +629,16 @@ def main(argv: list[str] | None = None) -> int:
             print("gravadas", gravar(a.db, linhas))
         return 0
     # modelo: os pares que a regra mandou (vários contratos citados), por valor pago; + controle positivo
+    if a.gravar:          # rodada que grava = a agendada: só o que o modelo ainda não leu
+        antes = len(ao_modelo)
+        lidos = ler_lidos()
+        for pp_fmt, cred, est_ in _ja_na_tabela_pelo_modelo(a.db):     # leituras anteriores ao registro (piloto)
+            lidos.setdefault(id_par(P.chave_sei("SEI-" + pp_fmt), cred), {"em": "2026-11-14", "estado": est_})
+        ao_modelo = pares_nao_lidos(ao_modelo, lidos, date.today())
+        logger.info("modelo: %d de %d pares ainda não lidos pelo modelo", len(ao_modelo), antes)
+    if not ao_modelo and not a.controle:
+        print(json.dumps({"pares": 0, "motivo": "nada novo para o modelo"}, ensure_ascii=False))
+        return 0
     valor = {par: sum(o[4] for o in pares[par]) for par in ao_modelo}
     alvo = dict(sorted(ao_modelo.items(), key=lambda x: -valor[x[0]])[:a.limite or None])
     gab = {}
@@ -606,6 +671,7 @@ def main(argv: list[str] | None = None) -> int:
                      ensure_ascii=False, indent=1, default=str))
     if a.gravar:
         print("gravadas", gravar(a.db, novas))
+        registrar_lidos(LIDOS_MODELO, {p_: d_ for p_, d_ in decisoes.items() if p_ not in gab}, date.today())
     return 0
 
 
