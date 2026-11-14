@@ -386,9 +386,12 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     limite = n_sessoes if modo == "integras" else n_varredura
     os.environ.update({"PYTHONPATH": str(s), "TMPDIR": str(s / "tmp"), "TZ": "America/Sao_Paulo",
                        "SEI_SEM_TG": "1", "JFN_CLAUDE_MAX_CONFERENCIA_VM2": "0"})
-    # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU
-    os.environ.setdefault("VM_GUARD_MAX_LOAD", "20")
+    # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU. Medido em 14/11 com 8 sessões
+    # de íntegras + 4 de varredura: carga 21 (tesseract = ~8 núcleos) e 2 GB livres no WSL. O teto de carga sobe; o
+    # PISO DE MEMÓRIA (1,5 GB) fica como válvula — o Windows do dono tinha só 3 GB livres, o WSL não cresce.
+    os.environ.setdefault("VM_GUARD_MAX_LOAD", "28")
     os.environ.setdefault("VM_GUARD_MIN_FREE_GB", "1.5")
+    os.environ.setdefault("OMP_THREAD_LIMIT", "1")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
     os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
     meu = _head(BASE)
     preparar_worktree(k, meu, modo)
