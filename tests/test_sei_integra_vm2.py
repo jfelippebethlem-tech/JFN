@@ -149,3 +149,14 @@ def test_restrito_confirmado_nao_vai_para_a_fila(monkeypatch, tmp_path):
         "3000000000032025": {"numero": "300000/000003/2025", "status": "RESTRITO"},
         "3000000000042025": {"numero": "300000/000004/2025", "status": "RESTRITO?"}}))
     assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000004/2025"]
+
+
+def test_restrito_confirmado_volta_a_fila_depois_de_30_dias(monkeypatch, tmp_path):
+    # 14/11/2026: acesso de unidade muda — restrito confirmado é retentado após 30 dias da última leitura
+    _isolar(monkeypatch, tmp_path)
+    (tmp_path / "data" / "sei_restritos.json").write_text(json.dumps({
+        "a": {"numero": "300000/000003/2025", "status": "RESTRITO", "ultima": "2026-01-02 10:00"},
+        "b": {"numero": "300000/000004/2025", "status": "RESTRITO",
+              "ultima": time.strftime("%Y-%m-%d %H:%M")},
+        "c": {"numero": "300000/000005/2025", "status": "RESTRITO"}}))   # sem data: segue fora (conservador)
+    assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000003/2025"]

@@ -87,6 +87,9 @@ def _pre() -> dict | None:
         return None
 
 
+RETENTAR_RESTRITO_DIAS = 30
+
+
 def _restritos_confirmados() -> set[str]:
     """Processos com status RESTRITO CONFIRMADO no registro da casa (`tools/sei_restritos.py`, ≥2 leituras
     consistentes). A conta tem UMA unidade: reabrir não traz documento (o caminho é a requisição formal,
@@ -98,8 +101,12 @@ def _restritos_confirmados() -> set[str]:
         return set()
     if not isinstance(d, dict):
         return set()
+    # 14/11/2026: o acesso de uma unidade muda — confirmado há mais de RETENTAR_RESTRITO_DIAS volta à fila uma vez
+    # (a leitura nova renova `ultima` no registro). Sem data na entrada = segue fora (conservador).
+    corte = time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time() - RETENTAR_RESTRITO_DIAS * 86400))
     return {F._proc_limpo(str(v.get("numero") or "")) for v in d.values()
-            if isinstance(v, dict) and v.get("status") == "RESTRITO"} - {""}
+            if isinstance(v, dict) and v.get("status") == "RESTRITO"
+            and (not v.get("ultima") or str(v.get("ultima")) >= corte)} - {""}
 
 
 def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | None = None) -> list[dict]:
