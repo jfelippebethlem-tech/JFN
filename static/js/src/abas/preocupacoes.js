@@ -39,6 +39,19 @@ function _couto(d) {
     estado: 'VERIFICADO', destino: 'e_couto'});
 }
 
+/* Concentração (14/11/2026): o total saltou de R$ 4,26 mi para R$ 17,96 mi com 6 contratos a mais — 60% vinha de UM
+   contrato de vigência longa sem termo publicado. Manchete concentrada tem de dizer que é concentrada. */
+function _concentracao(e) {
+  // mesma grandeza da manchete: `excesso_a_maior` é a soma de `diferenca` (pago − devido) dos contratos A_MAIOR
+  const l = (e.a_maior || []).filter(x => x.diferenca > 0).sort((a, b) => b.diferenca - a.diferenca);
+  const tot = e.excesso_a_maior;
+  if (!l.length || !tot) return '';
+  const top = l[0], p = Math.round(100 * top.diferenca / tot);
+  if (p < 25) return '';
+  const res = String(top.ressalvas || '').split(' · ')[0];
+  return ` O maior caso (${esc(top.fornecedor || '—')}, ${esc(top.orgao ? top.orgao.split(' - ')[0] : '')}) responde por ${p}% da soma${res ? ` — ${esc(res)}` : ''}.`;
+}
+
 function _pericia(d) {
   if (!d || d.ok === false || !d.esferas) return '<div class="pq-indisp"><b>Perícia contábil: INDISPONÍVEL</b> — a rota não respondeu.</div>';
   const e = d.esferas['Estado do RJ'];
@@ -49,7 +62,7 @@ function _pericia(d) {
     grau: '🟡',
     valor: brl(e.excesso_a_maior),
     titulo: `Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`,
-    texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado. Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
+    texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
     fonte: 'SIAFE (OB Contabilizado) × contratos do TCE-RJ, régua determinística reproduzível',
     estado: 'VERIFICADO', destino: 'e_pcont'});
 }

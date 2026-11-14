@@ -2,12 +2,9 @@
    O reator mantém os nomes em órbita e a legenda do que está rodando (o dono pediu de volta em 14/11). */
 html.v61 .c61-preoc{margin-top:4px}
 @media (min-width:1000px){
-  /* 14/11/2026 (revisão visual): os Sinais críticos sobem para a coluna do reator. Com eles embaixo do
-     mapa, a coluna da direita ficava ~700 px em branco ao lado da legenda e da cobertura do mapa
-     (captura 1366×900); agora a vitrine lê mapa | reator → economia → sinais críticos. */
-  html.v61 .ck.ck61{grid-template-rows:max-content max-content 1fr}
-  html.v61 .ck61 .c61-mapa{grid-row:1 / 4}
-  html.v61 .ck61 .c61-preoc{grid-column:9 / 13;grid-row:3;align-self:start;margin-top:0}
+  /* Abaixo do mapa, em largura total — ordem expressa do dono (14/11/2026): "o grandes preocupações fica abaixo
+     do mapa e dos dados dele no início". A revisão visual o tinha subido para a coluna do reator; revertido. */
+  html.v61 .ck61 .c61-preoc{grid-column:1 / -1;grid-row:3}
   html.v61 .ck61 #ck-grid{grid-row:4}
 }
 .pq-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
