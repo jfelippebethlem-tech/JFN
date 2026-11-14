@@ -163,7 +163,7 @@ def pares_candidatos(con, por_cred: dict) -> dict[tuple, list]:
         c = P._digitos(cred)
         if c not in por_cred or not str(num or "").strip():
             continue
-        k = P.chave_sei(proc)
+        k = P.chave_processo_ob(proc)
         if not k or k in por_cred[c] or (num, ex, str(ug)) in vistos:
             continue
         vistos.add((num, ex, str(ug)))

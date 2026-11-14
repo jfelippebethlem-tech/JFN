@@ -27,6 +27,24 @@ def test_chave_sei_aceita_sei_norm_de_16_digitos():
 
 
 @pytest.mark.parametrize("bruto,esperado", [
+    ("SEI-330002/031566/2024", "3300020315662024"),      # canônico: o mesmo de chave_sei
+    ("150012/000143/2024", "1500120001432024"),          # OB sem o prefixo SEI
+    ("150012/000143/24", "1500120001432024"),
+    ("S07-030001/037771/2025", "0300010377712025"),      # sigla antes do número
+    ("I-270002/000115/2024", "2700020001152024"),        # prefixo SEI digitado errado
+    ("Sei 270002/000115/2024", "2700020001152024"), ("CAP-270002/000115/2024", None),
+    ("SEI-260007/05954/2025", "2600070059542025"),       # sequencial sem o zero à esquerda
+    ("SEI-330005/1134/2025", "3300050011342025"),
+    # controles negativos: outra numeração, desdobramento, dígito verificador, lixo
+    ("E-20/001.000207/2024", None), ("PGE/021.005781/2023", None), ("350208/000080A/2024", None),
+    ("SEI-080002/011492-4/2024", None), ("300.171-0/2025", None), ("06127040/2022", None),
+    ("2026-06168788", None), ("123-150012/000143/2024", None), ("SEI-330005/134/2025", None), ("", None), (None, None),
+])
+def test_chave_processo_ob_formas_nao_canonicas_da_ob(bruto, esperado):
+    assert pc.chave_processo_ob(bruto) == esperado
+
+
+@pytest.mark.parametrize("bruto,esperado", [
     ("11/02/2026", date(2026, 2, 11)),
     ("2024-03-21T00:00:00.000", date(2024, 3, 21)),
     ("2024-03-21", date(2024, 3, 21)),

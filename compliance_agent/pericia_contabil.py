@@ -142,6 +142,27 @@ def chave_sei(processo: str | None) -> str | None:
     return m.group(1) + m.group(2) + ano
 
 
+# Número do processo na OB do SIAFE em forma não canônica (medido 14/11/2026 nas OB Contabilizadas): sem o prefixo
+# "SEI" ("150012/000143/2024": 24.478 OBs, R$ 5,56 bi), com sigla ("S07-030001/037771/2025": 1.054) ou sem os zeros à
+# esquerda do sequencial ("SEI-260007/05954/2025": 1.961; "SEI-330005/1134/2025": 960), ou com o prefixo digitado
+# errado ("S-", "I-", "SE-", "EI-": ~1.000). É o MESMO processo (`tools.lex_execucao._chave_processo` já os trata
+# assim) — sem isto a OB caía em "processo diverso do contrato". Casamento do texto INTEIRO: numeração antiga (E-NN/…,
+# PGE/…), prefixo desconhecido (CAP-…), desdobramento com sufixo e número com dígito verificador ficam de fora (None).
+_RE_PROC_OB = re.compile(r"^(?:[SEI]{1,4}|S\d{2})?[\s\-]*(\d{6})\s*/\s*(\d{4,6})\s*/\s*(\d{4}|\d{2})$", re.I)
+
+
+def chave_processo_ob(processo: str | None) -> str | None:
+    """Chave de 16 dígitos do processo de uma OB: `chave_sei` + as formas não canônicas acima."""
+    k = chave_sei(processo)
+    if k:
+        return k
+    m = _RE_PROC_OB.match(str(processo or "").strip())
+    if not m:
+        return None
+    ano = m.group(3) if len(m.group(3)) == 4 else "20" + m.group(3)
+    return m.group(1) + m.group(2).zfill(6) + ano
+
+
 def parse_data(s: Any) -> date | None:
     """DD/MM/AAAA (SIAFE, TCE-RJ, Contas Rio) ou ISO com/sem 'T'. Texto inválido → None."""
     t = str(s or "").strip()
@@ -388,7 +409,7 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
         v, marca = valor_efetivo_ob(float(val or 0), sit, devolvido=devolvido.get((str(num).strip(), ug)))
         # (data, chave do processo, UG, valor efetivo, NL, competência, número da OB, devolução, valor bruto,
         #  status_envio, exercício)
-        por_credor[c].append((parse_data(dt), chave_sei(proc), ug, v, nl or "", comp or "", num, marca,
+        por_credor[c].append((parse_data(dt), chave_processo_ob(proc), ug, v, nl or "", comp or "", num, marca,
                               float(val or 0), env, ex))
     # contagem das não contabilizadas por (processo, credor) — informativo, NUNCA somado
     nao_contab: dict[tuple, int] = defaultdict(int)
@@ -397,7 +418,7 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
             "SELECT processo, credor FROM ob_orcamentaria_siafe WHERE status<>'Contabilizado'"):
         c = _digitos(cred)
         if c in credores:
-            nao_contab[(chave_sei(proc), c)] += 1
+            nao_contab[(chave_processo_ob(proc), c)] += 1
     return por_credor, nao_contab
 
 
