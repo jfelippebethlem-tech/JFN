@@ -151,3 +151,14 @@ def test_minuta_e_documento_sobre_o_aditivo_nao_sao_o_termo(tmp_path):
                                     "Primeiro Termo Aditivo (98441301)": INEA_23})
     assert [a["doc_sei"] for a in AD.aditivos_do_contrato([(p, True)], CONTRATO, set(), vo.chaves_citadas)] == [
         98441301]
+
+
+def test_vigencia_do_periodo_prorrogado_nao_e_a_maior(base):
+    import sqlite3
+    con = sqlite3.connect(base)
+    con.execute("UPDATE contratos_tcerj SET vig_inicio='15/04/2024' WHERE id='A'")   # contratação 01/02/2024
+    con.commit()
+    con.close()
+    a = _a(base)
+    assert a["categoria"] == "INDETERMINADO" and a["motivo"] == "vigencia_do_periodo_prorrogado"
+    assert "antes de 15/04/2024" in a["ressalvas"]

@@ -279,6 +279,7 @@ def valor_devido(valor_atualizado: float, continuada: bool, inicio: date | None,
 
 RAZAO_DESPROPORCIONAL = 100.0
 CARENCIA_ULTIMA_OB_DIAS = 60   # a última parcela é paga depois do fim da vigência; além disso, o contrato seguiu
+FOLGA_PRORROGADO_DIAS = 60     # vigência registrada que começa mais que isto depois da contratação = período prorrogado
 
 
 def desproporcional(valor: float, pago: float) -> bool:
@@ -836,6 +837,18 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
         if sem_rep <= r["valor_atualizado"] or dentro_da_tolerancia(sem_rep - r["valor_atualizado"],
                                                                     r["valor_atualizado"]):
             return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "pagamento_repetido_nao_confirmado"}
+    if cat == "A_MAIOR" and not aditivo_aplicado and ini and d_contr and (ini - d_contr).days > FOLGA_PRORROGADO_DIAS:
+        # Conferência dos 10 maiores "acima do valor" (14/11/2026): vigência registrada começando meses depois da
+        # contratação (CEASA × PLENA: contrato 27/09/2024, vigência 15/07/2025; SEDSODH × MILANO: 15/08/2025 e
+        # 09/07/2026) é a do período PRORROGADO — o valor registrado é o de um período e o pago soma os dois.
+        antes_da_vig = [o for o in no_proc if o[0] < ini]
+        if antes_da_vig:
+            return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "vigencia_do_periodo_prorrogado",
+                    "ressalvas": _junta(r["ressalvas"], f"{len(antes_da_vig)} OB(s) (R$ "
+                                                        f"{fmt_brl(sum(o[3] for o in antes_da_vig))}) antes de "
+                                                        f"{ini.strftime('%d/%m/%Y')}, início da vigência registrada, "
+                                                        f"e contratação em {d_contr.strftime('%d/%m/%Y')} — o valor "
+                                                        "registrado é o de um período; requerer os termos")}
     if cat == "A_MAIOR" and a and a["estado"] == "sem_valor":
         # há termo aditivo nos autos que fala em valor, mas o total do contrato não foi extraído com segurança:
         # o "acima do valor" pode ser só o aditivo — nunca se afirma
