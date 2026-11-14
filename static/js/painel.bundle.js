@@ -3334,7 +3334,7 @@ void main(){
     }, 15e3);
   }
   async function nebulaViva() {
-    const mapa = _v61 ? { estado: "v61/estado", prefeitura: "v61/prefeitura", geral: "v61/transversal", sistema: "v61/transversal", inicio: "v61/sala" } : {
+    const mapa = _v61 ? { estado: "v61/estado", prefeitura: "v61/prefeitura", geral: "v61/transversal", inicio: "v61/sala" } : {
       estado: "nebula-estado",
       prefeitura: "nebula-prefeitura",
       geral: "nebula-transversal",
@@ -3343,6 +3343,13 @@ void main(){
     };
     const _cel = matchMedia("(max-width:760px)").matches, _eco = !!(navigator.connection && navigator.connection.saveData);
     const nome = mapa[esfera], host = $("esfnebula");
+    if (!nome && host) {
+      const v0 = host.querySelector("video");
+      if (v0) {
+        v0.classList.remove("on");
+        v0.pause();
+      }
+    }
     if (!nome || !host || _redMotion) return;
     if (_sobrio) {
       const v0 = host.querySelector("video");

@@ -13,6 +13,7 @@ html.v61 .cover{--capa:url(/static/assets/v61/sala.webp);padding:18px 18px 16px;
 html.v61 .cover.estado{--capa:url(/static/assets/v61/estado.webp)}
 html.v61 .cover.prefeitura{--capa:url(/static/assets/v61/prefeitura.webp)}
 html.v61 .cover.geral{--capa:url(/static/assets/v61/transversal.webp)}
+html.v61 .cover.sistema{--capa:url(/static/assets/v61/sistema.webp)}
 html.v61 .cover .t{color:var(--ink);font-size:1.3125rem}
 html.v61 .cover .s{color:var(--ink-2)}
 html.v61 .cover-seal{background:#fff;box-shadow:0 0 0 1px var(--line-strong),0 4px 12px rgba(20,70,140,.1)}
@@ -26,6 +27,7 @@ html.v61 .cover-seal{background:#fff;box-shadow:0 0 0 1px var(--line-strong),0 4
   html.v61 .cover.estado{--capa:url(/static/assets/v61/estado-sm.webp)}
   html.v61 .cover.prefeitura{--capa:url(/static/assets/v61/prefeitura-sm.webp)}
   html.v61 .cover.geral{--capa:url(/static/assets/v61/transversal-sm.webp)}
+  html.v61 .cover.sistema{--capa:url(/static/assets/v61/sistema-sm.webp)}
 }
 
 /* botão de som com alto-falante (desktop: só o glifo; o texto fica para o leitor de tela) */

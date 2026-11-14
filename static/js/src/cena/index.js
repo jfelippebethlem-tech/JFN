@@ -897,11 +897,13 @@ export function nucleoStart(){
 /* ══ VIDEO DAS ESFERAS ══ */
 export async function nebulaViva(){
   /* v61: as peças claras de `assets/v61/` (loop por esfera; Início = a sala de comando) */
-  const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',sistema:'v61/transversal',inicio:'v61/sala'}
+  const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',inicio:'v61/sala'}   // sistema: imagem própria, sem vídeo (14/11)
                  :{estado:'nebula-estado',prefeitura:'nebula-prefeitura',
                    geral:'nebula-transversal',sistema:'nebula-transversal',inicio:'portal-hero'};
   const _cel=matchMedia('(max-width:760px)').matches,_eco=!!(navigator.connection&&navigator.connection.saveData);
   const nome=mapa[esfera],host=$('esfnebula');
+  /* esfera sem vídeo próprio (Sistema, 14/11): apaga o vídeo da esfera anterior para a imagem dela aparecer */
+  if(!nome&&host){const v0=host.querySelector('video');if(v0){v0.classList.remove('on');v0.pause();}}
   if(!nome||!host||_redMotion)return;
   /* v51: modo sobrio (FPS MEDIDO < 24) tambem apaga a nebulosa viva. Decodificar video
      de faixa inteira a cada quadro e exatamente o custo que a maquina ja nao estava
