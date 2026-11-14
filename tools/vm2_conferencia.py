@@ -246,7 +246,12 @@ def conferir_cdp(caminho: Path, juizo: dict | None) -> tuple[bool, list[str], di
     if len(conteudos) > len(arvore) + 5 and arvore:
         motivos.append(f"{len(conteudos)} conteúdos para {len(arvore)} documentos na árvore")
     tag = re.sub(r"^cdp_SEI_|\.json$", "", caminho.name)
-    novos = {_norm_titulo(d.get("titulo") or d.get("doc") or ""): str(d.get("conteudo") or "") for d in conteudos}
+    # títulos da ÁRVORE inteira, texto só dos que têm conteúdo: o sweep lê o teor de no máximo
+    # SEI_MAX_DOCS (40) documentos — comparar só esses 40 com a árvore de 105 da VM-1 reprovou duas
+    # entregas boas em 13/11 ("só 40/105 títulos reaparecem").
+    novos = {_norm_titulo(d.get("titulo") or d.get("texto") or ""): "" for d in arvore if isinstance(d, dict)}
+    novos.update({_norm_titulo(d.get("titulo") or d.get("doc") or ""): str(d.get("conteudo") or "")
+                  for d in conteudos})
     ref = _referencia(tag)
     ok_ref, nota = comparar_com_referencia(novos, ref) if arvore else (None, "sem documentos")
     # o sweep TRIMA o conteúdo depois da ficha (400 chars): comparar títulos vale, o texto não
@@ -503,6 +508,28 @@ def amostra(n: int = 2) -> dict:
     return res
 
 
+def rever_quarentena(lote: str) -> dict:
+    """Reconfere os caches CDP de um lote em quarentena (depois de corrigir a régua) e importa o que passar."""
+    pasta = QUARENTENA / lote
+    man = _ler_json(IMPORTADOS / f"{lote}.json") or {}
+    res = {}
+    for p in sorted(x for x in pasta.glob("cdp_*.json") if not x.name.endswith(".motivo.json")) if pasta.is_dir() else []:
+        ok, motivos, met = conferir_cdp(p, ((man.get("processos") or {}).get(p.name) or {}).get("juizo"))
+        if ok:
+            _substituir(p, CACHE / p.name, lote)
+            (pasta / f"{p.name}.motivo.json").unlink(missing_ok=True)
+            num = ((man.get("processos") or {}).get(p.name) or {}).get("numero")
+            if num and num in (man.get("progresso") or {}):
+                man.setdefault("progresso_pendente", {})[num] = man["progresso"][num]
+        _log(f"REVISÃO DA QUARENTENA {p.name}: {'APROVADO' if ok else 'segue em quarentena'} "
+             + json.dumps(met, ensure_ascii=False) + ("" if ok else f" motivos={motivos}"))
+        res[p.name] = ok
+    if man:
+        (IMPORTADOS / f"{lote}.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
+    aplicar_pendentes()
+    return res
+
+
 def reconferir(tags: list[str]) -> dict:
     """Confere pastas que já entraram no acervo (entregas anteriores à conferência). Sem md5 de origem —
     o md5 do manifesto foi conferido na entrega. Reprovada ⇒ quarentena (o acervo não fica com o defeito)."""
@@ -530,11 +557,14 @@ def main() -> int:
     sub.add_parser("pendentes")
     r = sub.add_parser("reconferir"); r.add_argument("tags", nargs="+")
     am = sub.add_parser("amostra"); am.add_argument("--n", type=int, default=2)
+    rq = sub.add_parser("rever-quarentena"); rq.add_argument("lote")
     a = ap.parse_args()
     if a.cmd == "importar":
         print(json.dumps(importar(a.lote), ensure_ascii=False))
     elif a.cmd == "pendentes":
         print(aplicar_pendentes())
+    elif a.cmd == "rever-quarentena":
+        print(json.dumps(rever_quarentena(a.lote), ensure_ascii=False))
     elif a.cmd == "amostra":
         print(json.dumps(amostra(a.n), ensure_ascii=False))
     else:
