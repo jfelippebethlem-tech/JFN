@@ -5912,7 +5912,7 @@ void main(){
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // ../../../node_modules/d3-array/dist/d3-array.mjs
+  // node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -6120,7 +6120,7 @@ void main(){
     };
   }
 
-  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
+  // node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7621,12 +7621,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // ../../../node_modules/topojson-client/src/identity.js
+  // node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // ../../../node_modules/topojson-client/src/transform.js
+  // node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7640,13 +7640,13 @@ void main(){
     };
   }
 
-  // ../../../node_modules/topojson-client/src/reverse.js
+  // node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // ../../../node_modules/topojson-client/src/feature.js
+  // node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7714,7 +7714,7 @@ void main(){
     return geometry(o);
   }
 
-  // ../../../node_modules/topojson-client/src/stitch.js
+  // node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7780,7 +7780,7 @@ void main(){
     return fragments;
   }
 
-  // ../../../node_modules/topojson-client/src/mesh.js
+  // node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }

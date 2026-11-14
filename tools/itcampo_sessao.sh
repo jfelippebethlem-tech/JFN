@@ -18,7 +18,6 @@ export PYTHONPATH="$S" TMPDIR="$S/tmp" TZ=America/Sao_Paulo SEI_SEM_TG=1
 # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU
 export VM_GUARD_MAX_LOAD="${VM_GUARD_MAX_LOAD:-20}" VM_GUARD_MIN_FREE_GB="${VM_GUARD_MIN_FREE_GB:-1.5}"
 export JFN_CLAUDE_MAX_CONFERENCIA_VM2=0      # sem Claude Code aqui: a conferência da VM-1 decide sozinha
-unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && export SEI_HEADED=1
 # navegador da sessão k num lugar FIXO (mosaico 3 colunas na metade direita, janelas pequenas) — instância própria
 # do Chromium do Playwright no WSL, perfil temporário em $TMPDIR; nunca o Chrome/perfil do dono
