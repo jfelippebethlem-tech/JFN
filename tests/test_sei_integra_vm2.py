@@ -22,6 +22,7 @@ def _isolar(monkeypatch, tmp_path):
     (tmp_path / "data" / "sei_arquivo").mkdir(parents=True)
     monkeypatch.setattr(F, "ARQUIVO", tmp_path / "data" / "sei_arquivo")
     monkeypatch.setattr(V, "RAIZ", tmp_path)
+    monkeypatch.setattr(V, "PRE", tmp_path / "pre_ausente.json")   # sem isto lia o pré-cálculo REAL da VM-1
     monkeypatch.setattr(F, "_fila_reler_por_ob", lambda: [])
     monkeypatch.setattr(F, "_fila_inscrita", lambda: ["SEI-300000/000003/2025"])
     monkeypatch.setattr(F, "_fila_geral", lambda: [{"sei": "SEI-300000/000004/2025"}])
@@ -112,3 +113,28 @@ def test_fila_usa_precalculo_fresco_e_ignora_velho(monkeypatch, tmp_path):
     assert "SEI-400000/000001/2025" in [e["sei"] for e in V.montar_fila(10)] and not caro
     (tmp_path / "pre.json").write_text(json.dumps({"ts": time.time() - 27 * 3600, "reler": [], "geral": []}))
     assert "SEI-300000/000004/2025" in [e["sei"] for e in V.montar_fila(10)] and caro
+
+
+def test_nos_nao_pegam_processo_reservado_por_outro(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    monkeypatch.setattr(V, "RESERVA", tmp_path / "data" / ".integras_vm2_reserva.json")
+    monkeypatch.setattr(V, "PRE", tmp_path / "pre.json")
+    (tmp_path / "data" / ".integras_vm2_reserva.json").write_text(json.dumps(
+        {"ts": time.time(), "procs": ["300000/000003/2025"]}))
+    fila = V.exportar(10, no="itcampo", validade_h=3)
+    assert [e["sei"] for e in fila] == ["SEI-300000/000004/2025"]
+    reg = json.loads((tmp_path / "data" / ".integras_itcampo_reserva.json").read_text())
+    assert reg["procs"] == ["300000/000004/2025"] and reg["validade_h"] == 3
+    # a fila da VM-1 enxerga as duas reservas; a de 3 h vence sozinha (nó fora do ar devolve a fila)
+    monkeypatch.setattr(F, "RESERVA_VM2", tmp_path / "data" / ".integras_vm2_reserva.json")
+    assert F._reservados_vm2() == {"300000/000003/2025", "300000/000004/2025"}
+    reg["ts"] = time.time() - 4 * 3600
+    (tmp_path / "data" / ".integras_itcampo_reserva.json").write_text(json.dumps(reg))
+    assert F._reservados_vm2() == {"300000/000003/2025"}
+
+
+def test_batida_de_qualquer_no_faz_a_vm1_ceder(monkeypatch, tmp_path):
+    monkeypatch.setattr(F, "DELEGADO_VM2", tmp_path / ".integras_na_vm2")
+    assert not F._delegado_vm2()
+    (tmp_path / ".integras_na_itcampo").write_text("x")
+    assert F._delegado_vm2()

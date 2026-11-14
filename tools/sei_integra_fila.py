@@ -59,11 +59,26 @@ def _ja_rodando() -> bool:
                 exe = os.path.basename(os.path.realpath(f"/proc/{p}/exe"))
             except OSError:
                 continue
-            if exe.startswith("python"):
+            if exe.startswith("python") and _mesmo_worker(p):
                 return True
         return False
     except OSError:
         return False
+
+
+def _mesmo_worker(pid: str) -> bool:
+    """A outra instância roda ESTE script (mesma árvore)? Nó com várias sessões (it-campo, 14/11/2026) tem um
+    worktree por sessão, cada um com o seu `data/browser.lock` — uma sessão em outra árvore não é duplicata.
+    Na dúvida (cmdline ilegível, script não identificado) conta como duplicata: o erro seguro é não rodar."""
+    try:
+        args = open(f"/proc/{pid}/cmdline", "rb").read().decode("utf-8", "replace").split("\0")
+        cwd = os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        return True
+    scripts = [a for a in args if a.endswith("sei_integra_fila.py")]
+    if not scripts:
+        return True
+    return os.path.realpath(os.path.join(cwd, scripts[0])) == os.path.realpath(__file__)
 
 
 # VM-2 COMO NÓ DE ÍNTEGRAS (13/11/2026, tools/sei_integra_vm2.py). A VM-2 bate `.integras_na_vm2` a cada
@@ -75,20 +90,29 @@ RESERVA_VM2 = RAIZ / "data" / ".integras_vm2_reserva.json"
 
 
 def _delegado_vm2(horas: float = 30) -> bool:
-    try:
-        return time.time() - DELEGADO_VM2.stat().st_mtime < horas * 3600
-    except OSError:
-        return False
+    """Algum nó remoto (VM-2 `.integras_na_vm2`, it-campo `.integras_na_itcampo`, …) bateu o ponto há < `horas`?"""
+    for marca in [DELEGADO_VM2, *DELEGADO_VM2.parent.glob(".integras_na_*")]:
+        try:
+            if time.time() - marca.stat().st_mtime < horas * 3600:
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def _reservados_vm2(horas: float = 12) -> set[str]:
-    try:
-        d = json.loads(RESERVA_VM2.read_text(encoding="utf-8"))
-        if time.time() - float(d.get("ts") or 0) < horas * 3600:
-            return {str(p) for p in d.get("procs") or []}
-    except (OSError, ValueError, TypeError, AttributeError):
-        pass
-    return set()
+    """União das reservas FRESCAS de todos os nós remotos (`.integras_<nó>_reserva.json`). Cada reserva pode
+    trazer a própria `validade_h` (o it-campo reserva por 3 h e renova a cada rodada: se ele cair, os processos
+    voltam sozinhos para a VM-1/VM-2); sem ela vale `horas`."""
+    out: set[str] = set()
+    for arq in {RESERVA_VM2, *RESERVA_VM2.parent.glob(".integras_*_reserva.json")}:
+        try:
+            d = json.loads(arq.read_text(encoding="utf-8"))
+            if time.time() - float(d.get("ts") or 0) < float(d.get("validade_h") or horas) * 3600:
+                out |= {str(p) for p in d.get("procs") or []}
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+    return out
 
 
 def _sweep_no_browser() -> bool:

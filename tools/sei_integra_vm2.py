@@ -87,8 +87,10 @@ def _pre() -> dict | None:
         return None
 
 
-def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
-    """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral."""
+def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | None = None) -> list[dict]:
+    """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral.
+    `excluir` = processos reservados por OUTRO nó (nenhum processo é capturado por dois nós ao mesmo tempo)."""
+    excluir = excluir or set()
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
     pre = _pre()
@@ -106,7 +108,7 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
             if len(out) >= max_n or n_fonte >= teto:
                 break
             proc = F._proc_limpo(sei)
-            if not proc or proc in vistos:
+            if not proc or proc in vistos or proc in excluir:
                 continue
             vistos.add(proc)
             pasta = F.ARQUIVO / proc.replace("/", "_")
@@ -122,10 +124,36 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
     return out
 
 
-def exportar(max_n: int) -> list[dict]:
-    fila = montar_fila(max_n)
-    RESERVA.write_text(json.dumps({"ts": time.time(), "host": "vm2",
-                                   "procs": [F._proc_limpo(e["sei"]) for e in fila]}), encoding="utf-8")
+def _reserva(no: str) -> Path:
+    """Arquivo de reserva do nó. A VM-2 mantém o nome histórico; os demais nós ganham o seu."""
+    return RESERVA if no == "vm2" else RAIZ / "data" / f".integras_{no}_reserva.json"
+
+
+def _reservas_alheias(no: str) -> set[str]:
+    """Processos reservados (reserva fresca) por qualquer OUTRO nó."""
+    out: set[str] = set()
+    for arq in (RAIZ / "data").glob(".integras_*_reserva.json"):
+        if arq == _reserva(no):
+            continue
+        try:
+            d = json.loads(arq.read_text(encoding="utf-8"))
+            if time.time() - float(d.get("ts") or 0) < float(d.get("validade_h") or 12) * 3600:
+                out |= {str(p) for p in d.get("procs") or []}
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+    return out
+
+
+def exportar(max_n: int, no: str = "vm2", validade_h: float | None = None,
+             k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
+    fila = montar_fila(max_n, k_bombeiros=k_bombeiros, excluir=_reservas_alheias(no))
+    reg = {"ts": time.time(), "host": no, "procs": [F._proc_limpo(e["sei"]) for e in fila]}
+    if validade_h:
+        reg["validade_h"] = validade_h
+    alvo = _reserva(no)
+    tmp = alvo.with_suffix(".tmp")
+    tmp.write_text(json.dumps(reg), encoding="utf-8")
+    tmp.replace(alvo)
     return fila
 
 
@@ -135,9 +163,10 @@ def aceita(tags: list[str]) -> list[str]:
     return [t for t in tags if re.fullmatch(r"\d{6}_\d{6}_\d{4}", t) and not F._arquivado_ok(F.ARQUIVO / t)]
 
 
-def batida() -> None:
-    BATIDA.write_text(f"{time.strftime('%F %T')} {socket.gethostname()} — fila de íntegras na VM-2 "
-                      "(apagar este arquivo devolve a fila à VM-1)\n", encoding="utf-8")
+def batida(no: str = "vm2") -> None:
+    alvo = BATIDA if no == "vm2" else RAIZ / "data" / f".integras_na_{no}"
+    alvo.write_text(f"{time.strftime('%F %T')} {socket.gethostname()} — fila de íntegras no nó {no} "
+                    "(apagar este arquivo devolve a fila à VM-1)\n", encoding="utf-8")
 
 
 # ───────────────────────────── lado VM-2 ─────────────────────────────
@@ -258,18 +287,21 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("exportar"); e.add_argument("--max", type=int, default=300)
+    e.add_argument("--no", default="vm2", help="nó que reserva (vm2, itcampo, …)")
+    e.add_argument("--validade-h", type=float, default=None, help="validade da reserva (padrão: 12 h)")
+    e.add_argument("--k-bombeiros", type=int, default=K_BOMBEIROS)
     a = sub.add_parser("aceita"); a.add_argument("tags", nargs="*")
-    sub.add_parser("batida")
+    b = sub.add_parser("batida"); b.add_argument("--no", default="vm2")
     sub.add_parser("precalcular")
     d = sub.add_parser("devolver"); d.add_argument("--desde", type=int, default=0)
     d.add_argument("--fila", default="")
     args = ap.parse_args()
     if args.cmd == "exportar":
-        print(json.dumps(exportar(args.max), ensure_ascii=False))
+        print(json.dumps(exportar(args.max, args.no, args.validade_h, args.k_bombeiros), ensure_ascii=False))
     elif args.cmd == "aceita":
         print(" ".join(aceita(args.tags)))
     elif args.cmd == "batida":
-        batida()
+        batida(args.no)
     elif args.cmd == "precalcular":
         print(json.dumps(precalcular(), ensure_ascii=False))
     else:

@@ -368,7 +368,7 @@ def _importar(lote: str) -> dict:
             _log(f"CONFERÊNCIA {proc}: {'APROVADO' if ok else 'QUARENTENA'} [{status}] "
                  + json.dumps(met, ensure_ascii=False) + ("" if ok else f" motivos={motivos}"))
         # linhas do log da fila: só "ok" de quem foi APROVADO
-        saida = [f"[{time.strftime('%F %T')}] VM-2: lote {lote} conferido — {len(aprovados)} aprovado(s), "
+        saida = [f"[{time.strftime('%F %T')}] {man.get('origem') or 'VM-2'}: lote {lote} conferido — {len(aprovados)} aprovado(s), "
                  f"{len(reprovados)} em quarentena (data/vm2_conferencia.log)"]
         for ln in man.get("linhas_log") or []:
             mm = _RX_STATUS.match(ln)

@@ -11,7 +11,9 @@ import sys
 import re
 import asyncio
 from pathlib import Path
-sys.path.insert(0, "/home/ubuntu/JFN")
+# A RAIZ DESTA ÁRVORE, não `/home/ubuntu/JFN` cravado: no worker da VM-2 (~/JFN-worker) o caminho fixo punha a
+# cópia ANTIGA ~/JFN na frente do sys.path e o `tools.sei_reader` importado era o de lá (achado em 14/11/2026).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import sei_reader as SR
 from tools import vm_guard as G
 from playwright.async_api import async_playwright, Error as PWError
@@ -98,7 +100,8 @@ async def main():
     # e o `idade_max` ainda descarta lock órfão de sessão que morreu.
     from compliance_agent.recursos import browser_lock_async
     async with browser_lock_async(espera_max=1800), async_playwright() as pw:
-        b = await pw.chromium.launch(headless=True, args=G.guarded_launch_args())
+        # SEI_HEADED=1: janela do navegador VISÍVEL (it-campo, pedido do dono 14/11/2026: "nada de janelas ocultas")
+        b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=G.guarded_launch_args())
         ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
               user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
