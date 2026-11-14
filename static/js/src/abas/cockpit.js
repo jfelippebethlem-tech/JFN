@@ -221,8 +221,9 @@ export function ckPull(first){
       if(m){m.textContent='indisponível — '+erroHumano(d&&d.erro);m.classList.remove('esperando');}
       return;}
     nuSet('alertas',a.total);
-    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
-    if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média`
+    // só alerta NÃO descartado (o servidor filtra desde 13/11/2026); as três gravidades somam o total
+    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
+    if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média${a.baixa!=null?' · '+fmtN(a.baixa)+' baixa':''} (descartados fora)`
       +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
   if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
     /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".

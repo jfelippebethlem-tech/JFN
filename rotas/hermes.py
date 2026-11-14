@@ -41,7 +41,7 @@ async def api_hermes_estado():
             "chrome_9222": await chrome_disponivel(),
             "llm_ok": bool(openrouter_available() or groq_available()),
             "n_obs": s.query(OrdemBancaria).count(),
-            "n_alertas": s.query(Alerta).count(),
+            "n_alertas": s.query(Alerta).filter((Alerta.status.is_(None)) | (Alerta.status != "descartado")).count(),
             "aprendizados": aprendizados,
         })
     finally:
