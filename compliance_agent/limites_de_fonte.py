@@ -343,6 +343,28 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
             "INDISPONÍVEL — nunca a inicial."),
         medido_em="2026-11-14",
     ),
+    LimiteDeFonte(
+        fonte="Processo da OB do SIAFE — vazio em 2021–2023 na base (SIAFE 1 não trouxe o campo)",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "Em `ob_orcamentaria_siafe` (status Contabilizado) o campo `processo` está vazio em praticamente todas as "
+            "OBs de 2021 (182.472 de 182.472), 2022 (217.698 de 218.292) e 2023 (216.841 de 217.561) — R$ 182,7 bi — "
+            "e em ~10% das de 2024–2026 (70.586). O espelho TFE (`ordens_bancarias.numero_processo`) também é vazio "
+            "em 2021–2023. Sem o processo, a OB não se liga ao contrato pelo processo nem pelo vínculo dos autos "
+            "(`vinculo_ob_contrato` parte do processo de pagamento da OB): na perícia contábil o contrato fica "
+            "INDETERMINADO ('OB do credor fora do processo'). Medido em 14/11/2026: 1.131 contratos têm SÓ OB sem "
+            "processo como candidata e 4.623 misturam OB sem processo com processos não capturados — nenhuma "
+            "captura do SEI os fecha. Também: o número do processo vem em forma não canônica em ~29 mil OBs "
+            "(sem 'SEI', sem zeros à esquerda, prefixo digitado errado) — tratado por `pericia_contabil."
+            "chave_processo_ob`."),
+        caminho_alternativo=(
+            "SIAFE 1 (www5) foi desativado em 10/11/2026 e o SIAFE 2 só oferece 2023–2027: 2021–2022 não têm mais "
+            "fonte para o processo da OB. 2023 talvez possa ser recoletado no SIAFE 2 com o campo processo (decisão "
+            "do dono; sessão SIAFE única na VM-1). Sem recoleta, o caminho é o inverso: o número da OB citado nos "
+            "autos do processo do contrato (medido em 14/11/2026 nos 600 processos de contrato do acervo: 2 casos) "
+            "— hoje irrelevante."),
+        medido_em="2026-11-14",
+    ),
 )
 
 
