@@ -31,8 +31,8 @@ export async function renderLai(){
   </div>`;
   if(sd && sd.ok){
     h += sec('Saúde dos pipelines da Prefeitura', sd.grau_geral);
-    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>`
-      + (sd.etapas||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td>${fmtN(e.n)}</td><td>${esc((e.ultimo||'—').slice(0,16))}</td><td>${esc(e.grau)} ${esc(e.leitura||'')}</td><td class="dim">${esc(e.acao||'')}</td></tr>`).join('')
+    h += `<div style="overflow-x:auto"><table class="tb" style="min-width:640px"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>`
+      + (sd.etapas||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo||'—').slice(0,16))}</td><td>${esc(e.grau)} ${esc(e.leitura||'')}</td><td class="dim">${esc(e.acao||'')}</td></tr>`).join('')
       + `</tbody></table></div>`;
   }
   h += sec('Gerar requerimento');

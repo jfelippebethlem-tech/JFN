@@ -19,7 +19,7 @@
 import {$, esc, corta, card, spin, clk, svgIco, sec, leitura} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _sobrio, _v60} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60, _v61} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 import {revelar, _wireFase} from './revelacao.js';
 import {somTocar} from './midia.js';
@@ -138,7 +138,11 @@ export function vivo(){
   top.forEach((el,i)=>{el.classList.add('rise');el.style.setProperty('--d',Math.min(i*18,220)+'ms');});
   if(!rm){const k=v.querySelector('.kpi');if(k)setTimeout(()=>k.classList.add('beat'),700);}
   // 2) números que sobem
-  if(!rm)v.querySelectorAll('.kpi .v').forEach(_countUp);
+  /* v61: quem conta o KPI é o `ui/movimento.js` (na 1ª vez que ele APARECE, e respeitando o modo
+     sóbrio). Os dois contadores no mesmo nó brigavam: um lia o quadro intermediário do outro como
+     valor final e o KPI chegou a mostrar número errado e negativo ("-29.317" em vez de 21.990,
+     g_conluio, 14/11/2026). */
+  if(!rm&&!_v61)v.querySelectorAll('.kpi .v').forEach(_countUp);
   // 3) A→Z em TODA busca de lista (vale pra tudo; padrão continua por risco/valor)
   v.querySelectorAll('.search').forEach(box=>{
     const inp=box.querySelector('input[oninput*="filtrar"]'); if(!inp||box.querySelector('.az'))return;

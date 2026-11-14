@@ -80,13 +80,18 @@ export function reatorMontar(host) {
     });
     const n = motoresRodando().length, f = aoVivo.motores.filter(m => m.estado === 'falhou').length,
       se = aoVivo.motores.filter(semEfeito).length;
-    if (aoVivo.disponivel === false) leg.innerHTML = 'ao vivo: <b>INDISPONÍVEL</b>';
-    else if (aoVivo.disponivel === null) leg.textContent = 'ao vivo: lendo…';
-    else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? 'motor rodando' : 'motores rodando'}`
+    /* 14/11/2026: a legenda era reescrita a CADA evento do barramento — e todo `.num` novo dentro de
+       #view replays o `numChega` (opacity 0 → 1 em 0,42 s). Com eventos frequentes os números
+       ficavam invisíveis na maior parte do tempo ("motores rodando · sem efeito · eventos/min" sem
+       número nenhum, visto em captura). Só reescreve quando o texto muda. */
+    const h = aoVivo.disponivel === false ? 'ao vivo: <b>INDISPONÍVEL</b>'
+      : aoVivo.disponivel === null ? 'ao vivo: lendo…'
+      : `<b class="num">${n}</b> ${n === 1 ? 'motor rodando' : 'motores rodando'}`
       + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? 'falhou' : 'falharam'}` : '')
       + (se ? ` · <b class="num rt-sefeito">${se}</b> sem efeito` : '')
       + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace('.', ',')}</b> eventos/min`
       + (aoVivo.conectado ? '' : ' · <span class="rt-pausa">reconectando</span>');
+    if (leg.dataset.h !== h) { leg.dataset.h = h; leg.innerHTML = h; }
     raiz.classList.toggle('rt-indisp', aoVivo.disponivel === false);
     sujo = true;
   };

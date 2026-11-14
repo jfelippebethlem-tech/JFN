@@ -68,6 +68,8 @@ html.v61 .mt-card .mt-barra{margin:0}
 html.v61 .mt-spark{width:100%;height:28px;display:block}
 html.v61 .mt-ult{font-size:.75rem;line-height:1.35;color:var(--ink-2);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.7em}
 html.v61 .mt-ult .num{color:var(--muted)}
+/* a grade é repintada pelo barramento: o número dos cartões não "chega" de novo a cada evento */
+html.v61 #view .mt-grade .num, html.v61 #view #mt-cnt{animation:none}
 html.v61 .mt-prox{font-size:.6875rem;color:var(--muted)}
 html.v61 .mt-evs li.t-falha{color:var(--crit-text)}
 html.v61 .mt-evs li b{font-weight:600;color:var(--ink)}

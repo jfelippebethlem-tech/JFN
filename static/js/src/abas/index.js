@@ -523,13 +523,15 @@ export async function renderFontesExternas(){
      omissão. Aqui o limite é DADO, e a tabela diz se é bloqueio (contornável) ou limite da fonte. */
   const lim=await J('/api/fontes/limites');
   if(lim&&lim.ok&&(lim.itens||[]).length){
+    /* o texto vem de limites_de_fonte.py com **negrito** e `código` — aparecia com os asteriscos crus */
+    const _mdLim=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`(.+?)`/g,'<code>$1</code>');
     h+=sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
     h+=card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>`
       +lim.itens.map(x=>`<tr>
-          <td><b>${esc(x.fonte)}</b></td>
+          <td><b>${_mdLim(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo==='bloqueio'?'medio':'alto'}">${x.tipo==='bloqueio'?'bloqueio':'limite da fonte'}</span></td>
-          <td>${esc(x.o_que_acontece)}</td>
-          <td class="dim">${esc(x.caminho_alternativo)}</td>
+          <td>${_mdLim(x.o_que_acontece)}</td>
+          <td class="dim">${_mdLim(x.caminho_alternativo)}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join('')
       +`</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
@@ -1562,7 +1564,7 @@ export async function renderBeneficiosPref(chips){
         {sobre:'Benefício com critério de <b>renda familiar</b>. A sobreposição com remuneração pública é indício de renda não declarada ao cadastro — não de fraude provada: composição familiar muda, e a atualização cadastral tem prazo próprio.'})}${kpi(fmtN(r.n_bpc),'BPC',null,'♿',
         {sobre:'Benefício de Prestação Continuada — critério de <b>deficiência ou idade</b> somado à renda per capita. Ser servidor não veda o BPC por si; o que pesa é a renda do grupo familiar. Por isso este número fica separado do Bolsa Família em vez de somado.'})}
       ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅',
-        {sobre:'A janela de competências efetivamente ingerida. Fora dela nada foi observado — e benefício ausente num mês que não entrou na base <b>não cessou</b>: o mês é que não existe aqui.'})}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️',
+        {sobre:'A janela de competências efetivamente ingerida. Fora dela nada foi observado — e benefício ausente num mês que não entrou na base <b>não cessou</b>: o mês é que não existe aqui.'})}${kpi(esc(/^\d{6}$/.test(String(r.ultima||''))?['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+String(r.ultima).slice(4)-1]+'/'+String(r.ultima).slice(0,4):(r.ultima||'—')),'Última competência',null,'🗓️',
         {sobre:'O mês mais recente disponível. É contra ele que "ainda ativo" é medido; se a base estiver defasada, o número de ativos descreve o passado dessa data, não o presente.'})}</div>`;
   h+=buscaPag('bv-list','filtrar por nome, órgão, cargo, partido — busca em TODOS os casos…');
   const _montarBV=x=>{
@@ -1632,7 +1634,7 @@ export async function renderFantasmasPref(){
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴',
         {sobre:'Servidores da folha municipal com o conjunto MAIS FORTE de sinais de vínculo apenas formal. Faixa é ordem de diligência, não conclusão: nenhum caso aqui afirma que a pessoa não trabalha — afirma que o cruzamento não achou o que deveria achar se ela trabalhasse.'})}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡',
         {sobre:'Sinais presentes mas insuficientes para separar de explicação inocente — licença, cessão, lotação em unidade que não publica frequência. Existe para não empurrar dúvida para dentro da faixa forte.'})}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢',
-        {sobre:'Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são.'})}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️',
+        {sobre:'Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são.'})}${kpi(esc(fmtData((d.gerado_em||'').slice(0,10))),'Gerado em',null,'🗓️',
         {sobre:'Data da última execução do detector. Número velho com cara de atual é a forma mais silenciosa de errar; por isso a data fica ao lado das faixas, não escondida no rodapé.'})}</div>`;
   h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
     `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
@@ -2328,6 +2330,7 @@ export const TIPO_ALERTA={
   pcrj_d9_socio_na_folha:['🕴️','Sócio na folha','Sócio de empresa fornecedora que também é servidor público — conflito de interesse.'],
   fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas para não licitar.'],
   sobrepreco:['📈','Sobrepreço','Preço muito acima da mediana de mercado.'],
+  acumulacao:['👥','Acumulação de vínculos','Mesmo CPF em vínculos de órgãos distintos na mesma competência — possível acúmulo vedado (CF art. 37, XVI); a conferir.'],
 };
 export const SEV_LEGENDA={
   alta:['🔴','Alta','Indício forte — priorize a verificação.'],
@@ -2362,7 +2365,8 @@ export async function renderSiafe(){
   /* 13/11/2026 — o KPI "Valor total" e a tabela por exercício somavam TODA OB ingerida, inclusive Anulada,
      Excluída e Não contabilizada (~R$ 16 bi). Pago é só OB Contabilizada; o resto aparece à parte na quebra. */
   const pagoOk=s.valor_pago!=null;
-  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas (todos os status)',null,null,
+  /* era a única aba do Estado sem capa (só um título solto) — 14/11/2026 */
+  let h=cover('estado','SIAFE · ordens bancárias','Ordens bancárias coletadas do SIAFE-Rio, por status. Pago é só OB <b>Contabilizada</b>; anulada, excluída e não contabilizada aparecem à parte.','💳')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas (todos os status)',null,null,
         {sobre:'Ordens bancárias no acervo, em qualquer status. Só a OB <b>Contabilizada</b> é pagamento efetivo: anulada e excluída não pagaram nada. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida.'})}${kpi(pagoOk?fmtR(s.valor_pago):'INDISPONÍVEL','Pago — OB Contabilizada',null,null,
         {sobre:'Soma das OB com status Contabilizado ('+fmtN(s.n_pago)+' OB). É o total do que a casa VIU, não o do orçamento executado: exercício ou unidade não coletados não entram, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`;
   /* QUANTIFICAR A LACUNA, não só avisar dela. O tooltip dizia "exercício não coletado não entra";
@@ -2389,7 +2393,7 @@ export async function renderSweeps(){
   const gb=v=>v==null?'—':fmtD(v/1e9,2)+' GB';
   const idade=st=>st==null?'—':(st<90?'agora':(st<5400?Math.round(st/60)+' min atrás':Math.round(st/3600)+' h atrás'));
   const aprTotal=(apr.memoria_db||0)+(apr.fichas_sei||0)+(apr.direcionamentos||0)+(apr.vault_notas||0);
-  let h=cover('geral','Sistema — a atividade de toda a máquina',
+  let h=cover('geral','Coletas e rotinas — a atividade de toda a máquina',
     'O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.','🛰️');
   h+=`<div class="grid g2" id="sis-live">
     ${kpi(sei.pct_lido==null?'—':fmtD(sei.pct_lido,1)+'%','Fila SEI já lida',null,'📄',
@@ -3006,7 +3010,7 @@ export async function renderLentes(){
     ${kpi(fmtN(mult.length),'Empresas em 2+ dimensões','var(--rose)','🎯',{sobre:'Convergência de detectores independentes. <b>Dimensão não é detector</b>: porte e estrutura magra medem a mesma coisa e contam uma vez só.'})}
     ${kpi(fmtRc(mult.reduce((s,x)=>s+(x.pago||0),0)),'Pago a essas empresas','var(--amber)','💸',{sobre:'Soma das OB <b>Contabilizado</b> do SIAFE — pagamento efetivo, não empenho.'})}
     ${kpi(fmtN((L.convergencia&&L.convergencia.n)!=null?L.convergencia.n:'—'),'Marcadas por ao menos 1','var(--dim)','🔎',{sobre:'Total de empresas que acenderam em <b>alguma</b> das lentes — a base de onde sai a convergência. Acender numa lente sozinha <b>não é achado</b>: 93,9% estão nesse caso, e é por isso que a fila se ordena pelo cruzamento, não pelo total. Vem do JSON materializado, não da tela: por isso não tem gaveta.'})}
-    ${kpi(esc((d.gerado_em||'').replace('T',' ').slice(0,16)),'Materializado em',null,'🕒',{sobre:'A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira.'})}
+    ${kpi(esc(fmtData(d.gerado_em||'')),'Materializado em',null,'🕒',{sobre:'A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira.'})}
   </div>`;
   h+=leitura('Convergência <b>ordena</b>, não acusa. Cada dimensão carrega as ressalvas da própria lente: porte da Receita pode estar desatualizado, dependência alta é esperada em serviço essencial com operador único, e sanção de outro ente pode não alcançar o contrato estadual.');
   h+=sec('Em mais de uma dimensão');
@@ -3104,7 +3108,7 @@ export async function renderIntegras(){
      inteira esvaziava — 304 cards viravam 0, com o cover na tela e nenhum erro visivel.
      INDISPONIVEL tem de aparecer como INDISPONIVEL, nunca como tela vazia. */
   if(!d||d.erro) return cover('prefeitura','Íntegras · Contratos do Município do Rio',
-      'acervo de contratos capturados do PNCP','doc')
+      'acervo de contratos capturados do PNCP','📄')
     +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`);
   const itens=d.itens||[];
   /* o documento aberto e buscado AQUI, no proprio render. Buscar no handler e chamar ir() de
@@ -3114,7 +3118,7 @@ export async function renderIntegras(){
   }
   let h=cover('prefeitura','Íntegras · Contratos do Município do Rio',
     'O documento assinado de cada contrato, capturado do PNCP. Clique para ler a íntegra, '
-    +'baixar o texto ou abrir o original.','doc');
+    +'baixar o texto ou abrir o original.','📄');
 
   /* Cobertura primeiro e sem eufemismo: 47% do universo é 47%, não "amplo acervo". */
   /* assinatura do kpi: VALOR primeiro, rotulo depois — inverter imprime `undefined` na tela.
@@ -3135,11 +3139,11 @@ export async function renderIntegras(){
   h+=sec('Buscar');
   h+=`<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:0 2px 8px">
     <input id="intq" class="inp" style="flex:1;min-width:220px" placeholder="fornecedor, arquivo ou nº de processo SEI…"
-      value="${esc(_intQ)}"     <button class="btn" data-int="buscar">Buscar</button>
-    <button class="btn${_intFonte==='ocr'?' on':''}" data-int="fonte:ocr" title="texto recuperado por OCR — pode conter erro de leitura">só OCR</button>
-    <button class="btn${_intFonte==='nativo'?' on':''}" data-int="fonte:nativo" title="texto nativo do PDF">só nativo</button>
-    <button class="btn${_intOrdem==='valor'?' on':''}" data-int="ordem:valor">por valor</button>
-    <button class="btn${_intOrdem==='texto'?' on':''}" data-int="ordem:texto">por tamanho</button>
+      value="${esc(_intQ)}"><button class="btn" data-int="buscar">Buscar</button>
+    <button class="chip${_intFonte==='ocr'?' on':''}" data-int="fonte:ocr" title="texto recuperado por OCR — pode conter erro de leitura">só OCR</button>
+    <button class="chip${_intFonte==='nativo'?' on':''}" data-int="fonte:nativo" title="texto nativo do PDF">só nativo</button>
+    <button class="chip${_intOrdem==='valor'?' on':''}" data-int="ordem:valor">por valor</button>
+    <button class="chip${_intOrdem==='texto'?' on':''}" data-int="ordem:texto">por tamanho</button>
   </div>`;
 
   const mostra=itens.slice(0,_INT_POR_PAGINA);
@@ -3169,11 +3173,11 @@ export async function renderIntegras(){
           <b>${fmtRc(it.valor)}</b>
           <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
             <button class="btn sm" data-int="abrir" data-num="${esc(it.numero)}">${sel?'fechar':'ler'}</button>
-            <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(it.numero)}"
+            <a class="btn sm ghost" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(it.numero)}"
                title="dossiê em Markdown, com a procedência do texto no cabeçalho">.md</a>
-            <a class="btn sm" href="/api/pcrj/download?numero=${encodeURIComponent(it.numero)}"
+            <a class="btn sm ghost" href="/api/pcrj/download?numero=${encodeURIComponent(it.numero)}"
                title="texto puro extraído do documento">.txt</a>
-            ${it.url_pncp?`<a class="btn sm" href="${esc(it.url_pncp)}" target="_blank" rel="noopener"
+            ${it.url_pncp?`<a class="btn sm ghost" href="${esc(it.url_pncp)}" target="_blank" rel="noopener"
                title="documento original no PNCP">original</a>`:''}
           </div>
         </div>

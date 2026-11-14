@@ -4782,6 +4782,9 @@ html.v61 .rt-leg{font-size:.8125rem;line-height:1.45;color:var(--muted)}
 html.v61 .rt-leg b{font-weight:600;color:var(--ink)}
 html.v61 .rt-leg .rt-falha{color:var(--crit-text)}
 html.v61 .rt-leg .rt-pausa{color:var(--muted)}
+/* a legenda é reescrita pelo barramento: o `numChega` (opacity 0 → 1) reiniciava a cada evento e o
+   número passava a maior parte do tempo invisível. Aqui o número já está lá; não "chega". */
+html.v61 #view .rt-leg .num{animation:none}
 @media (max-width:760px){
   html.v61 .rt-no span{display:none}                        /* no reator de 120px só cabem os pontos */
 }
@@ -5090,6 +5093,8 @@ html.v61 .mt-card .mt-barra{margin:0}
 html.v61 .mt-spark{width:100%;height:28px;display:block}
 html.v61 .mt-ult{font-size:.75rem;line-height:1.35;color:var(--ink-2);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.7em}
 html.v61 .mt-ult .num{color:var(--muted)}
+/* a grade é repintada pelo barramento: o número dos cartões não "chega" de novo a cada evento */
+html.v61 #view .mt-grade .num, html.v61 #view #mt-cnt{animation:none}
 html.v61 .mt-prox{font-size:.6875rem;color:var(--muted)}
 html.v61 .mt-evs li.t-falha{color:var(--crit-text)}
 html.v61 .mt-evs li b{font-weight:600;color:var(--ink)}
@@ -5298,6 +5303,18 @@ html.v61 :is(a,button,[role=button],select,input,.chip,.sph):focus-visible{
   html.v61 :is(.card.kpi,.ck-inst), html.v61 .chip, html.v61 nav.tabs button{transition:none}
   html.v61 :is(.card.kpi,.ck-inst):hover{transform:none}
 }
+
+/* ── 9 · glifo sem contexto de tamanho (14/11/2026) ─────────────────────────────────────────────
+   `svgIco()` devolve <svg class="jico"> SEM width/height — quem dá o tamanho é o contexto (.chip,
+   h2.sec, .kpi-ico…). No título de um cartão comum não havia contexto: o SVG ocupava a largura do
+   cartão e virava um ícone gigante (p_gastos, visto em captura). Piso de especificidade zero
+   (`:where`): qualquer regra de contexto continua mandando. */
+:where(svg.jico){width:1.15em;height:1.15em;vertical-align:-.2em;flex:0 0 auto}
+
+/* ── 10 · etiqueta dentro do número-manchete ("parcial" no Pago do Orçamento por órgão) herdava o corpo
+   do KPI e ficava do tamanho do valor. Etiqueta é nota de rodapé do número, não outro número. */
+html.v61 .card.kpi .v .tag{font-size:.6875rem;line-height:1.2;font-weight:600;font-family:var(--f-sans);
+  letter-spacing:0;vertical-align:middle;padding:2px 7px;margin-left:4px}
 /* ══ v61 · degradação ═══════════════════════════════════════════════════════════════════════════
    O modo sóbrio da casa (`body.fps-baixo`: FPS MEDIDO abaixo do piso) tira o desfoque e os laços no
    estrato camadado `70-v49-sobrio.css`. Os estratos v61 não são camadados e o venciam — a v61
@@ -5309,6 +5326,10 @@ html.v61 body.fps-baixo{--blur:none}
 html.v61 body.fps-baixo :is(.v61-grade,.tk-selo i,.mt-card .mt-pt,.tm-onda){animation:none}
 html.v61 body.fps-baixo .v61-piso, html.v61 body.fps-baixo .tm-radar{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
 html.v61 body.fps-baixo #view .grid.v60-lista > .card{animation:none}
+/* 14/11/2026 — o número "chega" (`numChega`: opacity 0 → 1) seguia ligado no modo sóbrio. Justo na
+   máquina sem quadro sobrando a animação demora a andar e o KPI aparece VAZIO (capturado em
+   g_conluio, g_dep, g_ocult, p_conluio, p_integras: rótulo sem número). O dado não espera enfeite. */
+html.v61 body.fps-baixo #view :is(.num,.val), html.v61 body.fps-baixo #view :is(.bar,.meter,.prog) > i{animation:none}
 html.v61 body.fps-baixo .tm-placa{transform:none;margin-top:0}
 html.v61 body.fps-baixo #esfnebula video{display:none}
 @media (max-width:760px){
@@ -5359,7 +5380,12 @@ html.v61 .per-tb tr.on td{background:rgba(30,123,240,.12)}
    O reator mantém os nomes em órbita e a legenda do que está rodando (o dono pediu de volta em 14/11). */
 html.v61 .c61-preoc{margin-top:4px}
 @media (min-width:1000px){
-  html.v61 .ck61 .c61-preoc{grid-column:1 / -1;grid-row:3}
+  /* 14/11/2026 (revisão visual): os Sinais críticos sobem para a coluna do reator. Com eles embaixo do
+     mapa, a coluna da direita ficava ~700 px em branco ao lado da legenda e da cobertura do mapa
+     (captura 1366×900); agora a vitrine lê mapa | reator → economia → sinais críticos. */
+  html.v61 .ck.ck61{grid-template-rows:max-content max-content 1fr}
+  html.v61 .ck61 .c61-mapa{grid-row:1 / 4}
+  html.v61 .ck61 .c61-preoc{grid-column:9 / 13;grid-row:3;align-self:start;margin-top:0}
   html.v61 .ck61 #ck-grid{grid-row:4}
 }
 .pq-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
@@ -5368,7 +5394,7 @@ html.v61 .c61-preoc{margin-top:4px}
 .pq-pulso{width:9px;height:9px;border-radius:50%;background:var(--rose,#e5484d);box-shadow:0 0 0 0 rgba(229,72,77,.5);animation:pqPulso 2s infinite}
 @keyframes pqPulso{0%{box-shadow:0 0 0 0 rgba(229,72,77,.45)}70%{box-shadow:0 0 0 9px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
 @media (prefers-reduced-motion:reduce){.pq-pulso{animation:none}}
-.pq-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.pq-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px}
 .pq-grade .pq-item{margin-bottom:0;border-left:3px solid var(--rose,#e5484d)}
 .pq-item{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;margin-bottom:10px;padding:14px 16px;
   border-radius:var(--r-l,14px);background:var(--card,#fff);border:1px solid var(--line-soft,rgba(0,0,0,.08));

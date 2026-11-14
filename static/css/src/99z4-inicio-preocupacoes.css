@@ -2,7 +2,12 @@
    O reator mantém os nomes em órbita e a legenda do que está rodando (o dono pediu de volta em 14/11). */
 html.v61 .c61-preoc{margin-top:4px}
 @media (min-width:1000px){
-  html.v61 .ck61 .c61-preoc{grid-column:1 / -1;grid-row:3}
+  /* 14/11/2026 (revisão visual): os Sinais críticos sobem para a coluna do reator. Com eles embaixo do
+     mapa, a coluna da direita ficava ~700 px em branco ao lado da legenda e da cobertura do mapa
+     (captura 1366×900); agora a vitrine lê mapa | reator → economia → sinais críticos. */
+  html.v61 .ck.ck61{grid-template-rows:max-content max-content 1fr}
+  html.v61 .ck61 .c61-mapa{grid-row:1 / 4}
+  html.v61 .ck61 .c61-preoc{grid-column:9 / 13;grid-row:3;align-self:start;margin-top:0}
   html.v61 .ck61 #ck-grid{grid-row:4}
 }
 .pq-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
@@ -11,7 +16,7 @@ html.v61 .c61-preoc{margin-top:4px}
 .pq-pulso{width:9px;height:9px;border-radius:50%;background:var(--rose,#e5484d);box-shadow:0 0 0 0 rgba(229,72,77,.5);animation:pqPulso 2s infinite}
 @keyframes pqPulso{0%{box-shadow:0 0 0 0 rgba(229,72,77,.45)}70%{box-shadow:0 0 0 9px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
 @media (prefers-reduced-motion:reduce){.pq-pulso{animation:none}}
-.pq-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.pq-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px}
 .pq-grade .pq-item{margin-bottom:0;border-left:3px solid var(--rose,#e5484d)}
 .pq-item{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;margin-bottom:10px;padding:14px 16px;
   border-radius:var(--r-l,14px);background:var(--card,#fff);border:1px solid var(--line-soft,rgba(0,0,0,.08));

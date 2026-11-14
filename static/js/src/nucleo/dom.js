@@ -33,6 +33,10 @@ const _ICO_V61 = {
   '§v61-som': '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
   '§v61-mudo': '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
   '§v61-atividade': '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>',
+  /* 14/11/2026 — três capas novas (Orçamento por órgão, Sistema › Motores e › Comandos) caíam no emoji */
+  '🏦': '<path d="M4 9.5 12 5l8 4.5"/><path d="M6 10.5v6.5M10 10.5v6.5M14 10.5v6.5M18 10.5v6.5"/><path d="M4 19.5h16"/>',
+  '⚙️': '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
+  '🧭': '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
 };
 export const svgIco = e => {
   const _h = document.documentElement.classList;
@@ -84,7 +88,8 @@ export const kpi = (v, l, cor, gl, dest) => {
   return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ''}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ''}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ''}</div>`;
 };
 
-export const sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ''}</h2>`;
+/* contagem numérica sai com milhar pt-BR ("40.411", não "40411") — 14/11/2026 */
+export const sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${typeof cnt === 'number' ? cnt.toLocaleString('pt-BR') : cnt}</span>` : ''}</h2>`;
 export const spin = t => `<div class="skel"><span class="sp"></span>${t || 'Carregando…'}</div>`;
 /* Aviso HONESTO de demora: se a aba `id` ainda está no spinner depois de `ms`, diz por quê em vez de girar
    mudo. Devolve o timer — quem chamou faz clearTimeout quando o dado chega. Confere o hash para não

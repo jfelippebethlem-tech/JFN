@@ -51,3 +51,10 @@ export async function lerEstado(ms = 4000) {
     return j && Array.isArray(j.motores) ? j : null;
   } catch (_) { return null; } finally { clearTimeout(t); }
 }
+
+/** Texto de evento com milhar pt-BR nas CONTAGENS ("40411 contratos" → "40.411 contratos"). Só número
+ *  solto de 4+ dígitos seguido de palavra; ano (1990–2039), hora, código e id ficam como vieram. */
+export function textoEvento(t) {
+  return String(t == null ? '' : t).replace(/(^|[\s(:—-])(\d{4,})(?=\s+[a-zà-ú])/g, (s, a, n) =>
+    (n.length === 4 && +n >= 1990 && +n <= 2039) ? s : a + Number(n).toLocaleString('pt-BR'));
+}

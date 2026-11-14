@@ -36,6 +36,9 @@ html.v61 .rt-leg{font-size:.8125rem;line-height:1.45;color:var(--muted)}
 html.v61 .rt-leg b{font-weight:600;color:var(--ink)}
 html.v61 .rt-leg .rt-falha{color:var(--crit-text)}
 html.v61 .rt-leg .rt-pausa{color:var(--muted)}
+/* a legenda é reescrita pelo barramento: o `numChega` (opacity 0 → 1) reiniciava a cada evento e o
+   número passava a maior parte do tempo invisível. Aqui o número já está lá; não "chega". */
+html.v61 #view .rt-leg .num{animation:none}
 @media (max-width:760px){
   html.v61 .rt-no span{display:none}                        /* no reator de 120px só cabem os pontos */
 }

@@ -1,7 +1,7 @@
 /* AO VIVO — a interface dos motores (v61). O estado mora em `aovivo/estado.js`; aqui é só tela. */
 import {$, esc} from '../nucleo/dom.js';
 import {aoVivo, aoVivoLigar, aoVivoOuvir, motoresRodando} from '../aovivo/estado.js';
-import {rotuloEstado, quando, haQuanto, semEfeito} from '../aovivo/formato.js';
+import {rotuloEstado, quando, haQuanto, semEfeito, textoEvento} from '../aovivo/formato.js';
 
 /** Cartão de UM motor na folha (toque no nó em órbita, no cartão da grade ou no ticker). */
 export function abrirMotor(id) {
@@ -20,7 +20,7 @@ export function abrirMotor(id) {
       ${linha('Unidade', m.unidade)}
       ${linha('Último código de saída', m.saida == null ? '' : String(m.saida))}
       <h4>Últimos eventos</h4>
-      ${evs.length ? `<ul class="mt-evs">${evs.map(e => `<li><span class="num">${esc(quando(e.t))}</span>${esc(e.texto)}</li>`).join('')}</ul>`
+      ${evs.length ? `<ul class="mt-evs">${evs.map(e => `<li><span class="num">${esc(quando(e.t))}</span>${esc(textoEvento(e.texto))}</li>`).join('')}</ul>`
                    : '<div class="dim">Sem evento registrado nesta janela.</div>'}
     </div>`;
   ov.classList.add('on');
@@ -67,7 +67,7 @@ function _tickerPinta() {
   }
   const novo = evs[evs.length - 1].id !== _ultimoNoTicker;
   _ultimoNoTicker = evs[evs.length - 1].id;
-  lane.innerHTML = evs.map((e, i) => `<li class="t-${esc(e.tipo)}${novo && i === evs.length - 1 ? ' novo' : ''}"><span class="num">${_hm(e.t)}</span><b>${esc(_nome(e.motor))}</b>${esc(e.texto)}</li>`).join('');
+  lane.innerHTML = evs.map((e, i) => `<li class="t-${esc(e.tipo)}${novo && i === evs.length - 1 ? ' novo' : ''}"><span class="num">${_hm(e.t)}</span><b>${esc(_nome(e.motor))}</b>${esc(textoEvento(e.texto))}</li>`).join('');
 }
 
 /** Histórico do fio (até 60 eventos), na folha. */
@@ -78,7 +78,7 @@ export function abrirHistorico() {
   sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
     <div class="mt-ficha"><h3 class="v61-disp">Atividade dos motores</h3>
       <div class="mt-estado">${aoVivo.disponivel === false ? 'ao vivo: INDISPONÍVEL' : `${r} rodando · ${f} com falha · ${aoVivo.conectado ? 'fio conectado' : 'fio caído — relendo a cada 30 s'}`}</div>
-      ${evs.length ? `<ul class="mt-evs">${evs.map(e => `<li class="t-${esc(e.tipo)}"><span class="num">${esc(quando(e.t))}</span><span><b>${esc(_nome(e.motor))}</b> — ${esc(e.texto)}</span></li>`).join('')}</ul>`
+      ${evs.length ? `<ul class="mt-evs">${evs.map(e => `<li class="t-${esc(e.tipo)}"><span class="num">${esc(quando(e.t))}</span><span><b>${esc(_nome(e.motor))}</b> — ${esc(textoEvento(e.texto))}</span></li>`).join('')}</ul>`
                    : '<div class="dim">Nenhum evento registrado na última hora.</div>'}
     </div>`;
   ov.classList.add('on');
@@ -109,16 +109,20 @@ function _motoresPinta(host) {
   const se = ms.filter(semEfeito).length;
   cnt.textContent = `${n('rodando')} rodando · ${n('falhou')} com falha${se ? ` · ${se} sem efeito` : ''} · ${n('agendado')} agendados`;
   let infra = false;
-  g.innerHTML = ms.map(m => {
+  const html = ms.map(m => {
     const sep = (!infra && m.classe === 'infra') ? (infra = true, '<div class="mt-sep">Serviços de apoio</div>') : '';
     const pr = typeof m.progresso === 'number' ? Math.round(m.progresso * 100) : null;
     return `${sep}<article class="mt-card e-${esc(m.estado)}${semEfeito(m) ? ' sem-efeito' : ''}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
       <header><i class="mt-pt" aria-hidden="true"></i><b>${esc(m.nome)}</b><span class="mt-rot">${esc(rotuloEstado(m))}</span></header>
       ${pr != null ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr}"><i style="width:${pr}%"></i></div>` : ''}
       <canvas class="mt-spark" width="240" height="28" data-at="${(m.atividade || []).join(',')}" aria-hidden="true"></canvas>
-      <div class="mt-ult">${m.ultimo_evento ? `<span class="num">${_hm(m.ultimo_evento.t)}</span> ${esc(m.ultimo_evento.texto)}` : 'sem evento na última hora'}</div>
+      <div class="mt-ult">${m.ultimo_evento ? `<span class="num">${_hm(m.ultimo_evento.t)}</span> ${esc(textoEvento(m.ultimo_evento.texto))}` : 'sem evento na última hora'}</div>
       <div class="mt-prox">${m.proxima ? 'próxima: <span class="num">' + esc(quando(m.proxima)) + '</span>' : (m.estado === 'falhou' && m.desde ? 'desde <span class="num">' + esc(quando(m.desde)) + '</span>' : '&nbsp;')}</div>
     </article>`; }).join('');
+  /* só repinta o que mudou: reescrever a grade a cada evento do barramento derrubava foco/hover e
+     reiniciava a entrada dos números (14/11/2026) */
+  if (g.dataset.h === html) return;
+  g.dataset.h = html; g.innerHTML = html;
   g.querySelectorAll('canvas.mt-spark').forEach(_spark);
 }
 /* sparkline de atividade: 60 barras = eventos por minuto na última hora (desenho único, sem laço) */

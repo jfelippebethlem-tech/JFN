@@ -19,7 +19,11 @@
     "§v61-sair": '<path d="M10 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M14.5 8 19 12l-4.5 4"/><path d="M19 12H9.5"/>',
     "§v61-som": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
     "§v61-mudo": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
-    "§v61-atividade": '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>'
+    "§v61-atividade": '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>',
+    /* 14/11/2026 — três capas novas (Orçamento por órgão, Sistema › Motores e › Comandos) caíam no emoji */
+    "🏦": '<path d="M4 9.5 12 5l8 4.5"/><path d="M6 10.5v6.5M10 10.5v6.5M14 10.5v6.5M18 10.5v6.5"/><path d="M4 19.5h16"/>',
+    "⚙️": '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
+    "🧭": '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>'
   };
   var svgIco = (e) => {
     const _h = document.documentElement.classList;
@@ -46,7 +50,7 @@
     const n = String(v ?? "").replace(/<[^>]*>/g, "").replace(/&[a-z#0-9]+;/gi, "x").length || 1;
     return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ""}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
-  var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
+  var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${typeof cnt === "number" ? cnt.toLocaleString("pt-BR") : cnt}</span>` : ""}</h2>`;
   var spin = (t) => `<div class="skel"><span class="sp"></span>${t || "Carregando…"}</div>`;
   var avisoDemora = (id, ms, txt) => setTimeout(() => {
     const sk = document.querySelector("#view > .skel");
@@ -1014,6 +1018,9 @@
       clearTimeout(t);
     }
   }
+  function textoEvento(t) {
+    return String(t == null ? "" : t).replace(/(^|[\s(:—-])(\d{4,})(?=\s+[a-zà-ú])/g, (s, a, n) => n.length === 4 && +n >= 1990 && +n <= 2039 ? s : a + Number(n).toLocaleString("pt-BR"));
+  }
 
   // static/js/src/aovivo/estado.js
   var aoVivo = {
@@ -1137,7 +1144,7 @@
       ${linha("Unidade", m.unidade)}
       ${linha("Último código de saída", m.saida == null ? "" : String(m.saida))}
       <h4>Últimos eventos</h4>
-      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li><span class="num">${esc(quando(e.t))}</span>${esc(e.texto)}</li>`).join("")}</ul>` : '<div class="dim">Sem evento registrado nesta janela.</div>'}
+      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li><span class="num">${esc(quando(e.t))}</span>${esc(textoEvento(e.texto))}</li>`).join("")}</ul>` : '<div class="dim">Sem evento registrado nesta janela.</div>'}
     </div>`;
     ov.classList.add("on");
   }
@@ -1199,7 +1206,7 @@
     }
     const novo = evs[evs.length - 1].id !== _ultimoNoTicker;
     _ultimoNoTicker = evs[evs.length - 1].id;
-    lane.innerHTML = evs.map((e, i) => `<li class="t-${esc(e.tipo)}${novo && i === evs.length - 1 ? " novo" : ""}"><span class="num">${_hm(e.t)}</span><b>${esc(_nome(e.motor))}</b>${esc(e.texto)}</li>`).join("");
+    lane.innerHTML = evs.map((e, i) => `<li class="t-${esc(e.tipo)}${novo && i === evs.length - 1 ? " novo" : ""}"><span class="num">${_hm(e.t)}</span><b>${esc(_nome(e.motor))}</b>${esc(textoEvento(e.texto))}</li>`).join("");
   }
   function abrirHistorico() {
     const ov = $("ov"), sh = $("sheet");
@@ -1209,7 +1216,7 @@
     sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
     <div class="mt-ficha"><h3 class="v61-disp">Atividade dos motores</h3>
       <div class="mt-estado">${aoVivo.disponivel === false ? "ao vivo: INDISPONÍVEL" : `${r} rodando · ${f} com falha · ${aoVivo.conectado ? "fio conectado" : "fio caído — relendo a cada 30 s"}`}</div>
-      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li class="t-${esc(e.tipo)}"><span class="num">${esc(quando(e.t))}</span><span><b>${esc(_nome(e.motor))}</b> — ${esc(e.texto)}</span></li>`).join("")}</ul>` : '<div class="dim">Nenhum evento registrado na última hora.</div>'}
+      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li class="t-${esc(e.tipo)}"><span class="num">${esc(quando(e.t))}</span><span><b>${esc(_nome(e.motor))}</b> — ${esc(textoEvento(e.texto))}</span></li>`).join("")}</ul>` : '<div class="dim">Nenhum evento registrado na última hora.</div>'}
     </div>`;
     ov.classList.add("on");
   }
@@ -1251,17 +1258,20 @@
     const se = ms.filter(semEfeito).length;
     cnt.textContent = `${n("rodando")} rodando · ${n("falhou")} com falha${se ? ` · ${se} sem efeito` : ""} · ${n("agendado")} agendados`;
     let infra = false;
-    g.innerHTML = ms.map((m) => {
+    const html = ms.map((m) => {
       const sep = !infra && m.classe === "infra" ? (infra = true, '<div class="mt-sep">Serviços de apoio</div>') : "";
       const pr = typeof m.progresso === "number" ? Math.round(m.progresso * 100) : null;
       return `${sep}<article class="mt-card e-${esc(m.estado)}${semEfeito(m) ? " sem-efeito" : ""}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
       <header><i class="mt-pt" aria-hidden="true"></i><b>${esc(m.nome)}</b><span class="mt-rot">${esc(rotuloEstado(m))}</span></header>
       ${pr != null ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr}"><i style="width:${pr}%"></i></div>` : ""}
       <canvas class="mt-spark" width="240" height="28" data-at="${(m.atividade || []).join(",")}" aria-hidden="true"></canvas>
-      <div class="mt-ult">${m.ultimo_evento ? `<span class="num">${_hm(m.ultimo_evento.t)}</span> ${esc(m.ultimo_evento.texto)}` : "sem evento na última hora"}</div>
+      <div class="mt-ult">${m.ultimo_evento ? `<span class="num">${_hm(m.ultimo_evento.t)}</span> ${esc(textoEvento(m.ultimo_evento.texto))}` : "sem evento na última hora"}</div>
       <div class="mt-prox">${m.proxima ? 'próxima: <span class="num">' + esc(quando(m.proxima)) + "</span>" : m.estado === "falhou" && m.desde ? 'desde <span class="num">' + esc(quando(m.desde)) + "</span>" : "&nbsp;"}</div>
     </article>`;
     }).join("");
+    if (g.dataset.h === html) return;
+    g.dataset.h = html;
+    g.innerHTML = html;
     g.querySelectorAll("canvas.mt-spark").forEach(_spark);
   }
   function _spark(cv) {
@@ -3894,7 +3904,7 @@ void main(){
       const k = v.querySelector(".kpi");
       if (k) setTimeout(() => k.classList.add("beat"), 700);
     }
-    if (!rm) v.querySelectorAll(".kpi .v").forEach(_countUp);
+    if (!rm && !_v61) v.querySelectorAll(".kpi .v").forEach(_countUp);
     v.querySelectorAll(".search").forEach((box) => {
       const inp = box.querySelector('input[oninput*="filtrar"]');
       if (!inp || box.querySelector(".az")) return;
@@ -5767,9 +5777,11 @@ void main(){
         orb.set(m.id, { el: b, a: i / Math.max(1, vivos.length) * TAU });
       });
       const n = motoresRodando().length, f = aoVivo.motores.filter((m) => m.estado === "falhou").length, se = aoVivo.motores.filter(semEfeito).length;
-      if (aoVivo.disponivel === false) leg.innerHTML = "ao vivo: <b>INDISPONÍVEL</b>";
-      else if (aoVivo.disponivel === null) leg.textContent = "ao vivo: lendo…";
-      else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + (se ? ` · <b class="num rt-sefeito">${se}</b> sem efeito` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
+      const h = aoVivo.disponivel === false ? "ao vivo: <b>INDISPONÍVEL</b>" : aoVivo.disponivel === null ? "ao vivo: lendo…" : `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + (se ? ` · <b class="num rt-sefeito">${se}</b> sem efeito` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
+      if (leg.dataset.h !== h) {
+        leg.dataset.h = h;
+        leg.innerHTML = h;
+      }
       raiz.classList.toggle("rt-indisp", aoVivo.disponivel === false);
       sujo = true;
     };
@@ -5886,6 +5898,15 @@ void main(){
       destino: "e_couto"
     });
   }
+  function _concentracao(e) {
+    const l = (e.a_maior || []).filter((x) => x.diferenca > 0).sort((a, b) => b.diferenca - a.diferenca);
+    const tot = e.excesso_a_maior;
+    if (!l.length || !tot) return "";
+    const top = l[0], p = Math.round(100 * top.diferenca / tot);
+    if (p < 25) return "";
+    const res = String(top.ressalvas || "").split(" · ")[0];
+    return ` O maior caso (${esc(top.fornecedor || "—")}, ${esc(top.orgao ? top.orgao.split(" - ")[0] : "")}) responde por ${p}% da soma${res ? ` — ${esc(res)}` : ""}.`;
+  }
   function _pericia(d) {
     if (!d || d.ok === false || !d.esferas) return '<div class="pq-indisp"><b>Perícia contábil: INDISPONÍVEL</b> — a rota não respondeu.</div>';
     const e = d.esferas["Estado do RJ"];
@@ -5896,7 +5917,7 @@ void main(){
       grau: "🟡",
       valor: brl(e.excesso_a_maior),
       titulo: `Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`,
-      texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado. Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
+      texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
       fonte: "SIAFE (OB Contabilizado) × contratos do TCE-RJ, régua determinística reproduzível",
       estado: "VERIFICADO",
       destino: "e_pcont"
@@ -8844,7 +8865,7 @@ void main(){
     const r = d.resumo || {}, u = d.ultimo_ciclo;
     h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora2(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora2(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
     h += `<div class="grid g2" style="margin-top:8px">
-    ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (aguardando assentar, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
+    ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
     ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--rose)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
     ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? "var(--rose)" : null, "📡", { sobre: "Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou." })}
     ${kpi(fmtN((d.cerebro || {}).gravadas), "Descobertas no segundo cérebro", null, "🧠", { sobre: "Memórias gravadas no cérebro compartilhado dos agentes a partir desta máquina, com resposta do cérebro confirmando a gravação (tabela cerebro de data/propagacao.db)." })}
@@ -10612,12 +10633,13 @@ void main(){
     h += `<div class="note">Ausência de resultado numa fonte externa é <b>INDISPONÍVEL</b>, não prova de inexistência: a cobertura de cada base é parcial e declarada por ela mesma.</div>`;
     const lim = await J("/api/fontes/limites");
     if (lim && lim.ok && (lim.itens || []).length) {
+      const _mdLim = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
       h += sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
       h += card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>` + lim.itens.map((x) => `<tr>
-          <td><b>${esc(x.fonte)}</b></td>
+          <td><b>${_mdLim(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo === "bloqueio" ? "medio" : "alto"}">${x.tipo === "bloqueio" ? "bloqueio" : "limite da fonte"}</span></td>
-          <td>${esc(x.o_que_acontece)}</td>
-          <td class="dim">${esc(x.caminho_alternativo)}</td>
+          <td>${_mdLim(x.o_que_acontece)}</td>
+          <td class="dim">${_mdLim(x.caminho_alternativo)}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join("") + `</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
         a base simplesmente não tem aquele campo, e insistir é queimar sessão. Este quadro existe para
@@ -11838,7 +11860,7 @@ void main(){
       "📅",
       { sobre: "A janela de competências efetivamente ingerida. Fora dela nada foi observado — e benefício ausente num mês que não entrou na base <b>não cessou</b>: o mês é que não existe aqui." }
     )}${kpi(
-      esc(r.ultima || "—"),
+      esc(/^\d{6}$/.test(String(r.ultima || "")) ? ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][+String(r.ultima).slice(4) - 1] + "/" + String(r.ultima).slice(0, 4) : r.ultima || "—"),
       "Última competência",
       null,
       "🗓️",
@@ -11943,7 +11965,7 @@ void main(){
       "🟢",
       { sobre: "Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são." }
     )}${kpi(
-      esc((d.gerado_em || "").slice(0, 10)),
+      esc(fmtData((d.gerado_em || "").slice(0, 10))),
       "Gerado em",
       null,
       "🗓️",
@@ -12933,7 +12955,8 @@ void main(){
     pcrj_d10_rede_concorrentes: ["🕸️", "Rede de concorrentes", "Empresas ligadas entre si (mesmo sócio/endereço) que disputam as mesmas licitações — concorrência de fachada."],
     pcrj_d9_socio_na_folha: ["🕴️", "Sócio na folha", "Sócio de empresa fornecedora que também é servidor público — conflito de interesse."],
     fracionamento: ["✂️", "Fracionamento de despesa", "Compras fatiadas para não licitar."],
-    sobrepreco: ["📈", "Sobrepreço", "Preço muito acima da mediana de mercado."]
+    sobrepreco: ["📈", "Sobrepreço", "Preço muito acima da mediana de mercado."],
+    acumulacao: ["👥", "Acumulação de vínculos", "Mesmo CPF em vínculos de órgãos distintos na mesma competência — possível acúmulo vedado (CF art. 37, XVI); a conferir."]
   };
   var SEV_LEGENDA = {
     alta: ["🔴", "Alta", "Indício forte — priorize a verificação."],
@@ -12968,7 +12991,7 @@ void main(){
     const s = await J("/api/siafe/stats");
     if (!s.ok) return sec("SIAFE") + card('<div class="muted">SIAFE indisponível.</div>');
     const pagoOk = s.valor_pago != null;
-    let h = sec("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(
+    let h = cover("estado", "SIAFE · ordens bancárias", "Ordens bancárias coletadas do SIAFE-Rio, por status. Pago é só OB <b>Contabilizada</b>; anulada, excluída e não contabilizada aparecem à parte.", "💳") + `<div class="grid g2">${kpi(
       fmtN(s.total),
       "OBs ingeridas (todos os status)",
       null,
@@ -13000,7 +13023,7 @@ void main(){
     const aprTotal = (apr.memoria_db || 0) + (apr.fichas_sei || 0) + (apr.direcionamentos || 0) + (apr.vault_notas || 0);
     let h = cover(
       "geral",
-      "Sistema — a atividade de toda a máquina",
+      "Coletas e rotinas — a atividade de toda a máquina",
       "O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.",
       "🛰️"
     );
@@ -13659,7 +13682,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ${kpi(fmtN(mult.length), "Empresas em 2+ dimensões", "var(--rose)", "🎯", { sobre: "Convergência de detectores independentes. <b>Dimensão não é detector</b>: porte e estrutura magra medem a mesma coisa e contam uma vez só." })}
     ${kpi(fmtRc(mult.reduce((s, x) => s + (x.pago || 0), 0)), "Pago a essas empresas", "var(--amber)", "💸", { sobre: "Soma das OB <b>Contabilizado</b> do SIAFE — pagamento efetivo, não empenho." })}
     ${kpi(fmtN((L.convergencia && L.convergencia.n) != null ? L.convergencia.n : "—"), "Marcadas por ao menos 1", "var(--dim)", "🔎", { sobre: "Total de empresas que acenderam em <b>alguma</b> das lentes — a base de onde sai a convergência. Acender numa lente sozinha <b>não é achado</b>: 93,9% estão nesse caso, e é por isso que a fila se ordena pelo cruzamento, não pelo total. Vem do JSON materializado, não da tela: por isso não tem gaveta." })}
-    ${kpi(esc((d.gerado_em || "").replace("T", " ").slice(0, 16)), "Materializado em", null, "🕒", { sobre: "A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira." })}
+    ${kpi(esc(fmtData(d.gerado_em || "")), "Materializado em", null, "🕒", { sobre: "A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira." })}
   </div>`;
     h += leitura("Convergência <b>ordena</b>, não acusa. Cada dimensão carrega as ressalvas da própria lente: porte da Receita pode estar desatualizado, dependência alta é esperada em serviço essencial com operador único, e sanção de outro ente pode não alcançar o contrato estadual.");
     h += sec("Em mais de uma dimensão");
@@ -13784,7 +13807,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       "prefeitura",
       "Íntegras · Contratos do Município do Rio",
       "acervo de contratos capturados do PNCP",
-      "doc"
+      "📄"
     ) + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
     const itens = d.itens || [];
     if (_intAberto && !_intDoc[_intAberto]) {
@@ -13794,7 +13817,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       "prefeitura",
       "Íntegras · Contratos do Município do Rio",
       "O documento assinado de cada contrato, capturado do PNCP. Clique para ler a íntegra, baixar o texto ou abrir o original.",
-      "doc"
+      "📄"
     );
     h += `<div class="grid">
     ${kpi(fmtN(d.processados || 0), "Processados", null, null, { sobre: "Contratos do Município cujo arquivo no PNCP foi baixado e decidido (texto lido, PDF de imagem ou sem arquivo publicado). Fila por erro de rede NÃO conta — é espera, não decisão." })}
@@ -13808,11 +13831,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += sec("Buscar");
     h += `<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:0 2px 8px">
     <input id="intq" class="inp" style="flex:1;min-width:220px" placeholder="fornecedor, arquivo ou nº de processo SEI…"
-      value="${esc(_intQ)}"     <button class="btn" data-int="buscar">Buscar</button>
-    <button class="btn${_intFonte === "ocr" ? " on" : ""}" data-int="fonte:ocr" title="texto recuperado por OCR — pode conter erro de leitura">só OCR</button>
-    <button class="btn${_intFonte === "nativo" ? " on" : ""}" data-int="fonte:nativo" title="texto nativo do PDF">só nativo</button>
-    <button class="btn${_intOrdem === "valor" ? " on" : ""}" data-int="ordem:valor">por valor</button>
-    <button class="btn${_intOrdem === "texto" ? " on" : ""}" data-int="ordem:texto">por tamanho</button>
+      value="${esc(_intQ)}"><button class="btn" data-int="buscar">Buscar</button>
+    <button class="chip${_intFonte === "ocr" ? " on" : ""}" data-int="fonte:ocr" title="texto recuperado por OCR — pode conter erro de leitura">só OCR</button>
+    <button class="chip${_intFonte === "nativo" ? " on" : ""}" data-int="fonte:nativo" title="texto nativo do PDF">só nativo</button>
+    <button class="chip${_intOrdem === "valor" ? " on" : ""}" data-int="ordem:valor">por valor</button>
+    <button class="chip${_intOrdem === "texto" ? " on" : ""}" data-int="ordem:texto">por tamanho</button>
   </div>`;
     const mostra = itens.slice(0, _INT_POR_PAGINA);
     h += sec(`Contratos (${fmtN(mostra.length)} de ${fmtN(itens.length)} encontrados)`);
@@ -13838,11 +13861,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
           <b>${fmtRc(it.valor)}</b>
           <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
             <button class="btn sm" data-int="abrir" data-num="${esc(it.numero)}">${sel ? "fechar" : "ler"}</button>
-            <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(it.numero)}"
+            <a class="btn sm ghost" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(it.numero)}"
                title="dossiê em Markdown, com a procedência do texto no cabeçalho">.md</a>
-            <a class="btn sm" href="/api/pcrj/download?numero=${encodeURIComponent(it.numero)}"
+            <a class="btn sm ghost" href="/api/pcrj/download?numero=${encodeURIComponent(it.numero)}"
                title="texto puro extraído do documento">.txt</a>
-            ${it.url_pncp ? `<a class="btn sm" href="${esc(it.url_pncp)}" target="_blank" rel="noopener"
+            ${it.url_pncp ? `<a class="btn sm ghost" href="${esc(it.url_pncp)}" target="_blank" rel="noopener"
                title="documento original no PNCP">original</a>` : ""}
           </div>
         </div>
@@ -13957,7 +13980,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   </div>`;
     if (sd && sd.ok) {
       h += sec("Saúde dos pipelines da Prefeitura", sd.grau_geral);
-      h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>` + (sd.etapas || []).map((e) => `<tr><td>${esc(e.etapa)}</td><td>${fmtN(e.n)}</td><td>${esc((e.ultimo || "—").slice(0, 16))}</td><td>${esc(e.grau)} ${esc(e.leitura || "")}</td><td class="dim">${esc(e.acao || "")}</td></tr>`).join("") + `</tbody></table></div>`;
+      h += `<div style="overflow-x:auto"><table class="tb" style="min-width:640px"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>` + (sd.etapas || []).map((e) => `<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo || "—").slice(0, 16))}</td><td>${esc(e.grau)} ${esc(e.leitura || "")}</td><td class="dim">${esc(e.acao || "")}</td></tr>`).join("") + `</tbody></table></div>`;
     }
     h += sec("Gerar requerimento");
     h += card(`<div class="grid" style="grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end">

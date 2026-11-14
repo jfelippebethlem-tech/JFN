@@ -95,3 +95,15 @@ html.v61 :is(a,button,[role=button],select,input,.chip,.sph):focus-visible{
   html.v61 :is(.card.kpi,.ck-inst), html.v61 .chip, html.v61 nav.tabs button{transition:none}
   html.v61 :is(.card.kpi,.ck-inst):hover{transform:none}
 }
+
+/* ── 9 · glifo sem contexto de tamanho (14/11/2026) ─────────────────────────────────────────────
+   `svgIco()` devolve <svg class="jico"> SEM width/height — quem dá o tamanho é o contexto (.chip,
+   h2.sec, .kpi-ico…). No título de um cartão comum não havia contexto: o SVG ocupava a largura do
+   cartão e virava um ícone gigante (p_gastos, visto em captura). Piso de especificidade zero
+   (`:where`): qualquer regra de contexto continua mandando. */
+:where(svg.jico){width:1.15em;height:1.15em;vertical-align:-.2em;flex:0 0 auto}
+
+/* ── 10 · etiqueta dentro do número-manchete ("parcial" no Pago do Orçamento por órgão) herdava o corpo
+   do KPI e ficava do tamanho do valor. Etiqueta é nota de rodapé do número, não outro número. */
+html.v61 .card.kpi .v .tag{font-size:.6875rem;line-height:1.2;font-weight:600;font-family:var(--f-sans);
+  letter-spacing:0;vertical-align:middle;padding:2px 7px;margin-left:4px}
