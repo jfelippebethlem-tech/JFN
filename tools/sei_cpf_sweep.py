@@ -10,7 +10,6 @@ Honesto: só CPF com DV válido; cada par guarda o contexto p/ conferência; res
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import os
 import re
@@ -19,6 +18,7 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json
 from compliance_agent.sei.extrair_cpf import extrair_cpfs
 
 _DB = Path("data") / "compliance.db"
@@ -56,13 +56,11 @@ def varrer_cache(db_path: str | Path | None = None, cache_dir: str | Path | None
     con = sqlite3.connect(Path(db_path or _DB))
     try:
         ensure_schema(con)
-        files = glob.glob(str(Path(cache_dir or _CACHE) / "cdp_SEI_*.json"))
+        # `glob_cache`/`ler_json`: 8.496 de 9.260 blobs estão em `.json.zst` (14/11/2026) — o glob antigo via 764.
+        files = list(glob_cache(Path(cache_dir or _CACHE), "cdp_SEI_*.json"))
         n_arq = n_cpf = 0
         for f in files:
-            try:
-                d = json.loads(Path(f).read_text("utf-8"))
-            except Exception:  # noqa: BLE001
-                continue
+            d = ler_json(f)
             if not isinstance(d, dict):
                 continue
             n_arq += 1
@@ -82,8 +80,11 @@ def varrer_cache(db_path: str | Path | None = None, cache_dir: str | Path | None
         con.close()
 
 
+MARCA_ACERVO = Path("data") / ".sei_cpf_acervo_vistos.json"
+
+
 def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None = None,
-                  limite: int = 0) -> dict:
+                  limite: int = 0, marca: str | Path | None = None) -> dict:
     """Varre o ACERVO (`data/sei_arquivo/*/texto/*.txt`), não só o cache — é 7× mais texto.
 
     POR QUE ISTO FALTAVA. `varrer_cache` lê os `cdp_SEI_*.json` do `sei_cache`: 557 arquivos,
@@ -108,6 +109,18 @@ def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None =
         pastas = sorted(d for d in raiz.iterdir() if d.is_dir()) if raiz.is_dir() else []
         if limite:
             pastas = pastas[:limite]
+        # INCREMENTAL (14/11/2026): a captura dos nós entrega dezenas de processos por hora e a varredura
+        # inteira relê 6 mil pastas. A marca guarda, por pasta, a assinatura do `texto/` (nº de arquivos +
+        # bytes); pasta igual à da última passada é pulada. Pasta VARRIDA sem CPF também fica marcada — é o
+        # que distingue "não tem CPF" (medido) de "nunca foi lida" (INDISPONÍVEL).
+        marca_arq = Path(marca) if marca else None
+        vistos = {}
+        if marca_arq and marca_arq.is_file():
+            try:
+                vistos = json.loads(marca_arq.read_text("utf-8"))
+            except (OSError, ValueError):
+                vistos = {}
+        n_pulados = 0
         n_proc = n_arq = n_cpf = 0
         agora = datetime.now().isoformat(timespec="seconds")
         for pasta in pastas:
@@ -118,8 +131,14 @@ def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None =
             partes = pasta.name.split("_")
             numero = (f"SEI-{partes[0]}/{partes[1]}/{partes[2]}"
                       if len(partes) >= 3 else pasta.name)
+            txts = sorted(tdir.glob("*.txt"))
+            assinatura = f"{len(txts)}:{sum(f.stat().st_size for f in txts)}"
+            if marca_arq and vistos.get(pasta.name, {}).get("a") == assinatura:
+                n_pulados += 1
+                continue
             n_proc += 1
-            for f in sorted(tdir.glob("*.txt")):
+            antes = n_cpf
+            for f in txts:
                 try:
                     txt = f.read_text("utf-8", errors="ignore")
                 except OSError:
@@ -134,12 +153,18 @@ def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None =
                         (cpf, par["nome"], _norm(par["nome"]), cpf[3:9], numero,
                          par["contexto"][:200], agora))
                     n_cpf += 1
+            if marca_arq:
+                vistos[pasta.name] = {"a": assinatura, "cpfs": n_cpf - antes, "em": agora}
             if n_proc % 200 == 0:
                 con.commit()
+                if marca_arq:
+                    marca_arq.write_text(json.dumps(vistos), "utf-8")
                 print(f"  …{n_proc} processos · {n_arq} arquivos · {n_cpf} pares", flush=True)
         con.commit()
+        if marca_arq:
+            marca_arq.write_text(json.dumps(vistos), "utf-8")
         tot = con.execute("SELECT COUNT(*), COUNT(DISTINCT cpf) FROM sei_cpf").fetchone()
-        return {"processos": n_proc, "arquivos": n_arq, "pares_vistos": n_cpf,
+        return {"processos": n_proc, "pulados_sem_mudanca": n_pulados, "varridos_total": len(vistos), "arquivos": n_arq, "pares_vistos": n_cpf,
                 "total_sei_cpf": tot[0], "cpfs_distintos": tot[1]}
     finally:
         con.close()
@@ -153,8 +178,9 @@ def main() -> None:
     ap.add_argument("--limite", type=int, default=0, help="só os N primeiros processos do acervo")
     a = ap.parse_args()
     if a.acervo:
-        r = varrer_acervo(limite=a.limite)
-        print(f"[sei_cpf_sweep] ACERVO: {r['processos']} processos · {r['arquivos']} arquivos · "
+        r = varrer_acervo(limite=a.limite, marca=MARCA_ACERVO)
+        print(f"[sei_cpf_sweep] ACERVO: {r['processos']} processos lidos · {r['pulados_sem_mudanca']} sem mudança · "
+              f"{r['varridos_total']} pastas varridas no total · {r['arquivos']} arquivos · "
               f"{r['cpfs_distintos']} CPFs distintos em sei_cpf ({r['total_sei_cpf']} pares)")
         return
     r = varrer_cache(cache_dir=a.cache)
