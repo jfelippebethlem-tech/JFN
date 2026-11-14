@@ -123,3 +123,19 @@ def test_cdp_com_teor_de_40_de_105_nao_e_reprovado(monkeypatch, tmp_path):
                     encoding="utf-8")
     ok, motivos, _ = C.conferir_cdp(novo, None)
     assert ok, motivos
+
+
+def test_restrito_declarado_pelo_sei_vai_para_o_registro(monkeypatch, tmp_path):
+    import tools.vm2_conferencia as C
+    import tools.sei_restritos as R
+    monkeypatch.setattr(C, "LOG", tmp_path / "conf.log")
+    semeados = []
+    monkeypatch.setattr(R, "seed", lambda numero, unidade="", motivo="": semeados.append((numero, motivo)))
+    linhas = [
+        "[2026-11-14 09:17:32]   270032/000052/2023: SEM ÁRVORE (processo não abriu) — RESTRITO: SEI diz "
+        "'Unidade atual não possui acesso ao processo restrito SEI-270032/000052/2023' — via='cracked'",
+        "[2026-11-14 09:17:32]   270032/000052/2023: sem_arvore",
+        "[2026-11-14 09:20:00]   100000/000001/2025: SEM ÁRVORE (processo não abriu) — via='cracked' erro_cracked=None",
+    ]
+    assert C.registrar_restritos_declarados(linhas, "jorge") == ["270032/000052/2023"]
+    assert semeados[0][0] == "270032/000052/2023" and "SEI declarou" in semeados[0][1]

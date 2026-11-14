@@ -326,6 +326,25 @@ def _mesclar_restritos(delta: dict) -> None:
     tmp.replace(arq)
 
 
+_RX_RESTRITO_DECLARADO = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): SEM ÁRVORE .*RESTRITO: SEI diz '([^']*)'")
+
+
+def registrar_restritos_declarados(linhas: list[str], origem: str = "") -> list[str]:
+    """Processo que o PRÓPRIO SEI declarou restrito ("Unidade atual não possui acesso ao processo restrito …",
+    registrado pela captura desde 13/11/2026) entra no registro da casa como RESTRITO confirmado
+    (`tools/sei_restritos.seed`): sai das filas de captura (a conta tem UMA unidade — reabrir não traz documento) e
+    entra na requisição formal (`tools/gerar_requisicoes.py`). Medido em 14/11/2026 no it-campo: os 15 primeiros
+    processos da fila exportada eram todos assim, ~3 min de sessão cada, e voltavam a cada exportação."""
+    procs = list(dict.fromkeys(m.group(1) for m in map(_RX_RESTRITO_DECLARADO.match, linhas) if m))
+    if not procs:
+        return []
+    from tools import sei_restritos as R
+    for proc in procs:
+        R.seed(proc, motivo=f"SEI declarou: Unidade atual não possui acesso (captura de íntegra{', ' + origem if origem else ''})")
+    _log(f"RESTRITOS declarados pelo SEI registrados: {len(procs)} ({', '.join(procs[:6])}{'…' if len(procs) > 6 else ''})")
+    return procs
+
+
 def importar(lote: str) -> dict:
     """Confere e importa um lote. Segura `data/.vm2_conferencia.lock` (flock) enquanto roda: é a `trava` do
     motor `vm2-conferencia` no AO VIVO, e impede duas importações ao mesmo tempo."""
@@ -379,6 +398,7 @@ def _importar(lote: str) -> dict:
             saida.append(ln)
         with LOG_FILA.open("a", encoding="utf-8") as f:
             f.write("\n".join(saida) + "\n")
+        registrar_restritos_declarados(man.get("linhas_log") or [], str(man.get("origem") or ""))
     elif man.get("tipo") == "sweep":
         for nome, info in procs.items():                  # nome = arquivo cdp_*.json
             erros = _md5_confere(base, arquivos, (f"cache/{nome}",))
