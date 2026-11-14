@@ -58,6 +58,10 @@ def _motor_falso(monkeypatch, fn):
 
 def test_pensar_sem_motor_devolve_pendente(monkeypatch):
     monkeypatch.setitem(sys.modules, "compliance_agent.llm.claude_motor", None)   # import falha
+    # com o motor já importado por outro teste, `from compliance_agent.llm import claude_motor` acha o atributo
+    # no pacote e não falha — tira o atributo também
+    import compliance_agent.llm as _llm
+    monkeypatch.delattr(_llm, "claude_motor", raising=False)
     r, motivo = RB.pensar("t", "p")
     assert r is None and "ausente" in motivo
 

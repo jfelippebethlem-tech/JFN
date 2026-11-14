@@ -137,8 +137,10 @@ def con_receita(tmp_path):
     con = sqlite3.connect(":memory:")
     con.row_factory = sqlite3.Row
     con.execute(f"ATTACH DATABASE '{estab}' AS estab")
-    con.execute("CREATE TABLE ob_orcamentaria_siafe (credor TEXT, valor REAL, data_emissao TEXT, status TEXT)")
-    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,'Contabilizado')", [
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (credor TEXT, valor REAL, data_emissao TEXT, status TEXT, "
+                "ug_emitente TEXT, processo TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe (credor, valor, data_emissao, status) "
+                    "VALUES (?,?,?,'Contabilizado')", [
         (CNPJ_A, 8_000.0, "10/02/2025"), (CNPJ_A, 9_000.0, "20/05/2025"),   # A: só antes da baixa
         (CNPJ_B, 7_000.0, "10/02/2025"), (CNPJ_B, 3_000.0, "15/07/2025")])  # B: uma depois
     yield con
