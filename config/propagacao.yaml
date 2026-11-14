@@ -16,7 +16,8 @@
 # DERIVADOS — o que fica velho. Campos:
 #   depende          fontes e/ou outros derivados (derivado recalculado vira evento para os seus dependentes)
 #   comando          argv (`{py}` = python do venv); rotina JÁ EXISTENTE, idempotente, sem API paga
-#   tipo: cache      vence chaves do cache do painel (`prefixos`) e pede as rotas (`urls: {rota: prefixo-da-chave}`)
+#   tipo: cache      vence chaves do cache do painel (`prefixos`) e pede as rotas (`urls: {rota: prefixo-da-chave}`);
+#                    o recálculo roda DENTRO do jfn.service (threads, sem nice) — soma de OB é `pesado`
 #   peso             leve (carga ≤ 14) | pesado (um por ciclo, carga ≤ 7; sujo há mais de 2 h, ≤ 12)
 #   debounce_s       janela de junção: espera contada do 1º evento pendente, para recalcular uma vez só
 #   intervalo_min_s  mínimo entre duas execuções · timeout_s · prioridade (menor = antes)
@@ -233,7 +234,7 @@ derivados:
       "orcamento_orgao": "orcamento_orgao:"
       "governo_couto": "governo_couto:base"
       "fontes/frescor": "fontes:frescor"
-    peso: leve
+    peso: pesado
     debounce_s: 600
     intervalo_min_s: 1800
     prioridade: 4
@@ -249,7 +250,7 @@ derivados:
       "periodo/contratacoes_tcerj": "periodo:contratacoes_tcerj"
       "periodo/aditivos_estado": "periodo:aditivos_estado"
       "periodo/tac_estado": "periodo:tac_estado"
-    peso: leve
+    peso: pesado
     debounce_s: 900
     intervalo_min_s: 3600
     prioridade: 6
