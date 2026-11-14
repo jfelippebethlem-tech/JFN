@@ -81,7 +81,8 @@ def rodar(max_n: int) -> None:
     import tools.sei_sweep as S
     fila = carregar_fila([x for x in _ler(FILA, []) if x and x[0] not in _entregues_recentes()])
     S._fila = lambda ug, limite, cnpj=None: fila
-    S._log(f"[vm2] fila da VM-1 (fatia 1/2): {len(fila)} processos; lote --max {max_n}")
+    S._log(f"[vm2] fila da VM-1 (fatia {os.environ.get('JFN_SWEEP_FATIA', '1/2')}): {len(fila)} processos; "
+           f"lote --max {max_n}")
     asyncio.run(S.run(max_n=max_n, ug=None))
 
 
