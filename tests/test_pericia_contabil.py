@@ -275,7 +275,9 @@ def test_estado_fim_a_fim(tmp_path):
     assert res["H"]["categoria"] == "INDETERMINADO" and res["H"]["motivo"] == "registro_de_termo"
 
     i = res["I"]
-    assert i["categoria"] == "A_MAIOR" and i["pago"] == pytest.approx(100_000.0)
+    # o "excesso" é exatamente a OB repetida sem confirmação do banco: devolução + reemissão não descartada
+    assert i["categoria"] == "INDETERMINADO" and i["motivo"] == "pagamento_repetido_nao_confirmado"
+    assert i["pago"] == pytest.approx(100_000.0)
     # base sem `status_envio`: o crédito não está confirmado pelo banco — repetição INDISPONÍVEL, não duplicidade
     assert i["obs_mesma_nl"] == 0 and i["obs_mesma_nl_nao_confirmadas"] == 1
     assert i["valor_mesma_nl_nao_confirmadas"] == pytest.approx(50_000.0)

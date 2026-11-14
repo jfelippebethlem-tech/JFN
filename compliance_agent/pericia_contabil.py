@@ -110,6 +110,9 @@ MOTIVOS = {
     "ob_apos_fim_da_vigencia_registrada": "pago acima do valor registrado, mas há OB depois do fim da vigência "
                                           "registrada e a fonte não publica termos aditivos — prorrogação provável "
                                           "não publicada; o valor registrado é o de um período",
+    "pagamento_repetido_nao_confirmado": "pago acima do valor só por OB repetida para a mesma NL sem confirmação do "
+                                         "banco na coleta — devolução e reemissão não descartadas; recoletar o status "
+                                         "de envio no SIAFE",
     "liquidado_indisponivel": "pago abaixo do valor contratado, mas o total liquidado não está na base — saldo não "
                               "executado não é pagamento a menor",
     "vigencia_do_periodo_prorrogado": "a vigência publicada é a do período prorrogado (ano do contrato anterior ao "
@@ -707,6 +710,13 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
     r.update(devido=round(devido, 2), categoria=cat, subtipo=sub, diferenca=round(dif, 2))
     if cat == "A_MAIOR" and pago > r["valor_atualizado"]:
         r["excesso_global"] = round(pago - r["valor_atualizado"], 2)
+    if cat == "A_MAIOR" and r["obs_mesma_nl_nao_confirmadas"]:
+        # OB repetida para a mesma NL sem confirmação do banco: se, tirada a repetição, o pago cabe no valor, o
+        # "excesso" pode ser só devolução + reemissão que a coleta ainda não enxerga — nada se afirma.
+        sem_rep = pago - r["valor_mesma_nl_nao_confirmadas"]
+        if sem_rep <= r["valor_atualizado"] or dentro_da_tolerancia(sem_rep - r["valor_atualizado"],
+                                                                    r["valor_atualizado"]):
+            return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "pagamento_repetido_nao_confirmado"}
     if cat == "A_MAIOR" and not t:
         # O TCE-RJ não publica termos aditivos. OB depois do fim da vigência registrada = o contrato seguiu
         # (prorrogação não publicada): o pago acumula vários períodos e o valor registrado é o de um só.
