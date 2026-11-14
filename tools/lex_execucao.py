@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -237,6 +238,19 @@ def _exec_norm(v) -> str | None:
 
 
 def _gravar(con, numero_sei, objeto, fl, r, nota, modelo):
+    # "database is locked" aqui jogava fora o parecer de LLM já gasto e o processo voltava à fila (38 vezes no log
+    # até 14/11/2026): desfaz a transação (libera o snapshot WAL vencido) e tenta de novo antes de desistir.
+    for tentativa in range(4):
+        try:
+            return _gravar_uma_vez(con, numero_sei, objeto, fl, r, nota, modelo)
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e) and "busy" not in str(e) or tentativa == 3:
+                raise
+            con.rollback()
+            time.sleep(3 * (tentativa + 1))
+
+
+def _gravar_uma_vez(con, numero_sei, objeto, fl, r, nota, modelo):
     con.execute(
         """INSERT INTO lex_execucao (numero_sei,objeto,tem_prestacao_contas,tem_fiscalizacao,
             tem_relatorio_fotografico,tem_atesto_recebimento,tem_nota_fiscal,tem_medicao,
