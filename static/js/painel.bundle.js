@@ -5155,11 +5155,11 @@ void main(){
     const it = r.itens || [];
     if (it.length) {
       const temV = it.some((x) => x.valor != null);
-      h += `<details class="per-top" open><summary><b>Maiores de ${esc(sel.rotulo)}</b> <span class="dim">(até ${fmtN(r.top)})</span></summary>
+      h += `<details class="per-top" open><summary><b>${temV ? "Maiores de" : "Registros de"} ${esc(sel.rotulo)}</b> <span class="dim">(até ${fmtN(r.top)})</span></summary>
       <div class="per-tbw"><table class="per-tb"><tbody>${it.map((x) => `<tr><td style="min-width:180px">${esc(x.nome)}${x.doc ? ` <span class="dim">${esc(x.doc)}</span>` : ""}
         ${x.orgao ? `<div class="dim" style="font-size:12px">${esc(x.orgao)}${x.data ? " · " + esc(String(x.data).slice(0, 10)) : ""}</div>` : ""}
-        ${x.objeto ? `<div class="dim" style="font-size:12px">${esc(x.objeto)}</div>` : ""}</td>
-        <td class="right num">${x.n != null ? fmtN(x.n) + " reg." : ""}</td>${temV ? `<td class="right num"><b>${x.valor == null ? "—" : fmtR(x.valor)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div></details>`;
+        ${x.objeto ? `<div class="dim" style="font-size:12px">${esc(x.objeto)}${x.fim !== void 0 ? " · vigência até " + esc(x.fim || "sem prazo") : ""}</div>` : ""}</td>
+        ${x.n != null ? `<td class="right num">${fmtN(x.n)} reg.</td>` : ""}${temV ? `<td class="right num"><b>${x.valor == null ? "—" : fmtR(x.valor)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div></details>`;
     } else if (r.itens) {
       h += `<div class="dim" style="font-size:12px;margin:4px 0 8px">${f.granularidade === "ano" && _P.mes ? "Fonte anual: sem registros por mês." : "Nenhum registro individual neste recorte."}</div>`;
     }
