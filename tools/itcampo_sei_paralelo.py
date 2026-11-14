@@ -335,6 +335,14 @@ def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
 
 
 FILA_V_HORAS = 3
+FILA_V_MAX, FILA_V_TETO = 120, 1920
+
+
+def proxima_fila_v(max_atual: int) -> int | None:
+    """Tamanho da PRÓXIMA exportação quando a fila exportada veio sem nada a ler (None = já no teto: a fatia
+    acabou mesmo, espera longa). A VM-1 exporta os N primeiros pelo critério do sweep SEM tirar os já lidos; com
+    as sessões andando, os 120 primeiros da sub-fatia ficam todos lidos e a volta termina em 0 s."""
+    return None if max_atual >= FILA_V_TETO else min(max_atual * 4, FILA_V_TETO)
 
 
 def volta_varredura(k: int, s: Path, segundos: int) -> dict | None:
@@ -345,11 +353,16 @@ def volta_varredura(k: int, s: Path, segundos: int) -> dict | None:
     fatia = f"{2 * (k - 1)}/{2 * m}"
     fila = s / "data" / "fila_sweep_vm2.json"
     rotulo = s / "data" / "fila_sweep_fatia.txt"
+    esgotada = s / "data" / ".fila_sweep_esgotada"       # a exportação anterior não tinha nada a ler: pedir mais
+    try:
+        max_fila = int(esgotada.read_text().strip())
+    except (OSError, ValueError):
+        max_fila = FILA_V_MAX
     velha = (not fila.exists() or time.time() - fila.stat().st_mtime > FILA_V_HORAS * 3600
-             or (rotulo.read_text().strip() if rotulo.exists() else "") != fatia)
+             or (rotulo.read_text().strip() if rotulo.exists() else "") != fatia or esgotada.exists())
     if velha:
         r = _ssh(f"cd {VM1_JFN} && PYTHONPATH=. nice -n 10 timeout 900 .venv/bin/python -m tools.vm2_sweep_geral "
-                 f"exportar --max 120 --fatia {fatia}", timeout=1000)
+                 f"exportar --max {max_fila} --fatia {fatia}", timeout=1000)
         if r.returncode != 0:
             raise RuntimeError(f"exportar varredura na VM-1 falhou: {r.stderr.strip()[-200:]}")
         fila.write_text(r.stdout, encoding="utf-8")
@@ -398,6 +411,20 @@ def volta_varredura(k: int, s: Path, segundos: int) -> dict | None:
            "cdp": dev.get("cdp", 0), "com_docs": dev.get("com_docs", 0), "progresso": dev.get("progresso", 0),
            "aprovados": len(lote.get("aprovados") or []), "quarentena": len(lote.get("reprovados") or {}),
            "lote_nao_chegou": bool(dev.get("cdp")) and not lote}
+    if not rec["cdp"] and not rec["progresso"] and rec["duracao_s"] < 120:
+        # NADA A LER NA FILA EXPORTADA. Medido em 14/11/2026 às 18:06: duas sessões em laço de 2 s ("nada novo
+        # na fila"), gravando uma volta vazia e abrindo um ssh na VM-1 a cada passada, até a fila fazer 3 h.
+        prox = proxima_fila_v(max_fila)
+        if prox is None:
+            esgotada.unlink(missing_ok=True)
+            fila.unlink(missing_ok=True)
+            print(f"=== sub-fatia {fatia}: nada a ler nem nos {max_fila} primeiros da VM-1 ===", flush=True)
+            return None
+        esgotada.write_text(str(prox))
+        print(f"=== sub-fatia {fatia}: os {max_fila} exportados já estavam lidos — peço {prox} à VM-1 em 1 min ===",
+              flush=True)
+        return {"esgotada": True}
+    esgotada.unlink(missing_ok=True)
     registrar(rec, batida="varredura")
     print(f"=== volta de varredura: {rec['cdp']} lidos ({rec['com_docs']} com documentos), lote "
           f"{rec['aprovados']} aprovados / {rec['quarentena']} quarentena ===", flush=True)
@@ -457,6 +484,9 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
         if rec is None:
             titulo(f"JFN SEI sessão {k} — fila vazia na VM-1, nova consulta em 20 min")
             time.sleep(1200)
+        elif rec.get("esgotada"):
+            titulo(f"JFN SEI sessão {k} — fila exportada já lida, pedindo uma maior à VM-1")
+            time.sleep(60)
 
 
 def registrar(rec: dict, batida: str = "integras") -> None:

@@ -91,3 +91,10 @@ def test_freio_de_memoria_nao_age_com_folga_nem_sem_leitura():
     """Controle negativo: com folga, ou sem conseguir ler a memória, nada muda e a contagem zera."""
     assert P.freio_de_memoria(P.PISO_MEM_GB + 0.1, 8, 5, 2) == (8, 5, 0)
     assert P.freio_de_memoria(None, 8, 5, 2) == (8, 5, 0)
+
+
+def test_fila_de_varredura_esgotada_pede_mais_ate_o_teto():
+    """14/11/2026 18:06: fila de 120 toda lida ⇒ volta de 0 s em laço. Cresce 4× por pedido; no teto, espera longa."""
+    assert P.proxima_fila_v(P.FILA_V_MAX) == 480
+    assert P.proxima_fila_v(480) == P.FILA_V_TETO
+    assert P.proxima_fila_v(P.FILA_V_TETO) is None
