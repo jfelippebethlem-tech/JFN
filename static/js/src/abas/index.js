@@ -1113,7 +1113,7 @@ export async function renderPanoramaEstado(){
 export async function renderSancionadas(esf){
   const pSoc=J('/api/intel/socio_sancionada');            // em paralelo: não atrasa a lista principal
   const d=await J('/api/intel/sancionadas?limite=1000');   // teto da rota = 1000 > n(770): cobre a base
-  if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(esf==='estado'?['sancoes_estado']:['sancoes_estado','sancoes_prefeitura'],'Sanções por ano e mês de início');
   let emp=d.empresas||[];const carregadas=emp.length;   // ANTES do corte de esfera — é o que o filtro varre
   if(esf==='estado')emp=emp.filter(e=>e.estado.obs>0);
   const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
@@ -1275,7 +1275,7 @@ export async function renderCartelMun(){
 // ═══ SANCIONADAS × PREFEITURA (contrato municipal DURANTE sanção impeditiva — TCM-RJ) ═══
 export async function renderSancionadasMun(){
   const d=await J('/api/intel/sancionadas_municipio?limite=300');   // n=238 → cabe inteiro; filtro em memória, não no DOM
-  if(!d.ok)return sec('Sancionadas — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Sancionadas — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(['sancoes_prefeitura'],'Sanções por ano e mês de início');
   const emp=d.empresas||[];const aepoca=emp.filter(e=>(e.contratos_durante||0)>0);
   let h=cover('prefeitura','Sancionadas contratadas pela Prefeitura do Rio',
     'Empresas com sanção <b>impeditiva</b> (CEIS: impedimento, suspensão, inidoneidade) que assinaram contrato com o <b>Município do Rio</b>. <b>À ÉPOCA</b> = assinatura DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156 §§4º-5º). Competência: <b>TCM-RJ</b>. Órgãos federais/estaduais são excluídos do corte.','🚫')+acoesAba('sancionadas_municipio');
@@ -1310,7 +1310,7 @@ export async function renderSancionadasMun(){
 
 export async function renderAditivos(esf='estado'){
   const d=await J('/api/intel/aditivos?limite=120&esfera='+esf);
-  if(!d.ok)return sec('Aditivos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Aditivos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo([esf==='prefeitura'?'aditivos_prefeitura':'aditivos_estado'],'Termos aditivos por ano e mês');
   const a=d.achados||[];
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
@@ -1593,7 +1593,7 @@ export async function renderGastosPref(){
   const d=await J('/api/pcrj/gastos_achados');
   let h=cover('prefeitura','Perícia de gastos — detectores D7–D12',
     'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️')+acoesAba('gastos_pcrj');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`);
+  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`)+blocoPeriodo(['despesa_prefeitura','contratos_prefeitura'],'Despesa e contratações por ano e mês');
   const dets=Object.keys(d.detectores||{});
   /* A PROCEDÊNCIA JÁ EXISTIA E NÃO CHEGAVA À TELA: `_DET_ROTULO` guarda, no terceiro campo, o que
      cada detector mede e a base normativa — e o KPI só usava o ícone e o rótulo. Escrever texto
@@ -1687,7 +1687,7 @@ export async function renderContratosPref(){
   }
   const d=await J('/api/certames/lista?esfera=prefeitura&limite=600');
   let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips+acoesAba('contratos_analise');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(['contratos_prefeitura','aditivos_prefeitura'],'Contratos e aditivos por ano e mês');
   const its=d.itens||[],rs=d.resumo||{};
   h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄',
         {sobre:'Certames municipais capturados. É o denominador de tudo nesta aba: certame fora da base não foi considerado regular — não foi visto.'})}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮',
@@ -3220,7 +3220,7 @@ function _intDocHtml(num){
 export async function renderTacRecorrente(){
   const d=await J('/api/doerj/tac_recorrente?top=30');
   if(!d||d.erro||d.ok===false) return cover('estado','TAC recorrente (DOERJ)','Termos de Ajuste de Contas publicados no Diário Oficial do Estado','🧾')
-    +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`);
+    +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`)+blocoPeriodo(['tac_estado'],'TAC publicados por ano e mês');
   let h=cover('estado','TAC recorrente (DOERJ)',
     'Quem o Estado paga por <b>Termo de Ajuste de Contas</b> — serviço prestado sem contrato regular — e quantas vezes. '
     +'Valores são os <b>publicados</b> nos extratos, não ordens bancárias.','🧾');

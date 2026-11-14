@@ -10708,7 +10708,7 @@ void main(){
   async function renderSancionadas(esf) {
     const pSoc = J("/api/intel/socio_sancionada");
     const d = await J("/api/intel/sancionadas?limite=1000");
-    if (!d.ok) return sec("Sancionadas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sancionadas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(esf === "estado" ? ["sancoes_estado"] : ["sancoes_estado", "sancoes_prefeitura"], "Sanções por ano e mês de início");
     let emp = d.empresas || [];
     const carregadas = emp.length;
     if (esf === "estado") emp = emp.filter((e) => e.estado.obs > 0);
@@ -10912,7 +10912,7 @@ void main(){
   }
   async function renderSancionadasMun() {
     const d = await J("/api/intel/sancionadas_municipio?limite=300");
-    if (!d.ok) return sec("Sancionadas — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sancionadas — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(["sancoes_prefeitura"], "Sanções por ano e mês de início");
     const emp = d.empresas || [];
     const aepoca = emp.filter((e) => (e.contratos_durante || 0) > 0);
     let h = cover(
@@ -10971,7 +10971,7 @@ void main(){
   }
   async function renderAditivos(esf = "estado") {
     const d = await J("/api/intel/aditivos?limite=120&esfera=" + esf);
-    if (!d.ok) return sec("Aditivos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Aditivos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo([esf === "prefeitura" ? "aditivos_prefeitura" : "aditivos_estado"], "Termos aditivos por ano e mês");
     const a = d.achados || [];
     let h = cover(
       esf,
@@ -11345,7 +11345,7 @@ void main(){
       "Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.",
       "✂️"
     ) + acoesAba("gastos_pcrj");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`);
+    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`) + blocoPeriodo(["despesa_prefeitura", "contratos_prefeitura"], "Despesa e contratações por ano e mês");
     const dets = Object.keys(d.detectores || {});
     h += `<div class="grid g2">` + dets.map((k) => {
       const m = _DET_ROTULO[k] || ["📌", k, ""];
@@ -11493,7 +11493,7 @@ void main(){
     }
     const d = await J("/api/certames/lista?esfera=prefeitura&limite=600");
     let h = cover("prefeitura", "Contratações do município — cada uma com a sua análise", "Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.", "📄") + chips + acoesAba("contratos_analise");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(["contratos_prefeitura", "aditivos_prefeitura"], "Contratos e aditivos por ano e mês");
     const its = d.itens || [], rs2 = d.resumo || {};
     h += `<div class="grid g2">${kpi(
       fmtN(rs2.total),
@@ -13346,7 +13346,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   async function renderTacRecorrente() {
     const d = await J("/api/doerj/tac_recorrente?top=30");
-    if (!d || d.erro || d.ok === false) return cover("estado", "TAC recorrente (DOERJ)", "Termos de Ajuste de Contas publicados no Diário Oficial do Estado", "🧾") + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
+    if (!d || d.erro || d.ok === false) return cover("estado", "TAC recorrente (DOERJ)", "Termos de Ajuste de Contas publicados no Diário Oficial do Estado", "🧾") + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`) + blocoPeriodo(["tac_estado"], "TAC publicados por ano e mês");
     let h = cover(
       "estado",
       "TAC recorrente (DOERJ)",
