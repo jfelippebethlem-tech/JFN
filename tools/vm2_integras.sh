@@ -26,7 +26,10 @@ say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
 # trava COMPARTILHADA com a varredura geral (tools/vm2_sweep_geral.sh): um navegador SEI do worker por vez
 exec 9>"$W/data/.vm2_sei.lock"
-flock -n 9 || { say "rodada anterior ainda viva — pula"; exit 0; }
+# ESPERA a trava (até 1 h), não pula: a varredura geral (timer de 30 em 30 min, teto 3000 s) segura a MESMA trava
+# quase o tempo todo, e com `flock -n` a rodada de 01:00 de 14/11 pulou a madrugada inteira ("rodada anterior ainda
+# viva") — enquanto a íntegra espera, as varreduras seguintes é que pulam (elas usam -n).
+flock -w 3600 9 || { say "trava do navegador ocupada há 1 h — pula"; exit 0; }
 [ -f "$W/data/.pause_vm2_integras" ] && { say "pausado (.pause_vm2_integras) — pulei"; exit 0; }
 
 # código atual da VM-1 (fast-forward; se falhar, roda com o que tem e registra)
