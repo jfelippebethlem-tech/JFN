@@ -33,6 +33,8 @@ import pathlib
 import sqlite3
 from datetime import datetime
 
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
+
 CACHE = pathlib.Path(os.environ.get("JFN_SEI_CACHE", "data/sei_cache"))
 ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
 DB = os.environ.get("JFN_DB", "data/compliance.db")
@@ -90,12 +92,13 @@ def ler_caches() -> dict[str, dict]:
     out: dict[str, dict] = {}
     if not CACHE.is_dir():
         return out
-    for f in sorted(CACHE.glob("cdp_SEI_*.json")):
-        try:
-            d = json.loads(f.read_text())
-        except (OSError, json.JSONDecodeError):
+    # `glob_cache` + `ler_json`: desde a compressão do cache, 8.496 de 9.260 blobs são `.json.zst` (medido em
+    # 14/11/2026) e o glob antigo só via os 764 não comprimidos — a tabela ficou parada em 09/08 sem ninguém notar.
+    for f in sorted(glob_cache(CACHE, "cdp_SEI_*.json")):
+        d = ler_json(f)
+        if not isinstance(d, dict):
             continue
-        num = d.get("numero") or f.stem.replace("cdp_SEI_", "").replace("_", "/")
+        num = d.get("numero") or nome_logico(f)[: -len(".json")].replace("cdp_SEI_", "").replace("_", "/")
         docs = d.get("documentos") or []
         out[so_digitos(num)] = {
             "numero_sei": num,
@@ -124,6 +127,31 @@ def textos_locais() -> set[str]:
         return set()
     return {so_digitos(p.name) for p in ACERVO.iterdir()
             if p.is_dir() and (p / "texto").is_dir() and any((p / "texto").glob("*.txt"))}
+
+
+REGISTRO_RESTRITOS = pathlib.Path(os.environ.get("JFN_SEI_RESTRITOS", "data/sei_restritos.json"))
+
+
+def ler_registro_restritos() -> dict[str, dict]:
+    """Restrição DECLARADA pelo SEI na leitura (íntegra/varredura em VM-1, VM-2 e it-campo) — `tools/sei_restritos`.
+
+    O cache de varredura deixou de ser o único caminho de captura: as íntegras dos nós entram no acervo sem
+    `cdp_SEI_*.json`, e o que o SEI declarou restrito nelas vive só no registro. Só `RESTRITO` entra (o
+    `RESTRITO?` é suspeita sem confirmação e fica de fora)."""
+    try:
+        reg = json.loads(REGISTRO_RESTRITOS.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out: dict[str, dict] = {}
+    for chave, v in (reg.items() if isinstance(reg, dict) else ()):
+        if not isinstance(v, dict) or v.get("status") != "RESTRITO":
+            continue
+        dig = so_digitos(v.get("numero") or chave)
+        if len(dig) != 16:              # 6+6+4 dígitos; fora disso não dá para casar com o resto da casa
+            continue
+        out[dig] = {"numero_sei": f"SEI-{dig[:6]}/{dig[6:12]}/{dig[12:]}",
+                    "fonte": f"sei_restritos:{v.get('fonte') or '?'}"}
+    return out
 
 
 def conhecidos(con: sqlite3.Connection) -> dict[str, dict]:
@@ -227,6 +255,18 @@ def main() -> int:
             [(v["numero_sei"], k, v["cadeado"], v["n_docs_restritos"], v["arvore_carregou"],
               v["n_docs"], 1 if k in locais else 0, v["fonte"], agora)
              for k, v in cache.items()])
+        # Fora do cache: (1) restrição DECLARADA pelo SEI no registro → cadeado=1; (2) processo com texto no
+        # acervo (íntegra dos nós) → cadeado NULL = NÃO AFERÍVEL (o manifesto não registra cadeado; ter texto
+        # não prova ausência de documento restrito). INDISPONÍVEL ≠ 0: nunca gravar 0 sem medição.
+        registro = ler_registro_restritos()
+        extra = [(v["numero_sei"], k, 1, None, None, None, 1 if k in locais else 0, v["fonte"], agora)
+                 for k, v in registro.items() if k not in cache]
+        vistos = set(cache) | set(registro)
+        nomes = {so_digitos(p.name): p.name for p in ACERVO.iterdir() if p.is_dir()} if ACERVO.is_dir() else {}
+        extra += [("SEI-" + nomes[k].replace("_", "/"), k, None, None, None, None, 1,
+                   "acervo (íntegra) — cadeado não aferível", agora)
+                  for k in sorted(locais - vistos) if k in nomes]
+        con.executemany("INSERT OR REPLACE INTO sei_sigilo VALUES (?,?,?,?,?,?,?,?,?)", extra)
         con.executemany(
             "INSERT OR REPLACE INTO sei_fila_captura VALUES (?,?,?,?,?,?)",
             [(conh[k]["numero_sei"], k,
@@ -236,7 +276,7 @@ def main() -> int:
               conh[k]["total_pago"], conh[k]["n_docs"], agora)
              for k in sorted(conh_sem_texto)])
         con.commit()
-        print(f"\ngravado: sei_sigilo ({len(cache)}) · sei_fila_captura ({len(conh_sem_texto)})")
+        print(f"\ngravado: sei_sigilo ({len(cache)} do cache + {len(extra)} do registro/acervo) · sei_fila_captura ({len(conh_sem_texto)})")
     else:
         print("\n(somente leitura — use --gravar para materializar as tabelas)")
 
