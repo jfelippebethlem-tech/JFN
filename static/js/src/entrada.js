@@ -52,6 +52,7 @@ import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, sei
 import {renderCasos, ligarCasos} from './abas/casos.js';
 import {renderComissao, ligarComissao} from './abas/comissao.js';
 import {renderGovernoCouto, ligarGovernoCouto} from './abas/governo_couto.js';
+import {renderOrcamentoOrgao, ligarOrcamentoOrgao} from './abas/orcamento_orgao.js';
 import {ligarPeriodo} from './abas/periodo.js';
 import {renderPericiaContabil, renderCgeJfn} from './abas/rotinas.js';
 import {renderMotoresSistema, renderComandosSistema} from './abas/sistema.js';
@@ -96,6 +97,7 @@ const TABS={
     {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
     {id:'e_comissao',ic:'🏛️',tl:'Comissão de Orçamento',render:renderComissao},
+    {id:'e_orcorg',  ic:'🏦',tl:'Orçamento por órgão',render:renderOrcamentoOrgao},
     {id:'e_couto',   ic:'📜',tl:'Governo Couto',render:renderGovernoCouto},
     {id:'e_pcont',   ic:'⚖️',tl:'Perícia contábil',render:renderPericiaContabil},
     {id:'e_cge',     ic:'🔎',tl:'CGE × JFN',render:renderCgeJfn},
@@ -406,6 +408,7 @@ ligarCasos();
 ligarRequerimentos();
 ligarComissao();
 ligarGovernoCouto();
+ligarOrcamentoOrgao();
 ligarPeriodo();
 ligarLai();
 ligarAcervo();
