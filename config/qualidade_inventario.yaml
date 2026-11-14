@@ -314,6 +314,7 @@ lex:
   compliance_agent/lex_render.py: {afirma: "Render do parecer de fornecedor (mérito, seções, md e pdf).", fonte: "contexto do Lex", llm: true, consome: ["dono (Telegram)"]}
   compliance_agent/lex_orgao.py: {afirma: "Parecer de órgão (UG): achados de nível órgão.", fonte: compliance.db, llm: false, consome: ["relatório órgão"]}
   tools/lex_execucao.py: {afirma: "Avalia a execução do contrato a partir do processo SEI de pagamento.", fonte: "processo SEI arquivado", llm: true, consome: ["Processo 360", "perícia"]}
+  tools/sei_ficha_acervo.py: {afirma: "Ficha de triagem do processo SEI lido do acervo (Haiku/Batch); só entra o que a conferência literal acha no texto; risco sem red flag conferida = não avaliado.", fonte: "processo SEI arquivado", llm: true, consome: ["perícia de execução", "ficha do Acervo"]}
   tools/lex_pesquisa_internet.py: {afirma: "Pesquisa na internet as dúvidas abertas do parecer e reajusta a análise.", fonte: "web", llm: true, consome: ["parecer Lex"]}
   tools/lex_feedback.py: {afirma: "Canal de dificuldades e ideias do Lex/JFN para o Claude Code.", fonte: "registros do Lex", llm: false, consome: ["Claude Code"]}
   tools/lex_bombeiros.py: {afirma: "Perícia de execução dos contratos do FUNESBOM ainda não avaliados.", fonte: "processo SEI arquivado", llm: true, consome: ["perícia"]}

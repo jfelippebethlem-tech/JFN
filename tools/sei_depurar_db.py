@@ -184,6 +184,8 @@ def depurar(stats_only: bool = False, completo: bool = False) -> dict:
         # perícias = objetos {achados[],verificar[],conclusao}; persiste como JSON ("" se ausente)
         per_c = json.dumps(ficha.get("pericia_contabil"), ensure_ascii=False) if isinstance(ficha.get("pericia_contabil"), dict) else ""
         per_j = json.dumps(ficha.get("pericia_juridica"), ensure_ascii=False) if isinstance(ficha.get("pericia_juridica"), dict) else ""
+        # A ficha do ACERVO (`tools/sei_ficha_acervo`, `fonte_modelo` com `#acervo-`) lê até 60 mil caracteres por
+        # valor fiscalizatório e passa pela conferência literal; a do cache lê 4.500. Não se troca a melhor pela pior.
         cur.execute(
             """INSERT INTO sei_ficha
                (numero_sei,objeto,modalidade,fundamento_legal,resumo,analise,nivel_risco,situacao,relevante,
@@ -199,7 +201,8 @@ def depurar(stats_only: bool = False, completo: bool = False) -> dict:
                  datas=excluded.datas, red_flags=excluded.red_flags, documentos=excluded.documentos,
                  pericia_contabil=excluded.pericia_contabil, pericia_juridica=excluded.pericia_juridica,
                  n_docs=excluded.n_docs, fonte_modelo=excluded.fonte_modelo,
-                 cached_at=excluded.cached_at, atualizado_em=datetime('now')""",
+                 cached_at=excluded.cached_at, atualizado_em=datetime('now')
+               WHERE COALESCE(sei_ficha.fonte_modelo,'') NOT LIKE '%#acervo-%'""",
             (numero, vals["objeto"], vals["modalidade"], vals["fundamento_legal"], vals["resumo"],
              vals["analise"], vals["nivel_risco"], vals["situacao"], 1 if ficha.get("relevante") else 0,
              listas["valores"], listas["cnpjs"], listas["partes"], listas["datas"],
