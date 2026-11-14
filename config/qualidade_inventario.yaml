@@ -333,6 +333,7 @@ agendamentos:
   siafe_runner_mfa: {fonte_codigo: compliance_agent/siafe_runner.py, envia: "pedido de código MFA e estado da coleta SIAFE", canal: Telegram}
   guardiao_banco: {fonte_codigo: tools/guardiao_db_malformed.sh, envia: "alerta de banco corrompido / failover", canal: Telegram}
   lembrete_dono: {fonte_codigo: A DECLARAR, envia: "lembrete diário das ações do dono em aberto (script fora do repo)", canal: "Telegram (Yoda)"}
+  vault_retratos: {fonte_codigo: compliance_agent/vault_retratos.py, envia: "notas-retrato do painel (perícia, orçamento por exercício, gestão Couto, CGE × JFN, municípios, sobrepreço, sinais críticos), regravadas pela propagação quando a fonte muda", canal: "vault (~/vault/jfn) → segundo cérebro"}
   metacognicao: {fonte_codigo: tools/hermes_metacognicao.py, envia: "síntese de metacognição do Hermes (re-indexa o RAG)", canal: vault}
 
 abas:

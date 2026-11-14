@@ -228,6 +228,33 @@ derivados:
     timeout_s: 900
     prioridade: 8
     antes: "diário 06:25 (cron)"
+  vault_retratos:
+    nome: Retratos do JFN no vault (perícia, orçamento por exercício e mês, gestão Couto, CGE × JFN, municípios, sobrepreço, sinais críticos)
+    onde: vault ~/vault/jfn/ (índice jfn/00-retratos.md) → segundo cérebro (indexa a cada 10 min)
+    # lê as ROTAS do painel (só GET em 127.0.0.1:8000): por isso depende dos caches do painel, não das fontes cruas —
+    # roda depois que o número novo já está no painel. Não regrava nota cujo conteúdo não mudou (sem ruído no Syncthing).
+    # Sobrepreço não tem sonda própria: entra de carona na próxima rodada (há pelo menos uma por dia, pela OB do SIAFE).
+    depende: [pericia_contabil, governo_couto_regras, cge_confronto, territorio, painel_ob, painel_contratos]
+    comando: ["{py}", "-m", "compliance_agent.vault_retratos"]
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 10800
+    timeout_s: 600
+    prioridade: 9
+    efeito: {arquivo: data/vault_retratos_estado.json}
+    antes: "não existia (o vault só recebia os blocos de caso e o estado do sistema, 1× ao dia)"
+    cerebro:
+      # perícia contábil e CGE × JFN NÃO entram aqui: já são memória dos próprios derivados (não duplicar)
+      arquivo: data/vault_retratos_estado.json
+      assunto: "retratos do JFN — gestão Couto, sobrepreço, mapa por município"
+      campos:
+        "Gestão Couto: pontos de atenção VERIFICADOS graves": manchetes.couto_graves
+        "Gestão Couto: pontos de atenção VERIFICADOS em atenção": manchetes.couto_atencao
+        "Sobrepreço: compras conferidas no PNCP fora de ata": manchetes.sobrepreco_compras
+        "Sobrepreço: excesso estimado conferido (quantidade homologada, não é pagamento)": manchetes.sobrepreco_excesso
+        "Mapa por município: contratos vigentes atribuídos a município": manchetes.territorio_atribuidos
+        "Mapa por município: contratos vigentes sem município identificado": manchetes.territorio_sem_municipio
+      ressalva: "Detalhe, fonte e estado de cada número nas notas do vault em jfn/. Indício interno para requerer documentos, não acusação."
   conformidade:
     nome: Conformidade — sensores das regras de qualidade
     onde: Sistema › Conformidade

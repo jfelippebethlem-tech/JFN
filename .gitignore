@@ -230,6 +230,7 @@ data/governo_couto_suspeitas.json
 data/governo_couto_regras.json
 data/governo_couto_curadoria.json
 data/cge_confronto.json
+data/vault_retratos_estado.json
 data/cge_auditorias.json
 
 # regras de qualidade: fotografia dos sensores, historico, juiz e series das manchetes (estado de producao)
