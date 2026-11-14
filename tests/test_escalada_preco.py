@@ -145,3 +145,19 @@ def test_caixa_com_contagem_vira_preco_por_unidade(tmp_path):
     assert d["n"] == 1
     a = d["achados"][0]
     assert a["preco_final"] == 10.0 and a["razao"] == 5.0 and a["unidade_normalizada"] == "unidade"
+
+
+def test_salto_entre_compras_consecutivas_e_indeterminado(tmp_path):
+    # medido no banco real (14/11/2026): 'Dieta enteral' por litro de R$ 58,98 a R$ 64.590,00
+    # (1.095×) ia ao TOPO da escalada. Salto ≥ GAP× entre preços consecutivos é unidade ou
+    # produto diferente (doutrina do preco_normalizado) — sai da conta, contado e com motivo.
+    A = "11111111000111"
+    p = _db_series(tmp_path, [
+        ("C1", "S", "S", "Dieta enteral", "Litro", 58.98, 10, A, "ALFA", "2025-01-10"),
+        ("C2", "S", "S", "Dieta enteral", "Litro", 60.0, 10, A, "ALFA", "2025-02-10"),
+        ("C3", "S", "S", "Dieta enteral", "Litro", 64590.0, 10, A, "ALFA", "2025-04-10"),
+    ])
+    d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
+    assert d["n"] == 0
+    assert d["indeterminados"]["n"] == 3
+    assert any("salto" in m["motivo"] for m in d["indeterminados"]["por_motivo"])

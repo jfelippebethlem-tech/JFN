@@ -1147,7 +1147,7 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
             "AND length(fornecedor_cnpj)=14").fetchall()
         from collections import defaultdict
         from compliance_agent.collectors.pncp_resultados import certames_da_esfera
-        from compliance_agent.preco_normalizado import normalizar
+        from compliance_agent.preco_normalizado import GAP, normalizar
         certs = certames_da_esfera(con, esfera)
         grupos: dict[tuple, list] = defaultdict(list)
         mercado: dict[tuple, list] = defaultdict(list)   # (item,unid. normalizada) -> preços de TODOS
@@ -1188,6 +1188,12 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
                 continue
             if precos[-1] / precos[0] < fator:
                 continue                              # o preço TRIPLICOU (tendência), não só variou
+            saltos = [b / a for a, b in zip(precos, precos[1:]) if a > 0 and (b / a >= GAP or a / b >= GAP)]
+            if saltos:                                # doutrina do preco_normalizado: salto = outro produto/unidade
+                motivo = (f"série com salto ≥{GAP:g}× entre compras consecutivas (maior {max(saltos):.1f}×) — "
+                          f"provável unidade, apresentação ou produto diferente, não escalada")
+                indet.extend((dict(r), motivo) for r in itens)
+                continue
             acima_mkt = round(precos[-1] / med_mkt, 1) if med_mkt and med_mkt > 0 else None
             achados.append({
                 "fornecedor": itens[0]["fornecedor_nome"], "fornecedor_cnpj": cnpj,
