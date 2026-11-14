@@ -90,10 +90,13 @@ RESERVA_VM2 = RAIZ / "data" / ".integras_vm2_reserva.json"
 
 
 def _delegado_vm2(horas: float = 30) -> bool:
-    """Algum nó remoto (VM-2 `.integras_na_vm2`, it-campo `.integras_na_itcampo`, …) bateu o ponto há < `horas`?"""
+    """Algum nó remoto (VM-2 `.integras_na_vm2`, it-campo `.integras_na_itcampo`, …) bateu o ponto há < `horas`?
+    A VM-2 roda duas vezes ao dia (daí 30 h); os outros nós batem a cada rodada de ~40 min e valem só 4 h —
+    nó desligado não pode segurar a fila da VM-1 por mais de uma manhã."""
     for marca in [DELEGADO_VM2, *DELEGADO_VM2.parent.glob(".integras_na_*")]:
+        validade = horas if marca.name == DELEGADO_VM2.name else min(horas, 4)
         try:
-            if time.time() - marca.stat().st_mtime < horas * 3600:
+            if time.time() - marca.stat().st_mtime < validade * 3600:
                 return True
         except OSError:
             continue

@@ -138,6 +138,9 @@ def test_batida_de_qualquer_no_faz_a_vm1_ceder(monkeypatch, tmp_path):
     assert not F._delegado_vm2()
     (tmp_path / ".integras_na_itcampo").write_text("x")
     assert F._delegado_vm2()
+    velho = time.time() - 5 * 3600                      # nó de rodadas curtas vale 4 h, não 30
+    os.utime(tmp_path / ".integras_na_itcampo", (velho, velho))
+    assert not F._delegado_vm2()
 
 
 def test_restrito_confirmado_nao_vai_para_a_fila(monkeypatch, tmp_path):
