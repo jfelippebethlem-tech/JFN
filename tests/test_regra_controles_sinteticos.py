@@ -31,6 +31,7 @@ CNPJ_B = "11444777000161"
 # ───────────── a. OB devolvida pelo banco + reemissão não soma duas vezes ─────────────
 
 def _base_obs(tmp_path, linhas):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     db = tmp_path / "ob.db"
     con = sqlite3.connect(db)
     con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, exercicio INTEGER, ug_emitente TEXT, "

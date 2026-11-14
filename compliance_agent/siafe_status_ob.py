@@ -55,6 +55,7 @@ def fila(exercicio: int, db=None, max_dias: int = 6, agora: datetime | None = No
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=30)
     try:
         dias = con.execute(
+            # ob-qualquer-status: consulta de cobertura/estado da coleta (lê todo status de propósito; não soma pago)
             "SELECT data_emissao, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe WHERE exercicio=? "
             f"AND status='Contabilizado' AND status_envio IN {_IN} AND numero_ob<>'' GROUP BY 1",
             (int(exercicio), *INTERMEDIARIOS)).fetchall()
@@ -83,6 +84,7 @@ def fila(exercicio: int, db=None, max_dias: int = 6, agora: datetime | None = No
 
 def _foto(con, exercicio: int, data: str) -> dict[tuple, tuple[str, float]]:
     return {(r[0], r[1]): (r[2], r[3]) for r in con.execute(
+        # ob-qualquer-status: consulta de cobertura/estado da coleta (lê todo status de propósito; não soma pago)
         "SELECT numero_ob, ug_emitente, status_envio, valor FROM ob_orcamentaria_siafe WHERE exercicio=? "
         f"AND data_emissao=? AND status='Contabilizado' AND status_envio IN {_IN} AND numero_ob<>''",
         (int(exercicio), data, *INTERMEDIARIOS))}
@@ -96,6 +98,7 @@ def registrar(exercicio: int, data: str, antes: dict, db=None) -> dict:
         con.execute(_DDL)
         trans: Counter = Counter()
         for (num, ug) in antes:
+            # ob-qualquer-status: consulta de cobertura/estado da coleta (lê todo status de propósito; não soma pago)
             r = con.execute("SELECT status_envio FROM ob_orcamentaria_siafe WHERE numero_ob=? AND ug_emitente=? "
                             "AND exercicio=?", (num, ug, int(exercicio))).fetchone()
             trans[(r[0] or "") if r else "nao_reencontrada"] += 1

@@ -319,6 +319,7 @@ def cobertura_gd_pela_ob(ug: str, exercicio: int, db=None) -> float | None:
     try:
         con.execute(TIPOS["GD"]["ddl"])
         tot, ach = con.execute(
+            # ob-qualquer-status: consulta de cobertura/estado da coleta (lê todo status de propósito; não soma pago)
             "SELECT COUNT(DISTINCT o.gd), COUNT(DISTINCT g.numero) FROM ob_orcamentaria_siafe o LEFT JOIN gd_siafe g "
             "ON g.numero=o.gd AND g.ug_emitente=o.ug_emitente AND g.ob=o.numero_ob WHERE o.ug_emitente=? "
             "AND o.exercicio=? AND o.gd LIKE ?", (str(ug), int(exercicio), f"{exercicio}GD%")).fetchone()
