@@ -106,3 +106,14 @@ def test_documento_que_nao_troca_nao_vira_teor_do_anterior():
     res = asyncio.run(SR._conteudo_via_arvore(pg, {"url": "https://sei/?id_documento=42", "texto": "Despacho"}))
     assert res is None
     assert pg.esperas == 60
+
+
+def test_no_de_captura_nao_monta_o_pdf_unico_que_o_lote_nao_leva():
+    """O desvio fica DEPOIS do manifesto completo e ANTES da junção; sem a variável, a junção segue (VM-1)."""
+    from pathlib import Path
+    src = (Path(SR.__file__).parent / "sei_integra_completa.py").read_text(encoding="utf-8")
+    completo, desvio, juncao = (src.index("_grava(manifest, True)"), src.index('"SEI_SEM_PDF_UNICO") == "1"'),
+                                src.index("out = fitz.open()"))
+    assert completo < desvio < juncao
+    lote = (Path(SR.__file__).parent / "sei_integra_vm2.py").read_text(encoding="utf-8")
+    assert 'itens[f"cache/integra_{tag}"]' in lote and 'itens[f"cache/INTEGRA_' not in lote

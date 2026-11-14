@@ -240,6 +240,13 @@ async def main():
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)
             _grava(manifest, True)
+            # NÓ DE CAPTURA (it-campo): o lote entregue à VM-1 leva `arquivo/` e `cache/integra_<proc>/` — o PDF
+            # único abaixo NÃO vai, e `sei_integra_vm2._limpar_local` o apaga depois da entrega. Montá-lo era só
+            # custo: 14/11/2026, quatro deles com 0,6–1,0 GB, juntados inteiros na memória (`garbage=4`) por
+            # sessão — pico de RAM na máquina onde a memória é o que limita o nº de sessões.
+            if os.environ.get("SEI_SEM_PDF_UNICO") == "1":
+                print(f"ÍNTEGRA: {len(paths)} docs (PDF único dispensado: SEI_SEM_PDF_UNICO=1)", flush=True)
+                return
             # junta
             out = fitz.open()
             sep = fitz.open(); spg = sep.new_page(); spg.insert_text((60, 120), f"ÍNTEGRA — PROCESSO SEI-{PROC} ({len(paths)} documentos)", fontsize=14); out.insert_pdf(sep); sep.close()
