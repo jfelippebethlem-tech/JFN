@@ -55,8 +55,8 @@ MODELO_JUIZO = "claude-opus-5-5"
 # a sessão nunca usa chave de API: só a assinatura
 VARIAVEIS_PROIBIDAS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
-TETO_CHAMADAS_DIA = 120
-TETO_SEGUNDOS_DIA = 7200
+TETO_CHAMADAS_DIA = 320       # 14/11/2026: dono "pode aumentar a triagem do opus" (era 120)
+TETO_SEGUNDOS_DIA = 14400     # era 7200
 TETO_TAREFA_PADRAO = 10
 # Por tarefa (chamadas/dia). Soma > total de propósito: o total é quem trava; a tarefa só impede que uma
 # fila sozinha coma o dia. Ver o relatório de 13/11/2026 para a conta.
@@ -68,7 +68,7 @@ TETOS_TAREFA = {
     "triagem_alertas": 40,
     "camada_subjetiva": 20,
     "investigacao_risco": 10,
-    "verificacao_opus": 30,      # todo 🔴/🟡 da triagem relido pelo Opus (diretriz "sem margem pra erro")
+    "verificacao_opus": 200,     # todo 🔴/🟡 da triagem relido pelo Opus; 30→200 em 14/11/2026 a pedido do dono
     "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
 }
 
