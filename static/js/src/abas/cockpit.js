@@ -278,8 +278,11 @@ export function ckPull(first){
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ ${_v60?'Radar':'RADAR'} ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
+  // Revisão D8 (13/11/2026): circulares (usam sanção como insumo) saem do CÁLCULO no servidor; o filtro aqui
+  // fica como segunda trava. O rótulo diz o que o número mede: sancionados de qualquer época ou ente, com n.
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra sanção ${b.lift}× acima da base (sanção de qualquer época ou ente)`:'—'});});
+    ckFill('lift',{txt:b?fmtD(b.lift,2)+'×':'—',meta:b?`<b>${rot(b.detector)}</b> marca ${fmtD(b.lift,2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)`
+      +((d.circulares||[]).length?` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo`:''):'—'});});
   // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
   // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
   // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.

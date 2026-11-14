@@ -2148,13 +2148,15 @@ export async function _liftBloco(){
   const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,var(--green))'));
     return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
   let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
-  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base*100,1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base*100,1)}%</b> dos ${fmtN(d.universo)} fornecedores têm sanção impeditiva (de qualquer época ou ente). <b>Lift</b> = quantas vezes o detector marca sancionados acima disso — não mede irregularidade. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal. Detector que usa sanção como insumo é <b>circular</b> e fica fora do cálculo.</div>`;
   h+=`<div class="grid">`+det.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:700">${rot(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">circular</span>':''}${x.n_pequeno?'<span class="tag amber">n<10</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${fmtD(x.taxa*100,1)}%)</div>
       ${barra(x.lift,x.circular)}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${fmtN(x.lift)}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+  const circ=d.circulares||[];
+  if(circ.length)h+=`<div class="note" style="margin-top:8px">Fora do cálculo (circulares — usam sanção como insumo, o lift contra sanção não informa nada): ${circ.map(x=>`<b>${rot(x.detector)}</b> (${fmtN(x.n)} marcados)`).join(' · ')}.</div>`;
   return h;
 }
 

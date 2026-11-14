@@ -43,17 +43,20 @@ def test_lift_calcula_taxa_base_e_circularidade(db):
     d = RA.avaliar_lift(db)
     assert d["ok"] is True
     assert d["taxa_base"] == pytest.approx(0.20)      # 2/10
-    fm = next(x for x in d["detectores"] if x["detector"] == "fantasma_medio")
-    assert fm["n"] == 2 and fm["sancionados"] == 2
-    assert fm["taxa"] == pytest.approx(1.0) and fm["lift"] == pytest.approx(5.0)
-    assert fm["circular"] is True and fm["n_pequeno"] is True
+    # Revisão cética de 13/11/2026 (D8): detector que usa sanção como insumo "prevê" sanção por construção —
+    # sai do CÁLCULO (sem lift), listado à parte só com o tamanho, nunca ao lado dos independentes.
+    assert all(not x["circular"] for x in d["detectores"])
+    assert "fantasma_medio" not in {x["detector"] for x in d["detectores"]}
+    fm = next(x for x in d["circulares"] if x["detector"] == "fantasma_medio")
+    assert fm["n"] == 2 and "lift" not in fm and "sancionados" not in fm
+    assert "sanção" in fm["motivo"]
 
 
-def test_lift_ordena_independentes_antes_dos_circulares(db):
+def test_lift_rotulo_diz_o_que_mede(db):
     d = RA.avaliar_lift(db)
-    circ = [x["circular"] for x in d["detectores"]]
-    # todos os não-circular vêm antes dos circular (ordenação estável)
-    assert circ == sorted(circ)
+    txt = d["explicacao"].lower()
+    assert "fraude" not in txt and "risco real" not in txt
+    assert "sancionad" in txt and "qualquer" in txt          # sanção de qualquer época ou ente
 
 
 def test_lift_universo_vazio_e_honesto(tmp_path, monkeypatch):
