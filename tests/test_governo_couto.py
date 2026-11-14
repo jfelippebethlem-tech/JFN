@@ -290,3 +290,25 @@ def test_pontos_de_atencao_declaram_verificado_ou_pendente(bases):
         assert "possível homônimo — não verificado" in it[k]["verificacao_motivo"], k
     assert it["r2"]["verificacao"] == "PENDENTE" and "agregado" in it["r2"]["verificacao_motivo"]
     assert it["h2"]["verificacao"] == "PENDENTE" and "hipótese" in it["h2"]["verificacao_motivo"]
+
+
+def test_execucao_ob_devolvida_pelo_banco_e_linha_sem_numero_nao_sao_pagamento(bases):
+    """Verificação de 13/11/2026: 'Erro no Pagamento' segue Contabilizado no SIAFE e a coleta deixou linhas sem número
+    de OB — nenhuma das duas é pagamento; saem do pago e entram em 'fora da soma', nos dois períodos."""
+    c = sqlite3.connect(bases.DB)
+    c.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN status_envio")
+    c.executemany("INSERT INTO ob_orcamentaria_siafe (numero_ob, ug_emitente, data_emissao, status, credor, nome_credor,"
+                  " valor, exercicio, processo, coletado_em, status_envio) VALUES (?,?,?,?,?,?,?,?,?,'2026-11-01',?)", [
+        ("1OB7", "100100", "20/04/2026", "Contabilizado", "11111111000111", "ALFA LTDA", 7000.0, 2026, "SEI-1",
+         "Erro no Pagamento"),
+        ("", "100100", "10/04/2026", "Contabilizado", "11111111000111", "ALFA LTDA", 400.0, 2026, "SEI-1", ""),
+        ("1OB8", "100100", "15/04/2025", "Contabilizado", "11111111000111", "ALFA LTDA", 600.0, 2025, "SEI-0",
+         "Erro no Pagamento"),
+    ])
+    c.commit()
+    c.close()
+    bases._CACHE.clear()
+    e = bases.montar()["execucao"]
+    assert e["pago"] == pytest.approx(500.0) and e["n_obs"] == 2
+    assert e["anterior"]["pago"] == pytest.approx(250.0)
+    assert e["n_nao_contabilizadas"] == 3

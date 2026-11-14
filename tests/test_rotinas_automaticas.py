@@ -215,7 +215,8 @@ def test_montar_preserva_top10_e_marca_hipoteses_pendentes(base_couto, tmp_path)
     h = [x for x in doc["achados"] if x["id"] == "H1"][0]
     assert h["pendente"] is True and doc["camada_subjetiva"]["estado"] == "pendente"
     assert all(x.get("explicacao_inocente") for x in doc["achados"] if x.get("tipo") in ("regra", "caso"))
-    assert any(x["id"] == "D14" and x["grau"] == "🔴" for x in doc["achados"])
+    # pagamento na vigência SEM contrato novo localizado: sinal 🟡, não 🔴 (a vedação é contratar; efeito ex nunc)
+    assert any(x["id"] == "D14" and x["grau"] == "🟡" for x in doc["achados"])
     assert any(x["id"] == "D03" and "INDISPONÍVEL" in x["regra_ou_hipotese"] for x in doc["achados"])
 
 

@@ -98,7 +98,8 @@ def classificar_sancao(categoria: str | None, fundamentacao: str | None = None,
 
 # ── ente do ÓRGÃO sancionador ────────────────────────────────────────────────
 _RX_FEDERAL = re.compile(
-    r"\btrf\d?\b|tribunal regional federal|justica federal|\btcu\b|controladoria-geral da uniao|"
+    r"\btrf\d?\b|tribunal regional federal|justica federal|\btcu\b|tribunal de contas da uniao|"
+    r"controladoria-geral da uniao|"
     r"\bcgu\b|advocacia-geral da uniao|\bagu\b|ministerio p(u|ú)blico federal|\bmpf\b|"
     r"superior tribunal|\bstj\b|\bstf\b|\btse\b|\btst\b|comando (do|da) (exercito|marinha|aeronautica)|"
     r"universidade federal|instituto federal|\bifrj\b|receita federal|policia federal|"
@@ -168,6 +169,31 @@ def teto_legal(fundamentacao: str | None) -> str | None:
     return None
 
 
+INICIO_LEI_14230 = "2021-10-26"
+
+
+def teto_por_lei_especial(fundamentacao: str | None, data_inicio: str | None = None) -> tuple[str | None, str]:
+    """(teto, motivo) para bases legais que a categoria do CEIS esconde — verificação independente de 13/11/2026.
+    Vale também SEM abrangência declarada (o teto de `teto_legal` só entrava quando o CEIS declarava algo).
+
+    · Lei 8.443/92 art. 46 (TCU): inidoneidade "para participar de licitação na Administração Pública FEDERAL" →
+      teto = ente (a União). O CEIS grava a categoria "Declaração de Inidoneidade" e, em 9 registros, "Todas as
+      Esferas" — a lei não dá isso.
+    · Lei 13.303/16 art. 83, III: suspensão e impedimento "com a ENTIDADE sancionadora" → teto = órgão.
+    · Lei 8.429/92 art. 12, §4º (redação da Lei 14.230/2021, em vigor em 26/10/2021): a proibição de contratar
+      alcança o ENTE LESADO; só "em caráter excepcional e por motivos relevantes devidamente justificados" extrapola.
+      Sanção iniciada desde então e sem abrangência declarada → teto = ente (o do sancionador é a melhor
+      aproximação disponível do ente lesado; ler a sentença). Anterior ou sem data: mantém-se a leitura ampla."""
+    f = _norm(fundamentacao)
+    if re.search(r"\b8\.?443\b", f) and re.search(r"art\.?\s*46", f):
+        return "ente", "Lei 8.443/92, art. 46 — só a Administração Pública Federal"
+    if re.search(r"\b13\.?303\b", f) and re.search(r"art\.?\s*83", f):
+        return "orgao", "Lei 13.303/16, art. 83, III — só a entidade sancionadora"
+    if "8429" in f and (data_inicio or "")[:10] >= INICIO_LEI_14230:
+        return "ente", "Lei 8.429/92, art. 12, §4º (Lei 14.230/2021) — ente lesado, salvo decisão que o estenda"
+    return None, ""
+
+
 def abrangencia_declarada(texto: str | None) -> str | None:
     """Tier da abrangência que o próprio CEIS declara; 'Sem Informação'/vazio/'Em outro órgão' → None."""
     return _ABRANGENCIA_CEIS.get(_norm(texto).strip())
@@ -209,6 +235,15 @@ def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ",
         if teto and _TIER[decl] > _TIER[teto]:
             decl = teto        # a declaração só estreita o alcance que a lei dá; nunca o alarga
         cl = {**cl, "abrangencia": decl}
+    if cl["veda_contratacao"]:
+        # lei especial: o teto vale com ou sem declaração; improbidade pós-2021 só quando o CEIS NÃO declara
+        # (declaração de "todas as esferas" ali pode ser a decisão que o §4º admite)
+        teto_e, _mot = teto_por_lei_especial(sancao.get("fundamentacao"), sancao.get("data_inicio"))
+        if teto_e and not (decl and "8429" in _norm(sancao.get("fundamentacao"))):
+            if _TIER.get(cl["abrangencia"], 0) > _TIER[teto_e]:
+                cl = {**cl, "abrangencia": teto_e, "tipo": "impedimento" if teto_e == "ente" else "suspensao"}
+                if decl:
+                    decl = teto_e
     esf_decl = _norm(sancao.get("esfera_sancionador")).strip()
     if decl == "ente_poder":
         ente = ente_do_orgao(sancao.get("orgao"), sancao.get("uf"))

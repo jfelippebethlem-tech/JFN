@@ -22,7 +22,7 @@ def _mkdb(tmp_path):
         aditivos_checados INT)""")
     # sanção impeditiva vigente 2024-01-01 .. 2026-12-31 p/ o CNPJ 11111111000111
     con.execute("INSERT INTO sancoes_federais (cadastro,cpf_cnpj,nome,categoria,data_inicio,data_fim) "
-                "VALUES ('CEIS','11111111000111','FORN SANCIONADA LTDA','Inidônea - impeditiva',"
+                "VALUES ('CEIS','11111111000111','FORN SANCIONADA LTDA','Declaração de Inidoneidade com prazo determinado',"
                 "'2024-01-01','2026-12-31')")
 
     def _c(cnpj, orgao_nome, data, valor, fonte="pncp", ncp="x1"):
@@ -65,3 +65,32 @@ def test_sancionadas_municipio_sem_sancao(tmp_path):
     con.commit(); con.close()
     d = ci.sancionadas_municipio(db_path=str(p))
     assert d["ok"] and d["n"] == 0
+
+
+def test_sancao_sem_alcance_sobre_a_prefeitura_do_rio_fica_a_parte(tmp_path):
+    """Verificação de 13/11/2026: suspensão de órgão federal e impedimento de OUTRO município não maculam."""
+    dbp = _mkdb(tmp_path)
+    con = sqlite3.connect(dbp)
+    S = ("INSERT INTO sancoes_federais (cadastro,cpf_cnpj,nome,categoria,data_inicio,data_fim,orgao,uf,fundamentacao) "
+         "VALUES ('CEIS',?,?,?,?,?,?,?,?)")
+    con.executemany(S, [
+        ("22222222000122", "SUSP FED", "Suspensão", "2024-01-01", "2026-12-31", "Instituto Federal Ficticio", "RJ",
+         "LEI 8666 - ART. 87, III"),
+        ("33333333000133", "IMP OUTRO MUN", "Impedimento/proibição de contratar com prazo determinado", "2024-01-01",
+         "2026-12-31", "Prefeitura Municipal de Cidade Ficticia (RJ)", "RJ", "LEI 14133 - ART. 156, III"),
+        ("44444444000144", "IMP RIO", "Impedimento/proibição de contratar com prazo determinado", "2024-01-01",
+         "2026-12-31", "Prefeitura Municipal da Cidade do Rio de Janeiro (RJ)", "RJ", "LEI 14133 - ART. 156, III"),
+        ("55555555000155", "SEM FIM", "Impedimento/proibição de contratar com prazo determinado", "2024-01-01",
+         None, "Prefeitura Municipal da Cidade do Rio de Janeiro (RJ)", "RJ", "LEI 14133 - ART. 156, III"),
+    ])
+    for i, cnpj in enumerate(("22222222000122", "33333333000133", "44444444000144", "55555555000155")):
+        con.execute("INSERT INTO pcrj_contratos (numero_controle_pncp,orgao_cnpj,orgao_nome,fornecedor_documento,"
+                    "fornecedor_nome,objeto,valor_global,valor_inicial,data_assinatura,fonte) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (f"n{i}", "", "MUNICIPIO DE RIO DE JANEIRO", cnpj, "F", "obra", 100.0, 100.0, "2025-06-10", "pncp"))
+    con.commit()
+    con.close()
+    emp = {e["cnpj"]: e for e in ci.sancionadas_municipio(db_path=dbp)["empresas"]}
+    assert emp["22222222000122"]["contratos_durante"] == 0 and emp["22222222000122"]["contratos_vigente_sem_alcance"] == 1
+    assert emp["33333333000133"]["contratos_durante"] == 0 and emp["33333333000133"]["contratos_vigente_sem_alcance"] == 1
+    assert emp["44444444000144"]["contratos_durante"] == 1
+    assert emp["55555555000155"]["contratos_durante"] == 0          # "prazo determinado" sem data final: não se afirma

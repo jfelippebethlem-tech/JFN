@@ -172,6 +172,23 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
         con.close()
 
 
+_RX_MUNICIPIO_DO_RIO = re.compile(
+    r"(prefeitura|munic[ií]pio|c[aâ]mara municipal|tribunal de contas do munic[ií]pio|secretaria municipal|"
+    r"controladoria[- ]geral do munic[ií]pio).{0,40}rio de janeiro|\bPCRJ\b|\bCGM[- ]?RIO\b|\bTCM[- ]?RJ\b", re.I)
+
+
+def _alcanca_o_municipio_do_rio(sancao: dict, veda_ente) -> bool:
+    """A sanção alcança contrato da Prefeitura do Rio? Alcance total sempre; alcance de ENTE (impedimento,
+    suspensão de parceria) só quando o sancionador é o próprio Município do Rio — `veda_ente` compara esfera e UF,
+    e outro município do mesmo Estado passaria."""
+    v = veda_ente(sancao, "municipal", "RJ")
+    if not v["veda"]:
+        return False
+    if v.get("abrangencia") == "total":
+        return True
+    return bool(_RX_MUNICIPIO_DO_RIO.search(sancao.get("orgao") or ""))
+
+
 def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) -> dict:
     """Sanção impeditiva × CONTRATO da Prefeitura do Rio (análogo municipal do
     ``sancionadas_contratadas``, que só cobre SIAFE-Estado + PNCP).
@@ -181,7 +198,14 @@ def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) ->
     Teste "à época": o contrato foi ASSINADO dentro da vigência [data_inicio, data_fim]
     de uma sanção impeditiva? Contrato fora da janela NÃO macula (mesma régua do Estado).
     Guarda extra: corrobora a esfera do órgão via ``pcrj.esfera.classificar_esfera``.
+
+    Verificação de 13/11/2026: a função contava QUALQUER sanção impeditiva na janela — sem alcance (suspensão de
+    um instituto federal "maculava" contrato da Prefeitura) e com "prazo determinado" sem data final lido como
+    eterno. Agora a régua é a do Estado: `vigente_em` + `veda_ente(municipal, RJ)`; e, como impedimento/suspensão
+    de ente municipal só vale no PRÓPRIO município, exige-se que o sancionador seja o Município do Rio (a de
+    Niterói não alcança a Prefeitura do Rio). Vigente sem alcance é contado à parte — não é vedação.
     """
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis, veda_ente, vigente_em
     try:
         from compliance_agent.pcrj.esfera import classificar_esfera as _cls
     except Exception:                       # pragma: no cover
@@ -189,8 +213,11 @@ def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) ->
     con = _ro(db_path)
     try:
         sanc: dict[str, list] = {}
+        cols = {r[1] for r in con.execute("PRAGMA table_info(sancoes_federais)")}
+        extras = ", ".join(c if c in cols else f"NULL AS {c}" for c in ("uf", "fundamentacao"))
         for r in con.execute(
-                f"SELECT cpf_cnpj, nome, cadastro, categoria, data_inicio, data_fim, orgao "
+                f"SELECT cpf_cnpj, nome, cadastro, categoria, data_inicio, data_fim, orgao, {extras}, "
+                f"{sql_campos_ceis(con)} "
                 f"FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND {_SQL_IMPEDITIVA}"):
             sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
         if not sanc or not _tabela_existe(con, "pcrj_contratos"):
@@ -213,28 +240,35 @@ def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) ->
             a = achados.setdefault(r["c"], {
                 "cnpj": r["c"], "nome": r["fornecedor_nome"], "sancoes": sanc.get(r["c"], []),
                 "contratos": 0, "valor": 0.0, "contratos_durante": 0, "valor_durante": 0.0,
+                "contratos_vigente_sem_alcance": 0, "valor_vigente_sem_alcance": 0.0,
                 "exemplos_durante": []})
             val = r["valor_global"] or r["valor_inicial"] or 0.0
             dt = (r["data_assinatura"] or "")[:10]
             a["contratos"] += 1
             a["valor"] += val
-            for s in a["sancoes"]:
-                ini, fim = s.get("data_inicio") or "0000", s.get("data_fim") or "9999"
-                if dt and ini <= dt <= fim:
-                    a["contratos_durante"] += 1
-                    a["valor_durante"] += val
-                    if len(a["exemplos_durante"]) < 5:
-                        a["exemplos_durante"].append(
-                            {"contrato": r["numero_controle_pncp"], "orgao": r["orgao_nome"],
-                             "objeto": (r["objeto"] or "")[:120], "data": dt, "valor": val,
-                             "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
-                    break
+            vigentes = [s for s in a["sancoes"] if vigente_em(s, dt)]
+            com_alcance = [s for s in vigentes if _alcanca_o_municipio_do_rio(s, veda_ente)]
+            if vigentes and not com_alcance:
+                a["contratos_vigente_sem_alcance"] += 1
+                a["valor_vigente_sem_alcance"] += val
+            if com_alcance:
+                s = com_alcance[0]
+                ini, fim = s.get("data_inicio") or "?", s.get("data_fim") or "sem prazo"
+                a["contratos_durante"] += 1
+                a["valor_durante"] += val
+                if len(a["exemplos_durante"]) < 5:
+                    a["exemplos_durante"].append(
+                        {"contrato": r["numero_controle_pncp"], "orgao": r["orgao_nome"],
+                         "objeto": (r["objeto"] or "")[:120], "data": dt, "valor": val,
+                         "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
 
         lista = [a for a in achados.values() if a["valor"] >= min_valor]
         lista.sort(key=lambda a: (-a["valor_durante"], -a["valor"]))
         n_epoca = sum(1 for a in lista if a["contratos_durante"])
         return {"ok": True, "empresas": lista, "n": len(lista), "n_a_epoca": n_epoca,
                 "valor_durante_total": round(sum(a["valor_durante"] for a in lista), 2),
+                "n_vigente_sem_alcance": sum(1 for a in lista if a["contratos_vigente_sem_alcance"]),
+                "valor_vigente_sem_alcance_total": round(sum(a["valor_vigente_sem_alcance"] for a in lista), 2),
                 "descartados_outra_esfera": descartados, "ressalva": RESSALVA}
     finally:
         con.close()

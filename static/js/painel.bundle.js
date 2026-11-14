@@ -4966,9 +4966,10 @@ void main(){
   var _pct = (a, b) => b ? (100 * a / b).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%" : "—";
   var _CLASSES = [
     ["CONFORME", "Conforme", "var(--green)", "✅"],
-    ["A_MAIOR", "Pago a maior", "var(--rose)", "🔺"],
-    ["A_MENOR_ENCERRADO", "A menor — encerrado", "var(--amber)", "🔻"],
-    ["A_MENOR_EM_CURSO", "A menor — em curso", null, "⏳"],
+    ["A_MAIOR", "Acima do valor contratado", "var(--rose)", "🔺"],
+    ["ADIANTADO", "À frente do pró-rata (dentro do valor)", null, "⏩"],
+    ["A_MENOR_ENCERRADO", "Abaixo do devido — encerrado", "var(--amber)", "🔻"],
+    ["A_MENOR_EM_CURSO", "Abaixo do devido — em curso", null, "⏳"],
     ["INDETERMINADO", "Indeterminado", null, "❔"]
   ];
   function _linhasContrato(itens, campoValor) {
@@ -4988,13 +4989,15 @@ void main(){
     return `${sec(esc(nome), e.n)}<div class="grid g2" style="margin-top:8px">${kp}</div>
   ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado("VERIFICADO")} placar e somas: ${esc(((e.verificacao || {}).placar || "").replace(/^VERIFICADO — /, ""))}<br>${_estado("PENDENTE")} listas abaixo: ${esc(((e.verificacao || {}).listas || "").replace(/^PENDENTE — /, ""))}</div>
     <div style="font-size:13px"><b>${fmtN(e.n)}</b> contratos · corte ${e.corte ? fmtData(e.corte) : `por contrato, de ${fmtData(e.corte_min)} a ${fmtData(e.corte_max)}`} · pago determinado ${fmtR(e.pago_determinado)} × devido ${fmtR(e.devido_determinado)}
-      · excesso "a maior" ${fmtR(e.excesso_a_maior)} (acima do valor global: ${fmtR(e.excesso_global)}) · déficit em encerrados ${fmtR(e.deficit_encerrado)}</div>
+      · pago acima do valor contratado ${fmtR(e.excesso_a_maior)} (indício a conferir nos termos aditivos, não dano apurado) · à frente do pró-rata ${e.adiantado == null ? "—" : fmtR(e.adiantado)} · abaixo do devido em encerrados ${fmtR(e.deficit_encerrado)}</div>
+    <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.acima_do_valor || "")}. ${esc(defs.adiantado || "")}. ${esc(defs.abaixo_do_devido || "")}.</div>
     <div class="dim" style="font-size:12px;margin-top:4px"><b>Pago:</b> ${esc(e.fonte_pago || "")}. ${esc(nome === "Estado do RJ" ? defs.pago_estado || "" : defs.pago_prefeitura || "")}.
       <b>Contratos:</b> ${esc((e.proveniencia || {}).fonte_contratos || "")}. <b>Cobertura:</b> ${esc((e.proveniencia || {}).cobertura || "")}.
       Acréscimo acima do teto legal aferível em ${fmtN((e.art125 || {}).aferivel)} contratos; estouro em ${fmtN((e.art125 || {}).estouro)}.</div>
-    <details style="margin-top:10px" open><summary style="cursor:pointer"><b>Maiores "pago a maior"</b> (${fmtN((e.a_maior || []).length)} de ${fmtN(p.A_MAIOR)}, maior diferença primeiro)</summary>
+    <details style="margin-top:10px" open><summary style="cursor:pointer"><b>Maiores "pago acima do valor contratado"</b> (${fmtN((e.a_maior || []).length)} de ${fmtN(p.A_MAIOR)}, maior diferença primeiro)</summary>
       <div style="max-height:560px;overflow:auto"><table class="tb rt-txt">${cab.replace("%s", "Pago − devido")}<tbody>${_linhasContrato(e.a_maior, (x) => fmtR(x.diferenca))}</tbody></table></div></details>
-    ${dup.aferivel === false ? `<div class="dim" style="font-size:12px;margin-top:8px"><b>Duplicidades:</b> ${esc(dup.motivo || "não aferível nesta esfera")}</div>` : `<details style="margin-top:8px"><summary style="cursor:pointer"><b>Duplicidades — mesma NL, mesmo valor em mais de uma OB</b> (${fmtN(dup.n_contratos)} contratos · ${fmtN(dup.n_obs_repetidas)} OB repetidas · ${fmtR(dup.valor_repetido)})</summary>
+    ${dup.aferivel === false ? `<div class="dim" style="font-size:12px;margin-top:8px"><b>Duplicidades:</b> ${esc(dup.motivo || "não aferível nesta esfera")}</div>` : `<details style="margin-top:8px"><summary style="cursor:pointer"><b>Possível duplicidade — mesma NL, dias distintos, todas confirmadas pelo banco</b> (${fmtN(dup.n_contratos)} contratos · ${fmtN(dup.n_obs_repetidas)} OB repetidas · ${fmtR(dup.valor_repetido)})</summary>
+      <div style="font-size:12px;margin:4px 0"><b>Não aferível agora (não é zero):</b> ${dup.n_obs_nao_confirmadas == null ? "—" : fmtN(dup.n_obs_nao_confirmadas)} OB repetidas sem confirmação do banco na coleta (${dup.valor_nao_confirmado == null ? "—" : fmtR(dup.valor_nao_confirmado)}) — devolução e reemissão não descartadas. Parcelas no mesmo dia (não são duplicidade): ${dup.n_obs_mesmo_dia == null ? "—" : fmtN(dup.n_obs_mesmo_dia)}.</div>
       <div class="dim" style="font-size:12px;margin:4px 0">${esc(defs.duplicidade || "")}</div>
       <div style="max-height:480px;overflow:auto"><table class="tb rt-txt">${cab.replace("%s", "Valor repetido (mesma NL)")}<tbody>${_linhasContrato(dup.itens, (x) => `${fmtR(x.valor_mesma_nl)} <span class="dim" style="font-size:11px">(${fmtN(x.obs_mesma_nl)} OB)</span>`)}</tbody></table></div></details>`}
     <details style="margin-top:8px"><summary style="cursor:pointer"><b>Por que ${fmtN(p.INDETERMINADO)} ficaram indeterminados</b></summary>

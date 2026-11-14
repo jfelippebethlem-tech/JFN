@@ -61,8 +61,10 @@ _MESES = {m: i + 1 for i, m in enumerate("JANEIRO FEVEREIRO MARÇO ABRIL MAIO JU
 
 # Grau da RÉGUA (atribuído na análise de 13/11/2026 ao tipo de sinal). Regra sem caso sai ⚪.
 GRAU_REGRA = {"D01": "⚪", "D02": "🟡", "D03": "🟡", "D04": "🟡", "D05": "🟡", "D06": "⚪", "D07": "🟡", "D08": "⚪",
-              "D09": "🟡", "D10": "🟡", "D11": "⚪", "D12": "⚪", "D13": "🟡", "D14": "🔴", "D15": "⚪", "D16": "🔴",
+              "D09": "🟡", "D10": "🟡", "D11": "⚪", "D12": "⚪", "D13": "🟡", "D14": "🟡", "D15": "⚪", "D16": "🔴",
               "D17": "🟡", "D18": "🟡", "D19": "⚪", "D20": "⚪"}
+# D14 (regra agregada) é 🟡: ela soma PAGAMENTOS na vigência, e o que a sanção veda é contratar. O 🔴 fica no CASO
+# que tem contrato com ato na vigência (`_d14_vermelho`) — verificação independente de 13/11/2026.
 # D18 rebaixado a 🟡 na revisão cética de 13/11/2026: "fantasma_score alto" não é fachada documentada (0 de 6 eram);
 # 🔴 só com veredito de fachada registrado (ver achados_deterministicos).
 
@@ -230,21 +232,11 @@ class Ctx:
         self.n_devolvidas = len(dev)
         if not dev:
             return
-        tfe: dict[tuple, float] = {}
-        try:
-            nums = sorted({d[1] for d in dev})
-            for i in range(0, len(nums), 500):
-                lote = nums[i:i + 500]
-                for num, ug, v in self.W.execute(
-                        "SELECT numero_ob, ug_codigo, SUM(valor) FROM m.ordens_bancarias "
-                        f"WHERE numero_ob IN ({','.join('?' * len(lote))}) GROUP BY numero_ob, ug_codigo", lote):
-                    if v is not None:
-                        tfe[(num, str(ug))] = float(v)
-        except sqlite3.OperationalError as exc:   # sem espelho do TFE: devolvida sem valor apurado → fora da soma
-            logger.warning("ordens_bancarias indisponível para abater devoluções: %s", exc)
+        # só SIAFE (regra da casa: fonte de OB nunca é o espelho do TFE): erro no pagamento = 0,00; GD com outro
+        # status = valor da devolução desconhecido → fora da soma (o pago da gestão é PISO nesses credores)
+        self.n_devolvidas_sem_valor = sum(1 for d in dev if d[4] == "gd")
         self.W.executemany("UPDATE ob SET valor=? WHERE rowid=?",
-                           [(valor_efetivo_ob(float(v or 0), sit, tfe.get((num, ug)))[0], rid)
-                            for rid, num, ug, v, sit in dev])
+                           [(valor_efetivo_ob(float(v or 0), sit)[0], rid) for rid, num, ug, v, sit in dev])
 
     def fechar(self):
         self.W.close()
@@ -394,6 +386,48 @@ def d05(c: Ctx) -> dict:
                        f"{sum(x['tipo'] == 'SUBIU' for x in casos)} em alta)", valor_ob=soma)
 
 
+_EMAIL_GENERICO = re.compile(r"@(gmail|hotmail|outlook|yahoo|uol|bol|terra|ig|live|icloud|globo|msn)\.", re.I)
+MAX_RAIZES_NO_CONTATO = 15     # acima disso o e-mail é de contador/consultoria (medido: um e-mail em 44 raízes)
+
+
+def rotulo_estreia(c, cnpj: str, nome: str, hist: set) -> tuple[str, str | None]:
+    """('consorcio' | 'grupo_com_historico' | 'estreia', base). Consórcio: natureza 215-1 na Receita ou o nome.
+    Grupo: outro CNPJ (raiz diferente) COM histórico de OB no mesmo e-mail de contato — não genérico e usado por no
+    máximo `MAX_RAIZES_NO_CONTATO` raízes. É indício de grupo ou sucessão, não prova societária. Mesmo ENDEREÇO de
+    credor antigo sozinho não tira ninguém da estreia (sala comercial dividida): só vai anotado na base."""
+    raiz = dig(cnpj)[:8]
+    if re.match(r"CONS[OÓ]RCIO\b", (nome or "").strip(), re.I):
+        return "consorcio", "nome do credor"
+    if not getattr(c, "tem_receita", False):
+        return "estreia", None
+    nota = None
+    try:
+        nat = c.W.execute("SELECT natureza_cod FROM r.empresas WHERE cnpj_basico=?", (raiz,)).fetchone()
+        if nat and str(nat[0]) == "2151":
+            return "consorcio", "natureza jurídica 215-1 (Receita)"
+        for end, mail in c.W.execute("SELECT endereco_norm, correio_eletronico FROM r.estabelecimentos "
+                                     "WHERE cnpj_basico=?", (raiz,)).fetchall():
+            if mail and "@" in mail and not _EMAIL_GENERICO.search(mail):
+                outras = [b for (b,) in c.W.execute("SELECT DISTINCT cnpj_basico FROM r.estabelecimentos "
+                                                    "WHERE correio_eletronico=? AND cnpj_basico<>?", (mail, raiz))]
+                if len(outras) <= MAX_RAIZES_NO_CONTATO:
+                    for b in outras:
+                        if b in hist:
+                            return "grupo_com_historico", (f"mesmo e-mail de contato da raiz {b} "
+                                                           "(credor com OB desde 2021)")
+            if end and not nota:
+                outras = [b for (b,) in c.W.execute("SELECT DISTINCT cnpj_basico FROM r.estabelecimentos "
+                                                    "WHERE endereco_norm=? AND cnpj_basico<>?", (end, raiz))]
+                if len(outras) <= MAX_RAIZES_NO_CONTATO:
+                    for b in outras:
+                        if b in hist:
+                            nota = f"mesmo endereço da raiz {b}, credor com OB desde 2021 — conferir relação"
+                            break
+    except sqlite3.OperationalError as exc:
+        logger.warning("Receita indisponível para rotular estreia do D10: %s", exc)
+    return "estreia", nota
+
+
 def d10(c: Ctx) -> dict:
     # histórico pela RAIZ do CNPJ (8 dígitos) desde 2021: filial de fornecedora antiga não é "credor novo"
     # (revisão cética 13/11/2026 — 63,3% do valor do D10 era filial, grupo ou credor de 2021-22)
@@ -415,14 +449,25 @@ def d10(c: Ctx) -> dict:
         if v < 5e6:
             continue
         ug = ugs.most_common(1)[0][0]
+        rot, base_rot = rotulo_estreia(c, cr, nm, hist)
         casos.append(dict(cnpj=cr, credor=nm, pago_ob=round(v, 2), n_ob=n, primeira_ob=p, ug=ug, orgao=c.ugn(ug),
-                          n_ugs=len(ugs), processos=sorted(x for x in prs if x)[:6]))
+                          n_ugs=len(ugs), processos=sorted(x for x in prs if x)[:6], rotulo=rot, base_rotulo=base_rot))
     casos.sort(key=lambda x: -x["pago_ob"])
-    soma = round(sum(x["pago_ob"] for x in casos), 2)
+    # Verificação de 13/11/2026: consórcio tem CNPJ que nasce com o contrato; SPE/subsidiária no endereço ou e-mail
+    # de credor antigo é o mesmo grupo. Nenhum dos dois é "credor sem histórico" — contados à parte, fora da soma.
+    a_parte = [x for x in casos if x["rotulo"] != "estreia"]
+    estreia = [x for x in casos if x["rotulo"] == "estreia"]
+    soma = round(sum(x["pago_ob"] for x in estreia), 2)
+    v_parte = round(sum(x["pago_ob"] for x in a_parte), 2)
+    n_cons = sum(x["rotulo"] == "consorcio" for x in a_parte)
     return dict(criterio=f"CNPJ fornecedor cuja RAIZ (8 dígitos — matriz e filiais) não tem NENHUMA OB contabilizada de "
-                         f"01/01/2021 até a véspera da gestão e que recebeu >=R$5 mi em OB de {G0} a {c.GFIM}",
-                n=len(casos), soma=soma, n_universo_novos=len(agg), casos=casos, valor_ob=soma,
-                resumo=f"Credor sem histórico ≥ R$ 5 mi: {len(casos)} ({brl(soma)})")
+                         f"01/01/2021 até a véspera da gestão e que recebeu >=R$5 mi em OB de {G0} a {c.GFIM}; consórcio "
+                         "(CNPJ criado para o contrato) e CNPJ no mesmo endereço ou e-mail de credor com histórico "
+                         "(grupo/sucessão provável) ficam à parte, fora da soma",
+                n=len(estreia), soma=soma, n_universo_novos=len(agg), casos=casos, valor_ob=soma,
+                n_consorcio=n_cons, n_grupo_com_historico=len(a_parte) - n_cons, soma_a_parte=v_parte,
+                resumo=f"Credor sem histórico ≥ R$ 5 mi: {len(estreia)} ({brl(soma)}); à parte, {n_cons} consórcio(s) e "
+                       f"{len(a_parte) - n_cons} de grupo com histórico ({brl(v_parte)}) — não são estreia")
 
 
 def d03(c: Ctx) -> dict:
@@ -713,6 +758,16 @@ def _cpfs_folha(c: Ctx, nomes: set[str]) -> dict[str, set]:
     return out
 
 
+_RE_UEX = re.compile(r"^(A ?A ?E?\b|ASSOCIACAO DE APOIO|CAIXA ESCOLAR|CONSELHO ESCOLAR|CIEP\b|C ?E\b|E ?E ?E ?S?\b|"
+                     r"COLEGIO ESTADUAL|ESCOLA ESTADUAL|GINASIO PUBLICO)")
+
+
+def unidade_executora_escolar(nome_credor, nome_ug) -> bool:
+    """Associação de Apoio à Escola / caixa escolar paga pela Educação: unidade executora, não fornecedor."""
+    n = re.sub(r"[^A-Z0-9 ]", " ", nn(nome_credor))
+    return "EDUCACAO" in nn(nome_ug) and bool(_RE_UEX.match(re.sub(r"\s+", " ", n).strip()))
+
+
 def d13(c: Ctx) -> dict:
     """Sócio de credor que é agente público. Revisão cética 13/11/2026: casar só pelo nome gera homônimo — agora o
     sócio só conta se os dígitos VISÍVEIS do CPF do QSA conferem com os da folha (posição por fonte); ALERJ e folha
@@ -741,13 +796,20 @@ def d13(c: Ctx) -> dict:
             a[0] += v or 0
             a[1] = nm
             a[2][ug] += v or 0
-    casos = []
+    casos, escolares = [], []
     for b, (v, nm, ugs) in agg.items():
         if v < 100e3:
             continue
         ug = ugs.most_common(1)[0][0]
+        if unidade_executora_escolar(nm, c.ugn(ug)):
+            # Associação de Apoio à Escola: o "sócio" é o diretor/professor da própria escola, por desenho —
+            # não é sócio de fornecedor (verificação 13/11/2026: 225 dos 246 "no mesmo órgão" eram isso)
+            escolares.append(v)
+            continue
+        # mesmo órgão = o nome do órgão do agente é IGUAL ao de uma UG que pagou (antes: uma palavra em comum —
+        # "EDUCACAO", "SAUDE" — bastava)
         casos.append(dict(cnpj_basico=b, credor=nm, pago_ob=round(v, 2), ug=ug, orgao=c.ugn(ug), socios_agentes=ap[b][:5],
-                          mesmo_orgao=any(_pal(s["orgao_agente"]) & _pal(c.ugn(u)) for s in ap[b] for u in ugs)))
+                          mesmo_orgao=any(nn(s["orgao_agente"]) == nn(c.ugn(u)) for s in ap[b] for u in ugs)))
     casos.sort(key=lambda x: -x["pago_ob"])
     soma = round(sum(x["pago_ob"] for x in casos), 2)
     nmo = sum(x["mesmo_orgao"] for x in casos)
@@ -757,8 +819,34 @@ def d13(c: Ctx) -> dict:
                          "provado pelos dígitos excluído; ALERJ/folha sem CPF = não testável, fora da soma",
                 n=len(casos), soma=soma, n_mesmo_orgao=nmo, n_comissionado=ncom, casos=casos, valor_ob=soma,
                 n_homonimos_descartados=homonimo, n_cnpj_nao_testavel=len(nao_testavel - set(ap)),
-                resumo=f"Sócio agente público (CPF confere): {len(casos)} credores ({brl(soma)}), {nmo} no mesmo órgão, "
-                       f"{ncom} comissionados")
+                n_unidade_executora_escolar=len(escolares), soma_unidade_executora_escolar=round(sum(escolares), 2),
+                resumo=f"Sócio agente público (CPF confere): {len(casos)} credores ({brl(soma)}), {nmo} com agente do "
+                       f"mesmo órgão que paga, {ncom} comissionados; à parte, {len(escolares)} associações de apoio à "
+                       f"escola ({brl(round(sum(escolares), 2))}) — dirigente é servidor da escola por desenho")
+
+
+def contratos_na_vigencia(c, cnpj: str, inicio: str, fim: str | None) -> list[str]:
+    """Contratos do espelho do TCE-RJ com o CNPJ cujo ATO (assinatura no DOERJ, senão registro) caiu na vigência da
+    sanção — não cancelados, não ata/pedido de empenho."""
+    if not hasattr(c, "_contr_cnpj"):
+        idx: dict[str, list] = collections.defaultdict(list)
+        try:
+            cols = {r[1] for r in c.W.execute("PRAGMA m.table_info(contratos_tcerj)")}
+            c_un = "unidade" if "unidade" in cols else "''"
+            for sei, proc, dreg, obj, st, cn, un in c.W.execute(
+                    f"SELECT sei_norm, processo, data_contratacao, objeto, status, cnpj, {c_un} FROM m.contratos_tcerj"):
+                idx[dig(cn)].append((sei, proc, dreg, obj, st, un))
+        except sqlite3.OperationalError as exc:
+            logger.warning("contratos_tcerj indisponível para o D14: %s", exc)
+        c._contr_cnpj = idx
+    out = []
+    for sei, proc, dreg, obj, st, un in c._contr_cnpj.get(dig(cnpj), ()):
+        a = ato_do_contrato(c, sei, proc, dreg, obj or "", st or "")
+        if a["cancelado"] or a["nao_contrato"] or not a["data"]:
+            continue
+        if a["data"] >= inicio and (not fim or a["data"] <= fim):
+            out.append(f"{proc or sei} · {(un or '').strip()[:50]} · ato em {a['data']} ({a['fonte']})")
+    return sorted(out)
 
 
 def d14(c: Ctx) -> dict:
@@ -813,6 +901,11 @@ def d14(c: Ctx) -> dict:
         a.update(ug=ug, orgao=c.ugn(ug), pago_ob=round(a["pago_ob"], 2))
         a["grau_sancao"] = "inidoneidade" if a["abrangencia"] == "total" else "impedimento"
         a["sancao_iniciou_na_gestao"] = a["inicio"] >= G0
+        # O que a sanção veda é CONTRATAR (efeito ex nunc: não rescinde contrato em curso). Pagamento na vigência
+        # é sinal; contrato NOVO na vigência é o indício forte. Sem contrato no espelho = não localizado, não zero.
+        novos = contratos_na_vigencia(c, a["cnpj"], a["inicio"], a["fim"])
+        a["contratos_na_vigencia"] = novos[:3]
+        a["n_contratos_na_vigencia"] = len(novos)
         casos.append(a)
     casos.sort(key=lambda x: -x["pago_ob"])
     exe = [x for x in casos if not _OUT_CASO.search(x["orgao"] or "")]
@@ -1107,7 +1200,13 @@ _CHAVE_DOC = {"D14": "cnpj", "D05": "cnpj", "D10": "cnpj", "D18": "cnpj", "D03":
 def anexar_provas(c: Ctx, res: dict) -> None:
     for rid, campo in _CHAVE_DOC.items():
         for x in (res.get(rid) or {}).get("casos", []):
-            p = c.refs_ob(x.get(campo), d0=P0, d1=P1) if rid == "D09" else c.refs_ob(x.get(campo))
+            if rid == "D09":
+                p = c.refs_ob(x.get(campo), d0=P0, d1=P1)
+            elif rid == "D14":      # prova só de OB DENTRO da vigência da sanção (antes: OB de meses anteriores)
+                p = c.refs_ob(x.get(campo), d0=max(G0, x.get("inicio") or G0), d1=x.get("fim") or None)
+                p += [f"contrato na vigência da sanção: {k}" for k in x.get("contratos_na_vigencia") or []]
+            else:
+                p = c.refs_ob(x.get(campo))
             if rid == "D14" and p:
                 p.append(f"{x.get('cadastro')} — {x.get('categoria')} desde {x.get('inicio')} ({x.get('orgao_sancionador')})")
             if rid == "D18" and p:
@@ -1133,6 +1232,13 @@ def _base(**k) -> dict:
     return b
 
 
+def _d14_vermelho(x: dict) -> bool:
+    """🔴 só com sanção de alcance total (não TCU) E contrato com ato na vigência — e no Executivo."""
+    tcu = "TRIBUNAL DE CONTAS DA UNI" in (x.get("orgao_sancionador") or "").upper()
+    return (x.get("grau_sancao") == "inidoneidade" and not tcu and bool(x.get("n_contratos_na_vigencia"))
+            and not _OUT_CASO.search(x.get("orgao") or ""))
+
+
 def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
     A = []
     for rid in REGRAS:
@@ -1149,11 +1255,14 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
     for x in (res.get("D14") or {}).get("casos", []):
         if _OUT_CASO.search(x.get("orgao") or ""):
             continue
-        tcu = "TRIBUNAL DE CONTAS DA UNI" in (x.get("orgao_sancionador") or "").upper()
+        nv = x.get("n_contratos_na_vigencia") or 0
         A.append(_base(id=f"D14-{x['cnpj']}-{x['inicio']}", camada="deterministica",
                        regra_ou_hipotese=f"D14 · {x['credor']} paga na vigência de {x['categoria']} ({x['orgao_sancionador']}, "
-                                         f"{x['inicio']}→{x['fim'] or 'sem prazo'})",
-                       grau="🔴" if x["grau_sancao"] == "inidoneidade" and not tcu else "🟡",
+                                         f"{x['inicio']}→{x['fim'] or 'sem prazo'}) — "
+                                         + (f"{nv} contrato(s) com ato NA vigência da sanção" if nv else
+                                            "sem contrato novo localizado no espelho do TCE-RJ: pagamento de contrato "
+                                            "anterior não é a vedação (efeito ex nunc) — conferir prorrogação"),
+                       grau="🔴" if _d14_vermelho(x) else "🟡",
                        orgao=f"{x['orgao']} ({x['ug']})", valor_ob=x["pago_ob"], fonte=SIAFE + "; CEIS/CNEP",
                        explicacao_inocente=INOCENTE_REGRA["D14"], proximo_passo=PASSO_REGRA["D14"], tipo="caso", cnpj=x["cnpj"],
                        prova_primaria=x.get("prova_primaria") or []))
@@ -1167,9 +1276,14 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
                        explicacao_inocente=INOCENTE_REGRA["D05"], proximo_passo=PASSO_REGRA["D05"], tipo="caso", cnpj=x["cnpj"],
                        prova_primaria=x.get("prova_primaria") or []))
     for x in (res.get("D10") or {}).get("casos", []):
+        rot = x.get("rotulo") or "estreia"
         A.append(_base(id=f"D10-{x['cnpj']}", camada="deterministica",
-                       regra_ou_hipotese=f"D10 · {x['credor']} sem OB à raiz do CNPJ desde 2021; 1ª OB {x['primeira_ob']}",
-                       grau="🟡", orgao=f"{x['orgao']} ({x['ug']})", processo="; ".join(x["processos"][:3]) or None,
+                       regra_ou_hipotese=f"D10 · {x['credor']} sem OB à raiz do CNPJ desde 2021; 1ª OB {x['primeira_ob']}"
+                                         + (f" ({x['base_rotulo']})" if rot == "estreia" and x.get("base_rotulo") else "")
+                                         + ({"consorcio": " — CONSÓRCIO: o CNPJ nasce com o contrato, não é estreia",
+                                             "grupo_com_historico": f" — GRUPO COM HISTÓRICO ({x.get('base_rotulo')}): "
+                                                                    "sucessão provável, não é estreia"}.get(rot, "")),
+                       grau="🟡" if rot == "estreia" else "⚪", orgao=f"{x['orgao']} ({x['ug']})", processo="; ".join(x["processos"][:3]) or None,
                        valor_ob=x["pago_ob"], fonte=SIAFE, explicacao_inocente=INOCENTE_REGRA["D10"],
                        proximo_passo=PASSO_REGRA["D10"], tipo="caso", cnpj=x["cnpj"],
                        prova_primaria=x.get("prova_primaria") or []))
