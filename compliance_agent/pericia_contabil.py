@@ -312,7 +312,7 @@ def _colunas(con, tabela: str) -> set[str]:
     return {r[1] for r in con.execute(f"PRAGMA table_info({tabela})")}
 
 
-_RE_GD = re.compile(r"^\d{4}GD\d+$")
+_RE_GD = re.compile(r"\b\d{4}GD\d+\b")   # uma OU MAIS guias no campo ("2024GD00010,2024GD00017") — 14/11/2026
 DEVOLVIDA = "devolvida"                    # devolução apurada: o valor que conta é o efetivamente pago
 DEVOLVIDA_SEM_VALOR = "devolvida_sem_valor"  # GD sem valor efetivo conhecido: fora da soma, "a menor" inaferível
 
@@ -325,7 +325,7 @@ def situacao_devolucao(gd: Any, status_envio: Any) -> str:
     lixo de coleta ('OB já encaminhada ao banco') — só vale o número AAAAGDnnnnn."""
     if str(status_envio or "").strip() == "Erro no Pagamento":
         return "erro"
-    if _RE_GD.match(str(gd or "").strip()):
+    if _RE_GD.search(str(gd or "")):
         return "gd"
     return ""
 

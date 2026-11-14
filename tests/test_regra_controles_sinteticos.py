@@ -284,3 +284,13 @@ def test_contrato_de_gestao_com_repasse_antecipado_nao_e_a_maior(tmp_path):
     # (Até 13/11/2026 saía A_MAIOR — achado desta catraca; a verificação independente criou a classe ADIANTADO.)
     r = _pericia_um(tmp_path, "CONTRATO DE GESTÃO COM ORGANIZAÇÃO SOCIAL - GERENCIAMENTO DE UNIDADE DE SAÚDE")
     assert r["categoria"] in ("ADIANTADO", "INDETERMINADO"), r
+
+
+def test_ob_com_duas_ou_mais_guias_e_devolucao():
+    # 14/11/2026: OB com várias guias no campo ("2024GD00010,2024GD00017") passava como paga inteira —
+    # 331 OB e R$ 983,76 mi só em 2024 (medido pela aba Orçamento por órgão).
+    assert pc.situacao_devolucao("2024GD00010,2024GD00017", "Processado e Pago") == "gd"
+    assert pc.situacao_devolucao("2024GD00010, 2024GD00017", "Parcialmente Pago") == "gd"
+    assert pc.situacao_devolucao("2024GD00010", "Processado e Pago") == "gd"
+    # controle negativo: texto de coleta continua não sendo guia
+    assert pc.situacao_devolucao("OB já encaminhada ao banco", "Processado e Pago") == ""
