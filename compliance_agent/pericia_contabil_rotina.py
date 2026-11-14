@@ -3,9 +3,11 @@
 
 Roda a mesma régua do relatório de 13/11/2026 (`pericia_contabil.avaliar_estado` + `avaliar_prefeitura`) sem gerar
 PDF e grava `data/pericia_contabil_resumo.json`:
-  · placar por esfera — conforme / a maior / a menor encerrado / a menor em curso / indeterminado;
-  · os maiores "a maior" (diferença pago − devido);
-  · OBs repetidas (mesma NL, competência e valor, nenhuma devolvida pelo banco) — sinal que NÃO muda a classe;
+  · placar por esfera — conforme / acima do valor contratado / à frente do pró-rata / abaixo do devido (encerrado,
+    em curso) / indeterminado;
+  · os maiores "acima do valor contratado" (pago − devido) — indício a conferir nos termos aditivos;
+  · OBs repetidas (mesma UG, NL, competência e valor, em dias distintos, todas confirmadas pelo banco, nenhuma
+    devolvida) — sinal que NÃO muda a classe; as sem confirmação do banco saem contadas à parte (INDISPONÍVEL);
   · o motivo de cada indeterminado, contado.
 
 Pago no Estado = SÓ OB Contabilizada do SIAFE (a régua já filtra); Prefeitura = total pago no SIAFIC-Rio por contrato.
@@ -29,7 +31,8 @@ TOP = 60
 _CAMPOS = ("esfera", "orgao", "ug", "contrato", "processo", "fornecedor", "fornecedor_doc", "objeto", "categoria",
            "subtipo", "motivo", "valor_atualizado", "devido", "pago", "diferenca", "excesso_global", "n_obs",
            "vig_inicio", "vig_fim", "encerrado", "corte", "obs_mesma_nl", "valor_mesma_nl", "obs_mesma_competencia",
-           "valor_mesma_competencia", "ressalvas", "fonte_pago")
+           "valor_mesma_competencia", "obs_mesma_nl_mesmo_dia", "obs_mesma_nl_nao_confirmadas",
+           "valor_mesma_nl_nao_confirmadas", "criterio_devido", "ressalvas", "fonte_pago")
 
 
 def _mascarar(x):
@@ -71,6 +74,7 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
             "pago_determinado": round(e["pago_determinado"], 2),
             "devido_determinado": round(e["devido_determinado"], 2),
             "excesso_a_maior": round(e["excesso_a_maior"], 2),
+            "adiantado": round(e["adiantado"], 2),
             "excesso_global": round(e["excesso_global"], 2),
             "deficit_encerrado": round(e["deficit_encerrado"], 2),
             "subtipos": {P.SUBTIPO.get(k, k): v for k, v in e["subtipos"].items()},
@@ -105,6 +109,11 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                 "n_contratos": len(dup),
                 "n_obs_repetidas": sum(int(r.get("obs_mesma_nl") or 0) for r in dup),
                 "valor_repetido": round(sum(float(r.get("valor_mesma_nl") or 0) for r in dup), 2),
+                # sem confirmação do banco na coleta: devolução + reemissão não descartada — INDISPONÍVEL, não zero
+                "n_obs_nao_confirmadas": sum(int(r.get("obs_mesma_nl_nao_confirmadas") or 0) for r in da_esfera),
+                "valor_nao_confirmado": round(sum(float(r.get("valor_mesma_nl_nao_confirmadas") or 0)
+                                                  for r in da_esfera), 2),
+                "n_obs_mesmo_dia": sum(int(r.get("obs_mesma_nl_mesmo_dia") or 0) for r in da_esfera),
                 "itens": [_linha(r) for r in dup[:top]],
             },
         }
@@ -115,11 +124,21 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
         "definicoes": {
             "pago_estado": "SÓ Ordem Bancária do SIAFE com status Contabilizado; empenho e liquidação nunca entram",
             "pago_prefeitura": "total pago por contrato no SIAFIC-Rio (Contas Rio/CCON)",
-            "duplicidade": ("mesma NL + mesma competência + mesmo valor em mais de uma OB do contrato, nenhuma delas "
-                            "devolvida pelo banco (GD/erro no pagamento) — sinal a conferir na NF, não muda a classe "
-                            "e não é duplicidade comprovada"),
-            "devolucao": ("OB devolvida pelo banco (Guia de Devolução ou status 'Erro no Pagamento') conta só pelo "
-                          "valor efetivamente pago (TFE); a reemissão é que vale"),
+            "duplicidade": ("mesma UG + mesma NL + mesma competência + mesmo valor em OBs de DIAS DISTINTOS, todas "
+                            "com o crédito confirmado pelo banco ('Processado e Pago') e nenhuma devolvida — sinal a "
+                            "conferir na NF, não muda a classe e não é duplicidade comprovada. OBs do mesmo dia para a "
+                            "mesma NL são parcelas (uma NL liquida vários documentos). OB repetida SEM confirmação do "
+                            "banco na coleta é INDISPONÍVEL: a devolução posterior não aparece até recoletar o status"),
+            "devolucao": ("só pelo SIAFE: 'Erro no Pagamento' = devolvida inteira (0,00); Guia de Devolução com outro "
+                          "status = valor devolvido desconhecido → a OB sai da soma e o pago vira piso (o valor da guia "
+                          "está na tela Guia de Devolução do SIAFE, ainda não coletada)"),
+            "acima_do_valor": ("pago acima do valor registrado/atualizado do contrato. No Estado a fonte (TCE-RJ) não "
+                               "publica termos aditivos: é indício a conferir nos termos, não dano apurado"),
+            "adiantado": ("pago à frente do pró-rata linear, mas dentro do valor contratado — não é pagamento a maior "
+                          "(licença anual, curso, parcela única de parceria)"),
+            "abaixo_do_devido": ("Prefeitura: pago menor que o LIQUIDADO (o que se deve); saldo contratual não "
+                                 "executado não entra. Estado: pago menor que o valor/pró-rata — sem a liquidação por "
+                                 "contrato na base, é saldo não pago OU não executado"),
             "indeterminado": "sem base para afirmar a maior/a menor — o motivo vem ao lado; INDISPONÍVEL ≠ zero",
         },
         "ressalva": "Indício não é acusação. Diferença é sinal para requerer documentos, não conclusão de dano.",

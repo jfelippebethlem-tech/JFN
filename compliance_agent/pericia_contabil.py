@@ -2,8 +2,17 @@
 """Perícia contábil de TODOS os contratos: valor DEVIDO até a data de corte × valor PAGO.
 
 Pergunta do dono (2026-11-13): "quero saber se os valores deles foram pagos a maior ou a menor, até o
-presente momento". Cada contrato sai em UMA de cinco classes — CONFORME, A_MAIOR, A_MENOR_ENCERRADO,
-A_MENOR_EM_CURSO ou INDETERMINADO (sempre com o motivo) — e as esferas NUNCA se misturam.
+presente momento". Cada contrato sai em UMA de seis classes — CONFORME, A_MAIOR (acima do valor contratado),
+ADIANTADO (à frente do pró-rata, dentro do valor), A_MENOR_ENCERRADO, A_MENOR_EM_CURSO ou INDETERMINADO (sempre
+com o motivo) — e as esferas NUNCA se misturam.
+
+Verificação independente de 13/11/2026 (o que a régua NÃO pode afirmar):
+  · "acima do pró-rata" com pago ≤ valor global não é pagamento a maior: é desembolso à frente do calendário
+    linear (licença anual, curso, parcela única de parceria) — classe própria, ADIANTADO;
+  · o TCE-RJ não publica termos aditivos: pago acima do valor REGISTRADO com OB depois do fim da vigência
+    registrada é prorrogação provável não publicada → INDETERMINADO;
+  · Prefeitura: o devido é o que foi LIQUIDADO; valor contratado − pago é saldo não executado, não dívida;
+  · a devolução da OB só se afirma pelo SIAFE (regra da casa: fonte de OB nunca é o espelho do TFE).
 
 ESTADO (Governo do RJ)
   · Contratos: `contratos_tcerj` (dados abertos do TCE-RJ — a única fonte dos contratos do executivo
@@ -69,10 +78,12 @@ VIGENCIA_PADRAO_DIAS = 370  # acima disso, contrato contínuo sem termo publicad
 ESTADO = "Estado do RJ"
 PREFEITURA = "Prefeitura do Rio"
 
-CATEGORIAS = ("A_MAIOR", "A_MENOR_ENCERRADO", "A_MENOR_EM_CURSO", "CONFORME", "INDETERMINADO")
+CATEGORIAS = ("A_MAIOR", "ADIANTADO", "A_MENOR_ENCERRADO", "A_MENOR_EM_CURSO", "CONFORME", "INDETERMINADO")
 ROTULO = {
-    "A_MAIOR": "Pago a maior", "A_MENOR_ENCERRADO": "Pago a menor — vigência encerrada",
-    "A_MENOR_EM_CURSO": "Pago a menor — em curso", "CONFORME": "Conforme",
+    "A_MAIOR": "Pago acima do valor contratado",
+    "ADIANTADO": "Pago à frente do pró-rata (dentro do valor contratado)",
+    "A_MENOR_ENCERRADO": "Pago abaixo do devido — vigência encerrada",
+    "A_MENOR_EM_CURSO": "Pago abaixo do devido — em curso", "CONFORME": "Conforme",
     "INDETERMINADO": "Indeterminado",
 }
 MOTIVOS = {
@@ -96,6 +107,11 @@ MOTIVOS = {
                              "pagamento a menor (coleta, credor sem identificação ou pagamento fora do SIAFE)",
     "devolucao_sem_valor_apurado": "pago abaixo do devido, mas há OB com Guia de Devolução sem o valor efetivamente "
                                    "pago na base — o 'a menor' não se afere",
+    "ob_apos_fim_da_vigencia_registrada": "pago acima do valor registrado, mas há OB depois do fim da vigência "
+                                          "registrada e a fonte não publica termos aditivos — prorrogação provável "
+                                          "não publicada; o valor registrado é o de um período",
+    "liquidado_indisponivel": "pago abaixo do valor contratado, mas o total liquidado não está na base — saldo não "
+                              "executado não é pagamento a menor",
     "vigencia_do_periodo_prorrogado": "a vigência publicada é a do período prorrogado (ano do contrato anterior ao "
                                       "início da vigência) e o início original não está publicado — pró-rata "
                                       "inaferível",
@@ -229,6 +245,7 @@ def valor_devido(valor_atualizado: float, continuada: bool, inicio: date | None,
 
 
 RAZAO_DESPROPORCIONAL = 100.0
+CARENCIA_ULTIMA_OB_DIAS = 60   # a última parcela é paga depois do fim da vigência; além disso, o contrato seguiu
 
 
 def desproporcional(valor: float, pago: float) -> bool:
@@ -256,7 +273,9 @@ def classificar(pago: float, devido: float, valor_global: float, *,
         return "CONFORME", "", dif
     if dif > 0:
         excede_global = not dentro_da_tolerancia(pago - valor_global, valor_global) and pago > valor_global
-        return "A_MAIOR", ("acima_do_valor_global" if excede_global else "acima_do_pro_rata"), dif
+        # pago ≤ valor global e só à frente do calendário linear NÃO é "a maior" (verificação 13/11/2026: 65 de
+        # 157 "a maior" do Estado eram isso — curso, licença anual, parcela única de parceria)
+        return ("A_MAIOR", "acima_do_valor_global", dif) if excede_global else ("ADIANTADO", "", dif)
     return ("A_MENOR_ENCERRADO" if encerrado else "A_MENOR_EM_CURSO"), "", dif
 
 
@@ -305,38 +324,31 @@ def situacao_devolucao(gd: Any, status_envio: Any) -> str:
     return ""
 
 
-def valor_efetivo_ob(valor: float, situacao: str, valor_tfe: float | None) -> tuple[float, str]:
-    """(valor que conta como pago, marca). OB devolvida não é pagamento: vale o que o TFE publica como pago
-    (0,00 na devolução integral — 205/205 —, o valor líquido na parcial). Erro no Pagamento sem TFE → 0,00.
-    GD sem TFE → valor efetivo DESCONHECIDO: fora da soma (o pago vira piso) e marcado."""
+def valor_efetivo_ob(valor: float, situacao: str, valor_tfe: float | None = None) -> tuple[float, str]:
+    """(valor que conta como pago, marca) — SÓ com o SIAFE (regra da casa: fonte de OB nunca é o espelho do TFE).
+
+    · 'erro' (status_envio 'Erro no Pagamento') → devolvida inteira: 0,00. Conferido contra o espelho em 13/11/2026
+      só como CONTROLE: 13.659 de 13.733 (99,5%) saem lá com 0,00.
+    · 'gd' com outro status (Parcialmente Pago, Processado e Pago…) → devolução PARCIAL ou posterior; o valor da
+      guia está na tela Guia de Devolução do SIAFE (`tblGuiaDevolucao`: OB · Valor), que a casa ainda não coleta →
+      valor efetivo DESCONHECIDO: fora da soma (o pago vira piso) e marcado.
+    `valor_tfe` é ignorado (mantido na assinatura por compatibilidade): o espelho parou em 01/10/2026, não é
+    recoletável de datacenter e não é fonte de OB. Efeito medido da troca: 0 em "acima do valor"; 3 contratos mudam."""
     if not situacao:
         return float(valor), ""
-    if valor_tfe is not None:
-        return min(float(valor_tfe), float(valor)), DEVOLVIDA
     if situacao == "erro":
         return 0.0, DEVOLVIDA
     return 0.0, DEVOLVIDA_SEM_VALOR
 
 
-def _valor_tfe(con, chaves: set[tuple]) -> dict[tuple, float]:
-    """(numero_ob, ug) → valor publicado no espelho do TFE, só para as OBs com devolução."""
-    if not chaves or not _tem(con, "ordens_bancarias") or "valor" not in _colunas(con, "ordens_bancarias"):
-        return {}
-    nums = sorted({n for n, _ in chaves})
-    out: dict[tuple, float] = {}
-    for i in range(0, len(nums), 500):
-        lote = nums[i:i + 500]
-        for num, ug, v in con.execute(
-                "SELECT numero_ob, ug_codigo, SUM(valor) FROM ordens_bancarias "
-                f"WHERE numero_ob IN ({','.join('?' * len(lote))}) GROUP BY numero_ob, ug_codigo", lote):
-            if (num, str(ug)) in chaves and v is not None:
-                out[(num, str(ug))] = float(v)
-    return out
+PAGO_CONFIRMADO = "Processado e Pago"   # único status_envio em que o banco confirmou o crédito
 
 
 def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
     """OB contabilizada por credor, deduplicada por (numero_ob, exercicio, ug_emitente). OB devolvida (GD /
-    Erro no Pagamento) entra com o valor efetivamente pago (`valor_efetivo_ob`), marcada na posição 7."""
+    Erro no Pagamento) entra com o valor efetivamente pago (`valor_efetivo_ob`), marcada na posição 7; o
+    `status_envio` da coleta vai na posição 9. OB sem número é linha-fantasma da coleta (58 linhas, R$ 11.469.492,62,
+    cada uma repetindo PD/RE/NL de uma OB numerada) — fora."""
     cols = _colunas(con, "ob_orcamentaria_siafe")
     c_gd = "gd" if "gd" in cols else "''"
     c_env = "status_envio" if "status_envio" in cols else "''"
@@ -346,20 +358,20 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
             "SELECT numero_ob, exercicio, ug_emitente, data_emissao, processo, credor, valor, nl, competencia, "
             f"{c_gd}, {c_env} FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
         c = _digitos(cred)
-        if c not in credores:
+        if c not in credores or not str(num or "").strip():
             continue
         k = (num, ex, str(ug))
         if k in vistos:
             continue
         vistos.add(k)
-        brutas.append((c, num, str(ug), dt, proc, val, nl, comp, situacao_devolucao(gd, env)))
-    tfe = _valor_tfe(con, {(b[1], b[2]) for b in brutas if b[8]})
+        brutas.append((c, num, str(ug), dt, proc, val, nl, comp, situacao_devolucao(gd, env), str(env or "").strip()))
     por_credor: dict[str, list] = defaultdict(list)
-    for c, num, ug, dt, proc, val, nl, comp, sit in brutas:
-        v, marca = valor_efetivo_ob(float(val or 0), sit, tfe.get((num, ug)))
-        # (data, chave do processo, UG, valor efetivo, NL, competência, número da OB, devolução, valor bruto)
+    for c, num, ug, dt, proc, val, nl, comp, sit, env in brutas:
+        v, marca = valor_efetivo_ob(float(val or 0), sit)
+        # (data, chave do processo, UG, valor efetivo, NL, competência, número da OB, devolução, valor bruto,
+        #  status_envio)
         por_credor[c].append((parse_data(dt), chave_sei(proc), ug, v, nl or "", comp or "", num, marca,
-                              float(val or 0)))
+                              float(val or 0), env))
     # contagem das não contabilizadas por (processo, credor) — informativo, NUNCA somado
     nao_contab: dict[tuple, int] = defaultdict(int)
     for proc, cred in con.execute(
@@ -453,25 +465,47 @@ def _cobertura_pares(con, pares: set[tuple]) -> dict[tuple, str]:
 
 
 def sinais_duplicidade(obs: list[tuple]) -> dict:
-    """Dois sinais sobre as OBs de UM contrato (não mudam a classe; vão às ressalvas):
-    · mesma NL + mesmo valor + MESMA competência em mais de uma OB — a liquidação é paga uma vez;
-    · mesma competência + mesmo valor com NL distinta — lente de competência (só a NF fecha).
-    OB devolvida (posição 7 marcada) sai ANTES de agrupar: devolução + reemissão não é duplicidade (revisão
-    13/11/2026: 174 dos 208 "mesma NL" eram isso). Mesma NL com competências distintas são parcelas."""
+    """Sinais sobre as OBs de UM contrato (não mudam a classe; vão às ressalvas).
+
+    `obs_mesma_nl` — o único que se chama "possível duplicidade": mesma UG + mesma NL + mesmo valor + mesma
+    competência, em DIAS DISTINTOS, todas com o crédito CONFIRMADO pelo banco ('Processado e Pago') e nenhuma
+    devolvida. Verificação de 13/11/2026 sobre os 19 contratos que a regra anterior apontava (0 se sustentaram):
+      · 11 eram N OBs no MESMO dia, PDs distintos, uma NL que liquida N documentos (NF 534 e NF 535; um boleto por
+        OB; uma inscrição por servidor) → `obs_mesma_nl_mesmo_dia`, parcelas, não duplicidade;
+      · 7 eram devolução + reemissão que a coleta não enxerga: o `status_envio` é o do dia da coleta ('Enviado ao
+        Banco'/'Enviado Manualmente' nunca atualizado; 37.982 OBs de 2026 nesse estado) → `obs_mesma_nl_nao_
+        confirmadas`: INDISPONÍVEL, não duplicidade;
+      · 1 era linha-fantasma sem número de OB.
+    A NL é numerada por UG — a chave leva a UG. `obs_mesma_competencia` (NL distinta) segue como lente."""
     por_nl: dict[tuple, list] = defaultdict(list)
     por_comp: dict[tuple, set] = defaultdict(set)
     for o in obs:
         if len(o) > 7 and o[7]:
             continue
         if o[4] and o[5]:
-            por_nl[(o[4], round(o[3], 2), o[5])].append(o)
+            por_nl[(o[2], o[4], round(o[3], 2), o[5])].append(o)
         if o[5]:
             por_comp[(o[5], round(o[3], 2))].add(o[4] or o[6])
-    n_nl = sum(len(v) - 1 for v in por_nl.values() if len(v) > 1)
-    v_nl = sum(k[1] * (len(v) - 1) for k, v in por_nl.items() if len(v) > 1)
+    n_nl = n_dia = n_nc = 0
+    v_nl = v_dia = v_nc = 0.0
+    for k, v in por_nl.items():
+        if len(v) < 2:
+            continue
+        conf = [o for o in v if len(o) > 9 and o[9] == PAGO_CONFIRMADO]
+        if len(conf) < len(v):                       # alguma sem confirmação do banco: nada se afirma do grupo
+            n_nc += len(v) - 1
+            v_nc += k[2] * (len(v) - 1)
+            continue
+        dias = len({o[0] for o in conf})
+        n_nl += dias - 1
+        v_nl += k[2] * (dias - 1)
+        n_dia += len(conf) - dias
+        v_dia += k[2] * (len(conf) - dias)
     n_cp = sum(len(v) - 1 for v in por_comp.values() if len(v) > 1)
     v_cp = sum(k[1] * (len(v) - 1) for k, v in por_comp.items() if len(v) > 1)
     return {"obs_mesma_nl": n_nl, "valor_mesma_nl": round(v_nl, 2),
+            "obs_mesma_nl_mesmo_dia": n_dia, "valor_mesma_nl_mesmo_dia": round(v_dia, 2),
+            "obs_mesma_nl_nao_confirmadas": n_nc, "valor_mesma_nl_nao_confirmadas": round(v_nc, 2),
             "obs_mesma_competencia": n_cp, "valor_mesma_competencia": round(v_cp, 2)}
 
 
@@ -484,7 +518,9 @@ def _resultado_base(esfera: str, **kw) -> dict:
          "diferenca": None, "excesso_global": None, "motivo": "", "ressalvas": "", "acrescimo_pct": None,
          "teto_acrescimo": None, "estouro_art125": None, "obs_nao_contabilizadas": 0,
          "obs_anteriores_ao_contrato": 0, "valor_obs_anteriores": 0.0, "encerrado": False, "corte": "",
-         "obs_mesma_nl": 0, "valor_mesma_nl": 0.0, "obs_mesma_competencia": 0, "valor_mesma_competencia": 0.0}
+         "obs_mesma_nl": 0, "valor_mesma_nl": 0.0, "obs_mesma_competencia": 0, "valor_mesma_competencia": 0.0,
+         "obs_mesma_nl_mesmo_dia": 0, "valor_mesma_nl_mesmo_dia": 0.0,
+         "obs_mesma_nl_nao_confirmadas": 0, "valor_mesma_nl_nao_confirmadas": 0.0}
     r.update(kw)
     return mascarar_textos(r)
 
@@ -646,7 +682,12 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
     if r["obs_mesma_nl"]:
         r["ressalvas"] = _junta(r["ressalvas"], f"{r['obs_mesma_nl']} OB(s) a mais para a MESMA nota de liquidação, "
                                                 f"mesma competência e mesmo valor (R$ {fmt_brl(r['valor_mesma_nl'])}),"
-                                                " sem devolução registrada — possível duplicidade a conferir na NF")
+                                                " em dias distintos, todas confirmadas pelo banco e nenhuma devolvida"
+                                                " — possível duplicidade a conferir na NF")
+    if r["obs_mesma_nl_nao_confirmadas"]:
+        r["ressalvas"] = _junta(r["ressalvas"], f"{r['obs_mesma_nl_nao_confirmadas']} OB(s) repetida(s) para a mesma NL "
+                                                "sem confirmação do banco na coleta (status de envio intermediário) — "
+                                                "devolução e reemissão não descartadas; recoletar o status no SIAFE")
     if r["obs_mesma_competencia"]:
         r["ressalvas"] = _junta(r["ressalvas"], f"{r['obs_mesma_competencia']} OB(s) de mesmo valor e mesma "
                                                 f"competência com NL distinta (R$ {fmt_brl(r['valor_mesma_competencia'])})"
@@ -666,6 +707,20 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
     r.update(devido=round(devido, 2), categoria=cat, subtipo=sub, diferenca=round(dif, 2))
     if cat == "A_MAIOR" and pago > r["valor_atualizado"]:
         r["excesso_global"] = round(pago - r["valor_atualizado"], 2)
+    if cat == "A_MAIOR" and not t:
+        # O TCE-RJ não publica termos aditivos. OB depois do fim da vigência registrada = o contrato seguiu
+        # (prorrogação não publicada): o pago acumula vários períodos e o valor registrado é o de um só.
+        apos = [o for o in no_proc if fim and (o[0] - fim).days > CARENCIA_ULTIMA_OB_DIAS]
+        if apos:
+            return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "ob_apos_fim_da_vigencia_registrada",
+                    "ressalvas": _junta(r["ressalvas"], f"{len(apos)} OB(s) (R$ {fmt_brl(sum(o[3] for o in apos))}) "
+                                                        f"depois de {fim.strftime('%d/%m/%Y')}, fim da vigência "
+                                                        "registrada — requerer os termos aditivos")}
+        teto = 0.50 if re.search(r"REFORMA", objeto or "", re.I) else 0.25
+        exc = pago / r["valor_atualizado"] - 1
+        r["ressalvas"] = _junta(r["ressalvas"], f"a fonte não publica termos aditivos: o excesso de {exc:.1%} sobre o "
+                                                "valor registrado " + ("cabe no" if exc <= teto else "supera o")
+                                                + f" teto legal de acréscimo ({teto:.0%}) — conferir os termos")
     if cat.startswith("A_MENOR") and sem_valor:
         return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "devolucao_sem_valor_apurado"}
     if cat.startswith("A_MENOR") and r["vinculo"] == "processo_e_credor":
@@ -689,9 +744,10 @@ def avaliar_prefeitura(db: str | Path = _DB_PCRJ) -> list[dict]:
         if not _tem(con, "contasrio_contrato"):
             return []
         c_ano = "ano" if "ano" in _colunas(con, "contasrio_contrato") else "NULL"
+        c_liq = "total_liquidado" if "total_liquidado" in _colunas(con, "contasrio_contrato") else "NULL"
         linhas = con.execute(
             "SELECT contrato, favorecido_doc, favorecido_nome, orgao, ug, objeto, situacao, vigencia_ini, "
-            f"vigencia_fim, processo, valor_atualizado, total_pago, coletado_em, data_publicacao, {c_ano} "
+            f"vigencia_fim, processo, valor_atualizado, total_pago, coletado_em, data_publicacao, {c_ano}, {c_liq} "
             "FROM contasrio_contrato").fetchall()
     finally:
         con.close()
@@ -701,6 +757,7 @@ def avaliar_prefeitura(db: str | Path = _DB_PCRJ) -> list[dict]:
 def _avaliar_um_pcrj(row) -> dict:
     (cid, doc, nome, orgao, ug, objeto, sit, vini, vfim, proc, v_atual, pago, coletado, dpub) = row[:14]
     ano = row[14] if len(row) > 14 else None
+    liquidado = row[15] if len(row) > 15 else None
     corte = parse_data(coletado) or date.today()
     ini, fim = parse_data(vini), parse_data(vfim)
     regime, lei = regime_legal(ini or parse_data(dpub))
@@ -761,6 +818,20 @@ def _avaliar_um_pcrj(row) -> dict:
                 "motivo": "valor_desproporcional"}
     cat, sub, dif = classificar(pago, devido, float(v_atual), encerrado=encerrado)
     r.update(devido=round(devido, 2), categoria=cat, subtipo=sub, diferenca=round(dif, 2))
+    if cat.startswith("A_MENOR"):
+        # O município DEVE o que LIQUIDOU, não o valor contratado: contrato é teto (registro de preços, demanda,
+        # obra não concluída). Verificação de 13/11/2026: dos R$ 7,45 bi de "a menor encerrado", R$ 7,08 bi nunca
+        # foram sequer empenhados; liquidado e não pago eram R$ 50,0 mi em 274 contratos.
+        if liquidado is None:
+            return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "liquidado_indisponivel"}
+        liq = float(liquidado)
+        r["ressalvas"] = _junta(r["ressalvas"], f"saldo contratual não executado (valor atualizado − liquidado): "
+                                                f"R$ {fmt_brl(float(v_atual) - liq)} — não é dívida")
+        r.update(devido=round(liq, 2), diferenca=round(pago - liq, 2),
+                 criterio_devido="total liquidado no SIAFIC-Rio (deve-se o que foi liquidado; saldo não executado "
+                                 "não é pagamento a menor)")
+        if pago >= liq or dentro_da_tolerancia(pago - liq, liq):
+            r.update(categoria="CONFORME", subtipo="")
     if cat == "A_MAIOR" and pago > v_atual:
         r["excesso_global"] = round(pago - v_atual, 2)
     return r
@@ -806,7 +877,7 @@ def resumo(resultados: list[dict]) -> dict:
     for r in resultados:
         e = out.setdefault(r["esfera"], {"n": 0, **{c: 0 for c in CATEGORIAS}, "motivos": defaultdict(int),
                                           "subtipos": defaultdict(int), "excesso_a_maior": 0.0,
-                                          "excesso_global": 0.0, "deficit_encerrado": 0.0,
+                                          "adiantado": 0.0, "excesso_global": 0.0, "deficit_encerrado": 0.0,
                                           "pago_determinado": 0.0, "devido_determinado": 0.0,
                                           "n_estouro_art125": 0, "n_art125_aferivel": 0})
         e["n"] += 1
@@ -820,6 +891,8 @@ def resumo(resultados: list[dict]) -> dict:
             e["subtipos"][r["subtipo"]] += 1
             e["excesso_a_maior"] += float(r["diferenca"] or 0)
             e["excesso_global"] += float(r["excesso_global"] or 0)
+        if r["categoria"] == "ADIANTADO":
+            e["adiantado"] += float(r["diferenca"] or 0)
         if r["categoria"] == "A_MENOR_ENCERRADO":
             e["deficit_encerrado"] += -float(r["diferenca"] or 0)
         if r["estouro_art125"] is not None:
@@ -911,11 +984,13 @@ def _tabela_resumo(rs: dict) -> str:
         linhas.append(
             f"<tr><td><b>{_E(esf)}</b></td><td class='n'>{fmt_int(e['n'])}</td>"
             f"<td class='n'>{fmt_int(e['CONFORME'])}</td><td class='n'>{fmt_int(e['A_MAIOR'])}</td>"
+            f"<td class='n'>{fmt_int(e['ADIANTADO'])}</td>"
             f"<td class='n'>{fmt_int(e['A_MENOR_ENCERRADO'])}</td><td class='n'>{fmt_int(e['A_MENOR_EM_CURSO'])}</td>"
             f"<td class='n'>{fmt_int(e['INDETERMINADO'])}</td><td class='n'>{fmt_brl(e['excesso_a_maior'])}</td>"
             f"<td class='n'>{fmt_brl(e['excesso_global'])}</td><td class='n'>{fmt_brl(e['deficit_encerrado'])}</td></tr>")
-    return ("<table class='res'><thead><tr><th>Esfera</th><th>Contratos</th><th>Conforme</th><th>Pago a maior</th>"
-            "<th>A menor (encerrado)</th><th>A menor (em curso)</th><th>Indeterminado</th>"
+    return ("<table class='res'><thead><tr><th>Esfera</th><th>Contratos</th><th>Conforme</th><th>Acima do valor contratado</th>"
+            "<th>À frente do pró-rata</th>"
+            "<th>Abaixo do devido (encerrado)</th><th>Abaixo do devido (em curso)</th><th>Indeterminado</th>"
             "<th>Excesso sobre o devido (R$)</th><th>Excesso sobre o valor global (R$)</th>"
             "<th>Déficit em contratos encerrados (R$)</th></tr></thead><tbody>" + "".join(linhas) + "</tbody></table>")
 
@@ -1041,11 +1116,12 @@ def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date 
         if not e:
             return ""
         return (f"<p><b>{_E(esf)}.</b> Foram periciados <b>{fmt_int(e['n'])}</b> contratos (a totalidade da base "
-                f"desta esfera). Resultado: {fmt_int(e['CONFORME'])} conforme(s); <b>{fmt_int(e['A_MAIOR'])} pago(s) a "
-                f"maior</b>, com excesso de <b>R$ {fmt_brl(e['excesso_a_maior'])}</b> sobre o devido no corte "
-                f"(dos quais R$ {fmt_brl(e['excesso_global'])} acima do próprio valor global atualizado); "
-                f"{fmt_int(e['A_MENOR_ENCERRADO'])} pago(s) a menor com vigência encerrada (déficit de "
-                f"R$ {fmt_brl(e['deficit_encerrado'])}); {fmt_int(e['A_MENOR_EM_CURSO'])} a menor em curso; e "
+                f"desta esfera). Resultado: {fmt_int(e['CONFORME'])} conforme(s); <b>{fmt_int(e['A_MAIOR'])} pago(s) acima "
+                f"do valor contratado</b>, com excesso de <b>R$ {fmt_brl(e['excesso_a_maior'])}</b> — indício a conferir "
+                f"nos termos aditivos, não dano apurado; {fmt_int(e['ADIANTADO'])} pago(s) à frente do pró-rata, dentro "
+                f"do valor contratado (R$ {fmt_brl(e['adiantado'])}); "
+                f"{fmt_int(e['A_MENOR_ENCERRADO'])} pago(s) abaixo do devido com vigência encerrada "
+                f"(R$ {fmt_brl(e['deficit_encerrado'])}); {fmt_int(e['A_MENOR_EM_CURSO'])} abaixo do devido em curso; e "
                 f"{fmt_int(e['INDETERMINADO'])} indeterminado(s), cada um com o motivo declarado.</p>")
 
     top = []
