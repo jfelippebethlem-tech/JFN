@@ -278,6 +278,21 @@ sobreposição. Configuração inválida LEVANTA — cair no padrão faria as du
 > Contexto: 45.939 processos citados em OB, 2.007 com texto, vazão de 102/dia. Uma máquina só
 > levaria ~430 dias.
 
+## it-campo: N sessões itkava ao mesmo tempo  ⭐ NOVO 2026-11-14
+
+`tools/itcampo_sei_paralelo.py` no WSL `Ubuntu` do it-campo (24 threads): cada rodada pede à VM-1
+`sei_integra_vm2 exportar --no itcampo --validade-h 3` (nenhum nó pega reserva alheia; RESTRITO confirmado fica
+fora), divide em fatias disjuntas e abre uma JANELA por sessão (`git worktree` próprio = `browser.lock`, `data/` e
+`TMPDIR` próprios). Entrega = lote conferido (`vm2_conferencia`), como a VM-2. Controles no WSL:
+`~/JFN-worker/data/itcampo_n` (nº de sessões) e `data/.pause_itcampo`; tarefa Windows `JFN-SEI-Paralelo` (/it).
+
+> ⚠️ **Navegador VISÍVEL trava em PDF.** Medido (A/B, mesmo processo): headed abre o PDF no visualizador embutido e
+> `_conteudo_via_arvore` espera o teto de 450 s POR documento; headless lê 16 de 44 em menos de 1 min. Sessões rodam
+> headless; a janela mostra processo e documento a documento.
+>
+> ⚠️ **"SEM ÁRVORE" com `RESTRITO: SEI diz …` é o processo, não o método** (controle positivo na mesma sessão abriu
+> 44 nós). A conferência agora semeia esses processos em `sei_restritos.json` → saem da fila e vão para a requisição.
+
 ## NUNCA
 - ❌ Culpar acesso/WAF: o login SEMPRE funciona (cron prova). Falha = seu método.
 - ❌ Browser em foreground ou 2 browsers: use background + `tools/vm_guard.py`.
