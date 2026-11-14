@@ -633,8 +633,8 @@ rotas:
   "/api/sweeps/status": {classe: operacional, afirma: "Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).", fonte: "tabelas ob_orcamentaria_siafe"}
   "/api/tac/ranking": {classe: afirma, afirma: "Quem paga FORA de contrato regular, e quanto fora da curva está.", fonte: "data/tac_ranking_ugs.json (gerador tools/tac_ranking_ugs.py)"}
   "/api/territorio/baldes": {classe: afirma, afirma: "Contratos sem município, multimunicípio, regionais ou sem AP.", fonte: "data/territorio.db via compliance_agent.territorio"}
-  "/api/territorio/estado": {classe: afirma, afirma: "Mapa dos 92 municípios do RJ: valor contratado/pago por município e baldes.", fonte: "data/territorio.db via compliance_agent.territorio"}
-  "/api/territorio/estado/{cod_ibge}": {classe: afirma, afirma: "Ficha de um município: contratos do Estado atribuídos a ele.", fonte: "data/territorio.db (territorio_contrato_estado)"}
+  "/api/territorio/estado": {classe: afirma, afirma: "Mapa dos 92 municípios do RJ: valor contratado/pago por município, por grau de certeza da atribuição, e baldes do que não tem município.", fonte: "data/territorio.db via compliance_agent.territorio (PNCP + SIGA/TCE-RJ + DOERJ; pago = OB SIAFE pela perícia contábil)"}
+  "/api/territorio/estado/{cod_ibge}": {classe: afirma, afirma: "Ficha de um município: contratos do Estado atribuídos a ele, órgãos, fornecedores, série por ano e mês e indícios da perícia contábil.", fonte: "data/territorio.db (territorio_contrato_estado)"}
   "/api/territorio/pcrj": {classe: afirma, afirma: "Mapa das 5 APs da Prefeitura do Rio: valor contratado por área.", fonte: "data/territorio.db via compliance_agent.territorio"}
   "/api/territorio/pcrj/{ap}": {classe: afirma, afirma: "Ficha de uma AP: contratos da Prefeitura atribuídos a ela.", fonte: "data/territorio.db (territorio_contrato_pcrj)"}
   "/api/trace/{correlation_id}": {classe: operacional, afirma: "Etapas registradas de um request (correlation-id) para depuração.", fonte: "A DECLARAR"}

@@ -50,8 +50,11 @@ def abrir(escrita: bool = False) -> sqlite3.Connection:
         c = sqlite3.connect(DB, timeout=30)
         c.executescript(DDL)
         # fase 7b: colunas novas em banco já criado (CREATE IF NOT EXISTS não altera tabela existente)
-        for tabela, col in (("territorio_contrato_estado", "fontes_json TEXT"), ("territorio_contrato_estado", "abrangencia TEXT"),
-                            ("territorio_contrato_pcrj", "abrangencia TEXT")):
+        # fase 12 (14/11/2026): grau de certeza, situação na fonte, assinatura, OBs e série mensal do pago, indício
+        est = "territorio_contrato_estado"
+        for tabela, col in ((est, "fontes_json TEXT"), (est, "abrangencia TEXT"), ("territorio_contrato_pcrj", "abrangencia TEXT"),
+                            (est, "grau TEXT"), (est, "situacao_fonte TEXT"), (est, "data_assinatura TEXT"), (est, "processo TEXT"),
+                            (est, "n_obs INTEGER"), (est, "pago_mensal_json TEXT"), (est, "pago_motivo TEXT"), (est, "alerta TEXT")):
             if col.split()[0] not in {r[1] for r in c.execute(f"PRAGMA table_info({tabela})")}:
                 c.execute(f"ALTER TABLE {tabela} ADD COLUMN {col}")
     else:

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """API do território (só leitura de `data/territorio.db`).
 
-    GET /api/territorio/estado?metrica=&periodo=      mapa: os 92 municípios + baldes
-    GET /api/territorio/estado/{cod_ibge}?periodo=    ficha do município
+    GET /api/territorio/estado?metrica=&periodo=&graus=      mapa: os 92 municípios + baldes + cobertura por grau
+    GET /api/territorio/estado/{cod_ibge}?periodo=&graus=    ficha do município (contratos, órgãos, fornecedores,
+                                                             por ano e mês, indícios)
     GET /api/territorio/pcrj?periodo=                 mapa: as 5 APs + baldes
     GET /api/territorio/pcrj/{ap}?periodo=            ficha da AP
     GET /api/territorio/baldes                        sem município / multimunicípio / região / sem AP
@@ -27,8 +28,18 @@ router = APIRouter()
 _PERIODOS = tuple(agrega.PERIODOS)
 _METRICAS = ("valor_contratado", "valor_em_execucao", "pago", "n_contratos", "n_alertas")
 _NOTA_ALERTAS = "INDISPONÍVEL — os alertas da casa não têm vínculo territorial (só 275 de 62 mil têm empresa vinculada)"
-_NOTA_PAGO_ESTADO = ("pago = OBs do SIAFE (status Contabilizado) do mesmo processo SEI ao mesmo CNPJ; contrato sem vínculo "
-                     "fica sem valor (INDISPONÍVEL)")
+_NOTA_ALERTAS_ESTADO = ("indício = contrato cujo PAGO (OB do SIAFE) supera o valor registrado, pela perícia contábil da casa; "
+                        "é sinal a conferir nos termos aditivos, não acusação. Os demais alertas da casa não têm vínculo territorial")
+_NOTA_PAGO_ESTADO = ("pago = OB do SIAFE Contabilizada do mesmo processo SEI ao mesmo CNPJ (ou vinculada pelos autos), sem a OB "
+                     "devolvida pelo banco — o mesmo cálculo da perícia contábil; contrato sem vínculo fica INDISPONÍVEL (≠ zero)")
+_NOTA_EXECUCAO = ("em execução = fim da vigência (com aditivo de prazo publicado no PNCP) igual ou posterior a hoje e sem termo de "
+                  "rescisão; o SIGA/TCE-RJ não publica aditivos — contrato Ativo lá com vigência registrada vencida conta como executado; "
+                  "contrato sem fim de vigência na fonte fica fora de \"vigentes\"")
+_NOTA_GRAU = {"explicito": "município, distrito, bairro ou CEP escrito no objeto/extrato",
+              "unidade": "inferido de unidade de endereço conhecido (compradora de sítio único ou citada no objeto: CNES, ISP-RJ, TSE)",
+              "sede": "objeto da própria organização, atribuído ao município da sede do órgão (cadastro de unidades do PNCP) — o grau mais fraco"}
+_VERSAO = "12"
+_TETO_CONTRATOS = 300
 
 
 def _responder(request: Request, corpo: dict, status: int = 200) -> Response:
@@ -61,14 +72,125 @@ def _conf_texto(c) -> str:
     return base.meta(c, "confianca_texto", "media") or "media"
 
 
+def _doc(doc: str | None) -> tuple[str | None, str]:
+    """(CNPJ para o dossiê | None, documento para exibir). CPF NUNCA sai inteiro (LGPD): mascarado e sem link."""
+    d = "".join(ch for ch in (doc or "") if ch.isdigit())
+    if len(d) == 14:
+        return d, f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+    return None, (f"{d[:3]}.***.***-{d[-2:]}" if len(d) == 11 else "")
+
+
 def _contrato(r: sqlite3.Row, conf_texto: str) -> dict:
-    d = {k: r[k] for k in ("contrato_id", "objeto", "orgao", "fornecedor_cnpj", "fornecedor_nome", "valor", "vig_ini", "vig_fim",
+    d = {k: r[k] for k in ("contrato_id", "objeto", "orgao", "fornecedor_nome", "valor", "vig_ini", "vig_fim",
                            "status", "pago", "metodo", "confianca", "evidencia", "multi")}
+    d["fornecedor_cnpj"], d["fornecedor_doc"] = _doc(r["fornecedor_cnpj"])
     d["pct_pago"] = (r["pago"] / r["valor"]) if r["pago"] is not None and r["valor"] else None
     if d["metodo"] == "texto" and conf_texto == "baixa":
         d["confianca"] = "baixa"
     d["multi"] = bool(d["multi"])
+    cols = r.keys()
+    for k in ("fonte", "grau", "situacao_fonte", "data_assinatura", "processo", "n_obs", "pago_motivo", "alerta"):
+        if k in cols:
+            d[k] = r[k]
+    if d.get("objeto") and len(d["objeto"]) > 600:
+        d["objeto"] = d["objeto"][:600].rstrip() + "…"
     return d
+
+
+def _versao_ok(c) -> bool:
+    return base.meta(c, "estado_versao") == _VERSAO
+
+
+def _desatualizado() -> JSONResponse:
+    return JSONResponse({"erro": "territorio.db é de versão anterior do motor — rode "
+                                 "`python -m compliance_agent.territorio.cli --full --so estado`"}, status_code=503)
+
+
+def _graus(graus: str | None) -> tuple[str, ...]:
+    return agrega.graus_validos((graus or "").split(","))
+
+
+def _serie(linhas: list[sqlite3.Row]) -> dict:
+    """POR ANO E MÊS. Contratado = pelo mês da ASSINATURA (na falta, início da vigência); pago = pelo mês da OB.
+    O que não tem data (ou tem pago sem série mensal) é contado à parte — nunca espalhado."""
+    anos: dict[str, dict] = {}
+    sem_data = {"n": 0, "valor": 0.0}
+    pago_sem_serie = {"n": 0, "valor": 0.0}
+
+    def mes(am: str) -> dict:
+        a = anos.setdefault(am[:4], {"ano": am[:4], "n": 0, "valor": 0.0, "pago": 0.0, "meses": {}})
+        return a["meses"].setdefault(am, {"mes": am, "n": 0, "valor": 0.0, "pago": 0.0})
+
+    for r in linhas:
+        dt = (r["data_assinatura"] or r["vig_ini"] or "")[:7]
+        if len(dt) == 7 and dt[:4].isdigit() and "1990" <= dt[:4] <= "2100":
+            m = mes(dt)
+            m["n"] += 1
+            m["valor"] += r["valor"] or 0
+        else:
+            sem_data["n"] += 1
+            sem_data["valor"] += r["valor"] or 0
+        if r["pago"] is not None:
+            if r["pago_mensal_json"]:
+                for am, v in json.loads(r["pago_mensal_json"]).items():
+                    mes(am)["pago"] += v
+            else:
+                pago_sem_serie["n"] += 1
+                pago_sem_serie["valor"] += r["pago"]
+    out = []
+    for a in sorted(anos.values(), key=lambda x: x["ano"], reverse=True):
+        ms = sorted(a["meses"].values(), key=lambda x: x["mes"])
+        for m in ms:
+            m["valor"], m["pago"] = round(m["valor"], 2), round(m["pago"], 2)
+        a.update(n=sum(m["n"] for m in ms), valor=round(sum(m["valor"] for m in ms), 2), pago=round(sum(m["pago"] for m in ms), 2), meses=ms)
+        out.append(a)
+    return {"anos": out, "sem_data": sem_data, "pago_sem_serie_mensal": pago_sem_serie,
+            "criterio": "contratado pelo mês da assinatura (na falta, início da vigência); pago pelo mês da OB do SIAFE"}
+
+
+def _ficha_estado(c, cod_ibge: str, periodo: str, graus: tuple[str, ...], conf_texto: str) -> dict:
+    """Ficha do município: tudo sai da MESMA lista de contratos (uma leitura), para os totais fecharem entre si."""
+    w = agrega.PERIODOS[periodo]
+    todos = c.execute(f"SELECT * FROM territorio_contrato_estado WHERE cod_ibge=? AND multi=0 AND {w}", (cod_ibge,)).fetchall()
+    linhas = [r for r in todos if (r["grau"] or "explicito") in graus]
+    com_pago = [r for r in linhas if r["pago"] is not None]
+    vp = sum(r["valor"] or 0 for r in com_pago)
+    pago = round(sum(r["pago"] for r in com_pago), 2) if com_pago else None
+    k = {"n_contratos": len(linhas), "n_em_execucao": sum(r["status"] == "em_execucao" for r in linhas),
+         "n_executados": sum(r["status"] == "executado" for r in linhas), "n_rescindidos": sum(r["status"] == "rescindido" for r in linhas),
+         "n_sem_vigencia": sum(r["status"] == "sem_vigencia" for r in linhas),
+         "valor_contratado": round(sum(r["valor"] or 0 for r in linhas), 2),
+         "valor_em_execucao": round(sum(r["valor"] or 0 for r in linhas if r["status"] == "em_execucao"), 2),
+         "pago": pago, "n_com_pago": len(com_pago), "pct_executado": (pago / vp) if pago is not None and vp else None,
+         "n_alertas": sum(1 for r in linhas if r["alerta"])}
+
+    def grupo(chave, rotulo) -> list[dict]:
+        g: dict[str, dict] = {}
+        for r in linhas:
+            o = g.setdefault(chave(r), {**rotulo(r), "n": 0, "valor": 0.0, "pago": None, "n_com_pago": 0})
+            o["n"] += 1
+            o["valor"] += r["valor"] or 0
+            if r["pago"] is not None:
+                o["pago"] = (o["pago"] or 0.0) + r["pago"]
+                o["n_com_pago"] += 1
+        return sorted(g.values(), key=lambda x: -x["valor"])
+
+    # o mesmo órgão chega com grafias diferentes de cada fonte: soma pelo nome-base normalizado, mostra a grafia com sigla
+    orgaos = grupo(lambda r: norm(atribui_estado.unidade_base(r["orgao"]))[:34], lambda r: {"orgao": r["orgao"]})
+
+    def forn(r):
+        cnpj, doc = _doc(r["fornecedor_cnpj"])
+        return {"cnpj": cnpj, "doc": doc, "nome": r["fornecedor_nome"]}
+    fornecedores = grupo(lambda r: r["fornecedor_cnpj"] or norm(r["fornecedor_nome"]), forn)
+    ordenados = sorted(linhas, key=lambda r: (r["status"] != "em_execucao", -(r["valor"] or 0)))
+    por_grau = [{"grau": g, "nota": _NOTA_GRAU[g], "n": sum(1 for r in todos if (r["grau"] or "explicito") == g),
+                 "valor": round(sum(r["valor"] or 0 for r in todos if (r["grau"] or "explicito") == g), 2), "incluido": g in graus}
+                for g in agrega.GRAUS]
+    alertas = [{"contrato_id": r["contrato_id"], "texto": r["alerta"], "orgao": r["orgao"], "fornecedor_nome": r["fornecedor_nome"],
+                "valor": r["valor"], "pago": r["pago"]} for r in sorted(linhas, key=lambda r: -(r["pago"] or 0)) if r["alerta"]]
+    return {"kpis": k, "por_grau": por_grau, "orgaos": orgaos[:15], "n_orgaos": len(orgaos), "fornecedores": fornecedores[:15],
+            "n_fornecedores": len(fornecedores), "contratos": [_contrato(r, conf_texto) for r in ordenados[:_TETO_CONTRATOS]],
+            "n_contratos_total": len(linhas), "serie": _serie(linhas), "alertas": alertas, "nota_alertas": _NOTA_ALERTAS_ESTADO}
 
 
 def _ficha(c, tabela: str, onde: str, args: tuple, periodo: str, conf_texto: str) -> dict:
@@ -96,25 +218,33 @@ def _ficha(c, tabela: str, onde: str, args: tuple, periodo: str, conf_texto: str
 
 
 @router.get("/api/territorio/estado")
-def territorio_estado(request: Request, metrica: str = Query("valor_contratado"), periodo: str = Query("vigentes")):
+def territorio_estado(request: Request, metrica: str = Query("valor_contratado"), periodo: str = Query("vigentes"),
+                      graus: str = Query("explicito,unidade")):
     c = _abrir()
     if c is None:
         return _indisponivel()
     try:
-        p = _periodo(periodo)
+        if not _versao_ok(c):
+            return _desatualizado()
+        p, g = _periodo(periodo), _graus(graus)
+        num = lambda chave: int(float(base.meta(c, chave, "0") or 0))  # noqa: E731
         return _responder(request, {
-            "fonte": atribui_estado.FONTE, "atualizado_em": base.meta(c, "atualizado_em"), "periodo": p,
-            "metrica": metrica if metrica in _METRICAS else "valor_contratado", "municipios": agrega.por_municipio(c, p),
+            "fonte": atribui_estado.FONTE, "atualizado_em": base.meta(c, "atualizado_em"), "periodo": p, "graus": list(g),
+            "metrica": metrica if metrica in _METRICAS else "valor_contratado", "municipios": agrega.por_municipio(c, p, g),
             "baldes": agrega.baldes_estado(c, p), "confianca_texto": _conf_texto(c), "nota_pago": _NOTA_PAGO_ESTADO,
-            "nota_alertas": _NOTA_ALERTAS,
-            "fora_do_escopo": {"unidade_municipal": int(base.meta(c, "estado_fora_municipal", "0") or 0),
-                               "fora_do_executivo": int(base.meta(c, "estado_fora_outro", "0") or 0)}})
+            "pago_apurado_em": base.meta(c, "estado_pago_em"), "nota_execucao": _NOTA_EXECUCAO, "nota_grau": _NOTA_GRAU,
+            "nota_alertas": _NOTA_ALERTAS_ESTADO,
+            "fora_do_escopo": {"unidade_municipal": num("estado_fora_municipal"), "fora_do_executivo": num("estado_fora_outro"),
+                               "siga_cancelado": num("estado_siga_cancelado"), "siga_em_elaboracao": num("estado_siga_rascunho"),
+                               "siga_repeticoes": num("estado_siga_repetidos")},
+            "possivel_duplicidade": {"n": num("estado_possivel_duplicidade_n"),
+                                     "valor": float(base.meta(c, "estado_possivel_duplicidade_valor", "0") or 0)}})
     finally:
         c.close()
 
 
 @router.get("/api/territorio/estado/{cod_ibge}")
-def territorio_municipio(request: Request, cod_ibge: str, periodo: str = Query("vigentes")):
+def territorio_municipio(request: Request, cod_ibge: str, periodo: str = Query("vigentes"), graus: str = Query("explicito,unidade")):
     nome = nome_municipio().get(cod_ibge)
     if not nome:
         return JSONResponse({"erro": "município desconhecido (código IBGE de 7 dígitos do RJ)"}, status_code=404)
@@ -122,15 +252,18 @@ def territorio_municipio(request: Request, cod_ibge: str, periodo: str = Query("
     if c is None:
         return _indisponivel()
     try:
-        p, ct = _periodo(periodo), _conf_texto(c)
-        f = _ficha(c, "territorio_contrato_estado", "cod_ibge=?", (cod_ibge,), p, ct)
+        if not _versao_ok(c):
+            return _desatualizado()
+        p, ct, g = _periodo(periodo), _conf_texto(c), _graus(graus)
+        f = _ficha_estado(c, cod_ibge, p, g, ct)
         multi = [_contrato(r, ct) for r in c.execute(
             f"SELECT * FROM territorio_contrato_estado WHERE multi=1 AND municipios_json LIKE ? AND {agrega.PERIODOS[p]} "
             "ORDER BY valor DESC LIMIT 50", (f'%"{cod_ibge}"%',))]
         f["kpis"]["n_multi"] = len(multi)
         f["contratos"] += multi
         f.update(fonte=atribui_estado.FONTE, atualizado_em=base.meta(c, "atualizado_em"), cod_ibge=cod_ibge, nome=nome,
-                 periodo=p, nota_pago=_NOTA_PAGO_ESTADO)
+                 periodo=p, graus=list(g), nota_pago=_NOTA_PAGO_ESTADO, nota_execucao=_NOTA_EXECUCAO,
+                 pago_apurado_em=base.meta(c, "estado_pago_em"))
         return _responder(request, f)
     finally:
         c.close()
@@ -177,6 +310,8 @@ def territorio_baldes(request: Request, periodo: str = Query("tudo")):
         return _indisponivel()
     try:
         p = _periodo(periodo) if periodo in _PERIODOS else "tudo"
+        if not _versao_ok(c):
+            return _desatualizado()
         return _responder(request, {"fonte": "data/territorio.db", "atualizado_em": base.meta(c, "atualizado_em"), "periodo": p,
                                     "estado": agrega.baldes_estado(c, p), "pcrj": agrega.baldes_pcrj(c, p)})
     finally:
