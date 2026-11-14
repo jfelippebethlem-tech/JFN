@@ -236,3 +236,6 @@ data/qualidade_*.json
 data/qualidade_*.jsonl
 data/qualidade_*.log
 data/qualidade_*.tmp
+
+# 13/11/2026 — dado pessoal (CPF) não pode ficar no repositório PÚBLICO (regras de qualidade CNF-08/PAD-04)
+data/ajovem_contratados.json

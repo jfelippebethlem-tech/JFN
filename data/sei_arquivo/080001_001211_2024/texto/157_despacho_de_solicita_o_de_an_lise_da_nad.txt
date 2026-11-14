@@ -1,2 +1,0 @@
-[Despacho de Solicitação de Análise da NAD] (fase: despesa · tipo: autorizacao_despesa)
-

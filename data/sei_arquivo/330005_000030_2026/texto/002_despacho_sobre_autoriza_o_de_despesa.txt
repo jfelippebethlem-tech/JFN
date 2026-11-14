@@ -1,2 +1,0 @@
-[Despacho sobre Autorização de Despesa] (fase: despesa · tipo: autorizacao_despesa)
-

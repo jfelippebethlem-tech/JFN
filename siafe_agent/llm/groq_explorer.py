@@ -26,10 +26,7 @@ import json
 import os
 from pathlib import Path
 
-GROQ_API_KEY = os.environ.get(
-    "GROQ_API_KEY",
-    "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",
-)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")  # credencial só por ambiente (.env); nunca no código
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama3-70b-8192")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
