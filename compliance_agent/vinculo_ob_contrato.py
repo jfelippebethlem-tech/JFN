@@ -270,26 +270,39 @@ FORMATO = {"type": "object", "additionalProperties": False,
            "required": ["processo_contrato", "mais_de_um", "citacao"]}
 _RE_RELEVANTE = re.compile(r"contrat|processo|SEI|referente|objeto|vig[êe]ncia|compet[êe]ncia|pagamento", re.I)
 TETO_EXCERTO = 9000
+# piloto de 14/11/2026: com 400, 79 de 400 leituras cortadas — o raciocínio adaptativo do Haiku consome o max_tokens
+MAX_TOKENS = 2500
 
 
-def excerto(docs: list[tuple[str, str]], teto: int = TETO_EXCERTO) -> str:
-    """Linhas relevantes (± 1 linha) de cada documento — recorte LITERAL, para a citação continuar conferível."""
+def excerto(docs: list[tuple[str, str]], teto: int = TETO_EXCERTO, candidatos=()) -> str:
+    """Recorte LITERAL dos autos (linhas inteiras, para a citação continuar conferível). Primeiro, a vizinhança
+    (± 3 linhas) de cada linha que cita um processo candidato — piloto de 14/11/2026: com só as primeiras linhas
+    "relevantes", a citação do contrato ficava fora dos 9.000 caracteres e o modelo se abstinha; depois, as
+    demais linhas relevantes (± 1 linha), até o teto."""
+    alvo = set(candidatos)
     partes, total, vistas = [], 0, set()
-    for fonte, texto in docs:
-        ls = texto.splitlines()
-        marcar = {j for i, l in enumerate(ls) if _RE_RELEVANTE.search(l) or RE_PROC.search(l)
-                  for j in (i - 1, i, i + 1) if 0 <= j < len(ls)}
-        bloco = [ls[i] for i in sorted(marcar) if ls[i].strip() and ls[i].strip() not in vistas]
-        vistas.update(x.strip() for x in bloco)
-        if not bloco:
-            continue
+
+    def juntar(fonte, ls, idx):
+        nonlocal total
+        bloco = [ls[i] for i in sorted(idx) if ls[i].strip() and (fonte, i) not in vistas]
+        vistas.update((fonte, i) for i in idx)
+        if not bloco or total >= teto:
+            return
         b = f"### {fonte}\n" + "\n".join(bloco)
-        if total + len(b) > teto:
-            b = b[:max(0, teto - total)]
+        b = b[:max(0, teto - total - 2)]           # 2 = o separador entre blocos
         partes.append(b)
-        total += len(b)
-        if total >= teto:
-            break
+        total += len(b) + 2
+
+    linhas = [(f, t.splitlines()) for f, t in docs]
+    if alvo:
+        for fonte, ls in linhas:
+            idx = {j for i, l in enumerate(ls) if chaves_citadas(l) & alvo
+                   for j in range(i - 3, i + 4) if 0 <= j < len(ls)}
+            juntar(fonte, ls, idx)
+    for fonte, ls in linhas:
+        idx = {j for i, l in enumerate(ls) if _RE_RELEVANTE.search(l) or RE_PROC.search(l)
+               for j in (i - 1, i, i + 1) if 0 <= j < len(ls)}
+        juntar(fonte, ls, idx)
     return "\n\n".join(partes)
 
 
@@ -325,7 +338,7 @@ def montar_itens(pares: dict, candidatos_de: dict) -> tuple[list, dict]:
     itens, contexto = [], {}
     for i, ((pp, c), cand) in enumerate(pares.items()):
         docs = ler_docs(pasta(pp))
-        exc = excerto(docs)
+        exc = excerto(docs, candidatos=cand)
         contexto[f"p{i}"] = ((pp, c), cand, "\n".join(t for _, t in docs))
         itens.append((f"p{i}a", prompt(pp, cand, exc, False)))
         itens.append((f"p{i}b", prompt(pp, cand, exc, True)))
@@ -351,7 +364,7 @@ def rodar_modelo(pares: dict, *, modelo: str | None = None, espera_max: int = 36
     from compliance_agent.llm import claude_api as C
     candidatos_de = {par: cand for par, cand in pares.items()}
     itens, contexto = montar_itens(pares, candidatos_de)
-    lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=modelo, max_tokens=400, effort="low",
+    lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=modelo, max_tokens=MAX_TOKENS, effort="low",
                          formato=FORMATO, n_decisoes=len(pares))
     if not lote:
         raise RuntimeError(C.ultimo_motivo or "lote não enviado")

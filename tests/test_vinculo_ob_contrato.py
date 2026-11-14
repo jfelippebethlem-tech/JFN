@@ -165,3 +165,10 @@ def test_fila_de_captura_pula_o_arquivado_e_ordena_por_valor(tmp_path, monkeypat
              ("1000010000962024", "2"): [("o4", "u", 2024, d, 99.0)]}        # credor sem indeterminado: fora
     fila = vo.fila_captura(pares, {"1": date(2024, 1, 1)})
     assert [e["sei"] for e in fila] == ["SEI-100001/000097/2024", "SEI-100001/000098/2024"]
+
+
+def test_excerto_traz_a_citacao_do_candidato_mesmo_longe_do_inicio():
+    enchimento = "\n".join(f"processo de pagamento linha {i} referente ao objeto" for i in range(2000))
+    docs = [("d1", enchimento), ("d2", "Despacho final\nconforme contrato SEI-100001/000004/2024\nok")]
+    exc = vo.excerto(docs, teto=3000, candidatos=["1000010000042024"])
+    assert "SEI-100001/000004/2024" in exc and len(exc) <= 3000
