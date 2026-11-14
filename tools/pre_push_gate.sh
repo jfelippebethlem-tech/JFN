@@ -30,7 +30,9 @@ PY=.venv/bin/python
 # este portão existe para evitar. E o critério de casamento NÃO alcança esse caso: ele casa por
 # nome de arquivo e por quem IMPORTA o módulo tocado, e `test_server_snapshot` não importa
 # `rotas/vinculos`. Rota nova é onde o import não chega; por isso é transversal. Custo: 6,6 s.
-CATRACAS="tests/test_catraca_excepts.py tests/test_moeda_padrao_brasileiro.py tests/test_server_snapshot.py"
+# Regras de qualidade (docs/REGRAS-DE-QUALIDADE.md): toda catraca de regra é transversal — `test_regra_registro`
+# barra o push se alguma delas sair desta lista (CST-05).
+CATRACAS="tests/test_catraca_excepts.py tests/test_moeda_padrao_brasileiro.py tests/test_server_snapshot.py tests/test_regra_registro.py tests/test_regra_catracas.py tests/test_regra_inventario.py tests/test_regra_motores.py tests/test_regra_controles_detector.py tests/test_regra_controles_sinteticos.py tests/test_regra_verificadores.py tests/test_regra_sensores.py tests/test_regra_juiz.py"
 
 alvos() {
   # arquivos .py que este push leva (contra o upstream; sem upstream, contra o último commit)

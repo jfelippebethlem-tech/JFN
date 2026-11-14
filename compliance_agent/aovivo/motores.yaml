@@ -201,6 +201,23 @@ motores:
   # 13/11/2026 (dono): "o claude vai ser o CO-MOTOR de tudo". O Claude Code pela assinatura julga ao lado da
   # cascata (perícia, parecer, triagem dos alertas, camada subjetiva). Rodando = trava do único `claude` presa.
   # `uso: claude_motor` põe no JSON do motor: chamadas hoje, por tarefa, tetos, último erro e o canário.
+  # 13/11/2026 (dono: "criar as regras de padrão, conformidade, correção, constância e os subjetivos de tudo").
+  # Regras em config/qualidade_regras.yaml → docs/REGRAS-DE-QUALIDADE.md. Os sensores rodam dentro do laço de
+  # automelhoria (a cada 3 h) sobre o dado SERVIDO; o juiz roda 1×/dia pelo Claude da ASSINATURA (nunca API paga).
+  # Efeito = a fotografia regravada / a última rodada que de fato julgou (`em` só avança com juízo do Claude).
+  - id: qualidade
+    nome: Regras de qualidade · sensores
+    classe: motor
+    descricao: Confere o que o painel, o vault e o Yoda afirmam contra as regras de qualidade (proveniência, constância, prova primária)
+    trava: data/qualidade_sensores.lock
+    efeito: {arquivo: data/qualidade_estado.json, horas: 8}
+  - id: qualidade-juiz
+    nome: Regras de qualidade · juiz
+    classe: motor
+    descricao: Juiz subjetivo (Claude pela assinatura) dá nota pela rubrica ao que é afirmado ao dono, por valor e risco
+    trava: data/qualidade_juiz.lock
+    log: data/qualidade_juiz.log
+    efeito: {json: data/qualidade_juiz.json, chave: em, horas: 48}
   - id: claude
     nome: Claude · co-motor
     classe: motor

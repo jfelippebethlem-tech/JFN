@@ -1,0 +1,646 @@
+# qualidade_inventario.yaml — INVENTÁRIO VIVO: tudo que afirma algo ao dono ou age em nome dele (regra CST-11).
+#
+# O código é enumerado por `compliance_agent/qualidade/inventario.py` (regex, sem rede, sem banco) e confrontado com
+# este arquivo pelas catracas de `tests/test_regra_inventario.py`: superfície nova sem entrada é barrada, entrada
+# morta (que não existe mais no código) também. "A DECLARAR" é dívida MEDIDA, nunca escondida — as catracas contam
+# quantas restam e o número só desce (base em tests/golden/qualidade_base.json, chaves `inventario_*`).
+#
+# Campos
+#   manchetes   afirmações em destaque do cockpit (cards `cki-*`, herói `ck-econ`, vedada `ck-ved`, frescor `ck-fontes`)
+#               e os chips da mesa holográfica (`chip: nu-<id>`; o chip espelha o card de mesmo id: ckFill → nuSet).
+#     id          id do elemento no DOM            superficie  onde aparece
+#     afirma      o que o número diz, em 1 linha     rota        rota /api que o alimenta
+#     origem      função Python que calcula          fonte       tabelas/arquivos lidos
+#     natureza    pago|contratado|teto_de_ata|estimado|contagem|indice
+#     esfera      estado|prefeitura|estado+prefeitura|sistema
+#     consome     quem recebe a afirmação            detector    chave em config/qualidade_detectores.yaml (null = não é detector)
+#     campos      caminho no JSON da rota de onde o JS tira cada número (valor|contagem|indice|…)
+#     lista       caminho da lista exibida (ticker/página), quando houver
+#   rotas       path → {classe: afirma|operacional, afirma: 1 linha, fonte: tabela/módulo ou A DECLARAR}
+#               afirma = devolve número/achado/lista sobre terceiros ou sobre a qualidade do dado; operacional =
+#               controle, saúde, SSE, missões, pausas, autocomplete, visualizador de documento.
+#   abas        id → {esfera, afirma}
+#   relatorios  produto entregável → {entrada, fonte_codigo (arquivo ou lista), saida, consome, gates}
+#               `gates` é o que o código CHAMA (conferido por grep; a catraca re-confere por `relatorios_gate`).
+#   dados_painel arquivo de dados lido por rota → {gerador: arquivo .py/.sh versionado ou A DECLARAR, rota}
+#   yoda        plugins/comandos do Yoda (fora do repo, ~/.hermes/plugins/jfn-*) → {afirma, deterministico, fonte}
+#   lex         peça do Lex (arquivo) → {afirma, fonte, llm, consome}
+#   agendamentos o que ENTREGA algo ao dono por cron/timer → {fonte_codigo, envia, canal}
+#   motores     o registro é compliance_agent/aovivo/motores.yaml (não se copia aqui)
+#
+# Repositório PÚBLICO: nenhum dado pessoal, nenhum nome de pessoa física.
+
+motores: {registro: compliance_agent/aovivo/motores.yaml}
+
+manchetes:
+  - id: ck-econ
+    superficie: "cockpit — número-herói (sobrepreço conferido)"
+    afirma: "Soma dos indícios de sobrepreço conferidos no PNCP (≥ 2× a mediana do mesmo item na mesma unidade), fora de ata; quantidade homologada, não OB paga."
+    rota: /api/comparador/economia
+    origem: compliance_agent.comparador_precos.economia_potencial
+    fonte: "pncp_resultado, pncp_ente (compliance.db)"
+    natureza: estimado
+    esfera: estado+prefeitura
+    consome: ["dono (painel)", "Yoda"]
+    detector: comparador.economia_potencial
+    campos: {valor: economia_total, estado: por_esfera.estado.economia, prefeitura: por_esfera.prefeitura.economia,
+             pendente: economia_pendente, n_pendentes: n_compras_pendentes, ata_teto: economia_ata_teto}
+  - id: ck-ved
+    superficie: "cockpit — caixa 'vedada' sob o herói (só aparece se > 0)"
+    afirma: "Sobrepreço pago a fornecedor juridicamente vedado de contratar com aquele ente na data."
+    rota: /api/comparador/vedada
+    origem: compliance_agent.comparador_precos.economia_vedada
+    fonte: "pncp_resultado, pncp_ente, sancoes_federais (compliance.db)"
+    natureza: estimado
+    esfera: estado+prefeitura
+    consome: ["dono (painel)"]
+    detector: comparador.economia_vedada
+    campos: {valor: economia_vedada_total}
+  - id: cki-radar
+    chip: nu-radar
+    superficie: "cockpit — card 'Radar de risco' + chip da mesa"
+    afirma: "Quantos fornecedores têm sinal no radar composto (0-100) e quantos estão em nível crítico."
+    rota: /api/intel/radar
+    origem: compliance_agent.cruzamentos_intel.radar_risco
+    fonte: "data/cache/radar_risco.json ← fantasma_score, favorecido_resumo, pncp_resultado, socios_fornecedor"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)", "Yoda"]
+    detector: intel.radar_risco
+    campos: {contagem: n, criticos: n_vermelho}
+    lista: achados
+  - id: cki-alertas
+    chip: nu-alertas
+    superficie: "cockpit — card 'Alertas' + chip da mesa"
+    afirma: "Total de alertas do motor de regras, com quantos são de gravidade alta e média."
+    rota: /api/compliance/painel
+    origem: rotas.investigacao.api_painel
+    fonte: "alertas, ob_orcamentaria_siafe (compliance.db)"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)", "Yoda"]
+    detector: rules.engine
+    campos: {contagem: alertas.total, alta: alertas.alta, media: alertas.media}
+    lista: lista_alertas
+  - id: cki-fenix
+    chip: nu-fenix
+    superficie: "cockpit — card 'Pago a empresa morta' + chip da mesa"
+    afirma: "Valor pago (OB) a empresas DEPOIS da baixa na Receita, e quantas são."
+    rota: /api/intel/fenix
+    origem: compliance_agent.cruzamentos_intel.empresa_fenix
+    fonte: "ob_orcamentaria_siafe, favorecido_resumo, empresas, estab"
+    natureza: pago
+    esfera: estado
+    consome: ["dono (painel)", "Yoda"]
+    detector: intel.empresa_fenix
+    campos: {valor: total_apos_baixa, contagem: n_defunta_confirmada, contexto: n_defunta}
+    concentracao: {lista: achados, item: valor_apos_baixa, filtro: {pagou_apos_baixa: true}}
+  - id: cki-compras
+    chip: nu-compras
+    superficie: "cockpit — card 'Compras auditáveis' + chip da mesa"
+    afirma: "Quantas compras têm indício de sobrepreço conferido no PNCP."
+    rota: /api/comparador/economia
+    origem: compliance_agent.comparador_precos.economia_potencial
+    fonte: "pncp_resultado, pncp_ente (compliance.db)"
+    natureza: contagem
+    esfera: estado+prefeitura
+    consome: ["dono (painel)"]
+    detector: comparador.economia_potencial
+    campos: {contagem: n_compras_acima_mediana}
+  - id: cki-com
+    chip: nu-com
+    superficie: "cockpit — card 'Comunidades' + chip da mesa"
+    afirma: "Quantos clusters família-empresa-órgão (Louvain) foram detectados."
+    rota: /api/intel/comunidades
+    origem: compliance_agent.grafo_comunidades.detectar_comunidades
+    fonte: "data/cache/comunidades.json ← fantasma_score, sancoes_federais, socios_fornecedor"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: intel.comunidades
+    campos: {contagem: n}
+  - id: cki-dossie
+    chip: nu-dossie
+    superficie: "cockpit — card 'Caro + suspeito' + chip da mesa"
+    afirma: "Itens ≥ 3× a mediana do mesmo item com fornecedor marcado por outra fonte; quantos sancionados à época."
+    rota: /api/comparador/dossie
+    origem: compliance_agent.comparador_precos.caro_e_suspeito
+    fonte: "pncp_resultado, pncp_ente, fantasma_score, sancoes_federais"
+    natureza: contagem
+    esfera: estado+prefeitura
+    consome: ["dono (painel)"]
+    detector: comparador.caro_e_suspeito
+    campos: {contagem: n, sancionadas: n_sancionada}
+    lista: achados
+  - id: cki-orgao
+    superficie: "cockpit — card 'Órgão que mais economiza'"
+    afirma: "O órgão com maior indício de sobrepreço conferido e o valor."
+    rota: /api/comparador/economia
+    origem: compliance_agent.comparador_precos.economia_potencial
+    fonte: "pncp_resultado, pncp_ente (compliance.db)"
+    natureza: estimado
+    esfera: estado+prefeitura
+    consome: ["dono (painel)"]
+    detector: comparador.economia_potencial
+    campos: {valor: "por_orgao[0].economia", rotulo: "por_orgao[0].orgao"}
+    lista: por_orgao
+  - id: cki-ninho
+    chip: nu-ninho
+    superficie: "cockpit — card 'Ninhos de fachada' + chip da mesa 'mesma sala'"
+    afirma: "Grupos na MESMA SALA com 2+ CNPJs recebendo e 3+ fatores de fachada, e o valor em OB nesses grupos."
+    rota: /api/intel/ninho_sala
+    origem: compliance_agent.ninho_sala.ninhos_por_sala
+    fonte: "data/cache/ninho_sala.json ← estabelecimentos, favorecido_resumo"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: ninho_sala
+    campos: {contagem: n_alto, total: n, valor: total_recebido_ob_alto}
+    lista: grupos
+    concentracao: {lista: grupos, item: total_recebido_ob, filtro: {grau: alto}}
+  - id: cki-lift
+    superficie: "cockpit — card 'Melhor detector (lift)'"
+    afirma: "O detector (não circular) com maior lift contra sanção impeditiva, e o lift."
+    rota: /api/intel/lift
+    origem: compliance_agent.retro_auditoria.avaliar_lift
+    fonte: "fantasma_score, sanções (gabarito objetivo)"
+    natureza: indice
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: retro.lift
+    campos: {indice: "detectores[max lift, circular=false].lift", rotulo: "detectores[…].detector"}
+    lista: detectores
+  - id: ck-fontes
+    superficie: "cockpit — faixa 'Fontes de dados — frescor ao vivo'"
+    afirma: "Idade e estado de cada fonte de dados (verde/âmbar/vermelho)."
+    rota: /api/fontes/frescor
+    origem: rotas.investigacao.api_fontes_frescor
+    fonte: "ob_orcamentaria_siafe, pcrj_folha, pcrj_comissionado_candidato, siafe_runner"
+    natureza: indice
+    esfera: sistema
+    consome: ["dono (painel)"]
+    detector: null
+    campos: {estado: "fontes[].estado", idade: "fontes[].idade_dias"}
+    lista: fontes
+
+relatorios:
+  fornecedor:
+    entrada: "CNPJ ou nome (POST /api/relatorio/inteligencia; /relatorio do Yoda)"
+    fonte_codigo: [compliance_agent/reporting/inteligencia.py, compliance_agent/reporting/intel_pdf.py]
+    saida: "md + pdf + xlsx (+ parecer Lex) em reports/"
+    consome: ["dono (Telegram)", "Yoda"]
+    gates: [render_html]
+  orgao:
+    entrada: "nome/UG do órgão (POST /api/relatorio/orgao; /orgao do Yoda)"
+    fonte_codigo: compliance_agent/reporting/inteligencia_orgao.py
+    saida: "md + pdf"
+    consome: ["dono (Telegram)", "Yoda"]
+    gates: []
+  dossie:
+    entrada: "CNPJ (POST /api/dossie)"
+    fonte_codigo: compliance_agent/dossie.py
+    saida: pdf
+    consome: ["dono (Telegram)"]
+    gates: [garantir_neutro, render_html]
+  dossie_completo:
+    entrada: "CNPJ (POST /api/dossie/completo)"
+    fonte_codigo: compliance_agent/dossie.py
+    saida: "pdf (dossiê 360 + fachada + cláusulas + parecer)"
+    consome: ["dono (Telegram)"]
+    gates: [garantir_neutro, render_html]
+  dossie_mestre:
+    entrada: "órgão ou portfólio (POST /api/dossie/mestre)"
+    fonte_codigo: compliance_agent/reporting/dossie_mestre.py
+    saida: pdf
+    consome: ["dono (Telegram)"]
+    gates: [garantir_neutro, render_html]
+  pericia_contabil:
+    entrada: "rotina diária (python -m compliance_agent.pericia_contabil_rotina)"
+    fonte_codigo: compliance_agent/pericia_contabil.py
+    saida: "html/pdf + data/pericia_contabil_resumo.json (aba e_pcont)"
+    consome: ["dono (painel)"]
+    gates: [garantir_neutro_exceto_dados, render_html]
+  gestao_couto:
+    entrada: "rotina semanal (compliance_agent/governo_couto_regras.py)"
+    fonte_codigo: [compliance_agent/governo_couto_regras.py, compliance_agent/governo_couto.py]
+    saida: "data/governo_couto_suspeitas.json → GET /api/governo_couto (aba e_couto)"
+    consome: ["dono (painel)"]
+    gates: []
+  processo_360:
+    entrada: "nº do processo SEI (POST /api/processo/avaliar → tools/processo_360.py)"
+    fonte_codigo: [tools/processo_360.py, compliance_agent/processo_360.py, compliance_agent/reporting/processo_360_ctx.py]
+    saida: "processo_avaliacao (compliance.db) + pdf"
+    consome: ["dono (painel)", "Yoda (/pareceres)"]
+    gates: [render_html]
+  fiscalizacao_emendas_pcrj:
+    entrada: "emenda ou contrato da Prefeitura (tools/emendas_pericia.py; compliance_agent/pcrj/pericia_pcrj.py)"
+    fonte_codigo: [tools/emendas_pericia.py, compliance_agent/emendas/pericia.py, compliance_agent/pcrj/pericia_pcrj.py,
+                   compliance_agent/pcrj/pericia.py]
+    saida: pdf
+    consome: ["dono (Telegram)"]
+    gates: [render_html]
+  direcionamento_editais:
+    entrada: "edital/órgão (tools/editais_direcionamento.py)"
+    fonte_codigo: [compliance_agent/reporting/relatorio_direcionamento.py, tools/editais_direcionamento.py]
+    saida: pdf
+    consome: ["dono (Telegram)"]
+    gates: [render_html]
+  parecer_lex:
+    entrada: "fornecedor (compliance_agent/lex.py; anexo do /relatorio)"
+    fonte_codigo: compliance_agent/lex_render.py
+    saida: "md + pdf (parecer 🟢🟡🔴)"
+    consome: ["dono (Telegram)", "relatório fornecedor"]
+    gates: [gate_citacoes, sanear_parecer]
+  requerimento_lai:
+    entrada: "processo, CNPJ ou nome (POST /api/lai/gerar)"
+    fonte_codigo: compliance_agent/lai/gerar.py
+    saida: "minuta de requerimento LAI"
+    consome: ["dono (painel aba p_lai)", "Telegram"]
+    gates: [garantir_neutro]
+  intel_pdf:
+    entrada: "tipo de detector (GET /api/intel/pdf)"
+    fonte_codigo: compliance_agent/intel_relatorio.py
+    saida: pdf
+    consome: ["dono (painel)"]
+    gates: [render_html]
+
+dados_painel:
+  data/governo_couto_suspeitas.json: {gerador: compliance_agent/governo_couto_regras.py, rota: /api/governo_couto}
+  data/pericia_contabil_resumo.json: {gerador: compliance_agent/pericia_contabil_rotina.py, rota: /api/pericia_contabil}
+  data/cge_confronto.json: {gerador: compliance_agent/cge_confronto.py, rota: /api/cge_confronto}
+  data/lentes_estado.json: {gerador: tools/lentes_materializar.py, rota: /api/lentes}
+  data/tac_ranking_ugs.json: {gerador: tools/tac_ranking_ugs.py, rota: /api/tac/ranking}
+  data/flags_graves.json: {gerador: tools/flags_graves.py, rota: /api/flags}
+  data/sei_restritos.json: {gerador: tools/sei_restritos.py, rota: /api/restritos}
+  data/pipelines_slo_estado.json: {gerador: tools/pipelines_slo.py, rota: /api/sistema/atividade}
+  data/sei_cache/sei_sweep_progress.json: {gerador: tools/sei_sweep.py, rota: /api/sweeps/status}
+  data/cache/sancionadas_contratadas.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/sancionadas}
+  data/cache/perdedoras_contumazes.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/perdedoras}
+  data/cache/beneficios_vinculo.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/pcrj/beneficios_vinculo}
+  data/cache/conluio_qsa.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/conluio_qsa}
+  data/cache/hub_compartilhado.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/hub_compartilhado}
+  data/cache/ninho_sala.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/ninho_sala}
+  data/cache/comunidades.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/comunidades}
+  data/cache/radar_risco.json: {gerador: compliance_agent/cruzamentos_intel.py, rota: /api/intel/radar}
+  data/territorio.db: {gerador: compliance_agent/territorio/cli.py, rota: /api/territorio/estado}
+  data/achados.db: {gerador: compliance_agent/varredura_orgaos.py, rota: /api/detectores_achados,
+                    nota: "cria achado_detector; os detectores P7/EST/X7 gravam com --gravar"}
+
+yoda:
+  capacidades: {registro: capabilities.yaml}
+  plugins:
+    jfn-automelhoria:
+      /melhorias: {afirma: "Fila única de automelhoria (aberto/curado/REINCIDIU) de SLO, CI, catracas, serviços, ronda, SIAFE, Yoda.", deterministico: true, fonte: tools/automelhoria_geral.py}
+      /pareceres: {afirma: "Fila do fiscal (Processo 360) e o que cada parecer ganhou/perdeu desde a avaliação anterior.", deterministico: true, fonte: "ranking do Processo 360 (tools/processo_360_ranking.py)"}
+      /socio-sancionada: {afirma: "Contratada cujo sócio é sócio de empresa sancionada, com OB na janela de risco.", deterministico: true, fonte: /api/intel/socio_sancionada}
+      /competencia-futura: {afirma: "OB SIAFE paga antes da competência que quita.", deterministico: true, fonte: /api/intel/competencia_futura}
+      /dea: {afirma: "DEA (elemento 92) repetida ao mesmo fornecedor.", deterministico: true, fonte: /api/intel/dea_recorrente}
+      /ordem-cronologica: {afirma: "Quebra da ordem cronológica de pagamento medida no SIAFE.", deterministico: true, fonte: /api/intel/ordem_cronologica}
+      /tcu: {afirma: "Confere citação de acórdão/súmula do TCU contra o acervo local.", deterministico: true, fonte: "acervo TCU local"}
+    jfn-siafe:
+      /siafe: {afirma: "Grava o código MFA do SIAFE e marca a sessão livre/ocupada; devolve o estado.", deterministico: true, fonte: "arquivos de sessão lidos pelos coletores SIAFE"}
+    jfn-claude:
+      /claude: {afirma: "Resultado de tarefa só-leitura do Claude Code da VM.", deterministico: false, fonte: "Claude Code (assinatura)"}
+      /claude-edita: {afirma: "Executa tarefa com edição pelo Claude Code (plano + confirmação).", deterministico: false, fonte: "Claude Code (assinatura)"}
+      /claude-status: {afirma: "Tarefa do Claude Code em curso e a última.", deterministico: true, fonte: "estado local do plugin"}
+      /claude-cancela: {afirma: "Cancela a tarefa do Claude Code.", deterministico: true, fonte: "estado local do plugin"}
+      /cc: {afirma: "Liga o modo Claude Code direto (plano → ✅ → execução).", deterministico: false, fonte: "Claude Code (assinatura)"}
+      /yoda: {afirma: "Desliga o modo direto (volta ao Yoda).", deterministico: true, fonte: "estado local do plugin"}
+      /cc-nova: {afirma: "Abre sessão nova do Claude Code.", deterministico: true, fonte: "estado local do plugin"}
+      /cc-para: {afirma: "Interrompe o Claude Code.", deterministico: true, fonte: "estado local do plugin"}
+      /cc-status: {afirma: "Estado do modo direto.", deterministico: true, fonte: "estado local do plugin"}
+      /cc-desfaz: {afirma: "Desfaz a última execução do Claude Code (escopado).", deterministico: true, fonte: "jfn-claude/desfaz.py"}
+    jfn-guardas:
+      hook pre_tool_call: {afirma: "Veta ferramentas de escrita/execução do Yoda e write_file em documentos só-acréscimo.", deterministico: true, fonte: "regras do plugin"}
+
+lex:
+  compliance_agent/lex.py: {afirma: "Parecer fático-jurídico (tomada de contas) sobre contratação/licitação/pagamentos de um fornecedor.", fonte: "compliance.db + texto SEI", llm: true, consome: ["relatório fornecedor", "dono (Telegram)"]}
+  compliance_agent/lex_analise_conteudo.py: {afirma: "Análise de conteúdo do SEI, contratos TCE-RJ e OB com LLM discursivo.", fonte: "texto SEI, contratos TCE-RJ, OB", llm: true, consome: ["parecer Lex"]}
+  compliance_agent/lex_redflags.py: {afirma: "Catálogo estático de red flags e grau 🟢🟡🔴.", fonte: "conhecimento estático (sem I/O)", llm: false, consome: ["parecer Lex"]}
+  compliance_agent/lex_sancoes.py: {afirma: "Dosimetria de sanções administrativas (manual PGE-RJ).", fonte: "manual PGE-RJ codificado", llm: false, consome: ["parecer Lex"]}
+  compliance_agent/lex_forense.py: {afirma: "Análise forense quantitativa das OBs do alvo.", fonte: "OB (compliance.db)", llm: false, consome: ["parecer Lex"]}
+  compliance_agent/lex_conflito.py: {afirma: "Conflito de interesse: doações TSE × fornecedores (OB/QSA).", fonte: "TSE dados abertos, OB, QSA", llm: false, consome: ["parecer Lex", "/api/conflito"]}
+  compliance_agent/lex_base_empirica.py: {afirma: "Padrões empíricos da base (OB, scores) para calibrar o parecer.", fonte: compliance.db, llm: false, consome: ["parecer Lex"]}
+  compliance_agent/lex_render.py: {afirma: "Render do parecer de fornecedor (mérito, seções, md e pdf).", fonte: "contexto do Lex", llm: true, consome: ["dono (Telegram)"]}
+  compliance_agent/lex_orgao.py: {afirma: "Parecer de órgão (UG): achados de nível órgão.", fonte: compliance.db, llm: false, consome: ["relatório órgão"]}
+  tools/lex_execucao.py: {afirma: "Avalia a execução do contrato a partir do processo SEI de pagamento.", fonte: "processo SEI arquivado", llm: true, consome: ["Processo 360", "perícia"]}
+  tools/lex_pesquisa_internet.py: {afirma: "Pesquisa na internet as dúvidas abertas do parecer e reajusta a análise.", fonte: "web", llm: true, consome: ["parecer Lex"]}
+  tools/lex_feedback.py: {afirma: "Canal de dificuldades e ideias do Lex/JFN para o Claude Code.", fonte: "registros do Lex", llm: false, consome: ["Claude Code"]}
+  tools/lex_bombeiros.py: {afirma: "Perícia de execução dos contratos do FUNESBOM ainda não avaliados.", fonte: "processo SEI arquivado", llm: true, consome: ["perícia"]}
+  tools/lex_aprendizado_cruzado.py: {afirma: "Propaga padrão de fraude de um fornecedor aos ligados (mesmos sócios/veículos).", fonte: "QSA + achados", llm: false, consome: ["parecer Lex"]}
+
+agendamentos:
+  ronda: {fonte_codigo: tools/ronda.py, envia: "ronda de saúde do ecossistema (timer jfn-ronda)", canal: Telegram}
+  digest_diario: {fonte_codigo: tools/digest_diario.py, envia: "digest diário dos achados novos", canal: Telegram}
+  pipelines_slo: {fonte_codigo: tools/pipelines_slo.py, envia: "SLO de frescor por etapa; avisa o que parou", canal: Telegram}
+  automelhoria: {fonte_codigo: tools/automelhoria_geral.py, envia: "fila única de automelhoria; avisa só com novidade", canal: Telegram}
+  yoda_autoauditoria: {fonte_codigo: tools/yoda_autoauditoria.py, envia: "falhas de conversa do Yoda (nova/reincidente)", canal: "Telegram + vault"}
+  canario_claude: {fonte_codigo: compliance_agent/llm/claude_motor.py, envia: "canário diário do co-motor Claude", canal: "AO VIVO (data/claude_motor_estado.json)"}
+  triagem_amarelos: {fonte_codigo: tools/triagem_amarelos.py, envia: "triagem dos alertas amarelos", canal: Telegram}
+  pcrj_saude: {fonte_codigo: tools/pcrj_saude.py, envia: "laudo de saúde das coletas da Prefeitura", canal: Telegram}
+  siafe_runner_mfa: {fonte_codigo: compliance_agent/siafe_runner.py, envia: "pedido de código MFA e estado da coleta SIAFE", canal: Telegram}
+  guardiao_banco: {fonte_codigo: tools/guardiao_db_malformed.sh, envia: "alerta de banco corrompido / failover", canal: Telegram}
+  lembrete_dono: {fonte_codigo: A DECLARAR, envia: "lembrete diário das ações do dono em aberto (script fora do repo)", canal: "Telegram (Yoda)"}
+  metacognicao: {fonte_codigo: tools/hermes_metacognicao.py, envia: "síntese de metacognição do Hermes (re-indexa o RAG)", canal: vault}
+
+abas:
+  i_cockpit: {esfera: inicio, afirma: "Aba 'Cockpit' (inicio)."}
+  e_panorama: {esfera: estado, afirma: "Aba 'Panorama' (estado)."}
+  e_pericias: {esfera: estado, afirma: "Aba 'Perícias' (estado)."}
+  e_comissao: {esfera: estado, afirma: "Aba 'Comissão de Orçamento' (estado)."}
+  e_couto: {esfera: estado, afirma: "Aba 'Governo Couto' (estado)."}
+  e_pcont: {esfera: estado, afirma: "Aba 'Perícia contábil' (estado)."}
+  e_cge: {esfera: estado, afirma: "Aba 'CGE × JFN' (estado)."}
+  e_sanc: {esfera: estado, afirma: "Aba 'Sancionadas' (estado)."}
+  e_tac: {esfera: estado, afirma: "Aba 'TAC recorrente' (estado)."}
+  e_imprensa: {esfera: estado, afirma: "Aba 'Imprensa por órgão' (estado)."}
+  e_lentes: {esfera: estado, afirma: "Aba 'Lentes' (estado)."}
+  e_frac: {esfera: estado, afirma: "Aba 'Fracion.' (estado)."}
+  e_sobre: {esfera: estado, afirma: "Aba 'Sobrepreço' (estado)."}
+  e_escal: {esfera: estado, afirma: "Aba 'Escalada' (estado)."}
+  e_comp: {esfera: estado, afirma: "Aba 'Comparador' (estado)."}
+  e_adit: {esfera: estado, afirma: "Aba 'Aditivos' (estado)."}
+  e_certames: {esfera: estado, afirma: "Aba 'Certames' (estado)."}
+  e_cartel: {esfera: estado, afirma: "Aba 'Cartel' (estado)."}
+  e_conluio: {esfera: estado, afirma: "Aba 'Conluio' (estado)."}
+  e_poder: {esfera: estado, afirma: "Aba 'Nomeados' (estado)."}
+  e_alertas: {esfera: estado, afirma: "Aba 'Alertas' (estado)."}
+  e_resp: {esfera: estado, afirma: "Aba 'Responsáveis' (estado)."}
+  e_siafe: {esfera: estado, afirma: "Aba 'SIAFE' (estado)."}
+  p_panorama: {esfera: prefeitura, afirma: "Aba 'Panorama' (prefeitura)."}
+  p_gastos: {esfera: prefeitura, afirma: "Aba 'Gastos' (prefeitura)."}
+  p_sanc: {esfera: prefeitura, afirma: "Aba 'Sancionadas' (prefeitura)."}
+  p_sobre: {esfera: prefeitura, afirma: "Aba 'Sobrepreço' (prefeitura)."}
+  p_escal: {esfera: prefeitura, afirma: "Aba 'Escalada' (prefeitura)."}
+  p_comp: {esfera: prefeitura, afirma: "Aba 'Comparador' (prefeitura)."}
+  p_adit: {esfera: prefeitura, afirma: "Aba 'Aditivos' (prefeitura)."}
+  p_cartel: {esfera: prefeitura, afirma: "Aba 'Concentração' (prefeitura)."}
+  p_comis: {esfera: prefeitura, afirma: "Aba 'Comissionados' (prefeitura)."}
+  p_benef: {esfera: prefeitura, afirma: "Aba 'Benefícios' (prefeitura)."}
+  p_fant: {esfera: prefeitura, afirma: "Aba 'Fantasmas' (prefeitura)."}
+  p_ppp: {esfera: prefeitura, afirma: "Aba 'PPP' (prefeitura)."}
+  p_conluio: {esfera: prefeitura, afirma: "Aba 'Conluio' (prefeitura)."}
+  p_contr: {esfera: prefeitura, afirma: "Aba 'Contratos' (prefeitura)."}
+  p_integras: {esfera: prefeitura, afirma: "Aba 'Íntegras' (prefeitura)."}
+  p_lai: {esfera: prefeitura, afirma: "Aba 'LAI' (prefeitura)."}
+  g_buscar: {esfera: geral, afirma: "Aba 'Buscar' (geral)."}
+  g_casos: {esfera: geral, afirma: "Aba 'Casos' (geral)."}
+  g_requerimentos: {esfera: geral, afirma: "Aba 'Requerimentos' (geral)."}
+  g_acervo: {esfera: geral, afirma: "Aba 'Acervo' (geral)."}
+  g_radar: {esfera: geral, afirma: "Aba 'Radar' (geral)."}
+  g_prioridade: {esfera: geral, afirma: "Aba 'Prioridade' (geral)."}
+  g_vinculos: {esfera: geral, afirma: "Aba 'Vínculos' (geral)."}
+  g_pecas: {esfera: geral, afirma: "Aba 'Peças' (geral)."}
+  g_fontes: {esfera: geral, afirma: "Aba 'Fontes externas' (geral)."}
+  g_hub: {esfera: geral, afirma: "Aba 'Hub físico' (geral)."}
+  g_acuracia: {esfera: geral, afirma: "Aba 'Acurácia' (geral)."}
+  g_dets: {esfera: geral, afirma: "Aba 'Detectores' (geral)."}
+  g_instr: {esfera: geral, afirma: "Aba 'Instrumentação' (geral)."}
+  g_conform: {esfera: geral, afirma: "Aba 'Conformidade' (geral)."}
+  g_missoes: {esfera: geral, afirma: "Aba 'Missões' (geral)."}
+  g_conluioq: {esfera: geral, afirma: "Aba 'Conluio QSA' (geral)."}
+  g_comun: {esfera: geral, afirma: "Aba 'Comunidades' (geral)."}
+  g_retro: {esfera: geral, afirma: "Aba 'Retro' (geral)."}
+  g_riscos: {esfera: geral, afirma: "Aba 'Riscos' (geral)."}
+  g_dep: {esfera: geral, afirma: "Aba 'Cativos' (geral)."}
+  g_capital: {esfera: geral, afirma: "Aba 'Capital irrisório' (geral)."}
+  g_dez: {esfera: geral, afirma: "Aba 'Dezembro' (geral)."}
+  g_ocult: {esfera: geral, afirma: "Aba 'Sócio oculto' (geral)."}
+  g_nep: {esfera: geral, afirma: "Aba 'Nepotismo' (geral)."}
+  g_nepx: {esfera: geral, afirma: "Aba 'Nepot. cruzado' (geral)."}
+  g_fenix: {esfera: geral, afirma: "Aba 'Fênix' (geral)."}
+  g_porta: {esfera: geral, afirma: "Aba 'Porta giratória' (geral)."}
+  g_laranjas: {esfera: geral, afirma: "Aba 'Laranjas' (geral)."}
+  g_socserv: {esfera: geral, afirma: "Aba 'Servidor-sócio' (geral)."}
+  g_poder: {esfera: geral, afirma: "Aba 'Poder' (geral)."}
+  g_conluio: {esfera: geral, afirma: "Aba 'Conluio' (geral)."}
+  g_validar: {esfera: geral, afirma: "Aba 'Validar' (geral)."}
+  g_sweeps: {esfera: geral, afirma: "Aba 'Sistema' (geral)."}
+  g_acoes: {esfera: geral, afirma: "Aba 'Ações' (geral)."}
+
+rotas:
+  "/api/acervo/buscar": {classe: operacional, afirma: "Busca textual no acervo SEI arquivado (devolve trechos de documentos).", fonte: "compliance_agent.acervo"}
+  "/api/acervo/documento": {classe: operacional, afirma: "Texto de um documento SEI arquivado.", fonte: "compliance_agent.acervo"}
+  "/api/acervo/estatisticas": {classe: afirma, afirma: "Números do acervo SEI e do SIAFE (processos, documentos, distintos).", fonte: "compliance_agent.acervo"}
+  "/api/acervo/processo": {classe: afirma, afirma: "Documentos e regras acesas de um processo SEI do acervo.", fonte: "compliance_agent.acervo"}
+  "/api/acervo/regras": {classe: afirma, afirma: "Processos com regra determinística acesa no acervo inteiro.", fonte: "compliance_agent.acervo"}
+  "/api/agenda": {classe: operacional, afirma: "Observabilidade central: timers systemd + crons + pausas num relatório só (determinístico, leitura-só).", fonte: "compliance_agent.agenda_jobs"}
+  "/api/anomalias": {classe: afirma, afirma: "Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas.", fonte: "compliance_agent.analysis.benford, compliance_agent.anomalias"}
+  "/api/ao-vivo/claude": {classe: operacional, afirma: "Uso do co-motor Claude hoje: chamadas, por tarefa, tetos, último erro, canário (sem conteúdo).", fonte: "compliance_agent.aovivo.coleta"}
+  "/api/ao-vivo/cruzamento": {classe: operacional, afirma: "Bloco \"Cruzamento de motores\": concordância com o Claude por tarefa × modelo, matriz ⚪🟡🔴, A/B do few-shot, revisões pendentes (divergência grave).", fonte: "compliance_agent.llm.cruzamento"}
+  "/api/ao-vivo/estado": {classe: operacional, afirma: "Estado dos motores do AO VIVO (rodando, parado, sem efeito).", fonte: "A DECLARAR"}
+  "/api/ao-vivo/stream": {classe: operacional, afirma: "SSE dos eventos dos motores do AO VIVO.", fonte: "A DECLARAR"}
+  "/api/captura/cobertura": {classe: afirma, afirma: "Quanto do que foi PAGO o motor consegue ler — o número que limita todos os outros.", fonte: "compliance_agent.reporting.cobertura_captura"}
+  "/api/cartel": {classe: afirma, afirma: "Grafo fornecedor↔órgão (Onda 3).", fonte: "compliance_agent.grafo_cartel, compliance_agent.rede_societaria"}
+  "/api/casos": {classe: afirma, afirma: "Os dossiês do vault (casos conferidos à mão), com o parecer do Processo 360 dos autos que citam.", fonte: "compliance_agent.casos_vault"}
+  "/api/casos/nota": {classe: operacional, afirma: "Texto de um dossiê de caso do vault.", fonte: "compliance_agent.casos_vault"}
+  "/api/certame/indice": {classe: afirma, afirma: "Índice de Direcionamento de Certame (0-100, 6 famílias — Task 4.5).", fonte: "A DECLARAR"}
+  "/api/certames/lista": {classe: afirma, afirma: "Certames da base LOCAL, cada um com a SUA análise (Índice de Direcionamento + temas).", fonte: "tabelas certame_indice, edital_documento"}
+  "/api/cge_confronto": {classe: afirma, afirma: "Recall do JFN contra as contratações auditadas pela CGE (por processo) + histórico semanal.", fonte: "data/cge_confronto.json (gerador compliance_agent/cge_confronto.py)"}
+  "/api/coendereco/clusters": {classe: afirma, afirma: "Descoberta proativa: grupos de fornecedores que dividem a MESMA sede e recebem do Estado.", fonte: "compliance_agent.cruzamento"}
+  "/api/comissao/orgaos": {classe: afirma, afirma: "Órgão a órgão (ALERJ, TCE-RJ, TJRJ, MPRJ, DPRJ primeiro; depois o Executivo): fornecedores com problema — perícia 🔴/🟡 com cada indício e a evidência, situação d…", fonte: "compliance_agent.comissao_orcamento"}
+  "/api/comissao/pecas": {classe: afirma, afirma: "Catálogo das 18 peças da Comissão (base legal, prazo), última versão gerada de cada uma e o calendário.", fonte: "compliance_agent.comissao_pecas"}
+  "/api/comissao/pecas/gerar": {classe: afirma, afirma: "Gera agora a peça `id` (PDF no padrão da casa) e devolve a URL.", fonte: "compliance_agent.comissao_pecas"}
+  "/api/comparador/buscar": {classe: afirma, afirma: "Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de preço entre órgãos — abrir um grupo mostra quem paga mais/menos.", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/catalogo": {classe: afirma, afirma: "Catálogo navegável: TODOS os grupos comparáveis por CATEGORIA (menu→submenu→item).", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/dossie": {classe: afirma, afirma: "Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é sancionado/no radar/fantasma.", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/economia": {classe: afirma, afirma: "Economia potencial: quanto os cofres economizariam se cada compra acima da mediana tivesse pago a mediana de mercado do item.", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/fornecedores": {classe: afirma, afirma: "Ranking de fornecedores por preço relativo (mais caros / mais baratos vs mercado).", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/item": {classe: afirma, afirma: "Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário.", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/orgaos": {classe: afirma, afirma: "Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens).", fonte: "compliance_agent.comparador_precos"}
+  "/api/comparador/vedada": {classe: afirma, afirma: "O número mais forte: sobrepreço (acima da mediana) pago a fornecedor JURIDICAMENTE VEDADO de contratar com aquele ente comprador, VIGENTE à época.", fonte: "compliance_agent.comparador_precos"}
+  "/api/compliance/alerts": {classe: afirma, afirma: "Lista de alertas de compliance filtrável por tipo e severidade.", fonte: "alertas (compliance.db) via compliance_agent.database.models"}
+  "/api/compliance/buscar": {classe: afirma, afirma: "FTS5 full-text search across contracts, DOERJ, and alerts.", fonte: "A DECLARAR"}
+  "/api/compliance/graph": {classe: afirma, afirma: "Grafo da rede completa fornecedor-órgão-sócio para a tela de grafo.", fonte: "A DECLARAR"}
+  "/api/compliance/investigar": {classe: operacional, afirma: "Investiga uma pessoa/empresa na internet (web research).", fonte: "compliance_agent.collectors.web_research"}
+  "/api/compliance/painel": {classe: afirma, afirma: "Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.", fonte: "ob_orcamentaria_siafe; alertas (compliance.db) via compliance_agent.database.models"}
+  "/api/compliance/relatorio_30d": {classe: afirma, afirma: "Gera relatório estruturado das OBs dos últimos 30 dias em Markdown.", fonte: "ordens bancárias (compliance.db) via compliance_agent.database.models"}
+  "/api/compliance/reports": {classe: operacional, afirma: "Lista os arquivos de relatório gerados em reports/.", fonte: "A DECLARAR"}
+  "/api/compliance/reports/limpar": {classe: operacional, afirma: "Apaga relatórios EFÊMEROS gerados pela sessão web (chamado no page-leave via sendBeacon) para não acumular relatórios duplicados na VM.", fonte: "A DECLARAR"}
+  "/api/compliance/stats": {classe: operacional, afirma: "Resumo dos alertas por tipo e severidade e do orçamento de LLM.", fonte: "compliance_agent.llm.router"}
+  "/api/compliance/tse/{ano}": {classe: operacional, afirma: "Dispara a importação das doações eleitorais do TSE de um ano.", fonte: "compliance_agent.collectors.tse"}
+  "/api/conflito": {classe: afirma, afirma: "Conflito de interesse: doador TSE ↔ (empresa | SÓCIO da empresa) ↔ OB.", fonte: "compliance_agent.lex_conflito"}
+  "/api/conjunto/orgao": {classe: afirma, afirma: "Avaliação de CONJUNTO dos certames de um órgão (dossiê mestre §5): distribuição do índice (mediana/p90), reincidência de cláusula restritiva (≥3 certames → audi…", fonte: "compliance_agent.editais.avaliacao_conjunto"}
+  "/api/conjunto/portfolio": {classe: afirma, afirma: "Ranking de ÓRGÃOS por risco de certame (portfólio, dossiê mestre §5): órgãos com ≥min_certames indexados, mediana do índice, desvio vs pares (peer-benchmark), g…", fonte: "compliance_agent.editais.avaliacao_conjunto"}
+  "/api/conjunto/unidades": {classe: afirma, afirma: "Ranking por UNIDADE/secretaria do RJ (granularidade que o CNPJ guarda-chuva esconde): Hospital Pedro Ernesto, Fundo Estadual de Saúde, etc., pela mediana do Índ…", fonte: "compliance_agent.editais.avaliacao_conjunto"}
+  "/api/cruzamento": {classe: afirma, afirma: "Cruzamento sócio × OB (SIAFE) × processo SEI × endereço de um fornecedor (Onda 4+).", fonte: "compliance_agent.cruzamento"}
+  "/api/detectores_achados": {classe: afirma, afirma: "Achados de TODOS os detectores gravados em `achados.db`; os semanais (P7, EST-*) aparecem mesmo sem linha (\"ainda não rodou\" — não é zero).", fonte: "tabelas achado_detector"}
+  "/api/diario": {classe: afirma, afirma: "diários oficiais municipais (Querido Diário).", fonte: "compliance_agent.providers.lookup"}
+  "/api/doador_contrato": {classe: afirma, afirma: "TSE doador×contrato: sócios (QSA) do fornecedor que aparecem como doadores de campanha (RJ).", fonte: "compliance_agent.providers.lookup"}
+  "/api/doerj/tac_recorrente": {classe: afirma, afirma: "Termos de Ajuste de Contas publicados no DOERJ (PDF integral, desde 09/09/2026) — quem recebe sem cobertura contratual, quantas vezes, quanto.", fonte: "tabelas doerj_tac, doerj_tac_meta, doerj_tac_sinal, publicacoes_doerj"}
+  "/api/dossie": {classe: afirma, afirma: "Dossiê 360 de um CNPJ: cadastro+sanções+OB+conflito+rede+score → PDF.", fonte: "compliance_agent.dossie"}
+  "/api/dossie/completo": {classe: afirma, afirma: "Dossiê COMPLETO de fornecedor (assíncrono, PDF no Telegram): dossiê 360 + veredito de fachada + cláusulas restritivas na íntegra + suspeitas + árvore/íntegra SE…", fonte: "compliance_agent.dossie"}
+  "/api/dossie/mestre": {classe: afirma, afirma: "Dossiê Mestre de licitações (assíncrono, empurra PDF no Telegram).", fonte: "compliance_agent.reporting.dossie_mestre"}
+  "/api/empresa": {classe: afirma, afirma: "cadastro + sócios (QSA) por CNPJ, fonte hospedada (BrasilAPI→cnpj.pw).", fonte: "compliance_agent.providers.lookup"}
+  "/api/eval/hermeneutica": {classe: afirma, afirma: "acurácia MEDIDA do juízo jurídico, visível junto do produto.", fonte: "compliance_agent.reporting.painel_acuracia"}
+  "/api/eval/lift": {classe: afirma, afirma: "poder preditivo MEDIDO de cada detector, contra sanção POSTERIOR ao sinal.", fonte: "compliance_agent.reporting.painel_lift"}
+  "/api/eventos/stream": {classe: operacional, afirma: "SSE com a vida real do sistema: deltas de OB/alertas/cláusulas, avanço de sweep e pulso de carga.", fonte: "A DECLARAR"}
+  "/api/fachada/revisar": {classe: afirma, afirma: "Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).", fonte: "tabelas fachada_veredito, verificacao_sede"}
+  "/api/fachada/veredito": {classe: operacional, afirma: "Salva o veredito HUMANO do validador.", fonte: "tabelas verificacao_sede"}
+  "/api/fiscal/aditivo_precoce": {classe: afirma, afirma: "Acréscimo de VALOR logo após a assinatura — o sinal que a CGE usou na SECID.", fonte: "tools.screen_aditivo_precoce"}
+  "/api/fiscal/concentracao_por_grupo": {classe: afirma, afirma: "Concentração de uma unidade gestora COLAPSADA por grupo econômico — o que o CNPJ esconde.", fonte: "compliance_agent.osint.grupo_economico, compliance_agent.reporting.cobertura_siafe, compliance_agent.ugs"}
+  "/api/fiscal/consorcio_veiculo": {classe: afirma, afirma: "Um CONSÓRCIO por certame — o mesmo núcleo em veículos diferentes.", fonte: "tools.screen_consorcio_veiculo"}
+  "/api/fiscal/coparticipacao_relacionados": {classe: afirma, afirma: "Empresas do mesmo comando disputando o MESMO certame — competição simulada (E.3.2).", fonte: "tools.screen_coparticipacao_relacionados"}
+  "/api/fiscal/detectores": {classe: afirma, afirma: "Os achados do framework de detectores — que nenhuma tela lia.", fonte: "data/achados.db"}
+  "/api/fiscal/emergencia_recorrente": {classe: afirma, afirma: "Emergência RECORRENTE — o art.", fonte: "compliance_agent.fracionamento_emergencia, tools.sweep_emergencia_recorrente; data/achados.db"}
+  "/api/fiscal/fila": {classe: afirma, afirma: "A FILA DO FISCAL — a ordem em que os autos devem ser abertos.", fonte: "A DECLARAR"}
+  "/api/fiscal/fim_de_exercicio": {classe: afirma, afirma: "Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.", fonte: "tools.screen_fim_de_exercicio"}
+  "/api/fiscal/leitura_dupla": {classe: afirma, afirma: "Onde a REGRA e a IA discordam ao ler o mesmo processo — a fila de leitura humana.", fonte: "tabelas sei_leitura_dupla"}
+  "/api/fiscal/nucleo_cartel": {classe: afirma, afirma: "Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.", fonte: "tools.screen_convergencia_cartel"}
+  "/api/fiscal/recuperacao_judicial": {classe: afirma, afirma: "Quem o Estado paga estando em recuperação judicial — inclusive DENTRO de consórcio.", fonte: "tools.screen_recuperacao_judicial"}
+  "/api/fiscal/taxa_por_unidade": {classe: afirma, afirma: "A TAXA da lacuna por unidade — o achado que só existe no conjunto, não no processo.", fonte: "tools.taxa_lacuna_por_unidade"}
+  "/api/fiscal/zeros_sem_causa": {classe: afirma, afirma: "Processo lido pelo sweep que voltou com ZERO documento — e a causa NÃO está medida.", fonte: "tools.sei_zeros_por_causa"}
+  "/api/flags": {classe: afirma, afirma: "Flags vermelhos GRAVES da fiscalização (data/flags_graves.json).", fonte: "data/flags_graves.json (gerador tools/flags_graves.py)"}
+  "/api/fontes/frescor": {classe: afirma, afirma: "Frescor de CADA fonte de dados (última coleta + último dado).", fonte: "compliance_agent.siafe_runner; tabelas ob_orcamentaria_siafe, pcrj_comissionado_candidato, pcrj_folha_pref, pncp_resultado, registros_folha, sancoes_federais"}
+  "/api/fontes/limites": {classe: afirma, afirma: "O que cada fonte NÃO tem, e o que já foi tentado e não funciona.", fonte: "compliance_agent.limites_de_fonte"}
+  "/api/governo_couto": {classe: afirma, afirma: "Placar, atos do DOERJ, contratações, OB do SIAFE, controle e pontos de atenção do período — cada bloco com fonte e cobertura.", fonte: "compliance_agent.governo_couto + data/governo_couto_suspeitas.json"}
+  "/api/grafo": {classe: afirma, afirma: "Grafo de Poder: vizinhança de um alvo (CNPJ/UG/nome) unindo sócios+OB+doações+folha+co-endereço, até `saltos`.", fonte: "compliance_agent.grafo_poder"}
+  "/api/grafo/ftm": {classe: afirma, afirma: "Export do Grafo de Poder no modelo FollowTheMoney (interoperar c/ Aleph/Gephi).", fonte: "compliance_agent.grafo_ftm"}
+  "/api/hermes/auditor24h/iniciar": {classe: operacional, afirma: "Liga o modo Auditor 24 horas (botão da interface).", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/auditor24h/parar": {classe: operacional, afirma: "Desliga o modo Auditor 24 horas.", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/auditor24h/status": {classe: operacional, afirma: "Estado atual do Auditor 24 horas (ciclos, último resumo, etc.).", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/chat": {classe: operacional, afirma: "Conversa com o Hermes (raciocínio sobre os casos).", fonte: "compliance_agent.direcionamento_cerebro, compliance_agent.hermes_goal, compliance_agent.knowledge.jurisprudencia"}
+  "/api/hermes/estado": {classe: operacional, afirma: "Estado do Hermes: missão, Chrome 9222, contagens e aprendizados recentes.", fonte: "compliance_agent.hermes_goal, compliance_agent.llm.free_llm, compliance_agent.llm.memoria"}
+  "/api/hermes/missao": {classe: operacional, afirma: "Define ou limpa a missão do Hermes.", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/missoes": {classe: operacional, afirma: "Cria uma missão paralela e dispara a execução em background.", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/missoes/{missao_id}": {classe: operacional, afirma: "Detalhe de uma missão específica.", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/parar": {classe: operacional, afirma: "Para o ciclo 'trabalhar agora' em andamento.", fonte: "compliance_agent.hermes_goal"}
+  "/api/hermes/relatorio": {classe: operacional, afirma: "Exporta relatório consolidado dos alertas (txt/md/pdf).", fonte: "compliance_agent.reporting.export_relatorios"}
+  "/api/hermes/stream": {classe: operacional, afirma: "SSE do ciclo de trabalho do Hermes.", fonte: "A DECLARAR"}
+  "/api/hermes/trabalhar": {classe: operacional, afirma: "Dispara o ciclo 'trabalhar agora' do Hermes.", fonte: "compliance_agent.hermes_goal"}
+  "/api/idoneidade": {classe: afirma, afirma: "triagem em listas: CEIS/CNEP (BR) + sanções/PEP (OpenSanctions).", fonte: "compliance_agent.providers.get_providers"}
+  "/api/imprensa/orgaos": {classe: afirma, afirma: "Imprensa sobre os ÓRGÃOS do Estado/Prefeitura (Google News RSS, sem chave; tools/noticias_orgaos, diário).", fonte: "tabelas noticias_orgaos"}
+  "/api/intel/aditivos": {classe: afirma, afirma: "Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/capital_incompativel": {classe: afirma, afirma: "Capital irrisório (<R$50k) frente ao volume recebido (≥100× o capital) — subcapitalização/ fachada (Lei 14.133 art.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/competencia_futura": {classe: afirma, afirma: "OB SIAFE paga antes da competência que quita: antecipação (L.14.133 art.", fonte: "compliance_agent.pagamento_competencia_futura"}
+  "/api/intel/comunidades": {classe: afirma, afirma: "Comunidades (Louvain) do grafo família-empresa-órgão, ranqueadas por risco 0-100.", fonte: "data/cache/comunidades.json (compliance_agent.cruzamentos_intel.gerar_cache_intel)"}
+  "/api/intel/comunidades_grafo": {classe: afirma, afirma: "Grafo D3 (nodes/links) das comunidades Louvain — consumido pelo graph.html em /graph?fonte=comunidades.", fonte: "data/cache/comunidades.json (compliance_agent.cruzamentos_intel.gerar_cache_intel)"}
+  "/api/intel/concentracao_municipio": {classe: afirma, afirma: "Concentração de fornecedor por RAMO de objeto no município do Rio (HHI + top-share sobre pcrj_contratos, fonte='pncp').", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/conluio_qsa": {classe: afirma, afirma: "CONLUIO DIRETO: vencedor × perdedora do MESMO certame com sócio em comum (QSA Receita) ou matriz×filial concorrendo entre si.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/corrida_dezembro": {classe: afirma, afirma: "Fornecedor comercial com ≥75% do valor do ano concentrado em dezembro (corrida do empenho).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/dea_recorrente": {classe: afirma, afirma: "DEA (elemento 92) repetida ao mesmo fornecedor em processos distintos — serviço sem empenho prévio (L.4320 arts.", fonte: "compliance_agent.dea_recorrente"}
+  "/api/intel/escalada": {classe: afirma, afirma: "Escalada de preço unitário: MESMO fornecedor vende o MESMO item por preços cada vez maiores ao longo do tempo (≥3 compras, ≥45 dias, alta ≥3×).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/fantasmas": {classe: afirma, afirma: "Ranking de risco de empresa-fantasma (8 sinais determinísticos do /fantasma) no conjunto-alvo (capturas, rodízios, perdedoras contumazes, sancionadas, top favor…", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/fenix": {classe: afirma, afirma: "Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/fornecedor_dependente": {classe: afirma, afirma: "Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão').", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/fracionamento": {classe: afirma, afirma: "Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de dispensa (fatiar p/ não licitar, Lei 14.133 art.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/grafo_familias": {classe: afirma, afirma: "Grafo D3 (nodes/links) das famílias que ocupam cargo de confiança E fornecem ao Estado — consumido pelo graph.html em /graph?fonte=familias.", fonte: "compliance_agent.cruzamentos_intel; compliance.db"}
+  "/api/intel/hub_compartilhado": {classe: afirma, afirma: "Hub compartilhado: 1 âncora física (endereço/telefone/e-mail) usada por N CNPJs — assinatura de 'ninho de fantasmas'.", fonte: "compliance_agent.cruzamentos_intel; compliance.db"}
+  "/api/intel/lift": {classe: afirma, afirma: "Validação de cada detector contra o gabarito OBJETIVO (sanções impeditivas): LIFT = taxa de sancionados no que o detector marca ÷ taxa-base do universo.", fonte: "compliance_agent.retro_auditoria"}
+  "/api/intel/nepotismo": {classe: afirma, afirma: "Nepotismo (SV13 STF): ≥2 pessoas de nomes distintos, mesmo sobrenome de família raro, ambas em cargo de confiança no mesmo órgão.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/nepotismo_cruzado": {classe: afirma, afirma: "Nepotismo cruzado: colocação recíproca de parentes entre dois órgãos (dribla a SV13).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/ninho_sala": {classe: afirma, afirma: "Ninho pela SALA (endereço + complemento) e por CONJUNTO de fatores.", fonte: "data/cache/ninho_sala.json (compliance_agent.ninho_sala.ninhos_por_sala)"}
+  "/api/intel/ordem_cronologica": {classe: afirma, afirma: "Quebra da ordem cronológica medida no SIAFE (Dec.", fonte: "compliance_agent.ordem_cronologica_siafe"}
+  "/api/intel/pdf": {classe: afirma, afirma: "Gera o PDF Kroll do detector `tipo` e devolve a URL.", fonte: "compliance_agent.intel_relatorio; compliance.db"}
+  "/api/intel/perdedoras": {classe: afirma, afirma: "Perdedoras contumazes (\"nunca ganharam\"): participam de ≥K certames nas atas e nunca vencem — perfil de proposta de cobertura (OCDE).", fonte: "data/cache/perdedoras_contumazes.json (compliance_agent.cruzamentos_intel)"}
+  "/api/intel/porta_giratoria": {classe: afirma, afirma: "Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/prioridade_valor": {classe: afirma, afirma: "Fila priorizada por VALOR EM RISCO: interseção do RADAR (fornecedor arriscado) com a ECONOMIA POTENCIAL (R$ recuperável se tivesse pago a mediana).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/radar": {classe: afirma, afirma: "RADAR composto: score 0-100 por fornecedor somando os sinais de todos os detectores — a fila de apuração priorizada.", fonte: "data/cache/radar_risco.json (compliance_agent.cruzamentos_intel.radar_risco)"}
+  "/api/intel/retro": {classe: afirma, afirma: "Retro-auditoria (hindsight): por detector, sanção POSTERIOR ao 1º sinal (corroboração independente) e R$ pagos/vitórias APÓS o alerta (custo da inação).", fonte: "compliance_agent.retro_auditoria"}
+  "/api/intel/sancionadas": {classe: afirma, afirma: "Empresas com sanção IMPEDITIVA (CEIS/CNEP) que receberam OB do Estado ou venceram no PNCP — com o teste temporal \"à época\" (ato DENTRO da vigência da sanção).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/sancionadas_municipio": {classe: afirma, afirma: "Empresas com sanção IMPEDITIVA contratadas pela PREFEITURA DO RIO (pcrj_contratos fonte='pncp'), com o teste \"à época\" (contrato ASSINADO dentro da vigência da…", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/sobrepreco": {classe: afirma, afirma: "Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD…", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/socio_oculto": {classe: afirma, afirma: "Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/socio_sancionada": {classe: afirma, afirma: "Contratada cujo sócio é sócio de empresa sancionada (vedação que alcança o RJ), com OB SIAFE paga na janela em que as duas sociedades e a sanção coexistem.", fonte: "compliance_agent.socio_de_sancionada"}
+  "/api/intel/socio_servidor": {classe: afirma, afirma: "Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse (Lei 14.133 art.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/lai/gerar": {classe: afirma, afirma: "Gera a minuta de requerimento LAI para um alvo (processo, CNPJ ou nome).", fonte: "compliance_agent.lai.gerar"}
+  "/api/lai/lista": {classe: operacional, afirma: "Lista os requerimentos LAI gerados e seu estado.", fonte: "compliance_agent.lai.listar"}
+  "/api/lai/prazos": {classe: operacional, afirma: "Prazos legais dos requerimentos LAI em aberto.", fonte: "compliance_agent.lai.vencendo"}
+  "/api/lai/status": {classe: operacional, afirma: "Atualiza o estado de um requerimento LAI (protocolado, respondido, negado…).", fonte: "compliance_agent.lai.atualizar"}
+  "/api/laranjas": {classe: afirma, afirma: "Sócios de fornecedores do Estado que RECEBEM benefício social de subsistência (bolsa família etc.) — indício clássico de LARANJA/interposição (art.", fonte: "tabelas socio_beneficio"}
+  "/api/leaks": {classe: operacional, afirma: "busca hospedada em vazamentos offshore (ICIJ; link MANUAL).", fonte: "compliance_agent.providers.lookup"}
+  "/api/lentes": {classe: afirma, afirma: "Lentes de detecção materializadas: convergência, dependência mútua, sanção, porte.", fonte: "data/lentes_estado.json (gerador tools/lentes_materializar.py)"}
+  "/api/links": {classe: operacional, afirma: "pistas de investigação HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador).", fonte: "compliance_agent.providers.lookup"}
+  "/api/lista": {classe: operacional, afirma: "Menu COMPLETO das funções do JFN (para o /lista do Yoda) — gerado da skilltree (capabilities.yaml, fonte única), agrupado por domínio.", fonte: "compliance_agent.skilltree"}
+  "/api/mandato/minuta": {classe: afirma, afirma: "Instrumento de mandato: gera minuta .docx (requerimento ALERJ / representação TCE / notícia de fato MP / post).", fonte: "compliance_agent.mandato"}
+  "/api/memoria": {classe: operacional, afirma: "Memória consolidada do ecossistema (Massare/Lex/Hermes).", fonte: "compliance_agent.memoria"}
+  "/api/motor/fotografia": {classe: operacional, afirma: "O estado do MOTOR: faixas, achados por código e por origem, motivos no topo da fila.", fonte: "tools.pos_correcao"}
+  "/api/nucleo/comando": {classe: operacional, afirma: "Núcleo de perícia INTERATIVO (/pericia, /veredito, /placar, /fantasma, /fases, /promover, /ciclo_nucleo, /fornecedor, /parametros, /evolucao) — religa o núcleo…", fonte: "compliance_agent.nucleo.telegram_nucleo"}
+  "/api/ob/retiradas": {classe: afirma, afirma: "OBs que o portal da transparência publicou e depois DESPUBLICOU.", fonte: "compliance_agent.reporting.ob_retiradas"}
+  "/api/orgao/cidades": {classe: afirma, afirma: "Concentração GEOGRÁFICA dos fornecedores de um órgão (ou de todo o Estado se ug ausente): em que cidades se sediam quem o órgão paga.", fonte: "compliance_agent.cruzamento"}
+  "/api/osint/agente_publico": {classe: afirma, afirma: "Fila de agente público × entidade que recebeu dinheiro público.", fonte: "tools.agente_publico_reverso"}
+  "/api/osint/beneficiario_final": {classe: afirma, afirma: "sobe a cadeia societária de uma PJ até as pessoas físicas.", fonte: "compliance_agent.osint.fonte_grafo"}
+  "/api/osint/cocontato_certame": {classe: afirma, afirma: "Dois participantes do MESMO certame atendendo pelo mesmo telefone ou e-mail.", fonte: "tools.cocontato_certame"}
+  "/api/osint/conluio_municipal": {classe: afirma, afirma: "E.3.2 municipal — vencedor × perdedora com sócio em comum nos certames do TCE-RJ.", fonte: "compliance_agent.osint.qsa_certame_municipal"}
+  "/api/osint/contato_compartilhado": {classe: afirma, afirma: "Telefone e e-mail compartilhados — as arestas mais fortes da régua depois de `mesma_sala`.", fonte: "compliance_agent.osint.contato_compartilhado; data/receita_estab.db"}
+  "/api/osint/elos_ocultos": {classe: afirma, afirma: "Empresas que dividem contato E ambas recebem do Estado — o elo que ninguém declarou.", fonte: "compliance_agent.reporting.intel_base, tools.elos_ocultos; tabelas grafo_persistido, ob_orcamentaria_siafe"}
+  "/api/osint/historico_socio": {classe: afirma, afirma: "Todas as sociedades de uma pessoa ao longo da série, com entrada e saída observadas.", fonte: "compliance_agent.osint.historico_societario"}
+  "/api/osint/interposicao": {classe: afirma, afirma: "perfil de laranja no QSA, calibrado por PREVALÊNCIA de cada eixo.", fonte: "compliance_agent.osint.interposicao"}
+  "/api/osint/parentesco": {classe: afirma, afirma: "Hipóteses de vínculo familiar no QSA, com a prevalência de cada eixo acionado.", fonte: "compliance_agent.osint.parentesco"}
+  "/api/osint/parentesco/prevalencia": {classe: afirma, afirma: "Prevalência de cada eixo NA BASE DE HOJE, contra a calibração declarada.", fonte: "compliance_agent.osint.parentesco"}
+  "/api/osint/patrimonio": {classe: afirma, afirma: "capacidade declarada × recebimento público.", fonte: "compliance_agent.osint.patrimonio; tabelas empresas_cadastro, ordens_bancarias"}
+  "/api/osint/processos": {classe: afirma, afirma: "Processos já lidos cuja empresa tem sinal OSINT — a correlação que faltava.", fonte: "tools.osint_x_processos"}
+  "/api/osint/resolucao_nome_cnpj": {classe: afirma, afirma: "Estado da resolução razão social → CNPJ pelo catálogo nacional da Receita.", fonte: "tools.resolver_nome_cnpj"}
+  "/api/osint/serie_societaria": {classe: afirma, afirma: "Estado da série de snapshots: o denominador que impede ler silêncio como limpeza.", fonte: "compliance_agent.osint.fonte_grafo, compliance_agent.osint.historico_societario; tabelas socio_historico"}
+  "/api/osint/trocas_societarias": {classe: afirma, afirma: "Troca de quadro societário perto de uma data — sócio que entra depois da homologação, ou que sai depois do pagamento.", fonte: "compliance_agent.osint.historico_societario"}
+  "/api/osint/vinculo_na_data": {classe: afirma, afirma: "*Fulano era sócio desta empresa NESTA data?* — a pergunta que fecha direcionamento.", fonte: "compliance_agent.osint.historico_societario"}
+  "/api/ownership": {classe: afirma, afirma: "controle internacional (LEI + relações) via GLEIF (sem chave).", fonte: "compliance_agent.providers.lookup"}
+  "/api/pcrj/assinaturas": {classe: afirma, afirma: "Quem assinou cada despacho da Prefeitura — matrícula publicada pelo SEI × folha municipal.", fonte: "tools.pcrj_assinaturas_x_folha, tools.pcrj_signatario_x_qsa"}
+  "/api/pcrj/beneficios_vinculo": {classe: afirma, afirma: "Comissionados/servidores municipais × benefício social (Bolsa Família etc.) DURANTE o vínculo (fairness: só o mês dentro da janela de vínculo conta).", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/pcrj/comissionados_candidatos": {classe: afirma, afirma: "Comissionados da PREFEITURA do Rio que foram CANDIDATOS (TSE) — tabela pcrj_comissionado_candidato (data/pcrj.db, coletor pcrj/comissionados_candidatos).", fonte: "compliance_agent.pcrj.comissionados_candidatos; tabelas pcrj_comissionado_candidato"}
+  "/api/pcrj/consultar": {classe: operacional, afirma: "Consulta ao vivo de processo da Prefeitura na pesquisa pública do SEI.RIO (executada na VM-2).", fonte: "compliance_agent.acervo"}
+  "/api/pcrj/doe_canal_informal": {classe: afirma, afirma: "Canais @gmail.com usados como via de compra por órgão municipal (pesquisa de mercado / retirada de empenho por e-mail pessoal) — minerado do D.O.", fonte: "compliance_agent.pcrj.doe_minerador"}
+  "/api/pcrj/doe_concentracao": {classe: afirma, afirma: "Concentração de vencedor nas Atas de Registro de Preços mineradas do D.O.", fonte: "compliance_agent.pcrj.doe_minerador"}
+  "/api/pcrj/download": {classe: operacional, afirma: "Baixa a íntegra.", fonte: "tabelas contrato_integra"}
+  "/api/pcrj/emergencias": {classe: afirma, afirma: "Emergências à incumbente na Prefeitura (tools/pcrj_emergencia_incumbente): fundamento lido nos autos × contrato anterior no mesmo órgão × certame citado × prorr…", fonte: "tools.pcrj_emergencia_incumbente"}
+  "/api/pcrj/fantasmas": {classe: afirma, afirma: "Servidor-fantasma na folha da Câmara/PCRJ — 8 sinais determinísticos (pcrj/fantasma_servidor), cache materializado em pcrj_fantasma_servidor.", fonte: "tabelas pcrj_fantasma_servidor"}
+  "/api/pcrj/gastos_achados": {classe: afirma, afirma: "Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na folha · D10 rede de sócios entre concorrentes · aditivo estourado)…", fonte: "tabelas alertas"}
+  "/api/pcrj/integra/{numero:path}": {classe: afirma, afirma: "Íntegra de um contrato: texto completo, processos SEI citados e link do original.", fonte: "tabelas contrato_integra, pcrj_contratos"}
+  "/api/pcrj/integras": {classe: afirma, afirma: "Lista as íntegras capturadas.", fonte: "tabelas contrato_doe_sinal, contrato_integra, pcrj_contratos"}
+  "/api/pcrj/saude": {classe: operacional, afirma: "Laudo de saúde das coletas da Prefeitura do Rio.", fonte: "tools.pcrj_saude"}
+  "/api/perfil": {classe: afirma, afirma: "Dossiê 360 INSTANTÂNEO de um CNPJ, montado do banco local (sem rede): perícia (grau/achados), pagamento (OB total, órgãos), QSA (sócios), sede/fachada, vitórias…", fonte: "tabelas estab, ordens_bancarias, pericia_fornecedor, pncp_resultado, socios_fornecedor, verificacao_sede"}
+  "/api/pericia/bateria": {classe: afirma, afirma: "Cobertura da BATERIA: quais dos 24 testes de perícia REALMENTE rodam, e o que falta.", fonte: "tools.bateria_pericia"}
+  "/api/pericia/cobertura": {classe: afirma, afirma: "Quanto do acervo já recebeu JUÍZO documento a documento — e por qual cadeia de LLM.", fonte: "compliance_agent.reporting.cobertura_pericia"}
+  "/api/pericia_contabil": {classe: afirma, afirma: "Placar por esfera, maiores \"a maior\", duplicidades (mesma NL, mesmo valor) e motivos dos indeterminados.", fonte: "data/pericia_contabil_resumo.json (gerador compliance_agent/pericia_contabil_rotina.py)"}
+  "/api/pericias": {classe: afirma, afirma: "Ranking pesquisável de perícias de fornecedor (pericia_fornecedor).", fonte: "tabelas pericia_fornecedor"}
+  "/api/pipelines": {classe: operacional, afirma: "SLO de frescor por etapa (config/pipelines.yaml) — a agenda vê o GATILHO, aqui vemos o OUTPUT.", fonte: "tools.pipelines_slo"}
+  "/api/pncp": {classe: afirma, afirma: "PNCP (API pública de consulta, sem login): licitação SEM depender do SEI.", fonte: "compliance_agent.collectors.pncp, compliance_agent.lex; compliance.db"}
+  "/api/pncp/conluio": {classe: afirma, afirma: "Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item): CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se re…", fonte: "compliance_agent.collectors.pncp_resultados; compliance.db"}
+  "/api/poder/nomeados_candidatos": {classe: afirma, afirma: "Servidor/nomeado (folha) × candidato (TSE consulta_cand) — UMA linha por pessoa, com a verificação declarada: VERIFICADO (CPF parcial da folha confere com o do…", fonte: "compliance_agent.nomeados_candidatos; compliance.db"}
+  "/api/ppp": {classe: afirma, afirma: "Dossiê pericial de PPP/concessão municipal (CCPAR + D.O.", fonte: "compliance_agent.pcrj.dossie_ppp; data/pcrj.db"}
+  "/api/ppp/triagem": {classe: afirma, afirma: "Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo Nacional de Saúde, aporte, PMI-captura, 5% RCL, verificador) — lista…", fonte: "compliance_agent.pcrj.triagem_ppp; data/pcrj.db"}
+  "/api/processo": {classe: afirma, afirma: "Avaliação 360 persistida de um processo SEI (processo_avaliacao).", fonte: "processo_avaliacao (compliance.db), gravada por tools/processo_360.py"}
+  "/api/processo/avaliar": {classe: operacional, afirma: "Dispara a avaliação 360 de um processo SEI em background (subprocess; 1 pesado por vez — a VM tem 2 vCPU).", fonte: "A DECLARAR"}
+  "/api/qualidade/conformidade": {classe: afirma, afirma: "Estado das regras de qualidade por sistema: regras, violações abertas, tendência.", fonte: "data/qualidade_estado.json, data/qualidade_historico.jsonl, data/qualidade_juiz.json (compliance_agent/qualidade/estado.py)"}
+  "/api/radar/ciclo": {classe: operacional, afirma: "Radar: roda um ciclo de vigilância agora (o timer systemd chama isto).", fonte: "compliance_agent.radar"}
+  "/api/radar/status": {classe: operacional, afirma: "Radar: o que está sendo vigiado + últimos alertas.", fonte: "compliance_agent.radar"}
+  "/api/radar/vigiar": {classe: operacional, afirma: "Radar: adiciona um alvo à watchlist 24/7.", fonte: "compliance_agent.radar"}
+  "/api/relatorio/inteligencia": {classe: afirma, afirma: "Relatório de INTELIGÊNCIA de fornecedor (motor do comando /relatorio do Yoda).", fonte: "compliance_agent.reporting.inteligencia"}
+  "/api/relatorio/orgao": {classe: afirma, afirma: "Relatório de inteligência de ÓRGÃO (UG): quanto a unidade gestora pagou, a quem, por ano.", fonte: "compliance_agent.reporting.inteligencia_orgao"}
+  "/api/requerimentos": {classe: operacional, afirma: "Os requerimentos de informação sugeridos pelas investigações (notas do vault) — só leitura.", fonte: "compliance_agent.requerimentos_vault"}
+  "/api/requerimentos/minuta": {classe: operacional, afirma: "Minuta de requerimento de informação sugerida por uma investigação do vault.", fonte: "compliance_agent.requerimentos_vault"}
+  "/api/responsaveis": {classe: afirma, afirma: "Quem responde por um processo SEI: ordenador, gestor e fiscal, com ID funcional.", fonte: "A DECLARAR"}
+  "/api/restritos": {classe: afirma, afirma: "Lista de controle dos processos SEI de acesso RESTRITO (data/sei_restritos.json).", fonte: "data/sei_restritos.json (gerador tools/sei_restritos.py)"}
+  "/api/rodizio": {classe: afirma, afirma: "Rodízio temporal de cartel (bid rotation): vencedores que se revezam no topo de uma UG ano a ano.", fonte: "compliance_agent.rodizio_temporal"}
+  "/api/route": {classe: operacional, afirma: "Triagem DETERMINÍSTICA pedido→capacidade (sem LLM): pontua cada capacidade do capabilities.yaml pela sobreposição de palavras com quando_usar/descricao/id e dev…", fonte: "compliance_agent.skilltree"}
+  "/api/sancoes/detalhar": {classe: afirma, afirma: "Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o contrato com o ente-alvo (default Estado-RJ).", fonte: "compliance_agent.sancao_abrangencia; compliance.db"}
+  "/api/sei/acatamento": {classe: afirma, afirma: "Auditoria de ACATAMENTO de pareceres (art.", fonte: "compliance_agent.sei_recomendacoes, tools.backfill_dossie_mestre"}
+  "/api/sei/direcionamento": {classe: afirma, afirma: "Varredor de direcionamento: busca editais (PNCP), extrai por schema, roda red flags do Lex e ranqueia por gravidade.", fonte: "compliance_agent.sei_direcionamento"}
+  "/api/sei/empresa/iniciar": {classe: operacional, afirma: "Dispara a busca+download da árvore SEI completa de uma empresa.", fonte: "A DECLARAR"}
+  "/api/sei/empresa/status": {classe: operacional, afirma: "Progresso da árvore SEI de uma empresa: quantos processos existem (via OB paga — processos_de_fornecedor) vs quantos já estão no arquivo compacto.", fonte: "A DECLARAR"}
+  "/api/sei/empresa/zip": {classe: operacional, afirma: "ZIP do arquivo compacto (texto+fotos+manifest) de cada processo SEI JÁ arquivado dessa empresa.", fonte: "A DECLARAR"}
+  "/api/siafe/atualizar": {classe: operacional, afirma: "Atualização DIÁRIA incremental do SIAFE 2 (aba OB Orçamentária, OBs novas, sem filtro).", fonte: "A DECLARAR"}
+  "/api/siafe/stats": {classe: afirma, afirma: "Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante).", fonte: "A DECLARAR"}
+  "/api/siafe/status": {classe: operacional, afirma: "Estado da coleta SIAFE (lockfile: se há coleta rodando e qual).", fonte: "compliance_agent.siafe_runner"}
+  "/api/siafe/sweep": {classe: operacional, afirma: "SWEEP completo do SIAFE por UG (BACKFILL; fura o teto de 1000).", fonte: "A DECLARAR"}
+  "/api/siafe/truncamento": {classe: afirma, afirma: "A fonte CANÔNICA de pagamento está truncada — e nada avisava.", fonte: "compliance_agent.reporting.cobertura_siafe"}
+  "/api/sistema/atividade": {classe: operacional, afirma: "Atividade de TODA a máquina numa resposta: sweeps vivos (e quando mexeram), fila SEI lida × restante, arquivo compacto (nº e bytes), pipelines (SLO) e aprendiza…", fonte: "compliance.db, data/pipelines_slo_estado.json"}
+  "/api/skill": {classe: operacional, afirma: "Detalhe de uma capacidade (rota, args, quando usar, status) — p/ o /skill <id>.", fonte: "compliance_agent.skilltree"}
+  "/api/skills": {classe: operacional, afirma: "Skilltree (capacidades) agrupada por domínio — texto p/ o /skills do Telegram.", fonte: "compliance_agent.skilltree"}
+  "/api/skills/reload": {classe: operacional, afirma: "Recarrega capabilities.yaml do disco (fail-safe) — p/ o /skills_reload (admin no Yoda).", fonte: "compliance_agent.skilltree"}
+  "/api/skills/validate": {classe: operacional, afirma: "Valida o contrato (schema + rotas PRONTO existem) — p/ o /skills_validate (admin).", fonte: "compliance_agent.skilltree"}
+  "/api/sobrepreco": {classe: afirma, afirma: "Sobrepreço: preço pago vs mediana de referência de mercado.", fonte: "compliance_agent.sobrepreco"}
+  "/api/sugestoes": {classe: operacional, afirma: "Autocomplete leve: empresas (favorecido_resumo, prefixo no nome ou no CNPJ) + nomeados (registros_folha=estado, pcrj_comissionado_candidato=prefeitura).", fonte: "tabelas favorecido_resumo, pcrj_comissionado_candidato, registros_folha"}
+  "/api/sweeps/pausar": {classe: operacional, afirma: "Admin (painel): PAUSA os sweeps.", fonte: "A DECLARAR"}
+  "/api/sweeps/retomar": {classe: operacional, afirma: "Admin (painel): RETOMA os sweeps (remove as flags de pausa).", fonte: "A DECLARAR"}
+  "/api/sweeps/status": {classe: operacional, afirma: "Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).", fonte: "tabelas ob_orcamentaria_siafe"}
+  "/api/tac/ranking": {classe: afirma, afirma: "Quem paga FORA de contrato regular, e quanto fora da curva está.", fonte: "data/tac_ranking_ugs.json (gerador tools/tac_ranking_ugs.py)"}
+  "/api/territorio/baldes": {classe: afirma, afirma: "Contratos sem município, multimunicípio, regionais ou sem AP.", fonte: "data/territorio.db via compliance_agent.territorio"}
+  "/api/territorio/estado": {classe: afirma, afirma: "Mapa dos 92 municípios do RJ: valor contratado/pago por município e baldes.", fonte: "data/territorio.db via compliance_agent.territorio"}
+  "/api/territorio/estado/{cod_ibge}": {classe: afirma, afirma: "Ficha de um município: contratos do Estado atribuídos a ele.", fonte: "data/territorio.db (territorio_contrato_estado)"}
+  "/api/territorio/pcrj": {classe: afirma, afirma: "Mapa das 5 APs da Prefeitura do Rio: valor contratado por área.", fonte: "data/territorio.db via compliance_agent.territorio"}
+  "/api/territorio/pcrj/{ap}": {classe: afirma, afirma: "Ficha de uma AP: contratos da Prefeitura atribuídos a ela.", fonte: "data/territorio.db (territorio_contrato_pcrj)"}
+  "/api/trace/{correlation_id}": {classe: operacional, afirma: "Etapas registradas de um request (correlation-id) para depuração.", fonte: "A DECLARAR"}
+  "/api/tunnel/collect": {classe: operacional, afirma: "Dispara coleta de OBs pelo tunnel Windows.", fonte: "A DECLARAR"}
+  "/api/tunnel/status": {classe: operacional, afirma: "Retorna se o tunnel do Windows está conectado.", fonte: "A DECLARAR"}
+  "/api/ugs": {classe: afirma, afirma: "Catálogo das UGs (órgãos) — o /UG do Yoda.", fonte: "compliance_agent.reporting.inteligencia_orgao"}

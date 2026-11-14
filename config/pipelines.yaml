@@ -241,3 +241,21 @@ pipelines:
       movimentos). **Não há nome de parte, CPF/CNPJ nem teor de decisão** (Portaria CNJ 160/2020),
       então NÃO serve para "achar processo do fornecedor X pelo CNPJ" — promessa que aparece em doc
       de terceiro e é falsa. Serve com número CNJ conhecido e para medir judicialização por órgão.
+
+  # ---- REGRAS DE QUALIDADE (docs/REGRAS-DE-QUALIDADE.md) ----
+  - nome: qualidade-sensores
+    arquivo: data/qualidade_estado.json
+    max_stale_h: 8
+    grupo: qualidade
+    nota: >-
+      fotografia dos sensores das regras de qualidade; regravada pelo sensor `qualidade` do laço de automelhoria
+      (cron a cada 3 h). Parada = ninguém está conferindo o que o painel, o vault e o Yoda afirmam.
+  - nome: qualidade-juiz
+    remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.qualidade juiz >> data/qualidade_juiz.log 2>&1"
+    arquivo: data/qualidade_juiz.json
+    max_stale_h: 50
+    grupo: qualidade
+    nota: >-
+      juiz subjetivo diário (Claude pela ASSINATURA, `backend="cli"` — nunca API paga; teto de 12 chamadas/dia no
+      motor). Cron sugerido 08:10. O remédio roda o próprio juiz: ele grava o arquivo mesmo quando a assinatura
+      está sem cota (rodada PENDENTE), então o SLO mede a TENTATIVA; o silêncio de JUÍZO é do sensor CST-15.
