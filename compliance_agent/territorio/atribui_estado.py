@@ -48,6 +48,7 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
+from compliance_agent.reporting.intel_base import moeda
 from compliance_agent.territorio import base
 from compliance_agent.territorio.dicionario import ler_municipios
 from compliance_agent.territorio.geo import RIO, nome_municipio, norm
@@ -496,7 +497,7 @@ def _pagamentos(db_path, linhas: list[dict], log=print) -> dict[str, dict]:
                                  "motivo": "; ".join(dict.fromkeys(r["ressalvas"] for r in ok if r["ressalvas"]))[:500] or None,
                                  "alerta": alerta}
     com = sum(1 for v in out.values() if v["pago"] is not None)
-    log(f"[pago] {com} contratos com pagamento vinculado (R$ {sum(v['pago'] or 0 for v in out.values()):,.2f}); "
+    log(f"[pago] {com} contratos com pagamento vinculado (R$ {moeda(sum(v['pago'] or 0 for v in out.values()))}); "
         f"{sem_serie} sem série mensal (a releitura das OBs não fechou com a perícia)")
     return out
 
@@ -723,7 +724,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
     log(f"[estado] TCE-RJ/SIGA: {est['juntados']} registros casaram um-para-um com contrato do PNCP (CNPJ, valor ±1%, data), "
         f"{est['novos']} contratos novos ({est['em_aberto']} deles 'Em Aberto'), {est['repetidos']} repetições descartadas; "
         f"fora: {est['cancelado']} cancelados, {est['rascunho']} em elaboração; possível duplicidade entre fontes: "
-        f"{est['dup_n']} (R$ {est['dup_valor']:,.2f})")
+        f"{est['dup_n']} (R$ {moeda(est['dup_valor'])})")
     # o MESMO órgão chega "ADMINISTRACAO CENTRAL" do PNCP e "UERJ - ADMINISTRACAO CENTRAL" do SIGA: exibe o do SIGA (com a sigla)
     for k in linhas:
         k["orgao"] = est["siglas"].get(norm(unidade_base(k["orgao"])), k["orgao"])
