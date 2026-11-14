@@ -11,8 +11,10 @@ Camadas:
   · SUBJETIVA — hipóteses H* geradas pelo motor Claude a partir dos achados determinísticos, SEMPRE com explicação
     inocente e próximo passo. Sem o motor (ausente, sem cota) as hipóteses anteriores são mantidas e marcadas
     `pendente` — a determinística segue de qualquer jeito;
-  · CURADORIA MANUAL — o "top 10" (T01..T10) é seleção editorial de 13/11/2026; é preservado do arquivo anterior e
-    marcado como tal (não é recalculado).
+  · CURADORIA MANUAL — o "top 10" (T01..T10) é seleção editorial lida de `data/governo_couto_curadoria.json` (dado
+    real, fora do git — repositório público). Cada item declara o estado da verificação (SUSTENTADO, PARCIAL,
+    REFUTADO); sem estado ele sai PENDENTE e ⚪. Não é mais preservado do arquivo anterior: era assim que títulos com
+    números já refutados sobreviviam a cada rodada.
 
 Regras da casa: pago = SÓ OB com status Contabilizado do SIAFE (`ob_orcamentaria_siafe`); TAC e contrato não são OB
 (valor_ob nulo); INDISPONÍVEL ≠ zero (regra cuja fonte falha sai "INDISPONÍVEL", não zero); CPF mascarado; indício ≠
@@ -42,6 +44,7 @@ logger = logging.getLogger(__name__)
 NOME = "governo_couto_regras"
 SAIDA = DATA / "governo_couto_suspeitas.json"
 DETALHE = DATA / "governo_couto_regras.json"
+CURADORIA = DATA / "governo_couto_curadoria.json"
 
 DB = Path(os.environ.get("JFN_DB") or RAIZ / "data" / "compliance.db")
 DB_RECEITA = Path(os.environ.get("JFN_DB_RECEITA") or RAIZ / "data" / "receita_estab.db")
@@ -68,27 +71,10 @@ GRAU_REGRA = {"D01": "⚪", "D02": "🟡", "D03": "🟡", "D04": "🟡", "D05": 
 # D18 rebaixado a 🟡 na revisão cética de 13/11/2026: "fantasma_score alto" não é fachada documentada (0 de 6 eram);
 # 🔴 só com veredito de fachada registrado (ver achados_deterministicos).
 
-# Veredito da revisão cética de 13/11/2026 (`~/vault/notas/revisao-cetica-2026-11-13.md` §6.1 e §6.2) sobre a seleção
-# editorial T01..T10. A curadoria manual não pode carregar 🔴 fixado à mão: o grau curado vira `grau_proposto`, o
-# item sai no máximo 🟡, e o REFUTADO sai ⚪ — com o veredito escrito no próprio item.
-REVISAO_TOP10 = {
-    "T01": ("PARCIAL", "a OB de 06/08/2026 (competência 06/2026) caiu na vigência de cautelar do STF registrada no "
-                       "CEIS (todas as esferas); 'operador preso' sem fonte"),
-    "T02": ("PARCIAL", "≈ R$ 78,5 mi em OB ligada aos TACs, não R$ 151,8 mi; par de OB possivelmente devolvida e "
-                       "reemitida (R$ 13.176.044,63)"),
-    "T03": ("PARCIAL", "valor e cautelar conferem; data de inclusão no CEIS desconhecida; processos citados errados"),
-    "T04": ("PARCIAL", "+76,4% deduplicado, quebra em julho; valor reconhecido ≠ pago; sem base 2025"),
-    "T05": ("REFUTADA", "CEIS: abrangência 'No órgão sancionador' (IFRJ) — não impede o Estado de pagar; a OB do dia "
-                        "seguinte é do FUNESBOM, de competência anterior"),
-    "T06": ("PARCIAL", "NRTT: 100% liquidações anteriores à sanção; Rede Sol R$ 20.594.226,85 (OB duplicada sem número)"),
-    "T07": ("PARCIAL", "o 'contrato de R$ 43 mi do 3º dia' é ata de registro de preços assinada em 24/02/2026, sem OB "
-                       "da CEHAB; núcleo SEAS/Procon fica"),
-    "T08": ("PARCIAL", "homologação 25/02 e contrato 12/03/2026, pagamento autorizado em 20/03 — decidido antes da "
-                       "gestão; F.L.O.S.P.E. é subsidiária da SuperVia"),
-    "T09": ("PARCIAL", "contrato com efeitos desde 10/03/2026 (DOERJ 14/04), não 'assinado no 5º dia'; R$ 43,0 mi são "
-                       "todas as OB 2026 à DRV, nenhuma no processo da dispensa"),
-    "T10": ("PARCIAL", "'OB acima do contrato' é variação cambial (contrato em US$)"),
-}
+# Curadoria T01..T10: o estado da verificação vem DECLARADO em cada item do arquivo de curadoria (verificação
+# independente de 13/11/2026, `~/vault/notas/verificacao-fable-correcoes-2026-11-13.md` §6.1). Curadoria nunca carrega
+# 🔴 — o 🔴 é da régua (caso D14 com contrato na vigência); PARCIAL sai no máximo 🟡; REFUTADO e PENDENTE saem ⚪.
+ESTADOS_CURADORIA = ("SUSTENTADO", "PARCIAL", "REFUTADO")
 INOCENTE_REGRA = {
     "D01": "contratação direta legítima (concessionária, inexigibilidade real) ou mudança de mix de objetos",
     "D02": "continuidade do serviço essencial enquanto a licitação corre",
@@ -1378,9 +1364,12 @@ def aplicar_verificacao(x: dict) -> dict:
         x["regra_ou_hipotese"] = txt
         return x
     prova = [p for p in (x.get("prova_primaria") or []) if str(p).strip()]
-    if not prova and x.get("top10") and x.get("processo"):
-        prova = [f"processo {x['processo']} (curadoria manual de 13/11/2026)"]
     x["prova_primaria"] = prova
+    if x.get("top10"):
+        # o título já carrega o estado (curar_top10); VERIFICADO só o que a verificação sustentou com prova primária
+        x["verificacao"] = "VERIFICADO" if x.get("estado_verificacao") == "SUSTENTADO" and prova else "PENDENTE"
+        x["regra_ou_hipotese"] = txt
+        return x
     if prova:
         x["verificacao"] = "VERIFICADO"
         x["regra_ou_hipotese"] = txt
@@ -1396,25 +1385,62 @@ def aplicar_verificacao(x: dict) -> dict:
     return x
 
 
-def rebaixar_curadoria(x: dict) -> dict:
-    """Item da curadoria manual: nunca 🔴 fixado à mão; veredito da revisão cética anexado; REFUTADO → ⚪."""
-    x = dict(x)
-    ver = REVISAO_TOP10.get(str(x.get("id") or ""))
-    if ver:
-        x["revisao_cetica"] = {"data": "2026-11-13", "veredito": ver[0], "nota": ver[1]}
-    alvo = "⚪" if ver and ver[0] == "REFUTADA" else ("🟡" if x.get("grau") == "🔴" else x.get("grau"))
+def curar_top10(x: dict) -> dict:
+    """Item da curadoria manual. Função pura e idempotente: estado de verificação obrigatório (sem ele, PENDENTE e ⚪),
+    estado no início do título, nunca 🔴 fixado à mão, REFUTADO/PENDENTE → ⚪, PARCIAL/SUSTENTADO → no máximo 🟡."""
+    x = dict(x, top10=True, camada=x.get("camada") or "deterministica")
+    x.setdefault("curadoria", "manual — seleção editorial com estado da verificação de 13/11/2026")
+    est = str(x.get("estado_verificacao") or "").upper()
+    est = est if est in ESTADOS_CURADORIA else "PENDENTE"
+    x["estado_verificacao"] = est
+    txt = str(x.get("regra_ou_hipotese") or "")
+    for e in ESTADOS_CURADORIA + ("PENDENTE",):
+        if txt.startswith(f"{e} · "):
+            txt = txt[len(e) + 3:]
+    x["regra_ou_hipotese"] = f"{est} · {txt}"
+    alvo = "⚪" if est in ("REFUTADO", "PENDENTE") else ("🟡" if x.get("grau") in ("🔴", "🟡", None) else x["grau"])
     if alvo != x.get("grau"):
         x.setdefault("grau_proposto", x.get("grau"))
         x["grau"] = alvo
     return x
 
 
-def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, motivo_subj: str | None, ctx_info: dict) -> dict:
+def carregar_curadoria(caminho: Path = CURADORIA) -> list[dict] | None:
+    """Itens do arquivo de curadoria (`{"itens": [...]}` ou lista). Ausente ou ilegível → None (top 10 fica de fora,
+    dito em `curadoria.estado` — nunca se volta a preservar o título antigo)."""
+    d = ler_json(caminho)
+    itens = d.get("itens") if isinstance(d, dict) else d
+    return [x for x in itens if isinstance(x, dict)] if isinstance(itens, list) else None
+
+
+def _estado_curadoria(curadoria: list[dict] | None) -> dict:
+    if curadoria is None:
+        return {"estado": "ausente", "arquivo": CURADORIA.name,
+                "motivo": "arquivo de curadoria ausente — o top 10 não é publicado sem estado de verificação"}
+    return {"estado": "ok", "arquivo": CURADORIA.name, "n": len(curadoria)}
+
+
+def reaplicar_curadoria(saida: Path = SAIDA, curadoria: Path = CURADORIA) -> int:
+    """Troca SÓ o top 10 do arquivo publicado pela curadoria atual, sem recalcular as 20 regras (que leva até 1 h).
+    Devolve quantos itens curados foram gravados; sem curadoria legível não toca o arquivo (→ -1)."""
+    doc, cur = ler_json(saida), carregar_curadoria(curadoria)
+    if not isinstance(doc, dict) or cur is None:
+        return -1
+    from compliance_agent.governo_couto import _mascarar_tudo
+    top = [aplicar_verificacao(curar_top10(x)) for x in cur]
+    A = top + [x for x in doc.get("achados", []) if isinstance(x, dict) and not x.get("top10")]
+    doc.update(achados=A, n_achados=len(A), curadoria=_estado_curadoria(cur),
+               por_verificacao=dict(collections.Counter(x.get("verificacao") for x in A)))
+    gravar_json(saida, _mascarar_tudo(doc))
+    return len(top)
+
+
+def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, motivo_subj: str | None, ctx_info: dict,
+           curadoria: list[dict] | None = None) -> dict:
     from compliance_agent.governo_couto import _mascarar_tudo
     anterior = anterior or {}
     ant = [x for x in anterior.get("achados", []) if isinstance(x, dict)]
-    top = [rebaixar_curadoria(dict(x, curadoria="manual — seleção editorial preservada (não recalculada)"))
-           for x in ant if x.get("top10")]
+    top = [curar_top10(x) for x in (curadoria or [])]
     det = achados_deterministicos(res)
     if hipoteses:
         mod = ctx_info.get("modelo") or "modelo não informado"
@@ -1434,7 +1460,7 @@ def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, mo
                                    "(valor_ob nulo nesses casos)"),
                relatorio=anterior.get("relatorio") or "~/vault/casos/gestao-couto-analise-2026-11-13.md",
                regua="compliance_agent.governo_couto_regras (recalculada semanalmente)",
-               camada_subjetiva=estado_subj, verificacao_definicao=VERIFICACAO_DEF,
+               camada_subjetiva=estado_subj, curadoria=_estado_curadoria(curadoria), verificacao_definicao=VERIFICACAO_DEF,
                por_verificacao=dict(collections.Counter(x["verificacao"] for x in A)),
                indisponivel=[f"{k}: {v['indisponivel']}" for k, v in res.items() if v.get("indisponivel")],
                n_achados=len(A), achados=A)
@@ -1462,7 +1488,10 @@ def _rodar(log, saida: Path, detalhe: Path, usar_motor: bool) -> int:
         if bruto is not None and not hip:
             motivo = "motor respondeu sem hipótese válida (faltou explicação inocente ou próximo passo)"
     log.info("camada subjetiva: %s", f"{len(hip)} hipóteses do motor" if hip else f"PENDENTE — {motivo}")
-    doc = montar(res, anterior=anterior, hipoteses=hip, motivo_subj=motivo, ctx_info=info)
+    cur = carregar_curadoria()
+    if cur is None:
+        log.warning("curadoria ausente (%s): o top 10 sai do arquivo até ser declarado com estado de verificação", CURADORIA)
+    doc = montar(res, anterior=anterior, hipoteses=hip, motivo_subj=motivo, ctx_info=info, curadoria=cur)
     n_det = sum(1 for x in doc["achados"] if x.get("camada") == "deterministica" and not x.get("top10"))
     doc["efeito"] = {"achados": len(doc["achados"]), "deterministicos": n_det, "hipoteses_motor": len(hip or [])}
     doc["ultimo_efeito_iso"] = info["gerado_em"] if n_det else (anterior or {}).get("ultimo_efeito_iso")
@@ -1478,7 +1507,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--saida", default=str(SAIDA))
     ap.add_argument("--detalhe", default=str(DETALHE))
     ap.add_argument("--sem-motor", action="store_true", help="não chama o motor Claude (camada subjetiva fica pendente)")
+    ap.add_argument("--so-curadoria", action="store_true",
+                    help="só troca o top 10 do arquivo publicado pela curadoria atual (sem recalcular as regras)")
     a = ap.parse_args(argv)
+    if a.so_curadoria:
+        n = reaplicar_curadoria(Path(a.saida))
+        print(f"curadoria: {n} itens gravados em {a.saida}" if n >= 0 else "curadoria ou arquivo publicado ilegível")
+        return 0 if n >= 0 else 1
     return executar(NOME, lambda log: _rodar(log, Path(a.saida), Path(a.detalhe), not a.sem_motor))
 
 

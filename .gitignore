@@ -228,6 +228,7 @@ agentdb.rvf.lock
 data/pericia_contabil_resumo.json
 data/governo_couto_suspeitas.json
 data/governo_couto_regras.json
+data/governo_couto_curadoria.json
 data/cge_confronto.json
 data/cge_auditorias.json
 
