@@ -81,7 +81,7 @@ def _b_sobrepreco(d):
 
 
 def _b_escalada(d):
-    ls = [f"<tr><td>{a['razao']}×</td><td>{_esc(a['item'])}{(' / '+_esc(a['unidade_medida'])) if a.get('unidade_medida') else ''}"
+    ls = [f"<tr><td>{a['razao']}×</td><td>{_esc(a['item'])}{(' / por '+_esc(a.get('unidade_normalizada') or a['unidade_medida'])) if (a.get('unidade_normalizada') or a.get('unidade_medida')) else ''}"
           f"<br><small>{_esc(a.get('fornecedor'))}</small></td>"
           f"<td>{a['n_compras']} compras / {a['span_dias']}d"
           f"{('<br><small>'+str(a['final_vs_mercado'])+'× o mercado</small>') if a.get('final_vs_mercado') else ''}</td>"

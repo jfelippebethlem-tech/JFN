@@ -35,7 +35,7 @@ function _linhasContrato(itens, campoValor){
 
 function _esfera(nome, e, defs){
   const p = e.placar || {};
-  const kp = _CLASSES.map(([k, rot, cor, gl]) => kpi(fmtN(p[k] || 0), `${rot} (${_pct(p[k] || 0, e.n)})`, cor, gl, {sobre: 'Contratos desta esfera nesta classe da perícia contábil: devido (valor + aditivos, pró-rata quando contínuo) × pago (só OB Contabilizada do SIAFE). Indeterminado = sem vínculo seguro OB↔contrato; nunca vira zero.'})).join('');
+  const kp = _CLASSES.map(([k, rotulo, cor, gl]) => kpi(fmtN(p[k] || 0), `${rotulo} (${_pct(p[k] || 0, e.n)})`, cor, gl, {sobre: 'Contratos desta esfera nesta classe da perícia contábil: devido (valor + aditivos, pró-rata quando contínuo) × pago (só OB Contabilizada do SIAFE). Indeterminado = sem vínculo seguro OB↔contrato; nunca vira zero.'})).join('');
   const mot = (e.motivos_indeterminado || []).map(m => `<tr><td style="font-size:13px">${esc(m.texto)}</td><td class="right">${fmtN(m.n)}</td><td class="right">${_pct(m.n, p.INDETERMINADO)}</td></tr>`).join('');
   const dup = e.duplicidades || {};
   const cab = '<thead><tr><th>Fornecedor, objeto e órgão</th><th class="right">Valor atualizado</th><th class="right">Devido até o corte</th><th class="right">Pago</th><th class="right">%s</th></tr></thead>';

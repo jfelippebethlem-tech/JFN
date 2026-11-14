@@ -1412,7 +1412,7 @@ export async function renderEscalada(esf='estado'){
     const mkt=x.final_vs_mercado?`<span class="tag rose">${fmtN(x.final_vs_mercado)}× o mercado</span>`:'';
     return card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${(x.unidade_normalizada||x.unidade_medida)?` <span class="dim">/ preço por ${esc(x.unidade_normalizada||x.unidade_medida)}</span>`:''}</div>
       <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${fmtN(x.n_compras)} compras em ${fmtN(x.span_dias)} dias ${mkt}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">série: ${serie}</span></div>

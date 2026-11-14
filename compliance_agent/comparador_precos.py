@@ -637,15 +637,20 @@ _ESFERA_PNCP = {"E": "estadual", "F": "federal", "M": "municipal", "N": "federal
 
 def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
                     esfera: str | None = None,
-                    min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60) -> dict:
+                    min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60,
+                    fator: float = 2.0) -> dict:
     """O número mais forte: sobrepreço (economia acima da mediana) pago a fornecedor que estava
     JURIDICAMENTE VEDADO de contratar com AQUELE ente comprador, À ÉPOCA da compra.
 
     Rigor: (a) a sanção precisa VEDAR o ente do órgão comprador (inidoneidade veda todos; impedimento/
     suspensão só se a esfera/UF do sancionador coincide — via sancao_abrangencia.veda_ente); (b) a
-    sanção precisa estar VIGENTE na data da compra (teste à época); (c) só compras acima da mediana
-    em grupos comparáveis (mesma robustez da economia_potencial). Esfera do comprador vem do
-    pncp_ente (oficial). Separa 'total' (inidoneidade, alcance certo) de 'ente' (impedimento)."""
+    sanção precisa estar VIGENTE na data da compra (teste à época); (c) só compras com indício de
+    sobrepreço em GRUPO HOMOGÊNEO — a mesma base da `economia_potencial` (`comparacao_homogenea`:
+    preço NORMALIZADO na mesma unidade e apresentação comprovadas; ≥ `fator`× a mediana e fora da
+    banda robusta). Unidade ambígua, grupo heterogêneo ou preço fora de mercado é INDETERMINADO:
+    fica FORA da soma e é contado à parte em `indeterminados_vedados` (não absolvido — sem
+    comparação segura). Esfera do comprador vem do pncp_ente (oficial). Separa 'total'
+    (inidoneidade, alcance certo) de 'ente' (impedimento)."""
     from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_ente, vigente_em
     con = _ro(db_path)
     try:
@@ -664,98 +669,87 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
                       con.execute("SELECT cnpj, esfera_id FROM pncp_ente")}
         except sqlite3.OperationalError:
             esfera = {}
-
-        rows = con.execute(
-            "SELECT item_descricao d, unidade_medida un, valor_unitario vu, quantidade, "
-            "orgao_cnpj, orgao_nome, unidade_nome, uf, fornecedor_nome, fornecedor_cnpj, "
-            "certame, data_pub FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 "
-            "AND quantidade>=2 AND item_descricao IS NOT NULL AND length(item_descricao)>=4").fetchall()
-        from collections import defaultdict
-        grupos: dict[tuple, list] = defaultdict(list)
-        for r in rows:
-            b = _norm_item(r["d"])
-            if b:
-                grupos[(b, _un(r["un"]))].append(r)
-
-        total = 0.0
-        por_forn: dict[str, dict] = {}
-        por_abr = {"total": 0.0, "ente": 0.0, "orgao": 0.0}
-        n_compras = 0
-        for (base, un), itens in grupos.items():
-            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
-            n_cert = len({r["certame"] for r in itens})
-            if len(itens) < min_amostra or len(orgaos) < min_orgaos or n_cert < min_certames:
-                continue
-            precos = sorted(r["vu"] for r in itens)
-            med = _mediana(precos)
-            if med <= 0:
-                continue
-            n_perto = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
-            if n_perto < 0.6 * n_cert:
-                continue
-            piso, teto = 0.10 * med, teto_razao * med
-            for r in itens:
-                if certs_esf is not None and r["certame"] not in certs_esf:
-                    continue                       # compra de outra esfera não entra na aba
-                p = r["vu"]
-                if p < piso or p <= med:
-                    continue
-                cnpj = r["fornecedor_cnpj"]
-                if cnpj not in sanc:
-                    continue
-                data = (r["data_pub"] or "")[:10]
-                esfera_alvo = esfera.get(r["orgao_cnpj"]) or "estadual"
-                uf_alvo = (r["uf"] or "RJ").upper()
-                # a sanção mais forte que VEDA este comprador E está vigente na data
-                melhor = None
-                for s in sanc[cnpj]:
-                    if not vigente_em(s, data):
-                        continue                       # não vigente à época (sem data não se afirma)
-                    v = veda_ente(s, esfera_alvo, uf_alvo)
-                    if v["veda"]:
-                        rank = {"total": 3, "ente": 2, "ente_poder": 2, "orgao": 1}
-                        if melhor is None or rank[v["abrangencia"]] > rank[melhor["abrangencia"]]:
-                            melhor = v
-                if not melhor:
-                    continue                           # sancionado, mas não vedava ESTE comprador à época
-                qtd = r["quantidade"] or 1
-                excesso = (min(p, teto) - med) * qtd
-                if excesso <= 0:
-                    continue
-                total += excesso
-                por_abr[melhor["abrangencia"]] += excesso
-                n_compras += 1
-                fo = por_forn.setdefault(cnpj, {
-                    "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": cnpj,
-                    "economia_vedada": 0.0, "n": 0, "abrangencia": melhor["abrangencia"],
-                    "exemplos": []})
-                fo["economia_vedada"] += excesso
-                fo["n"] += 1
-                rank = {"total": 3, "ente": 2, "orgao": 1}
-                if rank[melhor["abrangencia"]] > rank[fo["abrangencia"]]:
-                    fo["abrangencia"] = melhor["abrangencia"]
-                if len(fo["exemplos"]) < 5:
-                    fo["exemplos"].append({
-                        "item": r["d"], "orgao": r["unidade_nome"] or r["orgao_nome"],
-                        "preco": round(p, 2), "mediana": round(med, 2),
-                        "data": data, "veda": melhor["motivo"]})
-
-        forn = sorted(por_forn.values(), key=lambda x: -x["economia_vedada"])
-        for f in forn:
-            f["economia_vedada"] = round(f["economia_vedada"], 2)
-        return {"ok": True, "economia_vedada_total": round(total, 2), "n_compras": n_compras,
-                "por_abrangencia": {k: round(v, 2) for k, v in por_abr.items()},
-                "por_fornecedor": forn[:limite], "n_fornecedores": len(forn),
-                "explicacao": ("Sobrepreço (valor acima da mediana de mercado) pago a fornecedor que "
-                               "estava juridicamente VEDADO de contratar com aquele ente comprador, "
-                               "VIGENTE à época da compra. Inidoneidade veda qualquer ente; "
-                               "impedimento/suspensão só o ente/órgão sancionador. É o dinheiro pago "
-                               "caro a quem não podia sequer contratar — o alvo mais forte."),
-                "ressalva": ("Vedação e sobrepreço vêm de fontes independentes; confirmar a vigência "
-                             "e o alcance no cadastro-fonte (CGU) e o termo de referência antes de uso "
-                             "externo. Suspensão (art. 87 III) tem divergência jurisprudencial. Indício ≠ acusação.")}
+        g = comparacao_homogenea(con, min_amostra=min_amostra, min_certames=min_certames,
+                                 min_orgaos=min_orgaos)
     finally:
         con.close()
+
+    rank = {"total": 3, "ente": 2, "ente_poder": 2, "orgao": 1}
+
+    def _vedacao(r) -> dict | None:
+        """A sanção mais forte que VEDA este comprador E está vigente na data da compra."""
+        if certs_esf is not None and r["certame"] not in certs_esf:
+            return None                        # compra de outra esfera não entra na aba
+        cnpj = r["fornecedor_cnpj"]
+        if cnpj not in sanc:
+            return None
+        data = (r["data_pub"] or "")[:10]
+        esfera_alvo = esfera.get(r["orgao_cnpj"]) or "estadual"
+        uf_alvo = (r["uf"] or "RJ").upper()
+        melhor = None
+        for s in sanc[cnpj]:
+            if not vigente_em(s, data):
+                continue                       # não vigente à época (sem data não se afirma)
+            v = veda_ente(s, esfera_alvo, uf_alvo)
+            if v["veda"] and (melhor is None or rank[v["abrangencia"]] > rank[melhor["abrangencia"]]):
+                melhor = v
+        return melhor                          # None: sancionado, mas não vedava ESTE comprador à época
+
+    total = 0.0
+    por_forn: dict[str, dict] = {}
+    por_abr = {"total": 0.0, "ente": 0.0, "orgao": 0.0}
+    n_compras = 0
+    for grp in g["grupos"]:
+        med = grp["mediana"]
+        teto = teto_razao * med
+        for r, _z in achados_do_grupo(grp, fator=fator):
+            melhor = _vedacao(r)
+            if not melhor:
+                continue
+            excesso = (min(r["pn"], teto) - med) * (r["qn"] or 0)
+            if excesso <= 0:
+                continue
+            total += excesso
+            por_abr[melhor["abrangencia"]] += excesso
+            n_compras += 1
+            cnpj = r["fornecedor_cnpj"]
+            fo = por_forn.setdefault(cnpj, {
+                "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": cnpj,
+                "economia_vedada": 0.0, "n": 0, "abrangencia": melhor["abrangencia"],
+                "exemplos": []})
+            fo["economia_vedada"] += excesso
+            fo["n"] += 1
+            if rank[melhor["abrangencia"]] > rank[fo["abrangencia"]]:
+                fo["abrangencia"] = melhor["abrangencia"]
+            if len(fo["exemplos"]) < 5:
+                fo["exemplos"].append({
+                    "item": r["d"], "orgao": r["unidade_nome"] or r["orgao_nome"],
+                    "unidade_medida": r["un"], "unidade_normalizada": grp["rotulo"],
+                    "preco": round(r["vu"], 2), "preco_normalizado": round(r["pn"], 4),
+                    "mediana": round(med, 4), "data": (r["data_pub"] or "")[:10],
+                    "veda": melhor["motivo"]})
+
+    # compra a fornecedor vedado que ficou SEM comparação segura: fora da soma, contada à parte
+    indet_ved = [(r, m) for r, m in g["indeterminados"] if _vedacao(r)]
+    forn = sorted(por_forn.values(), key=lambda x: -x["economia_vedada"])
+    for f in forn:
+        f["economia_vedada"] = round(f["economia_vedada"], 2)
+    return {"ok": True, "economia_vedada_total": round(total, 2), "n_compras": n_compras,
+            "por_abrangencia": {k: round(v, 2) for k, v in por_abr.items()},
+            "por_fornecedor": forn[:limite], "n_fornecedores": len(forn), "fator": fator,
+            "indeterminados_vedados": resumo_indeterminados(indet_ved, None, n_lista=0),
+            "explicacao": (f"Sobrepreço (preço ≥ {fator:g}× a mediana de mercado do MESMO item, na MESMA "
+                           "unidade e apresentação) pago a fornecedor que estava juridicamente VEDADO "
+                           "de contratar com aquele ente comprador, VIGENTE à época da compra. "
+                           "Inidoneidade veda qualquer ente; impedimento/suspensão só o ente/órgão "
+                           "sancionador. É o dinheiro pago caro a quem não podia sequer contratar — "
+                           "o alvo mais forte."),
+            "ressalva": ("Vedação e sobrepreço vêm de fontes independentes; confirmar a vigência "
+                         "e o alcance no cadastro-fonte (CGU) e o termo de referência antes de uso "
+                         "externo. Item com unidade ambígua ou grupo heterogêneo fica INDETERMINADO e "
+                         "fora da conta (contado em 'indeterminados_vedados'). Quantidade homologada no "
+                         "PNCP, não OB paga. Suspensão (art. 87 III) tem divergência jurisprudencial. "
+                         "Indício ≠ acusação.")}
 
 
 def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: int = 2,

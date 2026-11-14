@@ -30,6 +30,7 @@ import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {mapaMontar} from '../mapa/territorio.js';
 import {motoresMontar} from '../ui/aovivo.js';
+import {cruzamentoMontar} from './motores_cruzamento.js';
 import {flipAoVivo} from '../ui/movimento.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
@@ -143,6 +144,7 @@ export async function renderCockpit(){
     <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
     </div>
     ${_v61?'<section class="c61-motores" id="c61-motores" aria-labelledby="c61-motores-t"></section>':''}
+    <section class="c61-cruz" id="c61-cruz" aria-label="Cruzamento de motores"></section>
     ${blocoComandosMestres()}
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
   /* v48: quem monta o cockpit e o ir(), DEPOIS de pintar — nao um timer daqui.
@@ -197,6 +199,7 @@ export function ckBoot(){
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
   if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));motoresMontar($('c61-motores'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();
+  cruzamentoMontar($('c61-cruz'));   // co-motor Claude × cascata: uso, gasto e concordância
   /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
      instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de
      largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo

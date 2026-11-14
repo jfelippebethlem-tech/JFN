@@ -147,3 +147,15 @@ def test_opus_verifica_achado_e_pausa_api_se_haiku_discorda(con, monkeypatch):
     assert {f["estado"] for f in feitos} == {"PENDENTE"}          # Opus divergiu: vai para gente
     from compliance_agent.llm import claude_api
     assert "triagem_alertas" in claude_api.ler_gasto()["pausadas"] and avisos
+
+
+def test_prompt_medido_no_ab_nao_muda_sem_novo_ab():
+    # A/B de 14/11/2026 (Opus como referência, 36 alertas): a regra de MECANISMO levou o Haiku de 21/36 a
+    # 31/36 sem perder 🔴/🟡. Trocar o texto sem medir de novo já derrubou recall em outra tarefa (3/6 → 0/6).
+    import hashlib
+    assert "refaça o raciocínio do detector" in T._SYS and "Valor alto mede o TAMANHO" in T._SYS
+    assert hashlib.sha256(T._SYS.encode()).hexdigest()[:12] == _HASH_SYS_MEDIDO, (
+        "o prompt da triagem mudou: rode o A/B contra o Opus (scratch ab_triagem) antes de atualizar o hash")
+
+
+_HASH_SYS_MEDIDO = "25cdd6329a81"

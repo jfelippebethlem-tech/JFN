@@ -161,3 +161,19 @@ def test_painel_resume_sem_conteudo():
     p = M.painel()
     assert p["hoje"] == 1 and p["por_tarefa"]["triagem_alertas"]["teto"] == M.TETOS_TAREFA["triagem_alertas"]
     assert p["teto"] == M.TETO_CHAMADAS_DIA and p["ligado"] is True
+
+
+def test_binario_achado_fora_do_path_do_cron(monkeypatch, tmp_path):
+    # 13/11/2026: o cron roda com PATH mínimo e o `claude` mora em ~/.npm-global/bin — toda
+    # chamada da assinatura saía com rc=127 ('nice: claude: No such file or directory') e a
+    # verificação Opus da triagem NUNCA rodou (176 itens parados). O binário é resolvido por caminho.
+    falso = tmp_path / ".npm-global" / "bin" / "claude"
+    falso.parent.mkdir(parents=True)
+    falso.write_text("#!/bin/sh\n")
+    falso.chmod(0o755)
+    monkeypatch.delenv("JFN_CLAUDE_BIN", raising=False)
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert M._bin() == [str(falso)]
+    monkeypatch.setenv("JFN_CLAUDE_BIN", "/opt/x/claude")
+    assert M._bin() == ["/opt/x/claude"]          # variável explícita sempre vence

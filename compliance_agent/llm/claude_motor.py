@@ -121,7 +121,17 @@ def _pasta_trabalho() -> Path:
 
 
 def _bin() -> list[str]:
-    return [os.environ.get("JFN_CLAUDE_BIN") or "claude"]
+    """Caminho do `claude`. O cron e o serviço rodam com PATH mínimo: só o nome dava rc=127 em toda
+    chamada (13/11/2026). Ordem: variável explícita → PATH → instalações conhecidas do usuário."""
+    if os.environ.get("JFN_CLAUDE_BIN"):
+        return [os.environ["JFN_CLAUDE_BIN"]]
+    import shutil
+    achado = shutil.which("claude")
+    if not achado:
+        casa = Path(os.environ.get("HOME") or Path.home())
+        achado = next((str(p) for p in (casa / ".npm-global" / "bin" / "claude", casa / ".local" / "bin" / "claude")
+                       if p.is_file() and os.access(p, os.X_OK)), None)
+    return [achado or "claude"]
 
 
 def _int_env(nome: str, padrao: int) -> int:

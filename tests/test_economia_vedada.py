@@ -81,3 +81,34 @@ def test_impedimento_federal_nao_veda_comprador_estadual(db):
 def test_ressalva_presente(db):
     d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1)
     assert "Indício" in d["ressalva"] and "independentes" in d["ressalva"].lower()
+
+
+# ── unidade normalizada (preco_normalizado): mesma unidade e apresentação comprovadas ─────────────
+def _inserir(db, linhas):
+    con = sqlite3.connect(db)
+    con.executemany(
+        "INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, quantidade, "
+        "orgao_cnpj, orgao_nome, unidade_nome, uf, fornecedor_nome, fornecedor_cnpj, "
+        "ordem_classificacao, data_pub, certame) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)", linhas)
+    con.commit()
+    con.close()
+
+
+def test_caixa_com_contagem_declarada_e_normalizada_por_unidade(db):
+    # 'Caixa 10 UN' a R$ 300 = R$ 30 por cadeira. O agrupamento antigo ('caixaun' ≠ 'un') nunca
+    # comparava; o normalizado compara por UNIDADE: mediana de [9,10,10,11,30,30] = 10,5 →
+    # (30−10,5)×10 un + (30−10,5)×(2 caixas × 10) = 195 + 390.
+    _inserir(db, [("Cadeira", "Caixa 10 UN", 300.0, 2, "00000000000100", "SES", "SES", "RJ",
+                   "INIDONEA", "99999999000199", "2025-06-11", "c6")])
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
+    assert d["economia_vedada_total"] == pytest.approx(195.0 + 390.0)
+
+
+def test_unidade_ambigua_fica_indeterminada_fora_da_conta(db):
+    # 'Caixa' sem conteúdo: não se sabe quantas cadeiras — sai da soma, mas é CONTADA à parte
+    _inserir(db, [("Cadeira", "Caixa", 900.0, 2, "00000000000100", "SES", "SES", "RJ",
+                   "INIDONEA", "99999999000199", "2025-06-12", "c7")])
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
+    assert d["economia_vedada_total"] == pytest.approx(200.0)
+    assert d["indeterminados_vedados"]["n"] == 1
+    assert "sem conteúdo" in d["indeterminados_vedados"]["por_motivo"][0]["motivo"]

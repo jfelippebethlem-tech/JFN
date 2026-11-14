@@ -1124,8 +1124,11 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
     muito acima do mercado, o indício é mais forte.
 
     Guardas anti-FP: quantidade≥2 (evita total-do-lote no campo unitário); descrição normalizada +
-    unidade de medida na chave (litro≠tambor); razão alta (3×) e tendência de alta exigidas juntas —
-    ainda assim a descrição do PNCP é curta e pode misturar especificações (por isso mostra a série)."""
+    unidade NORMALIZADA na chave (`preco_normalizado`: mesma unidade e apresentação comprovadas —
+    galão de 5 L ≠ galão de 20 L; 'Caixa 10 UN' vira preço por unidade); unidade ambígua é
+    INDETERMINADO, fica fora da série e é contada em `indeterminados`; razão alta (3×) e tendência
+    de alta exigidas juntas — ainda assim a descrição do PNCP é curta e pode misturar especificações
+    (por isso mostra a série)."""
     from datetime import date as _date
 
     def _span(d0: str, d1: str) -> int:
@@ -1144,21 +1147,30 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
             "AND length(fornecedor_cnpj)=14").fetchall()
         from collections import defaultdict
         from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+        from compliance_agent.preco_normalizado import GAP, normalizar
         certs = certames_da_esfera(con, esfera)
         grupos: dict[tuple, list] = defaultdict(list)
-        mercado: dict[tuple, list] = defaultdict(list)   # (item,un) -> preços de TODOS os fornecedores
+        mercado: dict[tuple, list] = defaultdict(list)   # (item,unid. normalizada) -> preços de TODOS
+        indet: list[tuple[dict, str]] = []
         for r in rows:
             base = _norm_item(r["d"])
             if not base:
                 continue
-            un = re.sub(r"[^a-z]", "", (r["un"] or "").lower())[:8]
-            if certs is None or r["certame"] in certs:    # série = compras DA esfera da aba
-                grupos[(r["fornecedor_cnpj"], base, un)].append(r)
-            mercado[(base, un)].append(r["vu"])           # mercado corrobora com TODAS as esferas
+            da_esfera = certs is None or r["certame"] in certs   # série = compras DA esfera da aba
+            nz = normalizar(r["d"], r["un"])
+            if not nz["ok"]:
+                if da_esfera:
+                    indet.append((dict(r), nz["motivo"]))
+                continue                                  # unidade ambígua: fora da série e do mercado
+            pn = r["vu"] / nz["fator"]
+            if da_esfera:
+                grupos[(r["fornecedor_cnpj"], base, nz["chave"])].append((r, pn, nz["rotulo"]))
+            mercado[(base, nz["chave"])].append(pn)       # mercado corrobora com TODAS as esferas
         achados = []
-        for (cnpj, base, un), itens in grupos.items():
-            serie = sorted({(r["data_pub"][:10], r["vu"], r["unidade_nome"] or r["orgao_nome"],
-                             r["certame"]) for r in itens})
+        for (cnpj, base, un), itens_pn in grupos.items():
+            itens = [r for r, _p, _rot in itens_pn]
+            serie = sorted({(r["data_pub"][:10], pn, r["unidade_nome"] or r["orgao_nome"],
+                             r["certame"]) for r, pn, _rot in itens_pn})
             if len(serie) < min_compras:
                 continue
             datas = [s[0] for s in serie]
@@ -1176,10 +1188,17 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
                 continue
             if precos[-1] / precos[0] < fator:
                 continue                              # o preço TRIPLICOU (tendência), não só variou
+            saltos = [b / a for a, b in zip(precos, precos[1:]) if a > 0 and (b / a >= GAP or a / b >= GAP)]
+            if saltos:                                # doutrina do preco_normalizado: salto = outro produto/unidade
+                motivo = (f"série com salto ≥{GAP:g}× entre compras consecutivas (maior {max(saltos):.1f}×) — "
+                          f"provável unidade, apresentação ou produto diferente, não escalada")
+                indet.extend((dict(r), motivo) for r in itens)
+                continue
             acima_mkt = round(precos[-1] / med_mkt, 1) if med_mkt and med_mkt > 0 else None
             achados.append({
                 "fornecedor": itens[0]["fornecedor_nome"], "fornecedor_cnpj": cnpj,
                 "item": itens[0]["d"], "grupo": base, "unidade_medida": itens[0]["un"],
+                "unidade_normalizada": itens_pn[0][2],
                 "n_compras": len(serie), "span_dias": span,
                 "preco_inicial": round(precos[0], 2), "preco_final": round(precos[-1], 2),
                 "razao": round(precos[-1] / precos[0], 1),
@@ -1188,13 +1207,17 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
                 "serie": [{"data": d, "preco": round(p, 2), "orgao": o} for d, p, o, _ in serie[:8]]})
         # ranking: escalada que também está acima do mercado primeiro, depois pela razão
         achados.sort(key=lambda a: (-(a["final_vs_mercado"] or 0), -a["razao"]))
+        from compliance_agent.comparador_precos import resumo_indeterminados
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "indeterminados": resumo_indeterminados(indet, None, n_lista=0),
                 "explicacao": ("Mesmo fornecedor vendendo o MESMO item por preços unitários cada vez "
                                "maiores ao poder público (≥3 compras, ≥3 meses, alta ≥3×). Indica "
                                "preço dirigido/captura — o fornecedor aprende que o comprador aceita "
                                "aumentos. 'Acima do mercado' cruza com a mediana de outros fornecedores."),
                 "ressalva": ("A descrição do PNCP é curta e pode misturar marca/especificação/embalagem "
-                             "entre compras — a série é mostrada para conferência. Reajuste contratual "
+                             "entre compras — a série é mostrada para conferência. Preço por unidade "
+                             "NORMALIZADA (mesma unidade e apresentação); unidade ambígua fica "
+                             "INDETERMINADA e fora da série. Reajuste contratual "
                              "legítimo não chega a 3×. Confirmar o termo de referência. Indício ≠ acusação.")}
     finally:
         con.close()
