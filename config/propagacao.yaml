@@ -77,8 +77,9 @@ fontes:
     sonda: {sql: "SELECT status, COUNT(*) FROM alertas GROUP BY status ORDER BY status",
             mudanca: "situação de alertas mudou (confirmação ou descarte)"}
   regra_pericia:
-    nome: Correção na régua da perícia contábil / Guia de Devolução
-    sonda: {git: [compliance_agent/pericia_contabil.py, compliance_agent/pericia_contabil_rotina.py, compliance_agent/siafe_gd.py]}
+    nome: Correção na régua da perícia contábil / Guia de Devolução / termo aditivo nos autos
+    sonda: {git: [compliance_agent/pericia_contabil.py, compliance_agent/pericia_contabil_rotina.py, compliance_agent/siafe_gd.py,
+                  compliance_agent/aditivo_autos.py]}
     cerebro: {de: commit, kind: experiencial, rotulo: "correção de regra da perícia contábil", assunto: "perícia contábil"}
   regra_vinculo:
     nome: Correção na regra do vínculo OB↔contrato

@@ -102,6 +102,9 @@ MOTIVOS = {
     "ob_do_credor_sem_processo_na_base": "o credor recebeu OB na vigência, mas sem número de processo na base "
                                          "(SIAFE 1 não trouxe o campo em 2021–2023) — sem chave para ligar a OB "
                                          "ao contrato; só recoleta do SIAFE resolve",
+    "aditivo_nos_autos_sem_valor_extraido": "pago acima do valor registrado, mas há termo aditivo nos autos que fala "
+                                            "em valor e o valor global não foi extraído com segurança — o excesso "
+                                            "pode ser só o aditivo",
     "a_menor_com_ob_fora_do_processo": "pago no processo abaixo do devido, mas o credor recebeu outras OBs na "
                                        "mesma UG em outro processo — o 'a menor' não se sustenta",
     "cobertura_siafe_parcial": "pago no processo abaixo do devido, mas a coleta do SIAFE está parcial na "
@@ -555,7 +558,8 @@ def _resultado_base(esfera: str, **kw) -> dict:
     r = {"esfera": esfera, "id": "", "orgao": "", "ug": "", "contrato": "", "processo": "", "fornecedor": "",
          "fornecedor_doc": "", "objeto": "", "status_fonte": "", "data_contrato": "", "vig_inicio": "",
          "vig_fim": "", "continuada": False, "regime": "", "lei_teto": "", "valor_inicial": None,
-         "valor_atualizado": None, "criterio_valor": "", "devido": None, "criterio_devido": "", "pago": None,
+         "valor_atualizado": None, "criterio_valor": "", "fonte_valor": "", "devido": None, "criterio_devido": "",
+         "pago": None,
          "fonte_pago": "", "n_obs": 0, "vinculo": "", "categoria": "INDETERMINADO", "subtipo": "",
          "diferenca": None, "excesso_global": None, "motivo": "", "ressalvas": "", "acrescimo_pct": None,
          "teto_acrescimo": None, "estouro_art125": None, "obs_nao_contabilizadas": 0,
@@ -601,8 +605,10 @@ def avaliar_estado(db: str | Path = _DB, *, corte: date | None = None) -> list[d
         pncp = _termos_pncp(con, {k for k, v in grupos.items() if len(v) == 1})
         from compliance_agent.vinculo_ob_contrato import vinculos_verificados
         vinc = vinculos_verificados(con)      # OB → contrato pelos AUTOS do processo de pagamento (só VERIFICADO)
+        adit = _aditivos_nos_autos(con, grupos, procs_do_credor)
 
-        res = [_avaliar_um_estado(c, chave_de[c[0]], grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc)
+        res = [_avaliar_um_estado(c, chave_de[c[0]], grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc,
+                                  adit)
                for c in contratos]
         # cobertura só onde ela decide (o "a menor" no processo)
         pares = {p for r in res for p in r.get("_checar", ())}
@@ -638,7 +644,37 @@ def _chave_ob(o: tuple) -> tuple:
     return (o[6], int(o[10]), o[2]) if len(o) > 10 and o[10] is not None else (o[6], None, o[2])
 
 
-def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc=None) -> dict:
+def _aditivos_nos_autos(con, grupos: dict, procs_do_credor: dict) -> dict[str, dict]:
+    """{id do contrato: situação do termo aditivo MAIS RECENTE lido nos autos capturados} (`aditivo_autos`). Autos =
+    pasta do processo do contrato (só par processo×credor de contrato único) + processos de pagamento ligados a ele
+    pelo vínculo VERIFICADO. Sem acervo: {} (a perícia segue com o valor do TCE-RJ)."""
+    from compliance_agent import aditivo_autos as AD
+    from compliance_agent import vinculo_ob_contrato as VO
+    pagamentos: dict[str, set] = defaultdict(set)
+    if _tem(con, "vinculo_ob_contrato"):
+        for cid, pp in con.execute("SELECT DISTINCT contrato_tcerj_id, processo_pagamento FROM vinculo_ob_contrato "
+                                   "WHERE estado='VERIFICADO' AND contrato_tcerj_id IS NOT NULL"):
+            k = chave_sei("SEI-" + str(pp or ""))
+            if k:
+                pagamentos[cid].add(k)
+    out = {}
+    for (proc, cred), ids in grupos.items():
+        if len(ids) != 1:
+            continue
+        cid = ids[0]
+        pastas = [(VO.pasta(proc), True)] + [(VO.pasta(k), False) for k in sorted(pagamentos.get(cid, ()))]
+        pastas = [(p, d) for p, d in pastas if (p / "manifest.json").exists()]
+        if not pastas:
+            continue
+        s = AD.situacao(AD.aditivos_do_contrato(pastas, proc, procs_do_credor.get(cred, set()) - {proc},
+                                                VO.chaves_citadas))
+        if s:
+            out[cid] = s
+    return out
+
+
+def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc=None,
+                       adit=None) -> dict:
     (cid, processo, _sn, data_contr, valor, status, unidade, objeto, fornecedor, cnpj, vig_ini, vig_fim,
      num) = c
     d_contr = parse_data(data_contr)
@@ -689,7 +725,17 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
         if est.get("aferivel"):
             r.update(acrescimo_pct=est["pct"], teto_acrescimo=est["teto"], estouro_art125=bool(est["estourou"]))
 
-    inicio_ref = min([d for d in (ini, d_contr) if d], default=None)
+    # termo aditivo lido nos AUTOS capturados (`aditivo_autos`): valor global maior que o registrado passa a valer
+    a = (adit or {}).get(cid)
+    aditivo_aplicado = bool(a and a["estado"] == "com_valor" and a["valor"] > float(r["valor_atualizado"] or 0))
+    if aditivo_aplicado:
+        r["valor_atualizado"] = round(a["valor"], 2)
+        r["criterio_valor"] = (f"valor global atualizado pelo termo aditivo nº {a['numero'] or 's/ nº'} (doc SEI "
+                               f"{a['doc_sei']}, processo SEI-{a['processo']}, assinado em {a['data'] or 's/ data'}) "
+                               f"— lido nos autos: \"{a['trecho']}\"")
+        r["fonte_valor"] = f"termo aditivo nº {a['numero'] or 's/ nº'}, doc SEI {a['doc_sei']}"
+
+    inicio_ref =min([d for d in (ini, d_contr) if d], default=None)
     if inicio_ref is None:
         return {**r, "motivo": "inicio_nao_registrado"}
     if inicio_ref < INICIO_COBERTURA_SIAFE:
@@ -790,7 +836,17 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
         if sem_rep <= r["valor_atualizado"] or dentro_da_tolerancia(sem_rep - r["valor_atualizado"],
                                                                     r["valor_atualizado"]):
             return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "pagamento_repetido_nao_confirmado"}
-    if cat == "A_MAIOR" and not t:
+    if cat == "A_MAIOR" and a and a["estado"] == "sem_valor":
+        # há termo aditivo nos autos que fala em valor, mas o total do contrato não foi extraído com segurança:
+        # o "acima do valor" pode ser só o aditivo — nunca se afirma
+        return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "aditivo_nos_autos_sem_valor_extraido",
+                "ressalvas": _junta(r["ressalvas"], f"termo aditivo nos autos sem o valor global extraído (doc SEI "
+                                                    f"{a['doc_sei']}, processo SEI-{a['processo']})")}
+    if cat == "A_MAIOR" and aditivo_aplicado:
+        r["ressalvas"] = _junta(r["ressalvas"], f"pago acima do valor global do último termo aditivo lido nos autos "
+                                                f"(nº {a['numero'] or 's/ nº'}, doc SEI {a['doc_sei']}) — conferir "
+                                                "apostilamentos e aditivos posteriores à captura")
+    elif cat == "A_MAIOR" and not t:
         # O TCE-RJ não publica termos aditivos. OB depois do fim da vigência registrada = o contrato seguiu
         # (prorrogação não publicada): o pago acumula vários períodos e o valor registrado é o de um só.
         apos = [o for o in no_proc if fim and (o[0] - fim).days > CARENCIA_ULTIMA_OB_DIAS]

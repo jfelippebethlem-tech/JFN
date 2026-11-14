@@ -29,7 +29,8 @@ NOME = "pericia_contabil_rotina"
 SAIDA = DATA / "pericia_contabil_resumo.json"
 TOP = 60
 _CAMPOS = ("esfera", "orgao", "ug", "contrato", "processo", "fornecedor", "fornecedor_doc", "objeto", "categoria",
-           "subtipo", "motivo", "valor_atualizado", "devido", "pago", "diferenca", "excesso_global", "n_obs",
+           "subtipo", "motivo", "valor_atualizado", "fonte_valor", "devido", "pago", "diferenca", "excesso_global",
+           "n_obs",
            "vig_inicio", "vig_fim", "encerrado", "corte", "obs_mesma_nl", "valor_mesma_nl", "obs_mesma_competencia",
            "valor_mesma_competencia", "obs_mesma_nl_mesmo_dia", "obs_mesma_nl_nao_confirmadas",
            "valor_mesma_nl_nao_confirmadas", "criterio_devido", "ressalvas", "fonte_pago")
