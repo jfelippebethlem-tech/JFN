@@ -392,6 +392,10 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     os.environ.setdefault("VM_GUARD_MAX_LOAD", "28")
     os.environ.setdefault("VM_GUARD_MIN_FREE_GB", "1.5")
     os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+    # a memória é o que limita o nº de sessões (14/11: 13 sessões = 19,2 GB de PSS, 8,8 GB só nos Python de
+    # captura). O OCR roda em thread do executor e a glibc abre uma arena de malloc por thread, que não devolve
+    # ao sistema o que os PDFs/páginas ocuparam; duas arenas bastam para um processo que faz um OCR por vez.
+    os.environ.setdefault("MALLOC_ARENA_MAX", "2")
     # processos de 478 a 2.379 documentos morreram no teto de 900 s (14/11); 2.379 × 2,5 s ≈ 100 min. 3 h = a validade
     # da reserva: o processo gigante termina dentro dela, na mesma sessão (outra árvore recomeçaria do zero)
     os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "10800")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)

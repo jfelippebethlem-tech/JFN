@@ -85,6 +85,37 @@ def pesquisa_sem_resultado(corpo: str) -> bool:
     return bool(_RE_SEM_RESULTADO.search(corpo or ""))
 
 
+_RE_RESTRITO = re.compile(r"Unidade atual não possui acesso ao processo restrito[^\n.]*")
+
+
+def aviso_restrito(corpo: str) -> str | None:
+    """A frase com que o PRÓPRIO SEI declara o processo restrito à unidade da sessão (ou None)."""
+    m = _RE_RESTRITO.search(corpo or "")
+    return m.group(0) if m else None
+
+
+_JS_TEM_LINK_PESQUISA = r"""()=>!![...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''))"""
+_JS_FIM_DO_CORPO = "()=>document.body?document.body.innerText.slice(-1500):''"
+
+
+async def _menu_ou_campo_pronto(pg) -> bool:
+    return bool(await pg.evaluate(_JS_TEM_LINK_PESQUISA)) or await _tem_campo_protocolo(pg)
+
+
+async def _resultado_arvore_ou_nada(pg) -> bool:
+    """Pós-Pesquisar: a árvore/lista pintou OU a página já respondeu "Nenhum resultado encontrado"."""
+    if await _tem_resultado_ou_arvore(pg):
+        return True
+    return pesquisa_sem_resultado(await pg.evaluate(_JS_FIM_DO_CORPO))
+
+
+async def _arvore_ou_aviso_restrito(pg) -> bool:
+    """Pós-pesquisa rápida: o frame da árvore existe OU o SEI já declarou o processo restrito."""
+    if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
+        return True
+    return bool(aviso_restrito(await pg.evaluate("()=>document.body?document.body.innerText:''")))
+
+
 async def _tem_resultado_ou_arvore(pg) -> bool:
     """Pós-submit da pesquisa: True quando a lista de resultados OU a árvore (ifrArvore) já pintou."""
     if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
@@ -403,8 +434,9 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
     provado ao vivo 2026-07-09: tent 0 falha, tent 1–2 abrem). Detecta a árvore por CONTEÚDO
     (``infraArvoreNo`` no HTML do frame), não por nome/URL. Retorna o frame da árvore ou None."""
     for _ in range(tentativas):
+        dump = {}
         try:
-            await _ler_cracked(pg, proc)
+            dump = await _ler_cracked(pg, proc) or {}
         except Exception as exc:
             logger.debug("abrir_processo: cracked falhou p/ %s: %s", proc, exc)
         await pg.wait_for_timeout(1500)
@@ -414,12 +446,19 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
                     return fr
             except PWError:
                 continue
+        # "Nenhum resultado encontrado" é resposta DEFINITIVA da pesquisa (a mesma regra do sweep, medida em
+        # 10/09): repetir a MESMA pesquisa 4× custava ~45 s cada para o mesmo nada. Medido no it-campo em
+        # 14/11/2026: processo restrito levava ~170 s para ser declarado. Vai direto à pesquisa rápida.
+        if dump.get("sem_resultado"):
+            break
     # FALLBACK quicksearch (fix 2026-07-12): processo de OUTRA unidade (ex.: SEAS 070026, Juventude
     # 280001) que o caminho CRACKED do ITERJ vê mas não abre — a PESQUISA RÁPIDA do topo abre por
     # número completo (mesma lógica que já existe no ler() canônico). Aditivo e sem regressão: só roda
     # quando o loop cracked acima não achou a árvore; para os processos que já abriam, retorna antes.
     try:
-        await _abrir_por_quicksearch(pg, proc)
+        dump = await _abrir_por_quicksearch(pg, proc)
+        if dump.get("restrito_declarado"):
+            return None             # o SEI respondeu: não há árvore a esperar (a frase segue na página)
         await _esperar_arvore(pg)
         for fr in pg.frames:
             try:
@@ -485,6 +524,18 @@ async def _abrir_por_quicksearch(pg, proc: str) -> dict:
         await pg.wait_for_load_state("networkidle", timeout=12000)
     except PWError as exc:
         logger.debug("quick-search: networkidle estourou p/ %s: %s", numero, exc)
+    # O SEI responde à pesquisa rápida de processo restrito com "Unidade atual não possui acesso ao processo
+    # restrito SEI-…" em menos de 1 s — e o código esperava 24 s por uma árvore que não viria (sonda no it-campo,
+    # 14/11/2026: 25,3 s por processo restrito, 24,0 deles em `_esperar_arvore`). Espera POR CONDIÇÃO: a árvore
+    # ou a frase, o que vier primeiro.
+    await _ate(pg, lambda: _arvore_ou_aviso_restrito(pg), 8000, 200)
+    try:
+        aviso = aviso_restrito(await pg.evaluate("()=>document.body?document.body.innerText:''"))
+    except PWError:
+        aviso = None
+    if aviso:
+        return {"documentos": [], "relacionados": [], "via": "quicksearch", "url": pg.url,
+                "restrito_declarado": aviso}
     await _esperar_arvore(pg)
     await pg.wait_for_timeout(1200)
     dump = await _extrair_de_todos_frames(pg)
@@ -516,6 +567,11 @@ async def _ler_cracked(pg, proc: str) -> dict:
     # `arvore_do_fonte` o alcança (mesma unidade do login). Como o cracked é o ÚNICO caminho para
     # processo de OUTRA unidade, e é chamado pelo `sei_sweep` em três pontos, a falha silenciosa
     # tira do alcance uma classe inteira do acervo sem que nada acuse.
+    # O MENU PRECISA TER PINTADO. `login()` devolve assim que a URL sai do login.php, com a página ainda em
+    # `readyState=loading` — e o clique abaixo, dado na hora, não achava o link: a 1ª pesquisa de TODA sessão
+    # recém-logada falhava com "link 'Pesquisa' NÃO ESTÁ no DOM" e custava 5 s + uma nova tentativa (sonda no
+    # it-campo, 14/11/2026: o link aparece 0,12 s depois). Espera por condição, teto 6 s.
+    await _ate(pg, lambda: _menu_ou_campo_pronto(pg), 6000, 100)
     achou_link = await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e){e.click();return true}return false}""")
     await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
     if not await _tem_campo_protocolo(pg):
@@ -586,6 +642,16 @@ async def _ler_cracked(pg, proc: str) -> dict:
         await pg.wait_for_load_state("networkidle", timeout=15000)
     except PWError as exc:
         logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
+    # "Nenhum resultado encontrado." é resposta definitiva (ver `ler_processo`): sem árvore a esperar. Antes
+    # vinham 24 s de `_esperar_arvore` + extração para devolver o mesmo vazio (sonda de 14/11/2026: 45,1 s).
+    await _ate(pg, lambda: _resultado_arvore_ou_nada(pg), 4000)
+    try:
+        _corpo = await pg.evaluate(_JS_FIM_DO_CORPO)
+    except PWError:
+        _corpo = ""
+    if pesquisa_sem_resultado(_corpo):
+        return {"documentos": [], "relacionados": [], "via": "cracked", "url": pg.url,
+                "sem_resultado": True, "arvore_carregou": False}
     # 5) espera ATIVA o ifrArvore antes de extrair
     achou_arvore = await _esperar_arvore(pg)
     await pg.wait_for_timeout(1500)
@@ -706,6 +772,18 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
         return None
     vf = await _frame_visualizacao(pg)
     url_antes = (vf.url if vf else "") or ""
+    # MARCA NO DOCUMENTO QUE ESTÁ NA TELA. A espera comparava a URL do frame com a de antes do clique — mas
+    # anexo externo (PDF) é servido sempre pela MESMA URL (`acao=arvore_processar_html`): externo depois de
+    # externo nunca "mudava" e o laço girava os 6 s inteiros antes de baixar o anexo. Medido no it-campo em
+    # 14/11/2026: mediana de 6,3 s por documento em 10.510 documentos, com o conteúdo pronto em 0,2–0,35 s.
+    # Cada clique carrega um documento NOVO no frame (passa por about:blank): a marca some com o antigo.
+    marcado = False
+    if vf:
+        try:
+            await vf.evaluate("()=>{window.__jfn_doc_anterior=1}")
+            marcado = True
+        except PWError:
+            marcado = False
     try:
         clicou = await arv.evaluate(
             """(idd)=>{const a=[...document.querySelectorAll('a[href*="id_documento="]')]
@@ -717,15 +795,27 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
         return None
     # espera EVENT-BASED o ifrVisualizacao trocar de conteúdo (teto ~6s; nativo carrega em <1s)
     txt = ""
-    for _ in range(24):
-        await pg.wait_for_timeout(250)
+    for _ in range(60):
+        await pg.wait_for_timeout(100)
         vf = await _frame_visualizacao(pg)
-        if not vf or (vf.url or "") == url_antes:
+        if not vf:
             continue
-        try:
-            txt = (await vf.evaluate("()=>document.body?document.body.innerText:''")) or ""
-        except PWError:
-            txt = ""
+        if marcado:
+            try:
+                est = await vf.evaluate("()=>window.__jfn_doc_anterior?null:"
+                                        "[document.readyState,document.body?document.body.innerText:'']")
+            except PWError:
+                continue                    # frame em plena troca de documento
+            if not est or est[0] == "loading":
+                continue                    # ainda o documento anterior, ou o novo ainda chegando
+            txt = est[1] or ""
+        else:
+            if (vf.url or "") == url_antes:
+                continue
+            try:
+                txt = (await vf.evaluate("()=>document.body?document.body.innerText:''")) or ""
+            except PWError:
+                txt = ""
         if txt.strip():
             break
     txt = txt.strip()
@@ -749,6 +839,9 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                     continue
                 body = await r.body()
                 ct = (r.headers.get("content-type") or "").lower()
+                # o driver do Playwright guarda o corpo de toda resposta até o contexto fechar: num processo de
+                # centenas de anexos isso é o PDF de cada um parado no node (0,14–0,31 GB por sessão medidos)
+                await r.dispose()
                 tipo = "pdf" if (body[:5] == b"%PDF-" or "pdf" in ct) else ("imagem" if ct.startswith("image/") else None)
                 loop = asyncio.get_event_loop()
                 if not tipo:
@@ -881,6 +974,9 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
     for doc in ordenar_para_leitura(dump.get("documentos", []), limite=_max_docs):
         c = await _conteudo_doc(pg, doc)
         if c:
+            # o PDF original só serve a quem ARQUIVA (`sei_integra_completa`, que chama `_conteudo_doc` direto);
+            # aqui ele ficava na lista até o fim do processo — até 120 PDFs na memória (~1 GB de RSS no it-campo)
+            c.pop("anexo_bytes", None)
             docs_txt.append(c)
     res["conteudo_documentos"] = docs_txt
     tot = res["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in docs_txt)
@@ -984,6 +1080,9 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     for doc in _tentados:
         c = await _conteudo_doc(pg, doc)
         if c:
+            # o PDF original só serve a quem ARQUIVA (`sei_integra_completa`, que chama `_conteudo_doc` direto);
+            # aqui ele ficava na lista até o fim do processo — até 120 PDFs na memória (~1 GB de RSS no it-campo)
+            c.pop("anexo_bytes", None)
             docs_txt.append(c)
     res["conteudo_documentos"] = docs_txt
     res["_tempos"] = {"pesquisa": round(_t_pesq - _t0, 1), "arvore": round(_t_arv - _t_pesq, 1),
