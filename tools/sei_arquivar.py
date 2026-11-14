@@ -67,6 +67,22 @@ def _ocr_pdf(pdf_bytes: bytes) -> str:
         return ""
 
 
+def _ocr_da_captura(pdf: Path) -> str:
+    """OCR que a CAPTURA já fez deste mesmo PDF (`NNN.ocr.txt`, gravado por `sei_integra_completa`).
+
+    O anexo escaneado passava pelo OCR duas vezes: na captura (para saber se havia teor) e aqui, do zero, sobre
+    os mesmos bytes — medido no it-campo em 14/11/2026: 25–32 s de arquivamento em processos de 19–40 documentos
+    com 2–5 escaneados, contra 0,3 s num processo sem nenhum. Só vale o texto gravado DEPOIS do PDF; sem ele
+    (captura antiga, texto cortado no teto de caracteres), '' e o OCR roda como sempre."""
+    lado = pdf.with_suffix(".ocr.txt")
+    try:
+        if lado.stat().st_mtime >= pdf.stat().st_mtime:
+            return lado.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    return ""
+
+
 def _pagina_com_imagem_grande(pg: fitz.Page) -> bool:
     try:
         area_pg = abs(pg.rect)
@@ -198,7 +214,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
 
         texto, pobres = _texto_pdf(doc)
         if ocr and len(texto) < _MIN_CHARS_PAG and doc.page_count:
-            t2 = _ocr_pdf(pdf.read_bytes())
+            t2 = _ocr_da_captura(pdf) or _ocr_pdf(pdf.read_bytes())
             if len(t2) > len(texto):
                 texto, entrada["ocr"] = t2, True
 

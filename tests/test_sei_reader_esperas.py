@@ -117,3 +117,35 @@ def test_no_de_captura_nao_monta_o_pdf_unico_que_o_lote_nao_leva():
     assert completo < desvio < juncao
     lote = (Path(SR.__file__).parent / "sei_integra_vm2.py").read_text(encoding="utf-8")
     assert 'itens[f"cache/integra_{tag}"]' in lote and 'itens[f"cache/INTEGRA_' not in lote
+
+
+def _integra_com_um_escaneado(tmp_path):
+    import fitz
+    origem = tmp_path / "integra_270001_000001_2026"
+    origem.mkdir()
+    d = fitz.open(); d.new_page(); d.save(str(origem / "000.pdf")); d.close()      # página sem texto = "escaneado"
+    return origem
+
+
+def test_arquivador_usa_o_ocr_que_a_captura_ja_fez(tmp_path, monkeypatch):
+    from tools import sei_arquivar as A
+    origem = _integra_com_um_escaneado(tmp_path)
+    (origem / "000.ocr.txt").write_text("NOTA FISCAL 123 — teor lido pelo OCR na captura", encoding="utf-8")
+    monkeypatch.setattr(A, "_ocr_pdf", lambda b: (_ for _ in ()).throw(AssertionError("OCR refeito")))
+    man = A.arquivar(origem, tmp_path / "arq", "270001/000001/2026")
+    doc = man["docs"][0]
+    assert doc["ocr"] is True and doc["chars"] == len("NOTA FISCAL 123 — teor lido pelo OCR na captura")
+
+
+def test_arquivador_sem_texto_da_captura_roda_o_ocr(tmp_path, monkeypatch):
+    """Controle negativo: sem o `.ocr.txt` (ou com ele mais VELHO que o PDF), o OCR roda como sempre."""
+    import os
+    from tools import sei_arquivar as A
+    origem = _integra_com_um_escaneado(tmp_path)
+    velho = origem / "000.ocr.txt"
+    velho.write_text("texto de outra captura", encoding="utf-8")
+    os.utime(velho, (1, 1))
+    chamadas = []
+    monkeypatch.setattr(A, "_ocr_pdf", lambda b: chamadas.append(1) or "TEOR DO OCR FEITO AGORA")
+    man = A.arquivar(origem, tmp_path / "arq", "270001/000001/2026")
+    assert chamadas == [1] and man["docs"][0]["chars"] == len("TEOR DO OCR FEITO AGORA")

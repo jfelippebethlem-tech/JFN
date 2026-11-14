@@ -196,6 +196,10 @@ async def main():
                 if not gravar_doc(fp, x["t"], txt, (c or {}).get("anexo_bytes")):
                     print(f"  doc sem teor gravável: {x['t'][:40]}", flush=True)
                     return False
+                # o OCR deste anexo já foi pago aqui: fica ao lado do PDF para o `sei_arquivar` não refazê-lo do
+                # zero (ver `_ocr_da_captura`). Texto cortado no teto de caracteres NÃO serve — o arquivador lê inteiro.
+                if (c or {}).get("via") == "ocr" and (c or {}).get("anexo_bytes") and len(txt) < SR.MAX_CHARS_DOC:
+                    fp.with_suffix(".ocr.txt").write_text(txt, encoding="utf-8")
                 return True
 
             # manifest com os TÍTULOS da árvore: é ele que permite classificar a
