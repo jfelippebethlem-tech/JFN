@@ -159,12 +159,24 @@ def test_fila_de_captura_pula_o_arquivado_e_ordena_por_valor(tmp_path, monkeypat
     monkeypatch.setattr(vo, "ARQUIVO", tmp_path / "arq")
     _autos(tmp_path / "arq", "1000010000992024", {"000.txt": "x" * 400})
     d = date(2024, 5, 1)
-    pares = {("1000010000992024", "1"): [("o1", "u", 2024, d, 9e9)],          # já arquivado: fora
+    jan = {"1": [(date(2024, 1, 1), date(2024, 12, 31), 1_000.0)], "00394460000141": [(date(2024, 1, 1), None, 9e9)]}
+    pares = {("1000010000992024", "1"): [("o1", "u", 2024, d, 500.0)],          # já arquivado: fora
              ("1000010000982024", "1"): [("o2", "u", 2024, d, 10.0)],
              ("1000010000972024", "1"): [("o3", "u", 2024, d, 20.0)],
-             ("1000010000962024", "2"): [("o4", "u", 2024, d, 99.0)]}        # credor sem indeterminado: fora
-    fila = vo.fila_captura(pares, {"1": date(2024, 1, 1)})
+             ("1000010000952024", "1"): [("o5", "u", 2024, date(2026, 1, 1), 999.0)],   # fora da vigência
+             ("1000010000962024", "2"): [("o4", "u", 2024, d, 99.0)],        # credor sem indeterminado: fora
+             ("1000010000942024", "00394460000141"): [("o6", "u", 2024, d, 9e8)]}  # União: nunca é o contratado
+    fila = vo.fila_captura(pares, jan)
     assert [e["sei"] for e in fila] == ["SEI-100001/000097/2024", "SEI-100001/000098/2024"]
+
+
+def test_fila_escore_limitado_ao_valor_dos_contratos():
+    d = date(2024, 5, 1)
+    jan = {"1": [(date(2024, 1, 1), None, 100.0)], "2": [(date(2024, 1, 1), None, 5_000.0)]}
+    pares = {("1000010000932024", "1"): [("o1", "u", 2024, d, 1e9)],      # banco da folha: R$ 1 bi, contrato de 100
+             ("1000010000922024", "2"): [("o2", "u", 2024, d, 3_000.0)]}
+    fila = vo.fila_captura(pares, jan)
+    assert fila[0]["sei"] == "SEI-100001/000092/2024" and fila[1]["score"] == 100.0
 
 
 def test_excerto_traz_a_citacao_do_candidato_mesmo_longe_do_inicio():
@@ -178,3 +190,12 @@ def test_citacao_so_com_o_numero_nao_liga_o_pagamento():
     texto = "Capa. PROCESSO Nº SEI-100001/000004/2024. Ver também SEI-100001/000044/2024."
     k, _, m = vo.conferir_leitura(_resp("100001/000004/2024", "PROCESSO Nº SEI-100001/000004/2024."), CAND, texto)
     assert k is None and "não liga o pagamento" in m
+
+
+def test_custom_id_do_lote_identifica_o_par_e_nao_a_posicao(tmp_path, monkeypatch):
+    monkeypatch.setattr(vo, "ARQUIVO", tmp_path / "arq")
+    _autos(tmp_path / "arq", PAG, {"000.txt": DESPACHO})
+    a, ca = vo.montar_itens({(PAG, CNPJ_D): CAND, ("1000010000012024", "1"): CAND})
+    b, cb = vo.montar_itens({("1000010000012024", "1"): CAND, (PAG, CNPJ_D): CAND})
+    assert dict(a) == dict(b) and ca.keys() == cb.keys()
+    assert all(len(cid) <= 64 and cid.replace("_", "").isalnum() for cid, _ in a)

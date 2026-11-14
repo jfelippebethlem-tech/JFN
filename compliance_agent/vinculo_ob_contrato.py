@@ -339,14 +339,21 @@ def conferir_leitura(resp: str | None, candidatos: list[str], fonte_total: str) 
     return k, cit, ""
 
 
-def montar_itens(pares: dict, candidatos_de: dict) -> tuple[list, dict]:
+def id_par(pp: str, credor: str) -> str:
+    """custom_id ESTÁVEL do lote (processo + credor), nunca a posição: resultado colhido depois — ou relido de um
+    lote já pago — não pode cair no par errado (14/11/2026: reler o piloto por posição trocou os pares)."""
+    return f"{pp}_{re.sub(r'[^0-9A-Za-z]', '', credor)}"[:60]
+
+
+def montar_itens(pares: dict, candidatos_de: dict | None = None) -> tuple[list, dict]:
     itens, contexto = [], {}
-    for i, ((pp, c), cand) in enumerate(pares.items()):
+    for (pp, c), cand in pares.items():
         docs = ler_docs(pasta(pp))
         exc = excerto(docs, candidatos=cand)
-        contexto[f"p{i}"] = ((pp, c), cand, "\n".join(t for _, t in docs))
-        itens.append((f"p{i}a", prompt(pp, cand, exc, False)))
-        itens.append((f"p{i}b", prompt(pp, cand, exc, True)))
+        pid = id_par(pp, c)
+        contexto[pid] = ((pp, c), cand, "\n".join(t for _, t in docs))
+        itens.append((pid + "a", prompt(pp, cand, exc, False)))
+        itens.append((pid + "b", prompt(pp, cand, exc, True)))
     return itens, contexto
 
 
@@ -367,8 +374,7 @@ def decidir_modelo(saida: dict, contexto: dict) -> dict:
 
 def rodar_modelo(pares: dict, *, modelo: str | None = None, espera_max: int = 3600) -> tuple[dict, dict]:
     from compliance_agent.llm import claude_api as C
-    candidatos_de = {par: cand for par, cand in pares.items()}
-    itens, contexto = montar_itens(pares, candidatos_de)
+    itens, contexto = montar_itens(pares)
     lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=modelo, max_tokens=MAX_TOKENS, effort="low",
                          formato=FORMATO, n_decisoes=len(pares))
     if not lote:
@@ -415,28 +421,52 @@ def vinculos_verificados(con) -> dict[tuple, str]:
 
 
 # ── fila de captura (só a LISTA; quem captura é a VM-2) ──────────────────────────────────────────────
-def fila_captura(pares: dict, contratos_indet: dict[str, date | None], top: int | None = None) -> list[dict]:
-    """Processos de pagamento NÃO arquivados de credores com contrato INDETERMINADO, por valor pago (OB
-    Contabilizada do credor no processo, emitida a partir do início mais antigo dos contratos indeterminados)."""
+# Raízes de CNPJ que nunca são o contratado (União/Fazenda, tributo/repasse) — a mesma lista de
+# `tools.sei_fila_por_dinheiro._RAIZES_NAO_CONTRATADO`, repetida aqui para o pacote não importar `tools`.
+RAIZES_NAO_CONTRATADO = {"00394460", "42498600", "42498733"}
+CARENCIA_FIM_DIAS = 60
+
+
+def fila_captura(pares: dict, contratos_indet: dict[str, list], top: int | None = None) -> list[dict]:
+    """Processos de pagamento NÃO arquivados que podem tirar contrato de INDETERMINADO, em ordem de valor.
+
+    `contratos_indet` = {credor: [(início, fim, valor do contrato)]} dos contratos INDETERMINADOS por OB fora do
+    processo. Conta só a OB Contabilizada do credor emitida dentro da vigência de algum desses contratos (fim +
+    60 dias; fim desconhecido = aberto), e o ESCORE de cada par é o menor entre esse valor pago e a soma dos valores
+    dos contratos cuja vigência a OB toca — sem o teto, o banco que recebe a folha (bilhões em OB) e a União
+    (tributo) ocupavam o topo da fila sem ter contrato desse tamanho para resolver (medido em 14/11/2026)."""
     from compliance_agent.sei import acervo_texto as A
     agg: dict[str, dict] = {}
     for (pp, c), obs in pares.items():
-        if c not in contratos_indet:
+        if c not in contratos_indet or c[:8] in RAIZES_NAO_CONTRATADO:
             continue
-        ini = contratos_indet[c]
-        val = [o for o in obs if o[3] and (ini is None or o[3] >= ini)]
+        janelas = contratos_indet[c]
+        tocados, val = set(), []
+        for o in obs:
+            if not o[3]:
+                continue
+            hit = [k for k, (ini, fim, _v) in enumerate(janelas) if ini and o[3] >= ini
+                   and (fim is None or o[3] <= fim + timedelta(days=CARENCIA_FIM_DIAS))]
+            if hit:
+                tocados.update(hit)
+                val.append(o)
         if not val:
             continue
-        e = agg.setdefault(pp, {"valor": 0.0, "n_ob": 0, "credores": set()})
-        e["valor"] += sum(o[4] for o in val)
+        pago = sum(o[4] for o in val)
+        teto = sum(float(janelas[k][2] or 0) for k in tocados)
+        e = agg.setdefault(pp, {"score": 0.0, "valor": 0.0, "n_ob": 0, "credores": set()})
+        e["score"] += min(pago, teto)
+        e["valor"] += pago
         e["n_ob"] += len(val)
         e["credores"].add(c)
     out = []
-    for pp, e in sorted(agg.items(), key=lambda x: -x[1]["valor"]):
+    for pp, e in sorted(agg.items(), key=lambda x: -x[1]["score"]):
+        if e["score"] <= 0:
+            continue
         pst = pasta(pp)
         if (pst / "manifest.json").exists() and A.docs_com_conteudo(pst) > 0:
             continue
-        out.append({"sei": f"SEI-{formatar(pp)}", "score": round(e["valor"], 2), "valor_ob": round(e["valor"], 2),
+        out.append({"sei": f"SEI-{formatar(pp)}", "score": round(e["score"], 2), "valor_ob": round(e["valor"], 2),
                     "n_ob": e["n_ob"], "cnpj": sorted(e["credores"])[0], "n_credores": len(e["credores"]),
                     "tipo": "VINCULO_OB", "flags": ["FILA_VINCULO_OB_CONTRATO"],
                     "motivo": "processo de pagamento de credor com contrato INDETERMINADO na perícia contábil"})
@@ -466,18 +496,21 @@ def main(argv: list[str] | None = None) -> int:
     if a.acao == "fila":
         con.close()
         res = P.avaliar_estado(a.db)
-        indet: dict[str, date | None] = {}
-        ids_fora = {r["id"] for r in res if r["motivo"] in MOTIVOS_FORA}
+        valor_de = {r["id"]: r["valor_atualizado"] for r in res if r["motivo"] in MOTIVOS_FORA}
+        indet: dict[str, list] = {}
         for c, procs in por_cred.items():
-            inis = [info[i][0] for ids in procs.values() for i in ids if i in ids_fora]
-            if inis:
-                indet[c] = min([d for d in inis if d], default=None)
+            js = [(*info[i], valor_de[i]) for ids in procs.values() for i in ids if i in valor_de]
+            if js:
+                indet[c] = js
         fila = fila_captura(pares, indet)
-        total = round(sum(e["valor_ob"] for e in fila), 2)
-        SAIDA_FILA.write_text(json.dumps(fila[:a.top] if a.top else fila, ensure_ascii=False, indent=0),
-                              encoding="utf-8")
-        print(json.dumps({"processos": len(fila), "valor_ob": total, "gravado": str(SAIDA_FILA),
-                          "top5": fila[:5]}, ensure_ascii=False, indent=1))
+        gravar_fila = fila[:a.top] if a.top else fila
+        SAIDA_FILA.write_text(json.dumps(gravar_fila, ensure_ascii=False, indent=0), encoding="utf-8")
+        print(json.dumps({"processos": len(fila), "gravados": len(gravar_fila),
+                          "escore_total": round(sum(e["score"] for e in fila), 2),
+                          "valor_ob_total": round(sum(e["valor_ob"] for e in fila), 2),
+                          "escore_gravados": round(sum(e["score"] for e in gravar_fila), 2),
+                          "credores_com_indeterminado": len(indet), "gravado": str(SAIDA_FILA),
+                          "top10": fila[:10]}, ensure_ascii=False, indent=1))
         return 0
     if a.acao == "modelo" and a.cache and Path(a.cache).exists():
         con.close()
