@@ -9,6 +9,9 @@ versionados em `compliance_agent/territorio/dados/` (cada linha com a sua fonte)
   cnes_unidades.csv  Ministério da Saúde, API de dados abertos do CNES — hospitais, UPAs e pronto-socorros
                      do RJ + unidades básicas da capital (nome → município / AP)
 
+  sedes_orgaos.csv   PNCP, cadastro de unidades do órgão (orgaos/42498600000171/unidades) — unidade compradora →
+                     município de registro (a SEDE). Só serve ao grau `sede`, o mais fraco da atribuição.
+
 NÃO baixado: Censo Escolar/INEP — `download.inep.gov.br` apresenta cadeia TLS que não valida nesta VM,
 e baixar sem verificação de certificado não é aceitável. As escolas vêm do cadastro local do TSE.
 
@@ -124,7 +127,46 @@ def cnes() -> None:
     print(f"CNES: {sum(1 for k in linhas if por_nome[k[0]] == 1)} unidades de nome único (de {len(tudo)} lidas)")
 
 
+# Unidades cujo cadastro no PNCP diz "Rio de Janeiro" mas cuja sede, segundo o próprio órgão, fica FORA da capital
+# (ou do Estado). O cadastro diverge do endereço público: a linha sai SEM município e o grau `sede` não as atribui.
+_SEDE_DIVERGENTE = ("UNIV EST DO NORTE FLUMINENSE", "INSTITUTO VITAL BRAZIL", "EMPR DE ASSIST TECN E EXT RURAL", "EMPR DE PESQUISA AGROPECUARIA",
+                    "INSTITUTO DE PESCA", "DEPART RECURSOS MINERAIS", "AGRICULTURA", "REPRES DO GOV EM BSB", "IMPRENSA OFICIAL")
+
+
+def sedes() -> None:
+    from compliance_agent.territorio.atribui_estado import CNPJ_ESTADO, esfera_unidade
+    us = json.loads(_get(f"https://pncp.gov.br/api/pncp/v1/orgaos/{CNPJ_ESTADO}/unidades", 120))
+    validos = {m["cod_ibge"] for m in municipios()}
+    por: dict[str, set] = collections.defaultdict(set)
+    nomes = {}
+    for u in us:
+        n = norm(u.get("nomeUnidade"))
+        if not n or esfera_unidade(u.get("nomeUnidade")) != "estadual":
+            continue
+        por[n].add(str((u.get("municipio") or {}).get("codigoIbge") or ""))
+        nomes[n] = (u.get("nomeUnidade") or "").strip()
+    fonte = "PNCP — cadastro de unidades do órgão 42.498.600/0001-71 (município de registro da unidade), lido em " + time.strftime("%d/%m/%Y")
+    n_ok = 0
+    with open(DADOS / "sedes_orgaos.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["unidade_norm", "unidade", "cod_ibge", "situacao", "fonte"])
+        for n, cods in sorted(por.items()):
+            cod = next(iter(cods)) if len(cods) == 1 else ""
+            if any(d in n for d in _SEDE_DIVERGENTE):
+                w.writerow([n, nomes[n], "", "divergente", fonte + " — o cadastro diz capital, a sede pública do órgão não: NÃO atribuído"])
+            elif cod in validos:
+                w.writerow([n, nomes[n], cod, "pncp", fonte])
+                n_ok += 1
+            else:
+                w.writerow([n, nomes[n], "", "sem_municipio", fonte + " — unidade em mais de um município ou fora do RJ"])
+    print(f"sedes: {n_ok} unidades estaduais com município de registro (de {len(por)})")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ["sedes"]:
+        sedes()
+        sys.exit(0)
     distritos()
     isp()
     cnes()
+    sedes()
