@@ -139,8 +139,8 @@ def test_leitura_que_nao_confere_e_descartada(resp, motivo):
 
 def test_dupla_leitura_so_verifica_quando_as_duas_concordam():
     boa = _resp("100001/000004/2024", "contrato celebrado no processo SEI-100001/000004/2024")
-    outra = _resp("100001/000044/2024", "Ver também SEI-100001/000044/2024")
-    texto = DESPACHO + " Ver também SEI-100001/000044/2024."
+    outra = _resp("100001/000044/2024", "Pagamento referente ao SEI-100001/000044/2024")
+    texto = DESPACHO + " Pagamento referente ao SEI-100001/000044/2024."
     ctx = {"p0": ((PAG, CNPJ_D), CAND, texto)}
     assert vo.decidir_modelo({"p0a": boa, "p0b": boa}, ctx)[(PAG, CNPJ_D)][2] == V.VERIFICADO
     d = vo.decidir_modelo({"p0a": boa, "p0b": outra}, ctx)[(PAG, CNPJ_D)]
@@ -172,3 +172,9 @@ def test_excerto_traz_a_citacao_do_candidato_mesmo_longe_do_inicio():
     docs = [("d1", enchimento), ("d2", "Despacho final\nconforme contrato SEI-100001/000004/2024\nok")]
     exc = vo.excerto(docs, teto=3000, candidatos=["1000010000042024"])
     assert "SEI-100001/000004/2024" in exc and len(exc) <= 3000
+
+
+def test_citacao_so_com_o_numero_nao_liga_o_pagamento():
+    texto = "Capa. PROCESSO Nº SEI-100001/000004/2024. Ver também SEI-100001/000044/2024."
+    k, _, m = vo.conferir_leitura(_resp("100001/000004/2024", "PROCESSO Nº SEI-100001/000004/2024."), CAND, texto)
+    assert k is None and "não liga o pagamento" in m

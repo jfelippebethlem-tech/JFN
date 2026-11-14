@@ -269,6 +269,8 @@ FORMATO = {"type": "object", "additionalProperties": False,
                           "citacao": {"type": "string"}},
            "required": ["processo_contrato", "mais_de_um", "citacao"]}
 _RE_RELEVANTE = re.compile(r"contrat|processo|SEI|referente|objeto|vig[êe]ncia|compet[êe]ncia|pagamento", re.I)
+_RE_LIGA_PAGAMENTO = re.compile(r"contrat|referente|pagamento|pagar|nota\s+fiscal|\bNF\b|empenho|liquida|atest|"
+                                r"medi[çc][ãa]o|compet[êe]ncia|fatura", re.I)
 TETO_EXCERTO = 9000
 # piloto de 14/11/2026: com 400, 79 de 400 leituras cortadas — o raciocínio adaptativo do Haiku consome o max_tokens
 MAX_TOKENS = 2500
@@ -331,6 +333,9 @@ def conferir_leitura(resp: str | None, candidatos: list[str], fonte_total: str) 
         return None, cit, "citação não encontrada literalmente nos autos"
     if k not in chaves_citadas(cit):
         return None, cit, "o número do processo escolhido não está no trecho citado"
+    if not _RE_LIGA_PAGAMENTO.search(cit):
+        # piloto de 14/11/2026: "PROCESSO Nº SEI-…/2025." sozinho, entre dois contratos citados, não prova qual é pago
+        return None, cit, "a citação não liga o pagamento ao processo escolhido"
     return k, cit, ""
 
 
