@@ -122,15 +122,15 @@ def _pasta_trabalho() -> Path:
 
 def _bin() -> list[str]:
     """Caminho do `claude`. O cron e o serviço rodam com PATH mínimo: só o nome dava rc=127 em toda
-    chamada (13/11/2026). Ordem: variável explícita → PATH → instalações conhecidas do usuário."""
+    chamada (13/11/2026). Ordem: variável explícita → instalações do USUÁRIO (as que se atualizam) → PATH.
+    14/11/2026: na VM-2 o PATH achava primeiro o /usr/bin/claude de sistema (2.1.296, parado) enquanto o do
+    usuário em ~/.local/bin estava em 2.1.325 — o dono pediu "usar o claude code da vm2 atualizado"."""
     if os.environ.get("JFN_CLAUDE_BIN"):
         return [os.environ["JFN_CLAUDE_BIN"]]
     import shutil
-    achado = shutil.which("claude")
-    if not achado:
-        casa = Path(os.environ.get("HOME") or Path.home())
-        achado = next((str(p) for p in (casa / ".npm-global" / "bin" / "claude", casa / ".local" / "bin" / "claude")
-                       if p.is_file() and os.access(p, os.X_OK)), None)
+    casa = Path(os.environ.get("HOME") or Path.home())
+    achado = next((str(p) for p in (casa / ".npm-global" / "bin" / "claude", casa / ".local" / "bin" / "claude")
+                   if p.is_file() and os.access(p, os.X_OK)), None) or shutil.which("claude")
     return [achado or "claude"]
 
 

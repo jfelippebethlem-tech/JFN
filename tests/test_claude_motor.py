@@ -177,3 +177,16 @@ def test_binario_achado_fora_do_path_do_cron(monkeypatch, tmp_path):
     assert M._bin() == [str(falso)]
     monkeypatch.setenv("JFN_CLAUDE_BIN", "/opt/x/claude")
     assert M._bin() == ["/opt/x/claude"]          # variável explícita sempre vence
+
+
+def test_instalacao_do_usuario_vence_o_claude_de_sistema_no_path(monkeypatch, tmp_path):
+    # 14/11/2026: na VM-2 o PATH trazia /usr/bin/claude (2.1.296) e o do usuário (~/.local/bin, 2.1.325) era ignorado
+    monkeypatch.delenv("JFN_CLAUDE_BIN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    usuario = tmp_path / ".local" / "bin" / "claude"
+    usuario.parent.mkdir(parents=True)
+    usuario.write_text("#!/bin/sh\n")
+    usuario.chmod(0o755)
+    import shutil
+    monkeypatch.setattr(shutil, "which", lambda n: "/usr/bin/claude")
+    assert M._bin() == [str(usuario)]
