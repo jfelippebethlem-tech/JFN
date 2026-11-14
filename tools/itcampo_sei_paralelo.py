@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""it-campo como nó de ÍNTEGRAS do SEI com N SESSÕES SIMULTÂNEAS (pedido do dono, 14/11/2026).
+"""it-campo como nó de ÍNTEGRAS do SEI com N SESSÕES SIMULTÂNEAS E CONTÍNUAS (pedido do dono, 14/11/2026).
 
 POR QUE EXISTE. A fila de íntegras andava ~25 processos/dia (177 novos em 7 dias, medido em 14/11) com um navegador
 por máquina. O it-campo (Windows, 24 threads, 31 GB, WSL Ubuntu, Tailscale) roda várias sessões itkava ao mesmo
-tempo. O dono autorizou levar a senha do SEI até lá e exigiu ver tudo na tela ("nada de janelas ocultas").
+tempo. O dono autorizou levar a senha do SEI até lá, exigiu ver tudo na tela ("nada de janelas ocultas") e mandou
+"nunca pare as capturas" — por isso nenhuma sessão espera a outra.
 
 DESENHO (a VM-1 continua dona da verdade — banco, arquivo, painel; nada daqui escreve no acervo dela):
-  base     ~/JFN-worker (clone git da VM-1 pelo Tailscale; `git pull --ff-only` a cada rodada)
-  sessões  ~/JFN-sessoes/s1..sN = `git worktree` da base (código idêntico; data/, browser.lock e TMPDIR PRÓPRIOS:
-           o mutex de navegador da casa é por árvore e a limpeza de órfãos do vm_guard não alcança o perfil alheio)
-  rodada   1. VM-1 `sei_integra_vm2 exportar --no itcampo --validade-h 3` — mesma ordem da fila da VM-1
-              (bombeiros → dinheiro → geral), SEM o que outro nó reservou (a VM-2 tem a dela); reserva por 3 h
-           2. fatias DISJUNTAS por round-robin (cada sessão leva a sua parte da ordem de prioridade)
-           3. uma JANELA por sessão (`cmd.exe /c start "JFN SEI sessão k/N" wsl.exe … tools/itcampo_sessao.sh`),
-              navegador visível pelo WSLg; o título diz o processo e quantos foram feitos
-           4. cada sessão entrega o próprio LOTE (`sei_integra_vm2 devolver` → `vm2_conferencia importar` na VM-1:
-              md5, documentos × árvore, texto legível, amostra independente; reprovado ⇒ quarentena)
-           5. métricas da rodada (processos/hora, erro, documentos vazios, s/documento) em
-              `data/itcampo_rodadas.jsonl` daqui E da VM-1; batida `.integras_na_itcampo` na VM-1
-  fora do ar  a reserva vale 3 h e é renovada a cada rodada: it-campo desligado ⇒ os processos voltam sozinhos
-              para a VM-1/VM-2 (que já excluem só reservas frescas).
+  base     ~/JFN-worker (clone git da VM-1 pelo Tailscale; o orquestrador faz `git pull --ff-only` a cada 10 min)
+  sessões  ~/JFN-sessoes/s1..sN = `git worktree` da base (data/, browser.lock e TMPDIR PRÓPRIOS: o mutex de
+           navegador da casa é por árvore e a limpeza de órfãos do vm_guard não alcança o perfil alheio)
+  sessão k LAÇO CONTÍNUO na sua JANELA (`cmd.exe /c start "JFN SEI sessão k/N" wsl.exe …`):
+           1. VM-1 `sei_integra_vm2 exportar --no itcampo<k> --validade-h 3` — mesma ordem da fila da VM-1
+              (bombeiros → dinheiro → geral), SEM reserva alheia (VM-2 e as outras sessões) nem RESTRITO confirmado
+           2. `sei_integra_fila.py --fila` (código da casa) por ~30 min; o título mostra processo e contagem, a janela
+              mostra o progresso documento a documento (navegador headless: PDF em janela trava 450 s/doc, medido)
+           3. entrega o LOTE (`sei_integra_vm2 devolver` → `vm2_conferencia importar` na VM-1: md5, documentos ×
+              árvore, texto legível, amostra independente; reprovado ⇒ quarentena; restrito declarado ⇒ registro)
+           4. métricas da volta em `data/itcampo_rodadas.jsonl` (base) e na VM-1; batida `.integras_na_itcampo`
+           e recomeça na hora. Código novo na base ⇒ a sessão termina a volta e o orquestrador a reabre atualizada.
+  orquest. garante as N janelas vivas (sessão viva = algum processo com cwd no worktree dela) e mostra o painel.
+  fora do ar  reserva de 3 h renovada a cada volta e batida de 4 h: it-campo desligado ⇒ a fila volta sozinha
+              para a VM-1/VM-2.
 
 Controle (no WSL do it-campo):
-  data/itcampo_n          nº de sessões (lido a cada rodada; degraus 2 → 4 → 6 → …)
-  data/.pause_itcampo     pausa ENTRE rodadas (a rodada em curso termina e entrega)
+  ~/JFN-worker/data/itcampo_n         nº de sessões (lido a cada minuto; sessão k > N termina a volta e fecha)
+  ~/JFN-worker/data/.pause_itcampo    pausa (cada sessão termina e entrega a volta em curso, depois espera)
 
 Uso:
-  python -m tools.itcampo_sei_paralelo rodar [--rodadas K] [--n N]      # orquestrador (janela visível)
-  python -m tools.itcampo_sei_paralelo metricas --desde <byte do log>   # chamado por cada sessão
+  python -m tools.itcampo_sei_paralelo rodar                 # orquestrador (janela visível, tarefa JFN-SEI-Paralelo)
+  python -m tools.itcampo_sei_paralelo sessao --k K          # uma sessão (aberta pelo orquestrador)
+  python -m tools.itcampo_sei_paralelo relatorio             # ritmo por nº de sessões (degraus)
+  python -m tools.itcampo_sei_paralelo metricas --desde <byte do log>
 """
 from __future__ import annotations
 
@@ -46,11 +50,12 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 DATA = RAIZ / "data"
+BASE = Path(os.environ.get("JFN_ITCAMPO_BASE", str(Path.home() / "JFN-worker")))
 SESSOES = Path(os.environ.get("JFN_ITCAMPO_SESSOES", str(Path.home() / "JFN-sessoes")))
-CFG_N = DATA / "itcampo_n"
-PAUSA = DATA / ".pause_itcampo"
-RODADAS = DATA / "itcampo_rodadas.jsonl"
-PAINEL = DATA / "itcampo_montagem.log"          # o que a janela de status do Windows mostra
+CFG_N = BASE / "data" / "itcampo_n"
+PAUSA = BASE / "data" / ".pause_itcampo"
+RODADAS = BASE / "data" / "itcampo_rodadas.jsonl"
+PAINEL = BASE / "data" / "itcampo_montagem.log"          # painel do orquestrador
 VM1 = os.environ.get("JFN_VM1_SSH", "vm1-ts")
 VM1_JFN = os.environ.get("JFN_VM1_DIR", "/home/ubuntu/JFN")
 NO = "itcampo"
@@ -76,8 +81,11 @@ def _ts(s: str) -> float:
 def painel(msg: str) -> None:
     linha = f"[{time.strftime('%F %T')}] {msg}"
     print(linha, flush=True)
-    with PAINEL.open("a", encoding="utf-8") as f:
-        f.write(linha + "\n")
+    try:
+        with PAINEL.open("a", encoding="utf-8") as f:
+            f.write(linha + "\n")
+    except OSError:
+        pass
 
 
 def titulo(t: str) -> None:
@@ -158,7 +166,7 @@ def metricas(desde: int) -> dict:
     return metricas_do_log(linhas, F.ARQUIVO, F.CACHE)
 
 
-# ───────────────────────────── orquestrador ─────────────────────────────
+# ───────────────────────────── comum ─────────────────────────────
 
 def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
@@ -176,99 +184,152 @@ def n_sessoes(padrao: int = 2) -> int:
         return padrao
 
 
-def fatiar(fila: list[dict], n: int) -> list[list[dict]]:
-    """Fatias DISJUNTAS por round-robin: cada sessão pega a sua parte da ordem de prioridade. O score de cada
-    fatia é a posição (o `--fila` reordena por score desc)."""
-    fatias = [fila[i::n] for i in range(n)]
-    for f in fatias:
-        for j, e in enumerate(f):
-            e["score"] = len(f) - j
-    return fatias
+def _head(arvore: Path) -> str:
+    return _run(["git", "-C", str(arvore), "rev-parse", "HEAD"]).stdout.strip()
 
 
-def preparar(n: int) -> str:
-    """Atualiza a base e põe cada worktree de sessão no mesmo commit. Devolve o commit."""
-    r = _run(["git", "-C", str(RAIZ), "pull", "--ff-only", "-q"], timeout=300)
-    if r.returncode != 0:
-        painel(f"git pull falhou ({r.stderr.strip()[:120]}) — seguindo com o código que há")
-    head = _run(["git", "-C", str(RAIZ), "rev-parse", "HEAD"]).stdout.strip()
+def preparar_worktree(k: int, head: str) -> Path:
+    """Cria (ou põe no commit `head`) o worktree da sessão k, com venv/.env da base e trava do SIAFE."""
+    s = SESSOES / f"s{k}"
     SESSOES.mkdir(parents=True, exist_ok=True)
-    for k in range(1, n + 1):
-        s = SESSOES / f"s{k}"
-        if not (s / ".git").exists():
-            _run(["git", "-C", str(RAIZ), "worktree", "prune"])
-            r = _run(["git", "-C", str(RAIZ), "worktree", "add", "-q", "--detach", str(s), head], timeout=300)
-            if r.returncode != 0:
-                raise RuntimeError(f"worktree s{k}: {r.stderr.strip()[:200]}")
-        else:
-            _run(["git", "-C", str(s), "checkout", "-q", "--detach", head], timeout=300)
-        for nome in (".venv", ".env"):
-            if not (s / nome).exists():
-                (s / nome).symlink_to(RAIZ / nome)
-        (s / "data").mkdir(exist_ok=True)
-        (s / "data" / ".siafe_host").write_text("jfn-core\n")       # SIAFE é sessão única, na VM-1
-        (s / "tmp").mkdir(exist_ok=True)
-    return head[:8]
+    if not (s / ".git").exists():
+        _run(["git", "-C", str(BASE), "worktree", "prune"])
+        r = _run(["git", "-C", str(BASE), "worktree", "add", "-q", "--detach", str(s), head], timeout=300)
+        if r.returncode != 0:
+            raise RuntimeError(f"worktree s{k}: {r.stderr.strip()[:200]}")
+    elif _head(s) != head:
+        _run(["git", "-C", str(s), "checkout", "-q", "--detach", head], timeout=300)
+    for nome in (".venv", ".env"):
+        if not (s / nome).exists():
+            (s / nome).symlink_to(BASE / nome)
+    (s / "data").mkdir(exist_ok=True)
+    (s / "data" / ".siafe_host").write_text("jfn-core\n")       # SIAFE é sessão única, na VM-1
+    (s / "tmp").mkdir(exist_ok=True)
+    return s
 
 
-def exportar(n: int) -> list[dict]:
-    m = n * POR_SESSAO
+# ───────────────────────────── uma sessão (laço contínuo) ─────────────────────────────
+
+def exportar_slot(k: int, m: int) -> list[dict]:
     r = _ssh(f"cd {VM1_JFN} && PYTHONPATH=. nice -n 10 .venv/bin/python -m tools.sei_integra_vm2 exportar "
-             f"--no {NO} --max {m} --validade-h {VALIDADE_H} --k-bombeiros {max(1, m // 4)}")
+             f"--no {NO}{k} --max {m} --validade-h {VALIDADE_H} --k-bombeiros {max(1, m // 4)}")
     if r.returncode != 0:
         raise RuntimeError(f"exportar na VM-1 falhou: {r.stderr.strip()[-200:]}")
-    return json.loads(r.stdout)
+    fila = json.loads(r.stdout)
+    for j, e in enumerate(fila):
+        e["score"] = len(fila) - j
+    return fila
 
 
-def lancar(k: int, n: int, segundos: int) -> None:
-    """Abre a JANELA da sessão k no Windows (visível, com título) — nunca processo escondido."""
-    s = SESSOES / f"s{k}"
-    distro = os.environ.get("WSL_DISTRO_NAME", "Ubuntu")
-    subprocess.Popen(["cmd.exe", "/c", "start", f"JFN SEI sessão {k}/{n}", "wsl.exe", "-d", distro,
-                      "--cd", str(s), "--", "bash", str(s / "tools" / "itcampo_sessao.sh"), str(k), str(n),
-                      str(segundos)], cwd="/mnt/c", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def _progresso(s: Path, estado: dict, parar) -> None:
+    """Linha de progresso documento a documento (a saída da captura fica dentro da fila da casa)."""
+    while not parar.wait(30):
+        proc = estado.get("atual")
+        if not proc:
+            continue
+        m = _ler_json(s / "data" / "sei_cache" / f"integra_{proc.replace('/', '_')}" / "manifest.json")
+        if isinstance(m, dict):
+            docs = [x for x in m.get("docs") or [] if isinstance(x, dict)]
+            print(f"[{time.strftime('%F %T')}]     {proc}: documento {len(docs)} de {m.get('total_arvore')} "
+                  f"({sum(1 for x in docs if x.get('ok'))} com teor)", flush=True)
 
 
-def esperar(n: int, segundos: int, t0: float) -> list[int]:
-    """Espera as N sessões terminarem (teto: orçamento + 40 min). Devolve as que não terminaram."""
-    teto = t0 + segundos + 2400
-    while True:
-        faltam = [k for k in range(1, n + 1) if not (SESSOES / f"s{k}" / "data" / "itcampo_sessao_fim.json").exists()]
-        estados = []
-        for k in range(1, n + 1):
-            try:
-                estados.append(f"s{k}:" + (SESSOES / f"s{k}" / "data" / "itcampo_estado.txt").read_text().strip())
-            except OSError:
-                estados.append(f"s{k}:-")
-        titulo(f"JFN SEI orquestrador — {n} sessões — {len(faltam)} rodando — {int((time.time()-t0)/60)} min")
-        print(f"[{time.strftime('%T')}] " + "  ".join(estados), flush=True)
-        if not faltam or time.time() > teto:
-            return faltam
-        time.sleep(60)
-
-
-def agregar(n: int, t0: float, fila_n: int, commit: str) -> dict:
-    procs: dict = {}
-    lotes = {"aprovados": 0, "quarentena": 0, "nao_entregues": 0, "lote_nao_chegou": 0}
-    for k in range(1, n + 1):
-        d = SESSOES / f"s{k}" / "data"
-        m = _ler_json(d / "itcampo_metricas.json") or {}
-        procs.update(m.get("procs") or {})
-        r = _ler_json(d / "itcampo_devolver.json") or {}
-        lote = r.get("lote")
-        if lote:
-            lotes["aprovados"] += len(lote.get("aprovados") or [])
-            lotes["quarentena"] += len(lote.get("reprovados") or {})
-        elif r.get("status"):
-            lotes["lote_nao_chegou"] += 1
-        lotes["nao_entregues"] += len(r.get("nao_entregues") or {})
-    dur = time.time() - t0
-    tot = _totais(procs)
-    rec = {"ts": time.strftime("%F %T"), "no": NO, "sessoes": n, "commit": commit, "fila_exportada": fila_n,
-           "duracao_s": round(dur), **tot, **lotes,
-           "proc_por_hora": round(tot["tentados"] / (dur / 3600), 1) if dur else None,
-           "ok_por_hora": round(tot["ok"] / (dur / 3600), 1) if dur else None, "procs": procs}
+def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
+    import threading
+    fila = exportar_slot(k, POR_SESSAO)
+    if not fila:
+        return None
+    n = n_sessoes()
+    (s / "data" / "fila_itcampo.json").write_text(json.dumps(fila, ensure_ascii=False), encoding="utf-8")
+    log = s / "data" / "sei_integra_fila.log"
+    desde = log.stat().st_size if log.exists() else 0
+    t0 = time.time()
+    print(f"\n=== JFN SEI — sessão {k} de {n} — {time.strftime('%F %T')} — {len(fila)} processo(s) reservados, "
+          f"orçamento {segundos // 60} min ===", flush=True)
+    titulo(f"JFN SEI sessão {k}/{n} — começando ({len(fila)} na fila)")
+    estado = {"atual": "", "feitos": 0}
+    parar = threading.Event()
+    threading.Thread(target=_progresso, args=(s, estado, parar), daemon=True).start()
+    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 1200), str(s / ".venv/bin/python"),
+                          "-u", "tools/sei_integra_fila.py", "--fila", "data/fila_itcampo.json",
+                          "--segundos", str(segundos)], cwd=s, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         text=True, encoding="utf-8", errors="replace")
+    for ln in p.stdout:
+        ln = ln.rstrip("\n")
+        print(ln, flush=True)
+        m = _RX_INI.match(ln)
+        if m:
+            estado["atual"] = m.group(2)
+        elif _RX_FIM.match(ln):
+            estado["feitos"] += 1
+        titulo(f"JFN SEI sessão {k}/{n} — processo {estado['atual'] or '-'}, {estado['feitos']} feitos")
+        (s / "data" / "itcampo_estado.txt").write_text(f"{estado['atual'] or '-'} {estado['feitos']}")
+    rc = p.wait()
+    parar.set()
+    titulo(f"JFN SEI sessão {k}/{n} — medindo e entregando o lote à VM-1")
+    print("--- medindo a volta e entregando o lote à VM-1 (conferência com quarentena) ---", flush=True)
+    met = metricas_do_log(_linhas(log, desde), s / "data" / "sei_arquivo", s / "data" / "sei_cache")
+    r = _run([str(s / ".venv/bin/python"), "-m", "tools.sei_integra_vm2", "devolver", "--desde", str(desde),
+              "--fila", "data/fila_itcampo.json"], cwd=s, timeout=7200)
+    try:
+        dev = json.loads(r.stdout.strip().splitlines()[-1]) if r.stdout.strip() else {}
+    except (ValueError, IndexError):
+        dev = {}
+    lote = dev.get("lote") or {}
+    rec = {"ts": time.strftime("%F %T"), "no": NO, "slot": k, "sessoes": n, "commit": _head(s)[:8],
+           "inicio": time.strftime("%F %T", time.localtime(t0)), "duracao_s": round(time.time() - t0), "rc": rc,
+           **{c: v for c, v in met.items() if c != "procs"},
+           "aprovados": len(lote.get("aprovados") or []), "quarentena": len(lote.get("reprovados") or {}),
+           "lote_nao_chegou": bool(dev.get("status")) and not lote,
+           "nao_entregues": len(dev.get("nao_entregues") or {}), "procs": met.get("procs")}
+    registrar(rec)
+    print(f"=== volta terminada: {rec['tentados']} tentados, {rec['ok']} ok, {rec['docs']} docs, "
+          f"erro {rec['taxa_erro']}, lote {rec['aprovados']} aprovados / {rec['quarentena']} quarentena ===",
+          flush=True)
     return rec
+
+
+def _linhas(log: Path, desde: int) -> list[str]:
+    try:
+        with log.open("rb") as f:
+            f.seek(desde)
+            return f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return []
+
+
+def sessao(k: int, segundos: int) -> int:
+    """Laço contínuo da sessão k na sua janela. Sai (e o orquestrador reabre) quando há código novo na base."""
+    s = SESSOES / f"s{k}"
+    os.environ.update({"PYTHONPATH": str(s), "TMPDIR": str(s / "tmp"), "TZ": "America/Sao_Paulo",
+                       "SEI_SEM_TG": "1", "JFN_CLAUDE_MAX_CONFERENCIA_VM2": "0"})
+    # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU
+    os.environ.setdefault("VM_GUARD_MAX_LOAD", "20")
+    os.environ.setdefault("VM_GUARD_MIN_FREE_GB", "1.5")
+    os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
+    meu = _head(BASE)
+    preparar_worktree(k, meu)
+    (s / "data" / "itcampo_sessao.pid").write_text(str(os.getpid()))
+    while True:
+        if k > n_sessoes():
+            print(f"sessão {k} acima de N={n_sessoes()} — fechando", flush=True)
+            return 0
+        if _head(BASE) != meu:
+            print("código novo na base — fechando para reabrir atualizada", flush=True)
+            return 3
+        if PAUSA.exists():
+            titulo(f"JFN SEI sessão {k} — PAUSADA (.pause_itcampo)")
+            time.sleep(60)
+            continue
+        try:
+            rec = uma_volta(k, s, FATIA_S)
+        except (RuntimeError, subprocess.SubprocessError, OSError, ValueError) as exc:
+            print(f"[{time.strftime('%F %T')}] volta falhou: {str(exc)[:200]} — nova tentativa em 5 min", flush=True)
+            time.sleep(300)
+            continue
+        if rec is None:
+            titulo(f"JFN SEI sessão {k} — fila vazia na VM-1, nova consulta em 20 min")
+            time.sleep(1200)
 
 
 def registrar(rec: dict) -> None:
@@ -280,69 +341,113 @@ def registrar(rec: dict) -> None:
         _ssh(f"cd {VM1_JFN} && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 batida --no {NO}", timeout=120)
 
 
-def rodada(n: int, segundos: int) -> dict | None:
-    t0 = time.time()
-    commit = preparar(n)
-    fila = exportar(n)
-    painel(f"rodada: {n} sessões, código {commit}, VM-1 exportou {len(fila)} processo(s) (reserva de {VALIDADE_H:g} h)")
-    if not fila:
-        return None
-    for k, fatia in enumerate(fatiar(fila, n), start=1):
-        d = SESSOES / f"s{k}" / "data"
-        (d / "itcampo_sessao_fim.json").unlink(missing_ok=True)
-        for nome in ("itcampo_metricas.json", "itcampo_devolver.json", "itcampo_estado.txt"):
-            (d / nome).unlink(missing_ok=True)
-        (d / "fila_itcampo.json").write_text(json.dumps(fatia, ensure_ascii=False), encoding="utf-8")
-        lancar(k, n, segundos)
-        time.sleep(3)
-    painel(f"{n} janela(s) de sessão abertas na tela — fatia de {segundos // 60} min cada")
-    faltam = esperar(n, segundos, t0)
-    if faltam:
-        painel(f"sessões sem terminar no teto: {faltam} (seguem; a próxima rodada as reaproveita)")
-    rec = agregar(n, t0, len(fila), commit)
-    registrar(rec)
-    painel(f"rodada medida: {rec['tentados']} tentados, {rec['ok']} ok, {rec['docs']} docs, "
-           f"{rec['proc_por_hora']} proc/h, erro {rec['taxa_erro']}, docs vazios {rec['taxa_docs_vazios']}, "
-           f"{rec['s_por_doc']} s/doc; lote: {rec['aprovados']} aprovados, {rec['quarentena']} em quarentena")
-    return rec
+# ───────────────────────────── orquestrador ─────────────────────────────
 
-
-def rodar(rodadas: int, n_fixo: int | None, segundos: int) -> int:
-    feitas = 0
-    while rodadas <= 0 or feitas < rodadas:
-        if PAUSA.exists():
-            titulo("JFN SEI orquestrador — PAUSADO (.pause_itcampo)")
-            print(f"[{time.strftime('%T')}] pausado (data/.pause_itcampo) — confiro de novo em 5 min", flush=True)
-            time.sleep(300)
+def viva(k: int) -> bool:
+    """Sessão k viva = algum processo com cwd dentro do worktree dela (vale para a janela, a fila e a captura)."""
+    alvo = str(SESSOES / f"s{k}")
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
             continue
-        n = n_fixo or n_sessoes()
         try:
-            rec = rodada(n, segundos)
-        except (RuntimeError, subprocess.SubprocessError, OSError, ValueError) as exc:
-            painel(f"rodada falhou: {str(exc)[:200]} — nova tentativa em 10 min")
-            time.sleep(600)
+            cwd = os.readlink(f"/proc/{pid}/cwd")
+        except OSError:
             continue
-        feitas += 1
-        if rec is None:
-            painel("fila vazia na VM-1 — nova consulta em 30 min")
-            time.sleep(1800)
-    return 0
+        if cwd == alvo or cwd.startswith(alvo + "/"):
+            return True
+    return False
+
+
+def lancar(k: int, n: int) -> None:
+    """Abre a JANELA da sessão k no Windows (visível, com título) — nunca processo escondido."""
+    s = SESSOES / f"s{k}"
+    distro = os.environ.get("WSL_DISTRO_NAME", "Ubuntu")
+    subprocess.Popen(["cmd.exe", "/c", "start", f"JFN SEI sessão {k}/{n}", "wsl.exe", "-d", distro,
+                      "--cd", str(s), "--", "bash", "-lc",
+                      f"PYTHONPATH={s} {BASE}/.venv/bin/python -u -m tools.itcampo_sei_paralelo sessao --k {k}; "
+                      "echo; echo 'sessão encerrada — esta janela fecha em 20 s'; sleep 20"],
+                     cwd="/mnt/c", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def rodar() -> int:
+    ultimo_pull = 0.0
+    while True:
+        n = n_sessoes()
+        if time.time() - ultimo_pull > 600:
+            r = _run(["git", "-C", str(BASE), "pull", "--ff-only", "-q"], timeout=300)
+            if r.returncode != 0:
+                painel(f"git pull falhou ({r.stderr.strip()[:120]}) — seguindo com o código que há")
+            ultimo_pull = time.time()
+        head = _head(BASE)
+        for k in range(1, n + 1):
+            if PAUSA.exists() or viva(k):
+                continue
+            try:
+                preparar_worktree(k, head)
+            except (RuntimeError, OSError) as exc:
+                painel(f"sessão {k}: worktree falhou — {str(exc)[:150]}")
+                continue
+            lancar(k, n)
+            painel(f"sessão {k}/{n} aberta em janela própria (código {head[:8]})")
+            time.sleep(3)
+        estados = []
+        for k in range(1, n + 1):
+            try:
+                estados.append(f"s{k}:" + (SESSOES / f"s{k}" / "data" / "itcampo_estado.txt").read_text().strip())
+            except OSError:
+                estados.append(f"s{k}:-")
+        vivas = sum(1 for k in range(1, n + 1) if viva(k))
+        titulo(f"JFN SEI orquestrador — {vivas}/{n} sessões vivas" + (" — PAUSADO" if PAUSA.exists() else ""))
+        print(f"[{time.strftime('%T')}] {vivas}/{n} vivas  " + "  ".join(estados), flush=True)
+        time.sleep(60)
+
+
+# ───────────────────────────── relatório por degrau ─────────────────────────────
+
+def relatorio(registros: list[dict]) -> dict:
+    """Ritmo por nº de sessões: processos/hora = tentados na janela de tempo em que aquele N vigorou."""
+    por_n: dict[int, list[dict]] = {}
+    for r in registros:
+        por_n.setdefault(int(r.get("sessoes") or 0), []).append(r)
+    out = {}
+    for n, rs in sorted(por_n.items()):
+        ini = min(_ts(r.get("inicio") or r["ts"]) - (0 if r.get("inicio") else r.get("duracao_s", 0)) for r in rs)
+        fim = max(_ts(r["ts"]) for r in rs)
+        horas = max((fim - ini) / 3600, 1e-9)
+        procs: dict = {}
+        for r in rs:
+            procs.update(r.get("procs") or {})
+        t = _totais(procs)
+        out[n] = {"voltas": len(rs), "horas": round(horas, 2), **t,
+                  "proc_por_hora": round(t["tentados"] / horas, 1), "ok_por_hora": round(t["ok"] / horas, 1),
+                  "docs_por_hora": round(t["docs"] / horas, 1),
+                  "aprovados": sum(r.get("aprovados", 0) for r in rs),
+                  "quarentena": sum(r.get("quarentena", 0) for r in rs)}
+    return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("rodar")
-    r.add_argument("--rodadas", type=int, default=0, help="0 = contínuo")
-    r.add_argument("--n", type=int, default=0, help="sessões (padrão: data/itcampo_n)")
-    r.add_argument("--segundos", type=int, default=FATIA_S)
+    sub.add_parser("rodar")
+    s = sub.add_parser("sessao")
+    s.add_argument("--k", type=int, required=True)
+    s.add_argument("--segundos", type=int, default=FATIA_S)
+    sub.add_parser("relatorio")
     m = sub.add_parser("metricas")
     m.add_argument("--desde", type=int, default=0)
     a = ap.parse_args()
     if a.cmd == "metricas":
         print(json.dumps(metricas(a.desde), ensure_ascii=False))
         return 0
-    return rodar(a.rodadas, a.n or None, a.segundos)
+    if a.cmd == "sessao":
+        return sessao(a.k, a.segundos)
+    if a.cmd == "relatorio":
+        regs = [json.loads(ln) for ln in RODADAS.read_text(encoding="utf-8").splitlines() if ln.strip()] \
+            if RODADAS.exists() else []
+        print(json.dumps(relatorio(regs), ensure_ascii=False, indent=1))
+        return 0
+    return rodar()
 
 
 if __name__ == "__main__":

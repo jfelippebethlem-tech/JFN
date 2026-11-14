@@ -12,14 +12,17 @@ import tools.itcampo_sei_paralelo as P
 import tools.sei_integra_fila as F
 
 
-def test_fatias_disjuntas_cobrem_tudo_e_preservam_ordem():
-    fila = [{"sei": f"SEI-100000/{i:06d}/2025"} for i in range(11)]
-    fatias = P.fatiar([dict(e) for e in fila], 4)
-    todos = [e["sei"] for f in fatias for e in f]
-    assert sorted(todos) == sorted(e["sei"] for e in fila) and len(todos) == len(set(todos))
-    assert [e["sei"] for e in fatias[0]] == [fila[0]["sei"], fila[4]["sei"], fila[8]["sei"]]
-    for f in fatias:          # `--fila` ordena por score desc: tem de reproduzir a ordem da fatia
-        assert sorted(f, key=lambda e: -e["score"]) == f
+def test_relatorio_por_degrau_soma_voltas_simultaneas():
+    def volta(n, slot, ini, fim, procs):
+        return {"sessoes": n, "slot": slot, "inicio": ini, "ts": fim, "aprovados": 1, "procs": procs}
+    ok = {"status": "ok", "segundos": 600.0, "docs": 10, "docs_com_teor": 9}
+    regs = [volta(4, 1, "2026-11-14 10:00:00", "2026-11-14 10:30:00", {"1/1/1": ok, "1/1/2": ok}),
+            volta(4, 2, "2026-11-14 10:00:00", "2026-11-14 10:30:00", {"1/1/3": ok}),
+            volta(8, 1, "2026-11-14 10:30:00", "2026-11-14 11:00:00", {"1/1/4": ok})]
+    r = P.relatorio(regs)
+    assert r[4]["tentados"] == 3 and r[4]["horas"] == 0.5 and r[4]["proc_por_hora"] == 6.0
+    assert r[4]["docs_por_hora"] == 60.0 and r[4]["taxa_docs_vazios"] == 0.1
+    assert r[8]["voltas"] == 1
 
 
 def test_metricas_do_log(tmp_path):
