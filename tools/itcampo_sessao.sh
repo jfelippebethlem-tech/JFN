@@ -18,7 +18,11 @@ export PYTHONPATH="$S" TMPDIR="$S/tmp" TZ=America/Sao_Paulo SEI_SEM_TG=1
 # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU
 export VM_GUARD_MAX_LOAD="${VM_GUARD_MAX_LOAD:-20}" VM_GUARD_MIN_FREE_GB="${VM_GUARD_MIN_FREE_GB:-1.5}"
 export JFN_CLAUDE_MAX_CONFERENCIA_VM2=0      # sem Claude Code aqui: a conferência da VM-1 decide sozinha
-[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && export SEI_HEADED=1
+# Navegador SEM janela por padrão. MEDIDO em 14/11/2026 (A/B no mesmo processo, 270003/004118/2024): com o Chromium
+# visível (WSLg) o documento em PDF abre no visualizador embutido e a leitura do frame trava até o teto de 450 s POR
+# DOCUMENTO (2 de 44 em 10 min); headless, 16 de 44 em menos de 1 min. A visibilidade fica nesta janela: processo,
+# documento a documento, e o título. `JFN_ITCAMPO_HEADED=1` religa o navegador visível (só para olhar, é lento).
+[ "${JFN_ITCAMPO_HEADED:-0}" = 1 ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && export SEI_HEADED=1
 # navegador da sessão k num lugar FIXO (mosaico 3 colunas na metade direita, janelas pequenas) — instância própria
 # do Chromium do Playwright no WSL, perfil temporário em $TMPDIR; nunca o Chrome/perfil do dono
 C=$(( (K - 1) % 3 )); L=$(( (K - 1) / 3 % 3 ))
@@ -31,6 +35,14 @@ DESDE=$(stat -c %s data/sei_integra_fila.log 2>/dev/null || echo 0)
 titulo "JFN SEI sessão $K/$N — começando ($NF na fila)"
 echo "=== JFN SEI — sessão $K de $N — $(date '+%F %T') — $NF processo(s) na fatia, orçamento ${SEG}s ==="
 echo "    navegador: $([ "${SEI_HEADED:-}" = 1 ] && echo 'VISÍVEL (WSLg)' || echo 'sem tela disponível')"
+# progresso documento a documento do processo em captura (o stdout da captura fica dentro da fila da casa)
+( while sleep 30; do
+    T=$(cut -d' ' -f1 data/itcampo_estado.txt 2>/dev/null | tr / _)
+    M="data/sei_cache/integra_$T/manifest.json"
+    [ -n "$T" ] && [ -f "$M" ] && "$PY" -c "import json,sys,time;d=json.load(open(sys.argv[1]));o=sum(1 for x in d['docs'] if x.get('ok'));print(time.strftime('[%F %T]'),'   ',d['processo'],': documento',len(d['docs']),'de',d['total_arvore'],'(',o,'com teor)')" "$M" 2>/dev/null
+  done ) &
+PROG=$!
+trap 'kill $PROG 2>/dev/null' EXIT
 FEITOS=0; ATUAL="-"
 timeout -k 120 --foreground $((SEG + 1200)) "$PY" -u tools/sei_integra_fila.py --fila "$FILA" --segundos "$SEG" 2>&1 \
 | while IFS= read -r ln; do
