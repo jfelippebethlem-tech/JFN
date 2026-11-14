@@ -100,8 +100,11 @@ def _sem_fonte(id_: str, pulo: int, titulo: str, regra: str, dispositivo: str, f
 # da LOA 2026 (Lei 11.098/2026, art. 6º, I) — manual, seção 6.3. Exercício sem entrada = limite INDISPONÍVEL.
 LIMITE_LOA = {2026: ("Lei 11.098/2026", "art. 6º, I", 0.20)}
 # Itens do §2º do art. 120 da Lei estadual 287/1979 (origem do recurso do crédito). Só o item de ANULAÇÃO consome o
-# teto do art. 6º, I. Preenchido da leitura do texto da lei (ver manual, seção 6.2); item ausente = "não lido".
-ITENS_ART_120: dict[str, str] = {}
+# teto do art. 6º, I. Texto lido na base de legislação da ALERJ em 14/11/2026 (manual, seção 6.2).
+ITENS_ART_120: dict[str, str] = {
+    "1": "superávit financeiro do exercício anterior", "2": "excesso de arrecadação",
+    "3": "anulação de dotações", "4": "operações de crédito", "5": "reserva de contingência",
+    "6": "recursos com destinação específica não previstos no orçamento"}
 ITEM_ANULACAO = "3"
 
 _RE_DECRETO = re.compile(
@@ -483,6 +486,10 @@ def caixa_art_42(ca, hoje: date | None = None) -> dict:
 # ══════════════════════════ PG06 · troca de fonte e uso de fonte vinculada (Pulo 6) ══════════════════════════
 
 FONTE_FECP_RJ = "122"            # detalhamento estadual ↔ STN 761 (conferido em cge_execucao_despesa.fonte_rj/fonte_stn)
+# nome do código estadual na base de dados abertos do TFE (2021–2023); de 2024 em diante a base só traz o rótulo STN
+NOME_FONTE_FUNDO = {"102": "Fundo Orçamentário Temporário", "103": "FISED (investimentos e ações de segurança pública)",
+                    "150": "FEHIS (habitação de interesse social)", "151": "FECAM (controle ambiental)",
+                    "251": "FECAM (controle ambiental)", "245": "concessão de serviço público"}
 _STN_LIVRES = ("500", "501", "502")  # Portaria STN 710/2021: recursos não vinculados
 FUNDO_EXECUCAO_MIN = 0.50        # fonte "Recursos Vinculados a Fundos" com menos de 50% da dotação empenhada
 
@@ -548,7 +555,10 @@ def troca_de_fonte(c, ca, decs: list[dict] | None = None) -> dict:
                 acionados += 1
                 achados.append(_ach(
                     int(ano), None, f"Fonte de fundo {fonte.split(' - ')[0]} em {ano}: {pct(emp / dot)} da dotação empenhada",
-                    f"{fonte}: dotação inicial {brl(dot)}, empenhado {brl(emp)}, pago {brl(pago)}. Receita vinculada a "
+                    (f"Código estadual {fonte.split(' - ')[0]} = {NOME_FONTE_FUNDO[fonte.split(' - ')[0]]}, pelo nome "
+                     "que o código tinha na base do TFE até 2023 (conferir se a destinação não mudou). "
+                     if fonte.split(' - ')[0] in NOME_FONTE_FUNDO else "")
+                    + f"{fonte}: dotação inicial {brl(dot)}, empenhado {brl(emp)}, pago {brl(pago)}. Receita vinculada a "
                     "fundo que ficou sem aplicação no exercício: perguntar o saldo financeiro da fonte em 31/12 e se "
                     "houve desvinculação ou uso como superávit para outra despesa.",
                     dot - emp, "dotação inicial não empenhada (não é despesa nem pagamento)", PENDENTE,
@@ -562,8 +572,8 @@ def troca_de_fonte(c, ca, decs: list[dict] | None = None) -> dict:
                  "Correção de classificação: a despesa foi orçada na fonte errada e o decreto só acerta o registro.",
                  "Fundo cuja receita não se realizou: a dotação não empenhada reflete falta de receita, não desvio.",
                  "A lei do FECP admite despesas de pessoal em ações finalísticas específicas (conferir a lei)."],
-                limites + ["O código de detalhamento estadual da fonte agrupa vários fundos (FECAM, FEHIS, FISED não têm "
-                           "código próprio identificado na base): o achado é por fonte, não por fundo.",
+                limites + ["O nome do fundo por código estadual (FECAM, FEHIS, FISED) vem da base do TFE de 2021–2023; a "
+                           "tabela oficial de fontes (Ementário da Receita Estadual) não foi obtida.",
                            "Receita realizada por fonte não está na base de 2026: não dá para medir arrecadado × aplicado.",
                            "O anexo do decreto perde as colunas no texto extraído."], achados)
 
