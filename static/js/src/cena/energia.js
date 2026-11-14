@@ -54,7 +54,7 @@ import {esfera} from '../app/estado.js';
    degradê tem sentido além do estético — ele diz de onde a leitura SAI: o fio é mais forte no
    cartão, que é o dado, e se dissolve no centro, que é onde tudo converge. */
 const FIO = {inicio: '99,224,255', estado: '125,175,255',
-             prefeitura: '235,190,105', geral: '200,150,255'};
+             prefeitura: '235,190,105', geral: '200,150,255', sistema: '200,150,255'};
 
 let _raf = 0;
 let _pacotes = [];        // {i: índice da linha, p: 0..1, c: 'r,g,b'}

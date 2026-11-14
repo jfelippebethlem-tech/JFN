@@ -28,9 +28,8 @@ import {J, erroHumano} from '../nucleo/http.js';
 import {_redMotion, _v60, _v61} from '../capacidade/estado.js';
 import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
+import {preocupacoesMontar} from './preocupacoes.js';
 import {mapaMontar} from '../mapa/territorio.js';
-import {motoresMontar} from '../ui/aovivo.js';
-import {cruzamentoMontar} from './motores_cruzamento.js';
 import {flipAoVivo} from '../ui/movimento.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
@@ -59,6 +58,16 @@ export const _CK={teal:'#5fd9ff',gold:'#eec276',good:'#5fe0a1',amber:'#f2b544',r
    As rotas aparecem como string literal no arquivo gerado de propósito: é assim que as duas
    catracas de rota (órfãs, teto 0; e sem-superfície) enxergam que a capacidade tem porta de
    entrada. Fosse `fetch('/api/lista')` em runtime, elas acusariam órfãs que não são órfãs. */
+/* Frescor das fontes — saiu do Início para a esfera Sistema em 14/11/2026 (pedido do dono). */
+export function frescorMontar(box){
+  J('/api/fontes/frescor').then(d=>{if(!box||!box.isConnected||!d||!d.fontes)return;
+    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
+      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';
+      return f.idade_dias==null?'#63718f':(f.idade_dias<=2?'#5fe0a1':(f.idade_dias<=10?'#f2b544':'#ff7a8a'));};
+    box.innerHTML=`<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">`+
+      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)}"></span>
+        <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
+}
 export function blocoComandosMestres(){
   if(typeof CAPS_MESTRAS==='undefined'||!CAPS_MESTRAS.length)return '';
   const grupos={};
@@ -104,7 +113,8 @@ export async function renderCockpit(){
      resto; a mesa de vigília antiga segue no DOM, oculta pelo CSS, e o laço dela não é iniciado. */
   const v61=_v61?`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
-      <button type="button" class="chip c61-ir-motores" onclick="document.getElementById('c61-motores').scrollIntoView({behavior:'smooth',block:'start'})">Motores · ver todos</button></aside>`:'';
+</aside>
+    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`:'';
   const html=`<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
@@ -143,10 +153,12 @@ export async function renderCockpit(){
     <div class="ck-grid" id="ck-grid"></div>
     <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
     </div>
-    ${_v61?'<section class="c61-motores" id="c61-motores" aria-labelledby="c61-motores-t"></section>':''}
-    <section class="c61-cruz" id="c61-cruz" aria-label="Cruzamento de motores"></section>
-    ${blocoComandosMestres()}
-    <div class="ck-fontes" id="ck-fontes"></div></div>`;
+    <!-- 14/11/2026: a grade de motores e o cruzamento de motores foram para a esfera Sistema
+         (aba s_motores) — pedido do dono: configurações e funcionamento numa aba própria. -->
+    <!-- 14/11/2026: "Funções mestras" e "Fontes de dados — frescor" foram para a esfera Sistema
+         (abas s_comandos e s_motores): o Início fica com o que impressiona — reator, mapa, números
+         e grandes preocupações (pedido do dono). -->
+    </div>`;
   /* v48: quem monta o cockpit e o ir(), DEPOIS de pintar — nao um timer daqui.
      O v44 reagendava ate achar o ck-grid, mas o grid que ele achava era o do
      quadro ANTERIOR: o innerHTML final entrava depois e jogava fora o que
@@ -197,9 +209,8 @@ export function ckBoot(){
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
-  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));motoresMontar($('c61-motores'));}   // v61: o reator vivo no lugar da mesa
+  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();
-  cruzamentoMontar($('c61-cruz'));   // co-motor Claude × cascata: uso, gasto e concordância
   /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
      instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de
      largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo
@@ -307,13 +318,6 @@ export function ckPull(first){
       meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo`
            +(d.n_fora_da_manchete?` · fora da conta: ${_fmN('natureza_publica')} órgãos públicos, ${_fmN('cartorio')} cartórios, ${_fmN('filial_de_matriz_ativa')} filiais de matriz ativa, ${_fmN('pagamento_judicial')} pagamentos judiciais`:'')});
     if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir`}]);});
-  J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
-    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
-      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';
-      return f.idade_dias==null?'#63718f':(f.idade_dias<=2?'#5fe0a1':(f.idade_dias<=10?'#f2b544':'#ff7a8a'));};
-    box.innerHTML=`<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">`+
-      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)}"></span>
-        <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
 

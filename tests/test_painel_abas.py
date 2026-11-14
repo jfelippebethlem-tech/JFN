@@ -42,8 +42,13 @@ from tools.painel_abas import abas, abas_por_esfera
 # (Município do Rio) foi de estado para prefeitura.
 # 2026-11-13: 72 → 73 e geral 33 → 34. Entrou "Conformidade" (`g_conform`): o painel de conformidade das regras de
 # qualidade do próprio JFN (por sistema: regras, violações abertas, tendência, juiz, dívida) — /api/qualidade/conformidade.
-TOTAL = 73
-POR_ESFERA = {"inicio": 1, "estado": 22, "prefeitura": 16, "geral": 34}
+# 2026-11-14: 73 → 74; geral 34 → 29 e nova esfera "sistema" (6). Pedido do dono: "coloque uma outra aba
+# (configurações e funcionamento do sistema) e mova o que for disso". Foram para lá Sistema (agora "Coletas e
+# rotinas"), Instrumentação, Conformidade, Acurácia e Missões, e entrou "Motores" (`s_motores`) com a grade de
+# motores e o cruzamento de motores que estavam no Início. Custo de API/assinatura saiu do painel.
+# Mesmo dia: entrou "Comandos" (`s_comandos`, as funções mestras que ficavam no rodapé do Início) → 75, sistema 7.
+TOTAL = 75
+POR_ESFERA = {"inicio": 1, "estado": 22, "prefeitura": 16, "geral": 29, "sistema": 7}
 
 
 def test_le_todas_as_abas_do_painel():

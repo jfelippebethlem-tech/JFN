@@ -54,6 +54,7 @@ import {renderComissao, ligarComissao} from './abas/comissao.js';
 import {renderGovernoCouto, ligarGovernoCouto} from './abas/governo_couto.js';
 import {ligarPeriodo} from './abas/periodo.js';
 import {renderPericiaContabil, renderCgeJfn} from './abas/rotinas.js';
+import {renderMotoresSistema, renderComandosSistema} from './abas/sistema.js';
 import {renderConformidade} from './abas/conformidade.js';
 import {renderRequerimentos, ligarRequerimentos} from './abas/requerimentos.js';
 import {ligarVinculos, ligarFila, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, sinteseProcesso, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
@@ -80,6 +81,11 @@ const SPHERES=[
   {id:'estado',    ic:'§rj', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
   {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
   {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
+  /* 14/11/2026 — pedido do dono: "coloque uma outra aba (configurações e funcionamento do sistema) e
+     mova o que for disso". O que diz COMO o JFN funciona (motores, coletas, instrumentação, regras de
+     qualidade, acurácia, missões) sai do Início e do Transversal. Os ids das abas movidas ficam os
+     mesmos, para que link antigo (#g_instr etc.) continue abrindo — o `ir()` acha a esfera dona. */
+  {id:'sistema',   ic:'§v61-controle', tl:'Sistema', c:'configurações e funcionamento'},
 ];
 
 const TABS={
@@ -139,11 +145,7 @@ const TABS={
     {id:'g_pecas',    ic:'📜',tl:'Peças',    render:renderPecas},
     {id:'g_fontes',   ic:'§fonte',tl:'Fontes externas',render:renderFontesExternas},
     {id:'g_hub',      ic:'🏢',tl:'Hub físico',render:renderHubFisico},
-    {id:'g_acuracia', ic:'🎯',tl:'Acurácia', render:renderAcuracia},
     {id:'g_dets',     ic:'🧪',tl:'Detectores',render:renderDetectoresOrfaos},
-    {id:'g_instr',    ic:'🔧',tl:'Instrumentação',render:renderInstrumentacao},
-    {id:'g_conform',  ic:'✅',tl:'Conformidade',render:renderConformidade},
-    {id:'g_missoes',  ic:'🛰️',tl:'Missões',  render:renderMissoes},
     {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
     {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
     {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},
@@ -161,8 +163,16 @@ const TABS={
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:()=>renderPoder('todos')},   // todas as esferas, cada cartão rotulado
     {id:'g_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
-    {id:'g_sweeps',  ic:'🛰️',tl:'Sistema', render:renderSweeps},
     {id:'g_acoes',   ic:'☑️',tl:'Ações',   render:renderAcoes},
+  ],
+  sistema:[
+    {id:'s_motores',  ic:'⚙️',tl:'Motores', render:renderMotoresSistema},
+    {id:'g_sweeps',   ic:'🛰️',tl:'Coletas e rotinas', render:renderSweeps},
+    {id:'g_instr',    ic:'🔧',tl:'Instrumentação',render:renderInstrumentacao},
+    {id:'g_conform',  ic:'✅',tl:'Conformidade',render:renderConformidade},
+    {id:'g_acuracia', ic:'🎯',tl:'Acurácia', render:renderAcuracia},
+    {id:'g_missoes',  ic:'🛰️',tl:'Missões',  render:renderMissoes},
+    {id:'s_comandos', ic:'🧭',tl:'Comandos', render:renderComandosSistema},
   ],
 };
 /* `esfera` e `aba` vivem em `app/estado.js` — folha que a cena tambem importa. Enquanto

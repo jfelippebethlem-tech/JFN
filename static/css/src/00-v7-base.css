@@ -658,11 +658,11 @@
     --persp:640px}
   body[data-esf="estado"]{--esf:var(--ion)}
   body[data-esf="prefeitura"]{--esf:var(--flame)}
-  body[data-esf="geral"]{--esf:var(--accent2)}
+  body[data-esf="geral"],body[data-esf="sistema"]{--esf:var(--accent2)}
   .sph.estado::before{background:var(--ion)}
   .sph.prefeitura::before{background:var(--flame)}
   .sph.geral::before{background:var(--accent2)}
-  .sph.estado{--sphc:var(--ion)}.sph.prefeitura{--sphc:var(--flame)}.sph.geral{--sphc:var(--accent2)}
+  .sph.estado{--sphc:var(--ion)}.sph.prefeitura{--sphc:var(--flame)}.sph.geral,.sph.sistema{--sphc:var(--accent2)}
 
   /* ── CONTROLE 3D UNIVERSAL ─────────────────────────────────────────────────
      Todo botão vive num plano com profundidade real. O JS (tilt3d) alimenta

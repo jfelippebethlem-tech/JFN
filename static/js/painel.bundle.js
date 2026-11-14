@@ -3324,10 +3324,11 @@ void main(){
     }, 15e3);
   }
   async function nebulaViva() {
-    const mapa = _v61 ? { estado: "v61/estado", prefeitura: "v61/prefeitura", geral: "v61/transversal", inicio: "v61/sala" } : {
+    const mapa = _v61 ? { estado: "v61/estado", prefeitura: "v61/prefeitura", geral: "v61/transversal", sistema: "v61/transversal", inicio: "v61/sala" } : {
       estado: "nebula-estado",
       prefeitura: "nebula-prefeitura",
       geral: "nebula-transversal",
+      sistema: "nebula-transversal",
       inicio: "portal-hero"
     };
     const _cel = matchMedia("(max-width:760px)").matches, _eco = !!(navigator.connection && navigator.connection.saveData);
@@ -3439,7 +3440,8 @@ void main(){
     inicio: "99,224,255",
     estado: "125,175,255",
     prefeitura: "235,190,105",
-    geral: "200,150,255"
+    geral: "200,150,255",
+    sistema: "200,150,255"
   };
   var _raf2 = 0;
   var _pacotes = [];
@@ -5345,187 +5347,89 @@ void main(){
     return `<div id="rt-cge">${h}${_txt}</div>`;
   }
 
-  // static/js/src/abas/conformidade.js
-  var _IND = '<span class="dim">indisponível</span>';
-  var _txt2 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
-  var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
-  var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
-  var _hora = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
-  var _sinal = (v) => v == null ? '<span class="dim">—</span>' : v > 0 ? `<b style="color:var(--rose)">+${fmtN(v)}</b>` : v < 0 ? `<b style="color:var(--green)">${fmtN(v)}</b>` : "0";
-  var _nota = (v) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-  function _itens(s) {
-    const it = s.itens || [];
-    if (!it.length) return `<div class="dim" style="font-size:12px">${s.violacoes_abertas == null ? "Sem fotografia dos sensores — não há como listar." : "Nenhuma violação aberta neste sistema."}</div>`;
-    const lin = it.map((a) => `<tr><td style="white-space:nowrap"><b>${esc(a.regra)}</b></td>
-      <td style="font-size:13px"><b>${esc(a.titulo)}</b><div class="dim" style="font-size:12px">${esc(a.titulo_regra || "")}</div></td>
-      <td style="font-size:13px">${esc(a.detalhe || "")}</td><td>${_sev(a.severidade)}</td>
-      <td style="font-size:13px">${esc(a.acao_humana || "")}<div class="dim" style="font-size:11px">sensor ${esc(a.sensor || "—")}</div></td></tr>`).join("");
-    const corte = s.itens_total > it.length ? `<div class="dim" style="font-size:12px;margin-top:4px">Listados ${fmtN(it.length)} de ${fmtN(s.itens_total)} (bloqueantes primeiro).</div>` : "";
-    return `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Regra</th><th>Violação</th><th>Detalhe</th><th>Severidade</th><th>Ação</th></tr></thead><tbody>${lin}</tbody></table></div>${corte}`;
-  }
-  function _sistemas(d) {
-    const lin = (d.sistemas || []).map((s) => {
-      const serie = (s.tendencia || []).slice(-7).map((t) => fmtN(t.abertas)).join(" · ");
-      const sem = (s.sem_verificador_automatico || []).length ? `<div class="dim" style="font-size:11px">${fmtN(s.sem_verificador_automatico.length)} sem verificação automática</div>` : "";
-      return `<tr class="cf-lin" title="Ver as violações de ${esc(s.nome)}" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">
-        <td><b>${esc(s.nome)}</b>${sem}</td><td class="right">${fmtN(s.regras)}</td>
-        <td class="right">${s.violacoes_abertas == null ? _IND : `<b>${fmtN(s.violacoes_abertas)}</b>`}</td>
-        <td class="right">${s.bloqueantes == null ? _IND : s.bloqueantes ? `<b style="color:var(--rose)">${fmtN(s.bloqueantes)}</b>` : "0"}</td>
-        <td style="font-size:12px">${(s.regras_violadas || []).map(esc).join(", ") || '<span class="dim">—</span>'}</td>
-        <td style="font-size:12px;white-space:nowrap">${serie || '<span class="dim">sem série</span>'} <span class="dim">(7 d:</span> ${_sinal(s.variacao_7d)}<span class="dim">)</span></td></tr>
-      <tr hidden><td colspan="6">${_itens(s)}</td></tr>`;
-    }).join("");
-    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Clique na linha para ver as violações daquele sistema. Tendência = violações abertas na última leitura de cada dia (até 7 dias); variação 7 d com sinal (+ piorou).</div>
-    <div style="overflow:auto"><table class="tb cf-txt"><thead><tr><th>Sistema</th><th class="right">Regras</th><th class="right">Violações abertas</th><th class="right">Bloqueantes</th><th>Regras violadas</th><th>Tendência</th></tr></thead><tbody>${lin}</tbody></table></div>`);
-  }
-  function _cegos(c) {
-    const ks = Object.keys(c || {});
-    if (!ks.length) return "";
-    return sec("Sensores cegos", ks.length) + card(`<div class="warn"><b>Estes sensores não conseguiram medir</b> — o que eles cobrem está INDISPONÍVEL, não conforme.</div>
-    <table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Sensor</th><th>Motivo</th></tr></thead><tbody>${ks.map((k) => `<tr><td><b>${esc(k)}</b></td><td style="font-size:13px">${esc(c[k])}</td></tr>`).join("")}</tbody></table>`);
-  }
-  function _juiz(j) {
-    if (!j || j.media == null) return sec("Juiz subjetivo") + card(`<div class="dim">Sem rodada do juiz${j && j.motivo ? ` — ${esc(j.motivo)}` : ""}. Isso não é nota boa: as regras subjetivas (SUB) ainda não foram avaliadas.</div>`);
-    const crit = Object.entries(j.por_criterio || {}).map(([c, n]) => `<tr><td>${esc(c)}</td><td class="right">${_nota(n)}</td></tr>`).join("");
-    const baixas = [];
-    for (const a of j.avaliacoes || []) {
-      for (const [c, n] of Object.entries(a.notas || {})) {
-        if (n != null && n <= 2) baixas.push({ a, c, n });
+  // static/js/src/abas/motores_cruzamento.js
+  var AMOSTRA_MINIMA = 20;
+  var NIV = ["⚪", "🟡", "🔴"];
+  var pct = (v) => v == null ? "—" : Math.round(v * 100) + "%";
+  var taxaCom = (t, n) => t == null || !n ? "—" : `${pct(t)} <span class="dim">(${fmtN(n)})</span>${n < AMOSTRA_MINIMA ? ' <span class="dim">· amostra curta</span>' : ""}`;
+  var indisp = (rota) => card(`<b>INDISPONÍVEL</b> — a rota <code>${esc(rota)}</code> não respondeu. Sem leitura, não há número: INDISPONÍVEL ≠ 0.`);
+  function cruzamentoMontar(host) {
+    if (!host) return;
+    host.innerHTML = `${sec("Cruzamento de motores")}<div class="dim">Lendo a concordância entre motores…</div>`;
+    const ler2 = async () => {
+      if (!host.isConnected) {
+        clearInterval(relogio);
+        return;
       }
-    }
-    const lin = baixas.map(({ a, c, n }) => `<tr><td style="font-size:13px"><b>${esc(a.rotulo || a.id)}</b><div class="dim" style="font-size:11px">${esc(a.sistema || "")} · ${esc(a.veredito || "")}</div></td>
-      <td>${esc(c)}</td><td class="right"><b style="color:${n <= 1 ? "var(--rose)" : "var(--amber)"}">${fmtN(n)}</b></td>
-      <td style="font-size:13px">${esc((a.motivos || {})[c] || "")}</td><td style="font-size:13px">${esc(a.o_que_falta || "")}</td>
-      <td style="font-size:12px">${a.escalar ? `<b>sim</b>${a.motivo_escalar ? ` — ${esc(a.motivo_escalar)}` : ""}` : "não"}</td></tr>`).join("");
-    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
-    <table class="tb cf-txt" style="margin-top:8px;max-width:420px"><thead><tr><th>Critério</th><th class="right">Média</th></tr></thead><tbody>${crit}</tbody></table>
-    <details style="margin-top:10px"${baixas.length ? " open" : ""}><summary style="cursor:pointer"><b>Notas ≤ 2</b> (${fmtN(baixas.length)})</summary>
-      ${baixas.length ? `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Afirmação</th><th>Critério</th><th class="right">Nota</th><th>Motivo</th><th>O que falta</th><th>Escala ao dono</th></tr></thead><tbody>${lin}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Nenhuma nota ≤ 2 nas avaliações vigentes.</div>'}</details>`);
+      const c = await J("/api/ao-vivo/cruzamento");
+      host.innerHTML = sec("Cruzamento de motores") + _cruz(c);
+    };
+    const relogio = setInterval(ler2, 12e4);
+    ler2();
   }
-  function _divida(d) {
-    const cat = (d.dividas_catraca || []).map((x) => `<tr><td>${esc(x.catraca)}</td><td class="right">${fmtN(x.ocorrencias)}</td><td class="right">${fmtN(x.itens)}</td></tr>`).join("");
-    const reg = (d.dividas_regra || []).map((x) => `<tr><td style="white-space:nowrap"><b>${esc(x.regra)}</b></td><td style="font-size:13px">${esc(x.titulo)}</td><td style="font-size:13px">${(x.falta || []).map(esc).join("<br>")}</td></tr>`).join("");
-    return sec("Dívida") + card(`<div class="dim" style="font-size:12px">Por catraca: o que já existia quando a catraca foi travada — só pode descer.</div>
-    ${cat ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Catraca</th><th class="right">Ocorrências travadas</th><th class="right">Itens</th></tr></thead><tbody>${cat}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma dívida travada em catraca.</div>'}
-    <div class="dim" style="font-size:12px;margin-top:12px">Regras ainda com verificação manual — o que falta para a máquina cobrar.</div>
-    ${reg ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Regra</th><th>Título</th><th>O que falta</th></tr></thead><tbody>${reg}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma.</div>'}`);
-  }
-  async function renderConformidade() {
-    const d = await J("/api/qualidade/conformidade");
-    let h = cover(
-      "geral",
-      "Conformidade — regras de qualidade do JFN",
-      "Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.",
-      "✅"
-    );
-    if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
-    const medido = d.estado === "MEDIDO";
-    const r = d.regras || {}, j = d.juiz;
-    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
-    h += `<div class="grid g2" style="margin-top:8px">
-    ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
-    ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
-    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--rose)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
-    ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', "Nota média do juiz (0–4)", null, "🎯", { sobre: "Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa." })}
+  function _cruz(c) {
+    if (!c || c.erro) return indisp("/api/ao-vivo/cruzamento");
+    const ls = c.por_tarefa_modelo || [];
+    const suf = ls.filter((x) => x.amostra_suficiente);
+    const nPares = ls.reduce((s, x) => s + (x.n || 0), 0);
+    const acordos = ls.reduce((s, x) => s + (x.acordos || 0), 0);
+    const graves = ls.reduce((s, x) => s + (x.graves || 0), 0);
+    let h = `<div class="grid g4">
+    ${kpi(
+      fmtN(nPares),
+      "Pares cruzados (30 dias)",
+      "var(--accent)",
+      null,
+      { sobre: `Vereditos em que o Claude e outro motor julgaram o MESMO item, na mesma tarefa, nos últimos ${fmtN(c.dias || 30)} dias. Par com um lado indeterminado fica fora da taxa (INDISPONÍVEL ≠ discordância). Fonte: data/cruzamento_motores.db.` }
+    )}
+    ${kpi(
+      nPares ? pct(acordos / nPares) : "—",
+      "Concordância geral com o Claude",
+      "var(--accent)",
+      null,
+      { sobre: `Pares em que o outro motor deu o MESMO nível (⚪🟡🔴) que o Claude, sobre todos os pares medidos. Concordar com o Claude é REFERÊNCIA, não acerto: o Claude não é gabarito. Só ${fmtN(suf.length)} de ${fmtN(ls.length)} combinações tarefa × modelo têm a amostra mínima de ${AMOSTRA_MINIMA} pares.` }
+    )}
+    ${kpi(
+      fmtN(graves),
+      "Divergências graves",
+      graves ? "var(--rose)" : "var(--green)",
+      null,
+      { sobre: "Pares em que um motor disse 🔴 e o outro ⚪ (distância de dois níveis). Cada uma vira revisão humana; nenhuma é resolvida a favor de um lado sem gente olhar." }
+    )}
+    ${kpi(
+      fmtN(c.revisao_pendente),
+      "Revisões pendentes",
+      c.revisao_pendente ? "var(--rose)" : "var(--green)",
+      null,
+      { sobre: `Divergências graves ainda sem decisão humana (tabela revisao, status pendente). A lista abaixo mostra as ${fmtN((c.revisoes || []).length)} mais recentes. Exemplos guardados para o few-shot da cascata: ${fmtN(c.exemplos_few_shot)}.` }
+    )}
   </div>`;
-    if (d.ok === false) return `<div id="cf-raiz">${h}</div>`;
-    h += sec("Por sistema", fmtN((d.sistemas || []).length)) + _sistemas(d);
-    h += _cegos(d.sensores_cegos);
-    h += _juiz(j);
-    h += _divida(d);
-    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora(d.gerado_em)}` : ""}</div>`);
-    return `<div id="cf-raiz">${h}${_txt2}</div>`;
-  }
-
-  // static/js/src/abas/requerimentos.js
-  var GRUPOS = [
-    { k: "sugerido", rot: "Sugeridos", cor: "var(--amber)", sobre: "Pedido que uma nota de caso aponta como próximo passo. Ainda sem texto redigido." },
-    { k: "minuta", rot: "Com minuta", cor: "var(--accent)", sobre: "Texto redigido, aguardando revisão do titular. Não protocolado." },
-    { k: "protocolado", rot: "Protocolados", cor: "var(--gold)", sobre: "Enviado ao destinatário; aguardando resposta." },
-    { k: "respondido", rot: "Respondidos", cor: "var(--green)", sobre: "Resposta recebida." },
-    { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
-  ];
-  var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
-  var _n = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
-  var _dados2 = null;
-  function _cardReq(r) {
-    return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
-    <div class="cs-topo">
-      <span class="cs-nivel">${esc(r.id)}</span>
-      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
-      ${r.data_sugestao ? `<span class="dim cs-data">${esc(r.data_sugestao)}</span>` : ""}
-    </div>
-    <h3 class="cs-tit">${esc(r.titulo)}</h3>
-    ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
-    <div class="cs-tags"><span class="tag teal">${_n(r.pedidos.length, "pedido", "pedidos")}</span>
-      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n(r.pendencias.length, "pendência", "pendências")}</span>
-      ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
-    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
-    <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
-      ${r.caso ? `<button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button>` : ""}</div>
-  </article>`;
-  }
-  async function renderRequerimentos() {
-    let h = cover(
-      "geral",
-      "Requerimentos — pedidos de informação sugeridos",
-      "O que as investigações indicam <b>pedir a um órgão</b> para fechar uma dúvida: cada item nasce de um próximo passo escrito numa nota de caso. Esta aba <b>só lê</b> — nada é enviado daqui. <b>Indício a verificar, não acusação</b>, com presunção de legitimidade do ato administrativo.",
-      "📝"
-    );
-    const d = await J("/api/requerimentos");
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
-    _dados2 = d;
-    const ps = d.por_status || {};
-    h += `<div class="grid g4">${GRUPOS.slice(0, 4).map((g) => kpi(fmtN(ps[g.k] || 0), g.rot, g.cor, null, { sobre: g.sobre })).join("")}</div>`;
-    if (!d.total) return h + card('<div class="dim">Nenhum requerimento cadastrado em <code>~/vault/requerimentos/</code>.</div>');
-    for (const g of GRUPOS) {
-      const it = d.itens.filter((r) => r.status === g.k);
-      if (it.length) h += sec(g.rot, it.length) + `<div class="cs-grade">${it.map(_cardReq).join("")}</div>`;
-    }
+    if (!c.medido) return h + card(`<div class="dim">${esc(c.motivo || "Sem cruzamentos ainda")} — nada a medir.</div>`);
+    const tab = ls.map((x) => `<tr><td style="text-align:left">${esc(String(x.tarefa).replace(/_/g, " "))}</td><td style="text-align:left">${esc(x.modelo)}</td>
+    <td class="num">${fmtN(x.n)}</td><td class="num">${taxaCom(x.taxa_acordo, x.n)}</td><td class="num">${fmtN(x.graves)}</td><td class="num">${fmtN(x.indeterminados)}</td></tr>`).join("");
+    h += card(`<div style="font-weight:700;margin-bottom:6px">Concordância por tarefa × modelo</div>
+    <div class="dim" style="margin-bottom:6px">${esc(c.legenda || "")}. Abaixo de ${AMOSTRA_MINIMA} pares a taxa é indicação, não medida.</div>
+    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Tarefa</th><th>Modelo comparado</th><th>Pares</th><th>Acordo</th><th>Graves</th><th>Indeterm.</th></tr></thead><tbody>${tab}</tbody></table></div>`);
+    const matrizes = Object.entries(c.matriz || {}).map(([t, m]) => {
+      const cel = (a, b) => m[`${NIV[a]}×${NIV[b]}`] || 0;
+      const corpo = [0, 1, 2].map((a) => `<tr><th>${NIV[a]}</th>${[0, 1, 2].map((b) => `<td class="num"${a === b ? ' style="font-weight:700"' : Math.abs(a - b) === 2 && cel(a, b) ? ' style="color:var(--rose);font-weight:700"' : ""}>${fmtN(cel(a, b))}</td>`).join("")}</tr>`).join("");
+      return `<div style="min-width:180px"><div style="font-weight:600;margin-bottom:4px">${esc(t.replace(/_/g, " "))}</div>
+      <table class="tb"><thead><tr><th>Claude ↓ · outro →</th>${NIV.map((n) => `<th>${n}</th>`).join("")}</tr></thead><tbody>${corpo}</tbody></table></div>`;
+    }).join("");
+    h += card(`<div style="font-weight:700;margin-bottom:6px">Matriz ⚪🟡🔴 por tarefa</div>
+    <div class="dim" style="margin-bottom:6px">Linha = nível do Claude; coluna = nível do outro motor. Diagonal = acordo; canto 🔴×⚪ = divergência grave.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px">${matrizes || '<span class="dim">sem pares com os dois lados determinados</span>'}</div>`);
+    const ab = ls.filter((x) => x.n_com_exemplos || x.n_sem_exemplos).map((x) => `<tr><td style="text-align:left">${esc(String(x.tarefa).replace(/_/g, " "))}</td><td style="text-align:left">${esc(x.modelo)}</td>
+    <td class="num">${taxaCom(x.taxa_com_exemplos, x.n_com_exemplos)}</td><td class="num">${taxaCom(x.taxa_sem_exemplos, x.n_sem_exemplos)}</td></tr>`).join("");
+    h += card(`<div style="font-weight:700;margin-bottom:6px">Efeito dos exemplos (com × sem)</div>
+    <div class="dim" style="margin-bottom:6px">Os exemplos são divergências passadas usadas como few-shot na cascata. Só se acredita que ajudaram quando os DOIS lados têm amostra mínima — mexer em prompt sem A/B medido já derrubou recall de 3/6 para 0/6.</div>
+    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Tarefa</th><th>Modelo</th><th>Acordo com exemplos</th><th>Acordo sem exemplos</th></tr></thead><tbody>${ab || '<tr><td colspan="4" class="dim">sem medição</td></tr>'}</tbody></table></div>`);
+    const rv = (c.revisoes || []).map((r) => `<tr><td class="num">${esc((r.em || "").slice(0, 16).replace("T", " "))}</td><td style="text-align:left">${esc(String(r.tarefa).replace(/_/g, " "))}</td>
+    <td style="text-align:left">${esc(r.item || "—")}</td><td>${NIV[r.nivel_claude] || "?"} ${esc(r.veredito_claude || "")} <span class="dim">${esc(r.modelo_claude || "")}</span></td>
+    <td>${NIV[r.nivel_outro] || "?"} ${esc(r.veredito_outro || "")} <span class="dim">${esc(r.modelo_outro || "")}</span></td></tr>`).join("");
+    h += card(`<div style="font-weight:700;margin-bottom:6px">Revisões pendentes</div>
+    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Quando</th><th>Tarefa</th><th>Item</th><th>Claude</th><th>Outro motor</th></tr></thead><tbody>${rv || '<tr><td colspan="5" class="dim">nenhuma divergência grave pendente</td></tr>'}</tbody></table></div>`);
     return h;
-  }
-  var _lista = (tit, itens, ord) => `<h3 class="cs-h">${tit}</h3>` + (itens.length ? `<${ord ? "ol" : "ul"}>${itens.map((x) => `<li>${esc(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>` : '<p class="dim">Nenhum item registrado na nota.</p>');
-  var _semAncoras = (md) => String(md || "").replace(/^<a id="[^"]*"><\/a>\s*$/gm, "").replace(/^\[↑ topo\]\(#[^)]*\)\s*$/gm, "").replace(/\[([^\]]+)\]\(#[^)]*\)/g, "$1");
-  async function _abrir(slug) {
-    const ov = $("ov"), sh = $("sheet");
-    if (!ov || !sh) return;
-    const r = (_dados2 && _dados2.itens || []).find((k) => k.slug === slug);
-    if (!r) return;
-    const x = '<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>';
-    const naVault = /\.md$/.test(r.minuta);
-    const corpo = (minuta) => `<div class="cs-nota" data-rq-folha="${esc(slug)}" style="--cs:${_cor2(r.status)}">
-    <div class="cs-topo"><span class="cs-nivel">${esc(r.id)} · ${esc(r.status)}</span>
-      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
-      ${r.data_sugestao ? `<span class="dim cs-data">sugerido em ${esc(r.data_sugestao)}</span>` : ""}</div>
-    <h2 class="cs-h">${esc(r.titulo)}</h2>
-    ${r.destinatario ? `<p><b>Destinatário:</b> ${esc(r.destinatario)}</p>` : ""}
-    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
-    ${_lista("Pedidos", r.pedidos, true)}
-    <h3 class="cs-h">Fundamento</h3><p>${r.fundamento ? esc(r.fundamento) : '<span class="dim">Não registrado na nota.</span>'}</p>
-    ${_lista("Pendências", r.pendencias)}
-    ${r.origem ? `<div class="dim cs-fonte">Origem: <code>${esc(r.origem)}</code></div>` : ""}
-    ${r.caso ? `<div class="btns"><button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button></div>` : ""}
-    <hr><h3 class="cs-h">Minuta</h3>
-    ${naVault ? `<div class="dim cs-fonte">Fonte: <code>${esc(r.minuta)}</code></div>${minuta}` : r.minuta ? `<p class="dim">Fora do vault — não exibida aqui: <code>${esc(r.minuta)}</code></p>` : '<p class="dim">Ainda não há minuta.</p>'}
-    <div class="note">Nota do vault: <code>requerimentos/${esc(slug)}.md</code> — editar lá; esta folha só lê e não envia nada.</div></div>`;
-    ov.classList.add("on");
-    sh.innerHTML = x + corpo(naVault ? spin("Abrindo a minuta…") : "");
-    a11yfy(sh);
-    if (!naVault) return;
-    const d = await J("/api/requerimentos/minuta?slug=" + encodeURIComponent(slug));
-    const no = sh.querySelector(".cs-nota");
-    if (!ov.classList.contains("on") || !no || no.dataset.rqFolha !== slug) return;
-    sh.innerHTML = x + corpo(!d || d.ok === false ? `<div class="warn">${erroHumano(d && d.erro)}</div>` : mdNota(_semAncoras(d.markdown)));
-    a11yfy(sh);
-  }
-  function ligarRequerimentos() {
-    document.addEventListener("click", (ev) => {
-      const a = ev.target.closest && ev.target.closest("[data-rq-abrir]");
-      if (a) {
-        ev.preventDefault();
-        _abrir(a.dataset.rqAbrir);
-      }
-    });
   }
 
   // static/js/src/cena/reator.js
@@ -5696,6 +5600,59 @@ void main(){
       if (_sair === sair) _sair = null;
     }
     _sair = sair;
+  }
+
+  // static/js/src/abas/preocupacoes.js
+  var brl = (v) => "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function _item({ grau, valor, titulo, texto, fonte, estado, destino }) {
+    return `<button type="button" class="pq-item" onclick="ir('${destino}')">
+    <div class="pq-topo"><span class="pq-grau" aria-hidden="true">${grau}</span><span class="pq-valor num">${valor}</span></div>
+    <div class="pq-tit">${titulo}</div>
+    <div class="pq-txt">${texto}</div>
+    <div class="pq-fonte"><b>${esc(estado)}</b> · ${esc(fonte)}</div>
+  </button>`;
+  }
+  function _couto(d) {
+    if (!d || d.ok === false || !d.pontos_atencao) return '<div class="pq-indisp"><b>Governo Couto: INDISPONÍVEL</b> — a rota não respondeu.</div>';
+    const it = (d.pontos_atencao.itens || []).filter((x) => x.verificacao === "VERIFICADO" || x.verificacao && x.verificacao.estado === "VERIFICADO");
+    const verm = it.filter((x) => x.grau === "🔴"), amar = it.filter((x) => x.grau === "🟡");
+    if (!verm.length && !amar.length) return "";
+    const top = verm[0] || amar[0];
+    const nome = String(top.regra_ou_hipotese || "").replace(/^[A-Z]\d+\s*·\s*/, "");
+    return _item({
+      grau: verm.length ? "🔴" : "🟡",
+      valor: `${fmtN(verm.length)} grave${verm.length === 1 ? "" : "s"} · ${fmtN(amar.length)} em atenção`,
+      titulo: "Pontos de atenção na gestão Couto (desde 23/03/2026)",
+      texto: `Mais grave: ${esc(nome.length > 170 ? nome.slice(0, 168) + "…" : nome)}${top.valor_ob ? ` — ${brl(top.valor_ob)} em OB contabilizada` : ""}. Explicação inocente possível: ${esc(top.explicacao_inocente || "ver a aba")}.`,
+      fonte: "SIAFE (OB Contabilizado), CEIS/CNEP, DOERJ, TCE-RJ — só os pontos com prova primária conferida",
+      estado: "VERIFICADO",
+      destino: "e_couto"
+    });
+  }
+  function _pericia(d) {
+    if (!d || d.ok === false || !d.esferas) return '<div class="pq-indisp"><b>Perícia contábil: INDISPONÍVEL</b> — a rota não respondeu.</div>';
+    const e = d.esferas["Estado do RJ"];
+    if (!e || !e.placar || !e.placar.A_MAIOR) return "";
+    const verif = String((e.verificacao || {}).placar || "");
+    if (!/^VERIFICADO/.test(verif)) return "";
+    return _item({
+      grau: "🟡",
+      valor: brl(e.excesso_a_maior),
+      titulo: `Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`,
+      texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado. Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
+      fonte: "SIAFE (OB Contabilizado) × contratos do TCE-RJ, régua determinística reproduzível",
+      estado: "VERIFICADO",
+      destino: "e_pcont"
+    });
+  }
+  async function preocupacoesMontar(host) {
+    if (!host) return;
+    const CAB = '<div class="pq-cab"><span class="pq-pulso" aria-hidden="true"></span><h2 class="sec">Sinais críticos</h2><span class="pq-sub">varredura cruzada · prova primária conferida</span></div>';
+    host.innerHTML = CAB + '<div class="dim">Varrendo…</div>';
+    const [c, p] = await Promise.all([J("/api/governo_couto", { tetoMs: 6e4 }), J("/api/pericia_contabil", { tetoMs: 6e4 })]);
+    if (!host.isConnected) return;
+    const corpo = _couto(c) + _pericia(p);
+    host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
   // node_modules/d3-array/dist/d3-array.mjs
@@ -7641,7 +7598,7 @@ void main(){
   };
   var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido" };
   var rs = (v) => v == null ? "INDISPONÍVEL" : fmtR(v);
-  var pct = (v) => v == null ? "INDISPONÍVEL" : (Math.round(v * 1e3) / 10).toLocaleString("pt-BR") + "%";
+  var pct2 = (v) => v == null ? "INDISPONÍVEL" : (Math.round(v * 1e3) / 10).toLocaleString("pt-BR") + "%";
   var dma = (s) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
     return m ? `${m[3]}/${m[2]}/${m[1]}` : "—";
@@ -7815,7 +7772,7 @@ void main(){
       const d = S.dados[chave()], G = S.escopo === "estado" ? geo.est : geo.rio;
       const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome = G.nomes.get(p.dataset.k) || "";
       const tem = l && l.n_contratos > 0;
-      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct(l.pct_executado)}</b></span>` + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
+      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
       dica.hidden = false;
       const r = q("#tm-palco").getBoundingClientRect(), b = p.getBoundingClientRect();
       const x = (ev && ev.clientX != null && ev.pointerType === "mouse" ? ev.clientX : b.left + b.width / 2) - r.left;
@@ -7861,7 +7818,7 @@ void main(){
       const selo = (c) => `<span class="tf-selo m-${esc(c.metodo || "")} c-${esc(c.confianca || "")}" title="${esc(c.evidencia || "")}">${esc(METODO[c.metodo] || c.metodo || "—")} · ${esc(c.confianca || "—")}</span>`;
       return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "")}</p>
       <div class="tf-kpis">${kp("Em execução", fmtN(k.n_em_execucao))}${kp("Executados", fmtN(k.n_executados))}
-        ${kp("Valor contratado", rs(k.valor_contratado))}${kp("Pago", rs(k.pago))}${kp("% executado", pct(k.pct_executado))}</div>
+        ${kp("Valor contratado", rs(k.valor_contratado))}${kp("Pago", rs(k.pago))}${kp("% executado", pct2(k.pct_executado))}</div>
       <p class="tf-nota">${k.n_com_pago ? `Pago e % executado consideram só os <b class="num">${fmtN(k.n_com_pago)}</b> de <b class="num">${fmtN(k.n_contratos)}</b> contratos com pagamento vinculado.` : "Nenhum contrato desta seleção tem pagamento vinculado: pago <b>INDISPONÍVEL</b> (≠ zero)."}${f.nota_pago ? " " + esc(f.nota_pago) + "." : ""}</p>
       ${k.n_multi ? `<p class="tf-nota">Participa de <b class="num">${fmtN(k.n_multi)}</b> contratos multimunicipais (valor não repartido — fica no balde "vários municípios").</p>` : ""}
       ${f.ras && f.ras.length ? `<h4>Regiões administrativas</h4><div class="tf-ras">${f.ras.map((r) => `<span class="tag">${esc(r)}</span>`).join("")}</div>` : ""}
@@ -7874,7 +7831,7 @@ void main(){
           <div class="tf-obj">${esc(c.objeto || "(sem objeto na fonte)")}</div>
           <div class="tf-meta">${esc(c.orgao || "—")} · ${esc(c.fornecedor_nome || c.fornecedor_cnpj || "—")}</div>
           <div class="tf-lin"><span class="num tf-val">${rs(c.valor)}</span><span class="num">${dma(c.vig_ini)} – ${dma(c.vig_fim)}</span></div>
-          <div class="tf-lin"><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span><span>pago: <b class="num">${pct(c.pct_pago)}</b></span>${selo(c)}${c.multi ? '<span class="tf-selo">multimunicipal</span>' : ""}</div></li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato atribuído nesta seleção.</div>'}
+          <div class="tf-lin"><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span><span>pago: <b class="num">${pct2(c.pct_pago)}</b></span>${selo(c)}${c.multi ? '<span class="tf-selo">multimunicipal</span>' : ""}</div></li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato atribuído nesta seleção.</div>'}
       <h4>Alertas e achados</h4>
       ${(f.alertas || []).length ? `<ul class="tf-al">${f.alertas.map((a) => `<li>${esc(a.texto || "")}</li>`).join("")}</ul>` : `<div class="dim">${f.alertas === null ? "INDISPONÍVEL — os alertas ainda não têm vínculo territorial." : "Nenhum alerta ligado a este território."}</div>`}
       <p class="tf-fonte">Fonte: ${esc(f.fonte || "—")} · atualizado em <span class="num">${dmhm(f.atualizado_em)}</span></p>`;
@@ -8014,139 +7971,6 @@ void main(){
     }, host };
   }
 
-  // static/js/src/abas/motores_cruzamento.js
-  var AMOSTRA_MINIMA = 20;
-  var NIV = ["⚪", "🟡", "🔴"];
-  var usd = (v) => v == null ? "—" : "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  var usd4 = (v) => v == null ? "—" : "US$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
-  var pct2 = (v) => v == null ? "—" : Math.round(v * 100) + "%";
-  var taxaCom = (t, n) => t == null || !n ? "—" : `${pct2(t)} <span class="dim">(${fmtN(n)})</span>${n < AMOSTRA_MINIMA ? ' <span class="dim">· amostra curta</span>' : ""}`;
-  var indisp = (rota) => card(`<b>INDISPONÍVEL</b> — a rota <code>${esc(rota)}</code> não respondeu. Sem leitura, não há número: INDISPONÍVEL ≠ 0.`);
-  function cruzamentoMontar(host) {
-    if (!host) return;
-    host.innerHTML = `${sec("Cruzamento de motores")}<div class="dim">Lendo o uso do Claude e a concordância entre motores…</div>`;
-    const ler2 = async () => {
-      if (!host.isConnected) {
-        clearInterval(relogio);
-        return;
-      }
-      const [u, c] = await Promise.all([J("/api/ao-vivo/claude"), J("/api/ao-vivo/cruzamento")]);
-      host.innerHTML = sec("Cruzamento de motores") + _uso(u) + _cruz(c);
-    };
-    const relogio = setInterval(ler2, 12e4);
-    ler2();
-  }
-  function _uso(u) {
-    if (!u || u.erro || u.disponivel === false) return indisp("/api/ao-vivo/claude");
-    const a = u.api;
-    let h = `<div class="grid g4">
-    ${kpi(
-      `${fmtN(u.hoje)} / ${fmtN(u.teto)}`,
-      "Assinatura · chamadas hoje",
-      u.ligado ? "var(--teal)" : "var(--rose)",
-      null,
-      { sobre: `Chamadas ao Claude pela ASSINATURA hoje contra o teto diário (claude_motor: reserva antes de rodar; processo que morre no meio conta). ${fmtN(u.ok)} ok, ${fmtN(u.erros)} com erro, ${fmtN(u.bloqueadas)} barradas pelo teto. ${u.ligado ? "Motor ligado." : "Motor DESLIGADO: " + (u.motivo_desligado || "sem motivo registrado") + "."} Fonte: data/claude_motor_uso.json.` }
-    )}
-    ${kpi(
-      `${fmtN(Math.round(u.segundos || 0))} s`,
-      "Assinatura · tempo hoje",
-      "var(--teal)",
-      null,
-      { sobre: `Segundos de Claude pela assinatura hoje, contra o teto de ${fmtN(u.teto_segundos)} s. É o que a cota da assinatura mede — não há dólar aqui. Fonte: data/claude_motor_uso.json.` }
-    )}
-    ${a ? kpi(
-      usd(a.gasto_usd),
-      "API paga · gasto acumulado",
-      "var(--amber)",
-      null,
-      { sobre: `Dólares gastos na API da Anthropic desde ${esc(a.desde || "—")}, por preço de tabela × tokens que a própria resposta informa (lote = 50%). Só Haiku; Opus nunca vai pela API (decisão do dono). ${fmtN(a.chamadas)} chamadas; ${fmtN(a.recusadas_teto)} recusadas pelo teto. Fonte: data/claude_api_gasto.json.` }
-    ) : kpi("—", "API paga · gasto acumulado", "var(--dim)", null, { sobre: "O registro de gasto da API não pôde ser lido — INDISPONÍVEL, não zero." })}
-    ${a ? kpi(
-      usd(a.resta_usd),
-      "API paga · saldo até o teto",
-      "var(--amber)",
-      null,
-      { sobre: `Quanto ainda cabe: teto de ${usd(a.teto_usd)} menos a margem de segurança (limite efetivo ${usd(a.limite_efetivo_usd)}), menos o gasto e o reservado por lotes em curso (${usd(a.reservado_usd)}). Cada balde tem teto próprio abaixo.` }
-    ) : kpi("—", "API paga · saldo até o teto", "var(--dim)", null, { sobre: "O registro de gasto da API não pôde ser lido — INDISPONÍVEL, não zero." })}
-  </div>`;
-    if (a && a.baldes) {
-      const linhas = Object.entries(a.baldes).map(([nome, b]) => `<tr>
-      <td style="text-align:left">${esc(nome.replace(/_/g, " "))}${b.pausada ? ` <span class="tag rose" title="${esc(b.pausada.motivo || "")}">pausada</span>` : ""}</td>
-      <td class="num">${usd(b.teto_usd)}</td><td class="num">${usd4(b.gasto_usd)}</td><td class="num">${fmtN(b.itens)}</td>
-      <td class="num">${usd4(b.usd_por_item)}</td><td class="num">${b.restantes == null ? "—" : fmtN(b.restantes)}</td>
-      <td class="num">${b.projecao_total_usd == null ? "—" : usd(b.projecao_total_usd)}</td>
-      <td>${b.projecao_cabe == null ? '<span class="dim">sem medida</span>' : b.projecao_cabe ? "cabe" : '<b style="color:var(--rose)">NÃO cabe</b>'}</td></tr>`).join("");
-      h += card(`<div style="font-weight:700;margin-bottom:6px">Projeção por balde</div>
-      <div class="dim" style="margin-bottom:6px">Projeção = custo REAL por item já colhido × itens que faltam. Sem item colhido, não há projeção (sem medida ≠ zero).</div>
-      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Balde</th><th>Teto</th><th>Gasto</th><th>Itens</th><th>US$/item</th><th>Faltam</th><th>Projeção</th><th>Cabe?</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
-    }
-    return h;
-  }
-  function _cruz(c) {
-    if (!c || c.erro) return indisp("/api/ao-vivo/cruzamento");
-    const ls = c.por_tarefa_modelo || [];
-    const suf = ls.filter((x) => x.amostra_suficiente);
-    const nPares = ls.reduce((s, x) => s + (x.n || 0), 0);
-    const acordos = ls.reduce((s, x) => s + (x.acordos || 0), 0);
-    const graves = ls.reduce((s, x) => s + (x.graves || 0), 0);
-    let h = `<div class="grid g4" style="margin-top:14px">
-    ${kpi(
-      fmtN(nPares),
-      "Pares cruzados (30 dias)",
-      "var(--accent)",
-      null,
-      { sobre: `Vereditos em que o Claude e outro motor julgaram o MESMO item, na mesma tarefa, nos últimos ${fmtN(c.dias || 30)} dias. Par com um lado indeterminado fica fora da taxa (INDISPONÍVEL ≠ discordância). Fonte: data/cruzamento_motores.db.` }
-    )}
-    ${kpi(
-      nPares ? pct2(acordos / nPares) : "—",
-      "Concordância geral com o Claude",
-      "var(--accent)",
-      null,
-      { sobre: `Pares em que o outro motor deu o MESMO nível (⚪🟡🔴) que o Claude, sobre todos os pares medidos. Concordar com o Claude é REFERÊNCIA, não acerto: o Claude não é gabarito. Só ${fmtN(suf.length)} de ${fmtN(ls.length)} combinações tarefa × modelo têm a amostra mínima de ${AMOSTRA_MINIMA} pares.` }
-    )}
-    ${kpi(
-      fmtN(graves),
-      "Divergências graves",
-      graves ? "var(--rose)" : "var(--green)",
-      null,
-      { sobre: "Pares em que um motor disse 🔴 e o outro ⚪ (distância de dois níveis). Cada uma vira revisão humana; nenhuma é resolvida a favor de um lado sem gente olhar." }
-    )}
-    ${kpi(
-      fmtN(c.revisao_pendente),
-      "Revisões pendentes",
-      c.revisao_pendente ? "var(--rose)" : "var(--green)",
-      null,
-      { sobre: `Divergências graves ainda sem decisão humana (tabela revisao, status pendente). A lista abaixo mostra as ${fmtN((c.revisoes || []).length)} mais recentes. Exemplos guardados para o few-shot da cascata: ${fmtN(c.exemplos_few_shot)}.` }
-    )}
-  </div>`;
-    if (!c.medido) return h + card(`<div class="dim">${esc(c.motivo || "Sem cruzamentos ainda")} — nada a medir.</div>`);
-    const tab = ls.map((x) => `<tr><td style="text-align:left">${esc(String(x.tarefa).replace(/_/g, " "))}</td><td style="text-align:left">${esc(x.modelo)}</td>
-    <td class="num">${fmtN(x.n)}</td><td class="num">${taxaCom(x.taxa_acordo, x.n)}</td><td class="num">${fmtN(x.graves)}</td><td class="num">${fmtN(x.indeterminados)}</td></tr>`).join("");
-    h += card(`<div style="font-weight:700;margin-bottom:6px">Concordância por tarefa × modelo</div>
-    <div class="dim" style="margin-bottom:6px">${esc(c.legenda || "")}. Abaixo de ${AMOSTRA_MINIMA} pares a taxa é indicação, não medida.</div>
-    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Tarefa</th><th>Modelo comparado</th><th>Pares</th><th>Acordo</th><th>Graves</th><th>Indeterm.</th></tr></thead><tbody>${tab}</tbody></table></div>`);
-    const matrizes = Object.entries(c.matriz || {}).map(([t, m]) => {
-      const cel = (a, b) => m[`${NIV[a]}×${NIV[b]}`] || 0;
-      const corpo = [0, 1, 2].map((a) => `<tr><th>${NIV[a]}</th>${[0, 1, 2].map((b) => `<td class="num"${a === b ? ' style="font-weight:700"' : Math.abs(a - b) === 2 && cel(a, b) ? ' style="color:var(--rose);font-weight:700"' : ""}>${fmtN(cel(a, b))}</td>`).join("")}</tr>`).join("");
-      return `<div style="min-width:180px"><div style="font-weight:600;margin-bottom:4px">${esc(t.replace(/_/g, " "))}</div>
-      <table class="tb"><thead><tr><th>Claude ↓ · outro →</th>${NIV.map((n) => `<th>${n}</th>`).join("")}</tr></thead><tbody>${corpo}</tbody></table></div>`;
-    }).join("");
-    h += card(`<div style="font-weight:700;margin-bottom:6px">Matriz ⚪🟡🔴 por tarefa</div>
-    <div class="dim" style="margin-bottom:6px">Linha = nível do Claude; coluna = nível do outro motor. Diagonal = acordo; canto 🔴×⚪ = divergência grave.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:16px">${matrizes || '<span class="dim">sem pares com os dois lados determinados</span>'}</div>`);
-    const ab = ls.filter((x) => x.n_com_exemplos || x.n_sem_exemplos).map((x) => `<tr><td style="text-align:left">${esc(String(x.tarefa).replace(/_/g, " "))}</td><td style="text-align:left">${esc(x.modelo)}</td>
-    <td class="num">${taxaCom(x.taxa_com_exemplos, x.n_com_exemplos)}</td><td class="num">${taxaCom(x.taxa_sem_exemplos, x.n_sem_exemplos)}</td></tr>`).join("");
-    h += card(`<div style="font-weight:700;margin-bottom:6px">Efeito dos exemplos (com × sem)</div>
-    <div class="dim" style="margin-bottom:6px">Os exemplos são divergências passadas usadas como few-shot na cascata. Só se acredita que ajudaram quando os DOIS lados têm amostra mínima — mexer em prompt sem A/B medido já derrubou recall de 3/6 para 0/6.</div>
-    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Tarefa</th><th>Modelo</th><th>Acordo com exemplos</th><th>Acordo sem exemplos</th></tr></thead><tbody>${ab || '<tr><td colspan="4" class="dim">sem medição</td></tr>'}</tbody></table></div>`);
-    const rv = (c.revisoes || []).map((r) => `<tr><td class="num">${esc((r.em || "").slice(0, 16).replace("T", " "))}</td><td style="text-align:left">${esc(String(r.tarefa).replace(/_/g, " "))}</td>
-    <td style="text-align:left">${esc(r.item || "—")}</td><td>${NIV[r.nivel_claude] || "?"} ${esc(r.veredito_claude || "")} <span class="dim">${esc(r.modelo_claude || "")}</span></td>
-    <td>${NIV[r.nivel_outro] || "?"} ${esc(r.veredito_outro || "")} <span class="dim">${esc(r.modelo_outro || "")}</span></td></tr>`).join("");
-    h += card(`<div style="font-weight:700;margin-bottom:6px">Revisões pendentes</div>
-    <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Quando</th><th>Tarefa</th><th>Item</th><th>Claude</th><th>Outro motor</th></tr></thead><tbody>${rv || '<tr><td colspan="5" class="dim">nenhuma divergência grave pendente</td></tr>'}</tbody></table></div>`);
-    return h;
-  }
-
   // static/js/src/abas/cockpit.js
   var _ckTimer = null;
   function _ckCount(el, to, fmt, ms = 1e3) {
@@ -8163,6 +7987,20 @@ void main(){
       if (p < 1) requestAnimationFrame(s);
       else el.textContent = fmt(to);
     })(performance.now());
+  }
+  function frescorMontar(box) {
+    J("/api/fontes/frescor").then((d) => {
+      if (!box || !box.isConnected || !d || !d.fontes) return;
+      const cor = (f) => {
+        const s = (f.estado || "").toLowerCase();
+        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
+        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
+        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
+        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
+      };
+      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
+        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
+    });
   }
   function blocoComandosMestres() {
     if (typeof CAPS_MESTRAS === "undefined" || !CAPS_MESTRAS.length) return "";
@@ -8197,7 +8035,8 @@ void main(){
   async function renderCockpit() {
     const v61 = _v61 ? `<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
-      <button type="button" class="chip c61-ir-motores" onclick="document.getElementById('c61-motores').scrollIntoView({behavior:'smooth',block:'start'})">Motores · ver todos</button></aside>` : "";
+</aside>
+    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>` : "";
     const html = `<div class="ck${_v61 ? " ck61" : ""}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
@@ -8236,10 +8075,12 @@ void main(){
     <div class="ck-grid" id="ck-grid"></div>
     <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
     </div>
-    ${_v61 ? '<section class="c61-motores" id="c61-motores" aria-labelledby="c61-motores-t"></section>' : ""}
-    <section class="c61-cruz" id="c61-cruz" aria-label="Cruzamento de motores"></section>
-    ${blocoComandosMestres()}
-    <div class="ck-fontes" id="ck-fontes"></div></div>`;
+    <!-- 14/11/2026: a grade de motores e o cruzamento de motores foram para a esfera Sistema
+         (aba s_motores) — pedido do dono: configurações e funcionamento numa aba própria. -->
+    <!-- 14/11/2026: "Funções mestras" e "Fontes de dados — frescor" foram para a esfera Sistema
+         (abas s_comandos e s_motores): o Início fica com o que impressiona — reator, mapa, números
+         e grandes preocupações (pedido do dono). -->
+    </div>`;
     return html;
   }
   function ckCard(id, lab, valc, dotc, href, spark) {
@@ -8302,9 +8143,8 @@ void main(){
       aoVivoLigar();
       reatorMontar($("c61-reator"));
       mapaMontar($("c61-mapa"));
-      motoresMontar($("c61-motores"));
+      preocupacoesMontar($("c61-preoc"));
     } else nucleoStart();
-    cruzamentoMontar($("c61-cruz"));
     if (!_v61) requestAnimationFrame(() => energiaLigar());
     ckPull(true);
     clearInterval(_ckTimer);
@@ -8399,18 +8239,218 @@ void main(){
       });
       if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir` }]);
     });
-    J("/api/fontes/frescor").then((d) => {
-      const box = $("ck-fontes");
-      if (!box || !d || !d.fontes) return;
-      const cor = (f) => {
-        const s = (f.estado || "").toLowerCase();
-        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
-        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
-        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
-        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
-      };
-      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
-        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
+  }
+
+  // static/js/src/abas/sistema.js
+  function _quandoExistir(id, fn, tentativas = 180) {
+    const el = document.getElementById(id);
+    if (el) {
+      fn(el);
+      return;
+    }
+    if (tentativas > 0) requestAnimationFrame(() => _quandoExistir(id, fn, tentativas - 1));
+  }
+  async function renderMotoresSistema() {
+    aoVivoLigar();
+    _quandoExistir("s-motores", motoresMontar);
+    _quandoExistir("s-cruz", cruzamentoMontar);
+    _quandoExistir("s-fontes", frescorMontar);
+    return cover(
+      "sistema",
+      "Motores — o que está rodando e se os modelos concordam",
+      "Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.",
+      "⚙️"
+    ) + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section><div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div><section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
+  }
+  async function renderComandosSistema() {
+    return cover(
+      "sistema",
+      "Comandos — as funções mestras do JFN",
+      "Cada botão é uma capacidade pronta (capabilities.yaml), a mesma que o Yoda atende no Telegram. Nada é disparado sem a sua decisão.",
+      "🧭"
+    ) + (blocoComandosMestres() || '<div class="dim">Lista de comandos INDISPONÍVEL nesta carga.</div>');
+  }
+
+  // static/js/src/abas/conformidade.js
+  var _IND = '<span class="dim">indisponível</span>';
+  var _txt2 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
+  var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
+  var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
+  var _hora = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
+  var _sinal = (v) => v == null ? '<span class="dim">—</span>' : v > 0 ? `<b style="color:var(--rose)">+${fmtN(v)}</b>` : v < 0 ? `<b style="color:var(--green)">${fmtN(v)}</b>` : "0";
+  var _nota = (v) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  function _itens(s) {
+    const it = s.itens || [];
+    if (!it.length) return `<div class="dim" style="font-size:12px">${s.violacoes_abertas == null ? "Sem fotografia dos sensores — não há como listar." : "Nenhuma violação aberta neste sistema."}</div>`;
+    const lin = it.map((a) => `<tr><td style="white-space:nowrap"><b>${esc(a.regra)}</b></td>
+      <td style="font-size:13px"><b>${esc(a.titulo)}</b><div class="dim" style="font-size:12px">${esc(a.titulo_regra || "")}</div></td>
+      <td style="font-size:13px">${esc(a.detalhe || "")}</td><td>${_sev(a.severidade)}</td>
+      <td style="font-size:13px">${esc(a.acao_humana || "")}<div class="dim" style="font-size:11px">sensor ${esc(a.sensor || "—")}</div></td></tr>`).join("");
+    const corte = s.itens_total > it.length ? `<div class="dim" style="font-size:12px;margin-top:4px">Listados ${fmtN(it.length)} de ${fmtN(s.itens_total)} (bloqueantes primeiro).</div>` : "";
+    return `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Regra</th><th>Violação</th><th>Detalhe</th><th>Severidade</th><th>Ação</th></tr></thead><tbody>${lin}</tbody></table></div>${corte}`;
+  }
+  function _sistemas(d) {
+    const lin = (d.sistemas || []).map((s) => {
+      const serie = (s.tendencia || []).slice(-7).map((t) => fmtN(t.abertas)).join(" · ");
+      const sem = (s.sem_verificador_automatico || []).length ? `<div class="dim" style="font-size:11px">${fmtN(s.sem_verificador_automatico.length)} sem verificação automática</div>` : "";
+      return `<tr class="cf-lin" title="Ver as violações de ${esc(s.nome)}" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">
+        <td><b>${esc(s.nome)}</b>${sem}</td><td class="right">${fmtN(s.regras)}</td>
+        <td class="right">${s.violacoes_abertas == null ? _IND : `<b>${fmtN(s.violacoes_abertas)}</b>`}</td>
+        <td class="right">${s.bloqueantes == null ? _IND : s.bloqueantes ? `<b style="color:var(--rose)">${fmtN(s.bloqueantes)}</b>` : "0"}</td>
+        <td style="font-size:12px">${(s.regras_violadas || []).map(esc).join(", ") || '<span class="dim">—</span>'}</td>
+        <td style="font-size:12px;white-space:nowrap">${serie || '<span class="dim">sem série</span>'} <span class="dim">(7 d:</span> ${_sinal(s.variacao_7d)}<span class="dim">)</span></td></tr>
+      <tr hidden><td colspan="6">${_itens(s)}</td></tr>`;
+    }).join("");
+    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Clique na linha para ver as violações daquele sistema. Tendência = violações abertas na última leitura de cada dia (até 7 dias); variação 7 d com sinal (+ piorou).</div>
+    <div style="overflow:auto"><table class="tb cf-txt"><thead><tr><th>Sistema</th><th class="right">Regras</th><th class="right">Violações abertas</th><th class="right">Bloqueantes</th><th>Regras violadas</th><th>Tendência</th></tr></thead><tbody>${lin}</tbody></table></div>`);
+  }
+  function _cegos(c) {
+    const ks = Object.keys(c || {});
+    if (!ks.length) return "";
+    return sec("Sensores cegos", ks.length) + card(`<div class="warn"><b>Estes sensores não conseguiram medir</b> — o que eles cobrem está INDISPONÍVEL, não conforme.</div>
+    <table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Sensor</th><th>Motivo</th></tr></thead><tbody>${ks.map((k) => `<tr><td><b>${esc(k)}</b></td><td style="font-size:13px">${esc(c[k])}</td></tr>`).join("")}</tbody></table>`);
+  }
+  function _juiz(j) {
+    if (!j || j.media == null) return sec("Juiz subjetivo") + card(`<div class="dim">Sem rodada do juiz${j && j.motivo ? ` — ${esc(j.motivo)}` : ""}. Isso não é nota boa: as regras subjetivas (SUB) ainda não foram avaliadas.</div>`);
+    const crit = Object.entries(j.por_criterio || {}).map(([c, n]) => `<tr><td>${esc(c)}</td><td class="right">${_nota(n)}</td></tr>`).join("");
+    const baixas = [];
+    for (const a of j.avaliacoes || []) {
+      for (const [c, n] of Object.entries(a.notas || {})) {
+        if (n != null && n <= 2) baixas.push({ a, c, n });
+      }
+    }
+    const lin = baixas.map(({ a, c, n }) => `<tr><td style="font-size:13px"><b>${esc(a.rotulo || a.id)}</b><div class="dim" style="font-size:11px">${esc(a.sistema || "")} · ${esc(a.veredito || "")}</div></td>
+      <td>${esc(c)}</td><td class="right"><b style="color:${n <= 1 ? "var(--rose)" : "var(--amber)"}">${fmtN(n)}</b></td>
+      <td style="font-size:13px">${esc((a.motivos || {})[c] || "")}</td><td style="font-size:13px">${esc(a.o_que_falta || "")}</td>
+      <td style="font-size:12px">${a.escalar ? `<b>sim</b>${a.motivo_escalar ? ` — ${esc(a.motivo_escalar)}` : ""}` : "não"}</td></tr>`).join("");
+    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
+    <table class="tb cf-txt" style="margin-top:8px;max-width:420px"><thead><tr><th>Critério</th><th class="right">Média</th></tr></thead><tbody>${crit}</tbody></table>
+    <details style="margin-top:10px"${baixas.length ? " open" : ""}><summary style="cursor:pointer"><b>Notas ≤ 2</b> (${fmtN(baixas.length)})</summary>
+      ${baixas.length ? `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Afirmação</th><th>Critério</th><th class="right">Nota</th><th>Motivo</th><th>O que falta</th><th>Escala ao dono</th></tr></thead><tbody>${lin}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Nenhuma nota ≤ 2 nas avaliações vigentes.</div>'}</details>`);
+  }
+  function _divida(d) {
+    const cat = (d.dividas_catraca || []).map((x) => `<tr><td>${esc(x.catraca)}</td><td class="right">${fmtN(x.ocorrencias)}</td><td class="right">${fmtN(x.itens)}</td></tr>`).join("");
+    const reg = (d.dividas_regra || []).map((x) => `<tr><td style="white-space:nowrap"><b>${esc(x.regra)}</b></td><td style="font-size:13px">${esc(x.titulo)}</td><td style="font-size:13px">${(x.falta || []).map(esc).join("<br>")}</td></tr>`).join("");
+    return sec("Dívida") + card(`<div class="dim" style="font-size:12px">Por catraca: o que já existia quando a catraca foi travada — só pode descer.</div>
+    ${cat ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Catraca</th><th class="right">Ocorrências travadas</th><th class="right">Itens</th></tr></thead><tbody>${cat}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma dívida travada em catraca.</div>'}
+    <div class="dim" style="font-size:12px;margin-top:12px">Regras ainda com verificação manual — o que falta para a máquina cobrar.</div>
+    ${reg ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Regra</th><th>Título</th><th>O que falta</th></tr></thead><tbody>${reg}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma.</div>'}`);
+  }
+  async function renderConformidade() {
+    const d = await J("/api/qualidade/conformidade");
+    let h = cover(
+      "geral",
+      "Conformidade — regras de qualidade do JFN",
+      "Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.",
+      "✅"
+    );
+    if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
+    const medido = d.estado === "MEDIDO";
+    const r = d.regras || {}, j = d.juiz;
+    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
+    h += `<div class="grid g2" style="margin-top:8px">
+    ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
+    ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
+    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--rose)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
+    ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', "Nota média do juiz (0–4)", null, "🎯", { sobre: "Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa." })}
+  </div>`;
+    if (d.ok === false) return `<div id="cf-raiz">${h}</div>`;
+    h += sec("Por sistema", fmtN((d.sistemas || []).length)) + _sistemas(d);
+    h += _cegos(d.sensores_cegos);
+    h += _juiz(j);
+    h += _divida(d);
+    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora(d.gerado_em)}` : ""}</div>`);
+    return `<div id="cf-raiz">${h}${_txt2}</div>`;
+  }
+
+  // static/js/src/abas/requerimentos.js
+  var GRUPOS = [
+    { k: "sugerido", rot: "Sugeridos", cor: "var(--amber)", sobre: "Pedido que uma nota de caso aponta como próximo passo. Ainda sem texto redigido." },
+    { k: "minuta", rot: "Com minuta", cor: "var(--accent)", sobre: "Texto redigido, aguardando revisão do titular. Não protocolado." },
+    { k: "protocolado", rot: "Protocolados", cor: "var(--gold)", sobre: "Enviado ao destinatário; aguardando resposta." },
+    { k: "respondido", rot: "Respondidos", cor: "var(--green)", sobre: "Resposta recebida." },
+    { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
+  ];
+  var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
+  var _n = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
+  var _dados2 = null;
+  function _cardReq(r) {
+    return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
+    <div class="cs-topo">
+      <span class="cs-nivel">${esc(r.id)}</span>
+      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
+      ${r.data_sugestao ? `<span class="dim cs-data">${esc(r.data_sugestao)}</span>` : ""}
+    </div>
+    <h3 class="cs-tit">${esc(r.titulo)}</h3>
+    ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
+    <div class="cs-tags"><span class="tag teal">${_n(r.pedidos.length, "pedido", "pedidos")}</span>
+      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n(r.pendencias.length, "pendência", "pendências")}</span>
+      ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
+    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
+    <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
+      ${r.caso ? `<button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button>` : ""}</div>
+  </article>`;
+  }
+  async function renderRequerimentos() {
+    let h = cover(
+      "geral",
+      "Requerimentos — pedidos de informação sugeridos",
+      "O que as investigações indicam <b>pedir a um órgão</b> para fechar uma dúvida: cada item nasce de um próximo passo escrito numa nota de caso. Esta aba <b>só lê</b> — nada é enviado daqui. <b>Indício a verificar, não acusação</b>, com presunção de legitimidade do ato administrativo.",
+      "📝"
+    );
+    const d = await J("/api/requerimentos");
+    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+    _dados2 = d;
+    const ps = d.por_status || {};
+    h += `<div class="grid g4">${GRUPOS.slice(0, 4).map((g) => kpi(fmtN(ps[g.k] || 0), g.rot, g.cor, null, { sobre: g.sobre })).join("")}</div>`;
+    if (!d.total) return h + card('<div class="dim">Nenhum requerimento cadastrado em <code>~/vault/requerimentos/</code>.</div>');
+    for (const g of GRUPOS) {
+      const it = d.itens.filter((r) => r.status === g.k);
+      if (it.length) h += sec(g.rot, it.length) + `<div class="cs-grade">${it.map(_cardReq).join("")}</div>`;
+    }
+    return h;
+  }
+  var _lista = (tit, itens, ord) => `<h3 class="cs-h">${tit}</h3>` + (itens.length ? `<${ord ? "ol" : "ul"}>${itens.map((x) => `<li>${esc(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>` : '<p class="dim">Nenhum item registrado na nota.</p>');
+  var _semAncoras = (md) => String(md || "").replace(/^<a id="[^"]*"><\/a>\s*$/gm, "").replace(/^\[↑ topo\]\(#[^)]*\)\s*$/gm, "").replace(/\[([^\]]+)\]\(#[^)]*\)/g, "$1");
+  async function _abrir(slug) {
+    const ov = $("ov"), sh = $("sheet");
+    if (!ov || !sh) return;
+    const r = (_dados2 && _dados2.itens || []).find((k) => k.slug === slug);
+    if (!r) return;
+    const x = '<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>';
+    const naVault = /\.md$/.test(r.minuta);
+    const corpo = (minuta) => `<div class="cs-nota" data-rq-folha="${esc(slug)}" style="--cs:${_cor2(r.status)}">
+    <div class="cs-topo"><span class="cs-nivel">${esc(r.id)} · ${esc(r.status)}</span>
+      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
+      ${r.data_sugestao ? `<span class="dim cs-data">sugerido em ${esc(r.data_sugestao)}</span>` : ""}</div>
+    <h2 class="cs-h">${esc(r.titulo)}</h2>
+    ${r.destinatario ? `<p><b>Destinatário:</b> ${esc(r.destinatario)}</p>` : ""}
+    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
+    ${_lista("Pedidos", r.pedidos, true)}
+    <h3 class="cs-h">Fundamento</h3><p>${r.fundamento ? esc(r.fundamento) : '<span class="dim">Não registrado na nota.</span>'}</p>
+    ${_lista("Pendências", r.pendencias)}
+    ${r.origem ? `<div class="dim cs-fonte">Origem: <code>${esc(r.origem)}</code></div>` : ""}
+    ${r.caso ? `<div class="btns"><button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button></div>` : ""}
+    <hr><h3 class="cs-h">Minuta</h3>
+    ${naVault ? `<div class="dim cs-fonte">Fonte: <code>${esc(r.minuta)}</code></div>${minuta}` : r.minuta ? `<p class="dim">Fora do vault — não exibida aqui: <code>${esc(r.minuta)}</code></p>` : '<p class="dim">Ainda não há minuta.</p>'}
+    <div class="note">Nota do vault: <code>requerimentos/${esc(slug)}.md</code> — editar lá; esta folha só lê e não envia nada.</div></div>`;
+    ov.classList.add("on");
+    sh.innerHTML = x + corpo(naVault ? spin("Abrindo a minuta…") : "");
+    a11yfy(sh);
+    if (!naVault) return;
+    const d = await J("/api/requerimentos/minuta?slug=" + encodeURIComponent(slug));
+    const no = sh.querySelector(".cs-nota");
+    if (!ov.classList.contains("on") || !no || no.dataset.rqFolha !== slug) return;
+    sh.innerHTML = x + corpo(!d || d.ok === false ? `<div class="warn">${erroHumano(d && d.erro)}</div>` : mdNota(_semAncoras(d.markdown)));
+    a11yfy(sh);
+  }
+  function ligarRequerimentos() {
+    document.addEventListener("click", (ev) => {
+      const a = ev.target.closest && ev.target.closest("[data-rq-abrir]");
+      if (a) {
+        ev.preventDefault();
+        _abrir(a.dataset.rqAbrir);
+      }
     });
   }
 
@@ -13543,7 +13583,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       ${kpi(fmtN(st.pcrj_ocp_r052), "Compra-teste (OCP R052)", "var(--amber)", null, { sobre: "pcrj_ocp_sinal: 1º contrato pequeno seguido de um muito maior com o mesmo órgão (Open Contracting Partnership, 2024). 🔴 quando o 1º foi contratação direta e o 2º veio em até 1 ano." })}
     </div>`;
   }
-  async function _quandoExistir(id, ms = 5e3) {
+  async function _quandoExistir2(id, ms = 5e3) {
     for (let t = 0; t < ms; t += 50) {
       const o = $(id);
       if (o) return o;
@@ -13561,7 +13601,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div id="ac-kpis">${spin("Contando o acervo…")}</div>`;
     setTimeout(async () => {
       const st = await J("/api/acervo/estatisticas", { tetoMs: 3e4 });
-      const o = await _quandoExistir("ac-kpis");
+      const o = await _quandoExistir2("ac-kpis");
       if (o) o.innerHTML = _acervoKpis(st);
     }, 0);
     h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
@@ -13573,7 +13613,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div id="ac-regras" style="margin-top:12px"></div>`;
     setTimeout(async () => {
       const r = await J("/api/acervo/regras?limite=200", { tetoMs: 3e4 });
-      const o = await _quandoExistir("ac-regras");
+      const o = await _quandoExistir2("ac-regras");
       if (o) o.innerHTML = _secRegrasAcervo(r);
     }, 0);
     if (_q) setTimeout(() => acervoBuscar(_q, _esf), 0);
@@ -13582,7 +13622,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   async function acervoBuscar(q, esf) {
     _q = q;
     _esf = esf;
-    const o = await _quandoExistir("ac-res");
+    const o = await _quandoExistir2("ac-res");
     if (!o) return;
     o.innerHTML = spin('Buscando "' + esc(q) + '"…');
     const r = await J("/api/acervo/buscar?q=" + encodeURIComponent(q) + "&esfera=" + encodeURIComponent(esf) + "&limite=100", { tetoMs: 6e4 });
@@ -13618,7 +13658,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     return h;
   }
   var _RX_CIT = /\[Doc:\s*([^\]—]+?)\s*—\s*[“"]?([^\]]*?)[”"]?\]/g;
-  var _item = (t) => {
+  var _item2 = (t) => {
     const s = String(t ?? "");
     const cits = [...s.matchAll(_RX_CIT)];
     const corpo = esc(s.replace(_RX_CIT, "").replace(/\s+e\s*$/, "").replace(/^\s*e\s+/, "").trim());
@@ -13647,7 +13687,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       if (j && typeof j === "object") return _rico(j);
       return `<div>${esc(v)}</div>`;
     }
-    if (Array.isArray(v)) return v.length ? `<ol style="margin:6px 0 6px 18px;padding:0">${v.map((x) => typeof x === "object" && x ? `<li>${_rico(x)}</li>` : _item(x)).join("")}</ol>` : "";
+    if (Array.isArray(v)) return v.length ? `<ol style="margin:6px 0 6px 18px;padding:0">${v.map((x) => typeof x === "object" && x ? `<li>${_rico(x)}</li>` : _item2(x)).join("")}</ol>` : "";
     if (typeof v === "object") return Object.entries(v).filter(([, x]) => x != null && x !== "" && !(Array.isArray(x) && !x.length)).map(([k, x]) => `<div style="margin-top:6px"><div style="font-weight:600">${esc(_rot(k))}</div>${typeof x === "object" ? _rico(x) : `<div>${esc(String(x))}</div>`}</div>`).join("");
     return `<div>${esc(String(v))}</div>`;
   }
@@ -13869,7 +13909,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
        continua sendo de `e_poder`/`g_poder`, onde o desenho quer dizer instituição, não território. */
     { id: "estado", ic: "§rj", tl: "Estado", c: "órgãos estaduais (SIAFE + PNCP)" },
     { id: "prefeitura", ic: "🏙️", tl: "Prefeitura·Rio", c: "município do Rio (PNCP + folha)" },
-    { id: "geral", ic: "🌐", tl: "Transversal", c: "riscos, busca, poder, ferramentas" }
+    { id: "geral", ic: "🌐", tl: "Transversal", c: "riscos, busca, poder, ferramentas" },
+    /* 14/11/2026 — pedido do dono: "coloque uma outra aba (configurações e funcionamento do sistema) e
+       mova o que for disso". O que diz COMO o JFN funciona (motores, coletas, instrumentação, regras de
+       qualidade, acurácia, missões) sai do Início e do Transversal. Os ids das abas movidas ficam os
+       mesmos, para que link antigo (#g_instr etc.) continue abrindo — o `ir()` acha a esfera dona. */
+    { id: "sistema", ic: "§v61-controle", tl: "Sistema", c: "configurações e funcionamento" }
   ];
   var TABS = {
     inicio: [
@@ -13928,11 +13973,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "g_pecas", ic: "📜", tl: "Peças", render: renderPecas },
       { id: "g_fontes", ic: "§fonte", tl: "Fontes externas", render: renderFontesExternas },
       { id: "g_hub", ic: "🏢", tl: "Hub físico", render: renderHubFisico },
-      { id: "g_acuracia", ic: "🎯", tl: "Acurácia", render: renderAcuracia },
       { id: "g_dets", ic: "🧪", tl: "Detectores", render: renderDetectoresOrfaos },
-      { id: "g_instr", ic: "🔧", tl: "Instrumentação", render: renderInstrumentacao },
-      { id: "g_conform", ic: "✅", tl: "Conformidade", render: renderConformidade },
-      { id: "g_missoes", ic: "🛰️", tl: "Missões", render: renderMissoes },
       { id: "g_conluioq", ic: "🤝", tl: "Conluio QSA", render: renderConluioQSA },
       { id: "g_comun", ic: "🧩", tl: "Comunidades", render: renderComunidades },
       { id: "g_retro", ic: "🔮", tl: "Retro", render: renderRetro },
@@ -13951,8 +13992,16 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       // todas as esferas, cada cartão rotulado
       { id: "g_conluio", ic: "§conluio", tl: "Conluio", render: () => renderConluio(_cjEsf) },
       { id: "g_validar", ic: "🏢", tl: "Validar", render: renderValidar },
-      { id: "g_sweeps", ic: "🛰️", tl: "Sistema", render: renderSweeps },
       { id: "g_acoes", ic: "☑️", tl: "Ações", render: renderAcoes }
+    ],
+    sistema: [
+      { id: "s_motores", ic: "⚙️", tl: "Motores", render: renderMotoresSistema },
+      { id: "g_sweeps", ic: "🛰️", tl: "Coletas e rotinas", render: renderSweeps },
+      { id: "g_instr", ic: "🔧", tl: "Instrumentação", render: renderInstrumentacao },
+      { id: "g_conform", ic: "✅", tl: "Conformidade", render: renderConformidade },
+      { id: "g_acuracia", ic: "🎯", tl: "Acurácia", render: renderAcuracia },
+      { id: "g_missoes", ic: "🛰️", tl: "Missões", render: renderMissoes },
+      { id: "s_comandos", ic: "🧭", tl: "Comandos", render: renderComandosSistema }
     ]
   };
   function montarSpheres() {

@@ -897,9 +897,9 @@ export function nucleoStart(){
 /* ══ VIDEO DAS ESFERAS ══ */
 export async function nebulaViva(){
   /* v61: as peças claras de `assets/v61/` (loop por esfera; Início = a sala de comando) */
-  const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',inicio:'v61/sala'}
+  const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',sistema:'v61/transversal',inicio:'v61/sala'}
                  :{estado:'nebula-estado',prefeitura:'nebula-prefeitura',
-                   geral:'nebula-transversal',inicio:'portal-hero'};
+                   geral:'nebula-transversal',sistema:'nebula-transversal',inicio:'portal-hero'};
   const _cel=matchMedia('(max-width:760px)').matches,_eco=!!(navigator.connection&&navigator.connection.saveData);
   const nome=mapa[esfera],host=$('esfnebula');
   if(!nome||!host||_redMotion)return;

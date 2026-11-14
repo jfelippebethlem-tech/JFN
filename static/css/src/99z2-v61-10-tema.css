@@ -69,12 +69,12 @@ html.v61 #esfnebula{opacity:.55;background-color:var(--bg)}
 html.v61 body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/v61/sala.webp)}
 html.v61 body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/v61/estado.webp)}
 html.v61 body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/v61/prefeitura.webp)}
-html.v61 body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/v61/transversal.webp)}
+html.v61 body[data-esf="geral"] #esfnebula,html.v61 body[data-esf="sistema"] #esfnebula{background-image:url(/static/assets/v61/transversal.webp)}
 @media (max-width:760px){
   html.v61 body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/v61/sala-sm.webp)}
   html.v61 body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/v61/estado-sm.webp)}
   html.v61 body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/v61/prefeitura-sm.webp)}
-  html.v61 body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/v61/transversal-sm.webp)}
+  html.v61 body[data-esf="geral"] #esfnebula,html.v61 body[data-esf="sistema"] #esfnebula{background-image:url(/static/assets/v61/transversal-sm.webp)}
 }
 html.v61 #v61-fundo{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;contain:strict}
 html.v61 .v61-veu{position:absolute;inset:0;

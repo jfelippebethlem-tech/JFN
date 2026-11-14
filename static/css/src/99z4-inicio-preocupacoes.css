@@ -1,0 +1,30 @@
+/* 14/11/2026 — Início: reator + mapa + números + GRANDES PREOCUPAÇÕES (pedido do dono).
+   O funcionamento foi para a esfera Sistema: a legenda de motores e os nomes em órbita saem do
+   reator do Início (a animação fica — os nós continuam como pontos). */
+html.v61 .ck61 .rt-leg{display:none}
+html.v61 .ck61 .rt-no span{display:none}
+html.v61 .c61-preoc{margin-top:4px}
+@media (min-width:1000px){
+  html.v61 .ck61 .c61-preoc{grid-column:1 / -1;grid-row:3}
+  html.v61 .ck61 #ck-grid{grid-row:4}
+}
+.pq-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.pq-cab h2.sec{margin:0;letter-spacing:.02em}
+.pq-sub{font-family:var(--mono,ui-monospace,monospace);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim,#6b7894)}
+.pq-pulso{width:9px;height:9px;border-radius:50%;background:var(--rose,#e5484d);box-shadow:0 0 0 0 rgba(229,72,77,.5);animation:pqPulso 2s infinite}
+@keyframes pqPulso{0%{box-shadow:0 0 0 0 rgba(229,72,77,.45)}70%{box-shadow:0 0 0 9px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
+@media (prefers-reduced-motion:reduce){.pq-pulso{animation:none}}
+.pq-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.pq-grade .pq-item{margin-bottom:0;border-left:3px solid var(--rose,#e5484d)}
+.pq-item{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;margin-bottom:10px;padding:14px 16px;
+  border-radius:var(--r-l,14px);background:var(--card,#fff);border:1px solid var(--line-soft,rgba(0,0,0,.08));
+  box-shadow:0 1px 2px rgba(15,30,60,.05);transition:border-color .16s,box-shadow .16s}
+.pq-item:hover,.pq-item:focus-visible{border-color:var(--ion,#1E7BF0);box-shadow:0 4px 16px rgba(15,30,60,.08)}
+.pq-topo{display:flex;align-items:baseline;gap:8px}
+.pq-grau{font-size:15px}
+.pq-valor{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--ink,#0b1830)}
+.pq-tit{font-weight:650;font-size:13.5px;margin-top:4px;color:var(--ink,#0b1830)}
+.pq-txt{font-size:12.5px;line-height:1.45;margin-top:4px;color:var(--muted,#4a5875)}
+.pq-fonte{font-size:11px;margin-top:6px;color:var(--dim,#6b7894)}
+.pq-indisp{font-size:12px;margin-bottom:8px;color:var(--muted,#4a5875)}
+.pq-nota{font-size:11px;color:var(--dim,#6b7894);margin-top:2px}

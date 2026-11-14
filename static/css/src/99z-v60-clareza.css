@@ -195,7 +195,7 @@ html.v60 .v60-mi.on .som-d{background:var(--ion)}
   html.v60 .htop .actions{padding-right:6px;gap:0}
   html.v60 .htop .actions > a{display:none}                 /* Mudo/Termos/Controle/Sair → menu "⋯" */
   html.v60 #kyber{padding:11px}                             /* alvo de 44px */
-  html.v60 #spheres{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
+  html.v60 #spheres{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);
     gap:0;height:calc(64px + env(safe-area-inset-bottom));padding:0 4px env(safe-area-inset-bottom);
     background:var(--bg-2);border-top:1px solid var(--line-soft)}
   html.v60 .sph{flex-direction:column;gap:4px;height:64px;font-size:11px;font-weight:500;line-height:1}

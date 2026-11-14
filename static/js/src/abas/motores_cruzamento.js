@@ -4,10 +4,13 @@
    depois se cruzam". As duas rotas existiam (`/api/ao-vivo/claude` e `/api/ao-vivo/cruzamento`) e
    nenhuma tela as lia — gasto e concordância só eram vistos por quem abria o JSON.
 
-   O que mostra: uso da ASSINATURA (chamadas e tempo de hoje contra o teto), uso da API paga (gasto,
-   saldo e projeção por BALDE), concordância por tarefa × modelo, a matriz ⚪🟡🔴, o efeito dos
+   O que mostra: concordância por tarefa × modelo, a matriz ⚪🟡🔴, o efeito dos
    exemplos (com × sem — o A/B que a memória `prompt-mais-especifico-piorou-recall` exige) e as
    revisões pendentes (divergência grave, que nunca se resolve sozinha).
+
+   Custo de API e uso da assinatura NÃO aparecem no painel (dono, 14/11/2026: "não quero saber o
+   custo das chamadas da api nem chamadas da assinatura no painel. isso polui"). Ficam só nos
+   arquivos de registro (data/claude_api_gasto.json, data/claude_motor_uso.json).
 
    Regra de leitura que a tela repete: acordo com o Claude é REFERÊNCIA, não gabarito; amostra abaixo
    de 20 pares não sustenta taxa; rota que não respondeu é INDISPONÍVEL, nunca zero. */
@@ -17,8 +20,6 @@ import {J} from '../nucleo/http.js';
 
 const AMOSTRA_MINIMA = 20;
 const NIV = ['⚪', '🟡', '🔴'];
-const usd = v => (v == null ? '—' : 'US$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-const usd4 = v => (v == null ? '—' : 'US$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 4, maximumFractionDigits: 6}));
 const pct = v => (v == null ? '—' : Math.round(v * 100) + '%');
 const taxaCom = (t, n) => (t == null || !n ? '—' : `${pct(t)} <span class="dim">(${fmtN(n)})</span>${n < AMOSTRA_MINIMA ? ' <span class="dim">· amostra curta</span>' : ''}`);
 const indisp = rota => card(`<b>INDISPONÍVEL</b> — a rota <code>${esc(rota)}</code> não respondeu. Sem leitura, não há número: INDISPONÍVEL ≠ 0.`);
@@ -26,43 +27,14 @@ const indisp = rota => card(`<b>INDISPONÍVEL</b> — a rota <code>${esc(rota)}<
 /** Monta o bloco no `host` e relê a cada 2 min enquanto o host estiver na página. */
 export function cruzamentoMontar(host) {
   if (!host) return;
-  host.innerHTML = `${sec('Cruzamento de motores')}<div class="dim">Lendo o uso do Claude e a concordância entre motores…</div>`;
+  host.innerHTML = `${sec('Cruzamento de motores')}<div class="dim">Lendo a concordância entre motores…</div>`;
   const ler = async () => {
     if (!host.isConnected) { clearInterval(relogio); return; }
-    const [u, c] = await Promise.all([J('/api/ao-vivo/claude'), J('/api/ao-vivo/cruzamento')]);
-    host.innerHTML = sec('Cruzamento de motores') + _uso(u) + _cruz(c);
+    const c = await J('/api/ao-vivo/cruzamento');
+    host.innerHTML = sec('Cruzamento de motores') + _cruz(c);
   };
   const relogio = setInterval(ler, 120000);
   ler();
-}
-
-function _uso(u) {
-  if (!u || u.erro || u.disponivel === false) return indisp('/api/ao-vivo/claude');
-  const a = u.api;
-  let h = `<div class="grid g4">
-    ${kpi(`${fmtN(u.hoje)} / ${fmtN(u.teto)}`, 'Assinatura · chamadas hoje', u.ligado ? 'var(--teal)' : 'var(--rose)', null,
-      {sobre: `Chamadas ao Claude pela ASSINATURA hoje contra o teto diário (claude_motor: reserva antes de rodar; processo que morre no meio conta). ${fmtN(u.ok)} ok, ${fmtN(u.erros)} com erro, ${fmtN(u.bloqueadas)} barradas pelo teto. ${u.ligado ? 'Motor ligado.' : 'Motor DESLIGADO: ' + (u.motivo_desligado || 'sem motivo registrado') + '.'} Fonte: data/claude_motor_uso.json.`})}
-    ${kpi(`${fmtN(Math.round(u.segundos || 0))} s`, 'Assinatura · tempo hoje', 'var(--teal)', null,
-      {sobre: `Segundos de Claude pela assinatura hoje, contra o teto de ${fmtN(u.teto_segundos)} s. É o que a cota da assinatura mede — não há dólar aqui. Fonte: data/claude_motor_uso.json.`})}
-    ${a ? kpi(usd(a.gasto_usd), 'API paga · gasto acumulado', 'var(--amber)', null,
-      {sobre: `Dólares gastos na API da Anthropic desde ${esc(a.desde || '—')}, por preço de tabela × tokens que a própria resposta informa (lote = 50%). Só Haiku; Opus nunca vai pela API (decisão do dono). ${fmtN(a.chamadas)} chamadas; ${fmtN(a.recusadas_teto)} recusadas pelo teto. Fonte: data/claude_api_gasto.json.`})
-      : kpi('—', 'API paga · gasto acumulado', 'var(--dim)', null, {sobre: 'O registro de gasto da API não pôde ser lido — INDISPONÍVEL, não zero.'})}
-    ${a ? kpi(usd(a.resta_usd), 'API paga · saldo até o teto', 'var(--amber)', null,
-      {sobre: `Quanto ainda cabe: teto de ${usd(a.teto_usd)} menos a margem de segurança (limite efetivo ${usd(a.limite_efetivo_usd)}), menos o gasto e o reservado por lotes em curso (${usd(a.reservado_usd)}). Cada balde tem teto próprio abaixo.`})
-      : kpi('—', 'API paga · saldo até o teto', 'var(--dim)', null, {sobre: 'O registro de gasto da API não pôde ser lido — INDISPONÍVEL, não zero.'})}
-  </div>`;
-  if (a && a.baldes) {
-    const linhas = Object.entries(a.baldes).map(([nome, b]) => `<tr>
-      <td style="text-align:left">${esc(nome.replace(/_/g, ' '))}${b.pausada ? ` <span class="tag rose" title="${esc(b.pausada.motivo || '')}">pausada</span>` : ''}</td>
-      <td class="num">${usd(b.teto_usd)}</td><td class="num">${usd4(b.gasto_usd)}</td><td class="num">${fmtN(b.itens)}</td>
-      <td class="num">${usd4(b.usd_por_item)}</td><td class="num">${b.restantes == null ? '—' : fmtN(b.restantes)}</td>
-      <td class="num">${b.projecao_total_usd == null ? '—' : usd(b.projecao_total_usd)}</td>
-      <td>${b.projecao_cabe == null ? '<span class="dim">sem medida</span>' : b.projecao_cabe ? 'cabe' : '<b style="color:var(--rose)">NÃO cabe</b>'}</td></tr>`).join('');
-    h += card(`<div style="font-weight:700;margin-bottom:6px">Projeção por balde</div>
-      <div class="dim" style="margin-bottom:6px">Projeção = custo REAL por item já colhido × itens que faltam. Sem item colhido, não há projeção (sem medida ≠ zero).</div>
-      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Balde</th><th>Teto</th><th>Gasto</th><th>Itens</th><th>US$/item</th><th>Faltam</th><th>Projeção</th><th>Cabe?</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
-  }
-  return h;
 }
 
 function _cruz(c) {
@@ -72,7 +44,7 @@ function _cruz(c) {
   const nPares = ls.reduce((s, x) => s + (x.n || 0), 0);
   const acordos = ls.reduce((s, x) => s + (x.acordos || 0), 0);
   const graves = ls.reduce((s, x) => s + (x.graves || 0), 0);
-  let h = `<div class="grid g4" style="margin-top:14px">
+  let h = `<div class="grid g4">
     ${kpi(fmtN(nPares), 'Pares cruzados (30 dias)', 'var(--accent)', null,
       {sobre: `Vereditos em que o Claude e outro motor julgaram o MESMO item, na mesma tarefa, nos últimos ${fmtN(c.dias || 30)} dias. Par com um lado indeterminado fica fora da taxa (INDISPONÍVEL ≠ discordância). Fonte: data/cruzamento_motores.db.`})}
     ${kpi(nPares ? pct(acordos / nPares) : '—', 'Concordância geral com o Claude', 'var(--accent)', null,

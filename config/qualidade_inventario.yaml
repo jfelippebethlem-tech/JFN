@@ -170,18 +170,7 @@ manchetes:
     detector: retro.lift
     campos: {indice: "detectores[max lift, circular=false].lift", rotulo: "detectores[…].detector"}
     lista: detectores
-  - id: ck-fontes
-    superficie: "cockpit — faixa 'Fontes de dados — frescor ao vivo'"
-    afirma: "Idade e estado de cada fonte de dados (verde/âmbar/vermelho)."
-    rota: /api/fontes/frescor
-    origem: rotas.investigacao.api_fontes_frescor
-    fonte: "ob_orcamentaria_siafe, pcrj_folha, pcrj_comissionado_candidato, siafe_runner"
-    natureza: indice
-    esfera: sistema
-    consome: ["dono (painel)"]
-    detector: null
-    campos: {estado: "fontes[].estado", idade: "fontes[].idade_dias"}
-    lista: fontes
+  # ck-fontes saiu do cockpit em 14/11/2026 (pedido do dono): o frescor das fontes mora na aba Sistema › Motores (s_motores).
 
 relatorios:
   fornecedor:
@@ -394,11 +383,11 @@ abas:
   g_pecas: {esfera: geral, afirma: "Aba 'Peças' (geral)."}
   g_fontes: {esfera: geral, afirma: "Aba 'Fontes externas' (geral)."}
   g_hub: {esfera: geral, afirma: "Aba 'Hub físico' (geral)."}
-  g_acuracia: {esfera: geral, afirma: "Aba 'Acurácia' (geral)."}
+  g_acuracia: {esfera: sistema, afirma: "Aba 'Acurácia' (sistema)."}
   g_dets: {esfera: geral, afirma: "Aba 'Detectores' (geral)."}
-  g_instr: {esfera: geral, afirma: "Aba 'Instrumentação' (geral)."}
-  g_conform: {esfera: geral, afirma: "Aba 'Conformidade' (geral)."}
-  g_missoes: {esfera: geral, afirma: "Aba 'Missões' (geral)."}
+  g_instr: {esfera: sistema, afirma: "Aba 'Instrumentação' (sistema)."}
+  g_conform: {esfera: sistema, afirma: "Aba 'Conformidade' (sistema)."}
+  g_missoes: {esfera: sistema, afirma: "Aba 'Missões' (sistema)."}
   g_conluioq: {esfera: geral, afirma: "Aba 'Conluio QSA' (geral)."}
   g_comun: {esfera: geral, afirma: "Aba 'Comunidades' (geral)."}
   g_retro: {esfera: geral, afirma: "Aba 'Retro' (geral)."}
@@ -416,7 +405,9 @@ abas:
   g_poder: {esfera: geral, afirma: "Aba 'Poder' (geral)."}
   g_conluio: {esfera: geral, afirma: "Aba 'Conluio' (geral)."}
   g_validar: {esfera: geral, afirma: "Aba 'Validar' (geral)."}
-  g_sweeps: {esfera: geral, afirma: "Aba 'Sistema' (geral)."}
+  g_sweeps: {esfera: sistema, afirma: "Aba 'Coletas e rotinas' (sistema)."}
+  s_comandos: {esfera: sistema, afirma: "Aba 'Comandos' (sistema): as funções mestras de capabilities.yaml."}
+  s_motores: {esfera: sistema, afirma: "Aba 'Motores' (sistema): estado dos motores e concordância entre modelos; sem custo de API."}
   g_acoes: {esfera: geral, afirma: "Aba 'Ações' (geral)."}
 
 rotas:
