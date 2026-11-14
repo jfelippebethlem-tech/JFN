@@ -320,6 +320,29 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
             "descrição (ver docstring de `varredura_certames_ctx._serie_do_item`)."),
         medido_em="2026-11-12",
     ),
+    LimiteDeFonte(
+        fonte="Dotação ATUALIZADA por órgão — só o TFE dos dados abertos tem, e ele parou em 14/07/2025",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "O conjunto `tfe-despesa` de dadosabertos.rj.gov.br traz dotação inicial e atualizada por unidade "
+            "orçamentária, órgão e UG — mas é posição ANUAL e os 12 arquivos foram publicados pela última vez em "
+            "14/07/2025 (conferido na API do portal em 14/11/2026): 2016–2024 fechados, 2025 parado num dia de "
+            "julho, 2026 inexistente. O painel da CGE (`cge_execucao_despesa`, só Executivo) tem a coluna "
+            "`dotacao_atualizada`, mas ela REPETE a inicial: em 2024 soma R$ 97,26 bi nas duas, contra "
+            "R$ 113,56 bi de dotação atualizada do Executivo no TFE. Usá-la como atualizada faria toda UG que "
+            "recebeu crédito adicional parecer executar mais de 100%. O SICONFI só publica por Poder. Duas "
+            "armadilhas do próprio TFE: a dotação mora na UNIDADE ORÇAMENTÁRIA e qualquer UG executa o crédito "
+            "dela (UG 293100 em 2024: R$ 57,75 mi empenhados sobre R$ 654 mil de dotação 'própria' = 8.827%), e "
+            "posição fora de dezembro é a do dia da publicação, não a do fim do mês."),
+        caminho_alternativo=(
+            "SIAFE-Rio 2, menu Execução › Execução Orçamentária: telas 'Detalhamento de Dotação', 'Nota de "
+            "Dotação' e 'Nota de Crédito' (mapeadas em vault/notas/siafe-mapa-do-conhecimento.md, não coletadas) — "
+            "um coletor ali daria a dotação atualizada do exercício corrente por UG. Sem login: os decretos de "
+            "crédito adicional no DOERJ (o valor está na ementa) permitiriam reconstruir a atualização a partir da "
+            "inicial — extração ainda não feita. Até lá, `compliance_agent/orcamento_orgao.py` devolve "
+            "INDISPONÍVEL — nunca a inicial."),
+        medido_em="2026-11-14",
+    ),
 )
 
 

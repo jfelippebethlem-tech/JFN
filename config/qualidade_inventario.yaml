@@ -338,6 +338,7 @@ abas:
   e_panorama: {esfera: estado, afirma: "Aba 'Panorama' (estado)."}
   e_pericias: {esfera: estado, afirma: "Aba 'Perícias' (estado)."}
   e_comissao: {esfera: estado, afirma: "Aba 'Comissão de Orçamento' (estado)."}
+  e_orcorg: {esfera: estado, afirma: "Aba 'Orçamento por órgão' (estado)."}
   e_couto: {esfera: estado, afirma: "Aba 'Governo Couto' (estado)."}
   e_pcont: {esfera: estado, afirma: "Aba 'Perícia contábil' (estado)."}
   e_cge: {esfera: estado, afirma: "Aba 'CGE × JFN' (estado)."}
@@ -550,6 +551,7 @@ rotas:
   "/api/motor/fotografia": {classe: operacional, afirma: "O estado do MOTOR: faixas, achados por código e por origem, motivos no topo da fila.", fonte: "tools.pos_correcao"}
   "/api/nucleo/comando": {classe: operacional, afirma: "Núcleo de perícia INTERATIVO (/pericia, /veredito, /placar, /fantasma, /fases, /promover, /ciclo_nucleo, /fornecedor, /parametros, /evolucao) — religa o núcleo…", fonte: "compliance_agent.nucleo.telegram_nucleo"}
   "/api/ob/retiradas": {classe: afirma, afirma: "OBs que o portal da transparência publicou e depois DESPUBLICOU.", fonte: "compliance_agent.reporting.ob_retiradas"}
+  "/api/orcamento_orgao": {classe: afirma, afirma: "Por órgão, unidade orçamentária e UG, por exercício e mês: dotação inicial e atualizada, empenhado, liquidado, pago por OB Contabilizada do SIAFE, pago do balancete (referência), a diferença entre os dois e as taxas de execução, com ranking — cada coluna com fonte e estado.", fonte: "compliance_agent.orcamento_orgao; tabelas da_despesa e cge_execucao_despesa (data/dadosabertos_rj.db), ob_orcamentaria_siafe (compliance.db)"}
   "/api/orgao/cidades": {classe: afirma, afirma: "Concentração GEOGRÁFICA dos fornecedores de um órgão (ou de todo o Estado se ug ausente): em que cidades se sediam quem o órgão paga.", fonte: "compliance_agent.cruzamento"}
   "/api/osint/agente_publico": {classe: afirma, afirma: "Fila de agente público × entidade que recebeu dinheiro público.", fonte: "tools.agente_publico_reverso"}
   "/api/osint/beneficiario_final": {classe: afirma, afirma: "sobe a cadeia societária de uma PJ até as pessoas físicas.", fonte: "compliance_agent.osint.fonte_grafo"}

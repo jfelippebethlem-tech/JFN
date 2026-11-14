@@ -47,8 +47,11 @@ from tools.painel_abas import abas, abas_por_esfera
 # rotinas"), Instrumentação, Conformidade, Acurácia e Missões, e entrou "Motores" (`s_motores`) com a grade de
 # motores e o cruzamento de motores que estavam no Início. Custo de API/assinatura saiu do painel.
 # Mesmo dia: entrou "Comandos" (`s_comandos`, as funções mestras que ficavam no rodapé do Início) → 75, sistema 7.
-TOTAL = 75
-POR_ESFERA = {"inicio": 1, "estado": 22, "prefeitura": 16, "geral": 29, "sistema": 7}
+# 2026-11-14: 75 → 76 e estado 22 → 23. Entrou "Orçamento por órgão" (`e_orcorg`): por órgão, unidade orçamentária e
+# UG, dotação inicial e atualizada, empenhado, liquidado, pago por OB do SIAFE e taxas de execução, com ranking e
+# filtro por exercício e mês (`/api/orcamento_orgao`) — pedido do dono ("quais órgãos têm orçamento e quanto executou").
+TOTAL = 76
+POR_ESFERA = {"inicio": 1, "estado": 23, "prefeitura": 16, "geral": 29, "sistema": 7}
 
 
 def test_le_todas_as_abas_do_painel():
