@@ -72,7 +72,15 @@ say "início (best-effort baixa prio, bounded)"
 # tempo por processo cresce, então cada slot cobre MENOS processos — mas o slot é o mesmo, o cron
 # repete, e o que se ganha é profundidade onde antes havia corte cego. Ajustável por ambiente.
 export SEI_MAX_DOCS=${SEI_MAX_DOCS:-120}
-$PRIO timeout -k 120 --foreground 1900 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
+# A FATIA 0/2 NO IT-CAMPO (14/11/2026): enquanto o it-campo bate `.varredura_na_itcampo` (< 2 h), as sessões de
+# varredura dele cobrem esta fatia em sub-fatias disjuntas (tools/itcampo_sei_paralelo.py) e este passo cede — a
+# VM-1 ficou a manhã de 14/11 inteira em "load alto — adia". Foco, pais, recaptura e o resto do ciclo seguem aqui.
+# Batida velha (it-campo desligado) = a fatia volta sozinha para cá.
+if [ -n "$(find data/.varredura_na_itcampo -mmin -120 2>/dev/null)" ]; then
+  say "varredura principal da fatia $JFN_SWEEP_FATIA no it-campo (.varredura_na_itcampo fresco) — passo cedido"
+else
+  $PRIO timeout -k 120 --foreground 1900 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
+fi
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
 # CAUSA-RAIZ (2026-08-08): o laço antigo era `while read -r ugcod ... < data/ugs_foco.txt`, e o
 # arquivo era o STDIN do laço. Cada UG roda `timeout --foreground python -m tools.sei_sweep`, e o

@@ -53,6 +53,7 @@ DATA = RAIZ / "data"
 BASE = Path(os.environ.get("JFN_ITCAMPO_BASE", str(Path.home() / "JFN-worker")))
 SESSOES = Path(os.environ.get("JFN_ITCAMPO_SESSOES", str(Path.home() / "JFN-sessoes")))
 CFG_N = BASE / "data" / "itcampo_n"
+CFG_V = BASE / "data" / "itcampo_varredura_n"      # nº de sessões de VARREDURA (fatia 0/2 da VM-1)
 PAUSA = BASE / "data" / ".pause_itcampo"
 RODADAS = BASE / "data" / "itcampo_rodadas.jsonl"
 PAINEL = BASE / "data" / "itcampo_montagem.log"          # painel do orquestrador
@@ -184,13 +185,24 @@ def n_sessoes(padrao: int = 2) -> int:
         return padrao
 
 
+def n_varredura() -> int:
+    try:
+        return max(0, min(N_MAX, int(CFG_V.read_text().strip())))
+    except (OSError, ValueError):
+        return 0
+
+
+def _dir(modo: str, k: int) -> Path:
+    return SESSOES / (f"s{k}" if modo == "integras" else f"v{k}")
+
+
 def _head(arvore: Path) -> str:
     return _run(["git", "-C", str(arvore), "rev-parse", "HEAD"]).stdout.strip()
 
 
-def preparar_worktree(k: int, head: str) -> Path:
+def preparar_worktree(k: int, head: str, modo: str = "integras") -> Path:
     """Cria (ou põe no commit `head`) o worktree da sessão k, com venv/.env da base e trava do SIAFE."""
-    s = SESSOES / f"s{k}"
+    s = _dir(modo, k)
     SESSOES.mkdir(parents=True, exist_ok=True)
     if not (s / ".git").exists():
         _run(["git", "-C", str(BASE), "worktree", "prune"])
@@ -289,6 +301,76 @@ def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
     return rec
 
 
+FILA_V_HORAS = 3
+
+
+def volta_varredura(k: int, s: Path, segundos: int) -> dict | None:
+    """Uma volta de VARREDURA (cache CDP, 1ª leitura do processo) na sub-fatia 2(k-1)/2M da metade da VM-1 —
+    o fluxo da VM-2 (`tools/vm2_sweep_geral.py`), sem alteração: fila da VM-1, progresso e restritos da VM-1
+    copiados para o `_pular` decidir igual, lote `sweep` conferido. Bate `.varredura_na_itcampo` na VM-1."""
+    m = max(1, n_varredura())
+    fatia = f"{2 * (k - 1)}/{2 * m}"
+    fila = s / "data" / "fila_sweep_vm2.json"
+    rotulo = s / "data" / "fila_sweep_fatia.txt"
+    velha = (not fila.exists() or time.time() - fila.stat().st_mtime > FILA_V_HORAS * 3600
+             or (rotulo.read_text().strip() if rotulo.exists() else "") != fatia)
+    if velha:
+        r = _ssh(f"cd {VM1_JFN} && PYTHONPATH=. nice -n 10 timeout 900 .venv/bin/python -m tools.vm2_sweep_geral "
+                 f"exportar --max 120 --fatia {fatia}", timeout=1000)
+        if r.returncode != 0:
+            raise RuntimeError(f"exportar varredura na VM-1 falhou: {r.stderr.strip()[-200:]}")
+        fila.write_text(r.stdout, encoding="utf-8")
+        rotulo.write_text(fatia)
+    if not _ler_json(fila):
+        return None
+    (s / "data" / "sei_cache").mkdir(parents=True, exist_ok=True)
+    for orig, dest in ((f"{VM1_JFN}/data/sei_cache/sei_sweep_progress.json", s / "data/sei_cache/sei_sweep_progress.json"),
+                       (f"{VM1_JFN}/data/sei_restritos.json", s / "data/sei_restritos.json")):
+        r = _run(["rsync", "-a", f"{VM1}:{orig}", str(dest)], timeout=600)
+        if r.returncode != 0:
+            raise RuntimeError(f"sem o progresso da VM-1 o _pular releria o já lido: {r.stderr.strip()[:150]}")
+    import shutil
+    shutil.copy2(s / "data/sei_cache/sei_sweep_progress.json", s / "data/.vm2_prog_antes.json")
+    shutil.copy2(s / "data/sei_restritos.json", s / "data/.vm2_restritos_antes.json")
+    n = n_varredura()
+    t0 = time.time()
+    print(f"\n=== JFN SEI — VARREDURA {k} de {n} (sub-fatia {fatia}) — {time.strftime('%F %T')} — "
+          f"{len(_ler_json(fila) or [])} na fila da VM-1 ===", flush=True)
+    titulo(f"JFN SEI varredura {k}/{n} — lendo (sub-fatia {fatia})")
+    env = dict(os.environ, JFN_SWEEP_FATIA=fatia, SEI_MAX_DOCS=os.environ.get("SEI_MAX_DOCS", "120"))
+    p = subprocess.Popen(["timeout", "-k", "120", "--foreground", str(segundos + 1200), str(s / ".venv/bin/python"),
+                          "-u", "-m", "tools.vm2_sweep_geral", "rodar", "--max", "8"], cwd=s, env=env,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                         errors="replace")
+    lidos = 0
+    for ln in p.stdout:
+        ln = ln.rstrip("\n")
+        print(ln, flush=True)
+        mm = re.search(r"(\d{6}/\d{6}/\d{4})", ln)
+        if mm:
+            titulo(f"JFN SEI varredura {k}/{n} — processo {mm.group(1)}, {lidos} lote(s)")
+            (s / "data" / "itcampo_estado.txt").write_text(f"{mm.group(1)} {lidos}")
+    rc = p.wait()
+    titulo(f"JFN SEI varredura {k}/{n} — entregando o lote à VM-1")
+    r = _run([str(s / ".venv/bin/python"), "-m", "tools.vm2_sweep_geral", "devolver", "--desde", str(t0)],
+             cwd=s, timeout=7200, env=env)
+    try:
+        dev = json.loads(r.stdout.strip().splitlines()[-1]) if r.stdout.strip() else {}
+    except (ValueError, IndexError):
+        dev = {}
+    lote = dev.get("lote") or {}
+    rec = {"ts": time.strftime("%F %T"), "no": NO, "modo": "varredura", "slot": k, "sessoes_varredura": n,
+           "sessoes": n_sessoes(), "fatia": fatia, "commit": _head(s)[:8],
+           "inicio": time.strftime("%F %T", time.localtime(t0)), "duracao_s": round(time.time() - t0), "rc": rc,
+           "cdp": dev.get("cdp", 0), "com_docs": dev.get("com_docs", 0), "progresso": dev.get("progresso", 0),
+           "aprovados": len(lote.get("aprovados") or []), "quarentena": len(lote.get("reprovados") or {}),
+           "lote_nao_chegou": bool(dev.get("cdp")) and not lote}
+    registrar(rec, batida="varredura")
+    print(f"=== volta de varredura: {rec['cdp']} lidos ({rec['com_docs']} com documentos), lote "
+          f"{rec['aprovados']} aprovados / {rec['quarentena']} quarentena ===", flush=True)
+    return rec
+
+
 def _linhas(log: Path, desde: int) -> list[str]:
     try:
         with log.open("rb") as f:
@@ -298,9 +380,10 @@ def _linhas(log: Path, desde: int) -> list[str]:
         return []
 
 
-def sessao(k: int, segundos: int) -> int:
+def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     """Laço contínuo da sessão k na sua janela. Sai (e o orquestrador reabre) quando há código novo na base."""
-    s = SESSOES / f"s{k}"
+    s = _dir(modo, k)
+    limite = n_sessoes if modo == "integras" else n_varredura
     os.environ.update({"PYTHONPATH": str(s), "TMPDIR": str(s / "tmp"), "TZ": "America/Sao_Paulo",
                        "SEI_SEM_TG": "1", "JFN_CLAUDE_MAX_CONFERENCIA_VM2": "0"})
     # 24 threads / 15 GB no WSL: o limiar de 1,7 do vm_guard é para a VM-1 de 2 vCPU
@@ -308,11 +391,11 @@ def sessao(k: int, segundos: int) -> int:
     os.environ.setdefault("VM_GUARD_MIN_FREE_GB", "1.5")
     os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
     meu = _head(BASE)
-    preparar_worktree(k, meu)
+    preparar_worktree(k, meu, modo)
     (s / "data" / "itcampo_sessao.pid").write_text(str(os.getpid()))
     while True:
-        if k > n_sessoes():
-            print(f"sessão {k} acima de N={n_sessoes()} — fechando", flush=True)
+        if k > limite():
+            print(f"sessão {k} acima de N={limite()} — fechando", flush=True)
             return 0
         if _head(BASE) != meu:
             print("código novo na base — fechando para reabrir atualizada", flush=True)
@@ -322,7 +405,7 @@ def sessao(k: int, segundos: int) -> int:
             time.sleep(60)
             continue
         try:
-            rec = uma_volta(k, s, FATIA_S)
+            rec = uma_volta(k, s, segundos) if modo == "integras" else volta_varredura(k, s, segundos)
         except (RuntimeError, subprocess.SubprocessError, OSError, ValueError) as exc:
             print(f"[{time.strftime('%F %T')}] volta falhou: {str(exc)[:200]} — nova tentativa em 5 min", flush=True)
             time.sleep(300)
@@ -332,20 +415,24 @@ def sessao(k: int, segundos: int) -> int:
             time.sleep(1200)
 
 
-def registrar(rec: dict) -> None:
+def registrar(rec: dict, batida: str = "integras") -> None:
     linha = json.dumps(rec, ensure_ascii=False)
     with RODADAS.open("a", encoding="utf-8") as f:
         f.write(linha + "\n")
     r = _ssh(f"cat >> {VM1_JFN}/data/itcampo_rodadas.jsonl", entrada=linha + "\n", timeout=120)
-    if r.returncode == 0:
+    if r.returncode != 0:
+        return
+    if batida == "integras":
         _ssh(f"cd {VM1_JFN} && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 batida --no {NO}", timeout=120)
+    elif rec.get("aprovados") or rec.get("progresso"):      # só bate quem ENTREGOU (a VM-1 cede a fatia por isso)
+        _ssh(f"touch {VM1_JFN}/data/.varredura_na_itcampo", timeout=120)
 
 
 # ───────────────────────────── orquestrador ─────────────────────────────
 
-def viva(k: int) -> bool:
+def viva(k: int, modo: str = "integras") -> bool:
     """Sessão k viva = algum processo com cwd dentro do worktree dela (vale para a janela, a fila e a captura)."""
-    alvo = str(SESSOES / f"s{k}")
+    alvo = str(_dir(modo, k))
     for pid in os.listdir("/proc"):
         if not pid.isdigit():
             continue
@@ -358,13 +445,15 @@ def viva(k: int) -> bool:
     return False
 
 
-def lancar(k: int, n: int) -> None:
+def lancar(k: int, n: int, modo: str = "integras") -> None:
     """Abre a JANELA da sessão k no Windows (visível, com título) — nunca processo escondido."""
-    s = SESSOES / f"s{k}"
+    s = _dir(modo, k)
     distro = os.environ.get("WSL_DISTRO_NAME", "Ubuntu")
-    subprocess.Popen(["cmd.exe", "/c", "start", f"JFN SEI sessão {k}/{n}", "wsl.exe", "-d", distro,
+    nome = f"JFN SEI sessão {k}/{n}" if modo == "integras" else f"JFN SEI varredura {k}/{n}"
+    subprocess.Popen(["cmd.exe", "/c", "start", nome, "wsl.exe", "-d", distro,
                       "--cd", str(s), "--", "bash", "-lc",
-                      f"PYTHONPATH={s} {BASE}/.venv/bin/python -u -m tools.itcampo_sei_paralelo sessao --k {k}; "
+                      f"PYTHONPATH={s} {BASE}/.venv/bin/python -u -m tools.itcampo_sei_paralelo sessao --k {k} "
+                      f"--modo {modo}; "
                       "echo; echo 'sessão encerrada — esta janela fecha em 20 s'; sleep 20"],
                      cwd="/mnt/c", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -379,26 +468,28 @@ def rodar() -> int:
                 painel(f"git pull falhou ({r.stderr.strip()[:120]}) — seguindo com o código que há")
             ultimo_pull = time.time()
         head = _head(BASE)
-        for k in range(1, n + 1):
-            if PAUSA.exists() or viva(k):
+        slots = [("integras", k, n) for k in range(1, n + 1)] + \
+                [("varredura", k, n_varredura()) for k in range(1, n_varredura() + 1)]
+        for modo, k, tot in slots:
+            if PAUSA.exists() or viva(k, modo):
                 continue
             try:
-                preparar_worktree(k, head)
+                preparar_worktree(k, head, modo)
             except (RuntimeError, OSError) as exc:
-                painel(f"sessão {k}: worktree falhou — {str(exc)[:150]}")
+                painel(f"{modo} {k}: worktree falhou — {str(exc)[:150]}")
                 continue
-            lancar(k, n)
-            painel(f"sessão {k}/{n} aberta em janela própria (código {head[:8]})")
+            lancar(k, tot, modo)
+            painel(f"{modo} {k}/{tot} aberta em janela própria (código {head[:8]})")
             time.sleep(3)
         estados = []
-        for k in range(1, n + 1):
+        for modo, k, _ in slots:
             try:
-                estados.append(f"s{k}:" + (SESSOES / f"s{k}" / "data" / "itcampo_estado.txt").read_text().strip())
+                estados.append(f"{_dir(modo, k).name}:" + (_dir(modo, k) / "data" / "itcampo_estado.txt").read_text().strip())
             except OSError:
-                estados.append(f"s{k}:-")
-        vivas = sum(1 for k in range(1, n + 1) if viva(k))
-        titulo(f"JFN SEI orquestrador — {vivas}/{n} sessões vivas" + (" — PAUSADO" if PAUSA.exists() else ""))
-        print(f"[{time.strftime('%T')}] {vivas}/{n} vivas  " + "  ".join(estados), flush=True)
+                estados.append(f"{_dir(modo, k).name}:-")
+        vivas = sum(1 for modo, k, _ in slots if viva(k, modo))
+        titulo(f"JFN SEI orquestrador — {vivas}/{len(slots)} sessões vivas" + (" — PAUSADO" if PAUSA.exists() else ""))
+        print(f"[{time.strftime('%T')}] {vivas}/{len(slots)} vivas  " + "  ".join(estados), flush=True)
         time.sleep(60)
 
 
@@ -408,6 +499,8 @@ def relatorio(registros: list[dict]) -> dict:
     """Ritmo por nº de sessões: processos/hora = tentados na janela de tempo em que aquele N vigorou."""
     por_n: dict[int, list[dict]] = {}
     for r in registros:
+        if r.get("modo", "integras") != "integras":
+            continue
         por_n.setdefault(int(r.get("sessoes") or 0), []).append(r)
     out = {}
     for n, rs in sorted(por_n.items()):
@@ -433,6 +526,7 @@ def main() -> int:
     s = sub.add_parser("sessao")
     s.add_argument("--k", type=int, required=True)
     s.add_argument("--segundos", type=int, default=FATIA_S)
+    s.add_argument("--modo", choices=("integras", "varredura"), default="integras")
     sub.add_parser("relatorio")
     m = sub.add_parser("metricas")
     m.add_argument("--desde", type=int, default=0)
@@ -441,7 +535,7 @@ def main() -> int:
         print(json.dumps(metricas(a.desde), ensure_ascii=False))
         return 0
     if a.cmd == "sessao":
-        return sessao(a.k, a.segundos)
+        return sessao(a.k, a.segundos, a.modo)
     if a.cmd == "relatorio":
         regs = [json.loads(ln) for ln in RODADAS.read_text(encoding="utf-8").splitlines() if ln.strip()] \
             if RODADAS.exists() else []

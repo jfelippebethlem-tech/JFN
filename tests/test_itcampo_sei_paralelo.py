@@ -62,3 +62,14 @@ def test_sessao_em_outra_arvore_nao_e_duplicata(tmp_path):
     finally:
         p.kill(); p.wait()
     assert F._mesmo_worker(str(os.getpid())) is True    # sem o script na linha de comando: na dúvida, duplicata
+
+
+def test_subfatias_da_varredura_cobrem_a_metade_da_vm1_sem_sobrepor():
+    """Sessão k de M varre `2(k-1)/2M`: hash ≡ 2(k-1) mod 2M ⇒ par ⇒ dentro da fatia 0/2 da VM-1, nunca na 1/2
+    da VM-2, e as M sub-fatias juntas cobrem a 0/2 inteira, sem processo em duas sessões."""
+    from tools.sei_sweep import na_minha_fatia
+    procs = [f"SEI-{u:06d}/{n:06d}/2025" for u in (80001, 270006, 330005) for n in range(400)]
+    m = 4
+    for p in procs:
+        donos = [k for k in range(1, m + 1) if na_minha_fatia(p, 2 * (k - 1), 2 * m)]
+        assert len(donos) == (1 if na_minha_fatia(p, 0, 2) else 0)

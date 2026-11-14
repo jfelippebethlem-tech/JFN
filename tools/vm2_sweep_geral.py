@@ -38,10 +38,11 @@ RESUMO = DATA / "vm2_sweep_resumo.jsonl"
 MAX_JUIZOS_LOTE = 3
 
 
-def exportar(limite: int) -> list:
-    """(VM-1) Fila da FATIA 1/2 — a metade da VM-2 — com o critério do sweep da casa."""
+def exportar(limite: int, fatia: str = "1/2") -> list:
+    """(VM-1) Fila da FATIA 1/2 — a metade da VM-2 — com o critério do sweep da casa. O it-campo pede sub-fatias
+    da metade da VM-1 (`2j/2m`: hash ≡ 2j mod 2m ⇒ par ⇒ dentro de 0/2), disjuntas entre as sessões dele."""
     import contextlib
-    os.environ["JFN_SWEEP_FATIA"] = "1/2"
+    os.environ["JFN_SWEEP_FATIA"] = fatia
     import tools.sei_sweep as S
     with contextlib.redirect_stdout(sys.stderr):        # o `_log` do sweep imprime: o stdout é só o JSON
         rows = S._fila(None, limite)
@@ -131,11 +132,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("exportar"); e.add_argument("--max", type=int, default=200)
+    e.add_argument("--fatia", default="1/2")
     r = sub.add_parser("rodar"); r.add_argument("--max", type=int, default=8)
     d = sub.add_parser("devolver"); d.add_argument("--desde", type=float, required=True)
     a = ap.parse_args()
     if a.cmd == "exportar":
-        print(json.dumps(exportar(a.max), ensure_ascii=False))
+        print(json.dumps(exportar(a.max, a.fatia), ensure_ascii=False))
     elif a.cmd == "rodar":
         rodar(a.max)
     else:
