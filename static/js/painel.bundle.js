@@ -5035,6 +5035,188 @@ void main(){
     return `<div id="gc-raiz">${h}</div>`;
   }
 
+  // static/js/src/abas/periodo.js
+  var MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  var MESES_L = [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro"
+  ];
+  var ESFERA = { estado: "Estado do RJ", prefeitura: "Prefeitura do Rio", transversal: "Transversal" };
+  var _CHAVE = "jfn.periodo";
+  var _P = { ano: "", mes: "" };
+  function _ler() {
+    try {
+      const s = JSON.parse(sessionStorage.getItem(_CHAVE) || "null");
+      if (s && typeof s === "object") _P = { ano: String(s.ano || ""), mes: String(s.mes || "") };
+    } catch (e) {
+    }
+  }
+  var _salvar = () => {
+    try {
+      sessionStorage.setItem(_CHAVE, JSON.stringify(_P));
+    } catch (e) {
+    }
+  };
+  var _seq = 0;
+  var _blocos = /* @__PURE__ */ new Map();
+  function blocoPeriodo(fontes, titulo) {
+    const id = "per-" + ++_seq;
+    _blocos.set(id, fontes);
+    _quandoNaTela(id);
+    return `<div style="height:16px"></div>${sec(titulo || "Por ano e mês")}<section class="per" id="${id}" aria-live="polite">
+    <div class="skel"><span class="sp"></span>Montando a quebra por ano e mês…</div></section>`;
+  }
+  function _quandoNaTela(id, n = 0) {
+    const el = document.getElementById(id);
+    if (el) {
+      _pintar(id);
+      return;
+    }
+    if (n < 200) setTimeout(() => _quandoNaTela(id, n + 1), 50);
+    else _blocos.delete(id);
+  }
+  var _qs = () => _P.ano ? `?ano=${encodeURIComponent(_P.ano)}${_P.mes ? "&mes=" + encodeURIComponent(_P.mes) : ""}` : "";
+  async function _pintar(id) {
+    const fontes = _blocos.get(id);
+    if (!fontes) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    const rs2 = await Promise.all(fontes.map((f) => J("/api/periodo/" + f + _qs(), { tetoMs: 9e4 })));
+    const el2 = document.getElementById(id);
+    if (!el2) return;
+    const anos = /* @__PURE__ */ new Set();
+    rs2.forEach((r) => r && r.ok && (r.quebra.anos || []).forEach((a) => anos.add(a.ano)));
+    el2.innerHTML = _seletor([...anos].sort((a, b) => b - a)) + rs2.map((r, i) => _fonte2(r, fontes[i])).join("");
+  }
+  function _seletor(anos) {
+    if (_P.ano && !anos.includes(Number(_P.ano))) anos = [Number(_P.ano), ...anos];
+    const oA = `<option value="">Todos os anos</option>` + anos.map((a) => `<option value="${a}"${String(a) === _P.ano ? " selected" : ""}>${a}</option>`).join("");
+    const oM = `<option value="">Todos os meses</option>` + MESES_L.map((m, i) => `<option value="${i + 1}"${String(i + 1) === _P.mes ? " selected" : ""}>${m}</option>`).join("");
+    return `<div class="per-sel" role="group" aria-label="Filtrar por ano e mês">
+    <label>Ano <select class="inp" data-per-ano>${oA}</select></label>
+    <label>Mês <select class="inp" data-per-mes${_P.ano ? "" : ' disabled title="escolha o ano primeiro"'}>${oM}</select></label>
+    ${_P.ano ? `<button type="button" class="btn ghost" data-per-limpar>Limpar filtro</button>` : ""}
+    <span class="dim per-nota">O filtro vale para todas as abas. Toque num mês da tabela para filtrar por ele.</span></div>`;
+  }
+  var _TAG = {
+    parcial: '<span class="tag amber" title="cobertura parcial — o número é PISO">parcial</span>',
+    zero: '<span class="tag" title="a fonte cobre o período e não há registro">sem registro</span>',
+    indisponivel: '<span class="tag" title="a fonte não cobre este período — não é zero">INDISPONÍVEL</span>'
+  };
+  var _val = (b, k) => b.v == null ? '<span class="dim">—</span>' : fmtR(b.v[k]);
+  function _linha(f, b, cab, ir3, on, cls) {
+    const ind = b.status === "indisponivel";
+    const cel = ind ? `<td colspan="${1 + f.medidas.length}" class="dim">INDISPONÍVEL</td>` : `<td class="right num">${b.n == null ? "—" : fmtN(b.n)}</td>${f.medidas.map((k) => `<td class="right num">${_val(b, k)}</td>`).join("")}`;
+    const c = [cls, ir3 ? "per-ir" : "", on ? "on" : ""].filter(Boolean).join(" ");
+    return `<tr${c ? ` class="${c}"` : ""}${ir3 ? ` data-per-ir="${ir3}" tabindex="0" title="filtrar por este período"` : ""}>
+    <td>${cab} ${b.status === "ok" || ind ? "" : _TAG[b.status] || ""}</td>${cel}</tr>`;
+  }
+  function _fonte2(r, fid) {
+    if (!r || !r.ok) return card(`<div class="warn">${erroHumano(r && r.erro)} — a quebra de <b>${esc(fid)}</b> está INDISPONÍVEL (não é zero).</div>`);
+    const f = r.fonte, q = r.quebra, cob = r.cobertura || {}, sel = r.selecao || {}, fil = r.filtro || {};
+    const cabMed = f.medidas.map((k) => `<th class="right">${esc(f.rotulos_medidas[k] || k)}</th>`).join("");
+    const thead = `<thead><tr><th>Período</th><th class="right">Registros</th>${cabMed}</tr></thead>`;
+    let corpo = "";
+    for (const a of [...q.anos].reverse()) {
+      const aberto = fil.ano ? fil.ano === a.ano : a === q.anos[q.anos.length - 1];
+      corpo += _linha(f, a, `<b>${a.ano}</b>`, `${a.ano}-0`, fil.ano === a.ano && !fil.mes, "per-ano");
+      if (a.meses && aberto) {
+        for (const m of a.meses) corpo += _linha(f, m, `<span class="per-mes">${MESES[m.mes - 1]}/${a.ano}</span>`, `${a.ano}-${m.mes}`, fil.ano === a.ano && fil.mes === m.mes);
+        if (a.sem_mes && a.sem_mes.n) corpo += _linha(f, { ...a.sem_mes, status: "ok" }, '<span class="per-mes dim">sem mês na fonte</span>');
+      }
+    }
+    if (q.sem_data.n) corpo += _linha(f, { ...q.sem_data, status: "ok" }, '<span class="dim">Sem data na fonte</span>');
+    const tfoot = `<tfoot><tr><td><b>Total geral</b></td><td class="right num"><b>${fmtN(q.total_geral.n)}</b></td>${f.medidas.map((k) => `<td class="right num"><b>${fmtR(q.total_geral.v[k])}</b></td>`).join("")}</tr></tfoot>`;
+    const anual = q.granularidade === "ano" ? `<div class="per-aviso">Fonte <b>anual</b>: publica só o acumulado do exercício — não existe valor por mês, e o painel não inventa um.</div>` : "";
+    const recorte = fil.ano ? _recorte(f, sel, r) : "";
+    const extra = _extra(r.extra || {});
+    return card(`<div class="per-cab"><div style="min-width:0"><div style="font-weight:700">${esc(f.rotulo)}</div>
+      <div class="dim" style="font-size:12px">Data: <b>${esc(f.campo_data)}</b> · Fonte: ${esc(f.origem)}</div></div>
+      <span class="tag ${f.esfera === "prefeitura" ? "teal" : f.esfera === "estado" ? "accent" : ""}">${esc(ESFERA[f.esfera] || f.esfera)}</span></div>
+    ${recorte}${anual}
+    <div class="per-tbw"><table class="per-tb">${thead}<tbody>${corpo}</tbody>${tfoot}</table></div>
+    <div class="dim" style="font-size:12px;margin-top:6px"><b>Cobertura:</b> ${esc(cob.inicio || "?")} a ${esc(cob.fim || "?")}${(cob.anos_sem_coleta || []).length ? ` · exercícios NÃO coletados: ${cob.anos_sem_coleta.join(", ")}` : ""}. ${esc(cob.nota || "")}</div>${extra}`);
+  }
+  function _recorte(f, sel, r) {
+    if (sel.status === "indisponivel") return `<div class="per-aviso"><b>${esc(sel.rotulo)}: INDISPONÍVEL</b> — ${esc(sel.motivo || "a fonte não cobre este período")}. Não é zero.</div>`;
+    const vals = f.medidas.map((k) => `<div class="per-kv"><span>${esc(f.rotulos_medidas[k] || k)}</span><b class="num">${fmtR(sel.v[k])}</b></div>`).join("");
+    let h = `<div class="per-sel-res"><div class="per-kv"><span>Recorte</span><b>${esc(sel.rotulo)}${sel.status === "parcial" ? " " + _TAG.parcial : ""}${sel.status === "zero" ? " " + _TAG.zero : ""}</b></div>
+    <div class="per-kv"><span>Registros</span><b class="num">${fmtN(sel.n)}</b></div>${vals}</div>`;
+    const it = r.itens || [];
+    if (it.length) {
+      const temV = it.some((x) => x.valor != null);
+      h += `<details class="per-top" open><summary><b>Maiores de ${esc(sel.rotulo)}</b> <span class="dim">(até ${fmtN(r.top)})</span></summary>
+      <div class="per-tbw"><table class="per-tb"><tbody>${it.map((x) => `<tr><td style="min-width:180px">${esc(x.nome)}${x.doc ? ` <span class="dim">${esc(x.doc)}</span>` : ""}
+        ${x.orgao ? `<div class="dim" style="font-size:12px">${esc(x.orgao)}${x.data ? " · " + esc(String(x.data).slice(0, 10)) : ""}</div>` : ""}
+        ${x.objeto ? `<div class="dim" style="font-size:12px">${esc(x.objeto)}</div>` : ""}</td>
+        <td class="right num">${x.n != null ? fmtN(x.n) + " reg." : ""}</td>${temV ? `<td class="right num"><b>${x.valor == null ? "—" : fmtR(x.valor)}</b></td>` : ""}</tr>`).join("")}</tbody></table></div></details>`;
+    } else if (r.itens) {
+      h += `<div class="dim" style="font-size:12px;margin:4px 0 8px">${f.granularidade === "ano" && _P.mes ? "Fonte anual: sem registros por mês." : "Nenhum registro individual neste recorte."}</div>`;
+    }
+    return h;
+  }
+  function _extra(x) {
+    const p = [];
+    if (x.fora_do_pago && x.fora_do_pago.length) p.push('<b>Fora do "pago"</b> (não somado acima): ' + x.fora_do_pago.map((s) => `${esc(s.status)} ${fmtN(s.n)} OB · ${fmtR(s.valor)}`).join(" · "));
+    if (x.posicao_por_ano) p.push("<b>Posição do relatório</b>: " + Object.entries(x.posicao_por_ano).map(([a, v]) => `${esc(a)} até ${esc(v)}`).join(" · "));
+    if (x.canceladas_fora) p.push(`<b>Canceladas</b> fora da soma: ${fmtN(x.canceladas_fora)}`);
+    if (x.sem_valor_legivel) p.push(`<b>Extratos sem valor legível</b> (contam em registros, não em R$): ${fmtN(x.sem_valor_legivel)}`);
+    if (x.descartados_fora) p.push(`<b>Descartados pela triagem</b> fora da contagem: ${fmtN(x.descartados_fora)}`);
+    if (x.datas_futuras) p.push(`<b>Assinatura com data futura</b> na fonte: ${fmtN(x.datas_futuras)} (erro de digitação do órgão provável)`);
+    if (x.por_cadastro) p.push("<b>Por cadastro</b>: " + Object.entries(x.por_cadastro).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · "));
+    return p.length ? `<div class="dim" style="font-size:12px;margin-top:4px">${p.join("<br>")}</div>` : "";
+  }
+  function _repintarTodos() {
+    for (const id of [..._blocos.keys()]) {
+      if (document.getElementById(id)) _pintar(id);
+      else _blocos.delete(id);
+    }
+  }
+  function _definir(ano, mes) {
+    _P = { ano: ano ? String(ano) : "", mes: ano && mes ? String(mes) : "" };
+    _salvar();
+    _repintarTodos();
+  }
+  var _ligado5 = false;
+  function ligarPeriodo() {
+    if (_ligado5) return;
+    _ligado5 = true;
+    _ler();
+    document.addEventListener("change", (ev) => {
+      const t = ev.target;
+      if (!t || !t.matches) return;
+      if (t.matches("[data-per-ano]")) _definir(t.value, t.value === _P.ano ? _P.mes : "");
+      else if (t.matches("[data-per-mes]")) _definir(_P.ano, t.value);
+    });
+    const ir3 = (el) => {
+      const [a, m] = el.dataset.perIr.split("-").map(Number);
+      _definir(a, m || "");
+    };
+    document.addEventListener("click", (ev) => {
+      const b = ev.target && ev.target.closest && ev.target.closest("[data-per-limpar],[data-per-ir]");
+      if (!b) return;
+      if (b.hasAttribute("data-per-limpar")) _definir("", "");
+      else ir3(b);
+    });
+    document.addEventListener("keydown", (ev) => {
+      const b = (ev.key === "Enter" || ev.key === " ") && ev.target && ev.target.closest && ev.target.closest("[data-per-ir]");
+      if (b) {
+        ev.preventDefault();
+        ir3(b);
+      }
+    });
+  }
+
   // static/js/src/abas/rotinas.js
   var _txt = "<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>";
   var _rodape = (d) => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina <code>${esc(d.rotina || "")}</code> · ${esc(d.horario || "")} · arquivo gravado em ${esc(d.arquivo_mtime || "—")}</div>`;
@@ -5516,7 +5698,7 @@ void main(){
     _sair = sair;
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../../../node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -5724,7 +5906,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7225,12 +7407,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../../../node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../../../node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7244,13 +7426,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../../../node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../../../node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7318,7 +7500,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../../../node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7384,7 +7566,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../../../node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -10518,6 +10700,7 @@ void main(){
     h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+    h += blocoPeriodo(["ob_siafe", "contratacoes_tcerj", "contratos_estado"], "Pagamentos e contratações por ano e mês");
     h += `<div style="height:16px"></div>` + await frescorHtml();
     h += `<div style="height:14px"></div>` + card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado || "—")}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro ? "color:#f0c078" : ""}">${esc(p.ultima_coleta || "—")}</b></div>`);
     return h;
@@ -10578,7 +10761,7 @@ void main(){
       ${grave && ex ? leitura(`Exemplo: ${ex.ob ? "OB <b>" + esc(ex.ob) + "</b> paga em " : "certame homologado em "}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`) : ""}`, grave ? "hl" : "");
     }, 80, (e) => e.nome);
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
-    return h + _blocoSocioSancionada(await pSoc);
+    return h + _blocoSocioSancionada(await pSoc) + blocoPeriodo(["sancoes"], "Sanções por ano e mês de início");
   }
   var _FORCA = { forte: ["rose", "forte — mesmo ramo e mesmo endereço/telefone"], medio: ["amber", "médio — um critério"], fraco: ["accent", "fraco — só o sócio"] };
   function _blocoSocioSancionada(r) {
@@ -10784,7 +10967,7 @@ void main(){
       );
     }, 100, (e) => e.nome);
     h += `<div class="note">${esc(d.explicacao || "")}</div>`;
-    return h;
+    return h + blocoPeriodo(["sancoes"], "Sanções por ano e mês de início");
   }
   async function renderAditivos(esf = "estado") {
     const d = await J("/api/intel/aditivos?limite=120&esfera=" + esf);
@@ -10827,7 +11010,7 @@ void main(){
       );
     }).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
-    return h;
+    return h + blocoPeriodo([esf === "prefeitura" ? "aditivos_prefeitura" : "aditivos_estado"], "Termos aditivos por ano e mês");
   }
   var _VERIF_TAG = { VERIFICADO: ["teal", "VERIFICADO no PNCP"], PENDENTE: ["amber", "PENDENTE de conferência"], DIVERGENTE: ["rose", "DIVERGENTE do PNCP"] };
   function _fmtPU(v) {
@@ -11018,6 +11201,7 @@ void main(){
     ${card(`<div style="font-weight:700">Servidor-fantasma</div><div class="muted" style="font-size:13px">8 sinais determinísticos, faixas forte/verificar/fraco</div><div class="btns"><button class="btn ghost" onclick="ir('p_fant')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">PPPs e concessões</div><div class="muted" style="font-size:13px">triagem de red flags CCPAR + dossiê Souza Aguiar</div><div class="btns"><button class="btn ghost" onclick="ir('p_ppp')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length + rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn ghost" onclick="ir('p_conluio')">Abrir</button></div>`)}</div>`;
+    h += blocoPeriodo(["contratos_prefeitura", "despesa_prefeitura"], "Contratações e despesa por ano e mês");
     h += `<div class="note">${esc(cj.aviso || "")}</div>`;
     return h;
   }
@@ -11190,7 +11374,7 @@ void main(){
     h += `<div id="pg-list" class="grid">` + cards + `</div>`;
     if (!cards) h += card('<div class="muted">Nenhum achado deste detector na última corrida — a base é revarrida a cada sweep; um resultado limpo aqui é um resultado, não um vazio.</div>');
     h += `<div class="note">${esc(d.explicacao || "")} ${esc(d.ressalva || "")}</div>`;
-    return h;
+    return h + blocoPeriodo(["despesa_prefeitura", "contratos_prefeitura"], "Despesa e contratações por ano e mês");
   }
   var _fantFaixa = "";
   async function renderFantasmasPref() {
@@ -11341,7 +11525,7 @@ void main(){
     const _wrap = (c) => _montarCtr(c).replace('<div class="card', '<div data-nc="' + esc(c.nc) + '" style="cursor:pointer" class="card');
     h += listaPaginada("ctr-list", its, _wrap, 60, (c) => (c.objeto || "").slice(0, 70)) + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
-    return h;
+    return h + blocoPeriodo(["contratos_prefeitura", "aditivos_prefeitura"], "Contratos e aditivos por ano e mês");
   }
   var _cjEsf = "";
   async function renderConluio(esf) {
@@ -12224,7 +12408,8 @@ void main(){
   async function renderAlertas() {
     const p = await J("/api/compliance/painel");
     const lst = p.lista_alertas || [];
-    if (!lst.length) return sec("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>');
+    const porMes = blocoPeriodo(["alertas"], "Alertas por ano e mês de detecção");
+    if (!lst.length) return sec("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>') + porMes;
     let h = cover("estado", "Alertas de auditoria", "Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.", "🚨");
     h += card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>` + Object.values(SEV_LEGENDA).map(([ic, nome, desc]) => `<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase() === "alta" ? "alta" : nome.toLowerCase() === "média" ? "media" : "baixa"}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(""));
     const porTipo = {};
@@ -12242,24 +12427,24 @@ void main(){
       <div class="objs">${alertas.slice(0, 40).map((a) => `<div class="obj">${a.severidade === "alta" ? "🔴" : "🟡"} <b>${esc((a.titulo || "").replace(/^[^—]*—\\s*/, ""))}</b>${a.descricao ? ` — <span class="muted">${esc(a.descricao)}</span>` : ""}</div>`).join("")}</div></div>`);
     }).join("") + `</div>`;
     h += `<div class="note">Indício para apuração interna — não é acusação. 🔴 = sinal forte; 🟡 = merece checagem.</div>`;
-    return h;
+    return h + porMes;
   }
   async function renderSiafe() {
     const s = await J("/api/siafe/stats");
     if (!s.ok) return sec("SIAFE") + card('<div class="muted">SIAFE indisponível.</div>');
-    const linhas = (s.por_ano || []).filter((x) => x.valor > 0).map((x) => `<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join("");
+    const pagoOk = s.valor_pago != null;
     let h = sec("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(
       fmtN(s.total),
-      "OBs ingeridas",
+      "OBs ingeridas (todos os status)",
       null,
       null,
-      { sobre: "Ordens bancárias no acervo — pagamento EFETIVO. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida. Só a OB significa que o dinheiro saiu." }
+      { sobre: "Ordens bancárias no acervo, em qualquer status. Só a OB <b>Contabilizada</b> é pagamento efetivo: anulada e excluída não pagaram nada. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida." }
     )}${kpi(
-      fmtRc(s.valor_total),
-      "Valor total",
+      pagoOk ? fmtR(s.valor_pago) : "INDISPONÍVEL",
+      "Pago — OB Contabilizada",
       null,
       null,
-      { sobre: "Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia." }
+      { sobre: "Soma das OB com status Contabilizado (" + fmtN(s.n_pago) + " OB). É o total do que a casa VIU, não o do orçamento executado: exercício ou unidade não coletados não entram, e a diferença é lacuna de coleta, não economia." }
     )}</div><div style="height:12px"></div>`;
     const cb0 = s.cobertura || {};
     if (cb0.pct_do_espelho != null) {
@@ -12268,7 +12453,7 @@ void main(){
       (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total || 0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
       a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
     }
-    h += card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+    h += blocoPeriodo(["ob_siafe", "execucao_estado"], "Pagamentos e execução por ano e mês");
     h += `<div style="height:16px"></div>` + await frescorHtml();
     return h;
   }
@@ -12948,7 +13133,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         <div class="dim">${(x.dimensoes || []).map((k) => `<span class="sev ${x.n_dim >= 3 ? "alta" : "media"}">${esc(_DIM_ROTULO[k] || k)}</span>`).join(" ")}</div>
         <div class="muted" style="font-size:12.5px;margin-top:4px">${esc((x.porques || []).join(" · "))}</div></div>
       <div class="right"><div class="num"><b>${fmtRc(x.pago)}</b></div><div class="dim">${fmtN(x.n_dim)} dimensões</div></div></div>`, x.n_dim >= 3 ? "hl" : "")).join("") : card('<div class="muted">Nenhuma empresa em duas dimensões nesta materialização.</div>');
-    const _blocos = [
+    const _blocos2 = [
       [
         "dependencia_mutua",
         "Dependência mútua",
@@ -13006,7 +13191,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago_durante || x.pago || 0
       ]
     ];
-    for (const [chave, titulo, nota, linha, valor] of _blocos) {
+    for (const [chave, titulo, nota, linha, valor] of _blocos2) {
       const b = L[chave] || {};
       h += sec(titulo);
       if (b.ok === false) {
@@ -13186,6 +13371,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += sec("Quem mais recebe por TAC", (d.itens || []).length);
     h += `<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
     h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais || []).length ? '<div style="margin-top:3px">' + x.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(" ") + "</div>" : ""}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(fmtData(x.de))} → ${esc(fmtData(x.ate))}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += blocoPeriodo(["tac_estado"], "TAC publicados por ano e mês");
     h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
     return h;
   }
@@ -13214,7 +13400,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
 
   // static/js/src/abas/lai.js
-  function _linha(it) {
+  function _linha2(it) {
     const venc = it.vencido ? '<span class="warn"> vencido</span>' : "";
     const links = [it.url_docx ? `<a href="${esc(it.url_docx)}" target="_blank" rel="noopener">docx</a>` : "", it.url_md ? `<a href="${esc(it.url_md)}" target="_blank" rel="noopener">md</a>` : ""].filter(Boolean).join(" · ");
     return `<tr><td>#${it.id}</td><td>${esc(it.alvo)}</td><td>${esc(it.esfera || "")}</td><td>${esc(it.status)}${venc}</td><td>${esc(it.protocolo || "—")}</td><td>${esc(it.prazo_resposta || "—")}</td><td>${links || "—"}</td><td><button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="protocolado">protocolado</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="respondido">respondido</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="negado">negado</button></td></tr>`;
@@ -13254,7 +13440,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th></th><th>fornecedor</th><th>órgão</th><th>processo</th><th>pago</th><th>leitura</th><th></th></tr></thead><tbody>` + emItens.map((e) => `<tr><td>${esc(e.grau)}</td><td>${esc((e.favorecido_nome || "").slice(0, 40))}</td><td>${esc((e.orgao || "").slice(0, 34))}</td><td>${esc(e.processo || "")}</td><td>${fmtN(Math.round(e.total_pago || 0))}</td><td class="dim">${esc((e.detalhe || "").slice(0, 120))}</td><td><button type="button" class="btn ghost" data-lai="alvo" data-alvo="${esc(e.processo || e.contrato)}">📨 LAI</button></td></tr>`).join("") + `</tbody></table></div>`;
     }
     h += sec("Requerimentos", itens.length);
-    h += itens.length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>#</th><th>alvo</th><th>esfera</th><th>status</th><th>protocolo</th><th>prazo</th><th>arquivos</th><th>marcar</th></tr></thead><tbody>${itens.map(_linha).join("")}</tbody></table></div>` : card('<div class="dim">Nenhum requerimento ainda. Informe um alvo acima.</div>');
+    h += itens.length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>#</th><th>alvo</th><th>esfera</th><th>status</th><th>protocolo</th><th>prazo</th><th>arquivos</th><th>marcar</th></tr></thead><tbody>${itens.map(_linha2).join("")}</tbody></table></div>` : card('<div class="dim">Nenhum requerimento ainda. Informe um alvo acima.</div>');
     h += `<div class="dim" style="margin-top:8px">Requerente: <code>data/lai_requerente.json</code> (nome, cargo, CPF, e-mail) — sem ele o texto sai com «placeholders». Canais: Carioca Digital → Acesso à Informação (PCRJ); e-SIC RJ (Estado).</div>`;
     return h;
   }
@@ -13285,7 +13471,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       <details style="margin-top:8px"><summary>texto do requerimento</summary><pre id="lai-texto" style="white-space:pre-wrap;font-size:12px">${esc(d.texto || "")}</pre></details>`);
       const tb = document.querySelector("table.tb tbody");
       if (tb) {
-        tb.insertAdjacentHTML("afterbegin", _linha({ ...d, status: "rascunho", vencido: false }));
+        tb.insertAdjacentHTML("afterbegin", _linha2({ ...d, status: "rascunho", vencido: false }));
       }
     } catch (e) {
       o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
@@ -13305,7 +13491,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       const it = d.item || {};
       const cel = [...document.querySelectorAll("table.tb tbody tr")].find((tr) => tr.firstElementChild && tr.firstElementChild.textContent === `#${id}`);
       if (cel) {
-        cel.outerHTML = _linha({ ...it, vencido: false });
+        cel.outerHTML = _linha2({ ...it, vencido: false });
       }
     } catch (e) {
       alert(erroHumano(String(e)));
@@ -13978,6 +14164,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   ligarRequerimentos();
   ligarComissao();
   ligarGovernoCouto();
+  ligarPeriodo();
   ligarLai();
   ligarAcervo();
   ligarDrill();

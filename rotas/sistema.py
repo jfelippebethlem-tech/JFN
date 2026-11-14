@@ -74,6 +74,10 @@ def _calc_siafe_stats():
             if not tem:
                 return JSONResponse({"ok": True, "total": 0, "detail": "Tabela ainda não criada — rode a coleta SIAFE."})
             tot = con.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe").fetchone()
+            # PAGO = só OB Contabilizada (regra absoluta nº 2). O `valor_total` acima soma também Anulada, Excluída e
+            # Não contabilizada (~R$ 16 bi em 13/11/2026) — fica por compatibilidade, e a tela mostra o pago.
+            pago = con.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
+                               "WHERE status='Contabilizado'").fetchone()
             por_ano = [{"exercicio": r[0], "n": r[1], "valor": round(r[2] or 0, 2)}
                        for r in con.execute("SELECT exercicio, COUNT(*), COALESCE(SUM(valor),0) "
                                             "FROM ob_orcamentaria_siafe GROUP BY exercicio ORDER BY exercicio")]
@@ -112,6 +116,7 @@ def _calc_siafe_stats():
         except sqlite3.Error as _e:
             logger.warning("cobertura do SIAFE indisponível nesta resposta: %s", _e)
         return JSONResponse({"ok": True, "total": tot[0], "valor_total": round(tot[1] or 0, 2),
+                             "n_pago": pago[0], "valor_pago": round(pago[1] or 0, 2),
                              "por_ano": por_ano, "com_processo": com_processo,
                              "ultima_atualizacao": ultima, "coletou_hoje": coletou_hoje,
                              "cobertura": cob,

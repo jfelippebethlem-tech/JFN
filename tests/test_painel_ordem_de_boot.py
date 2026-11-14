@@ -55,6 +55,7 @@ SEQUENCIA = [
     # ouvinte no `document`, nada de nome novo no `window`. Entrou aqui porque a primeira versao
     # custava dois globais e a catraca de globais reprovou em 61 contra teto 59.
     "chamada:ligarFila()", "chamada:ligarCasos()", "chamada:ligarRequerimentos()", "chamada:ligarComissao()", "chamada:ligarGovernoCouto()",
+    "chamada:ligarPeriodo()",          # 2026-11-13: delegacao `data-per-*` (seletor Ano/Mes + quebra por ano e mes)
     "chamada:ligarLai()",              # 2026-09-15: delegacao `data-lai` (LAI automatizada), colada na ligarFila
     "chamada:ligarAcervo()",           # 2026-09-20: delegacao `data-acervo` (busca unica + ficha do processo)
     # 2026-08-06: delegacao das METRICAS CLICAVEIS. Colada no `ligarVinculos` de proposito — as

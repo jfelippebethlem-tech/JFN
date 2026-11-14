@@ -1,0 +1,41 @@
+/* ══ Por ano e mês (13/11/2026) — seletor Ano/Mês + quebra ano → mês (static/js/src/abas/periodo.js) ═════════
+   Pedido do dono: "coloca em tudo organização por ano e mês". Um componente só, em todas as abas que têm dado
+   datado. A tabela rola DENTRO do cartão (.per-tbw): a página nunca ganha rolagem lateral, nem a 390 px.
+   Base sem `html.v61` (vale também no tema escuro da v60); o bloco `html.v61` só recolore.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+.per{display:block;min-width:0}
+.per-sel{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin:0 0 12px}
+.per-sel label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;min-width:0}
+.per-sel select{min-width:150px;max-width:100%;min-height:40px}
+.per-sel .per-nota{flex:1 1 220px;font-size:12px}
+.per-cab{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+.per-tbw{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.per-tb{width:100%;font-size:13px;border-collapse:collapse}
+.per-tb th,.per-tb td{padding:6px 8px;white-space:nowrap;vertical-align:top}
+.per-tb td:first-child{white-space:normal}
+.per-tb thead th{font-size:11.5px;text-transform:none;letter-spacing:0}
+.per-tb tfoot td{border-top:2px solid var(--line-strong,rgba(127,127,127,.4))}
+.per-tb tr.per-ano td{font-weight:600}
+.per-tb .per-mes{padding-left:14px;display:inline-block}
+.per-tb tr.per-ir{cursor:pointer}
+.per-tb tr.per-ir:hover td,.per-tb tr.per-ir:focus-visible td{background:color-mix(in oklch,var(--ion,#4aa3ff) 9%,transparent)}
+.per-tb tr.per-ir:focus-visible{outline:2px solid var(--ion,#4aa3ff);outline-offset:-2px}
+.per-tb tr.on td{background:color-mix(in oklch,var(--ion,#4aa3ff) 15%,transparent)}
+.per-aviso{font-size:12.5px;margin:4px 0 10px;padding:8px 10px;border-radius:10px;
+  background:color-mix(in oklch,var(--warn,#c98400) 10%,transparent);border:1px solid color-mix(in oklch,var(--warn,#c98400) 28%,transparent)}
+.per-sel-res{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px 14px;margin:2px 0 10px;
+  padding:10px 12px;border-radius:12px;border:1px solid var(--line,rgba(127,127,127,.25))}
+.per-kv{display:flex;flex-direction:column;gap:2px;min-width:0}
+.per-kv span{font-size:11.5px;opacity:.8}
+.per-kv b{font-size:15px;overflow-wrap:anywhere}
+.per-top{margin:0 0 10px}
+.per-top summary{cursor:pointer;padding:4px 0}
+@media (max-width:560px){
+  .per-sel label{flex:1 1 140px}
+  .per-sel select{min-width:0;width:100%}
+  .per-tb{font-size:12.5px}
+  .per-tb th,.per-tb td{padding:5px 6px}
+}
+html.v61 .per-sel-res{background:var(--surface-solid);border-color:var(--line)}
+html.v61 .per-tb tfoot td{border-top-color:var(--line-strong)}
+html.v61 .per-tb tr.on td{background:rgba(30,123,240,.12)}

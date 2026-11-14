@@ -52,6 +52,7 @@ import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, sei
 import {renderCasos, ligarCasos} from './abas/casos.js';
 import {renderComissao, ligarComissao} from './abas/comissao.js';
 import {renderGovernoCouto, ligarGovernoCouto} from './abas/governo_couto.js';
+import {ligarPeriodo} from './abas/periodo.js';
 import {renderPericiaContabil, renderCgeJfn} from './abas/rotinas.js';
 import {renderConformidade} from './abas/conformidade.js';
 import {renderRequerimentos, ligarRequerimentos} from './abas/requerimentos.js';
@@ -395,6 +396,7 @@ ligarCasos();
 ligarRequerimentos();
 ligarComissao();
 ligarGovernoCouto();
+ligarPeriodo();
 ligarLai();
 ligarAcervo();
 /* Um ouvinte para TODAS as métricas clicáveis do painel — ver nucleo/drill.js. */

@@ -24,6 +24,7 @@ import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
 import {abrirDossie, abrirCertame, verCruzamento, jsq, seiArvore, seiBaixarZip,
         a11yfy, holografar, jfnToast, jfnConfirm} from '../ui/index.js';
+import {blocoPeriodo} from './periodo.js';
 
 // ═══ RESPONSÁVEIS pelo processo (ordenador · gestor · fiscal) ═══
 // Declarado ANTES de TABS de propósito: TABS é `const` e referencia o render na avaliação —
@@ -1102,6 +1103,7 @@ export async function renderPanoramaEstado(){
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+  h+=blocoPeriodo(['ob_siafe','contratacoes_tcerj','contratos_estado'],'Pagamentos e contratações por ano e mês');
   h+=`<div style="height:16px"></div>`+await frescorHtml();
   h+=`<div style="height:14px"></div>`+card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado||'—')}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro?'color:#f0c078':''}">${esc(p.ultima_coleta||'—')}</b></div>`);
   return h;
@@ -1143,7 +1145,7 @@ export async function renderSancionadas(esf){
       <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
       ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');},80,e=>e.nome);
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
-  return h+_blocoSocioSancionada(await pSoc);
+  return h+_blocoSocioSancionada(await pSoc)+blocoPeriodo(['sancoes'],'Sanções por ano e mês de início');
 }
 
 /* A sanção contornada pelo SÓCIO (03/11/2026, caso GUARAILHA): a contratada não é a punida, mas o sócio dela
@@ -1303,7 +1305,7 @@ export async function renderSancionadasMun(){
       ${forte&&ex?leitura(`Contrato <b>${esc(ex.contrato||'')}</b> (${esc(ex.data||'?')}, ${fmtRc(ex.valor||0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao||'')} (${esc(ex.vigencia||'')}) — "${esc((ex.objeto||'').slice(0,90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`):''}`,
     forte?'hl':'');},100,e=>e.nome);
   h+=`<div class="note">${esc(d.explicacao||'')}</div>`;
-  return h;
+  return h+blocoPeriodo(['sancoes'],'Sanções por ano e mês de início');
 }
 
 export async function renderAditivos(esf='estado'){
@@ -1334,7 +1336,7 @@ export async function renderAditivos(esf='estado'){
       ${leitura(forte?`Contrato de <b>${esc(x.fornecedor||'—')}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real!=null?'Acréscimo classificado no termo: '+fmtRc(x.acrescimo_real)+'.':'Separar reajuste do acréscimo no termo aditivo.'}`:`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
     forte?'hl':'');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
-  return h;
+  return h+blocoPeriodo([esf==='prefeitura'?'aditivos_prefeitura':'aditivos_estado'],'Termos aditivos por ano e mês');
 }
 
 // ═══ SOBREPREÇO (Estado / Prefeitura) ═══
@@ -1499,6 +1501,7 @@ export async function renderPanoramaPref(){
     ${card(`<div style="font-weight:700">Servidor-fantasma</div><div class="muted" style="font-size:13px">8 sinais determinísticos, faixas forte/verificar/fraco</div><div class="btns"><button class="btn ghost" onclick="ir('p_fant')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">PPPs e concessões</div><div class="muted" style="font-size:13px">triagem de red flags CCPAR + dossiê Souza Aguiar</div><div class="btns"><button class="btn ghost" onclick="ir('p_ppp')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn ghost" onclick="ir('p_conluio')">Abrir</button></div>`)}</div>`;
+  h+=blocoPeriodo(['contratos_prefeitura','despesa_prefeitura'],'Contratações e despesa por ano e mês');
   h+=`<div class="note">${esc(cj.aviso||'')}</div>`;
   return h;
 }
@@ -1615,7 +1618,7 @@ export async function renderGastosPref(){
   h+=`<div id="pg-list" class="grid">`+cards+`</div>`;
   if(!cards)h+=card('<div class="muted">Nenhum achado deste detector na última corrida — a base é revarrida a cada sweep; um resultado limpo aqui é um resultado, não um vazio.</div>');
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
-  return h;
+  return h+blocoPeriodo(['despesa_prefeitura','contratos_prefeitura'],'Despesa e contratações por ano e mês');
 }
 export let _fantFaixa='';
 export async function renderFantasmasPref(){
@@ -1707,7 +1710,7 @@ export async function renderContratosPref(){
   const _wrap=c=>_montarCtr(c).replace('<div class="card','<div data-nc="'+esc(c.nc)+'" style="cursor:pointer" class="card');
   h+=listaPaginada('ctr-list',its,_wrap,60,c=>(c.objeto||'').slice(0,70))+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
-  return h;
+  return h+blocoPeriodo(['contratos_prefeitura','aditivos_prefeitura'],'Contratos e aditivos por ano e mês');
 }
 
 // ═══ CONLUIO (esfera-aware; no Transversal tem chips de esfera) ═══
@@ -2333,7 +2336,8 @@ export const SEV_LEGENDA={
 };
 export async function renderAlertas(){
   const p=await J('/api/compliance/painel');const lst=p.lista_alertas||[];
-  if(!lst.length)return sec('Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
+  const porMes=blocoPeriodo(['alertas'],'Alertas por ano e mês de detecção');
+  if(!lst.length)return sec('Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>')+porMes;
   // legenda da escala (o que 🔴/🟡 significam) — resolve "não entendo o amarelo"
   let h=cover('estado','Alertas de auditoria','Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.','🚨');
   h+=card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>`+
@@ -2351,14 +2355,16 @@ export async function renderAlertas(){
       <div class="objs">${alertas.slice(0,40).map(a=>`<div class="obj">${a.severidade==='alta'?'🔴':'🟡'} <b>${esc((a.titulo||'').replace(/^[^—]*—\\s*/,''))}</b>${a.descricao?` — <span class="muted">${esc(a.descricao)}</span>`:''}</div>`).join('')}</div></div>`);
   }).join('')+`</div>`;
   h+=`<div class="note">Indício para apuração interna — não é acusação. 🔴 = sinal forte; 🟡 = merece checagem.</div>`;
-  return h;
+  return h+porMes;
 }
 export async function renderSiafe(){
   const s=await J('/api/siafe/stats');if(!s.ok)return sec('SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
-  const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
-  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas',null,null,
-        {sobre:'Ordens bancárias no acervo — pagamento EFETIVO. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtRc(s.valor_total),'Valor total',null,null,
-        {sobre:'Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`;
+  /* 13/11/2026 — o KPI "Valor total" e a tabela por exercício somavam TODA OB ingerida, inclusive Anulada,
+     Excluída e Não contabilizada (~R$ 16 bi). Pago é só OB Contabilizada; o resto aparece à parte na quebra. */
+  const pagoOk=s.valor_pago!=null;
+  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas (todos os status)',null,null,
+        {sobre:'Ordens bancárias no acervo, em qualquer status. Só a OB <b>Contabilizada</b> é pagamento efetivo: anulada e excluída não pagaram nada. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida.'})}${kpi(pagoOk?fmtR(s.valor_pago):'INDISPONÍVEL','Pago — OB Contabilizada',null,null,
+        {sobre:'Soma das OB com status Contabilizado ('+fmtN(s.n_pago)+' OB). É o total do que a casa VIU, não o do orçamento executado: exercício ou unidade não coletados não entram, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`;
   /* QUANTIFICAR A LACUNA, não só avisar dela. O tooltip dizia "exercício não coletado não entra";
      o leitor precisa do TAMANHO: medido em 2026-08-09, a fonte canônica tinha 23,6% das OBs que o
      espelho conhece, e o número sobe a cada drenagem. Sem isto, R$ 86 bi lê-se como o gasto do
@@ -2370,7 +2376,7 @@ export async function renderSiafe(){
       (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total||0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
       a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
   }
-  h+=card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+  h+=blocoPeriodo(['ob_siafe','execucao_estado'],'Pagamentos e execução por ano e mês');
   h+=`<div style="height:16px"></div>`+await frescorHtml();
   return h;
 }
@@ -3238,6 +3244,7 @@ export async function renderTacRecorrente(){
   h+=`<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>`
     +(d.itens||[]).map(x=>`<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais||[]).length?'<div style="margin-top:3px">'+x.sinais.map(s=>`<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(' ')+'</div>':''}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma||0)}${x.n_com_valor<x.n?` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>`:''}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(fmtData(x.de))} → ${esc(fmtData(x.ate))}</td></tr>`).join('')
     +`</tbody></table></div>`;
+  h+=blocoPeriodo(['tac_estado'],'TAC publicados por ano e mês');
   h+=`<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
   return h;
 }

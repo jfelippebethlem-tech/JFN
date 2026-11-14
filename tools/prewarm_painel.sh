@@ -57,6 +57,19 @@ URLS=(
   # 2026-11-13: Nomeados × candidatos — o cache antigo (10 min, sem SWR, fora daqui) estourava o teto de 30 s do
   # cliente a frio (26,5 s medidos a load 22; 61 s = dois estouros). Agora 1 h + SWR + disco, mantido quente aqui.
   "poder/nomeados_candidatos?esfera=estado"
+  # 2026-11-13: organização por ano e mês — a quebra INTEIRA de cada fonte é um cálculo só (o filtro recorta
+  # o que já está em cache). A OB do SIAFE leva ~25 s a frio (1,3 mi de linhas); as do PNCP ~10 s.
+  "periodo/ob_siafe"
+  "periodo/execucao_estado"
+  "periodo/contratos_estado"
+  "periodo/contratacoes_tcerj"
+  "periodo/aditivos_estado"
+  "periodo/tac_estado"
+  "periodo/contratos_prefeitura"
+  "periodo/aditivos_prefeitura"
+  "periodo/despesa_prefeitura"
+  "periodo/sancoes"
+  "periodo/alertas"
 )
 {
   echo "── $(date -Is) prewarm"
