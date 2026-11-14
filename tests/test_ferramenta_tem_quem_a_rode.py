@@ -34,6 +34,16 @@ PRECISAM_DE_ROTINA = {
         "ingestão de OB",
     "tools.sei_cpf_sweep":
         "enriquecimento de CPF a partir dos processos capturados",
+    # 14/11/2026: a captura passou a vir das íntegras dos nós (sem cache de varredura) e a análise ficou atrás —
+    # 3.730 processos sem ficha, 4.165 sem perícia de execução, sei_sigilo parado desde 09/08.
+    "tools.sei_ficha_acervo":
+        "ficha dos processos que entram no acervo pelas íntegras (sem cache de varredura); sem rotina, "
+        "nada do que os nós capturam chega à perícia de execução",
+    "tools.lex_execucao":
+        "perícia de execução (prova de entrega × OB paga); a fila cresce com cada ficha nova",
+    "sei_inventario_captura":
+        "materializa sei_sigilo/sei_fila_captura (base das requisições formais); ficou parada de 09/08 a "
+        "14/11/2026 sem caller",
     # Terceira mordida da mesma família, em 2026-08-05: `sei_sweep --recaptura` existia desde
     # 2026-08-03 e NENHUM agendamento o acionava. A fila de 540 processos com documento sem texto
     # lido não tinha quem a drenasse — e nela estava o nº 1 da fila do fiscal

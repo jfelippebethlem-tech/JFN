@@ -137,3 +137,19 @@ def test_quem_leu_a_ob_nao_e_contestado():
 def test_regra_do_liquido_esta_no_sistema():
     """SEI-490001/001078/2025: 443.902,73 − 5.327,91 (guia) = 438.574,82 (OB) e o modelo chamou de discrepância."""
     assert "bruto − guias = OB" in L._SYS
+
+
+def test_fila_pelo_valor_pago_antes_de_n_docs():
+    """Sem contestados: quem tem OB contabilizada (maior pago) vem antes da pasta maior sem OB; anulada não conta."""
+    con = _base()
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, indicios TEXT, resumo TEXT, nota_risco INT, em TEXT, "
+                "execucao_comprovada TEXT)")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, objeto TEXT, valores TEXT, documentos TEXT, "
+                "red_flags TEXT, n_docs INT)")
+    con.executemany("INSERT INTO sei_ficha VALUES (?,?,?,?,?,?)", [
+        ("SEI-999999/000009/2024", "grande sem OB", "", "[]", "[]", 90),
+        ("SEI-330002/031567/2024", "OB 7", "", "[]", "[]", 2),
+        ("SEI-330002/031566/2024", "OB 1.500,50", "", "[]", "[]", 1),
+    ])
+    assert [a[0] for a in L._alvos(con, 3, False)] == [
+        "SEI-330002/031566/2024", "SEI-330002/031567/2024", "SEI-999999/000009/2024"]

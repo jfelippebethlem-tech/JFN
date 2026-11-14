@@ -204,7 +204,10 @@ if [ -f data/.pause_fila_parecer ]; then say "fila por parecer pausada — pulei
 # (rsync + arquivamento sem browser) e por isso roda toda passada.
 # Pausa: data/.pause_colher_vm2.
 if [ -f data/.pause_colher_vm2 ]; then say "colheita vm2 pausada — pulei"; else $PRIO timeout 1200 bash "$REPO/tools/colher_vm2.sh" >> data/colher_vm2.log 2>&1; say "colher vm2 rc=$?"; fi
-$PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
+# CPF do ACERVO, não só do cache (14/11/2026): as íntegras dos nós entram em data/sei_arquivo SEM cache, e o modo
+# cache não as via (3.517 processos do acervo nunca varridos). Incremental por pasta (marca
+# data/.sei_cpf_acervo_vistos.json): só lê pasta nova ou que cresceu; pasta varrida sem CPF fica MEDIDA.
+$PRIO timeout 600  $PY -m tools.sei_cpf_sweep --acervo >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
 # ORÇAMENTO INTERNO (07/08/2026): antes o `timeout 600` matava a ferramenta e o log registrava
@@ -225,9 +228,9 @@ $PRIO timeout 400  $PY -m tools.sei_direcionamento_llm --top 6 >> data/sei_direc
 # PESQUISA-INTERNET (Fase 5): o Lex pesquisa as dúvidas dos TOP-SCORE (OSINT/web/DOERJ/mídia adversa),
 # aprende (vault + DB lex_pesquisa) e re-ajusta a análise. Poucos por slot (rede + LLM produto); cache 30d.
 $PRIO timeout 600  $PY -m tools.lex_pesquisa_internet --top 3 >> data/lex_pesquisa.log 2>&1; say "lex_pesquisa rc=$?"
-# EXECUÇÃO DO CONTRATO (Gemini): o Lex avalia se a entrega foi comprovada e COERENTE com o objeto/
-# quantidade (prestação de contas, fiscalização/relatório fotográfico, plausibilidade física). Poucos/slot.
-$PRIO timeout 600  $PY -m tools.lex_execucao --top 4 >> data/lex_execucao.log 2>&1; say "lex_execucao rc=$?"
+# EXECUÇÃO DO CONTRATO: saiu deste ciclo em 14/11/2026 para cron PRÓPRIO (crontab, a cada 30 min, flock) — aqui
+# rodava ~8×/dia com --top 4 (~35 processos/dia) e o ciclo só passa quando a sessão SEI e a carga deixam; o Lex
+# não usa o browser, então não precisa esperar a fila do SEI. Ver tools/fila_analise_sei.sh lex.
 # APRENDIZADO PROGRESSIVO DA PERÍCIA: agrega dúvidas/lacunas recorrentes das perícias do sweep → surfa os
 # TÓPICOS p/ nós (lex_feedback → nota do vault) + promove a regras de método (memoria 'metodo:pericia:*')
 # que o sei_ficha reinjeta no prompt da próxima perícia. Núcleo determinístico; síntese de regra = best-effort.

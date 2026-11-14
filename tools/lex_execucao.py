@@ -384,7 +384,13 @@ def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
         "SELECT numero_sei, objeto, valores, documentos, red_flags FROM sei_ficha "
         "WHERE n_docs > 0 ORDER BY n_docs DESC"
     ).fetchall()
-    rows.sort(key=lambda r: r[0] not in primeiro)      # estável: contestados na frente, resto na ordem de n_docs
+    # FILA PELO DINHEIRO (14/11/2026): depois dos contestados, o maior VALOR PAGO (OB contabilizada no SIAFE); empate
+    # (e processo sem OB localizada) segue a ordem de n_docs. Antes era só n_docs — o processo de R$ 8 bi esperava atrás
+    # de qualquer pasta grande.
+    rows = [r for r in rows if r[0] not in ja]
+    pago = mapa_obs_siafe(con, [r[0] for r in rows]) if rows else {}
+    rows.sort(key=lambda r: (r[0] not in primeiro,
+                             -(pago.get(_chave_processo(r[0])) or {}).get("total", 0.0)))   # estável: n_docs no empate
     out = []
     for ns, obj, val, docs, rf in rows:
         if ns in ja:
