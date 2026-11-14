@@ -79,8 +79,10 @@ _SCHEMA = (
 
 
 def _con() -> sqlite3.Connection:
-    con = sqlite3.connect(DB, timeout=30)
-    con.execute("PRAGMA busy_timeout=30000")
+    # 120 s (era 30): o parecer já foi PAGO (assinatura/cascata) quando a gravação acontece; perder por trava de
+    # escrita alheia é jogar fora a chamada — 9 de 10 num ciclo de 14/11/2026.
+    con = sqlite3.connect(DB, timeout=120)
+    con.execute("PRAGMA busy_timeout=120000")
     con.execute(
         """CREATE TABLE IF NOT EXISTS lex_execucao (
             numero_sei TEXT PRIMARY KEY,
