@@ -16,6 +16,25 @@ const _ha = (t, agora) => {
   return m < 60 ? `há ${fmtN(m)} min` : m < 2880 ? `há ${fmtN(Math.round(m / 60))} h` : `há ${fmtN(Math.round(m / 1440))} dias`;
 };
 
+/* O estado traz o motivo como "id-da-fonte: o que mudou". Na tela vai o NOME da fonte (ou do derivado que foi
+   recalculado), sem repetição. */
+function _nomes(d){
+  const n = {};
+  for (const f of d.fontes || []) n[f.id] = f.nome;
+  for (const x of d.derivados || []) n[x.id] = x.nome;
+  return n;
+}
+function _motivos(lista, nomes, max){
+  const vistos = new Set(), out = [];
+  for (const m of lista || []) {
+    const i = m.indexOf(': ');
+    const id = i > 0 ? m.slice(0, i) : '';
+    const txt = nomes[id] ? `<b>${esc(nomes[id])}</b> — ${esc(m.slice(i + 2))}` : esc(m);
+    if (!vistos.has(txt)) { vistos.add(txt); out.push(txt); }
+  }
+  return out.slice(0, max).join('<br>');
+}
+
 function _situacao(x, agora){
   if (x.ultimo_estado === 'rodando') return '<b style="color:var(--accent)">recalculando agora</b>';
   if (x.ultimo_estado === 'falhou') return `<b style="color:var(--rose)">falhou</b> (${fmtN(x.falhas)}×)${x.proxima_tentativa ? ` · nova tentativa ${_hora(x.proxima_tentativa)}` : ''}`;
@@ -25,10 +44,11 @@ function _situacao(x, agora){
 }
 
 function _derivados(d){
+  const nomes = _nomes(d);
   const lin = (d.derivados || []).map(x => `<tr>
       <td><b>${esc(x.nome)}</b><div class="dim" style="font-size:11px">${esc(x.onde || '')}</div></td>
       <td>${_situacao(x, d.gerado_em)}${x.ultimo_erro ? `<div style="font-size:12px;color:var(--rose)">${esc(x.ultimo_erro)}</div>` : ''}</td>
-      <td style="font-size:12px">${(x.motivos || []).map(esc).join('<br>') || '<span class="dim">—</span>'}${x.eventos_pendentes > (x.motivos || []).length ? `<div class="dim" style="font-size:11px">${fmtN(x.eventos_pendentes)} evento(s) pendente(s) no total</div>` : ''}</td>
+      <td style="font-size:12px">${_motivos(x.motivos, nomes, 4) || '<span class="dim">—</span>'}${x.eventos_pendentes > (x.motivos || []).length ? `<div class="dim" style="font-size:11px">${fmtN(x.eventos_pendentes)} evento(s) pendente(s) no total</div>` : ''}</td>
       <td style="white-space:nowrap;font-size:13px">${_hora(x.ultimo_fim)}<div class="dim" style="font-size:11px">${x.ultimo_fim ? `levou ${_dur(x.ultimo_inicio, x.ultimo_fim)} · ${fmtN(x.execucoes)} execução(ões)` : 'ainda não recalculado pela propagação'}</div></td>
       <td style="font-size:12px">${esc(x.antes || '—')}</td></tr>`).join('');
   return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Cada linha é um derivado: algo que o painel mostra e que fica velho quando a fonte muda. "Antes" = como se atualizava até 14/11/2026 (esses agendamentos continuam como rede de segurança).</div>
@@ -36,28 +56,29 @@ function _derivados(d){
 }
 
 function _fontes(d){
+  const nomes = _nomes(d);
   const lin = (d.fontes || []).map(f => `<tr><td><b>${esc(f.nome)}</b></td>
       <td style="font-size:13px">${f.manual ? '<span class="dim">manual</span>' : f.erro ? `<b style="color:var(--rose)">INDISPONÍVEL</b><div style="font-size:12px">${esc(f.erro)}</div>` : (f.visto_em ? `conferida ${_ha(f.visto_em, d.gerado_em)}` : '<span class="dim">ainda não conferida</span>')}</td>
       <td style="font-size:13px;white-space:nowrap">${f.mudou_em ? _hora(f.mudou_em) : '<span class="dim">sem mudança desde a ligação</span>'}</td>
-      <td style="font-size:12px">${(f.alimenta || []).map(esc).join(', ') || '<span class="dim">só o segundo cérebro</span>'}</td></tr>`).join('');
+      <td style="font-size:12px">${(f.alimenta || []).map(x => esc(nomes[x] || x)).join(', ') || '<span class="dim">só o segundo cérebro</span>'}</td></tr>`).join('');
   return card(`<div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Fonte / evento</th><th>Sonda</th><th>Última mudança percebida</th><th>Suja</th></tr></thead><tbody>${lin}</tbody></table></div>
     <div class="dim" style="font-size:12px;margin-top:6px">Sonda que não consegue medir aparece como INDISPONÍVEL — isso não quer dizer que a fonte não mudou.</div>`);
 }
 
 function _execucoes(d){
-  const ex = d.execucoes || [];
+  const ex = d.execucoes || [], nomes = _nomes(d);
   if (!ex.length) return card('<div class="dim">Nenhum recálculo feito pela propagação até agora.</div>');
-  const lin = ex.map(e => `<tr><td style="white-space:nowrap">${_hora(e.inicio)}</td><td><b>${esc(e.derivado)}</b></td>
+  const lin = ex.map(e => `<tr><td style="white-space:nowrap">${_hora(e.inicio)}</td><td><b>${esc(nomes[e.derivado] || e.derivado)}</b></td>
       <td>${e.estado === 'ok' ? '<b style="color:var(--green)">recalculado</b>' : '<b style="color:var(--rose)">falhou</b>'}</td>
       <td class="right">${_dur(e.inicio, e.fim)}</td>
-      <td style="font-size:12px">${(e.motivos || []).slice(0, 3).map(esc).join('<br>')}${e.erro ? `<div style="color:var(--rose)">${esc(e.erro)}</div>` : ''}</td></tr>`).join('');
+      <td style="font-size:12px">${_motivos(e.motivos, nomes, 3)}${e.erro ? `<div style="color:var(--rose)">${esc(e.erro)}</div>` : ''}</td></tr>`).join('');
   return card(`<div style="max-height:420px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Início</th><th>Derivado</th><th>Resultado</th><th class="right">Duração</th><th>Motivo / erro</th></tr></thead><tbody>${lin}</tbody></table></div>`);
 }
 
 function _eventos(d){
-  const ev = d.eventos || [];
+  const ev = d.eventos || [], nomes = _nomes(d);
   if (!ev.length) return card('<div class="dim">Nenhum evento registrado ainda.</div>');
-  return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map(e => `<tr><td style="white-space:nowrap">${_hora(e.quando)}</td><td><b>${esc(e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join('')}</tbody></table></div>`);
+  return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map(e => `<tr><td style="white-space:nowrap">${_hora(e.quando)}</td><td><b>${esc(nomes[e.fonte] ? (e.detalhe.startsWith('recalculado') ? 'Derivado: ' : '') + nomes[e.fonte] : e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join('')}</tbody></table></div>`);
 }
 
 function _cerebro(c, agora){
