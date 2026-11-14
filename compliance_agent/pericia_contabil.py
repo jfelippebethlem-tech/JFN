@@ -621,6 +621,15 @@ def _junta(a: str, b: str) -> str:
     return f"{a} · {b}" if a else b
 
 
+def _processos_fora(fora: list[tuple], outros_contratos: set) -> dict:
+    """O que falta para o indeterminado por OB fora do processo se resolver: os processos (de pagamento) em que o
+    credor recebeu as OBs que não se ligam a este contrato — exceto os processos de OUTROS contratos dele, que pagam
+    aqueles — e quantas dessas OBs não trazem processo nenhum na base (SIAFE 1 não coletou o campo; nenhuma captura
+    resolve). Vai à fila de captura do vínculo (`vinculo_ob_contrato fila`)."""
+    procs = sorted({o[1] for o in fora if o[1] and o[1] not in outros_contratos})
+    return {"processos": procs, "obs_sem_processo": sum(1 for o in fora if not o[1])}
+
+
 def _chave_ob(o: tuple) -> tuple:
     """(número, exercício, UG) da OB na lista do credor — a mesma chave de deduplicação da coleta."""
     return (o[6], int(o[10]), o[2]) if len(o) > 10 and o[10] is not None else (o[6], None, o[2])
@@ -714,7 +723,9 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
 
     if not no_proc:
         if fora:
-            return {**r, "motivo": "ob_do_credor_fora_do_processo"}
+            return {**r, "motivo": "ob_do_credor_fora_do_processo",
+                    "processos_fora": _processos_fora([o for o in fora if id(o) not in alheia_vinculada],
+                                                      procs_do_credor.get(k_cred, set()) - {k_proc})}
         # Sem OB na base não é "pago a menor": é ausência de medida (revisão 13/11/2026 — 452 contratos /
         # R$ 771,27 mi, 98,4% do "déficit", eram isso). INDISPONÍVEL ≠ zero.
         return {**r, "vinculo": "credor_sem_ob", "motivo": "credor_sem_ob_na_base"}
@@ -794,6 +805,7 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
         alheias = [o for o in fora if o[2] in ugs and o[1] not in outros and id(o) not in alheia_vinculada]
         if alheias:
             return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "a_menor_com_ob_fora_do_processo",
+                    "processos_fora": _processos_fora(alheias, outros),
                     "ressalvas": _junta(r["ressalvas"], f"{len(alheias)} OB(s) do credor na mesma UG em outro "
                                                         f"processo (R$ {fmt_brl(sum(o[3] for o in alheias))})")}
         anos = range(inicio_ref.year, min(corte, fim or corte).year + 1)

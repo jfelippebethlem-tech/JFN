@@ -249,3 +249,31 @@ def test_registro_de_lidos_ilegivel_nao_quebra(tmp_path):
     assert vo.ler_lidos(arq) == {}
     vo.registrar_lidos(arq, {("9", "C9"): (None, "", V.INDISPONIVEL, "x")}, date(2026, 11, 14))
     assert vo.ler_lidos(arq)[vo.id_par("9", "C9")] == {"em": "2026-11-14", "estado": V.INDISPONIVEL}
+
+
+# ── estrato "fecha contrato" da fila de captura (14/11/2026) ─────────────────────────────────────────
+def test_perícia_declara_o_processo_que_falta_ao_contrato_indeterminado(base):
+    d = {r["id"]: r for r in pc.avaliar_estado(base, corte=date(2026, 7, 1))}["D"]
+    assert d["motivo"] == "ob_do_credor_fora_do_processo"
+    assert d["processos_fora"] == {"processos": [PAG], "obs_sem_processo": 0}
+
+
+def _r(motivo, valor, procs, sem=0):
+    return {"motivo": motivo, "valor_atualizado": valor,
+            "processos_fora": {"processos": procs, "obs_sem_processo": sem}}
+
+
+def test_fila_fecha_contrato_so_o_que_a_captura_pode_fechar():
+    res = [
+        _r("ob_do_credor_fora_do_processo", 900.0, ["1111110000012024", "1111110000022024"]),   # fecha: 450 cada
+        _r("a_menor_com_ob_fora_do_processo", 300.0, ["1111110000012024"]),                      # fecha: +300
+        _r("ob_do_credor_fora_do_processo", 10_000.0, ["2222220000012024"], sem=1),              # OB sem processo
+        _r("ob_do_credor_fora_do_processo", 10_000.0, [f"33333300000{i}2024" for i in range(1, 5)]),  # faltam 4
+        _r("ob_do_credor_fora_do_processo", 10_000.0, ["4444440000012024", "5555550000012024"]),  # um já lido
+        _r("vinculo_ambiguo", 10_000.0, ["6666660000012024"]),                                    # outro motivo
+        _r("ob_do_credor_fora_do_processo", 10_000.0, []),                                        # nada a capturar
+    ]
+    fila = vo.fila_fecha_contrato(res, capturado=lambda k: k == "4444440000012024")
+    assert [(e["sei"], e["score"], e["n_contratos"]) for e in fila] == [
+        ("SEI-111111/000001/2024", 750.0, 2), ("SEI-111111/000002/2024", 450.0, 1)]
+    assert all("FECHA_CONTRATO" in e["flags"] for e in fila)

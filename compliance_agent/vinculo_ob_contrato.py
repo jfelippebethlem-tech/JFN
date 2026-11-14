@@ -569,6 +569,44 @@ def fila_captura(pares: dict, contratos_indet: dict[str, list], top: int | None 
 
 MOTIVOS_FORA = ("ob_do_credor_fora_do_processo", "a_menor_com_ob_fora_do_processo")
 
+# Medido em 14/11/2026: o vínculo tirou 705 contratos de "OB fora do processo", mas 607 deles caíram em "a menor com
+# OB fora do processo" — o contrato é pago num processo de pagamento POR MÊS, e basta um não capturado para o pago
+# não fechar. A fila por valor do processo captura o processo grande de muitos contratos e não termina nenhum. Este
+# estrato vai na frente: os processos que FALTAM a um contrato para fechar, quando faltam no máximo
+# `FECHA_MAX_PROCESSOS`, nenhum dos seus processos fora já foi lido sem ligar (captura não resolveria) e nenhuma OB
+# fora está sem processo na base (SIAFE 1 não coletou o campo — só recoleta resolve).
+FECHA_MAX_PROCESSOS = 3
+
+
+def fila_fecha_contrato(resultados: list[dict], capturado) -> list[dict]:
+    """Processos de pagamento cuja captura pode FECHAR um contrato indeterminado, por valor do contrato (rateado
+    entre os processos que faltam a ele). `capturado(chave)` diz se o processo já está no acervo com texto."""
+    por_proc: dict[str, dict] = {}
+    for r in resultados:
+        if r.get("motivo") not in MOTIVOS_FORA:
+            continue
+        pf = r.get("processos_fora") or {}
+        procs = pf.get("processos") or []
+        if pf.get("obs_sem_processo") or not procs or len(procs) > FECHA_MAX_PROCESSOS:
+            continue
+        if any(capturado(p) for p in procs):
+            continue
+        quota = float(r.get("valor_atualizado") or 0) / len(procs)
+        for p in procs:
+            e = por_proc.setdefault(p, {"score": 0.0, "contratos": 0})
+            e["score"] += quota
+            e["contratos"] += 1
+    return [{"sei": f"SEI-{formatar(p)}", "score": round(e["score"], 2), "n_contratos": e["contratos"],
+             "tipo": "VINCULO_OB", "flags": ["FILA_VINCULO_OB_CONTRATO", "FECHA_CONTRATO"],
+             "motivo": "processo de pagamento que falta para fechar contrato INDETERMINADO na perícia contábil"}
+            for p, e in sorted(por_proc.items(), key=lambda x: -x[1]["score"]) if e["score"] > 0]
+
+
+def capturado_com_texto(chave: str) -> bool:
+    from compliance_agent.sei import acervo_texto as A
+    pst = pasta(chave)
+    return (pst / "manifest.json").exists() and A.docs_com_conteudo(pst) > 0
+
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -597,10 +635,14 @@ def main(argv: list[str] | None = None) -> int:
             js = [(info[i][0], info[i][1], valor_de[i]) for ids in procs.values() for i in ids if i in valor_de]
             if js:
                 indet[c] = js
-        fila = fila_captura(pares, indet)
+        fecha = fila_fecha_contrato(res, capturado_com_texto)
+        na_frente = {e["sei"] for e in fecha}
+        fila = fecha + [e for e in fila_captura(pares, indet) if e["sei"] not in na_frente]
         gravar_fila = fila[:a.top] if a.top else fila
         SAIDA_FILA.write_text(json.dumps(gravar_fila, ensure_ascii=False, indent=0), encoding="utf-8")
         print(json.dumps({"processos": len(fila), "gravados": len(gravar_fila),
+                          "fecha_contrato": {"processos": len(fecha),
+                                             "vagas_de_contrato": sum(e["n_contratos"] for e in fecha)},
                           "escore_total": round(sum(e["score"] for e in fila), 2),
                           "valor_ob_total": round(sum(e["valor_ob"] for e in fila), 2),
                           "escore_gravados": round(sum(e["score"] for e in gravar_fila), 2),

@@ -142,6 +142,18 @@ derivados:
         "Prefeitura: contratos avaliados": "esferas.Prefeitura do Rio.n"
         "Prefeitura: placar": "esferas.Prefeitura do Rio.placar"
       ressalva: "Pago do Estado = só OB Contabilizada do SIAFE. Indício interno para requerer documentos, não acusação."
+  vinculo_fila:
+    nome: Fila de captura do vínculo OB↔contrato (fecha-contrato na frente, depois por valor)
+    onde: estrato VINCULO_OB da fila do sweep SEI (VM-1, VM-2, it-campo)
+    depende: [pericia_contabil, regra_vinculo]
+    comando: ["{py}", "-m", "compliance_agent.vinculo_ob_contrato", "fila"]
+    peso: pesado
+    debounce_s: 900
+    intervalo_min_s: 14400
+    timeout_s: 2700
+    prioridade: 4
+    efeito: {arquivo: data/sei_fila_vinculo_ob.json}
+    antes: "diário 05:15 (cron)"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos
