@@ -196,7 +196,7 @@ def test_mascarar_nao_estraga_cnpj_processo_nem_numero_comum():
 def test_toda_nota_declara_fonte_posicao_e_estado(amb):
     vault, _, obter = amb
     V.gerar(obter)
-    notas = sorted((vault / "jfn").rglob("*.md"))
+    notas = sorted(p for p in (vault / "jfn").rglob("*.md") if "itens" not in p.parts)
     assert len(notas) == 9                                             # 6 retratos + 2 exercícios + índice
     for p in notas:
         t = p.read_text(encoding="utf-8")
@@ -270,7 +270,7 @@ def test_segunda_rodada_sem_mudanca_nao_regrava_nenhum_byte(amb, tmp_path):
     rotas["pericia_contabil"]["esferas"]["Estado do RJ"]["placar"]["A_MAIOR"] = 63
     tres = V.gerar(obter)
     assert sorted(r["nota"] for r in tres["registro"] if r["mudou"]) == ["jfn/pericia-contabil", "jfn/sinais-criticos"]
-    assert not [p for p in vault.rglob("*") if p.is_file() and p.suffix != ".md"]   # nenhum temporário dentro do vault
+    assert not [p for p in vault.rglob("*") if p.is_file() and p.suffix not in (".md", ".base")]   # nenhum temporário no vault
     assert not list((tmp_path / ".jfn_vault_tmp").iterdir())
     hub = (vault / "00-INDEX.md").read_text(encoding="utf-8")
     assert hub.count("[[jfn/00-retratos]]") == 1 and "<!-- cerebro:hub:inicio -->\nx\n" in hub   # bloco alheio intacto
@@ -327,3 +327,55 @@ def test_descobertas_mascaram_cpf_e_ignoram_grau_sem_cor():
 def test_soma_da_diferenca_sem_valor_nao_vira_zero():
     assert V._soma_dif([{"diferenca": 10.0}, {"diferenca": None}]) == "R$ 10,00 (parcial: 1 sem valor)"
     assert V._soma_dif([{"diferenca": None}]) == V.IND and V._soma_dif([{"diferenca": 0.0}]) == "R$ 0,00"
+
+
+# ───────────── propriedades padronizadas e notas-item para o Bases ─────────────
+def _props(texto):
+    import yaml
+    return yaml.safe_load(texto.split("---\n")[1])
+
+
+def test_frontmatter_padronizado_em_retratos_e_itens(amb):
+    vault, _, obter = amb
+    est = V.gerar(obter)
+    for p in (vault / "jfn").rglob("*.md"):
+        pr = _props(p.read_text(encoding="utf-8"))                  # YAML válido
+        assert "[[Retratos JFN]]" in pr["categories"] and pr["fonte"] and pr["gerado_por"] == V.GERADO_POR, p
+        assert set(pr["estado"] if isinstance(pr["estado"], list) else [pr["estado"]]) <= {"VERIFICADO", "PENDENTE", V.IND, "DIVERGENTE", "REFUTADO"}
+    per = _props(_ler(vault, "pericia-contabil"))
+    assert per["gerado"] == "2026-11-14" and per["categories"] == ["[[Retratos JFN]]", "[[Contratos]]"]
+    assert est["itens"]["a-maior"] == {"ok": True, "n": 2, "regravadas": 2, "removidas": 0}
+    am = _props(_ler(vault, "itens/a-maior/estado-do-rj-2025007357"))
+    assert am["valor_pago"] == 1902706.43 and am["diferenca"] == 902706.43 and am["estado"] == "PENDENTE"
+    assert am["ug"] is None and am["cnpj"] == "60.853.934/0001-06" and am["casos"] == ["[[casos/caso-construtora]]"]
+    pf = next(_props(p.read_text(encoding="utf-8")) for p in (vault / "jfn/itens/a-maior").glob("*.md") if "PESSOA" in p.read_text(encoding="utf-8"))
+    assert pf["cnpj"] == "***.982.247-**"                              # CPF mascarado também na propriedade
+    co = _props(_ler(vault, "itens/couto/d14-x"))
+    assert co["grau"] == "🔴" and co["ug"] == "324200" and co["regra"] == "D14" and co["estado"] == "VERIFICADO"
+    assert not (vault / "jfn/itens/couto/h3-z.md").exists()           # PENDENTE não vira item
+    base = (vault / "jfn" / "retratos-jfn.base").read_text(encoding="utf-8")
+    import yaml
+    b = yaml.safe_load(base)
+    assert [v["name"] for v in b["views"]] == ["A_MAIOR por órgão", "Pontos Couto por grau", "Retratos"]
+
+
+def test_valor_ausente_no_item_fica_vazio_nunca_zero(amb):
+    vault, rotas, obter = amb
+    rotas["pericia_contabil"]["esferas"]["Estado do RJ"]["a_maior"][0]["pago"] = None
+    V.gerar(obter)
+    am = _props(_ler(vault, "itens/a-maior/estado-do-rj-2025007357"))
+    assert am["valor_pago"] is None
+    assert "| Pago | INDISPONÍVEL |" in _ler(vault, "itens/a-maior/estado-do-rj-2025007357")
+
+
+def test_item_que_sai_da_lista_e_removido_so_se_for_nosso(amb):
+    vault, rotas, obter = amb
+    V.gerar(obter)
+    alheia = vault / "jfn/itens/couto/nota-do-dono.md"
+    alheia.write_text("minha nota\n", encoding="utf-8")
+    rotas["governo_couto"]["pontos_atencao"]["itens"][0]["verificacao"] = "PENDENTE"
+    est = V.gerar(obter)
+    assert est["itens"]["couto"]["removidas"] == 1 and not (vault / "jfn/itens/couto/d14-x.md").exists()
+    assert alheia.exists()
+    rotas["governo_couto"] = None
+    assert V.gerar(obter)["itens"]["couto"] == {"ok": False} and alheia.exists()

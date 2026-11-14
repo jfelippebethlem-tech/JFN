@@ -4,7 +4,10 @@ informações dos contratos".
 
 Gerador DETERMINÍSTICO (sem modelo): lê as MESMAS rotas que o painel serve (`/api/pericia_contabil`,
 `/api/governo_couto`, `/api/cge_confronto`, `/api/orcamento_orgao`, `/api/territorio/*`, `/api/intel/sobrepreco`,
-`/api/comparador/economia`, `/api/periodo/*`) e escreve notas-retrato em `~/vault/jfn/`. O jfn-brain indexa o vault a
+`/api/comparador/economia`, `/api/periodo/*`) e escreve notas-retrato em `~/vault/jfn/`, mais uma nota-item por contrato
+A_MAIOR e por ponto VERIFICADO da gestão Couto (`jfn/itens/`) e o `jfn/retratos-jfn.base` (visões do Bases). O
+frontmatter segue propriedades curtas e padronizadas (categories, orgao, ug, cnpj, grau, estado, valor_pago, fonte,
+gerado = data da fonte). O jfn-brain indexa o vault a
 cada 10 min, então o que entra aqui chega aos agentes sem outro passo.
 
 Regras da casa aplicadas aqui (e cobertas por `tests/test_vault_retratos.py`):
@@ -36,6 +39,7 @@ import re
 import sys
 import tempfile
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -169,15 +173,42 @@ def casos_de(idx: dict, cnpj=None, processo=None, teto: int = 2) -> str:
 
 
 # ───────────────────────────── moldura da nota ─────────────────────────────
+# Propriedades padronizadas e curtas (método do vault do kepano) para o Bases montar visões: `categories` (links),
+# `estado`, `fonte`, `gerado` (AAAA-MM-DD = data da PRÓPRIA fonte, não da execução — senão toda rodada regravaria).
+_CAT_POR_TAG = {"pericia-contabil": ("Contratos",), "governo-couto": ("Órgãos", "Contratos"), "cge": ("Contratos", "Órgãos"),
+                "territorio": ("Contratos", "Municípios"), "sobrepreco": ("Contratos",), "exercicio": ("Órgãos", "Exercícios")}
+_ORDEM_ESTADOS = ("VERIFICADO", "PENDENTE", IND, "DIVERGENTE", "REFUTADO")
+GERADO_POR = "compliance_agent/vault_retratos.py"
+
+
+def _y(v) -> str:
+    """Valor YAML de uma linha (JSON é YAML válido); ausente = vazio (nulo), nunca zero."""
+    return "" if v is None else json.dumps(v, ensure_ascii=False)
+
+
+def iso(texto) -> str | None:
+    """Primeira data do texto (dd/mm/aaaa ou aaaa-mm-dd) em AAAA-MM-DD."""
+    m = re.search(r"(\d{2})/(\d{2})/(\d{4})|(\d{4})-(\d{2})-(\d{2})", str(texto or ""))
+    if not m:
+        return None
+    return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m.group(1) else f"{m.group(4)}-{m.group(5)}-{m.group(6)}"
+
+
+def frontmatter(props: dict) -> list[str]:
+    return ["---"] + [f"{k}: {_y(v)}".rstrip() for k, v in props.items()] + ["---"]
+
+
 def nota(titulo: str, resumo: str, fontes: str, fonte_de: str, corpo: list[str], tags: tuple = ()) -> str:
     """Frontmatter do vault + capa. `fonte_de` é a data da PRÓPRIA fonte (não a hora desta execução)."""
-    fm = ["---", "tipo: retrato", f"tags: [{', '.join(('jfn', 'retrato') + tuple(tags))}]",
-          f"fonte: {json.dumps(fontes, ensure_ascii=False)}", f"fonte_de: {json.dumps(fonte_de, ensure_ascii=False)}",
-          f"resumo: {json.dumps(resumo, ensure_ascii=False)}", "gerado_por: compliance_agent/vault_retratos.py",
-          "---", "", f"# {titulo}", "",
-          "> [!info] Retrato gerado pelo JFN — não editar (a próxima mudança da fonte regrava a nota)",
-          f"> **Fonte:** {fontes}", f"> **Posição da fonte:** {fonte_de} · índice: [[{PASTA}/00-retratos]]", "",
-          "> [!warning] Leitura", f"> {RESSALVA}", ""]
+    texto_corpo = "\n".join(corpo)
+    cats = ["Retratos JFN"] + [c for t in tags for c in _CAT_POR_TAG.get(t, ())]
+    props = {"tipo": "retrato", "categories": [f"[[{c}]]" for c in dict.fromkeys(cats)],
+             "tags": ["jfn", "retrato", *tags], "estado": [e for e in _ORDEM_ESTADOS if e in texto_corpo],
+             "fonte": fontes, "fonte_de": fonte_de, "gerado": iso(fonte_de), "resumo": resumo, "gerado_por": GERADO_POR}
+    fm = frontmatter(props) + ["", f"# {titulo}", "",
+                               "> [!info] Retrato gerado pelo JFN — não editar (a próxima mudança da fonte regrava a nota)",
+                               f"> **Fonte:** {fontes}", f"> **Posição da fonte:** {fonte_de} · índice: [[{PASTA}/00-retratos]]", "",
+                               "> [!warning] Leitura", f"> {RESSALVA}", ""]
     return mascarar("\n".join(fm + corpo).rstrip() + "\n")
 
 
@@ -567,6 +598,187 @@ def descobertas(couto: dict | None, sobre: dict[str, dict] | None) -> list[tuple
     return [(k, mascarar(t), a) for k, t, a in out if not (k in vistos or vistos.add(k))]
 
 
+# ───────────────────────────── notas-item (Bases) ─────────────────────────────
+# Uma nota pequena por item RELEVANTE — contrato pago acima do valor (A_MAIOR, ~60) e ponto VERIFICADO da gestão Couto
+# (~50) —, nunca uma por contrato da base. Existem para o Bases do Obsidian agrupar e somar (jfn/retratos-jfn.base).
+ITENS = f"{PASTA}/itens"
+
+
+def _slug(t) -> str:
+    t = unicodedata.normalize("NFKD", str(t or "")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:80] or "sem-id"
+
+
+def _ug(x: dict) -> str | None:
+    m = re.match(r"\s*(\d{6})\b", str(x.get("ug") or "")) or re.search(r"\((\d{6})\)", str(x.get("orgao") or ""))
+    return m.group(1) if m else None
+
+
+def _casos_lista(idx: dict, cnpj=None, processo=None) -> list[str]:
+    return re.findall(r"\[\[[^\]]+\]\]", casos_de(idx, cnpj, processo, teto=3))
+
+
+def nota_item(titulo: str, props: dict, corpo: list[str], retrato: str) -> str:
+    base = {"tipo": "item", "categories": ["[[Retratos JFN]]"]}
+    fm = frontmatter({**base, **props, "gerado_por": GERADO_POR})
+    cab = ["", f"# {titulo}", "",
+           f"> [!info] Item gerado pelo JFN — não editar. Retrato: [[{retrato}]] · índice: [[{PASTA}/00-retratos]]",
+           f"> **Fonte:** {props.get('fonte') or IND}", "", "> [!warning] Leitura", f"> {RESSALVA}", ""]
+    return mascarar("\n".join(fm + cab + corpo).rstrip() + "\n")
+
+
+def itens_a_maior(per: dict, idx: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    gerado = iso(per.get("gerado_em"))
+    for esf, e in (per.get("esferas") or {}).items():
+        fonte = f"/api/pericia_contabil — {e.get('fonte_pago') or IND} × {(e.get('proveniencia') or {}).get('fonte_contratos') or IND}"
+        for x in e.get("a_maior") or []:
+            rel = f"{ITENS}/a-maior/{_slug(esf)}-{_slug(x.get('contrato') or x.get('processo'))}"
+            while rel in out:
+                rel += "-b"
+            st = estado(x.get("verificacao") or (e.get("verificacao") or {}).get("listas"))
+            num_ok = lambda v: v if isinstance(v, (int, float)) and not isinstance(v, bool) else None  # noqa: E731
+            props = {"categories": ["[[Retratos JFN]]", "[[Contratos]]"], "categoria": "A_MAIOR", "esfera": esf,
+                     "orgao": cel(str(x.get("orgao") or "").split(" - ")[0], 60) or None, "ug": _ug(x),
+                     "cnpj": doc(x.get("fornecedor_doc")) if x.get("fornecedor_doc") else None,
+                     "fornecedor": cel(x.get("fornecedor"), 120), "processo": x.get("processo"), "contrato": x.get("contrato"),
+                     "estado": st, "valor_contrato": num_ok(x.get("valor_atualizado")), "valor_pago": num_ok(x.get("pago")),
+                     "diferenca": num_ok(x.get("diferenca")), "n_ob": num_ok(x.get("n_obs")),
+                     "vig_inicio": iso(x.get("vig_inicio")), "vig_fim": iso(x.get("vig_fim")),
+                     "casos": _casos_lista(idx, x.get("fornecedor_doc"), x.get("processo")), "fonte": fonte, "gerado": gerado}
+            corpo = [tabela(["Campo", "Valor", "Estado"], [
+                        ["Valor do contrato (registrado na fonte)", brl(x.get("valor_atualizado")), st],
+                        ["Fonte do valor / aditivo", cel(x.get("fonte_valor") or "valor registrado na fonte do contrato"), st],
+                        ["Pago", brl(x.get("pago")), st], ["Diferença (pago − valor do contrato)", brl(x.get("diferenca")), st],
+                        ["OB", num(x.get("n_obs")), st],
+                        ["Vigência", f"{data_br(x.get('vig_inicio'))} → {data_br(x.get('vig_fim'))}", st]], direita=(1,)), "",
+                     f"- **Objeto:** {cel(x.get('objeto'), 400)}",
+                     f"- **Ressalva:** {cel(x.get('ressalvas') or 'sem ressalva registrada pela rota')}",
+                     f"- **Prova primária:** {cel(x.get('prova_primaria') or IND)}",
+                     f"- **Caso no vault:** {casos_de(idx, x.get('fornecedor_doc'), x.get('processo'), teto=3)}",
+                     f"- **Posição da fonte:** rotina de {data_br(per.get('gerado_em'))}"]
+            out[rel] = nota_item(f"A_MAIOR — {cel(x.get('fornecedor'), 80)} ({x.get('contrato') or x.get('processo')})",
+                                 props, corpo, f"{PASTA}/pericia-contabil")
+    return out
+
+
+def itens_couto(couto: dict, idx: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    pa = couto.get("pontos_atencao") or {}
+    for x in pa.get("itens") or []:
+        if not _verificado(x) or not x.get("id"):
+            continue
+        rel = f"{ITENS}/couto/{_slug(x['id'])}"
+        provas = x.get("prova_primaria") or []
+        provas = provas if isinstance(provas, list) else [provas]
+        v = x.get("valor_ob")
+        props = {"categories": ["[[Retratos JFN]]", "[[Órgãos]]"], "regra": str(x.get("regra_ou_hipotese") or "").split(" · ")[0] or None,
+                 "grau": x.get("grau"), "orgao": cel(x.get("orgao"), 60) if x.get("orgao") else None, "ug": _ug(x),
+                 "cnpj": doc(x.get("cnpj")) if x.get("cnpj") else None, "processo": x.get("processo"), "estado": "VERIFICADO",
+                 "valor_pago": v if isinstance(v, (int, float)) and not isinstance(v, bool) else None,
+                 "casos": _casos_lista(idx, x.get("cnpj"), x.get("processo")), "fonte": x.get("fonte") or IND,
+                 "gerado": iso(pa.get("gerado_em"))}
+        corpo = [f"**{cel(x.get('regra_ou_hipotese'))}**", "",
+                 f"- **OB contabilizada (SIAFE):** {brl(v)} · estado **VERIFICADO** (número reproduzido da prova primária; "
+                 "não é juízo de irregularidade)", "", "**Prova primária**", ""]
+        corpo += [f"- {cel(pr)}" for pr in provas] or [f"- {IND}"]
+        corpo += ["", f"- **Explicação inocente possível:** {cel(x.get('explicacao_inocente') or IND)}",
+                  f"- **Próximo passo:** {cel(x.get('proximo_passo') or IND)}",
+                  f"- **Caso no vault:** {casos_de(idx, x.get('cnpj'), x.get('processo'), teto=3)}",
+                  f"- **Posição da análise:** {data_br(pa.get('gerado_em'))}"]
+        out[rel] = nota_item(f"{x.get('grau') or ''} {cel(x.get('regra_ou_hipotese'), 90)}".strip(), props, corpo,
+                             f"{PASTA}/gestao-couto")
+    return out
+
+
+def remover_velhas(pasta: Path, manter: set[Path], seco: bool = False) -> int:
+    """Apaga da pasta de itens só nota GERADA AQUI (marcador no frontmatter) que saiu da lista da fonte."""
+    n = 0
+    for p in sorted(pasta.glob("*.md")) if pasta.is_dir() else []:
+        try:
+            nossa = f"gerado_por: {_y(GERADO_POR)}" in p.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if p not in manter and nossa:
+            n += 1
+            if not seco:
+                p.unlink()
+    return n
+
+
+BASE_ARQ = f"{PASTA}/retratos-jfn.base"
+BASE_YAML = f"""# Gerado por compliance_agent/vault_retratos.py — não editar (regravado se mudar no código).
+filters:
+  and:
+    - file.inFolder("{PASTA}")
+    - 'file.ext == "md"'
+properties:
+  valor_pago:
+    displayName: "Pago (R$)"
+  valor_contrato:
+    displayName: "Valor do contrato (R$)"
+  diferenca:
+    displayName: "Diferença (R$)"
+  gerado:
+    displayName: "Posição da fonte"
+views:
+  - type: table
+    name: "A_MAIOR por órgão"
+    filters:
+      and:
+        - 'categoria == "A_MAIOR"'
+    groupBy:
+      property: orgao
+      direction: ASC
+    order:
+      - file.name
+      - esfera
+      - fornecedor
+      - cnpj
+      - processo
+      - valor_contrato
+      - valor_pago
+      - diferenca
+      - estado
+      - casos
+      - gerado
+    summaries:
+      valor_pago: Sum
+      diferenca: Sum
+  - type: table
+    name: "Pontos Couto por grau"
+    filters:
+      and:
+        - file.inFolder("{ITENS}/couto")
+    groupBy:
+      property: grau
+      direction: ASC
+    order:
+      - file.name
+      - regra
+      - orgao
+      - ug
+      - cnpj
+      - valor_pago
+      - estado
+      - casos
+      - gerado
+    summaries:
+      valor_pago: Sum
+  - type: table
+    name: "Retratos"
+    filters:
+      and:
+        - 'tipo == "retrato"'
+    order:
+      - file.name
+      - categories
+      - estado
+      - gerado
+      - fonte
+"""
+
+
 # ───────────────────────────── 7. por exercício (ano e mês) ─────────────────────────────
 _COLS = (("dotacao_inicial", "Dotação inicial (LOA)"), ("dotacao_atualizada", "Dotação atualizada"),
          ("empenhado", "Empenhado (não é pagamento)"), ("liquidado", "Liquidado (não é pagamento)"),
@@ -745,7 +957,11 @@ def nota_indice(reg: list[dict]) -> str:
                 [[f"[[{r['nota']}]]", r.get("fonte_de") or IND,
                   _situacao(r)]
                  for r in reg if r["nota"].startswith(f"{PASTA}/anos/")]), "",
-         "## 3. Como ler", "",
+         "## 3. Itens e visões (Bases)", "",
+         f"- `{ITENS}/a-maior/` — uma nota por contrato pago acima do valor contratado (lista da perícia).",
+         f"- `{ITENS}/couto/` — uma nota por ponto de atenção VERIFICADO da gestão Couto.",
+         f"- ![[{BASE_ARQ}]]", "",
+         "## 4. Como ler", "",
          "- **VERIFICADO** — prova primária citada e conferida por código. **PENDENTE** — saiu da régua ou de soma da "
          f"casa e ainda não foi conferido linha a linha. **{IND}** — a fonte não permite saber; nunca é zero.",
          "- **Pago** do Estado é OB do SIAFE com status Contabilizado, fora a devolvida pelo banco. Empenhado, liquidado "
@@ -853,6 +1069,19 @@ def gerar(obter_=obter, seco: bool = False, registrar_=None) -> dict:
     for ano in sorted(anos, reverse=True):
         faz(f"{PASTA}/anos/{ano}", f"exercício {ano}", m_ano(ano))
 
+    # notas-item (A_MAIOR, pontos Couto VERIFICADOS) + o .base que as agrupa; fonte fora do ar = pasta intocada
+    itens: dict[str, dict] = {}
+    for sub, rota, montar in (("a-maior", "pericia_contabil", itens_a_maior), ("couto", "governo_couto", itens_couto)):
+        try:
+            notas = montar(pega(rota), idx)
+        except FonteIndisponivel:
+            itens[sub] = {"ok": False}
+            continue
+        escritas = sum(gravar(VAULT / f"{rel}.md", t, seco) for rel, t in sorted(notas.items()))
+        removidas = remover_velhas(VAULT / ITENS / sub, {VAULT / f"{rel}.md" for rel in notas}, seco)
+        itens[sub] = {"ok": True, "n": len(notas), "regravadas": escritas, "removidas": removidas}
+    mudou_base = gravar(VAULT / BASE_ARQ, BASE_YAML, seco) if any(r["ok"] for r in reg) else False
+
     # descobertas VERIFICADAS → fila do segundo cérebro (o despachante da propagação envia; chave estável = sem duplicar)
     cer: dict[str, int] = {}
     if not seco and fontes_cerebro:
@@ -873,6 +1102,7 @@ def gerar(obter_=obter, seco: bool = False, registrar_=None) -> dict:
            "notas": len(reg), "em_dia": sum(r["ok"] for r in reg), "regravadas": sum(r["mudou"] for r in reg),
            "indisponiveis": [{"nota": r["nota"], "erro": r["erro"]} for r in reg if not r["ok"]],
            "indice_regravado": mudou_indice, "hub_regravado": mudou_hub, "cerebro": dict(sorted(cer.items())),
+           "itens": itens, "base_regravada": mudou_base,
            "manchetes": {k: (IND if v is None else v) for k, v in sorted(manchetes.items())},
            "registro": [{k: r[k] for k in ("nota", "ok", "mudou", "fonte_de")} for r in reg]}
     if not seco:
@@ -909,6 +1139,9 @@ def main(argv=None) -> int:
     print(f"retratos: {est['em_dia']}/{est['notas']} em dia, {est['regravadas']} regravada(s)"
           + (", índice regravado" if est["indice_regravado"] else "") + (" [seco]" if a.seco else "")
           + (" · cérebro: " + ", ".join(f"{k} {v}" for k, v in est["cerebro"].items()) if est["cerebro"] else ""))
+    for sub, i in est["itens"].items():
+        print(f"  itens/{sub}: " + (f"{i['n']} nota(s), {i['regravadas']} regravada(s), {i['removidas']} removida(s)"
+                                    if i["ok"] else IND))
     for r in est["registro"]:
         if r["mudou"]:
             print(f"  ~ {r['nota']}")
