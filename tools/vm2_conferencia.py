@@ -34,7 +34,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -145,7 +144,7 @@ def _referencia(tag: str, incluir_arquivo: bool = True) -> dict[str, str]:
         from compliance_agent.sei.cache_arquivo import localizar, ler_json
         cf = localizar(CACHE / f"cdp_SEI_{tag}.json")
         c = ler_json(cf) if cf else None
-    except Exception:  # noqa: BLE001 — referência é opcional: sem ela, a conferência diz que não houve
+    except (ImportError, OSError, ValueError):   # referência é opcional: sem ela, a conferência diz que não houve
         c = None
     if isinstance(c, dict):
         for d in c.get("conteudo_documentos") or []:
@@ -267,13 +266,6 @@ def conferir_cdp(caminho: Path, juizo: dict | None) -> tuple[bool, list[str], di
 
 # ───────────────────────── importação ─────────────────────────
 
-def _sweep_vm1_vivo() -> bool:
-    """Algum sweep SEI da VM-1 com o progresso em memória? (ele regravaria o progresso por cima do importado)"""
-    r = subprocess.run(["pgrep", "-f", r"tools[.]sei_sweep|tools[.]sei_bombeiros_sweep|sweep_recaptura_integra[l]"],
-                       capture_output=True, text=True)
-    return r.returncode == 0
-
-
 def _substituir(origem: Path, destino: Path, lote: str) -> None:
     if destino.exists():
         SUBST.mkdir(parents=True, exist_ok=True)
@@ -306,16 +298,21 @@ def _md5_confere(base: Path, arquivos: dict[str, str], prefixos: tuple[str, ...]
 
 
 def _mesclar_progresso(delta: dict) -> None:
+    """Mesma trava curta e mesma regra do `sei_sweep._salvar_prog` (mais novo vence por processo): um sweep
+    vivo na VM-1 não apaga mais o que entra aqui, então a incorporação não espera a ausência de sweep."""
+    import fcntl
     prog_arq = CACHE / "sei_sweep_progress.json"
-    prog = _ler_json(prog_arq) or {"feitos": {}}
-    fe = prog.setdefault("feitos", {})
-    for k, v in delta.items():
-        atual = fe.get(k) or {}
-        if str(v.get("em") or "") >= str(atual.get("em") or ""):
-            fe[k] = v
-    tmp = prog_arq.with_name(f"{prog_arq.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(prog, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(prog_arq)
+    with prog_arq.with_name(prog_arq.name + ".lock").open("w") as trava:
+        fcntl.flock(trava, fcntl.LOCK_EX)
+        prog = _ler_json(prog_arq) or {"feitos": {}}
+        fe = prog.setdefault("feitos", {})
+        for k, v in delta.items():
+            atual = fe.get(k) or {}
+            if str(v.get("em") or "") >= str(atual.get("em") or ""):
+                fe[k] = v
+        tmp = prog_arq.with_name(f"{prog_arq.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(prog, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(prog_arq)
 
 
 def _mesclar_restritos(delta: dict) -> None:
@@ -421,16 +418,14 @@ def _importar(lote: str) -> dict:
 
 
 def aplicar_pendentes() -> int:
-    """Progresso e restritos dos lotes de sweep: só com nenhum sweep da VM-1 vivo (o merge-on-save dele
-    daria prioridade ao que ele tem em memória e apagaria o importado). Fica pendente e volta na próxima."""
+    """Progresso e restritos dos lotes de sweep. Até 13/11 isto esperava NÃO haver sweep vivo na VM-1 (o
+    merge-on-save dele apagava o importado) — e sempre havia. Com o "mais novo vence" + trava curta no
+    `_salvar_prog`, incorpora na hora; a fila só segura o que falhar (erro de disco, JSON ilegível)."""
     n = 0
     for arq in sorted(IMPORTADOS.glob("*.json")) if IMPORTADOS.is_dir() else []:
         man = _ler_json(arq)
         if not isinstance(man, dict) or not (man.get("progresso_pendente") or man.get("restritos_pendente")):
             continue
-        if _sweep_vm1_vivo():
-            _log("progresso da VM-2 pendente: há sweep SEI vivo na VM-1 — aplico na próxima")
-            return n
         if man.get("progresso_pendente"):
             _mesclar_progresso(man["progresso_pendente"])
         if man.get("restritos_pendente"):

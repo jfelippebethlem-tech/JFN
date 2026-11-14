@@ -11,6 +11,7 @@ LOG=data/bombeiros_supervisor.log
 PY=".venv/bin/python"; export PYTHONPATH=.
 LOTE="${BBM_LOTE:-10}"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
+source "$(dirname "$0")/lib/bombeiros_lote.sh"
 say "bombeiros_supervisor iniciado (lote=$LOTE)"
 while true; do
   if [ -f data/.pause_bombeiros ]; then sleep 120; continue; fi
@@ -23,11 +24,17 @@ while true; do
   # timeout OBRIGATÓRIO: sem ele o sweep ficou 21 dias (18/08→09/09) parado em ep_poll do driver
   # do Playwright depois do 1º processo, e o supervisor inteiro esperou junto. 10 processos a
   # ~133 s cada cabem em 1 h com folga para uma leitura lenta (p90).
+  INICIO_LOTE=$(stat -c %s data/bombeiros_sweep.out 2>/dev/null || echo 0)
   timeout 3600 $PY -m tools.sei_bombeiros_sweep --max "$LOTE" >> data/bombeiros_sweep.out 2>&1
   rc=$?; say "sweep lote rc=$rc"
   # fila drenada? o sweep loga "nada novo na fila" → back-off longo e revalida
   if tail -3 data/bombeiros_sweep.out 2>/dev/null | grep -q "nada novo na fila"; then
     say "fila aparentou drenada — back-off 20min"; sleep 1200; continue; fi
+  # SÓ COM DOCUMENTO NOVO (13/11/2026): os passos abaixo releem tudo a cada volta. Medido: o lex fez 891
+  # passadas em 23 dias com 0 perícia; a reconciliação repetia o mesmo resultado. Lote sem documento → pula.
+  NOVOS=$(docs_novos_do_lote data/bombeiros_sweep.out "$INICIO_LOTE")
+  if [ "${NOVOS:-0}" -eq 0 ]; then say "lote sem documento novo — passos de depois pulados"; sleep 15; continue; fi
+  say "lote trouxe $NOVOS processo(s) com documento — rodando os passos de depois"
   # 2) ficha -> tabela ; 3) dossiê/árvore ; 4) Lex pericia (novas fichas) ; 5) camada Claude
   timeout 300 $PY -m tools.sei_depurar_db   >> data/sei_depurar.log 2>&1; say "depurar rc=$?"
   timeout 400 $PY -m tools.sei_arvore_build >> data/sei_arvore.log  2>&1; say "arvore rc=$?"

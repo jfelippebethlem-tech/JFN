@@ -163,16 +163,27 @@ def _salvar_prog(p: dict):
     # load-modify-save do arquivo INTEIRO — a última a salvar apagava os feitos das outras (274
     # leituras de 07-09/10 sumiram assim), e um read no meio de um write parcial caía no
     # "ilegível → recomeça do zero". Merge: o nosso (mais novo) prevalece; o do disco completa.
-    try:
-        no_disco = json.loads(PROG.read_text(encoding="utf-8")).get("feitos", {})
-    except Exception:
-        no_disco = {}
-    fe = p.setdefault("feitos", {})
-    for k, v in no_disco.items():
-        fe.setdefault(k, v)
-    tmp = PROG.with_name(f"{PROG.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(PROG)
+    #
+    # MAIS NOVO VENCE (13/11/2026). "O nosso prevalece" valia para TUDO o que estava em memória — inclusive o
+    # que este processo só carregou no início e nunca tocou —, então qualquer sweep vivo apagava, ao salvar,
+    # a leitura que outro escritor gravou depois (a incorporação da VM-2 ficou pendente a noite toda por
+    # isso). Agora, por processo, vence o `em` mais recente; sem data dos dois lados, a memória (como antes).
+    # Trava curta (flock) só em volta do ler-mesclar-trocar, para dois escritores não se cruzarem ali.
+    import fcntl
+    with PROG.with_name(PROG.name + ".lock").open("w") as trava:
+        fcntl.flock(trava, fcntl.LOCK_EX)
+        try:
+            no_disco = json.loads(PROG.read_text(encoding="utf-8")).get("feitos", {})
+        except Exception:
+            no_disco = {}
+        fe = p.setdefault("feitos", {})
+        for k, v in no_disco.items():
+            meu = fe.get(k)
+            if meu is None or str((v or {}).get("em") or "") > str((meu or {}).get("em") or ""):
+                fe[k] = v
+        tmp = PROG.with_name(f"{PROG.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(PROG)
 
 
 def _unidades_legiveis() -> set[str]:

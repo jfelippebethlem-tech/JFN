@@ -88,7 +88,6 @@ def test_legivel():
 
 def test_lote_sweep_importa_cdp_e_nao_sobrescreve_leitura_boa_com_vazia(monkeypatch, tmp_path):
     d = _isolar(monkeypatch, tmp_path)
-    monkeypatch.setattr(C, "_sweep_vm1_vivo", lambda: False)
     src = tmp_path / "vm2"
     src.mkdir()
     bom = {"numero": "SEI-100000/000007/2025", "documentos": [{"titulo": "Despacho 1"}],

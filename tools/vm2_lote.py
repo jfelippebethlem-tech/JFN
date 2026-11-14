@@ -59,7 +59,7 @@ def julgar(proc: str, titulo: str, texto: str) -> dict | None:
         from compliance_agent.llm import claude_motor as cm
         r = cm.pensar(TAREFA_JUIZO, _PROMPT.format(proc=proc, titulo=titulo[:200], texto=texto[:6000]),
                       schema=_SCHEMA, modelo=cm.MODELO_VOLUME, timeout=150.0, backend="cli", espera=60.0)
-    except Exception:  # noqa: BLE001 — juízo é camada extra: nunca derruba a entrega
+    except (ImportError, OSError, ValueError, RuntimeError):   # juízo é camada extra (pensar() não levanta)
         return None
     if r is None or not isinstance(r.dados, dict):
         return None
