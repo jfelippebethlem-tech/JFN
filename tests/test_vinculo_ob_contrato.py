@@ -291,3 +291,40 @@ def test_ob_sem_processo_na_base_tem_motivo_proprio_e_nao_vai_a_fila(base):
     assert d["processos_fora"] == {"processos": [], "obs_sem_processo": 1}
     assert "ob_do_credor_sem_processo_na_base" in pc.MOTIVOS
     assert vo.fila_fecha_contrato([d], capturado=lambda k: False) == []
+
+
+# ── processo dominante (14/11/2026: pagamento que cita 47× o contrato não registrado e 2× o registrado) ─────
+OUTRO_PROC = "SEI-100001/000777/2021"
+
+
+def test_autos_que_falam_sobretudo_de_outro_processo_nao_verificam(base, tmp_path):
+    docs = {"000_despacho.txt": DESPACHO}
+    docs.update({f"{i:03d}_nl.txt": f"Nota de liquidação referente ao contrato do processo {OUTRO_PROC}."
+                 for i in range(1, 7)})
+    _autos(tmp_path / "arq", PAG, docs)
+    linhas, _, est = _regra(base)
+    assert est["resolvido"][0] == 1
+    assert all(x[10] == V.PENDENTE and "sobretudo outro processo" in x[11] for x in linhas)
+
+
+def test_codigo_de_barras_nao_vira_processo_dominante():
+    docs = [("d", "linha digitável 012505/086918/7189 " * 9 + " processo SEI-100001/000004/2024")]
+    c = vo.contagem_processos(docs, PAG)
+    assert "0125050869187189" not in c and vo.motivo_dominante(c, "1000010000042024") == ""
+
+
+def test_reconferir_rebaixa_vinculo_de_processo_dominado(base, tmp_path):
+    _autos(tmp_path / "arq", PAG, {"000_despacho.txt": DESPACHO})
+    vo.gravar(base, _regra(base)[0])
+    p = tmp_path / "arq" / f"{PAG[:6]}_{PAG[6:12]}_{PAG[12:]}"
+    man = json.loads((p / "manifest.json").read_text())
+    for i in range(1, 7):
+        (p / "texto" / f"x{i}.txt").write_text(f"pagamento do contrato {OUTRO_PROC}", encoding="utf-8")
+        man["docs"].append({"i": str(i), "titulo": "NL", "texto": f"texto/x{i}.txt"})
+    (p / "manifest.json").write_text(json.dumps(man))
+    assert vo.reconferir(base)["rebaixadas"] == 1
+
+
+def test_ug_repetida_do_siafe_nao_vira_processo_dominante():
+    c = vo.contagem_processos([("d", "UG 166100/166100/2023 " * 9)], PAG)
+    assert not c

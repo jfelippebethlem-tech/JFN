@@ -41,7 +41,7 @@ import os
 import re
 import sqlite3
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -208,13 +208,43 @@ def decidir_regra(docs: list[tuple[str, str]], proc_pag: str, contratos_do_credo
     return {**base, "situacao": "resolvido", "id": ids[0]}
 
 
+# PROCESSO DOMINANTE (14/11/2026): o pagamento SEI-420001/004159/2025 cita 47 vezes o processo do Contrato nº 064/2021
+# (SEI-420001/001422/2021, não registrado no TCE-RJ para o credor) e 2 vezes o de um contrato registrado — num extrato do
+# Diário Oficial juntado aos autos. A dupla leitura do modelo VERIFICOU o registrado e a perícia acusou "pago acima do
+# valor" de R$ 226 mil numa locação de um SUV. Os autos que falam SOBRETUDO de outro processo pagam outra coisa.
+DOMINANTE_MIN, DOMINANTE_RAZAO = 5, 3
+_ANO_PLAUSIVEL = range(2010, 2031)        # NF-e, boleto e código de barras também casam o padrão 6/6/4
+
+
+def contagem_processos(docs: list[tuple[str, str]], proc_pag: str) -> Counter:
+    """Quantas vezes cada processo (ano plausível) é citado nos autos, sem o próprio processo de pagamento."""
+    c = Counter(k for _, t in docs for m in _achados(t)
+                if int((k := _chave(m))[12:]) in _ANO_PLAUSIVEL and k[:6] != k[6:12])   # "166100/166100/2023" = UG/UG
+    c.pop(proc_pag, None)
+    return c
+
+
+def motivo_dominante(contagem: Counter, chave_ctr: str | None) -> str:
+    if not contagem or not chave_ctr:
+        return ""
+    dom, n = contagem.most_common(1)[0]
+    if dom != chave_ctr and n >= DOMINANTE_MIN and n >= DOMINANTE_RAZAO * max(contagem.get(chave_ctr, 0), 1):
+        return (f"os autos citam sobretudo outro processo (SEI-{formatar(dom)}, {n} vezes, contra "
+                f"{contagem.get(chave_ctr, 0)} do contrato) — o pagamento provavelmente é de outro contrato")
+    return ""
+
+
 def linhas_do_par(proc_pag: str, credor: str, obs: list, cid: str | None, chave_ctr: str | None, info: dict,
-                  fonte: str, tr: str, metodo: str, estado: str, motivo: str = "") -> list[tuple]:
-    """Uma linha por OB. VERIFICADO só sobrevive se nenhuma OB do par antecede o contrato (folga de 30 dias)."""
+                  fonte: str, tr: str, metodo: str, estado: str, motivo: str = "",
+                  contagem: Counter | None = None) -> list[tuple]:
+    """Uma linha por OB. VERIFICADO só sobrevive se nenhuma OB do par antecede o contrato (folga de 30 dias) e os
+    autos não falam sobretudo de outro processo (`contagem` = `contagem_processos` dos autos)."""
     hoje = datetime.now().isoformat(timespec="seconds")
     if estado == V.VERIFICADO and cid:
         ini, _fim, bruto = info.get(cid, (None, None, ""))
         if (m := motivo_rebaixa(bruto, tr)):
+            estado, motivo = V.PENDENTE, m
+        elif (m := motivo_dominante(contagem or Counter(), chave_ctr)):
             estado, motivo = V.PENDENTE, m
         elif ini is None:
             estado, motivo = V.PENDENTE, "contrato sem data de início registrada"
@@ -246,13 +276,15 @@ def rodar_regra(con, *, por_cred=None, info=None, pares=None) -> tuple[list[tupl
             logger.info("regra: %d processos de pagamento lidos", lidos)
         docs = ler_docs(pst)
         lidas = citacoes(docs)
+        cont = contagem_processos(docs, pp)
         for c in creds:
             obs = pares[(pp, c)]
-            _um_par(pp, c, obs, decidir_regra(docs, pp, por_cred[c], lidas=lidas), info, linhas, ao_modelo, est)
+            _um_par(pp, c, obs, decidir_regra(docs, pp, por_cred[c], lidas=lidas), info, linhas, ao_modelo, est,
+                    cont)
     return linhas, ao_modelo, {k: (n, round(v, 2)) for k, (n, v) in est.items()}
 
 
-def _um_par(pp, c, obs, d, info, linhas, ao_modelo, est) -> None:
+def _um_par(pp, c, obs, d, info, linhas, ao_modelo, est, cont=None) -> None:
     s = d["situacao"]
     valor = sum(o[4] for o in obs)
     if s == "resolvido" and d.get("tac"):
@@ -261,7 +293,7 @@ def _um_par(pp, c, obs, d, info, linhas, ao_modelo, est) -> None:
     est[s][1] += valor
     if s == "resolvido":
         linhas += linhas_do_par(pp, c, obs, d["id"], d["chave"], info, d["fonte_doc"], d["trecho"], REGRA,
-                                V.VERIFICADO)
+                                V.VERIFICADO, contagem=cont)
     elif s == "ambiguo":
         linhas += linhas_do_par(pp, c, obs, None, d["chave"], info, d["fonte_doc"], d["trecho"], REGRA,
                                 V.PENDENTE, f"processo do contrato com {len(d['ids'])} registros no TCE-RJ "
@@ -488,13 +520,24 @@ def gravar(db: str | Path, linhas: list[tuple], *, preservar_regra: bool = True)
 
 
 def reconferir(db: str | Path) -> dict:
-    """Aplica `motivo_rebaixa` às linhas VERIFICADO já gravadas (regra nova não exige reler o acervo)."""
+    """Aplica `motivo_rebaixa` e o processo dominante (`motivo_dominante`, relê os autos de cada processo de
+    pagamento uma vez) às linhas VERIFICADO já gravadas."""
     con = sqlite3.connect(str(db), timeout=120)
     try:
         bruto = {cid: proc or "" for cid, proc in con.execute("SELECT id, processo FROM contratos_tcerj")}
-        rebaixar = [(m, ob, ug, ex) for ob, ug, ex, cid, tr in con.execute(
-            "SELECT ob, ug, exercicio, contrato_tcerj_id, trecho FROM vinculo_ob_contrato WHERE estado='VERIFICADO'")
-            if (m := motivo_rebaixa(bruto.get(cid), tr))]
+        cont: dict[str, Counter] = {}
+        rebaixar = []
+        for ob, ug, ex, cid, tr, pp, pc in con.execute(
+                "SELECT ob, ug, exercicio, contrato_tcerj_id, trecho, processo_pagamento, processo_contrato "
+                "FROM vinculo_ob_contrato WHERE estado='VERIFICADO'").fetchall():
+            m = motivo_rebaixa(bruto.get(cid), tr)
+            kp, kc = P.chave_sei("SEI-" + str(pp or "")), P.chave_sei("SEI-" + str(pc or ""))
+            if not m and kp:
+                if kp not in cont:
+                    cont[kp] = contagem_processos(ler_docs(pasta(kp)), kp)
+                m = motivo_dominante(cont[kp], kc)
+            if m:
+                rebaixar.append((m, ob, ug, ex))
         with con:
             con.executemany("UPDATE vinculo_ob_contrato SET estado='PENDENTE', motivo=? WHERE ob=? AND ug=? AND "
                             "exercicio=?", rebaixar)
@@ -669,6 +712,9 @@ def main(argv: list[str] | None = None) -> int:
                           "ao_modelo": len(ao_modelo)}, ensure_ascii=False, indent=1))
         if a.gravar:
             print("gravadas", gravar(a.db, linhas))
+            # as linhas do MODELO não são regravadas pela regra: a reconferência (processo dominante, desdobramento)
+            # passa por elas aqui — a propagação só chama `regra --gravar`
+            print("reconferir", json.dumps(reconferir(a.db), ensure_ascii=False))
         return 0
     # modelo: os pares que a regra mandou (vários contratos citados), por valor pago; + controle positivo
     if a.gravar:          # rodada que grava = a agendada: só o que o modelo ainda não leu
@@ -702,8 +748,9 @@ def main(argv: list[str] | None = None) -> int:
             estado, motivo = V.PENDENTE, "processo do contrato com mais de um registro no TCE-RJ"
         if estado == V.INDISPONIVEL:
             continue
+        cont = contagem_processos(ler_docs(pasta(par[0])), par[0]) if estado == V.VERIFICADO else None
         novas += linhas_do_par(par[0], par[1], pares[par], ids[0] if len(ids) == 1 else None, k, info,
-                               "leitura do modelo (dupla)", cit, HAIKU, estado, motivo)
+                               "leitura do modelo (dupla)", cit, HAIKU, estado, motivo, contagem=cont)
     from compliance_agent.llm import claude_api as C
     print(json.dumps({**meta, "pares": len(alvo), "controle": len(gab), "controle_acertos": acertos,
                       "controle_erros": erros,
