@@ -452,11 +452,12 @@ def viva(k: int, modo: str = "integras") -> bool:
 
 
 def lancar(k: int, n: int, modo: str = "integras") -> None:
-    """Abre a JANELA da sessão k no Windows (visível, com título) — nunca processo escondido."""
+    """Abre a JANELA da sessão k no Windows (visível, com título) — nunca processo escondido. Abre MINIMIZADA na barra
+    de tarefas (dono, 14/11/2026: "abrir as janelas minimizadas") para não roubar o foco a cada reabertura."""
     s = _dir(modo, k)
     distro = os.environ.get("WSL_DISTRO_NAME", "Ubuntu")
     nome = f"JFN SEI sessão {k}/{n}" if modo == "integras" else f"JFN SEI varredura {k}/{n}"
-    subprocess.Popen(["cmd.exe", "/c", "start", nome, "wsl.exe", "-d", distro,
+    subprocess.Popen(["cmd.exe", "/c", "start", nome, "/min", "wsl.exe", "-d", distro,
                       "--cd", str(s), "--", "bash", "-lc",
                       f"PYTHONPATH={s} {BASE}/.venv/bin/python -u -m tools.itcampo_sei_paralelo sessao --k {k} "
                       f"--modo {modo}; "
