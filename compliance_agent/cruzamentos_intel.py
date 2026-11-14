@@ -1553,6 +1553,38 @@ def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_em
 
 _SITUACOES_SEM_ATIVIDADE = frozenset({"BAIXADA", "INAPTA", "SUSPENSA", "NULA"})
 _MOTIVOS_SUCESSAO = frozenset({"02", "03", "04"})   # incorporação, fusão, cisão total (tabela de motivos da Receita)
+_NATUREZA_CARTORIO = "3034"                          # Serviço Notarial e Registral (Cartório)
+_RX_CARTORIO = re.compile(r"\bCART[OÓ]RIO\b|\bSERVENTIA\b|OF[IÍ]CIO DE (NOTAS|REGISTRO)", re.I)
+# Pagamento por decisão judicial / restituição: Encargos Gerais do Estado (UG 370200) com processo da PGE (SEI-1400…).
+# Medido em 13/11/2026: Ford, GE Vernova, Brami, Dimpus — OB única pela EGE em processo SEI-140001/140017.
+_UG_ENCARGOS_GERAIS = "370200"
+_SQL_JUDICIAL = f"(ug_emitente='{_UG_ENCARGOS_GERAIS}' AND processo LIKE 'SEI-1400%')"
+
+
+def _fora_da_manchete(con, cnpj: str) -> str | None:
+    """Credor que não é "empresa morta" ainda que o CNPJ esteja baixado/inapto (verificação de 13/11/2026):
+    ente público (natureza 1xxx), cartório (3034 — extinto na reorganização das serventias) e filial baixada de
+    matriz ATIVA (a pessoa jurídica segue viva). Sem a tabela/coluna no dump → None (não se presume exclusão)."""
+    b = cnpj[:8]
+    try:
+        nat = con.execute("SELECT natureza_cod, razao_social FROM estab.empresas WHERE cnpj_basico=?", (b,)).fetchone()
+    except sqlite3.OperationalError:
+        nat = None
+    cod = str((nat["natureza_cod"] if nat else "") or "").strip()
+    if cod.startswith("1"):
+        return "natureza_publica"
+    if cod == _NATUREZA_CARTORIO or (nat and _RX_CARTORIO.search(str(nat["razao_social"] or ""))):
+        return "cartorio"
+    try:
+        r = con.execute("SELECT matriz_filial FROM estab.estabelecimentos WHERE cnpj=?", (cnpj,)).fetchone()
+        if r and str(r["matriz_filial"] or "").strip() == "2":
+            m = con.execute("SELECT situacao_cadastral FROM estab.estabelecimentos WHERE cnpj_basico=? "
+                            "AND matriz_filial='1'", (b,)).fetchone()
+            if m and str(m["situacao_cadastral"] or "").strip().upper() == "ATIVA":
+                return "filial_de_matriz_ativa"
+    except sqlite3.OperationalError:
+        pass
+    return None
 
 
 def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
@@ -1561,9 +1593,12 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     Devolve sempre as três chaves, com `None`/`False` quando não dá para saber — a ausência
     do dado NÃO vira "regular" nem "irregular" (INDISPONÍVEL ≠ 0). O valor pago depois só é
     somado para quem de fato qualifica, para não fazer 373 varreduras à toa.
+    Ente público, cartório, filial de matriz ativa e pagamento judicial pago depois da baixa saem da
+    soma com o motivo em `fora_da_manchete` e o valor em `valor_fora_da_manchete` — contados à parte.
     """
     vazio = {"data_baixa": None, "motivo_baixa": None, "pagou_apos_baixa": None,
-             "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0}
+             "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0,
+             "fora_da_manchete": None, "valor_fora_da_manchete": 0.0}
     try:
         r = con.execute("SELECT situacao_cadastral, data_situacao, motivo_situacao FROM estab.estabelecimentos "
                         "WHERE cnpj=?", (cnpj,)).fetchone()
@@ -1585,10 +1620,19 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     out = {**vazio, "data_baixa": d, "motivo_baixa": str(r["motivo_situacao"] or "") or None}
     if not ultima_ob or ultima_ob <= d:
         return {**out, "pagou_apos_baixa": False}        # morreu DEPOIS do último pagamento
-    q = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v FROM ob_orcamentaria_siafe "
+    q = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN 1 END),0) nj, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN valor END),0) vj FROM ob_orcamentaria_siafe "
                     f"WHERE {_OB_PAGA} AND credor=? AND {iso} > ?", (cnpj, d)).fetchone()
-    return {**out, "pagou_apos_baixa": bool(q["n"]),
-            "valor_apos_baixa": round(q["v"] or 0.0, 2), "n_ob_apos_baixa": q["n"]}
+    n, v, nj, vj = q["n"], q["v"] or 0.0, q["nj"], q["vj"] or 0.0
+    fora = _fora_da_manchete(con, cnpj) if n else None
+    if fora:
+        return {**out, "pagou_apos_baixa": False, "fora_da_manchete": fora, "valor_fora_da_manchete": round(v, 2)}
+    if n and n == nj:
+        return {**out, "pagou_apos_baixa": False, "fora_da_manchete": "pagamento_judicial",
+                "valor_fora_da_manchete": round(vj, 2)}
+    return {**out, "pagou_apos_baixa": bool(n - nj), "valor_apos_baixa": round(v - vj, 2),
+            "n_ob_apos_baixa": n - nj, "valor_fora_da_manchete": round(vj, 2)}
 
 
 def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
@@ -1615,8 +1659,8 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
         # Medido em 25/07/2026 sobre as 373 apontadas (R$ 3,99 bi):
         #     54 pagaram DEPOIS da baixa  ->  R$   18.266.205,85   (o indício se sustenta)
         #    319 só pagaram ANTES         ->  R$ 2.558.961.415,54  (não é empresa morta)
-        # A Cruz Vermelha, baixada em 2005, respondia por R$ 305 mi do total — pagamentos
-        # obviamente anteriores. O número de manchete estava ~218× superestimado.
+        # (Correção de 13/11/2026: a "baixa em 2005" da Cruz Vermelha era a data em que ela ficou
+        # ATIVA no dump — o próprio número de julho tinha esse defeito; ver `_pagou_apos_baixa`.)
         #
         # A cura é ACRESCENTAR a prova, não apagar o sinal: quem recebeu muito e hoje está
         # baixada continua valendo conhecimento, só não é "pagamento a empresa morta".
@@ -1661,25 +1705,40 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
                 item.update(_pagou_apos_baixa(con, e["cnpj"], janela.get(e["cnpj"], (None, None))[1], iso))
             achados.append(item)
         achados.sort(key=lambda a: (a["tipo"] != "defunta", -(a["total_recebido"] or 0)))
+        fora: dict[str, dict] = {}
+        for a in achados:
+            if a.get("fora_da_manchete"):
+                f = fora.setdefault(a["fora_da_manchete"], {"n": 0, "valor": 0.0})
+                f["n"] += 1
+                f["valor"] = round(f["valor"] + (a.get("valor_fora_da_manchete") or 0.0), 2)
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
                 "n_defunta": sum(1 for a in achados if a["tipo"] == "defunta"),
                 "total_defunta": round(sum(a["total_recebido"] for a in achados
                                            if a["tipo"] == "defunta"), 2),
                 # ── o número que PODE ser dito em público ────────────────────────────────
                 # `n_defunta`/`total_defunta` são o conjunto AMPLO: "hoje está baixada e um
-                # dia recebeu". Isso não é "pago a empresa morta" — a Cruz Vermelha foi
-                # baixada em 2005 e respondia por R$ 305 mi do total. O par CONFIRMADO só
-                # conta quem recebeu DEPOIS da baixa, e só ele deve virar manchete.
+                # dia recebeu". Isso não é "pago a empresa morta". O par CONFIRMADO só
+                # conta quem recebeu DEPOIS da baixa, fora de `fora_da_manchete`, e só ele vira manchete.
                 "n_defunta_confirmada": sum(1 for a in achados if a.get("pagou_apos_baixa")),
                 "total_apos_baixa": round(sum(a.get("valor_apos_baixa") or 0 for a in achados), 2),
                 "n_sem_data_baixa": sum(1 for a in achados
                                         if a["tipo"] == "defunta" and a.get("pagou_apos_baixa") is None),
+                "n_pagou_so_antes": sum(1 for a in achados if a.get("pagou_apos_baixa") is False
+                                        and not a.get("fora_da_manchete")),
+                # fora da manchete, contados à parte (verificação de 13/11/2026): ente público, cartório, filial de
+                # matriz ativa e pagamento judicial pago depois da baixa não são "empresa morta"
+                "fora_da_manchete": fora,
+                "n_fora_da_manchete": sum(f["n"] for f in fora.values()),
+                "total_fora_da_manchete": round(sum(f["valor"] for f in fora.values()), 2),
                 "explicacao": ("Empresa BAIXADA/INAPTA/SUSPENSA na Receita que mesmo assim recebeu do "
-                               "Estado (pagamento a empresa morta/irregular), ou aberta ≤12 meses antes "
+                               "Estado depois da baixa ou da inaptidão, ou aberta ≤12 meses antes "
                                "do 1º pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
-                "ressalva": ("A situação cadastral pode ter mudado APÓS o pagamento (empresa baixada "
-                             "depois de receber) — confirmar a data da baixa vs a do pagamento. SPE e "
-                             "consórcio (novos por natureza) foram excluídos. Indício ≠ acusação.")}
+                "ressalva": ("Indício a conferir no processo de pagamento, não acusação: inapta não é o mesmo que "
+                             "extinta, e situação cadastral irregular não prova inexecução. A situação pode ter mudado "
+                             "APÓS o pagamento: vale a data do ato (só OB posterior à baixa conta). Fora da conta, ditos à parte: sucessão "
+                             "(incorporação, fusão, cisão), ente público, cartório, filial baixada de matriz ativa e "
+                             "pagamento judicial (Encargos Gerais com processo da PGE). SPE e consórcio (novos por "
+                             "natureza) foram excluídos.")}
     finally:
         con.close()
 

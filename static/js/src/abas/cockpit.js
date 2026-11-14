@@ -179,7 +179,7 @@ export function ckBoot(){
      para o chip da mesa — é o mesmo número, agora também em cartão). */
   if(_v60)g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
     ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
-    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
@@ -190,7 +190,7 @@ export function ckBoot(){
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
-    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
@@ -292,10 +292,14 @@ export function ckPull(first){
     // R$ 2,56 bi são pagamentos anteriores à morte, que não têm nada de irregular (a Cruz
     // Vermelha, baixada em 2005, sozinha respondia por R$ 305 mi). O número da manchete
     // passa a ser o confirmado; o amplo vira contexto na linha de baixo, sem sumir.
+    // Verificação de 13/11/2026: a soma ainda trazia cartório extinto, órgão público, filial baixada de matriz
+    // ATIVA e pagamento judicial. O servidor os tira da soma e os conta à parte (`fora_da_manchete`); o card diz
+    // isso e diz que é INDÍCIO A CONFERIR — inapta não é extinta, e cadastro irregular não prova inexecução.
+    const _fm=d.fora_da_manchete||{},_fmN=k=>fmtN((_fm[k]||{}).n||0);
     ckFill('fenix',{txt:fmtRc(d.total_apos_baixa||0),
-      meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> empresas receberam <b>depois</b> da baixa na Receita`
-           +` · outras ${fmtN((d.n_defunta||0)-(d.n_defunta_confirmada||0))} estão baixadas hoje mas só receberam antes`});
-    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita`}]);});
+      meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo`
+           +(d.n_fora_da_manchete?` · fora da conta: ${_fmN('natureza_publica')} órgãos públicos, ${_fmN('cartorio')} cartórios, ${_fmN('filial_de_matriz_ativa')} filiais de matriz ativa, ${_fmN('pagamento_judicial')} pagamentos judiciais`:'')});
+    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir`}]);});
   J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
     const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
       if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';
