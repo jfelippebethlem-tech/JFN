@@ -3040,3 +3040,192 @@ detectores:
     hipoteses_inocentes: []
     dominio: null
     fp_medida: null
+  orcamento.pg01_suplementacao_decreto:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: suplementacao_por_decreto
+    afirma: "Créditos suplementares por decreto do exercício contra o limite percentual da LOA (piso e teto de anulação)"
+    fonte:
+    - publicacoes_doerj
+    - siconfi_rreo
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg01_positivo_piso_de_anulacao_acima_do_limite
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg01_negativo_teto_de_anulacao_abaixo_do_limite
+    hipoteses_inocentes:
+    - hipotese: "crédito por superávit, excesso de arrecadação ou operação de crédito não consome o teto"
+      excluida_por: compliance_agent/pulos_do_gato.py:suplementacao_por_decreto
+    - hipotese: "exceções do §2º do art. 6º da LOA (pessoal, dívida, DEA, vinculadas, emendas)"
+      excluida_por: null
+    dominio: "decretos de crédito suplementar do Executivo estadual publicados na Parte I do DOERJ; exercício com limite cadastrado em LIMITE_LOA"
+    fp_medida: null
+  orcamento.pg03_dea_recorrente:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: dea_recorrente
+    afirma: "Credor pessoa jurídica com empenhos de DEA (elemento 92) em 3 ou mais meses do exercício na mesma UG"
+    fonte:
+    - ne_siafe
+    - nl_siafe
+    - ob_orcamentaria_siafe
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg03_positivo_dea_em_tres_meses_com_pago_pela_cadeia
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg03_negativo_dea_em_um_mes_e_despesa_do_exercicio_recorrente
+    hipoteses_inocentes:
+    - hipotese: "reconhecimento único (vários empenhos no mesmo mês)"
+      excluida_por: compliance_agent/pulos_do_gato.py:dea_recorrente
+    - hipotese: "repasse a outro ente (modalidade diferente de 90)"
+      excluida_por: compliance_agent/pulos_do_gato.py:dea_recorrente
+    - hipotese: "reajuste ou repactuação retroativa de contrato vigente"
+      excluida_por: null
+    dominio: "UGs e exercícios com nota de empenho coletada (siafe_documento_cobertura); credor com CNPJ; aplicação direta"
+    fp_medida: null
+  orcamento.pg04_restos_a_pagar:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: restos_a_pagar
+    afirma: "Restos a pagar não processados cancelados em proporção igual ou maior que 10% do estoque inscrito"
+    fonte:
+    - siconfi_rreo
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg04_positivo_e_negativo
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg04_positivo_e_negativo
+    hipoteses_inocentes:
+    - hipotese: "cancelamento por prescrição ou saneamento de RP antigo"
+      excluida_por: null
+    - hipotese: "empenho estimativo maior que o consumo"
+      excluida_por: null
+    dominio: "ente consolidado (Estado do RJ), RREO Anexo 07, 2021 em diante"
+    fp_medida: null
+  orcamento.pg05_caixa_art_42:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: caixa_art_42
+    afirma: "Fonte de recursos do Executivo com disponibilidade de caixa líquida negativa após os restos a pagar, no 3º quadrimestre"
+    fonte:
+    - siconfi_rgf
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg05_positivo_negativo_e_ano_ainda_nao_publicado
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg05_positivo_negativo_e_ano_ainda_nao_publicado
+    hipoteses_inocentes:
+    - hipotese: "exercício que não é fim de mandato (art. 42 não incide)"
+      excluida_por: compliance_agent/pulos_do_gato.py:caixa_art_42
+    - hipotese: "recursos extraorçamentários negativos"
+      excluida_por: null
+    dominio: "Poder Executivo, RGF Anexo 05, 3º quadrimestre, 2021 em diante"
+    fp_medida: null
+  orcamento.pg06_troca_de_fonte:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: troca_de_fonte
+    afirma: "Mesma dotação com fonte trocada em decreto; FECP em pessoal; fonte de fundo com menos de 50% da dotação empenhada"
+    fonte:
+    - publicacoes_doerj
+    - cge_execucao_despesa
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg06_positivo_mesma_dotacao_so_a_fonte_muda
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg06_negativo_remanejamento_entre_acoes_na_mesma_fonte
+    hipoteses_inocentes:
+    - hipotese: "remanejamento entre ações na mesma fonte"
+      excluida_por: compliance_agent/pulos_do_gato.py:troca_de_fonte
+    - hipotese: "exercício ainda aberto"
+      excluida_por: compliance_agent/pulos_do_gato.py:troca_de_fonte
+    - hipotese: "desvinculação autorizada em lei"
+      excluida_por: null
+    dominio: "decretos de crédito do Executivo; fontes STN 759 e detalhamento estadual 122 no portal da CGE"
+    fp_medida: null
+  orcamento.pg07_reserva_contingencia:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: reserva_de_contingencia
+    afirma: "Composição da reserva de contingência por UG e fonte e redução da reserva no exercício"
+    fonte:
+    - siconfi_rreo
+    - cge_execucao_despesa
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg07_positivo_reducao_e_composicao_que_fecha
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg07_negativo_sem_reducao_e_fontes_divergentes
+    hipoteses_inocentes:
+    - hipotese: "reserva de fundo previdenciário ou soberano fora do teto da LDO"
+      excluida_por: null
+    - hipotese: "uso para passivo contingente materializado"
+      excluida_por: null
+    dominio: "ente consolidado, RREO Anexo 01; dotação inicial por UG do portal da CGE"
+    fp_medida: null
+  orcamento.pg09_empenho_dezembro:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: empenho_em_dezembro
+    afirma: "UG com 25% ou mais do empenho anual de custeio e investimento concentrado em dezembro (mínimo R$ 10 milhões)"
+    fonte:
+    - cge_execucao_despesa
+    - ne_siafe
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg09_positivo_e_negativo
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg09_positivo_e_negativo
+    hipoteses_inocentes:
+    - hipotese: "13º salário e encargos (grupo 1 fora da regra)"
+      excluida_por: compliance_agent/pulos_do_gato.py:empenho_em_dezembro
+    - hipotese: "exercício ainda aberto"
+      excluida_por: compliance_agent/pulos_do_gato.py:empenho_em_dezembro
+    - hipotese: "crédito ou descentralização recebidos em dezembro"
+      excluida_por: null
+    dominio: "UGs do Estado com R$ 1 milhão ou mais empenhado em exercício encerrado; grupos 3, 4 e 5"
+    fp_medida: null
+  orcamento.pg10_ordem_cronologica:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: ordem_cronologica
+    afirma: "Liquidação paga depois de 10 ou mais liquidações posteriores pagas com 30 dias ou mais de antecedência, na mesma UG e vinculação"
+    fonte:
+    - ob_orcamentaria_siafe
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg10_positivo_liquidacao_antiga_paga_depois_de_dez_posteriores
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg10_negativo_fila_respeitada_outra_vinculacao_e_ob_anulada
+    hipoteses_inocentes:
+    - hipotese: "folha, tributos, judiciais e dívida (vinculações fora da regra)"
+      excluida_por: compliance_agent/pulos_do_gato.py:ordem_cronologica
+    - hipotese: "OB anulada não é pagamento"
+      excluida_por: compliance_agent/pulos_do_gato.py:ordem_cronologica
+    - hipotese: "atraso curto (menos de 30 dias)"
+      excluida_por: compliance_agent/pulos_do_gato.py:ordem_cronologica
+    - hipotese: "categorias de contrato diferentes (art. 141)"
+      excluida_por: null
+    - hipotese: "pendência documental do credor"
+      excluida_por: null
+    dominio: "OB orçamentária contabilizada a credor com CNPJ, com liquidação do próprio exercício"
+    fp_medida: null
+  orcamento.pg15_minimos_rp:
+    modulo: compliance_agent/pulos_do_gato.py
+    simbolo: minimos_com_restos_a_pagar
+    afirma: "Folga do mínimo de saúde ou educação menor que os restos a pagar não processados da função, ou índice declarado abaixo do mínimo"
+    fonte:
+    - siconfi_rreo
+    grava: data/pulos_do_gato.json (via tools/pulos_do_gato_semanal.py)
+    consome:
+    - /api/comissao/pulos (aba Comissão de Orçamento)
+    manchete: false
+    controle_positivo: tests/test_pulos_do_gato.py::test_pg15_positivo_folga_menor_que_rp_e_indice_abaixo_do_minimo
+    controle_negativo: tests/test_pulos_do_gato.py::test_pg15_negativo_folga_larga
+    hipoteses_inocentes:
+    - hipotese: "folga do índice maior que os RP não processados"
+      excluida_por: compliance_agent/pulos_do_gato.py:minimos_com_restos_a_pagar
+    - hipotese: "RP liquidado e pago no início do ano seguinte"
+      excluida_por: null
+    dominio: "ente consolidado, RREO Anexos 02 e 14, 6º bimestre, 2021 em diante"
+    fp_medida: null

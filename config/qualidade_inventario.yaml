@@ -271,6 +271,7 @@ dados_painel:
   data/lentes_estado.json: {gerador: tools/lentes_materializar.py, rota: /api/lentes}
   data/tac_ranking_ugs.json: {gerador: tools/tac_ranking_ugs.py, rota: /api/tac/ranking}
   data/flags_graves.json: {gerador: tools/flags_graves.py, rota: /api/flags}
+  data/pulos_do_gato.json: {gerador: tools/pulos_do_gato_semanal.py, rota: /api/comissao/pulos}
   data/sei_restritos.json: {gerador: tools/sei_restritos.py, rota: /api/restritos}
   data/pipelines_slo_estado.json: {gerador: tools/pipelines_slo.py, rota: /api/sistema/atividade}
   data/sei_cache/sei_sweep_progress.json: {gerador: tools/sei_sweep.py, rota: /api/sweeps/status}
@@ -441,6 +442,7 @@ rotas:
   "/api/comissao/orgaos": {classe: afirma, afirma: "Órgão a órgão (ALERJ, TCE-RJ, TJRJ, MPRJ, DPRJ primeiro; depois o Executivo): fornecedores com problema — perícia 🔴/🟡 com cada indício e a evidência, situação d…", fonte: "compliance_agent.comissao_orcamento"}
   "/api/comissao/pecas": {classe: afirma, afirma: "Catálogo das 18 peças da Comissão (base legal, prazo), última versão gerada de cada uma e o calendário.", fonte: "compliance_agent.comissao_pecas"}
   "/api/comissao/pecas/gerar": {classe: afirma, afirma: "Gera agora a peça `id` (PDF no padrão da casa) e devolve a URL.", fonte: "compliance_agent.comissao_pecas"}
+  "/api/comissao/pulos": {classe: afirma, afirma: "Detectores dos pulos do gato do orçamento (decretos de crédito, DEA, restos a pagar, art. 42, fonte, reserva, dezembro, ordem cronológica, mínimos), com prevalência, estado do número e filtro por ano e mês.", fonte: "compliance_agent.pulos_do_gato (data/pulos_do_gato.json)"}
   "/api/comparador/buscar": {classe: afirma, afirma: "Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de preço entre órgãos — abrir um grupo mostra quem paga mais/menos.", fonte: "compliance_agent.comparador_precos"}
   "/api/comparador/catalogo": {classe: afirma, afirma: "Catálogo navegável: TODOS os grupos comparáveis por CATEGORIA (menu→submenu→item).", fonte: "compliance_agent.comparador_precos"}
   "/api/comparador/dossie": {classe: afirma, afirma: "Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é sancionado/no radar/fantasma.", fonte: "compliance_agent.comparador_precos"}
