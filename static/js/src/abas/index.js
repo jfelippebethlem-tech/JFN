@@ -588,6 +588,7 @@ export async function renderHubFisico(){
     h+=`<div class="warn" style="margin-top:12px"><b>INDISPONÍVEL</b> — a fonte não devolveu nenhum grupo${d.erro?' ('+esc(d.erro)+')':''}. Lista vazia aqui não significa que não existam hubs: significa que o cruzamento (cadastro da Receita × ordens bancárias) não foi lido.</div>`;
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
+  h+=`<div class="warn" style="margin-top:8px"><b>Valor recebido: PENDENTE.</b> Os valores em R$ citados nos motivos somam o espelho TFE das ordens bancárias (tabela <code>favorecido_resumo</code>), sem tirar OB cancelada ou devolvida — não é o pago do SIAFE (Contabilizado, sem devolução). Use só como ordem de grandeza até a fonte ser trocada.</div>`;
   h+=`<div class="dim" style="margin-top:6px">Fonte: cadastro da Receita Federal (foto de um mês) × ordens bancárias do Estado${d.gerado_em?' · calculado em '+esc(d.gerado_em):''}${d.do_cache?' (cache)':''}. A lista é cortada em 200 grupos — é teto de exibição, não o total de hubs existentes.</div>`;
   h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs listados','var(--amber)','🏢',{drill:'hubTodos'})}
       ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos',null,null,
