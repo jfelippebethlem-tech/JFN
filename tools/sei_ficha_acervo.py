@@ -296,6 +296,8 @@ def colher(estado: dict) -> dict:
                 gravar(con, numero_da_pasta(pasta), ficha_ok, {"versao": VERSAO, "cobertura": cob, "conferido": rel,
                                                                "lote": lote_id}, modelo)
                 tot["gravadas"] += 1
+                if tot["gravadas"] % 20 == 0:
+                    con.commit()      # trava de escrita curta: o lex_execucao espera só 30 s pelo banco
             con.commit()
         finally:
             con.close()

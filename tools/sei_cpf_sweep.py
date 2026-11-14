@@ -155,10 +155,13 @@ def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None =
                     n_cpf += 1
             if marca_arq:
                 vistos[pasta.name] = {"a": assinatura, "cpfs": n_cpf - antes, "em": agora}
-            if n_proc % 200 == 0:
+            # COMMIT CURTO: a cada 200 pastas a trava de escrita do compliance.db ficava ~1 min com este
+            # processo, e o lex_execucao (busy_timeout 30 s) perdeu 9 pareceres já pagos em 14/11/2026.
+            if n_proc % 20 == 0:
                 con.commit()
                 if marca_arq:
                     marca_arq.write_text(json.dumps(vistos), "utf-8")
+            if n_proc % 200 == 0:
                 print(f"  …{n_proc} processos · {n_arq} arquivos · {n_cpf} pares", flush=True)
         con.commit()
         if marca_arq:
