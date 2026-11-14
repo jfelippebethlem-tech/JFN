@@ -214,10 +214,14 @@ def rodar_regra(con, *, por_cred=None, info=None, pares=None) -> tuple[list[tupl
     por_proc: dict[str, list] = defaultdict(list)
     for (pp, c) in pares:
         por_proc[pp].append(c)
+    lidos = 0
     for pp, creds in por_proc.items():
         pst = pasta(pp)
         if not (pst / "manifest.json").exists():
             continue
+        lidos += 1
+        if lidos % 500 == 0:
+            logger.info("regra: %d processos de pagamento lidos", lidos)
         docs = ler_docs(pst)
         lidas = citacoes(docs)
         for c in creds:
@@ -436,6 +440,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--controle", type=int, default=0,
                     help="modelo: pares JÁ resolvidos pela regra relidos como controle positivo")
     ap.add_argument("--top", type=int, default=0)
+    ap.add_argument("--cache", help="regra grava aqui o que vai ao modelo; modelo lê daqui (evita reler o acervo)")
     a = ap.parse_args(argv)
     con = P._con_ro(a.db)
     por_cred, info = indice_contratos(con)
@@ -456,8 +461,20 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"processos": len(fila), "valor_ob": total, "gravado": str(SAIDA_FILA),
                           "top5": fila[:5]}, ensure_ascii=False, indent=1))
         return 0
-    linhas, ao_modelo, est = rodar_regra(con, por_cred=por_cred, info=info, pares=pares)
-    con.close()
+    if a.acao == "modelo" and a.cache and Path(a.cache).exists():
+        con.close()
+        cache = json.loads(Path(a.cache).read_text(encoding="utf-8"))
+        ao_modelo = {(pp, c): cand for pp, c, cand in cache["ao_modelo"]}
+        resolvidos = {(pp, c): k for pp, c, k in cache["resolvidos"]}
+    else:
+        linhas, ao_modelo, est = rodar_regra(con, por_cred=por_cred, info=info, pares=pares)
+        con.close()
+        resolvidos = {(P.chave_sei("SEI-" + ln[5]), ln[6]): P.chave_sei("SEI-" + ln[4])
+                      for ln in linhas if ln[9] == REGRA and ln[10] == V.VERIFICADO}
+        if a.cache:
+            Path(a.cache).write_text(json.dumps({
+                "ao_modelo": [[pp, c, cand] for (pp, c), cand in ao_modelo.items()],
+                "resolvidos": [[pp, c, k] for (pp, c), k in resolvidos.items()]}), encoding="utf-8")
     if a.acao == "regra":
         print(json.dumps({"pares_por_situacao": est, "linhas": len(linhas),
                           "verificadas": sum(1 for x in linhas if x[10] == V.VERIFICADO),
@@ -470,11 +487,8 @@ def main(argv: list[str] | None = None) -> int:
     alvo = dict(sorted(ao_modelo.items(), key=lambda x: -valor[x[0]])[:a.limite or None])
     gab = {}
     if a.controle:
-        resolvidos = {}
-        for ln in linhas:
-            if ln[9] == REGRA and ln[10] == V.VERIFICADO:
-                resolvidos[(P.chave_sei("SEI-" + ln[5]), ln[6])] = P.chave_sei("SEI-" + ln[4])
-        for par, k in sorted(resolvidos.items())[:a.controle]:
+        # controle positivo: pares que a regra resolveu, de credor com 2+ contratos (escolha não trivial)
+        for par, k in sorted((p_, k_) for p_, k_ in resolvidos.items() if len(por_cred[p_[1]]) > 1)[:a.controle]:
             outros = sorted(por_cred[par[1]])[:12]
             alvo[par] = sorted(set(outros) | {k})
             gab[par] = k
