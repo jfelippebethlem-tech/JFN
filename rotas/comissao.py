@@ -44,3 +44,20 @@ def api_comissao_pecas_gerar(id: str):  # noqa: A002 — nome do parâmetro é o
     if not pdf:
         return JSONResponse({"ok": False, "erro": "peça sem gerador ou sem dado na base"}, status_code=404)
     return JSONResponse({"ok": True, "url": f"/reports/{pdf.name}"})
+
+
+@router.get("/api/comissao/pulos")
+def api_comissao_pulos(ano: int = 0, mes: int = 0):
+    """Detectores dos "pulos do gato" do orçamento (suplementação por decreto, DEA recorrente, restos a pagar, art. 42,
+    troca de fonte, reserva de contingência, empenho em dezembro, ordem cronológica, mínimos), com o texto do manual
+    ao lado, prevalência medida, estado VERIFICADO/PENDENTE de cada número e filtro por ano e mês. Lê o arquivo
+    gerado por `tools/pulos_do_gato_semanal.py`; indício não é acusação e empenho nunca é chamado de pago."""
+    from compliance_agent.pulos_do_gato import filtrar, ler
+    try:
+        painel = ler()
+    except (OSError, ValueError) as exc:
+        return JSONResponse({"ok": False, "erro": f"{type(exc).__name__}: {exc}"}, status_code=500)
+    if not painel:
+        return JSONResponse({"ok": False, "erro": "detectores ainda não rodaram (tools/pulos_do_gato_semanal.py)"},
+                            status_code=404)
+    return JSONResponse(filtrar(painel, ano=ano or None, mes=mes if 1 <= mes <= 12 else None))

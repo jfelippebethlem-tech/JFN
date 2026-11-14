@@ -34,7 +34,11 @@ ENTE = 33
 DB = Path(__file__).resolve().parents[1] / "data" / "dadosabertos_rj.db"
 PODERES = ("E", "L", "J", "M", "D")
 ANEXOS_RGF = ("RGF-Anexo 01", "RGF-Anexo 02", "RGF-Anexo 05", "RGF-Anexo 06")
-ANEXOS_RREO = ("RREO-Anexo 01", "RREO-Anexo 03", "RREO-Anexo 06")
+ANEXOS_RREO = ("RREO-Anexo 01", "RREO-Anexo 03", "RREO-Anexo 06",
+               # 13/11/2026 — detectores dos "pulos do gato": 02 despesa por função (RP não processados de saúde e
+               # educação), 07 restos a pagar, 14 simplificado. O RJ NÃO entrega os Anexos 08 (MDE) e 12 (saúde) ao
+               # SICONFI (conferido na API em 13/11/2026: vêm vazios) — esses índices ficam no SIOPE/SIOPS.
+               "RREO-Anexo 02", "RREO-Anexo 07", "RREO-Anexo 14")
 UA = {"User-Agent": "jfn-coletor-siconfi/1.0"}
 _COLS = ("exercicio", "periodo", "periodicidade", "co_poder", "instituicao", "anexo", "rotulo", "coluna",
          "cod_conta", "conta", "valor")
