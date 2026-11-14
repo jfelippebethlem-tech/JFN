@@ -1582,8 +1582,8 @@ def _fora_da_manchete(con, cnpj: str) -> str | None:
                             "AND matriz_filial='1'", (b,)).fetchone()
             if m and str(m["situacao_cadastral"] or "").strip().upper() == "ATIVA":
                 return "filial_de_matriz_ativa"
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as exc:      # dump sem matriz_filial: não se presume filial (exclusão não aplicada)
+        logger.debug("fenix: matriz/filial de %s indisponível (%s)", cnpj, exc)
     return None
 
 

@@ -5438,7 +5438,7 @@ void main(){
     _sair = sair;
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../../../node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -5646,7 +5646,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7147,12 +7147,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../../../node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../../../node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7166,13 +7166,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../../../node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../../../node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7240,7 +7240,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../../../node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7306,7 +7306,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../../../node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -7885,7 +7885,7 @@ void main(){
     if (_v60) g.innerHTML = [
       ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
       ckCard("alertas", "Alertas", "ckrose", "bgrose", "e_alertas"),
-      ckCard("fenix", "Pago a empresa morta", "ckrose", "bgrose", "g_fenix"),
+      ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
       ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
@@ -7898,7 +7898,7 @@ void main(){
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
       ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
-      ckCard("fenix", "Pago a empresa morta", "ckrose", "bgrose", "g_fenix"),
+      ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
       ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
       ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos")
@@ -7932,8 +7932,8 @@ void main(){
         return;
       }
       nuSet("alertas", a.total);
-      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` });
-      if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
+      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` + (a.baixa != null ? ` · ${fmtN(a.baixa)} baixa` : "") + ` — descartados fora da conta` });
+      if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média${a.baixa != null ? " · " + fmtN(a.baixa) + " baixa" : ""} (descartados fora) — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
     });
     if (first) J("/api/intel/ninho_sala?limite=60").then((d) => {
       if (!d || !d.ok) {
@@ -7984,7 +7984,7 @@ void main(){
     J("/api/intel/lift").then((d) => {
       if (!d || !d.ok) return;
       const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
-      ckFill("lift", { txt: b ? b.lift + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> concentra sanção ${b.lift}× acima da base (sanção de qualquer época ou ente)` : "—" });
+      ckFill("lift", { txt: b ? fmtD(b.lift, 2) + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> marca ${fmtD(b.lift, 2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)` + ((d.circulares || []).length ? ` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo` : "") : "—" });
     });
     J("/api/comparador/dossie").then((d) => {
       if (!d || !d.ok) return;
@@ -7997,11 +7997,12 @@ void main(){
     });
     J("/api/intel/fenix").then((d) => {
       if (!d || !d.ok) return;
+      const _fm = d.fora_da_manchete || {}, _fmN = (k) => fmtN((_fm[k] || {}).n || 0);
       ckFill("fenix", {
         txt: fmtRc(d.total_apos_baixa || 0),
-        meta: `<b>${fmtN(d.n_defunta_confirmada || 0)}</b> empresas receberam <b>depois</b> da baixa na Receita · outras ${fmtN((d.n_defunta || 0) - (d.n_defunta_confirmada || 0))} estão baixadas hoje mas só receberam antes`
+        meta: `<b>${fmtN(d.n_defunta_confirmada || 0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo` + (d.n_fora_da_manchete ? ` · fora da conta: ${_fmN("natureza_publica")} órgãos públicos, ${_fmN("cartorio")} cartórios, ${_fmN("filial_de_matriz_ativa")} filiais de matriz ativa, ${_fmN("pagamento_judicial")} pagamentos judiciais` : "")
       });
-      if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita` }]);
+      if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir` }]);
     });
     J("/api/fontes/frescor").then((d) => {
       const box = $("ck-fontes");
@@ -11757,13 +11758,13 @@ void main(){
     const d = await J("/api/intel/lift");
     if (!d.ok) return "";
     const det = d.detectores || [];
-    const barra = (l, circ) => {
+    const barra = (l, circ2) => {
       const w = Math.min(100, (l || 0) / 15 * 100);
-      const col = circ ? "var(--muted)" : l >= 2 ? "var(--rose)" : l >= 1 ? "var(--amber)" : "var(--green,var(--green))";
+      const col = circ2 ? "var(--muted)" : l >= 2 ? "var(--rose)" : l >= 1 ? "var(--amber)" : "var(--green,var(--green))";
       return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;
     };
     let h = sec("Validação contra o gabarito objetivo (sanções) — lift por detector");
-    h += `<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base * 100, 1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+    h += `<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base * 100, 1)}%</b> dos ${fmtN(d.universo)} fornecedores têm sanção impeditiva (de qualquer época ou ente). <b>Lift</b> = quantas vezes o detector marca sancionados acima disso — não mede irregularidade. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal. Detector que usa sanção como insumo é <b>circular</b> e fica fora do cálculo.</div>`;
     h += `<div class="grid">` + det.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:700">${rot(x.detector)} ${x.circular ? '<span class="tag" style="opacity:.6">circular</span>' : ""}${x.n_pequeno ? '<span class="tag amber">n<10</span>' : ""}</div>
@@ -11771,6 +11772,8 @@ void main(){
       ${barra(x.lift, x.circular)}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular ? "var(--muted)" : x.lift >= 2 ? "var(--rose)" : x.lift >= 1 ? "var(--amber)" : "var(--green)"}">${fmtN(x.lift)}×</div><div class="dim">lift</div></div></div>`
     )).join("") + `</div>`;
+    const circ = d.circulares || [];
+    if (circ.length) h += `<div class="note" style="margin-top:8px">Fora do cálculo (circulares — usam sanção como insumo, o lift contra sanção não informa nada): ${circ.map((x) => `<b>${rot(x.detector)}</b> (${fmtN(x.n)} marcados)`).join(" · ")}.</div>`;
     return h;
   }
   async function renderSocioOculto() {
@@ -11850,6 +11853,12 @@ void main(){
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
     return h;
   }
+  var _FENIX_FORA = {
+    natureza_publica: "é órgão ou ente público, não empresa",
+    cartorio: "é cartório extinto na reorganização das serventias (a serventia foi sucedida)",
+    filial_de_matriz_ativa: "é filial baixada de matriz ATIVA — a pessoa jurídica segue viva",
+    pagamento_judicial: "é pagamento por decisão judicial ou restituição (Encargos Gerais, processo da PGE)"
+  };
   async function renderFenix() {
     const d = await J("/api/intel/fenix?limite=150");
     if (!d.ok) return sec("Fênix") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
@@ -11857,7 +11866,9 @@ void main(){
     const _fenixLeitura = (x) => {
       const quem = `<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita`;
       if (x.pagou_apos_baixa === true)
-        return `${quem} desde <b>${esc(x.data_baixa)}</b> e ainda assim recebeu <b>${fmtRc(x.valor_apos_baixa)}</b> em <b>${fmtN(x.n_ob_apos_baixa)} OB posteriores à baixa</b> (de ${fmtRc(x.total_recebido)} no total). Pagamento a empresa baixada/inapta é irregular — indício forte.`;
+        return `${quem} desde <b>${esc(x.data_baixa)}</b> e ainda assim recebeu <b>${fmtRc(x.valor_apos_baixa)}</b> em <b>${fmtN(x.n_ob_apos_baixa)} OB posteriores à baixa</b> (de ${fmtRc(x.total_recebido)} no total). Indício a conferir no processo de pagamento — inapta não é o mesmo que extinta, e cadastro irregular não prova inexecução.`;
+      if (x.fora_da_manchete)
+        return `${quem} desde <b>${esc(x.data_baixa)}</b> e recebeu ${fmtRc(x.valor_fora_da_manchete)} depois, mas <b>não entra na soma</b>: ${esc(_FENIX_FORA[x.fora_da_manchete] || x.fora_da_manchete)}.`;
       if (x.pagou_apos_baixa === false)
         return `${quem} desde <b>${esc(x.data_baixa)}</b>, mas <b>todos</b> os ${fmtRc(x.total_recebido)} foram pagos <b>antes</b> da baixa — situação comum, <b>não é</b> pagamento a empresa morta. Fica na lista como contexto do fornecedor, não como indício.`;
       return `${quem} e recebeu ${fmtRc(x.total_recebido)} do Estado. A <b>data da baixa</b> não está na base da Receita local, então não dá para dizer se os pagamentos são posteriores — <b>INDISPONÍVEL</b>, que não é o mesmo que regular.`;
@@ -11883,13 +11894,13 @@ void main(){
       "💰",
       { sobre: "Soma das OB emitidas depois da baixa — só destas, não do histórico da empresa. Fonte: <b>SIAFE</b>, ordem bancária, que é o único registro de pagamento efetivo; empenho e liquidação não entram porque empenho pode ser cancelado." }
     )}${kpi(
-      fmtN(d.n_defunta || 0),
+      fmtN(d.n_pagou_so_antes != null ? d.n_pagou_so_antes : d.n_defunta || 0),
       "Baixada hoje (recebeu antes)",
       null,
       "🗓️",
       { sobre: "Empresas hoje baixadas cujos pagamentos são TODOS anteriores à baixa. Ficam listadas e fora do achado de propósito: encerrar atividade depois de cumprir contrato é o curso normal das coisas, e contá-las como irregularidade é o erro que esta tela já cometeu." }
     )}</div>`;
-    h += `<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.</div>`;
+    h += `<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.` + (d.n_fora_da_manchete ? ` Fora da soma, contados à parte: <b>${fmtN(d.n_fora_da_manchete)}</b> CNPJs (${fmtRc(d.total_fora_da_manchete || 0)}) de órgão público, cartório, filial baixada de matriz ativa ou pagamento judicial — a baixa desses CNPJs não indica pagamento indevido.` : "") + ` O que fica na soma é <b>indício a conferir</b> no processo de pagamento, não acusação.</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
     h += `<div id="fenix-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>

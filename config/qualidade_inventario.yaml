@@ -72,7 +72,7 @@ manchetes:
   - id: cki-alertas
     chip: nu-alertas
     superficie: "cockpit — card 'Alertas' + chip da mesa"
-    afirma: "Total de alertas do motor de regras, com quantos são de gravidade alta e média."
+    afirma: "Total de alertas NÃO descartados do motor de regras, com quantos são de gravidade alta, média e baixa (somam o total)."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas, ob_orcamentaria_siafe (compliance.db)"
@@ -80,12 +80,12 @@ manchetes:
     esfera: estado
     consome: ["dono (painel)", "Yoda"]
     detector: rules.engine
-    campos: {contagem: alertas.total, alta: alertas.alta, media: alertas.media}
+    campos: {contagem: alertas.total, alta: alertas.alta, media: alertas.media, baixa: alertas.baixa}
     lista: lista_alertas
   - id: cki-fenix
     chip: nu-fenix
-    superficie: "cockpit — card 'Pago a empresa morta' + chip da mesa"
-    afirma: "Valor pago (OB) a empresas DEPOIS da baixa na Receita, e quantas são."
+    superficie: "cockpit — card 'Pago a CNPJ baixado ou inapto' + chip da mesa"
+    afirma: "Valor pago (OB) a CNPJs DEPOIS da baixa ou inaptidão na Receita, e quantos são — indício a conferir; ente público, cartório, filial de matriz ativa e pagamento judicial contados à parte."
     rota: /api/intel/fenix
     origem: compliance_agent.cruzamentos_intel.empresa_fenix
     fonte: "ob_orcamentaria_siafe, favorecido_resumo, empresas, estab"
@@ -93,7 +93,7 @@ manchetes:
     esfera: estado
     consome: ["dono (painel)", "Yoda"]
     detector: intel.empresa_fenix
-    campos: {valor: total_apos_baixa, contagem: n_defunta_confirmada, contexto: n_defunta}
+    campos: {valor: total_apos_baixa, contagem: n_defunta_confirmada, contexto: n_defunta, fora: n_fora_da_manchete}
     concentracao: {lista: achados, item: valor_apos_baixa, filtro: {pagou_apos_baixa: true}}
   - id: cki-compras
     chip: nu-compras
@@ -160,7 +160,7 @@ manchetes:
     concentracao: {lista: grupos, item: total_recebido_ob, filtro: {grau: alto}}
   - id: cki-lift
     superficie: "cockpit — card 'Melhor detector (lift)'"
-    afirma: "O detector (não circular) com maior lift contra sanção impeditiva, e o lift."
+    afirma: "O detector (circulares fora do cálculo) que marca mais fornecedores com sanção impeditiva de qualquer época ou ente acima da base, o lift e o n."
     rota: /api/intel/lift
     origem: compliance_agent.retro_auditoria.avaliar_lift
     fonte: "fantasma_score, sanções (gabarito objetivo)"
