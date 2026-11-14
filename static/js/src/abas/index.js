@@ -567,27 +567,39 @@ export async function fxConsultar(rota){
 export async function renderHubFisico(){
   const d=await J('/api/intel/hub_compartilhado?limite=150');
   if(!d.ok)return sec('Hub compartilhado')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-  const a=d.achados||d.hubs||[];
+  /* A rota devolve `grupos` (chave, valor, n_cnpjs, risco, motivo, n_recebem_ob). A tela lia
+     `achados`/`hubs`, que a rota nunca enviou: 200 grupos na resposta, zero na tela. */
+  const a=d.grupos||d.achados||d.hubs||[];
+  const _ehAlto=x=>x.risco==='alto';
   let h=cover('geral','Hub físico — uma âncora, vários fornecedores',
     'Endereço, telefone ou e-mail <b>idêntico</b> em empresas distintas que vendem ao Estado. A lição já paga: <b>mesma sala</b> significa muito, <b>mesmo prédio</b> quase nada — o topo do acervo por prédio é um endereço com 318 CNPJs. Só a âncora com complemento (sala/andar) pesa.','🏢')+acoesAba('hub_compartilhado');
   /* `Hubs` e `Com complemento` contam o mesmo `a` desta tela. `CNPJs envolvidos` é uma SOMA de
      campos, não uma contagem de linhas — abrir uma gaveta com os hubs ali faria o clique mostrar
      menos linhas do que o número promete, que é o defeito que esta casa já cometeu duas vezes. */
-  const _linHub=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')}</div><div class="dim">${esc(x.tipo||'')}${x.complemento?' · '+esc(x.complemento):''}</div></div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_cnpjs||x.n||0)}</div><div class="dim">CNPJs</div></div></div>`);
+  const _linHub=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')}</div><div class="dim">${esc(x.tipo||x.chave||'')}${x.complemento?' · '+esc(x.complemento):''}${x.motivo?' · '+esc(x.motivo):''}</div></div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_cnpjs||x.n||0)}</div><div class="dim">CNPJs</div></div></div>`);
   registrarDrill('hubTodos',{titulo:'Hubs — âncora compartilhada por empresas distintas',itens:a,render:_linHub,
     nota:'Mesma SALA pesa; mesmo PRÉDIO quase nada — o topo do acervo por prédio tem 318 CNPJs.'});
-  registrarDrill('hubComComplemento',{titulo:'Hubs com complemento (sala/andar) — os que pesam',
-    itens:a.filter(x=>(x.tipo||'').includes('sala')||x.complemento),render:_linHub});
-  h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs','var(--amber)','🏢',{drill:'hubTodos'})}
+  /* Esta fonte agrupa por ENDEREÇO (prédio), sem complemento: "com sala/andar" não é medido aqui
+     (INDISPONÍVEL nesta rota — a medida por sala vive em Ninho por sala). O terceiro número passa a
+     ser o que a rota de fato classifica: risco alto. */
+  registrarDrill('hubRiscoAlto',{titulo:'Hubs classificados como risco alto pelo motor',
+    itens:a.filter(_ehAlto),render:_linHub,nota:'Indício, não acusação: grupo coeso com pagamento do Estado. Confirmar o vínculo real (QSA, execução) antes de citar.'});
+  if(!a.length){
+    h+=`<div class="warn" style="margin-top:12px"><b>INDISPONÍVEL</b> — a fonte não devolveu nenhum grupo${d.erro?' ('+esc(d.erro)+')':''}. Lista vazia aqui não significa que não existam hubs: significa que o cruzamento (cadastro da Receita × ordens bancárias) não foi lido.</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  }
+  h+=`<div class="dim" style="margin-top:6px">Fonte: cadastro da Receita Federal (foto de um mês) × ordens bancárias do Estado${d.gerado_em?' · calculado em '+esc(d.gerado_em):''}${d.do_cache?' (cache)':''}. A lista é cortada em 200 grupos — é teto de exibição, não o total de hubs existentes.</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs listados','var(--amber)','🏢',{drill:'hubTodos'})}
       ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos',null,null,
         {sobre:'Soma de CNPJs distintos nos agrupamentos exibidos. A mesma empresa pode aparecer em mais de um grupo — o número mede alcance do padrão, não quantidade de empresas suspeitas.'})}
-      ${kpi(fmtN(a.filter(x=>(x.tipo||'').includes('sala')||x.complemento).length),'Com complemento (sala/andar)','var(--rose)','🚪',{drill:'hubComComplemento'})}</div>`;
+      ${kpi(fmtN(a.filter(_ehAlto).length),'Risco alto (indício)','var(--rose)','🚩',{drill:'hubRiscoAlto'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por âncora ou empresa…" oninput="filtrar(this,'#hub-list .card')"></div>`;
   h+=`<div id="hub-list" class="grid">`+a.map(x=>card(
-    `<div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')} <span class="tag">${esc(x.tipo||'endereço')}</span></div>
-     <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas||x.cnpjs||[]).join(' · '))}</div>
-     <div class="dim" style="margin-top:4px">${fmtN(x.n_cnpjs||x.n||(x.empresas||[]).length)} empresas</div>`,
-    (x.n_cnpjs||x.n||0)>=4?'hl':'')).join('')+`</div>`;
+    `<div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')} <span class="tag">${esc(x.tipo||x.chave||'endereço')}</span>${x.risco?` <span class="tag ${_ehAlto(x)?'rose':''}">risco ${esc(x.risco)}</span>`:''}</div>
+     ${x.motivo?`<div class="dim" style="margin-top:3px">${esc(x.motivo)}</div>`:''}
+     <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas||x.cnpjs||[]).join(' · '))}${(x.n_cnpjs||0)>(x.cnpjs||[]).length&&(x.cnpjs||[]).length?' · … (amostra de '+fmtN((x.cnpjs||[]).length)+')':''}</div>
+     <div class="dim" style="margin-top:4px">${fmtN(x.n_cnpjs||x.n||(x.empresas||[]).length)} CNPJs${x.n_recebem_ob!=null?' · '+fmtN(x.n_recebem_ob)+' com ordem bancária do Estado':''}</div>`,
+    _ehAlto(x)?'hl':'')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'Coworking, escritório virtual e prédio comercial hospedam empresas sem relação — a âncora é indício, não prova.')}</div>`;
   return h;
 }
@@ -1403,7 +1415,12 @@ export async function renderEscalada(esf='estado'){
   const a=d.achados||[];
   let h=cover(esf,'Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','🪜')+acoesAba('escalada');
   if(!a.length){
-    h+=`<div class="warn" style="margin-top:12px">Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
+    /* Zero aqui só vale para as séries COMPARÁVEIS. As compras que o motor não conseguiu comparar
+       (unidade genérica, embalagem ambígua) são INDETERMINADAS, não "sem escalada". */
+    const ind=d.indeterminados||{};
+    h+=`<div class="warn" style="margin-top:12px">Nenhuma escalada detectada entre as séries <b>comparáveis</b> de preço unitário do PNCP (mesmo fornecedor, mesmo item, mesma unidade).${ind.n?` Outras <b>${fmtN(ind.n)}</b> compras ficaram <b>INDETERMINADAS</b> — sem unidade confiável não há comparação, e isso não equivale a ausência de escalada.`:''}</div>`;
+    const mot=(ind.por_motivo||[]).map(m=>`<tr><td class="num">${fmtN(m.n)}</td><td style="text-align:left">${esc(m.motivo)}</td></tr>`).join('');
+    if(mot)h+=sec('Indeterminados — fora da série')+card(`<table class="tb"><thead><tr><th>Compras</th><th style="text-align:left">Motivo</th></tr></thead><tbody>${mot}</tbody></table>`);
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
   registrarDrill('aditAcimaMercado',{titulo:'Aditivos cujo preço final também supera o mercado',itens:a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2),nota:'Acréscimo dentro do limite legal ainda pode chegar a preço fora do mercado.'});
@@ -1768,6 +1785,14 @@ export async function renderConluio(esf){
 
 // ═══ PERÍCIAS ═══
 export let _perOrdem='score',_perGrau='';
+/* A perícia é por ESTABELECIMENTO (CNPJ de 14 dígitos): matriz e filiais de uma mesma empresa
+   têm o mesmo nome. Sem o CNPJ na linha, três estabelecimentos da Caixa pareciam a mesma linha
+   repetida três vezes. */
+export function _cnpjEstab(c){
+  const d=String(c||'').replace(/\D/g,'');
+  if(d.length!==14)return d?'CNPJ '+d:'';
+  return 'CNPJ '+d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12)+(d.slice(8,12)==='0001'?' · matriz':' · filial '+d.slice(8,12));
+}
 export async function renderPericias(){
   const d=await J('/api/pericias?limite=80&ordem='+_perOrdem+(_perGrau?'&grau='+encodeURIComponent(_perGrau):''));
   const it=d.itens||[];
@@ -1781,6 +1806,7 @@ export async function renderPericias(){
   h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
   h+=`<div id="per-list" class="grid">`+it.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj,x.favorecido||x.cnpj)}</div>
+      <div class="dim">${esc(_cnpjEstab(x.cnpj))}</div>
       <div class="dim">${(x.indicios||0)} indício(s) · ${x.ugs} órgão(s) · ${fmtN(x.n_obs)} OBs</div></div>
       <div class="right"><div style="font-size:18px">${x.grau||'⚪'}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`)).join('')+`</div>`;
   if(!it.length)h+=card('<div class="muted">Nenhum fornecedor casa esse filtro — a busca varre nome, CNPJ e objeto; tente um pedaço do nome ou só os dígitos do CNPJ.</div>');
