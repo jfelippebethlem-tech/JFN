@@ -25,7 +25,8 @@ import json
 import os
 import re
 import sqlite3
-from datetime import datetime, timezone
+from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, "data", "compliance.db")
@@ -268,6 +269,8 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         if ant and ant[0] and ant[0] != SEM_DOC_EXECUCAO:
             # a regra não apaga juízo já dado sobre outro recorte; só não gasta LLM de novo
             print(f"  [{numero_sei}] sem documento de execução ({ev['fonte']}) — mantido o veredito anterior")
+            if con is not None:
+                _marcar_revisto_sem_doc(numero_sei)
             return None
         r = {"execucao_comprovada": SEM_DOC_EXECUCAO, "coerencia_objeto_evidencia": "indeterminado",
              "indicios": [],
@@ -350,8 +353,32 @@ _NEGA_OB = re.compile(r"(aus[eê]ncia|sem|falta\w*|n[aã]o h[aá]|inexist[eê]nc
 _CORTE_SIAFE = "2026-10-29T00:12"
 
 
+# Contestado sem documento de execução: o veredito anterior é mantido (a regra não apaga juízo) e a linha NÃO é
+# regravada — por isso ele voltava ao topo da fila a cada rodada (~53 processos, medido 14/11/2026). Fica registrado
+# aqui quando foi revisto e sai da fila de contestados por 30 dias (o sweep pode trazer o atesto nesse meio-tempo).
+_REVISTOS_SEM_DOC = Path(__file__).resolve().parents[1] / "data" / "lex_contestados_sem_doc.json"
+_DIAS_REVISTO = 30
+
+
+def _revistos_sem_doc() -> dict:
+    try:
+        d = json.loads(_REVISTOS_SEM_DOC.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _marcar_revisto_sem_doc(numero_sei: str) -> None:
+    d = _revistos_sem_doc()            # relê do disco antes de gravar (outra rodada pode ter marcado)
+    d[numero_sei] = _agora()
+    tmp = _REVISTOS_SEM_DOC.with_suffix(".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(_REVISTOS_SEM_DOC)
+
+
 def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
-    """Processos cujo veredito antigo apontou 'ausência de OB' e que TÊM OB contabilizada no SIAFE."""
+    """Processos cujo veredito antigo apontou 'ausência de OB' e que TÊM OB contabilizada no SIAFE (menos os já
+    revistos sem documento de execução há menos de `_DIAS_REVISTO` dias)."""
     try:
         rows = con.execute(
             "SELECT numero_sei, COALESCE(indicios,'') || ' ' || COALESCE(resumo,'') FROM lex_execucao "
@@ -360,7 +387,9 @@ def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
     except sqlite3.OperationalError:
         return []
     # só quem AFIRMOU ausência — "divergência na ordem bancária de retenção" leu a OB, não a negou
-    cand = [ns for ns, txt in rows if _NEGA_OB.search(txt)]
+    corte_rev = (datetime.now() - timedelta(days=_DIAS_REVISTO)).strftime("%Y-%m-%dT%H:%M:%S")
+    rev = {k for k, v in _revistos_sem_doc().items() if str(v) >= corte_rev}
+    cand = [ns for ns, txt in rows if _NEGA_OB.search(txt) and ns not in rev]
     m = mapa_obs_siafe(con, cand) if cand else {}
     return [ns for ns in cand if _chave_processo(ns) in m]
 

@@ -17,6 +17,7 @@ Regras de ouro: (1) UM browser pesado por vez, em FOREGROUND (nunca sobrepor em 
 from __future__ import annotations
 import os
 import signal
+import sys
 import subprocess
 import time
 
@@ -90,8 +91,8 @@ def cleanup_orphans() -> int:
     for pid in pids:
         try:
             os.kill(pid, signal.SIGKILL); n += 1
-        except Exception:
-            pass
+        except OSError as e:                       # processo já saiu ou não é nosso: registra e segue
+            print(f"vm_guard: não matei {pid}: {e}", file=sys.stderr)
     try:
         subprocess.run("rm -rf /tmp/playwright_chromiumdev_profile-* /tmp/.org.chromium.* 2>/dev/null",
                        shell=True, timeout=10)
