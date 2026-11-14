@@ -30,6 +30,9 @@ ESTADO (Governo do RJ)
     Par que aponta para mais de um contrato → INDETERMINADO (dividir a soma seria inventar número).
     OB do credor só em OUTRO processo → INDETERMINADO: no RJ o pagamento corre muitas vezes em processo
     próprio, e atribuí-lo ao contrato por credor seria palpite. INDISPONÍVEL ≠ zero.
+    Exceção documentada (14/11/2026): OB cujo processo de pagamento tem nos AUTOS a citação literal do processo
+    deste contrato, conferida por código (`vinculo_ob_contrato`, estado VERIFICADO), conta como OB do contrato.
+    Vínculo PENDENTE (dupla leitura divergente, TAC/indenização, OB anterior ao contrato) não muda a classe.
   · Cobertura: OB do SIAFE de 2021 em diante. Vigência iniciada antes disso → INDETERMINADO.
     "A menor" só se afirma quando o par (UG, ano) não está parcial (`reporting/cobertura_siafe`);
     "a maior" sobrevive a cobertura parcial, porque o pago medido é PISO.
@@ -378,14 +381,15 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
         if k in vistos:
             continue
         vistos.add(k)
-        brutas.append((c, num, str(ug), dt, proc, val, nl, comp, situacao_devolucao(gd, env), str(env or "").strip()))
+        brutas.append((c, num, str(ug), dt, proc, val, nl, comp, situacao_devolucao(gd, env), str(env or "").strip(),
+                       ex))
     por_credor: dict[str, list] = defaultdict(list)
-    for c, num, ug, dt, proc, val, nl, comp, sit, env in brutas:
+    for c, num, ug, dt, proc, val, nl, comp, sit, env, ex in brutas:
         v, marca = valor_efetivo_ob(float(val or 0), sit, devolvido=devolvido.get((str(num).strip(), ug)))
         # (data, chave do processo, UG, valor efetivo, NL, competência, número da OB, devolução, valor bruto,
-        #  status_envio)
+        #  status_envio, exercício)
         por_credor[c].append((parse_data(dt), chave_sei(proc), ug, v, nl or "", comp or "", num, marca,
-                              float(val or 0), env))
+                              float(val or 0), env, ex))
     # contagem das não contabilizadas por (processo, credor) — informativo, NUNCA somado
     nao_contab: dict[tuple, int] = defaultdict(int)
     for proc, cred in con.execute(
@@ -571,8 +575,10 @@ def avaliar_estado(db: str | Path = _DB, *, corte: date | None = None) -> list[d
             procs_do_credor[cr].add(p)
         obs, nao_contab = _obs_por_credor(con, credores)
         pncp = _termos_pncp(con, {k for k, v in grupos.items() if len(v) == 1})
+        from compliance_agent.vinculo_ob_contrato import vinculos_verificados
+        vinc = vinculos_verificados(con)      # OB → contrato pelos AUTOS do processo de pagamento (só VERIFICADO)
 
-        res = [_avaliar_um_estado(c, chave_de[c[0]], grupos, obs, nao_contab, pncp, procs_do_credor, corte)
+        res = [_avaliar_um_estado(c, chave_de[c[0]], grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc)
                for c in contratos]
         # cobertura só onde ela decide (o "a menor" no processo)
         pares = {p for r in res for p in r.get("_checar", ())}
@@ -594,7 +600,12 @@ def _junta(a: str, b: str) -> str:
     return f"{a} · {b}" if a else b
 
 
-def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor, corte) -> dict:
+def _chave_ob(o: tuple) -> tuple:
+    """(número, exercício, UG) da OB na lista do credor — a mesma chave de deduplicação da coleta."""
+    return (o[6], int(o[10]), o[2]) if len(o) > 10 and o[10] is not None else (o[6], None, o[2])
+
+
+def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc=None) -> dict:
     (cid, processo, _sn, data_contr, valor, status, unidade, objeto, fornecedor, cnpj, vig_ini, vig_fim,
      num) = c
     d_contr = parse_data(data_contr)
@@ -665,14 +676,20 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
                                                 "da natureza do instrumento")
 
     lista = obs.get(k_cred, [])
-    no_proc = [o for o in lista if o[1] == k_proc and o[0] and o[0] >= inicio_ref and o[0] <= corte]
+    # Vínculo pelos AUTOS (`vinculo_ob_contrato`, só VERIFICADO): a OB paga num processo de pagamento próprio, cujos
+    # documentos citam o processo DESTE contrato, conta como OB do contrato. PENDENTE nunca entra aqui.
+    vinc = vinc or {}
+    dos_autos = {id(o) for o in lista if o[1] != k_proc and vinc.get(_chave_ob(o)) == cid}
+    alheia_vinculada = {id(o) for o in lista if o[1] != k_proc and _chave_ob(o) in vinc and id(o) not in dos_autos}
+    no_proc = [o for o in lista if (o[1] == k_proc or id(o) in dos_autos) and o[0] and inicio_ref <= o[0] <= corte]
     anteriores = [o for o in lista if o[1] == k_proc and o[0] and o[0] < inicio_ref]
     r["obs_anteriores_ao_contrato"] = len(anteriores)
     r["valor_obs_anteriores"] = round(sum(o[3] for o in anteriores), 2)
     if anteriores:
         r["ressalvas"] = _junta(r["ressalvas"], f"{len(anteriores)} OB(s) do mesmo processo anteriores ao "
                                                 "contrato excluídas da soma")
-    fora = [o for o in lista if o[1] != k_proc and o[0] and inicio_ref <= o[0] <= corte]
+    fora = [o for o in lista if o[1] != k_proc and id(o) not in dos_autos and o[0] and inicio_ref <= o[0] <= corte]
+    n_autos = sum(1 for o in no_proc if id(o) in dos_autos)
 
     if not no_proc:
         if fora:
@@ -680,7 +697,13 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
         # Sem OB na base não é "pago a menor": é ausência de medida (revisão 13/11/2026 — 452 contratos /
         # R$ 771,27 mi, 98,4% do "déficit", eram isso). INDISPONÍVEL ≠ zero.
         return {**r, "vinculo": "credor_sem_ob", "motivo": "credor_sem_ob_na_base"}
-    pago, r["vinculo"] = round(sum(o[3] for o in no_proc), 2), "processo_e_credor"
+    pago = round(sum(o[3] for o in no_proc), 2)
+    r["vinculo"] = ("processo_e_credor" if not n_autos else
+                    "autos_do_pagamento" if n_autos == len(no_proc) else "processo_e_credor+autos_do_pagamento")
+    if n_autos:
+        r["ressalvas"] = _junta(r["ressalvas"], f"{n_autos} OB(s) de processo de pagamento próprio vinculada(s) ao "
+                                                "contrato pelos autos (citação literal do processo do contrato, "
+                                                "conferida — vinculo_ob_contrato VERIFICADO)")
     ugs = sorted({o[2] for o in no_proc})
     r.update(pago=pago, n_obs=len(no_proc), ug=",".join(ugs))
     devolvidas = [o for o in no_proc if len(o) > 7 and o[7]]
@@ -744,9 +767,10 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
                                                 + f" teto legal de acréscimo ({teto:.0%}) — conferir os termos")
     if cat.startswith("A_MENOR") and sem_valor:
         return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "devolucao_sem_valor_apurado"}
-    if cat.startswith("A_MENOR") and r["vinculo"] == "processo_e_credor":
+    if cat.startswith("A_MENOR") and r["vinculo"].startswith(("processo_e_credor", "autos_do_pagamento")):
         outros = procs_do_credor.get(k_cred, set()) - {k_proc}
-        alheias = [o for o in fora if o[2] in ugs and o[1] not in outros]
+        # OB que os autos vinculam (VERIFICADO) a OUTRO contrato do credor não é alheia a este
+        alheias = [o for o in fora if o[2] in ugs and o[1] not in outros and id(o) not in alheia_vinculada]
         if alheias:
             return {**r, "categoria": "INDETERMINADO", "subtipo": "", "motivo": "a_menor_com_ob_fora_do_processo",
                     "ressalvas": _junta(r["ressalvas"], f"{len(alheias)} OB(s) do credor na mesma UG em outro "

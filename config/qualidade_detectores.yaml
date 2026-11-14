@@ -2427,6 +2427,8 @@ detectores:
       excluida_por: compliance_agent/pericia_contabil.py:_avaliar_um_estado
     - hipotese: prorrogação não publicada
       excluida_por: null
+    - hipotese: OB paga em processo de pagamento próprio (vínculo só pelos autos, VERIFICADO)
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:decidir_regra
     dominio: contratos contínuos e pontuais do Estado (TCE-RJ) com OB no SIAFE-Rio desde 2021; parceria fora
     fp_medida: null
     controles_extras:
@@ -2438,6 +2440,35 @@ detectores:
       veredito: REFUTADA
       afirmado: 293 pagos a maior / R$ 29,67 mi; 208 duplicidades
       sustentado: 0 confirmados nos 10 maiores; 174 de 208 eram devolução + reemissão
+  vinculo_ob_contrato:
+    modulo: compliance_agent/vinculo_ob_contrato.py
+    simbolo: rodar_regra
+    afirma: A OB de um processo de pagamento próprio paga o contrato do TCE-RJ cujo processo os autos citam
+    fonte:
+    - ob_orcamentaria_siafe
+    - contratos_tcerj
+    - data/sei_arquivo (manifesto + texto declarado)
+    grava: vinculo_ob_contrato (VERIFICADO/PENDENTE) + data/sei_fila_vinculo_ob.json
+    consome:
+    - compliance_agent/pericia_contabil.py (só VERIFICADO)
+    manchete: false
+    controle_positivo: tests/test_vinculo_ob_contrato.py::test_controle_positivo_autos_citam_o_processo_do_contrato
+    controle_negativo: tests/test_vinculo_ob_contrato.py::test_controle_negativo_pendente_nao_muda_classe
+    hipoteses_inocentes:
+    - hipotese: Termo de Ajuste de Contas / indenização citando o contrato (não é pagamento do contrato)
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:decidir_regra
+    - hipotese: processo de pagamento que cita dois contratos do credor
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:decidir_regra
+    - hipotese: processo de pagamento mais antigo que o contrato citado (paga outra coisa também)
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:linhas_do_par
+    - hipotese: documento órfão de captura anterior na pasta
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:ler_docs
+    dominio: OB Contabilizada do SIAFE de credor com contrato no TCE-RJ, em processo de pagamento arquivado no acervo
+    fp_medida: null
+    controles_extras:
+    - tests/test_vinculo_ob_contrato.py::test_dois_contratos_citados_nao_se_escolhe_por_regra
+    - tests/test_vinculo_ob_contrato.py::test_ob_anterior_ao_contrato_deixa_o_par_pendente
+    - tests/test_vinculo_ob_contrato.py::test_dupla_leitura_so_verifica_quando_as_duas_concordam
   processo_360:
     modulo: compliance_agent/processo_360.py
     simbolo: avaliar
