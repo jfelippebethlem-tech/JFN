@@ -171,7 +171,7 @@ derivados:
     timeout_s: 5400
     prioridade: 6
     efeito: {arquivo: data/governo_couto_suspeitas.json}
-    antes: "semanal, domingo 08:10 (cron)"
+    antes: "semanal, domingo 08:10 (cron); desde 14/11/2026 a rede é diária, 19:05, e só roda se o arquivo tiver mais de 20 h"
   territorio:
     nome: Mapa por município / AP (territorio.db)
     onde: Estado › Mapa por município · Prefeitura › Mapa por AP
@@ -334,7 +334,8 @@ cerebro:
     kind: semantica
     chave: "alerta:{id}"
     assunto: "alerta {tipo}"
-    # `emendas_d2_*` fica fora: o título traz o NOME do parlamentar autor (pessoa física) — decisão do dono pendente.
+    # Emendas com o NOME do parlamentar (D2, D6) e D5 (nomeia o sócio doador, particular) ficam fora: as duas
+    # primeiras vão pelo bloco `emendas_parlamentar`, com fonte, estado e ressalva; D5 não vai.
     sql: >-
       SELECT a.id AS id, a.tipo AS tipo, substr(a.titulo,1,220) AS titulo, t.prioridade AS prioridade,
              COALESCE('nota ' || t.nota || '/10', 'sem nota registrada') AS nota,
@@ -343,7 +344,7 @@ cerebro:
       FROM alertas_triagem t JOIN alertas a ON a.id = t.alerta_id
       WHERE t.estado = 'VERIFICADO' AND t.verificado_por IS NOT NULL
         AND t.prioridade IN ('aprofundar', 'monitorar') AND a.pessoa_id IS NULL
-        AND a.tipo NOT LIKE 'emendas_d2%'
+        AND a.tipo NOT LIKE 'emendas_d2%' AND a.tipo NOT LIKE 'emendas_d5%' AND a.tipo NOT LIKE 'emendas_d6%'
     texto: >-
       JFN — alerta #{id} ({tipo}) com triagem VERIFICADA em {em} (duas leituras + Opus): {prioridade}, {nota}.
       {titulo}.{proximo_passo} Indício interno, não acusação; a confirmação é ato humano.
@@ -354,3 +355,8 @@ cerebro:
     sql: >-
       SELECT id, tipo, substr(titulo,1,220) AS titulo FROM alertas WHERE status = 'confirmado' AND pessoa_id IS NULL
     texto: "JFN — alerta #{id} ({tipo}) CONFIRMADO por revisão humana: {titulo}."
+  - id: emendas_parlamentar
+    # decisão do dono, 14/11/2026: alerta de emenda VERIFICADO com o nome do parlamentar (pessoa pública no exercício
+    # do mandato) entra no cérebro, com fonte, estado e "indício não é acusação"; nunca CPF. Regras no módulo.
+    kind: semantica
+    funcao: "compliance_agent.emendas.cerebro_alertas:descobertas"

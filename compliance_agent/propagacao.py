@@ -384,19 +384,29 @@ def _descoberta_do_derivado(con: sqlite3.Connection, did: str, d: dict) -> None:
 
 
 def descobertas_sql(con: sqlite3.Connection, cfg: dict) -> int:
-    """Blocos `cerebro:` do topo do yaml: consultas (só leitura) cujas linhas são descobertas VERIFICADAS."""
+    """Blocos `cerebro:` do topo do yaml: consultas (só leitura) cujas linhas são descobertas VERIFICADAS.
+    `funcao: "modulo:nome"` no lugar de `sql` = a função recebe a conexão só-leitura e devolve (chave, texto, assunto)
+    já prontos (texto que não cabe num `format` — ex.: alertas de emendas com o nome do parlamentar)."""
     n = 0
     for b in cfg["cerebro"]:
         try:
             src = sqlite3.connect(f"file:{RAIZ / b.get('db', 'data/compliance.db')}?mode=ro", uri=True, timeout=20)
             src.row_factory = sqlite3.Row
             try:
-                linhas = [dict(r) for r in src.execute(b["sql"])]
+                if b.get("funcao"):
+                    mod, _, nome = b["funcao"].partition(":")
+                    prontas = getattr(__import__(mod, fromlist=[nome]), nome)(src)
+                else:
+                    linhas = [dict(r) for r in src.execute(b["sql"])]
             finally:
                 src.close()
         except sqlite3.Error as exc:
             con.execute("INSERT OR REPLACE INTO meta(k, v) VALUES (?,?)", (f"cerebro_erro:{b['id']}", str(exc)[:300]))
             con.commit()
+            continue
+        if b.get("funcao"):
+            for chave, texto, assunto in prontas:
+                n += cerebro.registrar(chave, texto, b.get("kind", "semantica"), assunto, con=con) in ("novo", "corrigido")
             continue
         for r in linhas:
             limpo = {k: ("" if v is None else v) for k, v in r.items()}
@@ -529,7 +539,12 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 return "juntando eventos da fonte"
             if lin["proxima_tentativa"] and agora < lin["proxima_tentativa"]:
                 return f"recuo após {lin['falhas']} falha(s)"
-            if lin["ultimo_fim"] and agora - lin["ultimo_fim"] < d.get("intervalo_min_s", 0):
+            # rodada FORA do despachante (o cron que ficou como rede) também conta: ela regravou o arquivo de efeito
+            ultimo = lin["ultimo_fim"] or 0.0
+            if (d.get("efeito") or {}).get("arquivo"):
+                with contextlib.suppress(OSError):
+                    ultimo = max(ultimo, (RAIZ / d["efeito"]["arquivo"]).stat().st_mtime)
+            if ultimo and agora - ultimo < d.get("intervalo_min_s", 0):
                 return "intervalo mínimo entre execuções"
             return None
 

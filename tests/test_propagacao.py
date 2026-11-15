@@ -218,6 +218,20 @@ def test_derivado_nao_espera_o_de_que_depende_se_esse_ainda_junta_eventos(con):
     assert [x["id"] for x in feitos] == ["b"] and "a" in P._sujos(con)
 
 
+def test_rodada_fora_do_despachante_conta_no_intervalo_minimo(con, tmp_path, monkeypatch):
+    """O cron diário da gestão Couto (rede) regrava o arquivo de efeito: o despachante não roda de novo logo depois."""
+    import os
+    monkeypatch.setattr(P, "RAIZ", tmp_path)
+    (tmp_path / "saida.json").write_text("{}")
+    cfg = _cfg(a=_der(["f"], intervalo_min_s=3600, efeito={"arquivo": "saida.json"}))
+    P.emitir(con, cfg, "f", "mudou")
+    assert P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None)) == []   # arquivo novo
+    assert con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0] == "intervalo mínimo entre execuções"
+    os.utime(tmp_path / "saida.json", (time.time() - 4000, time.time() - 4000))
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["a"]          # controle positivo: arquivo velho não segura
+
+
 def test_comando_que_roda_sem_regravar_o_arquivo_e_falha(tmp_path, monkeypatch):
     monkeypatch.setattr(P, "RAIZ", tmp_path)
     monkeypatch.setattr(P, "DATA", tmp_path)
