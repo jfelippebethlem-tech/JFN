@@ -485,6 +485,12 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             # o preflight de carga recusou: o alvo continua na fila e a próxima passada retoma.
             # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
             return "adiado"
+        if rc not in (0, RC_SEM_ARVORE) and not any((CACHE / f"integra_{re.sub(r'[^0-9]', '_', proc)}").glob("*.pdf")):
+            # caiu ANTES de baixar qualquer documento (ex.: 15/11/2026, navegador sem tela no it-campo): arquivar aqui
+            # gravaria `captura_vazia` e seguraria o processo 7 dias por uma falha do método, não do processo.
+            for causa in causas:
+                _log(f"  {proc}: {causa[:200]}")
+            return "erro"
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                              cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
