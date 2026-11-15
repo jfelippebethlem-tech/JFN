@@ -22,7 +22,9 @@ import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 PACOTES = ("compliance_agent", "tools", "rotas")
-IGNORA_CAMINHO = ("_arquivo", "_SANDBOX", "__pycache__")
+# `site-packages`: a `.venv` dentro do repo (VM-1) tem `sympy/printing/numpy.py`, `jsonpickle/ext/yaml.py` etc., e o
+# stem desses arquivos fazia `numpy`/`yaml` parecerem módulos LOCAIS — mascarou a falta de declaração até 15/11/2026.
+IGNORA_CAMINHO = ("_arquivo", "_SANDBOX", "__pycache__", "site-packages")
 
 # nome importado -> nome da distribuição no requirements
 APELIDOS = {
