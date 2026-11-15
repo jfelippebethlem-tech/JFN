@@ -214,7 +214,8 @@ def edificacao_no_ponto(lat: float, lon: float, raio: int = 35) -> dict:
 # Classes do veredito visual (auditoria de fachada): o que predomina no ponto/entorno do endereço.
 _CLASSES_VISUAIS = ["terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco",
                     "casa_residencial", "predio_residencial", "comercial_industrial",
-                    "galpao_logistico", "estabelecimento_fechado_abandonado", "indeterminado"]
+                    "galpao_logistico", "estabelecimento_fechado_abandonado", "via_sem_lote_visivel",
+                    "indeterminado"]
 # Classes que reforçam indício de fachada/inexistência operacional:
 _CLASSE_INDICIO = {"terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco"}
 
@@ -432,7 +433,8 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
         "(campo/mato/rural sem edificações), construcao_precaria_barraco (construção precária/favela/barraco), "
         "casa_residencial, predio_residencial, comercial_industrial (em funcionamento), galpao_logistico, "
         "estabelecimento_fechado_abandonado (loja/galpão com porta trancada, letreiro vazio, abandono, pichação, "
-        "sem sinal de atividade), indeterminado (nuvem/"
+        "sem sinal de atividade), via_sem_lote_visivel (a foto mostra rua/estrada/rodovia/acostamento e NENHUM "
+        "lote ou fachada no centro), indeterminado (nuvem/"
         "imagem ruim/ambíguo). Responda SOMENTE JSON: "
         '{"classe":"<categoria>","confianca":<0-1>,"descricao":"<breve, em português>"}')
     txt = _gemini_vision_sync(img, mime, prompt)

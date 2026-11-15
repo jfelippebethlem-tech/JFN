@@ -42,6 +42,7 @@ CLASSES_TERRENO = frozenset({"terreno_baldio", "area_aberta_rural"})
 CLASSE_PRECARIA = "construcao_precaria_barraco"
 # 15/11/2026: controle sintético mostrou loja trancada/pichada saindo "comercial_industrial" → AFASTADO.
 CLASSE_FECHADO = "estabelecimento_fechado_abandonado"
+CLASSE_VIA = "via_sem_lote_visivel"   # 15/11/2026: acostamento de rodovia saía "área aberta rural"
 CLASSES_COMERCIAIS = frozenset({"comercial_industrial", "galpao_logistico"})
 CLASSES_RESIDENCIAIS = frozenset({"casa_residencial", "predio_residencial"})
 
@@ -146,6 +147,9 @@ def veredito_foto(reg: dict) -> dict:
     classe = normalizar_classe(reg.get("visual_classe"))
     base = {"classe": classe, "prova_endereco": None, "motivos_sem_prova": [], "revisar_humano": False,
             "explicacao_inocente": ""}
+    if classe == CLASSE_VIA:
+        return {**base, "status": "INDISPONIVEL",
+                "evidencia": "A foto mostra a via (rua/estrada), não o lote — não julga a sede; é preciso foto do lote."}
     if not classe or classe == "indeterminado":
         return {**base, "status": "INDISPONIVEL",
                 "evidencia": "sem foto classificada da sede" if not classe

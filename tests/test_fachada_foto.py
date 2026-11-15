@@ -146,3 +146,12 @@ def test_estabelecimento_fechado_abandonado_vai_para_revisao_e_nao_absolve():
 def test_vlm_conhece_a_classe_fechado_abandonado():
     from compliance_agent.verificacao_endereco import _CLASSES_VISUAIS
     assert "estabelecimento_fechado_abandonado" in _CLASSES_VISUAIS
+
+
+def test_foto_da_via_sem_lote_visivel_nao_acusa():
+    """15/11/2026, controle sintético: acostamento de rodovia (nenhum lote no quadro) saía 'area_aberta_rural' —
+    com endereço provado viraria indício de terreno. Foto que não mostra o lote não julga o lote."""
+    v = veredito_foto(_reg(visual_classe="via_sem_lote_visivel"))
+    assert v["status"] == "INDISPONIVEL" and v["revisar_humano"] is False
+    from compliance_agent.verificacao_endereco import _CLASSES_VISUAIS
+    assert "via_sem_lote_visivel" in _CLASSES_VISUAIS
