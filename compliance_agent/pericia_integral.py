@@ -50,7 +50,7 @@ _REPO = Path(__file__).resolve().parents[1]
 DB = _REPO / "data" / "compliance.db"
 ACERVO = _REPO / "data" / "sei_arquivo"
 TAREFA = "pericia_integral"
-VERSAO_PROMPT = "pi-1"
+VERSAO_PROMPT = "pi-2"   # pi-2: pontos de controle por eixo, regime, diligência, hipótese inocente
 # caracteres de documentos por processo. 80k (1º desenho) leu 8 de 198 docs no processo-prova de 15/11; o dono quer o
 # Claude "pensando profundo em cada processo" — 240k (~65k tokens) cabem no Opus e no Gemini com folga.
 TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
@@ -68,60 +68,119 @@ _MARCA_INI = "=== ENTRADA (única fonte de fatos; cite LITERALMENTE daqui) ==="
 _MARCA_FIM = "=== FIM DA ENTRADA ==="
 
 # ── os eixos: constante ÚNICA (prompt, normalização, cruzamento e tabela iteram sobre ela) ─────────────────
+# pi-2 (15/11/2026, dono: "aprimore os 10 eixos"): cada eixo virou PONTOS DE CONTROLE numerados que todo modelo
+# responde um a um (conforme | desconforme | nao_se_aplica | indeterminado). Pergunta aberta deixava cada IA olhar
+# coisas diferentes — os pontos fixam a régua e são cruzados um a um (padronização Claude × cascata no detalhe).
+# Artigos: Lei 14.133/2021 (L14), Lei 8.666/1993 (L8), Lei 13.303/2016 (estatais), Lei 4.320/1964 (L4320).
+def _p(i: str, t: str) -> dict:
+    return {"id": i, "texto": t}
+
+
 EIXOS: tuple[dict, ...] = (
     {"nome": "juridico",
-     "pergunta": "A modalidade é a correta e a dispensa/inexigibilidade está fundamentada? Há parecer jurídico "
-                 "(PGE/assessoria) e ele foi acatado? As cláusulas essenciais estão presentes?",
-     "base": "Lei 14.133/2021 arts. 53, 72, 74, 75, 92 (Lei 8.666/1993 arts. 24, 25, 26, 38, 55 nos processos "
-             "sob o regime antigo)",
+     "pergunta": "A forma de contratação é a juridicamente correta e está fundamentada?",
+     "base": "L14 arts. 53, 72, 74, 75, 92 e 107; L8 arts. 24, 25, 26, 38 VI, 55 e 57; Lei 13.303 arts. 28-30",
+     "pontos": (_p("J1", "a modalidade ou a hipótese de contratação direta é compatível com o objeto e o valor"),
+                _p("J2", "a dispensa/inexigibilidade cita a hipótese legal e a justifica (L14 art. 72; L8 art. 26)"),
+                _p("J3", "na inexigibilidade, há prova da exclusividade/notória especialização e justificativa do preço"),
+                _p("J4", "na emergência, a situação é concreta e o prazo respeita o teto legal, sem prorrogação nem "
+                         "recontratação vedadas (L14 art. 75 VIII; L8 art. 24 IV)"),
+                _p("J5", "há parecer jurídico PRÉVIO e a decisão o acatou ou motivou a divergência (L14 art. 53)"),
+                _p("J6", "o contrato tem as cláusulas necessárias e as prorrogações têm base legal (L14 arts. 92, 107)")),
      "fontes": ("p360_achados", "p360_acatamento", "sei_ficha")},
     {"nome": "planejamento",
-     "pergunta": "Há DFD, ETP e termo de referência/projeto básico? A pesquisa de preços tem fontes suficientes "
-                 "e independentes? A necessidade e o quantitativo estão justificados?",
-     "base": "Lei 14.133/2021 arts. 6º XXIII, 18, 23; IN SEGES 65/2021; Decreto estadual de pesquisa de preços",
+     "pergunta": "A contratação foi planejada e o preço estimado tem base?",
+     "base": "L14 arts. 6º XX e XXIII, 18, 23, 40 e 72 I-II",
+     "pontos": (_p("P1", "há documento de formalização da demanda com a necessidade descrita"),
+                _p("P2", "há estudo técnico preliminar ou dispensa motivada dele"),
+                _p("P3", "há termo de referência/projeto básico com especificação que não restringe a competição"),
+                _p("P4", "o quantitativo é justificado por consumo, histórico ou memória de cálculo"),
+                _p("P5", "a pesquisa de preços tem 3+ fontes independentes, datadas e sem cotação só de interessados")),
      "fontes": ("p360_lacunas", "rapp")},
     {"nome": "economicidade",
-     "pergunta": "Há sobrepreço ou superfaturamento demonstrável COM BASE DE PREÇO PRESENTE NA ENTRADA? Aditivos "
-                 "de valor respeitam os limites de 25%/50%?",
-     "base": "Lei 14.133/2021 arts. 6º LVI-LVII, 23, 125; Lei 8.666/1993 art. 65 §1º",
+     "pergunta": "O preço contratado e pago é compatível com o mercado e com o próprio orçamento?",
+     "base": "L14 arts. 6º LVI-LVII, 23, 124-125; L8 art. 65 §1º",
+     "pontos": (_p("E1", "o preço contratado está dentro do estimado e das referências PRESENTES NA ENTRADA"),
+                _p("E2", "aditivos de valor respeitam 25% (50% em reforma) do valor inicial atualizado"),
+                _p("E3", "não há jogo de planilha (itens com sobrepreço aumentados e com desconto suprimidos)"),
+                _p("E4", "não há pagamento de item/quantidade acima do medido ou do contratado"),
+                _p("E5", "reajustes/repactuações seguem o índice e o prazo contratuais")),
      "fontes": ("rapp", "siafe_ob", "p360_achados")},
     {"nome": "orcamentario_contabil",
-     "pergunta": "Há dotação, empenho prévio, liquidação e OB na sequência certa? A despesa é regular? Há restos "
-                 "a pagar ou pagamento sem liquidação? (Empenho ≠ Liquidação ≠ OB: só a OB é pagamento.)",
-     "base": "Lei 4.320/1964 arts. 58-64; LC 101/2000; Lei 14.133/2021 art. 150",
+     "pergunta": "A despesa percorreu dotação → empenho → liquidação → OB regularmente? (só a OB é pagamento)",
+     "base": "L4320 arts. 36, 37, 58-64; LC 101/2000 arts. 15-17 e 42; L14 arts. 72 IV, 141, 145 e 149; L8 arts. 5º e 59",
+     "pontos": (_p("O1", "há indicação de dotação/compatibilidade orçamentária antes da contratação"),
+                _p("O2", "o empenho é PRÉVIO à despesa (sem despesa sem empenho — L4320 art. 60)"),
+                _p("O3", "cada OB tem liquidação prévia com atesto (L4320 arts. 62-63)"),
+                _p("O4", "não há pagamento por indenização/reconhecimento de dívida/TAC sem cobertura contratual, ou, "
+                         "havendo, ele está motivado e com apuração de responsabilidade"),
+                _p("O5", "não há pagamento antecipado fora das hipóteses legais (L14 art. 145)"),
+                _p("O6", "a ordem cronológica de pagamentos foi respeitada ou a quebra foi justificada"),
+                _p("O7", "despesa de exercício anterior/restos a pagar estão reconhecidos regularmente")),
      "fontes": ("siafe_ob", "p360_cadeia")},
     {"nome": "conformidade_procedimental",
-     "pergunta": "As fases obrigatórias existem e em ordem? Houve publicidade (PNCP/DOERJ), prazos legais, "
-                 "habilitação e os documentos obrigatórios?",
-     "base": "Lei 14.133/2021 arts. 17, 54, 55, 62-70, 72 parágrafo único, 94, 174",
+     "pergunta": "O rito foi cumprido, na ordem e com publicidade?",
+     "base": "L14 arts. 17, 54, 55, 62-70, 72, 94 e 174; L8 arts. 21, 38 e 61 parágrafo único",
+     "pontos": (_p("C1", "as fases obrigatórias existem e estão em ordem cronológica coerente"),
+                _p("C2", "edital/aviso e contrato foram divulgados no PNCP/DOERJ (condição de eficácia — L14 art. 94)"),
+                _p("C3", "prazos mínimos de propostas e de recurso foram respeitados"),
+                _p("C4", "a habilitação foi verificada com documentos válidos NA DATA (fiscal, trabalhista, jurídica)"),
+                _p("C5", "há autorização da autoridade competente e designação formal dos agentes"),
+                _p("C6", "não há documento com data posterior ao ato que ele deveria preceder (instrução retroativa)")),
      "fontes": ("p360_lacunas", "p360_achados")},
     {"nome": "execucao_fisica",
-     "pergunta": "A execução está comprovada (atesto, medição, nota fiscal, prova de entrega, fiscal designado)? "
-                 "Houve pagamento antes da execução ou sem atesto?",
-     "base": "Lei 14.133/2021 arts. 117, 140; Lei 4.320/1964 art. 63",
+     "pergunta": "O que foi pago foi efetivamente entregue/executado e comprovado?",
+     "base": "L14 arts. 117 e 140; L8 arts. 67 e 73; L4320 art. 63",
+     "pontos": (_p("X1", "há fiscal do contrato designado formalmente"),
+                _p("X2", "há medição/relatório de execução compatível com o objeto e com o período pago"),
+                _p("X3", "há notas fiscais compatíveis em data, valor e descrição com o pago"),
+                _p("X4", "há recebimento provisório/definitivo ou atesto por quem não é o próprio demandante interessado"),
+                _p("X5", "há prova material da entrega (fotos, relatórios, listas) e ela é específica, não genérica"),
+                _p("X6", "não há pagamento anterior à execução ou sem atesto")),
      "fontes": ("lex_execucao", "p360_achados", "siafe_ob")},
     {"nome": "fornecedor",
-     "pergunta": "O fornecedor tem capacidade operacional? Há sinal de fachada, CNAE incompatível com o objeto, "
-                 "porte ME/EPP incompatível com o valor, situação cadastral irregular na data, sanção vigente?",
-     "base": "Lei 14.133/2021 arts. 14, 62-70, 156; LC 123/2006 arts. 3º e 48",
+     "pergunta": "O contratado tem existência, capacidade e regularidade compatíveis com o contrato?",
+     "base": "L14 arts. 14, 62-70 e 156; LC 123/2006 arts. 3º e 48",
+     "pontos": (_p("F1", "a atividade econômica (CNAE) é compatível com o objeto"),
+                _p("F2", "a idade da empresa e o capital são compatíveis com o porte do contrato"),
+                _p("F3", "o porte ME/EPP declarado é compatível com o faturamento/valores recebidos"),
+                _p("F4", "a situação cadastral era ativa NA DATA da contratação e do pagamento"),
+                _p("F5", "não há sanção/impedimento vigente na data (CEIS/CNEP/estado)"),
+                _p("F6", "não há sinal de fachada (endereço, quadro de pessoal, capacidade operacional)")),
      "fontes": ("pericia_fornecedor", "sancoes_siga", "lista_suja")},
     {"nome": "compliance_integridade",
-     "pergunta": "Há conflito de interesse, vínculo entre servidor e sócio, parentesco, rodízio ou concentração "
-                 "de contratos no mesmo grupo?",
-     "base": "Lei 14.133/2021 arts. 7º, 9º, 14 IV; Lei 12.813/2013; Súmula Vinculante 13",
+     "pergunta": "Há conflito de interesse ou relação imprópria entre contratado e agentes públicos?",
+     "base": "L14 arts. 7º, 9º e 14 IV; Lei 12.813/2013; Súmula Vinculante 13; Lei 8.429/1992 arts. 9º-11",
+     "pontos": (_p("I1", "não há sócio/administrador do contratado com vínculo com o órgão CONTRATANTE (o órgão "
+                         "precisa ser o mesmo — vínculo com outro órgão é ponto de atenção, não impedimento)"),
+                _p("I2", "não há parentesco entre sócios e agentes que atuaram no processo"),
+                _p("I3", "o agente que demandou, cotou, julgou ou atestou não é o mesmo em fases incompatíveis"),
+                _p("I4", "não há concentração/rodízio de contratos do mesmo grupo econômico no órgão"),
+                _p("I5", "o contratado tem programa de integridade quando exigido por lei ou edital")),
      "fontes": ("conflito_socio_agente", "pericia_fornecedor")},
     {"nome": "anticorrupcao",
-     "pergunta": "Há indício de direcionamento, conluio/propostas gêmeas, fracionamento, emergência fabricada, "
-                 "convite de fachada ou jogo de planilha?",
-     "base": "Lei 12.846/2013 art. 5º IV; Lei 14.133/2021 arts. 75 §1º, 155, 337-F do Código Penal",
+     "pergunta": "Há padrão de fraude ou corrupção na contratação?",
+     "base": "Lei 12.846/2013 art. 5º IV; Lei 8.429/1992 art. 10 VIII; L14 arts. 75 §1º e 155; CP arts. 337-E a 337-L",
+     "pontos": (_p("A1", "não há direcionamento (exigência restritiva, marca, atestado desproporcional, prazo exíguo)"),
+                _p("A2", "não há sinal de conluio (propostas gêmeas, mesmo endereço/sócio/telefone, rodízio, cobertura)"),
+                _p("A3", "não há fracionamento para fugir de modalidade ou de limite de dispensa (L14 art. 75 §1º)"),
+                _p("A4", "a emergência não foi fabricada pela própria inércia administrativa"),
+                _p("A5", "não há participante único ou desclassificação sistemática dos concorrentes sem motivo"),
+                _p("A6", "não há sinal de pagamento/benefício indevido ou de simulação de execução")),
      "fontes": ("indicadores_fraude", "p360_achados", "rapp")},
     {"nome": "controle_interno_externo",
-     "pergunta": "Há no processo achados da CGE, do TCE ou da auditoria interna, sindicância, ou recomendações "
-                 "não atendidas?",
-     "base": "CF arts. 70-71 e 74; Lei 14.133/2021 art. 169; LC estadual 63/1990",
+     "pergunta": "Os órgãos de controle atuaram e suas recomendações foram atendidas?",
+     "base": "CF arts. 70, 71 e 74; L14 art. 169; LC estadual 63/1990",
+     "pontos": (_p("K1", "há manifestação do controle interno (CGE/AUDIN) quando exigida"),
+                _p("K2", "achados/recomendações do controle foram atendidos ou a recusa foi motivada"),
+                _p("K3", "há atuação do TCE (determinação, representação, auditoria) e seu desfecho está nos autos"),
+                _p("K4", "irregularidade apontada gerou apuração (sindicância/PAD) com desfecho registrado")),
      "fontes": ("p360_acatamento", "p360_achados")},
 )
 NOMES_EIXOS: tuple[str, ...] = tuple(e["nome"] for e in EIXOS)
+VALORES_PONTO = ("conforme", "desconforme", "nao_se_aplica", "indeterminado")
+REGIMES = ("8666", "14133", "13303", "outro", "indeterminado")
+_NIVEL_PONTO = {"conforme": 0, "desconforme": 1}
 
 _FALHAS_DB = (sqlite3.Error, OSError)
 
@@ -330,20 +389,29 @@ _SISTEMA_EXTRA = (
 
 
 def montar_prompt(entrada: dict) -> tuple[str, str]:
-    eixos = "\n".join(f"{i + 1}. `{e['nome']}` — {e['pergunta']} Base: {e['base']}. Evidências determinísticas "
-                      f"a consultar: {', '.join(e.get('fontes') or ()) or '—'}."
-                      for i, e in enumerate(EIXOS))
-    exemplo_eixo = ('{"grau": 0|1|2|null, "achados": [{"documento": "título do documento ou [fonte] da evidência", '
+    eixos = "\n".join(
+        f"{i + 1}. `{e['nome']}` — {e['pergunta']} Base: {e['base']}. Evidências determinísticas a consultar: "
+        f"{', '.join(e.get('fontes') or ()) or '—'}.\n" + "\n".join(f"   {p['id']}: {p['texto']}" for p in e["pontos"])
+        for i, e in enumerate(EIXOS))
+    exemplo_eixo = ('{"grau": 0|1|2|null, "pontos": {"<id>": "conforme|desconforme|nao_se_aplica|indeterminado", ...}, '
+                    '"achados": [{"documento": "título do documento ou [fonte] da evidência", '
                     '"citacao": "trecho LITERAL copiado da entrada, 20 a 200 caracteres", "descricao": "o que o trecho '
-                    'indica (até 160 caracteres)", "grau": 1|2, "fundamento": "dispositivo legal"}], '
-                    '"fundamento": "base normativa do juízo do eixo", "lacunas": ["documento que faltou para julgar"]}')
-    schema = '{"eixos": {' + ", ".join(f'"{n}": EIXO' for n in NOMES_EIXOS) + '}, "resumo": "até 3 frases"}'
+                    'indica (até 160 caracteres)", "grau": 1|2, "fundamento": "dispositivo legal", "ponto": "<id>"}], '
+                    '"fundamento": "base normativa do juízo do eixo", "lacunas": ["documento que faltou para julgar"], '
+                    '"diligencias": ["pedido CONCRETO de informação/documento que fecharia a dúvida"], '
+                    '"hipotese_inocente": "a explicação regular mais plausível que você considerou e por que (não) basta"}')
+    schema = ('{"regime": "8666|14133|13303|outro|indeterminado", "regime_citacao": "trecho literal que mostra o '
+              'regime", "eixos": {' + ", ".join(f'"{n}": EIXO' for n in NOMES_EIXOS) + '}, "resumo": "até 3 frases"}')
     prompt = (
         f"PERÍCIA INTEGRAL DO PROCESSO DE CONTRATAÇÃO {entrada['processo']}\n\n"
         f"Julgue o processo em CADA um dos {len(EIXOS)} eixos abaixo:\n{eixos}\n\n"
         "Escala do grau: 0 = sem sinal; 1 = atenção (indício a diligenciar); 2 = grave (indício forte, com prova "
         "citada); null = INDETERMINADO (falta documento para julgar). Grau 1 ou 2 exige ao menos um achado com "
-        "citação literal. No máximo 3 achados por eixo, os mais fortes.\n\n"
+        "citação literal. No máximo 3 achados por eixo, os mais fortes.\n"
+        "Primeiro identifique o REGIME legal (Lei 8.666, Lei 14.133 ou Lei 13.303 de estatais) pela data e pelo texto "
+        "dos atos, e aplique os artigos do regime certo. Depois responda TODOS os pontos de controle de cada eixo: "
+        "`desconforme` exige achado com citação (indique o ponto no achado); `indeterminado` quando faltar o documento; "
+        "`nao_se_aplica` quando o ponto não cabe ao tipo de contratação. O grau do eixo resume os pontos.\n\n"
         f"{_MARCA_INI}\n{entrada['bloco']}\n\nDOCUMENTOS DO PROCESSO (ordenados por valor fiscalizatório):\n"
         f"{entrada['documentos']}\n{_MARCA_FIM}\n\n"
         f"Responda SOMENTE com este JSON, com TODOS os eixos: {schema}\nonde cada EIXO é {exemplo_eixo}"
@@ -371,10 +439,21 @@ def _grau(v) -> int | None:
     return None
 
 
-def conferir_eixo(bruto, fonte: str) -> dict:
+def _pontos(bruto: dict, ids: tuple[str, ...]) -> dict:
+    """{id: valor} para TODOS os pontos do eixo; valor fora da escala ou ausente = indeterminado; id estranho cai."""
+    dado = bruto.get("pontos") if isinstance(bruto.get("pontos"), dict) else {}
+    out = {}
+    for i in ids:
+        v = str(dado.get(i) or "").strip().lower().replace(" ", "_").replace("ã", "a")
+        out[i] = v if v in VALORES_PONTO else "indeterminado"
+    return out
+
+
+def conferir_eixo(bruto, fonte: str, ids_pontos: tuple[str, ...] = ()) -> dict:
     """Confere as citações do eixo contra a fonte. Achado sem citação literal cai; 🟡/🔴 sem achado = null."""
     if not isinstance(bruto, dict):
         return {"grau": None, "achados": [], "fundamento": "", "descartados": [],
+                "pontos": {i: "indeterminado" for i in ids_pontos}, "diligencias": [], "hipotese_inocente": "",
                 "lacunas": ["eixo não respondido pelo modelo"]}
     g = _grau(bruto.get("grau"))
     ok, fora = [], []
@@ -385,7 +464,7 @@ def conferir_eixo(bruto, fonte: str) -> dict:
         if citacao_existe(cit, fonte):
             ok.append({"documento": str(a.get("documento") or "")[:200], "citacao": cit[:400],
                        "descricao": str(a.get("descricao") or "")[:300], "grau": _grau(a.get("grau")),
-                       "fundamento": str(a.get("fundamento") or "")[:200]})
+                       "fundamento": str(a.get("fundamento") or "")[:200], "ponto": str(a.get("ponto") or "")[:8]})
         else:
             fora.append({"citacao": cit[:300], "descricao": str(a.get("descricao") or "")[:200],
                          "motivo": "citação não encontrada literalmente na entrada"})
@@ -399,7 +478,9 @@ def conferir_eixo(bruto, fonte: str) -> dict:
         else:
             g = min(g, max(graus))
     out = {"grau": g, "achados": ok, "fundamento": str(bruto.get("fundamento") or "")[:400], "lacunas": lacunas,
-           "descartados": fora}
+           "descartados": fora, "pontos": _pontos(bruto, ids_pontos),
+           "diligencias": [str(x)[:300] for x in (bruto.get("diligencias") or []) if x][:5],
+           "hipotese_inocente": str(bruto.get("hipotese_inocente") or "")[:500]}
     if nota:
         out["nota_verificacao"] = nota
     return out
@@ -411,8 +492,12 @@ def interpretar(texto: str, fonte: str) -> dict | None:
     d = parse_json_llm(texto or "")
     if not isinstance(d, dict) or not isinstance(d.get("eixos"), dict):
         return None
-    eixos = {n: conferir_eixo(d["eixos"].get(n), fonte) for n in NOMES_EIXOS}
-    eixos["_global"] = {"resumo": str(d.get("resumo") or "")[:800]}
+    eixos = {e["nome"]: conferir_eixo(d["eixos"].get(e["nome"]), fonte, tuple(p["id"] for p in e["pontos"]))
+             for e in EIXOS}
+    regime = str(d.get("regime") or "").replace(".", "").replace("/", "").strip()
+    regime = next((r for r in REGIMES if regime == r or regime.startswith(r)), "indeterminado")
+    eixos["_global"] = {"resumo": str(d.get("resumo") or "")[:800], "regime": regime,
+                        "regime_citacao": str(d.get("regime_citacao") or "")[:300]}
     return eixos
 
 
@@ -444,6 +529,27 @@ def cruzar_eixos(processo: str, eixos_ref: dict, modelo_ref: str, eixos_outro: d
             n += 1
         except _FALHAS_DB + (ValueError,) as e:
             logger.warning("pericia_integral: cruzamento do eixo %s não gravado (%s)", nome, type(e).__name__)
+        n += _cruzar_pontos(processo, nome, a, modelo_ref, b, modelo_outro)
+    return n
+
+
+def _cruzar_pontos(processo: str, eixo: str, a: dict, modelo_ref: str, b: dict, modelo_outro: str) -> int:
+    """Um par por ponto de controle em que ao menos um lado decidiu (conforme/desconforme): a padronização no detalhe."""
+    pa, pb = a.get("pontos") or {}, b.get("pontos") or {}
+    textos = {p["id"]: p["texto"] for e in EIXOS if e["nome"] == eixo for p in e["pontos"]}
+    n = 0
+    for pid in textos:
+        va, vb = pa.get(pid, "indeterminado"), pb.get(pid, "indeterminado")
+        if va not in _NIVEL_PONTO and vb not in _NIVEL_PONTO:
+            continue
+        try:
+            cruzamento.cruzar(f"{TAREFA}:{eixo}:{pid}", f"sei:{processo}",
+                              cruzamento.Lado("claude", modelo_ref, va, _NIVEL_PONTO.get(va)),
+                              cruzamento.Lado("cascata", modelo_outro, vb, _NIVEL_PONTO.get(vb)),
+                              entrada_resumo=f"PONTO {pid}: {textos[pid]}")
+            n += 1
+        except _FALHAS_DB + (ValueError,) as e:
+            logger.warning("pericia_integral: cruzamento do ponto %s não gravado (%s)", pid, type(e).__name__)
     return n
 
 

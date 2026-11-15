@@ -266,3 +266,48 @@ def test_fonte_do_prompt_e_a_entrada_sem_as_instrucoes():
     _, prompt = PI.montar_prompt({"processo": "SEI-1/1/2025", "bloco": "BLOCO-X", "documentos": "DOCS-Y"})
     f = PI._fonte_do_prompt(prompt)
     assert "BLOCO-X" in f and "DOCS-Y" in f and "Lei 14.133" not in f.split("DOCS-Y")[-1]
+
+
+# ── pi-2: pontos de controle por eixo, regime legal, diligência e hipótese inocente ────────────────────────
+def test_cada_eixo_tem_pontos_de_controle_com_id_unico():
+    ids = [p["id"] for e in PI.EIXOS for p in e["pontos"]]
+    assert all(len(e["pontos"]) >= 3 for e in PI.EIXOS)
+    assert len(ids) == len(set(ids))
+
+
+def test_prompt_pede_regime_e_todos_os_pontos():
+    entrada = {"processo": "SEI-1", "bloco": "b", "documentos": "d"}
+    _, prompt = PI.montar_prompt(entrada)
+    assert '"regime"' in prompt
+    for e in PI.EIXOS:
+        for p in e["pontos"]:
+            assert p["id"] in prompt
+
+
+def test_pontos_normalizados_e_campos_novos_guardados():
+    e0 = PI.EIXOS[0]
+    p1, p2 = e0["pontos"][0]["id"], e0["pontos"][1]["id"]
+    bruto = {"eixos": {e0["nome"]: {"grau": 0, "achados": [],
+                                     "pontos": {p1: "conforme", p2: "talvez", "XX9": "desconforme"},
+                                     "diligencias": ["pedir o parecer da PGE"], "hipotese_inocente": "ata anterior"}},
+             "regime": "14133", "resumo": "r"}
+    eixos = PI.interpretar(json.dumps(bruto), "fonte")
+    pts = eixos[e0["nome"]]["pontos"]
+    assert pts[p1] == "conforme" and pts[p2] == "indeterminado" and "XX9" not in pts
+    assert set(pts) == {p["id"] for p in e0["pontos"]}          # ponto não respondido = indeterminado
+    assert eixos[e0["nome"]]["diligencias"] == ["pedir o parecer da PGE"]
+    assert eixos[e0["nome"]]["hipotese_inocente"] == "ata anterior"
+    assert eixos["_global"]["regime"] == "14133"
+    assert PI.interpretar(json.dumps({**bruto, "regime": "lei qualquer"}), "f")["_global"]["regime"] == "indeterminado"
+
+
+def test_cruzamento_tambem_por_ponto_de_controle():
+    e0 = PI.EIXOS[0]
+    p1 = e0["pontos"][0]["id"]
+    a = {e0["nome"]: {"grau": 1, "achados": [], "pontos": {p1: "desconforme"}}}
+    b = {e0["nome"]: {"grau": 0, "achados": [], "pontos": {p1: "conforme"}}}
+    PI.cruzar_eixos("SEI-9", a, "claude-opus-5-5", b, "gemini:x")
+    con = C.conectar()
+    rows = con.execute("SELECT motor, nivel FROM veredito WHERE tarefa=? ORDER BY motor",
+                       (f"pericia_integral:{e0['nome']}:{p1}",)).fetchall()
+    assert rows == [("cascata", 0), ("claude", 1)]
