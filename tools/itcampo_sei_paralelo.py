@@ -77,6 +77,9 @@ FOLGA_SUBIR_GB = float(os.environ.get("JFN_ITCAMPO_FOLGA_SUBIR_GB", "3.0"))
 MINUTOS_FOLGA_PARA_SUBIR = 20
 CARGA_MAX_SUBIR = 0.70
 V_MAX = 6
+# Dono, 15/11/2026: "alivie um pouco o it campo, tá esquentando e a ventoinha não me deixa dormir". Com este arquivo o
+# acelerador não sobe nada (o freio continua descendo); apagar o arquivo devolve a escala automática.
+SEM_ACELERAR = BASE / "data" / ".sem_acelerar"
 
 _RX_INI = re.compile(r"^\[([^\]]+)\] ÍNTEGRA (\d{6}/\d{6}/\d{4})")
 _RX_FIM = re.compile(r"^\[([^\]]+)\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
@@ -236,7 +239,8 @@ def acelerador(disp_gb: float | None, carga1: float, ncpu: int, n: int, v: int,
                minutos_folga: int) -> tuple[int, int, int]:
     """(n, v, minutos_folga). Sobe uma sessão só depois de `MINUTOS_FOLGA_PARA_SUBIR` leituras seguidas com memória
     ≥ piso + `FOLGA_SUBIR_GB` e carga < `CARGA_MAX_SUBIR` × núcleos. Qualquer leitura sem folga zera a contagem."""
-    if disp_gb is None or disp_gb < PISO_MEM_GB + FOLGA_SUBIR_GB or carga1 >= CARGA_MAX_SUBIR * max(1, ncpu):
+    if (SEM_ACELERAR.exists() or disp_gb is None or disp_gb < PISO_MEM_GB + FOLGA_SUBIR_GB
+            or carga1 >= CARGA_MAX_SUBIR * max(1, ncpu)):
         return n, v, 0
     minutos_folga += 1
     if minutos_folga < MINUTOS_FOLGA_PARA_SUBIR:

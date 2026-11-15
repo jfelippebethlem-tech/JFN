@@ -143,3 +143,12 @@ def test_acelerador_nao_sobe_sem_folga_de_memoria_cpu_ou_leitura():
     assert P.acelerador(P.PISO_MEM_GB + 1, 6.0, 24, 8, 4, quase) == (8, 4, 0)      # memória curta: zera a contagem
     assert P.acelerador(folga, 22.0, 24, 8, 4, quase) == (8, 4, 0)                  # processador cheio
     assert P.acelerador(None, 6.0, 24, 8, 4, quase) == (8, 4, 0)                    # sem leitura: não sobe às cegas
+
+
+def test_acelerador_desligado_pelo_arquivo_do_dono(tmp_path, monkeypatch):
+    """15/11/2026: ventoinha do it-campo à noite — com `.sem_acelerar` nada sobe."""
+    flag = tmp_path / ".sem_acelerar"
+    flag.touch()
+    monkeypatch.setattr(P, "SEM_ACELERAR", flag)
+    folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
+    assert P.acelerador(folga, 1.0, 24, 5, 2, P.MINUTOS_FOLGA_PARA_SUBIR - 1) == (5, 2, 0)
