@@ -7,7 +7,9 @@
    ════════════════════════════════════════════════════════════════════════════════════════════ */
 html.v61 body.fps-baixo{--blur:none}
 html.v61 body.fps-baixo :is(.v61-grade,.tk-selo i,.mt-card .mt-pt,.tm-onda){animation:none}
-html.v61 body.fps-baixo .v61-piso, html.v61 body.fps-baixo .tm-radar{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+html.v61 body.fps-baixo .v61-piso{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+/* 14/11/2026: o radar do mapa fica, PARADO (pintado uma vez, sem laço) — o dono pediu o radar visível */
+html.v61 body.fps-baixo .tm-radar::before{animation:none;will-change:auto;transform:rotate(-38deg)}
 html.v61 body.fps-baixo #view .grid.v60-lista > .card{animation:none}
 /* 14/11/2026 — o número "chega" (`numChega`: opacity 0 → 1) seguia ligado no modo sóbrio. Justo na
    máquina sem quadro sobrando a animação demora a andar e o KPI aparece VAZIO (capturado em

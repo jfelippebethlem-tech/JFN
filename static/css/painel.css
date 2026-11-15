@@ -4821,7 +4821,7 @@ html.v61 .mt-evs li .num{flex:0 0 auto;font-size:.75rem;color:var(--muted)}
 /* ══ v61 · Fase 6 — MAPA DO TERRITÓRIO ═════════════════════════════════════════════════════════
    `.tm` é o hospedeiro (`#c61-mapa`), montado por `mapa/territorio.js`. Mesa holográfica clara:
    placa com sombra azul e borda forte, leve inclinação 3D no desktop que se ALINHA ao passar o
-   ponteiro (para ler e clicar de frente), varredura de radar a 6%, pulsos ao vivo no centróide.
+   ponteiro (para ler e clicar de frente), varredura de radar nítida (12 s por volta), pulsos ao vivo no centróide.
    ════════════════════════════════════════════════════════════════════════════════════════════ */
 html.v61 .tm{display:flex;flex-direction:column;position:relative}
 html.v61 .tm-topo{padding:14px 16px 6px}
@@ -4859,10 +4859,21 @@ html.v61 .tm-a.on, html.v61 .tm-a:focus-visible{transform:translateY(-3px);strok
 html.v61 .tm-onda{fill:none;stroke:var(--cyan);stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none;
   transform-box:fill-box;transform-origin:center;animation:v61onda 1.2s cubic-bezier(.2,.8,.2,1) both}
 @keyframes v61onda{from{transform:scale(1);opacity:.95}to{transform:scale(11);opacity:0}}
-/* varredura de radar: 30 s por volta, 6% */
-html.v61 .tm-radar{position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;margin:-75% 0 0 -75%;pointer-events:none;opacity:.06;
-  background:conic-gradient(from 0deg,var(--ion) 0deg,transparent 62deg,transparent 360deg);border-radius:50%;
-  animation:v61radar 30s linear infinite;will-change:transform}
+/* varredura de radar — 14/11/2026, dono: "radar mais visível". Antes: cunha a 6% de opacidade, 30 s por volta, com
+   o claro na borda de TRÁS (a cunha andava ao contrário do rastro) — não se via. Agora: linha de frente nítida em
+   azul ion, rastro de ~65° que esmaece para trás, anéis de alcance finos e 12 s por volta. Rastro no máximo 30% e
+   linha de 0,5°: o nome e a cor do município seguem legíveis. Sem `mix-blend-mode` (testado: com a placa
+   inclinada em 3D, o Chrome pinta a camada em blend PLANA e o radar vaza para fora da placa).
+   Sem movimento (reduced-motion, modo sóbrio): fica a imagem parada, sem laço. */
+html.v61 .tm-radar{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;
+  clip-path:inset(0 round var(--radius))}          /* moldura: o disco que gira não vaza da placa */
+html.v61 .tm-radar::before{content:"";position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;margin:-75% 0 0 -75%;
+  border-radius:50%;
+  background:
+    conic-gradient(from 0deg,transparent 0deg 296deg,rgba(30,123,240,.05) 302deg,rgba(30,123,240,.16) 345deg,
+      rgba(30,123,240,.3) 357deg,rgba(10,99,209,.85) 359.2deg,rgba(10,99,209,.85) 359.7deg,transparent 360deg),
+    repeating-radial-gradient(circle closest-side,transparent 0 calc(16.6% - 1.5px),rgba(30,123,240,.18) calc(16.6% - 1.5px) 16.6%);
+  animation:v61radar 12s linear infinite;will-change:transform}
 @keyframes v61radar{to{transform:rotate(1turn)}}
 
 /* tooltip de vidro */
@@ -5020,7 +5031,7 @@ html.v61 .tf-ind{margin-top:6px;padding:6px 8px;border-radius:8px;background:rgb
 }
 @keyframes v61entra{from{transform:translateX(24px);opacity:0}}
 @media (prefers-reduced-motion:reduce){
-  html.v61 .tm-radar{animation:none;display:none}
+  html.v61 .tm-radar::before{animation:none;will-change:auto;transform:rotate(-38deg)}   /* parado, a linha no quadrante de cima */
   html.v61 .tm-placa{transform:none;transition:none}
   html.v61 .tm-cam, html.v61 .tm-g, html.v61 .tm-a{transition:none}
   html.v61 .tm-ficha{animation:none}
@@ -5328,7 +5339,9 @@ html.v61 .card.kpi .v .tag{font-size:.6875rem;line-height:1.2;font-weight:600;fo
    ════════════════════════════════════════════════════════════════════════════════════════════ */
 html.v61 body.fps-baixo{--blur:none}
 html.v61 body.fps-baixo :is(.v61-grade,.tk-selo i,.mt-card .mt-pt,.tm-onda){animation:none}
-html.v61 body.fps-baixo .v61-piso, html.v61 body.fps-baixo .tm-radar{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+html.v61 body.fps-baixo .v61-piso{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+/* 14/11/2026: o radar do mapa fica, PARADO (pintado uma vez, sem laço) — o dono pediu o radar visível */
+html.v61 body.fps-baixo .tm-radar::before{animation:none;will-change:auto;transform:rotate(-38deg)}
 html.v61 body.fps-baixo #view .grid.v60-lista > .card{animation:none}
 /* 14/11/2026 — o número "chega" (`numChega`: opacity 0 → 1) seguia ligado no modo sóbrio. Justo na
    máquina sem quadro sobrando a animação demora a andar e o KPI aparece VAZIO (capturado em
