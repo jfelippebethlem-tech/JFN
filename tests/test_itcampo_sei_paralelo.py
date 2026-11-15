@@ -221,3 +221,11 @@ def test_bloqueio_que_persiste_com_poucas_sessoes_nao_derruba_o_teto(tmp_path, m
     P.registrar_bloqueio(total_sessoes=18)
     P.registrar_bloqueio(total_sessoes=2)
     assert P.teto_vigente() == 18 - P.FOLGA_TETO
+
+
+def test_saude_ignora_rodadas_anteriores_ao_fim_da_pausa():
+    """15/11 19:17: a pausa acabou e o freio disparou de novo contando as falhas de ANTES dela."""
+    agora = P._ts("2026-11-15 19:20:00")
+    regs = [dict(_rodada("2026-11-15 19:16:00", login=40), inicio="2026-11-15 19:10:00"),
+            dict(_rodada("2026-11-15 19:19:00", ok=2), inicio="2026-11-15 19:17:30")]
+    assert P.saude_sei(regs, agora, desde=P._ts("2026-11-15 19:17:00")) == (2, 0)

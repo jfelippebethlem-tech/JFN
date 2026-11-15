@@ -245,11 +245,13 @@ def freio_de_memoria(disp_gb: float | None, n: int, v: int, minutos_baixos: int)
     return n, v, 0
 
 
-def saude_sei(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_S) -> tuple[int, int]:
-    """(processos ok, processos com login falho) nas rodadas de íntegras dos últimos `janela_s` segundos."""
+def saude_sei(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_S,
+              desde: float = 0.0) -> tuple[int, int]:
+    """(processos ok, processos com login falho) nas rodadas de íntegras dos últimos `janela_s` segundos que
+    COMEÇARAM depois de `desde` (fim da última pausa de bloqueio: falha de antes dela não é estado de agora)."""
     ok = login = 0
     for r in registros:
-        if agora - _ts(r.get("ts", "")) > janela_s:
+        if agora - _ts(r.get("ts", "")) > janela_s or _ts(r.get("inicio") or r.get("ts", "")) < desde:
             continue
         for p in (r.get("procs") or {}).values():
             ok += p.get("status") == "ok"
@@ -268,7 +270,9 @@ def _saude_local() -> tuple[int, int]:
                     continue
     except OSError:
         pass
-    return saude_sei(regs, time.time())
+    idade = _idade_bloqueio()
+    fim_pausa = time.time() - idade + PAUSA_BLOQUEIO_S if idade is not None else 0.0
+    return saude_sei(regs, time.time(), desde=fim_pausa)
 
 
 def freio_de_bloqueio(saude: tuple[int, int], n: int, v: int) -> tuple[int, int] | None:
