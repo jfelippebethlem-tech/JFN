@@ -185,8 +185,13 @@ def veredito_foto(reg: dict) -> dict:
 # ── dados do acervo ──────────────────────────────────────────────────────────────────────────
 
 def _chave_endereco(endereco: str) -> str:
-    partes = [_sem_acento(p) for p in str(endereco or "").split(",")]
-    return " ".join(p for p in partes[:3] if p)
+    """'RUA, NELSON CARDOSO, 00309, …' e 'RUA, NELSON CARDOSO, 309, …' são o mesmo lote: sem pontuação,
+    número sem zero à esquerda (senão o mesmo prédio contava como 2 endereços)."""
+    partes = [_sem_acento(p) for p in str(endereco or "").split(",")][:3]
+    toks = []
+    for t in re.sub(r"[^A-Z0-9]+", " ", " ".join(partes)).split():
+        toks.append(t.lstrip("0") or "0" if t.isdigit() else t)
+    return " ".join(toks)
 
 
 _IDX_COORD: dict = {"ts": 0.0, "id": None, "idx": None}

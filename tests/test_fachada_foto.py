@@ -126,3 +126,9 @@ def test_comercial_em_coordenada_aproximada_nao_absolve():
 def test_sem_foto_e_indisponivel_nunca_zero():
     v = veredito_foto(_reg(visual_classe=""))
     assert v["status"] == "INDISPONIVEL" and v["prova_endereco"] is None
+
+
+def test_mesmo_lote_com_zero_a_esquerda_e_um_endereco_so():
+    from compliance_agent.fachada_foto import _chave_endereco
+    assert (_chave_endereco("AVENIDA, NELSON CARDOSO, 00309, SAL 0502, TAQUARA")
+            == _chave_endereco("AVENIDA, NELSON CARDOSO, 309, LOJA A, TAQUARA"))
