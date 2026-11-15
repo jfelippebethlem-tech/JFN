@@ -433,9 +433,11 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
         "(campo/mato/rural sem edificações), construcao_precaria_barraco (construção precária/favela/barraco), "
         "casa_residencial, predio_residencial, comercial_industrial (em funcionamento), galpao_logistico, "
         "estabelecimento_fechado_abandonado (loja/galpão com porta trancada, letreiro vazio, abandono, pichação, "
-        "sem sinal de atividade), via_sem_lote_visivel (a foto mostra rua/estrada/rodovia/acostamento e NENHUM "
-        "lote ou fachada no centro), indeterminado (nuvem/"
-        "imagem ruim/ambíguo). Responda SOMENTE JSON: "
+        "sem sinal de atividade), via_sem_lote_visivel (SOMENTE quando NÃO aparece nenhuma frente de lote: rodovia "
+        "com guard-rail, viaduto, túnel, encosta ou mata contínua dos dois lados), indeterminado (nuvem/"
+        "imagem ruim/ambíguo). Foto de rua costuma ter a pista no centro: NÃO julgue a pista — julgue os LOTES à "
+        "beira dela (lote vazio/mato ao lado da rua é terreno_baldio ou area_aberta_rural; casas são residenciais). "
+        "Responda SOMENTE JSON: "
         '{"classe":"<categoria>","confianca":<0-1>,"descricao":"<breve, em português>"}')
     txt = _gemini_vision_sync(img, mime, prompt)
     if not txt:  # fallback OpenRouter (visão)
