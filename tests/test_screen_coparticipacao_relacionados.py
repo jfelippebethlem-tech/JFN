@@ -113,10 +113,10 @@ def test_valor_implausivel_da_fonte_nao_entra_na_soma(db):
     """
     con = sqlite3.connect(db)
     con.execute("INSERT INTO tcerj_licitante VALUES "
-                "('MACAE',2024,'99/2024','ALFA LTDA','PERDEDOR',2,2_209_760_960.0,2_945_789.05,"
+                "('MACAE',2024,'99/2024','ALFA LTDA','PERDEDOR',2,2209760960.0,2945789.05,"
                 "'2024-06-10')")
     con.execute("INSERT INTO tcerj_licitante VALUES "
-                "('MACAE',2024,'99/2024','BETA LTDA','PERDEDOR',2,2_209_760_960.0,2_945_789.05,"
+                "('MACAE',2024,'99/2024','BETA LTDA','PERDEDOR',2,2209760960.0,2945789.05,"
                 "'2024-06-10')")
     con.commit(); con.close()
     r = S.medir(db=db)[0]

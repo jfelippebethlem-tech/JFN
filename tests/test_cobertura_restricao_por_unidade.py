@@ -116,8 +116,8 @@ def test_ordena_pela_RELEVANCIA_do_ponto_cego_nao_pelo_percentual():
     con = _s.connect(db)
     con.execute("CREATE TABLE ordens_bancarias (numero_sei TEXT, ug_nome TEXT, valor REAL)")
     con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, status TEXT)")
-    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-040014/1/2024','PREVIDENCIA',900_000.0)")
-    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-080002/1/2024','FUNDACAO SAUDE',1_781_000_000.0)")
+    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-040014/1/2024','PREVIDENCIA',900000.0)")
+    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-080002/1/2024','FUNDACAO SAUDE',1781000000.0)")
     con.commit(); con.close()
     u = C.medir(db=db, acervo=acervo)["restricao"]["por_unidade"]
     assert u[0]["ug"] == "080002", f"topo veio {u[0]['ug']} (percentual, não relevância)"

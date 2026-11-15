@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+import sys
 
 # Erros que uma rota de LEITURA do acervo pode ver de verdade: base ocupada/corrompida, esquema
 # ausente, argumento fora de forma, módulo opcional ausente. Captura genérica aqui esconderia
@@ -665,8 +666,11 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         # quando os itens estavam logo abaixo da janela. Corte de janela não pode virar "não há".
         _args = (["--osint"] if so_osint
                  else ["--top", str(max(1, min(limite, 300)))])
+        # .venv do repositório quando existe; senão o intérprete que serve a rota (venv limpo da
+        # rotina noturna e da VM-2 não tem `.venv` no repositório — o caminho fixo dava 500).
+        _py = raiz / ".venv" / "bin" / "python"
         r = subprocess.run(
-            [str(raiz / ".venv" / "bin" / "python"),
+            [str(_py) if _py.exists() else sys.executable,
              str(raiz / "tools" / "processo_360_ranking.py"), *_args],
             capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
         if r.returncode != 0:
