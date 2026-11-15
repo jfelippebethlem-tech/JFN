@@ -55,8 +55,11 @@ function _orgao(d){
           <button class="btn ghost" style="margin-left:8px" data-com-mais="${esc(d.orgao)}">Ver todos os ${fmtN(d.n_problemas)}</button></div>`:''}`
     : `<div class="dim" style="margin-top:8px">Nenhum fornecedor com indício neste órgão.</div>`;
   // <summary> tem de ser filho DIRETO do <details>: dentro do card() o navegador mostrava um "▼ Details" solto
-  return `<details class="card com-org" data-inst="${d.instituicao_da_comissao?1:0}" ${d.instituicao_da_comissao?'open':''}
-     style="margin:12px 0">${cab}${corpo}</details>`;
+  // Fechado = corpo montado só ao abrir (15/11/2026: a aba montava 15,6 mil nós escondidos e travava no iPhone).
+  const aberto=!!d.instituicao_da_comissao;
+  const lazy=aberto?'':` data-com-lazy="${_guardar(()=>corpo)}"`;
+  return `<details class="card com-org" data-inst="${d.instituicao_da_comissao?1:0}" ${aberto?'open':''}${lazy}
+     style="margin:12px 0">${cab}${aberto?corpo:''}</details>`;
 }
 
 async function _pecas(){
@@ -83,6 +86,10 @@ async function _pecas(){
 // ═══ PULOS DO GATO — detectores orçamentários com o manual ao lado (13/11/2026) ═══
 // GET /api/comissao/pulos?ano=&mes= (compliance_agent/pulos_do_gato.py; rotina semanal tools/pulos_do_gato_semanal.py).
 // ESTADO fala do NÚMERO (conferido ou não), nunca da irregularidade. Empenho/dotação/RP nunca aparecem como "pago".
+// corpos de <details> montados só quando abertos (ver ligarComissao, evento toggle)
+const _lazy = new Map(); let _lazySeq = 0;
+function _guardar(fn){ const k=String(++_lazySeq); _lazy.set(k, fn); return k; }
+
 const _MES = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const _EST = {'VERIFICADO':['var(--ok,#1f9d55)','número conferido'],'PENDENTE':['var(--amber,#b7791f)','número a conferir'],'INDISPONÍVEL':['var(--dim,#888)','a fonte não tem o dado']};
 const _md = t => esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`(.+?)`/g,'<code>$1</code>');
@@ -91,7 +98,7 @@ function _selo(e){ const c=_EST[e]||_EST['PENDENTE']; return `<span title="${esc
 
 function _pgAchado(a, i){
   const quando = a.ano ? (a.mes?_MES[a.mes]+'/':'')+a.ano : '—';
-  return `<tr${i>=25?' class="pg-mais" hidden':''}>
+  return `<tr>
     <td style="white-space:nowrap;text-align:left">${esc(quando)}</td>
     <td style="text-align:left"><b>${esc(a.titulo)}</b>${a.url?` <a href="${esc(a.url)}" target="_blank" rel="noopener" style="font-size:11px">DOERJ</a>`:''}
       <div class="dim" style="font-size:12px;margin-top:2px">${esc(a.detalhe)}</div>
@@ -122,13 +129,13 @@ function _pgDetector(d){
   const e=d.estados||{}, n=(d.achados||[]).length;
   const est=Object.keys(e).map(k=>`${fmtN(e[k])} ${k.toLowerCase()}`).join(' · ');
   const corpo = n ? `<table class="tb com-txt"><thead><tr><th>Quando</th><th>Achado</th><th class="right">Valor · o que é</th><th>Estado do número</th></tr></thead>
-      <tbody>${d.achados.map(_pgAchado).join('')}</tbody></table>
-      ${n>25?`<button class="btn ghost" style="margin-top:6px" data-com-pg-mais="1">Ver os ${fmtN(n)}</button>`:''}`
+      <tbody>${d.achados.slice(0,25).map(_pgAchado).join('')}</tbody></table>
+      ${n>25?`<button class="btn ghost" style="margin-top:6px" data-com-pg-mais="${_guardar(()=>d.achados.slice(25).map((a,i)=>_pgAchado(a,i+25)).join(''))}">Ver os ${fmtN(n)}</button>`:''}`
     : `<div class="dim">Nenhum achado neste recorte${d.n_total?` (${fmtN(d.n_total)} no total, em outros períodos)`:''}.</div>`;
-  return `<details class="card com-pg" style="margin:12px 0"><summary style="cursor:pointer;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+  const lazy=_guardar(()=>`<div class="com-pg-grid" style="margin-top:10px">${_pgManual(d)}<div style="min-width:0;overflow-x:auto">${corpo}</div></div>`);
+  return `<details class="card com-pg" data-com-lazy="${lazy}" style="margin:12px 0"><summary style="cursor:pointer;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
       <span class="dim" style="font-size:12px">${esc(d.id)}</span><b style="font-size:15px">${esc(d.titulo)}</b>
-      <span style="margin-left:auto;font-size:13px"><b>${fmtN(n)}</b> achado(s)${d.n_total!=null&&d.n_total!==n?` de ${fmtN(d.n_total)}`:''} <span class="dim">· ${esc(est||'—')}</span></span></summary>
-    <div class="com-pg-grid" style="margin-top:10px">${_pgManual(d)}<div style="min-width:0;overflow-x:auto">${corpo}</div></div></details>`;
+      <span style="margin-left:auto;font-size:13px"><b>${fmtN(n)}</b> achado(s)${d.n_total!=null&&d.n_total!==n?` de ${fmtN(d.n_total)}`:''} <span class="dim">· ${esc(est||'—')}</span></span></summary></details>`;
 }
 
 async function _pulosCorpo(ano, mes){
@@ -182,15 +189,23 @@ export function ligarComissao(){
     if(!b) return;
     ev.preventDefault();
     if(b.dataset.comGerar) comissaoGerar(b.dataset.comGerar, b);
-    else if(b.dataset.comPgMais){ b.closest('details').querySelectorAll('.pg-mais').forEach(e=>e.hidden=false); b.remove(); }
+    else if(b.dataset.comPgMais){ const f=_lazy.get(b.dataset.comPgMais), tb=b.closest('details').querySelector('tbody');
+      if(f&&tb) tb.insertAdjacentHTML('beforeend', f()); b.remove(); }
     else comissaoMais(b.dataset.comMais, b);
   });
+  // toggle não borbulha: captura
+  document.addEventListener('toggle', ev=>{
+    const det=ev.target; if(!det||!det.open||!det.dataset||!det.dataset.comLazy) return;
+    const f=_lazy.get(det.dataset.comLazy); delete det.dataset.comLazy;
+    if(f) det.insertAdjacentHTML('beforeend', f());
+  }, true);
   document.addEventListener('change', ev=>{
     if(ev.target && ev.target.matches && ev.target.matches('[data-com-pg-f]')) pulosFiltrar();
   });
 }
 
 export async function renderComissao(){
+  _lazy.clear();
   let h=cover('estado','Comissão de Orçamento, Finanças, Fiscalização Financeira e Controle',
     'ALERJ · contas do Governo do Estado, TJRJ, MPRJ, Defensoria Pública e TCE-RJ. Peças geradas pelo sistema e, órgão a órgão, os problemas encontrados nos fornecedores. Indício não é acusação.','🏛️');
   h+=await _pecas();
