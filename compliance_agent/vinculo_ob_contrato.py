@@ -127,8 +127,19 @@ _RE_DESDOBRAMENTO = re.compile(r"/\s*\d{3,6}\s*-?\s*[A-Za-z]{1,2}\s*/")
 _RE_ATA_RP = re.compile(r"REGISTRO\s+DE\s+PRE[ÇC]OS|\bARP\b", re.I)
 
 
-def motivo_rebaixa(processo_contrato_bruto: str | None, trecho_citado: str) -> str:
+# PROVA DE EXPERIÊNCIA (14/11/2026): OB de R$ 8,85 mi de uma parceria NOVA (Lei 13.019, outra UG) foi ligada ao contrato
+# de R$ 1 mi da SETUR porque o processo do contrato aparecia num "Comprovante de Capacidade Técnica": a entidade citava a
+# parceria ANTERIOR como experiência. Citação em atestado/comprovante de capacidade ou de experiência não diz o que a OB paga.
+_RE_PROVA_EXPERIENCIA = re.compile(
+    r"capacidade[\s_]+t[ée]cnica|atestado[\s_]+de[\s_]+capacidade|experi[êe]ncia[\s_]+(?:anterior|pr[ée]via|comprovada)"
+    r"|acervo[\s_]+t[ée]cnico|portf[óo]lio|curr[íi]culo", re.I)
+
+
+def motivo_rebaixa(processo_contrato_bruto: str | None, trecho_citado: str, fonte_doc: str = "") -> str:
     """Motivo para um vínculo NÃO ser VERIFICADO apesar da citação conferida ('' = nenhum)."""
+    if _RE_PROVA_EXPERIENCIA.search(fonte_doc or "") or _RE_PROVA_EXPERIENCIA.search(trecho_citado or ""):
+        return ("a citação está em prova de capacidade/experiência anterior — mostra que o credor já contratou, não o "
+                "que esta OB paga")
     if _RE_DESDOBRAMENTO.search(processo_contrato_bruto or ""):
         return ("o contrato é desdobramento (processo com sufixo) de ata/licitação — a citação do processo-base não "
                 "identifica qual compra é paga")
@@ -242,7 +253,7 @@ def linhas_do_par(proc_pag: str, credor: str, obs: list, cid: str | None, chave_
     hoje = datetime.now().isoformat(timespec="seconds")
     if estado == V.VERIFICADO and cid:
         ini, _fim, bruto = info.get(cid, (None, None, ""))
-        if (m := motivo_rebaixa(bruto, tr)):
+        if (m := motivo_rebaixa(bruto, tr, fonte)):
             estado, motivo = V.PENDENTE, m
         elif (m := motivo_dominante(contagem or Counter(), chave_ctr)):
             estado, motivo = V.PENDENTE, m
@@ -527,10 +538,10 @@ def reconferir(db: str | Path) -> dict:
         bruto = {cid: proc or "" for cid, proc in con.execute("SELECT id, processo FROM contratos_tcerj")}
         cont: dict[str, Counter] = {}
         rebaixar = []
-        for ob, ug, ex, cid, tr, pp, pc in con.execute(
-                "SELECT ob, ug, exercicio, contrato_tcerj_id, trecho, processo_pagamento, processo_contrato "
+        for ob, ug, ex, cid, tr, pp, pc, fd in con.execute(
+                "SELECT ob, ug, exercicio, contrato_tcerj_id, trecho, processo_pagamento, processo_contrato, fonte_doc "
                 "FROM vinculo_ob_contrato WHERE estado='VERIFICADO'").fetchall():
-            m = motivo_rebaixa(bruto.get(cid), tr)
+            m = motivo_rebaixa(bruto.get(cid), tr, fd)
             kp, kc = P.chave_sei("SEI-" + str(pp or "")), P.chave_sei("SEI-" + str(pc or ""))
             if not m and kp:
                 if kp not in cont:

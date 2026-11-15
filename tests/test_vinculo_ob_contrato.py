@@ -211,6 +211,21 @@ def test_desdobramento_de_ata_e_citacao_em_ata_nao_verificam(bruto, trecho, reba
     assert bool(vo.motivo_rebaixa(bruto, trecho)) is rebaixa
 
 
+# 14/11/2026: a OB de R$ 8,85 mi de uma parceria NOVA (UG 170100, Lei 13.019) foi ligada ao contrato de R$ 1 mi da SETUR
+# porque o processo do contrato aparece num "Comprovante de Capacidade Técnica" — a entidade cita a parceria ANTERIOR como
+# experiência. Citação em prova de experiência não diz o que a OB paga.
+@pytest.mark.parametrize("fonte,trecho,rebaixa", [
+    ("texto/030_comprovante_de_capacidade_tecnica_lei_13_019_2014_122750279.txt — Comprovante de Capacidade Técnica "
+     "Lei 13.019/2014 (122750279)", "corrobora o processo SEI-050001/000746/2025", True),
+    ("texto/012_atestado_de_capacidade_tecnica_1.txt — Atestado de Capacidade Técnica (1)",
+     "prestou serviços no processo SEI-050001/000746/2025", True),
+    ("texto/040_relatorio.txt — Relatório", "experiência anterior comprovada no processo SEI-050001/000746/2025", True),
+    ("texto/005_nota_fiscal.txt — Nota Fiscal (99)", "referente ao contrato do processo SEI-050001/000746/2025", False),
+])
+def test_citacao_em_prova_de_experiencia_nao_verifica(fonte, trecho, rebaixa):
+    assert bool(vo.motivo_rebaixa("SEI-050001/000746/2025", trecho, fonte)) is rebaixa
+
+
 def test_reconferir_rebaixa_o_ja_gravado(base, tmp_path):
     con = sqlite3.connect(base)
     con.execute("UPDATE contratos_tcerj SET processo='SEI-100001/000004-B/2024' WHERE id='D'")
