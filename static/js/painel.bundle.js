@@ -5508,6 +5508,43 @@ void main(){
     ["A_MENOR_EM_CURSO", "Abaixo do devido — em curso", null, "⏳"],
     ["INDETERMINADO", "Indeterminado", null, "❔"]
   ];
+  var _CLASSES_PROPRIAS = [
+    ["CONSUMO_CONTINUO", "Consumo contínuo acima da estimativa", "var(--amber)", "🔌"],
+    ["GRUPO_ATA_DENTRO", "Grupo de ata — dentro da soma", "var(--green)", "🧩"],
+    ["GRUPO_ATA_A_MAIOR", "Grupo de ata — acima da soma", "var(--rose)", "🧩"],
+    ["GRUPO_ATA_INDETERMINADO", "Grupo de ata — indeterminado", null, "🧩"]
+  ];
+  function _linhasGrupo(itens) {
+    return (itens || []).map((x) => `<tr><td style="font-size:13px"><b>${esc(x.fornecedor || "")}</b> <span class="dim" style="font-size:11px">${esc(x.fornecedor_doc || "")}</span>
+      <div>${esc(x.objeto || "")}</div><div class="dim" style="font-size:11px">${esc(x.orgao || "")} · processo de origem ${esc(x.grupo_ata || "")} · ${fmtN(x.grupo_n)} registro(s): ${(x.registros || []).map((g) => esc(g.processo || g.contrato || "")).join("; ")}</div></td>
+    <td class="right" style="white-space:nowrap">${x.grupo_regua == null ? "—" : fmtR(x.grupo_regua)}${x.grupo_regua_conservadora != null && x.grupo_regua_conservadora !== x.grupo_regua ? `<div class="dim" style="font-size:11px">conservadora ${fmtR(x.grupo_regua_conservadora)}</div>` : ""}</td>
+    <td class="right" style="white-space:nowrap">${x.grupo_pago == null ? "—" : fmtR(x.grupo_pago)}<div class="dim" style="font-size:11px">${fmtN(x.grupo_n_obs)} OB</div></td>
+    <td class="right" style="white-space:nowrap"><b>${x.grupo_diferenca == null ? "—" : fmtR(x.grupo_diferenca)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
+  }
+  function _proprias(e, p) {
+    const cc = e.consumo_continuo, g = e.grupos_ata;
+    if (!cc && !g) return "";
+    const kp = _CLASSES_PROPRIAS.map(([k, rotulo, cor, gl]) => kpi(fmtN(p[k] || 0), `${rotulo} (${_pct(p[k] || 0, e.n)})`, cor, gl, { sobre: 'Contratos nesta classe própria — fora da manchete "acima do valor contratado". Grupos de ata: cada contrato do grupo conta aqui, mas o pago e a soma são do GRUPO.' })).join("");
+    const cab = '<thead><tr><th>Fornecedor, objeto e órgão</th><th class="right">Valor atualizado</th><th class="right">Devido até o corte</th><th class="right">Pago</th><th class="right">Pago − devido</th></tr></thead>';
+    const cabG = '<thead><tr><th>Grupo (processo de origem × credor)</th><th class="right">Soma dos desdobramentos</th><th class="right">Pago no processo de origem</th><th class="right">Pago − soma</th></tr></thead>';
+    const sub = cc ? Object.entries(cc.subtipos || {}).map(([k, v]) => `${esc(k)}: ${fmtN(v)}`).join(" · ") : "";
+    const mot = g ? (g.motivos_indeterminado || []).map((m) => `<tr><td style="font-size:13px">${esc(m.texto)}</td><td class="right">${fmtN(m.n)}</td></tr>`).join("") : "";
+    const pg = g && g.placar_grupos || {};
+    return `<div class="grid g2" style="margin-top:8px">${kp}</div>
+    ${cc ? `<details style="margin-top:10px"><summary style="cursor:pointer"><b>Consumo contínuo acima da estimativa</b> — ${fmtN(cc.n)} contratos · ${fmtR(cc.excesso)} (fora da manchete)</summary>
+      <div class="dim" style="font-size:12px;margin:4px 0">${esc(cc.criterio || "")}</div>
+      <div style="font-size:12px;margin:4px 0">${sub}</div>
+      <div style="max-height:480px;overflow:auto"><table class="tb rt-txt">${cab}<tbody>${_linhasContrato(cc.itens, (x) => fmtR(x.diferenca))}</tbody></table></div></details>` : ""}
+    ${g ? `<details style="margin-top:8px"><summary style="cursor:pointer"><b>Desdobramentos de ata — perícia por grupo</b> — ${fmtN(g.n_grupos)} grupos: ${fmtN(pg.GRUPO_ATA_A_MAIOR)} acima da soma (${fmtR(g.excesso_a_maior)}) · ${fmtN(pg.GRUPO_ATA_DENTRO)} dentro · ${fmtN(pg.GRUPO_ATA_INDETERMINADO)} indeterminados</summary>
+      <div class="dim" style="font-size:12px;margin:4px 0">${esc(g.criterio || "")}</div>
+      <div style="font-size:12px;margin:4px 0">Grupos dentro da soma: pago ${fmtR(g.pago_dentro)} × soma ${fmtR(g.regua_dentro)}. O excesso de grupo é contado uma vez por grupo e não entra em "acima do valor contratado".</div>
+      <div style="margin-top:6px"><b>Grupos acima da soma</b> (todos, ${fmtN((g.a_maior || []).length)})</div>
+      <div style="max-height:480px;overflow:auto"><table class="tb rt-txt">${cabG}<tbody>${_linhasGrupo(g.a_maior)}</tbody></table></div>
+      <div style="margin-top:8px"><b>Maiores grupos dentro da soma</b> (${fmtN(g.n_dentro_listados)} de ${fmtN(pg.GRUPO_ATA_DENTRO)}, maior pago primeiro)</div>
+      <div style="max-height:420px;overflow:auto"><table class="tb rt-txt">${cabG}<tbody>${_linhasGrupo(g.dentro)}</tbody></table></div>
+      <div style="margin-top:8px"><b>Por que ${fmtN(pg.GRUPO_ATA_INDETERMINADO)} grupos ficaram indeterminados</b></div>
+      <table class="tb rt-txt"><thead><tr><th>Motivo</th><th class="right">Grupos</th></tr></thead><tbody>${mot}</tbody></table></details>` : ""}`;
+  }
   function _linhasContrato(itens, campoValor) {
     return (itens || []).map((x) => `<tr><td style="font-size:13px"><b>${esc(x.fornecedor || "")}</b> <span class="dim" style="font-size:11px">${esc(x.fornecedor_doc || "")}</span>
       <div>${esc(x.objeto || "")}</div><div class="dim" style="font-size:11px">${esc(x.orgao || "")}${x.ug ? " · UG " + esc(x.ug) : ""} · contrato ${esc(x.contrato || "")}${x.processo ? " · " + esc(x.processo) : ""}</div></td>
@@ -5530,6 +5567,7 @@ void main(){
     <div class="dim" style="font-size:12px;margin-top:4px"><b>Pago:</b> ${esc(e.fonte_pago || "")}. ${esc(nome === "Estado do RJ" ? defs.pago_estado || "" : defs.pago_prefeitura || "")}.
       <b>Contratos:</b> ${esc((e.proveniencia || {}).fonte_contratos || "")}. <b>Cobertura:</b> ${esc((e.proveniencia || {}).cobertura || "")}.
       Acréscimo acima do teto legal aferível em ${fmtN((e.art125 || {}).aferivel)} contratos; estouro em ${fmtN((e.art125 || {}).estouro)}.</div>
+    ${_proprias(e, p)}
     <details style="margin-top:10px" open><summary style="cursor:pointer"><b>Maiores "pago acima do valor contratado"</b> (${fmtN((e.a_maior || []).length)} de ${fmtN(p.A_MAIOR)}, maior diferença primeiro)</summary>
       <div style="max-height:560px;overflow:auto"><table class="tb rt-txt">${cab.replace("%s", "Pago − devido")}<tbody>${_linhasContrato(e.a_maior, (x) => fmtR(x.diferenca))}</tbody></table></div></details>
     ${dup.aferivel === false ? `<div class="dim" style="font-size:12px;margin-top:8px"><b>Duplicidades:</b> ${esc(dup.motivo || "não aferível nesta esfera")}</div>` : `<details style="margin-top:8px"><summary style="cursor:pointer"><b>Possível duplicidade — mesma NL, dias distintos, todas confirmadas pelo banco</b> (${fmtN(dup.n_contratos)} contratos · ${fmtN(dup.n_obs_repetidas)} OB repetidas · ${fmtR(dup.valor_repetido)})</summary>
@@ -5977,6 +6015,13 @@ void main(){
     const res = String(top.ressalvas || "").split(" · ")[0];
     return ` O maior caso (${esc(top.fornecedor || "—")}, ${esc(top.orgao ? top.orgao.split(" - ")[0] : "")}) responde por ${p}% da soma${res ? ` — ${esc(res)}` : ""}.`;
   }
+  function _foraDaManchete(e) {
+    const cc = e.consumo_continuo, g = e.grupos_ata;
+    const p = [];
+    if (cc && cc.n) p.push(`${fmtN(cc.n)} de consumo contínuo (${brl(cc.excesso)}, valor registrado é estimativa)`);
+    if (g && g.placar_grupos && g.placar_grupos.GRUPO_ATA_A_MAIOR) p.push(`${fmtN(g.placar_grupos.GRUPO_ATA_A_MAIOR)} grupo(s) de ata acima da soma dos desdobramentos (${brl(g.excesso_a_maior)})`);
+    return p.length ? ` Fora desta soma, em classe própria: ${p.join("; ")}.` : "";
+  }
   function _pericia(d) {
     if (!d || d.ok === false || !d.esferas) return '<div class="pq-indisp"><b>Perícia contábil: INDISPONÍVEL</b> — a rota não respondeu.</div>';
     const e = d.esferas["Estado do RJ"];
@@ -5987,7 +6032,7 @@ void main(){
       grau: "🟡",
       valor: brl(e.excesso_a_maior),
       titulo: `Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`,
-      texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
+      texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.${_foraDaManchete(e)}`,
       fonte: "SIAFE (OB Contabilizado) × contratos do TCE-RJ, régua determinística reproduzível",
       estado: "VERIFICADO",
       destino: "e_pcont"

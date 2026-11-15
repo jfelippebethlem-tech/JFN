@@ -52,6 +52,16 @@ function _concentracao(e) {
   return ` O maior caso (${esc(top.fornecedor || '—')}, ${esc(top.orgao ? top.orgao.split(' - ')[0] : '')}) responde por ${p}% da soma${res ? ` — ${esc(res)}` : ''}.`;
 }
 
+/* Decisão do dono (14/11/2026): consumo contínuo (concessionária, cota condominial, assinatura) e grupos de ata têm
+   classe própria — ficam FORA desta soma; a frase diz quanto ficou de fora, para a manchete não esconder nada. */
+function _foraDaManchete(e) {
+  const cc = e.consumo_continuo, g = e.grupos_ata;
+  const p = [];
+  if (cc && cc.n) p.push(`${fmtN(cc.n)} de consumo contínuo (${brl(cc.excesso)}, valor registrado é estimativa)`);
+  if (g && g.placar_grupos && g.placar_grupos.GRUPO_ATA_A_MAIOR) p.push(`${fmtN(g.placar_grupos.GRUPO_ATA_A_MAIOR)} grupo(s) de ata acima da soma dos desdobramentos (${brl(g.excesso_a_maior)})`);
+  return p.length ? ` Fora desta soma, em classe própria: ${p.join('; ')}.` : '';
+}
+
 function _pericia(d) {
   if (!d || d.ok === false || !d.esferas) return '<div class="pq-indisp"><b>Perícia contábil: INDISPONÍVEL</b> — a rota não respondeu.</div>';
   const e = d.esferas['Estado do RJ'];
@@ -62,7 +72,7 @@ function _pericia(d) {
     grau: '🟡',
     valor: brl(e.excesso_a_maior),
     titulo: `Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`,
-    texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.`,
+    texto: `Soma das OB contabilizadas no SIAFE que passam do valor registrado do contrato. O TCE-RJ não publica os termos aditivos: é indício a conferir nos aditivos, não dano apurado.${_concentracao(e)} Em contratos já encerrados, ficaram ${brl(e.deficit_encerrado)} abaixo do devido.${_foraDaManchete(e)}`,
     fonte: 'SIAFE (OB Contabilizado) × contratos do TCE-RJ, régua determinística reproduzível',
     estado: 'VERIFICADO', destino: 'e_pcont'});
 }
