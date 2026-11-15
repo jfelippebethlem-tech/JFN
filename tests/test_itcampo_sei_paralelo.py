@@ -136,11 +136,11 @@ def test_acelerador_sobe_uma_sessao_so_depois_de_folga_sustentada():
     folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
     n, v, f = 8, 4, 0
     for _ in range(P.MINUTOS_FOLGA_PARA_SUBIR - 1):
-        n, v, f = P.acelerador(folga, 6.0, 24, n, v, f)
+        n, v, f = P.acelerador(folga, 6.0, 24, n, v, f, saude=(10, 0))
         assert (n, v) == (8, 4)
-    assert P.acelerador(folga, 6.0, 24, n, v, f) == (9, 4, 0)
-    assert P.acelerador(folga, 6.0, 24, P.N_MAX, 4, P.MINUTOS_FOLGA_PARA_SUBIR - 1) == (P.N_MAX, 5, 0)
-    assert P.acelerador(folga, 6.0, 24, P.N_MAX, P.V_MAX, 99) == (P.N_MAX, P.V_MAX, 0)
+    assert P.acelerador(folga, 6.0, 24, n, v, f, saude=(10, 0)) == (9, 4, 0)
+    assert P.acelerador(folga, 6.0, 24, P.N_MAX, 4, P.MINUTOS_FOLGA_PARA_SUBIR - 1, saude=(10, 0)) == (P.N_MAX, 5, 0)
+    assert P.acelerador(folga, 6.0, 24, P.N_MAX, P.V_MAX, 99, saude=(10, 0)) == (P.N_MAX, P.V_MAX, 0)
 
 
 def test_acelerador_nao_sobe_sem_folga_de_memoria_cpu_ou_leitura():
@@ -158,3 +158,66 @@ def test_acelerador_desligado_pelo_arquivo_do_dono(tmp_path, monkeypatch):
     monkeypatch.setattr(P, "SEM_ACELERAR", flag)
     folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
     assert P.acelerador(folga, 1.0, 24, 5, 2, P.MINUTOS_FOLGA_PARA_SUBIR - 1) == (5, 2, 0)
+
+
+def _rodada(ts, **status):
+    procs = {f"{i:06d}/000001/2026": {"status": s} for i, s in enumerate(
+        [st for st, q in status.items() for _ in range(q)])}
+    return {"ts": ts, "no": "itcampo", "procs": procs}
+
+
+def test_saude_conta_ok_e_login_so_da_janela_recente():
+    agora = P._ts("2026-11-15 18:00:00")
+    regs = [_rodada("2026-11-15 17:00:00", ok=9),                       # fora da janela de 30 min
+            _rodada("2026-11-15 17:45:00", ok=2, login=1, sem_arvore=4),
+            {"ts": "2026-11-15 17:50:00", "modo": "varredura", "cdp": 3}]  # varredura não tem status por processo
+    assert P.saude_sei(regs, agora) == (2, 1)
+
+
+def test_acelerador_nao_le_cpu_ociosa_de_sessao_bloqueada_como_folga():
+    """15/11/2026: o SEI recusou o it-campo das 15h em diante (login 100% falho); a CPU ficou ociosa PORQUE nada
+    era capturado e o acelerador leu isso como folga — subiu de 12+3 para 12+6 durante o bloqueio, martelando mais."""
+    folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
+    quase = P.MINUTOS_FOLGA_PARA_SUBIR - 1
+    assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(0, 40)) == (12, 3, 0)   # só login falho
+    assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(0, 0)) == (12, 3, 0)    # nada medido: não sobe às cegas
+    assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(10, 5)) == (12, 3, 0)   # 1/3 de login falho
+    assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(20, 1)) == (12, 4, 0)
+
+
+def test_acelerador_respeita_o_teto_do_ultimo_bloqueio():
+    folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
+    quase = P.MINUTOS_FOLGA_PARA_SUBIR - 1
+    assert P.acelerador(folga, 1.0, 24, 8, 2, quase, saude=(20, 0), teto=10) == (8, 2, 0)
+    assert P.acelerador(folga, 1.0, 24, 8, 1, quase, saude=(20, 0), teto=10) == (9, 1, 0)
+
+
+def test_freio_de_bloqueio_desce_ao_minimo_com_login_falhando_em_massa():
+    assert P.freio_de_bloqueio((0, 12), 12, 6) == (P.N_MIN, 0)
+    assert P.freio_de_bloqueio((3, 9), 12, 6) == (P.N_MIN, 0)
+    assert P.freio_de_bloqueio((30, 3), 12, 6) is None          # falha esparsa não é bloqueio
+    assert P.freio_de_bloqueio((0, 3), 12, 6) is None           # amostra pequena demais para concluir
+
+
+def test_bloqueio_recente_pausa_as_sessoes_e_expira(tmp_path, monkeypatch):
+    marca = tmp_path / ".bloqueio_sei"
+    monkeypatch.setattr(P, "BLOQUEIO", marca)
+    assert not P.em_bloqueio()
+    P.registrar_bloqueio(total_sessoes=18)
+    assert P.em_bloqueio()
+    assert P.teto_vigente() == 18 - P.FOLGA_TETO
+    velho = marca.stat().st_mtime - P.PAUSA_BLOQUEIO_S - 1
+    os.utime(marca, (velho, velho))
+    assert not P.em_bloqueio()
+    assert P.teto_vigente() == 18 - P.FOLGA_TETO          # o teto dura mais que a pausa
+    vencido = marca.stat().st_mtime - P.VALIDADE_TETO_S - 1
+    os.utime(marca, (vencido, vencido))
+    assert P.teto_vigente() is None
+
+
+def test_bloqueio_que_persiste_com_poucas_sessoes_nao_derruba_o_teto(tmp_path, monkeypatch):
+    """Se o SEI segue recusando depois da pausa, o freio dispara de novo já com 2 sessões — isso não mede capacidade."""
+    monkeypatch.setattr(P, "BLOQUEIO", tmp_path / ".bloqueio_sei")
+    P.registrar_bloqueio(total_sessoes=18)
+    P.registrar_bloqueio(total_sessoes=2)
+    assert P.teto_vigente() == 18 - P.FOLGA_TETO
