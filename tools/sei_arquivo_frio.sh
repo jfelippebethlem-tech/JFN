@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Disco da VM-1 encheu em 15/11/2026 (100%, ~22 GB de PDF de íntegra a cada 6 h vindos do it-campo).
-# Uma vez por dia, para cada pasta data/sei_cache/integra_* parada há 3 h e já arquivada (sei_arquivo/<tag>):
+# De hora em hora (15/11: 4 GB/h de PDF), para cada pasta data/sei_cache/integra_* parada há 2 h e já arquivada (sei_arquivo/<tag>):
 #   1. PDF NATIVO → NNN.txt + sha256/URL em depurados.json  (tools/sei_depurar_pdfs.py; fica na VM-1)
 #   2. PDF escaneado → it-campo C:\JFN-Arquivo\sei_pdfs\<pasta>\ (rsync confere e só então apaga daqui)
 #   3. data/sei_arquivo_frio.jsonl registra onde cada pasta foi parar.
@@ -14,7 +14,7 @@ PY=.venv/bin/python
 DEST=/mnt/c/JFN-Arquivo/sei_pdfs   # = C:\JFN-Arquivo\sei_pdfs no it-campo: FORA do OneDrive (a Área de Trabalho
                                    # dele é OneDrive), com atalho "JFN-Arquivo" na Área de Trabalho (pedido do dono, 15/11)
 echo "$(date '+%F %T') início — livre: $(df -h / | awk 'NR==2{print $4}')"
-nice -n 15 ionice -c3 timeout 10800 $PY -m tools.sei_depurar_pdfs --aplicar --sem-recomprimir --idade-min-h 3 2>/dev/null | tail -1
+nice -n 15 ionice -c3 timeout 10800 $PY -m tools.sei_depurar_pdfs --aplicar --sem-recomprimir --idade-min-h 2 2>/dev/null | tail -1
 if ! timeout 30 ssh -o ConnectTimeout=15 it-campo 'wsl -d Ubuntu -e true' >/dev/null 2>&1; then
   echo "$(date '+%F %T') it-campo fora do ar — escaneados ficam na VM-1 hoje"; exit 0
 fi
@@ -23,10 +23,10 @@ $PY - "$lista" <<'PY'
 import sys, time
 from pathlib import Path
 from tools.sei_depurar_pdfs import pastas_elegiveis, CACHE, ARQUIVO
-Path(sys.argv[1]).write_text("".join(f"{d.name}/\n" for d in pastas_elegiveis(CACHE, 3.0, ARQUIVO)))
+Path(sys.argv[1]).write_text("".join(f"{d.name}/\n" for d in pastas_elegiveis(CACHE, 2.0, ARQUIVO)))
 PY
 n=$(wc -l < "$lista")
-[ "$n" -eq 0 ] && { echo "nada a levar"; rm -f "$lista"; exit 0; }
+rc=0
 nice -n 15 ionice -c3 timeout 21600 rsync -a --remove-source-files --rsync-path="wsl -d Ubuntu -e rsync" \
   --include='integra_*/' --include='integra_*/[0-9][0-9][0-9]*.pdf' --exclude='*' \
   --files-from="$lista" -r data/sei_cache/ "it-campo:$DEST/"
@@ -35,4 +35,22 @@ while read -r p; do
   printf '{"pasta":"%s","destino":"it-campo:%s","em":"%s","rc":%d}\n' "${p%/}" "$DEST" "$(date '+%F %T')" "$rc"
 done < "$lista" >> data/sei_arquivo_frio.jsonl
 rm -f "$lista"
+# 15/11 14h: quarentena e versões substituídas da conferência da VM-2 (10,6 GB, só crescem; nenhum cron as lê —
+# rever_quarentena é manual). Paradas há mais de 6 h vão inteiras para o it-campo (reversível: rsync de volta).
+for par in "data/vm2_quarentena:vm2_quarentena" "data/vm2_entrega/_substituidos:vm2_substituidos"; do
+  src=${par%%:*}; dst=/mnt/c/JFN-Arquivo/${par##*:}
+  velhos=$(mktemp)
+  find "$src" -mindepth 1 -maxdepth 1 -type d -mmin +360 -printf '%f/\n' > "$velhos" 2>/dev/null
+  if [ -s "$velhos" ]; then
+    nice -n 15 ionice -c3 timeout 10800 rsync -a --remove-source-files --rsync-path="wsl -d Ubuntu -e rsync" \
+      --files-from="$velhos" -r "$src/" "it-campo:$dst/"
+    r2=$?
+    while read -r p; do
+      printf '{"pasta":"%s/%s","destino":"it-campo:%s","em":"%s","rc":%d}\n' "$src" "${p%/}" "$dst" "$(date '+%F %T')" "$r2"
+      [ "$r2" -eq 0 ] && find "$src/${p%/}" -depth -type d -empty -delete
+    done < "$velhos" >> data/sei_arquivo_frio.jsonl
+    echo "$(date '+%F %T') $src: $(wc -l < "$velhos") pasta(s) → it-campo rc=$r2"
+  fi
+  rm -f "$velhos"
+done
 echo "$(date '+%F %T') fim rc=$rc · $n pasta(s) · livre: $(df -h / | awk 'NR==2{print $4}')"
