@@ -124,6 +124,11 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
              apagar_pdf: bool = False, ocr: bool = True) -> dict:
     """Converte o diretório de íntegra em arquivo compacto. Idempotente."""
     origem, destino = Path(origem), Path(destino)
+    # PASTA DEPURADA (tools/sei_depurar_pdfs.py, 15/11/2026): os PDFs nativos viraram NNN.txt e saíram. Rearquivar
+    # varreria só os PDFs que sobraram e gravaria um manifesto SEM os documentos nativos — perda silenciosa.
+    if (origem / "depurados.json").exists() and (destino / "manifest.json").exists():
+        print(f"  {origem.name}: depurada — arquivo existente mantido (não rearquivo)", flush=True)
+        return json.loads((destino / "manifest.json").read_text(encoding="utf-8"))
     (destino / "texto").mkdir(parents=True, exist_ok=True)
     (destino / "fotos").mkdir(parents=True, exist_ok=True)
 

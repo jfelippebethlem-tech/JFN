@@ -118,9 +118,12 @@ export async function renderCockpit(){
   const html=`<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
-      <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
+      <div class="ck-lead" role="link" tabindex="0" style="cursor:pointer" title="Abrir as compras com sobrepreço (Comparador › Economia possível)"
+        onclick="if(!event.target.closest('[data-v60-desc]')){_compView='economia';_compEsf='todas';ir('e_comp')}"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_compView='economia';_compEsf='todas';ir('e_comp')}"><div class="ck-eye">Economia potencial identificada</div>
       <div class="ck-big" id="ck-econ">R$ ——</div>
-      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div></div>
+      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
+      <span class="chip" style="margin-top:8px;display:inline-block">Ver as compras →</span></div>
       <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
         <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
     </div>
