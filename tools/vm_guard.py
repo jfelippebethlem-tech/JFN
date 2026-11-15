@@ -182,7 +182,7 @@ def guarda_navegador_claude(agora: float | None = None, cpu_pct=None, paginas=No
         try:
             with urllib.request.urlopen(f"{NAV_CDP}/json", timeout=5) as r:
                 paginas = [p for p in json.load(r) if p.get("type") == "page"]
-        except Exception as e:               # navegador fechado/sem CDP: nada a guardar
+        except (OSError, ValueError) as e:   # navegador fechado/sem CDP (URLError é OSError): nada a guardar
             return {"acao": "nenhuma", "motivo": f"CDP indisponível: {e.__class__.__name__}"}
     try:
         estado = json.load(open(estado_path))
@@ -222,13 +222,13 @@ def guarda_navegador_claude(agora: float | None = None, cpu_pct=None, paginas=No
 
 def _cdp_navegar_blank(pagina: dict) -> bool:
     import json
+    import websocket                          # websocket-client (já no .venv)
     try:
-        import websocket                      # websocket-client (já no .venv)
         ws = websocket.create_connection(pagina["webSocketDebuggerUrl"], timeout=10)
         ws.send(json.dumps({"id": 1, "method": "Page.navigate", "params": {"url": "about:blank"}}))
         ws.recv(); ws.close()
         return True
-    except Exception as e:
+    except (OSError, KeyError, websocket.WebSocketException) as e:
         print(f"vm_guard: navegador não voltou a about:blank: {e}", file=sys.stderr)
         return False
 
