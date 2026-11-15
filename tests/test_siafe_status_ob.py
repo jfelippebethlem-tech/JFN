@@ -57,20 +57,20 @@ def test_recoleta_registra_transicoes_e_conta_as_devolvidas(tmp_path):
     col = _coletor(db, {"02/09/2026": [("2026OB00002", "100100", "Erro no Pagamento"),
                                        ("2026OB00003", "100100", "Processado e Pago")],
                         "01/09/2026": [("2026OB00001", "100100", "Processado e Pago")]})
-    r = asyncio.run(S.recoletar(2026, db=db, _coletar_dia=col))
+    r = asyncio.run(S.recoletar(2026, db=db, agora=AGORA, _coletar_dia=col))
     assert r["viraram_erro_no_pagamento"] == 1
     d = {x["data"]: x for x in r["dias"]}
     assert d["02/09/2026"]["transicoes"] == {"Erro no Pagamento": 1, "Processado e Pago": 1}
     assert d["02/09/2026"]["intermed_depois"] == 0 and d["01/09/2026"]["intermed_depois"] == 1   # 200200 segue
-    assert S.fila(2026, db=db, agora=datetime.now()) == []              # recolhidos agora: fora até o refresco
+    assert S.fila(2026, db=db, agora=AGORA) == []                       # recolhidos agora: fora até o refresco
 
 
 def test_dia_sem_mudanca_espera_o_dobro_para_voltar(tmp_path):
     db = tmp_path / "c.db"
     _base(db)
     col = _coletor(db, {})
-    asyncio.run(S.recoletar(2026, db=db, _coletar_dia=col))
-    asyncio.run(S.recoletar(2026, db=db, _coletar_dia=col))     # fila vazia: nada recolhido de novo
+    asyncio.run(S.recoletar(2026, db=db, agora=AGORA, _coletar_dia=col))
+    asyncio.run(S.recoletar(2026, db=db, agora=AGORA, _coletar_dia=col))     # fila vazia: nada recolhido de novo
     sem = sqlite3.connect(db).execute("SELECT sem_mudanca FROM ob_status_recoleta WHERE data_emissao='02/09/2026'"
                                       ).fetchone()[0]
     assert sem == 1
@@ -83,10 +83,10 @@ def test_falha_da_coleta_nao_conta_como_sem_mudanca_e_prazo_para_entre_dias(tmp_
 
     async def ocupado(ex, data):
         raise TimeoutError("browser_lock")
-    r = asyncio.run(S.recoletar(2026, db=db, _coletar_dia=ocupado))
+    r = asyncio.run(S.recoletar(2026, db=db, agora=AGORA, _coletar_dia=ocupado))
     assert all(x["erro"] == "navegador_ocupado" for x in r["dias"])
     assert len(S.fila(2026, db=db, agora=AGORA)) == 2                 # voltam na próxima passada
-    r = asyncio.run(S.recoletar(2026, db=db, prazo=100.0, _coletar_dia=ocupado, _relogio=lambda: 101.0))
+    r = asyncio.run(S.recoletar(2026, db=db, prazo=100.0, agora=AGORA, _coletar_dia=ocupado, _relogio=lambda: 101.0))
     assert r["dias"] == [{"data": "02/09/2026", "pulado": "prazo"}]
 
 
@@ -100,5 +100,5 @@ def test_ob_que_sumiu_da_tabela_nao_vira_pago(tmp_path):
         c.commit()
         c.close()
         return {"ok": True}
-    r = asyncio.run(S.recoletar(2026, db=db, max_dias=1, _coletar_dia=apaga))
+    r = asyncio.run(S.recoletar(2026, db=db, max_dias=1, agora=AGORA, _coletar_dia=apaga))
     assert r["dias"][0]["transicoes"] == {"nao_reencontrada": 1, "Aguardando Envio": 1}
