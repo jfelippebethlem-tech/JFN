@@ -22,8 +22,8 @@ GUARD-RAILS (regra do dono: *"preferir guard-rail real (kill-switch + cap) a cot
   · **kill-switch em arquivo** — `data/.pause_llm_triagem` existe ⇒ para na hora, sem deploy;
   · **teto diário de chamadas** — `JFN_TRIAGEM_MAX_DIA` (padrão 2.000), contado em disco e
     reiniciado por data. Estourou, devolve vazio e o detector degrada honesto;
-  · **só cadeia grátis** — `best_free_chat` percorre Ollama/Groq/OpenRouter/Cerebras/Gemini/
-    Cloudflare com cooldown por provedor. Nada aqui usa chave paga por padrão;
+  · **só cadeia grátis** — `best_free_chat` percorre Gemini/Groq/OpenRouter/NVIDIA/
+    Cloudflare/Cohere com cooldown por provedor. Nada aqui usa chave paga por padrão;
   · **uso registrado** — `data/triagem_uso.json` guarda contagem por dia e por desfecho, para a
     conta ser auditável em vez de estimada.
 

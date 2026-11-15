@@ -1,8 +1,7 @@
 """
-LLM Router — routes tasks between Claude API and local Ollama.
+LLM Router — routes tasks to the free remote LLM chain (free_llm) and tracks Claude API usage.
 
-Tracks monthly token usage and budget, preferring local models
-for simple tasks to reduce API costs.
+Tracks monthly token usage and budget. (O caminho de LLM local via Ollama saiu em 15/11/2026.)
 """
 
 import json
@@ -12,31 +11,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from compliance_agent.llm.local import (
-    DEFAULT_MODEL,
-    extract_entities,
-    is_available as _check_ollama,
-)
-
 logger = logging.getLogger(__name__)
 
 MONTHLY_TOKEN_LIMIT = int(os.environ.get("MONTHLY_TOKEN_LIMIT", "500000"))
 
 BUDGET_FILE = Path("data/llm_budget.json")
 
-# Tasks that can be handled by local Ollama (no Claude API needed)
-SIMPLE_TASKS = {"classify_contract", "summarize_doerj", "extract_entities", "categorize_alert"}
-
-
 class LLMRouter:
     """
-    Routes LLM tasks between local Ollama and Claude API.
+    Routes LLM tasks to the free remote LLM chain and tracks Claude API budget.
 
     Budget tracking is persisted to data/llm_budget.json indexed by month (YYYY-MM).
     """
 
     def __init__(self):
-        self._ollama_ok: Optional[bool] = None
         self._budget_data: Optional[dict] = None
 
     # ── Budget tracking ───────────────────────────────────────────────────────
@@ -92,18 +80,6 @@ class LLMRouter:
         remaining = max(0, MONTHLY_TOKEN_LIMIT - used)
         return round(remaining / MONTHLY_TOKEN_LIMIT, 4)
 
-    # ── Routing logic ─────────────────────────────────────────────────────────
-
-    def _ollama_available(self) -> bool:
-        """Lazy-cached check for Ollama availability."""
-        if self._ollama_ok is None:
-            self._ollama_ok = _check_ollama()
-        return self._ollama_ok
-
-    def should_use_local(self, task: str) -> bool:
-        """Return True if task should be handled by local Ollama."""
-        return self._ollama_available() and task in SIMPLE_TASKS
-
     # ── Public task methods ───────────────────────────────────────────────────
     # NB: classify()/summarize() abaixo (via LLM grátis) são as versões VÁLIDAS — havia
     # definições duplicadas Ollama-first acima que o Python descartava silenciosamente
@@ -113,18 +89,15 @@ class LLMRouter:
         """
         Extract named entities from text.
 
-        Uses Ollama if available, otherwise returns empty dict.
+        Via free LLM chain (free_llm.extrair_entidades_texto); empty dict if it fails.
         """
-        if self._ollama_available():
-            return extract_entities(text)
-        return {"pessoas": [], "empresas": [], "valores": [], "cpfs": [], "cnpjs": []}
+        from compliance_agent.llm.free_llm import extrair_entidades_texto
+        return extrair_entidades_texto(text)
 
     def status(self) -> dict:
         """Return router status and budget information."""
         from compliance_agent.llm.free_llm import status_provedores
         return {
-            "ollama_disponivel": self._ollama_available(),
-            "model": DEFAULT_MODEL,
             "tokens_usados_mes": self.tokens_used_this_month(),
             "limite_mensal": MONTHLY_TOKEN_LIMIT,
             "orcamento_restante_pct": self.budget_remaining_pct(),

@@ -43,13 +43,11 @@ MIN_SAUDAVEL = 2
 def _provas():
     """(nome, disponivel_fn, chamar_fn) para cada degrau — na ordem real da cadeia."""
     from compliance_agent.llm import free_llm as F
-    from compliance_agent.llm import local as L
 
     def _c(fn):
         return lambda: fn(_PERGUNTA, system=_SISTEMA)
 
     return [
-        ("ollama", L.is_available, lambda: L.chat(_PERGUNTA, system=_SISTEMA)),
         ("cerebras", F.cerebras_available, _c(F.cerebras_chat)),
         ("gemini", F.gemini_available, _c(F.gemini_chat)),
         ("groq", F.groq_available, _c(F.groq_chat)),

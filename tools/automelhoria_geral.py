@@ -282,7 +282,7 @@ def sensor_vm() -> list[dict]:
     if pct >= 90:
         out.append(_p("vm", "disco", f"disco em {pct:.0f}% ({du.free / 2**30:.0f} GB livres)",
                       acao_humana="maiores: ~/JFN/data/sei_cache (26 GB), ~/.npm (14 GB, cache regenerável), "
-                                  "~/.ollama (9,7 GB), ~/.cache (9 GB — NÃO apagar ms-playwright nem uv). "
+                                  "~/.cache (9 GB — NÃO apagar ms-playwright nem uv). "
                                   "Apagar só com ordem do dono"))
     mem = {ln.split(":")[0]: int(ln.split()[1]) for ln in Path("/proc/meminfo").read_text().splitlines()[:5]}
     if mem.get("MemAvailable", 10**9) < 700 * 1024:

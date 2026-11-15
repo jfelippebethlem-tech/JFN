@@ -388,7 +388,7 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "status_llm_gratuito",
-            "description": "Mostra quais LLMs gratuitos estão disponíveis (Ollama, Groq, OpenRouter) e como configurar.",
+            "description": "Mostra quais LLMs gratuitos estão disponíveis (Gemini, Groq, OpenRouter e demais da cascata) e como configurar.",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },

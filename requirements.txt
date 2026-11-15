@@ -16,7 +16,6 @@ networkx>=3.3
 lxml>=5.2.0
 fpdf2>=2.7.0
 matplotlib>=3.9.0
-ollama>=0.3.0
 openpyxl>=3.1.0
 # --- Análise/ML (motor de anomalias Onda 1, grafo Onda 3/4, Massare) ---
 scikit-learn>=1.5.0

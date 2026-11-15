@@ -8,8 +8,8 @@ nomeado e CITA o trecho literal; sem trecho verificável no texto, o juízo vira
 (doutrina agregacao.md §1.1: IA fraca acerta com tarefa fechada; o pior caso é
 `nao_avaliavel`, nunca invenção).
 
-LLM: `camada_triagem.gerar_triagem()` — a cadeia GRÁTIS da casa (Ollama/Groq/OpenRouter
-:free/Cerebras/Gemini/Cloudflare) com kill-switch em arquivo, teto diário e uso auditável.
+LLM: `camada_triagem.gerar_triagem()` — a cadeia GRÁTIS da casa (Gemini/Groq/OpenRouter
+:free/NVIDIA/Cloudflare/Cohere) com kill-switch em arquivo, teto diário e uso auditável.
 Grau: `grau_flag` com origem="llm" — teto C, sempre. Cache: `doc_veredito` por hash
 (reavaliar processo não re-paga documento inalterado). Rubrica crítica (emergência) tem
 SEGUNDO voto independente; divergência >1 nível rebaixa para o menor (adversarial barato).

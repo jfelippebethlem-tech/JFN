@@ -6,18 +6,15 @@ Provedores suportados:
                     Grátis com limite de taxa. Chave em: https://console.groq.com
   - OpenRouter    : acesso gratuito a Hermes-3, Gemma-2, Mistral e outros modelos
                     Grátis (modelos ":free"). Chave em: https://openrouter.ai
-  - Ollama        : roda 100% local, offline, sem custo. Ver compliance_agent/llm/local.py
 
-Hierarquia de uso no LLMRouter:
-  1. Ollama        — local, sem internet, sem conta
-  2. Groq          — cloud grátis, muito rápido, precisa de chave
-  3. OpenRouter    — cloud grátis, modelos maiores (Hermes 405B!), precisa de chave
-  4. Claude        — apenas para análises complexas que realmente precisam
+LLM LOCAL (Ollama/llama.cpp) REMOVIDO em 15/11/2026 por decisão do dono — autohospedar é
+impraticável e os modelos locais eram ruins. A cascata é só de provedores remotos
+(ordem real em `_get_provider_order`).
 
 Configure as chaves no .env:
   GROQ_API_KEY=gsk_...
   OPENROUTER_API_KEY=sk-or-...
-  FREE_LLM_PREFER=groq          # groq | openrouter | ollama (qual usar primeiro)
+  FREE_LLM_PREFER=groq          # nome de um provedor de _get_provider_order (qual usar primeiro)
 """
 
 import asyncio
@@ -516,47 +513,18 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
     )
 
 
-# Coder LOCAL abliterated (100% uncensored — abliteração remove a recusa no peso).
-# Roda no Ollama da VM; é a 1ª opção do coder (offline, $0, sem rate-limit). Env:
-# OLLAMA_CODER_MODEL / OLLAMA_URL. keep_alive curto p/ não segurar RAM na VM frágil.
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_CODER_MODEL = os.environ.get("OLLAMA_CODER_MODEL", "huihui_ai/qwen2.5-coder-abliterate:7b")
-
-
-async def _ollama_coder_async(messages: list, max_tokens: int) -> "str | None":
-    """Tenta o coder abliterated local. Retorna None se o Ollama/modelo não estiver disponível
-    (para a cascata cair p/ a API sem quebrar)."""
-    try:
-        async with httpx.AsyncClient(timeout=180) as cli:
-            r = await cli.post(f"{OLLAMA_URL}/api/chat", json={
-                "model": OLLAMA_CODER_MODEL, "messages": messages, "stream": False,
-                "keep_alive": "30s",
-                "options": {"num_predict": max_tokens, "num_thread": 2},
-            })
-            if r.status_code != 200:
-                return None
-            return (r.json().get("message", {}).get("content") or "").strip() or None
-    except Exception:
-        return None
-
-
 async def coder_chat_async(prompt: str, system: str = "", max_tokens: int = 4096) -> str:
-    """Caminho de CÓDIGO do Hermes — LOCAL abliterated (100% uncensored) primeiro; se
-    indisponível, Qwen3-Coder :free (1M ctx) + fallbacks não-Venice. Levanta se tudo falhar."""
+    """Caminho de CÓDIGO do Hermes — Qwen3-Coder :free (1M ctx) + fallbacks não-Venice.
+    (O coder local via Ollama saiu em 15/11/2026.) Levanta se tudo falhar."""
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    # 1. Local abliterated (100% uncensored, offline, $0)
-    local = await _ollama_coder_async(messages, max_tokens)
-    if local:
-        return local
-
-    # 2. API OpenRouter :free (fallback)
+    # API OpenRouter :free
     key = _openrouter_key()
     if not key:
-        raise RuntimeError("Coder local indisponível e OPENROUTER_API_KEY não configurada.")
+        raise RuntimeError("OPENROUTER_API_KEY não configurada (coder sem provedor).")
     ultimo_erro = None
     # Primário do env (se fixado) e depois a escolha viva do catálogo, sem repetir.
     _cands = [m for m in (OPENROUTER_MODEL_CODER, modelo_or("coder"), modelo_or("smart")) if m]
@@ -830,7 +798,7 @@ async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
 
     Antes era importado em hermes_agent.py mas não existia (ImportError a cada chamada,
     mascarado pelo fallback). Aqui roteia para o modelo Qwen do OpenRouter; se OpenRouter/Qwen
-    falhar, cai para o melhor provedor livre disponível (Ollama/Groq/OpenRouter).
+    falhar, cai para o melhor provedor livre disponível (cascata de `_get_provider_order`).
     """
     try:
         if openrouter_available():
@@ -927,15 +895,12 @@ def best_free_chat(
 ) -> str:
     """
     Tenta provedores gratuitos em ordem de preferência.
-    Ordem padrão: Ollama → Groq → OpenRouter.
-    Configura com FREE_LLM_PREFER=groq|openrouter|ollama.
+    Ordem padrão: a de `_get_provider_order` (gemini → groq → openrouter → …).
+    Configura com FREE_LLM_PREFER=<provedor> ou FREE_LLM_ONLY=<lista>.
 
     Se nenhum disponível e fallback fornecido, retorna fallback.
     Raises RuntimeError se tudo falhar e sem fallback.
     """
-    # Import local here to avoid circular imports
-    from compliance_agent.llm import local as _ollama
-
     order = _get_provider_order()
 
     last_error: Exception | None = None
@@ -949,8 +914,6 @@ def best_free_chat(
                 resp = cerebras_chat(prompt, system=system, smart=smart)
             elif provider == "gemini" and gemini_available():
                 resp = gemini_chat(prompt, system=system, smart=smart)
-            elif provider == "ollama" and _ollama.is_available():
-                resp = _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
                 resp = groq_chat(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
@@ -965,7 +928,7 @@ def best_free_chat(
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
                 _trace(provider, True, int((time.monotonic() - _ini) * 1000))
                 return resp
-            if resp is not None:  # "" = contrato de erro do local.chat — NÃO é resposta; segue a cadeia
+            if resp is not None:  # "" = resposta vazia — NÃO é resposta; segue a cadeia
                 _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")
         except Exception as e:
             last_error = e
@@ -977,8 +940,7 @@ def best_free_chat(
         return fallback
     raise RuntimeError(
         f"Nenhum LLM gratuito disponível. Último erro: {last_error}. "
-        "Configure GROQ_API_KEY ou OPENROUTER_API_KEY no .env, "
-        "ou instale Ollama em ollama.com."
+        "Configure GROQ_API_KEY ou OPENROUTER_API_KEY no .env."
     )
 
 
@@ -988,8 +950,6 @@ async def best_free_chat_async(
     smart: bool = False,
     fallback: str = "",
 ) -> str:
-    from compliance_agent.llm import local as _ollama
-
     order = _get_provider_order()
 
     last_error: Exception | None = None
@@ -1003,8 +963,6 @@ async def best_free_chat_async(
                 resp = await cerebras_chat_async(prompt, system=system, smart=smart)
             elif provider == "gemini" and gemini_available():
                 resp = await gemini_chat_async(prompt, system=system, smart=smart)
-            elif provider == "ollama" and _ollama.is_available():
-                resp = _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
                 resp = await groq_chat_async(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
@@ -1019,7 +977,7 @@ async def best_free_chat_async(
                 _limpar_cooldown(provider)
                 _trace(provider, True, int((time.monotonic() - _ini) * 1000))
                 return resp
-            if resp is not None:  # "" = contrato de erro do local.chat — NÃO é resposta; segue a cadeia
+            if resp is not None:  # "" = resposta vazia — NÃO é resposta; segue a cadeia
                 _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")
         except Exception as e:
             last_error = e
@@ -1035,13 +993,13 @@ async def best_free_chat_async(
 def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
     # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
-    # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
+    # (fallback forte); depois groq/openrouter. (ollama/local removido em 15/11/2026.)
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     # 09/11/2026 (bench medido, ver docs): gemini 1º (pool de 8 chaves × cascata de modelos); groq qwen3.8
     # (curto e rápido; 413 acima de ~8k tokens falha em 1 s); openrouter :free; nvidia (termos: prototipagem
     # — reserva, nunca 1º); cloudflare (10k neurons/dia); cohere (1k/mês); zai glm-4.7-flash; resto no fim.
     # Os de _DESLIGADOS continuam na lista só para nome conhecido, mas são filtrados abaixo.
-    all_providers = ["gemini", "groq", "openrouter", "nvidia", "cloudflare", "cohere", "zai", "ollama",
+    all_providers = ["gemini", "groq", "openrouter", "nvidia", "cloudflare", "cohere", "zai",
                      "bazaarlink", "ofox", "routeway",
                      "cerebras", "github_models", "sambanova", "siliconflow", "wisdomgate", "mistral"]
     # CADEIA CURTA PARA VOLUME (`FREE_LLM_ONLY`). Medido em 2026-08-13 no sweep do SEI: com o
@@ -1136,8 +1094,7 @@ def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[s
     ]
 
     # Depois: análise semântica via LLM gratuito (só se houver provedor disponível)
-    from compliance_agent.llm import local as _ollama
-    if not (groq_available() or openrouter_available() or _ollama.is_available()):
+    if not (groq_available() or openrouter_available()):
         return flags_locais
 
     prompt = (
@@ -1157,13 +1114,7 @@ def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[s
 
 def status_provedores() -> dict:
     """Retorna status de todos os provedores de LLM gratuito."""
-    from compliance_agent.llm import local as _ollama
     return {
-        "ollama": {
-            "disponivel": _ollama.is_available(),
-            "modelo": os.environ.get("OLLAMA_MODEL", "llama3.2:3b"),
-            "custo": "zero (local)",
-        },
         "groq": {
             "disponivel": groq_available(),
             "modelo_fast": GROQ_MODEL_FAST,
