@@ -183,3 +183,13 @@ def test_acelerador_nao_le_cpu_ociosa_de_sessao_bloqueada_como_folga():
     assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(0, 0)) == (12, 3, 0)    # nada medido: não sobe às cegas
     assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(10, 5)) == (12, 3, 0)   # 1/3 de login falho
     assert P.acelerador(folga, 1.0, 24, 12, 3, quase, saude=(20, 1)) == (12, 4, 0)
+
+
+def test_espera_depois_da_volta_nao_gira_em_falso():
+    """15/11/2026: com a fila local toda "vazia recente", cada sessão voltava em ~20 s e, a cada volta, pedia fila
+    nova à VM-1 por ssh e batia o ponto — 18 sessões levaram a VM-1 (2 vCPU) a carga 19. Volta sem nada tentado espera."""
+    assert P.espera_apos_volta(None) == 1200
+    assert P.espera_apos_volta({"esgotada": True}) == 60
+    assert P.espera_apos_volta({"tentados": 0}) == P.ESPERA_VOLTA_VAZIA_S >= 600
+    assert P.espera_apos_volta({"tentados": 3}) == 0
+    assert P.espera_apos_volta({"modo": "varredura", "cdp": 2}) == 0

@@ -405,6 +405,9 @@ def uma_volta(k: int, s: Path, segundos: int) -> dict | None:
            "aprovados": len(lote.get("aprovados") or []), "quarentena": len(lote.get("reprovados") or {}),
            "lote_nao_chegou": bool(dev.get("status")) and not lote,
            "nao_entregues": len(dev.get("nao_entregues") or {}), "procs": met.get("procs")}
+    if not rec.get("tentados"):
+        print("=== volta sem nenhum processo tentado (fila local já vista) — não registro, espero ===", flush=True)
+        return {"tentados": 0}
     registrar(rec)
     print(f"=== volta terminada: {rec['tentados']} tentados, {rec['ok']} ok, {rec['docs']} docs, "
           f"erro {rec['taxa_erro']}, lote {rec['aprovados']} aprovados / {rec['quarentena']} quarentena ===",
@@ -563,12 +566,29 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
             print(f"[{time.strftime('%F %T')}] volta falhou: {str(exc)[:200]} — nova tentativa em 5 min", flush=True)
             time.sleep(300)
             continue
-        if rec is None:
-            titulo(f"JFN SEI sessão {k} — fila vazia na VM-1, nova consulta em 20 min")
-            time.sleep(1200)
-        elif rec.get("esgotada"):
-            titulo(f"JFN SEI sessão {k} — fila exportada já lida, pedindo uma maior à VM-1")
-            time.sleep(60)
+        espera = espera_apos_volta(rec)
+        if espera:
+            titulo(f"JFN SEI sessão {k} — " + ("fila vazia na VM-1" if rec is None else
+                   "fila exportada já lida, pedindo uma maior à VM-1" if rec.get("esgotada") else
+                   "nada tentado nesta volta") + f", nova consulta em {espera // 60 or 1} min")
+            time.sleep(espera)
+
+
+ESPERA_VOLTA_VAZIA_S = 600
+
+
+def espera_apos_volta(rec: dict | None) -> int:
+    """Segundos de espera antes da próxima volta. Volta sem nada tentado espera: girar em falso pedia fila à VM-1 por
+    ssh a cada ~20 s por sessão (15/11/2026: carga 19 na VM-1 com 18 sessões)."""
+    if rec is None:
+        return 1200
+    if rec.get("esgotada"):
+        return 60
+    if rec.get("modo") == "varredura":
+        return 0                         # a volta vazia da varredura já devolve "esgotada"/None acima
+    if not rec.get("tentados"):
+        return ESPERA_VOLTA_VAZIA_S
+    return 0
 
 
 def registrar(rec: dict, batida: str = "integras") -> None:
