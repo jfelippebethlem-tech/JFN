@@ -272,8 +272,10 @@ def test_estado_fim_a_fim(tmp_path):
     assert a["obs_nao_contabilizadas"] == 1
     assert a["obs_anteriores_ao_contrato"] == 1
 
-    assert res["B"]["categoria"] == res["B2"]["categoria"] == "INDETERMINADO"
-    assert res["B"]["motivo"] == "vinculo_ambiguo"
+    # B e B2: mesmo processo e mesmo credor → perícia POR GRUPO (decisão do dono, 14/11/2026): 60k pagos ≤ 50k + 70k
+    assert res["B"]["categoria"] == res["B2"]["categoria"] == "GRUPO_ATA_DENTRO"
+    assert res["B"]["grupo_pago"] == pytest.approx(60_000.0) and res["B"]["grupo_regua"] == pytest.approx(120_000.0)
+    assert res["B"]["pago"] is None                          # o pago é do grupo, nunca por contrato
 
     # sem OB na base não é "pago a menor" (revisão 13/11/2026): INDISPONÍVEL ≠ zero
     assert res["C"]["categoria"] == "INDETERMINADO" and res["C"]["motivo"] == "credor_sem_ob_na_base"
@@ -307,7 +309,7 @@ def test_consolidacao_soma_so_o_determinado(tmp_path):
     res = pc.avaliar_estado(db, corte=date(2026, 7, 1))
     por_org = {c["chave"]: c for c in pc.consolidar(res, "orgao")}
     x = por_org["ORGAO X"]
-    assert x["n"] == 3 and x["n_a_maior"] == 1 and x["n_indeterminado"] == 2
+    assert x["n"] == 3 and x["n_a_maior"] == 1 and x["n_grupo_ata_dentro"] == 2
     assert x["excesso_a_maior"] == pytest.approx(35_000.0)
 
 

@@ -33,7 +33,9 @@ _CAMPOS = ("esfera", "orgao", "ug", "contrato", "processo", "fornecedor", "forne
            "n_obs",
            "vig_inicio", "vig_fim", "encerrado", "corte", "obs_mesma_nl", "valor_mesma_nl", "obs_mesma_competencia",
            "valor_mesma_competencia", "obs_mesma_nl_mesmo_dia", "obs_mesma_nl_nao_confirmadas",
-           "valor_mesma_nl_nao_confirmadas", "criterio_devido", "ressalvas", "fonte_pago")
+           "valor_mesma_nl_nao_confirmadas", "criterio_devido", "ressalvas", "fonte_pago", "grupo_ata", "grupo_n",
+           "grupo_pago", "grupo_regua", "grupo_regua_conservadora", "grupo_diferenca", "grupo_n_obs")
+TOP_GRUPOS = 40
 
 
 def _mascarar(x):
@@ -57,6 +59,39 @@ def _linha(r: dict) -> dict:
     return d
 
 
+def _linha_grupo(rs: list[dict]) -> dict:
+    """Uma linha por GRUPO de ata (a primeira linha carrega os campos do grupo; os registros vão listados)."""
+    d = _linha(rs[0])
+    d["registros"] = [{"contrato": r.get("contrato"), "processo": (r.get("processo") or "")[:80],
+                       "valor_atualizado": r.get("valor_atualizado"), "vig_inicio": r.get("vig_inicio"),
+                       "vig_fim": r.get("vig_fim")} for r in rs[:30]]
+    d["prova_primaria"] = (f"{rs[0].get('grupo_n_obs') or 0} OB Contabilizada(s) do SIAFE no processo de origem "
+                           f"{rs[0].get('grupo_ata')}" if rs[0].get("grupo_pago") is not None else None)
+    return d
+
+
+def _grupos(da_esfera: list[dict], e: dict, top: int) -> dict:
+    por: dict[str, list] = {}
+    for r in da_esfera:
+        if r["categoria"] in P.GRUPOS_ATA:
+            por.setdefault(r["grupo_ata"], []).append(r)
+    g = e["grupos_ata"]
+    am = sorted((v for v in por.values() if v[0]["categoria"] == "GRUPO_ATA_A_MAIOR"),
+                key=lambda v: -float(v[0].get("grupo_diferenca") or 0))
+    dentro = sorted((v for v in por.values() if v[0]["categoria"] == "GRUPO_ATA_DENTRO"),
+                    key=lambda v: -float(v[0].get("grupo_pago") or 0))
+    return {
+        "n_grupos": g["n"], "placar_grupos": {c: g[c] for c in P.GRUPOS_ATA},
+        "contratos": {c: e[c] for c in P.GRUPOS_ATA},
+        "pago": g["pago"], "regua": g["regua"], "excesso_a_maior": g["excesso"],
+        "pago_dentro": g["pago_dentro"], "regua_dentro": g["regua_dentro"],
+        "motivos_indeterminado": [{"motivo": k, "texto": P.MOTIVOS.get(k, k), "n": v} for k, v in g["motivos"].items()],
+        "criterio": P.CRITERIO_GRUPO_ATA,
+        "a_maior": [_linha_grupo(v) for v in am],                    # todos: é a lista a conferir
+        "dentro": [_linha_grupo(v) for v in dentro[:top]], "n_dentro_listados": min(top, len(dentro)),
+    }
+
+
 def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
     """Payload da aba a partir das linhas da perícia. Função pura (testada com dados sintéticos)."""
     rs = P.resumo(resultados)
@@ -67,6 +102,8 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                          key=lambda r: -float(r.get("diferenca") or 0))
         dup = sorted((r for r in da_esfera if (r.get("obs_mesma_nl") or 0) > 0),
                      key=lambda r: -float(r.get("valor_mesma_nl") or 0))
+        consumo = sorted((r for r in da_esfera if r["categoria"] == "CONSUMO_CONTINUO"),
+                         key=lambda r: -float(r.get("diferenca") or 0))
         cortes = Counter(r.get("corte") for r in da_esfera if r.get("corte"))
         esferas[esf] = {
             "n": e["n"],
@@ -100,6 +137,13 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                 "listas": ("PENDENTE — cada linha é indício a conferir nos documentos (NL, nota fiscal, termo aditivo, "
                            "medição); a diferença não é conclusão de dano"),
             },
+            # decisão do dono (14/11/2026): consumo contínuo fora da manchete, com contagem e soma próprias — TODOS
+            # listados para conferência
+            "consumo_continuo": {"n": e["CONSUMO_CONTINUO"], "excesso": round(e["consumo_continuo"], 2),
+                                 "excesso_global": round(e["consumo_excesso_global"], 2),
+                                 "subtipos": {P.SUBTIPO.get(k, k): v for k, v in e["consumo_subtipos"].items()},
+                                 "criterio": P.CRITERIO_CONSUMO, "itens": [_linha(r) for r in consumo]},
+            "grupos_ata": _grupos(da_esfera, e, TOP_GRUPOS),
             "n_a_maior_listados": min(top, len(a_maior)),
             "a_maior": [_linha(r) for r in a_maior[:top]],
             "duplicidades": {"aferivel": False, "n_contratos": None, "itens": [],
@@ -142,6 +186,8 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                                  "executado não entra. Estado: pago menor que o valor/pró-rata — sem a liquidação por "
                                  "contrato na base, é saldo não pago OU não executado"),
             "indeterminado": "sem base para afirmar a maior/a menor — o motivo vem ao lado; INDISPONÍVEL ≠ zero",
+            "consumo_continuo": P.CRITERIO_CONSUMO,
+            "grupo_ata": P.CRITERIO_GRUPO_ATA,
         },
         "ressalva": "Indício não é acusação. Diferença é sinal para requerer documentos, não conclusão de dano.",
         "esferas": esferas,

@@ -2,7 +2,7 @@
 """Perícia contábil de TODOS os contratos: valor DEVIDO até a data de corte × valor PAGO.
 
 Pergunta do dono (2026-11-13): "quero saber se os valores deles foram pagos a maior ou a menor, até o
-presente momento". Cada contrato sai em UMA de seis classes — CONFORME, A_MAIOR (acima do valor contratado),
+presente momento". Cada contrato sai em UMA de seis classes (mais as classes próprias abaixo) — CONFORME, A_MAIOR (acima do valor contratado),
 ADIANTADO (à frente do pró-rata, dentro do valor), A_MENOR_ENCERRADO, A_MENOR_EM_CURSO ou INDETERMINADO (sempre
 com o motivo) — e as esferas NUNCA se misturam.
 
@@ -51,6 +51,13 @@ VALOR DEVIDO
   · acréscimo acima do teto (25%; 50% em reforma) é indício por si — régua única em `limites_aditivo`,
     lei citada pela data do contrato (8.666/93 art. 65 §1º · 14.133/21 art. 125).
 
+CLASSES PRÓPRIAS (decisão do dono, 14/11/2026 — nunca somadas ao A_MAIOR da manchete)
+  · GRUPO_ATA_DENTRO / GRUPO_ATA_A_MAIOR / GRUPO_ATA_INDETERMINADO: desdobramentos de ata e demais registros do
+    MESMO processo de origem ao MESMO credor (eram `vinculo_ambiguo` e `processo_sem_sei`) periciados pela SOMA dos
+    valores registrados — o valor da ata não é publicado. Régua e salvaguardas em `CRITERIO_GRUPO_ATA`.
+  · CONSUMO_CONTINUO: o "a maior" de concessionária (energia, água/esgoto, gás, telefonia), cota condominial e
+    assinatura — o valor registrado é estimativa de consumo. Critério em `CRITERIO_CONSUMO`.
+
 CLI:  python -m compliance_agent.pericia_contabil --saida <pasta> [--db ...] [--pcrj-db ...] [--sem-pdf]
 """
 from __future__ import annotations
@@ -81,12 +88,18 @@ VIGENCIA_PADRAO_DIAS = 370  # acima disso, contrato contínuo sem termo publicad
 ESTADO = "Estado do RJ"
 PREFEITURA = "Prefeitura do Rio"
 
-CATEGORIAS = ("A_MAIOR", "ADIANTADO", "A_MENOR_ENCERRADO", "A_MENOR_EM_CURSO", "CONFORME", "INDETERMINADO")
+GRUPOS_ATA = ("GRUPO_ATA_A_MAIOR", "GRUPO_ATA_DENTRO", "GRUPO_ATA_INDETERMINADO")
+CATEGORIAS = ("A_MAIOR", "CONSUMO_CONTINUO", "ADIANTADO", "A_MENOR_ENCERRADO", "A_MENOR_EM_CURSO", "CONFORME",
+              *GRUPOS_ATA, "INDETERMINADO")
 ROTULO = {
     "A_MAIOR": "Pago acima do valor contratado",
+    "CONSUMO_CONTINUO": "Consumo contínuo acima da estimativa (concessionária, cota condominial, assinatura)",
     "ADIANTADO": "Pago à frente do pró-rata (dentro do valor contratado)",
     "A_MENOR_ENCERRADO": "Pago abaixo do devido — vigência encerrada",
     "A_MENOR_EM_CURSO": "Pago abaixo do devido — em curso", "CONFORME": "Conforme",
+    "GRUPO_ATA_A_MAIOR": "Grupo de ata/processo de origem — pago acima da soma dos desdobramentos",
+    "GRUPO_ATA_DENTRO": "Grupo de ata/processo de origem — pago dentro da soma dos desdobramentos",
+    "GRUPO_ATA_INDETERMINADO": "Grupo de ata/processo de origem — indeterminado",
     "INDETERMINADO": "Indeterminado",
 }
 MOTIVOS = {
@@ -128,8 +141,48 @@ MOTIVOS = {
                                       "início da vigência) e o início original não está publicado — pró-rata "
                                       "inaferível",
 }
+MOTIVOS.update({
+    "processos_de_origem_distintos": "o registro lista desdobramentos de MAIS de um processo de origem — agrupar "
+                                     "seria escolher um deles sem base",
+    "registro_repetido_no_grupo": "o pago cabe na soma dos desdobramentos só se os de valor idêntico (ou o que "
+                                  "iguala a soma dos demais, ata-mestre) forem registros distintos — pode ser o "
+                                  "mesmo registro duas vezes",
+    "dentro_com_ob_fora_do_processo": "pago no processo de origem dentro da soma dos desdobramentos, mas o credor "
+                                      "recebeu outras OBs na mesma UG em outro processo que podem pagar o grupo — "
+                                      "'dentro' não se sustenta",
+    "pago_a_frente_dos_desdobramentos_publicados": "pago acima da soma, mas em alguma data o pago acumulado já "
+                                                   "passava da soma dos desdobramentos contratados até então — a OB "
+                                                   "paga desdobramento não publicado para o credor",
+    "ob_anterior_ao_primeiro_desdobramento": "pago acima da soma, mas há OB do processo de origem anterior ao "
+                                             "primeiro desdobramento publicado — há desdobramento fora da base "
+                                             "(TCE-RJ publica contratações de 2023 em diante)",
+})
 SUBTIPO = {"acima_do_valor_global": "acima do valor global atualizado",
-           "acima_do_pro_rata": "acima do pró-rata decorrido (dentro do valor global)"}
+           "acima_do_pro_rata": "acima do pró-rata decorrido (dentro do valor global)",
+           "concessionaria": "concessionária de serviço público (energia, água/esgoto, gás, telefonia)",
+           "cota_condominial": "cota condominial", "assinatura": "assinatura / acesso a plataforma"}
+
+CRITERIO_GRUPO_ATA = (
+    "Grupo = registros do TCE-RJ não cancelados do MESMO processo de origem (16 dígitos do SEI, sem o sufixo do "
+    "desdobramento — A, B, /1/ …) ao MESMO CPF/CNPJ, quando são dois ou mais, ou quando o registro lista os "
+    "desdobramentos. Régua = SOMA dos valores registrados dos desdobramentos: o valor da ata não é publicado (o TCE-RJ "
+    "não traz a ata; o PNCP não publica ata — limites_de_fonte) e a OB nunca nomeia o desdobramento, só o processo "
+    "de origem. Pago = OB Contabilizada do credor no processo de origem, do início do primeiro desdobramento até o "
+    "corte. 'Acima' exige pago > soma fora da tolerância, sem OB anterior ao primeiro desdobramento, sem OB depois do "
+    "fim de todos, sem repetição não confirmada pelo banco e sem pago acumulado, em data nenhuma, acima da soma dos "
+    "desdobramentos já contratados naquela data. 'Dentro' exige que caiba na régua CONSERVADORA (valores "
+    "idênticos contados uma vez; membro igual à soma dos demais tratado como ata-mestre) mesmo somando as OBs do "
+    "credor em outro processo da mesma UG e as devolvidas sem valor apurado, e cobertura do SIAFE não parcial. "
+    "O excesso do grupo é contado UMA vez por grupo e nunca entra no A_MAIOR individual.")
+CRITERIO_CONSUMO = (
+    "Contrato que seria 'pago acima do valor contratado' e cujo credor é concessionária de serviço público pelo CNAE "
+    "principal (energia elétrica 351x, gás canalizado 3520-4/02, água 3600, esgoto 370x, telefonia/TV por assinatura "
+    "611x–614x; descrição equivalente quando o cadastro traz o texto) ou cujo objeto é energia/água-esgoto/gás "
+    "canalizado/telefonia — salvo objeto de aquisição, instalação, obra, solar, água mineral/pipa —; ou cota "
+    "condominial (CNAE 8112-5/00 ou objeto); ou assinatura/acesso a plataforma pelo objeto (não 'assinatura "
+    "digital/do contrato'). O valor registrado é estimativa de consumo de um período: o excesso vai à classe "
+    "CONSUMO_CONTINUO, com contagem e soma próprias, fora da manchete. Vale-transporte NÃO entra (compra de créditos "
+    "com valor definido).")
 
 # ── normalização ─────────────────────────────────────────────────────────────────────────────
 _RE_SEI = re.compile(r"SEI[\s\-]*(\d{6})[\s/\-]*(\d{6})[\s/\-]*(\d{4}|\d{2})(?!\d)", re.I)
@@ -241,6 +294,101 @@ def e_continuada(objeto: str | None) -> bool:
     if _RE_PONTUAL.search(o) and not re.search(r"CONT[ÍI]NU", o, re.I):
         return False
     return bool(_RE_CONTINUA.search(o))
+
+
+# ── grupo de ata / processo de origem (decisão do dono, 14/11/2026) ──────────────────────────
+# Registro do TCE-RJ que lista os desdobramentos ("SEI-080002/000408/1/2024, SEI-080002/000408/A/2024, …";
+# "SEI-180001/000559B/2025"; "SEI-270032/000072-A/2022"): o `sei_norm` vem concatenado e `chave_sei` não o lê.
+# Medido 14/11/2026: 1.061 registros com UM processo de origem, 8 com mais de um, 4.952 sem número SEI.
+_RE_PROC_LISTA = re.compile(r"SEI[\s\-]*(\d{6})\s*/\s*(\d{6})\s*[-/]?\s*(?:[A-Z]{1,2}|\d{1,2})?\s*/\s*(\d{4}|\d{2})"
+                            r"(?!\d)", re.I)
+
+
+def base_do_processo(processo: str | None) -> tuple[str | None, str]:
+    """(processo de origem em 16 dígitos, '') quando todos os processos listados têm a mesma origem; (None, motivo)
+    quando há origens distintas; (None, '') sem número SEI."""
+    ms = _RE_PROC_LISTA.findall(processo or "")
+    if not ms:
+        return None, ""
+    bases = {a + b + (c if len(c) == 4 else "20" + c) for a, b, c in ms}
+    if len(bases) == 1:
+        return bases.pop(), ""
+    return None, "processos_de_origem_distintos"
+
+
+def regua_conservadora(valores: list[float]) -> float:
+    """Soma dos desdobramentos SEM o que pode ser registro em dobro: valor idêntico conta uma vez (medido: 448 grupos
+    com valor repetido — p.ex. a mesma obra da EMOP registrada duas vezes com R$ 48,6 mi) e o membro igual à soma dos
+    demais é tratado como ata-mestre (171 grupos). Só serve para AFIRMAR 'dentro'; o 'acima' usa a soma cheia."""
+    uniq = sorted({round(float(v), 2) for v in valores})
+    total = sum(uniq)
+    if len(uniq) > 2:
+        resto = total - uniq[-1]
+        # só relativa: a tolerância absoluta de R$ 1.000 tomaria por "mestre" qualquer valor pequeno
+        if resto > 0 and abs(uniq[-1] - resto) <= max(0.01, TOL_PCT * resto):
+            total = uniq[-1]
+    return round(total, 2)
+
+
+# ── consumo contínuo (decisão do dono, 14/11/2026) ────────────────────────────────────────────
+# CNAE principal do credor (`empresas.atividade_princ`: ora o código de 7 dígitos, ora a descrição).
+_CNAE_CONCESSAO = ("3511", "3512", "3513", "3514", "3520402", "3600", "3701", "3702", "6110", "6120", "6130",
+                   "6141", "6142", "6143")
+_RE_CNAE_CONCESSAO = re.compile(
+    r"^\s*((GERA[ÇC][ÃA]O|TRANSMISS[ÃA]O|DISTRIBUI[ÇC][ÃA]O|COM[ÉE]RCIO\s+ATACADISTA)\s+DE\s+ENERGIA\s+EL[ÉE]TRICA|"
+    r"CAPTA[ÇC][ÃA]O,?\s+TRATAMENTO\s+E\s+DISTRIBUI[ÇC][ÃA]O\s+DE\s+[ÁA]GUA|GEST[ÃA]O\s+DE\s+REDES\s+DE\s+ESGOTO|"
+    r"ATIVIDADES\s+RELACIONADAS\s+A\s+ESGOTO|DISTRIBUI[ÇC][ÃA]O\s+DE\s+COMBUST[ÍI]VEIS\s+GASOSOS\s+POR\s+REDES|"
+    r"SERVI[ÇC]OS\s+DE\s+TELEFONIA|TELEFONIA\s+M[ÓO]VEL|TELECOMUNICA[ÇC][ÕO]ES\s+POR\s+SAT|"
+    r"OPERADORAS\s+DE\s+TELEVIS[ÃA]O\s+POR\s+ASSINATURA)", re.I)
+_RE_CNAE_CONDOMINIO = re.compile(r"^\s*(8112-?5/?00|8112500|CONDOM[ÍI]NIOS\s+PREDIAIS)", re.I)
+_RE_OBJ_CONCESSAO = re.compile(
+    r"ENERGIA\s+EL[ÉE]TRICA|FORNECIMENTO\s+DE\s+ENERGIA|[ÁA]GUA\s+E\s+(COLETA\s+DE\s+)?ESGOT|"
+    r"ABASTECIMENTO\s+DE\s+[ÁA]GUA|ESGOTAMENTO\s+SANIT|G[ÁA]S\s+CANALIZADO|TELEFONIA\s+(FIXA|M[ÓO]VEL)|"
+    r"SERVI[ÇC]OS?\s+DE\s+TELEFONIA", re.I)
+# objeto que NÃO é consumo mesmo com credor concessionário (bem, obra, geração própria, água envasada/pipa)
+_RE_OBJ_NAO_CONSUMO = re.compile(r"AQUISI[ÇC]|INSTALA[ÇC]|\bOBRAS?\b|REFORMA|CONSTRU[ÇC]|IMPLANTA[ÇC]|SOLAR|"
+                                 r"FOTOVOLT|GERADOR|NOBREAK|MINERAL|GARRAF|GAL[ÃA]O|\bPIPA\b|APARELHO", re.I)
+_RE_OBJ_CONDOMINIO = re.compile(r"COTAS?\s+(DE\s+)?CONDOM|TAXAS?\s+(DE\s+)?CONDOM|TAXAS?\s+CONDOMINI|"
+                                r"DESPESAS?\s+CONDOMINI", re.I)
+_RE_OBJ_ASSINATURA = re.compile(
+    r"\bASSINATURAS?\b(?!\s+(DIGITA|ELETR[ÔO]NIC|QUALIFICAD|CERTIFICAD|D[OE]\s+CONTRATO|D[OE]\s+TERMO|D[AO]S?\s+PART))|"
+    r"ACESSO\s+(A|AO|[ÀA])\s+(SERVI[ÇC]O\s+DE\s+)?(PORTAL|PLATAFORMA|BASE\s+DE\s+DADOS)", re.I)
+
+
+def _cnae_concessao(cnae: str | None) -> bool:
+    c = str(cnae or "").strip()
+    d = re.sub(r"\D", "", c)
+    if re.fullmatch(r"\d[\d.\-/ ]*", c) and len(d) == 7:
+        return d.startswith(_CNAE_CONCESSAO)
+    return bool(_RE_CNAE_CONCESSAO.search(c))
+
+
+def classe_consumo(objeto: str | None, cnae: str | None = None) -> str | None:
+    """Subtipo de CONSUMO_CONTINUO ('concessionaria', 'cota_condominial', 'assinatura') ou None. Determinístico:
+    critério integral em `CRITERIO_CONSUMO`."""
+    o = objeto or ""
+    if not o.strip() and not cnae:
+        return None
+    if (_cnae_concessao(cnae) or _RE_OBJ_CONCESSAO.search(o)) and not _RE_OBJ_NAO_CONSUMO.search(o):
+        return "concessionaria"
+    if _RE_CNAE_CONDOMINIO.search(str(cnae or "")) or _RE_OBJ_CONDOMINIO.search(o):
+        return "cota_condominial"
+    if _RE_OBJ_ASSINATURA.search(o):
+        return "assinatura"
+    return None
+
+
+def para_consumo_continuo(r: dict, cnae: str | None = None) -> dict:
+    """A_MAIOR de consumo contínuo → CONSUMO_CONTINUO (diferença e excesso preservados, somados à parte)."""
+    if r.get("categoria") != "A_MAIOR":
+        return r
+    sub = classe_consumo(r.get("objeto"), cnae)
+    if sub:
+        r.update(categoria="CONSUMO_CONTINUO", subtipo=sub,
+                 ressalvas=_junta(r.get("ressalvas") or "", f"consumo contínuo ({SUBTIPO[sub]}): o valor registrado é "
+                                                            "estimativa de um período, não teto — excesso somado à "
+                                                            "parte, fora da manchete"))
+    return r
 
 
 _INICIO_14133 = date(2021, 4, 1)
@@ -567,7 +715,9 @@ def _resultado_base(esfera: str, **kw) -> dict:
          "obs_anteriores_ao_contrato": 0, "valor_obs_anteriores": 0.0, "encerrado": False, "corte": "",
          "obs_mesma_nl": 0, "valor_mesma_nl": 0.0, "obs_mesma_competencia": 0, "valor_mesma_competencia": 0.0,
          "obs_mesma_nl_mesmo_dia": 0, "valor_mesma_nl_mesmo_dia": 0.0,
-         "obs_mesma_nl_nao_confirmadas": 0, "valor_mesma_nl_nao_confirmadas": 0.0}
+         "obs_mesma_nl_nao_confirmadas": 0, "valor_mesma_nl_nao_confirmadas": 0.0,
+         "grupo_ata": "", "grupo_n": 0, "grupo_pago": None, "grupo_regua": None, "grupo_regua_conservadora": None,
+         "grupo_diferenca": None, "grupo_n_obs": 0}
     r.update(kw)
     return mascarar_textos(r)
 
@@ -593,14 +743,20 @@ def avaliar_estado(db: str | Path = _DB, *, corte: date | None = None) -> list[d
             "fornecedor, cnpj, vig_inicio, vig_fim, num_contratacao FROM contratos_tcerj").fetchall()
         grupos: dict[tuple, list] = defaultdict(list)
         chave_de: dict[str, tuple] = {}
+        base_de: dict[str, tuple] = {}      # registro com lista de desdobramentos → (processo de origem, motivo)
         for c in contratos:
             k = (chave_sei(c[2] or c[1]), _digitos(c[9]))
             chave_de[c[0]] = k
+            if not k[0]:
+                b = base_do_processo(c[1])
+                if b[0] or b[1]:
+                    base_de[c[0]] = b
             if (c[5] or "").strip() != "Cancelado" and k[0] and k[1]:
                 grupos[k].append(c[0])
+        ata = grupos_de_ata(contratos, chave_de, base_de)
         credores = {k[1] for k in chave_de.values() if k[1]}
         procs_do_credor: dict[str, set] = defaultdict(set)
-        for (p, cr) in grupos:
+        for (p, cr) in list(grupos) + list(ata):
             procs_do_credor[cr].add(p)
         obs, nao_contab = _obs_por_credor(con, credores)
         pncp = _termos_pncp(con, {k for k, v in grupos.items() if len(v) == 1})
@@ -611,7 +767,21 @@ def avaliar_estado(db: str | Path = _DB, *, corte: date | None = None) -> list[d
         res = [_avaliar_um_estado(c, chave_de[c[0]], grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc,
                                   adit)
                for c in contratos]
-        # cobertura só onde ela decide (o "a menor" no processo)
+        # grupo de ata / processo de origem: o resultado do GRUPO substitui o individual (vinculo_ambiguo,
+        # processo_sem_sei e o contrato único que divide o processo com um registro de desdobramentos)
+        por_id = {c[0]: c for c in contratos}
+        res_de = {r["id"]: r for r in res}
+        for (k_proc, k_cred), ids in ata.items():
+            g = avaliar_grupo_ata([por_id[i] for i in ids], [res_de[i]["valor_atualizado"] for i in ids], k_proc,
+                                  obs.get(k_cred, []), corte, vinc, procs_do_credor.get(k_cred, set()) - {k_proc})
+            rotulo = f"SEI-{k_proc[:6]}/{k_proc[6:12]}/{k_proc[12:]} · {mascarar_doc(k_cred)}"
+            for i in ids:
+                aplicar_grupo(res_de[i], g, rotulo, len(ids))
+        for cid, (b, mot) in base_de.items():
+            r = res_de[cid]
+            if mot and r["motivo"] == "processo_sem_sei":
+                r.update(categoria="GRUPO_ATA_INDETERMINADO", motivo=mot)
+        # cobertura só onde ela decide (o "a menor" no processo; o "dentro" do grupo)
         pares = {p for r in res for p in r.get("_checar", ())}
         cob = _cobertura_pares(con, pares) if pares else {}
         for r in res:
@@ -619,12 +789,28 @@ def avaliar_estado(db: str | Path = _DB, *, corte: date | None = None) -> list[d
                 ruins = sorted(f"{u}/{a}" for (u, a) in r.pop("_checar")
                                if cob.get((u, a)) in ("parcial", "nunca_coletado"))
                 if ruins:
-                    r.update(categoria="INDETERMINADO", motivo="cobertura_siafe_parcial", subtipo="")
+                    r.update(categoria="GRUPO_ATA_INDETERMINADO" if r["categoria"] in GRUPOS_ATA else "INDETERMINADO",
+                             motivo="cobertura_siafe_parcial", subtipo="")
                     r["ressalvas"] = _junta(r["ressalvas"], "pares (UG/ano) parciais: " + ", ".join(ruins))
             r.pop("_checar", None)
+        cnae = _cnae_por_credor(con, credores)
+        for r in res:
+            para_consumo_continuo(r, cnae.get(chave_de[r["id"]][1]))
         return res
     finally:
         con.close()
+
+
+def _cnae_por_credor(con, credores: set[str]) -> dict[str, str]:
+    """{CNPJ: CNAE principal} do cadastro (`empresas.atividade_princ`); sem a tabela: {} (regra só pelo objeto)."""
+    if not _tem(con, "empresas"):
+        return {}
+    out = {}
+    for cnpj, at in con.execute("SELECT cnpj, atividade_princ FROM empresas WHERE atividade_princ IS NOT NULL"):
+        d = _digitos(cnpj)
+        if d in credores:
+            out[d] = at
+    return out
 
 
 def _junta(a: str, b: str) -> str:
@@ -672,6 +858,143 @@ def _aditivos_nos_autos(con, grupos: dict, procs_do_credor: dict) -> dict[str, d
         if s:
             out[cid] = s
     return out
+
+
+def grupos_de_ata(contratos: list, chave_de: dict, base_de: dict) -> dict[tuple, list[str]]:
+    """{(processo de origem, credor): [ids]} — registros não cancelados do mesmo processo de origem ao mesmo credor,
+    quando são dois ou mais OU quando algum é um registro com a lista de desdobramentos."""
+    membros: dict[tuple, list] = defaultdict(list)
+    multi: set = set()
+    for c in contratos:
+        if (c[5] or "").strip() == "Cancelado":
+            continue
+        k_proc, k_cred = chave_de[c[0]]
+        if not k_proc and (base_de.get(c[0]) or (None,))[0]:
+            k_proc = base_de[c[0]][0]
+            multi.add(c[0])
+        if k_proc and k_cred:
+            membros[(k_proc, k_cred)].append(c[0])
+    return {k: ids for k, ids in membros.items() if len(ids) > 1 or any(i in multi for i in ids)}
+
+
+def avaliar_grupo_ata(cs: list, valores: list[float], k_proc: str, lista: list, corte: date, vinc: dict | None = None,
+                      outros_procs: set | frozenset = frozenset()) -> dict:
+    """Perícia do GRUPO (régua e salvaguardas em `CRITERIO_GRUPO_ATA`). `cs` = linhas de `contratos_tcerj` do grupo
+    (mesma ordem de colunas de `avaliar_estado`); `valores` = valor atualizado de cada uma; `lista` = OBs do credor
+    (`_obs_por_credor`). Devolve categoria/motivo/pago/régua/diferença do grupo — nunca por contrato."""
+    ids = {c[0] for c in cs}
+    out = {"categoria": "GRUPO_ATA_INDETERMINADO", "motivo": "", "pago": None, "regua": None,
+           "regua_conservadora": None, "diferenca": None, "n_obs": 0, "ressalvas": "", "_checar": None, "ug": ""}
+    if any(not v or float(v) <= 0 for v in valores):
+        return {**out, "motivo": "valor_contrato_ausente"}
+    if any(e_registro_de_termo(c[7]) for c in cs):
+        return {**out, "motivo": "registro_de_termo"}
+    inicios = [min([d for d in (parse_data(c[10]), parse_data(c[3])) if d], default=None) for c in cs]
+    if any(i is None for i in inicios):
+        return {**out, "motivo": "inicio_nao_registrado"}
+    ini = min(inicios)
+    if ini < INICIO_COBERTURA_SIAFE:
+        return {**out, "motivo": "vigencia_anterior_a_cobertura"}
+    regua = round(sum(float(v) for v in valores), 2)
+    cons = regua_conservadora(valores)
+    out.update(regua=regua, regua_conservadora=cons)
+    vinc = vinc or {}
+
+    def do_grupo(o):
+        return o[1] == k_proc or vinc.get(_chave_ob(o)) in ids
+
+    no = [o for o in lista if do_grupo(o) and o[0] and ini <= o[0] <= corte]
+    anteriores = [o for o in lista if o[1] == k_proc and o[0] and o[0] < ini]
+    # OB vinculada pelos autos a OUTRO contrato do credor não é candidata a pagar o grupo
+    fora = [o for o in lista if not do_grupo(o) and _chave_ob(o) not in vinc and o[0] and ini <= o[0] <= corte]
+    if not no:
+        if fora:
+            pf = _processos_fora(fora, outros_procs)
+            mot = ("ob_do_credor_sem_processo_na_base" if pf["obs_sem_processo"] and not pf["processos"]
+                   else "ob_do_credor_fora_do_processo")
+            return {**out, "motivo": mot, "processos_fora": pf}
+        return {**out, "motivo": "credor_sem_ob_na_base"}
+    pago = round(sum(o[3] for o in no), 2)
+    sem_valor = round(sum(o[8] for o in no if len(o) > 7 and o[7] == DEVOLVIDA_SEM_VALOR), 2)
+    ugs = sorted({o[2] for o in no})
+    out.update(pago=pago, n_obs=len(no), diferenca=round(pago - regua, 2), ug=",".join(ugs))
+    ress = [f"{len(cs)} registro(s) do mesmo processo de origem ao mesmo credor; régua = soma dos valores registrados "
+            f"(R$ {fmt_brl(regua)}; conservadora R$ {fmt_brl(cons)}) — o valor da ata não é publicado"]
+    if anteriores:
+        ress.append(f"{len(anteriores)} OB(s) do processo de origem anteriores ao primeiro desdobramento (R$ "
+                    f"{fmt_brl(sum(o[3] for o in anteriores))}) fora da soma")
+    out["ressalvas"] = " · ".join(ress)
+    if desproporcional(regua, pago):
+        return {**out, "motivo": "valor_desproporcional"}
+
+    if pago > regua and not dentro_da_tolerancia(pago - regua, regua):
+        if anteriores:
+            return {**out, "motivo": "ob_anterior_ao_primeiro_desdobramento"}
+        # cronologia: o pago acumulado não pode passar, em data nenhuma, da soma dos desdobramentos JÁ contratados —
+        # se passa, a OB paga desdobramento que o TCE-RJ não publicou para este credor (conferência de 14/11/2026:
+        # IVB × MERCK, desdobramentos A, D, U publicados e R$ 651 mil pagos antes do U)
+        acum = 0.0
+        for o in sorted(no, key=lambda o: o[0]):
+            acum += o[3]
+            vig = sum(float(v) for v, i in zip(valores, inicios) if i <= o[0])
+            if vig < regua - 0.005 and acum > vig and not dentro_da_tolerancia(acum - vig, vig):
+                return {**out, "motivo": "pago_a_frente_dos_desdobramentos_publicados",
+                        "ressalvas": _junta(out["ressalvas"], f"em {o[0].strftime('%d/%m/%Y')} o pago acumulado (R$ "
+                                                              f"{fmt_brl(acum)}) já passava da soma dos desdobramentos "
+                                                              f"contratados até então (R$ {fmt_brl(vig)})")}
+        sd = sinais_duplicidade(no)
+        if sd["obs_mesma_nl_nao_confirmadas"]:
+            sem_rep = pago - sd["valor_mesma_nl_nao_confirmadas"]
+            if sem_rep <= regua or dentro_da_tolerancia(sem_rep - regua, regua):
+                return {**out, "motivo": "pagamento_repetido_nao_confirmado"}
+        fins = [parse_data(c[11]) for c in cs]
+        if all(fins):
+            fim = max(fins)
+            apos = [o for o in no if (o[0] - fim).days > CARENCIA_ULTIMA_OB_DIAS]
+            if apos:
+                return {**out, "motivo": "ob_apos_fim_da_vigencia_registrada",
+                        "ressalvas": _junta(out["ressalvas"], f"{len(apos)} OB(s) depois de {fim.strftime('%d/%m/%Y')}, "
+                                                              "fim do último desdobramento registrado")}
+        elif any(e_continuada(c[7]) for c in cs):
+            return {**out, "motivo": "vigencia_nao_registrada"}
+        return {**out, "categoria": "GRUPO_ATA_A_MAIOR",
+                "ressalvas": _junta(out["ressalvas"], "indício a conferir: a ata, os termos e desdobramentos não "
+                                                      "publicados pelo TCE-RJ podem cobrir a diferença")}
+
+    alheias = [o for o in fora if o[2] in ugs and o[1] not in outros_procs]
+    teto = pago + sem_valor + sum(o[3] for o in alheias)
+    if teto <= cons or dentro_da_tolerancia(teto - cons, cons):
+        anos = range(ini.year, corte.year + 1)
+        return {**out, "categoria": "GRUPO_ATA_DENTRO", "_checar": [(u, str(a)) for u in ugs for a in anos]}
+    if pago > cons and not dentro_da_tolerancia(pago - cons, cons):
+        return {**out, "motivo": "registro_repetido_no_grupo"}
+    if sem_valor and pago + sem_valor > cons:
+        return {**out, "motivo": "devolucao_sem_valor_apurado"}
+    return {**out, "motivo": "dentro_com_ob_fora_do_processo", "processos_fora": _processos_fora(alheias, outros_procs),
+            "ressalvas": _junta(out["ressalvas"], f"{len(alheias)} OB(s) do credor na mesma UG em outro processo (R$ "
+                                                  f"{fmt_brl(sum(o[3] for o in alheias))})")}
+
+
+def aplicar_grupo(r: dict, g: dict, rotulo: str, n: int) -> dict:
+    """Linha do contrato recebe o resultado do GRUPO. Pago/devido/diferença por contrato ficam vazios (o pago é do
+    grupo; somá-lo por contrato contaria a mesma OB N vezes — `territorio.atribui_estado` soma `pago`)."""
+    r.pop("_checar", None)
+    r.update(categoria=g["categoria"], subtipo="", motivo=g["motivo"] if g["categoria"] == "GRUPO_ATA_INDETERMINADO"
+             else "", pago=None, devido=None, diferenca=None, excesso_global=None, n_obs=0, vinculo="grupo_ata",
+             criterio_devido="soma dos valores registrados dos desdobramentos do grupo (CRITERIO_GRUPO_ATA)",
+             grupo_ata=rotulo, grupo_n=n, grupo_pago=g["pago"], grupo_regua=g["regua"],
+             grupo_regua_conservadora=g["regua_conservadora"], grupo_diferenca=g["diferenca"], grupo_n_obs=g["n_obs"],
+             ressalvas=g["ressalvas"], obs_mesma_nl=0, valor_mesma_nl=0.0, obs_mesma_competencia=0,
+             valor_mesma_competencia=0.0, obs_mesma_nl_mesmo_dia=0, valor_mesma_nl_mesmo_dia=0.0,
+             obs_mesma_nl_nao_confirmadas=0, valor_mesma_nl_nao_confirmadas=0.0)
+    if g.get("ug"):
+        r["ug"] = g["ug"]
+    r.pop("processos_fora", None)
+    if g.get("processos_fora"):
+        r["processos_fora"] = g["processos_fora"]
+    if g.get("_checar"):
+        r["_checar"] = list(g["_checar"])
+    return mascarar_textos(r)
 
 
 def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor, corte, vinc=None,
@@ -905,7 +1228,7 @@ def avaliar_prefeitura(db: str | Path = _DB_PCRJ) -> list[dict]:
             "FROM contasrio_contrato").fetchall()
     finally:
         con.close()
-    return [_avaliar_um_pcrj(row) for row in linhas]
+    return [_avaliar_um_pcrj(row) for row in linhas]   # consumo contínuo já aplicado em `_avaliar_um_pcrj`
 
 
 def _avaliar_um_pcrj(row) -> dict:
@@ -988,7 +1311,7 @@ def _avaliar_um_pcrj(row) -> dict:
             r.update(categoria="CONFORME", subtipo="")
     if cat == "A_MAIOR" and pago > v_atual:
         r["excesso_global"] = round(pago - v_atual, 2)
-    return r
+    return para_consumo_continuo(r)      # Prefeitura: sem CNAE na base do Contas Rio — só pelo objeto
 
 
 MOTIVOS["pago_indisponivel"] = "total pago não publicado para o contrato"
@@ -1033,9 +1356,36 @@ def resumo(resultados: list[dict]) -> dict:
                                           "subtipos": defaultdict(int), "excesso_a_maior": 0.0,
                                           "adiantado": 0.0, "excesso_global": 0.0, "deficit_encerrado": 0.0,
                                           "pago_determinado": 0.0, "devido_determinado": 0.0,
-                                          "n_estouro_art125": 0, "n_art125_aferivel": 0})
+                                          "n_estouro_art125": 0, "n_art125_aferivel": 0,
+                                          "consumo_continuo": 0.0, "consumo_excesso_global": 0.0,
+                                          "consumo_subtipos": defaultdict(int),
+                                          "grupos_ata": {"n": 0, **{c: 0 for c in GRUPOS_ATA}, "pago": 0.0,
+                                                         "regua": 0.0, "excesso": 0.0, "pago_dentro": 0.0,
+                                                         "regua_dentro": 0.0, "motivos": defaultdict(int),
+                                                         "_vistos": set()}})
         e["n"] += 1
         e[r["categoria"]] += 1
+        if r["categoria"] in GRUPOS_ATA:
+            # o grupo é contado UMA vez (suas somas não são por contrato)
+            g = e["grupos_ata"]
+            if r["grupo_ata"] not in g["_vistos"]:
+                g["_vistos"].add(r["grupo_ata"])
+                g["n"] += 1
+                g[r["categoria"]] += 1
+                g["pago"] += float(r["grupo_pago"] or 0)
+                g["regua"] += float(r["grupo_regua"] or 0)
+                if r["categoria"] == "GRUPO_ATA_A_MAIOR":
+                    g["excesso"] += float(r["grupo_diferenca"] or 0)
+                if r["categoria"] == "GRUPO_ATA_DENTRO":
+                    g["pago_dentro"] += float(r["grupo_pago"] or 0)
+                    g["regua_dentro"] += float(r["grupo_regua"] or 0)
+                if r["categoria"] == "GRUPO_ATA_INDETERMINADO":
+                    g["motivos"][r["motivo"]] += 1
+            continue
+        if r["categoria"] == "CONSUMO_CONTINUO":
+            e["consumo_continuo"] += float(r["diferenca"] or 0)
+            e["consumo_excesso_global"] += float(r["excesso_global"] or 0)
+            e["consumo_subtipos"][r["subtipo"]] += 1
         if r["categoria"] == "INDETERMINADO":
             e["motivos"][r["motivo"]] += 1
         else:
@@ -1055,6 +1405,12 @@ def resumo(resultados: list[dict]) -> dict:
     for e in out.values():
         e["motivos"] = dict(sorted(e["motivos"].items(), key=lambda kv: -kv[1]))
         e["subtipos"] = dict(e["subtipos"])
+        e["consumo_subtipos"] = dict(e["consumo_subtipos"])
+        g = e["grupos_ata"]
+        g.pop("_vistos")
+        g["motivos"] = dict(sorted(g["motivos"].items(), key=lambda kv: -kv[1]))
+        for k in ("pago", "regua", "excesso", "pago_dentro", "regua_dentro"):
+            g[k] = round(g[k], 2)
     return out
 
 
@@ -1276,7 +1632,13 @@ def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date 
                 f"do valor contratado (R$ {fmt_brl(e['adiantado'])}); "
                 f"{fmt_int(e['A_MENOR_ENCERRADO'])} pago(s) abaixo do devido com vigência encerrada "
                 f"(R$ {fmt_brl(e['deficit_encerrado'])}); {fmt_int(e['A_MENOR_EM_CURSO'])} abaixo do devido em curso; e "
-                f"{fmt_int(e['INDETERMINADO'])} indeterminado(s), cada um com o motivo declarado.</p>")
+                f"{fmt_int(e['INDETERMINADO'])} indeterminado(s), cada um com o motivo declarado. Fora da manchete, em "
+                f"classes próprias: {fmt_int(e['CONSUMO_CONTINUO'])} contrato(s) de consumo contínuo acima da "
+                f"estimativa registrada (R$ {fmt_brl(e['consumo_continuo'])}) e {fmt_int(e['grupos_ata']['n'])} "
+                f"grupo(s) de ata/processo de origem periciados pela soma dos desdobramentos — "
+                f"{fmt_int(e['grupos_ata']['GRUPO_ATA_A_MAIOR'])} acima (R$ {fmt_brl(e['grupos_ata']['excesso'])}), "
+                f"{fmt_int(e['grupos_ata']['GRUPO_ATA_DENTRO'])} dentro, "
+                f"{fmt_int(e['grupos_ata']['GRUPO_ATA_INDETERMINADO'])} indeterminado(s).</p>")
 
     top = []
     for esf in (ESTADO, PREFEITURA):
