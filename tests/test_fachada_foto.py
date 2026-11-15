@@ -132,3 +132,17 @@ def test_mesmo_lote_com_zero_a_esquerda_e_um_endereco_so():
     from compliance_agent.fachada_foto import _chave_endereco
     assert (_chave_endereco("AVENIDA, NELSON CARDOSO, 00309, SAL 0502, TAQUARA")
             == _chave_endereco("AVENIDA, NELSON CARDOSO, 309, LOJA A, TAQUARA"))
+
+
+def test_estabelecimento_fechado_abandonado_vai_para_revisao_e_nao_absolve():
+    """15/11/2026, controle sintético (Higgsfield): loja com porta de aço trancada, grafite e letreiro vazio saía
+    'comercial_industrial' → AFASTADO ("compatível com sede real"). Fechada na hora da foto não é inexistente
+    (domingo, noite), então nem absolve nem acusa: olho humano."""
+    v = veredito_foto(_reg(visual_classe="estabelecimento_fechado_abandonado"))
+    assert v["status"] == "INDISPONIVEL" and v["revisar_humano"] is True
+    assert "fora do expediente" in v["explicacao_inocente"]
+
+
+def test_vlm_conhece_a_classe_fechado_abandonado():
+    from compliance_agent.verificacao_endereco import _CLASSES_VISUAIS
+    assert "estabelecimento_fechado_abandonado" in _CLASSES_VISUAIS

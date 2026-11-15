@@ -47,6 +47,7 @@ _IMG_DIR = _RAIZ / "data" / "fachada_img"
 
 # Classes FLAGUEADAS — salvamos o print só destas (economiza disco; comercial_industrial/galpão não interessa).
 _FLAG_PRINT = {"terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco",
+               "estabelecimento_fechado_abandonado",
                "predio_residencial", "casa_residencial"}
 
 

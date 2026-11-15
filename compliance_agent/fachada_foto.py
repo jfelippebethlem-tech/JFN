@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 CLASSES_TERRENO = frozenset({"terreno_baldio", "area_aberta_rural"})
 CLASSE_PRECARIA = "construcao_precaria_barraco"
+# 15/11/2026: controle sintético mostrou loja trancada/pichada saindo "comercial_industrial" → AFASTADO.
+CLASSE_FECHADO = "estabelecimento_fechado_abandonado"
 CLASSES_COMERCIAIS = frozenset({"comercial_industrial", "galpao_logistico"})
 CLASSES_RESIDENCIAIS = frozenset({"casa_residencial", "predio_residencial"})
 
@@ -174,6 +176,12 @@ def veredito_foto(reg: dict) -> dict:
                 "evidencia": ("O classificador disse 'construção precária', mas confunde casa simples de "
                               "alvenaria com barraco (no controle de 14/11/2026 acertou 2 de 7) — vai para "
                               "o olho humano antes de qualquer juízo.")}
+    if classe == CLASSE_FECHADO:
+        return {**base, "status": "INDISPONIVEL", "revisar_humano": True,
+                "evidencia": ("Foto do lote mostra estabelecimento fechado ou com sinais de abandono (porta trancada, "
+                              "letreiro vazio, pichação) — não absolve nem acusa: olho humano e, se preciso, nova foto."),
+                "explicacao_inocente": ("foto tirada fora do expediente (noite, domingo, feriado), mudança recente "
+                                        "de endereço ainda não registrada, ou operação sem atendimento ao público")}
     if classe in CLASSES_COMERCIAIS:
         return {**base, "status": "AFASTADO",
                 "evidencia": f"Foto do lote mostra edificação {classe.replace('_', ' ')} — compatível com sede real."}
