@@ -379,3 +379,99 @@ def test_item_que_sai_da_lista_e_removido_so_se_for_nosso(amb):
     assert alheia.exists()
     rotas["governo_couto"] = None
     assert V.gerar(obter)["itens"]["couto"] == {"ok": False} and alheia.exists()
+
+
+# ───────────── propriedades padronizadas dos casos (casos/*.md) — o texto do autor é intocável ─────────────
+CASO_HUMANO = ("---\ntipo: caso\nstatus: aberto — conferir a pasta do contrato\nseveridade: 🔴 8/10 (pago sob impedimento)\n"
+               "entidade: CONSTRUTORA X — 60.853.934/0001-06\nresumo: pago sob impedimento, R$ 1.234.567,89 em OB do SIAFE\n"
+               "atualizado: 2026-08-01\n---\n\n# Caso X\n\nUG 133100 pagou; de novo a UG 133100 (e uma vez a UG 296100).\n"
+               "CNPJ 60.853.934/0001-06 e o sócio 529.982.247-25.\n")
+
+
+def _fm_e_corpo(texto):
+    _, fm, corpo = texto.split("---\n", 2)
+    return fm, corpo
+
+
+def _casos_amb(amb, monkeypatch, **notas):
+    vault, rotas, obter = amb
+    monkeypatch.setattr(V, "_nomes_ug", lambda: {"133100": "Instituto de Terras e Cartografia", "296100": "Fundo de Saúde"})
+    for nome, texto in notas.items():
+        (vault / "casos" / f"{nome}.md").write_text(texto, encoding="utf-8")
+    return vault, obter
+
+
+def test_caso_recebe_propriedades_sem_tocar_em_nada_do_autor(amb, monkeypatch):
+    vault, obter = _casos_amb(amb, monkeypatch, x=CASO_HUMANO)
+    est = V.gerar(obter)
+    novo = (vault / "casos/x.md").read_text(encoding="utf-8")
+    fm_a, corpo_a = _fm_e_corpo(CASO_HUMANO)
+    fm_n, corpo_n = _fm_e_corpo(novo)
+    assert corpo_n == corpo_a                                           # corpo byte a byte
+    assert fm_n.startswith(fm_a)                                        # frontmatter do autor intacto e na mesma ordem
+    pr = _props(novo)                                                   # YAML válido, sem chave duplicada
+    assert pr["status"] == "aberto — conferir a pasta do contrato"      # chave do autor vence: não é reescrita
+    assert pr["categories"] == ["[[Casos]]"] and pr["ug"] == "133100" and pr["orgao"] == "Instituto de Terras e Cartografia"
+    assert pr["cnpj"] == "60.853.934/0001-06" and pr["grau"] == "🔴" and pr["estado"] == "PENDENTE"
+    assert pr["valor"] == 1234567.89 and "conferir" in pr["valor_fonte"] and pr["data"] == "2026-08-01"
+    assert fm_n.count("status:") == 1 and "529.982.247-25" not in fm_n[len(fm_a):]
+    assert est["casos"]["n"] == 2 and est["casos"]["regravadas"] == 2  # o caso do fixture também
+    assert pr["propriedades_por"] == V.GERADO_POR and "gerado_por" not in pr   # nunca o marcador que autoriza apagar
+
+
+def test_caso_chave_do_autor_vence_e_sem_valor_fica_indisponivel(amb, monkeypatch):
+    humano = ("---\ntipo: caso\nstatus: concluído\ngrau: medio\ncnpj: \"19088605000104\"\nug: \"036100\"\n---\n"
+              "UG 133100 aqui, CNPJs 60.853.934/0001-06 e 44.982.273/0001-54.\n")
+    vault, obter = _casos_amb(amb, monkeypatch, y=humano)
+    V.gerar(obter)
+    novo = (vault / "casos/y.md").read_text(encoding="utf-8")
+    pr = _props(novo)
+    assert pr["grau"] == "medio" and pr["cnpj"] == "19088605000104" and pr["ug"] == "036100"   # do autor
+    assert pr["valor"] is None and pr["valor_fonte"].startswith(V.IND)                        # ausente ≠ zero
+    assert pr["orgao"] is None                                          # UG do autor fora do índice: não inventa nome
+    for k in ("grau", "cnpj", "ug", "status"):
+        assert novo.split("---\n")[1].count(f"\n{k}:") + novo.split("---\n")[1].startswith(f"{k}:") == 1, k
+
+
+def test_caso_sem_cnpj_unico_nao_atribui_e_cpf_sai_mascarado(amb, monkeypatch):
+    dois = "---\ntipo: caso\n---\nCNPJ 60.853.934/0001-06 e 44.982.273/0001-54, UG 133100 e UG 296100.\n"
+    pf = "---\ntipo: caso\ncpf: 529.982.247-25\nseveridade: 🟢 afastado (veredito humano)\n---\nsem CNPJ\n"
+    vault, obter = _casos_amb(amb, monkeypatch, dois=dois, pf=pf)
+    V.gerar(obter)
+    d = _props((vault / "casos/dois.md").read_text(encoding="utf-8"))
+    assert d["cnpj"] is None and d["ug"] is None and d["grau"] is None   # empate/ambíguo: vazio, nunca chute
+    p = _props((vault / "casos/pf.md").read_text(encoding="utf-8"))
+    assert p["cnpj"] == "***.982.247-**" and p["grau"] == "🟢" and p["estado"] == "REFUTADO"
+
+
+def test_caso_segunda_rodada_troca_o_bloco_sem_duplicar_e_seco_nao_grava(amb, monkeypatch):
+    vault, obter = _casos_amb(amb, monkeypatch, x=CASO_HUMANO)
+    V.gerar(obter, seco=True)
+    assert (vault / "casos/x.md").read_text(encoding="utf-8") == CASO_HUMANO
+    V.gerar(obter)
+    marca = (vault / "casos/x.md").stat().st_mtime_ns
+    assert V.gerar(obter)["casos"]["regravadas"] == 0 and (vault / "casos/x.md").stat().st_mtime_ns == marca
+    monkeypatch.setattr(V, "_nomes_ug", lambda: {"133100": "ITERJ"})
+    V.gerar(obter)
+    novo = (vault / "casos/x.md").read_text(encoding="utf-8")
+    assert novo.count(V._MARCA[0]) == 1 and _props(novo)["orgao"] == "ITERJ"
+    assert _fm_e_corpo(novo)[0].startswith(_fm_e_corpo(CASO_HUMANO)[0])
+
+
+def test_casos_base_agrupa_por_grau_e_status(amb, monkeypatch):
+    vault, obter = _casos_amb(amb, monkeypatch)
+    V.gerar(obter)
+    import yaml
+    b = yaml.safe_load((vault / V.CASOS_BASE_ARQ).read_text(encoding="utf-8"))
+    assert [v["name"] for v in b["views"]] == ["Casos por grau", "Casos por status", "Abertos 🔴"]
+    assert {"grau_cor", "situacao"} <= set(b["formulas"])
+    assert V.situacao_caso("concluído") == "fechado" and V.situacao_caso("aberto — ler") == "aberto"
+    assert V.situacao_caso(None) == "aberto" and V.situacao_caso("🟢 afastado") == "fechado"
+
+
+def test_caso_com_frontmatter_invalido_do_autor_nao_e_tocado_e_sai_listado(amb, monkeypatch):
+    quebrado = "---\ntipo: caso\nseveridade: 🔴 alto: pago sem contrato\n---\ncorpo\n"   # ':' solto: YAML inválido
+    vault, obter = _casos_amb(amb, monkeypatch, q=quebrado)
+    est = V.gerar(obter)
+    assert (vault / "casos/q.md").read_text(encoding="utf-8") == quebrado
+    assert est["casos"]["yaml_invalido"] == ["q"]

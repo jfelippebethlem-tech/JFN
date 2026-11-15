@@ -7,7 +7,8 @@ Gerador DETERMINÍSTICO (sem modelo): lê as MESMAS rotas que o painel serve (`/
 `/api/comparador/economia`, `/api/periodo/*`) e escreve notas-retrato em `~/vault/jfn/`, mais uma nota-item por contrato
 A_MAIOR e por ponto VERIFICADO da gestão Couto (`jfn/itens/`) e o `jfn/retratos-jfn.base` (visões do Bases). O
 frontmatter segue propriedades curtas e padronizadas (categories, orgao, ug, cnpj, grau, estado, valor_pago, fonte,
-gerado = data da fonte). O jfn-brain indexa o vault a
+gerado = data da fonte). As notas de caso escritas à mão (`casos/*.md`) recebem as mesmas propriedades num bloco
+próprio no fim do frontmatter, sem tocar no texto do autor, e o `casos/casos.base` (casos por grau/status). O jfn-brain indexa o vault a
 cada 10 min, então o que entra aqui chega aos agentes sem outro passo.
 
 Regras da casa aplicadas aqui (e cobertas por `tests/test_vault_retratos.py`):
@@ -779,6 +780,228 @@ views:
 """
 
 
+# ───────────────────────────── 8. propriedades padronizadas dos casos (casos/*.md) ─────────────────────────────
+# Pedido do dono (14/11/2026): o padrão de propriedades dos retratos estendido às notas de caso, escritas À MÃO.
+# Regra (memória artefato-derivado-carrega-trabalho-humano): o texto do autor é intocável. As propriedades geradas
+# ficam num bloco próprio, entre duas marcas, no FIM do frontmatter; o resto do frontmatter e o corpo saem byte a byte.
+# Chave que o autor já escreveu (status, grau, orgao, cnpj…) VENCE: o bloco não a repete (YAML sem chave duplicada) e
+# o `casos.base` normaliza o texto livre do autor por fórmula. Derivação conservadora: ambíguo fica vazio, nunca chute.
+CASOS = "casos"
+CASOS_BASE_ARQ = f"{CASOS}/casos.base"
+_MARCA = ("# jfn:propriedades — geradas por compliance_agent/vault_retratos.py; o resto da nota é do autor",
+          "# jfn:propriedades:fim")
+_RE_FM = re.compile(r"\A---\n(.*?\n)---\n", re.S)
+_RE_CHAVE = re.compile(r"^([A-Za-z_][\w-]*):[ \t]*(.*)$")
+_RE_UG_TXT = re.compile(r"\bUGs?\s*[:`(]?\s*(\d{6})\b")
+_RE_RS = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})(?!\d)")
+_CORES = ("🔴", "🟡", "🟢", "⚪")
+_FECHADO = ("conclu", "afastad", "arquivad", "encerrad", "descartad", "fechad")
+
+
+def _nomes_ug() -> dict[str, str]:
+    """UG → nome canônico (data/ug_canonico.json, versionado). Sem o arquivo, nenhum órgão é nomeado."""
+    try:
+        return json.loads((RAIZ / "data" / "ug_canonico.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def situacao_caso(status) -> str:
+    """aberto | fechado a partir do status livre do autor (mesma regra da fórmula `situacao` do casos.base)."""
+    s = str(status or "").lower()
+    return "fechado" if any(w in s for w in _FECHADO) else "aberto"
+
+
+def _grau_de(texto) -> str | None:
+    s = str(texto or "").strip()
+    for c in _CORES:
+        if s.startswith(c):
+            return c
+    low = s.lower()
+    for pal, c in (("alto", "🔴"), ("grave", "🔴"), ("médio", "🟡"), ("medio", "🟡"), ("baixo", "🟢"),
+                   ("afastad", "🟢"), ("descartad", "⚪")):
+        if low.startswith(pal):
+            return c
+    return None
+
+
+def _sem_aspas(v: str) -> str:
+    v = v.strip()
+    return v[1:-1] if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'" else v
+
+
+def _partes_caso(texto: str):
+    """(linhas do frontmatter do AUTOR, corpo) — o bloco gerado antes, se houver, sai das linhas do autor."""
+    m = _RE_FM.match(texto)
+    if not m:
+        return None
+    linhas, dentro = [], False
+    for ln in m.group(1).splitlines(keepends=True):
+        if ln.rstrip("\n") == _MARCA[0]:
+            dentro = True
+        elif ln.rstrip("\n") == _MARCA[1] and dentro:
+            dentro = False
+        elif not dentro:
+            linhas.append(ln)
+    return linhas, texto[m.end():]
+
+
+def props_caso(chaves: dict[str, str], texto: str, nomes_ug: dict[str, str]) -> dict:
+    """Propriedades padronizadas de um caso, só para as chaves que o autor NÃO escreveu."""
+    p: dict = {"categories": ["[[Casos]]"]}
+    ugs = [u for u in _RE_UG_TXT.findall(texto) if u in nomes_ug]
+    cont = sorted({u: ugs.count(u) for u in ugs}.items(), key=lambda kv: -kv[1])
+    ug = _sem_aspas(chaves["ug"]) if "ug" in chaves else (
+        cont[0][0] if cont and (len(cont) == 1 or cont[0][1] > cont[1][1]) else None)
+    p["orgao"] = nomes_ug.get(ug or "") or None
+    p["ug"] = ug
+    cnpjs = list(dict.fromkeys(re.sub(r"\D", "", c) for c in _RE_CNPJ.findall(texto)))
+    cab = " ".join(chaves.get(k, "") for k in ("entidade", "fornecedor"))
+    no_cab = list(dict.fromkeys(re.sub(r"\D", "", c) for c in _RE_CNPJ.findall(cab)))
+    ident = (no_cab[0] if len(no_cab) == 1 else cnpjs[0] if len(cnpjs) == 1 else
+             re.sub(r"\D", "", chaves.get("cpf", "")) or None)
+    p["cnpj"] = doc(ident) if ident else None            # CPF de pessoa física sai mascarado (doc → mascarar_cpf)
+    fonte_grau = next((chaves[k] for k in ("grau_revisado", "severidade", "gravidade") if chaves.get(k)), None)
+    p["grau"] = _grau_de(_sem_aspas(fonte_grau)) if fonte_grau else None
+    low = _sem_aspas(fonte_grau or "").lower()
+    p["estado"] = "REFUTADO" if (low.startswith("⚪") or "descartad" in low or "afastad" in low) else "PENDENTE"
+    valor, vfonte = None, f"{IND} — a nota não declara valor com fonte"
+    for k, rot in (("valor_pago_ob", "OB do SIAFE — campo valor_pago_ob do autor"),
+                   ("valor_contratado", "valor contratado (não é pagamento) — campo do autor")):
+        try:
+            valor, vfonte = float(_sem_aspas(chaves[k])), rot
+            break
+        except (KeyError, ValueError):
+            continue
+    if valor is None:
+        for k in ("resumo", "severidade", "entidade"):
+            t = chaves.get(k, "")
+            m = _RE_RS.search(t)
+            if m and re.search(r"\bpag|\bOBs?\b", t, re.I):
+                valor = float(m.group(1).replace(".", "").replace(",", "."))
+                vfonte = f"texto do autor (campo {k}) — conferir na OB do SIAFE"
+                break
+    p["valor"], p["valor_fonte"] = valor, vfonte
+    p["data"] = next((iso(chaves[k]) for k in ("aberto_em", "criado", "criada", "detectado_em", "atualizado")
+                      if iso(chaves.get(k))), None)
+    p["status"] = situacao_caso(chaves.get("status"))
+    p["propriedades_por"] = GERADO_POR
+    return {k: v for k, v in p.items() if k not in chaves}
+
+
+def nota_caso(texto: str, nomes_ug: dict[str, str]) -> str | None:
+    """A nota com o bloco de propriedades (re)escrito; None se não tem frontmatter (nada é criado na nota do autor)."""
+    partes = _partes_caso(texto)
+    if partes is None:
+        return None
+    linhas, corpo = partes
+    chaves = {m.group(1): m.group(2) for m in map(_RE_CHAVE.match, (ln.rstrip("\n") for ln in linhas)) if m}
+    bloco = [_MARCA[0]] + [mascarar(f"{k}: {_y(v)}".rstrip()) for k, v in props_caso(chaves, texto, nomes_ug).items()]
+    return "---\n" + "".join(linhas) + "\n".join(bloco + [_MARCA[1]]) + "\n---\n" + corpo
+
+
+def propriedades_casos(seco: bool = False) -> dict:
+    """Uma rodada sobre casos/*.md. Nota editada durante a rodada (Obsidian/Syncthing) é pulada, não sobrescrita."""
+    import yaml                                               # o Obsidian não lê propriedade de frontmatter inválido
+    nomes = _nomes_ug()
+    n = regravadas = puladas = 0
+    invalidos: list[str] = []
+    for p in sorted((VAULT / CASOS).glob("*.md")) if (VAULT / CASOS).is_dir() else []:
+        try:
+            texto = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        novo = nota_caso(texto, nomes)
+        if novo is None:
+            continue
+        try:
+            yaml.safe_load("".join(_partes_caso(texto)[0]))
+        except yaml.YAMLError:                                # erro do AUTOR: não se conserta por ele — só se lista
+            invalidos.append(p.stem)
+            continue
+        n += 1
+        antes, depois = _partes_caso(texto), _partes_caso(novo)
+        if depois != antes:                                   # trava: o texto do autor tem de sair idêntico
+            raise AssertionError(f"propriedades de {p.name} alterariam o texto do autor — nada gravado")
+        if novo == texto:
+            continue
+        try:
+            if p.read_text(encoding="utf-8") != texto:
+                puladas += 1
+                continue
+        except OSError:
+            continue
+        regravadas += gravar(p, novo, seco)
+    base = gravar(VAULT / CASOS_BASE_ARQ, CASOS_BASE_YAML, seco) if n else False
+    return {"n": n, "regravadas": regravadas, "puladas": puladas, "base_regravada": base, "yaml_invalido": invalidos}
+
+
+CASOS_BASE_YAML = f"""# Gerado por compliance_agent/vault_retratos.py — não editar (regravado se mudar no código).
+# grau_cor e situacao normalizam também o texto livre que o autor escreveu em grau/status (a chave do autor vence).
+filters:
+  and:
+    - file.inFolder("{CASOS}")
+    - 'file.ext == "md"'
+formulas:
+  grau_cor: 'if(grau, if(grau.contains("🔴") || grau.lower().startsWith("alto"), "🔴", if(grau.contains("🟡") || grau.lower().startsWith("m"), "🟡", if(grau.contains("🟢") || grau.lower().startsWith("baixo"), "🟢", "⚪"))), "⚪ sem grau")'
+  situacao: 'if(status, if(status.lower().containsAny({", ".join(f'"{w}"' for w in _FECHADO)}), "fechado", "aberto"), "aberto")'
+properties:
+  formula.grau_cor:
+    displayName: "Grau"
+  formula.situacao:
+    displayName: "Situação"
+  valor:
+    displayName: "Valor (R$)"
+  valor_fonte:
+    displayName: "Fonte do valor"
+views:
+  - type: table
+    name: "Casos por grau"
+    groupBy:
+      property: formula.grau_cor
+      direction: ASC
+    order:
+      - file.name
+      - formula.situacao
+      - orgao
+      - ug
+      - cnpj
+      - valor
+      - valor_fonte
+      - estado
+      - data
+    summaries:
+      valor: Sum
+  - type: table
+    name: "Casos por status"
+    groupBy:
+      property: formula.situacao
+      direction: ASC
+    order:
+      - file.name
+      - formula.grau_cor
+      - orgao
+      - cnpj
+      - valor
+      - estado
+      - data
+  - type: table
+    name: "Abertos 🔴"
+    filters:
+      and:
+        - 'formula.grau_cor == "🔴"'
+        - 'formula.situacao == "aberto"'
+    order:
+      - file.name
+      - orgao
+      - ug
+      - cnpj
+      - valor
+      - valor_fonte
+      - data
+"""
+
+
 # ───────────────────────────── 7. por exercício (ano e mês) ─────────────────────────────
 _COLS = (("dotacao_inicial", "Dotação inicial (LOA)"), ("dotacao_atualizada", "Dotação atualizada"),
          ("empenhado", "Empenhado (não é pagamento)"), ("liquidado", "Liquidado (não é pagamento)"),
@@ -1081,6 +1304,7 @@ def gerar(obter_=obter, seco: bool = False, registrar_=None) -> dict:
         removidas = remover_velhas(VAULT / ITENS / sub, {VAULT / f"{rel}.md" for rel in notas}, seco)
         itens[sub] = {"ok": True, "n": len(notas), "regravadas": escritas, "removidas": removidas}
     mudou_base = gravar(VAULT / BASE_ARQ, BASE_YAML, seco) if any(r["ok"] for r in reg) else False
+    casos = propriedades_casos(seco)                 # não depende das rotas: só do texto das notas de caso
 
     # descobertas VERIFICADAS → fila do segundo cérebro (o despachante da propagação envia; chave estável = sem duplicar)
     cer: dict[str, int] = {}
@@ -1102,7 +1326,7 @@ def gerar(obter_=obter, seco: bool = False, registrar_=None) -> dict:
            "notas": len(reg), "em_dia": sum(r["ok"] for r in reg), "regravadas": sum(r["mudou"] for r in reg),
            "indisponiveis": [{"nota": r["nota"], "erro": r["erro"]} for r in reg if not r["ok"]],
            "indice_regravado": mudou_indice, "hub_regravado": mudou_hub, "cerebro": dict(sorted(cer.items())),
-           "itens": itens, "base_regravada": mudou_base,
+           "itens": itens, "base_regravada": mudou_base, "casos": casos,
            "manchetes": {k: (IND if v is None else v) for k, v in sorted(manchetes.items())},
            "registro": [{k: r[k] for k in ("nota", "ok", "mudou", "fonte_de")} for r in reg]}
     if not seco:
@@ -1142,6 +1366,10 @@ def main(argv=None) -> int:
     for sub, i in est["itens"].items():
         print(f"  itens/{sub}: " + (f"{i['n']} nota(s), {i['regravadas']} regravada(s), {i['removidas']} removida(s)"
                                     if i["ok"] else IND))
+    c = est["casos"]
+    print(f"  casos: {c['n']} nota(s) com propriedades, {c['regravadas']} regravada(s), {c['puladas']} pulada(s) (editadas na hora)"
+          + (f", {len(c['yaml_invalido'])} com frontmatter inválido do autor (intocadas): " + ", ".join(c["yaml_invalido"])
+             if c["yaml_invalido"] else ""))
     for r in est["registro"]:
         if r["mudou"]:
             print(f"  ~ {r['nota']}")
