@@ -1,9 +1,10 @@
 [Unit]
-Description=JFN — íntegras SEI na VM-2: madrugada 01:00 (5 h) e janela diurna 13:00 (3 h), horário de Brasília
+Description=JFN — íntegras SEI na VM-2: de hora em hora, contínuo (dono 15/11/2026: "usar sempre todo nosso poder computacional")
 
 [Timer]
-OnCalendar=*-*-* 01:00:00 America/Sao_Paulo
-OnCalendar=*-*-* 13:00:00 America/Sao_Paulo
+# A rodada dura até 3 h (5 h de madrugada); com o serviço ativo o systemd ignora o disparo — na prática, uma rodada
+# emenda na outra. O navegador continua um por vez (trava .vm2_sei.lock compartilhada com a varredura).
+OnCalendar=hourly
 Persistent=true
 
 [Install]
