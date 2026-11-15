@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import logging
 import os
 import re
@@ -102,7 +103,8 @@ def _garante_colunas(con: sqlite3.Connection) -> None:
     cols = {r[1] for r in con.execute("PRAGMA table_info(verificacao_sede)")}
     tipos = {"visual_classe": "TEXT", "visual_conf": "REAL", "visual_fonte": "TEXT", "visual_em": "TEXT",
              "visual_img_path": "TEXT", "visual_img_b2": "TEXT",
-             "coerencia_google": "TEXT", "coerencia_nota": "TEXT"}
+             "coerencia_google": "TEXT", "coerencia_nota": "TEXT",
+             "letreiro": "TEXT", "letreiro_nomes": "TEXT"}
     for nome, typ in tipos.items():
         if nome not in cols:
             con.execute(f"ALTER TABLE verificacao_sede ADD COLUMN {nome} {typ}")
@@ -168,12 +170,13 @@ def _alvos(con: sqlite3.Connection, status: str | None, limite: int, cnpj: str |
 # ── 1) RENDER Street View Embed (iframe + HTTP local) — subprocesso interno ────
 _RENDER_SRC = r'''
 import os, sys, tempfile, functools, http.server, socketserver, threading
-key = os.environ.get("GOOGLE_MAPS_KEY", "").strip()
+key = os.environ.get("GOOGLE_MAPS_EMBED_KEY", "").strip()
 if not key:
-    print("ERRO: GOOGLE_MAPS_KEY ausente", file=sys.stderr); raise SystemExit(3)
+    print("ERRO: GOOGLE_MAPS_EMBED_KEY ausente", file=sys.stderr); raise SystemExit(3)
 lat, lon, heading, out = float(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
+pano = sys.argv[5] if len(sys.argv) > 5 else ""
 url = (f"https://www.google.com/maps/embed/v1/streetview?key={key}"
-       f"&location={lat},{lon}&heading={heading}&pitch=0&fov=80")
+       + (f"&pano={pano}" if pano else f"&location={lat},{lon}") + f"&heading={heading}&pitch=0&fov=80")
 d = tempfile.mkdtemp()
 open(os.path.join(d, "index.html"), "w").write(
     '<!doctype html><html><head><meta charset="utf-8">'
@@ -198,6 +201,26 @@ with sync_playwright() as p:
         if el is None:
             print("ERRO: iframe ausente", file=sys.stderr); raise SystemExit(5)
         el.screenshot(path=out)
+        # METADADOS do panorama (15/11/2026): o link "View on Google Maps" traz a posição EXATA e o id do
+        # panorama (!1s<id>!2e0 = Google; !2e10 + link /contrib = foto de USUÁRIO, pode ser interior).
+        import json, re as _re
+        meta = {}
+        try:
+            fr = [f for f in pg.frames if "/maps/embed" in f.url]
+            if fr:
+                hrefs = fr[0].eval_on_selector_all("a", "as=>as.map(a=>a.href)")
+                txt = fr[0].inner_text("body")
+                for h in hrefs:
+                    m = _re.search(r"/maps/@(-?[\d.]+),(-?[\d.]+),[^/]*/data=[^?]*!1s([^!]+)!2e(\d+)", h)
+                    if m:
+                        meta = {"pano_lat": float(m.group(1)), "pano_lon": float(m.group(2)),
+                                "pano": m.group(3), "fonte": int(m.group(4))}
+                        break
+                meta["contrib"] = any("/maps/contrib/" in h for h in hrefs)
+                meta["titulo"] = (txt.split("\n")[0] if txt else "").strip()[:120]
+        except Exception as e:  # noqa: BLE001
+            meta["erro"] = str(e)[:80]
+        print("META" + json.dumps(meta, ensure_ascii=False), flush=True)
     finally:
         b.close()
 raise SystemExit(0)
@@ -234,13 +257,13 @@ def _dbus_bus():
     return bus if os.path.exists(bus) else None
 
 
-def _cmd_env_render(lat: float, lon: float, heading: float, out: Path):
+def _cmd_env_render(lat: float, lon: float, heading: float, out: Path, pano: str = ""):
     """(cmd, env) do render. COM D-Bus: systemd-run --user (cap de RAM do cgroup) + o env do
     bus explícito (o cron não herda XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS → 'No medium found';
     25.478 renders falharam assim). SEM D-Bus: render direto — sem cap de cgroup, mas o gate de
     mem/load + timeout ainda protegem a VM — melhor render sem cap do que 0 fotos."""
     env = dict(os.environ)
-    py = [sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out)]
+    py = [sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out), pano]
     bus = _dbus_bus()
     if bus:
         env["XDG_RUNTIME_DIR"] = os.path.join(_RUN_USER, str(os.getuid()))
@@ -255,18 +278,18 @@ def _cmd_env_render(lat: float, lon: float, heading: float, out: Path):
 
 
 def _render_protegido(lat: float, lon: float, heading: float, out: Path,
-                      mem_min: int, load_max: float) -> dict:
+                      mem_min: int, load_max: float, pano: str = "") -> dict:
     """Gate (mem/load) + render num SUBPROCESSO com cap de RAM REAL do cgroup (systemd-run) + timeout.
     Devolve {ok, rc, antes, depois, stderr, motivo}. NÃO importa playwright no processo-pai (mantém leve)."""
     antes = _snap()
     if not _gate(mem_min, load_max):
         return {"ok": False, "skip": True, "antes": antes, "depois": _snap(),
                 "motivo": f"GATE não liberou (mem≥{mem_min}MB/load≤{load_max}); adia (resumível)"}
-    cmd, env = _cmd_env_render(lat, lon, heading, out)
-    rc, err = None, ""
+    cmd, env = _cmd_env_render(lat, lon, heading, out, pano)
+    rc, err, sout = None, "", ""
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RENDER_TIMEOUT_S + 12, env=env)
-        rc, err = proc.returncode, (proc.stderr or "")[-400:]
+        rc, err, sout = proc.returncode, (proc.stderr or "")[-400:], proc.stdout or ""
     except subprocess.TimeoutExpired:
         rc, err = 124, "subprocess.run estourou (teardown lento)"
     depois = _snap()
@@ -278,7 +301,14 @@ def _render_protegido(lat: float, lon: float, heading: float, out: Path,
         oom = " (provável OOM do cgroup → morto)" if rc in (137, 139) else ""
         res.update(ok=False, oom=rc in (137, 139), motivo=f"render rc={rc}{oom}")
         return res
-    res.update(ok=True, motivo="render concluído")
+    meta = {}
+    for ln in sout.splitlines():
+        if ln.startswith("META"):
+            try:
+                meta = json.loads(ln[4:])
+            except ValueError:
+                meta = {}
+    res.update(ok=True, motivo="render concluído", meta=meta)
     return res
 
 
@@ -310,7 +340,9 @@ def _coord_precisa(r: sqlite3.Row, sg, stats: Counter) -> dict:
         return {"ok": True, "lat": r["geo_lat"], "lon": r["geo_lon"], "geo_tipo": geo_tipo}
 
     # 2) impreciso (ou vazio) → RE-GEOCODE o endereço completo (reusa sede_google, quota-guarded)
-    if sg.cota_restante("geocoding") <= 0:
+    # 15/11/2026: a chave é restrita SÓ à Maps Embed (grátis); o Geocoding é NEGADO e voltaria "sem resultado",
+    # o que marcaria o alvo como impreciso para sempre. Sem Geocoding pago, ADIA (não marca nada).
+    if os.environ.get("SV_SEM_GEOCODE") == "1" or sg.cota_restante("geocoding") <= 0:
         stats["sem_cota"] += 1
         return {"ok": False, "sem_cota": True,
                 "motivo": "cota de Geocoding esgotada — adia o re-geocode p/ o próximo ciclo (resumível)"}
@@ -415,6 +447,145 @@ def _validar(path: Path, branco_max: float = 0.60) -> dict:
                 "motivo": "Street View plausível (colorido, não-branco)"}
     except Exception:  # noqa: BLE001
         return {"ok": n > 30000, "bytes": n, "motivo": f"sem Pillow; só tamanho ({n} B)"}
+
+
+# ── 1b) A foto é do ENDEREÇO da sede? ──────────────────────────────────────────
+# 15/11/2026, dono: "fotos de lugares que não são a fachada da empresa". A Embed devolve o panorama MAIS PRÓXIMO
+# da coordenada — medido no 1º teste: alvo "Alameda Santos, 193" → foto da "R. Teixeira da Silva, 251" (gravou
+# 🔴 contradiz falso para quem recebeu R$ 552 mi); alvo "Estr. São Lourenço, 661" → foto do nº 222 (oficina).
+# O Google ESCREVE o endereço do panorama no canto da imagem: lê-se por OCR e só aceita mesma rua + número perto.
+_GENERICOS = {"rua", "r", "avenida", "av", "estrada", "estr", "est", "alameda", "al", "travessa", "tv", "trav",
+              "praca", "pc", "rodovia", "rod", "largo", "lgo", "beco", "via", "do", "da", "de", "dos", "das", "e",
+              "sao", "santa", "santo", "quadra", "lote", "qd", "lt", "sn", "km", "br", "rj", "sp"}
+_NUM_TOLERANCIA = 60
+
+
+def _norm_end(t: str) -> list[str]:
+    import unicodedata
+    t = unicodedata.normalize("NFKD", t or "").encode("ascii", "ignore").decode().lower()
+    return re.findall(r"[a-z]+|\d+", t)
+
+
+def _partes_alvo(endereco: str) -> tuple[set[str], int | None]:
+    """Rua (palavras não genéricas ANTES do 1º número) e o número do endereço cadastrado."""
+    rua, num = set(), None
+    for tk in _norm_end(endereco):
+        if tk.isdigit():
+            num = int(tk) if len(tk) <= 5 else None
+            break
+        if len(tk) >= 3 and tk not in _GENERICOS:
+            rua.add(tk)
+    return rua, num
+
+
+def _partes_foto(linha: str) -> tuple[set[str], int | None]:
+    tks = _norm_end(linha)
+    num = next((int(t) for t in tks if t.isdigit() and len(t) <= 5), None)
+    return {t for t in tks if not t.isdigit() and len(t) >= 3 and t not in _GENERICOS}, num
+
+
+def mesmo_endereco(linha_foto: str, endereco_alvo: str) -> tuple[bool, str]:
+    rua_a, num_a = _partes_alvo(endereco_alvo)
+    rua_f, num_f = _partes_foto(linha_foto)
+    if not linha_foto.strip() or not rua_f:
+        return False, "endereço do panorama ilegível"
+    if not rua_a:
+        return False, "endereço cadastrado sem nome de rua comparável"
+    if not (rua_a & rua_f):
+        return False, "rua diferente"
+    if num_a is not None and num_f is not None and abs(num_a - num_f) > _NUM_TOLERANCIA:
+        return False, f"mesma rua, mas nº {num_f} contra nº {num_a} cadastrado"
+    return True, "mesma rua" + ("" if num_a is None or num_f is None else f", nº {num_f} ≈ {num_a}")
+
+
+def pontos_em_volta(lat: float, lon: float) -> list[tuple[float, float, float]]:
+    """(lat, lon, heading) a tentar: o próprio ponto e anéis de 15/30/50 m em 8 direções; a câmera de cada
+    ponto aponta para a sede (o panorama devolvido fica perto do ponto pedido)."""
+    import math
+    pts = [(lat, lon, 0.0)]
+    for raio in (15.0, 30.0, 50.0):
+        for k in range(8):
+            ang = math.radians(45 * k)
+            dlat = raio * math.cos(ang) / 111_320.0
+            dlon = raio * math.sin(ang) / (111_320.0 * max(0.2, math.cos(math.radians(lat))))
+            heading = (45.0 * k + 180.0) % 360.0                                  # de volta para a sede
+            pts.append((lat + dlat, lon + dlon, heading))
+    return pts
+
+
+def rumo_graus(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Rumo (0 = norte, 90 = leste) do ponto 1 ao ponto 2."""
+    import math
+    f1, f2, dl = math.radians(lat1), math.radians(lat2), math.radians(lon2 - lon1)
+    y = math.sin(dl) * math.cos(f2)
+    x = math.cos(f1) * math.sin(f2) - math.sin(f1) * math.cos(f2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def dist_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    h = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return 2 * 6_371_000 * math.asin(math.sqrt(h))
+
+
+# ── 3b) LETREIRO: a fachada mostra o NOME da empresa? (15/11/2026, "invente uma solução") ─────────────
+# O modelo de visão só TRANSCREVE os nomes legíveis; quem compara com a razão social / nome no Google é a regra
+# abaixo (modelo barato não decide). Letreiro com o nome = prova forte de existência no endereço; letreiro de
+# OUTRA empresa = sinal (a sede declarada abriga outro negócio); sem letreiro = nada se conclui.
+_GENERICOS_NOME = {"ltda", "eireli", "me", "epp", "sa", "s", "a", "cia", "comercio", "servicos", "servico", "de",
+                   "da", "do", "das", "dos", "e", "em", "industria", "empresa", "grupo", "brasil", "rio", "janeiro",
+                   "solucoes", "assessoria", "consultoria", "construcoes", "construtora", "engenharia", "e", "the"}
+
+
+def _tokens_nome(t: str) -> set[str]:
+    return {x for x in _norm_end(t) if not x.isdigit() and len(x) >= 3 and x not in _GENERICOS_NOME}
+
+
+def letreiro_bate(nomes: list[str], razao: str, outros: list[str]) -> str:
+    """'bate' | 'outro_nome' | 'sem_letreiro'. Bate se um nome lido partilha palavra distintiva com a razão social
+    ou com o nome que o Google dá ao negócio da sede."""
+    nomes = [n for n in (nomes or []) if (n or "").strip()]
+    if not nomes:
+        return "sem_letreiro"
+    ref = _tokens_nome(razao)
+    for o in outros:
+        ref |= _tokens_nome(o or "")
+    lidos = set().union(*(_tokens_nome(n) for n in nomes))
+    return "bate" if ref & lidos else "outro_nome"
+
+
+def ler_letreiros(img: bytes) -> list[str]:
+    from compliance_agent.verificacao_endereco import _gemini_vision_sync
+    mime = "image/png" if img[:4] == b"\x89PNG" else "image/jpeg"
+    prompt = ("Foto de rua. Transcreva, exatamente como escrito, TODO nome de empresa/estabelecimento legível em "
+              "placas, letreiros, toldos, portões ou vitrines. Ignore placas de rua, de trânsito, de imóvel à venda e "
+              "a marca d'água do Google. Não adivinhe texto ilegível. Responda SOMENTE JSON: {\"nomes\": [\"...\"]}")
+    txt = _gemini_vision_sync(img, mime, prompt) or ""
+    m = re.search(r"\{.*\}", txt, re.S)
+    try:
+        return [str(x)[:80] for x in (json.loads(m.group(0)).get("nomes") or [])] if m else []
+    except ValueError:
+        return []
+
+
+def endereco_da_foto(img: bytes) -> str:
+    """1ª linha da caixa que o Google desenha no canto superior esquerdo do Street View (OCR, tesseract)."""
+    import io
+
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(img)).convert("L")
+        w, h = im.size
+        c = im.crop((4, int(h * 6 / 480), int(w * 0.40), int(h * 32 / 480)))
+        c = c.resize((c.width * 4, c.height * 4), Image.LANCZOS).point(lambda p: 0 if p > 150 else 255)
+        b = io.BytesIO()
+        c.save(b, "PNG")
+        r = subprocess.run(["tesseract", "stdin", "stdout", "-l", "por", "--psm", "7"],
+                           input=b.getvalue(), capture_output=True, timeout=30)
+        return r.stdout.decode("utf-8", "replace").strip()
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return ""
 
 
 # ── 2) Sobe p/ nuvem (R2→B2) ──────────────────────────────────────────────────
@@ -546,9 +717,9 @@ def main() -> int:
     a = ap.parse_args()
     _carregar_env()
 
-    _key = os.environ.get("GOOGLE_MAPS_KEY", "").strip()
+    _key = os.environ.get("GOOGLE_MAPS_EMBED_KEY", "").strip()
     if not _key:
-        print("[sv_sweep] ⛔ GOOGLE_MAPS_KEY ausente (.env/os.environ). Abortando.", flush=True)
+        print("[sv_sweep] ⛔ GOOGLE_MAPS_EMBED_KEY ausente (.env/os.environ). Abortando.", flush=True)
         return 2
     if not _embed_api_ok(_key):
         # AUTO-PAUSA APÓS ABORTO REPETIDO. A 'Maps Embed API' está desabilitada no console do dono
@@ -688,32 +859,85 @@ def main() -> int:
                 out.unlink()
             except OSError as exc:
                 logger.debug("falha ao remover render antigo %s (cnpj %s): %s", out, r["cnpj"], exc)
-        rr = _render_protegido(lat_use, lon_use, 0.0, out, a.mem_min, a.load_teto)
-        if rr.get("travou"):
-            print(f"  ⚠ {rr.get('motivo')} ({rr.get('antes')} → {rr.get('depois')}) — ABORTA o run por segurança.",
-                  flush=True)
-            break
-        if not rr.get("ok"):
-            sem_img += 1
-            print(f"  · render falhou p/ {r['cnpj']} {r['razao'][:34]}: {rr.get('motivo')} "
-                  f"{('| ' + rr['stderr'][:120]) if rr.get('stderr') else ''} — reentra (não marcado).",
-                  flush=True)
-            if a.pausa:
-                time.sleep(a.pausa)
-            continue
-        val = _validar(out, a.branco_max)
-        if not val.get("ok"):
-            sem_img += 1
-            print(f"  · imagem inválida p/ {r['cnpj']} {r['razao'][:34]}: {val.get('motivo')} "
-                  "— reentra (não marcado).", flush=True)
-            try:
+        # 1) RENDER + 1b) A FOTO É DA SEDE? — tenta o ponto e os anéis em volta até o panorama ser do endereço
+        img, ultima, travou, falhas, tentativas = None, "", False, [], 0
+        for plat, plon, phead in pontos_em_volta(lat_use, lon_use):
+            tentativas += 1
+            if out.exists():
                 out.unlink()
-            except OSError as exc:
-                logger.debug("falha ao remover imagem inválida %s (cnpj %s): %s", out, r["cnpj"], exc)
+            rr = _render_protegido(plat, plon, phead, out, a.mem_min, a.load_teto)
+            if rr.get("travou"):
+                print(f"  ⚠ {rr.get('motivo')} ({rr.get('antes')} → {rr.get('depois')}) — ABORTA o run por segurança.",
+                      flush=True)
+                travou = True
+                break
+            if not rr.get("ok"):
+                falhas.append(str(rr.get("motivo"))[:60])
+                continue
+            val = _validar(out, a.branco_max)
+            if not val.get("ok"):
+                falhas.append(str(val.get("motivo"))[:60])
+                continue
+            meta = rr.get("meta") or {}
+            if meta.get("contrib") or meta.get("fonte") not in (None, 0):
+                ultima = f"panorama de usuário ('{meta.get('titulo', '')[:40]}'), não do Google"
+                continue
+            linha_foto = meta.get("titulo") or endereco_da_foto(out.read_bytes())
+            bate, porque = mesmo_endereco(linha_foto, r["endereco"] or "")
+            ultima = f"'{linha_foto[:50]}': {porque}"
+            if not bate:
+                continue
+            # aproxima: entre o panorama achado e a sede pode haver outro panorama da MESMA rua mais perto
+            if meta.get("pano") and meta.get("pano_lat") is not None:
+                melhor = meta
+                for frac in (0.5, 0.75):
+                    qlat = meta["pano_lat"] + frac * (lat_use - meta["pano_lat"])
+                    qlon = meta["pano_lon"] + frac * (lon_use - meta["pano_lon"])
+                    rq = _render_protegido(qlat, qlon, 0.0, out, a.mem_min, a.load_teto)
+                    mq = rq.get("meta") or {}
+                    if (rq.get("ok") and mq.get("pano_lat") is not None and not mq.get("contrib")
+                            and mq.get("fonte") == 0 and mesmo_endereco(mq.get("titulo", ""), r["endereco"] or "")[0]
+                            and dist_m(mq["pano_lat"], mq["pano_lon"], lat_use, lon_use)
+                            < dist_m(melhor["pano_lat"], melhor["pano_lon"], lat_use, lon_use)):
+                        melhor = mq
+                meta = melhor
+            # câmera DE FRENTE para a sede: rumo do panorama (posição exata) até a coordenada da sede
+            if meta.get("pano") and meta.get("pano_lat") is not None:
+                rumo = rumo_graus(meta["pano_lat"], meta["pano_lon"], lat_use, lon_use)
+                out.unlink(missing_ok=True)
+                rr2 = _render_protegido(lat_use, lon_use, rumo, out, a.mem_min, a.load_teto, pano=meta["pano"])
+                if rr2.get("travou"):
+                    travou = True
+                    break
+                if not (rr2.get("ok") and _validar(out, a.branco_max).get("ok")):
+                    continue
+                ultima += f"; câmera a {rumo:.0f}°, panorama a {dist_m(meta['pano_lat'], meta['pano_lon'], lat_use, lon_use):.0f} m da sede"
+            img = out.read_bytes()
+            break
+        if travou:
+            break
+        try:
+            if out.exists():
+                out.unlink()
+        except OSError as exc:
+            logger.debug("falha ao remover render %s: %s", out, exc)
+        if img is None:
+            sem_img += 1
+            if not ultima:      # nenhuma imagem válida: render/validação falharam — reentra (não marca)
+                print(f"  · sem imagem p/ {r['cnpj']} {r['razao'][:34]} ({'; '.join(falhas[:2])}) — reentra.",
+                      flush=True)
+            else:
+                _grava(r["cnpj"], {"classe": "indeterminado", "conf": 0.0, "fonte": _FONTE_SV, "img_b2": None,
+                                   "coerencia": "indeterminado",
+                                   "coerencia_nota": f"INDISPONÍVEL — nenhum Street View num raio de 50 m é do endereço "
+                                                     f"cadastrado ({tentativas} pontos; último {ultima}). Sem foto da "
+                                                     "sede; não é indício."})
+                print(f"  · {r['cnpj']} {r['razao'][:34]}: nenhum panorama do endereço em {tentativas} pontos "
+                      f"(último {ultima}) — INDISPONÍVEL.", flush=True)
             if a.pausa:
                 time.sleep(a.pausa)
             continue
-        img = out.read_bytes()
+        print(f"  · {r['cnpj']} panorama do endereço achado na tentativa {tentativas} ({ultima}).", flush=True)
 
         # 2) SOBE p/ nuvem (R2 → B2)
         img_b2, nb = _subir_foto(img, r["cnpj"], sel)
@@ -738,10 +962,24 @@ def main() -> int:
 
         # 4) COERÊNCIA foto-vs-Google
         coer, nota = coerencia_foto_google(classe, r["places_achou"], r["places_nome"])
+        nomes = ler_letreiros(img)
+        letr = letreiro_bate(nomes, r["razao"] or "", [r["places_nome"] or ""])
+        if letr == "bate":
+            nota += f" Letreiro na fachada com o nome da empresa ({'; '.join(nomes)[:120]}) — prova de existência no endereço."
+        elif letr == "outro_nome":
+            nota += f" Letreiro de OUTRO negócio na fachada ({'; '.join(nomes)[:120]}) — confirmar se a empresa funciona ali."
 
         dados = {"classe": classe, "conf": conf, "fonte": _FONTE_SV, "img_b2": img_b2,
                  "coerencia": coer, "coerencia_nota": nota}
         _grava(r["cnpj"], dados)
+        _con = sqlite3.connect(str(_DB), timeout=30)
+        try:
+            _con.execute("PRAGMA busy_timeout=30000")
+            _con.execute("UPDATE verificacao_sede SET letreiro=?, letreiro_nomes=? WHERE cnpj=?",
+                         (letr, json.dumps(nomes, ensure_ascii=False), r["cnpj"]))
+            _con.commit()
+        finally:
+            _con.close()
         subidos += 1
         dist[classe] += 1
         coer_cnt[coer] += 1
@@ -752,7 +990,7 @@ def main() -> int:
         else:
             herdou = 0
         marca = "🔴 CONTRADIZ" if coer == "contradiz" else ("🟢 confirma" if coer == "confirma" else "🟡 indet.")
-        linha = (f"  ✓ {r['cnpj']} {marca} · classe={classe} (conf {conf:.0%}) · "
+        linha = (f"  ✓ {r['cnpj']} {marca} · classe={classe} (conf {conf:.0%}) · letreiro={letr} · "
                  f"R$ {r['total_recebido']:,.0f} · {r['razao'][:34]} → {img_b2} ({nb/1024:.0f} KB)"
                  + (f" · +{herdou} prédio" if herdou else ""))
         print(linha, flush=True)
