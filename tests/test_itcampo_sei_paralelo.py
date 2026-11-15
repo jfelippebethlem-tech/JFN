@@ -121,3 +121,25 @@ def test_teto_do_arquivamento_e_configuravel_e_o_no_usa_uma_hora():
     fila = Path(F.__file__).read_text(encoding="utf-8")
     assert "timeout=TETO_ARQUIVAR_S" in fila and "timeout=900," not in fila
     assert '"INTEGRA_TETO_ARQUIVAR_S", "3600"' in Path(P.__file__).read_text(encoding="utf-8")
+
+
+def test_acelerador_sobe_uma_sessao_so_depois_de_folga_sustentada():
+    """Dono, 15/11/2026: "de tempos em tempos avaliar tudo que tiver de memória sobrando pra acelerar". Sobe UMA
+    sessão por vez, só com memória E processador folgados por vários minutos seguidos; íntegras primeiro (é o atraso
+    de >30 dias), depois varredura; nunca acima dos tetos."""
+    folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
+    n, v, f = 8, 4, 0
+    for _ in range(P.MINUTOS_FOLGA_PARA_SUBIR - 1):
+        n, v, f = P.acelerador(folga, 6.0, 24, n, v, f)
+        assert (n, v) == (8, 4)
+    assert P.acelerador(folga, 6.0, 24, n, v, f) == (9, 4, 0)
+    assert P.acelerador(folga, 6.0, 24, P.N_MAX, 4, P.MINUTOS_FOLGA_PARA_SUBIR - 1) == (P.N_MAX, 5, 0)
+    assert P.acelerador(folga, 6.0, 24, P.N_MAX, P.V_MAX, 99) == (P.N_MAX, P.V_MAX, 0)
+
+
+def test_acelerador_nao_sobe_sem_folga_de_memoria_cpu_ou_leitura():
+    folga = P.PISO_MEM_GB + P.FOLGA_SUBIR_GB + 0.1
+    quase = P.MINUTOS_FOLGA_PARA_SUBIR - 1
+    assert P.acelerador(P.PISO_MEM_GB + 1, 6.0, 24, 8, 4, quase) == (8, 4, 0)      # memória curta: zera a contagem
+    assert P.acelerador(folga, 22.0, 24, 8, 4, quase) == (8, 4, 0)                  # processador cheio
+    assert P.acelerador(None, 6.0, 24, 8, 4, quase) == (8, 4, 0)                    # sem leitura: não sobe às cegas

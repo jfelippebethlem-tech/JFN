@@ -70,6 +70,13 @@ N_MAX = 12
 PISO_MEM_GB = float(os.environ.get("JFN_ITCAMPO_PISO_MEM_GB", "3.0"))
 MINUTOS_ABAIXO_DO_PISO = 3
 N_MIN = 2
+# ACELERADOR (dono, 15/11/2026: "de tempos em tempos avaliar tudo que tiver de memória sobrando pra acelerar tudo").
+# Espelho do freio: sobe UMA sessão quando há memória acima do piso + a de uma sessão (~1,3 GB medidos, com margem) E o
+# processador abaixo de 70% por vários minutos seguidos. Íntegras primeiro (atraso de >30 dias), depois varredura.
+FOLGA_SUBIR_GB = float(os.environ.get("JFN_ITCAMPO_FOLGA_SUBIR_GB", "3.0"))
+MINUTOS_FOLGA_PARA_SUBIR = 20
+CARGA_MAX_SUBIR = 0.70
+V_MAX = 6
 
 _RX_INI = re.compile(r"^\[([^\]]+)\] ÍNTEGRA (\d{6}/\d{6}/\d{4})")
 _RX_FIM = re.compile(r"^\[([^\]]+)\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
@@ -222,6 +229,22 @@ def freio_de_memoria(disp_gb: float | None, n: int, v: int, minutos_baixos: int)
         return n, v - 1, 0
     if n > N_MIN:
         return n - 1, v, 0
+    return n, v, 0
+
+
+def acelerador(disp_gb: float | None, carga1: float, ncpu: int, n: int, v: int,
+               minutos_folga: int) -> tuple[int, int, int]:
+    """(n, v, minutos_folga). Sobe uma sessão só depois de `MINUTOS_FOLGA_PARA_SUBIR` leituras seguidas com memória
+    ≥ piso + `FOLGA_SUBIR_GB` e carga < `CARGA_MAX_SUBIR` × núcleos. Qualquer leitura sem folga zera a contagem."""
+    if disp_gb is None or disp_gb < PISO_MEM_GB + FOLGA_SUBIR_GB or carga1 >= CARGA_MAX_SUBIR * max(1, ncpu):
+        return n, v, 0
+    minutos_folga += 1
+    if minutos_folga < MINUTOS_FOLGA_PARA_SUBIR:
+        return n, v, minutos_folga
+    if n < N_MAX:
+        return n + 1, v, 0
+    if v < V_MAX:
+        return n, v + 1, 0
     return n, v, 0
 
 
@@ -555,6 +578,7 @@ def lancar(k: int, n: int, modo: str = "integras") -> None:
 def rodar() -> int:
     ultimo_pull = 0.0
     minutos_baixos = 0
+    minutos_folga = 0
     while True:
         n = n_sessoes()
         disp = mem_disponivel_gb()
@@ -565,6 +589,15 @@ def rodar() -> int:
             CFG_N.write_text(f"{n2}\n")
             CFG_V.write_text(f"{v2}\n")
             n = n2
+        else:
+            v0 = n_varredura()
+            n3, v3, minutos_folga = acelerador(disp, os.getloadavg()[0], os.cpu_count() or 1, n, v0, minutos_folga)
+            if (n3, v3) != (n, v0):
+                painel(f"FOLGA: {disp:.1f} GB disponíveis e carga {os.getloadavg()[0]:.1f}/{os.cpu_count()} há "
+                       f"{MINUTOS_FOLGA_PARA_SUBIR} min — sessões {n}+{v0} → {n3}+{v3}")
+                CFG_N.write_text(f"{n3}\n")
+                CFG_V.write_text(f"{v3}\n")
+                n = n3
         if time.time() - ultimo_pull > 600:
             r = _run(["git", "-C", str(BASE), "pull", "--ff-only", "-q"], timeout=300)
             if r.returncode != 0:
