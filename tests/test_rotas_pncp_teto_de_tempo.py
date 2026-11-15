@@ -13,7 +13,19 @@ from __future__ import annotations
 import asyncio
 import warnings
 
+import pytest
+
 warnings.filterwarnings("ignore")
+
+
+@pytest.fixture(autouse=True)
+def _cache_isolado(monkeypatch, tmp_path):
+    """Nunca ler nem escrever o `data/cache_painel` real. Sem isto, a resposta boa da 1ª rodada ficava
+    cacheada em disco por 1 h: a 2ª rodada da suíte falhava aqui (fonte nunca consultada) e, na VM, o
+    painel vivo servia o órgão FALSO deste teste em `/api/pncp?dias=3&uf=SP`."""
+    from rotas import investigacao as inv
+    monkeypatch.setattr(inv, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(inv, "_cache", {})
 
 
 def _client():

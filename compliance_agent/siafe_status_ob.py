@@ -122,14 +122,15 @@ def registrar(exercicio: int, data: str, antes: dict, db=None) -> dict:
 
 
 async def recoletar(exercicio: int, max_dias: int = 6, prazo: float | None = None, db=None,
-                    _coletar_dia=None, _relogio=time.time, batimento=None) -> dict:
+                    _coletar_dia=None, _relogio=time.time, batimento=None, agora: datetime | None = None) -> dict:
     """Recolhe os dias da fila até `max_dias` ou até o `prazo` (epoch), conferido ENTRE dias. Quem chama segura o
     lock do `siafe_runner` (renovado por `batimento` a cada dia: o lock vence em 30 min sem heartbeat); o
-    `browser_lock(siafe)` é pego dentro de `coletar_por_data`."""
+    `browser_lock(siafe)` é pego dentro de `coletar_por_data`. `agora` (padrão: relógio real) fixa o corte da fila —
+    sem ele o teste com data sintética virava bomba-relógio quando o dia "recente" envelhecia."""
     if _coletar_dia is None:
         from compliance_agent import siafe_ob_orcamentaria as M
         _coletar_dia = M.coletar_por_data
-    dias, feitos = fila(exercicio, db=db, max_dias=max_dias), []
+    dias, feitos = fila(exercicio, db=db, max_dias=max_dias, agora=agora), []
     for d in dias:
         if prazo is not None and _relogio() >= prazo:
             feitos.append({"data": d["data"], "pulado": "prazo"})

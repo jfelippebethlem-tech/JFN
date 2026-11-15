@@ -1191,7 +1191,7 @@ def _avaliar_um_estado(c, chave, grupos, obs, nao_contab, pncp, procs_do_credor,
                     "ressalvas": _junta(r["ressalvas"], f"{len(apos)} OB(s) (R$ {fmt_brl(sum(o[3] for o in apos))}) "
                                                         f"depois de {fim.strftime('%d/%m/%Y')}, fim da vigência "
                                                         "registrada — requerer os termos aditivos")}
-        teto = 0.50 if re.search(r"REFORMA", objeto or "", re.I) else 0.25
+        teto = limites_aditivo.teto_acrescimo(limites_aditivo.tipo_objeto(objeto))  # régua única do art. 125
         exc = pago / r["valor_atualizado"] - 1
         r["ressalvas"] = _junta(r["ressalvas"], f"a fonte não publica termos aditivos: o excesso de {exc:.1%} sobre o "
                                                 "valor registrado " + ("cabe no" if exc <= teto else "supera o")
