@@ -80,6 +80,7 @@ def medir(ug: str, db: Path | str = _DB) -> dict:
     """Linhas da UG em 2023 e quantas trazem processo."""
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
     try:
+        # ob-qualquer-status: conta linhas para medir cobertura do campo processo; não soma valor pago
         n, com = con.execute(
             "SELECT COUNT(*), SUM(processo IS NOT NULL AND trim(processo) <> '') FROM ob_orcamentaria_siafe "
             "WHERE exercicio=? AND ug_emitente=?", (ANO, str(ug))).fetchone()
@@ -93,6 +94,7 @@ def fila(relevancia: dict[str, int], db: Path | str = _DB) -> list[str]:
     primeiro), depois as demais da menor para a maior (mais UGs fechadas por hora de navegador)."""
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
     try:
+        # ob-qualquer-status: tamanho da UG para ordenar a fila de coleta; não soma valor pago
         tam = dict(con.execute("SELECT ug_emitente, COUNT(*) FROM ob_orcamentaria_siafe WHERE exercicio=? "
                                "GROUP BY 1", (ANO,)).fetchall())
     finally:
