@@ -80,16 +80,10 @@ V_MAX = 6
 # Dono, 15/11/2026: "alivie um pouco o it campo, tá esquentando e a ventoinha não me deixa dormir". Com este arquivo o
 # acelerador não sobe nada (o freio continua descendo); apagar o arquivo devolve a escala automática.
 SEM_ACELERAR = BASE / "data" / ".sem_acelerar"
-# FREIO DE BLOQUEIO. 15/11/2026: das 15h em diante o SEI recusou a conexão do it-campo (login 100% falho por 4 h, zero
-# captura). A CPU ficou ociosa PORQUE nada era capturado, e o acelerador leu isso como folga: subiu de 12+3 para 12+6
-# durante o bloqueio — mais sessões martelando o login, 25 tentativas cada. Volume demais é defeito do MEU método.
-# Agora: (1) só sobe com captura saudável medida nas rodadas; (2) login falhando em massa desce ao mínimo, pausa
-# todas as sessões por `PAUSA_BLOQUEIO_S` e grava um TETO abaixo do total que provocou o bloqueio, válido 24 h.
-BLOQUEIO = BASE / "data" / ".bloqueio_sei"
+# 15/11/2026: o acelerador lia CPU ociosa como folga mesmo com as sessões falhando — só sobe com captura saudável
+# medida nas rodadas (`saude_sei`). O freio de "bloqueio" que existiu por algumas horas foi RETIRADO por ordem do dono
+# ("o SEI não vai recusar, essa trava não faz sentido"): login falhando é defeito do método, a investigar — não pausa.
 JANELA_SAUDE_S = 1800
-PAUSA_BLOQUEIO_S = 45 * 60
-VALIDADE_TETO_S = 24 * 3600
-FOLGA_TETO = 3
 
 _RX_INI = re.compile(r"^\[([^\]]+)\] ÍNTEGRA (\d{6}/\d{6}/\d{4})")
 _RX_FIM = re.compile(r"^\[([^\]]+)\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
@@ -245,13 +239,11 @@ def freio_de_memoria(disp_gb: float | None, n: int, v: int, minutos_baixos: int)
     return n, v, 0
 
 
-def saude_sei(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_S,
-              desde: float = 0.0) -> tuple[int, int]:
-    """(processos ok, processos com login falho) nas rodadas de íntegras dos últimos `janela_s` segundos que
-    COMEÇARAM depois de `desde` (fim da última pausa de bloqueio: falha de antes dela não é estado de agora)."""
+def saude_sei(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_S) -> tuple[int, int]:
+    """(processos ok, processos com login falho) nas rodadas de íntegras dos últimos `janela_s` segundos."""
     ok = login = 0
     for r in registros:
-        if agora - _ts(r.get("ts", "")) > janela_s or _ts(r.get("inicio") or r.get("ts", "")) < desde:
+        if agora - _ts(r.get("ts", "")) > janela_s:
             continue
         for p in (r.get("procs") or {}).values():
             ok += p.get("status") == "ok"
@@ -270,55 +262,18 @@ def _saude_local() -> tuple[int, int]:
                     continue
     except OSError:
         pass
-    idade = _idade_bloqueio()
-    fim_pausa = time.time() - idade + PAUSA_BLOQUEIO_S if idade is not None else 0.0
-    return saude_sei(regs, time.time(), desde=fim_pausa)
-
-
-def freio_de_bloqueio(saude: tuple[int, int], n: int, v: int) -> tuple[int, int] | None:
-    """Login falhando em massa (≥ 6 e ≥ metade dos processos) = o SEI está recusando este nó → (N_MIN, 0)."""
-    ok, login = saude
-    if login >= 6 and login >= ok:
-        return N_MIN, 0
-    return None
-
-
-def registrar_bloqueio(total_sessoes: int) -> None:
-    BLOQUEIO.write_text(f"{max(N_MIN, total_sessoes - FOLGA_TETO, teto_vigente() or 0)}\n")
-
-
-def _idade_bloqueio() -> float | None:
-    try:
-        return time.time() - BLOQUEIO.stat().st_mtime
-    except OSError:
-        return None
-
-
-def em_bloqueio() -> bool:
-    idade = _idade_bloqueio()
-    return idade is not None and idade < PAUSA_BLOQUEIO_S
-
-
-def teto_vigente() -> int | None:
-    idade = _idade_bloqueio()
-    if idade is None or idade >= VALIDADE_TETO_S:
-        return None
-    try:
-        return int(BLOQUEIO.read_text().strip())
-    except (OSError, ValueError):
-        return None
+    return saude_sei(regs, time.time())
 
 
 def acelerador(disp_gb: float | None, carga1: float, ncpu: int, n: int, v: int,
-               minutos_folga: int, saude: tuple[int, int] = (0, 0), teto: int | None = None) -> tuple[int, int, int]:
+               minutos_folga: int, saude: tuple[int, int] = (0, 0)) -> tuple[int, int, int]:
     """(n, v, minutos_folga). Sobe uma sessão só depois de `MINUTOS_FOLGA_PARA_SUBIR` leituras seguidas com memória
     ≥ piso + `FOLGA_SUBIR_GB`, carga < `CARGA_MAX_SUBIR` × núcleos E captura saudável (processos ok e < 20% de login
-    falho na janela). Nunca passa do `teto` deixado pelo último bloqueio. Qualquer leitura sem folga zera a contagem."""
+    falho na janela). Qualquer leitura sem folga zera a contagem."""
     ok, login = saude
     if (SEM_ACELERAR.exists() or disp_gb is None or disp_gb < PISO_MEM_GB + FOLGA_SUBIR_GB
             or carga1 >= CARGA_MAX_SUBIR * max(1, ncpu)
-            or ok == 0 or login >= 0.2 * (ok + login)
-            or (teto is not None and n + v >= teto)):
+            or ok == 0 or login >= 0.2 * (ok + login)):
         return n, v, 0
     minutos_folga += 1
     if minutos_folga < MINUTOS_FOLGA_PARA_SUBIR:
@@ -598,8 +553,8 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
         if codigo_da_captura_mudou(meu, _head(BASE)):
             print("código de captura novo na base — fechando para reabrir atualizada", flush=True)
             return 3
-        if PAUSA.exists() or em_bloqueio():
-            titulo(f"JFN SEI sessão {k} — PAUSADA ({'.pause_itcampo' if PAUSA.exists() else 'SEI recusando o login'})")
+        if PAUSA.exists():
+            titulo(f"JFN SEI sessão {k} — PAUSADA (.pause_itcampo)")
             time.sleep(60)
             continue
         try:
@@ -674,18 +629,10 @@ def rodar() -> int:
             CFG_N.write_text(f"{n2}\n")
             CFG_V.write_text(f"{v2}\n")
             n = n2
-        elif (fb := freio_de_bloqueio(saude := _saude_local(), n, n_varredura())) and not em_bloqueio():
-            registrar_bloqueio(n + n_varredura())
-            painel(f"BLOQUEIO: {saude[1]} login(s) falho(s) e {saude[0]} ok em {JANELA_SAUDE_S // 60} min — sessões "
-                   f"{n}+{n_varredura()} → {fb[0]}+{fb[1]}, pausa de {PAUSA_BLOQUEIO_S // 60} min, teto "
-                   f"{teto_vigente()} por {VALIDADE_TETO_S // 3600} h")
-            CFG_N.write_text(f"{fb[0]}\n")
-            CFG_V.write_text(f"{fb[1]}\n")
-            n = fb[0]
         else:
             v0 = n_varredura()
             n3, v3, minutos_folga = acelerador(disp, os.getloadavg()[0], os.cpu_count() or 1, n, v0, minutos_folga,
-                                               saude=saude, teto=teto_vigente())
+                                               saude=_saude_local())
             if (n3, v3) != (n, v0):
                 painel(f"FOLGA: {disp:.1f} GB disponíveis e carga {os.getloadavg()[0]:.1f}/{os.cpu_count()} há "
                        f"{MINUTOS_FOLGA_PARA_SUBIR} min — sessões {n}+{v0} → {n3}+{v3}")
@@ -702,7 +649,7 @@ def rodar() -> int:
         slots = [("integras", k, n) for k in range(1, n + 1)] + \
                 [("varredura", k, n_varredura()) for k in range(1, n_varredura() + 1)]
         for modo, k, tot in slots:
-            if PAUSA.exists() or em_bloqueio() or viva(k, modo) or sem_folga:
+            if PAUSA.exists() or viva(k, modo) or sem_folga:
                 continue
             try:
                 preparar_worktree(k, head, modo)
