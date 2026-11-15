@@ -334,3 +334,9 @@ def test_rodar_comando_segura_a_trava_enquanto_o_filho_vive(tmp_path, monkeypatc
     fcntl.flock(fora, fcntl.LOCK_EX | fcntl.LOCK_NB)
     ok, erro = P._rodar_comando("x", {"comando": ["true"]})
     assert ok is False and "já rodando" in erro
+
+
+def test_carga_efetiva_nao_cai_no_mergulho_de_1_minuto():
+    """15/11/2026: carga de 1 min em 3 com a de 5 min em 20 não libera tarefa pesada."""
+    assert P._carga_efetiva((3.0, 20.0, 18.0)) == 20.0
+    assert P._carga_efetiva((9.5,)) == 9.5

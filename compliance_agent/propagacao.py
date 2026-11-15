@@ -571,6 +571,12 @@ def _linha(con: sqlite3.Connection, did: str) -> dict:
     return dict(zip([c[0] for c in cur.description], cur.fetchone()))
 
 
+def _carga_efetiva(c) -> float:
+    """Maior entre a carga de 1 min e a de 5 min (15/11/2026): um mergulho momentâneo da carga de 1 min abaixo do
+    teto liberava tarefa pesada com a média em 20."""
+    return max(c[0], c[1]) if len(c) > 1 else c[0]
+
+
 def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None) -> list[dict]:
     """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo."""
     t0, feitos, pesado_feito = time.time(), [], False
@@ -614,8 +620,9 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 motivo = "já rodando fora do despachante (cron ou à mão)"
             elif peso == "pesado" and pesado_feito:
                 motivo = "um pesado por ciclo"
-            elif carga()[0] > (teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL):
-                motivo = f"carga {carga()[0]:.1f} acima do teto {teto:.0f}"
+            elif (c := _carga_efetiva(carga())) > (
+                    teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL):
+                motivo = f"carga {c:.1f} acima do teto {teto:.0f}"
             con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
             if motivo is None:
                 escolhido = did
