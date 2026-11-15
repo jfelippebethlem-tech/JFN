@@ -58,6 +58,12 @@ def test_sessao_em_outra_arvore_nao_e_duplicata(tmp_path):
     (outra / "sei_integra_fila.py").write_text("import time; time.sleep(30)\n")
     p = subprocess.Popen([sys.executable, "tools/sei_integra_fila.py"], cwd=tmp_path / "s2")
     try:
+        # Logo após o fork, antes do exec, /proc/<pid>/cmdline ainda é o do pytest — `_mesmo_worker` responde
+        # "duplicata" (o erro seguro, de propósito) e o teste falhava sob carga. Espera o exec, não o resultado.
+        import time
+        limite = time.monotonic() + 10
+        while time.monotonic() < limite and b"sei_integra_fila.py" not in open(f"/proc/{p.pid}/cmdline", "rb").read():
+            time.sleep(0.01)
         assert F._mesmo_worker(str(p.pid)) is False
     finally:
         p.kill(); p.wait()
