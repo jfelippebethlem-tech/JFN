@@ -33,6 +33,7 @@ no PNCP entra também na fila do cérebro (`cerebro_compartilhado.registrar`, ch
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import os
@@ -61,6 +62,8 @@ ESTADOS = {"VERIFICADO": "VERIFICADO", "PENDENTE": "PENDENTE", "INDISPONIVEL": I
            "REFUTADO": "REFUTADO", "DIVERGENTE": "DIVERGENTE"}
 RESSALVA = ("Indício não é acusação: cada linha é sinal para requerer documentos, com presunção de regularidade. "
             f"{IND} não é zero. Empenho não é pagamento — pago do Estado é só OB do SIAFE com status Contabilizado.")
+
+logger = logging.getLogger(__name__)
 
 
 class FonteIndisponivel(RuntimeError):
@@ -1122,8 +1125,8 @@ def gravar(destino: Path, texto: str, seco: bool = False) -> bool:
     try:
         if destino.read_text(encoding="utf-8") == texto:
             return False
-    except OSError:
-        pass
+    except OSError as e:                    # destino ainda não existe (ou ilegível): grava
+        logger.debug("retrato %s: leitura prévia falhou (%s)", destino, e)
     if seco:
         return True
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -1271,13 +1274,13 @@ def gerar(obter_=obter, seco: bool = False, registrar_=None) -> dict:
     try:
         exs = {e["ano"]: e for e in pega("orcamento_orgao").get("exercicios") or []}
         anos |= set(exs)
-    except FonteIndisponivel:
-        pass
+    except FonteIndisponivel as e:
+        logger.debug("anos: orcamento_orgao indisponível (%s)", e)
     for fid in _PERIODOS:
         try:
             anos |= {a["ano"] for a in (pega(f"periodo/{fid}").get("quebra") or {}).get("anos") or [] if a.get("ano")}
-        except FonteIndisponivel:
-            pass
+        except FonteIndisponivel as e:
+            logger.debug("anos: periodo/%s indisponível (%s)", fid, e)
 
     def m_ano(ano: int):
         def monta():
