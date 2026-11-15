@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sqlite3
 import subprocess
 import unicodedata
 from pathlib import Path
@@ -198,14 +199,14 @@ def _indice_coordenadas(con) -> dict | None:
     import time as _t
     try:
         chave = str(con.execute("PRAGMA database_list").fetchone()[2] or id(con))
-    except Exception:  # noqa: BLE001 — conexão sem PRAGMA (mock): chave pela instância
+    except (sqlite3.Error, AttributeError, TypeError, IndexError):  # conexão sem PRAGMA (mock): chave pela instância
         chave = str(id(con))
     if _IDX_COORD["idx"] is not None and _IDX_COORD["id"] == chave and _t.time() - _IDX_COORD["ts"] < 600:
         return _IDX_COORD["idx"]
     try:
         rows = con.execute("SELECT endereco, geo_lat, geo_lon FROM verificacao_sede "
                            "WHERE geo_lat IS NOT NULL AND geo_lon IS NOT NULL").fetchall()
-    except Exception as exc:  # noqa: BLE001 — tabela ausente: sem dado, não inventa
+    except sqlite3.Error as exc:  # tabela ausente: sem dado, não inventa
         logger.debug("coordenada compartilhada indisponível: %s", exc)
         return None
     idx: dict = {}
@@ -277,7 +278,7 @@ def veredito_foto_do_cnpj(cnpj: str, con) -> dict:
     try:
         r = con.execute("SELECT endereco, geo_lat, geo_lon, geo_tipo, visual_classe, visual_conf, "
                         "visual_img_path FROM verificacao_sede WHERE cnpj=?", (cnpj,)).fetchone()
-    except Exception as exc:  # noqa: BLE001
+    except sqlite3.Error as exc:
         logger.debug("verificacao_sede indisponível p/ %s: %s", cnpj, exc)
         r = None
     if not r:

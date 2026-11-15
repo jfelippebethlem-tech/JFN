@@ -23,11 +23,15 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 import threading
 import time
 import unicodedata
 
 logger = logging.getLogger(__name__)
+
+# Cache de site é OTIMIZAÇÃO: import, disco, SQLite ou JSON corrompido degradam para consulta direta.
+_ERROS_CACHE = (ImportError, OSError, sqlite3.Error, ValueError, TypeError)
 
 _WEBMAIL = {"gmail.com", "gmail.com.br", "hotmail.com", "hotmail.com.br", "yahoo.com", "yahoo.com.br",
             "outlook.com", "outlook.com.br", "live.com", "msn.com", "bol.com.br", "uol.com.br", "terra.com.br",
@@ -122,7 +126,7 @@ def checar_site(dominio: str, cnpj: str, razao: str, logradouro: str, *, fetch=N
             hit = cache.get(k, 30 * 86400)
             if hit and hit["dados"]:
                 return dict(hit["dados"])
-        except Exception as exc:  # noqa: BLE001 — cache é otimização; sem ele, consulta direto
+        except _ERROS_CACHE as exc:  # cache é otimização; sem ele, consulta direto
             logger.debug("cache de site indisponível: %s", exc)
             cache = None
     fetch = fetch or _fetch_padrao
@@ -142,7 +146,7 @@ def checar_site(dominio: str, cnpj: str, razao: str, logradouro: str, *, fetch=N
         try:
             from compliance_agent.providers.base import Resultado, agora_iso
             cache.set(k, Resultado(True, out, "site", agora_iso()))
-        except Exception as exc:  # noqa: BLE001
+        except _ERROS_CACHE as exc:
             logger.debug("cache de site não gravado: %s", exc)
     return out
 
@@ -154,7 +158,7 @@ def site_em_cache(dominio: str, cnpj: str) -> dict | None:
         cache = CacheSQLite()
         hit = cache.get(cache.chave("site:empresa", {"d": dominio, "c": cnpj}), 30 * 86400)
         return dict(hit["dados"]) if hit and hit["dados"] else None
-    except Exception as exc:  # noqa: BLE001
+    except _ERROS_CACHE as exc:
         logger.debug("cache de site indisponível: %s", exc)
         return None
 

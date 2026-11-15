@@ -256,7 +256,7 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
             "AND data_emissao LIKE '__/__/____'"), {"c": cnpj}).fetchone()
         if r and r[0]:
             p.update(total_recebido=r[0], primeira_ob=r[1], ultima_ob=r[2], fonte_total="SIAFE (OB contabilizada)")
-    except Exception as exc:
+    except SQLAlchemyError as exc:  # tabela/coluna ausente: total fica sem dado (INDISPONÍVEL ≠ 0)
         logger.warning("consulta de OB SIAFE falhou p/ CNPJ %s: %s", cnpj, exc)
     try:
         r = session.execute(text(
