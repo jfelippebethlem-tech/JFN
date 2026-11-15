@@ -109,7 +109,10 @@ _UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
 async def _contexto_sei(b):
     """O contexto que o SEI aceita — mesmo UA para os três caminhos de login."""
-    return await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=_UA_DESKTOP)
+    ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=_UA_DESKTOP)
+    from tools.sei_reader import sem_visualizador_pdf
+    await sem_visualizador_pdf(ctx)      # janela visível (SEI_HEADED=1) sem abrir PDF no visualizador
+    return ctx
 
 
 def na_minha_fatia(processo: str, indice: int, total: int) -> bool:
@@ -1115,7 +1118,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     # repete no próximo slot. Nada de traceback não-tratado nem Node crashando o processo.
     try:
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+            b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
             ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
@@ -1313,7 +1316,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     n_ok = n_zero = n_doc_total = 0
     try:
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+            b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
             ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
@@ -1517,7 +1520,7 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
     ganho = 0
     try:
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=True,
+            b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1",
                                          args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
             ctx = await _contexto_sei(b)

@@ -106,6 +106,7 @@ async def main():
                                      args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
         ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
               user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+        await SR.sem_visualizador_pdf(ctx)   # janela visível sem o visualizador de PDF (450 s/doc em 14/11)
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
             if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU

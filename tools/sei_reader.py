@@ -148,6 +148,26 @@ def escolher_orgao(opcoes: list[dict], pedido: str | None) -> str | None:
     return None
 
 
+_RX_ANEXO = re.compile(r"controlador\.php\?[^#]*acao=(?:documento_download_anexo|download_anexo|documento_download)\b")
+
+
+def cortar_no_visualizador(tipo_recurso: str, url: str) -> bool:
+    """O anexo (PDF) pedido COMO PÁGINA/QUADRO deve ser cortado? Com navegador visível o Chromium o abriria no
+    visualizador de PDF — 450 s/doc em escaneado (14/11/2026). O conteúdo vem por `context.request.get`, que não
+    passa por aqui. Dono, 15/11/2026: "não use headless pra isso nunca"."""
+    return tipo_recurso == "document" and bool(_RX_ANEXO.search(url or ""))
+
+
+async def sem_visualizador_pdf(ctx) -> None:
+    """Instala no contexto o corte de `cortar_no_visualizador` (vale também em headless, onde é inócuo)."""
+    async def _rota(route):
+        if cortar_no_visualizador(route.request.resource_type, route.request.url):
+            await route.abort()
+        else:
+            await route.continue_()
+    await ctx.route(_RX_ANEXO, _rota)
+
+
 async def login(pg, tentativas=40, orgao: str | None = None) -> bool:
     """Loga no SEI interno (itkava) vencendo o flap do WAF. Retorna True se autenticou.
 

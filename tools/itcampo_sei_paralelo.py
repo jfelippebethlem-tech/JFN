@@ -584,7 +584,10 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     # da reserva: o processo gigante termina dentro dela, na mesma sessão (outra árvore recomeçaria do zero)
     os.environ.setdefault("INTEGRA_TETO_ARQUIVAR_S", "3600")       # ver sei_integra_fila.TETO_ARQUIVAR_S
     os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "10800")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
-    os.environ.pop("SEI_HEADED", None)     # headless: PDF em janela trava 450 s/doc (A/B medido em 14/11/2026)
+    # NAVEGADOR VISÍVEL, SEMPRE (dono, 15/11/2026: "não use headless pra isso nunca"). Em 14/11 eu tinha ido para headless
+    # porque com janela o PDF escaneado abria no visualizador (450 s/doc); a causa foi tratada na raiz: o anexo carregado
+    # como página é cortado (`sei_reader.sem_visualizador_pdf`) e o conteúdo vem por request à parte.
+    os.environ["SEI_HEADED"] = "1"
     meu = _head(BASE)
     preparar_worktree(k, meu, modo)
     (s / "data" / "itcampo_sessao.pid").write_text(str(os.getpid()))
