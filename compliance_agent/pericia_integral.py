@@ -51,7 +51,9 @@ DB = _REPO / "data" / "compliance.db"
 ACERVO = _REPO / "data" / "sei_arquivo"
 TAREFA = "pericia_integral"
 VERSAO_PROMPT = "pi-1"
-TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "80000"))   # caracteres de documentos por processo
+# caracteres de documentos por processo. 80k (1º desenho) leu 8 de 198 docs no processo-prova de 15/11; o dono quer o
+# Claude "pensando profundo em cada processo" — 240k (~65k tokens) cabem no Opus e no Gemini com folga.
+TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
 TETO_DOC = 12_000            # uma peça gigante não come a janela das outras
 TETO_EVIDENCIA = 3_000       # por fonte determinística
 MIN_TEXTO = 400              # bytes de texto na pasta abaixo disto: nada a periciar
