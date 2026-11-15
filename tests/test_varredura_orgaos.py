@@ -39,11 +39,11 @@ def base(tmp_path):
         con.execute(
             "INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
             (f"2026OB{i:05d}", "133100", "10/03/2026", "11222333000144", "ACME LTDA",
-             f"2026-0600{i}", f"2026NE{i}", 50000.0, 2026, "PAGO"))
+             f"2026-0600{i}", f"2026NE{i}", 50000.0, 2026, "Contabilizado"))
     con.execute(
         "INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
         ("2026OB99999", "999999", "10/03/2026", "44555666000177", "OUTRA LTDA",
-         "2026-06099", "2026NE9", 10.0, 2026, "PAGO"))
+         "2026-06099", "2026NE9", 10.0, 2026, "Contabilizado"))
     con.commit()
     con.close()
     return caminho
@@ -104,7 +104,7 @@ def test_so_cnpj_de_quatorze_digitos_e_fornecedor(base):
     con = sqlite3.connect(base)
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
                 ("2026OB88888", "133100", "10/03/2026", "CG0004700", "FUNDO X",
-                 "2026-06088", "2026NE8", 90000.0, 2026, "PAGO"))
+                 "2026-06088", "2026NE8", 90000.0, 2026, "Contabilizado"))
     con.commit()
     con.close()
     ro = V.abrir_leitura(str(base))
@@ -214,8 +214,21 @@ def test_ente_publico_nao_entra_como_fornecedor(base):
     for i, (cnpj, nome) in enumerate([("29138278000101", "MUNICIPIO DE NOVA IGUACU"),
                                        ("11715094000100", "FUNDO MUNICIPAL DE SAUDE DA CIDADE DO RIO DE JANEIRO")]):
         con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
-                    (f"2026OB7777{i}", "133100", "10/03/2026", cnpj, nome, "2026-1", "2026NE9", 9e6, 2026, "PAGO"))
+                    (f"2026OB7777{i}", "133100", "10/03/2026", cnpj, nome, "2026-1", "2026NE9", 9e6, 2026, "Contabilizado"))
     con.commit()
     con.close()
     ro = V.abrir_leitura(str(base))
     assert V.fornecedores_da_ug(ro, "133100", exercicio=2026) == ["11222333000144"]
+
+
+def test_ob_anulada_nao_entra_no_total_pago_do_fornecedor(base):
+    """OB Anulado/Excluído não é pagamento: somava R$ 6,16 bi em 2.326 credores PJ (14/11/2026)."""
+    con = sqlite3.connect(base)
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
+                ("2026OB55555", "133100", "11/03/2026", "11222333000144", "ACME LTDA",
+                 "2026-06055", "2026NE5", 9_000_000.0, 2026, "Anulado"))
+    con.commit()
+    con.close()
+    ctx = V.contexto_fornecedor(V.abrir_leitura(str(base)), "11222333000144", "133100")
+    assert ctx["pagamentos"]["total_pago"] == 200_000.0
+    assert ctx["pagamentos"]["n_obs"] == 4

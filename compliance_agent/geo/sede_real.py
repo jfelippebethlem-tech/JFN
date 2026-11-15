@@ -501,6 +501,18 @@ def _viacep(cep) -> dict | None:
         import httpx
     except ImportError:
         return None
+    # Cache de 90 dias (CEP quase não muda) no mesmo CacheSQLite da camada OSM; indisponibilidade não é
+    # cacheada (só resposta real). Antes cada perfil batia no ViaCEP de novo.
+    from compliance_agent.providers.base import CacheSQLite, Resultado, agora_iso
+    try:
+        cache = CacheSQLite()
+        k = cache.chave("cep:viacep", {"cep": cep})
+        hit = cache.get(k, 90 * 86400)
+    except (OSError, sqlite3.Error) as exc:
+        logger.debug("cache do ViaCEP indisponível: %s", exc)
+        cache, hit = None, None
+    if hit:
+        return dict(hit["dados"]) if hit["dados"] else None
     try:
         r = httpx.get(f"https://viacep.com.br/ws/{cep}/json/", timeout=12,
                       headers={"User-Agent": "JFN-fiscalizacao/1.0 (gabinete RJ)"})
@@ -510,7 +522,13 @@ def _viacep(cep) -> dict | None:
     except (httpx.HTTPError, ValueError) as exc:
         logger.debug("ViaCEP indisponível p/ %s: %s", cep, exc)
         return None
-    return None if dados.get("erro") else dados
+    dados = None if dados.get("erro") else dados
+    if cache is not None:
+        try:
+            cache.set(k, Resultado(True, dados, "viacep", agora_iso()))
+        except (OSError, sqlite3.Error) as exc:
+            logger.debug("cache do ViaCEP não gravado: %s", exc)
+    return dados
 
 
 def _cep_confere(p: dict, dados: dict | None) -> bool | None:
@@ -518,12 +536,41 @@ def _cep_confere(p: dict, dados: dict | None) -> bool | None:
     cep = re.sub(r"\D", "", str(p.get("cep") or ""))
     if not dados or len(cep) != 8 or cep.endswith("000"):
         return None  # CEP de município inteiro não prova nem desmente endereço
-    oficial, declarado = _norm(dados.get("logradouro")), _norm(p.get("logradouro"))
+    oficial, declarado = _tokens_logradouro(dados.get("logradouro")), _tokens_logradouro(p.get("logradouro"))
     if not oficial or not declarado:
         return None
-    nucleo = re.sub(r"^(rua|avenida|av|travessa|estrada|rodovia|praca|alameda|largo) ",
-                    "", oficial)
-    return nucleo in declarado or _norm(dados.get("localidade")) == _norm(p.get("municipio"))
+    # Comparação por PALAVRAS do nome, não por substring. Rodado em 14/11/2026 no controle de fachada,
+    # 6 das 10 "incoerências" eram escrita: "ESTRADA DA MEIA NOITE" × "Rua Estrada Meia Noite",
+    # "DR." × "Doutor", "BR 040" × "BR-040", "QD. 08" × "Quadra 8". E o antigo `or localidade == municipio`
+    # foi removido: cidade igual não prova rua (e `municipio` da Receita é código, então nem comparava).
+    comum = oficial & declarado
+    return len(comum) / min(len(oficial), len(declarado)) >= 0.6
+
+
+_TIPOS_LOGRADOURO = {"rua", "r", "avenida", "av", "travessa", "tv", "estrada", "estr", "est", "rodovia", "rod",
+                     "praca", "pca", "alameda", "al", "largo", "lgo", "via", "vila", "beco", "ladeira", "lad",
+                     "esplanada", "setor", "caminho", "servidao", "parque", "passagem", "viela", "acesso"}
+_PREPOSICOES = {"de", "da", "do", "das", "dos", "e"}
+_GENERICOS = {"bloco", "bl", "quadra", "lote", "lotes", "km", "conjunto", "sn"}
+_ABREV = {"dr": "doutor", "dra": "doutora", "prof": "professor", "profa": "professora", "pres": "presidente",
+          "cel": "coronel", "gal": "general", "gen": "general", "sta": "santa", "sto": "santo", "qd": "quadra",
+          "eng": "engenheiro", "ver": "vereador", "cap": "capitao", "mal": "marechal", "pref": "prefeito",
+          "dep": "deputado", "sen": "senador", "gov": "governador", "des": "desembargador", "min": "ministro",
+          "pe": "padre", "ten": "tenente", "sgt": "sargento", "alm": "almirante", "brig": "brigadeiro"}
+
+
+def _tokens_logradouro(s) -> set[str]:
+    """Palavras que IDENTIFICAM o logradouro: sem tipo (rua/av…), preposição, genérico (bloco/quadra) e
+    letra solta; abreviação expandida; número sem zero à esquerda ('040' → '40')."""
+    out = set()
+    for t in re.sub(r"[^a-z0-9]+", " ", _norm(s)).split():
+        t = _ABREV.get(t, t)
+        if t.isdigit():
+            t = t.lstrip("0") or "0"
+        if t in _TIPOS_LOGRADOURO or t in _PREPOSICOES or t in _GENERICOS or (len(t) == 1 and not t.isdigit()):
+            continue
+        out.add(t)
+    return out
 
 
 def avaliar_cnpj(cnpj: str, *, com_rede: bool = False, db=None) -> dict | None:

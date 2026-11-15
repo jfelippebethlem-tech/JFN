@@ -83,9 +83,21 @@ def sinal_sede(cnpj: str, *, db_path=None) -> dict:
     # leitura honesta dos sinais visuais e de operação
     d["sem_negocio_google"] = (d.get("places_achou") == 0)
     d["residencial"] = (d.get("addr_residencial") == 1)
-    vc = (d.get("visual_classe") or "")
-    d["visual_suspeito"] = bool(vc) and vc.lower() in (
-        "terreno_baldio", "area_aberta_rural", "area_aberta", "area_rural", "vegetacao", "obra")
+    # A classe visual só vale se a FOTO provar ser do endereço (fachada_foto, 14/11/2026): 1.163 fotos
+    # eram de coordenada aproximada e 64 grupos de fotos idênticas estavam em endereços diferentes —
+    # a praia de Mangaratiba entrava como "área rural" de 8 empresas. Sem prova: nem suspeita, nem limpa.
+    try:
+        from compliance_agent.fachada_foto import veredito_foto_do_cnpj
+        con2 = _ro(db)
+        try:
+            vf = veredito_foto_do_cnpj(cnpj, con2) if con2 else None
+        finally:
+            if con2:
+                con2.close()
+    except (ImportError, sqlite3.Error):
+        vf = None
+    d["foto_veredito"] = vf
+    d["visual_suspeito"] = bool(vf and vf.get("status") == "INDICIO")
     return d
 
 

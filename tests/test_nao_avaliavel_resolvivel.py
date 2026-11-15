@@ -132,7 +132,7 @@ def base(tmp_path):
     # data_emissao é TEXTO DD/MM/AAAA: o min() lexicográfico daria 01/10/2024, a 1ª é 16/12/2022
     for i, d in enumerate(("01/10/2024", "16/12/2022", "05/03/2023")):
         con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
-                    (f"OB{i}", "133100", d, _CNPJ, "ACME", "P", "RE", 100.0, 2024, "PAGO"))
+                    (f"OB{i}", "133100", d, _CNPJ, "ACME", "P", "RE", 100.0, 2024, "Contabilizado"))
     con.execute("INSERT INTO socios_fornecedor VALUES (?,?,?,?,?,?,?,?)",
                 (_CNPJ, "ACME", "JOSÉ DA SILVA", "jose da silva", "***364817**",
                  "Sócio-Administrador", "2026-01-01", None))

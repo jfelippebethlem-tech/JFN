@@ -8,7 +8,7 @@ correspondente do spec, convertendo o juízo já feito para a ÂNCORA do framewo
 
 MAPA hipótese (investigacao_dd) → detector C (spec §5):
   H-RECENTE                                  → C1 (CNPJ recém-nascido)
-  H-CAPITAL · H-END-RESID · H-PORTE          → C2 (estrutura incompatível com o objeto)
+  H-CAPITAL · H-END-RESID · H-PORTE · H-FOTO-TERRENO → C2 (estrutura incompatível com o objeto)
   H-SITUACAO (situação irregular/sancionada) → C3/C5 (atividade/reencarnação — empresa não-ativa/inidônea)
   H-COEND · H-SOCIO-UNICO                    → C4 (quadro societário suspeito / co-endereço — laranja)
 
@@ -33,6 +33,8 @@ _MAPA_C: dict[str, tuple[str, str]] = {
     "H-CAPITAL": ("C2", "Estrutura incompatível com o objeto — capital ínfimo"),
     "H-END-RESID": ("C2", "Estrutura incompatível com o objeto — sede residencial"),
     "H-PORTE": ("C2", "Estrutura incompatível com o objeto — volume acima do porte"),
+    # foto do lote (só quando prova ser do endereço — fachada_foto); antes a classe visual não chegava ao card
+    "H-FOTO-TERRENO": ("C2", "Estrutura incompatível com o objeto — foto do lote sem edificação"),
     "H-SITUACAO": ("C3/C5", "Situação cadastral irregular / reencarnação de sancionada"),
     "H-COEND": ("C4", "Quadro societário suspeito — co-endereço de fornecedores"),
     "H-SOCIO-UNICO": ("C4", "Quadro societário suspeito — sócio único com sinais de fachada"),

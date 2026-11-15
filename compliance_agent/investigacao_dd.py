@@ -148,6 +148,70 @@ def _situacao_com_data(cnpj: str, db_path=None) -> tuple[str, dt.date | None]:
         return str(r[0] or ""), None
 
 
+def _motivo_situacao(cnpj: str) -> str:
+    """Código do MOTIVO da situação cadastral no dump da Receita ('02' incorporação, '15' inexistente de
+    fato…). Base ausente → '' (o chamador trata como motivo não apurado)."""
+    import sqlite3
+    from pathlib import Path as _Path
+    base = _Path("data/receita_estab.db")
+    if not base.exists():
+        return ""
+    try:
+        con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
+        try:
+            r = con.execute("SELECT motivo_situacao FROM estabelecimentos WHERE cnpj=?",
+                            (_digitos(cnpj),)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return ""
+    return str((r or [""])[0] or "").strip()
+
+
+# Motivo 15 da tabela de motivos da Receita: a própria RFB declarou a empresa INEXISTENTE DE FATO.
+_MOTIVO_INEXISTENTE_DE_FATO = "15"
+
+
+def _pico_anual_ob(cnpj: str) -> tuple[int, float] | None:
+    """(ano, valor) do ANO-CALENDÁRIO em que o CNPJ mais recebeu do Estado — OB SIAFE contabilizada,
+    todas as UGs (receita bruta não se mede por unidade pagadora). Sem OB/base → None."""
+    import sqlite3
+    from pathlib import Path as _Path
+    base = _Path("data/compliance.db")
+    if not base.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
+        try:
+            r = con.execute("SELECT exercicio, SUM(valor) v FROM ob_orcamentaria_siafe WHERE credor=? "
+                            "AND status='Contabilizado' GROUP BY exercicio ORDER BY v DESC LIMIT 1",
+                            (_digitos(cnpj),)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    return (int(r[0]), float(r[1])) if r and r[1] else None
+
+
+def _veredito_foto(cnpj: str) -> dict | None:
+    """Veredito da foto da sede (`fachada_foto`): só julga foto que prova ser do endereço."""
+    import sqlite3
+    from pathlib import Path as _Path
+    base = _Path("data/compliance.db")
+    if len(_digitos(cnpj)) != 14 or not base.exists():
+        return None
+    try:
+        from compliance_agent.fachada_foto import veredito_foto_do_cnpj
+        con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
+        try:
+            return veredito_foto_do_cnpj(cnpj, con)
+        finally:
+            con.close()
+    except (sqlite3.Error, ImportError) as exc:
+        logger.debug("veredito de foto indisponível p/ %s: %s", cnpj, exc)
+        return None
+
+
 def _ultimo_pagamento_ob(cnpj: str, db_path=None) -> dt.date | None:
     """Data da ÚLTIMA OB paga (SIAFE, Contabilizado) ao CNPJ — OB é pagamento, empenho não.
 
@@ -389,6 +453,31 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                 "(CUIDADO: rodovia/'S/N'/prédio público também dão isso e podem ser reais — não é prova).",
                 "Google Geocoding + Address Validation", "art. 337-F CP", 8))
 
+    # H-FOTO-TERRENO — a FOTO do lote (classe do VLM) só entra se provar ser do endereço (fachada_foto).
+    # Antes a classe visual não chegava aqui: 155 sedes com foto de terreno/mato/barraco ficavam AFASTADO
+    # e a investigação nunca as via; e 1.163 fotos eram de coordenada aproximada (foto da rua, não do lote).
+    # O olho do auditor (vh) vence a foto automática.
+    if not vh:
+        vf = _veredito_foto(cnpj)
+        if vf:
+            st = vf.get("status")
+            if st == "INDICIO":
+                hipoteses.append(_hip(
+                    "H-FOTO-TERRENO", "Foto do lote declarado sem edificação (terreno/mato)", "INDICIO",
+                    vf.get("nivel") or "MEDIO",
+                    f"{vf.get('evidencia')} Explicação inocente a descartar: {vf.get('explicacao_inocente')}",
+                    "Foto de rua (Street View) + classificador visual + prova de endereço (fachada_foto)",
+                    "art. 337-F CP; art. 11 Lei 8.429/92", 10))
+                cobertura["foto_sede"] = "INDICIO (foto do lote sem edificação)"
+            elif st == "AFASTADO":
+                cobertura["foto_sede"] = "AFASTADO (foto do lote edificada)"
+            elif vf.get("prova_endereco") is False or vf.get("revisar_humano"):
+                motivo = ("revisão humana: classificador confunde casa simples com barraco"
+                          if vf.get("revisar_humano") else "; ".join(vf.get("motivos_sem_prova") or []))
+                cobertura["foto_sede"] = f"INDISPONIVEL (foto não serve: {motivo[:160]})"
+            else:
+                cobertura["foto_sede"] = "INDISPONIVEL (sem foto classificada)"
+
     # H-COEND — outros fornecedores recebendo do Estado na MESMA sede
     if usar_rede:
         try:
@@ -421,11 +510,13 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             pass
         elif total_pago >= 50 * capital and total_pago > 500_000:
             razao = total_pago / capital if capital else 0
+            # padrão brasileiro: 1005 vezes saía "1,005×" (separador inglês), lido como 1 vírgula 005
+            razao_txt = f"{razao:,.0f}".replace(",", ".")
             hipoteses.append(_hip(
                 "H-CAPITAL", "Capital social ínfimo frente ao recebido", "INDICIO",
                 "ALTO" if razao >= 200 else "MEDIO",
                 f"Capital social declarado de {_moeda(capital)} contra {_moeda(total_pago)} recebidos do "
-                f"Estado ({razao:,.0f}× o capital). Capital irrisório frente a contratos vultosos é indício "
+                f"Estado ({razao_txt}× o capital). Capital irrisório frente a contratos vultosos é indício "
                 "de subcapitalização típica de empresa de fachada — verificar capacidade econômico-financeira.",
                 "Receita Federal (cadastro CNPJ)", "art. 11 Lei 8.429/92; Lei 14.133/21 art. 69",
                 14 if razao >= 200 else 8))
@@ -466,6 +557,14 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             # com o estado à época.
             sit_rfb, quando = _situacao_com_data(cnpj)
             ultima = _ultimo_pagamento_ob(cnpj)
+            # O MOTIVO muda o que a situação significa (medido 14/11/2026 nos 99 CONFIRMADO/ALTO da base):
+            # 34 eram BAIXA POR INCORPORAÇÃO (motivo 02, R$ 469,22 mi — Telemar, Oi Móvel, Energisa,
+            # Medtronic): a sucessora existe e responde; pagar ao CNPJ extinto é falha de cadastro do
+            # credor no contratante, não fachada. E 3 eram INEXISTENTE DE FATO (motivo 15, R$ 587,35 mi —
+            # IDESI): a própria Receita declarou que a empresa não existe — o sinal mais forte que há.
+            # Fonte única dos motivos de sucessão: cruzamentos_intel._MOTIVOS_SUCESSAO (caso Fênix).
+            from compliance_agent.cruzamentos_intel import _MOTIVOS_SUCESSAO
+            motivo = _motivo_situacao(cnpj) if quando else ""
             # AS DUAS FONTES DISCORDAM — e a acusação não pode ignorar isso. `cad["situacao"]` vem
             # do cadastro enriquecido; `_situacao_com_data` vem do dump oficial da RFB. Medido em
             # 2026-08-05: dos 374 CNPJs que o cadastro chama de irregulares, **118 (31,5%) estão
@@ -485,6 +584,18 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                       "fonte (consulta CNPJ na RFB) antes de qualquer juízo.**",
                     "Receita Federal (dump) × cadastro enriquecido — em conflito",
                     "Lei 14.133/21 art. 14 (aferido na data do ato)", 4))
+            elif quando and motivo in _MOTIVOS_SUCESSAO:
+                rotulo = {"02": "incorporação", "03": "fusão", "04": "cisão total"}.get(motivo, "sucessão")
+                hipoteses.append(_hip(
+                    "H-SITUACAO", f"CNPJ baixado por {rotulo} (sucessão empresarial)", "INDICIO", "BAIXO",
+                    f"Situação cadastral '{cad.get('situacao')}' desde {quando:%d/%m/%Y} por **{rotulo}** "
+                    f"(motivo {motivo} da Receita)"
+                    + (f"; último pagamento conhecido em {ultima:%d/%m/%Y}" if ultima else "")
+                    + ". A empresa foi absorvida por uma sucessora, que responde pelas obrigações — não é "
+                      "indício de fachada. Pagamento ao CNPJ extinto é questão de cadastro do credor no "
+                      "contratante (conferir se o contrato foi transferido à sucessora).",
+                    "Receita Federal (dump de estabelecimentos: situação, data e motivo)",
+                    "Lei 14.133/21 art. 14 (aferido na data do ato); CC arts. 1.116 e 1.119; Lei 6.404/76 art. 229", 3))
             elif quando and ultima and ultima < quando:
                 hipoteses.append(_hip(
                     "H-SITUACAO", "Situação cadastral irregular na Receita (HOJE)", "INDICIO", "BAIXO",
@@ -495,6 +606,16 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                     "pago. Serve para contratação futura e para a cobrança de eventual passivo.",
                     "Receita Federal (dump de estabelecimentos, com data da situação)",
                     "Lei 14.133/21 art. 14 (aferido na data do ato)", 3))
+            elif quando and motivo == _MOTIVO_INEXISTENTE_DE_FATO:
+                hipoteses.append(_hip(
+                    "H-SITUACAO", "Receita declarou a empresa INEXISTENTE DE FATO", "CONFIRMADO", "ALTO",
+                    f"Situação cadastral '{cad.get('situacao')}' desde {quando:%d/%m/%Y} pelo motivo "
+                    f"**inexistente de fato** (motivo {motivo} da Receita)"
+                    + (f", e há pagamento posterior a essa data (último em {ultima:%d/%m/%Y})" if ultima else "")
+                    + ". É a própria administração tributária afirmando que a empresa não existe no endereço "
+                      "nem opera — o sinal mais direto de fachada. Indício forte a apurar, não condenação.",
+                    "Receita Federal (dump de estabelecimentos: situação, data e motivo)",
+                    "Lei 14.133/21 art. 14; IN RFB 2.119/2022 (inaptidão por inexistência de fato)", 24))
             elif quando:
                 hipoteses.append(_hip(
                     "H-SITUACAO", "Situação cadastral irregular na Receita", "CONFIRMADO", "ALTO",
@@ -524,13 +645,27 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
     tp = _teto_do_porte(cad.get("porte") or "")
     if tp and total_pago > 0:
         chave, teto = tp
-        if total_pago > teto:
+        # O teto da LC 123 (art. 3º) é de receita bruta ANUAL. Comparar a soma de todos os anos com ele
+        # acusava quem nunca passou do teto em ano nenhum (medido 14/11/2026: 08.746.676/0001-30, EPP,
+        # R$ 5,57 mi somados, maior ano R$ 4,51 mi). O critério é o ano-calendário de pico, em OB SIAFE
+        # de todas as UGs — mesma régua de tools/porte_incompativel. Limite inclusivo ("igual ou inferior").
+        pico = _pico_anual_ob(cnpj) if total_pago > teto else None
+        if pico and pico[1] > teto:
+            ano, valor = pico
             hipoteses.append(_hip(
-                "H-PORTE", "Volume recebido acima do teto do porte declarado", "INDICIO", "MEDIO",
-                f"Porte declarado '{cad.get('porte')}' (teto de receita ≈ {_moeda(teto)}/ano) contra "
-                f"{_moeda(total_pago)} recebidos do Estado. Volume acima do teto do enquadramento merece "
-                "apuração de enquadramento indevido (benefício de ME/EPP) ou de pulverização entre CNPJs.",
-                "Receita Federal (porte) × OBs", "LC 123/2006; Lei 14.133/21 art. 4º", 8))
+                "H-PORTE", "Recebido num ano acima do teto do porte declarado", "INDICIO", "MEDIO",
+                f"Porte declarado '{cad.get('porte')}' (teto de receita bruta {_moeda(teto)}/ano, LC 123 "
+                f"art. 3º) e só do Estado do RJ recebeu {_moeda(valor)} em {ano} (OB contabilizada). Volume "
+                "acima do teto do enquadramento merece apuração de enquadramento indevido (benefício de "
+                "ME/EPP) ou de pulverização entre CNPJs.",
+                "Receita Federal (porte) × OB SIAFE por ano-calendário", "LC 123/2006 art. 3º; Lei 14.133/21 art. 4º", 8))
+        elif total_pago > teto and pico is None:
+            hipoteses.append(_hip(
+                "H-PORTE", "Recebido acima do teto do porte (pico anual não apurado)", "INDICIO", "BAIXO",
+                f"Porte declarado '{cad.get('porte')}' (teto {_moeda(teto)}/ano) e {_moeda(total_pago)} "
+                "recebidos SOMANDO todos os anos. O pico por ano-calendário não foi apurado (sem OB SIAFE "
+                "para este CNPJ) — a soma plurianual não prova que algum ano passou do teto.",
+                "Receita Federal (porte) × OBs (soma plurianual)", "LC 123/2006 art. 3º", 3))
         cobertura["porte"] = "verificado"
     elif _norm(cad.get("porte") or "").strip() in _PORTE_SEM_TETO:
         cobertura["porte"] = "verificado"       # porte conhecido, mas sem teto (empresa não-ME/EPP)
@@ -581,6 +716,16 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
     if usar_beneficios:
         _wire_beneficios_pep(cnpj, total_pago, socios, hipoteses, cobertura)
 
+    # VALIDADORES INDEPENDENTES da sede (14/11/2026) — foto provada, CEP×logradouro, sala e telefone
+    # compartilhados com OUTROS grupos, site próprio (só o cache: produto interativo não visita sites).
+    # Informativo: a combinação vai no retorno com grau e explicação inocente; nenhum entra sozinho no score.
+    validadores = None
+    if len(cnpj) == 14:
+        inexist = any(h["codigo"] == "H-SITUACAO" and "INEXISTENTE" in h["titulo"].upper() for h in hipoteses)
+        validadores = _validadores_sede(cnpj, vf if not vh else None, inexist)
+        if validadores:
+            cobertura["site"] = validadores.pop("_site_cobertura")
+
     # ───── consolidação honesta ─────
     confirmados = [h for h in hipoteses if h["status"] == "CONFIRMADO"]
     indicios = [h for h in hipoteses if h["status"] == "INDICIO"]
@@ -597,7 +742,59 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
         "cnpj": cnpj, "hipoteses": hipoteses, "score": score, "grau": grau,
         "n_indicios": len(indicios), "n_confirmados": len(confirmados),
         "resumo": _resumo(grau, confirmados, indicios), "cobertura": cobertura,
+        "validadores_sede": validadores,
     }
+
+
+def _validadores_sede(cnpj: str, vf: dict | None, inexistente_de_fato: bool) -> dict | None:
+    """Junta os validadores independentes de sede em `fachada_validadores.veredito_combinado`."""
+    import sqlite3
+    from pathlib import Path as _Path
+    try:
+        from compliance_agent.fachada_validadores import dominio_corporativo, site_em_cache, veredito_combinado
+        from compliance_agent.geo.sede_real import telefone_valido
+    except ImportError as exc:
+        logger.debug("validadores de sede indisponíveis: %s", exc)
+        return None
+    cep = sala = None
+    tel_outros = 0
+    site_estado, site_cob = None, "INDISPONIVEL (sem e-mail de domínio próprio na Receita)"
+    try:
+        if _Path("data/compliance.db").exists():
+            con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True, timeout=10)
+            try:
+                r = con.execute("SELECT cep_coerente, na_sala_terceiros FROM verificacao_sede_real WHERE cnpj=?",
+                                (cnpj,)).fetchone()
+            finally:
+                con.close()
+            if r:
+                cep = None if r[0] is None else bool(r[0])
+                sala = r[1] or 0
+        if _Path("data/receita_estab.db").exists():
+            con = sqlite3.connect("file:data/receita_estab.db?mode=ro", uri=True, timeout=10)
+            try:
+                e = con.execute("SELECT correio_eletronico, telefone1 FROM estabelecimentos WHERE cnpj=?",
+                                (cnpj,)).fetchone()
+                if e and telefone_valido(e[1]):
+                    # outros GRUPOS (cnpj_basico ≠), não filiais: com filiais o telefone "repetido" marcava 31%
+                    tel_outros = con.execute("SELECT COUNT(DISTINCT cnpj_basico) FROM estabelecimentos "
+                                             "WHERE telefone1=? AND cnpj_basico<>?", (e[1], cnpj[:8])).fetchone()[0]
+            finally:
+                con.close()
+            dom = dominio_corporativo(e[0]) if e else None
+            if dom:
+                s = site_em_cache(dom, cnpj)
+                site_estado = s.get("estado") if s else None
+                site_cob = (f"verificado ({site_estado}; {dom}"
+                            + (f"; redes: {', '.join(s.get('redes') or [])}" if s and s.get("redes") else "") + ")"
+                            if s else f"INDISPONIVEL (domínio {dom} ainda não visitado — tools/fachada_validar_site)")
+    except sqlite3.Error as exc:
+        logger.debug("validadores de sede: base indisponível p/ %s: %s", cnpj, exc)
+    foto = vf.get("status") if vf and vf.get("status") in ("INDICIO", "AFASTADO") else None
+    out = veredito_combinado(foto=foto, cep=cep, telefone_compartilhado=tel_outros,
+                             sala_compartilhada=sala or 0, site=site_estado, inexistente_de_fato=inexistente_de_fato)
+    out["_site_cobertura"] = site_cob
+    return out
 
 
 def _num(v) -> float | None:

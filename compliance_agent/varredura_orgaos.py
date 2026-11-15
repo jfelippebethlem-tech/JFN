@@ -97,8 +97,10 @@ def fornecedores_da_ug(con: sqlite3.Connection, ug: str, *, exercicio: int | Non
     eles viravam C6/C8 `nao_avaliavel` ("faltam qsa"): 85 dos 99 CNPJs dos 133 pares C6/C8 não avaliáveis
     eram ente público. Mesmo critério da perícia (`pericia_sweep._fora_da_bateria`)."""
     from compliance_agent.pericia_sweep import _fora_da_bateria
-    sql = ("SELECT credor, MAX(nome_credor), SUM(valor) t FROM ob_orcamentaria_siafe "
-           "WHERE ug_emitente = ? AND LENGTH(TRIM(credor)) = 14 AND TRIM(credor) GLOB '[0-9]*'")
+    # OB = pagamento só quando Contabilizada: Anulado/Excluído/Não contabilizado somavam R$ 6,16 bi em
+    # 2.326 credores PJ (medido 14/11/2026) e inflavam o ranking e o "total pago" do card C.
+    sql = ("SELECT credor, MAX(nome_credor), SUM(valor) t FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+           "AND ug_emitente = ? AND LENGTH(TRIM(credor)) = 14 AND TRIM(credor) GLOB '[0-9]*'")
     params: list = [ug]
     if exercicio:
         sql += " AND exercicio = ?"
@@ -338,7 +340,7 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
     # 16/12/2022). Converte para ISO dentro do MIN, a mesma expressão de `cruzamentos_intel`.
     try:
         sql = (f"SELECT SUM(valor), COUNT(*), MIN(CASE WHEN data_emissao LIKE '__/__/____' "
-               f"THEN {_OB_ISO} END) FROM ob_orcamentaria_siafe WHERE credor = ?")
+               f"THEN {_OB_ISO} END) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND credor = ?")
         params: list = [cnpj]
         if ug:
             sql += " AND ug_emitente = ?"
