@@ -577,11 +577,12 @@ def descobertas(couto: dict | None, sobre: dict[str, dict] | None) -> list[tuple
         provas = x.get("prova_primaria") or []
         provas = provas if isinstance(provas, list) else [provas]
         out.append((f"couto:{x['id']}",
-                    f"JFN — ponto de atenção {x['grau']} VERIFICADO na gestão Couto (prova primária conferida por código): "
-                    f"{cel(x.get('regra_ou_hipotese'), 400)}. Órgão: {cel(x.get('orgao'))}. OB contabilizada (SIAFE): "
-                    f"{brl(x.get('valor_ob'))}. Fonte: {cel(x.get('fonte'))}. Prova: {cel('; '.join(map(str, provas[:3])), 450) or IND}. "
-                    f"Explicação inocente possível: {cel(x.get('explicacao_inocente') or IND)}. Próximo passo: "
-                    f"{cel(x.get('proximo_passo') or IND)}. Indício interno, não acusação. Retrato: {PASTA}/gestao-couto.",
+                    # fato distintivo primeiro e texto curto: o cérebro funde memórias com similaridade > 0,96, e o
+                    # trecho fixo longo fazia pontos diferentes parecerem o mesmo (14/11/2026: 9 pontos D05 numa memória)
+                    f"{cel(x.get('regra_ou_hipotese'), 300)} — OB contabilizada (SIAFE): {brl(x.get('valor_ob'))}; órgão: "
+                    f"{cel(x.get('orgao'))}. Gestão Couto, ponto {x['grau']} VERIFICADO; prova: "
+                    f"{cel('; '.join(map(str, provas[:2])), 200) or IND}. Explicação inocente possível: "
+                    f"{cel(x.get('explicacao_inocente') or IND, 160)}. Indício, não acusação. Retrato: {PASTA}/gestao-couto.",
                     "gestão Couto — ponto verificado"))
     for esf, d in (sobre or {}).items():
         for x in d.get("achados") or []:
