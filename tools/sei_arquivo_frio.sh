@@ -37,7 +37,8 @@ done < "$lista" >> data/sei_arquivo_frio.jsonl
 rm -f "$lista"
 # 15/11 14h: quarentena e versões substituídas da conferência da VM-2 (10,6 GB, só crescem; nenhum cron as lê —
 # rever_quarentena é manual). Paradas há mais de 6 h vão inteiras para o it-campo (reversível: rsync de volta).
-for par in "data/vm2_quarentena:vm2_quarentena" "data/vm2_entrega/_substituidos:vm2_substituidos"; do
+for par in "data/vm2_quarentena:vm2_quarentena" "data/vm2_entrega/_substituidos:vm2_substituidos" \
+           "data/sei_arquivo/_substituido:sei_arquivo_substituido"; do   # capturas antigas, fora dos detectores
   src=${par%%:*}; dst=/mnt/c/JFN-Arquivo/${par##*:}
   velhos=$(mktemp)
   find "$src" -mindepth 1 -maxdepth 1 -type d -mmin +360 -printf '%f/\n' > "$velhos" 2>/dev/null
