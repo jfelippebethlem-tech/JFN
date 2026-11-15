@@ -58,15 +58,20 @@ def nao_informativas(pasta: Path) -> list[Path]:
 def pastas(idade_min_h: float) -> list[Path]:
     agora = time.time()
     res = []
+    # Idade = da FOTO mais nova, não do manifest.json: a captura/conferência regrava o manifesto o tempo todo
+    # (15/11: 780 de 841 pastas com manifesto <24 h) e o critério antigo quase nunca deixava a pasta passar.
     for d in ARQUIVO.iterdir():
-        m = d / "manifest.json"
-        if d.is_dir() and _SLUG.match(d.name) and (d / "fotos").is_dir() and m.exists() \
-                and agora - m.stat().st_mtime >= idade_min_h * 3600 and any((d / "fotos").iterdir()):
-            reg = d / REGISTRO
-            if reg.exists() and reg.stat().st_mtime >= max(f.stat().st_mtime for f in (d / "fotos").iterdir()):
-                continue   # já vista e nada novo em fotos/
-            res.append(d)
-    return sorted(res, key=lambda d: (d / "manifest.json").stat().st_mtime)
+        f = d / "fotos"
+        if not (d.is_dir() and _SLUG.match(d.name) and f.is_dir() and (d / "manifest.json").exists()):
+            continue
+        mtimes = [x.stat().st_mtime for x in f.iterdir() if x.is_file()]
+        if not mtimes or agora - max(mtimes) < idade_min_h * 3600:
+            continue
+        reg = d / REGISTRO
+        if reg.exists() and reg.stat().st_mtime >= max(mtimes):
+            continue   # já vista e nada novo em fotos/
+        res.append((max(mtimes), d))
+    return [d for _, d in sorted(res)]
 
 
 def tratar(pasta: Path, ensaio: bool) -> int:
@@ -107,7 +112,7 @@ def tratar(pasta: Path, ensaio: bool) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--limite", type=int, default=0)
-    ap.add_argument("--idade-min-h", type=float, default=24.0)
+    ap.add_argument("--idade-min-h", type=float, default=2.0)
     ap.add_argument("--ensaio", action="store_true")
     a = ap.parse_args(argv)
     lista = pastas(a.idade_min_h)
