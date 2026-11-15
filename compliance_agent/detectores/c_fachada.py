@@ -96,7 +96,7 @@ def _sem_hipotese(cnpj: str, inv: dict) -> ResultadoDetector:
                + (f". Não verificado (INDISPONÍVEL ≠ regular): {', '.join(faltam)}" if faltam else ""))
     else:
         st, mot = "nao_avaliavel", (f"checagens básicas incompletas — faltam: "
-                                    f"{', '.join(k for k in _BASICAS_C if k not in feitas)}")
+                                    f"{', '.join(k for k in _BASICAS_C if k not in feitas)} (ausência de juízo ≠ regular)")
     r = ResultadoDetector(detector="C", processo=cnpj, status=st, motivo_refutacao=mot)
     r.valores = {"cobertura": cob, "grau_geral": inv.get("grau"), "verificado": feitas, "nao_verificado": faltam,
                  "sinais": sinais}
