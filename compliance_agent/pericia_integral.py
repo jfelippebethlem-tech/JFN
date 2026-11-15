@@ -1,0 +1,802 @@
+# -*- coding: utf-8 -*-
+"""pericia_integral — UMA perícia por processo de contratação, em todos os eixos, com o Claude como co-motor.
+
+Pedido do dono (15/11/2026): "use o poder computacional restante das máquinas para as perícias jurídicas,
+contábeis, de conformidade, de compliance e anticorrupção e anti-irregularidades … batendo claude com as outras
+IAs para que sejam padronizadas. prioridade é pensar profundo em cada processo de contratação com o claude."
+E, no mesmo dia: "pode periciar o que mais imaginar. tudo junto, processo a processo."
+
+COMO FUNCIONA (uma chamada por processo):
+  1. `montar_entrada(pasta)` — camada DETERMINÍSTICA: `processo_360.avaliar_pasta` sem LLM (fases, lacunas,
+     achados dos detectores de edital/execução/fornecedor, CNPJ vencedor), OB CONTABILIZADA no SIAFE (só a OB é
+     pagamento — Empenho ≠ Liquidação ≠ OB), e as evidências que a casa já calcula (R-RAPP do Lex, sócio na
+     folha, sanções SIGA, lista suja, perícia de fornecedor e de execução já gravadas, indicadores de fraude).
+     O texto dos documentos entra POR VALOR (`ordenar_para_leitura`, nunca os N primeiros da árvore), com teto.
+  2. O prompt pede UM JSON com todos os eixos de `EIXOS` (constante única: nome, pergunta-guia, base normativa,
+     fontes determinísticas a consultar). Cada eixo: `grau` 0 ⚪ · 1 🟡 · 2 🔴 · null INDETERMINADO, `achados`
+     com citação LITERAL, `fundamento`, `lacunas`.
+  3. `comotor.juizo("pericia_integral")` roda o Claude (Opus, só ASSINATURA — `backend="cli"`, nunca a API paga)
+     e a cascata em paralelo; o par global vai ao cruzamento e, sem o Claude, à fila do Opus.
+  4. Cada resposta passa pela VERIFICAÇÃO LITERAL (`llm/verificacao.citacao_existe`): citação que não está na
+     entrada derruba o achado (fica em `descartados`); grau 🟡/🔴 sem nenhum achado conferido vira INDETERMINADO.
+  5. Cruzamento POR EIXO: um par Claude × cascata por eixo, tarefa `pericia_integral:<eixo>` — é a régua que
+     padroniza as outras IAs contra o Claude eixo a eixo (concordância, few-shot, revisão humana do 🔴×⚪).
+  6. Persistência em `compliance.db`, tabela `pericia_integral`, SÓ ACRESCENTA (histórico): uma linha por eixo
+     + uma `_global` por rodada. `conferido_opus`: 0 pendente (cascata, na fila do Opus) · 1 feito/conferido
+     pelo Opus · 2 substituído pela conferência do Opus. Transação curta: um commit por processo.
+
+Indício ≠ acusação. Ausência de documento = INDETERMINADO, nunca irregularidade. Grau é indício interno.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import re
+import sqlite3
+import uuid
+import zlib
+from datetime import datetime
+from pathlib import Path
+from typing import Callable
+
+from compliance_agent.llm import claude_motor, comotor, cruzamento
+from compliance_agent.llm.verificacao import citacao_existe
+
+logger = logging.getLogger(__name__)
+
+_REPO = Path(__file__).resolve().parents[1]
+DB = _REPO / "data" / "compliance.db"
+ACERVO = _REPO / "data" / "sei_arquivo"
+TAREFA = "pericia_integral"
+VERSAO_PROMPT = "pi-1"
+TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "80000"))   # caracteres de documentos por processo
+TETO_DOC = 12_000            # uma peça gigante não come a janela das outras
+TETO_EVIDENCIA = 3_000       # por fonte determinística
+MIN_TEXTO = 400              # bytes de texto na pasta abaixo disto: nada a periciar
+# 10 eixos × até 3 achados: o JSON passa de 4.096 tokens (o teto da cascata padrão) — a lição das 87/200 fichas
+# cortadas. A cascata desta tarefa chama o Gemini com teto próprio antes de cair na cascata padrão.
+MAX_TOKENS_SAIDA = 16_000
+TIMEOUT_CLAUDE = 600.0
+TIMEOUT_CASCATA = 240.0
+ESPERA_TRAVA = 120.0
+
+_MARCA_INI = "=== ENTRADA (única fonte de fatos; cite LITERALMENTE daqui) ==="
+_MARCA_FIM = "=== FIM DA ENTRADA ==="
+
+# ── os eixos: constante ÚNICA (prompt, normalização, cruzamento e tabela iteram sobre ela) ─────────────────
+EIXOS: tuple[dict, ...] = (
+    {"nome": "juridico",
+     "pergunta": "A modalidade é a correta e a dispensa/inexigibilidade está fundamentada? Há parecer jurídico "
+                 "(PGE/assessoria) e ele foi acatado? As cláusulas essenciais estão presentes?",
+     "base": "Lei 14.133/2021 arts. 53, 72, 74, 75, 92 (Lei 8.666/1993 arts. 24, 25, 26, 38, 55 nos processos "
+             "sob o regime antigo)",
+     "fontes": ("p360_achados", "p360_acatamento", "sei_ficha")},
+    {"nome": "planejamento",
+     "pergunta": "Há DFD, ETP e termo de referência/projeto básico? A pesquisa de preços tem fontes suficientes "
+                 "e independentes? A necessidade e o quantitativo estão justificados?",
+     "base": "Lei 14.133/2021 arts. 6º XXIII, 18, 23; IN SEGES 65/2021; Decreto estadual de pesquisa de preços",
+     "fontes": ("p360_lacunas", "rapp")},
+    {"nome": "economicidade",
+     "pergunta": "Há sobrepreço ou superfaturamento demonstrável COM BASE DE PREÇO PRESENTE NA ENTRADA? Aditivos "
+                 "de valor respeitam os limites de 25%/50%?",
+     "base": "Lei 14.133/2021 arts. 6º LVI-LVII, 23, 125; Lei 8.666/1993 art. 65 §1º",
+     "fontes": ("rapp", "siafe_ob", "p360_achados")},
+    {"nome": "orcamentario_contabil",
+     "pergunta": "Há dotação, empenho prévio, liquidação e OB na sequência certa? A despesa é regular? Há restos "
+                 "a pagar ou pagamento sem liquidação? (Empenho ≠ Liquidação ≠ OB: só a OB é pagamento.)",
+     "base": "Lei 4.320/1964 arts. 58-64; LC 101/2000; Lei 14.133/2021 art. 150",
+     "fontes": ("siafe_ob", "p360_cadeia")},
+    {"nome": "conformidade_procedimental",
+     "pergunta": "As fases obrigatórias existem e em ordem? Houve publicidade (PNCP/DOERJ), prazos legais, "
+                 "habilitação e os documentos obrigatórios?",
+     "base": "Lei 14.133/2021 arts. 17, 54, 55, 62-70, 72 parágrafo único, 94, 174",
+     "fontes": ("p360_lacunas", "p360_achados")},
+    {"nome": "execucao_fisica",
+     "pergunta": "A execução está comprovada (atesto, medição, nota fiscal, prova de entrega, fiscal designado)? "
+                 "Houve pagamento antes da execução ou sem atesto?",
+     "base": "Lei 14.133/2021 arts. 117, 140; Lei 4.320/1964 art. 63",
+     "fontes": ("lex_execucao", "p360_achados", "siafe_ob")},
+    {"nome": "fornecedor",
+     "pergunta": "O fornecedor tem capacidade operacional? Há sinal de fachada, CNAE incompatível com o objeto, "
+                 "porte ME/EPP incompatível com o valor, situação cadastral irregular na data, sanção vigente?",
+     "base": "Lei 14.133/2021 arts. 14, 62-70, 156; LC 123/2006 arts. 3º e 48",
+     "fontes": ("pericia_fornecedor", "sancoes_siga", "lista_suja")},
+    {"nome": "compliance_integridade",
+     "pergunta": "Há conflito de interesse, vínculo entre servidor e sócio, parentesco, rodízio ou concentração "
+                 "de contratos no mesmo grupo?",
+     "base": "Lei 14.133/2021 arts. 7º, 9º, 14 IV; Lei 12.813/2013; Súmula Vinculante 13",
+     "fontes": ("conflito_socio_agente", "pericia_fornecedor")},
+    {"nome": "anticorrupcao",
+     "pergunta": "Há indício de direcionamento, conluio/propostas gêmeas, fracionamento, emergência fabricada, "
+                 "convite de fachada ou jogo de planilha?",
+     "base": "Lei 12.846/2013 art. 5º IV; Lei 14.133/2021 arts. 75 §1º, 155, 337-F do Código Penal",
+     "fontes": ("indicadores_fraude", "p360_achados", "rapp")},
+    {"nome": "controle_interno_externo",
+     "pergunta": "Há no processo achados da CGE, do TCE ou da auditoria interna, sindicância, ou recomendações "
+                 "não atendidas?",
+     "base": "CF arts. 70-71 e 74; Lei 14.133/2021 art. 169; LC estadual 63/1990",
+     "fontes": ("p360_acatamento", "p360_achados")},
+)
+NOMES_EIXOS: tuple[str, ...] = tuple(e["nome"] for e in EIXOS)
+
+_FALHAS_DB = (sqlite3.Error, OSError)
+
+
+def _agora() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _dig(s) -> str:
+    return re.sub(r"\D", "", str(s or ""))
+
+
+def _brl(v: float) -> str:
+    return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _json_curto(obj, teto: int = TETO_EVIDENCIA) -> str:
+    t = json.dumps(obj, ensure_ascii=False, default=str)
+    return t if len(t) <= teto else t[:teto] + " …[cortado no teto]"
+
+
+# ── entrada determinística ────────────────────────────────────────────────────────────────────────────
+def _resumo_360(p: dict) -> dict:
+    achados = [{k: (str(a.get(k))[:300] if a.get(k) is not None else None)
+                for k in ("origem", "codigo", "grau", "gravidade", "diz", "evidencia", "apoio") if a.get(k)}
+               for a in (p.get("achados") or [])[:40] if isinstance(a, dict)]
+    return {"achados": achados, "lacunas": {"processo": p.get("lacunas_processo"), "captura": p.get("lacunas_captura")},
+            "acatamento": p.get("acatamento"), "cadeia": p.get("cadeia")}
+
+
+def _ro() -> sqlite3.Connection:
+    return sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
+
+
+def coletar_evidencias(*, numero: str, cnpj: str | None, texto: str, integra: bool) -> dict:
+    """Evidências que a casa JÁ calcula, por fonte. Fonte que falhar vira {"indisponivel": motivo} — nunca 0."""
+    ev: dict = {}
+
+    def _tenta(nome, fn):
+        try:
+            ev[nome] = fn()
+        except (ImportError, AttributeError, KeyError, TypeError, ValueError, sqlite3.Error, OSError) as e:
+            ev[nome] = {"indisponivel": f"{type(e).__name__}: {str(e)[:80]}"}
+
+    def _rapp():
+        from compliance_agent import lex_redflags
+        return lex_redflags.avaliar_rapp(texto, cnpj_contratada=cnpj, texto_integral=integra)
+    _tenta("rapp", _rapp)
+
+    def _fraude():
+        from compliance_agent import lex_indicadores_fraude as F
+        rfs = ev.get("rapp") if isinstance(ev.get("rapp"), list) else []
+        t = F.triagem(F.sinais_do_contexto({}, {"achados": rfs}))
+        return {k: t.get(k) for k in ("n_indicadores", "faixa", "tipologias", "nota")} | {
+            "indicadores": [i.get("id") or i.get("nome") for i in t.get("indicadores") or []]}
+    _tenta("indicadores_fraude", _fraude)
+
+    def _linha(sql, args, cols):
+        con = _ro()
+        try:
+            r = con.execute(sql, args).fetchone()
+        finally:
+            con.close()
+        return dict(zip(cols, r)) if r else {"consta": False}
+
+    _tenta("lex_execucao", lambda: _linha(
+        "SELECT execucao_comprovada, coerencia, nota_risco, indicios, resumo, modelo FROM lex_execucao "
+        "WHERE numero_sei=?", (numero,), ("execucao_comprovada", "coerencia", "nota_risco", "indicios", "resumo",
+                                          "modelo")))
+    _tenta("sei_ficha", lambda: {"aviso": "extraído por modelo, não conferido — use só como pista"} | _linha(
+        "SELECT objeto, modalidade, fundamento_legal FROM sei_ficha WHERE numero_sei=?", (numero,),
+        ("objeto", "modalidade", "fundamento_legal")))
+    if cnpj and len(_dig(cnpj)) == 14:
+        c = _dig(cnpj)
+        _tenta("pericia_fornecedor", lambda: _linha(
+            "SELECT grau, score, resumo, n_confirmados, n_indicios, atualizado_em FROM pericia_fornecedor "
+            "WHERE cnpj=? ORDER BY atualizado_em DESC", (c,),
+            ("grau", "score", "resumo", "n_confirmados", "n_indicios", "atualizado_em")))
+
+        def _conflito():
+            from compliance_agent import lex_conflito as L
+            a = L.achado_socio_agente(L.socios_agentes_publicos(c))
+            return a or {"consta": False}
+        _tenta("conflito_socio_agente", _conflito)
+
+        def _sancoes():
+            from compliance_agent import lex_conflito as L
+            return L.sancoes_siga(c) or {"consta": False}
+        _tenta("sancoes_siga", _sancoes)
+
+        def _suja():
+            from compliance_agent import lex_conflito as L
+            return L.lista_suja(c) or {"consta": False}
+        _tenta("lista_suja", _suja)
+    else:
+        for k in ("pericia_fornecedor", "conflito_socio_agente", "sancoes_siga", "lista_suja"):
+            ev[k] = {"indisponivel": "CNPJ do vencedor não identificado no processo"}
+    return ev
+
+
+def _texto_por_valor(pasta: Path, teto: int) -> tuple[str, dict]:
+    from compliance_agent.sei import acervo_texto
+    from compliance_agent.sei.classificador_doc import ordenar_para_leitura
+    try:
+        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        man = {}
+    docs = [d for d in (man.get("docs") or []) if isinstance(d, dict) and d.get("texto")]
+    partes, total, lidos, fora = [], 0, 0, []
+    for d in ordenar_para_leitura(docs):
+        t = acervo_texto.ler(pasta, d).strip()
+        if len(t) < 40:
+            continue
+        titulo = str(d.get("titulo") or "").strip() or "(sem título)"
+        if total >= teto:
+            fora.append(titulo)
+            continue
+        t = t[: min(TETO_DOC, teto - total)]
+        partes.append(f"--- DOCUMENTO: {titulo} ---\n{t}")
+        total += len(t)
+        lidos += 1
+    return "\n\n".join(partes), {"docs_com_texto": len(docs), "docs_lidos": lidos, "docs_fora_do_teto": len(fora),
+                                 "titulos_fora_do_teto": fora[:30], "chars": total}
+
+
+def _pago(numero: str, obs: dict | None) -> dict | None:
+    from tools.lex_execucao import _chave_processo, mapa_obs_siafe
+    if obs is None:
+        con = _ro()
+        try:
+            obs = mapa_obs_siafe(con, [numero])
+        finally:
+            con.close()
+    return obs.get(_chave_processo(numero) or "")
+
+
+def _bloco_ob(ob: dict | None) -> str:
+    if not ob:
+        return ("PAGAMENTO (SIAFE): nenhuma OB contabilizada localizada pelo nº deste processo — INDISPONÍVEL "
+                "(pode estar sob outra numeração); não é prova de ausência de pagamento.")
+    ds = sorted((x for x in ob.get("datas") or [] if x), key=lambda s: s[6:10] + s[3:5] + s[0:2])
+    per = f", emitidas de {ds[0]} a {ds[-1]}" if ds else ""
+    return (f"PAGAMENTO (SIAFE, fonte oficial da OB): {ob['n']} OB(s) contabilizada(s), total {_brl(ob['total'])}"
+            f"{per}. Só a OB é pagamento; empenho e liquidação não são.")
+
+
+def numero_da_pasta(nome: str) -> str:
+    p = nome.split("_")
+    return f"SEI-{p[0]}/{p[1]}/{p[2]}" if len(p) >= 3 else nome
+
+
+def montar_entrada(pasta: Path | str, *, avaliar: Callable | None = None, obs: dict | None = None,
+                   coletar: Callable | None = None, teto_chars: int | None = None) -> dict:
+    pasta = Path(pasta)
+    numero = numero_da_pasta(pasta.name)
+    documentos, cobertura = _texto_por_valor(pasta, teto_chars or TETO_TEXTO)
+    if not documentos.strip():
+        return {"processo": numero, "status": "SEM_TEXTO", "cobertura": cobertura}
+    if avaliar is None:
+        from compliance_agent.processo_360 import avaliar_pasta as avaliar
+    try:
+        p360 = avaliar(pasta, com_llm=False)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error) as e:
+        p360 = {"status": "INDISPONIVEL", "motivo": f"{type(e).__name__}: {str(e)[:120]}"}
+    try:
+        ob = _pago(numero, obs)
+    except _FALHAS_DB as e:
+        logger.warning("pericia_integral: SIAFE ilegível (%s)", type(e).__name__)
+        ob = None
+    cnpj = p360.get("cnpj_vencedor")
+    integra = bool((p360.get("cobertura") or {}).get("captura_integra"))
+    ev = (coletar or coletar_evidencias)(numero=numero, cnpj=cnpj, texto=documentos, integra=integra)
+    r360 = _resumo_360(p360) if p360.get("status") == "OK" else {}
+    fontes = {"p360_achados": r360.get("achados"), "p360_lacunas": r360.get("lacunas"),
+              "p360_acatamento": r360.get("acatamento"), "p360_cadeia": r360.get("cadeia"),
+              "siafe_ob": _bloco_ob(ob), **ev}
+    linhas = [f"PROCESSO: {numero}",
+              f"MODALIDADE (manifesto): {p360.get('modalidade') or 'não informada'} · natureza: "
+              f"{p360.get('natureza') or '?'} · ato principal: {p360.get('ato_principal') or '?'}",
+              f"CNPJ VENCEDOR (extraído do texto): {cnpj or 'não identificado'}",
+              f"CAPTURA ÍNTEGRA: {'sim' if integra else 'NÃO — ausência no texto não prova ausência no processo'}"
+              f" · documentos lidos {cobertura['docs_lidos']} de {cobertura['docs_com_texto']}"
+              f" ({cobertura['docs_fora_do_teto']} fora do teto de leitura)",
+              _bloco_ob(ob)]
+    if p360.get("status") != "OK":
+        linhas.append(f"AVALIAÇÃO DETERMINÍSTICA (360): INDISPONÍVEL — {p360.get('motivo', '')}")
+    linhas.append("EVIDÊNCIAS DETERMINÍSTICAS (calculadas por código; julgue sobre elas, não as recalcule):")
+    for nome, v in fontes.items():
+        if nome == "siafe_ob":
+            continue
+        linhas.append(f"[{nome}] " + (_json_curto(v) if v not in (None, [], {}) else "nada consta"))
+    return {"processo": numero, "status": "OK", "pasta": str(pasta), "bloco": "\n".join(linhas),
+            "documentos": documentos, "cobertura": cobertura, "valor_pago": round((ob or {}).get("total", 0.0), 2),
+            "cnpj": cnpj, "captura_integra": integra}
+
+
+# ── prompt ────────────────────────────────────────────────────────────────────────────────────────────
+_SISTEMA_EXTRA = (
+    " Você faz PERÍCIA INTEGRAL de um processo de contratação pública do Estado do RJ, em vários eixos, numa "
+    "única leitura. Pense com profundidade, eixo a eixo, antes de concluir. Regras: (1) só a entrada é fonte de "
+    "fatos; (2) cada achado traz a CITAÇÃO LITERAL copiada da entrada — o código confere letra a letra e descarta "
+    "achado com citação que não existe; (3) documento que não está na entrada ⇒ grau null (INDETERMINADO) e o "
+    "documento faltante vai em `lacunas`, nunca grau de irregularidade; (4) sobrepreço só com base de preço "
+    "presente na entrada; (5) Empenho ≠ Liquidação ≠ OB — pagamento é só a OB; (6) indício, não acusação."
+)
+
+
+def montar_prompt(entrada: dict) -> tuple[str, str]:
+    eixos = "\n".join(f"{i + 1}. `{e['nome']}` — {e['pergunta']} Base: {e['base']}. Evidências determinísticas "
+                      f"a consultar: {', '.join(e.get('fontes') or ()) or '—'}."
+                      for i, e in enumerate(EIXOS))
+    exemplo_eixo = ('{"grau": 0|1|2|null, "achados": [{"documento": "título do documento ou [fonte] da evidência", '
+                    '"citacao": "trecho LITERAL copiado da entrada, 20 a 200 caracteres", "descricao": "o que o trecho '
+                    'indica (até 160 caracteres)", "grau": 1|2, "fundamento": "dispositivo legal"}], '
+                    '"fundamento": "base normativa do juízo do eixo", "lacunas": ["documento que faltou para julgar"]}')
+    schema = '{"eixos": {' + ", ".join(f'"{n}": EIXO' for n in NOMES_EIXOS) + '}, "resumo": "até 3 frases"}'
+    prompt = (
+        f"PERÍCIA INTEGRAL DO PROCESSO DE CONTRATAÇÃO {entrada['processo']}\n\n"
+        f"Julgue o processo em CADA um dos {len(EIXOS)} eixos abaixo:\n{eixos}\n\n"
+        "Escala do grau: 0 = sem sinal; 1 = atenção (indício a diligenciar); 2 = grave (indício forte, com prova "
+        "citada); null = INDETERMINADO (falta documento para julgar). Grau 1 ou 2 exige ao menos um achado com "
+        "citação literal. No máximo 3 achados por eixo, os mais fortes.\n\n"
+        f"{_MARCA_INI}\n{entrada['bloco']}\n\nDOCUMENTOS DO PROCESSO (ordenados por valor fiscalizatório):\n"
+        f"{entrada['documentos']}\n{_MARCA_FIM}\n\n"
+        f"Responda SOMENTE com este JSON, com TODOS os eixos: {schema}\nonde cada EIXO é {exemplo_eixo}"
+    )
+    return claude_motor.SISTEMA_PADRAO + _SISTEMA_EXTRA, prompt
+
+
+def _fonte_do_prompt(prompt: str) -> str:
+    """O trecho do prompt que é ENTRADA (dados + documentos) — a única fonte contra a qual se confere citação."""
+    i = (prompt or "").find(_MARCA_INI)
+    j = (prompt or "").rfind(_MARCA_FIM)
+    if i < 0 or j < 0 or j <= i:
+        return ""
+    return prompt[i + len(_MARCA_INI):j]
+
+
+# ── interpretação + verificação literal ───────────────────────────────────────────────────────────────
+def _grau(v) -> int | None:
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)) and int(v) == v and 0 <= v <= 2:
+        return int(v)
+    if isinstance(v, str) and v.strip() in ("0", "1", "2"):
+        return int(v.strip())
+    return None
+
+
+def conferir_eixo(bruto, fonte: str) -> dict:
+    """Confere as citações do eixo contra a fonte. Achado sem citação literal cai; 🟡/🔴 sem achado = null."""
+    if not isinstance(bruto, dict):
+        return {"grau": None, "achados": [], "fundamento": "", "descartados": [],
+                "lacunas": ["eixo não respondido pelo modelo"]}
+    g = _grau(bruto.get("grau"))
+    ok, fora = [], []
+    for a in bruto.get("achados") or []:
+        if not isinstance(a, dict):
+            continue
+        cit = str(a.get("citacao") or "")
+        if citacao_existe(cit, fonte):
+            ok.append({"documento": str(a.get("documento") or "")[:200], "citacao": cit[:400],
+                       "descricao": str(a.get("descricao") or "")[:300], "grau": _grau(a.get("grau")),
+                       "fundamento": str(a.get("fundamento") or "")[:200]})
+        else:
+            fora.append({"citacao": cit[:300], "descricao": str(a.get("descricao") or "")[:200],
+                         "motivo": "citação não encontrada literalmente na entrada"})
+    lacunas = [str(x)[:200] for x in (bruto.get("lacunas") or []) if x][:10]
+    nota = None
+    if g in (1, 2):
+        graus = [a["grau"] if a["grau"] in (1, 2) else g for a in ok]
+        if not graus:
+            nota = f"grau {g} declarado sem achado com citação conferida — INDETERMINADO"
+            g = None
+        else:
+            g = min(g, max(graus))
+    out = {"grau": g, "achados": ok, "fundamento": str(bruto.get("fundamento") or "")[:400], "lacunas": lacunas,
+           "descartados": fora}
+    if nota:
+        out["nota_verificacao"] = nota
+    return out
+
+
+def interpretar(texto: str, fonte: str) -> dict | None:
+    """{eixo: conferido} para TODOS os eixos de `EIXOS`; None se a resposta não tem o JSON pedido."""
+    from compliance_agent.llm.json_resposta import parse_json_llm
+    d = parse_json_llm(texto or "")
+    if not isinstance(d, dict) or not isinstance(d.get("eixos"), dict):
+        return None
+    eixos = {n: conferir_eixo(d["eixos"].get(n), fonte) for n in NOMES_EIXOS}
+    eixos["_global"] = {"resumo": str(d.get("resumo") or "")[:800]}
+    return eixos
+
+
+def grau_global(eixos: dict) -> int | None:
+    gs = [eixos[n]["grau"] for n in NOMES_EIXOS if eixos.get(n, {}).get("grau") is not None]
+    return max(gs) if gs else None
+
+
+# ── cruzamento por eixo ───────────────────────────────────────────────────────────────────────────────
+def _veredito_eixo(e: dict) -> str:
+    g = e.get("grau")
+    v = f"grau {g if g is not None else 'indeterminado'}"
+    if e.get("achados"):
+        v += ": " + e["achados"][0]["descricao"][:60]
+    return v
+
+
+def cruzar_eixos(processo: str, eixos_ref: dict, modelo_ref: str, eixos_outro: dict, modelo_outro: str,
+                 resumo: str = "") -> int:
+    """Um par por eixo (`pericia_integral:<eixo>`): referência (Claude/Opus) × outro modelo. Devolve quantos gravou."""
+    n = 0
+    for nome in NOMES_EIXOS:
+        a, b = eixos_ref.get(nome) or {}, eixos_outro.get(nome) or {}
+        try:
+            cruzamento.cruzar(f"{TAREFA}:{nome}", f"sei:{processo}",
+                              cruzamento.Lado("claude", modelo_ref, _veredito_eixo(a), a.get("grau")),
+                              cruzamento.Lado("cascata", modelo_outro, _veredito_eixo(b), b.get("grau")),
+                              entrada_resumo=f"{resumo}\nEIXO {nome}: {dict((e['nome'], e['pergunta']) for e in EIXOS)[nome]}")
+            n += 1
+        except _FALHAS_DB + (ValueError,) as e:
+            logger.warning("pericia_integral: cruzamento do eixo %s não gravado (%s)", nome, type(e).__name__)
+    return n
+
+
+# ── persistência ──────────────────────────────────────────────────────────────────────────────────────
+_DDL = """
+CREATE TABLE IF NOT EXISTS pericia_integral(
+  id INTEGER PRIMARY KEY, rodada TEXT NOT NULL, processo TEXT NOT NULL, eixo TEXT NOT NULL, grau INTEGER,
+  achados TEXT, modelo TEXT, provedor TEXT, versao_prompt TEXT, conferido_opus INTEGER DEFAULT 0,
+  valor_pago REAL, criado_em TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_pericia_integral_proc ON pericia_integral(processo, versao_prompt);
+CREATE INDEX IF NOT EXISTS ix_pericia_integral_rodada ON pericia_integral(rodada);
+"""
+
+
+def _garantir_tabela(con: sqlite3.Connection) -> None:
+    con.executescript(_DDL)
+
+
+def _con_escrita() -> sqlite3.Connection:
+    con = sqlite3.connect(DB, timeout=120)
+    con.execute("PRAGMA busy_timeout=120000")
+    return con
+
+
+def gravar(processo: str, eixos: dict, *, modelo: str, provedor: str, conferido_opus: int, valor_pago: float | None,
+           extra_global: dict | None = None, con: sqlite3.Connection | None = None) -> str:
+    """Acrescenta UMA rodada (linha por eixo + `_global`) num commit curto. Nunca sobrescreve."""
+    rodada = uuid.uuid4().hex[:16]
+    em = _agora()
+    proprio = con is None
+    con = con or _con_escrita()
+    try:
+        _garantir_tabela(con)
+        linhas = [(rodada, processo, n, eixos[n]["grau"], json.dumps(eixos[n], ensure_ascii=False), modelo, provedor,
+                   VERSAO_PROMPT, conferido_opus, valor_pago, em) for n in NOMES_EIXOS]
+        glob = {**(eixos.get("_global") or {}), **(extra_global or {}),
+                "descartados": sum(len(eixos[n]["descartados"]) for n in NOMES_EIXOS)}
+        linhas.append((rodada, processo, "_global", grau_global(eixos), json.dumps(glob, ensure_ascii=False, default=str),
+                       modelo, provedor, VERSAO_PROMPT, conferido_opus, valor_pago, em))
+        con.executemany("INSERT INTO pericia_integral(rodada,processo,eixo,grau,achados,modelo,provedor,versao_prompt,"
+                        "conferido_opus,valor_pago,criado_em) VALUES(?,?,?,?,?,?,?,?,?,?,?)", linhas)
+        con.commit()
+        return rodada
+    finally:
+        if proprio:
+            con.close()
+
+
+# ── a cascata desta tarefa: Gemini com teto de saída próprio, depois a cascata padrão ─────────────────────
+def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASCATA,
+                   json_saida: bool = True) -> tuple[str, str]:
+    import asyncio
+
+    from compliance_agent import direcionamento_cerebro as dc
+    from compliance_agent.llm.free_llm import _em_cooldown, _limpar_cooldown, _marcar_cooldown
+    try:
+        if dc._gemini_keys() and not _em_cooldown("gemini"):
+            msgs = [{"role": "system", "content": sistema}, {"role": "user", "content": prompt}]
+            fut = asyncio.run_coroutine_threadsafe(
+                dc.gerar_gemini(msgs, max_tokens=MAX_TOKENS_SAIDA, json_saida=json_saida), dc._bg_loop())
+            txt = fut.result(timeout=timeout)
+            if txt and txt.strip():
+                _limpar_cooldown("gemini")
+                return txt, f"gemini:{getattr(dc, 'ultimo_modelo', '') or '?'}"
+    except (RuntimeError, OSError, ValueError, TypeError, KeyError) as e:   # TimeoutError é OSError
+        _marcar_cooldown("gemini", e)
+        logger.warning("pericia_integral: Gemini de saída longa falhou (%s: %s) — cascata padrão",
+                       type(e).__name__, str(e)[:120])
+    txt = dc.gerar_sync(prompt, sistema, timeout, json_saida)
+    return txt, comotor._modelo_da_cascata()
+
+
+# ── uma perícia ───────────────────────────────────────────────────────────────────────────────────────
+def periciar(pasta: Path | str, *, pensar: Callable | None = None, cascata: Callable | None = None,
+             avaliar: Callable | None = None, coletar: Callable | None = None, obs: dict | None = None,
+             teto_chars: int | None = None) -> dict:
+    entrada = montar_entrada(pasta, avaliar=avaliar, obs=obs, coletar=coletar, teto_chars=teto_chars)
+    proc = entrada["processo"]
+    if entrada["status"] != "OK":
+        return {"processo": proc, "status": entrada["status"]}
+    sistema, prompt = montar_prompt(entrada)
+    fonte = _fonte_do_prompt(prompt)
+    cap: dict = {}
+    _pensar = pensar or claude_motor.pensar
+
+    def _p(t, p, **kw):
+        kw["backend"] = "cli"                       # só a ASSINATURA: nunca a API paga da Anthropic
+        r = _pensar(t, p, **kw)
+        cap["claude"] = r
+        return r
+
+    def _c(p, s, timeout, json_saida):
+        try:
+            if cascata is not None:
+                txt, rot = cascata(p, s, timeout, json_saida), "cascata"
+            else:
+                txt, rot = _cascata_longa(p, s, timeout, json_saida)
+        except (RuntimeError, OSError, ValueError) as e:     # o co-motor só repassa o TIPO; a mensagem fica aqui
+            logger.warning("pericia_integral: cascata falhou em %s (%s: %s)", proc, type(e).__name__, str(e)[:200])
+            raise
+        cap["cascata"], cap["modelo_cascata"] = txt, rot
+        return txt
+
+    # sorteio=1.0 desliga o few-shot GLOBAL do co-motor nesta tarefa: o "resumo" dele seriam os 600 primeiros
+    # caracteres do prompt — só instruções, iguais em todo processo. Os exemplos úteis são os POR EIXO
+    # (`pericia_integral:<eixo>` no cruzamento); ligá-los no prompt da cascata é passo seguinte, com A/B.
+    gerar = comotor.juizo(TAREFA, modelo=claude_motor.MODELO_JUIZO, pensar=_p, cascata=_c, sorteio=lambda: 1.0,
+                          espera=ESPERA_TRAVA, timeout_claude=TIMEOUT_CLAUDE)
+    try:
+        txt = gerar(prompt, sistema, TIMEOUT_CASCATA, item=f"sei:{proc}")
+    except RuntimeError as e:
+        return {"processo": proc, "status": "SEM_MOTOR", "motivo": str(e)[:200]}
+    u = comotor.ultima_chamada()
+    exibido = u.get("exibido") or "desconhecido"
+    eixos = interpretar(txt, fonte)
+    if eixos is None:
+        return {"processo": proc, "status": "RESPOSTA_INVALIDA", "motor": exibido}
+    do_claude = exibido.startswith("claude:")
+    resumo = f"Processo {proc} · pago {_brl(entrada['valor_pago'])} · captura íntegra: {entrada['captura_integra']}"
+    cruzados = 0
+    r_c, t_o = cap.get("claude"), cap.get("cascata")
+    if r_c is not None and t_o:
+        eixos_o = interpretar(t_o, fonte)
+        if eixos_o is not None:
+            cruzados = cruzar_eixos(proc, eixos, f"{r_c.modelo}", eixos_o, cap.get("modelo_cascata") or "cascata",
+                                    resumo)
+    provedor = "claude" if do_claude else (cap.get("modelo_cascata") or exibido).split(":", 1)[0]
+    try:
+        rodada = gravar(proc, eixos, modelo=exibido if do_claude else (cap.get("modelo_cascata") or exibido),
+                        provedor=provedor, conferido_opus=1 if do_claude else 0, valor_pago=entrada["valor_pago"],
+                        extra_global={"cobertura": entrada["cobertura"], "captura_integra": entrada["captura_integra"]})
+    except _FALHAS_DB as e:
+        return {"processo": proc, "status": "NAO_GRAVADO", "motivo": f"{type(e).__name__}: {str(e)[:120]}"}
+    return {"processo": proc, "status": "OK", "rodada": rodada, "motor": exibido, "grau_global": grau_global(eixos),
+            "graus": {n: eixos[n]["grau"] for n in NOMES_EIXOS}, "cruzados": cruzados,
+            "descartados": sum(len(eixos[n]["descartados"]) for n in NOMES_EIXOS),
+            "conferencia_pendente": bool(u.get("conferencia_pendente"))}
+
+
+# ── fila ──────────────────────────────────────────────────────────────────────────────────────────────
+def _bytes_texto(pasta: Path) -> int:
+    t = pasta / "texto"
+    return sum(f.stat().st_size for f in t.glob("*.txt")) if t.is_dir() else 0
+
+
+def _ja_periciados(con: sqlite3.Connection) -> set[str]:
+    try:
+        return {_dig(r[0]) for r in con.execute("SELECT DISTINCT processo FROM pericia_integral WHERE versao_prompt=?",
+                                                (VERSAO_PROMPT,))}
+    except sqlite3.OperationalError:
+        return set()                                   # tabela ainda não existe: ninguém periciado
+
+
+# Natureza (`tools.sei_triagem_pericia.natureza`, a mesma do 360): processo financeiro (empenho→liquidação→OB),
+# repasse e compra cancelada não são PROCESSO DE CONTRATAÇÃO — a contratação mora no processo-pai. Sem este
+# corte, o 1º da fila em 15/11/2026 era um processo de pagamento de R$ 8 bi com 99 peças de NE/NL/OB.
+# `indefinido` entra: sem sinal no título não se presume que não é contratação.
+NATUREZAS_CONTRATACAO = ("contratacao", "aditivo", "indefinido")
+
+
+def _elegivel(pasta: Path, naturezas: tuple[str, ...] | None) -> tuple[bool, str]:
+    """(íntegra capturada E natureza de contratação?, natureza)."""
+    from compliance_agent.sei import manifesto_norm
+    try:
+        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, "?"
+    man["_pasta"] = str(pasta)
+    if not manifesto_norm.captura_integra(man, pasta)[0]:
+        return False, "?"
+    if naturezas is None:
+        return True, "?"
+    from tools.sei_triagem_pericia import natureza
+    norm = manifesto_norm.normalizar(man)
+    nat = natureza(norm, norm["docs"])
+    return nat in naturezas, nat
+
+
+def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO) -> list[dict]:
+    """Processos do acervo com íntegra capturada, de natureza de contratação e sem perícia na versão atual do
+    prompt, por VALOR PAGO (OB contabilizada no SIAFE) decrescente. `naturezas=None` não filtra a natureza."""
+    from tools.lex_execucao import _chave_processo, mapa_obs_siafe
+    con = _ro()
+    try:
+        feitos = _ja_periciados(con)
+        cands = []
+        for p in (ACERVO.iterdir() if ACERVO.is_dir() else ()):
+            if not p.is_dir():
+                continue
+            numero = numero_da_pasta(p.name)
+            if _dig(numero) in feitos:
+                continue
+            tam = _bytes_texto(p)
+            if tam >= MIN_TEXTO:
+                cands.append({"pasta": str(p), "numero": numero, "bytes": tam})
+        obs = mapa_obs_siafe(con, [c["numero"] for c in cands]) if cands else {}
+    finally:
+        con.close()
+    for c in cands:
+        c["ob"] = obs.get(_chave_processo(c["numero"]))
+        c["pago"] = round((c["ob"] or {}).get("total", 0.0), 2)
+    cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))
+    out = []
+    for c in cands:                                    # íntegra é cara de medir: só até encher o limite
+        if len(out) >= limite:
+            break
+        ok, nat = _elegivel(Path(c["pasta"]), naturezas)
+        if ok:
+            out.append(c | {"natureza": nat})
+    return out
+
+
+def rodar(limite: int, *, so_cascata: bool = False, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO,
+          pensar: Callable | None = None, cascata: Callable | None = None,
+          avaliar: Callable | None = None, coletar: Callable | None = None) -> list[dict]:
+    """Periciar os `limite` primeiros da fila. `so_cascata` força a contingência (JFN_CLAUDE_CONTINGENCIA=1):
+    o Claude nem é tentado e tudo vai para a fila de conferência do Opus.
+
+    Contingência real (limite de 5 h, teto do motor): `claude_motor.pensar` devolve None NA HORA pelo
+    `motivo_desligado` — sem esperar a trava, sem laço — e o processo sai pela cascata para a fila do Opus."""
+    from tools.lex_execucao import _chave_processo
+    antes = os.environ.get("JFN_CLAUDE_CONTINGENCIA")
+    if so_cascata:
+        os.environ["JFN_CLAUDE_CONTINGENCIA"] = "1"
+    try:
+        alvos = fila(limite, naturezas)
+        feitos = []
+        for a in alvos:
+            ob = a.pop("ob", None)                     # a OB já lida na fila: sem nova varredura do SIAFE
+            obs = {_chave_processo(a["numero"]): ob} if ob else {}
+            bloqueio = claude_motor.motivo_desligado(tarefa=TAREFA)
+            r = periciar(a["pasta"], pensar=pensar, cascata=cascata, avaliar=avaliar, coletar=coletar, obs=obs)
+            r["claude_bloqueado"] = bloqueio
+            feitos.append(r)
+            print(f"[{_agora()}] {a['numero']} pago {_brl(a['pago'])} → {r.get('status')} "
+                  f"grau {r.get('grau_global')} motor {r.get('motor')} cruzados {r.get('cruzados', 0)} "
+                  f"descartados {r.get('descartados', 0)}" + (f" (Claude: {bloqueio})" if bloqueio else ""))
+        return feitos
+    finally:
+        if so_cascata:
+            if antes is None:
+                os.environ.pop("JFN_CLAUDE_CONTINGENCIA", None)
+            else:
+                os.environ["JFN_CLAUDE_CONTINGENCIA"] = antes
+
+
+# ── aplicador da conferência do Opus (`llm/conferencia_opus.APLICADORES`) ───────────────────────────────
+def _entrada_da_fila(item: str) -> str | None:
+    from compliance_agent.llm import conferencia_opus
+    if not conferencia_opus.caminho().exists():
+        return None
+    con = sqlite3.connect(conferencia_opus.caminho(), timeout=30)
+    try:
+        r = con.execute("SELECT entrada FROM fila WHERE tarefa=? AND item=? AND entrada IS NOT NULL "
+                        "ORDER BY id DESC LIMIT 1", (TAREFA, item)).fetchone()
+    finally:
+        con.close()
+    return zlib.decompress(r[0]).decode("utf-8", "replace") if r and r[0] else None
+
+
+def aplicar_conferencia(item: str, resposta: str, modelo: str, concorda, con: sqlite3.Connection | None = None) -> bool:
+    """O Opus releu a MESMA entrada que a cascata periciou. Passa pela mesma verificação literal; cruza eixo a
+    eixo contra a rodada da cascata; igual em todos os eixos ⇒ a rodada vira conferida (1); diferente em algum ⇒
+    nova rodada do Opus (1) e a anterior fica como substituída (2). Sem entrada legível ou sem JSON: não aplica."""
+    if not str(item or "").startswith("sei:"):
+        return False
+    proc = item[4:]
+    try:
+        prompt = _entrada_da_fila(item)
+    except (sqlite3.Error, OSError, zlib.error) as e:
+        logger.warning("pericia_integral: entrada da fila ilegível (%s)", type(e).__name__)
+        return False
+    fonte = _fonte_do_prompt(prompt or "")
+    eixos_op = interpretar(resposta, fonte) if fonte else None
+    if eixos_op is None:
+        return False
+    proprio = con is None
+    con = con or _con_escrita()
+    try:
+        _garantir_tabela(con)
+        ult = con.execute("SELECT rodada, modelo, valor_pago FROM pericia_integral WHERE processo=? AND "
+                          "conferido_opus=0 ORDER BY id DESC LIMIT 1", (proc,)).fetchone()
+        if not ult:
+            return False
+        rodada, modelo_casc, valor = ult
+        antes = {e: (g, json.loads(a or "{}")) for e, g, a in con.execute(
+            "SELECT eixo, grau, achados FROM pericia_integral WHERE rodada=?", (rodada,))}
+        eixos_casc = {n: {"grau": antes.get(n, (None, {}))[0], **antes.get(n, (None, {}))[1]} for n in NOMES_EIXOS}
+        con.commit()
+        cruzar_eixos(proc, eixos_op, f"{modelo}", eixos_casc, modelo_casc or "cascata",
+                     f"Processo {proc} · conferência do Opus")
+        iguais = all(eixos_op[n]["grau"] == eixos_casc[n]["grau"] for n in NOMES_EIXOS)
+        if iguais:
+            con.execute("UPDATE pericia_integral SET conferido_opus=1, modelo=? WHERE rodada=?",
+                        (f"{modelo_casc} · conferido claude:{modelo}"[:200], rodada))
+            con.commit()
+            return True
+        con.execute("UPDATE pericia_integral SET conferido_opus=2 WHERE rodada=?", (rodada,))
+        gravar(proc, eixos_op, modelo=f"claude:{modelo} (conferência; antes {modelo_casc})"[:200], provedor="claude",
+               conferido_opus=1, valor_pago=valor, con=con)            # o commit do gravar fecha as duas mudanças
+        return True
+    finally:
+        if proprio:
+            con.close()
+
+
+# ── status ────────────────────────────────────────────────────────────────────────────────────────────
+def status() -> dict:
+    try:
+        con = _ro()
+    except sqlite3.Error as e:
+        return {"disponivel": False, "motivo": str(e)}
+    try:
+        try:
+            ult = ("SELECT p.* FROM pericia_integral p JOIN (SELECT processo, MAX(id) mid FROM pericia_integral "
+                   "WHERE eixo='_global' AND conferido_opus IN (0,1) GROUP BY processo) u ON u.processo=p.processo "
+                   "AND p.rodada=(SELECT rodada FROM pericia_integral WHERE id=u.mid)")
+            proc = con.execute(f"SELECT COUNT(DISTINCT processo), SUM(conferido_opus=0 AND eixo='_global') "
+                               f"FROM ({ult})").fetchone()
+            por_eixo = {}
+            for eixo, grau, n in con.execute(f"SELECT eixo, grau, COUNT(*) FROM ({ult}) GROUP BY eixo, grau"):
+                por_eixo.setdefault(eixo, {})[{None: "indeterminado", 0: "0", 1: "1", 2: "2"}.get(grau, str(grau))] = n
+            versoes = dict(con.execute("SELECT versao_prompt, COUNT(DISTINCT processo) FROM pericia_integral "
+                                       "GROUP BY versao_prompt").fetchall())
+        except sqlite3.OperationalError:
+            return {"disponivel": True, "processos": 0, "motivo": "nenhuma perícia integral ainda"}
+    finally:
+        con.close()
+    return {"disponivel": True, "versao_prompt": VERSAO_PROMPT, "processos": proc[0],
+            "pendentes_conferencia_opus": proc[1] or 0, "por_eixo": por_eixo, "por_versao": versoes,
+            "claude": claude_motor.motivo_desligado(tarefa=TAREFA) or "disponível"}
+
+
+def _main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="Perícia integral por processo de contratação (Claude co-motor)")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("rodar", help="periciar os N primeiros da fila (por valor pago)")
+    r.add_argument("--limite", type=int, default=1)
+    r.add_argument("--so-cascata", action="store_true", help="força contingência: cascata + fila do Opus")
+    r.add_argument("--todas-naturezas", action="store_true", help="inclui processos de pagamento/repasse")
+    sub.add_parser("status")
+    sub.add_parser("fila").add_argument("--limite", type=int, default=20)
+    a = ap.parse_args(argv)
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    if a.cmd == "rodar":
+        feitos = rodar(a.limite, so_cascata=a.so_cascata,
+                       naturezas=None if a.todas_naturezas else NATUREZAS_CONTRATACAO)
+        print(json.dumps(feitos, ensure_ascii=False, indent=1, default=str))
+    elif a.cmd == "fila":
+        print(json.dumps([{k: v for k, v in c.items() if k != "ob"} for c in fila(a.limite)], ensure_ascii=False,
+                         indent=1))
+    else:
+        print(json.dumps(status(), ensure_ascii=False, indent=1, default=str))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())

@@ -58,14 +58,14 @@ MODELO_JUIZO = "claude-opus-5-5"
 # a sessão nunca usa chave de API: só a assinatura
 VARIAVEIS_PROIBIDAS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
-TETO_CHAMADAS_DIA = 320       # 14/11/2026: dono "pode aumentar a triagem do opus" (era 120)
+TETO_CHAMADAS_DIA = 600       # 15/11/2026: dono "pode rodar o claude nas perícias de dia também" (era 320; 120 antes de 14/11)
 TETO_SEGUNDOS_DIA = 14400     # era 7200
 TETO_TAREFA_PADRAO = 10
 # Por tarefa (chamadas/dia). Soma > total de propósito: o total é quem trava; a tarefa só impede que uma
 # fila sozinha coma o dia. Ver o relatório de 13/11/2026 para a conta.
 TETOS_TAREFA = {
     "canario": 3,
-    "pericia_execucao": 30,
+    "pericia_execucao": 100,     # 30→100 em 15/11/2026: dono "pode rodar o claude nas perícias de dia também"
     "pericia_fornecedor": 15,
     "parecer_juridico": 10,
     "triagem_alertas": 40,
@@ -74,6 +74,7 @@ TETOS_TAREFA = {
     "verificacao_opus": 200,     # todo 🔴/🟡 da triagem relido pelo Opus; 30→200 em 14/11/2026 a pedido do dono
     "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
     "conferencia_opus": 60,      # Opus relê o que os outros modelos produziram em contingência (llm/conferencia_opus)
+    "pericia_integral": 200,     # 15/11/2026: perícia integral por processo (Opus, todos os eixos numa chamada)
 }
 
 SISTEMA_PADRAO = (

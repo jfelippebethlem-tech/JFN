@@ -119,7 +119,22 @@ def norm_triagem(txt):
     return (p or None), nivel, conf
 
 
+def norm_pericia_integral(txt):
+    """Perícia integral (`compliance_agent.pericia_integral`): grau global = MÁXIMO dos eixos determinados
+    (null = INDETERMINADO fica fora; todos null ⇒ nível None). Genérico nos nomes dos eixos."""
+    e = _json(txt).get("eixos")
+    if not isinstance(e, dict) or not e:
+        return None, None, None
+    graus = {k: (v.get("grau") if isinstance(v, dict) and v.get("grau") in (0, 1, 2)
+                 and not isinstance(v.get("grau"), bool) else None) for k, v in e.items()}
+    det = [g for g in graus.values() if g is not None]
+    if not det:
+        return "indeterminado", None, None
+    return " ".join(f"{k[:4]}{'?' if g is None else g}" for k, g in graus.items())[:80], max(det), None
+
+
 NORMALIZADORES: dict[str, Callable] = {
+    "pericia_integral": norm_pericia_integral,
     "pericia_execucao": norm_execucao,
     "pericia_fornecedor": norm_fachada,
     "investigacao_risco": norm_risco,

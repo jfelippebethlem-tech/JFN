@@ -40,7 +40,8 @@ _REPO = Path(__file__).resolve().parents[2]
 TAREFA = "conferencia_opus"
 MAX_TENTATIVAS = 3
 # tarefa → "modulo:funcao(item, dados_opus, modelo_opus, concorda) -> bool" que regrava o registro do consumidor
-APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia"}
+APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
+               "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia"}
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS fila(
