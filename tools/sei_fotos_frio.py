@@ -26,6 +26,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 from compliance_agent import foto_medicao as FM  # noqa: E402
+from PIL import Image  # noqa: E402
 
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 INDICE = RAIZ / "data" / "sei_arquivo_frio.jsonl"
@@ -49,7 +50,7 @@ def nao_informativas(pasta: Path) -> list[Path]:
         try:
             if not FM._triar_e_hashear(f):
                 out.append(f)
-        except Exception as e:  # noqa: BLE001 — imagem que não abre fica onde está
+        except (OSError, ValueError, Image.DecompressionBombError) as e:  # imagem que não abre fica onde está
             print(f"  {f}: não li ({type(e).__name__}) — fica", flush=True)
     return out
 
