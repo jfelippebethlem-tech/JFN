@@ -211,3 +211,14 @@ def test_navegador_fixo_da_sessao_porta_janela_e_sem_estrangulamento(tmp_path):
     assert pos(c1) != pos(c2)
     tam = next(a for a in c1 if a.startswith("--window-size=")).split("=")[1].split(",")
     assert int(tam[0]) <= 800 and int(tam[1]) <= 600
+
+
+def test_navegador_fixo_oculto_por_padrao_com_ua_de_desktop(tmp_path, monkeypatch):
+    """Dono, 15/11/2026 21h: "a janela do SEI continua interferindo no meu uso… tente uma sessão headless"."""
+    monkeypatch.delenv("ITCAMPO_NAVEGADOR_VISIVEL", raising=False)
+    c = P.comando_navegador(tmp_path / "s1", "integras", 1, "/x/chrome")
+    assert "--headless=new" in c
+    ua = next(a for a in c if a.startswith("--user-agent="))
+    assert "Headless" not in ua and "Chrome/" in ua
+    monkeypatch.setenv("ITCAMPO_NAVEGADOR_VISIVEL", "1")
+    assert "--headless=new" not in P.comando_navegador(tmp_path / "s1", "integras", 1, "/x/chrome")

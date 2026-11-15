@@ -528,6 +528,8 @@ def _linhas(log: Path, desde: int) -> list[str]:
 # nele por CDP (SEI_CDP_URL), usa uma aba e fecha só a aba. Minimizado continua trabalhando (sem estrangulamento).
 _PORTA_BASE = {"integras": 9300, "varredura": 9400}
 JANELA_L, JANELA_A = 640, 480
+UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/124.0.0.0 Safari/537.36")
 
 
 def porta_cdp(modo: str, k: int) -> int:
@@ -542,6 +544,11 @@ def comando_navegador(s: Path, modo: str, k: int, exe: str) -> list[str]:
             "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
             "--disable-backgrounding-occluded-windows",
             f"--window-size={JANELA_L},{JANELA_A}", f"--window-position={60 + 28 * i},{60 + 28 * i}",
+            *([] if os.environ.get("ITCAMPO_NAVEGADOR_VISIVEL") == "1" else
+              # dono, 15/11/2026 21h: "a janela do SEI continua interferindo no meu uso… tente uma sessão headless".
+              # Oculto, mas com a identidade de um Chrome de desktop: o UA padrão do modo oculto ("HeadlessChrome")
+              # foi o que o SEI recusou nos ensaios de 15/11.
+              ["--headless=new", f"--user-agent={UA_DESKTOP}"]),
             "about:blank"]
 
 
@@ -605,10 +612,11 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     # da reserva: o processo gigante termina dentro dela, na mesma sessão (outra árvore recomeçaria do zero)
     os.environ.setdefault("INTEGRA_TETO_ARQUIVAR_S", "3600")       # ver sei_integra_fila.TETO_ARQUIVAR_S
     os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "10800")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
-    # NAVEGADOR VISÍVEL, SEMPRE (dono, 15/11/2026: "não use headless pra isso nunca"). Em 14/11 eu tinha ido para headless
-    # porque com janela o PDF escaneado abria no visualizador (450 s/doc); a causa foi tratada na raiz: o anexo carregado
-    # como página é cortado (`sei_reader.sem_visualizador_pdf`) e o conteúdo vem por request à parte.
-    os.environ["SEI_HEADED"] = "1"
+    # Dono, 15/11/2026: às 19h "não use headless pra isso nunca"; às 21h, com as janelas atrapalhando o uso do notebook,
+    # "tente uma sessão headless ou algum jeito de não interferir comigo". A captura usa o navegador FIXO da sessão
+    # (oculto, UA de desktop — `comando_navegador`); SEI_HEADED=1 vale só para o lançamento de reserva, se o fixo não
+    # subir, e ITCAMPO_NAVEGADOR_VISIVEL=1 volta as janelas.
+    os.environ["SEI_HEADED"] = os.environ.get("ITCAMPO_NAVEGADOR_VISIVEL", "0")
     meu = _head(BASE)
     preparar_worktree(k, meu, modo)
     (s / "data" / "itcampo_sessao.pid").write_text(str(os.getpid()))
