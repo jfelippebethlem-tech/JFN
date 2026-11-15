@@ -204,6 +204,7 @@ with sync_playwright() as p:
         # METADADOS do panorama (15/11/2026): o link "View on Google Maps" traz a posição EXATA e o id do
         # panorama (!1s<id>!2e0 = Google; !2e10 + link /contrib = foto de USUÁRIO, pode ser interior).
         import json, re as _re
+        from playwright.sync_api import Error as PWError
         meta = {}
         try:
             fr = [f for f in pg.frames if "/maps/embed" in f.url]
@@ -218,7 +219,7 @@ with sync_playwright() as p:
                         break
                 meta["contrib"] = any("/maps/contrib/" in h for h in hrefs)
                 meta["titulo"] = (txt.split("\n")[0] if txt else "").strip()[:120]
-        except Exception as e:  # noqa: BLE001
+        except (PWError, ValueError, KeyError, TypeError) as e:
             meta["erro"] = str(e)[:80]
         print("META" + json.dumps(meta, ensure_ascii=False), flush=True)
     finally:
