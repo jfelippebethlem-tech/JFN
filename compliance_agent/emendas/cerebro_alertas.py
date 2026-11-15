@@ -26,13 +26,17 @@ TIPOS = ("emendas_d2_concentracao_autor", "emendas_d6_empenho_sem_pagamento")
 ROTULO = {"emendas_d2_concentracao_autor": "concentração de emendas autor→destino",
           "emendas_d6_empenho_sem_pagamento": "empenho de emenda sem pagamento"}
 FONTE_PADRAO = "API Portal da Transparência, /emendas"
-RESSALVA = ("Indício não é acusação: o detector aponta padrão a conferir, com presunção de regularidade; "
-            "a confirmação é ato humano.")
+RESSALVA = "Indício não é acusação."
+# O cérebro funde memórias com similaridade > 0,96 (medido em 14/11/2026: com o texto inteiro do detector e uma
+# ressalva longa, 3 parlamentares diferentes viraram a mesma memória). Por isso o texto é CURTO e o que distingue
+# (nome, números, destino) vem primeiro: só a 1ª frase do detector, sem o prefixo "Indício de …:" nem a explicação.
 
 _FONTE = re.compile(r"\s*\(fontes?:\s*([^)]*(?:\([^)]*\)[^)]*)*)\)\s*")
 _CPF = re.compile(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\*{3}\.?\d{3}\.?\d{3}-?\*{2}|\b\d{3}\.\*{3}\.\*{3}-\d{2}\b")
 _CODIGO = re.compile(r"emenda (\d{6,})")
 _AUTOR_DESC = re.compile(r"\bautor ([^,()]+?),")
+_PREFIXO = re.compile(r"^Indício de [^:]{3,60}:\s*")
+_FIM_FRASE = re.compile(r"(?<=[^\s.]{2}[.)])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])")
 
 _SQL = f"""
 SELECT a.id, a.tipo, a.titulo, a.descricao, a.evidencias, t.prioridade, t.nota, substr(t.em, 1, 10) AS em
@@ -77,10 +81,11 @@ def descobertas(con: sqlite3.Connection) -> list[tuple[str, str, str]]:
             continue                                 # sem o nome não é "alerta com parlamentar": fica no fluxo geral
         m = _FONTE.search(desc or "")
         fonte = _limpo(m.group(1)) if m else FONTE_PADRAO
-        fato = _limpo(_FONTE.sub(" ", desc or "")) or _limpo(titulo)
-        nota_txt = f"nota {nota}/10" if nota is not None else "sem nota registrada"
-        texto = (f"JFN — alerta de emenda parlamentar #{aid} ({ROTULO[tipo]}). Parlamentar autor da emenda: {_limpo(nome)} "
-                 f"(pessoa pública; emenda é ato do mandato). {fato} Fonte: {fonte}. Estado: VERIFICADO na triagem "
-                 f"(duas leituras + Opus, {em}): {prio}, {nota_txt} — o achado segue como indício. {RESSALVA}")
+        fato = _PREFIXO.sub("", _limpo(_FONTE.sub(" ", desc or "")))
+        fato = (_FIM_FRASE.split(fato, maxsplit=1)[0] if fato else _limpo(titulo)).rstrip(".")
+        nota_txt = f", nota {nota}/10" if nota is not None else ""
+        texto = (f"Parlamentar autor da emenda: {_limpo(nome)} — {fato}. Fonte: {fonte}. Estado: VERIFICADO na triagem "
+                 f"do JFN (duas leituras + Opus, {em}; {prio}{nota_txt}); segue indício. {RESSALVA} "
+                 f"Alerta JFN #{aid}, {ROTULO[tipo]}; parlamentar é pessoa pública e a emenda, ato do mandato.")
         out.append((f"emenda:{aid}", texto, f"emenda parlamentar — {_limpo(nome)}"))
     return out

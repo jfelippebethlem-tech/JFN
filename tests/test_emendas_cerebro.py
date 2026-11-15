@@ -126,3 +126,10 @@ def test_mapa_de_producao_liga_emendas_e_triagem_geral_nao_duplica():
     sql = blocos["triagem_verificada"]["sql"]
     for tipo in E.TIPOS:
         assert tipo.split("_")[1] in sql                # o alerta com parlamentar vai só pelo bloco próprio
+
+
+def test_texto_curto_e_o_que_distingue_vem_primeiro(src):
+    """O cérebro funde memórias com similaridade > 0,96: com o texto longo, 3 parlamentares viraram 1 memória."""
+    for _k, t, _a in E.descobertas(src):
+        assert t.startswith("Parlamentar autor da emenda: ") and len(t) <= 600
+        assert "Concentração não é ilícito por si" not in t and "Indício de " not in t[:80]

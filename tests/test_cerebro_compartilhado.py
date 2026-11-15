@@ -66,11 +66,41 @@ def test_correcao_vai_com_supersedes_do_id_anterior(con, monkeypatch):
     C.registrar("k", "placar 63", "semantica", "perícia", con=con)
     assert C.enviar_pendentes(con=con)["enviadas"] == 1
     assert enviados[0]["supersedes"] is None and enviados[0]["source"] == "claude-vm1"
-    assert C.enviar_pendentes(con=con) == {"enviadas": 0, "corrigidas": 0, "falhas": 0, "erro": None}   # idempotente
+    assert C.enviar_pendentes(con=con) == {"enviadas": 0, "corrigidas": 0, "duplicadas": 0, "falhas": 0, "erro": None}   # idempotente
     C.registrar("k", "placar 61", "semantica", "perícia", con=con)
     assert C.enviar_pendentes(con=con)["corrigidas"] == 1
     assert enviados[1]["supersedes"] == 101            # nunca sobrescreve: substitui pelo id
     assert con.execute("SELECT mem_id FROM cerebro WHERE chave='k'").fetchone()[0] == 102
+
+
+def test_duplicada_de_outro_fato_nao_vira_id_desta_chave(con, monkeypatch):
+    """O cérebro funde texto com similaridade > 0,96 e devolve o id do OUTRO fato. Medido em 14/11/2026: 3 alertas
+    de emenda (parlamentares diferentes) gravados como a memória #87, e a correção seguinte substituiria a #87."""
+    enviados = []
+
+    def http(caminho, corpo=None):
+        enviados.append(corpo)
+        if corpo["content"] == "fato B":
+            return {"status": "duplicada", "id": 87, "existente": "fato A"}
+        return {"status": "gravada", "id": 87}
+    monkeypatch.setattr(C, "_http", http)
+    C.registrar("a", "fato A", con=con)
+    C.registrar("b", "fato B", con=con)
+    r = C.enviar_pendentes(con=con)
+    assert (r["enviadas"], r.get("duplicadas")) == (1, 1)
+    mem, erro = con.execute("SELECT mem_id, erro FROM cerebro WHERE chave='b'").fetchone()
+    assert mem is None and "#87" in erro               # nunca herda o id do outro fato
+    assert C.enviar_pendentes(con=con)["duplicadas"] == 0          # não reenvia a cada ciclo
+    C.registrar("b", "fato B corrigido", con=con)
+    C.enviar_pendentes(con=con)
+    assert enviados[-1]["supersedes"] is None          # a correção não substitui a #87 (que é o fato A)
+
+
+def test_duplicada_do_mesmo_texto_vale_como_gravada(con, monkeypatch):
+    monkeypatch.setattr(C, "_http", lambda caminho, corpo=None: {"status": "duplicada", "id": 5, "existente": "fato A"})
+    C.registrar("a", "fato A", con=con)
+    assert C.enviar_pendentes(con=con)["enviadas"] == 1
+    assert con.execute("SELECT mem_id FROM cerebro WHERE chave='a'").fetchone()[0] == 5
 
 
 def test_cerebro_fora_do_ar_deixa_na_fila_e_nao_marca_enviado(con, monkeypatch):

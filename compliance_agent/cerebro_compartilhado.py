@@ -158,7 +158,7 @@ def enviar_pendentes(limite: int = 20, con: sqlite3.Connection | None = None) ->
     Só marca como enviado com a resposta do cérebro em mãos ('gravada' ou 'duplicada' + id)."""
     proprio = con is None
     con = con or _con()
-    r = {"enviadas": 0, "corrigidas": 0, "falhas": 0, "erro": None}
+    r = {"enviadas": 0, "corrigidas": 0, "duplicadas": 0, "falhas": 0, "erro": None}
     try:
         linhas = con.execute(
             "SELECT chave, kind, assunto, conteudo, hash, mem_id FROM cerebro "
@@ -177,6 +177,15 @@ def enviar_pendentes(limite: int = 20, con: sqlite3.Connection | None = None) ->
                 r["erro"] = str(exc)[:300]
                 if isinstance(exc, CerebroIndisponivel):
                     break                 # fora do ar: não insiste nas demais neste ciclo
+                continue
+            if resp.get("status") == "duplicada" and " ".join(str(resp.get("existente") or "").split()) != conteudo:
+                # o cérebro fundiu com OUTRO fato (similaridade > 0,96) e devolveu o id dele: herdar esse id faria a
+                # próxima correção desta chave substituir a memória alheia. Fica sem id, com o motivo, e não reenvia
+                # até o texto mudar (o texto precisa ficar mais distinto para entrar).
+                con.execute("UPDATE cerebro SET mem_id=NULL, hash_enviado=?, enviado_em=?, erro=? WHERE chave=?",
+                            (h, time.time(), f"DUPLICADA: o cérebro fundiu com a memória #{novo_id} (outro texto)", chave))
+                con.commit()
+                r["duplicadas"] += 1
                 continue
             con.execute("UPDATE cerebro SET mem_id=?, hash_enviado=?, enviado_em=?, erro=NULL WHERE chave=?",
                         (novo_id, h, time.time(), chave))
