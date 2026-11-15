@@ -13,6 +13,9 @@ própria base curada.
 Não dá para suprimir sem o índice: o teto por colegiado e ano vem dele, e inventar teto seria
 trocar um erro por outro. O que dá, e é obrigatório, é DECLARAR que não se conferiu.
 """
+import pytest
+from helpers_ambiente import indice_tcu_utilizavel
+
 from compliance_agent.reporting.gate_citacoes import sanear_canal
 
 SEM_INDICE = "/tmp/indice_que_nao_existe.db"
@@ -38,6 +41,7 @@ def test_texto_sem_citacao_nenhuma_nao_ganha_aviso():
     assert sanear_canal(limpo, db=SEM_INDICE, contexto="teste") == limpo
 
 
+@pytest.mark.skipif(not indice_tcu_utilizavel(), reason="índice de jurisprudência do TCU (data/tcu_juris.db) indisponível neste ambiente")
 def test_com_indice_o_comportamento_nao_muda():
     """A correção vale para a máquina SEM índice; onde há índice, suprime como antes."""
     saida = sanear_canal(COM_CITACAO, contexto="teste")

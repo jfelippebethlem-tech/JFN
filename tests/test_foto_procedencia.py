@@ -42,7 +42,11 @@ def test_foto_sem_exif_sozinha_nao_acusa(tmp_path):
     r = FP.analisar(_jpg(tmp_path / "a.jpg", 2311, 1733))
     assert r["grau"] == "descartado"
     assert r["pontuacao"] == 0
-    assert any("perde EXIF" in x for x in r["limitacoes"])
+    if FP.shutil.which("exiftool"):
+        assert any("perde EXIF" in x for x in r["limitacoes"])
+    else:
+        # sem o binário a camada de metadado não é avaliada — e isso tem de ser DECLARADO
+        assert any("exiftool ausente" in x for x in r["limitacoes"])
 
 
 def test_o_sinal_de_recompressao_compoe_mas_nao_inicia(tmp_path):

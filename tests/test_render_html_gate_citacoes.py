@@ -20,6 +20,9 @@ from __future__ import annotations
 
 import pathlib
 
+import pytest
+from helpers_ambiente import indice_tcu_utilizavel
+
 from compliance_agent.reporting.render_html import render_html
 
 _SEM_INDICE = pathlib.Path("/tmp/jfn-indice-que-nao-existe.db")
@@ -34,6 +37,7 @@ def _ctx(html: str) -> dict:
             "secoes": [{"titulo": "Fundamentação", "html": html}]}
 
 
+@pytest.mark.skipif(not indice_tcu_utilizavel(), reason="índice de jurisprudência do TCU (data/tcu_juris.db) indisponível neste ambiente")
 def test_citacao_impossivel_nao_sai_no_html():
     saida = render_html(_ctx(f"<p>Conforme o {_INVENTADO}, o gestor responde.</p>"))
     assert _INVENTADO not in saida, "acórdão inexistente chegou ao entregável"

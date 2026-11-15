@@ -25,6 +25,17 @@ from tools.bench_modelos import _VALOR_TRIBUTOS as _VALOR
 
 _E1, _E2 = _EMP[0], _EMP[1]
 
+# A prova só entra no banco quando o processo da prova está no acervo (`data/sei_arquivo`, não
+# versionado). A condição é a PASTA do processo, nunca `_DOC`: o defeito que estes testes pegam é
+# justamente `_DOC` virar `None` com o acervo presente (texto renomeado) — pular por `_DOC` o calaria.
+from pathlib import Path  # noqa: E402
+
+from tools.bench_modelos import _DOC_PROC  # noqa: E402
+
+_COM_ACERVO = pytest.mark.skipif(
+    not (Path("data/sei_arquivo") / _DOC_PROC / "texto").is_dir(),
+    reason="acervo SEI (data/sei_arquivo) indisponível neste ambiente")
+
 
 def test_resposta_completa_e_correta_vale_tudo():
     assert _p_documento_longo(
@@ -58,12 +69,14 @@ def test_resposta_vazia_ou_evasiva_nao_quebra(resp):
     assert 0 <= _p_documento_longo(resp) <= 100
 
 
+@_COM_ACERVO
 def test_prova_entra_no_banco_quando_o_acervo_existe():
     nomes = [p[0] for p in PROVAS]
     assert "documento_longo" in nomes, (
         "a prova sai do banco quando o acervo não está disponível — mas ele está")
 
 
+@_COM_ACERVO
 def test_execucao_de_prova_unica_produz_nota():
     """O piso de 3 provas existe para não pontuar quem mal foi medido — mas bloqueava
     `--tarefa documento_longo`, que é a execução deliberadamente restrita. O mínimo passou a
@@ -106,6 +119,7 @@ def test_prova_isolada_nao_apaga_as_medicoes_anteriores(tmp_path, monkeypatch):
 
 # ── "não medido" e "não existe" são fatos diferentes ───────────────────────────────────────
 
+@_COM_ACERVO
 def test_404_sem_endpoint_marca_o_modelo_como_morto(tmp_path, monkeypatch):
     """`poolside/laguna-m.1:free` está no catálogo e responde 404 "No endpoints found" — não é
     cota, é ausência de servidor. Reportá-lo como "não medido" faria o medidor tentá-lo para

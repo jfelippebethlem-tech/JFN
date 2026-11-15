@@ -34,6 +34,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from helpers_ambiente import base_utilizavel
 
 from compliance_agent.database.models import _resolver_db
 
@@ -45,7 +46,9 @@ _CONTRATO_J1 = ("ug", "ug_nome", "indicio", "n_cnpjs", "n_grupos", "n_grupos_mul
 
 
 def _tem_base() -> bool:
-    return Path(_resolver_db()).exists()
+    # Conteúdo, não presença: num checkout limpo a compliance.db nasce VAZIA (criada por outro teste
+    # do mesmo lote) e `.exists()` deixava estes testes rodarem contra banco sem dado — "HHI 0.0".
+    return base_utilizavel(_resolver_db())
 
 
 def test_delegacao_esta_declarada_no_codigo():

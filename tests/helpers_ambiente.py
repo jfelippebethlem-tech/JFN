@@ -53,3 +53,24 @@ def acervo_sei_utilizavel(minimo: int = 1) -> bool:
         if achados >= minimo:
             return True
     return False
+
+
+def indice_tcu_utilizavel() -> bool:
+    """O índice de jurisprudência do TCU (`data/tcu_juris.db`, não versionado) está construído?
+
+    Sem ele o gate de citações declara `indice_ausente` e não suprime nada — correto em produção,
+    mas os testes que medem a SUPRESSÃO precisam do teto por colegiado, que só o índice dá.
+    """
+    try:
+        from compliance_agent.knowledge.tcu_juris_index import abrir
+        con = abrir()
+    except Exception:
+        return False
+    if con is None:
+        return False
+    try:
+        return con.execute("SELECT COUNT(*) FROM tcu_acordao").fetchone()[0] > 0
+    except sqlite3.Error:
+        return False
+    finally:
+        con.close()

@@ -17,6 +17,9 @@ Três recusas travadas aqui, cada uma corrigindo um modo de falhar:
 """
 from __future__ import annotations
 
+import pytest
+from helpers_ambiente import indice_tcu_utilizavel
+
 from compliance_agent.knowledge.subsuncao import SCHEMA_PROMPT, montar, render_texto
 
 _DOC = ("3. DA QUALIFICAÇÃO TÉCNICA. A licitante deverá apresentar atestado de capacidade "
@@ -70,6 +73,7 @@ def test_norma_inexistente_torna_a_subsuncao_nao_aferivel():
     assert any("premissa maior" in p for p in r["problemas"])
 
 
+@pytest.mark.skipif(not indice_tcu_utilizavel(), reason="índice de jurisprudência do TCU (data/tcu_juris.db) indisponível neste ambiente")
 def test_acordao_impossivel_e_recusado():
     """9.999/2024 extrapola a série anual de qualquer colegiado — o índice detecta sem tê-lo."""
     r = montar(_dados(norma_dispositivo="Acórdão 9999/2024-Plenário"), _DOC)

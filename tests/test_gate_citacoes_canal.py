@@ -7,9 +7,13 @@ completa de conferência na peça, uma linha no chat.
 """
 from __future__ import annotations
 
+import pytest
+from helpers_ambiente import indice_tcu_utilizavel
+
 from compliance_agent.reporting.gate_citacoes import sanear_canal
 
 
+@pytest.mark.skipif(not indice_tcu_utilizavel(), reason="índice de jurisprudência do TCU (data/tcu_juris.db) indisponível neste ambiente")
 def test_citacao_impossivel_e_suprimida_no_canal():
     saida = sanear_canal("Conforme o Acórdão 9999/2024-Plenário, o gestor responde.",
                          contexto="teste")
@@ -22,6 +26,7 @@ def test_texto_limpo_sai_sem_rodape():
     assert sanear_canal(limpo, contexto="teste") == limpo
 
 
+@pytest.mark.skipif(not indice_tcu_utilizavel(), reason="índice de jurisprudência do TCU (data/tcu_juris.db) indisponível neste ambiente")
 def test_rodape_de_uma_linha_quando_houve_supressao():
     saida = sanear_canal("Vide Acórdão 9999/2024-Plenário.", contexto="teste")
     rodape = [ln for ln in saida.splitlines() if "Conferência de citações" in ln]

@@ -22,7 +22,6 @@ from pathlib import Path
 
 import pytest
 
-RAIZ = Path(__file__).resolve().parent.parent
 MARCA = "CHEGUEI-AO-PYTHON"
 
 # Ambiente que o cron entrega (man 5 crontab): só HOME, LOGNAME, PATH e SHELL.
@@ -44,9 +43,17 @@ def _sh(script: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_dash_nao_acha_env_sem_barra():
-    """Prova do defeito: `. .env` não carrega e ainda derruba o resto da linha."""
-    r = _sh(f'cd "{RAIZ}" && set -a; . .env; set +a; echo {MARCA}')
+def _dir_com_env(tmp_path: Path) -> Path:
+    """Diretório com um `.env` de verdade: o que se mede é o `.` do dash, não a existência do `.env`
+    do repositório (que não é versionado — num checkout limpo ele não existe e o teste media o vazio)."""
+    (tmp_path / ".env").write_text("JFN_TESTE_DASH=1\n")
+    return tmp_path
+
+
+def test_dash_nao_acha_env_sem_barra(tmp_path):
+    """Prova do defeito: `. .env` não carrega e ainda derruba o resto da linha — mesmo com o
+    `.env` presente no diretório atual."""
+    r = _sh(f'cd "{_dir_com_env(tmp_path)}" && set -a; . .env; set +a; echo {MARCA}')
     assert "not found" in (r.stderr + r.stdout), "dash deveria recusar `.env` sem barra"
     assert MARCA not in r.stdout, (
         "a shell deveria ter morrido no `.` — se a marca apareceu, o dash mudou "
@@ -54,9 +61,9 @@ def test_dash_nao_acha_env_sem_barra():
     )
 
 
-def test_com_barra_a_linha_sobrevive():
+def test_com_barra_a_linha_sobrevive(tmp_path):
     """A correção: caminho relativo explícito faz o dash achar e seguir em frente."""
-    r = _sh(f'cd "{RAIZ}" && set -a; . ./.env; set +a; echo {MARCA}')
+    r = _sh(f'cd "{_dir_com_env(tmp_path)}" && set -a; . ./.env; set +a; echo {MARCA}')
     assert MARCA in r.stdout, f"`. ./.env` deveria funcionar no dash: {r.stderr.strip()}"
 
 

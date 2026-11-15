@@ -73,8 +73,11 @@ def test_a_base_primaria_responde_com_data(tmp_path):
     """A data existe e é barata: `receita_estab.db` é indexado por CNPJ. Se este teste passar a
     pular, a correção acima degrada para o ramo 'data não apurada' — que é honesto, mas cego."""
     import pathlib
-    if not (pathlib.Path.home() / "JFN" / "data" / "receita_estab.db").exists():
-        pytest.skip("receita_estab.db ausente")
+    # O mesmo caminho que `_situacao_com_data` abre (relativo à raiz, de onde a suíte roda). Checar
+    # `~/JFN/data` era medir OUTRA cópia: na VM-2 ela existe, a do diretório testado não — e o teste
+    # rodava contra base nenhuma em vez de pular.
+    if not pathlib.Path("data/receita_estab.db").exists():
+        pytest.skip("receita_estab.db indisponível neste ambiente")
     sit, quando = I._situacao_com_data("28470707000180")
     assert sit == "INAPTA" and quando == dt.date(2026, 1, 28)
 

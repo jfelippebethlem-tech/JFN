@@ -9,6 +9,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+from helpers_ambiente import base_utilizavel
 
 from compliance_agent.reporting import penalidades_tce_view as pv
 
@@ -111,6 +112,7 @@ def test_dedup_solidaria_nao_infla_erario(tmp_path: Path):
 
 
 # ───────── depuração / auto-auditoria ─────────
+@pytest.mark.skipif(not base_utilizavel(), reason="compliance.db real (penalidades_tcerj) indisponível neste ambiente")
 def test_depurar_sem_match_zero():
     """Nenhum órgão-TCE pode ficar sem âncora além do CEDAE (sem UG no canônico)."""
     d = pv.depurar()
