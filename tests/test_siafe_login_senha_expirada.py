@@ -115,3 +115,30 @@ def test_erro_interno_do_siafe_e_nomeado(monkeypatch):
     monkeypatch.delenv("SIAFE2_PASS", raising=False)
     r = asyncio.run(M._login(_PgErro(), 2021))
     assert r["erro"] == "erro_interno_siafe" and "RootMenuParser" in r["detail"]
+
+
+def test_exercicio_bloqueado_que_chega_tarde_e_nomeado(monkeypatch):
+    """14/11/2026 (build 202611091117): no SIAFE 2 o aviso "O SIAFE-Rio 2023 está bloqueado. Somente usuários com
+    permissão podem acessá-lo." chegou depois da espera inicial; o clicador genérico apertou o OK dele e sobrou
+    `login_falhou` mudo. Tem de sair `exercicio_bloqueado`, sem clique no aviso."""
+    monkeypatch.setenv("SIAFE_USER", "u")
+    monkeypatch.setenv("SIAFE_PASS", "p")
+    monkeypatch.delenv("SIAFE2_USER", raising=False)
+    monkeypatch.delenv("SIAFE2_PASS", raising=False)
+    aviso = ("\nErro\nO SIAFE-Rio 2023 está bloqueado. Somente usuários com permissão podem acessá-lo. "
+             "Favor entrar em contato com o Administrador do Sistema.\nOK")
+
+    class _PgBloqueado(_PaginaSenhaExpirada):
+        async def inner_text(self, _sel):
+            if not self.clicou_ok:
+                return _FORM
+            if self.leituras_ate_popup > 0:
+                self.leituras_ate_popup -= 1
+                return _FORM
+            return _FORM + aviso
+
+    pg = _PgBloqueado()
+    pg.leituras_ate_popup = 1
+    r = asyncio.run(S._login(pg, 2023))
+    assert r["erro"] == "exercicio_bloqueado" and r["ano"] == 2023
+    assert pg.cliques_em_popup == 0

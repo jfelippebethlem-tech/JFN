@@ -359,8 +359,11 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
             "chave_processo_ob`."),
         caminho_alternativo=(
             "SIAFE 1 (www5) foi desativado em 10/11/2026 e o SIAFE 2 só oferece 2023–2027: 2021–2022 não têm mais "
-            "fonte para o processo da OB. 2023 talvez possa ser recoletado no SIAFE 2 com o campo processo (decisão "
-            "do dono; sessão SIAFE única na VM-1). Sem recoleta, o caminho é o inverso: o número da OB citado nos "
+            "fonte para o processo da OB. 2023: o SIAFE 2 tem o exercício na tela de login, mas responde \"O SIAFE-Rio "
+            "2023 está bloqueado. Somente usuários com permissão podem acessá-lo\" para a conta do JFN (medido em "
+            "14/11/2026, build 202611091117) — a recoleta (`tools/siafe_recoleta_2023_processo.py`, pronta e "
+            "retomável) depende de a SEFAZ liberar o exercício à conta. Dos 1.070 contratos deste motivo, 894 têm OB "
+            "2023 candidata e 804 só OB 2023. Sem recoleta, o caminho é o inverso: o número da OB citado nos "
             "autos do processo do contrato (medido em 14/11/2026 nos 600 processos de contrato do acervo: 2 casos) "
             "— hoje irrelevante."),
         medido_em="2026-11-14",

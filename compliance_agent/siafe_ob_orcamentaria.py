@@ -393,6 +393,12 @@ async def _login(pg, exercicio: int):
             return {"ok": False, "erro": "senha_expirada",
                     "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "
                               "Dono: definir a nova senha no SIAFE e atualizar SIAFE_PASS no .env."}
+        # EXERCÍCIO BLOQUEADO QUE CHEGA TARDE (14/11/2026, build 202611091117, exercício 2023): o aviso "O SIAFE-Rio
+        # 2023 está bloqueado. Somente usuários com permissão podem acessá-lo." às vezes aparece depois dos 4 s e o
+        # clicador abaixo apertava o "OK" dele — sobrava `login_falhou` mudo (mesma família da senha expirada).
+        if "está bloqueado" in corpo_rodada and "somente usuários com permissão" in corpo_rodada:
+            return {"ok": False, "erro": "exercicio_bloqueado", "ano": exercicio,
+                    "detail": f"Exercício {exercicio} bloqueado para esta conta (pedir liberação ao Administrador do SIAFE)."}
         if await _mfa_presente(pg):
             r = await _resolver_mfa(pg)
             if not r.get("ok"):
