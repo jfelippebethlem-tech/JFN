@@ -264,7 +264,7 @@ def _cmd_env_render(lat: float, lon: float, heading: float, out: Path, pano: str
     25.478 renders falharam assim). SEM D-Bus: render direto — sem cap de cgroup, mas o gate de
     mem/load + timeout ainda protegem a VM — melhor render sem cap do que 0 fotos."""
     env = dict(os.environ)
-    py = [sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out), pano]
+    py = [sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out)] + ([pano] if pano else [])
     bus = _dbus_bus()
     if bus:
         env["XDG_RUNTIME_DIR"] = os.path.join(_RUN_USER, str(os.getuid()))
