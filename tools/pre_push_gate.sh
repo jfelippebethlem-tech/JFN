@@ -61,8 +61,24 @@ casados() {
 
 L=$(awk '{print int($1)}' /proc/loadavg)
 if [ "$L" -ge 6 ]; then
-  echo "[pre-push] ⚠️  load $L em 2 vCPU — NÃO rodei os testes. Isto é dívida, não aprovação."
-  exit 0
+  # 15/11/2026: com a VM-1 carregada os testes eram pulados ("dívida, não aprovação") em quase todo push.
+  # Agora as catracas (leves; leem o índice do git, que só existe aqui) rodam aqui e os testes casados vão à VM-2.
+  echo "[pre-push] load $L em 2 vCPU — catracas aqui, testes casados na VM-2…"
+  # shellcheck disable=SC2086
+  if ! nice -n 19 timeout 300 $PY -m pytest $CATRACAS -q --no-header -p no:cacheprovider >/tmp/pre_push.log 2>&1; then
+    echo "[pre-push] ❌ BLOQUEADO — catraca falhando:"; grep -E "^FAILED|^ERROR|^E " /tmp/pre_push.log | head -12; exit 1
+  fi
+  C=$(casados)
+  if [ "${1:-}" = "--so-catracas" ] || [ -z "${C// /}" ]; then echo "[pre-push] ✅ catracas ok; nada casado para a VM-2"; exit 0; fi
+  # shellcheck disable=SC2086
+  if timeout 900 bash tools/testar_na_vm2.sh $C >/tmp/pre_push_vm2.log 2>&1; then
+    echo "[pre-push] ✅ catracas ok; VM-2: $(grep -E 'passed|failed' /tmp/pre_push_vm2.log | tail -1)"; exit 0
+  fi
+  if grep -qE "scp falhou|md5 do pacote" /tmp/pre_push_vm2.log || ! grep -qE "passed|failed|error" /tmp/pre_push_vm2.log; then
+    echo "[pre-push] ⚠️  VM-2 indisponível — testes casados NÃO rodados. Isto é dívida, não aprovação."; exit 0
+  fi
+  echo "[pre-push] ❌ BLOQUEADO — teste falhando na VM-2:"; grep -E "^FAILED|^ERROR" /tmp/pre_push_vm2.log | head -12
+  echo "[pre-push]    log completo: /tmp/pre_push_vm2.log"; exit 1
 fi
 
 SUITE="$CATRACAS"
