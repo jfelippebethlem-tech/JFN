@@ -22,6 +22,10 @@
 #   debounce_s       janela de junção: espera contada do 1º evento pendente, para recalcular uma vez só
 #   intervalo_min_s  mínimo entre duas execuções · timeout_s · prioridade (menor = antes)
 #   efeito.arquivo   arquivo que TEM de ser regravado para o recálculo valer (rodou sem efeito = falha)
+#   trava            flock POR TAREFA (padrão data/locks/<id>.lock). O despachante não dispara a tarefa com a trava
+#                    ocupada e o filho a herda enquanto roda; o cron-rede usa `flock -n` no MESMO arquivo (15/11/2026:
+#                    cron 00:30 e despachante gravaram o vínculo juntos). trava_externa = trava que a própria tarefa
+#                    segura por dentro: só consultada.
 #   antes            como se atualizava antes da propagação (só documentação — os crons antigos seguem como rede)
 #   cerebro          número de manchete que vira memória no cérebro; se mudar, a nova SUBSTITUI a anterior
 #                    (sem data nos campos: recálculo que não muda o número não gera memória nova)
@@ -177,6 +181,7 @@ derivados:
     onde: Estado › Mapa por município · Prefeitura › Mapa por AP
     depende: [contratos_tcerj, regra_territorio]
     comando: ["{py}", "-m", "compliance_agent.territorio.cli", "--incremental"]
+    trava_externa: data/territorio.lock   # a CLI segura esta trava por dentro (timer jfn-territorio também)
     peso: pesado
     debounce_s: 900
     intervalo_min_s: 7200
@@ -210,6 +215,7 @@ derivados:
     onde: Transversal › Lentes
     depende: [siafe_ob, siafe_status]
     comando: ["{py}", "tools/lentes_materializar.py"]
+    trava: data/.lentes.lock          # a mesma do cron 04:17 (`flock -n data/.lentes.lock`)
     peso: pesado
     debounce_s: 1800
     intervalo_min_s: 21600

@@ -422,16 +422,65 @@ def _log_do(did: str) -> Path:
     return DATA / "propagacao" / f"{did}.log"
 
 
+def trava_da_tarefa(did: str, d: dict) -> Path:
+    """Trava (flock) POR TAREFA, a mesma que o cron-rede usa (`flock -n <arquivo> comando`).
+
+    15/11/2026 00:45: o despachante lançou `vinculo_ob_contrato regra --gravar` enquanto a rodada do cron das
+    00:30 ainda gravava na mesma tabela — dois gravadores, carga 20. A trava do ciclo (`.propagacao.lock`) só
+    serializa ciclos entre si; quem roda fora dele (cron, mão) precisa de uma trava por tarefa."""
+    t = d.get("trava")
+    if t:
+        return Path(t) if os.path.isabs(t) else RAIZ / t
+    return DATA / "locks" / f"{did}.lock"
+
+
+def _trava_ocupada(did: str, d: dict) -> bool:
+    """`trava_externa` = trava que a PRÓPRIA tarefa segura por dentro (ex.: território): só consultada, nunca
+    segurada pelo despachante — se ele a segurasse, a tarefa veria a trava ocupada e sairia sem rodar."""
+    if d.get("tipo") == "cache":
+        return False
+    caminhos = [trava_da_tarefa(did, d)]
+    if d.get("trava_externa"):
+        t = d["trava_externa"]
+        caminhos.append(Path(t) if os.path.isabs(t) else RAIZ / t)
+    for caminho in caminhos:
+        if not caminho.exists():
+            continue
+        with caminho.open("a") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+            fcntl.flock(fh, fcntl.LOCK_UN)
+    return False
+
+
 def _rodar_comando(did: str, d: dict) -> tuple[bool, str | None]:
     argv = [a.replace("{py}", str(RAIZ / ".venv" / "bin" / "python")) for a in d["comando"]]
     env = dict(os.environ, PYTHONPATH=str(RAIZ), HOME=os.path.expanduser("~"))
     env.update({k: str(v) for k, v in (d.get("env") or {}).items()})
     inicio = time.time()
+    caminho = trava_da_tarefa(did, d)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    trava = caminho.open("a")
+    try:
+        fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        trava.close()
+        return False, f"já rodando fora do despachante (trava {caminho.name} ocupada)"
+    try:
+        return _rodar_comando_travado(did, d, argv, env, inicio, trava)
+    finally:
+        trava.close()
+
+
+def _rodar_comando_travado(did, d, argv, env, inicio, trava) -> tuple[bool, str | None]:
     with _log_do(did).open("ab") as log:
         log.write(f"\n== {time.strftime('%F %T')} {' '.join(argv)}\n".encode())
         log.flush()
+        # o filho HERDA o descritor da trava (pass_fds): se este ciclo morrer, a trava segue com a tarefa viva
         p = subprocess.Popen(["nice", "-n", "15", *argv], cwd=RAIZ, env=env, stdout=log, stderr=subprocess.STDOUT,
-                             start_new_session=True)
+                             start_new_session=True, pass_fds=(trava.fileno(),))
         try:
             rc = p.wait(timeout=int(d.get("timeout_s", 1800)))
         except subprocess.TimeoutExpired:
@@ -561,6 +610,8 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             elif any(dep in sujos and dep in ders and relogio(dep) is None and not any(x["id"] == dep for x in feitos)
                      for dep in d.get("depende", [])):
                 motivo = "aguardando derivado de que depende"
+            elif _trava_ocupada(did, d):
+                motivo = "já rodando fora do despachante (cron ou à mão)"
             elif peso == "pesado" and pesado_feito:
                 motivo = "um pesado por ciclo"
             elif carga()[0] > (teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL):

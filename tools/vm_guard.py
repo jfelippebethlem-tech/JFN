@@ -138,8 +138,108 @@ def guarded_launch_args(extra: list[str] | None = None) -> list[str]:
     return args + (extra or [])
 
 
+# ── Navegador do Claude (CDP 127.0.0.1:9333) ────────────────────────────────────────────────────
+# 14-15/11/2026: ficou 18 h em higgsfield.ai com o gpu-process a 30 % de CPU constante (~5,4 h de CPU)
+# e já chegou a 85 %. Não é órfão (tem dono, start.sh), então cleanup_orphans() não o vê. Regra: página
+# que não é about:blank, parada na MESMA URL há > NAV_MAX_MIN e com a árvore do navegador acima de
+# NAV_MAX_CPU % → volta para about:blank (Page.navigate). Nunca mata o processo nem fecha a aba.
+NAV_CDP = os.environ.get("VM_GUARD_NAV_CDP", "http://127.0.0.1:9333")
+NAV_PERFIL = "navegador-claude/profile"
+NAV_MAX_MIN = float(os.environ.get("VM_GUARD_NAV_MAX_MIN", "30"))
+NAV_MAX_CPU = float(os.environ.get("VM_GUARD_NAV_MAX_CPU", "25"))   # % de UM núcleo, soma da árvore
+NAV_ESTADO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "data", ".navegador_claude_guard.json")
+
+
+def _cpu_ticks_perfil(perfil: str = NAV_PERFIL) -> int:
+    """Soma utime+stime de todos os processos cujo cmdline contém o perfil (lê /proc, sem pgrep -f)."""
+    tot = 0
+    for p in os.listdir("/proc"):
+        if not p.isdigit():
+            continue
+        try:
+            if perfil.encode() not in open(f"/proc/{p}/cmdline", "rb").read():
+                continue
+            r = open(f"/proc/{p}/stat").read().rsplit(")", 1)[1].split()
+            tot += int(r[11]) + int(r[12])
+        except (OSError, IndexError, ValueError):
+            continue
+    return tot
+
+
+def _cpu_pct_perfil(segundos: float = 10.0) -> float:
+    a = _cpu_ticks_perfil(); time.sleep(segundos); b = _cpu_ticks_perfil()
+    return max(0, b - a) * 100.0 / os.sysconf("SC_CLK_TCK") / segundos
+
+
+def guarda_navegador_claude(agora: float | None = None, cpu_pct=None, paginas=None,
+                            navegar=None, estado_path: str = NAV_ESTADO) -> dict:
+    """Uma passada da guarda. Dependências injetáveis para teste (cpu_pct, paginas, navegar)."""
+    import json
+    import urllib.request
+    agora = time.time() if agora is None else agora
+    if paginas is None:
+        try:
+            with urllib.request.urlopen(f"{NAV_CDP}/json", timeout=5) as r:
+                paginas = [p for p in json.load(r) if p.get("type") == "page"]
+        except Exception as e:               # navegador fechado/sem CDP: nada a guardar
+            return {"acao": "nenhuma", "motivo": f"CDP indisponível: {e.__class__.__name__}"}
+    try:
+        estado = json.load(open(estado_path))
+    except (OSError, ValueError):
+        estado = {}
+    novo, pesadas = {}, []
+    for p in paginas:
+        pid_, url = p.get("id"), p.get("url", "")
+        if not pid_ or url.startswith("about:") or url.startswith("chrome://"):
+            continue
+        ant = estado.get(pid_)
+        desde = ant["desde"] if ant and ant.get("url") == url else agora
+        novo[pid_] = {"url": url, "desde": desde}
+        if (agora - desde) / 60 >= NAV_MAX_MIN:
+            pesadas.append(p)
+    res = {"acao": "nenhuma", "paginas": len(novo), "paradas": len(pesadas)}
+    if pesadas:
+        cpu = cpu_pct() if cpu_pct else _cpu_pct_perfil()
+        res["cpu_pct"] = round(cpu, 1)
+        if cpu >= NAV_MAX_CPU:
+            navegar = navegar or _cdp_navegar_blank
+            for p in pesadas:
+                ok = navegar(p)
+                res.setdefault("voltou_blank", []).append({"url": p.get("url", "")[:120], "ok": ok})
+                if ok:
+                    novo.pop(p.get("id"), None)
+            res["acao"] = "about:blank"
+    try:
+        os.makedirs(os.path.dirname(estado_path), exist_ok=True)
+        with open(estado_path + ".tmp", "w") as f:
+            json.dump(novo, f)
+        os.replace(estado_path + ".tmp", estado_path)
+    except OSError as e:
+        res["erro_estado"] = str(e)
+    return res
+
+
+def _cdp_navegar_blank(pagina: dict) -> bool:
+    import json
+    try:
+        import websocket                      # websocket-client (já no .venv)
+        ws = websocket.create_connection(pagina["webSocketDebuggerUrl"], timeout=10)
+        ws.send(json.dumps({"id": 1, "method": "Page.navigate", "params": {"url": "about:blank"}}))
+        ws.recv(); ws.close()
+        return True
+    except Exception as e:
+        print(f"vm_guard: navegador não voltou a about:blank: {e}", file=sys.stderr)
+        return False
+
+
 if __name__ == "__main__":
     import json
+    if "--navegador" in sys.argv:
+        r = guarda_navegador_claude()
+        if r.get("acao") != "nenhuma" or "--verboso" in sys.argv:
+            print(time.strftime("%F %T"), json.dumps(r, ensure_ascii=False))
+        sys.exit(0)
     n = cleanup_orphans()
     ok, motivo = preflight()
     print(json.dumps({"orfaos_mortos": n, "seguro": ok, "estado": motivo,

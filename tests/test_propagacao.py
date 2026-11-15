@@ -299,3 +299,38 @@ def test_rota_devolve_indisponivel_quando_o_estado_falha(monkeypatch):
     monkeypatch.setattr(P, "estado", quebra)
     d = json.loads(R.api_sistema_propagacao().body)
     assert d["ok"] is False and d["estado"] == "INDISPONIVEL" and "locked" in d["motivo"]
+
+
+# ───────────── trava por tarefa (15/11/2026: cron e despachante gravando juntos) ─────────────
+def test_tarefa_com_trava_ocupada_nao_e_disparada_e_espera(con, tmp_path):
+    import fcntl
+    cfg = _cfg(a=_der(["f"], peso="pesado"))
+    P.emitir(con, cfg, "f", "mudou")
+    caminho = P.trava_da_tarefa("a", cfg["derivados"]["a"])
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    fora = caminho.open("a")
+    fcntl.flock(fora, fcntl.LOCK_EX | fcntl.LOCK_NB)          # o cron-rede está rodando
+    rodou = []
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda did, d: rodou.append(did) or (True, None))
+    assert feitos == [] and rodou == []
+    assert "já rodando" in con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0]
+    assert set(P._sujos(con)) == {"a"}                        # continua sujo: roda quando o cron soltar
+    fcntl.flock(fora, fcntl.LOCK_UN); fora.close()
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda did, d: rodou.append(did) or (True, None))
+    assert rodou == ["a"]                                     # controle positivo
+
+
+def test_rodar_comando_segura_a_trava_enquanto_o_filho_vive(tmp_path, monkeypatch):
+    import fcntl
+    monkeypatch.setattr(P, "RAIZ", tmp_path)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    marca = tmp_path / "durante.txt"
+    d = {"comando": ["sh", "-c", f"flock -n {tmp_path}/locks/x.lock true; echo $? > {marca}"]}
+    ok, _ = P._rodar_comando("x", d)
+    assert ok and marca.read_text().strip() == "1"            # de dentro, a trava estava tomada
+    with (tmp_path / "locks" / "x.lock").open("a") as fh:     # e foi solta no fim
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    fora = (tmp_path / "locks" / "x.lock").open("a")
+    fcntl.flock(fora, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    ok, erro = P._rodar_comando("x", {"comando": ["true"]})
+    assert ok is False and "já rodando" in erro
