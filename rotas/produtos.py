@@ -3,6 +3,7 @@
 Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
+import sys
 import logging
 import asyncio
 import os
@@ -51,6 +52,13 @@ async def retomar_promessas() -> int:
 
 _SWEEP_PAUSE_FLAGS = ("data/.pause_sweep_2", "data/.pause_sweep_1", "data/.pause_sei_sweep")
 
+
+
+def _python_do_repo() -> str:
+    """`.venv` do repositório quando existe; senão o intérprete que serve a rota (ambiente limpo — mesmo
+    conserto de rotas/vinculos.py, 15/11/2026)."""
+    py = RAIZ / ".venv" / "bin" / "python"
+    return str(py) if py.exists() else sys.executable
 
 def _pausar_sweeps_para_relatorio() -> None:
     import subprocess
@@ -729,7 +737,7 @@ def api_sei_empresa_iniciar(payload: dict | None = None):
         return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
     import subprocess
     env = dict(os.environ, SEI_SEM_TG="1", PYTHONPATH=str(RAIZ))
-    cmd = [str(RAIZ / ".venv" / "bin" / "python"), "tools/sei_integra_fila.py",
+    cmd = [_python_do_repo(), "tools/sei_integra_fila.py",
            "--empresa", cnpj, "--segundos", "7200"]
     if busca_viva:
         cmd.append("--busca-viva")
@@ -854,7 +862,7 @@ def api_processo_avaliar(payload: dict | None = None):
     if info and info["proc"].poll() is None:
         return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
     import subprocess
-    cmd = [str(RAIZ / ".venv" / "bin" / "python"), "tools/processo_360.py",
+    cmd = [_python_do_repo(), "tools/processo_360.py",
            "--numero", numero, "--gravar"]
     if payload.get("com_llm"):
         cmd.append("--com-llm")
