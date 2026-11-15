@@ -521,6 +521,69 @@ def _linhas(log: Path, desde: int) -> list[str]:
         return []
 
 
+# ── navegador FIXO da sessão ─────────────────────────────────────────────────────────────────────────────
+# Dono, 15/11/2026: "o it campo tá indo e vindo no SEI sem ser cuidadoso, apenas abrindo e fechando tudo... faça
+# direito", "logue uma vez e busque tudo por uma sessão só" e "de um jeito que eu consiga usar o computador". Cada
+# sessão abre UM Chromium visível, pequeno, num canto, e o mantém aberto e logado; a captura de cada processo conecta
+# nele por CDP (SEI_CDP_URL), usa uma aba e fecha só a aba. Minimizado continua trabalhando (sem estrangulamento).
+_PORTA_BASE = {"integras": 9300, "varredura": 9400}
+JANELA_L, JANELA_A = 640, 480
+
+
+def porta_cdp(modo: str, k: int) -> int:
+    return _PORTA_BASE[modo] + k
+
+
+def comando_navegador(s: Path, modo: str, k: int, exe: str) -> list[str]:
+    i = (k - 1) + (0 if modo == "integras" else N_MAX)       # cascata: cada janela 28 px abaixo/à direita da outra
+    return [exe, f"--remote-debugging-port={porta_cdp(modo, k)}", "--remote-debugging-address=127.0.0.1",
+            f"--user-data-dir={s / 'data' / 'navegador-fixo'}", "--no-first-run", "--no-default-browser-check",
+            "--ignore-certificate-errors", "--disable-dev-shm-usage",
+            "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
+            "--disable-backgrounding-occluded-windows",
+            f"--window-size={JANELA_L},{JANELA_A}", f"--window-position={60 + 28 * i},{60 + 28 * i}",
+            "about:blank"]
+
+
+def _cdp_vivo(porta: int) -> bool:
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{porta}/json/version", timeout=3) as r:
+            return r.status == 200
+    except OSError:
+        return False
+
+
+def _exe_chromium(s: Path) -> str:
+    r = _run([str(s / ".venv/bin/python"), "-c",
+              "from playwright.sync_api import sync_playwright\n"
+              "with sync_playwright() as p: print(p.chromium.executable_path)"], cwd=s, timeout=120)
+    return r.stdout.strip().splitlines()[-1]
+
+
+def garantir_navegador(s: Path, modo: str, k: int) -> str | None:
+    """Endereço CDP do navegador fixo da sessão, lançando-o se não estiver de pé. None = não subiu (a captura então
+    lança o seu, como antes — nunca para)."""
+    porta = porta_cdp(modo, k)
+    if not _cdp_vivo(porta):
+        try:
+            exe = _exe_chromium(s)
+        except (RuntimeError, OSError, IndexError, subprocess.SubprocessError) as exc:
+            print(f"navegador fixo: não achei o Chromium ({str(exc)[:120]})", flush=True)
+            return None
+        subprocess.Popen(comando_navegador(s, modo, k, exe), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")})
+        for _ in range(30):
+            time.sleep(1)
+            if _cdp_vivo(porta):
+                break
+        else:
+            print(f"navegador fixo da sessão {k} não respondeu na porta {porta}", flush=True)
+            return None
+        print(f"navegador fixo da sessão {k} aberto (porta {porta})", flush=True)
+    return f"http://127.0.0.1:{porta}"
+
+
 def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     """Laço contínuo da sessão k na sua janela. Sai (e o orquestrador reabre) quando há código novo na base."""
     s = _dir(modo, k)
@@ -560,6 +623,11 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
             titulo(f"JFN SEI sessão {k} — PAUSADA (.pause_itcampo)")
             time.sleep(60)
             continue
+        cdp = garantir_navegador(s, modo, k)
+        if cdp:
+            os.environ["SEI_CDP_URL"] = cdp
+        else:
+            os.environ.pop("SEI_CDP_URL", None)
         try:
             rec = uma_volta(k, s, segundos) if modo == "integras" else volta_varredura(k, s, segundos)
         except (RuntimeError, subprocess.SubprocessError, OSError, ValueError) as exc:

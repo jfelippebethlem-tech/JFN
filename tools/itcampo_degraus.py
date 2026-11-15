@@ -109,6 +109,10 @@ def main(argv=None) -> int:
             anotar(f"degrau {n}: sem dados ainda ({c}) — estendo")
         historico.append({"n": n, "status": c, "veredito": v})
         anotar(f"DEGRAU {n}: {v} {json.dumps(c, ensure_ascii=False)}")
+        telegram(f"it-campo — degrau {n} sessão(ões) de íntegras + 1 varredura: "
+                 f"{'FUNCIONA' if v == 'saudavel' else 'DEGRADOU'} — por processo: "
+                 + (", ".join(f"{k} {q}" for k, q in sorted(c.items())) or "nada concluído")
+                 + ("" if v != "saudavel" else f". Subo para {n + 1}." if n < a.max else ". Teto do teste."))
         if v == "saudavel":
             bom = n
             if n >= a.max:

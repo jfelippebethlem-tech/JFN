@@ -102,14 +102,13 @@ async def main():
     async with browser_lock_async(espera_max=1800), async_playwright() as pw:
         # SEI_HEADED=1: janela do navegador VISÍVEL (it-campo, pedido do dono 14/11/2026: "nada de janelas ocultas")
         # SEI_CHROMIUM_ARGS: posição/tamanho da janela por sessão (it-campo: mosaico fixo, sem cobrir o trabalho do dono)
-        b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1",
-                                     args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-              user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-        await SR.sem_visualizador_pdf(ctx)   # janela visível sem o visualizador de PDF (450 s/doc em 14/11)
+        # SEI_CDP_URL (it-campo): conecta no navegador FIXO da sessão, aberto e logado — uma aba por processo, sem
+        # abrir/fechar janela nem relogar a cada processo. Sem ela, lança um navegador como sempre (VM-1/VM-2).
+        b, ctx, fixo = await SR.navegador_sei(
+            pw, args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
-            if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
+            if not await SR.entrar(pg, fixo=fixo, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
             print("login OK", flush=True)
             # ENUMERAÇÃO — caminho CRACKED primeiro (mesmo do ler() canônico): abre processos de OUTRA
             # unidade que o itkava VÊ mas o abrir_processo/arvore_do_fonte não abre (070002/INEA,
@@ -277,7 +276,7 @@ async def main():
                     pp = Path(f"data/sei_cache/INTEGRA_{TAG}_p{k//per+1}.pdf"); part.save(str(pp), deflate=True, garbage=4); part.close()
                     print(f"TG parte {k//per+1}:", envia(str(pp), f"📚 ÍNTEGRA SEI-{PROC} (parte {k//per+1}, págs {k+1}-{min(k+per,out.page_count)})"), flush=True)
         finally:
-            await b.close()
+            await SR.fechar_sei(b, pg, fixo=fixo)
     G.cleanup_orphans()
 
 if __name__ == "__main__":   # importar este módulo NÃO pode disparar o trabalho

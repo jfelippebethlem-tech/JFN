@@ -991,7 +991,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
-    from tools.sei_reader import login, ler_processo, seguir_relacionados, _ler_cracked, _montar_resultado_cracked
+    from tools.sei_reader import ler_processo, seguir_relacionados, _ler_cracked, _montar_resultado_cracked
     from playwright.async_api import async_playwright
 
     prog = _carregar_prog()
@@ -1118,12 +1118,14 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     # repete no próximo slot. Nada de traceback não-tratado nem Node crashando o processo.
     try:
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=["--no-sandbox", "--ignore-certificate-errors"],
-                                         **({"proxy": proxy} if proxy else {}))
-            ctx = await _contexto_sei(b)
+            # SEI_CDP_URL (it-campo): navegador FIXO da sessão, logado uma vez — dono, 15/11/2026: "logue uma vez e
+            # busque tudo por uma sessão só". Sem ela, lança um como sempre.
+            from tools.sei_reader import navegador_sei, entrar, fechar_sei
+            b, ctx, fixo = await navegador_sei(pw, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                               user_agent=_UA_DESKTOP, **({"proxy": proxy} if proxy else {}))
             pg = await ctx.new_page()
             try:
-                if not await login(pg, tentativas=tentativas_login):
+                if not await entrar(pg, fixo=fixo, tentativas=tentativas_login):
                     _log(f"ABORTADO: login itkava não completou em {tentativas_login} tentativas. "
                          "NÃO se atribui a WAF nem a bloqueio de acesso (o acesso é liberado): "
                          "a causa já observada é sessão anterior deixada aberta por "
@@ -1238,7 +1240,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                          f"(R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
             finally:
                 try:
-                    await b.close()  # fechar um browser JÁ MORTO levanta (EPIPE/TargetClosed) — nunca pode crashar
+                    await fechar_sei(b, pg, fixo=fixo)  # no fixo, só a aba; fechar browser JÁ MORTO levanta — nunca crasha
                 except Exception as e:  # noqa: BLE001
                     _log(f"  (encerramento do browser ignorado: {type(e).__name__})")
     except Exception as e:  # noqa: BLE001 — CRASH-PROOF: morte de browser/pipe/lock vira saída LIMPA (cron repete)
@@ -1275,7 +1277,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
-    from tools.sei_reader import login, ler_processo, _ler_cracked, _montar_resultado_cracked
+    from tools.sei_reader import ler_processo, _ler_cracked, _montar_resultado_cracked
     from tools.sei_pais import detectar_pais, _norm
     from playwright.async_api import async_playwright
 
@@ -1316,12 +1318,14 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     n_ok = n_zero = n_doc_total = 0
     try:
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=["--no-sandbox", "--ignore-certificate-errors"],
-                                         **({"proxy": proxy} if proxy else {}))
-            ctx = await _contexto_sei(b)
+            # SEI_CDP_URL (it-campo): navegador FIXO da sessão, logado uma vez — dono, 15/11/2026: "logue uma vez e
+            # busque tudo por uma sessão só". Sem ela, lança um como sempre.
+            from tools.sei_reader import navegador_sei, entrar, fechar_sei
+            b, ctx, fixo = await navegador_sei(pw, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                               user_agent=_UA_DESKTOP, **({"proxy": proxy} if proxy else {}))
             pg = await ctx.new_page()
             try:
-                if not await login(pg, tentativas=tentativas_login):
+                if not await entrar(pg, fixo=fixo, tentativas=tentativas_login):
                     _log("[pais] ABORTADO: login itkava não completou em "
                          f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio "
                          "de acesso (o acesso é liberado): a causa já observada é sessão "
@@ -1405,7 +1409,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                          f"({p['confianca']}/{p['fonte']}, ←{p['origem']}) {time.time()-t0:.0f}s")
             finally:
                 try:
-                    await b.close()
+                    await fechar_sei(b, pg, fixo=fixo)
                 except Exception as e:  # noqa: BLE001
                     _log(f"  [pais] (encerramento do browser ignorado: {type(e).__name__})")
     except Exception as e:  # noqa: BLE001 — CRASH-PROOF

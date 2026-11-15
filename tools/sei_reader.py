@@ -168,6 +168,55 @@ async def sem_visualizador_pdf(ctx) -> None:
     await ctx.route(_RX_ANEXO, _rota)
 
 
+_UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+               "Chrome/124.0.0.0 Safari/537.36")
+URL_SEI_INICIO = "https://sei.rj.gov.br/sei/"
+
+
+async def navegador_sei(pw, *, args=None, user_agent: str | None = _UA_DESKTOP, **launch_kw):
+    """(browser, contexto, fixo). Com SEI_CDP_URL conecta no navegador FIXO da sessão — aberto e logado, uma janela
+    que não abre e fecha a cada processo (dono, 15/11/2026: "apenas abrindo e fechando tudo... faça direito");
+    sem ela, lança um como sempre. O corte do visualizador de PDF vale nos dois."""
+    cdp = os.environ.get("SEI_CDP_URL")
+    if cdp:
+        b = await pw.chromium.connect_over_cdp(cdp, timeout=30000)
+        ctx = b.contexts[0] if b.contexts else await b.new_context(ignore_https_errors=True, locale="pt-BR")
+        await sem_visualizador_pdf(ctx)
+        return b, ctx, True
+    b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=args, **launch_kw)
+    ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=user_agent)
+    await sem_visualizador_pdf(ctx)
+    return b, ctx, False
+
+
+async def fechar_sei(b, pg, *, fixo: bool) -> None:
+    """No navegador fixo fecha só a ABA (a janela e o login ficam para o próximo processo); senão, o navegador."""
+    if fixo:
+        try:
+            await pg.close()
+        except PWError:
+            pass
+        return
+    await b.close()
+
+
+async def ja_logado(pg) -> bool:
+    """A sessão do SEI ainda vale? Sem sessão o SEI redireciona para o login do SIP."""
+    try:
+        await pg.goto(URL_SEI_INICIO, timeout=45000)
+    except PWError:
+        return False
+    u = pg.url or ""
+    return u.startswith("https://sei.rj.gov.br/sei/") and "login.php" not in u
+
+
+async def entrar(pg, *, fixo: bool, tentativas: int = 25) -> bool:
+    """Navegador fixo já logado → não reloga (um login por sessão, não por processo)."""
+    if fixo and await ja_logado(pg):
+        return True
+    return await login(pg, tentativas=tentativas)
+
+
 async def login(pg, tentativas=40, orgao: str | None = None) -> bool:
     """Loga no SEI interno (itkava) vencendo o flap do WAF. Retorna True se autenticou.
 

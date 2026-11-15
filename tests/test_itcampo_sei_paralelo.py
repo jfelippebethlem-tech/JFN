@@ -193,3 +193,21 @@ def test_espera_depois_da_volta_nao_gira_em_falso():
     assert P.espera_apos_volta({"tentados": 0}) == P.ESPERA_VOLTA_VAZIA_S >= 600
     assert P.espera_apos_volta({"tentados": 3}) == 0
     assert P.espera_apos_volta({"modo": "varredura", "cdp": 2}) == 0
+
+
+def test_navegador_fixo_da_sessao_porta_janela_e_sem_estrangulamento(tmp_path):
+    """Uma janela por sessão, aberta e logada, pequena e fora do caminho do dono ("de um jeito que eu consiga usar o
+    computador"); minimizada continua trabalhando (sem estrangulamento de fundo do Chromium)."""
+    c1 = P.comando_navegador(tmp_path / "s1", "integras", 1, "/x/chrome")
+    c2 = P.comando_navegador(tmp_path / "v1", "varredura", 1, "/x/chrome")
+    assert c1[0] == "/x/chrome"
+    assert P.porta_cdp("integras", 1) != P.porta_cdp("varredura", 1)
+    assert f"--remote-debugging-port={P.porta_cdp('integras', 1)}" in c1
+    assert any(a.startswith("--user-data-dir=") and "s1" in a for a in c1)
+    for flag in ("--disable-background-timer-throttling", "--disable-renderer-backgrounding",
+                 "--disable-backgrounding-occluded-windows"):
+        assert flag in c1
+    pos = lambda c: next(a for a in c if a.startswith("--window-position="))
+    assert pos(c1) != pos(c2)
+    tam = next(a for a in c1 if a.startswith("--window-size=")).split("=")[1].split(",")
+    assert int(tam[0]) <= 800 and int(tam[1]) <= 600

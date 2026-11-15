@@ -25,6 +25,9 @@ import time
 MAX_LOAD1 = float(os.environ.get("VM_GUARD_MAX_LOAD", "1.7"))   # load 1min; >1.7 em 2 vCPU = saturando
 MIN_FREE_GB = float(os.environ.get("VM_GUARD_MIN_FREE_GB", "2.5"))
 PRESERVE = "chrome-jfn"   # o chromium persistente do ecossistema (porta 9222) — NUNCA matar
+# navegador FIXO das sessões do it-campo (tools/itcampo_sei_paralelo.comando_navegador): fica aberto e logado entre
+# processos e é reaproveitado pela sessão que reabre na mesma porta — órfão por um instante não é lixo
+PRESERVE_FIXO = "navegador-fixo"
 
 
 def _meminfo_available_gb() -> float:
@@ -73,7 +76,7 @@ def _meus_chromium_pids(somente_orfaos: bool = True) -> list[int]:
         try:
             pid = int(line)
             cmd = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode("utf-8", "ignore")
-            if PRESERVE in cmd:
+            if PRESERVE in cmd or PRESERVE_FIXO in cmd:
                 continue
             if somente_orfaos and _ppid(pid) != 1:
                 continue  # pai vivo → browser em uso, NÃO matar
