@@ -27,6 +27,8 @@ Indícios de fachada/laranja (literatura: TCU; OECD Bid Rigging 2025; ACFE; osin
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_EPP, TETO_ME, TETO_MEI
+
 import datetime as dt
 import logging
 import re
@@ -93,12 +95,12 @@ def _marcadores_residenciais(*partes: str) -> list[str]:
 # Limites legais de receita bruta anual (LC 123/2006 + Res. CGSN): sinal de incompatibilidade quando o
 # PAGO pelo Estado já supera o teto do porte declarado. Indício (o teto é anual e plurianual aqui) — apura.
 _TETO_PORTE = {
-    "MEI": 81_000.0,
-    "MICROEMPRESA": 360_000.0,
-    "MICRO EMPRESA": 360_000.0,
-    "ME": 360_000.0,
-    "EMPRESA DE PEQUENO PORTE": 4_800_000.0,
-    "EPP": 4_800_000.0,
+    "MEI": TETO_MEI,
+    "MICROEMPRESA": TETO_ME,
+    "MICRO EMPRESA": TETO_ME,
+    "ME": TETO_ME,
+    "EMPRESA DE PEQUENO PORTE": TETO_EPP,
+    "EPP": TETO_EPP,
 }
 
 # portes conhecidos que NÃO têm teto de receita (empresa grande/normal) — 'porte verificado', sem H-PORTE

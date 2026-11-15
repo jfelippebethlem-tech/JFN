@@ -40,6 +40,8 @@ Uso:
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_EPP
+
 import argparse
 import collections
 import re
@@ -55,7 +57,6 @@ DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
 # LC 123/2006, art. 3º, II — receita bruta máxima de EPP. É o limite citado pela Lei 14.133 na
 # declaração exigida do licitante; ME (R$ 360 mil) é mais baixo, então EPP é o corte CONSERVADOR.
-TETO_EPP = 4_800_000.0
 
 # Domínio oficial do PNCP (GET /api/pncp/v1/portes-empresa, conferido em 2026-08-22).
 PORTE_PNCP = {1: "ME", 2: "EPP", 3: "Demais", 4: "Não se aplica", 5: "Não informado", 6: "MEI"}

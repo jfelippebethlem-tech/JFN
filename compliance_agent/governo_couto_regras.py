@@ -24,6 +24,8 @@ Uso:  nice -n 15 timeout 3600 python -m compliance_agent.governo_couto_regras [-
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_ANUAL_POR_PORTE
+
 import argparse
 import collections
 import datetime as D
@@ -53,7 +55,7 @@ DB_TSE = Path(os.environ.get("JFN_DB_TSE") or RAIZ / "data" / "doacao_tse.db")
 G0 = "2026-03-23"                    # início da gestão (DOERJ 24/03/2026 — ver governo_couto.GESTAO)
 P0, P1 = "2026-01-01", "2026-03-22"  # 2026 sob o governador anterior
 SIAFE = "SIAFE-Rio, OB Orçamentária (status Contabilizado)"
-TETO_PORTE = {"Microempresa": 360_000.0, "Empresa de Pequeno Porte": 4_800_000.0}
+TETO_PORTE = TETO_ANUAL_POR_PORTE
 _OUTRO_PODER = re.compile(r"TRIBUNAL|ASSEMBLEIA|MINIST[EÉ]RIO P[UÚ]BLICO|PROCURADORIA.GERAL DE JUSTI|DEFENSORIA|"
                           r"JUSTI[CÇ]A|ENCARGOS GERAIS|FUNDO ESPECIAL DO MINISTERIO", re.I)
 _OUT_CASO = re.compile(r"TRIBUNAL|ASSEMBLEIA|MINIST[EÉ]RIO P[UÚ]BLICO|MINISTERIO P|DEFENSORIA|DPGE|JUSTI[CÇ]A|"

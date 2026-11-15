@@ -50,6 +50,8 @@ Uso:
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_ANUAL_POR_PORTE
+
 import argparse
 import collections
 import re
@@ -64,7 +66,7 @@ from compliance_agent.reporting.intel_base import moeda
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
 # LC 123/2006, art. 3º — receita bruta anual máxima de cada porte.
-TETO_ANUAL = {"Microempresa": 360_000.0, "Empresa de Pequeno Porte": 4_800_000.0}
+TETO_ANUAL = TETO_ANUAL_POR_PORTE
 
 
 def acima_do_porte(con: sqlite3.Connection, min_razao: float = 1.0) -> list[dict]:

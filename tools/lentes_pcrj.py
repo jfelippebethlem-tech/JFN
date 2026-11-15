@@ -27,6 +27,8 @@ LIMITES HERDADOS DA FONTE (medidos, não supostos)
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_EPP, TETO_ME
+
 import logging
 import re
 import sqlite3
@@ -39,8 +41,8 @@ from compliance_agent.reporting.intel_base import moeda
 logger = logging.getLogger(__name__)
 
 # LC 123/2006, art. 3º: ME até R$ 360.000,00/ano; EPP até R$ 4.800.000,00/ano de receita bruta.
-TETO_EPP_ANUAL = 4_800_000.00
-TETO_ME_ANUAL = 360_000.00
+TETO_EPP_ANUAL = TETO_EPP
+TETO_ME_ANUAL = TETO_ME
 
 # Elementos em que o pagamento a PESSOA FÍSICA é anômalo: pressupõem fornecedor empresarial.
 # Rótulos da tabela OFICIAL, nunca de memória. O 40 (Serviços de TIC) voltou depois de eu o ter

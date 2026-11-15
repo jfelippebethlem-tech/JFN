@@ -48,6 +48,8 @@ Uso:
 """
 from __future__ import annotations
 
+from compliance_agent.limites_porte import TETO_ANUAL_POR_PORTE
+
 import argparse
 import collections
 import re
@@ -73,11 +75,8 @@ NATUREZA = {
 # Naturezas que NÃO são sociedade empresária: contam dirigentes, não sócios.
 NAO_EMPRESARIAL = {"3999", "2143", "3069", "3255", "3131"}
 
-# LC 123/2006, art. 3º, I e II. FONTE ÚNICA — não duplicar noutro detector.
-TETO_ANUAL = {
-    "Microempresa": 360_000.00,
-    "Empresa de Pequeno Porte": 4_800_000.00,
-}
+# LC 123/2006, art. 3º, I e II — valores em compliance_agent/limites_porte.py (fonte única).
+TETO_ANUAL = TETO_ANUAL_POR_PORTE
 
 
 # SINAL TESTADO E DESCARTADO (2026-08-24): "capital social acima do teto de receita do porte".
