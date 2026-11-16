@@ -210,7 +210,8 @@ def test_navegador_fixo_da_sessao_porta_janela_e_sem_estrangulamento(tmp_path):
     pos = lambda c: next(a for a in c if a.startswith("--window-position="))
     assert pos(c1) != pos(c2)
     tam = next(a for a in c1 if a.startswith("--window-size=")).split("=")[1].split(",")
-    assert int(tam[0]) <= 800 and int(tam[1]) <= 600
+    # janela estreita escondia o campo de pesquisa do SEI (15/11: 640x480 "não abriu", 1366x900 abriu)
+    assert int(tam[0]) >= 1280 and int(tam[1]) >= 800
 
 
 def test_navegador_fixo_oculto_por_padrao_com_ua_de_desktop(tmp_path, monkeypatch):

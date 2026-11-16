@@ -527,7 +527,9 @@ def _linhas(log: Path, desde: int) -> list[str]:
 # sessão abre UM Chromium visível, pequeno, num canto, e o mantém aberto e logado; a captura de cada processo conecta
 # nele por CDP (SEI_CDP_URL), usa uma aba e fecha só a aba. Minimizado continua trabalhando (sem estrangulamento).
 _PORTA_BASE = {"integras": 9300, "varredura": 9400}
-JANELA_L, JANELA_A = 640, 480
+# 1366x900: com 640x480 o SEI não mostrava o campo de pesquisa e o processo "não abria" (medido 15/11/2026 21h,
+# mesmo processo: 640x480 falhou, 1366x900 abriu). O navegador fixo é oculto — tamanho não incomoda ninguém.
+JANELA_L, JANELA_A = 1366, 900
 UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
               "Chrome/124.0.0.0 Safari/537.36")
 
