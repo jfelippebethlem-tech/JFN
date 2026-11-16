@@ -5664,7 +5664,9 @@ html.v61 .gx-prev::before{content:"";position:absolute;inset:0;border-radius:inh
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
 html.v61 .gx-prev-cv{position:relative;height:250px;border-radius:21px;overflow:hidden;background:#030B1F;
   box-shadow:0 0 0 1px rgba(127,219,255,.2) inset,0 0 40px rgba(34,181,245,.12) inset}
-html.v61 .gx-prev-cv canvas{display:block;width:100%;height:100%}
+html.v61 .gx-prev-cv{background:#030B1F url(/static/assets/v61/galaxia-arte-sm.webp) center/cover no-repeat}
+html.v61 .gx-prev-cv canvas{position:relative;display:block;width:100%;height:100%;mix-blend-mode:screen}
+html.v61 .gx-prev-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85}
 html.v61 .gx-prev-ring{position:absolute;left:50%;top:50%;width:210px;height:210px;margin:-105px 0 0 -105px;border-radius:50%;pointer-events:none;
   background:conic-gradient(from 0deg,rgba(127,219,255,0) 0deg 300deg,rgba(127,219,255,.18) 350deg,rgba(217,246,255,.5) 359deg,rgba(127,219,255,0) 360deg);
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));
@@ -5684,8 +5686,9 @@ html.v61 .gx-prev-aviso{margin-top:10px;font-size:.75rem}
   html.v61 .gx-prev-cv{height:200px;border-radius:17px}
   html.v61 .gx-prev-txt{padding:0 8px}
 }
-@media (prefers-reduced-motion:reduce){html.v61 .gx-prev-ring{animation:none;opacity:.5}}
+@media (prefers-reduced-motion:reduce){html.v61 .gx-prev-ring{animation:none;opacity:.5}html.v61 .gx-prev-vid{display:none}}
 body.fps-baixo .gx-prev-ring{animation:none;opacity:.5}
+html.v61 body.fps-baixo .gx-prev-vid{display:none}
 /* ══ Por ano e mês (13/11/2026) — seletor Ano/Mês + quebra ano → mês (static/js/src/abas/periodo.js) ═════════
    Pedido do dono: "coloca em tudo organização por ano e mês". Um componente só, em todas as abas que têm dado
    datado. A tabela rola DENTRO do cartão (.per-tbw): a página nunca ganha rolagem lateral, nem a 390 px.

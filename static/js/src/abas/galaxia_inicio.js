@@ -22,7 +22,12 @@ export function galaxiaPreviewHtml() {
 export async function galaxiaPreviewMontar(el) {
   if (!el || el.dataset.gx) return;
   el.dataset.gx = '1';
-  el.innerHTML = `<div class="gx-prev-cv"><canvas aria-hidden="true"></canvas><span class="gx-prev-ring" aria-hidden="true"></span></div>
+  /* fundo vivo: loop da galáxia (Higgsfield, 16/11) por baixo; por cima, os nós e ligações REAIS do grafo.
+     Só toca visível, fora do modo sóbrio e sem movimento reduzido (CSS esconde o vídeo; o pôster fica). */
+  const cel = matchMedia('(max-width:700px)').matches ? '-m' : '';
+  el.innerHTML = `<div class="gx-prev-cv"><video class="gx-prev-vid" muted loop playsinline preload="none" aria-hidden="true">
+      <source src="/static/assets/v61/galaxia-loop${cel}.webm" type="video/webm"><source src="/static/assets/v61/galaxia-loop${cel}.mp4" type="video/mp4"></video>
+      <canvas aria-hidden="true"></canvas><span class="gx-prev-ring" aria-hidden="true"></span></div>
     <div class="gx-prev-txt"><div class="gx-prev-eye">Galáxia dos casos</div>
       <h2 class="gx-prev-tit">Todos os dossiês e as ligações entre eles, num só céu</h2>
       <div class="gx-prev-num" id="gx-prev-num"><span class="dim">carregando o grafo…</span></div>
@@ -35,6 +40,16 @@ export async function galaxiaPreviewMontar(el) {
   num.innerHTML = _CONT.map(([k, rotulo]) => `<span class="gx-prev-k"><b>${r[k] == null ? "—" : fmtN(r[k])}</b> ${rotulo}</span>`).join('');
   const av = el.querySelector('#gx-prev-aviso'); if (av) av.textContent = d.aviso || '';
   const cv = el.querySelector('canvas');
-  if (cv && cv.isConnected) desenhar2D(cv, d, layoutEspiral(d), {escala: 0.8, estrelas: 220});
+  if (cv && cv.isConnected) desenhar2D(cv, d, layoutEspiral(d), {escala: 0.8, estrelas: 220, fundo: false});
+  tocarQuandoVisivel(el.querySelector('.gx-prev-vid'));
   el.querySelector('.gx-prev-cv').setAttribute('title', `${fmtN(r.casos)} casos · ${fmtN(r.arestas)} ligações — ${d.aviso || ''}`);
+}
+
+function tocarQuandoVisivel(v) {
+  if (!v || typeof IntersectionObserver !== 'function') return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !document.body.classList.contains('fps-baixo')) v.play().catch(() => {});
+    else v.pause();
+  }, {threshold: 0.15}).observe(v);
 }

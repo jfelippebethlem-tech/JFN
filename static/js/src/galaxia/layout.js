@@ -79,18 +79,22 @@ export function corNo(n) {
 }
 
 /** Pinta a galáxia num canvas 2D, UMA vez (sem laço). `escala` multiplica o tamanho dos nós. */
-export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro = null, vista = null} = {}) {
+export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro = null, vista = null, fundo = true} = {}) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
   if (!w || !h) return;
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  /* fundo:false = só nós e ligações sobre transparente (o preview do Início põe o vídeo da galáxia por baixo) */
+  if (fundo) {
   const bg = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
   bg.addColorStop(0, '#0A2150'); bg.addColorStop(0.45, '#05112E'); bg.addColorStop(1, COR.fundo);
   g.fillStyle = bg; g.fillRect(0, 0, w, h);
   for (let i = 0; i < estrelas; i++) {                    // campo de estrelas (determinístico)
     const x = h01('sx' + i) * w, y = h01('sy' + i) * h, a = 0.15 + 0.6 * h01('sa' + i) ** 2;
     g.fillStyle = `rgba(190,225,255,${a.toFixed(2)})`; g.fillRect(x, y, h01('ss' + i) > 0.92 ? 1.6 : 0.9, h01('ss' + i) > 0.92 ? 1.6 : 0.9);
+  }
   }
   let mx = 1;
   for (const k in pos) mx = Math.max(mx, Math.abs(pos[k].x), Math.abs(pos[k].y));
@@ -101,7 +105,7 @@ export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro =
   escala *= Math.min(2.2, Math.sqrt(vk));
   const nucleo = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.32 * vk);
   nucleo.addColorStop(0, 'rgba(127,219,255,.30)'); nucleo.addColorStop(0.4, 'rgba(30,123,240,.10)'); nucleo.addColorStop(1, 'rgba(30,123,240,0)');
-  g.fillStyle = nucleo; g.fillRect(0, 0, w, h);
+  if (fundo) { g.fillStyle = nucleo; g.fillRect(0, 0, w, h); }
   const ok = filtro || (() => true);
   const nosV = (dados.nos || []).filter(ok), vis = new Set(nosV.map(n => n.id));
   g.globalCompositeOperation = 'lighter';

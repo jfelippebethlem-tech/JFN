@@ -8872,7 +8872,7 @@ void main(){
     if (n.tipo === "socio") return COR.gelo;
     return COR.ciano;
   }
-  function desenhar2D(cv, dados, pos, { escala = 1, estrelas = 380, filtro = null, vista = null } = {}) {
+  function desenhar2D(cv, dados, pos, { escala = 1, estrelas = 380, filtro = null, vista = null, fundo = true } = {}) {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
     if (!w || !h) return;
@@ -8880,16 +8880,19 @@ void main(){
     cv.height = Math.round(h * dpr);
     const g = cv.getContext("2d");
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const bg = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
-    bg.addColorStop(0, "#0A2150");
-    bg.addColorStop(0.45, "#05112E");
-    bg.addColorStop(1, COR.fundo);
-    g.fillStyle = bg;
-    g.fillRect(0, 0, w, h);
-    for (let i = 0; i < estrelas; i++) {
-      const x = h01("sx" + i) * w, y = h01("sy" + i) * h, a = 0.15 + 0.6 * h01("sa" + i) ** 2;
-      g.fillStyle = `rgba(190,225,255,${a.toFixed(2)})`;
-      g.fillRect(x, y, h01("ss" + i) > 0.92 ? 1.6 : 0.9, h01("ss" + i) > 0.92 ? 1.6 : 0.9);
+    g.clearRect(0, 0, w, h);
+    if (fundo) {
+      const bg = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+      bg.addColorStop(0, "#0A2150");
+      bg.addColorStop(0.45, "#05112E");
+      bg.addColorStop(1, COR.fundo);
+      g.fillStyle = bg;
+      g.fillRect(0, 0, w, h);
+      for (let i = 0; i < estrelas; i++) {
+        const x = h01("sx" + i) * w, y = h01("sy" + i) * h, a = 0.15 + 0.6 * h01("sa" + i) ** 2;
+        g.fillStyle = `rgba(190,225,255,${a.toFixed(2)})`;
+        g.fillRect(x, y, h01("ss" + i) > 0.92 ? 1.6 : 0.9, h01("ss" + i) > 0.92 ? 1.6 : 0.9);
+      }
     }
     let mx = 1;
     for (const k in pos) mx = Math.max(mx, Math.abs(pos[k].x), Math.abs(pos[k].y));
@@ -8901,8 +8904,10 @@ void main(){
     nucleo.addColorStop(0, "rgba(127,219,255,.30)");
     nucleo.addColorStop(0.4, "rgba(30,123,240,.10)");
     nucleo.addColorStop(1, "rgba(30,123,240,0)");
-    g.fillStyle = nucleo;
-    g.fillRect(0, 0, w, h);
+    if (fundo) {
+      g.fillStyle = nucleo;
+      g.fillRect(0, 0, w, h);
+    }
     const ok = filtro || (() => true);
     const nosV = (dados.nos || []).filter(ok), vis = new Set(nosV.map((n) => n.id));
     g.globalCompositeOperation = "lighter";
@@ -8953,7 +8958,10 @@ void main(){
   async function galaxiaPreviewMontar(el) {
     if (!el || el.dataset.gx) return;
     el.dataset.gx = "1";
-    el.innerHTML = `<div class="gx-prev-cv"><canvas aria-hidden="true"></canvas><span class="gx-prev-ring" aria-hidden="true"></span></div>
+    const cel = matchMedia("(max-width:700px)").matches ? "-m" : "";
+    el.innerHTML = `<div class="gx-prev-cv"><video class="gx-prev-vid" muted loop playsinline preload="none" aria-hidden="true">
+      <source src="/static/assets/v61/galaxia-loop${cel}.webm" type="video/webm"><source src="/static/assets/v61/galaxia-loop${cel}.mp4" type="video/mp4"></video>
+      <canvas aria-hidden="true"></canvas><span class="gx-prev-ring" aria-hidden="true"></span></div>
     <div class="gx-prev-txt"><div class="gx-prev-eye">Galáxia dos casos</div>
       <h2 class="gx-prev-tit">Todos os dossiês e as ligações entre eles, num só céu</h2>
       <div class="gx-prev-num" id="gx-prev-num"><span class="dim">carregando o grafo…</span></div>
@@ -8970,8 +8978,18 @@ void main(){
     const av = el.querySelector("#gx-prev-aviso");
     if (av) av.textContent = d.aviso || "";
     const cv = el.querySelector("canvas");
-    if (cv && cv.isConnected) desenhar2D(cv, d, layoutEspiral(d), { escala: 0.8, estrelas: 220 });
+    if (cv && cv.isConnected) desenhar2D(cv, d, layoutEspiral(d), { escala: 0.8, estrelas: 220, fundo: false });
+    tocarQuandoVisivel(el.querySelector(".gx-prev-vid"));
     el.querySelector(".gx-prev-cv").setAttribute("title", `${fmtN(r.casos)} casos · ${fmtN(r.arestas)} ligações — ${d.aviso || ""}`);
+  }
+  function tocarQuandoVisivel(v) {
+    if (!v || typeof IntersectionObserver !== "function") return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !document.body.classList.contains("fps-baixo")) v.play().catch(() => {
+      });
+      else v.pause();
+    }, { threshold: 0.15 }).observe(v);
   }
 
   // static/js/src/abas/cockpit.js
