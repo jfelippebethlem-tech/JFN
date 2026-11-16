@@ -549,6 +549,23 @@ def rever_quarentena(lote: str) -> dict:
         _log(f"REVISÃO DA QUARENTENA {p.name}: {'APROVADO' if ok else 'segue em quarentena'} "
              + json.dumps(met, ensure_ascii=False) + ("" if ok else f" motivos={motivos}"))
         res[p.name] = ok
+    # ÍNTEGRAS (15/11/2026): a revisão só cobria caches CDP da varredura — as íntegras barradas por uma régua que depois
+    # foi corrigida (títulos antigos genéricos × completos) ficavam presas para sempre. Mesmo caminho da importação.
+    for pi in sorted(x for x in pasta.iterdir() if x.is_dir() and not x.name.startswith("integra_")) \
+            if pasta.is_dir() else []:
+        tag = pi.name
+        info = (man.get("processos") or {}).get(tag.replace("_", "/")) or {}
+        ok, motivos, met = conferir_integra(pi, info.get("status") or "ok", tag, info.get("juizo"))
+        if ok:
+            _substituir(pi, ARQUIVO / tag, lote)
+            cache = QUARENTENA / lote / f"integra_{tag}"
+            if cache.is_dir():
+                _substituir(cache, CACHE / f"integra_{tag}", lote)
+                (QUARENTENA / lote / f"integra_{tag}.motivo.json").unlink(missing_ok=True)
+            (QUARENTENA / lote / f"{tag}.motivo.json").unlink(missing_ok=True)
+        _log(f"REVISÃO DA QUARENTENA {tag}: {'APROVADO' if ok else 'segue em quarentena'} "
+             + json.dumps(met, ensure_ascii=False) + ("" if ok else f" motivos={motivos}"))
+        res[tag] = ok
     if man:
         (IMPORTADOS / f"{lote}.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
     aplicar_pendentes()

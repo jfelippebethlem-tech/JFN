@@ -159,3 +159,24 @@ def test_titulos_realmente_diferentes_continuam_reprovando():
     ref = {"parecer juridico": "a", "contrato": "b"}
     ok, _ = V.comparar_com_referencia({"nota fiscal 12": "x", "relatorio de medicao": "y"}, ref)
     assert ok is False
+
+
+def test_rever_quarentena_reaprova_integra_que_a_regua_antiga_barrou(monkeypatch, tmp_path):
+    """Integra quarentenada por régua que mudou: revista, entra no acervo no lugar da antiga (que vai para
+    `_substituidos`) e o cache da íntegra vai junto; o motivo some."""
+    d = _isolar(monkeypatch, tmp_path)
+    lote = "integras-20261115-195824-1"
+    q = d / "vm2_quarentena" / lote
+    _pasta(q, "100000_000009_2025")
+    (q / "integra_100000_000009_2025").mkdir(parents=True)
+    (q / "100000_000009_2025.motivo.json").write_text('{"motivos": ["só 0/2 títulos"]}', encoding="utf-8")
+    antiga = d / "sei_arquivo" / "100000_000009_2025"
+    antiga.mkdir(parents=True)
+    (antiga / "manifest.json").write_text('{"docs": [{"titulo": "despacho"}]}', encoding="utf-8")
+    monkeypatch.setattr(C, "conferir_integra", lambda pasta, status, tag, juizo: (True, [], {"docs": 1}))
+    r = C.rever_quarentena(lote)
+    assert r == {"100000_000009_2025": True}
+    assert (d / "sei_arquivo" / "100000_000009_2025" / "texto").is_dir()
+    assert (d / "sei_cache" / "integra_100000_000009_2025").is_dir()
+    assert not (q / "100000_000009_2025.motivo.json").exists()
+    assert any(p.name.startswith("100000_000009_2025__") for p in (d / "vm2_entrega" / "_substituidos").iterdir())
