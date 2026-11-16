@@ -35,6 +35,7 @@ import json
 import httpx
 import logging
 import os
+import random
 import re
 import sqlite3
 import uuid
@@ -518,7 +519,7 @@ def _veredito_eixo(e: dict) -> str:
 
 
 def cruzar_eixos(processo: str, eixos_ref: dict, modelo_ref: str, eixos_outro: dict, modelo_outro: str,
-                 resumo: str = "") -> int:
+                 resumo: str = "", *, com_exemplos: bool = False) -> int:
     """Um par por eixo (`pericia_integral:<eixo>`): referência (Claude/Opus) × outro modelo. Devolve quantos gravou."""
     n = 0
     for nome in NOMES_EIXOS:
@@ -526,16 +527,18 @@ def cruzar_eixos(processo: str, eixos_ref: dict, modelo_ref: str, eixos_outro: d
         try:
             cruzamento.cruzar(f"{TAREFA}:{nome}", f"sei:{processo}",
                               cruzamento.Lado("claude", modelo_ref, _veredito_eixo(a), a.get("grau")),
-                              cruzamento.Lado("cascata", modelo_outro, _veredito_eixo(b), b.get("grau")),
+                              cruzamento.Lado("cascata", modelo_outro, _veredito_eixo(b), b.get("grau"),
+                                              com_exemplos=com_exemplos),
                               entrada_resumo=f"{resumo}\nEIXO {nome}: {dict((e['nome'], e['pergunta']) for e in EIXOS)[nome]}")
             n += 1
         except _FALHAS_DB + (ValueError,) as e:
             logger.warning("pericia_integral: cruzamento do eixo %s não gravado (%s)", nome, type(e).__name__)
-        n += _cruzar_pontos(processo, nome, a, modelo_ref, b, modelo_outro)
+        n += _cruzar_pontos(processo, nome, a, modelo_ref, b, modelo_outro, com_exemplos)
     return n
 
 
-def _cruzar_pontos(processo: str, eixo: str, a: dict, modelo_ref: str, b: dict, modelo_outro: str) -> int:
+def _cruzar_pontos(processo: str, eixo: str, a: dict, modelo_ref: str, b: dict, modelo_outro: str,
+                   com_exemplos: bool = False) -> int:
     """Um par por ponto de controle em que ao menos um lado decidiu (conforme/desconforme): a padronização no detalhe."""
     pa, pb = a.get("pontos") or {}, b.get("pontos") or {}
     textos = {p["id"]: p["texto"] for e in EIXOS if e["nome"] == eixo for p in e["pontos"]}
@@ -547,7 +550,7 @@ def _cruzar_pontos(processo: str, eixo: str, a: dict, modelo_ref: str, b: dict, 
         try:
             cruzamento.cruzar(f"{TAREFA}:{eixo}:{pid}", f"sei:{processo}",
                               cruzamento.Lado("claude", modelo_ref, va, _NIVEL_PONTO.get(va)),
-                              cruzamento.Lado("cascata", modelo_outro, vb, _NIVEL_PONTO.get(vb)),
+                              cruzamento.Lado("cascata", modelo_outro, vb, _NIVEL_PONTO.get(vb), com_exemplos=com_exemplos),
                               entrada_resumo=f"PONTO {pid}: {textos[pid]}")
             n += 1
         except _FALHAS_DB + (ValueError,) as e:
@@ -668,6 +671,27 @@ def _openrouter_longo(prompt: str, sistema: str) -> tuple[str, str]:
 
 
 # ── uma perícia ───────────────────────────────────────────────────────────────────────────────────────
+# Calibração A/B (15/11/2026): concordância de partida cascata × Claude = 52% por eixo (planejamento 1/8, jurídico
+# 2/13). Metade das chamadas da cascata recebe divergências anteriores do PRÓPRIO eixo com o veredito do Claude como
+# referência; a outra metade é o controle — o cruzamento mede os dois braços (`com_exemplos`), porque prompt mudado
+# sem A/B já derrubou recall nesta casa.
+FRACAO_CALIBRACAO = float(os.environ.get("JFN_PERICIA_CALIBRACAO", "0.5"))
+_TETO_CALIBRACAO = 4000
+
+
+def bloco_calibracao(k_por_eixo: int = 2) -> str:
+    linhas = []
+    for e in EIXOS:
+        for ex in cruzamento.exemplos(f"{TAREFA}:{e['nome']}", k=k_por_eixo):
+            linhas.append(f"- eixo `{e['nome']}` — caso: {str(ex.get('entrada') or '')[:220]} → perito de referência: "
+                          f"{str(ex.get('referencia') or '')[:160]}")
+    if not linhas:
+        return ""
+    corpo = "\n".join(linhas)[:_TETO_CALIBRACAO]
+    return ("\n\nCALIBRAÇÃO — casos anteriores em que outro modelo divergiu do perito de referência. Aplique o CRITÉRIO "
+            "do perito (não copie os casos; eles não são fonte de fatos deste processo):\n" + corpo)
+
+
 def periciar(pasta: Path | str, *, pensar: Callable | None = None, cascata: Callable | None = None,
              avaliar: Callable | None = None, coletar: Callable | None = None, obs: dict | None = None,
              teto_chars: int | None = None) -> dict:
@@ -687,6 +711,10 @@ def periciar(pasta: Path | str, *, pensar: Callable | None = None, cascata: Call
         return r
 
     def _c(p, s, timeout, json_saida):
+        if random.random() < FRACAO_CALIBRACAO:
+            bloco = bloco_calibracao()
+            if bloco:
+                p, cap["com_exemplos"] = p + bloco, True
         try:
             if cascata is not None:
                 txt, rot = cascata(p, s, timeout, json_saida), "cascata"
@@ -698,9 +726,8 @@ def periciar(pasta: Path | str, *, pensar: Callable | None = None, cascata: Call
         cap["cascata"], cap["modelo_cascata"] = txt, rot
         return txt
 
-    # sorteio=1.0 desliga o few-shot GLOBAL do co-motor nesta tarefa: o "resumo" dele seriam os 600 primeiros
-    # caracteres do prompt — só instruções, iguais em todo processo. Os exemplos úteis são os POR EIXO
-    # (`pericia_integral:<eixo>` no cruzamento); ligá-los no prompt da cascata é passo seguinte, com A/B.
+    # sorteio=1.0 desliga o few-shot GLOBAL do co-motor nesta tarefa (o "resumo" dele seriam só instruções); os
+    # exemplos úteis são os POR EIXO, em A/B dentro de `_c` (`bloco_calibracao`).
     gerar = comotor.juizo(TAREFA, modelo=claude_motor.MODELO_JUIZO, pensar=_p, cascata=_c, sorteio=lambda: 1.0,
                           espera=ESPERA_TRAVA, timeout_claude=TIMEOUT_CLAUDE)
     try:
@@ -720,7 +747,7 @@ def periciar(pasta: Path | str, *, pensar: Callable | None = None, cascata: Call
         eixos_o = interpretar(t_o, fonte)
         if eixos_o is not None:
             cruzados = cruzar_eixos(proc, eixos, f"{r_c.modelo}", eixos_o, cap.get("modelo_cascata") or "cascata",
-                                    resumo)
+                                    resumo, com_exemplos=bool(cap.get("com_exemplos")))
     provedor = "claude" if do_claude else (cap.get("modelo_cascata") or exibido).split(":", 1)[0]
     try:
         rodada = gravar(proc, eixos, modelo=exibido if do_claude else (cap.get("modelo_cascata") or exibido),

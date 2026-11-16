@@ -340,3 +340,28 @@ def test_chat_longo_recusa_modelo_pago():
     from compliance_agent.llm import free_llm
     with pytest.raises(ValueError):
         PI._chat_longo(free_llm, "k", "nvidia/modelo-pago", [])
+
+
+def test_calibracao_ab_metade_da_cascata_recebe_exemplos_por_eixo(monkeypatch):
+    """Padronização (dono: "batendo claude com as outras IAs para que sejam padronizadas"): metade das chamadas da
+    cascata recebe divergências anteriores POR EIXO com o veredito do Claude como referência; a outra metade é o
+    controle. O bloco fica FORA da entrada — citação tirada do exemplo não conta como prova."""
+    monkeypatch.setattr(PI.cruzamento, "exemplos",
+                        lambda tarefa, k=2, con=None: [{"entrada": f"caso de {tarefa}", "referencia": "veredito=grau 0"}]
+                        if tarefa.endswith(":planejamento") else [])
+    bloco = PI.bloco_calibracao()
+    assert "planejamento" in bloco and "veredito=grau 0" in bloco
+    p = _pasta(PI.ACERVO, "100001_000001_2025", [("Parecer Jurídico", TXT_PARECER)])
+    vistos = []
+
+    def _casc(prompt, s, t, j):
+        vistos.append(prompt)
+        return _resposta({"economicidade": 0})
+    for sorteio, espera_exemplos in ((0.1, True), (0.9, False)):
+        monkeypatch.setattr(PI.random, "random", lambda s=sorteio: s)
+        _periciar(p, _pensar(_resposta({"economicidade": 0})), _casc)
+        assert ("CALIBRAÇÃO" in vistos[-1]) is espera_exemplos
+        assert PI._fonte_do_prompt(vistos[-1]).find("CALIBRAÇÃO") == -1
+    con = C.conectar()
+    flags = {r[0] for r in con.execute("SELECT com_exemplos FROM veredito WHERE motor='cascata' AND tarefa LIKE 'pericia_integral:%'")}
+    assert flags == {0, 1}
