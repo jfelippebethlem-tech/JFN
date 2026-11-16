@@ -194,8 +194,9 @@ async def fechar_sei(b, pg, *, fixo: bool) -> None:
     if fixo:
         try:
             await pg.close()
-        except PWError:
-            pass
+        except PWError as e:
+            # aba já fechada/morta: o navegador fixo segue vivo para o próximo processo — rastro, não silêncio
+            logger.debug("fechar_sei: aba do navegador fixo não fechou limpo: %s", e)
         return
     await b.close()
 
