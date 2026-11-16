@@ -153,17 +153,27 @@ def _referencia(tag: str, incluir_arquivo: bool = True) -> dict[str, str]:
     return ref
 
 
+def _titulo_correspondente(t: str, novos: dict[str, str]) -> str | None:
+    """O título novo que corresponde ao da referência: igual, ou o antigo é o COMEÇO do novo. 15/11/2026: a leitura de
+    julho guardava títulos genéricos ("despacho") e a de hoje os completos ("despacho de encaminhamento de processo 1");
+    exigir igualdade mandou à quarentena uma captura 63/63 correta."""
+    if t in novos:
+        return t
+    return next((n for n in sorted(novos) if n.startswith(t + " ")), None)
+
+
 def comparar_com_referencia(novos: dict[str, str], ref: dict[str, str]) -> tuple[bool | None, str]:
     """None = sem referência. Compara títulos e o texto de até 3 documentos de mesmo título."""
     if not ref:
         return None, "sem leitura independente na VM-1"
     titulos_ref = {t for t in ref if t}
-    comuns = [t for t in titulos_ref if t in novos]
+    par = {t: c for t in titulos_ref if (c := _titulo_correspondente(t, novos))}
+    comuns = list(par)
     cobertura = len(comuns) / max(1, len(titulos_ref))
     if cobertura < MIN_TITULOS:
         return False, f"só {len(comuns)}/{len(titulos_ref)} títulos da leitura da VM-1 reaparecem"
-    sims = [semelhanca(novos[t], ref[t]) for t in comuns
-            if legivel(ref[t]) and legivel(novos[t])][:3]
+    sims = [semelhanca(novos[par[t]], ref[t]) for t in comuns
+            if legivel(ref[t]) and legivel(novos[par[t]])][:3]
     if sims and max(sims) < MIN_SEMELHANCA:
         return False, f"texto diverge da leitura da VM-1 (semelhança máx {max(sims):.2f})"
     return True, (f"{len(comuns)}/{len(titulos_ref)} títulos em comum com a VM-1"

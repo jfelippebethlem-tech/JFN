@@ -139,3 +139,23 @@ def test_restrito_declarado_pelo_sei_vai_para_o_registro(monkeypatch, tmp_path):
     ]
     assert C.registrar_restritos_declarados(linhas, "jorge") == ["270032/000052/2023"]
     assert semeados[0][0] == "270032/000052/2023" and "SEI declarou" in semeados[0][1]
+
+
+def test_titulo_antigo_generico_casa_com_o_titulo_completo_novo():
+    """15/11/2026: 260006/027088/2026 veio inteiro do it-campo (63/63 docs com teor) e foi para a QUARENTENA porque a
+    referência era a leitura de JULHO, com títulos genéricos ("despacho") que não são IGUAIS aos completos de hoje
+    ("despacho de encaminhamento de processo 1") — "só 0/2 títulos reaparecem". Prefixo do mesmo documento casa."""
+    import tools.vm2_conferencia as V
+    texto = "Encaminho o processo à DIRAF para providências quanto ao pagamento da nota fiscal. " * 3
+    ref = {"despacho": texto, "despacho de encaminhamento de processo": texto}
+    novos = {"despacho de encaminhamento de processo 1": texto, "despacho 128812 seeduc": texto,
+             "nota de empenho original ne": "outro"}
+    ok, nota = V.comparar_com_referencia(novos, ref)
+    assert ok, nota
+
+
+def test_titulos_realmente_diferentes_continuam_reprovando():
+    import tools.vm2_conferencia as V
+    ref = {"parecer juridico": "a", "contrato": "b"}
+    ok, _ = V.comparar_com_referencia({"nota fiscal 12": "x", "relatorio de medicao": "y"}, ref)
+    assert ok is False
