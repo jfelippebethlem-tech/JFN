@@ -345,7 +345,9 @@ def test_chat_longo_recusa_modelo_pago():
 def test_calibracao_ab_metade_da_cascata_recebe_exemplos_por_eixo(monkeypatch):
     """Padronização (dono: "batendo claude com as outras IAs para que sejam padronizadas"): metade das chamadas da
     cascata recebe divergências anteriores POR EIXO com o veredito do Claude como referência; a outra metade é o
-    controle. O bloco fica FORA da entrada — citação tirada do exemplo não conta como prova."""
+    controle. O bloco fica FORA da entrada — citação tirada do exemplo não conta como prova.
+    Desde 16/11 a fração padrão é 0 (A/B sem diferença); o mecanismo segue válido quando ligado por env."""
+    monkeypatch.setattr(PI, "FRACAO_CALIBRACAO", 0.5)
     monkeypatch.setattr(PI.cruzamento, "exemplos",
                         lambda tarefa, k=2, con=None: [{"entrada": f"caso de {tarefa}", "referencia": "veredito=grau 0"}]
                         if tarefa.endswith(":planejamento") else [])
@@ -365,3 +367,13 @@ def test_calibracao_ab_metade_da_cascata_recebe_exemplos_por_eixo(monkeypatch):
     con = C.conectar()
     flags = {r[0] for r in con.execute("SELECT com_exemplos FROM veredito WHERE motor='cascata' AND tarefa LIKE 'pericia_integral:%'")}
     assert flags == {0, 1}
+
+
+def test_regras_de_julgamento_no_prompt_de_todo_modelo():
+    """pi-3: regras tiradas das divergências medidas (ausência = lacuna; cronologia só por datas; formal ≤ grau 1;
+    grau 2 = ato + norma + efeito; orçamentário compara datas). Ficam FORA da entrada (não são prova)."""
+    s, pr = PI.montar_prompt({"processo": "X", "bloco": "b", "documentos": "d"})
+    for r in ("R1.", "R2.", "R3.", "R4.", "R5.", "R6.", "R7."):
+        assert r in pr
+    assert PI._fonte_do_prompt(pr).find("REGRAS DE JULGAMENTO") == -1
+    assert PI.VERSAO_PROMPT == "pi-3" and PI.FRACAO_CALIBRACAO == 0.0

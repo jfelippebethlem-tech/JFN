@@ -53,7 +53,8 @@ _REPO = Path(__file__).resolve().parents[1]
 DB = _REPO / "data" / "compliance.db"
 ACERVO = _REPO / "data" / "sei_arquivo"
 TAREFA = "pericia_integral"
-VERSAO_PROMPT = "pi-2"   # pi-2: pontos de controle por eixo, regime, diligência, hipótese inocente
+VERSAO_PROMPT = "pi-3"   # pi-3: regras de calibração por eixo (divergências medidas Claude × cascata, 16/11)
+# pi-2: pontos de controle por eixo, regime, diligência, hipótese inocente
 # caracteres de documentos por processo. 80k (1º desenho) leu 8 de 198 docs no processo-prova de 15/11; o dono quer o
 # Claude "pensando profundo em cada processo" — 240k (~65k tokens) cabem no Opus e no Gemini com folga.
 TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
@@ -391,6 +392,30 @@ _SISTEMA_EXTRA = (
 )
 
 
+# Regras de calibração (pi-3), tiradas das divergências MEDIDAS entre o Claude e a cascata em 16/11/2026 (eixo jurídico:
+# cascata mais grave em 27 de 36 pares; planejamento 12/24; orçamentário-contábil: cascata MENOS grave em 29/60, por não
+# comparar datas). Valem para todo modelo — descrevem o critério que o Claude já aplica.
+REGRAS_CALIBRACAO = (
+    "REGRAS DE JULGAMENTO (obrigatórias):\n"
+    "R1. Documento que NÃO aparece nos autos lidos é LACUNA (vai em `lacunas`/`diligencias`, ponto `indeterminado`), "
+    "nunca achado: ausência não prova irregularidade.\n"
+    "R2. Ordem entre atos só se afirma com as DATAS de assinatura/emissão citadas dos dois atos; número/ID do documento "
+    "no SEI e posição na árvore NÃO provam cronologia.\n"
+    "R3. Erro formal (numeração de aditivo, soma, referência normativa trocada, digitação) é no máximo grau 1, salvo "
+    "efeito financeiro ou restrição de competição demonstrados com citação.\n"
+    "R4. Grau 2 exige os três: o ATO praticado (citado), a NORMA violada e o EFEITO (dano, sobrepreço, restrição de "
+    "competição, pagamento indevido). Faltando um, é grau 1.\n"
+    "R5. Eixo orçamentário-contábil: para cada empenho, liquidação e OB citados, COMPARE as datas — empenho emitido "
+    "depois da competência da despesa (art. 60 da Lei 4.320), OB antes da liquidação (arts. 62–63), liquidação sem "
+    "atesto. Só marque `conforme` citando as datas que comparou; sem as datas, `indeterminado`.\n"
+    "R6. Eixos de fornecedor e compliance: todo sinal presente no bloco de evidências determinísticas (sanção, sócio "
+    "servidor/doador, situação cadastral, empresa nova, endereço compartilhado) tem de ser avaliado expressamente — "
+    "confirmado com citação ou afastado com a hipótese inocente; nunca ignorado.\n"
+    "R7. Planejamento: ETP/TR ou pesquisa de preços ausentes nos autos lidos são lacuna (R1); só é achado o que está "
+    "nos documentos e contraria a norma (ex.: pesquisa com uma única cotação, quantitativo sem memória de cálculo citado).\n"
+)
+
+
 def montar_prompt(entrada: dict) -> tuple[str, str]:
     eixos = "\n".join(
         f"{i + 1}. `{e['nome']}` — {e['pergunta']} Base: {e['base']}. Evidências determinísticas a consultar: "
@@ -415,6 +440,7 @@ def montar_prompt(entrada: dict) -> tuple[str, str]:
         "dos atos, e aplique os artigos do regime certo. Depois responda TODOS os pontos de controle de cada eixo: "
         "`desconforme` exige achado com citação (indique o ponto no achado); `indeterminado` quando faltar o documento; "
         "`nao_se_aplica` quando o ponto não cabe ao tipo de contratação. O grau do eixo resume os pontos.\n\n"
+        f"{REGRAS_CALIBRACAO}\n"
         f"{_MARCA_INI}\n{entrada['bloco']}\n\nDOCUMENTOS DO PROCESSO (ordenados por valor fiscalizatório):\n"
         f"{entrada['documentos']}\n{_MARCA_FIM}\n\n"
         f"Responda SOMENTE com este JSON, com TODOS os eixos: {schema}\nonde cada EIXO é {exemplo_eixo}"
@@ -675,7 +701,7 @@ def _openrouter_longo(prompt: str, sistema: str) -> tuple[str, str]:
 # 2/13). Metade das chamadas da cascata recebe divergências anteriores do PRÓPRIO eixo com o veredito do Claude como
 # referência; a outra metade é o controle — o cruzamento mede os dois braços (`com_exemplos`), porque prompt mudado
 # sem A/B já derrubou recall nesta casa.
-FRACAO_CALIBRACAO = float(os.environ.get("JFN_PERICIA_CALIBRACAO", "0.5"))
+FRACAO_CALIBRACAO = float(os.environ.get("JFN_PERICIA_CALIBRACAO", "0"))   # A/B de 16/11: exemplos não ajudaram (44% × 45%) — trocados pelas REGRAS_CALIBRACAO
 _TETO_CALIBRACAO = 4000
 
 
