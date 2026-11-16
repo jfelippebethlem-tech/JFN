@@ -53,6 +53,15 @@ async def api_casos_nota(slug: str = ""):
     return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
 
 
+@router.get("/api/galaxia")
+async def api_galaxia():
+    """Galáxia dos casos: dossiês do vault, CNPJs, processos SEI e sócios (QSA público) e as pontes entre casos.
+    Ligação = indício de relação a conferir, nunca prova."""
+    from compliance_agent.galaxia import galaxia
+    r = await asyncio.to_thread(galaxia)
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 503)
+
+
 @router.get("/api/requerimentos")
 async def api_requerimentos():
     """Os requerimentos de informação sugeridos pelas investigações (notas do vault) — só leitura."""
