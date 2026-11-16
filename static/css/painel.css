@@ -5459,7 +5459,9 @@ html.v61 #view .fade .card:not(.card .card):not(.grid.v60-lista > .card){positio
     box-shadow:var(--vidro-luz),0 18px 40px -18px rgba(20,70,140,.35)}
   html.v61 .sph{flex-direction:column;gap:5px;height:auto;padding:9px 2px 8px;border-radius:22px;font-size:10px;
     font-weight:550;letter-spacing:0;word-spacing:0;white-space:normal;overflow-wrap:normal;word-break:keep-all;text-align:center;line-height:1.15}
-  html.v61 .sph > div, html.v61 .sph > div > div{letter-spacing:0;font-size:inherit;max-width:100%}
+  /* rótulo em 10 px: a display (Oxanium) com tracking abria "Prefeit ura·Rio" em duas; aqui vale a sans */
+  html.v61 .sph > div, html.v61 .sph > div > div:first-child{letter-spacing:0;font-size:inherit;max-width:100%;
+    font-family:var(--f-sans);font-weight:600}
   html.v61 .sph .i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
   html.v61 .sph .i .jico{width:20px;height:20px}
   html.v61 .sph.on, html.v61 .sph.on:hover{background:#fff;box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),
