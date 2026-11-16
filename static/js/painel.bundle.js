@@ -1605,6 +1605,376 @@
     });
   }
 
+  // static/js/src/ui/vidro.js
+  var CHAVE = "jfn_vidro";
+  var CTRL = [
+    ["blur", "Desfoque", 0, 40, 1, 22, "px", (v) => `${v} px`],
+    ["alfa", "Opacidade", 0.4, 0.92, 0.01, 0.56, "", (v) => `${Math.round(v * 100)}%`],
+    ["sat", "Saturação", 1, 2, 0.05, 1.2, "", (v) => `${Number(v).toFixed(2).replace(".", ",")}×`],
+    ["tinta", "Tinta azul", 0, 0.12, 0.01, 0.04, "", (v) => `${Math.round(v / 0.12 * 100)}%`],
+    ["borda", "Luz de borda", 0, 1, 0.05, 0.6, "", (v) => `${Math.round(v * 100)}%`]
+  ];
+  var _prender = (c, v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.min(c[3], Math.max(c[2], n)) : c[5];
+  };
+  function _ler() {
+    let o = {};
+    try {
+      o = JSON.parse(localStorage.getItem(CHAVE) || "{}") || {};
+    } catch (_) {
+      o = {};
+    }
+    const r = {};
+    for (const c of CTRL) r[c[0]] = _prender(c, o[c[0]] ?? c[5]);
+    return r;
+  }
+  function _gravar(val) {
+    try {
+      localStorage.setItem(CHAVE, JSON.stringify(val));
+    } catch (_) {
+    }
+  }
+  function _esquecer() {
+    try {
+      localStorage.removeItem(CHAVE);
+    } catch (_) {
+    }
+  }
+  function _aplicar2(val) {
+    const h = document.documentElement.style;
+    for (const c of CTRL) {
+      const v = val[c[0]];
+      if (v === c[5]) h.removeProperty("--vidro-" + c[0]);
+      else h.setProperty("--vidro-" + c[0], v + c[6]);
+    }
+  }
+  var _ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
+  function vidroBoot() {
+    if (!_v61) return;
+    let val = _ler();
+    _aplicar2(val);
+    const box = document.querySelector(".htop .actions");
+    if (!box || document.querySelector("[data-vidro-abrir]")) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "vd-btn";
+    b.setAttribute("data-vidro-abrir", "");
+    b.title = "Ajustar vidro — desfoque, opacidade, saturação, tinta e luz de borda";
+    b.setAttribute("aria-label", "Ajustar vidro");
+    b.setAttribute("aria-haspopup", "dialog");
+    b.setAttribute("aria-expanded", "false");
+    b.innerHTML = _ICO;
+    box.insertBefore(b, box.querySelector("a.som") || box.firstChild);
+    const pop = document.createElement("div");
+    pop.id = "vd-pop";
+    pop.hidden = true;
+    pop.setAttribute("role", "dialog");
+    pop.setAttribute("aria-label", "Ajustar vidro");
+    pop.innerHTML = '<h3>Ajustar vidro</h3><p class="vd-sub">Só a aparência deste aparelho. O texto fica sempre legível: os limites foram medidos.</p>' + CTRL.map((c) => `<label>${c[1]}<output data-vidro-saida="${c[0]}"></output><input type="range" data-vidro="${c[0]}" min="${c[2]}" max="${c[3]}" step="${c[4]}" aria-label="${c[1]}"></label>`).join("") + '<div class="vd-pe"><small>gravado neste navegador</small><button type="button" class="vd-reset" data-vidro-padrao>Restaurar padrão</button></div>';
+    document.body.appendChild(pop);
+    const pintar = () => {
+      for (const c of CTRL) {
+        const i = pop.querySelector(`[data-vidro="${c[0]}"]`), o = pop.querySelector(`[data-vidro-saida="${c[0]}"]`);
+        if (i) i.value = val[c[0]];
+        if (o) o.textContent = c[7](val[c[0]]);
+      }
+    };
+    const abrir = (sim) => {
+      pop.hidden = !sim;
+      b.setAttribute("aria-expanded", sim ? "true" : "false");
+      if (sim) {
+        pintar();
+        const p = pop.querySelector("input");
+        if (p) p.focus({ preventScroll: true });
+      }
+    };
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrir(pop.hidden);
+    });
+    pop.addEventListener("input", (e) => {
+      const k = e.target && e.target.dataset ? e.target.dataset.vidro : null;
+      const c = CTRL.find((x) => x[0] === k);
+      if (!c) return;
+      val = { ...val, [k]: _prender(c, e.target.value) };
+      _aplicar2(val);
+      _gravar(val);
+      const o = pop.querySelector(`[data-vidro-saida="${k}"]`);
+      if (o) o.textContent = c[7](val[k]);
+    });
+    pop.addEventListener("click", (e) => {
+      if (!(e.target && e.target.closest && e.target.closest("[data-vidro-padrao]"))) return;
+      val = Object.fromEntries(CTRL.map((c) => [c[0], c[5]]));
+      _aplicar2(val);
+      _esquecer();
+      pintar();
+    });
+    document.addEventListener("click", (e) => {
+      if (!pop.hidden && !pop.contains(e.target) && e.target !== b) abrir(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !pop.hidden) {
+        abrir(false);
+        b.focus();
+      }
+    });
+  }
+
+  // static/js/src/ui/jarvis.js
+  var _mobile = () => matchMedia("(max-width:760px)").matches;
+  var _parado = () => _redMotion || _sobrio || document.hidden;
+  var _toque = { x: 0, y: 0, t: -1e9, dir: 1 };
+  function jarvisToque() {
+    return { dir: _toque.dir, recente: performance.now() - _toque.t < 1500, x: _toque.x, y: _toque.y };
+  }
+  function _registrarToque(e) {
+    const c = e.target && e.target.closest ? e.target.closest(".chip, nav.tabs button, .sph") : null;
+    let dir = 1;
+    if (c && c.parentElement) {
+      const irmaos = [...c.parentElement.children];
+      const de = irmaos.findIndex((x) => x.classList.contains("on")), pa = irmaos.indexOf(c);
+      if (de >= 0 && pa >= 0 && pa < de) dir = -1;
+    }
+    _toque = { x: e.clientX, y: e.clientY, t: performance.now(), dir };
+  }
+  function _efemero(cls, estilo, ms) {
+    const i = document.createElement("i");
+    i.className = cls;
+    i.setAttribute("aria-hidden", "true");
+    if (estilo) i.setAttribute("style", estilo);
+    document.body.appendChild(i);
+    const fora = () => i.remove();
+    i.addEventListener("animationend", fora, { once: true });
+    setTimeout(fora, ms);
+  }
+  function _aposRender(f) {
+    const fam = f.dataset.fam;
+    if (!_parado()) {
+      if (fam === "holo") _efemero("jv-scan", "", 1400);
+      const tq = jarvisToque();
+      if (fam === "pulso" && tq.recente) _efemero("jv-onda", `left:${tq.x}px;top:${tq.y}px`, 1400);
+    }
+    const alvo = f.querySelector(".ck-hero, .card.kpi, .ck-inst");
+    if (alvo && !alvo.querySelector(".jv-hud")) {
+      const h = document.createElement("i");
+      h.className = "jv-hud" + (alvo.querySelector('.kpi-ico[style*="rose"]') ? " jv-hud-baixo" : "");
+      h.setAttribute("aria-hidden", "true");
+      h.innerHTML = "<b></b><b></b>";
+      alvo.appendChild(h);
+    }
+  }
+  function _reflexo() {
+    if (_parado()) return;
+    const v = $("view");
+    if (!v) return;
+    const cand = [...v.querySelectorAll(".jv-c.card, .jv-c.ck-inst, .jv-c.ck-hero, .card.kpi")].slice(0, 16);
+    if (!cand.length) return;
+    for (let k = 0; k < 4; k++) {
+      const el = cand[Math.floor(Math.random() * cand.length)];
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight || el.querySelector(".jv-brilho")) continue;
+      if (getComputedStyle(el).position === "static") continue;
+      const i = document.createElement("i");
+      i.className = "jv-brilho";
+      i.setAttribute("aria-hidden", "true");
+      el.appendChild(i);
+      const fora = () => i.remove();
+      i.addEventListener("animationend", fora, { once: true });
+      setTimeout(fora, 2e3);
+      return;
+    }
+  }
+  var _p2 = (n) => String(n).padStart(2, "0");
+  function _tele() {
+    const t = $("jv-tele");
+    if (!t) return;
+    const d = /* @__PURE__ */ new Date();
+    const partes = [`<span class="num">${_p2(d.getHours())}:${_p2(d.getMinutes())}:${_p2(d.getSeconds())}</span>`];
+    if (aoVivo.disponivel === true) partes.push(`<b class="num">${motoresRodando().length}</b> motores`);
+    const r = ritmoEstado();
+    if (r && r.eventosPorMinuto > 0) partes.push(`<b class="num">${r.eventosPorMinuto}</b> ev/min`);
+    if (r && r.load1 > 0) partes.push(`carga <b class="num">${r.load1.toFixed(1).replace(".", ",")}</b>`);
+    const h = partes.join('<i aria-hidden="true"></i>');
+    if (t.dataset.h !== h) {
+      t.dataset.h = h;
+      t.innerHTML = h;
+    }
+  }
+  var _relogio2 = 0;
+  var _brilho = 0;
+  function _ligarRelogios() {
+    if (!_relogio2) _relogio2 = setInterval(_tele, 1e3);
+    if (!_brilho && !_redMotion) _brilho = setInterval(_reflexo, 5200);
+  }
+  function _pararRelogios() {
+    clearInterval(_relogio2);
+    clearInterval(_brilho);
+    _relogio2 = _brilho = 0;
+  }
+  function jarvisBoot() {
+    if (!_v61) return;
+    addEventListener("pointerdown", _registrarToque, { capture: true, passive: true });
+    const lg = document.querySelector(".brand .lg");
+    if (lg && !lg.querySelector(".jv-hud")) {
+      const h = document.createElement("i");
+      h.className = "jv-hud jv-hud-lg";
+      h.setAttribute("aria-hidden", "true");
+      h.innerHTML = "<b></b><b></b>";
+      lg.appendChild(h);
+    }
+    if (!$("jv-part")) {
+      const p = document.createElement("div");
+      p.id = "jv-part";
+      p.setAttribute("aria-hidden", "true");
+      p.innerHTML = "<i></i>".repeat(_mobile() ? 6 : 12);
+      const fundo = $("v61-fundo");
+      if (fundo) fundo.insertAdjacentElement("afterend", p);
+      else document.body.insertBefore(p, document.body.firstChild);
+    }
+    const tk = $("v61-ticker");
+    if (tk && !$("jv-tele")) {
+      const t = document.createElement("span");
+      t.id = "jv-tele";
+      t.className = "jv-tele";
+      t.title = "Telemetria: hora local, motores rodando, eventos por minuto no barramento e carga da VM (só o que já chegou)";
+      tk.appendChild(t);
+      aoVivoOuvir(_tele);
+    }
+    _tele();
+    const v = $("view");
+    if (v) new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList.contains("fade")) _aposRender(n);
+    }).observe(v, { childList: true });
+    const vis = () => {
+      document.documentElement.classList.toggle("jv-oculto", document.hidden);
+      if (document.hidden) _pararRelogios();
+      else {
+        _tele();
+        _ligarRelogios();
+      }
+    };
+    document.addEventListener("visibilitychange", vis);
+    vis();
+  }
+
+  // static/js/src/ui/revelacao.js
+  var TETO_NOS = 40;
+  var _primeiros = (lista) => [...lista].slice(0, TETO_NOS);
+  var _num = (el) => {
+    const alvo = el.querySelector(".num, .val, .v");
+    if (!alvo) return null;
+    const m = String(alvo.textContent || "").match(/-?\d[\d.\s]*(?:,\d+)?/);
+    if (!m) return null;
+    const s = m[0].replace(/\s/g, "");
+    const n = s.includes(",") ? parseFloat(s.replace(/\./g, "").replace(",", ".")) : /^-?\d{1,3}(\.\d{3})+$/.test(s) ? parseFloat(s.replace(/\./g, "")) : parseFloat(s);
+    return isFinite(n) ? n : null;
+  };
+  function _ehRanking(nos) {
+    if (nos.length < 4) return false;
+    const s = nos.map(_num);
+    if (s.some((v) => v === null)) return false;
+    let desce = true, sobe = true, degraus = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i] > s[i - 1]) desce = false;
+      if (s[i] < s[i - 1]) sobe = false;
+      if (s[i] !== s[i - 1]) degraus++;
+    }
+    return (desce || sobe) && degraus >= 2;
+  }
+  function _tabelas(v) {
+    let tocadas = 0;
+    v.querySelectorAll("table tbody").forEach((tb) => {
+      const trs = _primeiros(tb.rows);
+      if (trs.length < 3) return;
+      trs.forEach((tr, i) => {
+        tr.classList.add("rv-linha");
+        tr.style.setProperty("--i", i);
+      });
+      tocadas += trs.length;
+    });
+    return tocadas;
+  }
+  function _rankings(v) {
+    let n = 0;
+    v.querySelectorAll(".grid, .cols").forEach((g) => {
+      const filhos = _primeiros([...g.children].filter((el) => el.classList.contains("card") || el.classList.contains("ck-inst")));
+      if (!_ehRanking(filhos)) return;
+      g.classList.add("rv-rank");
+      filhos.forEach((el, i) => el.style.setProperty("--i", filhos.length - 1 - i));
+      n++;
+    });
+    return n;
+  }
+  function _colunasOpostas(v) {
+    const rks = [...v.querySelectorAll(".rv-rank")];
+    if (rks.length < 2) return 0;
+    rks.forEach((g, i) => {
+      g.classList.add("rv-lado");
+      g.style.setProperty("--lado", i % 2 ? "-1" : "1");
+    });
+    return rks.length;
+  }
+  function _secoes(v) {
+    const secs = _primeiros(v.querySelectorAll("h2.sec"));
+    secs.forEach((s, i) => {
+      s.classList.add("rv-sec");
+      s.style.setProperty("--i", i);
+    });
+    return secs.length;
+  }
+  function _chips(v) {
+    let n = 0;
+    v.querySelectorAll(".chips").forEach((row) => {
+      const bs = _primeiros(row.children);
+      if (bs.length < 2) return;
+      row.classList.add("rv-leque");
+      bs.forEach((b, i) => b.style.setProperty("--i", i));
+      n += bs.length;
+    });
+    return n;
+  }
+  function revelar(v, rm, sobrio) {
+    if (!v) return null;
+    if (rm || sobrio) return { desligado: true, motivo: rm ? "reduced-motion" : "fps-baixo" };
+    const censo = {
+      linhas: _tabelas(v),
+      rankings: _rankings(v),
+      secoes: _secoes(v),
+      chips: _chips(v)
+    };
+    censo.opostos = _colunasOpostas(v);
+    censo.coreo = _coreografia(v);
+    return censo;
+  }
+  var _FAM_PULSO = /pericia|pcont|casos|alerta|radar|prioridade|riscos|requerimentos/;
+  var _FAM_GRADE = /siafe|orc|panorama|comissao|gastos|couto|cge|capital|dez|benef|comis|ppp/;
+  function familiaDaAba(esf, aba2) {
+    if (esf === "inicio" || esf === "sistema") return "holo";
+    const id = String(aba2 || "");
+    if (_FAM_PULSO.test(id)) return "pulso";
+    if (_FAM_GRADE.test(id)) return "grade";
+    return "fluxo";
+  }
+  function _coreografia(v) {
+    const f = v.querySelector(":scope > .fade[data-fam]");
+    if (!f) return 0;
+    const blocos = _primeiros([...f.querySelectorAll(".card, .cover, .ck-inst, .ck-hero, h2.sec, .chips")].filter((el) => !el.parentElement.closest(".card, .cover, .rv-rank, .chips, .v60-lista") && !el.closest(".rv-rank")));
+    blocos.forEach((el, i) => {
+      el.classList.add("jv-c");
+      el.style.setProperty("--jv-i", i);
+    });
+    return blocos.length;
+  }
+  var INTRO_ARESTA = 620;
+  var INTRO_NO = 300;
+  function _wireFase(msDesdeInicio) {
+    if (msDesdeInicio == null) return { aresta: 1, no: 1 };
+    const a = Math.min(1, Math.max(0, msDesdeInicio / INTRO_ARESTA));
+    const n = Math.min(1, Math.max(0, (msDesdeInicio - INTRO_ARESTA) / INTRO_NO));
+    return { aresta: 1 - Math.pow(1 - a, 3), no: 1 - Math.pow(1 - n, 3) };
+  }
+
   // static/js/src/capacidade/sobrio.js
   var _reagir = () => {
   };
@@ -1641,6 +2011,7 @@
     };
     document.addEventListener("visibilitychange", h);
   }
+  var _lentoVisivel = 0;
   function _medirFps() {
     if (_redMotion) return;
     if (document.hidden) {
@@ -1661,9 +2032,19 @@
         return;
       }
       if (dt > 3e3) {
+        if (!document.hidden && ++_lentoVisivel >= 3) {
+          _lentoVisivel = 0;
+          _sobrioAplicar(true, n * 1e3 / dt);
+          return;
+        }
+        if (!document.hidden) {
+          setTimeout(_medirFps, 4e3);
+          return;
+        }
         _medirQuandoVisivel();
         return;
       }
+      _lentoVisivel = 0;
       const fps = n * 1e3 / dt;
       window._jfnFps = Math.round(fps);
       if (fps < 24) _sobrioAplicar(true, fps);
@@ -3595,110 +3976,13 @@ void main(){
     ligada: !!(_cv && !_cv.hidden)
   });
 
-  // static/js/src/ui/revelacao.js
-  var TETO_NOS = 40;
-  var _primeiros = (lista) => [...lista].slice(0, TETO_NOS);
-  var _num = (el) => {
-    const alvo = el.querySelector(".num, .val, .v");
-    if (!alvo) return null;
-    const m = String(alvo.textContent || "").match(/-?\d[\d.\s]*(?:,\d+)?/);
-    if (!m) return null;
-    const s = m[0].replace(/\s/g, "");
-    const n = s.includes(",") ? parseFloat(s.replace(/\./g, "").replace(",", ".")) : /^-?\d{1,3}(\.\d{3})+$/.test(s) ? parseFloat(s.replace(/\./g, "")) : parseFloat(s);
-    return isFinite(n) ? n : null;
-  };
-  function _ehRanking(nos) {
-    if (nos.length < 4) return false;
-    const s = nos.map(_num);
-    if (s.some((v) => v === null)) return false;
-    let desce = true, sobe = true, degraus = 0;
-    for (let i = 1; i < s.length; i++) {
-      if (s[i] > s[i - 1]) desce = false;
-      if (s[i] < s[i - 1]) sobe = false;
-      if (s[i] !== s[i - 1]) degraus++;
-    }
-    return (desce || sobe) && degraus >= 2;
-  }
-  function _tabelas(v) {
-    let tocadas = 0;
-    v.querySelectorAll("table tbody").forEach((tb) => {
-      const trs = _primeiros(tb.rows);
-      if (trs.length < 3) return;
-      trs.forEach((tr, i) => {
-        tr.classList.add("rv-linha");
-        tr.style.setProperty("--i", i);
-      });
-      tocadas += trs.length;
-    });
-    return tocadas;
-  }
-  function _rankings(v) {
-    let n = 0;
-    v.querySelectorAll(".grid, .cols").forEach((g) => {
-      const filhos = _primeiros([...g.children].filter((el) => el.classList.contains("card") || el.classList.contains("ck-inst")));
-      if (!_ehRanking(filhos)) return;
-      g.classList.add("rv-rank");
-      filhos.forEach((el, i) => el.style.setProperty("--i", filhos.length - 1 - i));
-      n++;
-    });
-    return n;
-  }
-  function _colunasOpostas(v) {
-    const rks = [...v.querySelectorAll(".rv-rank")];
-    if (rks.length < 2) return 0;
-    rks.forEach((g, i) => {
-      g.classList.add("rv-lado");
-      g.style.setProperty("--lado", i % 2 ? "-1" : "1");
-    });
-    return rks.length;
-  }
-  function _secoes(v) {
-    const secs = _primeiros(v.querySelectorAll("h2.sec"));
-    secs.forEach((s, i) => {
-      s.classList.add("rv-sec");
-      s.style.setProperty("--i", i);
-    });
-    return secs.length;
-  }
-  function _chips(v) {
-    let n = 0;
-    v.querySelectorAll(".chips").forEach((row) => {
-      const bs = _primeiros(row.children);
-      if (bs.length < 2) return;
-      row.classList.add("rv-leque");
-      bs.forEach((b, i) => b.style.setProperty("--i", i));
-      n += bs.length;
-    });
-    return n;
-  }
-  function revelar(v, rm, sobrio) {
-    if (!v) return null;
-    if (rm || sobrio) return { desligado: true, motivo: rm ? "reduced-motion" : "fps-baixo" };
-    const censo = {
-      linhas: _tabelas(v),
-      rankings: _rankings(v),
-      secoes: _secoes(v),
-      chips: _chips(v)
-    };
-    censo.opostos = _colunasOpostas(v);
-    return censo;
-  }
-  var INTRO_ARESTA = 620;
-  var INTRO_NO = 300;
-  function _wireFase(msDesdeInicio) {
-    if (msDesdeInicio == null) return { aresta: 1, no: 1 };
-    const a = Math.min(1, Math.max(0, msDesdeInicio / INTRO_ARESTA));
-    const n = Math.min(1, Math.max(0, (msDesdeInicio - INTRO_ARESTA) / INTRO_NO));
-    return { aresta: 1 - Math.pow(1 - a, 3), no: 1 - Math.pow(1 - n, 3) };
-  }
-
   // static/js/src/ui/midia.js
   var SFX = {
     area: { src: "/static/assets/sfx/area.mp3", vol: 0.1, intervalo: 350 },
     alerta: { src: "/static/assets/sfx/alerta.mp3", vol: 0.16, intervalo: 8e3 },
     dossie: { src: "/static/assets/sfx/dossie.mp3", vol: 0.12, intervalo: 600 }
   };
-  var CHAVE = "jfn.som";
+  var CHAVE2 = "jfn.som";
   var ILUS = { doc: "/static/assets/gen/vazio-doc.webp", rede: "/static/assets/gen/vazio-rede.webp" };
   var _ligado2 = false;
   var _audio = {};
@@ -3706,14 +3990,14 @@ void main(){
   var _quebrado = {};
   function _lerPref() {
     try {
-      return localStorage.getItem(CHAVE) === "1";
+      return localStorage.getItem(CHAVE2) === "1";
     } catch (_) {
       return false;
     }
   }
   function _gravarPref(v) {
     try {
-      localStorage.setItem(CHAVE, v ? "1" : "0");
+      localStorage.setItem(CHAVE2, v ? "1" : "0");
     } catch (_) {
     }
   }
@@ -5091,7 +5375,7 @@ void main(){
   var ESFERA = { estado: "Estado do RJ", prefeitura: "Prefeitura do Rio", transversal: "Transversal" };
   var _CHAVE = "jfn.periodo";
   var _P = { ano: "", mes: "" };
-  function _ler() {
+  function _ler2() {
     try {
       const s = JSON.parse(sessionStorage.getItem(_CHAVE) || "null");
       if (s && typeof s === "object") _P = { ano: String(s.ano || ""), mes: String(s.mes || "") };
@@ -5231,7 +5515,7 @@ void main(){
   function ligarPeriodo() {
     if (_ligado5) return;
     _ligado5 = true;
-    _ler();
+    _ler2();
     document.addEventListener("change", (ev) => {
       const t = ev.target;
       if (!t || !t.matches) return;
@@ -14994,8 +15278,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     try {
       const html = await t.render();
       if (meu !== _nav) return;
+      const _tq = jarvisToque(), _fam = _abaAntes === id && _tq.recente ? "lado" : familiaDaAba(esfera, id);
       const pintar = () => {
-        v.innerHTML = `<div class="fade">${html}</div>`;
+        v.innerHTML = `<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;
         if (typeof marcarValores === "function") marcarValores(v);
       };
       if (document.startViewTransition && !_redMotion && (!_v60 || _v61 && !_sobrio)) {
@@ -15067,6 +15352,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   ligarAcervo();
   ligarDrill();
   ligarMidia();
+  vidroBoot();
+  jarvisBoot();
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();

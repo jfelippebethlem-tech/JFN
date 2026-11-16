@@ -207,7 +207,42 @@ export function revelar(v, rm, sobrio) {
     chips: _chips(v),
   };
   censo.opostos = _colunasOpostas(v);   // depende de `_rankings` já ter marcado `.rv-rank`
+  censo.coreo = _coreografia(v);        // depende de `_rankings`: ranking tem gesto próprio e fica fora
   return censo;
+}
+
+// ═══ GRAMÁTICA 7 · CADA FAMÍLIA DE ABA ENTRA DO SEU JEITO (vidro, 16/11/2026) ════════════════════
+/* Pedido do dono: "animações em cada aba, sub aba ou algo do gênero … que tudo se mexa e esteja vivo".
+   As gramáticas 1–6 são da FORMA da tela; esta é da FAMÍLIA da aba — e continua sem cadastro por
+   id. A família sai do prefixo e do tema do id (`familiaDaAba`), então aba nova cai numa família
+   sozinha, e uma família sem regra no CSS só não ganha gesto — nada some.
+     holo   Início e Sistema    linha de varredura holográfica monta os blocos de cima para baixo
+     grade  dado SIAFE/orçamento os blocos chegam dos eixos (alternando lados), como peças encaixando
+     pulso  perícias/casos/alertas um pulso radial sai do ponto do clique e os blocos "acendem"
+     fluxo  o resto (listas/tabelas) entram em cascata lateral, como telemetria
+     lado   SUB-ABA (chip na mesma aba) a tela desliza para o lado do chip escolhido, igual ao
+            controle segmentado
+   As MESMAS travas das outras: só classe + `--jv-i`, nenhuma geometria, teto de 40 nós e de 380 ms
+   (o CSS multiplica `--jv-i` e corta em 380). Ranking (`.rv-rank`) já tem gesto com SENTIDO e não
+   é tocado. A família vem escrita no `.fade` por `pintar()` (`entrada.js`). */
+const _FAM_PULSO = /pericia|pcont|casos|alerta|radar|prioridade|riscos|requerimentos/;
+const _FAM_GRADE = /siafe|orc|panorama|comissao|gastos|couto|cge|capital|dez|benef|comis|ppp/;
+/** Família de entrada de uma aba (pura: só lê os dois ids). */
+export function familiaDaAba(esf, aba) {
+  if (esf === 'inicio' || esf === 'sistema') return 'holo';
+  const id = String(aba || '');
+  if (_FAM_PULSO.test(id)) return 'pulso';
+  if (_FAM_GRADE.test(id)) return 'grade';
+  return 'fluxo';
+}
+function _coreografia(v) {
+  const f = v.querySelector(':scope > .fade[data-fam]');
+  if (!f) return 0;
+  const blocos = _primeiros([...f.querySelectorAll('.card, .cover, .ck-inst, .ck-hero, h2.sec, .chips')]
+    .filter(el => !el.parentElement.closest('.card, .cover, .rv-rank, .chips, .v60-lista') && !el.closest('.rv-rank')));
+  /* linha de lista (`.v60-lista`) fica fora: ela já tem a cascata própria do estrato 70 */
+  blocos.forEach((el, i) => { el.classList.add('jv-c'); el.style.setProperty('--jv-i', i); });
+  return blocos.length;
 }
 
 // ═══ GRAMÁTICA 6 · O GRAFO DESENHA AS ARESTAS ANTES DOS NÓS ═════════════════════════════════════

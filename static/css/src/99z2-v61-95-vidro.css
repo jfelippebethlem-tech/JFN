@@ -1,0 +1,162 @@
+/* ══ v61 · VIDRO (2026-11-16) — o «Adjustable Glass Dashboard» adaptado ao tema Gelo ════════════════
+   Pedido do dono: "use a versão mais recente do glassy dashboard pro nosso painel, respeitando cores".
+   Referência medida (21st.dev, troyjlorents-gh): painéis com `blur(22px) saturate(1.2)`, branco a .30,
+   barra do topo a .70 com blur 20, contorno oklch(.922 0 0), raios 20/23/27/30, fio de luz branco no
+   topo (`0 1px 0 rgba(255,255,255,.6) inset`), barra do topo em cápsula flutuante, trilho vertical de
+   ícones e o painel «Adjust glass». Aqui: as MESMAS medidas, com as cores da casa (--ion, --cyan,
+   --tron, --bg) — nada da paleta bege da demonstração.
+
+   REGRAS DESTE ESTRATO
+   · Os cinco botões do «Ajustar vidro» (`ui/vidro.js`) escrevem SÓ os tokens `--vidro-*` no <html>.
+     Quem os transforma em superfície são as regras daqui — o JS não pinta nada.
+   · LEGIBILIDADE NÃO É AJUSTÁVEL. A opacidade mínima do controle (.40) e a tinta máxima (.12) foram
+     medidas com `tools/auditar_contraste_pixel.py`: texto sobre o vidro fica ≥ 4,5:1 nos dois extremos.
+   · As três quedas de sempre continuam valendo e ficam ESCRITAS aqui, não herdadas por acaso:
+       1. modo sóbrio (`body.fps-baixo`): sem desfoque e superfície opaca;
+       2. celular (≤ 820 px): cabeçalho opaco, sem cápsula flutuante (decisão medida da v50/v60);
+       3. `prefers-reduced-transparency`: tudo sólido.
+   · Os tokens derivados (`--surface`, `--blur`) moram no BODY, não no <html>: é no body que o modo
+     sóbrio e o celular os sobrescrevem, e custom property resolvida no <html> não "ouviria" isso.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── tokens (padrões do controle) ───────────────────────────────────────────────────────────── */
+html.v61{
+  --vidro-blur:22px;        /* desfoque atrás do vidro (0–40) */
+  --vidro-sat:1.2;          /* saturação do que passa pelo vidro (1–2) */
+  --vidro-alfa:.56;         /* opacidade do branco do cartão (.40–.92) */
+  --vidro-tinta:.04;        /* quanto de --ion tinge o vidro (0–.12) */
+  --vidro-borda:.6;         /* intensidade da luz de borda ciano (0–1) */
+  --vidro-contorno:oklch(.922 0 0 / .9);
+  --r-card:20px; --r-hero:23px; --r-pop:27px; --r-capsula:30px;
+}
+html.v61 body{
+  /* branco tingido de --ion: (255,255,255) → (30,123,240) na proporção da tinta */
+  --surface:rgba(calc(255 - 225 * var(--vidro-tinta)),calc(255 - 132 * var(--vidro-tinta)),calc(255 - 15 * var(--vidro-tinta)),var(--vidro-alfa));
+  --vidro-luz:0 1px 0 rgba(255,255,255,.62) inset;
+  --sh:var(--vidro-luz),0 8px 24px rgba(20,70,140,.08);
+  --lift:var(--vidro-luz),0 1px 1px rgba(11,27,51,.04),0 10px 30px -12px rgba(20,70,140,.20),0 0 24px -6px rgba(255,255,255,.55);
+  --lift-hi:var(--vidro-luz),0 1px 1px rgba(11,27,51,.04),0 0 0 1px var(--tron-glow),0 18px 40px -14px rgba(30,123,240,.30);
+}
+@media (min-width:821px){
+  html.v61 body{--blur:blur(var(--vidro-blur)) saturate(var(--vidro-sat))}
+}
+
+/* ── cartões: vidro + fio de luz no topo + borda luminosa ciano (máscara) ───────────────────── */
+html.v61 .card, html.v61 .grid.v60-lista, html.v61 .v60-feed{border-color:var(--vidro-contorno)}
+html.v61 .ck-hero{border-radius:var(--r-hero)}
+/* A luz de borda é um pseudo de 1px de "moldura": gradiente recortado por máscara (conteúdo × caixa).
+   Especificidade (1,3,2) de propósito — a v60 zera `#view > .fade > *::after` com (1,2,2). */
+html.v61 #view .fade :is(.card,.ck-inst,.ck-hero):not(.card .card):not(.grid.v60-lista > .card)::after{
+  content:"";display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:0;
+  background:linear-gradient(135deg,
+    rgba(34,181,245,calc(.95 * var(--vidro-borda))) 0%,
+    rgba(255,255,255,calc(.9 * var(--vidro-borda))) 18%,
+    transparent 42%, transparent 66%,
+    rgba(30,123,240,calc(.55 * var(--vidro-borda))) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  animation:none;opacity:1;transform:none;filter:none;box-shadow:none;width:auto;height:auto}
+html.v61 #view .fade .card:not(.card .card):not(.grid.v60-lista > .card){position:relative}
+
+/* ── cabeçalho: cápsula flutuante (desktop) ────────────────────────────────────────────────────
+   O <header> continua sendo a faixa grudada de 64 px (o ticker e o trilho de abas medem a partir
+   dela). Ele fica TRANSPARENTE e sem desfoque, e a cápsula é o `::before`. Dois motivos:
+     · `backdrop-filter` no <header> o tornaria bloco de contenção de quem é `position:fixed` dentro
+       dele — e o trilho vertical das esferas (abaixo) precisa escapar para a janela;
+     · a faixa em volta da cápsula fica livre: o conteúdo passa por trás, como na referência.
+   A faixa transparente não pode roubar clique do que aparece por trás: `pointer-events:none` nela e
+   `auto` em cada filho real. */
+@media (min-width:821px){
+  html.v61 .wrap > header{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;pointer-events:none}
+  html.v61 .wrap > header > *, html.v61 .wrap > header .htop > *{pointer-events:auto}
+  html.v61 .wrap > header::before{content:"";display:block;position:absolute;z-index:-1;pointer-events:none;
+    top:7px;bottom:5px;left:calc(var(--col) + 10px);right:calc(var(--col) + 10px);
+    border-radius:var(--r-capsula);border:1px solid var(--vidro-contorno);
+    background:
+      linear-gradient(90deg,transparent 18%,rgba(20,184,245,calc(.6 * var(--vidro-borda))) 50%,transparent 82%) 50% 100% / 70% 1px no-repeat,
+      rgba(255,255,255,max(.70,var(--vidro-alfa)));
+    backdrop-filter:blur(max(20px,var(--vidro-blur))) saturate(var(--vidro-sat));
+    -webkit-backdrop-filter:blur(max(20px,var(--vidro-blur))) saturate(var(--vidro-sat));
+    box-shadow:var(--vidro-luz),0 10px 30px -14px rgba(20,70,140,.28),0 0 0 .5px rgba(255,255,255,.7)}
+  html.v61 .brand{padding-left:calc(24px + 8px)}
+  html.v61 .htop .actions{padding-right:calc(16px + 10px)}
+  html.v61 #conduit{opacity:0}                      /* o fio da cápsula já é a lâmina */
+  /* esferas: trilho de vidro dentro da cápsula */
+  html.v61 #spheres{background:rgba(11,27,51,.045);border:1px solid rgba(255,255,255,.7);border-radius:var(--r-capsula);
+    box-shadow:inset 0 1px 2px rgba(11,27,51,.06)}
+  /* ticker e trilho de abas: vidro denso, encostados na cápsula (sem faixa opaca de borda a borda) */
+  html.v61 #v61-ticker{background:rgba(243,248,254,.72);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+    border-bottom:1px solid rgba(255,255,255,.6);box-shadow:0 1px 0 var(--hair)}
+  html.v61 nav.tabs{background:rgba(243,248,254,.66);border-bottom:1px solid var(--hair);box-shadow:var(--vidro-luz)}
+}
+
+/* ── esferas como TRILHO VERTICAL de ícones (tela larga) ───────────────────────────────────────
+   Só onde a margem lateral comporta o trilho sem empurrar a coluna de 1280 px (≥ 1460 px de janela:
+   --col ≥ 90 px). Abaixo disso a cápsula horizontal dentro do cabeçalho segue — um trilho que
+   cobrisse conteúdo seria pior que trilho nenhum. O rótulo continua escrito (pequeno, sob o ícone):
+   num painel de governo, ícone sem nome é adivinhação. */
+@media (min-width:1460px){
+  html.v61 #spheres{position:fixed;z-index:21;left:max(12px,calc(var(--col) / 2 - 38px));top:50%;transform:translateY(-50%);
+    display:flex;flex-direction:column;gap:6px;padding:8px 5px;width:86px;box-sizing:border-box;
+    border-radius:var(--r-capsula);border:1px solid var(--vidro-contorno);
+    background:rgba(255,255,255,max(.62,var(--vidro-alfa)));
+    backdrop-filter:blur(max(20px,var(--vidro-blur))) saturate(var(--vidro-sat));
+    -webkit-backdrop-filter:blur(max(20px,var(--vidro-blur))) saturate(var(--vidro-sat));
+    box-shadow:var(--vidro-luz),0 18px 40px -18px rgba(20,70,140,.35)}
+  html.v61 .sph{flex-direction:column;gap:5px;height:auto;padding:9px 2px 8px;border-radius:22px;font-size:10px;
+    font-weight:550;letter-spacing:0;word-spacing:0;white-space:normal;overflow-wrap:normal;word-break:keep-all;text-align:center;line-height:1.15}
+  /* rótulo em 10 px: a display (Oxanium) com tracking abria "Prefeit ura·Rio" em duas; aqui vale a sans */
+  html.v61 .sph > div, html.v61 .sph > div > div:first-child{letter-spacing:0;font-size:inherit;max-width:100%;
+    font-family:var(--f-sans);font-weight:600}
+  html.v61 .sph .i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+  html.v61 .sph .i .jico{width:20px;height:20px}
+  html.v61 .sph.on, html.v61 .sph.on:hover{background:#fff;box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),
+    0 6px 18px -6px var(--tron-glow),inset 2px 0 0 var(--tron)}
+}
+
+/* ── chips e sub-abas: vidro claro no trilho ────────────────────────────────────────────────── */
+html.v61 .chips{background:rgba(11,27,51,.045);box-shadow:inset 0 1px 2px rgba(11,27,51,.05),0 1px 0 rgba(255,255,255,.7)}
+html.v61 .chip.on, html.v61 .chip.on:hover, html.v61 nav.tabs button.on{
+  box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),inset 0 1px 0 #fff,inset 0 -2px 0 var(--tron),0 4px 14px -6px var(--tron-glow)}
+
+/* ── botão e painel «Ajustar vidro» ─────────────────────────────────────────────────────────── */
+html.v61 .vd-btn{all:unset;box-sizing:border-box;min-width:36px;height:36px;display:inline-grid;place-items:center;padding:0 9px;
+  border-radius:12px;color:var(--muted);cursor:pointer;transition:color .16s var(--ease),background .16s var(--ease)}
+html.v61 .vd-btn:hover, html.v61 .vd-btn[aria-expanded="true"]{background:var(--tinta);color:var(--ion-text)}
+html.v61 .vd-btn .jico, html.v61 .vd-btn svg{width:18px;height:18px}
+html.v61 #vd-pop{position:fixed;z-index:60;top:72px;right:calc(var(--col) + 20px);width:300px;box-sizing:border-box;padding:16px 16px 14px;
+  border-radius:var(--r-pop);border:1px solid var(--vidro-contorno);color:var(--ink);
+  background:rgba(255,255,255,.86);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);
+  box-shadow:var(--vidro-luz),0 24px 60px -20px rgba(20,70,140,.45),0 0 0 .5px rgba(255,255,255,.8)}
+html.v61 #vd-pop[hidden]{display:none}
+html.v61 #vd-pop h3{margin:0 0 2px;font-size:14px;font-weight:650;letter-spacing:-.01em}
+html.v61 #vd-pop .vd-sub{margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.4}
+html.v61 #vd-pop label{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;margin:0 0 10px;font-size:12.5px;font-weight:550;color:var(--ink-2)}
+html.v61 #vd-pop output{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+html.v61 #vd-pop input[type=range]{grid-column:1 / -1;width:100%;margin:0;accent-color:var(--ion-solid);height:20px;cursor:pointer}
+html.v61 #vd-pop .vd-pe{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:10px;border-top:1px solid var(--line)}
+html.v61 #vd-pop .vd-pe small{font-size:11px;color:var(--muted)}
+html.v61 #vd-pop button.vd-reset{all:unset;cursor:pointer;font-size:12px;font-weight:600;color:var(--ion-text);padding:6px 10px;border-radius:9px}
+html.v61 #vd-pop button.vd-reset:hover{background:var(--tinta)}
+html.v61 #vd-pop button:focus-visible, html.v61 #vd-pop input:focus-visible{outline:2px solid var(--tron);outline-offset:2px}
+@media (max-width:820px){
+  html.v61 .vd-btn, html.v61 #vd-pop{display:none}   /* no celular o vidro já é sólido: nada a ajustar */
+}
+
+/* ══ QUEDAS ═══════════════════════════════════════════════════════════════════════════════════ */
+/* 1 · modo sóbrio: sem desfoque em NADA deste estrato (o `*` da casa não alcança pseudo-elemento)
+       e superfície opaca — sem blur, 44% de transparência deixaria o fundo NÍTIDO sob o texto. */
+html.v61 body.fps-baixo{--surface:rgba(255,255,255,.96)}
+html.v61 body.fps-baixo .wrap > header::before, html.v61 body.fps-baixo #spheres, html.v61 body.fps-baixo #v61-ticker,
+html.v61 body.fps-baixo #vd-pop{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+html.v61 body.fps-baixo .wrap > header::before{background:var(--bg2);border-color:var(--line)}
+html.v61 body.fps-baixo #v61-ticker, html.v61 body.fps-baixo #vd-pop{background:var(--bg2)}
+@media (min-width:1460px){html.v61 body.fps-baixo #spheres{background:var(--bg2)}}
+/* 2 · celular: a cápsula e o trilho vertical só existem em `min-width` — aqui nada flutua e o
+       cabeçalho opaco da v50 (`--painel-topo-opaco`) segue mandando. */
+/* 3 · transparência reduzida: tudo sólido */
+@media (prefers-reduced-transparency:reduce){
+  html.v61 body{--surface:var(--surface-solid);--blur:none}
+  html.v61 .wrap > header::before, html.v61 #spheres, html.v61 #v61-ticker, html.v61 nav.tabs, html.v61 #vd-pop{
+    background:var(--bg2);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
