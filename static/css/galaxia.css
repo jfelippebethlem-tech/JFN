@@ -149,6 +149,15 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
 .gx-carga{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;color:var(--holo);font:600 11px var(--f-mono);
   letter-spacing:.24em;text-transform:uppercase;transition:opacity .5s;pointer-events:none}
 .gx-carga.fora{opacity:0}
+/* fundo da espera: arte da galáxia (Higgsfield, 16/11) + anel HUD Jarvis girando devagar — some quando o grafo acende */
+.gx-carga{background:radial-gradient(60% 60% at 50% 50%,rgba(3,11,31,.25),rgba(3,11,31,.85)),url(/static/assets/v61/galaxia-arte.webp) center/cover no-repeat,var(--fundo)}
+.gx-carga::before{content:"";position:absolute;left:50%;top:50%;width:min(70vmin,560px);aspect-ratio:1;translate:-50% -50%;
+  background:url(/static/assets/v61/hud-jarvis.webp) center/contain no-repeat;mix-blend-mode:screen;opacity:.55;
+  -webkit-mask:radial-gradient(circle,#000 55%,transparent 71%);mask:radial-gradient(circle,#000 55%,transparent 71%);
+  animation:gxGira 60s linear infinite;pointer-events:none;z-index:-1}
+.gx-carga{isolation:isolate}
+.gx-carga.fora{visibility:hidden;transition:opacity .5s,visibility 0s .5s}
+.gx-carga.fora::before{animation:none}   /* invisível não gira: nada de compositor gasto atrás do 3D */
 .gx-carga-anel{width:54px;height:54px;border-radius:50%;border:2px solid rgba(127,219,255,.15);border-top-color:var(--cyan);animation:gxGira 1s linear infinite}
 .gx-warn{pointer-events:auto;text-transform:none;letter-spacing:0;font:13px var(--f-ui);color:#FFE3A8;max-width:440px;text-align:center}
 .gx-warn a{color:var(--gelo)}
@@ -220,6 +229,7 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
   .gx-leg::-webkit-scrollbar{display:none}
   .gx-chip{padding:5px 9px;font-size:11px;flex:none}
   .gx-p-br{display:none}
+  .gx-carga{background-image:radial-gradient(60% 60% at 50% 50%,rgba(3,11,31,.25),rgba(3,11,31,.85)),url(/static/assets/v61/galaxia-arte-sm.webp)}
   .gx-p-zoom{right:10px;top:auto;bottom:136px;transform:none;padding:5px}
   .gx-p-zoom button{width:38px;height:38px}
   .gx-c{width:16px;height:16px}
@@ -228,7 +238,7 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
 }
 /* ── movimento reduzido e modo estático: nada gira, nada pisca ───────────────────────────── */
 @media (prefers-reduced-motion:reduce){
-  .gx-led,.gx-carga-anel{animation:none}
+  .gx-led,.gx-carga-anel,.gx-carga::before{animation:none}
   .gx-folha,.gx-tip,.gx-carga,.gx-chip{transition:none}
 }
 body.gx-estatico .gx-led{animation:none}

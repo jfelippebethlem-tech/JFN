@@ -4,7 +4,8 @@
    recortado à direita, sob um véu claro que mantém o título em --ink. Um fundo só, na própria capa
    (sem pseudo-elemento: a v60 aposentou os dois). O selo continua sendo glifo de LINHA.
    ════════════════════════════════════════════════════════════════════════════════════════════ */
-html.v61 .cover{--capa:url(/static/assets/v61/sala.webp);padding:18px 18px 16px;margin-bottom:16px;
+html.v61 .cover{--capa:url(/static/assets/v61/inicio-vidro.webp);   /* Início/sem esfera: vidro claro (Higgsfield, 16/11) */
+  padding:18px 18px 16px;margin-bottom:16px;
   border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--sh);
   background:
     linear-gradient(90deg,#fff 0,rgba(255,255,255,.94) 36%,rgba(255,255,255,.62) 70%,rgba(255,255,255,.3) 100%),
@@ -24,6 +25,7 @@ html.v61 .cover-seal{background:#fff;box-shadow:0 0 0 1px var(--line-strong),0 4
       linear-gradient(100deg,rgba(255,255,255,.97) 0,rgba(255,255,255,.9) 60%,rgba(255,255,255,.74) 100%),
       var(--capa) right center / cover no-repeat,
       #fff}
+  html.v61 .cover{--capa:url(/static/assets/v61/inicio-vidro-sm.webp)}
   html.v61 .cover.estado{--capa:url(/static/assets/v61/estado-sm.webp)}
   html.v61 .cover.prefeitura{--capa:url(/static/assets/v61/prefeitura-sm.webp)}
   html.v61 .cover.geral{--capa:url(/static/assets/v61/transversal-sm.webp)}
