@@ -311,3 +311,32 @@ def test_cruzamento_tambem_por_ponto_de_controle():
     rows = con.execute("SELECT motor, nivel FROM veredito WHERE tarefa=? ORDER BY motor",
                        (f"pericia_integral:{e0['nome']}:{p1}",)).fetchall()
     assert rows == [("cascata", 0), ("claude", 1)]
+
+
+def test_cascata_longa_cai_no_openrouter_free_de_contexto_longo(monkeypatch):
+    """15/11/2026 21h: Gemini sem cota (429 nas 8 chaves) e a cascata padrão sem modelo que coubesse ~65k tokens — a
+    perícia ficava SEM o segundo lado e o cruzamento não acontecia. 2º degrau: :free do catálogo com contexto ≥128k."""
+    from compliance_agent import direcionamento_cerebro as dc
+    from compliance_agent.llm import free_llm, openrouter_catalogo
+    monkeypatch.setattr(dc, "_gemini_keys", lambda: [])
+    monkeypatch.setattr(openrouter_catalogo, "catalogo", lambda **k: [
+        {"id": "pequeno/a:free", "ctx": 32000}, {"id": "grande/b:free", "ctx": 1000000}])
+    monkeypatch.setattr(openrouter_catalogo, "escolher_varios", lambda perfil, n=3, **k: ["pequeno/a:free", "grande/b:free"])
+    monkeypatch.setattr(free_llm, "_openrouter_key", lambda: "k")
+    chamados = []
+
+    def _chat(fl, key, model, msgs):
+        chamados.append((model, PI.MAX_TOKENS_SAIDA))
+        return '{"eixos": {}}'
+    monkeypatch.setattr(PI, "_chat_longo", _chat)
+    monkeypatch.setattr(dc, "gerar_sync", lambda *a, **k: (_ for _ in ()).throw(AssertionError("não devia chegar")))
+    txt, modelo = PI._cascata_longa("p" * 1000, "s")
+    assert txt == '{"eixos": {}}' and modelo == "openrouter:grande/b:free"
+    assert chamados == [("grande/b:free", PI.MAX_TOKENS_SAIDA)]          # o de 32k nem é tentado
+
+
+def test_chat_longo_recusa_modelo_pago():
+    import pytest
+    from compliance_agent.llm import free_llm
+    with pytest.raises(ValueError):
+        PI._chat_longo(free_llm, "k", "nvidia/modelo-pago", [])

@@ -31,6 +31,8 @@ from __future__ import annotations
 
 import argparse
 import json
+
+import httpx
 import logging
 import os
 import re
@@ -618,8 +620,51 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
         _marcar_cooldown("gemini", e)
         logger.warning("pericia_integral: Gemini de saída longa falhou (%s: %s) — cascata padrão",
                        type(e).__name__, str(e)[:120])
+    # 2º degrau (15/11/2026): Gemini sem cota e a cascata padrão sem modelo que coubesse ~65k tokens deixavam a perícia
+    # SEM o segundo lado — o cruzamento que padroniza as IAs não acontecia. Modelo :free do catálogo vivo com contexto
+    # longo (o guard `_forcar_free` fica no nível baixo: nunca a variante paga).
+    txt, modelo = _openrouter_longo(prompt, sistema)
+    if txt:
+        return txt, modelo
     txt = dc.gerar_sync(prompt, sistema, timeout, json_saida)
     return txt, comotor._modelo_da_cascata()
+
+
+CTX_MIN_CASCATA = 128_000
+
+
+def _chat_longo(free_llm, key: str, modelo: str, msgs: list[dict]) -> str:
+    """Uma chamada OpenRouter com prazo de perícia (o cliente comum tem 60 s fixos: curto para 10 eixos de saída)."""
+    if not modelo.endswith(":free"):
+        raise ValueError(f"modelo não-free recusado: {modelo}")
+    with httpx.Client(timeout=TIMEOUT_CASCATA + 60) as cli:
+        r = cli.post(f"{free_llm.OPENROUTER_BASE}/chat/completions",
+                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                              **free_llm.OPENROUTER_HEADERS},
+                     json={"model": modelo, "messages": msgs, "max_tokens": MAX_TOKENS_SAIDA})
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"] or ""
+
+
+def _openrouter_longo(prompt: str, sistema: str) -> tuple[str, str]:
+    from compliance_agent.llm import free_llm, openrouter_catalogo
+    key = free_llm._openrouter_key()
+    if not key:
+        return "", ""
+    ctx = {m["id"]: m.get("ctx") or 0 for m in openrouter_catalogo.catalogo()}
+    msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
+    for mid in openrouter_catalogo.escolher_varios("documento", n=4):
+        if ctx.get(mid, 0) < CTX_MIN_CASCATA:
+            continue
+        modelo = free_llm._forcar_free(mid)
+        try:
+            txt = _chat_longo(free_llm, key, modelo, msgs)
+        except (httpx.HTTPError, RuntimeError, OSError, ValueError, KeyError, IndexError, TypeError) as e:
+            logger.warning("pericia_integral: %s falhou (%s: %s)", modelo, type(e).__name__, str(e)[:120])
+            continue
+        if txt and txt.strip():
+            return txt, f"openrouter:{modelo}"
+    return "", ""
 
 
 # ── uma perícia ───────────────────────────────────────────────────────────────────────────────────────
@@ -884,6 +929,9 @@ def status() -> dict:
 
 
 def _main(argv=None) -> int:
+    # o cron não lê o .env; sem isto a cascata não via a chave do OpenRouter (15/11/2026: 2º lado ausente)
+    from compliance_agent.envfile import carregar_env
+    carregar_env()
     ap = argparse.ArgumentParser(description="Perícia integral por processo de contratação (Claude co-motor)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("rodar", help="periciar os N primeiros da fila (por valor pago)")
