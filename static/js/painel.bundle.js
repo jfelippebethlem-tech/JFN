@@ -6066,7 +6066,7 @@ void main(){
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -6274,7 +6274,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7775,12 +7775,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7794,13 +7794,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7868,7 +7868,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7934,7 +7934,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -8517,6 +8517,177 @@ void main(){
     }, host };
   }
 
+  // static/js/src/galaxia/layout.js
+  var COR = {
+    ciano: "#22B5F5",
+    ion: "#1E7BF0",
+    gelo: "#7FDBFF",
+    marinho: "#0B3D91",
+    fundo: "#030B1F",
+    branco: "#FFFFFF"
+  };
+  function h01(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) % 1e5 / 1e5;
+  }
+  function layoutEspiral(dados, R = 300) {
+    const nos = dados.nos || [], ar = dados.arestas || [];
+    const viz = /* @__PURE__ */ new Map();
+    for (const a of ar) {
+      if (!viz.has(a.source)) viz.set(a.source, []);
+      if (!viz.has(a.target)) viz.set(a.target, []);
+      viz.get(a.source).push(a.target);
+      viz.get(a.target).push(a.source);
+    }
+    const casos = nos.filter((n) => n.tipo === "caso").sort((a, b) => (b.nivel || 0) - (a.nivel || 0) || (b.grau || 0) - (a.grau || 0) || (a.id < b.id ? -1 : 1));
+    const pos = {};
+    const N = Math.max(1, casos.length);
+    casos.forEach((c, i) => {
+      const t = Math.sqrt((i + 1) / N);
+      const r = R * (0.08 + 0.82 * t);
+      const braco = i % 3;
+      const ang = braco * (2 * Math.PI / 3) + t * 4.2 + (h01(c.id) - 0.5) * 0.5;
+      pos[c.id] = { x: r * Math.cos(ang), y: r * Math.sin(ang), z: (h01(c.id + "z") - 0.5) * R * 0.08 };
+    });
+    const orbita = (id, pai, raio) => {
+      const p = pos[pai];
+      const a = h01(id) * Math.PI * 2, rr = raio * (0.6 + 0.8 * h01(id + "r"));
+      pos[id] = { x: p.x + rr * Math.cos(a), y: p.y + rr * Math.sin(a), z: p.z + (h01(id + "z") - 0.5) * raio };
+    };
+    const solto = (id) => {
+      const a = h01(id) * Math.PI * 2, r = R * (0.3 + 0.7 * h01(id + "r"));
+      pos[id] = { x: r * Math.cos(a), y: r * Math.sin(a), z: (h01(id + "z") - 0.5) * R * 0.1 };
+    };
+    for (const n of nos) {
+      if (n.tipo !== "cnpj" && n.tipo !== "sei") continue;
+      const pai = (viz.get(n.id) || []).find((v) => v.startsWith("caso:") && pos[v]);
+      if (pai) orbita(n.id, pai, n.tipo === "cnpj" ? R * 0.07 : R * 0.1);
+      else solto(n.id);
+    }
+    for (const n of nos) {
+      if (n.tipo !== "socio") continue;
+      const pai = (viz.get(n.id) || []).find((v) => pos[v]);
+      if (pai) orbita(n.id, pai, R * 0.03);
+      else solto(n.id);
+    }
+    return pos;
+  }
+  function raioNo(n) {
+    if (n.tipo === "caso") return 2.4 + (n.nivel || 0) * 0.9;
+    if (n.tipo === "cnpj") return 1.8;
+    if (n.tipo === "socio") return 1;
+    return 1.1;
+  }
+  function corNo(n) {
+    if (n.tipo === "caso") return (n.nivel || 0) >= 4 ? COR.ciano : (n.nivel || 0) >= 2 ? COR.ion : "#3B6FD8";
+    if (n.tipo === "cnpj") return COR.ion;
+    if (n.tipo === "socio") return COR.gelo;
+    return COR.ciano;
+  }
+  function desenhar2D(cv, dados, pos, { escala = 1, estrelas = 380, filtro = null } = {}) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
+    if (!w || !h) return;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bg = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+    bg.addColorStop(0, "#0A2150");
+    bg.addColorStop(0.45, "#05112E");
+    bg.addColorStop(1, COR.fundo);
+    g.fillStyle = bg;
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < estrelas; i++) {
+      const x = h01("sx" + i) * w, y = h01("sy" + i) * h, a = 0.15 + 0.6 * h01("sa" + i) ** 2;
+      g.fillStyle = `rgba(190,225,255,${a.toFixed(2)})`;
+      g.fillRect(x, y, h01("ss" + i) > 0.92 ? 1.6 : 0.9, h01("ss" + i) > 0.92 ? 1.6 : 0.9);
+    }
+    let mx = 1;
+    for (const k in pos) mx = Math.max(mx, Math.abs(pos[k].x), Math.abs(pos[k].y));
+    const s = (Math.min(w, h) / 2 - 10) / mx;
+    const P = (id) => pos[id] && [w / 2 + pos[id].x * s, h / 2 + pos[id].y * s];
+    const nucleo = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.32);
+    nucleo.addColorStop(0, "rgba(127,219,255,.30)");
+    nucleo.addColorStop(0.4, "rgba(30,123,240,.10)");
+    nucleo.addColorStop(1, "rgba(30,123,240,0)");
+    g.fillStyle = nucleo;
+    g.fillRect(0, 0, w, h);
+    const ok = filtro || (() => true);
+    const nosV = (dados.nos || []).filter(ok), vis = new Set(nosV.map((n) => n.id));
+    g.globalCompositeOperation = "lighter";
+    for (const a of dados.arestas || []) {
+      if (!vis.has(a.source) || !vis.has(a.target)) continue;
+      const p = P(a.source), q = P(a.target);
+      if (!p || !q) continue;
+      const ponte = a.tipo === "caso_caso";
+      g.strokeStyle = ponte ? "rgba(127,219,255,.34)" : "rgba(30,123,240,.16)";
+      g.lineWidth = ponte ? Math.min(1.8, 0.6 + (a.peso || 1) * 0.18) * escala : 0.6 * escala;
+      g.beginPath();
+      g.moveTo(p[0], p[1]);
+      g.lineTo(q[0], q[1]);
+      g.stroke();
+    }
+    for (const n of nosV) {
+      const p = P(n.id);
+      if (!p) continue;
+      const r = raioNo(n) * escala, cor = corNo(n);
+      const halo = g.createRadialGradient(p[0], p[1], 0, p[0], p[1], r * (n.tipo === "caso" ? 4.2 : 2.6));
+      halo.addColorStop(0, cor + "CC");
+      halo.addColorStop(0.35, cor + "44");
+      halo.addColorStop(1, cor + "00");
+      g.fillStyle = halo;
+      g.beginPath();
+      g.arc(p[0], p[1], r * (n.tipo === "caso" ? 4.2 : 2.6), 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = n.tipo === "caso" ? "#EAF8FF" : cor;
+      g.beginPath();
+      g.arc(p[0], p[1], Math.max(0.6, r * (n.tipo === "caso" ? 0.55 : 0.7)), 0, Math.PI * 2);
+      g.fill();
+    }
+    g.globalCompositeOperation = "source-over";
+    return { P, s };
+  }
+
+  // static/js/src/abas/galaxia_inicio.js
+  var _CONT = [
+    ["casos", "casos"],
+    ["cnpjs", "empresas"],
+    ["socios", "sócios"],
+    ["processos_sei", "processos SEI"],
+    ["pontes_entre_casos", "pontes entre casos"]
+  ];
+  function galaxiaPreviewHtml() {
+    return `<section class="gx-prev" id="gx-prev" aria-label="Galáxia dos casos"></section>`;
+  }
+  async function galaxiaPreviewMontar(el) {
+    if (!el || el.dataset.gx) return;
+    el.dataset.gx = "1";
+    el.innerHTML = `<div class="gx-prev-cv"><canvas aria-hidden="true"></canvas><span class="gx-prev-ring" aria-hidden="true"></span></div>
+    <div class="gx-prev-txt"><div class="gx-prev-eye">Galáxia dos casos</div>
+      <h2 class="gx-prev-tit">Todos os dossiês e as ligações entre eles, num só céu</h2>
+      <div class="gx-prev-num" id="gx-prev-num"><span class="dim">carregando o grafo…</span></div>
+      <a class="btn gx-prev-btn" href="/galaxia" target="_blank" rel="noopener">Abrir galáxia ↗</a>
+      <div class="gx-prev-aviso dim" id="gx-prev-aviso"></div></div>`;
+    const d = await J("/api/galaxia");
+    const num = el.querySelector("#gx-prev-num");
+    if (!d || d.ok === false) {
+      if (num) num.innerHTML = '<span class="dim">grafo indisponível agora — a página da galáxia tenta de novo ao abrir.</span>';
+      return;
+    }
+    const r = d.resumo || {};
+    num.innerHTML = _CONT.map(([k, rotulo]) => `<span class="gx-prev-k"><b>${r[k] == null ? "—" : fmtN(r[k])}</b> ${rotulo}</span>`).join("");
+    const av = el.querySelector("#gx-prev-aviso");
+    if (av) av.textContent = d.aviso || "";
+    const cv = el.querySelector("canvas");
+    if (cv && cv.isConnected) desenhar2D(cv, d, layoutEspiral(d), { escala: 0.8, estrelas: 220 });
+    el.querySelector(".gx-prev-cv").setAttribute("title", `${fmtN(r.casos)} casos · ${fmtN(r.arestas)} ligações — ${d.aviso || ""}`);
+  }
+
   // static/js/src/abas/cockpit.js
   var _ckTimer = null;
   function _ckCount(el, to, fmt, ms = 1e3) {
@@ -8629,6 +8800,7 @@ void main(){
     <!-- 14/11/2026: "Funções mestras" e "Fontes de dados — frescor" foram para a esfera Sistema
          (abas s_comandos e s_motores): o Início fica com o que impressiona — reator, mapa, números
          e grandes preocupações (pedido do dono). -->
+    ${galaxiaPreviewHtml()}
     </div>`;
     return html;
   }
@@ -8695,6 +8867,7 @@ void main(){
       preocupacoesMontar($("c61-preoc"));
     } else nucleoStart();
     if (!_v61) requestAnimationFrame(() => energiaLigar());
+    galaxiaPreviewMontar($("gx-prev"));
     ckPull(true);
     clearInterval(_ckTimer);
     _ckTimer = setInterval(() => {

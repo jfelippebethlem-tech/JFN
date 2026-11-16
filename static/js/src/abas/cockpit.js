@@ -35,6 +35,7 @@ import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
 import {a11yfy, abrirDossie} from '../ui/index.js';
+import {galaxiaPreviewHtml, galaxiaPreviewMontar} from './galaxia_inicio.js';   // 16/11: preview leve da galáxia (fim do Início)
 
 // ═══ COCKPIT (aba Início) — command deck ao vivo ═══
 export let _ckTimer=null;
@@ -161,6 +162,7 @@ export async function renderCockpit(){
     <!-- 14/11/2026: "Funções mestras" e "Fontes de dados — frescor" foram para a esfera Sistema
          (abas s_comandos e s_motores): o Início fica com o que impressiona — reator, mapa, números
          e grandes preocupações (pedido do dono). -->
+    ${galaxiaPreviewHtml()}
     </div>`;
   /* v48: quem monta o cockpit e o ir(), DEPOIS de pintar — nao um timer daqui.
      O v44 reagendava ate achar o ck-grid, mas o grid que ele achava era o do
@@ -219,6 +221,7 @@ export function ckBoot(){
      largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo
      layout — `getBoundingClientRect` no mesmo quadro leria a posição anterior. */
   if(!_v61)requestAnimationFrame(()=>energiaLigar());
+  galaxiaPreviewMontar($('gx-prev'));   // 16/11: canvas 2D pintado uma vez; a galáxia 3D abre em /galaxia
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
