@@ -37,6 +37,11 @@ import {_redMotion, _sobrio, _v60, _v61} from './capacidade/estado.js';
 import {movimentoBoot} from './ui/movimento.js';
 import {v60Boot} from './ui/v60.js';
 import {v61Boot} from './ui/v61.js';
+/* VIDRO + JARVIS (16/11/2026): o vidro ajustável e a vida contínua. Sem efeito de topo — ligam pelas
+   chamadas `vidroBoot()`/`jarvisBoot()` na sequência de boot, como os outros `ligar*`. */
+import {vidroBoot} from './ui/vidro.js';
+import {jarvisBoot, jarvisToque} from './ui/jarvis.js';
+import {familiaDaAba} from './ui/revelacao.js';
 import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 /* A CENA — canvas de fundo, mesa de vigilia, videos de esfera e portal. Sem efeito de topo:
    quem a liga e a sequencia de boot abaixo. */
@@ -336,7 +341,10 @@ async function ir(id){
      O render assincrono termina ANTES de abrir a transicao — senao o
      navegador congelaria a tela durante o fetch.                          */
   try{const html=await t.render();if(meu!==_nav)return;
-    const pintar=()=>{v.innerHTML=`<div class="fade">${html}</div>`;if(typeof marcarValores==='function')marcarValores(v);};
+    /* vidro/jarvis: a FAMÍLIA da aba (e "lado" quando é sub-aba — chip na mesma aba, tocado agora)
+       vai escrita no `.fade`; quem decide o gesto é a gramática 7 de `ui/revelacao.js` + o CSS. */
+    const _tq=jarvisToque(),_fam=(_abaAntes===id&&_tq.recente)?'lado':familiaDaAba(esfera,id);
+    const pintar=()=>{v.innerHTML=`<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;if(typeof marcarValores==='function')marcarValores(v);};
     /* v60: a troca de aba é um crossfade de 160ms em CSS (`.fade`). A View Transition fotografa a
        tela inteira antes e depois — medido no perfil (celular, CPU 4×): era o item mais caro da
        troca, e o resultado visual que o v60 quer é só o fade. */
@@ -419,6 +427,10 @@ ligarDrill();
 /* Botão "Som" do cabeçalho (delegado por `data-som`) + sonda das ilustrações de vazio. Mesma
    família dos `ligar*` acima: um ouvinte no `document`, nada novo no `window`. */
 ligarMidia();
+/* Vidro ajustável (botão "Ajustar vidro" no cabeçalho, `data-vidro-*`) e a vida contínua do painel
+   (reflexo, anéis HUD, telemetria, partículas, toque). Mesma família: nada novo no `window`. */
+vidroBoot();
+jarvisBoot();
 sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();
                       energiaRever(); });
 conscienciaLigar(ritmoEstado);

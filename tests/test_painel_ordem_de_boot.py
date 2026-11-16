@@ -66,6 +66,11 @@ SEQUENCIA = [
     # 2026-11-09: botao "Som" do cabecalho (delegado por `data-som`) + sonda das ilustracoes de
     # vazio. Mesma familia: um ouvinte no `document`, nada no `window`, nao toca a tela.
     "chamada:ligarMidia()",
+    # 2026-11-16: vidro ajustavel (botao "Ajustar vidro", `data-vidro-*`) e a vida continua do painel
+    # (reflexo, aneis HUD, telemetria, particulas, toque). Mesma familia: ouvintes no `document`,
+    # nada no `window`; vem depois do `ligarMidia` porque o botao entra na mesma barra de acoes.
+    "chamada:vidroBoot()",
+    "chamada:jarvisBoot()",
     "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
                                       # videos da cena. Gancho, nao import — senao a folha
                                       # das bandeiras e a cena se importariam em circulo

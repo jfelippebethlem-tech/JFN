@@ -1,0 +1,135 @@
+/* ══ v61 · JARVIS — tudo vivo (2026-11-16) ═══════════════════════════════════════════════════════
+   Pedido do dono: "animações em cada aba, sub aba … de forma criativa que tudo se mexa e esteja
+   vivo … tudo ultratech jarvis". Par em CSS de `ui/jarvis.js` e da gramática 7 de `ui/revelacao.js`.
+
+   AS TRÊS LEIS DO ESTRATO v59 VALEM AQUI, e `tests/test_painel_vidro_jarvis.py` as cobra:
+     1. entrada de CONTEÚDO nunca parte de opacidade abaixo de .3 (animação congela em aba oculta:
+        partir do zero deixaria a tela em branco). Os adornos — varredura, onda, reflexo, anel,
+        partícula — não são conteúdo e estão declarados como tal no teste;
+     2. só `transform` e `opacity` são animados (o compositor resolve; nada repinta por quadro);
+     3. tudo desliga com `prefers-reduced-motion` E com o modo sóbrio (`body.fps-baixo`).
+   Preenchimento da entrada é `backwards`, nunca `both`: transformação "em efeito" depois do fim
+   transforma o cartão em bloco de contenção de `position:fixed` (o defeito da ficha do mapa, v61).
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1 · coreografia de entrada por família de aba (gramática 7) ─────────────────────────────── */
+html.v61 #view .fade .jv-c{animation-duration:520ms;animation-timing-function:var(--ease);animation-fill-mode:backwards;
+  animation-delay:min(calc(var(--jv-i,0) * 26ms),380ms)}
+/* holo — Início e Sistema: o bloco "materializa" inclinado, na passagem da linha de varredura */
+html.v61 #view .fade[data-fam="holo"] .jv-c{animation-name:jvHolo;transform-origin:50% 0}
+@keyframes jvHolo{from{opacity:.35;transform:perspective(900px) rotateX(9deg) translate3d(0,12px,0) scaleY(.96)}}
+/* grade — SIAFE/orçamento: as peças chegam dos dois lados e encaixam */
+html.v61 #view .fade[data-fam="grade"] .jv-c{animation-name:jvGradeE}
+html.v61 #view .fade[data-fam="grade"] .jv-c:nth-child(even){animation-name:jvGradeD}
+@keyframes jvGradeE{from{opacity:.35;transform:translate3d(-24px,8px,0) scale(.97)}}
+@keyframes jvGradeD{from{opacity:.35;transform:translate3d(24px,8px,0) scale(.97)}}
+/* pulso — perícias/casos/alertas: os blocos acendem no rastro da onda que sai do clique */
+html.v61 #view .fade[data-fam="pulso"] .jv-c{animation-name:jvPulso;animation-duration:560ms}
+@keyframes jvPulso{from{opacity:.35;transform:scale(.93)} 62%{transform:scale(1.008)}}
+/* fluxo — listas e tabelas: entram como telemetria, da esquerda, em cascata */
+html.v61 #view .fade[data-fam="fluxo"] .jv-c{animation-name:jvFluxo;animation-duration:440ms}
+@keyframes jvFluxo{from{opacity:.35;transform:translate3d(-18px,0,0)}}
+/* lado — sub-aba: a tela desliza para o lado do chip escolhido (controle segmentado) */
+html.v61 #view .fade[data-fam="lado"] .jv-c{animation-name:jvLado;animation-duration:360ms;animation-delay:min(calc(var(--jv-i,0) * 14ms),200ms)}
+@keyframes jvLado{from{opacity:.4;transform:translate3d(calc(var(--jv-dir,1) * 30px),0,0)}}
+
+/* ── 2 · varredura holográfica (Início/Sistema) e onda radial (perícias/casos/alertas) ──────── */
+html.v61 .jv-scan{position:fixed;left:0;right:0;top:0;height:2px;z-index:18;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--cyan) 20%,#fff 50%,var(--cyan) 80%,transparent);
+  box-shadow:0 0 16px 3px var(--glow);animation:jvScan 1.1s cubic-bezier(.4,0,.2,1) both}
+html.v61 .jv-scan::before{content:"";position:absolute;left:0;right:0;bottom:2px;height:90px;
+  background:linear-gradient(180deg,transparent,rgba(34,181,245,.10))}
+@keyframes jvScan{from{transform:translate3d(0,110px,0);opacity:0} 12%{opacity:1} to{transform:translate3d(0,100vh,0);opacity:0}}
+html.v61 .jv-onda{position:fixed;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;z-index:50;pointer-events:none;
+  border:2px solid rgba(34,181,245,.85);box-shadow:0 0 22px var(--glow),inset 0 0 14px var(--glow);
+  animation:jvOnda .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes jvOnda{from{transform:scale(.2);opacity:.95} to{transform:scale(13);opacity:0}}
+
+/* ── 3 · reflexo: a lâmina de luz que atravessa um cartão de vidro ──────────────────────────── */
+html.v61 #view .jv-brilho{position:absolute;inset:0;z-index:1;border-radius:inherit;overflow:hidden;pointer-events:none;
+  grid-column:auto;margin:0}
+html.v61 #view .jv-brilho::before{content:"";display:block;position:absolute;top:-30%;bottom:-30%;left:0;width:42%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.36) 45%,rgba(160,225,255,.26) 55%,transparent);
+  animation:jvBrilho 1.4s cubic-bezier(.4,0,.2,1) both}
+@keyframes jvBrilho{from{transform:translate3d(-130%,0,0) skewX(-14deg);opacity:0} 20%{opacity:1} to{transform:translate3d(330%,0,0) skewX(-14deg);opacity:0}}
+
+/* ── 4 · anéis HUD — logo e instrumento principal da tela ───────────────────────────────────── */
+html.v61 .jv-hud{position:absolute;pointer-events:none;display:block}
+html.v61 .jv-hud b{position:absolute;inset:0;border-radius:50%;display:block}
+html.v61 .jv-hud b:first-child{border:1.5px dashed rgba(30,123,240,.42);animation:jvGira 14s linear infinite}
+html.v61 .jv-hud b:last-child{inset:5px;border:1.5px solid transparent;border-top-color:var(--cyan);border-bottom-color:rgba(30,123,240,.55);
+  animation:jvGira 5s linear infinite reverse}
+@keyframes jvGira{to{transform:rotate(360deg)}}
+html.v61 .brand .lg{position:relative;overflow:visible}
+html.v61 .brand .lg .jv-hud-lg{inset:-7px}
+html.v61 .brand .lg .jv-hud-lg b:last-child{inset:3px}
+html.v61 #view .jv-hud{position:absolute;top:12px;right:12px;width:24px;height:24px;grid-column:auto;margin:0;opacity:.9}
+html.v61 #view .jv-hud.jv-hud-baixo{top:auto;bottom:12px}
+html.v61 #view .ck-hero .jv-hud{top:16px;right:16px;width:30px;height:30px}
+
+/* ── 5 · cantos de mira finos que acendem no hover ──────────────────────────────────────────── */
+html.v61{--jv-mira:rgba(20,184,245,.85)}
+html.v61 #view .fade :is(.card,.ck-inst,.ck-hero):not(.card .card):not(.grid.v60-lista > .card)::before{
+  content:"";display:block;position:absolute;inset:6px;z-index:0;pointer-events:none;opacity:0;transform:scale(1.025);
+  background:
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 0 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 0 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 100% 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 100% 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 0 100% / 12px 1.5px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 0 100% / 1.5px 12px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 100% 100% / 12px 1.5px no-repeat,
+    linear-gradient(var(--jv-mira),var(--jv-mira)) 100% 100% / 1.5px 12px no-repeat;
+  transition:opacity .22s var(--ease),transform .22s var(--ease);width:auto;height:auto;border:0;animation:none}
+@media (hover:hover){
+  html.v61 #view .fade :is(.card,.ck-inst,.ck-hero):not(.card .card):not(.grid.v60-lista > .card):hover::before{opacity:1;transform:none}
+}
+
+/* ── 6 · partículas leves atrás do vidro ────────────────────────────────────────────────────── */
+html.v61 #jv-part{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;contain:strict}
+html.v61 #jv-part i{position:absolute;width:4px;height:4px;border-radius:50%;opacity:.55;
+  background:radial-gradient(circle,#fff 0,var(--cyan) 45%,rgba(34,181,245,0) 72%);
+  animation:jvDeriva 26s linear infinite alternate}
+@keyframes jvDeriva{from{transform:translate3d(0,0,0)} to{transform:translate3d(60px,-140px,0)}}
+html.v61 #jv-part i:nth-child(1){left:6%;top:72%;animation-duration:31s}
+html.v61 #jv-part i:nth-child(2){left:17%;top:38%;animation-duration:24s;animation-delay:-6s}
+html.v61 #jv-part i:nth-child(3){left:29%;top:84%;animation-duration:28s;animation-delay:-12s;width:3px;height:3px}
+html.v61 #jv-part i:nth-child(4){left:41%;top:22%;animation-duration:35s;animation-delay:-3s}
+html.v61 #jv-part i:nth-child(5){left:53%;top:64%;animation-duration:22s;animation-delay:-9s;width:5px;height:5px}
+html.v61 #jv-part i:nth-child(6){left:66%;top:44%;animation-duration:29s;animation-delay:-15s}
+html.v61 #jv-part i:nth-child(7){left:77%;top:80%;animation-duration:33s;animation-delay:-4s;width:3px;height:3px}
+html.v61 #jv-part i:nth-child(8){left:88%;top:30%;animation-duration:25s;animation-delay:-11s}
+html.v61 #jv-part i:nth-child(9){left:94%;top:62%;animation-duration:37s;animation-delay:-7s}
+html.v61 #jv-part i:nth-child(10){left:11%;top:12%;animation-duration:27s;animation-delay:-14s;width:3px;height:3px}
+html.v61 #jv-part i:nth-child(11){left:35%;top:52%;animation-duration:32s;animation-delay:-2s}
+html.v61 #jv-part i:nth-child(12){left:59%;top:90%;animation-duration:23s;animation-delay:-10s;width:5px;height:5px}
+
+/* ── 7 · telemetria no fim do ticker (dado real; sem dado, o campo não aparece) ─────────────── */
+html.v61 .jv-tele{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;margin-left:6px;padding-left:12px;
+  border-left:1px solid var(--line);font-size:.6875rem;color:var(--ink-2);white-space:nowrap}
+html.v61 .jv-tele .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+html.v61 .jv-tele b{font-weight:600;color:var(--ink)}
+html.v61 .jv-tele > i{width:3px;height:3px;border-radius:50%;background:var(--cyan);flex:0 0 auto}
+html.v61 .jv-tele:empty{display:none}
+@media (max-width:760px){html.v61 .jv-tele{display:none}}
+
+/* ── 8 · aba oculta: o que é laço infinito para ─────────────────────────────────────────────── */
+html.v61.jv-oculto :is(#jv-part i,.jv-hud b){animation-play-state:paused}
+
+/* ── 9 · celular: mais leve — sem partícula no meio do texto rolando, sem anel no instrumento ─ */
+@media (max-width:760px){
+  html.v61 #jv-part i{opacity:.35}
+  html.v61 #view .jv-hud{display:none}
+}
+
+/* ══ OS DOIS PISOS — tudo para ════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion:reduce){
+  html.v61 #view .fade .jv-c{animation:none}
+  html.v61 :is(.jv-scan,.jv-onda,#view .jv-brilho,#jv-part){display:none}
+  html.v61 .jv-hud b{animation:none}
+  html.v61 #view .fade :is(.card,.ck-inst,.ck-hero)::before{transition:none}
+}
+html.v61 body.fps-baixo #view .fade .jv-c{animation:none}
+html.v61 body.fps-baixo :is(.jv-scan,.jv-onda,#view .jv-brilho,#jv-part){display:none}
+html.v61 body.fps-baixo .jv-hud b{animation:none}
+html.v61 body.fps-baixo #view .fade :is(.card,.ck-inst,.ck-hero)::before{transition:none}
