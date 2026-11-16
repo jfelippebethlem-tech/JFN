@@ -15,7 +15,9 @@ TRÊS ORIGENS:
     volta é lida da própria mensagem (`hora_de_volta`); sem hora legível, pausa de `JFN_CLAUDE_PAUSA_LIMITE_S`;
   · teto_proprio — o orçamento diário do motor passou de 90% (chamadas ou segundos): o que resta fica
     RESERVADO ao Opus (verificação e conferência) e as tarefas de volume passam aos outros modelos até 00:00;
-  · forcada — `JFN_CLAUDE_CONTINGENCIA=1` (ensaio/prova, ou decisão manual).
+  · forcada — `JFN_CLAUDE_CONTINGENCIA=1` (ensaio/prova, ou decisão manual);
+  · ritmo_semanal — o gasto da SEMANA passou da linha que faz a conta durar até a virada (`llm/ritmo_assinatura`,
+    16/11/2026): ECONOMIA deixa só o Opus que confere; CONTIDO deixa só o canário.
 
 O QUE NÃO FAZ: não decide nada. Quem produz em contingência é a cascata que a casa já usa
 (`direcionamento_cerebro.gerar_sync`); tudo o que ela produzir vai para a fila `conferencia_opus` e NUNCA é
@@ -212,12 +214,33 @@ def estado() -> dict:
     if isinstance(ate, (int, float)) and ate > agora:
         return dict(base, ativa=True, origem=d.get("origem") or "limite_assinatura", ate=ate, ate_iso=_iso(ate),
                     motivo=d.get("motivo"))
+    r = _ritmo()
+    if r.get("nivel") == "contido":
+        return _ritmo_estado(base, r)
     if (u.get("fracao") or 0) >= FRACAO_PERTO:
         meia_noite = (datetime.fromtimestamp(agora) + timedelta(days=1)).replace(hour=0, minute=0, second=0,
                                                                                 microsecond=0).timestamp()
         return dict(base, ativa=True, origem="teto_proprio", ate=meia_noite, ate_iso=_iso(meia_noite),
                     motivo=f"{u['fracao']:.0%} do orçamento diário do motor — o resto fica para o Opus conferir")
+    if r.get("nivel") == "economia":
+        return _ritmo_estado(base, r)
     return base
+
+
+def _ritmo() -> dict:
+    """Ritmo SEMANAL da assinatura (16/11/2026: "a assinatura não pode acabar antes do sábado 19:00"). Só lê arquivo;
+    ilegível ⇒ {} (sem restrição: os tetos diários seguem valendo)."""
+    try:
+        from compliance_agent.llm import ritmo_assinatura
+        return ritmo_assinatura.nivel()
+    except (ImportError, OSError, ValueError, TypeError, KeyError):
+        return {}
+
+
+def _ritmo_estado(base: dict, r: dict) -> dict:
+    ate = datetime.fromisoformat(r["reavaliar_em"]).timestamp()
+    return dict(base, ativa=True, origem="ritmo_semanal", ate=ate, ate_iso=r["reavaliar_em"], motivo=r.get("motivo"),
+                ritmo_nivel=r.get("nivel"), semana_pct=r.get("semana_pct"), linha_pct=r.get("linha_pct"))
 
 
 def motivo_bloqueio(tarefa: str = "") -> str | None:
@@ -232,6 +255,10 @@ def motivo_bloqueio(tarefa: str = "") -> str | None:
         return f"contingência — {e['motivo']}"
     if e["origem"] == "forcada":
         return f"contingência — {e['motivo']}"
+    if e["origem"] == "ritmo_semanal":
+        if tarefa == "canario" or (e.get("ritmo_nivel") == "economia" and tarefa in RESERVA_OPUS):
+            return None
+        return f"ritmo semanal da assinatura — {e['motivo']}"
     return f"limite de uso da assinatura — pausa até {datetime.fromtimestamp(e['ate']):%H:%M}"
 
 
