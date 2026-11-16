@@ -46,14 +46,35 @@ def test_nenhum_new_context_solto_no_sweep():
 
 
 def test_todos_os_logins_usam_o_contexto_compartilhado():
-    """Cada `login(pg, ...)` precisa ter vindo de uma página do contexto único."""
+    """Cada login no SEI precisa ter vindo de uma página de um contexto montado num lugar só.
+
+    Desde bc2b55a (15/11/2026, navegador FIXO por sessão do it-campo) o sweep principal e o [pais]
+    entram por `sei_reader.entrar` sobre o contexto de `sei_reader.navegador_sei`; a recaptura
+    segue em `login` sobre `_contexto_sei`. Os três caminhos continuam contados — só mudou o nome
+    da montagem compartilhada, e a igualdade do UA entre as duas é guardada no teste abaixo."""
     fonte = _fonte()
-    n_login = len(re.findall(r"await login\(pg", fonte))
-    n_ctx = len(re.findall(r"ctx = await _contexto_sei\(b\)", fonte))
+    n_login = len(re.findall(r"await (?:login|entrar)\(pg", fonte))
+    n_ctx = (len(re.findall(r"ctx = await _contexto_sei\(b\)", fonte))
+             + len(re.findall(r"b, ctx, fixo = await navegador_sei\(pw", fonte)))
     assert n_login >= 3, "os caminhos de login sumiram — reveja este teste antes de relaxá-lo"
     assert n_ctx >= n_login, (
-        f"{n_login} caminhos fazem login e só {n_ctx} usam `_contexto_sei` — algum voltou a montar "
-        "o navegador por conta própria")
+        f"{n_login} caminhos fazem login e só {n_ctx} usam `_contexto_sei`/`navegador_sei` — algum "
+        "voltou a montar o navegador por conta própria")
+
+
+def test_ua_do_navegador_sei_e_o_mesmo_do_sweep():
+    """`navegador_sei` (sei_reader) e `_contexto_sei` (sweep) têm cada um a sua constante de UA.
+
+    Duas cópias é o começo de duas verdades: se uma mudar sem a outra, os caminhos de login voltam a
+    se apresentar diferente ao SEI — o defeito de 07/08. Enquanto houver duas, elas têm de ser iguais,
+    e o UA tem de ser o padrão de `navegador_sei` quando ele lança o próprio navegador."""
+    import inspect as _insp
+    from tools import sei_reader
+    assert sei_reader._UA_DESKTOP == sei_sweep._UA_DESKTOP, (
+        "UA de desktop divergiu entre sei_reader e sei_sweep — os caminhos de login não se "
+        "apresentam mais do mesmo jeito ao SEI")
+    padrao = _insp.signature(sei_reader.navegador_sei).parameters["user_agent"].default
+    assert padrao == sei_sweep._UA_DESKTOP
 
 
 def test_user_agent_de_desktop_existe_e_e_unico():
