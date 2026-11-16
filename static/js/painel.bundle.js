@@ -2011,6 +2011,7 @@
     };
     document.addEventListener("visibilitychange", h);
   }
+  var _lentoVisivel = 0;
   function _medirFps() {
     if (_redMotion) return;
     if (document.hidden) {
@@ -2031,9 +2032,19 @@
         return;
       }
       if (dt > 3e3) {
+        if (!document.hidden && ++_lentoVisivel >= 3) {
+          _lentoVisivel = 0;
+          _sobrioAplicar(true, n * 1e3 / dt);
+          return;
+        }
+        if (!document.hidden) {
+          setTimeout(_medirFps, 4e3);
+          return;
+        }
         _medirQuandoVisivel();
         return;
       }
+      _lentoVisivel = 0;
       const fps = n * 1e3 / dt;
       window._jfnFps = Math.round(fps);
       if (fps < 24) _sobrioAplicar(true, fps);

@@ -63,6 +63,8 @@ function _medirQuandoVisivel() {
   document.addEventListener('visibilitychange', h);
 }
 
+let _lentoVisivel = 0;
+
 export function _medirFps() {
   if (_redMotion) return;                  // quem já pediu menos movimento não precisa da medição
   if (document.hidden) { _medirQuandoVisivel(); return; }
@@ -74,7 +76,15 @@ export function _medirFps() {
     if (dt < 1000) { requestAnimationFrame(passo); return; }
     /* Janela de 1 s que levou mais de 3 s = o navegador estrangulou o rAF (aba oculta, janela
        minimizada, economia de energia). Isso não é a máquina; não condena ninguém. */
-    if (dt > 3000) { _medirQuandoVisivel(); return; }
+    if (dt > 3000) {
+      /* Visível e ainda assim > 3 s: pode ser a máquina engasgada, não estrangulamento. Remede
+         duas vezes com folga; se continuar, é a máquina — sóbrio (antes ficava esperando uma
+         volta de aba que nunca vinha e o painel seguia a ~2 fps). */
+      if (!document.hidden && ++_lentoVisivel >= 3) { _lentoVisivel = 0; _sobrioAplicar(true, n * 1000 / dt); return; }
+      if (!document.hidden) { setTimeout(_medirFps, 4000); return; }
+      _medirQuandoVisivel(); return;
+    }
+    _lentoVisivel = 0;
     const fps = n * 1000 / dt;
     window._jfnFps = Math.round(fps);
     if (fps < 24) _sobrioAplicar(true, fps);
