@@ -65,7 +65,7 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
 .gx-visor{position:relative;height:calc(100vh - 210px);min-height:540px;border-radius:var(--r-visor);overflow:hidden;
   background:radial-gradient(120% 90% at 50% 45%,#0A2150 0%,#05112E 45%,var(--fundo) 100%);
   box-shadow:0 0 0 1px rgba(127,219,255,.18) inset,0 0 60px rgba(34,181,245,.12) inset;isolation:isolate}
-.gx-cena{position:absolute;inset:0}
+.gx-cena{position:absolute;inset:0;touch-action:none}   /* pinça e arrasto são da galáxia, não da página */
 .gx-cena canvas{display:block;outline:none}
 .gx-2d{width:100%;height:100%}
 
@@ -114,6 +114,12 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
 .gx-chip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .gx-chip-ponte.on{background:rgba(127,219,255,.22)}
 .gx-p-br{right:24px;bottom:24px;display:flex;align-items:center;gap:8px;font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--holo-mut);padding:9px 12px}
+
+.gx-p-zoom{right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;padding:6px}
+.gx-p-zoom button{width:40px;height:40px;border-radius:11px;font:500 20px/1 var(--f-mono);color:#EAF8FF;cursor:pointer;
+  background:rgba(3,11,31,.5);border:1px solid rgba(127,219,255,.28);touch-action:manipulation;transition:background .2s,border-color .2s}
+.gx-p-zoom button:hover,.gx-p-zoom button:active{background:rgba(34,181,245,.22);border-color:var(--cyan)}
+.gx-p-zoom button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
 .gx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;vertical-align:middle}
 .gx-dot-caso{background:radial-gradient(circle,#fff 0 30%,var(--cyan) 60%);box-shadow:0 0 8px var(--cyan)}
@@ -205,13 +211,17 @@ code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;bor
   .gx-p-tl .gx-p-eye{display:none}
   .gx-num{grid-template-columns:repeat(3,1fr);gap:6px 8px}
   .gx-k b{font-size:16px}.gx-k span{font-size:8.5px}
-  .gx-p-tr{top:auto;bottom:118px;left:10px;right:10px;width:auto}
+  .gx-p-tr{top:auto;bottom:72px;left:10px;right:10px;width:auto}
   .gx-p-tr .gx-p-eye{display:none}
   .gx-res{max-height:180px}
   .gx-p-bl{left:10px;right:10px;bottom:10px;max-width:none}
   .gx-p-bl .gx-p-eye{display:none}
-  .gx-chip{padding:5px 9px;font-size:11px}
+  .gx-leg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}   /* uma linha só: sobra céu para a galáxia */
+  .gx-leg::-webkit-scrollbar{display:none}
+  .gx-chip{padding:5px 9px;font-size:11px;flex:none}
   .gx-p-br{display:none}
+  .gx-p-zoom{right:10px;top:auto;bottom:136px;transform:none;padding:5px}
+  .gx-p-zoom button{width:38px;height:38px}
   .gx-c{width:16px;height:16px}
   .gx-tip{max-width:250px}
   .gx-folha{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:78vh;border-radius:22px}

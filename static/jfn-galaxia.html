@@ -7,7 +7,7 @@
 <title>Galáxia dos casos — Controle Externo · RJ</title>
 <!-- Página própria da galáxia (decisão do dono, 16/11/2026): o painel mostra só um preview 2D no fim
      do Início e abre esta página em outra aba. Só aqui o bundle 3D (three.js + 3d-force-graph) desce. -->
-<link rel="stylesheet" href="/static/css/galaxia.css?v=7644996a">
+<link rel="stylesheet" href="/static/css/galaxia.css?v=1b35147e">
 </head>
 <body class="gx-pg">
 <header class="gx-top">
@@ -37,6 +37,11 @@
           <div class="gx-leg" id="gx-leg" role="group" aria-label="Filtrar por tipo"></div>
         </div>
         <div class="gx-p gx-p-br"><span class="gx-led" aria-hidden="true"></span><span id="gx-modo">acendendo…</span></div>
+        <div class="gx-p gx-p-zoom" id="gx-zoom" role="group" aria-label="Zoom">
+          <button type="button" data-gx-zoom="mais" aria-label="Aproximar">+</button>
+          <button type="button" data-gx-zoom="menos" aria-label="Afastar">−</button>
+          <button type="button" data-gx-zoom="reset" aria-label="Recentralizar a galáxia">⟲</button>
+        </div>
       </div>
       <div class="gx-tip" id="gx-tip" role="tooltip" aria-hidden="true"></div>
       <div class="gx-carga" id="gx-carga"><span class="gx-carga-anel" aria-hidden="true"></span>acendendo a galáxia…</div>
@@ -53,6 +58,6 @@
   </section>
 </main>
 <aside class="gx-folha" id="gx-folha" aria-label="Detalhe" hidden></aside>
-<script type="module" src="/static/js/galaxia.bundle.js?v=1efe3a6b"></script>
+<script type="module" src="/static/js/galaxia.bundle.js?v=76843fef"></script>
 </body>
 </html>

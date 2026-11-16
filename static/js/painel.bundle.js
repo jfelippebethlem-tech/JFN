@@ -6350,7 +6350,7 @@ void main(){
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
+  // node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -6558,7 +6558,7 @@ void main(){
     };
   }
 
-  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
+  // node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8059,12 +8059,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // ../JFN/node_modules/topojson-client/src/identity.js
+  // node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // ../JFN/node_modules/topojson-client/src/transform.js
+  // node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8078,13 +8078,13 @@ void main(){
     };
   }
 
-  // ../JFN/node_modules/topojson-client/src/reverse.js
+  // node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // ../JFN/node_modules/topojson-client/src/feature.js
+  // node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8152,7 +8152,7 @@ void main(){
     return geometry(o);
   }
 
-  // ../JFN/node_modules/topojson-client/src/stitch.js
+  // node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -8218,7 +8218,7 @@ void main(){
     return fragments;
   }
 
-  // ../JFN/node_modules/topojson-client/src/mesh.js
+  // node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -8872,7 +8872,7 @@ void main(){
     if (n.tipo === "socio") return COR.gelo;
     return COR.ciano;
   }
-  function desenhar2D(cv, dados, pos, { escala = 1, estrelas = 380, filtro = null } = {}) {
+  function desenhar2D(cv, dados, pos, { escala = 1, estrelas = 380, filtro = null, vista = null } = {}) {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
     if (!w || !h) return;
@@ -8893,9 +8893,11 @@ void main(){
     }
     let mx = 1;
     for (const k in pos) mx = Math.max(mx, Math.abs(pos[k].x), Math.abs(pos[k].y));
-    const s = (Math.min(w, h) / 2 - 10) / mx;
-    const P = (id) => pos[id] && [w / 2 + pos[id].x * s, h / 2 + pos[id].y * s];
-    const nucleo = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.32);
+    const vk = vista ? vista.k : 1, cx = w / 2 + (vista ? vista.x : 0), cy = h / 2 + (vista ? vista.y : 0);
+    const s = (Math.min(w, h) / 2 - 10) / mx * vk;
+    const P = (id) => pos[id] && [cx + pos[id].x * s, cy + pos[id].y * s];
+    escala *= Math.min(2.2, Math.sqrt(vk));
+    const nucleo = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.32 * vk);
     nucleo.addColorStop(0, "rgba(127,219,255,.30)");
     nucleo.addColorStop(0.4, "rgba(30,123,240,.10)");
     nucleo.addColorStop(1, "rgba(30,123,240,0)");

@@ -10,7 +10,8 @@
  * Ligação = indício de relação a conferir, nunca prova (o aviso da rota fica visível o tempo todo).
  *
  * Modos: 3D com brilho (desktop) · 3D sem brilho (celular ≤600px, ou máquina que não entrega quadro)
- * · 2D estático (movimento reduzido, `?modo=2d`, sem WebGL, ou FPS medido muito baixo).
+ * · 2D plano (`?modo=2d`, sem WebGL, ou FPS medido muito baixo) — com arrasto, pinça e roda. Movimento reduzido
+ * fica no 3D sem rotação automática (dono, 16/11: no celular parecia estático e não dava zoom).
  *
  * Este arquivo mora FORA de `static/js/src/` de propósito: é um entrypoint com efeito de topo
  * (o boot da página), e `src/` é vigiado pela lei "nenhum módulo tem efeito de topo" do painel.
@@ -37,12 +38,13 @@ const MOTIVO = {cnpj: ['CNPJ', 'CNPJs'], sei: ['processo SEI', 'processos SEI'],
 const qs = new URLSearchParams(location.search);
 const redMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const celular = matchMedia('(max-width: 600px)').matches;
+const toque = matchMedia('(pointer: coarse)').matches;
 
 const E = {
   dados: null, nos: [], porId: new Map(), viz: new Map(), pontes: new Set(),
   tipos: new Set(Object.keys(TIPOS)), soPontes: false,
   graph: null, modo: '', halos: [], estrelas: null, bloom: null, mx: 0, my: 0,
-  ocioso: 0, voando: null, pos2d: null, P2d: null, hover: null,
+  ocioso: 0, voando: null, pos2d: null, P2d: null, hover: null, vista: {k: 1, x: 0, y: 0},
 };
 
 /* ── utilidades ─────────────────────────────────────────────────────────────────────────── */
@@ -136,12 +138,43 @@ function ligarControles() {
   });
   addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharFolha(); });
   const visor = $('gx-visor');
+  const ondeEsta = ev => { const r = visor.getBoundingClientRect(); E.mx = ev.clientX - r.left; E.my = ev.clientY - r.top; };
+  /* no toque não existe pointermove antes do toque curto: a posição é gravada também no down/up (captura) */
+  visor.addEventListener('pointerdown', ondeEsta, true);
+  visor.addEventListener('pointerup', ondeEsta, true);
   visor.addEventListener('pointermove', ev => {
-    const r = visor.getBoundingClientRect(); E.mx = ev.clientX - r.left; E.my = ev.clientY - r.top;
+    ondeEsta(ev);
+    if (ev.pointerType === 'touch') return;
     if (E.modo === '2d') hover2D(); else { posicionarTip(); hover3D(); }
   });
-  visor.addEventListener('pointerleave', () => { mostrarTip(null); });
-  visor.addEventListener('click', () => { if (E.modo === '2d' && E.hover) abrir(E.hover); });
+  visor.addEventListener('pointerleave', ev => { if (ev.pointerType !== 'touch') mostrarTip(null); });
+  $('gx-zoom').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-gx-zoom]'); if (!b) return;
+    const z = b.dataset.gxZoom;
+    if (z === 'reset') recentrar(); else zoom(z === 'mais' ? 1.5 : 1 / 1.5);
+  });
+}
+
+/* ── zoom (botões, pinça e roda) — os dois modos ───────────────────────────────────────── */
+function zoom(f, px, py) {
+  if (E.modo === '2d') {
+    const v = E.vista, W = $('gx-cena').clientWidth, H = $('gx-cena').clientHeight;
+    const k = Math.max(0.6, Math.min(14, v.k * f)), r = k / v.k;
+    const ax = (px == null ? W / 2 : px) - W / 2, ay = (py == null ? H / 2 : py) - H / 2;   // ponto fixo sob o dedo
+    v.x = ax - (ax - v.x) * r; v.y = ay - (ay - v.y) * r; v.k = k;
+    pintar2D(); return;
+  }
+  const g = E.graph; if (!g) return;
+  const ctl = g.controls(), cam = g.camera(), alvo = ctl.target;
+  const d = cam.position.distanceTo(alvo), nd = Math.max(ctl.minDistance, Math.min(ctl.maxDistance, d / f));
+  const p = cam.position.clone().sub(alvo).multiplyScalar(nd / d).add(alvo);
+  ctl.autoRotate = false; E.ocioso = performance.now();
+  g.cameraPosition({x: p.x, y: p.y, z: p.z}, {x: alvo.x, y: alvo.y, z: alvo.z}, redMotion ? 0 : 350);
+}
+function recentrar() {
+  mostrarTip(null);
+  if (E.modo === '2d') { E.vista = {k: 1, x: 0, y: 0}; pintar2D(); return; }
+  if (E.graph) enquadrar(redMotion ? 0 : 900);
 }
 
 /* ── tooltip ────────────────────────────────────────────────────────────────────────────── */
@@ -430,7 +463,9 @@ function montar3D() {
   cv.addEventListener('pointerdown', ev => { pd = [ev.clientX, ev.clientY]; });
   cv.addEventListener('pointerup', ev => {
     if (!pd || Math.hypot(ev.clientX - pd[0], ev.clientY - pd[1]) > 6) return;
-    const n = pick3D(); if (n) { irPara(n); abrir(n); } else mostrarTip(null);
+    const n = pick3D();
+    if (!n) { const l = pickPonte(); mostrarTip(l ? tipAresta(l) : null); return; }
+    irPara(n); abrir(n);
   });
   E.ro = new ResizeObserver(() => { const w = visor.clientWidth, h = visor.clientHeight; if (w && h && E.graph) g.width(w).height(h); });
   E.ro.observe(visor);
@@ -585,7 +620,7 @@ function destruir() {
 /* ── 2D estático ────────────────────────────────────────────────────────────────────────── */
 function pintar2D() {
   const cv = $('gx-2d'); if (!cv) return;
-  const r = desenhar2D(cv, E.dados, E.pos2d, {escala: celular ? 1.1 : 1.6, estrelas: 520, filtro: visivelNo});
+  const r = desenhar2D(cv, E.dados, E.pos2d, {escala: celular ? 1.1 : 1.6, estrelas: 520, filtro: visivelNo, vista: E.vista});
   if (!r) return;
   E.P2d = r.P;
   if (E.hover && visivelNo(E.hover)) {
@@ -606,11 +641,54 @@ function hover2D() {
   $('gx-2d').style.cursor = melhor ? 'pointer' : '';
   mostrarTip(melhor ? tipNo(melhor) : null);
 }
+/* Arrastar = mover · pinça / roda = zoom no ponto · toque curto = abrir · duplo toque = recentrar.
+   Redesenha só quando algo muda (o modo plano não tem laço). */
+function gestos2D(cv) {
+  const dedos = new Map(); let ini = null, ultimoTap = 0, agendado = 0;
+  const local = ev => { const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+  const pintar = () => { if (!agendado) agendado = requestAnimationFrame(() => { agendado = 0; pintar2D(); }); };
+  const par = () => { const [a, b] = [...dedos.values()]; return {d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2}; };
+  cv.addEventListener('pointerdown', ev => {
+    cv.setPointerCapture(ev.pointerId); dedos.set(ev.pointerId, local(ev));
+    ini = dedos.size === 1 ? {p: local(ev), v: {...E.vista}, mexeu: false} : {...ini, mexeu: true, par: par(), v: {...E.vista}};
+  });
+  cv.addEventListener('pointermove', ev => {
+    if (!dedos.has(ev.pointerId) || !ini) return;
+    dedos.set(ev.pointerId, local(ev));
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (dedos.size >= 2 && ini.par) {
+      const q = par(), k = Math.max(0.6, Math.min(14, ini.v.k * q.d / ini.par.d)), r = k / ini.v.k;
+      const ax = ini.par.cx - W / 2, ay = ini.par.cy - H / 2;
+      E.vista = {k, x: ax - (ax - ini.v.x) * r + (q.cx - ini.par.cx), y: ay - (ay - ini.v.y) * r + (q.cy - ini.par.cy)};
+      mostrarTip(null); pintar(); return;
+    }
+    const [x, y] = local(ev), dx = x - ini.p[0], dy = y - ini.p[1];
+    if (!ini.mexeu && Math.hypot(dx, dy) < 6) return;
+    ini.mexeu = true; E.vista = {k: ini.v.k, x: ini.v.x + dx, y: ini.v.y + dy};
+    mostrarTip(null); cv.style.cursor = 'grabbing'; pintar();
+  });
+  const solta = ev => {
+    if (!dedos.has(ev.pointerId)) return;
+    dedos.delete(ev.pointerId); cv.style.cursor = '';
+    if (dedos.size) { const [p] = dedos.values(); ini = {p, v: {...E.vista}, mexeu: true}; return; }
+    const tap = ini && !ini.mexeu; ini = null;
+    if (!tap || ev.type === 'pointercancel') return;
+    [E.mx, E.my] = local(ev);
+    const agora = performance.now();
+    if (agora - ultimoTap < 300) { ultimoTap = 0; recentrar(); return; }
+    ultimoTap = agora;
+    hover2D(); if (E.hover) abrir(E.hover);
+  };
+  cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+  cv.addEventListener('wheel', ev => { ev.preventDefault(); const [x, y] = local(ev); zoom(Math.exp(-ev.deltaY * 0.0015), x, y); }, {passive: false});
+}
+
 function montar2D(motivo) {
   E.modo = '2d'; E.motivo2d = motivo;
-  $('gx-cena').innerHTML = '<canvas id="gx-2d" class="gx-2d" aria-label="Galáxia dos casos (estática)"></canvas>';
+  $('gx-cena').innerHTML = '<canvas id="gx-2d" class="gx-2d" aria-label="Galáxia dos casos (plana: arraste, pinça ou roda para aproximar)"></canvas>';
   E.pos2d = layoutEspiral(E.dados);
   pintar2D();
+  gestos2D($('gx-2d'));
   document.body.classList.add('gx-estatico');
   new ResizeObserver(() => pintar2D()).observe($('gx-cena'));
   modoHud();
@@ -618,8 +696,9 @@ function montar2D(motivo) {
 
 function modoHud() {
   const m = $('gx-modo'); if (!m) return;
-  m.textContent = E.modo === '2d' ? `modo estático · ${E.motivo2d}` : E.bloom ? 'holo 3D · brilho neon · arraste para girar'
-    : E.resReduzida ? 'holo 3D · modo leve · arraste para girar' : 'holo 3D · arraste para girar';
+  const gesto = E.modo === '2d' ? (toque ? 'arraste e pinça' : 'arraste e roda') : (toque ? 'arraste para girar · pinça para zoom' : 'arraste para girar · roda para zoom');
+  m.textContent = E.modo === '2d' ? `modo plano · ${E.motivo2d} · ${gesto}` : E.bloom ? `holo 3D · brilho neon · ${gesto}`
+    : E.resReduzida ? `holo 3D · modo leve · ${gesto}` : `holo 3D · ${gesto}`;
 }
 
 function webglOk() {
@@ -642,7 +721,9 @@ async function boot() {
   }
   montarHud(); ligarControles();
   const forca2d = qs.get('modo') === '2d';
-  if (redMotion || forca2d || !webglOk()) montar2D(redMotion ? 'movimento reduzido' : forca2d ? 'pedido na URL' : 'sem WebGL');
+  /* movimento reduzido não congela a galáxia: fica 3D, mas sem rotação automática e sem voo de câmera
+     (os ramos `redMotion` em montar3D/irPara/zoom). O plano 2D só entra sem WebGL, por pedido ou por máquina lenta. */
+  if (forca2d || !webglOk()) montar2D(forca2d ? 'pedido na URL' : 'sem WebGL');
   else { E.modo = '3d'; montar3D(); modoHud(); }
   carga.classList.add('fora');
   /* sonda de teste (`?sonda=1`): onde está um nó na tela e quantos quadros já saíram — só para o Playwright. */

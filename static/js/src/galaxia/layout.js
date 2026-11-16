@@ -79,7 +79,7 @@ export function corNo(n) {
 }
 
 /** Pinta a galáxia num canvas 2D, UMA vez (sem laço). `escala` multiplica o tamanho dos nós. */
-export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro = null} = {}) {
+export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro = null, vista = null} = {}) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
   if (!w || !h) return;
@@ -94,9 +94,12 @@ export function desenhar2D(cv, dados, pos, {escala = 1, estrelas = 380, filtro =
   }
   let mx = 1;
   for (const k in pos) mx = Math.max(mx, Math.abs(pos[k].x), Math.abs(pos[k].y));
-  const s = (Math.min(w, h) / 2 - 10) / mx;
-  const P = id => pos[id] && [w / 2 + pos[id].x * s, h / 2 + pos[id].y * s];
-  const nucleo = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.32);
+  /* vista = zoom/arrasto do modo plano (pinça, roda, botões): k multiplica a escala, x/y deslocam o centro */
+  const vk = vista ? vista.k : 1, cx = w / 2 + (vista ? vista.x : 0), cy = h / 2 + (vista ? vista.y : 0);
+  const s = (Math.min(w, h) / 2 - 10) / mx * vk;
+  const P = id => pos[id] && [cx + pos[id].x * s, cy + pos[id].y * s];
+  escala *= Math.min(2.2, Math.sqrt(vk));
+  const nucleo = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.32 * vk);
   nucleo.addColorStop(0, 'rgba(127,219,255,.30)'); nucleo.addColorStop(0.4, 'rgba(30,123,240,.10)'); nucleo.addColorStop(1, 'rgba(30,123,240,0)');
   g.fillStyle = nucleo; g.fillRect(0, 0, w, h);
   const ok = filtro || (() => true);
