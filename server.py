@@ -711,6 +711,12 @@ async def painel_fiscalizacao():
     return FileResponse("static/jfn-painel.html", headers=_HTML_REVALIDA)
 
 
+@app.get("/galaxia", response_class=HTMLResponse)
+async def galaxia_pagina():
+    """Galáxia dos casos (3D): página própria aberta pelo preview do Início; dados em /api/galaxia."""
+    return FileResponse("static/jfn-galaxia.html", headers=_HTML_REVALIDA)
+
+
 @app.get("/cockpit")
 async def cockpit():
     """Unificado no painel v6 (aba Início = command deck); a página separada foi aposentada."""

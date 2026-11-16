@@ -243,3 +243,6 @@ data/qualidade_*.tmp
 data/ajovem_contratados.json
 data/lentes_estado.json
 data/fachada_controle_sintetico/
+
+# 16/11/2026: dependências do build:galaxia instaladas fora do node_modules compartilhado (worktree)
+.galaxia-deps/

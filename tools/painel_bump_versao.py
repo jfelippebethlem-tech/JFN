@@ -48,7 +48,12 @@ if not _MALHA_SRC.exists():                       # e antes do build, era o pró
 # antes de painel.js virar hash — senão a catraca do painel nasce defasada no mesmo passo.
 # caps.js, jfn-icones.js e rj-malha.js são GERADOS; ficavam de fora e o navegador servia a
 # cópia velha (medido 2026-07-31: caps.js regenerado com os ícones de grupo não chegava à tela).
+# 16/11/2026: a galáxia dos casos é página própria (`/galaxia`) com folha e bundle próprios —
+# fora da catraca, o navegador serviria a cópia velha dos dois depois de cada build:galaxia.
+_GALAXIA = _REPO / "static" / "jfn-galaxia.html"
 _ALVOS = (
+    ("galaxia/css", _REPO / "static" / "css" / "galaxia.css", _GALAXIA, re.compile(r'(galaxia\.css\?v=)([0-9a-f]{8})')),
+    ("galaxia/js", _REPO / "static" / "js" / "galaxia.bundle.js", _GALAXIA, re.compile(r'(galaxia\.bundle\.js\?v=)([0-9a-f]{8})')),
     ("css", _REPO / "static" / "css" / "painel.css", _HTML, re.compile(r'(painel\.css\?v=)([0-9a-f]{8})')),
     ("caps", _REPO / "static" / "js" / "caps.js", _HTML, re.compile(r'(caps\.js\?v=)([0-9a-f]{8})')),
     ("icones", _REPO / "static" / "assets" / "jfn-icones.js", _HTML, re.compile(r'(jfn-icones\.js\?v=)([0-9a-f]{8})')),

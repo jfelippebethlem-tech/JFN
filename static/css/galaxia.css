@@ -1,0 +1,229 @@
+/* GALÁXIA DOS CASOS — folha da página própria `/galaxia` (static/jfn-galaxia.html).
+ *
+ * NÃO entra no painel.css (não está em static/css/src/): a página é independente e só ela carrega
+ * esta folha e o bundle 3D. O preview do Início usa `static/css/src/99z2-v61-97-galaxia.css`.
+ *
+ * Tema: página CLARA (a casa é v61 tron claro) com o visor ESCURO azul-marinho dentro de um cartão
+ * de vidro — raio 28px, fio de luz no topo, borda de luz ciano por máscara. Paleta estrita de azuis
+ * neon: #22B5F5 · #1E7BF0 · #7FDBFF · #0B3D91 e núcleos brancos.
+ * Movimento: só `transform`/`opacity`; tudo para com `prefers-reduced-motion` e no modo estático.
+ */
+@font-face{font-family:"Geist";src:url(/static/assets/fonts/v61/Geist-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Geist";src:url(/static/assets/fonts/v61/Geist-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Geist";src:url(/static/assets/fonts/v61/Geist-SemiBold.woff2) format("woff2");font-weight:600 700;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url(/static/assets/fonts/v61/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Oxanium";src:url(/static/assets/fonts/v61/Oxanium-latin-wght.woff2) format("woff2");font-weight:200 800;font-display:swap}
+
+:root{
+  --bg:#F3F8FE; --bg-2:#E8F1FC; --ink:#0B1B33; --mut:#4A5F7D; --linha:rgba(30,123,240,.16);
+  --ion:#1E7BF0; --ion-text:#0A63D1; --cyan:#22B5F5; --gelo:#7FDBFF; --marinho:#0B3D91; --fundo:#030B1F;
+  --holo:#BFEFFF; --holo-mut:rgba(191,239,255,.62);
+  --vidro:rgba(255,255,255,.62); --vidro-borda:rgba(255,255,255,.85);
+  --f-ui:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --f-display:"Oxanium","Geist",system-ui,sans-serif;
+  --r-card:28px; --r-visor:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body.gx-pg{min-height:100vh;font:14px/1.5 var(--f-ui);color:var(--ink);background:var(--bg);
+  background-image:radial-gradient(1200px 600px at 12% -10%,rgba(34,181,245,.16),transparent 60%),
+    radial-gradient(900px 520px at 100% 0%,rgba(30,123,240,.12),transparent 60%),
+    linear-gradient(180deg,#F7FBFF,var(--bg) 40%,var(--bg-2));
+  -webkit-font-smoothing:antialiased}
+a{color:var(--ion-text)}
+code{font:12px var(--f-mono);background:rgba(30,123,240,.08);padding:1px 5px;border-radius:6px}
+
+/* ── cabeçalho: cápsula de vidro ─────────────────────────────────────────────────────────── */
+.gx-top{position:sticky;top:10px;z-index:5;margin:10px 16px 0;padding:10px 14px 10px 12px;display:flex;align-items:center;gap:16px;
+  border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(246,250,255,.84));border:1px solid var(--vidro-borda);
+  box-shadow:0 1px 0 #fff inset,0 10px 30px -14px rgba(11,61,145,.35)}   /* sem backdrop-filter: ver .gx-card */
+.gx-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);min-width:0}
+.gx-marca b{display:block;font:700 15px/1 var(--f-display);letter-spacing:.14em}
+.gx-marca small{display:block;color:var(--mut);font-size:11px;white-space:nowrap}
+.gx-logo{width:32px;height:32px;border-radius:10px;flex:none;
+  background:radial-gradient(circle at 50% 50%,#fff 0 14%,transparent 15%),
+    radial-gradient(circle at 50% 50%,transparent 0 36%,rgba(255,255,255,.9) 37% 41%,transparent 42%),
+    linear-gradient(135deg,var(--cyan),#1470E6);box-shadow:0 6px 16px -6px rgba(30,123,240,.7)}
+.gx-titulo{flex:1;text-align:center;min-width:0}
+.gx-eye{display:block;font:600 10px/1 var(--f-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ion-text);opacity:.8}
+.gx-titulo h1{margin:3px 0 0;font:600 20px/1.1 var(--f-display);letter-spacing:.06em}
+.gx-voltar{font:500 13px var(--f-ui);text-decoration:none;padding:8px 14px;border-radius:12px;color:var(--ion-text);
+  background:rgba(255,255,255,.7);border:1px solid var(--linha)}
+.gx-voltar:hover{background:#fff}
+
+/* ── cartão de vidro + visor holográfico ─────────────────────────────────────────────────── */
+.gx-main{padding:16px}
+.gx-card{position:relative;border-radius:var(--r-card);padding:10px;border:1.2px solid transparent;
+  /* Vidro SEM backdrop-filter e borda de luz SEM camada mascarada por cima: as duas coisas envolvem o canvas
+     WebGL e obrigavam o compositor a refazer o desfoque/máscara a cada quadro (medido: 8,7 → 19 fps no
+     Chromium headless a 1280×900). O cartão fica sobre o fundo claro estático — o gradiente leitoso e o
+     fio de luz dão a mesma leitura de vidro. A borda ciano é o `border-box` do próprio fundo. */
+  background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(240,247,255,.74)) padding-box,
+    linear-gradient(135deg,rgba(34,181,245,.95),rgba(127,219,255,.25) 30%,rgba(30,123,240,.10) 60%,rgba(34,181,245,.85)) border-box;
+  box-shadow:0 1px 0 #fff inset,0 0 0 1px rgba(255,255,255,.7) inset,0 30px 60px -30px rgba(11,61,145,.45),0 8px 20px -12px rgba(30,123,240,.3),0 0 30px -12px rgba(34,181,245,.45)}
+.gx-visor{position:relative;height:calc(100vh - 210px);min-height:540px;border-radius:var(--r-visor);overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 45%,#0A2150 0%,#05112E 45%,var(--fundo) 100%);
+  box-shadow:0 0 0 1px rgba(127,219,255,.18) inset,0 0 60px rgba(34,181,245,.12) inset;isolation:isolate}
+.gx-cena{position:absolute;inset:0}
+.gx-cena canvas{display:block;outline:none}
+.gx-2d{width:100%;height:100%}
+
+/* ── HUD Jarvis ─────────────────────────────────────────────────────────────────────────── */
+.gx-hud{position:absolute;inset:0;pointer-events:none;color:var(--holo);font-family:var(--f-mono)}
+.gx-c{position:absolute;width:26px;height:26px;border:0 solid rgba(127,219,255,.75);filter:drop-shadow(0 0 4px rgba(34,181,245,.8))}
+.gx-c-tl{top:12px;left:12px;border-top-width:1.5px;border-left-width:1.5px;border-top-left-radius:6px}
+.gx-c-tr{top:12px;right:12px;border-top-width:1.5px;border-right-width:1.5px;border-top-right-radius:6px}
+.gx-c-bl{bottom:12px;left:12px;border-bottom-width:1.5px;border-left-width:1.5px;border-bottom-left-radius:6px}
+.gx-c-br{bottom:12px;right:12px;border-bottom-width:1.5px;border-right-width:1.5px;border-bottom-right-radius:6px}
+/* o anel de varredura mora DENTRO da cena 3D (pagina.js, `anelVarredura`): como camada CSS mascarada sobre o
+   canvas custava ~20% dos quadros no compositor. */
+@keyframes gxGira{to{transform:rotate(360deg)}}
+
+/* Os painéis do HUD NÃO usam backdrop-filter: sobre um canvas WebGL que muda a cada quadro, o desfoque é
+   recalculado a cada quadro — medido no Chromium headless desta VM a 1280×900: 2,6 fps com o vidro
+   desfocado sobre o visor, 11 fps sem ele. O "vidro" aqui é gradiente quase opaco + fio de luz. */
+.gx-p{position:absolute;pointer-events:auto;border-radius:16px;padding:12px 14px;
+  background:linear-gradient(180deg,rgba(16,44,100,.82),rgba(5,17,46,.86));border:1px solid rgba(127,219,255,.22);
+  box-shadow:0 1px 0 rgba(191,239,255,.20) inset,0 0 22px -8px rgba(34,181,245,.35),0 12px 30px -12px rgba(0,0,0,.6)}
+.gx-p-eye{display:flex;align-items:center;gap:8px;font:600 10px/1 var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--holo-mut);margin-bottom:10px}
+.gx-led{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 3px rgba(34,181,245,.18),0 0 10px var(--cyan);animation:gxLed 2.4s ease-in-out infinite}
+@keyframes gxLed{50%{opacity:.45;transform:scale(.8)}}
+.gx-p-tl{top:24px;left:24px;width:min(330px,40%)}
+.gx-num{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px}
+.gx-k b{display:block;font:600 22px/1 var(--f-display);color:#EAF8FF;letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 14px rgba(34,181,245,.75)}
+.gx-k span{display:block;margin-top:4px;font-size:10px;letter-spacing:.06em;color:var(--holo-mut);text-transform:uppercase}
+.gx-k-ponte b{color:var(--gelo)}
+.gx-p-tr{top:24px;right:24px;width:min(330px,38%)}
+.gx-busca input{width:100%;font:13px var(--f-ui);color:#EAF8FF;background:rgba(3,11,31,.55);border:1px solid rgba(127,219,255,.28);
+  border-radius:11px;padding:9px 12px;outline:none}
+.gx-busca input::placeholder{color:rgba(191,239,255,.45)}
+.gx-busca input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,181,245,.22)}
+.gx-res{list-style:none;margin:8px 0 0;padding:0;max-height:300px;overflow:auto}
+.gx-res li{display:grid;grid-template-columns:12px 1fr;gap:2px 8px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;font:12.5px/1.3 var(--f-ui);color:#DDF4FF}
+.gx-res li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-res li em{grid-column:2;font:normal 10px var(--f-mono);color:var(--holo-mut);letter-spacing:.04em}
+.gx-res li.on,.gx-res li:hover{background:rgba(34,181,245,.16)}
+.gx-p-bl{left:24px;bottom:24px;max-width:calc(100% - 48px)}
+.gx-leg{display:flex;flex-wrap:wrap;gap:6px}
+.gx-chip{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--f-ui);color:rgba(221,244,255,.6);cursor:pointer;
+  padding:6px 11px;border-radius:999px;background:rgba(3,11,31,.4);border:1px solid rgba(127,219,255,.16);transition:background .2s,color .2s,border-color .2s}
+.gx-chip em{font:normal 11px var(--f-mono);color:var(--holo-mut)}
+.gx-chip.on{color:#EAF8FF;border-color:rgba(127,219,255,.5);background:rgba(34,181,245,.16);box-shadow:0 0 14px -4px rgba(34,181,245,.7)}
+.gx-chip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.gx-chip-ponte.on{background:rgba(127,219,255,.22)}
+.gx-p-br{right:24px;bottom:24px;display:flex;align-items:center;gap:8px;font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--holo-mut);padding:9px 12px}
+
+.gx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;vertical-align:middle}
+.gx-dot-caso{background:radial-gradient(circle,#fff 0 30%,var(--cyan) 60%);box-shadow:0 0 8px var(--cyan)}
+.gx-dot-cnpj{background:#2C8BFF;box-shadow:0 0 6px var(--ion)}
+.gx-dot-socio{width:7px;height:7px;background:var(--gelo);box-shadow:0 0 5px var(--gelo)}
+.gx-dot-sei{width:6px;height:6px;background:#3FD0FF;box-shadow:0 0 6px #3FD0FF}
+.gx-dot-ponte{width:14px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--gelo),#fff,var(--gelo));box-shadow:0 0 6px var(--gelo)}
+
+/* ── tooltip de vidro ───────────────────────────────────────────────────────────────────── */
+.gx-tip{position:absolute;left:0;top:0;z-index:3;width:max-content;max-width:320px;pointer-events:none;opacity:0;
+  border-radius:16px;padding:12px 14px;color:#E6F7FF;font:12.5px/1.45 var(--f-ui);
+  background:linear-gradient(180deg,rgba(20,56,122,.92),rgba(5,17,46,.94));border:1px solid rgba(127,219,255,.35);
+  box-shadow:0 1px 0 rgba(191,239,255,.25) inset,0 0 24px -6px rgba(34,181,245,.6),0 18px 40px -16px rgba(0,0,0,.7);
+  transition:opacity .14s}
+.gx-tip.on{opacity:1}
+.gx-tip-eye{display:flex;align-items:center;gap:7px;font:600 9.5px/1 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--holo-mut);margin-bottom:6px}
+.gx-tip-tit{font:600 14px/1.3 var(--f-ui);color:#fff;margin-bottom:8px}
+.gx-tip-par span{display:block;color:var(--gelo);font-weight:400;margin:2px 0}
+.gx-tip dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0}
+.gx-tip dt{color:var(--holo-mut);font:10px/1.7 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+.gx-tip dd{margin:0}
+.gx-niv{font-family:var(--f-mono);color:var(--cyan);letter-spacing:1px;margin-left:4px}
+.gx-mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.gx-tip-mot{margin:0;padding-left:16px}
+.gx-tip-pe{margin-top:8px;padding-top:7px;border-top:1px solid rgba(127,219,255,.18);font:10.5px var(--f-mono);color:var(--holo-mut);letter-spacing:.04em}
+
+.gx-carga{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;color:var(--holo);font:600 11px var(--f-mono);
+  letter-spacing:.24em;text-transform:uppercase;transition:opacity .5s;pointer-events:none}
+.gx-carga.fora{opacity:0}
+.gx-carga-anel{width:54px;height:54px;border-radius:50%;border:2px solid rgba(127,219,255,.15);border-top-color:var(--cyan);animation:gxGira 1s linear infinite}
+.gx-warn{pointer-events:auto;text-transform:none;letter-spacing:0;font:13px var(--f-ui);color:#FFE3A8;max-width:440px;text-align:center}
+.gx-warn a{color:var(--gelo)}
+
+/* ── rodapé do cartão ───────────────────────────────────────────────────────────────────── */
+.gx-rodape{padding:12px 10px 4px;display:grid;gap:4px}
+.gx-aviso{margin:0;font-size:13px;color:var(--ink)}
+.gx-aviso b{color:var(--ion-text)}
+.gx-fonte{margin:0;font-size:12px;color:var(--mut)}
+.gx-leg-niv{display:block;margin-top:4px}
+.gx-leg-niv .gx-dot{margin:0 3px 0 6px}
+
+/* ── folha lateral ──────────────────────────────────────────────────────────────────────── */
+.gx-folha{position:fixed;z-index:10;top:12px;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));overflow:auto;
+  border-radius:24px;padding:0 22px 22px;background:rgba(255,255,255,.88);border:1px solid #fff;
+  box-shadow:0 1px 0 #fff inset,0 30px 70px -20px rgba(11,61,145,.5),0 0 0 1px rgba(34,181,245,.25);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3);
+  transform:translateX(16px);opacity:.4;transition:transform .28s cubic-bezier(.2,.9,.25,1),opacity .28s}
+.gx-folha.on{transform:none;opacity:1}
+.gx-folha-top{position:sticky;top:0;display:flex;justify-content:flex-end;padding:14px 0 8px;background:linear-gradient(rgba(255,255,255,.95) 70%,rgba(255,255,255,0))}
+.gx-x{font:500 12px var(--f-ui);border:1px solid var(--linha);background:#fff;color:var(--ion-text);border-radius:10px;padding:6px 12px;cursor:pointer}
+.gx-f-eye{display:flex;align-items:center;gap:8px;font:600 10px var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ion-text)}
+.gx-f-tit{font:600 19px/1.25 var(--f-ui);margin:8px 0 4px}
+.gx-f-ent{color:var(--mut);margin:4px 0 10px}
+.gx-f-pe{font-size:12px;color:var(--mut);margin:14px 0;padding-top:10px;border-top:1px solid var(--linha)}
+.gx-carregando{color:var(--mut);padding:30px 0}
+.gx-folha .gx-warn{color:#8A5A00;background:#FFF6E0;border-radius:12px;padding:10px 12px;text-align:left}
+.gx-nota{font-size:13.5px;line-height:1.6}
+.gx-nota h2,.gx-nota h3,.gx-nota h4,.gx-nota h5{font-family:var(--f-ui);line-height:1.3;margin:18px 0 6px}
+.gx-nota h2{font-size:19px}.gx-nota h3{font-size:16px}.gx-nota h4,.gx-nota h5{font-size:14px}
+.gx-nota blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid var(--cyan);background:rgba(34,181,245,.07);border-radius:0 10px 10px 0}
+.gx-nota .cs-tbw{overflow:auto}
+.gx-nota table{border-collapse:collapse;font-size:12.5px;width:100%}
+.gx-nota th,.gx-nota td{border-bottom:1px solid var(--linha);padding:5px 8px;text-align:left;vertical-align:top}
+.gx-nota th{font-weight:600;background:rgba(30,123,240,.06)}
+.gx-nota hr{border:0;border-top:1px solid var(--linha)}
+.gx-sec{font:600 10.5px var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ion-text);margin:18px 0 8px}
+.gx-viz,.gx-qsa{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.gx-viz button{width:100%;display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;text-align:left;cursor:pointer;
+  font:13px var(--f-ui);color:var(--ink);background:rgba(30,123,240,.04);border:1px solid var(--linha);border-radius:11px;padding:7px 10px}
+.gx-viz button:hover{background:rgba(34,181,245,.12)}
+.gx-viz span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-viz em,.gx-qsa em{font:normal 10.5px var(--f-mono);color:var(--mut)}
+.gx-qsa li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--linha)}
+.gx-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.gx-mini div{background:rgba(30,123,240,.06);border:1px solid var(--linha);border-radius:14px;padding:10px}
+.gx-mini b{display:block;font:600 15px/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.gx-mini span{font-size:11px;color:var(--mut)}
+
+/* ── celular ────────────────────────────────────────────────────────────────────────────── */
+@media (max-width:600px){
+  .gx-top{margin:8px 8px 0;gap:10px;padding:8px 10px}
+  .gx-marca small,.gx-eye{display:none}
+  .gx-titulo{text-align:left}.gx-titulo h1{font-size:16px;margin:0}
+  .gx-main{padding:8px}
+  .gx-card{padding:6px;border-radius:24px}
+  .gx-visor{height:calc(100vh - 150px);min-height:520px;border-radius:19px}
+  .gx-p{padding:9px 10px;border-radius:13px}
+  .gx-p-tl{top:10px;left:10px;right:10px;width:auto}
+  .gx-p-tl .gx-p-eye{display:none}
+  .gx-num{grid-template-columns:repeat(3,1fr);gap:6px 8px}
+  .gx-k b{font-size:16px}.gx-k span{font-size:8.5px}
+  .gx-p-tr{top:auto;bottom:118px;left:10px;right:10px;width:auto}
+  .gx-p-tr .gx-p-eye{display:none}
+  .gx-res{max-height:180px}
+  .gx-p-bl{left:10px;right:10px;bottom:10px;max-width:none}
+  .gx-p-bl .gx-p-eye{display:none}
+  .gx-chip{padding:5px 9px;font-size:11px}
+  .gx-p-br{display:none}
+  .gx-c{width:16px;height:16px}
+  .gx-tip{max-width:250px}
+  .gx-folha{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:78vh;border-radius:22px}
+}
+/* ── movimento reduzido e modo estático: nada gira, nada pisca ───────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  .gx-led,.gx-carga-anel{animation:none}
+  .gx-folha,.gx-tip,.gx-carga,.gx-chip{transition:none}
+}
+body.gx-estatico .gx-led{animation:none}
+@media (prefers-reduced-transparency:reduce){
+  .gx-top,.gx-folha{-webkit-backdrop-filter:none;backdrop-filter:none;background:#fff}
+  .gx-card{background:#fff padding-box,linear-gradient(135deg,var(--cyan),var(--ion)) border-box}
+  .gx-p,.gx-tip{background:rgba(5,17,46,.96)}
+}

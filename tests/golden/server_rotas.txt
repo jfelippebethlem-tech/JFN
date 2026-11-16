@@ -206,6 +206,7 @@ GET /chat -> chat_ui
 GET /cockpit -> cockpit
 GET /controle -> pagina_controle
 GET /exports -> list_exports
+GET /galaxia -> galaxia_pagina
 GET /graph -> graph_page
 GET /hermes -> hermes_ui
 GET /login_jfn -> login_jfn_form

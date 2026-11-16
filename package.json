@@ -1,14 +1,17 @@
 {
   "private": true,
   "scripts": {
-    "build:painel": "esbuild static/js/src/entrada.js --bundle --format=iife --target=es2020 --charset=utf8 --sourcemap=linked --outfile=static/js/painel.bundle.js"
+    "build:painel": "esbuild static/js/src/entrada.js --bundle --format=iife --target=es2020 --charset=utf8 --sourcemap=linked --outfile=static/js/painel.bundle.js",
+    "build:galaxia": "NODE_PATH=.galaxia-deps/node_modules esbuild static/js/galaxia-src/pagina.js --bundle --format=esm --target=es2020 --charset=utf8 --alias:three/webgpu=./static/js/galaxia-src/sem-webgpu.js --minify --legal-comments=none --outfile=static/js/galaxia.bundle.js"
   },
   "dependencies": {
     "puppeteer": "^25.1.0"
   },
   "devDependencies": {
+    "3d-force-graph": "1.80.2",
     "d3-geo": "^3.1.2",
     "esbuild": "^0.28.1",
+    "three": "0.187.0",
     "topojson-client": "^3.1.0"
   }
 }
