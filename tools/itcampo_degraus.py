@@ -58,8 +58,13 @@ def conexao() -> bool:
     return _ic(f"curl -sk -m 20 -o /dev/null -w '%{{http_code}}' '{URL_SEI}'").strip() == "200"
 
 
+# o final de CADA log: `cat s*/… | tail` pegava só o fim do último arquivo na ordem alfabética (s1, s10…s9) e deixava
+# de fora a s1 — a única ativa no degrau 1 (15/11/2026: 35 min de "sem dados" com 18 ok na s1)
+COMANDO_LOGS = "for f in ~/JFN-sessoes/s*/data/sei_integra_fila.log; do tail -n 1500 \"$f\"; done 2>/dev/null"
+
+
 def logs_sessoes() -> str:
-    return _ic("cat ~/JFN-sessoes/s*/data/sei_integra_fila.log 2>/dev/null | tail -n 4000", timeout=180)
+    return _ic(COMANDO_LOGS, timeout=180)
 
 
 def definir(n: int) -> None:

@@ -22,3 +22,7 @@ def test_veredito_do_degrau():
     assert D.veredito({"erro": 3}, conexao=True) == "degradou"            # 3+ tentativas sem nenhum ok
     assert D.veredito({}, conexao=True) == "sem_dados"
     assert D.veredito({"sem_arvore": 1}, conexao=True) == "sem_dados"
+
+
+def test_logs_lidos_por_arquivo_e_nao_pelo_fim_da_concatenacao():
+    assert "for f in" in D.COMANDO_LOGS and "tail" in D.COMANDO_LOGS and "| tail" not in D.COMANDO_LOGS
