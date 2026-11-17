@@ -4,60 +4,74 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F7FAFF">
 <title>Galáxia dos casos — Controle Externo · RJ</title>
-<!-- Página própria da galáxia (decisão do dono, 16/11/2026): o painel mostra só um preview 2D no fim
-     do Início e abre esta página em outra aba. Só aqui o bundle 3D (three.js + 3d-force-graph) desce. -->
-<link rel="stylesheet" href="/static/css/galaxia.css?v=06ceae8e">
+<!-- Página própria da galáxia (decisão do dono, 16/11/2026), aberta pelo preview do fim do Início.
+     v64 (17/11/2026): clara, na linguagem v63, desenhada em canvas 2D com níveis de detalhe — sem three.js. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/static/assets/fonts/v63/Geist-Bold.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/static/assets/fonts/v63/InstrumentSerif-Italic.woff2">
+<link rel="stylesheet" href="/static/css/galaxia.css?v=90f943cd">
 </head>
 <body class="gx-pg">
 <header class="gx-top">
-  <a class="gx-marca" href="/painel" title="Voltar ao painel"><span class="gx-logo" aria-hidden="true"></span>
-    <span><b>JFN</b><small>Central de Inteligência · Controle Externo RJ</small></span></a>
-  <div class="gx-titulo"><span class="gx-eye">Esfera Início · grafo vivo</span><h1>Galáxia dos casos</h1></div>
-  <a class="gx-voltar" href="/painel">← Painel</a>
+  <a class="gx-marca" href="/painel" title="Voltar ao painel"><span class="gx-logo" aria-hidden="true">CE</span>
+    <span class="gx-marca-tx"><b>Controle Externo</b><small>Central de inteligência · RJ</small></span></a>
+  <div class="gx-titulo"><span class="gx-eye">grafo vivo · todos os casos</span><h1>Galáxia dos <em>casos</em></h1></div>
+  <a class="gx-voltar" href="/painel"><span aria-hidden="true">←</span> Painel</a>
 </header>
 <main class="gx-main">
-  <section class="gx-card" aria-label="Galáxia dos casos">
-    <div class="gx-visor" id="gx-visor">
-      <div class="gx-cena" id="gx-cena"></div>
-      <div class="gx-hud" aria-hidden="false">
-        <i class="gx-c gx-c-tl" aria-hidden="true"></i><i class="gx-c gx-c-tr" aria-hidden="true"></i>
-        <i class="gx-c gx-c-bl" aria-hidden="true"></i><i class="gx-c gx-c-br" aria-hidden="true"></i>
-        <div class="gx-p gx-p-tl">
-          <div class="gx-p-eye"><span class="gx-led" aria-hidden="true"></span>Telemetria do grafo</div>
-          <div class="gx-num" id="gx-num" aria-live="polite"></div>
-        </div>
-        <div class="gx-p gx-p-tr gx-busca" role="search">
-          <label class="gx-p-eye" for="gx-q">Localizar na galáxia</label>
-          <input id="gx-q" type="search" autocomplete="off" spellcheck="false" placeholder="caso, empresa, CNPJ, nº SEI, sócio…" aria-controls="gx-res">
-          <ul class="gx-res" id="gx-res" role="listbox" hidden></ul>
-        </div>
-        <div class="gx-p gx-p-bl">
-          <div class="gx-p-eye">Camadas</div>
-          <div class="gx-leg" id="gx-leg" role="group" aria-label="Filtrar por tipo"></div>
-        </div>
-        <div class="gx-p gx-p-br"><span class="gx-led" aria-hidden="true"></span><span id="gx-modo">acendendo…</span></div>
-        <div class="gx-p gx-p-zoom" id="gx-zoom" role="group" aria-label="Zoom">
-          <button type="button" data-gx-zoom="mais" aria-label="Aproximar">+</button>
-          <button type="button" data-gx-zoom="menos" aria-label="Afastar">−</button>
-          <button type="button" data-gx-zoom="reset" aria-label="Recentralizar a galáxia">⟲</button>
-        </div>
+  <section class="gx-visor" id="gx-visor" aria-label="Galáxia dos casos — arraste para mover, pinça ou roda para aproximar, toque num ponto para ver a prova">
+    <canvas id="gx-cv" role="img" aria-label="Mapa de órgãos, fornecedores, dossiês e sócios ligados entre si"></canvas>
+
+    <div class="gx-ctl">
+      <div class="gx-busca" role="search">
+        <svg class="gx-lupa" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+        <label class="gx-sr" for="gx-q">Localizar na galáxia</label>
+        <input id="gx-q" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
+          placeholder="órgão, empresa, CNPJ, dossiê, sócio, nº SEI…" aria-controls="gx-res" aria-expanded="false">
+        <ul class="gx-res" id="gx-res" role="listbox" hidden></ul>
       </div>
-      <div class="gx-tip" id="gx-tip" role="tooltip" aria-hidden="true"></div>
-      <div class="gx-carga" id="gx-carga"><span class="gx-carga-anel" aria-hidden="true"></span>acendendo a galáxia…</div>
+      <div class="gx-filtros" role="group" aria-label="Filtros">
+        <div class="gx-chips" id="gx-score" role="radiogroup" aria-label="Score mínimo do Radar">
+          <button type="button" role="radio" aria-checked="true" data-min="0">Todos</button>
+          <button type="button" role="radio" aria-checked="false" data-min="10">≥ 10</button>
+          <button type="button" role="radio" aria-checked="false" data-min="25">≥ 25</button>
+          <button type="button" role="radio" aria-checked="false" data-min="50" class="gx-crit">Crítico ≥ 50</button>
+        </div>
+        <label class="gx-sr" for="gx-org">Filtrar por órgão</label>
+        <select id="gx-org" class="gx-sel"><option value="">Todos os órgãos</option></select>
+      </div>
     </div>
-    <div class="gx-rodape">
-      <p class="gx-aviso"><b id="gx-aviso">Ligação = indício de relação a conferir, nunca prova.</b>
-        Presunção de legitimidade do ato administrativo; nenhuma ligação aqui é acusação.</p>
-      <p class="gx-fonte">Fonte: <code>/api/galaxia</code> — dossiês conferidos do vault (<code>~/vault/casos</code>), CNPJs e
-        processos SEI citados nas notas, sócios do QSA público na base local (até 4 por CNPJ, sem CPF).
-        <span class="gx-leg-niv"><i class="gx-dot gx-dot-caso"></i>estrela = caso (maior e mais pulsante = nível mais alto) ·
-        <i class="gx-dot gx-dot-cnpj"></i>planeta = empresa · <i class="gx-dot gx-dot-socio"></i>lua = sócio ·
-        <i class="gx-dot gx-dot-sei"></i>ponto = processo SEI · <i class="gx-dot gx-dot-ponte"></i>ponte = casos que compartilham itens</span></p>
+
+    <div class="gx-num" id="gx-num" aria-live="polite"></div>
+
+    <div class="gx-leg" id="gx-leg" aria-label="Legenda">
+      <span><i class="gx-d gx-d-caso"></i>dossiê do vault</span>
+      <span><i class="gx-d gx-d-org"></i>órgão</span>
+      <span><i class="gx-d gx-d-s0"></i><i class="gx-d gx-d-s1"></i><i class="gx-d gx-d-s2"></i>fornecedor (score)</span>
+      <span><i class="gx-d gx-d-crit"></i>crítico ≥ 50</span>
+      <span class="gx-leg-perto"><i class="gx-d gx-d-socio"></i>sócio</span>
+      <span class="gx-leg-perto"><i class="gx-d gx-d-end"></i>mesmo endereço</span>
     </div>
+
+    <div class="gx-zoom" role="group" aria-label="Zoom">
+      <button type="button" data-z="mais" aria-label="Aproximar">+</button>
+      <button type="button" data-z="menos" aria-label="Afastar">−</button>
+      <button type="button" data-z="tudo" aria-label="Ver a galáxia inteira">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
+    </div>
+    <div class="gx-nivel" id="gx-nivel" aria-live="polite"></div>
+
+    <div class="gx-carga" id="gx-carga"><span class="gx-carga-anel" aria-hidden="true"></span><span>acendendo a galáxia…</span></div>
   </section>
+
+  <footer class="gx-rodape">
+    <p class="gx-aviso"><b id="gx-aviso">Ligação = indício de relação a conferir, nunca prova.</b>
+      Presunção de legitimidade do ato administrativo; nenhuma ligação aqui é acusação.</p>
+    <p class="gx-fonte" id="gx-fonte">Fonte: <code>/api/galaxia</code>.</p>
+  </footer>
 </main>
-<aside class="gx-folha" id="gx-folha" aria-label="Detalhe" hidden></aside>
-<script type="module" src="/static/js/galaxia.bundle.js?v=2c064ff3"></script>
+<aside class="gx-folha" id="gx-folha" role="dialog" aria-modal="false" aria-labelledby="gx-f-tit" hidden></aside>
+<script type="module" src="/static/js/galaxia.bundle.js?v=af07708b"></script>
 </body>
 </html>

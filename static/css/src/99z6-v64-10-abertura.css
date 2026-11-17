@@ -1,0 +1,73 @@
+/* ══ v64 · ABERTURA EM CÓDIGO (2026-11-17) ═══════════════════════════════════════════════════════
+   `#v64-abertura` nasce VAZIO no HTML (véu claro: o esqueleto do painel não pisca enquanto o bundle
+   desce) e `cena/abertura.js` o preenche: véu · fitas (SVG) · reator (camadas HTML que giram no
+   compositor) · marca escrita em traço · linha mono dos motores · Pular. Só transform/opacity e
+   stroke-dashoffset se animam; o brilho é gradiente estático. Se o JS nunca rodar, a própria folha
+   dissolve o véu aos 6 s — a abertura nunca prende o painel.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+#v64-abertura{position:fixed;inset:0;z-index:200;overflow:hidden;color:#0B1B3A;contain:strict;
+  animation:v64abSeg .3s linear 6s forwards}
+@keyframes v64abSeg{to{opacity:0;visibility:hidden;pointer-events:none}}
+#v64-abertura:empty, #v64-abertura .ab-veu{
+  background:radial-gradient(120% 90% at 50% 46%,#FFFFFF 0,#F4F8FF 38%,#E7F0FF 72%,#DCE8FF 100%)}
+#v64-abertura .ab-veu{position:absolute;inset:0}
+#v64-abertura.ab-saindo{pointer-events:none}
+
+/* fitas: duas camadas SVG em tela cheia (viewBox em px, origem no centro), cada uma girando/encolhendo
+   para o lugar no compositor */
+#v64-abertura .ab-fitas{position:absolute;inset:0;transform-origin:50% 50%}
+#v64-abertura .ab-camada{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform-origin:50% 50%;
+  fill:none;stroke-linecap:round;opacity:0}
+#v64-abertura .ab-halo{stroke-width:8;stroke-opacity:.09}
+
+/* o painel NÃO pinta enquanto a abertura o cobre (layout segue — o boot mede o que precisa); volta um
+   instante antes da saída. Classe no <html> posta/tirada pelo JS (2 recálculos de estilo no total) — um
+   `body:has(...)` aqui recalculava o painel inteiro a cada quadro da abertura (medido no trace, 17/11). */
+html.v64-ab-cobre body > :not(#v64-abertura){visibility:hidden}
+
+/* reator */
+#v64-abertura .ab-reator{position:absolute;left:50%;top:50%;width:var(--ab-s);height:var(--ab-s);
+  margin:calc(var(--ab-s) / -2) 0 0 calc(var(--ab-s) / -2);transform-origin:50% 50%}
+#v64-abertura .ab-anel{position:absolute;inset:0}
+#v64-abertura .ab-anel svg{display:block;width:100%;height:100%;overflow:visible;transform-origin:50% 50%}
+#v64-abertura .ab-nucleo{position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;opacity:0;
+  background:radial-gradient(circle,#FFFFFF 0 17%,rgba(214,244,255,.95) 23%,rgba(56,211,255,.42) 36%,rgba(29,91,255,.12) 55%,rgba(29,91,255,0) 71%)}
+#v64-abertura .ab-nucleo::after{content:"";position:absolute;left:41%;top:41%;width:18%;height:18%;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 1.5px #38D3FF,0 0 0 5px rgba(56,211,255,.18)}
+#v64-abertura .ab-varre{position:absolute;inset:3%;border-radius:50%;opacity:0;
+  background:conic-gradient(from 0deg,rgba(56,211,255,0) 0deg 250deg,rgba(56,211,255,.28) 320deg,rgba(255,255,255,.95) 357deg,rgba(56,211,255,0) 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 5px),#000 calc(100% - 1px),transparent);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 5px),#000 calc(100% - 1px),transparent)}
+#v64-abertura .ab-pulso{position:absolute;left:30%;top:30%;width:40%;height:40%;border-radius:50%;opacity:0;
+  border:2px solid #38D3FF;box-shadow:0 0 0 6px rgba(56,211,255,.12)}
+
+/* marca + motores, logo abaixo do reator */
+#v64-abertura .ab-texto{position:absolute;left:0;right:0;top:calc(50% + var(--ab-s) / 2 + 14px);
+  display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 20px;opacity:0}
+#v64-abertura .ab-marca{width:min(400px,82vw);height:auto;overflow:visible}
+#v64-abertura .ab-marca text{stroke-width:1.1;stroke-dasharray:420;stroke-dashoffset:0;stroke-linejoin:round;paint-order:stroke}
+#v64-abertura .ab-jfn{font:700 54px/1 var(--f-display,"Geist",system-ui,sans-serif);letter-spacing:-.02em;fill:#0B1B3A;stroke:#1D5BFF}
+#v64-abertura .ab-ce{font:italic 400 50px/1 var(--f-serif,"Instrument Serif",Georgia,serif);fill:#1D5BFF;stroke:#1D5BFF}
+#v64-abertura .ab-ponto{fill:#38D3FF;transform-box:fill-box;transform-origin:50% 50%}
+#v64-abertura .ab-motores{margin:0;min-height:1.4em;max-width:min(440px,90vw);text-align:center;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font:500 11.5px/1.4 var(--f-mono,"Geist Mono",ui-monospace,monospace);color:#5A6B8C;font-variant-numeric:tabular-nums}
+#v64-abertura .ab-motores i{font-style:normal;font-weight:700;margin-right:4px}
+#v64-abertura .ab-motores .e-ok{color:#0E9E74}
+#v64-abertura .ab-motores .e-falhou{color:#B4232F}
+#v64-abertura .ab-motores .e-indisponivel{color:#5A6B8C}
+#v64-abertura .ab-m-e{color:#1D5BFF}
+
+/* Pular: discreto, canto inferior direito, alvo de toque de 44 px */
+#v64-abertura .ab-pular{all:unset;box-sizing:border-box;position:absolute;
+  right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));
+  min-height:44px;min-width:44px;padding:0 16px;display:flex;align-items:center;justify-content:center;border-radius:999px;
+  font:500 12px/1 var(--f-mono,"Geist Mono",ui-monospace,monospace);color:#2A3B5E;cursor:pointer;
+  background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(29,91,255,.16)}
+#v64-abertura .ab-pular:hover{background:#fff;color:#1D5BFF}
+#v64-abertura .ab-pular:focus-visible{outline:2px solid #1D5BFF;outline-offset:2px}
+
+/* curta: reator já aceso, marca já escrita */
+#v64-abertura.ab-curta .ab-marca text{stroke-dasharray:none}
+/* mínima (movimento reduzido / economia de dados): o reator parado, sem texto, e um fade de 250 ms */
+#v64-abertura.ab-quieto .ab-nucleo{opacity:.85}
+@media (prefers-reduced-motion:reduce){#v64-abertura{animation-duration:.01s;animation-delay:1s}}

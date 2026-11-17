@@ -1,0 +1,30 @@
+/* ══ v64 · GALÁXIA — preview no FIM da aba Início (substitui o `99z2-v61-97`) ════════════════════════
+   O vídeo escuro saiu: o visor é a galáxia REAL e clara em canvas (`abas/galaxia_inicio.js`), girando
+   devagar só quando visível. Cartão de vidro v63 com o visor à esquerda e os totais à direita. */
+html.v61 .gx-prev{position:relative;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:center;
+  margin-top:14px;padding:12px 24px 12px 12px;border-radius:24px;background:var(--v63-vidro,rgba(255,255,255,.72));
+  box-shadow:var(--v63-sh-hi,0 22px 44px -16px rgba(29,91,255,.28)),inset 0 0 0 1px rgba(29,91,255,.08)}
+html.v61 .gx-prev-cv{position:relative;height:280px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(70% 80% at 50% 50%,#FFFFFF 0,#F1F6FF 45%,#E4EEFF 100%);
+  box-shadow:inset 0 0 0 1px rgba(29,91,255,.08)}
+html.v61 .gx-prev-cv::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(60% 60% at 30% 25%,rgba(111,168,255,.14),transparent 70%),radial-gradient(50% 50% at 78% 80%,rgba(56,211,255,.10),transparent 70%)}
+html.v61 .gx-prev-cv canvas{position:relative;display:block;width:100%;height:100%}
+html.v61 .gx-prev-eye{font:500 11.5px/1 var(--f-mono,ui-monospace,monospace);text-transform:lowercase;letter-spacing:0;color:var(--ion-text,#1D5BFF)}
+html.v61 .gx-prev-tit{margin:10px 0 14px;font:700 1.35rem/1.2 var(--f-display,system-ui,sans-serif);letter-spacing:-.015em;color:var(--ink)}
+html.v61 .gx-prev-tit .v63-it{font-size:1.12em}
+html.v61 .gx-prev-num{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;font-size:.8125rem;color:var(--muted)}
+html.v61 .gx-prev-k b{font:600 1.05rem var(--f-mono,ui-monospace,monospace);color:var(--ink);font-variant-numeric:tabular-nums}
+html.v61 .gx-prev-crit b{color:var(--v63-alerta-text,#8A6500)}
+html.v61 .gx-prev-crit::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:#FFC400;vertical-align:1px}
+html.v61 .gx-prev-btn{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;border-radius:999px;padding:0 20px}
+html.v61 .gx-prev-aviso{margin-top:12px;font-size:.75rem;line-height:1.4}
+@media (min-width:1000px){
+  html.v61 .ck61 .gx-prev{grid-column:1 / -1;grid-row:5}
+}
+@media (max-width:700px){
+  html.v61 .gx-prev{grid-template-columns:1fr;padding:10px 10px 18px;gap:14px;border-radius:22px}
+  html.v61 .gx-prev-cv{height:240px;border-radius:16px}
+  html.v61 .gx-prev-txt{padding:0 8px}
+  html.v61 .gx-prev-tit{font-size:1.2rem}
+}

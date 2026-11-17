@@ -353,7 +353,9 @@ async function ir(id){
        máquina que entrega quadro — no modo sóbrio (FPS medido baixo) vale o `.fade` em CSS. */
     /* v63: com a cobertura azul da transição de clique no ar (`v63-tr-on`), sem View Transition — as
        duas fotografariam uma à outra no meio do gesto (`v63/transicao.js`). */
-    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))&&!document.documentElement.classList.contains('v63-tr-on')){
+    /* v64: nem com a abertura na tela — ela cobre tudo, e o cabeçalho/abas nomeados da transição
+       seriam pintados POR CIMA dela (camada da View Transition), além de fotografar a tela no boot. */
+    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))&&!document.documentElement.classList.contains('v63-tr-on')&&!document.getElementById('v64-abertura')){
       const _h=document.documentElement;_h.classList.add('v61-vt');
       const _vt=document.startViewTransition(pintar);
       /* sob carga o navegador ABORTA a transição ("timeout in DOM update") e as promessas dela rejeitam —

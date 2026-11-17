@@ -13,9 +13,12 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
-<link rel="stylesheet" href="/static/css/painel.css?v=18611ee8">
+<link rel="stylesheet" href="/static/css/painel.css?v=37c2390b">
 </head>
 <body>
+<!-- v64: véu da abertura nasce aqui (claro, vazio) — sem flash do esqueleto enquanto o bundle desce;
+     `cena/abertura.js` o preenche, e a própria folha o dissolve aos 6 s se o JS nunca rodar. -->
+<div id="v64-abertura" aria-hidden="true"></div>
 <div id="hologrid" aria-hidden="true"></div>
 <canvas id="rjbg" aria-hidden="true"></canvas>
 <div id="esfnebula" aria-hidden="true"></div>
@@ -71,6 +74,6 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=a3b3d821"></script>
+<script src="/static/js/painel.bundle.js?v=118df2e5"></script>
 </body>
 </html>

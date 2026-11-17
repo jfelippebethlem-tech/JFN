@@ -440,7 +440,7 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
                 loc[f"socio:{s}"] = (x + 6.5 * math.cos(b), y + 6.5 * math.sin(b))
             rmax = max(rmax, r + (7 if ss else 0))
         locais[chave], raios[chave] = loc, rmax + 6
-    ordem = sorted(g.org, key=lambda k: (-raios[k], k))
+    ordem = sorted(g.org, key=lambda k: (k.startswith(("sem:", "vault:")), -raios[k], k))   # "sem órgão" na borda
     centros = dict(zip(ordem, _empacotar([raios[k] for k in ordem])))
 
     # ─ nós

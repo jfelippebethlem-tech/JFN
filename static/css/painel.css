@@ -4680,72 +4680,6 @@ html.v61 body{font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased;
 html.v61 .cover .t, html.v61 .v61-disp{font-family:var(--f-display);font-weight:600;letter-spacing:.01em}
 html.v61 .sph > div > div:first-child{font-family:var(--f-display);font-weight:600;letter-spacing:.02em}
 @media (max-width:760px){html.v61 .sph > div > div:first-child{letter-spacing:0}}     /* 4 esferas em 390px: sem folga para tracking */
-/* ══ v61 · Fase 4 — ABERTURA ═══════════════════════════════════════════════════════════════════
-   `#v61-abertura` nasce em `cena/abertura.js` (o `#portal` antigo é removido). Tela cheia: pôster do
-   reator → filme → HUD em código por cima. Três formas: `.ab-completa`, `.ab-curta`, `.ab-minima`.
-   O fim é sempre um fade do contêiner inteiro (`.ab-off`, duração em `--ab-sai`): por baixo está o
-   cockpit com o loop `sala` no fundo, então a passagem é contínua.
-   ════════════════════════════════════════════════════════════════════════════════════════════ */
-html.v61 #v61-abertura{position:fixed;inset:0;z-index:200;overflow:hidden;background:#EAF3FD;color:var(--ink);
-  opacity:1;transition:opacity var(--ab-sai,600ms) cubic-bezier(.2,.8,.2,1)}
-html.v61 #v61-abertura.ab-off{opacity:0;pointer-events:none}
-html.v61 #v61-abertura :is(.ab-poster,.ab-vid,.ab-clarao){position:absolute;inset:0;width:100%;height:100%}
-html.v61 #v61-abertura .ab-poster{background:center / cover no-repeat}
-html.v61 #v61-abertura .ab-vid{object-fit:cover;opacity:0;transition:opacity .3s linear}
-html.v61 #v61-abertura.ab-tocando .ab-vid{opacity:1}
-/* clarão: só na forma curta — o núcleo do reator "acende" e leva ao painel */
-html.v61 #v61-abertura .ab-clarao{opacity:0;pointer-events:none;
-  background:radial-gradient(circle at 50% 50%,#fff 0,rgba(255,255,255,.9) 12%,rgba(190,232,255,.55) 34%,transparent 62%)}
-html.v61 #v61-abertura.ab-curta.ab-on .ab-clarao{animation:v61clarao .8s cubic-bezier(.2,.8,.2,1) both}
-@keyframes v61clarao{0%{opacity:0;transform:scale(.4)}45%{opacity:1}100%{opacity:.85;transform:scale(2.6)}}
-
-/* marca: JFN letra a letra, sobre o núcleo claro do reator */
-html.v61 #v61-abertura .ab-marca{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;
-  transition:opacity .5s cubic-bezier(.2,.8,.2,1);pointer-events:none}
-html.v61 #v61-abertura .ab-jfn{font-size:clamp(3rem,11vw,6.5rem);font-weight:700;line-height:1;letter-spacing:.16em;
-  margin-right:-.16em;color:var(--ink);text-shadow:0 0 28px #fff,0 0 10px #fff,0 0 2px #fff}
-html.v61 #v61-abertura .ab-jfn span{display:inline-block;opacity:0;transform:translateY(.18em) scale(1.12)}
-html.v61 #v61-abertura.ab-on .ab-jfn span{animation:v61letra .5s cubic-bezier(.2,.8,.2,1) both}
-html.v61 #v61-abertura.ab-on .ab-jfn span:nth-child(2){animation-delay:.22s}
-html.v61 #v61-abertura.ab-on .ab-jfn span:nth-child(3){animation-delay:.44s}
-@keyframes v61letra{to{opacity:1;transform:none}}
-html.v61 #v61-abertura .ab-sub{margin-top:.9em;font-size:clamp(.72rem,2.6vw,1rem);font-weight:600;letter-spacing:.32em;
-  margin-right:-.32em;color:var(--ink-2);white-space:nowrap;opacity:0;text-shadow:0 0 12px #fff,0 0 4px #fff}
-html.v61 #v61-abertura.ab-on .ab-sub{animation:v61letra .6s cubic-bezier(.2,.8,.2,1) .9s both}
-html.v61 #v61-abertura.ab-curta .ab-jfn span, html.v61 #v61-abertura.ab-curta .ab-sub{opacity:1;transform:none;animation:none}
-html.v61 #v61-abertura.ab-marca-off .ab-marca{opacity:0}
-
-/* checklist de boot: estado REAL dos motores, canto inferior esquerdo, numa placa de vidro */
-html.v61 #v61-abertura .ab-boot{position:absolute;left:max(20px,env(safe-area-inset-left));
-  bottom:max(24px,env(safe-area-inset-bottom));margin:0;padding:10px 14px;list-style:none;display:grid;gap:3px;
-  min-width:220px;max-width:min(440px,calc(100vw - 40px));border-radius:var(--radius);border:1px solid var(--line-strong);
-  background:rgba(255,255,255,.72);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  box-shadow:var(--sh);transition:opacity .5s cubic-bezier(.2,.8,.2,1)}
-html.v61 #v61-abertura .ab-boot:empty{display:none}
-html.v61 #v61-abertura .ab-boot li{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.75rem;
-  line-height:1.5;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  opacity:0;transform:translateX(-6px);transition:opacity .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
-html.v61 #v61-abertura .ab-boot li.on{opacity:1;transform:none}
-html.v61 #v61-abertura .ab-boot li i{flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
-html.v61 #v61-abertura .ab-boot li.e-rodando i{background:var(--ok);box-shadow:0 0 0 3px rgba(14,158,116,.2)}
-html.v61 #v61-abertura .ab-boot li.e-agendado i{background:var(--ion)}
-html.v61 #v61-abertura .ab-boot li.e-falhou{color:var(--crit-text)}
-html.v61 #v61-abertura .ab-boot li.e-falhou i{background:var(--crit)}
-html.v61 #v61-abertura .ab-boot li.e-indisponivel{color:var(--muted)}
-html.v61 #v61-abertura .ab-boot li.e-indisponivel i{background:none;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
-html.v61 #v61-abertura.ab-hud-off .ab-boot{opacity:0}
-
-/* Pular: alvo de 44px, canto superior direito */
-html.v61 #v61-abertura .ab-pular{all:unset;box-sizing:border-box;position:absolute;
-  top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));min-width:44px;min-height:44px;
-  padding:0 18px;display:inline-grid;place-items:center;border-radius:999px;cursor:pointer;
-  font-family:var(--f-sans);font-size:.875rem;font-weight:600;color:var(--ink);
-  background:rgba(255,255,255,.78);border:1px solid var(--line-strong);
-  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);-webkit-tap-highlight-color:transparent;
-  transition:background .12s,border-color .12s}
-html.v61 #v61-abertura .ab-pular:hover{background:#fff;border-color:var(--ion)}
-html.v61 #v61-abertura .ab-pular:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
-html.v61 #v61-abertura.ab-hud-off .ab-pular{opacity:0;pointer-events:none;transition:opacity .4s}
 /* ══ v61 · Fase 5 — COCKPIT: reator vivo + mesa + mapa ═════════════════════════════════════════
    Desktop: mapa no centro-esquerda (8 de 12 colunas), coluna da direita com o reator no topo e o
    herói abaixo; os 9 KPIs em grade inteira logo depois. Celular: reator compacto (120px) no topo,
@@ -5651,44 +5585,6 @@ html.v61 body.fps-baixo #view .fade .jv-c{animation:none}
 html.v61 body.fps-baixo :is(.jv-scan,.jv-onda,#view .jv-brilho,#jv-part){display:none}
 html.v61 body.fps-baixo .jv-hud b{animation:none}
 html.v61 body.fps-baixo #view .fade :is(.card,.ck-inst,.ck-hero)::before{transition:none}
-/* 16/11/2026 — GALÁXIA DOS CASOS · preview leve no FIM da aba Início (decisão do dono).
-   O canvas é pintado UMA vez (abas/galaxia_inicio.js); a galáxia 3D completa abre em /galaxia, em outra
-   aba do navegador, com folha própria (static/css/galaxia.css). Aqui: cartão de vidro com o visor
-   azul-marinho à esquerda e os contadores à direita. Única animação: o feixe do anel (transform),
-   desligado com movimento reduzido e no modo sóbrio. */
-html.v61 .gx-prev{position:relative;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:center;
-  margin-top:14px;padding:12px 22px 12px 12px;border-radius:28px;background:rgba(255,255,255,.66);
-  border:1px solid rgba(255,255,255,.9);box-shadow:0 1px 0 #fff inset,0 24px 50px -28px rgba(11,61,145,.45),0 0 0 1px rgba(34,181,245,.18)}
-html.v61 .gx-prev::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;
-  background:linear-gradient(135deg,rgba(34,181,245,.9),rgba(127,219,255,.12) 35%,rgba(30,123,240,.04) 65%,rgba(34,181,245,.7));
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-html.v61 .gx-prev-cv{position:relative;height:250px;border-radius:21px;overflow:hidden;background:#030B1F;
-  box-shadow:0 0 0 1px rgba(127,219,255,.2) inset,0 0 40px rgba(34,181,245,.12) inset}
-html.v61 .gx-prev-cv{background:#030B1F url(/static/assets/v61/galaxia-arte-sm.webp) center/cover no-repeat}
-html.v61 .gx-prev-cv canvas{position:relative;display:block;width:100%;height:100%;mix-blend-mode:screen}
-html.v61 .gx-prev-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85}
-html.v61 .gx-prev-ring{position:absolute;left:50%;top:50%;width:210px;height:210px;margin:-105px 0 0 -105px;border-radius:50%;pointer-events:none;
-  background:conic-gradient(from 0deg,rgba(127,219,255,0) 0deg 300deg,rgba(127,219,255,.18) 350deg,rgba(217,246,255,.5) 359deg,rgba(127,219,255,0) 360deg);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1px));
-  animation:gxPrevGira 12s linear infinite}
-@keyframes gxPrevGira{to{transform:rotate(360deg)}}
-html.v61 .gx-prev-eye{font:600 10.5px/1 var(--f-mono,ui-monospace,monospace);letter-spacing:.22em;text-transform:uppercase;color:var(--ion-text)}
-html.v61 .gx-prev-tit{margin:8px 0 12px;font-size:1.15rem;line-height:1.3;font-weight:600;color:var(--ink)}
-html.v61 .gx-prev-num{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:14px;font-size:.8125rem;color:var(--muted)}
-html.v61 .gx-prev-k b{font:600 1.05rem var(--f-mono,ui-monospace,monospace);color:var(--ion-text);font-variant-numeric:tabular-nums}
-html.v61 .gx-prev-btn{display:inline-block;text-decoration:none;border-radius:12px;padding:9px 16px}
-html.v61 .gx-prev-aviso{margin-top:10px;font-size:.75rem}
-@media (min-width:1000px){
-  html.v61 .ck61 .gx-prev{grid-column:1 / -1;grid-row:5}
-}
-@media (max-width:700px){
-  html.v61 .gx-prev{grid-template-columns:1fr;padding:10px 10px 16px;gap:14px;border-radius:24px}
-  html.v61 .gx-prev-cv{height:200px;border-radius:17px}
-  html.v61 .gx-prev-txt{padding:0 8px}
-}
-@media (prefers-reduced-motion:reduce){html.v61 .gx-prev-ring{animation:none;opacity:.5}html.v61 .gx-prev-vid{display:none}}
-body.fps-baixo .gx-prev-ring{animation:none;opacity:.5}
-html.v61 body.fps-baixo .gx-prev-vid{display:none}
 /* ══ Por ano e mês (13/11/2026) — seletor Ano/Mês + quebra ano → mês (static/js/src/abas/periodo.js) ═════════
    Pedido do dono: "coloca em tudo organização por ano e mês". Um componente só, em todas as abas que têm dado
    datado. A tabela rola DENTRO do cartão (.per-tbw): a página nunca ganha rolagem lateral, nem a 390 px.
@@ -6295,3 +6191,106 @@ html.v63 .btn:active{transform:scale(.96)}
 
 /* ── a faixa ao vivo sob o cabeçalho ────────────────────────────────────────────────────────────── */
 html.v63 #v61-ticker{background:rgba(247,250,255,.72);border-bottom-color:var(--line)}
+/* ══ v64 · ABERTURA EM CÓDIGO (2026-11-17) ═══════════════════════════════════════════════════════
+   `#v64-abertura` nasce VAZIO no HTML (véu claro: o esqueleto do painel não pisca enquanto o bundle
+   desce) e `cena/abertura.js` o preenche: véu · fitas (SVG) · reator (camadas HTML que giram no
+   compositor) · marca escrita em traço · linha mono dos motores · Pular. Só transform/opacity e
+   stroke-dashoffset se animam; o brilho é gradiente estático. Se o JS nunca rodar, a própria folha
+   dissolve o véu aos 6 s — a abertura nunca prende o painel.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+#v64-abertura{position:fixed;inset:0;z-index:200;overflow:hidden;color:#0B1B3A;contain:strict;
+  animation:v64abSeg .3s linear 6s forwards}
+@keyframes v64abSeg{to{opacity:0;visibility:hidden;pointer-events:none}}
+#v64-abertura:empty, #v64-abertura .ab-veu{
+  background:radial-gradient(120% 90% at 50% 46%,#FFFFFF 0,#F4F8FF 38%,#E7F0FF 72%,#DCE8FF 100%)}
+#v64-abertura .ab-veu{position:absolute;inset:0}
+#v64-abertura.ab-saindo{pointer-events:none}
+
+/* fitas: duas camadas SVG em tela cheia (viewBox em px, origem no centro), cada uma girando/encolhendo
+   para o lugar no compositor */
+#v64-abertura .ab-fitas{position:absolute;inset:0;transform-origin:50% 50%}
+#v64-abertura .ab-camada{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform-origin:50% 50%;
+  fill:none;stroke-linecap:round;opacity:0}
+#v64-abertura .ab-halo{stroke-width:8;stroke-opacity:.09}
+
+/* o painel NÃO pinta enquanto a abertura o cobre (layout segue — o boot mede o que precisa); volta um
+   instante antes da saída. Classe no <html> posta/tirada pelo JS (2 recálculos de estilo no total) — um
+   `body:has(...)` aqui recalculava o painel inteiro a cada quadro da abertura (medido no trace, 17/11). */
+html.v64-ab-cobre body > :not(#v64-abertura){visibility:hidden}
+
+/* reator */
+#v64-abertura .ab-reator{position:absolute;left:50%;top:50%;width:var(--ab-s);height:var(--ab-s);
+  margin:calc(var(--ab-s) / -2) 0 0 calc(var(--ab-s) / -2);transform-origin:50% 50%}
+#v64-abertura .ab-anel{position:absolute;inset:0}
+#v64-abertura .ab-anel svg{display:block;width:100%;height:100%;overflow:visible;transform-origin:50% 50%}
+#v64-abertura .ab-nucleo{position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;opacity:0;
+  background:radial-gradient(circle,#FFFFFF 0 17%,rgba(214,244,255,.95) 23%,rgba(56,211,255,.42) 36%,rgba(29,91,255,.12) 55%,rgba(29,91,255,0) 71%)}
+#v64-abertura .ab-nucleo::after{content:"";position:absolute;left:41%;top:41%;width:18%;height:18%;border-radius:50%;
+  background:#fff;box-shadow:0 0 0 1.5px #38D3FF,0 0 0 5px rgba(56,211,255,.18)}
+#v64-abertura .ab-varre{position:absolute;inset:3%;border-radius:50%;opacity:0;
+  background:conic-gradient(from 0deg,rgba(56,211,255,0) 0deg 250deg,rgba(56,211,255,.28) 320deg,rgba(255,255,255,.95) 357deg,rgba(56,211,255,0) 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 5px),#000 calc(100% - 1px),transparent);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 5px),#000 calc(100% - 1px),transparent)}
+#v64-abertura .ab-pulso{position:absolute;left:30%;top:30%;width:40%;height:40%;border-radius:50%;opacity:0;
+  border:2px solid #38D3FF;box-shadow:0 0 0 6px rgba(56,211,255,.12)}
+
+/* marca + motores, logo abaixo do reator */
+#v64-abertura .ab-texto{position:absolute;left:0;right:0;top:calc(50% + var(--ab-s) / 2 + 14px);
+  display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 20px;opacity:0}
+#v64-abertura .ab-marca{width:min(400px,82vw);height:auto;overflow:visible}
+#v64-abertura .ab-marca text{stroke-width:1.1;stroke-dasharray:420;stroke-dashoffset:0;stroke-linejoin:round;paint-order:stroke}
+#v64-abertura .ab-jfn{font:700 54px/1 var(--f-display,"Geist",system-ui,sans-serif);letter-spacing:-.02em;fill:#0B1B3A;stroke:#1D5BFF}
+#v64-abertura .ab-ce{font:italic 400 50px/1 var(--f-serif,"Instrument Serif",Georgia,serif);fill:#1D5BFF;stroke:#1D5BFF}
+#v64-abertura .ab-ponto{fill:#38D3FF;transform-box:fill-box;transform-origin:50% 50%}
+#v64-abertura .ab-motores{margin:0;min-height:1.4em;max-width:min(440px,90vw);text-align:center;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font:500 11.5px/1.4 var(--f-mono,"Geist Mono",ui-monospace,monospace);color:#5A6B8C;font-variant-numeric:tabular-nums}
+#v64-abertura .ab-motores i{font-style:normal;font-weight:700;margin-right:4px}
+#v64-abertura .ab-motores .e-ok{color:#0E9E74}
+#v64-abertura .ab-motores .e-falhou{color:#B4232F}
+#v64-abertura .ab-motores .e-indisponivel{color:#5A6B8C}
+#v64-abertura .ab-m-e{color:#1D5BFF}
+
+/* Pular: discreto, canto inferior direito, alvo de toque de 44 px */
+#v64-abertura .ab-pular{all:unset;box-sizing:border-box;position:absolute;
+  right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));
+  min-height:44px;min-width:44px;padding:0 16px;display:flex;align-items:center;justify-content:center;border-radius:999px;
+  font:500 12px/1 var(--f-mono,"Geist Mono",ui-monospace,monospace);color:#2A3B5E;cursor:pointer;
+  background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(29,91,255,.16)}
+#v64-abertura .ab-pular:hover{background:#fff;color:#1D5BFF}
+#v64-abertura .ab-pular:focus-visible{outline:2px solid #1D5BFF;outline-offset:2px}
+
+/* curta: reator já aceso, marca já escrita */
+#v64-abertura.ab-curta .ab-marca text{stroke-dasharray:none}
+/* mínima (movimento reduzido / economia de dados): o reator parado, sem texto, e um fade de 250 ms */
+#v64-abertura.ab-quieto .ab-nucleo{opacity:.85}
+@media (prefers-reduced-motion:reduce){#v64-abertura{animation-duration:.01s;animation-delay:1s}}
+/* ══ v64 · GALÁXIA — preview no FIM da aba Início (substitui o `99z2-v61-97`) ════════════════════════
+   O vídeo escuro saiu: o visor é a galáxia REAL e clara em canvas (`abas/galaxia_inicio.js`), girando
+   devagar só quando visível. Cartão de vidro v63 com o visor à esquerda e os totais à direita. */
+html.v61 .gx-prev{position:relative;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:center;
+  margin-top:14px;padding:12px 24px 12px 12px;border-radius:24px;background:var(--v63-vidro,rgba(255,255,255,.72));
+  box-shadow:var(--v63-sh-hi,0 22px 44px -16px rgba(29,91,255,.28)),inset 0 0 0 1px rgba(29,91,255,.08)}
+html.v61 .gx-prev-cv{position:relative;height:280px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(70% 80% at 50% 50%,#FFFFFF 0,#F1F6FF 45%,#E4EEFF 100%);
+  box-shadow:inset 0 0 0 1px rgba(29,91,255,.08)}
+html.v61 .gx-prev-cv::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(60% 60% at 30% 25%,rgba(111,168,255,.14),transparent 70%),radial-gradient(50% 50% at 78% 80%,rgba(56,211,255,.10),transparent 70%)}
+html.v61 .gx-prev-cv canvas{position:relative;display:block;width:100%;height:100%}
+html.v61 .gx-prev-eye{font:500 11.5px/1 var(--f-mono,ui-monospace,monospace);text-transform:lowercase;letter-spacing:0;color:var(--ion-text,#1D5BFF)}
+html.v61 .gx-prev-tit{margin:10px 0 14px;font:700 1.35rem/1.2 var(--f-display,system-ui,sans-serif);letter-spacing:-.015em;color:var(--ink)}
+html.v61 .gx-prev-tit .v63-it{font-size:1.12em}
+html.v61 .gx-prev-num{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;font-size:.8125rem;color:var(--muted)}
+html.v61 .gx-prev-k b{font:600 1.05rem var(--f-mono,ui-monospace,monospace);color:var(--ink);font-variant-numeric:tabular-nums}
+html.v61 .gx-prev-crit b{color:var(--v63-alerta-text,#8A6500)}
+html.v61 .gx-prev-crit::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:#FFC400;vertical-align:1px}
+html.v61 .gx-prev-btn{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;border-radius:999px;padding:0 20px}
+html.v61 .gx-prev-aviso{margin-top:12px;font-size:.75rem;line-height:1.4}
+@media (min-width:1000px){
+  html.v61 .ck61 .gx-prev{grid-column:1 / -1;grid-row:5}
+}
+@media (max-width:700px){
+  html.v61 .gx-prev{grid-template-columns:1fr;padding:10px 10px 18px;gap:14px;border-radius:22px}
+  html.v61 .gx-prev-cv{height:240px;border-radius:16px}
+  html.v61 .gx-prev-txt{padding:0 8px}
+  html.v61 .gx-prev-tit{font-size:1.2rem}
+}
