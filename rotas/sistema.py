@@ -270,7 +270,11 @@ def api_siafe_truncamento():
     """
     try:
         from compliance_agent.reporting import cobertura_siafe
-        return JSONResponse(content=cobertura_siafe.medir())
+        from rotas.investigacao import _cache_calc
+        # v66: 16–26 s por chamada SEM cache (medido em produção, 17/11/2026) — a aba Instrumentação ficava em
+        # "carregando…" esse tempo todo a cada visita. O dado só muda quando a coleta do SIAFE roda: 30 min de
+        # cache single-flight (stale-while-revalidate) não esconde nada que a tela precise ver na hora.
+        return JSONResponse(content=_cache_calc("siafe_truncamento:v1", 1800, cobertura_siafe.medir))
     except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -298,7 +302,9 @@ def api_captura_cobertura():
     """
     try:
         from compliance_agent.reporting import cobertura_captura
-        return JSONResponse(content=cobertura_captura.medir())
+        from rotas.investigacao import _cache_calc
+        # v66: ~8 s por chamada sem cache (medido em produção); mesma razão e mesmo prazo do /api/siafe/truncamento.
+        return JSONResponse(content=_cache_calc("captura_cobertura:v1", 1800, cobertura_captura.medir))
     except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
