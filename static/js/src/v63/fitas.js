@@ -1,12 +1,11 @@
 /* v63 · FITAS DE LUZ — a assinatura visual (o "Relay" tem fitas verde-limão sobre preto; aqui são
  * feixes de fios azuis sobre branco, como seda).
  *
- * Uma função pura de (contexto, largura, altura, tempo). Duas vidas:
- *   1. fallback ao vivo (`v63/fundo.js`) quando o vídeo não toca;
- *   2. MATRIZ do próprio vídeo `static/v63/fluxo_*.mp4` — `tools/v63_render_fitas.js` chama esta
- *      mesma função quadro a quadro e o ffmpeg codifica. Por isso ela é PERIÓDICA: todo termo de
- *      tempo é `fase × inteiro`, com fase = 2π·t/PERIODO — o quadro PERIODO é idêntico ao quadro 0 e
- *      o `<video loop>` emenda sem costura.
+ * Uma função pura de (contexto, largura, altura, tempo). Desde 17/11/2026 os vídeos do fundo são os do
+ * Higgsfield (`static/v63/fluxo_{hero,hero_m,secao1,secao2}`); esta função é SÓ o fallback ao vivo do
+ * herói (`v63/fundo.js`), para quem não consegue tocar vídeo. Ela segue PERIÓDICA (todo termo de tempo é
+ * `fase × inteiro`, fase = 2π·t/PERIODO) porque `tools/v63_render_fitas.js` ainda gera dela um vídeo
+ * procedural de reserva, emendável em loop.
  *
  * Custo: ~60 fios × 48 segmentos = ~2,9 mil `lineTo` por quadro, nenhum `shadowBlur` (o brilho é um
  * traço largo de alfa baixo, não um filtro). Medido no Chromium da VM (2 vCPU ARM, sob carga): ~3,4 ms/quadro a 1280×720 — o ao vivo roda
