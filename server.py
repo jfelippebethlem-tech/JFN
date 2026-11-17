@@ -448,8 +448,8 @@ app.mount("/static/login", _StaticAssets(directory="static/login"), name="login"
 
 _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name=color-scheme content=dark><meta name=robots content="noindex,nofollow">
-<meta name=theme-color content="#02040a">
+<meta name=color-scheme content=light><meta name=robots content="noindex,nofollow">
+<meta name=theme-color content="#F7FAFF">
 <title>Acesso — Controle Externo</title>
 <script src=/static/login/v61.js></script>
 <link rel=preload href=/static/login/fonts/IBMPlexSans-Regular.woff2 as=font type=font/woff2 crossorigin>
