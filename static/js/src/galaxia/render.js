@@ -103,7 +103,8 @@ export function semearPulsos(G, cam, w, h, n = 3) {
   }
 }
 
-/** Desenha um quadro. `dt` em s avança os pulsos. Opções: {fundo, rotulos, pulsos, nevoa}. */
+/** Desenha um quadro. `dt` em s avança os pulsos. Opções: {fundo, rotulos, pulsos, nevoa}.
+ *  Devolve quantos nós caem DENTRO da tela (sem margem) — 0 = tela vazia (v66: a página recentra). */
 export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
   const {nos, ar} = G, k = cam.k, dpr = op.dpr || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -250,6 +251,18 @@ export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
 
   /* 6. rótulos — órgãos grandes no longe; casos e fornecedores com sinal no perto */
   if (op.rotulos !== false) rotulos(ctx, G, cam, w, h, T, dentro, apaga, longe, perto);
+  return contarNaTela(G, cam, w, h);
+}
+
+/** Nós visíveis no nível atual cujo centro cai na tela (filtro respeitado). Barato: ~10 mil nós. */
+export function contarNaTela(G, cam, w, h) {
+  const k = cam.k; let n = 0;
+  for (const no of G.nos) {
+    if (!visivelNoNivel(G, no, k) || (G.filtro && !G.filtro(no))) continue;
+    const [x, y] = paraTela(cam, w, h, no.x, no.y), r = (no.R && no.t === 'orgao' ? 0 : no.r * kr(k));
+    if (x >= -r && x <= w + r && y >= -r && y <= h + r) n++;
+  }
+  return n;
 }
 
 function estrela(ctx, x, y, r, cor) {

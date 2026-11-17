@@ -38,9 +38,14 @@ let G = null, cam = null, w = 0, h = 0, dpr = 1, sujo = true, raf = 0, ant = 0, 
 let scoreMin = 0, orgaoSel = '', ultimoToque = 0;
 const cv = $('gx-cv'), ctx = cv.getContext('2d'), visor = $('gx-visor');
 
+/* DPR real do aparelho (iPhone = 3), limitado por ÁREA: o Safari recusa canvas acima de ~16 MP e a
+   memória do iOS aperta antes disso — teto de 12 MP. (v64 cortava em 2 → borrado no iPhone.) */
+const AREA_MAX = 12e6;
 function medir() {
   const b = cv.getBoundingClientRect();
-  dpr = Math.min(devicePixelRatio || 1, 2); w = b.width; h = b.height;
+  w = b.width; h = b.height;
+  dpr = Math.min(devicePixelRatio || 1, 3);
+  if (w * h * dpr * dpr > AREA_MAX) dpr = Math.sqrt(AREA_MAX / (w * h));
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   sujo = true; laco();
 }
@@ -61,75 +66,205 @@ function quadro(t) {
     if (p >= 1) voo = null;
     sujo = true;
   }
+  if (inercia) passoInercia(dt);
+  if (!camOk()) { console.warn('galáxia: câmera inválida, recentrando'); Object.assign(cam, enquadrar(G, w, h, G.bbox, w < 760 ? .98 : .96)); voo = null; inercia = null; sujo = true; }
   const pulsando = !QUIETO && G.pulsos.length > 0;
   if (!QUIETO && (sem += dt) > .28) { sem = 0; semearPulsos(G, cam, w, h, cam.k < .28 ? 2 : 3); }
   if (sujo || pulsando) {
-    desenhar(ctx, G, cam, w, h, dt, {dpr, pulsos: !QUIETO});
-    $('gx-nivel').textContent = nivel();
+    nVis = desenhar(ctx, G, cam, w, h, dt, {dpr, pulsos: !QUIETO});
+    if (!aviso) $('gx-nivel').textContent = nivel();
     sujo = false;
   }
-  if (voo || !QUIETO) raf = requestAnimationFrame(quadro);
+  if (!voo && !inercia && !ptrs.size) assentar();
+  if (voo || inercia || !QUIETO) raf = requestAnimationFrame(quadro);
 }
 
 function voar(alvo, ms = 650) {
+  inercia = null;
   if (QUIETO) { Object.assign(cam, alvo); sujo = true; laco(); return; }
   voo = {a: {cx: cam.cx, cy: cam.cy, k: cam.k}, b: alvo, t0: performance.now(), ms}; laco();
 }
-function zoomEm(px, py, f) {
-  const [wx, wy] = [(px - w / 2) / cam.k + cam.cx, (py - h / 2) / cam.k + cam.cy];
-  const k = Math.max(kMin(), Math.min(14, cam.k * f));
-  cam.cx = wx - (px - w / 2) / k; cam.cy = wy - (py - h / 2) / k; cam.k = k; sujo = true; laco();
+
+/* ── câmera (v66): limites com mola, guarda de NaN, "nunca tela vazia" ───────────────────────────
+ * Zoom entre kMin (galáxia inteira × .5) e K_MAX; o centro não sai da caixa do grafo (+ meia tela).
+ * Durante o gesto passa-se do limite com resistência elástica; ao soltar, a mola traz de volta.
+ * Se ao assentar não houver NENHUM nó na tela, voa para o nó mais próximo do centro. */
+const K_MAX = 14;
+const kFit = () => enquadrar(G, w, h, G.bbox, w < 760 ? .98 : .96).k;
+const kMin = () => kFit() * .5;
+const camOk = () => cam && Number.isFinite(cam.cx) && Number.isFinite(cam.cy) && Number.isFinite(cam.k) && cam.k > 0;
+let inercia = null, aviso = 0, nVis = -1, assentado = true;
+/** Resistência elástica: dentro do limite é 1:1; fora, cresce em raiz (puxa como borracha). */
+function elastico(k) {
+  const a = kMin(), b = K_MAX;
+  if (k > b) return b * Math.pow(k / b, .3);
+  if (k < a) return a * Math.pow(k / a, .3);
+  return k;
 }
-const kMin = () => enquadrar(G, w, h).k * .6;
+const travaK = k => Math.max(kMin(), Math.min(K_MAX, k));
+function caixaCentro(k) {                                  // onde o centro da câmera pode ficar
+  const [x0, y0, x1, y1] = G.bbox, mx = w * .5 / k, my = h * .5 / k;
+  return [x0 - mx * .2, y0 - my * .2, x1 + mx * .2, y1 + my * .2];
+}
+function travaCentro(cx, cy, k) {
+  const [a, b, c, d] = caixaCentro(k);
+  return [Math.max(a, Math.min(c, cx)), Math.max(b, Math.min(d, cy))];
+}
+/** Põe o ponto do mundo (wx, wy) sob o ponto de tela (px, py) no zoom k. */
+function ancorar(wx, wy, px, py, k) { cam.k = k; cam.cx = wx - (px - w / 2) / k; cam.cy = wy - (py - h / 2) / k; }
+const mundo = (px, py) => [(px - w / 2) / cam.k + cam.cx, (py - h / 2) / cam.k + cam.cy];
+
+function zoomEm(px, py, f) {                               // roda, teclado: limite duro, sem mola
+  if (!camOk()) return;
+  const [wx, wy] = mundo(px, py);
+  ancorar(wx, wy, px, py, travaK(cam.k * f));
+  [cam.cx, cam.cy] = travaCentro(cam.cx, cam.cy, cam.k);
+  assentado = false; sujo = true; laco();
+}
+/** Gesto acabou: mola de volta aos limites; se a tela ficou vazia, voa para o nó mais próximo. */
+function assentar() {
+  if (assentado || !G || !camOk()) return;
+  assentado = true;
+  const k = travaK(cam.k), [cx, cy] = travaCentro(cam.cx, cam.cy, k);
+  if (Math.abs(k - cam.k) > 1e-6 * k || Math.abs(cx - cam.cx) * k > .5 || Math.abs(cy - cam.cy) * k > .5) {
+    voar({cx, cy, k}, 320); assentado = false; return;
+  }
+  if (nVis === 0) {
+    const i = maisProximo(cam.cx, cam.cy);
+    if (i >= 0) {
+      const n = G.nos[i];
+      avisar('nada neste ponto — voltando ao aglomerado mais próximo');
+      voar({cx: n.x, cy: n.y, k: Math.min(cam.k, Math.max(kFit() * 2, n.t === 'orgao' ? .5 : 1.2))}, 520); assentado = false;
+    }
+  }
+}
+function maisProximo(x, y) {
+  let m = -1, dm = Infinity;
+  G.nos.forEach((n, i) => {
+    if (G.filtro && !G.filtro(n)) return;
+    if ((n.t === 'socio' || n.t === 'sei')) return;          // alvo é algo que aparece em qualquer nível
+    const d = (n.x - x) ** 2 + (n.y - y) ** 2; if (d < dm) { dm = d; m = i; }
+  });
+  return m;
+}
+function avisar(txt) {
+  const el = $('gx-nivel'); el.textContent = txt; clearTimeout(aviso);
+  aviso = setTimeout(() => { aviso = 0; el.textContent = nivel(); }, 2200);
+}
+/** Inércia do arrasto: velocidade em px/ms, decaimento exponencial (~325 ms). */
+function passoInercia(dt) {
+  const ms = dt * 1000, f = Math.exp(-ms / 325);
+  cam.cx -= inercia.vx * ms / cam.k; cam.cy -= inercia.vy * ms / cam.k;
+  const [a, b, c, d] = caixaCentro(cam.k);                  // na borda a inércia freia forte
+  if (cam.cx < a || cam.cx > c) inercia.vx *= .5;
+  if (cam.cy < b || cam.cy > d) inercia.vy *= .5;
+  inercia.vx *= f; inercia.vy *= f; sujo = true;
+  if (Math.hypot(inercia.vx, inercia.vy) < .02) inercia = null;
+}
 function verTudo() { const c = enquadrar(G, w, h, G.bbox, w < 760 ? .98 : .96); voar({cx: c.cx, cy: c.cy, k: c.k}); }
 
-/* ── gestos: arrastar, pinça, roda, toque, toque duplo ─────────────────────────────────────────── */
+/* ── gestos (v66): máquina de estados que se REFAZ a cada dedo que entra ou sai ─────────────────
+ * v64: ao soltar 1 dedo da pinça, o "arrasto" continuava sendo o da pinça (sem cx/cy) e o próximo
+ * movimento gravava NaN na câmera — a galáxia sumia para sempre (reproduzido em _SANDBOX/v66_repro.py).
+ * Agora: 1 dedo = arrasto ancorado no ponto do mundo sob o dedo; 2 dedos = pinça ancorada no ponto
+ * médio (zoom + pan juntos); ao mudar o nº de dedos a âncora é recalculada a partir da câmera atual. */
 const ptrs = new Map();
-let arrasto = null;
+let gesto = null;                                            // {tipo:'arrasto'|'pinca', ...}
+let toqueIni = null;                                         // candidato a toque (1 dedo, sem mover)
+let vel = [];                                                // amostras recentes p/ inércia
+function recomecar() {
+  const pts = [...ptrs.values()];
+  if (!pts.length) { gesto = null; return; }
+  if (pts.length === 1) {
+    const [wx, wy] = mundo(pts[0].x, pts[0].y);
+    gesto = {tipo: 'arrasto', wx, wy}; vel = [];
+  } else {
+    const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, [wx, wy] = mundo(mx, my);
+    gesto = {tipo: 'pinca', d0: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), k0: cam.k, wx, wy};
+  }
+}
+function xy(e) { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
 cv.addEventListener('pointerdown', e => {
-  cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x: e.offsetX, y: e.offsetY, x0: e.offsetX, y0: e.offsetY, t0: performance.now()});
-  voo = null;
-  if (ptrs.size === 1) arrasto = {cx: cam.cx, cy: cam.cy, x: e.offsetX, y: e.offsetY, moveu: false};
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; arrasto = {pinca: Math.hypot(a.x - b.x, a.y - b.y), k: cam.k, moveu: true}; }
+  if (!G || !camOk()) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ponteiro já liberado */ }
+  const [x, y] = xy(e);
+  ptrs.set(e.pointerId, {x, y, x0: x, y0: y, t0: performance.now()});
+  voo = null; inercia = null; assentado = false;
+  toqueIni = ptrs.size === 1 ? {id: e.pointerId, t0: performance.now(), x, y} : null;
+  recomecar();
 });
 cv.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId);
   if (!p) {                                                         // só passando o mouse: cursor de "clicável"
-    if (e.pointerType === 'mouse' && G) visor.classList.toggle('sobre-no', acertar(G, cam, w, h, e.offsetX, e.offsetY, 8) >= 0);
+    if (e.pointerType === 'mouse' && G && camOk()) visor.classList.toggle('sobre-no', acertar(G, cam, w, h, e.offsetX, e.offsetY, 8) >= 0);
     return;
   }
-  p.x = e.offsetX; p.y = e.offsetY;
-  if (ptrs.size === 2 && arrasto && arrasto.pinca) {
+  const [x, y] = xy(e); p.x = x; p.y = y;
+  if (!gesto || !camOk()) return;
+  if (toqueIni && Math.hypot(x - toqueIni.x, y - toqueIni.y) > 6) toqueIni = null;
+  if (gesto.tipo === 'pinca' && ptrs.size >= 2) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-    zoomEm((a.x + b.x) / 2, (a.y + b.y) / 2, (arrasto.k * d / arrasto.pinca) / cam.k);
-  } else if (arrasto && ptrs.size === 1) {
-    if (Math.hypot(e.offsetX - arrasto.x, e.offsetY - arrasto.y) > 6) { arrasto.moveu = true; visor.classList.add('arrastando'); }
-    if (arrasto.moveu) { cam.cx = arrasto.cx - (e.offsetX - arrasto.x) / cam.k; cam.cy = arrasto.cy - (e.offsetY - arrasto.y) / cam.k; sujo = true; laco(); }
-  }
+    ancorar(gesto.wx, gesto.wy, (a.x + b.x) / 2, (a.y + b.y) / 2, elastico(gesto.k0 * d / gesto.d0));
+  } else if (gesto.tipo === 'arrasto' && !toqueIni) {
+    visor.classList.add('arrastando');
+    ancorar(gesto.wx, gesto.wy, x, y, cam.k);
+    const [cx, cy] = travaCentro(cam.cx, cam.cy, cam.k);        // fora da caixa: borracha (1/3 do excesso)
+    cam.cx = cx + (cam.cx - cx) / 3; cam.cy = cy + (cam.cy - cy) / 3;
+    const t = performance.now(); vel.push([t, x, y]); while (vel.length > 2 && t - vel[0][0] > 100) vel.shift();
+  } else return;
+  sujo = true; laco();
 });
 const soltar = e => {
-  const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
   visor.classList.remove('arrastando');
-  if (p && arrasto && !arrasto.moveu && ptrs.size === 0 && performance.now() - p.t0 < 500) {
-    const agora = performance.now();
-    if (agora - ultimoToque < 300) { zoomEm(p.x, p.y, 2.2); ultimoToque = 0; }
-    else { ultimoToque = agora; tocar(p.x, p.y); }
+  const eraArrasto = gesto && gesto.tipo === 'arrasto';
+  if (toqueIni && toqueIni.id === e.pointerId && ptrs.size === 0 && e.type === 'pointerup' && performance.now() - toqueIni.t0 < 500) {
+    const agora = performance.now(), {x, y} = toqueIni;
+    if (agora - ultimoToque < 300) {                               // toque duplo: aproxima NO ponto, animado
+      ultimoToque = 0;
+      const [wx, wy] = mundo(x, y), k = travaK(cam.k * 2.2);
+      voar({cx: wx - (x - w / 2) / k, cy: wy - (y - h / 2) / k, k}, 380);
+    } else { ultimoToque = agora; tocar(x, y); }
+  } else if (eraArrasto && ptrs.size === 0 && vel.length >= 2 && !QUIETO) {
+    const [t0, x0, y0] = vel[0], [t1, x1, y1] = vel[vel.length - 1], dt = Math.max(16, t1 - t0);
+    if (performance.now() - t1 < 80) {
+      const vx = (x1 - x0) / dt, vy = (y1 - y0) / dt;
+      if (Math.hypot(vx, vy) > .25) inercia = {vx: Math.max(-4, Math.min(4, vx)), vy: Math.max(-4, Math.min(4, vy))};
+    }
   }
-  if (ptrs.size === 0) arrasto = null;
+  toqueIni = null;
+  recomecar();                                                     // 2→1 dedo: novo arrasto ancorado aqui
+  sujo = true; laco();
 };
 cv.addEventListener('pointerup', soltar);
 cv.addEventListener('pointercancel', soltar);
-cv.addEventListener('wheel', e => { e.preventDefault(); voo = null; zoomEm(e.offsetX, e.offsetY, Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0018))); }, {passive: false});
+cv.addEventListener('lostpointercapture', soltar);
+/* Safari iOS: a pinça dispara gesturestart/change (zoom da PÁGINA) mesmo com touch-action; barra aqui. */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => visor.addEventListener(t, e => e.preventDefault(), {passive: false}));
+cv.addEventListener('dblclick', e => e.preventDefault());
+let rodaFim = 0;
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); voo = null; inercia = null;
+  const [x, y] = xy(e); zoomEm(x, y, Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0018)));
+  assentado = true; clearTimeout(rodaFim); rodaFim = setTimeout(() => { assentado = false; sujo = true; laco(); }, 220);
+}, {passive: false});
 document.querySelectorAll('.gx-zoom button').forEach(b => b.addEventListener('click', () => {
-  if (b.dataset.z === 'tudo') return verTudo();
-  voar({cx: cam.cx, cy: cam.cy, k: Math.max(kMin(), Math.min(14, cam.k * (b.dataset.z === 'mais' ? 1.8 : 1 / 1.8)))}, 360);
+  if (!G) return;
+  if (b.dataset.z === 'tudo' || !camOk()) return verTudo();
+  voar({cx: cam.cx, cy: cam.cy, k: travaK(cam.k * (b.dataset.z === 'mais' ? 1.8 : 1 / 1.8))}, 360); assentado = false;
 }));
 addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,select,textarea')) return;
   if (e.key === 'Escape') fecharFolha();
+  if (!G) return;
   if (e.key === '+' || e.key === '=') zoomEm(w / 2, h / 2, 1.5);
   if (e.key === '-') zoomEm(w / 2, h / 2, 1 / 1.5);
+  if (e.key === '0') verTudo();
 });
+/* Diagnóstico só-leitura para o teste de gesto (_SANDBOX/v66_gesto.py): câmera, nós na tela, limites. */
+window.__gx = () => ({cam: cam && {...cam}, nVis, kMin: G && kMin(), kMax: K_MAX, dpr, cw: cv.width, ch: cv.height, ptrs: ptrs.size, gesto: gesto && gesto.tipo, parado: !voo && !inercia && !ptrs.size && assentado && !sujo});
 
 function tocar(px, py) {
   const i = acertar(G, cam, w, h, px, py, matchMedia('(pointer:coarse)').matches ? 16 : 10);

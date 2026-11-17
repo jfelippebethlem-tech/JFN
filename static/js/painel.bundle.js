@@ -7164,7 +7164,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -7372,7 +7372,7 @@
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8873,12 +8873,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8892,13 +8892,13 @@
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8966,7 +8966,7 @@
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -9032,7 +9032,7 @@
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -9953,6 +9953,17 @@
       ctx.stroke();
     }
     if (op.rotulos !== false) rotulos(ctx, G, cam, w, h, T, dentro, apaga, longe, perto);
+    return contarNaTela(G, cam, w, h);
+  }
+  function contarNaTela(G, cam, w, h) {
+    const k = cam.k;
+    let n = 0;
+    for (const no of G.nos) {
+      if (!visivelNoNivel(G, no, k) || G.filtro && !G.filtro(no)) continue;
+      const [x, y] = paraTela(cam, w, h, no.x, no.y), r = no.R && no.t === "orgao" ? 0 : no.r * kr(k);
+      if (x >= -r && x <= w + r && y >= -r && y <= h + r) n++;
+    }
+    return n;
   }
   function estrela(ctx, x, y, r, cor) {
     ctx.beginPath();
@@ -10065,9 +10076,10 @@
     let w = 0, h = 0, dpr = 1, cam = null, raf = 0, ant = 0, visivel = false, semente = 0;
     const medir = () => {
       const b = cv.getBoundingClientRect();
-      dpr = Math.min(devicePixelRatio || 1, 2);
       w = b.width;
       h = b.height;
+      dpr = Math.min(devicePixelRatio || 1, 3);
+      if (w * h * dpr * dpr > 4e6) dpr = Math.sqrt(4e6 / Math.max(1, w * h));
       cv.width = Math.round(w * dpr);
       cv.height = Math.round(h * dpr);
       const giro = cam ? cam.rot : 0;

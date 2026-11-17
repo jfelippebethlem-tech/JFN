@@ -52,8 +52,9 @@ function girar(el, cv, G) {
   const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let w = 0, h = 0, dpr = 1, cam = null, raf = 0, ant = 0, visivel = false, semente = 0;
   const medir = () => {
-    const b = cv.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2);
-    w = b.width; h = b.height; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const b = cv.getBoundingClientRect(); w = b.width; h = b.height;
+    dpr = Math.min(devicePixelRatio || 1, 3);                                   // v66: DPR real (iPhone = 3), teto 4 MP
+    if (w * h * dpr * dpr > 4e6) dpr = Math.sqrt(4e6 / Math.max(1, w * h)); cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     const giro = cam ? cam.rot : 0; cam = enquadrar(G, w, h, G.bbox, 1.02); cam.rot = giro;
   };
   const quadro = (t) => {

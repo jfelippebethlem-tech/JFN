@@ -191,7 +191,7 @@ a{color:var(--ion)}
   .gx-titulo{align-items:flex-start}
   .gx-titulo h1{font-size:19px}
   .gx-eye{font-size:10.5px}
-  .gx-voltar{min-height:40px;padding:0 13px}
+  .gx-voltar{min-height:44px;padding:0 13px}
   .gx-main{padding:0}
   .gx-visor{height:calc(100vh - var(--topo));height:calc(100dvh - var(--topo));border-radius:0;box-shadow:none;min-height:0}
   .gx-ctl{top:10px;left:10px;right:10px;gap:8px}
@@ -199,14 +199,15 @@ a{color:var(--ion)}
   .gx-filtros{flex-wrap:nowrap;width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin:0 -2px}
   .gx-filtros::-webkit-scrollbar{display:none}
   .gx-chips{flex:0 0 auto}
-  .gx-chips button{min-height:36px;padding:0 11px;font-size:12px}
-  .gx-sel{flex:0 0 auto;max-width:190px;height:42px}
+  .gx-chips button{min-height:44px;padding:0 12px;font-size:12.5px}   /* v66: alvo de toque ≥ 44 px (HIG) */
+  .gx-sel{flex:0 0 auto;max-width:190px;height:44px}
   .gx-num{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:none;padding:10px 12px;gap:2px 12px;font-size:11.5px}
   .gx-num b{font-size:13.5px}
   .gx-leg{display:none}
   .gx-zoom{right:10px;top:auto;bottom:calc(118px + env(safe-area-inset-bottom));transform:none}
+  .gx-visor,.gx-visor canvas{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   .gx-zoom button{width:44px;height:44px}
-  .gx-nivel{top:112px}
+  .gx-nivel{top:120px;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;line-height:1.2}
   .gx-rodape{padding:14px 16px 24px;margin:0}
   /* folha vira gaveta de baixo */
   .gx-folha{top:auto;left:0;right:0;bottom:0;width:auto;max-height:78vh;max-height:78dvh;border-radius:24px 24px 0 0;
