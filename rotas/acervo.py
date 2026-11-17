@@ -54,12 +54,26 @@ async def api_casos_nota(slug: str = ""):
 
 
 @router.get("/api/galaxia")
-async def api_galaxia():
-    """Galáxia dos casos: dossiês do vault, CNPJs, processos SEI e sócios (QSA público) e as pontes entre casos.
-    Ligação = indício de relação a conferir, nunca prova."""
-    from compliance_agent.galaxia import galaxia
-    r = await asyncio.to_thread(galaxia)
-    return JSONResponse(content=r, status_code=200 if r.get("ok") else 503)
+async def api_galaxia(limite: int = 0, score_min: int = 0, orgao: str = ""):
+    """Galáxia dos casos: órgãos, fornecedores do Radar e de alertas abertos, dossiês do vault, sócios (QSA
+    público) e processos SEI, com as ligações reais. JSON pré-calculado (`data/cache/galaxia.json`, gerado pela
+    ronda); `limite`/`score_min`/`orgao` recortam. Ligação = indício de relação a conferir, nunca prova."""
+    from fastapi.responses import Response
+    from compliance_agent.galaxia import galaxia_bytes
+    try:
+        b = await asyncio.to_thread(galaxia_bytes, max(0, min(limite, 20000)) or None,
+                                    max(0, min(score_min, 100)), orgao[:80])
+    except Exception as exc:  # noqa: BLE001 — a página mostra "indisponível", nunca grafo vazio fingido
+        return JSONResponse({"ok": False, "erro": f"galáxia indisponível: {type(exc).__name__}"}, status_code=503)
+    return Response(content=b, media_type="application/json", headers={"Cache-Control": "private, max-age=60"})
+
+
+@router.get("/api/galaxia/no")
+async def api_galaxia_no(id: str = ""):
+    """Um nó da galáxia com a prova (sinais do Radar, alertas abertos, dossiês) e o motivo de cada ligação."""
+    from compliance_agent.galaxia import detalhe
+    r = await asyncio.to_thread(detalhe, id[:200])
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
 
 
 @router.get("/api/requerimentos")

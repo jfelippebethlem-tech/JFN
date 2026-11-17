@@ -180,6 +180,16 @@ def main():
         notificar("🛡️ <b>JFN — ronda</b>\n" + "\n".join(eventos)
                   + f"\n<code>{agora()}</code>")
 
+    # 5) galáxia dos casos pré-calculada (data/cache/galaxia.json): a rota só lê. Processo à parte, com
+    #    prioridade baixa e teto de tempo; falha não derruba a ronda (a rota segue servindo o JSON anterior).
+    try:
+        r = subprocess.run(["nice", "-n", "15", sys.executable, "-m", "compliance_agent.galaxia", "gerar"],
+                           cwd=str(REPO), capture_output=True, text=True, timeout=240)
+        if r.returncode != 0:
+            log(f"⚠ galáxia não gerada (rc={r.returncode}): {(r.stderr or '').strip().splitlines()[-1:]}")
+    except Exception as e:  # noqa: BLE001
+        log(f"⚠ galáxia não gerada: {type(e).__name__}: {e}")
+
     salvar_estado({
         "ativo": ativo, "api_ok": api_ok, "api_fails": api_fails,
         "llm_ok": bool(estado.get("llm_ok", True)) if api_ok else prev.get("llm_ok", True),
