@@ -82,7 +82,14 @@ def _retomar_sweeps_se_ocioso() -> None:
         logger.warning("não despausou os sweeps (ficam parados até remover flag manualmente): %s", exc)
 
 
+def _pedido_do_dono() -> None:
+    """Estas entregas respondem a um pedido do dono: passam pelo silêncio de avisos de sistema (17/11/2026)."""
+    from compliance_agent.notifications.silencio import PEDIDO
+    PEDIDO.set(True)   # só nesta tarefa (asyncio.create_task copia o contexto)
+
+
 async def _enviar_docs_telegram(result: dict, titulo: str) -> None:
+    _pedido_do_dono()
     from compliance_agent.notifications import telegram as _tg
     # PDF primeiro (recebe a caption), depois MD (fonte legível/grep-ável p/ o Yoda), xlsx e parecer Lex.
     # path_md incluído p/ o Yoda mandar MD+PDF (antes só PDF/xlsx/lex iam — o MD ficava de fora).
@@ -106,6 +113,7 @@ async def _enviar_docs_telegram(result: dict, titulo: str) -> None:
 
 
 async def _gerar_e_enviar_fornecedor(cnpj, empresa, anos, key) -> None:
+    _pedido_do_dono()
     from compliance_agent.notifications import telegram as _tg
     from compliance_agent.reporting.inteligencia import montar
     _pausar_sweeps_para_relatorio()
@@ -125,6 +133,7 @@ async def _gerar_e_enviar_fornecedor(cnpj, empresa, anos, key) -> None:
 
 
 async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
+    _pedido_do_dono()
     from compliance_agent.notifications import telegram as _tg
     from compliance_agent.reporting.inteligencia_orgao import montar as montar_orgao
     _pausar_sweeps_para_relatorio()
@@ -147,6 +156,7 @@ async def _gerar_e_enviar_dossie(alvo, key) -> None:
     """Dossiê 360 ORQUESTRADO: o painel 360 (dossie: cadastro/QSA/sanções/OB/conflito/rede/mídia)
     + o relatório de INTELIGÊNCIA de fornecedor (montar) COM o parecer jurídico Lex. O pedido do
     Mestre por /dossie é o pacote completo — o painel sozinho não substitui a due diligence + Lex."""
+    _pedido_do_dono()
     import re as _re
     from compliance_agent.dossie import dossie
     from compliance_agent.notifications import telegram as _tg
@@ -352,6 +362,7 @@ _PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": (_pdf_mestre_souza_aguia
 
 
 async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
+    _pedido_do_dono()
     from compliance_agent.notifications import telegram as _tg
     from compliance_agent.pcrj import ppp_ccpar
     from compliance_agent.reporting import render_html as rh
@@ -553,6 +564,7 @@ def _responsaveis_payload(numero: str) -> dict:
 
 async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
     """Dossiê Mestre de licitações (PDF Kroll): portfólio de órgãos (sem alvo) ou um órgão (CNPJ)."""
+    _pedido_do_dono()
     from compliance_agent.notifications import telegram as _tg
     from compliance_agent.reporting import dossie_mestre
     _pausar_sweeps_para_relatorio()
@@ -574,6 +586,7 @@ async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
 async def _gerar_e_enviar_dossie_completo(cnpj: str, key: str) -> None:
     """Dossiê COMPLETO de fornecedor (360 + fachada + cláusulas na íntegra + suspeitas + SEI) e,
     na sequência, o relatório de inteligência + parecer Lex — o pacote inteiro no Telegram."""
+    _pedido_do_dono()
     from compliance_agent.dossie import gerar_pdf_completo
     from compliance_agent.notifications import telegram as _tg
     from compliance_agent.reporting.inteligencia import montar

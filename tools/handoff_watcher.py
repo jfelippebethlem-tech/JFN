@@ -23,8 +23,12 @@ def main():
     seen = set(json.loads(CURSOR.read_text())) if CURSOR.exists() else set()
     novos = sorted(f for f in INBOX.glob("*.md")
                    if f.name not in (".keep",) and f.stat().st_mtime > 0 and str(f.name) not in seen)
+    from compliance_agent.notifications.silencio import silenciar
     for f in novos:
         body = f.read_text(errors="ignore")[:3000]
+        if silenciar(body, origem=f"handoff_watcher:{f.name}"):   # dono 17/11/2026: sem avisos de sistema
+            seen.add(f.name)
+            continue
         msg = f"📨 *VM-2 → jfn-core* (`{f.name}`)\n\n{body}"
         r = httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
                        data={"chat_id": chat, "text": msg[:4000], "parse_mode": "Markdown"}, timeout=20).json()

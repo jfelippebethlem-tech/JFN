@@ -280,7 +280,9 @@ def main() -> int:
             it = r["fila"][s]
             linhas.append(f"• {'🔁 ' if s in r['reincidiu'] else ''}{it['tipo']}: “{it['exemplo']['pedido'][:70]}”")
         linhas.append("Fila: data/yoda_melhorias_fila.json · relatório no vault (yoda-autoauditoria).")
-        notificar("\n".join(linhas))
+        from compliance_agent.notifications.silencio import silenciar
+        if not silenciar("\n".join(linhas), origem="yoda_autoauditoria"):   # dono 17/11/2026: sem avisos de sistema
+            notificar("\n".join(linhas))
     return 0
 
 

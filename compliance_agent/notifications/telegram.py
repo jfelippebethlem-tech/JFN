@@ -75,6 +75,10 @@ async def enviar_mensagem(
     Returns:
         Telegram API response dict.
     """
+    if not chat_id:
+        from compliance_agent.notifications.silencio import silenciar
+        if silenciar(texto):     # aviso automático de sistema: dono pediu silêncio (17/11/2026)
+            return {"ok": True, "silenciado": True}
     target = _get_chat_id(chat_id)
     base = _base_url()
     if not base or not target:
@@ -127,6 +131,10 @@ async def enviar_arquivo(
     Returns:
         Telegram API response dict.
     """
+    if not chat_id:
+        from compliance_agent.notifications.silencio import silenciar
+        if silenciar(f"[arquivo] {Path(path).name} {caption}"):
+            return {"ok": True, "silenciado": True}
     target = _get_chat_id(chat_id)
     base = _base_url()
     if not base or not target:

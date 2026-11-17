@@ -630,7 +630,9 @@ def main() -> int:
             L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}"
                      + (" — 🤖 já tentando consertar" if s in rem["feitos"] else ""))
         L.append("Detalhe: /melhorias")
-        notificar("\n".join(L))
+        from compliance_agent.notifications.silencio import silenciar
+        if not silenciar("\n".join(L), origem="automelhoria"):   # dono 17/11/2026: sem avisos de sistema
+            notificar("\n".join(L))
     return 0
 
 

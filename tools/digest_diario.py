@@ -85,6 +85,10 @@ def main():
         print(msg)
         print(f"\n[dry] {len(novas)} novos restritos seriam marcados como reportados.")
         return 0
+    from compliance_agent.notifications.silencio import silenciar
+    if silenciar(msg, origem="digest_diario"):   # dono 17/11/2026: sem avisos automáticos no Telegram
+        print("digest silenciado (data/telegram_silencio.json)")
+        return 0
     ok = asyncio.run(_enviar(msg))
     if ok:
         st = _estado()

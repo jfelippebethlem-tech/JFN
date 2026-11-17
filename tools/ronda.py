@@ -65,6 +65,14 @@ def telegram_cfg():
 
 
 def notificar(texto: str) -> bool:
+    import sys as _sys
+    _raiz = str(Path(__file__).resolve().parents[1])
+    if _raiz not in _sys.path:          # rodado como script (systemd): a raiz do JFN não está no path
+        _sys.path.insert(0, _raiz)
+    from compliance_agent.notifications.silencio import silenciar
+    if silenciar(texto, origem="ronda"):   # dono 17/11/2026: sem avisos de sistema no Telegram
+        log("NOTIFY silenciado: " + texto.replace("\n", " | ")[:200])
+        return True
     cfg = telegram_cfg()
     if not cfg:
         log("NOTIFY pulado (Telegram não configurado): " + texto.replace("\n", " | "))

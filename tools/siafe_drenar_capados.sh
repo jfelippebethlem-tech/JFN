@@ -308,7 +308,7 @@ PYEOF
         AVISO=data/.siafe_dreno_aviso_login_$SIS; touch "data/.siafe_dreno_pausa_login_$SIS"
         if [ ! -f "$AVISO" ] || [ $(( $(date +%s) - $(stat -c %Y "$AVISO") )) -gt 86400 ]; then
           touch "$AVISO"
-          $PY -c "from compliance_agent.siafe_coord import notificar; notificar('⚠️ JFN — o dreno do SIAFE $SIS parou: o LOGIN falha em todos os pares (último: UG $UG/$ANO). A coleta histórica desse sistema está travada até investigar — log: $SAIDA')" >/dev/null 2>&1
+          $PY -c "from compliance_agent.siafe_coord import notificar; from compliance_agent.notifications.silencio import silenciar; t='⚠️ JFN — o dreno do SIAFE $SIS parou: o LOGIN falha em todos os pares (último: UG $UG/$ANO). A coleta histórica desse sistema está travada até investigar — log: $SAIDA'; silenciar(t, origem='siafe_drenar_capados') or notificar(t)" >/dev/null 2>&1   # dono 17/11/2026: sem avisos de sistema
         fi
         feitos=$((feitos+1)); break
       fi
