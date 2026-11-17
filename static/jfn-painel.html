@@ -5,11 +5,10 @@
    nem volta à versão escura — as classes nascem aqui, antes do CSS pintar. */
 (function(){var h=document.documentElement;h.classList.add('v60','v61');h.setAttribute('data-v61','1');
 try{localStorage.removeItem('jfn_tema');localStorage.removeItem('jfn_v61');localStorage.removeItem('jfn_v60');}catch(e){}
-/* v63 FLUXO CLARO — em validação: `?v63=1` liga e lembra neste aparelho, `?v63=0` desliga. */
-var q=location.search,v63=0;try{if(/[?&]v63=1/.test(q))localStorage.setItem('jfn_v63','1');
-else if(/[?&]v63=0/.test(q))localStorage.removeItem('jfn_v63');v63=localStorage.getItem('jfn_v63')==='1';}catch(e){v63=/[?&]v63=1/.test(q);}
-if(v63)h.classList.add('v63');
-(v63?['v61/Geist-Regular','v61/Geist-SemiBold','v63/Geist-Bold','v63/InstrumentSerif-Italic']:['v61/Geist-Regular','v61/Geist-SemiBold']).forEach(function(f){var l=document.createElement('link');l.rel='preload';l.as='font';
+/* v63 FLUXO CLARO é o PADRÃO (17/11/2026): a classe nasce sempre, como a v61 — sem `?v63=` nem chave
+   guardada (lição do v61: virar o default de verdade, não só atrás de flag). */
+h.classList.add('v63');try{localStorage.removeItem('jfn_v63');}catch(e){}
+['v61/Geist-Regular','v61/Geist-SemiBold','v63/Geist-Bold','v63/InstrumentSerif-Italic'].forEach(function(f){var l=document.createElement('link');l.rel='preload';l.as='font';
 l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'.woff2';document.head.appendChild(l);});})();</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">

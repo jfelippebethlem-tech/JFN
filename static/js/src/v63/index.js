@@ -1,7 +1,7 @@
 /* v63 FLUXO CLARO — ponto de entrada. O par em JS dos estratos `static/css/src/99z5-v63-*.css`.
  *
  * Mesmo contrato da `ui/v60.js` e da `ui/v61.js`: UMA função (`v63Boot`), chamada uma vez no início
- * do boot, que não faz nada sem a classe `v63` no <html>. Sem efeito de topo.
+ * do boot (a classe `v63` está sempre no <html> desde que virou o padrão). Sem efeito de topo.
  *
  * O que muda a cada tela pintada é decidido por UM observador no `#view` (só filhos diretos): quando
  * o `.fade` novo entra, as fitas trocam de enquadramento, a capa ganha a palavra em itálico, os
