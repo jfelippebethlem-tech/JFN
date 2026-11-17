@@ -16,6 +16,13 @@
  *
  * MOVIMENTO DE CÂMERA: parallax na rolagem (`--v63-sy`) + um enquadramento leve por seção/aba
  * (`data-quadro`, CSS) por cima do crossfade.
+ *
+ * v65 NITIDEZ: os vídeos agora saem dos masters 4K ampliados por IA (`tools/v65_fundo_videos.sh`):
+ *   · variante por tela para AS TRÊS camadas — retrato (≤ 4:5) leva o recorte 1080×2160 `_m`, o resto a 2560×1440;
+ *   · fontes AV1 → VP9 → H.264 (o navegador pega a primeira que decodifica);
+ *   · pôster nítido AVIF/WebP (`image-set`) = 1º quadro do próprio loop; o do herói tem preload no HTML;
+ *   · o vídeo do herói só é criado DEPOIS do `load` e da abertura sair (é quando o título, o LCP, pinta);
+ *   · sem o canvas de 4 s: rede lenta fica no pôster nítido, que é melhor que as fitas em canvas a ½ resolução.
  */
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {desenharFitas} from './fitas.js';
@@ -28,7 +35,10 @@ let _camada = null, _cv = null, _raf = 0, _vivo = false, _io = null, _passo = nu
 let _so_poster = false, _ret = false, _ativa = '';
 const _videos = {};          // camada → <video>
 
-const _base = c => '/static/assets/v63/fluxo_' + c + (c === 'hero' && _ret ? '_m' : '');
+const _base = c => '/static/assets/v65/fluxo_' + c + (_ret ? '_m' : '');
+const _poster = b => `url(${b}.webp)`;
+const _posterSet = b => `image-set(url(${b}.avif) type("image/avif"), url(${b}.webp) type("image/webp"))`;
+let _pintou = false;   // primeiro paint + `load` já passaram → vídeo pode descer
 
 export function fundoMontar() {
   if (_camada) return;
@@ -42,6 +52,15 @@ export function fundoMontar() {
   document.body.insertBefore(f, document.body.firstChild);
   _camada = f;
   _ativar('hero');
+  /* o vídeo só desce depois do `load` E da abertura (`cena/abertura.js`) sair de cena: o LCP medido é o
+     título do herói, que pinta quando a abertura acaba — antes disso o vídeo só disputaria banda com ele
+     (Lighthouse 17/11: pedido do vídeo caía ANTES do LCP observado). Teto de 6 s: nunca fica preso. */
+  const t0 = performance.now();
+  const solta = () => {
+    if (document.getElementById('v64-abertura') && performance.now() - t0 < 6000) { setTimeout(solta, 200); return; }
+    setTimeout(() => { _pintou = true; if (!_so_poster && _ativa && !_videos[_ativa]) { _criarVideo(_ativa, _q(_ativa)); _tocar(); } }, 400);
+  };
+  if (document.readyState === 'complete') solta(); else addEventListener('load', solta, {once: true});
   document.addEventListener('visibilitychange', _visib);
   if (!_redMotion) { addEventListener('scroll', _rolou, {passive: true}); _rolou(); }
 }
@@ -53,12 +72,15 @@ function _ativar(c) {
   if (!_camada || c === _ativa) return;
   const velha = _ativa; _ativa = c;
   const q = _q(c);
-  if (!q.style.backgroundImage) q.style.backgroundImage = `url(${_base(c)}.webp)`;   // pôster: na 1ª vez
+  if (!q.style.backgroundImage) {                                                     // pôster: na 1ª vez
+    q.style.backgroundImage = _poster(_base(c));
+    q.style.backgroundImage = _posterSet(_base(c));    // sem suporte a `image-set(type())`: fica o WebP
+  }
   for (const k of CAMADAS) _q(k).classList.toggle('ativa', k === c);
   _camada.dataset.camada = c;
   if (velha && _videos[velha]) _videos[velha].pause();                                // só um toca
   if (_cv) { _vivo = c === 'hero' && !document.hidden && !_sobrio; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
-  if (_so_poster) return;
+  if (_so_poster || !_pintou) return;
   if (!_videos[c]) _criarVideo(c, q);
   _tocar();
 }
@@ -67,15 +89,16 @@ function _criarVideo(c, q) {
   const v = document.createElement('video');
   v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-  v.innerHTML = `<source src="${_base(c)}.webm" type="video/webm"><source src="${_base(c)}.mp4" type="video/mp4">`;
+  const b = _base(c);
+  v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? '08' : '12'}M.08"'>`
+    + `<source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
   v.addEventListener('playing', () => {
     q.classList.add('toca');
     if (c === 'hero' && _cv) { _vivo = false; _cv.remove(); _cv = null; }   // o vídeo chegou depois do canvas
   }, {once: true});
   if (c === 'hero') {
-    v.addEventListener('error', _paraCanvas, true);       // `error` dos <source> não borbulha: captura
-    /* rede lenta: se em 4 s o herói não deu quadro, o canvas assume (o vídeo segue tentando por baixo) */
-    setTimeout(() => { if (!q.classList.contains('toca') && _ativa === 'hero') _paraCanvas(); }, 4000);
+    /* só o erro do ÚLTIMO <source> (nenhum codec serviu) chama o canvas — `error` não borbulha: captura */
+    v.addEventListener('error', e => { if (e.target === v.lastElementChild || e.target === v) _paraCanvas(); }, true);
   }
   q.appendChild(v); _videos[c] = v;
 }
@@ -83,7 +106,7 @@ function _criarVideo(c, q) {
 function _tocar() {
   const v = _videos[_ativa]; if (!v) return;
   if (document.hidden || _sobrio) { v.pause(); return; }
-  const p = v.play(); if (p && p.catch) p.catch(() => { if (_ativa === 'hero') _paraCanvas(); });
+  const p = v.play(); if (p && p.catch) p.catch(e => { if (_ativa === 'hero' && e && e.name === 'NotSupportedError') _paraCanvas(); });   // autoplay barrado → fica o pôster nítido
 }
 
 function _paraCanvas() {

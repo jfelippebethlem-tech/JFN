@@ -1681,7 +1681,10 @@
   var _ret = false;
   var _ativa = "";
   var _videos = {};
-  var _base = (c) => "/static/assets/v63/fluxo_" + c + (c === "hero" && _ret ? "_m" : "");
+  var _base = (c) => "/static/assets/v65/fluxo_" + c + (_ret ? "_m" : "");
+  var _poster = (b) => `url(${b}.webp)`;
+  var _posterSet = (b) => `image-set(url(${b}.avif) type("image/avif"), url(${b}.webp) type("image/webp"))`;
+  var _pintou = false;
   function fundoMontar() {
     if (_camada) return;
     _ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
@@ -1695,6 +1698,22 @@
     document.body.insertBefore(f, document.body.firstChild);
     _camada = f;
     _ativar("hero");
+    const t0 = performance.now();
+    const solta = () => {
+      if (document.getElementById("v64-abertura") && performance.now() - t0 < 6e3) {
+        setTimeout(solta, 200);
+        return;
+      }
+      setTimeout(() => {
+        _pintou = true;
+        if (!_so_poster && _ativa && !_videos[_ativa]) {
+          _criarVideo(_ativa, _q(_ativa));
+          _tocar();
+        }
+      }, 400);
+    };
+    if (document.readyState === "complete") solta();
+    else addEventListener("load", solta, { once: true });
     document.addEventListener("visibilitychange", _visib);
     if (!_redMotion) {
       addEventListener("scroll", _rolou, { passive: true });
@@ -1709,7 +1728,10 @@
     const velha = _ativa;
     _ativa = c;
     const q = _q(c);
-    if (!q.style.backgroundImage) q.style.backgroundImage = `url(${_base(c)}.webp)`;
+    if (!q.style.backgroundImage) {
+      q.style.backgroundImage = _poster(_base(c));
+      q.style.backgroundImage = _posterSet(_base(c));
+    }
     for (const k of CAMADAS) _q(k).classList.toggle("ativa", k === c);
     _camada.dataset.camada = c;
     if (velha && _videos[velha]) _videos[velha].pause();
@@ -1717,7 +1739,7 @@
       _vivo = c === "hero" && !document.hidden && !_sobrio;
       if (_vivo && !_raf2) _raf2 = requestAnimationFrame(_passo);
     }
-    if (_so_poster) return;
+    if (_so_poster || !_pintou) return;
     if (!_videos[c]) _criarVideo(c, q);
     _tocar();
   }
@@ -1729,7 +1751,8 @@
     v.preload = "auto";
     v.setAttribute("muted", "");
     v.setAttribute("playsinline", "");
-    v.innerHTML = `<source src="${_base(c)}.webm" type="video/webm"><source src="${_base(c)}.mp4" type="video/mp4">`;
+    const b = _base(c);
+    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? "08" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
     v.addEventListener("playing", () => {
       q.classList.add("toca");
       if (c === "hero" && _cv) {
@@ -1739,10 +1762,9 @@
       }
     }, { once: true });
     if (c === "hero") {
-      v.addEventListener("error", _paraCanvas, true);
-      setTimeout(() => {
-        if (!q.classList.contains("toca") && _ativa === "hero") _paraCanvas();
-      }, 4e3);
+      v.addEventListener("error", (e) => {
+        if (e.target === v.lastElementChild || e.target === v) _paraCanvas();
+      }, true);
     }
     q.appendChild(v);
     _videos[c] = v;
@@ -1755,8 +1777,8 @@
       return;
     }
     const p = v.play();
-    if (p && p.catch) p.catch(() => {
-      if (_ativa === "hero") _paraCanvas();
+    if (p && p.catch) p.catch((e) => {
+      if (_ativa === "hero" && e && e.name === "NotSupportedError") _paraCanvas();
     });
   }
   function _paraCanvas() {
@@ -1908,7 +1930,7 @@
   var _n = 0;
   var _ov = null;
   var _cobriuEm = 0;
-  var _pintou = false;
+  var _pintou2 = false;
   var _saida = 0;
   function transicaoLigar() {
     document.addEventListener("click", _clique, true);
@@ -1954,7 +1976,7 @@
     document.body.appendChild(ov);
     document.documentElement.classList.add("v63-tr-on");
     _ov = ov;
-    _pintou = false;
+    _pintou2 = false;
     _cobriuEm = 0;
     clearTimeout(_saida);
     const ini = {
@@ -1971,13 +1993,13 @@
     const a = ov.animate([{ clipPath: ini }, { clipPath: fim }], { duration: ENTRA, easing: CURVA, fill: "forwards" });
     a.finished.then(() => {
       _cobriuEm = performance.now();
-      if (_pintou) _revelar();
+      if (_pintou2) _revelar();
     }).catch(() => {
     });
     _saida = setTimeout(_revelar, TETO2);
   }
   function transicaoPintou() {
-    _pintou = true;
+    _pintou2 = true;
     if (_ov && _cobriuEm) _revelar();
   }
   function _revelar() {
@@ -2128,10 +2150,10 @@
     const v = document.getElementById("view");
     if (!v) return;
     new MutationObserver((ms) => {
-      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList.contains("fade")) _pintou2(n);
+      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList.contains("fade")) _pintou3(n);
     }).observe(v, { childList: true });
   }
-  function _pintou2(f) {
+  function _pintou3(f) {
     const id = f.dataset.aba || "";
     if (id !== "i_cockpit") {
       fundoSoltarSecoes();
@@ -7142,7 +7164,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -7350,7 +7372,7 @@
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8851,12 +8873,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8870,13 +8892,13 @@
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8944,7 +8966,7 @@
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -9010,7 +9032,7 @@
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }

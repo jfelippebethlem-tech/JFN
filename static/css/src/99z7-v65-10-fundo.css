@@ -1,0 +1,13 @@
+/* ══ v65 · NITIDEZ — o fundo de fitas sem ampliar o vídeo (par do `v63/fundo.js`) ══════════════════
+   O v63 esticava o vídeo em CSS: moldura de parallax com `inset:-8%` (×1,16) e enquadramento por seção
+   com `scale` até 1,12 — juntos, até ×1,30 por cima de um 720p. Agora o teto é ×1,05: a moldura
+   encolhe para −2,5 % (×1,05) e o enquadramento por seção fica só em translate, dentro dessa margem.
+   O parallax também fica preso à margem (antes podia andar 480 px e descobrir a borda).
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v63 .v63-cam{inset:-2.5%;transform:translate3d(0,max(var(--v63-sy,0px),-1.8lvh),0)}
+html.v63 #v63-fundo[data-quadro="2"] .v63-quadro{transform:translate3d(-1.2%,.6%,0)}
+html.v63 #v63-fundo[data-quadro="3"] .v63-quadro{transform:translate3d(1.2%,-.6%,0)}
+html.v63 #v63-fundo[data-quadro="4"] .v63-quadro{transform:translate3d(-.8%,.8%,0)}
+html.v63 #v63-fundo[data-quadro="5"] .v63-quadro{transform:translate3d(1.4%,-.4%,0)}
+html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-1.4%,-.4%,0)}
+@media (prefers-reduced-motion:reduce){html.v63 .v63-cam{transform:none}}
