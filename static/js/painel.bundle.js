@@ -1606,6 +1606,128 @@
     });
   }
 
+  // static/js/src/ui/toque.js
+  var ALVO2 = "a[href],button,[role=button],summary,input:not([type=hidden]),select,[onclick]";
+  var COARSE = typeof matchMedia === "function" ? matchMedia("(pointer:coarse)") : null;
+  var MQ = typeof matchMedia === "function" ? matchMedia("(max-width:640px)") : null;
+  var _txt = (el) => (el.textContent || "").replace(/\s+/g, " ").trim();
+  function _rotulos(t) {
+    let linha = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null;
+    if (!linha) {
+      const r0 = t.rows[0];
+      if (r0 && r0.cells.length > 1 && [...r0.cells].every((c) => c.tagName === "TH")) linha = r0;
+    }
+    if (!linha) return null;
+    const out = [];
+    for (const c of linha.cells) for (let k = 0; k < (c.colSpan || 1); k++) out.push(_txt(c).slice(0, 40));
+    return out;
+  }
+  function _principal(tr) {
+    if (tr.hasAttribute("onclick")) return tr;
+    const clk2 = tr.querySelector(".clk");
+    if (clk2) return clk2;
+    const a = tr.querySelector('a[href]:not([href="#"])');
+    return a || null;
+  }
+  function _preparar(t) {
+    if (t.dataset.tt === "tabela" || t.closest('[data-tt="tabela"]')) return;
+    const corpo = [...t.tBodies].flatMap((b) => [...b.rows]);
+    if (!corpo.length) return;
+    if (t.dataset.tt !== "pronta" || t.dataset.ttN !== String(corpo.length)) {
+      const cab = _rotulos(t);
+      let alvos = 0;
+      for (const tr of corpo) {
+        let col = 0;
+        for (const td of tr.cells) {
+          const r = cab && cab[col];
+          if (r && td.tagName === "TD") td.dataset.rotulo = r;
+          else delete td.dataset.rotulo;
+          if (_txt(td).length > 34 || td.querySelector("table,ul,ol,details")) td.classList.add("tt-larga");
+          col += td.colSpan || 1;
+        }
+        if (tr.cells.length === 1 && (tr.cells[0].colSpan || 1) > 1) tr.classList.add("tt-faixa");
+        const p = _principal(tr);
+        tr.classList.toggle("tt-tem-principal", !!p && p !== tr);
+        tr.classList.toggle("tt-linha-alvo", p === tr);
+        for (const el of tr.querySelectorAll(ALVO2)) {
+          alvos++;
+          el.classList.toggle("tt-principal", el === p);
+          el.classList.toggle("tt-sec", el !== p);
+        }
+        if (p === tr) alvos++;
+      }
+      t.dataset.tt = "pronta";
+      t.dataset.ttN = String(corpo.length);
+      t.dataset.ttAlvos = String(alvos);
+      t.classList.add("tt");
+    }
+    _modo(t);
+  }
+  function _modo(t) {
+    const celular = !!(MQ && MQ.matches);
+    if (!celular) {
+      t.classList.remove("tt-cartoes");
+      return;
+    }
+    if (t.classList.contains("tt-cartoes")) return;
+    const colunas = Math.max(0, ...[...t.rows].map((r) => [...r.cells].reduce((s, c) => s + (c.colSpan || 1), 0)));
+    if (colunas < 2) return;
+    const caixa = t.parentElement ? t.parentElement.clientWidth : innerWidth;
+    const naoCabe = t.scrollWidth > caixa + 2 || t.getBoundingClientRect().width > innerWidth;
+    if (Number(t.dataset.ttAlvos) > 0 || naoCabe) t.classList.add("tt-cartoes");
+  }
+  function _emTexto(el) {
+    const cs = getComputedStyle(el);
+    if (!cs.display.startsWith("inline") || cs.display === "inline-block" || cs.display === "inline-flex") return false;
+    const pai = el.parentElement;
+    if (!pai) return false;
+    for (const n of pai.childNodes) if (n !== el && n.nodeType === 3 && n.textContent.trim().length > 2) return true;
+    return false;
+  }
+  function _alvosSoltos(raiz) {
+    if (!COARSE || !COARSE.matches) return;
+    for (const el of raiz.querySelectorAll(ALVO2)) {
+      if (el.classList.contains("tt-alvo") || el.closest("table.tt-cartoes") || el.dataset.ttTexto) continue;
+      if (el.matches("input[type=checkbox],input[type=radio],input[type=range]")) continue;
+      if (el.tagName === "A" && _emTexto(el)) {
+        el.dataset.ttTexto = "1";
+        continue;
+      }
+      el.classList.add("tt-alvo");
+      if (getComputedStyle(el).display === "inline") el.classList.add("tt-alvo-inl");
+    }
+  }
+  function toqueVivo(raiz) {
+    if (!raiz) return;
+    for (const t of raiz.querySelectorAll("table")) _preparar(t);
+    _alvosSoltos(raiz);
+  }
+  var _passe2 = 0;
+  function toqueBoot() {
+    const raizes = ["view", "sheet"].map((id) => document.getElementById(id)).filter(Boolean);
+    const passe = () => {
+      if (_passe2) return;
+      _passe2 = setTimeout(() => {
+        _passe2 = 0;
+        raizes.forEach(toqueVivo);
+      }, 80);
+    };
+    const obs = (ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) return passe();
+    };
+    for (const r of raizes) new MutationObserver(obs).observe(r, { childList: true, subtree: true });
+    if (MQ) {
+      const troca = () => {
+        for (const r of raizes) for (const t of r.querySelectorAll("table.tt")) {
+          t.classList.remove("tt-cartoes");
+          _modo(t);
+        }
+      };
+      MQ.addEventListener ? MQ.addEventListener("change", troca) : MQ.addListener(troca);
+    }
+    passe();
+  }
+
   // static/js/src/v63/fitas.js
   var PERIODO = 12;
   var SEG = 48;
@@ -6229,7 +6351,7 @@
   }
 
   // static/js/src/abas/rotinas.js
-  var _txt = "<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>";
+  var _txt2 = "<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>";
   var _rodape = (d) => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina <code>${esc(d.rotina || "")}</code> · ${esc(d.horario || "")} · arquivo gravado em ${esc(d.arquivo_mtime || "—")}</div>`;
   var _semExec = (d) => card(`<div class="warn">${esc(d.mensagem || "Rotina ainda sem execução.")}</div>
   <div class="dim" style="font-size:12px;margin-top:6px">Comando: <code>${esc(d.rotina || "")}</code> (${esc(d.horario || "")}).</div>`);
@@ -6326,7 +6448,7 @@
     h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || "")} · <b>Tolerância:</b> ${esc(d.tolerancia || "")}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.indeterminado || "")}. ${esc(d.ressalva || "")}</div>${_rodape(d)}`);
     for (const [nome, e] of Object.entries(d.esferas || {})) h += _esfera(nome, e, defs);
-    return `<div id="rt-pericia">${h}${_txt}</div>`;
+    return `<div id="rt-pericia">${h}${_txt2}</div>`;
   }
   var _sim = (v) => v == null ? '<span class="dim">indisp.</span>' : v ? "✔" : '<span class="dim">—</span>';
   function _cge(d) {
@@ -6391,7 +6513,7 @@
     h += sec("1. Confronto CGE × JFN (recall por processo)");
     h += !c || c.ok === false ? card(`<div class="warn">${erroHumano(c)}</div>`) : _cge(c);
     h += sec("2. Achados dos detectores (achados.db)") + _detectores(dt);
-    return `<div id="rt-cge">${h}${_txt}</div>`;
+    return `<div id="rt-cge">${h}${_txt2}</div>`;
   }
 
   // static/js/src/abas/motores_cruzamento.js
@@ -7166,7 +7288,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -7374,7 +7496,7 @@
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8875,12 +8997,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8894,13 +9016,13 @@
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8968,7 +9090,7 @@
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -9034,7 +9156,7 @@
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -10434,7 +10556,7 @@
 
   // static/js/src/abas/conformidade.js
   var _IND = '<span class="dim">indisponível</span>';
-  var _txt2 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
+  var _txt3 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
   var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
   var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
   var _hora3 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
@@ -10521,7 +10643,7 @@
     h += _juiz(j);
     h += _divida(d);
     h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora3(d.gerado_em)}` : ""}</div>`);
-    return `<div id="cf-raiz">${h}${_txt2}</div>`;
+    return `<div id="cf-raiz">${h}${_txt3}</div>`;
   }
 
   // static/js/src/abas/propagacao.js
@@ -16471,6 +16593,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }, { passive: true });
   (async () => {
     v60Boot();
+    toqueBoot();
     v61Boot();
     v63Boot();
     movimentoBoot();
@@ -16605,12 +16728,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }, true);
   setTimeout(_sphMask, 600);
   (function _ligarTato() {
-    const ALVO2 = ".btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi";
+    const ALVO3 = ".btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi";
     let ultima = 0;
     addEventListener("pointerdown", (ev) => {
       const agora = performance.now();
       if (agora - ultima < 60) return;
-      const el = ev.target && ev.target.closest && ev.target.closest(ALVO2);
+      const el = ev.target && ev.target.closest && ev.target.closest(ALVO3);
       if (!el) return;
       if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
       ultima = agora;
