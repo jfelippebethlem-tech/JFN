@@ -48,7 +48,9 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 #   157 → 151, teto acompanha em 151.
 # 2026-11-13: a ponta da branch já chegou em 152 (dívida alheia) e o trabalho do SEI somou 1 → curei 3
 #   (marca de fila vazia em `sei_leitura_dupla`, submit e espera de rede em `sei_busca_mgs`): 150.
-TETO_MUDOS_PRODUCAO = 150
+# 2026-11-17: a ponta chegou em 152 (navegador fixo do it-campo, silêncio do Telegram, propagação) → curei os
+#   5 novos desde f076bc94 com rastro (stderr/logger.debug), sem mudar o fluxo: 147.
+TETO_MUDOS_PRODUCAO = 147
 
 
 def _mudos(py: Path) -> list[int]:

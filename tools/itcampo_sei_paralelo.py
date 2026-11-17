@@ -105,8 +105,8 @@ def painel(msg: str) -> None:
     try:
         with PAINEL.open("a", encoding="utf-8") as f:
             f.write(linha + "\n")
-    except OSError:
-        pass
+    except OSError as exc:  # a linha já saiu no stdout; o arquivo do painel falhou — fica o rastro
+        print(f"[painel] {PAINEL} não gravou: {exc}", file=sys.stderr)
 
 
 def titulo(t: str) -> None:
@@ -260,8 +260,8 @@ def _saude_local() -> tuple[int, int]:
                     regs.append(json.loads(ln))
                 except ValueError:
                     continue
-    except OSError:
-        pass
+    except OSError as exc:  # sem histórico de rodadas: segue com o que leu; fica o rastro
+        print(f"[rodadas] {RODADAS} ilegível: {exc}", file=sys.stderr)
     return saude_sei(regs, time.time())
 
 

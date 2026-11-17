@@ -13,6 +13,7 @@ import contextvars
 import inspect
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -40,6 +41,6 @@ def silenciar(texto: str, origem: str = "") -> bool:
         with (DATA / "telegram_silenciado.jsonl").open("a") as f:
             f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "origem": origem, "chars": len(texto or ""),
                                 "inicio": (texto or "")[:120]}, ensure_ascii=False) + "\n")
-    except OSError:
-        pass
+    except OSError as exc:  # o registro do silêncio não pode derrubar quem silenciou; fica o rastro
+        print(f"[silencio] telegram_silenciado.jsonl não gravou: {exc}", file=sys.stderr)
     return True
