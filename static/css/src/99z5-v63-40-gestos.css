@@ -1,0 +1,33 @@
+/* ══ v63 · GESTOS — a cobertura azul da transição de clique + brilho das pílulas ═════════════════════
+   Par do `v63/transicao.js` e do `v63/micro.js`. A cobertura é UM elemento fixo; o JS anima só o
+   `clip-path` (e, na saída do zoom, opacidade/escala) com WAAPI — nada de layout.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v63 .v63-tr{position:fixed;inset:0;z-index:2147483000;pointer-events:none;display:grid;place-items:center;
+  background:radial-gradient(120% 90% at 70% 20%,#3D7BFF 0,#1D5BFF 45%,#1748D6 100%);
+  clip-path:inset(50% 50% 50% 50%);will-change:clip-path}
+/* um fio de luz atravessa a cor enquanto ela está no ar — a fita do fundo, em branco */
+html.v63 .v63-tr::before{content:"";position:absolute;left:-10%;right:-10%;top:58%;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.0) 10%,rgba(255,255,255,.85) 50%,rgba(56,211,255,.9) 70%,transparent);
+  box-shadow:0 0 18px rgba(56,211,255,.8);transform:rotate(-8deg) translate3d(-60%,0,0);animation:v63fio .9s .1s var(--v63-mola) forwards}
+@keyframes v63fio{to{transform:rotate(-8deg) translate3d(10%,0,0)}}
+html.v63 .v63-tr-l{position:relative;font:500 13px/1 var(--f-mono);text-transform:lowercase;color:rgba(255,255,255,.92);
+  letter-spacing:.01em;opacity:0;transform:translate3d(0,8px,0);animation:v63rotulo .5s .18s var(--v63-mola) forwards}
+html.v63 .v63-tr-l::before{content:"→ ";color:#9FE6FF}
+@keyframes v63rotulo{to{opacity:1;transform:none}}
+
+/* brilho que segue o ponteiro/dedo nas pílulas de aba e nos chips */
+html.v63 nav.tabs button, html.v63 .chip{position:relative;isolation:isolate}   /* `.sph::before` é de estratos antigos: fica fora */
+html.v63 nav.tabs button::before, html.v63 .chip::before{content:"";position:absolute;inset:0;border-radius:inherit;
+  z-index:-1;opacity:0;transition:opacity .3s;pointer-events:none;
+  background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),rgba(56,211,255,.22),transparent 65%)}
+html.v63 nav.tabs button:hover::before, html.v63 .chip:hover::before,
+html.v63 nav.tabs button.toque::before, html.v63 .chip.toque::before{opacity:1}
+html.v63 nav.tabs button.on::before, html.v63 .chip.on::before{background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.35),transparent 65%)}
+
+/* cartão tocado afunda com mola (toque) */
+html.v63 :is(.ck-inst,.card.clk,.grid.v60-lista > .card):active{transform:scale(.985);transition:transform .15s var(--v63-mola)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-tr{display:none}
+  html.v63 nav.tabs button::before, html.v63 .chip::before{display:none}
+}

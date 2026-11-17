@@ -1,0 +1,35 @@
+/* ══ v63 · FUNDO VIVO — fitas de luz (par do `v63/fundo.js`) ═══════════════════════════════════════
+   Uma camada fixa atrás de tudo. Três níveis de movimento, todos no compositor:
+   · `.v63-cam`    parallax da rolagem (`--v63-sy`, escrito pelo JS só quando a rolagem muda);
+   · `.v63-quadro` o ENQUADRAMENTO — cada seção/aba move, gira e escala as fitas com mola de 1,4 s;
+   · o próprio vídeo (ou o canvas de fallback) — as fitas fluindo.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v63 #v63-fundo{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;background:var(--bg)}
+html.v63 .v63-cam{position:absolute;inset:-14%;transform:translate3d(0,var(--v63-sy,0px),0);will-change:transform}
+html.v63 .v63-quadro{position:absolute;inset:0;background:center/cover no-repeat;opacity:.78;will-change:transform;
+  transition:transform 1.4s var(--v63-mola),opacity 1.2s var(--v63-mola)}
+html.v63 .v63-quadro video, html.v63 .v63-quadro .v63-cv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .9s ease}
+html.v63 .v63-quadro.toca video, html.v63 .v63-quadro.toca .v63-cv{opacity:1}
+/* véu: o topo e o pé clareiam para o cabeçalho e a barra de esferas lerem limpos sobre as fitas */
+html.v63 .v63-veu{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(247,250,255,.7) 0,rgba(247,250,255,0) 22%,rgba(247,250,255,0) 70%,rgba(247,250,255,.55) 100%)}
+
+/* enquadramentos (1 = herói; 2–5 = seções do Início; 2–6 = abas, por hash do id) */
+html.v63 #v63-fundo[data-quadro="2"] .v63-quadro{transform:translate3d(-12%,8%,0) rotate(-8deg) scale(1.14)}
+html.v63 #v63-fundo[data-quadro="3"] .v63-quadro{transform:translate3d(10%,-10%,0) rotate(7deg) scale(1.24)}
+html.v63 #v63-fundo[data-quadro="4"] .v63-quadro{transform:translate3d(-4%,14%,0) rotate(14deg) scale(1.32)}
+html.v63 #v63-fundo[data-quadro="5"] .v63-quadro{transform:translate3d(12%,4%,0) rotate(-14deg) scale(1.18)}
+html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-10%,-8%,0) rotate(4deg) scale(1.08)}
+/* fora do Início as fitas recuam: a tela é de dado, a seda é moldura */
+html.v63 body:not([data-esf="inicio"]) .v63-quadro{opacity:.5}
+
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-cam{transform:none}
+  html.v63 .v63-quadro{transition:none}
+}
+
+/* modo sóbrio (FPS MEDIDO baixo, `capacidade/sobrio.js`): as fitas param no pôster e a poeira sai —
+   mesma regra dos vídeos de esfera da v51: o item mais caro da tela é o primeiro a recuar */
+html.v63 body.fps-baixo .v63-quadro video, html.v63 body.fps-baixo .v63-quadro .v63-cv, html.v63 body.fps-baixo .v63-poeira{display:none}
+html.v63 body.fps-baixo .v63-quadro{transition:none}

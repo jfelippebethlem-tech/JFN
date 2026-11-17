@@ -36,3 +36,15 @@ html.v61 button[aria-busy=true] .rot{border-color:rgba(255,255,255,.4);border-to
 html.v61 .err{border-color:rgba(217,58,64,.45);background:rgba(217,58,64,.08);color:#BE2A31}
 @media (prefers-reduced-transparency:reduce){html.v61 .card{background:#fff}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html.v61 .card{background:rgba(255,255,255,.96)}}
+
+/* v63 FLUXO CLARO (17/11/2026) — mesma porta, linguagem nova: tokens do painel v63, título geométrico
+   (Geist, sem o Oxanium Tron), ação em pílula azul sólida. */
+html.v61{--bg:#F7FAFF; --tx:#0B1B3A; --tx2:#2A3B5E; --mut:#5A6B8C; --ion:#1D5BFF; --ion2:#1D5BFF;
+  --flame:#1D5BFF; --flame2:#1D5BFF}
+html.v61 h1{font-family:"Geist",system-ui,sans-serif;font-weight:600;letter-spacing:-.02em}
+html.v61 .sub{letter-spacing:0;text-transform:lowercase}
+html.v61 .card{border-radius:20px;border-color:rgba(255,255,255,.9);
+  box-shadow:0 1px 2px rgba(11,27,58,.06),0 12px 32px -12px rgba(29,91,255,.18),inset 0 0 0 1px rgba(29,91,255,.06)}
+html.v61 .selo{background:#1D5BFF}
+html.v61 button{border-radius:999px;background:#1D5BFF}
+html.v61 button:hover{background:#2F6BFF}

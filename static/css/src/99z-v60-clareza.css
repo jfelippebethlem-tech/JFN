@@ -14,24 +14,26 @@
 
 /* ── §3 · tokens ─────────────────────────────────────────────────────────────────────────────── */
 html.v60{
-  --bg:        oklch(0.145 0.018 255);   /* fundo único, azul-noite */
-  --bg-2:      oklch(0.175 0.020 255);   /* header/nav */
-  --card:      oklch(0.200 0.020 255 / .82);
-  --card-hi:   oklch(0.235 0.022 255 / .90);
-  --line:      oklch(0.36 0.025 255 / .55);
-  --line-soft: oklch(0.30 0.020 255 / .45);
-  --ink:       oklch(0.97 0.006 255);
-  --ink-2:     oklch(0.86 0.012 255);
-  --muted:     oklch(0.72 0.016 255);    /* ≥4.5:1 sobre --card */
-  --ion:       oklch(0.78 0.14 258);     /* estrutura/seleção/link */
-  --flame:     oklch(0.78 0.16 55);      /* ação/dinheiro */
-  --crit:      oklch(0.70 0.18 18);
-  --warn:      oklch(0.82 0.14 80);
-  --ok:        oklch(0.80 0.14 158);
+  /* v63 (17/11/2026): os valores do "azul-noite" saíram — a paleta da v60 é a clara (a v61/v63 a
+     refinam por cima). Nenhum estrato define mais fundo escuro. */
+  --bg:        #F7FAFF;
+  --bg-2:      #EEF4FF;
+  --card:      rgba(255,255,255,.82);
+  --card-hi:   #FFFFFF;
+  --line:      rgba(11,27,58,.14);
+  --line-soft: rgba(11,27,58,.08);
+  --ink:       #0B1B3A;
+  --ink-2:     #2A3B5E;
+  --muted:     #5A6B8C;
+  --ion:       #1D5BFF;
+  --flame:     #086B55;
+  --crit:      #BE2A31;
+  --warn:      #8A5A00;
+  --ok:        #0A7557;
   --r-s:8px; --r-m:12px; --r-l:16px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
   --ease: cubic-bezier(.2,.7,.2,1);
-  --sh: 0 1px 0 oklch(1 0 0 / .05) inset, 0 8px 24px -12px oklch(0 0 0 / .6);
+  --sh: 0 1px 2px rgba(11,27,58,.06), 0 12px 32px -12px rgba(29,91,255,.18);
   --f-sans: "IBM Plex Sans", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, monospace;
 }

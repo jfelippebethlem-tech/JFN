@@ -25,7 +25,8 @@
 import {$, esc, svgIco, card, kpi, sec, cover, corta, clk} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _v60, _v61} from '../capacidade/estado.js';
+import {_redMotion, _v60, _v61, _v63} from '../capacidade/estado.js';
+import {v63InicioHtml, v63InicioMontar} from '../v63/inicio.js';
 import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {preocupacoesMontar} from './preocupacoes.js';
@@ -116,7 +117,8 @@ export async function renderCockpit(){
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
       <button type="button" class="chip c61-ir-motores" onclick="ir('s_motores')">Motores · ver todos</button></aside>
     <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`:'';
-  const html=`<div class="ck${_v61?' ck61':''}">${v61}
+  /* v63: o herói e as quatro seções no estilo Relay entram ANTES do cockpit (`v63/inicio.js`) */
+  const html=`${_v63?v63InicioHtml():''}<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead" role="link" tabindex="0" style="cursor:pointer" title="Abrir as compras com sobrepreço (Comparador › Economia possível)"
@@ -221,6 +223,7 @@ export function ckBoot(){
      largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo
      layout — `getBoundingClientRect` no mesmo quadro leria a posição anterior. */
   if(!_v61)requestAnimationFrame(()=>energiaLigar());
+  if(_v63)v63InicioMontar();          // v63: depois do paint, como o resto do cockpit
   galaxiaPreviewMontar($('gx-prev'));   // 16/11: canvas 2D pintado uma vez; a galáxia 3D abre em /galaxia
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);

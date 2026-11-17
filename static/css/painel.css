@@ -19,25 +19,23 @@
   @font-face{font-family:"IBM Plex Mono";src:url(/static/assets/fonts/IBMPlexMono-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
   @font-face{font-family:"IBM Plex Mono";src:url(/static/assets/fonts/IBMPlexMono-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
   :root{
-    /* espaço profundo azul (hue ~253, chroma rico) — o fundo é céu, não cinza */
-    --bg:oklch(0.125 0.028 255); --bg2:oklch(0.15 0.03 253);
-    --card:oklch(0.19 0.032 252); --card2:oklch(0.168 0.03 252); --raise:oklch(0.235 0.036 250);
-    --bd:oklch(0.48 0.07 230 / .5); --bd2:oklch(0.4 0.055 240 / .32); --glass:oklch(0.15 0.03 252 / .74);
-    --tx:oklch(0.96 0.012 230); --tx2:oklch(0.85 0.02 230); --mut:oklch(0.71 0.03 235); --dim:oklch(0.57 0.03 240);
-    /* paleta VIVA com significado: cian holográfico=interação (Jarvis) · ouro=dinheiro ·
-       âmbar=atenção · rosa=crítico (coisas graves brilham graves) · verde=ok ·
-       azul=Estado · ouro=Prefeitura · violeta=Transversal */
-    --accent:oklch(0.85 0.135 205); --teal:oklch(0.83 0.13 195); --accent2:oklch(0.74 0.14 300);
-    --gold:oklch(0.84 0.135 85); --amber:oklch(0.8 0.15 70); --rose:oklch(0.7 0.215 15);
-    --green:oklch(0.8 0.15 155); --blue:oklch(0.75 0.13 245); --purple:oklch(0.74 0.14 300);
-    --blue-d:oklch(0.64 0.11 245); --teal-d:oklch(0.66 0.11 205); --amber-d:oklch(0.66 0.12 72); --green-d:oklch(0.64 0.12 158);
-    --violet:oklch(0.72 0.14 300); --rose-d:oklch(0.6 0.17 18);
-    --accent-ink:oklch(0.16 0.04 230); --ink:oklch(0.97 0.005 250);
+    /* v63 (17/11/2026): a paleta-base passou a ser a CLARA. O "espaço profundo azul" de 2026-07 saiu
+       de vez — sem fundo escuro definido em nenhum estrato; os nomes ficaram (os estratos os leem). */
+    --bg:#F7FAFF; --bg2:#EEF4FF;
+    --card:#FFFFFF; --card2:#F4F8FF; --raise:#FFFFFF;
+    --bd:rgba(11,27,58,.14); --bd2:rgba(11,27,58,.08); --glass:rgba(255,255,255,.72);
+    --tx:#0B1B3A; --tx2:#2A3B5E; --mut:#5A6B8C; --dim:#5A6B8C;
+    --accent:#1D5BFF; --teal:#1D5BFF; --accent2:#6B46C8;
+    --gold:#086B55; --amber:#8A5A00; --rose:#BE2A31;
+    --green:#0A7557; --blue:#1D5BFF; --purple:#6B46C8;
+    --blue-d:#1D5BFF; --teal-d:#1D5BFF; --amber-d:#8A5A00; --green-d:#0A7557;
+    --violet:#6B46C8; --rose-d:#BE2A31;
+    --accent-ink:#FFFFFF; --ink:#0B1B3A;
     --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     --r:10px; --r2:12px;
-    /* vidro líquido: highlight especular no topo + profundidade + luz ambiente */
-    --sh:inset 0 1px 0 -0.5px oklch(1 0 0/.08), inset 0 -1px 0 -0.5px oklch(0 0 0/.2), 0 1px 2px oklch(0 0 0/.3), 0 14px 34px -24px oklch(0 0 0/.65);
+    /* sombra suave dupla (v63) — a sombra preta do vidro escuro saiu com ele */
+    --sh:0 1px 2px rgba(11,27,58,.06), 0 12px 32px -12px rgba(29,91,255,.18);
     --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
     --saber:var(--teal); --esf:var(--accent)}
   body[data-esf="estado"]{--esf:var(--blue)}
@@ -3690,24 +3688,26 @@
 
 /* ── §3 · tokens ─────────────────────────────────────────────────────────────────────────────── */
 html.v60{
-  --bg:        oklch(0.145 0.018 255);   /* fundo único, azul-noite */
-  --bg-2:      oklch(0.175 0.020 255);   /* header/nav */
-  --card:      oklch(0.200 0.020 255 / .82);
-  --card-hi:   oklch(0.235 0.022 255 / .90);
-  --line:      oklch(0.36 0.025 255 / .55);
-  --line-soft: oklch(0.30 0.020 255 / .45);
-  --ink:       oklch(0.97 0.006 255);
-  --ink-2:     oklch(0.86 0.012 255);
-  --muted:     oklch(0.72 0.016 255);    /* ≥4.5:1 sobre --card */
-  --ion:       oklch(0.78 0.14 258);     /* estrutura/seleção/link */
-  --flame:     oklch(0.78 0.16 55);      /* ação/dinheiro */
-  --crit:      oklch(0.70 0.18 18);
-  --warn:      oklch(0.82 0.14 80);
-  --ok:        oklch(0.80 0.14 158);
+  /* v63 (17/11/2026): os valores do "azul-noite" saíram — a paleta da v60 é a clara (a v61/v63 a
+     refinam por cima). Nenhum estrato define mais fundo escuro. */
+  --bg:        #F7FAFF;
+  --bg-2:      #EEF4FF;
+  --card:      rgba(255,255,255,.82);
+  --card-hi:   #FFFFFF;
+  --line:      rgba(11,27,58,.14);
+  --line-soft: rgba(11,27,58,.08);
+  --ink:       #0B1B3A;
+  --ink-2:     #2A3B5E;
+  --muted:     #5A6B8C;
+  --ion:       #1D5BFF;
+  --flame:     #086B55;
+  --crit:      #BE2A31;
+  --warn:      #8A5A00;
+  --ok:        #0A7557;
   --r-s:8px; --r-m:12px; --r-l:16px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
   --ease: cubic-bezier(.2,.7,.2,1);
-  --sh: 0 1px 0 oklch(1 0 0 / .05) inset, 0 8px 24px -12px oklch(0 0 0 / .6);
+  --sh: 0 1px 2px rgba(11,27,58,.06), 0 12px 32px -12px rgba(29,91,255,.18);
   --f-sans: "IBM Plex Sans", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -5759,3 +5759,520 @@ html.v61 .c61-preoc{margin-top:4px}
 .pq-fonte{font-size:11px;margin-top:6px;color:var(--dim,#6b7894)}
 .pq-indisp{font-size:12px;margin-bottom:8px;color:var(--muted,#4a5875)}
 .pq-nota{font-size:11px;color:var(--dim,#6b7894);margin-top:2px}
+/* ══ v63 · FLUXO CLARO — base: tokens, tipografia, moldura (2026-11-17) ═══════════════════════════
+   Brief: _SANDBOX/v63_BRIEF.md · referência: landing "Relay" (escura, fitas verde-limão). Traduz-se a
+   LINGUAGEM, não a paleta: branco + azul, título geométrico pesado com UMA palavra em serifa itálica,
+   rótulos em mono caixa-baixa, cartões de vidro com sombra dupla, pílulas, acento azul sólido.
+
+   REGRAS DESTES ESTRATOS (`99z5-v63-*.css`)
+   · Vêm DEPOIS dos `99z2-v61-*` e não são camadados: mesma especificidade → a declaração daqui vence.
+   · TODO seletor começa por `html.v63` (classe sempre presente desde 17/11/2026: é o padrão do painel).
+   · Os nomes de token são os da v61 (`--ion`, `--ink`, `--surface`…): redefini-los recolore os 30
+     estratos anteriores de uma vez. Só o que a v61 não tem nome ganha token novo (`--v63-*`).
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@font-face{font-family:"Geist";src:url(/static/assets/fonts/v63/Geist-Bold.woff2) format("woff2");font-weight:700 800;font-style:normal;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url(/static/assets/fonts/v63/InstrumentSerif-Italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Instrument Serif";src:url(/static/assets/fonts/v63/InstrumentSerif-Italic-ext.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+/* ── tokens do brief ─────────────────────────────────────────────────────────────────────────────── */
+html.v63{
+  color-scheme:light;
+  --bg:#F7FAFF; --bg-2:#EEF4FF; --bg-3:#E2ECFF;
+  --surface:rgba(255,255,255,.72); --surface-solid:#FFFFFF; --surface-2:rgba(244,248,255,.86);
+  --line:rgba(11,27,58,.08); --line-strong:rgba(11,27,58,.14);
+  --ink:#0B1B3A; --ink-2:#2A3B5E; --ink-3:#5A6B8C; --muted:#5A6B8C;
+  --ion:#1D5BFF; --ion-text:#1D5BFF; --ion-solid:#1D5BFF; --cyan:#38D3FF; --glow:rgba(56,211,255,.38);
+  --v63-azul-claro:#6FA8FF; --v63-alerta:#FFC400; --v63-alerta-text:#8A6500;
+  --radius:16px; --r-l:16px;
+  --sh:0 1px 2px rgba(11,27,58,.06), 0 12px 32px -12px rgba(29,91,255,.18);
+  --v63-sh-hi:0 1px 2px rgba(11,27,58,.06), 0 22px 44px -16px rgba(29,91,255,.28);
+  --v63-vidro:rgba(255,255,255,.72);
+  --v63-vidro-borda:inset 0 0 0 1px rgba(29,91,255,.06);
+  --blur:blur(18px) saturate(1.4);
+  --tinta:rgba(29,91,255,.06);
+  --brk:transparent;                                   /* os colchetes de canto da v61 saem: o Relay é liso */
+  --v63-mola:cubic-bezier(.2,.8,.2,1);
+  --f-sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --f-display:"Geist",system-ui,sans-serif;            /* Oxanium (Tron) sai: título é geométrico pesado */
+  --f-serif:"Instrument Serif","Iowan Old Style",Georgia,serif;
+}
+html.v63 body{background:var(--bg);color:var(--ink)}
+html.v63 ::selection{background:rgba(29,91,255,.16);color:var(--ink)}
+
+/* camadas ambientes da v61 saem — o fundo da v63 é um só, o das fitas (`99z5-v63-20-fundo.css`) */
+html.v63 #esfnebula, html.v63 #v61-fundo{display:none !important}
+
+/* ── tipografia ─────────────────────────────────────────────────────────────────────────────────── */
+/* palavra de destaque: serifa itálica azul. `.v63-it` é a classe-folha; o JS embrulha a última palavra
+   do título de cada aba nela (só embrulha — o texto é o mesmo). */
+html.v63 .v63-it, html.v63 em.v63-it{font-family:var(--f-serif);font-style:italic;font-weight:400;
+  color:var(--ion);letter-spacing:-.01em;padding-right:.04em}
+html.v63 .cover .t{font-family:var(--f-display);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+html.v63 .cover .t .v63-it{font-size:1.12em;line-height:.9}
+html.v63 h2.sec{font-family:var(--f-display);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+html.v63 .sph > div > div:first-child{font-family:var(--f-sans);font-weight:600;letter-spacing:-.01em}
+/* rótulo/estado: mono, caixa baixa, 11–12px (o "● all systems normal" do Relay) */
+html.v63 .v63-mono, html.v63 .ck-eye, html.v63 .cover-seal{font-family:var(--f-mono);text-transform:lowercase;
+  letter-spacing:0;font-size:11.5px;font-weight:500}
+
+/* ── moldura: topbar fina de vidro ──────────────────────────────────────────────────────────────── */
+html.v63 header{background:rgba(255,255,255,.72);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:0 1px 0 var(--line), var(--v63-vidro-borda)}
+html.v63 .brand .lg{background:var(--ion-solid);color:#fff;border-radius:10px;
+  box-shadow:0 0 0 3px rgba(29,91,255,.12), 0 6px 16px -6px rgba(29,91,255,.6)}
+html.v63 .brand h1{font-family:var(--f-display);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+html.v63 .brand small{color:var(--muted)}
+html.v63 .cblade{background:linear-gradient(90deg,transparent,var(--v63-azul-claro) 20%,var(--ion) 50%,var(--cyan) 80%,transparent);opacity:.7}
+
+/* pílula de status ao vivo (`● 2 motores rodando`) e CTA da topbar — nascem em `v63/moldura.js` */
+html.v63 .v63-status{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;
+  font:500 11.5px/1 var(--f-mono);color:var(--ink-2);background:rgba(255,255,255,.8);
+  box-shadow:inset 0 0 0 1px var(--line-strong);white-space:nowrap;cursor:pointer;
+  transition:box-shadow .25s var(--v63-mola),transform .25s var(--v63-mola)}
+html.v63 .v63-status:hover{box-shadow:inset 0 0 0 1px rgba(29,91,255,.4)}
+html.v63 .v63-status i{width:7px;height:7px;border-radius:50%;background:#12B886;box-shadow:0 0 0 3px rgba(18,184,134,.18);flex:none}
+html.v63 .v63-status.parado i{background:var(--v63-azul-claro);box-shadow:0 0 0 3px rgba(111,168,255,.2)}
+html.v63 .v63-status.indisp i{background:#9AA8C0;box-shadow:none}
+html.v63 .v63-status i{animation:v63pulso 2.4s var(--v63-mola) infinite}
+@keyframes v63pulso{0%,100%{box-shadow:0 0 0 3px rgba(18,184,134,.18)}50%{box-shadow:0 0 0 6px rgba(18,184,134,0)}}
+
+/* CTA da topbar: as regras da v60 para `.htop .actions > a` (ícone 32px, texto oculto) não valem para ele */
+html.v63 header .htop .actions > a.v63-btn.v63-cta{display:inline-flex;flex:none;white-space:nowrap;height:34px;padding:0 16px;margin-right:6px;font-size:13px;
+  color:#fff;background:var(--ion-solid);border-radius:999px}
+html.v63 header .htop .actions > a.v63-btn.v63-cta:hover{color:#fff;background:var(--ion-solid)}
+@media (max-width:760px){html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}}
+/* a marca não encolhe por baixo da pílula (o `minmax(0,auto)` da v60 deixava o h1 nowrap vazar sobre ela);
+   entre 761 e 1180px quem cede lugar é o CTA */
+@media (min-width:761px){html.v63 .brand{min-width:max-content}}
+@media (min-width:761px) and (max-width:1180px){html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}}
+/* a marca: subtítulo volta à sans (a mono não cabia ao lado da pílula) */
+html.v63 .brand small{font-family:var(--f-sans);text-transform:none}
+/* pílula no celular: só o número ("● 2 rodando") — o resto vai para o title */
+@media (max-width:760px){
+  html.v63 .v63-status{height:26px;padding:0 9px;gap:6px;font-size:11px}
+  html.v63 .v63-status .v63-st .w{display:none}
+}
+/* esfera ativa = pílula azul cheia → o ícone (que herda a cor do texto) tem de ir para o branco */
+html.v63 #spheres .sph.on .i, html.v63 #spheres .sph.on .i .jico, html.v63 nav.tabs button.on .ti, html.v63 nav.tabs button.on .ti .jico{color:#fff}
+
+/* ── botões: pílula sólida azul (o "Start free" limão do Relay) + fantasma ──────────────────────── */
+html.v63 .v63-btn{--mx:50%;--my:50%;position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;gap:8px;
+  height:42px;padding:0 20px;border-radius:999px;border:0;cursor:pointer;
+  font:600 14px/1 var(--f-sans);letter-spacing:-.005em;text-decoration:none;white-space:nowrap;
+  transition:transform .35s var(--v63-mola),box-shadow .35s var(--v63-mola),background-color .25s}
+html.v63 .v63-btn.sol{background:var(--ion-solid);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 24px -10px rgba(29,91,255,.75)}
+html.v63 .v63-btn.fan{background:rgba(255,255,255,.78);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+/* brilho que segue o dedo/cursor (--mx/--my vêm do `v63/micro.js`) */
+html.v63 .v63-btn::after{content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .3s;
+  background:radial-gradient(120px circle at var(--mx) var(--my),rgba(255,255,255,.55),transparent 60%)}
+html.v63 .v63-btn.fan::after{background:radial-gradient(120px circle at var(--mx) var(--my),rgba(56,211,255,.28),transparent 60%)}
+html.v63 .v63-btn:hover::after, html.v63 .v63-btn.toque::after{opacity:1}
+@media (hover:hover){html.v63 .v63-btn:hover{transform:translateY(-1px)}}
+html.v63 .v63-btn:active{transform:scale(.96);transition-duration:.12s}
+html.v63 .v63-btn .play{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  background:var(--ion-solid);color:#fff;font-size:8px;padding-left:2px}
+html.v63 .v63-btn:focus-visible{outline:2px solid var(--ion);outline-offset:3px}
+
+/* ── abas e pílulas ─────────────────────────────────────────────────────────────────────────────── */
+html.v63 nav.tabs{background:rgba(247,250,255,.82)}
+html.v63 nav.tabs button, html.v63 .chip{border-radius:999px;transition:background-color .25s,color .25s,box-shadow .35s var(--v63-mola),transform .35s var(--v63-mola)}
+html.v63 nav.tabs button.on, html.v63 .chip.on{background:var(--ion-solid);border-color:var(--ion-solid);color:#fff;
+  box-shadow:0 8px 18px -8px rgba(29,91,255,.7)}
+html.v63 .chip{background:rgba(255,255,255,.72);border-color:var(--line-strong)}
+html.v63 nav.tabs button:active, html.v63 .chip:active{transform:scale(.95)}
+html.v63 nav.tabs .tmais.e{background:linear-gradient(90deg,var(--bg) 35%,transparent)}
+html.v63 nav.tabs .tmais.d{background:linear-gradient(270deg,var(--bg) 35%,transparent)}
+@media (max-width:760px){
+  html.v63 #spheres{background:rgba(255,255,255,.94);box-shadow:0 -1px 0 var(--line),0 -10px 30px -12px rgba(29,91,255,.18)}
+  html.v63 .sph.on{color:var(--ion)}
+  html.v63 .sph.on .i{background:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -8px rgba(29,91,255,.8)}
+}
+@media (min-width:761px){
+  html.v63 #spheres{background:rgba(255,255,255,.6);border-color:var(--line);border-radius:999px}
+  html.v63 .sph{border-radius:999px}
+  html.v63 .sph.on, html.v63 .sph.on:hover{background:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -8px rgba(29,91,255,.7)}
+}
+
+/* ── cartões: vidro branco, raio 16, sombra suave dupla, borda interna azul 6% ─────────────────── */
+html.v63 .card, html.v63 :is(.card.kpi,.ck-inst), html.v63 .ck-hero, html.v63 .grid.v60-lista, html.v63 .v60-feed{
+  background:var(--v63-vidro);border:1px solid rgba(255,255,255,.9);border-radius:var(--radius);
+  box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .card:hover{background:var(--v63-vidro);border-color:rgba(255,255,255,.95);box-shadow:var(--v63-sh-hi),var(--v63-vidro-borda)}
+html.v63 .card .card{background:none;border:0;box-shadow:none}
+html.v63 .grid.v60-lista > .card{background:none;border:0;border-top:1px solid var(--line);box-shadow:none;border-radius:0}
+html.v63 .grid.v60-lista > .card:first-child{border-top:0}
+html.v63 .grid.v60-lista > .card:hover{background:var(--tinta)}
+@media (max-width:760px){
+  html.v63 .card, html.v63 :is(.card.kpi,.ck-inst), html.v63 .ck-hero, html.v63 .grid.v60-lista, html.v63 .v60-feed{--v63-vidro:rgba(255,255,255,.9)}
+}
+@media (prefers-reduced-transparency:reduce){
+  html.v63 :is(.card,.card.kpi,.ck-inst,header){background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+
+/* ── movimento: reduzir movimento desliga TUDO o que é contínuo nesta versão ───────────────────── */
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-status i{animation:none}
+  html.v63 .v63-btn, html.v63 nav.tabs button, html.v63 .chip{transition:none}
+}
+/* ══ v63 · FUNDO VIVO — fitas de luz (par do `v63/fundo.js`) ═══════════════════════════════════════
+   Uma camada fixa atrás de tudo. Três níveis de movimento, todos no compositor:
+   · `.v63-cam`    parallax da rolagem (`--v63-sy`, escrito pelo JS só quando a rolagem muda);
+   · `.v63-quadro` o ENQUADRAMENTO — cada seção/aba move, gira e escala as fitas com mola de 1,4 s;
+   · o próprio vídeo (ou o canvas de fallback) — as fitas fluindo.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v63 #v63-fundo{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;background:var(--bg)}
+html.v63 .v63-cam{position:absolute;inset:-14%;transform:translate3d(0,var(--v63-sy,0px),0);will-change:transform}
+html.v63 .v63-quadro{position:absolute;inset:0;background:center/cover no-repeat;opacity:.78;will-change:transform;
+  transition:transform 1.4s var(--v63-mola),opacity 1.2s var(--v63-mola)}
+html.v63 .v63-quadro video, html.v63 .v63-quadro .v63-cv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .9s ease}
+html.v63 .v63-quadro.toca video, html.v63 .v63-quadro.toca .v63-cv{opacity:1}
+/* véu: o topo e o pé clareiam para o cabeçalho e a barra de esferas lerem limpos sobre as fitas */
+html.v63 .v63-veu{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(247,250,255,.7) 0,rgba(247,250,255,0) 22%,rgba(247,250,255,0) 70%,rgba(247,250,255,.55) 100%)}
+
+/* enquadramentos (1 = herói; 2–5 = seções do Início; 2–6 = abas, por hash do id) */
+html.v63 #v63-fundo[data-quadro="2"] .v63-quadro{transform:translate3d(-12%,8%,0) rotate(-8deg) scale(1.14)}
+html.v63 #v63-fundo[data-quadro="3"] .v63-quadro{transform:translate3d(10%,-10%,0) rotate(7deg) scale(1.24)}
+html.v63 #v63-fundo[data-quadro="4"] .v63-quadro{transform:translate3d(-4%,14%,0) rotate(14deg) scale(1.32)}
+html.v63 #v63-fundo[data-quadro="5"] .v63-quadro{transform:translate3d(12%,4%,0) rotate(-14deg) scale(1.18)}
+html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-10%,-8%,0) rotate(4deg) scale(1.08)}
+/* fora do Início as fitas recuam: a tela é de dado, a seda é moldura */
+html.v63 body:not([data-esf="inicio"]) .v63-quadro{opacity:.5}
+
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-cam{transform:none}
+  html.v63 .v63-quadro{transition:none}
+}
+
+/* modo sóbrio (FPS MEDIDO baixo, `capacidade/sobrio.js`): as fitas param no pôster e a poeira sai —
+   mesma regra dos vídeos de esfera da v51: o item mais caro da tela é o primeiro a recuar */
+html.v63 body.fps-baixo .v63-quadro video, html.v63 body.fps-baixo .v63-quadro .v63-cv, html.v63 body.fps-baixo .v63-poeira{display:none}
+html.v63 body.fps-baixo .v63-quadro{transition:none}
+/* ══ v63 · INÍCIO NO ESTILO RELAY (par do `v63/inicio.js`) ════════════════════════════════════════
+   herói + grafo do fluxo · faixa de fontes · run log · números que contam · barras isométricas ·
+   cartão de alerta. Mobile primeiro: a pilha de uma coluna é a base; a grade de duas entra ≥ 900px.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── revelação (fade + desfoque → nítido + subida). `backwards`: depois de entrar, o elemento volta
+   aos estilos normais — e a inclinação (`.v63-tilt-on`) pode usar o `transform` livremente. ─────── */
+html.v63 .v63-rv:not(.v63-in){opacity:0}
+html.v63 .v63-rv.v63-in{animation:v63entra .95s var(--v63-mola) backwards;animation-delay:calc(var(--v63i,var(--i,0)) * 85ms)}
+@keyframes v63entra{from{opacity:0;transform:translate3d(0,24px,0);filter:blur(10px)}}
+
+html.v63 .v63-vidro{background:var(--v63-vidro);border:1px solid rgba(255,255,255,.9);border-radius:20px;
+  box-shadow:var(--sh),var(--v63-vidro-borda);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
+@media (max-width:760px){html.v63 .v63-vidro{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(255,255,255,.88)}}
+
+/* inclinação (só ponteiro fino; `v63/micro.js`) com o brilho especular seguindo o cursor */
+html.v63 .v63-tilt{transform-style:preserve-3d;transition:transform .5s var(--v63-mola),box-shadow .5s var(--v63-mola)}
+html.v63 .v63-tilt.v63-tilt-on{transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition-duration:.18s;
+  box-shadow:var(--v63-sh-hi),var(--v63-vidro-borda)}
+html.v63 .v63-tilt{position:relative}
+html.v63 .v63-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.65),transparent 45%)}
+html.v63 .v63-tilt.v63-tilt-on::before{opacity:1}
+
+html.v63 .v63-inicio{position:relative;margin:0 0 8px}
+html.v63 .v63-eti{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 11px;border-radius:999px;
+  background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--ink-2);font-size:11.5px}
+html.v63 .v63-eti i{width:6px;height:6px;border-radius:50%;background:var(--ion);box-shadow:0 0 0 3px rgba(29,91,255,.15)}
+
+/* ── herói ──────────────────────────────────────────────────────────────────────────────────────── */
+html.v63 .v63-hero{position:relative;display:grid;gap:28px;padding:22px 2px 30px;align-items:center}
+@media (min-width:900px){html.v63 .v63-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:44px;min-height:min(74vh,700px);padding:40px 4px 48px}}
+html.v63 .v63-hero-tx{position:relative;z-index:1}
+html.v63 .v63-h1{margin:18px 0 0;font:700 clamp(42px,7.6vw,80px)/.98 var(--f-display);letter-spacing:-.04em;color:var(--ink);text-wrap:balance}
+html.v63 .v63-h1 .v63-it{font-size:1.1em;letter-spacing:-.02em;color:var(--ion)}
+html.v63 .v63-lead{margin:18px 0 0;max-width:44ch;font:400 clamp(15.5px,1.6vw,18px)/1.55 var(--f-sans);color:var(--muted)}
+html.v63 .v63-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+html.v63 .v63-nota{margin:16px 0 0;color:var(--muted);font-size:11.5px}
+
+/* poeira de luz — só no herói, 14 pontos, só `transform`/`opacity` */
+html.v63 .v63-poeira{position:absolute;inset:-10% -4%;pointer-events:none;overflow:hidden}
+html.v63 .v63-poeira i{position:absolute;width:3px;height:3px;border-radius:50%;background:#38D3FF;opacity:0;
+  left:calc(4% + var(--i) * 6.7%);top:calc(12% + (var(--i) * 37 % 70) * 1%);
+  box-shadow:0 0 0 2px rgba(56,211,255,.18);
+  animation:v63poeira calc(7s + var(--i) * .63s) ease-in-out infinite;animation-delay:calc(var(--i) * -1.3s)}
+html.v63 .v63-poeira i:nth-child(3n){background:#1D5BFF;width:2px;height:2px}
+@keyframes v63poeira{0%{opacity:0;transform:translate3d(0,14px,0)}30%{opacity:.85}70%{opacity:.5}100%{opacity:0;transform:translate3d(18px,-46px,0)}}
+
+/* card do fluxo */
+html.v63 .v63-fluxo{position:relative;z-index:1;padding:14px 14px 12px}
+html.v63 .v63-fluxo-top, html.v63 .v63-run-top, html.v63 .v63-slack-top{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  color:var(--muted);font-size:11.5px;padding:2px 4px 10px;border-bottom:1px solid var(--line)}
+html.v63 .v63-selo{font:600 11px/1 var(--f-mono);padding:5px 9px;border-radius:999px;background:rgba(11,27,58,.05);color:var(--muted)}
+html.v63 .v63-selo.on{background:rgba(29,91,255,.1);color:var(--ion)}
+html.v63 .v63-selo.on::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--ion);
+  vertical-align:1px;animation:v63pisca 1.4s ease-in-out infinite}
+@keyframes v63pisca{50%{opacity:.25}}
+html.v63 .v63-selo.off{color:#7A879E}
+html.v63 .v63-fluxo-pe{padding:10px 4px 2px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
+html.v63 .v63-grafo{display:block;width:100%;height:auto;margin:6px 0 4px;overflow:visible}
+html.v63 .v63-aresta{fill:none;stroke:url(#v63-gA);stroke-width:1.7;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1}
+html.v63 .v63-fluxo.v63-in .v63-aresta{animation:v63traco 1.1s var(--v63-mola) forwards;animation-delay:calc(.5s + var(--i) * .2s)}
+@keyframes v63traco{to{stroke-dashoffset:0}}
+html.v63 .v63-aresta.ramo{stroke:#6FA8FF;stroke-dasharray:.018 .014;stroke-dashoffset:0;opacity:0}
+html.v63 .v63-fluxo.v63-in .v63-aresta.ramo{animation:v63aparece .8s 1.6s forwards}
+@keyframes v63aparece{to{opacity:1}}
+html.v63 .v63-pulso{fill:#38D3FF;stroke:#fff;stroke-width:1.5;opacity:0}
+html.v63 .v63-fluxo.v63-in .v63-pulso{animation:v63aparece .4s 1.8s forwards}
+html.v63 .v63-no{cursor:pointer;outline:none}
+html.v63 .v63-no rect{fill:rgba(255,255,255,.94);stroke:rgba(11,27,58,.1);stroke-width:1;
+  transition:stroke .3s,fill .3s;filter:drop-shadow(0 6px 10px rgba(29,91,255,.10))}
+html.v63 .v63-no:hover rect, html.v63 .v63-no:focus-visible rect{stroke:var(--ion);fill:#fff}
+html.v63 .v63-no-pt{fill:#B9CCF0}
+html.v63 .v63-no.vivo .v63-no-pt{fill:var(--ion);animation:v63pisca 1.4s ease-in-out infinite}
+html.v63 .v63-no-t{font:600 13.5px var(--f-sans);fill:var(--ink);letter-spacing:-.01em}
+html.v63 .v63-no-s{font:500 10.5px var(--f-mono);fill:var(--muted)}
+html.v63 .v63-fluxo .v63-no{opacity:0}
+html.v63 .v63-fluxo.v63-in .v63-no{animation:v63aparece .6s var(--v63-mola) forwards;animation-delay:calc(.25s + var(--i) * .12s)}
+
+/* ── faixa de fontes ────────────────────────────────────────────────────────────────────────────── */
+html.v63 .v63-integra{padding:18px 0 30px;text-align:center}
+html.v63 .v63-integra-t{margin:0 0 14px;color:var(--muted);font-size:12px}
+html.v63 .v63-integra-t b{color:var(--ion);font-weight:600}
+html.v63 .v63-integra-l{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 12px}
+html.v63 .v63-fonte{display:inline-flex;align-items:center;gap:9px;padding:6px 14px 6px 6px;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-2);font:500 13px var(--f-sans);
+  text-decoration:none;transition:transform .35s var(--v63-mola),box-shadow .35s}
+html.v63 .v63-fonte:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px rgba(29,91,255,.35),0 10px 20px -12px rgba(29,91,255,.6)}
+html.v63 .v63-fonte-ic{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;
+  font:600 10px var(--f-mono);color:var(--muted);background:#EEF3FC;transition:background-color .5s,color .5s,box-shadow .5s}
+html.v63 .v63-integra.v63-in .v63-fonte-ic{animation:v63acende 1.6s var(--v63-mola) forwards;animation-delay:calc(.3s + var(--i) * .22s)}
+@keyframes v63acende{
+  0%{background:#EEF3FC;color:var(--muted)}
+  35%{background:var(--ion);color:#fff;box-shadow:0 0 0 6px rgba(56,211,255,.25),0 0 22px rgba(56,211,255,.65)}
+  100%{background:var(--ion);color:#fff;box-shadow:0 0 0 3px rgba(29,91,255,.12)}}
+html.v63 .v63-integra-fr{margin:14px 0 0;color:var(--muted);font-size:11.5px}
+html.v63 .v63-integra-fr b{font-weight:600}
+html.v63 .v63-integra-fr .ok{color:var(--ok-text)} html.v63 .v63-integra-fr .at{color:var(--v63-alerta-text)} html.v63 .v63-integra-fr .cr{color:var(--crit-text)}
+html.v63 .v63-integra-fr a{color:var(--ion);cursor:pointer;margin-left:4px}
+
+/* ── seções ─────────────────────────────────────────────────────────────────────────────────────── */
+html.v63 .v63-sec{display:grid;gap:22px;padding:42px 0;align-items:center;border-top:1px solid var(--line)}
+@media (min-width:900px){
+  html.v63 .v63-sec{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:48px;padding:72px 4px}
+  html.v63 .v63-sec-iso{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+  html.v63 .v63-sec-iso .v63-sec-tx{order:2}
+}
+html.v63 .v63-h2{margin:14px 0 0;font:700 clamp(32px,4.6vw,54px)/1.02 var(--f-display);letter-spacing:-.035em;color:var(--ink);text-wrap:balance}
+html.v63 .v63-h2 .v63-it{font-size:1.1em}
+html.v63 .v63-sec-tx p{margin:14px 0 0;max-width:46ch;color:var(--muted);font-size:15.5px;line-height:1.6}
+
+/* run log */
+html.v63 .v63-run{padding:14px}
+html.v63 .v63-run-l{list-style:none;margin:6px 0;padding:0}
+html.v63 .v63-run-i{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(60px,.8fr);grid-template-areas:"ic n b" ". q q";
+  gap:2px 10px;align-items:center;padding:10px 4px;border-bottom:1px dashed var(--line)}
+@media (min-width:600px){html.v63 .v63-run-i{grid-template-columns:22px minmax(0,1.1fr) minmax(70px,1fr) auto;grid-template-areas:"ic n b q"}}
+html.v63 .v63-run-i:last-child{border-bottom:0}
+html.v63 .v63-run-i:not(.v63-in){opacity:0}
+html.v63 .v63-run-i.v63-in{animation:v63item .7s var(--v63-mola) backwards;animation-delay:calc(var(--i) * 140ms)}
+@keyframes v63item{from{opacity:0;transform:translate3d(-14px,0,0)}}
+html.v63 .v63-run-ic{grid-area:ic;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;font:700 11px/1 var(--f-mono);
+  color:var(--ion);background:rgba(29,91,255,.08)}
+html.v63 .v63-run-i.e-rodando .v63-run-ic{color:#fff;background:var(--ion);box-shadow:0 0 0 4px rgba(56,211,255,.22);animation:v63pisca 1.6s infinite}
+html.v63 .v63-run-i.e-falhou .v63-run-ic, html.v63 .v63-run-i.e-indisponivel .v63-run-ic{color:var(--crit-text);background:rgba(217,58,64,.1)}
+html.v63 .v63-run-i.e-agendado .v63-run-ic{color:var(--muted);background:rgba(11,27,58,.05)}
+html.v63 .v63-run-n{grid-area:n;font:500 13.5px var(--f-sans);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.v63 .v63-run-b{grid-area:b;height:6px;border-radius:999px;background:rgba(11,27,58,.06);overflow:hidden}
+html.v63 .v63-run-b i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#6FA8FF,#1D5BFF);
+  transform-origin:left;transform:scaleX(0)}
+html.v63 .v63-run-i.v63-in .v63-run-b i{animation:v63enche 1.2s var(--v63-mola) forwards;animation-delay:calc(.25s + var(--i) * 140ms)}
+@keyframes v63enche{to{transform:scaleX(var(--w))}}
+html.v63 .v63-run-i.e-rodando .v63-run-b i{background:linear-gradient(90deg,#6FA8FF 0%,#38D3FF 40%,#1D5BFF 60%,#6FA8FF 100%);background-size:200% 100%;
+  animation:v63enche 1.2s var(--v63-mola) forwards,v63corre 1.6s linear infinite}
+@keyframes v63corre{to{background-position:-200% 0}}
+html.v63 .v63-run-q{grid-area:q;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.v63 .v63-run-pe, html.v63 .v63-iso-pe, html.v63 .v63-slack-pe{padding:10px 4px 0;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.5}
+
+/* números */
+html.v63 .v63-nums{display:grid;gap:14px}
+@media (min-width:600px){html.v63 .v63-nums{grid-template-columns:1fr 1fr}}
+html.v63 .v63-num{display:flex;flex-direction:column;gap:6px;padding:18px 18px 14px;min-width:0}
+html.v63 .v63-num-l{color:var(--muted);font-size:11.5px}
+html.v63 .v63-num-v{font:700 clamp(26px,3vw,36px)/1.05 var(--f-display);letter-spacing:-.03em;color:var(--ink);
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+html.v63 .v63-num.indisp .v63-num-v{color:#9AA8C0}
+html.v63 .v63-num-s{color:var(--muted);font-size:13px;line-height:1.45}
+html.v63 .v63-num-s b{color:var(--ink);font-weight:600}
+html.v63 .v63-num-f{margin-top:auto;padding-top:8px;color:var(--muted);font-size:10.5px}
+html.v63 .v63-barra{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-top:4px}
+html.v63 .v63-barra i{height:6px;border-radius:999px;background:rgba(11,27,58,.06);overflow:hidden}
+html.v63 .v63-barra b{display:block;height:100%;border-radius:inherit;background:#6FA8FF;transform-origin:left;transform:scaleX(0)}
+html.v63 .v63-barra b.alta{background:var(--v63-alerta)}
+html.v63 .v63-barra b.baixa{background:var(--ion)}
+html.v63 .v63-num.v63-in .v63-barra b{animation:v63enche 1.3s var(--v63-mola) forwards;animation-delay:.5s}
+html.v63 .v63-barra em{font:500 11px var(--f-mono);font-style:normal;color:var(--ink-2)}
+/* estado do número (regra 9: proveniência + estado em todo número) */
+html.v63 .v63-estado{display:inline-block;font:600 9.5px/1 var(--f-mono);font-style:normal;letter-spacing:.04em;padding:4px 6px;border-radius:999px;margin-right:4px}
+html.v63 .v63-estado.verificado{background:var(--ion);color:#fff}
+html.v63 .v63-estado.pendente{background:rgba(29,91,255,.1);color:var(--ion)}
+html.v63 .v63-estado.indisponível, html.v63 .v63-estado.indisponivel{background:rgba(11,27,58,.07);color:var(--muted)}
+
+/* barras isométricas */
+html.v63 .v63-iso{padding:18px 14px 12px}
+html.v63 .v63-iso-l{--bw:34px;--alt:170px;display:flex;justify-content:space-between;align-items:flex-end;gap:6px;padding:26px 6px 0;min-height:calc(var(--alt) + 90px)}
+@media (min-width:600px){html.v63 .v63-iso-l{--bw:46px;--alt:200px;gap:12px;padding:30px 10px 0}}
+html.v63 .v63-iso-b{all:unset;box-sizing:border-box;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+  --a:calc(var(--h) * var(--alt) + 14px)}
+html.v63 .v63-iso-b:focus-visible{outline:2px solid var(--ion);outline-offset:4px;border-radius:8px}
+html.v63 .v63-iso-col{position:relative;width:var(--bw);height:var(--a);margin-right:calc(var(--bw) * .38)}
+html.v63 .v63-iso-col i{position:absolute;bottom:0;display:block}
+html.v63 .v63-iso-col .f{left:0;width:100%;height:100%;background:linear-gradient(180deg,#F4F8FF,#DCE7FB);border-radius:2px 0 0 2px;
+  box-shadow:inset 0 0 0 1px rgba(29,91,255,.12);transform-origin:bottom;transform:scaleY(0)}
+html.v63 .v63-iso-col .l{left:100%;width:38%;height:100%;background:linear-gradient(180deg,#D3E1FA,#BCD0F4);
+  transform-origin:left bottom;transform:skewY(-38deg) scaleY(0)}
+html.v63 .v63-iso-col .t{left:0;bottom:100%;width:138%;height:calc(var(--bw) * .3);background:#fff;
+  clip-path:polygon(0 100%,72.5% 100%,100% 0,27.5% 0);box-shadow:inset 0 0 0 1px rgba(29,91,255,.12);transform:translate3d(0,var(--a),0)}
+html.v63 .v63-iso-b.topo .f{background:linear-gradient(180deg,#3B74FF,#1D5BFF);box-shadow:none}
+html.v63 .v63-iso-b.topo .l{background:linear-gradient(180deg,#1A4FE0,#1543C4)}
+html.v63 .v63-iso-b.topo .t{background:#8DB9FF}
+html.v63 .v63-iso-b.topo .v63-iso-col::after{content:"";position:absolute;left:-30%;right:-60%;bottom:-14px;height:22px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(56,211,255,.45),transparent);opacity:0}
+html.v63 .v63-iso-b.v63-in .f{animation:v63sobe 1.2s var(--v63-mola) forwards;animation-delay:calc(var(--i) * 120ms)}
+html.v63 .v63-iso-b.v63-in .l{animation:v63sobeL 1.2s var(--v63-mola) forwards;animation-delay:calc(var(--i) * 120ms)}
+html.v63 .v63-iso-b.v63-in .t{animation:v63topo 1.2s var(--v63-mola) forwards;animation-delay:calc(var(--i) * 120ms)}
+html.v63 .v63-iso-b.topo.v63-in .v63-iso-col::after{animation:v63aparece .8s 1.1s forwards}
+@keyframes v63sobe{to{transform:scaleY(1)}}
+@keyframes v63sobeL{to{transform:skewY(-38deg) scaleY(1)}}
+@keyframes v63topo{to{transform:translate3d(0,0,0)}}
+html.v63 .v63-iso-b:not(.v63-in){opacity:.001}
+html.v63 .v63-iso-v{font-size:12px;font-weight:600;color:var(--ink)}
+html.v63 .v63-iso-b.topo .v63-iso-v{color:var(--ion)}
+html.v63 .v63-iso-n{width:100%;font:500 10.5px/1.25 var(--f-sans);color:var(--muted);text-align:center;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
+@media (hover:hover){html.v63 .v63-iso-b:hover .f{filter:brightness(1.04)} html.v63 .v63-iso-b:hover .v63-iso-n{color:var(--ink)}}
+html.v63 .v63-vazio{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
+
+/* cartão de alerta (o "approval" do Relay) */
+html.v63 .v63-slack{padding:14px}
+html.v63 .v63-slack-vazio{padding:28px 4px;color:var(--muted);font-size:12px}
+html.v63 .v63-slack-msg{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;padding:14px 4px 12px}
+html.v63 .v63-slack-av{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--ion);color:#fff;
+  font:700 10.5px var(--f-mono);box-shadow:0 8px 16px -8px rgba(29,91,255,.8)}
+html.v63 .v63-slack-q{display:flex;gap:8px;align-items:baseline}
+html.v63 .v63-slack-q b{font:700 14px var(--f-sans);color:var(--ink)}
+html.v63 .v63-slack-q span{font-size:11px;color:var(--muted)}
+html.v63 .v63-slack-tx{margin:4px 0 0;color:var(--ink-2);font-size:14px;line-height:1.5}
+html.v63 .v63-slack-tx b.sev-alta{color:var(--v63-alerta-text);background:rgba(255,196,0,.2);padding:0 5px;border-radius:5px}
+html.v63 .v63-slack-tx b.sev-media{color:var(--ion)}
+html.v63 .v63-slack-tx b.sev-baixa{color:var(--muted)}
+html.v63 .v63-slack-bq{margin:10px 0 0;padding:8px 12px;border-left:3px solid var(--ion);background:rgba(29,91,255,.05);
+  border-radius:0 10px 10px 0;color:var(--ink-2);font-size:13px;line-height:1.5}
+html.v63 .v63-slack-campos{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;color:var(--muted);font-size:11px}
+html.v63 .v63-slack-campos b{color:var(--ink);font-weight:600}
+html.v63 .v63-slack-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+html.v63 .v63-slack-acoes .v63-btn{height:36px;padding:0 16px;font-size:13px}
+
+/* ponte para o cockpit */
+html.v63 .v63-ponte{display:flex;align-items:center;gap:14px;margin:18px 0 16px;color:var(--muted);font-size:11.5px}
+html.v63 .v63-ponte::before, html.v63 .v63-ponte::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line-strong),transparent)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-rv, html.v63 .v63-run-i, html.v63 .v63-iso-b{animation:none !important;opacity:1 !important}
+  html.v63 .v63-aresta{stroke-dashoffset:0} html.v63 .v63-aresta.ramo, html.v63 .v63-fluxo .v63-no{opacity:1}
+  html.v63 .v63-fluxo .v63-no, html.v63 .v63-fonte-ic, html.v63 .v63-run-b i, html.v63 .v63-barra b{animation:none !important}
+  html.v63 .v63-run-b i, html.v63 .v63-barra b{transform:scaleX(var(--w))}
+  html.v63 .v63-iso-col .f{transform:none} html.v63 .v63-iso-col .l{transform:skewY(-38deg)} html.v63 .v63-iso-col .t{transform:none}
+  html.v63 .v63-integra .v63-fonte-ic{background:var(--ion);color:#fff}
+}
+/* ══ v63 · GESTOS — a cobertura azul da transição de clique + brilho das pílulas ═════════════════════
+   Par do `v63/transicao.js` e do `v63/micro.js`. A cobertura é UM elemento fixo; o JS anima só o
+   `clip-path` (e, na saída do zoom, opacidade/escala) com WAAPI — nada de layout.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v63 .v63-tr{position:fixed;inset:0;z-index:2147483000;pointer-events:none;display:grid;place-items:center;
+  background:radial-gradient(120% 90% at 70% 20%,#3D7BFF 0,#1D5BFF 45%,#1748D6 100%);
+  clip-path:inset(50% 50% 50% 50%);will-change:clip-path}
+/* um fio de luz atravessa a cor enquanto ela está no ar — a fita do fundo, em branco */
+html.v63 .v63-tr::before{content:"";position:absolute;left:-10%;right:-10%;top:58%;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.0) 10%,rgba(255,255,255,.85) 50%,rgba(56,211,255,.9) 70%,transparent);
+  box-shadow:0 0 18px rgba(56,211,255,.8);transform:rotate(-8deg) translate3d(-60%,0,0);animation:v63fio .9s .1s var(--v63-mola) forwards}
+@keyframes v63fio{to{transform:rotate(-8deg) translate3d(10%,0,0)}}
+html.v63 .v63-tr-l{position:relative;font:500 13px/1 var(--f-mono);text-transform:lowercase;color:rgba(255,255,255,.92);
+  letter-spacing:.01em;opacity:0;transform:translate3d(0,8px,0);animation:v63rotulo .5s .18s var(--v63-mola) forwards}
+html.v63 .v63-tr-l::before{content:"→ ";color:#9FE6FF}
+@keyframes v63rotulo{to{opacity:1;transform:none}}
+
+/* brilho que segue o ponteiro/dedo nas pílulas de aba e nos chips */
+html.v63 nav.tabs button, html.v63 .chip{position:relative;isolation:isolate}   /* `.sph::before` é de estratos antigos: fica fora */
+html.v63 nav.tabs button::before, html.v63 .chip::before{content:"";position:absolute;inset:0;border-radius:inherit;
+  z-index:-1;opacity:0;transition:opacity .3s;pointer-events:none;
+  background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),rgba(56,211,255,.22),transparent 65%)}
+html.v63 nav.tabs button:hover::before, html.v63 .chip:hover::before,
+html.v63 nav.tabs button.toque::before, html.v63 .chip.toque::before{opacity:1}
+html.v63 nav.tabs button.on::before, html.v63 .chip.on::before{background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.35),transparent 65%)}
+
+/* cartão tocado afunda com mola (toque) */
+html.v63 :is(.ck-inst,.card.clk,.grid.v60-lista > .card):active{transform:scale(.985);transition:transform .15s var(--v63-mola)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-tr{display:none}
+  html.v63 nav.tabs button::before, html.v63 .chip::before{display:none}
+}
+/* ══ v63 · TODAS AS ABAS — a linguagem Relay fora do Início ═════════════════════════════════════════
+   O que está aqui é o que os tokens sozinhos não alcançam: o mapa (fronteira que brilha ao tocar),
+   o reator (corpo metálico clareado), tabelas, a folha do dossiê, avisos, campos, a capa de cada aba.
+   Estrutura, medidas e hierarquia continuam as da v60/v61 — aqui só se recolore e se dá movimento.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── capa de cada aba: título geométrico + palavra em itálico (o JS embrulha), selo vira pílula ──── */
+html.v63 .cover{border-bottom-color:var(--line)}
+html.v63 .cover-seal{background:rgba(29,91,255,.08);color:var(--ion);border-radius:12px}
+html.v63 .cover .s{color:var(--muted)}
+
+/* ── mapa: branco, escala de azul, fronteira com brilho ao tocar ────────────────────────────────── */
+html.v63 .tm-placa{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(238,244,255,.7));border-color:rgba(255,255,255,.95);
+  box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .tm-a{transition:transform .35s var(--v63-mola),filter .35s var(--v63-mola),stroke .25s}
+@media (hover:hover){
+  html.v63 .tm-a:hover{stroke:#38D3FF;stroke-width:1.6;filter:drop-shadow(0 0 5px rgba(56,211,255,.85)) drop-shadow(0 4px 10px rgba(29,91,255,.25))}
+}
+html.v63 .tm-a.on, html.v63 .tm-a:focus-visible, html.v63 .tm-a:active{stroke:#1D5BFF;stroke-width:1.8;
+  filter:drop-shadow(0 0 6px rgba(56,211,255,.9)) drop-shadow(0 6px 12px rgba(29,91,255,.3))}
+html.v63 .tm-onda{stroke:#38D3FF}
+/* o radar que varre a placa: mais leve, ciano — no claro, o marinho pesava */
+html.v63 .tm-radar::before{opacity:.55}
+
+/* ── reator: o corpo metálico (vídeo da v61) clareia e azula ────────────────────────────────────── */
+html.v63 .c61-reator{background:var(--v63-vidro);border-color:rgba(255,255,255,.9);box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .v61-reator .rt-corpo{filter:brightness(1.22) saturate(1.25) contrast(.88) hue-rotate(-6deg)}
+html.v63 .v61-reator .rt-corpo::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.28),rgba(111,168,255,.12) 55%,transparent 70%)}
+html.v63 .rt-no span{background:rgba(255,255,255,.92);border-color:var(--line-strong)}
+
+/* ── tabelas: cabeçalho mono caixa-baixa, linhas finas, hover azul 6% ───────────────────────────── */
+html.v63 #view table th, html.v63 #sheet table th{font-family:var(--f-mono);font-weight:500;text-transform:lowercase;letter-spacing:0;
+  color:var(--muted);border-bottom-color:var(--line-strong);background:transparent}
+html.v63 #view table td, html.v63 #sheet table td{border-bottom-color:var(--line)}
+html.v63 #view table tbody tr:hover td{background:var(--tinta)}
+
+/* ── folha do dossiê (overlay) ──────────────────────────────────────────────────────────────────── */
+html.v63 .ov{background:rgba(11,27,58,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+html.v63 .ov .sheet{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.95);
+  box-shadow:0 30px 80px -30px rgba(29,91,255,.45),0 2px 6px rgba(11,27,58,.08)}
+
+/* ── avisos, campos, esqueleto ──────────────────────────────────────────────────────────────────── */
+html.v63 .warn{border-radius:14px}
+html.v63 :where(#view,#sheet) :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),select,textarea){
+  border-radius:12px;border-color:var(--line-strong);background:rgba(255,255,255,.9);color:var(--ink);
+  transition:border-color .2s,box-shadow .25s var(--v63-mola)}
+html.v63 :where(#view,#sheet) :is(input,select,textarea):focus{outline:none;border-color:var(--ion);box-shadow:0 0 0 4px rgba(29,91,255,.14)}
+html.v63 .skel{color:var(--muted);font-family:var(--f-mono);text-transform:lowercase}
+html.v63 .skel .sp{border-color:rgba(29,91,255,.15);border-top-color:var(--ion)}
+
+/* ── botões da casa (`.btn`) entram na família das pílulas ──────────────────────────────────────── */
+html.v63 .btn{border-radius:999px;transition:transform .3s var(--v63-mola),box-shadow .3s var(--v63-mola),background-color .2s}
+/* `.red`/`.green` mantêm a semântica deles; o resto (padrão e `.accent`) vira a pílula azul sólida */
+html.v63 .btn:not(.ghost):not(.red):not(.green){background:var(--ion-solid);border-color:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -10px rgba(29,91,255,.8)}
+html.v63 .btn:not(.ghost):not(.red):not(.green):hover{background:#2F6BFF;color:#fff}
+html.v63 .btn.ghost{background:rgba(255,255,255,.8);color:var(--ink);border-color:var(--line-strong)}
+html.v63 .btn:active{transform:scale(.96)}
+
+/* ── a faixa ao vivo sob o cabeçalho ────────────────────────────────────────────────────────────── */
+html.v63 #v61-ticker{background:rgba(247,250,255,.72);border-bottom-color:var(--line)}

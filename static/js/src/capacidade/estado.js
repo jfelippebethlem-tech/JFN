@@ -36,12 +36,16 @@ export let _sobrio = false;
    NÃO iniciar os laços das camadas ambientes que o v60 aposentou. */
 export const _v60 = document.documentElement.classList.contains('v60');
 
-/* v61 TRON CLARO (2026-11-11): mesma mecânica da v60, um degrau acima. `_v61flag` = a v61 está
-   ligada neste aparelho (`data-v61` no <html>); `_v61` = o tema claro está valendo AGORA (classe
-   `v61`). As duas diferem só quando o dono escolheu "Tema escuro" na folha "⋯": aí a flag segue
-   ligada (o botão de voltar ao claro precisa existir) e a classe não entra — o painel é a v60. */
+/* v61 TRON CLARO (2026-11-11): o tema claro, sempre ligado (o script do <head> põe `v61` e `data-v61`
+   em toda carga). As duas bandeiras são iguais desde que a volta ao escuro saiu (11/11) e o resto do
+   tema escuro foi apagado na v63 (17/11); ficam as duas porque ~30 pontos as leem. */
 export const _v61flag = document.documentElement.hasAttribute('data-v61');
 export const _v61 = document.documentElement.classList.contains('v61');
 
 /** Único caminho de escrita da bandeira de sobriedade. Chamado só por `capacidade/sobrio.js`. */
 export function _setSobrio(v) { _sobrio = !!v; }
+
+/* v63 FLUXO CLARO (2026-11-17): a linguagem da landing "Relay" traduzida para branco + azul — fundo de
+   fitas de luz, título com palavra em serifa itálica, grafo de fluxo, transição de clique que enche a
+   tela. A classe `v63` nasce SEMPRE no script do <head> (padrão desde 17/11/2026), constante por carga. */
+export const _v63 = document.documentElement.classList.contains('v63');
