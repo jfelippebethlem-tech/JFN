@@ -9,7 +9,7 @@
  * movimento permitido (`prefers-reduced-motion`) não há pulsos nem voo animado. Aba oculta → laço para.
  * Ligação = indício de relação a conferir, nunca prova.
  */
-import {preparar, enquadrar, desenhar, acertar, paraTela, semearPulsos, corScore, CRITICO} from '../src/galaxia/render.js';
+import {preparar, enquadrar, desenhar, acertar, paraTela, semearPulsos, contarNaTela, corScore, CRITICO} from '../src/galaxia/render.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -89,7 +89,7 @@ function voar(alvo, ms = 650) {
  * Zoom entre kMin (galáxia inteira × .5) e K_MAX; o centro não sai da caixa do grafo (+ meia tela).
  * Durante o gesto passa-se do limite com resistência elástica; ao soltar, a mola traz de volta.
  * Se ao assentar não houver NENHUM nó na tela, voa para o nó mais próximo do centro. */
-const K_MAX = 14;
+const K_MAX = 6;                                            // 'perto' começa em .95; acima de ~6 só espalha os nós
 const kFit = () => enquadrar(G, w, h, G.bbox, w < 760 ? .98 : .96).k;
 const kMin = () => kFit() * .5;
 const camOk = () => cam && Number.isFinite(cam.cx) && Number.isFinite(cam.cy) && Number.isFinite(cam.k) && cam.k > 0;
@@ -129,14 +129,22 @@ function assentar() {
   if (Math.abs(k - cam.k) > 1e-6 * k || Math.abs(cx - cam.cx) * k > .5 || Math.abs(cy - cam.cy) * k > .5) {
     voar({cx, cy, k}, 320); assentado = false; return;
   }
-  if (nVis === 0) {
-    const i = maisProximo(cam.cx, cam.cy);
+  const A = areaUtil();
+  if (nVis === 0 || contarNaTela(G, cam, w, h, A) === 0) {   // nada na área livre (os painéis tapam o resto)
+    const [mx, my] = mundo((A[0] + A[2]) / 2, (A[1] + A[3]) / 2), i = maisProximo(mx, my);
     if (i >= 0) {
-      const n = G.nos[i];
+      const n = G.nos[i], k2 = Math.min(cam.k, Math.max(kFit() * 2, n.t === 'orgao' ? .5 : 1.2));
       avisar('nada neste ponto — voltando ao aglomerado mais próximo');
-      voar({cx: n.x, cy: n.y, k: Math.min(cam.k, Math.max(kFit() * 2, n.t === 'orgao' ? .5 : 1.2))}, 520); assentado = false;
+      voar({cx: n.x - ((A[0] + A[2]) / 2 - w / 2) / k2, cy: n.y - ((A[1] + A[3]) / 2 - h / 2) / k2, k: k2}, 520); assentado = false;
     }
   }
+}
+/** Retângulo do canvas que NÃO está coberto pelos controles (topo) nem pela telemetria (base). */
+function areaUtil() {
+  const c = cv.getBoundingClientRect(), ctl = $('gx-ctl') || document.querySelector('.gx-ctl'), num = $('gx-num');
+  const y0 = ctl ? Math.max(0, ctl.getBoundingClientRect().bottom - c.top) : 0;
+  const y1 = num && num.offsetHeight ? Math.min(h, num.getBoundingClientRect().top - c.top) : h;
+  return y1 - y0 > 120 ? [0, y0, w, y1] : [0, 0, w, h];
 }
 function maisProximo(x, y) {
   let m = -1, dm = Infinity;
@@ -253,7 +261,8 @@ cv.addEventListener('wheel', e => {
 document.querySelectorAll('.gx-zoom button').forEach(b => b.addEventListener('click', () => {
   if (!G) return;
   if (b.dataset.z === 'tudo' || !camOk()) return verTudo();
-  voar({cx: cam.cx, cy: cam.cy, k: travaK(cam.k * (b.dataset.z === 'mais' ? 1.8 : 1 / 1.8))}, 360); assentado = false;
+  const base = voo ? voo.b : cam;                          // toques seguidos somam a partir do ALVO do voo
+  voar({cx: base.cx, cy: base.cy, k: travaK(base.k * (b.dataset.z === 'mais' ? 1.8 : 1 / 1.8))}, 360); assentado = false;
 }));
 addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,select,textarea')) return;
@@ -264,7 +273,7 @@ addEventListener('keydown', e => {
   if (e.key === '0') verTudo();
 });
 /* Diagnóstico só-leitura para o teste de gesto (_SANDBOX/v66_gesto.py): câmera, nós na tela, limites. */
-window.__gx = () => ({cam: cam && {...cam}, nVis, kMin: G && kMin(), kMax: K_MAX, dpr, cw: cv.width, ch: cv.height, ptrs: ptrs.size, gesto: gesto && gesto.tipo, parado: !voo && !inercia && !ptrs.size && assentado && !sujo});
+window.__gx = () => ({cam: cam && {...cam}, nVis, nUtil: G && camOk() ? contarNaTela(G, cam, w, h, areaUtil()) : -1, kMin: G && kMin(), kMax: K_MAX, dpr, cw: cv.width, ch: cv.height, ptrs: ptrs.size, gesto: gesto && gesto.tipo, parado: !voo && !inercia && !ptrs.size && assentado && !sujo});
 
 function tocar(px, py) {
   const i = acertar(G, cam, w, h, px, py, matchMedia('(pointer:coarse)').matches ? 16 : 10);

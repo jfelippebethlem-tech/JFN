@@ -254,13 +254,14 @@ export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
   return contarNaTela(G, cam, w, h);
 }
 
-/** Nós visíveis no nível atual cujo centro cai na tela (filtro respeitado). Barato: ~10 mil nós. */
-export function contarNaTela(G, cam, w, h) {
+/** Nós visíveis no nível atual cujo centro cai na tela — ou na `area` [x0,y0,x1,y1] (filtro respeitado). Barato: ~10 mil nós. */
+export function contarNaTela(G, cam, w, h, area = null) {
   const k = cam.k; let n = 0;
+  const [ax0, ay0, ax1, ay1] = area || [0, 0, w, h];          // área útil (sem os painéis por cima)
   for (const no of G.nos) {
     if (!visivelNoNivel(G, no, k) || (G.filtro && !G.filtro(no))) continue;
     const [x, y] = paraTela(cam, w, h, no.x, no.y), r = (no.R && no.t === 'orgao' ? 0 : no.r * kr(k));
-    if (x >= -r && x <= w + r && y >= -r && y <= h + r) n++;
+    if (x >= ax0 - r && x <= ax1 + r && y >= ay0 - r && y <= ay1 + r) n++;
   }
   return n;
 }
