@@ -1,59 +1,94 @@
-/* v63 · FUNDO VIVO — fitas de luz atrás de tudo, que acompanham a rolagem.
+/* v63 · FUNDO VIVO — fitas de luz atrás de tudo, que mudam de lugar a cada seção (como no Relay).
  *
- * Ordem de preferência (a mais barata que funciona):
- *   1. `<video>` em loop (`static/v63/fluxo_hero[_m].{webm,mp4}`) — decodificação em hardware, ~0 CPU;
- *   2. canvas ao vivo (`v63/fitas.js`, a MESMA função que gerou o vídeo) a meia resolução e 30 fps,
- *      quando o vídeo não toca (codec ausente, erro de rede);
- *   3. o pôster `.webp` parado — reduzir movimento, economia de dados ou modo sóbrio (FPS medido baixo).
+ * TRÊS CAMADAS, cada uma um vídeo do Higgsfield (loop sem costura, câmera parada):
+ *   hero    `fluxo_hero[_m]` — o herói do Início (retrato usa o recorte 540×720 `_m`);
+ *   secao1  `fluxo_secao1`  — seções 01–02 do Início;
+ *   secao2  `fluxo_secao2`  — seções 03–04 e o cockpit.
+ * Fora do Início, cada aba fica com uma das três (hash estável do id).
  *
- * MOVIMENTO DE CÂMERA (o Relay troca o enquadramento das fitas entre as seções):
- *   · parallax: `--v63-sy` = rolagem × 0,12, escrito num rAF só quando a rolagem muda;
- *   · enquadramento: cada seção do Início traz `data-v63-quadro="1..4"`; a que ocupa o meio da tela
- *     escreve `data-quadro` na camada e o CSS (`99z5-v63-20-fundo.css`) desliza/gira/escala as fitas
- *     com mola de 1,4 s. Fora do Início, o enquadramento é o da ABA (hash estável do id) — cada aba
- *     tem o seu, e trocar de aba move as fitas.
- * Tudo para quando a aba do navegador some (`visibilitychange`).
+ * REGRAS DE CUSTO:
+ *   · SÓ UM VÍDEO TOCA POR VEZ. Na troca, a camada nova entra em crossfade (1,2 s, CSS) e a velha
+ *     é PAUSADA na hora — ela some congelada no último quadro, ninguém percebe.
+ *   · Camada de seção é criada (pôster + vídeo) na PRIMEIRA vez que vira ativa: quem não rola não baixa.
+ *   · Aba oculta ou modo sóbrio (FPS medido baixo) → pausa; o CSS mostra o pôster.
+ *   · Reduzir movimento / economia de dados → só pôsteres, sem vídeo nenhum (a troca por seção continua).
+ *   · Fallback em canvas (`v63/fitas.js`) SÓ se o vídeo do herói não der quadro (codec, rede).
+ *
+ * MOVIMENTO DE CÂMERA: parallax na rolagem (`--v63-sy`) + um enquadramento leve por seção/aba
+ * (`data-quadro`, CSS) por cima do crossfade.
  */
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {desenharFitas} from './fitas.js';
 
-let _camada = null, _video = null, _cv = null, _raf = 0, _vivo = false, _io = null, _passo = null;
+const CAMADAS = ['hero', 'secao1', 'secao2'];
+/* quadro (seção/aba) → camada. 1 = herói; 2–3 = seções 01–02; 4–6 = seções 03–04 / cockpit */
+const CAMADA_DO_QUADRO = {1: 'hero', 2: 'secao1', 3: 'secao1', 4: 'secao2', 5: 'secao2', 6: 'secao2'};
+
+let _camada = null, _cv = null, _raf = 0, _vivo = false, _io = null, _passo = null;
+let _so_poster = false, _ret = false, _ativa = '';
+const _videos = {};          // camada → <video>
+
+const _base = c => '/static/assets/v63/fluxo_' + c + (c === 'hero' && _ret ? '_m' : '');
 
 export function fundoMontar() {
   if (_camada) return;
-  const ret = matchMedia('(max-aspect-ratio: 4/5)').matches;
+  _ret = matchMedia('(max-aspect-ratio: 4/5)').matches;
   const eco = !!(navigator.connection && navigator.connection.saveData);
-  const base = '/static/v63/fluxo_hero' + (ret ? '_m' : '');
+  _so_poster = _redMotion || eco || _sobrio;
   const f = document.createElement('div');
   f.id = 'v63-fundo'; f.setAttribute('aria-hidden', 'true'); f.dataset.quadro = '1';
-  f.innerHTML = `<div class="v63-cam"><div class="v63-quadro" style="background-image:url(${base}.webp)"></div></div>`
+  f.innerHTML = `<div class="v63-cam">${CAMADAS.map(c => `<div class="v63-quadro" data-c="${c}"></div>`).join('')}</div>`
     + '<div class="v63-veu"></div>';
   document.body.insertBefore(f, document.body.firstChild);
   _camada = f;
-  const q = f.querySelector('.v63-quadro');
-  if (_redMotion || eco || _sobrio) return;                 // pôster parado — e nada mais roda
+  _ativar('hero');
+  document.addEventListener('visibilitychange', _visib);
+  if (!_redMotion) { addEventListener('scroll', _rolou, {passive: true}); _rolou(); }
+}
+
+function _q(c) { return _camada && _camada.querySelector(`.v63-quadro[data-c="${c}"]`); }
+
+/** Troca a camada ativa: crossfade pelo CSS (`.ativa`), pausa a velha NA HORA, toca a nova. */
+function _ativar(c) {
+  if (!_camada || c === _ativa) return;
+  const velha = _ativa; _ativa = c;
+  const q = _q(c);
+  if (!q.style.backgroundImage) q.style.backgroundImage = `url(${_base(c)}.webp)`;   // pôster: na 1ª vez
+  for (const k of CAMADAS) _q(k).classList.toggle('ativa', k === c);
+  _camada.dataset.camada = c;
+  if (velha && _videos[velha]) _videos[velha].pause();                                // só um toca
+  if (_cv) { _vivo = c === 'hero' && !document.hidden && !_sobrio; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
+  if (_so_poster) return;
+  if (!_videos[c]) _criarVideo(c, q);
+  _tocar();
+}
+
+function _criarVideo(c, q) {
   const v = document.createElement('video');
-  v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto';
+  v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-  v.poster = base + '.webp';
-  v.innerHTML = `<source src="${base}.webm" type="video/webm"><source src="${base}.mp4" type="video/mp4">`;
+  v.innerHTML = `<source src="${_base(c)}.webm" type="video/webm"><source src="${_base(c)}.mp4" type="video/mp4">`;
   v.addEventListener('playing', () => {
     q.classList.add('toca');
-    if (_cv) { _vivo = false; _cv.remove(); _cv = null; }   // o vídeo chegou depois do canvas: o canvas sai
+    if (c === 'hero' && _cv) { _vivo = false; _cv.remove(); _cv = null; }   // o vídeo chegou depois do canvas
   }, {once: true});
-  v.addEventListener('error', _paraCanvas, true);            // `error` dos <source> não borbulha: captura
-  q.appendChild(v); _video = v;
-  const p = v.play(); if (p && p.catch) p.catch(_paraCanvas);
-  /* rede lenta: se em 4 s o vídeo não deu quadro, o canvas assume (o vídeo segue tentando por baixo) */
-  setTimeout(() => { if (!q.classList.contains('toca')) _paraCanvas(); }, 4000);
-  document.addEventListener('visibilitychange', _visib);
-  addEventListener('scroll', _rolou, {passive: true});
-  _rolou();
+  if (c === 'hero') {
+    v.addEventListener('error', _paraCanvas, true);       // `error` dos <source> não borbulha: captura
+    /* rede lenta: se em 4 s o herói não deu quadro, o canvas assume (o vídeo segue tentando por baixo) */
+    setTimeout(() => { if (!q.classList.contains('toca') && _ativa === 'hero') _paraCanvas(); }, 4000);
+  }
+  q.appendChild(v); _videos[c] = v;
+}
+
+function _tocar() {
+  const v = _videos[_ativa]; if (!v) return;
+  if (document.hidden || _sobrio) { v.pause(); return; }
+  const p = v.play(); if (p && p.catch) p.catch(() => { if (_ativa === 'hero') _paraCanvas(); });
 }
 
 function _paraCanvas() {
   if (_cv || !_camada) return;
-  const q = _camada.querySelector('.v63-quadro');
+  const q = _q('hero');
   const cv = document.createElement('canvas'); cv.className = 'v63-cv';
   q.appendChild(cv); _cv = cv;
   const ctx = cv.getContext('2d');
@@ -76,8 +111,8 @@ function _paraCanvas() {
    aba oculta OU sóbrio → vídeo pausado e canvas parado (o CSS mostra o pôster). */
 function _visib() {
   const parar = document.hidden || _sobrio;
-  if (_video) { if (parar) _video.pause(); else { const p = _video.play(); if (p && p.catch) p.catch(() => {}); } }
-  if (_cv) { _vivo = !parar; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
+  _tocar();
+  if (_cv) { _vivo = !parar && _ativa === 'hero'; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
 }
 
 /* parallax: uma escrita de variável por quadro em que houve rolagem — nada de leitura de layout */
@@ -96,7 +131,9 @@ function _rolou() {
 export function fundoQuadroDaAba(id) {
   if (!_camada) return;
   let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  _camada.dataset.quadro = id === 'i_cockpit' ? '1' : String(2 + (h % 5));
+  const q = id === 'i_cockpit' ? 1 : 2 + (h % 5);
+  _camada.dataset.quadro = String(q);
+  _ativar(id === 'i_cockpit' ? 'hero' : CAMADAS[h % 3]);
 }
 
 /** Observa as seções `[data-v63-quadro]` dentro de `raiz`: a que cruza o meio da tela manda. */
@@ -104,7 +141,11 @@ export function fundoSeguirSecoes(raiz) {
   if (!_camada || !('IntersectionObserver' in window)) return;
   if (_io) _io.disconnect();
   _io = new IntersectionObserver(es => {
-    for (const e of es) if (e.isIntersecting) _camada.dataset.quadro = e.target.dataset.v63Quadro;
+    for (const e of es) if (e.isIntersecting) {
+      const q = e.target.dataset.v63Quadro;
+      _camada.dataset.quadro = q;
+      _ativar(CAMADA_DO_QUADRO[q] || 'secao2');
+    }
   }, {rootMargin: '-45% 0px -45% 0px'});
   raiz.querySelectorAll('[data-v63-quadro]').forEach(s => _io.observe(s));
 }

@@ -1669,60 +1669,99 @@
   }
 
   // static/js/src/v63/fundo.js
+  var CAMADAS = ["hero", "secao1", "secao2"];
+  var CAMADA_DO_QUADRO = { 1: "hero", 2: "secao1", 3: "secao1", 4: "secao2", 5: "secao2", 6: "secao2" };
   var _camada = null;
-  var _video = null;
   var _cv = null;
   var _raf2 = 0;
   var _vivo = false;
   var _io2 = null;
   var _passo = null;
+  var _so_poster = false;
+  var _ret = false;
+  var _ativa = "";
+  var _videos = {};
+  var _base = (c) => "/static/assets/v63/fluxo_" + c + (c === "hero" && _ret ? "_m" : "");
   function fundoMontar() {
     if (_camada) return;
-    const ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
+    _ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
     const eco = !!(navigator.connection && navigator.connection.saveData);
-    const base = "/static/v63/fluxo_hero" + (ret ? "_m" : "");
+    _so_poster = _redMotion || eco || _sobrio;
     const f = document.createElement("div");
     f.id = "v63-fundo";
     f.setAttribute("aria-hidden", "true");
     f.dataset.quadro = "1";
-    f.innerHTML = `<div class="v63-cam"><div class="v63-quadro" style="background-image:url(${base}.webp)"></div></div><div class="v63-veu"></div>`;
+    f.innerHTML = `<div class="v63-cam">${CAMADAS.map((c) => `<div class="v63-quadro" data-c="${c}"></div>`).join("")}</div><div class="v63-veu"></div>`;
     document.body.insertBefore(f, document.body.firstChild);
     _camada = f;
-    const q = f.querySelector(".v63-quadro");
-    if (_redMotion || eco || _sobrio) return;
+    _ativar("hero");
+    document.addEventListener("visibilitychange", _visib);
+    if (!_redMotion) {
+      addEventListener("scroll", _rolou, { passive: true });
+      _rolou();
+    }
+  }
+  function _q(c) {
+    return _camada && _camada.querySelector(`.v63-quadro[data-c="${c}"]`);
+  }
+  function _ativar(c) {
+    if (!_camada || c === _ativa) return;
+    const velha = _ativa;
+    _ativa = c;
+    const q = _q(c);
+    if (!q.style.backgroundImage) q.style.backgroundImage = `url(${_base(c)}.webp)`;
+    for (const k of CAMADAS) _q(k).classList.toggle("ativa", k === c);
+    _camada.dataset.camada = c;
+    if (velha && _videos[velha]) _videos[velha].pause();
+    if (_cv) {
+      _vivo = c === "hero" && !document.hidden && !_sobrio;
+      if (_vivo && !_raf2) _raf2 = requestAnimationFrame(_passo);
+    }
+    if (_so_poster) return;
+    if (!_videos[c]) _criarVideo(c, q);
+    _tocar();
+  }
+  function _criarVideo(c, q) {
     const v = document.createElement("video");
     v.muted = true;
     v.loop = true;
     v.playsInline = true;
-    v.autoplay = true;
     v.preload = "auto";
     v.setAttribute("muted", "");
     v.setAttribute("playsinline", "");
-    v.poster = base + ".webp";
-    v.innerHTML = `<source src="${base}.webm" type="video/webm"><source src="${base}.mp4" type="video/mp4">`;
+    v.innerHTML = `<source src="${_base(c)}.webm" type="video/webm"><source src="${_base(c)}.mp4" type="video/mp4">`;
     v.addEventListener("playing", () => {
       q.classList.add("toca");
-      if (_cv) {
+      if (c === "hero" && _cv) {
         _vivo = false;
         _cv.remove();
         _cv = null;
       }
     }, { once: true });
-    v.addEventListener("error", _paraCanvas, true);
+    if (c === "hero") {
+      v.addEventListener("error", _paraCanvas, true);
+      setTimeout(() => {
+        if (!q.classList.contains("toca") && _ativa === "hero") _paraCanvas();
+      }, 4e3);
+    }
     q.appendChild(v);
-    _video = v;
+    _videos[c] = v;
+  }
+  function _tocar() {
+    const v = _videos[_ativa];
+    if (!v) return;
+    if (document.hidden || _sobrio) {
+      v.pause();
+      return;
+    }
     const p = v.play();
-    if (p && p.catch) p.catch(_paraCanvas);
-    setTimeout(() => {
-      if (!q.classList.contains("toca")) _paraCanvas();
-    }, 4e3);
-    document.addEventListener("visibilitychange", _visib);
-    addEventListener("scroll", _rolou, { passive: true });
-    _rolou();
+    if (p && p.catch) p.catch(() => {
+      if (_ativa === "hero") _paraCanvas();
+    });
   }
   function _paraCanvas() {
     if (_cv || !_camada) return;
-    const q = _camada.querySelector(".v63-quadro");
+    const q = _q("hero");
     const cv = document.createElement("canvas");
     cv.className = "v63-cv";
     q.appendChild(cv);
@@ -1751,16 +1790,9 @@
   }
   function _visib() {
     const parar = document.hidden || _sobrio;
-    if (_video) {
-      if (parar) _video.pause();
-      else {
-        const p = _video.play();
-        if (p && p.catch) p.catch(() => {
-        });
-      }
-    }
+    _tocar();
     if (_cv) {
-      _vivo = !parar;
+      _vivo = !parar && _ativa === "hero";
       if (_vivo && !_raf2) _raf2 = requestAnimationFrame(_passo);
     }
   }
@@ -1781,13 +1813,19 @@
     if (!_camada) return;
     let h = 0;
     for (const c of String(id)) h = h * 31 + c.charCodeAt(0) >>> 0;
-    _camada.dataset.quadro = id === "i_cockpit" ? "1" : String(2 + h % 5);
+    const q = id === "i_cockpit" ? 1 : 2 + h % 5;
+    _camada.dataset.quadro = String(q);
+    _ativar(id === "i_cockpit" ? "hero" : CAMADAS[h % 3]);
   }
   function fundoSeguirSecoes(raiz) {
     if (!_camada || !("IntersectionObserver" in window)) return;
     if (_io2) _io2.disconnect();
     _io2 = new IntersectionObserver((es) => {
-      for (const e of es) if (e.isIntersecting) _camada.dataset.quadro = e.target.dataset.v63Quadro;
+      for (const e of es) if (e.isIntersecting) {
+        const q = e.target.dataset.v63Quadro;
+        _camada.dataset.quadro = q;
+        _ativar(CAMADA_DO_QUADRO[q] || "secao2");
+      }
     }, { rootMargin: "-45% 0px -45% 0px" });
     raiz.querySelectorAll("[data-v63-quadro]").forEach((s) => _io2.observe(s));
   }
@@ -15347,7 +15385,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
 
   // static/js/src/abas/acervo.js
-  var _q = "";
+  var _q2 = "";
   var _esf = "todos";
   var _ultimaFicha = null;
   var GRAU = (g) => {
@@ -15392,10 +15430,10 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       if (o) o.innerHTML = _acervoKpis(st);
     }, 0);
     h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
-      <label>O que procurar<br><input id="ac-q" class="inp" style="width:100%" value="${esc(_q)}" placeholder="SEI-080001/000633/2024 · 000700.007924/2026-97 · SME-PRO-2025/38233 · CNPJ · fornecedor · órgão · termo"></label>
+      <label>O que procurar<br><input id="ac-q" class="inp" style="width:100%" value="${esc(_q2)}" placeholder="SEI-080001/000633/2024 · 000700.007924/2026-97 · SME-PRO-2025/38233 · CNPJ · fornecedor · órgão · termo"></label>
       <label>Esfera<br><select id="ac-esf" class="inp"><option value="todos">todas</option><option value="estado" ${_esf === "estado" ? "selected" : ""}>Estado</option><option value="prefeitura" ${_esf === "prefeitura" ? "selected" : ""}>Prefeitura</option></select></label>
       <button type="submit" class="btn accent">🔎 Buscar</button></form>
-    <div id="ac-res" style="margin-top:10px">${_q ? spin() : '<div class="dim">Resultados ordenados por valor pago; clique no nº para abrir a ficha.</div>'}</div>`);
+    <div id="ac-res" style="margin-top:10px">${_q2 ? spin() : '<div class="dim">Resultados ordenados por valor pago; clique no nº para abrir a ficha.</div>'}</div>`);
     h += `<div id="ac-ficha" style="margin-top:12px"></div>`;
     h += `<div id="ac-regras" style="margin-top:12px"></div>`;
     setTimeout(async () => {
@@ -15403,11 +15441,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       const o = await _quandoExistir2("ac-regras");
       if (o) o.innerHTML = _secRegrasAcervo(r);
     }, 0);
-    if (_q) setTimeout(() => acervoBuscar(_q, _esf), 0);
+    if (_q2) setTimeout(() => acervoBuscar(_q2, _esf), 0);
     return h;
   }
   async function acervoBuscar(q, esf) {
-    _q = q;
+    _q2 = q;
     _esf = esf;
     const o = await _quandoExistir2("ac-res");
     if (!o) return;
@@ -15664,7 +15702,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       ev.preventDefault();
       const a = b.dataset.acervo;
       if (a === "buscar") {
-        _q = b.dataset.q || "";
+        _q2 = b.dataset.q || "";
         _esf = b.dataset.esf || "todos";
         if (typeof window.ir === "function") window.ir("g_acervo");
       } else if (a === "abrir") acervoAbrir(b.dataset.numero);

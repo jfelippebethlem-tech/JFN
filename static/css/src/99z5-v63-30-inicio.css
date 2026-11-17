@@ -28,7 +28,7 @@ html.v63 .v63-eti{display:inline-flex;align-items:center;gap:8px;height:26px;pad
 html.v63 .v63-eti i{width:6px;height:6px;border-radius:50%;background:var(--ion);box-shadow:0 0 0 3px rgba(29,91,255,.15)}
 
 /* ── herói ──────────────────────────────────────────────────────────────────────────────────────── */
-html.v63 .v63-hero{position:relative;display:grid;gap:28px;padding:22px 2px 30px;align-items:center}
+html.v63 .v63-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:28px;padding:22px 2px 30px;align-items:center}
 @media (min-width:900px){html.v63 .v63-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:44px;min-height:min(74vh,700px);padding:40px 4px 48px}}
 html.v63 .v63-hero-tx{position:relative;z-index:1}
 html.v63 .v63-h1{margin:18px 0 0;font:700 clamp(42px,7.6vw,80px)/.98 var(--f-display);letter-spacing:-.04em;color:var(--ink);text-wrap:balance}
@@ -99,7 +99,7 @@ html.v63 .v63-integra-fr .ok{color:var(--ok-text)} html.v63 .v63-integra-fr .at{
 html.v63 .v63-integra-fr a{color:var(--ion);cursor:pointer;margin-left:4px}
 
 /* ── seções ─────────────────────────────────────────────────────────────────────────────────────── */
-html.v63 .v63-sec{display:grid;gap:22px;padding:42px 0;align-items:center;border-top:1px solid var(--line)}
+html.v63 .v63-sec{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;padding:42px 0;align-items:center;border-top:1px solid var(--line)}   /* minmax(0,…): o cartão das barras não alarga a coluna (estourava 390px) */
 @media (min-width:900px){
   html.v63 .v63-sec{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:48px;padding:72px 4px}
   html.v63 .v63-sec-iso{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
@@ -162,7 +162,7 @@ html.v63 .v63-estado.indisponível, html.v63 .v63-estado.indisponivel{background
 
 /* barras isométricas */
 html.v63 .v63-iso{padding:18px 14px 12px}
-html.v63 .v63-iso-l{--bw:34px;--alt:170px;display:flex;justify-content:space-between;align-items:flex-end;gap:6px;padding:26px 6px 0;min-height:calc(var(--alt) + 90px)}
+html.v63 .v63-iso-l{--bw:26px;--alt:170px;display:flex;justify-content:space-between;align-items:flex-end;gap:6px;padding:26px 6px 0;min-height:calc(var(--alt) + 90px)}
 @media (min-width:600px){html.v63 .v63-iso-l{--bw:46px;--alt:200px;gap:12px;padding:30px 10px 0}}
 html.v63 .v63-iso-b{all:unset;box-sizing:border-box;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
   --a:calc(var(--h) * var(--alt) + 14px)}
@@ -204,11 +204,11 @@ html.v63 .v63-slack-av{display:grid;place-items:center;width:38px;height:38px;bo
 html.v63 .v63-slack-q{display:flex;gap:8px;align-items:baseline}
 html.v63 .v63-slack-q b{font:700 14px var(--f-sans);color:var(--ink)}
 html.v63 .v63-slack-q span{font-size:11px;color:var(--muted)}
-html.v63 .v63-slack-tx{margin:4px 0 0;color:var(--ink-2);font-size:14px;line-height:1.5}
+html.v63 .v63-slack-tx{overflow-wrap:anywhere;margin:4px 0 0;color:var(--ink-2);font-size:14px;line-height:1.5}
 html.v63 .v63-slack-tx b.sev-alta{color:var(--v63-alerta-text);background:rgba(255,196,0,.2);padding:0 5px;border-radius:5px}
 html.v63 .v63-slack-tx b.sev-media{color:var(--ion)}
 html.v63 .v63-slack-tx b.sev-baixa{color:var(--muted)}
-html.v63 .v63-slack-bq{margin:10px 0 0;padding:8px 12px;border-left:3px solid var(--ion);background:rgba(29,91,255,.05);
+html.v63 .v63-slack-bq{margin:10px 0 0;padding:8px 12px;overflow-wrap:anywhere;border-left:3px solid var(--ion);background:rgba(29,91,255,.05);
   border-radius:0 10px 10px 0;color:var(--ink-2);font-size:13px;line-height:1.5}
 html.v63 .v63-slack-campos{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;color:var(--muted);font-size:11px}
 html.v63 .v63-slack-campos b{color:var(--ink);font-weight:600}
@@ -227,3 +227,17 @@ html.v63 .v63-ponte::before, html.v63 .v63-ponte::after{content:"";flex:1;height
   html.v63 .v63-iso-col .f{transform:none} html.v63 .v63-iso-col .l{transform:skewY(-38deg)} html.v63 .v63-iso-col .t{transform:none}
   html.v63 .v63-integra .v63-fonte-ic{background:var(--ion);color:#fff}
 }
+
+/* ── legibilidade sobre as fitas (vídeos do Higgsfield, azul médio denso) ───────────────────────────
+   Todo texto que NÃO está num cartão de vidro ganha um halo claro difuso atrás do bloco e o secundário
+   escurece um degrau (`--v63-sobre-fita`). Medido com `_SANDBOX/v63_contraste.js`: fundo real (texto
+   oculto) no pior quadro amostrado de cada vídeo × cor do texto ≥ 4,5:1. */
+html.v63{--v63-sobre-fita:#3E4C68}
+html.v63 :is(.v63-hero-tx,.v63-sec-tx,.v63-integra){position:relative;isolation:isolate}
+html.v63 :is(.v63-hero-tx,.v63-sec-tx,.v63-integra)::after{content:"";position:absolute;inset:-48px -72px;z-index:-1;
+  pointer-events:none;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(247,250,255,.94) 0,rgba(247,250,255,.9) 62%,rgba(247,250,255,.6) 84%,rgba(247,250,255,0) 100%)}
+html.v63 .v63-integra::after{inset:-24px -10%}
+/* a ponte usa ::before/::after para as linhas: o rótulo ganha a própria pílula clara */
+html.v63 .v63-ponte span{padding:5px 12px;border-radius:999px;background:rgba(247,250,255,.94)}
+html.v63 :is(.v63-lead,.v63-sec-tx p,.v63-nota,.v63-integra-t,.v63-integra-fr,.v63-ponte){color:var(--v63-sobre-fita)}
