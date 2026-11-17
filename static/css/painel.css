@@ -964,7 +964,8 @@
     /* v66: tabela que JÁ ROLA no próprio contêiner não precisa quebrar palavra na letra — com `anywhere` a
        largura mínima da coluna ignora a palavra e a tabela encolhia até 324 px ("Exoneração" numa célula de
        34 px, nº SEI em 3 linhas). `break-word` (a regra do v57) deixa a coluna ter a palavra e o contêiner rola. */
-    #view [style*="overflow-x:auto"] td,#view [style*="overflow-x: auto"] td{overflow-wrap:break-word}
+    #view [style*="overflow-x:auto"] td,#view [style*="overflow-x: auto"] td,
+    #view [style*="overflow:auto"] td,#view [style*="overflow: auto"] td{overflow-wrap:break-word}
   }
   html,body{overflow-x:clip}
 
