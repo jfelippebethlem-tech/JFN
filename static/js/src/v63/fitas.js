@@ -2,7 +2,7 @@
  * feixes de fios azuis sobre branco, como seda).
  *
  * Uma função pura de (contexto, largura, altura, tempo). Desde 17/11/2026 os vídeos do fundo são os do
- * Higgsfield (`static/v63/fluxo_{hero,hero_m,secao1,secao2}`); esta função é SÓ o fallback ao vivo do
+ * Higgsfield (`static/assets/v63/fluxo_{hero,hero_m,secao1,secao2}`); esta função é SÓ o fallback ao vivo do
  * herói (`v63/fundo.js`), para quem não consegue tocar vídeo. Ela segue PERIÓDICA (todo termo de tempo é
  * `fase × inteiro`, fase = 2π·t/PERIODO) porque `tools/v63_render_fitas.js` ainda gera dela um vídeo
  * procedural de reserva, emendável em loop.

@@ -1681,7 +1681,7 @@
   var _ret = false;
   var _ativa = "";
   var _videos = {};
-  var _base = (c) => "/static/v63/fluxo_" + c + (c === "hero" && _ret ? "_m" : "");
+  var _base = (c) => "/static/assets/v63/fluxo_" + c + (c === "hero" && _ret ? "_m" : "");
   function fundoMontar() {
     if (_camada) return;
     _ret = matchMedia("(max-aspect-ratio: 4/5)").matches;

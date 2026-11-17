@@ -28,7 +28,7 @@ let _camada = null, _cv = null, _raf = 0, _vivo = false, _io = null, _passo = nu
 let _so_poster = false, _ret = false, _ativa = '';
 const _videos = {};          // camada → <video>
 
-const _base = c => '/static/v63/fluxo_' + c + (c === 'hero' && _ret ? '_m' : '');
+const _base = c => '/static/assets/v63/fluxo_' + c + (c === 'hero' && _ret ? '_m' : '');
 
 export function fundoMontar() {
   if (_camada) return;
