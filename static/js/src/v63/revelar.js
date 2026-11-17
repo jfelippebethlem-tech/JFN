@@ -41,7 +41,9 @@ export function contarEm(bloco) {
 }
 
 const _f = (fmt, x) => fmt === 'R$' ? fmtR(x) : fmtN(Math.round(x));
-function _final(el) { el.textContent = _f(el.dataset.fmt, +el.dataset.alvo); el.dataset.contado = '1'; }
+/* v66: `data-alvo` também é usado por botões com TEXTO (o "📨 LAI" leva o nº do processo); sem a guarda o
+   texto do botão virava "NaN". Só número conta — o resto fica como está. */
+function _final(el) { const a = +el.dataset.alvo; if (!isFinite(a)) return; el.textContent = _f(el.dataset.fmt, a); el.dataset.contado = '1'; }
 function _contar(el) {
   if (el.dataset.contado) return;
   const alvo = +el.dataset.alvo; if (!isFinite(alvo)) return;

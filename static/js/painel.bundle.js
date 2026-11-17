@@ -2123,7 +2123,9 @@
   }
   var _f = (fmt, x) => fmt === "R$" ? fmtR(x) : fmtN(Math.round(x));
   function _final(el) {
-    el.textContent = _f(el.dataset.fmt, +el.dataset.alvo);
+    const a = +el.dataset.alvo;
+    if (!isFinite(a)) return;
+    el.textContent = _f(el.dataset.fmt, a);
     el.dataset.contado = "1";
   }
   function _contar2(el) {
