@@ -37,7 +37,10 @@ export let _respProc='';
 export const _ehEmail=s=>/@/.test(String(s||''));
 export async function renderResponsaveis(){
   let h=cover('estado','Responsáveis pelo processo','Quem responde por um processo SEI: ordenador de despesa, gestor e fiscal do contrato, com ID funcional quando o documento o traz.','🧑‍⚖️');
-  h+=`<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter'){_respProc=this.value;ir('e_resp')}"></div>`;
+  h+=`<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter')this.blur()"></div>`;
+  /* v66: o Enter chamava ir() e o re-render tirava o campo focado → blur → o onchange chamava ir() DE NOVO no
+     meio da troca de innerHTML ("The node to be removed is no longer a child"). Agora o Enter só solta o foco
+     e o único disparo é o onchange (no iPhone, a tecla "Ir" faz o mesmo). */
   if(!_respProc.trim())return h+card('<div class="muted">Informe o número do processo. A busca lê o que já foi capturado — ela responde uma pergunta, não varre o acervo.</div>');
   let d;
   try{ d=await J('/api/responsaveis?processo='+encodeURIComponent(_respProc.trim())); }
