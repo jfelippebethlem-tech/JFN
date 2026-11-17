@@ -46,14 +46,21 @@ def test_nenhum_new_context_solto_no_sweep():
 
 
 def test_todos_os_logins_usam_o_contexto_compartilhado():
-    """Cada `login(pg, ...)` precisa ter vindo de uma página do contexto único."""
+    """Cada login (`login(pg, ...)` ou `entrar(pg, ...)`) precisa ter vindo de uma página do contexto único.
+
+    Desde 15/11/2026 (bc2b55a0, navegador FIXO do it-campo) o sweep principal e o de processos-pai
+    montam o navegador por `sei_reader.navegador_sei(..., user_agent=_UA_DESKTOP)` e logam por
+    `entrar(pg, ...)`; a recaptura segue em `_contexto_sei`. As duas montagens contam — desde que a
+    de `navegador_sei` passe explicitamente o UA de desktop deste módulo."""
     fonte = _fonte()
-    n_login = len(re.findall(r"await login\(pg", fonte))
+    n_login = len(re.findall(r"await (?:login|entrar)\(pg", fonte))
     n_ctx = len(re.findall(r"ctx = await _contexto_sei\(b\)", fonte))
+    n_nav = len(re.findall(r"ctx, fixo = await navegador_sei\(pw,[^)]*?user_agent=_UA_DESKTOP",
+                           fonte, flags=re.S))
     assert n_login >= 3, "os caminhos de login sumiram — reveja este teste antes de relaxá-lo"
-    assert n_ctx >= n_login, (
-        f"{n_login} caminhos fazem login e só {n_ctx} usam `_contexto_sei` — algum voltou a montar "
-        "o navegador por conta própria")
+    assert n_ctx + n_nav >= n_login, (
+        f"{n_login} caminhos fazem login e só {n_ctx + n_nav} usam `_contexto_sei`/`navegador_sei` "
+        "com o UA de desktop — algum voltou a montar o navegador por conta própria")
 
 
 def test_user_agent_de_desktop_existe_e_e_unico():
