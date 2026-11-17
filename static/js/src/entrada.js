@@ -37,6 +37,7 @@ import {_redMotion, _sobrio, _v60, _v61} from './capacidade/estado.js';
 import {movimentoBoot} from './ui/movimento.js';
 import {v60Boot} from './ui/v60.js';
 import {v61Boot} from './ui/v61.js';
+import {v63Boot} from './v63/index.js';
 /* VIDRO + JARVIS (16/11/2026): o vidro ajustável e a vida contínua. Sem efeito de topo — ligam pelas
    chamadas `vidroBoot()`/`jarvisBoot()` na sequência de boot, como os outros `ligar*`. */
 import {vidroBoot} from './ui/vidro.js';
@@ -350,7 +351,9 @@ async function ir(id){
        troca, e o resultado visual que o v60 quer é só o fade. */
     /* v61: a View Transition VOLTA, mas só no miolo (fade + 12px; `99z2-v61-70-movimento.css`) e só em
        máquina que entrega quadro — no modo sóbrio (FPS medido baixo) vale o `.fade` em CSS. */
-    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))){
+    /* v63: com a cobertura azul da transição de clique no ar (`v63-tr-on`), sem View Transition — as
+       duas fotografariam uma à outra no meio do gesto (`v63/transicao.js`). */
+    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))&&!document.documentElement.classList.contains('v63-tr-on')){
       const _h=document.documentElement;_h.classList.add('v61-vt');
       const _vt=document.startViewTransition(pintar);
       _vt.finished.finally(()=>_h.classList.remove('v61-vt'));
@@ -385,7 +388,7 @@ fetch('/static/assets/no-energia.png',{method:'HEAD'})
    importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
-(async()=>{v60Boot();v61Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
+(async()=>{v60Boot();v61Boot();v63Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
   /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
   const _h=decodeURIComponent(location.hash.slice(1));
   await ir(_abaValida(_h)?_h:'i_cockpit');

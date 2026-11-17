@@ -34,7 +34,7 @@
 import {$, esc, svgIco, card, kpi, sec, spin, corta, clk} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J} from '../nucleo/http.js';
-import {_redMotion, _sobrio, _v60, _v61} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60, _v61, _v63} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 /* A malha do Estado saiu para `cena/malha-rj.js` (v59). O `import` E o reexport lá no fim são as
    duas metades da mesma decisão: aqui ela é USADA (fundo e mesa a pedem), e lá embaixo ela é
@@ -896,6 +896,7 @@ export function nucleoStart(){
 
 /* ══ VIDEO DAS ESFERAS ══ */
 export async function nebulaViva(){
+  if(_v63)return;   // v63: o fundo é um só, o das fitas (`v63/fundo.js`) — nenhum vídeo de esfera é criado
   /* v61: as peças claras de `assets/v61/` (loop por esfera; Início = a sala de comando) */
   const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',inicio:'v61/sala'}   // sistema: imagem própria, sem vídeo (14/11)
                  :{estado:'nebula-estado',prefeitura:'nebula-prefeitura',

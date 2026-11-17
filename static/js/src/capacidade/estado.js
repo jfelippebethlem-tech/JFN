@@ -45,3 +45,8 @@ export const _v61 = document.documentElement.classList.contains('v61');
 
 /** Único caminho de escrita da bandeira de sobriedade. Chamado só por `capacidade/sobrio.js`. */
 export function _setSobrio(v) { _sobrio = !!v; }
+
+/* v63 FLUXO CLARO (2026-11-17): a linguagem da landing "Relay" traduzida para branco + azul — fundo de
+   fitas de luz, título com palavra em serifa itálica, grafo de fluxo, transição de clique que enche a
+   tela. Mesma mecânica das anteriores: a classe `v63` nasce no script do <head>, constante por carga. */
+export const _v63 = document.documentElement.classList.contains('v63');

@@ -22,13 +22,15 @@ import {geoMercator, geoPath} from 'd3-geo';
 import {feature, mesh} from 'topojson-client';
 import {$, esc} from '../nucleo/dom.js';
 import {fmtN, fmtR} from '../nucleo/formato.js';
-import {_redMotion} from '../capacidade/estado.js';
+import {_redMotion, _v63} from '../capacidade/estado.js';
 import {aoVivoOuvir} from '../aovivo/estado.js';
 import {abrirDossie} from '../ui/index.js';
 
 const GEO = '/static/assets/geo/';
 const W = 800, H = 520;
-const RAMPA = ['#EAF4FF', '#B9D9FB', '#6FAEF6', '#1E7BF0', '#0A3E8C'];
+/* v63: a rampa termina no azul elétrico do brief (#1D5BFF → #1546D8), não no marinho — o mapa é claro
+   de ponta a ponta. Cinco degraus continuam distinguíveis (medido: ΔL ≥ 9 entre vizinhos). */
+const RAMPA = _v63 ? ['#EEF4FF', '#C2D6FF', '#86ADFF', '#4A80FF', '#1546D8'] : ['#EAF4FF', '#B9D9FB', '#6FAEF6', '#1E7BF0', '#0A3E8C'];
 const RIO = '3304557';
 const METRICAS = [
   ['valor_contratado', 'Valor contratado', 'rs'],
@@ -43,7 +45,7 @@ const METODO = {campo: 'unidade compradora', orcamento: 'orçamento', unidade: '
 const STATUS = {em_execucao: 'Em execução', executado: 'Executado', rescindido: 'Rescindido', sem_vigencia: 'Sem vigência na fonte'};
 /* grau de certeza da atribuição (Estado): [chave, rótulo do botão, rótulo longo, cor na barra de cobertura] */
 const GRAUS = [
-  ['explicito', 'Explícito no texto', 'explícito no texto', '#0A3E8C'],
+  ['explicito', 'Explícito no texto', 'explícito no texto', _v63 ? '#1546D8' : '#0A3E8C'],
   ['unidade', 'Inferido pela unidade', 'inferido pela unidade', '#1E7BF0'],
   ['sede', 'Sede do órgão', 'sede do órgão', '#8CBEF8'],
 ];

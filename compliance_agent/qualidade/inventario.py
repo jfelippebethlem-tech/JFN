@@ -35,6 +35,8 @@ _ABA = re.compile(r"\{id:'([a-z_]+)'[^}\n]*?tl:'([^']*)'")
 
 COCKPIT = "static/js/src/abas/cockpit.js"
 CENA = "static/js/src/cena/index.js"
+V63_INICIO = "static/js/src/v63/inicio.js"   # v63: herói + seções do Início, antes do cockpit
+_V63_MANCHETE = re.compile(r'data-manchete="(v63-[\w-]+)"')
 _CKCARD = re.compile(r"ckCard\('(\w+)'")
 _CK_FIXOS = ("ck-econ", "ck-ved", "ck-fontes")  # herói, vedada e frescor: fora do ckCard
 _NU_NODES = re.compile(r"export const NU_NODES=\[(.*?)\n\];", re.S)
@@ -95,10 +97,12 @@ def abas(repo: Path = REPO) -> dict[str, dict]:
 
 
 def cards_cockpit(repo: Path = REPO) -> list[str]:
-    """Ids dos instrumentos do cockpit (`cki-<id>` dos ckCard) e dos números fixos (herói, vedada, frescor)."""
+    """Ids dos instrumentos do cockpit (`cki-<id>` dos ckCard), dos números fixos (herói, vedada, frescor)
+    e das afirmações do Início da v63 (`data-manchete="v63-…"` em `v63/inicio.js`)."""
     texto = _ler(repo, COCKPIT)
     cards = [f"cki-{i}" for i in dict.fromkeys(_CKCARD.findall(texto))]
-    return cards + [c for c in _CK_FIXOS if f'id="{c}"' in texto]
+    v63 = list(dict.fromkeys(_V63_MANCHETE.findall(_ler(repo, V63_INICIO))))
+    return cards + [c for c in _CK_FIXOS if f'id="{c}"' in texto] + v63
 
 
 def chips_mesa(repo: Path = REPO) -> list[str]:

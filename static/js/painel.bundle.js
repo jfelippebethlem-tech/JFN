@@ -237,10 +237,10 @@
       const c = _jCache.get(ep);
       if (c && Date.now() - c.t < 9e4) return c.d;
     }
-    const TETO3 = opt && opt.tetoMs || 3e4;
+    const TETO4 = opt && opt.tetoMs || 3e4;
     for (let t = 0; ; t++) {
       const ac = "AbortController" in window ? new AbortController() : null;
-      const relogio = ac ? setTimeout(() => ac.abort(), TETO3) : 0;
+      const relogio = ac ? setTimeout(() => ac.abort(), TETO4) : 0;
       try {
         const r = await fetch(ep, ac ? Object.assign({}, opt, { signal: ac.signal }) : opt);
         const d = await r.json();
@@ -248,7 +248,7 @@
         return d;
       } catch (e) {
         const estourou = e && e.name === "AbortError";
-        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO3 / 1e3}s` : String(e) };
+        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO4 / 1e3}s` : String(e) };
         await new Promise((rs2) => setTimeout(rs2, 1200));
       } finally {
         if (relogio) clearTimeout(relogio);
@@ -605,6 +605,7 @@
   function _setSobrio(v) {
     _sobrio = !!v;
   }
+  var _v63 = document.documentElement.classList.contains("v63");
 
   // static/js/src/consciencia.js
   var MARCHA = {
@@ -1605,6 +1606,509 @@
     });
   }
 
+  // static/js/src/v63/fitas.js
+  var PERIODO = 12;
+  var SEG = 48;
+  var FEIXES = [
+    { y0: 0.74, amp: 0.24, larg: 0.44, n: 46, incl: -0.62, c: ["#1D5BFF", "#38D3FF"], k: 1, f: 0, ond: 0.85 },
+    { y0: 0.4, amp: 0.16, larg: 0.24, n: 26, incl: -0.3, c: ["#6FA8FF", "#1D5BFF"], k: 1, f: 2.1, ond: 1.05 },
+    { y0: 0.96, amp: 0.1, larg: 0.16, n: 16, incl: -0.7, c: ["#38D3FF", "#6FA8FF"], k: 2, f: 4, ond: 1.3 }
+  ];
+  function desenharFitas(ctx, w, h, t, dens = 1) {
+    const fase = 2 * Math.PI * (t % PERIODO / PERIODO);
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const retrato = h > w * 1.1;
+    const H2 = retrato ? h * 0.62 : h, oy = retrato ? h * 0.22 : 0;
+    const hx = w * (0.66 + 0.08 * Math.sin(fase)), hy = h * (0.58 + 0.06 * Math.cos(fase)), hr = Math.max(w, h) * 0.55;
+    const halo = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+    halo.addColorStop(0, "rgba(111,168,255,.16)");
+    halo.addColorStop(0.5, "rgba(56,211,255,.05)");
+    halo.addColorStop(1, "rgba(56,211,255,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, w, h);
+    for (const fx of FEIXES) {
+      const n = Math.max(6, Math.round(fx.n * dens));
+      const g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0, fx.c[0]);
+      g.addColorStop(0.55, fx.c[1]);
+      g.addColorStop(1, fx.c[0]);
+      ctx.strokeStyle = g;
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1) - 0.5;
+        _curva(ctx, w, H2, oy, fx, fase, u, i, retrato);
+        const borda = 1 - Math.abs(u) * 2;
+        ctx.globalAlpha = 0.07 + 0.5 * borda * borda * borda;
+        ctx.lineWidth = i % 7 === 3 ? 1.5 : 0.8;
+        ctx.stroke();
+      }
+      _curva(ctx, w, H2, oy, fx, fase, 0, 0, retrato);
+      ctx.globalAlpha = 0.1;
+      ctx.strokeStyle = "#38D3FF";
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+  function _curva(ctx, w, H2, oy, fx, fase, u, i, retrato) {
+    ctx.beginPath();
+    for (let s = 0; s <= SEG; s++) {
+      const xn = s / SEG;
+      const x = -0.08 * w + xn * 1.16 * w;
+      const dobra = Math.sin(xn * Math.PI * 1.6 + fase * fx.k + fx.f);
+      const eixo = fx.y0 + fx.amp * Math.sin(xn * Math.PI * fx.ond + fase * fx.k + fx.f * 0.7) + fx.incl * (xn - 0.5) * (retrato ? 1.5 : 1);
+      const fio = Math.sin(xn * 9 + fase * 2 + i * 0.7) * 4e-3;
+      const y = oy + H2 * (eixo + u * fx.larg * dobra + fio);
+      s ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+  }
+
+  // static/js/src/v63/fundo.js
+  var _camada = null;
+  var _video = null;
+  var _cv = null;
+  var _raf2 = 0;
+  var _vivo = false;
+  var _io2 = null;
+  var _passo = null;
+  function fundoMontar() {
+    if (_camada) return;
+    const ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
+    const eco = !!(navigator.connection && navigator.connection.saveData);
+    const base = "/static/v63/fluxo_hero" + (ret ? "_m" : "");
+    const f = document.createElement("div");
+    f.id = "v63-fundo";
+    f.setAttribute("aria-hidden", "true");
+    f.dataset.quadro = "1";
+    f.innerHTML = `<div class="v63-cam"><div class="v63-quadro" style="background-image:url(${base}.webp)"></div></div><div class="v63-veu"></div>`;
+    document.body.insertBefore(f, document.body.firstChild);
+    _camada = f;
+    const q = f.querySelector(".v63-quadro");
+    if (_redMotion || eco || _sobrio) return;
+    const v = document.createElement("video");
+    v.muted = true;
+    v.loop = true;
+    v.playsInline = true;
+    v.autoplay = true;
+    v.preload = "auto";
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    v.poster = base + ".webp";
+    v.innerHTML = `<source src="${base}.webm" type="video/webm"><source src="${base}.mp4" type="video/mp4">`;
+    v.addEventListener("playing", () => {
+      q.classList.add("toca");
+      if (_cv) {
+        _vivo = false;
+        _cv.remove();
+        _cv = null;
+      }
+    }, { once: true });
+    v.addEventListener("error", _paraCanvas, true);
+    q.appendChild(v);
+    _video = v;
+    const p = v.play();
+    if (p && p.catch) p.catch(_paraCanvas);
+    setTimeout(() => {
+      if (!q.classList.contains("toca")) _paraCanvas();
+    }, 4e3);
+    document.addEventListener("visibilitychange", _visib);
+    addEventListener("scroll", _rolou, { passive: true });
+    _rolou();
+  }
+  function _paraCanvas() {
+    if (_cv || !_camada) return;
+    const q = _camada.querySelector(".v63-quadro");
+    const cv = document.createElement("canvas");
+    cv.className = "v63-cv";
+    q.appendChild(cv);
+    _cv = cv;
+    const ctx = cv.getContext("2d");
+    const medir = () => {
+      cv.width = Math.round(innerWidth * 0.5);
+      cv.height = Math.round(innerHeight * 0.5);
+    };
+    medir();
+    addEventListener("resize", medir, { passive: true });
+    q.classList.add("toca");
+    _vivo = true;
+    let ult = 0;
+    const t0 = performance.now();
+    _passo = (now) => {
+      _raf2 = 0;
+      if (!_vivo) return;
+      if (now - ult >= 33) {
+        ult = now;
+        desenharFitas(ctx, cv.width, cv.height, (now - t0) / 1e3, 0.6);
+      }
+      _raf2 = requestAnimationFrame(_passo);
+    };
+    _raf2 = requestAnimationFrame(_passo);
+  }
+  function _visib() {
+    const fora = document.hidden;
+    if (_video) {
+      if (fora) _video.pause();
+      else {
+        const p = _video.play();
+        if (p && p.catch) p.catch(() => {
+        });
+      }
+    }
+    if (_cv) {
+      _vivo = !fora;
+      if (_vivo && !_raf2) _raf2 = requestAnimationFrame(_passo);
+    }
+  }
+  var _sy = -1;
+  var _pend = false;
+  function _rolou() {
+    if (_pend) return;
+    _pend = true;
+    requestAnimationFrame(() => {
+      _pend = false;
+      const y = Math.min(scrollY, 4e3);
+      if (y === _sy || !_camada) return;
+      _sy = y;
+      _camada.style.setProperty("--v63-sy", (-y * 0.12).toFixed(1) + "px");
+    });
+  }
+  function fundoQuadroDaAba(id) {
+    if (!_camada) return;
+    let h = 0;
+    for (const c of String(id)) h = h * 31 + c.charCodeAt(0) >>> 0;
+    _camada.dataset.quadro = id === "i_cockpit" ? "1" : String(2 + h % 5);
+  }
+  function fundoSeguirSecoes(raiz) {
+    if (!_camada || !("IntersectionObserver" in window)) return;
+    if (_io2) _io2.disconnect();
+    _io2 = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting) _camada.dataset.quadro = e.target.dataset.v63Quadro;
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    raiz.querySelectorAll("[data-v63-quadro]").forEach((s) => _io2.observe(s));
+  }
+  function fundoSoltarSecoes() {
+    if (_io2) {
+      _io2.disconnect();
+      _io2 = null;
+    }
+  }
+
+  // static/js/src/v63/moldura.js
+  var _timer = 0;
+  function molduraMontar() {
+    const lb = document.getElementById("livebadge");
+    if (lb && !lb.querySelector(".v63-st")) {
+      lb.classList.add("v63-status");
+      const s = document.createElement("span");
+      s.className = "v63-st";
+      s.textContent = "lendo motores…";
+      lb.appendChild(s);
+      lb.title = "motores do JFN agora — clique para a atividade ao vivo";
+    }
+    const ac = document.querySelector(".htop .actions");
+    if (ac && !ac.querySelector(".v63-cta")) {
+      const a = document.createElement("a");
+      a.className = "v63-btn sol v63-cta";
+      a.setAttribute("role", "button");
+      a.tabIndex = 0;
+      a.dataset.v63Ir = "g_buscar";
+      a.textContent = "Buscar CNPJ";
+      ac.insertBefore(a, ac.firstChild);
+    }
+    _ler();
+    clearInterval(_timer);
+    _timer = setInterval(() => {
+      if (!document.hidden) _ler();
+    }, 3e4);
+  }
+  async function _ler() {
+    const lb = document.getElementById("livebadge");
+    if (!lb) return;
+    const st = lb.querySelector(".v63-st");
+    const d = await J("/api/ao-vivo/estado");
+    if (!d || !Array.isArray(d.motores)) {
+      lb.classList.add("indisp");
+      lb.classList.remove("parado");
+      st.textContent = "status indisponível";
+      return;
+    }
+    const n = d.motores.filter((m) => m.estado === "rodando" && m.classe !== "infra").length;
+    lb.classList.remove("indisp");
+    lb.classList.toggle("parado", n === 0);
+    st.innerHTML = n ? `${fmtN(n)}<span class="w"> ${n === 1 ? "motor" : "motores"}</span> rodando` : '<span class="w">motores </span>em espera';
+    lb.dataset.motores = String(n);
+  }
+  function capaItalico(raiz) {
+    raiz.querySelectorAll(".cover .t").forEach((t) => {
+      if (t.querySelector(".v63-it")) return;
+      const nos = [...t.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim());
+      const no = nos[nos.length - 1];
+      if (!no) return;
+      const m = no.textContent.match(/^(.*?)(\S{3,})(\s*)$/s);
+      if (!m) return;
+      const em = document.createElement("em");
+      em.className = "v63-it";
+      em.textContent = m[2];
+      no.textContent = m[1];
+      no.after(em);
+      if (m[3]) em.after(document.createTextNode(m[3]));
+    });
+  }
+
+  // static/js/src/v63/transicao.js
+  var GESTOS = ["expandir", "cortina", "zoom"];
+  var ENTRA = 430;
+  var SAI = 560;
+  var TETO2 = 1600;
+  var CURVA = "cubic-bezier(.7,0,.2,1)";
+  var _n = 0;
+  var _ov = null;
+  var _cobriuEm = 0;
+  var _pintou = false;
+  var _saida = 0;
+  function transicaoLigar() {
+    document.addEventListener("click", _clique, true);
+    document.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-v63-ir],[data-v63-dossie]")) {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
+  }
+  function _clique(e) {
+    if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    const t = e.target.closest && e.target.closest("[data-v63-ir],[data-v63-dossie],nav.tabs button[data-aba],.sph,.ck-inst");
+    if (!t) return;
+    if (t.dataset.v63Dossie) {
+      e.preventDefault();
+      window.abrirDossie && window.abrirDossie(t.dataset.v63Dossie, t.dataset.nome || "");
+      return;
+    }
+    if (t.classList.contains("on")) return;
+    const destino = t.dataset.v63Ir;
+    if (!_redMotion && !_sobrio) _cobrir(t, e);
+    if (destino) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.ir && window.ir(destino);
+    }
+  }
+  function _cobrir(el, e) {
+    if (_ov) {
+      _ov.remove();
+      _ov = null;
+    }
+    const r = el.getBoundingClientRect(), W2 = innerWidth, H2 = innerHeight;
+    const gesto = el.dataset.v63Gesto || GESTOS[_n++ % GESTOS.length];
+    const cx = e.clientX || r.left + r.width / 2, cy = e.clientY || r.top + r.height / 2;
+    const raio = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16;
+    const ov = document.createElement("div");
+    ov.className = "v63-tr g-" + gesto;
+    ov.setAttribute("aria-hidden", "true");
+    const rotulo = (el.getAttribute("title") || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 42);
+    ov.innerHTML = `<span class="v63-tr-l">${rotulo.replace(/[<>&]/g, "")}</span>`;
+    document.body.appendChild(ov);
+    document.documentElement.classList.add("v63-tr-on");
+    _ov = ov;
+    _pintou = false;
+    _cobriuEm = 0;
+    clearTimeout(_saida);
+    const ini = {
+      expandir: `inset(${r.top}px ${W2 - r.right}px ${H2 - r.bottom}px ${r.left}px round ${raio}px)`,
+      cortina: "polygon(0% 0%, 0% 0%, -40% 100%, -40% 100%)",
+      zoom: `circle(0px at ${cx}px ${cy}px)`
+    }[gesto];
+    const fim = {
+      expandir: "inset(0px 0px 0px 0px round 0px)",
+      cortina: "polygon(0% 0%, 140% 0%, 100% 100%, -40% 100%)",
+      zoom: `circle(${Math.hypot(Math.max(cx, W2 - cx), Math.max(cy, H2 - cy)) + 2}px at ${cx}px ${cy}px)`
+    }[gesto];
+    ov.dataset.fim = fim;
+    const a = ov.animate([{ clipPath: ini }, { clipPath: fim }], { duration: ENTRA, easing: CURVA, fill: "forwards" });
+    a.finished.then(() => {
+      _cobriuEm = performance.now();
+      if (_pintou) _revelar();
+    }).catch(() => {
+    });
+    _saida = setTimeout(_revelar, TETO2);
+  }
+  function transicaoPintou() {
+    _pintou = true;
+    if (_ov && _cobriuEm) _revelar();
+  }
+  function _revelar() {
+    const ov = _ov;
+    if (!ov || ov.dataset.saindo) return;
+    ov.dataset.saindo = "1";
+    clearTimeout(_saida);
+    const g = ov.className.replace(/.*g-/, "");
+    const fim = ov.dataset.fim;
+    const quadros = {
+      expandir: [{ clipPath: fim }, { clipPath: "inset(0px 0px 100% 0px round 0px)" }],
+      // a cor sobe como cortina
+      cortina: [{ clipPath: fim }, { clipPath: "polygon(140% 0%, 140% 0%, 100% 100%, 100% 100%)" }],
+      // a lâmina segue e sai
+      zoom: [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(1.06)" }]
+    }[g];
+    const a = ov.animate(quadros, { duration: SAI, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" });
+    const fora = () => {
+      ov.remove();
+      if (_ov === ov) {
+        _ov = null;
+        document.documentElement.classList.remove("v63-tr-on");
+      }
+    };
+    a.finished.then(fora).catch(fora);
+  }
+
+  // static/js/src/v63/micro.js
+  var BRILHO = ".v63-btn, .chip, nav.tabs button, .v63-fonte";
+  var _pend2 = null;
+  var _raf3 = 0;
+  var _tilt = null;
+  var _fino = false;
+  function microLigar() {
+    if (_redMotion) return;
+    const fino = matchMedia("(hover:hover) and (pointer:fine)").matches;
+    document.addEventListener("pointermove", (e) => {
+      _pend2 = e;
+      if (!_raf3) _raf3 = requestAnimationFrame(_quadro);
+    }, { passive: true });
+    document.addEventListener("pointerdown", (e) => {
+      const b = e.target.closest && e.target.closest(BRILHO);
+      if (!b) return;
+      _luz(b, e);
+      b.classList.add("toque");
+      const solta = () => {
+        b.classList.remove("toque");
+        removeEventListener("pointerup", solta);
+        removeEventListener("pointercancel", solta);
+      };
+      addEventListener("pointerup", solta);
+      addEventListener("pointercancel", solta);
+    }, { passive: true });
+    if (!fino) _pend2 = null;
+    _fino = fino;
+  }
+  function _luz(b, e) {
+    const r = b.getBoundingClientRect();
+    b.style.setProperty("--mx", (e.clientX - r.left).toFixed(0) + "px");
+    b.style.setProperty("--my", (e.clientY - r.top).toFixed(0) + "px");
+  }
+  function _quadro() {
+    _raf3 = 0;
+    const e = _pend2;
+    if (!e || !e.target || !e.target.closest) return;
+    const b = e.target.closest(BRILHO);
+    if (b) _luz(b, e);
+    if (!_fino) return;
+    const c = e.target.closest(".v63-tilt");
+    if (_tilt && _tilt !== c) {
+      _tilt.style.removeProperty("--rx");
+      _tilt.style.removeProperty("--ry");
+      _tilt.classList.remove("v63-tilt-on");
+    }
+    _tilt = c;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    c.classList.add("v63-tilt-on");
+    c.style.setProperty("--rx", (-y * 4).toFixed(2) + "deg");
+    c.style.setProperty("--ry", (x * 5).toFixed(2) + "deg");
+    c.style.setProperty("--mx", ((x + 0.5) * 100).toFixed(1) + "%");
+    c.style.setProperty("--my", ((y + 0.5) * 100).toFixed(1) + "%");
+  }
+
+  // static/js/src/v63/revelar.js
+  var SEL = ".v63-rv, .v63-run-i, .v63-iso-b, .v63-fonte, .v63-integra";
+  var _io3 = null;
+  var _parado = () => _redMotion || _sobrio || !("IntersectionObserver" in window);
+  function _obs() {
+    if (_io3) return _io3;
+    _io3 = new IntersectionObserver((es) => {
+      for (const e of es) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add("v63-in");
+        _io3.unobserve(e.target);
+        e.target.querySelectorAll && e.target.querySelectorAll("[data-alvo]").forEach(_contar2);
+        if (e.target.dataset && e.target.dataset.alvo) _contar2(e.target);
+      }
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+    return _io3;
+  }
+  function revelarEm(raiz) {
+    const els = [...raiz.matches && raiz.matches(SEL) ? [raiz] : [], ...raiz.querySelectorAll(SEL)];
+    if (_parado()) {
+      els.forEach((e) => e.classList.add("v63-in"));
+      raiz.querySelectorAll("[data-alvo]").forEach(_final);
+      return;
+    }
+    const io = _obs();
+    els.forEach((e) => {
+      if (!e.classList.contains("v63-in")) io.observe(e);
+    });
+  }
+  function contarEm(bloco) {
+    if (_parado()) {
+      bloco.querySelectorAll("[data-alvo]").forEach(_final);
+      return;
+    }
+    if (bloco.classList.contains("v63-in")) bloco.querySelectorAll("[data-alvo]").forEach(_contar2);
+  }
+  var _f = (fmt, x) => fmt === "R$" ? fmtR(x) : fmtN(Math.round(x));
+  function _final(el) {
+    el.textContent = _f(el.dataset.fmt, +el.dataset.alvo);
+    el.dataset.contado = "1";
+  }
+  function _contar2(el) {
+    if (el.dataset.contado) return;
+    const alvo = +el.dataset.alvo;
+    if (!isFinite(alvo)) return;
+    el.dataset.contado = "1";
+    const fmt = el.dataset.fmt, dur = 1400, t0 = performance.now();
+    const passo = (now) => {
+      const p = Math.min(1, (now - t0) / dur), k = 1 - Math.pow(1 - p, 4);
+      el.textContent = p < 1 ? _f(fmt, alvo * k) : _f(fmt, alvo);
+      if (p < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  }
+
+  // static/js/src/v63/index.js
+  function v63Boot() {
+    if (!_v63) return;
+    fundoMontar();
+    molduraMontar();
+    transicaoLigar();
+    microLigar();
+    const v = document.getElementById("view");
+    if (!v) return;
+    new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList.contains("fade")) _pintou2(n);
+    }).observe(v, { childList: true });
+  }
+  function _pintou2(f) {
+    const id = f.dataset.aba || "";
+    if (id !== "i_cockpit") {
+      fundoSoltarSecoes();
+      fundoQuadroDaAba(id);
+    }
+    capaItalico(f);
+    f.querySelectorAll(":scope > .cover, :scope > .card, :scope > .grid > .card, :scope > .cols > *").forEach((c, i) => {
+      if (i < 10) {
+        c.classList.add("v63-rv");
+        c.style.setProperty("--v63i", String(i));
+      }
+    });
+    revelarEm(f);
+    transicaoPintou();
+  }
+
   // static/js/src/ui/vidro.js
   var CHAVE = "jfn_vidro";
   var CTRL = [
@@ -1618,7 +2122,7 @@
     const n = Number(v);
     return Number.isFinite(n) ? Math.min(c[3], Math.max(c[2], n)) : c[5];
   };
-  function _ler() {
+  function _ler2() {
     let o = {};
     try {
       o = JSON.parse(localStorage.getItem(CHAVE) || "{}") || {};
@@ -1652,7 +2156,7 @@
   var _ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
   function vidroBoot() {
     if (!_v61) return;
-    let val = _ler();
+    let val = _ler2();
     _aplicar2(val);
     const box = document.querySelector(".htop .actions");
     if (!box || document.querySelector("[data-vidro-abrir]")) return;
@@ -1723,7 +2227,7 @@
 
   // static/js/src/ui/jarvis.js
   var _mobile = () => matchMedia("(max-width:760px)").matches;
-  var _parado = () => _redMotion || _sobrio || document.hidden;
+  var _parado2 = () => _redMotion || _sobrio || document.hidden;
   var _toque = { x: 0, y: 0, t: -1e9, dir: 1 };
   function jarvisToque() {
     return { dir: _toque.dir, recente: performance.now() - _toque.t < 1500, x: _toque.x, y: _toque.y };
@@ -1750,7 +2254,7 @@
   }
   function _aposRender(f) {
     const fam = f.dataset.fam;
-    if (!_parado()) {
+    if (!_parado2()) {
       if (fam === "holo") _efemero("jv-scan", "", 1400);
       const tq = jarvisToque();
       if (fam === "pulso" && tq.recente) _efemero("jv-onda", `left:${tq.x}px;top:${tq.y}px`, 1400);
@@ -1765,7 +2269,7 @@
     }
   }
   function _reflexo() {
-    if (_parado()) return;
+    if (_parado2()) return;
     const v = $("view");
     if (!v) return;
     const cand = [...v.querySelectorAll(".jv-c.card, .jv-c.ck-inst, .jv-c.ck-hero, .card.kpi")].slice(0, 16);
@@ -3715,6 +4219,7 @@ void main(){
     }, 15e3);
   }
   async function nebulaViva() {
+    if (_v63) return;
     const mapa = _v61 ? { estado: "v61/estado", prefeitura: "v61/prefeitura", geral: "v61/transversal", inicio: "v61/sala" } : {
       estado: "nebula-estado",
       prefeitura: "nebula-prefeitura",
@@ -3841,20 +4346,20 @@ void main(){
     geral: "200,150,255",
     sistema: "200,150,255"
   };
-  var _raf2 = 0;
+  var _raf4 = 0;
   var _pacotes = [];
   var _linhas = [];
-  var _cv = null;
+  var _cv2 = null;
   var _cx = null;
   var _W = 0;
   var _H = 0;
   var _dpr = 1;
-  var TETO2 = 30;
+  var TETO3 = 30;
   var DUR = 1500;
   function _medir() {
     const box = $("ck-orbita"), nuc = $("ck-nucleo"), g = $("ck-grid");
-    _cv = $("ck-energia");
-    if (!box || !nuc || !g || !_cv) return false;
+    _cv2 = $("ck-energia");
+    if (!box || !nuc || !g || !_cv2) return false;
     const rb = box.getBoundingClientRect();
     if (rb.width < 1100) return false;
     const rn = nuc.getBoundingClientRect();
@@ -3875,11 +4380,11 @@ void main(){
     _W = Math.round(rb.width);
     _H = Math.round(rb.height);
     _dpr = Math.min(2, window.devicePixelRatio || 1);
-    _cv.width = _W * _dpr;
-    _cv.height = _H * _dpr;
-    _cv.style.width = _W + "px";
-    _cv.style.height = _H + "px";
-    _cx = _cv.getContext("2d");
+    _cv2.width = _W * _dpr;
+    _cv2.height = _H * _dpr;
+    _cv2.style.width = _W + "px";
+    _cv2.style.height = _H + "px";
+    _cx = _cv2.getContext("2d");
     _cx.setTransform(_dpr, 0, 0, _dpr, 0, 0);
     return _linhas.length > 0;
   }
@@ -3913,7 +4418,7 @@ void main(){
       _cx.fill();
     }
     if (parado) {
-      _raf2 = 0;
+      _raf4 = 0;
       return;
     }
     _pacotes = _pacotes.filter((p) => agora - p.t0 < DUR);
@@ -3931,7 +4436,7 @@ void main(){
       _cx.arc(q.x, q.y, 9, 0, 6.283);
       _cx.fill();
     }
-    _raf2 = _pacotes.length ? requestAnimationFrame(_desenhar) : 0;
+    _raf4 = _pacotes.length ? requestAnimationFrame(_desenhar) : 0;
   }
   function energiaLigar() {
     energiaParar();
@@ -3945,16 +4450,16 @@ void main(){
       if (c) c.hidden = true;
       return;
     }
-    _cv.hidden = false;
+    _cv2.hidden = false;
     _desenhar(performance.now());
   }
   function energiaParar() {
-    if (_raf2) cancelAnimationFrame(_raf2);
-    _raf2 = 0;
+    if (_raf4) cancelAnimationFrame(_raf4);
+    _raf4 = 0;
     _pacotes = [];
     _linhas = [];
     _cx = null;
-    _cv = null;
+    _cv2 = null;
   }
   function energiaPacote(tipo) {
     if (_redMotion || _sobrio || !_linhas.length || !_cx) return;
@@ -3962,8 +4467,8 @@ void main(){
     const i = _linhas.findIndex((L) => L.id === alvo);
     if (i < 0) return;
     _pacotes.push({ i, t0: performance.now(), c: EV_COR[tipo] || "95,217,255" });
-    if (_pacotes.length > TETO2) _pacotes.splice(0, _pacotes.length - TETO2);
-    if (!_raf2) _raf2 = requestAnimationFrame(_desenhar);
+    if (_pacotes.length > TETO3) _pacotes.splice(0, _pacotes.length - TETO3);
+    if (!_raf4) _raf4 = requestAnimationFrame(_desenhar);
   }
   function energiaRever() {
     if (!$("ck-orbita")) return;
@@ -3972,8 +4477,8 @@ void main(){
   var energiaCenso = () => ({
     linhas: _linhas.length,
     pacotes: _pacotes.length,
-    laco: !!_raf2,
-    ligada: !!(_cv && !_cv.hidden)
+    laco: !!_raf4,
+    ligada: !!(_cv2 && !_cv2.hidden)
   });
 
   // static/js/src/ui/midia.js
@@ -4630,10 +5135,10 @@ void main(){
   var _ic = (r) => (NIVEIS.find((n) => n.k === r) || NIVEIS[4]).ic;
   var SITUACOES = ["aberto", "concluído", "afastado", "contexto"];
   var _dados = null;
-  var _f = { nivel: "", situacao: "aberto", q: "" };
+  var _f2 = { nivel: "", situacao: "aberto", q: "" };
   function _filtrados() {
-    const q = _f.q.trim().toLowerCase();
-    return (_dados.casos || []).filter((c) => (!_f.nivel || c.nivel_rotulo === _f.nivel) && (!_f.situacao || c.situacao === _f.situacao) && (!q || [
+    const q = _f2.q.trim().toLowerCase();
+    return (_dados.casos || []).filter((c) => (!_f2.nivel || c.nivel_rotulo === _f2.nivel) && (!_f2.situacao || c.situacao === _f2.situacao) && (!q || [
       c.titulo,
       c.resumo,
       c.entidade,
@@ -4647,9 +5152,9 @@ void main(){
     const cont = _dados.por_nivel || {};
     const b = (grupo, v, rot2, on) => `<button type="button" class="chip ${on ? "on" : ""}" data-cs-f="${grupo}" data-cs-v="${esc(v)}" aria-pressed="${on}">${rot2}</button>`;
     return `<div class="cs-filtros">
-    <div class="chips" role="group" aria-label="Gravidade">${b("nivel", "", "Todas as gravidades", !_f.nivel)}${NIVEIS.filter((n) => cont[n.k]).map((n) => b("nivel", n.k, `${n.ic} ${n.k} · ${fmtN(cont[n.k])}`, _f.nivel === n.k)).join("")}</div>
-    <div class="chips" role="group" aria-label="Situação">${b("situacao", "", "Todas", !_f.situacao)}${SITUACOES.map((s) => b("situacao", s, s, _f.situacao === s)).join("")}</div>
-    <div class="search"><span class="mag"></span><input id="cs-q" placeholder="filtrar por empresa, órgão, nº SEI, CNPJ, tag…" value="${esc(_f.q)}" aria-label="Filtrar casos"></div>
+    <div class="chips" role="group" aria-label="Gravidade">${b("nivel", "", "Todas as gravidades", !_f2.nivel)}${NIVEIS.filter((n) => cont[n.k]).map((n) => b("nivel", n.k, `${n.ic} ${n.k} · ${fmtN(cont[n.k])}`, _f2.nivel === n.k)).join("")}</div>
+    <div class="chips" role="group" aria-label="Situação">${b("situacao", "", "Todas", !_f2.situacao)}${SITUACOES.map((s) => b("situacao", s, s, _f2.situacao === s)).join("")}</div>
+    <div class="search"><span class="mag"></span><input id="cs-q" placeholder="filtrar por empresa, órgão, nº SEI, CNPJ, tag…" value="${esc(_f2.q)}" aria-label="Filtrar casos"></div>
   </div>`;
   }
   function _cardCaso(c) {
@@ -4790,9 +5295,9 @@ void main(){
       const f = ev.target.closest("[data-cs-f]");
       if (f) {
         ev.preventDefault();
-        _f[f.dataset.csF] = f.dataset.csV;
+        _f2[f.dataset.csF] = f.dataset.csV;
         for (const b of document.querySelectorAll(`[data-cs-f="${f.dataset.csF}"]`)) {
-          const on = b.dataset.csV === _f[f.dataset.csF];
+          const on = b.dataset.csV === _f2[f.dataset.csF];
           b.classList.toggle("on", on);
           b.setAttribute("aria-pressed", on);
         }
@@ -4814,7 +5319,7 @@ void main(){
     let tm = null;
     document.addEventListener("input", (ev) => {
       if (ev.target && ev.target.id === "cs-q") {
-        _f.q = ev.target.value;
+        _f2.q = ev.target.value;
         clearTimeout(tm);
         tm = setTimeout(_pintarLista, 120);
       }
@@ -5375,7 +5880,7 @@ void main(){
   var ESFERA = { estado: "Estado do RJ", prefeitura: "Prefeitura do Rio", transversal: "Transversal" };
   var _CHAVE = "jfn.periodo";
   var _P = { ano: "", mes: "" };
-  function _ler2() {
+  function _ler3() {
     try {
       const s = JSON.parse(sessionStorage.getItem(_CHAVE) || "null");
       if (s && typeof s === "object") _P = { ano: String(s.ano || ""), mes: String(s.mes || "") };
@@ -5515,7 +6020,7 @@ void main(){
   function ligarPeriodo() {
     if (_ligado5) return;
     _ligado5 = true;
-    _ler2();
+    _ler3();
     document.addEventListener("change", (ev) => {
       const t = ev.target;
       if (!t || !t.matches) return;
@@ -6061,35 +6566,35 @@ void main(){
   }
   var _ORIGEM = { limite_assinatura: "a conta do Claude chegou ao limite de uso", teto_proprio: "o orçamento diário do motor passou de 90%", forcada: "contingência ligada à mão" };
   var _hora = (iso) => iso ? String(iso).slice(11, 16) + " de " + String(iso).slice(8, 10) + "/" + String(iso).slice(5, 7) : "—";
-  var _n = (v) => v == null ? "INDISPONÍVEL" : fmtN(v);
+  var _n2 = (v) => v == null ? "INDISPONÍVEL" : fmtN(v);
   function _conf(c) {
     if (!c || c.erro) return indisp("/api/ao-vivo/conferencia-opus");
     const k = c.contingencia || {};
     const estado = k.ativa ? card(`<b>🟡 Em contingência</b> — ${esc(_ORIGEM[k.origem] || k.origem || "motivo não informado")}${k.ate_iso ? `; o Claude da assinatura volta às <b>${esc(_hora(k.ate_iso))}</b>` : ""}. O JFN segue produzindo com os outros modelos; o que eles fizerem entra na fila abaixo e não vira VERIFICADO antes de o Opus conferir.`) : card(`<b>🟢 Claude da assinatura respondendo</b> — sem contingência agora.${c.ultima_contingencia ? ` Última: ${esc(String(c.ultima_contingencia.desde || "").replace("T", " ").slice(0, 16))} até ${esc(_hora(c.ultima_contingencia.ate))}.` : ""}${(k.tarefas_perto_do_teto || []).length ? ` Tarefas a mais de 90% do teto do dia: ${esc(k.tarefas_perto_do_teto.join(", ").replace(/_/g, " "))}.` : ""}`);
     let h = estado + `<div class="grid g4">
     ${kpi(
-      c.disponivel ? _n(c.pendentes) : "INDISPONÍVEL",
+      c.disponivel ? _n2(c.pendentes) : "INDISPONÍVEL",
       "Aguardando o Opus",
       c.pendentes ? "var(--amber, var(--accent))" : "var(--green)",
       null,
       { sobre: "Resultados entregues por outro modelo (cascata gratuita ou Claude barato) enquanto o Claude da assinatura não podia responder. Cada um fica PENDENTE até o Opus reler a mesma entrada. Fonte: data/conferencia_opus.db." }
     )}
     ${kpi(
-      _n(c.triagem_pendente),
+      _n2(c.triagem_pendente),
       "Alertas da triagem aguardando o Opus",
       "var(--accent)",
       null,
       { sobre: "Fila irmã, mais antiga: alertas da triagem com leitura 🔴/🟡, descartada ou feita sem o Claude da assinatura (alertas_triagem.opus_pendente). O Opus relê em lotes a cada hora." }
     )}
     ${kpi(
-      c.disponivel ? _n(c.conferidos) : "INDISPONÍVEL",
+      c.disponivel ? _n2(c.conferidos) : "INDISPONÍVEL",
       "Já conferidos pelo Opus",
       "var(--accent)",
       null,
       { sobre: "Itens da fila que o Opus releu. Cada par Opus × outro modelo entra no cruzamento de motores abaixo." }
     )}
     ${kpi(
-      c.disponivel ? _n(c.divergencias) : "INDISPONÍVEL",
+      c.disponivel ? _n2(c.divergencias) : "INDISPONÍVEL",
       "Opus divergiu",
       c.divergencias ? "var(--rose)" : "var(--green)",
       null,
@@ -6107,6 +6612,389 @@ void main(){
     if (its) h += card(`<div style="font-weight:700;margin-bottom:6px">Próximos ${fmtN((c.itens || []).length)} da fila</div>
     <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Desde</th><th>Tarefa</th><th>Item</th><th>Leitura do outro modelo (pendente)</th><th>Modelo</th><th>Por que o Claude não respondeu</th></tr></thead><tbody>${its}</tbody></table></div>`);
     return h;
+  }
+
+  // static/js/src/v63/inicio.js
+  var FONTES = [
+    { s: "SEI", n: "SEI-RJ", ir: "p_integras" },
+    { s: "SF", n: "SIAFE-Rio", ir: "e_siafe" },
+    { s: "TCE", n: "TCE-RJ", ir: "g_fontes" },
+    { s: "QD", n: "Querido Diário", ir: "g_fontes" },
+    { s: "TSE", n: "TSE", ir: "g_fontes" },
+    { s: "API", n: "BrasilAPI", ir: "g_fontes" },
+    { s: "OS", n: "OpenSanctions", ir: "e_sanc" }
+  ];
+  var NOS_T = [
+    { id: "sei", t: "Ingestão SEI", ir: "p_integras" },
+    { id: "siafe", t: "SIAFE · OB", ir: "e_siafe" },
+    { id: "det", t: "Detectores", ir: "g_dets" },
+    { id: "ver", t: "Verificador", ir: "g_conform" },
+    { id: "dos", t: "Dossiê", ir: "g_buscar" }
+  ];
+  var LAYOUT = {
+    deitado: {
+      vb: "0 0 560 300",
+      pos: { sei: [16, 30], siafe: [16, 232], det: [204, 131], ver: [392, 30], dos: [392, 232] },
+      arestas: [
+        "M168 60 C190 60 182 161 204 161",
+        "M168 262 C190 262 182 161 204 161",
+        "M356 161 C378 161 370 60 392 60",
+        "M468 90 C468 140 468 182 468 232",
+        "M356 161 C378 161 370 262 392 262"
+      ]
+    },
+    empe: {
+      vb: "0 0 340 372",
+      pos: { sei: [8, 10], siafe: [180, 10], det: [94, 152], ver: [8, 300], dos: [180, 300] },
+      arestas: [
+        "M84 70 C84 112 170 110 170 152",
+        "M256 70 C256 112 170 110 170 152",
+        "M170 212 C170 256 84 256 84 300",
+        "M160 330 C167 330 173 330 180 330",
+        "M170 212 C170 256 256 256 256 300"
+      ]
+    }
+  };
+  function _grafo() {
+    const L = LAYOUT[matchMedia("(max-width:600px)").matches ? "empe" : "deitado"];
+    const ARESTAS = L.arestas.map((d, i) => ({ id: "a" + (i + 1), d, ramo: i === 4 }));
+    const pulsos = _redMotion ? "" : ARESTAS.map((a, i) => `<circle r="3.4" class="v63-pulso"><animateMotion dur="${2.2 + i * 0.25}s" begin="${0.9 + i * 0.35}s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .25 1"><mpath href="#v63-${a.id}"/></animateMotion></circle>`).join("");
+    return `<svg class="v63-grafo" viewBox="${L.vb}" role="img" aria-label="Fluxo do JFN: ingestão SEI e SIAFE alimentam os detectores; o verificador confere; o dossiê sai por CNPJ">
+    <defs><linearGradient id="v63-gA" x1="0" x2="1"><stop offset="0" stop-color="#6FA8FF"/><stop offset="1" stop-color="#1D5BFF"/></linearGradient></defs>
+    ${ARESTAS.map((a, i) => `<path id="v63-${a.id}" class="v63-aresta${a.ramo ? " ramo" : ""}" d="${a.d}" pathLength="1" style="--i:${i}"/>`).join("")}
+    ${pulsos}
+    ${NOS_T.map((n, i) => `<g class="v63-no" data-no="${n.id}" data-v63-ir="${n.ir}" data-v63-gesto="zoom" role="link" tabindex="0" aria-label="${esc(n.t)}" style="--i:${i}" transform="translate(${L.pos[n.id][0]} ${L.pos[n.id][1]})">
+      <rect width="152" height="60" rx="14"/><circle class="v63-no-pt" cx="18" cy="21" r="4"/>
+      <text class="v63-no-t" x="30" y="25">${esc(n.t)}</text>
+      <text class="v63-no-s" x="16" y="45" id="v63-no-${n.id}">lendo…</text></g>`).join("")}
+  </svg>`;
+  }
+  function v63InicioHtml() {
+    return `<div class="v63-inicio" id="v63-inicio">
+  <section class="v63-hero" data-v63-quadro="1">
+    <div class="v63-poeira" aria-hidden="true">${_redMotion ? "" : Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div>
+    <div class="v63-hero-tx">
+      <span class="v63-eti v63-mono v63-rv" style="--i:0"><i></i>controle externo · rio de janeiro · ${FONTES.length} fontes</span>
+      <h2 class="v63-h1 v63-rv" style="--i:1">Cada contrato,<br><em class="v63-it">rastreado.</em></h2>
+      <p class="v63-lead v63-rv" style="--i:2">O JFN lê o SEI, o SIAFE, o PNCP e as listas de sanção, cruza tudo sozinho e só chama você quando um indício pede olhar humano.</p>
+      <div class="v63-cta v63-rv" style="--i:3">
+        <a class="v63-btn sol" role="button" tabindex="0" data-v63-ir="e_alertas">Ver alertas</a>
+        <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="s_motores" data-v63-gesto="cortina"><span class="play" aria-hidden="true">▶</span>ver ao vivo</a>
+      </div>
+      <p class="v63-nota v63-mono v63-rv" style="--i:4">dado real · relido a cada 30 s · indício ≠ acusação</p>
+    </div>
+    <div class="v63-fluxo v63-vidro v63-rv v63-tilt" style="--i:2">
+      <div class="v63-fluxo-top v63-mono"><span>pipeline · 5 etapas / 1 ramo</span><b class="v63-selo" id="v63-selo">lendo</b></div>
+      ${_grafo()}
+      <div class="v63-fluxo-pe v63-mono" id="v63-fluxo-pe">—</div>
+    </div>
+  </section>
+
+  <section class="v63-integra v63-rv" aria-label="Fontes que o JFN lê">
+    <p class="v63-mono v63-integra-t">conectado a <b class="v63-conta" data-alvo="${FONTES.length}">0</b> fontes públicas — e ao que cada uma publica</p>
+    <div class="v63-integra-l">${FONTES.map((f, i) => `<a class="v63-fonte" data-v63-ir="${f.ir}" role="link" tabindex="0" style="--i:${i}"><span class="v63-fonte-ic">${f.s}</span><span class="v63-fonte-n">${esc(f.n)}</span></a>`).join("")}</div>
+    <p class="v63-mono v63-integra-fr" id="v63-frescor" data-manchete="v63-frescor">frescor medido: lendo…</p>
+  </section>
+
+  <section class="v63-sec v63-sec-run" data-v63-quadro="2">
+    <div class="v63-sec-tx">
+      <span class="v63-mono v63-eti v63-rv"><i></i>01 · rodada contínua</span>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Gasto público é <em class="v63-it">dado.</em></h3>
+      <p class="v63-rv" style="--i:2">Cada motor faz uma parte: o SEI de madrugada, o SIAFE todo dia, as perícias quando há o que periciar. O registro abaixo é o desta hora — o mesmo da aba Sistema › Motores.</p>
+    </div>
+    <div class="v63-run v63-vidro v63-rv v63-tilt" style="--i:2" data-manchete="v63-run">
+      <div class="v63-run-top v63-mono"><span id="v63-run-id">run · lendo</span><span id="v63-run-ev">—</span></div>
+      <ol class="v63-run-l" id="v63-run-l"></ol>
+      <div class="v63-run-pe v63-mono" id="v63-run-pe"></div>
+    </div>
+  </section>
+
+  <section class="v63-sec v63-sec-num" data-v63-quadro="3">
+    <div class="v63-sec-tx">
+      <span class="v63-mono v63-eti v63-rv"><i></i>02 · o que já está na base</span>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Todo real <em class="v63-it">conta.</em></h3>
+      <p class="v63-rv" style="--i:2">Pagamento só é pagamento quando há Ordem Bancária. Alerta é indício a conferir. Cada número diz de onde veio e em que estado está.</p>
+    </div>
+    <div class="v63-nums" id="v63-nums">
+      ${_tile("ob", 0, 'data-manchete="v63-ob"')}${_tile("alertas", 1, 'data-manchete="v63-alertas"')}
+      ${_tile("acervo", 2, 'data-manchete="v63-acervo"')}${_tile("econ", 3, 'data-manchete="v63-econ"')}
+    </div>
+  </section>
+
+  <section class="v63-sec v63-sec-iso" data-v63-quadro="4">
+    <div class="v63-sec-tx">
+      <span class="v63-mono v63-eti v63-rv"><i></i>03 · radar composto</span>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Quem soma <em class="v63-it">mais sinais.</em></h3>
+      <p class="v63-rv" style="--i:2" id="v63-iso-tx">Um detector isolado é indício fraco; vários acesos no mesmo fornecedor pedem olhar. Score 0–100, uso interno.</p>
+    </div>
+    <div class="v63-iso v63-vidro v63-rv" style="--i:2" id="v63-iso" data-manchete="v63-radar"><div class="v63-iso-cena" id="v63-iso-cena"></div><div class="v63-iso-pe v63-mono" id="v63-iso-pe"></div></div>
+  </section>
+
+  <section class="v63-sec v63-sec-alerta" data-v63-quadro="5">
+    <div class="v63-sec-tx">
+      <span class="v63-mono v63-eti v63-rv"><i></i>04 · onde você entra</span>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Alerta que <em class="v63-it">chama você.</em></h3>
+      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O último alerta da base, como chega:</p>
+    </div>
+    <div class="v63-slack v63-vidro v63-rv v63-tilt" style="--i:2" id="v63-slack" data-manchete="v63-alerta"><div class="v63-slack-vazio v63-mono">lendo o último alerta…</div></div>
+  </section>
+
+  <div class="v63-ponte v63-mono v63-rv"><span>território · reator · grandes preocupações</span></div>
+</div>`;
+  }
+  function _tile(k, i, manchete) {
+    return `<div class="v63-num v63-vidro v63-rv v63-tilt" style="--i:${i}" id="v63-n-${k}" ${manchete}><span class="v63-mono v63-num-l">—</span><b class="v63-num-v">—</b><span class="v63-num-s"></span><div class="v63-num-b"></div><span class="v63-mono v63-num-f"></span></div>`;
+  }
+  function v63InicioMontar() {
+    const raiz = document.getElementById("v63-inicio");
+    if (!raiz || raiz.dataset.montado) return;
+    raiz.dataset.montado = "1";
+    revelarEm(raiz);
+    fundoSeguirSecoes(raiz);
+    _pausarGrafoForaDaTela(raiz);
+    const [pEst, pPai] = [J("/api/ao-vivo/estado"), J("/api/compliance/painel")];
+    pEst.then((d) => {
+      _selo2(d);
+      _run(d);
+    });
+    Promise.all([pEst, pPai]).then(([e, p]) => _nos(e, p));
+    pPai.then((d) => {
+      _numOB(d);
+      _numAlertas(d);
+      _numAcervo(d);
+      _slack(d);
+    });
+    J("/api/comparador/economia").then(_numEcon);
+    J("/api/intel/radar?limite=6").then(_iso);
+    J("/api/fontes/frescor").then(_frescor);
+  }
+  var _ok = (d) => d && !d.erro;
+  function _indisp2(d) {
+    return "indisponível — " + erroHumano(d && d.erro);
+  }
+  function _selo2(d) {
+    const s = document.getElementById("v63-selo");
+    if (!s) return;
+    if (!_ok(d) || !Array.isArray(d.motores)) {
+      s.textContent = "indisponível";
+      s.className = "v63-selo off";
+      return;
+    }
+    const n = d.motores.filter((m) => m.estado === "rodando" && m.classe !== "infra").length;
+    s.textContent = n ? "running" : "em espera";
+    s.className = "v63-selo" + (n ? " on" : "");
+    const pe = document.getElementById("v63-fluxo-pe");
+    if (pe) pe.textContent = `${fmtN(n)} ${n === 1 ? "motor rodando" : "motores rodando"} · ${String(d.eventos_min ?? "—").replace(".", ",")} eventos/min · ${_hora2(d.atualizado_em)}`;
+  }
+  function _nos(e, p) {
+    const set = (id, t) => {
+      const el = document.getElementById("v63-no-" + id);
+      if (el) el.textContent = corta(t, 22);
+    };
+    const mot = (id) => _ok(e) && Array.isArray(e.motores) ? e.motores.find((m) => m.id === id) : null;
+    const est = (m) => !m ? "indisponível" : m.estado === "rodando" ? "rodando agora" : m.estado === "agendado" && m.proxima ? `agendado · ${_hora2(m.proxima)}` : m.estado;
+    set("sei", est(mot("sei-noturno")));
+    if (_ok(p) && p.obs && p.obs.ultimo_dia) set("siafe", `${_dataCurta(p.obs.ultimo_dia)} · ${fmtN(p.obs.n_ultimo_dia)} OB`);
+    else set("siafe", "indisponível");
+    if (_ok(p) && p.alertas && p.alertas.total != null) set("det", `${fmtN(p.alertas.total)} alertas abertos`);
+    else set("det", "indisponível");
+    set("ver", "regras · " + est(mot("qualidade")));
+    set("dos", "md · pdf · xlsx");
+    const ativo = { sei: mot("sei-noturno"), siafe: mot("siafe-ob"), det: mot("ronda"), ver: mot("qualidade"), dos: null };
+    for (const [k, m] of Object.entries(ativo)) {
+      const g = document.querySelector(`.v63-no[data-no="${k}"]`);
+      if (g) g.classList.toggle("vivo", !!(m && m.estado === "rodando"));
+    }
+  }
+  function _run(d) {
+    const l = document.getElementById("v63-run-l");
+    if (!l) return;
+    if (!_ok(d) || !Array.isArray(d.motores)) {
+      l.innerHTML = `<li class="v63-run-x">${esc(_indisp2(d))}</li>`;
+      return;
+    }
+    document.getElementById("v63-run-id").textContent = `run · ${_hora2(d.atualizado_em)}`;
+    document.getElementById("v63-run-ev").textContent = `${String(d.eventos_min ?? "—").replace(".", ",")} ev/min`;
+    const ord = { rodando: 0, falhou: 1, indisponivel: 2, ocioso: 3, agendado: 4 };
+    const ms = d.motores.filter((m) => m.classe !== "infra").sort((a, b) => (ord[a.estado] ?? 5) - (ord[b.estado] ?? 5) || _t(b.ultimo_evento) - _t(a.ultimo_evento)).slice(0, 7);
+    const maxAt = Math.max(1, ...ms.map((m) => (m.atividade || []).reduce((s, x) => s + x, 0)));
+    l.innerHTML = ms.map((m, i) => {
+      const at = (m.atividade || []).reduce((s, x) => s + x, 0);
+      const ic = m.estado === "rodando" ? "●" : m.estado === "falhou" || m.estado === "indisponivel" ? "!" : m.estado === "agendado" ? "○" : "✓";
+      const qd = m.ultimo_evento ? _rel(m.ultimo_evento.t) : m.proxima ? "às " + _hora2(m.proxima) : "";
+      const tit = m.ultimo_evento ? m.ultimo_evento.texto : m.descricao || "";
+      return `<li class="v63-run-i e-${esc(m.estado)}" style="--i:${i}" title="${esc(tit)}">
+      <span class="v63-run-ic" aria-hidden="true">${ic}</span><span class="v63-run-n">${esc(m.nome)}</span>
+      <span class="v63-run-b"><i style="--w:${m.estado === "rodando" ? 1 : Math.max(0.04, at / maxAt).toFixed(3)}"></i></span>
+      <span class="v63-run-q v63-mono">${esc(m.estado === "indisponivel" ? "indisponível" : m.estado)}${qd ? " · " + esc(qd) : ""}</span></li>`;
+    }).join("");
+    const r = d.resumo || {};
+    document.getElementById("v63-run-pe").textContent = `${fmtN(r.rodando)} rodando · ${fmtN(r.agendado)} agendados · ${fmtN(r.ocioso)} ociosos · ${fmtN(r.falhou)} com falha — fonte: /api/ao-vivo/estado (systemd)`;
+    revelarEm(l);
+  }
+  function _num2(k, { l, v, fmt, s, f, estado, barras, alvo }) {
+    const c = document.getElementById("v63-n-" + k);
+    if (!c) return;
+    c.querySelector(".v63-num-l").textContent = l;
+    const ve = c.querySelector(".v63-num-v");
+    if (v == null) {
+      ve.textContent = "—";
+      c.classList.add("indisp");
+    } else {
+      ve.dataset.alvo = String(v);
+      ve.dataset.fmt = fmt;
+      ve.textContent = fmt === "R$" ? fmtR(0) : "0";
+      contarEm(c);
+    }
+    c.querySelector(".v63-num-s").innerHTML = s || "";
+    c.querySelector(".v63-num-b").innerHTML = (barras || []).map((b) => `<div class="v63-barra"><span>${esc(b.l)}</span><i><b style="--w:${b.w.toFixed(4)}"${b.c ? ` class="${b.c}"` : ""}></b></i><em class="v63-mono">${esc(b.v)}</em></div>`).join("");
+    c.querySelector(".v63-num-f").innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${esc(f)}`;
+  }
+  function _numOB(d) {
+    if (!_ok(d) || !d.obs || !d.obs.ultimo_dia) return _num2("ob", { l: "pago em OB · último dia no SIAFE", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
+    _num2("ob", {
+      l: `pago em OB · ${_dataCurta(d.obs.ultimo_dia)}`,
+      v: d.obs.valor_ultimo_dia,
+      fmt: "R$",
+      s: `<b>${fmtN(d.obs.n_ultimo_dia)}</b> ordens bancárias contabilizadas no último dia com OB no SIAFE`,
+      f: "SIAFE · ob_orcamentaria_siafe",
+      estado: "VERIFICADO"
+    });
+  }
+  function _numAlertas(d) {
+    const a = _ok(d) && d.alertas;
+    if (!a || a.total == null) return _num2("alertas", { l: "alertas abertos", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
+    const t = Math.max(1, a.total), baixa = a.baixa != null ? a.baixa : Math.max(0, a.total - (a.alta || 0) - (a.media || 0));
+    _num2("alertas", {
+      l: "alertas abertos",
+      v: a.total,
+      fmt: "n",
+      s: "indícios do motor de regras, descartados fora",
+      barras: [
+        { l: "alta", w: (a.alta || 0) / t, v: fmtN(a.alta || 0), c: "alta" },
+        { l: "média", w: (a.media || 0) / t, v: fmtN(a.media || 0) },
+        { l: "baixa", w: baixa / t, v: fmtN(baixa), c: "baixa" }
+      ],
+      f: "motor de regras · alertas",
+      estado: "PENDENTE"
+    });
+  }
+  function _numAcervo(d) {
+    if (!_ok(d) || !d.obs || d.obs.total == null) return _num2("acervo", { l: "ordens bancárias no acervo", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
+    _num2("acervo", {
+      l: "ordens bancárias no acervo",
+      v: d.obs.total,
+      fmt: "n",
+      s: `espelho TFE até ${_dataCurta(d.obs.tfe_ultimo_dia)} (publicado com ~3 semanas de atraso)`,
+      f: "TFE · ordens_bancarias",
+      estado: "VERIFICADO"
+    });
+  }
+  function _numEcon(d) {
+    if (!_ok(d) || d.economia_total == null) return _num2("econ", { l: "economia potencial", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
+    _num2("econ", {
+      l: "economia potencial",
+      v: d.economia_total,
+      fmt: "R$",
+      s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item — estimativa, não OB paga`,
+      f: "PNCP · comparador de preços",
+      estado: "PENDENTE"
+    });
+  }
+  function _iso(d) {
+    const cena = document.getElementById("v63-iso-cena"), pe = document.getElementById("v63-iso-pe");
+    if (!cena) return;
+    if (!_ok(d) || !Array.isArray(d.achados)) {
+      cena.innerHTML = `<p class="v63-mono v63-vazio">${esc(_indisp2(d))}</p>`;
+      return;
+    }
+    const top = d.achados.filter((a) => a && a.nome && !/^\d/.test(a.nome)).sort((a, b) => b.score - a.score).slice(0, 6);
+    if (!top.length) {
+      cena.innerHTML = '<p class="v63-mono v63-vazio">nenhum fornecedor com sinal no radar agora</p>';
+      return;
+    }
+    const max = Math.max(...top.map((a) => a.score), 1);
+    cena.innerHTML = `<div class="v63-iso-l">${top.map((a, i) => `<button type="button" class="v63-iso-b${i === 0 ? " topo" : ""}" style="--i:${i};--h:${(a.score / max).toFixed(3)}"
+      data-v63-dossie="${esc(a.cnpj)}" data-nome="${esc(a.nome)}" title="${esc(a.nome)} — score ${a.score} · ${a.n_sinais} sinais">
+      <span class="v63-iso-col"><i class="f"></i><i class="l"></i><i class="t"></i></span>
+      <span class="v63-iso-v v63-mono">${a.score}</span><span class="v63-iso-n">${esc(corta(a.nome, 22))}</span></button>`).join("")}</div>`;
+    if (pe) pe.innerHTML = `<i class="v63-estado pendente">PENDENTE</i> score 0–100 · ${fmtN(d.n)} fornecedores com sinal · ${fmtN(d.n_vermelho)} em nível crítico — indício para apuração interna, não acusação · fonte: radar composto (${esc(String(d.gerado_em || "").slice(0, 16))})`;
+    revelarEm(cena);
+  }
+  function _slack(d) {
+    const c = document.getElementById("v63-slack");
+    if (!c) return;
+    const lista = _ok(d) && Array.isArray(d.lista_alertas) ? d.lista_alertas : null;
+    if (!lista) {
+      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${esc(_indisp2(d))}</div>`;
+      return;
+    }
+    if (!lista.length) {
+      c.innerHTML = '<div class="v63-slack-vazio v63-mono">nenhum alerta aberto na base</div>';
+      return;
+    }
+    const pj = lista.filter((x) => /\b\d{14}\b/.test(String(x.descricao)) && !/X{2,}|\bCPF\s+X/i.test(String(x.titulo) + String(x.descricao)));
+    if (!pj.length) {
+      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${fmtN(d.alertas && d.alertas.total)} alertas abertos — nenhum sobre empresa entre os mais recentes; ver a lista completa em Estado › Alertas</div>`;
+      return;
+    }
+    const peso = { alta: 0, "média": 1, media: 1, baixa: 2 };
+    const a = [...pj].sort((x, y) => (peso[x.severidade] ?? 3) - (peso[y.severidade] ?? 3))[0];
+    const cnpj = (String(a.descricao).match(/\b(\d{14})\b/) || [])[1];
+    const sev = String(a.severidade || "baixa");
+    c.innerHTML = `<div class="v63-slack-top v63-mono"><span># alertas-jfn</span><span>${esc(_rel(String(a.criado).replace(" ", "T")))}</span></div>
+    <div class="v63-slack-msg">
+      <span class="v63-slack-av" aria-hidden="true">JFN</span>
+      <div class="v63-slack-c"><div class="v63-slack-q"><b>JFN</b><span class="v63-mono">app · ${esc(String(a.criado).slice(11, 16))}</span></div>
+        <p class="v63-slack-tx">Alerta de gravidade <b class="sev-${esc(sev.normalize("NFD").replace(/[̀-ͯ]/g, ""))}">${esc(sev)}</b>: ${esc(a.titulo)}</p>
+        <blockquote class="v63-slack-bq">${esc(corta(a.descricao, 220))}</blockquote>
+        <div class="v63-slack-campos v63-mono"><span>tipo <b>${esc(a.tipo || "—")}</b></span><span>estado <b>a conferir</b></span></div>
+        <div class="v63-slack-acoes">${cnpj ? `<a class="v63-btn sol" role="button" tabindex="0" data-v63-dossie="${cnpj}">✓ Ver dossiê</a>` : ""}
+          <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="e_alertas" data-v63-gesto="cortina">Todos os alertas</a></div>
+      </div></div>
+    <div class="v63-slack-pe v63-mono"><i class="v63-estado pendente">PENDENTE</i> indício do motor de regras · fonte: alertas (${fmtN(d.alertas && d.alertas.total)} abertos)</div>`;
+    revelarEm(c);
+  }
+  function _frescor(d) {
+    const el = document.getElementById("v63-frescor");
+    if (!el) return;
+    if (!_ok(d) || !Array.isArray(d.fontes)) {
+      el.textContent = "frescor medido: " + _indisp2(d);
+      return;
+    }
+    const n = (k) => d.fontes.filter((f) => f.estado === k).length;
+    el.innerHTML = `frescor medido agora em ${fmtN(d.fontes.length)} coletas: <b class="ok">${fmtN(n("ok"))} em dia</b> · <b class="at">${fmtN(n("atencao"))} em atenção</b> · <b class="cr">${fmtN(n("critico"))} atrasadas</b> <a data-v63-ir="s_motores" role="link" tabindex="0">ver →</a>`;
+  }
+  function _pausarGrafoForaDaTela(raiz) {
+    const svg = raiz.querySelector(".v63-grafo");
+    if (!svg || !("IntersectionObserver" in window) || !svg.pauseAnimations) return;
+    new IntersectionObserver((es) => {
+      for (const e of es) e.isIntersecting && !document.hidden ? svg.unpauseAnimations() : svg.pauseAnimations();
+    }).observe(svg);
+    if (_sobrio) svg.pauseAnimations();
+  }
+  function _t(ev) {
+    return ev && ev.t ? Date.parse(ev.t) || 0 : 0;
+  }
+  function _hora2(iso) {
+    const t = Date.parse(iso);
+    if (!t) return "—";
+    const d = new Date(t);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function _dataCurta(s) {
+    const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : s || "—";
+  }
+  function _rel(iso) {
+    const t = Date.parse(iso);
+    if (!t) return "";
+    const min = Math.round((Date.now() - t) / 6e4);
+    if (min < 1) return "agora";
+    if (min < 60) return `há ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 48) return `há ${h} h`;
+    return `há ${Math.round(h / 24)} dias`;
   }
 
   // static/js/src/cena/reator.js
@@ -6350,7 +7238,7 @@ void main(){
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -6558,7 +7446,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8059,12 +8947,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8078,13 +8966,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8152,7 +9040,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -8218,7 +9106,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -8273,7 +9161,7 @@ void main(){
   var GEO = "/static/assets/geo/";
   var W = 800;
   var H = 520;
-  var RAMPA = ["#EAF4FF", "#B9D9FB", "#6FAEF6", "#1E7BF0", "#0A3E8C"];
+  var RAMPA = _v63 ? ["#EEF4FF", "#C2D6FF", "#86ADFF", "#4A80FF", "#1546D8"] : ["#EAF4FF", "#B9D9FB", "#6FAEF6", "#1E7BF0", "#0A3E8C"];
   var RIO = "3304557";
   var METRICAS = [
     ["valor_contratado", "Valor contratado", "rs"],
@@ -8294,7 +9182,7 @@ void main(){
   };
   var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido", sem_vigencia: "Sem vigência na fonte" };
   var GRAUS = [
-    ["explicito", "Explícito no texto", "explícito no texto", "#0A3E8C"],
+    ["explicito", "Explícito no texto", "explícito no texto", _v63 ? "#1546D8" : "#0A3E8C"],
     ["unidade", "Inferido pela unidade", "inferido pela unidade", "#1E7BF0"],
     ["sede", "Sede do órgão", "sede do órgão", "#8CBEF8"]
   ];
@@ -8339,10 +9227,10 @@ void main(){
       return null;
     }
   }
-  var _vivo = null;
+  var _vivo2 = null;
   function mapaMontar(host) {
     if (!host) return;
-    if (_vivo) _vivo.sair();
+    if (_vivo2) _vivo2.sair();
     const S = {
       escopo: "estado",
       metrica: "valor_contratado",
@@ -8794,10 +9682,10 @@ void main(){
       }
       pintar(await lerDados());
     })();
-    _vivo = { sair() {
+    _vivo2 = { sair() {
       pararVivo();
       if (portal) ficha.remove();
-      if (_vivo && _vivo.host === host) _vivo = null;
+      if (_vivo2 && _vivo2.host === host) _vivo2 = null;
     }, host };
   }
 
@@ -9058,7 +9946,7 @@ void main(){
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
       <button type="button" class="chip c61-ir-motores" onclick="ir('s_motores')">Motores · ver todos</button></aside>
     <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>` : "";
-    const html = `<div class="ck${_v61 ? " ck61" : ""}">${v61}
+    const html = `${_v63 ? v63InicioHtml() : ""}<div class="ck${_v61 ? " ck61" : ""}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead" role="link" tabindex="0" style="cursor:pointer" title="Abrir as compras com sobrepreço (Comparador › Economia possível)"
@@ -9171,6 +10059,7 @@ void main(){
       preocupacoesMontar($("c61-preoc"));
     } else nucleoStart();
     if (!_v61) requestAnimationFrame(() => energiaLigar());
+    if (_v63) v63InicioMontar();
     galaxiaPreviewMontar($("gx-prev"));
     ckPull(true);
     clearInterval(_ckTimer);
@@ -9303,7 +10192,7 @@ void main(){
   var _txt2 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
   var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
   var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
-  var _hora2 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
+  var _hora3 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
   var _sinal = (v) => v == null ? '<span class="dim">—</span>' : v > 0 ? `<b style="color:var(--rose)">+${fmtN(v)}</b>` : v < 0 ? `<b style="color:var(--green)">${fmtN(v)}</b>` : "0";
   var _nota = (v) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   function _itens(s) {
@@ -9350,7 +10239,7 @@ void main(){
       <td>${esc(c)}</td><td class="right"><b style="color:${n <= 1 ? "var(--rose)" : "var(--amber)"}">${fmtN(n)}</b></td>
       <td style="font-size:13px">${esc((a.motivos || {})[c] || "")}</td><td style="font-size:13px">${esc(a.o_que_falta || "")}</td>
       <td style="font-size:12px">${a.escalar ? `<b>sim</b>${a.motivo_escalar ? ` — ${esc(a.motivo_escalar)}` : ""}` : "não"}</td></tr>`).join("");
-    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora2(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
+    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora3(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
     <table class="tb cf-txt" style="margin-top:8px;max-width:420px"><thead><tr><th>Critério</th><th class="right">Média</th></tr></thead><tbody>${crit}</tbody></table>
     <details style="margin-top:10px"${baixas.length ? " open" : ""}><summary style="cursor:pointer"><b>Notas ≤ 2</b> (${fmtN(baixas.length)})</summary>
       ${baixas.length ? `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Afirmação</th><th>Critério</th><th class="right">Nota</th><th>Motivo</th><th>O que falta</th><th>Escala ao dono</th></tr></thead><tbody>${lin}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Nenhuma nota ≤ 2 nas avaliações vigentes.</div>'}</details>`);
@@ -9374,7 +10263,7 @@ void main(){
     if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
     const medido = d.estado === "MEDIDO";
     const r = d.regras || {}, j = d.juiz;
-    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora2(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
+    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora3(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
     h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
     ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
@@ -9386,13 +10275,13 @@ void main(){
     h += _cegos(d.sensores_cegos);
     h += _juiz(j);
     h += _divida(d);
-    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora2(d.gerado_em)}` : ""}</div>`);
+    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora3(d.gerado_em)}` : ""}</div>`);
     return `<div id="cf-raiz">${h}${_txt2}</div>`;
   }
 
   // static/js/src/abas/propagacao.js
   var _css = "<style>.pg-txt th,.pg-txt td{text-align:left;vertical-align:top}.pg-txt th.right,.pg-txt td.right{text-align:right}</style>";
-  var _hora3 = (t) => t ? new Date(t * 1e3).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+  var _hora4 = (t) => t ? new Date(t * 1e3).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
   var _dur = (a, b) => a && b ? `${fmtN(Math.max(0, Math.round(b - a)))} s` : "—";
   var _ha = (t, agora) => {
     if (!t) return "—";
@@ -9420,7 +10309,7 @@ void main(){
   }
   function _situacao(x, agora) {
     if (x.ultimo_estado === "rodando") return '<b style="color:var(--accent)">recalculando agora</b>';
-    if (x.ultimo_estado === "falhou") return `<b style="color:var(--rose)">falhou</b> (${fmtN(x.falhas)}×)${x.proxima_tentativa ? ` · nova tentativa ${_hora3(x.proxima_tentativa)}` : ""}`;
+    if (x.ultimo_estado === "falhou") return `<b style="color:var(--rose)">falhou</b> (${fmtN(x.falhas)}×)${x.proxima_tentativa ? ` · nova tentativa ${_hora4(x.proxima_tentativa)}` : ""}`;
     if (x.sujo) return `<b style="color:var(--amber)">desatualizado</b> ${_ha(x.sujo_desde, agora)}${x.adiado ? `<div class="dim" style="font-size:11px">${esc(x.adiado)}</div>` : ""}`;
     if (x.ultimo_estado === "ok") return '<b style="color:var(--green)">em dia</b>';
     return '<span class="dim">sem evento desde que a propagação foi ligada</span>';
@@ -9431,7 +10320,7 @@ void main(){
       <td><b>${esc(x.nome)}</b><div class="dim" style="font-size:11px">${esc(x.onde || "")}</div></td>
       <td>${_situacao(x, d.gerado_em)}${x.ultimo_erro ? `<div style="font-size:12px;color:var(--rose)">${esc(x.ultimo_erro)}</div>` : ""}</td>
       <td style="font-size:12px">${_motivos(x.motivos, nomes, 4) || '<span class="dim">—</span>'}${x.eventos_pendentes > (x.motivos || []).length ? `<div class="dim" style="font-size:11px">${fmtN(x.eventos_pendentes)} evento(s) pendente(s) no total</div>` : ""}</td>
-      <td style="white-space:nowrap;font-size:13px">${_hora3(x.ultimo_fim)}<div class="dim" style="font-size:11px">${x.ultimo_fim ? `levou ${_dur(x.ultimo_inicio, x.ultimo_fim)} · ${fmtN(x.execucoes)} execução(ões)` : "ainda não recalculado pela propagação"}</div></td>
+      <td style="white-space:nowrap;font-size:13px">${_hora4(x.ultimo_fim)}<div class="dim" style="font-size:11px">${x.ultimo_fim ? `levou ${_dur(x.ultimo_inicio, x.ultimo_fim)} · ${fmtN(x.execucoes)} execução(ões)` : "ainda não recalculado pela propagação"}</div></td>
       <td style="font-size:12px">${esc(x.antes || "—")}</td></tr>`).join("");
     return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Cada linha é um derivado: algo que o painel mostra e que fica velho quando a fonte muda. "Antes" = como se atualizava até 14/11/2026 (esses agendamentos continuam como rede de segurança).</div>
     <div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Derivado</th><th>Situação</th><th>O que o deixou desatualizado</th><th>Último recálculo</th><th>Antes</th></tr></thead><tbody>${lin}</tbody></table></div>`);
@@ -9440,7 +10329,7 @@ void main(){
     const nomes = _nomes(d);
     const lin = (d.fontes || []).map((f) => `<tr><td><b>${esc(f.nome)}</b></td>
       <td style="font-size:13px">${f.manual ? '<span class="dim">manual</span>' : f.erro ? `<b style="color:var(--rose)">INDISPONÍVEL</b><div style="font-size:12px">${esc(f.erro)}</div>` : f.visto_em ? `conferida ${_ha(f.visto_em, d.gerado_em)}` : '<span class="dim">ainda não conferida</span>'}</td>
-      <td style="font-size:13px;white-space:nowrap">${f.mudou_em ? _hora3(f.mudou_em) : '<span class="dim">sem mudança desde a ligação</span>'}</td>
+      <td style="font-size:13px;white-space:nowrap">${f.mudou_em ? _hora4(f.mudou_em) : '<span class="dim">sem mudança desde a ligação</span>'}</td>
       <td style="font-size:12px">${(f.alimenta || []).map((x) => esc(nomes[x] || x)).join(", ") || '<span class="dim">só o segundo cérebro</span>'}</td></tr>`).join("");
     return card(`<div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Fonte / evento</th><th>Sonda</th><th>Última mudança percebida</th><th>Suja</th></tr></thead><tbody>${lin}</tbody></table></div>
     <div class="dim" style="font-size:12px;margin-top:6px">Sonda que não consegue medir aparece como INDISPONÍVEL — isso não quer dizer que a fonte não mudou.</div>`);
@@ -9448,7 +10337,7 @@ void main(){
   function _execucoes(d) {
     const ex = d.execucoes || [], nomes = _nomes(d);
     if (!ex.length) return card('<div class="dim">Nenhum recálculo feito pela propagação até agora.</div>');
-    const lin = ex.map((e) => `<tr><td style="white-space:nowrap">${_hora3(e.inicio)}</td><td><b>${esc(nomes[e.derivado] || e.derivado)}</b></td>
+    const lin = ex.map((e) => `<tr><td style="white-space:nowrap">${_hora4(e.inicio)}</td><td><b>${esc(nomes[e.derivado] || e.derivado)}</b></td>
       <td>${e.estado === "ok" ? '<b style="color:var(--green)">recalculado</b>' : '<b style="color:var(--rose)">falhou</b>'}</td>
       <td class="right">${_dur(e.inicio, e.fim)}</td>
       <td style="font-size:12px">${_motivos(e.motivos, nomes, 3)}${e.erro ? `<div style="color:var(--rose)">${esc(e.erro)}</div>` : ""}</td></tr>`).join("");
@@ -9457,11 +10346,11 @@ void main(){
   function _eventos2(d) {
     const ev = d.eventos || [], nomes = _nomes(d);
     if (!ev.length) return card('<div class="dim">Nenhum evento registrado ainda.</div>');
-    return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap">${_hora3(e.quando)}</td><td><b>${esc(nomes[e.fonte] ? (e.detalhe.startsWith("recalculado") ? "Derivado: " : "") + nomes[e.fonte] : e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join("")}</tbody></table></div>`);
+    return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap">${_hora4(e.quando)}</td><td><b>${esc(nomes[e.fonte] ? (e.detalhe.startsWith("recalculado") ? "Derivado: " : "") + nomes[e.fonte] : e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join("")}</tbody></table></div>`);
   }
   function _cerebro(c, agora) {
     if (!c) return "";
-    const ult = (c.ultimas || []).map((m) => `<tr><td style="white-space:nowrap">${_hora3(m.quando)}</td><td>${esc(m.kind)}</td><td style="font-size:13px"><b>${esc(m.assunto || m.chave)}</b><div style="font-size:12px">${esc(m.texto)}</div></td><td class="right">#${fmtN(m.id)}</td></tr>`).join("");
+    const ult = (c.ultimas || []).map((m) => `<tr><td style="white-space:nowrap">${_hora4(m.quando)}</td><td>${esc(m.kind)}</td><td style="font-size:13px"><b>${esc(m.assunto || m.chave)}</b><div style="font-size:12px">${esc(m.texto)}</div></td><td class="right">#${fmtN(m.id)}</td></tr>`).join("");
     return sec("Segundo cérebro", fmtN(c.gravadas)) + card(`<div style="font-size:13px">Descobertas duráveis (número de manchete corrigido, correção de regra, alerta verificado, decisão e lição registradas) seguem para a memória comum dos agentes. <b>${fmtN(c.gravadas)}</b> gravada(s) · <b>${fmtN(c.pendentes)}</b> na fila · ${fmtN(c.recusadas)} recusada(s) por conter dado pessoal ou segredo · último envio ${c.ultimo_envio ? _ha(c.ultimo_envio, agora) : "—"}.</div>
     ${c.pendentes && c.ultimo_erro ? `<div class="warn" style="margin-top:6px">Fila parada: ${esc(c.ultimo_erro)}. As descobertas ficam guardadas e seguem quando o cérebro responder.</div>` : ""}
     ${ult ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Enviada</th><th>Tipo</th><th>Memória</th><th class="right">Nº</th></tr></thead><tbody>${ult}</tbody></table></div>` : ""}`);
@@ -9477,7 +10366,7 @@ void main(){
     if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
     if (d.ok === false) return h + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem estado da propagação")}. Não quer dizer que está tudo em dia: a tela não tem como saber.</div>`);
     const r = d.resumo || {}, u = d.ultimo_ciclo;
-    h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora3(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora3(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
+    h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora4(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora4(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
     h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
     ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--rose)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
@@ -9489,7 +10378,7 @@ void main(){
     h += sec("Fontes e eventos", fmtN(r.fontes)) + _fontes2(d);
     h += sec("Últimos eventos", fmtN((d.eventos || []).length)) + _eventos2(d);
     h += _cerebro(d.cerebro, d.gerado_em);
-    h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora3(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
+    h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora4(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
     return `<div id="pg-raiz">${h}${_css}</div>`;
   }
 
@@ -9502,7 +10391,7 @@ void main(){
     { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
   ];
   var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
-  var _n2 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
+  var _n3 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
   var _dados2 = null;
   function _cardReq(r) {
     return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
@@ -9513,8 +10402,8 @@ void main(){
     </div>
     <h3 class="cs-tit">${esc(r.titulo)}</h3>
     ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
-    <div class="cs-tags"><span class="tag teal">${_n2(r.pedidos.length, "pedido", "pedidos")}</span>
-      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n2(r.pendencias.length, "pendência", "pendências")}</span>
+    <div class="cs-tags"><span class="tag teal">${_n3(r.pedidos.length, "pedido", "pedidos")}</span>
+      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n3(r.pendencias.length, "pendência", "pendências")}</span>
       ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
     ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
     <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
@@ -15303,7 +16192,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         v.innerHTML = `<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;
         if (typeof marcarValores === "function") marcarValores(v);
       };
-      if (document.startViewTransition && !_redMotion && (!_v60 || _v61 && !_sobrio)) {
+      if (document.startViewTransition && !_redMotion && (!_v60 || _v61 && !_sobrio) && !document.documentElement.classList.contains("v63-tr-on")) {
         const _h = document.documentElement;
         _h.classList.add("v61-vt");
         const _vt = document.startViewTransition(pintar);
@@ -15335,6 +16224,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   (async () => {
     v60Boot();
     v61Boot();
+    v63Boot();
     movimentoBoot();
     montarSpheres();
     montarTabs();

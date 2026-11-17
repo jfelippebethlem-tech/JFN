@@ -1,0 +1,155 @@
+/* ══ v63 · FLUXO CLARO — base: tokens, tipografia, moldura (2026-11-17) ═══════════════════════════
+   Brief: _SANDBOX/v63_BRIEF.md · referência: landing "Relay" (escura, fitas verde-limão). Traduz-se a
+   LINGUAGEM, não a paleta: branco + azul, título geométrico pesado com UMA palavra em serifa itálica,
+   rótulos em mono caixa-baixa, cartões de vidro com sombra dupla, pílulas, acento azul sólido.
+
+   REGRAS DESTES ESTRATOS (`99z5-v63-*.css`)
+   · Vêm DEPOIS dos `99z2-v61-*` e não são camadados: mesma especificidade → a declaração daqui vence.
+   · TODO seletor começa por `html.v63`. Sem a classe (`?v63=0`) o painel é a v61, byte a byte.
+   · Os nomes de token são os da v61 (`--ion`, `--ink`, `--surface`…): redefini-los recolore os 30
+     estratos anteriores de uma vez. Só o que a v61 não tem nome ganha token novo (`--v63-*`).
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@font-face{font-family:"Geist";src:url(/static/assets/fonts/v63/Geist-Bold.woff2) format("woff2");font-weight:700 800;font-style:normal;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url(/static/assets/fonts/v63/InstrumentSerif-Italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Instrument Serif";src:url(/static/assets/fonts/v63/InstrumentSerif-Italic-ext.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+/* ── tokens do brief ─────────────────────────────────────────────────────────────────────────────── */
+html.v63{
+  color-scheme:light;
+  --bg:#F7FAFF; --bg-2:#EEF4FF; --bg-3:#E2ECFF;
+  --surface:rgba(255,255,255,.72); --surface-solid:#FFFFFF; --surface-2:rgba(244,248,255,.86);
+  --line:rgba(11,27,58,.08); --line-strong:rgba(11,27,58,.14);
+  --ink:#0B1B3A; --ink-2:#2A3B5E; --ink-3:#5A6B8C; --muted:#5A6B8C;
+  --ion:#1D5BFF; --ion-text:#1D5BFF; --ion-solid:#1D5BFF; --cyan:#38D3FF; --glow:rgba(56,211,255,.38);
+  --v63-azul-claro:#6FA8FF; --v63-alerta:#FFC400; --v63-alerta-text:#8A6500;
+  --radius:16px; --r-l:16px;
+  --sh:0 1px 2px rgba(11,27,58,.06), 0 12px 32px -12px rgba(29,91,255,.18);
+  --v63-sh-hi:0 1px 2px rgba(11,27,58,.06), 0 22px 44px -16px rgba(29,91,255,.28);
+  --v63-vidro:rgba(255,255,255,.72);
+  --v63-vidro-borda:inset 0 0 0 1px rgba(29,91,255,.06);
+  --blur:blur(18px) saturate(1.4);
+  --tinta:rgba(29,91,255,.06);
+  --brk:transparent;                                   /* os colchetes de canto da v61 saem: o Relay é liso */
+  --v63-mola:cubic-bezier(.2,.8,.2,1);
+  --f-sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --f-display:"Geist",system-ui,sans-serif;            /* Oxanium (Tron) sai: título é geométrico pesado */
+  --f-serif:"Instrument Serif","Iowan Old Style",Georgia,serif;
+}
+html.v63 body{background:var(--bg);color:var(--ink)}
+html.v63 ::selection{background:rgba(29,91,255,.16);color:var(--ink)}
+
+/* camadas ambientes da v61 saem — o fundo da v63 é um só, o das fitas (`99z5-v63-20-fundo.css`) */
+html.v63 #esfnebula, html.v63 #v61-fundo{display:none !important}
+
+/* ── tipografia ─────────────────────────────────────────────────────────────────────────────────── */
+/* palavra de destaque: serifa itálica azul. `.v63-it` é a classe-folha; o JS embrulha a última palavra
+   do título de cada aba nela (só embrulha — o texto é o mesmo). */
+html.v63 .v63-it, html.v63 em.v63-it{font-family:var(--f-serif);font-style:italic;font-weight:400;
+  color:var(--ion);letter-spacing:-.01em;padding-right:.04em}
+html.v63 .cover .t{font-family:var(--f-display);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+html.v63 .cover .t .v63-it{font-size:1.12em;line-height:.9}
+html.v63 h2.sec{font-family:var(--f-display);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+html.v63 .sph > div > div:first-child{font-family:var(--f-sans);font-weight:600;letter-spacing:-.01em}
+/* rótulo/estado: mono, caixa baixa, 11–12px (o "● all systems normal" do Relay) */
+html.v63 .v63-mono, html.v63 .ck-eye, html.v63 .cover-seal{font-family:var(--f-mono);text-transform:lowercase;
+  letter-spacing:0;font-size:11.5px;font-weight:500}
+
+/* ── moldura: topbar fina de vidro ──────────────────────────────────────────────────────────────── */
+html.v63 header{background:rgba(255,255,255,.72);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:0 1px 0 var(--line), var(--v63-vidro-borda)}
+html.v63 .brand .lg{background:var(--ion-solid);color:#fff;border-radius:10px;
+  box-shadow:0 0 0 3px rgba(29,91,255,.12), 0 6px 16px -6px rgba(29,91,255,.6)}
+html.v63 .brand h1{font-family:var(--f-display);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+html.v63 .brand small{color:var(--muted)}
+html.v63 .cblade{background:linear-gradient(90deg,transparent,var(--v63-azul-claro) 20%,var(--ion) 50%,var(--cyan) 80%,transparent);opacity:.7}
+
+/* pílula de status ao vivo (`● 2 motores rodando`) e CTA da topbar — nascem em `v63/moldura.js` */
+html.v63 .v63-status{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;
+  font:500 11.5px/1 var(--f-mono);color:var(--ink-2);background:rgba(255,255,255,.8);
+  box-shadow:inset 0 0 0 1px var(--line-strong);white-space:nowrap;cursor:pointer;
+  transition:box-shadow .25s var(--v63-mola),transform .25s var(--v63-mola)}
+html.v63 .v63-status:hover{box-shadow:inset 0 0 0 1px rgba(29,91,255,.4)}
+html.v63 .v63-status i{width:7px;height:7px;border-radius:50%;background:#12B886;box-shadow:0 0 0 3px rgba(18,184,134,.18);flex:none}
+html.v63 .v63-status.parado i{background:var(--v63-azul-claro);box-shadow:0 0 0 3px rgba(111,168,255,.2)}
+html.v63 .v63-status.indisp i{background:#9AA8C0;box-shadow:none}
+html.v63 .v63-status i{animation:v63pulso 2.4s var(--v63-mola) infinite}
+@keyframes v63pulso{0%,100%{box-shadow:0 0 0 3px rgba(18,184,134,.18)}50%{box-shadow:0 0 0 6px rgba(18,184,134,0)}}
+
+/* CTA da topbar: as regras da v60 para `.htop .actions > a` (ícone 32px, texto oculto) não valem para ele */
+html.v63 header .htop .actions > a.v63-btn.v63-cta{display:inline-flex;height:34px;padding:0 16px;margin-right:6px;font-size:13px;
+  color:#fff;background:var(--ion-solid);border-radius:999px}
+html.v63 header .htop .actions > a.v63-btn.v63-cta:hover{color:#fff;background:var(--ion-solid)}
+@media (max-width:760px){html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}}
+/* a marca: subtítulo volta à sans (a mono não cabia ao lado da pílula) */
+html.v63 .brand small{font-family:var(--f-sans);text-transform:none}
+/* pílula no celular: só o número ("● 2 rodando") — o resto vai para o title */
+@media (max-width:760px){
+  html.v63 .v63-status{height:26px;padding:0 9px;gap:6px;font-size:11px}
+  html.v63 .v63-status .v63-st .w{display:none}
+}
+/* esfera ativa = pílula azul cheia → o ícone (que herda a cor do texto) tem de ir para o branco */
+html.v63 #spheres .sph.on .i, html.v63 #spheres .sph.on .i .jico, html.v63 nav.tabs button.on .ti, html.v63 nav.tabs button.on .ti .jico{color:#fff}
+
+/* ── botões: pílula sólida azul (o "Start free" limão do Relay) + fantasma ──────────────────────── */
+html.v63 .v63-btn{--mx:50%;--my:50%;position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;gap:8px;
+  height:42px;padding:0 20px;border-radius:999px;border:0;cursor:pointer;
+  font:600 14px/1 var(--f-sans);letter-spacing:-.005em;text-decoration:none;white-space:nowrap;
+  transition:transform .35s var(--v63-mola),box-shadow .35s var(--v63-mola),background-color .25s}
+html.v63 .v63-btn.sol{background:var(--ion-solid);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 24px -10px rgba(29,91,255,.75)}
+html.v63 .v63-btn.fan{background:rgba(255,255,255,.78);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+/* brilho que segue o dedo/cursor (--mx/--my vêm do `v63/micro.js`) */
+html.v63 .v63-btn::after{content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .3s;
+  background:radial-gradient(120px circle at var(--mx) var(--my),rgba(255,255,255,.55),transparent 60%)}
+html.v63 .v63-btn.fan::after{background:radial-gradient(120px circle at var(--mx) var(--my),rgba(56,211,255,.28),transparent 60%)}
+html.v63 .v63-btn:hover::after, html.v63 .v63-btn.toque::after{opacity:1}
+@media (hover:hover){html.v63 .v63-btn:hover{transform:translateY(-1px)}}
+html.v63 .v63-btn:active{transform:scale(.96);transition-duration:.12s}
+html.v63 .v63-btn .play{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  background:var(--ion-solid);color:#fff;font-size:8px;padding-left:2px}
+html.v63 .v63-btn:focus-visible{outline:2px solid var(--ion);outline-offset:3px}
+
+/* ── abas e pílulas ─────────────────────────────────────────────────────────────────────────────── */
+html.v63 nav.tabs{background:rgba(247,250,255,.82)}
+html.v63 nav.tabs button, html.v63 .chip{border-radius:999px;transition:background-color .25s,color .25s,box-shadow .35s var(--v63-mola),transform .35s var(--v63-mola)}
+html.v63 nav.tabs button.on, html.v63 .chip.on{background:var(--ion-solid);border-color:var(--ion-solid);color:#fff;
+  box-shadow:0 8px 18px -8px rgba(29,91,255,.7)}
+html.v63 .chip{background:rgba(255,255,255,.72);border-color:var(--line-strong)}
+html.v63 nav.tabs button:active, html.v63 .chip:active{transform:scale(.95)}
+html.v63 nav.tabs .tmais.e{background:linear-gradient(90deg,var(--bg) 35%,transparent)}
+html.v63 nav.tabs .tmais.d{background:linear-gradient(270deg,var(--bg) 35%,transparent)}
+@media (max-width:760px){
+  html.v63 #spheres{background:rgba(255,255,255,.94);box-shadow:0 -1px 0 var(--line),0 -10px 30px -12px rgba(29,91,255,.18)}
+  html.v63 .sph.on{color:var(--ion)}
+  html.v63 .sph.on .i{background:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -8px rgba(29,91,255,.8)}
+}
+@media (min-width:761px){
+  html.v63 #spheres{background:rgba(255,255,255,.6);border-color:var(--line);border-radius:999px}
+  html.v63 .sph{border-radius:999px}
+  html.v63 .sph.on, html.v63 .sph.on:hover{background:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -8px rgba(29,91,255,.7)}
+}
+
+/* ── cartões: vidro branco, raio 16, sombra suave dupla, borda interna azul 6% ─────────────────── */
+html.v63 .card, html.v63 :is(.card.kpi,.ck-inst), html.v63 .ck-hero, html.v63 .grid.v60-lista, html.v63 .v60-feed{
+  background:var(--v63-vidro);border:1px solid rgba(255,255,255,.9);border-radius:var(--radius);
+  box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .card:hover{background:var(--v63-vidro);border-color:rgba(255,255,255,.95);box-shadow:var(--v63-sh-hi),var(--v63-vidro-borda)}
+html.v63 .card .card{background:none;border:0;box-shadow:none}
+html.v63 .grid.v60-lista > .card{background:none;border:0;border-top:1px solid var(--line);box-shadow:none;border-radius:0}
+html.v63 .grid.v60-lista > .card:first-child{border-top:0}
+html.v63 .grid.v60-lista > .card:hover{background:var(--tinta)}
+@media (max-width:760px){
+  html.v63 .card, html.v63 :is(.card.kpi,.ck-inst), html.v63 .ck-hero, html.v63 .grid.v60-lista, html.v63 .v60-feed{--v63-vidro:rgba(255,255,255,.9)}
+}
+@media (prefers-reduced-transparency:reduce){
+  html.v63 :is(.card,.card.kpi,.ck-inst,header){background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+
+/* ── movimento: reduzir movimento desliga TUDO o que é contínuo nesta versão ───────────────────── */
+@media (prefers-reduced-motion:reduce){
+  html.v63 .v63-status i{animation:none}
+  html.v63 .v63-btn, html.v63 nav.tabs button, html.v63 .chip{transition:none}
+}

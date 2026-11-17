@@ -171,6 +171,99 @@ manchetes:
     campos: {indice: "detectores[max lift, circular=false].lift", rotulo: "detectores[…].detector"}
     lista: detectores
   # ck-fontes saiu do cockpit em 14/11/2026 (pedido do dono): o frescor das fontes mora na aba Sistema › Motores (s_motores).
+  # ── v63 FLUXO CLARO (17/11/2026): herói + quatro seções do Início, ANTES do cockpit (static/js/src/v63/inicio.js).
+  #    Nenhuma rota nova: todas já declaradas abaixo. Cada número leva fonte + estado ao lado (VERIFICADO/PENDENTE/INDISPONÍVEL).
+  - id: v63-frescor
+    superficie: "Início v63 — faixa de fontes (linha 'frescor medido agora')"
+    afirma: "Quantas coletas estão em dia, em atenção e atrasadas, pelo frescor medido de cada fonte."
+    rota: /api/fontes/frescor
+    origem: rotas.investigacao.api_fontes_frescor
+    fonte: "compliance_agent.siafe_runner; tabelas das coletas (ver rota)"
+    natureza: contagem
+    esfera: sistema
+    consome: ["dono (painel)"]
+    detector: null
+    campos: {contagem: "fontes[estado]"}
+    lista: fontes
+  - id: v63-run
+    superficie: "Início v63 — seção 01 'Gasto público é dado.' (registro da rodada dos motores)"
+    afirma: "Estado de cada motor do JFN agora (rodando/agendado/ocioso/falhou) e a atividade da última hora."
+    rota: /api/ao-vivo/estado
+    origem: compliance_agent.aovivo.api.ao_vivo_estado
+    fonte: "systemd + travas (compliance_agent/aovivo/motores.yaml)"
+    natureza: contagem
+    esfera: sistema
+    consome: ["dono (painel)"]
+    detector: null
+    campos: {contagem: resumo.rodando}
+    lista: motores
+  - id: v63-ob
+    superficie: "Início v63 — seção 02, número 'pago em OB · último dia no SIAFE'"
+    afirma: "Valor PAGO (Ordem Bancária contabilizada) no último dia com OB coletada do SIAFE, e quantas OB."
+    rota: /api/compliance/painel
+    origem: rotas.investigacao.api_painel
+    fonte: "ob_orcamentaria_siafe (compliance.db), status Contabilizado"
+    natureza: pago
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: null
+    campos: {valor: obs.valor_ultimo_dia, contagem: obs.n_ultimo_dia, data: obs.ultimo_dia}
+  - id: v63-alertas
+    superficie: "Início v63 — seção 02, número 'alertas abertos' com barras alta/média/baixa"
+    afirma: "Total de alertas NÃO descartados do motor de regras e a divisão por gravidade (somam o total)."
+    rota: /api/compliance/painel
+    origem: rotas.investigacao.api_painel
+    fonte: "alertas (compliance.db)"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: rules.engine
+    campos: {contagem: alertas.total, alta: alertas.alta, media: alertas.media, baixa: alertas.baixa}
+  - id: v63-acervo
+    superficie: "Início v63 — seção 02, número 'ordens bancárias no acervo'"
+    afirma: "Quantas ordens bancárias o espelho TFE tem na base, com a data da última publicada."
+    rota: /api/compliance/painel
+    origem: rotas.investigacao.api_painel
+    fonte: "ordens_bancarias (espelho TFE, compliance.db)"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: null
+    campos: {contagem: obs.total, data: obs.tfe_ultimo_dia}
+  - id: v63-econ
+    superficie: "Início v63 — seção 02, número 'economia potencial'"
+    afirma: "Mesmo número do herói do cockpit (ck-econ): indícios de sobrepreço ≥ 2× a mediana, estimativa — não OB paga."
+    rota: /api/comparador/economia
+    origem: compliance_agent.comparador_precos.economia_potencial
+    fonte: "pncp_resultado, pncp_ente (compliance.db)"
+    natureza: estimado
+    esfera: estado+prefeitura
+    consome: ["dono (painel)"]
+    detector: comparador.economia_potencial
+    campos: {valor: economia_total, contagem: n_compras_acima_mediana}
+  - id: v63-radar
+    superficie: "Início v63 — seção 03, barras isométricas (6 maiores scores do radar, só PJ)"
+    afirma: "Os seis fornecedores (pessoa jurídica) com maior score no radar composto 0-100 — indício interno."
+    rota: /api/intel/radar
+    origem: compliance_agent.cruzamentos_intel.radar_risco
+    fonte: "data/cache/radar_risco.json ← fantasma_score, favorecido_resumo, pncp_resultado, socios_fornecedor"
+    natureza: indice
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: intel.radar_risco
+    campos: {indice: "achados[].score", contagem: n, criticos: n_vermelho}
+    lista: achados
+  - id: v63-alerta
+    superficie: "Início v63 — seção 04, cartão de alerta (o de maior gravidade entre os 40 mais recentes que citam CNPJ — nunca pessoa física)"
+    afirma: "Um alerta aberto do motor de regras, com título, descrição e atalho para o dossiê do CNPJ citado."
+    rota: /api/compliance/painel
+    origem: rotas.investigacao.api_painel
+    fonte: "alertas (compliance.db)"
+    natureza: contagem
+    esfera: estado
+    consome: ["dono (painel)"]
+    detector: rules.engine
+    lista: lista_alertas
 
 relatorios:
   fornecedor:

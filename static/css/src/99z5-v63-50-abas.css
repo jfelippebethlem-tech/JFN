@@ -1,0 +1,61 @@
+/* ══ v63 · TODAS AS ABAS — a linguagem Relay fora do Início ═════════════════════════════════════════
+   O que está aqui é o que os tokens sozinhos não alcançam: o mapa (fronteira que brilha ao tocar),
+   o reator (corpo metálico clareado), tabelas, a folha do dossiê, avisos, campos, a capa de cada aba.
+   Estrutura, medidas e hierarquia continuam as da v60/v61 — aqui só se recolore e se dá movimento.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── capa de cada aba: título geométrico + palavra em itálico (o JS embrulha), selo vira pílula ──── */
+html.v63 .cover{border-bottom-color:var(--line)}
+html.v63 .cover-seal{background:rgba(29,91,255,.08);color:var(--ion);border-radius:12px}
+html.v63 .cover .s{color:var(--muted)}
+
+/* ── mapa: branco, escala de azul, fronteira com brilho ao tocar ────────────────────────────────── */
+html.v63 .tm-placa{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(238,244,255,.7));border-color:rgba(255,255,255,.95);
+  box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .tm-a{transition:transform .35s var(--v63-mola),filter .35s var(--v63-mola),stroke .25s}
+@media (hover:hover){
+  html.v63 .tm-a:hover{stroke:#38D3FF;stroke-width:1.6;filter:drop-shadow(0 0 5px rgba(56,211,255,.85)) drop-shadow(0 4px 10px rgba(29,91,255,.25))}
+}
+html.v63 .tm-a.on, html.v63 .tm-a:focus-visible, html.v63 .tm-a:active{stroke:#1D5BFF;stroke-width:1.8;
+  filter:drop-shadow(0 0 6px rgba(56,211,255,.9)) drop-shadow(0 6px 12px rgba(29,91,255,.3))}
+html.v63 .tm-onda{stroke:#38D3FF}
+/* o radar que varre a placa: mais leve, ciano — no claro, o marinho pesava */
+html.v63 .tm-radar::before{opacity:.55}
+
+/* ── reator: o corpo metálico (vídeo da v61) clareia e azula ────────────────────────────────────── */
+html.v63 .c61-reator{background:var(--v63-vidro);border-color:rgba(255,255,255,.9);box-shadow:var(--sh),var(--v63-vidro-borda)}
+html.v63 .v61-reator .rt-corpo{filter:brightness(1.22) saturate(1.25) contrast(.88) hue-rotate(-6deg)}
+html.v63 .v61-reator .rt-corpo::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.28),rgba(111,168,255,.12) 55%,transparent 70%)}
+html.v63 .rt-no span{background:rgba(255,255,255,.92);border-color:var(--line-strong)}
+
+/* ── tabelas: cabeçalho mono caixa-baixa, linhas finas, hover azul 6% ───────────────────────────── */
+html.v63 #view table th, html.v63 #sheet table th{font-family:var(--f-mono);font-weight:500;text-transform:lowercase;letter-spacing:0;
+  color:var(--muted);border-bottom-color:var(--line-strong);background:transparent}
+html.v63 #view table td, html.v63 #sheet table td{border-bottom-color:var(--line)}
+html.v63 #view table tbody tr:hover td{background:var(--tinta)}
+
+/* ── folha do dossiê (overlay) ──────────────────────────────────────────────────────────────────── */
+html.v63 .ov{background:rgba(11,27,58,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+html.v63 .ov .sheet{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.95);
+  box-shadow:0 30px 80px -30px rgba(29,91,255,.45),0 2px 6px rgba(11,27,58,.08)}
+
+/* ── avisos, campos, esqueleto ──────────────────────────────────────────────────────────────────── */
+html.v63 .warn{border-radius:14px}
+html.v63 :where(#view,#sheet) :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),select,textarea){
+  border-radius:12px;border-color:var(--line-strong);background:rgba(255,255,255,.9);color:var(--ink);
+  transition:border-color .2s,box-shadow .25s var(--v63-mola)}
+html.v63 :where(#view,#sheet) :is(input,select,textarea):focus{outline:none;border-color:var(--ion);box-shadow:0 0 0 4px rgba(29,91,255,.14)}
+html.v63 .skel{color:var(--muted);font-family:var(--f-mono);text-transform:lowercase}
+html.v63 .skel .sp{border-color:rgba(29,91,255,.15);border-top-color:var(--ion)}
+
+/* ── botões da casa (`.btn`) entram na família das pílulas ──────────────────────────────────────── */
+html.v63 .btn{border-radius:999px;transition:transform .3s var(--v63-mola),box-shadow .3s var(--v63-mola),background-color .2s}
+/* `.red`/`.green` mantêm a semântica deles; o resto (padrão e `.accent`) vira a pílula azul sólida */
+html.v63 .btn:not(.ghost):not(.red):not(.green){background:var(--ion-solid);border-color:var(--ion-solid);color:#fff;box-shadow:0 8px 18px -10px rgba(29,91,255,.8)}
+html.v63 .btn:not(.ghost):not(.red):not(.green):hover{background:#2F6BFF;color:#fff}
+html.v63 .btn.ghost{background:rgba(255,255,255,.8);color:var(--ink);border-color:var(--line-strong)}
+html.v63 .btn:active{transform:scale(.96)}
+
+/* ── a faixa ao vivo sob o cabeçalho ────────────────────────────────────────────────────────────── */
+html.v63 #v61-ticker{background:rgba(247,250,255,.72);border-bottom-color:var(--line)}
