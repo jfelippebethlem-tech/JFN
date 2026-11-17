@@ -80,10 +80,14 @@ html.v63 .v63-status i{animation:v63pulso 2.4s var(--v63-mola) infinite}
 @keyframes v63pulso{0%,100%{box-shadow:0 0 0 3px rgba(18,184,134,.18)}50%{box-shadow:0 0 0 6px rgba(18,184,134,0)}}
 
 /* CTA da topbar: as regras da v60 para `.htop .actions > a` (ícone 32px, texto oculto) não valem para ele */
-html.v63 header .htop .actions > a.v63-btn.v63-cta{display:inline-flex;height:34px;padding:0 16px;margin-right:6px;font-size:13px;
+html.v63 header .htop .actions > a.v63-btn.v63-cta{display:inline-flex;flex:none;white-space:nowrap;height:34px;padding:0 16px;margin-right:6px;font-size:13px;
   color:#fff;background:var(--ion-solid);border-radius:999px}
 html.v63 header .htop .actions > a.v63-btn.v63-cta:hover{color:#fff;background:var(--ion-solid)}
 @media (max-width:760px){html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}}
+/* a marca não encolhe por baixo da pílula (o `minmax(0,auto)` da v60 deixava o h1 nowrap vazar sobre ela);
+   entre 761 e 1180px quem cede lugar é o CTA */
+@media (min-width:761px){html.v63 .brand{min-width:max-content}}
+@media (min-width:761px) and (max-width:1180px){html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}}
 /* a marca: subtítulo volta à sans (a mono não cabia ao lado da pílula) */
 html.v63 .brand small{font-family:var(--f-sans);text-transform:none}
 /* pílula no celular: só o número ("● 2 rodando") — o resto vai para o title */

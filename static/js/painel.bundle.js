@@ -1817,7 +1817,8 @@
       a.setAttribute("role", "button");
       a.tabIndex = 0;
       a.dataset.v63Ir = "g_buscar";
-      a.textContent = "Buscar CNPJ";
+      a.textContent = "Buscar";
+      a.title = "Buscar empresa, CNPJ, órgão ou contrato";
       ac.insertBefore(a, ac.firstChild);
     }
     _ler();
@@ -6421,16 +6422,16 @@
   <section class="v63-hero" data-v63-quadro="1">
     <div class="v63-poeira" aria-hidden="true">${_redMotion ? "" : Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div>
     <div class="v63-hero-tx">
-      <span class="v63-eti v63-mono v63-rv" style="--i:0"><i></i>controle externo · rio de janeiro · ${FONTES.length} fontes</span>
-      <h2 class="v63-h1 v63-rv" style="--i:1">Cada contrato,<br><em class="v63-it">rastreado.</em></h2>
-      <p class="v63-lead v63-rv" style="--i:2">O JFN lê o SEI, o SIAFE, o PNCP e as listas de sanção, cruza tudo sozinho e só chama você quando um indício pede olhar humano.</p>
-      <div class="v63-cta v63-rv" style="--i:3">
+      <span class="v63-eti v63-mono v63-rv v63-in" style="--i:0"><i></i>controle externo · rio de janeiro · ${FONTES.length} fontes</span>
+      <h2 class="v63-h1 v63-rv v63-in" style="--i:1">Cada contrato,<br><em class="v63-it">rastreado.</em></h2>
+      <p class="v63-lead v63-rv v63-in" style="--i:2">O JFN lê o SEI, o SIAFE, o PNCP e as listas de sanção, cruza tudo sozinho e só chama você quando um indício pede olhar humano.</p>
+      <div class="v63-cta v63-rv v63-in" style="--i:3">
         <a class="v63-btn sol" role="button" tabindex="0" data-v63-ir="e_alertas">Ver alertas</a>
         <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="s_motores" data-v63-gesto="cortina"><span class="play" aria-hidden="true">▶</span>ver ao vivo</a>
       </div>
-      <p class="v63-nota v63-mono v63-rv" style="--i:4">dado real · relido a cada 30 s · indício ≠ acusação</p>
+      <p class="v63-nota v63-mono v63-rv v63-in" style="--i:4">dado real · relido a cada 30 s · indício ≠ acusação</p>
     </div>
-    <div class="v63-fluxo v63-vidro v63-rv v63-tilt" style="--i:2">
+    <div class="v63-fluxo v63-vidro v63-rv v63-in v63-tilt" style="--i:2">
       <div class="v63-fluxo-top v63-mono"><span>pipeline · 5 etapas / 1 ramo</span><b class="v63-selo" id="v63-selo">lendo</b></div>
       ${_grafo()}
       <div class="v63-fluxo-pe v63-mono" id="v63-fluxo-pe">—</div>
@@ -6557,7 +6558,7 @@
     const l = document.getElementById("v63-run-l");
     if (!l) return;
     if (!_ok(d) || !Array.isArray(d.motores)) {
-      l.innerHTML = `<li class="v63-run-x">${esc(_indisp2(d))}</li>`;
+      l.innerHTML = `<li class="v63-run-x">${_indisp2(d)}</li>`;
       return;
     }
     document.getElementById("v63-run-id").textContent = `run · ${_hora2(d.atualizado_em)}`;
@@ -6595,7 +6596,7 @@
     }
     c.querySelector(".v63-num-s").innerHTML = s || "";
     c.querySelector(".v63-num-b").innerHTML = (barras || []).map((b) => `<div class="v63-barra"><span>${esc(b.l)}</span><i><b style="--w:${b.w.toFixed(4)}"${b.c ? ` class="${b.c}"` : ""}></b></i><em class="v63-mono">${esc(b.v)}</em></div>`).join("");
-    c.querySelector(".v63-num-f").innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${esc(f)}`;
+    c.querySelector(".v63-num-f").innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${f}`;
   }
   function _numOB(d) {
     if (!_ok(d) || !d.obs || !d.obs.ultimo_dia) return _num2("ob", { l: "pago em OB · último dia no SIAFE", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
@@ -6652,7 +6653,7 @@
     const cena = document.getElementById("v63-iso-cena"), pe = document.getElementById("v63-iso-pe");
     if (!cena) return;
     if (!_ok(d) || !Array.isArray(d.achados)) {
-      cena.innerHTML = `<p class="v63-mono v63-vazio">${esc(_indisp2(d))}</p>`;
+      cena.innerHTML = `<p class="v63-mono v63-vazio">${_indisp2(d)}</p>`;
       return;
     }
     const top = d.achados.filter((a) => a && a.nome && !/^\d/.test(a.nome)).sort((a, b) => b.score - a.score).slice(0, 6);
@@ -6673,7 +6674,7 @@
     if (!c) return;
     const lista = _ok(d) && Array.isArray(d.lista_alertas) ? d.lista_alertas : null;
     if (!lista) {
-      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${esc(_indisp2(d))}</div>`;
+      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${_indisp2(d)}</div>`;
       return;
     }
     if (!lista.length) {
@@ -6706,7 +6707,7 @@
     const el = document.getElementById("v63-frescor");
     if (!el) return;
     if (!_ok(d) || !Array.isArray(d.fontes)) {
-      el.textContent = "frescor medido: " + _indisp2(d);
+      el.innerHTML = "frescor medido: " + _indisp2(d);
       return;
     }
     const n = (k) => d.fontes.filter((f) => f.estado === k).length;
@@ -15943,7 +15944,10 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         const _h = document.documentElement;
         _h.classList.add("v61-vt");
         const _vt = document.startViewTransition(pintar);
-        _vt.finished.finally(() => _h.classList.remove("v61-vt"));
+        _vt.ready.catch(() => {
+        });
+        _vt.finished.catch(() => {
+        }).finally(() => _h.classList.remove("v61-vt"));
         await _vt.updateCallbackDone;
       } else {
         pintar();

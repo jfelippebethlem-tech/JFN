@@ -23,7 +23,7 @@ export function molduraMontar() {
   if (ac && !ac.querySelector('.v63-cta')) {
     const a = document.createElement('a');
     a.className = 'v63-btn sol v63-cta'; a.setAttribute('role', 'button'); a.tabIndex = 0;
-    a.dataset.v63Ir = 'g_buscar'; a.textContent = 'Buscar CNPJ';
+    a.dataset.v63Ir = 'g_buscar'; a.textContent = 'Buscar'; a.title = 'Buscar empresa, CNPJ, órgão ou contrato';
     ac.insertBefore(a, ac.firstChild);
   }
   _ler();

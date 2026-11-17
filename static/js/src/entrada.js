@@ -356,7 +356,10 @@ async function ir(id){
     if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))&&!document.documentElement.classList.contains('v63-tr-on')){
       const _h=document.documentElement;_h.classList.add('v61-vt');
       const _vt=document.startViewTransition(pintar);
-      _vt.finished.finally(()=>_h.classList.remove('v61-vt'));
+      /* sob carga o navegador ABORTA a transição ("timeout in DOM update") e as promessas dela rejeitam —
+         sem `catch` isso virava pageerror em toda troca lenta (medido na VM, 17/11/2026). A tela é pintada igual. */
+      _vt.ready.catch(()=>{});
+      _vt.finished.catch(()=>{}).finally(()=>_h.classList.remove('v61-vt'));
       await _vt.updateCallbackDone;
     }else{pintar();}}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}

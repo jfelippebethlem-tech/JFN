@@ -61,21 +61,24 @@ function _grafo() {
   </svg>`;
 }
 
+/* O herói nasce JÁ revelado (`v63-in` no HTML): a animação de entrada começa na inserção, sem esperar o
+   IntersectionObserver — com a thread ocupada no boot ele atrasava segundos e o título (o LCP da página)
+   ficava invisível esse tempo todo (Lighthouse na VM: LCP 27,7 s → ver relatório). */
 export function v63InicioHtml() {
   return `<div class="v63-inicio" id="v63-inicio">
   <section class="v63-hero" data-v63-quadro="1">
     <div class="v63-poeira" aria-hidden="true">${_redMotion ? '' : Array.from({length: 14}, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
     <div class="v63-hero-tx">
-      <span class="v63-eti v63-mono v63-rv" style="--i:0"><i></i>controle externo · rio de janeiro · ${FONTES.length} fontes</span>
-      <h2 class="v63-h1 v63-rv" style="--i:1">Cada contrato,<br><em class="v63-it">rastreado.</em></h2>
-      <p class="v63-lead v63-rv" style="--i:2">O JFN lê o SEI, o SIAFE, o PNCP e as listas de sanção, cruza tudo sozinho e só chama você quando um indício pede olhar humano.</p>
-      <div class="v63-cta v63-rv" style="--i:3">
+      <span class="v63-eti v63-mono v63-rv v63-in" style="--i:0"><i></i>controle externo · rio de janeiro · ${FONTES.length} fontes</span>
+      <h2 class="v63-h1 v63-rv v63-in" style="--i:1">Cada contrato,<br><em class="v63-it">rastreado.</em></h2>
+      <p class="v63-lead v63-rv v63-in" style="--i:2">O JFN lê o SEI, o SIAFE, o PNCP e as listas de sanção, cruza tudo sozinho e só chama você quando um indício pede olhar humano.</p>
+      <div class="v63-cta v63-rv v63-in" style="--i:3">
         <a class="v63-btn sol" role="button" tabindex="0" data-v63-ir="e_alertas">Ver alertas</a>
         <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="s_motores" data-v63-gesto="cortina"><span class="play" aria-hidden="true">▶</span>ver ao vivo</a>
       </div>
-      <p class="v63-nota v63-mono v63-rv" style="--i:4">dado real · relido a cada 30 s · indício ≠ acusação</p>
+      <p class="v63-nota v63-mono v63-rv v63-in" style="--i:4">dado real · relido a cada 30 s · indício ≠ acusação</p>
     </div>
-    <div class="v63-fluxo v63-vidro v63-rv v63-tilt" style="--i:2">
+    <div class="v63-fluxo v63-vidro v63-rv v63-in v63-tilt" style="--i:2">
       <div class="v63-fluxo-top v63-mono"><span>pipeline · 5 etapas / 1 ramo</span><b class="v63-selo" id="v63-selo">lendo</b></div>
       ${_grafo()}
       <div class="v63-fluxo-pe v63-mono" id="v63-fluxo-pe">—</div>
@@ -157,6 +160,7 @@ export function v63InicioMontar() {
 }
 
 const _ok = d => d && !d.erro;
+/* `erroHumano` (da casa) devolve HTML — motivo + botão "tentar de novo" —, então vai por innerHTML, sem esc */
 function _indisp(d) { return 'indisponível — ' + erroHumano(d && d.erro); }
 
 function _selo(d) {
@@ -186,7 +190,7 @@ function _nos(e, p) {
 
 function _run(d) {
   const l = document.getElementById('v63-run-l'); if (!l) return;
-  if (!_ok(d) || !Array.isArray(d.motores)) { l.innerHTML = `<li class="v63-run-x">${esc(_indisp(d))}</li>`; return; }
+  if (!_ok(d) || !Array.isArray(d.motores)) { l.innerHTML = `<li class="v63-run-x">${_indisp(d)}</li>`; return; }
   document.getElementById('v63-run-id').textContent = `run · ${_hora(d.atualizado_em)}`;
   document.getElementById('v63-run-ev').textContent = `${String(d.eventos_min ?? '—').replace('.', ',')} ev/min`;
   const ord = {rodando: 0, falhou: 1, indisponivel: 2, ocioso: 3, agendado: 4};
@@ -219,7 +223,7 @@ function _num(k, {l, v, fmt, s, f, estado, barras, alvo}) {
   c.querySelector('.v63-num-s').innerHTML = s || '';
   c.querySelector('.v63-num-b').innerHTML = (barras || []).map(b =>
     `<div class="v63-barra"><span>${esc(b.l)}</span><i><b style="--w:${b.w.toFixed(4)}"${b.c ? ` class="${b.c}"` : ''}></b></i><em class="v63-mono">${esc(b.v)}</em></div>`).join('');
-  c.querySelector('.v63-num-f').innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${esc(f)}`;
+  c.querySelector('.v63-num-f').innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${f}`;   // f: rótulo fixo daqui ou o HTML do erroHumano
 }
 
 function _numOB(d) {
@@ -252,7 +256,7 @@ function _numEcon(d) {
 function _iso(d) {
   const cena = document.getElementById('v63-iso-cena'), pe = document.getElementById('v63-iso-pe');
   if (!cena) return;
-  if (!_ok(d) || !Array.isArray(d.achados)) { cena.innerHTML = `<p class="v63-mono v63-vazio">${esc(_indisp(d))}</p>`; return; }
+  if (!_ok(d) || !Array.isArray(d.achados)) { cena.innerHTML = `<p class="v63-mono v63-vazio">${_indisp(d)}</p>`; return; }
   /* só pessoa jurídica no pódio: nome que começa por número (MEI com CPF no nome) fica fora (LGPD) */
   const top = d.achados.filter(a => a && a.nome && !/^\d/.test(a.nome)).sort((a, b) => b.score - a.score).slice(0, 6);
   if (!top.length) { cena.innerHTML = '<p class="v63-mono v63-vazio">nenhum fornecedor com sinal no radar agora</p>'; return; }
@@ -269,7 +273,7 @@ function _iso(d) {
 function _slack(d) {
   const c = document.getElementById('v63-slack'); if (!c) return;
   const lista = _ok(d) && Array.isArray(d.lista_alertas) ? d.lista_alertas : null;
-  if (!lista) { c.innerHTML = `<div class="v63-slack-vazio v63-mono">${esc(_indisp(d))}</div>`; return; }
+  if (!lista) { c.innerHTML = `<div class="v63-slack-vazio v63-mono">${_indisp(d)}</div>`; return; }
   if (!lista.length) { c.innerHTML = '<div class="v63-slack-vazio v63-mono">nenhum alerta aberto na base</div>'; return; }
   /* LGPD: o cartão em destaque só mostra alerta sobre EMPRESA (CNPJ de 14 dígitos no texto) e nunca um
      que cite CPF mascarado (emprego múltiplo etc.) — nome de pessoa física não vai para a vitrine. */
@@ -295,7 +299,7 @@ function _slack(d) {
 
 function _frescor(d) {
   const el = document.getElementById('v63-frescor'); if (!el) return;
-  if (!_ok(d) || !Array.isArray(d.fontes)) { el.textContent = 'frescor medido: ' + _indisp(d); return; }
+  if (!_ok(d) || !Array.isArray(d.fontes)) { el.innerHTML = 'frescor medido: ' + _indisp(d); return; }
   const n = k => d.fontes.filter(f => f.estado === k).length;
   el.innerHTML = `frescor medido agora em ${fmtN(d.fontes.length)} coletas: <b class="ok">${fmtN(n('ok'))} em dia</b> · <b class="at">${fmtN(n('atencao'))} em atenção</b> · <b class="cr">${fmtN(n('critico'))} atrasadas</b> <a data-v63-ir="s_motores" role="link" tabindex="0">ver →</a>`;
 }
