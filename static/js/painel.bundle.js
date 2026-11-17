@@ -1750,9 +1750,9 @@
     _raf2 = requestAnimationFrame(_passo);
   }
   function _visib() {
-    const fora = document.hidden;
+    const parar = document.hidden || _sobrio;
     if (_video) {
-      if (fora) _video.pause();
+      if (parar) _video.pause();
       else {
         const p = _video.play();
         if (p && p.catch) p.catch(() => {
@@ -1760,7 +1760,7 @@
       }
     }
     if (_cv) {
-      _vivo = !fora;
+      _vivo = !parar;
       if (_vivo && !_raf2) _raf2 = requestAnimationFrame(_passo);
     }
   }
@@ -1891,7 +1891,7 @@
     }
     if (t.classList.contains("on")) return;
     const destino = t.dataset.v63Ir;
-    if (!_redMotion && !_sobrio) _cobrir(t, e);
+    if (!_redMotion) _cobrir(t, e);
     if (destino) {
       e.preventDefault();
       e.stopPropagation();

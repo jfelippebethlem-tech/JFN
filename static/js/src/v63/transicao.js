@@ -12,9 +12,11 @@
  * Enquanto a cobertura está no ar, o `ir()` não abre View Transition (classe `v63-tr-on`): as duas
  * fotografariam uma à outra no meio do gesto.
  *
- * Reduzir movimento e modo sóbrio: sem gesto nenhum — a navegação é a de sempre.
+ * Reduzir movimento: sem gesto nenhum — a navegação é a de sempre. O modo sóbrio (FPS medido baixo)
+ * NÃO desliga: é um elemento só, animando só `clip-path` por ~1 s, e é ele que esconde o carregamento
+ * justamente na máquina lenta (medido nesta VM: o Chrome sem GPU entra em sóbrio a 1 fps).
  */
-import {_redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion} from '../capacidade/estado.js';
 
 const GESTOS = ['expandir', 'cortina', 'zoom'];
 const ENTRA = 430, SAI = 560, TETO = 1600;
@@ -38,7 +40,7 @@ function _clique(e) {
   if (t.dataset.v63Dossie) { e.preventDefault(); window.abrirDossie && window.abrirDossie(t.dataset.v63Dossie, t.dataset.nome || ''); return; }
   if (t.classList.contains('on')) return;                       // aba/esfera em que já se está
   const destino = t.dataset.v63Ir;
-  if (!_redMotion && !_sobrio) _cobrir(t, e);
+  if (!_redMotion) _cobrir(t, e);
   if (destino) { e.preventDefault(); e.stopPropagation(); window.ir && window.ir(destino); }
 }
 

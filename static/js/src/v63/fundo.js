@@ -72,10 +72,12 @@ function _paraCanvas() {
   _raf = requestAnimationFrame(_passo);
 }
 
+/* `visibilitychange` também é o sinal que o modo sóbrio reemite ao ligar/desligar (`capacidade/sobrio.js`):
+   aba oculta OU sóbrio → vídeo pausado e canvas parado (o CSS mostra o pôster). */
 function _visib() {
-  const fora = document.hidden;
-  if (_video) { if (fora) _video.pause(); else { const p = _video.play(); if (p && p.catch) p.catch(() => {}); } }
-  if (_cv) { _vivo = !fora; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
+  const parar = document.hidden || _sobrio;
+  if (_video) { if (parar) _video.pause(); else { const p = _video.play(); if (p && p.catch) p.catch(() => {}); } }
+  if (_cv) { _vivo = !parar; if (_vivo && !_raf) _raf = requestAnimationFrame(_passo); }
 }
 
 /* parallax: uma escrita de variável por quadro em que houve rolagem — nada de leitura de layout */

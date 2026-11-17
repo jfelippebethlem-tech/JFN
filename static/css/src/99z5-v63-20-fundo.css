@@ -28,3 +28,8 @@ html.v63 body:not([data-esf="inicio"]) .v63-quadro{opacity:.5}
   html.v63 .v63-cam{transform:none}
   html.v63 .v63-quadro{transition:none}
 }
+
+/* modo sóbrio (FPS MEDIDO baixo, `capacidade/sobrio.js`): as fitas param no pôster e a poeira sai —
+   mesma regra dos vídeos de esfera da v51: o item mais caro da tela é o primeiro a recuar */
+html.v63 body.fps-baixo .v63-quadro video, html.v63 body.fps-baixo .v63-quadro .v63-cv, html.v63 body.fps-baixo .v63-poeira{display:none}
+html.v63 body.fps-baixo .v63-quadro{transition:none}

@@ -5,7 +5,7 @@
 
    REGRAS DESTES ESTRATOS (`99z5-v63-*.css`)
    · Vêm DEPOIS dos `99z2-v61-*` e não são camadados: mesma especificidade → a declaração daqui vence.
-   · TODO seletor começa por `html.v63`. Sem a classe (`?v63=0`) o painel é a v61, byte a byte.
+   · TODO seletor começa por `html.v63` (classe sempre presente desde 17/11/2026: é o padrão do painel).
    · Os nomes de token são os da v61 (`--ion`, `--ink`, `--surface`…): redefini-los recolore os 30
      estratos anteriores de uma vez. Só o que a v61 não tem nome ganha token novo (`--v63-*`).
    ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
