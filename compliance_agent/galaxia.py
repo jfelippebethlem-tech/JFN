@@ -689,6 +689,20 @@ def galaxia_bytes(limite: int | None = None, score_min: int = 0, orgao: str = ""
     return memo[chave]
 
 
+def galaxia_gz(limite: int | None = None, score_min: int = 0, orgao: str = "") -> bytes:
+    """O mesmo JSON já comprimido (gzip nível 6), memorizado — a rota não recomprime 1 MB a cada visita."""
+    import gzip
+    b = galaxia_bytes(limite, score_min, orgao)
+    memo = _MEM.setdefault("gz", {})
+    if memo.get("_mt") != _MEM["mtime"]:
+        memo.clear()
+        memo["_mt"] = _MEM["mtime"]
+    chave = (limite or 0, score_min or 0, orgao or "")
+    if chave not in memo:
+        memo[chave] = gzip.compress(b, 6)
+    return memo[chave]
+
+
 if __name__ == "__main__":
     import sys
     if (sys.argv[1] if len(sys.argv) > 1 else "gerar") == "gerar":

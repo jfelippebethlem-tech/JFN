@@ -54,18 +54,22 @@ async def api_casos_nota(slug: str = ""):
 
 
 @router.get("/api/galaxia")
-async def api_galaxia(limite: int = 0, score_min: int = 0, orgao: str = ""):
+async def api_galaxia(request: Request, limite: int = 0, score_min: int = 0, orgao: str = ""):
     """Galáxia dos casos: órgãos, fornecedores do Radar e de alertas abertos, dossiês do vault, sócios (QSA
     público) e processos SEI, com as ligações reais. JSON pré-calculado (`data/cache/galaxia.json`, gerado pela
     ronda); `limite`/`score_min`/`orgao` recortam. Ligação = indício de relação a conferir, nunca prova."""
     from fastapi.responses import Response
-    from compliance_agent.galaxia import galaxia_bytes
+    from compliance_agent.galaxia import galaxia_bytes, galaxia_gz
+    gz = "gzip" in request.headers.get("accept-encoding", "")
+    args = (max(0, min(limite, 20000)) or None, max(0, min(score_min, 100)), orgao[:80])
     try:
-        b = await asyncio.to_thread(galaxia_bytes, max(0, min(limite, 20000)) or None,
-                                    max(0, min(score_min, 100)), orgao[:80])
+        b = await asyncio.to_thread(galaxia_gz if gz else galaxia_bytes, *args)
     except Exception as exc:  # noqa: BLE001 — a página mostra "indisponível", nunca grafo vazio fingido
         return JSONResponse({"ok": False, "erro": f"galáxia indisponível: {type(exc).__name__}"}, status_code=503)
-    return Response(content=b, media_type="application/json", headers={"Cache-Control": "private, max-age=60"})
+    h = {"Cache-Control": "private, max-age=60", "Vary": "Accept-Encoding"}
+    if gz:
+        h["Content-Encoding"] = "gzip"            # já comprimido e memorizado: o GZipMiddleware não recomprime
+    return Response(content=b, media_type="application/json", headers=h)
 
 
 @router.get("/api/galaxia/no")
