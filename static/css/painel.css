@@ -4348,7 +4348,7 @@ html.v60 .sheet .x:hover{color:var(--ink);border-color:color-mix(in oklch,var(--
 @media (max-width:760px){
   html.v60 .search .az{height:44px;min-width:44px;margin-top:-22px;right:0}
   html.v60 .search input{padding-right:56px}
-  html.v60 .v60-desc-mais{padding:12px 12px 12px 0}
+  html.v60 .v60-desc-mais{padding:12px 12px 12px 0;min-width:44px}   /* v66: alvo ≥ 44 px (era 41) */
   html.v60 .sheet .x{min-height:44px}
   html.v60 th.srt{padding-top:12px;padding-bottom:14px}
 }
