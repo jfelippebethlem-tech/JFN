@@ -122,9 +122,10 @@ function zoomEm(px, py, f) {                               // roda, teclado: lim
   assentado = false; sujo = true; laco();
 }
 /** Gesto acabou: mola de volta aos limites; se a tela ficou vazia, voa para o nó mais próximo. */
+let nAssentar = 0;
 function assentar() {
   if (assentado || !G || !camOk()) return;
-  assentado = true;
+  assentado = true; nAssentar++;
   const k = travaK(cam.k), [cx, cy] = travaCentro(cam.cx, cam.cy, k);
   if (Math.abs(k - cam.k) > 1e-6 * k || Math.abs(cx - cam.cx) * k > .5 || Math.abs(cy - cam.cy) * k > .5) {
     voar({cx, cy, k}, 320); assentado = false; return;
@@ -273,7 +274,8 @@ addEventListener('keydown', e => {
   if (e.key === '0') verTudo();
 });
 /* Diagnóstico só-leitura para o teste de gesto (_SANDBOX/v66_gesto.py): câmera, nós na tela, limites. */
-window.__gx = () => ({cam: cam && {...cam}, nVis, nUtil: G && camOk() ? contarNaTela(G, cam, w, h, areaUtil()) : -1, kMin: G && kMin(), kMax: K_MAX, dpr, cw: cv.width, ch: cv.height, ptrs: ptrs.size, gesto: gesto && gesto.tipo, parado: !voo && !inercia && !ptrs.size && assentado && !sujo});
+window.__gx = () => ({cam: cam && {...cam}, nVis, nUtil: G && camOk() ? contarNaTela(G, cam, w, h, areaUtil()) : -1, kMin: G && kMin(), kMax: K_MAX, dpr, cw: cv.width, ch: cv.height, ptrs: ptrs.size, gesto: gesto && gesto.tipo, parado: !voo && !inercia && !ptrs.size && assentado && !sujo,
+  voo: !!voo, inercia: inercia && {...inercia}, assentado, sujo, nAssentar});
 
 function tocar(px, py) {
   const i = acertar(G, cam, w, h, px, py, matchMedia('(pointer:coarse)').matches ? 16 : 10);
