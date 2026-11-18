@@ -112,6 +112,7 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
             "pago_determinado": round(e["pago_determinado"], 2),
             "devido_determinado": round(e["devido_determinado"], 2),
             "excesso_a_maior": round(e["excesso_a_maior"], 2),
+            "excesso_a_maior_pro_rata": round(e["excesso_a_maior_pro_rata"], 2),
             "adiantado": round(e["adiantado"], 2),
             "excesso_global": round(e["excesso_global"], 2),
             "deficit_encerrado": round(e["deficit_encerrado"], 2),
