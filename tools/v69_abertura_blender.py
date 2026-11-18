@@ -79,7 +79,7 @@ sc.render.filepath = os.path.join(SAIDA, '')
 wd = bpy.data.worlds.new('w'); sc.world = wd
 try:
     wd.use_nodes = True; wd.node_tree.nodes['Background'].inputs[0].default_value = (*FUNDO0, 1)
-except Exception:
+except (AttributeError, KeyError):       # mundo sem nós nesta versão
     wd.color = FUNDO0
 
 
@@ -454,7 +454,7 @@ def borrao(px, fator):
     b = CN.new('CompositorNodeBlur')
     b.inputs['Size'].default_value = (px * esc, px * esc)
     try: b.inputs['Type'].default_value = 'Gaussian'
-    except Exception: pass
+    except (TypeError, KeyError): pass      # o tipo é menu do nó; ausente → padrão
     CL.new(rl_.outputs['Image'], b.inputs['Image'])
     return b, fator
 
