@@ -61,6 +61,8 @@ def _txt(h: str) -> str:
 
 
 def main() -> int:
+    import surya_utf8  # acentos: o modelo gera ç/ã em Latin-1 (ver o módulo)
+    surya_utf8.instalar()
     from surya import RecognitionPredictor, SuryaInferenceManager
     rec = RecognitionPredictor(SuryaInferenceManager())
     for d in (TMP, OUT):
