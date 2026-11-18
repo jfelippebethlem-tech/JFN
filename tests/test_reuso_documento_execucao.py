@@ -147,6 +147,11 @@ def test_negativo_portaria_de_designacao_fica_fora_da_selecao():
               "Resolução SECC 28.2021 - Regulamento", "Anexo 02 - PUBLICAÇÃO COMISSÃO DE FISCALIZAÇÃO",
               "Anotação ART /RRT - Comissão de Fiscalização", "Anexo 10 - Nomeção da Comissão de Fiscalização"):
         assert R.titulo_e_de_designacao(t), t
+    for t in ("Relatório ART - ATESTADO DE RESPONSABILIDADE TÉCNICA", "Guia de ISS e Comp. Pagto - Belford",
+              "Anexo 19 E-MAIL DE SOL./REC. DOC", "Atestado de veracidade (76298022)",
+              "Boletim Comissão de Fiscalização de Contratos",
+              "Despacho de Atesto de Habilitação Jurídica e Fiscal"):
+        assert R.titulo_e_de_designacao(t), t
     assert not R.titulo_e_de_designacao("Parecer 31 Comissão de Fiscalização - Abril/25")
     assert not R.titulo_e_de_designacao("Anexo 15 F - RELATORIO DIARIO DE OBRA")
     assert R.titulo_e_de_designacao("Anexo - Comissão de Gestão e Fiscalização (92999987)")
@@ -315,5 +320,12 @@ def test_negativo_catalogo_emop_exportado_na_planilha_nao_e_corpo():
                     + [f"01.001.0{100 + i}-0 | ENSAIO DE VISCOSIDADE ESPECIFICA ENGLER TIPO {i} | UN | {200 + i}.15"
                        for i in range(50)])
     assert R.normalizar_corpo(cat) == ""
+    assert R.predominio_de_catalogo(cat)
+    a = _doc("490001/000221/2026", "128209368", "Planilha Boletim de Medição Excel", cat + "\n2202.27\n2064.33",
+             tipo="medicao", credor="29622057000104", contratos=["15/2026"])
+    b = _doc("490001/000232/2026", "128218811", "Planilha Boletim de Medição em Excel", cat + "\n2202.27\n2064.33",
+             tipo="medicao", credor="29622057000104", contratos=["17/2026"])
+    assert R.comparar(a, b)["classe"] == "catalogo_de_precos"
+    assert not R.predominio_de_catalogo(DIARIO)
     med = "13.373.0020-0 | PISO DE CONCRETO ARMADO | M2 | 100,50 | 154,31 | 50,00 | 7.715,50"
     assert "piso de concreto" in R.normalizar_corpo(med)

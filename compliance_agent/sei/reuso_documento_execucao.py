@@ -36,6 +36,22 @@ texto no acervo (não comparado — nunca "sem reuso").
 
 Indício ≠ acusação. Corpo repetido pede o diário/relatório real e a vistoria; não prova, sozinho,
 que o serviço não foi feito. Presunção de regularidade.
+
+MEDIDO NO ACERVO (18/11/2026, rodada final no it-campo, B=3): 20.816 documentos de execução com texto
+em 3.505 processos (1.118 INDISPONÍVEIS, sem texto — 855 atestos, 203 medições); 85.673 candidatos;
+2.335 pares (372 famílias). Por NÍVEL (pares de documentos / pares de processos):
+  identico_contratos_diferentes 9/6 — conferidos à mão: os 5 da SEHIS×Augusto Velloso e 1 da DEGASE
+    (Contratos 007/2020 × 008/2020, mesmo relatório escaneado) → os dois são casos reais a apurar;
+  trecho_contratos_diferentes 15/13 — 2 da EUREKA (reais); o resto é, na maioria, parágrafo de método
+    do fiscal (≈ 3 a 4 em 13 merecem leitura) → PENDENTE, nunca manchete;
+  quase_identico_contratos_diferentes 76/76 — amostra de 8: quase tudo formulário de avaliação
+    preenchido igual ("bom x") e despacho-padrão → fraco;
+  quase_identico_mesmo_contrato 1.519/726 e …_contrato_indisponivel 657/224 — relatório mensal do
+    fiscal com cabeçalho fixo: endêmico, só leitura;
+  identico_contrato_indisponivel 49/5, identico_mesmo_contrato_* 10/10 — a conferir (há cópia do mesmo
+    relatório da medição de jul/2024 num processo de 2025; planilha da 23ª medição igual noutro processo).
+Fora por regra, contados: 1.045 pares de catálogo EMOP, 22 de formulário em branco, 2 cópias assinadas.
+Entre credores DIFERENTES: 43 pares (1,8%), quase todos modelo do órgão — por isso o filtro por credor.
 """
 from __future__ import annotations
 
@@ -104,7 +120,9 @@ _LINHAS_FORA = [re.compile(p, re.I) for p in (
 # credores e de contratos diferentes e virava "corpo idêntico". Catálogo público não é relato de execução.
 # A linha de MEDIÇÃO tem mais colunas (quantidade contratada, medida, acumulada) e não casa.
 _RX_LINHA_CATALOGO = re.compile(
-    r"^\s*(?:\d{2}\.\d{3}\.\d{4}-[0-9A-Z]\s*\|\s*)?[^|]+\|\s*[A-Za-z0-9²³/%.]{1,8}\s*\|\s*[\d.,]+\s*$"
+    r"^\s*(?:\d{2}\.\d{3}\.\d{4}-[0-9A-Z]\s*\|\s*)?[^|]+\|\s*[A-Za-z0-9²³/%.]{1,8}\s*(?:\|\s*[\d.,]*)?\s*$"
+    r"|^\s*\d{2}\.\d{3}\.\d{4}-[0-9A-Z]\s*\|[^|]+$"            # código | descrição (quebra de linha)
+    r"|^\s*c[oó]digo\s*\|\s*descri[cç][aã]o\s*\|\s*unid\.?\s*\|\s*pre[cç]o"
     r"|^\s*\d{2}\s*\|\s*[A-ZÀ-Ú ,.()/-]+$|^\s*categorias cat[aá]logo|^\s*cat[aá]logo\s*\|", re.I)
 # CPF (inteiro ou mascarado) nunca chega ao trecho que se exibe (LGPD) nem ao shingle
 _RX_CPF = re.compile(r"(?:\d{3}|\*{3})\.\d{3}\.\d{3}-(?:\d{2}|\*{2})|\b\d{11}\b")
@@ -168,6 +186,14 @@ def formulario_em_branco(texto: str) -> bool:
     return numeros < 15 and (lacunas >= 3 or (rotulos >= 5 and rotulos / len(linhas) >= 0.25))
 
 
+def predominio_de_catalogo(texto: str) -> bool:
+    """Metade ou mais das linhas é catálogo de preços (EMOP/SINAPI). 4ª rodada: depois de tirar as linhas
+    de catálogo, o resto da "Planilha Boletim de Medição Excel" (preço quebrado em linha própria, título de
+    aba) ainda casava entre dois credores. Documento que é, no essencial, o catálogo público sai inteiro."""
+    linhas = [ln for ln in (texto or "").splitlines() if ln.strip()]
+    return len(linhas) >= 50 and sum(1 for ln in linhas if _RX_LINHA_CATALOGO.search(ln)) >= 0.5 * len(linhas)
+
+
 def shingles(corpo: str, k: int = K_SHINGLE) -> set[int]:
     """Conjunto de shingles de k palavras, cada um como inteiro de 63 bits (blake2b, estável entre
     processos e máquinas — `hash()` do Python muda com PYTHONHASHSEED)."""
@@ -223,8 +249,13 @@ _RX_TITULO_RELATO = re.compile(r"relat|diario de obra|medi|atest|boletim|vistori
 # de corpo IDÊNTICO, ~270 eram publicação no D.O. da comissão, "Documento - Modelo de recebimento"
 # (formulário EM BRANCO), "Resolução SECC 28/2021 - Regulamento", "Anotação ART/RRT" do fiscal e
 # "Nomeção" (sic) da comissão — atos e modelos, não relato de execução.
+# 4ª rodada: "Relatório ART – Atestado de Responsabilidade Técnica", "Guia de ISS e Comp. Pagto",
+# "E-mail de sol./rec. doc", "Atestado de veracidade" e o "Boletim Comissão de Fiscalização" do CBMERJ
+# (lista de membros) — documentos administrativos, não relato de execução.
 _RX_TITULO_SEMPRE_FORA = re.compile(r"\bpublicac|\bd o\b|diario oficial|\bdoerj\b|resolucao|regulamento"
-                                    r"|\bmodelo\b|\banotacao\b|\brrt\b|\bnomecao\b|\bnomeacao\b")
+                                    r"|\bmodelo\b|\banotacao\b|\brrt\b|\bnomecao\b|\bnomeacao\b"
+                                    r"|\bart\b|responsabilidade tecnica|\bguia\b|\be ?mail\b|veracidade"
+                                    r"|boletim (da )?comiss|habilitac")
 
 
 def titulo_e_de_designacao(titulo: str) -> bool:
@@ -454,6 +485,8 @@ def comparar(a: dict, b: dict, df_credores: dict[int, int] | None = None,
         classe = "copia_do_mesmo_documento"
     elif a.get("em_branco") or b.get("em_branco"):
         classe = "formulario_em_branco"
+    elif a.get("catalogo") or b.get("catalogo"):
+        classe = "catalogo_de_precos"
     elif len(comum) >= MIN_DESCRITIVO and cont >= LIMIAR_CONTENCAO:
         classe = "reuso_execucao"
         out["forma"] = "integral"
@@ -541,6 +574,7 @@ def preparar(doc: dict) -> dict:
             "assinaturas": assinaturas(texto),
             "contratos_doc": sorted(contratos_citados(texto[:4000])),
             "em_branco": formulario_em_branco(texto),
+            "catalogo": predominio_de_catalogo(texto),
             # o SEI aparece no rodapé "código verificador N" e no cabeçalho "[Título (N)]" do
             # acervo; o rodapé é do SEI, não nosso — por isso confere-se no texto SEM etiqueta
             "texto_bruto_inicio": sei if (sei and sei in texto) else ""}
@@ -619,7 +653,7 @@ def exportar(base: Path = BASE_ACERVO, saida: Path | None = None, limite: int | 
                     "registro": "doc", **{k: p[k] for k in ("processo", "pasta", "i", "titulo", "tipo",
                                                             "sei", "arquivo", "corpo", "hash",
                                                             "assinaturas", "texto_bruto_inicio",
-                                                            "contratos_doc", "em_branco")},
+                                                            "contratos_doc", "em_branco", "catalogo")},
                     "credor": credor, "credor_fonte": fonte, "contratos": contratos,
                 }, ensure_ascii=False) + "\n")
                 n_doc += 1
