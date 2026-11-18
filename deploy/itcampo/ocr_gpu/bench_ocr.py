@@ -47,7 +47,7 @@ for p in PDFS:
     for i in range(min(MAXPAG, doc.page_count)):
         verdade = doc.load_page(i).get_text()
         if len(norm(verdade)) < 300: continue
-        img = Image.open(io.BytesIO(doc.load_page(i).get_pixmap(dpi=200).tobytes("png"))).convert("RGB")
+        img = Image.open(io.BytesIO(doc.load_page(i).get_pixmap(dpi=int(os.environ.get("DPI", "200"))).tobytes("png"))).convert("RGB")
         amostras.append((f"{p.name}#{i}", verdade, img))
 print("páginas com gabarito:", len(amostras), flush=True)
 
