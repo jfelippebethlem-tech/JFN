@@ -325,11 +325,11 @@ def _liberar_senha() -> None:
 
 async def _login(pg, exercicio: int):
     """Login com a trava entre execuções: senha já recusada (mesma impressão) não vai ao SIAFE; recusa nova grava a
-    trava; login ok a libera. O resto é `_login_bruto`."""
+    trava; login ok a libera. O resto é `_login_bruto` (que recarrega o ambiente de novo)."""
     from compliance_agent.envfile import carregar_env
     try:
         carregar_env()
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.debug("falha ao carregar .env antes do login SIAFE: %s", exc)
     _sis = "1" if ("www5" in LOGIN_URL or "SiafeRio" in LOGIN_URL) else "2"
     u = (os.environ.get(f"SIAFE{_sis}_USER") or os.environ.get("SIAFE_USER") or "").strip()
