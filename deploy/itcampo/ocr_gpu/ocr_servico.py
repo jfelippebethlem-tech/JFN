@@ -10,6 +10,7 @@ import html as _html
 import io
 import re
 import threading
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from PIL import Image
@@ -17,6 +18,7 @@ from surya import RecognitionPredictor, SuryaInferenceManager
 
 _REC = RecognitionPredictor(SuryaInferenceManager())
 _TRAVA = threading.Semaphore(4)          # no máximo 4 páginas em voo (o vLLM enfileira o resto)
+SINAL = Path.home() / "jfn-gpu" / "ocr" / "SESSAO_ATIVA"   # o lote em massa cede a GPU enquanto este arquivo é recente
 MAX_BYTES = 30 * 1024 * 1024
 
 
@@ -48,6 +50,8 @@ class H(BaseHTTPRequestHandler):
         if not 0 < n <= MAX_BYTES:
             return self._resp(413, "")
         try:
+            SINAL.parent.mkdir(parents=True, exist_ok=True)
+            SINAL.touch()
             img = Image.open(io.BytesIO(self.rfile.read(n))).convert("RGB")
             with _TRAVA:
                 r = _REC([img])[0]

@@ -61,3 +61,32 @@ def test_texto_gpu_vazio_nao_substitui(tmp_path, monkeypatch):
                     {1: "  \n[página 1]\n  "})
     G.integrar()
     assert "tesseract" in (arq / "texto" / "001_pub.txt").read_text()
+
+
+def test_fila_prioriza_nota_fiscal_sem_texto_e_pula_nativo_e_aplicado(tmp_path, monkeypatch):
+    import tools.sei_ocr_gpu_fila as F
+    arq = tmp_path / "sei_arquivo" / "111_222_2024"
+    arq.mkdir(parents=True)
+    docs = [{"i": 0, "tipo": "despacho", "chars": 500, "ocr": True},          # tesseract, prioridade baixa
+            {"i": 1, "tipo": "nota_fiscal", "chars": 0},                      # sem texto, NF → primeiro
+            {"i": 2, "tipo": "nota_fiscal", "chars": 900, "ocr": False},       # nativo → nunca
+            {"i": 3, "tipo": "ordem_bancaria", "chars": 300, "ocr": True},     # tesseract OB
+            {"i": 4, "tipo": "nota_fiscal", "chars": 0},                       # já aplicado → fora
+            {"i": 5, "tipo": "nota_fiscal", "chars": 0}]                       # sem PDF no frio → fora
+    (arq / "manifest.json").write_text(json.dumps({"docs": docs}))
+    monkeypatch.setattr(F, "ARQUIVO", tmp_path / "sei_arquivo")
+    frio = {f"integra_111_222_2024/{i:03d}.pdf" for i in range(5)}
+    fila = F.montar(frio, {("111_222_2024", 4)})
+    assert fila == ["integra_111_222_2024/001.pdf", "integra_111_222_2024/003.pdf", "integra_111_222_2024/000.pdf"]
+
+
+def test_texto_com_acento_quebrado_nao_entra(tmp_path, monkeypatch):
+    """18/11/2026: o vLLM 0.34 devolvia 'Liquida��o' (byte do ç/ã cortado). Texto com U+FFFD não entra no arquivo."""
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    docs = [{"i": 0, "titulo": "NL", "fase": "despesa", "tipo": "nota_liquidacao", "texto": "", "chars": 0}]
+    arq, _ = _monta(tmp_path, docs, {}, {0: "Nota de Liquida��o encerrado até Mar�o valor 1.234,56 " * 3})
+    res = G.integrar()
+    assert res["preenchidos"] == 0 and res.get("texto_corrompido") == 1
+    assert json.loads((arq / "manifest.json").read_text())["docs"][0]["chars"] == 0

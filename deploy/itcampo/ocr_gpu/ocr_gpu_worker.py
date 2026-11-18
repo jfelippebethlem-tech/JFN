@@ -31,6 +31,14 @@ LOTE = int(os.environ.get("OCR_LOTE", "40"))
 MAX_PAG = int(os.environ.get("OCR_MAX_PAG", "300"))
 PAG_POR_CHAMADA = 8
 VM1 = "vm1-ts:JFN/data/sei_cache/"
+SINAL = BASE / "SESSAO_ATIVA"          # tocado pelo ocr_servico a cada página das sessões SEI
+
+
+def ceder_as_sessoes(max_s: int = 600) -> None:
+    """Captura ao vivo tem prioridade: enquanto uma sessão SEI pediu OCR há < 20 s, o lote espera (até 10 min)."""
+    t0 = time.time()
+    while SINAL.exists() and time.time() - SINAL.stat().st_mtime < 20 and time.time() - t0 < max_s:
+        time.sleep(5)
 
 
 def log(**kw):
@@ -59,9 +67,23 @@ def main() -> int:
         d.mkdir(parents=True, exist_ok=True)
     feitos = set(FEITOS.read_text().split()) if FEITOS.exists() else set()
     falhas = set(FALHAS.read_text().split()) if FALHAS.exists() else set()
-    fila = [p for p in FILA.read_text().split() if p not in feitos and p not in falhas]
+    fila = [p for p in FILA.read_text().split() if p not in feitos and p not in falhas] if FILA.exists() else []
     log(ev="inicio", pendentes=len(fila), feitos=len(feitos))
-    while fila:
+    if any(OUT.rglob("*.ocr_gpu.txt")):     # sobra de lote interrompido: entrega antes de seguir
+        r = subprocess.run(["rsync", "-a", "--ignore-existing", "--include=*/", "--include=*.ocr_gpu.txt",
+                            "--include=*.ocr_gpu.json", "--exclude=*", str(OUT) + "/", VM1],
+                           capture_output=True, text=True, timeout=1800)
+        log(ev="sobra_entregue", rc=r.returncode)
+    while True:
+        if not fila:      # acabou: puxa a fila que a VM-1 remonta (tools/sei_ocr_gpu_fila.py); nada novo → 1 h
+            r = subprocess.run(["rsync", "-a", "vm1-ts:JFN/data/sei_ocr_gpu_fila.txt", str(FILA)],
+                               capture_output=True, text=True, timeout=300)
+            fila = [p for p in FILA.read_text().split() if p not in feitos and p not in falhas] \
+                if r.returncode == 0 and FILA.exists() else []
+            log(ev="fila_da_vm1", rc=r.returncode, pendentes=len(fila))
+            if not fila:
+                time.sleep(3600)
+                continue
         if (BASE / "PAUSA").exists():
             time.sleep(60); continue
         if mem_livre_gb() < 3.0:
@@ -75,6 +97,7 @@ def main() -> int:
             log(ev="rsync_vm2_falhou", rc=r.returncode, erro=r.stderr[-300:]); fila = lote + fila; time.sleep(300); continue
         t_lote, pags_lote = time.time(), 0
         for rel in lote:
+            ceder_as_sessoes()
             pdf = TMP / rel
             try:
                 doc = fitz.open(pdf)
@@ -83,6 +106,7 @@ def main() -> int:
                         for i in range(n)]
                 t0, partes = time.time(), []
                 for k in range(0, n, PAG_POR_CHAMADA):
+                    ceder_as_sessoes()
                     for res in rec(imgs[k:k + PAG_POR_CHAMADA]):
                         partes.append("\n".join(_txt(b.html) for b in
                                                 sorted(res.blocks, key=lambda b: b.reading_order or 0)))
@@ -113,7 +137,6 @@ def main() -> int:
         dt = time.time() - t_lote
         log(ev="lote", pdfs=len(lote), paginas=pags_lote, s=round(dt), s_por_pag=round(dt / max(pags_lote, 1), 2),
             entregue=r.returncode == 0, restantes=len(fila))
-    log(ev="fim", feitos=len(feitos))
     return 0
 
 

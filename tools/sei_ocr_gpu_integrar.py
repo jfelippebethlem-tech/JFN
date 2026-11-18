@@ -54,6 +54,7 @@ def _aplicados() -> set[str]:
 def integrar() -> dict:
     res = {"preenchidos": 0, "substituidos": 0, "nativos_mantidos": 0, "sem_manifesto": 0, "fora_do_manifesto": 0,
            "processos": 0}
+    corrompidos = 0
     feitos = _aplicados()
     novos: list[dict] = []
     for pasta in sorted(CACHE.glob("integra_*")):
@@ -78,6 +79,11 @@ def integrar() -> dict:
             if d is None:
                 res["fora_do_manifesto"] += 1
                 novos.append({**reg, "acao": "fora_do_manifesto"})
+                continue
+            if texto.count("\ufffd") > max(2, len(texto) // 1000):     # acento cortado (U+FFFD): não entra
+                corrompidos += 1           # apaga a entrega para a releitura corrigida poder chegar (rsync --ignore-existing)
+                g.unlink(missing_ok=True)
+                g.with_suffix("").with_suffix(".ocr_gpu.json").unlink(missing_ok=True)
                 continue
             nativo = _chars(d) >= MIN_CHARS and not d.get("ocr")
             if nativo or len(texto) < MIN_CHARS:
@@ -111,6 +117,8 @@ def integrar() -> dict:
             tmp.write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
             os.replace(tmp, mpath)
             res["processos"] += 1
+    if corrompidos:
+        res["texto_corrompido"] = corrompidos
     if novos:
         with LEDGER.open("a", encoding="utf-8") as f:
             f.writelines(json.dumps(n, ensure_ascii=False) + "\n" for n in novos)
