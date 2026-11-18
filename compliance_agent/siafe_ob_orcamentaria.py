@@ -280,8 +280,75 @@ _ERRO_SENHA_INCORRETA = {"ok": False, "erro": "senha_incorreta",
                                    "senha no SIAFE e atualizar SIAFE_PASS (ou SIAFE1_PASS/SIAFE2_PASS) no .env."}
 _CREDENCIAL_RECUSADA = ("senha_incorreta", "senha_expirada")
 
+# TRAVA ENTRE EXECUÇÕES (18/11/2026): o retry de dentro já não repete, mas o DIÁRIO das 05:00 voltava todo dia com a
+# mesma senha recusada — 16, 17 e 18/11, três logins errados seguidos. Recusa grava a IMPRESSÃO (HMAC com o
+# machine-id, nunca a senha) e nenhum coletor tenta essa senha de novo; senha nova no .env ou login ok liberam.
+_TRAVA_SENHA = Path(__file__).resolve().parent.parent / "data" / "siafe_senha_recusada.json"
+_TRAVA_PADRAO = _TRAVA_SENHA
+
+
+def _trava_ativa() -> bool:
+    """Sob pytest só vale se o teste apontou outro arquivo (página falsa de login não pode travar a conta real)."""
+    return not (os.environ.get("PYTEST_CURRENT_TEST") and _TRAVA_SENHA == _TRAVA_PADRAO)
+
+
+def _impressao(usuario: str, senha: str) -> str:
+    import hashlib
+    import hmac
+    try:
+        chave = Path("/etc/machine-id").read_bytes().strip()
+    except OSError:
+        chave = b"jfn-siafe"
+    return hmac.new(chave, f"{usuario}\0{senha}".encode(), hashlib.sha256).hexdigest()
+
+
+def _senha_bloqueada(usuario: str, senha: str) -> bool:
+    try:
+        return json.loads(_TRAVA_SENHA.read_text(encoding="utf-8")).get("impressao") == _impressao(usuario, senha)
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def _registrar_recusa(usuario: str, senha: str) -> None:
+    try:
+        _TRAVA_SENHA.parent.mkdir(parents=True, exist_ok=True)
+        _TRAVA_SENHA.write_text(json.dumps({"impressao": _impressao(usuario, senha), "desde": time.strftime("%F %T")}),
+                                encoding="utf-8")
+        os.chmod(_TRAVA_SENHA, 0o600)
+    except OSError as exc:
+        logger.warning("trava de senha recusada não gravada: %s", exc)
+
+
+def _liberar_senha() -> None:
+    _TRAVA_SENHA.unlink(missing_ok=True)
+
 
 async def _login(pg, exercicio: int):
+    """Login com a trava entre execuções: senha já recusada (mesma impressão) não vai ao SIAFE; recusa nova grava a
+    trava; login ok a libera. O resto é `_login_bruto`."""
+    from compliance_agent.envfile import carregar_env
+    try:
+        carregar_env()
+    except Exception as exc:
+        logger.debug("falha ao carregar .env antes do login SIAFE: %s", exc)
+    _sis = "1" if ("www5" in LOGIN_URL or "SiafeRio" in LOGIN_URL) else "2"
+    u = (os.environ.get(f"SIAFE{_sis}_USER") or os.environ.get("SIAFE_USER") or "").strip()
+    p = (os.environ.get(f"SIAFE{_sis}_PASS") or os.environ.get("SIAFE_PASS") or "").strip()
+    trava = _trava_ativa()
+    if trava and u and p and _senha_bloqueada(u, p):
+        return {**_ERRO_SENHA_INCORRETA, "nao_tentei": True,
+                "detail": "Não tentei: esta mesma senha já foi recusada pelo SIAFE (trava data/siafe_senha_recusada.json). "
+                          "Dono: atualizar SIAFE_PASS no .env — a próxima coleta tenta sozinha com a senha nova."}
+    r = await _login_bruto(pg, exercicio)
+    if trava and u and p:
+        if isinstance(r, dict) and r.get("erro") in _CREDENCIAL_RECUSADA:
+            _registrar_recusa(u, p)
+        elif isinstance(r, dict) and r.get("ok"):
+            _liberar_senha()
+    return r
+
+
+async def _login_bruto(pg, exercicio: int):
     from compliance_agent.envfile import carregar_env
     try:
         carregar_env()
