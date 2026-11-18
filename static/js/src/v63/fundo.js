@@ -17,6 +17,7 @@
  * MOVIMENTO DE CÂMERA: parallax na rolagem (`--v63-sy`) + um enquadramento leve por seção/aba
  * (`data-quadro`, CSS) por cima do crossfade.
  *
+ * v68 60 FPS: os mesmos loops interpolados 24→60 com RIFE (static/assets/v68; pôsteres seguem os do v65).
  * v65 NITIDEZ: os vídeos agora saem dos masters 4K ampliados por IA (`tools/v65_fundo_videos.sh`):
  *   · variante por tela para AS TRÊS camadas — retrato (≤ 4:5) leva o recorte 1080×2160 `_m`, o resto a 2560×1440;
  *   · fontes AV1 → VP9 → H.264 (o navegador pega a primeira que decodifica);
@@ -35,7 +36,21 @@ let _camada = null, _cv = null, _raf = 0, _vivo = false, _io = null, _passo = nu
 let _so_poster = false, _ret = false, _ativa = '';
 const _videos = {};          // camada → <video>
 
-const _base = c => '/static/assets/v65/fluxo_' + c + (_ret ? '_m' : '');
+const _base = c => '/static/assets/v65/fluxo_' + c + (_ret ? '_m' : '');       // pôsteres (1º quadro do loop)
+/* v68: os vídeos são os mesmos loops a 60 fps — RIFE v4.6 no it-campo (`tools/v68_fundo60.ps1`). Aparelho que
+   declara (MediaCapabilities) não decodificar 60 fps com folga no 1º codec que ele aceita fica nos 24 fps do v65. */
+let _60 = true;
+const _baseVideo = c => '/static/assets/' + (_60 ? 'v68' : 'v65') + '/fluxo_' + c + (_ret ? '_m' : '');
+async function _decidir60() {
+  const mc = navigator.mediaCapabilities; if (!mc || !mc.decodingInfo) return;
+  const [w, h] = _ret ? [1080, 2160] : [2560, 1440];
+  for (const ct of [`video/mp4; codecs="av01.0.${_ret ? '09' : '12'}M.08"`, 'video/webm; codecs="vp9"', 'video/mp4; codecs="avc1.640032"']) {
+    try {
+      const r = await mc.decodingInfo({type: 'file', video: {contentType: ct, width: w, height: h, bitrate: 3e6, framerate: 60}});
+      if (r.supported) { _60 = !!r.smooth; return; }
+    } catch (e) { /* tipo não reconhecido: tenta o próximo */ }
+  }
+}
 const _poster = b => `url(${b}.webp)`;
 const _posterSet = b => `image-set(url(${b}.avif) type("image/avif"), url(${b}.webp) type("image/webp"))`;
 let _pintou = false;   // primeiro paint + `load` já passaram → vídeo pode descer
@@ -45,6 +60,7 @@ export function fundoMontar() {
   _ret = matchMedia('(max-aspect-ratio: 4/5)').matches;
   const eco = !!(navigator.connection && navigator.connection.saveData);
   _so_poster = _redMotion || eco || _sobrio;
+  if (!_so_poster) _decidir60();          // resolve bem antes do vídeo (que só desce depois do `load`)
   const f = document.createElement('div');
   f.id = 'v63-fundo'; f.setAttribute('aria-hidden', 'true'); f.dataset.quadro = '1';
   f.innerHTML = `<div class="v63-cam">${CAMADAS.map(c => `<div class="v63-quadro" data-c="${c}"></div>`).join('')}</div>`
@@ -89,8 +105,8 @@ function _criarVideo(c, q) {
   const v = document.createElement('video');
   v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-  const b = _base(c);
-  v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? '08' : '12'}M.08"'>`
+  const b = _baseVideo(c);
+  v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? '09' : '12'}M.08"'>`
     + `<source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
   v.addEventListener('playing', () => {
     q.classList.add('toca');

@@ -1682,6 +1682,23 @@
   var _ativa = "";
   var _videos = {};
   var _base = (c) => "/static/assets/v65/fluxo_" + c + (_ret ? "_m" : "");
+  var _60 = true;
+  var _baseVideo = (c) => "/static/assets/" + (_60 ? "v68" : "v65") + "/fluxo_" + c + (_ret ? "_m" : "");
+  async function _decidir60() {
+    const mc = navigator.mediaCapabilities;
+    if (!mc || !mc.decodingInfo) return;
+    const [w, h] = _ret ? [1080, 2160] : [2560, 1440];
+    for (const ct of [`video/mp4; codecs="av01.0.${_ret ? "09" : "12"}M.08"`, 'video/webm; codecs="vp9"', 'video/mp4; codecs="avc1.640032"']) {
+      try {
+        const r = await mc.decodingInfo({ type: "file", video: { contentType: ct, width: w, height: h, bitrate: 3e6, framerate: 60 } });
+        if (r.supported) {
+          _60 = !!r.smooth;
+          return;
+        }
+      } catch (e) {
+      }
+    }
+  }
   var _poster = (b) => `url(${b}.webp)`;
   var _posterSet = (b) => `image-set(url(${b}.avif) type("image/avif"), url(${b}.webp) type("image/webp"))`;
   var _pintou = false;
@@ -1690,6 +1707,7 @@
     _ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
     const eco = !!(navigator.connection && navigator.connection.saveData);
     _so_poster = _redMotion || eco || _sobrio;
+    if (!_so_poster) _decidir60();
     const f = document.createElement("div");
     f.id = "v63-fundo";
     f.setAttribute("aria-hidden", "true");
@@ -1751,8 +1769,8 @@
     v.preload = "auto";
     v.setAttribute("muted", "");
     v.setAttribute("playsinline", "");
-    const b = _base(c);
-    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? "08" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
+    const b = _baseVideo(c);
+    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? "09" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
     v.addEventListener("playing", () => {
       q.classList.add("toca");
       if (c === "hero" && _cv) {
@@ -7166,7 +7184,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -7374,7 +7392,7 @@
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8875,12 +8893,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../JFN/node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../JFN/node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8894,13 +8912,13 @@
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../JFN/node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../JFN/node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8968,7 +8986,7 @@
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../JFN/node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -9034,7 +9052,7 @@
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../JFN/node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
