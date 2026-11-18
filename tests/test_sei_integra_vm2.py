@@ -193,3 +193,16 @@ def test_fila_execucao_sai_quando_recapturado_depois_da_inscricao(monkeypatch, t
         ts = datetime.strptime(quando, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
         os.utime(F.ARQUIVO / tag / "manifest.json", (ts, ts))
     assert F._fila_execucao() == ["SEI-600000/000001/2025", "SEI-600000/000003/2025"]
+
+
+def test_reprovado_duas_vezes_em_24h_sai_da_exportacao(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    q = tmp_path / "data" / "vm2_quarentena"
+    agora = time.strftime("%Y%m%d-%H%M%S")
+    for i, lote in enumerate((f"integras-{agora}-1", f"integras-{agora}-2", "integras-20200101-000000-1")):
+        (q / lote).mkdir(parents=True)
+        (q / lote / "300000_000003_2025.motivo.json").write_text("{}")
+        if i == 2:                                                       # lote velho não conta
+            (q / lote / "300000_000004_2025.motivo.json").write_text("{}")
+    assert V._quarentena_repetida() == {"300000/000003/2025"}
+    assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000004/2025"]

@@ -109,10 +109,33 @@ def _restritos_confirmados() -> set[str]:
             and (not v.get("ultima") or str(v.get("ultima")) >= corte)} - {""}
 
 
+QUARENTENA_MAX = 2          # reprovações em 24 h que tiram o processo da exportação até a fila de quarentena ser revista
+
+
+def _quarentena_repetida(horas: float = 24, limite: int = QUARENTENA_MAX) -> set[str]:
+    """Processos reprovados na conferência `limite`+ vezes nas últimas `horas` (lotes em `data/vm2_quarentena/`).
+
+    Medido em 18/11/2026: 14 processos foram recapturados 104 vezes no dia — a conferência reprova (ex.: "só 22/49
+    documentos com teor"), o arquivo da VM-1 segue incompleto, a exportação seguinte devolve o mesmo processo e o
+    nó o baixa de novo, ~7 vezes cada. Recapturar não muda o resultado; só come a vez da fila. Fica fora por um dia
+    (a reprovação continua na quarentena para revisão — isto não aprova nada)."""
+    from collections import Counter
+    corte = time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time() - horas * 3600))
+    n: Counter = Counter()
+    for lote in (RAIZ / "data" / "vm2_quarentena").glob("integras-*"):
+        if lote.name[len("integras-"):] < corte:
+            continue
+        for p in lote.glob("*.motivo.json"):
+            tag = p.name[:-len(".motivo.json")]
+            if re.fullmatch(r"\d{6}_\d{6}_\d{4}", tag):
+                n[tag.replace("_", "/")] += 1
+    return {proc for proc, k in n.items() if k >= limite}
+
+
 def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | None = None) -> list[dict]:
     """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral.
     `excluir` = processos reservados por OUTRO nó (nenhum processo é capturado por dois nós ao mesmo tempo)."""
-    excluir = set(excluir or set()) | _restritos_confirmados()
+    excluir = set(excluir or set()) | _restritos_confirmados() | _quarentena_repetida()
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
     pre = _pre()
