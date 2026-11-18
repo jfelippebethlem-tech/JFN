@@ -3,7 +3,7 @@
 
 ORIGEM (medido em 18/11/2026 lendo a fonte primária): quando a NFS-e manda o tomador reter o ISS, a OB ao
 prestador deveria sair por bruto − retenções federais aplicáveis − ISS. Se a OB = bruto − retenções federais
-(sem o ISS), o valor do ISS foi pago ao prestador. AGILE CORP × SEEDUC (35 processos, R$ 2.270.009,39) e
+(sem o ISS), o valor do ISS foi pago ao prestador. AGILE CORP × SEEDUC (1ª medição manual: 35 processos, R$ 2.270.009,39; o detector fecha 38 / R$ 2.437.189,45 NF a NF) e
 IDESI × FSERJ (jan.–jul./2024 e 2025, NF de Matias Barbosa/MG) são os casos-índice
 (`~/vault/casos/agile-corp-seeduc-emergencia-do-incumbente.md`, `~/vault/casos/idesi-fundacao-saude-rj.md`).
 
