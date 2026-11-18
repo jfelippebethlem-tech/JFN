@@ -34,3 +34,14 @@ def test_regra_com_alias_de_tabela():
                     [("Contabilizado", None, 10.0), ("Contabilizado", "Erro no Pagamento", 99.0)])
     assert CI._ob_paga(com, "o") == ("o.status='Contabilizado' AND COALESCE(o.status_envio,'')<>'Erro no Pagamento'")
     assert com.execute(f"SELECT SUM(o.valor) FROM ob_orcamentaria_siafe o WHERE {CI._ob_paga(com, 'o')}").fetchone()[0] == 10.0
+
+
+def test_ob_sem_numero_nao_e_paga():
+    """18/11/2026: 58 linhas sem numero_ob (uma coleta de 09/08/2026) duplicavam a OB numerada de mesmo PD/valor."""
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, status TEXT, status_envio TEXT, valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)",
+                    [("2026OB29974", "Contabilizado", "Enviado ao Banco", 10.0), ("", "Contabilizado", "", 10.0),
+                     (None, "Contabilizado", None, 10.0)])
+    assert con.execute(f"SELECT SUM(valor) FROM ob_orcamentaria_siafe WHERE {CI._ob_paga(con)}").fetchone()[0] == 10.0
+    assert con.execute(f"SELECT SUM(o.valor) FROM ob_orcamentaria_siafe o WHERE {CI._ob_paga(con, 'o')}").fetchone()[0] == 10.0

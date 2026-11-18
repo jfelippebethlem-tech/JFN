@@ -1246,11 +1246,16 @@ def _ob_paga(con, alias: str = "") -> str:
     somar as duas contava o pagamento duas vezes. Base sem a coluna `status_envio` (fixture antiga) → regra antiga.
     `alias`: prefixo da tabela na consulta (ex.: "o" → `o.status`, `o.status_envio`)."""
     try:
-        tem = any(r[1] == "status_envio" for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
+        cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
     except sqlite3.Error:
-        tem = False
+        cols = set()
+    tem = "status_envio" in cols
     r = (f"{_OB_PAGA} AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if tem else _OB_PAGA)
-    return r.replace("status", f"{alias}.status") if alias else r   # cobre status e status_envio
+    r = r.replace("status", f"{alias}.status") if alias else r   # cobre status e status_envio
+    # OB SEM NÚMERO não é pagamento: 18/11/2026, 58 linhas (R$ 11,47 mi) de UMA coleta (09/08/2026 08:05–11:36),
+    # 57 com a irmã numerada de mesmo PD/valor — a soma contava a mesma OB duas vezes (SEI-080002/019260/2026 virou
+    # "2 OB = o dobro da NL" num laudo de execução); a 58ª tem colunas deslocadas e valor 0.
+    return r + (f" AND COALESCE({alias + '.' if alias else ''}numero_ob,'')<>''" if "numero_ob" in cols else "")
 
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
