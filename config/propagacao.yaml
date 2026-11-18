@@ -212,6 +212,18 @@ derivados:
     prioridade: 7
     efeito: {arquivo: data/sei_ocr_gpu_fila.txt}
     antes: "nenhum — criado em 18/11/2026"
+  propostas_sei:
+    nome: Preços das propostas/cotações dos autos SEI → proposta_item (só linha em que q × unitário = total) + J9
+    onde: proposta_item (fonte sei_proposta) → J9 propostas gêmeas · screens de conluio
+    depende: [sei_arquivado, ocr_gpu]
+    comando: ["{py}", "-m", "tools.propostas_sei_extrair"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 1800
+    prioridade: 7
+    efeito: {arquivo: data/propostas_sei_extrair.json}
+    antes: "nenhum — criado em 18/11/2026 (determinístico, sem LLM)"
   vinculo_fila:
     nome: Fila de captura do vínculo OB↔contrato (fecha-contrato na frente, depois por valor)
     onde: estrato VINCULO_OB da fila do sweep SEI (VM-1, VM-2, it-campo)
