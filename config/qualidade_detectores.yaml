@@ -3336,3 +3336,44 @@ detectores:
       excluida_por: null
     dominio: "ente consolidado, RREO Anexos 02 e 14, 6º bimestre, 2021 em diante"
     fp_medida: null
+  sei.reuso_documento_execucao:
+    modulo: compliance_agent/sei/reuso_documento_execucao.py
+    simbolo: comparar
+    afirma: Documento de execução (diário de obra, relatório de fiscalização, atesto, medição, relatório fotográfico) com o mesmo corpo descritivo, integral ou em trecho contínuo, em processos SEI diferentes
+    fonte:
+    - data/sei_arquivo (texto + manifest; fase pelo título em sei/fases.py)
+    - ob_orcamentaria_siafe.processo (credor do processo)
+    grava: 'não grava no banco (sob demanda: etapas credores → exportar → parear; saída JSON com nº SEI de cada par, processos, credor, estado)'
+    consome:
+    - casos do vault (SEHIS × Augusto Velloso, EUREKA × SEEDUC)
+    manchete: false
+    controle_positivo: tests/test_reuso_documento_execucao.py::test_positivo_diario_identico_em_processos_diferentes_e_VERIFICADO
+    controle_negativo: tests/test_reuso_documento_execucao.py::test_negativo_formulario_padrao_do_orgao_em_varios_credores_e_modelo_nao_achado
+    hipoteses_inocentes:
+    - hipotese: formulário-padrão/modelo institucional do órgão (texto presente em documentos de 3 ou mais credores)
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:descritivo
+    - hipotese: juntada em duplicidade no mesmo processo
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:comparar
+    - hipotese: o mesmo documento SEI (mesmo número) em processo anexado ou relacionado
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:comparar
+    - hipotese: cópia do mesmo documento juntada noutro processo (mesmas assinaturas eletrônicas e datas)
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:comparar
+    - hipotese: portaria/publicação de designação da comissão replicada nos processos do contrato
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:titulo_e_de_designacao
+    - hipotese: planilha de medição da mesma ata (descrição de itens do catálogo EMOP/SINAPI)
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:comparar
+    - hipotese: assinatura, rodapé SEI, número de processo/documento e CPF que variam entre cópias
+      excluida_por: compliance_agent/sei/reuso_documento_execucao.py:normalizar_corpo
+    - hipotese: relatório legitimamente idêntico para o mesmo período de um contrato em processos de pagamento parciais
+      excluida_por: null
+    dominio: documentos de fase execução (fiscalização, relatório fotográfico, medição, aceite) com texto no acervo SEI; documento sem texto é INDISPONÍVEL, nunca "sem reuso"
+    fp_medida: null
+    controles_extras:
+    - tests/test_reuso_documento_execucao.py::test_positivo_relatorio_modelo_com_cabecalho_diferente_dispara_por_trecho
+    - tests/test_reuso_documento_execucao.py::test_negativo_duplicata_no_mesmo_processo_nao_e_achado
+    - tests/test_reuso_documento_execucao.py::test_negativo_mesmo_numero_sei_em_dois_processos_e_o_mesmo_documento
+    - tests/test_reuso_documento_execucao.py::test_negativo_copia_com_as_mesmas_assinaturas_juntada_noutro_processo
+    - tests/test_reuso_documento_execucao.py::test_negativo_portaria_de_designacao_fica_fora_da_selecao
+    - tests/test_reuso_documento_execucao.py::test_negativo_planilha_de_medicao_da_mesma_ata_nao_dispara_por_trecho
+    - tests/test_reuso_documento_execucao.py::test_real_sehis_os_cinco_diarios_tem_o_mesmo_corpo_e_disparam
+    - tests/test_reuso_documento_execucao.py::test_real_eureka_relatorio_modelo_nos_tres_pagamentos
