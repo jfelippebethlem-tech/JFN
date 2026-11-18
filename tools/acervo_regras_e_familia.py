@@ -27,6 +27,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from compliance_agent import cronologia_do_ato as CR  # noqa: E402
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent import execucao_fatos as EF  # noqa: E402
 from compliance_agent import inexigibilidade_coerencia as IX  # noqa: E402
 from compliance_agent import foto_medicao as FM  # noqa: E402
@@ -104,7 +105,7 @@ def enfileirar_contratacoes(familia: dict, *, teto: int = 300) -> int:
         return 0
     try:
         pago: dict[str, float] = defaultdict(float)
-        for p, v in con.execute("SELECT processo, sum(valor) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+        for p, v in con.execute(f"SELECT processo, sum(valor) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
                                 "AND processo LIKE 'SEI-%' GROUP BY processo"):
             m = re.search(r"(\d{6})/(\d{6})/(\d{4})", p or "")
             if m:

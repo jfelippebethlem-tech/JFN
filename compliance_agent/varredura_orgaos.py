@@ -32,6 +32,7 @@ import sqlite3
 from datetime import datetime
 from typing import Any, Callable, Iterable
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.detectores import rodar_fornecedor, rodar_orgao
 from compliance_agent.detectores.base import ResultadoDetector
 
@@ -98,8 +99,9 @@ def fornecedores_da_ug(con: sqlite3.Connection, ug: str, *, exercicio: int | Non
     eram ente público. Mesmo critério da perícia (`pericia_sweep._fora_da_bateria`)."""
     from compliance_agent.pericia_sweep import _fora_da_bateria
     # OB = pagamento só quando Contabilizada: Anulado/Excluído/Não contabilizado somavam R$ 6,16 bi em
-    # 2.326 credores PJ (medido 14/11/2026) e inflavam o ranking e o "total pago" do card C.
-    sql = ("SELECT credor, MAX(nome_credor), SUM(valor) t FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+    # 2.326 credores PJ (medido 14/11/2026) e inflavam o ranking e o "total pago" do card C. A devolvida pelo
+    # banco ('Erro no Pagamento') segue Contabilizada no SIAFE e também não é pago (18/11/2026).
+    sql = (f"SELECT credor, MAX(nome_credor), SUM(valor) t FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
            "AND ug_emitente = ? AND LENGTH(TRIM(credor)) = 14 AND TRIM(credor) GLOB '[0-9]*'")
     params: list = [ug]
     if exercicio:
@@ -340,7 +342,7 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
     # 16/12/2022). Converte para ISO dentro do MIN, a mesma expressão de `cruzamentos_intel`.
     try:
         sql = (f"SELECT SUM(valor), COUNT(*), MIN(CASE WHEN data_emissao LIKE '__/__/____' "
-               f"THEN {_OB_ISO} END) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND credor = ?")
+               f"THEN {_OB_ISO} END) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND credor = ?")
         params: list = [cnpj]
         if ug:
             sql += " AND ug_emitente = ?"

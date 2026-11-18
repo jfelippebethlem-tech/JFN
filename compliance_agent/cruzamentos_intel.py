@@ -1240,15 +1240,17 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
 _OB_PAGA = "status='Contabilizado'"
 
 
-def _ob_paga(con) -> str:
+def _ob_paga(con, alias: str = "") -> str:
     """OB que é pagamento: Contabilizada e NÃO devolvida pelo banco ('Erro no Pagamento' segue 'Contabilizado' no
     SIAFE). 18/11/2026: 21.044 OB / R$ 5,57 bi; em amostra de 400, 72% tinham reemissão do mesmo credor/UG/valor —
-    somar as duas contava o pagamento duas vezes. Base sem a coluna `status_envio` (fixture antiga) → regra antiga."""
+    somar as duas contava o pagamento duas vezes. Base sem a coluna `status_envio` (fixture antiga) → regra antiga.
+    `alias`: prefixo da tabela na consulta (ex.: "o" → `o.status`, `o.status_envio`)."""
     try:
         tem = any(r[1] == "status_envio" for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
     except sqlite3.Error:
         tem = False
-    return (f"{_OB_PAGA} AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if tem else _OB_PAGA)
+    r = (f"{_OB_PAGA} AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if tem else _OB_PAGA)
+    return r.replace("status", f"{alias}.status") if alias else r   # cobre status e status_envio
 
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "

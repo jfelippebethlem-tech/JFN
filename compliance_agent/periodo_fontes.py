@@ -26,6 +26,7 @@ from datetime import date
 from typing import Callable
 
 from compliance_agent import periodo as P
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 TOP = 15
 
@@ -60,7 +61,7 @@ _OB_A, _OB_M = P.sql_ano_mes("data_emissao", "br")
 def _ob_agregar(con, hoje):
     linhas = [(a, m, n, {"pago": c}) for a, m, n, c in con.execute(
         f"SELECT {_OB_A}, {_OB_M}, COUNT(*), {P.sql_centavos('valor')} FROM ob_orcamentaria_siafe "
-        f"WHERE status='Contabilizado' GROUP BY 1, 2")]
+        f"WHERE {_ob_paga(con)} GROUP BY 1, 2")]
     anos = {a for a, *_ in linhas if a}
     fim = max(((a, m) for a, m, *_ in linhas if a and m and 1 <= m <= 12), default=_mes_corrente(hoje))
     fim = min(fim, _mes_corrente(hoje))
@@ -69,6 +70,11 @@ def _ob_agregar(con, hoje):
     fora = [{"status": s, "n": n, "valor": P.reais(c)} for s, n, c in con.execute(  # ob-qualquer-status
         f"SELECT status, COUNT(*), {P.sql_centavos('valor')} FROM ob_orcamentaria_siafe "
         "WHERE status IS NOT 'Contabilizado' GROUP BY 1 ORDER BY 3 DESC")]
+    if "status_envio" in _ob_paga(con):  # contabilizada mas devolvida pelo banco ('Erro no Pagamento'): não é pago
+        fora += [{"status": "Contabilizado — devolvida pelo banco (Erro no Pagamento)", "n": n, "valor": P.reais(c)}
+                 for n, c in con.execute(
+                     f"SELECT COUNT(*), {P.sql_centavos('valor')} FROM ob_orcamentaria_siafe "
+                     "WHERE status='Contabilizado' AND status_envio='Erro no Pagamento'") if n]
     cob = P.Cobertura(
         inicio=inicio, fim=fim, anos_sem_coleta=frozenset(set(range(inicio[0], fim[0] + 1)) - anos),
         # 2016–2020: ~2,2 mil OB/ano coletadas contra ~180 mil+ a partir de 2021
@@ -90,7 +96,7 @@ def _ob_itens(con, ano, mes):
     return [{"doc": P.mascarar_doc(d), "nome": nm or "—", "n": n, "valor": P.reais(c), "ugs": u}
             for d, nm, n, c, u in con.execute(
                 f"SELECT credor, MAX(nome_credor), COUNT(*), {P.sql_centavos('valor')}, COUNT(DISTINCT ug_emitente) "
-                f"FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND {cond} GROUP BY credor ORDER BY 4 DESC LIMIT {TOP}", par)]
+                f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND {cond} GROUP BY credor ORDER BY 4 DESC LIMIT {TOP}", par)]
 
 
 # ── Execução orçamentária anual (Estado — TFE; Prefeitura — ContasRio) ──────────────────────────

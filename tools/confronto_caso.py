@@ -17,6 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv  # noqa: E402
 
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 REPO = Path(__file__).resolve().parent.parent
@@ -28,7 +30,7 @@ def _ugs_de(cnpj: str) -> list[str]:
     try:
         return [r[0] for r in con.execute(
             "select ug_pagadora, sum(valor) t from ob_orcamentaria_siafe "
-            "where credor=? and status='Contabilizado' group by 1 order by t desc", (cnpj,))]
+            f"where credor=? and {_ob_paga(con)} group by 1 order by t desc", (cnpj,))]
     finally:
         con.close()
 

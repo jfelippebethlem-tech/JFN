@@ -14,7 +14,8 @@ Saídas (todas idempotentes; mesma foto do DB ⇒ mesmo texto):
   4. diario/AAAA-MM-DD.md                  — cria se ausente + seção gerada (delta 24h)
   5. log.md                                — ledger append-only (1 linha por run)
 
-Regras: OB = SIAFE direto (`ob_orcamentaria_siafe`, status='Contabilizado'), NUNCA o espelho TFE.
+Regras: OB = SIAFE direto (`ob_orcamentaria_siafe`, status='Contabilizado' e não devolvida pelo banco —
+'Erro no Pagamento', via `cruzamentos_intel._ob_paga`), NUNCA o espelho TFE.
 Datas do DB são DD/MM/AAAA → ordenar SEMPRE pela forma ISO derivada (MAX lexicográfico mente).
 Sentinelas são DONAS do código: texto entre `<!-- cerebro:...:inicio -->` e `fim` é regravado a cada run;
 edição humana ali se perde (editar FORA do bloco). Honesto: INDISPONÍVEL ≠ 0 — sem dado, escreve "n/d".
@@ -29,6 +30,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 JFN = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(JFN))   # padrão dos `tools/` da casa (o cron roda como script)
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 VAULT = Path.home() / "vault"
 DB = JFN / "data" / "compliance.db"
 HOJE = datetime.now().strftime("%Y-%m-%d")
@@ -81,10 +84,10 @@ def bloco_caso(db, fm: dict) -> str | None:
     if cnpj:
         n, tot, ult = db.execute(
             f"SELECT COUNT(*), SUM(valor), MAX({ISO_EXPR}) FROM ob_orcamentaria_siafe "
-            "WHERE credor=? AND status='Contabilizado'", (cnpj,)).fetchone()
+            f"WHERE credor=? AND {_ob_paga(db)}", (cnpj,)).fetchone()
         ugs = db.execute(
             "SELECT ug_emitente, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
-            "WHERE credor=? AND status='Contabilizado' GROUP BY 1 ORDER BY 3 DESC, 1 LIMIT 3", (cnpj,)).fetchall()
+            f"WHERE credor=? AND {_ob_paga(db)} GROUP BY 1 ORDER BY 3 DESC, 1 LIMIT 3", (cnpj,)).fetchall()
         sanc = db.execute("SELECT COUNT(*) FROM sancoes_federais WHERE replace(replace(replace(cpf_cnpj,'.',''),'/',''),'-','')=?",
                           (cnpj,)).fetchone()[0]
         fichas = db.execute("SELECT COUNT(*) FROM sei_ficha WHERE cnpjs LIKE ?", (f"%{cnpj}%",)).fetchone()[0]
@@ -99,10 +102,10 @@ def bloco_caso(db, fm: dict) -> str | None:
     if ug:
         n, tot, ult = db.execute(
             f"SELECT COUNT(*), SUM(valor), MAX({ISO_EXPR}) FROM ob_orcamentaria_siafe "
-            "WHERE ug_emitente=? AND status='Contabilizado'", (ug,)).fetchone()
+            f"WHERE ug_emitente=? AND {_ob_paga(db)}", (ug,)).fetchone()
         top = db.execute(
             "SELECT nome_credor, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
-            "WHERE ug_emitente=? AND status='Contabilizado' GROUP BY 1 ORDER BY 3 DESC, 1 LIMIT 3", (ug,)).fetchall()
+            f"WHERE ug_emitente=? AND {_ob_paga(db)} GROUP BY 1 ORDER BY 3 DESC, 1 LIMIT 3", (ug,)).fetchall()
         linhas.append(f"- **UG {ug} — OB SIAFE emitidas:** {n} · **{brl(tot)}** · última {ult or 'n/d'}")
         if top:
             linhas.append("- **Top credores da UG:** " + " · ".join(f"{(c or 'n/d')[:34]} ({brl(v)})" for c, _, v in top))
@@ -115,10 +118,10 @@ def bloco_caso(db, fm: dict) -> str | None:
 # ── 2. painel estado-do-sistema ────────────────────────────────────────────────
 def painel(db) -> str:
     n_ob, tot_ob, ult_ob = db.execute(
-        f"SELECT COUNT(*), SUM(valor), MAX({ISO_EXPR}) FROM ob_orcamentaria_siafe WHERE status='Contabilizado'").fetchone()
+        f"SELECT COUNT(*), SUM(valor), MAX({ISO_EXPR}) FROM ob_orcamentaria_siafe WHERE {_ob_paga(db)}").fetchone()
     por_ex = db.execute(
         "SELECT exercicio, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
-        "WHERE status='Contabilizado' GROUP BY 1 ORDER BY 1 DESC LIMIT 4").fetchall()
+        f"WHERE {_ob_paga(db)} GROUP BY 1 ORDER BY 1 DESC LIMIT 4").fetchall()
     fichas = db.execute("SELECT COUNT(*) FROM sei_ficha").fetchone()[0]
     sanc = db.execute("SELECT COUNT(*) FROM sancoes_federais").fetchone()[0]
     emp = db.execute("SELECT COUNT(*) FROM empresas").fetchone()[0]
@@ -212,7 +215,7 @@ def bloco_hub(db, casos: list[tuple[str, dict]]) -> str:
 
 def diario_e_log(db) -> str:
     novas24 = db.execute("SELECT COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
-                         "WHERE status='Contabilizado' AND coletado_em >= datetime('now','-1 day','localtime')").fetchone()
+                         f"WHERE {_ob_paga(db)} AND coletado_em >= datetime('now','-1 day','localtime')").fetchone()
     resumo = f"OB coletadas 24h: {novas24[0]} ({brl(novas24[1]) if novas24[0] else 'R$ 0,00'})"
     ddir = VAULT / "diario"
     ddir.mkdir(exist_ok=True)

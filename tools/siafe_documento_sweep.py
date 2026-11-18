@@ -28,6 +28,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.siafe_documento import prazo_absoluto
 
 _REPO = Path(__file__).resolve().parents[1]
@@ -42,7 +43,7 @@ def fila(exercicio: int, db=None, max_ugs: int = 3) -> list[tuple[str, str]]:
         ugs = [r[0] for r in con.execute(
             # valor pago a FORNECEDOR (credor CNPJ): por valor bruto a previdência e a folha encabeçavam a fila,
             # e nelas a ordem cronológica não se aplica (Dec. 49.134 art. 9º p.ú. a)
-            "SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE exercicio=? AND status='Contabilizado' "
+            f"SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE exercicio=? AND {_ob_paga(con)} "
             "AND length(credor)=14 GROUP BY 1 ORDER BY SUM(valor) DESC", (int(exercicio),))]
         try:
             cob = {(r[0], r[1]): (r[2], r[3]) for r in con.execute(

@@ -7,9 +7,9 @@ o grafo do zero, nada sobrevive à execução e a pergunta mais útil — *o que
 vez?* — não tem onde ser feita.
 
 O UNIVERSO É O DE QUEM RECEBEU DINHEIRO, e vem do **SIAFE** (`ob_orcamentaria_siafe`), nunca do
-espelho TFE, com `status='Contabilizado'` — OB anulada ou excluída não é pagamento e já inflou
-número nesta casa. São 5.615 credores PJ distintos, ordenados pelo valor pago: quem mais recebeu é
-quem primeiro merece grafo.
+espelho TFE, com `status='Contabilizado'` e sem a devolvida pelo banco ('Erro no Pagamento') — OB anulada,
+excluída ou devolvida não é pagamento e já inflou número nesta casa. São 5.615 credores PJ distintos,
+ordenados pelo valor pago: quem mais recebeu é quem primeiro merece grafo.
 
 MEDIDO ANTES DE LIGAR (família 18), nos 100 maiores credores, 189 s: 215 arestas societárias (24
 credores sem nenhuma), 62 `mesmo_telefone`, 69 `mesmo_email` e 140 `mesmo_contador` — mais 33
@@ -33,6 +33,7 @@ import sqlite3
 import time
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.osint.contato_compartilhado import (
     explicacao_estrutural,
     vinculos_por_contato,
@@ -80,7 +81,7 @@ def universo(con: sqlite3.Connection, limite: int) -> list[tuple[str, float]]:
     indice, total = _fatia()
     linhas = [(r[0], float(r[1] or 0.0)) for r in con.execute(
         "SELECT credor, SUM(valor) v FROM ob_orcamentaria_siafe "
-        "WHERE status='Contabilizado' AND length(credor)=14 "
+        f"WHERE {_ob_paga(con)} AND length(credor)=14 "
         "  AND credor NOT IN (SELECT cnpj FROM grafo_persistido) "
         "GROUP BY 1 ORDER BY v DESC LIMIT ?", (limite * max(total, 1),)).fetchall()]
     if total > 1:

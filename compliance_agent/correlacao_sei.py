@@ -21,6 +21,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _REPO = Path(__file__).resolve().parent.parent
 _DB = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "compliance.db"
 
@@ -129,7 +131,7 @@ def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
              "FROM ordens_bancarias WHERE favorecido_cpf=? AND numero_sei IS NOT NULL AND numero_sei!='' "
              "GROUP BY numero_sei", (cnpj,)),
             ("SELECT processo p, COUNT(*) n_obs, ROUND(SUM(valor),2) total, MIN(exercicio) ano "
-             "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')=? "
+             f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')=? "
              "AND processo IS NOT NULL AND processo!='' GROUP BY processo", (cnpj,)),
         ):
             try:

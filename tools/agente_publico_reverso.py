@@ -47,6 +47,8 @@ import time
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _REPO = Path(__file__).resolve().parent.parent
 _ZST = _REPO / "data" / "receita_dump" / "socios_full.csv.zst"
 _ESTAB = _REPO / "data" / "receita_estab.db"
@@ -259,7 +261,8 @@ def explicacao_institucional(razao_social: str, natureza_cod: str = "") -> str:
 # 127 pares novos (27 comissionados) e `emenda_favorecidos` outros 35 (8 comissionados, 18 deles em
 # terceiro setor). Fila unificada: **458 pares, 53 comissionados, 186 em terceiro setor**.
 #
-# TODAS SÃO FASE DE PAGAMENTO, sem exceção: OB `Contabilizado` no SIAFE, `pago` (não `empenhado`)
+# TODAS SÃO FASE DE PAGAMENTO, sem exceção: OB `Contabilizado` e não devolvida pelo banco ('Erro no
+# Pagamento', `{paga}` = `_ob_paga(con)`) no SIAFE, `pago` (não `empenhado`)
 # na despesa municipal e `fase='Pagamento'` na emenda. Empenho ≠ liquidação ≠ pagamento, e a única
 # das quatro que NÃO é pagamento é `pcrj_contratos` — contrato assinado é obrigação, não desembolso,
 # e por isso ele entra rotulado como tal, nunca somado a dinheiro.
@@ -268,7 +271,7 @@ _TORNEIRAS = (
     # consulta que já entregava 8 dígitos era descartada por ele em silêncio — a fonte SIAFE
     # inteira sumia da fila sem erro nenhum. Um teste de mesa pegou; a fila não teria acusado.
     ("siafe_ob", "SELECT credor, SUM(valor) FROM ob_orcamentaria_siafe "
-                 "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1", True),
+                 "WHERE {paga} AND length(credor)=14 GROUP BY 1", True),
     ("pcrj_despesa", "SELECT credor_documento, SUM(pago) FROM pcrj_despesa "
                      "WHERE pago > 0 GROUP BY 1", True),
     ("emenda_favorecidos", "SELECT documento_favorecido, SUM(valor) FROM emenda_favorecidos "
@@ -292,7 +295,7 @@ def dinheiro_publico(con: sqlite3.Connection) -> tuple[dict[str, dict], dict[str
     de_onde: dict[str, list[str]] = {}
     for nome, sql, e_pagamento in _TORNEIRAS:
         try:
-            linhas = con.execute(sql).fetchall()
+            linhas = con.execute(sql.replace("{paga}", _ob_paga(con))).fetchall()
         except sqlite3.Error:
             continue
         for doc, v in linhas:
@@ -342,7 +345,7 @@ def pagadores_por_raiz(con: sqlite3.Connection) -> dict[str, set[str]]:
                                "WHERE ug_nome IS NOT NULL"))
     for raiz, ug in con.execute(
             "SELECT substr(credor,1,8), ug_emitente FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1,2"):
+            f"WHERE {_ob_paga(con)} AND length(credor)=14 GROUP BY 1,2"):
         out.setdefault(raiz, set()).add(ug_nome.get(str(ug or ""), str(ug or "")))
     for doc, org in con.execute(
             "SELECT credor_documento, orgao FROM pcrj_despesa WHERE pago > 0 GROUP BY 1,2"):
@@ -488,7 +491,7 @@ def resumo(db: str = "") -> dict:
             "ON e.cnpj_basico=a.cnpj_basico WHERE substr(e.natureza_cod,1,1)='3'").fetchone()[0]
     din = q("SELECT COUNT(DISTINCT a.nome_norm || a.cnpj_basico) FROM agente_publico_societario a "
             "JOIN ob_orcamentaria_siafe o ON substr(o.credor,1,8)=a.cnpj_basico "
-            "WHERE o.status='Contabilizado'").fetchone()[0]
+            f"WHERE {_ob_paga(con, 'o')}").fetchone()[0]
     con.close()
     return {"pessoas": tot[0], "vinculos_societarios": tot[1],
             "nomes_com_mais_de_um_cpf": homon, "entidades_terceiro_setor": ter,

@@ -43,6 +43,7 @@ PADROES = ("%EM RECUPERACAO JUDICIAL%", "%EM RECUPERAÇÃO JUDICIAL%", "%EM RECU
 
 
 def medir(db: str = "", min_valor: float = 100_000.0) -> list[dict[str, Any]]:
+    from compliance_agent.cruzamentos_intel import _ob_paga
     from compliance_agent.reporting.intel_base import _DB
 
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
@@ -64,7 +65,7 @@ def medir(db: str = "", min_valor: float = 100_000.0) -> list[dict[str, Any]]:
                 " COUNT(*) n, "
                 " MIN(ug_emitente) ug, COUNT(DISTINCT ug_emitente) n_ug, "
                 " MIN(substr(data_emissao,7,4)) ano_ini, MAX(substr(data_emissao,7,4)) ano_fim "
-                "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND length(credor)=14 "
+                f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 "
                 "GROUP BY 1").fetchall()
             proprios = {r[0] for r in con.execute(
                 f"SELECT DISTINCT substr(credor,1,8) FROM ob_orcamentaria_siafe WHERE {ors_cred}",

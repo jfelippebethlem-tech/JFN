@@ -33,7 +33,7 @@ RESSALVAS que viajam com o número:
   · só qualificação de **sócio** (o filtro `'cio' in qualificacao`), nunca Diretor/Presidente;
   · a janela do histórico começa em **2023-03**: troca anterior a isso é invisível — ausência aqui
     é limite de fonte, NUNCA prova de que não houve;
-  · OB `status='Contabilizado'` apenas — OB é pagamento; empenho e liquidação não entram.
+  · OB `status='Contabilizado'` e não devolvida pelo banco ('Erro no Pagamento') apenas — OB é pagamento; empenho e liquidação não entram.
 
 Uso:
     .venv/bin/python tools/troca_de_controle.py
@@ -51,6 +51,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -83,7 +84,7 @@ def _pagamentos(con: sqlite3.Connection) -> tuple[dict, dict, dict, dict]:
     nome: dict = {}
     for credor, valor, data, nm in con.execute(
             "SELECT credor, valor, data_emissao, nome_credor FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado'"):
+            f"WHERE {_ob_paga(con)}"):
         dig = re.sub(r"\D", "", str(credor))
         ym = _ym(data)
         if len(dig) != 14 or not ym:
