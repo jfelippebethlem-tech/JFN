@@ -1621,7 +1621,8 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     """
     vazio = {"data_baixa": None, "motivo_baixa": None, "pagou_apos_baixa": None,
              "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0,
-             "fora_da_manchete": None, "valor_fora_da_manchete": 0.0}
+             "fora_da_manchete": None, "valor_fora_da_manchete": 0.0,
+             "n_ob_devolvida_apos_baixa": 0, "valor_devolvido_apos_baixa": 0.0}
     try:
         r = con.execute("SELECT situacao_cadastral, data_situacao, motivo_situacao FROM estab.estabelecimentos "
                         "WHERE cnpj=?", (cnpj,)).fetchone()
@@ -1643,11 +1644,19 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     out = {**vazio, "data_baixa": d, "motivo_baixa": str(r["motivo_situacao"] or "") or None}
     if not ultima_ob or ultima_ob <= d:
         return {**out, "pagou_apos_baixa": False}        # morreu DEPOIS do último pagamento
-    q = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, "
-                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN 1 END),0) nj, "
-                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN valor END),0) vj FROM ob_orcamentaria_siafe "
+    # OB devolvida pelo banco ('Erro no Pagamento': devolução integral, ver `siafe_gd`) segue 'Contabilizado' e
+    # não é pagamento — 17/11/2026: R$ 7,60 mi dos R$ 15,59 mi do 1º colocado (IDESI) eram isso. Contada à parte.
+    tem_envio = any(c[1] == "status_envio" for c in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
+    devolvida = "COALESCE(status_envio,'')='Erro no Pagamento'" if tem_envio else "0"
+    q = con.execute(f"SELECT COALESCE(SUM(CASE WHEN NOT {devolvida} THEN 1 END),0) n, "
+                    f"COALESCE(SUM(CASE WHEN NOT {devolvida} THEN valor END),0) v, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN 1 END),0) nj, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN valor END),0) vj, "
+                    f"COALESCE(SUM(CASE WHEN {devolvida} THEN 1 END),0) nd, "
+                    f"COALESCE(SUM(CASE WHEN {devolvida} THEN valor END),0) vd FROM ob_orcamentaria_siafe "
                     f"WHERE {_OB_PAGA} AND credor=? AND {iso} > ?", (cnpj, d)).fetchone()
     n, v, nj, vj = q["n"], q["v"] or 0.0, q["nj"], q["vj"] or 0.0
+    out.update(n_ob_devolvida_apos_baixa=q["nd"], valor_devolvido_apos_baixa=round(q["vd"] or 0.0, 2))
     fora = _fora_da_manchete(con, cnpj) if n else None
     if fora:
         return {**out, "pagou_apos_baixa": False, "fora_da_manchete": fora, "valor_fora_da_manchete": round(v, 2)}

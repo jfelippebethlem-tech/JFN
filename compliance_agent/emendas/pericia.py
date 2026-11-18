@@ -125,13 +125,17 @@ def d3_favorecido_sancionado(con) -> list[dict]:
     # ~600 milhões de comparações por corrida, numa máquina de 2 vCPU. Dois dicionários (por
     # documento e por raiz de CNPJ) fazem o mesmo em segundos, e o resultado é idêntico porque a
     # regra de casamento é exatamente essa: documento igual, ou raiz igual quando os dois são CNPJ.
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis, veda_ente
     from compliance_agent.sancao_impeditiva import e_impeditiva as _impeditiva
 
     achados = []
     por_doc: dict[str, list] = {}
     por_raiz: dict[str, list] = {}
-    for s_ in con.execute("select cadastro, cpf_cnpj, categoria, orgao, data_inicio, data_fim "
-                          "from sancoes_federais"):
+    # uf/fundamentação/abrangência alimentam o ALCANCE (veda_ente); base antiga sem as colunas → NULL
+    _cols = {c[1] for c in con.execute("PRAGMA table_info(sancoes_federais)")}
+    _extra = ", ".join(c if c in _cols else f"NULL AS {c}" for c in ("uf", "fundamentacao"))
+    for s_ in con.execute(f"select cadastro, cpf_cnpj, categoria, orgao, data_inicio, data_fim, {_extra}, "
+                          f"{sql_campos_ceis(con)} from sancoes_federais"):
         d = (s_["cpf_cnpj"] or "").strip()
         por_doc.setdefault(d, []).append(s_)
         if len(d) == 14:
@@ -152,7 +156,8 @@ def d3_favorecido_sancionado(con) -> list[dict]:
             visto.add(chave)
             rows.append({**dict(f_), "cadastro": s_["cadastro"], "categoria": s_["categoria"],
                          "orgao": s_["orgao"], "doc_sancao": s_["cpf_cnpj"],
-                         "data_inicio": s_["data_inicio"], "data_fim": s_["data_fim"]})
+                         "data_inicio": s_["data_inicio"], "data_fim": s_["data_fim"],
+                         "_sancao": dict(s_)})
 
     def _ano(v) -> int | None:
         t = str(v or "")[:4]
@@ -177,9 +182,19 @@ def d3_favorecido_sancionado(con) -> list[dict]:
         # `sancao_impeditiva`, a mesma do `nucleo/adaptador_db` e do `cruzamentos_intel`.
         if vigencia == "vigente" and not _impeditiva(r["categoria"]):
             vigencia, risco = "nao_impeditiva", 4
+        # IMPEDITIVA não basta: precisa ALCANÇAR o pagador. O favorecido de emenda federal recebe da União;
+        # impedimento de prefeitura/estado (ou suspensão restrita ao órgão sancionador) não veda a União.
+        # Pente fino 17/11/2026: 30 dos 36 "Indício grave" eram isso (Ubiratã-PR, PCSC, Lajedo-PE…). Régua
+        # única `sancao_abrangencia.veda_ente`, a mesma do `cruzamentos_intel.sancionadas_contratadas`.
+        alcance = None
+        if vigencia == "vigente":
+            alcance = veda_ente(r["_sancao"], esfera_alvo="federal", uf_alvo=None)
+            if not alcance["veda"]:
+                vigencia, risco = "sem_alcance", 4
 
         rotulo = {"vigente": "Favorecido sancionado",
                   "nao_impeditiva": "Favorecido com sanção NÃO impeditiva vigente",
+                  "sem_alcance": "Favorecido com sanção vigente de OUTRO ente (não alcança a União)",
                   "posterior": "Favorecido sancionado APÓS a emenda",
                   "encerrada": "Favorecido com sanção encerrada antes da emenda",
                   "indeterminada": "Favorecido sancionado (vigência não apurada)"}[vigencia]
@@ -195,6 +210,9 @@ def d3_favorecido_sancionado(con) -> list[dict]:
                        "irregularidade na emenda")
         elif vigencia == "encerrada":
             explica = f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"
+        elif vigencia == "sem_alcance":
+            explica = (f"A sanção estava vigente, mas NÃO alcança o pagador da emenda federal "
+                       f"({alcance['motivo']}). Risco reputacional a conferir, não vedação de contratar")
         elif vigencia == "nao_impeditiva":
             explica = (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que NÃO veda "
                        "contratar (multa e publicação extraordinária são penalidades, não "

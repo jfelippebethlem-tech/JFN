@@ -181,22 +181,34 @@ class MotorCompliance:
             )
             .all()
         )
+        # Régua única `acima_do_teto.classificar` (17/11/2026): a folha da base não traz a composição do
+        # contracheque, e indenizatórias/férias/13º/retroativos não contam para o teto (CF art. 37 §11) — sem
+        # composição é VERIFICAR (média), ≥2,5× o teto é RRA provável (baixa); nunca "alta". Antes: 403 alertas
+        # "alta" (53% dos "alta" do Início) pelo líquido cru.
+        from compliance_agent.acima_do_teto import classificar as _classificar_teto
         for reg in acima_teto:
+            cls = _classificar_teto(reg.remuneracao_bruta or reg.remuneracao_liquida, None,
+                                    teto=TETO_REMUNERATORIO_RJ)
+            if not cls.get("acima"):
+                continue
             pessoa = self.session.query(Pessoa).filter_by(cpf=reg.cpf).first() if reg.cpf else None
             self._criar_alerta(
                 tipo       = "enriquecimento",
-                severidade = "alta",
+                severidade = "baixa" if cls["status"] == "RRA_RETROATIVO_PROVAVEL" else "média",
                 titulo     = f"Remuneração acima do teto — {reg.nome}",
                 descricao  = (
                     f"'{reg.nome}' recebeu R$ {moeda(reg.remuneracao_liquida)} líquidos "
-                    f"em {competencia}, acima do teto estadual de "
-                    f"R$ {moeda(TETO_REMUNERATORIO_RJ)}."
+                    f"(R$ {moeda(reg.remuneracao_bruta)} brutos) em {competencia}; teto de referência "
+                    f"R$ {moeda(TETO_REMUNERATORIO_RJ)}. {cls['status']}: {cls['motivo']} "
+                    "(verba indenizatória não entra no teto — CF art. 37 §11). Indício a conferir, não acusação."
                 ),
                 evidencias = {
                     "nome": reg.nome, "cpf": reg.cpf,
                     "remuneracao": reg.remuneracao_liquida,
+                    "remuneracao_bruta": reg.remuneracao_bruta,
                     "teto": TETO_REMUNERATORIO_RJ,
                     "excesso": reg.remuneracao_liquida - TETO_REMUNERATORIO_RJ,
+                    "status_teto": cls["status"],
                 },
                 pessoa = pessoa,
             )

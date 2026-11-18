@@ -43,8 +43,11 @@ def _obs_de(c, cnpj: str, ug: str) -> list[dict]:
     # e daqui a cadeia vai ate lex_render.render_pdf, o PDF que vai para fora. Mesmo idioma
     # ISO que retro_auditoria.py e cruzamentos_intel.py ja usavam (`_OB_ISO`).
     iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+    # status_envio: OB devolvida pelo banco ('Erro no Pagamento') não é pagamento (auditoria_contrato._contabilizadas)
+    envio = ("COALESCE(status_envio,'')" if any(r[1] == "status_envio" for r in
+                                                c.execute("PRAGMA table_info(ob_orcamentaria_siafe)")) else "''")
     cur = c.execute(f"""SELECT numero_ob,status,COALESCE(nl,'') nl,COALESCE(re,'') re,COALESCE(pd,'') pd,
-        valor,competencia,data_emissao,COALESCE(processo,'') processo,nome_credor
+        valor,competencia,data_emissao,COALESCE(processo,'') processo,nome_credor,{envio} status_envio
         FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente=? ORDER BY {iso},numero_ob""", (cnpj, ug))
     return [dict(r) for r in cur.fetchall()]
 

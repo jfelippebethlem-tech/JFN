@@ -532,10 +532,12 @@ def sinais(couto: dict, per: dict) -> list[dict]:
                     "nota": f"{PASTA}/gestao-couto", "n_graves": len(verm), "n_atencao": len(amar)})
     e = (per.get("esferas") or {}).get("Estado do RJ") or {}
     if (e.get("placar") or {}).get("A_MAIOR") and estado((e.get("verificacao") or {}).get("placar")) == "VERIFICADO":
-        lst = sorted([x for x in e.get("a_maior") or [] if (x.get("diferenca") or 0) > 0], key=lambda x: -x["diferenca"])
+        # mesma grandeza da manchete: excesso_a_maior é a soma de excesso_global (pago − valor contratado)
+        lst = sorted([x for x in e.get("a_maior") or [] if (x.get("excesso_global") or 0) > 0],
+                     key=lambda x: -x["excesso_global"])
         conc = ""
         if lst and e.get("excesso_a_maior"):
-            p = round(100 * lst[0]["diferenca"] / e["excesso_a_maior"])
+            p = round(100 * lst[0]["excesso_global"] / e["excesso_a_maior"])
             if p >= 25:
                 conc = (f" O maior caso ({lst[0].get('fornecedor') or '—'}, {str(lst[0].get('orgao') or '').split(' - ')[0]}) "
                         f"responde por {p}% da soma.")

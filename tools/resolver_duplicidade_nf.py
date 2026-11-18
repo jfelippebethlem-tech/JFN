@@ -704,7 +704,8 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
 
 def resolver_par(cnpj: str, ug: str, obs: list[dict], favorecido: str = "", gerar=None) -> list[dict]:
     """Uma linha por competência dobrada do par (só OB Contabilizado — REGRA DE OURO)."""
-    contab = [o for o in obs if str(o.get("status") or "").strip().lower().startswith("contabiliz")]
+    from compliance_agent.auditoria_contrato import _contabilizadas
+    contab = _contabilizadas(obs)        # régua única: sem a OB devolvida pelo banco (17/11/2026)
     out = []
     for f in detectar(contab, favorecido=favorecido, orgao=ug):
         if f["tipo_indicio"] != "competencia_dobrada":

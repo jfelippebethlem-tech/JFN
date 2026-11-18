@@ -252,6 +252,15 @@ def api_painel():
             alta = sev.get("alta", 0)
             media = sev.get("média", 0) + sev.get("media", 0)
             total_ativos = sum(sev.values())
+            # De que produtor vem cada alerta aberto e quando ele criou o último (17/11/2026: 1.300+ abertos eram de
+            # produtores parados desde 10/08 — emendas, PCRJ D7/D10 — e o card os somava como se fossem de hoje).
+            por_tipo = [
+                {"tipo": r[0], "n": r[1], "alta": int(r[2] or 0), "ultima_criacao": str(r[3])[:16] if r[3] else None}
+                for r in (s.query(Alerta.tipo, sa.func.count(Alerta.id),
+                                  sa.func.sum(sa.case((Alerta.severidade == "alta", 1), else_=0)),
+                                  sa.func.max(Alerta.created_at))
+                          .filter(ativo).group_by(Alerta.tipo).order_by(sa.desc(sa.func.count(Alerta.id))).all())
+            ]
 
             alertas = [
                 {"tipo": a.tipo, "severidade": a.severidade, "titulo": a.titulo,
@@ -304,7 +313,8 @@ def api_painel():
                         "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
                         "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
                 "alertas": {"alta": alta, "media": media, "baixa": total_ativos - alta - media,
-                            "total": total_ativos, "criterio": "não descartados (status ≠ descartado)"},
+                            "total": total_ativos, "criterio": "não descartados (status ≠ descartado)",
+                            "por_tipo": por_tipo},
                 "ultima_coleta": ultima_coleta,
                 "lista_alertas": alertas,
                 "top_favorecidos": top,
@@ -2626,6 +2636,16 @@ def _idade_dias(ultimo, agora=None):
     return max(0, (agora - d).days)
 
 
+def _estado_frescor(idade, detalhe: str = "") -> str:
+    """ok (≤3 d) · atencao (≤10 d) · critico. Coleta cuja ÚLTIMA tentativa falhou (detalhe com ⛔, ver
+    `siafe_runner.detalhe_frescor`) nunca sai 'ok': o dado ainda é novo, mas a coleta está parada (17/11/2026:
+    SIAFE com senha recusada aparecia verde)."""
+    est = "ok" if idade is not None and idade <= 3 else "atencao" if idade is not None and idade <= 10 else "critico"
+    if est == "ok" and str(detalhe or "").startswith("⛔"):
+        est = "atencao"
+    return est
+
+
 @router.get("/api/fontes/frescor")
 def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
@@ -2685,8 +2705,7 @@ def api_fontes_frescor():
         for f in fontes:
             idade = _idade_dias(f["ultimo"], hoje)
             f["idade_dias"] = idade
-            f["estado"] = ("ok" if idade is not None and idade <= 3 else
-                           "atencao" if idade is not None and idade <= 10 else "critico")
+            f["estado"] = _estado_frescor(idade, f.get("detalhe"))
         out = {"ok": True, "fontes": fontes, "gerado": hoje.strftime("%Y-%m-%d %H:%M")}
         return JSONResponse(_cache_put("fontes:frescor", out))
     except Exception as exc:  # noqa: BLE001

@@ -1338,7 +1338,9 @@ def consolidar(resultados: list[dict], por: str) -> list[dict]:
             a["devido_determinado"] += float(r["devido"] or 0)
             a["pago_determinado"] += float(r["pago"] or 0)
         if r["categoria"] == "A_MAIOR":
-            a["excesso_a_maior"] += float(r["diferenca"] or 0)
+            # "pago acima do valor contratado" = pago − valor; pago − pró-rata embute o adiantamento (pente fino 17/11)
+            a["excesso_a_maior"] += float(r["excesso_global"] or 0)
+            a["excesso_a_maior_pro_rata"] = a.get("excesso_a_maior_pro_rata", 0.0) + float(r["diferenca"] or 0)
             a["excesso_global"] += float(r["excesso_global"] or 0)
         if r["categoria"] == "A_MENOR_ENCERRADO":
             a["deficit_encerrado"] += -float(r["diferenca"] or 0)
@@ -1354,6 +1356,7 @@ def resumo(resultados: list[dict]) -> dict:
     for r in resultados:
         e = out.setdefault(r["esfera"], {"n": 0, **{c: 0 for c in CATEGORIAS}, "motivos": defaultdict(int),
                                           "subtipos": defaultdict(int), "excesso_a_maior": 0.0,
+                                          "excesso_a_maior_pro_rata": 0.0,
                                           "adiantado": 0.0, "excesso_global": 0.0, "deficit_encerrado": 0.0,
                                           "pago_determinado": 0.0, "devido_determinado": 0.0,
                                           "n_estouro_art125": 0, "n_art125_aferivel": 0,
@@ -1393,7 +1396,11 @@ def resumo(resultados: list[dict]) -> dict:
             e["devido_determinado"] += float(r["devido"] or 0)
         if r["categoria"] == "A_MAIOR":
             e["subtipos"][r["subtipo"]] += 1
-            e["excesso_a_maior"] += float(r["diferenca"] or 0)
+            # A MANCHETE diz "pago acima do valor contratado": soma pago − valor (excesso global). A diferença ao
+            # pró-rata embute o adiantamento de contrato em curso (que sozinho é ADIANTADO, não irregular) — ela
+            # inflava a manchete em R$ 2,14 mi (23,97 → 21,82 mi; pente fino 17/11/2026). Fica à parte, declarada.
+            e["excesso_a_maior"] += float(r["excesso_global"] or 0)
+            e["excesso_a_maior_pro_rata"] += float(r["diferenca"] or 0)
             e["excesso_global"] += float(r["excesso_global"] or 0)
         if r["categoria"] == "ADIANTADO":
             e["adiantado"] += float(r["diferenca"] or 0)
@@ -1496,7 +1503,7 @@ def _tabela_resumo(rs: dict) -> str:
             f"<td class='n'>{fmt_int(e['CONFORME'])}</td><td class='n'>{fmt_int(e['A_MAIOR'])}</td>"
             f"<td class='n'>{fmt_int(e['ADIANTADO'])}</td>"
             f"<td class='n'>{fmt_int(e['A_MENOR_ENCERRADO'])}</td><td class='n'>{fmt_int(e['A_MENOR_EM_CURSO'])}</td>"
-            f"<td class='n'>{fmt_int(e['INDETERMINADO'])}</td><td class='n'>{fmt_brl(e['excesso_a_maior'])}</td>"
+            f"<td class='n'>{fmt_int(e['INDETERMINADO'])}</td><td class='n'>{fmt_brl(e['excesso_a_maior_pro_rata'])}</td>"
             f"<td class='n'>{fmt_brl(e['excesso_global'])}</td><td class='n'>{fmt_brl(e['deficit_encerrado'])}</td></tr>")
     return ("<table class='res'><thead><tr><th>Esfera</th><th>Contratos</th><th>Conforme</th><th>Acima do valor contratado</th>"
             "<th>À frente do pró-rata</th>"

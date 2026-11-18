@@ -675,3 +675,19 @@ def test_prefeitura_inicio_nao_passa_de_01_01_do_ano_do_contrato(tmp_path):
     r = _pcrj_um(tmp_path, 2026, "01/04/2026", "31/12/2026", "-", 365_000.0, 181_000.0)
     assert r["devido"] == pytest.approx(365_000.0 * 182 / 365, rel=1e-6), r
     assert r["categoria"] == "CONFORME"
+
+
+def test_manchete_a_maior_soma_o_que_passa_do_VALOR_CONTRATADO_nao_do_pro_rata(tmp_path):
+    """Pente fino 17/11/2026: 'Pago acima do valor contratado — R$ 23,97 mi' somava pago − devido PRÓ-RATA; o que
+    passa do valor contratado era R$ 21,82 mi. Em contrato EM CURSO a diferença ao pró-rata inclui o adiantamento
+    (que, sozinho, a régua classifica ADIANTADO, não irregular). DIMENSIONAL × INEA: 10,82 mi ao pró-rata, 8,68 mi
+    acima do valor. A manchete diz 'acima do valor contratado' — soma o excesso global."""
+    r = _estado_um(tmp_path, "SERVIÇO DE MANUTENÇÃO", 100_000.0, "01/11/2025", "31/10/2027",
+                   [("10/12/2025", 60_000.0), ("10/03/2026", 60_000.0)])
+    assert r["categoria"] == "A_MAIOR", r
+    assert r["excesso_global"] == pytest.approx(20_000.0) and r["diferenca"] > 60_000.0
+    e = pc.resumo([r])["Estado do RJ"]
+    assert e["excesso_a_maior"] == pytest.approx(20_000.0)
+    assert e["excesso_a_maior_pro_rata"] == pytest.approx(r["diferenca"])
+    c = pc.consolidar([r], "orgao")[0]
+    assert c["excesso_a_maior"] == pytest.approx(20_000.0)
