@@ -118,8 +118,11 @@ def _indisp(codigo, titulo, falta: str, base_legal: str, peso=8) -> dict:
 
 
 def _contabilizadas(obs: list[dict]) -> list[dict]:
-    """Só OBs Contabilizado entram como 'pago' (REGRA DE OURO)."""
-    return [o for o in obs if str(o.get("status", "")).strip().lower().startswith("contabiliz")]
+    """Só OBs Contabilizado entram como 'pago' (REGRA DE OURO) — e nunca a devolvida pelo banco: 'Erro no
+    Pagamento' segue 'Contabilizado' no SIAFE, mas a devolução é integral (`siafe_gd`) e o órgão reemite outra
+    OB. Contar as duas fabricava "mesma quantia paga 2× na competência" (T07; pente fino 17/11/2026)."""
+    return [o for o in obs if str(o.get("status", "")).strip().lower().startswith("contabiliz")
+            and str(o.get("status_envio") or "").strip() != "Erro no Pagamento"]
 
 
 # ───────────────────────── BATERIA ─────────────────────────
