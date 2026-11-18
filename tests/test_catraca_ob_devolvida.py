@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-BASELINE = 44          # 18/11/2026: 53 módulos com status='Contabilizado', 44 sem tratar a devolvida
+BASELINE = 0           # 18/11/2026: 44 → 0 (43 corrigidos + dea_recorrente, que é NE e não OB, declarado)
 _RAIZ = Path(__file__).resolve().parent.parent
 _TRATA = ("Erro no Pagamento", "_ob_paga", "valor_efetivo_ob")
 
