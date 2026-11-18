@@ -191,3 +191,19 @@ def test_casa_o_mesmo_item_escrito_de_outro_jeito_mas_nunca_medida_diferente():
     assert (30.0, 33.0) in pares and (25.0, 27.5) in pares
     assert (2.0, 2.2) not in pares                                     # medida diferente: não é o mesmo item
     assert len(pares) == 2
+
+
+def test_markup_linear_nao_dispara_com_cotacoes_parecidas_de_tamanhos_diferentes():
+    """18/11/2026, caso REAL (490001/1289/2024, mobiliário urbano, 3 cotações): R² 0,997 e 0,9998 porque os itens
+    vão de R$ 28 mil a R$ 200 mil — mas a razão B/A varia de 1,007 a 1,087 item a item: não é planilha derivada,
+    é cotação parecida. R² pela origem mede o tamanho dos itens, não a constância da razão. Cada item tem de cair
+    na reta dentro do arredondamento (1% ou R$ 1,00)."""
+    from compliance_agent.sei import conluio_propostas as C
+    a = [{"descricao": f"item {i}", "valor_unitario": v} for i, v in
+         ((1, 144325.00), (2, 135818.25), (5, 28013.13), (6, 29005.71), (3, 200799.73))]
+    b = [{"descricao": f"item {i}", "valor_unitario": v} for i, v in
+         ((1, 156875.00), (2, 136757.35), (5, 28911.30), (6, 31023.50))]
+    c = [{"descricao": f"item {i}", "valor_unitario": v} for i, v in
+         ((1, 151855.00), (2, 140865.94), (5, 30586.26), (6, 30519.06), (3, 207549.30))]
+    assert C.markup_linear(a, b) is None
+    assert C.markup_linear(a, c) is None

@@ -216,7 +216,11 @@ def markup_linear(itens_a: list[dict], itens_b: list[dict], min_itens: int = 4,
     if sst <= 0:
         return None
     r2 = 1.0 - sse / sst
-    if r2 >= r2_min and abs(alfa - 1.0) > 0.005:
+    # R² pela origem mede o TAMANHO dos itens, não a constância da razão: cotações parecidas (±5%) de itens de
+    # R$ 28 mil a R$ 200 mil dão R² 0,997 (caso real 490001/1289/2024, 18/11/2026). Planilha derivada põe CADA
+    # item na reta, a menos do arredondamento — que é o que este detector existe para tolerar (R$ 1,00 ou 1%).
+    na_reta = all(abs(y - alfa * x) <= max(1.0, 0.01 * y) for x, y in pares)
+    if r2 >= r2_min and na_reta and abs(alfa - 1.0) > 0.005:
         return {"coeficiente": round(alfa, 4), "pct": round((alfa - 1.0) * 100, 2),
                 "r2": round(r2, 5), "n_itens": len(pares)}
     return None

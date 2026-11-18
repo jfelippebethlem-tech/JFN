@@ -228,3 +228,12 @@ def test_linha_repetida_e_item_sem_numero_nao_se_apagam_na_pk():
     out = X._numerar({"c": linhas}, med)["c"]
     assert [(l["item"], l["descricao"]) for l in out] == [(1, "Caneta"), (X.ITEM_ATRIBUIDO, "Lápis")]
     assert med["linhas_repetidas"] == 1 and med["linhas_persistiveis"] == 2
+
+
+def test_cnpj_so_no_rodape_identifica_se_for_o_unico_privado():
+    import tools.propostas_sei_extrair as X
+    miolo = "PROPOSTA COMERCIAL\n" + ("Item de serviço com descrição longa para empurrar o rodapé. " * 80)
+    um = miolo + "\nAtenciosamente, EMPRESA X LTDA CNPJ 11.222.333/0001-81"
+    dois = um + "\nSubcontratada: OUTRA LTDA CNPJ 11.444.777/0001-61"
+    assert X.fornecedor_do_documento(um) == ("11222333000181", "ok_corpo")
+    assert X.fornecedor_do_documento(dois) == (None, "ambiguo")

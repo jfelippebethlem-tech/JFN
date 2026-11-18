@@ -119,9 +119,9 @@ def cnpj_valido(c: str) -> bool:
     return _v(c)
 
 
-def cnpjs_cabecalho(corpo: str) -> list[tuple[str, str]]:
-    """[(cnpj, linha)] dos CNPJs com DV válido no cabeçalho, na ordem em que aparecem (sem repetir)."""
-    cab = corpo[:_CABECALHO_CHARS]
+def cnpjs_cabecalho(corpo: str, limite: int | None = _CABECALHO_CHARS) -> list[tuple[str, str]]:
+    """[(cnpj, linha)] dos CNPJs com DV válido no cabeçalho (ou no documento todo, limite=None), sem repetir."""
+    cab = corpo[:limite] if limite else corpo
     vistos, out = set(), []
     achados = [(m.start(), "".join(m.groups())) for m in _CNPJ.finditer(cab)]
     achados += [(m.start(1), m.group(1)) for m in _CNPJ_NU.finditer(cab)]
@@ -141,9 +141,13 @@ def fornecedor_do_documento(corpo: str, cadastro=None) -> tuple[str | None, str]
     Público fora (natureza 1xxx; sem cadastro, a linha do CNPJ citando órgão também tira). Um só CNPJ básico
     privado → é o fornecedor. Nenhum → 'sem_cnpj'. Mais de um → 'ambiguo' (não se adivinha)."""
     privados: dict[str, str] = {}
-    achados = cnpjs_cabecalho(corpo)
+    achados, onde = cnpjs_cabecalho(corpo), "ok"
     if not achados:
-        return None, "sem_cnpj"
+        # 18/11/2026: 297 propostas traziam o CNPJ só no rodapé/assinatura. Documento inteiro, mas a mesma régua:
+        # UM só CNPJ básico privado, senão ambíguo (nunca se adivinha).
+        achados, onde = cnpjs_cabecalho(corpo, None), "ok_corpo"
+        if not achados:
+            return None, "sem_cnpj"
     for c, linha in achados:
         cad = cadastro(c) if cadastro else None
         if cad is not None:
@@ -156,7 +160,7 @@ def fornecedor_do_documento(corpo: str, cadastro=None) -> tuple[str | None, str]
         return None, "so_cnpj_publico"
     if len(privados) > 1:
         return None, "ambiguo"
-    return next(iter(privados.values())), "ok"
+    return next(iter(privados.values())), onde
 
 
 # ───────────────────────────── fluxo de tokens ─────────────────────────────
