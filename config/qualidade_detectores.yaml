@@ -1732,6 +1732,44 @@ detectores:
       excluida_por: compliance_agent/editais/indice_certame.py:calcular
     dominio: null
     fp_medida: null
+  iss_nao_retido:
+    modulo: compliance_agent/detector_iss_retido.py
+    simbolo: decidir
+    afirma: A NFS-e mandava o tomador reter o ISS e a OB paga ao prestador saiu sem a retenção (o valor do ISS foi pago ao prestador)
+    fonte:
+    - data/sei_arquivo (NFS-e declaradas no manifesto)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/iss_nao_retido.json (VERIFICADO/PENDENTE/INDISPONÍVEL por processo × credor; resumo por fornecedor, UG e grupo de controle)
+    consome:
+    - config/propagacao.yaml (derivado iss_nao_retido)
+    - casos do vault (AGILE × SEEDUC, IDESI × FSERJ)
+    manchete: false
+    controle_positivo: tests/test_detector_iss_retido.py::test_controle_positivo_agile_ob_igual_bruto_menos_inss_irrf
+    controle_negativo: tests/test_detector_iss_retido.py::test_controle_negativo_idesi_ago_set_2024_prestador_recolhe
+    hipoteses_inocentes:
+    - hipotese: regime muda no mesmo fornecedor (o prestador recolhe o ISS; "Data de vencimento do ISS")
+      excluida_por: compliance_agent/detector_iss_retido.py:_bandeira
+    - hipotese: PIS/COFINS/CSLL destacados na NF e não retidos pelo tomador estadual
+      excluida_por: compliance_agent/detector_iss_retido.py:_somas_federais
+    - hipotese: retenção paga em OB separada ao Município/Fundo/DARM (mesmo processo ou mesma NL)
+      excluida_por: compliance_agent/detector_iss_retido.py:avaliar_processo
+    - hipotese: arredondamento de centavos
+      excluida_por: compliance_agent/detector_iss_retido.py:decidir
+    - hipotese: leitura OCR errada da NF (dígito trocado)
+      excluida_por: compliance_agent/detector_iss_retido.py:_iss_confere
+    - hipotese: documento órfão de outra captura na pasta
+      excluida_por: compliance_agent/detector_iss_retido.py:ler_nfs_do_processo
+    dominio: NFS-e de serviço (Nota Carioca e layouts "VALOR DA NOTA =", ISSnet, Futurize, DANFSe nacional) com
+      ISS retido pelo tomador, em processo SEI do acervo com OB Contabilizada do SIAFE ao prestador; fora disso INDISPONÍVEL
+    fp_medida: null
+    controles_extras:
+    - tests/test_detector_iss_retido.py::test_controle_negativo_iss_retido_corretamente
+    - tests/test_detector_iss_retido.py::test_controle_negativo_pis_cofins_csll_nao_retidos_pelo_estado_nao_viram_iss
+    - tests/test_detector_iss_retido.py::test_controle_negativo_retencao_em_ob_separada_ao_municipio_fica_pendente
+    - tests/test_detector_iss_retido.py::test_controle_negativo_arredondamento_de_centavos
+    - tests/test_detector_iss_retido.py::test_ambiguo_quando_a_conta_fecha_com_e_sem_o_iss
+    - tests/test_detector_iss_retido.py::test_controle_positivo_real
+    - tests/test_detector_iss_retido.py::test_controle_negativo_real_idesi_ago_2024
   empresa_fantasma:
     modulo: compliance_agent/empresa_fantasma.py
     simbolo: avaliar_cnpj

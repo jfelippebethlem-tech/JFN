@@ -122,6 +122,9 @@ fontes:
     sonda: {git: [compliance_agent/detectores, compliance_agent/qualidade, config/qualidade_regras.yaml, config/qualidade_detectores.yaml, config/qualidade_inventario.yaml],
             assunto: '^(fix|feat|perf)'}
     cerebro: {de: commit, kind: experiencial, rotulo: "correção de detector/regra de qualidade", assunto: "detectores e regras de qualidade"}
+  regra_iss_retido:
+    nome: Correção no detector de ISS retido na NF × OB
+    sonda: {git: [compliance_agent/detector_iss_retido.py]}
   memoria_claude:
     nome: Decisão do dono ou lição registrada na memória dos agentes
     sonda: {pasta: "~/.claude/projects/-home-ubuntu/memory", glob: "*.md", ignorar: [MEMORY.md]}
@@ -261,6 +264,17 @@ derivados:
     timeout_s: 1800
     prioridade: 5
     antes: "a cada 6 h (timer jfn-territorio)"
+  iss_nao_retido:
+    nome: ISS declarado retido na NFS-e × OB paga sem a retenção
+    onde: data/iss_nao_retido.json (casos do vault; indício para requerer documentos)
+    depende: [sei_lote, sei_arquivado, siafe_ob, siafe_status, regra_iss_retido]
+    comando: ["{py}", "-m", "compliance_agent.detector_iss_retido"]
+    peso: pesado
+    debounce_s: 3600
+    intervalo_min_s: 86400
+    timeout_s: 3600
+    prioridade: 6
+    efeito: {arquivo: data/iss_nao_retido.json}
   cge_confronto:
     nome: Confronto CGE × JFN
     onde: Estado › CGE × JFN
