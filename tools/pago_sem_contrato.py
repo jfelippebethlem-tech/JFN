@@ -66,6 +66,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -123,7 +124,7 @@ def sem_contrato(con: sqlite3.Connection, com_legitimos: bool = False) -> list[d
     credor: dict = {}
     for processo, valor, nome in con.execute(
             "SELECT processo, valor, nome_credor FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado' AND processo LIKE 'SEI-%'"):
+            f"WHERE {_ob_paga(con)} AND processo LIKE 'SEI-%'"):
         k = str(processo).replace("SEI-", "")
         if k in alvo:
             pago[k] += valor or 0.0

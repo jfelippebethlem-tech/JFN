@@ -54,6 +54,7 @@ def _aplicados() -> set[str]:
 def integrar() -> dict:
     res = {"preenchidos": 0, "substituidos": 0, "nativos_mantidos": 0, "sem_manifesto": 0, "fora_do_manifesto": 0,
            "processos": 0}
+    corrompidos = 0
     feitos = _aplicados()
     novos: list[dict] = []
     for pasta in sorted(CACHE.glob("integra_*")):
@@ -80,9 +81,14 @@ def integrar() -> dict:
                 novos.append({**reg, "acao": "fora_do_manifesto"})
                 continue
             nativo = _chars(d) >= MIN_CHARS and not d.get("ocr")
-            if nativo or len(texto) < MIN_CHARS:
-                res["nativos_mantidos"] += int(nativo)
-                novos.append({**reg, "acao": "nativo_mantido" if nativo else "gpu_vazio"})
+            if nativo:
+                res["nativos_mantidos"] += 1
+                novos.append({**reg, "acao": "nativo_mantido"})
+                continue
+            if "\ufffd" in texto or len(texto) < MIN_CHARS:  # acento cortado (U+FFFD) ou GPU sem texto: não entra
+                corrompidos += int("\ufffd" in texto)   # apaga a entrega e NÃO registra: a releitura pode chegar depois
+                g.unlink(missing_ok=True)
+                g.with_suffix("").with_suffix(".ocr_gpu.json").unlink(missing_ok=True)
                 continue
             cab = f"[{d.get('titulo', '')}] (fase: {d.get('fase', '')} · tipo: {d.get('tipo', '')})\n\n"
             if _chars(d) >= MIN_CHARS and d.get("texto"):           # Tesseract → guarda o antigo e substitui
@@ -111,6 +117,8 @@ def integrar() -> dict:
             tmp.write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
             os.replace(tmp, mpath)
             res["processos"] += 1
+    if corrompidos:
+        res["texto_corrompido"] = corrompidos
     if novos:
         with LEDGER.open("a", encoding="utf-8") as f:
             f.writelines(json.dumps(n, ensure_ascii=False) + "\n" for n in novos)

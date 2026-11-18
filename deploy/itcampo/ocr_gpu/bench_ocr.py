@@ -19,6 +19,7 @@ PDFS = sorted(Path(sys.argv[1]).glob("*.pdf"))
 MAXPAG = 2
 random.seed(7); np.random.seed(7)
 
+ACENTO = re.compile(r"\b\w*[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]\w*\b")
 RX = {"cnpj": re.compile(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}"),
       "valor": re.compile(r"\b\d{1,3}(?:\.\d{3})*,\d{2}\b"),
       "data": re.compile(r"\b\d{2}/\d{2}/\d{2,4}\b")}
@@ -29,7 +30,8 @@ def dig(s): return re.sub(r"\D", "", s)
 def campos(t):
     t2 = norm(t)
     return {"cnpj": {dig(m) for m in RX["cnpj"].findall(t2) if len(dig(m)) == 14},
-            "valor": set(RX["valor"].findall(t2)), "data": set(RX["data"].findall(t2))}
+            "valor": set(RX["valor"].findall(t2)), "data": set(RX["data"].findall(t2)),
+            "acentuada": set(ACENTO.findall(t2))}
 
 def sujar(img):
     g = img.convert("L").rotate(random.uniform(-1.2, 1.2), expand=True, fillcolor=255)
@@ -54,6 +56,8 @@ def tess(img):
     return subprocess.run(["tesseract", "stdin", "stdout", "-l", "por"], input=b.getvalue(), capture_output=True).stdout.decode("utf-8", "ignore")
 
 import html as _html
+import surya_utf8  # acentos: o modelo gera ç/ã em Latin-1 (ver o módulo)
+surya_utf8.instalar()
 from surya import RecognitionPredictor, SuryaInferenceManager
 rec = RecognitionPredictor(SuryaInferenceManager())
 def _txt(h):
@@ -71,12 +75,12 @@ for cond in ("limpa", "escaneada"):
         t0 = time.time()
         textos = [tess(im) for im in imgs] if motor == "tesseract" else surya_lote(imgs)
         dt = (time.time() - t0) / len(imgs)
-        cer = []; rec_ = {k: [0, 0] for k in RX}
+        cer = []; rec_ = {k: [0, 0] for k in (*RX, "acentuada")}
         for (nome, verdade, _), t in zip(amostras, textos):
             v, o = norm(verdade), norm(t)
             cer.append(Levenshtein.normalized_distance(v, o))
             cv, co = campos(verdade), campos(t)
-            for k in RX:
+            for k in (*RX, "acentuada"):
                 rec_[k][0] += len(cv[k] & co[k]); rec_[k][1] += len(cv[k])
         out[f"{cond}/{motor}"] = {"CER_mediana_%": round(100 * float(np.median(cer)), 1),
                                  **{f"acerto_{k}_%": round(100 * a / max(b, 1), 1) for k, (a, b) in rec_.items()},

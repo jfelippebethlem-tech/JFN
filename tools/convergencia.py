@@ -25,7 +25,7 @@ RESSALVAS:
   · convergência ORDENA a fila, não conclui nada — cada dimensão já traz as suas próprias ressalvas
     (porte desatualizado, alcance da sanção, repasse, etc.);
   · agrega por CNPJ BÁSICO: matriz e filiais somam, como manda o porte e o QSA;
-  · só OB `status='Contabilizado'`.
+  · só OB `status='Contabilizado'` e não devolvida pelo banco ('Erro no Pagamento').
 
 Uso:
     .venv/bin/python tools/convergencia.py
@@ -43,6 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 from tools.contrato_acima_do_porte import acima_do_porte
 from tools.dependencia_mutua import dependencia
 from tools.pago_a_sancionado import pagos_durante_sancao, sucessao_societaria
@@ -114,7 +115,7 @@ def convergir(con: sqlite3.Connection, min_pago_estrutura: float = 5_000_000.0) 
 
     pago: dict = collections.defaultdict(float)
     for credor, valor in con.execute(
-            "SELECT credor, valor FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+            f"SELECT credor, valor FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)}"):
         d = re.sub(r"\D", "", str(credor))
         if len(d) >= 8 and d[:8] in dim:
             pago[d[:8]] += (valor or 0)

@@ -517,14 +517,20 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         _erows = "".join(
             f"<tr><td>{esc(x.get('numero_sei'))}</td><td>{esc(x.get('n_obs'))}</td>"
             f"<td>{esc(moeda(x.get('total')))}</td><td>{esc(x.get('exec'))}</td>"
-            f"<td>{'—' if x.get('nota') is None else esc(x.get('nota')) + '/10'}</td><td>{esc(campo(x.get('resumo'), 110))}</td></tr>"
+            f"<td>{'—' if x.get('nota') is None else esc(x.get('nota')) + '/10'}</td>"
+            f"<td>{esc(x.get('estado') or 'PENDENTE')}</td><td>{esc(campo(x.get('resumo'), 110))}</td></tr>"
             for x in sorted(_susp, key=lambda y: -(y.get("total") or 0)))
+        _npend = sum(1 for x in _susp if x.get("estado") == "PENDENTE")
+        _aviso_pend = (f"<p class='nota'>⚠️ <b>{_npend} de {len(_susp)}</b> laudo(s) são de outro modelo <b>sem "
+                       "conferência do Opus</b> (PENDENTE). Nos laudos de risco alto já conferidos, o Opus rebaixou o "
+                       "risco em 39 de 43 (18/11/2026): PENDENTE é hipótese a confirmar, não conclusão.</p>"
+                       if _npend else "")
         _eh = _cab + (
             f"<p class='nota'>🟡 <b>{len(_susp)}</b> processo(s) pago(s) — <b>R$ {moeda(_etot)}</b> — "
             "sem execução comprovada nos autos. Cabe exigir do gestor atesto, nota fiscal, medição e "
-            "relatório fotográfico antes de novo pagamento.</p>"
+            "relatório fotográfico antes de novo pagamento.</p>" + _aviso_pend +
             "<table><tr><th>Processo SEI</th><th>OBs</th><th>Pago</th><th>Execução</th>"
-            f"<th>Nota</th><th>Resumo da perícia</th></tr>{_erows}</table>")
+            f"<th>Nota</th><th>Estado</th><th>Resumo da perícia</th></tr>{_erows}</table>")
     secoes.append({"titulo": "9-C. Execução contratual — prova de entrega (OB paga × perícia dos autos)",
                    "html": _eh})
 

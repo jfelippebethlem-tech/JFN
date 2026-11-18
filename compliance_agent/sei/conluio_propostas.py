@@ -47,21 +47,59 @@ def _chave_item(desc: str) -> str:
     return " ".join(nome[:6] + medida[:3])
 
 
-def _ratios(itens_a: list[dict], itens_b: list[dict]) -> list[float]:
-    """Razões vu_B/vu_A dos itens casados por descrição (preço unitário > 0 nos dois)."""
-    mapa_a = {}
-    for it in itens_a:
-        k = _chave_item(it.get("descricao", ""))
+SIM_MIN = 90          # semelhança mínima (rapidfuzz token_set_ratio) do casamento por texto
+
+
+def _medidas(desc: str) -> frozenset:
+    return frozenset(w for w in _n(desc).split() if any(c.isdigit() for c in w))
+
+
+def _pares(itens_a: list[dict], itens_b: list[dict]) -> list[tuple[float, float]]:
+    """(vu_A, vu_B) dos itens que são o MESMO item nas duas propostas (preço unitário > 0 nos dois).
+
+    1º a chave exata (`_chave_item`). 2º, para o que sobrou, semelhança de texto ≥ SIM_MIN com as MESMAS medidas
+    (números/frações idênticos), um-para-um pelo melhor par — 18/11/2026: nas 4.516 linhas das propostas SEI cada
+    fornecedor escreve a descrição do seu jeito e a chave exata casava quase nada. Medida diferente nunca casa
+    ("3/8" × "1/2"), então o texto parecido não junta itens distintos."""
+    from rapidfuzz import fuzz
+
+    def _ok(it):
         v = it.get("valor_unitario")
-        if k and isinstance(v, (int, float)) and v > 0:
-            mapa_a.setdefault(k, v)
-    out = []
-    for it in itens_b:
+        return isinstance(v, (int, float)) and v > 0 and _n(it.get("descricao", "")).strip()
+    sa = [it for it in itens_a if _ok(it)]
+    sb = [it for it in itens_b if _ok(it)]
+    mapa_a: dict[str, int] = {}
+    for i, it in enumerate(sa):
         k = _chave_item(it.get("descricao", ""))
-        v = it.get("valor_unitario")
-        if k in mapa_a and isinstance(v, (int, float)) and v > 0:
-            out.append(v / mapa_a[k])
+        if k:
+            mapa_a.setdefault(k, i)
+    usados_a, usados_b, out = set(), set(), []
+    for j, it in enumerate(sb):
+        i = mapa_a.get(_chave_item(it.get("descricao", "")))
+        if i is not None and i not in usados_a:
+            usados_a.add(i); usados_b.add(j)
+            out.append((float(sa[i]["valor_unitario"]), float(it["valor_unitario"])))
+    cand = []
+    for i, x in enumerate(sa):
+        if i in usados_a:
+            continue
+        na, ma = _n(x.get("descricao", "")), _medidas(x.get("descricao", ""))
+        for j, y in enumerate(sb):
+            if j in usados_b or _medidas(y.get("descricao", "")) != ma:
+                continue
+            s = fuzz.token_set_ratio(na, _n(y.get("descricao", "")))
+            if s >= SIM_MIN:
+                cand.append((s, i, j))
+    for s, i, j in sorted(cand, reverse=True):
+        if i not in usados_a and j not in usados_b:
+            usados_a.add(i); usados_b.add(j)
+            out.append((float(sa[i]["valor_unitario"]), float(sb[j]["valor_unitario"])))
     return out
+
+
+def _ratios(itens_a: list[dict], itens_b: list[dict]) -> list[float]:
+    """Razões vu_B/vu_A dos itens casados (ver `_pares`)."""
+    return [vb / va for va, vb in _pares(itens_a, itens_b)]
 
 
 def markup_uniforme(itens_a: list[dict], itens_b: list[dict], min_itens: int = 3, cv_max: float = 0.02) -> dict | None:
@@ -165,18 +203,7 @@ def markup_linear(itens_a: list[dict], itens_b: list[dict], min_itens: int = 4,
 
     Verificado neste cenário exato: `markup_uniforme` cego, `markup_linear` com R² 1.0 e +12,0%.
     """
-    mapa_a: dict[str, float] = {}
-    for it in itens_a:
-        k = _chave_item(it.get("descricao", ""))
-        v = it.get("valor_unitario")
-        if k and isinstance(v, (int, float)) and v > 0:
-            mapa_a.setdefault(k, float(v))
-    pares: list[tuple[float, float]] = []
-    for it in itens_b:
-        k = _chave_item(it.get("descricao", ""))
-        v = it.get("valor_unitario")
-        if k in mapa_a and isinstance(v, (int, float)) and v > 0:
-            pares.append((mapa_a[k], float(v)))
+    pares = _pares(itens_a, itens_b)
     if len(pares) < min_itens:
         return None
     sxx = sum(x * x for x, _ in pares)
@@ -189,7 +216,11 @@ def markup_linear(itens_a: list[dict], itens_b: list[dict], min_itens: int = 4,
     if sst <= 0:
         return None
     r2 = 1.0 - sse / sst
-    if r2 >= r2_min and abs(alfa - 1.0) > 0.005:
+    # R² pela origem mede o TAMANHO dos itens, não a constância da razão: cotações parecidas (±5%) de itens de
+    # R$ 28 mil a R$ 200 mil dão R² 0,997 (caso real 490001/1289/2024, 18/11/2026). Planilha derivada põe CADA
+    # item na reta, a menos do arredondamento — que é o que este detector existe para tolerar (R$ 1,00 ou 1%).
+    na_reta = all(abs(y - alfa * x) <= max(1.0, 0.01 * y) for x, y in pares)
+    if r2 >= r2_min and na_reta and abs(alfa - 1.0) > 0.005:
         return {"coeficiente": round(alfa, 4), "pct": round((alfa - 1.0) * 100, 2),
                 "r2": round(r2, 5), "n_itens": len(pares)}
     return None

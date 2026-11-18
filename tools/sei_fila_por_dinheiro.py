@@ -37,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent.sei import acervo_texto  # noqa: E402
 
 # FOLHA, PREVIDÊNCIA E ENCARGO não são contratação — e é do credor que se sabe. Medido na fonte
@@ -123,7 +124,7 @@ def levantar(fornecedor: str | None = None) -> dict:
         sql = ("WITH por_credor AS ("
                "  SELECT processo, credor, nome_credor, SUM(valor) vc, COUNT(*) nc"
                "  FROM ob_orcamentaria_siafe"
-               "  WHERE processo LIKE 'SEI-%/%/20%' AND status = 'Contabilizado'"
+               f"  WHERE processo LIKE 'SEI-%/%/20%' AND {_ob_paga(con)}"
                "  GROUP BY processo, credor"
                "), dominante AS ("
                "  SELECT processo, nome_credor, credor, MAX(vc) FROM por_credor GROUP BY processo"

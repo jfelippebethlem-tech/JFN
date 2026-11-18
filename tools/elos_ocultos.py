@@ -46,6 +46,7 @@ _SAIDA_MD = _REPO / "data" / "elos_ocultos.md"
 
 import re as _re
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.osint.marca_grupo import mesmo_grupo
 
 _RX_EMAIL = _re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
@@ -162,7 +163,7 @@ def levantar(db: str = "") -> dict:
 
     pago = {r[0]: r[1] for r in con.execute(
         "SELECT substr(credor,1,8), SUM(valor) FROM ob_orcamentaria_siafe "
-        "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1")}
+        f"WHERE {_ob_paga(con)} AND length(credor)=14 GROUP BY 1")}
     # O PESO PODE ESTAR SUBESTIMADO, E ISSO TEM DE APARECER. A coleta do SIAFE tem teto por
     # (UG, ano) — 23 pares estão parados em 1.000 OBs exatos, e o espelho TFE conhece 137.654 OBs
     # que a fonte canônica não tem (medido 2026-08-09). Efeito real: PHOTONLUX entrou na fila com

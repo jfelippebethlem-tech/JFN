@@ -32,6 +32,8 @@ import re
 import sqlite3
 from typing import Any
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 # Uma pessoa em muitíssimas empresas não forma "grupo": é administrador profissional ou o efeito
 # da máscara de CPF (medido: 977 de 24.448 documentos carregam mais de um nome). Acima deste
 # limite a pessoa não é usada para unir empresas — uniria o mercado inteiro num grupo só.
@@ -194,7 +196,7 @@ def concentracao_da_ug(con: sqlite3.Connection, ug: str, *,
     mapa = g.get("grupo_de") or {}
 
     sql = ("SELECT credor, nome_credor, SUM(valor) FROM ob_orcamentaria_siafe "
-           "WHERE ug_emitente = ? AND valor > 0 AND status = 'Contabilizado'")   # só OB paga (24/09/2026)
+           f"WHERE ug_emitente = ? AND valor > 0 AND {_ob_paga(con)}")   # só OB paga (24/09; devolvida 18/11/2026)
     par: list[Any] = [str(ug)]
     if ano:
         sql += " AND substr(data_emissao, 7, 4) = ?"   # data_emissao é TEXTO DD/MM/AAAA
@@ -267,7 +269,7 @@ def ranking(con: sqlite3.Connection, *, ano: str | None = None, minimo_cnpj: int
     g = montar_grupos(con)
     try:
         ugs = [r[0] for r in con.execute(
-            "SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE valor > 0 AND status = 'Contabilizado' "
+            f"SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE valor > 0 AND {_ob_paga(con)} "
             "GROUP BY ug_emitente HAVING COUNT(DISTINCT credor) >= ?", (minimo_cnpj,))]
     except sqlite3.OperationalError:
         return []

@@ -76,8 +76,10 @@ def _calc_siafe_stats():
             tot = con.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe").fetchone()
             # PAGO = só OB Contabilizada (regra absoluta nº 2). O `valor_total` acima soma também Anulada, Excluída e
             # Não contabilizada (~R$ 16 bi em 13/11/2026) — fica por compatibilidade, e a tela mostra o pago.
+            # Devolvida pelo banco ('Erro no Pagamento') segue Contabilizada e também não é pago (18/11/2026).
+            from compliance_agent.cruzamentos_intel import _ob_paga
             pago = con.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
-                               "WHERE status='Contabilizado'").fetchone()
+                               f"WHERE {_ob_paga(con)}").fetchone()
             por_ano = [{"exercicio": r[0], "n": r[1], "valor": round(r[2] or 0, 2)}
                        for r in con.execute("SELECT exercicio, COUNT(*), COALESCE(SUM(valor),0) "
                                             "FROM ob_orcamentaria_siafe GROUP BY exercicio ORDER BY exercicio")]

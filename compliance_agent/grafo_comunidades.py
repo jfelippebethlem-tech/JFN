@@ -23,6 +23,8 @@ import math
 import sqlite3
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _REPO = Path(__file__).resolve().parent.parent
 _DB = str(_REPO / "data" / "compliance.db")
 
@@ -102,7 +104,7 @@ def construir_grafo_intel(db_path: str | None = None):
         except (OSError, ValueError, KeyError):
             ug_nome = {}
         for r in _q(con, "SELECT substr(credor,1,8) b, credor, ug_emitente ug, SUM(valor) v "
-                         "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND length(credor)=14 AND valor>0 "
+                         f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 "
                          "GROUP BY b, ug_emitente"):
             oid = f"org:ug{r['ug']}"
             if oid not in G:

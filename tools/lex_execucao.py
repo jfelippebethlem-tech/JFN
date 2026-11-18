@@ -29,6 +29,8 @@ import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, "data", "compliance.db")
 
@@ -155,7 +157,7 @@ def mapa_obs_siafe(con: sqlite3.Connection, processos: list[str]) -> dict[str, d
         return out
     try:
         rows = con.execute("SELECT processo, valor, data_emissao FROM ob_orcamentaria_siafe "
-                           "WHERE status='Contabilizado' AND processo LIKE '%/%'")
+                           f"WHERE {_ob_paga(con)} AND processo LIKE '%/%'")
     except sqlite3.OperationalError:
         return out                                     # base sem SIAFE: o bloco diz INDISPONÍVEL
     for proc, valor, data in rows:

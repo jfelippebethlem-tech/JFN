@@ -340,3 +340,13 @@ def test_carga_efetiva_nao_cai_no_mergulho_de_1_minuto():
     """15/11/2026: carga de 1 min em 3 com a de 5 min em 20 não libera tarefa pesada."""
     assert P._carga_efetiva((3.0, 20.0, 18.0)) == 20.0
     assert P._carga_efetiva((9.5,)) == 9.5
+
+
+def test_paciencia_sobe_o_teto_da_leve_em_vez_de_descer(con, monkeypatch):
+    """18/11/2026: o teto final da paciência (12) valia para os dois pesos — subia o da pesada (7 → 12) mas DESCIA o
+    da leve (14 → 12): com a VM-1 vivendo em carga 14–17, a tarefa leve ficava mais presa quanto mais esperava."""
+    cfg = _cfg(lv=_der(["f"]))
+    P.emitir(con, cfg, "f", "mudou")
+    con.execute("UPDATE evento SET quando = quando - ?", (P.CARGA_PACIENCIA_S + 60,))   # sujo há mais de 2 h
+    feitos = P.despachar(con, cfg, carga=lambda: (16.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["lv"]

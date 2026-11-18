@@ -33,13 +33,14 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.sancao_abrangencia import veda_ente
 
 _REPO = Path(__file__).resolve().parents[1]
 # Sem índice em `credor`: consulta por par varria a tabela inteira ~230 vezes (145 s a frio). Uma passada só.
 _SQL_OBS = ("SELECT substr(credor,1,8), valor, "
             "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) "
-            "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND valor>0 AND length(credor)=14")
+            "FROM ob_orcamentaria_siafe WHERE {paga} AND valor>0 AND length(credor)=14")
 
 
 def _iso(d: str | None) -> str:
@@ -97,7 +98,7 @@ def socio_de_sancionada(db_path: str | None = None, estab_path: str | None = Non
                         janelas.append((a["b"], s["b"], nome, doc, ini, fim, sc))
         alvo = {j[0] for j in janelas}
         obs: dict[str, list[tuple]] = defaultdict(list)
-        for b, valor, dia in con.execute(_SQL_OBS):
+        for b, valor, dia in con.execute(_SQL_OBS.replace("{paga}", _ob_paga(con))):   # sem a devolvida ('Erro no Pagamento')
             if b in alvo:
                 obs[b].append((dia, valor))
         melhor: dict[tuple, dict] = {}

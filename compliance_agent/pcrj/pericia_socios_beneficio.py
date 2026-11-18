@@ -20,6 +20,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.pcrj import db as _db
 
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
@@ -138,7 +139,7 @@ def analisar() -> dict:
 
     # sócios de fornecedores (com CPF mascarado) + quanto cada empresa RECEBEU do Estado.
     # Pagamento = OB SIAFE 'Contabilizado' (regra da casa: só a Ordem Bancária é pago; Anulado/
-    # Excluído fora) — dá a dimensão do sinal: sócio de empresa que fatura X com o poder público.
+    # Excluído fora; devolvida pelo banco — 'Erro no Pagamento' — também) — dá a dimensão do sinal: sócio de empresa que fatura X com o poder público.
     cc = _db.sqlite3.connect(f"file:{COMPLIANCE_DB}?mode=ro", uri=True)
     cc.row_factory = _db.sqlite3.Row
     socios = cc.execute(
@@ -151,7 +152,7 @@ def analisar() -> dict:
                  for r in cc.execute(
                      "SELECT credor, SUM(valor) AS total, COUNT(*) AS n, MIN(exercicio) AS ini, "
                      "MAX(exercicio) AS fim FROM ob_orcamentaria_siafe "
-                     "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY credor")}
+                     f"WHERE {_ob_paga(cc)} AND length(credor)=14 GROUP BY credor")}
     except Exception:  # noqa: BLE001 — banco parcial segue sem o contexto de pagamento
         pagos = {}
     cc.close()

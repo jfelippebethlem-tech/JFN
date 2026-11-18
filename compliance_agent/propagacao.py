@@ -64,7 +64,10 @@ ORCAMENTO_CICLO_S = 1200          # um ciclo não começa execução nova depois
 CARGA_MAX = {"leve": 14.0, "pesado": 7.0}
 # A VM vive entre carga 5 e 9: sem válvula, um pesado poderia esperar o dia inteiro. Sujo há mais de 2 h, o teto
 # sobe (os mesmos comandos já rodam pelo cron, com `nice`, sem olhar a carga).
-CARGA_PACIENCIA_S, CARGA_TETO_FINAL = 7200, 12.0
+CARGA_PACIENCIA_S = 7200
+# Depois da paciência o teto SOBE, nunca desce (18/11/2026: o 12 único descia o da leve de 14 para 12; com a VM-1
+# em carga 14–17 a tarefa leve ficava mais presa quanto mais esperava).
+CARGA_TETO_FINAL = {"leve": 18.0, "pesado": 12.0}
 RECUO_BASE_S, RECUO_MAX_S = 1800, 6 * 3600
 EVENTOS_GUARDADOS = 3000
 
@@ -621,7 +624,7 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             elif peso == "pesado" and pesado_feito:
                 motivo = "um pesado por ciclo"
             elif (c := _carga_efetiva(carga())) > (
-                    teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL):
+                    teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL[peso]):
                 motivo = f"carga {c:.1f} acima do teto {teto:.0f}"
             con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
             if motivo is None:

@@ -45,8 +45,8 @@ def _ck(sistema):
 def _ck_save(sistema, d):
     try:
         _ckpt_path(sistema).write_text(json.dumps(d, ensure_ascii=False))
-    except (OSError, TypeError):
-        pass
+    except (OSError, TypeError) as e:     # checkpoint é conveniência: sem ele a varredura recomeça do zero
+        print(f"[siafe_sweep_full] checkpoint de {sistema} não gravado ({type(e).__name__})", file=sys.stderr)
 
 
 def _log(sistema, m):

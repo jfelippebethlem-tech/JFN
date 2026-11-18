@@ -24,6 +24,7 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.reporting.intel_base import moeda
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -137,7 +138,7 @@ def medir(db_path: str | None = None, limite_exemplos: int = 30) -> dict:
                 (r["cnpj"], r["primeira_vez"])).fetchone()
             pago = con.execute(
                 f"SELECT COALESCE(SUM(valor),0), COUNT(*) FROM ob_orcamentaria_siafe "
-                f"WHERE status='Contabilizado' AND credor=? AND {_OB_ISO} > ?", (r["cnpj"], r["primeira_vez"])).fetchone()
+                f"WHERE {_ob_paga(con)} AND credor=? AND {_OB_ISO} > ?", (r["cnpj"], r["primeira_vez"])).fetchone()
             vit = con.execute(
                 "SELECT COUNT(DISTINCT certame) FROM pncp_resultado WHERE fornecedor_cnpj=? "
                 "AND (ordem_classificacao=1 OR (ordem_classificacao IS NULL AND "

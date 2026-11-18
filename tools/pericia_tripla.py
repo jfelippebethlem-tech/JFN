@@ -57,6 +57,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 RAIZ = Path(__file__).resolve().parent.parent
 DB = RAIZ / "data" / "compliance.db"
@@ -154,7 +155,7 @@ def periciar(con: sqlite3.Connection, corte_de_captura: bool = True) -> list[dic
     credor: dict = {}
     for processo, valor, nome in con.execute(
             "SELECT processo, valor, nome_credor FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado' AND processo LIKE 'SEI-%'"):
+            f"WHERE {_ob_paga(con)} AND processo LIKE 'SEI-%'"):
         k = str(processo).replace("SEI-", "")
         if k in achados:
             pago[k] += valor or 0.0

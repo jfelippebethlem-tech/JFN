@@ -36,6 +36,7 @@ import {ritmoEstado} from './ritmo.js';
 import {_redMotion, _sobrio, _v60, _v61} from './capacidade/estado.js';
 import {movimentoBoot} from './ui/movimento.js';
 import {v60Boot} from './ui/v60.js';
+import {toqueBoot} from './ui/toque.js';
 import {v61Boot} from './ui/v61.js';
 import {v63Boot} from './v63/index.js';
 /* VIDRO + JARVIS (16/11/2026): o vidro ajustável e a vida contínua. Sem efeito de topo — ligam pelas
@@ -393,7 +394,7 @@ fetch('/static/assets/no-energia.png',{method:'HEAD'})
    importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
-(async()=>{v60Boot();v61Boot();v63Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
+(async()=>{v60Boot();toqueBoot();v61Boot();v63Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
   /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
   const _h=decodeURIComponent(location.hash.slice(1));
   await ir(_abaValida(_h)?_h:'i_cockpit');

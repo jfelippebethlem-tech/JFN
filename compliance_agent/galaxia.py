@@ -33,6 +33,8 @@ from collections import Counter, defaultdict
 from itertools import combinations
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 SOCIOS_POR_CNPJ = 4
 ORGAOS_POR_CNPJ = 3
 EXEMPLOS_ALERTA = 4
@@ -262,9 +264,10 @@ def _casos(g: _G, casos: list[dict], nomes_ug: dict):
 def _orgaos(g: _G, con, nomes_ug: dict):
     """Quem pagou (OB SIAFE contabilizada) ou contratou (PCRJ/PNCP) cada fornecedor."""
     cn = sorted(g.forn)
+    paga = _ob_paga(con) if con is not None else ""   # sem base: _q levanta e a fonte vira INDISPONÍVEL
     try:
         for c, ug, n, v in _em_lotes(con, "SELECT credor, ug_emitente, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
-                                          "WHERE credor IN ({}) AND status='Contabilizado' GROUP BY 1, 2", cn):
+                                          "WHERE credor IN ({}) AND " + paga + " GROUP BY 1, 2", cn):
             if c in g.forn and ug and (v or 0) > 0:
                 f = g.forn[c]
                 f["org"][f"ug:{ug}"] += float(v)

@@ -6312,6 +6312,88 @@ html.v63 #v63-fundo[data-quadro="4"] .v63-quadro{transform:translate3d(-.8%,.8%,
 html.v63 #v63-fundo[data-quadro="5"] .v63-quadro{transform:translate3d(1.4%,-.4%,0)}
 html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-1.4%,-.4%,0)}
 @media (prefers-reduced-motion:reduce){html.v63 .v63-cam{transform:none}}
+/* ══ v67 · TOQUE — tabela vira lista de cartões no celular (par do `ui/toque.js`) ═══════════════════
+   Medido no v66 (390 × 844, DPR 3): 40–110 links por aba com 18–23 px de altura dentro de tabelas
+   densas, e tabelas esmagadas ("Exoneração" em 34 px) onde a largura não dava. Um componente só:
+   o JS marca a tabela (`.tt`), os rótulos (`data-rotulo`), o destino principal (`.tt-principal`) e
+   as ações secundárias (`.tt-sec`); este CSS só age ≤ 640 px. Desktop continua tabela, intocada.
+
+   - Cartão = a linha. A 1ª célula é o título (largura toda); os demais campos ficam em 2 colunas,
+     com o rótulo da coluna em cima, miúdo — a densidade fica perto da tabela, sem célula esmagada.
+     Campo longo (> 34 caracteres, ou com lista/tabela dentro) ocupa a largura toda.
+   - Destino principal: o link "esticado" — o `::after` dele cobre o cartão inteiro. Um só alvo,
+     do tamanho do cartão, sem JS de clique e sem duplicar evento.
+   - Secundárias: por cima do link esticado (z-index), com 44 × 44 px reais. Nenhum alvo disputa o
+     toque de outro: o principal só recebe o que sobra do cartão.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  table.tt-cartoes{display:block;width:100% !important;min-width:0 !important;max-width:100%;
+    border:0 !important;background:none !important;box-shadow:none !important;margin-left:0;margin-right:0}
+  /* o cabeçalho vira rótulo de cada campo — some da tela, não do leitor de tela */
+  table.tt-cartoes>thead{position:absolute !important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  table.tt-cartoes>caption{display:block;text-align:left}
+  table.tt-cartoes>tbody,table.tt-cartoes>tfoot{display:flex;flex-direction:column;gap:8px;width:100%}
+  table.tt-cartoes>tbody+tbody{margin-top:8px}
+  table.tt-cartoes>tbody>tr,table.tt-cartoes>tfoot>tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px 14px;position:relative;padding:11px 13px;border:1px solid var(--bd,rgba(11,27,58,.14));border-radius:12px;
+    background:color-mix(in oklch,var(--bg2,#EEF4FF) 55%,transparent);transform:none !important;
+    -webkit-tap-highlight-color:transparent}
+  table.tt-cartoes>tbody>tr>*,table.tt-cartoes>tfoot>tr>*{display:block;min-width:0 !important;width:auto !important;
+    max-width:none !important;padding:0 !important;border:0 !important;text-align:left !important;
+    white-space:normal !important;overflow-wrap:break-word;height:auto !important}
+  html table.tt-cartoes>tbody>tr>td,html table.tt-cartoes>tbody>tr:nth-child(n)>td,html table.tt-cartoes>tbody>tr:hover>td{background:none !important}
+  table.tt-cartoes>tbody>tr>:first-child,table.tt-cartoes>tbody>tr>.tt-larga,
+  table.tt-cartoes>tfoot>tr>:first-child{grid-column:1/-1}
+  table.tt-cartoes>tbody>tr>:first-child{font-weight:600}
+  table.tt-cartoes>tbody>tr>:empty{display:none}
+  table.tt-cartoes>tbody>tr>[data-rotulo]:not(:first-child)::before{content:attr(data-rotulo);display:block;
+    font:600 10.5px/1.25 var(--f-sans,system-ui),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--tx3,var(--mut,#6b7a99));margin-bottom:2px}
+  /* linha-faixa (uma célula com colspan: subtítulo, "sem dados", total) fica como faixa, não cartão */
+  table.tt-cartoes>tbody>tr.tt-faixa{display:block;padding:6px 2px;border:0;background:none}
+
+  /* destino principal: o cartão inteiro é o alvo */
+  table.tt-cartoes tr.tt-tem-principal .tt-principal{position:static !important}
+  table.tt-cartoes tr.tt-tem-principal .tt-principal::after{content:"";position:absolute;inset:0;border-radius:12px;z-index:0}
+  table.tt-cartoes tr.tt-tem-principal,table.tt-cartoes tr.tt-linha-alvo{cursor:pointer}
+  table.tt-cartoes tr.tt-tem-principal:active,table.tt-cartoes tr.tt-linha-alvo:active{
+    background:color-mix(in oklch,var(--accent,#1D5BFF) 11%,transparent);border-color:color-mix(in oklch,var(--accent,#1D5BFF) 45%,transparent)}
+  table.tt-cartoes tr.tt-linha-alvo{min-height:44px}
+  table.tt-cartoes tr:has(.tt-principal:focus-visible){outline:2px solid var(--accent,#1D5BFF);outline-offset:2px}
+  table.tt-cartoes .tt-principal:focus-visible{outline:none}
+
+  /* secundárias: 44 × 44 reais, por cima do link esticado */
+  table.tt-cartoes .tt-sec{position:relative;z-index:1;min-height:44px;min-width:44px;box-sizing:border-box;
+    display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin:1px 2px 1px 0}
+  table.tt-cartoes a.tt-sec,table.tt-cartoes .clk.tt-sec{justify-content:flex-start;padding:0 6px}
+  table.tt-cartoes input.tt-sec[type=checkbox],table.tt-cartoes input.tt-sec[type=radio]{min-width:22px;min-height:22px;margin:11px}
+  table.tt-cartoes summary.tt-sec{display:flex;justify-content:flex-start}
+}
+
+/* ── alvos soltos (fora das tabelas-cartão): 44 × 44 reais no toque ──────────────────────────────────
+   O `ui/toque.js` marca `.tt-alvo` só sob `pointer:coarse`: chip, botão, `.clk` de lista, `summary`,
+   link de ação. Link dentro de frase fica de fora (exceção "inline" da WCAG 2.5.8): engordar a linha
+   quebraria o parágrafo. O alvo cresce por dentro (altura/largura mínimas, conteúdo centrado) — o texto
+   não muda de corpo; o que muda é o respiro entre um alvo e o próximo. */
+@media (pointer:coarse){
+  :is(#view,#sheet) .tt-alvo:not(table.tt-cartoes *){min-height:44px;min-width:44px;box-sizing:border-box}
+  :is(#view,#sheet) .tt-alvo-inl:not(table.tt-cartoes *){display:inline-flex;align-items:center;vertical-align:middle}
+  :is(#view,#sheet) summary.tt-alvo:not(table.tt-cartoes *){padding-block:max(0px,calc((44px - 1lh) / 2));margin-block-end:4px}
+  :is(#view,#sheet) :is(button,a,[role=button]).tt-alvo:not(.tt-alvo-inl):not(table.tt-cartoes *){align-content:center}
+}
+
+/* ── lista do v60: o nome (`.clk`) vira link esticado sobre o cartão (par do `_listas` do toque.js) ──── */
+@media (pointer:coarse){
+  :is(#view,#sheet) .tt-cartao{position:relative}
+  :is(#view,#sheet) .tt-cartao .clk.tt-principal{position:static}
+  :is(#view,#sheet) .tt-cartao .clk.tt-principal::after{content:"";position:absolute;inset:0;z-index:0}
+  :is(#view,#sheet) .tt-cartao .tt-sec{position:relative;z-index:1;min-height:44px;min-width:44px;box-sizing:border-box}
+}
+
+/* ── valor não quebra no meio (par do `tt-num` do toque.js): vale com ou sem cartão, só no estreito ────── */
+@media (max-width:640px){
+  :is(#view,#sheet) table.tt td.tt-num{white-space:nowrap !important;overflow-wrap:normal !important}
+}
 /* ══ v68 · CINE 3D — vídeos renderizados no Blender com dados reais (par do `cena/cine3d.js`) ════════
    Faixa no topo do mapa do território: o vídeo é fundo de palco (cobre, sem esticar além do nativo:
    paisagem 1920×1080, retrato 1080×1920), a legenda é texto em código sobre um véu claro para contraste AA.

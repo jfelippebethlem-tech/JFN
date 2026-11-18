@@ -234,8 +234,11 @@ def api_painel():
             try:
                 from sqlalchemy import text as _t
                 _iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+                # devolvida pelo banco ('Erro no Pagamento') segue Contabilizada e não é pago (18/11/2026)
+                _dev = (" AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if any(
+                    c[1] == "status_envio" for c in s.execute(_t("PRAGMA table_info(ob_orcamentaria_siafe)"))) else "")
                 ultimo_dia, n_ultimo_dia, v_ultimo_dia = s.execute(_t(
-                    f"SELECT {_iso} d, count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+                    f"SELECT {_iso} d, count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE status='Contabilizado'{_dev} "
                     f"AND {_iso} <= :h GROUP BY d ORDER BY d DESC LIMIT 1"), {"h": str(hoje)}).one()
             except (sa.exc.SQLAlchemyError, ValueError, TypeError) as exc:  # sem SIAFE o KPI diz INDISPONÍVEL, não 0
                 logger.warning("último dia do SIAFE indisponível: %s", exc)

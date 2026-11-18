@@ -249,11 +249,15 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
     # total recebido e 1ª/última OB — OB SIAFE contabilizada (pagamento efetivo); o espelho TFE só
     # entra se o SIAFE não tiver o credor, e a fonte fica registrada.
     try:
+        # devolvida pelo banco ('Erro no Pagamento') segue Contabilizada no SIAFE e não é pago (18/11/2026);
+        # base sem a coluna status_envio (fixture antiga) → regra antiga
+        devolvida = (" AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if any(
+            c[1] == "status_envio" for c in session.execute(text("PRAGMA table_info(ob_orcamentaria_siafe)"))) else "")
         r = session.execute(text(
             "SELECT SUM(valor), MIN(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||"
             "substr(data_emissao,1,2)), MAX(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||"
             "substr(data_emissao,1,2)) FROM ob_orcamentaria_siafe WHERE credor=:c AND status='Contabilizado' "
-            "AND data_emissao LIKE '__/__/____'"), {"c": cnpj}).fetchone()
+            "AND data_emissao LIKE '__/__/____'" + devolvida), {"c": cnpj}).fetchone()
         if r and r[0]:
             p.update(total_recebido=r[0], primeira_ob=r[1], ultima_ob=r[2], fonte_total="SIAFE (OB contabilizada)")
     except SQLAlchemyError as exc:

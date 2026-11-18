@@ -34,6 +34,8 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 RAIZ = Path(__file__).resolve().parents[1]
 DATA = Path(os.environ.get("JFN_DATA_DIR", RAIZ / "data"))
 DB = DATA / "compliance.db"
@@ -322,7 +324,7 @@ def dea_recorrente(c) -> dict:
             lista = nes.split(",")
             marc = ",".join("?" * len(lista))
             r = c.execute(f"""SELECT COALESCE(SUM(o.valor),0), COUNT(*) FROM ob_orcamentaria_siafe o
-                WHERE o.credor=? AND o.ug_emitente=? AND o.status='Contabilizado' AND o.nl IN
+                WHERE o.credor=? AND o.ug_emitente=? AND {_ob_paga(c, 'o')} AND o.nl IN
                   (SELECT numero FROM nl_siafe WHERE ug_emitente=? AND status='Contabilizado' AND ne IN ({marc}))""",
                           (cnpj, ug, ug, *lista)).fetchone()
             pago, n_ob = float(r[0] or 0), int(r[1] or 0)
@@ -706,7 +708,7 @@ def ordem_cronologica(c) -> dict:
         SELECT ug_emitente, exercicio, vinculacao_pagamento, nl, MIN({_ISO}), SUM(valor), MAX(credor), MAX(nome_credor),
                MIN(numero_ob), MAX(processo)
         FROM ob_orcamentaria_siafe
-        WHERE status='Contabilizado' AND tipo_ob='Orçamentária' AND length(credor)=14
+        WHERE {_ob_paga(c)} AND tipo_ob='Orçamentária' AND length(credor)=14
           AND nl LIKE (CAST(exercicio AS TEXT) || 'NL%')
         GROUP BY ug_emitente, exercicio, vinculacao_pagamento, nl""").fetchall()
     grupos = defaultdict(list)

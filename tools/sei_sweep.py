@@ -329,6 +329,7 @@ def _incluir_dirigidos_fora_do_universo(rows: list[tuple], dirigidos: set[str], 
 def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     """Processos SEI distintos das OBs, priorizando as UNIDADES que o itkava já leu (escopo
     aprendido), depois por valor desc. Filtra por UG e/ou CNPJ do favorecido (alvo de um relatório)."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
     con = sqlite3.connect(str(DB))
     where = "numero_sei LIKE 'SEI-%/%/20%'"
     args: list = []
@@ -352,8 +353,9 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')", "credor")
     rows = con.execute(
         # SÓ OB `Contabilizado` é pago (13/11/2026): Anulado (R$ 7,06 bi) e Excluído (R$ 8,91 bi) entravam
-        # no valor que ordena a fila. O universo de processos não muda — só o valor.
-        f"SELECT processo, COUNT(*) nob, ROUND(SUM(CASE WHEN status='Contabilizado' THEN valor ELSE 0 END),2) tot "
+        # no valor que ordena a fila. O universo de processos não muda — só o valor. Nem a devolvida pelo
+        # banco ('Erro no Pagamento'), que segue Contabilizada (18/11/2026).
+        f"SELECT processo, COUNT(*) nob, ROUND(SUM(CASE WHEN {_ob_paga(con)} THEN valor ELSE 0 END),2) tot "
         f"FROM ob_orcamentaria_siafe "
         f"WHERE {where_siafe} GROUP BY processo ORDER BY tot DESC",
         tuple(args),

@@ -25,6 +25,8 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 
+# Status de NOTA DE EMPENHO (ne_siafe), não de OB: aqui não há 'Erro no Pagamento' a excluir — empenho não é
+# pagamento e não é somado como tal (catraca test_catraca_ob_devolvida).
 _SQL = ("SELECT numero, ug_emitente, ano_ne, data_emissao, credor, nome_credor, natureza, processo, valor "
         "FROM ne_siafe WHERE status='Contabilizado' AND valor>0 AND length(credor)=14 AND substr(natureza,5,2)='92'")
 
