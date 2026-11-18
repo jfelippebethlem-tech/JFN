@@ -75,6 +75,12 @@ def carregar_sessao(url: str, agora: float | None = None) -> list[dict]:
     return [c for c in (d.get("cookies") or []) if (c.get("expires") or -1) < 0 or c["expires"] > agora]
 
 
+def _erros_navegador() -> tuple:
+    """Erros esperados de navegação/página (Playwright) — captura específica (catraca da casa)."""
+    from playwright.async_api import Error as ErroPlaywright
+    return (ErroPlaywright, TimeoutError, OSError)
+
+
 def ha_desafio(iframes_src: list[str], texto_visivel: str) -> bool:
     """Puro (testável): há verificação humana pendente na página?"""
     if any(any(k in (s or "").lower() for k in _IFRAMES) for s in iframes_src):
@@ -87,7 +93,7 @@ async def _estado(pagina) -> bool:
     srcs = [f.url for f in pagina.frames]
     try:
         texto = await pagina.inner_text("body", timeout=5000)
-    except Exception:  # noqa: BLE001 — página navegando/sem body: trata como ainda carregando (sem desafio visível)
+    except _erros_navegador():   # página navegando/sem body: trata como ainda carregando (sem desafio visível)
         texto = ""
     return ha_desafio(srcs, texto[:20000])
 
@@ -125,7 +131,7 @@ async def aguardar_humano_async(url: str, motivo: str, minutos: float = 30.0) ->
             try:
                 await pagina.goto("about:blank")
                 await pagina.close()
-            except Exception:  # noqa: BLE001 — limpeza de aba não pode mascarar o resultado
+            except _erros_navegador():   # limpeza de aba não pode mascarar o resultado
                 pass
 
 
@@ -161,13 +167,13 @@ async def manter_async() -> dict:
                 else:
                     guardar_sessao(info["url"], await contexto.cookies(info["url"]))
                     out[host] = "renovada"
-            except Exception as e:  # noqa: BLE001 — um site fora do ar não para a renovação dos outros
+            except _erros_navegador() as e:   # um site fora do ar não para a renovação dos outros
                 out[host] = f"erro: {type(e).__name__}"
             finally:
                 try:
                     await pagina.goto("about:blank")
                     await pagina.close()
-                except Exception:  # noqa: BLE001
+                except _erros_navegador():
                     pass
     return out
 
