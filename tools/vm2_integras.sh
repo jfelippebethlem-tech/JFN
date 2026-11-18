@@ -12,7 +12,9 @@ ANTIGO=/home/ubuntu/JFN              # cópia rsync antiga da VM-2, onde mora o 
 export TZ=America/Sao_Paulo          # o log vai para a VM-1, que está em -03: as horas têm de casar
 # orçamento: madrugada (antes das 08h) 5 h; janela diurna 3 h — ou o 1º argumento, se dado
 if [ "$(date +%-H)" -lt 8 ]; then SEG=${1:-18000}; else SEG=${1:-10800}; fi
-MAX=${2:-400}
+# 60, não 400 (18/11/2026): a reserva da VM-2 vale 12 h e ela faz ~6–8 processos/h; com 400 reservados os outros
+# nós (it-campo) ficavam sem a cabeça da fila — a recaptura prioritária inteira ia parar atrás de um só navegador.
+MAX=${2:-60}
 cd "$W" || exit 1
 export PYTHONPATH="$W"
 # juízo das amostras pelo Claude Code DESTA máquina, pela assinatura (nunca API paga), com teto próprio
