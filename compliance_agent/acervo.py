@@ -16,6 +16,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _RAIZ = Path(__file__).resolve().parents[1]
 DB_COMPLIANCE = _RAIZ / "data" / "compliance.db"
 DB_ACHADOS = _RAIZ / "data" / "achados.db"
@@ -122,18 +124,21 @@ def _ficha_estado(canon: str) -> dict:
         if _tem(con, "ob_orcamentaria_siafe"):
             # PAGO = só OB `Contabilizado`. Anulada/Excluída/Não contabilizada somavam R$ 6,58 bi em 5.726 processos
             # e inflavam o total da ficha (medido 24/09/2026); aparecem à parte, na lista, com o status.
+            # Devolvida pelo banco ('Erro no Pagamento') segue 'Contabilizado' no SIAFE e também não é pago (18/11/2026).
+            paga = _ob_paga(con)
+            env = ", status_envio" if "status_envio" in paga else ""
             rows = con.execute(f"SELECT credor, nome_credor, count(*) n, round(sum(valor),2) total, min(data_emissao) primeira, max(data_emissao) ultima, "
-                               f"group_concat(DISTINCT ug_emitente) ugs FROM ob_orcamentaria_siafe WHERE processo IN ({q}) AND status='Contabilizado' "
+                               f"group_concat(DISTINCT ug_emitente) ugs FROM ob_orcamentaria_siafe WHERE processo IN ({q}) AND {paga} "
                                f"GROUP BY credor ORDER BY total DESC LIMIT 30", vars_).fetchall()
             lista = [dict(x) for x in con.execute(
-                f"SELECT numero_ob, data_emissao, ug_emitente, credor, nome_credor, valor, status FROM ob_orcamentaria_siafe "
+                f"SELECT numero_ob, data_emissao, ug_emitente, credor, nome_credor, valor, status{env} FROM ob_orcamentaria_siafe "
                 f"WHERE processo IN ({q}) ORDER BY substr(data_emissao,7,4)||substr(data_emissao,4,2)||substr(data_emissao,1,2) DESC LIMIT 400", vars_)]
-            nao_pagas = [x for x in lista if x["status"] != "Contabilizado"]
+            nao_pagas = [x for x in lista if x["status"] != "Contabilizado" or x.get("status_envio") == "Erro no Pagamento"]
             f["obs"] = {"fonte": "SIAFE (ob_orcamentaria_siafe.processo, só OB Contabilizado no total)", "n": sum(x["n"] for x in rows),
                         "total": round(sum(x["total"] or 0 for x in rows), 2), "por_credor": [dict(x) for x in rows], "lista": lista,
                         "n_nao_pagas": len(nao_pagas), "valor_nao_pago": round(sum(x["valor"] or 0 for x in nao_pagas), 2)}
             f["cobertura"]["obs_siafe"] = (f"{f['obs']['n']} OB(s) contabilizada(s) com este nº de processo"
-                                           + (f"; {len(nao_pagas)} anulada(s)/excluída(s) fora do total" if nao_pagas else "")) if lista \
+                                           + (f"; {len(nao_pagas)} anulada(s)/excluída(s)/devolvida(s) fora do total" if nao_pagas else "")) if lista \
                 else "nenhuma OB do SIAFE cita este processo"
         if _tem(con, "doerj_tac"):
             f["tac"] = [dict(x) for x in con.execute(
@@ -569,7 +574,7 @@ def buscar(q: str, esfera: str = "todos", limite: int = 60) -> dict:
                                  {"fornecedor": r["forn"], "n_tac": r["n"], "soma_tac_publicada": r["soma"]}))
             if _tem(con, "ob_orcamentaria_siafe") and e_cnpj:
                 for r in con.execute("SELECT processo, nome_credor, count(*) n, round(sum(valor),2) total, max(data_emissao) ultima FROM ob_orcamentaria_siafe "
-                                     "WHERE credor LIKE ? AND processo LIKE 'SEI-%' AND status='Contabilizado' GROUP BY processo ORDER BY total DESC LIMIT ?", (f"%{dig[:8]}%", lim)):
+                                     f"WHERE credor LIKE ? AND processo LIKE 'SEI-%' AND {_ob_paga(con)} GROUP BY processo ORDER BY total DESC LIMIT ?", (f"%{dig[:8]}%", lim)):
                     nn = norm(r["processo"])
                     if nn:
                         add(_hit("estado", nn[1], None, r["nome_credor"], None, r["total"], None, "siafe_ob", r["ultima"], {"n_obs": r["n"]}))

@@ -27,6 +27,7 @@ Indícios de fachada/laranja (literatura: TCU; OECD Bid Rigging 2025; ACFE; osin
 """
 from __future__ import annotations
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.limites_porte import TETO_EPP, TETO_ME, TETO_MEI
 
 import datetime as dt
@@ -186,7 +187,7 @@ def _pico_anual_ob(cnpj: str) -> tuple[int, float] | None:
         con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
         try:
             r = con.execute("SELECT exercicio, SUM(valor) v FROM ob_orcamentaria_siafe WHERE credor=? "
-                            "AND status='Contabilizado' GROUP BY exercicio ORDER BY v DESC LIMIT 1",
+                            f"AND {_ob_paga(con)} GROUP BY exercicio ORDER BY v DESC LIMIT 1",
                             (_digitos(cnpj),)).fetchone()
         finally:
             con.close()
@@ -233,7 +234,7 @@ def _ultimo_pagamento_ob(cnpj: str, db_path=None) -> dt.date | None:
             r = con.execute(
                 "SELECT MAX(substr(data_emissao,7,4)||substr(data_emissao,4,2)||"
                 "       substr(data_emissao,1,2)) FROM ob_orcamentaria_siafe "
-                "WHERE credor=? AND status='Contabilizado'", (_digitos(cnpj),)).fetchone()
+                f"WHERE credor=? AND {_ob_paga(con)}", (_digitos(cnpj),)).fetchone()
         finally:
             con.close()
     except sqlite3.Error:
