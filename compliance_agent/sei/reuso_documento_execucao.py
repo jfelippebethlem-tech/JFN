@@ -325,8 +325,7 @@ def credor_siafe(numero: str) -> str | None:
 
     Medido em 18/11/2026: o texto do Contrato 034/2026 da SEHIS traz o CNPJ da PRÓPRIA SEHIS no
     campo do contratado (erro material) e o fallback por texto devolvia o órgão como credor; o SIAFE
-    devolve a Construtora Augusto Velloso. Identidade do credor, não valor pago — por isso não filtra
-    status aqui."""
+    devolve a Construtora Augusto Velloso. Só OB Contabilizada (a anulada não diz quem recebeu)."""
     global _CREDOR_SIAFE
     if _CREDOR_SIAFE is None:
         import sqlite3
@@ -338,7 +337,8 @@ def credor_siafe(numero: str) -> str | None:
                 somas: dict[tuple[str, str], float] = defaultdict(float)
                 for proc, cred, v in con.execute(
                         "SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
-                        "WHERE processo LIKE '%/%/%' AND credor IS NOT NULL GROUP BY 1, 2"):
+                        "WHERE status='Contabilizado' AND processo LIKE '%/%/%' AND credor IS NOT NULL "
+                        "GROUP BY 1, 2"):
                     cred = re.sub(r"\D", "", str(cred or ""))
                     if len(cred) == 14:
                         somas[(_chave_proc(proc), cred)] += float(v or 0)
