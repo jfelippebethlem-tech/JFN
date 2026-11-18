@@ -76,7 +76,8 @@ _SYS = (
     "impreciso — se contradiz a nota de empenho/NF, vale a NE (natureza de despesa) e a NF, e não há contradição; "
     "(c) número com dígito trocado/ilegível no texto de NF é provável OCR — confira contra o quadro de apuração/NL "
     "antes de apontar diferença de valor; (d) documento 'CANCELADO' acompanhado de termo de cancelamento e "
-    "documento substituto é substituição regular. "
+    "documento substituto é substituição regular; (e) a PESQUISA DE PREÇOS cita contratos de OUTROS órgãos e "
+    "empresas como referência — fornecedor, unidade ou município dela não é divergência com este processo. "
     "Responda SOMENTE o objeto JSON do schema, sem texto fora."
 )
 _SCHEMA = (
