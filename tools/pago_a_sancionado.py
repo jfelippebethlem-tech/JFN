@@ -25,7 +25,8 @@ Hierarquia do que cada sanção alcança (e por isso o `--grau`):
 RESSALVAS QUE INTEGRAM O RESULTADO:
   · sanção do CEIS/CNEP é FEDERAL; pagamento estadual a suspenso pelo órgão federal exige a análise
     jurídica acima — o achado é o FATO do pagamento na vigência, não a conclusão de ilicitude;
-  · só OB `status='Contabilizado'` (anulada e excluída não são pagamento);
+  · só OB `status='Contabilizado'` e não devolvida pelo banco ('Erro no Pagamento') — anulada, excluída e
+    devolvida não são pagamento;
   · casa por CNPJ de 14 dígitos, e uma empresa pode ter várias sanções — vale a primeira vigente na
     data do pagamento.
 
@@ -46,6 +47,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.reporting.intel_base import moeda
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
@@ -95,7 +97,7 @@ def pagos_durante_sancao(con: sqlite3.Connection, restringe_apenas: bool = True,
     agr: dict = collections.defaultdict(lambda: {"pago": 0.0, "obs": 0, "primeira": None})
     for credor, data, valor in con.execute(
             "SELECT credor, data_emissao, valor FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado' AND credor IS NOT NULL"):
+            f"WHERE {_ob_paga(con)} AND credor IS NOT NULL"):
         d = re.sub(r"\D", "", str(credor))
         if d not in sanc:
             continue
@@ -196,7 +198,7 @@ def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True,
     pago: dict = collections.defaultdict(float)
     obs: dict = collections.Counter()
     for credor, valor in con.execute(
-            "SELECT credor, valor FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+            f"SELECT credor, valor FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)}"):
         d = re.sub(r"\D", "", str(credor))
         if len(d) >= 8 and d[:8] in alvo:
             pago[d[:8]] += (valor or 0)

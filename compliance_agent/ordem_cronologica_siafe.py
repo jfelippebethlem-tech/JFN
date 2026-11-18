@@ -34,6 +34,8 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _REPO = Path(__file__).resolve().parents[1]
 _ELEMENTOS = {"30", "35", "37", "39", "40", "51", "52"}
 _CNAE_FORA = ("35", "36", "61", "4731", "4681")
@@ -45,7 +47,7 @@ _SQL = """SELECT l.numero, l.ug_emitente, l.exercicio, l.ano_nl, l.data_emissao,
                  e.fonte, e.natureza,
                  (SELECT MIN(substr(o.data_emissao,7,4)||'-'||substr(o.data_emissao,4,2)||'-'||substr(o.data_emissao,1,2))
                     FROM ob_orcamentaria_siafe o WHERE o.nl=l.numero AND o.ug_emitente=l.ug_emitente
-                     AND o.status='Contabilizado') AS pago_em
+                     AND {paga}) AS pago_em
           FROM nl_siafe l JOIN ne_siafe e ON e.numero=l.ne AND e.ug_emitente=l.ug_emitente AND e.exercicio=l.exercicio
           WHERE l.status='Contabilizado' AND l.valor>0 AND length(l.credor)=14 AND e.fonte<>''"""
 
@@ -65,7 +67,8 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
     try:
         from compliance_agent.siafe_documento import ugs_completas
         completas = ugs_completas(con)      # só UG com NE E NL inteiras: coleta capada fabricava quebra
-        linhas = [r for r in con.execute(_SQL).fetchall() if (str(r["ug_emitente"]), int(r["exercicio"])) in completas]
+        # {paga}: OB Contabilizada e não devolvida pelo banco ('Erro no Pagamento') — devolvida não paga a NL
+        linhas = [r for r in con.execute(_SQL.replace("{paga}", _ob_paga(con, "o"))).fetchall() if (str(r["ug_emitente"]), int(r["exercicio"])) in completas]
     finally:
         con.close()
     est = sqlite3.connect(f"file:{estab_path or _REPO / 'data' / 'receita_estab.db'}?mode=ro", uri=True, timeout=30)

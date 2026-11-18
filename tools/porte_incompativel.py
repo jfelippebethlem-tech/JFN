@@ -37,7 +37,8 @@ salto de faturamento, que separa "cadastro desatualizado" de "empresa que só ex
 RESSALVAS QUE INTEGRAM O RESULTADO:
   · o cadastro é uma foto de **2026-05**; para pagamento de 2022 o porte pode não ser o da época;
   · soma apenas OB com `status='Contabilizado'` — Anulado (R$ 3,79 bi) e Excluído (R$ 7,50 bi)
-    NÃO são pagamento, e incluí-los inflava o total em R$ 147 mi só neste recorte;
+    NÃO são pagamento, e incluí-los inflava o total em R$ 147 mi só neste recorte; nem a devolvida
+    pelo banco ('Erro no Pagamento'), que segue Contabilizada no SIAFE (18/11/2026);
   · agrega por CNPJ BÁSICO (8 dígitos), então matriz e filiais somam — que é o certo, porque o
     porte é da empresa, não do estabelecimento.
 
@@ -63,6 +64,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # padrão dos 
 # catraca para isso (`test_moeda_padrao_brasileiro`) — que pegou este módulo com `{:,.2f}`
 # americano antes do push. Mais uma cópia local do formatador seria a cópia divergente de sempre.
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -108,7 +110,7 @@ def incompativeis(con: sqlite3.Connection, min_razao: float = 1.0,
             socios[d[:8]] += 1
 
     sql = ("SELECT credor, data_emissao, valor, ug_emitente FROM ob_orcamentaria_siafe "
-           "WHERE credor IS NOT NULL AND status='Contabilizado'")
+           f"WHERE credor IS NOT NULL AND {_ob_paga(con)}")
     par: tuple = ()
     if ug:
         sql += " AND ug_emitente=?"
@@ -182,7 +184,7 @@ def estrutura_magra(con: sqlite3.Connection, min_pago: float = 5_000_000.0,
     ugs: dict = collections.defaultdict(collections.Counter)
     for credor, valor, ug_emit in con.execute(
             "SELECT credor, valor, ug_emitente FROM ob_orcamentaria_siafe "
-            "WHERE credor IS NOT NULL AND status='Contabilizado'"):
+            f"WHERE credor IS NOT NULL AND {_ob_paga(con)}"):
         d = re.sub(r"\D", "", str(credor))
         if len(d) < 14:
             continue
