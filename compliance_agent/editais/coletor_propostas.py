@@ -32,7 +32,9 @@ from compliance_agent.editais.db import conectar
 log = logging.getLogger(__name__)
 
 ITEM_LANCE_GLOBAL = 0                       # lance total da ata (sem abertura por item)
-FONTES_VALIDAS = ("ata", "sei_precos")      # proveniência obrigatória — linha sem fonte válida não entra
+# proveniência obrigatória — linha sem fonte válida não entra. 'sei_proposta' = preço de proposta/cotação lido
+# DETERMINISTICAMENTE dos autos SEI (tools/propostas_sei_extrair: só entra linha em que q × u = total).
+FONTES_VALIDAS = ("ata", "sei_precos", "sei_proposta")
 
 DDL_PROPOSTA_ITEM = """CREATE TABLE IF NOT EXISTS proposta_item (
     certame TEXT NOT NULL,
@@ -75,7 +77,7 @@ def _sha_curto(trecho: str | None) -> str | None:
 def persistir_propostas(conn: sqlite3.Connection, certame: str, propostas: list[dict]) -> int:
     """INSERT OR REPLACE idempotente em `proposta_item`. Cada proposta (dict canônico):
     {item?, fornecedor_cnpj, fornecedor_nome?, valor_unitario?, valor_total?, classificacao?, marca?,
-     fonte ('ata'|'sei_precos'), trecho?}. Devolve nº de linhas persistidas. Guards de honestidade:
+     fonte ('ata'|'sei_precos'|'sei_proposta'), trecho?}. Devolve nº de linhas persistidas. Guards de honestidade:
     sem valor numérico literal → não entra; CNPJ != 14 dígitos → não entra; fonte inválida → não entra."""
     garantir_tabela(conn)
     n = 0
