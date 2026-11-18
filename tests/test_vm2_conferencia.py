@@ -154,6 +154,19 @@ def test_titulo_antigo_generico_casa_com_o_titulo_completo_novo():
     assert ok, nota
 
 
+def test_titulo_antigo_so_com_numero_sei_casa_pelo_numero():
+    """18/11/2026: 080001/017471/2026 — a referência tinha só números SEI como título ("134062161")."""
+    import tools.vm2_conferencia as V
+    texto = "Formalizo a liquidação da despesa referente à nota fiscal do mês de abril, conforme atesto. " * 3
+    ref = {"134062161": texto, "134069495": texto}
+    novos = {"despacho de formalizacao de liquidacao de despesa 134062161": texto,
+             "despacho de autorizacao de emissao e execucao pd 134069495": texto}
+    ok, nota = V.comparar_com_referencia(novos, ref)
+    assert ok, nota
+    ok, _ = V.comparar_com_referencia({"despacho 1340621610": texto, "oficio 99134062161": texto}, ref)
+    assert ok is False                                   # número dentro de outro número não casa
+
+
 def test_titulos_realmente_diferentes_continuam_reprovando():
     import tools.vm2_conferencia as V
     ref = {"parecer juridico": "a", "contrato": "b"}

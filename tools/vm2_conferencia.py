@@ -167,6 +167,11 @@ def _titulo_correspondente(t: str, novos: dict[str, str]) -> str | None:
     exigir igualdade mandou à quarentena uma captura 63/63 correta."""
     if t in novos:
         return t
+    if re.fullmatch(r"\d{7,}", t):
+        # 18/11/2026: leituras antigas guardaram como título só o NÚMERO SEI do documento ("134062161"); a de hoje
+        # traz "despacho de formalização de liquidação de despesa 134062161". O número é único no SEI — casa pelo
+        # número (o texto ainda é comparado adiante). Sem isto: "só 0/6 títulos reaparecem" e quarentena.
+        return next((n for n in sorted(novos) if t in n.split()), None)
     return next((n for n in sorted(novos) if n.startswith(t + " ")), None)
 
 
