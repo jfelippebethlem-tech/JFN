@@ -233,3 +233,15 @@ def test_aba_le_o_estado_da_curadoria_e_nao_o_rebaixa_a_agregado():
                                                  "regra_ou_hipotese": "B", "prova_primaria": ["DOERJ"]}))
     v, motivo = G._verificacao(sus)
     assert v == "VERIFICADO" and "SUSTENTADO" in motivo
+
+
+def test_prova_de_ob_declara_o_que_ficou_fora_da_lista():
+    """Pente fino 17/11/2026: o 🔴 D14 (Sinais críticos do Início) somava 5 OB na janela (R$ 235.487,10) e a prova
+    listava só as 3 maiores, sem dizer que havia mais — corte silencioso. A lista segue curta; o resto é declarado."""
+    from types import SimpleNamespace
+    obs = [(47_000.0, f"2026OB0000{i}", "999999", f"2026-0{i}-10") for i in range(4, 9)]
+    c = SimpleNamespace(_idx_ob={NOVA: obs}, GFIM="2026-12-31")
+    p = GR.Ctx.refs_ob(c, NOVA, d0="2026-03-23")
+    assert len([x for x in p if x.startswith("OB ")]) == 3
+    assert p[-1] == "e mais 2 OB Contabilizada(s) na janela (R$ 94.000,00) — 5 OB, R$ 235.000,00 no total"
+    assert GR.Ctx.refs_ob(c, NOVA, d0="2026-03-23", limite=5)[-1].startswith("OB ")      # nada cortado, nada declarado
