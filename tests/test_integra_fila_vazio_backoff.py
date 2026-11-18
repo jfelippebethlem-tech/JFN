@@ -186,6 +186,7 @@ def test_rodada_pula_vazio_recente_e_declara(tmp_path, monkeypatch):
     monkeypatch.setattr(F, "_fila_inscrita",
                         lambda: ["SEI-030001/008372/2024", "SEI-420001/003257/2024"])
     monkeypatch.setattr(F, "_fila_reler_por_ob", lambda: [])
+    monkeypatch.setattr(F, "_fila_execucao", lambda: [])          # sem isto lia a sei_fila_captura REAL
     monkeypatch.setattr(F, "_esperar_browser_livre", lambda *a, **k: None)
     monkeypatch.setattr(F, "PAUSA", tmp_path / ".p1")
     monkeypatch.setattr(F, "PAUSA_SEI", tmp_path / ".p2")

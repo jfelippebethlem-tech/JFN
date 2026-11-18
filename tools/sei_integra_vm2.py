@@ -119,7 +119,10 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | 
     reler = pre["reler"] if pre else F._fila_reler_por_ob()
     geral_cdp = pre["geral"] if pre else [c["sei"] for c in F._fila_geral()]
     geral = list(dict.fromkeys(F._fila_inscrita() + geral_cdp + reler))
-    fontes = [("bombeiros", [e.get("sei", "") for e in bomb], k_bombeiros),
+    execucao = F._fila_execucao()       # recaptura prioritária (18/11/2026): relê mesmo o já arquivado
+    reler = reler + execucao
+    fontes = [("execucao", execucao, max_n),
+              ("bombeiros", [e.get("sei", "") for e in bomb], k_bombeiros),
               ("dinheiro", [e.get("sei", "") for e in dinheiro], max_n),
               ("geral", geral, max_n)]
     vistos: set[str] = set()

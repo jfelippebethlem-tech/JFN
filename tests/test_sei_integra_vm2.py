@@ -24,6 +24,7 @@ def _isolar(monkeypatch, tmp_path):
     monkeypatch.setattr(V, "RAIZ", tmp_path)
     monkeypatch.setattr(V, "PRE", tmp_path / "pre_ausente.json")   # sem isto lia o pré-cálculo REAL da VM-1
     monkeypatch.setattr(F, "_fila_reler_por_ob", lambda: [])
+    monkeypatch.setattr(F, "_fila_execucao", lambda: [])                # sem isto lia a sei_fila_captura REAL
     monkeypatch.setattr(F, "_fila_inscrita", lambda: ["SEI-300000/000003/2025"])
     monkeypatch.setattr(F, "_fila_geral", lambda: [{"sei": "SEI-300000/000004/2025"}])
 
@@ -160,3 +161,35 @@ def test_restrito_confirmado_volta_a_fila_depois_de_30_dias(monkeypatch, tmp_pat
               "ultima": time.strftime("%Y-%m-%d %H:%M")},
         "c": {"numero": "300000/000005/2025", "status": "RESTRITO"}}))   # sem data: segue fora (conservador)
     assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000003/2025"]
+
+
+def test_recaptura_de_execucao_vem_antes_e_rele_o_arquivado(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    _arquivo_bom(F.ARQUIVO / "500000_000001_2025")          # arquivado "completo", mas sem doc de execução
+    monkeypatch.setattr(F, "_fila_execucao", lambda: ["SEI-500000/000001/2025"])
+    fila = V.montar_fila(10, k_bombeiros=1)
+    assert fila[0] == {"sei": "SEI-500000/000001/2025", "fonte": "execucao", "score": len(fila)}
+
+
+def test_fila_execucao_sai_quando_recapturado_depois_da_inscricao(monkeypatch, tmp_path):
+    import sqlite3
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE sei_fila_captura (numero_sei TEXT PRIMARY KEY, sei_norm TEXT, motivo TEXT,"
+                " total_pago REAL, n_docs INTEGER, visto_em TEXT)")
+    m = F.MOTIVO_EXECUCAO + " — recaptura 18/11"
+    con.executemany("INSERT INTO sei_fila_captura VALUES (?,?,?,?,?,?)", [
+        ("SEI-600000/000001/2025", "", m, 10.0, None, "2026-11-18 18:00:00"),   # arquivo velho: relê
+        ("SEI-600000/000002/2025", "", m, 20.0, None, "2026-11-18 18:00:00"),   # recapturado depois: sai
+        ("SEI-600000/000003/2025", "", m, 5.0, None, "2026-11-18 18:00:00"),    # sem arquivo: captura
+        ("SEI-600000/000004/2025", "", "nunca_capturado", 99.0, None, "2026-11-18 18:00:00")])
+    con.commit(); con.close()
+    (tmp_path / "arq").mkdir()
+    monkeypatch.setattr(F, "DB", db)
+    monkeypatch.setattr(F, "ARQUIVO", tmp_path / "arq")
+    for tag, quando in (("600000_000001_2025", "2026-11-01 00:00:00"), ("600000_000002_2025", "2026-11-18 19:00:00")):
+        _arquivo_bom(F.ARQUIVO / tag)
+        from datetime import datetime, timezone
+        ts = datetime.strptime(quando, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+        os.utime(F.ARQUIVO / tag / "manifest.json", (ts, ts))
+    assert F._fila_execucao() == ["SEI-600000/000001/2025", "SEI-600000/000003/2025"]

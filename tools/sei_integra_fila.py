@@ -371,6 +371,46 @@ def _fila_inscrita(limite: int = 40) -> list[str]:
     return out
 
 
+# RECAPTURA PRIORITÁRIA (18/11/2026): 697 processos com laudo de execução de risco ≥ 7 dado SEM nenhum documento de
+# execução na captura. 448 nem tinham arquivo; 197 tinham arquivo "completo" e `_arquivado_ok` os dava por prontos —
+# a inscrição comum nunca os recapturaria. Esta fonte vem antes de tudo e RELÊ mesmo o arquivado. Auto-limitante:
+# sai da fila quando o manifesto do arquivo fica mais novo que a inscrição (`visto_em`, UTC).
+MOTIVO_EXECUCAO = "laudo de execução risco alto sem documento de execução"
+
+
+def _fila_execucao() -> list[str]:
+    """`SEI-…` inscritos com `MOTIVO_EXECUCAO` cuja captura é inexistente, incompleta ou ANTERIOR à inscrição."""
+    if not DB.exists():
+        return []
+    import sqlite3
+    from datetime import datetime, timezone
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        con.execute("PRAGMA busy_timeout=15000")
+        linhas = con.execute("SELECT numero_sei, COALESCE(visto_em,'') FROM sei_fila_captura WHERE motivo LIKE ? "
+                             "ORDER BY COALESCE(total_pago,0) DESC, numero_sei",
+                             (MOTIVO_EXECUCAO + "%",)).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    out: list[str] = []
+    for num, visto in linhas:
+        proc = _proc_limpo(num)
+        if not proc:
+            continue
+        pasta = ARQUIVO / proc.replace("/", "_")
+        if _arquivado_ok(pasta):
+            try:
+                capturado = datetime.fromtimestamp((pasta / "manifest.json").stat().st_mtime, timezone.utc)
+            except OSError:
+                capturado = None
+            if capturado and capturado.strftime("%Y-%m-%d %H:%M:%S") >= visto:
+                continue                  # recapturado depois da inscrição: cumprido
+        out.append(f"SEI-{proc}")
+    return out
+
+
 def _fila_reler_por_ob(max_reler: int = 10) -> list[str]:
     """FRESCOR POR OB: processo JÁ ARQUIVADO que ganhou OB nova (SIAFE ou TFE) DEPOIS do
     arquivo = o processo andou → re-ler, senão a perícia roda incompleta (regra do dono).
@@ -560,12 +600,14 @@ def main() -> int:
     elif args.geral:
         novos = [c["sei"] for c in _fila_geral()]
         inscritos = _fila_inscrita()          # inscrição manual: alvo escolhido por quem investiga
+        execucao = _fila_execucao()           # laudo de risco alto sem documento de execução: antes de tudo
         reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
         # inscritos primeiro: são alvos escolhidos a dedo, não varredura. O `dict.fromkeys` tira
         # repetido preservando a ordem — um inscrito pode também ter cache CDP.
-        candidatos = list(dict.fromkeys(inscritos + novos + reler))
-        _log(f"fonte=GERAL: {len(inscritos)} inscritos em sei_fila_captura + {len(novos)} não "
-             f"arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
+        candidatos = list(dict.fromkeys(execucao + inscritos + novos + reler))
+        _log(f"fonte=GERAL: {len(execucao)} recaptura de execução + {len(inscritos)} inscritos em "
+             f"sei_fila_captura + {len(novos)} não arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
+        reler = reler + execucao
     else:
         fila_path = Path(args.fila)
         if not fila_path.exists():
