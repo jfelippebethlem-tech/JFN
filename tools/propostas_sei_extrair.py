@@ -325,7 +325,8 @@ def extrair_linhas(texto: str) -> dict:
                 item, literal = int(ms[-1]), True
         # descrição = só as linhas PRÓXIMAS do 1º número do item: o 1º registro de um documento começa no topo e
         # puxaria endereço, saudação e cabeçalho do órgão para a descrição
-        desc_toks = _texto_descritivo([tk for tk in toks[desc_ini:i] if toks[i]["lin"] - tk["lin"] <= _DESC_LINHAS])
+        perto = [tk for tk in toks[desc_ini:i] if toks[i]["lin"] - tk["lin"] <= _DESC_LINHAS]
+        desc_toks = _texto_descritivo(perto)
         if not desc_toks:   # texto entre o par e o total (marca/modelo no nativo) só se não houve descrição antes
             desc_toks = _texto_descritivo(toks[i:k])
         descricao = re.sub(r"\s+", " ", " ".join(desc_toks)).strip()[:_DESC_MAX]
@@ -334,7 +335,9 @@ def extrair_linhas(texto: str) -> dict:
             consumido = k
             continue
         seq += 1
-        l0 = min(toks[ini]["lin"], toks[i]["lin"])
+        # trecho = do nº do item (ou da 1ª linha da descrição) até o total — sem o item anterior que não fechou
+        l0 = min([toks[i]["lin"]] + [tk["lin"] for tk in perto if _TEM_LETRA.search(tk["txt"])]
+                 + ([toks[desc_ini - 1]["lin"]] if literal and desc_ini > ini else []))
         trecho = " / ".join(s.strip() for s in linhas_txt[l0:t["lin"] + 1] if s.strip())
         if len(trecho) > _TRECHO_MAX:
             trecho = "… " + trecho[-(_TRECHO_MAX - 2):]

@@ -206,6 +206,7 @@ def test_item_que_nao_fechou_nao_empresta_o_numero_ao_seguinte():
     r = X.extrair_linhas(txt)
     assert [(l["item"], l["valor_unitario"]) for l in r["linhas"]] == [(3, 149.98)]
     assert "LAGARTO" in r["linhas"][0]["descricao"] and "CHARQUE" not in r["linhas"][0]["descricao"]
+    assert r["linhas"][0]["trecho"].startswith("03 / Carne, tipo: LAGARTO")    # evidência sem o item anterior
 
 
 def test_quantidade_com_centavos_segue_a_ordem_do_cabecalho():
