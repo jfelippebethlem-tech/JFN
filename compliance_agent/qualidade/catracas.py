@@ -68,7 +68,9 @@ def achar_linguagem(rel: str, texto: str) -> list:
 # ── CNF-02 · soma de OB só com OB paga ───────────────────────────────────────────────────────────────────
 _RE_FROM_OB = re.compile(r"FROM\s+ob_orcamentaria_siafe", re.I)
 # `=\s*'Contabilizado'` sozinho: o filtro pode vir sobre uma EXPRESSÃO de status efetivo (`({st_ef})='Contabilizado'`)
-_RE_FILTRO_OB = re.compile(r"_OB_PAGA|OB_PAGA|=\s*'Contabilizado'|status\s*=\s*\?|_contabilizadas|SQL_OB_PAGA", re.I)
+# `{paga}` / `+ paga +`: fragmento de `cruzamentos_intel._ob_paga(con)` guardado numa variável (18/11/2026, OB devolvida)
+_RE_FILTRO_OB = re.compile(r"_OB_PAGA|OB_PAGA|=\s*'Contabilizado'|status\s*=\s*\?|_contabilizadas|SQL_OB_PAGA"
+                           r"|\{paga\}|\+\s*paga\s*\+", re.I)
 MARCA_OB_LIVRE = "ob-qualquer-status"       # comentário que declara: esta consulta é metadado/cobertura, não soma
 
 
