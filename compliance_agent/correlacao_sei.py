@@ -163,25 +163,47 @@ def estado_do_laudo(modelo: str | None) -> tuple[str, str]:
 
 
 def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
-    """Cruza os processos SEI pagos do fornecedor (via OBs) com a perícia de EXECUÇÃO (lex_execucao):
-    surfacing dos contratos pagos cuja entrega/execução NÃO foi comprovada nos autos. Indício, não prova."""
+    """Cruza os processos SEI pagos do fornecedor com a perícia de EXECUÇÃO (lex_execucao): contratos pagos cuja
+    entrega/execução NÃO foi comprovada nos autos. Indício, não prova.
+
+    Pago = OB do SIAFE (`ob_orcamentaria_siafe`, Contabilizada e não devolvida — `_ob_paga`), nunca o espelho TFE
+    (18/11/2026: lia `ordens_bancarias`). O nº do processo vem em grafias diferentes nas duas pontas
+    ('SEI-330002/031566/24' × '330002/031566/2024'): o casamento é pela chave de `lex_execucao._chave_processo`."""
     if not _DB.exists():
         return []
+    from tools.lex_execucao import _chave_processo
     cnpj = re.sub(r"\D", "", cnpj or "")
     con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
-        rows = con.execute(
-            "SELECT o.numero_sei, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total, "
-            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo, l.indicios, l.em AS avaliado_em, "
-            "l.modelo AS modelo "
-            "FROM ordens_bancarias o LEFT JOIN lex_execucao l ON l.numero_sei=o.numero_sei "
-            "WHERE o.favorecido_cpf=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
-            "GROUP BY o.numero_sei ORDER BY total DESC LIMIT ?", (cnpj, limite)).fetchall()
-        out = [dict(r) for r in rows]
-        for x in out:
-            if x.get("exec"):
+        por: dict[str, dict] = {}
+        for r in con.execute(f"SELECT processo, COUNT(*) n, SUM(valor) v FROM ob_orcamentaria_siafe "
+                             f"WHERE credor=? AND {_ob_paga(con)} AND processo LIKE '%/%' GROUP BY processo", (cnpj,)):
+            k = _chave_processo(r["processo"])
+            if not k:
+                continue
+            a = por.setdefault(k, {"numero_sei": r["processo"], "n_obs": 0, "total": 0.0})
+            a["n_obs"] += r["n"]
+            a["total"] += r["v"] or 0.0
+        if not por:
+            return []
+        laudos = {}
+        for r in con.execute("SELECT numero_sei, execucao_comprovada AS exec, nota_risco AS nota, resumo, indicios, "
+                             "em AS avaliado_em, modelo FROM lex_execucao"):
+            k = _chave_processo(r["numero_sei"])
+            if k in por:
+                laudos[k] = dict(r)
+        out = []
+        for k, a in sorted(por.items(), key=lambda kv: -kv[1]["total"])[:limite]:
+            x = {**a, "total": round(a["total"], 2), "fonte_pago": "SIAFE (OB Contabilizada, sem devolvida)",
+                 "exec": None, "nota": None, "resumo": None, "indicios": None, "avaliado_em": None, "modelo": None}
+            if k in laudos:
+                x.update({c: laudos[k][c] for c in ("exec", "nota", "resumo", "indicios", "avaliado_em", "modelo")})
+                x["numero_sei"] = laudos[k]["numero_sei"] or a["numero_sei"]
                 x["estado"], x["estado_motivo"] = estado_do_laudo(x.get("modelo"))
+            out.append(x)
         return out
+    except sqlite3.OperationalError:
+        return []                                  # base sem SIAFE/laudos: o relatório declara INDISPONÍVEL
     finally:
         con.close()
 
