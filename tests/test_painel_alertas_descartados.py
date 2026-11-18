@@ -45,3 +45,13 @@ def test_card_nao_conta_alerta_descartado(painel):
 def test_lista_da_tela_nao_traz_descartado(painel):
     lst = painel["lista_alertas"]
     assert len(lst) == 9 and all(not x["titulo"].startswith("acumulacao") or x["severidade"] == "média" for x in lst)
+
+
+def test_card_diz_de_que_produtor_vem_cada_alerta_e_quando_ele_rodou(painel):
+    """Pente fino 17/11/2026: 1.300+ alertas abertos vinham de produtores que não rodam desde 10/08/2026 (emendas,
+    PCRJ D7/D10) e o card os somava como se fossem de hoje. Cada tipo diz quantos abertos e a última criação."""
+    t = {x["tipo"]: x for x in painel["alertas"]["por_tipo"]}
+    assert t["enriquecimento"]["n"] == 3 and t["acumulacao"]["n"] == 3
+    assert sum(x["n"] for x in t.values()) == painel["alertas"]["total"]
+    assert all("ultima_criacao" in x and "alta" in x for x in t.values())
+    assert t["enriquecimento"]["alta"] == 3
