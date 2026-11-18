@@ -180,3 +180,22 @@ def test_rever_quarentena_reaprova_integra_que_a_regua_antiga_barrou(monkeypatch
     assert (d / "sei_cache" / "integra_100000_000009_2025").is_dir()
     assert not (q / "100000_000009_2025.motivo.json").exists()
     assert any(p.name.startswith("100000_000009_2025__") for p in (d / "vm2_entrega" / "_substituidos").iterdir())
+
+
+def test_referencia_so_com_cabecalho_nao_reprova_captura_completa():
+    """18/11/2026: 080001/013449/2024 veio inteiro (211 docs, 203 com teor) e foi para a QUARENTENA com "semelhança
+    0,07": a leitura antiga da VM-1 tinha só o CABEÇALHO ("[Minuta de Ofício 74386583] (fase: … · tipo: …)", 63 chars)
+    e o novo o ofício inteiro (8.828 chars). Cabeçalho tem letras e passava no `legivel`. Referência sem corpo não é
+    leitura independente — compara-se só o que tem corpo; o adulterado continua reprovando (teste acima)."""
+    import tools.vm2_conferencia as V
+    corpo = "Governo do Estado do Rio de Janeiro. Secretaria de Estado de Saude. Encaminho o oficio. " * 20
+    ref = {f"minuta de oficio {i}": f"[Minuta de Ofício {i}] (fase: tramitacao · tipo: oficio)\n\n" for i in range(3)}
+    novos = {f"minuta de oficio {i}": f"[Minuta de Ofício {i}] (fase: tramitacao · tipo: oficio)\n\n{corpo}"
+             for i in range(3)}
+    ok, nota = V.comparar_com_referencia(novos, ref)
+    assert ok, nota
+    # e com corpo na referência, texto trocado ainda reprova
+    ref2 = {k: v + "Contrato de locacao de veiculos com motorista para a frota da secretaria. " * 20
+            for k, v in ref.items()}
+    ok2, _ = V.comparar_com_referencia(novos, ref2)
+    assert ok2 is False

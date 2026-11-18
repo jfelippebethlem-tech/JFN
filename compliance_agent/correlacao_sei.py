@@ -148,6 +148,18 @@ def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
         con.close()
 
 
+def estado_do_laudo(modelo: str | None) -> tuple[str, str]:
+    """Estado do laudo de execução pela proveniência (regra 9). 18/11/2026: 92% dos 7.919 laudos eram de outro modelo
+    sem conferência do Claude, e o Opus rebaixou o risco em 39 dos 43 'risco alto' que conferiu — laudo sem a
+    conferência é PENDENTE, nunca conclusão."""
+    m = str(modelo or "").strip()
+    if "claude" in m.lower():
+        return "VERIFICADO", "conferido/feito pelo Claude"
+    if m.startswith("regra:"):
+        return "REGRA", "regra determinística (sem documento de execução nos autos capturados)"
+    return "PENDENTE", f"laudo de {m.split(' ')[0] or 'modelo desconhecido'} sem conferência do Opus"
+
+
 def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
     """Cruza os processos SEI pagos do fornecedor (via OBs) com a perícia de EXECUÇÃO (lex_execucao):
     surfacing dos contratos pagos cuja entrega/execução NÃO foi comprovada nos autos. Indício, não prova."""
@@ -158,11 +170,16 @@ def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
     try:
         rows = con.execute(
             "SELECT o.numero_sei, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total, "
-            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo, l.indicios, l.em AS avaliado_em "
+            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo, l.indicios, l.em AS avaliado_em, "
+            "l.modelo AS modelo "
             "FROM ordens_bancarias o LEFT JOIN lex_execucao l ON l.numero_sei=o.numero_sei "
             "WHERE o.favorecido_cpf=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
             "GROUP BY o.numero_sei ORDER BY total DESC LIMIT ?", (cnpj, limite)).fetchall()
-        return [dict(r) for r in rows]
+        out = [dict(r) for r in rows]
+        for x in out:
+            if x.get("exec"):
+                x["estado"], x["estado_motivo"] = estado_do_laudo(x.get("modelo"))
+        return out
     finally:
         con.close()
 

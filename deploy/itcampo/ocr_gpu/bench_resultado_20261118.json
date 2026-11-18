@@ -1,0 +1,63 @@
+{
+ "limpa/tesseract": {
+  "CER_mediana_%": 64.0,
+  "acerto_cnpj_%": 92.5,
+  "acerto_valor_%": 86.5,
+  "acerto_data_%": 94.7,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 1.04
+ },
+ "limpa/surya": {
+  "CER_mediana_%": 100.0,
+  "acerto_cnpj_%": 0.0,
+  "acerto_valor_%": 0.0,
+  "acerto_data_%": 0.0,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 0.76
+ },
+ "escaneada/tesseract": {
+  "CER_mediana_%": 55.6,
+  "acerto_cnpj_%": 92.5,
+  "acerto_valor_%": 78.0,
+  "acerto_data_%": 89.8,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 1.66
+ },
+ "escaneada/surya": {
+  "CER_mediana_%": 100.0,
+  "acerto_cnpj_%": 0.0,
+  "acerto_valor_%": 0.0,
+  "acerto_data_%": 0.0,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 0.82
+ }
+}{
+ "limpa/surya": {
+  "CER_mediana_%": 23.2,
+  "acerto_cnpj_%": 96.8,
+  "acerto_valor_%": 100.0,
+  "acerto_data_%": 100.0,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 1.28
+ },
+ "escaneada/surya": {
+  "CER_mediana_%": 23.4,
+  "acerto_cnpj_%": 95.7,
+  "acerto_valor_%": 99.7,
+  "acerto_data_%": 100.0,
+  "n_cnpj": 93,
+  "n_valor": 318,
+  "n_data": 206,
+  "s_por_pagina": 1.24
+ }
+}

@@ -256,8 +256,13 @@ class Ctx:
         d = dig(doc)
         # só OB DENTRO da janela da regra — prova fora dela não prova o caso
         fim = d1 or self.GFIM
-        top = sorted((x for x in self._idx_ob.get(d, ()) if d0 <= x[3] <= fim), key=lambda x: -x[0])[:limite]
-        return [f"OB {num} · UG {ug} · {dt} · {brl(round(v, 2))} (SIAFE, Contabilizado)" for v, num, ug, dt in top]
+        todas = sorted((x for x in self._idx_ob.get(d, ()) if d0 <= x[3] <= fim), key=lambda x: -x[0])
+        top, resto = todas[:limite], todas[limite:]
+        out = [f"OB {num} · UG {ug} · {dt} · {brl(round(v, 2))} (SIAFE, Contabilizado)" for v, num, ug, dt in top]
+        if resto:   # corte declarado (17/11/2026: o 🔴 D14 somava 5 OB e listava 3 sem dizer)
+            out.append(f"e mais {len(resto)} OB Contabilizada(s) na janela ({brl(round(sum(x[0] for x in resto), 2))})"
+                       f" — {len(todas)} OB, {brl(round(sum(x[0] for x in todas), 2))} no total")
+        return out
 
     @staticmethod
     def fornecedor(credor, nome) -> bool:

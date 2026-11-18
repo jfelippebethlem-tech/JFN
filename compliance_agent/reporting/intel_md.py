@@ -629,8 +629,14 @@ def _render_execucao(ctx: dict) -> str:
     tot = sum(x.get("total") or 0 for x in suspeitos)
     add(f"🟡 **Indício:** **{len(suspeitos)}** processo(s) pago(s) — **R$ {_brl(tot)}** — sem execução comprovada nos autos:")
     add("")
-    add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
-    add("|---|---:|---:|:--:|:--:|---|")
+    n_pend = sum(1 for x in suspeitos if x.get("estado") == "PENDENTE")
+    if n_pend:
+        add(f"> ⚠️ **{n_pend} de {len(suspeitos)}** laudo(s) abaixo são de outro modelo **sem conferência do Opus** "
+            "(estado PENDENTE). Medido em 18/11/2026: nos laudos de risco alto já conferidos, o Opus **rebaixou o "
+            "risco em 39 de 43** — leia PENDENTE como hipótese a confirmar, não como conclusão.")
+        add("")
+    add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Estado | Resumo da perícia |")
+    add("|---|---:|---:|:--:|:--:|:--:|---|")
     # Vereditos dados antes de a perícia ler o SIAFE (29/10/2026) que NEGAVAM a OB — e a linha mostra OB paga.
     # 1.285 de 4.832 estavam assim (filtro preciso); seguem em reavaliação no sweep. Não somem: ficam marcados.
     from tools.lex_execucao import _CORTE_SIAFE, _NEGA_OB
@@ -641,7 +647,7 @@ def _render_execucao(ctx: dict) -> str:
                 _NEGA_OB.search(f"{x.get('indicios') or ''} {x.get('resumo') or ''}"):
             res = "⚠️ veredito anterior negava a OB que o SIAFE registra — em reavaliação. " + res
             n_contest += 1
-        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {'—' if x.get('nota') is None else str(x.get('nota')) + '/10'} | {res} |")
+        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {'—' if x.get('nota') is None else str(x.get('nota')) + '/10'} | {x.get('estado') or 'PENDENTE'} | {res} |")
     add("")
     if n_contest:
         add(f"> ⚠️ **{n_contest} processo(s) acima** têm veredito de execução dado antes de a perícia consultar o "

@@ -1830,6 +1830,23 @@
   var _ativa = "";
   var _videos = {};
   var _base = (c) => "/static/assets/v65/fluxo_" + c + (_ret ? "_m" : "");
+  var _60 = true;
+  var _baseVideo = (c) => "/static/assets/" + (_60 ? "v68" : "v65") + "/fluxo_" + c + (_ret ? "_m" : "");
+  async function _decidir60() {
+    const mc = navigator.mediaCapabilities;
+    if (!mc || !mc.decodingInfo) return;
+    const [w, h] = _ret ? [1080, 2160] : [2560, 1440];
+    for (const ct of [`video/mp4; codecs="av01.0.${_ret ? "09" : "12"}M.08"`, 'video/webm; codecs="vp9"', 'video/mp4; codecs="avc1.640032"']) {
+      try {
+        const r = await mc.decodingInfo({ type: "file", video: { contentType: ct, width: w, height: h, bitrate: 3e6, framerate: 60 } });
+        if (r.supported) {
+          _60 = !!r.smooth;
+          return;
+        }
+      } catch (e) {
+      }
+    }
+  }
   var _poster = (b) => `url(${b}.webp)`;
   var _posterSet = (b) => `image-set(url(${b}.avif) type("image/avif"), url(${b}.webp) type("image/webp"))`;
   var _pintou = false;
@@ -1838,6 +1855,7 @@
     _ret = matchMedia("(max-aspect-ratio: 4/5)").matches;
     const eco = !!(navigator.connection && navigator.connection.saveData);
     _so_poster = _redMotion || eco || _sobrio;
+    if (!_so_poster) _decidir60();
     const f = document.createElement("div");
     f.id = "v63-fundo";
     f.setAttribute("aria-hidden", "true");
@@ -1899,8 +1917,8 @@
     v.preload = "auto";
     v.setAttribute("muted", "");
     v.setAttribute("playsinline", "");
-    const b = _base(c);
-    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? "08" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
+    const b = _baseVideo(c);
+    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${_ret ? "09" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
     v.addEventListener("playing", () => {
       q.classList.add("toca");
       if (c === "hero" && _cv) {

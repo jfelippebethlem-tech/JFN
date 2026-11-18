@@ -85,6 +85,22 @@ fontes:
     sonda: {git: [compliance_agent/pericia_contabil.py, compliance_agent/pericia_contabil_rotina.py, compliance_agent/siafe_gd.py,
                   compliance_agent/aditivo_autos.py]}
     cerebro: {de: commit, kind: experiencial, rotulo: "correção de regra da perícia contábil", assunto: "perícia contábil"}
+  regra_emendas:
+    nome: Correção nos detectores de emendas (D1–D6)
+    sonda: {git: [compliance_agent/emendas/pericia.py, compliance_agent/sancao_abrangencia.py, compliance_agent/sancao_impeditiva.py]}
+  regra_pcrj:
+    nome: Correção nos detectores da Prefeitura (D7–D12)
+    sonda: {git: [compliance_agent/pcrj/pericia_gastos.py]}
+  pcrj_base:
+    nome: Despesa, contrato ou licitação nova da Prefeitura do Rio
+    sonda: {sql: "SELECT (SELECT MAX(rowid) FROM pcrj_despesa), (SELECT MAX(rowid) FROM pcrj_contratos), (SELECT MAX(rowid) FROM pcrj_licitacoes)",
+            mudanca: "despesa/contratos/licitações municipais novos na base"}
+  emendas_base:
+    nome: Emenda nova na base
+    sonda: {sql: "SELECT MAX(rowid) FROM emendas", unidade: "emenda(s)"}
+  ocr_gpu:
+    nome: Texto novo do OCR por IA (GPU do it-campo, Surya 2.5) chegou ao cache SEI
+    sonda: {pasta: "data/sei_cache", glob: "integra_*/*.ocr_gpu.txt"}
   regra_vinculo:
     nome: Correção na regra do vínculo OB↔contrato
     sonda: {git: [compliance_agent/vinculo_ob_contrato.py]}
@@ -151,6 +167,51 @@ derivados:
         "Prefeitura: contratos avaliados": "esferas.Prefeitura do Rio.n"
         "Prefeitura: placar": "esferas.Prefeitura do Rio.placar"
       ressalva: "Pago do Estado = só OB Contabilizada do SIAFE. Indício interno para requerer documentos, não acusação."
+  pericia_emendas:
+    nome: Perícia das emendas (D1–D6) — regrava os alertas emendas_*
+    onde: Transversal › Alertas · Galáxia (alertas de emenda)
+    depende: [sancoes, emendas_base, regra_emendas]
+    comando: ["{py}", "-m", "tools.emendas_pericia", "--sem-pdf", "--sem-colegiado"]
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 43200
+    timeout_s: 3600
+    prioridade: 5
+    antes: "nenhum — rodava à mão; alertas parados de 10/08 a 17/11/2026 (pente fino de 18/11)"
+  pericia_pcrj:
+    nome: Perícia de gastos da Prefeitura (D7–D12) — regrava os alertas pcrj_*
+    onde: Prefeitura · Transversal › Alertas
+    depende: [pcrj_base, sancoes, regra_pcrj]
+    comando: ["{py}", "-m", "tools.pcrj_pericia_gastos", "--sem-pdf", "--sem-colegiado"]
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 43200
+    timeout_s: 5400
+    prioridade: 6
+    antes: "nenhum — rodava à mão; alertas parados desde 10/08/2026 (pente fino de 18/11)"
+  sei_ocr_gpu:
+    nome: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
+    onde: arquivo canônico data/sei_arquivo → fichas, perícia de execução, extrator de preços
+    depende: [ocr_gpu]
+    comando: ["{py}", "-m", "tools.sei_ocr_gpu_integrar"]
+    peso: leve
+    debounce_s: 600
+    intervalo_min_s: 900
+    timeout_s: 1800
+    prioridade: 4
+    antes: "nenhum — criado em 18/11/2026 com o nó de GPU do it-campo"
+  sei_ocr_gpu_fila:
+    nome: Fila do OCR por IA (o que o Tesseract leu ou ficou sem texto e ainda tem PDF no arquivo frio)
+    onde: it-campo (trabalhador ocr_gpu_worker puxa data/sei_ocr_gpu_fila.txt quando a dele acaba)
+    depende: [sei_arquivado, ocr_gpu]
+    comando: ["{py}", "-m", "tools.sei_ocr_gpu_fila"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 900
+    prioridade: 7
+    efeito: {arquivo: data/sei_ocr_gpu_fila.txt}
+    antes: "nenhum — criado em 18/11/2026"
   vinculo_fila:
     nome: Fila de captura do vínculo OB↔contrato (fecha-contrato na frente, depois por valor)
     onde: estrato VINCULO_OB da fila do sweep SEI (VM-1, VM-2, it-campo)

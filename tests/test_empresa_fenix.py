@@ -207,3 +207,15 @@ def test_manchete_soma_so_o_sustentado_e_conta_o_resto_por_motivo(tmp_path, monk
     assert d["fora_da_manchete"] == {"natureza_publica": {"n": 1, "valor": 7000.0}}
     assert d["n_pagou_so_antes"] == 0
     assert "indício" in d["ressalva"].lower() and "conferir" in d["ressalva"].lower()
+
+
+def test_ob_devolvida_pelo_banco_nao_e_pago_apos_baixa(con_baixa):
+    """Pente fino 17/11/2026: a manchete 'pago depois da baixa' (R$ 15,71 mi) era 99% IDESI (INAPTA desde
+    28/01/2026, R$ 15,59 mi em 32 OB) — e 15 dessas OB (R$ 7,60 mi) estão 'Erro no Pagamento' com Guia de
+    Devolução: o banco devolveu (devolução integral, `siafe_gd`). OB devolvida continua 'Contabilizado'."""
+    con_baixa.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN status_envio TEXT")
+    con_baixa.execute("INSERT INTO ob_orcamentaria_siafe (credor, valor, data_emissao, status, status_envio) "
+                      "VALUES ('11111111000111', 9000.0, '13/03/2024', 'Contabilizado', 'Erro no Pagamento')")
+    r = _pagou_apos_baixa(con_baixa, "11111111000111", "2024-03-13", _ISO)
+    assert r["valor_apos_baixa"] == 2000.0 and r["n_ob_apos_baixa"] == 1
+    assert r["n_ob_devolvida_apos_baixa"] == 1 and r["valor_devolvido_apos_baixa"] == 9000.0

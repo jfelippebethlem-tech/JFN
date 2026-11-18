@@ -585,6 +585,19 @@ def _confirmacao_sustentada(nf_por_ob, citacao: str, valores: dict | None = None
 
 
 # ───────────────────────── camada determinística ─────────────────────────
+_RX_NF_CITADA = re.compile(r"\b(?:NFS?-?e?|Nota\s+Fiscal)\s*(?:n[º°o.]*\s*)?0*(\d{1,9})\b", re.I)
+
+
+def _nfs_citadas_pela_ob(docs: list[dict], numero_ob: str) -> list[str]:
+    """Números de NF citados nos documentos que mencionam a OB (anexo da OB, PD). Vazio/ambíguo → valor decide."""
+    nums: set[str] = set()
+    for d in docs:
+        txt = d.get("texto") or ""
+        if numero_ob and numero_ob in txt:
+            nums |= {m.lstrip("0") or "0" for m in _RX_NF_CITADA.findall(txt)}
+    return sorted(nums)
+
+
 def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> dict:
     """Veredito de UMA competência dobrada a partir das NFs dos processos das suas OBs."""
     procs: dict[str, dict] = {}
@@ -609,6 +622,19 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
         if t is None or not procs[t]["docs"]:
             continue
         nfs, v = procs[t]["nfs"], float(o.get("valor") or 0)
+        # 0) o documento do processo que cita ESTA OB e diz qual NF ela paga (anexo da OB/PD) vence o valor: serviço de
+        # valor fixo tem várias NFs de mesmo valor (18/11/2026: 2 OBs de R$ 94.999,98 casadas pelo valor com a NF 78,
+        # de 2025, quando os anexos diziam NF 53 e NF 55 — o único 🔴 da base era isso).
+        citadas = _nfs_citadas_pela_ob(procs[t]["docs"], o["numero_ob"])
+        if len(citadas) == 1:
+            num = citadas[0]
+            nf = next((n for n in nfs if n["numero"] == num), None) or {
+                "numero": num, "cnpj": cnpj, "competencia": None, "comp_desc": False, "valor": v, "liquido": 0.0,
+                "titulo": f"NF {num} citada no anexo da OB {o['numero_ob']}", "benigno": ""}
+            if nf not in nfs:
+                nfs.append(nf)
+            nf_da_ob[o["numero_ob"]] = {"por": "anexo_ob", "nfs": [nf]}
+            continue
         casam = [n for n in nfs if abs(n["valor"] - v) <= TOL or (n["liquido"] and abs(n["liquido"] - v) <= TOL)]
         if len(casam) == 1:
             nf_da_ob[o["numero_ob"]] = {"por": "valor", "nfs": casam}
@@ -636,14 +662,14 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:
             na, nb = nf_da_ob[a], nf_da_ob[b]
-            if ob_proc[a] == ob_proc[b] and not (na["por"] == nb["por"] == "valor"):
+            if ob_proc[a] == ob_proc[b] and not (na["por"] == nb["por"] and na["por"] in ("valor", "anexo_ob")):
                 continue
             comum = ({(n["cnpj"][:8], n["numero"]) for n in na["nfs"] if not n["benigno"]}
                      & {(n["cnpj"][:8], n["numero"]) for n in nb["nfs"] if not n["benigno"]})
             if comum:
                 num = sorted(comum)[0][1]
                 tit = next(n["titulo"] for n in na["nfs"] if n["numero"] == num)
-                onde = (f"no mesmo processo {numero_sei(ob_proc[a])}, casada por valor nas duas" if ob_proc[a] == ob_proc[b]
+                onde = (f"no mesmo processo {numero_sei(ob_proc[a])}, " + ("citada no anexo de cada OB" if na["por"] == "anexo_ob" else "casada por valor nas duas") if ob_proc[a] == ob_proc[b]
                         else f"em {numero_sei(ob_proc[a])} e {numero_sei(ob_proc[b])}")
                 return {**res, "veredito": "CONFIRMADO", "citacao": tit,
                         "motivo": f"NF nº {num} é a nota cobrada pela OB {a} e pela OB {b} ({onde}) — mesma NF paga "
@@ -704,7 +730,8 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
 
 def resolver_par(cnpj: str, ug: str, obs: list[dict], favorecido: str = "", gerar=None) -> list[dict]:
     """Uma linha por competência dobrada do par (só OB Contabilizado — REGRA DE OURO)."""
-    contab = [o for o in obs if str(o.get("status") or "").strip().lower().startswith("contabiliz")]
+    from compliance_agent.auditoria_contrato import _contabilizadas
+    contab = _contabilizadas(obs)        # régua única: sem a OB devolvida pelo banco (17/11/2026)
     out = []
     for f in detectar(contab, favorecido=favorecido, orgao=ug):
         if f["tipo_indicio"] != "competencia_dobrada":
@@ -779,17 +806,22 @@ def pares_amarelos(c, limit: int | None = None) -> list[tuple]:
         feitos = {(r[0], str(r[1])) for r in c.execute("SELECT DISTINCT cnpj, ug FROM resolucao_duplicidade")}
     except sqlite3.OperationalError:
         feitos = set()
-    out = []
+    out, confirmados = [], []
     for cnpj, ug, fav, aj in c.execute("SELECT cnpj, ug, favorecido, achados_json FROM pericia_fornecedor "
-                                       "WHERE grau IN ('🟡', '🟢') "
                                        "ORDER BY total_pago DESC"):
         try:
             ach = json.loads(aj or "[]")
         except ValueError:
             continue
-        if any(a.get("codigo") == "T07-DUPLICIDADE-COMP" and a.get("status") == "INDICIO" for a in ach):
+        t07 = {a.get("status") for a in ach if a.get("codigo") == "T07-DUPLICIDADE-COMP"}
+        if "CONFIRMADO" in t07:
+            # 18/11/2026: o 🔴 CONFIRMADO nunca voltava ao resolvedor — quando a regra mudou (anexo da OB vence o
+            # valor), o único 🔴 da base, falso, ficou de pé. O confirmado é RECONFERIDO toda rodada, e primeiro.
+            confirmados.append((cnpj, ug, fav or ""))
+        elif "INDICIO" in t07:
             out.append((cnpj, ug, fav or ""))
     out.sort(key=lambda p: (p[0], str(p[1])) in feitos)      # estável: mantém o maior pago primeiro em cada grupo
+    out = confirmados + out
     return out[:limit] if limit else out
 
 

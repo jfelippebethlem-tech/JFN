@@ -100,7 +100,7 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
 
         # Estado: OBs SIAFE pagas a CNPJ sancionado (total e durante a vigência)
         q_ob = (f"SELECT credor, nome_credor, numero_ob, valor, {_OB_ISO} AS dt "
-                f"FROM ob_orcamentaria_siafe WHERE {_OB_PAGA} AND length(credor)=14 AND credor IN "
+                f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 AND credor IN "
                 f"({','.join('?' * len(sanc))})")
         if sanc:
             for r in con.execute(q_ob, list(sanc)):
@@ -661,7 +661,7 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
                SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) n_colado,
                MAX({teto_expr}) teto
         FROM ob_orcamentaria_siafe
-        WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
+        WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
         GROUP BY credor, ug_emitente, {iso_mes}
         HAVING n >= ? AND n_colado >= ?
         ORDER BY (CAST(n_colado AS REAL)/n) DESC, soma DESC
@@ -674,7 +674,7 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         # total (sem limite) p/ KPI
         total = con.execute(f"""SELECT COUNT(*) FROM (
             SELECT credor FROM ob_orcamentaria_siafe
-            WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
+            WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
             GROUP BY credor, ug_emitente, {iso_mes}
             HAVING COUNT(*) >= ? AND
               SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) >= ?)""",
@@ -935,7 +935,7 @@ def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
             ugs_alvo = set(_ug_do_orgao_servidor(info[0]))
             pagadoras, mesmo_orgao = [], False
             for pr in con.execute(f"SELECT ug_emitente ug, SUM(valor) v FROM ob_orcamentaria_siafe "
-                                  f"WHERE {_OB_PAGA} AND credor=? AND valor>0 GROUP BY ug_emitente "
+                                  f"WHERE {_ob_paga(con)} AND credor=? AND valor>0 GROUP BY ug_emitente "
                                   "ORDER BY v DESC LIMIT 3", (cnpj,)):
                 pagadoras.append({"ug": pr["ug"], "nome": _ug_nome.get(pr["ug"], ""), "valor": pr["v"]})
                 if pr["ug"] in ugs_alvo:
@@ -1239,6 +1239,17 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
 # pago após a baixa…) — a mesma inflação já corrigida na ficha do Acervo (commit 50a8093b).
 _OB_PAGA = "status='Contabilizado'"
 
+
+def _ob_paga(con) -> str:
+    """OB que é pagamento: Contabilizada e NÃO devolvida pelo banco ('Erro no Pagamento' segue 'Contabilizado' no
+    SIAFE). 18/11/2026: 21.044 OB / R$ 5,57 bi; em amostra de 400, 72% tinham reemissão do mesmo credor/UG/valor —
+    somar as duas contava o pagamento duas vezes. Base sem a coluna `status_envio` (fixture antiga) → regra antiga."""
+    try:
+        tem = any(r[1] == "status_envio" for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
+    except sqlite3.Error:
+        tem = False
+    return (f"{_OB_PAGA} AND COALESCE(status_envio,'')<>'Erro no Pagamento'" if tem else _OB_PAGA)
+
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
     "AND nome_credor NOT LIKE '%MUNICÍPIO%' AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%BANCO%' "
@@ -1350,10 +1361,10 @@ def fornecedor_dependente(db_path: str | None = None, min_total: float = 2_000_0
     try:
         rows = con.execute(f"""
         WITH tot AS (SELECT credor, SUM(valor) t FROM ob_orcamentaria_siafe
-                     WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
+                     WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
                      GROUP BY credor HAVING t >= ?),
         porug AS (SELECT credor, ug_emitente, SUM(valor) v, MAX(nome_credor) nome
-                  FROM ob_orcamentaria_siafe WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0
+                  FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0
                   GROUP BY credor, ug_emitente),
         -- n_ugs agregado UMA vez: a subconsulta correlacionada varria as 1,2 mi de OBs por linha do
         -- resultado (sem índice em credor) — 166 s a frio em 24/09/2026
@@ -1443,7 +1454,7 @@ def corrida_dezembro(db_path: str | None = None, min_total: float = 2_000_000,
         WITH t AS (SELECT credor, MAX(nome_credor) nome, SUM(valor) tot,
                      SUM(CASE WHEN substr(data_emissao,4,2)='12' THEN valor ELSE 0 END) dez,
                      COUNT(*) n_obs
-                   FROM ob_orcamentaria_siafe WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
+                   FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
                    GROUP BY credor HAVING tot >= ?)
         SELECT credor, nome, tot, dez, n_obs FROM t WHERE dez >= ? * tot
         ORDER BY tot DESC LIMIT ?""", (min_total, min_share, limite)).fetchall()
@@ -1621,7 +1632,8 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     """
     vazio = {"data_baixa": None, "motivo_baixa": None, "pagou_apos_baixa": None,
              "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0,
-             "fora_da_manchete": None, "valor_fora_da_manchete": 0.0}
+             "fora_da_manchete": None, "valor_fora_da_manchete": 0.0,
+             "n_ob_devolvida_apos_baixa": 0, "valor_devolvido_apos_baixa": 0.0}
     try:
         r = con.execute("SELECT situacao_cadastral, data_situacao, motivo_situacao FROM estab.estabelecimentos "
                         "WHERE cnpj=?", (cnpj,)).fetchone()
@@ -1643,11 +1655,19 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     out = {**vazio, "data_baixa": d, "motivo_baixa": str(r["motivo_situacao"] or "") or None}
     if not ultima_ob or ultima_ob <= d:
         return {**out, "pagou_apos_baixa": False}        # morreu DEPOIS do último pagamento
-    q = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, "
-                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN 1 END),0) nj, "
-                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} THEN valor END),0) vj FROM ob_orcamentaria_siafe "
+    # OB devolvida pelo banco ('Erro no Pagamento': devolução integral, ver `siafe_gd`) segue 'Contabilizado' e
+    # não é pagamento — 17/11/2026: R$ 7,60 mi dos R$ 15,59 mi do 1º colocado (IDESI) eram isso. Contada à parte.
+    tem_envio = any(c[1] == "status_envio" for c in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
+    devolvida = "COALESCE(status_envio,'')='Erro no Pagamento'" if tem_envio else "0"
+    q = con.execute(f"SELECT COALESCE(SUM(CASE WHEN NOT {devolvida} THEN 1 END),0) n, "
+                    f"COALESCE(SUM(CASE WHEN NOT {devolvida} THEN valor END),0) v, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN 1 END),0) nj, "
+                    f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN valor END),0) vj, "
+                    f"COALESCE(SUM(CASE WHEN {devolvida} THEN 1 END),0) nd, "
+                    f"COALESCE(SUM(CASE WHEN {devolvida} THEN valor END),0) vd FROM ob_orcamentaria_siafe "
                     f"WHERE {_OB_PAGA} AND credor=? AND {iso} > ?", (cnpj, d)).fetchone()
     n, v, nj, vj = q["n"], q["v"] or 0.0, q["nj"], q["vj"] or 0.0
+    out.update(n_ob_devolvida_apos_baixa=q["nd"], valor_devolvido_apos_baixa=round(q["vd"] or 0.0, 2))
     fora = _fora_da_manchete(con, cnpj) if n else None
     if fora:
         return {**out, "pagou_apos_baixa": False, "fora_da_manchete": fora, "valor_fora_da_manchete": round(v, 2)}
@@ -1671,7 +1691,7 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
         iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
         janela = {r["credor"]: (r["p"], r["u"]) for r in con.execute(
             f"SELECT credor, MIN({iso}) p, MAX({iso}) u FROM ob_orcamentaria_siafe "
-            f"WHERE {_OB_PAGA} AND length(credor)=14 AND valor>0 GROUP BY credor")}
+            f"WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 GROUP BY credor")}
         prim = {k: v[0] for k, v in janela.items()}
         # ── A DATA DA BAIXA, que faltava ────────────────────────────────────────────────
         # "Pago a empresa MORTA" só é verdade se o pagamento veio DEPOIS da baixa, e este

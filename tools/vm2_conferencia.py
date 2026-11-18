@@ -95,6 +95,14 @@ def legivel(texto: str) -> bool:
     return letras / max(1, len(t)) >= MIN_LETRAS
 
 
+_RX_CABECALHO = re.compile(r"^\s*\[[^\]\n]*\](?:\s*\([^)\n]*\))?\s*$", re.M)
+
+
+def _sem_cabecalho(texto: str) -> str:
+    """Tira as linhas de cabeçalho que o arquivador põe ("[Título] (fase: … · tipo: …)" e "[Título]")."""
+    return _RX_CABECALHO.sub("", texto or "")
+
+
 def _tokens(texto: str) -> set[str]:
     return {w for w in re.findall(r"[a-zà-ú0-9]{3,}", (texto or "").lower()[:4000])}
 
@@ -172,8 +180,10 @@ def comparar_com_referencia(novos: dict[str, str], ref: dict[str, str]) -> tuple
     cobertura = len(comuns) / max(1, len(titulos_ref))
     if cobertura < MIN_TITULOS:
         return False, f"só {len(comuns)}/{len(titulos_ref)} títulos da leitura da VM-1 reaparecem"
+    # Só referência com CORPO conta: a leitura antiga às vezes guardou só o cabeçalho "[Título] (fase: … · tipo: …)",
+    # que tem letras e passava no `legivel` — 18/11/2026: 44% das íntegras do it-campo iam à quarentena por isso.
     sims = [semelhanca(novos[par[t]], ref[t]) for t in comuns
-            if legivel(ref[t]) and legivel(novos[par[t]])][:3]
+            if legivel(_sem_cabecalho(ref[t])) and legivel(_sem_cabecalho(novos[par[t]]))][:3]
     if sims and max(sims) < MIN_SEMELHANCA:
         return False, f"texto diverge da leitura da VM-1 (semelhança máx {max(sims):.2f})"
     return True, (f"{len(comuns)}/{len(titulos_ref)} títulos em comum com a VM-1"

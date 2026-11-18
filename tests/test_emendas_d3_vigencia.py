@@ -36,8 +36,8 @@ def _favorecido(con, cod, doc="11111111000111", nome="ALFA LTDA"):
 
 
 def _sancao(con, doc="11111111000111", ini="2019-01-01", fim="2029-01-01"):
-    con.execute("insert into sancoes_federais values ('CEIS',?,'ALFA LTDA','inidônea',?,?,'MEC')",
-                (doc, ini, fim))
+    con.execute("insert into sancoes_federais values ('CEIS',?,'ALFA LTDA','Declaração de Inidoneidade',?,?,'MEC')",
+                (doc, ini, fim))   # categoria real do CEIS (a inventada 'inidônea' não tem alcance conhecido)
 
 
 def _um(con):
@@ -104,3 +104,35 @@ def test_publicacao_extraordinaria_tambem_nao_impede(con):
     con.execute("insert into sancoes_federais values ('CNEP','11111111000111','ALFA LTDA',"
                 "'Publicação extraordinária da decisão condenatória','2023-01-01','2033-01-01','CGU')")
     assert _um(con)["evidencias"]["vigencia_na_emenda"] == "nao_impeditiva"
+
+
+def _sancao_com_alcance(con, orgao, categoria, uf=None, abrangencia=None, fundamentacao=None):
+    for col in ("uf", "fundamentacao", "abrangencia", "esfera_sancionador"):
+        try:
+            con.execute(f"alter table sancoes_federais add column {col} text")
+        except sqlite3.OperationalError:
+            pass
+    con.execute("insert into sancoes_federais (cadastro, cpf_cnpj, nome, categoria, data_inicio, data_fim, orgao,"
+                " uf, fundamentacao, abrangencia) values ('CEIS','11111111000111','ALFA LTDA',?,"
+                "'2023-01-01','2033-01-01',?,?,?,?)", (categoria, orgao, uf, fundamentacao, abrangencia))
+
+
+def test_impedimento_de_OUTRO_ente_vigente_nao_e_indicio_grave(con):
+    """Pente fino 17/11/2026: 30 dos 36 'Indício grave' do D3 eram impedimento/suspensão de prefeitura ou estado
+    (Ubiratã-PR, PCSC, Lajedo-PE) — sanção que não alcança o pagador da emenda federal. Mesma doutrina do
+    `sancionadas_contratadas` (vigente sem alcance = risco reputacional, não vedação), que não chegara ao D3."""
+    _favorecido(con, "E2024")
+    _sancao_com_alcance(con, "PREFEITURA DE UBIRATA - PR", "Impedimento/proibição de contratar com prazo determinado",
+                        uf="PR", abrangencia="Na esfera e no poder do órgão sancionador")
+    a = _um(con)
+    assert a["evidencias"]["vigencia_na_emenda"] == "sem_alcance"
+    assert a["risco"] < 5
+    assert "Indício grave" not in a["descricao"] and "NÃO alcança" in a["descricao"]
+
+
+def test_inidoneidade_de_todas_as_esferas_segue_indicio_grave(con):
+    _favorecido(con, "E2024")
+    _sancao_com_alcance(con, "Controladoria-Geral da União", "Declaração de Inidoneidade sem prazo determinado",
+                        uf="DF", abrangencia="Todas as Esferas em todos os Poderes")
+    a = _um(con)
+    assert a["evidencias"]["vigencia_na_emenda"] == "vigente" and a["risco"] == 9
