@@ -290,21 +290,25 @@ def aplicar_conferencia(item: str, resposta: str, modelo: str, concorda, con: sq
         if not ant:
             return False
         antes = (ant[0] or "desconhecido").split(" · conferido")[0]
-        if concorda == 1:
-            con.execute("UPDATE lex_execucao SET modelo=? WHERE numero_sei=?",
-                        (f"{antes} · conferido claude:{modelo}", numero_sei))
-            con.commit()
-            return True
         r = _parse_json(resposta) or {}
         r["execucao_comprovada"] = _exec_norm(r.get("execucao_comprovada"))
         if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
+            if concorda == 1:        # concordou mas a resposta não traz o laudo: só a proveniência muda
+                con.execute("UPDATE lex_execucao SET modelo=? WHERE numero_sei=?",
+                            (f"{antes} · conferido claude:{modelo}", numero_sei))
+                con.commit()
+                return True
             return False
+        # Com laudo válido do Opus, o TEXTO dele substitui o anterior MESMO quando o nível coincide (18/11/2026:
+        # SEI-260005/011066/2025 — nível alto nos dois, mas fundamentos diferentes; ficava VERIFICADO com o
+        # fundamento que o Opus não endossou). A concordância só muda a anotação de proveniência.
+        antes = f"concordou com {antes}" if concorda == 1 else f"antes {antes}"
         con.execute("UPDATE lex_execucao SET execucao_comprovada=?, coerencia=?, nota_risco=?, indicios=?, duvidas=?, "
                     "resumo=?, modelo=?, em=? WHERE numero_sei=?",
                     (r["execucao_comprovada"], r.get("coerencia_objeto_evidencia"), _nota_0a10(r.get("nota_risco_execucao")),
                      json.dumps(r.get("indicios") or [], ensure_ascii=False),
                      json.dumps(r.get("duvidas") or [], ensure_ascii=False), r.get("resumo"),
-                     f"claude:{modelo} (conferência; antes {antes})"[:200], _agora(), numero_sei))
+                     f"claude:{modelo} (conferência; {antes})"[:200], _agora(), numero_sei))
         con.commit()
         return True
     finally:

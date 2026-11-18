@@ -940,13 +940,11 @@ def aplicar_conferencia(item: str, resposta: str, modelo: str, concorda, con: sq
         cruzar_eixos(proc, eixos_op, f"{modelo}", eixos_casc, modelo_casc or "cascata",
                      f"Processo {proc} · conferência do Opus")
         iguais = all(eixos_op[n]["grau"] == eixos_casc[n]["grau"] for n in NOMES_EIXOS)
-        if iguais:
-            con.execute("UPDATE pericia_integral SET conferido_opus=1, modelo=? WHERE rodada=?",
-                        (f"{modelo_casc} · conferido claude:{modelo}"[:200], rodada))
-            con.commit()
-            return True
+        # Mesmo com os graus iguais, a rodada que fica é a do Opus (18/11/2026): grau igual com fundamento diferente
+        # deixava VERIFICADO o achado que o Opus não escreveu. A concordância fica só na proveniência.
         con.execute("UPDATE pericia_integral SET conferido_opus=2 WHERE rodada=?", (rodada,))
-        gravar(proc, eixos_op, modelo=f"claude:{modelo} (conferência; antes {modelo_casc})"[:200], provedor="claude",
+        nota = "concordou com" if iguais else "antes"
+        gravar(proc, eixos_op, modelo=f"claude:{modelo} (conferência; {nota} {modelo_casc})"[:200], provedor="claude",
                conferido_opus=1, valor_pago=valor, con=con)            # o commit do gravar fecha as duas mudanças
         return True
     finally:

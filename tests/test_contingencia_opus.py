@@ -272,8 +272,13 @@ def test_aplicador_do_parecer_de_execucao():
     assert L.aplicar_conferencia("sei:SEI-0", opus, "claude-opus-5-5", 0, con=con) is False
     con.execute("UPDATE lex_execucao SET modelo='groq'")
     assert L.aplicar_conferencia("sei:SEI-9", opus, "claude-opus-5-5", 1, con=con) is True
+    # 18/11/2026: concordar no nível não mantém mais o texto do outro modelo — o laudo VERIFICADO é o do Opus
     assert con.execute("SELECT execucao_comprovada, modelo FROM lex_execucao").fetchone() == \
-        ("nao", "groq · conferido claude:claude-opus-5-5")
+        ("nao", "claude:claude-opus-5-5 (conferência; concordou com groq)")
+    # sem laudo válido na resposta, a concordância só anota a proveniência (texto anterior fica)
+    con.execute("UPDATE lex_execucao SET modelo='groq'")
+    assert L.aplicar_conferencia("sei:SEI-9", "ok", "claude-opus-5-5", 1, con=con) is True
+    assert con.execute("SELECT modelo FROM lex_execucao").fetchone()[0] == "groq · conferido claude:claude-opus-5-5"
 
 
 def test_rota_do_painel_nao_expoe_custo():
