@@ -61,7 +61,7 @@ def _ciclo(dry_run, pastas_agentes, gerar, n_fila, fontes) -> dict:
                 ver = portao.julgar(reexecucao.por_filtros(valid, campeao, c["conteudo"]))
                 linha["status"], linha["portao"] = registro.julgado(con, c["chave"], ver), ver
             elif gerar is not None:
-                casos = reexecucao.por_prompt(valid, c["conteudo"], gerar, fontes.get("compliance_db"))
+                casos = reexecucao.por_prompt(valid, c["conteudo"], gerar, fontes.get("compliance_db"), campeao=campeao)
                 ver = portao.julgar(casos)
                 linha["status"], linha["portao"] = registro.julgado(con, c["chave"], ver), ver
             else:
@@ -78,6 +78,61 @@ def _ciclo(dry_run, pastas_agentes, gerar, n_fila, fontes) -> dict:
         (config.dados() / "ultimo_ciclo.json").write_text(json.dumps(r, ensure_ascii=False, indent=1, default=str),
                                                           encoding="utf-8")
         (config.dados() / "relatorio.md").write_text(relatorio(con, r, fila), encoding="utf-8")
+        return r
+    finally:
+        con.close()
+
+
+def reexecutar(chaves: list[str], gerar, max_casos: int | None = None, compliance_db: Path | None = None,
+               gerador: str = "injetado") -> dict:
+    """Reexecução por prompt de candidatos JÁ registrados (o ciclo só reexecuta o que acabou de propor) e veredito
+    do PORTÃO: aprovado → sombra, senão → reprovado. Só no conjunto de VALIDAÇÃO; nunca promove. Reexecução que não
+    chegou ao teto de casos (motor fora, cota acabou) não é julgada: o candidato segue `candidato` — falta de
+    resposta não refuta a lição."""
+    if config.morto():
+        return {"parado": "kill switch ativo"}
+    if not config.ligado():
+        raise SystemExit("reexecução recusada: defina JFN_AUTOAPRIMORAMENTO=1 (ela muda o registro)")
+    n_chamadas = [0]
+
+    def contado(p, s, t):
+        n_chamadas[0] += 1
+        return gerar(p, s, t)
+    con = ledger.conectar()
+    try:
+        registro.preparar(con)
+        campeao = registro.campeao(con)["conteudo"]
+        versoes = {}
+        for ch in chaves:
+            v = registro.ler(con, ch)
+            if v is None or v["status"] != "candidato":
+                raise ValueError(f"{ch}: só candidato é reexecutado (status {v and v['status']})")
+            if v["conteudo"].get("licoes") == campeao.get("licoes"):
+                raise ValueError(f"{ch}: não muda lição — é julgado por filtros no ciclo")
+            versoes[ch] = v["conteudo"]
+        valid = ledger.rotulos(con, ("validacao",), com_texto=True)
+        teto = min(max_casos or config.ORCAMENTO["max_casos_reexecucao"], len(valid))
+        casos = reexecucao.por_prompt_pareado(valid, campeao, versoes, contado, compliance_db, teto)
+        pasta = config.dados() / "reexecucao"
+        pasta.mkdir(parents=True, exist_ok=True)
+        r = {"em": time.strftime("%Y-%m-%dT%H:%M:%S"), "gerador": gerador, "conjunto": "validacao", "teto": teto,
+             "campeao": registro.campeao(con)["chave"], "chamadas_llm": None, "candidatos": []}
+        reais = min(teto, sum(int(bool(x["alto_verificado"])) for x in valid))
+        for ch, cs in casos.items():
+            linha = {"chave": ch, "licoes": versoes[ch]["licoes"], "casos": len(cs)}
+            if len(cs) < teto or sum(c["real"] for c in cs) < reais:
+                # um alto verdadeiro sem resposta faria a R2 reprovar por falha do motor, não da lição
+                linha["status"] = (f"candidato (reexecução incompleta: {len(cs)} de {teto} casos, "
+                                   f"{sum(c['real'] for c in cs)} de {reais} altos verdadeiros — não julgado)")
+                linha["portao"] = None
+            else:
+                ver = portao.julgar(cs)
+                linha["status"], linha["portao"] = registro.julgado(con, ch, ver), ver
+            r["candidatos"].append(linha)
+            (pasta / f"{ch}.json").write_text(json.dumps({**linha, "em": r["em"], "gerador": gerador, "detalhe": cs},
+                                                         ensure_ascii=False, indent=1), encoding="utf-8")
+        r["chamadas_llm"] = n_chamadas[0]
+        (pasta / "ultima.json").write_text(json.dumps(r, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
         return r
     finally:
         con.close()

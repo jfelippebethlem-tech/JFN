@@ -2,6 +2,9 @@
 """CLI: python -m compliance_agent.autoaprimoramento <comando>
 
   ciclo [--dry-run] [--agentes PASTA ...] [-n 30]   roda o ciclo (real exige JFN_AUTOAPRIMORAMENTO=1)
+  reexecutar CHAVE ... [--max-casos 40] [--gerador cascata|assinatura]
+                                                    lições candidatas × campeão reexecutado com o MESMO gerador, na
+                                                    VALIDAÇÃO, e veredito do portão (exige JFN_AUTOAPRIMORAMENTO=1)
   status                                            versões, campeão, kill, último ciclo
   promover CHAVE --quem NOME                        sombra → campeão (ato humano)
   rollback --quem NOME --motivo TEXTO               volta ao campeão anterior
@@ -17,6 +20,26 @@ from pathlib import Path
 from . import calibracao, config, ledger, monitor, orquestrador, registro
 
 
+def _gerador_assinatura():
+    """Claude pela ASSINATURA (backend="cli": sem cair na API paga), dentro dos tetos e da contingência do
+    `claude_motor` (tarefa "autoaprimoramento"). Trava ocupada ou prazo: tenta de novo; o resto levanta e o caso
+    fica sem resposta (a reexecução incompleta não é julgada)."""
+    from compliance_agent import direcionamento_cerebro as dc
+    from compliance_agent.llm import claude_motor
+
+    def gerar(prompt, sistema, timeout):
+        for _ in range(3):
+            r = claude_motor.pensar("autoaprimoramento", prompt, modelo=claude_motor.MODELO_VOLUME, sistema=sistema,
+                                    backend="cli", timeout=300.0, espera=900.0)
+            if r is not None:
+                dc.ultimo_provedor, dc.ultimo_modelo = "claude", r.modelo     # proveniência da linha de sombra
+                return r.texto
+            if not claude_motor.ultimo_motivo.startswith(("ocupado", "passou do prazo")):
+                break
+        raise RuntimeError(f"assinatura sem resposta: {claude_motor.ultimo_motivo[:120]}")
+    return gerar
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="autoaprimoramento")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -24,6 +47,10 @@ def main(argv=None) -> int:
     c.add_argument("--dry-run", action="store_true")
     c.add_argument("--agentes", nargs="*", default=[])
     c.add_argument("-n", type=int, default=30)
+    rx = sub.add_parser("reexecutar")
+    rx.add_argument("chaves", nargs="+")
+    rx.add_argument("--max-casos", type=int, default=None)
+    rx.add_argument("--gerador", choices=("cascata", "assinatura"), default="cascata")
     sub.add_parser("status")
     p = sub.add_parser("promover")
     p.add_argument("chave")
@@ -45,6 +72,25 @@ def main(argv=None) -> int:
         print(f"ciclo {'(ensaio) ' if a.dry_run else ''}ok — relatório em {r['pasta']}/relatorio.md")
         for cand in r["candidatos"]:
             print(f"  {cand['chave']}: {cand['status']}")
+        return 0
+    if a.cmd == "reexecutar":
+        # cascata: a grátis de volume (gemini free tier → groq → openrouter:free …), a que gravou os laudos que as
+        # lições querem corrigir. assinatura: o Claude de volume da perícia (co-motor), só pelo CLI — nunca a API.
+        # Nos dois, sem fila do Opus e sem cruzamento (sombra).
+        if a.gerador == "assinatura":
+            gerar, nome = _gerador_assinatura(), "assinatura (claude_motor backend=cli, modelo de volume)"
+        else:
+            from compliance_agent.direcionamento_cerebro import gerar_sync
+            gerar, nome = gerar_sync, "cascata grátis (direcionamento_cerebro.gerar_sync)"
+        r = orquestrador.reexecutar(a.chaves, gerar, a.max_casos, gerador=nome)
+        if "parado" in r:
+            print(r["parado"])
+            return 1
+        print(f"reexecução: {r['chamadas_llm']} chamadas de LLM; detalhe em {config.dados()}/reexecucao/")
+        for cand in r["candidatos"]:
+            print(f"  {cand['chave']} ({cand['casos']} casos): {cand['status']}")
+            for g in (cand.get("portao") or {}).get("regras", []):
+                print(f"    {'PASSA' if g['ok'] else 'FALHA'} · {g['regra']}: {g['detalhe']}")
         return 0
     if a.cmd == "matar":
         print("KILL em", monitor.matar(a.motivo))

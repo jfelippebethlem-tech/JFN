@@ -152,16 +152,105 @@ def test_reexecucao_por_prompt_roda_em_sombra_e_injeta_as_licoes(auto, tmp_path)
 
     def gerar(prompt, sistema, timeout):
         vistos.append(prompt)
+        return json.dumps({"execucao_comprovada": "sim", "nota_risco_execucao": 3 if "IRRF" in prompt else 8,
+                           "indicios": [], "resumo": "ok"})
+
+    antes = auto.execute("SELECT COUNT(*) FROM laudo_versao").fetchone()[0]
+    rot = [{"numero_sei": "SEI-100001/000001/2025", "nota": 8, "alto_verificado": 0, "indicios": ["x"]}]
+    casos = reexecucao.por_prompt(rot, {"licoes": ["retencao_tributaria"], "filtros": []}, gerar, db)
+    assert [{k: c[k] for k in ("numero_sei", "real", "campeao", "desafiante", "nota_campeao", "nota_desafiante",
+                                "nota_gravada")} for c in casos] == [
+        {"numero_sei": "SEI-100001/000001/2025", "real": 0, "campeao": 1, "desafiante": 0, "nota_campeao": 8,
+         "nota_desafiante": 3, "nota_gravada": 8}]
+    # o campeão foi REEXECUTADO com o mesmo gerador (sem a lição); o desafiante, com ela
+    assert len(vistos) == 2 and "IRRF" not in vistos[0] and "IRRF" in vistos[1] and L._LICOES_SOMBRA is None
+    c = sqlite3.connect(db)
+    assert c.execute("SELECT nota_risco, modelo FROM lex_execucao").fetchone() == (8, "gemini:x")   # produção intacta
+    assert auto.execute("SELECT COUNT(*) FROM laudo_versao").fetchone()[0] == antes      # a sombra não vai ao ledger
+    with pytest.raises(ValueError):
+        reexecucao.por_prompt(rot, {"licoes": []}, None, db)                        # sem gerador não reexecuta
+
+
+def test_reexecucao_compara_com_o_campeao_reexecutado_nao_com_o_laudo_gravado(auto, tmp_path):
+    # controle negativo do confundimento: o motor de hoje dá nota baixa com OU sem a lição; o laudo gravado (outro
+    # modelo, outra captura) era 8. Comparado ao gravado, a lição "derrubaria" o falso alto; pareada, não muda nada.
+    db = _compliance(tmp_path, [("SEI-100001/000001/2025", 8, "gemini:x", ["x"])])
+
+    def gerar(prompt, sistema, timeout):
         return json.dumps({"execucao_comprovada": "sim", "nota_risco_execucao": 3, "indicios": [], "resumo": "ok"})
 
     rot = [{"numero_sei": "SEI-100001/000001/2025", "nota": 8, "alto_verificado": 0, "indicios": ["x"]}]
-    casos = reexecucao.por_prompt(rot, {"licoes": ["retencao_tributaria"], "filtros": []}, gerar, db)
-    assert casos == [{"numero_sei": "SEI-100001/000001/2025", "real": 0, "campeao": 1, "desafiante": 0, "nota_desafiante": 3}]
-    assert "IRRF" in vistos[0] and L._LICOES_SOMBRA is None                         # lição entrou e a produção voltou
+    c = reexecucao.por_prompt(rot, {"licoes": ["retencao_tributaria"], "filtros": []}, gerar, db)[0]
+    assert (c["campeao"], c["desafiante"], c["nota_gravada"]) == (0, 0, 8)
+
+
+def test_ordem_da_reexecucao_poe_os_altos_verdadeiros_dentro_do_teto():
+    rot = [{"numero_sei": f"SEI-{i:06d}/1/2025", "alto_verificado": int(i >= 67)} for i in range(71)]
+    alvo = reexecucao.ordem_reexecucao(rot)[:40]
+    assert sum(r["alto_verificado"] for r in alvo) == 4                       # o corte alfabético pegava 0 de 4
+    # controle negativo: a ordem do resto não é a alfabética nem depende da posição na lista de entrada
+    resto = [r["numero_sei"] for r in alvo[4:]]
+    assert resto != sorted(resto) and reexecucao.ordem_reexecucao(list(reversed(rot))) == reexecucao.ordem_reexecucao(rot)
+
+
+def _validacao_sintetica(tmp_path, monkeypatch, n_falsos=34, n_reais=6):
+    reais = [f"SEI-9{i:05d}/000001/2025" for i in range(n_reais)]
+    falsos = [f"SEI-1{i:05d}/000001/2025" for i in range(n_falsos)]
+    db = _compliance(tmp_path, [(ns, 8, "gemini:x", ["x"]) for ns in reais + falsos])
     c = sqlite3.connect(db)
-    assert c.execute("SELECT nota_risco, modelo FROM lex_execucao").fetchone() == (8, "gemini:x")   # produção intacta
+    c.executemany("UPDATE sei_ficha SET objeto='ALTO REAL' WHERE numero_sei=?", [(ns,) for ns in reais])
+    c.commit(); c.close()
+    rot = [{"numero_sei": ns, "nota": 8, "alto_verificado": int(ns in reais), "indicios": ["x"]} for ns in reais + falsos]
+    monkeypatch.setattr(ledger, "rotulos", lambda con, conjuntos, **k: rot if conjuntos == ("validacao",) else [])
+    return db
+
+
+def _gerador(licao_derruba=True, licao_perde_real=False, falha_desafiante=False, falha_real=False):
+    vez = {}
+
+    def gerar(prompt, sistema, timeout):
+        com = "IRRF" in prompt
+        real = "ALTO REAL" in prompt
+        if com and (falha_desafiante or (falha_real and real and not vez)):
+            vez["x"] = 1
+            raise TimeoutError()
+        nota = 8 if (real and not (com and licao_perde_real)) or not (com and licao_derruba) else 3
+        return json.dumps({"execucao_comprovada": "parcial", "nota_risco_execucao": nota, "indicios": [], "resumo": "r"})
+    return gerar
+
+
+def test_reexecutar_candidato_registrado_controle_positivo_vai_a_sombra(auto, tmp_path, monkeypatch):
+    db = _validacao_sintetica(tmp_path, monkeypatch)
+    ch = registro.registrar(auto, {"licoes": ["retencao_tributaria"]}, "t")
+    with pytest.raises(SystemExit):
+        orquestrador.reexecutar([ch], _gerador(), compliance_db=db)                 # sem a chave não muda o registro
+    monkeypatch.setenv("JFN_AUTOAPRIMORAMENTO", "1")
+    r = orquestrador.reexecutar([ch], _gerador(), compliance_db=db)
+    cand = r["candidatos"][0]
+    assert cand["casos"] == 40 and cand["status"] == "sombra" and cand["portao"]["aprovado"]
+    assert r["chamadas_llm"] == 80                                                    # campeão + desafiante por caso
+    assert registro.ler(auto, ch)["status"] == "sombra" and registro.campeao(auto)["chave"] != ch   # nunca promove
+    assert json.loads((config.dados() / "reexecucao" / f"{ch}.json").read_text())["casos"] == 40
     with pytest.raises(ValueError):
-        reexecucao.por_prompt(rot, {"licoes": []}, None, db)                        # sem gerador não reexecuta
+        orquestrador.reexecutar([ch], _gerador(), compliance_db=db)                 # só candidato é reexecutado
+
+
+@pytest.mark.parametrize("gerador,status,regra", [
+    (_gerador(licao_derruba=False), "reprovado", "R4 melhora"),                       # a lição não muda o motor
+    (_gerador(licao_perde_real=True), "reprovado", "R3 sem regressão"),               # derruba falsos E um verdadeiro
+    (_gerador(falha_desafiante=True), "candidato", None),                             # motor fora: não julga
+    (_gerador(falha_real=True), "candidato", None),                                   # alto verdadeiro sem resposta
+])
+def test_reexecutar_controle_negativo(auto, tmp_path, monkeypatch, gerador, status, regra):
+    db = _validacao_sintetica(tmp_path, monkeypatch, n_falsos=40)      # 46 casos: a falha é reposta até o teto de 40
+    monkeypatch.setenv("JFN_AUTOAPRIMORAMENTO", "1")
+    ch = registro.registrar(auto, {"licoes": ["retencao_tributaria"]}, "t")
+    cand = orquestrador.reexecutar([ch], gerador, compliance_db=db)["candidatos"][0]
+    assert registro.ler(auto, ch)["status"] == status and cand["status"].startswith(status)
+    if regra:
+        assert regra in [g["regra"] for g in cand["portao"]["regras"] if not g["ok"]]
+    else:
+        assert cand["portao"] is None and "não julgado" in cand["status"]
 
 
 def _ledger_com_descartes(con, n=4, porque="SIAFE: 2026OB00001 paga; o campo processo da OB está vazio"):
