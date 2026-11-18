@@ -2997,13 +2997,73 @@
   function marcaSvg() {
     return `<svg class="ab-marca" viewBox="0 0 520 70" role="img" aria-label="JFN · Controle Externo"><text class="ab-jfn" x="0" y="52">JFN</text><circle class="ab-ponto" cx="139" cy="36" r="4"/><text class="ab-ce" x="160" y="52">Controle Externo</text></svg>`;
   }
+  var FILME = "/static/assets/v69/";
+  var FILME_ESPERA = { completa: 600, curta: 300 };
+  var FILME_RAIO = { q: 0.189, v: 0.307 };
+  function filmeEl(nome, w, h) {
+    const ret = h > w * 1.05, b = FILME + nome + (ret ? "_m" : "");
+    const v = document.createElement("video");
+    v.className = "ab-filme";
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    v.setAttribute("aria-hidden", "true");
+    v.poster = b + ".webp";
+    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.${ret ? "09" : "12"}M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
+    let bw, bh;
+    if (ret) {
+      bw = Math.max(w, h * 9 / 16);
+      bh = bw * 16 / 9;
+    } else {
+      bw = bh = Math.min(Math.max(w, h), h * 1.8);
+    }
+    v.style.cssText = `width:${bw.toFixed(1)}px;height:${bh.toFixed(1)}px;left:${((w - bw) / 2).toFixed(1)}px;top:${((h - bh) / 2).toFixed(1)}px`;
+    if (bw < w - 1) v.classList.add("ab-filme-borda");
+    return { v, raio: bw * FILME_RAIO[ret ? "v" : "q"] };
+  }
+  function tentaFilme(v, ms) {
+    return new Promise((res) => {
+      let feito = false;
+      const fim = (ok) => {
+        if (feito) return;
+        feito = true;
+        clearTimeout(t);
+        res(ok);
+      };
+      const t = setTimeout(() => fim(false), ms);
+      v.addEventListener("playing", () => fim(true), { once: true });
+      v.addEventListener("error", () => fim(false), { once: true });
+      const ult = v.querySelector("source:last-of-type");
+      if (ult) ult.addEventListener("error", () => fim(false), { once: true });
+      const p = v.play();
+      if (p && p.catch) p.catch(() => fim(false));
+    });
+  }
+  function preCurta(v) {
+    const src = v.currentSrc || "";
+    if (!src) return;
+    const url = src.replace(/\/abertura(_m)?\./, (_, m) => `/abertura_c${m || ""}.`);
+    setTimeout(() => fetch(url, { priority: "low" }).then((r) => r.ok ? r.blob() : null).then((b) => {
+      if (b && b.size) try {
+        localStorage.setItem("jfn_abertura_c_ok", "1");
+      } catch (_) {
+      }
+    }).catch(() => {
+    }), 1500);
+  }
   function aberturaStart(portal) {
     if (portal) portal.remove();
     let el = document.getElementById("v64-abertura");
-    let off = false, dia = "";
+    let off = false, dia = "", filmeOk = true, curtaOk = false, forca = false;
     try {
       off = localStorage.getItem("jfn_portal_off") === "1";
       dia = localStorage.getItem("jfn_abertura_dia") || "";
+      const fv = localStorage.getItem("jfn_abertura_video");
+      filmeOk = fv !== "0";
+      forca = fv === "1";
+      curtaOk = localStorage.getItem("jfn_abertura_c_ok") === "1";
     } catch (_) {
     }
     if (off) {
@@ -3029,7 +3089,9 @@
     const S = Math.round(Math.max(200, Math.min(cel ? 300 : 360, Math.min(w, h) * (cel ? 0.74 : 0.5))));
     const R = S / 200 * 92;
     el.style.setProperty("--ab-s", S + "px");
-    el.innerHTML = '<div class="ab-veu"></div>' + (modo === "completa" ? fitasHtml(w, h, R, cel) : "") + `<div class="ab-reator">${ANEIS.map((a, i) => `<div class="ab-anel" data-i="${i}">${reatorSvg(a)}</div>`).join("")}<div class="ab-varre"></div><div class="ab-nucleo"></div><div class="ab-pulso"></div></div>` + (modo === "minima" ? "" : `<div class="ab-texto">${marcaSvg()}` + (modo === "completa" ? '<p class="ab-motores" aria-live="polite"><span class="ab-m-t">motores · lendo…</span></p>' : "") + "</div>") + (modo === "completa" ? '<button type="button" class="ab-pular">Pular</button>' : "");
+    const comFilme = filmeOk && (modo === "completa" || modo === "curta" && curtaOk);
+    const codigoHtml = () => (modo === "completa" ? fitasHtml(w, h, R, cel) : "") + `<div class="ab-reator">${ANEIS.map((a, i) => `<div class="ab-anel" data-i="${i}">${reatorSvg(a)}</div>`).join("")}<div class="ab-varre"></div><div class="ab-nucleo"></div><div class="ab-pulso"></div></div>`;
+    el.innerHTML = '<div class="ab-veu"></div>' + (comFilme ? "" : codigoHtml()) + (modo === "minima" ? "" : `<div class="ab-texto">${marcaSvg()}` + (modo === "completa" ? '<p class="ab-motores" aria-live="polite"><span class="ab-m-t">motores · lendo…</span></p>' : "") + "</div>") + (modo === "completa" ? '<button type="button" class="ab-pular">Pular</button>' : "");
     const H2 = document.documentElement;
     const revela = () => H2.classList.remove("v64-ab-cobre");
     if (modo !== "minima") H2.classList.add("v64-ab-cobre");
@@ -3041,7 +3103,6 @@
       anims.push(a);
       return a;
     };
-    const reator = $2(".ab-reator"), veu = $2(".ab-veu"), texto = $2(".ab-texto"), fitas = $2(".ab-fitas");
     const escalaFim = Math.hypot(w, h) / (2 * R) * 1.15;
     let fim = false, tFim = 0;
     const remover = () => {
@@ -3056,10 +3117,12 @@
       el.classList.add("ab-saindo");
       const op = { duration: ms, delay: atraso, easing: SAI2 };
       revela();
-      A5(reator, [{ transform: "scale(1)", opacity: 1 }, { transform: `scale(${escalaFim.toFixed(2)})`, opacity: 0 }], op);
-      A5(veu, [{ opacity: 1 }, { opacity: 0 }], { ...op, duration: ms * 0.85, delay: atraso + ms * 0.15 });
+      A5($2(".ab-reator"), [{ transform: "scale(1)", opacity: 1 }, { transform: `scale(${escalaFim.toFixed(2)})`, opacity: 0 }], op);
+      A5($2(".ab-filme"), [{ opacity: 1 }, { opacity: 0 }], op);
+      A5($2(".ab-veu"), [{ opacity: 1 }, { opacity: 0 }], { ...op, duration: ms * 0.85, delay: atraso + ms * 0.15 });
+      const fitas = $2(".ab-fitas");
       if (fitas) A5(fitas, [{ opacity: 0, transform: "scale(1.25)" }], op);
-      A5(texto, [{ opacity: 0, transform: "translateY(-10px)" }], { ...op, duration: ms * 0.6 });
+      A5($2(".ab-texto"), [{ opacity: 0, transform: "translateY(-10px)" }], { ...op, duration: ms * 0.6 });
       setTimeout(remover, atraso + ms + 40);
     };
     const pular = () => sair(fim ? 0 : 380);
@@ -3071,6 +3134,11 @@
     };
     addEventListener("keydown", tecla, true);
     el.addEventListener("pointerdown", pular, { once: true });
+    const pularBtn = $2(".ab-pular");
+    if (pularBtn) pularBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      pular();
+    });
     if (modo === "minima") {
       el.classList.add("ab-quieto");
       A5(el, [{ opacity: 1 }, { opacity: 0 }], { duration: DUR.minima, easing: "linear" });
@@ -3078,62 +3146,99 @@
       setTimeout(remover, DUR.minima + 30);
       return;
     }
-    $$(".ab-anel").forEach((n, i) => {
-      const g = ANEIS[i].giro;
-      if (g) A5(
-        n,
-        [{ transform: "rotate(0deg)" }, { transform: `rotate(${g > 0 ? 360 : -360}deg)` }],
-        { duration: Math.abs(g), iterations: Infinity, easing: "linear", fill: "none" }
-      );
-    });
-    if (modo === "curta") {
-      A5(reator, [{ transform: "scale(.92)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: 260, easing: MOLA });
-      pulso(A5, $2, 60, 520);
-      A5(texto, [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 240, easing: MOLA });
-      setTimeout(() => revela(), 120);
-      tFim = setTimeout(() => sair(DUR.curta - 340), 320);
-      setTimeout(remover, DUR.curta + 400);
-      return;
-    }
-    $$(".ab-camada").forEach((c, k) => A5(c, [
-      { opacity: 0, transform: `rotate(${k ? 42 : -34}deg) scale(1.9)` },
-      { opacity: 1, transform: "none" }
-    ], { duration: 1150, delay: 30 + k * 110, easing: MOLA }));
-    A5(fitas, [{ opacity: 1 }, { opacity: 0.42 }], { duration: 700, delay: 1300, easing: "linear" });
-    $$(".ab-anel").forEach((n, i) => A5(
-      n.firstElementChild,
-      [{ opacity: 0, transform: "scale(.72)" }, { opacity: 1, transform: "scale(1)" }],
-      { duration: 620, delay: 560 + i * 70, easing: MOLA }
-    ));
-    A5($2(".ab-varre"), [
-      { opacity: 0, transform: "rotate(0deg)" },
-      { opacity: 1, transform: "rotate(200deg)", offset: 0.4 },
-      { opacity: 0.55, transform: "rotate(560deg)" }
-    ], { duration: 2400, delay: 700, easing: "cubic-bezier(.3,.6,.4,1)" });
-    pulso(A5, $2, 1250, 760);
-    A5(texto, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 1300, easing: "linear" });
-    $$(".ab-marca text").forEach((t, i) => {
-      A5(
-        t,
-        [{ strokeDashoffset: 420, fillOpacity: 0 }, { strokeDashoffset: 0, fillOpacity: 0, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1 }],
-        { duration: 820, delay: 1320 + i * 160, easing: "ease-out" }
-      );
-    });
-    A5($2(".ab-ponto"), [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1)" }], { duration: 300, delay: 1600, easing: MOLA });
-    motores($2(".ab-m-t"), () => fim);
-    $2(".ab-pular").addEventListener("click", (e) => {
-      e.stopPropagation();
-      pular();
-    });
-    setTimeout(() => revela(), 2150);
-    tFim = setTimeout(() => sair(DUR.completa - 2480), 2480);
-    setTimeout(remover, DUR.completa + 600);
+    const marca = (atraso) => {
+      A5($2(".ab-texto"), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: atraso, easing: "linear" });
+      $$(".ab-marca text").forEach((t, i) => {
+        A5(
+          t,
+          [{ strokeDashoffset: 420, fillOpacity: 0 }, { strokeDashoffset: 0, fillOpacity: 0, offset: 0.7 }, { strokeDashoffset: 0, fillOpacity: 1 }],
+          { duration: 820, delay: atraso + 20 + i * 160, easing: "ease-out" }
+        );
+      });
+      A5($2(".ab-ponto"), [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1)" }], { duration: 300, delay: atraso + 300, easing: MOLA });
+      motores($2(".ab-m-t"), () => fim);
+    };
+    const codigo = () => {
+      $$(".ab-anel").forEach((n, i) => {
+        const g = ANEIS[i].giro;
+        if (g) A5(
+          n,
+          [{ transform: "rotate(0deg)" }, { transform: `rotate(${g > 0 ? 360 : -360}deg)` }],
+          { duration: Math.abs(g), iterations: Infinity, easing: "linear", fill: "none" }
+        );
+      });
+      const reator = $2(".ab-reator"), texto = $2(".ab-texto"), fitas = $2(".ab-fitas");
+      if (modo === "curta") {
+        A5(reator, [{ transform: "scale(.92)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: 260, easing: MOLA });
+        pulso(A5, $2, 60, 520);
+        A5(texto, [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 240, easing: MOLA });
+        setTimeout(() => revela(), 120);
+        tFim = setTimeout(() => sair(DUR.curta - 340), 320);
+        setTimeout(remover, DUR.curta + 400);
+        return;
+      }
+      $$(".ab-camada").forEach((c, k) => A5(c, [
+        { opacity: 0, transform: `rotate(${k ? 42 : -34}deg) scale(1.9)` },
+        { opacity: 1, transform: "none" }
+      ], { duration: 1150, delay: 30 + k * 110, easing: MOLA }));
+      A5(fitas, [{ opacity: 1 }, { opacity: 0.42 }], { duration: 700, delay: 1300, easing: "linear" });
+      $$(".ab-anel").forEach((n, i) => A5(
+        n.firstElementChild,
+        [{ opacity: 0, transform: "scale(.72)" }, { opacity: 1, transform: "scale(1)" }],
+        { duration: 620, delay: 560 + i * 70, easing: MOLA }
+      ));
+      A5($2(".ab-varre"), [
+        { opacity: 0, transform: "rotate(0deg)" },
+        { opacity: 1, transform: "rotate(200deg)", offset: 0.4 },
+        { opacity: 0.55, transform: "rotate(560deg)" }
+      ], { duration: 2400, delay: 700, easing: "cubic-bezier(.3,.6,.4,1)" });
+      pulso(A5, $2, 1250, 760);
+      marca(1300);
+      setTimeout(() => revela(), 2150);
+      tFim = setTimeout(() => sair(DUR.completa - 2480), 2480);
+      setTimeout(remover, DUR.completa + 600);
+    };
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && !fim) {
         fim = true;
         remover();
       }
     }, { once: true });
+    if (!comFilme) {
+      codigo();
+      return;
+    }
+    const { v, raio } = filmeEl(modo === "completa" ? "abertura" : "abertura_c", w, h);
+    el.classList.add("ab-com-filme");
+    $2(".ab-veu").after(v);
+    tentaFilme(v, forca ? 5e3 : FILME_ESPERA[modo]).then((ok) => {
+      if (fim) return;
+      if (!ok) {
+        v.pause();
+        v.remove();
+        el.classList.remove("ab-com-filme");
+        $2(".ab-veu").insertAdjacentHTML("afterend", codigoHtml());
+        codigo();
+        return;
+      }
+      el.style.setProperty("--ab-s", Math.round(2 * raio) + "px");
+      const resta = (s) => Math.max(0, (s - v.currentTime) * 1e3);
+      if (modo === "curta") {
+        A5($2(".ab-texto"), [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 240, easing: MOLA });
+        setTimeout(() => revela(), resta(0.62));
+        tFim = setTimeout(() => sair(360), resta(0.8));
+        setTimeout(remover, resta(1.2) + 1200);
+        return;
+      }
+      marca(Math.max(0, 1300 - v.currentTime * 1e3));
+      setTimeout(() => revela(), resta(2.7));
+      tFim = setTimeout(() => {
+        sair(380);
+        preCurta(v);
+      }, resta(2.82));
+      v.addEventListener("ended", () => sair(300), { once: true });
+      setTimeout(remover, resta(3.2) + 1400);
+    });
   }
   function pulso(A5, $2, atraso, dur) {
     A5(

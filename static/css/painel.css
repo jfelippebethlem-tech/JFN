@@ -6411,3 +6411,15 @@ html.v61 .tm-cine-leg span{color:var(--ink-2,#33476B);font-size:.75rem}
   html.v61 .tm-cine video{object-position:50% 50%}
 }
 
+/* ══ v69 · ABERTURA EM FILME (2026-11-18) ═══════════════════════════════════════════════════════════
+   O filme renderizado no Blender fica entre o véu e a marca. Fundo do vídeo = #F7FAFF → #FFFFFF; o véu
+   assume a mesma cor enquanto o filme é tentado (sem o degradê do v64 piscando por trás do pôster).
+   Tela muito larga (quadrado não cobre a largura): as laterais do vídeo dissolvem no véu. */
+#v64-abertura.ab-com-filme .ab-veu{background:#F7FAFF}
+#v64-abertura .ab-filme{position:absolute;display:block;object-fit:cover;pointer-events:none;background:#F7FAFF}
+#v64-abertura .ab-filme-borda{
+  -webkit-mask:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+          mask:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}
+/* sobre as fitas do filme, a marca e a linha dos motores ganham um véu claro (legibilidade, sem caixa visível) */
+#v64-abertura.ab-com-filme .ab-texto{padding:14px 20px 18px;margin-top:-14px;
+  background:radial-gradient(closest-side,rgba(247,250,255,.92) 0,rgba(247,250,255,.78) 55%,rgba(247,250,255,0) 100%)}
