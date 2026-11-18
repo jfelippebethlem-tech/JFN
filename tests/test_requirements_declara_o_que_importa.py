@@ -142,7 +142,10 @@ def test_quem_monta_venv_nova_consegue_RODAR_a_suite():
 
 def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
     """Se `oci` aparecer no caminho de análise, a exceção não pode cobri-lo."""
-    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")}, \
+    render = ({(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
+              | {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
+              | {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")})
+    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render, \
         "exceção nova em EXCECOES: justifique no comentário por que o pacote não é declarado"
 
 
