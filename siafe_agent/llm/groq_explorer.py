@@ -21,10 +21,13 @@ Or standalone:
     python -m siafe_agent.llm.groq_explorer
 """
 
+import logging
 import asyncio
 import json
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")  # credencial só por ambiente (.env); nunca no código
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama3-70b-8192")
@@ -167,8 +170,8 @@ async def _execute_action(page, action: dict) -> str:
         await asyncio.sleep(3)
         try:
             await page.wait_for_load_state("networkidle", timeout=8000)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("groq_explorer: espera da página excedeu o tempo — segue com o que carregou (%s)", type(e).__name__)
         return "waited"
 
     if act == "navigate":
@@ -176,8 +179,8 @@ async def _execute_action(page, action: dict) -> str:
         if url:
             try:
                 await page.goto(url, wait_until="networkidle", timeout=20000)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("groq_explorer: espera da página excedeu o tempo — segue com o que carregou (%s)", type(e).__name__)
             await asyncio.sleep(2)
         return f"navigated to {url}"
 
@@ -206,8 +209,8 @@ async def _execute_action(page, action: dict) -> str:
             await asyncio.sleep(2)
             try:
                 await page.wait_for_load_state("networkidle", timeout=8000)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("groq_explorer: espera da página excedeu o tempo — segue com o que carregou (%s)", type(e).__name__)
             await asyncio.sleep(1)
             return result
         return f"element not found: {selector} / {text}"
