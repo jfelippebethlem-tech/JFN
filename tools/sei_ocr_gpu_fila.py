@@ -40,8 +40,23 @@ def pdfs_no_frio() -> set[str]:
     return set(r.stdout.split())
 
 
-def montar(frio: set[str], aplicados: set[tuple[str, int]]) -> list[str]:
-    alvo: list[tuple[int, int, str]] = []
+def tags_risco_alto() -> set[str]:
+    """Processos com laudo de execução em risco alto (nota ≥ 7) ou sem documento de execução lido — o OCR deles vem
+    antes (18/11/2026: metade dos "sem documento" tem as peças só como PDF escaneado ainda sem texto)."""
+    import sqlite3
+    try:
+        con = sqlite3.connect(f"file:{_REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
+        rows = con.execute("SELECT numero_sei FROM lex_execucao WHERE nota_risco >= 7 "
+                           "OR execucao_comprovada IN ('nao', 'indeterminado')").fetchall()
+        con.close()
+    except sqlite3.Error:
+        return set()
+    return {str(r[0]).replace("SEI-", "").replace("/", "_") for r in rows if r[0]}
+
+
+def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[str] | None = None) -> list[str]:
+    prioritarios = prioritarios or set()
+    alvo: list[tuple[int, int, int, str]] = []
     for mp in ARQUIVO.glob("*/manifest.json"):
         tag = mp.parent.name
         try:
@@ -57,7 +72,7 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]]) -> list[str]:
                 continue
             rel = f"integra_{tag}/{i:03d}.pdf"
             if rel in frio:
-                alvo.append((PRIOR.get(d.get("tipo"), 5), 0 if sem_texto else 1, rel))
+                alvo.append((0 if tag in prioritarios else 1, PRIOR.get(d.get("tipo"), 5), 0 if sem_texto else 1, rel))
     alvo.sort()
     return [r for *_, r in alvo]
 
@@ -69,7 +84,7 @@ def main() -> int:
             if ln.strip():
                 e = json.loads(ln)
                 aplicados.add((e["tag"], int(e["i"])))
-    fila = montar(pdfs_no_frio(), aplicados)
+    fila = montar(pdfs_no_frio(), aplicados, tags_risco_alto())
     tmp = SAIDA.with_suffix(".tmp")
     tmp.write_text("\n".join(fila) + ("\n" if fila else ""), encoding="utf-8")
     tmp.replace(SAIDA)
