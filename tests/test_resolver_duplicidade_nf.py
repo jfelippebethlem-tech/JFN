@@ -575,3 +575,41 @@ def test_pares_inclui_verde_com_t07_e_poe_nunca_resolvido_na_frente():
     c.execute("INSERT INTO resolucao_duplicidade VALUES ('A','1')")
     assert [p[0] for p in R.pares_amarelos(c)] == ["B", "D", "A"]
     assert [p[0] for p in R.pares_amarelos(c, limit=1)] == ["B"]
+
+
+def test_anexo_da_ob_que_cita_a_nf_vence_o_casamento_por_valor(monkeypatch):
+    """18/11/2026 — único 🔴 da base (FERREIRAS UP, UG 154100, 12/2024) era falso: as OB 2024OB02435 e 02436 têm o
+    MESMO valor (R$ 94.999,98, serviço de valor fixo) e o resolvedor casou as duas, pelo valor, com a NF 78 (de
+    março/2025). Os anexos das próprias OB no SEI dizem NF 53 e NF 55. O documento que cita a OB manda."""
+    docs = [
+        {"titulo": "Nota Fiscal NF 78 06 apresentações", "tipo": "", "texto": "x"},
+        {"titulo": "Anexo OB dezembro 2024 NF 00000055", "tipo": "",
+         "texto": "Ordem Bancária 2024OB02436 Valor 94.999,98 Nota Fiscal NF 00000055"},
+        {"titulo": "Anexo OB dezembro 2024 NF 00000053", "tipo": "",
+         "texto": "Ordem Bancária 2024OB02435 Valor 94.999,98 Nota Fiscal NF 00000053"},
+    ]
+    nf78 = {"numero": "78", "cnpj": "48211105000116", "competencia": "03/2025", "comp_desc": False,
+            "valor": 94999.98, "liquido": 0.0, "titulo": "Nota Fiscal NF 78", "benigno": ""}
+    monkeypatch.setattr(R, "textos_do_processo", lambda t: docs)
+    monkeypatch.setattr(R, "extrair_nfs", lambda d: [nf78])
+    monkeypatch.setattr(R, "afastado_pelo_historico", lambda comp, obs: None)
+    obs = [{"numero_ob": "2024OB02435", "valor": 94999.98, "processo": "SEI-180002/001723/2024"},
+           {"numero_ob": "2024OB02436", "valor": 94999.98, "processo": "SEI-180002/001723/2024"}]
+    r = R.resolver_competencia("48211105000116", "12/2024", obs)
+    assert r["veredito"] != "CONFIRMADO", r
+    nfs = json.loads(r["nfs_json"])
+    assert {n["numero"] for n in nfs["2024OB02435"] if n["da_ob"]} == {"53"}
+    assert {n["numero"] for n in nfs["2024OB02436"] if n["da_ob"]} == {"55"}
+
+
+def test_anexos_das_duas_obs_citando_a_mesma_nf_confirma(monkeypatch):
+    """Controle positivo do teste acima: as duas OBs, no mesmo processo, com anexo citando a MESMA NF = duplicidade."""
+    docs = [{"titulo": "Anexo OB A", "tipo": "", "texto": "Ordem Bancária 2024OB00001 Nota Fiscal NF 00000053"},
+            {"titulo": "Anexo OB B", "tipo": "", "texto": "Ordem Bancária 2024OB00002 Nota Fiscal NF 53"}]
+    monkeypatch.setattr(R, "textos_do_processo", lambda t: docs)
+    monkeypatch.setattr(R, "extrair_nfs", lambda d: [])
+    monkeypatch.setattr(R, "afastado_pelo_historico", lambda comp, obs: None)
+    obs = [{"numero_ob": "2024OB00001", "valor": 10.0, "processo": "SEI-180002/001723/2024"},
+           {"numero_ob": "2024OB00002", "valor": 10.0, "processo": "SEI-180002/001723/2024"}]
+    r = R.resolver_competencia("48211105000116", "12/2024", obs)
+    assert r["veredito"] == "CONFIRMADO", r
