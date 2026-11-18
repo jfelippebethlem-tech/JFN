@@ -101,6 +101,9 @@ fontes:
   ocr_gpu:
     nome: Texto novo do OCR por IA (GPU do it-campo, Surya 2.5) chegou ao cache SEI
     sonda: {pasta: "data/sei_cache", glob: "integra_*/*.ocr_gpu.txt"}
+  ocr_reserva:
+    nome: Texto novo do OCR de reserva (RapidOCR em CPU — VM-2 com a GPU parada; it-campo em paralelo) chegou ao cache SEI
+    sonda: {pasta: "data/sei_cache", glob: "integra_*/*.ocr_reserva.txt"}
   regra_vinculo:
     nome: Correção na regra do vínculo OB↔contrato
     sonda: {git: [compliance_agent/vinculo_ob_contrato.py]}
@@ -195,7 +198,7 @@ derivados:
   sei_ocr_gpu:
     nome: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
     onde: arquivo canônico data/sei_arquivo → fichas, perícia de execução, extrator de preços
-    depende: [ocr_gpu]
+    depende: [ocr_gpu, ocr_reserva]
     comando: ["{py}", "-m", "tools.sei_ocr_gpu_integrar"]
     peso: leve
     debounce_s: 600

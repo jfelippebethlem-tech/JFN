@@ -45,6 +45,9 @@ EXCECOES = {("oci", "tools/criar_vm_oracle2.py")}
 EXCECOES |= {(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
 EXCECOES |= {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
 EXCECOES |= {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")}
+# 18/11/2026 — OCR de reserva: o motor (RapidOCR/ONNX) roda na venv própria dos nós (vm2:~/ocr-reserva/.venv,
+# it-campo:~/jfn-gpu/ocr-cpu/.venv), importado só dentro de `motor_ocr()`; a venv do JFN na VM-1 nunca lê OCR.
+EXCECOES |= {("rapidocr", "tools/sei_ocr_reserva.py")}
 
 
 def _modulos_locais() -> set[str]:
@@ -145,7 +148,8 @@ def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
     render = ({(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
               | {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
               | {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")})
-    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render, \
+    ocr_reserva = {("rapidocr", "tools/sei_ocr_reserva.py")}
+    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render | ocr_reserva, \
         "exceção nova em EXCECOES: justifique no comentário por que o pacote não é declarado"
 
 

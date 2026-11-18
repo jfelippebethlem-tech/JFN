@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — OCR de reserva na VM-2 (RapidOCR/ONNX) quando a GPU do it-campo para
+Documentation=file:/home/ubuntu/JFN-worker/tools/sei_ocr_reserva.py
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN-worker
+ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_ocr_reserva.sh
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=3600

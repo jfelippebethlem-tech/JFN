@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — OCR de reserva na VM-2: a cada 30 min mede o pulso da GPU (só lê se ela estiver parada)
+
+[Timer]
+OnCalendar=*:07,37
+Persistent=false
+
+[Install]
+WantedBy=timers.target

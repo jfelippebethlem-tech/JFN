@@ -6,6 +6,10 @@ empenho, contrato, aditivo → autorização, parecer, ata → edital → resto.
 Grava `data/sei_ocr_gpu_fila.txt` (caminhos `integra_<tag>/NNN.pdf` relativos a vm2:~/arquivo_frio/sei_cache), que o
 trabalhador do it-campo puxa quando a fila dele acaba. Nativo nunca entra (texto do próprio PDF é a verdade).
 
+RESERVA (18/11/2026, `tools/sei_ocr_reserva.py`): o que a reserva da VM-2 tem reservado ou entregue e ainda não aplicado
+fica FORA (não duplicar com a GPU); o que a reserva já aplicou volta só no FIM da fila — o Surya é mais forte e
+substitui o texto da reserva quando chegar (precedência em `tools/sei_ocr_gpu_integrar.py`).
+
     python -m tools.sei_ocr_gpu_fila
 """
 from __future__ import annotations
@@ -54,8 +58,9 @@ def tags_risco_alto() -> set[str]:
     return {str(r[0]).replace("SEI-", "").replace("/", "_") for r in rows if r[0]}
 
 
-def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[str] | None = None) -> list[str]:
-    prioritarios = prioritarios or set()
+def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[str] | None = None,
+           reservados: set[str] | None = None) -> list[str]:
+    prioritarios, reservados = prioritarios or set(), reservados or set()
     alvo: list[tuple[int, int, int, str]] = []
     for mp in ARQUIVO.glob("*/manifest.json"):
         tag = mp.parent.name
@@ -71,8 +76,9 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[st
             if not (sem_texto or tess) or (tag, i) in aplicados:
                 continue
             rel = f"integra_{tag}/{i:03d}.pdf"
-            if rel in frio:
-                alvo.append((0 if tag in prioritarios else 1, PRIOR.get(d.get("tipo"), 5), 0 if sem_texto else 1, rel))
+            if rel in frio and rel not in reservados:
+                classe = 2 if str(d.get("ocr_motor", "")).startswith("reserva") else 0 if tag in prioritarios else 1
+                alvo.append((classe, PRIOR.get(d.get("tipo"), 5), 0 if sem_texto else 1, rel))
     alvo.sort()
     return [r for *_, r in alvo]
 
@@ -83,8 +89,10 @@ def main() -> int:
         for ln in LEDGER.read_text(encoding="utf-8").splitlines():
             if ln.strip():
                 e = json.loads(ln)
-                aplicados.add((e["tag"], int(e["i"])))
-    fila = montar(pdfs_no_frio(), aplicados, tags_risco_alto())
+                if e.get("motor", "surya") != "reserva":       # o da reserva volta no fim (o Surya é mais forte)
+                    aplicados.add((e["tag"], int(e["i"])))
+    from tools.sei_ocr_reserva import reservados_pela_reserva
+    fila = montar(pdfs_no_frio(), aplicados, tags_risco_alto(), reservados_pela_reserva())
     tmp = SAIDA.with_suffix(".tmp")
     tmp.write_text("\n".join(fila) + ("\n" if fila else ""), encoding="utf-8")
     tmp.replace(SAIDA)

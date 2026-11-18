@@ -11,6 +11,13 @@ documentos do acervo (60%) foram lidos pelo Tesseract. O trabalhador do it-campo
   · texto da GPU vazio                       → não aplica.
 Idempotente (registro em `data/sei_ocr_gpu_aplicado.jsonl`). Depois avisa a propagação (`sei_arquivado`).
 
+RESERVA (18/11/2026, `tools/sei_ocr_reserva.py`): quando a GPU para, a VM-2 lê com RapidOCR (PP-OCRv5 em ONNX) e entrega
+`NNN.ocr_reserva.txt` (+ `.ocr_reserva.json`). PRECEDÊNCIA por motor — só entra texto de motor MAIS FORTE que o atual:
+  nativo (nunca tocado)  >  Surya/GPU (3)  >  reserva (2)  >  Tesseract (1)  >  sem texto (0)
+Reserva substitui Tesseract e preenche sem-texto; Surya substitui reserva quando chegar (o texto da reserva fica em
+`.reserva.txt`, o do Tesseract segue em `.tesseract.txt`); reserva que chega DEPOIS do Surya não entra (`mantido_superior`).
+O registro anota o motor (`surya` | `reserva`).
+
     python -m tools.sei_ocr_gpu_integrar            # aplica o que chegou
 """
 from __future__ import annotations
@@ -51,49 +58,70 @@ def _aplicados() -> set[str]:
     return {json.loads(ln)["arq"] for ln in LEDGER.read_text(encoding="utf-8").splitlines() if ln.strip()}
 
 
+# sufixo da entrega → (motor, posto). Surya antes da reserva na mesma rodada: a reserva que chegar junto não entra.
+FONTES = ((".ocr_gpu", "surya", 3), (".ocr_reserva", "reserva", 2))
+MOTOR_PADRAO = {"surya": "surya-ocr-2.5", "reserva": "reserva:rapidocr"}
+
+
+def _posto(d: dict) -> int:
+    """Força do texto ATUAL do documento: 4 nativo · 3 Surya · 2 reserva · 1 Tesseract · 0 sem texto."""
+    if _chars(d) >= MIN_CHARS and not d.get("ocr"):    # nativo: o texto do próprio PDF é a verdade
+        return 4
+    if _chars(d) < MIN_CHARS or not d.get("texto"):
+        return 0
+    motor = str(d.get("ocr_motor") or "")
+    return 3 if motor.startswith("surya") else 2 if motor.startswith("reserva") else 1
+
+
 def integrar() -> dict:
     res = {"preenchidos": 0, "substituidos": 0, "nativos_mantidos": 0, "sem_manifesto": 0, "fora_do_manifesto": 0,
            "processos": 0}
-    corrompidos = 0
+    corrompidos = mantidos = 0
     feitos = _aplicados()
     novos: list[dict] = []
     for pasta in sorted(CACHE.glob("integra_*")):
-        gpus = sorted(p for p in pasta.glob("*.ocr_gpu.txt") if str(p) not in feitos)
-        if not gpus:
+        entregas = [(g, suf, motor, posto) for suf, motor, posto in FONTES
+                    for g in sorted(pasta.glob(f"*{suf}.txt")) if str(g) not in feitos]
+        if not entregas:
             continue
+        entregas.sort(key=lambda e: (int(e[0].name.split(".")[0]), -e[3]))   # por documento, o motor mais forte primeiro
         tag = pasta.name[len("integra_"):]
         mpath = ARQUIVO / tag / "manifest.json"
         if not mpath.exists():
-            res["sem_manifesto"] += len(gpus)
+            res["sem_manifesto"] += len(entregas)
             continue
         man = json.loads(mpath.read_text(encoding="utf-8"))
         por_i = {int(d["i"]): d for d in man.get("docs") or [] if str(d.get("i", "")).isdigit()}
         mudou = False
-        for g in gpus:
+        for g, suf, motor, posto in entregas:
             i = int(g.name.split(".")[0])
-            meta = json.loads(g.with_suffix("").with_suffix(".ocr_gpu.json").read_text()) \
-                if g.with_suffix("").with_suffix(".ocr_gpu.json").exists() else {}
+            gmeta = g.with_name(g.name[:-len(".txt")] + ".json")
+            meta = json.loads(gmeta.read_text()) if gmeta.exists() else {}
             texto = _corpo(g.read_text(encoding="utf-8"))
             d = por_i.get(i)
-            reg = {"arq": str(g), "tag": tag, "i": i, "em": time.strftime("%F %T")}
+            reg = {"arq": str(g), "tag": tag, "i": i, "motor": motor, "em": time.strftime("%F %T")}
             if d is None:
                 res["fora_do_manifesto"] += 1
                 novos.append({**reg, "acao": "fora_do_manifesto"})
                 continue
-            nativo = _chars(d) >= MIN_CHARS and not d.get("ocr")
-            if nativo:
+            atual = _posto(d)
+            if atual == 4:
                 res["nativos_mantidos"] += 1
                 novos.append({**reg, "acao": "nativo_mantido"})
                 continue
-            if "\ufffd" in texto or len(texto) < MIN_CHARS:  # acento cortado (U+FFFD) ou GPU sem texto: não entra
+            if "\ufffd" in texto or len(texto) < MIN_CHARS:  # acento cortado (U+FFFD) ou motor sem texto: não entra
                 corrompidos += int("\ufffd" in texto)   # apaga a entrega e NÃO registra: a releitura pode chegar depois
                 g.unlink(missing_ok=True)
-                g.with_suffix("").with_suffix(".ocr_gpu.json").unlink(missing_ok=True)
+                gmeta.unlink(missing_ok=True)
+                continue
+            if atual >= posto:                          # já tem texto de motor igual ou mais forte (Surya > reserva)
+                mantidos += 1
+                novos.append({**reg, "acao": "mantido_superior", "motor_atual": str(d.get("ocr_motor") or "")})
                 continue
             cab = f"[{d.get('titulo', '')}] (fase: {d.get('fase', '')} · tipo: {d.get('tipo', '')})\n\n"
-            if _chars(d) >= MIN_CHARS and d.get("texto"):           # Tesseract → guarda o antigo e substitui
+            if atual > 0:                               # Tesseract ou reserva → guarda o antigo e substitui
                 antigo = ARQUIVO / tag / d["texto"]
-                guarda = antigo.with_suffix(".tesseract.txt")
+                guarda = antigo.with_suffix(".tesseract.txt" if atual == 1 else ".reserva.txt")
                 if antigo.exists() and not guarda.exists():
                     guarda.write_text(antigo.read_text(encoding="utf-8"), encoding="utf-8")
                 d["ocr_anterior"] = str(guarda.relative_to(ARQUIVO / tag))
@@ -103,12 +131,12 @@ def integrar() -> dict:
             else:                                                      # sem texto → preenche
                 destino = ARQUIVO / tag / "texto" / f"{i:03d}_{_slug(d.get('titulo', ''))}.txt"
                 d["texto"] = str(destino.relative_to(ARQUIVO / tag))
-                d["texto_recuperado_ocr_gpu"] = True
+                d[f"texto_recuperado_ocr_{'gpu' if motor == 'surya' else 'reserva'}"] = True
                 res["preenchidos"] += 1
                 acao = "preenchido"
             destino.parent.mkdir(parents=True, exist_ok=True)
             destino.write_text(cab + texto, encoding="utf-8")
-            d.update(chars=len(texto), ocr=True, ocr_motor=str(meta.get("motor") or "surya-ocr-2.5"),
+            d.update(chars=len(texto), ocr=True, ocr_motor=str(meta.get("motor") or MOTOR_PADRAO[motor]),
                      ocr_paginas=meta.get("paginas"), ocr_cortado=bool(meta.get("cortado")))
             mudou = True
             novos.append({**reg, "acao": acao})
@@ -119,6 +147,8 @@ def integrar() -> dict:
             res["processos"] += 1
     if corrompidos:
         res["texto_corrompido"] = corrompidos
+    if mantidos:
+        res["mantido_superior"] = mantidos
     if novos:
         with LEDGER.open("a", encoding="utf-8") as f:
             f.writelines(json.dumps(n, ensure_ascii=False) + "\n" for n in novos)
@@ -134,7 +164,7 @@ def main() -> int:
             pc = propagacao.conectar()
             try:
                 propagacao.emitir(pc, propagacao.carregar(), "sei_arquivado",
-                                  f"OCR por IA (GPU): {res['preenchidos']} documento(s) preenchido(s) e "
+                                  f"OCR por IA (GPU/reserva): {res['preenchidos']} documento(s) preenchido(s) e "
                                   f"{res['substituidos']} relido(s) em {res['processos']} processo(s)")
             finally:
                 pc.close()

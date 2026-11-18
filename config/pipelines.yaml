@@ -52,6 +52,19 @@ pipelines:
     nota: backup semanal dom 03:50 (cron)
 
   # ---- PIPELINE SEI (downstream do cron */30 sweep_sei.sh — vítimas da starvation de 07-07) ----
+  - nome: sei-ocr-reserva
+    arquivo: data/sei_ocr_reserva.log
+    max_stale_h: 3
+    grupo: sei
+    pausa: data/.pause_ocr_reserva
+    nota: >-
+      OCR de reserva (tools/sei_ocr_reserva.py): cada rodada da VM-2 (timer :07/:37) e do it-campo (cron da VM-1)
+      pede reserva à VM-1 e grava uma linha aqui — mesmo quando a GPU está ativa e nada é lido. Parado = timer da VM-2
+      morto, ssh VM-2→VM-1 caído ou o cron do it-campo sem disparar.
+    acao_humana: >-
+      VM-2: `systemctl --user status jfn-ocr-reserva-vm2.timer` e ~/JFN-worker/data/vm2_ocr_reserva.log;
+      VM-1: data/itcampo_ocr_cpu.log
+
   - nome: sei-depurar
     arquivo: data/sei_depurar.log
     max_stale_h: 12
