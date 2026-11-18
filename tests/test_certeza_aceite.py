@@ -62,6 +62,7 @@ def test_f1_controle_negativo_nota_atualizada_historico_e_numero_alheio(cz, tmp_
     texto = ("ISS da AGILE: R$ 2.437.189,45 em 38 processos (supera a 1ª medição de 35 e R$ 2.270.009,39).\n"
              "Histórico: a 1ª medição do ISS da AGILE deu R$ 2.270.009,39 em 35 processos. <!--fato-historico-->\n"
              "Outro assunto: o contrato tem 35 postos de vigilância.\n"                       # 35 sem AGILE + ISS
+             "A comissão de emissão da AGILE analisou 35 processos de outro tema.\n"         # "ISS" dentro de palavra não é o termo
              "A AGILE recebeu R$ 12.270.009,39 no exercício; ISS à parte.\n")                 # outro número, não o superado
     assert _varrer(cz, tmp_path, texto.replace("\n", "\n\n"))["divergencias"] == []
 

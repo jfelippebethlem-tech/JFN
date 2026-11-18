@@ -127,6 +127,11 @@ def _rx_num(v: float, unidade: str) -> re.Pattern:
     return re.compile(r"(?<![\d.,/])" + re.escape(s) + r"(?![\d/]|[.,]\d)")
 
 
+def _tem(texto_maiusculo: str, palavras: list[str]) -> bool:
+    """Alguma das palavras aparece em INÍCIO de palavra ("ISS" casa "ISSQN", não "COMISSÃO")."""
+    return any(re.search(r"(?<![A-Z0-9])" + re.escape(p), texto_maiusculo) for p in palavras if p)
+
+
 def mencoes_superadas(texto: str, alvos_: list[dict]) -> list[dict]:
     """Menção livre a valor superado. A unidade de contexto é o PARÁGRAFO (linhas seguidas sem linha em branco —
     nota com quebra dura de linha parte a frase no meio; medido na nota da AGILE em 18/11/2026: "Em 35\nprocessos").
@@ -159,7 +164,7 @@ def mencoes_superadas(texto: str, alvos_: list[dict]) -> list[dict]:
                         continue
                 else:
                     up = _sem_acento(par)
-                    if not (any(x in up for x in a["apelidos"]) and any(t in up for t in a["termos"])):
+                    if not (_tem(up, a["apelidos"]) and _tem(up, a["termos"])):
                         continue
                 out.append({"tipo": "mencao_a_valor_superado", "fato_id": a["fato_id"],
                             "linha": texto.count("\n", 0, m.start() + achado.start()) + 1,
