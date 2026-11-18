@@ -28,13 +28,17 @@ _DDL = """CREATE TABLE IF NOT EXISTS pericia_fornecedor (
   grau TEXT, score INTEGER, n_confirmados INTEGER, n_indicios INTEGER, n_indisponivel INTEGER,
   resumo TEXT, achados_json TEXT, atualizado_em TEXT,
   PRIMARY KEY (cnpj, ug))"""
+# Índice que COBRE as colunas do ranking de /api/pericias: a tabela tem 30 mil linhas mas 279 MB de achados_json, e a
+# varredura com o disco frio lia tudo (16 s depois de um reinício, 18/11/2026). Com o índice a consulta não toca o JSON.
+_IDX = ("CREATE INDEX IF NOT EXISTS ix_pericia_ranking ON pericia_fornecedor "
+        "(cnpj, grau, favorecido, score, total_pago, n_obs, n_confirmados, n_indicios, ug)")
 
 
 def _conn():
     # TIMEOUT NA ESCRITA (11/11/2026): com o padrão do sqlite (5 s) o sweep perdia par para qualquer outro
     # escritor — 5.377 "database is locked" no log do cron e 28.414 numa passada concorrente. A casa espera 120 s.
     c = sqlite3.connect(DB, timeout=120); c.row_factory = sqlite3.Row
-    c.execute(_DDL); return c
+    c.execute(_DDL); c.execute(_IDX); return c
 
 
 def _obs_de(c, cnpj: str, ug: str) -> list[dict]:

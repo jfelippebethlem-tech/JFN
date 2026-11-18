@@ -2341,6 +2341,40 @@ detectores:
       excluida_por: compliance_agent/lex_conflito.py:achado_lista_suja
     dominio: null
     fp_medida: null
+  ligacoes_conluio:
+    modulo: compliance_agent/ligacoes_conluio.py
+    simbolo: levantar
+    afirma: Indício de vínculo entre fornecedores da galáxia (mesmo contato, mesmo sócio grafado diferente, ou concorrentes do mesmo certame com vínculo) — ligação a verificar, nunca prova
+    fonte:
+    - estabelecimentos
+    - empresas
+    - socios_fornecedor
+    - socios_receita
+    - pncp_resultado
+    - proposta_item
+    - tcerj_licitante
+    grava: data/cache/galaxia.json (via compliance_agent.galaxia.gerar, na ronda)
+    consome:
+    - rotas/acervo.py /api/galaxia
+    - rotas/acervo.py /api/galaxia/no
+    manchete: false
+    controle_positivo: tests/test_ligacoes_conluio.py::test_concorrentes_ligados_positivo_e_negativos
+    controle_negativo: tests/test_ligacoes_conluio.py::test_contato_positivo_e_negativos
+    hipoteses_inocentes:
+    - hipotese: matriz e filial da mesma raiz
+      excluida_por: compliance_agent/ligacoes_conluio.py:contatos
+    - hipotese: telefone de central ou e-mail de escritório de contabilidade (fan-out acima do teto medido)
+      excluida_por: compliance_agent/ligacoes_conluio.py:contatos
+    - hipotese: homônimo (mesmo nome, CPF mascarado diferente) ou colisão de dígitos com nome distante
+      excluida_por: compliance_agent/ligacoes_conluio.py:socios_variantes
+    - hipotese: pesquisa de preço não é disputa
+      excluida_por: compliance_agent/ligacoes_conluio.py:participacoes
+    - hipotese: razão social repetida não identifica o licitante do TCE-RJ
+      excluida_por: compliance_agent/ligacoes_conluio.py:participacoes
+    - hipotese: grupo econômico lícito (marcado, não absolvido — disputar fingindo concorrência é o que se verifica)
+      excluida_por: null
+    dominio: fornecedores que já são nós da galáxia (4.627 CNPJs em 18/11/2026), raízes distintas; certames do PNCP, propostas nos autos SEI e licitantes TCE-RJ resolvidos por razão social única
+    fp_medida: null
   ninho_sala:
     modulo: compliance_agent/ninho_sala.py
     simbolo: ninhos_por_sala
