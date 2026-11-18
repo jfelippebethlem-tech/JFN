@@ -472,12 +472,44 @@ SQL_JA_AVALIADO = ("SELECT numero_sei FROM lex_execucao WHERE (execucao_comprova
                    "OR em >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-7 days')")
 
 
+_ARQUIVO_SEI = Path(__file__).resolve().parents[1] / "data" / "sei_arquivo"
+
+
+def _recapturados(con: sqlite3.Connection) -> list[str]:
+    """Laudos dados ANTES da última captura do processo (manifesto do arquivo SEI mais novo que `em`): a perícia
+    vê documentos que o laudo não viu. 18/11/2026: recaptura de 79 processos de risco alto sem documento de
+    execução — 52 ganharam atesto/medição/NF, e nada refazia o laudo (SQL_JA_AVALIADO os excluía para sempre).
+    Fora: laudo conferido à mão na fonte primária (sessão/agente Claude Code — a cascata não sobrescreve) e
+    processo já revisto sem documento DEPOIS dessa captura (senão volta a cada rodada). Só o que pesa: nota ≥ 7 ou
+    execução não comprovada/indeterminada (962 laudos tinham manifesto mais novo; todos na frente parariam a cobertura)."""
+    rev = _revistos_sem_doc()
+    out = []
+    try:
+        rows = con.execute("SELECT numero_sei, COALESCE(em,'') FROM lex_execucao WHERE "
+                              "(nota_risco >= 7 OR execucao_comprovada IN ('nao', 'indeterminado', ?)) AND "
+                              "COALESCE(modelo,'') NOT LIKE '%sessão Claude Code%' AND "
+                              "COALESCE(modelo,'') NOT LIKE '%agente Claude Code%'", (SEM_DOC_EXECUCAO,)).fetchall()
+    except sqlite3.OperationalError:
+        return []                                      # base sem modelo/em (fixture antiga): nada a reavaliar
+    for ns, em in rows:
+        man = _ARQUIVO_SEI / str(ns).replace("SEI-", "").replace("/", "_") / "manifest.json"
+        try:
+            cap = datetime.fromtimestamp(man.stat().st_mtime).strftime("%Y-%m-%dT%H:%M:%S")
+        except OSError:
+            continue
+        if cap > str(em)[:19] and str(rev.get(ns, ""))[:19] < cap:
+            out.append(ns)
+    return out
+
+
 def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     ja = set()
     if not reavaliar:
         ja = {r[0] for r in con.execute(SQL_JA_AVALIADO)}
     # mesmo ritmo do slot (top por rodada): só a ORDEM muda — veredito errado vale mais que cobertura nova
     primeiro = set(_contestados_por_siafe(con)[:top]) if not reavaliar else set()
+    if not reavaliar:
+        primeiro |= set(_recapturados(con)[:top])
     ja -= primeiro
     rows = con.execute(
         "SELECT numero_sei, objeto, valores, documentos, red_flags FROM sei_ficha "
