@@ -32,6 +32,8 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 _REPO = Path(__file__).resolve().parents[1]
 _CNAE_CONCESSIONARIA = ("35", "36", "61")
 _NAT_OS = ("3999", "3069")
@@ -39,7 +41,7 @@ _NAT_OS = ("3999", "3069")
 _SQL = ("SELECT numero_ob, ug_emitente, credor, nome_credor, valor, data_emissao, competencia, processo, "
         "(CAST(substr(competencia,4,4) AS INT)*12 + CAST(substr(competencia,1,2) AS INT)) - "
         "(CAST(substr(data_emissao,7,4) AS INT)*12 + CAST(substr(data_emissao,4,2) AS INT)) AS meses "
-        "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND valor>0 AND length(credor)=14 "
+        "FROM ob_orcamentaria_siafe WHERE {paga} AND valor>0 AND length(credor)=14 "
         "AND competencia GLOB '[0-9][0-9]/[0-9][0-9][0-9][0-9]' "
         "AND data_emissao GLOB '[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9]' AND meses > 0")
 
@@ -51,7 +53,7 @@ def _forca(meses: int) -> str:
 def pagamento_competencia_futura(db_path=None, estab_path=None) -> dict:
     con = sqlite3.connect(f"file:{db_path or _REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
     try:
-        obs = con.execute(_SQL).fetchall()
+        obs = con.execute(_SQL.replace("{paga}", _ob_paga(con))).fetchall()   # sem a devolvida ('Erro no Pagamento')
     finally:
         con.close()
     est = sqlite3.connect(f"file:{estab_path or _REPO / 'data' / 'receita_estab.db'}?mode=ro", uri=True, timeout=30)

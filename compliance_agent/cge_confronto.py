@@ -28,6 +28,7 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.rotina_base import DATA, RAIZ, agora_iso, executar, gravar_json, ler_json
 
 NOME = "cge_confronto"
@@ -136,7 +137,7 @@ def coletar(con, con_ach, arquivo: Path, chaves: set[str]) -> dict:
     f["caso"] = caso
     ob: dict | None = defaultdict(lambda: [0, 0.0])
     try:
-        for proc, v in con.execute("SELECT processo, valor FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+        for proc, v in con.execute(f"SELECT processo, valor FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
                                    "AND processo IS NOT NULL AND processo<>''"):
             k = chave(proc)
             if k in chaves:

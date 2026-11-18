@@ -19,6 +19,8 @@ import sqlite3
 
 import re
 
+from compliance_agent.cruzamentos_intel import _ob_paga
+
 # os SEIS → padrões de unidade no TCE-RJ (uma família pode ter várias unidades)
 ORGAOS_ESTADO = {
     "SAUDE":    ("FSERJ", "FES ", "FUNDO ESTADUAL DE SAUDE", "FUNDO ESTADUAL DE SAÚDE",
@@ -83,8 +85,9 @@ def _pagamentos_por_processo(con, processo: str) -> dict:
     if not processo or not _tem_tabela(con, "ob_orcamentaria_siafe"):
         return {}
     r = con.execute(
-        # só OB CONTABILIZADA é pagamento — anulada/excluída inflava o "pago" do contrato (24/09/2026)
-        "select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=? and status='Contabilizado'",
+        # só OB CONTABILIZADA é pagamento — anulada/excluída inflava o "pago" do contrato (24/09/2026);
+        # nem a devolvida pelo banco ('Erro no Pagamento'), que segue Contabilizada (18/11/2026)
+        f"select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=? and {_ob_paga(con)}",
         (processo,)).fetchone()
     return {"pago": r[0], "empenhado": None, "liquidado": None} if r and r[0] else {}
 

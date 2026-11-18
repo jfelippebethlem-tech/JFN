@@ -46,6 +46,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from compliance_agent import pericia_contabil as P
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.llm import verificacao as V
 
 logger = logging.getLogger(__name__)
@@ -170,7 +171,7 @@ def pares_candidatos(con, por_cred: dict) -> dict[tuple, list]:
     vistos = set()
     for num, ex, ug, dt, proc, cred, val in con.execute(
             "SELECT numero_ob, exercicio, ug_emitente, data_emissao, processo, credor, valor "
-            "FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+            f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)}"):
         c = P._digitos(cred)
         if c not in por_cred or not str(num or "").strip():
             continue
