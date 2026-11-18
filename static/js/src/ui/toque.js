@@ -55,6 +55,8 @@ function _preparar(t) {
         const tx = _txt(td), palavra = tx.split(' ').reduce((a, b) => b.length > a.length ? b : a, '');
         /* campo longo, ou com "palavra" comprida (nº de OB, slug, nome de modelo), ocupa a largura toda —
            em meia coluna (~150 px) ele quebraria na letra */
+        /* valor (R$, número, %) não quebra no meio: "2.282.941.698,\n78" lê como dois números */
+        td.classList.toggle('tt-num', tx.length > 0 && tx.length <= 24 && /^[R$\s\d.,%+\-−–—]+$/.test(tx) && /\d/.test(tx));
         if (tx.length > 34 || palavra.length > 14 || td.querySelector('table,ul,ol,details')) td.classList.add('tt-larga');
         col += td.colSpan || 1;
       }

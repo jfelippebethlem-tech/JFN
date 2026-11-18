@@ -1643,6 +1643,7 @@
           if (r && td.tagName === "TD") td.dataset.rotulo = r;
           else delete td.dataset.rotulo;
           const tx = _txt(td), palavra = tx.split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
+          td.classList.toggle("tt-num", tx.length > 0 && tx.length <= 24 && /^[R$\s\d.,%+\-−–—]+$/.test(tx) && /\d/.test(tx));
           if (tx.length > 34 || palavra.length > 14 || td.querySelector("table,ul,ol,details")) td.classList.add("tt-larga");
           col += td.colSpan || 1;
         }

@@ -6389,3 +6389,8 @@ html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-1.4%,-.4
   :is(#view,#sheet) .tt-cartao .clk.tt-principal::after{content:"";position:absolute;inset:0;z-index:0}
   :is(#view,#sheet) .tt-cartao .tt-sec{position:relative;z-index:1;min-height:44px;min-width:44px;box-sizing:border-box}
 }
+
+/* ── valor não quebra no meio (par do `tt-num` do toque.js): vale com ou sem cartão, só no estreito ────── */
+@media (max-width:640px){
+  :is(#view,#sheet) table.tt td.tt-num{white-space:nowrap !important;overflow-wrap:normal !important}
+}
