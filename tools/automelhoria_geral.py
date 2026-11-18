@@ -484,12 +484,64 @@ def _conferencias_fora_do_ledger(con, db: Path, ledger) -> int:
         ro.close()
 
 
+def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> list[dict]:
+    """Certeza (docs/ARQUITETURA-DE-CERTEZA.md): número divergente entre registro de fatos, vault, documentos e
+    cérebro; violação de contrato de dados; nível de prova que regrediu; escrita recusada pelo portão; defeito grave
+    do grafo de propagação. Lê a fotografia do último ciclo (data/certeza/estado.json) — não recalcula nada.
+    Pasta inexistente = o ciclo nunca rodou nesta máquina (nada a medir); fotografia velha ou ilegível É problema."""
+    pasta = pasta or DATA / "certeza"
+    if not pasta.exists():
+        return []
+    agora = agora or time.time()
+    est = json.loads((pasta / "estado.json").read_text(encoding="utf-8"))      # ausente/ilegível → `sensor:certeza`
+    out = []
+    if agora - est["gerado_em"] > 26 * 3600:
+        out.append(_p("certeza", "parada", f"painel de certeza sem ciclo há {(agora - est['gerado_em']) / 3600:.0f} h",
+                      acao_humana="ver o derivado `certeza` em Sistema › Propagação e data/propagacao_certeza.log"))
+    por_tipo: dict[str, list] = {}
+    for d in est.get("divergencias", []):
+        por_tipo.setdefault(d["tipo"], []).append(d)
+    for tipo, ds in sorted(por_tipo.items()):
+        d0 = ds[0]
+        out.append(_p("certeza", f"divergencia:{tipo}", f"{len(ds)} número(s) divergente(s) do registro de fatos ({tipo.replace('_', ' ')})",
+                      "; ".join(f"{d['superficie']}: {d['local']} diz {d['encontrado']}, vigente {d['esperado']}" for d in ds[:3]),
+                      acao_humana=f"corrigir o texto e citar o fato pelo id (`python -m compliance_agent.certeza fato {d0['fato_id']}`)"))
+    for v in (est.get("contratos") or {}).get("violacoes", []):
+        out.append(_p("certeza", f"contrato:{v['contrato']}:{v['regra'].split(' ')[0]}:{v['detalhe'][:40]}",
+                      f"contrato de dados violado em {v['contrato']}: {v['detalhe']} ({v.get('n')} linha(s))",
+                      "; ".join(map(str, v.get("exemplos", [])[:3])),
+                      acao_humana="valor sem faixa plausível/proveniência: achar quem gravou (data/certeza/relatorio.md §3)"))
+    reg = sum(f.get("regressoes_abertas", 0) for f in ((est.get("contratos") or {}).get("fotografia") or {}).values())
+    if reg:
+        out.append(_p("certeza", "regressao_de_prova", f"{reg} linha(s) de achado regrediram de nível de prova",
+                      acao_humana="o conteúdo anterior está em data/certeza/certeza.db (tabela regressao): reaplicar depois de conferir"))
+    r = est.get("resumo", {})
+    if r.get("recusas_24h"):
+        out.append(_p("certeza", "recusas", f"{r['recusas_24h']} escrita(s) de fato recusada(s) pelo portão em 24 h",
+                      acao_humana="ler data/certeza/certeza.db (tabela recusa): produtor que tentou regredir prova ou gravar sem proveniência"))
+    if r.get("risco_alto_verificado_sem_prova_primaria"):
+        out.append(_p("certeza", "verificado_sem_prova", f"{r['risco_alto_verificado_sem_prova_primaria']} laudo(s) de risco alto "
+                      "saem VERIFICADO sem prova primária", acao_humana="conferir compliance_agent/correlacao_sei.estado_do_laudo"))
+    erros = ((est.get("ciclo") or {}).get("extracao") or {}).get("erros") or []
+    if erros:
+        out.append(_p("certeza", "extracao", f"{len(erros)} bloco(s) de fato sem extração (fonte ausente ou ilegível)",
+                      "; ".join(f"{e['no']}: {e['erro']}" for e in erros[:3]), acao_humana="ver o derivado que publica o fato"))
+    graves = ("erro_de_mapa", "fonte_sem_sonda_nem_emissor", "sonda_com_erro", "derivado_falhando", "derivado_atrasado",
+              "externo_sem_agendamento", "externo_atrasado", "externo_sem_drenar")
+    for k in graves:
+        itens = ((est.get("grafo") or {}).get("achados") or {}).get(k) or []
+        if itens:
+            out.append(_p("certeza", f"grafo:{k}", f"grafo de propagação: {k.replace('_', ' ')} ({len(itens)})",
+                          "; ".join(map(str, itens[:3])), acao_humana="config/propagacao.yaml — ver data/certeza/relatorio.md §4"))
+    return out
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
             "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
             "qualidade": sensor_qualidade,
-            "autoaprimoramento": sensor_autoaprimoramento}
+            "autoaprimoramento": sensor_autoaprimoramento, "certeza": sensor_certeza}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:

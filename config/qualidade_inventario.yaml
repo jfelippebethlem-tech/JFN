@@ -721,6 +721,7 @@ rotas:
   "/api/siafe/status": {classe: operacional, afirma: "Estado da coleta SIAFE (lockfile: se há coleta rodando e qual).", fonte: "compliance_agent.siafe_runner"}
   "/api/siafe/sweep": {classe: operacional, afirma: "SWEEP completo do SIAFE por UG (BACKFILL; fura o teto de 1000).", fonte: "A DECLARAR"}
   "/api/siafe/truncamento": {classe: afirma, afirma: "A fonte CANÔNICA de pagamento está truncada — e nada avisava.", fonte: "compliance_agent.reporting.cobertura_siafe"}
+  "/api/sistema/certeza": {classe: afirma, afirma: "Painel de certeza: cada fato registrado (id) com valor, estado, nível de prova, proveniência, frescor e divergências abertas; contratos de dados e auditoria do grafo de dependências.", fonte: "data/certeza/estado.json (compliance_agent/certeza/orquestrador.py) — registro data/certeza/certeza.db + config/propagacao.yaml"}
   "/api/sistema/propagacao": {classe: operacional, afirma: "Estado da propagação automática: derivados sujos, recálculos, falhas, fontes e fila do segundo cérebro (só leitura).", fonte: "data/propagacao.db + config/propagacao.yaml (compliance_agent/propagacao.py)"}
   "/api/sistema/atividade": {classe: operacional, afirma: "Atividade de TODA a máquina numa resposta: sweeps vivos (e quando mexeram), fila SEI lida × restante, arquivo compacto (nº e bytes), pipelines (SLO) e aprendiza…", fonte: "compliance.db, data/pipelines_slo_estado.json"}
   "/api/skill": {classe: operacional, afirma: "Detalhe de uma capacidade (rota, args, quando usar, status) — p/ o /skill <id>.", fonte: "compliance_agent.skilltree"}
