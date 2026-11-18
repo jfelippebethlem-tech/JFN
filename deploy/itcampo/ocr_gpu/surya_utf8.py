@@ -55,7 +55,9 @@ def texto_dos_ids(ids: list[int]) -> str:
             buf.clear()
             out.append(t)
         else:
-            buf.extend(_DEC.get(ch, ord("?")) for ch in t)
+            for ch in t:                       # caractere fora do mapa de bytes = já é texto: entra em UTF-8 como está
+                b = _DEC.get(ch)
+                buf.extend([b] if b is not None else ch.encode("utf-8"))
     out.append(utf8_com_recuo(bytes(buf)))
     return "".join(out)
 

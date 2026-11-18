@@ -18,3 +18,12 @@ def test_byte_latin1_solto_vira_o_caractere_e_utf8_valido_passa_igual():
 def test_mapa_de_bytes_do_bpe():
     m = U._bytes_to_unicode()
     assert len(m) == 256 and m[0xE7] == "ç" and m[0x20] == "Ġ" and U._DEC["ç"] == 0xE7
+
+
+def test_caractere_fora_do_mapa_nao_vira_interrogacao(monkeypatch):
+    class TK:
+        added_tokens_decoder = {}
+        def convert_ids_to_tokens(self, ids):
+            return ["N.", "º", " ", "1458"]
+    monkeypatch.setattr(U, "_TK", TK())
+    assert U.texto_dos_ids([1, 2, 3, 4]) == "N.º 1458"
