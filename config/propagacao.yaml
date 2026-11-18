@@ -98,6 +98,9 @@ fontes:
   emendas_base:
     nome: Emenda nova na base
     sonda: {sql: "SELECT MAX(rowid) FROM emendas", unidade: "emenda(s)"}
+  ocr_gpu:
+    nome: Texto novo do OCR por IA (GPU do it-campo, Surya 2.5) chegou ao cache SEI
+    sonda: {pasta: "data/sei_cache", glob: "integra_*/*.ocr_gpu.txt"}
   regra_vinculo:
     nome: Correção na regra do vínculo OB↔contrato
     sonda: {git: [compliance_agent/vinculo_ob_contrato.py]}
@@ -186,6 +189,17 @@ derivados:
     timeout_s: 5400
     prioridade: 6
     antes: "nenhum — rodava à mão; alertas parados desde 10/08/2026 (pente fino de 18/11)"
+  sei_ocr_gpu:
+    nome: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
+    onde: arquivo canônico data/sei_arquivo → fichas, perícia de execução, extrator de preços
+    depende: [ocr_gpu]
+    comando: ["{py}", "-m", "tools.sei_ocr_gpu_integrar"]
+    peso: leve
+    debounce_s: 600
+    intervalo_min_s: 900
+    timeout_s: 1800
+    prioridade: 4
+    antes: "nenhum — criado em 18/11/2026 com o nó de GPU do it-campo"
   vinculo_fila:
     nome: Fila de captura do vínculo OB↔contrato (fecha-contrato na frente, depois por valor)
     onde: estrato VINCULO_OB da fila do sweep SEI (VM-1, VM-2, it-campo)
