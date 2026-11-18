@@ -70,6 +70,13 @@ _SYS = (
     "localizou OB, isso é INDISPONÍVEL (o processo pode estar sob outra numeração), não ausência de pagamento. "
     "A OB costuma ser o valor LÍQUIDO: bruto da NF/NL menos as retenções (guias de recolhimento de tributo). "
     "FAÇA A CONTA antes de chamar diferença de 'discrepância' — bruto − guias = OB é pagamento regular. "
+    "(9) FONTES QUE ENGANAM (medido 18/11/2026 em 5 de 9 laudos de risco alto conferidos na fonte): "
+    "(a) a PUBLICAÇÃO do DOERJ juntada traz a página inteira — só vale o ato que cita ESTE processo/valor; atos "
+    "vizinhos (outra unidade, outra empresa, outro TAC) NÃO são divergência; (b) o OBJETO do resumo pode ser "
+    "impreciso — se contradiz a nota de empenho/NF, vale a NE (natureza de despesa) e a NF, e não há contradição; "
+    "(c) número com dígito trocado/ilegível no texto de NF é provável OCR — confira contra o quadro de apuração/NL "
+    "antes de apontar diferença de valor; (d) documento 'CANCELADO' acompanhado de termo de cancelamento e "
+    "documento substituto é substituição regular. "
     "Responda SOMENTE o objeto JSON do schema, sem texto fora."
 )
 _SCHEMA = (
