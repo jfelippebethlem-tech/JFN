@@ -54,6 +54,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib.request
 from pathlib import Path
 from typing import Optional, Union
 
@@ -146,7 +147,36 @@ def _preprocess_para_ocr(img):
     return arr
 
 
+def _ocr_gpu(img) -> str:
+    """OCR por IA na GPU do it-campo (Surya 2.5 via `deploy/itcampo/ocr_gpu/ocr_servico.py`). Só existe onde
+    `JFN_OCR_GPU_URL` está definida; qualquer falha devolve '' e o Tesseract assume. Gabarito de 18/11/2026 (79
+    páginas): valores em R$ 99,7% (Tesseract 78,0%), datas 100% (89,8%), CNPJ 95,7% (92,5%)."""
+    url = os.environ.get("JFN_OCR_GPU_URL")
+    if not url:
+        return ""
+    try:
+        from PIL import Image
+        import io
+        im = img if isinstance(img, Image.Image) else Image.fromarray(img)
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, "PNG")
+        req = urllib.request.Request(url, data=buf.getvalue(), method="POST", headers={"Content-Type": "image/png"})
+        with urllib.request.urlopen(req, timeout=float(os.environ.get("JFN_OCR_GPU_TIMEOUT", "180"))) as r:
+            return r.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001 — GPU fora do ar não pode parar a captura
+        log.warning("ocr: GPU indisponível (%s) — Tesseract", type(exc).__name__)
+        return ""
+
+
 def _ocr_pil(img, lang: str) -> str:
+    """OCR de UMA imagem: GPU do it-campo quando configurada (`_ocr_gpu`); senão (ou se ela falhar), Tesseract."""
+    saida = _ocr_gpu(img)
+    if len(saida.strip()) >= _MIN_OCR_UTIL:
+        return saida
+    return _ocr_tesseract(img, lang)
+
+
+def _ocr_tesseract(img, lang: str) -> str:
     """OCR de UMA imagem PIL/ndarray via pytesseract (assume _tesseract_ok já checado).
 
     O pré-processamento AJUDA em scan sujo e ATRAPALHA em scan claro: numa NF real
