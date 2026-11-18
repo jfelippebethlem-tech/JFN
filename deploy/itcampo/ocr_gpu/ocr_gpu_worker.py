@@ -29,7 +29,7 @@ FILA, FEITOS, FALHAS = BASE / "ocr_fila.txt", BASE / "feitos.txt", BASE / "falha
 TMP, OUT = BASE / "tmp", BASE / "out"
 LOTE = int(os.environ.get("OCR_LOTE", "40"))
 MAX_PAG = int(os.environ.get("OCR_MAX_PAG", "300"))
-PAG_POR_CHAMADA = 8
+PAG_POR_CHAMADA = int(os.environ.get("OCR_PAG_CHAMADA", "32"))   # o vLLM aguenta 48 sequências; 8 deixava a GPU ociosa
 VM1 = "vm1-ts:JFN/data/sei_cache/"
 SINAL = BASE / "SESSAO_ATIVA"          # tocado pelo ocr_servico a cada página das sessões SEI
 
