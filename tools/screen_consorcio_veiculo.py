@@ -46,6 +46,7 @@ QUALIF_CONSORCIADA = "%onsorciad%"
 
 def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
           min_valor: float = MIN_VALOR) -> list[dict[str, Any]]:
+    from compliance_agent.cruzamentos_intel import _ob_paga
     from compliance_agent.reporting.intel_base import _DB
 
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
@@ -102,7 +103,7 @@ def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
                     r = con.execute(
                         "SELECT MIN(nome_credor), COALESCE(SUM(valor),0), COUNT(*) "
                         "FROM ob_orcamentaria_siafe WHERE substr(credor,1,8)=? "
-                        "AND status='Contabilizado'", (rz,)).fetchone()
+                        f"AND {_ob_paga(con)}", (rz,)).fetchone()
                     if r and (r[1] or 0) > 0:
                         diretas[str(pessoa).strip()].append(
                             {"cnpj": rz, "nome": r[0] or "", "pago": round(float(r[1]), 2),
@@ -114,7 +115,7 @@ def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
         for rz in consorcios:
             r = con.execute(
                 "SELECT COALESCE(SUM(valor),0), COUNT(*), GROUP_CONCAT(DISTINCT ug_emitente) "
-                "FROM ob_orcamentaria_siafe WHERE substr(credor,1,8)=? AND status='Contabilizado'",
+                f"FROM ob_orcamentaria_siafe WHERE substr(credor,1,8)=? AND {_ob_paga(con)}",
                 (rz,)).fetchone()
             pago[rz] = (float(r[0] or 0), int(r[1] or 0),
                         sorted({u for u in (r[2] or "").split(",") if u}))

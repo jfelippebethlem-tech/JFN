@@ -22,7 +22,7 @@ empresa não obtenha vantagem concreta no certame (Ac. 2695/2025-Plenário).
                   mesmo ano, acima do teto. Aqui ela sabia — o dado estava no próprio caixa dela.
 
 RESSALVAS que viajam com o número:
-  · **é PISO.** Só somo o que o Estado do RJ pagou (OB `status='Contabilizado'`); o critério legal
+  · **é PISO.** Só somo o que o Estado do RJ pagou (OB `status='Contabilizado'`, sem a devolvida pelo banco — 'Erro no Pagamento'); o critério legal
     soma contratos com TODA a Administração — União, outros estados, municípios;
   · **pago ≠ contrato celebrado.** A vedação fala em valor de contratos do ano-calendário; eu meço
     OB paga. Para o desenquadramento por RECEITA BRUTA (LC 123, art. 3º) a medida vale direto —
@@ -40,6 +40,7 @@ Uso:
 """
 from __future__ import annotations
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.limites_porte import TETO_EPP
 
 import argparse
@@ -74,7 +75,7 @@ def _pagamentos(con: sqlite3.Connection) -> dict[str, list[tuple[str, float]]]:
     ev: dict = collections.defaultdict(list)
     for credor, valor, data in con.execute(
             "SELECT credor, valor, data_emissao FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado'"):
+            f"WHERE {_ob_paga(con)}"):
         dig = re.sub(r"\D", "", str(credor))
         iso = _iso(data)
         if len(dig) == 14 and iso:

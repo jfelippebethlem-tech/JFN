@@ -26,6 +26,7 @@ from pathlib import Path
 _RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_RAIZ))
 
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent.fachada_validadores import checar_site, dominio_corporativo, site_em_cache  # noqa: E402
 
 
@@ -38,7 +39,7 @@ def main() -> int:
     con = sqlite3.connect(f"file:{_RAIZ / 'data/compliance.db'}?mode=ro", uri=True, timeout=30)
     rf = sqlite3.connect(f"file:{_RAIZ / 'data/receita_estab.db'}?mode=ro", uri=True, timeout=30)
     credores = [r[0] for r in con.execute(
-        "SELECT credor FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND length(credor)=14 "
+        f"SELECT credor FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND length(credor)=14 "
         "GROUP BY credor ORDER BY SUM(valor) DESC")]
     info, grupos_dom = {}, collections.defaultdict(set)
     for c in credores:

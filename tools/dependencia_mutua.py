@@ -19,7 +19,7 @@ antes de somar — `--com-repasse` mostra tudo, para conferência.
 RESSALVAS:
   · a lente ORDENA, não acusa: dependência mútua alta é esperada em serviço público essencial
     prestado por operador único (hemocentro, transporte metropolitano);
-  · só OB `status='Contabilizado'`; agrega por CNPJ de 14 dígitos.
+  · só OB `status='Contabilizado'` e não devolvida pelo banco ('Erro no Pagamento'); agrega por CNPJ de 14 dígitos.
 
 Uso:
     .venv/bin/python tools/dependencia_mutua.py
@@ -37,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -66,7 +67,7 @@ def dependencia(con: sqlite3.Connection, min_pago: float = 1_000_000.0,
     nomes: dict = {}
     for credor, ug, valor, nome in con.execute(
             "SELECT credor, ug_emitente, valor, nome_credor FROM ob_orcamentaria_siafe "
-            "WHERE status='Contabilizado'"):
+            f"WHERE {_ob_paga(con)}"):
         v = valor or 0
         # DENOMINADOR = TUDO que a unidade pagou, inclusive o que não tem CNPJ no campo `credor`
         # (folha de pagamento, prêmios de loteria, precatórios). Antes o filtro de 14 dígitos

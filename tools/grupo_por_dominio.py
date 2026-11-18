@@ -18,7 +18,7 @@ RESSALVAS QUE INTEGRAM O RESULTADO:
   · a aresta é ADMINISTRATIVA (quem responde pelo cadastro), não societária;
   · escritório de contabilidade legitimamente atende dezenas de empresas sem relação entre si —
     por isso a lente ordena por dinheiro recebido, não por tamanho do grupo;
-  · só OB `status='Contabilizado'`.
+  · só OB `status='Contabilizado'` e não devolvida pelo banco ('Erro no Pagamento').
 
 Uso:
     .venv/bin/python tools/grupo_por_dominio.py
@@ -36,6 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cruzamentos_intel import _ob_paga
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -70,7 +71,7 @@ def grupos_por_dominio(con: sqlite3.Connection, min_cnpj: int = 2) -> list[dict]
     pago: dict = collections.defaultdict(float)
     obs: dict = collections.Counter()
     for credor, valor in con.execute(
-            "SELECT credor, valor FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+            f"SELECT credor, valor FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)}"):
         d = re.sub(r"\D", "", str(credor))
         if d in todos:
             pago[d] += (valor or 0)

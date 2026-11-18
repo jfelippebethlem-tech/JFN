@@ -60,6 +60,7 @@ def _cadastro() -> tuple[dict, dict]:
 
 def medir(min_valor: float = 5_000_000, min_obs: int = 5, pct: float = 80.0,
           db: str = "") -> list[dict]:
+    from compliance_agent.cruzamentos_intel import _ob_paga
     from compliance_agent.reporting.intel_base import _DB
     from tools.agente_publico_reverso import e_estatal, explicacao_institucional
 
@@ -71,7 +72,7 @@ def medir(min_valor: float = 5_000_000, min_obs: int = 5, pct: float = 80.0,
             " SUM(CASE WHEN substr(data_emissao,4,2) IN (?,?) THEN valor ELSE 0 END) fim, COUNT(*) n "
             "FROM ob_orcamentaria_siafe "
             # `data_emissao` é TEXTO DD/MM/AAAA nesta base — o mês vive nas posições 4-5.
-            "WHERE status='Contabilizado' AND length(credor)=14 AND length(data_emissao)=10 "
+            f"WHERE {_ob_paga(con)} AND length(credor)=14 AND length(data_emissao)=10 "
             "GROUP BY 1,3 HAVING tot >= ? AND n >= ?",
             (*MESES_FIM, min_valor, min_obs)).fetchall()
     except sqlite3.Error:
