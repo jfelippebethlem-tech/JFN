@@ -19,7 +19,7 @@ _REPO = Path(__file__).resolve().parent.parent
 ARQUIVO = _REPO / "data" / "sei_arquivo"
 SAIDA = _REPO / "data" / "sei_ocr_gpu_fila.txt"
 LEDGER = _REPO / "data" / "sei_ocr_gpu_aplicado.jsonl"
-PRIOR = {"nota_fiscal": 0, "proposta": 0, "ordem_bancaria": 1, "liquidacao": 1, "medicao": 1, "atesto": 1,
+PRIOR = {"nota_fiscal": 0, "proposta": 0, "planilha_preco": 0, "ordem_bancaria": 1, "liquidacao": 1, "medicao": 1, "atesto": 1,
          "empenho": 2, "contrato": 2, "termo_aditivo": 2, "autorizacao_despesa": 3, "parecer_juridico": 3, "ata": 3,
          "edital": 4}
 
