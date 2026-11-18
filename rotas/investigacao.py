@@ -2626,6 +2626,16 @@ def _idade_dias(ultimo, agora=None):
     return max(0, (agora - d).days)
 
 
+def _estado_frescor(idade, detalhe: str = "") -> str:
+    """ok (≤3 d) · atencao (≤10 d) · critico. Coleta cuja ÚLTIMA tentativa falhou (detalhe com ⛔, ver
+    `siafe_runner.detalhe_frescor`) nunca sai 'ok': o dado ainda é novo, mas a coleta está parada (17/11/2026:
+    SIAFE com senha recusada aparecia verde)."""
+    est = "ok" if idade is not None and idade <= 3 else "atencao" if idade is not None and idade <= 10 else "critico"
+    if est == "ok" and str(detalhe or "").startswith("⛔"):
+        est = "atencao"
+    return est
+
+
 @router.get("/api/fontes/frescor")
 def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
@@ -2685,8 +2695,7 @@ def api_fontes_frescor():
         for f in fontes:
             idade = _idade_dias(f["ultimo"], hoje)
             f["idade_dias"] = idade
-            f["estado"] = ("ok" if idade is not None and idade <= 3 else
-                           "atencao" if idade is not None and idade <= 10 else "critico")
+            f["estado"] = _estado_frescor(idade, f.get("detalhe"))
         out = {"ok": True, "fontes": fontes, "gerado": hoje.strftime("%Y-%m-%d %H:%M")}
         return JSONResponse(_cache_put("fontes:frescor", out))
     except Exception as exc:  # noqa: BLE001

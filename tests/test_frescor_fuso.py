@@ -58,3 +58,15 @@ def test_valor_impossivel_vira_none_e_nao_zero(ruim):
 def test_relogio_adiantado_da_fonte_satura_em_zero():
     """Se o registro vier do futuro por desvio de relógio, o piso é 0 — negativo não existe."""
     assert _idade_dias("2026-08-02T00:00:00+00:00", AGORA) == 0
+
+
+def test_coleta_cuja_ULTIMA_TENTATIVA_falhou_nao_aparece_em_dia():
+    """Pente fino 17/11/2026: 'SIAFE · OB orçamentária (coleta)' saía estado 'ok' (verde, 'em dia') com o detalhe
+    '⛔ última coleta 2026-11-17 08:00 UTC falhou: senha_incorreta' — o dado de 2 dias ainda é fresco, mas a coleta
+    está PARADA. Verde em coleta que falhou é o defeito de 16-17/07 (MFA quebrou e nada avisava)."""
+    from rotas.investigacao import _estado_frescor
+    assert _estado_frescor(2, "coletor diário 05:00") == "ok"
+    assert _estado_frescor(2, "⛔ última coleta 2026-11-17 08:00 UTC falhou: senha_incorreta · coletor") == "atencao"
+    assert _estado_frescor(7, "⛔ última coleta falhou") == "atencao"
+    assert _estado_frescor(16, "⛔ última coleta falhou") == "critico"
+    assert _estado_frescor(None, "") == "critico"
