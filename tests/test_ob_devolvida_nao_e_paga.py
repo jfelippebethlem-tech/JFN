@@ -25,3 +25,12 @@ def test_nenhum_detector_usa_a_regra_antiga_direto():
     fonte = inspect.getsource(CI)
     # 2 = a própria _ob_paga + _pagou_apos_baixa, que separa a devolvida por conta própria (conta à parte)
     assert fonte.count("{_OB_PAGA}") == 2, "use _ob_paga(con): a constante não exclui a OB devolvida"
+
+
+def test_regra_com_alias_de_tabela():
+    com = sqlite3.connect(":memory:")
+    com.execute("CREATE TABLE ob_orcamentaria_siafe (status TEXT, status_envio TEXT, valor REAL)")
+    com.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?)",
+                    [("Contabilizado", None, 10.0), ("Contabilizado", "Erro no Pagamento", 99.0)])
+    assert CI._ob_paga(com, "o") == ("o.status='Contabilizado' AND COALESCE(o.status_envio,'')<>'Erro no Pagamento'")
+    assert com.execute(f"SELECT SUM(o.valor) FROM ob_orcamentaria_siafe o WHERE {CI._ob_paga(com, 'o')}").fetchone()[0] == 10.0
