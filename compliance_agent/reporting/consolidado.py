@@ -65,8 +65,8 @@ _SYS_HERMES = (
 
 _NOTA_GEMINI_OFF = (
     "> **INDISPONÍVEL — análise Hermes (LLM) não executada nesta geração.** A cadeia multi-IA do Hermes "
-    "(Groq → Cerebras → OpenRouter :free) não respondeu e o Gemini está desligado por billing "
-    "(ver vault `gemini-desligado-billing`). Nenhuma análise foi fabricada (CLAUDE.md #6: INDISPONÍVEL ≠ 0). "
+    "(cascata grátis da casa) não respondeu nesta geração. Nenhuma análise foi fabricada "
+    "(CLAUDE.md #6: INDISPONÍVEL ≠ 0). "
     "Os capítulos II (JFN) e III (LEX) abaixo seguem íntegros — a inteligência determinística e o parecer "
     "jurídico não dependem de LLM."
 )
@@ -114,8 +114,9 @@ def _hermes_cache_orgao(ug: str, top_nomes: list[str], limite: int = 6) -> str:
 
 
 def _hermes_fresco(fatos: str, titulo_alvo: str) -> str:
-    """Síntese Hermes FRESCA via a cadeia multi-IA grátis (Groq → Cerebras → OpenRouter :free; Gemini OFF
-    por billing). '' se a cadeia não responder (capítulo cai p/ INDISPONÍVEL)."""
+    """Síntese Hermes FRESCA via a cadeia multi-IA grátis da casa (`hermes_agent._hermes`). '' se a cadeia não
+    responder (capítulo cai p/ INDISPONÍVEL). O texto do capítulo NÃO nomeia provedor: a cascata muda (18/11/2026 o
+    entregável ainda dizia Cerebras, desligado, e 'Gemini OFF', religado) e a função não devolve qual respondeu."""
     if not fatos.strip():
         return ""
     try:
@@ -142,8 +143,8 @@ def _capitulo_hermes(fatos: str, titulo_alvo: str, cache_md: str = "") -> tuple[
     disponivel = False
     if fresco:
         L += ["## I-A. Síntese raciocinada (Hermes)", "",
-              "> Gerada nesta execução pela cadeia multi-IA grátis do Hermes (Groq/Cerebras/OpenRouter :free; "
-              "Gemini desligado por billing). Indícios a verificar, nunca acusação.", "", fresco, ""]
+              "> Gerada nesta execução pela cadeia multi-IA grátis do Hermes (modelo da cascata da casa, **sem "
+              "conferência do Opus — estado PENDENTE**). Indícios a verificar, nunca acusação.", "", fresco, ""]
         disponivel = True
     if cache_md:
         L += [cache_md]
