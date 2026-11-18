@@ -70,7 +70,7 @@ FRIO_REMOTO = os.environ.get("JFN_FRIO_REMOTO", "")   # nó sem o arquivo frio (
 PARADA_MIN = 75      # lote da GPU dura 21–31 min (ocr_gpu.log, 18/11/2026): 75 min sem lote = parada
 MARGEM = 400         # pendentes da cabeça da fila da GPU que a reserva nunca toca (10 lotes ≈ 5 h de GPU)
 VALIDADE_H = 24      # reserva mais velha que isto volta para a fila da VM-1 (a reserva morreu)
-LOAD_POR_NUCLEO = 1.5
+LOAD_POR_NUCLEO = float(os.environ.get("JFN_OCR_LOAD_POR_NUCLEO", "1.5"))   # VM-2: 2,5 (nice 19 só pega ocioso)
 MEM_MIN_GB = float(os.environ.get("JFN_OCR_MEM_MIN_GB", "2.0"))   # it-campo: 3,0 (vLLM + 6 sessões SEI)
 MAX_PAG = 120        # o mesmo teto do worker da GPU
 DPI = 200            # idem
