@@ -9103,6 +9103,74 @@
     return arcs;
   }
 
+  // static/js/src/cena/cine3d.js
+  var BASE = "/static/assets/v68/";
+  var cineRetrato = () => matchMedia("(max-aspect-ratio: 4/5)").matches;
+  var cineSoPoster = () => matchMedia("(prefers-reduced-motion: reduce)").matches || !!(navigator.connection && navigator.connection.saveData);
+  function cineVideo(nome, { loop = false } = {}) {
+    const b = BASE + nome + (cineRetrato() ? "_m" : "");
+    const v = document.createElement("video");
+    v.muted = true;
+    v.loop = loop;
+    v.playsInline = true;
+    v.preload = "none";
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    v.setAttribute("aria-hidden", "true");
+    v.poster = b + ".webp";
+    v.innerHTML = `<source src="${b}.av1.mp4" type='video/mp4; codecs="av01.0.09M.08"'><source src="${b}.webm" type='video/webm; codecs="vp9"'><source src="${b}.mp4" type="video/mp4">`;
+    return v;
+  }
+  function cineSoVisivel(v, el = v) {
+    if (cineSoPoster() || typeof IntersectionObserver !== "function") return () => {
+    };
+    let vis = false;
+    const aplica = () => {
+      if (vis && !document.hidden) {
+        v.preload = "auto";
+        const p = v.play();
+        if (p && p.catch) p.catch(() => {
+        });
+      } else v.pause();
+    };
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) vis = e.isIntersecting;
+      aplica();
+    }, { threshold: 0.35 });
+    io.observe(el);
+    document.addEventListener("visibilitychange", aplica);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", aplica);
+      v.pause();
+    };
+  }
+
+  // static/assets/v68/cine3d.json
+  var cine3d_default = {
+    galaxia3d: {
+      fonte: "/api/galaxia",
+      gerado_em: "2026-11-18 00:01",
+      nos: 5801,
+      ligacoes: 8117,
+      criticos: 1,
+      limiar_critico: 50
+    },
+    mapa3d: {
+      fonte: "/api/territorio/estado",
+      atualizado_em: "2026-11-17T19:24:25-03:00",
+      metrica: "valor_contratado",
+      periodo: "vigentes",
+      graus: [
+        "explicito",
+        "unidade"
+      ],
+      municipios: 92,
+      com_contrato: 54,
+      sem_contrato_atribuido: 38
+    }
+  };
+
   // static/js/src/mapa/territorio.js
   var GEO = "/static/assets/geo/";
   var W = 800;
@@ -9219,6 +9287,7 @@
       <aside class="tm-ficha" id="tm-ficha" aria-live="polite" hidden></aside>
     </div>
     <div class="tm-pe" id="tm-pe">Fonte: lendo…</div>`;
+    _cineFaixa(host);
     const q = (s) => host.querySelector(s);
     const gEst = q("#tm-est"), gRio = q("#tm-rio"), cam = q("#tm-cam"), dica = q("#tm-dica"), ficha = q("#tm-ficha");
     const geo = { est: null, rio: null };
@@ -9633,6 +9702,21 @@
       if (portal) ficha.remove();
       if (_vivo2 && _vivo2.host === host) _vivo2 = null;
     }, host };
+  }
+  var _cineDesl = null;
+  function _cineFaixa(host) {
+    if (_cineDesl) {
+      _cineDesl();
+      _cineDesl = null;
+    }
+    const M2 = cine3d_default.mapa3d, dataRetrato = String(M2.atualizado_em || "").slice(0, 10).split("-").reverse().join("/");
+    const f = document.createElement("figure");
+    f.className = "tm-cine";
+    const v = cineVideo("mapa3d");
+    f.appendChild(v);
+    f.insertAdjacentHTML("beforeend", `<figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b><span>${fmtN(M2.com_contrato)} de ${fmtN(M2.municipios)} municípios com contrato atribuído · altura ∝ √ valor contratado (certeza explícita + unidade) · sem relevo = nenhum contrato atribuído, não zero · valor contratado não é pago · retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo</span></figcaption>`);
+    host.insertBefore(f, host.firstChild);
+    _cineDesl = cineSoVisivel(v, f);
   }
 
   // static/js/src/galaxia/render.js

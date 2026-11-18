@@ -1,0 +1,23 @@
+{
+ "galaxia3d": {
+  "fonte": "/api/galaxia",
+  "gerado_em": "2026-11-18 00:01",
+  "nos": 5801,
+  "ligacoes": 8117,
+  "criticos": 1,
+  "limiar_critico": 50
+ },
+ "mapa3d": {
+  "fonte": "/api/territorio/estado",
+  "atualizado_em": "2026-11-17T19:24:25-03:00",
+  "metrica": "valor_contratado",
+  "periodo": "vigentes",
+  "graus": [
+   "explicito",
+   "unidade"
+  ],
+  "municipios": 92,
+  "com_contrato": 54,
+  "sem_contrato_atribuido": 38
+ }
+}

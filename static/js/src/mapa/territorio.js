@@ -25,6 +25,8 @@ import {fmtN, fmtR} from '../nucleo/formato.js';
 import {_redMotion, _v63} from '../capacidade/estado.js';
 import {aoVivoOuvir} from '../aovivo/estado.js';
 import {abrirDossie} from '../ui/index.js';
+import {cineVideo, cineSoVisivel} from '../cena/cine3d.js';
+import CINE from '../../../assets/v68/cine3d.json';
 
 const GEO = '/static/assets/geo/';
 const W = 800, H = 520;
@@ -119,6 +121,7 @@ export function mapaMontar(host) {
     </div>
     <div class="tm-pe" id="tm-pe">Fonte: lendo…</div>`;
 
+  _cineFaixa(host);
   const q = s => host.querySelector(s);
   const gEst = q('#tm-est'), gRio = q('#tm-rio'), cam = q('#tm-cam'), dica = q('#tm-dica'), ficha = q('#tm-ficha');
   const geo = {est: null, rio: null};      // {feats, path, centro: Map}
@@ -457,4 +460,23 @@ export function mapaMontar(host) {
   })();
 
   _vivo = {sair() { pararVivo(); if (portal) ficha.remove(); if (_vivo && _vivo.host === host) _vivo = null; }, host};
+}
+
+/* v68 · faixa de cinema no topo do mapa: os municípios do RJ em 3D (Blender, it-campo), extrudados por
+   √(valor contratado vigente atribuído, graus explícito + unidade) — a métrica PADRÃO desta tela, num retrato
+   datado. Todo texto é código; o vídeo só toca visível (`cine3d.js`). */
+let _cineDesl = null;
+function _cineFaixa(host) {
+  if (_cineDesl) { _cineDesl(); _cineDesl = null; }
+  const M = CINE.mapa3d, dataRetrato = String(M.atualizado_em || '').slice(0, 10).split('-').reverse().join('/');
+  const f = document.createElement('figure');
+  f.className = 'tm-cine';
+  const v = cineVideo('mapa3d');           // toca uma vez e para no mapa inteiro aceso
+  f.appendChild(v);
+  f.insertAdjacentHTML('beforeend', `<figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b>`
+    + `<span>${fmtN(M.com_contrato)} de ${fmtN(M.municipios)} municípios com contrato atribuído · altura ∝ √ valor contratado `
+    + `(certeza explícita + unidade) · sem relevo = nenhum contrato atribuído, não zero · valor contratado não é pago · `
+    + `retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo</span></figcaption>`);
+  host.insertBefore(f, host.firstChild);
+  _cineDesl = cineSoVisivel(v, f);
 }

@@ -10,6 +10,8 @@
  * Ligação = indício de relação a conferir, nunca prova.
  */
 import {preparar, enquadrar, desenhar, acertar, paraTela, semearPulsos, contarNaTela, corScore, CRITICO} from '../src/galaxia/render.js';
+import {cineVideo, cineSoPoster} from '../src/cena/cine3d.js';
+import CINE from '../../assets/v68/cine3d.json';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -469,9 +471,40 @@ function resumo() {
     + `<span><b>${fmtN(r.alertas_abertos)}</b>alertas abertos</span><span><b>${fmtN(r.arestas)}</b>ligações</span>`;
 }
 
+/* v68 · VOO 3D enquanto a galáxia carrega (a API leva ~15 s quando o cache da ronda venceu): vídeo renderizado
+   no Blender com os nós e ligações REAIS de um retrato datado, a câmera termina no fornecedor crítico. Só na
+   1ª visita do dia; toque pula; sai sozinho quando o vídeo acaba E a galáxia viva está pronta (teto 22 s). */
+function vooCinema() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  let dia = ''; try { dia = localStorage.getItem('jfn_gx_voo_dia') || ''; } catch (e) { /* sem storage: toca */ }
+  if (cineSoPoster() || dia === hoje) return null;
+  try { localStorage.setItem('jfn_gx_voo_dia', hoje); } catch (e) { /* idem */ }
+  const M = CINE.galaxia3d, dataRetrato = String(M.gerado_em || '').slice(0, 10).split('-').reverse().join('/');
+  const el = document.createElement('div'); el.className = 'gx-voo';
+  const v = cineVideo('galaxia3d'); v.preload = 'auto'; el.appendChild(v);
+  el.insertAdjacentHTML('beforeend', `<div class="gx-voo-leg"><span class="gx-eye">voo pela galáxia real · retrato de ${esc(dataRetrato)}</span>`
+    + `<b>${fmtN(M.nos)} nós · ${fmtN(M.ligacoes)} ligações</b>`
+    + `<span>a câmera para no fornecedor crítico (score ≥ ${fmtN(M.limiar_critico)}) — indício a conferir, não acusação</span></div>`
+    + `<button type="button" class="gx-voo-pular">pular <span aria-hidden="true">›</span></button>`);
+  visor.appendChild(el);
+  let acabou = false, pronto = false;
+  const sair = () => { if (el.classList.contains('sai')) return; el.classList.add('sai'); v.pause(); setTimeout(() => el.remove(), 700); };
+  const talvez = () => { if (acabou && pronto) sair(); };
+  const fim = () => { acabou = true; talvez(); };
+  v.addEventListener('ended', fim);
+  v.addEventListener('error', fim, true);
+  el.addEventListener('pointerdown', sair);
+  addEventListener('keydown', sair, {once: true});
+  setTimeout(() => { acabou = pronto = true; talvez(); }, 22000);
+  const p = v.play(); if (p && p.catch) p.catch(fim);
+  return {pronto() { pronto = true; talvez(); }};
+}
+
 async function iniciar() {
   const carga = $('gx-carga');
+  const voo = vooCinema();
   const d = await J('/api/galaxia');
+  if (voo) voo.pronto();
   if (!d || d.ok === false) {
     const aut = /autentic/.test(String(d && d.erro));
     carga.innerHTML = `<div class="gx-warn">${aut ? 'Sessão do painel expirada.' : 'A galáxia está INDISPONÍVEL agora (' + esc(d && d.erro) + ').'}`

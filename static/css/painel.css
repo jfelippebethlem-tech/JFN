@@ -6312,3 +6312,20 @@ html.v63 #v63-fundo[data-quadro="4"] .v63-quadro{transform:translate3d(-.8%,.8%,
 html.v63 #v63-fundo[data-quadro="5"] .v63-quadro{transform:translate3d(1.4%,-.4%,0)}
 html.v63 #v63-fundo[data-quadro="6"] .v63-quadro{transform:translate3d(-1.4%,-.4%,0)}
 @media (prefers-reduced-motion:reduce){html.v63 .v63-cam{transform:none}}
+/* ══ v68 · CINE 3D — vídeos renderizados no Blender com dados reais (par do `cena/cine3d.js`) ════════
+   Faixa no topo do mapa do território: o vídeo é fundo de palco (cobre, sem esticar além do nativo:
+   paisagem 1920×1080, retrato 1080×1920), a legenda é texto em código sobre um véu claro para contraste AA.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 .tm-cine{position:relative;margin:0 0 4px;aspect-ratio:21/9;overflow:hidden;border-radius:18px 18px 0 0;
+  background:#F3F7FF center/cover no-repeat;isolation:isolate}
+html.v61 .tm-cine video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%}
+html.v61 .tm-cine-leg{position:absolute;left:0;right:0;bottom:0;z-index:1;display:grid;gap:3px;padding:28px 16px 12px;
+  background:linear-gradient(to top,rgba(247,250,255,.94) 0,rgba(247,250,255,.86) 55%,rgba(247,250,255,0) 100%);
+  color:var(--ink);font-size:.8125rem;line-height:1.35}
+html.v61 .tm-cine-leg b{font-size:.9375rem;font-weight:650}
+html.v61 .tm-cine-leg span{color:var(--ink-2,#33476B);font-size:.75rem}
+@media (max-aspect-ratio:4/5){
+  html.v61 .tm-cine{aspect-ratio:1;border-radius:16px 16px 0 0}
+  html.v61 .tm-cine video{object-position:50% 50%}
+}
+
