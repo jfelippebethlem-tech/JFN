@@ -46,10 +46,17 @@ def test_nenhum_new_context_solto_no_sweep():
 
 
 def test_todos_os_logins_usam_o_contexto_compartilhado():
-    """Cada `login(pg, ...)` precisa ter vindo de uma página do contexto único."""
+    """Cada `login(pg, ...)` precisa ter vindo de uma página do contexto único.
+
+    Desde bc2b55a0 (15/11/2026, navegador FIXO do it-campo) o sweep e os pais entram por
+    `entrar(pg, ...)` sobre `navegador_sei(..., user_agent=_UA_DESKTOP)`; a recaptura segue em
+    `login(pg, ...)` sobre `_contexto_sei(b)`. As duas montagens contam — desde que passem o UA
+    de desktop explicitamente; `navegador_sei` sem `user_agent=_UA_DESKTOP` não conta.
+    """
     fonte = _fonte()
-    n_login = len(re.findall(r"await login\(pg", fonte))
-    n_ctx = len(re.findall(r"ctx = await _contexto_sei\(b\)", fonte))
+    n_login = len(re.findall(r"await (?:login|entrar)\(pg", fonte))
+    n_ctx = (len(re.findall(r"ctx = await _contexto_sei\(b\)", fonte))
+             + len(re.findall(r"ctx, fixo = await navegador_sei\(pw,[^)]*user_agent=_UA_DESKTOP", fonte)))
     assert n_login >= 3, "os caminhos de login sumiram — reveja este teste antes de relaxá-lo"
     assert n_ctx >= n_login, (
         f"{n_login} caminhos fazem login e só {n_ctx} usam `_contexto_sei` — algum voltou a montar "
