@@ -52,7 +52,7 @@ class H(BaseHTTPRequestHandler):
             with _TRAVA:
                 r = _REC([img])[0]
             self._resp(200, "\n".join(_txt(b.html) for b in sorted(r.blocks, key=lambda b: b.reading_order or 0)))
-        except Exception as e:  # noqa: BLE001 — erro vira 500; a sessão cai para o Tesseract
+        except (OSError, ValueError, RuntimeError) as e:   # erro vira 500; a sessão cai para o Tesseract
             self._resp(500, type(e).__name__)
 
 

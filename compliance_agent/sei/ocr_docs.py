@@ -54,6 +54,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import http.client
 import urllib.request
 from pathlib import Path
 from typing import Optional, Union
@@ -163,7 +164,7 @@ def _ocr_gpu(img) -> str:
         req = urllib.request.Request(url, data=buf.getvalue(), method="POST", headers={"Content-Type": "image/png"})
         with urllib.request.urlopen(req, timeout=float(os.environ.get("JFN_OCR_GPU_TIMEOUT", "180"))) as r:
             return r.read().decode("utf-8", "replace")
-    except Exception as exc:  # noqa: BLE001 — GPU fora do ar não pode parar a captura
+    except (OSError, ValueError, http.client.HTTPException) as exc:   # GPU fora do ar não pode parar a captura
         log.warning("ocr: GPU indisponível (%s) — Tesseract", type(exc).__name__)
         return ""
 

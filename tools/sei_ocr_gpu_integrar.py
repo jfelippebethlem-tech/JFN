@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -129,7 +130,7 @@ def main() -> int:
                                   f"{res['substituidos']} relido(s) em {res['processos']} processo(s)")
             finally:
                 pc.close()
-        except Exception as e:  # noqa: BLE001 — aviso de propagação é acessório; o texto já está no arquivo
+        except (ImportError, OSError, ValueError, KeyError, sqlite3.Error) as e:   # aviso é acessório; o texto já está no arquivo
             print(f"propagação não avisada: {type(e).__name__}", file=sys.stderr)
     return 0
 

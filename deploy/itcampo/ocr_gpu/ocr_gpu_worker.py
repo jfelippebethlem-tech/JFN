@@ -98,7 +98,7 @@ def main() -> int:
                 feitos.add(rel)
                 with FEITOS.open("a") as f:
                     f.write(rel + "\n")
-            except Exception as e:  # noqa: BLE001 — um PDF ruim não para o lote; vai para falhas.txt
+            except (OSError, ValueError, RuntimeError, MemoryError) as e:   # PDF ruim não para o lote → falhas.txt
                 log(ev="pdf_falhou", pdf=rel, erro=f"{type(e).__name__}: {str(e)[:200]}")
                 with FALHAS.open("a") as f:
                     f.write(rel + "\n")

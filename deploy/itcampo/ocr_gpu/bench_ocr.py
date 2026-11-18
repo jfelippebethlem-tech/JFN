@@ -41,7 +41,7 @@ def sujar(img):
 amostras = []
 for p in PDFS:
     try: doc = fitz.open(p)
-    except Exception: continue
+    except (OSError, ValueError, RuntimeError): continue
     for i in range(min(MAXPAG, doc.page_count)):
         verdade = doc.load_page(i).get_text()
         if len(norm(verdade)) < 300: continue
