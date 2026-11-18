@@ -143,7 +143,9 @@ def _processo_por_ob(c: sqlite3.Connection, texto: str) -> str | None:
     obs, nls = set(_RE_OB.findall(texto)), set(_RE_NL.findall(texto))
     if not obs:
         return None
-    q = f"SELECT DISTINCT processo, nl FROM ob_orcamentaria_siafe WHERE numero_ob IN ({','.join('?' * len(obs))})"
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    q = (f"SELECT DISTINCT processo, nl FROM ob_orcamentaria_siafe WHERE {_ob_paga(c)} AND "
+         f"numero_ob IN ({','.join('?' * len(obs))})")
     linhas = [(p, nl) for p, nl in c.execute(q, tuple(obs)) if p and "/" in p]
     if nls:
         linhas = [(p, nl) for p, nl in linhas if nl in nls]
