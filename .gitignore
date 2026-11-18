@@ -257,3 +257,5 @@ data/certeza/
 
 # Cofre de sessões da verificação humana (cookies = credencial): NUNCA versionar (18/11/2026)
 data/sessoes/
+# Resultados do detector de documento reaproveitado (derivado, 6 MB por rodada) — não versionar (18/11/2026)
+data/reuso_documento/
