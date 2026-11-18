@@ -252,6 +252,8 @@ data/siafe_senha_recusada.json
 
 # autoaprimoramento da perícia: ledger (auto.db), candidatos/ e relatórios gerados
 data/autoaprimoramento/
+# certeza: registro de fatos (certeza.db), estado.json e relatório gerados
+data/certeza/
 
 # Cofre de sessões da verificação humana (cookies = credencial): NUNCA versionar (18/11/2026)
 data/sessoes/

@@ -29,11 +29,51 @@
 #   antes            como se atualizava antes da propagação (só documentação — os crons antigos seguem como rede)
 #   cerebro          número de manchete que vira memória no cérebro; se mudar, a nova SUBSTITUI a anterior
 #                    (sem data nos campos: recálculo que não muda o número não gera memória nova)
+#
+# CERTEZA (18/11/2026 — docs/ARQUITETURA-DE-CERTEZA.md; lido por compliance_agent/certeza, o despachante ignora):
+#   fatos            (em fonte, derivado ou externo) o que o nó PUBLICA no registro de fatos. Bloco:
+#                    id "familia:{campo}:…" · arquivo (JSON) + lista (+ filtro {campo, min}), ou sql · medidas {nome: {campo, unidade}} ·
+#                    estado / nivel_prova / natureza / base (fixos ou `<nome>_por: {campo, mapa, padrao}`) · fonte ·
+#                    data_ref · apelidos/termos (para achar menção em texto) · superados (valor de medição anterior
+#                    a este registro) · reconcilia (o agregado tem de bater com as linhas de detalhe)
+#   frescor_max_s    (derivado) sujo há mais que isto = ATRASADO (padrão: o maior entre 6 h e 3× intervalo_min_s)
+#   manual: true     (fonte) evento só entra por `emitir`, de propósito
+#   externos:        recalculado FORA do despachante (LLM, cron próprio): depende · publica (a fonte que alimenta) ·
+#                    cron (trecho da linha do crontab) · atraso {funcao, teto} (conta o que está velho)
+#   contratos:       contrato de dados de tabela de achado: chave · colunas {min, max, monetaria, tipo, nulo, dominio}
+#                    · proveniencia [colunas obrigatórias] · nivel_prova {coluna+funcao | casos+padrao}
+#   certeza:         superfícies onde o verificador procura citação (`<!--fato:ID-->`) e menção a valor superado
 
 fontes:
   siafe_ob:
     nome: OB nova ou regravada no SIAFE
     sonda: {sql: "SELECT MAX(rowid) FROM ob_orcamentaria_siafe", unidade: "OB(s) gravada(s) (novas ou recoletadas)"}
+    fatos:
+      # o STATUS ao lado do valor (18/11/2026): "Contabilizado" não basta para dizer PAGO. Mesmo filtro de
+      # cruzamentos_intel._ob_paga; o que muda é que cada status de envio é um fato, com o seu estado.
+      - id: "siafe_ob:contabilizada:{envio}"
+        sql: >-
+          SELECT CASE WHEN status_envio IN ('Processado e Pago','Enviado Manualmente','Parcialmente Pago','Enviado ao Banco',
+                 'Aguardando Envio','Aguardando Geração RE') THEN status_envio ELSE 'fora do dominio' END AS envio,
+                 COUNT(*) AS n, ROUND(SUM(valor), 2) AS valor
+          FROM ob_orcamentaria_siafe
+          WHERE status='Contabilizado' AND COALESCE(status_envio,'')<>'Erro no Pagamento' AND COALESCE(numero_ob,'')<>''
+          GROUP BY 1
+        rotulo: "OB Contabilizada do SIAFE (todos os exercícios coletados) — status de envio '{envio}'"
+        fonte: "SIAFE-Rio 2 — ob_orcamentaria_siafe (compliance.db), status='Contabilizado', sem 'Erro no Pagamento', com número de OB"
+        natureza: pago
+        nivel_prova: 2
+        estado_por:
+          campo: envio
+          padrao: PENDENTE
+          mapa: {"Processado e Pago": VERIFICADO, "Enviado Manualmente": VERIFICADO, "Parcialmente Pago": "A CONFERIR"}
+        base_por:
+          campo: envio
+          padrao: ob_contabilizada_sem_confirmacao
+          mapa: {"Processado e Pago": ob_contabilizada_confirmada, "Enviado Manualmente": ob_contabilizada_confirmada}
+        medidas:
+          valor: {campo: valor, unidade: BRL}
+          n: {campo: n, unidade: contagem}
   siafe_status:
     nome: Status de envio de OB recoletado (devolvida pelo banco, paga)
     # a TABELA, não o log: o siafe_runner corta a linha do log em 400 caracteres
@@ -138,6 +178,7 @@ fontes:
     nome: Conferência do Opus corrigiu resultado produzido em contingência (Claude da assinatura no limite)
   decisao_dono:
     nome: Decisão do dono que muda requisito (manual)
+    manual: true
 
 derivados:
   vinculo_ob_contrato:
@@ -173,6 +214,20 @@ derivados:
         "Prefeitura: contratos avaliados": "esferas.Prefeitura do Rio.n"
         "Prefeitura: placar": "esferas.Prefeitura do Rio.placar"
       ressalva: "Pago do Estado = só OB Contabilizada do SIAFE. Indício interno para requerer documentos, não acusação."
+    fatos:
+      - id: "pericia_contabil:estado"
+        arquivo: data/pericia_contabil_resumo.json
+        data_ref: gerado_em
+        rotulo: "Perícia contábil — Estado do RJ"
+        fonte: "compliance_agent.pericia_contabil sobre contratos_tcerj/PNCP × OB Contabilizada do SIAFE"
+        # agregado determinístico que depende do vínculo OB↔contrato: não conferido contrato a contrato → nível 1
+        nivel_prova: 1
+        estado: PENDENTE
+        medidas:
+          contratos_avaliados: {campo: "esferas.Estado do RJ.n", unidade: contagem}
+          pago_acima_do_contratado_n: {campo: "esferas.Estado do RJ.placar.A_MAIOR", unidade: contagem}
+          pago_acima_do_contratado_valor: {campo: "esferas.Estado do RJ.excesso_a_maior", unidade: BRL}
+          indeterminados: {campo: "esferas.Estado do RJ.placar.INDETERMINADO", unidade: contagem}
   pericia_emendas:
     nome: Perícia das emendas (D1–D6) — regrava os alertas emendas_*
     onde: Transversal › Alertas · Galáxia (alertas de emenda)
@@ -278,6 +333,39 @@ derivados:
     timeout_s: 3600
     prioridade: 6
     efeito: {arquivo: data/iss_nao_retido.json}
+    fatos:
+      - id: "iss_nao_retido:{credor}:{ug}"
+        arquivo: data/iss_nao_retido.json
+        lista: por_fornecedor
+        filtro: {campo: processos_iss_nao_retido, min: 1}   # quem sai da lista aparece como "a fonte não produz mais"
+        data_ref: gerado_em
+        rotulo: "ISS declarado retido na NFS-e e pago ao prestador (OB sem a retenção) — {nome_credor} × UG {ug}"
+        fonte: "NFS-e dos autos SEI (data/sei_arquivo, documentos do manifesto) × OB Contabilizada do SIAFE; conta fechada NF a NF ao centavo (compliance_agent/detector_iss_retido.py)"
+        nivel_prova: 2
+        estado: VERIFICADO
+        apelidos: ["{nome_credor}", "{credor}"]
+        apelidos_por: {"28470707000180:294200": [IDESI]}
+        termos: [ISS]
+        medidas:
+          valor: {campo: iss_nao_retido, unidade: BRL}
+          processos: {campo: processos_iss_nao_retido, unidade: contagem}
+        # 1ª medição (manual, 18/11/2026, antes do detector): 35 processos / R$ 2.270.009,39. O detector mediu 38.
+        superados:
+          "00801512000157:180100": {valor: 2270009.39, processos: 35}
+        reconcilia:
+          lista: registros
+          onde: {credor: "$credor", ug: "$ug", classe: ISS_NAO_RETIDO, estado: VERIFICADO}
+          medidas: {valor: {soma: iss_nao_retido}, processos: {distintos: processo}}
+      - id: "iss_nao_retido:total"
+        arquivo: data/iss_nao_retido.json
+        data_ref: gerado_em
+        rotulo: "ISS declarado retido na NFS-e e pago ao prestador — total do acervo lido"
+        fonte: "NFS-e dos autos SEI × OB Contabilizada do SIAFE (compliance_agent/detector_iss_retido.py)"
+        nivel_prova: 2
+        estado: VERIFICADO
+        medidas:
+          valor: {campo: totais.iss_nao_retido_verificado, unidade: BRL}
+          processos: {campo: totais.processos_iss_nao_retido_verificado, unidade: contagem}
   cge_confronto:
     nome: Confronto CGE × JFN
     onde: Estado › CGE × JFN
@@ -300,6 +388,18 @@ derivados:
         "com OB no SIAFE": metricas.todas.com_ob
         "G1+G2 com sinal do JFN": "metricas.G1+G2.com_sinal"
       ressalva: "Métrica interna de cobertura do JFN contra a auditoria da CGE; não é peça de acusação."
+    fatos:
+      - id: "cge_confronto:todas"
+        arquivo: data/cge_confronto.json
+        data_ref: gerado_em
+        rotulo: "CGE × JFN — contratações examinadas pela CGE"
+        fonte: "relatórios de auditoria da CGE no acervo × artefatos do JFN (compliance_agent/cge_confronto.py)"
+        nivel_prova: 1
+        estado: PENDENTE
+        medidas:
+          contratacoes: {campo: metricas.todas.n, unidade: contagem}
+          com_ob_no_siafe: {campo: metricas.todas.com_ob, unidade: contagem}
+          autos_lidos: {campo: metricas.todas.autos_lidos, unidade: contagem}
   lentes:
     nome: Lentes de detecção materializadas
     onde: Transversal › Lentes
@@ -421,6 +521,83 @@ derivados:
     intervalo_min_s: 3600
     prioridade: 6
     antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  certeza:
+    nome: Certeza — registro de fatos, portões de escrita, auditoria do grafo e verificador de citações
+    onde: /api/sistema/certeza · data/certeza/relatorio.md · sensor `certeza` da automelhoria
+    # folha do grafo: nada depende dela (não realimenta nenhuma fonte). Sem LLM, sem API, só leitura do compliance.db.
+    depende: [iss_nao_retido, pericia_contabil, cge_confronto, vault_casos, vault_retratos, siafe_status, sei_lex, triagem, memoria_claude]
+    comando: ["{py}", "-m", "compliance_agent.certeza", "ciclo"]
+    peso: leve
+    debounce_s: 600
+    intervalo_min_s: 3600
+    timeout_s: 900
+    prioridade: 9
+    efeito: {arquivo: data/certeza/estado.json}
+    antes: "não existia — cada número vivia no derivado, na nota e na memória, sem ninguém conferir um contra o outro"
+
+# Recalculados FORA do despachante (usam LLM pela assinatura/cascata e têm cron próprio). Entram no grafo para a
+# cadeia fechar: fonte → externo → fonte publicada → derivados. O despachante não os executa.
+externos:
+  lex_execucao:
+    nome: Perícia de execução — laudo por processo (tools/lex_execucao.py)
+    depende: [sei_arquivado, sei_lote, sei_ficha, siafe_ob, ocr_gpu]
+    publica: sei_lex
+    cron: "fila_analise_sei.sh lex"
+    # sem `teto`: o número certo de laudos na fila da re-perícia não é conhecido; o que se acusa é a fila que NÃO
+    # DIMINUI em 24 h (`externo_sem_drenar`, medido pela certeza a cada ciclo)
+    atraso: {funcao: "tools.lex_execucao:_recapturados",
+             o_que: "laudo de risco alto ou sem execução comprovada dado ANTES da última captura do processo"}
+  sei_fichas:
+    nome: Ficha do processo SEI (acervo → sei_ficha; tools/fila_analise_sei.sh ficha)
+    depende: [sei_arquivado, sei_lote, ocr_gpu]
+    publica: sei_ficha
+    cron: "fila_analise_sei.sh ficha"
+  triagem_alertas:
+    nome: Triagem dos alertas — duas leituras + verificação do Opus (compliance_agent/triagem_alertas.py)
+    depende: [revisao_humana, sancoes]
+    publica: triagem
+    cron: "compliance_agent.triagem_alertas"
+  conferencia_opus:
+    nome: Conferência do Opus do que saiu em contingência (compliance_agent/llm/conferencia_opus.py)
+    depende: [sei_lex, triagem]
+    publica: conferencia_opus
+    cron: "compliance_agent.llm.conferencia_opus"
+
+# Contratos de dados das tabelas de achado e de fila (compliance_agent/certeza/portoes.py). Auditados a cada ciclo
+# (controle detectivo, só leitura); `nivel_prova` liga a fotografia que acusa linha que REGREDIU de nível.
+contratos:
+  sei_fila_captura:
+    tabela: sei_fila_captura
+    chave: [numero_sei]
+    # 18/11/2026: total_pago = 1e12 gravado só para furar a fila. Valor pago é dado, não prioridade.
+    colunas: {total_pago: {monetaria: true, min: 0, max: 2.0e10}}
+    proveniencia: [motivo, visto_em]
+  lex_execucao:
+    tabela: lex_execucao
+    chave: [numero_sei]
+    colunas: {nota_risco: {tipo: int, min: 0, max: 10}}
+    proveniencia: [modelo, em]
+    nivel_prova: {coluna: modelo, funcao: "compliance_agent.autoaprimoramento.ledger:nivel_gravado"}
+  alertas_triagem:
+    tabela: alertas_triagem
+    chave: [alerta_id]
+    colunas: {nota: {min: 0, max: 10}, valor: {monetaria: true, min: 0, max: 2.0e11}}
+    proveniencia: [motor, em]
+    nivel_prova: {casos: [[1, {estado: VERIFICADO}]], padrao: 0}
+  ob_orcamentaria_siafe:
+    tabela: ob_orcamentaria_siafe
+    chave: [numero_ob, ug_emitente, exercicio]
+    colunas:
+      valor: {monetaria: true, max: 5.0e9}
+      status_envio: {dominio: ["", "Processado e Pago", "Enviado Manualmente", "Parcialmente Pago", "Enviado ao Banco",
+                               "Aguardando Envio", "Aguardando Geração RE", "Erro no Pagamento"]}
+
+certeza:
+  superficies:
+    vault: {pasta: "~/vault", glob: "**/*.md", ignorar: [".obsidian", ".trash", "aprendizados/automelhoria"], sincronizar: true}
+    docs: {pasta: docs, glob: "**/*.md", ignorar: [ARQUITETURA-DE-CERTEZA.md]}
+    memoria: {pasta: "~/.claude/projects/-home-ubuntu/memory", glob: "*.md"}
+    cerebro: {registro: true, busca: true}
 
 # Descobertas VERIFICADAS que vão ao segundo cérebro (consultas só-leitura; 1 linha = 1 memória; mudou = substitui).
 # Só entra o que já passou pela verificação da casa (duas leituras + Opus, ou ato humano) e NÃO tem pessoa física
