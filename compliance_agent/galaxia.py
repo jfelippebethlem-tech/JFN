@@ -12,7 +12,10 @@ Até a v63 eram só os dossiês do vault (92 casos). Desde a v64 entram:
   · SÓCIOS do QSA público (`socios_fornecedor`, só o nome) e processos SEI citados nos dossiês.
 
 Arestas reais: órgão pagou/contratou, sócio em comum, processo SEI, dossiê cita CNPJ/órgão,
-endereço compartilhado (grupos de risco do `hub_compartilhado`, co-endereço do alerta d12).
+endereço compartilhado (grupos de risco do `hub_compartilhado`, co-endereço do alerta d12) e, desde
+18/11/2026, as ligações de conluio de `ligacoes_conluio` entre fornecedores que já são nós: `contato`
+(mesmo telefone/e-mail na Receita, fan-out medido), `socio_variante` (mesmo sócio grafado diferente,
+mesmos dígitos visíveis do CPF) e `concorrentes_ligados` (mesmo certame + qualquer vínculo).
 Ligação = indício de relação a conferir, nunca prova. Sem CPF/documento de pessoa na saída.
 
 O layout (x, y) é calculado AQUI, uma vez por ciclo: aglomerado = órgão no centro, fornecedores em
@@ -100,6 +103,8 @@ class _G:
         self.fontes: dict[str, str] = {}
         self.sem_ancora: Counter = Counter()
         self.n_alertas = 0
+        self.end_grupos: dict[str, set] = defaultdict(set)      # cnpj → rótulos de endereço compartilhado
+        self.conluio: dict = {}
 
     def f(self, cnpj, nome=""):
         d = self.forn.get(cnpj)
@@ -217,6 +222,8 @@ def _alertas(g: _G, con, nomes_ug: dict):
                     g.socio_de[s].add(f["cnpj"])
         elif tipo == "pcrj_d12_coendereco_concorrentes":
             cs = [f["cnpj"] for f in (no_forn(c) for c in d.get("fornecedores") or []) if f]
+            for c in cs:
+                g.end_grupos[c].add(f"co-endereço entre concorrentes (alerta d12, CEP {d.get('cep', '')})")
             for a, b in combinations(sorted(set(cs)), 2):
                 g.liga(f"cnpj:{a}", f"cnpj:{b}", "endereco", 1.0, det=f"mesmo CEP {d.get('cep', '')}")
         elif tipo == "pcrj_d11_aditivo_estourado":
@@ -339,10 +346,27 @@ def _hubs(g: _G, hubs: dict | None):
         if gr.get("risco") not in ("alto", "medio"):
             continue
         cs = sorted({_dig(c) for c in gr.get("cnpjs", []) if _dig(c) in g.forn})
+        for c in cs:
+            g.end_grupos[c].add(f"mesmo {gr.get('chave', 'endereço')} (grupo de {gr.get('n_cnpjs')} CNPJs, "
+                                f"risco {gr.get('risco')})")
         # corrente em vez de clique: todos dividem a mesma âncora; desenhar os n(n-1)/2 pares só embola
         for a, b in zip(cs, cs[1:]):
             g.liga(f"cnpj:{a}", f"cnpj:{b}", "endereco", 1.0,
                    det=f"mesmo {gr.get('chave', 'endereço')} — grupo de {gr.get('n_cnpjs')} CNPJs (risco {gr.get('risco')})")
+
+
+def _conluio(g: _G, con, estab):
+    """Ligações novas entre fornecedores que já são nós: contato, sócio variante e concorrentes ligados
+    (`ligacoes_conluio`). Uma aresta por par de EMPRESAS (raiz), desenhada entre os representantes."""
+    from compliance_agent.ligacoes_conluio import levantar, representantes
+    rep = representantes(g.forn)
+    r = levantar(con, estab, list(g.forn), g.end_grupos, {c: f["nome"] for c, f in g.forn.items()})
+    for e in r["arestas"]:
+        a, b = rep.get(e["a"]), rep.get(e["b"])
+        if a and b:
+            g.liga(f"cnpj:{a}", f"cnpj:{b}", e["tipo"], e["peso"], det=e["det"], ev=e["ev"], estado=e["estado"])
+    g.fontes.update({f"conluio_{k}": v for k, v in r["fontes"].items()})
+    g.conluio = r["medida"]
 
 
 # ── layout ───────────────────────────────────────────────────────────────────────────────────────
@@ -373,7 +397,7 @@ def _empacotar(raios: list[float], folga: float = 26.0) -> list[tuple[float, flo
 
 
 def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict | None = None,
-           hubs: dict | None = None) -> dict:
+           hubs: dict | None = None, estab: sqlite3.Connection | None = None) -> dict:
     t0 = time.time()
     g = _G()
     nomes_ug = {}
@@ -388,6 +412,7 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
     _orgaos(g, con, nomes_ug)
     _socios(g, con)
     _hubs(g, hubs)
+    _conluio(g, con, estab)
 
     # aglomerado de cada fornecedor = órgão de maior peso; sem órgão → aglomerado "sem órgão identificado"
     SEM = "sem:orgao"
@@ -532,6 +557,15 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
     for i, n in enumerate(nos):
         n["g"] = grau[i]
 
+    novas = {}
+    for t in TIPOS_CONLUIO:                               # quantas cruzam aglomerado / dossiê
+        es = [e for e in arestas if e["tipo"] == t]
+        novas[t] = {"arestas": len(es),
+                    "entre_orgaos_diferentes": sum(1 for e in es if nos[e["s"]]["cl"] != nos[e["t"]]["cl"]),
+                    "entre_casos_diferentes": sum(1 for e in es if set(nos[e["s"]].get("k") or [])
+                                                  != set(nos[e["t"]].get("k") or [])
+                                                  and (nos[e["s"]].get("k") or nos[e["t"]].get("k")))}
+
     tipos = Counter(n["t"] for n in nos)
     forn_score = [f["score"] for f in g.forn.values()]
     n_anc = g.n_alertas - sum(g.sem_ancora.values())
@@ -548,6 +582,10 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
         "pontes_entre_casos": sum(1 for e in arestas if e["tipo"] == "caso_caso"),
         "ligacoes_endereco": sum(1 for e in arestas if e["tipo"] == "endereco"),
         "ligacoes_socio_compartilhado": sum(1 for s, cs in g.socio_de.items() if len(cs) >= 2),
+        "ligacoes_contato": novas["contato"]["arestas"],
+        "ligacoes_socio_variante": novas["socio_variante"]["arestas"],
+        "ligacoes_concorrentes": novas["concorrentes_ligados"]["arestas"],
+        "conluio": {"por_tipo": novas, "medida": g.conluio, "estado": "indício a verificar"},
     }
     return {"ok": True, "versao": 2, "gerado_em": time.strftime("%Y-%m-%d %H:%M"), "segundos": round(time.time() - t0, 2),
             "nos": nos, "arestas": arestas, "resumo": resumo, "fontes": g.fontes,
@@ -574,11 +612,19 @@ def gerar(salvar: bool = True) -> dict:
         con = sqlite3.connect(f"file:{_resolver_db()}?mode=ro", uri=True, timeout=10)
     except sqlite3.Error:
         con = None
+    estab = None
+    arq_estab = Path(_resolver_db()).parent / "receita_estab.db"
+    if arq_estab.exists():
+        try:
+            estab = sqlite3.connect(f"file:{arq_estab}?mode=ro", uri=True, timeout=10)
+        except sqlite3.Error:
+            estab = None                                   # contato vira INDISPONÍVEL em `fontes`
     try:
-        d = montar(casos, con, radar, hubs)
+        d = montar(casos, con, radar, hubs, estab)
     finally:
-        if con is not None:
-            con.close()
+        for c in (con, estab):
+            if c is not None:
+                c.close()
     if not r.get("ok"):
         d["fontes"]["vault"] = "INDISPONÍVEL"
     else:
@@ -592,7 +638,9 @@ def gerar(salvar: bool = True) -> dict:
 
 
 _MEM: dict = {"mtime": None, "d": None, "leve": {}}
-TIPOS_ARESTA = ("orgao", "socio", "cita_cnpj", "cita_sei", "caso_orgao", "caso_caso", "endereco")
+# Tipos NOVOS entram sempre no FIM: `leve()` manda o índice, e o front colore pelo índice.
+TIPOS_CONLUIO = ("contato", "socio_variante", "concorrentes_ligados")
+TIPOS_ARESTA = ("orgao", "socio", "cita_cnpj", "cita_sei", "caso_orgao", "caso_caso", "endereco") + TIPOS_CONLUIO
 _LEVE = ("id", "t", "l", "x", "y", "cl", "s", "nal", "nv", "g", "R", "nf", "slug", "cnpj")
 
 
@@ -663,8 +711,10 @@ def detalhe(no_id: str) -> dict:
         if idx in (e["s"], e["t"]):
             o = d["nos"][e["t"] if e["s"] == idx else e["s"]]
             viz.append({"id": o["id"], "t": o["t"], "l": o["l"], "s": o.get("s"), "tipo": e["tipo"],
-                        "det": e.get("det", ""), "via": e.get("via", ""), "motivos": e.get("motivos")})
-    ordem = {"caso_caso": 0, "cita_cnpj": 1, "caso_orgao": 1, "orgao": 2, "endereco": 3, "socio": 4, "cita_sei": 5}
+                        "det": e.get("det", ""), "via": e.get("via", ""), "motivos": e.get("motivos"),
+                        "ev": e.get("ev"), "estado": e.get("estado")})
+    ordem = {"caso_caso": 0, "cita_cnpj": 1, "caso_orgao": 1, "concorrentes_ligados": 2, "orgao": 2, "contato": 3,
+             "socio_variante": 3, "endereco": 3, "socio": 4, "cita_sei": 5}
     viz.sort(key=lambda v: (ordem.get(v["tipo"], 9), -(v["s"] or 0), v["l"]))
     return {"ok": True, "no": d["nos"][idx], "vizinhos": viz[:80], "n_vizinhos": len(viz),
             "rotulos_alerta": d.get("rotulos_alerta", {}), "aviso": d.get("aviso", AVISO), "gerado_em": d.get("gerado_em")}
