@@ -57,7 +57,7 @@ fontes:
     sonda: {sql: "SELECT MAX(rowid) FROM sei_ficha", unidade: "ficha(s)"}
   sei_lex:
     nome: Parecer de execução (Lex) novo
-    sonda: {sql: "SELECT MAX(rowid) FROM lex_execucao", unidade: "parecer(es) de execução"}
+    sonda: {sql: "SELECT MAX(rowid) || '|' || MAX(em) FROM lex_execucao", unidade: "parecer(es) de execução (novo ou reconferido)"}
   sei_leitura_dupla:
     nome: Leitura dupla nova
     sonda: {sql: "SELECT MAX(rowid) FROM sei_leitura_dupla", unidade: "leitura(s) dupla(s)"}
