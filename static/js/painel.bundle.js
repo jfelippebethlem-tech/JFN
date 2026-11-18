@@ -1642,7 +1642,8 @@
           const r = cab && cab[col];
           if (r && td.tagName === "TD") td.dataset.rotulo = r;
           else delete td.dataset.rotulo;
-          if (_txt(td).length > 34 || td.querySelector("table,ul,ol,details")) td.classList.add("tt-larga");
+          const tx = _txt(td), palavra = tx.split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
+          if (tx.length > 34 || palavra.length > 14 || td.querySelector("table,ul,ol,details")) td.classList.add("tt-larga");
           col += td.colSpan || 1;
         }
         if (tr.cells.length === 1 && (tr.cells[0].colSpan || 1) > 1) tr.classList.add("tt-faixa");
@@ -1674,7 +1675,20 @@
     if (colunas < 2) return;
     const caixa = t.parentElement ? t.parentElement.clientWidth : innerWidth;
     const naoCabe = t.scrollWidth > caixa + 2 || t.getBoundingClientRect().width > innerWidth;
-    if (Number(t.dataset.ttAlvos) > 0 || naoCabe) t.classList.add("tt-cartoes");
+    let esmagada = false;
+    for (const tr of [...t.rows].slice(0, 25)) {
+      for (const td of tr.cells) {
+        const w = td.clientWidth;
+        if (!w) continue;
+        const p = _txt(td).split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
+        if (p.length >= 7 && w < p.length * 5.2) {
+          esmagada = true;
+          break;
+        }
+      }
+      if (esmagada) break;
+    }
+    if (Number(t.dataset.ttAlvos) > 0 || naoCabe || esmagada || colunas >= 5) t.classList.add("tt-cartoes");
   }
   function _emTexto(el) {
     const cs = getComputedStyle(el);
@@ -1688,6 +1702,7 @@
     if (!COARSE || !COARSE.matches) return;
     for (const el of raiz.querySelectorAll(ALVO2)) {
       if (el.classList.contains("tt-alvo") || el.closest("table.tt-cartoes") || el.dataset.ttTexto) continue;
+      if (el.classList.contains("tt-principal") && el.closest(".tt-cartao")) continue;
       if (el.matches("input[type=checkbox],input[type=radio],input[type=range]")) continue;
       if (el.tagName === "A" && _emTexto(el)) {
         el.dataset.ttTexto = "1";
@@ -1697,9 +1712,19 @@
       if (getComputedStyle(el).display === "inline") el.classList.add("tt-alvo-inl");
     }
   }
+  function _listas2(raiz) {
+    for (const c of raiz.querySelectorAll(".v60-lista > .card.v60-abre:not(.tt-cartao)")) {
+      const p = c.querySelector(".clk");
+      if (!p) continue;
+      c.classList.add("tt-cartao");
+      p.classList.add("tt-principal");
+      for (const el of c.querySelectorAll(ALVO2)) if (el !== p) el.classList.add("tt-sec");
+    }
+  }
   function toqueVivo(raiz) {
     if (!raiz) return;
     for (const t of raiz.querySelectorAll("table")) _preparar(t);
+    _listas2(raiz);
     _alvosSoltos(raiz);
   }
   var _passe2 = 0;

@@ -52,7 +52,10 @@ function _preparar(t) {
       for (const td of tr.cells) {
         const r = cab && cab[col];
         if (r && td.tagName === 'TD') td.dataset.rotulo = r; else delete td.dataset.rotulo;
-        if (_txt(td).length > 34 || td.querySelector('table,ul,ol,details')) td.classList.add('tt-larga');
+        const tx = _txt(td), palavra = tx.split(' ').reduce((a, b) => b.length > a.length ? b : a, '');
+        /* campo longo, ou com "palavra" comprida (nº de OB, slug, nome de modelo), ocupa a largura toda —
+           em meia coluna (~150 px) ele quebraria na letra */
+        if (tx.length > 34 || palavra.length > 14 || td.querySelector('table,ul,ol,details')) td.classList.add('tt-larga');
         col += td.colSpan || 1;
       }
       if (tr.cells.length === 1 && (tr.cells[0].colSpan || 1) > 1) tr.classList.add('tt-faixa');
@@ -81,7 +84,18 @@ function _modo(t) {
   if (colunas < 2) return;
   const caixa = t.parentElement ? t.parentElement.clientWidth : innerWidth;
   const naoCabe = t.scrollWidth > caixa + 2 || t.getBoundingClientRect().width > innerWidth;
-  if (Number(t.dataset.ttAlvos) > 0 || naoCabe) t.classList.add('tt-cartoes');
+  /* esmagada: alguma célula mais estreita que a própria palavra mais longa (a tabela "coube" quebrando
+     palavra na letra — "2025OB00096" em 39 px). Olha só as primeiras linhas: é sintoma de coluna, não de linha. */
+  let esmagada = false;
+  for (const tr of [...t.rows].slice(0, 25)) {
+    for (const td of tr.cells) {
+      const w = td.clientWidth; if (!w) continue;
+      const p = _txt(td).split(' ').reduce((a, b) => b.length > a.length ? b : a, '');
+      if (p.length >= 7 && w < p.length * 5.2) { esmagada = true; break; }
+    }
+    if (esmagada) break;
+  }
+  if (Number(t.dataset.ttAlvos) > 0 || naoCabe || esmagada || colunas >= 5) t.classList.add('tt-cartoes');
 }
 
 /** Link dentro de frase (há texto corrido ao lado, no mesmo pai): exceção "inline" da WCAG 2.5.8 —
@@ -101,6 +115,7 @@ function _alvosSoltos(raiz) {
   if (!COARSE || !COARSE.matches) return;
   for (const el of raiz.querySelectorAll(ALVO)) {
     if (el.classList.contains('tt-alvo') || el.closest('table.tt-cartoes') || el.dataset.ttTexto) continue;
+    if (el.classList.contains('tt-principal') && el.closest('.tt-cartao')) continue;
     if (el.matches('input[type=checkbox],input[type=radio],input[type=range]')) continue;
     if (el.tagName === 'A' && _emTexto(el)) { el.dataset.ttTexto = '1'; continue; }
     el.classList.add('tt-alvo');
@@ -108,9 +123,22 @@ function _alvosSoltos(raiz) {
   }
 }
 
+/** Lista do v60 (`.v60-lista > .card.v60-abre`): o cartão inteiro já abre o dossiê (clique delegado ao
+ *  `.clk`), mas o alvo de verdade era só o nome. Aqui o `.clk` vira link esticado sobre o cartão — o mesmo
+ *  padrão das tabelas-cartão; o delegado do v60 continua valendo para quem clica fora do nome. */
+function _listas(raiz) {
+  for (const c of raiz.querySelectorAll('.v60-lista > .card.v60-abre:not(.tt-cartao)')) {
+    const p = c.querySelector('.clk'); if (!p) continue;
+    c.classList.add('tt-cartao');
+    p.classList.add('tt-principal');
+    for (const el of c.querySelectorAll(ALVO)) if (el !== p) el.classList.add('tt-sec');
+  }
+}
+
 export function toqueVivo(raiz) {
   if (!raiz) return;
   for (const t of raiz.querySelectorAll('table')) _preparar(t);
+  _listas(raiz);
   _alvosSoltos(raiz);
 }
 

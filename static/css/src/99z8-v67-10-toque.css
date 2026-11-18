@@ -67,3 +67,11 @@
   :is(#view,#sheet) summary.tt-alvo:not(table.tt-cartoes *){padding-block:max(0px,calc((44px - 1lh) / 2));margin-block-end:4px}
   :is(#view,#sheet) :is(button,a,[role=button]).tt-alvo:not(.tt-alvo-inl):not(table.tt-cartoes *){align-content:center}
 }
+
+/* ── lista do v60: o nome (`.clk`) vira link esticado sobre o cartão (par do `_listas` do toque.js) ──── */
+@media (pointer:coarse){
+  :is(#view,#sheet) .tt-cartao{position:relative}
+  :is(#view,#sheet) .tt-cartao .clk.tt-principal{position:static}
+  :is(#view,#sheet) .tt-cartao .clk.tt-principal::after{content:"";position:absolute;inset:0;z-index:0}
+  :is(#view,#sheet) .tt-cartao .tt-sec{position:relative;z-index:1;min-height:44px;min-width:44px;box-sizing:border-box}
+}
