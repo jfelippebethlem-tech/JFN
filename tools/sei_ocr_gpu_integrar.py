@@ -80,15 +80,15 @@ def integrar() -> dict:
                 res["fora_do_manifesto"] += 1
                 novos.append({**reg, "acao": "fora_do_manifesto"})
                 continue
-            if texto.count("\ufffd") > max(2, len(texto) // 1000):     # acento cortado (U+FFFD): não entra
-                corrompidos += 1           # apaga a entrega para a releitura corrigida poder chegar (rsync --ignore-existing)
+            nativo = _chars(d) >= MIN_CHARS and not d.get("ocr")
+            if nativo:
+                res["nativos_mantidos"] += 1
+                novos.append({**reg, "acao": "nativo_mantido"})
+                continue
+            if "\ufffd" in texto or len(texto) < MIN_CHARS:  # acento cortado (U+FFFD) ou GPU sem texto: não entra
+                corrompidos += int("\ufffd" in texto)   # apaga a entrega e NÃO registra: a releitura pode chegar depois
                 g.unlink(missing_ok=True)
                 g.with_suffix("").with_suffix(".ocr_gpu.json").unlink(missing_ok=True)
-                continue
-            nativo = _chars(d) >= MIN_CHARS and not d.get("ocr")
-            if nativo or len(texto) < MIN_CHARS:
-                res["nativos_mantidos"] += int(nativo)
-                novos.append({**reg, "acao": "nativo_mantido" if nativo else "gpu_vazio"})
                 continue
             cab = f"[{d.get('titulo', '')}] (fase: {d.get('fase', '')} · tipo: {d.get('tipo', '')})\n\n"
             if _chars(d) >= MIN_CHARS and d.get("texto"):           # Tesseract → guarda o antigo e substitui

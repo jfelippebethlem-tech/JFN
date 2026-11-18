@@ -90,3 +90,25 @@ def test_texto_com_acento_quebrado_nao_entra(tmp_path, monkeypatch):
     res = G.integrar()
     assert res["preenchidos"] == 0 and res.get("texto_corrompido") == 1
     assert json.loads((arq / "manifest.json").read_text())["docs"][0]["chars"] == 0
+
+
+def test_entrega_vazia_nao_fica_registrada_e_pode_voltar(tmp_path, monkeypatch):
+    """18/11/2026: 36 entregas vazias (vLLM fora do ar) ficaram no registro como 'gpu_vazio' e nunca voltariam."""
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    docs = [{"i": 0, "titulo": "NF", "fase": "despesa", "tipo": "nota_fiscal", "texto": "", "chars": 0}]
+    arq, cache = _monta(tmp_path, docs, {}, {0: "[página 1]\n"})
+    G.integrar()
+    assert not (cache / "000.ocr_gpu.txt").exists()                          # apagada para a releitura chegar
+    (cache / "000.ocr_gpu.txt").write_text("NOTA FISCAL Nº 53 valor R$ 94.999,98 serviço prestado em março", encoding="utf-8")
+    assert G.integrar()["preenchidos"] == 1
+
+
+def test_um_unico_caractere_quebrado_ja_barra(tmp_path, monkeypatch):
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    docs = [{"i": 0, "titulo": "NL", "fase": "despesa", "tipo": "nota_liquidacao", "texto": "", "chars": 0}]
+    _monta(tmp_path, docs, {}, {0: "Nota de Liquida�ão valor 1.234,56 referente ao contrato 12/2024 " * 2})
+    assert G.integrar()["preenchidos"] == 0
