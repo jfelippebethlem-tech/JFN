@@ -129,6 +129,20 @@ def _parse_json(txt: str) -> dict | None:
 
 
 _REGRAS_CACHE: list[str] | None = None
+# Lições da rubrica: as do CAMPEÃO do autoaprimoramento (`data/autoaprimoramento/campeao.json`, só entra lá o que
+# passou no portão determinístico e na sombra — docs/AUTOAPRIMORAMENTO-JFN.md). `_LICOES_SOMBRA` troca essa lista
+# durante a reexecução de um desafiante (compliance_agent/autoaprimoramento/reexecucao.py); None = produção.
+_LICOES_SOMBRA: list[str] | None = None
+
+
+def _licoes_da_rubrica() -> list[str]:
+    if _LICOES_SOMBRA is not None:
+        return list(_LICOES_SOMBRA)
+    try:
+        from compliance_agent.autoaprimoramento.registro import licoes_do_campeao
+        return licoes_do_campeao()
+    except ImportError:
+        return []
 
 
 def _regras_calibracao() -> str:
@@ -142,7 +156,8 @@ def _regras_calibracao() -> str:
             _REGRAS_CACHE = [(r.get("valor") or "")[:240] for r in regras[:16] if r.get("valor")]
         except Exception:
             _REGRAS_CACHE = []
-    return "\n".join(f"- {x}" for x in _REGRAS_CACHE) or "(sem lições registradas)"
+    # as da rubrica vão PRIMEIRO (o meio de um prompt longo é o trecho menos lido)
+    return "\n".join(f"- {x}" for x in _licoes_da_rubrica() + _REGRAS_CACHE) or "(sem lições registradas)"
 
 
 def _chave_processo(p: str | None) -> str | None:
@@ -260,7 +275,27 @@ def _gravar(con, numero_sei, objeto, fl, r, nota, modelo):
             time.sleep(3 * (tentativa + 1))
 
 
+def _antes_de_regravar(con, numero_sei, modelo_novo, laudo_novo: dict | None = None) -> bool:
+    """Toda regravação de laudo passa por aqui: a linha vigente vai para o ledger do autoaprimoramento (18/11/2026:
+    de 72 laudos de agente conferidos na fonte primária, 51 foram regravados por juízo sobre o resumo e não havia
+    onde achar o anterior). True = a linha vigente é PROVA PRIMÁRIA e o laudo novo não é: NÃO regravar."""
+    try:
+        from compliance_agent.autoaprimoramento import ledger
+        cur = con.execute("SELECT execucao_comprovada, coerencia, nota_risco, indicios, duvidas, resumo, modelo, em "
+                          "FROM lex_execucao WHERE numero_sei=?", (numero_sei,))
+        ant = cur.fetchone()
+        if not ant:
+            return False
+        return ledger.antes_de_regravar(numero_sei, dict(zip([d[0] for d in cur.description], ant)), modelo_novo,
+                                        laudo_novo)
+    except (ImportError, sqlite3.Error):
+        return False
+
+
 def _gravar_uma_vez(con, numero_sei, objeto, fl, r, nota, modelo):
+    if _antes_de_regravar(con, numero_sei, modelo, {**r, "nota_risco": nota}):
+        print(f"  [{numero_sei}] laudo conferido na fonte primária — o de {modelo} foi para o ledger, não regrava")
+        return
     con.execute(
         """INSERT INTO lex_execucao (numero_sei,objeto,tem_prestacao_contas,tem_fiscalizacao,
             tem_relatorio_fotografico,tem_atesto_recebimento,tem_nota_fiscal,tem_medicao,
@@ -297,6 +332,8 @@ def aplicar_conferencia(item: str, resposta: str, modelo: str, concorda, con: sq
         ant = con.execute("SELECT modelo FROM lex_execucao WHERE numero_sei=?", (numero_sei,)).fetchone()
         if not ant:
             return False
+        if _antes_de_regravar(con, numero_sei, modelo, _parse_json(resposta)):
+            return False             # prova primária não é regravada por conferência sobre o resumo
         antes = (ant[0] or "desconhecido").split(" · conferido")[0]
         r = _parse_json(resposta) or {}
         r["execucao_comprovada"] = _exec_norm(r.get("execucao_comprovada"))

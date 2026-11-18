@@ -23,6 +23,7 @@
 |---|---|
 | [CAPACIDADES.md](CAPACIDADES.md) · [COMANDOS.md](COMANDOS.md) | O que o sistema faz / comandos do Yoda. |
 | [PLAYBOOK-EXECUTOR.md](PLAYBOOK-EXECUTOR.md) · [PLAYBOOK-SEI.md](PLAYBOOK-SEI.md) | Como executar tarefas (passos idempotentes) / caminho único do SEI. |
+| [AUTOAPRIMORAMENTO-JFN.md](AUTOAPRIMORAMENTO-JFN.md) | Autoaprimoramento da perícia: ledger de verdade de chão, calibração por motor, armadilhas, portão determinístico, campeão × desafiante. |
 | [RUNBOOK-BOOT-E-ANTIIDLE.md](RUNBOOK-BOOT-E-ANTIIDLE.md) | Boot da VM + guarda anti-idle (Oracle Always Free). |
 | [METODOLOGIA-EMPRESA-FANTASMA.md](METODOLOGIA-EMPRESA-FANTASMA.md) | Método /fantasma (8 sinais determinísticos). |
 | [MASSARE-SUBMODULO.md](MASSARE-SUBMODULO.md) · [MIMO-CONTEXT.md](MIMO-CONTEXT.md) · [MANUAL-FISCALIZACAO-MIMO-2026-06-28.md](MANUAL-FISCALIZACAO-MIMO-2026-06-28.md) | Submódulo Massare / contexto e manual p/ o MiMo. |

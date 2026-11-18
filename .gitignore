@@ -249,3 +249,6 @@ data/fachada_controle_sintetico/
 
 # trava de senha SIAFE recusada (só HMAC, nunca versionar) — 18/11/2026
 data/siafe_senha_recusada.json
+
+# autoaprimoramento da perícia: ledger (auto.db), candidatos/ e relatórios gerados
+data/autoaprimoramento/

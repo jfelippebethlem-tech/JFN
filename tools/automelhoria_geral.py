@@ -436,11 +436,60 @@ def sensor_qualidade() -> list[dict]:
             for i in _q.para_automelhoria(_q.rodar())]
 
 
+def sensor_autoaprimoramento(pasta: Path | None = None, db: Path | None = None, agora: float | None = None) -> list[dict]:
+    """Autoaprimoramento da perícia (docs/AUTOAPRIMORAMENTO-JFN.md): prova primária regravada por juízo mais fraco,
+    kill switch ligado e ledger parado. Sem ledger ainda = nada a medir (o ciclo nunca rodou), não é problema."""
+    import sqlite3
+    pasta = pasta or DATA / "autoaprimoramento"
+    if not (pasta / "auto.db").exists():
+        return []
+    from compliance_agent.autoaprimoramento import ledger, monitor
+    out = []
+    if (pasta / "KILL").exists():
+        out.append(_p("autoaprimoramento", "kill", "kill switch do autoaprimoramento ligado",
+                      (pasta / "KILL").read_text(encoding="utf-8")[:200],
+                      acao_humana="ler o motivo; resolvido, apagar data/autoaprimoramento/KILL"))
+    con = sqlite3.connect(f"file:{pasta / 'auto.db'}?mode=ro", uri=True, timeout=20)
+    try:
+        perdidos = monitor.fonte_perdida(con, db)
+        ultimo = con.execute("SELECT MAX(capturado_em) FROM laudo_versao").fetchone()[0]
+        novos = _conferencias_fora_do_ledger(con, db or DATA / "compliance.db", ledger)
+    except sqlite3.Error as e:                     # `sentir` transforma em `sensor:autoaprimoramento` (cego ≠ ok)
+        raise RuntimeError(f"ledger ilegível: {type(e).__name__}: {e}") from e
+    finally:
+        con.close()
+    if perdidos:
+        out.append(_p("autoaprimoramento", "fonte_perdida",
+                      f"{len(perdidos)} laudo(s) conferido(s) na fonte primária regravado(s) por juízo mais fraco",
+                      ", ".join(perdidos[:6]),
+                      acao_humana="o laudo da fonte está no ledger (data/autoaprimoramento/auto.db, laudo_versao "
+                                  "nivel_prova=2): reaplicar com tools.lex_execucao.aplicar_conferencia depois de "
+                                  "conferir que a captura não mudou"))
+    if novos:
+        out.append(_p("autoaprimoramento", "ledger_parado",
+                      f"{novos} conferência(s) na fonte primária fora do ledger (último registro {ultimo})",
+                      acao_humana="rodar `python -m compliance_agent.autoaprimoramento ciclo --dry-run` e ler o relatório"))
+    return out
+
+
+def _conferencias_fora_do_ledger(con, db: Path, ledger) -> int:
+    """Laudos de nível 2 vigentes em lex_execucao que o ledger ainda não tem (o ciclo não rodou depois deles)."""
+    import sqlite3
+    tem = {r[0] for r in con.execute("SELECT DISTINCT numero_sei FROM laudo_versao WHERE nivel_prova=2")}
+    ro = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
+    try:
+        return sum(1 for ns, m in ro.execute("SELECT numero_sei, modelo FROM lex_execucao WHERE modelo LIKE '%Claude Code%'")
+                   if ledger.nivel_gravado(m) == 2 and ns not in tem)
+    finally:
+        ro.close()
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
             "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
-            "qualidade": sensor_qualidade}
+            "qualidade": sensor_qualidade,
+            "autoaprimoramento": sensor_autoaprimoramento}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:

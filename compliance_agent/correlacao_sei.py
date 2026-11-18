@@ -150,11 +150,22 @@ def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
         con.close()
 
 
-def estado_do_laudo(modelo: str | None) -> tuple[str, str]:
+def estado_do_laudo(modelo: str | None, nota: int | None = None) -> tuple[str, str]:
     """Estado do laudo de execução pela proveniência (regra 9). 18/11/2026: 92% dos 7.919 laudos eram de outro modelo
     sem conferência do Claude, e o Opus rebaixou o risco em 39 dos 43 'risco alto' que conferiu — laudo sem a
-    conferência é PENDENTE, nunca conclusão."""
+    conferência é PENDENTE, nunca conclusão.
+
+    Com a `nota`: risco alto (≥ 7) só é VERIFICADO se conferido na FONTE PRIMÁRIA. Medido no mesmo dia: dos riscos
+    altos que o Opus manteve lendo o resumo, cerca de um terço se confirmou na íntegra do SEI + OB do SIAFE — esse
+    laudo sai 'A CONFERIR', com a taxa de confirmação calibrada (compliance_agent/autoaprimoramento/calibracao.py)."""
     m = str(modelo or "").strip()
+    if nota is not None:
+        from compliance_agent.autoaprimoramento.calibracao import confianca
+        c = confianca(m, nota)
+        if c["estado"] == "VERIFICADO_NA_FONTE":
+            return "VERIFICADO", c["texto"]
+        if c["estado"] == "A_CONFERIR_NA_FONTE":
+            return ("A CONFERIR" if "claude" in m.lower() else "PENDENTE"), c["texto"]
     if "claude" in m.lower():
         return "VERIFICADO", "conferido/feito pelo Claude"
     if m.startswith("regra:"):
@@ -199,7 +210,7 @@ def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
             if k in laudos:
                 x.update({c: laudos[k][c] for c in ("exec", "nota", "resumo", "indicios", "avaliado_em", "modelo")})
                 x["numero_sei"] = laudos[k]["numero_sei"] or a["numero_sei"]
-                x["estado"], x["estado_motivo"] = estado_do_laudo(x.get("modelo"))
+                x["estado"], x["estado_motivo"] = estado_do_laudo(x.get("modelo"), x.get("nota"))
             out.append(x)
         return out
     except sqlite3.OperationalError:
