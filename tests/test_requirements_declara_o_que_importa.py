@@ -39,6 +39,12 @@ APELIDOS = {
 # usado só para provisionar VM — fora do caminho de análise. Se ele aparecer em qualquer outro
 # arquivo, o teste falha, que é o comportamento desejado.
 EXCECOES = {("oci", "tools/criar_vm_oracle2.py")}
+# 18/11/2026 — scripts de render da abertura do painel (v68/v69): rodam DENTRO do Blender (bpy/bmesh/mathutils vêm
+# do Python embutido dele) ou na GPU do it-campo (torch/diffusers/transformers da venv de lá), nunca na venv do JFN.
+# Presos a cada arquivo: o mesmo import em qualquer outro lugar volta a falhar.
+EXCECOES |= {(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
+EXCECOES |= {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
+EXCECOES |= {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")}
 
 
 def _modulos_locais() -> set[str]:
