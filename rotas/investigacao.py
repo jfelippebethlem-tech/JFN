@@ -312,9 +312,12 @@ def api_painel():
 
             return JSONResponse(content=_cache_put("painel:snapshot", {
                 "atualizado": str(hoje),
-                "obs": {"total": total_obs, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia, "valor_ultimo_dia": v_ultimo_dia,
+                "obs": {**_siafe_pago_total(), "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
+                        "valor_ultimo_dia": v_ultimo_dia,
                         "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
-                        "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
+                        "valor_hoje": float(valor_hoje),
+                        # espelho TFE (cobertura parcial) — rotulado, nunca o número principal (regra OB = SIAFE)
+                        "tfe_total": total_obs, "tfe_valor_total": float(valor_total)},
                 "alertas": {"alta": alta, "media": media, "baixa": total_ativos - alta - media,
                             "total": total_ativos, "criterio": "não descartados (status ≠ descartado)",
                             "por_tipo": por_tipo},
@@ -2647,6 +2650,29 @@ def _estado_frescor(idade, detalhe: str = "") -> str:
     if est == "ok" and str(detalhe or "").startswith("⛔"):
         est = "atencao"
     return est
+
+
+def _siafe_pago_total() -> dict:
+    """KPI de cabeçalho do painel: OB PAGA pelo SIAFE (Contabilizada, sem a devolvida pelo banco) de 2021 em diante,
+    o período com coleta completa. Até 18/11/2026 o painel somava o espelho TFE inteiro como "valor fiscalizado"
+    (R$ 141,5 bi em 1,2 mi OB) — regra da casa é OB = SIAFE; o pago de 2021–2026 no SIAFE é ~3,5× o do espelho.
+    Cache de 30 min (soma de 1,3 mi linhas). INDISPONÍVEL ≠ 0: sem a tabela, total None e o motivo."""
+    if d := _cache_get("obs:siafe_pago_total", 1800):
+        return d
+    out = {"total": None, "valor_total": None, "fonte_total": "SIAFE indisponível"}
+    try:
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
+        try:
+            n, v = con.execute(f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
+                               "AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021").fetchone()
+        finally:
+            con.close()
+        out = {"total": n, "valor_total": round(float(v), 2),
+               "fonte_total": "OB paga no SIAFE (Contabilizada, sem devolvida pelo banco), 2021 em diante"}
+    except _sqlite3.Error as exc:
+        out["fonte_total"] = f"SIAFE indisponível: {exc}"
+    return _cache_put("obs:siafe_pago_total", out)
 
 
 @router.get("/api/fontes/frescor")
