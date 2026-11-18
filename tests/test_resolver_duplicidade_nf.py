@@ -613,3 +613,16 @@ def test_anexos_das_duas_obs_citando_a_mesma_nf_confirma(monkeypatch):
            {"numero_ob": "2024OB00002", "valor": 10.0, "processo": "SEI-180002/001723/2024"}]
     r = R.resolver_competencia("48211105000116", "12/2024", obs)
     assert r["veredito"] == "CONFIRMADO", r
+
+
+def test_confirmado_volta_ao_resolvedor_e_vai_na_frente():
+    """18/11/2026: o 🔴 com T07 CONFIRMADO nunca era reconferido — regra corrigida não o alcançava."""
+    import sqlite3 as _sq
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE pericia_fornecedor (cnpj TEXT, ug TEXT, favorecido TEXT, achados_json TEXT, grau TEXT, "
+              "total_pago REAL)")
+    conf = json.dumps([{"codigo": "T07-DUPLICIDADE-COMP", "status": "CONFIRMADO"}])
+    ind = json.dumps([{"codigo": "T07-DUPLICIDADE-COMP", "status": "INDICIO"}])
+    c.executemany("INSERT INTO pericia_fornecedor VALUES (?,?,?,?,?,?)", [
+        ("A", "1", "a", ind, "🟡", 900.0), ("R", "1", "r", conf, "🔴", 10.0), ("Z", "1", "z", "[]", "🟢", 999.0)])
+    assert [p[0] for p in R.pares_amarelos(c)] == ["R", "A"]

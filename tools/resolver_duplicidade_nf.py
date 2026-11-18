@@ -806,17 +806,22 @@ def pares_amarelos(c, limit: int | None = None) -> list[tuple]:
         feitos = {(r[0], str(r[1])) for r in c.execute("SELECT DISTINCT cnpj, ug FROM resolucao_duplicidade")}
     except sqlite3.OperationalError:
         feitos = set()
-    out = []
+    out, confirmados = [], []
     for cnpj, ug, fav, aj in c.execute("SELECT cnpj, ug, favorecido, achados_json FROM pericia_fornecedor "
-                                       "WHERE grau IN ('🟡', '🟢') "
                                        "ORDER BY total_pago DESC"):
         try:
             ach = json.loads(aj or "[]")
         except ValueError:
             continue
-        if any(a.get("codigo") == "T07-DUPLICIDADE-COMP" and a.get("status") == "INDICIO" for a in ach):
+        t07 = {a.get("status") for a in ach if a.get("codigo") == "T07-DUPLICIDADE-COMP"}
+        if "CONFIRMADO" in t07:
+            # 18/11/2026: o 🔴 CONFIRMADO nunca voltava ao resolvedor — quando a regra mudou (anexo da OB vence o
+            # valor), o único 🔴 da base, falso, ficou de pé. O confirmado é RECONFERIDO toda rodada, e primeiro.
+            confirmados.append((cnpj, ug, fav or ""))
+        elif "INDICIO" in t07:
             out.append((cnpj, ug, fav or ""))
     out.sort(key=lambda p: (p[0], str(p[1])) in feitos)      # estável: mantém o maior pago primeiro em cada grupo
+    out = confirmados + out
     return out[:limit] if limit else out
 
 
