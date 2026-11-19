@@ -136,8 +136,10 @@ fontes:
     sonda: {git: [compliance_agent/pcrj/pericia_gastos.py]}
   pcrj_base:
     nome: Despesa, contrato ou licitação nova da Prefeitura do Rio
-    sonda: {sql: "SELECT (SELECT MAX(rowid) FROM pcrj_despesa), (SELECT MAX(rowid) FROM pcrj_contratos), (SELECT MAX(rowid) FROM pcrj_licitacoes)",
-            mudanca: "despesa/contratos/licitações municipais novos na base"}
+    # contrato_aditivo entra desde 19/11/2026: o D11 decide pelos TERMOS, e termo novo coletado
+    # (coletar_termos_municipio) não mexe em pcrj_contratos.rowid — sem ele a perícia não re-rodava.
+    sonda: {sql: "SELECT (SELECT MAX(rowid) FROM pcrj_despesa), (SELECT MAX(rowid) FROM pcrj_contratos), (SELECT MAX(rowid) FROM pcrj_licitacoes), (SELECT MAX(rowid) FROM contrato_aditivo)",
+            mudanca: "despesa/contratos/licitações/termos aditivos municipais novos na base"}
   emendas_base:
     nome: Emenda nova na base
     sonda: {sql: "SELECT MAX(rowid) FROM emendas", unidade: "emenda(s)"}
