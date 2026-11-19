@@ -93,6 +93,26 @@ def _declara_ug_valida(texto: str, nomes: dict[str, str]) -> bool:
     return bool(m and _ug_valida(m.group(1), nomes))
 
 
+_PODER = ((re.compile(r"tribunal de justi|\btjrj\b|poder judici", re.I), "Judiciário"),
+          (re.compile(r"tribunal de contas|\btce\b", re.I), "Tribunal de Contas"),
+          (re.compile(r"assembl[eé]ia legislativa|\balerj\b", re.I), "Legislativo"),
+          (re.compile(r"minist[eé]rio p[uú]blico|\bmprj\b|procuradoria-geral de justi", re.I), "Ministério Público"),
+          (re.compile(r"defensoria", re.I), "Defensoria Pública"))
+_MUNICIPAL = re.compile(r"\bpcrj\b|prefeitura|\bmunicipal\b|c[aâ]mara municipal", re.I)
+
+
+def esfera_poder(ug: str, nomes: dict[str, str], fm: str) -> tuple[str, str]:
+    """(esfera, poder) da nota — regra CNF-12 (19/11/2026: 132 casos abertos sem esfera). UG estadual válida →
+    estadual + Poder pelo nome do órgão (sem casar, Executivo); sem UG e frontmatter de Prefeitura → municipal.
+    Sem dado → ("", ""): a nota fica sem esfera e o sensor segue apontando (nunca chute)."""
+    if ug and ug in nomes:
+        return "estadual", next((p for rx, p in _PODER if rx.search(nomes[ug])), "Executivo")
+    campos = " ".join(ln for ln in fm.splitlines() if re.match(r"^(orgao|entidade|tags|esfera_texto):", ln))
+    if _MUNICIPAL.search(campos):
+        return "municipal", ("Legislativo" if re.search(r"c[aâ]mara", campos, re.I) else "Executivo")
+    return "", ""
+
+
 def marcar_nota(texto: str, ug, nomes: dict[str, str]) -> str | None:
     """A nota com `ug`/`orgao` (se o autor não escreveu) e as tags `ug/<código>` + `orgao/<sigla>`. A UG que a nota declara
     vence; `ug` (lida de fora, do SIAFE) só vale para nota que não declara nenhuma. None se a nota não tem frontmatter. Só o frontmatter muda."""
@@ -112,6 +132,15 @@ def marcar_nota(texto: str, ug, nomes: dict[str, str]) -> str | None:
     if ug and "orgao" in tem and not _valor(linhas[tem["orgao"]]):
         linhas[tem["orgao"]] = f"orgao: {_y(nomes[ug])}"
     novas = ([f'ug: "{ug}"'] if ug and "ug" not in tem else []) + ([f"orgao: {_y(nomes[ug])}"] if ug and "orgao" not in tem else [])
+    if not any(k in tem and _valor(linhas[tem[k]]) for k in ("esfera", "ente")):
+        esf, poder = esfera_poder(ug, nomes, m.group(1))
+        if esf:
+            if "esfera" in tem:
+                linhas[tem["esfera"]] = f"esfera: {esf}"
+            else:
+                novas.append(f"esfera: {esf}")
+            if "poder" not in tem:
+                novas.append(f"poder: {poder}")
     if "tags" in tem:
         i = tem["tags"]
         inline = re.match(r"^tags:\s*\[(.*)\]\s*$", linhas[i])

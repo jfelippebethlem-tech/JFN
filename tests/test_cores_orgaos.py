@@ -80,3 +80,16 @@ def test_ug_declarada_que_nao_e_ug_cede_a_lida_de_fora_e_lista_vale_a_primeira_v
     lista = '---\nug: "555555, 133100, 180100"\ntags: [caso]\n---\nc\n'
     assert "ug/133100" in co.marcar_nota(lista, "180100", NOMES)                   # 1ª UG válida declarada vence
     assert co._declara_ug_valida(degase, NOMES) is False and co._declara_ug_valida(lista, NOMES) is True
+
+
+def test_esfera_e_poder_cnf12_sem_chute():
+    # 19/11/2026: 132 casos abertos sem esfera (CNF-12). UG válida → estadual + Poder; Prefeitura → municipal; nada → nada
+    m = co.marcar_nota("---\ntipo: caso\ntags: [caso]\n---\nc\n", "180100", NOMES)
+    assert "esfera: estadual" in m and "poder: Executivo" in m
+    pm = co.marcar_nota("---\ntipo: caso\norgao: Prefeitura do Rio de Janeiro\ntags: [caso]\n---\nc\n", None, NOMES)
+    assert "esfera: municipal" in pm and "poder: Executivo" in pm
+    nada = co.marcar_nota("---\ntipo: caso\nentidade: Varredura de concentração\ntags: [caso]\n---\nc\n", None, NOMES)
+    assert "esfera:" not in nada
+    autor = co.marcar_nota("---\ntipo: caso\nesfera: federal\ntags: [caso]\n---\nc\n", "180100", NOMES)
+    assert "esfera: federal" in autor and autor.count("esfera:") == 1          # o autor vence
+    assert co.esfera_poder("x", {"x": "Tribunal de Justiça do Estado"}, "") == ("estadual", "Judiciário")
