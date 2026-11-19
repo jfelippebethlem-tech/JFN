@@ -2582,7 +2582,8 @@ def api_pcrj_aditivos():
                             "cobre o período). Pagamento por contrato: INDISPONÍVEL — a despesa "
                             "CGM é por credor e cobre 2019–2023. Indício ≠ acusação.")}
         return JSONResponse(_cache_put(ck, out))
-    except Exception as exc:  # noqa: BLE001
+    except (_sq.Error, OSError, KeyError, ValueError) as exc:  # base travada/ausente ou dado torto
+        logger.warning("api_pcrj_aditivos: %s", exc)
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
