@@ -216,7 +216,7 @@ def varrer(limite: int | None = None) -> dict:
             "processo": cc.canon(t), "grau": s[0]["grau"], "sinal": s[0]["sinal"],
             "prova": " | ".join(x["prova"] for x in s) + f" | adesão: {r['prova_adesao']}"
                      + (f" | foro: {r['foro_fora_rj']}" if r.get("foro_fora_rj") else ""),
-            "sinais": s, "regime": r["regime"], "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
+            "sinais": s, "regime": r["regime"], "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
             "porque": ("Inocente possível: anuência expressa do gerenciador e norma do ente aderente admitindo a carona "
                        "(RJ: Dec. 46.751/2019 art. 26). Não afasta a cláusula do PRÓPRIO instrumento que limita os "

@@ -30,3 +30,15 @@ def test_negativo_tenis_abaixo_e_estimativa_maior_no_tr():
 def test_negativo_numero_sem_trinca_nao_vira_preco():
     c = Doc("arquivo", "18", "Contrato", "(ID - 184730) página 12 de 40 CNPJ 11.210.951/0001-01 R$ 309,80")
     assert avaliar([ETP, c]) == []
+
+
+def test_negativo_leitura_implausivel_descartada():
+    # 1ª varredura: preço do kit lido no ID do tênis (SEI-030001/023009/2025, +233%) — número impossível = leitura
+    c = Doc("arquivo", "173", "Contrato 30 SEEDUC nº 20/2025", "(ID - 173149) DIESP 74.124 R$ 309,80 R$ 22.963.615,20")
+    r = avaliar([ETP, c])
+    assert r and all(i.get("descartado") == "leitura_implausivel" for i in r)
+
+
+def test_negativo_numero_de_descricao_sem_rs_nao_e_preco():
+    tr = Doc("arquivo", "12", "Termo de Referência", "ID: 161111 PARAFUSO DIÂMETRO 4,5 MM, 12 4,50 54,00")
+    assert precos_por_id(tr) == {}

@@ -13,6 +13,7 @@ sinal: >
 explicacoes_inocentes:
   - "Estimativa atualizada no edital não juntado — vale a maior estimativa dos autos"
   - "Ata de outro processo com estimativa própria — conferir a estimativa do certame"
-  - "Número solto (código, CNPJ, página) — sem trinca não vira preço"
+  - "Número solto (código, CNPJ, página) — sem trinca não vira preço; unitário sem 'R$' antes não vira preço"
+  - "Excesso > 100% = leitura cruzada, descartada e contada (1ª varredura: SEI-030001/023009/2025 kit lido no ID do tênis, +233%; SEI-270057/000012/2023 '4,5 MM' lido como preço)"
 controle_positivo: SEI-030001/087803/2025 doc 15 (ETP, R$ 278,41) × doc 18 (contrato, R$ 309,80) = +11,27%
 controle_negativo: item 173149 (tênis) do mesmo processo — contratado R$ 76,68 abaixo do estimado R$ 92,85

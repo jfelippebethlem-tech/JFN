@@ -27,6 +27,10 @@ _ESTIM = ("etp", "tr", "pesquisa")
 _CONTR = ("contrato", "ata")
 LIMIAR_MEDIO = 0.01
 LIMIAR_FORTE = 0.05
+# excesso acima de 100% é leitura cruzada (preço do kit lido no ID do tênis: SEI-030001/023009/2025, +233%;
+# descrição cirúrgica "4,5 MM" lida como preço: SEI-270057/000012/2023, +61.291%) — número impossível = leitura
+# quebrada, não achado (memória taxa-alta-defeito-de-leitura). Fica fora e é contado na cobertura.
+LIMITE_PLAUSIVEL = 1.0
 
 
 def _f(s: str) -> float:
@@ -48,7 +52,8 @@ def _trinca(janela: str) -> tuple[float, float, float, str] | None:
             continue
         for j in range(i + 1, min(i + 3, len(vals))):
             pu = vals[j][0]
-            if pu <= 0 or "," not in vals[j][1]:
+            # o unitário tem de vir marcado "R$" (número de descrição — "4,5 MM", "12.7" — não é preço)
+            if pu <= 0 or "," not in vals[j][1] or not re.search(r"R\$\s*$", janela[max(0, vals[j][2] - 5): vals[j][2]]):
                 continue
             for k in range(j + 1, min(j + 3, len(vals))):
                 tot = vals[k][0]
@@ -86,6 +91,9 @@ def avaliar(ds: list[cc.Doc]) -> list[dict]:
         e_max = max(est[idd], key=lambda x: x[0])
         c_max = max(cs, key=lambda x: x[0])
         exc = c_max[0] / e_max[0] - 1
+        if exc > LIMITE_PLAUSIVEL:
+            out.append({"id_siga": idd, "descartado": "leitura_implausivel", "excesso_pct": round(100 * exc, 2)})
+            continue
         if exc >= LIMIAR_MEDIO:
             out.append({"id_siga": idd, "estimado": e_max[0], "contratado": c_max[0], "excesso_pct": round(100 * exc, 2),
                         "grau": "forte" if exc >= LIMIAR_FORTE else "medio",
@@ -96,7 +104,7 @@ def avaliar(ds: list[cc.Doc]) -> list[dict]:
 
 def varrer(limite: int | None = None) -> dict:
     todos = cc.tags()[: limite or None]
-    universo = sem_texto = sem_par = 0
+    universo = sem_texto = sem_par = descartados = 0
     brutos = []
     cc.refs_em_paralelo(todos)
     pedidos = []
@@ -112,6 +120,8 @@ def varrer(limite: int | None = None) -> dict:
             continue
         universo += 1
         r = avaliar(ds)
+        descartados += sum(1 for i in r if i.get("descartado"))
+        r = [i for i in r if not i.get("descartado")]
         if r:
             brutos.append((t, r, ds))
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in brutos})
@@ -124,7 +134,7 @@ def varrer(limite: int | None = None) -> dict:
             "itens": itens, "prova": " || ".join(f"ID {i['id_siga']}: R$ {moeda(i['contratado'])} × estimado R$ "
                                                    f"{moeda(i['estimado'])} (+{i['excesso_pct']}%) — {i['prova']}"
                                                    for i in itens[:4]),
-            "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
+            "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
             "porque": ("Inocente possível: estimativa atualizada no edital (não juntado) ou negociação justificada nos "
                        "autos do certame; preço de ata de outro processo. Não afasta: o próprio ETP/TR juntado estima "
@@ -135,5 +145,6 @@ def varrer(limite: int | None = None) -> dict:
     cc.ligar(achados, VICIO, lambda a: a.get("grau") == "forte")
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos),
                                        "sem_texto": sem_texto, "sem_par_estimativa_e_contrato": sem_par,
+                                       "itens_descartados_leitura_implausivel": descartados,
                                        "nota": "só itens com ID SIGA e trinca qtd×unit=total nas DUAS pontas; ata sem "
                                                "coluna total não entra (o contrato entra)."}, achados)

@@ -285,6 +285,15 @@ def ligar(achados: list[dict], vicio: str, violado=lambda a: False) -> list[dict
     return achados
 
 
+def orgao_ou_ug(ds: list[Doc], ob: dict | None) -> str | None:
+    """Órgão pela NE dos autos; sem NE lida, a UG emitente da OB (SIAFE)."""
+    o = orgao(ds)
+    if o or not ob or not ob.get("obs"):
+        return o
+    ugs = sorted({str(x.get("ug")) for x in ob["obs"] if x.get("ug")})
+    return f"UG {', '.join(ugs)} (SIAFE)" if ugs else None
+
+
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], **extra) -> dict:
     return {"id": id_, "gerado_em": agora(), "universo": universo, "cobertura": cobertura,
             "achados": achados, **extra}

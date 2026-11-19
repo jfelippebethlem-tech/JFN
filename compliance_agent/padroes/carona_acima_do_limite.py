@@ -293,7 +293,7 @@ def varrer(limite: int | None = None) -> dict:
                                    "prova": f"PNCP vigência até {fim.isoformat()}; NE de adesão {ne[1]}"})
         if sinais:
             achados.append({"processo": canon, "sinais": sinais, "ata_pncp": ata and {k: v for k, v in ata.items() if k != "itens"},
-                            "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
+                            "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
                             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20]})
     _salvar_cache(cache)
     # L2 — soma das adesões do acervo à mesma ata

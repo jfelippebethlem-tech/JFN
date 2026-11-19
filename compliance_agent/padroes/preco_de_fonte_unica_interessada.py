@@ -101,7 +101,7 @@ def varrer(limite: int | None = None) -> dict:
         achados.append({
             "processo": cc.canon(t), "grau": "forte" if ambos else "medio",
             "sinal": "+".join(k for k, v in r.items() if v), "prova": " | ".join(provas),
-            "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
+            "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
             "porque": ("Inocente possível: produto autoral de editora única (preço de capa é o único preço público) ou "
                        "ata com desconto sobre tabela. Não afasta: art. 23 da Lei 14.133 pede cesta de preços e, na "

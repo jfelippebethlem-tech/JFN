@@ -126,7 +126,7 @@ def varrer(limite: int | None = None) -> dict:
         achados.append({
             "processo": cc.canon(t), "grau": grau, "inciso_art74": r["inciso"],
             "sinal": "bem_comum+outros_fornecedores" if ambos else ("bem_comum" if r["bem_comum"] else "outros_fornecedores"),
-            "prova": " | ".join(provas), "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
+            "prova": " | ".join(provas), "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
             "porque": ("Inocente possível: o item 'bem comum' é cópia do modelo de TR (AGU/PGE) e a exclusividade está "
                        "provada por atestado de exclusividade/direito autoral juntado; 'outras editoras' pode ser só "
