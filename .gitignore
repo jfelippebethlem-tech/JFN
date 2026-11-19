@@ -259,6 +259,10 @@ data/certeza/
 data/sessoes/
 # Resultados do detector de documento reaproveitado (derivado, 6 MB por rodada) — não versionar (18/11/2026)
 data/reuso_documento/
+# Foto × quantitativo (boletim × relatório fotográfico × diário × OB): derivado por rodada — não versionar (18/11/2026)
+data/foto_quantitativo/
 
 # perícia integral por agente (18/11/2026): saídas por processo, aplicadas ao compliance.db depois da conferência
 data/pericia_agentes/
+# Conluio por participação (derivado; nomeia empresas — indício, não vai para o repo público) (18/11/2026)
+data/conluio/
