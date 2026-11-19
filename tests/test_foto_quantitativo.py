@@ -387,7 +387,8 @@ def test_ob_ligada_pela_nl_do_siafe_nao_pela_peca_rejuntada(tmp_path):
     (pasta / "texto").mkdir(parents=True)
     (pasta / "texto" / "0.txt").write_text("Documento assinado eletronicamente por A, Adjunto, em 25/04/2025, às 10:00",
                                            encoding="utf-8")
-    pk = {"n": 20, "boletim": [], "memoria": [], "relatorio": [], "diario": [],
+    pk = {"n": 20, "boletim": [], "memoria": [], "diario": [],
+          "relatorio": [{"i": 0, "titulo": "Relatório Fotográfico - 20ª Medição", "texto": "texto/0.txt"}],
           "aceite": [{"i": 0, "titulo": "Atestado de Realização de Serviços", "texto": "texto/0.txt"}],
           "nl": ["2025NL00995"], "ob": ["2025OB01395"]}
     obs = [{"numero_ob": "2025OB01395", "ug": "243200", "data_emissao": "24/04/2025", "data": date(2025, 4, 24),
