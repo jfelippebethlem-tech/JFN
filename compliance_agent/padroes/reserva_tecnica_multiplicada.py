@@ -81,7 +81,9 @@ def declara_quantidade(texto: str, q: float) -> str | None:
 
 
 def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
-    cands = C.grep_candidatos("reserva t[eé]cnica", so, limite)
+    cands = C.grep_candidatos("reserva t[eé]cnica", so, limite,
+                              nomes=["anexo", "planilha", "detalh", "desembolso", "medi", "relat", "mem", "nota",
+                                     "fatura", "boletim", "_nf", "planejamento", "composi", "custo"])
     cob = {"processos_com_reserva_tecnica": len(cands)}
     brutos = []
     for tag, arqs in cands.items():
@@ -127,7 +129,7 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
             "excesso_estimado": round(sum(x["excesso_estimado"] for x in lin), 2),
             "prova": (f"{x0['doc']} — \"{x0['trecho']}\"" + (f"; {decl[x0['quantidade']]}" if com else "")),
             "valor_pago_ob": C.pago(obs.get(proc, [])),
-            "credor": next((o["nome_credor"] for o in obs.get(proc, []) if o.get("nome_credor")), None),
+            "credor": C.credor_nome(obs.get(proc, [])),
             "porque": ("reserva técnica (sobra de material) multiplicou lugar/pessoa/hora/transporte"
                        + ("; a quantidade executada declarada nos autos é a base sem reserva" if com else "")
                        + "; inocente não excluída: reserva expressamente prevista no contrato para o item"),

@@ -207,14 +207,18 @@ def obs_por_nl(con, nls: set[str], ugs: set[str]) -> list[dict]:
     return [dict(zip(_COLS, r)) for r in con.execute(q, [*sorted(nls), *sorted(ugs)])]
 
 
-def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None = None) -> dict[str, list[str]]:
+def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None = None,
+                    nomes: list[str] | None = None) -> dict[str, list[str]]:
     """{tag: [nomes de .txt]} cujo texto casa `padrao` (grep -E, sem caixa) — I/O em ionice, sem abrir 10 mil pastas
     em Python. Quem chama confere o documento contra o manifesto (órfão não conta)."""
     import subprocess
     alvo = [str(p / "texto") for p in pastas(so)][: limite or None]
     out: dict[str, list[str]] = {}
     for i in range(0, len(alvo), 400):
-        r = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "grep", "-rliE", padrao, *alvo[i:i + 400]],
+        # `nomes`: globs do NOME do .txt (derivado do título SEI: "024_nota_fiscal_….txt") — corta o I/O a quem o
+        # detector leria de qualquer jeito.
+        inc = [f"--include=*{n}*" for n in (nomes or [])]
+        r = subprocess.run(["nice", "-n", "19", "ionice", "-c2", "-n7", "grep", "-rliE", *inc, padrao, *alvo[i:i + 400]],
                            capture_output=True, text=True, check=False)
         for linha in r.stdout.splitlines():
             m = re.search(r"sei_arquivo/([^/]+)/texto/(.+)$", linha)
@@ -225,3 +229,14 @@ def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None
 
 def docs_por_arquivo(man: dict) -> dict[str, dict]:
     return {str(d["texto"]).split("/")[-1]: d for d in docs(man)}
+
+
+def credor_nome(obs: list[dict]) -> str | None:
+    """Nome do credor das OB; pessoa física (credor com 11 dígitos) sai omitida — LGPD (nome de PF só de agente
+    público no exercício da função, e com prova)."""
+    for o in obs:
+        if o.get("nome_credor"):
+            if len(re.sub(r"\D", "", str(o.get("credor") or ""))) == 11:
+                return "pessoa física (nome omitido)"
+            return o["nome_credor"]
+    return None

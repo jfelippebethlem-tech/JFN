@@ -37,3 +37,8 @@ def test_negativo_destino_privado_e_municipal():
 
 def test_negativo_natureza_que_nao_e_beneficio():
     assert B.ler_ob(OB.replace("339048 - Outros Auxílios", "339039 - Outros Serviços")) is None
+
+
+def test_folha_nominal_rebaixa_para_medio():
+    assert B._TIT_FOLHA_NOMINAL.search("Planilha DE PAGAMENTO 01  JANEIRO (122891468)")
+    assert not B._TIT_FOLHA_NOMINAL.search("Planilha Cartão Recomeçar SEDSODH 2º lote Bom Jesus Itabap (83638438)")

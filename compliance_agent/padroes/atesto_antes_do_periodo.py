@@ -83,7 +83,7 @@ def periodos(texto: str) -> list[tuple[date | None, date, str]]:
     out = []
 
     def ok(m) -> bool:
-        return not _NAO_SERVICO.search(t[max(0, m.start() - 70):m.start() + 12])
+        return not _NAO_SERVICO.search(t[max(0, m.start() - 70):m.start() + 28])   # "Período contratual: …"
 
     for m in _P1.finditer(t):
         a, b = C.data_br(m[1]), C.data_br(m[2])
@@ -126,9 +126,16 @@ def data_do_atesto(texto: str) -> date | None:
     return max(ds) if ds else None
 
 
+# Cartão de benefício (vale-refeição/alimentação): o crédito do mês é carregado no INÍCIO do mês — "serviços do mês
+# de maio" pagos em 12/05 é o modelo do produto, não antecipação (VR, Green Card, Trivale: 1ª varredura, 19/11/2026).
+VALE_BENEFICIO = re.compile(r"vale[- ]?(refei|alimenta)|refei[cç][oõ]es|benef[ií]cios e servi|cart[aã]o[- ](alimenta|"
+                            r"refei)|institui[cç][aã]o de pagamento|aux[ií]lio[- ](alimenta|refei)|green card|\bVR\b|"
+                            r"trivale|ticket|sodexo|pluxee|alelo", re.I)
+
+
 def avaliar_atesto(texto_atesto: str, nfs: dict[str, str]) -> dict | None:
     """Um atesto + {id SEI: texto} das NFs que ele cita → pior antecipação, ou None."""
-    if _CONCESSIONARIA.search(texto_atesto[:4000]):
+    if _CONCESSIONARIA.search(texto_atesto[:4000]) or VALE_BENEFICIO.search(texto_atesto[:6000]):
         return None
     assinado = data_do_atesto(texto_atesto)
     if not assinado:
@@ -195,6 +202,9 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
     for b in brutos:
         proc = C.processo(b["tag"])
         ob_p = obs.get(proc, [])
+        if any(VALE_BENEFICIO.search(o.get("nome_credor") or "") for o in ob_p):
+            cob["fora_cartao_beneficio"] = cob.get("fora_cartao_beneficio", 0) + len(b["atestos"])
+            continue
         for r in b["atestos"]:
             g, pagas = classificar(r, ob_p)
             obs_txt = ", ".join(f"{o['numero_ob']} de {o['data_emissao']} R$ {C.fmt(float(o['valor'] or 0))}"
@@ -208,7 +218,7 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
                 "obs_pagas_antes_do_fim": [o["numero_ob"] for o in pagas],
                 "valor_obs_antes_do_fim": round(sum(float(o["valor"] or 0) for o in pagas), 2) if pagas else None,
                 "valor_pago_ob": C.pago(ob_p),
-                "credor": next((o["nome_credor"] for o in ob_p if o.get("nome_credor")), None),
+                "credor": C.credor_nome(ob_p),
                 "porque": ("atesto anterior ao fim do período de serviço" + (" e anterior ao início" if
                            r["antes_do_inicio"] else "") + "; inocentes não excluídas: montagem/pré-produção que "
                            "termina antes do evento, data digitada errada, antecipação contratual (art. 145 §1º)"),

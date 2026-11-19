@@ -38,3 +38,12 @@ def test_negativo_concessionaria():
 def test_atesto_antecipado_sem_ob_e_medio():
     r = A.avaliar_atesto(ATESTO.replace("04 de novembro", "07 de novembro"), {"145642059": NF77})
     assert A.classificar(r, [])[0] == "medio"
+
+
+def test_negativo_periodo_contratual_e_vigencia():
+    assert A.periodos("Período contratual: 02/06/2025 a 01/06/2026") == []
+
+
+def test_negativo_cartao_beneficio_credito_no_inicio_do_mes():
+    t = "Atestamos os serviços do mês de maio/2026 — fornecimento de vale-refeição. Rio de Janeiro, 06 de maio de 2026"
+    assert A.avaliar_atesto(t, {}) is None

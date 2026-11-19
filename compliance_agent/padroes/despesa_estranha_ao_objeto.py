@@ -32,6 +32,8 @@ from compliance_agent.padroes import _pagamento_comum as C
 ID = "despesa_estranha_ao_objeto"
 
 GREP = r"jantar|almo[cç]o|confraterniza|coquetel|happy hour|ceia|dia do servidor|festa de (fim|encerramento)"
+# nomes dos .txt que podem ter título de execução (o casamento fino é `TIT_EXEC` sobre o título do manifesto)
+NOMES = ["nota", "_nf", "fatura", "ordem", "_os", "atest", "medi", "planilha", "relat", "boletim"]
 TIT_EXEC = re.compile(r"nota fiscal|\bNFS?e?\b|fatura|ordem de servi[cç]o|\bOS\b|atestad|medi[cç][aã]o|"
                       r"planilha|relat[oó]rio (de execu|fotogr|do evento|final)|boletim", re.I)
 _FESTA = re.compile(r"jantar|almo[cç]o|confraterniza\w*|coquetel|happy hour|\bceia\b|festa\b|celebra[cç][aã]o de "
@@ -72,7 +74,7 @@ def avaliar_texto(texto: str) -> dict | None:
 
 
 def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
-    cands = C.grep_candidatos(GREP, so, limite)
+    cands = C.grep_candidatos(GREP, so, limite, nomes=NOMES)
     cob = {"processos_com_termo": len(cands), "docs_com_termo": sum(len(v) for v in cands.values()),
            "nao_coberto": "reforma paga como outro objeto; festa classificada como manutenção (exige objeto × memória)"}
     brutos = []
@@ -107,7 +109,7 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
             "processo": proc, "grau": h0["grau"], "n_docs": len(hits),
             "prova": "; ".join(f"{h['doc']} ({h['titulo']}) — \"{h['trecho']}\"" for h in hits[:3]),
             "valor_pago_ob": C.pago(obs.get(proc, [])),
-            "credor": next((o["nome_credor"] for o in obs.get(proc, []) if o.get("nome_credor")), None),
+            "credor": C.credor_nome(obs.get(proc, [])),
             "porque": ("evento festivo/refeição para servidores ou autoridades do próprio órgão em documento de "
                        "execução; inocentes não excluídas: evento institucional previsto no objeto (ex.: contrato de "
                        "eventos que inclua cerimonial), alimentação de equipe em serviço"),

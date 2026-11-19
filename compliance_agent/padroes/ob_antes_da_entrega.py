@@ -43,6 +43,16 @@ _RE_CC_TXT = re.compile(r"carta de cr[eé]dito|letter of credit|MT\s?700|documen
 _RE_DATA_NL = re.compile(r"\b(\d{2}/\d{2}/\d{2,4})\b")
 
 
+_RE_RECEB_TXT = re.compile(
+    r"conformidade\s+d[oa]s?\s+(?:material|materiais|bens?|equipamentos?|viaturas?|ve[ií]culos?)\s+atestada|"
+    r"atest\w*\s+(?:o|a)\s+(?:recebimento|conformidade)(?!\s+d[aoe]s?\s+(?:nota|empenho|NE\b|of[ií]cio|documento))|"
+    r"(?:foram|foi)\s+recebid[oa]s?\s+(?:pela|por)\s+comiss|"
+    r"recebimento\s+(?:provis[oó]rio|definitivo)\s+(?:foi\s+)?realizado", re.I)
+# Documentos que DESCREVEM o recebimento como regra futura (cláusula), não como fato: não contam.
+_TIT_NAO_ATO = re.compile(r"contrato|\bata\b|edital|termo de refer|proposta|minuta|parecer|decreto|justificativa|"
+                          r"\bCTT\b|carta de cr|FIN\s*700|pedido de abertura|empenho|\bNE\b", re.I)
+
+
 def _data_doc(texto: str):
     d = data_do_atesto(texto)
     if d:
@@ -97,6 +107,17 @@ def _pasta(pasta, man, sel):
                 cc = True
     if not liq:
         return [], {}
+    # Recebimento declarado no CORPO de manifestação/despacho (ITURRI × CBMERJ, SEI-270005/000992/2025, doc 15: "a
+    # conformidade do material atestada pela Comissão de Fiscalização (SEI nº 129726203)") — o título não diz.
+    for d in C.docs(man):
+        tit = str(d.get("titulo") or "")
+        if TIT_RECEB.search(tit) or _TIT_NAO_ATO.search(tit):
+            continue
+        t = C.ler(pasta, man, d, teto=30000)
+        m = _RE_RECEB_TXT.search(t)
+        if m:
+            receb.append({"doc": C.numero_doc(d), "titulo": tit[:100], "data": _data_doc(t),
+                          "trecho": C.trecho(t, m.start(), m.end(), 80)})
     return [{"tag": pasta.name, "liq": liq, "receb": receb, "cc": cc, "nls": sorted(nls), "ugs": sorted(ugs)}], \
         {"liquidacao_proforma": 1}
 
@@ -139,7 +160,7 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
         rec = "; ".join(f"{r['doc']} {r['data']:%d/%m/%Y}" if r.get("data") else r["doc"] for r in b["receb"][:4])
         achados.append({
             "processo": proc, "grau": g, "carta_de_credito": b["cc"],
-            "credor": next((o["nome_credor"] for o in ob_p if o.get("nome_credor")), None),
+            "credor": C.credor_nome(ob_p),
             "prova": (f"{l0['doc']} ({l0['titulo']}) — \"{l0['trecho']}\"; 1ª OB paga "
                       f"{datas_ob[0][1]['numero_ob'] if datas_ob else '?'} de {primeira:%d/%m/%Y}" if primeira else "")
                      + ("; recebimento nos autos: " + rec if rec else "; nenhum termo de recebimento nos autos"),

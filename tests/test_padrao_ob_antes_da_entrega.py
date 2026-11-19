@@ -31,3 +31,16 @@ def test_texto_de_liquidacao_reconhece_proforma():
     t = "Documento de cobrança: SEI n° (Proforma Invoice 111256454) Valor total a liquidar: R$ 22.000.000,00"
     assert O._RE_PROFORMA.search(t)
     assert O._RE_PROFORMA_NUM.findall("Ceská zbrojovka a.s. PROFORMA INVOICE no 12522397") == ["12522397"]
+
+
+def test_recebimento_declarado_no_corpo_da_manifestacao():
+    t = ("tendo em vista a conformidade do material atestada pela Comissão de Fiscalização (SEI nº 129726203), "
+         "AUTORIZO a comunicação ao Banco do Brasil")
+    assert O._RE_RECEB_TXT.search(t)
+    assert not O._RE_RECEB_TXT.search("O pagamento somente será autorizado após a declaração de recebimento")
+    assert O._TIT_NAO_ATO.search("Anexo CTT Prestação de Serviços Bronto")
+
+
+def test_recibo_de_empenho_nao_e_recebimento_do_bem():
+    assert not O._RE_RECEB_TXT.search("Atesto o Recebimento da Nota de Empenho nº 2023NE02832")
+    assert O._TIT_NAO_ATO.search("Recibo de empenho ZODIAC (66819571)")

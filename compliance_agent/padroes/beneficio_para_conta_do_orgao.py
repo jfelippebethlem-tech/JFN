@@ -69,8 +69,14 @@ _TIT_RETORNO = re.compile(r"arquivo de retorno|\bretorno\b|cr[eé]ditos? efetiva
                           r"rela[cç][aã]o de cr[eé]ditos|presta[cç][aã]o de contas", re.I)
 
 
+# Folha nominal de pagamento (beneficiário, CPF, agência e conta — Aluguel Social, SEI-310001/000106/2026): o banco
+# credita a partir da conta do órgão em conta individual; a destinação está individualizada, falta só o retorno.
+_TIT_FOLHA_NOMINAL = re.compile(r"planilha de pagamento|folha de pagamento|rela[cç][aã]o de pagamento", re.I)
+
+
 def _pasta(pasta, man, sel):
-    retorno = [C.numero_doc(d) for d in C.docs(man) if _TIT_RETORNO.search(str(d.get("titulo") or ""))]
+    retorno = [C.numero_doc(d) for d in C.docs(man) if _TIT_RETORNO.search(str(d.get("titulo") or ""))
+               or _TIT_FOLHA_NOMINAL.search(str(d.get("titulo") or ""))]
     obs = []
     for d in sel:
         t = C.ler(pasta, man, d, teto=6000)
@@ -96,7 +102,7 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
                             (cnpj[:8],)).fetchone()
             g = grau(r[1] if r else None)
             if g == "forte" and b["retorno"]:
-                g = "medio"                  # há documento de retorno/prestação de contas: quem abre confere o valor
+                g = "medio"                  # retorno, prestação de contas ou folha nominal: quem abre confere o valor
             if not g:
                 cob["destino_privado_ou_desconhecido"] = cob.get("destino_privado_ou_desconhecido", 0) + 1
                 continue
