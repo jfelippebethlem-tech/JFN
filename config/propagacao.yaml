@@ -190,8 +190,28 @@ fontes:
   decisao_dono:
     nome: Decisão do dono que muda requisito (manual)
     manual: true
+  compras_diretas_tcerj:
+    nome: Compras diretas novas do TCE-RJ (dispensas e inexigibilidades)
+    sonda: {sql: "SELECT MAX(rowid) || '|' || COUNT(*) FROM compras_diretas_tcerj", unidade: "compra(s) direta(s)"}
+  regra_fracionamento:
+    nome: Correção na régua de fracionamento por objeto (art. 75 §1º)
+    sonda: {git: [tools/sweep_fracionamento_tcerj.py, compliance_agent/detectores/p4_fracionamento.py,
+                  compliance_agent/objeto_similaridade.py, compliance_agent/limites_dispensa.py]}
 
 derivados:
+  fracionamento_objeto:
+    nome: Fracionamento de despesa por OBJETO — unidade × exercício × natureza, soma das dispensas × teto (art. 75 §1º)
+    onde: output/sweep_fracionamento_tcerj.json · Estado › Fracionamento (/api/intel/fracionamento)
+    # 19/11/2026, pedido do dono: "não se trata da mesma empresa e sim do mesmo objeto". Sem LLM, ~30 s.
+    depende: [compras_diretas_tcerj, siafe_ob, regra_fracionamento]
+    comando: ["{py}", "-m", "tools.sweep_fracionamento_tcerj", "--top", "0"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 1200
+    prioridade: 5
+    efeito: {arquivo: output/sweep_fracionamento_tcerj.json}
+    antes: "rodado só à mão (JSON de julho); a aba agrupava por CREDOR+UG+mês, que não é a definição legal"
   vinculo_ob_contrato:
     nome: Vínculo OB↔contrato (regra determinística)
     onde: Estado › Perícia contábil (reduz indeterminados)
@@ -344,7 +364,7 @@ derivados:
     depende: [pericia_agentes, sei_lex]
     comando: ["{py}", "-m", "compliance_agent.autoaprimoramento", "ciclo"]
     env: {JFN_AUTOAPRIMORAMENTO: "1"}
-    peso: leve
+    peso: pesado     # medido 19/11 06h: >5 min a ~40% CPU (o "~30 s" do doc não vale mais com 7.720 laudos-versão)
     debounce_s: 1800
     intervalo_min_s: 86400
     timeout_s: 900
@@ -504,6 +524,20 @@ derivados:
     prioridade: 9
     efeito: {arquivo: data/cerebro_ponte_estado.json}
     antes: "não existia — veredito do portão ficava só em data/autoaprimoramento/auto.db e o laudo por agente só no JSON"
+  cerebro_bateria:
+    nome: Bateria de recall do segundo cérebro (56 perguntas reais → a nota certa volta entre as 10 primeiras?)
+    onde: data/cerebro_bateria/ultimo.json + historico.jsonl · docs/ARQUITETURA-SEGUNDO-CEREBRO-ALVO.md §7
+    # só leitura (jfn-brain pela Tailnet + índice local do vault), sem LLM. Roda depois que as notas geradas mudam,
+    # no máximo 1× por dia. `--minimo 53` é a catraca: recall@10 do `fundido` abaixo de 53/56 = falha visível aqui.
+    depende: [cerebro_ponte, vault_retratos, vault_casos]
+    comando: ["{py}", "tools/cerebro_bateria.py", "medir", "--sistemas", "brain,local_bm25,fundido", "--rotulo", "despachante", "--minimo", "53"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 86400
+    timeout_s: 900
+    prioridade: 9
+    efeito: {arquivo: data/cerebro_bateria/ultimo.json}
+    antes: "não existia — a qualidade da busca só foi medida à mão, em 14/11 (rodada cega) e 19/11/2026"
   vault_retratos:
     nome: Retratos do JFN no vault (perícia, orçamento por exercício e mês, gestão Couto, CGE × JFN, municípios, sobrepreço, sinais críticos)
     onde: vault ~/vault/jfn/ (índice jfn/00-retratos.md) → segundo cérebro (indexa a cada 10 min)
