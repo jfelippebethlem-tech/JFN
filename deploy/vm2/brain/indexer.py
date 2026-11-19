@@ -146,9 +146,13 @@ def entidades_completo() -> dict:
     n = m = 0
     with pool().connection() as c, c.transaction():
         cores = N.carregar_cores(c)
-        for src, path, title, body, fm in c.execute("SELECT source, path, title, body, frontmatter::text FROM notes").fetchall():
-            n += bool(N.gravar_mencoes(c, "nota:" + N.chave_nota(src, path), f"{title}\n{fm}\n{body}",
-                                       N.papel_da_nota(path) if src == "vault" else "citada"))
+        # do ARQUIVO, não da tabela: nota com YAML inválido fica com `frontmatter` vazio no banco, e é no frontmatter
+        # que moram `cnpj:` e `ug:` (19/11/2026: um caso sumia do cruzamento por isso)
+        for src, root, p in iter_files():
+            rel = str(p.relative_to(root))
+            n += bool(N.gravar_mencoes(c, "nota:" + N.chave_nota(src, rel),
+                                       f"{p.stem}\n{p.read_text(encoding='utf-8', errors='replace')}",
+                                       N.papel_da_nota(rel) if src == "vault" else "citada"))
         for mid, subject, content in c.execute("SELECT id, subject, content FROM memories WHERE status='ativa'").fetchall():
             m += bool(N.gravar_mencoes(c, f"mem:{mid}", f"{subject or ''} {content}"))
         tot = c.execute("SELECT count(*), count(DISTINCT (tipo, chave)) FROM entidade_mencao").fetchone()
