@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import subprocess
@@ -45,6 +46,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
@@ -105,8 +108,8 @@ def painel(msg: str) -> None:
     try:
         with PAINEL.open("a", encoding="utf-8") as f:
             f.write(linha + "\n")
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.debug("linha do painel do it-campo não gravada: %s", exc)
 
 
 def titulo(t: str) -> None:
@@ -260,8 +263,8 @@ def _saude_local() -> tuple[int, int]:
                     regs.append(json.loads(ln))
                 except ValueError:
                     continue
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.debug("registros do it-campo ilegíveis (%s) — segue com o que leu", exc)
     return saude_sei(regs, time.time())
 
 

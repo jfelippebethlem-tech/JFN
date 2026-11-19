@@ -26,6 +26,7 @@ só filtra a cópia em memória — responde em milissegundos.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
@@ -37,6 +38,8 @@ from itertools import combinations
 from pathlib import Path
 
 from compliance_agent import cores_orgaos
+
+logger = logging.getLogger(__name__)
 from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.orgao_fonte import esfera_de
 
@@ -324,8 +327,8 @@ def _orgaos(g: _G, con, nomes_ug: dict):
         try:
             for c, rz in _em_lotes(con, sql, [c for c in cn if not g.forn[c]["nome"]]):
                 g.f(c, rz)
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as exc:   # INDISPONÍVEL ≠ sem nome: a falha fica visível no log
+            logger.warning("galaxia: razão social do CNPJ não lida (%s) — nome fica em branco", exc)
 
 
 # Fornecedor sem órgão: o MOTIVO medido vira o aglomerado (um balde por motivo, nunca o texto genérico).
@@ -354,15 +357,15 @@ def _motivos_sem_orgao(g: _G, con, cs: list[str]) -> dict[str, str]:
             if _q(con, "SELECT 1 FROM ob_orcamentaria_siafe WHERE credor >= ? AND credor < ? AND " + paga + " LIMIT 1",
                   (r, r + "~")):
                 out.update({c: "sem:outra_raiz" for c in cs_r})
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.warning("galaxia: medição de outra raiz pagadora falhou (%s) — motivo da sobra fica sem medir", exc)
     for chave, sql in (("sem:so_tfe", "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE favorecido_cpf IN ({})"),
                        ("sem:so_pncp", "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE fornecedor_cnpj IN ({})")):
         try:
             for (c,) in _em_lotes(con, sql, [c for c in cs if c not in out]):
                 out.setdefault(c, chave)
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as exc:
+            logger.warning("galaxia: motivo %r da sobra não medido (%s)", chave, exc)
     return {c: out.get(c, "sem:sem_ob") for c in cs}
 
 
@@ -483,8 +486,8 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
     try:
         nomes_ug = {ug: nm for ug, nm in _q(con, "SELECT ug_codigo, MAX(ug_nome) FROM ordens_bancarias "
                                                  "WHERE ug_nome IS NOT NULL GROUP BY ug_codigo") if ug}
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.warning("galaxia: nomes de UG indisponíveis em ordens_bancarias (%s) — UG sai só com código", exc)
     _casos(g, casos, nomes_ug)
     _radar(g, radar)
     _alertas(g, con, nomes_ug)

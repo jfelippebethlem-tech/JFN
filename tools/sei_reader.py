@@ -204,8 +204,8 @@ async def fechar_sei(b, pg, *, fixo: bool) -> None:
     if fixo:
         try:
             await pg.close()
-        except PWError:
-            pass
+        except PWError as exc:
+            logger.debug("aba do navegador fixo já fechada: %s", exc)
         return
     await b.close()
 

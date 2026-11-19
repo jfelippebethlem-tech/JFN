@@ -19,6 +19,7 @@ O índice de prefixos custa uma varredura da tabela de OB (~7 s com a VM carrega
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -27,6 +28,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from compliance_agent.cruzamentos_intel import _ob_paga
+
+logger = logging.getLogger(__name__)
 
 MIN_OB_PREFIXO = 3
 TTL_S = 24 * 3600
@@ -62,8 +65,8 @@ def mapa_prefixos(con: sqlite3.Connection, ttl_s: float = TTL_S, cache: Path | N
         d = json.loads(arq.read_text(encoding="utf-8"))
         if db and d.get("db") == db and time.time() - float(d.get("gerado_ts", 0)) < ttl_s:
             return d["prefixos"]
-    except (OSError, ValueError, KeyError, TypeError):
-        pass
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        logger.debug("cache de prefixos SEI ilegível (%s) — recalcula", exc)
     pref: dict[str, dict[str, int]] = defaultdict(dict)
     for p, ug, n in con.execute("SELECT substr(processo, 5, 6), ug_emitente, COUNT(*) FROM ob_orcamentaria_siafe "
                                 "WHERE processo LIKE 'SEI-______/%' AND " + _ob_paga(con) + " GROUP BY 1, 2"):
@@ -78,8 +81,8 @@ def mapa_prefixos(con: sqlite3.Connection, ttl_s: float = TTL_S, cache: Path | N
                                    "fonte": "ob_orcamentaria_siafe (OB paga)", "prefixos": pref},
                                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         tmp.replace(arq)
-    except OSError:
-        pass                                               # sem cache em disco: só recalcula na próxima vez
+    except OSError as exc:                                 # sem cache em disco: só recalcula na próxima vez
+        logger.debug("cache de prefixos SEI não gravado: %s", exc)
     return dict(pref)
 
 

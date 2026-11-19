@@ -12,9 +12,12 @@ from __future__ import annotations
 import contextvars
 import inspect
 import json
+import logging
 import os
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DATA = Path(os.environ.get("JFN_DATA_DIR") or Path(__file__).resolve().parents[2] / "data")
 # Pedido do dono dentro do jfn.service (relatório/dossiê gerado em asyncio.create_task pelas rotas):
@@ -40,6 +43,6 @@ def silenciar(texto: str, origem: str = "") -> bool:
         with (DATA / "telegram_silenciado.jsonl").open("a") as f:
             f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "origem": origem, "chars": len(texto or ""),
                                 "inicio": (texto or "")[:120]}, ensure_ascii=False) + "\n")
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.debug("registro de aviso silenciado (origem=%s) não gravado: %s", origem, exc)
     return True

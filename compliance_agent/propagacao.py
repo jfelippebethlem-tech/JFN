@@ -38,6 +38,7 @@ import argparse
 import contextlib
 import fcntl
 import json
+import logging
 import os
 import re
 import signal
@@ -52,6 +53,8 @@ from pathlib import Path
 import yaml
 
 from compliance_agent import cerebro_compartilhado as cerebro
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parents[1]
 DATA = Path(os.environ.get("JFN_DATA_DIR") or RAIZ / "data")
@@ -203,8 +206,8 @@ def _sonda_sql(s: dict, anterior: str | None) -> tuple[str, list[str]]:
         a, b = json.loads(anterior)[0][0], lin[0][0]
         if len(lin) == 1 and len(lin[0]) == 1 and isinstance(a, int) and isinstance(b, int) and b > a:
             return nova, [f"+{b - a:,}".replace(",", ".") + f" {s.get('unidade', 'linha(s)')}"]
-    except (ValueError, IndexError, TypeError):
-        pass
+    except (ValueError, IndexError, TypeError) as exc:
+        logger.debug("delta numérico da sonda não calculado (%s) — segue comparação textual", exc)
     return nova, [s.get("mudanca", "conteúdo mudou")]
 
 

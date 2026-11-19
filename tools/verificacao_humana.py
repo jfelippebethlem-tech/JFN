@@ -23,9 +23,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 CDP = "http://127.0.0.1:9333"
 SESSOES = Path(__file__).resolve().parents[1] / "data" / "sessoes"      # cofre: <host>.json + sites.json
@@ -131,8 +134,8 @@ async def aguardar_humano_async(url: str, motivo: str, minutos: float = 30.0) ->
             try:
                 await pagina.goto("about:blank")
                 await pagina.close()
-            except _erros_navegador():   # limpeza de aba não pode mascarar o resultado
-                pass
+            except _erros_navegador() as exc:   # limpeza de aba não pode mascarar o resultado
+                logger.debug("limpeza da aba de verificação falhou: %s", exc)
 
 
 def _pode_avisar(host: str, agora: float) -> bool:
@@ -173,8 +176,8 @@ async def manter_async() -> dict:
                 try:
                     await pagina.goto("about:blank")
                     await pagina.close()
-                except _erros_navegador():
-                    pass
+                except _erros_navegador() as exc:
+                    logger.debug("limpeza da aba de verificação falhou: %s", exc)
     return out
 
 

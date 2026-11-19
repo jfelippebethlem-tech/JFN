@@ -10,9 +10,12 @@ igual para ele; o fundamento citado muda (`norma`).
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _FORTE = re.compile(r"termo de (fomento|colabora)|relat[oó]rio\s+(de\s+)?execu[cç][aã]o\s+(da\s+)?osc|\bOSC\b|"
                     r"monitoramento e avalia|mrosc|13\.019|termo\s+(aditivo\s+.{0,12})?(de|do)\s+conv[eê]nio|"
@@ -44,8 +47,8 @@ def tags_parceria(limite: int | None = None) -> list[str]:
     if not limite and _CACHE.is_file() and time.time() - _CACHE.stat().st_mtime < VALIDADE_CACHE_S:
         try:
             return json.loads(_CACHE.read_text(encoding="utf-8"))["tags"]
-        except (OSError, ValueError, KeyError):
-            pass
+        except (OSError, ValueError, KeyError) as exc:
+            logger.debug("cache MROSC ilegível (%s) — consulta de novo", exc)
     ps = C.pastas()
     if limite:
         ps = ps[:limite]
