@@ -269,3 +269,163 @@ def estouro(valor_inicial: float | None, aditivos: list[dict] | None,
     return {**comp, "aferivel": True, "motivo": "", "teto": teto, "ato": ato_normativo(regime),
             "pct": pct, "estourou": pct > teto,
             "pct_supressao": comp["supressao"] / float(valor_inicial)}
+
+
+# ───────────────────────────── a avaliação de UM contrato ─────────────────────────────────────
+# FONTE ÚNICA da decisão "este contrato estourou o art. 125?". Até 2026-11-19 a decisão vivia em
+# duas cópias (`pcrj/pericia_gastos.d11` e `cruzamentos_intel.aditivos_estouro`) que divergiam em
+# quatro pontos — tolerância do teto inclusivo, regex de reforma, saneamento do valor inicial e o
+# que fazer quando os termos FORAM lidos e nenhum é acréscimo — e as duas produziam 🟡/🔴 a partir
+# de `valor_global − valor_inicial`, que NÃO é acréscimo: no PNCP o "global" é o valor do período
+# todo (contrato plurianual, empenho anual estimado), e na coleta estadual ele é reescrito como
+# inicial + Σ termos de QUALQUER natureza (reajuste e prorrogação inclusive). Medido no acervo em
+# 2026-11-19: dos 28 achados do D11, 25 eram global−inicial sem termo nenhum e os 3 "confirmados"
+# eram falsos (ver `_RE_PCT_DECLARADO` e `_base_do_termo_diverge`).
+#
+# Estados (os do painel — regra 9 do projeto):
+#   VERIFICADO      acréscimo computável apurado NOS TERMOS acima do teto, sem incoerência de base;
+#   PENDENTE        há sinal, mas a prova não fecha: termo não coletado, percentual declarado no
+#                   próprio termo dentro do teto, base do termo incompatível com o contrato, ou
+#                   excesso tão pequeno que a atualização do valor inicial pode explicá-lo;
+#   DENTRO_DO_LIMITE termos lidos, acréscimo computável ≤ teto (o crescimento era outra coisa);
+#   INDISPONIVEL    valor inicial ausente ou implausível — denominador ruim fabrica percentual.
+
+# O art. 125 mede sobre o valor inicial ATUALIZADO e a base pública só traz o inicial CRU. Um
+# excesso de até 10% do próprio teto (25% → 27,5%) cabe numa correção monetária de um a dois anos
+# de IPCA: ali o número não sustenta a afirmação, só a pergunta. Caso real: VR Benefícios, 26,4%
+# pelo inicial cru, termo declarando "acréscimo de 25%" sobre o atualizado.
+FOLGA_ATUALIZACAO = 0.10
+# Valor inicial fora desta faixa é erro de coleta, não contrato (R$ 23,00 → R$ 748.800,00 na
+# FAETEC; R$ 20.375,71 → R$ 16,5 mi na Polícia Civil). Mesmo saneamento que o intel já fazia.
+VI_MINIMO, VI_MAXIMO = 1_000.0, 1e9
+_EPS = 1e-9
+
+# "acréscimo de 25 %", "o que equivale a 25% (vinte e cinco por cento) do valor inicial atualizado".
+_RE_PCT_DECLARADO = re.compile(r"acr[ée]sc\w*[^%]{0,220}?(\d{1,3}(?:[.,]\d{1,4})?)\s*%", re.I)
+
+
+def _pct_declarado(objeto: str | None) -> float | None:
+    m = _RE_PCT_DECLARADO.search(objeto or "")
+    if not m:
+        return None
+    try:
+        return float(m.group(1).replace(",", ".")) / 100.0
+    except ValueError:
+        return None
+
+
+def _base_do_termo_diverge(item: dict, valor_inicial: float, teto: float) -> bool:
+    """O termo publica o valor global DEPOIS dele. `global_do_termo − acrescido` é a base que o
+    próprio termo usou. Quando essa base é outra ordem de grandeza (fora de ½× a 2× do inicial) e,
+    sobre ela, o acréscimo está DENTRO do teto, o termo não descreve este contrato com este valor
+    inicial — caso DPE/Alexia: termo de "passagens aéreas" de R$ 133.650,00 (25% de R$ 534.600,00)
+    publicado sob o contrato de decoração floral de R$ 35.140,00. Medido: em 108 primeiros termos
+    com os dois valores, 7 têm base fora dessa faixa."""
+    try:
+        vg_t = float(item.get("valor_global") or 0)
+        val = float(item.get("valor_computado") or 0)
+    except (TypeError, ValueError):
+        return False
+    base = vg_t - val
+    if val <= 0 or base <= 0.01:
+        return False
+    fora = base > 2 * valor_inicial or base < 0.5 * valor_inicial
+    return fora and (val / base) <= teto + _EPS
+
+
+def avaliar_contrato(valor_inicial: float | None, aditivos: list[dict] | None,
+                     objeto: str | None = None, *, valor_global: float | None = None,
+                     termos_coletados: bool | None = None,
+                     regime: str = REGIME_VIGENTE) -> dict:
+    """Veredito do art. 125 para UM contrato, com a trilha que o sustenta.
+
+    `aditivos` são os termos do PNCP (mesmas chaves de `acrescimo_computavel`). `termos_coletados`
+    diz se a ausência de termos é MEDIDA (consultou-se o PNCP e não havia) ou falta de coleta —
+    `None` = desconhecido, tratado como não coletado.
+    """
+    tipo = tipo_objeto(objeto)
+    teto = teto_acrescimo(tipo, regime=regime)
+    base = {"teto": teto, "teto_pct": round(teto * 100), "tipo_objeto": tipo or "padrao",
+            "ato": ato_normativo(regime), "pct": None, "acrescimo": None, "supressao": None,
+            "pct_supressao": None, "termos": [], "lacunas": [], "motivos": [],
+            "pct_global": None,
+            "base_do_percentual": "valor inicial publicado no PNCP (NÃO atualizado; o art. 125 "
+                                  "mede sobre o atualizado)"}
+    try:
+        vi = float(valor_inicial or 0)
+    except (TypeError, ValueError):
+        vi = 0.0
+    if not (VI_MINIMO < vi < VI_MAXIMO):
+        return {**base, "estado": "INDISPONIVEL",
+                "motivos": ["valor_inicial_implausivel"],
+                "resumo": "valor inicial ausente ou implausível — percentual não aferível"}
+    try:
+        vg = float(valor_global) if valor_global is not None else None
+    except (TypeError, ValueError):
+        vg = None
+    if vg is not None and vg > 0:
+        base["pct_global"] = (vg - vi) / vi
+
+    if not aditivos:
+        cresceu = base["pct_global"] is not None and base["pct_global"] > teto + _EPS
+        if not cresceu:
+            return {**base, "estado": "DENTRO_DO_LIMITE", "motivos": ["sem_termo_e_sem_crescimento"],
+                    "resumo": "sem termo aditivo e sem crescimento acima do teto"}
+        motivo = "global_cresceu_sem_termo_publicado" if termos_coletados else "termos_nao_coletados"
+        return {**base, "estado": "PENDENTE", "motivos": [motivo],
+                "resumo": ("valor global acima do inicial SEM termo aditivo publicado — no PNCP o "
+                           "global é o valor do período, não prova acréscimo"
+                           if termos_coletados else
+                           "valor global acima do inicial e termos aditivos ainda não coletados")}
+
+    comp = acrescimo_computavel(aditivos)
+    pct = comp["acrescimo"] / vi
+    termos = []
+    for it in sorted(comp["itens"], key=lambda x: (x.get("sequencial_termo") or 0,
+                                                    str(x.get("data_assinatura") or ""))):
+        v = it.get("valor_computado") or 0.0
+        sup = it["tipo"] == "valor" and (v < 0 or bool(_RE_SUPRESSAO.search(it.get("objeto") or "")))
+        termos.append({
+            "seq": it.get("sequencial_termo"), "data": it.get("data_assinatura"),
+            "tipo_termo": it.get("tipo_termo"), "natureza": it["tipo"] or "indeterminada",
+            "origem_natureza": it.get("origem_tipo"),
+            "conta_no_teto": it["tipo"] == "valor" and not sup and v > 0,
+            "supressao": sup, "valor": v, "pct_sobre_inicial": (v / vi) if v else None,
+            "pct_declarado": _pct_declarado(it.get("objeto")) if it["tipo"] == "valor" else None,
+            "fundamento_legal": it.get("fundamento_legal"),
+            "objeto": (it.get("objeto") or "")[:240],
+            "base_diverge": it["tipo"] == "valor" and _base_do_termo_diverge(it, vi, teto),
+        })
+    out = {**base, "pct": pct, "acrescimo": comp["acrescimo"], "supressao": comp["supressao"],
+           "pct_supressao": comp["supressao"] / vi, "termos": termos, "lacunas": comp["lacunas"],
+           "n_por_tipo": comp["n_por_tipo"], "fora_do_teto": comp["fora_do_teto"]}
+
+    # "até 25%": o teto é INCLUSIVO; o _EPS absorve 0,25000000000000006 de ponto flutuante.
+    if pct <= teto + _EPS:
+        # Termo MISTO ou sem natureza carrega dinheiro que pode ser acréscimo. Se, somado, ele
+        # leva o contrato acima do teto, "dentro do limite" seria afirmar o que não se leu.
+        incerto = sum(v for k, v in comp["fora_do_teto"].items() if k in ("misto", "sem_natureza"))
+        if incerto and (comp["acrescimo"] + incerto) / vi > teto + _EPS:
+            return {**out, "estado": "PENDENTE",
+                    "motivos": ["natureza_indeterminada_pode_estourar"],
+                    "resumo": "termo misto ou sem natureza legível; somado, passaria do teto — "
+                              "ler a memória de cálculo do termo"}
+        return {**out, "estado": "DENTRO_DO_LIMITE", "motivos": ["acrescimo_computavel_no_limite"],
+                "resumo": "termos lidos: acréscimo computável dentro do teto"}
+
+    motivos = []
+    no_teto = [t for t in termos if t["conta_no_teto"]]
+    declarados = [t["pct_declarado"] for t in no_teto]
+    if no_teto and all(d is not None for d in declarados) and sum(declarados) <= teto + _EPS:
+        motivos.append("percentual_declarado_no_termo_dentro_do_teto")
+    if any(t["base_diverge"] for t in no_teto):
+        motivos.append("base_do_termo_incompativel_com_o_contrato")
+    if pct <= teto * (1 + FOLGA_ATUALIZACAO) + _EPS:
+        motivos.append("excesso_cabe_na_atualizacao_do_valor_inicial")
+    if motivos:
+        return {**out, "estado": "PENDENTE", "motivos": motivos,
+                "resumo": "acréscimo acima do teto pelo inicial cru, mas a prova não fecha: "
+                          + "; ".join(m.replace("_", " ") for m in motivos)}
+    return {**out, "estado": "VERIFICADO", "motivos": ["acrescimo_computavel_acima_do_teto"],
+            "resumo": (f"acréscimo computável de {pct:.1%} sobre o inicial, acima do teto de "
+                       f"{teto:.0%} ({ato_normativo(regime)})").replace(".", ",", 1)}

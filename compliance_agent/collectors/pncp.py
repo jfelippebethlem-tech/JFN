@@ -740,6 +740,93 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
     return len(termos)
 
 
+async def _termos_medidos(cnpj: str, ano, seq) -> tuple[bool, list[dict]]:
+    """Como `termos_contrato`, mas separa "sem termos" (200 vazio / 204) de "não consegui ler".
+    `termos_contrato` devolve [] nos dois casos — marcar um contrato como CHECADO numa falha de
+    rede gravaria como medido ("não tem aditivo") o que não foi lido."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"{PNCP_BASE}/orgaos/{cnpj}/contratos/{ano}/{seq}/termos",
+                            headers={"User-Agent": "JFN-Compliance/2.0"})
+    except httpx.HTTPError as exc:
+        logger.debug("termos %s/%s/%s: %s", cnpj, ano, seq, exc)
+        return False, []
+    if r.status_code == 204:
+        return True, []
+    if r.status_code != 200:
+        return False, []
+    try:
+        return True, [_parse_termo(t) for t in (r.json() or [])]
+    except ValueError:
+        return False, []
+
+
+async def coletar_termos_municipio(con, limite: int = 600, pausa: float = 0.3,
+                                   so_declarados: bool = False) -> dict:
+    """Termos aditivos dos contratos da PREFEITURA DO RIO (esfera municipal-rio) ainda não
+    consultados. Até 2026-11-19 só o Estado tinha esta fase: dos 2.588 contratos municipais, 216
+    declaravam aditivo e 6 tinham termo na base — e o feed municipal do PNCP NUNCA atualiza o valor
+    global, então o D11 da Prefeitura era cego por construção. Grava em `contrato_aditivo` (mesmo
+    gravador de `coletar_aditivos`) e marca `aditivos_checados=1` SÓ quando a leitura foi medida.
+    Não reescreve `valor_global`: o veredito vem dos termos (`limites_aditivo.avaliar_contrato`).
+    `so_declarados` prioriza quem o PNCP já diz ter aditivo; sem ele, varre todos os pendentes
+    (o contador `num_aditivos` do feed é o mesmo que nunca atualiza o global)."""
+    from compliance_agent.pcrj.esfera import classificar_esfera
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
+    if "aditivos_checados" not in cols:
+        con.execute("ALTER TABLE pcrj_contratos ADD COLUMN aditivos_checados INTEGER DEFAULT 0")
+        con.commit()
+    alvo = [o[0] for o in con.execute(
+        "SELECT DISTINCT orgao_cnpj, COALESCE(orgao_nome,'') FROM pcrj_contratos "
+        "WHERE orgao_cnpj IS NOT NULL").fetchall()
+        if classificar_esfera(o[1], o[0]) == "municipal-rio"]
+    tot = {"consultados": 0, "com_termo": 0, "termos": 0, "falhas": 0, "pendentes": 0}
+    if not alvo:
+        return tot
+    marcas = ",".join("?" * len(alvo))
+    pend = [r[0] for r in con.execute(
+        f"SELECT numero_controle_pncp FROM pcrj_contratos WHERE orgao_cnpj IN ({marcas}) "
+        "AND COALESCE(aditivos_checados,0)=0 "
+        + ("AND COALESCE(num_aditivos,0)>0 " if so_declarados else "")
+        + "ORDER BY COALESCE(num_aditivos,0) DESC, data_assinatura DESC LIMIT ?",
+        (*alvo, limite))]
+    tot["pendentes"] = len(pend)
+    for ncp in pend:
+        pr = _parse_id_pncp(ncp)
+        if not pr:
+            tot["falhas"] += 1
+            continue
+        ok, termos = await _termos_medidos(*pr)
+        if not ok:
+            tot["falhas"] += 1          # fica pendente: a próxima rodada tenta de novo
+            await asyncio.sleep(pausa)
+            continue
+        for row in termos:
+            con.execute(
+                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                     numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
+                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
+                     fundamento_legal, data_assinatura, tipo_termo, processo)
+                   VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
+                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
+                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
+                {**row, "ncp": ncp})
+        con.execute("UPDATE pcrj_contratos SET aditivos_checados=1, num_aditivos=? "
+                    "WHERE numero_controle_pncp=?", (len(termos), ncp))
+        tot["consultados"] += 1
+        tot["com_termo"] += bool(termos)
+        tot["termos"] += len(termos)
+        if tot["consultados"] % 50 == 0:
+            con.commit()
+        await asyncio.sleep(pausa)
+    con.commit()
+    return tot
+
+
 # ---------------------------------------------------------------------------
 # Contratos ESTADUAIS + aditivos (PNCP) — alimenta o detector de aditivos e o art. 9
 # ---------------------------------------------------------------------------
@@ -901,7 +988,12 @@ if __name__ == "__main__":
     with coleta_lock():
         con = sqlite3.connect("data/compliance.db", timeout=300)
         con.execute("PRAGMA busy_timeout=300000")
-        if "--aditivos" in args:
+        if "--termos-pcrj" in args:
+            # termos aditivos da Prefeitura do Rio (D11) — resumível, só o que falta consultar
+            lim = next((int(a) for a in args if a.isdigit()), 600)
+            r = asyncio.run(coletar_termos_municipio(con, limite=lim,
+                                                     so_declarados="--declarados" in args))
+        elif "--aditivos" in args:
             # SÓ fase 2: termos aditivos sobre os contratos estaduais já coletados (desacopla do rate-limit)
             lim = next((int(a) for a in args if a.isdigit()), 8000)
             r = asyncio.run(coletar_contratos_estado(con, so_aditivos=True, limite_termos=lim))

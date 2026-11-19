@@ -82,8 +82,12 @@ def test_no_teto_exato_NAO_e_estouro(db):
         "acréscimo de exatamente 25% é lícito — não pode ser marcado como estouro do art. 125")
 
 
-def test_um_centavo_acima_do_teto_E_estouro(db):
-    """O corte tem de continuar cortando: a correção não pode virar falso NEGATIVO."""
+def test_um_centavo_acima_do_teto_sai_PENDENTE_nao_some(db):
+    """O corte tem de continuar cortando — a correção não pode virar falso NEGATIVO silencioso.
+    Desde 2026-11-19 (régua única `avaliar_contrato`), um centavo acima do teto pelo inicial CRU
+    não é afirmado como estouro: o art. 125 mede sobre o inicial ATUALIZADO, e um excesso de até
+    10% do teto cabe na correção monetária (caso VR Benefícios, 26,4% × 25% declarado). Ele fica
+    na lista como PENDENTE, com o motivo — nunca desaparece."""
     import sqlite3 as _sq
     con = _sq.connect(db)
     con.execute("INSERT INTO pcrj_contratos VALUES "
@@ -92,7 +96,9 @@ def test_um_centavo_acima_do_teto_E_estouro(db):
     con.commit(); con.close()
     d = aditivos_estouro(db_path=db)
     k5 = next(a for a in d["achados"] if a["contrato"] == "K5")
-    assert k5["estoura_teto"] is True
+    assert k5["estoura_teto"] is False
+    assert k5["estado"] == "PENDENTE"
+    assert "excesso_cabe_na_atualizacao_do_valor_inicial" in k5["motivos"]
 
 
 def test_declara_que_a_base_e_o_inicial_CRU(db):
@@ -103,3 +109,27 @@ def test_declara_que_a_base_e_o_inicial_CRU(db):
     a = aditivos_estouro(db_path=db)["achados"][0]
     assert "atualizado" in a["base_do_percentual"]
     assert "valor_inicial" in a["base_do_percentual"]
+
+
+def test_k2_acima_da_folga_continua_VERIFICADO(db):
+    """Controle positivo: 30% (acima de 25% + a folga de atualização) segue afirmado."""
+    k2 = next(a for a in aditivos_estouro(db_path=db)["achados"] if a["contrato"] == "K2")
+    assert k2["estado"] == "VERIFICADO" and k2["tipo"] == "estouro"
+
+
+def test_termos_lidos_sem_acrescimo_nao_viram_estouro_pelo_global(db):
+    """Falso positivo medido em 2026-11-19 (167 de 169 "estouros" do Estado): o termo foi lido, é
+    PRORROGAÇÃO, e o global cresceu 100% — o intel caía no `vg − vi` e acusava estouro."""
+    import sqlite3 as _sq
+    con = _sq.connect(db)
+    con.execute("INSERT INTO pcrj_contratos VALUES "
+                "('K6','ZETA','66666666000166','SEEDUC','SEEDUC','serviço contínuo',100000.0,200000.0,1,'2026-12-31')")
+    con.execute("INSERT INTO contrato_aditivo VALUES ('K6','0',100000.0,"
+                "'Prorrogação do prazo de vigência por mais 12 meses')")
+    con.commit(); con.close()
+    assert "K6" not in {a["contrato"] for a in aditivos_estouro(db_path=db)["achados"]}
+
+
+def test_universo_e_o_da_esfera_nao_a_tabela(db):
+    d = aditivos_estouro(db_path=db)
+    assert d["contratos_analisados"] == 4

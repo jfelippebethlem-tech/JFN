@@ -100,9 +100,12 @@ def test_d10_rede_concorrentes_e_aditivos(con_semeado):
     achados = pericia_gastos.d10_rede_concorrentes(con)
     tipos = {a["evidencias"].get("subtipo") for a in achados}
     assert tipos == {"rede_socios"}
-    aditivos = pericia_gastos.d11_aditivo_estourado(con)
-    assert {a["evidencias"].get("subtipo") for a in aditivos} == {"aditivo_estourado"}
-    assert all(a["detector"] == "d11_aditivo_estourado" for a in aditivos)
+    # 2026-11-19: global 2× o inicial SEM termo aditivo não é mais alerta — no PNCP o global é o
+    # valor do período, não prova acréscimo (25 dos 28 achados do D11 eram isto). Fica PENDENTE na
+    # tela do D11; o positivo (acréscimo provado no termo) está em tests/test_d11_aditivo_regua.py.
+    assert pericia_gastos.d11_aditivo_estourado(con) == []
+    pend = pericia_gastos.d11_avaliacao(con)["itens"]
+    assert [(x["controle"], x["estado"]) for x in pend] == [("A1", "PENDENTE")]
 
 
 def test_rodar_todas_cobertura(con_semeado):

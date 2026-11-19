@@ -135,17 +135,21 @@ _DET_META: dict[str, dict] = {
         # Sem `acrescimo_confirmado` na peça, o leitor não distingue afirmação de indício — e sem
         # `teto_pct` não sabe se o caso é de 25% ou de 50% (reforma). O art. 125 admite acréscimos
         # ATÉ o teto: no teto exato o contrato está DENTRO da lei.
-        "detecta": ("Aditivo que eleva o valor do contrato além do teto do art. 125 (25% em regra, "
-                    "50% só para reforma de edifício ou equipamento). O percentual é calculado "
-                    "sobre o valor inicial NÃO atualizado — a norma mede sobre o atualizado, então "
-                    "caso rente ao teto pode ser lícito. Acréscimo apurado no termo aditivo é "
-                    "afirmação; diferença de valor global é indício."),
+        "detecta": ("Soma dos acréscimos quantitativos NOS TERMOS ADITIVOS de contrato da "
+                    "Prefeitura acima do teto do art. 125 (25% em regra, 50% só para reforma de "
+                    "edifício ou equipamento). Reajuste, repactuação, reequilíbrio e prorrogação "
+                    "ficam fora. Só sai VERIFICADO: diferença de valor global sem termo, termo que "
+                    "declara o percentual dentro do teto e excesso que a atualização do inicial "
+                    "explica ficam PENDENTES na tela, não viram achado. Base: valor inicial NÃO "
+                    "atualizado."),
         "irregularidade": "superfaturamento",
         "dispositivos": ["Lei 14.133/2021 art. 125", "Lei 8.666/93 art. 65 §1º"],
         "evid": [("controle", "Contrato (controle PNCP)", "s"),
                  ("pct_acrescimo", "Acréscimo", "pct_direto"),
                  ("teto_pct", "Teto aplicável (%)", "s"),
                  ("acrescimo_confirmado", "Apurado no termo aditivo", "bool"),
+                 ("estado", "Estado", "s"),
+                 ("termos_resumo", "Termos aditivos (natureza e valor)", "lista"),
                  ("lacunas_aditivo", "Lacunas declaradas do termo", "lista"),
                  ("subtipo", "Subtipo", "s")],
     },

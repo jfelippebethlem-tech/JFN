@@ -1872,15 +1872,56 @@ detectores:
     consome:
     - rotas/investigacao.py /api/intel/aditivos
     manchete: false
-    controle_positivo: tests/test_cruzamentos_intel_aditivos.py::test_um_centavo_acima_do_teto_E_estouro
-    controle_negativo: tests/test_cruzamentos_intel_aditivos.py::test_no_teto_exato_NAO_e_estouro
+    controle_positivo: tests/test_cruzamentos_intel_aditivos.py::test_k2_acima_da_folga_continua_VERIFICADO
+    controle_negativo: tests/test_cruzamentos_intel_aditivos.py::test_termos_lidos_sem_acrescimo_nao_viram_estouro_pelo_global
     hipoteses_inocentes:
     - hipotese: reajuste lançado como aditivo (não é acréscimo)
-      excluida_por: compliance_agent/cruzamentos_intel.py:aditivos_estouro
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
     - hipotese: acréscimo exatamente no teto (limite inclusivo)
-      excluida_por: compliance_agent/cruzamentos_intel.py:aditivos_estouro
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
+    - hipotese: valor global maior que o inicial sem termo (período/empenho estimado, não acréscimo)
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
     dominio: contratos com termos aditivos no PNCP; base = valor inicial cru (não atualizado)
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 169 "estouros" da esfera Estado (universo inteiro, não amostra)
+      taxa: 169/169 não afirmáveis — 167 sem acréscimo computável em termo (global − inicial) e 2 com termo incoerente com o contrato
+      fonte_primaria: PNCP — termos aditivos (contrato_aditivo) e contrato (pcrj_contratos)
+      onde: ~/vault/aprendizados/d11-global-menos-inicial-nao-e-acrescimo.md
+  pcrj.d11_aditivo_estourado:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d11_aditivo_estourado
+    afirma: Indício de acréscimo contratual acima do limite do art. 125 da Lei 14.133/2021 em contrato da Prefeitura do Rio
+    fonte:
+    - contrato_aditivo
+    - pcrj_contratos
+    grava: alertas (pcrj_d11_aditivo_estourado) pela perícia PCRJ do despachante
+    consome:
+    - rotas/investigacao.py /api/pcrj/gastos_achados
+    - rotas/investigacao.py /api/pcrj/aditivos
+    manchete: false
+    controle_positivo: tests/test_d11_aditivo_regua.py::test_d11_so_prefeitura_e_so_verificado
+    controle_negativo: tests/test_d11_aditivo_regua.py::test_caso_DPE_termo_de_outro_contrato
+    hipoteses_inocentes:
+    - hipotese: reajuste, repactuação, reequilíbrio ou prorrogação (não consomem o teto)
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
+    - hipotese: valor global maior que o inicial sem termo publicado
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
+    - hipotese: termo publicado sob o contrato errado (base do termo de outra ordem de grandeza)
+      excluida_por: compliance_agent/limites_aditivo.py:_base_do_termo_diverge
+    - hipotese: o próprio termo declara o percentual dentro do teto (base publicada errada)
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
+    - hipotese: excesso que a atualização do valor inicial explica
+      excluida_por: compliance_agent/limites_aditivo.py:avaliar_contrato
+    - hipotese: contrato de outra esfera (federal/estadual) na tabela pcrj_contratos
+      excluida_por: compliance_agent/pcrj/pericia_gastos.py:_contratos_da_esfera
+    dominio: contratos da esfera municipal-Rio no PNCP com termos aditivos coletados; base = valor inicial cru
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 28 alertas do D11 (todos), conferidos um a um no PNCP
+      taxa: 28/28 indevidos — 0 da Prefeitura (federal e Estado na tabela), 25 sem termo aditivo, 3 "confirmados" com termo incoerente
+      fonte_primaria: PNCP — contrato e termos aditivos de cada controle
+      onde: ~/vault/aprendizados/d11-global-menos-inicial-nao-e-acrescimo.md
   intel.capital_incompativel:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: capital_incompativel

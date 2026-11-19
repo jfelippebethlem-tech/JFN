@@ -96,6 +96,12 @@ async def _pncp(con, desde: int):
             incompletas += not rc.get("verificado")
             if _gravavel(rc) and rc["itens"]:
                 total_c += gravar_contratos(con, rc["itens"])
+    # termos aditivos da Prefeitura (D11): sem esta fase o D11 municipal era cego — o feed nunca
+    # atualiza o global e nenhum termo era coletado (2026-11-19). Resumível, só o que falta.
+    rt = await pncp.coletar_termos_municipio(con, limite=600)
+    _log(f"  PNCP termos PCRJ: {rt['consultados']} contratos consultados, {rt['com_termo']} com "
+         f"termo ({rt['termos']} termos)"
+         + (f" — {rt['falhas']} falha(s) de leitura: ficam pendentes" if rt["falhas"] else ""))
     _log(f"  PNCP total: {total_c} contratos, {total_l} licitações "
          f"({len(outros)} órgãos municipais extras)"
          + (f" — {incompletas} janela(s) PARCIAL/INDISPONÍVEL: total incompleto" if incompletas else ""))

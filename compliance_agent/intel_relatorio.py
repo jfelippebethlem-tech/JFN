@@ -94,12 +94,15 @@ def _b_escalada(d):
 
 
 def _b_aditivos(d):
-    ls = [f"<tr><td>{'🔴' if a['estoura_teto'] else '🟡'}</td><td>{_esc(a.get('fornecedor'))}<br><small>{_esc((a.get('orgao') or '')[:40])}</small></td>"
-          f"<td>{('+'+str(a['pct'])+'%') if a['estoura_teto'] else str(a['num_aditivos'])+' aditivos'} (teto {a['teto_pct']}%)</td>"
+    # PENDENTE (2026-11-19) não é estouro nem série: sai com o estado escrito, sem cor de achado.
+    _sinal = {"estouro": "🔴", "pendente": "PENDENTE", "serie": "🟡"}
+    ls = [f"<tr><td>{_sinal.get(a.get('tipo'), '🟡')}</td><td>{_esc(a.get('fornecedor'))}<br><small>{_esc((a.get('orgao') or '')[:40])}</small></td>"
+          f"<td>{('+'+str(a['pct'])+'% nos termos') if a['estoura_teto'] else (('global − inicial +'+str(a['pct'])+'% (não é acréscimo provado)') if a.get('tipo') == 'pendente' else str(a['num_aditivos'])+' aditivos')} (teto {a['teto_pct']}%)</td>"
           f"<td style='text-align:right'>{_rs(a['valor_inicial'])} → {_rs(a['valor_global'])}</td></tr>"
           for a in d.get("achados", [])[:1000]]
     return ("Aditivos que estouram o limite legal",
-            f"{d.get('n_estoura_teto',0)} estouram o teto (25%/50%) · {d.get('n_serie',0)} com ≥3 aditivos",
+            f"{d.get('n_estoura_teto',0)} estouro(s) verificado(s) no termo (25%/50%) · "
+            f"{d.get('n_pendente',0)} pendente(s) de prova · {d.get('n_serie',0)} com ≥3 aditivos",
             [{"titulo": "1. Contratos com acréscimo acima do limite / aditivos em série",
               "html": _tabela(["", "Fornecedor / órgão", "Acréscimo", "Inicial → global"], ls)}], d)
 

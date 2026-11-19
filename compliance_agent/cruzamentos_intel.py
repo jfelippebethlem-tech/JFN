@@ -50,7 +50,6 @@ RESSALVA = ("Indício para apuração interna, não acusação. Sanção impedit
 # Abaixo dele o gestor pode contratar SEM licitação — o incentivo a "fatiar" a despesa para
 # caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
 # Fonte única verificada nos decretos (Planalto): compliance_agent/limites_dispensa.py.
-from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
 from compliance_agent.limites_dispensa import LIMITES as _LIMITES_DISP
 
 _TETO_DISPENSA = {a: v["compras"] for a, v in _LIMITES_DISP.items()}
@@ -718,8 +717,12 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
         # `contratos/thoughts` ("vem '1' para quase tudo"): prorrogação e reequilíbrio entravam
         # como acréscimo. Foi o mesmo erro que produziu 45% de falso positivo na estreia da
         # varredura de execução (2026-07-29), lá com R$ 40,6 mi de revisão do art. 124.
-        from compliance_agent.limites_aditivo import acrescimo_computavel
-        acresc, lacunas_ad = {}, {}
+        # 2026-11-19: a DECISÃO também é única — `limites_aditivo.avaliar_contrato`, a mesma do
+        # D11 da Prefeitura. Antes, termos lidos sem nenhum acréscimo caíam no `vg − vi` (o global
+        # que a coleta estadual reescreve como inicial + Σ termos de QUALQUER natureza) e saíam
+        # como estouro: medido, 169 "estouros" do Estado, 167 deles sem um termo de acréscimo.
+        from compliance_agent.limites_aditivo import avaliar_contrato
+        por_contrato: dict[str, list[dict]] = {}
         try:
             # A lista de colunas é montada a partir do schema REAL. Pedir uma coluna que não
             # existe levantaria OperationalError e o `except` engoliria a tabela inteira — todos
@@ -728,25 +731,21 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             existentes = {r[1] for r in con.execute("PRAGMA table_info(contrato_aditivo)")}
             uteis = [c for c in ("objeto", "valor_acrescido", "prazo_aditado_dias",
                                  "qualif_acrescimo", "qualif_vigencia", "qualif_reajuste",
-                                 "fundamento_legal") if c in existentes]
-            por_contrato: dict[str, list[dict]] = {}
+                                 "fundamento_legal", "valor_global", "sequencial_termo",
+                                 "data_assinatura", "tipo_termo") if c in existentes]
             for r in con.execute(
                     f"SELECT numero_controle_pncp c{',' if uteis else ''}{','.join(uteis)} "
                     "FROM contrato_aditivo"):
                 por_contrato.setdefault(r["c"], []).append(dict(r))
-            for cc, ads in por_contrato.items():
-                comp = acrescimo_computavel(ads)
-                if comp["acrescimo"] > 0:
-                    acresc[cc] = comp["acrescimo"]
-                if comp["lacunas"]:
-                    lacunas_ad[cc] = comp["lacunas"]
         except sqlite3.OperationalError:
             pass
+        _cols_c = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
+        _chk = "aditivos_checados" if "aditivos_checados" in _cols_c else "NULL"
         # sanity: exclui valor_global lixo (> R$ 1 bi quase sempre é erro de coleta do PNCP)
         rows = con.execute(
             "SELECT numero_controle_pncp cc, fornecedor_nome, fornecedor_documento, orgao_nome, "
-            "unidade, objeto, valor_inicial vi, valor_global vg, num_aditivos, vigencia_fim "
-            "FROM pcrj_contratos WHERE valor_inicial>1000 AND valor_global>0 "
+            f"unidade, objeto, valor_inicial vi, valor_global vg, num_aditivos, vigencia_fim, "
+            f"{_chk} chk FROM pcrj_contratos WHERE valor_inicial>1000 AND valor_global>0 "
             "AND valor_global<1e9 AND valor_inicial<1e9").fetchall()
         # esfera do CONTRATO = esfera oficial do ENTE dono (CNPJ embutido no nº de controle PNCP);
         # a tabela pcrj_contratos, apesar do nome, guarda contratos de TODOS os entes coletados.
@@ -762,30 +761,23 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                        "unidade_nome": unidade, "municipio": ""}
                 return classificar_esfera(reg, oficial) == esfera
         achados = []
-        for r in rows:
+        n_universo = 0   # o "de quantos?" é o da ESFERA pedida, não a tabela inteira (antes: 90.905
+        for r in rows:   # contratos "analisados" na aba da Prefeitura, que tem 2,6 mil)
             if filtro_esfera and not filtro_esfera(r["cc"], r["orgao_nome"], r["unidade"]):
                 continue
+            n_universo += 1
             vi, vg, nad = r["vi"], r["vg"], r["num_aditivos"] or 0
-            # pct sobre o ACRÉSCIMO REAL (qualif='1') quando o contrato_aditivo o traz — vg−vi inclui
-            # reajuste/prorrogação, que NÃO contam no teto do art. 125. Sem o dado granular, o achado
-            # segue (honestidade: vira indício NÃO confirmado, rebaixado na ordenação).
-            confirmado = r["cc"] in acresc and vi
-            pct = (acresc[r["cc"]] / vi) if confirmado else ((vg - vi) / vi if vi else 0)
-            # Teto aplicável: 50% SÓ para REFORMA de edifício ou equipamento. A versão anterior
-            # dava 50% a qualquer OBRA/CONSTRUÇÃO/ENGENHARIA — o art. 125 não faz isso, e o
-            # efeito era falso NEGATIVO: obra nova com 30% de acréscimo passava calada.
-            obj = _norm_nome(r["objeto"])
-            teto = _teto_acrescimo("reforma" if re.search(r"REFORMA", obj) else None)
-            # ATÉ 25% é LÍCITO (art. 125: "os acréscimos ... até 25%"). No teto exato o contrato
-            # está DENTRO da lei, e `pct >= teto` acusava ilegalidade onde não havia: medido em
-            # 2026-08-10, QUATRO dos sete estouros com acréscimo granular confirmado estavam em
-            # 25,000000% — mais da metade do que a casa podia afirmar era falso. A tolerância
-            # existe porque `acrescimo/vi` em ponto flutuante devolve 0,25000000000000006 para um
-            # aditivo exatamente no teto; sem ela o `>` não resolveria nada.
-            estouro = pct > teto + 1e-9
+            ads = por_contrato.get(r["cc"]) or []
+            av = avaliar_contrato(vi, ads, r["objeto"], valor_global=vg,
+                                  termos_coletados=None if r["chk"] is None else bool(r["chk"]))
+            # VERIFICADO = acréscimo computável NOS TERMOS acima do teto (inclusivo), sem
+            # incoerência de base; PENDENTE = há sinal, a prova não fecha (motivo declarado).
+            estouro = av["estado"] == "VERIFICADO"
+            pendente = av["estado"] == "PENDENTE"
             serie = nad >= 3
-            if not (estouro or serie):
+            if not (estouro or pendente or serie):
                 continue
+            pct = av["pct"] if av["pct"] is not None else (av["pct_global"] or 0)
             cnpj = re.sub(r"\D", "", r["fornecedor_documento"] or "")
             achados.append({
                 "contrato": r["cc"], "fornecedor": r["fornecedor_nome"],
@@ -793,7 +785,7 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                                            if len(cnpj) == 14 else cnpj),
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
                 "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
-                "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
+                "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": av["teto_pct"],
                 # O art. 125 mede sobre o "valor inicial ATUALIZADO", e aqui a base é o inicial CRU:
                 # a varredura roda sobre todo o PNCP, onde não há índice nem data-base para corrigir.
                 # O efeito é superestimar. Medido em 2026-08-10 no caso VR Benefícios: o termo declara
@@ -804,30 +796,37 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "base_do_percentual": "valor_inicial (NÃO atualizado — o art. 125 mede sobre o "
                                       "atualizado; percentual rente ao teto pode ser lícito)",
                 "estoura_teto": estouro,
-                "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
-                "acrescimo_confirmado": bool(confirmado),
-                "lacunas_aditivo": lacunas_ad.get(r["cc"], []),
-                "tipo": ("estouro" if estouro else "serie"),
+                "acrescimo_real": (round(av["acrescimo"], 2) if av["acrescimo"] else None),
+                "acrescimo_confirmado": bool(ads) and bool(av["acrescimo"]),
+                "lacunas_aditivo": av["lacunas"],
+                "estado": av["estado"], "motivos": av["motivos"], "resumo": av["resumo"],
+                "termos": av["termos"],
+                "tipo": ("estouro" if estouro else "pendente" if pendente else "serie"),
                 "vigencia_fim": r["vigencia_fim"]})
         # ranking: estoura o teto legal primeiro, acréscimo CONFIRMADO antes do não confirmado
         # (vg−vi pode ser só reajuste), depois maior %/mais aditivos
-        achados.sort(key=lambda a: (not a["estoura_teto"], not a["acrescimo_confirmado"],
+        achados.sort(key=lambda a: ({"estouro": 0, "pendente": 1}.get(a["tipo"], 2),
+                                    not a["acrescimo_confirmado"],
                                     -(a["pct"] or 0), -(a["num_aditivos"] or 0)))
         n_estouro = sum(1 for a in achados if a["estoura_teto"])
+        n_pendente = sum(1 for a in achados if a["tipo"] == "pendente")
         n_serie = sum(1 for a in achados if a["tipo"] == "serie")
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "n_estoura_teto": n_estouro, "n_serie": n_serie,
-                "contratos_analisados": len(rows),
-                "explicacao": ("Contrato cujo valor global cresceu acima do limite legal de acréscimo "
-                               "(25% em regra; 50% p/ reforma — Lei 14.133 art. 125). Também marca "
-                               "CHANGE ORDERS EM SÉRIE (≥3 aditivos), red-flag de fraude por aditivos "
-                               "(OCDE/Banco Mundial). 'acréscimo real' vem do termo aditivo quando "
-                               "classificado como acréscimo (não reajuste, não reequilíbrio do "
-                               "art. 124, não prorrogação) pela régua única de limites_aditivo."),
-                "ressalva": ("Achado com acrescimo_confirmado=False usa vg−vi, que inclui REAJUSTE "
-                             "(correção inflacionária) — NÃO conta no limite de 25%; confirmar no termo "
-                             "aditivo se é acréscimo quantitativo. Base de contratos ainda parcial (PNCP). "
-                             "Indício ≠ acusação.")}
+                "n_estoura_teto": n_estouro, "n_pendente": n_pendente, "n_serie": n_serie,
+                "contratos_analisados": n_universo,
+                "explicacao": ("VERIFICADO = soma dos acréscimos quantitativos NOS TERMOS ADITIVOS "
+                               "acima do teto do art. 125 da Lei 14.133 (25%; 50% só para reforma de "
+                               "edifício ou equipamento; até o teto é lícito). Reajuste, repactuação, "
+                               "reequilíbrio (arts. 124 II-d, 134, 135), prorrogação e supressão não "
+                               "entram. PENDENTE = há sinal mas a prova não fecha (termo não coletado, "
+                               "percentual declarado no termo dentro do teto, base incompatível, excesso "
+                               "que a atualização do inicial explica). Também marca CHANGE ORDERS EM "
+                               "SÉRIE (≥3 aditivos, red-flag OCDE/Banco Mundial). Régua única: "
+                               "limites_aditivo.avaliar_contrato."),
+                "ressalva": ("PENDENTE não é estouro: valor global − inicial NÃO é acréscimo (o global "
+                             "do PNCP cobre o período e inclui reajuste e prorrogação). Base do "
+                             "percentual = valor inicial publicado, não atualizado. Pagamento por "
+                             "contrato INDISPONÍVEL (sem ponte contrato↔OB). Indício ≠ acusação.")}
     finally:
         con.close()
 

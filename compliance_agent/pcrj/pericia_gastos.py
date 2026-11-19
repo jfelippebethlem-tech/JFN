@@ -7,7 +7,6 @@ Mesmo contrato dos detectores de emendas: risco 0–10 explícito, fonte citada,
 from __future__ import annotations
 
 import logging
-import re as _re_reforma
 import sqlite3
 from datetime import date, datetime
 
@@ -38,7 +37,6 @@ def teto_dispensa(ano: int | None = None) -> float:
 
 
 TETO_DISPENSA_COMPRAS = teto_dispensa(2026)  # compat: consumidores antigos importam a constante
-_RE_REFORMA_OBJ = _re_reforma.compile(r"reforma\s+(?:de\s+)?(?:edif[íi]cio|pr[ée]dio|im[óo]vel|equipamento|cobertura)|reforma\s+d[ao]\s", _re_reforma.I)
 D7_JANELA_DIAS = 90
 D7_MINIMO_REGISTROS = 3
 D8_DIAS_RECEM_ABERTA = 180
@@ -360,71 +358,130 @@ def d10_rede_concorrentes(con) -> list[dict]:
 # ── D11 — aditivo acima do limite do art. 125 ────────────────────────────────
 # (vivia DENTRO do d10 sob o MESMO código de detector — duas análises num rótulo só
 # confundiam contagem, KPI e ficha; split 2026-07-18, subtipo preservado p/ compat)
-def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> list[dict]:
-    """Acréscimo por aditivo acima do teto do art. 125.
+#
+# REFEITO 2026-11-19 (pedido do dono: "verifique o pcrj d11 aditivo estourado"). Medido antes:
+# 28 achados, NENHUM da Prefeitura — o detector varria a `pcrj_contratos` inteira, que guarda
+# federal (Fiocruz, MPT da Paraíba, de Alagoas, do Paraná…) e Estado; 25 dos 28 eram
+# `valor_global − valor_inicial` sem termo nenhum (no PNCP o global é o valor do período, e
+# empenho anual estimado sai com global 10× o inicial) e os 3 "confirmados" eram falsos (termo de
+# outro contrato; termo que declara 25%; 26,4% pelo inicial cru contra 25% sobre o atualizado).
+# E a Prefeitura não tinha UM termo coletado: a fase de termos do coletor só olhava o Estado, e o
+# feed municipal nunca atualiza o global — o pré-filtro `global > inicial × 1,25` era cego para ela.
+# Agora: universo = esfera municipal-Rio; a decisão vem de `limites_aditivo.avaliar_contrato`
+# (fonte única, a mesma do intel do Estado); alerta só sai VERIFICADO (prova no termo).
+_ESFERA_D11 = "municipal-rio"
 
-    A versão anterior comparava apenas `valor_global > valor_inicial * 1.25`, sem olhar os termos:
-    reajuste, reequilíbrio e prorrogação entravam no teto como se fossem acréscimo de escopo, e o
-    tipo do objeto era ignorado (reforma tem teto de 50%). Agora a natureza de cada termo vem da
-    régua única (`limites_aditivo`), a mesma do X1 e do intel; quando os termos existem em
-    `contrato_aditivo`, o percentual é o do ACRÉSCIMO REAL. Sem eles, o achado ainda sai — mas
-    declarado como `nao_confirmado`, porque global−inicial não é acréscimo do art. 125.
-    """
-    from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo
 
-    # pré-filtro largo pelo MENOR teto possível: nada que possa estourar é descartado no SQL.
-    # LACUNA LATENTE, medida e declarada: o filtro exige que o GLOBAL tenha crescido, e o art. 125
-    # computa acréscimos e supressões SEPARADAMENTE (não se compensam). Um contrato que acresce 40%
-    # e suprime 20% cresce 20% no global e escaparia daqui. Medido em 2026-08-10 sobre todo o
-    # acervo: **zero** casos — a coleta granular é rala demais (82,8% dos termos sem valor) para
-    # produzir a situação. Fica escrito para ninguém confundir "não acontece" com "está coberto":
-    # quando o PNCP passar a publicar valor, isto vira falso negativo real.
-    rows = con.execute("""
+def _contratos_da_esfera(con, esfera: str) -> list:
+    from compliance_agent.pcrj.esfera import classificar_esfera
+    orgaos = con.execute("select distinct orgao_cnpj, coalesce(orgao_nome,'') from pcrj_contratos "
+                         "where orgao_cnpj is not null").fetchall()
+    alvo = [o[0] for o in orgaos if classificar_esfera(o[1], o[0]) == esfera]
+    if not alvo:
+        return []
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
+    chk = "coalesce(aditivos_checados,0)" if "aditivos_checados" in cols else "0"
+    marcas = ",".join("?" * len(alvo))
+    return con.execute(f"""
         select numero_controle_pncp, ano, orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
-               fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
-               coalesce(objeto,'') as objeto, valor_inicial, valor_global
-        from pcrj_contratos
-        where valor_inicial > 0 and valor_global > valor_inicial * ?""",
-        (limite_aditivo,)).fetchall()
+               coalesce(unidade,'') as unidade, fornecedor_documento,
+               coalesce(fornecedor_nome,'') as fornecedor_nome, coalesce(objeto,'') as objeto,
+               coalesce(tipo,'') as tipo, valor_inicial, valor_global, data_assinatura,
+               vigencia_fim, coalesce(num_aditivos,0) as num_aditivos, {chk} as termos_checados
+        from pcrj_contratos where orgao_cnpj in ({marcas})""", alvo).fetchall()
 
+
+def d11_avaliacao(con, esfera: str = _ESFERA_D11,
+                  limite_aditivo: float = D10_LIMITE_ADITIVO) -> dict:
+    """Avaliação contrato a contrato (VERIFICADO / PENDENTE) + cobertura dos termos — alimenta o
+    alerta (só VERIFICADO) e a tela do D11 (`/api/pcrj/aditivos`)."""
+    from compliance_agent.limites_aditivo import avaliar_contrato
+
+    contratos = _contratos_da_esfera(con, esfera)
     por_contrato: dict[str, list[dict]] = {}
     try:
-        for a in con.execute(
-                "select numero_controle_pncp, objeto, valor_acrescido, prazo_aditado_dias, "
-                "qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal "
-                "from contrato_aditivo"):
+        for a in con.execute("select * from contrato_aditivo"):
             por_contrato.setdefault(a["numero_controle_pncp"], []).append(dict(a))
-    except Exception as exc:  # noqa: BLE001 — sem a tabela, degrada p/ nao_confirmado (não cala)
+    except Exception as exc:  # noqa: BLE001 — sem a tabela, termos viram INDISPONÍVEL (não zero)
         logger.debug("contrato_aditivo indisponível no d11: %s", exc)
+        por_contrato = None
 
-    achados = []
-    for r in rows:
-        e_reforma = bool(_RE_REFORMA_OBJ.search(r["objeto"]))
-        teto = _teto_acrescimo("reforma" if e_reforma else None)
-        ads = por_contrato.get(r["numero_controle_pncp"])
-        if ads:
-            comp = acrescimo_computavel(ads)
-            pct_frac, confirmado = comp["acrescimo"] / r["valor_inicial"], True
-            lacunas = comp["lacunas"]
-        else:
-            pct_frac, confirmado, lacunas = (r["valor_global"] / r["valor_inicial"] - 1), False, []
-        if pct_frac <= teto:
+    itens, cont = [], {"VERIFICADO": 0, "PENDENTE": 0, "DENTRO_DO_LIMITE": 0, "INDISPONIVEL": 0}
+    n_decl = n_chk = n_com_termo = 0
+    for r in contratos:
+        ads = (por_contrato or {}).get(r["numero_controle_pncp"]) or []
+        n_decl += r["num_aditivos"] > 0
+        n_chk += bool(r["termos_checados"] or ads)
+        n_com_termo += bool(ads)
+        vi, vg = r["valor_inicial"] or 0, r["valor_global"] or 0
+        if not ads and not (vi > 0 and vg > vi * limite_aditivo):
             continue
-        pct = pct_frac * 100
-        origem = ("acréscimo apurado nos termos aditivos" if confirmado
-                  else "global−inicial (NÃO confirmado: pode incluir reajuste ou prorrogação)")
+        av = avaliar_contrato(vi, ads, r["objeto"], valor_global=vg,
+                              termos_coletados=bool(r["termos_checados"]))
+        cont[av["estado"]] += 1
+        if av["estado"] in ("VERIFICADO", "PENDENTE"):
+            itens.append({"controle": r["numero_controle_pncp"], "ano": r["ano"],
+                          "orgao": r["unidade"] or r["orgao_nome"] or r["orgao_cnpj"],
+                          "orgao_cnpj": r["orgao_cnpj"],
+                          "fornecedor": r["fornecedor_nome"] or r["fornecedor_documento"],
+                          "fornecedor_documento": r["fornecedor_documento"],
+                          "objeto": r["objeto"][:300], "tipo_instrumento": r["tipo"],
+                          "data_assinatura": r["data_assinatura"], "vigencia_fim": r["vigencia_fim"],
+                          "valor_inicial": vi, "valor_global": vg, "num_aditivos": r["num_aditivos"],
+                          # pagamento POR CONTRATO não tem fonte: a despesa CGM é por credor e
+                          # para em 2023; o PNCP não liga contrato a pagamento. Declarado, não zero.
+                          "pago": None, "pago_estado": "INDISPONIVEL",
+                          "pago_motivo": "sem fonte de pagamento por contrato na Prefeitura "
+                                         "(despesa CGM é por credor e cobre 2019–2023)",
+                          "prova": (f"PNCP — contrato {r['numero_controle_pncp']}"
+                                    + (f", {len(ads)} termo(s) aditivo(s)" if ads else
+                                       ", sem termo aditivo coletado")),
+                          **{k: av[k] for k in ("estado", "motivos", "resumo", "pct", "pct_global",
+                                                "teto", "teto_pct", "tipo_objeto", "ato",
+                                                "acrescimo", "supressao", "pct_supressao",
+                                                "termos", "lacunas", "base_do_percentual")}})
+    itens.sort(key=lambda x: (x["estado"] != "VERIFICADO", -(x["pct"] or x["pct_global"] or 0)))
+    return {"esfera": esfera, "itens": itens, "contagem": cont,
+            "cobertura": {"contratos": len(contratos), "com_aditivo_declarado": n_decl,
+                          "termos_consultados": n_chk, "com_termo": n_com_termo,
+                          "termos_disponiveis": por_contrato is not None}}
+
+
+def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> list[dict]:
+    """Acréscimo por aditivo acima do teto do art. 125 — SÓ o que o termo prova (VERIFICADO).
+
+    PENDENTE (termo não coletado, percentual declarado no termo dentro do teto, base do termo
+    incompatível, excesso que a atualização do inicial explica) não vira alerta: 🟡/🔴 exigem
+    prova primária. Esses ficam na tela do D11 com o motivo, para a coleta ou a leitura fecharem.
+    """
+    av = d11_avaliacao(con, limite_aditivo=limite_aditivo)
+    achados = []
+    for x in av["itens"]:
+        if x["estado"] != "VERIFICADO":
+            continue
+        pct, teto = x["pct"], x["teto"]
+        pct_txt = f"{pct * 100:.1f}".replace(".", ",")
+        termos_teto = [t for t in x["termos"] if t["conta_no_teto"]]
+        lista = "; ".join(
+            f"termo {t['seq'] or '?'} ({t['data'] or 's/d'}) +R$ {_brl(t['valor'])} "
+            f"= {t['pct_sobre_inicial']:.1%}".replace(".", ",") for t in termos_teto)
         achados.append(_achado(
-            "d11_aditivo_estourado", min(9, 6 + int(pct // 50)) - (0 if confirmado else 2),
-            f"Aditivos acima do limite — {r['fornecedor_nome'] or r['fornecedor_documento']}",
-            f"Indício de acréscimo contratual acima do limite: contrato "
-            f"{r['numero_controle_pncp']} ({r['orgao_nome'] or r['orgao_cnpj']}, {r['ano']}) "
-            f"saiu de R$ {_brl(r['valor_inicial'])} para R$ {_brl(r['valor_global'])} "
-            f"(+{pct:.0f}%), acima dos {teto:.0%} do {ato_normativo()} "
-            f"{'(reforma de edifício/equipamento)' if e_reforma else ''}. "
-            f"Base do percentual: {origem}. (fonte: PNCP)",
-            {"subtipo": "aditivo_estourado", "controle": r["numero_controle_pncp"],
-             "pct_acrescimo": round(pct, 1), "teto_pct": round(teto * 100),
-             "acrescimo_confirmado": confirmado, "lacunas_aditivo": lacunas}))
+            "d11_aditivo_estourado", 7 + (pct > 2 * teto) + (pct > 4 * teto),
+            f"Aditivos acima do limite — {x['fornecedor']} ({x['controle']})",
+            f"Indício de acréscimo contratual acima do limite: contrato {x['controle']} "
+            f"({x['orgao']}, {x['ano']}) com valor inicial de R$ {_brl(x['valor_inicial'])} recebeu "
+            f"R$ {_brl(x['acrescimo'])} de acréscimo quantitativo nos termos aditivos "
+            f"({pct_txt}%), acima do teto de {teto:.0%} do {x['ato']}"
+            f"{' (reforma de edifício/equipamento)' if x['tipo_objeto'] == 'reforma' else ''}. "
+            f"Termos computados: {lista}. Reajuste, repactuação, reequilíbrio e prorrogação ficam "
+            f"fora do teto. Base: valor inicial publicado (não atualizado). "
+            f"(fonte: PNCP — termos aditivos)",
+            {"subtipo": "aditivo_estourado", "controle": x["controle"], "estado": "VERIFICADO",
+             "pct_acrescimo": round(pct * 100, 1), "teto_pct": x["teto_pct"],
+             "acrescimo_confirmado": True, "lacunas_aditivo": x["lacunas"],
+             "valor_inicial": x["valor_inicial"], "acrescimo": x["acrescimo"],
+             "termos_resumo": [f"termo {t['seq']}: {t['natureza']} R$ {_brl(t['valor'])}"
+                               for t in x["termos"]]}))
     return achados
 
 
