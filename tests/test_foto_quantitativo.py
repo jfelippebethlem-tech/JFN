@@ -403,3 +403,11 @@ def test_ob_ligada_pela_nl_do_siafe_nao_pela_peca_rejuntada(tmp_path):
 def test_cabecalho_do_orgao_com_ocr_torto_nao_e_frente():
     assert not fq.locais("MISTITUTO ESTADUAL DO AMBIENTE - IHEA\nIHSTITUTO ESTADUAL DO AMBIENTE - INEA\nMACAÉ - RIO CAPOTE\n"
                          ) == {} and len(fq.locais("MISTITUTO ESTADUAL DO AMBIENTE - IHEA\nMACAÉ - RIO CAPOTE\n")) == 1
+
+
+def test_saldo_negativo_entre_parenteses():
+    # SEI-330001/000418/2024 (Valplat), item 5.1.7: pátio de concreto, contratado 13.081,02 m², acumulado 15.098,40
+    txt = ("5.1.7\n13.371.0010-0\nPATIO DE CONCRETO\nM2\n13081,02\n42,23\n552.411,47\n12.938,40\n546.388,62\n"
+           "2.160,00\n91.216,80\n15.098,40\n637.605,42\n(2.017,38)\n(85.193,95)\n")
+    it = fq.itens_boletim(txt)[0]
+    assert (it["acum"], it["saldo"]) == (15098.4, -2017.38) and "acum+saldo=contratado" in it["fecha"]

@@ -228,6 +228,9 @@ def _num(tok: str, ponto_decimal: bool = True) -> float | None:
     t = tok.strip().replace("R$", "").replace(" ", "").strip()
     if t in {"-", "–", "—"}:
         return 0.0
+    if len(t) > 2 and t[0] == "(" and t[-1] == ")":      # contábil: "(2.017,38)" = saldo NEGATIVO (330001/000418/2024)
+        v = _num(t[1:-1], ponto_decimal)
+        return -v if v is not None else None
     if _RX_NUM_BR.match(t):
         return float(t.replace(".", "").replace(",", "."))
     if ponto_decimal and _RX_NUM_PT.match(t):
