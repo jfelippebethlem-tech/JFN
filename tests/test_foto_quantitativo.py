@@ -283,7 +283,28 @@ def test_diario_sem_dia_do_periodo_e_contradicao(tmp_path):
           "aceite": [], "nl": [], "ob": []}
     pk["relatorio"] = [{"i": 1, "titulo": "Relatório Fotográfico", "texto": "texto/1.txt"}]
     s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "DIARIO_SEM_DIA_DO_PERIODO"]
-    assert s and s[0]["porque"]["classe"] == "contradição" and "2025-10-03" in s[0]["datas_no_diario"]
+    # só a data de cabeçalho (início de OUTRO contrato): lacuna, não contradição
+    assert s and s[0]["porque"]["classe"] == "sem-explicação" and "2025-10-03" in s[0]["datas_no_diario"]
+    (pasta / "texto" / "1.txt").write_text("".join(f"Data: {d:02d}/04/2026\nEscavação. " + "x " * 200
+                                                   for d in range(1, 8)), encoding="utf-8")
+    s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "DIARIO_SEM_DIA_DO_PERIODO"]
+    assert s[0]["porque"]["classe"] == "contradição"        # dias de OUTRO mês, nenhum do período
+    (pasta / "texto" / "1.txt").write_text("".join(f"Data: {d:02d}/06/2025\nEscavação. " + "x " * 200
+                                                   for d in range(16, 23)), encoding="utf-8")
+    s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "DIARIO_SEM_DIA_DO_PERIODO"]
+    assert s[0]["porque"]["classe"] == "inocente-provável"  # mesmo mês, ano trocado
+
+
+def test_nl_de_guia_nao_liga_ob_a_outra_medicao(tmp_path):
+    import json as _j
+    pasta = tmp_path / "p"
+    pasta.mkdir()
+    docs = [{"i": 0, "titulo": "Anexo 4ª Medição (1)"}, {"i": 1, "titulo": "Nota de Liquidação - NL 2025NL03532 (2)"},
+            {"i": 2, "titulo": "Anexo 6ª Medição (3)"}, {"i": 3, "titulo": "Guia GRE IRRF R$ 125.948,00 - 2025NL03532 (4)"},
+            {"i": 4, "titulo": "Ordem Bancária Orçamentária 2025OB06150 / R$ 8.566.466,22 (5)"}]
+    (pasta / "manifest.json").write_text(_j.dumps({"processo": "x", "docs": docs}), encoding="utf-8")
+    m = {p["n"]: p for p in fq.medicoes(pasta)}
+    assert m[4]["nl"] == ["2025NL03532"] and m[6]["nl"] == [] and m[6]["ob"] == ["2025OB06150"]
 
 
 def test_periodo_do_relatorio_antes_do_inicio_do_contrato_e_erro_de_ano(tmp_path):

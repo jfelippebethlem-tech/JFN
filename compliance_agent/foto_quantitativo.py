@@ -93,6 +93,10 @@ _RX_NL = re.compile(r"\b(20\d\d)\s*NL\s*0*(\d{1,6})\b", re.I)
 _RX_OB = re.compile(r"\b(20\d\d)\s*OB\s*0*(\d{1,6})\b", re.I)
 
 
+_RX_TIT_NL = re.compile(r"\s*(?:anexo\s+)?nota\s+de\s+liquida", re.I)
+_RX_TIT_OB = re.compile(r"\s*(?:anexo\s+)?ordem\s+banc", re.I)
+
+
 def _num_siafe(m: re.Match, tipo: str) -> str:
     return f"{m.group(1)}{tipo}{int(m.group(2)):05d}"
 
@@ -156,11 +160,15 @@ def medicoes(pasta: Path | str) -> list[dict]:
         papel = papel_do_titulo(tit)
         n = numero_medicao(tit)
         if papel is None:
-            # NL/OB no título: pertencem ao último pacote aberto (o processo de pagamento segue a medição)
+            # A PEÇA de NL/OB pertence ao último pacote aberto (o processo de pagamento segue a medição). Só a peça:
+            # "Guia GRE IRRF … - 2025NL03532" (doc 145 de 070002/019996/2025) cita a NL da 4ª depois da 6ª e
+            # ligava a OB da 4ª à 6ª — a "OB antes do atesto" era atribuição errada.
             if ordem:
                 ult = pacotes[ordem[-1]]
-                ult["nl"] += [_num_siafe(m, "NL") for m in _RX_NL.finditer(tit)]
-                ult["ob"] += [_num_siafe(m, "OB") for m in _RX_OB.finditer(tit)]
+                if _RX_TIT_NL.match(tit):
+                    ult["nl"] += [_num_siafe(m, "NL") for m in _RX_NL.finditer(tit)]
+                if _RX_TIT_OB.match(tit):
+                    ult["ob"] += [_num_siafe(m, "OB") for m in _RX_OB.finditer(tit)]
             continue
         if n is not None:
             ch = ("n", n)
@@ -1070,13 +1078,22 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
             fora = sorted({d for d in (_d(*m.groups()) for m in _RX_DATA.finditer(td)) if d})
             iso = sorted(set(re.findall(r"\b20\d\d-\d\d-\d\d\b", td)))
             achadas = [x.isoformat() for x in fora][:6] + iso[:6]
-            sinais.append({"tipo": "DIARIO_SEM_DIA_DO_PERIODO", "grau": "indicio" if achadas else "lacuna",
-                           "datas_no_diario": achadas,
-                           "porque": (_porque("contradição", "o diário juntado à medição não registra nenhum dia do período "
-                                              "medido; as únicas datas são de fora dele", ", ".join(achadas)[:160],
-                                              "diário de obra") if achadas else
-                                      _porque("sem-explicação", "o diário juntado à medição não traz data nenhuma — não "
-                                              "se sabe a que dias se refere"))})
+            mesmo_mes = [x for x in fora if x.month == per[0].month and x.year != per[0].year]
+            if len(fora) >= MIN_DIAS_MOLDE and len(mesmo_mes) >= MIN_DIAS_MOLDE:
+                # 330018/000015/2024: boletim "04/2023", diário com os dias de 04/2024 — ano trocado num dos dois
+                pq = _porque("inocente-provável", "o diário registra os dias do MESMO mês em outro ano — ano trocado no "
+                             "boletim ou no diário", ", ".join(x.isoformat() for x in mesmo_mes[:4]), "diário de obra")
+            elif len(fora) >= MIN_DIAS_MOLDE:
+                pq = _porque("contradição", "o diário juntado à medição registra dias de OUTRO período e nenhum dia do "
+                             "período medido", ", ".join(achadas)[:160], "diário de obra")
+            else:
+                # 1–4 datas soltas costumam ser cabeçalho (início/término do contrato), não dia: o formato do dia não
+                # foi lido ou o diário não tem data — lacuna, não contradição (510001 MUVI, 330001/000364/2024)
+                pq = _porque("sem-explicação", "nenhum dia do período identificado no diário (as datas que há são de "
+                             "cabeçalho, ou não há data)", ", ".join(achadas)[:160] or None, "diário de obra")
+            sinais.append({"tipo": "DIARIO_SEM_DIA_DO_PERIODO",
+                           "grau": "indicio" if pq["classe"] == "contradição" else "lacuna",
+                           "datas_no_diario": achadas, "porque": pq})
         parados = [d for d in dias if d["parado"]]
         res["diario_parados"] = len(parados)
         exec_med = [x for x in medidos if natureza(x) != "tempo"]
