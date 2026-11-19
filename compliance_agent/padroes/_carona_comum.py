@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
@@ -54,8 +53,13 @@ def tag_de(caminho: str | Path) -> str | None:
     return "_".join(m.groups()) if m else None
 
 
+_TIRA_ACENTO = str.maketrans("áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ",
+                              "aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC")
+
+
 def sem_acento(s: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn")
+    """Tira acento do português (str.translate, em C — o unicodedata por caractere pesava na VM-1)."""
+    return (s or "").translate(_TIRA_ACENTO)
 
 
 def _ler(p: Path) -> str:
@@ -184,6 +188,7 @@ def trecho(texto: str, ini: int, fim: int, raio: int = 140) -> str:
     return re.sub(r"\s+", " ", texto[a:b]).strip()
 
 
+@lru_cache(maxsize=200_000)
 def tipo_doc(titulo: str) -> str:
     t = sem_acento(titulo).lower()
     if re.search(r"estudo\s*t[eé]?cnico|\betp\b|estudos?\s+preliminar", t):
@@ -328,4 +333,5 @@ def codigo_mod(ne: dict) -> str | None:
 
 
 def titulos_casam(tag: str, rx: re.Pattern) -> bool:
-    return any(rx.search(sem_acento(r.titulo)) for r in refs(tag))
+    """`rx` sobre o título CRU (o padrão tolera acento) — sem_acento por título custava CPU que a VM-1 não tem."""
+    return any(rx.search(r.titulo) for r in refs(tag))

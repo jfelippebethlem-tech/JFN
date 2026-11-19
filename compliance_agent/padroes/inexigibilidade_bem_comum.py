@@ -86,6 +86,7 @@ def varrer(limite: int | None = None) -> dict:
     universo = sem_texto = sem_tr = ne06 = por_titulo = 0
     brutos = []
     cc.prefetch_ne(todos, cache)
+    cc.refs_em_paralelo([t for t in todos if cc.codigo_mod(cache[t]) is None])
     pedidos = []
     for t in todos:
         cod = cc.codigo_mod(cc.modalidade_ne(t, cache))

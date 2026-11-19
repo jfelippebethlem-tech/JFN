@@ -152,7 +152,7 @@ def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
             "prova_adesao": f'{d0.ref} — "{cc.trecho(d0.texto, m0.start(), m0.end(), 60)[:300]}"'}
 
 
-_RX_TIT_ADESAO = re.compile(r"ades[aã]o|carona|anuencia|\barp\b|ata de registro", re.I)
+_RX_TIT_ADESAO = re.compile(r"ades[aã]o|carona|anu[eê]ncia|\barp\b|ata de registro", re.I)
 
 
 def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict]:
@@ -163,6 +163,7 @@ def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict
     base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
                      "sem_ne_mas_titulo_de_adesao": 0}
     cc.prefetch_ne(todos, cache)
+    cc.refs_em_paralelo([t for t in todos if cc.codigo_mod(cache[t]) is None])   # títulos dos sem NE, em paralelo
     try:
         for n, t in enumerate(todos):
             ne = cc.modalidade_ne(t, cache)
