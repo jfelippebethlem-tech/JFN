@@ -394,7 +394,7 @@ derivados:
     comando: ["{py}", "-m", "compliance_agent.siafe_agenda", "status"]
     peso: pesado
     debounce_s: 600
-    intervalo_min_s: 10800
+    intervalo_min_s: 1800    # disparo 'pulado' (SIAFE ocupado/fora da janela) também conta: 30 min, não 3 h
     timeout_s: 300
     prioridade: 6
     efeito: {arquivo: data/siafe_agenda_status.json}
@@ -407,7 +407,7 @@ derivados:
     comando: ["{py}", "-m", "compliance_agent.siafe_agenda", "documentos"]
     peso: pesado
     debounce_s: 600
-    intervalo_min_s: 10800
+    intervalo_min_s: 1800    # disparo 'pulado' (SIAFE ocupado/fora da janela) também conta: 30 min, não 3 h
     timeout_s: 300
     prioridade: 7
     efeito: {arquivo: data/siafe_agenda_documentos.json}
