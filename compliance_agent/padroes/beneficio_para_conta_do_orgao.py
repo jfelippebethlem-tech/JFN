@@ -37,9 +37,9 @@ _RE_VAL = re.compile(r"\bValor\s*\n(?:[^\n]*\n){0,3}?\s*(" + C.MOEDA + r")\s*\n"
 _RE_NUM = re.compile(r"\b(\d{4}OB\d{5})\b")
 _RE_EMI = re.compile(r"Emiss[ãa]o\s*\n(?:[^\n]*\n){0,3}?\s*(\d{2}/\d{2}/\d{2,4})\s*\n", re.I)
 
-# Tabela de natureza jurídica da Receita (grupo 1 = administração pública).
-ESTADUAL = {"1023", "1058", "1082", "1112", "1147", "1171", "1236", "1260", "1295", "1325"}
-MUNICIPAL = {"1031", "1066", "1120", "1155", "1180", "1244", "1279", "1309", "1333"}
+# Tabela de natureza jurídica da Receita (grupo 1 = administração pública) — fonte única em esfera_orgao.
+from compliance_agent.esfera_orgao import NATUREZA_ESTADUAL as ESTADUAL  # noqa: E402
+from compliance_agent.esfera_orgao import NATUREZA_MUNICIPAL as MUNICIPAL  # noqa: E402
 
 
 def ler_ob(texto: str) -> dict | None:

@@ -251,7 +251,9 @@ def test_esfera_municipio_vazio_nao_e_rio():
 def test_esfera_unidade_estadual_com_municipios_no_nome_fica_estado():
     # counterexample do code review: substring "MUNICÍPIOS" em unidade ESTADUAL não pode
     # reclassificar o órgão como prefeitura
-    assert PR.esfera_do_orgao("SECRETARIA DE ESTADO DE APOIO AOS MUNICIPIOS") == "estado"
+    assert PR.esfera_do_orgao("SECRETARIA DE ESTADO DE APOIO AOS MUNICIPIOS DO RIO DE JANEIRO") == "estado"
+    # 19/11/2026: sem marca do RJ o nome nao prova esfera estadual do RJ (ha uma em cada estado)
+    assert PR.esfera_do_orgao("SECRETARIA DE ESTADO DE APOIO AOS MUNICIPIOS") == "outros"
     assert PR.esfera_do_orgao("MUNICIPIO DE PARACAMBI") == "prefeitura"
 
 
@@ -275,8 +277,10 @@ def test_cobertura_expoe_certames_sem_unidade():
     con = _con()
     _seed(con, "cert-1", A, 1, B, "EMP B", 1000.0)  # sem unidade (pré-backfill)
     _seed_uni(con, "e-1", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "100", "SES", C, "EMP C")
-    r = PR.conluio_enriquecido(con, min_certames=99)
+    # órgão fictício A não é do RJ: sem aba o filtro canônico (19/11/2026) o tira — 'todas' mede a cobertura inteira
+    r = PR.conluio_enriquecido(con, min_certames=99, esfera="todas")
     assert r["cobertura"]["certames_sem_unidade"] == 1
+    assert PR.conluio_enriquecido(con, min_certames=99)["cobertura"]["certames_sem_unidade"] == 0
 
 
 def test_conluio_do_orgao_casa_por_nome_da_unidade():

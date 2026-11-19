@@ -35,8 +35,11 @@ def test_rotulo_invalido_levanta_em_vez_de_devolver_vazio(con, ruim):
 
 def test_sem_filtro_continua_sendo_None(con):
     assert certames_da_esfera(con, "todas") is None
-    assert certames_da_esfera(con, "") is None
-    assert certames_da_esfera(con, None) is None
+    # 19/11/2026 (dono: "esquece a parte federal"): sem aba = escopo RJ, nunca "tudo"
+    con.execute("CREATE TABLE pncp_resultado (certame TEXT, orgao_cnpj TEXT, orgao_nome TEXT, "
+                "unidade_nome TEXT, municipio TEXT)")
+    assert certames_da_esfera(con, "") is not None
+    assert certames_da_esfera(con, None) is not None
 
 
 def test_aditivos_estouro_recusa_esfera_invalida(tmp_path):

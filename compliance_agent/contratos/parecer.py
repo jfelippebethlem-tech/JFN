@@ -54,7 +54,8 @@ def _conclusao(score: int) -> str:
 # Foro de controle externo por esfera do órgão contratante (a base pcrj_contratos
 # guarda também contratos federais — ex.: Fiocruz — e o foro errado invalida o voto).
 _FORO = {"federal": "TCU", "estadual-rj": "TCE-RJ", "municipal-rio": "TCM-RJ",
-         "municipal-outro": "TCE-RJ", "indefinido": "órgão de controle competente"}
+         "municipal-outro": "TCE-RJ", "outro-estado": "Tribunal de Contas do respectivo Estado",
+         "indefinido": "órgão de controle competente"}
 
 
 def foro_do_contrato(orgao_nome: str = "", orgao_cnpj: str = "") -> tuple[str, str]:

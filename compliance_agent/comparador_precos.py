@@ -58,9 +58,10 @@ def _linhas(con, certs: set | None = None):
 
 
 def _certs(con, esfera: str | None) -> set | None:
-    """Filtro canônico de esfera (aba Estado = 'estado', Prefeitura = 'prefeitura')."""
+    """Filtro canônico de esfera (aba Estado = 'estado', Prefeitura = 'prefeitura'). Sem aba, a NAVEGAÇÃO
+    de preços segue o mercado inteiro (referência de preço, não achado); o ACHADO usa `_certs_alvo` (só RJ)."""
     from compliance_agent.collectors.pncp_resultados import certames_da_esfera
-    return certames_da_esfera(con, esfera)
+    return certames_da_esfera(con, esfera or "todas")
 
 
 # Os dois entes que o gabinete fiscaliza. É o alvo PADRÃO do sobrepreço: sem escolher
@@ -444,7 +445,7 @@ def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None,
         con.close()
 
 
-def _eficiencia(con, por: str, min_itens: int, certs: set | None = None) -> list:
+def _eficiencia(con, por: str, min_itens: int, certs: set | None = None, alvo: set | None = None) -> list:
     """Agrega, por órgão OU fornecedor, a razão preço/mediana-do-item ao longo de MUITOS itens.
     razão mediana <1 = paga/cobra abaixo do mercado; >1 = acima. Exige ≥`min_itens` itens DISTINTOS
     comparáveis (diversidade real, não a mesma compra repetida) para significância."""
@@ -460,8 +461,8 @@ def _eficiencia(con, por: str, min_itens: int, certs: set | None = None) -> list
             continue
         piso = 0.10 * med
         for r in itens:
-            if r["vu"] < piso:
-                continue
+            if r["vu"] < piso or (alvo is not None and r["certame"] not in alvo):
+                continue                              # `alvo`: só compra do escopo vira linha do ranking
             if por == "orgao":
                 k = r["unidade_nome"] or r["orgao_nome"]
             else:
@@ -486,7 +487,8 @@ def ranking_orgaos(db_path: str | None = None, min_itens: int = 8, limite: int =
     <1 = compra abaixo do mercado (gasta bem); >1 = paga acima (auditar)."""
     con = _ro(db_path)
     try:
-        r = _eficiencia(con, "orgao", min_itens, _certs(con, esfera))
+        # sem aba: mercado inteiro como referência, ranking só de compra do RJ (dono, 19/11/2026)
+        r = _eficiencia(con, "orgao", min_itens, _certs(con, esfera), None if esfera else _certs_alvo(con, None))
         r.sort(key=lambda x: x["razao_mediana"])
         return {"ok": True, "melhores": r[:limite], "piores": list(reversed(r))[:limite],
                 "n": len(r),
@@ -504,7 +506,7 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
     >1 = cobra acima do mercado (caro); <1 = abaixo (barato)."""
     con = _ro(db_path)
     try:
-        r = _eficiencia(con, "fornecedor", min_itens, _certs(con, esfera))
+        r = _eficiencia(con, "fornecedor", min_itens, _certs(con, esfera), None if esfera else _certs_alvo(con, None))
         r.sort(key=lambda x: -x["razao_mediana"])
         return {"ok": True, "mais_caros": r[:limite], "mais_baratos": list(reversed(r))[:limite],
                 "n": len(r),

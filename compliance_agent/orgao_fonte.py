@@ -116,17 +116,21 @@ def ugs_pagadoras(con: sqlite3.Connection, cnpjs: list[str]) -> dict[str, Counte
     return dict(out)
 
 
-_MUNICIPAL = re.compile(r"\bpcrj\b|prefeitura|\bmunicipal\b", re.I)   # "Municípios do ERJ" (programa estadual) não conta
-
-
 def esfera_de(esfera: str, tags=(), *textos: str) -> str:
     """Esfera do caso: a declarada; sem ela, "municipal" quando a tag `pcrj` ou a entidade/órgão do frontmatter diz
-    Prefeitura/Municipal (nota da Prefeitura não ganha UG do Estado pelo CNPJ que o Estado também pagou)."""
+    Prefeitura/Municipal (nota da Prefeitura não ganha UG do Estado pelo CNPJ que o Estado também pagou), e
+    "federal"/"outro-estado" quando o nome é de órgão federal ou de outra UF (fonte única `esfera_orgao`, regra de
+    nome: federal antes de estadual; estadual só com marca do RJ). "Municípios do ERJ" (programa estadual) não conta."""
+    from compliance_agent import esfera_orgao as eo
     e = str(esfera or "").strip().lower()
     if e:
         return e
-    if any(str(t).strip().lower() == "pcrj" for t in tags or ()) or any(_MUNICIPAL.search(t or "") for t in textos):
+    if any(str(t).strip().lower() == "pcrj" for t in tags or ()) or any(eo.RX_MUNICIPAL.search(t or "") for t in textos):
         return "municipal"
+    for t in textos:
+        c = eo.classificar("", t or "", fatos={})["esfera"] if t else ""
+        if c in ("federal", "outro-estado"):
+            return c
     return ""
 
 
@@ -135,7 +139,7 @@ def resolver(seis: list[str], cnpjs: list[str], prefixos: dict, por_processo: di
     """UG de um caso/nota. Ordem: OB do próprio processo → prefixo SEI → quem mais pagou o CNPJ citado.
     Nota de esfera municipal/federal não ganha UG do Estado (o CNPJ pode ter OB estadual sem que o caso seja dela).
     Devolve {ug, via, det} ou {ug: "", motivo: <chave de MOTIVOS_CASO>}."""
-    if str(esfera or "").strip().lower() in ("municipal", "federal"):
+    if str(esfera or "").strip().lower() in ("municipal", "federal", "outro-estado"):
         return {"ug": "", "motivo": "esfera"}
     votos = Counter(u for u in (_maioria(por_processo.get(s) or Counter()) for s in seis) if u)
     if votos:

@@ -12,82 +12,38 @@ lido por ATTACH/JOIN quando os motores precisam filtrar por esfera. Honestidade:
 """
 from __future__ import annotations
 
-import re
 import sqlite3
 from datetime import datetime, timezone
 
 from . import db
 
-# Raízes de CNPJ "guarda-chuva" (override forte)
-_ROOTS = {
-    "42498600": "estadual-rj",   # ESTADO DO RIO DE JANEIRO
-    "42498733": "municipal-rio",  # MUNICIPIO DE RIO DE JANEIRO
-}
+# 19/11/2026 (dono: "esquece a parte federal" / "tem que ser do RJ"): a decisão de esfera mora em
+# ``compliance_agent/esfera_orgao.py`` (raiz CNPJ → natureza jurídica da Receita + UF da sede → nome só
+# com marca do RJ). Aqui só se traduz para o vocabulário histórico deste módulo. As regex de nome que
+# viviam aqui casavam "SECRETARIA DE ESTADO"/"TRIBUNAL DE CONTAS DO ESTADO" de qualquer estado e
+# testavam estadual antes de federal (UNIRIO e conselhos regionais saíam "estadual-rj").
+from compliance_agent import esfera_orgao as _eo
 
-# Ordem importa: municipal e estadual-RJ ANTES de federal
-# (ex.: "MINISTÉRIO PÚBLICO DO ESTADO DO RIO" é estadual, não federal).
-_MUNICIPAL_RIO = re.compile(
-    r"MUNIC[IÍ]PIO\s+D[EO]\s+RIO DE JANEIRO|PREFEITURA\b.*RIO DE JANEIRO|"
-    r"C[ÂA]MARA MUNICIPAL\b.*RIO DE JANEIRO|MUNIC[IÍ]PIO DO RIO DE JANEIRO", re.I)
-_ESTADUAL_RJ = re.compile(
-    r"ESTADO DO RIO DE JANEIRO|GOVERNO DO ESTADO\b.*RIO|SECRETARIA DE ESTADO|"
-    r"ASSEMBLEIA LEGISLATIVA\b.*RIO|MINIST[ÉE]RIO P[UÚ]BLICO DO ESTADO DO RIO|"
-    r"TRIBUNAL DE CONTAS DO ESTADO", re.I)
-_FEDERAL = re.compile(
-    r"MINIST[ÉE]RIO\b|COMANDO DA (MARINHA|EX[ÉE]RCITO|AERON[ÁA]UTICA)|"
-    r"UNIVERSIDADE FEDERAL|INSTITUTO FEDERAL|HOSPITAL FEDERAL|\bBNDES\b|"
-    r"OSWALDO CRUZ|FIOCRUZ|FIOTEC|UNI[ÃA]O\b|AG[ÊE]NCIA NACIONAL|"
-    r"CAIXA ECON[ÔO]MICA|BANCO CENTRAL|BANCO DO BRASIL|POL[IÍ]CIA FEDERAL|"
-    r"RECEITA FEDERAL|ADVOCACIA[- ]GERAL DA UNI[ÃA]O|TRIBUNAL REGIONAL|"
-    r"SUPERIOR TRIBUNAL|CASA DA MOEDA|COL[ÉE]GIO PEDRO II|\bFURNAS\b|"
-    r"CENTRAIS EL[ÉE]TRICAS|ELETROBRAS|COMISS[ÃA]O NACIONAL|"
-    r"COMPANHIA DE PESQUISA DE RECURSOS MINERAIS|SERVI[ÇC]O GEOL[ÓO]GICO|"
-    r"PETR[ÓO]LEO BRASILEIRO|PETROBRAS|EMPRESA BRASILEIRA|CORREIOS|SERPRO|"
-    r"DATAPREV|INSTITUTO NACIONAL|FUNDA[ÇC][ÃA]O NACIONAL|CONSELHO NACIONAL|"
-    r"AG[ÊE]NCIA ESPACIAL|IND[ÚU]STRIAS NUCLEARES|INSTITUTO BRASILEIRO|"
-    r"DEPARTAMENTO NACIONAL|SUPERINTEND[ÊE]NCIA (FEDERAL|NACIONAL)", re.I)
+_ROOTS = _eo.RAIZES_RJ   # compat: quem importava as raízes daqui
 
-# Outros municipios do RJ. Sem este balde uma prefeitura que nao fosse a do Rio caia
-# em "indefinido" — ou pior, escorregava para "federal" quando o nome trazia palavra
-# generica. O dono pediu a separacao explicita: Estado do RJ x Prefeitura do Rio x
-# outros entes federais OU MUNICIPAIS. Vem DEPOIS de _MUNICIPAL_RIO na ordem de teste,
-# entao o Rio nunca vaza para ca.
-_MUNICIPAL_OUTRO = re.compile(
-    r"MUNIC[IÍ]PIO\s+D[EO]\s+|PREFEITURA\s+(MUNICIPAL\s+)?D[EO]\s+|"
-    r"C[ÂA]MARA\s+MUNICIPAL\s+D[EO]\s+|FUNDO MUNICIPAL\b|SECRETARIA MUNICIPAL\b", re.I)
-
-ESFERAS = ("federal", "estadual-rj", "municipal-rio", "municipal-outro", "indefinido")
+ESFERAS = ("federal", "estadual-rj", "municipal-rio", "municipal-outro", "outro-estado", "indefinido")
+_DO_CANONICO = {"outro-municipio": "municipal-outro"}
 
 
 def classificar_esfera(orgao_nome: str = "", orgao_cnpj: str = "") -> str:
-    """Deriva a esfera de um órgão pelo CNPJ (raiz guarda-chuva) e pelo nome.
+    """Esfera do órgão (vocabulário de :data:`ESFERAS`) — delega a ``esfera_orgao``.
 
-    Retorna uma de :data:`ESFERAS`. ``"indefinido"`` quando não há sinal seguro.
+    ``"indefinido"`` quando não há sinal seguro; ``"outro-estado"`` = órgão estadual de outra UF.
     """
-    raiz = re.sub(r"\D", "", orgao_cnpj or "")[:8]
-    if raiz in _ROOTS:
-        return _ROOTS[raiz]
-    if raiz.startswith("00394"):   # base CNPJ da União
-        return "federal"
-    nome = orgao_nome or ""
-    if _MUNICIPAL_RIO.search(nome):
-        return "municipal-rio"
-    if _ESTADUAL_RJ.search(nome):
-        return "estadual-rj"
-    # ANTES de federal, de proposito: "MUNICIPIO DE SAO GONCALO" nao pode cair em
-    # federal por conter palavra generica. Municipal-Rio ja foi testado acima.
-    if _MUNICIPAL_OUTRO.search(nome):
-        return "municipal-outro"
-    if _FEDERAL.search(nome):
-        return "federal"
-    return "indefinido"
+    e = _eo.esfera(orgao_cnpj or "", orgao_nome or "")
+    return _DO_CANONICO.get(e, e)
 
 
 _SCHEMA_MAPA = """
 CREATE TABLE IF NOT EXISTS pcrj_orgao_esfera (
     orgao_cnpj   TEXT PRIMARY KEY,
     orgao_nome   TEXT,
-    esfera       TEXT,           -- federal | estadual-rj | municipal-rio | municipal-outro | indefinido
+    esfera       TEXT,           -- federal | estadual-rj | municipal-rio | municipal-outro | outro-estado | indefinido
     n_registros  INTEGER,
     classificado_em TEXT
 );

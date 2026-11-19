@@ -64,12 +64,26 @@ def test_comparar_grupo_inexistente(db):
 
 def test_ranking_orgaos_exige_diversidade_de_itens(db):
     # com min_itens=8 e só 1 item comparável, ninguém entra (evita ranking com 1-2 itens)
-    d = CP.ranking_orgaos(db_path=db, min_itens=8)
+    # (órgãos fictícios não são do RJ: 'todas' = ranking sem o corte de escopo de 19/11/2026)
+    d = CP.ranking_orgaos(db_path=db, min_itens=8, esfera="todas")
     assert d["ok"] is True and d["n"] == 0
     # com min_itens=1, os 3 órgãos entram e ORG A é o mais eficiente (0.5×)
-    d1 = CP.ranking_orgaos(db_path=db, min_itens=1)
+    d1 = CP.ranking_orgaos(db_path=db, min_itens=1, esfera="todas")
     assert d1["melhores"][0]["nome"] == "ORG A" and d1["melhores"][0]["razao_mediana"] == 0.5
     assert d1["piores"][0]["nome"] == "ORG C"
+
+
+def test_ranking_sem_aba_so_tem_compra_do_rj(db):
+    """Dono, 19/11/2026: "esquece a parte federal". Sem aba, órgão fora do RJ não entra no ranking."""
+    c = sqlite3.connect(db)
+    c.execute("ALTER TABLE pncp_resultado ADD COLUMN orgao_cnpj TEXT")
+    c.execute("ALTER TABLE pncp_resultado ADD COLUMN municipio TEXT")
+    c.execute("UPDATE pncp_resultado SET orgao_cnpj='42498600000171', orgao_nome='ESTADO DO RIO DE JANEIRO' "
+              "WHERE certame='c3'")
+    c.commit()
+    c.close()
+    d = CP.ranking_orgaos(db_path=db, min_itens=1)
+    assert [o["nome"] for o in d["piores"]] == ["ORG C"]      # só a compra do Estado do RJ (c3)
 
 
 def test_ressalva_presente(db):

@@ -385,33 +385,24 @@ def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_c
     return pad
 
 
-_RX_MUNICIPAL = __import__("re").compile(
-    # sinais de ENTIDADE municipal — não a mera substring "MUNICIP" (uma "SECRETARIA DE ESTADO DE
-    # APOIO AOS MUNICÍPIOS" é estadual e não pode cair em prefeitura)
-    r"\bMUNIC[IÍ]PIO DE\b|PREF(EITURA|\.)|\bMUN\.|C[ÂA]MARA MUNICIPAL|FUNDO MUNICIPAL|"
-    r"SECRETARIA MUNICIPAL", __import__("re").I)
-_RX_FEDERAL = __import__("re").compile(
-    # federais têm "DO ESTADO DO RIO DE JANEIRO" no nome (UNIRIO, conselhos regionais) — checar
-    # ANTES do estadual, senão viram "estado" (bug real: DNIT/IBGE/Exército no módulo Estado)
-    r"FEDERAL|MINIST[ÉE]RIO|COMANDO D[OA]|CONSELHO (REGIONAL|NACIONAL)|TRIBUNAL REGIONAL|"
-    r"JUSTI[ÇC]A FEDERAL|\bDNIT\b|\bIBGE\b|\bIBAMA\b|\bSEBRAE\b|\bSENAI\b|\bSENAC\b|"
-    r"FUNDA[ÇC][AÃ]O OSWALDO CRUZ|\bFIOCRUZ\b|\bINSS\b|\bUFRJ\b|\bUFF\b", __import__("re").I)
-_RX_ESTADUAL = __import__("re").compile(
-    r"\bESTAD|SECRETARIA DE ESTADO|GOVERNO DO ESTADO|FUNDO ESTADUAL|ASSEMBLEIA LEGISLATIVA|"
-    r"TRIBUNAL DE JUSTI|DETRAN|POL[ÍI]CIA (MILITAR|CIVIL)|CORPO DE BOMBEIROS", __import__("re").I)
+# 19/11/2026: as regex de nome que moravam aqui (federal/estadual/municipal) foram para a FONTE ÚNICA
+# `compliance_agent/esfera_orgao.py` — a estadual casava órgão de QUALQUER estado ("SECRETARIA DE ESTADO",
+# "TRIBUNAL DE JUSTI", "POLÍCIA CIVIL"). Aqui só se traduz o rótulo canônico para o vocabulário do PNCP.
+from compliance_agent import esfera_orgao as _eo  # noqa: E402
+
+_PARA_PNCP = {"estadual-rj": "estado", "municipal-rio": "prefeitura", "outro-municipio": "municipios",
+              "federal": "federal", "outro-estado": "outros", "indefinido": "outros"}
+# Escopo do JFN (dono, 19/11/2026: "esquece a parte federal"): sem aba escolhida, o filtro canônico é o RJ.
+ESFERAS_RJ = tuple(sorted({_PARA_PNCP[e] for e in _eo.NO_RJ}))   # ('estado', 'prefeitura')
 
 
 def esfera_do_orgao(nome: str) -> str:
-    """FALLBACK por nome: 'prefeitura' | 'estado' | 'outros' (federal/autarquia). Usado só quando o
-    ente não está em pncp_ente (esfera OFICIAL do PNCP) — ver classificar_esfera()."""
-    n = nome or ""
-    if _RX_MUNICIPAL.search(n):
+    """FALLBACK só por nome: 'prefeitura' | 'estado' | 'outros' (federal/outro estado/sem sinal).
+    'estado' exige marca do RJ no nome (regra da fonte única). Ver classificar_esfera()."""
+    e = _eo.classificar("", nome or "", fatos={})["esfera"]
+    if e in ("municipal-rio", "outro-municipio"):
         return "prefeitura"
-    if _RX_FEDERAL.search(n):
-        return "outros"
-    if _RX_ESTADUAL.search(n):
-        return "estado"
-    return "outros"
+    return "estado" if e == "estadual-rj" else "outros"
 
 
 def init_ente_schema(con: sqlite3.Connection) -> None:
@@ -474,49 +465,29 @@ ESFERAS = ("estado", "prefeitura", "municipios", "federal", "outros")
 
 
 def classificar_esfera(registro: dict, oficial: dict[str, str]) -> str:
-    """Esfera de UM certame: 'estado' | 'prefeitura' (município do Rio) | 'municipios' (demais
-    municípios) | 'federal' | 'outros'. Fonte 1 = esferaId OFICIAL do ente no PNCP; exceção real:
-    ente estadual com UNIDADE municipal (acontece no PNCP) segue a unidade. Fallback = nome."""
-    nome_uni = f"{registro.get('unidade_nome') or ''} {registro.get('orgao_nome') or ''}"
-    muni = (registro.get("municipio") or "").strip().lower()
-    cnpj14 = re.sub(r"\D", "", registro.get("orgao_cnpj") or (registro.get("orgao") or ""))[:14].zfill(14)
-    # BUG 2026-07-20: municipio VAZIO era tratado como Rio → Companhia de Desenvolvimento de MARICÁ
-    # (esfera 'M', municipio em branco) vazava na aba Prefeitura. Município vazio ≠ Rio: exigir sinal
-    # REAL de Rio (nome com "RIO DE JANEIRO" ou raiz do CNPJ do Município do Rio 42498733). Outro
-    # município nomeado (MARICÁ, NITERÓI…) nunca é Rio.
-    _nome_up = nome_uni.upper()
-    eh_rio = (muni == "rio de janeiro"
-              or (muni == "" and ("RIO DE JANEIRO" in _nome_up or cnpj14.startswith("42498733"))))
-    esf = oficial.get(cnpj14)
-    if esf == "M":
-        return "prefeitura" if eh_rio else "municipios"
-    if esf == "E":
-        uni = registro.get("unidade_nome") or ""
-        # exceção 1: unidade explicitamente municipal dentro do ente estadual
-        if _RX_MUNICIPAL.search(uni):
-            return "prefeitura" if eh_rio else "municipios"
-        # exceção 2 (dado real do PNCP): autarquia MUNICIPAL do interior cadastrada como unidade do
-        # ente "Estado do RJ" (ex.: Instituto de Seguridade Social de Maricá). Sem marcador estadual
-        # no nome E fora da capital → é municipal; unidades estaduais do interior têm marcador
-        # (SECRETARIA DE ESTADO, DETRAN, POLÍCIA, HOSPITAL ESTADUAL...).
-        if uni and muni and not eh_rio and not _RX_ESTADUAL.search(uni):
-            return "municipios"
-        return "estado"
-    if esf == "F":
-        return "federal"
-    e = esfera_do_orgao(nome_uni)
-    if e == "prefeitura":
-        return "prefeitura" if eh_rio else "municipios"
-    return e
+    """Esfera de UM certame: 'estado' (Estado do RJ) | 'prefeitura' (município do Rio) | 'municipios'
+    (demais municípios) | 'federal' | 'outros' (outro estado / sem sinal). Delega à fonte única
+    `esfera_orgao.classificar_unidade` (raiz CNPJ → natureza jurídica + UF da sede → nome com marca do RJ);
+    `oficial` (esferaId do ente no PNCP) completa o que a base não tiver. Exceção do PNCP preservada lá:
+    unidade municipal sob o ente "Estado do RJ" segue a unidade; município vazio ≠ Rio."""
+    cnpj14 = re.sub(r"\D", "", registro.get("orgao_cnpj") or (registro.get("orgao") or ""))[:14]
+    cnpj14 = cnpj14.zfill(14) if cnpj14 else ""
+    r = _eo.classificar_unidade(cnpj14, registro.get("orgao_nome") or "", registro.get("unidade_nome") or "",
+                                registro.get("municipio") or "", registro.get("uf") or "",
+                                (oficial or {}).get(cnpj14))
+    return _PARA_PNCP[r["esfera"]]
 
 
 def certames_da_esfera(con, esfera: str | None) -> set | None:
     """Set de `certame` cuja esfera oficial (classificar_esfera) é `esfera`
-    ('estado'|'prefeitura'|'municipios'|'federal'|'outros'). None/''/'todas' = sem filtro.
+    ('estado'|'prefeitura'|'municipios'|'federal'|'outros'). None/'' = escopo RJ (estado+prefeitura);
+    'todas' = sem filtro (opt-in explícito).
     É O filtro canônico das abas do painel: aba Estado passa 'estado', Prefeitura 'prefeitura' —
     nenhum detector deve reinventar a classificação (exceções de unidade vivem no classificar_esfera)."""
-    if not esfera or esfera == "todas":
+    if esfera == "todas":            # opt-in explícito de quem pesquisa fora do escopo
         return None
+    if not esfera:                   # 19/11/2026: sem aba = escopo do JFN (Estado do RJ + Prefeitura do Rio)
+        return certames_das_esferas(con, set(ESFERAS_RJ))
     # Rótulo fora do vocabulário devolveria um SET VAZIO, e set vazio filtra tudo: o detector some
     # com zero achados sobre uma base cheia. Medido em 2026-08-10 com `esfera="estadual"` (o
     # português natural) em vez de `"estado"` — 0 achados numa base com 260. Erro é melhor que
@@ -550,7 +521,8 @@ def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
     nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly).
     ``esfera`` ∈ {'estado','prefeitura','municipios','federal','outros'} filtra pela esfera OFICIAL
     do ente no PNCP (pncp_ente.esferaId; fallback nome) — 'prefeitura' = município do Rio;
-    'municipios' = demais municípios do RJ; 'outros' = tudo que não é estado/prefeitura."""
+    'municipios' = demais municípios; 'outros' = tudo que não é estado/prefeitura; None/'' = só o RJ
+    (estado+prefeitura); 'todas' = sem filtro."""
     from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
     regs = registros_vencedores(con, uf=uf)
     oficial = esferas_por_ente(con)
@@ -559,9 +531,11 @@ def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
         r["_esfera"] = classificar_esfera(r, oficial)
         contagem_esferas[r["_esfera"]] = contagem_esferas.get(r["_esfera"], 0) + 1
     if esfera == "outros":
-        regs = [r for r in regs if r["_esfera"] not in ("estado", "prefeitura")]
+        regs = [r for r in regs if r["_esfera"] not in ESFERAS_RJ]
     elif esfera in ("estado", "prefeitura", "municipios", "federal"):
         regs = [r for r in regs if r["_esfera"] == esfera]
+    elif esfera != "todas":          # 19/11/2026: sem aba = só o RJ (federal/outros entes fora do escopo)
+        regs = [r for r in regs if r["_esfera"] in ESFERAS_RJ]
     pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
     pad["esferas"] = contagem_esferas  # transparência da segregação (Estado ≠ prefeituras ≠ federal)
     # índices auxiliares: cnpj→nome, orgao→(nome exibível, ente), orgao→objetos, (orgao,cnpj)→objetos

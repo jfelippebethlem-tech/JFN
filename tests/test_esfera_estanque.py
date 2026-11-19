@@ -29,7 +29,11 @@ RAIZ = Path(__file__).resolve().parents[1]
     [
         # ── Estado do RJ ────────────────────────────────────────────────────
         ("ESTADO DO RIO DE JANEIRO", "", "estadual-rj"),
-        ("SECRETARIA DE ESTADO DE SAUDE", "", "estadual-rj"),
+        ("SECRETARIA DE ESTADO DE SAUDE DO RIO DE JANEIRO", "", "estadual-rj"),
+        # 19/11/2026: sem CNPJ e sem marca do RJ no nome NAO e estadual-rj — ha uma em cada estado
+        ("SECRETARIA DE ESTADO DE SAUDE", "", "indefinido"),
+        ("TRIBUNAL DE CONTAS DO ESTADO DE MINAS GERAIS", "", "outro-estado"),
+        ("UNIVERSIDADE FEDERAL DO ESTADO DO RIO DE JANEIRO", "", "federal"),
         ("", "42498600000171", "estadual-rj"),          # raiz guarda-chuva
         # o MP estadual tem "MINISTERIO" no nome e NAO pode virar federal
         ("MINISTERIO PUBLICO DO ESTADO DO RIO DE JANEIRO", "", "estadual-rj"),
@@ -86,12 +90,10 @@ def test_existe_UM_classificador_de_esfera():
     MINISTERIO DA FAZENDA e INSS num relatorio de fracionamento.
     """
     canonico = RAIZ / "compliance_agent" / "pcrj" / "esfera.py"
-    # ISENTO, com motivo: `collectors/pncp_resultados.py` NAO e copia. Tem outra
-    # assinatura e, sobretudo, outra FONTE — usa o `esferaId` oficial do ente no
-    # PNCP, que e sinal mais forte que casar nome, e ja trata "demais municipios"
-    # com um bug documentado e corrigido (municipio vazio != Rio). Fundir as duas
-    # destruiria a melhor. O que as une nao e o codigo: sao os BALDES, e disso
-    # cuida `test_baldes_batem_entre_os_dois_classificadores`.
+    # ISENTO, com motivo: `collectors/pncp_resultados.py` tem outra assinatura (registro do
+    # PNCP) e outro vocabulario; desde 19/11/2026 ele e o pcrj/esfera DELEGAM a
+    # `compliance_agent/esfera_orgao.py` (fonte unica: raiz CNPJ -> natureza juridica +
+    # UF da sede -> nome com marca do RJ). Os BALDES seguem conferidos abaixo.
     isentos = {RAIZ / "compliance_agent" / "collectors" / "pncp_resultados.py"}
     padrao = re.compile(r"^\s*def\s+_?classificar_esfera\s*\(", re.M)
     copias = []

@@ -93,22 +93,16 @@ def _declara_ug_valida(texto: str, nomes: dict[str, str]) -> bool:
     return bool(m and _ug_valida(m.group(1), nomes))
 
 
-_PODER = ((re.compile(r"tribunal de justi|\btjrj\b|poder judici", re.I), "Judiciário"),
-          (re.compile(r"tribunal de contas|\btce\b", re.I), "Tribunal de Contas"),
-          (re.compile(r"assembl[eé]ia legislativa|\balerj\b", re.I), "Legislativo"),
-          (re.compile(r"minist[eé]rio p[uú]blico|\bmprj\b|procuradoria-geral de justi", re.I), "Ministério Público"),
-          (re.compile(r"defensoria", re.I), "Defensoria Pública"))
-_MUNICIPAL = re.compile(r"\bpcrj\b|prefeitura|\bmunicipal\b|c[aâ]mara municipal", re.I)
-
-
 def esfera_poder(ug: str, nomes: dict[str, str], fm: str) -> tuple[str, str]:
     """(esfera, poder) da nota — regra CNF-12 (19/11/2026: 132 casos abertos sem esfera). UG estadual válida →
     estadual + Poder pelo nome do órgão (sem casar, Executivo); sem UG e frontmatter de Prefeitura → municipal.
     Sem dado → ("", ""): a nota fica sem esfera e o sensor segue apontando (nunca chute)."""
+    # Poder pelo nome e sinal municipal: FONTE ÚNICA `esfera_orgao` (19/11/2026). UG do SIAFE = Estado do RJ.
+    from compliance_agent.esfera_orgao import RX_MUNICIPAL, poder_por_nome
     if ug and ug in nomes:
-        return "estadual", next((p for rx, p in _PODER if rx.search(nomes[ug])), "Executivo")
+        return "estadual", poder_por_nome(nomes[ug], "Executivo")
     campos = " ".join(ln for ln in fm.splitlines() if re.match(r"^(orgao|entidade|tags|esfera_texto):", ln))
-    if _MUNICIPAL.search(campos):
+    if RX_MUNICIPAL.search(campos):
         return "municipal", ("Legislativo" if re.search(r"c[aâ]mara", campos, re.I) else "Executivo")
     return "", ""
 
