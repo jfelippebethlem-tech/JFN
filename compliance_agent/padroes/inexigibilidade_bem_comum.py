@@ -85,18 +85,17 @@ def varrer(limite: int | None = None) -> dict:
     todos = cc.tags()[: limite or None]
     universo = sem_texto = sem_tr = ne06 = por_titulo = 0
     brutos = []
-    for n, t in enumerate(todos):
-        ne = cc.modalidade_ne(t, cache)
-        if n % 500 == 499:
-            cc.salvar_cache_ne(cache)
-        cod = cc.codigo_mod(ne)
+    cc.prefetch_ne(todos, cache)
+    pedidos = []
+    for t in todos:
+        cod = cc.codigo_mod(cc.modalidade_ne(t, cache))
         if cod == "06":
             ne06 += 1
+            pedidos.append((t, _DOCS_TR + ("empenho",)))
         elif cod is None and cc.titulos_casam(t, _RX_TIT_INEX):
             por_titulo += 1
-        else:
-            continue
-        ds = cc.docs(t, _DOCS_TR + ("empenho", "outro") if cod is None else _DOCS_TR + ("empenho",))
+            pedidos.append((t, _DOCS_TR + ("empenho", "outro")))
+    for t, ds in cc.docs_em_paralelo(pedidos):
         if not ds:
             sem_texto += 1
             continue
@@ -109,7 +108,6 @@ def varrer(limite: int | None = None) -> dict:
             continue
         if r["bem_comum"] or r["outros_fornecedores"]:
             brutos.append((t, r, ds))
-    cc.salvar_cache_ne(cache)
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in brutos})
     achados = []
     for t, r, ds in brutos:

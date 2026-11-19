@@ -97,12 +97,15 @@ def varrer(limite: int | None = None) -> dict:
     todos = cc.tags()[: limite or None]
     universo = sem_texto = sem_par = 0
     brutos = []
+    cc.refs_em_paralelo(todos)
+    pedidos = []
     for t in todos:
         tipos = {cc.tipo_doc(r.titulo) for r in cc.refs(t)}
         if not (tipos & set(_ESTIM) and tipos & set(_CONTR)):
             sem_par += 1
             continue
-        ds = cc.docs(t, _ESTIM + _CONTR)
+        pedidos.append((t, _ESTIM + _CONTR))
+    for t, ds in cc.docs_em_paralelo(pedidos):
         if not ds:
             sem_texto += 1
             continue

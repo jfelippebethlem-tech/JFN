@@ -225,10 +225,11 @@ def varrer(limite: int | None = None) -> dict:
     adesoes, cob0 = cav.base_adesao(limite)
     base: list[tuple[str, list[cc.Doc], str]] = []
     sem_texto = 0
-    for t, ne in adesoes:
-        cod = cc.codigo_mod(ne)
-        # interna (ata do RJ, Mod. 10): só o sinal da lei revogada — basta ler contrato/extrato/NE
-        ds = cc.docs(t, ("contrato", "empenho", "outro")) if cod == "10" else cc.docs(t)
+    cods = {t: cc.codigo_mod(ne) for t, ne in adesoes}
+    # interna (ata do RJ, Mod. 10): só o sinal da lei revogada — basta ler contrato/extrato/NE
+    pedidos = [(t, ("contrato", "empenho", "outro") if cods[t] == "10" else None) for t, _ in adesoes]
+    for t, ds in cc.docs_em_paralelo(pedidos):
+        cod = cods[t]
         if not ds:
             sem_texto += 1
             continue

@@ -162,6 +162,7 @@ def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict
     todos = cc.tags()[: limite or None]
     base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
                      "sem_ne_mas_titulo_de_adesao": 0}
+    cc.prefetch_ne(todos, cache)
     try:
         for n, t in enumerate(todos):
             ne = cc.modalidade_ne(t, cache)
@@ -188,11 +189,9 @@ def varrer(limite: int | None = None) -> dict:
     base, cob = base_adesao(limite)
     avaliados = sem_texto = interna = sem_ato = 0
     brutos: list[tuple[str, dict, list[cc.Doc]]] = []
-    for t, ne in base:
-        if cc.codigo_mod(ne) == "10":
-            interna += 1                      # ata do próprio Estado: restrição de ente/municipal não se aplica
-            continue
-        ds = cc.docs(t)
+    externas = [(t, None) for t, ne in base if cc.codigo_mod(ne) != "10"]
+    interna += len(base) - len(externas)      # ata do próprio Estado (Mod. 10): restrição de ente não se aplica
+    for t, ds in cc.docs_em_paralelo(externas):
         if not ds:
             sem_texto += 1
             continue

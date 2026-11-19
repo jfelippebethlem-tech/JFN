@@ -72,13 +72,19 @@ def varrer(limite: int | None = None) -> dict:
     todos = cc.tags()[: limite or None]
     universo = sem_texto = sem_doc = 0
     brutos = []
+    cc.refs_em_paralelo(todos)
+    sel: dict[str, list] = {}
     for t in todos:
         rs = [r for r in cc.refs(t) if cc.tipo_doc(r.titulo) in ("tr", "etp", "pesquisa")
               or (cc.tipo_doc(r.titulo) == "outro" and _RX_TIT_ESTIM.search(cc.sem_acento(r.titulo)))]
-        if not rs:
+        if rs:
+            sel[t] = rs
+        else:
             sem_doc += 1
-            continue
-        ds = [d for d in (cc.ler(r) for r in rs) if d]
+
+    def _ler(t):
+        return [d for d in (cc.ler(r) for r in sel[t]) if d]
+    for t, ds in cc.em_paralelo(_ler, list(sel)):
         if not ds:
             sem_texto += 1
             continue
