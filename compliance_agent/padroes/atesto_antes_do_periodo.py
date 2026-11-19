@@ -61,6 +61,13 @@ _P5 = re.compile(r"(?:servi[cç]os|fornecimento|presta[cç][aã]o|repasse)[^.]{0
                  r"referentes?\s+ao\s+m[eê]s\s+de)\s+" + _MES + r"(?:\s*(?:,|e|a)\s*" + _MES + r")*"
                  r"\s*(?:de\s*|/\s*)?(\d{4})", re.I)
 _NAO_SERVICO = re.compile(r"vig[eê]ncia|garantia|aditivo|prorroga|contratual|validade|inscri[cç]", re.I)
+FOLGA_MIN_FORTE = 3     # 1–2 dias antes do fim do mês (3STRUCTURE, OB de 30/12) é calendário, não prova de antecipação
+_RE_EMISSAO = re.compile(r"(?:data\s+(?:e\s+hora\s+)?(?:de\s+|da\s+)?emiss[ãa]o(?:\s+da\s+nfs-e)?)[^0-9]{0,30}"
+                         r"(\d{2}/\d{2}/\d{4})", re.I)
+# Concessionária pelo NOME do credor (o texto do atesto nem sempre diz "telefonia"): OI, Cooperativa de Eletrificação…
+CREDOR_CONCESSIONARIA = re.compile(r"\bOI S\.?A|TELEMAR|\bCLARO\b|TELEF[OÔ]NICA|\bVIVO\b|\bTIM S|EMBRATEL|LIGHT S|"
+                                   r"\bENEL\b|AMPLA|\bCEG\b|NATURGY|CEDAE|[ÁA]GUAS D|COOPERATIVA DE ELETR|ENERGISA|"
+                                   r"IGU[AÁ]|CORREIOS|EMPRESA BRASILEIRA DE CORREIOS", re.I)
 _RE_IDSEI = re.compile(r"\((\d{7,10})\)")
 _RE_DATA_LOCAL = re.compile(r"Rio de Janeiro\s*,\s*(\d{1,2})\s+de\s+" + _MES + r"\s+de\s+(\d{4})", re.I)
 _RE_ASS = re.compile(r"assinado eletronicamente por .{3,160}?,\s*em\s+(\d{2}/\d{2}/\d{4})", re.I | re.S)
@@ -145,12 +152,17 @@ def avaliar_atesto(texto_atesto: str, nfs: dict[str, str]) -> dict | None:
         t = nfs.get(idsei)
         if t and not _CONCESSIONARIA.search(t[:4000]):
             cands += [(p, f"NF ({idsei})") for p in periodos(t)]
+    # NF emitida DEPOIS da data do atesto que a atesta: a data do atesto está errada (JRF × CEASA, SEI-020004/000013/2025
+    # doc 30: período de fevereiro "assinado" em 10/02, NFS-e de 10/03) — vira fraco, não antecipação
+    emissoes = [d for tx in [texto_atesto, *nfs.values()] for d in (C.data_br(x) for x in _RE_EMISSAO.findall(tx or ""))
+                if d]
+    nf_posterior = any(d > assinado for d in emissoes)
     pior = None
     for (ini, fim, tr), onde in cands:
         folga = (fim - assinado).days
         if folga > 0 and (pior is None or folga > pior["folga"]):
             pior = {"assinado": assinado, "inicio": ini, "fim": fim, "folga": folga, "trecho": tr, "onde": onde,
-                    "antes_do_inicio": bool(ini and ini > assinado)}
+                    "antes_do_inicio": bool(ini and ini > assinado), "nf_posterior_ao_atesto": nf_posterior}
     return pior
 
 
@@ -186,9 +198,9 @@ def _pasta(pasta, man, sel):
 
 def classificar(r: dict, obs: list[dict]) -> tuple[str, list[dict]]:
     pagas_antes = [o for o in obs if (d := C.data_br(o.get("data_emissao"))) and r["assinado"] <= d < r["fim"]]
-    if r["folga"] > 45:
+    if r["folga"] > 45 or r.get("nf_posterior_ao_atesto"):
         return "fraco", pagas_antes
-    if pagas_antes or r["antes_do_inicio"]:
+    if (pagas_antes or r["antes_do_inicio"]) and r["folga"] >= FOLGA_MIN_FORTE:
         return "forte", pagas_antes
     return "medio", pagas_antes
 
@@ -202,6 +214,9 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
     for b in brutos:
         proc = C.processo(b["tag"])
         ob_p = obs.get(proc, [])
+        if any(CREDOR_CONCESSIONARIA.search(o.get("nome_credor") or "") for o in ob_p):
+            cob["fora_concessionaria_pelo_credor"] = cob.get("fora_concessionaria_pelo_credor", 0) + len(b["atestos"])
+            continue
         if any(VALE_BENEFICIO.search(o.get("nome_credor") or "") for o in ob_p):
             cob["fora_cartao_beneficio"] = cob.get("fora_cartao_beneficio", 0) + len(b["atestos"])
             continue

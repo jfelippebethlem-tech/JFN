@@ -47,3 +47,23 @@ def test_negativo_periodo_contratual_e_vigencia():
 def test_negativo_cartao_beneficio_credito_no_inicio_do_mes():
     t = "Atestamos os serviços do mês de maio/2026 — fornecimento de vale-refeição. Rio de Janeiro, 06 de maio de 2026"
     assert A.avaliar_atesto(t, {}) is None
+
+
+def test_nf_emitida_depois_do_atesto_e_erro_de_data_fraco():
+    t = ("Atestamos os serviços PERÍODO DE 01 A 28 DE FEVEREIRO DE 2025. Data Emissão: 10/03/2025. "
+         "Documento assinado eletronicamente por Fulano, Fiscal, em 10/02/2025")
+    r = A.avaliar_atesto(t, {})
+    assert r["nf_posterior_ao_atesto"]
+    assert A.classificar(r, [{"numero_ob": "X", "data_emissao": "17/02/2025", "valor": 1}])[0] == "fraco"
+
+
+def test_um_dia_antes_do_fim_do_mes_nao_e_forte():
+    t = "Atestamos que os serviços do mês de dezembro/2024 foram executados. Rio de Janeiro, 30 de dezembro de 2024"
+    r = A.avaliar_atesto(t, {})
+    assert A.classificar(r, [{"numero_ob": "X", "data_emissao": "30/12/2024", "valor": 1}])[0] == "medio"
+
+
+def test_concessionaria_pelo_nome_do_credor():
+    assert A.CREDOR_CONCESSIONARIA.search("OI S.A. - EM RECUPERACAO JUDICIAL")
+    assert A.CREDOR_CONCESSIONARIA.search("Cooperativa De Eletr Rural De Resende")
+    assert not A.CREDOR_CONCESSIONARIA.search("BUZZLINE SERV, ENTRETENIMENTO")

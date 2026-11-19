@@ -24,3 +24,7 @@ def test_negativo_material_impresso():
 
 def test_negativo_sem_acrescimo():
     assert R.linhas_reserva("5 | Transporte nos polos | locais | 137 | 0.05 | 137 | 1 | 1 | 7407.18 | 1014783.66 |") == []
+
+
+def test_negativo_impresso_com_nome_de_pessoa():
+    assert R.linhas_reserva("14 | Impressão do Manual do Aplicador | unidade | 16977 | 0.05 | 427824 | 1 | 24 | 0.25 | 106956.0 |") == []

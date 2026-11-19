@@ -38,6 +38,8 @@ _DESC_PESSOA = re.compile(r"coordenador|aplicador|fiscal|apoio|motorista|transpo
                           r"supervisor|chefe|monitor|equipe", re.I)
 _DESC_MATERIAL = re.compile(r"caderno|prova\b|impress|malote|kit|exemplar|instrumento[s]? f[ií]sic|cart[aã]o resposta|"
                             r"envelope|lacre|material", re.I)
+_DESC_SERVICO_INICIO = re.compile(r"\s*(transporte|coordenador|apoio|aplica[cç]|aluguel|armazen|deslocamento|"
+                                  r"supervis|fiscal|motorista|equipe)", re.I)
 _N = r"(\d+(?:[.,]\d+)?)"
 # "| 5 | Transporte - Distribuição … | locais | 137 | 0.05 | 144 | 1 | 1 | 7407.18 | 1066633.92 |"
 _LINHA = re.compile(r"\|?\s*\d{1,3}\s*\|\s*([^|\n]{4,160}?)\s*\|\s*([^|\n]{1,20}?)\s*\|\s*" + _N + r"\s*\|\s*"
@@ -56,7 +58,9 @@ def linhas_reserva(texto: str) -> list[dict]:
     for m in _LINHA.finditer(t):
         desc, um = m[1].strip(), m[2].strip()
         q, p, tot, f1, f2, unit = _f(m[3]), _f(m[4]), _f(m[5]), _f(m[6]), _f(m[7]), _f(m[8])
-        if q <= 0 or p <= 0 or unit <= 0 or _DESC_MATERIAL.search(desc) and not _DESC_PESSOA.search(desc):
+        # material vence pessoa no nome: "Impressão do Manual do Aplicador" é impresso (Cesgranrio 030001/040552/2026,
+        # 1ª varredura), "Transporte - Distribuição dos instrumentos" é transporte
+        if q <= 0 or p <= 0 or unit <= 0 or _DESC_MATERIAL.search(desc) and not _DESC_SERVICO_INICIO.match(desc):
             continue
         if not (_UM_NAO_MATERIAL.match(um) or _DESC_PESSOA.search(desc)):
             continue
