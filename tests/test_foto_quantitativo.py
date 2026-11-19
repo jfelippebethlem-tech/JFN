@@ -379,3 +379,21 @@ def test_periodo_da_medicao_e_o_que_contem_o_diario(tmp_path):
           "aceite": [], "nl": [], "ob": []}
     r = fq.confrontar_medicao(pasta, pk)
     assert r["periodo"] == ["2024-03-01", "2024-03-31"]
+
+
+def test_ob_ligada_pela_nl_do_siafe_nao_pela_peca_rejuntada(tmp_path):
+    # 070002/006459/2024: a peça da 2025OB01395 (NL00777, 19ª) é juntada de novo depois da 20ª
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    (pasta / "texto" / "0.txt").write_text("Documento assinado eletronicamente por A, Adjunto, em 25/04/2025, às 10:00",
+                                           encoding="utf-8")
+    pk = {"n": 20, "boletim": [], "memoria": [], "relatorio": [], "diario": [],
+          "aceite": [{"i": 0, "titulo": "Atestado de Realização de Serviços", "texto": "texto/0.txt"}],
+          "nl": ["2025NL00995"], "ob": ["2025OB01395"]}
+    obs = [{"numero_ob": "2025OB01395", "ug": "243200", "data_emissao": "24/04/2025", "data": date(2025, 4, 24),
+            "valor": 4206397.76, "nl": "2025NL00777"},
+           {"numero_ob": "2025OB01694", "ug": "243200", "data_emissao": "12/05/2025", "data": date(2025, 5, 12),
+            "valor": 4279582.74, "nl": "2025NL00995"}]
+    r = fq.confrontar_medicao(pasta, pk, obs=obs)
+    assert [o["numero_ob"] for o in r["obs_pagas"]] == ["2025OB01694"] and r["ligacao_ob"] == "NL"
+    assert not [s for s in r["sinais"] if s["tipo"] == "OB_ANTES_DO_ATESTO"]

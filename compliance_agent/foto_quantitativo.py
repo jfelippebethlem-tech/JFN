@@ -1129,11 +1129,17 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
 
     # OB: ligada pela NL/OB citada nos títulos do pacote
     if obs is not None:
-        lig = [o for o in obs if (o["nl"] and o["nl"] in pk["nl"]) or o["numero_ob"] in pk["ob"]]
+        # A NL do SIAFE é o vínculo: a peça de OB pode ser JUNTADA DE NOVO depois da medição seguinte (070002/006459/2024:
+        # 2025OB01395 é da NL00777, da 19ª, e reaparece como doc 366 após a 20ª). Pelo título da OB só sem NL nenhuma,
+        # e aí sem confronto de data.
+        por_nl = bool(pk["nl"])
+        lig = ([o for o in obs if o["nl"] and o["nl"] in pk["nl"]] if por_nl
+               else [o for o in obs if o["numero_ob"] in pk["ob"]])
+        res["ligacao_ob"] = "NL" if por_nl else ("título da OB" if lig else None)
         res["obs_pagas"] = [{k: o[k] for k in ("numero_ob", "ug", "data_emissao", "valor", "nl")} for o in lig]
         res["valor_pago_ligado"] = round(sum(o["valor"] or 0 for o in lig), 2)
         # só pacote com nº de medição no título: sem ele, o atesto ao lado pode ser de outra medição
-        ato = data_do_ato(ta) if ta.strip() and pk.get("n") is not None else None
+        ato = data_do_ato(ta) if ta.strip() and pk.get("n") is not None and por_nl else None
         if ato:
             res["data_atesto"] = ato[0].isoformat()
             for o in lig:
