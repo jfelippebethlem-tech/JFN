@@ -391,7 +391,14 @@ def _rodar(ctx: sensores.Ctx, n: int, pensar: Callable | None, cascata: Callable
         elif "sem Claude" in av.juiz:
             break                                                # sem assinatura agora: parar (não insistir, não trocar de backend)
     julgadas = [asdict(x) for x in feitas if x.estado == "JULGADA"]
-    # a fotografia traz TODAS as afirmações com juízo vigente (não só as desta rodada): o sensor lê daqui
+    # a fotografia traz TODAS as afirmações com juízo vigente (não só as desta rodada): o sensor lê daqui.
+    # Superfície que SAIU (card retirado, achado que a régua não gera mais, caso apagado) não tem juízo vigente —
+    # 19/11/2026: cards retirados por FP medida seguiam como SUB bloqueante para sempre. Só se poda o grupo cuja
+    # fonte foi lida nesta rodada (fonte que falhou não apaga nota de ninguém); Yoda não se poda (resposta entregue
+    # é fato consumado).
+    vivos, lidos = {c.id for c in cands}, {_grupo_poda(c.id) for c in cands}
+    for hid in [h for h in historico if _grupo_poda(h) in lidos and h not in vivos]:
+        historico[hid]["estado"] = "SUPERFICIE_RETIRADA"
     vigentes = [h for h in historico.values() if h.get("estado") == "JULGADA"]
     todas_notas = [n_ for h in vigentes for n_ in h.get("notas", {}).values()]
     por_crit = {c: _media([h["notas"][c] for h in vigentes if c in h.get("notas", {})]) for c in regras.rubricas()}
@@ -414,6 +421,17 @@ def _rodar(ctx: sensores.Ctx, n: int, pensar: Callable | None, cascata: Callable
         tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
         tmp.replace(caminho)
     return resumo
+
+
+def _grupo_poda(aid: str) -> str | None:
+    """Grupo de fonte de uma afirmação, para a poda de superfície retirada (None = nunca se poda)."""
+    if aid.startswith("painel:gestao:"):
+        return "couto"
+    if aid.startswith("painel:"):
+        return "manchetes"
+    if aid.startswith("vault:"):
+        return "vault"
+    return None
 
 
 def _media(vals: list) -> float | None:

@@ -141,3 +141,23 @@ def test_prompt_traz_rubrica_ancoras_e_formato():
     assert "clareza" not in juiz.criterios_de("vault") and "acabamento" not in juiz.criterios_de("painel")   # só onde a regra vale
     assert "[acabamento]" not in juiz.montar_prompt(_afirmacao(sistema="painel"), [])
     assert "exemplo RUIM" in p and "ESCALAR AO DONO" in p and '"notas"' in p and "PAD-08 exemplo" in p
+
+
+def test_superficie_retirada_perde_o_juizo_vigente_e_fonte_que_falhou_nao_poda(tmp_path):
+    # 19/11/2026: card retirado por FP medida seguia como SUB bloqueante para sempre (não há mais o que rejulgar)
+    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", api=lambda r: {}, agora=AGORA)
+    casos = tmp_path / "vault" / "casos"
+    casos.mkdir(parents=True)
+    (casos / "caso-y.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nAchado sintético.\n", encoding="utf-8")
+    (casos / "caso-z.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nOutro achado.\n", encoding="utf-8")
+    notas = {c: 4 for c in regras.rubricas()} | {"inocente": 1}
+    juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []))
+    assert len(sensores.sensor_juiz_qualidade(ctx)) == 2
+    hist = json.loads((tmp_path / "qualidade_juiz_historico.json").read_text(encoding="utf-8"))
+    hist["painel:card-que-saiu"] = dict(hist["vault:caso-y"], id="painel:card-que-saiu")   # grupo sem fonte lida
+    (tmp_path / "qualidade_juiz_historico.json").write_text(json.dumps(hist), encoding="utf-8")
+    (casos / "caso-z.md").unlink()                                          # a superfície saiu
+    r = juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []))
+    ids = {a["id"] for a in r["avaliacoes"]}
+    assert "vault:caso-z" not in ids and "vault:caso-y" in ids
+    assert "painel:card-que-saiu" in ids                                    # manchetes não foram lidas: não se poda
