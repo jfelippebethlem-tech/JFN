@@ -229,11 +229,40 @@ def medir_arquivo(numero_sei: str) -> dict:
             "sigilo": sum(1 for x in docs if re.search(r"sigil|restrit", str(x.get("titulo") or ""), re.I))}
 
 
+# Leitura LIMITADA e escolhida (medido 19/11/2026: ler os autos inteiros dos maiores processos consumiu 675 MB em 45 min
+# sem fechar 100 processos, com carga 40). O processo-mãe é citado na abertura, no empenho, nos despachos e no contrato —
+# esses tipos vêm primeiro; o resto completa até `MAX_DOCS_LIDOS`, na ordem da árvore. Cada peça até `MAX_CHARS_DOC`.
+MAX_DOCS_LIDOS, MAX_CHARS_DOC = 80, 30000
+_TIPOS_CITAM_MAE = ("contrato", "nota_empenho", "autorizacao_despesa", "despacho", "oficio", "termo_referencia",
+                    "edital", "ata_rp", "parecer", "aditivo", "homologacao", "nota_liquidacao", "programacao_desembolso")
+
+
+def docs_para_relacionados(pasta: str | Path, docs: list[dict]) -> list[dict]:
+    """[{titulo, texto}] dos documentos escolhidos (tipos que citam o processo-mãe primeiro, ordem da árvore)."""
+    prio = [d for d in docs if d.get("tipo") in _TIPOS_CITAM_MAE]
+    resto = [d for d in docs if d.get("tipo") not in _TIPOS_CITAM_MAE]
+    out = []
+    for d in (prio + resto)[:MAX_DOCS_LIDOS]:
+        rel = d.get("texto")
+        if not rel:
+            continue
+        try:
+            with open(Path(pasta) / rel, encoding="utf-8", errors="ignore") as f:
+                out.append({"titulo": d.get("titulo"), "texto": f.read(MAX_CHARS_DOC)})
+        except OSError:
+            continue
+    return out
+
+
 def relacionados_do_arquivo(numero_sei: str, pasta: str | None) -> list[dict]:
     if not pasta:
         return []
-    from compliance_agent.cronologia_do_ato import docs_do_arquivo
-    return relacionados_dos_documentos(docs_do_arquivo(pasta), numero_sei)
+    from compliance_agent.sei import manifesto_norm
+    man = manifesto_norm.carregar(numero_sei)
+    if man is None:
+        return []
+    docs = manifesto_norm.normalizar(man)["docs"]
+    return relacionados_dos_documentos(docs_para_relacionados(pasta, docs), numero_sei)
 
 
 def lacunas_dos_agentes(pasta: Path = AGENTES) -> dict[str, list[dict]]:

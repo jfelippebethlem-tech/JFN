@@ -241,3 +241,14 @@ def test_drenador_le_fila_dos_indeterminados_e_pula_arquivado(tmp_path, monkeypa
     assert F._fila_indeterminados() == ["SEI-200000/000002/2025"]
     (tmp_path / "indeterminados" / "fila_captura.json").write_text("{", encoding="utf-8")
     assert F._fila_indeterminados() == []
+
+
+def test_leitura_limitada_escolhe_tipos_que_citam_a_mae(tmp_path, monkeypatch):
+    monkeypatch.setattr(I, "MAX_DOCS_LIDOS", 2)
+    monkeypatch.setattr(I, "MAX_CHARS_DOC", 10)
+    for n in ("a", "b", "c"):
+        (tmp_path / f"{n}.txt").write_text(n * 50, encoding="utf-8")
+    docs = [{"tipo": "outro", "titulo": "A", "texto": "a.txt"}, {"tipo": "despacho", "titulo": "B", "texto": "b.txt"},
+            {"tipo": "contrato", "titulo": "C", "texto": "c.txt"}, {"tipo": "contrato", "titulo": "D"}]
+    r = I.docs_para_relacionados(tmp_path, docs)
+    assert [x["titulo"] for x in r] == ["B", "C"] and r[0]["texto"] == "b" * 10
