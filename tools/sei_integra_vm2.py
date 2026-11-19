@@ -178,6 +178,7 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | 
     execucao = F._fila_execucao()       # recaptura prioritária (18/11/2026): relê mesmo o já arquivado
     reler = reler + execucao
     fontes = [("execucao", execucao, max_n),
+              ("indeterminado", F._fila_indeterminados(), max(1, max_n // 2)),   # laudo sem conclusão (19/11)
               ("bombeiros", [e.get("sei", "") for e in bomb], k_bombeiros),
               ("dinheiro", [e.get("sei", "") for e in dinheiro], max_n),
               ("geral", geral, max_n)]

@@ -411,6 +411,26 @@ def _fila_execucao() -> list[str]:
     return out
 
 
+def _fila_indeterminados(limite: int = 40) -> list[str]:
+    """LAUDO DE EXECUÇÃO SEM CONCLUSÃO (19/11/2026): fila gravada por `compliance_agent.indeterminados ciclo` em
+    `data/indeterminados/fila_captura.json` — o próprio processo sem arquivo/vazio e o processo de origem/contrato/ata
+    citado nos autos e fora do acervo, pelo valor pago em OB dos laudos que dependem dele. Medido em 18/11/2026: dos
+    1.493 laudos sem arquivo, 1.481 esperavam como `nunca_capturado` na inscrição em massa (40 por rodada, atrás de
+    3.939) e só 17 estavam na fila por dinheiro. Só quem ainda não está arquivado; `limite` por rodada."""
+    try:
+        d = json.loads((ARQUIVO.parent / "indeterminados" / "fila_captura.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out: list[str] = []
+    for e in (d.get("fila") or []) if isinstance(d, dict) else []:
+        proc = _proc_limpo(str((e or {}).get("sei") or ""))
+        if proc and not _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
+            out.append(f"SEI-{proc}")
+        if len(out) >= limite:
+            break
+    return out
+
+
 def _fila_reler_por_ob(max_reler: int = 10) -> list[str]:
     """FRESCOR POR OB: processo JÁ ARQUIVADO que ganhou OB nova (SIAFE ou TFE) DEPOIS do
     arquivo = o processo andou → re-ler, senão a perícia roda incompleta (regra do dono).
@@ -620,11 +640,13 @@ def main() -> int:
         novos = [c["sei"] for c in _fila_geral()]
         inscritos = _fila_inscrita()          # inscrição manual: alvo escolhido por quem investiga
         execucao = _fila_execucao()           # laudo de risco alto sem documento de execução: antes de tudo
+        indeterminados = _fila_indeterminados()   # laudo sem conclusão: o processo e o seu processo-mãe
         reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
         # inscritos primeiro: são alvos escolhidos a dedo, não varredura. O `dict.fromkeys` tira
         # repetido preservando a ordem — um inscrito pode também ter cache CDP.
-        candidatos = list(dict.fromkeys(execucao + inscritos + novos + reler))
-        _log(f"fonte=GERAL: {len(execucao)} recaptura de execução + {len(inscritos)} inscritos em "
+        candidatos = list(dict.fromkeys(execucao + indeterminados + inscritos + novos + reler))
+        _log(f"fonte=GERAL: {len(execucao)} recaptura de execução + {len(indeterminados)} de laudo sem conclusão + "
+             f"{len(inscritos)} inscritos em "
              f"sei_fila_captura + {len(novos)} não arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
         reler = reler + execucao
     else:
