@@ -31,6 +31,7 @@ from pathlib import Path
 
 VIAS = ("processo_exato", "processo_normalizado", "ob_dos_autos", "pd_dos_autos", "nl_dos_autos")
 _TOL = 0.01
+_PREFILTRO_MAX = 50           # até aqui, um LIKE por processo no SQL; acima, varredura única de toda OB com processo
 
 _RE_DOC = re.compile(r"\b(20\d{2})\s*(NL|PD|OB|GD)\s*0*(\d{1,5})\b", re.I)
 _RE_MOEDA = re.compile(r"(?<![\d.,])(\d{1,3}(?:\.\d{3})*,\d{2})(?![\d,])")
@@ -199,7 +200,13 @@ def obs_por_processo(con: sqlite3.Connection, processos: list[str], *, autos: bo
     try:
         sel = _select(con)
         paga = _ob_paga(con)
-        rows = con.execute(f"SELECT {sel} FROM ob_orcamentaria_siafe WHERE {paga} AND processo LIKE '%/%'").fetchall()
+        # poucos processos (ficha, dossiê): pré-filtro no SQL — superconjunto da regex de `chave_processo` (unidade,
+        # "/", nº sem zeros, "/"); a chave é reconferida abaixo. Sem ele, cada ficha trazia ~1,3 mi linhas ao Python.
+        pre, args = "processo LIKE '%/%'", []
+        if len(numeros) <= _PREFILTRO_MAX:
+            pre = "(" + " OR ".join("processo LIKE ?" for _ in numeros) + ")"
+            args = [f"%{k.split('/')[0]}%/%{k.split('/')[1]}%/%" for k in numeros]
+        rows = con.execute(f"SELECT {sel} FROM ob_orcamentaria_siafe WHERE {paga} AND {pre}", args).fetchall()
     except sqlite3.OperationalError:
         return out                                       # base sem SIAFE: quem chama diz INDISPONÍVEL
     achadas: dict[str, dict[tuple, dict]] = {k: {} for k in numeros}
