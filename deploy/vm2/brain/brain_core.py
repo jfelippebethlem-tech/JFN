@@ -240,14 +240,17 @@ def historico(ref: str) -> list[dict]:
             ids = [int(ref)]
         else:
             ids = [r[0] for r in c.execute("SELECT id FROM memories WHERE chave=%s ORDER BY id DESC LIMIT 1", (ref,))]
-        rows = c.execute("""
-          WITH RECURSIVE v(id) AS (
-            SELECT unnest(%(ids)s::bigint[])
-            UNION SELECT m.supersedes FROM memories m JOIN v ON m.id=v.id WHERE m.supersedes IS NOT NULL
-            UNION SELECT m.id FROM memories m JOIN v ON m.supersedes=v.id)
-          SELECT m.id, m.status, m.content, m.source, m.created_at, m.substituida_em, m.valeu_de, m.valeu_ate,
-                 m.chave, m.prova_doc, m.prova_trecho, m.supersedes
-          FROM memories m JOIN v ON v.id=m.id ORDER BY m.id DESC""", {"ids": ids}).fetchall()
+        while ids:                       # anda para trás (supersedes) e para a frente (quem substituiu) até fechar
+            mais = {r[0] for r in c.execute(
+                "SELECT supersedes FROM memories WHERE id = ANY(%s) AND supersedes IS NOT NULL "
+                "UNION SELECT id FROM memories WHERE supersedes = ANY(%s)", (ids, ids))} - set(ids)
+            if not mais:
+                break
+            ids = ids + sorted(mais)
+        rows = c.execute(
+            "SELECT m.id, m.status, m.content, m.source, m.created_at, m.substituida_em, m.valeu_de, m.valeu_ate, "
+            "m.chave, m.prova_doc, m.prova_trecho, m.supersedes FROM memories m WHERE m.id = ANY(%s) ORDER BY m.id DESC",
+            (ids,)).fetchall()
     iso = lambda d: d.isoformat() if d else None  # noqa: E731
     return [{"id": r[0], "status": r[1], "content": r[2], "source": r[3], "registrado_de": iso(r[4]),
              "registrado_ate": iso(r[5]), "valeu_de": iso(r[6]), "valeu_ate": iso(r[7]), "chave": r[8],
@@ -261,7 +264,7 @@ def entity(ref: str, com: str | None = None, tipo: str | None = None) -> dict:
 
 # memórias geradas em série (uma por processo/alerta/commit): texto parecido e números diferentes POR DESENHO —
 # compará-las entre si só gera par falso
-_SERIE = "^(pericia-agente|licao-pericia|alerta|conferencia-opus|commit|couto|emenda|sobrepreco|derivado):"
+_SERIE = "^(pericia-agente|licao-pericia|alerta|conferencia-opus|commit|couto|emenda|sobrepreco|derivado|autoaprimoramento):"
 
 
 def similar_pairs(minimo: float = 0.90, limite: int = 200) -> list[dict]:
