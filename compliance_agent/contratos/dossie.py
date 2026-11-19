@@ -8,6 +8,7 @@ os itens/preços (PNCP) e os sinais do fornecedor (emenda/sanção/rede). Cada
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 
 import asyncio
@@ -55,6 +56,9 @@ def _itens_default(nc: str) -> list[dict]:
         return []
 
 
+RAIZ_PREFEITURA_RIO = "42498733"   # CNPJ do Município do Rio de Janeiro
+
+
 def montar_dossie(con, numero_controle_pncp: str, com_rede: bool = True, itens_fn=None) -> dict:
     """Retorna o dossiê {contrato, aditivos, pagamentos, itens, sinais_fornecedor, proveniencia}."""
     itens_fn = itens_fn or _itens_default
@@ -70,10 +74,20 @@ def montar_dossie(con, numero_controle_pncp: str, com_rede: bool = True, itens_f
            from contrato_aditivo where numero_controle_pncp=? order by sequencial_termo""",
         (numero_controle_pncp,)).fetchall()]
     doc = contrato.get("fornecedor_documento")
+    # pcrj_despesa é a despesa da PREFEITURA DO RIO por credor (todas, não só deste contrato). Contrato de outro
+    # contratante (Fiocruz, União, Estado) não tem pagamento ali: somar o CNPJ lá dava "Pago (OB)" de outra esfera e
+    # outro período (19/11/2026: R$ 98,1 mi num contrato federal da Fiocruz). Outro contratante → INDISPONÍVEL.
+    orgao = re.sub(r"\D", "", str(contrato.get("orgao_cnpj") or ""))
+    if orgao and not orgao.startswith(RAIZ_PREFEITURA_RIO):
+        doc_pag = None
+    else:
+        doc_pag = doc
     pag = con.execute(
         """select coalesce(sum(empenhado),0), coalesce(sum(liquidado),0), coalesce(sum(pago),0)
-           from pcrj_despesa where credor_documento=?""", (doc,)).fetchone() if doc else None
-    pagamentos = {"empenhado": pag[0], "liquidado": pag[1], "pago": pag[2]} if pag else {}
+           from pcrj_despesa where credor_documento=?""", (doc_pag,)).fetchone() if doc_pag else None
+    pagamentos = ({"empenhado": pag[0], "liquidado": pag[1], "pago": pag[2],
+                   "escopo": "despesa da Prefeitura do Rio ao CNPJ (todas, não só deste contrato)"} if pag else
+                  {"indisponivel": "contratante fora da Prefeitura do Rio: pagamento não está no ContasRio"} if doc else {})
     return {
         "contrato": contrato,
         "aditivos": aditivos,

@@ -93,9 +93,10 @@ def deliberar(con, dossie: dict, achados: list[dict], gerar=None) -> dict:
         "objeto": c.get("objeto"),
         "valor_inicial": f"R$ {_brl(c.get('valor_inicial'))}",
         "valor_global": f"R$ {_brl(c.get('valor_global'))}",
-        "empenhado": f"R$ {_brl(p.get('empenhado'))}",
-        "liquidado": f"R$ {_brl(p.get('liquidado'))}",
-        "pago": f"R$ {_brl(p.get('pago'))}",
+        # sem pagamento na fonte (contratante fora da Prefeitura) é INDISPONÍVEL, nunca R$ 0,00
+        "empenhado": f"R$ {_brl(p['empenhado'])}" if p.get("empenhado") is not None else "INDISPONÍVEL",
+        "liquidado": f"R$ {_brl(p['liquidado'])}" if p.get("liquidado") is not None else "INDISPONÍVEL",
+        "pago": f"R$ {_brl(p['pago'])}" if p.get("pago") is not None else "INDISPONÍVEL",
         "n_aditivos": len(dossie.get("aditivos", [])),
         "vigencia": f"{c.get('vigencia_ini') or '?'} a {c.get('vigencia_fim') or '?'}",
     }

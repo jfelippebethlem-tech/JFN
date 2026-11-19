@@ -1853,8 +1853,9 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
                 "n_fora_da_manchete": sum(f["n"] for f in fora.values()),
                 "total_fora_da_manchete": round(sum(f["valor"] for f in fora.values()), 2),
                 "explicacao": ("Empresa BAIXADA/INAPTA/SUSPENSA na Receita que mesmo assim recebeu do "
-                               "Estado depois da baixa ou da inaptidão, ou aberta ≤12 meses antes "
-                               "do 1º pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
+                               "Estado (OB paga) depois da baixa ou da inaptidão — é o que o número do card soma. "
+                               "Empresa aberta ≤12 meses antes do 1º pagamento aparece só na lista, como sinal "
+                               "para priorizar leitura: empresa nova não é irregular."),
                 "ressalva": ("Indício a conferir no processo de pagamento, não acusação: inapta não é o mesmo que "
                              "extinta, e situação cadastral irregular não prova inexecução. A situação pode ter mudado "
                              "APÓS o pagamento: vale a data do ato (só OB posterior à baixa conta). Fora da conta, ditos à parte: sucessão "

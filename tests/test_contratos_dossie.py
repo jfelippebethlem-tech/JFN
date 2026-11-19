@@ -30,3 +30,15 @@ def test_montar_dossie(tmp_path):
     assert d["aditivos"][0]["valor_acrescido"] == 40000
     assert d["pagamentos"]["pago"] == 120000
     assert "proveniencia" in d
+
+
+def test_contrato_de_outro_contratante_nao_herda_despesa_da_prefeitura(tmp_path):
+    # 19/11/2026: contrato federal da Fiocruz recebia como "Pago (OB)" a soma da despesa da Prefeitura ao mesmo CNPJ
+    con = cd.conectar(tmp_path / "t.db")
+    _seed(con)
+    con.execute("update pcrj_contratos set orgao_cnpj='33781055000135', orgao_nome='FUNDACAO OSWALDO CRUZ'")
+    d = dossie.montar_dossie(con, "C1", com_rede=False, itens_fn=lambda nc: [])
+    assert "pago" not in d["pagamentos"] and d["pagamentos"]["indisponivel"]
+    con.execute("update pcrj_contratos set orgao_cnpj='42498733000148', orgao_nome='MUNICIPIO DE RIO DE JANEIRO'")
+    d = dossie.montar_dossie(con, "C1", com_rede=False, itens_fn=lambda nc: [])
+    assert d["pagamentos"]["pago"] == 120000
