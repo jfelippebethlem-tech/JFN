@@ -284,3 +284,21 @@ def test_diario_sem_dia_do_periodo_e_contradicao(tmp_path):
     pk["relatorio"] = [{"i": 1, "titulo": "Relatório Fotográfico", "texto": "texto/1.txt"}]
     s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "DIARIO_SEM_DIA_DO_PERIODO"]
     assert s and s[0]["porque"]["classe"] == "contradição" and "2025-10-03" in s[0]["datas_no_diario"]
+
+
+def test_periodo_do_relatorio_antes_do_inicio_do_contrato_e_erro_de_ano(tmp_path):
+    # SEI-330001/000578/2025 (Plenaplan, Valença), 8ª: boletim 05/2025 × relatório "01/05/2024 a 31/05/2024";
+    # o diário diz "INÍCIO DO CONTRATO: 01/10/2024" — o período do relatório não pode existir.
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    (pasta / "texto" / "0.txt").write_text("PLANILHA DE MEDIÇÃO PERÍODO DE 01/05 A 31/05/2025", encoding="utf-8")
+    (pasta / "texto" / "1.txt").write_text("Período de Referência\n01/05/2024 a 31/05/2024\nfoto", encoding="utf-8")
+    (pasta / "texto" / "2.txt").write_text("INÍCIO DO CONTRATO: 01/10/2024", encoding="utf-8")
+    pk = {"n": 8, "boletim": [{"i": 0, "titulo": "BOLETIM DE MEDIÇÃO 8ª", "texto": "texto/0.txt"}], "memoria": [],
+          "relatorio": [{"i": 1, "titulo": "RELATÓRIO FOTOGRÁFICO 8ª", "texto": "texto/1.txt"}],
+          "diario": [{"i": 2, "titulo": "Diário de Obras 8ª", "texto": "texto/2.txt"}], "aceite": [], "nl": [], "ob": []}
+    s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "PERIODO_RELATORIO_DIVERGE"]
+    assert s and s[0]["porque"]["classe"] == "inocente-comprovada"
+    (pasta / "texto" / "2.txt").write_text("sem data de início", encoding="utf-8")
+    s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "PERIODO_RELATORIO_DIVERGE"]
+    assert s[0]["porque"]["classe"] == "inocente-provável"

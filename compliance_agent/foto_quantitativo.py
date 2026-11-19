@@ -965,7 +965,13 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
     if per_b and per_r and (abs((per_b[0] - per_r[0]).days) > 3 or abs((per_b[1] - per_r[1]).days) > 3):
         so_ano = (per_b[0].replace(year=2000) == per_r[0].replace(year=2000)
                   and per_b[1].replace(year=2000) == per_r[1].replace(year=2000)) if per_b[0].day < 29 and per_r[0].day < 29 else False
-        pq = (_porque("inocente-provável", "dia e mês iguais, só o ANO difere — cabeçalho do modelo não atualizado",
+        mi = re.search(r"in[ií]cio\s+do\s+contrato\s*:?\s*\|?\s*(\d{2})/(\d{2})/(\d{4})", tb + "\n" + td + "\n" + tr, re.I)
+        ini_ct = _d(*mi.groups()) if mi else None
+        pq = (_porque("inocente-comprovada", f"só o ANO difere e o período do relatório termina antes do INÍCIO DO "
+                      f"CONTRATO ({ini_ct.strftime('%d/%m/%Y')}): não pode ser real — erro de digitação no cabeçalho",
+                      f"boletim: '{per_b[2]}' × relatório: '{per_r[2]}' · '{mi.group(0)}'", "boletim × relatório × diário")
+              if so_ano and ini_ct and per_r[1] < ini_ct else
+              _porque("inocente-provável", "dia e mês iguais, só o ANO difere — cabeçalho do modelo não atualizado",
                       f"boletim: '{per_b[2]}' × relatório: '{per_r[2]}'", "boletim × relatório")
               if so_ano else
               _porque("sem-explicação", "o relatório fotográfico declara outro período",
