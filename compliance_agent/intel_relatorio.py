@@ -59,14 +59,19 @@ def _b_sancionadas_mun(d):
               "html": _tabela(["", "Empresa / CNPJ", "Sanção (vigência)", "Durante/total", "Valor durante"], ls)}], d)
 
 
-def _b_fracionamento(d):
-    ls = [f"<tr><td>{int(g['concentracao']*100)}%</td><td>{_esc(g['nome'])}<br><small>{_esc(g['cnpj_fmt'])} · UG {g['ug_emitente']} · {g['mes']}</small></td>"
-          f"<td>{g['n_colado']}/{g['n']} coladas no teto</td><td style='text-align:right'>{_rs(g['soma'])}</td></tr>"
+def _b_fracionamento_objeto(d):
+    """PDF da aba Fracionamento: o critério é o OBJETO (art. 75 §1º), não o credor (19/11/2026)."""
+    ls = [f"<tr><td>{_esc(g['unidade'])}<br><small>{g['exercicio']} · {_esc(g['natureza_rotulo'])}"
+          f"{' · a conferir' if g['grau'] == 'a_conferir' else ''}</small></td>"
+          f"<td>{g['n_contratacoes']} contratações<br><small>{g['n_fornecedores_distintos']} fornecedor(es)</small></td>"
+          f"<td style='text-align:right'>{_rs(g['soma'])}<br><small>teto {_rs(g['teto'])}</small></td>"
+          f"<td style='text-align:right'>{_rs(g['ob_pago_total']) if g['ob_pago_total'] is not None else 'INDISPONÍVEL'}</td></tr>"
           for g in d.get("grupos", [])[:1000]]
-    return ("Fracionamento de despesa — fatiar para não licitar",
-            f"{d.get('n',0)} grupos favorecido+UG+mês com OBs coladas no teto de dispensa",
-            [{"titulo": "1. Grupos com concentração colada no teto",
-              "html": _tabela(["Conc.", "Favorecido / UG / mês", "OBs coladas", "Soma"], ls)}], d)
+    return ("Fracionamento de despesa — o mesmo objeto em várias contratações",
+            f"{d.get('n', 0)} grupos unidade gestora × exercício × natureza com soma de dispensas acima do teto "
+            "(Lei 14.133, art. 75, §1º) — o fornecedor não entra no critério",
+            [{"titulo": "1. Grupos de mesma natureza acima do teto de dispensa",
+              "html": _tabela(["Unidade / exercício / natureza", "Contratações", "Soma × teto", "OB paga (SIAFE)"], ls)}], d)
 
 
 def _b_sobrepreco(d):
@@ -574,6 +579,11 @@ def _d_retro(p):
     return d
 
 
+def _fracionamento_objeto(limite: int) -> dict:
+    from compliance_agent.fracionamento_objeto import fracionamento_por_objeto
+    return fracionamento_por_objeto(limite=limite)
+
+
 # tipo → (função-detector com db_path opcional, builder, faixa)
 def _detectores():
     from compliance_agent import cruzamentos_intel as C
@@ -586,7 +596,8 @@ def _detectores():
         "comissionados": (_d_comissionados, _b_comissionados, "MÉDIO"),
         "sancionadas": (lambda p: C.sancionadas_contratadas(p), _b_sancionadas, "ALTO"),
         "sancionadas_municipio": (lambda p: C.sancionadas_municipio(db_path=p), _b_sancionadas_mun, "ALTO"),
-        "fracionamento": (lambda p: C.fracionamento(db_path=p, limite=L), _b_fracionamento, "ALTO"),
+        # critério do OBJETO (art. 75 §1º); o antigo por credor (C.fracionamento) é só sinal auxiliar da aba
+        "fracionamento": (lambda p: _fracionamento_objeto(L), _b_fracionamento_objeto, "ALTO"),
         "sobrepreco": (lambda p: C.sobrepreco(db_path=p, limite=L), _b_sobrepreco, "ALTO"),
         "escalada": (lambda p: C.escalada_preco(db_path=p, limite=L), _b_escalada, "ALTO"),
         "aditivos": (lambda p: C.aditivos_estouro(db_path=p, limite=L), _b_aditivos, "ALTO"),

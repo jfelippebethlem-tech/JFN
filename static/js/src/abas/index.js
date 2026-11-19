@@ -1185,30 +1185,47 @@ function _blocoSocioSancionada(r){
 }
 
 // ═══ FRACIONAMENTO (Estado) ═══
+// 19/11/2026 — pedido do dono: "não se trata da mesma empresa e sim do mesmo objeto ser fracionado".
+// A tela mede o OBJETO (art. 75 §1º: unidade gestora × exercício × mesma natureza, qualquer fornecedor).
+// O agrupamento antigo por credor+UG+mês ficou como SINAL AUXILIAR rotulado, recolhido ao fim.
+const _obTxt=g=>g.ob_pago_total==null?'<span class="dim">OB: INDISPONÍVEL (sem OB ligável pelo processo)</span>'
+  :`OB paga (SIAFE): <b>${fmtR(g.ob_pago_total)}</b> <span class="dim">em ${fmtN(g.ob_processos_ligados)} de ${fmtN(g.n_contratacoes)} processos</span>`;
 export async function renderFracionamento(){
   const d=await J('/api/intel/fracionamento?limite=120');
   if(!d.ok)return sec('Fracionamento')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const g=d.grupos||[];
-  let h=cover('estado','Fracionamento de despesa — fatiar para não licitar',
-    'Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias Ordens Bancárias <b>coladas no teto de dispensa</b> de licitação. É o padrão de dividir a compra para caber embaixo do limite e não licitar (Lei 14.133, art. 75 §1º). Quanto maior a <b>concentração</b> (% de OBs coladas no teto), mais deliberado o indício.','✂️')+acoesAba('fracionamento');
-  const alta=g.filter(x=>x.concentracao>=0.5).length;
-  registrarDrill('fracConc50',{titulo:'Grupos com concentração ≥ 50% num único favorecido',itens:g.filter(x=>x.concentracao>=0.5),nota:'Fracionamento é indício de divisão da compra para escapar da licitação — o objeto decide.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos sinalizados','var(--amber)','✂️',drillSeCompleto('fracGrupos',d.n,g,{titulo:'Grupos com indício de fracionamento',nota:'Mesmo favorecido, mesma UG e mesmo mês, com OBs coladas no teto de dispensa. O objeto decide se houve divisão indevida.'})
-        ||{sobre:'Grupos com indício de fracionamento — mesmo favorecido, mesma UG, mesmo mês, com pagamentos colados no teto de dispensa. A tela recebe uma página e por isso a gaveta está desligada aqui. Este eixo já esteve <b>26× inflado</b> nesta casa (59.209 caindo para 2.225): o número só vale com a régua de agrupamento à vista.'})}${kpi(fmtN(alta),'Concentração ≥50%','var(--rose)','🎯',{drill:'fracConc50'})}
-      ${kpi(fmtRc(g.reduce((s,x)=>s+x.soma,0)),'Soma dos grupos exibidos',null,'💰',
-        {sobre:'Soma dos grupos EM TELA, não do acervo — o rótulo diz isso de propósito. Fracionamento já esteve 26× inflado nesta casa (59.209 caindo para 2.225) por contar o que não devia; somar só o exibido é o que impede o número de crescer sem lastro.'})}${kpi(g.length?Math.round(Math.max(...g.map(x=>x.concentracao))*100)+'%':'—','Pior concentração','var(--rose)',null,
-        {sobre:'O grupo com maior parcela num único favorecido. Concentração alta pode ser mercado de um fornecedor só; o que ela indica é onde perguntar por pesquisa de preço, não onde concluir.'})}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
+  let h=cover('estado','Fracionamento de despesa — o mesmo objeto picado em várias contratações',
+    'A mesma necessidade — objetos de <b>mesma natureza</b>, do mesmo ramo de atividade — dividida em <b>várias contratações distintas</b> no exercício para que cada parcela caiba na dispensa por valor. A lei manda somar, por <b>unidade gestora</b> e <b>exercício</b>, tudo o que foi contratado com objetos de mesma natureza (Lei 14.133/2021, art. 75, §1º). <b>O fornecedor não entra no critério</b>: as parcelas costumam ir para empresas diferentes.','✂️')+acoesAba('fracionamento');
+  const multi=g.filter(x=>(x.n_fornecedores_distintos||0)>1);
+  registrarDrill('fracMultiForn',{titulo:'Grupos com parcelas em fornecedores diferentes',itens:multi,nota:'O mesmo objeto contratado com várias empresas no exercício — a forma mais comum de fracionamento.'});
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos acima do teto','var(--rose)','✂️',drillSeCompleto('fracGrupos',d.n,g,{titulo:'Unidade × exercício × natureza com soma acima do teto',nota:'Soma das dispensas por valor de mesma natureza, na mesma unidade gestora e exercício, acima do limite do art. 75 do ano.'})
+        ||{sobre:'Grupos unidade gestora × exercício × natureza do objeto cuja soma de dispensas por valor passa do teto do ano. A tela recebe uma página; o total está no número.'})}${kpi(fmtN(multi.length),'Com fornecedores diferentes','var(--amber)','🏢',{drill:'fracMultiForn'})}
+      ${kpi(fmtR(d.soma_total),'Soma dos grupos (contratado)',null,'💰',
+        {sobre:'Valor CONTRATADO por dispensa (TCE-RJ), não pago. O pago é a OB do SIAFE, mostrada grupo a grupo quando o processo liga.'})}${kpi(`${fmtN(d.cobertura_ob?.com_ob)} de ${fmtN(d.cobertura_ob?.contratacoes)}`,'Contratações com OB ligada',null,null,
+        {sobre:'Quantas contratações dos grupos têm Ordem Bancária paga no SIAFE pelo mesmo número de processo. O resto é INDISPONÍVEL, não zero.'})}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por unidade, natureza, fornecedor ou processo…" oninput="filtrar(this,'#frac-list .card')"></div>`;
   h+=`<div id="frac-list" class="grid">`+g.map(x=>{
-    const pct=Math.round(x.concentracao*100);
-    const cor=pct>=60?'var(--rose)':pct>=40?'var(--amber)':'var(--tx2)';
+    const conf=x.grau==='a_conferir';
+    const lin=(x.contratacoes||[]).map(c=>`<tr><td>${esc(c.processo||'')}</td><td>${esc(c.fornecedor||'')}</td><td>${esc((c.objeto||'').slice(0,140))}</td><td class="num" style="text-align:right">${fmtR(c.valor)}</td><td class="num" style="text-align:right">${c.ob_pago==null?'<span class="dim">INDISPONÍVEL</span>':fmtR(c.ob_pago)}</td></tr>`).join('');
+    const irm=(x.processos_irmaos||[]).length?`<div class="dim" style="margin-top:6px">⚠️ Numeração irmã (${x.processos_irmaos.map(p=>esc(p.join(' × '))).join('; ')}): conferir nos autos se é uma contratação só — se for, a soma cai.</div>`:'';
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0">${clk(x.credor,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct}%</div><div class="dim">colado no teto</div></div></div>
-      <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString('pt-BR',{maximumFractionDigits:0})})</span><b>${fmtRc(x.soma)}</b></div>
-      ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
-      pct>=50?'hl':'');}).join('')+`</div>`;
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.unidade||'')}</div><div class="dim">${esc(String(x.exercicio))} · ${esc(x.natureza_rotulo||'')} · inciso ${esc(x.inciso||'')}</div>
+      <div style="margin-top:4px"><span class="tag ${conf?'':'rose'}">${conf?'a conferir — natureza só pelo texto':'indício — mesmo ramo de atividade'}</span></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:var(--rose)">${fmtR(x.soma)}</div><div class="dim">teto do ano ${fmtR(x.teto)}</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${fmtN(x.n_contratacoes)} contratações · ${fmtN(x.n_fornecedores_distintos)} fornecedor(es) · ${fmtN(x.colados_no_teto||0)} entre 80% e 100% do teto</span><b>excede em ${fmtR(x.excesso)}</b></div>
+      <div style="margin-top:6px">${_obTxt(x)}</div>
+      ${leitura(`${fmtN(x.n_contratacoes)} dispensas por valor de <b>${esc(x.natureza_rotulo||'mesma natureza')}</b> na mesma unidade, no exercício ${esc(String(x.exercicio))}, somam ${fmtR(x.soma)} — acima do limite de ${fmtR(x.teto)}, o que exigiria licitação (art. 75, §1º). ${(x.n_fornecedores_distintos||0)>1?`As parcelas foram para ${fmtN(x.n_fornecedores_distintos)} fornecedores diferentes — o fornecedor não afasta a soma.`:'Todas com o mesmo fornecedor.'} Pedido que fecha: o planejamento anual da contratação (ETP/PCA) e a justificativa de cada dispensa — necessidade imprevisível e superveniente afasta o indício; ata ou licitação regular para parte da despesa também.`)}
+      ${irm}
+      <details style="margin-top:8px"><summary>Ver as ${fmtN(x.n_contratacoes)} contratações</summary><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Processo</th><th>Fornecedor</th><th>Objeto</th><th style="text-align:right">Contratado</th><th style="text-align:right">OB paga</th></tr></thead><tbody>${lin}</tbody></table></div></details>`,
+      conf?'':'hl');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  if((d.lacunas||[]).length)h+=`<div class="note"><b>Lacunas medidas:</b> ${d.lacunas.map(esc).join(' · ')}</div>`;
+  h+=`<div class="note">Fonte: ${esc(d.fonte||'')} · gerado em ${esc((d.gerado_em||'').replace('T',' '))} · ${esc(d.fundamento||'')}</div>`;
+  const aux=d.auxiliar||{};
+  if(aux.ok&&(aux.grupos||[]).length){
+    h+=`<details style="margin-top:16px"><summary><b>${esc(aux.titulo)}</b> — ${fmtN(aux.n)} grupos</summary><div class="note">${esc(aux.rotulo)}</div><div class="grid">`+
+      aux.grupos.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(x.credor,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div><div class="right"><b>${fmtR(x.soma)}</b><div class="dim">${fmtN(x.n_colado)} de ${fmtN(x.n)} OBs coladas no teto</div></div></div>`)).join('')+`</div></details>`;
+  }
   return h;
 }
 
