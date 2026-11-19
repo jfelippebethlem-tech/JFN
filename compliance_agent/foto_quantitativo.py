@@ -907,7 +907,7 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
     zeradas = frentes_zeradas(tb)
     i_ctl = tb.upper().find("CONTROLE DE HORAS")
     controle = tb[i_ctl:] if i_ctl >= 0 else ""
-    controle_linhas = [ln for ln in controle.splitlines() if len(ln.strip()) > 3][:20000]
+    controle_toks = _toks_local(controle)
     copia_de, copia_n = pk.get("_copia_de"), pk.get("_copia_n")
     horas_k = horas_por_frente(tb)
     vpf = valor_por_frente(tb, itens)
@@ -930,8 +930,8 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
             _mun, corpo = _partes_local(nome)
             no_controle = None
             if controle:
-                no_controle = any(any(_parecido(t, c) for c in _toks_local(controle_txt_linha))
-                                  for t in corpo if len(t) >= 4 for controle_txt_linha in controle_linhas)
+                no_controle = any(t in controle_toks or any(_parecido(t, c) for c in controle_toks)
+                                  for t in corpo if len(t) >= 4)
             if parc:
                 pq = _porque("inocente-provável", "frente fotografada com nome parecido (mesmo município e nome próprio "
                              "em comum) — provavelmente a mesma", f"boletim: '{nome}' × relatório: '{parc[0]}'",
@@ -1172,30 +1172,78 @@ def _pastas_alvo(base: Path) -> list[Path]:
     return out
 
 
-def varrer(base: Path = BASE_ACERVO, saida: Path | None = None, db: Path | None = None) -> dict:
-    """Todo processo do acervo com relatório fotográfico. Grava JSON por processo (uma linha cada)."""
+def _um_processo(args) -> str | None:
+    p, obs = args
+    r = confrontar_processo(Path(p), obs=obs)
+    return json.dumps(r, ensure_ascii=False, default=str) if r["medicoes"] else None
+
+
+def exportar_obs(saida: Path, base: Path = BASE_ACERVO, db: Path | None = None) -> int:
+    """Mapa processo → OB pagas (SIAFE) dos processos-alvo, em JSON — para rodar a varredura fora da VM-1."""
     import sqlite3
     db = db or (REPO / "data" / "compliance.db")
+    pastas = _pastas_alvo(base)
+    procs = [str(_manifesto(p).get("processo") or p.name) for p in pastas]
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
+    try:
+        mapa = mapa_obs_pagas(con, procs)
+    finally:
+        con.close()
+    Path(saida).write_text(json.dumps(mapa, ensure_ascii=False, default=str), encoding="utf-8")
+    return sum(len(v) for v in mapa.values())
+
+
+def varrer(base: Path = BASE_ACERVO, saida: Path | None = None, db: Path | None = None,
+           obs_json: Path | None = None, procs: int = 1) -> dict:
+    """Todo processo do acervo com relatório fotográfico. Grava JSON por processo (uma linha cada).
+
+    `obs_json` (de `exportar_obs`) dispensa o compliance.db — é assim que roda no it-campo; `procs` > 1 paraleliza."""
     saida = saida or (REPO / "data" / "foto_quantitativo" / "medicoes.jsonl")
     saida.parent.mkdir(parents=True, exist_ok=True)
     pastas = _pastas_alvo(base)
-    procs = {p: str(_manifesto(p).get("processo") or p.name) for p in pastas}
-    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
-    try:
-        mapa = mapa_obs_pagas(con, procs.values())
-    finally:
-        con.close()
+    nomes = {p: str(_manifesto(p).get("processo") or p.name) for p in pastas}
+    if obs_json:
+        mapa = json.loads(Path(obs_json).read_text(encoding="utf-8"))
+        for v in mapa.values():
+            for o in v:
+                o["data"] = date.fromisoformat(o["data"]) if o.get("data") else None
+    else:
+        import sqlite3
+        db = db or (REPO / "data" / "compliance.db")
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
+        try:
+            mapa = mapa_obs_pagas(con, nomes.values())
+        finally:
+            con.close()
+    tarefas = [(str(p), mapa.get(chave_processo(nomes[p]) or "", [])) for p in pastas]
     n = 0
     with saida.open("w", encoding="utf-8") as fh:
-        for p in pastas:
-            r = confrontar_processo(p, obs=mapa.get(chave_processo(procs[p]) or "", []))
-            if r["medicoes"]:
-                fh.write(json.dumps(r, ensure_ascii=False, default=str) + "\n")
-                n += 1
+        if procs > 1:
+            from multiprocessing import Pool
+            with Pool(procs) as pool:
+                for linha in pool.imap_unordered(_um_processo, tarefas, chunksize=1):
+                    if linha:
+                        fh.write(linha + "\n")
+                        n += 1
+        else:
+            for t in tarefas:
+                linha = _um_processo(t)
+                if linha:
+                    fh.write(linha + "\n")
+                    n += 1
     return {"processos": n, "saida": str(saida)}
 
 
 if __name__ == "__main__":   # pragma: no cover
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "varrer":
-        print(json.dumps(varrer(), ensure_ascii=False))
+    import argparse
+    ap = argparse.ArgumentParser(description="foto × quantitativo")
+    ap.add_argument("acao", choices=["varrer", "obs"])
+    ap.add_argument("--base", type=Path, default=BASE_ACERVO)
+    ap.add_argument("--saida", type=Path)
+    ap.add_argument("--obs-json", type=Path)
+    ap.add_argument("--procs", type=int, default=1)
+    a = ap.parse_args()
+    if a.acao == "obs":
+        print(exportar_obs(a.saida or (REPO / "data" / "foto_quantitativo" / "obs_pagas.json"), a.base))
+    else:
+        print(json.dumps(varrer(a.base, a.saida, obs_json=a.obs_json, procs=a.procs), ensure_ascii=False))
