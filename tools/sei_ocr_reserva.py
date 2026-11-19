@@ -43,7 +43,7 @@ Pausar: `data/.pause_ocr_reserva` (na VM-1 para tudo; na VM-2 só aquele nó).
 from __future__ import annotations
 
 import argparse
-import fcntl
+import hashlib
 import json
 import os
 import re
@@ -51,6 +51,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+try:
+    import fcntl          # só a VM-1 trava (`_Trava`); o nó NATIVO do Windows não tem fcntl
+except ImportError:       # pragma: no cover - Windows
+    fcntl = None
 
 RAIZ = Path(__file__).resolve().parents[1]
 DATA = RAIZ / "data"
@@ -66,6 +71,22 @@ VM1_JFN = os.environ.get("JFN_VM1_DIR", "/home/ubuntu/JFN")
 FRIO = Path(os.environ.get("JFN_ARQUIVO_FRIO", str(Path.home() / "arquivo_frio" / "sei_cache")))
 BASE_NO = Path(os.environ.get("JFN_OCR_RESERVA_DIR", str(Path.home() / "ocr-reserva")))
 FRIO_REMOTO = os.environ.get("JFN_FRIO_REMOTO", "")   # nó sem o arquivo frio (it-campo): baixa o lote da VM-2
+# NÓ NATIVO DO WINDOWS (it-campo, 19/11/2026 — `deploy/itcampo/nativo/pool_nativo.py`): o OCR roda no Python do
+# Windows, fora da memória do WSL (onde a reserva cedia sempre: "memória livre 3,2 GB < 6,0"); o TRANSPORTE (ssh/rsync
+# com as chaves vm1-ts/vm2-ts) continua pelo WSL — é só rede, sem memória que dispute com o Surya.
+NATIVO_WIN = os.name == "nt"
+
+
+def _wsl_caminho(a: str) -> str:
+    """C:\\JFN-Nativo\\x → /mnt/c/JFN-Nativo/x (o resto passa intacto)."""
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", a)
+    return f"/mnt/{m.group(1).lower()}/{m.group(2).replace(chr(92), '/')}" if m else a
+
+
+def _unix(argv: list[str]) -> list[str]:
+    """ssh/rsync: direto no Linux; pelo WSL no Windows nativo (caminhos do Windows convertidos)."""
+    return ["wsl.exe", "-d", "Ubuntu", "-e", *[_wsl_caminho(a) for a in argv]] if NATIVO_WIN else argv
+
 
 PARADA_MIN = 75      # lote da GPU dura 21–31 min (ocr_gpu.log, 18/11/2026): 75 min sem lote = parada
 MARGEM = 400         # pendentes da cabeça da fila da GPU que a reserva nunca toca (10 lotes ≈ 5 h de GPU)
@@ -394,6 +415,9 @@ def ler_pdf(eng, pdf: Path) -> tuple[str, int, int]:
 
 
 def carga() -> tuple[float, float]:
+    if NATIVO_WIN:            # Windows: CPU ocupada × núcleos faz as vezes do load1; memória = disponível do Windows
+        import psutil
+        return psutil.cpu_percent(interval=1.0) / 100 * (os.cpu_count() or 1), psutil.virtual_memory().available / 1e9
     load1 = os.getloadavg()[0]
     mem = 99.0
     for ln in open("/proc/meminfo"):
@@ -412,29 +436,31 @@ def pode_rodar(load1: float, mem_gb: float, nucleos: int, proprio: int = 0) -> t
 
 
 def _ssh_vm1(cmd: str, entrada: str | None = None, timeout: int = 300) -> subprocess.CompletedProcess:
-    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", VM1,
-                           f"cd {VM1_JFN} && PYTHONPATH=. nice -n 10 .venv/bin/python -m tools.sei_ocr_reserva {cmd}"],
-                          input=entrada, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(_unix(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", VM1,
+                                 f"cd {VM1_JFN} && PYTHONPATH=. nice -n 10 .venv/bin/python -m tools.sei_ocr_reserva {cmd}"]),
+                          input=entrada, capture_output=True, text=True, encoding="utf-8", timeout=timeout)
 
 
 def _md5s(arqs: list[str], base: Path) -> dict[str, str]:
-    r = subprocess.run(["md5sum", "--", *arqs], cwd=base, capture_output=True, text=True)
-    return {ln[34:]: ln[:32] for ln in r.stdout.splitlines()}
+    """md5 local em Python (o Windows nativo não tem md5sum); arquivo ausente fica fora — como no md5sum."""
+    return {a: hashlib.md5((base / a).read_bytes()).hexdigest() for a in arqs if (base / a).is_file()}
 
 
 def entregar(rels: list[str], saida: Path) -> tuple[list[str], list[str]]:
     """rsync --ignore-existing para a VM-1 (caminho COMPLETO no destino) e md5 conferido nas duas pontas."""
     arqs = [f"{rel[:-4]}{suf}" for rel in rels for suf in (".ocr_reserva.txt", ".ocr_reserva.json")]
     lst = saida.parent / f"entrega_{saida.name}.lst"
-    lst.write_text("\n".join(arqs) + "\n", encoding="utf-8")
-    r = subprocess.run(["rsync", "-a", "--ignore-existing", "--files-from", str(lst), str(saida) + "/",
-                        f"{VM1}:{VM1_JFN}/data/sei_cache/"], capture_output=True, text=True, timeout=900)
+    lst.write_text("\n".join(arqs) + "\n", encoding="utf-8", newline="\n")   # Windows: sem \r
+    r = subprocess.run(_unix(["rsync", "-a", "--ignore-existing", "--files-from", str(lst), str(saida) + "/",
+                              f"{VM1}:{VM1_JFN}/data/sei_cache/"]), capture_output=True, text=True, encoding="utf-8",
+                       timeout=900)
     if r.returncode != 0:
         print(json.dumps({"ev": "rsync_falhou", "rc": r.returncode, "erro": r.stderr[-300:]}), flush=True)
         return [], rels
     local = _md5s(arqs, saida)
-    rr = subprocess.run(["ssh", "-o", "BatchMode=yes", VM1, f"cd {VM1_JFN}/data/sei_cache && xargs -d '\\n' md5sum --"],
-                        input="\n".join(arqs) + "\n", capture_output=True, text=True, timeout=300)
+    rr = subprocess.run(_unix(["ssh", "-o", "BatchMode=yes", VM1,
+                               f"cd {VM1_JFN}/data/sei_cache && xargs -d '\\n' md5sum --"]),
+                        input="\n".join(arqs) + "\n", capture_output=True, text=True, encoding="utf-8", timeout=300)
     remoto = {ln[34:]: ln[:32] for ln in rr.stdout.splitlines()}
     ok, ruim = [], []
     for rel in rels:
@@ -450,9 +476,9 @@ def _baixar(itens: list[str], destino: Path) -> Path:
     """Nó sem arquivo frio local: baixa os PDFs do lote da VM-2 (o mesmo caminho do worker da GPU)."""
     destino.mkdir(parents=True, exist_ok=True)
     lst = destino.parent / f"baixar_{destino.name}.lst"
-    lst.write_text("\n".join(itens) + "\n", encoding="utf-8")
-    r = subprocess.run(["rsync", "-a", "--files-from", str(lst), FRIO_REMOTO, str(destino) + "/"],
-                       capture_output=True, text=True, timeout=1800)
+    lst.write_text("\n".join(itens) + "\n", encoding="utf-8", newline="\n")
+    r = subprocess.run(_unix(["rsync", "-a", "--files-from", str(lst), FRIO_REMOTO, str(destino) + "/"]),
+                       capture_output=True, text=True, encoding="utf-8", timeout=1800)
     if r.returncode not in (0, 23):                 # 23 = parte ausente: vira falha do PDF, não da rodada
         raise RuntimeError(f"rsync do arquivo frio rc={r.returncode}: {r.stderr[-200:]}")
     return destino
@@ -511,17 +537,17 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
             if FRIO_REMOTO:
                 (frio / rel).unlink(missing_ok=True)
         destino.parent.mkdir(parents=True, exist_ok=True)
-        destino.with_suffix(".ocr_reserva.txt").write_text(texto, encoding="utf-8")
+        destino.with_suffix(".ocr_reserva.txt").write_text(texto, encoding="utf-8", newline="\n")
         destino.with_suffix(".ocr_reserva.json").write_text(json.dumps(
             {"motor": MOTOR, "no": no, "paginas": npag, "paginas_pdf": total, "cortado": total > npag,
-             "s": round(dt, 1), "chars": len(texto), "em": _agora()}, ensure_ascii=False), encoding="utf-8")
+             "s": round(dt, 1), "chars": len(texto), "em": _agora()}, ensure_ascii=False), encoding="utf-8", newline="\n")
         feitos.append(rel)
         paginas += npag
         t_ocr += dt
         print(json.dumps({"ev": "pdf", "pdf": rel, "paginas": npag, "s": round(dt, 1)}), flush=True)
     nao_feitos = [r for r in itens if r not in feitos and r not in falhas]
     # sobra de rodada anterior que ficou sem entregar (rsync caiu) vai junto
-    pendentes_locais = sorted({str(p.relative_to(saida))[:-len(".ocr_reserva.txt")] + ".pdf"
+    pendentes_locais = sorted({p.relative_to(saida).as_posix()[:-len(".ocr_reserva.txt")] + ".pdf"
                                for p in saida.rglob("*.ocr_reserva.txt")})
     entregues, ruins = entregar(pendentes_locais, saida) if pendentes_locais else ([], [])
     s_pag = round(t_ocr / paginas, 2) if paginas else None

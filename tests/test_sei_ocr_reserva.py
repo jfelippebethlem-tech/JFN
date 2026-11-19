@@ -282,3 +282,26 @@ def test_paralelo_do_itcampo_reserva_com_gpu_ativa_so_com_retirada_imediata(casa
     assert len(itens2) == 4 and not set(itens2) & set(itens)
     monkeypatch.setattr(R, "pulso_gpu", lambda: _pulso(False, None, ssh=False))
     assert R.reservar(4, "itcampo-3", paralelo=True)["itens"] == []
+
+
+# ── nó NATIVO do Windows (19/11/2026): OCR no Python do Windows, transporte pelo WSL ─────────────────────────────
+def test_unix_no_linux_passa_intacto(monkeypatch):
+    monkeypatch.setattr(R, "NATIVO_WIN", False)
+    assert R._unix(["rsync", "-a", "x/", "vm1-ts:JFN/"]) == ["rsync", "-a", "x/", "vm1-ts:JFN/"]
+
+
+def test_unix_no_windows_vai_pelo_wsl_com_caminho_convertido(monkeypatch):
+    monkeypatch.setattr(R, "NATIVO_WIN", True)
+    argv = R._unix(["rsync", "--files-from", "C:\\JFN-Nativo\\reserva\\a.lst", "C:\\JFN-Nativo\\out\\no/",
+                    "vm1-ts:/home/ubuntu/JFN/data/sei_cache/"])
+    assert argv[:4] == ["wsl.exe", "-d", "Ubuntu", "-e"]
+    assert argv[6] == "/mnt/c/JFN-Nativo/reserva/a.lst" and argv[7] == "/mnt/c/JFN-Nativo/out/no/"
+    assert argv[8] == "vm1-ts:/home/ubuntu/JFN/data/sei_cache/", "destino remoto não pode ser convertido"
+
+
+def test_md5s_em_python_igual_ao_md5sum_e_ignora_ausente(tmp_path):
+    import hashlib
+    (tmp_path / "integra_1").mkdir()
+    (tmp_path / "integra_1" / "000.ocr_reserva.txt").write_bytes(b"texto\n")
+    r = R._md5s(["integra_1/000.ocr_reserva.txt", "integra_1/001.ocr_reserva.txt"], tmp_path)
+    assert r == {"integra_1/000.ocr_reserva.txt": hashlib.md5(b"texto\n").hexdigest()}
