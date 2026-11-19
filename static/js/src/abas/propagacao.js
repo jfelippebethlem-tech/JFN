@@ -89,8 +89,20 @@ function _cerebro(c, agora){
     ${ult ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Enviada</th><th>Tipo</th><th>Memória</th><th class="right">Nº</th></tr></thead><tbody>${ult}</tbody></table></div>` : ''}`);
 }
 
+// Certeza (19/11/2026): fatos com id, nível de prova e portões — GET /api/sistema/certeza (compliance_agent/certeza).
+function _certeza(c){
+  if (!c || c.ok === false) return sec('Certeza', '—') + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc((c && (c.motivo || c.erro)) || 'sem estado da camada de certeza')}. Não quer dizer que os números estão certos: a tela não tem como saber.</div>`);
+  const r = c.resumo || {}, pe = r.por_estado || {}, pn = r.por_nivel_prova || {};
+  const alerta = (r.divergencias_abertas || 0) + (r.violacoes_de_contrato || 0) + (r.grafo_achados_graves || 0);
+  return sec('Certeza — cada número com prova', fmtN(r.fatos)) + card(`<div style="font-size:13px">Todo número publicado é um <b>fato com id</b>, fonte e nível de prova (2 = fonte primária lida; 1 = juízo sobre resumo). Só <b>VERIFICADO</b> sobe ao painel como certo.
+    <b>${fmtN(pe.VERIFICADO || 0)}</b> verificado(s) · <b>${fmtN(pe.PENDENTE || 0)}</b> pendente(s) · <b>${fmtN(pe['A CONFERIR'] || 0)}</b> a conferir ·
+    nível 2: <b>${fmtN(pn['2'] || 0)}</b> · nível 1: <b>${fmtN(pn['1'] || 0)}</b> · aguardando recálculo: ${fmtN(r.fatos_aguardando_recalculo || 0)}.</div>
+    ${alerta ? `<div class="warn" style="margin-top:6px">${fmtN(r.divergencias_abertas || 0)} divergência(s) aberta(s) · ${fmtN(r.violacoes_de_contrato || 0)} violação(ões) de contrato · ${fmtN(r.grafo_achados_graves || 0)} achado(s) grave(s) no grafo de dependências.</div>` : ''}
+    <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/certeza</code> · <code>docs/ARQUITETURA-DE-CERTEZA.md</code> · estado de ${esc(c.gerado_em_iso || '—')}</div>`);
+}
+
 export async function renderPropagacao(){
-  const d = await J('/api/sistema/propagacao');
+  const [d, cz] = await Promise.all([J('/api/sistema/propagacao'), J('/api/sistema/certeza').catch(e => ({ok: false, erro: String(e)}))]);
   let h = cover('sistema', 'Propagação — o que mudou puxa o que depende',
     'Quando uma fonte muda (OB nova, status recoletado, processo SEI capturado, contrato novo, regra corrigida), tudo o que depende dela é marcado como desatualizado e recalculado sozinho, um trabalho pesado por vez. Aqui se vê o que está desatualizado, o que foi recalculado e o que falhou.', '🔁');
   if (!d || (d.ok === false && !d.estado)) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
@@ -110,6 +122,7 @@ export async function renderPropagacao(){
   h += sec('Fontes e eventos', fmtN(r.fontes)) + _fontes(d);
   h += sec('Últimos eventos', fmtN((d.eventos || []).length)) + _eventos(d);
   h += _cerebro(d.cerebro, d.gerado_em);
+  h += _certeza(cz);
   h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
   return `<div id="pg-raiz">${h}${_css}</div>`;
 }
