@@ -27,7 +27,7 @@ main() {
   find . -maxdepth 1 -name '*.json' ! -name '_*' -newer ~/jfn-replica/.marco_padroes -printf '%f\n' > ~/jfn-replica/.devolver
   local n; n=$(wc -l < ~/jfn-replica/.devolver)
   if [ "$n" -gt 0 ]; then
-    rsync -a --files-from=~/jfn-replica/.devolver . vm1-ts:JFN/data/padroes/ || rc=1
+    rsync -a --files-from="$HOME/jfn-replica/.devolver" . vm1-ts:JFN/data/padroes/ || rc=1
     md5sum $(cat ~/jfn-replica/.devolver) | sort > ~/jfn-replica/.md5_local
     ssh -o BatchMode=yes vm1-ts "cd JFN/data/padroes && md5sum $(tr '\n' ' ' < ~/jfn-replica/.devolver)" | sort > ~/jfn-replica/.md5_vm1
     cmp -s ~/jfn-replica/.md5_local ~/jfn-replica/.md5_vm1 || { echo '{"ev":"md5_diverge"}'; rc=1; }
