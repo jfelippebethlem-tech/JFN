@@ -11,8 +11,11 @@ from compliance_agent import siafe_runner as R
 @pytest.fixture(autouse=True)
 def _lock_isolado(tmp_path, monkeypatch):
     """`pos_coleta` chama o `refresh_lock` REAL: sem isto o teste renovava o lock de produção do SIAFE
-    (data/sei_cache/siafe_lock.json) — um lock órfão de diário morto ganhava mais 30 min de vida (19/11/2026)."""
+    (data/sei_cache/siafe_lock.json) — um lock órfão de diário morto ganhava mais 30 min de vida (19/11/2026). E o
+    `_log` REAL escrevia "pós-coleta 2026 gd: … ingeridas: 7" em data/siafe_runner.log, que é a SONDA da fonte
+    `siafe_gd` da propagação: cada execução do teste virava um evento falso de GD ingerida."""
     monkeypatch.setattr(R, "_LOCK", tmp_path / "siafe_lock.json")
+    monkeypatch.setattr(R, "_LOG", tmp_path / "siafe_runner.log")
 
 
 def test_pos_coleta_roda_status_e_gd_com_prazo_comum(monkeypatch):
