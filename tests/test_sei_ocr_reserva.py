@@ -305,3 +305,27 @@ def test_md5s_em_python_igual_ao_md5sum_e_ignora_ausente(tmp_path):
     (tmp_path / "integra_1" / "000.ocr_reserva.txt").write_bytes(b"texto\n")
     r = R._md5s(["integra_1/000.ocr_reserva.txt", "integra_1/001.ocr_reserva.txt"], tmp_path)
     assert r == {"integra_1/000.ocr_reserva.txt": hashlib.md5(b"texto\n").hexdigest()}
+
+
+def test_entregar_manda_a_lista_do_md5_em_bytes(tmp_path, monkeypatch):
+    """No Windows o stdin em modo texto vira \\r\\n e o md5sum remoto não acha o arquivo (19/11: 8/8 divergentes)."""
+    import subprocess as sp
+    saida = tmp_path / "out"
+    (saida / "integra_1").mkdir(parents=True)
+    for suf in (".ocr_reserva.txt", ".ocr_reserva.json"):
+        (saida / "integra_1" / f"000{suf}").write_bytes(b"x\n")
+    entradas = []
+
+    def run(argv, **kw):
+        entradas.append(kw.get("input"))
+        if "md5sum" in " ".join(argv):
+            import hashlib
+            h = hashlib.md5(b"x\n").hexdigest()
+            out = f"{h}  integra_1/000.ocr_reserva.txt\n{h}  integra_1/000.ocr_reserva.json\n".encode()
+            return sp.CompletedProcess(argv, 0, out, b"")
+        return sp.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(R.subprocess, "run", run)
+    ok, ruim = R.entregar(["integra_1/000.pdf"], saida)
+    assert ok == ["integra_1/000.pdf"] and not ruim
+    assert isinstance(entradas[-1], bytes) and b"\r" not in entradas[-1]

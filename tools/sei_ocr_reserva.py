@@ -460,8 +460,10 @@ def entregar(rels: list[str], saida: Path) -> tuple[list[str], list[str]]:
     local = _md5s(arqs, saida)
     rr = subprocess.run(_unix(["ssh", "-o", "BatchMode=yes", VM1,
                                f"cd {VM1_JFN}/data/sei_cache && xargs -d '\\n' md5sum --"]),
-                        input="\n".join(arqs) + "\n", capture_output=True, text=True, encoding="utf-8", timeout=300)
-    remoto = {ln[34:]: ln[:32] for ln in rr.stdout.splitlines()}
+                        input=("\n".join(arqs) + "\n").encode("utf-8"), capture_output=True, timeout=300)
+    # BYTES, não texto: no Windows o modo texto troca "\n" por "\r\n" no stdin e o md5sum remoto procurava
+    # "arquivo\r" — medido 19/11 no nó itcampo-win-1: 8 de 8 entregues com "md5_divergente".
+    remoto = {ln[34:]: ln[:32] for ln in rr.stdout.decode("utf-8", "replace").splitlines()}
     ok, ruim = [], []
     for rel in rels:
         par = [f"{rel[:-4]}{s}" for s in (".ocr_reserva.txt", ".ocr_reserva.json")]
