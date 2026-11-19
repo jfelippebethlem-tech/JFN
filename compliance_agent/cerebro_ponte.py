@@ -202,9 +202,12 @@ def _ob_siafe_ro():
     if not db.exists():
         return None, None
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    paga = _ob_paga(con)                   # OB citada só confere se PAGA (devolvida/erro não valida laudo) — CNF-02
 
     def achar(numero: str, ug: str) -> list[float]:
-        return [v for (v, u) in con.execute("SELECT valor, ug_emitente FROM ob_orcamentaria_siafe WHERE numero_ob=?", (numero,))
+        return [v for (v, u) in con.execute("SELECT valor, ug_emitente FROM ob_orcamentaria_siafe WHERE numero_ob=? "
+                                            f"AND {paga}", (numero,))
                 if isinstance(v, (int, float)) and (not ug or str(u) == ug)]
     return achar, con
 
