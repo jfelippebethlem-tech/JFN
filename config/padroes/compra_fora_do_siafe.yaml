@@ -29,3 +29,8 @@ explicacoes_inocentes:
   - "NE nos autos ou OB da SEDEC ao emitente — dentro_do_siafe, fora do padrão"
 controle_positivo: "SEI-270118/001445/2021 (9 NF contra 28.176.998/0004-41, PIX, sem NE/OB); SEI-270098/000603/2022 (IMPRESSISTEM × MOVEMAQ, telefone comum)"
 controle_negativo: "Processo com NE juntada (2025NE02806 no SEI-270006/002628/2025); SEI-270089/000453/2023 cai em verba_operacionalizacao, não em sem_explicacao"
+# Parâmetros lidos pelo detector (PAD-12: CNPJ nunca literal no código)
+parametros:
+  cnpj_funesbom: "28176998000441"          # FUNESBOM / UG 166100 (raiz = SEDEC/CBMERJ)
+  raizes_estatais: ["28176998", "42498600", "42498733", "29468055"]   # órgão + Estado do RJ: nunca emitente de varejo
+  ugs_sedec: ["166100", "160100"]

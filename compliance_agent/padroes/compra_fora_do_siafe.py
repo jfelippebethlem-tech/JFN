@@ -30,10 +30,18 @@ from datetime import date
 from compliance_agent.padroes import _pagamento_comum as P
 
 ID = "compra_fora_do_siafe"
-RAIZ_ORGAO = "28176998"                      # SEDEC / CBMERJ / FUNESBOM (0004-41 = UG 166100)
-CNPJ_FUNESBOM = "28176998000441"
-UG_SEDEC = ("166100", "160100")
-_ESTATAIS = {RAIZ_ORGAO, "42498600", "42498733", "29468055"}   # órgão + Estado do RJ (nunca emitente de NF de varejo)
+def _parametros() -> dict:
+    """CNPJ/UG do órgão vêm da ficha (config/padroes/compra_fora_do_siafe.yaml) — PAD-12: nada de CNPJ literal."""
+    import yaml
+    with open(P.RAIZ / "config" / "padroes" / f"{ID}.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)["parametros"]
+
+
+_PAR = _parametros()
+CNPJ_FUNESBOM = str(_PAR["cnpj_funesbom"])
+RAIZ_ORGAO = CNPJ_FUNESBOM[:8]                 # SEDEC / CBMERJ / FUNESBOM
+UG_SEDEC = tuple(str(u) for u in _PAR["ugs_sedec"])
+_ESTATAIS = {str(r) for r in _PAR["raizes_estatais"]}   # órgão + Estado do RJ (nunca emitente de NF de varejo)
 
 _RE_TIT_NF = re.compile(r"nota\s*fiscal|\bNF\b|\bNF-?e\b|DANFE|cupom\s+fiscal|\brecibo\b", re.I)
 _RE_TIT_INC = re.compile(r"incorp|icorpora", re.I)
@@ -142,7 +150,7 @@ def extrair_nf(texto: str) -> dict:
         if cnpj_ok(c) and c[:8] not in _ESTATAIS and c not in emit and not emit:
             emit.append(c)
             fonte_emit = fonte_emit or "texto"
-    if not contra and re.search(r"28[.\s]?176[.\s]?998", t):
+    if not contra and re.search(r"[.\s]?".join((RAIZ_ORGAO[:2], RAIZ_ORGAO[2:5], RAIZ_ORGAO[5:8])), t):
         contra = True
     # OCR perde o CNPJ do destinatário com frequência; o nome da unidade como destinatário também vale
     contra_nome = bool(re.search(r"CORPO\s+DE\s+BOMBEIROS|CBMERJ|\bG\.?B\.?M\b|GRUPAMENTO\s+DE\s+BOMBEIRO|DEFESA\s+CIVIL|"
