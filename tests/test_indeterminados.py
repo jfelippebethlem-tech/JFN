@@ -285,3 +285,12 @@ def test_diagnosticar_junta_familia_agente_e_veredito_da_familia(tmp_path, monke
     assert um["causas"][0] == "execucao_avaliada_na_familia"
     assert d["SEI-100000/000003/2025"]["relacionados_fora"] == ["SEI-800000/000008/2024"]
     assert "ob_nao_ligada" in um["causas"]
+
+
+def test_relacionado_sem_credor_conhecido_fica_pendente(externas):
+    """Pelo processo citado e sem CNPJ do credor para conferir: PENDENTE (pesquisa de preços cita contrato alheio)."""
+    idx = I.Indices(externas)
+    via = I.fontes_externas(idx, "SEI-030029/002156/2022", cnpjs=set(), via="SEI-030001/084333/2024")
+    assert {e["estado"] for e in via if e["fonte"].startswith("TCE-RJ")} == {"PENDENTE"}
+    proprio = I.fontes_externas(idx, "SEI-030029/002156/2022", cnpjs=set())
+    assert {e["estado"] for e in proprio if e["fonte"].startswith("TCE-RJ")} == {"VERIFICADO"}

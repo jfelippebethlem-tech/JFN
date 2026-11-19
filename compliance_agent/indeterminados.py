@@ -318,6 +318,15 @@ class Indices:
                 self.vinculo[k].append(row)
 
 
+def _estado_partes(cnpj_fonte: str, cnpjs: set[str], via: str | None) -> str:
+    """VERIFICADO quando a parte da fonte é o credor dos autos; sem credor conhecido, só no PRÓPRIO processo (chave
+    exata). Pelo processo relacionado sem parte conferida é PENDENTE: a pesquisa de preços cita contratos de outros
+    órgãos e empresas (armadilha medida em 18/11/2026) e a citação sozinha não prova que é o contrato deste pagamento."""
+    if cnpjs:
+        return "VERIFICADO" if cnpj_fonte in cnpjs else "PENDENTE"
+    return "PENDENTE" if via else "VERIFICADO"
+
+
 def fontes_externas(idx: Indices, numero_sei: str, *, cnpjs: set[str] | None = None,
                     via: str | None = None) -> list[dict]:
     """Evidência de fonte externa sobre `numero_sei` (o próprio ou um processo relacionado, `via`).
@@ -335,7 +344,7 @@ def fontes_externas(idx: Indices, numero_sei: str, *, cnpjs: set[str] | None = N
             "SELECT id, cnpj, valor_contrato, vig_inicio, vig_fim, fornecedor, valor_pago FROM contratos_tcerj "
             "WHERE sei_norm = ?", (chave,)):
         cn = _digitos(cnpj)
-        est = "VERIFICADO" if not cnpjs or cn in cnpjs else "PENDENTE"
+        est = _estado_partes(cn, cnpjs, via)
         _ev("TCE-RJ contratos (dados abertos)", "houve_contrato",
             f"contrato registrado com {forn or '?'} (CNPJ {cn or '?'}), valor {_brl(valor or 0)}, vigência "
             f"{ini or '?'} a {fim or '?'}" + ("" if est == "VERIFICADO" else " — CNPJ difere do credor dos autos"),
@@ -345,11 +354,11 @@ def fontes_externas(idx: Indices, numero_sei: str, *, cnpjs: set[str] | None = N
             (chave,)):
         _ev("TCE-RJ compras diretas", "houve_contratacao_direta",
             f"compra direta registrada ({enq or 'enquadramento n/d'}) com {forn or '?'}, {_brl(valor or 0)}",
-            f"compras_diretas_tcerj.id={id_}", "VERIFICADO", valor)
+            f"compras_diretas_tcerj.id={id_}", "PENDENTE" if via else "VERIFICADO", valor)
     k = norm(numero_sei) or ""
     for _, id_c, cnpj, valor, data, objeto, sit, pago in idx.siga.get(k, []):
         cn = _digitos(cnpj)
-        est = "VERIFICADO" if not cnpjs or cn in cnpjs else "PENDENTE"
+        est = _estado_partes(cn, cnpjs, via)
         _ev("SIGA contratos", "houve_contrato",
             f"contrato SIGA {id_c} ({sit or 'situação n/d'}), {_brl(valor or 0)}, data {data or '?'}",
             f"siga_contratos.id_contrato={id_c}", est, valor)
@@ -583,7 +592,7 @@ def resumo(diag: list[dict], con: sqlite3.Connection | None = None) -> dict:
 
 
 def ciclo(*, maximo_externo: int = 400, ler_texto: bool = True, max_ler: int | None = 300, enfileirar_db: bool = True,
-          log=print) -> dict:
+          dias_externo: int = 7, log=print) -> dict:
     con = sqlite3.connect(DB, timeout=120)
     con.execute("PRAGMA busy_timeout=120000")
     try:
@@ -593,7 +602,7 @@ def ciclo(*, maximo_externo: int = 400, ler_texto: bool = True, max_ler: int | N
         desconhecidos = {a["numero"] for a in rel_alvos} - no_fila
         entraram = enfileirar(con, rel_alvos) if enfileirar_db else 0
         _gravar_json(FILA_JSON, {"gerado_em": time.strftime("%Y-%m-%dT%H:%M:%S"), "fila": fila})
-        ext = resolver_externo(con, diag, maximo=maximo_externo, log=log)
+        ext = resolver_externo(con, diag, maximo=maximo_externo, dias=dias_externo, log=log)
         r = resumo(diag, con)
         r["fila"] = {"relacionados_distintos": len({a["numero"] for a in rel_alvos}),
                      "relacionados_fora_da_fila_antes": len(desconhecidos), "inscritos_agora": entraram,
@@ -612,6 +621,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("acao", choices=("diagnosticar", "ciclo"))
     ap.add_argument("--max-externo", type=int, default=400)
     ap.add_argument("--sem-texto", action="store_true", help="não lê os autos (usa só o cache de relacionados)")
+    ap.add_argument("--dias-externo", type=int, default=7, help="reconsulta fontes externas mais velhas que N dias")
     ap.add_argument("--max-ler", type=int, default=300, help="processos com autos varridos por rodada (0 = sem teto)")
     a = ap.parse_args(argv)
     if a.acao == "diagnosticar":
@@ -623,7 +633,8 @@ def main(argv: list[str] | None = None) -> int:
             con.close()
         _gravar_json(SAIDA / "diagnostico.json", diag)
     else:
-        r = ciclo(maximo_externo=a.max_externo, ler_texto=not a.sem_texto, max_ler=a.max_ler or None)
+        r = ciclo(maximo_externo=a.max_externo, ler_texto=not a.sem_texto, max_ler=a.max_ler or None,
+                  dias_externo=a.dias_externo)
     print(json.dumps({k: v for k, v in r.items() if k != "por_estado"}, ensure_ascii=False, indent=1))
     return 0
 
