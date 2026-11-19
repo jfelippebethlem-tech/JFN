@@ -29,7 +29,6 @@ import time
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-from compliance_agent.cruzamentos_intel import _ob_paga
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, "data", "compliance.db")
@@ -169,33 +168,23 @@ def _chave_processo(p: str | None) -> str | None:
     return f"{m.group(1)}/{int(m.group(2))}/{ano}"
 
 
-def mapa_obs_siafe(con: sqlite3.Connection, processos: list[str]) -> dict[str, dict]:
-    """OBs CONTABILIZADAS no SIAFE por processo — UMA varredura por lote (a busca por processo custava 8 s).
+def mapa_obs_siafe(con: sqlite3.Connection, processos: list[str], *, autos: bool = True) -> dict[str, dict]:
+    """OBs PAGAS no SIAFE por processo — UMA varredura por lote (a busca por processo custava 8 s).
 
     Medido em 29/10/2026: 550 dos 666 processos em que a perícia de execução apontou 'ausência de Ordem
-    Bancária' têm OB contabilizada no SIAFE. A perícia lia só a pasta do SEI; a OB não mora lá."""
-    alvo = {k for k in map(_chave_processo, processos) if k}
-    out: dict[str, dict] = {}
-    if not alvo:
-        return out
-    try:
-        rows = con.execute("SELECT processo, valor, data_emissao FROM ob_orcamentaria_siafe "
-                           f"WHERE {_ob_paga(con)} AND processo LIKE '%/%'")
-    except sqlite3.OperationalError:
-        return out                                     # base sem SIAFE: o bloco diz INDISPONÍVEL
-    for proc, valor, data in rows:
-        k = _chave_processo(proc)
-        if k in alvo:
-            d = out.setdefault(k, {"n": 0, "total": 0.0, "datas": []})
-            d["n"] += 1; d["total"] += valor or 0; d["datas"].append(str(data or ""))
-    return out
+    Bancária' têm OB contabilizada no SIAFE. A perícia lia só a pasta do SEI; a OB não mora lá.
+    18/11/2026: a ligação é por CAMADAS (`compliance_agent.ob_processo`): nº do processo (exato e normalizado) e
+    NL/PD/OB juntadas nos autos, com a devolução (GD) descontada; cada OB traz a sua `via`. Formato mantido
+    ({n, total, datas}) + `obs`, `por_via`, `piso`, `candidatas`, `nos_autos_fora_da_base`."""
+    from compliance_agent.ob_processo import obs_por_processo
+    return obs_por_processo(con, processos, autos=autos, so_pagos=True)
 
 
 def _bloco_siafe(numero_sei: str, obs: dict | None) -> str:
     if obs is None:
         return "PAGAMENTO NO SIAFE: (não consultado nesta execução — INDISPONÍVEL)\n"
     d = obs.get(_chave_processo(numero_sei) or "")
-    if not d:
+    if not d or not d.get("n"):                         # só candidata/devolvida: nada pago a afirmar
         return ("PAGAMENTO NO SIAFE: nenhuma OB contabilizada localizada pelo nº deste processo — INDISPONÍVEL "
                 "(pode estar sob outra numeração), não prova de ausência de pagamento.\n")
     total = f"{d['total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -203,7 +192,17 @@ def _bloco_siafe(numero_sei: str, obs: dict | None) -> str:
     ds = sorted((x for x in d["datas"] if x), key=lambda s: s[6:10] + s[3:5] + s[0:2])
     periodo = f", emitidas de {ds[0]} a {ds[-1]}" if ds else ""
     return (f"PAGAMENTO NO SIAFE (fonte oficial da OB): {d['n']} OB(s) contabilizada(s), total R$ {total}{periodo}. "
-            "O pagamento está registrado — avalie se a ENTREGA está comprovada.\n")
+            f"{_ressalva_ob(d)}O pagamento está registrado — avalie se a ENTREGA está comprovada.\n")
+
+
+def _ressalva_ob(d: dict) -> str:
+    """De onde veio a soma além do nº do processo, e quando ela é só PISO (GD sem valor conhecido)."""
+    from compliance_agent.ob_processo import resumo_auditavel
+    vias = d.get("por_via") or {}
+    r = f"Origem por via: {resumo_auditavel(d)}. " if set(vias) - {"processo_exato", "processo_normalizado"} else ""
+    if d.get("piso"):
+        r += "PISO: há OB com Guia de Devolução sem valor conhecido, fora da soma. "
+    return r
 
 
 # ── PRÉ-FILTRO DETERMINÍSTICO (11/11/2026) ───────────────────────────────────────────────────────────────

@@ -322,13 +322,14 @@ def _pago(numero: str, obs: dict | None) -> dict | None:
 
 
 def _bloco_ob(ob: dict | None) -> str:
-    if not ob:
+    from tools.lex_execucao import _ressalva_ob
+    if not ob or not ob.get("n"):
         return ("PAGAMENTO (SIAFE): nenhuma OB contabilizada localizada pelo nº deste processo — INDISPONÍVEL "
                 "(pode estar sob outra numeração); não é prova de ausência de pagamento.")
     ds = sorted((x for x in ob.get("datas") or [] if x), key=lambda s: s[6:10] + s[3:5] + s[0:2])
     per = f", emitidas de {ds[0]} a {ds[-1]}" if ds else ""
     return (f"PAGAMENTO (SIAFE, fonte oficial da OB): {ob['n']} OB(s) contabilizada(s), total {_brl(ob['total'])}"
-            f"{per}. Só a OB é pagamento; empenho e liquidação não são.")
+            f"{per}. {_ressalva_ob(ob)}Só a OB é pagamento; empenho e liquidação não são.")
 
 
 def numero_da_pasta(nome: str) -> str:
