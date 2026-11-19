@@ -1,0 +1,31 @@
+id: compra_fora_do_siafe
+nome: "Compra fora do SIAFE — bem incorporado com NF contra o órgão, sem NE e sem OB ao emitente"
+familia: execucao_orcamentaria
+origem:
+  processo: SEI-270118/001445/2021
+  caso: "vault/casos/cbmerj-quadriciclos-cfmoto-baixa-em-lote-2022.md (seção Compras fora do orçamento); perícias lote 58/59/60 de 18–19/11/2026"
+norma:
+  - "Lei 4.320/1964, arts. 60 a 65 (empenho, liquidação, pagamento)"
+  - "Lei 4.320/1964, arts. 94 a 96 (registro patrimonial)"
+  - "Resolução SEDEC 113/2018, alterada pela 186/2020 (REDE/FUNESBOM — regime de desembolso descentralizado)"
+  - "Nota Técnica SUNOT/SUBCONT (registro das concessões em desembolso descentralizado)"
+sinal: >
+  Processo 27xxxx de incorporação patrimonial (título com incorporação ou listado em INCORPORAÇÃO de AAPAT) com NF
+  juntada, sem nota de empenho nos autos e sem OB paga (CNF-02) da SEDEC/FUNESBOM (UG 166100/160100) ao emitente
+  (consulta por raiz do CNPJ no índice `credor`). Emitente pela chave de acesso NF-e (DV conferido) ou CNPJ com DV
+  válido, confirmado pela razão social da Receita. Subsinais: emitentes de raiz diferente no mesmo processo com
+  telefone comum (7 últimos dígitos), sócio comum, pedidos consecutivos ou emissão em até 5 min (forte); NF faturada
+  ("dados bancários", "a prazo") sem OB ao emitente (possível dívida sem empenho).
+mecanismo_institucional: >
+  O FUNESBOM empenha 3.3.90.39 ao próprio CNPJ 28.176.998/0004-41 (ex.: 2025NE02806, SEI-270006/002628/2025) e paga
+  cotas mensais ao mesmo CNPJ (~5.000 OB/ano, mediana R$ 2.000,00); a Pagadoria Central orienta a unidade a comprar com a
+  "verba de operacionalização" (CI PAGCENT nº 92/2023, SEI-270089/000453/2023 doc 1). O fornecedor nunca é credor no
+  SIAFE: a irregularidade a examinar é do modelo (execução sem empenho por fornecedor; material permanente em 3.3.90.39;
+  aprovação prévia do Ordenador exigida pelo art. 2º, II da Res. 113) e a existência da prestação de contas mensal.
+explicacoes_inocentes:
+  - "REDE/FUNESBOM (verba de operacionalização / verba própria da unidade) — classificada verba_operacionalizacao"
+  - "Suprimento de fundos (servidor suprido) — classificada suprimento_de_fundos_provavel"
+  - "Doação (termo de doação) — classificada doacao"
+  - "NE nos autos ou OB da SEDEC ao emitente — dentro_do_siafe, fora do padrão"
+controle_positivo: "SEI-270118/001445/2021 (9 NF contra 28.176.998/0004-41, PIX, sem NE/OB); SEI-270098/000603/2022 (IMPRESSISTEM × MOVEMAQ, telefone comum)"
+controle_negativo: "Processo com NE juntada (2025NE02806 no SEI-270006/002628/2025); SEI-270089/000453/2023 cai em verba_operacionalizacao, não em sem_explicacao"
