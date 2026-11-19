@@ -163,18 +163,43 @@ def ingerir(con: sqlite3.Connection, anos, so_candidatos: bool = False) -> None:
             _registrar({"fonte": "tse_prestacao_rj", "ano": ano, "membro": m, "linhas": n_lin, "novos": n})
 
 
+def importar(con: sqlite3.Connection, arquivo: str) -> int:
+    """Funde o `cpf_corpus` de um SQLite gerado noutra máquina (idempotente: INSERT OR IGNORE pela PK)."""
+    cc.garantir_tabela(con)
+    antes = con.total_changes
+    con.execute("ATTACH DATABASE ? AS ext", (str(arquivo),))
+    try:
+        con.execute("INSERT OR IGNORE INTO cpf_corpus SELECT cpf, nome_norm, middle6, fonte, ano, papel "
+                    "FROM ext.cpf_corpus")
+        con.commit()
+    finally:
+        con.execute("DETACH DATABASE ext")
+    return con.total_changes - antes
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--anos", type=int, nargs="*", default=list(ANOS))
     ap.add_argument("--so-candidatos", action="store_true")
     ap.add_argument("--medir", action="store_true", help="só imprime as contagens do corpus")
     ap.add_argument("--banco", default=str(_DB))
+    ap.add_argument("--siafe", action="store_true", help="ingere os credores PF das OB do SIAFE (sem rede)")
+    ap.add_argument("--importar", default="", help="SQLite gerado em outra máquina (it-campo): funde o cpf_corpus dele")
     a = ap.parse_args()
     con = sqlite3.connect(a.banco, timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
     cc.garantir_tabela(con)
     con.commit()
-    if not a.medir:
+    if a.siafe:
+        ano = int(time.strftime("%Y"))
+        n = cc.gravar(con, list(cc.pares_siafe(con)), "siafe_ob_credor", ano)
+        print(f"SIAFE credores PF: {n} pares novos", flush=True)
+        _registrar({"fonte": "siafe_ob_credor", "novos": n})
+    elif a.importar:
+        n = importar(con, a.importar)
+        print(f"importados {n} pares novos de {a.importar}", flush=True)
+        _registrar({"fonte": "importacao", "arquivo": Path(a.importar).name, "novos": n})
+    elif not a.medir:
         try:
             ingerir(con, a.anos, a.so_candidatos)
         except TSEIndisponivel as e:

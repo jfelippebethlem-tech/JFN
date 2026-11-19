@@ -60,30 +60,44 @@ def main() -> int:
     tse_idx = rc.carregar_indice_tse(_DB)
     sei_idx = rc.carregar_indice_sei(_DB)
     folha_idx = rc.carregar_indice_folha(_DB)
+    from compliance_agent import cpf_corpus  # corpus TSE dos dados abertos (candidatos/doadores/fornecedores)
+    # favorecidos PF = OB TFE (vazia de PF desde a troca para CNPJ) ∪ credores PF das OB do SIAFE (Regra 2)
+    for k, v in cpf_corpus.carregar_indice(_DB, fontes=["siafe_ob_credor"]).items():
+        pf_idx.setdefault(k, set()).update(v)
+    corpus_idx = cpf_corpus.carregar_indice(_DB, fontes=[
+        "tse_candidatos", "tse_candidatos_titulo", "tse_prestacao_rj"])
     print(f"  índices: favorecidos={len(pf_idx)}  tse={len(tse_idx)}  sei={len(sei_idx)}  "
-          f"folha={len(folha_idx)} nomes")
+          f"corpus_tse={len(corpus_idx)}  folha={len(folha_idx)} nomes")
 
     cond = "" if a.forcar else " AND (cpf_resolvido IS NULL OR cpf_resolvido='') "
     lim = f" LIMIT {int(a.limite)}" if a.limite else ""
     alvos = con.execute(
-        f"SELECT rowid, socio_nome, socio_doc FROM socios_fornecedor "
+        f"SELECT rowid, socio_nome, socio_doc, cpf_resolvido, cpf_fonte FROM socios_fornecedor "
         f"WHERE socio_doc LIKE '%*%' {cond} ORDER BY rowid{lim}").fetchall()
     print(f"{len(alvos)} sócio(s) mascarado(s) a resolver.")
 
-    resolvidos = servidores = 0
+    resolvidos = servidores = revogados = 0
     fontes: dict[str, int] = {}
     agora = dt.datetime.now().isoformat(timespec="seconds")
     escrita = con.cursor()
     for i, r in enumerate(alvos, 1):
         res = rc.resolver_multi(r["socio_nome"], r["socio_doc"],
-                                pf_idx=pf_idx, tse_idx=tse_idx, sei_idx=sei_idx)
+                                pf_idx=pf_idx, tse_idx=tse_idx, sei_idx=sei_idx,
+                                corpus_idx=corpus_idx)
         if res.get("resolvido"):
             escrita.execute(
                 "UPDATE socios_fornecedor SET cpf_resolvido=?, cpf_fonte=?, cpf_confianca=?, "
                 "cpf_resolvido_em=? WHERE rowid=?",
-                (res["cpf"], res.get("fonte", ""), res.get("confianca", 0.0), agora, r["rowid"]))
+                (res["cpf"], "+".join(res.get("fontes") or [res.get("fonte", "")]), res.get("confianca", 0.0), agora, r["rowid"]))
             resolvidos += 1
             fontes[res.get("fonte", "?")] = fontes.get(res.get("fonte", "?"), 0) + 1
+        elif (r["cpf_resolvido"] and "ambíguo" in (res.get("motivo") or "")
+              and not (r["cpf_fonte"] or "").startswith("humano:")):
+            # --forcar reconfere o que já estava resolvido: outra fonte trouxe CPF DIFERENTE para o mesmo
+            # nome + 6 dígitos → homônimos; o CPF antigo não se sustenta (1:1) e é revogado.
+            escrita.execute("UPDATE socios_fornecedor SET cpf_resolvido=NULL, cpf_fonte=?, cpf_confianca=NULL, "
+                            "cpf_resolvido_em=? WHERE rowid=?", ("revogado:ambiguo", agora, r["rowid"]))
+            revogados += 1
         # fusão de máscaras folha×QSA — sócio que também é servidor público (indício de conflito/laranja)
         fus = rc.fusao_folha_qsa(r["socio_nome"], r["socio_doc"], folha_idx)
         if fus.get("servidor"):
@@ -98,6 +112,7 @@ def main() -> int:
     print(f"\nFIM: resolvidos={resolvidos}/{len(alvos)} "
           f"({100*resolvidos/max(1,len(alvos)):.1f}%)  por fonte={fontes}")
     print(f"     servidores-sócios (fusão folha×QSA): {servidores}")
+    print(f"     revogados (CPF antigo contradito por outra fonte = homônimo): {revogados}")
     con.close()
     return 0
 

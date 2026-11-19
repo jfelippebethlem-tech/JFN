@@ -147,3 +147,23 @@ def test_regua_cpf_completo_do_socio_e_camada_mas_nao_verifica_servidor_sem_cpf(
     r2 = ip.classificar(doc_qsa="***456780**", cpf_folha="", fonte_folha="tjrj_anexo8", n_folha_nome=1,
                         n_qsa_nome=1, cpf_resolvido=A)
     assert not any(c["camada"] == "cpf_completo_socio" for c in r2["camadas"])
+
+
+def test_importar_corpus_de_outra_maquina_e_idempotente(tmp_path):
+    from tools.tse_cpf_corpus import importar
+    ext = tmp_path / "ext.db"
+    c1 = sqlite3.connect(ext)
+    cc.gravar(c1, [(A, "JOAO DA SILVA", "candidato")], "tse_candidatos", 2020)
+    c1.close()
+    dst = sqlite3.connect(tmp_path / "dst.db")
+    assert importar(dst, str(ext)) == 1
+    assert importar(dst, str(ext)) == 0
+
+
+def test_pares_siafe_so_cpf_valido_de_credor_pf():
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (credor TEXT, nome_credor TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?)",
+                    [(A, "João da Silva"), ("12345678901", "DV ERRADO SILVA"), ("12345678000199", "EMPRESA LTDA")])
+    got = list(cc.pares_siafe(con))
+    assert got == [(A, "JOAO DA SILVA", "credor_ob")] or (cc.cpf_valido("12345678901") and len(got) == 2)

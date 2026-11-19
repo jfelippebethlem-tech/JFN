@@ -268,3 +268,4 @@ data/pericia_agentes/
 data/conluio/
 # saídas das varreduras de padrões (18/11/2026)
 data/padroes/
+data/cpf_fila_humana.json

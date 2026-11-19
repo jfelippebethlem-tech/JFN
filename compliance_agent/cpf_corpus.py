@@ -137,6 +137,19 @@ def indexar_titulos(linhas: Iterable[dict], destino: dict[str, set[tuple[str, st
             destino.setdefault(tit, set()).add((cpf, _norm(row.get(col_nome) or "")))
 
 
+def pares_siafe(con: sqlite3.Connection) -> Iterable[tuple[str, str, str]]:
+    """Credores PESSOA FÍSICA das OB do SIAFE-Rio 2 (`ob_orcamentaria_siafe`, CPF completo do credor + nome):
+    a fonte de pagamento da casa (Regra 2). Substitui o índice de favorecidos PF de `ordens_bancarias`, que em
+    19/11/2026 não tinha mais nenhuma linha PF (só CNPJ de 14 dígitos) — o corpus "favorecidos" estava vazio
+    calado. Só entra CPF com DV válido (credor de 11 dígitos que não é CPF fica de fora)."""
+    for cpf, nome in con.execute("SELECT DISTINCT credor, nome_credor FROM ob_orcamentaria_siafe "
+                                 "WHERE length(credor)=11"):
+        c = cpf_valido(cpf)
+        n = _norm(nome or "")
+        if c and len(n) >= 6:
+            yield c, n, "credor_ob"
+
+
 def carregar_indice(db_path: str | Path | None = None, fontes: Iterable[str] | None = None) -> dict:
     """Índice {(nome_norm, middle6) → set(cpf)} do corpus — mesmo formato de `resolucao_cpf.carregar_indice_*`,
     para `resolver_multi(corpus_idx=...)`. Tabela ausente → {} (honesto: sem corpus, nada resolve)."""
