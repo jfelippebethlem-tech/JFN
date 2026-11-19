@@ -1300,7 +1300,7 @@ detectores:
     fonte:
     - compras_diretas_tcerj
     - ordens_bancarias
-    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento); JSON avulso (tools/sweep_fracionamento_tcerj.py);
+    grava: processo_avaliacao (via compliance_agent/processo_360.py → coletor_edital.rodar_planejamento); output/sweep_fracionamento_tcerj.json (tools/sweep_fracionamento_tcerj.py, derivado fracionamento_objeto da propagação → aba Estado › Fracionamento);
       não está em varredura_certames nem varredura_execucao
     consome:
     - processo_360
@@ -1325,9 +1325,15 @@ detectores:
       excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
     - hipotese: soma igual ao teto não excede (comparação estrita soma > limite)
       excluida_por: compliance_agent/detectores/p4_fracionamento.py:P4Fracionamento.avaliar
+    - hipotese: credenciamento, inscrição, anuidade, juros/multas não são contratação de objeto
+      excluida_por: tools/sweep_fracionamento_tcerj.py:_dispensa_por_valor
+    - hipotese: mesmo processo em grafias distintas ou irmão de sufixo com o mesmo valor (registro duplicado)
+      excluida_por: tools/sweep_fracionamento_tcerj.py:carregar_grupos
+    - hipotese: obra/serviço de engenharia (inciso I) somado com compra (inciso II) contra um teto só
+      excluida_por: tools/sweep_fracionamento_tcerj.py:rodar_sweep
     dominio: dispensas por valor (art. 75, I/II, Lei 14.133/2021), por unidade gestora e exercício; limites 2021–2026 de
       compliance_agent/limites_dispensa.py
-    fp_medida: null
+    fp_medida: "19/11/2026, sweep TCE-RJ antes × depois da calibração: 78 → 69 achados (61 com soma acima do teto); o topo SEDSODH 2024 tinha 47 dispensas de 4 ramos encadeados (R$ 2.072.390,60) e passou a 13 só de alimentação (R$ 668.010,00); saíram por inspeção grupos de credenciamento (FEC 2025/2026), inscrições/anuidades (UERJ), juros do INSS (GSI) e moldura de ETP/citação legal"
   det.P5EmergenciaFabricada:
     modulo: compliance_agent/detectores/p5_emergencia_fabricada.py
     simbolo: P5EmergenciaFabricada

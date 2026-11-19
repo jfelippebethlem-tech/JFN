@@ -27,6 +27,7 @@ somou. Determinístico, sem dependência pesada (a VM tem 2 vCPU).
 """
 from __future__ import annotations
 
+import html
 import math
 import re
 import unicodedata
@@ -59,6 +60,12 @@ _STOP = {
     "despesas", "exercicio", "administrativo", "administrativa", "relativa", "relativas", "relativo",
     "relativos", "referentes", "autorizacao", "solicitacao", "solicito", "informamos", "encaminhamos",
     "trata", "tratam", "fins", "reais", "valor", "valores", "total",
+    # MOLDURA do ETP/TR e da citação legal (sweep 19/11/2026): "o presente TR levou em consideração as
+    # conclusões contidas no estudo técnico preliminar" e "contratação direta, na forma do artigo 75, inc. II
+    # da Lei" agrupavam contratações de objetos distintos pela fórmula que compartilham.
+    "levou", "consideracao", "informacao", "informacoes", "conclusao", "conclusoes", "contida", "contidas",
+    "contido", "contidos", "estudo", "estudos", "tecnico", "tecnicos", "preliminar", "preliminares", "etp",
+    "direta", "direto", "artigo", "art", "lei", "inc", "inciso", "dispensa", "licitacao",
 }
 # Descrições que NÃO descrevem objeto — não podem formar cluster (só ruído restaria após as stopwords).
 _RE_GENERICO = re.compile(
@@ -91,8 +98,18 @@ RAMOS: tuple[tuple[str, str], ...] = (
     ("combustivel", r"combust[íi]vel|gasolina|diesel|etanol|arla|[óo]leo\s+lubrificante"),
     ("veiculos", r"pneu|ve[íi]culo|autom[óo]vel|frota|manuten[çc][ãa]o\s+veicular|revis[ãa]o\s+de\s+ve[íi]culo|"
                  r"loca[çc][ãa]o\s+de\s+ve[íi]culo"),
+    # MANUTENÇÃO/CONSERTO de equipamento é serviço — não é o mesmo ramo do material do lugar onde o
+    # equipamento fica. Sem isto, "conserto do citômetro do laboratório" e "aquisição de medicamentos"
+    # somavam como uma só natureza (UERJ 2024, sweep 19/11/2026).
+    ("manutencao_equipamentos", r"(?:manuten[çc][ãa]o|conserto|reparo)\b.{0,60}?(?:equipamento|aparelho|"
+                                r"microsc[óo]pio|cit[ôo]metro|m[áa]quina)"),
+    # "laboratório" é LUGAR, não objeto: saiu do ramo de saúde (o evento do LABIMI virava "medicamento").
     ("saude_medicamentos", r"medicamento|f[áa]rmaco|hospitalar|seringa|luva\s+de\s+procedimento|"
-                           r"insumo\s+m[ée]dico|material\s+m[ée]dico|odontol[óo]gic|laborat[óo]ri"),
+                           r"insumo\s+m[ée]dico|material\s+m[ée]dico|odontol[óo]gic"),
+    ("laboratorio", r"reagente|vidraria|produtos?\s+qu[íi]mico|itens?\s+qu[íi]mico|"
+                    r"(?:equipamentos?|materia(?:l|is)|itens?)\s+(?:\w+\s+){0,3}(?:para|de)\s+(?:uso\s+no\s+)?laborat[óo]ri"),
+    # HOSPEDAGEM antes de alimentação: "hospedagem com café da manhã" é hotelaria, não gênero alimentício
+    ("hospedagem", r"hospedage|di[áa]rias?\s+de\s+hotel"),
     ("alimentacao", r"aliment[íi]cio|alimento|merenda|refei[çc][ãa]o|g[êe]nero\s+aliment|cesta\s+b[áa]sica|"
                     r"[áa]gua\s+mineral|caf[ée]|marmita|coffee\s*break"),
     ("limpeza_higiene", r"limpeza|higiene|higieniza|desinfetante|[áa]gua\s+sanit[áa]ria|saneante|sab[ãa]o|"
@@ -106,11 +123,12 @@ RAMOS: tuple[tuple[str, str], ...] = (
                      r"fardamento"),
     ("vigilancia", r"vigil[âa]ncia|seguran[çc]a\s+patrimonial|monitoramento\s+eletr[ôo]nico|"
                    r"portaria\s+e\s+vigil"),
-    ("manutencao_predial", r"manuten[çc][ãa]o\s+predial|reforma|obra|hidr[áa]ulic|instala[çc][ãa]o\s+el[ée]tric|"
+    # "obra" sozinho casava "MÃO DE OBRA" (sonorização com material e mão de obra virava predial — sweep 19/11)
+    ("manutencao_predial", r"manuten[çc][ãa]o\s+predial|reforma|(?<!m[ãa]o\sde\s)\bobras?\b|hidr[áa]ulic|instala[çc][ãa]o\s+el[ée]tric|"
                            r"rede\s+el[ée]tric|servi[çc]os?\s+el[ée]tric|pintura|"
                            r"alvenaria|ar[- ]condicionado|climatiza[çc][ãa]o|telhado|impermeabiliza"),
     ("grafica", r"gr[áa]fic|impress[ãa]o\s+de|encaderna[çc][ãa]o|banner|crach[áa]|panfleto|folder"),
-    ("eventos", r"evento|loca[çc][ãa]o\s+de\s+espa[çc]o|som\s+e\s+ilumina|palco|buffet"),
+    ("eventos", r"evento|loca[çc][ãa]o\s+de\s+espa[çc]o|som\s+e\s+ilumina|sonoriza|palco|buffet"),
     ("transporte", r"passagem\s+a[ée]rea|frete|mudan[çc]a|transporte\s+de\s+(?:carga|passageiro)"),
 )
 
@@ -118,7 +136,8 @@ RAMOS: tuple[tuple[str, str], ...] = (
 def ramo_atividade(objeto: str) -> str | None:
     """RAMO DE ATIVIDADE do objeto (art. 75, §1º, II — "objetos de mesma natureza"). None quando o texto
     não permite classificar: aí não se soma por natureza (conservador — INDISPONÍVEL ≠ mesmo ramo)."""
-    t = _sem_acento((objeto or "").lower())
+    # entidade HTML no dado do TCE-RJ ("SERVIC&#807O") quebrava as âncoras
+    t = _sem_acento(html.unescape(objeto or "").lower())
     alvo = _RE_PREAMBULO.sub("", t, count=1) or t
     for nome, pat in RAMOS:
         if re.search(_sem_acento(pat), alvo, re.I):
@@ -253,10 +272,15 @@ def agrupar(contratacoes: list[dict], limiar: float = LIMIAR, *, por_ramo: bool 
                 continue                      # classificação oficial divergente: NÃO cai para o texto
             if genericos[i] or genericos[j]:
                 continue                      # descrição que não identifica objeto fica isolada
-            if por_ramo and ramos[i] and ramos[j]:
+            if por_ramo and (ramos[i] or ramos[j]):
                 if ramos[i] == ramos[j]:      # art. 75, §1º, II — mesma natureza = mesmo ramo
                     union(i, j)
-                continue                      # ramos distintos NÃO somam, ainda que o texto se pareça
+                # ramos distintos NÃO somam, ainda que o texto se pareça. E um lado SEM ramo também
+                # não se cola num ramo pelo texto: medido no sweep de 19/11/2026, essa ponte era
+                # TRANSITIVA (union-find) — "coffee break" ~ "evento s/ ramo" ~ "material gráfico"
+                # punha gráfica, buffet, hospedagem e cenografia numa só "natureza" (SEDSODH 2024:
+                # 47 dispensas, R$ 2,07 mi). Sem ramo, só se agrupa com outro sem ramo, pelo texto.
+                continue
             if _cos(vecs[i], vecs[j]) >= limiar:
                 union(i, j)
     grupos: dict[int, list[int]] = {}
