@@ -1,0 +1,439 @@
+# cerebro_bateria.yaml — BATERIA DE RECALL do segundo cérebro (docs/ARQUITETURA-SEGUNDO-CEREBRO-ALVO.md §7).
+#
+# Cada pergunta tem a(s) NOTA(S) do vault que a respondem (`ok`), definida(s) ANTES de qualquer consulta.
+#   grupo dono   20 perguntas LITERAIS do dono (erros de digitação mantidos), gabarito pré-registrado em 14/11/2026
+#                (vm2:~/khoj-piloto/gabarito_r2.json, sha256 0a54c45c…) — é a rodada cega Khoj × jfn-brain.
+#   grupo casos  perguntas escritas pelo agente em 19/11/2026 a partir do resumo de notas de ~/vault/casos, no jeito
+#                curto do dono e SEM copiar o título; `resposta` = o que se espera ler; `contem` = trecho LITERAL
+#                que tem de existir na nota do gabarito (conferido por `tools/cerebro_bateria.py validar` — controle
+#                positivo do próprio gabarito: nota que mudou e perdeu o trecho derruba a validação, não o recall).
+# Medida: a nota certa entre as k primeiras NOTAS distintas devolvidas (recall@1/5/10, MRR@10).
+# Regras: pergunta nova só no FIM do grupo (ids são contrato); nunca ajustar pergunta para um buscador acertar.
+# Nada de CPF, e-mail, WhatsApp ou nome de pessoa física aqui (CNPJ e nº de processo são dado público).
+versao: 1
+# Notas que CITAM as perguntas da bateria ao pé da letra (a ata da rodada cega transcreve as 20 do dono): saem da
+# lista de TODOS os sistemas antes de contar a posição — senão o buscador "acerta" a ata, não a nota que responde.
+ignorar:
+- decisoes/2026-11-14-khoj-rodada-cega-perguntas-reais.md
+perguntas:
+- id: R01
+  grupo: dono
+  origem: Telegram/Yoda 2026-06-05
+  pergunta: Quero relatorio sobre a MGS anos 2023-2026 com cada ob paga mes a mesnuma tabela
+  ok:
+  - casos/iterj-mgs-clean-pagamentos.md
+- id: R02
+  grupo: dono
+  origem: Claude Code 2026-06-22
+  pergunta: o que vc esta considerando um split nessa pericia? mesmo empenho/RE? explica isso e porque nao seria duplicidade?
+  ok:
+  - casos/iterj-mgs-clean-pagamentos.md
+  - aprendizados/duplicidade-ob-competencia-vs-valor.md
+- id: R03
+  grupo: dono
+  origem: Claude Code 2026-06-19
+  pergunta: quero que leia os parametros dos contratos da mgs com o iterj e audite o contrato e seus pagamentos. quero saber se à luz das obrigacoes do contrato, dos dissídios trabalhistas, dos reajustes, repactuações e aditivos, se tudo foi pago em conformidade
+  ok:
+  - casos/iterj-mgs-clean-pagamentos.md
+  - notas/iterj-mgs-processos-sei.md
+- id: R04
+  grupo: dono
+  origem: Claude Code 2026-06-27
+  pergunta: e a pericia sobre os bombeiros?
+  ok:
+  - casos/pericia-bombeiros-funesbom-2024.md
+- id: R05
+  grupo: dono
+  origem: Claude Code 2026-07-12
+  pergunta: quero um pente-fino com relação a ong contato e seus socios a qualquer tempo, bem como suas relações, quanto ao projeto ambiente jovem da secretaria de estado do ambiente e sustentabilidade e/ou inea
+  ok:
+  - casos/ong-contato-emendatio.md
+- id: R06
+  grupo: dono
+  origem: Claude Code 2026-07-15
+  pergunta: veja como esta dividida a remuneracao ano a ano desses 30 anos da ppp e se isso faz sentido
+  ok:
+  - casos/ppp-souza-aguiar.md
+- id: R07
+  grupo: dono
+  origem: Claude Code 2026-09-18
+  pergunta: acha pra mim no sei rj esses documentos de auditoria do iterj por favor?
+  ok:
+  - casos/auditorias-gsi-decreto-50254-2026.md
+  - aprendizados/auditoria-decreto-50254-como-achar-no-sei.md
+- id: R08
+  grupo: dono
+  origem: Claude Code 2026-09-29
+  pergunta: qualquwr ilacao de angra deve virar pedido de esclarecime do tce e/ou representacao
+  ok:
+  - casos/angra-dos-reis-representacoes-tce-2026.md
+  - requerimentos/req-2026-010-tce-rj-angra-informacoes-e-esclarecimentos.md
+- id: R09
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: analise a gestao couto e queremos tudo o que seja suspeito, incomum, possa ter interesses escusos
+  ok:
+  - casos/gestao-couto-analise-2026-11-13.md
+  - jfn/gestao-couto.md
+- id: R10
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: veja que dia comecou a gestao ricardo couto rambem
+  ok:
+  - jfn/gestao-couto.md
+  - casos/gestao-couto-analise-2026-11-13.md
+- id: R11
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: vou ser presidente da comissao de orcamenro da alerj. quero que veja as atribuicoes da comissao
+  ok:
+  - notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md
+- id: R12
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: quero que voce estudo o orcamento do governo do estado e as leis orcamentarias e suas peculiaridades. quero um manual completo
+  ok:
+  - notas/manual-orcamento-publico-rj.md
+- id: R13
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: e queremos tambem perícia contábil em todos os contratos. quero saber se os valores deles foram pagos a maior ou a menor. até o presente momento.
+  ok:
+  - jfn/pericia-contabil.md
+  - relatorios/pericia-contabil-contratos-2026-11-13/README.md
+- id: R14
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: laudo motor a motor e suas melhorias
+  ok:
+  - notas/laudo-motores-jfn-2026-11-13.md
+- id: R15
+  grupo: dono
+  origem: Claude Code 2026-10-30
+  pergunta: e no site do tfe? cade os registros de la pra bater com as obs do siafe?
+  ok:
+  - aprendizados/fonte-ob-sempre-siafe-nunca-tfe.md
+- id: R16
+  grupo: dono
+  origem: Claude Code 2026-07-11
+  pergunta: fundo unico de previdencia é uma coisa e fundo soberano é outra. veja e procure direito esse índice das UGs
+  ok:
+  - notas/indice-ugs-siafe-estado.md
+- id: R17
+  grupo: dono
+  origem: Telegram/Yoda 2026-06-08
+  pergunta: tem indicio de cartel? me mostra fornecedores presos a um so orgao
+  ok:
+  - casos/varredura-concentracao-grupo-2026-06-12.md
+- id: R18
+  grupo: dono
+  origem: Claude Code 2026-11-13
+  pergunta: a aba sobrepreço precisa ser melhor analisada. nao pode comparar itens de unidades métricas diferentes com o mesmo preço. galão de água é diferente de copinho de agua por exemplo.
+  ok:
+  - jfn/sobrepreco-conferido.md
+- id: R19
+  grupo: dono
+  origem: Claude Code 2026-11-14
+  pergunta: quais orgaos tem orçamento e quanto executou de orçamento. ou seja, tem orcamento, tem empenho e tem execucao (pagamento) assim sabemos quais orgaos performam
+  ok:
+  - jfn/anos/2026.md
+  - jfn/anos/2025.md
+  - jfn/anos/2024.md
+  - jfn/anos/2023.md
+  - jfn/anos/2022.md
+  - jfn/anos/2021.md
+- id: R20
+  grupo: dono
+  origem: Claude Code 2026-06-22
+  pergunta: vamos colocar todos os sweeps direcionados para o tribunal de justiça do rio de janeiro e fundo especial do tribunal de justiça como um teste?
+  ok:
+  - casos/fachada-fundo-tj-036100.md
+  - hipoteses/2026-07-10-fundo-tj-fachadas-na-cauda.md
+- id: C01
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: empresa nova que recebeu da fundacao saude quase tudo por tac e trocou a socia depois
+  ok:
+  - casos/aviv-gestao-fserj.md
+  resposta: Empresa aberta em 29/03/2023, R$ 21,3 mi pagos, 97,2% via TAC; troca da sócia-administradora em 06/2025
+  contem: 97,2%
+- id: C02
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: casa civil pegou carona em ata de consorcio de municipio de minas, quanto foi pago?
+  ok:
+  - casos/casa-civil-mrc-carona-cim-jequitinhonha.md
+  resposta: 8 processos por adesão à ARP 061/2023 do CIM Jequitinhonha/MG somam R$ 50.324.935,47 em OB paga
+  contem: 50.324.935,47
+- id: C03
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: aquele caso da distribuidora de livros que a segov contratou por ata de sao paulo
+  ok:
+  - casos/cdel-segov-ata-de-sao-paulo.md
+  resposta: CDEL Cia Distribuidora e Editora de Livros — adesão a ata de São Paulo pela SEGOV
+  contem: 13.569.390
+- id: C04
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: a cesgranrio foi contratada por dispensa de instituicao de pesquisa, isso se sustenta?
+  ok:
+  - casos/cesgranrio-dispensa-art24-xiii.md
+  resposta: Dispensa do art. 24, XIII; processo 030001/005183/2025, R$ 5.315.548,68 pagos
+  contem: 5.315.548,68
+- id: C05
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: obra em que a medicao passou do que estava contratado e o boletim mostra saldo negativo
+  ok:
+  - casos/cidades-valplat-medicao-acima-do-contratado.md
+  resposta: 'Medição de fev/2024: sete itens com acumulado acima do contratado; excesso de R$ 279.831,37'
+  contem: 279.831,37
+- id: C06
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: coleta de lixo do degase cobrada na unidade errada
+  ok:
+  - casos/degase-ideal-coleta-kg-cobrado-por-litro.md
+  resposta: 'Contrato DEGASE 017/2023 (resíduos classe IIA): quilo cobrado por litro'
+  contem: 017/2023
+- id: C07
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: o cartao de natal dos servidores do degase foi pago sem o desconto da taxa?
+  ok:
+  - casos/degase-lecard-cartao-natalino-pago-sem-taxa-negativa.md
+  resposta: 'Contrato 019/2025: preço R$ 630,50 por cartão (650 − 3%); liquidado pelo valor de face R$ 1.240.850,00'
+  contem: 630,50
+- id: C08
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: repactuacao muito acima do reajuste da convencao coletiva no degase
+  ok:
+  - casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md
+  resposta: Gestor apurou CCT de 6,20% e a repactuação pedida chegava a ~24% (SEI-030002/008733/2024)
+  contem: 6,20%
+- id: C09
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: der pagou medicao de recapeamento antes da analise do controle interno
+  ok:
+  - casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md
+  resposta: '14ª medição do Contrato DER 024/2024: R$ 6.988.080,11 pagos pela OB 2025OB05796 em 26/12/2025, antes da análise prévia'
+  contem: 2025OB05796
+- id: C10
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: quanto a seeduc pagou pra eureka em 2025 sem licitacao
+  ok:
+  - casos/eureka-seeduc-inexigibilidade-2025.md
+  resposta: R$ 550.264.708,30 em 9 OB à EUREKA em 2025, por inexigibilidade
+  contem: 550.264.708,30
+- id: C11
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: teve uma empresa de logistica que a ia disse que era barraco e era galpao de verdade
+  ok:
+  - casos/fachada-pvax-niteroi.md
+  resposta: PVAX (R$ 285,4 mi) afastada por veredito humano — falso positivo do VLM de fachada
+  contem: PVAX
+- id: C12
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: aditivo de quase 50 por cento na faetec
+  ok:
+  - casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md
+  resposta: 1º TA de 01/11/2023 com acréscimo de 49,62% do valor inicial atualizado (Contrato 062/2022, Scalle)
+  contem: 49,62%
+- id: C13
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: duas empresas cotaram na mesma pesquisa de preco com o mesmo telefone
+  ok:
+  - casos/grana-guarailha-cotacoes-mesmo-telefone.md
+  resposta: GRANÁ 298 e GUARAILHA; sócio único da GUARAILHA é o da M L Distribuidora, inidônea; R$ 1.610.006,79 recebidos desde então
+  contem: 1.610.006,79
+- id: C14
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: grupo de empresas do mesmo dono que recebeu da fundacao saude, quantos cnpjs e quanto
+  ok:
+  - casos/grupo-caneca-fserj.md
+  resposta: 5 CNPJs (+4 SCPs) do mesmo sócio-administrador; 4 receberam ≈ R$ 181,8 mi da Fundação Saúde (UG 294200)
+  contem: 181,8
+- id: C15
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: compra de imovel de mais de cem milhoes por inexigibilidade
+  ok:
+  - casos/imovel-113-milhoes-construtora-internacional.md
+  resposta: 'Imóvel de R$ 113 milhões (Construtora Internacional): examina-se a instrução — avaliação prévia e justificativa de preço'
+  contem: Indício, não acusação
+- id: C16
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: pregao de desassoreamento de rios do inea com lances de centavos
+  ok:
+  - casos/inea-desassoreamento-pe-24-2023.md
+  resposta: 'PE 24/2023 do INEA: sessão 04/08/2023, ~16 licitantes, 6 lotes; lote 1 de R$ 42,28 mi para R$ 40,84 mi'
+  contem: 40,84
+- id: C17
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: o que tem do instituto rio metropole com patrocinio e denuncia do ministerio publico
+  ok:
+  - casos/irm-patrocinio-ti-e-consultoria-sob-denuncia-mprj.md
+  resposta: Denúncia do MPRJ trata de outros contratos do IRM (Engeconsult e R. Peotta); mesma autoridade assina os encaminhamentos
+  contem: Engeconsult
+- id: C18
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: microempresa de tecnologia que vive do cecierj
+  ok:
+  - casos/kratus-cecierj-microempresa-rotativa.md
+  resposta: 'KRATUS Tecnologia (33.780.199/0001-77): tamanho + dependência + controle'
+  contem: 33.780.199/0001-77
+- id: C19
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: distribuidoras de remedio com os mesmos administradores disputando os mesmos pregoes de prefeituras
+  ok:
+  - casos/medh-cannabr-coparticipacao-relacionadas.md
+  resposta: Duas distribuidoras com os mesmos dois administradores em seis certames municipais; R$ 36,7 milhões homologados
+  contem: 36,7
+- id: C20
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: empresa inidonea que ganhou pregao de papel na prefeitura
+  ok:
+  - casos/monsaras-inidonea-papel-reprografico-pcrj.md
+  resposta: 'Monsaras: certame 42498733000148-1-000489/2025 confrontado com sanção em cadastro federal'
+  contem: 000489/2025
+- id: C21
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: consorcio de mobilidade de sao goncalo ligado ao grupo vieira
+  ok:
+  - casos/muv-sao-goncalo-grupo-vieira.md
+  resposta: 'Consórcio MUV São Gonçalo (R$ 182 mi, Grupo Vieira): indício de grupo fracionado/direcionamento'
+  contem: MUV
+- id: C22
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: blindados da pm pagos quase tudo no fim do ano
+  ok:
+  - casos/nrtt-blindados-pm-fim-de-exercicio.md
+  resposta: R$ 67,3 mi por 20 blindados em 2023; R$ 25,4 mi num único dia (28/12/2023) em 7 OB
+  contem: 67,3
+- id: C23
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: duas empresas com o mesmo email pessoal vendendo material paradidatico pra educacao
+  ok:
+  - casos/photonlux-evolucao-elo-por-email-pessoal.md
+  resposta: PHOTONLUX recebeu R$ 385,8 mi em 13 OB (dez no mesmo dia 20/10/2023, R$ 270,0 mi); EVOLUÇÃO R$ 57,1 mi
+  contem: 385,8
+- id: C24
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: contrato do poupa tempo que mudou a faixa de atendimento por aditivo
+  ok:
+  - casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md
+  resposta: 'Contrato 010/2023: tabela de Fator de Atendimento termina na faixa 5; 2º TA de 07/06/2024 amplia'
+  contem: 010/2023
+- id: C25
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: prorrogacao de contrato de taxi aereo justificada pela boa parceria
+  ok:
+  - casos/processo-270131-lider-taxi-aereo.md
+  resposta: 'Processo 360 exemplar: prorrogação motivada por "boa parceria com essa renomada Contratada"; pareceres que não concluem'
+  contem: renomada Contratada
+- id: C26
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: aditivo de 45% dias depois de assinar contrato de pavimentacao
+  ok:
+  - casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md
+  resposta: CGE apontou aditivo de 45,4% dado 17 dias após a assinatura (R$ 99,6 mi → R$ 144,9 mi); consórcios da FP Vieira somam R$ 449,8 mi
+  contem: 45,4%
+- id: C27
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: nota fiscal de tenis paga duas vezes na seeduc
+  ok:
+  - casos/seeduc-brasil-comercio-nfe-paga-em-duplicidade-contrato-20-2025.md
+  resposta: NF-e 1391, 1392, 1399 e 1608 do Contrato 20/2025 em duas NL; bruto em duplicidade R$ 229.503,24
+  contem: 229.503,24
+- id: C28
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: evento de paraskate com repasse unico um dia antes
+  ok:
+  - casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md
+  resposta: 'Termo de Fomento 012/2025: repasse único de R$ 6.513.247,90 pela OB 2025OB00844 em 12/11/2025'
+  contem: 6.513.247,90
+- id: C29
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: emenda de 20 milhoes da saude pra hospital paga sem execucao
+  ok:
+  - casos/ses-fusve-hmk-emenda-20mi-paga-sem-execucao.md
+  resposta: FNS creditou R$ 20.000.000,00 no FES em 11/06/2024 (emenda da Comissão de Saúde); SEI-080001/013827/2024
+  contem: 080001/013827/2024
+- id: C30
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: a jucerja pagou empresa declarada inidonea pelo tcu?
+  ok:
+  - casos/sistematech-jucerja-inidoneidade-tcu.md
+  resposta: 'Grau médio: a leitura "pagamento a empresa inidônea" não se sustenta juridicamente; resta que a Administração não demonstra ter sabido'
+  contem: NÃO se sustenta
+- id: C31
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: kits de educacao no transito do ziraldo comprados por ata de instituto federal
+  ok:
+  - casos/stem-segov-carona-ata-ifmt-kits-transito.md
+  resposta: SEGOV pagou R$ 25.662.000,00 (2025OB06215, 30/12/2025) por 100.000 kits via ARP 90048/2024 do IFMT
+  contem: 25.662.000,00
+- id: C32
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: algum fornecedor do estado esta na lista suja do trabalho escravo?
+  ok:
+  - casos/viabras-lista-suja-mte.md
+  resposta: 'Um casamento: VIABRAS Engenharia (00.638.595/0001-05), ação fiscal de 2022'
+  contem: 00.638.595/0001-05
+- id: C33
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: empresa que perde todas as licitacoes de obra pra mesma vencedora em volta redonda
+  ok:
+  - casos/volta-redonda-construvalle-fourtech.md
+  resposta: CONSTRUVALLE venceu 103 de 114 (90,4%); FOURTECH perdeu todos os 14 certames, 8 para a Construvalle — cover bidding a apurar
+  contem: 90,4%
+- id: C34
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: uerj pagou estande em evento de inovacao pra propria organizadora
+  ok:
+  - casos/uerj-base-montagens-rio-innovation-week.md
+  resposta: Contrato 049/2024, inexigibilidade, R$ 6.510.400,00; OB 2024OB08221 em 15/08/2024; Base Montagens organiza o RIW
+  contem: 6.510.400,00
+- id: C35
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: empenho de valor simbolico com servico prestado depois de vencido o contrato no samu
+  ok:
+  - casos/tapevas-empenho-simbolico-vigencia-vencida.md
+  resposta: 'SEI-080002/011531/2026: empenho simbólico e serviço após o término da vigência (locação de mão de obra, SAMU)'
+  contem: 080002/011531/2026
+- id: C36
+  grupo: casos
+  origem: vault/casos (pergunta escrita pelo agente em 19/11/2026)
+  pergunta: secretaria de turismo pagou evento em lisboa antes de acontecer
+  ok:
+  - casos/setur-buzzline-pagamento-antes-do-evento.md
+  resposta: BTL Lisboa (NF 1249, R$ 1.370.194,19) paga em 27/02/2024, antes do evento; Contrato 010/2021
+  contem: 1.370.194,19

@@ -236,7 +236,17 @@ def resumo(con: sqlite3.Connection | None = None) -> dict:
 def caso(termo: str, k: int = 6) -> str:
     """O que o cérebro já sabe sobre um caso — para ler ANTES de reabri-lo. Texto curto, pronto para o agente."""
     mem = recordar(termo, k=k)
-    notas = buscar(termo, k=k)
+    aviso = None
+    if os.environ.get("JFN_CEREBRO_FUNDIDO", "1") != "0":
+        # fase 1 (19/11/2026): BM25 por nota do vault local dá a ordem, o cérebro resgata — recall@10 de 33 para
+        # 56 em 56 na bateria (tools/cerebro_bateria.py). Import tardio: cerebro_busca importa este módulo.
+        from compliance_agent import cerebro_busca
+        r = cerebro_busca.buscar_fundido(termo, k=k)
+        notas = [{"path": f["nota"], "heading": None, "snippet": f["trecho"] or ""} for f in r["notas"]]
+        fora = [f"{p} {v}" for p, v in r["pernas"].items() if v.startswith("INDISPONÍVEL")]
+        aviso = "  ATENÇÃO — parte da busca não respondeu: " + "; ".join(fora) if fora else None
+    else:
+        notas = buscar(termo, k=k)
     out = [f"CÉREBRO · o que já se sabe sobre: {termo}", ""]
     out.append(f"Memórias dos agentes ({len(mem)}):" if mem else "Memórias dos agentes: nenhuma sobre este termo.")
     for m in mem:
@@ -245,6 +255,8 @@ def caso(termo: str, k: int = 6) -> str:
     out.append(f"Notas do vault ({len(notas)}):" if notas else "Notas do vault: nenhuma sobre este termo.")
     for n in notas:
         out.append(f"  [{n['path']} › {n.get('heading') or '—'}] {' '.join(n['snippet'].split())[:300]}")
+    if aviso:
+        out.append(aviso)
     return "\n".join(out)
 
 
