@@ -144,6 +144,8 @@ async def main():
     ap.add_argument("--so-rj", action="store_true",
                     help="restringe o enxame às esferas estadual-RJ + municipal-Rio (CNPJ-raiz "
                          "42498600/42498733) — acende o índice do RJ sem gastar LLM no federal")
+    ap.add_argument("--incluir-federal", action="store_true",
+                    help="inclui órgãos federais/de outros entes (fora do escopo do mandato — padrão: só RJ)")
     ap.add_argument("--sem-pdf", action="store_true")
     ap.add_argument("--so-relatorio", action="store_true",
                     help="só (re)gera o PDF/XLSX dos vereditos JÁ avaliados — não re-roda o enxame (sem custo LLM)")
@@ -160,7 +162,9 @@ async def main():
             print(f"cláusulas extraídas: {extrair_todas_clausulas(con)}", flush=True)
         if args.clusters:
             print(f"clusters: {agrupar.construir_clusters(con)}", flush=True)
-        raizes = ("42498600", "42498733") if args.so_rj else None
+        # 19/11/2026, dono: "esquece a parte federal, nao queremos tratar disso" — RJ (Estado + Prefeitura do Rio) é o
+        # padrão; o federal só com --incluir-federal. Antes, sem --so-rj, 6 casos 🔴 do vault eram editais federais.
+        raizes = None if args.incluir_federal else ("42498600", "42498733")
         achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade, raizes_cnpj=raizes)
         achados.sort(key=lambda a: -a["risco"])
         print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
@@ -218,6 +222,8 @@ async def main():
         if a["risco"] >= 8:
             slug = f"edital-direcionamento-{a['evidencias']['cluster']}"
             nota = REPO.parent / "vault" / "casos" / f"{slug}.md"
+            if nota.exists():      # nunca regravar: a nota guarda órgão/esfera/arquivamento escritos depois (19/11/2026)
+                continue
             try:
                 nota.write_text(
                     f"---\ntipo: caso\nprojeto: jfn\nseveridade: 🔴 {a['risco']}/10\nstatus: aberto\n"
