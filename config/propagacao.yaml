@@ -171,6 +171,12 @@ fontes:
   regra_iss_retido:
     nome: Correção no detector de ISS retido na NF × OB
     sonda: {git: [compliance_agent/detector_iss_retido.py]}
+  pericia_agentes:
+    nome: Laudo novo ou refeito de perícia por agente (leitura integral do processo)
+    sonda: {pasta: "data/pericia_agentes", glob: "[0-9]*.json"}
+  autoaprimoramento_registro:
+    nome: Registro da automelhoria da perícia mudou (versão nova, veredito do portão, promoção)
+    sonda: {arquivo: data/autoaprimoramento/auto.db}
   memoria_claude:
     nome: Decisão do dono ou lição registrada na memória dos agentes
     sonda: {pasta: "~/.claude/projects/-home-ubuntu/memory", glob: "*.md", ignorar: [MEMORY.md]}
@@ -315,6 +321,19 @@ derivados:
     prioridade: 6
     efeito: {arquivo: data/indeterminados/estado.json}
     antes: "não existia — 4.296 laudos sem conclusão (18/11/2026) sem causa medida; processo-mãe citado nos autos não entrava em fila"
+  padroes:
+    nome: Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio)
+    onde: data/padroes/<id>.json (um por detector) · docs/PADROES-DE-IRREGULARIDADE.md
+    # sem LLM; o carona_acima_do_limite consulta o PNCP em série (cache em data/padroes/_cache_pncp_atas.json).
+    # Os 25 juntos levam ~5,2 h: cada rodada faz os de saída mais velha até ~45 min (tools.padroes_varrer.rodizio).
+    depende: [sei_arquivado, sei_lote, siafe_ob]
+    comando: ["{py}", "-m", "tools.padroes_varrer", "--orcamento-s", "2700"]
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 5400
+    prioridade: 7
+    antes: "não existia — os detectores rodaram uma vez, à mão, pelos agentes (18–19/11/2026); processo novo nunca era varrido"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos
@@ -442,6 +461,20 @@ derivados:
     timeout_s: 900
     prioridade: 8
     antes: "diário 06:25 (cron)"
+  cerebro_ponte:
+    nome: Ponte automelhoria e perícias por agente → segundo cérebro (fatos com chave, índice de entidade, notas e cor por órgão no vault)
+    onde: registro do cérebro (data/propagacao.db) → jfn-brain · vault ~/vault/jfn/pericias-agente/ e jfn/automelhoria-licoes.md · docs/ARQUITETURA-SEGUNDO-CEREBRO.md
+    # sem LLM e sem rede: só registra; quem envia é este despachante. Nível de prova medido por código (citação
+    # literal no texto arquivado do processo; OB por número e valor no SIAFE). Só relê o processo de laudo novo/alterado.
+    depende: [pericia_agentes, autoaprimoramento_registro]
+    comando: ["{py}", "-m", "compliance_agent.cerebro_ponte", "sincronizar"]
+    peso: leve
+    debounce_s: 600
+    intervalo_min_s: 1800
+    timeout_s: 1800
+    prioridade: 9
+    efeito: {arquivo: data/cerebro_ponte_estado.json}
+    antes: "não existia — veredito do portão ficava só em data/autoaprimoramento/auto.db e o laudo por agente só no JSON"
   vault_retratos:
     nome: Retratos do JFN no vault (perícia, orçamento por exercício e mês, gestão Couto, CGE × JFN, municípios, sobrepreço, sinais críticos)
     onde: vault ~/vault/jfn/ (índice jfn/00-retratos.md) → segundo cérebro (indexa a cada 10 min)
