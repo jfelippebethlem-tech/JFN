@@ -2549,6 +2549,43 @@ def api_pcrj_gastos_achados(limite_por_detector: int = 40):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/pcrj/aditivos")
+def api_pcrj_aditivos():
+    """D11 da Prefeitura contrato a contrato — acréscimos computáveis por termo × teto do art. 125,
+    estado (VERIFICADO = provado no termo; PENDENTE = sinal sem prova, com o motivo) e a COBERTURA
+    de termos coletados, que é o "de quantos?" do zero. Mesma régua do alerta (só leitura)."""
+    import sqlite3 as _sq
+    try:
+        ck = "pcrj:aditivos"
+        if d := _cache_get(ck, 600):
+            return JSONResponse(d)
+        from compliance_agent.pcrj.pericia_gastos import d11_avaliacao
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
+        con.row_factory = _sq.Row
+        try:
+            av = d11_avaliacao(con)
+        finally:
+            con.close()
+        cob = av["cobertura"]
+        out = {"ok": True, **av,
+               "estado_cobertura": ("VERIFICADO" if cob["com_aditivo_declarado"] and
+                                    cob["termos_consultados"] >= cob["com_aditivo_declarado"]
+                                    else "PENDENTE"),
+               "explicacao": ("Soma dos acréscimos quantitativos NOS TERMOS ADITIVOS publicados no "
+                              "PNCP sobre o valor inicial, contra o teto do art. 125 da Lei "
+                              "14.133/2021 (25%; 50% só para reforma de edifício ou equipamento; "
+                              "até o teto é lícito). Reajuste, repactuação, reequilíbrio (arts. 124 "
+                              "II-d, 134 e 135), prorrogação e supressão ficam fora. Só VERIFICADO "
+                              "vira alerta."),
+               "ressalva": ("Base = valor inicial publicado, não o atualizado que a lei manda usar. "
+                            "Valor global maior que o inicial NÃO é acréscimo (o global do PNCP "
+                            "cobre o período). Pagamento por contrato: INDISPONÍVEL — a despesa "
+                            "CGM é por credor e cobre 2019–2023. Indício ≠ acusação.")}
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/pcrj/beneficios_vinculo")
 def api_pcrj_beneficios_vinculo():
     """Comissionados/servidores municipais × benefício social (Bolsa Família etc.) DURANTE o vínculo

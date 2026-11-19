@@ -1333,26 +1333,29 @@ export async function renderAditivos(esf='estado'){
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨',drillSeCompleto('aditEstouraTeto',d.n_estoura_teto,a.filter(x=>x.estoura_teto),{titulo:'Aditivos que estouram o teto legal',nota:'Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício.'})
-        ||{sobre:'Aditivos que ultrapassam o limite do art. 125 da Lei 14.133 (25%, ou 50% em reforma de edifício). Estourar o teto não é automaticamente ilícito: a lei admite hipóteses excepcionais que o próprio processo tem de justificar. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑',
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouro VERIFICADO no termo','var(--rose)','🚨',drillSeCompleto('aditEstouraTeto',d.n_estoura_teto,a.filter(x=>x.estoura_teto),{titulo:'Aditivos que estouram o teto legal',nota:'Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício.'})
+        ||{sobre:'Aditivos que ultrapassam o limite do art. 125 da Lei 14.133 (25%, ou 50% em reforma de edifício). Estourar o teto não é automaticamente ilícito: a lei admite hipóteses excepcionais que o próprio processo tem de justificar. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(d.n_pendente),'Pendentes de prova','var(--amber)','⏳',
+        {sobre:'Há sinal mas a prova não fecha: termo não coletado, valor global maior que o inicial sem termo (o global do PNCP cobre o período, não é acréscimo), percentual declarado no próprio termo dentro do teto, base incompatível. Não é estouro e não entra em soma.'})}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑',
         {sobre:'Contratos com três ou mais termos aditivos. Aditar é lícito e às vezes necessário; a sequência longa é que levanta a pergunta sobre o planejamento original do objeto.'})}
-      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi(a.length?fmtPct(a[0].pct):'—','Pior acréscimo','var(--rose)',null,
+      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi((a.find(x=>x.estoura_teto)||{}).pct!=null?fmtPct(a.find(x=>x.estoura_teto).pct):'—','Pior acréscimo verificado','var(--rose)',null,
         {sobre:'O maior percentual de acréscimo da lista. O teto do art. 125 da Lei 14.133 é de 25% (50% em reforma de edifício) — acima disso, o aditivo exige justificativa que o próprio processo tem de trazer.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
+  /* estouro e pendente saem no cartão por contrato (mesmo do D11 da Prefeitura); série segue compacta */
+  const _intel2d11=x=>({...x,controle:x.contrato,teto:(x.teto_pct||25)/100,
+    pct:x.acrescimo_real!=null&&x.valor_inicial?x.acrescimo_real/x.valor_inicial:null,
+    pct_global:x.valor_inicial?(x.valor_global-x.valor_inicial)/x.valor_inicial:null,
+    acrescimo:x.acrescimo_real,pago:null,
+    pago_motivo:'sem ponte contrato↔ordem bancária na base — pagamento por contrato não aferível'});
   h+=`<div id="adt-list" class="grid">`+a.map(x=>{
-    const forte=x.estoura_teto;
+    if(x.tipo==='estouro'||x.tipo==='pendente')return _adtCartao(_intel2d11(x));
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${clk(x.cnpj,x.fornecedor||x.cnpj_fmt)} ${forte?`<span class="tag rose">${fmtPct(x.pct)}</span>`:`<span class="tag amber">${x.num_aditivos} aditivos</span>`}</div>
+      <div style="min-width:0"><div style="font-weight:700">${clk(x.cnpj,x.fornecedor||x.cnpj_fmt)} <span class="tag amber">${x.num_aditivos} aditivos</span></div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,46))}</div>
       <div class="dim" style="margin-top:2px">${esc((x.objeto||'').slice(0,90))}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;color:${forte?'var(--rose)':'var(--tx2)'}">${forte?fmtPct(x.pct):x.num_aditivos+'×'}</div><div class="dim">${forte?'acréscimo':'aditivos'}</div></div></div>
-      <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real!=null?` · acréscimo real ${fmtRc(x.acrescimo_real)}`:''}</span><b>teto ${x.teto_pct}%</b></div>
-      ${forte?`<div class="dim" style="font-size:12px;margin-top:4px">${x.acrescimo_confirmado
-        ?'✓ acréscimo <b>confirmado no termo</b> (natureza classificada como valor)'
-        :'⚠ percentual por <b>valor global − inicial</b>, que inclui reajuste e prorrogação — indício, não conclusão'}
-        · base do %: valor inicial <b>não atualizado</b> (o art. 125 mede sobre o atualizado; rente ao teto pode ser lícito)</div>`:''}
-      ${leitura(forte?`Contrato de <b>${esc(x.fornecedor||'—')}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real!=null?'Acréscimo classificado no termo: '+fmtRc(x.acrescimo_real)+'.':'Separar reajuste do acréscimo no termo aditivo.'}`:`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
-    forte?'hl':'');}).join('')+`</div>`;
+      <div class="right"><div class="num" style="font-weight:800;color:var(--tx2)">${x.num_aditivos}×</div><div class="dim">aditivos</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">inicial ${fmtR(x.valor_inicial)} · global publicado ${fmtR(x.valor_global)}</span><b>teto ${x.teto_pct}%</b></div>
+      <details style="margin-top:6px"><summary class="dim" style="cursor:pointer">Termos aditivos (${(x.termos||[]).length})</summary>${_adtTermos(x.termos)}</details>
+      ${leitura(`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')}. Aditamento em série é red-flag (OCDE/Banco Mundial) — verificar a justificativa de cada termo; o acréscimo computável somado está ${x.acrescimo_real!=null?'em '+_pct2(x.acrescimo_real/x.valor_inicial):'sem termo de acréscimo'}, dentro do teto.`)}`);}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h+blocoPeriodo([esf==='prefeitura'?'aditivos_prefeitura':'aditivos_estado'],'Termos aditivos por ano e mês');
 }
@@ -1605,6 +1608,85 @@ export async function renderBeneficiosPref(chips){
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
+/* ═══ D11 / ADITIVOS — apresentação por contrato (2026-11-19) ═══
+   Pedido do dono: "verifique o pcrj d11 aditivo estourado, vamos melhorar isso". A tela mostrava
+   título + descrição corrida e 28 achados que não eram da Prefeitura nem acréscimo. Agora, por
+   contrato: órgão, fornecedor, objeto, valor inicial, CADA termo com a natureza e o %, o acumulado
+   contra o limite aplicável, o pago (declarado INDISPONÍVEL quando não há fonte) e a prova. Os
+   números vêm prontos da régua única `limites_aditivo.avaliar_contrato` — aqui só se formata. */
+const _ADT_ESTADO={VERIFICADO:['rose','VERIFICADO no termo'],PENDENTE:['amber','PENDENTE de prova'],
+  DENTRO_DO_LIMITE:['teal','dentro do limite'],INDISPONIVEL:['','INDISPONÍVEL']};
+const _ADT_NAT={valor:'acréscimo de quantitativo',prazo:'prorrogação de prazo',reajuste:'reajuste / repactuação / reequilíbrio',
+  outro:'sem efeito no valor',misto:'misto (revisão + acréscimo)',indeterminada:'natureza não legível'};
+const _ADT_MOTIVO={termos_nao_coletados:'termos aditivos ainda não coletados do PNCP',
+  global_cresceu_sem_termo_publicado:'valor global maior que o inicial sem termo publicado — o global do PNCP cobre o período, não prova acréscimo',
+  percentual_declarado_no_termo_dentro_do_teto:'o próprio termo declara percentual dentro do teto — a base publicada no PNCP diverge',
+  base_do_termo_incompativel_com_o_contrato:'a base que o termo usa é de outra ordem de grandeza — termo possivelmente de outro contrato',
+  excesso_cabe_na_atualizacao_do_valor_inicial:'excesso pequeno: a lei mede sobre o inicial ATUALIZADO, que a fonte não traz',
+  natureza_indeterminada_pode_estourar:'termo misto ou sem natureza legível que, somado, passaria do teto',
+  acrescimo_computavel_acima_do_teto:'acréscimo computável nos termos acima do teto'};
+const _pct2=f=>f==null?'—':(f*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+const _adtTag=e=>{const m=_ADT_ESTADO[e]||['',e||'—'];return `<span class="tag ${m[0]}">${esc(m[1])}</span>`;};
+/* controle "CNPJ-1-SEQ/ANO" → API pública do PNCP (fonte primária, JSON que qualquer um confere) */
+const _adtProva=c=>{const m=/^(\d{14})-\d-(\d+)\/(\d{4})$/.exec(c||'');
+  return m?`https://pncp.gov.br/api/pncp/v1/orgaos/${m[1]}/contratos/${m[3]}/${parseInt(m[2],10)}/termos`:'';};
+function _adtBarra(pct,teto){
+  if(pct==null)return '<span class="dim">percentual não aferível</span>';
+  const lim=Math.max(pct,teto*1.6)||1,w=Math.min(100,pct/lim*100),t=teto/lim*100;
+  const cor=pct>teto?'var(--rose)':'var(--teal)';
+  return `<div style="position:relative;height:8px;border-radius:4px;background:color-mix(in oklch,var(--tx2) 14%,transparent);margin-top:6px" role="img" aria-label="acumulado ${_pct2(pct)} contra limite ${_pct2(teto)}">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;border-radius:4px;background:${cor}"></div>
+    <div style="position:absolute;left:${t}%;top:-3px;bottom:-3px;width:2px;background:var(--tx)" title="limite ${_pct2(teto)}"></div></div>`;
+}
+function _adtTermos(termos){
+  if(!termos||!termos.length)return '<div class="dim" style="margin-top:8px">Nenhum termo aditivo na base para este contrato.</div>';
+  return `<table class="tb" style="margin-top:8px"><thead><tr><th>Termo</th><th>Data</th><th>Natureza</th>
+    <th class="right">Valor (R$)</th><th class="right">% s/ inicial</th><th>No teto?</th></tr></thead><tbody>`+
+    termos.map(t=>`<tr title="${esc(t.objeto||'')}"><td>${esc(String(t.seq??'—'))}${t.tipo_termo?` <span class="dim">${esc(t.tipo_termo)}</span>`:''}</td>
+      <td>${esc(t.data?fmtData(String(t.data).slice(0,10)):'—')}</td>
+      <td>${esc(_ADT_NAT[t.natureza]||t.natureza)}${t.supressao?' <span class="dim">(supressão)</span>':''}${t.pct_declarado!=null?` <span class="dim">· termo declara ${_pct2(t.pct_declarado)}</span>`:''}${t.base_diverge?' <span class="tag amber">base diverge</span>':''}</td>
+      <td class="right">${t.valor?fmtR(t.valor).replace('R$ ',''):'—'}</td>
+      <td class="right">${_pct2(t.pct_sobre_inicial)}</td>
+      <td>${t.conta_no_teto?'<b>sim</b>':'não'}</td></tr>`).join('')+`</tbody></table>`;
+}
+function _adtCartao(x){
+  const v=x.estado==='VERIFICADO', prova=_adtProva(x.controle||x.contrato);
+  const pct=x.pct!=null?x.pct:x.pct_global;
+  return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+    <div style="min-width:0"><div style="font-weight:700">${esc(x.fornecedor||'—')} ${_adtTag(x.estado)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.orgao||'—')} · contrato ${esc(x.controle||x.contrato||'')}${x.tipo_instrumento?' · '+esc(x.tipo_instrumento):''}</div>
+      <div class="dim" style="margin-top:2px">${esc(corta(x.objeto||'',200))}</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${v?'var(--rose)':'var(--tx2)'}">${_pct2(pct)}</div>
+      <div class="dim">${x.pct!=null?'acréscimo computável':'global − inicial'}</div></div></div>
+    <table class="tb" style="margin-top:10px"><tbody>
+      <tr><td>Valor inicial</td><td class="right">${fmtR(x.valor_inicial)}</td></tr>
+      <tr><td>Acréscimos computáveis (art. 125)</td><td class="right">${x.acrescimo!=null?fmtR(x.acrescimo):'<span class="dim">sem termo</span>'}</td></tr>
+      ${x.supressao?`<tr><td>Supressões (computadas à parte)</td><td class="right">${fmtR(x.supressao)}</td></tr>`:''}
+      <tr><td>Acumulado × limite aplicável</td><td class="right">${_pct2(x.pct)} × ${_pct2(x.teto)}${x.tipo_objeto==='reforma'?' (reforma)':''}</td></tr>
+      <tr><td>Valor global publicado</td><td class="right">${fmtR(x.valor_global)} <span class="dim">(não é acréscimo)</span></td></tr>
+      <tr><td>Efetivamente pago</td><td class="right">${x.pago!=null?fmtR(x.pago):`<span class="tag">INDISPONÍVEL</span>`}</td></tr>
+    </tbody></table>
+    ${_adtBarra(x.pct,x.teto)}
+    <details style="margin-top:8px"${v?' open':''}><summary class="dim" style="cursor:pointer">Termos aditivos (${(x.termos||[]).length})</summary>${_adtTermos(x.termos)}</details>
+    <div class="dim" style="font-size:12px;margin-top:6px">${(x.motivos||[]).map(m=>'• '+esc(_ADT_MOTIVO[m]||m)).join('<br>')}</div>
+    ${x.pago_motivo?`<div class="dim" style="font-size:12px;margin-top:4px">Pagamento: ${esc(x.pago_motivo)}.</div>`:''}
+    <div class="dim" style="font-size:12px;margin-top:4px">Prova: ${prova?`<a href="${prova}" target="_blank" rel="noopener">termos no PNCP (API pública)</a>`:esc(x.prova||'PNCP')} · ${esc(x.ato||'Lei 14.133/2021, art. 125')} · base: valor inicial publicado, não atualizado</div>`,
+    v?'hl':'');
+}
+export async function painelD11(){
+  const d=await J('/api/pcrj/aditivos');
+  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const c=d.contagem||{},cob=d.cobertura||{},it=d.itens||[];
+  let h=`<div class="grid g2" style="margin-top:12px">${kpi(fmtN(c.VERIFICADO||0),'Estouro VERIFICADO no termo','var(--rose)','🚨',
+      {sobre:'Acréscimo quantitativo somado NOS TERMOS ADITIVOS acima do teto do art. 125 (25%; 50% só em reforma). Só estes viram alerta.'})}${kpi(fmtN(c.PENDENTE||0),'PENDENTES de prova','var(--amber)','⏳',
+      {sobre:'Há sinal, mas a prova não fecha — o motivo está em cada contrato. Não é estouro e não entra em soma nenhuma.'})}
+    ${kpi(`${fmtN(cob.termos_consultados||0)} / ${fmtN(cob.contratos||0)}`,'Contratos com termos consultados',d.estado_cobertura==='VERIFICADO'?'var(--teal)':'var(--amber)','📑',
+      {sobre:`Cobertura do D11: de ${fmtN(cob.contratos||0)} contratos da Prefeitura no PNCP, ${fmtN(cob.com_aditivo_declarado||0)} declaram aditivo e ${fmtN(cob.termos_consultados||0)} já tiveram os termos consultados (${fmtN(cob.com_termo||0)} com termo). Contrato sem termo consultado não foi julgado — zero aqui sem cobertura não é "limpo".`})}${kpi(fmtN(c.DENTRO_DO_LIMITE||0),'Termos lidos, dentro do limite','var(--teal)','✅',
+      {sobre:'Contratos cujos termos foram lidos e cujo acréscimo computável ficou até o teto — prorrogação, reajuste e reequilíbrio não contam.'})}</div>`;
+  h+=it.length?`<div class="grid" style="margin-top:12px">`+it.map(_adtCartao).join('')+`</div>`
+    :card(`<div class="muted">Nenhum contrato da Prefeitura com acréscimo acima do limite nem pendente — sobre ${fmtN(cob.termos_consultados||0)} contrato(s) com termos consultados de ${fmtN(cob.contratos||0)}.</div>`);
+  return h+`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+}
 export const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucessão de contratações do mesmo objeto/credor somando acima do teto de dispensa (Lei 14.133 art. 75)'],
   d8_credor_recem_aberto:['🐣','Credor recém-aberto','empresa criada há <180 dias já recebendo da Prefeitura'],
   d9_socio_na_folha:['👔','Sócio de credor na folha','sócio de empresa contratada com vínculo na folha municipal (Lei 14.133 art. 9º)'],
@@ -1617,7 +1699,10 @@ export async function renderGastosPref(){
   let h=cover('prefeitura','Perícia de gastos — detectores D7–D12',
     'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️')+acoesAba('gastos_pcrj');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`)+blocoPeriodo(['despesa_prefeitura','contratos_prefeitura'],'Despesa e contratações por ano e mês');
+  /* D11 sem alerta continua com chip: é por ele que se chega aos PENDENTES e à cobertura de termos —
+     sem isso, "0 alertas" sumia da tela e virava "nada a ver", que é o zero que engana. */
   const dets=Object.keys(d.detectores||{});
+  if(!dets.includes('d11_aditivo_estourado')){dets.push('d11_aditivo_estourado');d.detectores={...(d.detectores||{}),d11_aditivo_estourado:0};}
   /* A PROCEDÊNCIA JÁ EXISTIA E NÃO CHEGAVA À TELA: `_DET_ROTULO` guarda, no terceiro campo, o que
      cada detector mede e a base normativa — e o KPI só usava o ícone e o rótulo. Escrever texto
      novo aqui seria duplicar (e um dia divergir) o que a tabela já diz; o certo é ligar o que há. */
@@ -1639,7 +1724,8 @@ export async function renderGastosPref(){
       a.severidade==='alta'?'hl':'')).join('');
   }
   h+=`<div id="pg-list" class="grid">`+cards+`</div>`;
-  if(!cards)h+=card('<div class="muted">Nenhum achado deste detector na última corrida — a base é revarrida a cada sweep; um resultado limpo aqui é um resultado, não um vazio.</div>');
+  if(_gastosDet==='d11_aditivo_estourado')h+=await painelD11();
+  else if(!cards)h+=card('<div class="muted">Nenhum achado deste detector na última corrida — a base é revarrida a cada sweep; um resultado limpo aqui é um resultado, não um vazio.</div>');
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h+blocoPeriodo(['despesa_prefeitura','contratos_prefeitura'],'Despesa e contratações por ano e mês');
 }

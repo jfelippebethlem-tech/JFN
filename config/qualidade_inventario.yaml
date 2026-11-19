@@ -679,6 +679,7 @@ rotas:
   "/api/pcrj/download": {classe: operacional, afirma: "Baixa a íntegra.", fonte: "tabelas contrato_integra"}
   "/api/pcrj/emergencias": {classe: afirma, afirma: "Emergências à incumbente na Prefeitura (tools/pcrj_emergencia_incumbente): fundamento lido nos autos × contrato anterior no mesmo órgão × certame citado × prorr…", fonte: "tools.pcrj_emergencia_incumbente"}
   "/api/pcrj/fantasmas": {classe: afirma, afirma: "Servidor-fantasma na folha da Câmara/PCRJ — 8 sinais determinísticos (pcrj/fantasma_servidor), cache materializado em pcrj_fantasma_servidor.", fonte: "tabelas pcrj_fantasma_servidor"}
+  "/api/pcrj/aditivos": {classe: afirma, afirma: "D11 da Prefeitura contrato a contrato: acréscimos computáveis nos termos aditivos × teto do art. 125, estado VERIFICADO/PENDENTE e cobertura de termos…", fonte: "compliance_agent.pcrj.pericia_gastos.d11_avaliacao; compliance.db (pcrj_contratos, contrato_aditivo)"}
   "/api/pcrj/gastos_achados": {classe: afirma, afirma: "Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na folha · D10 rede de sócios entre concorrentes · aditivo estourado)…", fonte: "tabelas alertas"}
   "/api/pcrj/integra/{numero:path}": {classe: afirma, afirma: "Íntegra de um contrato: texto completo, processos SEI citados e link do original.", fonte: "tabelas contrato_integra, pcrj_contratos"}
   "/api/pcrj/integras": {classe: afirma, afirma: "Lista as íntegras capturadas.", fonte: "tabelas contrato_doe_sinal, contrato_integra, pcrj_contratos"}
