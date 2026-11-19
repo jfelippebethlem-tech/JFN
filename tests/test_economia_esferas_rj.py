@@ -34,19 +34,19 @@ def db(tmp_path):
     rows = [
         # base da mediana (10) — 5 órgãos genéricos (esfera 'outros'); quantidade>=2 é
         # exigência de _linhas (senão a linha é descartada e a mediana desloca).
-        ("Cadeira", "UN", 10.0, 2, "ORG A", "", "ORG A", "", "F", "11111111000111", "c1"),
-        ("Cadeira", "UN", 10.0, 2, "ORG B", "", "ORG B", "", "F", "11111111000111", "c2"),
-        ("Cadeira", "UN", 10.0, 2, "ORG C", "", "ORG C", "", "F", "11111111000111", "c3"),
-        ("Cadeira", "UN", 10.0, 2, "ORG D", "", "ORG D", "", "F", "11111111000111", "c5"),
-        ("Cadeira", "UN", 10.0, 2, "ORG E", "", "ORG E", "", "F", "11111111000111", "c6"),
+        ("Cadeira 45 cm", "UN", 10.0, 2, "ORG A", "", "ORG A", "", "F", "11111111000111", "c1"),
+        ("Cadeira 45 cm", "UN", 10.0, 2, "ORG B", "", "ORG B", "", "F", "11111111000111", "c2"),
+        ("Cadeira 45 cm", "UN", 10.0, 2, "ORG C", "", "ORG C", "", "F", "11111111000111", "c3"),
+        ("Cadeira 45 cm", "UN", 10.0, 2, "ORG D", "", "ORG D", "", "F", "11111111000111", "c5"),
+        ("Cadeira 45 cm", "UN", 10.0, 2, "ORG E", "", "ORG E", "", "F", "11111111000111", "c6"),
         # sobrepreço ESTADO RJ: (30-10)×100 = 2.000
-        ("Cadeira", "UN", 30.0, 100, "GOVERNO DO ESTADO DO RIO DE JANEIRO", "",
+        ("Cadeira 45 cm", "UN", 30.0, 100, "GOVERNO DO ESTADO DO RIO DE JANEIRO", "",
          "SECRETARIA DE ESTADO DE SAUDE", "rio de janeiro", "FE", "22222222000122", "cE"),
-        # sobrepreço PREFEITURA do Rio: (25-10)×100 = 1.500
-        ("Cadeira", "UN", 25.0, 100, "MUNICIPIO DE RIO DE JANEIRO", "",
+        # sobrepreço PREFEITURA do Rio: (22-10)×100 = 1.200 (fora da faixa de 80–125% do Estado: não é vizinho)
+        ("Cadeira 45 cm", "UN", 22.0, 100, "MUNICIPIO DE RIO DE JANEIRO", "",
          "SECRETARIA MUNICIPAL DE EDUCACAO", "rio de janeiro", "FP", "33333333000133", "cP"),
         # sobrepreço NITERÓI (fora dos dois entes): (40-10)×100 = 3.000 — NÃO pode aparecer
-        ("Cadeira", "UN", 40.0, 100, "MUNICIPIO DE NITEROI", "",
+        ("Cadeira 45 cm", "UN", 40.0, 100, "MUNICIPIO DE NITEROI", "",
          "SECRETARIA MUNICIPAL DE OBRAS", "niteroi", "FN", "44444444000144", "cN"),
     ]
     con.executemany(_INS, rows)
@@ -82,8 +82,8 @@ def test_default_restringe_aos_dois_entes_rj(db):
     assert any("ESTADO" in o for o in orgs)
     assert any("EDUCACAO" in o or "MUNICIPAL" in o for o in orgs)
     assert not any("OBRAS" in o for o in orgs), "Niterói (fora dos entes) vazou no achado"
-    # Niterói (3.000) fora; total = 2.000 (estado) + 1.500 (prefeitura)
-    assert d["economia_total"] == pytest.approx(3500.0)
+    # Niterói (3.000) fora; total = 2.000 (estado) + 1.200 (prefeitura)
+    assert d["economia_total"] == pytest.approx(3200.0)
 
 
 def test_mediana_continua_global(db):

@@ -31,11 +31,11 @@ def db(tmp_path):
     ORG = "00000000000100"    # órgão comprador (estadual)
     # Cadeira: mediana ~10 (5 compras). A inidônea paga 30 (excesso 20) × 10 unid, DENTRO da vigência
     rows = [
-        ("Cadeira", "UN", 10.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-01", "c1"),
-        ("Cadeira", "UN", 10.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-02", "c2"),
-        ("Cadeira", "UN", 11.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-03", "c3"),
-        ("Cadeira", "UN", 9.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-04", "c4"),
-        ("Cadeira", "UN", 30.0, 10, ORG, "SES", "SES", "RJ", "INIDONEA", INID, "2025-06-10", "c5"),
+        ("Cadeira 45 cm", "UN", 10.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-01", "c1"),
+        ("Cadeira 45 cm", "UN", 10.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-02", "c2"),
+        ("Cadeira 45 cm", "UN", 11.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-03", "c3"),
+        ("Cadeira 45 cm", "UN", 9.0, 10, ORG, "SES", "SES", "RJ", "L", LIMP, "2025-06-04", "c4"),
+        ("Cadeira 45 cm", "UN", 30.0, 10, ORG, "SES", "SES", "RJ", "INIDONEA", INID, "2025-06-10", "c5"),
     ]
     con.executemany(ins, rows)
     con.execute("INSERT INTO pncp_ente VALUES (?,?,?,?,?,?)", (ORG, "SES", "E", "E", "", ""))
@@ -98,7 +98,7 @@ def test_caixa_com_contagem_declarada_e_normalizada_por_unidade(db):
     # 'Caixa 10 UN' a R$ 300 = R$ 30 por cadeira. O agrupamento antigo ('caixaun' ≠ 'un') nunca
     # comparava; o normalizado compara por UNIDADE: mediana de [9,10,10,11,30,30] = 10,5 →
     # (30−10,5)×10 un + (30−10,5)×(2 caixas × 10) = 195 + 390.
-    _inserir(db, [("Cadeira", "Caixa 10 UN", 300.0, 2, "00000000000100", "SES", "SES", "RJ",
+    _inserir(db, [("Cadeira 45 cm", "Caixa 10 UN", 300.0, 2, "00000000000100", "SES", "SES", "RJ",
                    "INIDONEA", "99999999000199", "2025-06-11", "c6")])
     d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
     assert d["economia_vedada_total"] == pytest.approx(195.0 + 390.0)
@@ -106,7 +106,7 @@ def test_caixa_com_contagem_declarada_e_normalizada_por_unidade(db):
 
 def test_unidade_ambigua_fica_indeterminada_fora_da_conta(db):
     # 'Caixa' sem conteúdo: não se sabe quantas cadeiras — sai da soma, mas é CONTADA à parte
-    _inserir(db, [("Cadeira", "Caixa", 900.0, 2, "00000000000100", "SES", "SES", "RJ",
+    _inserir(db, [("Cadeira 45 cm", "Caixa", 900.0, 2, "00000000000100", "SES", "SES", "RJ",
                    "INIDONEA", "99999999000199", "2025-06-12", "c7")])
     d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
     assert d["economia_vedada_total"] == pytest.approx(200.0)

@@ -42,7 +42,7 @@ def _tudo(db):
 
 
 def test_grupo_homogeneo_com_sobrepreco_conta(tmp_path):
-    db = _banco(tmp_path, [("caneta esferografica azul", p) for p in (10, 11, 12, 11, 10, 25)])
+    db = _banco(tmp_path, [("caneta esferografica azul 1 mm", p) for p in (10, 11, 12, 11, 10, 25)])
     v, i = _tudo(db)
     r = economia_potencial(db, esfera="todas", min_certames=3, verificacao=v, info_certames=i)
     assert r["economia_total"] > 0

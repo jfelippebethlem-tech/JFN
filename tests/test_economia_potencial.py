@@ -33,12 +33,12 @@ def _db(tmp_path, linhas, nome="t.db"):
     return p
 
 
-def _base(desc="Cadeira", un="UN", precos=(10, 10, 10, 11, 9)):
+def _base(desc="Cadeira 45 cm", un="UN", precos=(10, 10, 10, 11, 9)):
     return [(desc, un, p, 10, f"O{i}", f"O{i}", "F1", "11111111000111", f"c{i}", 6, "")
             for i, p in enumerate(precos)]
 
 
-CARA = ("Cadeira", "UN", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+CARA = ("Cadeira 45 cm", "UN", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
 _KW = dict(esfera="todas", min_amostra=5, min_orgaos=2, min_certames=3)
 
 
@@ -79,7 +79,7 @@ def test_divergente_no_pncp_sai_da_conta(tmp_path):
 
 def test_acima_da_mediana_mas_abaixo_de_2x_nao_e_economia(tmp_path):
     """Pagar 1,5× a mediana é variação de mercado, não sobrepreço identificado."""
-    linha = ("Cadeira", "UN", 15.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    linha = ("Cadeira 45 cm", "UN", 15.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
     db = _db(tmp_path, _base() + [linha])
     d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
                               **_KW)
@@ -89,7 +89,7 @@ def test_acima_da_mediana_mas_abaixo_de_2x_nao_e_economia(tmp_path):
 def test_salto_de_preco_nao_vira_economia(tmp_path):
     """500× a mediana não é sobrepreço comparável: é unidade/produto diferente (antes era
     'capado' em 10× e SOMADO)."""
-    linha = ("Cadeira", "UN", 5000.0, 2, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    linha = ("Cadeira 45 cm", "UN", 5000.0, 2, "D", "D", "F2", "22222222000122", "cX", 6, "")
     db = _db(tmp_path, _base() + [linha])
     d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
                               **_KW)
@@ -117,7 +117,7 @@ def test_comodato_fica_fora(tmp_path):
 
 def test_unidade_ambigua_nao_entra(tmp_path):
     """Mesma descrição, unidade 'Caixa' sem quantidade declarada: INDETERMINADO."""
-    linha = ("Cadeira", "Caixa", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    linha = ("Cadeira 45 cm", "Caixa", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
     db = _db(tmp_path, _base() + [linha])
     d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
                               **_KW)
@@ -126,7 +126,7 @@ def test_unidade_ambigua_nao_entra(tmp_path):
 
 def test_caixa_com_quantidade_e_normalizada_antes_de_comparar(tmp_path):
     """'Caixa 10 UN' a R$ 300 = R$ 30/un — compara com a unidade avulsa (mediana R$ 10)."""
-    linha = ("Cadeira", "Caixa 10,00 UN", 300.0, 10, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    linha = ("Cadeira 45 cm", "Caixa 10,00 UN", 300.0, 10, "D", "D", "F2", "22222222000122", "cX", 6, "")
     db = _db(tmp_path, _base() + [linha])
     d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
                               **_KW)

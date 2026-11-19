@@ -30,19 +30,19 @@ def db(tmp_path, monkeypatch):
         # "Sonda" a ~10 em 5 compras; um órgão paga 35 (3,4×) a fornecedor SANCIONADO à época.
         # (Antes o caso era 100 = 10×; com a base homogênea de 2026-11-13 um salto ≥4× é
         # unidade/produto diferente e sai como INDETERMINADO — não vira dossiê.)
-        ("Sonda Nasogastrica", "UN", 10.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-01", "c1"),
-        ("Sonda Nasogastrica", "UN", 11.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-02-01", "c2"),
-        ("Sonda Nasogastrica", "UN", 9.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "c3"),
-        ("Sonda Nasogastrica", "UN", 10.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-05", "c5"),
-        ("Sonda Nasogastrica", "UN", 10.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-01-06", "c6"),
-        ("Sonda Nasogastrica", "UN", 35.0, 5, "D", "D", "RJ", "SUSPEITA LTDA", SANC, "2025-04-01", "c4"),
+        ("Sonda Nasogastrica 12 cm", "UN", 10.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-01", "c1"),
+        ("Sonda Nasogastrica 12 cm", "UN", 11.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-02-01", "c2"),
+        ("Sonda Nasogastrica 12 cm", "UN", 9.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "c3"),
+        ("Sonda Nasogastrica 12 cm", "UN", 10.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-05", "c5"),
+        ("Sonda Nasogastrica 12 cm", "UN", 10.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-01-06", "c6"),
+        ("Sonda Nasogastrica 12 cm", "UN", 35.0, 5, "D", "D", "RJ", "SUSPEITA LTDA", SANC, "2025-04-01", "c4"),
         # "Gaze" cara (3,5×) mas fornecedor LIMPO → NÃO entra no dossiê (fica no sobrepreço puro)
-        ("Gaze", "UN", 1.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-01", "g1"),
-        ("Gaze", "UN", 1.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-02-01", "g2"),
-        ("Gaze", "UN", 1.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "g3"),
-        ("Gaze", "UN", 1.1, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-03-05", "g5"),
-        ("Gaze", "UN", 0.9, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-03-06", "g6"),
-        ("Gaze", "UN", 3.5, 5, "D", "D", "RJ", "FORN OK", LIMPO, "2025-04-01", "g4"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-01", "g1"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-02-01", "g2"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "g3"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 1.1, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-03-05", "g5"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 0.9, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-03-06", "g6"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 3.5, 5, "D", "D", "RJ", "FORN OK", LIMPO, "2025-04-01", "g4"),
     ]
     con.executemany(ins, rows)
     con.execute("INSERT INTO sancoes_federais VALUES (?,?,?,?,?,?,?,?,?)",

@@ -170,8 +170,21 @@ def _comparacao_homogenea(con, min_amostra: int, min_certames: int, min_orgaos: 
         (fora.append((r, m)) if m else ok.append(r))
     g = agrupar(ok, _norm_item, min_amostra=min_amostra, min_certames=min_certames,
                 min_orgaos=min_orgaos)
+    # Medido em 19/11/2026 (COR-04, ~/vault/aprendizados/fp-medida-comparador-2026-11-19.md): a descrição do PNCP
+    # é o nome de CLASSE do CATMAT e o PNCP não publica código nem especificação. Unidade de CONTAGEM sem nenhuma
+    # medida na descrição ('Tubo Hospitalar'/'Unidade') não diz QUAL produto é → não serve de achado.
+    sem_spec = [grp for grp in g["grupos"] if _CHAVE_SEM_SPEC.match(grp.get("chave") or "")]
+    g["grupos"] = [grp for grp in g["grupos"] if not _CHAVE_SEM_SPEC.match(grp.get("chave") or "")]
+    g["indeterminados"].extend(
+        (r, "descrição de classe do catálogo sem especificação (unidade de contagem, nenhuma medida): o PNCP não "
+            "diz qual produto é — preço de um não é referência do outro")
+        for grp in sem_spec for r in grp["itens"])
     g["indeterminados"] = fora + g["indeterminados"]
     return g
+
+
+_CHAVE_SEM_SPEC = re.compile(r"^un\|[^|]*\|$")
+_VIZINHO = 0.8   # outro certame pagou entre 80 % e 125 % do preço → não é outlier isolado, é outro produto sob o mesmo nome
 
 
 def achados_do_grupo(grp: dict, fator: float = 2.0, z_min: float = 3.5):
@@ -184,8 +197,14 @@ def achados_do_grupo(grp: dict, fator: float = 2.0, z_min: float = 3.5):
     mad = mediana([abs(r["pn"] - med) for r in grp["itens"]]) or (med * 0.1)
     for r in grp["itens"]:
         z = (r["pn"] - med) / (1.4826 * mad)
-        if r["pn"] >= fator * med and z >= z_min:
-            yield r, z
+        if r["pn"] < fator * med or z < z_min:
+            continue
+        # grupo bimodal (19/11/2026, caso da agulha): preço acompanhado por OUTRO certame de OUTRO fornecedor não é
+        # sobrepreço isolado (o mesmo fornecedor repetindo o preço não serve de referência para si mesmo)
+        if any(x["certame"] != r["certame"] and x.get("fornecedor_cnpj") != r.get("fornecedor_cnpj")
+               and _VIZINHO * r["pn"] <= x["pn"] <= r["pn"] / _VIZINHO for x in grp["itens"]):
+            continue
+        yield r, z
 
 
 def resumo_grupo(grp: dict, n_amostra: int = 12) -> dict:
@@ -233,6 +252,8 @@ def _norm_ente(nome: str | None) -> str:
     from compliance_agent.medida_item import _norm as _n
     s = _n(nome or "—").upper()
     s = re.sub(r"^MRJ\s*-\s*", "", s)
+    # 'PREF.MUN.DO RIO DE JANEIRO' partia a Prefeitura em dois entes no card do órgão (medido 19/11/2026)
+    s = re.sub(r"^PREF\.?\s*MUN\.?\s*(DO|DE|DA)\s+", r"PREFEITURA MUNICIPAL \1 ", s)
     s = re.sub(r"\s*[-/]\s*RJ$", "", s)
     return re.sub(r"\s+", " ", s).strip() or "—"
 
