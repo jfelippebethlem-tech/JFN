@@ -23,6 +23,10 @@ sinal:
     credor e valor emitida depois, nos autos ou no SIAFE (medio; fraco se < 30 dias).
 explicacoes_inocentes:
   - Prestador recolheu o ISS por guia própria e o Estado reembolsou (guia/DARM nos autos → PENDENTE).
+  - A própria NF declara "ISS a ser recolhido no município de execução das obras pelo Prestador devido a Decisão
+    Judicial" apesar do "ISSQN RETIDO Sim" do emissor (Scalle × EMOP, 9 processos 330003/*) → PENDENTE. O mesmo
+    fornecedor nas NFs da FAETEC NÃO traz a ressalva: segue forte, mas pedir a decisão judicial (EMOP cita
+    "identificador 44648") antes de peça.
   - Retenção paga em OB separada ao Município, no processo ou na mesma NL (→ PENDENTE).
   - Federais destacadas e não retidas pelo tomador estadual (qualquer subconjunto é aceito).
   - Arredondamento de centavos (tolerância R$ 0,05 por NF; ISS > 20× a tolerância).

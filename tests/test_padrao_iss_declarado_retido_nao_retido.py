@@ -188,3 +188,16 @@ def test_negativo_real_barra_do_pirai_devolvida_e_reemitida():
     dev = {**base, "numero": "2026OB01115", "emissao": "20/03/2026", "status_envio": "Erro no Pagamento"}
     reem = {**base, "numero": "2026OB01290", "emissao": "26/03/2026", "status_envio": "Processado e Pago"}
     assert P.achado_devolvida("SEI-330002/049435/2025", dev, P.reemitida(dev, [reem, dev]), "doc 2") is None
+
+
+def test_negativo_nf_declara_prestador_recolhe_por_decisao_judicial_vira_pendente():
+    """FP medido em 18/11/2026: Scalle × EMOP (330003/002539/2024 e mais 9) — a NFS-e de Magé marca "ISSQN RETIDO
+    Sim", mas o corpo diz que o PRESTADOR recolhe por decisão judicial. Não pode ser forte."""
+    corpo = ("Município: Rio de Janeiro - ISS (3%) – Base de Cálculo (dedução do material no v alor de R$ 7.021.053,46): "
+             "R$ 210.631,60 (ISS a ser recolhido no município de\nexecução das obras pelo Prestador dev ido a Decisão "
+             "Judicial)")
+    provas = D.provas_de_recolhimento([("texto/011_nota_fiscal.txt", "Nota Fiscal - NF (87905704)", corpo)])
+    assert provas
+    nfs = D.extrair_nfs(MAGE_1001711)
+    [r] = D.avaliar_processo("SEI-330003/002539/2024", nfs, [_ob(8438266.82)], provas=provas)
+    assert r["estado"] == "PENDENTE" and P.achado_nf_x_ob(r)["grau"] == "medio"

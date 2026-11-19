@@ -318,7 +318,11 @@ _RE_TITULO_GUIA_ISS = re.compile(
     r"|programa[çc][ãa]o\W{1,3}de\W{1,3}desembolso.{0,60}\biss", re.I)
 _RE_CONTEUDO_GUIA_ISS = re.compile(
     r"Documento\s+de\s+Arrecada[çc][ãa]o\s+(?:de\s+Receitas\s+)?Municipa|ISSQN\s+RETEN[ÇC][ÃA]O\s+CORRENTE"
-    r"|IMPOSTO\s+ISS\s+PAG|Tipo\s+de\s+Reten[çc][ãa]o\s*\n\s*ISS", re.I)
+    r"|IMPOSTO\s+ISS\s+PAG|Tipo\s+de\s+Reten[çc][ãa]o\s*\n\s*ISS"
+    # A PRÓPRIA NF declara que o prestador recolhe por ordem judicial, apesar do "ISSQN RETIDO Sim" do sistema
+    # emissor (Scalle × EMOP, 330003/002539/2024: "ISS a ser recolhido no município de execução das obras pelo
+    # Prestador devido a Decisão Judicial"). Não é guia, mas é explicação inocente declarada → PENDENTE.
+    r"|recolhid\w*\s+no\s+munic[íi]pio.{0,80}?pelo\s+Prestador.{0,20}?Decis[ãa]o\s+Judicial", re.I | re.S)
 
 
 def provas_de_recolhimento(docs: list[tuple[str, str, str]]) -> list[str]:
