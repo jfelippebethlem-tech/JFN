@@ -56,8 +56,9 @@ def test_caixa_registrada_como_unidade_e_salto_nao_sobrepreco(tmp_path):
 
 
 def test_achado_traz_grupo_unidade_link_e_estado(tmp_path):
-    linhas = [("Caneta esferográfica azul", "Unidade", p) for p in (1.0, 1.1, 0.9, 1.0, 1.05)]
-    linhas.append(("Caneta esferográfica azul", "Caixa 10,00 UN", 30.0))   # R$ 3,00/un
+    # item ESPECIFICADO (ponta 1,0 mm): desde 19/11/2026 classe sem medida ('Caneta'/'Unidade') vai a INDETERMINADO
+    linhas = [("Caneta esferográfica azul 1,0 mm", "Unidade", p) for p in (1.0, 1.1, 0.9, 1.0, 1.05)]
+    linhas.append(("Caneta esferográfica azul 1,0 mm", "Caixa 10,00 UN", 30.0))   # R$ 3,00/un
     db = _db(tmp_path, linhas)
     d = sobrepreco(db_path=db, esfera="todas", verificacao={})
     assert d["n"] == 1
