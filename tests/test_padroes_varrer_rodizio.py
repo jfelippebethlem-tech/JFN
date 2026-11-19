@@ -26,3 +26,18 @@ def test_primeiro_entra_mesmo_maior_que_o_orcamento(tmp_path, monkeypatch):
     _saida(tmp_path, "longo", 4000, 1000)
     _saida(tmp_path, "curto", 50, 2000)
     assert PV.rodizio(2700, ["longo", "curto"]) == ["longo"]
+
+
+def test_paralelo_roda_cada_id_num_processo_e_conta_falhas(monkeypatch):
+    import subprocess as sp
+    chamados = []
+
+    def run(cmd, **kw):
+        i = cmd[cmd.index("--id") + 1]
+        chamados.append(i)
+        return sp.CompletedProcess(cmd, 1 if i == "b" else 0, json.dumps({"id": i}), "quebrou" if i == "b" else "")
+
+    monkeypatch.setattr(PV.subprocess, "run", run)
+    monkeypatch.setattr(PV, "mem_disponivel_gb", lambda: 99.0)
+    assert PV.em_paralelo(["a", "b", "c"], 2) == 1
+    assert sorted(chamados) == ["a", "b", "c"]

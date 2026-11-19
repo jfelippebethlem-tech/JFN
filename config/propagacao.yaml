@@ -347,10 +347,12 @@ derivados:
     nome: Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio)
     onde: data/padroes/<id>.json (um por detector) · docs/PADROES-DE-IRREGULARIDADE.md
     # sem LLM; o carona_acima_do_limite consulta o PNCP em série (cache em data/padroes/_cache_pncp_atas.json).
-    # Os 25 juntos levam ~5,2 h: cada rodada faz os de saída mais velha até ~45 min (tools.padroes_varrer.rodizio).
+    # Os 25 juntos levam ~5,2 h na VM-1. Desde 19/11/2026 (dono: "rode o que precisar na vm2 e no it campo") rodam
+    # TODOS no it-campo sobre a réplica só-leitura (sqlite3_rsync + rsync do acervo), em paralelo, e o JSON volta com
+    # md5 conferido; sem it-campo cai no rodízio local de 45 min (só com carga ≤ 7). Ver tools/padroes_no_itcampo.sh.
     depende: [sei_arquivado, sei_lote, siafe_ob]
-    comando: ["{py}", "-m", "tools.padroes_varrer", "--orcamento-s", "2700"]
-    peso: pesado
+    comando: ["bash", "tools/padroes_no_itcampo.sh"]
+    peso: leve
     debounce_s: 1800
     intervalo_min_s: 21600
     timeout_s: 5400
