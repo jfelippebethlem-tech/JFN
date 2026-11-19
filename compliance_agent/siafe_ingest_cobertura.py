@@ -51,6 +51,7 @@ def medir_ob(con, exercicios=EXERCICIOS) -> dict:
     out = {}
     vaz = ", ".join(f"SUM(COALESCE({c},'')='')" for c in CAMPOS_OB)
     for ex in exercicios:
+        # ob-qualquer-status: volume e campos vazios de TODA a coleta (metadado; não soma pago)
         r = con.execute(f"SELECT COUNT(*), COUNT(DISTINCT ug_emitente), MAX(coletado_em), {vaz} "
                         "FROM ob_orcamentaria_siafe WHERE exercicio=?", (ex,)).fetchone()
         n = r[0]
