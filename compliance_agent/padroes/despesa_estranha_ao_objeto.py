@@ -36,14 +36,23 @@ GREP = r"jantar|almo[cç]o|confraterniza|coquetel|happy hour|ceia|dia do servido
 NOMES = ["nota", "_nf", "fatura", "ordem", "_os", "atest", "medi", "planilha", "relat", "boletim"]
 TIT_EXEC = re.compile(r"nota fiscal|\bNFS?e?\b|fatura|ordem de servi[cç]o|\bOS\b|atestad|medi[cç][aã]o|"
                       r"planilha|relat[oó]rio (de execu|fotogr|do evento|final)|boletim", re.I)
-_FESTA = re.compile(r"jantar|almo[cç]o|confraterniza\w*|coquetel|happy hour|\bceia\b|festa\b|celebra[cç][aã]o de "
-                    r"(fim|encerramento)|comemora[cç][aã]o", re.I)
+# Refeição sozinha NÃO é festa: contrato de alimentação de presídio/hospital/socioeducativo fornece "jantar servidor"
+# e "almoço - funcionários" a quem está de serviço — 1ª varredura (19/11/2026): 39 dos 41 "fortes" eram isso (Qualybem,
+# Cassarotti, Nova Rodovia, Locasem…). O sinal exige o EVENTO: confraternização, coquetel, jantar/almoço DE algo.
+_FESTA = re.compile(r"confraterniza\w*|coquetel|happy hour|ceia de natal|festa de (fim|encerramento)|"
+                    r"(jantar|almo[cç]o)\s+(de|do|da|para)\s+(encerramento|confraterniza|gala|secret[aá]rios|natal|fim de "
+                    r"ano|homenagem|comemora|celebra)", re.I)
+# contexto de FORNECIMENTO DE ALIMENTAÇÃO (o comensal é o objeto do contrato) — fora
+_ALIMENTACAO = re.compile(r"\bpresos?\b|internos?\b|pacientes?|adolescentes?|socioeducand|acompanhantes?|\bdieta|"
+                          r"desjejum|kit[- ]lanche|refeit[oó]rio|merenda|colação", re.I)
 _BENEF = re.compile(r"\bservidor(es|as)?\b|funcion[aá]ri[oa]s|colaborador(es|as)|secret[aá]ri[oa]s de estado|"
-                    r"\bsecret[aá]ri[oa]s\b|equipe da secretaria|quadro de pessoal", re.I)
+                    r"\bsecret[aá]rios\b|equipe da secretaria|quadro de pessoal", re.I)
 _DIA_SERVIDOR = re.compile(r"dia do servidor", re.I)
-_BRINDE = re.compile(r"brindes?|presentes?|lembran[cç]as?", re.I)
+_EVENTO = re.compile(r"almo[cç]o|jantar|evento|buffet|coff?ee?|coquetel|festa|show|comemora", re.I)
+# "presente" sozinho é "o presente atestado"/"público presente" (1ª varredura: 5 de 6 médios) — só o presente DADO
+_BRINDE = re.compile(r"brindes?|presentes?\s+(para|aos?|de natal|de fim de ano)|lembran[cç]as?|kits? de natal", re.I)
 _TI = re.compile(r"\bservidor(es)?\s+(de\s+)?(rede|dados|arquivos|aplica|virtual|f[ií]sico|web|backup|rack|storage|"
-                 r"blade|hospedagem|banco de dados|e-?mail|dns|proxy)|hospedagem de servidor", re.I)
+                 r"blade|hospedagem|banco de dados|e-?mail|dns|proxy|v[ií]deo|m[ií]dia|streaming)|hospedagem de servidor", re.I)
 _TRABALHO = re.compile(r"capacita[cç]|treinamento|curso|oficina|semin[aá]rio|workshop|congresso|reuni[aã]o de "
                        r"trabalho|plant[aã]o|opera[cç][aã]o|tropa|efetivo|frente de trabalho|mutir[aã]o|aula|"
                        r"forma[cç][aã]o|palestra|f[oó]rum|confer[eê]ncia", re.I)
@@ -57,7 +66,7 @@ def avaliar_texto(texto: str) -> dict | None:
     for m in _FESTA.finditer(t):
         jan = t[max(0, m.start() - 150):m.end() + 150]
         b = _BENEF.search(jan)
-        if not b or _TI.search(jan):
+        if not b or _TI.search(jan) or _ALIMENTACAO.search(jan):
             continue
         g = "fraco" if _TRABALHO.search(jan) else "forte"
         if melhor is None or (g == "forte" and melhor["grau"] != "forte"):
@@ -65,7 +74,12 @@ def avaliar_texto(texto: str) -> dict | None:
     if melhor:
         return melhor
     for m in _DIA_SERVIDOR.finditer(t):
-        return {"grau": "medio", "trecho": C.trecho(t, m.start(), m.end(), 150)}
+        jan = t[max(0, m.start() - 200):m.end() + 200]
+        if _ALIMENTACAO.search(jan):
+            continue
+        # evento/refeição pago no Dia do Servidor (MRC "1º Evento em comemoração ao Dia do Servidor"; PGERJ coffee break)
+        g = "forte" if _EVENTO.search(jan) else "medio"
+        return {"grau": g, "trecho": C.trecho(t, m.start(), m.end(), 150)}
     for m in _BRINDE.finditer(t):
         jan = t[max(0, m.start() - 120):m.end() + 120]
         if _BENEF.search(jan) and not _TI.search(jan):

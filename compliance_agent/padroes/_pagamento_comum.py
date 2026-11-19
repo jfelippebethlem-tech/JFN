@@ -211,7 +211,15 @@ def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None
                     nomes: list[str] | None = None) -> dict[str, list[str]]:
     """{tag: [nomes de .txt]} cujo texto casa `padrao` (grep -E, sem caixa) — I/O em ionice, sem abrir 10 mil pastas
     em Python. Quem chama confere o documento contra o manifesto (órfão não conta)."""
+    import hashlib
     import subprocess
+    import time
+    # Varredura inteira custa ~45 min de I/O com a VM carregada: o resultado do acervo todo fica em cache por 12 h
+    # (recalibrar uma regra não exige reler 14 GB). `so`/`limite` nunca usam nem gravam o cache.
+    chave = hashlib.sha1(f"{padrao}|{sorted(nomes or [])}".encode()).hexdigest()[:16]
+    cache = RAIZ / "data" / "padroes" / "_grep_cache" / f"{chave}.json"
+    if not so and not limite and cache.is_file() and time.time() - cache.stat().st_mtime < 12 * 3600:
+        return json.loads(cache.read_text(encoding="utf-8"))
     alvo = [str(p / "texto") for p in pastas(so)][: limite or None]
     out: dict[str, list[str]] = {}
     for i in range(0, len(alvo), 400):
@@ -224,6 +232,9 @@ def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None
             m = re.search(r"sei_arquivo/([^/]+)/texto/(.+)$", linha)
             if m:
                 out.setdefault(m[1], []).append(m[2].split("/")[-1])
+    if not so and not limite:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(out), encoding="utf-8")
     return out
 
 
