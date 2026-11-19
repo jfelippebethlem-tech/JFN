@@ -324,10 +324,15 @@ def fontes_externas(idx: Indices, numero_sei: str, *, cnpjs: set[str] | None = N
         _ev("SIGA contratos", "houve_contrato",
             f"contrato SIGA {id_c} ({sit or 'situação n/d'}), {_brl(valor or 0)}, data {data or '?'}",
             f"siga_contratos.id_contrato={id_c}", est, valor)
+    por_contrato: dict[tuple, list[str]] = defaultdict(list)       # uma evidência por contrato, não por OB
     for _, proc_c, id_t, credor, est, ob in idx.vinculo.get(k, []):
+        por_contrato[(proc_c or "?", id_t or "n/d")].append(str(ob))
+    for (proc_c, id_t), obs in sorted(por_contrato.items()):
+        obs = sorted(set(obs))
         _ev("vínculo OB↔contrato (autos)", "processo_do_contrato",
-            f"OB {ob} deste pagamento ligada ao contrato do processo {proc_c or '?'} (TCE-RJ {id_t or 'n/d'})",
-            f"vinculo_ob_contrato.ob={ob}", "VERIFICADO")
+            f"{len(obs)} OB deste pagamento ligada(s) ao contrato do processo {proc_c} (TCE-RJ {id_t}): "
+            f"{', '.join(obs[:5])}{'…' if len(obs) > 5 else ''}",
+            f"vinculo_ob_contrato.contrato={id_t}", "VERIFICADO")
     a, b, c = (k[4:].split("/") + ["", "", ""])[:3] if k else ("", "", "")
     if a:
         frase = f'"{a} {b} {c}"'
