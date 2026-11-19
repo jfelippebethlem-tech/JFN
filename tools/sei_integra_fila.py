@@ -500,6 +500,16 @@ TETO_PROCESSO_S = int(os.environ.get("INTEGRA_TETO_PROCESSO_S", "900"))
 TETO_ARQUIVAR_S = int(os.environ.get("INTEGRA_TETO_ARQUIVAR_S", "900"))
 
 
+def _causa_da_saida(saida: str) -> str:
+    """A linha que diz POR QUE a etapa caiu: a última com `Error`/`Exception`/`Traceback` (num erro do Playwright a
+    última linha é o `call log` — "- <ws connected> ws://…" —, não a mensagem); sem ela, a última não vazia."""
+    linhas = [ln.strip() for ln in (saida or "").splitlines() if ln.strip()]
+    for ln in reversed(linhas):
+        if re.search(r"Error|Exception|Traceback|FALHOU|Killed", ln):
+            return ln[:200]
+    return linhas[-1][:200] if linhas else "sem saída"
+
+
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
     """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'adiado' | 'erro'.
 
@@ -531,8 +541,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             for causa in causas:
                 _log(f"  {proc}: {causa[:200]}")
             if not causas:     # 18/11/2026: 25 "erro" seguidos no it-campo, ~30 s cada, sem uma linha de causa
-                fim = [ln for ln in (getattr(r1, "stdout", "") or "").splitlines() if ln.strip()][-1:]
-                _log(f"  {proc}: captura rc={rc} — {fim[0].strip()[:200] if fim else 'sem saída'}")
+                _log(f"  {proc}: captura rc={rc} — {_causa_da_saida(getattr(r1, 'stdout', '') or '')}")
             return "erro"
         r2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                             cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S, text=True,
@@ -549,8 +558,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             # é o que distingue PDF quebrado de navegador caído.
             for etapa, r in (("captura", r1), ("arquivar", r2)):
                 if r.returncode != 0:
-                    fim = [ln for ln in (getattr(r, "stdout", "") or "").splitlines() if ln.strip()][-1:]
-                    _log(f"  {proc}: {etapa} rc={r.returncode} — {fim[0].strip()[:200] if fim else 'sem saída'}")
+                    _log(f"  {proc}: {etapa} rc={r.returncode} — {_causa_da_saida(getattr(r, 'stdout', '') or '')}")
             return "erro"
         return "ok"
     except subprocess.TimeoutExpired:

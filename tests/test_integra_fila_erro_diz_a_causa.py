@@ -44,3 +44,13 @@ def test_captura_que_cai_antes_do_primeiro_documento_tambem_diz_a_causa(monkeypa
     monkeypatch.setattr(F, "_log", linhas.append)
     assert F._baixar_e_arquivar("270089/001815/2023", env={}) == "erro"
     assert any("captura" in ln and "Target closed" in ln for ln in linhas), linhas
+
+
+def test_erro_do_playwright_mostra_a_mensagem_nao_o_call_log():
+    """18/11/2026 23h, it-campo: a causa registrada era "- <ws connected> ws://127.0.0.1:9302/devtools/browser/…" — a
+    última linha do `call log` do Playwright, não a mensagem do erro."""
+    saida = ("login OK\nplaywright._impl._errors.TargetClosedError: Target page, context or browser has been closed\n"
+             "Call log:\n  - <ws connected> ws://127.0.0.1:9302/devtools/browser/8ed76c3c\n")
+    assert "TargetClosedError" in F._causa_da_saida(saida)
+    assert F._causa_da_saida("baixando 3 docs…\n") == "baixando 3 docs…"
+    assert F._causa_da_saida("") == "sem saída"
