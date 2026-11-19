@@ -510,7 +510,8 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
     frio = FRIO
     if FRIO_REMOTO:
         try:
-            frio = _baixar(itens, BASE_NO / "pdfs" / no)
+            frio = _baixar([r for r in itens if not (saida / r[:-4]).with_suffix(".ocr_reserva.txt").exists()],
+                           BASE_NO / "pdfs" / no)
         except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
             print(json.dumps({"ev": "baixar_falhou", "erro": str(e)[:300]}, ensure_ascii=False), flush=True)
             return 1
@@ -526,6 +527,13 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
             break
         pdf = frio / rel
         destino = saida / rel[:-4]
+        if destino.with_suffix(".ocr_reserva.txt").exists() and destino.with_suffix(".ocr_reserva.json").exists():
+            # já lido numa rodada anterior e ainda não conferido na VM-1 (entrega caiu): não relê. Reler regravava o
+            # .json (outro "em") e a entrega com --ignore-existing nunca mais conferia o md5 (19/11, itcampo-win).
+            if FRIO_REMOTO:
+                (frio / rel).unlink(missing_ok=True)
+            feitos.append(rel)
+            continue
         try:
             t1 = time.time()
             texto, npag, total = ler_pdf(eng, pdf)

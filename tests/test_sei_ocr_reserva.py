@@ -329,3 +329,33 @@ def test_entregar_manda_a_lista_do_md5_em_bytes(tmp_path, monkeypatch):
     ok, ruim = R.entregar(["integra_1/000.pdf"], saida)
     assert ok == ["integra_1/000.pdf"] and not ruim
     assert isinstance(entradas[-1], bytes) and b"\r" not in entradas[-1]
+
+
+def test_rodar_nao_rele_o_que_ja_esta_lido_e_pendente_de_entrega(tmp_path, monkeypatch):
+    """Item já lido (txt+json locais, entrega não conferida) volta como `sobra`: não relê nem baixa de novo —
+    reler regravava o .json e o --ignore-existing nunca mais conferia (19/11, itcampo-win)."""
+    import subprocess as sp
+    monkeypatch.setattr(R, "BASE_NO", tmp_path)
+    monkeypatch.setattr(R, "PAUSA", tmp_path / ".pausa")
+    monkeypatch.setattr(R, "FRIO_REMOTO", "vm2-ts:x/")
+    monkeypatch.setattr(R, "carga", lambda: (0.0, 99.0))
+    rel = "integra_1/000.pdf"
+    d = tmp_path / "out" / "no-x" / "integra_1"
+    d.mkdir(parents=True)
+    (d / "000.ocr_reserva.txt").write_text("t")
+    (d / "000.ocr_reserva.json").write_text("{}")
+    concluido = {}
+
+    def ssh(cmd, entrada=None, timeout=300):
+        if cmd.startswith("concluir"):
+            concluido.update(json.loads(entrada))
+        return sp.CompletedProcess([], 0, json.dumps({"itens": [rel], "motivo": "teste"}), "")
+
+    baixados = []
+    monkeypatch.setattr(R, "_ssh_vm1", ssh)
+    monkeypatch.setattr(R, "_baixar", lambda itens, dest: baixados.extend(itens) or dest)
+    monkeypatch.setattr(R, "motor_ocr", lambda: None)
+    monkeypatch.setattr(R, "ler_pdf", lambda *a: (_ for _ in ()).throw(AssertionError("releu")))
+    monkeypatch.setattr(R, "entregar", lambda rels, saida: (rels, []))
+    assert R.rodar(60, 8, "no-x") == 0
+    assert baixados == [] and concluido["entregues"] == [rel]
