@@ -554,12 +554,12 @@ derivados:
     efeito: {arquivo: data/cerebro_ponte_estado.json}
     antes: "não existia — veredito do portão ficava só em data/autoaprimoramento/auto.db e o laudo por agente só no JSON"
   cerebro_bateria:
-    nome: Bateria de recall do segundo cérebro (56 perguntas reais → a nota certa volta entre as 10 primeiras?)
+    nome: Bateria de recall do segundo cérebro (78 perguntas → a nota certa volta entre as 10 primeiras? o cruzamento por entidade vem inteiro?)
     onde: data/cerebro_bateria/ultimo.json + historico.jsonl · docs/ARQUITETURA-SEGUNDO-CEREBRO-ALVO.md §7
     # só leitura (jfn-brain pela Tailnet + índice local do vault), sem LLM. Roda depois que as notas geradas mudam,
     # no máximo 1× por dia. `--minimo 53` é a catraca: recall@10 do `fundido` abaixo de 53/56 = falha visível aqui.
     depende: [cerebro_ponte, vault_retratos, vault_casos]
-    comando: ["{py}", "tools/cerebro_bateria.py", "medir", "--sistemas", "brain,local_bm25,fundido", "--rotulo", "despachante", "--minimo", "53"]
+    comando: ["{py}", "tools/cerebro_bateria.py", "medir", "--sistemas", "brain_mcp,brain_entity,fundido", "--rotulo", "despachante", "--minimo", "53"]
     peso: leve
     debounce_s: 1800
     intervalo_min_s: 86400

@@ -1,0 +1,3301 @@
+{
+ "rotulo": "depois-fase4",
+ "medido_em": "2026-11-19T09:25:11-0300",
+ "perguntas": 78,
+ "estado": "VERIFICADO",
+ "placar": {
+  "brain_mcp": {
+   "total": {
+    "n": 78,
+    "indisponivel": 0,
+    "mrr10": 0.896,
+    "mediana_s": 0.32,
+    "max_s": 0.68,
+    "recall1": 64,
+    "recall5": 77,
+    "recall10": 78,
+    "achadas": 120,
+    "esperadas": 127,
+    "completas": 75
+   },
+   "casos": {
+    "n": 36,
+    "indisponivel": 0,
+    "mrr10": 0.951,
+    "mediana_s": 0.31,
+    "max_s": 0.47,
+    "recall1": 33,
+    "recall5": 36,
+    "recall10": 36,
+    "achadas": 36,
+    "esperadas": 36,
+    "completas": 36
+   },
+   "cruzamento": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.902,
+    "mediana_s": 0.33,
+    "max_s": 0.38,
+    "recall1": 18,
+    "recall5": 22,
+    "recall10": 22,
+    "achadas": 58,
+    "esperadas": 58,
+    "completas": 22
+   },
+   "dono": {
+    "n": 20,
+    "indisponivel": 0,
+    "mrr10": 0.792,
+    "mediana_s": 0.42,
+    "max_s": 0.68,
+    "recall1": 13,
+    "recall5": 19,
+    "recall10": 20,
+    "achadas": 26,
+    "esperadas": 33,
+    "completas": 17
+   }
+  },
+  "brain_entity": {
+   "total": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.977,
+    "mediana_s": 0.06,
+    "max_s": 0.12,
+    "recall1": 21,
+    "recall5": 22,
+    "recall10": 22,
+    "achadas": 58,
+    "esperadas": 58,
+    "completas": 22
+   },
+   "cruzamento": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.977,
+    "mediana_s": 0.06,
+    "max_s": 0.12,
+    "recall1": 21,
+    "recall5": 22,
+    "recall10": 22,
+    "achadas": 58,
+    "esperadas": 58,
+    "completas": 22
+   }
+  },
+  "fundido": {
+   "total": {
+    "n": 78,
+    "indisponivel": 0,
+    "mrr10": 0.887,
+    "mediana_s": 0.34,
+    "max_s": 1.29,
+    "recall1": 63,
+    "recall5": 77,
+    "recall10": 78,
+    "achadas": 118,
+    "esperadas": 127,
+    "completas": 73
+   },
+   "casos": {
+    "n": 36,
+    "indisponivel": 0,
+    "mrr10": 0.95,
+    "mediana_s": 0.33,
+    "max_s": 1.29,
+    "recall1": 33,
+    "recall5": 36,
+    "recall10": 36,
+    "achadas": 36,
+    "esperadas": 36,
+    "completas": 36
+   },
+   "cruzamento": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.871,
+    "mediana_s": 0.32,
+    "max_s": 0.49,
+    "recall1": 17,
+    "recall5": 22,
+    "recall10": 22,
+    "achadas": 55,
+    "esperadas": 58,
+    "completas": 20
+   },
+   "dono": {
+    "n": 20,
+    "indisponivel": 0,
+    "mrr10": 0.792,
+    "mediana_s": 0.43,
+    "max_s": 0.7,
+    "recall1": 13,
+    "recall5": 19,
+    "recall10": 20,
+    "achadas": 27,
+    "esperadas": 33,
+    "completas": 17
+   }
+  }
+ },
+ "linhas": [
+  {
+   "id": "R01",
+   "grupo": "dono",
+   "pergunta": "Quero relatorio sobre a MGS anos 2023-2026 com cada ob paga mes a mesnuma tabela",
+   "ok": [
+    "casos/iterj-mgs-clean-pagamentos.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.379,
+    "top": [
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "notas/iterj-mgs-processos-sei.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "codigo/detector-duplicidade-competencia.md",
+     "codigo/relatorio-pipeline.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.527,
+    "top": [
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "notas/iterj-mgs-processos-sei.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "codigo/detector-duplicidade-competencia.md",
+     "codigo/relatorio-pipeline.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R02",
+   "grupo": "dono",
+   "pergunta": "o que vc esta considerando um split nessa pericia? mesmo empenho/RE? explica isso e porque nao seria duplicidade?",
+   "ok": [
+    "casos/iterj-mgs-clean-pagamentos.md",
+    "aprendizados/duplicidade-ob-competencia-vs-valor.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.447,
+    "top": [
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "codigo/detector-duplicidade-competencia.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "aprendizados/cross-fornecedor-sinais.md",
+     "aprendizados/restricao-e-da-unidade-nao-do-processo.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.617,
+    "top": [
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "codigo/detector-duplicidade-competencia.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "aprendizados/cross-fornecedor-sinais.md",
+     "aprendizados/restricao-e-da-unidade-nao-do-processo.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R03",
+   "grupo": "dono",
+   "pergunta": "quero que leia os parametros dos contratos da mgs com o iterj e audite o contrato e seus pagamentos. quero saber se à luz das obrigacoes do contrato, dos dissídios trabalhistas, dos reajustes, repactuações e aditivos, se tudo foi pago em conformidade",
+   "ok": [
+    "casos/iterj-mgs-clean-pagamentos.md",
+    "notas/iterj-mgs-processos-sei.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.676,
+    "top": [
+     "codigo/lex-auditoria-contrato.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "notas/iterj-mgs-processos-sei.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "jfn/pericias-agente/150001_013339_2025.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.7,
+    "top": [
+     "codigo/lex-auditoria-contrato.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "notas/iterj-mgs-processos-sei.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "notas/iterj-mgs-indice-sei.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R04",
+   "grupo": "dono",
+   "pergunta": "e a pericia sobre os bombeiros?",
+   "ok": [
+    "casos/pericia-bombeiros-funesbom-2024.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.287,
+    "top": [
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "jfn/pericias-agente/270120_000511_2023.md",
+     "jfn/pericias-agente/270120_000503_2023.md",
+     "jfn/pericias-agente/270120_002394_2023.md",
+     "jfn/pericias-agente/270120_000516_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.284,
+    "top": [
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "jfn/pericias-agente/270120_000511_2023.md",
+     "jfn/pericias-agente/270120_000503_2023.md",
+     "jfn/pericias-agente/270120_002394_2023.md",
+     "jfn/pericias-agente/270120_000516_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R05",
+   "grupo": "dono",
+   "pergunta": "quero um pente-fino com relação a ong contato e seus socios a qualquer tempo, bem como suas relações, quanto ao projeto ambiente jovem da secretaria de estado do ambiente e sustentabilidade e/ou inea",
+   "ok": [
+    "casos/ong-contato-emendatio.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.552,
+    "top": [
+     "casos/ong-contato-emendatio.md",
+     "jfn/pericias-agente/280001_000176_2025.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "casos/picos-setoriais-pcrj.md",
+     "casos/seijes-conecta-crj-nucleo-bem-viver-tetos-do-edital.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.499,
+    "top": [
+     "casos/ong-contato-emendatio.md",
+     "jfn/pericias-agente/280001_000176_2025.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "casos/picos-setoriais-pcrj.md",
+     "casos/seijes-conecta-crj-nucleo-bem-viver-tetos-do-edital.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R06",
+   "grupo": "dono",
+   "pergunta": "veja como esta dividida a remuneracao ano a ano desses 30 anos da ppp e se isso faz sentido",
+   "ok": [
+    "casos/ppp-souza-aguiar.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.323,
+    "top": [
+     "casos/ppp-souza-aguiar.md",
+     "aprendizados/folhas-orgaos-rj-fontes.md",
+     "casos/aviv-gestao-fserj.md",
+     "aprendizados/captacao-pcrj-fontes-abertas.md",
+     "codigo/tcu-indice-existencia.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.372,
+    "top": [
+     "casos/ppp-souza-aguiar.md",
+     "aprendizados/folhas-orgaos-rj-fontes.md",
+     "casos/aviv-gestao-fserj.md",
+     "codigo/tcu-indice-existencia.md",
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R07",
+   "grupo": "dono",
+   "pergunta": "acha pra mim no sei rj esses documentos de auditoria do iterj por favor?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md",
+    "aprendizados/auditoria-decreto-50254-como-achar-no-sei.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.316,
+    "top": [
+     "aprendizados/auditoria-sei-completa-pipeline.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "codigo/lex-auditoria-contrato.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "MOC-Aprendizados.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.365,
+    "top": [
+     "aprendizados/auditoria-sei-completa-pipeline.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "codigo/lex-auditoria-contrato.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "MOC-Aprendizados.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R08",
+   "grupo": "dono",
+   "pergunta": "qualquwr ilacao de angra deve virar pedido de esclarecime do tce e/ou representacao",
+   "ok": [
+    "casos/angra-dos-reis-representacoes-tce-2026.md",
+    "requerimentos/req-2026-010-tce-rj-angra-informacoes-e-esclarecimentos.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.331,
+    "top": [
+     "requerimentos/req-2026-010-tce-rj-angra-informacoes-e-esclarecimentos.md",
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "relatorios/pecas-2026-11-13/REP-01-tce-rj-leao-xiii-inidonea.md",
+     "relatorios/pecas-2026-11-13/00-INDICE-das-pecas.md",
+     "jfn/pericias-agente/080001_003821_2026.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.326,
+    "top": [
+     "requerimentos/req-2026-010-tce-rj-angra-informacoes-e-esclarecimentos.md",
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "relatorios/pecas-2026-11-13/REP-01-tce-rj-leao-xiii-inidonea.md",
+     "relatorios/pecas-2026-11-13/00-INDICE-das-pecas.md",
+     "jfn/pericias-agente/080001_003821_2026.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R09",
+   "grupo": "dono",
+   "pergunta": "analise a gestao couto e queremos tudo o que seja suspeito, incomum, possa ter interesses escusos",
+   "ok": [
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "jfn/gestao-couto.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.425,
+    "top": [
+     "jfn/gestao-couto.md",
+     "jfn/sinais-criticos.md",
+     "casos/agentes-ADMINISTRADORES-de-fornecedores.md",
+     "jfn/itens/couto/d02-sei-180002-001509-2026-03736955000108.md",
+     "jfn/itens/couto/d02-sei-180002-001509-2026-05101903000182.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.35,
+    "top": [
+     "jfn/gestao-couto.md",
+     "jfn/sinais-criticos.md",
+     "jfn/itens/couto/d02-sei-180002-001509-2026-03736955000108.md",
+     "jfn/itens/couto/d02-sei-180002-001509-2026-05101903000182.md",
+     "jfn/itens/couto/d02-sei-350009-014665b-2025-56998982003122.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R10",
+   "grupo": "dono",
+   "pergunta": "veja que dia comecou a gestao ricardo couto rambem",
+   "ok": [
+    "jfn/gestao-couto.md",
+    "casos/gestao-couto-analise-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.28,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "jfn/00-retratos.md",
+     "casos/ong-contato-emendatio.md",
+     "jfn/sinais-criticos.md",
+     "aprendizados/calibrar-a-taxa-nao-calibra-a-logica.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.5,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "jfn/00-retratos.md",
+     "casos/ong-contato-emendatio.md",
+     "jfn/sinais-criticos.md",
+     "aprendizados/calibrar-a-taxa-nao-calibra-a-logica.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R11",
+   "grupo": "dono",
+   "pergunta": "vou ser presidente da comissao de orcamenro da alerj. quero que veja as atribuicoes da comissao",
+   "ok": [
+    "notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.571,
+    "top": [
+     "notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md",
+     "relatorios/pecas-2026-11-13/RI-06-cge-relatorios-decreto-50254.md",
+     "relatorios/pecas-2026-11-13/RI-04-casa-civil-nfl-valor-global.md",
+     "relatorios/pecas-2026-11-13/RI-09-termos-aditivos-pagamento-acima-do-valor-registrado.md",
+     "relatorios/pecas-2026-11-13/RI-03-isp-pbc-locacao-e-diferenca-das-obs.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.666,
+    "top": [
+     "notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md",
+     "relatorios/pecas-2026-11-13/RI-06-cge-relatorios-decreto-50254.md",
+     "relatorios/pecas-2026-11-13/RI-04-casa-civil-nfl-valor-global.md",
+     "relatorios/pecas-2026-11-13/RI-09-termos-aditivos-pagamento-acima-do-valor-registrado.md",
+     "relatorios/pecas-2026-11-13/RI-03-isp-pbc-locacao-e-diferenca-das-obs.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R12",
+   "grupo": "dono",
+   "pergunta": "quero que voce estudo o orcamento do governo do estado e as leis orcamentarias e suas peculiaridades. quero um manual completo",
+   "ok": [
+    "notas/manual-orcamento-publico-rj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.436,
+    "top": [
+     "notas/manual-orcamento-publico-rj.md",
+     "notas/propagacao-automatica-2026-11-14.md",
+     "notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md",
+     "notas/manual-deteccao-corrupcao-licitacoes.md",
+     "_CLAUDE.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.407,
+    "top": [
+     "notas/manual-orcamento-publico-rj.md",
+     "notas/propagacao-automatica-2026-11-14.md",
+     "notas/comissao-orcamento-alerj-atribuicoes-e-fontes.md",
+     "notas/manual-deteccao-corrupcao-licitacoes.md",
+     "_CLAUDE.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R13",
+   "grupo": "dono",
+   "pergunta": "e queremos tambem perícia contábil em todos os contratos. quero saber se os valores deles foram pagos a maior ou a menor. até o presente momento.",
+   "ok": [
+    "jfn/pericia-contabil.md",
+    "relatorios/pericia-contabil-contratos-2026-11-13/README.md"
+   ],
+   "brain_mcp": {
+    "posicao": 3,
+    "s": 0.471,
+    "top": [
+     "notas/verificacao-fable-correcoes-2026-11-13.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "relatorios/pericia-contabil-contratos-2026-11-13/README.md",
+     "aprendizados/fachada-procedencia-api.md",
+     "jfn/itens/a-maior/estado-do-rj-2026007268.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 3,
+    "s": 0.444,
+    "top": [
+     "notas/verificacao-fable-correcoes-2026-11-13.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "relatorios/pericia-contabil-contratos-2026-11-13/README.md",
+     "aprendizados/fachada-procedencia-api.md",
+     "jfn/itens/a-maior/estado-do-rj-2026007268.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "R14",
+   "grupo": "dono",
+   "pergunta": "laudo motor a motor e suas melhorias",
+   "ok": [
+    "notas/laudo-motores-jfn-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.238,
+    "top": [
+     "MOC-Ecossistema.md",
+     "notas/laudo-motores-jfn-2026-11-13.md",
+     "shared:aprendizados/redacao-relatorio-nuggets.md",
+     "aprendizados/redacao-relatorio-nuggets.md",
+     "PENDENCIAS-DO-DONO.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.281,
+    "top": [
+     "MOC-Ecossistema.md",
+     "notas/laudo-motores-jfn-2026-11-13.md",
+     "aprendizados/redacao-relatorio-nuggets.md",
+     "PENDENCIAS-DO-DONO.md",
+     "MOC-melhorias-globais.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R15",
+   "grupo": "dono",
+   "pergunta": "e no site do tfe? cade os registros de la pra bater com as obs do siafe?",
+   "ok": [
+    "aprendizados/fonte-ob-sempre-siafe-nunca-tfe.md"
+   ],
+   "brain_mcp": {
+    "posicao": 3,
+    "s": 0.396,
+    "top": [
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md",
+     "HANDOFF-PCRJ-INTEGRAS.md",
+     "aprendizados/fonte-ob-sempre-siafe-nunca-tfe.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "aprendizados/automelhoria/2026-11-16.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 3,
+    "s": 0.319,
+    "top": [
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md",
+     "HANDOFF-PCRJ-INTEGRAS.md",
+     "aprendizados/fonte-ob-sempre-siafe-nunca-tfe.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "aprendizados/automelhoria/2026-11-16.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R16",
+   "grupo": "dono",
+   "pergunta": "fundo unico de previdencia é uma coisa e fundo soberano é outra. veja e procure direito esse índice das UGs",
+   "ok": [
+    "notas/indice-ugs-siafe-estado.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.433,
+    "top": [
+     "notas/indice-ugs-siafe-estado.md",
+     "notas/handoff-2026-07-11-fiscalizacao.md",
+     "jfn/pericias-agente/040014_040499_2025.md",
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md",
+     "casos/ibam-jucerja-cae-parcela-sem-prestacao.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.419,
+    "top": [
+     "notas/indice-ugs-siafe-estado.md",
+     "notas/handoff-2026-07-11-fiscalizacao.md",
+     "jfn/pericias-agente/040014_040499_2025.md",
+     "graphify-out/2026-07-28/GRAPH_REPORT.md",
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R17",
+   "grupo": "dono",
+   "pergunta": "tem indicio de cartel? me mostra fornecedores presos a um so orgao",
+   "ok": [
+    "casos/varredura-concentracao-grupo-2026-06-12.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.299,
+    "top": [
+     "casos/varredura-concentracao-grupo-2026-06-12.md",
+     "notas/detectores/J-julgamento.md",
+     "notas/sintese-casos-2026-06-12.md",
+     "decisoes/sistema-dual-esfera-pncp.md",
+     "notas/ferramentas-redflags-externas-2026-08-01.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.35,
+    "top": [
+     "casos/varredura-concentracao-grupo-2026-06-12.md",
+     "notas/detectores/J-julgamento.md",
+     "notas/sintese-casos-2026-06-12.md",
+     "decisoes/sistema-dual-esfera-pncp.md",
+     "aprendizados/tipologias-fraude-licitacao-motor.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R18",
+   "grupo": "dono",
+   "pergunta": "a aba sobrepreço precisa ser melhor analisada. nao pode comparar itens de unidades métricas diferentes com o mesmo preço. galão de água é diferente de copinho de agua por exemplo.",
+   "ok": [
+    "jfn/sobrepreco-conferido.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.49,
+    "top": [
+     "jfn/sobrepreco-conferido.md",
+     "jfn/automelhoria-licoes.md",
+     "aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md",
+     "notas/detectores/P-planejamento.md",
+     "jfn/pericias-agente/260001_000011_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.587,
+    "top": [
+     "jfn/sobrepreco-conferido.md",
+     "jfn/automelhoria-licoes.md",
+     "aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md",
+     "notas/detectores/P-planejamento.md",
+     "jfn/pericias-agente/260001_000011_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "R19",
+   "grupo": "dono",
+   "pergunta": "quais orgaos tem orçamento e quanto executou de orçamento. ou seja, tem orcamento, tem empenho e tem execucao (pagamento) assim sabemos quais orgaos performam",
+   "ok": [
+    "jfn/anos/2026.md",
+    "jfn/anos/2025.md",
+    "jfn/anos/2024.md",
+    "jfn/anos/2023.md",
+    "jfn/anos/2022.md",
+    "jfn/anos/2021.md"
+   ],
+   "brain_mcp": {
+    "posicao": 6,
+    "s": 0.498,
+    "top": [
+     "jfn/anos/2017.md",
+     "jfn/anos/2018.md",
+     "jfn/anos/2016.md",
+     "jfn/anos/2019.md",
+     "jfn/anos/2020.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 6
+   },
+   "fundido": {
+    "posicao": 6,
+    "s": 0.511,
+    "top": [
+     "jfn/anos/2017.md",
+     "jfn/anos/2018.md",
+     "jfn/anos/2016.md",
+     "jfn/anos/2019.md",
+     "jfn/anos/2020.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 6
+   }
+  },
+  {
+   "id": "R20",
+   "grupo": "dono",
+   "pergunta": "vamos colocar todos os sweeps direcionados para o tribunal de justiça do rio de janeiro e fundo especial do tribunal de justiça como um teste?",
+   "ok": [
+    "casos/fachada-fundo-tj-036100.md",
+    "hipoteses/2026-07-10-fundo-tj-fachadas-na-cauda.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.412,
+    "top": [
+     "casos/conflito-forum-comunicacao-defensoria.md",
+     "casos/fachada-fundo-tj-036100.md",
+     "casos/imovel-113-milhoes-construtora-internacional.md",
+     "casos/processo-270131-lider-taxi-aereo.md",
+     "aprendizados/enxame-contratos.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.469,
+    "top": [
+     "casos/conflito-forum-comunicacao-defensoria.md",
+     "casos/fachada-fundo-tj-036100.md",
+     "casos/imovel-113-milhoes-construtora-internacional.md",
+     "casos/processo-270131-lider-taxi-aereo.md",
+     "graphify-out/2026-07-28/GRAPH_REPORT.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "C01",
+   "grupo": "casos",
+   "pergunta": "empresa nova que recebeu da fundacao saude quase tudo por tac e trocou a socia depois",
+   "ok": [
+    "casos/aviv-gestao-fserj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.33,
+    "top": [
+     "casos/aviv-gestao-fserj.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "casos/voor-rc-lider-fserj-triagem.md",
+     "casos/lefe-emergencias-fserj.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.336,
+    "top": [
+     "casos/aviv-gestao-fserj.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "casos/voor-rc-lider-fserj-triagem.md",
+     "casos/lefe-emergencias-fserj.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C02",
+   "grupo": "casos",
+   "pergunta": "casa civil pegou carona em ata de consorcio de municipio de minas, quanto foi pago?",
+   "ok": [
+    "casos/casa-civil-mrc-carona-cim-jequitinhonha.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.384,
+    "top": [
+     "casos/casa-civil-mrc-carona-cim-jequitinhonha.md",
+     "jfn/pericias-agente/150002_000692_2025.md",
+     "jfn/pericias-agente/150002_000883_2025.md",
+     "jfn/pericias-agente/150002_000104_2026.md",
+     "jfn/pericias-agente/150002_001417_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.409,
+    "top": [
+     "casos/casa-civil-mrc-carona-cim-jequitinhonha.md",
+     "jfn/pericias-agente/150002_000692_2025.md",
+     "jfn/pericias-agente/150002_000883_2025.md",
+     "jfn/pericias-agente/150002_000104_2026.md",
+     "jfn/pericias-agente/150002_001417_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C03",
+   "grupo": "casos",
+   "pergunta": "aquele caso da distribuidora de livros que a segov contratou por ata de sao paulo",
+   "ok": [
+    "casos/cdel-segov-ata-de-sao-paulo.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.313,
+    "top": [
+     "casos/cdel-segov-ata-de-sao-paulo.md",
+     "casos/stem-segov-carona-ata-ifmt-kits-transito.md",
+     "jfn/pericias-agente/420001_003312_2024.md",
+     "casos/globaltec-salas-de-leitura-consolidado.md",
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.363,
+    "top": [
+     "casos/cdel-segov-ata-de-sao-paulo.md",
+     "casos/stem-segov-carona-ata-ifmt-kits-transito.md",
+     "jfn/pericias-agente/420001_003312_2024.md",
+     "casos/globaltec-salas-de-leitura-consolidado.md",
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C04",
+   "grupo": "casos",
+   "pergunta": "a cesgranrio foi contratada por dispensa de instituicao de pesquisa, isso se sustenta?",
+   "ok": [
+    "casos/cesgranrio-dispensa-art24-xiii.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.318,
+    "top": [
+     "casos/cesgranrio-dispensa-art24-xiii.md",
+     "casos/cesgranrio-avalia-rj-2026-polos-reserva-tecnica.md",
+     "jfn/pericias-agente/030001_040552_2026.md",
+     "jfn/pericias-agente/030001_047970_2026.md",
+     "jfn/pericias-agente/030001_071964_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.321,
+    "top": [
+     "casos/cesgranrio-dispensa-art24-xiii.md",
+     "casos/cesgranrio-avalia-rj-2026-polos-reserva-tecnica.md",
+     "jfn/pericias-agente/030001_040552_2026.md",
+     "jfn/pericias-agente/030001_047970_2026.md",
+     "jfn/pericias-agente/030001_071964_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C05",
+   "grupo": "casos",
+   "pergunta": "obra em que a medicao passou do que estava contratado e o boletim mostra saldo negativo",
+   "ok": [
+    "casos/cidades-valplat-medicao-acima-do-contratado.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.29,
+    "top": [
+     "casos/cidades-valplat-medicao-acima-do-contratado.md",
+     "jfn/pericias-agente/330002_049477_2025.md",
+     "jfn/pericias-agente/070002_007849_2026.md",
+     "jfn/automelhoria-licoes.md",
+     "jfn/pericias-agente/330002_047780_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 1.293,
+    "top": [
+     "casos/cidades-valplat-medicao-acima-do-contratado.md",
+     "jfn/pericias-agente/330002_049477_2025.md",
+     "jfn/pericias-agente/070002_007849_2026.md",
+     "jfn/automelhoria-licoes.md",
+     "jfn/pericias-agente/330002_047780_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C06",
+   "grupo": "casos",
+   "pergunta": "coleta de lixo do degase cobrada na unidade errada",
+   "ok": [
+    "casos/degase-ideal-coleta-kg-cobrado-por-litro.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.3,
+    "top": [
+     "casos/degase-ideal-coleta-kg-cobrado-por-litro.md",
+     "jfn/pericias-agente/030002_000327_2025.md",
+     "jfn/pericias-agente/020004_000090_2024.md",
+     "jfn/pericias-agente/020004_000013_2025.md",
+     "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.295,
+    "top": [
+     "casos/degase-ideal-coleta-kg-cobrado-por-litro.md",
+     "jfn/pericias-agente/030002_000327_2025.md",
+     "jfn/pericias-agente/020004_000090_2024.md",
+     "jfn/pericias-agente/020004_000013_2025.md",
+     "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C07",
+   "grupo": "casos",
+   "pergunta": "o cartao de natal dos servidores do degase foi pago sem o desconto da taxa?",
+   "ok": [
+    "casos/degase-lecard-cartao-natalino-pago-sem-taxa-negativa.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.305,
+    "top": [
+     "casos/degase-lecard-cartao-natalino-pago-sem-taxa-negativa.md",
+     "jfn/pericias-agente/030002_012642_2025.md",
+     "jfn/pericias-agente/030002_000531_2025.md",
+     "jfn/pericias-agente/030002_000649_2026.md",
+     "notas/detectores/J-julgamento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.329,
+    "top": [
+     "casos/degase-lecard-cartao-natalino-pago-sem-taxa-negativa.md",
+     "jfn/pericias-agente/030002_012642_2025.md",
+     "jfn/pericias-agente/030002_000531_2025.md",
+     "jfn/pericias-agente/030002_000649_2026.md",
+     "notas/detectores/J-julgamento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C08",
+   "grupo": "casos",
+   "pergunta": "repactuacao muito acima do reajuste da convencao coletiva no degase",
+   "ok": [
+    "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.322,
+    "top": [
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+     "jfn/pericias-agente/030022_000756_2024.md",
+     "jfn/pericias-agente/030002_008733_2024.md",
+     "jfn/pericias-agente/030002_010185_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.326,
+    "top": [
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+     "jfn/pericias-agente/030022_000756_2024.md",
+     "jfn/pericias-agente/030002_008733_2024.md",
+     "jfn/pericias-agente/030002_010185_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C09",
+   "grupo": "casos",
+   "pergunta": "der pagou medicao de recapeamento antes da analise do controle interno",
+   "ok": [
+    "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.284,
+    "top": [
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "jfn/pericias-agente/330002_006370_2026.md",
+     "jfn/pericias-agente/330002_049748_2025.md",
+     "jfn/pericias-agente/330002_049477_2025.md",
+     "jfn/pericias-agente/330002_029910_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.324,
+    "top": [
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "jfn/pericias-agente/330002_006370_2026.md",
+     "jfn/pericias-agente/330002_049748_2025.md",
+     "jfn/pericias-agente/330002_049477_2025.md",
+     "jfn/pericias-agente/330002_029910_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C10",
+   "grupo": "casos",
+   "pergunta": "quanto a seeduc pagou pra eureka em 2025 sem licitacao",
+   "ok": [
+    "casos/eureka-seeduc-inexigibilidade-2025.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.279,
+    "top": [
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md",
+     "casos/eureka-seeduc-inexigibilidade-2025.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/cdel-segov-ata-de-sao-paulo.md",
+     "casos/contrato-acima-do-porte-me-epp.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.313,
+    "top": [
+     "casos/eureka-seeduc-inexigibilidade-bem-comum.md",
+     "casos/eureka-seeduc-inexigibilidade-2025.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/cdel-segov-ata-de-sao-paulo.md",
+     "casos/contrato-acima-do-porte-me-epp.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C11",
+   "grupo": "casos",
+   "pergunta": "teve uma empresa de logistica que a ia disse que era barraco e era galpao de verdade",
+   "ok": [
+    "casos/fachada-pvax-niteroi.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.392,
+    "top": [
+     "casos/fachada-pvax-niteroi.md",
+     "aprendizados/investigacao-fachada-os-alto-valor.md",
+     "diario/2026-06-16.md",
+     "aprendizados/pesquisa-internet/pesquisa-fornecedor-12117414000184.md",
+     "aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.445,
+    "top": [
+     "casos/fachada-pvax-niteroi.md",
+     "aprendizados/investigacao-fachada-os-alto-valor.md",
+     "diario/2026-06-16.md",
+     "aprendizados/pesquisa-internet/pesquisa-fornecedor-12117414000184.md",
+     "aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C12",
+   "grupo": "casos",
+   "pergunta": "aditivo de quase 50 por cento na faetec",
+   "ok": [
+    "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md"
+   ],
+   "brain_mcp": {
+    "posicao": 4,
+    "s": 0.468,
+    "top": [
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+     "00-INDEX.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 5,
+    "s": 0.317,
+    "top": [
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "00-INDEX.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C13",
+   "grupo": "casos",
+   "pergunta": "duas empresas cotaram na mesma pesquisa de preco com o mesmo telefone",
+   "ok": [
+    "casos/grana-guarailha-cotacoes-mesmo-telefone.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.319,
+    "top": [
+     "casos/grana-guarailha-cotacoes-mesmo-telefone.md",
+     "casos/conluio-participacao-tcerj-2026-11-19.md",
+     "MOC-Casos.md",
+     "notas/detectores/J-julgamento.md",
+     "notas/detectores/P-planejamento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.357,
+    "top": [
+     "casos/grana-guarailha-cotacoes-mesmo-telefone.md",
+     "casos/conluio-participacao-tcerj-2026-11-19.md",
+     "MOC-Casos.md",
+     "notas/detectores/J-julgamento.md",
+     "notas/detectores/P-planejamento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C14",
+   "grupo": "casos",
+   "pergunta": "grupo de empresas do mesmo dono que recebeu da fundacao saude, quantos cnpjs e quanto",
+   "ok": [
+    "casos/grupo-caneca-fserj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.28,
+    "top": [
+     "casos/grupo-caneca-fserj.md",
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "MOC-Casos.md",
+     "casos/aviv-gestao-fserj.md",
+     "hipoteses/2026-07-10-vieira-concorrencia-ficticia.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.328,
+    "top": [
+     "casos/grupo-caneca-fserj.md",
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "MOC-Casos.md",
+     "graphify-out/2026-07-28/GRAPH_REPORT.md",
+     "hipoteses/2026-07-10-vieira-concorrencia-ficticia.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C15",
+   "grupo": "casos",
+   "pergunta": "compra de imovel de mais de cem milhoes por inexigibilidade",
+   "ok": [
+    "casos/imovel-113-milhoes-construtora-internacional.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.342,
+    "top": [
+     "casos/imovel-113-milhoes-construtora-internacional.md",
+     "jfn/sobrepreco-conferido.md",
+     "casos/eureka-seeduc-inexigibilidade-2025.md",
+     "jfn/pericias-agente/270107_000527_2023.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.336,
+    "top": [
+     "casos/imovel-113-milhoes-construtora-internacional.md",
+     "jfn/sobrepreco-conferido.md",
+     "casos/eureka-seeduc-inexigibilidade-2025.md",
+     "jfn/pericias-agente/270107_000527_2023.md",
+     "casos/picos-setoriais-pcrj.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C16",
+   "grupo": "casos",
+   "pergunta": "pregao de desassoreamento de rios do inea com lances de centavos",
+   "ok": [
+    "casos/inea-desassoreamento-pe-24-2023.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.351,
+    "top": [
+     "casos/inea-desassoreamento-pe-24-2023.md",
+     "jfn/pericias-agente/070002_009772_2024.md",
+     "jfn/pericias-agente/070002_003457_2024.md",
+     "jfn/pericias-agente/070002_023359_2024.md",
+     "jfn/pericias-agente/070002_006848_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.401,
+    "top": [
+     "casos/inea-desassoreamento-pe-24-2023.md",
+     "jfn/pericias-agente/070002_009772_2024.md",
+     "jfn/pericias-agente/070002_003457_2024.md",
+     "jfn/pericias-agente/070002_023359_2024.md",
+     "jfn/pericias-agente/070002_006848_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C17",
+   "grupo": "casos",
+   "pergunta": "o que tem do instituto rio metropole com patrocinio e denuncia do ministerio publico",
+   "ok": [
+    "casos/irm-patrocinio-ti-e-consultoria-sob-denuncia-mprj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.473,
+    "top": [
+     "casos/irm-patrocinio-ti-e-consultoria-sob-denuncia-mprj.md",
+     "jfn/pericias-agente/150018_000309_2026.md",
+     "casos/casa-civil-patrocinios-ob-unica-2025-2026.md",
+     "casos/irm-energy-summit-patrocinio-pago-antes-do-evento.md",
+     "jfn/itens/a-maior/estado-do-rj-2025001576.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.407,
+    "top": [
+     "casos/irm-patrocinio-ti-e-consultoria-sob-denuncia-mprj.md",
+     "jfn/pericias-agente/150018_000309_2026.md",
+     "casos/casa-civil-patrocinios-ob-unica-2025-2026.md",
+     "casos/irm-energy-summit-patrocinio-pago-antes-do-evento.md",
+     "jfn/itens/a-maior/estado-do-rj-2025001576.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C18",
+   "grupo": "casos",
+   "pergunta": "microempresa de tecnologia que vive do cecierj",
+   "ok": [
+    "casos/kratus-cecierj-microempresa-rotativa.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.296,
+    "top": [
+     "casos/kratus-cecierj-microempresa-rotativa.md",
+     "casos/evolucao-comercio-epp-declarou-me.md",
+     "RETOMADA-2026-08-25.md",
+     "casos/me-epp-acima-do-teto-fruicao-indevida.md",
+     "casos/declaracao-me-epp-no-certame-rc-card.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.26,
+    "top": [
+     "casos/kratus-cecierj-microempresa-rotativa.md",
+     "casos/evolucao-comercio-epp-declarou-me.md",
+     "RETOMADA-2026-08-25.md",
+     "casos/me-epp-acima-do-teto-fruicao-indevida.md",
+     "casos/declaracao-me-epp-no-certame-rc-card.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C19",
+   "grupo": "casos",
+   "pergunta": "distribuidoras de remedio com os mesmos administradores disputando os mesmos pregoes de prefeituras",
+   "ok": [
+    "casos/medh-cannabr-coparticipacao-relacionadas.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.315,
+    "top": [
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "casos/conluio-participacao-tcerj-2026-11-19.md",
+     "casos/pcrj-fracionamento-empenhos-saude.md",
+     "casos/agentes-ADMINISTRADORES-de-fornecedores.md",
+     "casos/grupo-vieira-consorcios.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.356,
+    "top": [
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "casos/conluio-participacao-tcerj-2026-11-19.md",
+     "casos/pcrj-fracionamento-empenhos-saude.md",
+     "casos/agentes-ADMINISTRADORES-de-fornecedores.md",
+     "casos/grupo-vieira-consorcios.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C20",
+   "grupo": "casos",
+   "pergunta": "empresa inidonea que ganhou pregao de papel na prefeitura",
+   "ok": [
+    "casos/monsaras-inidonea-papel-reprografico-pcrj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.29,
+    "top": [
+     "casos/monsaras-inidonea-papel-reprografico-pcrj.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "relatorios/pecas-2026-11-13/OF-01-cge-leao-xiii-inidonea.md",
+     "aprendizados/sei-pcrj-integras-pela-conferencia-com-pares-do-doe.md",
+     "relatorios/pecas-2026-11-13/00-INDICE-das-pecas.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.838,
+    "top": [
+     "casos/monsaras-inidonea-papel-reprografico-pcrj.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "relatorios/pecas-2026-11-13/OF-01-cge-leao-xiii-inidonea.md",
+     "aprendizados/sei-pcrj-integras-pela-conferencia-com-pares-do-doe.md",
+     "relatorios/pecas-2026-11-13/00-INDICE-das-pecas.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C21",
+   "grupo": "casos",
+   "pergunta": "consorcio de mobilidade de sao goncalo ligado ao grupo vieira",
+   "ok": [
+    "casos/muv-sao-goncalo-grupo-vieira.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.31,
+    "top": [
+     "casos/grupo-vieira-consorcios.md",
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "hipoteses/2026-07-10-vieira-concorrencia-ficticia.md",
+     "requerimentos/req-2026-003-secid-muv-concorrencia-17-2021.md",
+     "jfn/pericias-agente/510001_001040_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.332,
+    "top": [
+     "casos/grupo-vieira-consorcios.md",
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "hipoteses/2026-07-10-vieira-concorrencia-ficticia.md",
+     "requerimentos/req-2026-003-secid-muv-concorrencia-17-2021.md",
+     "jfn/pericias-agente/510001_001040_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C22",
+   "grupo": "casos",
+   "pergunta": "blindados da pm pagos quase tudo no fim do ano",
+   "ok": [
+    "casos/nrtt-blindados-pm-fim-de-exercicio.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.299,
+    "top": [
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "casos/aviv-gestao-fserj.md",
+     "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md",
+     "notas/siafe-mapa-do-conhecimento.md",
+     "casos/me-epp-acima-do-teto-fruicao-indevida.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.303,
+    "top": [
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "casos/aviv-gestao-fserj.md",
+     "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md",
+     "notas/siafe-mapa-do-conhecimento.md",
+     "jfn/itens/couto/d14-36366620000196-2026-09-16.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C23",
+   "grupo": "casos",
+   "pergunta": "duas empresas com o mesmo email pessoal vendendo material paradidatico pra educacao",
+   "ok": [
+    "casos/photonlux-evolucao-elo-por-email-pessoal.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.278,
+    "top": [
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "casos/grupo-jose-de-souza-filho-pcrj.md",
+     "MOC-Casos.md",
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "casos/tac-reconhecimento-divida-agregado.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.338,
+    "top": [
+     "casos/photonlux-evolucao-elo-por-email-pessoal.md",
+     "casos/grupo-jose-de-souza-filho-pcrj.md",
+     "MOC-Casos.md",
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "casos/tac-reconhecimento-divida-agregado.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C24",
+   "grupo": "casos",
+   "pergunta": "contrato do poupa tempo que mudou a faixa de atendimento por aditivo",
+   "ok": [
+    "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.318,
+    "top": [
+     "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md",
+     "jfn/pericias-agente/150001_000224_2025.md",
+     "jfn/pericias-agente/150001_000217_2025.md",
+     "jfn/pericias-agente/150001_002095_2024.md",
+     "jfn/pericias-agente/070002_001318_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.339,
+    "top": [
+     "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md",
+     "jfn/pericias-agente/150001_000224_2025.md",
+     "jfn/pericias-agente/150001_000217_2025.md",
+     "jfn/pericias-agente/150001_002095_2024.md",
+     "jfn/pericias-agente/070002_001318_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C25",
+   "grupo": "casos",
+   "pergunta": "prorrogacao de contrato de taxi aereo justificada pela boa parceria",
+   "ok": [
+    "casos/processo-270131-lider-taxi-aereo.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.313,
+    "top": [
+     "casos/processo-270131-lider-taxi-aereo.md",
+     "diario/2026-08-01.md",
+     "aprendizados/processo-360.md",
+     "relatorios/pecas-2026-11-13/RI-09-termos-aditivos-pagamento-acima-do-valor-registrado.md",
+     "00-INDEX.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.328,
+    "top": [
+     "casos/processo-270131-lider-taxi-aereo.md",
+     "diario/2026-08-01.md",
+     "aprendizados/processo-360.md",
+     "relatorios/pecas-2026-11-13/RI-09-termos-aditivos-pagamento-acima-do-valor-registrado.md",
+     "00-INDEX.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C26",
+   "grupo": "casos",
+   "pergunta": "aditivo de 45% dias depois de assinar contrato de pavimentacao",
+   "ok": [
+    "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.309,
+    "top": [
+     "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md",
+     "jfn/pericias-agente/510001_001040_2025.md",
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md",
+     "jfn/pericias-agente/350010_035297_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.293,
+    "top": [
+     "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md",
+     "jfn/pericias-agente/510001_001040_2025.md",
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md",
+     "jfn/pericias-agente/350010_035297_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C27",
+   "grupo": "casos",
+   "pergunta": "nota fiscal de tenis paga duas vezes na seeduc",
+   "ok": [
+    "casos/seeduc-brasil-comercio-nfe-paga-em-duplicidade-contrato-20-2025.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.277,
+    "top": [
+     "casos/seeduc-brasil-comercio-nfe-paga-em-duplicidade-contrato-20-2025.md",
+     "casos/seeduc-kit-uniforme-acima-do-etp.md",
+     "jfn/pericias-agente/030001_073048_2024.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "jfn/pericias-agente/030001_069278_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.259,
+    "top": [
+     "casos/seeduc-brasil-comercio-nfe-paga-em-duplicidade-contrato-20-2025.md",
+     "casos/seeduc-kit-uniforme-acima-do-etp.md",
+     "jfn/pericias-agente/030001_073048_2024.md",
+     "aprendizados/duplicidade-ob-competencia-vs-valor.md",
+     "jfn/pericias-agente/030001_069278_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C28",
+   "grupo": "casos",
+   "pergunta": "evento de paraskate com repasse unico um dia antes",
+   "ok": [
+    "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.319,
+    "top": [
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md",
+     "jfn/pericias-agente/300001_002302_2025.md",
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "jfn/pericias-agente/420001_002401_2026.md",
+     "casos/setur-buzzline-pagamento-antes-do-evento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.371,
+    "top": [
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md",
+     "jfn/pericias-agente/300001_002302_2025.md",
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "jfn/pericias-agente/420001_002401_2026.md",
+     "casos/setur-buzzline-pagamento-antes-do-evento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C29",
+   "grupo": "casos",
+   "pergunta": "emenda de 20 milhoes da saude pra hospital paga sem execucao",
+   "ok": [
+    "casos/ses-fusve-hmk-emenda-20mi-paga-sem-execucao.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.359,
+    "top": [
+     "casos/ses-fusve-hmk-emenda-20mi-paga-sem-execucao.md",
+     "jfn/pericias-agente/080001_013827_2024.md",
+     "notas/manual-orcamento-publico-rj.md",
+     "casos/grupo-jose-de-souza-filho-pcrj.md",
+     "casos/leao-xiii-intas-elas-geram-parcela-sem-meta.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.92,
+    "top": [
+     "casos/ses-fusve-hmk-emenda-20mi-paga-sem-execucao.md",
+     "jfn/pericias-agente/080001_013827_2024.md",
+     "notas/manual-orcamento-publico-rj.md",
+     "casos/grupo-jose-de-souza-filho-pcrj.md",
+     "casos/leao-xiii-intas-elas-geram-parcela-sem-meta.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C30",
+   "grupo": "casos",
+   "pergunta": "a jucerja pagou empresa declarada inidonea pelo tcu?",
+   "ok": [
+    "casos/sistematech-jucerja-inidoneidade-tcu.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.254,
+    "top": [
+     "casos/sistematech-jucerja-inidoneidade-tcu.md",
+     "relatorios/pecas-2026-11-13/OF-01-cge-leao-xiii-inidonea.md",
+     "casos/monsaras-inidonea-papel-reprografico-pcrj.md",
+     "relatorios/pecas-2026-11-13/RI-08-leao-xiii-transporte-contrato-e-tacs.md",
+     "casos/me-epp-acima-do-teto-fruicao-indevida.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.293,
+    "top": [
+     "casos/sistematech-jucerja-inidoneidade-tcu.md",
+     "relatorios/pecas-2026-11-13/OF-01-cge-leao-xiii-inidonea.md",
+     "casos/monsaras-inidonea-papel-reprografico-pcrj.md",
+     "relatorios/pecas-2026-11-13/RI-08-leao-xiii-transporte-contrato-e-tacs.md",
+     "casos/grana-guarailha-cotacoes-mesmo-telefone.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C31",
+   "grupo": "casos",
+   "pergunta": "kits de educacao no transito do ziraldo comprados por ata de instituto federal",
+   "ok": [
+    "casos/stem-segov-carona-ata-ifmt-kits-transito.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.323,
+    "top": [
+     "casos/stem-segov-carona-ata-ifmt-kits-transito.md",
+     "jfn/pericias-agente/420001_006323_2025.md",
+     "jfn/pericias-agente/420001_003312_2024.md",
+     "jfn/pericias-agente/030029_007380_2020.md",
+     "casos/globaltec-salas-de-leitura-consolidado.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.299,
+    "top": [
+     "casos/stem-segov-carona-ata-ifmt-kits-transito.md",
+     "jfn/pericias-agente/420001_006323_2025.md",
+     "jfn/pericias-agente/420001_003312_2024.md",
+     "jfn/pericias-agente/030029_007380_2020.md",
+     "casos/globaltec-salas-de-leitura-consolidado.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C32",
+   "grupo": "casos",
+   "pergunta": "algum fornecedor do estado esta na lista suja do trabalho escravo?",
+   "ok": [
+    "casos/viabras-lista-suja-mte.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.281,
+    "top": [
+     "casos/viabras-lista-suja-mte.md",
+     "aprendizados/fontes-publicas-sem-api-que-funcionam.md",
+     "HANDOFF-PCRJ-INTEGRAS.md",
+     "MOC-Aprendizados.md",
+     "casos/positiva-social-seeduc-cuidadores.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.299,
+    "top": [
+     "casos/viabras-lista-suja-mte.md",
+     "aprendizados/fontes-publicas-sem-api-que-funcionam.md",
+     "HANDOFF-PCRJ-INTEGRAS.md",
+     "MOC-Aprendizados.md",
+     "casos/positiva-social-seeduc-cuidadores.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C33",
+   "grupo": "casos",
+   "pergunta": "empresa que perde todas as licitacoes de obra pra mesma vencedora em volta redonda",
+   "ok": [
+    "casos/volta-redonda-construvalle-fourtech.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.378,
+    "top": [
+     "casos/volta-redonda-construvalle-fourtech.md",
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "jfn/pericias-agente/030022_000757_2024.md",
+     "jfn/pericias-agente/030002_000627_2025.md",
+     "diario/2026-08-01.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.309,
+    "top": [
+     "casos/volta-redonda-construvalle-fourtech.md",
+     "casos/medh-cannabr-coparticipacao-relacionadas.md",
+     "jfn/pericias-agente/030022_000757_2024.md",
+     "jfn/pericias-agente/030002_000627_2025.md",
+     "diario/2026-08-01.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C34",
+   "grupo": "casos",
+   "pergunta": "uerj pagou estande em evento de inovacao pra propria organizadora",
+   "ok": [
+    "casos/uerj-base-montagens-rio-innovation-week.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.297,
+    "top": [
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "casos/setur-buzzline-pagamento-antes-do-evento.md",
+     "jfn/pericias-agente/150018_000309_2026.md",
+     "jfn/pericias-agente/150002_001417_2025.md",
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.304,
+    "top": [
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "casos/setur-buzzline-pagamento-antes-do-evento.md",
+     "jfn/pericias-agente/150018_000309_2026.md",
+     "jfn/pericias-agente/150002_001417_2025.md",
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C35",
+   "grupo": "casos",
+   "pergunta": "empenho de valor simbolico com servico prestado depois de vencido o contrato no samu",
+   "ok": [
+    "casos/tapevas-empenho-simbolico-vigencia-vencida.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.283,
+    "top": [
+     "casos/tapevas-empenho-simbolico-vigencia-vencida.md",
+     "aprendizados/contrato-vence-tac-no-mes-seguinte.md",
+     "jfn/pericias-agente/080001_002576_2023.md",
+     "relatorios/pecas-2026-11-13/REP-01-tce-rj-leao-xiii-inidonea.md",
+     "casos/cbmerj-aditivos-2021-assinados-antes-do-parecer.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.332,
+    "top": [
+     "casos/tapevas-empenho-simbolico-vigencia-vencida.md",
+     "aprendizados/contrato-vence-tac-no-mes-seguinte.md",
+     "jfn/pericias-agente/080001_002576_2023.md",
+     "relatorios/pecas-2026-11-13/REP-01-tce-rj-leao-xiii-inidonea.md",
+     "casos/cbmerj-aditivos-2021-assinados-antes-do-parecer.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "C36",
+   "grupo": "casos",
+   "pergunta": "secretaria de turismo pagou evento em lisboa antes de acontecer",
+   "ok": [
+    "casos/setur-buzzline-pagamento-antes-do-evento.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.334,
+    "top": [
+     "casos/setur-buzzline-pagamento-antes-do-evento.md",
+     "jfn/pericias-agente/050001_000054_2026.md",
+     "jfn/pericias-agente/050001_000001_2025.md",
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.308,
+    "top": [
+     "casos/setur-buzzline-pagamento-antes-do-evento.md",
+     "jfn/pericias-agente/050001_000054_2026.md",
+     "jfn/pericias-agente/050001_000001_2025.md",
+     "casos/uerj-base-montagens-rio-innovation-week.md",
+     "casos/seel-idj-paraskate-conta-da-parceria-como-caixa.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X01",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 19.024.253/0001-23?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+    "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+    "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+    "casos/fotos-repetidas-acervo-2026-11-18.md",
+    "casos/gestao-couto-analise-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.336,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md"
+    ],
+    "erro": null,
+    "achadas": 6,
+    "esperadas": 6
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.058,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md"
+    ],
+    "erro": null,
+    "achadas": 6,
+    "esperadas": 6
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.246,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "jfn/pericias-agente/260005_001122_2026.md",
+     "jfn/pericias-agente/260005_006097_2026.md"
+    ],
+    "erro": null,
+    "achadas": 5,
+    "esperadas": 6
+   }
+  },
+  {
+   "id": "X02",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 18.546.232/0001-05?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+    "casos/degase-manutec-contrato-008-2020-lote-v.md",
+    "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+    "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.282,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+    ],
+    "erro": null,
+    "achadas": 5,
+    "esperadas": 5
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.052,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+    ],
+    "erro": null,
+    "achadas": 5,
+    "esperadas": 5
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.295,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "jfn/pericias-agente/030002_000529_2026.md",
+     "jfn/pericias-agente/030002_000550_2025.md",
+     "jfn/pericias-agente/030002_000627_2025.md",
+     "jfn/pericias-agente/030002_008733_2024.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 5
+   }
+  },
+  {
+   "id": "X03",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 12.647.362/0001-58?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md",
+    "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+    "casos/fotos-repetidas-acervo-2026-11-18.md",
+    "casos/inea-omega-tac-acima-do-teto-queimados.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.286,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/inea-omega-tac-acima-do-teto-queimados.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.05,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/inea-omega-tac-acima-do-teto-queimados.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.277,
+    "top": [
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "jfn/pericias-agente/070002_013721_2025.md",
+     "jfn/pericias-agente/070002_023359_2024.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X04",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 17.298.685/0001-05?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+    "casos/degase-manutec-contrato-008-2020-lote-v.md",
+    "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.286,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "jfn/automelhoria-licoes.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.045,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "jfn/automelhoria-licoes.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.295,
+    "top": [
+     "casos/degase-manutec-contrato-008-2020-lote-v.md",
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "jfn/pericias-agente/030002_000529_2026.md",
+     "jfn/pericias-agente/030002_000550_2025.md",
+     "jfn/pericias-agente/030002_000627_2025.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X05",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 28.470.707/0001-80?",
+   "ok": [
+    "casos/fserj-dirigentes-socios-de-contratadas.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+    "casos/idesi-fundacao-saude-rj.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.272,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "casos/idesi-fundacao-saude-rj.md",
+     "MOC-Casos.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.043,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "casos/idesi-fundacao-saude-rj.md",
+     "MOC-Casos.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.292,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/idesi-fundacao-saude-rj.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "aprendizados/pesquisa-internet/pesquisa-fornecedor-28470707000180.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X06",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 01.920.177/0001-79?",
+   "ok": [
+    "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+    "casos/seap-milano-creche-dezembro-pago-antes-de-servido.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.297,
+    "top": [
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/seap-milano-creche-dezembro-pago-antes-de-servido.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.06,
+    "top": [
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/seap-milano-creche-dezembro-pago-antes-de-servido.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.286,
+    "top": [
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "jfn/pericias-agente/210098_000128_2023.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X07",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 10.190.061/0001-12?",
+   "ok": [
+    "casos/angra-dos-reis-representacoes-tce-2026.md",
+    "casos/tac-recorrente-ses-fserj-2026.md",
+    "casos/tac-socios-agentes-publicos-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.319,
+    "top": [
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "MOC-Casos.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.053,
+    "top": [
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "MOC-Casos.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.283,
+    "top": [
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "MOC-Casos.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X08",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 03.314.057/0001-53?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/pericia-bombeiros-funesbom-2024.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.307,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "aprendizados/jedi-loop-treino-ias.md",
+     "jfn/gestao-couto.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.053,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "aprendizados/jedi-loop-treino-ias.md",
+     "jfn/gestao-couto.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.32,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "jfn/pericias-agente/270131_000559_2023.md",
+     "jfn/itens/couto/d18-03314057000153.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X09",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 10.555.527/0001-36?",
+   "ok": [
+    "casos/cafe-do-trabalhador-lote05-acf-pago-pela-capacidade.md",
+    "casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.352,
+    "top": [
+     "casos/cafe-do-trabalhador-lote05-acf-pago-pela-capacidade.md",
+     "casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.078,
+    "top": [
+     "casos/cafe-do-trabalhador-lote05-acf-pago-pela-capacidade.md",
+     "casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.307,
+    "top": [
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/pericias-agente/310001_000011_2025.md",
+     "jfn/pericias-agente/310001_000013_2025.md",
+     "jfn/pericias-agente/310001_000015_2026.md",
+     "jfn/pericias-agente/310001_000019_2026.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X10",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 24.977.781/0001-37?",
+   "ok": [
+    "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md",
+    "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md",
+    "casos/gestao-couto-analise-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.34,
+    "top": [
+     "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md",
+     "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/020004_000013_2025.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.076,
+    "top": [
+     "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md",
+     "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/020004_000013_2025.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.34,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "jfn/pericias-agente/020004_000013_2025.md",
+     "jfn/pericias-agente/020004_000090_2024.md",
+     "jfn/pericias-agente.md",
+     "casos/cesgranrio-seeduc-reserva-tecnica-em-locais-e-pessoas.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X11",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 04.375.510/0001-02?",
+   "ok": [
+    "casos/degase-mendes-dos-santos-dezembro-pago-antes-de-servido.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.357,
+    "top": [
+     "casos/degase-mendes-dos-santos-dezembro-pago-antes-de-servido.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/030002_000307_2025.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.066,
+    "top": [
+     "casos/degase-mendes-dos-santos-dezembro-pago-antes-de-servido.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/030002_000307_2025.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.317,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/tac-recorrente-sedsodh-2023-2026.md",
+     "jfn/pericias-agente/030002_000307_2025.md",
+     "jfn/pericias-agente.md",
+     "casos/setur-buzzline-pagamento-antes-do-evento.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X12",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 09.077.954/0001-77?",
+   "ok": [
+    "casos/degase-nova-rodovia-dezembro-pago-antes-de-servido.md",
+    "casos/fserj-dirigentes-socios-de-contratadas.md",
+    "casos/tac-recorrente-ses-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.305,
+    "top": [
+     "casos/degase-nova-rodovia-dezembro-pago-antes-de-servido.md",
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.044,
+    "top": [
+     "casos/degase-nova-rodovia-dezembro-pago-antes-de-servido.md",
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.308,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "jfn/pericias-agente/030002_000633_2025.md",
+     "jfn/pericias-agente/030002_000649_2026.md",
+     "jfn/pericias-agente/310001_001834_2026.md"
+    ],
+    "erro": null,
+    "achadas": 3,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X13",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 296100 pagou à empresa 24.006.302/0004-88?",
+   "ok": [
+    "casos/ideas-instituto-saude-nao-capturado.md"
+   ],
+   "brain_mcp": {
+    "posicao": 3,
+    "s": 0.342,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/ideas-instituto-saude-nao-capturado.md",
+     "aprendizados/cross-fornecedor-sinais.md",
+     "aprendizados/pesquisa-internet/_INDEX-pesquisa-fornecedor.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 2,
+    "s": 0.043,
+    "top": [
+     "casos/fserj-dirigentes-socios-de-contratadas.md",
+     "casos/ideas-instituto-saude-nao-capturado.md",
+     "jfn/gestao-couto.md",
+     "jfn/itens/couto/d14-24006302000488-2026-03-10.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.349,
+    "top": [
+     "casos/ideas-instituto-saude-nao-capturado.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/agentes-publicos-socios-fornecedores-saude.md",
+     "casos/edital-direcionamento-247.md",
+     "jfn/pericias-agente/080001_001096_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X14",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 180100 pagou à empresa 00.801.512/0001-57?",
+   "ok": [
+    "casos/agile-corp-seeduc-emergencia-do-incumbente.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.321,
+    "top": [
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "aprendizados/CATALOGO-DE-FALHAS.md",
+     "aprendizados/pesquisa-internet/pesquisa-fornecedor-00801512000157.md",
+     "jfn/gestao-couto.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.038,
+    "top": [
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "aprendizados/CATALOGO-DE-FALHAS.md",
+     "jfn/gestao-couto.md",
+     "jfn/itens/couto/d05-180100-00801512000157.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.343,
+    "top": [
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/seeduc-brasil-comercio-nfe-paga-em-duplicidade-contrato-20-2025.md",
+     "casos/cesgranrio-avalia-rj-2026-polos-reserva-tecnica.md",
+     "casos/cesgranrio-seeduc-reserva-tecnica-em-locais-e-pessoas.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X15",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 294200 pagou à empresa 10.190.061/0001-12?",
+   "ok": [
+    "casos/tac-recorrente-ses-fserj-2026.md",
+    "casos/tac-socios-agentes-publicos-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.326,
+    "top": [
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "MOC-Casos.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.112,
+    "top": [
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "MOC-Casos.md",
+     "notas/revisao-cetica-2026-11-13.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.37,
+    "top": [
+     "casos/angra-dos-reis-representacoes-tce-2026.md",
+     "casos/tac-socios-agentes-publicos-fserj-2026.md",
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "jfn/pericias-agente/080002_014430_2024.md",
+     "jfn/pericias-agente/080002_027563_2025.md"
+    ],
+    "erro": null,
+    "achadas": 2,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "X16",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 140100 pagou à empresa 21.602.870/0001-00?",
+   "ok": [
+    "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.329,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/150001_000217_2025.md",
+     "jfn/pericias-agente/150001_000224_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.064,
+    "top": [
+     "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md",
+     "jfn/pericias-agente/150001_000217_2025.md",
+     "jfn/pericias-agente/150001_000224_2025.md",
+     "jfn/pericias-agente/150001_002095_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 3,
+    "s": 0.352,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/casa-civil-mrc-carona-cim-jequitinhonha.md",
+     "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md",
+     "jfn/pericias-agente/150001_000217_2025.md",
+     "jfn/pericias-agente/150001_000224_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X17",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 404400 pagou à empresa 19.024.253/0001-23?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+    "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+    "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.327,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.077,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+     "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+     "jfn/gestao-couto.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   },
+   "fundido": {
+    "posicao": 3,
+    "s": 0.407,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/faetec-scalle-iss-retido-nao-retido.md",
+     "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md"
+    ],
+    "erro": null,
+    "achadas": 4,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X18",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 243200 pagou à empresa 07.792.269/0001-05?",
+   "ok": [
+    "casos/fotos-repetidas-lytoranea-cinco-contratos.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.347,
+    "top": [
+     "casos/fotos-repetidas-lytoranea-cinco-contratos.md",
+     "aprendizados/pesquisa-internet/pesquisa-fornecedor-07792269000105.md",
+     "jfn/itens/a-maior/estado-do-rj-2024005362.md",
+     "jfn/pericia-contabil.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.117,
+    "top": [
+     "casos/fotos-repetidas-lytoranea-cinco-contratos.md",
+     "jfn/pericias-agente/070002_002062_2024.md",
+     "jfn/pericias-agente/070002_006459_2024.md",
+     "jfn/pericias-agente/070002_006627_2024.md",
+     "jfn/pericias-agente/070002_012681_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.405,
+    "top": [
+     "casos/fotos-repetidas-lytoranea-cinco-contratos.md",
+     "jfn/pericias-agente/070002_002062_2024.md",
+     "jfn/pericias-agente/070002_006459_2024.md",
+     "jfn/pericias-agente/070002_006627_2024.md",
+     "jfn/pericias-agente/070002_012681_2024.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X19",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 660100 pagou à empresa 48.479.530/0001-90?",
+   "ok": [
+    "casos/muv-sao-goncalo-grupo-vieira.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.383,
+    "top": [
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/510001_000874_2025.md",
+     "casos/grupo-vieira-consorcios.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.058,
+    "top": [
+     "casos/muv-sao-goncalo-grupo-vieira.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.38,
+    "top": [
+     "casos/muv-sao-goncalo-grupo-vieira.md",
+     "casos/grupo-vieira-consorcios.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md",
+     "casos/secid-vieira-aditivo-45-e-recuperacao-judicial.md",
+     "casos/varredura-concentracao-grupo-2026-06-12.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X20",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 133100 pagou à empresa 03.314.057/0001-53?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.338,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "aprendizados/jedi-loop-treino-ias.md",
+     "jfn/gestao-couto.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.074,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "jfn/gestao-couto.md",
+     "jfn/itens/couto/d18-03314057000153.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.495,
+    "top": [
+     "casos/gestao-couto-analise-2026-11-13.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/pericia-bombeiros-funesbom-2024.md",
+     "casos/iterj-mgs-clean-pagamentos.md",
+     "jfn/pericias-agente/270131_000559_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X21",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 250100 pagou à empresa 02.102.125/0001-58?",
+   "ok": [
+    "casos/seap-cassarotti-3ta-absorcao-lote13.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.339,
+    "top": [
+     "casos/seap-cassarotti-3ta-absorcao-lote13.md",
+     "jfn/pericias-agente.md",
+     "jfn/pericias-agente/210108_000163_2023.md",
+     "jfn/pericias-agente/210108_000168_2023.md",
+     "jfn/pericias-agente/210108_000169_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.055,
+    "top": [
+     "casos/seap-cassarotti-3ta-absorcao-lote13.md",
+     "jfn/pericias-agente/210108_000163_2023.md",
+     "jfn/pericias-agente/210108_000168_2023.md",
+     "jfn/pericias-agente/210108_000169_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 2,
+    "s": 0.275,
+    "top": [
+     "casos/seap-milano-creche-dezembro-pago-antes-de-servido.md",
+     "casos/seap-cassarotti-3ta-absorcao-lote13.md",
+     "casos/seap-seleta-5ta-absorcao-lote12-acima-25.md",
+     "casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md",
+     "jfn/pericias-agente/210108_000168_2023.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X22",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 044100 pagou à empresa 12.647.362/0001-58?",
+   "ok": [
+    "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md"
+   ],
+   "brain_mcp": {
+    "posicao": 2,
+    "s": 0.306,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/inea-omega-tac-acima-do-teto-queimados.md",
+     "jfn/pericias-agente.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "brain_entity": {
+    "posicao": 1,
+    "s": 0.078,
+    "top": [
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "jfn/pericias-agente/330002_006370_2026.md",
+     "jfn/pericias-agente/330002_049477_2025.md",
+     "jfn/pericias-agente/330002_049748_2025.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   },
+   "fundido": {
+    "posicao": 1,
+    "s": 0.42,
+    "top": [
+     "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+     "casos/fotos-repetidas-acervo-2026-11-18.md",
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/seas-uniao-norte-sao-francisco-medicoes-zeradas-sem-empenho.md",
+     "casos/inea-omega-tac-acima-do-teto-queimados.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  }
+ ]
+}

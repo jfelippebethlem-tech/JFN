@@ -5,7 +5,7 @@
 | **Documento** | Medição do estado atual, estado da arte conferido na fonte, arquitetura-alvo, plano em fases com critério mensurável, bateria de avaliação e Fase 1 implantada |
 | **Pedido do dono** | "faça também a melhor arquitetura para segundo cérebro" · "eu quero uma arquitetura de segundo cérebro que seja o estado da arte" |
 | **Medição** | 19/11/2026, 07:59–08:30 (BRT) — VM-1 `jfn-core` (carga 9 a 20 durante a medição) e VM-2 `JFN-Agent-2` |
-| **Estado** | **Fase 1 implantada** (commit `09dec788`) · Fases 2 a 6 são proposta, com custo e decisão indicados (§8, §10) |
+| **Estado** | **Fases 1, 2 e 4 implantadas e a consolidação (fila + teto) agendada** — autorização do dono em 19/11/2026: "pode seguir com as fases 2 e 4 e a consolidação" (§12.1). Fase 3 pendente; Fase 6 (paga) **desligada** |
 | **Antecessor** | `docs/ARQUITETURA-SEGUNDO-CEREBRO.md` (18/11/2026 — inventário e ponte). Este documento **substitui** as linhas "Khoj" e "hermes_rag" do §4.3 de lá e o §3 (que não tinha sido conferido na fonte) |
 | **Irmãos** | `docs/ARQUITETURA-DE-CERTEZA.md` · `config/propagacao.yaml` · `config/cerebro_bateria.yaml` |
 
@@ -315,10 +315,10 @@ Tempo por consulta da busca nova: mediana 1,14 s com a VM-1 em carga 20 (0,1 a 0
 | Fase | O que entrega | Critério de pronto (mensurável) | Custo | Risco e reversão | Decisão |
 |---|---|---|---|---|---|
 | **1 — Medir e achar** | Bateria de 56 · busca por nota no `caso` · catraca no despachante · Khoj aposentado | recall@10 ≥ 53/56 — **medido: 56/56** (base: 33/56) | Zero | `JFN_CEREBRO_FUNDIDO=0` volta à busca antiga; Khoj volta com 1 linha | **FEITA** |
-| **2 — A mesma busca para todo agente** | Perna "por nota" **dentro** do jfn-brain (coluna `tsvector` com pesos A/B/C/D por título, nome, resumo e corpo, ordenada por nota; ou o mesmo FTS5 ao lado); `brain_search` do MCP devolve notas; Hermes passa a ler o jfn-brain | sistema `brain` da bateria: recall@10 ≥ 53/56 e 1º lugar ≥ 40/56 (hoje 33 e 20) | Zero · ~1 sessão | Escreve na VM-2: cópia `brain_core.py.bak-<data>` + chave de configuração para a busca antiga | **Dono** (escrita na VM-2) |
+| **2 — A mesma busca para todo agente** | Perna "por nota" **dentro** do jfn-brain (coluna `tsvector` com pesos A/B/C/D por título, nome, resumo e corpo, ordenada por nota; ou o mesmo FTS5 ao lado); `brain_search` do MCP devolve notas; Hermes passa a ler o jfn-brain | sistema `brain` da bateria: recall@10 ≥ 53/56 e 1º lugar ≥ 40/56 (hoje 33 e 20) | Zero · ~1 sessão | `deploy/vm2/brain/implantar.sh --reverter <carimbo>` ou `BRAIN_BUSCA=antiga` no `.env` | **FEITA** — medido: 56/56 e 46/56 |
 | **3 — Vetor melhor, em sombra** | Coluna-sombra com 1 a 3 modelos abertos (gte-multilingual-base, arctic-embed-m-v2.0, multilingual-e5-small); cronometrar 200 trechos antes de reembutir os 10.069 | perna só-vetor: 1º lugar no grupo `dono` ≥ 14/20 (régua do Khoj) e recall@10 total ≥ 45/56 (hoje 34). Não bateu → fica o modelo atual | Zero de API; CPU da VM-2 com `nice` (tempo a medir nos 200 trechos) | Coluna nova; a antiga só sai depois da medição | Pode ser feita com o ok da Fase 2 |
-| **4 — Entidades e tempo** | Tabela de entidades e arestas no Postgres para **todas** as notas e memórias; duas linhas de tempo e campos de prova nas memórias; `brain_entity` no MCP; cor do órgão na entidade | grupo novo `cruzamento` (≥ 20 perguntas "em que casos aparece X") com recall ≥ 95%; 100% dos fatos de nível 2 com `prova_doc` preenchido; 0 CPF em claro (catraca) | Zero · 2 a 3 sessões | Só acrescenta tabela e coluna; migração com cópia do banco antes | **Dono** |
-| **5 — Consolidação e higiene** | Rotina noturna do §5.5; memórias em série fora do `recall` padrão; carga das memórias antigas dos agentes; `MEMORY.md` ≤ 200 linhas | grupo novo `memorias` (≥ 30 perguntas sobre decisões do dono) com recall@5 ≥ 90% — **base a medir antes de mexer**; contradições abertas listadas em Sistema | Zero de API (propostas por modelo só pela assinatura, 23h–06h) | Filtro é configuração; nada é apagado | Dono decide o teto da assinatura |
+| **4 — Entidades e tempo** | Tabela de entidades e arestas no Postgres para **todas** as notas e memórias; duas linhas de tempo e campos de prova nas memórias; `brain_entity` no MCP; cor do órgão na entidade | grupo novo `cruzamento` (≥ 20 perguntas "em que casos aparece X") com recall ≥ 95%; 100% dos fatos de nível 2 com `prova_doc` preenchido; 0 CPF em claro (catraca) | Zero · 2 a 3 sessões | Só acrescenta tabela, coluna e índice (`migracao_f4.sql`) | **FEITA** — cruzamento 22/22, cobertura 58/58 (100%) |
+| **5 — Consolidação e higiene** | Rotina noturna do §5.5; memórias em série fora do `recall` padrão; carga das memórias antigas dos agentes; `MEMORY.md` ≤ 200 linhas | grupo novo `memorias` (≥ 30 perguntas sobre decisões do dono) com recall@5 ≥ 90% — **base a medir antes de mexer**; contradições abertas listadas em Sistema | Zero de API (propostas por modelo só pela assinatura, 23h–06h) | Filtro é configuração; nada é apagado | **PARCIAL** — fila + teto de 50 chamadas/noite implantados (§12.1); higiene do recall e grupo `memorias` a fazer |
 | **6 — Contexto por trecho** (opcional, pago) | Linha de contexto gerada por modelo para cada trecho (Contextual Retrieval) | só se, depois das Fases 2 e 3, o 1º lugar no grupo `dono` ficar < 16/20; ganho mínimo de +2 perguntas para manter | **API paga** — §9 | Coluna separada; desligar = ignorar a coluna | **Dono**, com teto |
 
 **Ordem recomendada:** 2 → 3 → 4 → 5. A Fase 6 só se a medição pedir.
@@ -343,9 +343,10 @@ Tempo por consulta da busca nova: mediana 1,14 s com a VM-1 em carga 20 (0,1 a 0
 |---|---|---|---|
 | D1 | Confirmar a aposentadoria do Khoj (revê a decisão de 14/11) | Confirmar | Fica parado, reversível |
 | D2 | Apagar `vm2:~/khoj-piloto` (2,2 GB) | Só depois da Fase 3 (a régua do vetor é dele) | Dados ficam |
-| D3 | Autorizar a Fase 2 (escrita no serviço do cérebro, VM-2) | Autorizar — é o que leva o ganho ao Yoda e às outras sessões | Ganho fica só na VM-1 |
-| D4 | Autorizar a Fase 4 (esquema de entidades e tempo) | Autorizar depois da 2 | — |
-| D5 | Teto de chamadas da assinatura para as propostas de consolidação | 50 por noite | Fase 5 roda só a parte determinística |
+| D3 | Autorizar a Fase 2 (escrita no serviço do cérebro, VM-2) | **AUTORIZADA e feita em 19/11** | — |
+| D4 | Autorizar a Fase 4 (esquema de entidades e tempo) | **AUTORIZADA e feita em 19/11** | — |
+| D5 | Teto de chamadas da assinatura para as propostas de consolidação | **AUTORIZADO: 50 por noite, só assinatura** — implantado | — |
+| D8 | Orçamento da assinatura de madrugada (automelhoria fez 0 chamadas em 19/11 — §12.1) | Reservar fatia para automelhoria + consolidação, ou atrasar a perícia integral | As duas seguem cedendo à perícia integral |
 | D6 | Fase 6 paga (teto US$ 5,00) | **Não ligar agora** — só se a medição pedir | Não liga |
 | D7 | Revisar o gabarito da bateria (15 min) | Recomendado: hoje o gabarito é de um avaliador só | Bateria segue como está |
 
@@ -375,6 +376,66 @@ Tempo por consulta da busca nova: mediana 1,14 s com a VM-1 em carga 20 (0,1 a 0
 | Avaliação contínua | derivado `cerebro_bateria` em `config/propagacao.yaml` (catraca 53/56) | Sistema › Propagação |
 | Khoj | parado e fora do boot; anotado em `vm2:~/khoj-piloto/LEIAME.txt` | `is-active` = inactive ×4 · `is-enabled` = disabled ×4 |
 | Decisão registrada | `~/vault/decisoes/2026-11-19-segundo-cerebro-arquitetura-alvo.md` · memória `decisoria` no jfn-brain | — |
+
+### 12.1 Fases 2, 4 e consolidação — implantadas em 19/11/2026 (08:50–09:30 BRT)
+
+**Antes e depois, por fase** (arquivos em `data/cerebro_bateria/`):
+
+| Fase | Medida | Antes | Depois | Critério | Estado |
+|---|---|---:|---:|---|---|
+| **2** | `brain_search` do **MCP** — recall@10 nas 56 perguntas de nota | 33 | **56** | ≥ 53 | VERIFICADO |
+| 2 | `brain_search` do MCP — 1º lugar | 20 | **46** | ≥ 40 | VERIFICADO |
+| 2 | `brain_search` do MCP — só as 20 do dono (1º / top-10) | 4 / 9 | **13 / 20** | — | VERIFICADO |
+| 2 | `fundido` (comando `caso`) — recall@10 / 1º lugar | 56 / 46 | 56 / 46 | não piorar | VERIFICADO |
+| **4** | Cruzamento (22 perguntas) — `brain_search` do MCP, recall@10 | 4 (busca antiga) | **22** | — | VERIFICADO |
+| 4 | Cruzamento — notas esperadas devolvidas (cobertura) pelo `brain_search` | 4 de 58 | **58 de 58** | — | VERIFICADO |
+| 4 | Cruzamento — `brain_entity` (ferramenta nova): recall / cobertura | não existia | **22 de 22 · 58 de 58 (100%)** | ≥ 95% | VERIFICADO |
+| 4 | `fundido` no cruzamento — recall@10 / cobertura | — | 22 de 22 · 55 de 58 | — | VERIFICADO |
+| 4 | Memórias ativas com chave estável no banco | 0 | **1.422 de 1.561** | — | VERIFICADO |
+| 4 | Entidades e menções indexadas | 465 CNPJ · 518 processos (só perícias) | **2.979 entidades · 8.621 menções** em 1.052 notas e 1.377 memórias | — | VERIFICADO |
+
+**O que entrou no serviço (VM-2), agora versionado em `deploy/vm2/brain/`:**
+
+| Item | Como ficou |
+|---|---|
+| `brain_search` (MCP e `/api/search`) | uma linha por **nota**: entidade citada na pergunta → BM25 por nota (título ×6, nome ×8) → até 2 notas resgatadas pelo vetor. Campo novo `via` diz de onde veio cada linha |
+| Uma regra, duas máquinas | `compliance_agent/cerebro_fts.py` é o **mesmo arquivo** na VM-1 e na VM-2 (md5 conferido no deploy) |
+| Entidades | tabelas `entidade` e `entidade_mencao`: CNPJ (dígito verificador conferido), processo SEI, UG (só com "UG" escrito), OB. Cada menção guarda o trecho onde aparece. **CPF não é extraído.** O indexador atualiza a cada nota e a cada memória |
+| Cor do órgão | 160 UGs com nome e cor de `cores_orgaos` (`ug_cores.json`) — a mesma do Obsidian e da galáxia |
+| `brain_entity(ref, com)` | tudo o que cita a entidade (casos primeiro), as memórias e as entidades que aparecem junto; `com` = só o que cita as duas. **Menção ≠ pagamento** — valor pago continua sendo o do SIAFE |
+| Fato em duas linhas de tempo | `memories` ganhou `chave`, `valeu_de`/`valeu_ate` (quando valeu no mundo), `substituida_em` (quando deixou de valer no registro) e `prova_doc`/`prova_trecho`/`prova_hash`. Índice único: **uma só versão ativa por chave**. `brain_history` mostra as versões; `brain_recall(em=data)` responde o que o cérebro sabia naquela data |
+| Fila de revisão | status `proposta` (fora do recall), `/api/proposals` |
+| Deploy | `deploy/vm2/brain/implantar.sh`: recusa arquivo não commitado, confere md5 nas duas pontas, guarda cópia, e só dá por pronto com **REST + MCP respondendo busca de verdade**; falhou → volta sozinho. 4 implantações hoje, 4 com saúde OK |
+| Reversão provada | a busca antiga foi religada (`BRAIN_BUSCA=antiga`) para medir o "antes" do cruzamento e desligada de novo — as duas trocas com saúde OK |
+
+**Consolidação noturna** (`compliance_agent/cerebro_consolidacao.py`, cron `15 0 * * *`):
+
+| Item | Valor |
+|---|---|
+| Parte sem modelo | colhe os pares de memórias ativas com semelhança ≥ 0,90, fora das séries geradas — **26 pares hoje** (34 antes de tirar as versões da rubrica) |
+| Parte com modelo | Claude **só pela assinatura** (`backend="cli"`): mesmo fato · contradição · distintos. Vira **proposta**; nada é fundido nem corrigido. Aceitar é ato de gente (`aceitar <id>`) |
+| Tetos | 50 chamadas por noite · 900 s por noite (6% do orçamento diário) · não começa chamada com menos de 1.800 s de sobra no dia |
+| Assinatura fora | a rodada **para** — não cai na API paga nem na cascata; resposta marcada `@api` é descartada (teste cobre) |
+| Não se sobrepõe à automelhoria | espera a trava dela (`flock -w` em `data/locks/autoaprimoramento_reexec.lock`) e roda depois |
+| Primeira rodada (09:25) | 34 pares na fila, **0 chamadas**: o motor estava em contingência (98% do orçamento do dia gasto) — o teto funcionou |
+
+> [!warning] Achado da medição do motor — para o dono
+> Em 19/11 a perícia integral gastou a assinatura a ~3.000 s por hora desde 00h e o orçamento diário (14.400 s)
+> chegou a 13.253 s às 04h e a 14.057 s às 07h. **A reexecução da automelhoria (00:10) fez 0 chamadas e teve 71
+> bloqueadas.** A consolidação foi desenhada para ser a primeira a ceder, mas o problema é anterior a ela: quem
+> roda de madrugada disputa o mesmo orçamento com a perícia integral. Decisão pendente: reservar fatia do
+> orçamento para a automelhoria (e a consolidação) ou começar a perícia integral mais tarde.
+
+**Limites do que foi feito (honestidade):**
+- O grupo `cruzamento` tem gabarito por `grep` do identificador nas notas de `casos/` — independente do cérebro, mas
+  da mesma família de expressão regular. Mede **menção**, não vínculo jurídico.
+- Contrato e pessoa física **não** viraram entidade: contrato não tem chave única sem o órgão; pessoa só entra com
+  identificador mascarado vindo das tabelas próprias — fica para a próxima rodada.
+- `valeu_de`/`valeu_ate` e os campos de prova existem e são aceitos, mas **nenhum produtor os preenche ainda**: a
+  ponte das perícias precisa passar a enviá-los (hoje a prova vai no texto).
+- 139 memórias ativas seguem sem chave (gravadas à mão por sessões).
+- A higiene do recall (memórias em série fora do padrão) **não** foi ligada: falta medir antes com o grupo `memorias`.
+- Uma nota com YAML inválido perdia `cnpj:`/`ug:` na carga inicial — corrigido lendo do arquivo (commit `397168d4`).
 
 ## 13. Fontes
 
