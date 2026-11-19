@@ -21,7 +21,13 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 PAR=vm2-ts                     # rota Tailscale permanente (porta 2222) — ver memória do túnel
-REMOTO='~/JFN-suite-vm1'
+# 19/11/2026: duas sessões rodando ao mesmo tempo apagavam o diretório uma da outra (rm -rf + mv no mesmo
+# ~/JFN-suite-vm1) e o pytest da primeira morria com 'failed to make path absolute'. Agora cada envio tem o
+# SEU diretório e o seu pacote, apagados ao fim.
+RUN="$(date +%s)-$$"
+REL="JFN-suite-vm1-$RUN"
+REMOTO="~/$REL"
+TGZ="/tmp/jfn-suite-$RUN.tgz"
 VENV='~/JFN-suite-venv'
 PY="$VENV/bin/python"
 PKG=$(mktemp /tmp/jfn-suite-XXXXXX.tgz)
@@ -36,7 +42,7 @@ git ls-files -z -- . ':!docs/pdf' ':!docs/referencias' \
   | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
   | tar czf "$PKG" --null -T - 2>/dev/null
 MD5=$(md5sum "$PKG" | cut -d' ' -f1)
-scp -q -o BatchMode=yes "$PKG" "$PAR:/tmp/jfn-suite.tgz" || { echo "[vm2] scp falhou — túnel fora?"; exit 1; }
+scp -q -o BatchMode=yes "$PKG" "$PAR:$TGZ" || { echo "[vm2] scp falhou — túnel fora?"; exit 1; }
 
 if [ $# -gt 0 ]; then
   CMD="nice -n 15 ionice -c3 $PY -m pytest $* -q -rf -p no:cacheprovider --timeout=900"
@@ -46,9 +52,9 @@ fi
 
 ssh -o BatchMode=yes "$PAR" "
 set -e
-[ \"\$(md5sum /tmp/jfn-suite.tgz | cut -d' ' -f1)\" = '$MD5' ] || { echo '[vm2] md5 do pacote NÃO confere — abortando'; exit 3; }
-rm -rf $REMOTO.novo && mkdir -p $REMOTO.novo && tar xzf /tmp/jfn-suite.tgz -C $REMOTO.novo && rm -f /tmp/jfn-suite.tgz
-rm -rf $REMOTO && mv $REMOTO.novo $REMOTO && cd $REMOTO
+[ \"\$(md5sum $TGZ | cut -d' ' -f1)\" = '$MD5' ] || { echo '[vm2] md5 do pacote NÃO confere — abortando'; exit 3; }
+trap \"cd; rm -rf \$HOME/$REL $TGZ\" EXIT
+mkdir -p $REMOTO && tar xzf $TGZ -C $REMOTO && rm -f $TGZ && cd $REMOTO
 # As catracas (compliance_agent/qualidade/catraca.py) medem por git ls-files e git grep: sem repositorio
 # elas morrem com not-a-git-repository. Um commit local dos arquivos enviados reproduz o checkout
 # (-f: arquivo versionado que casa com .gitignore, como data/*.json, tambem tem de entrar).
