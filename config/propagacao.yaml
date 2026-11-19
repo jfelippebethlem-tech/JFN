@@ -348,6 +348,19 @@ derivados:
     timeout_s: 900
     prioridade: 8
     antes: "escrito em docs/AUTOAPRIMORAMENTO-JFN.md §8 e NÃO instalado — o laço só andava à mão (último ciclo 18/11 17:41)"
+  ob_reemitida:
+    nome: OB 'Enviado ao Banco' reemitida e paga (fora do pago — lida por cruzamentos_intel._ob_paga)
+    onde: tabela ob_reemitida (compliance.db) · data/ob_reemitida.json
+    # decisão de 19/11/2026: mesma credor/UG/valor/processo com OB confirmada em ≤10 dias = reemissão (123 OB, R$ 19,65 mi)
+    depende: [siafe_ob]
+    comando: ["{py}", "-m", "compliance_agent.ob_reemitida"]
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    timeout_s: 1200
+    prioridade: 2
+    efeito: {arquivo: data/ob_reemitida.json}
+    antes: "não existia — a 'Enviado ao Banco' reemitida somava junto com a reemissão (dobro)"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos

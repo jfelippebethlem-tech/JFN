@@ -1262,6 +1262,14 @@ def _ob_paga(con, alias: str = "") -> str:
     if "tipo_regularizacao" in cols:
         r += f" AND COALESCE({a}tipo_regularizacao,'')<>'Pagamento Complementar'"
     return r + (f" AND COALESCE({a}numero_ob,'')<>''" if "numero_ob" in cols else "")
+    # 'Enviado ao Banco' REEMITIDA e paga (mesmo credor/UG/valor/processo, ≤10 dias): a 1ª não é pagamento (19/11/2026:
+    # 123 OB, R$ 19,65 mi). A lista vem de `compliance_agent.ob_reemitida` (tabela pequena); sem ela, regra antiga.
+    try:
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ob_reemitida'").fetchone():
+            r += (f" AND NOT EXISTS (SELECT 1 FROM ob_reemitida _re WHERE _re.ob={a}numero_ob"
+                  f" AND _re.ug={a}ug_emitente)")
+    except sqlite3.Error:
+        pass
 
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "

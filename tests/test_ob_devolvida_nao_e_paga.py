@@ -63,3 +63,25 @@ def test_pagamento_complementar_nao_e_paga():
     for a, pre in (("", ""), ("o", "o.")):
         tot = con.execute(f"SELECT SUM({pre}valor) FROM ob_orcamentaria_siafe {a} WHERE {CI._ob_paga(con, a)}").fetchone()[0]
         assert round(tot, 2) == 230103.02
+
+
+def test_enviado_ao_banco_reemitida_nao_e_paga():
+    """19/11/2026: 'Enviado ao Banco' com reemissão paga (mesmo credor/UG/valor/processo, ≤10 dias) conta 1×; parcela
+    mensal igual (outro processo ou >10 dias) e a 'Enviado ao Banco' sem reemissão seguem pagas."""
+    from compliance_agent import ob_reemitida as RE
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, credor TEXT, valor REAL, "
+                "processo TEXT, data_emissao TEXT, status TEXT, status_envio TEXT)")
+    linhas = [("2021OB01446", "070100", "X", 100.0, "P1", "29/12/2021", "Contabilizado", "Enviado ao Banco"),
+              ("2021OB01486", "070100", "X", 100.0, "P1", "30/12/2021", "Contabilizado", "Processado e Pago"),
+              ("2021OB00001", "070100", "X", 50.0, "P2", "01/02/2021", "Contabilizado", "Enviado ao Banco"),
+              ("2021OB00002", "070100", "X", 50.0, "P2", "01/03/2021", "Contabilizado", "Processado e Pago"),
+              ("2021OB00003", "070100", "Y", 7.0, "P3", "01/03/2021", "Contabilizado", "Enviado ao Banco")]
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?)", linhas)
+    soma = lambda: con.execute(f"SELECT SUM(valor) FROM ob_orcamentaria_siafe WHERE {CI._ob_paga(con)}").fetchone()[0]
+    assert soma() == 307.0                                               # sem a tabela: regra antiga
+    assert RE.calcular(con) == [("2021OB01446", "070100", 100.0)]
+    con.execute("CREATE TABLE ob_reemitida (ob TEXT, ug TEXT, valor REAL, PRIMARY KEY (ob, ug)) WITHOUT ROWID")
+    con.executemany("INSERT INTO ob_reemitida VALUES (?,?,?)", RE.calcular(con))
+    assert soma() == 207.0
+    assert con.execute(f"SELECT SUM(o.valor) FROM ob_orcamentaria_siafe o WHERE {CI._ob_paga(con, 'o')}").fetchone()[0] == 207.0
