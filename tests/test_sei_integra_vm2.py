@@ -206,3 +206,43 @@ def test_reprovado_duas_vezes_em_24h_sai_da_exportacao(monkeypatch, tmp_path):
             (q / lote / "300000_000004_2025.motivo.json").write_text("{}")
     assert V._quarentena_repetida() == {"300000/000003/2025"}
     assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-300000/000004/2025"]
+
+
+def _log_lotes(caminho, blocos):
+    """blocos = [(origem, [(proc, status), ...]), ...] no formato que `vm2_conferencia` grava no log da VM-1."""
+    linhas = []
+    for k, (origem, itens) in enumerate(blocos):
+        linhas.append(f"[2026-11-18 10:{k:02d}:00] {origem}: lote integras-x-{k} conferido — 0 aprovado(s), 0 em quarentena")
+        for proc, st in itens:
+            linhas.append(f"[2026-11-18 10:{k:02d}:01] ÍNTEGRA {proc} …")
+            linhas.append(f"[2026-11-18 10:{k:02d}:02]   {proc}: {st}")
+    caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+
+
+def test_timeouts_seguidos_na_vm2_mandam_o_processo_ao_itcampo(monkeypatch, tmp_path):
+    """18/11/2026: `080007/002208/2021` (1.953 documentos) estourou o teto de 900 s da VM-2 19 vezes sem um PDF novo
+    — só enumerar a árvore passa do teto. N timeouts SEGUIDOS na VM-2 tiram o processo da exportação DELA; o it-campo
+    (teto de 3 h) continua recebendo."""
+    _isolar(monkeypatch, tmp_path)
+    log = tmp_path / "fila.log"
+    monkeypatch.setattr(F, "LOG", log)
+    vm2 = V.ORIGENS_VM2[0]
+    _log_lotes(log, [
+        (vm2, [("300000/000003/2025", "timeout"), ("300000/000004/2025", "timeout")]),
+        (vm2, [("300000/000003/2025", "timeout")]),
+        ("Jorge", [("300000/000003/2025", "timeout")]),                 # timeout no it-campo não conta para a VM-2
+        (vm2, [("300000/000004/2025", "ok")]),                           # ok zera a sequência
+        (vm2, [("300000/000003/2025", "adiado"), ("300000/000003/2025", "timeout")]),   # adiado não diz nada
+        (vm2, [("300000/000004/2025", "timeout")]),
+    ])
+    assert V._timeouts_seguidos_vm2(limite=3) == {"300000/000003/2025"}
+    assert [e["sei"] for e in V.exportar(10, no="itcampo1", validade_h=3)] == \
+        ["SEI-300000/000003/2025", "SEI-300000/000004/2025"]
+    (tmp_path / "data" / ".integras_itcampo1_reserva.json").unlink()      # reserva do it-campo não interfere aqui
+    assert [e["sei"] for e in V.exportar(10, no="vm2", validade_h=3)] == ["SEI-300000/000004/2025"]
+
+
+def test_sem_log_nenhum_processo_sai(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    monkeypatch.setattr(F, "LOG", tmp_path / "nao_existe.log")
+    assert V._timeouts_seguidos_vm2() == set()

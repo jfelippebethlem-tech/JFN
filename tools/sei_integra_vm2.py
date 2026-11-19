@@ -109,6 +109,39 @@ def _restritos_confirmados() -> set[str]:
             and (not v.get("ultima") or str(v.get("ultima")) >= corte)} - {""}
 
 
+# TIMEOUT EM SÉRIE NA VM-2 → IT-CAMPO. Medido em 18/11/2026: `080007/002208/2021` (1.953 documentos) estourou o teto de
+# 900 s da VM-2 19 vezes sem um PDF novo — só enumerar a árvore passa do teto; cada volta comia 15 min da fila. O it-campo
+# roda com teto de 3 h (`itcampo_sei_paralelo`). O histórico vem do log da fila da VM-1, onde `vm2_conferencia` grava as
+# linhas de cada lote sob o cabeçalho com o hostname de origem.
+TIMEOUTS_MAX = 3
+ORIGENS_VM2 = ("JFN-Agent-2", "VM-2")
+_RX_CABECALHO_LOTE = re.compile(r"^\[[^\]]+\] (.+?): lote \S+ conferido")
+_NEUTROS = {"adiado", "login"}          # não dizem nada do processo: não zeram nem somam
+
+
+def _timeouts_seguidos_vm2(limite: int = TIMEOUTS_MAX, cauda_bytes: int = 8_000_000) -> set[str]:
+    """Processos cujos últimos `limite`+ desfechos NA VM-2 foram timeout (outro desfecho zera a contagem)."""
+    try:
+        with F.LOG.open("rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - cauda_bytes))
+            linhas = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return set()
+    seguidos: dict[str, int] = {}
+    origem = ""
+    for ln in linhas:
+        m = _RX_CABECALHO_LOTE.match(ln)
+        if m:
+            origem = m.group(1)
+            continue
+        m = _RX_STATUS.match(ln)
+        if not m or origem not in ORIGENS_VM2 or m.group(2) in _NEUTROS:
+            continue
+        seguidos[m.group(1)] = seguidos.get(m.group(1), 0) + 1 if m.group(2) == "timeout" else 0
+    return {p for p, n in seguidos.items() if n >= limite}
+
+
 QUARENTENA_MAX = 2          # reprovações em 24 h que tiram o processo da exportação até a fila de quarentena ser revista
 
 
@@ -194,7 +227,10 @@ def _reservas_alheias(no: str) -> set[str]:
 
 def exportar(max_n: int, no: str = "vm2", validade_h: float | None = None,
              k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
-    fila = montar_fila(max_n, k_bombeiros=k_bombeiros, excluir=_reservas_alheias(no))
+    excluir = _reservas_alheias(no)
+    if no == "vm2":
+        excluir |= _timeouts_seguidos_vm2()
+    fila = montar_fila(max_n, k_bombeiros=k_bombeiros, excluir=excluir)
     reg = {"ts": time.time(), "host": no, "procs": [F._proc_limpo(e["sei"]) for e in fila]}
     if validade_h:
         reg["validade_h"] = validade_h
