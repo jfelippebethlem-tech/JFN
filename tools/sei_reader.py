@@ -179,10 +179,20 @@ async def navegador_sei(pw, *, args=None, user_agent: str | None = _UA_DESKTOP, 
     sem ela, lança um como sempre. O corte do visualizador de PDF vale nos dois."""
     cdp = os.environ.get("SEI_CDP_URL")
     if cdp:
-        b = await pw.chromium.connect_over_cdp(cdp, timeout=30000)
-        ctx = b.contexts[0] if b.contexts else await b.new_context(ignore_https_errors=True, locale="pt-BR")
-        await sem_visualizador_pdf(ctx)
-        return b, ctx, True
+        # 19/11/2026: no it-campo 9 de 39 rodadas morriam em "connect_over_cdp: Timeout 30000ms" (navegador fixo
+        # ocupado com a aba anterior, WSL com 2 GB livres). Três tentativas de 60 s; persistindo, cai no navegador
+        # próprio (o caminho da VM-1/VM-2) em vez de perder a rodada inteira.
+        from playwright.async_api import Error as _ErroPW
+        for tentativa in range(3):
+            try:
+                b = await pw.chromium.connect_over_cdp(cdp, timeout=60000)
+                ctx = b.contexts[0] if b.contexts else await b.new_context(ignore_https_errors=True, locale="pt-BR")
+                await sem_visualizador_pdf(ctx)
+                return b, ctx, True
+            except _ErroPW as exc:
+                print(f"navegador fixo não respondeu ({tentativa + 1}/3): {str(exc)[:120]}", flush=True)
+                await asyncio.sleep(5)
+        print("navegador fixo indisponível — lanço um navegador próprio para esta rodada", flush=True)
     b = await pw.chromium.launch(headless=os.environ.get("SEI_HEADED") != "1", args=args, **launch_kw)
     ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=user_agent)
     await sem_visualizador_pdf(ctx)
