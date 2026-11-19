@@ -119,8 +119,14 @@ def varrer(limite: int | None = None) -> dict:
         if prova_nat:
             funil["com_natureza_obra"] += 1
         obra_obj = any(r["objeto_obra"] for r in ren)
-        if prova_nat:
+        # Manutenção predial/de instalações é tratada como serviço contínuo pela jurisprudência (TCU) mesmo com
+        # despesa 449051 — medido 18/11/2026: CBMERJ (270131/000072, 000074, 000561/2023) e INEA (Das Engenharia)
+        # citam manutenção no termo. Sem leitura do objeto, a explicação inocente é plausível: médio.
+        manut = any(r["manutencao"] for r in ren)
+        if prova_nat and not manut:
             g = "forte"
+        elif prova_nat:
+            g = "medio"
         elif obra_obj:
             g = "medio"
         else:
