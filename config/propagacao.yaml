@@ -105,6 +105,9 @@ fontes:
     nome: Contrato novo no TCE-RJ / PNCP / SIGA
     sonda: {sql: "SELECT (SELECT MAX(rowid) FROM contratos_tcerj), (SELECT MAX(rowid) FROM siga_contratos), (SELECT MAX(rowid) FROM contrato_aditivo), (SELECT MAX(rowid) FROM pncp_resultado)",
             mudanca: "contratos, aditivos ou resultados novos na base"}
+  tcerj_licitante:
+    nome: Licitantes novos do TCE-RJ (vencedor e perdedor por certame municipal)
+    sonda: {sql: "SELECT COUNT(*) FROM tcerj_licitante", unidade: "linha(s) de licitante"}
   sancoes:
     nome: Sanção nova (CEIS/CNEP/CEPIM)
     sonda: {sql: "SELECT MAX(rowid) FROM sancoes_federais", unidade: "sanção(ões)"}
@@ -536,11 +539,38 @@ derivados:
     intervalo_min_s: 3600
     prioridade: 6
     antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  conluio_participacao:
+    nome: Conluio por participação — perdedor de cobertura, par inseparável e rodízio contra o acaso do mercado
+    onde: data/conluio/participacao.json (indício a verificar; casos conferidos vão ao vault e ao cérebro)
+    depende: [tcerj_licitante]
+    comando: ["{py}", "-m", "compliance_agent.editais.conluio_participacao", "--gravar", "--top", "0"]
+    peso: pesado
+    debounce_s: 3600
+    intervalo_min_s: 86400
+    timeout_s: 3600
+    prioridade: 7
+    efeito: {arquivo: data/conluio/participacao.json}
+    antes: "não existia — editais/screens_participacao (lift contra o universo inteiro) nunca teve caller"
+    fatos:
+      - id: "conluio_participacao:total"
+        arquivo: data/conluio/participacao.json
+        data_ref: gerado_em
+        rotulo: "Conluio por participação (TCE-RJ licitantes) — indícios acima do acaso corrigido, por padrão"
+        fonte: "tcerj_licitante (TCE-RJ dados abertos) — compliance_agent/editais/conluio_participacao.py (Poisson por mercado ente×tipologia, Bonferroni)"
+        # agregado determinístico, não conferido caso a caso → nível 1, PENDENTE
+        nivel_prova: 1
+        estado: PENDENTE
+        medidas:
+          cobertura: {campo: cobertura.funil.acima_do_acaso_corrigido, unidade: contagem}
+          cobertura_acima_do_nicho: {campo: cobertura.funil.acima_do_acaso_do_nicho, unidade: contagem}
+          inseparaveis: {campo: inseparaveis.funil.acima_do_acaso_corrigido, unidade: contagem}
+          rodizio: {campo: rodizio.funil.acima_do_acaso_corrigido, unidade: contagem}
+          certames_com_disputa: {campo: n_certames_com_disputa, unidade: contagem}
   certeza:
     nome: Certeza — registro de fatos, portões de escrita, auditoria do grafo e verificador de citações
     onde: /api/sistema/certeza · data/certeza/relatorio.md · sensor `certeza` da automelhoria
     # folha do grafo: nada depende dela (não realimenta nenhuma fonte). Sem LLM, sem API, só leitura do compliance.db.
-    depende: [iss_nao_retido, pericia_contabil, cge_confronto, vault_casos, vault_retratos, siafe_status, sei_lex, triagem, memoria_claude]
+    depende: [iss_nao_retido, pericia_contabil, conluio_participacao, cge_confronto, vault_casos, vault_retratos, siafe_status, sei_lex, triagem, memoria_claude]
     comando: ["{py}", "-m", "compliance_agent.certeza", "ciclo"]
     peso: leve
     debounce_s: 600

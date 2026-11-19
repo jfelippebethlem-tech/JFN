@@ -2413,6 +2413,39 @@ detectores:
       excluida_por: null
     dominio: fornecedores que já são nós da galáxia (4.627 CNPJs em 18/11/2026), raízes distintas; certames do PNCP, propostas nos autos SEI e licitantes TCE-RJ resolvidos por razão social única
     fp_medida: null
+  conluio_participacao:
+    modulo: compliance_agent/editais/conluio_participacao.py
+    simbolo: levantar
+    afirma: Indício de conluio por participação em certame municipal (perdedor de cobertura, par inseparável, rodízio — contra o acaso do mercado e do nicho, Bonferroni) e concorrentes do mesmo certame com telefone, e-mail ou sala em comum — indício a verificar, nunca prova
+    fonte:
+    - tcerj_licitante
+    - nome_cnpj_resolvido
+    - empresas
+    - estabelecimentos
+    - socios_receita (via tools/screen_coparticipacao_relacionados)
+    - ob_orcamentaria_siafe
+    grava: data/conluio/participacao.json (derivado conluio_participacao do despachante)
+    consome: []
+    manchete: false
+    controle_positivo: tests/test_conluio_participacao.py::test_perdedor_que_so_aparece_ao_lado_do_mesmo_vencedor_e_cobertura
+    controle_negativo: tests/test_conluio_participacao.py::test_vencedor_que_ganha_quase_tudo_no_mercado_NAO_gera_cobertura
+    hipoteses_inocentes:
+    - hipotese: fornecedor dominante no mercado do município (perder para ele é o acaso)
+      excluida_por: compliance_agent/editais/conluio_participacao.py:_cobertura
+    - hipotese: nicho de poucos fornecedores (seguro de frota, material odontológico)
+      excluida_por: compliance_agent/editais/conluio_participacao.py:_certames_do_nicho
+    - hipotese: pregão por item com vários vencedores (dividir itens não é revezar)
+      excluida_por: compliance_agent/editais/conluio_participacao.py:_rodizio
+    - hipotese: credenciamento, chamamento, leilão e alienação não são disputa de preço
+      excluida_por: compliance_agent/editais/conluio_participacao.py:certames_tcerj
+    - hipotese: telefone ou endereço de filial/agência de rede grande; prédio comercial sem sala
+      excluida_por: compliance_agent/editais/conluio_participacao.py:vinculos
+    - hipotese: sócio que entrou depois do certame
+      excluida_por: tools/screen_coparticipacao_relacionados.py:medir
+    - hipotese: grupo econômico aparente (marcado, não absolvido)
+      excluida_por: null
+    dominio: licitantes municipais declarados ao TCE-RJ (91 entes, 2024–2026), identificados por nome; CNPJ por nome_cnpj_resolvido + razão única/prefixo
+    fp_medida: null
   ninho_sala:
     modulo: compliance_agent/ninho_sala.py
     simbolo: ninhos_por_sala

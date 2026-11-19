@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """Screens de PARTICIPAÇÃO — quem concorre com quem, e quem só faz número.
 
+⚠️ 18/11/2026: sem caller em produção, e o lift daqui é contra o UNIVERSO (15 mil certames de 91
+entes) — os 10 primeiros pares deram lift 1.286× a 2.572× com 4 encontros (raridade, não conluio).
+O screen em uso é `editais/conluio_participacao` (acaso por mercado e por nicho, Bonferroni).
+
 POR QUE ISTO SÓ FOI POSSÍVEL AGORA. `cruzamentos_intel.perdedoras_contumazes` já responde a
 pergunta, mas sobre as atas extraídas do SEI — que são poucas. Com `tcerj_licitante` (dados
 abertos do TCE-RJ), a mesma leitura passa a ter milhares de certames municipais com vencedor E
