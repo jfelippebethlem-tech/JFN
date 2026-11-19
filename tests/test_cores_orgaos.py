@@ -69,3 +69,14 @@ def test_aplicar_vault_marca_casos_e_grava_grafo_preservando_o_resto(tmp_path):
     grafo = json.loads((tmp_path / ".obsidian" / "graph.json").read_text(encoding="utf-8"))
     assert grafo["scale"] == 0.5 and grafo["colorGroups"][0]["query"] == "tag:#ug/180100"
     assert co.aplicar_vault(tmp_path, NOMES, pastas=("casos",), idade_min_s=0)["marcadas"] == 0
+
+
+def test_ug_declarada_que_nao_e_ug_cede_a_lida_de_fora_e_lista_vale_a_primeira_valida():
+    # 19/11/2026: DEGASE declarava ug "030002" (prefixo SEI, não UG) e a nota ficava orgao/indeterminado para sempre
+    degase = '---\nug: "030002"\ntags: [caso, orgao/indeterminado]\n---\nc\n'
+    m = co.marcar_nota(degase, "180100", NOMES)
+    assert "tags: [caso, ug/180100, orgao/seeduc]" in m and 'ug: "030002"' in m      # chave do autor não é reescrita
+    assert "orgao/indeterminado" in co.marcar_nota(degase, None, NOMES)            # sem fonte: segue indeterminado
+    lista = '---\nug: "555555, 133100, 180100"\ntags: [caso]\n---\nc\n'
+    assert "ug/133100" in co.marcar_nota(lista, "180100", NOMES)                   # 1ª UG válida declarada vence
+    assert co._declara_ug_valida(degase, NOMES) is False and co._declara_ug_valida(lista, NOMES) is True

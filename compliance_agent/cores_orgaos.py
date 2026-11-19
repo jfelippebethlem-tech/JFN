@@ -84,6 +84,15 @@ def _y(nome: str) -> str:
     return json.dumps(nome, ensure_ascii=False) if re.search(r"[:#\[\]{}\"']|^\s|\s$", nome) else nome
 
 
+def _ug_valida(declarada: str, nomes: dict[str, str]) -> str:
+    return next((u for u in re.findall(r"(?<!\d)\d{6}(?!\d)", declarada or "") if u in nomes), "")
+
+
+def _declara_ug_valida(texto: str, nomes: dict[str, str]) -> bool:
+    m = re.search(r'^ug: *(.*)$', texto[:1500], re.M)
+    return bool(m and _ug_valida(m.group(1), nomes))
+
+
 def marcar_nota(texto: str, ug, nomes: dict[str, str]) -> str | None:
     """A nota com `ug`/`orgao` (se o autor não escreveu) e as tags `ug/<código>` + `orgao/<sigla>`. A UG que a nota declara
     vence; `ug` (lida de fora, do SIAFE) só vale para nota que não declara nenhuma. None se a nota não tem frontmatter. Só o frontmatter muda."""
@@ -93,7 +102,9 @@ def marcar_nota(texto: str, ug, nomes: dict[str, str]) -> str | None:
     linhas = m.group(1).splitlines()
     tem = {ln.split(":", 1)[0]: i for i, ln in enumerate(linhas) if re.match(r"^[A-Za-z_][\w-]*:", ln)}
     declarada = _valor(linhas[tem["ug"]]) if "ug" in tem else ""
-    ug = str(declarada or ug or "").strip()            # a UG que a nota declara vence a lida de fora
+    # a UG que a nota declara vence a lida de fora — se for UG de verdade (19/11/2026: "030002" é prefixo SEI do DEGASE,
+    # não UG; "180100, 404400, 570100" lista três): vale a 1ª declarada que existe; nenhuma → a lida de fora
+    ug = _ug_valida(declarada, nomes) or str(ug or "").strip()
     ug = ug if ug in nomes else ""
     nossas = ([f"ug/{ug}"] if ug else []) + [f"orgao/{slug_orgao(ug, nomes)}"]
     if ug and "ug" in tem and not declarada:                 # chave vazia do bloco gerado: preenche no lugar
@@ -167,13 +178,13 @@ def aplicar_vault(vault: Path | None = None, nomes: dict[str, str] | None = None
         ug_de = {}
         if "processos" in pastas:                            # notas de processo que ainda não declaram UG: OB do processo
             falta = [a.stem for a in sorted((vault / "processos").glob("*.md"))
-                     if not re.search(r'^ug: *"?\d{6}', a.read_text(encoding="utf-8")[:1500], re.M)]
+                     if not _declara_ug_valida(a.read_text(encoding="utf-8"), nomes)]
             ug_de = ug_dos_processos(falta)
         # demais notas sem UG (19/11/2026): OB paga do processo citado → prefixo SEI no índice de OB → quem mais pagou
         # o CNPJ citado (`orgao_fonte`); sem nada disso a nota segue `orgao/indeterminado`
         from compliance_agent.orgao_fonte import resolver_notas
         sem_ug = {a.stem: t for p in pastas for a in sorted((vault / p).glob("*.md")) if a.stem not in ug_de
-                  for t in [a.read_text(encoding="utf-8")] if not re.search(r'^ug: *"?\d{6}', t[:1500], re.M)}
+                  for t in [a.read_text(encoding="utf-8")] if not _declara_ug_valida(t, nomes)}
         ug_de.update({s: r["ug"] for s, r in resolver_notas(sem_ug).items() if r.get("ug")})
     ug_de = ug_de or {}
     r = {"notas": 0, "marcadas": 0, "indeterminadas": 0, "grupos": 0}
