@@ -375,3 +375,34 @@ def test_mesma_nf_em_dois_processos_soma_uma_vez():
             "classe": "ISS_NAO_RETIDO", "nfs": [{"numero": "1", "bruto": 100.0}]}
     t = D.resumir([dict(base, processo="P1"), dict(base, processo="P2")])["totais"]
     assert t["iss_nao_retido_verificado"] == 5.0
+
+
+# ─────────────── NF quitada por OB de NL diferentes (Scalle × EMOP, SEI-330003/002626/2024) ───────────────
+
+def _nf_scalle() -> dict:
+    return {"formato": "mage", "numero": "1002000", "bruto": 9705421.03, "iss": 145581.32, "aliquota": 1.5,
+            "iss_retido_tomador": True, "liquido_nf": None, "_digitos": "",
+            "componentes": {"PIS": 63085.24, "COFINS": 291162.63, "IRRF": 116465.05, "INSS": 533798.16,
+                            "CSLL": 97054.21}}
+
+
+def _ob(n, nl, v):
+    return {"numero_ob": n, "nl": nl, "valor": v, "ug_emitente": "1", "credor": "X", "nome_credor": "X",
+            "data_emissao": "01/12/2024"}
+
+
+# 8.603.855,74 = bruto − federais (sem ISS), pago em 3 OB de 3 NL; 2024OB03306 é de OUTRA medição
+_OBS_SCALLE = [_ob("2024OB03897", "2024NL1", 3000000.00), _ob("2024OB03898", "2024NL2", 3000000.00),
+               _ob("2024OB03899", "2024NL3", 2603855.74)]
+
+
+def test_nf_paga_em_ob_de_nl_diferentes_fecha_por_subconjunto():
+    r = D._casar([_nf_scalle()], _OBS_SCALLE + [_ob("2024OB03306", "2024NL9", 3636723.87)], [])
+    assert r[0]["classe"] == "ISS_NAO_RETIDO" and r[0]["iss"] == 145581.32
+    assert {o["numero_ob"] for o in r[0]["obs"]} == {"2024OB03897", "2024OB03898", "2024OB03899"}
+
+
+def test_ob_de_outra_medicao_nao_completa_a_nf():
+    # sem uma das parcelas, a OB de outra medição não pode "tapar o buraco"
+    r = D._casar([_nf_scalle()], _OBS_SCALLE[:2] + [_ob("2024OB03306", "2024NL9", 3636723.87)], [])
+    assert r[0]["classe"] == "INDISPONIVEL" and not r[0]["obs"]

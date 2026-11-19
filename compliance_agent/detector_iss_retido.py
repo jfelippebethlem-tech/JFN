@@ -420,9 +420,40 @@ def _casar(nfs: list[dict], obs: list[dict], terceiros: list[dict], provas: list
                 achou = {**d, "nfs": [n], "obs": grupo}
                 usadas.add(nl)
                 break
+        if achou is None:
+            achou = _casar_subconjunto(n, [o for nl, g in por_nl.items() if nl not in usadas for o in g],
+                                       terceiros, provas)
+            if achou:
+                usadas |= {o.get("nl") or o["numero_ob"] for o in achou["obs"]}
         out.append(achou or {**decidir([n], [], []), "motivo": "nenhuma OB/NL do processo fecha com esta NF",
                              "classe": "INDISPONIVEL", "estado": "INDISPONÍVEL", "nfs": [n], "obs": []})
     return out
+
+
+MAX_OB_SUBCONJUNTO = 14     # 2^14 combinações no pior caso — acima disso não se tenta (INDISPONÍVEL)
+MAX_TAM_SUBCONJUNTO = 5
+
+
+def _casar_subconjunto(n: dict, obs: list[dict], terceiros: list[dict], provas: list[str] | None) -> dict | None:
+    """A NF paga em parcelas lançadas em NL DIFERENTES (Scalle × EMOP, SEI-330003/002626/2024: NF 1002000 quitada por
+    3 OB de 3 NL, e a vinculação por `ob_processo` trouxe também a 2024OB03306 de outra medição). Procura o MENOR
+    subconjunto de OB cuja soma fecha a NF em `decidir`; a OB de outra medição não entra porque a soma deixa de fechar.
+    Dois subconjuntos mínimos com classes diferentes → ambíguo, None."""
+    if not obs or len(obs) > MAX_OB_SUBCONJUNTO:
+        return None
+    for k in range(1, min(MAX_TAM_SUBCONJUNTO, len(obs)) + 1):
+        achados = []
+        for comb in itertools.combinations(obs, k):
+            nls = {o.get("nl") for o in comb}
+            ter = [t for t in terceiros if not t.get("nl") or t.get("nl") in nls or t.get("so_processo")]
+            d = decidir([n], list(comb), ter, provas)
+            if d["classe"] in ("ISS_NAO_RETIDO", "RETIDO"):
+                achados.append({**d, "nfs": [n], "obs": list(comb)})
+        if achados:
+            if len({a["classe"] for a in achados}) > 1:
+                return None
+            return achados[0]
+    return None
 
 
 # ───────────────────────────── leitura do acervo e do SIAFE ─────────────────────────────
