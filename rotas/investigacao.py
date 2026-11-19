@@ -2104,7 +2104,7 @@ def api_intel_fracionamento(limite: int = 120):
         d = fracionamento_por_objeto(limite=lim)
         try:
             aux = _cache_calc("intel:frac:30", 3600, lambda: fracionamento(limite=30))
-        except Exception as exc:  # noqa: BLE001 — o auxiliar não derruba a definição
+        except _sqlite3.Error as exc:  # o auxiliar (base travada/ausente) não derruba a definição
             aux = {"ok": False, "erro": str(exc)}
         d["auxiliar"] = {
             "titulo": "OBs do mesmo credor coladas no teto — sinal auxiliar",

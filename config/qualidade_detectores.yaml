@@ -1333,7 +1333,12 @@ detectores:
       excluida_por: tools/sweep_fracionamento_tcerj.py:rodar_sweep
     dominio: dispensas por valor (art. 75, I/II, Lei 14.133/2021), por unidade gestora e exercício; limites 2021–2026 de
       compliance_agent/limites_dispensa.py
-    fp_medida: "19/11/2026, sweep TCE-RJ antes × depois da calibração: 78 → 69 achados (61 com soma acima do teto); o topo SEDSODH 2024 tinha 47 dispensas de 4 ramos encadeados (R$ 2.072.390,60) e passou a 13 só de alimentação (R$ 668.010,00); saíram por inspeção grupos de credenciamento (FEC 2025/2026), inscrições/anuidades (UERJ), juros do INSS (GSI) e moldura de ETP/citação legal"
+    fp_medida:
+      data: '2026-11-19'
+      amostra: sweep inteiro de compras_diretas_tcerj (353 grupos unidade × exercício, 11.783 processos) antes × depois da calibração; topo inspecionado contratação a contratação
+      taxa: 78 → 69 achados (61 com soma acima do teto); o topo SEDSODH 2024 tinha 47 dispensas de 4 ramos encadeados (R$ 2.072.390,60) e passou a 13 só de alimentação (R$ 668.010,00)
+      fonte_primaria: TCE-RJ — compras diretas (objeto, enquadramento, fornecedor por processo); OB do SIAFE pelo processo
+      onde: ~/vault/aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md
   det.P5EmergenciaFabricada:
     modulo: compliance_agent/detectores/p5_emergencia_fabricada.py
     simbolo: P5EmergenciaFabricada
