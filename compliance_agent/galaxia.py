@@ -36,6 +36,7 @@ from collections import Counter, defaultdict
 from itertools import combinations
 from pathlib import Path
 
+from compliance_agent import cores_orgaos
 from compliance_agent.cruzamentos_intel import _ob_paga
 
 SOCIOS_POR_CNPJ = 4
@@ -691,6 +692,7 @@ def leve(d: dict) -> dict:
         m = {k: n[k] for k in _LEVE if n.get(k) not in (None, "", 0) or k in ("x", "y")}
         if n["t"] == "cnpj" and n.get("k"):
             m["nk"] = len(n["k"])
+        m["cor"] = cores_orgaos.cor(n.get("cl"))           # cor do ÓRGÃO do aglomerado (config/cores_orgaos.yaml)
         nos.append(m)
     ti = {t: i for i, t in enumerate(TIPOS_ARESTA)}
     ar = [[e["s"], e["t"], ti.get(e["tipo"], 0)] for e in d["arestas"]]

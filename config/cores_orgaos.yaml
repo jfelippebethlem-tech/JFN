@@ -1,0 +1,73 @@
+# cores_orgaos.yaml — PALETA ÚNICA por órgão / unidade gestora (UG). Pedido do dono, 18/11/2026:
+# "pinte cada órgão/unidade gestora de uma cor diferente no segundo cérebro" e "a galáxia deve reproduzir isso".
+# Toda visualização (grafo do Obsidian, galáxia do painel, o que vier) pega a cor AQUI, por
+# `compliance_agent/cores_orgaos.cor(<UG>)` — nunca define cor de órgão por conta própria.
+#
+# Regra (determinística, sem estado):
+#   1. UG em `principais` → a cor de mesma posição em `paleta` (a ordem das duas listas é o contrato: não reordenar;
+#      UG nova entra no FIM, cor nova entra no FIM).
+#   2. Qualquer outra chave (UG fora da lista, órgão municipal por CNPJ, órgão por nome) → cor calculada do hash da
+#      chave (matiz 0–359 pelo SHA-1, saturação e luminosidade em faixas que leem em fundo claro e escuro).
+#      A mesma chave dá sempre a mesma cor, em qualquer máquina.
+#   3. Órgão desconhecido → `indeterminado` (cinza). Nunca se chuta órgão para ganhar cor.
+#
+# `principais` = as 20 UGs que mais pagaram por OB no SIAFE (ob_orcamentaria_siafe, filtro de OB paga da casa
+# `cruzamentos_intel._ob_paga`), medido em 18/11/2026. É ordem de ATRIBUIÇÃO de cor, não ranking publicado: não se
+# atualiza quando o ranking muda (a cor de um órgão não pode mudar de um dia para o outro).
+versao: 1
+indeterminado: "#8A8F98"
+paleta:
+  - "#BE0032"   # vermelho
+  - "#0067A5"   # azul
+  - "#008856"   # verde
+  - "#F38400"   # laranja
+  - "#875692"   # roxo
+  - "#B8860B"   # ouro escuro
+  - "#17A2B8"   # ciano
+  - "#B3446C"   # vinho rosado
+  - "#5B8C00"   # verde-limão escuro
+  - "#604E97"   # violeta
+  - "#E25822"   # laranja avermelhado
+  - "#2F7FD8"   # azul claro
+  - "#882D17"   # marrom avermelhado
+  - "#D4479A"   # magenta
+  - "#00796B"   # verde-petróleo
+  - "#8D6E3A"   # castanho
+  - "#C2185B"   # carmim
+  - "#3F51B5"   # índigo
+  - "#7A9A01"   # oliva claro
+  - "#E0A800"   # âmbar
+principais:
+  - "123400"   # Fundo Único de Previdência do Estado do RJ
+  - "296100"   # Fundo Estadual de Saúde - FES
+  - "261100"   # Secretaria de Estado de Polícia Militar
+  - "370200"   # Encargos Gerais do Estado
+  - "180100"   # Secretaria de Estado de Educação
+  - "030100"   # Tribunal de Justiça
+  - "123422"   # Fundo SPSM
+  - "123404"   # Fundo Único de Previdência - Executivo
+  - "294200"   # Fundação Saúde do Estado do Rio de Janeiro
+  - "100100"   # Ministério Público
+  - "404310"   # UERJ - Administração Central
+  - "260400"   # Secretaria de Estado de Polícia Civil
+  - "036100"   # Fundo Especial do Tribunal de Justiça
+  - "010100"   # Assembleia Legislativa
+  - "160100"   # Secretaria de Estado de Defesa Civil e Corpo de Bombeiros
+  - "250100"   # Secretaria de Estado de Administração Penitenciária
+  - "263100"   # Departamento de Trânsito
+  - "110100"   # Defensoria Pública Geral do Estado
+  - "044100"   # Fundação Departamento de Estradas de Rodagem
+  - "404400"   # Fundação de Apoio à Escola Técnica
+# Sigla para a tag `orgao/<sigla>` do vault. Só entra aqui sigla de uso oficial corrente; UG sem sigla usa o nome
+# canônico (data/ug_canonico.json) em forma de slug. Nome com "SIGLA — …" no canônico já dá a sigla sozinho.
+siglas:
+  "180100": seeduc
+  "296100": fes
+  "261100": pmerj
+  "030100": tjrj
+  "294200": fserj-saude
+  "100100": mprj
+  "260400": pcerj
+  "010100": alerj
+  "110100": dpge
+  "020100": tce-rj

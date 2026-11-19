@@ -99,6 +99,9 @@ def test_recorte_mantem_orgaos_e_dossies_e_resumo_global():
     lv = leve(r)
     assert all(isinstance(a, list) and len(a) == 3 for a in lv["arestas"])
     assert not any("sin" in x or "ex" in x for x in lv["nos"])  # prova vem do detalhe, não do desenho
+    from compliance_agent import cores_orgaos              # cor do nó = cor do órgão do aglomerado (paleta única)
+    assert all(x["cor"] == cores_orgaos.cor(x.get("cl")) for x in lv["nos"])
+    assert len({x["cor"] for x in lv["nos"] if x["t"] == "orgao"}) > 1
 
 
 def test_empacotar_sem_sobreposicao():
