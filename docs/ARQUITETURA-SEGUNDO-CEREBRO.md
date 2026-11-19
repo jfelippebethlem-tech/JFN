@@ -6,6 +6,7 @@
 | **Pedido do dono** | 18/11/2026 — "o motor e a arquitetura de automelhoria funciona e registra no second brain? khoj, obsidian, gitnexus, graphify" · "faça também a melhor arquitetura para segundo cérebro" |
 | **Medição** | 18/11/2026, 22:10–23:00 (BRT), VM-1 `jfn-core` e VM-2 `JFN-Agent-2` (somente leitura na VM-2) |
 | **Estado** | Ponte automelhoria/perícias → cérebro **implantada** (`compliance_agent/cerebro_ponte.py`); demais itens são proposta com custo (§7) |
+| **Sucessor** | `docs/ARQUITETURA-SEGUNDO-CEREBRO-ALVO.md` (19/11/2026) — mediu a busca (recall@10 33/56 → 56/56), conferiu o estado da arte na fonte e **substitui** o §3 e as linhas "Khoj" e "hermes_rag" do §4.3 deste documento |
 | **Irmãos** | `docs/ARQUITETURA-DE-CERTEZA.md` (fatos numéricos) · `docs/AUTOAPRIMORAMENTO-JFN.md` (laço da perícia) · `config/propagacao.yaml` (mapa de dependências) |
 
 ---
