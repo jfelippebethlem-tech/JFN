@@ -300,8 +300,3 @@ motores:
       - regex: '"feitos": \[\{"id": "([a-z_]+)", "ok": false'
         texto: 'recálculo falhou: {1}'
         tipo: falha
-  - id: massare
-    nome: Massare (VM2)
-    classe: motor
-    descricao: Agente de mercado (fora desta VM); só aparece vivo se houver endpoint de status configurado
-    sonda_env: JFN_MASSARE_STATUS_URL
