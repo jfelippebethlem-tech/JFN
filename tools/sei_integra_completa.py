@@ -72,6 +72,26 @@ def parece_pagina_de_unidade(texto: str) -> bool:
     return sum(1 for s in _SIGLAS_UNIDADE if s in t) >= 5
 
 
+def arvore_anterior(man_path: Path) -> int:
+    """Tamanho da árvore que uma captura ANTERIOR desta pasta enumerou (0 se não houver/ilegível).
+
+    A ENUMERAÇÃO NÃO É DETERMINÍSTICA: as pastas lazy-load da árvore às vezes não terminam de carregar e a
+    lista volta menor. Medido em 18/11/2026 na VM-2: o `150016/009553/2024` tinha 668 PDFs de uma captura
+    (títulos e ids seguindo a ordem da árvore) e a seguinte enumerou só 356 e gravou `completo: True`; no
+    acervo da VM-1, o `330001/000788/2024` saiu `captura_completa` com `total_arvore` 15 e 257 documentos."""
+    import json as _json
+    try:
+        d = _json.loads(man_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    if not isinstance(d, dict):
+        return len(d) if isinstance(d, list) else 0
+    try:
+        return max(int(d.get("total_arvore") or 0), len(d.get("docs") or []))
+    except (TypeError, ValueError):
+        return 0
+
+
 async def main():
     G.cleanup_orphans()
     ok, m = G.preflight()
@@ -212,10 +232,20 @@ async def main():
             import json as _json
             man_path = outdir / "manifest.json"
 
+            # ÁRVORE QUE ENCOLHEU não fecha a captura: a enumeração de agora é menor que a de antes nesta
+            # mesma pasta, então o que falta é leitura nossa, não documento inexistente. Guarda o maior
+            # tamanho e não marca `completo` — a próxima passada reenumera e retoma.
+            n_antes = arvore_anterior(man_path)
+            encolheu = n_antes > len(docs)
+            if encolheu:
+                print(f"ÁRVORE ENCOLHEU: {len(docs)} nós agora, {n_antes} numa captura anterior — "
+                      "captura NÃO marcada completa", flush=True)
+
             def _grava(man: list, completo: bool) -> None:
                 tmp = outdir / "manifest.json.tmp"   # atômico: morte no meio não corrompe
                 tmp.write_text(_json.dumps(
-                    {"processo": PROC, "total_arvore": len(docs), "completo": completo,
+                    {"processo": PROC, "total_arvore": max(len(docs), n_antes),
+                     "completo": completo and not encolheu,
                      "docs": man}, ensure_ascii=False, indent=1), encoding="utf-8")
                 tmp.replace(man_path)
 
