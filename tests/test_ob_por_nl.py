@@ -405,3 +405,28 @@ def test_migracao_osint_cnpj_pelo_pagamento_so_de_ob_paga():
     con.execute("INSERT INTO sei_ficha VALUES (?, '[]')", (LOC,))
     fora, origem = processos_com_cnpj(con)
     assert fora == {LOC: [LOCASEM]} and origem == {LOC: "pagamento"}
+
+
+# 19/11/2026 — perícia do lote 64: R$ 468,96 mi em OB pagas tinham o processo gravado em grafia que a chave não lê
+# ("SEI-80001/…" sem o zero, "SEI02/0004/…" partida, "SEI-080001002471/2024" sem barra). Só casa com processo PEDIDO.
+@pytest.mark.parametrize("grafia", ["SEI-80001/001096/2025", "SEI08/0001/001096/2025", "SEI-080001001096/2025"])
+def test_grafia_irregular_do_siafe_entra_na_soma(grafia):
+    con = _base([{"numero_ob": "2025OB00001", "ug_emitente": "296100", "processo": "SEI-080001/001096/2025",
+                  "valor": 100.0, "credor": "1"},
+                 {"numero_ob": "2025OB00002", "ug_emitente": "296100", "processo": grafia, "valor": 50.0, "credor": "1"}])
+    r = P.obs_por_processo(con, ["SEI-080001/001096/2025"])["080001/1096/2025"]
+    assert r["total"] == 150.0
+
+
+def test_cinco_digitos_ambiguo_nao_entra():
+    """'03001' pode ser 030001 ou 003001: se os dois foram pedidos, nenhum leva a OB."""
+    con = _base([{"numero_ob": "2025OB00009", "ug_emitente": "180100", "processo": "SEI-03001/005157/2024",
+                  "valor": 70.0, "credor": "1"}])
+    r = P.obs_por_processo(con, ["SEI-030001/005157/2024", "SEI-003001/005157/2024"])
+    assert all(v["total"] == 0 for v in r.values())
+
+
+def test_cinco_digitos_de_outro_processo_nao_entra():
+    con = _base([{"numero_ob": "2025OB00010", "ug_emitente": "296100", "processo": "SEI-80001/001097/2025",
+                  "valor": 70.0, "credor": "1"}])
+    assert P.obs_por_processo(con, ["SEI-080001/001096/2025"]).get("080001/1096/2025", {}).get("total", 0) == 0

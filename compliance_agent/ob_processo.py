@@ -51,6 +51,27 @@ def chave_processo(p: str | None) -> str | None:
     return _chave_processo(p)
 
 
+def _chave_tolerante(p: str | None, pedidos) -> str | None:
+    """Grafias do SIAFE que `chave_processo` não lê (19/11/2026: R$ 468,96 mi em OB pagas): 'SEI-80001/001096/2025'
+    (zero da unidade caído — a posição varia: '03001' é 030001), 'SEI02/0004/000108/2025' (unidade partida) e
+    'SEI-080001002471/2024' (sem barra). Só devolve chave de processo PEDIDO, e só se a candidata for única."""
+    s = re.sub(r"\s", "", (p or "").upper())
+    m = re.search(r"(?<!\d)(\d{6})(\d{6})/(\d{4})(?!\d)", s)
+    if m:
+        k = f"{m[1]}/{int(m[2])}/{m[3]}"
+        return k if k in pedidos else None
+    m = re.search(r"(?<!\d)(\d{2})/(\d{4})/0*(\d+)/(\d{4})(?!\d)", s)
+    if m:
+        k = f"{m[1]}{m[2]}/{int(m[3])}/{m[4]}"
+        return k if k in pedidos else None
+    m = re.search(r"(?<!\d)(\d{5})/0*(\d+)/(\d{4})(?!\d)", s)
+    if m:
+        u = m[1]
+        cands = {f"{u[:i]}0{u[i:]}/{int(m[2])}/{m[3]}" for i in range(6)} & set(pedidos)
+        return cands.pop() if len(cands) == 1 else None
+    return None
+
+
 def _canonico(chave: str) -> str:
     a, b, ano = chave.split("/")
     return f"SEI-{a}/{int(b):06d}/{ano}"
@@ -206,13 +227,16 @@ def obs_por_processo(con: sqlite3.Connection, processos: list[str], *, autos: bo
         if len(numeros) <= _PREFILTRO_MAX:
             pre = "(" + " OR ".join("processo LIKE ?" for _ in numeros) + ")"
             args = [f"%{k.split('/')[0]}%/%{k.split('/')[1]}%/%" for k in numeros]
+            # grafias irregulares (`_chave_tolerante`): o nº/ano sempre aparece inteiro
+            pre = pre[:-1] + "".join(" OR processo LIKE ?" for _ in numeros) + ")"
+            args += [f"%{k.split('/')[1]}/{k.split('/')[2]}%" for k in numeros]
         rows = con.execute(f"SELECT {sel} FROM ob_orcamentaria_siafe WHERE {paga} AND {pre}", args).fetchall()
     except sqlite3.OperationalError:
         return out                                       # base sem SIAFE: quem chama diz INDISPONÍVEL
     achadas: dict[str, dict[tuple, dict]] = {k: {} for k in numeros}
     for i, r in enumerate(rows):
         o = _linha(r)
-        k = chave_processo(o["processo"])
+        k = chave_processo(o["processo"]) or _chave_tolerante(o["processo"], achadas)
         if k in achadas:
             exato = o["processo"].upper() == _canonico(k)
             # base sem nº de OB (fixture antiga): cada linha é uma OB — a chave não pode colapsá-las
