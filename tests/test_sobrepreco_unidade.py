@@ -19,6 +19,8 @@ _DDL = """CREATE TABLE pncp_resultado (certame TEXT, item INTEGER, orgao_cnpj TE
     data_pub TEXT, fornecedor_cnpj TEXT, fornecedor_nome TEXT, ordem_classificacao INTEGER,
     item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL, quantidade REAL)"""
 CERT = "12345678000199-1-{:06d}/2025"
+# órgãos fictícios (não são do RJ): os testes medem a lógica de unidade, então pedem esfera="todas" — sem aba,
+# desde 19/11/2026 o achado é só do Estado do RJ + Prefeitura do Rio
 
 
 def _db(tmp_path, linhas):
@@ -38,7 +40,7 @@ def test_galao_caro_nao_vira_sobrepreco_contra_copinho(tmp_path):
     """5 copos a ~R$ 0,60 e 5 galões a ~R$ 10: antes eram o mesmo 'Água mineral'."""
     linhas = [("Água mineral", "Copo 200 ML", p) for p in (0.5, 0.55, 0.6, 0.62, 0.7)] + \
              [("Água mineral", "Galão 20 L", p) for p in (8, 9, 10, 11, 12)]
-    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera=None, verificacao={})
+    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera="todas", verificacao={})
     assert d["n"] == 0 and d["grupos_comparaveis"] == 2
 
 
@@ -46,7 +48,7 @@ def test_caixa_registrada_como_unidade_e_salto_nao_sobrepreco(tmp_path):
     """Ampola a R$ 140 contra ampolas a R$ 0,2 — preço de caixa lançado como ampola."""
     linhas = [("Água destilada", "Ampola 10 ML", p) for p in (0.15, 0.18, 0.2, 0.21, 0.25, 0.3)]
     linhas.append(("Água destilada", "Ampola 10 ML", 140.0))
-    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera=None, verificacao={})
+    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera="todas", verificacao={})
     assert d["n"] == 0
     assert d["indeterminados"]["n_discrepancias_de_salto"] == 1
     disc = d["indeterminados"]["discrepancias_de_salto"][0]
@@ -57,7 +59,7 @@ def test_achado_traz_grupo_unidade_link_e_estado(tmp_path):
     linhas = [("Caneta esferográfica azul", "Unidade", p) for p in (1.0, 1.1, 0.9, 1.0, 1.05)]
     linhas.append(("Caneta esferográfica azul", "Caixa 10,00 UN", 30.0))   # R$ 3,00/un
     db = _db(tmp_path, linhas)
-    d = sobrepreco(db_path=db, esfera=None, verificacao={})
+    d = sobrepreco(db_path=db, esfera="todas", verificacao={})
     assert d["n"] == 1
     a = d["achados"][0]
     assert a["preco"] == 30.0 and a["preco_normalizado"] == pytest.approx(3.0)
@@ -72,7 +74,7 @@ def test_achado_traz_grupo_unidade_link_e_estado(tmp_path):
 def test_item_sem_unidade_sai_da_conta(tmp_path):
     linhas = [("Caneta esferográfica azul", "Unidade", p) for p in (1.0, 1.1, 0.9, 1.0, 1.05)]
     linhas.append(("Caneta esferográfica azul", "", 3.0))
-    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera=None, verificacao={})
+    d = sobrepreco(db_path=_db(tmp_path, linhas), esfera="todas", verificacao={})
     assert d["n"] == 0
     assert any("unidade de medida" in m["motivo"] for m in d["indeterminados"]["por_motivo"])
 

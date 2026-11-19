@@ -74,7 +74,7 @@ def db(tmp_path):
            "declarada vencedora do certame. A empresa BETA LTDA, CNPJ 22.222.222/0001-22, "
            "foi inabilitada por descumprir o item 9.1 do edital. " + "x" * 1500)
     con.execute("INSERT INTO edital_documento (numero_controle_pncp, orgao_cnpj, texto) "
-                "VALUES ('C7', '00000000000191', ?)", (ata,))
+                "VALUES ('C7', '42498600000171', ?)", (ata,))   # ata do Estado do RJ (escopo, 19/11/2026)
     con.execute("INSERT INTO empresas_min VALUES ('99999999', 'ZULU COMERCIO LTDA', '2062', '')")
     con.commit()
     con.close()
@@ -123,6 +123,16 @@ def test_ata_gera_par_alta_com_nome_de_empresas_min(db):
     assert par_ata[0]["vencedor"]["nome"] == "ZULU COMERCIO LTDA"
     assert par_ata[0]["certames"][0]["fonte"] == "ata"
     assert d["cobertura"]["certames_por_fonte"].get("ata") == 1
+
+
+def test_ata_de_orgao_federal_fica_fora(db):
+    """Dono, 19/11/2026: "esquece a parte federal" — a mesma ata, no Banco do Brasil (federal), não vira par."""
+    con = sqlite3.connect(db)
+    con.execute("UPDATE edital_documento SET orgao_cnpj='00000000000191' WHERE numero_controle_pncp='C7'")
+    con.commit()
+    con.close()
+    d = conluio_qsa(db_path=db)
+    assert all(p["vencedor"]["cnpj"] != "99999999000199" for p in d["pares"])
 
 
 def test_incluir_atas_false_ignora_corpus(db):
