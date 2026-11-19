@@ -41,8 +41,9 @@ ENV = Path.home() / ".hermes" / ".env"   # por usuário: `/home/ubuntu` cravado 
 # RENOVAÇÃO DA ABA (19/11/2026, it-campo): a aba do 150016/009553/2024 chegou a 4,9 GB de RSS no renderer após 711
 # documentos — o CDP dizia 391 `Documents` e 379 `Frames` vivos com só 4 frames na árvore: cada documento clicado deixa
 # o anterior desanexado e retido. A cada N documentos BAIXADOS o processo é reaberto numa aba nova (mesmo login) e a
-# velha fecha. 0 desliga.
-RENOVAR_ABA_DOCS = int(os.environ.get("SEI_RENOVAR_ABA_DOCS", "120"))
+# velha fecha. 0 desliga. Medido ao vivo (19/11, 828 nós): a reabertura custa 90–100 s (busca pelo cracked) e os
+# documentos seguintes saem normais (42/42 ok) — 250 docs ≈ 1,7 GB de pico por aba e ~5–8% de tempo de reabertura.
+RENOVAR_ABA_DOCS = int(os.environ.get("SEI_RENOVAR_ABA_DOCS", "250"))
 
 
 def hora_de_renovar(baixados_desde: int, limite: int = RENOVAR_ABA_DOCS) -> bool:
