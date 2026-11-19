@@ -28,6 +28,7 @@ import re
 import sqlite3
 
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "obra_renovada_como_continuo"
 RAZAO_VALOR_CHEIO = 0.80
@@ -133,7 +134,7 @@ def varrer(limite: int | None = None) -> dict:
         achados.append(C.achado(
             chave, g, prova=prova,
             porque=(f"{len(ren)} renovação(ões) pelo art. 57, II, com valor cheio (termo ≥ {RAZAO_VALOR_CHEIO:.0%} do "
-                    f"valor anterior); contrato chega a R$ {maior:,.2f} (menor valor anterior lido R$ {primeiro_ant:,.2f})"
+                    f"valor anterior); contrato chega a R$ {moeda(maior)} (menor valor anterior lido R$ {moeda(primeiro_ant)})"
                     + ("; despesa classificada como OBRA (449051)" if prova_nat else "; objeto se declara obra/engenharia")
                     + (". Objeto cita manutenção — avaliar se é de fato contínuo" if any(r["manutencao"] for r in ren) else "")
                     + ". Obra/engenharia de escopo não se prorroga com novo valor cheio (L8 art. 57 §1º; L14.133 art. 111)."),

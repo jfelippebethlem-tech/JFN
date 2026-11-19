@@ -22,11 +22,16 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "retificacao_altera_valor"
 _RE_TIT = re.compile(r"retifica|rerratifica|re-ratifica|apostil|aditivo|aditamento", re.I)
 _RE_TIT_NAO = re.compile(r"minuta|rascunho|parecer|despacho|of[íi]cio|memorando|e-?mail|solicita|publica[çc]|extrato|"
-                         r"check|an[áa]lise|informa[çc]", re.I)
+                         r"check|an[áa]lise|informa[çc]|proposta|atestad|nota\s+fiscal", re.I)
+# o "onde se lê" tem de falar do VALOR DO CONTRATO/TERMO — retificação do valor de NF num atestado (SEAPPA
+# 020001/000657/2026: "Valor das Notas Fiscais: R$ 371.829,46 ...") não altera contrato
+_RE_ONDE_CONTRATO = re.compile(r"valor\s+(?:global|total)|totaliza|termo\s+aditivo|apostil|contratad[ao]|"
+                               r"do\s+contrato|reajust", re.I)
 _RE_ONDE = re.compile(r"onde\s+(?:se\s+)?l[êe](?:-se)?\s*[:,]?", re.I)
 _RE_LEIA = re.compile(r"leia-?\s*se\s*[:,]?", re.I)
 _RE_REAJ = re.compile(r"reajust|repactua|IPCA|INCC|IGP-?M|anivers[áa]rio", re.I)
@@ -40,6 +45,8 @@ def onde_le_leia_se(texto: str) -> list[dict]:
             continue
         ml = _RE_LEIA.search(texto, m.end(), m.end() + 3000)
         if not ml:
+            continue
+        if not _RE_ONDE_CONTRATO.search(texto[m.end():ml.start()]):
             continue
         antes = [C.num_br(v) for v in C._RE_VALOR.findall(texto[m.end():ml.start()])]
         fim = _RE_ONDE.search(texto, ml.end(), ml.end() + 3000)
@@ -90,8 +97,8 @@ def varrer(limite: int | None = None) -> dict:
                 vistos.add(k)
                 funil["extenso_divergente"] += 1
                 extra["extenso"].append({"doc": d["i"], "valor": x["valor"], "valor_extenso": x["valor_extenso"]})
-                provas.append(f"doc {d['i']} ({d['titulo'][:60]}) — \"{x['trecho']}\" [número R$ {x['valor']:,.2f} × "
-                              f"extenso R$ {x['valor_extenso']:,.2f}]")
+                provas.append(f"doc {d['i']} ({d['titulo'][:60]}) — \"{x['trecho']}\" [número R$ {moeda(x['valor'])} × "
+                              f"extenso R$ {moeda(x['valor_extenso'])}]")
         if not provas:
             continue
         partes = []

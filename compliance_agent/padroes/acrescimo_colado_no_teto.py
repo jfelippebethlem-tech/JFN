@@ -26,6 +26,8 @@ from compliance_agent.padroes import _aditivos_comum as C
 
 ID = "acrescimo_colado_no_teto"
 FOLGA_PP = 1.0      # "encostado" = até 1 ponto percentual abaixo do teto
+_RE_TALVEZ_REFORMA = re.compile(r"reforma|moderniza|adequa[çc][ãa]o\s+(?:f[íi]sica|predial|d[aoe]s?\s+(?:pr[ée]dio|"
+                                r"edif|instala|complexo|unidade))|amplia[çc][ãa]o|requalifica|revitaliza", re.I)
 _RE_REAJUSTE = re.compile(r"reajust|repactua|reequil[íi]brio|\bIPCA\b|\bINCC\b|IGP-?M|corre[çc][ãa]o\s+monet", re.I)
 
 
@@ -38,7 +40,14 @@ def avaliar(decls: list[dict], objeto: str = "") -> dict | None:
     teto = L.teto_acrescimo(tipo) * 100
     soma = round(sum(x["pct"] for x in validas), 2)
     supr = round(sum(x.get("pct_supressao") or 0 for x in validas), 2)
-    if soma > teto + 1e-9:
+    if soma > teto + 1e-9 and tipo is None and soma <= 50.0 and _RE_TALVEZ_REFORMA.search(objeto or ""):
+        # FAETEC × Scalle (260005/*): "adequação e modernização dos complexos esportivos" com 47,18% e 49,62% —
+        # se o objeto for REFORMA de edifício, o teto é 50% e o acréscimo está encostado, não estourado. Sem
+        # leitura humana do objeto, fica médio com a ressalva.
+        g = "medio"
+        motivo = (f"acréscimos declarados somam {soma:.2f}% — acima de 25%; objeto pode ser reforma/modernização "
+                  f"(teto de 50%), caso em que está encostado no teto")
+    elif soma > teto + 1e-9:
         g = "forte"
         motivo = (f"acréscimos declarados somam {soma:.2f}% (bruto) > teto de {teto:.0f}%"
                   + (f"; líquido de supressões {soma - supr:.2f}% — o teto se controla pelo BRUTO" if supr else ""))

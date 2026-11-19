@@ -24,6 +24,7 @@ import statistics
 
 from compliance_agent import limites_aditivo as L
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "acrescimo_medido_pelo_objeto"
 MESES_ANTES, PULA, MESES_DEPOIS, MIN_MESES = 6, 1, 6, 3
@@ -104,7 +105,7 @@ def varrer(limite: int | None = None) -> dict:
         achados.append(C.achado(
             chave, g,
             prova=(f"doc {x['doc']} — \"{x['trecho'][:220]}\" (assinado {x['data']}); SIAFE OB pagas: mediana mensal "
-                   f"R$ {cr['mediana_antes']:,.2f} nos {cr['n_antes']} meses antes × R$ {cr['mediana_depois']:,.2f} "
+                   f"R$ {moeda(cr['mediana_antes'])} nos {cr['n_antes']} meses antes × R$ {moeda(cr['mediana_depois'])} "
                    f"nos meses 2–7 depois ({cr['n_depois']} meses)"),
             porque=(f"Termo declara acréscimo de {x['pct']:.2f}%; o pago mensal cresceu {cr['g']:.0%}"
                     f" (teto {teto:.0%}). "

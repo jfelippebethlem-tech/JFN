@@ -377,7 +377,7 @@ def _sem_fim(n: int) -> str:
 
 
 RE_PCT_ACRESCIMO = re.compile(r"acr[ée]scimo(?!\s+de\s+valor)" + _sem_fim(400) + r"percentual\s+de\s+" + _N, re.I)
-RE_PCT_SUPRESSAO = re.compile(r"supress[ãa]o" + _sem_fim(200) + r"percentual\s+de\s+" + _N, re.I)
+RE_PCT_SUPRESSAO = re.compile(r"(?:supress[ãa]o|redu[çc][ãa]o)" + _sem_fim(200) + r"percentual\s+de\s+" + _N, re.I)
 RE_VALOR_TERMO = re.compile(r"(?:d[áa]-se\s+ao\s+(?:presente\s+)?termo\s+aditivo\s+o\s+valor(?:\s+total)?\s+de|"
                             r"pagar\s+a\s+quantia\s+total\s+de)\s*R\$\s*([\d.]{1,15},\d{2})", re.I)
 RE_VALOR_TOTAL = re.compile(r"(?:totalizando\s+o\s+(?:contrato|valor\s+(?:global|total)\s+do\s+contrato)\s+"
@@ -439,6 +439,9 @@ def sem_rodape(texto: str) -> str:
     return _RE_RODAPE.sub("", texto or "")
 
 
+_RE_SOMATORIO = re.compile(r"somat[óo]rio|\bsoma\b|\btotal\b|acumulad|totaliza", re.I)
+
+
 def declaracoes_de_acrescimo(texto: str) -> list[dict]:
     """Cada termo do texto que DECLARA acréscimo: {pct, pct_supressao, valor_termo, valor_total, data, contrato, trecho,
     pos}. Só no corpo (não extrato do DOERJ). Termo compilado (1º ao 5º TA numa peça) devolve um item por termo."""
@@ -446,6 +449,10 @@ def declaracoes_de_acrescimo(texto: str) -> list[dict]:
     out = []
     for m in RE_PCT_ACRESCIMO.finditer(texto):
         if not no_corpo(texto, m.start()):
+            continue
+        # "O somatório do acréscimo de itens existentes e novos corresponde ao percentual de 17,78%" (Hydra
+        # 070002/021691/2023) repete a soma das parcelas já declaradas — contar de novo dobra o acréscimo
+        if _RE_SOMATORIO.search(texto[max(0, m.start() - 40): m.end()]):
             continue
         pct = pct_br(m.group(1))
         if pct is None or pct <= 0 or pct > 100:
@@ -483,14 +490,20 @@ def termos_do_processo(p: dict) -> tuple[list[tuple[dict, str]], dict]:
 def declaracoes_do_processo(termos: list[tuple[dict, str]]) -> dict[str, list[dict]]:
     """contrato → declarações de acréscimo DISTINTAS (o mesmo termo aparece em várias peças: compilação, cópia
     juntada no pagamento). Chave de unicidade: (pct, data) — ou (pct, valor_termo) sem data."""
-    por: dict[str, dict[tuple, dict]] = {}
+    # Unicidade pelo PERCENTUAL: a mesma declaração aparece com data numa peça e sem data noutra (cópia sem a página
+    # de assinatura) — medido 18/11/2026 (INEA 070002/008304/2022: "16,20%" contado 3× = 48,60%). Dois termos
+    # distintos com o mesmo percentual só ficam separados quando ambos têm data e as datas diferem.
+    por: dict[str, list[dict]] = {}
     for d, t in termos:
         for x in declaracoes_de_acrescimo(t):
-            k = (x["pct"], x["data"] or x["valor_termo"])
-            grupo = por.setdefault(x["contrato"] or "?", {})
-            if k not in grupo:
-                grupo[k] = {**x, "doc": d["i"], "titulo": d["titulo"], "fonte": d["fonte"]}
-    return {c: sorted(g.values(), key=lambda x: (x["data"] or "9999", x["doc"])) for c, g in por.items()}
+            grupo = por.setdefault(x["contrato"] or "?", [])
+            igual = next((g for g in grupo if g["pct"] == x["pct"]
+                          and (not g["data"] or not x["data"] or g["data"] == x["data"])), None)
+            if igual is None:
+                grupo.append({**x, "doc": d["i"], "titulo": d["titulo"], "fonte": d["fonte"]})
+            elif not igual["data"] and x["data"]:
+                igual.update({**x, "doc": d["i"], "titulo": d["titulo"], "fonte": d["fonte"]})
+    return {c: sorted(g, key=lambda x: (x["data"] or "9999", x["doc"])) for c, g in por.items()}
 
 
 def contrato_principal(decl: dict[str, list[dict]]) -> str | None:
@@ -522,19 +535,27 @@ def _inteiro_extenso(s: str) -> int | None:
     total = grupo = 0
     visto = False
     ultima_escala = None
+    ultimo = None          # última parcela do grupo: centena → dezena → unidade, sempre decrescendo
     anterior = ""
     for t in toks:
         if t in _NEUTRAS:
             anterior = t
             continue
         if t in _UNID:
-            grupo += _UNID[t]
+            v = _UNID[t]
+            # "oitocentos e noventa e seis, duzentos e sessenta" (falta o "mil") e "um, cento e setenta" são
+            # extensos malformados — medidos 18/11/2026 (SETUR 66.896.260,00; INEA 1.771.176,79)
+            if ultimo is not None and not ((ultimo >= 100 and v < 100) or (20 <= ultimo < 100 and v < 10)):
+                return None
+            grupo += v
+            ultimo = v
             visto = True
         elif t in _ESCALA:
             if anterior == "e" or (ultima_escala is not None and _ESCALA[t] >= ultima_escala):
                 return None
             total += (grupo or 1) * _ESCALA[t]
             grupo = 0
+            ultimo = None
             ultima_escala = _ESCALA[t]
             visto = True
         else:
@@ -550,6 +571,8 @@ def extenso_para_numero(s: str) -> float | None:
     s = sem_acento(s.lower()).replace(",", " ")
     m = re.match(r"\s*(.*?)\s*\breais?\b(?:\s+e\s+(.*?)\s*\bcentavos?\b)?\s*$", s, re.S)
     if m:
+        if not m.group(1).strip() and not m.group(2):
+            return None                      # "(reais)" sozinho não é extenso
         inteiro = _inteiro_extenso(m.group(1)) if m.group(1).strip() else 0
         cent = _inteiro_extenso(m.group(2)) if m.group(2) else 0
     else:
@@ -562,14 +585,24 @@ def extenso_para_numero(s: str) -> float | None:
     return round(inteiro + cent / 100, 2)
 
 
-RE_VALOR_EXTENSO = re.compile(r"R\$\s*([\d.]{1,15},\d{2})\s*\(\s*([^()]{5,400}?)\s*\)", re.S)
+# número com milhar BEM agrupado ("R$ 71.443.87,35" é erro material do próprio número, não divergência de extenso)
+RE_VALOR_EXTENSO = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\(\s*([^()]{5,400}?)\s*\)", re.S)
+# só cláusula de VALOR do contrato/termo — garantia, caução e valor de NF ficam fora (medido: "reforço da garantia em
+# R$ 200.970,89 (duzentos e quinze mil...)")
+_RE_CTX_VALOR = re.compile(r"valor|totaliza|pagar|quantia|pre[çc]o|reajust|passa\s+de", re.I)
+_RE_CTX_NAO = re.compile(r"garantia|cau[çc][ãa]o|seguro|nota\s+fiscal|\bNF\b|multa", re.I)
 
 
-def divergencias_extenso(texto: str, minimo: float = 1000.0, minimo_rel: float = 0.01) -> list[dict]:
+def divergencias_extenso(texto: str, minimo: float = 1000.0, minimo_rel: float = 0.05) -> list[dict]:
     """[(valor, extenso, valor_do_extenso, trecho)] onde número e extenso discordam em mais de `minimo` reais E de
-    `minimo_rel` do valor (troca de uma palavra em R$ 14.499,00 × 14.449,00 é erro de digitação sem relevância)."""
+    `minimo_rel` do valor, em cláusula de valor. Medido 18/11/2026: troca de uma palavra no extenso (R$ 120.576,00 ×
+    "cento e vinte e dois mil", 1,7%; R$ 421.197,56 × "quatrocentos e um mil", 4,8%) é erro de digitação recorrente
+    sem efeito; o caso que importa (Geo Ambiental: R$ 1,8 mi × R$ 5,7 mi) diverge em múltiplos."""
     out = []
     for m in RE_VALOR_EXTENSO.finditer(texto):
+        antes = texto[max(0, m.start() - 160): m.start()]
+        if not _RE_CTX_VALOR.search(antes) or _RE_CTX_NAO.search(antes[-80:]):
+            continue
         ext = m.group(2)
         if not re.search(r"\breais?\b|centavos?", ext, re.I):
             continue

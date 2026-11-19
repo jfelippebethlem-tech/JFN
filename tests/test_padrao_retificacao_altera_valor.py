@@ -35,3 +35,19 @@ def test_positivo_onde_se_le_leia_se_com_valor():
 
 def test_negativo_retificacao_sem_valor():
     assert onde_le_leia_se("CLÁUSULA PRIMEIRA: Onde se lê: Rua A. Leia-se: Rua B.") == []
+
+
+def test_negativo_extensos_malformados_e_garantia():
+    assert extenso_para_numero("sessenta e seis milhões, oitocentos e noventa e seis, duzentos e sessenta reais") is None
+    assert extenso_para_numero("um milhão, setecentos e setenta e um, cento e setenta e seis reais") is None
+    assert extenso_para_numero("reais") is None
+    assert divergencias_extenso("comprovante do reforço da garantia em R$ 200.970,89 (duzentos e quinze mil, setecentos "
+                                "e cinquenta e quatro reais e treze centavos)") == []
+    assert divergencias_extenso("totalizando o contrato o valor de R$ 71.443.87,35 (setenta e um milhões quatrocentos e "
+                                "quarenta e três mil trezentos e trinta e sete reais e trinta e cinco centavos)") == []
+
+
+def test_negativo_retificacao_de_valor_de_nf_em_atestado():
+    t = ("Onde se lê: \"Valor das Notas Fiscais: R$ 371.829,46 e R$ 379.505,44\" Leia-se: \"Valor das Notas Fiscais: "
+         "R$ 371.829,46 e R$ 380.505,44\"")
+    assert onde_le_leia_se(t) == []

@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "execucao_acima_do_valor_antes_do_aditivo"
 TOLERANCIA = 0.001
@@ -205,10 +206,10 @@ def varrer(limite: int | None = None) -> dict:
         achados.append(C.achado(
             C.chave_de_tag(tag), r["grau"],
             prova=(f"doc {dc['i']} ({dc['titulo'][:50]}) — \"{dc['trecho']}\"; doc {d['i']} ({d['titulo'][:60]}) — "
-                   f"acumulado medido R$ {r['acumulado']:,.2f} no mês {r['mes']}; 1º termo aditivo do contrato "
+                   f"acumulado medido R$ {moeda(r['acumulado'])} no mês {r['mes']}; 1º termo aditivo do contrato "
                    f"assinado em {e['data']} (doc {e['doc']})"),
-            porque=(f"Acumulado medido em {r['mes']} (R$ {r['acumulado']:,.2f}) excede a cobertura contratual vigente "
-                    f"(R$ {r['cobertura']:,.2f}) " + ("ANTES do 1º termo aditivo" if r["grau"] == "forte" else
+            porque=(f"Acumulado medido em {r['mes']} (R$ {moeda(r['acumulado'])}) excede a cobertura contratual vigente "
+                    f"(R$ {moeda(r['cobertura'])}) " + ("ANTES do 1º termo aditivo" if r["grau"] == "forte" else
                                                          "mesmo após os termos lidos")
                     + f" — {r['acumulado'] / r['cobertura'] - 1:.1%} acima. Execução sem cobertura; conferir se a "
                       "planilha embute reajuste (que não exige aditivo) antes de concluir."),

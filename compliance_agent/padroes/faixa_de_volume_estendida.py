@@ -24,6 +24,7 @@ import re
 
 from compliance_agent import limites_aditivo as L
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "faixa_de_volume_estendida"
 _RE_FAIXA_NOVA = re.compile(r"faixa\s+de\s+at[ée]\s+([\d.]{3,9})\s+(atendimentos|refei[çc][õo]es|exames|procedimentos|"
@@ -104,8 +105,8 @@ def varrer(limite: int | None = None) -> dict:
                     achados.append(C.achado(
                         chave, g, sinal="faixa_estendida",
                         prova=(f"doc {doc_orig['i']} ({doc_orig['titulo'][:50]}) — maior faixa remunerada "
-                               f"{orig:,} {x['unidade']}/dia; doc {d['i']} ({d['titulo'][:50]}) — \"{x['trecho']}\""),
-                        porque=(f"O termo estende o volume remunerado de {orig:,} para {x['novo_max']:,} "
+                               f"{moeda(orig)[:-3]} {x['unidade']}/dia; doc {d['i']} ({d['titulo'][:50]}) — \"{x['trecho']}\""),
+                        porque=(f"O termo estende o volume remunerado de {moeda(orig)[:-3]} para {moeda(x['novo_max'])[:-3]} "
                                 f"(+{ext:.0%})" + (f" sob acréscimo declarado de {x['pct']:.2f}%" if x["pct"] is not None else "")
                                 + f". Teto de acréscimo {teto:.0%} se mede pelo objeto (quantitativo), não só pelo valor do termo."),
                         fonte=f"contrato + termo aditivo ({p['fonte']})", faixa_original=orig,

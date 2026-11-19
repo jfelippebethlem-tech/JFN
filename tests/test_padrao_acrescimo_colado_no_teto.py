@@ -43,3 +43,24 @@ def test_negativo_extrato_de_outro_contrato_na_pagina_do_doerj():
          "EXTRATO DE TERMO ADITIVO\nINSTRUMENTO : Primeiro Termo Aditivo ao Contrato nº 20/2024\nOBJETO: prorrogação."
          " PARÁGRAFO PRIMEIRO: A\nalteração ora firmada resultará em acréscimo do objeto contratual, no\npercentual de 25%")
     assert [x["pct"] for x in declaracoes_de_acrescimo(t)] == [24.87]
+
+
+def test_negativo_somatorio_nao_soma_de_novo():
+    t = ("CLÁUSULA SEGUNDA: acréscimo de itens existentes no percentual de 5,62% e o acréscimo de itens novos no valor de "
+         "R$ 5.384.052,87 correspondente ao percentual de 12,16%. O somatório do acréscimo de itens existentes e novos "
+         "corresponde ao percentual de 17,78%")
+    assert sorted(x["pct"] for x in declaracoes_de_acrescimo(t)) == [5.62, 12.16]
+
+
+def test_mesmo_termo_com_e_sem_data_conta_uma_vez():
+    from compliance_agent.padroes._aditivos_comum import declaracoes_do_processo
+    com = "CLÁUSULA: Termo Aditivo ao Contrato nº 9/2023 acréscimo no percentual de 16,20%. assinado eletronicamente por X em 12/09/2024"
+    sem = "CLÁUSULA: Termo Aditivo ao Contrato nº 9/2023 acréscimo no percentual de 16,20%."
+    d = declaracoes_do_processo([({"i": 1, "titulo": "TA", "fonte": "x"}, sem), ({"i": 2, "titulo": "TA", "fonte": "x"}, com),
+                                 ({"i": 3, "titulo": "TA", "fonte": "x"}, sem)])
+    assert [x["pct"] for x in d["9/2023"]] == [16.2]
+
+
+def test_reforma_possivel_rebaixa_para_medio():
+    v = avaliar([{"pct": 47.18, "trecho": "acréscimo"}], "adequação e modernização dos complexos esportivos")
+    assert v["grau"] == "medio" and "50%" in v["motivo"]
