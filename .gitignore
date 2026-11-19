@@ -266,3 +266,5 @@ data/foto_quantitativo/
 data/pericia_agentes/
 # Conluio por participação (derivado; nomeia empresas — indício, não vai para o repo público) (18/11/2026)
 data/conluio/
+# saídas das varreduras de padrões (18/11/2026)
+data/padroes/
