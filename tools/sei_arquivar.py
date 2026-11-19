@@ -177,7 +177,10 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
 
     docs_saida, tipos_vistos = [], set()
     for pdf in sorted(origem.glob("[0-9][0-9][0-9]*.pdf")):
-        i = int(pdf.name[:3])
+        # O ÍNDICE É O NÚMERO INTEIRO DO NOME, não os 3 primeiros dígitos: a captura grava `{i:03d}.pdf`, que
+        # passa de 999 para `1000.pdf`. Com `name[:3]`, 1000–1009 viravam o documento 100 — medido em 18/11/2026:
+        # 15 processos com árvore > 1.000 (o `210108/000169/2023` com 2.770) e 7.554 documentos colapsados.
+        i = int(re.match(r"\d+", pdf.name).group())
         if i in alheios_i:      # peça de outro processo: não vira texto nem entra no manifest
             continue
         titulo = titulos.get(i, "")
