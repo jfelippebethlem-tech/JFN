@@ -119,11 +119,11 @@ def obs_pagas(con, processos: list[str]) -> dict[str, list[dict]]:
     """OB pagas (filtro canônico `_ob_paga`) por processo SEI."""
     from compliance_agent.cruzamentos_intel import _ob_paga
     out: dict[str, list[dict]] = {}
-    filtro = _ob_paga(con)
+    paga = _ob_paga(con)
     processos = sorted(set(processos))
     if len(processos) > 200:   # sem índice em `processo`: uma varredura só, filtrada em Python
         alvo = set(processos)
-        for r in con.execute(f"SELECT {', '.join(_COLS)} FROM ob_orcamentaria_siafe WHERE {filtro}"):
+        for r in con.execute(f"SELECT {', '.join(_COLS)} FROM ob_orcamentaria_siafe WHERE {paga}"):
             if r[-1] in alvo:
                 o = dict(zip(_COLS, r))
                 out.setdefault(o["processo"], []).append(o)
@@ -131,7 +131,7 @@ def obs_pagas(con, processos: list[str]) -> dict[str, list[dict]]:
     for i in range(0, len(processos), 500):
         lote = processos[i:i + 500]
         q = (f"SELECT {', '.join(_COLS)} FROM ob_orcamentaria_siafe WHERE processo IN ({','.join('?' * len(lote))}) "
-             f"AND {filtro}")
+             f"AND {paga}")
         for r in con.execute(q, lote):
             o = dict(zip(_COLS, r))
             out.setdefault(o["processo"], []).append(o)
