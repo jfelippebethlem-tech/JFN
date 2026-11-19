@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 import requests
@@ -85,6 +86,31 @@ def _salvar_cache(c: dict) -> None:
     tmp.replace(CACHE_PNCP)
 
 
+_LISTAS: dict[tuple[str, int], list | None] = {}
+
+
+def lista_atas(cnpj: str, aa: int) -> list | None:
+    """Todas as atas do órgão publicadas no ano `aa` (PNCP /consulta/v1/atas). None = indisponível. Memória do
+    processo: o mesmo gerenciador aparece em vários processos de adesão."""
+    k = (cnpj, int(aa))
+    if k in _LISTAS:
+        return _LISTAS[k]
+    out: list = []
+    for p in range(1, 41):
+        j = _get(f"{PNCP}/consulta/v1/atas", {"dataInicial": f"{aa}0101", "dataFinal": f"{aa}1231",
+                                               "cnpj": cnpj, "pagina": p, "tamanhoPagina": 50})
+        if j is None:
+            _LISTAS[k] = None
+            return None
+        if not j:
+            break
+        out.extend(j.get("data") or [])
+        if p >= int(j.get("totalPaginas") or 1):
+            break
+    _LISTAS[k] = out
+    return out
+
+
 def ata_pncp(cnpj: str, numero: str, ano: str, cache: dict) -> dict | None | str:
     """Ata (numero/ano) do órgão `cnpj` no PNCP com itens e resultados. None = não achou; "indisponivel" = falha."""
     k = f"{cnpj}|{int(numero)}|{ano}"
@@ -92,19 +118,11 @@ def ata_pncp(cnpj: str, numero: str, ano: str, cache: dict) -> dict | None | str
         return cache[k]
     achada = None
     for aa in (int(ano), int(ano) + 1):                  # a consulta aceita no máximo 365 dias por janela
-        for p in range(1, 21):
-            j = _get(f"{PNCP}/consulta/v1/atas", {"dataInicial": f"{aa}0101", "dataFinal": f"{aa}1231",
-                                                   "cnpj": cnpj, "pagina": p, "tamanhoPagina": 50})
-            if j is None:
-                return "indisponivel"
-            if not j:
-                break
-            for it in j.get("data") or []:
-                if str(it.get("anoAta")) == str(ano) and re.sub(r"\D", "", str(it.get("numeroAtaRegistroPreco"))).lstrip("0") == str(int(numero)):
-                    achada = it
-                    break
-            if achada or p >= int(j.get("totalPaginas") or 1):
-                break
+        lst = lista_atas(cnpj, aa)
+        if lst is None:
+            return "indisponivel"
+        achada = next((it for it in lst if str(it.get("anoAta")) == str(ano) and
+                       re.sub(r"\D", "", str(it.get("numeroAtaRegistroPreco"))).lstrip("0") == str(int(numero))), None)
         if achada:
             break
     if not achada:
@@ -164,7 +182,7 @@ def cnpjs_candidatos(ds: list[cc.Doc], excluir: set[str]) -> list[str]:
             if c in excluir or c.startswith("42498") or len(set(c)) == 1:
                 continue
             cont[c] = cont.get(c, 0) + peso
-    return [c for c, _ in sorted(cont.items(), key=lambda kv: -kv[1])][:6]
+    return [c for c, _ in sorted(cont.items(), key=lambda kv: -kv[1])][:3]
 
 
 def _data_ne_adesao(ds: list[cc.Doc]) -> tuple[date, str] | None:
@@ -246,6 +264,19 @@ def varrer(limite: int | None = None) -> dict:
            "externas": sum(1 for b in base if b[2] == "externa"), "sem_numero_de_ata": 0, "ata_nao_achada_pncp": 0,
            "pncp_indisponivel": 0, "sem_ob_paga": 0, "atas_pncp": 0}
     por_ata: dict[str, list] = {}
+    # listas de atas por (gerenciador, ano) em paralelo — a consulta serial levava ~20 s cada
+    pares = set()
+    for t, ds, tipo in base:
+        if tipo != "externa":
+            continue
+        ac = ata_citada(ds)
+        if ac:
+            excl = {re.sub(r"\D", "", o.get("cnpj") or "") for o in (obs.get(cc.canon(t)) or {}).get("obs", [])}
+            for cn in cnpjs_candidatos(ds, excl):
+                if f"{cn}|{int(ac[0])}|{ac[1]}" not in cache:
+                    pares |= {(cn, int(ac[1])), (cn, int(ac[1]) + 1)}
+    with ThreadPoolExecutor(6) as ex:
+        list(ex.map(lambda pa: lista_atas(*pa), sorted(pares)))
     achados: list[dict] = []
     for t, ds, tipo in base:
         canon = cc.canon(t)
