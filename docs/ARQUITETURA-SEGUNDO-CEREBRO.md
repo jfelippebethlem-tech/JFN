@@ -200,4 +200,32 @@ Resultado da primeira carga: ver §8.
 
 ## 8. Primeira carga — números
 
-_Preenchido após a execução (ver seção ao final)._
+Medido em 18/11/2026 às 23:44 (`data/cerebro_ponte_estado.json`; duração ~50 min com a VM-1 em carga 25–30 —
+o custo é a primeira leitura dos textos; as rodadas seguintes só releem laudo novo ou alterado). A pasta
+`data/pericia_agentes/` cresceu durante a carga (78 → 188 laudos): a carga pegou os 117 que existiam quando
+listou; os demais entram pelo derivado `cerebro_ponte`.
+
+| Medida | Valor | Estado |
+|---|---:|---|
+| Laudos por agente registrados | 117 | VERIFICADO (tabela `ponte_laudo`) |
+| Laudos com ao menos um achado de nível 2 | 112 de 117 | VERIFICADO |
+| Laudos sem texto do processo na máquina | 0 | VERIFICADO |
+| Achados com citação literal localizada no processo (nível 2) | 335 de 400 | VERIFICADO por código |
+| Achados com citação **não** localizada | 9 de 400 | ficam só na nota, marcados nível 1 |
+| Achados sem trecho conferível (sem aspas ou trecho < 20 caracteres) | 56 de 400 | ficam só na nota, marcados nível 1 |
+| OB dos laudos conferidas no SIAFE por número, UG e valor | 1.153 de 1.210 (95,3%) | VERIFICADO; as 57 restantes não foram localizadas com o mesmo valor (PENDENTE de exame) |
+| Fatos registrados na fila do cérebro | 241 (117 casos + 117 lições candidatas + 7 versões da rubrica) | 0 recusados |
+| Enviados ao jfn-brain até 23:45 | 176 de 241 | o restante sai nos ciclos seguintes do despachante (20 por ciclo) |
+| Índice de entidade | 69 CNPJ · 117 processos · 35 UG · 7 versões | VERIFICADO |
+| CNPJ presentes em mais de um processo | 22 | lista em `[[jfn/pericias-agente]]` |
+| Notas geradas no vault | 119 (117 laudos + índice + lições/portão) | — |
+| Notas com `ug`/`orgao`/tags de cor | 420 examinadas; 302 regravadas; 86 `orgao/indeterminado` | — |
+| Grupos de cor no grafo do Obsidian | 46 (45 UG + indeterminado) | `~/vault/.obsidian/graph.json` |
+
+Prova ponta a ponta: `brain_recall "Costa Verde Diesel locação de máquinas"` devolve a memória #499 (gravada pela
+ponte); `python -m compliance_agent.cerebro_ponte entidade 00.482.487/0001-96` devolve o mesmo fato pelo CNPJ.
+
+**Pendências observadas na carga:** (a) 2 notas novas de `casos/` têm frontmatter YAML inválido (dois-pontos sem
+aspas no texto do autor) — o Obsidian não lê as propriedades delas; a ponte não as corrige porque o texto é do autor.
+(b) O `git push` foi bloqueado pelo portão de pre-push: as catracas não terminaram no prazo com a carga em 25
+(nenhuma falha listada); os commits ficaram locais.
