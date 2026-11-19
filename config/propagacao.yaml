@@ -297,6 +297,21 @@ derivados:
     prioridade: 4
     efeito: {arquivo: data/sei_fila_vinculo_ob.json}
     antes: "diário 05:15 (cron)"
+  indeterminados:
+    nome: Laudo de execução sem conclusão — causa medida, processo-mãe citado nos autos → fila SEI, fontes externas
+    onde: data/indeterminados/{estado,fila_captura,diagnostico}.json · sei_fila_captura (motivo indeterminado_relacionado) · tabela indeterminado_evidencia
+    # sem LLM e sem rede: lê o arquivo SEI (incremental por mtime do manifesto, teto de leitura por rodada), o SIAFE e as
+    # tabelas TCE-RJ/SIGA/DOERJ já coletadas. A fila_captura.json é lida pelo drenador (sei_integra_fila._fila_indeterminados);
+    # a reperícia é do lex_execucao (_recapturados: captura mais nova que o laudo).
+    depende: [sei_lex, sei_arquivado, sei_lote, siafe_ob, contratos_tcerj, doerj]
+    comando: ["{py}", "-m", "compliance_agent.indeterminados", "ciclo", "--max-ler", "150", "--max-externo", "300"]
+    peso: pesado
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 3000
+    prioridade: 6
+    efeito: {arquivo: data/indeterminados/estado.json}
+    antes: "não existia — 4.296 laudos sem conclusão (18/11/2026) sem causa medida; processo-mãe citado nos autos não entrava em fila"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos
