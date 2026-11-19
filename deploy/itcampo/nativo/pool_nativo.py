@@ -41,6 +41,11 @@ PAUSA = BASE / "PAUSA"
 ESTADO = BASE / "estado.json"
 LOG = BASE / "pool.log"
 PISO_GB = float(os.environ.get("JFN_NATIVO_PISO_GB", "6"))          # disponível do Windows reservado ao dono
+# Dono AUSENTE (sem tecla/mouse há AUSENTE_S): o piso desce — medido 19/11 10h28: o Windows tinha 5,7 GB disponíveis
+# (o WSL segura ~19 GB e só devolve com CPU ociosa) e o piso de 6 deixava o pool parado com a máquina sem ninguém.
+# Quando o dono volta, o piso sobe na hora e o freio duro (piso − 1 GB) encerra o trabalhador mais novo.
+PISO_AUSENTE_GB = float(os.environ.get("JFN_NATIVO_PISO_AUSENTE_GB", "3"))
+AUSENTE_S = int(os.environ.get("JFN_NATIVO_AUSENTE_S", "1800"))
 GB_POR_TRAB = float(os.environ.get("JFN_NATIVO_GB_POR_TRAB", "1.5"))  # pico medido do RapidOCR num PDF de 19 pág: 1,1 GB
 # Medido 19/11 no Windows (PDF de 12 págs, texto IDÊNTICO ao do WSL por md5): 2 threads 13,8 s/pág · 4 → 8,0 · 8 → 5,2.
 # A memória (≈1,5 GB por trabalhador) limita antes da CPU: menos trabalhadores com mais threads rendem mais por GB.
@@ -75,10 +80,14 @@ def ocioso_s() -> float:
     return ((ctypes.windll.kernel32.GetTickCount() - li.dwTime) & 0xFFFFFFFF) / 1000
 
 
-def alvo(disp_gb: float, cpu_outros: float, ncpu: int, vivos: int) -> int:
+def piso(ocioso: float) -> float:
+    return PISO_AUSENTE_GB if ocioso >= AUSENTE_S else PISO_GB
+
+
+def alvo(disp_gb: float, cpu_outros: float, ncpu: int, vivos: int, piso_gb: float = PISO_GB) -> int:
     """Quantos trabalhadores cabem: CPU livre dos outros ÷ THREADS e memória acima do PISO ÷ GB_POR_TRAB."""
     cabe_cpu = int((100 - cpu_outros) / 100 * ncpu // THREADS)
-    cabe_mem = vivos + int((disp_gb - PISO_GB) // GB_POR_TRAB)
+    cabe_mem = vivos + int((disp_gb - piso_gb) // GB_POR_TRAB)
     return max(0, min(MAX_TRAB, cabe_cpu, cabe_mem))
 
 
@@ -112,10 +121,10 @@ def atualizar_codigo() -> bool:
     return True
 
 
-def lancar(k: int) -> subprocess.Popen:
+def lancar(k: int, piso_gb: float = PISO_GB) -> subprocess.Popen:
     env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8",
            "JFN_FRIO_REMOTO": "vm2-ts:arquivo_frio/sei_cache/", "JFN_VM1_SSH": "vm1-ts",
-           "JFN_OCR_RESERVA_DIR": str(BASE / "reserva"), "JFN_OCR_MEM_MIN_GB": str(PISO_GB),
+           "JFN_OCR_RESERVA_DIR": str(BASE / "reserva"), "JFN_OCR_MEM_MIN_GB": str(piso_gb),
            "JFN_OCR_LOAD_POR_NUCLEO": "0.85", "JFN_OCR_THREADS": str(THREADS), "OMP_NUM_THREADS": str(THREADS)}
     saida = (BASE / f"trab_{k}.log").open("a", encoding="utf-8")
     return subprocess.Popen([str(PY), str(CODIGO), "rodar", "--paralelo", "--orcamento", str(ORCAMENTO_S),
@@ -230,7 +239,8 @@ def main() -> int:
         cpu_outros = max(0.0, cpu - meus / ncpu)
         ocioso = ocioso_s()
         # freio duro de memória: o dono nunca fica sem memória
-        if disp < PISO_GB - 1.0 and trab:
+        p_gb = piso(ocioso)
+        if disp < p_gb - 1.0 and trab:
             k = max(trab, key=lambda v: trab[v]["desde"])
             for p in reversed(_arvore(trab[k]["proc"].pid)):
                 try:
@@ -251,7 +261,7 @@ def main() -> int:
         if motivo != motivo_ant:
             log(ev="pausa" if motivo else "retoma", motivo=motivo, ocioso_s=round(ocioso), cpu_outros=round(cpu_outros))
             motivo_ant = motivo
-        quer = 0 if motivo else alvo(disp, cpu_outros, ncpu, len(trab))
+        quer = 0 if motivo else alvo(disp, cpu_outros, ncpu, len(trab), p_gb)
         if len(trab) < quer and time.time() - ultimo_lanc > 60:
             livres = [k for k in range(1, MAX_TRAB + 1) if k not in trab and espera_ate.get(k, 0) < time.time()]
             if livres:
@@ -261,7 +271,7 @@ def main() -> int:
                     if not ok:
                         continue
                 k = livres[0]
-                trab[k] = {"proc": lancar(k), "desde": time.time(), "suspenso": False}
+                trab[k] = {"proc": lancar(k, p_gb), "desde": time.time(), "suspenso": False}
                 ultimo_lanc = time.time()
                 log(ev="lancado", vaga=k, pid=trab[k]["proc"].pid, alvo=quer, disp_gb=round(disp, 1),
                     cpu_outros=round(cpu_outros))
@@ -279,7 +289,7 @@ def main() -> int:
         tmp.write_text(json.dumps({
             "t": time.strftime("%F %T"), "win_disp_gb": round(disp, 2), "win_total_gb": round(mem.total / 1e9, 1),
             "cpu_pct": round(cpu), "cpu_outros_pct": round(cpu_outros), "dono_ocioso_s": round(ocioso),
-            "pausa": motivo, "alvo": quer, "piso_gb": PISO_GB,
+            "pausa": motivo, "alvo": quer, "piso_gb": p_gb,
             "trabalhadores": [{"vaga": k, "pid": t["proc"].pid, "rss_mb": round(rss[k] / 1e6),
                                "suspenso": t["suspenso"], "desde_s": round(time.time() - t["desde"])}
                               for k, t in sorted(trab.items())],

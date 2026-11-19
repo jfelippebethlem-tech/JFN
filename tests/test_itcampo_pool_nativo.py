@@ -38,3 +38,11 @@ def test_pausa_so_com_dono_ativo_e_cpu_alta_ou_arquivo():
     assert P.deve_pausar(False, 10, P.CPU_PAUSA + 1)
     assert not P.deve_pausar(False, 10, P.CPU_PAUSA - 1), "dono ativo com CPU folgada: segue (prioridade IDLE)"
     assert not P.deve_pausar(False, P.OCIOSO_S + 1, 95), "dono ausente: CPU alta é a do próprio JFN, segue"
+
+
+def test_piso_desce_so_com_o_dono_ausente():
+    assert P.piso(P.AUSENTE_S + 1) == P.PISO_AUSENTE_GB < P.PISO_GB
+    assert P.piso(60) == P.PISO_GB
+    # 5,7 GB disponíveis (medido 19/11 10h28): dono presente → 0; ausente → cabe trabalho
+    assert P.alvo(5.7, 16, 24, 0, P.piso(60)) == 0
+    assert P.alvo(5.7, 16, 24, 0, P.piso(P.AUSENTE_S + 1)) >= 1
