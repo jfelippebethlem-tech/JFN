@@ -123,7 +123,8 @@ def fila(con: sqlite3.Connection, estado: dict) -> list[dict]:
         if tam < MIN_TEXTO:
             continue
         cands.append({"pasta": p.name, "numero": numero_da_pasta(p.name), "bytes": tam})
-    obs = mapa_obs_siafe(con, [c["numero"] for c in cands]) if cands else {}
+    # só ORDENA a fila: autos=False — ler os espelhos de milhares de pastas custa horas a frio (~7 arquivos/s)
+    obs = mapa_obs_siafe(con, [c["numero"] for c in cands], autos=False) if cands else {}
     for c in cands:
         c["pago"] = round((obs.get(_chave_processo(c["numero"])) or {}).get("total", 0.0), 2)
     cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))

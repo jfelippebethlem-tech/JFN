@@ -138,7 +138,7 @@ def test_veredito_da_regra_nao_consome_vaga_do_llm(monkeypatch):
     chamadas = []
     monkeypatch.setattr(DC, "gerar_sync", lambda p, s, t=None: chamadas.append(1) or '{"execucao_comprovada":"sim"}')
     monkeypatch.setattr(L, "_con", lambda: _SemFechar(con))
-    monkeypatch.setattr(L, "mapa_obs_siafe", lambda c, ns: {})
+    monkeypatch.setattr(L, "mapa_obs_siafe", lambda c, ns, **k: {})
     monkeypatch.setattr(sys, "argv", ["lex_execucao", "--top", "1"])
     L.main()
     got = dict(con.execute("select numero_sei, execucao_comprovada from lex_execucao").fetchall())

@@ -555,7 +555,8 @@ def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     # (e processo sem OB localizada) segue a ordem de n_docs. Antes era só n_docs — o processo de R$ 8 bi esperava atrás
     # de qualquer pasta grande.
     rows = [r for r in rows if r[0] not in ja]
-    pago = mapa_obs_siafe(con, [r[0] for r in rows]) if rows else {}
+    # só ORDENA a fila (universo da sei_ficha): autos=False — a camada dos autos é para o processo periciado
+    pago = mapa_obs_siafe(con, [r[0] for r in rows], autos=False) if rows else {}
     rows.sort(key=lambda r: (r[0] not in primeiro,
                              -(pago.get(_chave_processo(r[0])) or {}).get("total", 0.0)))   # estável: n_docs no empate
     out = []

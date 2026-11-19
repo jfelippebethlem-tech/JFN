@@ -844,7 +844,8 @@ def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO)
             tam = _bytes_texto(p)
             if tam >= MIN_TEXTO:
                 cands.append({"pasta": str(p), "numero": numero, "bytes": tam})
-        obs = mapa_obs_siafe(con, [c["numero"] for c in cands]) if cands else {}
+        # só ORDENA a fila: autos=False; o processo periciado recalcula com os autos em `_pago`
+        obs = mapa_obs_siafe(con, [c["numero"] for c in cands], autos=False) if cands else {}
     finally:
         con.close()
     for c in cands:
@@ -869,15 +870,22 @@ def rodar(limite: int, *, so_cascata: bool = False, naturezas: tuple[str, ...] |
 
     Contingência real (limite de 5 h, teto do motor): `claude_motor.pensar` devolve None NA HORA pelo
     `motivo_desligado` — sem esperar a trava, sem laço — e o processo sai pela cascata para a fila do Opus."""
-    from tools.lex_execucao import _chave_processo
+    from tools.lex_execucao import _chave_processo, mapa_obs_siafe
     antes = os.environ.get("JFN_CLAUDE_CONTINGENCIA")
     if so_cascata:
         os.environ["JFN_CLAUDE_CONTINGENCIA"] = "1"
     try:
         alvos = fila(limite, naturezas)
+        # a fila ordenou SEM os autos; o periciado leva a soma COM eles (NL/PD/OB juntadas, GD) — 1 varredura
+        con = _ro()
+        try:
+            com_autos = mapa_obs_siafe(con, [a["numero"] for a in alvos]) if alvos else {}
+        finally:
+            con.close()
         feitos = []
         for a in alvos:
-            ob = a.pop("ob", None)                     # a OB já lida na fila: sem nova varredura do SIAFE
+            a.pop("ob", None)
+            ob = com_autos.get(_chave_processo(a["numero"]))
             obs = {_chave_processo(a["numero"]): ob} if ob else {}
             bloqueio = claude_motor.motivo_desligado(tarefa=TAREFA)
             r = periciar(a["pasta"], pensar=pensar, cascata=cascata, avaliar=avaliar, coletar=coletar, obs=obs)
