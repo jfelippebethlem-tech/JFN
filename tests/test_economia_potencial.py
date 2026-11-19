@@ -138,3 +138,25 @@ def test_ressalva_declara_que_nao_e_ob(tmp_path):
     db = _db(tmp_path, _base())
     d = CP.economia_potencial(db_path=db, **_KW)
     assert "OB" in d["ressalva"] and "Indício" in d["ressalva"]
+
+
+# Controles negativos da medição de 19/11/2026 (~/vault/aprendizados/fp-medida-comparador-2026-11-19.md).
+def test_classe_sem_especificacao_nao_vira_achado(tmp_path):
+    # 'Tubo Hospitalar' / 'Unidade' (classe do CATMAT, nenhuma medida): não diz qual produto é
+    base = [("Tubo Hospitalar", "Unidade", p, 10, f"O{i}", f"O{i}", "F1", "11111111000111", f"c{i}", 6, "")
+            for i, p in enumerate((2.23, 2.60, 3.00, 3.00, 4.28))]
+    cara = ("Tubo Hospitalar", "Unidade", 9.40, 200, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    d = CP.economia_potencial(db_path=_db(tmp_path, base + [cara]), verificacao=_v(),
+                              info_certames={"cX": {"srp": False}}, **_KW)
+    assert d["economia_total"] == 0 and d["n_compras_acima_mediana"] == 0
+
+
+def test_preco_acompanhado_por_outro_certame_nao_e_sobrepreco(tmp_path):
+    # grupo bimodal (dois produtos sob o mesmo nome): outro fornecedor pagou 1,11 num certame à parte
+    precos = (0.33, 0.35, 0.35, 0.45, 0.46, 0.54, 1.11, 1.46)
+    base = [("Agulha coleta 25 x 8 mm", "Unidade", p, 10, f"O{i}", f"O{i}", "F1", "11111111000111",
+             f"c{i}", 6, "") for i, p in enumerate(precos)]
+    cara = ("Agulha coleta 25 x 8 mm", "Unidade", 1.10, 6000, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    d = CP.economia_potencial(db_path=_db(tmp_path, base + [cara]), verificacao=_v(),
+                              info_certames={"cX": {"srp": False}}, **_KW)
+    assert d["n_compras_acima_mediana"] == 0

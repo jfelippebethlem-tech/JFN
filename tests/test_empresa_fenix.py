@@ -219,3 +219,19 @@ def test_ob_devolvida_pelo_banco_nao_e_pago_apos_baixa(con_baixa):
     r = _pagou_apos_baixa(con_baixa, "11111111000111", "2024-03-13", _ISO)
     assert r["valor_apos_baixa"] == 2000.0 and r["n_ob_apos_baixa"] == 1
     assert r["n_ob_devolvida_apos_baixa"] == 1 and r["valor_devolvido_apos_baixa"] == 9000.0
+
+
+# FP medido em 19/11/2026 (~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md): OB de R$ 0,01 sem NL nem
+# processo entrava como "pago a empresa morta". Pagamento exige número de OB e valor ≥ R$ 1,00 (NL/processo não:
+# as OB de 2021–2023 do espelho vêm sem eles).
+def test_ob_de_um_centavo_sem_nl_nao_e_pagamento_a_empresa_morta(con_baixa):
+    con_baixa.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN nl TEXT")
+    con_baixa.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN numero_ob TEXT")
+    con_baixa.execute("INSERT INTO ob_orcamentaria_siafe (credor, valor, data_emissao, status, processo, nl, numero_ob) "
+                      "VALUES ('88888888000188', 0.01, '10/03/2024', 'Contabilizado', '', '', '2024OB00001')")
+    r = _pagou_apos_baixa(con_baixa, "88888888000188", "2024-03-12", _ISO)
+    assert not r["pagou_apos_baixa"]
+    con_baixa.execute("INSERT INTO ob_orcamentaria_siafe (credor, valor, data_emissao, status, processo, nl, numero_ob) "
+                      "VALUES ('88888888000188', 500.0, '11/03/2024', 'Contabilizado', '', '', '2024OB00002')")
+    r = _pagou_apos_baixa(con_baixa, "88888888000188", "2024-03-12", _ISO)
+    assert r["pagou_apos_baixa"] is True and r["valor_apos_baixa"] == 500.0

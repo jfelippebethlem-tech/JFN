@@ -39,6 +39,9 @@ def moeda_fora_do_padrao(texto: str) -> list[str]:
 # ───────────────────────────── PAD-04 · CPF ─────────────────────────────
 _RE_CPF_FMT = re.compile(r"(?<![\d.])(\d{3})\.(\d{3})\.(\d{3})-(\d{2})(?!\d)")
 _RE_CPF_CRU = re.compile(r"(?i)\bcpf\b[^\d\n]{0,20}(\d{11})(?!\d)")
+# MEI: o nome empresarial é "NOME DO TITULAR 12345678901" — o CPF cru vem depois do nome, sem a palavra "cpf"
+# (19/11/2026: dois CPFs inteiros no `nome` do radar passaram pelo sensor sem acusar)
+_RE_CPF_MEI = re.compile(r"[A-Za-zÀ-ÿ]\s+(\d{11})(?![\d/.-])")
 
 
 def cpf_valido(dig: str) -> bool:
@@ -59,6 +62,7 @@ def cpf_exposto(texto: str) -> list[str]:
     """PAD-04/CNF-08: CPF com os 11 dígitos visíveis e dígito verificador válido. A mensagem já sai mascarada."""
     achados = ["".join(m.groups()) for m in _RE_CPF_FMT.finditer(texto or "")]
     achados += [m.group(1) for m in _RE_CPF_CRU.finditer(texto or "")]
+    achados += [m.group(1) for m in _RE_CPF_MEI.finditer(texto or "")]
     return [f"PAD-04 CPF exposto: {mascarar_cpf(d)}" for d in dict.fromkeys(achados) if cpf_valido(d)]
 
 

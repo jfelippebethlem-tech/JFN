@@ -34,7 +34,7 @@ def test_erro_nao_ganha_proveniencia_inventada():
 
 def test_nao_sobrescreve_bloco_da_propria_rota():
     proprio = {"fonte": "x"}
-    assert anexar("/api/intel/fenix", {"ok": True, "proveniencia": proprio})["proveniencia"] is proprio
+    assert anexar("/api/intel/fenix", {"ok": True, "proveniencia": proprio})["proveniencia"] == proprio
 
 
 def test_indicio_de_detector_nunca_sai_verificado():
@@ -47,3 +47,11 @@ def test_esfera_sistema_so_em_medicao_do_proprio_jfn():
     for rota, b in PROVENIENCIA.items():
         if b["esfera"] == "sistema":
             assert b["natureza"] == "contagem", rota
+
+
+def test_cpf_de_mei_no_nome_sai_mascarado():
+    # CPF sintético válido no nome empresarial de um MEI (radar, 19/11/2026); o CNPJ fica intacto
+    d = anexar("/api/intel/radar", {"ok": True, "achados": [{"cnpj": "48749319000140", "nome": "FULANO DE TAL 52998224725"}]})
+    a = d["achados"][0]
+    assert "52998224725" not in a["nome"] and a["cnpj"] == "48749319000140"
+    assert not v.cpf_exposto(a["nome"]) and not v.cpf_exposto("cpf " + a["nome"])

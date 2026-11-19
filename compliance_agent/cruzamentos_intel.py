@@ -1730,15 +1730,21 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
         return {**out, "pagou_apos_baixa": False}        # morreu DEPOIS do último pagamento
     # OB devolvida pelo banco ('Erro no Pagamento': devolução integral, ver `siafe_gd`) segue 'Contabilizado' e
     # não é pagamento — 17/11/2026: R$ 7,60 mi dos R$ 15,59 mi do 1º colocado (IDESI) eram isso. Contada à parte.
-    tem_envio = any(c[1] == "status_envio" for c in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)"))
+    cols_ob = {c[1] for c in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+    tem_envio = "status_envio" in cols_ob
     devolvida = "COALESCE(status_envio,'')='Erro no Pagamento'" if tem_envio else "0"
+    # FP medido em 19/11/2026 (~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md): OB de R$ 0,01 sem NL
+    # nem processo virava "pago a empresa morta". Pagamento exige número de OB e valor ≥ R$ 1,00. NL/processo NÃO é
+    # exigido: as OB de 2021–2023 do espelho vêm sem eles (DOSIMETRIKA e R.R LIMP, verdadeiros, sumiriam).
+    lastro = " AND valor >= 1.00"
+    lastro += " AND COALESCE(numero_ob,'')<>''" if "numero_ob" in cols_ob else ""
     q = con.execute(f"SELECT COALESCE(SUM(CASE WHEN NOT {devolvida} THEN 1 END),0) n, "
                     f"COALESCE(SUM(CASE WHEN NOT {devolvida} THEN valor END),0) v, "
                     f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN 1 END),0) nj, "
                     f"COALESCE(SUM(CASE WHEN {_SQL_JUDICIAL} AND NOT {devolvida} THEN valor END),0) vj, "
                     f"COALESCE(SUM(CASE WHEN {devolvida} THEN 1 END),0) nd, "
                     f"COALESCE(SUM(CASE WHEN {devolvida} THEN valor END),0) vd FROM ob_orcamentaria_siafe "
-                    f"WHERE {_OB_PAGA} AND credor=? AND {iso} > ?", (cnpj, d)).fetchone()
+                    f"WHERE {_OB_PAGA} AND credor=? AND {iso} > ?{lastro}", (cnpj, d)).fetchone()
     n, v, nj, vj = q["n"], q["v"] or 0.0, q["nj"], q["vj"] or 0.0
     out.update(n_ob_devolvida_apos_baixa=q["nd"], valor_devolvido_apos_baixa=round(q["vd"] or 0.0, 2))
     fora = _fora_da_manchete(con, cnpj) if n else None

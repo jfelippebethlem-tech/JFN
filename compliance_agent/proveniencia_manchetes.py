@@ -93,10 +93,32 @@ def _data_ref(d: dict) -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+_CAMPOS_NOME = frozenset({"nome", "razao_social", "credor", "nome_credor", "fornecedor", "fornecedor_nome", "favorecido_nome"})
+
+
+def mascarar_nomes(x, _chave: str = ""):
+    """PAD-04 (LGPD): MEI traz o CPF do titular no NOME empresarial ('FULANO DE TAL 12345678901'). Os campos de nome
+    do payload saem com o CPF mascarado — 19/11/2026: o radar servia dois CPFs inteiros no `nome` (achados 17 e 42)."""
+    if isinstance(x, str):
+        if _chave in _CAMPOS_NOME:
+            from compliance_agent.osint.vinculos import mascarar_cpf
+            return mascarar_cpf(x)
+        return x
+    if isinstance(x, dict):
+        return {k: mascarar_nomes(v, k) for k, v in x.items()}
+    if isinstance(x, list):
+        return [mascarar_nomes(v, _chave) for v in x]
+    return x
+
+
 def anexar(rota: str, d):
-    """Devolve o payload com `proveniencia` (não sobrescreve um bloco que a rota já monte). Erro fica sem bloco:
-    a rota que falhou diz INDISPONÍVEL pelo próprio `ok: false`, não por uma proveniência inventada."""
+    """Devolve o payload com `proveniencia` (não sobrescreve um bloco que a rota já monte) e com CPF de MEI mascarado
+    nos campos de nome. Erro fica sem bloco: a rota que falhou diz INDISPONÍVEL pelo próprio `ok: false`, não por
+    uma proveniência inventada."""
     base = PROVENIENCIA.get(rota)
-    if not base or not isinstance(d, dict) or d.get("ok") is False or isinstance(d.get("proveniencia"), dict):
+    if not base or not isinstance(d, dict) or d.get("ok") is False:
+        return d
+    d = mascarar_nomes(d)
+    if isinstance(d.get("proveniencia"), dict):
         return d
     return {**d, "proveniencia": {**base, "data_ref": _data_ref(d)}}
