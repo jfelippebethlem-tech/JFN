@@ -17,8 +17,8 @@ Camadas (todas DENTRO de `cruzamentos_intel._ob_paga` — OB não paga nunca ent
   pd_dos_autos          PD juntada nos autos (espelho ou título) — nº + UG + credor (+ valor, se o espelho o traz)
   nl_dos_autos          NL juntada/citada nos autos — UG + credor e soma ≤ valor da NL (espelho ou `nl_siafe`);
                         só puxa OB com `processo` VAZIO: NL citada como referência histórica não traz OB alheia.
-OB gravada noutro processo só entra pelo espelho da própria OB ou da PD juntado aqui (`processo_siafe` fica no
-registro, para auditoria). Devolução: Guia de Devolução da base (`gd_siafe`) ou dos autos (espelho da GD) desconta
+OB que o SIAFE OU o espelho juntado atribuem a OUTRO processo não é somada aqui: vai para `candidatas` com o
+motivo (Caxias × Bangu: SIAFE e espelho dizem Bangu — atribuição a decidir por quem lê, não por regra). Devolução: Guia de Devolução da base (`gd_siafe`) ou dos autos (espelho da GD) desconta
 pela regra canônica `pericia_contabil.valor_efetivo_ob`; GD marcada na OB sem valor conhecido → fora da soma,
 marcada, e o total vira PISO. OB que só existe no PDF dos autos vai em `nos_autos_fora_da_base`, nunca na soma.
 """
@@ -245,6 +245,16 @@ def _camada_autos(con, k: str, achadas: dict, refs: dict, extra: dict, gd_autos:
         ck = chave_processo(o["processo"])
         return ck is not None and ck != k
 
+    def _atribuida_a_outro(o, e) -> str:
+        """SIAFE ou o próprio espelho dizem OUTRO processo: juntada aqui não basta para somar aqui (Seleta: o
+        espelho da 2023OB00365 diz SEI-210108/000339/21, o contrato anterior). Vai para `candidatas`."""
+        if _outro_processo(o):
+            return f"registrada no SIAFE no processo {o['processo']}"
+        ce = chave_processo(e.get("processo"))
+        if ce is not None and ce != k:
+            return f"o espelho juntado aponta o processo {e['processo']}"
+        return ""
+
     def _entra(o, via, nota=""):
         achadas[(o["numero_ob"], o["ug_emitente"])] = {**o, "via": via, "processo_siafe": o["processo"],
                                                         **({"nota_via": nota} if nota else {})}
@@ -264,6 +274,8 @@ def _camada_autos(con, k: str, achadas: dict, refs: dict, extra: dict, gd_autos:
             _cand(o, "credor do espelho da OB diverge")
         elif e.get("valor") is None or abs(e["valor"] - o["valor"]) > _TOL:
             _cand(o, f"valor do espelho da OB ({e.get('valor')}) diverge do SIAFE ({o['valor']})")
+        elif (outro := _atribuida_a_outro(o, e)):
+            _cand(o, outro)
         else:
             _entra(o, "ob_dos_autos", e.get("doc", ""))
     # 2) PD juntada (espelho ou título): nº + UG + credor (+ valor do espelho)
@@ -277,6 +289,8 @@ def _camada_autos(con, k: str, achadas: dict, refs: dict, extra: dict, gd_autos:
                 _cand(o, "credor do espelho da PD diverge")
             elif e.get("valor") is not None and abs(e["valor"] - o["valor"]) > _TOL:
                 _cand(o, f"valor do espelho da PD ({e['valor']}) diverge do SIAFE ({o['valor']})")
+            elif (outro := _atribuida_a_outro(o, e)):
+                _cand(o, outro)
             else:
                 _entra(o, "pd_dos_autos", e.get("doc", ""))
         elif o["pd"] and o["pd"] in pd_titulo and not _outro_processo(o):

@@ -266,9 +266,10 @@ def test_nl_citada_como_referencia_historica_nao_puxa_ob_de_outro_processo(_acer
     assert {o["numero_ob"] for o in d["obs"]} == {"2024OB00010"}
 
 
-def test_ob_de_outro_processo_entra_so_com_o_espelho_juntado(_acervo_vazio):
-    """Caxias × Bangu (SEI-150001/002095/2024): a OB de janeiro foi gravada no processo de Bangu; o espelho da OB,
-    o da PD e o da NL estão juntados nos autos de Caxias, com o mesmo credor, UG e valor."""
+def test_ob_atribuida_a_outro_processo_nao_soma_vai_para_candidatas(_acervo_vazio):
+    """Caxias × Bangu (SEI-150001/002095/2024): a OB de janeiro está juntada nos autos de Caxias, mas o SIAFE E o
+    próprio espelho dizem SEI-150001/002094/2024. Não se soma por regra o que as duas fontes primárias atribuem a
+    outro processo — fica em `candidatas`, com o motivo, para quem lê decidir."""
     _autos(_acervo_vazio, "SEI-150001/002095/2024", [
         ("Ordem 2024OB00251 JAN/2024 NF 113", _espelho("OB", "140100", "2024OB00251", "4.296.815,37",
                                                         "21602870000100", nl="2024NL00042",
@@ -279,9 +280,23 @@ def test_ob_de_outro_processo_entra_so_com_o_espelho_juntado(_acervo_vazio):
                  {"numero_ob": "2024OB00483", "ug_emitente": "140100", "credor": "21602870000100",
                   "valor": 4294926.62, "processo": "SEI-150001/002095/2024"}])
     d = _um(con, "SEI-150001/002095/2024")
-    assert round(d["total"], 2) == round(4296815.37 + 4294926.62, 2)
-    o = [x for x in d["obs"] if x["numero_ob"] == "2024OB00251"][0]
-    assert o["via"] == "ob_dos_autos" and o["processo_siafe"] == "SEI-150001/002094/2024"
+    assert round(d["total"], 2) == 4294926.62
+    c = [x for x in d["candidatas"] if x["numero_ob"] == "2024OB00251"][0]
+    assert "SEI-150001/002094/2024" in c["motivo"]
+
+
+def test_ob_de_2023_sem_processo_entra_pelo_espelho_que_cita_este_processo(_acervo_vazio):
+    """Seleta: OB de 2023 (SIAFE 1) sem `processo` na base, espelho juntado diz 'SEI-210108/000153/23' → soma;
+    o espelho da 2023OB00365 diz o contrato ANTERIOR (SEI-210108/000339/21) → não soma."""
+    _autos(_acervo_vazio, "SEI-210108/000153/2023", [
+        ("Anexo OB", _espelho("OB", "250100", "2023OB00796", "919.021,53", CRED, processo="SEI-210108/000153/23")),
+        ("Ordem Bancária", _espelho("OB", "250100", "2023OB00365", "802.346,52", CRED,
+                                    processo="SEI-210108/000339/21"))])
+    con = _base([{"numero_ob": "2023OB00796", "ug_emitente": "250100", "credor": CRED, "valor": 919021.53},
+                 {"numero_ob": "2023OB00365", "ug_emitente": "250100", "credor": CRED, "valor": 802346.52}])
+    d = _um(con, "SEI-210108/000153/2023")
+    assert d["total"] == 919021.53 and d["obs"][0]["via"] == "ob_dos_autos"
+    assert "SEI-210108/000339/21" in d["candidatas"][0]["motivo"]
 
 
 def test_ob_nos_autos_fora_da_base_e_reportada_a_parte_nunca_somada(_acervo_vazio):
