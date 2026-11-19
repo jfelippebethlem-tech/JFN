@@ -326,44 +326,54 @@ def socios_servidores(cnpj: str, db_path: str | Path | None = None) -> list[dict
 
 def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None,
                    tse_idx: dict | None = None, pf_idx: dict | None = None,
-                   sei_idx: dict | None = None) -> dict:
+                   sei_idx: dict | None = None, corpus_idx: dict | None = None) -> dict:
     """Resolução de CPF de sócio mascarado MULTI-FONTE (todas oficiais/públicas):
       1) corpus de favorecidos PF (OB) — `resolver()` (SQL) ou `pf_idx` (índice pré-construído, VM-safe);
-      2) doadores do TSE — `tse_idx` (passe `carregar_indice_tse()` no sweep p/ não reconstruir por sócio).
-    Match 1:1 obrigatório (nome + 6 díg do meio como checksum). Ambíguo/sem match → INDISPONÍVEL (nunca chute).
-    Acrescenta `fonte` ao retorno. Cobertura medida: middle-6 ~2% → +TSE ~5% (a somar SEI-docs no futuro).
+      2) doadores do TSE — `tse_idx` (passe `carregar_indice_tse()` no sweep p/ não reconstruir por sócio);
+      3) documentos do SEI — `sei_idx`;
+      4) corpus TSE de dados abertos (candidatos Brasil, doadores/fornecedores RJ) — `corpus_idx`
+         (`cpf_corpus.carregar_indice`).
+    Match 1:1 obrigatório (nome + 6 díg do meio como checksum) **sobre a UNIÃO das fontes** (19/11/2026): se
+    duas fontes devolvem CPFs diferentes para o mesmo nome+6díg, são homônimos e NADA resolve — antes a 1ª fonte
+    que achasse ganhava e a divergência da seguinte nem era olhada. Ambíguo/sem match → INDISPONÍVEL.
+    Acrescenta `fonte` (a de maior prioridade que contém o CPF) e `fontes` (todas que o confirmam).
     No sweep, passe `pf_idx=carregar_indice_favorecidos()` p/ NÃO fazer 1 full-scan de OBs por sócio (§8)."""
     if pf_idx is not None:
         r = _match_indice(nome, doc_mascarado, pf_idx, "corpus de favorecidos PF")
     else:
         r = resolver(nome, doc_mascarado, db_path=db_path)
-    if r.get("resolvido"):
-        return {**r, "fonte": "favorecidos_pf"}
-    if tse_idx is not None:
-        m6 = middle6(doc_mascarado)
-        nome_n = _norm(nome)
-        if m6 and len(nome_n) >= 6:
-            cpfs = tse_idx.get((nome_n, m6))
-            if cpfs and len(cpfs) == 1:
-                return {"resolvido": True, "cpf": next(iter(cpfs)), "confianca": 0.8,
-                        "metodo": "nome+middle6", "fonte": "tse_doadores",
-                        "motivo": "par (nome + 6 díg do meio) único nos doadores TSE (dado público oficial)"}
-            if cpfs and len(cpfs) > 1:
-                return {**r, "resolvido": False, "fonte": "",
-                        "motivo": f"ambíguo no TSE ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
-    if sei_idx is not None:
-        m6 = middle6(doc_mascarado)
-        nome_n = _norm(nome)
-        if m6 and len(nome_n) >= 6:
-            cpfs = sei_idx.get((nome_n, m6))
-            if cpfs and len(cpfs) == 1:
-                return {"resolvido": True, "cpf": next(iter(cpfs)), "confianca": 0.9,
-                        "metodo": "nome+middle6", "fonte": "sei_docs",
-                        "motivo": "par (nome + 6 díg do meio) único em documento do SEI (contrato social/habilitação)"}
-            if cpfs and len(cpfs) > 1:
-                return {**r, "resolvido": False, "fonte": "",
-                        "motivo": f"ambíguo no SEI ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
-    return {**r, "fonte": ""}
+    m6 = middle6(doc_mascarado)
+    nome_n = _norm(nome)
+    if not m6 or len(nome_n) < 6:
+        return {**r, "fonte": ""}
+    if "ambíguo" in (r.get("motivo") or ""):
+        return {**r, "resolvido": False, "fonte": ""}
+    achados: list[tuple[str, set]] = []
+    if pf_idx is not None:
+        achados.append(("favorecidos_pf", set(pf_idx.get((nome_n, m6)) or ())))
+    elif r.get("resolvido"):
+        achados.append(("favorecidos_pf", {r["cpf"]}))
+    for fonte, idx in (("tse_doadores", tse_idx), ("sei_docs", sei_idx), ("tse_dados_abertos", corpus_idx)):
+        if idx is not None:
+            achados.append((fonte, set(idx.get((nome_n, m6)) or ())))
+    uniao = set().union(*(c for _, c in achados)) if achados else set()
+    if len(uniao) > 1:
+        quais = ", ".join(f for f, c in achados if c)
+        return {**r, "resolvido": False, "cpf": "", "fonte": "",
+                "motivo": f"ambíguo ({len(uniao)} CPFs p/ nome+6díg somando as fontes: {quais}) — não resolve"}
+    if len(uniao) == 1:
+        cpf = next(iter(uniao))
+        fontes = [f for f, c in achados if cpf in c]
+        conf = {"favorecidos_pf": 0.85, "tse_doadores": 0.8, "sei_docs": 0.9, "tse_dados_abertos": 0.85}
+        motivos = {"favorecidos_pf": "par (nome + 6 díg do meio) único no corpus de favorecidos PF",
+                   "tse_doadores": "par (nome + 6 díg do meio) único nos doadores TSE (dado público oficial)",
+                   "sei_docs": "par (nome + 6 díg do meio) único em documento do SEI (contrato social/habilitação)",
+                   "tse_dados_abertos": "par (nome + 6 díg do meio) único nos dados abertos do TSE "
+                                        "(candidatos/doadores/fornecedores de campanha)"}
+        return {"resolvido": True, "cpf": cpf, "confianca": max(conf[f] for f in fontes),
+                "metodo": "nome+middle6", "fonte": fontes[0], "fontes": fontes,
+                "motivo": motivos[fontes[0]] + (f"; confirmado também em {', '.join(fontes[1:])}" if len(fontes) > 1 else "")}
+    return {**r, "resolvido": False, "fonte": ""}
 
 
 if __name__ == "__main__":

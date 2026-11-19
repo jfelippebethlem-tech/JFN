@@ -98,7 +98,9 @@ def desmascarar_cpf_nome(nome: str, doc_mascarado: str, provider: ProviderCpfNom
         r = provider.nome_por_cpf(cpf)
         consultas += 1
         if log:
-            log(f"  [{consultas}/{teto}] {cpf}: {'ok ' + r.get('nome','') if r.get('ok') else 'x ' + r.get('motivo','')}")
+            # nunca o CPF candidato no log (LGPD): só a máscara da Receita
+            log(f"  [{consultas}/{teto}] ***.{cpf[3:6]}.{cpf[6:9]}-**: "
+                f"{'nome recebido' if r.get('ok') else 'x ' + r.get('motivo','')}")
         if not r.get("ok"):
             if "captcha" in (r.get("motivo") or "").lower() or "bloque" in (r.get("motivo") or "").lower():
                 return Resultado(False, "", provider.nome, consultas,
@@ -121,13 +123,20 @@ def desmascarar_nome_cpf(nome: str, doc_mascarado: str, provider: ProviderNomeCp
     r = provider.cpfs_por_nome(nome)
     if not r.get("ok"):
         return Resultado(False, "", provider.nome, 1, f"fonte indisponível: {r.get('motivo', '')}")
+    confirmados: set[str] = set()
     for cpf in r.get("cpfs", []):
         conf = confirmar_cpf(nome, cpf, doc_mascarado)
         if log:
-            log(f"  candidato {cpf}: {'CONFIRMA' if conf.get('confirmado') else conf.get('motivo','')}")
+            log(f"  candidato ***.{_digitos(cpf)[3:6]}.{_digitos(cpf)[6:9]}-**: "
+                f"{'CONFIRMA' if conf.get('confirmado') else 'rejeitado (máscara não bate ou nome curto)'}")
         if conf.get("confirmado"):
-            return Resultado(True, _digitos(cpf), provider.nome, 1,
-                             "CPF de registro judicial confere a máscara do QSA (1:1, anti-homônimo)")
+            confirmados.add(conf["cpf"])
+    if len(confirmados) == 1:   # 1:1 — dois CPFs que batem a máscara com o mesmo nome são homônimos: não resolve
+        return Resultado(True, next(iter(confirmados)), provider.nome, 1,
+                         "CPF de registro judicial confere a máscara do QSA (1:1, anti-homônimo)")
+    if len(confirmados) > 1:
+        return Resultado(False, "", provider.nome, 1,
+                         f"ambíguo: {len(confirmados)} CPFs da fonte batem nome e máscara — homônimos, não resolve")
     return Resultado(False, "", provider.nome, 1, "nenhum CPF da fonte bate a máscara (homônimo/sem registro)")
 
 

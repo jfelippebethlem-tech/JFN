@@ -181,6 +181,13 @@ def classificar(*, doc_qsa, cpf_folha, fonte_folha: str, n_folha_nome: int, n_qs
     # CPF completo por outra fonte: só conta se acrescenta posição que o QSA não mostra
     extra = posicoes_qsa(cpf_resolvido) if cpf_resolvido else {}
     conv_extra = False
+    # 19/11/2026 (corpus TSE, `cpf_corpus`): o CPF COMPLETO do sócio, de fonte pública e conferido contra a máscara
+    # do QSA, entra como camada declarada. Ele identifica o SÓCIO; não identifica o servidor — numa folha sem CPF
+    # (TJRJ, Câmara) o par continua INDETERMINADO, mas o "falta" passa a dizer que só o CPF do servidor falta.
+    socio_cpf_completo = bool(extra and len(extra) == 11 and comparar_cpf(q, extra)[0] == COMPATIVEL)
+    if socio_cpf_completo:
+        camadas.append({"camada": "cpf_completo_socio", "resultado": "CONFERIDO",
+                        "prova": "CPF completo do sócio em fonte pública (OB/TSE/SEI) confere os 6 dígitos do QSA"})
     if extra and f:
         r2, n2 = comparar_cpf(extra, f)
         novas = set(f) - set(q)
@@ -212,6 +219,9 @@ def classificar(*, doc_qsa, cpf_folha, fonte_folha: str, n_folha_nome: int, n_qs
         return {"selo": HOMONIMO, "falta": "", "camadas": camadas,
                 "motivo": "Mesmo nome, outra pessoa: os dígitos do CPF que as duas bases mostram são diferentes."}
     if res == SEM_DADO:
+        if socio_cpf_completo and not f:
+            prova_cpf += ("; o CPF completo do sócio já é conhecido — falta só o CPF do servidor, que o órgão "
+                          "empregador tem (requisição formal)")
         return {"selo": INDETERMINADO, "camadas": camadas, "falta": prova_cpf,
                 "motivo": f"Só o nome coincide — {prova_cpf}; sem CPF não há como separar de homônimo."}
     convergentes = []
