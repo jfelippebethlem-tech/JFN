@@ -20,7 +20,6 @@ from __future__ import annotations
 import json
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 import requests
@@ -55,11 +54,14 @@ RX_ADESAO_QQ = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os|ades[ã
 
 # ─────────────────────────────── PNCP (com cache em disco; INDISPONÍVEL ≠ 0) ───────────────────────────────
 def _get(url: str, params: dict | None = None):
-    for tent in range(3):
+    """GET no PNCP em SÉRIE, com pausa: em paralelo (6 threads) o PNCP devolve 429 'Limite de requisições
+    excedido' em segundos (medido 19/11/2026). 429 espera e tenta de novo; None = indisponível."""
+    for tent in range(6):
+        time.sleep(0.4)
         try:
             r = requests.get(url, params=params, headers=_H, timeout=60)
         except requests.RequestException:
-            time.sleep(2 * (tent + 1))
+            time.sleep(3 * (tent + 1))
             continue
         if r.status_code == 200:
             try:
@@ -68,7 +70,7 @@ def _get(url: str, params: dict | None = None):
                 return None
         if r.status_code in (204, 404):
             return []
-        time.sleep(2 * (tent + 1))
+        time.sleep((20 if r.status_code == 429 else 3) * (tent + 1))
     return None          # indisponível
 
 
@@ -87,6 +89,10 @@ def _salvar_cache(c: dict) -> None:
 
 
 _LISTAS: dict[tuple[str, int], list | None] = {}
+# teto de tempo das consultas ao PNCP por varredura (o PNCP limita a taxa e oscila): o que passar do teto vira
+# "pncp_indisponivel" na cobertura — INDISPONÍVEL ≠ 0, e o cache em disco faz a próxima rodada continuar dali
+ORCAMENTO_PNCP_S = 3600
+_INICIO_PNCP: list[float] = []
 
 
 def lista_atas(cnpj: str, aa: int) -> list | None:
@@ -95,6 +101,10 @@ def lista_atas(cnpj: str, aa: int) -> list | None:
     k = (cnpj, int(aa))
     if k in _LISTAS:
         return _LISTAS[k]
+    if not _INICIO_PNCP:
+        _INICIO_PNCP.append(time.time())
+    if time.time() - _INICIO_PNCP[0] > ORCAMENTO_PNCP_S:
+        return None                                   # sem tempo: indisponível nesta rodada (não grava)
     out: list = []
     for p in range(1, 41):
         j = _get(f"{PNCP}/consulta/v1/atas", {"dataInicial": f"{aa}0101", "dataFinal": f"{aa}1231",
@@ -264,7 +274,7 @@ def varrer(limite: int | None = None) -> dict:
            "externas": sum(1 for b in base if b[2] == "externa"), "sem_numero_de_ata": 0, "ata_nao_achada_pncp": 0,
            "pncp_indisponivel": 0, "sem_ob_paga": 0, "atas_pncp": 0}
     por_ata: dict[str, list] = {}
-    # listas de atas por (gerenciador, ano) em paralelo — a consulta serial levava ~20 s cada
+    # listas de atas por (gerenciador, ano), uma vez cada — o mesmo gerenciador aparece em vários processos
     pares = set()
     for t, ds, tipo in base:
         if tipo != "externa":
@@ -275,8 +285,8 @@ def varrer(limite: int | None = None) -> dict:
             for cn in cnpjs_candidatos(ds, excl):
                 if f"{cn}|{int(ac[0])}|{ac[1]}" not in cache:
                     pares |= {(cn, int(ac[1])), (cn, int(ac[1]) + 1)}
-    with ThreadPoolExecutor(6) as ex:
-        list(ex.map(lambda pa: lista_atas(*pa), sorted(pares)))
+    for pa in sorted(pares):                       # em série: o PNCP limita a taxa (429)
+        lista_atas(*pa)
     achados: list[dict] = []
     for t, ds, tipo in base:
         canon = cc.canon(t)
