@@ -334,6 +334,20 @@ derivados:
     timeout_s: 5400
     prioridade: 7
     antes: "não existia — os detectores rodaram uma vez, à mão, pelos agentes (18–19/11/2026); processo novo nunca era varrido"
+  autoaprimoramento_ciclo:
+    nome: Ciclo da automelhoria da perícia (lição → portão → sombra → campeão), 1×/dia
+    onde: data/autoaprimoramento/auto.db · Sistema › Automelhoria · docs/AUTOAPRIMORAMENTO-JFN.md §8
+    # sem LLM (~30 s). Instalado a pedido do dono em 19/11/2026 ("Ligar, 1×/dia"). A REEXECUÇÃO por prompt (gasta LLM)
+    # NÃO entra aqui — segue manual. Desligar: python -m compliance_agent.autoaprimoramento matar "motivo".
+    depende: [pericia_agentes, sei_lex]
+    comando: ["{py}", "-m", "compliance_agent.autoaprimoramento", "ciclo"]
+    env: {JFN_AUTOAPRIMORAMENTO: "1"}
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 86400
+    timeout_s: 900
+    prioridade: 8
+    antes: "escrito em docs/AUTOAPRIMORAMENTO-JFN.md §8 e NÃO instalado — o laço só andava à mão (último ciclo 18/11 17:41)"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos
