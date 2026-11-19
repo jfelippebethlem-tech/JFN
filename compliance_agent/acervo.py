@@ -125,21 +125,58 @@ def _ficha_estado(canon: str) -> dict:
             # PAGO = só OB `Contabilizado`. Anulada/Excluída/Não contabilizada somavam R$ 6,58 bi em 5.726 processos
             # e inflavam o total da ficha (medido 24/09/2026); aparecem à parte, na lista, com o status.
             # Devolvida pelo banco ('Erro no Pagamento') segue 'Contabilizado' no SIAFE e também não é pago (18/11/2026).
+            # 19/11/2026: o PAGO vem de `ob_processo` (nº exato e normalizado — "…/23", sem "SEI-" — e NL/PD/OB juntadas
+            # nos autos), com a GD descontada (`valor_efetivo`). O `processo IN (variantes)` perdia a OB com outra grafia
+            # ou sem processo, e somava a OB devolvida E a reemitida.
+            from compliance_agent.ob_processo import chave_processo, obs_por_processo
             paga = _ob_paga(con)
             env = ", status_envio" if "status_envio" in paga else ""
-            rows = con.execute(f"SELECT credor, nome_credor, count(*) n, round(sum(valor),2) total, min(data_emissao) primeira, max(data_emissao) ultima, "
-                               f"group_concat(DISTINCT ug_emitente) ugs FROM ob_orcamentaria_siafe WHERE processo IN ({q}) AND {paga} "
-                               f"GROUP BY credor ORDER BY total DESC LIMIT 30", vars_).fetchall()
-            lista = [dict(x) for x in con.execute(
+            pago = obs_por_processo(con, [canon], autos=True).get(chave_processo(canon)) or {}
+            obs_p = pago.get("obs") or []
+            meta = {}
+            if obs_p:
+                qo = ",".join("?" * len({o["numero_ob"] for o in obs_p}))
+                # ob-qualquer-status: nome do credor e status das OB que `ob_processo` já filtrou como pagas
+                meta = {(x["numero_ob"], x["ug_emitente"]): dict(x) for x in con.execute(
+                    f"SELECT numero_ob, ug_emitente, nome_credor, status{env} FROM ob_orcamentaria_siafe WHERE numero_ob IN ({qo})",
+                    sorted({o["numero_ob"] for o in obs_p}))}
+            lista = []
+            for o in obs_p:
+                m = meta.get((o["numero_ob"], o["ug"]), {})
+                lista.append({"numero_ob": o["numero_ob"], "data_emissao": o["data"], "ug_emitente": o["ug"], "credor": o["credor"],
+                              "nome_credor": m.get("nome_credor") or "", "valor": o["valor"], "valor_efetivo": o["valor_efetivo"],
+                              "status": m.get("status", "Contabilizado"), **({"status_envio": m["status_envio"]} if "status_envio" in m else {}),
+                              "via": o["via"], "processo_siafe": o["processo_siafe"], "nota": o["nota"]})
+            # ob-qualquer-status: anulada/excluída/devolvida pelo banco com este nº — listadas à parte, fora do total
+            nao_pagas = [dict(x) for x in con.execute(
                 f"SELECT numero_ob, data_emissao, ug_emitente, credor, nome_credor, valor, status{env} FROM ob_orcamentaria_siafe "
-                f"WHERE processo IN ({q}) ORDER BY substr(data_emissao,7,4)||substr(data_emissao,4,2)||substr(data_emissao,1,2) DESC LIMIT 400", vars_)]
-            nao_pagas = [x for x in lista if x["status"] != "Contabilizado" or x.get("status_envio") == "Erro no Pagamento"]
-            f["obs"] = {"fonte": "SIAFE (ob_orcamentaria_siafe.processo, só OB Contabilizado no total)", "n": sum(x["n"] for x in rows),
-                        "total": round(sum(x["total"] or 0 for x in rows), 2), "por_credor": [dict(x) for x in rows], "lista": lista,
+                f"WHERE processo IN ({q})", vars_)
+                if x["status"] != "Contabilizado" or (env and x["status_envio"] == "Erro no Pagamento")]
+            lista = sorted(lista + nao_pagas, key=lambda x: (x["data_emissao"] or "")[6:10] + (x["data_emissao"] or "")[3:5]
+                           + (x["data_emissao"] or "")[0:2], reverse=True)[:400]
+            por_credor: dict = {}
+            for x in lista:
+                if x.get("valor_efetivo") is None:
+                    continue
+                c = por_credor.setdefault(x["credor"], {"credor": x["credor"], "nome_credor": x["nome_credor"], "n": 0, "total": 0.0,
+                                                        "datas": [], "ugs": set()})
+                c["n"] += x["valor_efetivo"] > 0
+                c["total"] = round(c["total"] + x["valor_efetivo"], 2)
+                c["datas"].append(x["data_emissao"] or "")
+                c["ugs"].add(x["ug_emitente"])
+            for c in por_credor.values():
+                ds = sorted(c.pop("datas"), key=lambda d: d[6:10] + d[3:5] + d[0:2])
+                c.update(primeira=ds[0] if ds else "", ultima=ds[-1] if ds else "", ugs=",".join(sorted(c["ugs"])))
+            f["obs"] = {"fonte": "SIAFE — OB paga ligada ao processo pelo nº (exato e normalizado) e pelas NL/PD/OB juntadas nos "
+                                 "autos (compliance_agent.ob_processo); devolução (GD) descontada",
+                        "n": int(pago.get("n") or 0), "total": float(pago.get("total") or 0.0),
+                        "por_credor": sorted(por_credor.values(), key=lambda c: -c["total"])[:30], "lista": lista,
+                        "por_via": pago.get("por_via") or {}, "piso": bool(pago.get("piso")),
+                        "candidatas": pago.get("candidatas") or [], "nos_autos_fora_da_base": pago.get("nos_autos_fora_da_base") or [],
                         "n_nao_pagas": len(nao_pagas), "valor_nao_pago": round(sum(x["valor"] or 0 for x in nao_pagas), 2)}
-            f["cobertura"]["obs_siafe"] = (f"{f['obs']['n']} OB(s) contabilizada(s) com este nº de processo"
+            f["cobertura"]["obs_siafe"] = (f"{f['obs']['n']} OB(s) paga(s) ligada(s) a este processo"
                                            + (f"; {len(nao_pagas)} anulada(s)/excluída(s)/devolvida(s) fora do total" if nao_pagas else "")) if lista \
-                else "nenhuma OB do SIAFE cita este processo"
+                else "nenhuma OB do SIAFE ligada a este processo (nº do processo nem autos)"
         if _tem(con, "doerj_tac"):
             f["tac"] = [dict(x) for x in con.execute(
                 f"SELECT data_doe, numero_tac, orgao, fornecedor, cnpj, valor, objeto, data_assinatura, id_publicacao "

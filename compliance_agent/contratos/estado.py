@@ -81,15 +81,25 @@ def _sinais_fornecedor(con, doc: str) -> list[str]:
 
 
 def _pagamentos_por_processo(con, processo: str) -> dict:
-    """Soma paga no SIAFE ligada ao MESMO processo do contrato (empenho≠pago)."""
+    """Soma paga no SIAFE ligada ao MESMO processo do contrato (empenho≠pago).
+
+    Só OB paga (`_ob_paga`: anulada/excluída e a devolvida pelo banco ficam fora). 19/11/2026: a ligação é a de
+    `ob_processo` — nº exato e normalizado ("…/23", sem "SEI-") e NL/PD/OB juntadas nos autos —, com a devolução
+    (GD) descontada; o `processo=?` literal subcontava a outra grafia e somava a OB devolvida e a reemitida.
+    Um dossiê por vez: autos=True. `por_via`/`piso` dizem de onde vem cada real e se o total é piso."""
     if not processo or not _tem_tabela(con, "ob_orcamentaria_siafe"):
         return {}
-    r = con.execute(
-        # só OB CONTABILIZADA é pagamento — anulada/excluída inflava o "pago" do contrato (24/09/2026);
-        # nem a devolvida pelo banco ('Erro no Pagamento'), que segue Contabilizada (18/11/2026)
-        f"select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=? and {_ob_paga(con)}",
-        (processo,)).fetchone()
-    return {"pago": r[0], "empenhado": None, "liquidado": None} if r and r[0] else {}
+    from compliance_agent.ob_processo import chave_processo, obs_por_processo
+    if chave_processo(processo) is None:
+        # nº fora do padrão SEI (processo "E-02/000934/2024" do papel): sem chave normalizada, vale o literal
+        r = con.execute(f"select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=? and {_ob_paga(con)}",
+                        (processo,)).fetchone()
+        return {"pago": r[0], "empenhado": None, "liquidado": None} if r and r[0] else {}
+    d = obs_por_processo(con, [processo], autos=True, so_pagos=True).get(chave_processo(processo))
+    if not d or not d["total"]:
+        return {}
+    return {"pago": d["total"], "empenhado": None, "liquidado": None, "n_obs": d["n"], "por_via": d["por_via"],
+            "piso": d["piso"], "candidatas": d["candidatas"]}
 
 
 def _itens_dispensa(con, processo: str) -> list[dict]:

@@ -477,15 +477,30 @@ _COLS_OB = "numero_ob, ug_emitente, data_emissao, nl, credor, nome_credor, valor
 
 
 def _obs_dos_processos(con, processos: list[str]) -> dict[str, list[dict]]:
+    """OB PAGA ao processo pelas camadas de `ob_processo` (nº exato/normalizado + NL/PD/OB juntadas nos autos).
+    19/11/2026: o `processo IN (…)` literal perdia a OB com `processo` vazio (2021–2023) ou grafado "…/23", e
+    somava a OB devolvida pela GD e a reemitida — o W da NF fechava contra o dobro. Aqui `valor` = valor EFETIVO
+    (pago − devolvido); OB devolvida por inteiro não entra. Todo processo daqui tem pasta no acervo: autos=True."""
     from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.ob_processo import chave_processo, obs_por_processo
+    pago = obs_por_processo(con, processos, autos=True, so_pagos=True)
     out = defaultdict(list)
-    for i in range(0, len(processos), 500):
-        lote = processos[i:i + 500]
-        q = (f"SELECT {_COLS_OB} FROM ob_orcamentaria_siafe WHERE processo IN ({','.join('?' * len(lote))}) "
-             f"AND {_ob_paga(con)}")
-        for r in con.execute(q, lote):
-            d = dict(zip([c.strip() for c in _COLS_OB.split(",")], r))
-            out[d["processo"]].append(d)
+    meta: dict[tuple[str, str], tuple] = {}
+    pares = sorted({(o["numero_ob"], o["ug"]) for d in pago.values() for o in d["obs"]})
+    for i in range(0, len(pares), 500):
+        lote = sorted({ob for ob, _ in pares[i:i + 500]})
+        q = (f"SELECT numero_ob, ug_emitente, nome_credor, exercicio FROM ob_orcamentaria_siafe "
+             f"WHERE numero_ob IN ({','.join('?' * len(lote))}) AND {_ob_paga(con)}")
+        for ob, ug, nome, ex in con.execute(q, lote):
+            meta[(ob, ug)] = (nome, ex)
+    for sei in processos:
+        for o in (pago.get(chave_processo(sei) or "") or {}).get("obs", []):
+            if o["valor_efetivo"] <= 0:
+                continue
+            nome, ex = meta.get((o["numero_ob"], o["ug"]), ("", None))
+            out[sei].append({"numero_ob": o["numero_ob"], "ug_emitente": o["ug"], "data_emissao": o["data"],
+                             "nl": o["nl"], "credor": o["credor"], "nome_credor": nome, "valor": o["valor_efetivo"],
+                             "exercicio": ex, "processo": o["processo_siafe"], "via": o["via"]})
     return out
 
 

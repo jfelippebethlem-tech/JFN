@@ -88,13 +88,21 @@ def processos_com_cnpj(con: sqlite3.Connection) -> tuple[dict[str, list[str]], d
         return fora, origem
     ph = ",".join("?" * len(faltam))
     achado: dict[str, set[str]] = {}
-    for sql in (f"SELECT numero_sei, favorecido_cpf FROM ordens_bancarias "
-                f"WHERE numero_sei IN ({ph})",
-                f"SELECT processo, credor FROM ob_orcamentaria_siafe WHERE processo IN ({ph})"):
-        try:
-            linhas = con.execute(sql, tuple(faltam)).fetchall()
-        except sqlite3.Error:
-            continue
+    # SIAFE pela ligação canônica (`ob_processo`, 19/11/2026): só OB PAGA — o `processo IN (…)` literal trazia o
+    # credor de OB anulada — e pelo nº normalizado ("…/23", sem "SEI-"). Fila de milhares: sem a camada dos autos.
+    from compliance_agent.ob_processo import chave_processo, obs_por_processo
+    try:
+        pago = obs_por_processo(con, faltam, autos=False, so_pagos=True)
+    except sqlite3.Error:
+        pago = {}
+    siafe = [(n, o["credor"]) for n in faltam for o in (pago.get(chave_processo(n) or "") or {}).get("obs", [])
+             if o["valor_efetivo"] > 0]
+    try:
+        tfe = con.execute(f"SELECT numero_sei, favorecido_cpf FROM ordens_bancarias "
+                          f"WHERE numero_sei IN ({ph})", tuple(faltam)).fetchall()
+    except sqlite3.Error:
+        tfe = []
+    for linhas in (tfe, siafe):
         for numero, doc in linhas:
             d = re.sub(r"\D", "", str(doc or ""))
             if len(d) == 14:

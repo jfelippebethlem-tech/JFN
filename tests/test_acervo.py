@@ -51,6 +51,8 @@ def _bases(tmp_path, monkeypatch):
     monkeypatch.setattr(acervo, "DB_PCRJ", pc)
     monkeypatch.setattr(acervo, "DB_LAI", tmp_path / "lai.db")
     monkeypatch.setattr(acervo, "ARQUIVO_SEI", tmp_path / "sei_arquivo")
+    from compliance_agent.sei import manifesto_norm      # camada dos autos de `ob_processo`: o acervo REAL não decide
+    monkeypatch.setattr(manifesto_norm, "_BASE", tmp_path / "sei_arquivo")
     cat = sqlite3.connect(tmp_path / "sei_rj_catalogo.db")
     cat.executescript("""CREATE TABLE sei_rj_processo (numero, tipo, id_tipo, unidade_sigla, unidade_nome, orgao, data, coletado_em);
     INSERT INTO sei_rj_processo VALUES ('SEI-080001/000633/2024','Contratação: Inexigibilidade','100000549','SES/SUBGC','Subsecretaria de Gestão','SES','2024-03-05','x');
