@@ -416,3 +416,19 @@ def test_sensor_ledger_parado_manda_rodar_o_ciclo_real_nao_o_ensaio(auto, tmp_pa
     p = [x for x in A.sensor_autoaprimoramento(config.dados(), db) if x["assinatura"] == "autoaprimoramento:ledger_parado"][0]
     # o --dry-run trabalha numa CÓPIA (dryrun/auto.db): rodá-lo nunca cura o alerta
     assert "--dry-run" not in p["acao_humana"] and "JFN_AUTOAPRIMORAMENTO=1" in p["acao_humana"]
+
+
+def test_motor_fora_para_a_rodada_no_caso_seguinte(auto, tmp_path, monkeypatch):
+    # 19/11/2026: em contingência a recusa caía caso a caso — 71 tentativas, 0 casos. Agora a 1ª recusa para a rodada.
+    db = _compliance(tmp_path, [(f"SEI-100001/00000{i}/2025", 8, "gemini:x", ["x"]) for i in range(1, 4)])
+    vistos = []
+
+    def gerar(prompt, sistema, timeout):
+        vistos.append(1)
+        reexecucao.MOTOR_FORA = "contingência — 98% do orçamento diário do motor"
+        raise RuntimeError("assinatura sem resposta")
+
+    monkeypatch.setattr(reexecucao, "MOTOR_FORA", None)
+    rot = [{"numero_sei": f"SEI-100001/00000{i}/2025", "nota": 8, "alto_verificado": 0, "indicios": ["x"]} for i in range(1, 4)]
+    casos = reexecucao.por_prompt(rot, {"licoes": ["retencao_tributaria"], "filtros": []}, gerar, db)
+    assert casos == [] and len(vistos) == 1

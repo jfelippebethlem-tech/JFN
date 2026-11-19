@@ -35,9 +35,24 @@ def _gerador_assinatura():
                 dc.ultimo_provedor, dc.ultimo_modelo = "claude", r.modelo     # proveniência da linha de sombra
                 return r.texto
             if not claude_motor.ultimo_motivo.startswith(("ocupado", "passou do prazo")):
+                from . import reexecucao
+                reexecucao.MOTOR_FORA = claude_motor.ultimo_motivo[:200]     # para a rodada, não insiste caso a caso
                 break
         raise RuntimeError(f"assinatura sem resposta: {claude_motor.ultimo_motivo[:120]}")
     return gerar
+
+
+def _proximo_candidato() -> list[str]:
+    """O candidato reexecutado há mais tempo (ou nunca) — `reexecutar proximo` julga um por noite."""
+    con = ledger.conectar()
+    try:
+        registro.preparar(con)
+        cands = [c for (c,) in con.execute("SELECT chave FROM versao WHERE status='candidato' ORDER BY n")]
+    finally:
+        con.close()
+    pasta = config.dados() / "reexecucao"
+    idade = {c: (pasta / f"{c}.json").stat().st_mtime if (pasta / f"{c}.json").exists() else 0.0 for c in cands}
+    return sorted(cands, key=lambda c: idade[c])[:1]
 
 
 def main(argv=None) -> int:
@@ -82,11 +97,19 @@ def main(argv=None) -> int:
         else:
             from compliance_agent.direcionamento_cerebro import gerar_sync
             gerar, nome = gerar_sync, "cascata grátis (direcionamento_cerebro.gerar_sync)"
-        r = orquestrador.reexecutar(a.chaves, gerar, a.max_casos, gerador=nome)
+        chaves = a.chaves
+        if chaves == ["proximo"]:          # rodízio noturno: UM candidato por rodada, o reexecutado há mais tempo
+            chaves = _proximo_candidato()
+            if not chaves:
+                print("nenhum candidato para reexecutar")
+                return 0
+        r = orquestrador.reexecutar(chaves, gerar, a.max_casos, gerador=nome)
         if "parado" in r:
             print(r["parado"])
             return 1
         print(f"reexecução: {r['chamadas_llm']} chamadas de LLM; detalhe em {config.dados()}/reexecucao/")
+        if r.get("motor_fora"):
+            print(f"  rodada interrompida — motor fora: {r['motor_fora']}")
         for cand in r["candidatos"]:
             print(f"  {cand['chave']} ({cand['casos']} casos): {cand['status']}")
             for g in (cand.get("portao") or {}).get("regras", []):

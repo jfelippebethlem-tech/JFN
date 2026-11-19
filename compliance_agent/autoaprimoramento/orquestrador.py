@@ -94,6 +94,7 @@ def reexecutar(chaves: list[str], gerar, max_casos: int | None = None, complianc
     if not config.ligado():
         raise SystemExit("reexecução recusada: defina JFN_AUTOAPRIMORAMENTO=1 (ela muda o registro)")
     n_chamadas = [0]
+    reexecucao.MOTOR_FORA = None
 
     def contado(p, s, t):
         n_chamadas[0] += 1
@@ -131,7 +132,7 @@ def reexecutar(chaves: list[str], gerar, max_casos: int | None = None, complianc
             r["candidatos"].append(linha)
             (pasta / f"{ch}.json").write_text(json.dumps({**linha, "em": r["em"], "gerador": gerador, "detalhe": cs},
                                                          ensure_ascii=False, indent=1), encoding="utf-8")
-        r["chamadas_llm"] = n_chamadas[0]
+        r["chamadas_llm"], r["motor_fora"] = n_chamadas[0], reexecucao.MOTOR_FORA
         (pasta / "ultima.json").write_text(json.dumps(r, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
         return r
     finally:

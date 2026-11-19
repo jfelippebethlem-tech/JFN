@@ -56,6 +56,11 @@ def por_prompt(rotulos: list[dict], desafiante: dict, gerar, compliance_db: Path
                               compliance_db, max_casos)["_"]
 
 
+# Motor fora (contingência, teto do dia, kill): o gerador grava o motivo aqui e o laço para no caso seguinte — antes, a
+# recusa caía caso a caso e a rodada de 18/11 gastou 71 tentativas sem fechar nenhum (19/11/2026).
+MOTOR_FORA: str | None = None
+
+
 def por_prompt_pareado(rotulos: list[dict], campeao: dict, desafiantes: dict[str, dict], gerar,
                        compliance_db: Path | None = None, max_casos: int | None = None) -> dict[str, list[dict]]:
     """Reexecuta o CAMPEÃO e cada desafiante com o MESMO gerador, sobre a MESMA entrada de hoje, caso a caso e em
@@ -92,6 +97,8 @@ def por_prompt_pareado(rotulos: list[dict], campeao: dict, desafiantes: dict[str
         ordem = ordem_reexecucao(rotulos)
         obs = LX.mapa_obs_siafe(ro, [r["numero_sei"] for r in ordem])
         for r in ordem:
+            if MOTOR_FORA:
+                break
             faltam = [k for k in desafiantes if len(out[k]) < teto]
             if not faltam:
                 break
