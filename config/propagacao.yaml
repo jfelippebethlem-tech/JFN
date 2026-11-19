@@ -412,6 +412,18 @@ derivados:
     prioridade: 7
     efeito: {arquivo: data/siafe_agenda_documentos.json}
     antes: "cron 03:10 (2 UGs/noite, só 2025, load ≤ 3) — segue como rede"
+  siafe_ingest_cobertura:
+    nome: Medição do ingest do SIAFE (NE/NL/GD por UG×ano, NL citadas pela OB, status congelado, processo vazio)
+    onde: data/siafe_ingest_cobertura.json · python -m compliance_agent.siafe_ingest_cobertura
+    depende: [siafe_ob, siafe_status]
+    comando: ["{py}", "-m", "compliance_agent.siafe_ingest_cobertura", "--json"]
+    peso: leve        # só leitura, ~30 s
+    debounce_s: 900
+    intervalo_min_s: 3600
+    timeout_s: 600
+    prioridade: 8
+    efeito: {arquivo: data/siafe_ingest_cobertura.json}
+    antes: "não existia — a cobertura de NE/NL e o status congelado não eram medidos"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos
