@@ -1,0 +1,19 @@
+id: despesa_sem_previo_empenho
+nome: Despesa sem prévio empenho — confissão nos autos ou NE original posterior à NF
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-070002/004385/2024
+  caso: INEA × Cobrape — "JUSTIFICATIVA DE DESPESAS SEM PREVIO EMPENHO ... está sendo efetuado sem seu prévio empenho"; também Cobrape 004386/2024 doc 264, Lytoranea 006459/2024 doc 271, RJL2 023359/2024 doc 466
+norma:
+  - Lei 4.320/1964, art. 60
+  - Constituição Federal, art. 167, II
+sinal: >
+  (a) Forte: a administração declara a despesa feita sem prévio empenho (justificativa / "efetuado sem seu prévio
+  empenho" / "não existia o prévio empenho"); texto normativo ("é vedada a realização de despesa sem prévio empenho",
+  "o art. 60 veda") excluído. (b) Médio: toda NE ORIGINAL do exercício juntada é posterior à NF mais antiga do
+  exercício (reforço posterior sozinho não acende).
+explicacoes_inocentes:
+  - "NE global/estimativa no processo do contrato — (b) exige NE original juntada e nunca usa ausência como prova"
+  - "Reconhecimento de dívida (L4.320 art. 37) — rito próprio"
+controle_positivo: SEI-070002/004385/2024 (sei_cache 220); SEI-070002/004386/2024 doc 264
+controle_negativo: "Parecer jurídico 'é vedada a realização de despesa sem prévio empenho' (270131/000506/2023 doc 4); Cesgranrio 030001/047970/2026 tem NE original de 30/03/2026 anterior à NF de 04/05/2026 — não acende (b)"

@@ -1,0 +1,19 @@
+id: diario_de_obra_copiado
+nome: Diário de obra de uma medição copiado de outra medição do mesmo processo
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-070002/026015/2024
+  caso: INEA × Hydra — doc 397 "Diário de Obras - 17ª Medição (PETROPOLIS)" igual ao doc 381 (16ª), datas de novembro/2025, 17ª = 01–15/12/2025
+norma:
+  - Lei 8.666/1993, arts. 67 e 73; Lei 14.133/2021, arts. 117 e 140 (fiscalização e recebimento)
+  - Lei 4.320/1964, art. 63 (liquidação pela prestação efetiva)
+liga_a: compliance_agent/sei/reuso_documento_execucao.py (normalização, shingles, formulário em branco, catálogo) — aquele cobre ENTRE processos e exclui o mesmo processo por regra; este cobre o mesmo processo, medições diferentes
+sinal: >
+  Dois diários do mesmo processo e mesmo local (título sem nº da medição), medições de número diferente, contenção de
+  shingles ≥ 0,95 (forte) ou ≥ 0,85 (médio), ≥ 150 shingles; datas normalizadas (1/11/25 = 01/11/2025). Fora: mesmo
+  nº SEI, mesmas assinaturas, formulário em branco, catálogo.
+explicacoes_inocentes:
+  - "Obra parada — diário 'sem atividade' repetido (anotado)"
+  - "Período que atravessa duas medições juntado nas duas"
+controle_positivo: SEI-070002/026015/2024 docs 381 × 397
+controle_negativo: "Diários de medições diferentes com atividades distintas; o mesmo diário juntado duas vezes (mesmo nº SEI/assinaturas)"

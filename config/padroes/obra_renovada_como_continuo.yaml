@@ -1,0 +1,19 @@
+id: obra_renovada_como_continuo
+nome: Obra/serviço de engenharia de escopo prorrogado como "serviço contínuo" com valor cheio
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-070002/004386/2024
+  caso: INEA × Cobrape — TA 78/2023 "prestação de serviços contínuos ... art. 57, inciso II", R$ 12,55 mi + R$ 12,55 mi; NL "Natureza 449051 - Obras e Instalações"; também Geo Ambiental 005897/2024, RJL2 023359/2024, Hydra 026015/2024, Lytoranea 006459/2024, Via Expressa 003457/2024
+norma:
+  - Lei 8.666/1993, art. 57, II e §1º
+  - Lei 14.133/2021, arts. 106, 107 e 111
+  - Portaria STN/SOF 163/2001 (4.4.90.51 Obras e Instalações)
+sinal: >
+  Termo próprio que prorroga pelo art. 57, II / "serviços contínuos" com valor do termo ≥ 80% do valor anterior
+  (total − termo). Forte = + natureza 449051/"Obras e Instalações" na NL/NE dos autos ou NE do SIAFE; médio = objeto
+  se declara obra/engenharia sem a natureza nos autos.
+explicacoes_inocentes:
+  - "Manutenção predial/conservação é contínua mesmo com natureza de obra — anotado se o objeto diz manutenção"
+  - "Erro isolado de classificação orçamentária"
+controle_positivo: SEI-070002/004386/2024 doc 10 (TA 78/2023) + NL doc 35
+controle_negativo: "Prorrogação de serviço de limpeza por art. 57 II com valor cheio e natureza 3390.39"

@@ -1,0 +1,21 @@
+id: acrescimo_medido_pelo_objeto
+nome: Percentual declarado no termo × crescimento real do pago mensal (OB) depois dele
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-210108/000153/2023
+  caso: SEAP × Seleta — 5º TA "14,59%" que pelo objeto era +84% de refeições/mês; Cassarotti 000163/2023 (TA de R$ 4,84 mi × R$ 17,24 mi pagos às unidades absorvidas)
+norma:
+  - Lei 8.666/1993, art. 65 §1º; Lei 14.133/2021, art. 125 (o limite mede o acréscimo do OBJETO)
+  - Teto em compliance_agent/limites_aditivo.py (fonte única)
+sinal: >
+  Para cada termo que declara acréscimo de P% assinado em D: mediana do pago mensal (OB _ob_paga, mês de emissão) nos
+  6 meses antes × meses 2 a 7 depois; g = depois/antes − 1. Forte = g > teto + 10 p.p. e g ≥ 2P; médio = g ≥ P + 20
+  p.p. e g > teto. Mínimo de 3 meses com OB de cada lado.
+explicacoes_inocentes:
+  - "Reajuste/repactuação no período — o achado lista os termos de reajuste a ≤ 7 meses"
+  - "Pagamento de competências atrasadas — mediana, não média"
+  - "OB por processo é PISO (grafias normalizadas; OB sem processo fica fora)"
+controle_positivo: SEI-210108/000153/2023 (TA 02/10/2025, 14,59%)
+controle_negativo: "Série com crescimento de 10% após termo de 25%; série curta (< 3 meses) = INDISPONÍVEL"
+nao_coberto:
+  - "Unidade nova nas NF sem aditivo nos autos (Qualybem 000160/2023; Cassarotti Vicente Piragibe) — exige lista de unidades × NF por unidade; OCR das planilhas SEAP inutilizável"

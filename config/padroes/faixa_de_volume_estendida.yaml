@@ -1,0 +1,18 @@
+id: faixa_de_volume_estendida
+nome: Aditivo "de 25%" que estende a faixa de volume remunerado; internet contada como atendimento
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-150001/000224/2025
+  caso: Poupa Tempo / Consórcio RJ Cidadão — contrato 010/2023 até "FAIXA 5 9.501 10.500 10.000"; 2º TA "acréscimo 25%" "faixa de até 20.000 atendimentos/dia"; "Acesso Gratuito à Internet (POUPA TEMPO VIRTUAL)" na contagem (também 000217/2025 e 002095/2024)
+norma:
+  - Lei 8.666/1993, art. 65 §1º (teto pelo quantitativo)
+  - Contrato 010/2023, par. 5º (serviços de apoio não são atendimento)
+sinal: >
+  (a) Termo com "faixa de até N <unidade>" e contrato juntado com tabela FAIXA/DE/ATÉ cujo maior limite é M;
+  extensão N/M − 1. Forte = extensão ≥ 2× o declarado e acima do teto; médio = extensão > declarado + 10 p.p.
+  (b) Relatório gerencial com "Acesso gratuito à internet ... N atendimentos" (médio).
+explicacoes_inocentes:
+  - "'Havendo saldo contratual': o valor do termo segue 25% — o vício é remunerar volume não licitado"
+  - "Internet prevista no TR como serviço remunerado — conferir o TR"
+controle_positivo: SEI-150001/000224/2025 docs 9 × 12; relatórios gerenciais de 000217/2025
+controle_negativo: "Termo que mantém a faixa máxima do contrato; relatório gerencial sem internet"

@@ -1,0 +1,22 @@
+id: aditivo_absorve_outro_lote
+nome: Termo aditivo de "acréscimo quantitativo" que absorve o objeto de OUTRO contrato/lote
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-210108/000153/2023
+  caso: SEAP × Seleta — 5º TA (doc 873) "decorre da absorção parcial do Contrato nº 14/2020, referente ao lote 12", 243.764 refeições/mês trazidas para contrato de 289.012, declarado 14,59%; mesma redação em Cassarotti 000169 e 000163/2023, Qualybem 000158/2023 (data/pericia_agentes/<tag>.json)
+norma:
+  - Lei 8.666/1993, art. 65, I, "b" e §§1º e 2º (alteração quantitativa só do objeto licitado, até 25%)
+  - Lei 14.133/2021, art. 125
+  - TCU Decisão 215/1999-Plenário
+sinal: >
+  No CORPO de um termo aditivo (título; nunca minuta, parecer ou extrato do DOERJ), "absorção (parcial|total) do(s)
+  Contrato(s) nº X" ou "do lote N" com X ≠ o próprio contrato (inclusive o nomeado logo antes da cláusula, em peça
+  que compila vários termos); ou "assumir a prestação dos serviços nas unidades". Forte = contrato/lote identificado +
+  termo de alteração quantitativa/acréscimo; médio = só "assumir a prestação" ou sem contrato identificado.
+explicacoes_inocentes:
+  - "Continuidade de serviço essencial — justifica emergencial ou nova licitação, não aditivo (não excluída)"
+  - "Absorção de parte do PRÓPRIO contrato — excluída pelo número"
+  - "Extrato de outro ato na página do DOERJ colada ao termo — excluído (trecho tem de estar no corpo)"
+controle_positivo: SEI-210108/000153/2023 doc 873; SEI-210108/000169/2023 doc 1985 (sei_cache)
+controle_negativo: "Termo de acréscimo quantitativo de 25% sem absorção; absorção do próprio contrato; texto dentro de extrato do DOERJ"
+liga_a: [acrescimo_medido_pelo_objeto, acrescimo_colado_no_teto]

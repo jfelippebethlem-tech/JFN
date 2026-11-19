@@ -1,0 +1,18 @@
+id: acrescimo_colado_no_teto
+nome: Acréscimos declarados somando no teto (24–25% / 49–50%) ou acima; teto pelo bruto
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-070002/006481/2024
+  caso: INEA × Brasform — 19,96% + 4,35% = 24,31%; Seleta 210108/000153/2023 (5,90 + 3,61 + 14,59 = 24,10%); Hydra 026015/2024 (24,87% com supressão de 2,50%); Lazarus 012176/2025 (24,04% bruto)
+norma:
+  - Lei 8.666/1993, art. 65 §1º; Lei 14.133/2021, art. 125 (teto inclusivo, limites_aditivo.py)
+  - TCU Acórdão 749/2010-Plenário (acréscimos e supressões computados separadamente)
+sinal: >
+  Soma das declarações DISTINTAS "acréscimo ... percentual de X%" (por percentual+data) nos termos do contrato
+  principal do processo, excluídas as de reajuste. Forte = soma bruta > teto; médio = soma em [teto − 1 p.p., teto].
+explicacoes_inocentes:
+  - "Bases diferentes (valor inicial atualizado de cada data) — a soma é aproximação"
+  - "Termo de reajuste que fala em 'acréscimo' — excluído"
+  - "Mesmo termo em várias peças — deduplicado"
+controle_positivo: SEI-070002/006481/2024 docs 130 e 599
+controle_negativo: "Um termo de 10%; soma de 23,5%; extrato de outro contrato na página do DOERJ (Hydra doc 264, Contrato 20/2024 do PRODERJ)"

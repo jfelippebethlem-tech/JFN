@@ -1,0 +1,18 @@
+id: retificacao_altera_valor
+nome: Retificação/rerratificação/apostila que muda valor; número × extenso divergentes
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-070002/005897/2024
+  caso: INEA × Geo Ambiental — doc 472 "R$ 1.815.002,86 (cinco milhões, setecentos e quinze mil, trezentos e setenta e nove reais e trinta e cinco centavos)"; Brasform 006481/2024 doc 483 (TA 21/2025 "Leia-se ... R$ 20.617.970,44"); Lytoranea 006627/2024 doc 254
+norma:
+  - Lei 8.666/1993, art. 65 e §8º (apostila só para reajuste/empenho)
+  - Lei 14.133/2021, arts. 124 e 136
+sinal: >
+  (a) "onde se lê ... leia-se" com valores em R$ diferentes, no corpo de termo/apostila/retificação; (b) "R$ X
+  (extenso)" com extenso BEM FORMADO que difere de X em > R$ 1.000 e > 1%. Ambos médio.
+explicacoes_inocentes:
+  - "Erro material corrigido sem efeito financeiro — conferir NL/OB"
+  - "Apostila de reajuste (permitida) — o achado registra se cita reajuste"
+  - "Extenso mal redigido ('vinte e milhões') — recusado pelo parser (não vira divergência)"
+controle_positivo: SEI-070002/005897/2024 doc 472; SEI-070002/006481/2024 doc 483
+controle_negativo: "Extenso igual ao número; extenso malformado (Brasform doc 668); extrato do DOERJ (Brasform doc 16)"

@@ -1,0 +1,23 @@
+id: execucao_acima_do_valor_antes_do_aditivo
+nome: Execução medida acima do valor do contrato antes do termo aditivo que daria cobertura
+familia: aditivos_execucao_contratual
+origem:
+  processo: SEI-260005/007167/2024
+  caso: FAETEC × Scalle (ex-Nolasco) — "Total do Acum. (COM BDI)" R$ 53.772.203,62 em dez/23 (doc 18) × valor total R$ 45.872.202,68 (doc 12); 1º TA assinado 24/01/2024 (extrato, doc 15). Conferido pela sessão principal na fonte.
+norma:
+  - Lei 8.666/1993, art. 60 parágrafo único e art. 65 §1º
+  - Lei 4.320/1964, arts. 60 e 62
+  - Lei 14.133/2021, art. 132 (formalização do aditivo é condição para executar)
+sinal: >
+  Valor inicial único do contrato juntado; datas dos termos do mesmo contrato (corpo ou extrato "Termo Aditivo ao
+  Contrato nº X ... DATA DA ASSINATURA"); série do acumulado medido (planilha consolidada "Período de Referência" ×
+  "Total do Acum." ou tabela Nª/início/fim/acumulado). Forte = mês anterior ao 1º termo com acumulado > valor inicial;
+  médio = acumulado > valor vigente depois de termos com valor lido.
+explicacoes_inocentes:
+  - "Planilha com reajuste embutido (reajuste não exige aditivo) — conferir"
+  - "Contrato juntado é outro — exigido o mesmo número quando legível"
+  - "Itens de outro contrato na planilha — documentos alheios excluídos"
+controle_positivo: SEI-260005/007167/2024 docs 12, 15, 18
+controle_negativo: "Acumulado abaixo do valor inicial até o 1º termo; processo sem termo datado (não avaliado)"
+nao_coberto:
+  - "Medido acima do SALDO (não do valor) com retenção e pagamento após o aditivo — RJL2 070002/017689/2024; exige ler a coluna 'aprovado' × 'medido' do parecer técnico"
