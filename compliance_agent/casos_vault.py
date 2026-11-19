@@ -113,6 +113,7 @@ def listar() -> dict:
             "status": meta.get("status", ""), "situacao": _situacao(meta.get("status", "")),
             "entidade": meta.get("entidade") or meta.get("fornecedor") or meta.get("orgao") or "",
             "esfera": meta.get("esfera", ""),
+            "ug": meta.get("ug", "") if re.fullmatch(r"\d{6}", meta.get("ug", "")) else "",   # UG declarada no frontmatter
             "atualizado": meta.get("atualizado") or meta.get("criado") or meta.get("aberto_em")
             or meta.get("detectado_em") or "",
             "tags": [t.strip() for t in meta.get("tags", "").strip("[]").split(",") if t.strip()],

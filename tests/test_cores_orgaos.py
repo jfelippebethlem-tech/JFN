@@ -18,7 +18,8 @@ def test_paleta_e_contrato_principais_distintas_e_resto_estavel():
     assert co.cor("ug:180100") == co.cor("180100")                    # a galáxia chama pelo aglomerado
     assert co.cor("999900") == co.cor("999900") and re.fullmatch(r"#[0-9A-F]{6}", co.cor("999900"))
     assert co.cor("999900") != co.cor("999901")
-    for vazio in ("", None, "sem:orgao", "vault:dossies", "indeterminado"):
+    for vazio in ("", None, "sem:orgao", "vault:dossies", "indeterminado", "sem:sem_ob", "sem:so_tfe",
+                  "sem:dossie_sem_sei_cnpj", "vault:dossies_x"):        # baldes por motivo da galáxia: cinza também
         assert co.cor(vazio) == cfg["indeterminado"]
 
 

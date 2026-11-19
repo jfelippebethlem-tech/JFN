@@ -111,3 +111,100 @@ def test_empacotar_sem_sobreposicao():
         for j in range(i):
             d = math.dist(pos[i], pos[j])
             assert d >= raios[i] + raios[j] + 10 - 1e-6
+
+
+def _con_orgao():
+    """Base mínima do resolvedor de órgão: OB SIAFE com processo, PCRJ despesa, TFE e PNCP."""
+    c = sqlite3.connect(":memory:")
+    c.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, credor TEXT, ug_emitente TEXT, valor REAL, status TEXT, "
+              "status_envio TEXT, processo TEXT)")
+    c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)", [
+        # prefixo 040002 → UG 180100 (3 OB pagas de processos diferentes); o processo 000009 é da UG 296100
+        ("1", "90000000000190", "180100", 10.0, "Contabilizado", "Processado e Pago", "SEI-040002/000001/2024"),
+        ("2", "90000000000190", "180100", 10.0, "Contabilizado", "Processado e Pago", "SEI-040002/000002/2024"),
+        ("3", "90000000000190", "180100", 10.0, "Contabilizado", "Processado e Pago", "SEI-040002/000003/2024"),
+        ("4", "91000000000191", "296100", 70.0, "Contabilizado", "Processado e Pago", "SEI-150001/000009/2025"),
+        ("5", "91000000000191", "296100", 70.0, "Contabilizado", "Processado e Pago", "SEI-150001/000009/2025"),
+        # OB anulada não conta: nem pagamento do CNPJ, nem índice de prefixo
+        ("6", "92000000000192", "999900", 9e9, "Anulado", "", "SEI-770001/000001/2024"),
+        ("7", "92000000000192", "999900", 9e9, "Anulado", "", "SEI-770001/000002/2024"),
+        ("8", "92000000000192", "999900", 9e9, "Anulado", "", "SEI-770001/000003/2024"),
+        # outro estabelecimento (filial 0002) da empresa 93000000 recebeu; a matriz 0001 não
+        ("9", "93000000000293", "180100", 5.0, "Contabilizado", "Processado e Pago", "0"),
+    ])
+    c.execute("CREATE TABLE pcrj_despesa (credor_documento TEXT, orgao TEXT, pago REAL, exercicio INTEGER)")
+    c.executemany("INSERT INTO pcrj_despesa VALUES (?,?,?,?)", [
+        ("94000000000194", "Secretaria Municipal de Saúde", 300.0, 2022),
+        ("94000000000194", "Secretaria Municipal de Educação", 50.0, 2023),
+        ("95000000000195", "Secretaria Municipal de Saúde", 0.0, 2022),            # só empenho: pago 0 não é pagamento
+    ])
+    c.execute("CREATE TABLE ordens_bancarias (ug_codigo TEXT, ug_nome TEXT, favorecido_cpf TEXT)")
+    c.execute("INSERT INTO ordens_bancarias VALUES ('180100', 'SEEDUC', '96000000000196')")
+    c.execute("CREATE TABLE pncp_resultado (fornecedor_cnpj TEXT, fornecedor_nome TEXT)")
+    return c
+
+
+def test_sem_orgao_resolvido_na_fonte_e_resto_com_motivo():
+    from compliance_agent import cores_orgaos
+    radar = {"ok": True, "achados": [{"cnpj": c, "nome": n, "score": 30, "sinais": []} for c, n in (
+        ("90000000000190", "PAGA LTDA"), ("94000000000194", "MUNICIPAL LTDA"), ("95000000000195", "SO EMPENHO LTDA"),
+        ("93000000000193", "MATRIZ LTDA"), ("96000000000196", "TFE LTDA"))]}
+    casos = [
+        {"slug": "proc", "titulo": "P", "cnpjs": [], "sei": ["SEI-150001/000009/2025", "SEI-040002/000777/2024"]},
+        {"slug": "pref", "titulo": "Q", "cnpjs": [], "sei": ["SEI-040002/000555/2026"]},
+        {"slug": "decl", "titulo": "D", "cnpjs": [], "sei": [], "ug": "133100"},
+        {"slug": "nada", "titulo": "N", "cnpjs": [], "sei": []},
+        {"slug": "anul", "titulo": "A", "cnpjs": [], "sei": ["SEI-770001/000004/2024"]},
+        {"slug": "fed", "titulo": "F", "cnpjs": ["97000000000197"], "sei": ["SEI-040002/000556/2026"], "esfera": "federal"},
+    ]
+    g = montar(casos, _con_orgao(), radar, None)
+    ids = {n["id"]: n for n in g["nos"]}
+    # positivo (a): OB paga no SIAFE → UG; secundários expostos no nó
+    assert ids["cnpj:90000000000190"]["cl"] == "ug:180100" and ids["cnpj:90000000000190"]["orgs"][0]["via"] == "OB"
+    # positivo: pago pela PCRJ → órgão municipal que mais pagou, o outro fica como secundário; aresta diz o valor
+    m = ids["cnpj:94000000000194"]
+    assert m["cl"].startswith("pcrj:") and "SAUDE" in m["cl"] and len(m["orgs"]) == 2 and m["orgs"][0]["pago"] == 300.0
+    # positivo (b/c): OB do próprio processo vence o prefixo; sem OB do processo, o prefixo do índice dá a UG
+    assert ids["caso:proc"]["cl"] == "ug:296100" and "OB do processo" in ids["caso:proc"]["via"]
+    assert ids["caso:pref"]["cl"] == "ug:180100" and "prefixo SEI" in ids["caso:pref"]["via"]
+    assert ids["caso:decl"]["cl"] == "ug:133100"                       # UG declarada no frontmatter vence
+    # negativos: nada é chutado — cada sobra carrega o MOTIVO medido, em cinza
+    assert ids["cnpj:95000000000195"]["cl"] == "sem:sem_ob"            # empenho com pago 0 não é pagamento
+    assert ids["cnpj:93000000000193"]["cl"] == "sem:outra_raiz"        # a filial recebeu, não este CNPJ
+    assert ids["cnpj:96000000000196"]["cl"] == "sem:so_tfe"
+    assert ids["caso:nada"]["cl"] == "sem:dossie_sem_sei_cnpj" and ids["caso:nada"]["mot"] == "nota sem SEI nem CNPJ completo"
+    assert ids["caso:anul"]["cl"] == "sem:dossie_sei_sem_ug"           # prefixo só com OB anulada não entra no índice
+    assert ids["caso:fed"]["cl"] == "sem:dossie_esfera"                # esfera federal não ganha UG do Estado pelo SEI
+    assert all(n["l"] != "Sem órgão identificado na base" for n in g["nos"])
+    assert g["resumo"]["sem_orgao"]["fornecedores"] == {"sem:sem_ob": 2, "sem:outra_raiz": 1, "sem:so_tfe": 1}
+    lv = {n["id"]: n for n in leve(g)["nos"]}
+    assert lv["cnpj:95000000000195"]["cor"] == cores_orgaos.cor("") and lv["cnpj:95000000000195"]["mot"]
+    assert lv["cnpj:90000000000190"]["cor"] == cores_orgaos.cor("180100")   # resolvido herda a cor do órgão
+
+
+def test_notas_do_vault_resolvidas_por_sei_e_cnpj(tmp_path, monkeypatch):
+    from compliance_agent import orgao_fonte
+    monkeypatch.setattr(orgao_fonte, "CACHE", tmp_path / "prefixo.json")      # nunca a cópia real em data/cache
+    db = tmp_path / "c.db"
+    src = _con_orgao()
+    src.commit()                                                          # backup espera a transação aberta
+    dst = sqlite3.connect(db)
+    src.backup(dst)
+    dst.close()
+    fm = "---\ntipo: caso\n{}tags: [caso, orgao/indeterminado]\n---\n"
+    notas = {
+        "proc": fm.format("") + "processo SEI-150001/000009/2025\n",
+        "pref": fm.format("") + "ver SEI-040002/000555/2026\n",
+        "cnpj": fm.format("") + "PAGA LTDA (90.000.000/0001-90)\n",
+        "decl": fm.format("entidade: INEA (UG 243200)\n"),
+        "040002_000444_2024": fm.format(""),                       # nota de processo: o número está no nome do arquivo
+        "pcrj": fm.format("orgao: Prefeitura do Rio\n") + "PAGA LTDA (90.000.000/0001-90)\n",
+        "nada": fm.format("") + "texto sem número\n",
+        "anul": fm.format("") + "SEI-770001/000004/2024 e 92.000.000/0001-92\n",
+    }
+    r = orgao_fonte.resolver_notas(notas, db)
+    assert {k: r[k]["ug"] for k in ("proc", "pref", "cnpj", "decl", "040002_000444_2024")} == {
+        "proc": "296100", "pref": "180100", "cnpj": "180100", "decl": "243200", "040002_000444_2024": "180100"}
+    assert r["pcrj"] == {"ug": "", "motivo": "esfera"}               # Prefeitura não ganha UG do Estado pelo CNPJ
+    assert r["nada"] == {"ug": "", "motivo": "sem_sei_cnpj"}
+    assert r["anul"] == {"ug": "", "motivo": "sei_e_cnpj"}          # OB anulada não resolve nada

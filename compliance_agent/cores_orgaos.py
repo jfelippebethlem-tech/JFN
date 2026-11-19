@@ -47,7 +47,7 @@ def cor(chave) -> str:
     """#RRGGBB do órgão. Aceita a UG ("180100"), o aglomerado da galáxia ("ug:180100", "cnpj:…", "nome:…")."""
     cfg = carregar()
     k = str(chave or "").strip()
-    if k in _SEM:
+    if k in _SEM or k.startswith(("sem:", "vault:")):     # baldes sem órgão da galáxia (um por motivo): cinza
         return cfg["indeterminado"]
     k = k.removeprefix("ug:")
     if k in cfg["principais"]:
@@ -144,11 +144,13 @@ def ug_dos_processos(stems: list[str], db: Path | None = None) -> dict[str, str]
     cont: dict[str, dict[str, int]] = {}
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
     try:
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        paga = _ob_paga(con)                                 # OB paga: o filtro único da casa (catraca CNF-02)
         chaves = sorted(de)
         for i in range(0, len(chaves), 400):
             lote = chaves[i:i + 400]
             for proc, ug, n in con.execute("SELECT processo, ug_emitente, COUNT(*) FROM ob_orcamentaria_siafe WHERE processo IN "
-                                           f"({','.join('?' * len(lote))}) GROUP BY 1, 2", lote):
+                                           f"({','.join('?' * len(lote))}) AND {paga} GROUP BY 1, 2", lote):
                 cont.setdefault(de[proc], {})[str(ug)] = n
     finally:
         con.close()
@@ -158,12 +160,21 @@ def ug_dos_processos(stems: list[str], db: Path | None = None) -> dict[str, str]
 def aplicar_vault(vault: Path | None = None, nomes: dict[str, str] | None = None, pastas: tuple = ("casos", "processos", "jfn/pericias-agente"),
                   ug_de: dict[str, str] | None = None, idade_min_s: float = 120) -> dict:
     """Marca as notas das `pastas` e grava os grupos de cor no grafo. `ug_de` = {nome do arquivo sem .md: UG} lida de
-    fora; sem ele, a UG das notas de `processos/` que não a declaram vem da OB do SIAFE (`ug_dos_processos`). Nota mexida há menos de `idade_min_s` é pulada (alguém está editando)."""
+    fora; sem ele, a UG das notas de `processos/` que não a declaram vem da OB do SIAFE (`ug_dos_processos`) e a das
+    demais notas sem UG, do SEI/CNPJ citado (`orgao_fonte.resolver_notas`). Nota mexida há menos de `idade_min_s` é pulada (alguém está editando)."""
     vault, nomes = vault or VAULT, nomes if nomes is not None else nomes_ug()
-    if ug_de is None and "processos" in pastas:              # só as notas de processo que ainda não declaram UG
-        falta = [a.stem for a in sorted((vault / "processos").glob("*.md"))
-                 if not re.search(r'^ug: *"?\d{6}', a.read_text(encoding="utf-8")[:1500], re.M)]
-        ug_de = ug_dos_processos(falta)
+    if ug_de is None:
+        ug_de = {}
+        if "processos" in pastas:                            # notas de processo que ainda não declaram UG: OB do processo
+            falta = [a.stem for a in sorted((vault / "processos").glob("*.md"))
+                     if not re.search(r'^ug: *"?\d{6}', a.read_text(encoding="utf-8")[:1500], re.M)]
+            ug_de = ug_dos_processos(falta)
+        # demais notas sem UG (19/11/2026): OB paga do processo citado → prefixo SEI no índice de OB → quem mais pagou
+        # o CNPJ citado (`orgao_fonte`); sem nada disso a nota segue `orgao/indeterminado`
+        from compliance_agent.orgao_fonte import resolver_notas
+        sem_ug = {a.stem: t for p in pastas for a in sorted((vault / p).glob("*.md")) if a.stem not in ug_de
+                  for t in [a.read_text(encoding="utf-8")] if not re.search(r'^ug: *"?\d{6}', t[:1500], re.M)}
+        ug_de.update({s: r["ug"] for s, r in resolver_notas(sem_ug).items() if r.get("ug")})
     ug_de = ug_de or {}
     r = {"notas": 0, "marcadas": 0, "indeterminadas": 0, "grupos": 0}
     presentes: set[str] = set()

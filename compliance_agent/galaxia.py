@@ -38,6 +38,7 @@ from pathlib import Path
 
 from compliance_agent import cores_orgaos
 from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.orgao_fonte import esfera_de
 
 SOCIOS_POR_CNPJ = 4
 ORGAOS_POR_CNPJ = 3
@@ -258,15 +259,16 @@ def _casos(g: _G, casos: list[dict], nomes_ug: dict):
     for caso in casos:
         cnpjs = sorted({_dig(c) for c in caso.get("cnpjs", []) if len(_dig(c)) == 14})
         ug = re.search(r"\bUG\s*(\d{6})\b", caso.get("entidade") or "")
+        ug = _dig(caso.get("ug")) if len(_dig(caso.get("ug"))) == 6 else (ug.group(1) if ug else "")   # frontmatter vence
         g.casos.append({"slug": caso["slug"], "titulo": caso.get("titulo") or caso["slug"],
                         "nivel": caso.get("nivel", 0), "nivel_rotulo": caso.get("nivel_rotulo", ""),
                         "situacao": caso.get("situacao", ""), "entidade": caso.get("entidade", ""),
                         "cnpjs": cnpjs, "sei": list(dict.fromkeys(caso.get("sei", []))),
-                        "ug": ug.group(1) if ug else ""})
+                        "ug": ug, "esfera": esfera_de(caso.get("esfera", ""), caso.get("tags", []), caso.get("entidade", ""))})
         for c in cnpjs:
             g.f(c)["casos"].add(caso["slug"])
         if ug:
-            g.o(f"ug:{ug.group(1)}", nomes_ug.get(ug.group(1)) or f"UG {ug.group(1)}")
+            g.o(f"ug:{ug}", nomes_ug.get(ug) or f"UG {ug}")
 
 
 def _orgaos(g: _G, con, nomes_ug: dict):
@@ -296,6 +298,20 @@ def _orgaos(g: _G, con, nomes_ug: dict):
         g.fontes["contratos_pncp"] = "ok"
     except sqlite3.Error:
         g.fontes["contratos_pncp"] = "INDISPONÍVEL"
+    try:                                                    # sem OB no SIAFE: o órgão MUNICIPAL que PAGOU (PCRJ)
+        for c, on, v, e0, e1 in _em_lotes(con, "SELECT credor_documento, orgao, SUM(pago), MIN(exercicio), MAX(exercicio) "
+                                                "FROM pcrj_despesa WHERE credor_documento IN ({}) AND pago > 0 GROUP BY 1, 2", sem):
+            n = _norm(on)
+            if n and (v or 0) > 0:
+                g.o(f"pcrj:{n}", f"{str(on).strip()} (Prefeitura do Rio)")
+                f = g.forn[c]
+                f["org"][f"pcrj:{n}"] += float(v)                 # R$ pago pesa como a OB; contrato (1e-3) fica atrás
+                f["org_via"][f"pcrj:{n}"] = "PCRJ"
+                f.setdefault("pago", Counter())[f"pcrj:{n}"] += float(v)
+                f.setdefault("pago_ex", {})[f"pcrj:{n}"] = f"{e0}–{e1}" if e0 != e1 else str(e0)
+        g.fontes["despesa_pcrj"] = "ok"
+    except sqlite3.Error:
+        g.fontes["despesa_pcrj"] = "INDISPONÍVEL"
     for chave in {k for f in g.forn.values() for k in f["org"]}:
         if chave.startswith("ug:"):
             ug = chave[3:]
@@ -310,6 +326,44 @@ def _orgaos(g: _G, con, nomes_ug: dict):
                 g.f(c, rz)
         except sqlite3.Error:
             pass
+
+
+# Fornecedor sem órgão: o MOTIVO medido vira o aglomerado (um balde por motivo, nunca o texto genérico).
+SEM_FORN = {
+    "sem:base": "Sem órgão — base de OB indisponível (não medido)",
+    "sem:outra_raiz": "Sem órgão — OB paga no SIAFE só para outro estabelecimento da mesma empresa (raiz do CNPJ)",
+    "sem:so_tfe": "Sem órgão — OB só no espelho TFE, nenhuma no SIAFE",
+    "sem:so_pncp": "Sem órgão — só resultado de licitação no PNCP; sem OB no SIAFE, pagamento PCRJ ou contrato",
+    "sem:sem_ob": "Sem órgão — CNPJ sem OB no SIAFE, sem pagamento PCRJ e sem contrato publicado",
+}
+
+
+def _motivos_sem_orgao(g: _G, con, cs: list[str]) -> dict[str, str]:
+    """{cnpj: chave de SEM_FORN} para os fornecedores sem órgão. Cada motivo é uma consulta real (índice por CNPJ)."""
+    if not cs:
+        return {}
+    if g.fontes.get("ob_siafe") != "ok":
+        return {c: "sem:base" for c in cs}
+    out = {}
+    try:
+        paga = _ob_paga(con)
+        por_raiz = defaultdict(list)
+        for c in cs:
+            por_raiz[c[:8]].append(c)
+        for r, cs_r in por_raiz.items():
+            if _q(con, "SELECT 1 FROM ob_orcamentaria_siafe WHERE credor >= ? AND credor < ? AND " + paga + " LIMIT 1",
+                  (r, r + "~")):
+                out.update({c: "sem:outra_raiz" for c in cs_r})
+    except sqlite3.Error:
+        pass
+    for chave, sql in (("sem:so_tfe", "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE favorecido_cpf IN ({})"),
+                       ("sem:so_pncp", "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE fornecedor_cnpj IN ({})")):
+        try:
+            for (c,) in _em_lotes(con, sql, [c for c in cs if c not in out]):
+                out.setdefault(c, chave)
+        except sqlite3.Error:
+            pass
+    return {c: out.get(c, "sem:sem_ob") for c in cs}
 
 
 def _socios(g: _G, con):
@@ -370,6 +424,30 @@ def _conluio(g: _G, con, estab):
     g.conluio = r["medida"]
 
 
+def _casos_pela_fonte(g: _G, con, resto: list[dict], nomes_ug: dict):
+    from compliance_agent import orgao_fonte as of
+    try:
+        seis = [s for k in resto for s in k["sei"]]
+        pref = of.mapa_prefixos(con) if seis else {}
+        proc = of.ugs_dos_processos(con, seis) if seis else {}
+        pago = of.ugs_pagadoras(con, [c for k in resto for c in k["cnpjs"]])
+        g.fontes["sei_prefixo_ug"] = "ok"
+    except sqlite3.Error:
+        g.fontes["sei_prefixo_ug"] = "INDISPONÍVEL"
+        for k in resto:
+            k["cl"] = "sem:dossie_base"
+            g.o(k["cl"], "Dossiês sem órgão — base de OB indisponível (não medido)")
+        return
+    for k in resto:
+        r = of.resolver(k["sei"], k["cnpjs"], pref, proc, pago, k.get("esfera", ""))
+        if r["ug"]:
+            k["cl"], k["via"] = f"ug:{r['ug']}", f"{r['via']}: {r['det']}"
+            g.o(k["cl"], nomes_ug.get(r["ug"]) or f"UG {r['ug']}")
+        else:
+            k["cl"], k["mot"] = f"sem:dossie_{r['motivo']}", of.MOTIVOS_CASO[r["motivo"]]
+            g.o(k["cl"], f"Dossiês sem órgão — {k['mot']}")
+
+
 # ── layout ───────────────────────────────────────────────────────────────────────────────────────
 
 _GA = math.pi * (3 - math.sqrt(5))             # ângulo de ouro
@@ -415,22 +493,26 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
     _hubs(g, hubs)
     _conluio(g, con, estab)
 
-    # aglomerado de cada fornecedor = órgão de maior peso; sem órgão → aglomerado "sem órgão identificado"
-    SEM = "sem:orgao"
+    # aglomerado de cada fornecedor = órgão de maior peso; sem órgão → um aglomerado POR MOTIVO medido
     membro = defaultdict(list)
+    motivo = _motivos_sem_orgao(g, con, sorted(c for c, f in g.forn.items() if not f["org"]))
     for c, f in g.forn.items():
-        chave = f["org"].most_common(1)[0][0] if f["org"] else SEM
+        chave = f["org"].most_common(1)[0][0] if f["org"] else motivo[c]
         f["cl"] = chave
         membro[chave].append(c)
-    if SEM in membro:
-        g.o(SEM, "Sem órgão identificado na base")
-    caso_cl = {}
+        if chave in SEM_FORN:
+            g.o(chave, SEM_FORN[chave])
+    # dossiê: UG declarada (frontmatter/entidade) → órgão dos fornecedores citados → OB do processo SEI citado →
+    # prefixo SEI no índice de OB → quem mais pagou o CNPJ citado (orgao_fonte); sem nada → balde com o motivo
+    resto = []
     for k in g.casos:
-        cont = Counter(g.forn[c]["cl"] for c in k["cnpjs"] if c in g.forn and g.forn[c]["cl"] != SEM)
-        k["cl"] = f"ug:{k['ug']}" if k["ug"] else (cont.most_common(1)[0][0] if cont else "vault:dossies")
-        caso_cl[k["slug"]] = k["cl"]
-        if k["cl"] == "vault:dossies":
-            g.o(k["cl"], "Dossiês do vault sem órgão mapeado")
+        cont = Counter(g.forn[c]["cl"] for c in k["cnpjs"] if c in g.forn and not g.forn[c]["cl"].startswith("sem:"))
+        k["cl"] = f"ug:{k['ug']}" if k["ug"] else (cont.most_common(1)[0][0] if cont else "")
+        if not k["cl"]:
+            resto.append(k)
+    if resto:
+        _casos_pela_fonte(g, con, resto, nomes_ug)
+    for k in g.casos:
         g.org[k["cl"]]["casos"].add(k["slug"])
 
     # sócios: mora perto do primeiro fornecedor (maior score) que o tem
@@ -493,7 +575,8 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
                 continue
             x, y = loc[f"caso:{k['slug']}"]
             add(f"caso:{k['slug']}", t="caso", l=k["titulo"], x=round(cx + x, 1), y=round(cy + y, 1), cl=chave,
-                slug=k["slug"], nv=k["nivel"], nvr=k["nivel_rotulo"], sit=k["situacao"], ent=k["entidade"][:120])
+                slug=k["slug"], nv=k["nivel"], nvr=k["nivel_rotulo"], sit=k["situacao"], ent=k["entidade"][:120],
+                **({"via": k["via"]} if k.get("via") else {}), **({"mot": k["mot"]} if k.get("mot") else {}))
             for sei in k["sei"]:
                 if f"sei:{sei}" not in idx:
                     x, y = loc.get(f"sei:{sei}", (0, 0))
@@ -505,7 +588,11 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
             add(f"cnpj:{c}", t="cnpj", l=f["nome"] or f"CNPJ {c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}",
                 x=round(cx + x, 1), y=round(cy + y, 1), cl=chave, cnpj=c, s=f["score"], sin=f["sinais"],
                 nal=sum(f["al"].values()), al=dict(f["al"].most_common(6)), ex=f["ex"],
-                k=sorted(f["casos"]), pago=round(sum(pago.values()), 2) if pago else None)
+                k=sorted(f["casos"]), pago=round(sum(pago.values()), 2) if pago else None,
+                # órgão principal + secundários (peso = R$ pago; contrato pesa 1e-3 por contrato) para o front mostrar
+                orgs=[{"cl": ch, "l": g.org[ch]["nome"] if ch in g.org else ch, "via": f["org_via"].get(ch, "contrato"),
+                       "pago": round(pago.get(ch, 0), 2) or None} for ch, _ in f["org"].most_common(ORGAOS_POR_CNPJ)],
+                **({"mot": SEM_FORN[chave]} if chave in SEM_FORN else {}))
             for s in socios_de_forn.get(c, []):
                 x, y = loc[f"socio:{s}"]
                 add(f"socio:{s}", t="socio", l=s, x=round(cx + x, 1), y=round(cy + y, 1), cl=chave,
@@ -516,8 +603,10 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
         for chave, peso in f["org"].most_common(ORGAOS_POR_CNPJ):
             if chave in g.org:
                 via = f["org_via"].get(chave, "contrato")
-                det = (f"OB contabilizada no SIAFE: R$ {(f.get('pago') or {}).get(chave, 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                       if via == "OB" else "contrato/compra publicada (PCRJ/PNCP) — não é pagamento")
+                rs = f"R$ {(f.get('pago') or {}).get(chave, 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                det = (f"OB contabilizada no SIAFE: {rs}" if via == "OB"
+                       else f"pago pela Prefeitura do Rio (despesa aberta PCRJ, {f.get('pago_ex', {}).get(chave, '')}): {rs}"
+                       if via == "PCRJ" else "contrato/compra publicada (PCRJ/PNCP) — não é pagamento")
                 g.liga(f"org:{chave}", f"cnpj:{c}", "orgao", 1.0, det=det, via=via)
     for s, cs in g.socio_de.items():
         for c in cs:
@@ -587,13 +676,17 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
         "ligacoes_socio_variante": novas["socio_variante"]["arestas"],
         "ligacoes_concorrentes": novas["concorrentes_ligados"]["arestas"],
         "conluio": {"por_tipo": novas, "medida": g.conluio, "estado": "indício a verificar"},
+        # o que ficou sem órgão, por motivo medido (fornecedores e dossiês)
+        "sem_orgao": {"fornecedores": dict(Counter(f["cl"] for f in g.forn.values() if f["cl"].startswith("sem:")).most_common()),
+                      "casos": dict(Counter(k["cl"] for k in g.casos if k["cl"].startswith("sem:")).most_common())},
     }
     return {"ok": True, "versao": 2, "gerado_em": time.strftime("%Y-%m-%d %H:%M"), "segundos": round(time.time() - t0, 2),
             "nos": nos, "arestas": arestas, "resumo": resumo, "fontes": g.fontes,
             "rotulos_alerta": _ROTULO_ALERTA, "critico": CRITICO, "aviso": AVISO,
             "nota": ("Score = soma de sinais independentes do Radar (0–100; 🔴 ≥ 50 · 🟡 25–49 · 🟢 < 25), indício interno. "
                      "Alerta de pessoa (acúmulo, teto) conta no órgão, sem nome. Órgão do fornecedor = quem mais pagou "
-                     "(OB contabilizada no SIAFE); sem OB, o órgão do contrato publicado.")}
+                     "(OB contabilizada no SIAFE); sem OB, o órgão da Prefeitura do Rio que pagou (despesa aberta PCRJ) ou o do "
+                     "contrato publicado. Sem nenhum deles, o aglomerado cinza diz o MOTIVO medido.")}
 
 
 # ── geração, cache e recorte ────────────────────────────────────────────────────────────────────
@@ -642,7 +735,7 @@ _MEM: dict = {"mtime": None, "d": None, "leve": {}}
 # Tipos NOVOS entram sempre no FIM: `leve()` manda o índice, e o front colore pelo índice.
 TIPOS_CONLUIO = ("contato", "socio_variante", "concorrentes_ligados")
 TIPOS_ARESTA = ("orgao", "socio", "cita_cnpj", "cita_sei", "caso_orgao", "caso_caso", "endereco") + TIPOS_CONLUIO
-_LEVE = ("id", "t", "l", "x", "y", "cl", "s", "nal", "nv", "g", "R", "nf", "slug", "cnpj")
+_LEVE = ("id", "t", "l", "x", "y", "cl", "s", "nal", "nv", "g", "R", "nf", "slug", "cnpj", "mot")
 
 
 def ler() -> dict | None:
