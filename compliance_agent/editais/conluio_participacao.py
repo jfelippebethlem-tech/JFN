@@ -564,12 +564,12 @@ def ob_estado(con: sqlite3.Connection, raizes: list[str]) -> dict[str, dict]:
     """OB paga do Estado (SIAFE) por raiz — contexto: mostra se a empresa é fornecedora real do Estado.
     Não é pagamento do certame municipal."""
     from compliance_agent.cruzamentos_intel import _ob_paga
-    filtro = _ob_paga(con)
+    paga = _ob_paga(con)
     out = {}
     for r in raizes:
         try:
             n, v = con.execute(f"SELECT COUNT(*), ROUND(COALESCE(SUM(valor),0),2) FROM ob_orcamentaria_siafe "
-                               f"WHERE credor LIKE ? AND {filtro}", (r + "%",)).fetchone()
+                               f"WHERE credor LIKE ? AND {paga}", (r + "%",)).fetchone()
         except sqlite3.OperationalError:       # base sem SIAFE: ausência de fonte, não "nada pago"
             out[r] = "INDISPONÍVEL (sem ob_orcamentaria_siafe)"
             continue
