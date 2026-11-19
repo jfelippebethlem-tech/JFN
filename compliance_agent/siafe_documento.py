@@ -102,6 +102,40 @@ _DDL_COB = """CREATE TABLE IF NOT EXISTS siafe_documento_cobertura (
     colhidas INTEGER, em TEXT, PRIMARY KEY (tipo, ug_emitente, exercicio))"""
 
 
+_DDL_FATIA = """CREATE TABLE IF NOT EXISTS siafe_documento_fatia (
+    tipo TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, prefixo TEXT NOT NULL,
+    linhas INTEGER NOT NULL, no_teto INTEGER NOT NULL, em TEXT, PRIMARY KEY (tipo, ug_emitente, exercicio, prefixo))"""
+
+
+def registrar_fatia(tipo: str, ug: str, exercicio: int, prefixo: str, linhas: int, db=None) -> None:
+    """PROVA DE COMPLETUDE por fatia (19/11/2026): quantas linhas cada prefixo-folha devolveu e se encostou no
+    platô. "Completo" sem esta trilha era afirmação; com ela, qualquer um confere que nenhuma folha bateu no teto."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        con.execute(_DDL_FATIA)
+        con.execute("INSERT OR REPLACE INTO siafe_documento_fatia VALUES (?,?,?,?,?,?,?)",
+                    (tipo, str(ug), int(exercicio), prefixo, int(linhas), int(linhas >= _PLATO), time.strftime("%F %T")))
+        con.commit()
+    finally:
+        con.close()
+
+
+def prefixos_incrementais(base: str, ultimo: str) -> list[str]:
+    """Prefixos DISJUNTOS que cobrem todo número ≥ as 3 primeiras casas do `ultimo` já colhido (a numeração é
+    sequencial por UG/ano: documento novo só nasce acima). Ex.: base 2026NL, último 2026NL01234 →
+    ['2026NL012', '2026NL013'…'2026NL019', '2026NL02'…'2026NL09', '2026NL1'…'2026NL9']. Relê a fatia do último
+    (pode ter ganhado irmãos) e cada fatia acima; fatia vazia custa uma consulta."""
+    resto = ultimo[len(base):]
+    if not ultimo.startswith(base) or len(resto) < 3 or not resto[:3].isdigit():
+        return [f"{base}{d}" for d in range(10)]
+    a, b, c = (int(x) for x in resto[:3])
+    out = [f"{base}{a}{b}{c}"]
+    out += [f"{base}{a}{b}{d}" for d in range(c + 1, 10)]
+    out += [f"{base}{a}{d}" for d in range(b + 1, 10)]
+    out += [f"{base}{d}" for d in range(a + 1, 10)]
+    return out
+
+
 def registrar_cobertura(tipo: str, ug: str, exercicio: int, completo: bool, colhidas: int, db=None) -> None:
     """Quem lê NE/NL precisa saber se a UG está INTEIRA: 166100 ficou com 1.000 NL de uma coleta capada e o
     detector de ordem cronológica acusou 346 quebras (04/11/2026). Coleta capada ou com erro = completo 0."""
@@ -328,6 +362,33 @@ def cobertura_gd_pela_ob(ug: str, exercicio: int, db=None) -> float | None:
     return round(ach / tot, 4) if tot else None
 
 
+def cobertura_ne_pela_nl(ug: str, exercicio: int, db=None) -> float | None:
+    """Fração das NE (do próprio exercício) citadas pelas NL da (UG, exercício) que estão em `ne_siafe` — o
+    controle positivo da NE (a NE não tem OB que a cite; a NL tem). None se não há NL para comparar."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        for tipo in ("NE", "NL"):
+            con.execute(TIPOS[tipo]["ddl"])
+        tot, ach = con.execute(
+            "SELECT COUNT(DISTINCT l.ne), COUNT(DISTINCT e.numero) FROM nl_siafe l LEFT JOIN ne_siafe e "
+            "ON e.numero=l.ne AND e.ug_emitente=l.ug_emitente WHERE l.ug_emitente=? AND l.exercicio=? "
+            "AND l.ne LIKE ?", (str(ug), int(exercicio), f"{exercicio}NE%")).fetchone()
+    finally:
+        con.close()
+    return round(ach / tot, 4) if tot else None
+
+
+def _ne_registrada_completa(ug: str, exercicio: int, db=None) -> bool:
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        con.execute(_DDL_COB)
+        r = con.execute("SELECT completo FROM siafe_documento_cobertura WHERE tipo='NE' AND ug_emitente=? "
+                        "AND exercicio=?", (str(ug), int(exercicio))).fetchone()
+    finally:
+        con.close()
+    return bool(r and r[0])
+
+
 def fechar_cobertura(tipo: str, ug: str, exercicio: int, r: dict, db=None) -> bool:
     """Registra se a (UG, exercício) ficou INTEIRA. O coletor dizer "completo" não basta: NL e GD conferem contra
     o que as OBs citam (≥95%). Devolve o `completo` registrado e põe a cobertura medida em `r`."""
@@ -338,7 +399,24 @@ def fechar_cobertura(tipo: str, ug: str, exercicio: int, r: dict, db=None) -> bo
         cob = medir(ug, exercicio, db=db)
         r["cobertura_pela_ob"] = cob
         completo = cob is None or cob >= _COBERTURA_MIN
+    if tipo == "NE" and completo:
+        cob = cobertura_ne_pela_nl(ug, exercicio, db=db)
+        r["cobertura_pela_nl"] = cob
+        completo = cob is None or cob >= _COBERTURA_MIN
     registrar_cobertura(tipo, ug, exercicio, completo, n or 0, db=db)
+    # a NL completa CONFERE a NE já registrada completa: NE que não cobre as NE citadas pelas NL era parcial
+    if tipo == "NL" and completo and _ne_registrada_completa(ug, exercicio, db=db):
+        cob_ne = cobertura_ne_pela_nl(ug, exercicio, db=db)
+        r["cobertura_ne_pela_nl"] = cob_ne
+        if cob_ne is not None and cob_ne < _COBERTURA_MIN:
+            con = sqlite3.connect(db or _DB, timeout=60)
+            try:
+                con.execute("UPDATE siafe_documento_cobertura SET completo=0, em=? WHERE tipo='NE' AND "
+                            "ug_emitente=? AND exercicio=?", (time.strftime("%F %T"), str(ug), int(exercicio)))
+                con.commit()
+            finally:
+                con.close()
+            r["ne_rebaixada"] = True
     return completo
 
 
@@ -373,7 +451,7 @@ def _passou(ate: str | None) -> bool:
 
 
 async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | None = None,
-                          ug_ckpt: str = "") -> dict:
+                          ug_ckpt: str = "", a_partir: str | None = None) -> dict:
     """Linha 1 do filtro = Número começa com <prefixo>; fatia capada subdivide. Ingesta fatia a fatia."""
     from compliance_agent import siafe_ob_orcamentaria as S
     from compliance_agent.siafe_adf import AdfSync
@@ -386,7 +464,8 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
     base = f"{exercicio}{tipo}"
     ckp = _REPO / "data" / "sei_cache" / f"siafe_doc_{tipo}_{ug_ckpt}_{exercicio}.json"
     feitas = set(json.loads(ckp.read_text())) if ckp.exists() else set()
-    work, fatias, total, capadas = [f"{base}{d}" for d in range(10)], {}, 0, []
+    inicio = prefixos_incrementais(base, a_partir) if a_partir else [f"{base}{d}" for d in range(10)]
+    work, fatias, total, capadas = inicio, {}, 0, []
     while work:
         if _passou(ate):               # para ENTRE fatias e sai pelo `finally` com logout: nunca no meio
             return {"ok": False, "etapa": "prazo", "ate": ate, "fatias": fatias, "ingeridas": total,
@@ -408,6 +487,8 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
             capadas.append(pref)               # profundidade máxima e ainda no teto: declarar, não esconder
         fatias[pref] = len(linhas)
         total += ingerir(exercicio, header, linhas, tipo=tipo).get("ingeridas", 0)
+        if ug_ckpt:
+            registrar_fatia(tipo, ug_ckpt, exercicio, pref, len(linhas))
         if linhas:                     # ZERO NÃO ENTRA NO CHECKPOINT (lição da OB, ae72a7bf): re-consultar é barato
             feitas.add(pref)
             ckp.parent.mkdir(parents=True, exist_ok=True)
@@ -416,7 +497,10 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
     return {"ok": True, "fatias": fatias, "ingeridas": total, "capadas": capadas, "retomadas": len(feitas)}
 
 
-async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None = None) -> dict:
+async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None = None,
+                     a_partir: str | None = None) -> dict:
+    """Uma UG inteira; com `a_partir` (último número já colhido de uma UG completa) só os números acima —
+    a passada INCREMENTAL do exercício corrente, que não relê o que não muda."""
     t = TIPOS[tipo]
     from playwright.async_api import async_playwright
     from compliance_agent import siafe_ob_orcamentaria as S
@@ -435,16 +519,17 @@ async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None 
             f = await _filtrar_ug(pg, ug, tbl=_tbl(t))
             if not f.get("ok"):
                 return {"ok": False, "etapa": "filtro", **f}
-            header, linhas = await _colher(pg, t["re"], tbl=_tbl(t))
-            if len(linhas) < _PLATO:
+            header, linhas = ([], []) if a_partir else await _colher(pg, t["re"], tbl=_tbl(t))
+            if not a_partir and len(linhas) < _PLATO:
                 r = ingerir(exercicio, header, linhas, tipo=tipo)
                 return {**r, "tipo": tipo, "ug": ug, "exercicio": exercicio, "colhidas": len(linhas),
                         "limite": lim, "capou": False}
             # TETO DO SERVIDOR: desmarcar o limite não basta (166100/2025 parou em 1.000 de novo). Fatiar.
-            fat = await _colher_fatiado(pg, t, exercicio, tipo, ate, ug_ckpt=ug)
+            fat = await _colher_fatiado(pg, t, exercicio, tipo, ate, ug_ckpt=ug, a_partir=a_partir)
         finally:
             await S._encerrar(pg, ctx)
     return {**fat, "tipo": tipo, "ug": ug, "exercicio": exercicio, "limite": lim, "fatiado": True,
+            "incremental_a_partir": a_partir,
             "capou": bool(fat.get("capadas")),
             "aviso": ("fatias no teto mesmo na profundidade máxima: " + ", ".join(fat["capadas"])
                       if fat.get("capadas") else "")}
@@ -456,6 +541,7 @@ def main() -> None:
     ap.add_argument("--ug", required=True)
     ap.add_argument("--exercicio", type=int, required=True)
     ap.add_argument("--ate", default=None, help="HH:MM — para entre fatias (com logout) a partir deste horário")
+    ap.add_argument("--a-partir", default=None, help="último número colhido: só os acima (incremental)")
     a = ap.parse_args()
     a.ate = _normalizar_prazo(a.ate, datetime.now())
     from compliance_agent import host_siafe
@@ -464,7 +550,7 @@ def main() -> None:
     if not R._acquire("siafe_documento"):
         raise SystemExit(f"SIAFE ocupado: {R.lock_status()}")
     try:
-        r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo, a.ate))
+        r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo, a.ate, a_partir=a.a_partir))
         fechar_cobertura(a.tipo, a.ug, a.exercicio, r)
         print(json.dumps(r, ensure_ascii=False))
     finally:

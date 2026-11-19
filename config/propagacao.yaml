@@ -383,6 +383,35 @@ derivados:
     prioridade: 2
     efeito: {arquivo: data/ob_reemitida.json}
     antes: "não existia — a 'Enviado ao Banco' reemitida somava junto com a reemissão (dobro)"
+  siafe_status_releitura:
+    nome: Releitura do status das OB não finais (2024–2026) e consolidação dos últimos 60 dias no SIAFE
+    onde: tabela ob_status_recoleta + ob_orcamentaria_siafe (status/status_envio) · data/siafe_status_releitura.json
+    # 19/11/2026 (medição siafe_ingest_cobertura): 33.072 OB de 2026 (R$ 4,93 bi) e 1.608 de 2024/25 (R$ 426 mi) com o
+    # status congelado na foto da coleta. Só DISPARA (siafe_agenda): o coletor roda em segundo plano, herda a trava,
+    # 06:40–22:40, só depois que o diário de hoje logou, nunca com o SIAFE ocupado. A própria releitura regrava OB
+    # (siafe_ob) e volta a ficar suja: o intervalo é quem dá o ritmo.
+    depende: [siafe_ob]
+    comando: ["{py}", "-m", "compliance_agent.siafe_agenda", "status"]
+    peso: pesado
+    debounce_s: 600
+    intervalo_min_s: 10800
+    timeout_s: 300
+    prioridade: 6
+    efeito: {arquivo: data/siafe_agenda_status.json}
+    antes: "só na pós-coleta do diário (6 dias/dia, só o exercício corrente, só se o diário logasse)"
+  siafe_documentos_varredura:
+    nome: NE e NL de todas as UGs (2024–2026), por valor pago, incremental no exercício corrente
+    onde: tabelas ne_siafe, nl_siafe, siafe_documento_cobertura, siafe_documento_fatia · data/siafe_documento_sweep_estado.json
+    # 19/11/2026: NE completa em 4 e NL em 3 das 341 (UG, ano); o cron das 03:10 ficou parado 6 de 8 noites (load > 3).
+    depende: [siafe_ob]
+    comando: ["{py}", "-m", "compliance_agent.siafe_agenda", "documentos"]
+    peso: pesado
+    debounce_s: 600
+    intervalo_min_s: 10800
+    timeout_s: 300
+    prioridade: 7
+    efeito: {arquivo: data/siafe_agenda_documentos.json}
+    antes: "cron 03:10 (2 UGs/noite, só 2025, load ≤ 3) — segue como rede"
   governo_couto_regras:
     nome: Gestão Couto — regras D01–D20 e hipóteses
     onde: Estado › Governo Couto · Início › Sinais críticos

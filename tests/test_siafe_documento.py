@@ -132,3 +132,60 @@ def test_fatia_com_974_linhas_ainda_e_teto():
 def test_prazo_e_conferido_entre_fatias(monkeypatch):
     monkeypatch.setattr(N.time, "strftime", lambda fmt: "04:41")
     assert N._passou("04:40") is True and N._passou(None) is False
+
+
+# ── 19/11/2026: incremental, prova de completude por fatia e controle positivo da NE pela NL ─────────────────────
+
+def test_prefixos_incrementais_cobrem_tudo_acima_do_ultimo_sem_sobrepor():
+    p = N.prefixos_incrementais("2026NL", "2026NL01234")
+    assert p[:3] == ["2026NL012", "2026NL013", "2026NL014"] and p[-1] == "2026NL9"
+    # cobertura: todo número ≥ 01200 casa exatamente UM prefixo; abaixo, nenhum
+    for n in (1200, 1234, 1299, 1300, 1999, 2000, 45678, 99999):
+        assert sum(f"2026NL{n:05d}".startswith(x) for x in p) == 1
+    for n in (0, 999, 1199):
+        assert not any(f"2026NL{n:05d}".startswith(x) for x in p)
+    assert N.prefixos_incrementais("2026NL", "lixo") == [f"2026NL{d}" for d in range(10)]
+
+
+def test_fatia_registra_prova_e_marca_a_que_encostou_no_teto(tmp_path):
+    db = tmp_path / "c.db"
+    N.registrar_fatia("NL", "296100", 2025, "2025NL012", 950, db=db)
+    N.registrar_fatia("NL", "296100", 2025, "2025NL013", 12, db=db)
+    rows = sqlite3.connect(db).execute("SELECT prefixo, linhas, no_teto FROM siafe_documento_fatia ORDER BY 1").fetchall()
+    assert rows == [("2025NL012", 950, 1), ("2025NL013", 12, 0)]
+
+
+def _ne_nl(db, n_ne, n_nl_citando):
+    N.ingerir(2025, ["Número", "UG Emitente"], [[f"2025NE{i:05d}", "166100"] for i in range(n_ne)], db=db, tipo="NE")
+    N.ingerir(2025, _HEADER_NL, [[f"2025NL{i:05d}", "166100"] + [""] * 15 for i in range(n_nl_citando)], db=db,
+              tipo="NL")
+    c = sqlite3.connect(db)
+    c.executemany("UPDATE nl_siafe SET ne=? WHERE numero=?", [(f"2025NE{i:05d}", f"2025NL{i:05d}")
+                                                               for i in range(n_nl_citando)])
+    c.commit()
+    c.close()
+
+
+def test_ne_so_e_completa_se_cobre_as_ne_que_as_nl_citam(tmp_path):
+    """Controle POSITIVO da NE: as NL citam a NE; NE coletada sem 60 das 100 citadas não é completa."""
+    db = tmp_path / "c.db"
+    _ne_nl(db, 40, 100)
+    assert N.cobertura_ne_pela_nl("166100", 2025, db=db) == 0.4
+    assert N.fechar_cobertura("NE", "166100", 2025, {"ok": True, "colhidas": 40}, db=db) is False
+
+
+def test_ne_sem_nl_para_conferir_fica_completa_e_a_nl_depois_rebaixa(tmp_path):
+    """NE colhida antes da NL: sem NL não há o que conferir (None ≠ 0). Quando a NL fecha completa e cita NE que
+    não existem, a NE registrada completa é REBAIXADA — parcial nunca segue marcado como completo."""
+    db = tmp_path / "c.db"
+    N.ingerir(2025, ["Número", "UG Emitente"], [[f"2025NE{i:05d}", "166100"] for i in range(40)], db=db, tipo="NE")
+    c = sqlite3.connect(db)
+    c.execute("CREATE TABLE ob_orcamentaria_siafe(numero_ob,ug_emitente,exercicio,status,nl,gd)")
+    c.commit()
+    c.close()
+    assert N.fechar_cobertura("NE", "166100", 2025, {"ok": True, "colhidas": 40}, db=db) is True
+    _ne_nl(db, 0, 100)
+    r = {"ok": True, "colhidas": 100}
+    assert N.fechar_cobertura("NL", "166100", 2025, r, db=db) is True
+    assert r["ne_rebaixada"] is True
+    assert N.ugs_completas(sqlite3.connect(db)) == set()

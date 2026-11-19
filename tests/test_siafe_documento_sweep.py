@@ -74,3 +74,40 @@ def test_coletor_avulso_normaliza_hhmm_pela_hora_de_inicio():
     assert N._normalizar_prazo("02:55", datetime(2026, 11, 13, 23, 30)) == "2026-11-14T02:55"
     assert N._normalizar_prazo("2026-11-14T02:55", datetime(2026, 11, 13, 23, 30)) == "2026-11-14T02:55"
     assert N._normalizar_prazo(None, datetime(2026, 11, 13, 23, 30)) is None
+
+
+# ── 19/11/2026: fila de vários exercícios, incremental do ano corrente, parada no login ─────────────────────────
+
+def _db_varios(tmp_path):
+    p = tmp_path / "v.db"
+    c = sqlite3.connect(p)
+    c.execute("CREATE TABLE ob_orcamentaria_siafe(ug_emitente,exercicio,status,valor,credor)")
+    c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,'Contabilizado',?,'11111111000101')", [
+        ("A", 2026, 900.0), ("B", 2025, 800.0), ("C", 2024, 100.0), ("D", 2026, 50.0)])
+    c.execute("CREATE TABLE siafe_documento_cobertura(tipo,ug_emitente,exercicio,completo,colhidas,em)")
+    c.executemany("INSERT INTO siafe_documento_cobertura VALUES (?,?,?,?,0,?)", [
+        ("NE", "A", 2026, 1, "2026-11-10 03:00:00"), ("NL", "A", 2026, 1, "2026-11-18 03:00:00"),  # NE incremental
+        ("NE", "B", 2025, 1, "2026-11-15 03:00:00"), ("NL", "B", 2025, 0, "2026-11-15 03:00:00"),  # NL parcial
+        ("NE", "C", 2024, 1, "2026-09-01 03:00:00"), ("NL", "C", 2024, 1, "2026-11-15 03:00:00"),  # NE velha
+    ])
+    c.execute("CREATE TABLE ne_siafe(numero,ug_emitente,exercicio)")
+    c.executemany("INSERT INTO ne_siafe VALUES (?,'A',2026)", [("2026NE00099",), ("2026NE01234",), ("2025NE09999",)])
+    c.commit()
+    c.close()
+    return p
+
+
+def test_fila_varios_falta_primeiro_depois_incremental_depois_velha(tmp_path):
+    f = W.fila_varios((2026, 2025, 2024), db=_db_varios(tmp_path), agora=datetime(2026, 11, 19, 10, 0))
+    assert [(x["ug"], x["tipo"], x["exercicio"], x["motivo"]) for x in f] == [
+        ("B", "NL", 2025, "parcial"), ("D", "NE", 2026, "nunca_lida"), ("D", "NL", 2026, "nunca_lida"),
+        ("A", "NE", 2026, "incremental"), ("C", "NE", 2024, "releitura_30d")]
+    inc = [x for x in f if x["motivo"] == "incremental"][0]
+    assert inc["a_partir"] == "2026NE01234"          # último do PRÓPRIO ano, não o RP de 2025
+
+
+def test_passada_para_no_login_e_no_siafe_ocupado():
+    assert W._parar({"ok": False, "etapa": "login", "erro": "mfa_sem_codigo"}, "").startswith("login falhou")
+    assert W._parar({"rc": 1}, "SIAFE ocupado: {...}") == "SIAFE ocupado por outra coleta"
+    assert W._parar({"ok": False, "etapa": "prazo"}, "") is None
+    assert W._parar({"ok": True, "ingeridas": 10}, "") is None
