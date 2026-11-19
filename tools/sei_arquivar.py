@@ -121,12 +121,16 @@ def _modalidade(tipos: set[str]) -> str:
 
 
 def arquivar(origem: Path, destino: Path, processo: str = "",
-             apagar_pdf: bool = False, ocr: bool = True) -> dict:
-    """Converte o diretório de íntegra em arquivo compacto. Idempotente."""
+             apagar_pdf: bool = False, ocr: bool = True, textos_soltos: bool = False) -> dict:
+    """Converte o diretório de íntegra em arquivo compacto. Idempotente.
+
+    `textos_soltos=True` (reparo dirigido): documento SEM PDF na origem entra pelo texto que ficou ao lado —
+    `NNN.txt` (nativo depurado, `tools/sei_depurar_pdfs.py`) ou `NNN.ocr.txt` (OCR da captura). É o que permite
+    rearquivar pasta depurada; sem a opção, a pasta depurada mantém o arquivo existente."""
     origem, destino = Path(origem), Path(destino)
     # PASTA DEPURADA (tools/sei_depurar_pdfs.py, 15/11/2026): os PDFs nativos viraram NNN.txt e saíram. Rearquivar
     # varreria só os PDFs que sobraram e gravaria um manifesto SEM os documentos nativos — perda silenciosa.
-    if (origem / "depurados.json").exists() and (destino / "manifest.json").exists():
+    if not textos_soltos and (origem / "depurados.json").exists() and (destino / "manifest.json").exists():
         print(f"  {origem.name}: depurada — arquivo existente mantido (não rearquivo)", flush=True)
         return json.loads((destino / "manifest.json").read_text(encoding="utf-8"))
     (destino / "texto").mkdir(parents=True, exist_ok=True)
@@ -253,6 +257,25 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         if apagar_pdf:
             pdf.unlink(missing_ok=True)
 
+    if textos_soltos:
+        tem = {d["i"] for d in docs_saida}
+        for i, titulo in sorted(titulos.items()):
+            if i in tem or i in alheios_i:
+                continue
+            for lado, por_ocr in ((origem / f"{i:03d}.txt", False), (origem / f"{i:03d}.ocr.txt", True)):
+                if not lado.is_file():
+                    continue
+                texto = lado.read_text(encoding="utf-8", errors="replace").strip()
+                fase, tipo = classificar(titulo)
+                tipos_vistos.add(tipo)
+                txt_rel = f"texto/{i:03d}_{_slug(titulo)}.txt"
+                (destino / txt_rel).write_text(f"[{titulo}] (fase: {fase} · tipo: {tipo})\n\n{texto}",
+                                               encoding="utf-8")
+                docs_saida.append({"i": i, "titulo": titulo, "fase": fase, "tipo": tipo, "texto": txt_rel,
+                                   "chars": len(texto), "ocr": por_ocr, "via_texto_solto": lado.name,
+                                   "fotos": sorted(f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))})
+                break
+
     # INDISPONÍVEL ≠ 0 no ARQUIVO: docs que existem na árvore mas NÃO foram capturados
     # (formato raro — ZIP de PDFs, .odt, etc.) entram MARCADOS, com o título, para o
     # auditor saber que existem e buscar à mão. Sem isso sumiam sem rastro do arquivo.
@@ -285,8 +308,11 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     if mdest_ant.exists():
         try:
             anterior = json.loads(mdest_ant.read_text(encoding="utf-8"))
-            cap_ant = sum(1 for d in (anterior.get("docs") or [])
-                          if isinstance(d, dict) and not d.get("nao_capturado"))
+            # DOCUMENTOS DISTINTOS, não entradas: o manifesto feito com o índice de 3 dígitos (até 18/11/2026) repetia o
+            # mesmo `i` até 11 vezes (`210108/000169/2023`: 2.770 entradas capturadas, 1.000 índices). Contando entradas,
+            # a guarda preservava justamente o arquivo errado contra a captura corrigida.
+            cap_ant = len({str(d.get("i")) for d in (anterior.get("docs") or [])
+                           if isinstance(d, dict) and not d.get("nao_capturado")})
             if cap_ant > cap_novos:
                 # TOCAR O MTIME AO PRESERVAR. Manter o antigo é a decisão certa, mas ela não
                 # mexia no manifesto — e `arquivar_pendentes` monta a fila por "cache mais novo
