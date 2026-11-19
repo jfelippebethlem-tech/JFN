@@ -46,10 +46,26 @@ def medir(casos: list[dict]) -> dict:
     return m
 
 
+# Regras que dizem se o conjunto MEDE (amostra, verdadeiros) ou se o portão pode julgar (travas). Falhar só nelas é
+# INCONCLUSIVO: o candidato segue candidato — falta de gabarito não refuta a lição (registro.julgado).
+NAO_MEDE = ("R1 amostra", "R2 mensurável", "R6 travas")
+
+
+def gabarito(casos: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(casos com rótulo da FONTE PRIMÁRIA, os demais). O portão julga só os primeiros: rótulo do Opus sobre o resumo
+    (nível 1) confirma 31% dos altos na fonte — medir contra ele é medir concordância com o Opus, não acerto.
+    Caso sem `nivel_rotulo` é de quem montou o conjunto à mão (testes) e conta como fonte primária."""
+    dentro = [c for c in casos if c.get("nivel_rotulo", config.NIVEL_FONTE) >= config.NIVEL_FONTE]
+    return dentro, [c for c in casos if c.get("nivel_rotulo", config.NIVEL_FONTE) < config.NIVEL_FONTE]
+
+
 def julgar(casos: list[dict], regras: dict | None = None) -> dict:
-    """{aprovado, regras: [{regra, ok, detalhe}], metricas}. Reprovar é o resultado esperado da maioria das propostas."""
+    """{aprovado, regras: [{regra, ok, detalhe}], metricas}. Reprovar é o resultado esperado da maioria das propostas.
+    Só os casos rotulados na fonte primária entram nas regras; os outros ficam nas métricas como `fora_do_gabarito`."""
     g = {**config.PORTAO, **(regras or {})}
+    casos, fora = gabarito(casos)
     m = medir(casos)
+    m["fora_do_gabarito"] = len(fora)
     fa_c, fa_d = m["falsos_altos_campeao"], m["falsos_altos_desafiante"]
     melhora = (fa_c - fa_d) / fa_c if fa_c else 0.0
     estaveis = 0
@@ -57,7 +73,8 @@ def julgar(casos: list[dict], regras: dict | None = None) -> dict:
         mm = medir([c for c in casos if _metade(c["numero_sei"]) == h])
         estaveis += int(mm["falsos_altos_desafiante"] < mm["falsos_altos_campeao"] and mm["perdidos"] == 0)
     r = [
-        ("R1 amostra", m["n"] >= g["min_casos"], f"{m['n']} casos (mínimo {g['min_casos']})"),
+        ("R1 amostra", m["n"] >= g["min_casos"], f"{m['n']} casos rotulados na fonte primária (mínimo {g['min_casos']})"
+         + (f"; {len(fora)} com rótulo do Opus sobre o resumo não contam" if fora else "")),
         ("R2 mensurável", m["altos_verdadeiros"] >= g["min_altos_verdadeiros"],
          f"{m['altos_verdadeiros']} riscos altos verdadeiros no conjunto (mínimo {g['min_altos_verdadeiros']})"),
         ("R3 sem regressão", m["perdidos"] <= g["regressao_maxima"] * max(1, m["altos_pegos_campeao"]),

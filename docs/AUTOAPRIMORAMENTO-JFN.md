@@ -201,12 +201,14 @@ Tudo em `data/autoaprimoramento/` (fora do git).
 
 | Regra | Exigência | Por quê |
 |---|---|---|
-| R1 amostra | ≥ 30 casos | Abaixo disso o McNemar não tem poder |
+| R1 amostra | ≥ 30 casos **rotulados na fonte primária** (nível 2) | Abaixo disso o McNemar não tem poder. Rótulo do Opus sobre o resumo não conta: confirma 31% dos altos na fonte (§6.2) — medir contra ele é medir concordância com o Opus (avaliação de 18/11 noite: 34 dos 40 casos da reexecução eram nível 1) |
 | R2 mensurável | ≥ 3 riscos altos verdadeiros no conjunto | Sem eles "não perdeu nenhum" não mede nada |
 | R3 sem regressão | 0 risco alto verdadeiro perdido | Falso negativo é o erro que a casa não aceita |
 | R4 melhora | Falsos altos −5% **e** McNemar exato p ≤ 0,05 | Melhora pequena e não significativa é ruído |
 | R5 estabilidade | Melhora sem perda nas duas metades | Não vale ganhar num subgrupo só |
 | R6 travas | KILL desligado | — |
+
+**Inconclusivo não é reprovado.** Falhar só em R1, R2 ou R6 (o conjunto não mede, ou o KILL está ligado) deixa a versão `candidato`, com o veredito gravado: falta de gabarito não refuta a lição, e reprovado não se repete. Perder alto verdadeiro (R3) reprova sempre.
 
 Controle positivo e negativo do portão estão em `tests/test_autoaprimoramento_ciclo.py` (derrubar 30 de 60 falsos
 passa; perder um verdadeiro, não mudar nada, melhorar 2 em 60, conjunto pequeno, conjunto sem verdadeiros e ruído
@@ -261,8 +263,7 @@ processo de continuação, início retroativo, status da OB, ISS retido, relató
 > preservados no ledger (`laudo_versao`, `nivel_prova = 2`, origem `agente:*`). A lista está em
 > `data/autoaprimoramento/relatorio.md` §6 e no sensor `autoaprimoramento:fonte_perdida`.
 
-A reaplicação **não foi feita**: são laudos de outra sessão, e reaplicar exige conferir que a captura do processo
-não mudou depois. É a primeira ação recomendada (§9).
+Os 51 foram reaplicados na mesma tarde (`lex_execucao.modelo` com "restaurado após sobrescrita do lote"); às 21h de 18/11 o monitor mede **0** processo com prova primária regravada.
 
 ### 6.2 Calibração
 
@@ -346,7 +347,6 @@ O ciclo leva cerca de 30 s e não chama LLM. Instalar é decisão do dono.
 
 | Item | Por quê não agora |
 |---|---|
-| Reaplicar os 51 laudos de fonte primária regravados | São de outra sessão; exige conferir a captura de cada processo |
 | Reexecução por prompt das lições candidatas (até 40 casos por candidato) | Chama a cascata de volume; o dono decide o teto antes (regra de custo) |
 | Laudos em sombra em produção (`laudo_sombra`) | Só faz sentido com um desafiante aprovado; a tabela e a trava de 50 existem |
 | Detector de documento reaproveitado (hash do corpo entre processos do mesmo credor) e "ISS da NF × OB" | Detectores novos, com controle positivo e negativo próprios; o primeiro encosta na frente de similaridade por GPU aberta no quadro |

@@ -122,7 +122,7 @@ def test_filtro_so_derruba_laudo_cujos_indicios_sao_todos_armadilha():
     rot = [{"numero_sei": "a", "nota": 8, "alto_verificado": 0, "indicios": ["ausência de Ordem Bancária"]},
            {"numero_sei": "b", "nota": 8, "alto_verificado": 1, "indicios": None}]            # sem texto: fora
     assert reexecucao.por_filtros(rot, {"filtros": []}, {"filtros": f}) == [
-        {"numero_sei": "a", "real": 0, "campeao": 1, "desafiante": 0}]
+        {"numero_sei": "a", "real": 0, "nivel_rotulo": config.NIVEL_FONTE, "campeao": 1, "desafiante": 0}]
 
 
 def _compliance(tmp_path, linhas, obs=()):
@@ -367,3 +367,52 @@ def test_ciclo_real_exige_a_chave_e_o_ensaio_nao_toca_o_ledger(auto, tmp_path, m
     monkeypatch.setenv("JFN_AUTOAPRIMORAMENTO", "1")
     assert orquestrador.ciclo(dry_run=False, fontes=fontes, n_fila=3)["dry_run"] is False
     assert auto.execute("SELECT COUNT(*) FROM laudo_versao").fetchone()[0] == 4
+
+
+# ── Avaliação de 18/11/2026 (noite): o gabarito do portão é a FONTE PRIMÁRIA, e amostra que não mede não refuta ──
+# Medido no ledger real: dos 40 casos que a reexecução percorre na validação, 34 tinham rótulo do Opus SOBRE O RESUMO
+# (nível 1, que a própria conferência mostrou confirmar 31% dos altos) e só 6 da fonte primária. O portão "aprovava
+# contra laudos conferidos na fonte" (docs §1) medindo, de fato, a concordância com o Opus.
+
+def _nivel(casos, nivel_falsos, nivel_reais=config.NIVEL_FONTE):
+    return [{**c, "nivel_rotulo": nivel_reais if c["real"] else nivel_falsos} for c in casos]
+
+
+def test_portao_so_julga_com_rotulo_da_fonte_primaria(auto):
+    v = portao.julgar(_nivel(_casos(60, 30), config.NIVEL_RESUMO))       # 60 falsos rotulados pelo Opus-resumo
+    falhas = [r["regra"] for r in v["regras"] if not r["ok"]]
+    assert not v["aprovado"] and "R1 amostra" in falhas
+    assert v["metricas"]["n"] == 6 and v["metricas"]["fora_do_gabarito"] == 60
+    # controle positivo: os mesmos casos, todos rotulados na fonte primária, passam
+    assert portao.julgar(_nivel(_casos(60, 30), config.NIVEL_FONTE))["aprovado"]
+
+
+def test_inconclusivo_nao_reprova_e_regressao_reprova(auto):
+    pequeno = registro.registrar(auto, {"licoes": ["ocr_digito"]}, "t")
+    assert registro.julgado(auto, pequeno, portao.julgar(_casos(10, 8))) == "candidato"          # R1: não mede
+    assert registro.ler(auto, pequeno)["status"] == "candidato"
+    assert "inconclusivo" in registro.ler(auto, pequeno)["motivo"]
+    sem_real = registro.registrar(auto, {"licoes": ["data_futura"]}, "t")
+    assert registro.julgado(auto, sem_real, portao.julgar(_casos(60, 30, n_reais=1))) == "candidato"   # R2: não mede
+    # controle negativo: perder um alto verdadeiro reprova mesmo com amostra pequena — é evidência contra a lição
+    perde = registro.registrar(auto, {"licoes": ["licenca_anual"]}, "t")
+    assert registro.julgado(auto, perde, portao.julgar(_casos(10, 8, perde=1))) == "reprovado"
+
+
+def test_ordem_da_reexecucao_gasta_o_teto_primeiro_no_gabarito_da_fonte():
+    rot = [{"numero_sei": f"SEI-{i:06d}/1/2025", "alto_verificado": int(i >= 67),
+            "nivel_rotulo": config.NIVEL_FONTE if (i >= 60) else config.NIVEL_RESUMO} for i in range(71)]
+    alvo = reexecucao.ordem_reexecucao(rot)[:40]
+    assert sum(r["nivel_rotulo"] == config.NIVEL_FONTE for r in alvo) == 11 and sum(r["alto_verificado"] for r in alvo) == 4
+    assert reexecucao.por_filtros([{"numero_sei": "a", "nota": 8, "alto_verificado": 0, "indicios": ["x"],
+                                    "nivel_rotulo": config.NIVEL_RESUMO}], {}, {})[0]["nivel_rotulo"] == config.NIVEL_RESUMO
+
+
+def test_sensor_ledger_parado_manda_rodar_o_ciclo_real_nao_o_ensaio(auto, tmp_path):
+    from tools import automelhoria_geral as A
+    db = _compliance(tmp_path, [("SEI-100003/000001/2025", 2, FONTE, [])])
+    ledger.registrar_versao(auto, "SEI-100009/000001/2025", {"nota_risco": 2}, "gemini:x", "t")
+    auto.commit()
+    p = [x for x in A.sensor_autoaprimoramento(config.dados(), db) if x["assinatura"] == "autoaprimoramento:ledger_parado"][0]
+    # o --dry-run trabalha numa CÓPIA (dryrun/auto.db): rodá-lo nunca cura o alerta
+    assert "--dry-run" not in p["acao_humana"] and "JFN_AUTOAPRIMORAMENTO=1" in p["acao_humana"]

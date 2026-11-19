@@ -468,7 +468,9 @@ def sensor_autoaprimoramento(pasta: Path | None = None, db: Path | None = None, 
     if novos:
         out.append(_p("autoaprimoramento", "ledger_parado",
                       f"{novos} conferência(s) na fonte primária fora do ledger (último registro {ultimo})",
-                      acao_humana="rodar `python -m compliance_agent.autoaprimoramento ciclo --dry-run` e ler o relatório"))
+                      acao_humana="rodar o ciclo REAL (o ensaio grava numa cópia e não cura este alerta): "
+                                  "`JFN_AUTOAPRIMORAMENTO=1 python -m compliance_agent.autoaprimoramento ciclo` "
+                                  "(sem LLM, ~30 s) e ler data/autoaprimoramento/relatorio.md"))
     return out
 
 

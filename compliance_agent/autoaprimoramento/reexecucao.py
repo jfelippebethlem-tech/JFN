@@ -28,8 +28,12 @@ def alto_com_filtros(nota: int | None, indicios: list[str] | None, filtros: list
     return int(not all(armadilhas.do_indicio(i, tuple(filtros)) for i in indicios))
 
 
+def _nivel(r: dict) -> int:
+    return r.get("nivel_rotulo", config.NIVEL_FONTE)
+
+
 def por_filtros(rotulos: list[dict], campeao: dict, desafiante: dict) -> list[dict]:
-    return [{"numero_sei": r["numero_sei"], "real": int(bool(r["alto_verificado"])),
+    return [{"numero_sei": r["numero_sei"], "real": int(bool(r["alto_verificado"])), "nivel_rotulo": _nivel(r),
              "campeao": alto_com_filtros(r["nota"], r["indicios"], campeao.get("filtros") or []),
              "desafiante": alto_com_filtros(r["nota"], r["indicios"], desafiante.get("filtros") or [])}
             for r in rotulos if r.get("indicios") is not None]
@@ -37,10 +41,11 @@ def por_filtros(rotulos: list[dict], campeao: dict, desafiante: dict) -> list[di
 
 def ordem_reexecucao(rotulos: list[dict]) -> list[dict]:
     """Ordem FIXA em que a reexecução percorre o conjunto até o teto de casos: os riscos altos verdadeiros primeiro
-    (sem eles a R2 e a R3 do portão não medem nada) e o resto pelo hash do número. O corte por ordem alfabética
+    (sem eles a R2 e a R3 do portão não medem nada), depois os rotulados na FONTE PRIMÁRIA (o único gabarito que o
+    portão julga — portao.gabarito) e o resto pelo hash do número. O corte por ordem alfabética
     (`rotulos[:40]`) pegava os primeiros órgãos e só 2 dos 4 altos verdadeiros da validação de 18/11/2026 — a R2
     reprovava qualquer lição antes de olhar o efeito dela. A ordem não depende do que campeão ou desafiante dizem."""
-    return sorted(rotulos, key=lambda r: (not r["alto_verificado"],
+    return sorted(rotulos, key=lambda r: (not r["alto_verificado"], _nivel(r) < config.NIVEL_FONTE,
                                           hashlib.sha1(("reexec:" + r["numero_sei"]).encode()).hexdigest()))
 
 
@@ -102,7 +107,7 @@ def por_prompt_pareado(rotulos: list[dict], campeao: dict, desafiantes: dict[str
                 nota_d, ind_d, motor_d = rodar(desafiantes[k], ns, f, obs)
                 if nota_d is None:
                     continue
-                out[k].append({"numero_sei": ns, "real": int(bool(r["alto_verificado"])),
+                out[k].append({"numero_sei": ns, "real": int(bool(r["alto_verificado"])), "nivel_rotulo": _nivel(r),
                                "campeao": alto_com_filtros(nota_c, ind_c, campeao.get("filtros") or []),
                                "desafiante": alto_com_filtros(nota_d, ind_d, desafiantes[k].get("filtros") or []),
                                "nota_campeao": nota_c, "nota_desafiante": nota_d, "nota_gravada": r.get("nota"),

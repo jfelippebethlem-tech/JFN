@@ -111,9 +111,20 @@ def mover(con: sqlite3.Connection, chave: str, para: str, motivo: str, quem: str
 
 
 def julgado(con: sqlite3.Connection, chave: str, veredito: dict) -> str:
-    """Aplica o veredito do PORTÃO a um candidato: aprovado → sombra; senão → reprovado. Devolve o novo status."""
-    para = "sombra" if veredito.get("aprovado") else "reprovado"
+    """Aplica o veredito do PORTÃO a um candidato: aprovado → sombra; reprovado → reprovado (não se repete). Falhar
+    SÓ nas regras que dizem se o conjunto mede (portao.NAO_MEDE: amostra, verdadeiros, travas) é INCONCLUSIVO: segue
+    candidato, com o veredito gravado — conjunto que não mede não refuta a lição. Perder alto verdadeiro (R3) reprova
+    sempre. Devolve o status."""
+    from .portao import NAO_MEDE
     falhas = "; ".join(f"{r['regra']}: {r['detalhe']}" for r in veredito["regras"] if not r["ok"])
+    if not veredito.get("aprovado") and all(r["ok"] or r["regra"] in NAO_MEDE for r in veredito["regras"]):
+        motivo = f"inconclusivo no portão (conjunto não mede) — {falhas}"
+        con.execute("UPDATE versao SET motivo=?, validacao=? WHERE chave=? AND status='candidato'",
+                    (motivo[:400], json.dumps(veredito, ensure_ascii=False), chave))
+        _evento(con, chave, "candidato", "candidato", motivo, "portao")
+        con.commit()
+        return "candidato"
+    para = "sombra" if veredito.get("aprovado") else "reprovado"
     mover(con, chave, para, "aprovado no portão — entra em sombra" if para == "sombra" else f"reprovado no portão — {falhas}",
           "portao", veredito)
     return para
