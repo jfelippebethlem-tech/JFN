@@ -103,7 +103,8 @@ PASSO_REGRA = {
     "D01": "ler os processos de dispensa/inexigibilidade das unidades que subiram",
     "D02": "verificar licitação em curso e há quanto tempo",
     "D03": "conferir QSA, sede e capacidade operacional antes de concluir",
-    "D04": "requerer declaração de porte e ata dos certames",
+    "D04": "nos maiores casos, requerer à secretaria ordenadora edital e ata do certame (benefício de ME/EPP usado?) e a "
+           "declaração do art. 4º, §2º, da Lei 14.133/2021",
     "D05": "identificar o instrumento (licitação, dispensa, TAC, permissão)",
     "D06": "conferir o percentual sobre o valor inicial atualizado e a natureza (reforma/serviço)",
     "D07": "ler as séries rentes ao teto de dispensa",
@@ -345,8 +346,128 @@ def contrato_da_gestao(c, sei, processo, data_registro, objeto="", status="") ->
 
 # ── regras ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
+def _pref(t) -> set:
+    """Prefixos de 6 letras das palavras significativas: 'TRANSPORTE' casa com 'TRANSPORTES' (nome da UG no SIAFE ×
+    unidade no espelho do TCE-RJ)."""
+    return {w[:6] for w in _pal(t)}
+
+
+def _espelhos_instrumento(c):
+    """Índices (uma vez por Ctx) do espelho de contratos do TCE-RJ por CNPJ e das compras diretas por processo e por
+    nome do fornecedor (o espelho de compras diretas não tem CNPJ). Fonte que falha → None (INDISPONÍVEL ≠ zero)."""
+    if hasattr(c, "_esp_instr"):
+        return c._esp_instr
+    from compliance_agent.pericia_contabil import chave_sei
+    ct, cd_sei, cd_nome = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list)
+    try:
+        cols = {r[1] for r in c.W.execute("PRAGMA m.table_info(contratos_tcerj)")}
+        if not cols:
+            raise sqlite3.OperationalError("contratos_tcerj ausente")
+        sel = ", ".join(x if x in cols else f"NULL AS {x}" for x in (
+            "processo", "sei_norm", "data_contratacao", "valor_contrato", "unidade", "objeto", "status",
+            "criterio_julgamento", "cnpj"))
+        for proc, sei, dreg, val, un, obj, st, crit, cn in c.W.execute(f"SELECT {sel} FROM m.contratos_tcerj"):
+            ct[dig(cn)].append(dict(processo=proc, sei=sei, chave=chave_sei(sei) or chave_sei(proc), data_registro=dreg,
+                                    valor=val, unidade=(un or "").strip(), objeto=obj or "", status=st or "",
+                                    criterio=crit))
+    except sqlite3.OperationalError as exc:
+        logger.warning("contratos_tcerj indisponível para o instrumento do D05: %s", exc)
+        ct = None
+    try:
+        cols = {r[1] for r in c.W.execute("PRAGMA m.table_info(compras_diretas_tcerj)")}
+        if not cols:
+            raise sqlite3.OperationalError("compras_diretas_tcerj ausente")
+        sel = ", ".join(x if x in cols else f"NULL AS {x}" for x in (
+            "processo", "sei_norm", "afastamento", "enquadramento_legal", "unidade", "fornecedor", "valor",
+            "ano_processo"))
+        for proc, sei, af, enq, un, forn, val, ano in c.W.execute(f"SELECT {sel} FROM m.compras_diretas_tcerj"):
+            r = dict(processo=proc, chave=chave_sei(sei) or chave_sei(proc), afastamento=af, enquadramento=enq,
+                     unidade=(un or "").strip(), fornecedor=forn or "", valor=val, ano=ano)
+            if r["chave"]:
+                cd_sei[r["chave"]].append(r)
+            cd_nome[norm_nome(forn)].append(r)
+    except sqlite3.OperationalError as exc:
+        logger.warning("compras_diretas_tcerj indisponível para o instrumento do D05: %s", exc)
+        cd_sei = cd_nome = None
+    c._esp_instr = (ct, cd_sei, cd_nome)
+    return c._esp_instr
+
+
+def instrumento_d05(c, cnpj: str, credor: str, nome_ug: str, processos_ob, fim: str) -> dict:
+    """Procura o instrumento que ampara a concentração: (1) contrato do espelho do TCE-RJ ou compra direta no MESMO
+    processo SEI das OB; senão (2) contrato do mesmo CNPJ na mesma unidade, ou compra direta do mesmo fornecedor (por
+    nome) na mesma unidade. Só ato até `fim`, não cancelado. Devolve {situacao, via, processo, modalidade, valor, data,
+    ...}; situacao ∈ direta | contrato | nao_localizado | indisponivel. 'contrato' = está no espelho de contratos sem
+    registro de compra direta — o espelho não traz a modalidade (licitação provável, não afirmada)."""
+    from compliance_agent.pericia_contabil import chave_processo_ob
+    ct, cd_sei, cd_nome = _espelhos_instrumento(c)
+    if ct is None and cd_sei is None:
+        return dict(situacao="indisponivel", motivo="espelhos de contratos e compras diretas do TCE-RJ indisponíveis")
+    chaves = {k for k in (chave_processo_ob(p) for p in processos_ob or ()) if k}
+    pu, pc = _pref(nome_ug), _pal(credor)
+    contratos = []
+    for x in (ct or {}).get(dig(cnpj), ()):
+        a = ato_do_contrato(c, x["sei"], x["processo"], x["data_registro"], x["objeto"], x["status"])
+        if a["cancelado"] or not a["data"] or a["data"] > fim:
+            continue
+        via = ("processo das OB" if x["chave"] in chaves else
+               "CNPJ e unidade" if (_pref(x["unidade"]) & pu) else None)
+        if via:
+            contratos.append(dict(x, data=a["data"], fonte_data=a["fonte"], nao_contrato=a["nao_contrato"], via=via))
+    diretas = []
+    for k in chaves:
+        diretas += [dict(r, via="processo das OB") for r in (cd_sei or {}).get(k, ())
+                    if not r["fornecedor"] or (_pal(r["fornecedor"]) & pc)
+                    or norm_nome(r["fornecedor"]) == norm_nome(credor)]
+    if not diretas:
+        diretas = [dict(r, via="fornecedor (nome) e unidade") for r in (cd_nome or {}).get(norm_nome(credor), ())
+                   if _pref(r["unidade"]) & pu]
+    chaves_diretas = set((cd_sei or {}).keys())
+    ordem = {"processo das OB": 0}
+    if contratos:
+        # o mais recente (e maior) primeiro; depois, o do processo das OB e o que não é ata/empenho na frente
+        contratos.sort(key=lambda t: (t["data"], t["valor"] or 0), reverse=True)
+        contratos.sort(key=lambda t: (ordem.get(t["via"], 1), t["nao_contrato"]))
+        x = contratos[0]
+        direta = list((cd_sei or {}).get(x["chave"], ())) if x["chave"] in chaves_diretas else []
+        mod = (f"{direta[0]['afastamento']} ({direta[0]['enquadramento']})" if direta else
+               "não consta no espelho de contratos" + (f"; critério de julgamento: {x['criterio']}" if x["criterio"] else ""))
+        proc = str(x["processo"] or x["sei"] or "")
+        if len(proc) > 60:     # o espelho às vezes junta vários processos num campo só
+            proc = f"{proc.split(',')[0].strip()} (+{proc.count(',')} no mesmo registro)"
+        return dict(situacao="direta" if direta else "contrato", via=x["via"], processo=proc, modalidade=mod,
+                    valor=x["valor"], data=x["data"], fonte_data=x["fonte_data"], unidade=x["unidade"],
+                    objeto=(x["objeto"] or "")[:160], ata_ou_empenho=x["nao_contrato"], n_contratos=len(contratos),
+                    n_compras_diretas=len(diretas))
+    if diretas:
+        r = min(diretas, key=lambda t: (ordem.get(t["via"], 1), -(t["valor"] or 0)))
+        return dict(situacao="direta", via=r["via"], processo=r["processo"],
+                    modalidade=f"{r['afastamento']} ({r['enquadramento']})", valor=r["valor"],
+                    data=f"processo de {r['ano']}" if r["ano"] else None, unidade=r["unidade"], n_contratos=0,
+                    n_compras_diretas=len(diretas))
+    outros = len((ct or {}).get(dig(cnpj), ()))
+    return dict(situacao="nao_localizado", motivo="não localizado no espelho de contratos nem no de compras diretas do "
+                                                  "TCE-RJ para esta unidade (não é zero: o espelho pode não ter o registro)"
+                                                  + (f"; o CNPJ tem {outros} contrato(s) no espelho em outras unidades"
+                                                     if outros else ""))
+
+
+def descrever_instrumento(i: dict | None) -> str:
+    i = i or {}
+    s = i.get("situacao")
+    if s in ("indisponivel", "nao_localizado") or not s:
+        return "instrumento: " + (i.get("motivo") or "não pesquisado")
+    rot = "compra direta" if s == "direta" else "contrato no espelho do TCE-RJ sem registro de compra direta"
+    return (f"instrumento localizado ({i.get('via')}): {rot} — processo {i.get('processo')}, modalidade/enquadramento: "
+            f"{i.get('modalidade')}, valor {brl(i.get('valor')) if i.get('valor') else 'não informado no espelho'}, "
+            f"{i.get('data') or 'data não informada'}" + (" (ata de registro de preços/empenho)" if i.get("ata_ou_empenho")
+                                                          else ""))
+
+
 def d05(c: Ctx) -> dict:
-    def agreg(d0, d1):
+    procs: dict = collections.defaultdict(set)
+
+    def agreg(d0, d1, guardar=False):
         tot, por, nome = collections.Counter(), collections.Counter(), {}
         for ug, cr, nm, v, dt, pr in c.obs(d0, d1):
             if not c.fornecedor(cr, nm) or not c.executivo(ug):
@@ -354,8 +475,10 @@ def d05(c: Ctx) -> dict:
             tot[ug] += v or 0
             por[(ug, dig(cr))] += v or 0
             nome[dig(cr)] = nm
+            if guardar and pr:
+                procs[(ug, dig(cr))].add(pr)
         return tot, por, nome
-    tg, pg, ng = agreg(G0, c.G1)
+    tg, pg, ng = agreg(G0, c.G1, guardar=True)
     tb, pb, _ = agreg(c.B0, c.B1)
     casos = []
     for (ug, cr), v in pg.items():
@@ -370,13 +493,33 @@ def d05(c: Ctx) -> dict:
                           pago_2025=round(pb.get((ug, cr), 0), 2),
                           tipo="NOVA" if (shb is None or shb < 0.10) else ("SUBIU" if sh - shb >= 0.15 else "PERSISTENTE")))
     casos.sort(key=lambda x: -x["pago_ob"])
+    # SUB-03 (juiz 15/11/2026): a explicação inocente (contrato único, concessão, licitação ampla) era só nomeada.
+    # Agora cada caso traz o instrumento procurado nos espelhos do TCE-RJ — ou "não localizado" (não é zero).
+    for x in casos:
+        x["instrumento"] = instrumento_d05(c, x["cnpj"], x["credor"], x["orgao"], procs.get((x["ug"], x["cnpj"])), c.G1)
     soma = round(sum(x["pago_ob"] for x in casos), 2)
+    sit = collections.Counter(x["instrumento"]["situacao"] for x in casos)
+    n_loc = sit["direta"] + sit["contrato"]
+    instr = (f"instrumento localizado no espelho do TCE-RJ em {n_loc} de {len(casos)} ({sit['contrato']} contrato sem "
+             f"registro de compra direta — licitação provável, modalidade não consta do espelho; {sit['direta']} compra "
+             f"direta); {sit['nao_localizado']} não localizado(s) no espelho (não é zero)"
+             + (f"; {sit['indisponivel']} com espelho INDISPONÍVEL" if sit["indisponivel"] else ""))
     return dict(criterio=f"credor PJ fornecedor com >=30% do pago (OB contabilizada) da UG em {G0}→{c.G1}; UG>=R$10 mi; "
-                         f"credor>=R$5 mi; comparado a {c.B0}→{c.B1}",
+                         f"credor>=R$5 mi; comparado a {c.B0}→{c.B1}. Instrumento: contrato (espelho TCE-RJ) ou compra "
+                         "direta no mesmo processo SEI das OB, senão do mesmo CNPJ/fornecedor na mesma unidade",
                 n=len(casos), n_nova=sum(x["tipo"] == "NOVA" for x in casos),
                 n_subiu=sum(x["tipo"] == "SUBIU" for x in casos), soma=soma, casos=casos,
+                n_instrumento_localizado=n_loc, n_instrumento_contrato=sit["contrato"],
+                n_instrumento_direta=sit["direta"], n_instrumento_nao_localizado=sit["nao_localizado"],
+                n_instrumento_indisponivel=sit["indisponivel"],
+                explicacao_inocente=("concentração não é irregularidade por si; TESTADO por código: " + instr + ". "
+                                     "Concessão/permissão ou programa com contrato único explica o caso quando o "
+                                     "instrumento localizado é esse; NÃO TESTADO: amplitude da competição (nº de "
+                                     "propostas — o espelho não traz)"),
                 resumo=f"Concentração ≥30% por órgão: {len(casos)} ({sum(x['tipo'] == 'NOVA' for x in casos)} novas, "
-                       f"{sum(x['tipo'] == 'SUBIU' for x in casos)} em alta)", valor_ob=soma)
+                       f"{sum(x['tipo'] == 'SUBIU' for x in casos)} em alta) — {brl(soma)} pagos em OB contabilizada a "
+                       f"esses credores de {G0} a {c.G1} (valor sob concentração, não irregularidade); {instr}",
+                valor_ob=soma)
 
 
 _EMAIL_GENERICO = re.compile(r"@(gmail|hotmail|outlook|yahoo|uol|bol|terra|ig|live|icloud|globo|msn)\.", re.I)
@@ -503,11 +646,27 @@ def d03(c: Ctx) -> dict:
                 resumo=f"Empresa recém-aberta ou capital incompatível: {len(casos)} de {len(prim)} estreantes")
 
 
+# LC 123/2006, art. 3º, §9º-A: excesso de receita de até 20% sobre o teto só produz efeito (desenquadramento) no
+# ano-calendário SEGUINTE; acima disso, com efeito no próprio ano. O caso do D04 é quem passa de (1 + 20%) × teto.
+TOLERANCIA_PORTE = 0.20
+
+
 def d04(c: Ctx) -> dict:
+    """ME/EPP no cadastro da Receita que recebeu do Estado, em OB contabilizada do ANO-CALENDÁRIO, mais que o teto anual
+    do porte (LC 123/2006, art. 3º — `TETO_ANUAL_POR_PORTE`). O pago pelo Estado é PISO da receita bruta da empresa.
+
+    Juiz de qualidade 15/11/2026 (SUB-02/SUB-03): antes, o valor exibido era OB da gestão contra teto do ano, somado a
+    valor global de contrato (plurianual) contra teto anual, e a tolerância de 20% não era testada. Agora: só OB do
+    ano-calendário contra o teto; caso = acima de 1,2× o teto (o resto vai contado à parte); contrato é contexto."""
     porte = {b: (p, cap) for b, p, cap in c.W.execute("SELECT cnpj_basico, porte_txt, capital_social FROM m.empresas_cadastro")}
-    a26 = collections.defaultdict(lambda: [0.0, 0.0, "", collections.Counter()])
+    try:
+        fonte_mes = c.W.execute("SELECT max(fonte_mes) FROM m.empresas_cadastro").fetchone()[0]
+    except sqlite3.OperationalError:
+        fonte_mes = None
+    a26 = collections.defaultdict(lambda: [0.0, 0.0, "", collections.Counter(), 0, None, None])
     ano = c.GFIM[:4]
-    for ug, cr, nm, v, dt, pr in c.obs(f"{ano}-01-01", c.GFIM):
+    ini_ano = f"{ano}-01-01"
+    for ug, cr, nm, v, dt, pr in c.obs(ini_ano, c.GFIM):
         d = dig(cr)
         if len(d) != 14:
             continue
@@ -517,17 +676,26 @@ def d04(c: Ctx) -> dict:
         a = a26[d[:8]]
         a[0] += v or 0
         a[2] = nm
+        a[3][ug] += v or 0
+        a[4] += 1
+        a[5] = min(a[5] or dt, dt)
+        a[6] = max(a[6] or dt, dt)
         if dt >= G0:
             a[1] += v or 0
-            a[3][ug] += v or 0
-    casos = []
-    for b, (tot, g, nm, ugs) in a26.items():
+    casos, tolerancia = [], []
+    for b, (tot, g, nm, ugs, n_ob, p_ob, u_ob) in a26.items():
         t = TETO_PORTE[porte[b][0]]
-        if tot > t and g > 0:
-            ug = ugs.most_common(1)[0][0] if ugs else None
-            casos.append(dict(cnpj_basico=b, credor=nm, porte=porte[b][0], teto=t, pago_ano=round(tot, 2),
-                              pago_gestao=round(g, 2), razao_teto=round(tot / t, 1), ug=ug, orgao=c.ugn(ug) if ug else None))
+        if tot <= t or g <= 0:
+            continue
+        ug = ugs.most_common(1)[0][0] if ugs else None
+        x = dict(cnpj_basico=b, credor=nm, porte=porte[b][0], teto=t, limite_tolerancia=round(t * (1 + TOLERANCIA_PORTE), 2),
+                 ano=int(ano), pago_ano=round(tot, 2), n_ob_ano=n_ob, primeira_ob=p_ob, ultima_ob=u_ob,
+                 pago_gestao=round(g, 2), razao_teto=round(tot / t, 1), ug=ug, orgao=c.ugn(ug) if ug else None)
+        (casos if tot > t * (1 + TOLERANCIA_PORTE) else tolerancia).append(x)
     casos.sort(key=lambda x: -x["pago_ano"])
+    tolerancia.sort(key=lambda x: -x["pago_ano"])
+    # Contratos: CONTEXTO, não caso. Valor global de contrato (muitas vezes plurianual) não é receita do ano — não se
+    # compara com o teto anual como se fosse, e nunca se soma à OB.
     ct, vistos = [], set()
     for proc, data, uni, val, cnpj, forn, sei, obj, st in c.W.execute(
             "SELECT processo, data_contratacao, unidade, valor_contrato, cnpj, fornecedor, sei_norm, objeto, status "
@@ -543,14 +711,40 @@ def d04(c: Ctx) -> dict:
         ct.append(dict(processo=proc, data=ato["data"], fonte_data=ato["fonte"], unidade=uni, valor_contrato=val, cnpj=d,
                        fornecedor=forn, porte=p[0], razao_teto=round(val / TETO_PORTE[p[0]], 1)))
     ct.sort(key=lambda x: -x["razao_teto"])
-    sg = round(sum(x["pago_gestao"] for x in casos), 2)
-    return dict(criterio=f"porte ME/EPP no cadastro RFB; OB contabilizada {ano} (ano-calendário) > teto LC 123 art.3º; recebeu "
-                         "algo na gestão. Contratos: espelho TCE-RJ assinados na gestão (data do DOERJ quando houver; sem ata de registro "
-                         "de preços, pedido de empenho, cancelado nem registro repetido) e valor > teto",
-                n=len(casos), soma_ano=round(sum(x["pago_ano"] for x in casos), 2), soma_gestao=sg, n_contratos=len(ct),
-                soma_contratos=round(sum(x["valor_contrato"] for x in ct), 2), casos=casos, contratos=ct, valor_ob=sg,
-                resumo=f"ME/EPP acima do teto: {len(casos)} credores ({brl(sg)} em OB na gestão) e {len(ct)} contratos "
-                       f"({brl(round(sum(x['valor_contrato'] for x in ct), 2))})")
+    soma_ano = round(sum(x["pago_ano"] for x in casos), 2)
+    soma_tol = round(sum(x["pago_ano"] for x in tolerancia), 2)
+    n_me = sum(x["porte"] == "Microempresa" for x in casos)
+    fim_br = f"{c.GFIM[8:10]}/{c.GFIM[5:7]}/{c.GFIM[:4]}"
+    tetos = (f"teto anual ME {brl(TETO_PORTE['Microempresa'])}, EPP {brl(TETO_PORTE['Empresa de Pequeno Porte'])} "
+             "(LC 123/2006, art. 3º, I e II)")
+    inocente = (
+        f"TESTADO por código: tolerância de 20% (LC 123/2006, art. 3º, §9º-A — excesso de até 20% só desenquadra no ano "
+        f"seguinte): {len(tolerancia)} credores entre 1,0× e 1,2× o teto ({brl(soma_tol)} em OB de {ano}) ficaram FORA "
+        f"dos casos. NÃO TESTADO (sem fonte no espelho): (i) porte declaratório ou desatualizado no CNPJ — cadastro da "
+        f"Receita {('de ' + str(fonte_mes)) if fonte_mes else 'sem data de referência'}; a empresa pode ter comunicado o "
+        "desenquadramento depois; (ii) fruição do benefício de ME/EPP no certame (exclusividade, cota reservada, empate "
+        "ficto — LC 123, arts. 44 e 48) — sem edital/ata no espelho; passar do teto sozinho não é ilegal, leva ao "
+        "desenquadramento; o indício só se forma se o benefício foi usado com o teto já ultrapassado; (iii) porte ≠ opção "
+        "pelo Simples Nacional. Contratos: valor global (possivelmente plurianual) não é receita do ano — contexto, não "
+        "somado à OB")
+    return dict(criterio=f"porte ME/EPP no cadastro RFB; OB contabilizada de 01/01/{ano} a {fim_br} (ano-calendário, todo "
+                         f"o Estado) > (1 + 20%) × teto anual do porte ({tetos}); recebeu algo na gestão. Entre 1,0× e "
+                         "1,2× o teto: contados à parte (tolerância do art. 3º, §9º-A). Contratos assinados na gestão "
+                         "com valor GLOBAL acima do teto: só contexto (valor global ≠ receita anual)",
+                n=len(casos), n_me=n_me, n_epp=len(casos) - n_me, ano=int(ano), dados_ate=c.GFIM,
+                teto_me=TETO_PORTE["Microempresa"], teto_epp=TETO_PORTE["Empresa de Pequeno Porte"],
+                tolerancia=TOLERANCIA_PORTE, soma_ano=soma_ano,
+                soma_gestao=round(sum(x["pago_gestao"] for x in casos), 2),
+                n_tolerancia=len(tolerancia), soma_tolerancia=soma_tol, tolerancia_casos=tolerancia[:40],
+                n_contratos=len(ct), soma_contratos=round(sum(x["valor_contrato"] for x in ct), 2),
+                contratos_natureza="contexto: valor global do contrato (possivelmente plurianual) não é receita anual; "
+                                   "não comparado como receita nem somado à OB",
+                casos=casos, contratos=ct, valor_ob=soma_ano, cadastro_receita=fonte_mes, explicacao_inocente=inocente,
+                resumo=f"Porte ME/EPP na Receita e OB paga pelo Estado em {ano} (01/01 a {fim_br}) acima de 1,2× o teto "
+                       f"anual ({tetos}): {len(casos)} credores ({n_me} ME, {len(casos) - n_me} EPP), {brl(soma_ano)} em "
+                       f"OB no ano — total pago, não valor irregular; à parte, {len(tolerancia)} dentro da tolerância de "
+                       f"20% ({brl(soma_tol)}). Contexto, não somado: {len(ct)} contratos assinados na gestão com valor "
+                       "global acima do teto (valor global não é receita anual)")
 
 
 def d01_02_17(c: Ctx) -> dict:
@@ -842,6 +1036,122 @@ def contratos_na_vigencia(c, cnpj: str, inicio: str, fim: str | None) -> list[st
     return sorted(out)
 
 
+_RE_COMPETENCIA = re.compile(r"^(?:\d{1,2}/)?(\d{1,2})/(\d{4})$")
+
+
+def _competencia(s) -> tuple[int, int] | None:
+    """'MM/AAAA' (ou 'DD/MM/AAAA', forma antiga do SIAFE) → (ano, mês); outra forma → None."""
+    m = _RE_COMPETENCIA.match(str(s or "").strip())
+    return (int(m.group(2)), int(m.group(1))) if m and 1 <= int(m.group(1)) <= 12 else None
+
+
+def _obs_pagas_credor(c, cnpj: str, d0: str, d1: str) -> list[tuple] | None:
+    """OB PAGAS (`cruzamentos_intel._ob_paga`: Contabilizada, não devolvida, não complementar, não reemitida, com nº)
+    do credor entre d0 e d1 (ISO), direto do espelho do SIAFE — com a COMPETÊNCIA. None = coluna/tabela ausente."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    try:
+        cols = {r[1] for r in c.W.execute("PRAGMA m.table_info(ob_orcamentaria_siafe)")}
+        if "competencia" not in cols:
+            return None
+        onde = _ob_paga(c.W, "o")
+        if "ob_reemitida" not in onde and c.W.execute(
+                "SELECT 1 FROM m.sqlite_master WHERE type='table' AND name='ob_reemitida'").fetchone():
+            onde += " AND NOT EXISTS (SELECT 1 FROM m.ob_reemitida _re WHERE _re.ob=o.numero_ob AND _re.ug=o.ug_emitente)"
+        d = dig(cnpj)
+        fmt = f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+        rows = c.W.execute(f"SELECT o.numero_ob, o.data_emissao, o.competencia, o.valor, o.processo "
+                           f"FROM m.ob_orcamentaria_siafe o WHERE o.credor IN (?, ?) AND {onde}", (d, fmt)).fetchall()
+    except sqlite3.OperationalError as exc:
+        logger.warning("OB com competência indisponível para o D14: %s", exc)
+        return None
+    return [(n, iso_br(dt), comp, v or 0.0, pr) for n, dt, comp, v, pr in rows if d0 <= (iso_br(dt) or "") <= d1]
+
+
+def teste_inocente_d14(c, a: dict) -> dict:
+    """SUB-03 (juiz 13/11/2026): as explicações inocentes do D14 eram só nomeadas. Testa por código:
+      · serviço anterior — competência das OB pagas na janela ANTERIOR ao mês de início da sanção × posterior;
+      · efeito ex nunc — OB em processo de contrato do espelho do TCE-RJ com ato ANTERIOR à sanção (a sanção veda
+        contratar; não rescinde o contrato em curso);
+      · alcance — o que o CEIS declara (abrangência, esfera, fundamentação) e o que isso implica.
+    Se a competência anterior explica TODO o valor, `explica_tudo` = True (o caso cai a ⚪)."""
+    from compliance_agent.pericia_contabil import chave_processo_ob, chave_sei
+    d0, d1 = max(G0, a["inicio"]), a.get("fim") or c.GFIM
+    d1 = min(d1, c.GFIM)
+    obs = _obs_pagas_credor(c, a["cnpj"], d0, d1)
+    t = dict(janela=[d0, d1])
+    ini = (int(a["inicio"][:4]), int(a["inicio"][5:7]))
+    if obs is None:
+        t["competencia"] = dict(estado="INDISPONÍVEL", motivo="sem a coluna competencia no espelho do SIAFE")
+    else:
+        g = {k: [0, 0.0] for k in ("anterior", "mes_do_inicio", "posterior", "sem_competencia")}
+        for _n, _dt, comp, v, _pr in obs:
+            cp = _competencia(comp)
+            k = ("sem_competencia" if cp is None else "anterior" if cp < ini else
+                 "mes_do_inicio" if cp == ini else "posterior")
+            g[k][0] += 1
+            g[k][1] += v
+        tot_n, tot_v = len(obs), round(sum(o[3] for o in obs), 2)
+        t["competencia"] = dict(estado="TESTADO", n_ob=tot_n, valor=tot_v,
+                                **{k: dict(n_ob=n, valor=round(v, 2)) for k, (n, v) in g.items()},
+                                reconcilia_com_caso=(tot_n == a.get("n_ob") and abs(tot_v - (a.get("pago_ob") or 0)) < 0.01))
+        # processos das OB × contratos do espelho com ato ANTES da sanção
+        contratos_antes = set()
+        contratos_na_vigencia(c, a["cnpj"], a["inicio"], a.get("fim"))      # garante o índice c._contr_cnpj
+        for sei, proc, dreg, obj, st, _un in getattr(c, "_contr_cnpj", {}).get(dig(a["cnpj"]), ()):
+            at = ato_do_contrato(c, sei, proc, dreg, obj or "", st or "")
+            if not at["cancelado"] and at["data"] and at["data"] < a["inicio"]:
+                k = chave_sei(sei) or chave_sei(proc)
+                if k:
+                    contratos_antes.add(k)
+        amp = [o for o in obs if chave_processo_ob(o[4]) in contratos_antes]
+        t["ex_nunc"] = dict(estado="TESTADO", n_ob_contrato_anterior=len(amp),
+                            valor_contrato_anterior=round(sum(o[3] for o in amp), 2),
+                            n_contratos_anteriores_no_espelho=len(contratos_antes))
+        t["explica_tudo"] = bool(tot_n) and g["anterior"][0] == tot_n
+    fund = a.get("fundamentacao") or ""
+    fn = nn(fund)
+    if "8429" in re.sub(r"\D", "", fund) or "IMPROBIDADE" in fn:
+        impl = ("improbidade (Lei 8.429/92, art. 12): após a Lei 14.230/21 a proibição de contratar se restringe, em "
+                "regra, ao ente lesado (§4º), salvo decisão motivada — o alcance real está no dispositivo da sentença")
+    elif "PROCESSO PENAL" in fn and "319" in fund:
+        impl = ("medida cautelar penal (CPP, art. 319, VI — suspensão de atividade de natureza econômica ou "
+                "financeira): não é a sanção de improbidade da Lei 8.429/92 (a restrição ao ente lesado da Lei 14.230/21 "
+                "não se aplica a ela); o alcance é o da decisão judicial, não juntada")
+    else:
+        impl = "alcance conforme a lei citada na fundamentação e a declaração do CEIS"
+    t["alcance"] = dict(abrangencia_ceis=a.get("abrangencia_ceis") or "não declarada no CEIS",
+                        esfera_sancionador=a.get("esfera_sancionador"), processo=a.get("processo_sancao"),
+                        regua=a.get("alcance"), implicacao=impl)
+    return t
+
+
+def explicar_teste_d14(x: dict) -> str:
+    t = x.get("teste_inocente") or {}
+    cp, en, al = t.get("competencia") or {}, t.get("ex_nunc") or {}, t.get("alcance") or {}
+    partes = []
+    if cp.get("estado") == "TESTADO":
+        an, me, po, sc = (cp.get(k) or {} for k in ("anterior", "mes_do_inicio", "posterior", "sem_competencia"))
+        partes.append(
+            f"TESTADO — serviço anterior: das {cp['n_ob']} OB pagas na janela ({brl(cp['valor'])}), {an.get('n_ob', 0)} "
+            f"({brl(an.get('valor'))}) têm competência ANTERIOR ao mês de início da sanção, {me.get('n_ob', 0)} "
+            f"({brl(me.get('valor'))}) no próprio mês e {po.get('n_ob', 0)} ({brl(po.get('valor'))}) POSTERIOR"
+            + (f"; {sc['n_ob']} sem competência legível" if sc.get("n_ob") else ""))
+        partes.append(
+            f"TESTADO — efeito ex nunc: {en.get('n_ob_contrato_anterior', 0)} OB ({brl(en.get('valor_contrato_anterior'))}) "
+            f"em processo de contrato do espelho do TCE-RJ com ato ANTERIOR à sanção "
+            f"({en.get('n_contratos_anteriores_no_espelho', 0)} contrato(s) anterior(es) no espelho); a sanção veda "
+            "contratar, não rescinde contrato em curso — prorrogação/aditivo posterior não aparece no espelho")
+    else:
+        partes.append(f"competência: {cp.get('estado', 'INDISPONÍVEL')} ({cp.get('motivo', '')}) — não testado")
+    if al:
+        partes.append(f"alcance (o que o CEIS declara): abrangência '{al.get('abrangencia_ceis')}', esfera do sancionador "
+                      f"{al.get('esfera_sancionador') or 'não declarada'}, processo {al.get('processo') or 'não informado'}"
+                      f"; {al.get('implicacao')}")
+    if t.get("explica_tudo"):
+        partes.append("a competência anterior explica TODO o valor — caso rebaixado a ⚪")
+    return "; ".join(partes)
+
+
 def d14(c: Ctx) -> dict:
     """OB na gestão a CNPJ com sanção que, NA DATA DA OB, estava vigente E alcançava o Estado do RJ.
 
@@ -852,13 +1162,14 @@ def d14(c: Ctx) -> dict:
     from compliance_agent.sancao_abrangencia import CAMPOS_CEIS, veda_ente, vigente_em
     cols = {r[1] for r in c.W.execute("PRAGMA m.table_info(sancoes_federais)")}
     c_uf = "uf" if "uf" in cols else "NULL AS uf"
+    c_proc = "processo" if "processo" in cols else "NULL AS processo"
     campos = ", ".join(x if x in cols else f"NULL AS {x}" for x in CAMPOS_CEIS)
     sanc = collections.defaultdict(list)
     for r in c.W.execute(
             f"SELECT cadastro, cpf_cnpj, nome, categoria, data_inicio, data_fim, orgao, fundamentacao, {c_uf}, "
-            f"{campos} FROM m.sancoes_federais"):
+            f"{campos}, {c_proc} FROM m.sancoes_federais"):
         s = dict(zip(("cadastro", "cpf_cnpj", "nome", "categoria", "data_inicio", "data_fim", "orgao", "fundamentacao",
-                      "uf", "abrangencia", "esfera_sancionador", "data_publicacao"), r))
+                      "uf", "abrangencia", "esfera_sancionador", "data_publicacao", "processo"), r))
         d = dig(s["cpf_cnpj"])
         if len(d) == 14 and s["data_inicio"] and _RESTRINGE.search(s["categoria"] or ""):
             s["data_inicio"] = str(s["data_inicio"])[:10]
@@ -882,11 +1193,13 @@ def d14(c: Ctx) -> dict:
         a = agg.setdefault((d, s["categoria"], s["data_inicio"]), dict(
             cnpj=d, credor=nm, cadastro=s["cadastro"], categoria=s["categoria"], inicio=s["data_inicio"], fim=s["data_fim"],
             orgao_sancionador=s["orgao"], fundamentacao=(s["fundamentacao"] or "")[:160], abrangencia=va["abrangencia"],
-            abrangencia_ceis=s.get("abrangencia"), alcance=va["motivo"], pago_ob=0.0, n_ob=0, primeira=dt,
+            abrangencia_ceis=s.get("abrangencia"), esfera_sancionador=s.get("esfera_sancionador"),
+            processo_sancao=s.get("processo"), alcance=va["motivo"], pago_ob=0.0, n_ob=0, primeira=dt, ultima=dt,
             ugs=collections.Counter()))
         a["pago_ob"] += v or 0
         a["n_ob"] += 1
         a["primeira"] = min(a["primeira"], dt)
+        a["ultima"] = max(a["ultima"], dt)
         a["ugs"][ug] += v or 0
     casos = []
     for a in agg.values():
@@ -899,6 +1212,8 @@ def d14(c: Ctx) -> dict:
         novos = contratos_na_vigencia(c, a["cnpj"], a["inicio"], a["fim"])
         a["contratos_na_vigencia"] = novos[:3]
         a["n_contratos_na_vigencia"] = len(novos)
+        a["dados_ate"] = c.GFIM
+        a["teste_inocente"] = teste_inocente_d14(c, a)
         casos.append(a)
     casos.sort(key=lambda x: -x["pago_ob"])
     exe = [x for x in casos if not _OUT_CASO.search(x["orgao"] or "")]
@@ -935,7 +1250,7 @@ def d18(c: Ctx) -> dict:
     soma = round(sum(x["pago_ob"] for x in casos), 2)
     return dict(criterio="credor pago na gestão (>=R$100 mil) com fantasma_score=alto ou fachada_veredito=fachada "
                          "(vereditos já registrados)", n=len(casos), soma=soma, casos=casos, valor_ob=soma,
-                resumo=f"Fachada/fantasma já registrados: {len(casos)} credores ({brl(soma)})")
+                resumo=f"Sinais de fachada/fantasma já registrados (indício, não veredito): {len(casos)} credores ({brl(soma)})")
 
 
 def d16(c: Ctx) -> dict:
@@ -1195,6 +1510,8 @@ def anexar_provas(c: Ctx, res: dict) -> None:
         for x in (res.get(rid) or {}).get("casos", []):
             if rid == "D09":
                 p = c.refs_ob(x.get(campo), d0=P0, d1=P1)
+            elif rid == "D05":      # prova dentro da janela declarada da regra (G0→G1), não até a última coleta
+                p = c.refs_ob(x.get(campo), d0=G0, d1=c.G1)
             elif rid == "D14":      # prova só de OB DENTRO da vigência da sanção (antes: OB de meses anteriores)
                 p = c.refs_ob(x.get(campo), d0=max(G0, x.get("inicio") or G0), d1=x.get("fim") or None)
                 p += [f"contrato na vigência da sanção: {k}" for k in x.get("contratos_na_vigencia") or []]
@@ -1243,21 +1560,30 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
             continue
         grau = GRAU_REGRA[rid] if (r.get("n") or 0) > 0 else "⚪"
         A.append(_base(id=rid, camada="deterministica", regra_ou_hipotese=f"{rid} · {r.get('resumo') or ''}", grau=grau,
-                       valor_ob=r.get("valor_ob"), fonte=r.get("criterio"), explicacao_inocente=INOCENTE_REGRA[rid],
+                       valor_ob=r.get("valor_ob"), fonte=r.get("criterio"),
+                       explicacao_inocente=r.get("explicacao_inocente") or INOCENTE_REGRA[rid],
                        proximo_passo=PASSO_REGRA[rid], tipo="regra", prova_primaria=r.get("prova_primaria") or []))
     for x in (res.get("D14") or {}).get("casos", []):
         if _OUT_CASO.search(x.get("orgao") or ""):
             continue
         nv = x.get("n_contratos_na_vigencia") or 0
+        teste = x.get("teste_inocente") or {}
+        # nunca sobe sem prova; cai a ⚪ quando o teste mostra que a explicação inocente explica TODO o valor
+        grau = "⚪" if teste.get("explica_tudo") else ("🔴" if _d14_vermelho(x) else "🟡")
+        periodo = (f"{x['n_ob']} OB de {x.get('primeira')} a {x.get('ultima') or x.get('primeira')}"
+                   f" (dados do SIAFE até {x.get('dados_ate') or '?'})") if x.get("n_ob") else ""
         A.append(_base(id=f"D14-{x['cnpj']}-{x['inicio']}", camada="deterministica",
                        regra_ou_hipotese=f"D14 · {x['credor']} paga na vigência de {x['categoria']} ({x['orgao_sancionador']}, "
-                                         f"{x['inicio']}→{x['fim'] or 'sem prazo'}) — "
+                                         f"{x['inicio']}→{x['fim'] or 'sem prazo'}): {brl(x['pago_ob'])} em {periodo} — "
                                          + (f"{nv} contrato(s) com ato NA vigência da sanção" if nv else
                                             "sem contrato novo localizado no espelho do TCE-RJ: pagamento de contrato "
                                             "anterior não é a vedação (efeito ex nunc) — conferir prorrogação"),
-                       grau="🔴" if _d14_vermelho(x) else "🟡",
+                       grau=grau, motivo_grau=("competência de todas as OB é anterior à sanção (pagamento de serviço "
+                                               "anterior)" if teste.get("explica_tudo") else None),
                        orgao=f"{x['orgao']} ({x['ug']})", valor_ob=x["pago_ob"], fonte=SIAFE + "; CEIS/CNEP",
-                       explicacao_inocente=INOCENTE_REGRA["D14"], proximo_passo=PASSO_REGRA["D14"], tipo="caso", cnpj=x["cnpj"],
+                       explicacao_inocente=(explicar_teste_d14(x) if teste else INOCENTE_REGRA["D14"]),
+                       teste_inocente=teste or None,
+                       proximo_passo=PASSO_REGRA["D14"], tipo="caso", cnpj=x["cnpj"],
                        prova_primaria=x.get("prova_primaria") or []))
     for x in (res.get("D05") or {}).get("casos", []):
         if x["tipo"] == "PERSISTENTE":
@@ -1266,7 +1592,10 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
                        regra_ou_hipotese=f"D05 · {x['credor']} concentra {pct(x['share'])} do pago pela UG ({x['tipo']}; ano "
                                          f"anterior: {pct(x['share_2025'])})",
                        grau="🟡", orgao=f"{x['orgao']} ({x['ug']})", valor_ob=x["pago_ob"], fonte=SIAFE,
-                       explicacao_inocente=INOCENTE_REGRA["D05"], proximo_passo=PASSO_REGRA["D05"], tipo="caso", cnpj=x["cnpj"],
+                       processo=(x.get("instrumento") or {}).get("processo"),
+                       explicacao_inocente=(f"{descrever_instrumento(x['instrumento'])}; {INOCENTE_REGRA['D05']}"
+                                            if x.get("instrumento") else INOCENTE_REGRA["D05"]),
+                       instrumento=x.get("instrumento"), proximo_passo=PASSO_REGRA["D05"], tipo="caso", cnpj=x["cnpj"],
                        prova_primaria=x.get("prova_primaria") or []))
     for x in (res.get("D10") or {}).get("casos", []):
         rot = x.get("rotulo") or "estreia"

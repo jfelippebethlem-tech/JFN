@@ -245,3 +245,171 @@ def test_prova_de_ob_declara_o_que_ficou_fora_da_lista():
     assert len([x for x in p if x.startswith("OB ")]) == 3
     assert p[-1] == "e mais 2 OB Contabilizada(s) na janela (R$ 94.000,00) — 5 OB, R$ 235.000,00 no total"
     assert GR.Ctx.refs_ob(c, NOVA, d0="2026-03-23", limite=5)[-1].startswith("OB ")      # nada cortado, nada declarado
+
+
+# ───────────── juiz de qualidade 15/11/2026: D04 (SUB-02/03), D05 (SUB-03), D14 (SUB-02/03) ─────────────
+
+def _ctx_de(base, tmp_path):
+    return GR.Ctx(base, receita=None, tse=None, dir_tmp=tmp_path)
+
+
+def test_d04_so_ob_do_ano_contra_o_teto_e_tolerancia_de_20_por_cento_testada(base, tmp_path):
+    epp_tol = "12121212000112"
+    con = sqlite3.connect(base)
+    con.execute("CREATE TABLE empresas_cadastro (cnpj_basico TEXT, razao_social TEXT, natureza_cod TEXT, "
+                "capital_social REAL, porte_cod TEXT, porte_txt TEXT, fonte_mes TEXT)")
+    con.executemany("INSERT INTO empresas_cadastro VALUES (?,'X','2062',1000,'',?,'2026-10')", [
+        (NOVA[:8], "Empresa de Pequeno Porte"),       # R$ 6,0 mi = 1,25× o teto EPP → caso
+        (VELHA[:8], "Microempresa"),                  # raiz da FILIAL: R$ 7 mi → caso (e contrato de contexto)
+        (SANC_RJ[:8], "Microempresa"),                # R$ 400 mil = 1,11× → tolerância, à parte
+        (SANC_PRAZO[:8], "Microempresa"),             # R$ 300 mil < teto → nada
+        (epp_tol[:8], "Empresa de Pequeno Porte"),    # R$ 5,5 mi = 1,15× → tolerância
+    ])
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('2026OB00090','100100','10/06/2026','Contabilizado',NULL,"
+                "?,'TOL LTDA','SEI-100001/000001/2026',5500000.0,2026,'','')", (epp_tol,))
+    # OB de 2025 do caso NOVA não entra na conta do ano-calendário
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB00090','100100','10/06/2025','Contabilizado',NULL,"
+                "?,'NOVA LTDA','SEI-100001/000001/2025',9000000.0,2025,'','')", (NOVA,))
+    con.commit()
+    con.close()
+    c = _ctx_de(base, tmp_path)
+    try:
+        r = GR.d04(c)
+    finally:
+        c.fechar()
+    casos = {x["cnpj_basico"]: x for x in r["casos"]}
+    assert set(casos) == {NOVA[:8], VELHA[:8]}
+    assert casos[NOVA[:8]]["pago_ano"] == pytest.approx(6_000_000.0) and casos[NOVA[:8]]["teto"] == 4_800_000.0
+    assert casos[NOVA[:8]]["limite_tolerancia"] == pytest.approx(5_760_000.0)
+    assert {x["cnpj_basico"] for x in r["tolerancia_casos"]} == {SANC_RJ[:8], epp_tol[:8]}
+    assert r["n_tolerancia"] == 2 and r["soma_tolerancia"] == pytest.approx(5_900_000.0)
+    # valor da regra = só OB do ano dos casos; contrato (valor global) é contexto, nunca somado
+    assert r["valor_ob"] == pytest.approx(6_000_000.0 + 7_000_010.0)
+    assert r["n_contratos"] == 1 and "contexto" in r["contratos_natureza"]
+    for t in ("2026", "R$ 360.000,00", "R$ 4.800.000,00", "1,2×", "tolerância", "valor global não é receita anual"):
+        assert t in r["resumo"], t
+    ino = r["explicacao_inocente"]
+    assert "TESTADO" in ino and "NÃO TESTADO" in ino and "§9º-A" in ino and "2026-10" in ino
+    a = {x["id"]: x for x in GR.achados_deterministicos({"D04": r})}
+    assert a["D04"]["explicacao_inocente"] == ino and a["D04"]["valor_ob"] == r["valor_ob"]
+
+
+def test_d05_cada_caso_traz_o_instrumento_ou_nao_localizado(base, tmp_path):
+    so = "13131313000113"
+    con = sqlite3.connect(base)
+    con.execute("INSERT INTO despesa_execucao VALUES ('200200','AUTARQUIA DE OBRAS FICTICIA')")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('2026OB00091','200200','10/06/2026','Contabilizado',NULL,"
+                "?,'SOZINHA LTDA','SEI-200001/000009/2026',11000000.0,2026,'','')", (so,))
+    con.execute("INSERT INTO contratos_tcerj VALUES ('SEI-100001/000077/2026','1000010000772026','2026-04-01',"
+                "20000000.0,'Ativo','SF - SECRETARIA FICTICIA','OBRA','VELHA SA',?)", (FILIAL,))
+    con.execute("CREATE TABLE compras_diretas_tcerj (processo TEXT, sei_norm TEXT, ano_processo INTEGER, valor REAL, "
+                "objeto TEXT, afastamento TEXT, enquadramento_legal TEXT, unidade TEXT, fornecedor TEXT)")
+    con.execute("INSERT INTO compras_diretas_tcerj VALUES ('SEI-100001/000001/2026','1000010000012026',2026,6000000.0,"
+                "'SERVIÇO','Dispensa de Licitação','Lei 14.133/2021, Art. 75, VIII','SF - SECRETARIA FICTICIA','NOVA LTDA')")
+    con.commit()
+    con.close()
+    c = _ctx_de(base, tmp_path)
+    try:
+        r = GR.d05(c)
+    finally:
+        c.fechar()
+    i = {x["cnpj"]: x["instrumento"] for x in r["casos"]}
+    assert i[NOVA]["situacao"] == "direta" and i[NOVA]["via"] == "processo das OB"
+    assert "Art. 75, VIII" in i[NOVA]["modalidade"]
+    assert i[FILIAL]["situacao"] == "contrato" and i[FILIAL]["via"] == "CNPJ e unidade"
+    assert i[FILIAL]["processo"] == "SEI-100001/000077/2026" and i[FILIAL]["valor"] == 20_000_000.0
+    assert i[so]["situacao"] == "nao_localizado" and "não é zero" in i[so]["motivo"]
+    assert (r["n_instrumento_localizado"], r["n_instrumento_contrato"], r["n_instrumento_direta"],
+            r["n_instrumento_nao_localizado"]) == (2, 1, 1, 1)
+    assert "localizado no espelho do TCE-RJ em 2 de 3" in r["resumo"] and "não é zero" in r["resumo"]
+    a = {x["id"]: x for x in GR.achados_deterministicos({"D05": r})}
+    assert a[f"D05-200200-{so}"]["explicacao_inocente"].startswith("instrumento: não localizado")
+    assert "TESTADO" in a["D05"]["explicacao_inocente"]
+
+
+def test_d05_espelho_ausente_e_indisponivel_nao_nao_localizado(base, tmp_path):
+    con = sqlite3.connect(base)
+    con.execute("DROP TABLE contratos_tcerj")
+    con.commit()
+    con.close()
+    c = _ctx_de(base, tmp_path)
+    try:
+        r = GR.d05(c)
+    finally:
+        c.fechar()
+    assert r["n"] and all(x["instrumento"]["situacao"] == "indisponivel" for x in r["casos"])
+    assert r["n_instrumento_indisponivel"] == r["n"] and "INDISPONÍVEL" in r["resumo"]
+
+
+def _d14_com_competencia(base, obs, fundamentacao="LEI 14133 - ART. 156, IV", contrato_antes=True):
+    inid = "94949494000194"
+    con = sqlite3.connect(base)
+    con.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN competencia TEXT")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe (numero_ob, ug_emitente, data_emissao, status, credor, "
+                    "nome_credor, processo, valor, exercicio, gd, status_envio, competencia) "
+                    "VALUES (?,'100100',?,'Contabilizado',?,'INID LTDA','SEI-100001/000050/2025',?,2026,'','',?)",
+                    [(n, dt, inid, v, comp) for n, dt, v, comp in obs])
+    con.execute("INSERT INTO sancoes_federais VALUES ('CEIS',?,'INID','Declaração de Inidoneidade com prazo determinado',"
+                "'2026-06-01','2029-06-01','Secretaria de Estado Ficticia','RJ','5000000-00.2026.4.04.0000',?,"
+                "'Todas as Esferas em todos os Poderes','ESTADUAL',NULL)", (inid, fundamentacao))
+    if contrato_antes:
+        con.execute("INSERT INTO contratos_tcerj VALUES ('SEI-100001/000050/2025','1000010000502025','2025-12-10',"
+                    "1.0,'Ativo','UNIDADE X','SERVIÇO','INID',?)", (inid,))
+    con.commit()
+    con.close()
+    return inid
+
+
+def test_d14_testa_competencia_anterior_ex_nunc_e_alcance(base, tmp_path):
+    inid = _d14_com_competencia(base, [("2026OB00100", "20/06/2026", 100_000.0, "05/2026"),
+                                       ("2026OB00101", "25/06/2026", 50_000.0, "06/2026"),
+                                       ("2026OB00102", "10/07/2026", 300_000.0, "07/2026")])
+    c = _ctx_de(base, tmp_path)
+    try:
+        res = {"D14": GR.d14(c)}
+        GR.anexar_provas(c, res)
+    finally:
+        c.fechar()
+    x = {k["cnpj"]: k for k in res["D14"]["casos"]}[inid]
+    t = x["teste_inocente"]
+    cp = t["competencia"]
+    assert cp["estado"] == "TESTADO" and cp["reconcilia_com_caso"] is True
+    assert cp["anterior"] == {"n_ob": 1, "valor": 100_000.0} and cp["mes_do_inicio"]["n_ob"] == 1
+    assert cp["posterior"] == {"n_ob": 1, "valor": 300_000.0}
+    assert t["ex_nunc"]["n_ob_contrato_anterior"] == 3 and t["explica_tudo"] is False
+    assert t["alcance"]["abrangencia_ceis"] == "Todas as Esferas em todos os Poderes"
+    a = {k["id"]: k for k in GR.achados_deterministicos(res)}[f"D14-{inid}-2026-06-01"]
+    assert a["grau"] == "🟡"                                   # o teste não explica tudo: o grau não cai (nem sobe)
+    assert "R$ 450.000,00 em 3 OB de 2026-06-20 a 2026-07-10" in a["regra_ou_hipotese"]
+    assert "TESTADO — serviço anterior" in a["explicacao_inocente"] and "ex nunc" in a["explicacao_inocente"]
+    assert "Todas as Esferas em todos os Poderes" in a["explicacao_inocente"]
+
+
+def test_d14_competencia_toda_anterior_rebaixa_o_caso_a_branco(base, tmp_path):
+    inid = _d14_com_competencia(base, [("2026OB00100", "20/06/2026", 100_000.0, "04/2026"),
+                                       ("2026OB00101", "25/06/2026", 50_000.0, "05/2026")], contrato_antes=False)
+    c = _ctx_de(base, tmp_path)
+    try:
+        a = {k["id"]: k for k in GR.achados_deterministicos({"D14": GR.d14(c)})}[f"D14-{inid}-2026-06-01"]
+    finally:
+        c.fechar()
+    assert a["grau"] == "⚪" and "anterior" in a["motivo_grau"]
+
+
+def test_d14_alcance_escreve_o_que_a_fundamentacao_implica(base, tmp_path):
+    inid = _d14_com_competencia(base, [("2026OB00100", "20/06/2026", 1.0, "07/2026")],
+                                fundamentacao="LEI 8429 - ART. 12 - IMPROBIDADE ADMINISTRATIVA")
+    c = _ctx_de(base, tmp_path)
+    try:
+        x = {k["cnpj"]: k for k in GR.d14(c)["casos"]}[inid]
+    finally:
+        c.fechar()
+    assert "ente lesado" in x["teste_inocente"]["alcance"]["implicacao"]
+    assert x["teste_inocente"]["alcance"]["processo"] == "5000000-00.2026.4.04.0000"
+
+
+def test_d14_sem_coluna_competencia_e_indisponivel():
+    t = {"teste_inocente": {"competencia": {"estado": "INDISPONÍVEL", "motivo": "sem a coluna"}}}
+    assert "INDISPONÍVEL" in GR.explicar_teste_d14(t) and "não testado" in GR.explicar_teste_d14(t)
+    assert GR._competencia("06/2026") == (2026, 6) and GR._competencia("01/02/2023") == (2023, 2)
+    assert GR._competencia("13/2026") is None and GR._competencia("") is None
