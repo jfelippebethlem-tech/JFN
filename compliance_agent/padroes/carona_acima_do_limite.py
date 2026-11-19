@@ -263,6 +263,7 @@ def varrer(limite: int | None = None) -> dict:
                 excl = {re.sub(r"\D", "", o.get("cnpj") or "") for o in (ob or {}).get("obs", [])}
                 for cn in cnpjs_candidatos(ds, excl):
                     a = ata_pncp(cn, ac[0], ac[1], cache)
+                    _salvar_cache(cache)          # a consulta ao PNCP é o passo caro: não perder num erro adiante
                     if a == "indisponivel":
                         cob["pncp_indisponivel"] += 1
                         break
