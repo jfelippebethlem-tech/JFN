@@ -76,6 +76,12 @@ class Ref:
     caminhos: tuple[str, ...]      # arquivo: (texto,); íntegra: (.txt, .ocr.txt) — vale o mais longo
 
 
+def _docs_do_manifesto(m) -> list[dict]:
+    """Manifesto pode ser {"docs": [...]} ou, nos antigos, a lista direta; entrada que não é dict é ignorada."""
+    lst = m.get("docs") if isinstance(m, dict) else m
+    return [x for x in (lst or []) if isinstance(x, dict)] if isinstance(lst, list) else []
+
+
 @lru_cache(maxsize=None)
 def refs(tag: str) -> tuple[Ref, ...]:
     """Documentos do processo SEM ler o texto: o arquivo (texto já lido, com título) primeiro; da íntegra entram os
@@ -87,7 +93,7 @@ def refs(tag: str) -> tuple[Ref, ...]:
         m = json.loads(_ler(d / "manifest.json") or "{}")
     except ValueError:
         m = {}
-    for x in m.get("docs") or []:
+    for x in _docs_do_manifesto(m):
         if x.get("texto"):
             out.append(Ref("arquivo", str(x.get("i")), str(x.get("titulo") or ""), (str(d / str(x["texto"])),)))
             vistos.add(_norm_tit(str(x.get("titulo") or "")))
@@ -96,7 +102,7 @@ def refs(tag: str) -> tuple[Ref, ...]:
         m = json.loads(_ler(di / "manifest.json") or "{}")
     except ValueError:
         m = {}
-    for x in m.get("docs") or []:
+    for x in _docs_do_manifesto(m):
         tit = str(x.get("titulo") or "")
         if _norm_tit(tit) in vistos:
             continue

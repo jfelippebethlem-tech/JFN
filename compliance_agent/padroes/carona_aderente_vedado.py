@@ -162,23 +162,25 @@ def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict
     todos = cc.tags()[: limite or None]
     base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
                      "sem_ne_mas_titulo_de_adesao": 0}
-    for n, t in enumerate(todos):
-        ne = cc.modalidade_ne(t, cache)
-        cod = cc.codigo_mod(ne)
-        if cod == "12":
-            cob["ne_12_externa"] += 1
-            base.append((t, ne))
-        elif cod == "10":
-            cob["ne_10_interna"] += 1
-            base.append((t, ne))
-        elif cod is None:
-            cob["sem_ne_legivel"] += 1
-            if cc.titulos_casam(t, _RX_TIT_ADESAO):
-                cob["sem_ne_mas_titulo_de_adesao"] += 1
+    try:
+        for n, t in enumerate(todos):
+            ne = cc.modalidade_ne(t, cache)
+            cod = cc.codigo_mod(ne)
+            if cod == "12":
+                cob["ne_12_externa"] += 1
                 base.append((t, ne))
-        if n % 500 == 499:
-            cc.salvar_cache_ne(cache)
-    cc.salvar_cache_ne(cache)
+            elif cod == "10":
+                cob["ne_10_interna"] += 1
+                base.append((t, ne))
+            elif cod is None:
+                cob["sem_ne_legivel"] += 1
+                if cc.titulos_casam(t, _RX_TIT_ADESAO):
+                    cob["sem_ne_mas_titulo_de_adesao"] += 1
+                    base.append((t, ne))
+            if n % 500 == 499:
+                cc.salvar_cache_ne(cache)
+    finally:
+        cc.salvar_cache_ne(cache)
     return base, cob
 
 
