@@ -378,6 +378,13 @@ def _assinatura2(caminho, h: int):
         return None
     if a is None:
         return None
+    return _assinatura_da_imagem(a)
+
+
+def _assinatura_da_imagem(a):
+    """2ª e 3ª assinaturas de uma região JÁ recortada (as mesmas de `_assinatura2`) — o índice do acervo as calcula
+    na mesma passada do dHash, sem reabrir o arquivo na confirmação."""
+    a = a.convert("RGB")
     g16 = a.convert("L").resize((16, 16))
     cinza = list(g16.get_flattened_data() if hasattr(g16, "get_flattened_data") else g16.getdata())
     m = sum(cinza) / len(cinza)
@@ -387,7 +394,37 @@ def _assinatura2(caminho, h: int):
     # composição parecida confirmavam (Geo Ambiental, 27/09/2026 — RMS por célula 48,7 × 0,6–1,0 nos idênticos)
     c8 = a.resize((8, 8))
     celulas = [x for px in (c8.get_flattened_data() if hasattr(c8, "get_flattened_data") else c8.getdata()) for x in px]
-    return [x / n for x in v], celulas
+    return [x / n for x in v], celulas, _fina(a)
+
+
+# 3ª assinatura, FINA (18/11/2026, acervo inteiro). Página com FUNDO de imagem (relatório socioambiental do INEA,
+# "Limpa Rios", 070002_005874_2024) não tem branco para `_regioes_foto` recortar: a região vira a faixa inteira, com
+# o CABEÇALHO grande e as fotos pequenas. Na miniatura 16×16 o cabeçalho domina e páginas com fotos DIFERENTES
+# confirmavam (e páginas de texto sobre a marca d'água também). Aqui: 48×48 normalizada, fração de pixels que
+# divergem mais de 0,5 desvio, no melhor de ±2 px de deslocamento (o recorte da mesma foto em páginas diferentes
+# varia alguns pixels). Medido: mesma foto ≤ 0,062; cabeçalho igual + fotos diferentes 0,26–0,28; texto 0,30.
+FINO_LADO = 48
+FINO_DESLOC = 2
+FINO_MAX = 0.15
+
+
+def _fina(a):
+    import numpy as np
+    from PIL import Image
+    g = np.asarray(a.convert("L").resize((FINO_LADO, FINO_LADO), Image.BILINEAR), dtype=np.float32)
+    return ((g - g.mean()) / (g.std() + 1e-6)).astype(np.float16)
+
+
+def _divergencia_fina(f1, f2) -> float:
+    import numpy as np
+    a, b = np.asarray(f1, dtype=np.float32), np.asarray(f2, dtype=np.float32)
+    n, s, melhor = a.shape[0], FINO_DESLOC, 1.0
+    for dy in range(-s, s + 1):
+        for dx in range(-s, s + 1):
+            pa = a[max(0, dy):n + min(0, dy), max(0, dx):n + min(0, dx)]
+            pb = b[max(0, -dy):n + min(0, -dy), max(0, -dx):n + min(0, -dx)]
+            melhor = min(melhor, float((np.abs(pa - pb) > 0.5).mean()))
+    return melhor
 
 
 def _confirma(s1, s2) -> bool:
@@ -395,7 +432,11 @@ def _confirma(s1, s2) -> bool:
         return False
     ncc = sum(x * y for x, y in zip(s1[0], s2[0]))
     rms = (sum((x - y) ** 2 for x, y in zip(s1[1], s2[1])) / max(1, len(s1[1]))) ** 0.5
-    return ncc >= NCC_MIN and rms <= COR_MAX
+    if ncc < NCC_MIN or rms > COR_MAX:
+        return False
+    if len(s1) > 2 and len(s2) > 2 and s1[2] is not None and s2[2] is not None:   # índice antigo: só 2 medidas
+        return _divergencia_fina(s1[2], s2[2]) <= FINO_MAX
+    return True
 
 
 def _confirmar_grupo(ocorrencias: list[dict]) -> list[dict]:
@@ -630,11 +671,43 @@ RAZAO_TEXTURA_MAPA = 0.85
 _RX_MEDICAO = re.compile(r"(\d{1,3})\s*[ªa°º]\s*medi", re.I)
 
 
+def _sub_fotos(im) -> list:
+    """Uma FAIXA de 2–3 fotos lado a lado (o recorte de `_regioes_foto` pega a linha inteira) separada por colunas
+    brancas → as fotos individuais. 18/11/2026: na faixa, as colunas brancas entre as fotos tornam o topo "texturizado"
+    e `parece_mapa` dizia "sem céu" para fotos de campo com céu — 6 de 8 grupos 'sem céu' sorteados no acervo eram
+    faixas de fotos de obra. Devolve [im] quando não há separação."""
+    import numpy as np
+    g = np.asarray(im.convert("L").resize((min(im.size[0], 600), 120)), dtype=np.int16)
+    branca = (g > 235).mean(axis=0) > 0.9                      # coluna quase toda branca = vão entre fotos
+    w = g.shape[1]
+    trechos, ini = [], None
+    for x, b in enumerate(list(branca) + [True]):
+        if not b and ini is None:
+            ini = x
+        elif b and ini is not None:
+            if x - ini >= 0.15 * w:
+                trechos.append((ini, x))
+            ini = None
+    if len(trechos) < 2:
+        return [im]
+    k = im.size[0] / w
+    return [im.crop((round(a * k), 0, round(b * k), im.size[1])) for a, b in trechos]
+
+
 def parece_mapa(im) -> bool:
     """Imagem SEM céu = mapa de satélite (ou foto sem céu, que fica de fora — custo declarado).
 
+    Faixa com várias fotos: decide foto a foto (`_sub_fotos`) — só é "mapa" se TODAS forem.
+
     Céu = faixa superior CLARA (brilho ≥ 140) ou AZUL (azul − verde ≥ 40), e LISA (textura do topo < 0,85 da do
     resto). Medido na Geo Ambiental: fotos de campo com topo 177–196 de brilho ou azul − verde 46–88; mapas 40–94 e ≤ 26."""
+    subs = _sub_fotos(im)
+    if len(subs) > 1:
+        return all(_parece_mapa_uma(s) for s in subs)
+    return _parece_mapa_uma(im)
+
+
+def _parece_mapa_uma(im) -> bool:
     from PIL import ImageStat
     rgb = im.convert("RGB")
     w, h = rgb.size

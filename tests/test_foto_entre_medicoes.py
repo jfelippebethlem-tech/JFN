@@ -1,6 +1,9 @@
 """Mesma foto em medições de PERÍODOS diferentes do mesmo contrato (INEA 35/2023, Geo Ambiental, 27/09/2026)."""
 import json
 import random
+from pathlib import Path
+
+import pytest
 
 from PIL import Image, ImageDraw
 
@@ -58,3 +61,36 @@ def test_mapa_de_satelite_repetido_nao_acende(tmp_path):
 def test_fotos_diferentes_nao_confirmam(tmp_path):
     d = _processo(tmp_path, [("190_p26.jpg", lambda p: _campo(p, 1)), ("647_p14.jpg", lambda p: _campo(p, 2))])
     assert FM.reciclagem_entre_medicoes(d)["grupos"] == []
+
+
+def _faixa(fotos, gap=24):
+    """Faixa de fotos lado a lado com vão branco, como o recorte de `_regioes_foto` devolve uma linha de 3 fotos."""
+    w = sum(f.size[0] for f in fotos) + gap * (len(fotos) - 1)
+    h = max(f.size[1] for f in fotos)
+    im = Image.new("RGB", (w, h), (255, 255, 255))
+    x = 0
+    for f in fotos:
+        im.paste(f, (x, 0))
+        x += f.size[0] + gap
+    return im
+
+
+_FAIXAS_REAIS = [("data/sei_arquivo/070002_006481_2024/fotos/107_p04.jpg", (52, 450, 1235, 738)),
+                 ("data/sei_arquivo/020001_000685_2024/fotos/039_p08.jpg", (58, 358, 1177, 640))]
+
+
+@pytest.mark.skipif(not all(Path(a).exists() for a, _ in _FAIXAS_REAIS), reason="acervo SEI não presente nesta máquina")
+def test_faixa_real_de_fotos_de_campo_nao_e_mapa():
+    """18/11/2026, sorteio de 8 grupos 'sem céu' do acervo: 6 eram FOTOS DE OBRA. Duas eram faixas de 3 fotos com céu
+    (INEA 30ª medição; SEAPPA) que o vão branco entre as fotos fazia parecer 'topo texturizado' = mapa."""
+    for arq, caixa in _FAIXAS_REAIS:
+        faixa = Image.open(arq).crop(caixa)
+        assert FM._parece_mapa_uma(faixa)          # o defeito: a faixa inteira lida como uma imagem
+        assert len(FM._sub_fotos(faixa)) == 3
+        assert not FM.parece_mapa(faixa)
+
+
+def test_faixa_de_mapas_continua_mapa(tmp_path):
+    _mapa(tmp_path / "m.jpg")
+    m = Image.open(tmp_path / "m.jpg").resize((320, 240))
+    assert FM.parece_mapa(_faixa([m, m, m]))

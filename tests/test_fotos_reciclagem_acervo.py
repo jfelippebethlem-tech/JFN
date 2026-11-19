@@ -37,8 +37,10 @@ def test_mesma_foto_em_orgaos_diferentes_vem_primeiro_com_objeto(tmp_path, monke
     monkeypatch.setattr(T, "DB", db)
     monkeypatch.setattr(T, "SAIDA", tmp_path / "saida.json")
     r = T.rodar()
-    assert r["grau"] == "vermelho" and r["n_grupos"] == 1 and r["processos_examinados"] == 3
+    # repetição crua, sem documento que a explique, fica A CONFERIR (amarelo) — vermelho só depois da conferência
+    assert r["grau"] == "amarelo" and r["n_grupos"] == 1 and r["processos_examinados"] == 3
     g = r["grupos"][0]
+    assert g["porque"]["regra"] in ("a_conferir", "R5_sem_ceu_nao_conferido") and g["porque"]["classe"] is None
     assert g["n_ugs"] == 2
     nums = {p["numero"]: p for p in g["processos"]}
     assert nums["SEI-080001/000001/2025"]["objeto"] == "reforma de escola"
