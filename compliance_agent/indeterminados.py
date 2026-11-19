@@ -197,8 +197,8 @@ def enfileirar(con: sqlite3.Connection, alvos: list[dict], *, agora: str | None 
     for num, p in ordenados:
         pago = round(sum(p["filhos"].values()), 2)
         filhos = sorted(f for f in p["filhos"] if f)
-        motivo = (f"{MOTIVO}: {p['papeis'].most_common(1)[0][0]} citado por {len(filhos)} laudo(s) de execução "
-                  f"sem conclusão (ex.: {filhos[0] if filhos else '?'})")
+        motivo = (f"{MOTIVO}: papel {p['papeis'].most_common(1)[0][0]} — nos autos de {len(filhos)} laudo(s) de "
+                  f"execução sem conclusão (ex.: {filhos[0] if filhos else '?'})")
         n += con.execute("INSERT OR IGNORE INTO sei_fila_captura VALUES (?,?,?,?,?,?)",
                          (num, num.replace("SEI-", "").replace("/", ""), motivo, pago, 0, agora)).rowcount
     con.commit()
