@@ -30,3 +30,11 @@ def test_negativo_tr_que_nega_ser_comum_e_pregao():
     r = avaliar([DESP, tr])
     assert r["bem_comum"] is None and r["outros_fornecedores"] is None
     assert avaliar([Doc("arquivo", "1", "Termo de Referência", "Pregão eletrônico; bem comum, facilmente encontrados no mercado")]) is None
+
+
+def test_negativo_inexistencia_de_outros_fornecedores_e_justificativa():
+    # falso positivo da 1ª varredura (SEI-240002/003084/2025 e 270006/012496/2025)
+    tr = Doc("arquivo", "0", "Termo de Referência", "a contratação direta por inexigibilidade está condicionada à "
+             "inexistência de outros fornecedores com capacidade técnica e institucional equivalente para realizar")
+    r = avaliar([DESP, tr])
+    assert r["outros_fornecedores"] is None

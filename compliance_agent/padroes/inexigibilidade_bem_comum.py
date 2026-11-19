@@ -36,7 +36,10 @@ RX_OUTROS = re.compile(
     r"|(?:possível|poder[áa]|admit\w+|aceit\w+)[^.;]{0,80}?(?:outr[oa]s|demais)\s+(?:editoras?|fornecedor(?:es)?|fabricantes?|marcas?)",
     re.I)
 # negação perto do sinal: "não se caracteriza como comum", "não há outras editoras"
-RX_NEG = re.compile(r"\bn[ãa]o\s+(?:se\s+|é\s+|h[áa]\s+|existe\w*\s+|foram?\s+)?(?:\w+\s+){0,3}$", re.I)
+RX_NEG = re.compile(r"\bn[ãa]o\s+(?:se\s+|é\s+|h[áa]\s+|existe\w*\s+|foram?\s+)?(?:\w+\s+){0,3}$"
+                    # "a inexistência de outros fornecedores" (SEI-240002/003084/2025, 270006/012496/2025): é a
+                    # JUSTIFICATIVA da exclusividade, o contrário do sinal — falso positivo virou regra
+                    r"|\b(?:inexist[êe]ncia|aus[êe]ncia|nenhum\w*|sem)\s+(?:de\s+|d[eo]s?\s+)?$", re.I)
 # a frase de exclusividade CITADA (in verbis do art. 74) não é TR afirmando nada
 _DOCS_TR = ("tr", "etp")
 

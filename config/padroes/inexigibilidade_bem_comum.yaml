@@ -14,6 +14,6 @@ sinal: >
 explicacoes_inocentes:
   - "Item 'bem comum' herdado do modelo de TR — por isso C1 sozinho é médio"
   - "Atestado de exclusividade/direito autoral juntado — conferir antes de graduar"
-  - "Negação ('não é caracterizado como comum', 'não há outras editoras') — descartada"
+  - "Negação ('não é caracterizado como comum', 'não há outras editoras', 'inexistência de outros fornecedores' — esta é a JUSTIFICATIVA da exclusividade) — descartada (falso positivo da 1ª varredura: SEI-240002/003084/2025, 270006/012496/2025)"
 controle_positivo: SEI-030001/064253/2025 doc 9 (TR 1.3 + nota ao 9.1 "outras editoras") × doc 8 (art. 74, I)
 controle_negativo: SEI-030001/087803/2025 (pregão — sem inexigibilidade) e TR que nega ser comum — testes
