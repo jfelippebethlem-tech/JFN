@@ -856,120 +856,15 @@ _RX_DONO = re.compile(r"SOCIO|ADMINISTRADOR|TITULAR|EMPRESARIO|PROPRIET|PRESIDEN
 _RX_GERENCIA = re.compile(r"ADMINISTRADOR|PRESIDENTE|DIRETOR|TITULAR|GERENTE")
 
 
-# Órgão da folha → UG(s) do SIAFE estadual, p/ provar o impedimento do art. 9 (empresa do servidor
-# paga pela PRÓPRIA repartição). Só órgãos do Executivo estadual têm UG no OB do SIAFE — TJRJ
-# (autônomo) e Câmara Municipal ficam fora (checagem de art. 9 indisponível, mas a vedação de
-# gerência permanece). Ampliar conforme novas folhas do Executivo entram.
-_ORGAO_FOLHA_UG = {
-    "DEFENSORIA": ["110100"],           # DPGE
-    "POLICIA MILITAR": ["266500"],      # FUNESPOM/PM
-    "POLICIA CIVIL": ["263100"],        # DETRAN e correlatos (aprox.)
-    "EDUCACAO": ["190100", "191100"],
-    "SAUDE": ["294200"],                # Fundo Estadual de Saúde
-}
-
-
-def _ug_do_orgao_servidor(orgao_nome: str) -> list:
-    o = _norm_nome(orgao_nome)
-    for chave, ugs in _ORGAO_FOLHA_UG.items():
-        if chave in o:
-            return ugs
-    return []
-
-
 def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
-    """Servidor público (folha) que é SÓCIO de empresa fornecedora do Estado — conflito de interesse
-    (Lei 14.133 art. 9; interposição art. 337-F CP) e, quando é ADMINISTRADOR, vedação estatutária
-    de gerência de empresa privada. Casa por nome + corrobora com fragmento de CPF (mascarado):
-    ALTA se os dígitos visíveis coincidem, MÉDIA se só o nome, e DESCARTA quando o CPF conflita
-    (homônimo). Exclui entidades de classe. Liga a UG pagadora ao órgão do servidor: se a empresa
-    é paga pela PRÓPRIA repartição do servidor, marca impedimento do art. 9 (mesmo_orgao)."""
-    import json as _json
-    con = _ro(db_path)
-    try:
-        try:
-            _ug_nome = _json.loads((_REPO / "data" / "ug_index_siafe.json").read_text())["ugs"]
-        except Exception:
-            _ug_nome = {}
-        folha: dict[str, list] = {}
-        for r in con.execute("SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte "
-                             "FROM registros_folha WHERE nome IS NOT NULL"):
-            nn = _norm_nome(r["nome"])
-            if nn.count(" ") < 1:  # exige nome + sobrenome (reduz homônimo)
-                continue
-            folha.setdefault(nn, []).append(
-                (_frag6(r["cpf"]), r["orgao_nome"], r["cargo"], r["vinculo"], r["fonte"]))
-        achados, conflitos = [], 0
-        q = ("SELECT s.socio_nome, s.socio_doc, s.cnpj, s.qualificacao, "
-             "f.favorecido_nome, f.total_pago, f.n_obs "
-             "FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
-             "WHERE f.total_pago>0 AND s.socio_nome<>''")
-        for r in con.execute(q):
-            emp = r["favorecido_nome"] or ""
-            if _RX_NAOCOM.search(_norm_nome(emp)):
-                continue
-            qual = r["qualificacao"] or ""
-            if not _RX_DONO.search(_norm_nome(qual)):
-                continue
-            nn = _norm_nome(r["socio_nome"])
-            cands = folha.get(nn)
-            if not cands:
-                continue
-            fs = _frag6(r["socio_doc"])
-            tier, info, houve_conflito = None, None, False
-            for (ff, org, cargo, vinc, fonte) in cands:
-                if fs and ff:
-                    if fs[0:5] == ff[1:6]:   # janelas D4-D9 (sócio) × D3-D8 (folha) → overlap D4-D8
-                        tier, info = "ALTA", (org, cargo, vinc, fonte)
-                        break
-                    houve_conflito = True
-                elif not tier:
-                    tier, info = "MEDIA", (org, cargo, vinc, fonte)
-            if not tier:
-                if houve_conflito:
-                    conflitos += 1
-                continue
-            cnpj = r["cnpj"]
-            # UGs que pagaram a empresa (nome do índice) + teste de art. 9 (mesma repartição)
-            ugs_alvo = set(_ug_do_orgao_servidor(info[0]))
-            pagadoras, mesmo_orgao = [], False
-            for pr in con.execute(f"SELECT ug_emitente ug, SUM(valor) v FROM ob_orcamentaria_siafe "
-                                  f"WHERE {_ob_paga(con)} AND credor=? AND valor>0 GROUP BY ug_emitente "
-                                  "ORDER BY v DESC LIMIT 3", (cnpj,)):
-                pagadoras.append({"ug": pr["ug"], "nome": _ug_nome.get(pr["ug"], ""), "valor": pr["v"]})
-                if pr["ug"] in ugs_alvo:
-                    mesmo_orgao = True
-            achados.append({
-                "socio": r["socio_nome"], "cnpj": cnpj,
-                "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
-                             if len(cnpj or "") == 14 else cnpj),
-                "empresa": emp, "qualificacao": qual,
-                "gerencia": bool(_RX_GERENCIA.search(_norm_nome(qual))),
-                "confianca": tier, "servidor_orgao": info[0], "servidor_cargo": info[1],
-                "vinculo": info[2], "fonte_folha": info[3],
-                "ugs_pagadoras": pagadoras, "mesmo_orgao": mesmo_orgao,
-                "art9_verificavel": bool(ugs_alvo),  # False = órgão do servidor não tem UG no SIAFE
-                "total_pago": r["total_pago"], "n_obs": r["n_obs"]})
-        # ranking: art. 9 (mesmo órgão) primeiro, depois ALTA + gerência + valor
-        achados.sort(key=lambda a: (not a["mesmo_orgao"], a["confianca"] != "ALTA",
-                                    not a["gerencia"], -(a["total_pago"] or 0)))
-        n_alta = sum(1 for a in achados if a["confianca"] == "ALTA")
-        n_ger = sum(1 for a in achados if a["gerencia"])
-        n_art9 = sum(1 for a in achados if a["mesmo_orgao"])
-        return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "n_alta": n_alta, "n_gerencia": n_ger, "n_art9": n_art9,
-                "homonimos_descartados": conflitos,
-                "folhas": sorted({c[4] for lst in folha.values() for c in lst if c[4]}),
-                "explicacao": ("Servidor público (nas folhas coletadas) que é sócio de empresa que "
-                               "recebeu do Estado. Servidor ADMINISTRADOR/diretor de empresa privada "
-                               "viola a vedação estatutária de gerência; se a empresa contrata com o "
-                               "órgão dele, há impedimento (Lei 14.133 art. 9). Confiança ALTA = nome "
-                               "e fragmento de CPF batem; MÉDIA = só o nome (homônimo possível)."),
-                "ressalva": ("Match por nome + fragmento de CPF mascarado — homônimo com fragmento "
-                             "conflitante já é descartado, mas confirmar CPF completo antes de citar. "
-                             "Sócio sem gerência (mero quotista) pode ser permitido. Indício ≠ acusação.")}
-    finally:
-        con.close()
+    """Servidor público (folha) que é SÓCIO-dono de empresa paga pelo Estado — Lei 14.133 art. 9 e vedação
+    estatutária de gerência. Delegado a `socio_na_folha` (19/11/2026): identidade desambiguada em camadas
+    por `identidade_pessoa` (CPF na janela AFERIDA de cada folha — GESPERJ 4–9, DPRJ 3–8 —, prevalência do
+    nome, faixa etária da Receita), uma linha por pessoa, OB paga do SIAFE por UG e art. 9 com o mapa
+    órgão→UG conferido. A versão anterior presumia a janela 3–8 para toda folha: 911 "homônimos" e 0
+    casamento no Executivo. Par só-por-nome não entra em `achados` (vai para `indeterminados`)."""
+    from compliance_agent import socio_na_folha
+    return socio_na_folha.para_api(socio_na_folha.calcular(db_path), limite=limite)
 
 
 def _norm_item(desc: str) -> str:
@@ -1813,15 +1708,18 @@ def porta_giratoria(db_path: str | None = None, limite: int = 120) -> dict:
     con = _ro(db_path)
     try:
         from collections import defaultdict
-        ex = defaultdict(list)  # nome_norm -> [(orgao, cargo, vinculo, cpf_frag)]
+        from compliance_agent import identidade_pessoa as _ip
+        ex = defaultdict(list)  # nome_norm -> [(orgao, cargo, vinculo, cpf_folha, fonte, competencia)]
         vinc_ex = ("INATIVO", "ENCERRAMENTO", "SEM LOTAÇÃO", "Livre Nomeação e Exoneração", "EXONERADO")
         q_ph = ",".join("?" * len(vinc_ex))
-        for r in con.execute(f"SELECT nome, orgao_nome, cargo, vinculo, cpf FROM registros_folha "
+        for r in con.execute(f"SELECT nome, orgao_nome, cargo, vinculo, cpf, fonte, competencia FROM registros_folha "
                             f"WHERE vinculo IN ({q_ph})", vinc_ex):
             nn = _norm_nome(r["nome"])
             if nn.count(" ") >= 1:
-                ex[nn].append((r["orgao_nome"], r["cargo"], r["vinculo"], _frag6(r["cpf"])))
-        achados, conflitos = [], 0
+                ex[nn].append((r["orgao_nome"], r["cargo"], r["vinculo"], r["cpf"], r["fonte"], r["competencia"]))
+        # Identidade pela régua única (`identidade_pessoa`): CPF comparado na janela AFERIDA de cada fonte
+        # (antes: 3–8 presumido para toda folha). Par só-por-nome NÃO é achado — vai para `indeterminados`.
+        achados, conflitos, indeterminados = [], 0, []
         vistos = set()
         for r in con.execute("SELECT s.socio_nome, s.socio_doc, s.cnpj, s.qualificacao, "
                             "f.favorecido_nome, f.total_pago, f.n_obs FROM socios_fornecedor s "
@@ -1836,19 +1734,24 @@ def porta_giratoria(db_path: str | None = None, limite: int = 120) -> dict:
             cands = ex.get(nn)
             if not cands:
                 continue
-            fs = _frag6(r["socio_doc"])
+            q = _ip.posicoes_qsa(r["socio_doc"])
             tier, info, houve = None, None, False
-            for (org, cargo, vinc, ff) in cands:
-                if fs and ff:
-                    if fs[0:5] == ff[1:6]:
-                        tier, info = "ALTA", (org, cargo, vinc)
-                        break
+            for (org, cargo, vinc, cpf_f, fonte, comp) in cands:
+                res, _n = _ip.comparar_cpf(q, _ip.posicoes_folha(cpf_f, fonte, comp))
+                if res == _ip.COMPATIVEL:
+                    tier, info = "ALTA", (org, cargo, vinc)
+                    break
+                if res == _ip.INCOMPATIVEL:
                     houve = True
                 elif not tier:
                     tier, info = "MEDIA", (org, cargo, vinc)
             if not tier:
                 if houve:
                     conflitos += 1
+                continue
+            if tier == "MEDIA":
+                indeterminados.append({"socio": r["socio_nome"], "empresa": emp, "ex_orgao": info[0],
+                                       "motivo": "só o nome coincide — sem CPF comparável na folha"})
                 continue
             chave = (nn, r["cnpj"])
             if chave in vistos:
@@ -1864,7 +1767,8 @@ def porta_giratoria(db_path: str | None = None, limite: int = 120) -> dict:
                 "total_pago": r["total_pago"], "n_obs": r["n_obs"]})
         achados.sort(key=lambda a: (a["confianca"] != "ALTA", -(a["total_pago"] or 0)))
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "homonimos_descartados": conflitos,
+                "homonimos_descartados": conflitos, "n_indeterminados": len(indeterminados),
+                "indeterminados": indeterminados[:limite],
                 "explicacao": ("Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) "
                                "que hoje é sócio de empresa fornecedora do Estado. A 'porta giratória' "
                                "— sair do serviço público e virar fornecedor — pode violar a quarentena "

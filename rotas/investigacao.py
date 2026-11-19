@@ -2302,13 +2302,15 @@ def api_intel_aditivos(limite: int = 120, esfera: str = ""):
 
 
 @router.get("/api/intel/socio_servidor")
-def api_intel_socio_servidor(limite: int = 150):
-    """Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse
-    (Lei 14.133 art. 9) e, se administrador, vedação estatutária de gerência. Nome + fragmento de CPF."""
+def api_intel_socio_servidor(limite: int = 1000):
+    """Sócio na folha: servidor público que é sócio-dono de fornecedor pago pelo Estado — uma linha por
+    PESSOA, identidade desambiguada em camadas (`identidade_pessoa`: CPF na janela de cada folha,
+    prevalência do nome, faixa etária). Lista principal = VERIFICADO + PROVÁVEL; indeterminados e
+    homônimos vêm à parte. Chave `socserv2`: o formato mudou em 19/11/2026 (cache antigo não serve)."""
     try:
         from compliance_agent.cruzamentos_intel import socio_servidor
-        lim = max(1, min(int(limite or 150), 300))
-        d = _cache_calc(f"intel:socserv:{lim}", 3600, lambda: socio_servidor(limite=lim))
+        lim = max(1, min(int(limite or 1000), 2000))
+        d = _cache_calc(f"intel:socserv2:{lim}", 6 * 3600, lambda: socio_servidor(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

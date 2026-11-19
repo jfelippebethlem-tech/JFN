@@ -235,10 +235,19 @@ def carregar_indice_folha(db_path: str | Path | None = None) -> dict:
     try:
         con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
         try:
-            for nome, cpf in con.execute("SELECT nome, cpf FROM registros_folha"):
+            # Janela AFERIDA por fonte (19/11/2026, `identidade_pessoa`): GESPERJ mostra 4-9 (string,
+            # como antes); DPRJ mostra 3-8 — guardado como (fonte, fragmento) e comparado por posição.
+            # Antes a DPRJ entrava como se fosse 4-9 e nenhum servidor da Defensoria casava.
+            from compliance_agent.identidade_pessoa import deslocamento
+            for nome, cpf, fonte, comp in con.execute("SELECT nome, cpf, fonte, competencia FROM registros_folha"):
                 m = folha_middle(cpf)
-                if m and nome:
+                if not (m and nome):
+                    continue
+                desl = deslocamento(fonte, comp)
+                if desl == 3:
                     idx.setdefault(_norm(nome), set()).add(m)
+                elif desl is not None:
+                    idx.setdefault(_norm(nome), set()).add((fonte, m))
         finally:
             con.close()
     except Exception:  # noqa: BLE001 — tabela ausente → índice vazio (honesto)
@@ -269,7 +278,19 @@ def fusao_folha_qsa(nome: str, doc_mascarado_qsa: str, folha_idx: dict) -> dict:
     # sobreposição parcial a alinhar. A versão anterior comparava `m6_qsa[0:5]` com `m_folha[1:6]`,
     # isto é, posições 4-8 contra 5-9: um deslocamento de um dígito que declarava homônimos 1.007
     # dos 1.014 nomes encontrados na folha e marcava os 7 restantes por coincidência.
+    from compliance_agent.identidade_pessoa import COMPATIVEL, comparar_cpf, posicoes_folha, posicoes_qsa
     for m_folha in ms_folha:
+        if isinstance(m_folha, tuple):   # (fonte, fragmento) de folha com janela ≠ 4-9 (DPRJ: 3-8)
+            fonte, frag = m_folha
+            pf, pq = posicoes_folha(f"XX{frag}XXX", fonte), posicoes_qsa(f"***{m6_qsa}**")
+            if comparar_cpf(pq, pf)[0] == COMPATIVEL:
+                juntos = {**pq, **pf}
+                c3a9 = "".join(juntos.get(i, "") for i in range(3, 10))
+                return {"servidor": True, "conhecidos_3a9": c3a9, "n_candidatos": 100 if len(c3a9) == 7 else 1000,
+                        "motivo": (f"nome na folha ({fonte}) + os dígitos sobrepostos do CPF batendo (janela da "
+                                   "fonte 3-8 × QSA 4-9) → sócio de fornecedora que também consta na folha; a "
+                                   "folha acrescenta o dígito 3 (7 conhecidos). Indício, não acusação.")}
+            continue
         if m6_qsa == m_folha:
             # Mesma régua que o cruzamento de benefício chama de ALTA: nome + fragmento batendo é
             # anti-homônimo. NÃO estreita candidatos — mesma janela não acrescenta dígito, e

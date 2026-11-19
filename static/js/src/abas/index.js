@@ -2027,30 +2027,78 @@ export async function renderPoder(esf){
     ${buscaPag('pod-pen','filtrar pendentes…')}${listaPaginada('pod-pen',pen,_pdCard,40,x=>x.nome)}</details>`;
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
 }
+/* SÓCIO NA FOLHA — redesenho de 19/11/2026 (pedido do dono: "mais claro e clean" e "homônimos desmistificados
+   através de outros dados"). UMA LINHA POR PESSOA. A identidade vem desambiguada do servidor
+   (`identidade_pessoa`): CPF parcial na janela que cada folha publica, prevalência do nome, faixa etária da
+   Receita. Na lista principal só entram VERIFICADO e PROVÁVEL; par só-por-nome (INDETERMINADO) e homônimo
+   descartado ficam recolhidos, contados, cada um com o porquê. Valor = OB PAGA do SIAFE, por UG. */
+const _SNF_SELO = {VERIFICADO: ['teal', 'Verificado'], PROVAVEL: ['amber', 'Provável'],
+                   INDETERMINADO: ['accent', 'Indeterminado'], HOMONIMO: ['rose', 'Homônimo']};
+const _snfMes = c => { const m = /^(\d{4})-(\d{2})/.exec(c || ''); return m ? `${m[2]}/${m[1]}` : (c || ''); };
+const _snfPer = p => { const [a, b] = p || []; if (!a && !b) return 'período não informado';
+  return a === b || !b ? _snfMes(a) : `${_snfMes(a)} – ${_snfMes(b)}`; };
+function _snfVinc(v) {
+  return `<div style="font-size:13px;line-height:1.45"><span class="dim">${esc(v.fonte_rotulo)}</span> · <b>${esc(v.orgao || 'órgão não informado')}</b>`
+    + `<br>${esc(v.cargo || 'cargo não informado')}${v.vinculo ? ` · ${esc(v.vinculo)}` : ''} · <span class="num">${esc(_snfPer(v.periodo))}</span></div>`;
+}
+function _snfEmp(e) {
+  const ob = e.ob_siafe || {};
+  const ugs = (ob.ugs || []).slice(0, 3).map(u =>
+    `<span class="tag ${u.mesmo_orgao ? 'rose' : ''}" title="UG ${esc(u.ug)}">${esc(u.nome || 'UG ' + u.ug)} · ${fmtR(u.valor)}${u.mesmo_orgao ? ' · mesmo órgão do vínculo' : ''}</span>`).join(' ');
+  const mais = (ob.ugs || []).length > 3 ? `<span class="dim"> +${fmtN(ob.ugs.length - 3)} UG</span>` : '';
+  const valor = ob.estado === 'VERIFICADO'
+    ? `<div class="num" style="font-weight:800">${fmtR(ob.total)}</div><div class="dim">OB paga · SIAFE · ${fmtN(ob.n_ob)} OB</div>`
+    : `<div class="num" style="font-weight:700;color:var(--amber)">INDISPONÍVEL</div><div class="dim">sem OB no SIAFE coletado (≠ R$ 0)</div>`;
+  return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)">
+    <div style="min-width:0">${clk(e.cnpj, e.empresa || e.cnpj_fmt)} <span class="dim num">${esc(e.cnpj_fmt)}</span>
+      <div class="dim" style="margin-top:2px">${esc(e.qualificacao || 'sócio')}${e.data_entrada ? ` · na sociedade desde ${esc(e.data_entrada)}` : ''}${e.gerencia ? ' · <b>gerência</b>' : ''}</div>
+      ${ugs ? `<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${ugs}${mais}</div>` : ''}</div>
+    <div class="right" style="flex:none">${valor}</div></div>`;
+}
+function _snfCard(x) {
+  const [cor, rot] = _SNF_SELO[x.selo] || ['accent', x.selo];
+  const marcas = (x.mesmo_orgao ? '<span class="tag rose">art. 9 · pago pelo próprio órgão</span> ' : '')
+    + (x.gerencia ? '<span class="tag amber">gerência</span>' : '');
+  const vincs = (x.vinculos || []).map(_snfVinc).join('');
+  return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap">
+      <div><b style="font-size:15px">${esc(x.nome)}</b> <span class="dim num">${esc(x.cpf_mascarado)}</span></div>
+      <div>${marcas} <span class="tag ${cor}">${rot}</span></div></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-top:8px">
+      <div><div class="dim" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Vínculo público</div>${vincs || '<div class="dim">—</div>'}</div>
+      <div><div class="dim" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;margin-top:4px">Empresa${(x.empresas || []).length > 1 ? 's' : ''}</div>${(x.empresas || []).map(_snfEmp).join('')}</div></div>
+    <div class="dim" style="font-size:12.5px;margin-top:6px"><b>Identidade:</b> ${esc(x.motivo)}${x.homonimos_na_folha_descartados ? ` ${fmtN(x.homonimos_na_folha_descartados)} homônimo(s) da folha descartado(s) pelo CPF.` : ''}${x.outras_empresas_mesmo_cpf ? ` Mesma pessoa é sócia de mais ${fmtN(x.outras_empresas_mesmo_cpf)} empresa(s) no QSA.` : ''}</div>`,
+    x.mesmo_orgao ? 'hl' : '');
+}
+function _snfCurto(x) {
+  const v = (x.vinculos || [])[0] || {};
+  const e = (x.empresas || [])[0] || {};
+  return card(`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(x.nome)}</b> <span class="dim num">${esc(x.cpf_mascarado)}</span>
+    <div class="dim">${esc(v.fonte_rotulo || '')} · ${esc(v.orgao || '')} · sócio de ${esc(e.empresa || '')}</div></div>
+    <span class="tag ${(_SNF_SELO[x.selo] || ['accent'])[0]}">${(_SNF_SELO[x.selo] || ['', x.selo])[1]}</span></div>
+    <div class="dim" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>`);
+}
 export async function renderSocioServidor(){
-  const d=await J('/api/intel/socio_servidor?limite=150');
-  if(!d.ok)return sec('Servidor-sócio')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-  const a=d.achados||[];
-  let h=cover('geral','Servidor público sócio de fornecedor do Estado',
-    'Servidor que aparece nas folhas coletadas e também é sócio de empresa que recebeu do Estado. Servidor <b>administrador/diretor</b> de empresa privada viola a vedação estatutária de gerência; se a empresa contrata com o órgão dele, há impedimento (Lei 14.133 art. 9). <b>Confiança ALTA</b> = nome e fragmento de CPF batem; <b>MÉDIA</b> = só o nome.','🕴️')+acoesAba('socio_servidor');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Servidores sócios','var(--rose)','🕴️',
-        {sobre:'Pessoas que aparecem ao mesmo tempo na folha do Estado e no quadro societário de empresa paga pelo Estado. <b>Estar aqui não é irregularidade</b>: servidor pode ser sócio, e a medição na própria base dá 28%. O que pesa são os recortes ao lado.'})}${kpi(fmtN(d.n_gerencia),'Com gerência (vedada)','var(--rose)','⚖️',
-        {sobre:'Sócio com qualificação de <b>administrador, diretor ou gerente</b> — o estatuto do servidor veda o exercício de gerência em empresa privada (art. 117, X da Lei 8.112/1990 e correspondentes estaduais). Aqui a qualificação vem do QSA da Receita, declarada pela própria empresa.'})}
-      ${kpi(fmtN(d.n_art9||0),'Art. 9 (mesmo órgão)','var(--rose)','🎯',
-        {sobre:'O recorte MAIS GRAVE desta tela: a empresa é paga pela <b>própria repartição</b> onde o sócio serve. É o impedimento direto do art. 9º, III da Lei 8.429/1992 — auferir vantagem de contrato de órgão em que atua. Os demais casos exigem investigar; este já nasce com o vínculo entre o dinheiro e a decisão.'})}${kpi(fmtN(d.n_alta),'Confiança ALTA (CPF)','var(--amber)','🔎',
-        {sobre:'Casamento em que <b>nome e fragmento de CPF</b> coincidem, não só o nome. O resto é casamento por nome, que carrega homônimo — por isso a confiança viaja junto do achado, e nenhum caso sobe a relatório sem confirmação do CPF completo pelo órgão de controle.'})}</div>`;
-  h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Homônimos descartados por CPF: ${fmtN(d.homonimos_descartados)}. Art. 9 = empresa paga pela própria repartição do servidor (impedimento direto).</div>`;
-  h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por servidor, empresa, órgão ou cargo…" oninput="filtrar(this,'#ss-list .card')"></div>`;
-  h+=`<div id="ss-list" class="grid">`+a.map(x=>card(
-    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.mesmo_orgao?'<span class="tag rose">art. 9 · mesmo órgão</span>':x.gerencia?'<span class="tag rose">gerência</span>':'<span class="tag amber">sócio</span>'}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj,x.empresa)}</div>
-      <div class="dim" style="margin-top:2px">servidor: ${esc(x.servidor_cargo||'—')} · ${esc((x.servidor_orgao||'').slice(0,40))} · ${esc(x.vinculo||'')}</div>
-      ${(x.ugs_pagadoras||[]).length&&x.ugs_pagadoras[0].nome?`<div class="dim" style="margin-top:2px">paga por: ${(x.ugs_pagadoras||[]).filter(u=>u.nome).map(u=>esc(u.nome)+' ('+fmtRc(u.valor)+')').join(' · ')}</div>`:''}</div>
-      <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span>
-      <div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div><div class="dim">recebido · ${fmtN(x.n_obs)} OBs</div></div></div>
-      ${leitura(`<b>${esc(x.socio)}</b> é <b>${esc(x.qualificacao)}</b> da empresa <b>${esc(x.empresa)}</b> (recebeu ${fmtRc(x.total_pago)} do Estado) e consta na folha como <b>${esc(x.servidor_cargo||'servidor')}</b> ${esc(x.servidor_orgao?('do '+x.servidor_orgao):'')}.${x.mesmo_orgao?' <b>A empresa é paga pela PRÓPRIA repartição do servidor — impedimento direto do art. 9.</b>':x.gerencia?' Cargo de gerência em empresa privada é vedado ao servidor (estatuto).':''} ${x.confianca==='ALTA'?'Nome e fragmento de CPF coincidem.':'Casamento por nome — confirmar CPF.'}`)}`,
-    x.mesmo_orgao||x.confianca==='ALTA'||x.gerencia?'hl':'')).join('')+`</div>`;
+  const d=await J('/api/intel/socio_servidor');
+  if(!d.ok)return sec('Sócio na folha')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const ps=d.pessoas||[], ind=d.indeterminados||[], hom=d.homonimos||[], c=d.contagem||{};
+  const obArt9=ps.reduce((s,x)=>s+(x.ob_mesmo_orgao||0),0);
+  let h=cover('geral','Sócio na folha — servidor público sócio de fornecedor do Estado',
+    'Cada linha é <b>uma pessoa</b> que consta numa folha de pagamento pública e no quadro societário de empresa paga pelo Estado. A identidade é conferida antes de qualquer afirmação: <b>nome igual não basta</b>. Ser sócio pode ser lícito; o que pesa é a <b>gerência</b> (vedada ao servidor) e a empresa ser paga pelo <b>próprio órgão</b> do servidor (Lei 14.133, art. 9º).','🕴️')+acoesAba('socio_servidor');
+  h+=`<div class="grid g2">${kpi(fmtN(c.verificado),'Identidade verificada','var(--teal)','✔',
+        {sobre:'CPF parcial confere na janela que cada fonte publica (QSA e Executivo: dígitos 4–9; Defensoria: 3–8) <b>e</b> um segundo dado converge — nome único nas folhas ou no QSA, ou CPF completo de outra fonte. A chance de coincidência vai em cada linha.'})}${kpi(fmtN(d.n_art9),'Pago pelo próprio órgão (art. 9º)','var(--rose)','🎯',
+        {sobre:`Pessoas da lista cuja empresa recebeu OB paga de UG do <b>mesmo órgão</b> do vínculo — ${fmtR(obArt9)} no total. O mapa órgão→UG cobre os maiores órgãos do Executivo, a Defensoria e o TJRJ; vínculo fora dele aparece sem esse teste, nunca como "não".`})}
+      ${kpi(fmtN(d.n_gerencia),'Com gerência','var(--amber)','⚖️',
+        {sobre:'Qualificação no QSA de administrador, diretor, presidente ou titular — o estatuto veda ao servidor a gerência de empresa privada (Lei 8.112/1990, art. 117, X, e estatutos estaduais correlatos).'})}${kpi(fmtN(c.homonimo),'Homônimos descartados',null,'⊘',
+        {sobre:'Mesmo nome, outra pessoa: os dígitos do CPF que as duas bases mostram são diferentes (ou a faixa etária da Receita é impossível para o vínculo). Ficam fora da lista, recolhidos abaixo.'})}</div>`;
+  h+=`<div class="note" style="margin-top:10px"><b>Como a identidade é conferida.</b> A Receita mostra os dígitos 4–9 do CPF do sócio; a folha do Executivo (GESPERJ) também 4–9, a da Defensoria 3–8 — a comparação é feita posição a posição. TJRJ e Câmara do Rio não publicam CPF: ali só o nome coincide, e isso <b>não</b> vira achado. Faixa etária só descarta (0–12 anos não é servidor ativo); nome raro é dado convergente, nome comum não.
+    <span class="dim">De ${fmtN(d.n_pares_por_nome)} pares casados pelo nome (${fmtN(d.n_pessoas_por_nome)} pessoas): ${fmtN(c.verificado)} verificadas, ${fmtN(c.provavel)} prováveis, ${fmtN(c.indeterminado)} indeterminadas, ${fmtN(c.homonimo)} homônimas.${(d.fora_do_escopo||{}).entidade_sem_fins_ou_estatal?` Fora do escopo: ${fmtN(d.fora_do_escopo.entidade_sem_fins_ou_estatal)} entidades sem fins lucrativos ou estatais (associação de apoio a escola, sociedade musical, CEDAE…) — o servidor as preside por ofício, não é fornecedor.`:''}</span></div>`;
+  h+=sec('Pessoas',ps.length)+buscaPag('snf-ok','filtrar por nome, órgão, cargo, empresa ou UG — busca em TODAS…')+listaPaginada('snf-ok',ps,_snfCard,30,x=>x.nome);
+  h+=`<details style="margin-top:16px"><summary style="cursor:pointer"><b>Indeterminadas — só o nome coincide</b> (${fmtN(c.indeterminado)})</summary>
+    <div class="dim" style="font-size:12px;margin:6px 0">Não são achado. Falta o dado que separa a pessoa de um homônimo — quase sempre porque a folha da fonte não publica CPF. Conferir o CPF no órgão antes de qualquer uso.</div>
+    ${listaPaginada('snf-ind',ind,_snfCurto,20,x=>x.nome)}</details>`;
+  h+=`<details style="margin-top:10px"><summary style="cursor:pointer"><b>Homônimos descartados</b> (${fmtN(c.homonimo)})</summary>
+    <div class="dim" style="font-size:12px;margin:6px 0">Mesmo nome, outra pessoa — o motivo vai em cada linha.</div>
+    ${listaPaginada('snf-hom',hom,_snfCurto,20,x=>x.nome)}</details>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -2400,6 +2448,7 @@ export async function renderPortaGiratoria(){
       <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span><div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div></div></div>
       ${leitura(`<b>${esc(x.socio)}</b> consta na folha como ex-servidor (${esc(x.vinculo)}, ${esc(x.ex_orgao||'')}) e hoje é ${esc(x.qualificacao)} de <b>${esc(x.empresa)}</b>, que recebeu ${fmtRc(x.total_pago)} do Estado. Porta giratória — confirmar as datas de saída e do contrato (quarentena).`)}`,
     x.confianca==='ALTA'?'hl':'')).join('')+`</div>`;
+  if(d.n_indeterminados)h+=`<div class="dim" style="margin-top:10px">Fora da lista: <b>${fmtN(d.n_indeterminados)}</b> par(es) em que só o NOME coincide (a folha da fonte não publica CPF) — homônimo não desambiguado não é achado.</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
 

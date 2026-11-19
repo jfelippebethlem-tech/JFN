@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """C8 — servidor público no QSA. Três situações jurídicas distintas, e uma armadilha de dado.
 
-A armadilha: as duas fontes mascaram o CPF em JANELAS DIFERENTES. A RFB publica os dígitos D4–D9
-(`***364817**`) e a folha publica D3–D8 (`XX000057XXX`). O trecho comparável é D4–D8. Comparar as
-strings inteiras como se fossem a mesma janela descartaria como "homônimo" quase todo casamento
-verdadeiro — e o teste abaixo prova que a régua certa é a do deslocamento.
+A armadilha: a janela do CPF que a folha publica VARIA POR FONTE (medido 13/11 e 19/11/2026). A RFB
+publica D4–D9 (`***364817**`); a folha do Executivo (GESPERJ) também D4–D9 (`XX364817XXX`), a da
+Defensoria (DPRJ) D3–D8 (`XX036481XXX`). Presumir uma janela só para toda folha comparava dígitos
+errados e descartava a pessoa certa como "homônimo". Sem a fonte, não se decide (None).
 
 As três situações: impedimento do art. 9º (servidor do PRÓPRIO órgão) · vedação de gerência
 (administra empresa privada, ainda que de outro órgão) · mero quotista, que pode ser lícito.
@@ -25,20 +25,32 @@ def _socio(nome="JOSE DA SILVA", doc="***364817**", qual="49-Sócio-Administrado
     return {"nome": nome, "doc": doc, "qualificacao": qual}
 
 
-def _serv(nome="JOSE DA SILVA", cpf="XX036481XXX", orgao="SECRETARIA DE OBRAS",
-          cargo="ENGENHEIRO", vinculo="EFETIVO"):
-    return {"nome": nome, "cpf": cpf, "orgao": orgao, "cargo": cargo, "vinculo": vinculo}
+def _serv(nome="JOSE DA SILVA", cpf="XX364817XXX", orgao="SECRETARIA DE OBRAS",
+          cargo="ENGENHEIRO", vinculo="EFETIVO", fonte="gesperj_estado"):
+    return {"nome": nome, "cpf": cpf, "orgao": orgao, "cargo": cargo, "vinculo": vinculo, "fonte": fonte}
 
 
 # ─────────────────── a janela desalinhada das duas máscaras ───────────────────────────────────
 
-def test_fragmentos_da_MESMA_pessoa_casam_apesar_do_deslocamento():
-    """RFB `***364817**` (D4–D9) × folha `XX036481XXX` (D3–D8) — o comum é D4–D8."""
-    assert casa_fragmento("364817", "036481") is True
+def test_fragmentos_da_MESMA_pessoa_casam_na_janela_da_fonte():
+    """RFB D4–D9 × GESPERJ D4–D9 (mesma string) e × DPRJ D3–D8 (deslocada de um)."""
+    assert casa_fragmento("364817", "364817", "gesperj_estado") is True
+    assert casa_fragmento("364817", "036481", "dprj_transparencia") is True
+
+
+def test_a_janela_errada_para_a_fonte_nao_casa():
+    """O erro antigo: tratar GESPERJ como D3–D8. A mesma pessoa no Executivo virava homônimo."""
+    assert casa_fragmento("364817", "036481", "gesperj_estado") is False
+    assert casa_fragmento("364817", "364817", "dprj_transparencia") is False
+
+
+def test_sem_fonte_aferida_nao_se_chuta_a_janela():
+    assert casa_fragmento("364817", "364817") is None
+    assert casa_fragmento("364817", "364817", "tjrj_anexo8") is None
 
 
 def test_fragmentos_de_pessoas_diferentes_nao_casam():
-    assert casa_fragmento("364817", "999999") is False
+    assert casa_fragmento("364817", "999999", "gesperj_estado") is False
 
 
 def test_sem_fragmento_de_um_dos_lados_o_resultado_e_indeterminado():
@@ -85,10 +97,16 @@ def test_quotista_no_PROPRIO_orgao_ainda_e_alto():
 
 # ─────────────────── corroboração e homônimo ──────────────────────────────────────────────────
 
-def test_casamento_so_por_NOME_rebaixa_um_nivel_e_declara():
+def test_casamento_so_por_NOME_nao_e_achado():
+    """19/11/2026: homônimo não desambiguado não vira achado — fica indeterminado, com o dado que falta."""
     r = D.avaliar(_ctx([_socio(doc="")], [_serv(cpf="")], orgao="SECRETARIA DE OBRAS"))
-    assert r.status == "confirmado" and r.score < 1.0
-    assert "APENAS POR NOME" in r.evidencia[0]
+    assert r.status == "nao_avaliavel"
+    assert r.valores["indeterminados_so_nome"] == 1 and "MESMO NOME" in r.motivo_refutacao
+
+
+def test_folha_sem_CPF_publicado_TJRJ_nao_e_achado():
+    r = D.avaliar(_ctx([_socio()], [_serv(cpf="", fonte="tjrj_anexo8")], orgao="SECRETARIA DE OBRAS"))
+    assert r.status == "nao_avaliavel"
 
 
 def test_fragmento_CONFLITANTE_e_homonimo_descartado():
@@ -131,7 +149,7 @@ def test_sem_orgao_contratante_nao_inventa_impedimento_do_art_9():
 
 def test_varios_socios_na_folha_saem_contados():
     r = D.avaliar(_ctx([_socio(), _socio(nome="ANA SERVIDORA", doc="***111222**")],
-                       [_serv(), _serv(nome="ANA SERVIDORA", cpf="XX011122XXX")],
+                       [_serv(), _serv(nome="ANA SERVIDORA", cpf="XX111222XXX")],
                        orgao="SECRETARIA DE OBRAS"))
     assert r.valores["n_achados"] == 2
     assert "Outros 1" in r.evidencia[-1]

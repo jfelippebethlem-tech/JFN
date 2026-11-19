@@ -169,7 +169,7 @@ const TABS={
     {id:'g_fenix',   ic:'🦅',tl:'Fênix',   render:renderFenix},
     {id:'g_porta',   ic:'🚪',tl:'Porta giratória',render:renderPortaGiratoria},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
-    {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
+    {id:'g_socserv', ic:'🕴️',tl:'Sócio na folha',render:renderSocioServidor},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:()=>renderPoder('todos')},   // todas as esferas, cada cartão rotulado
     {id:'g_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},

@@ -16,7 +16,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from compliance_agent.resolucao_cpf import _digitos, _norm, middle6
+from compliance_agent.resolucao_cpf import _norm, middle6
 
 _DB = Path("data") / "compliance.db"
 
@@ -35,10 +35,14 @@ def _chave_socio(doc: str) -> str:
     return m6[:5] if len(m6) == 6 else ""
 
 
-def _chave_folha(cpf: str) -> str:
-    """Posições 4-8 (5 díg) do CPF mascarado da folha (mostra posições 3-8 = 6 díg)."""
-    d = _digitos(cpf)
-    return d[1:6] if len(d) == 6 else ""
+def _chave_folha(cpf: str, fonte: str | None = None, competencia: str | None = None) -> str:
+    """Posições 4-8 (5 díg) do CPF mascarado da folha, pela janela AFERIDA da fonte
+    (`identidade_pessoa.posicoes_folha`: GESPERJ mostra 4-9, DPRJ 3-8). Antes presumia 3-8 para
+    toda folha e, no Executivo (GESPERJ), comparava os dígitos errados. Fonte sem janela → ''."""
+    from compliance_agent.identidade_pessoa import posicoes_folha
+    pos = posicoes_folha(cpf, fonte, competencia)
+    d = "".join(pos.get(i, "") for i in range(4, 9))
+    return d if len(d) == 5 else ""
 
 
 _FOLHA_IDX_CACHE: dict = {}  # {db_path: {(nome_norm, pos4-8): {orgao,cargo,vinculo,competencia}}}
@@ -55,10 +59,10 @@ def _folha_index(db_path: str | Path | None) -> dict:
     try:
         con = _con(db_path)
         try:
-            for cpf, nome, orgao, cargo, vinculo, comp in con.execute(
-                    "SELECT cpf, nome, orgao_nome, cargo, vinculo, competencia FROM registros_folha "
+            for cpf, nome, orgao, cargo, vinculo, comp, fonte in con.execute(
+                    "SELECT cpf, nome, orgao_nome, cargo, vinculo, competencia, fonte FROM registros_folha "
                     "WHERE nome IS NOT NULL AND cpf IS NOT NULL"):
-                k = (_norm(nome), _chave_folha(cpf))
+                k = (_norm(nome), _chave_folha(cpf, fonte, comp))
                 if k[1] and k not in idx:  # 1 vínculo representativo por chave (basta p/ o relatório)
                     idx[k] = {"orgao": orgao or "", "cargo": cargo or "", "vinculo": vinculo or "",
                               "competencia": comp or ""}

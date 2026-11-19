@@ -148,7 +148,7 @@ def _db_fusao(tmp_path):
     p = tmp_path / "compliance.db"
     con = sqlite3.connect(p)
     con.executescript("""
-        CREATE TABLE registros_folha (nome TEXT, cpf TEXT);
+        CREATE TABLE registros_folha (nome TEXT, cpf TEXT, fonte TEXT, competencia TEXT);
         CREATE TABLE socios_fornecedor (cnpj TEXT, socio_nome TEXT, socio_doc TEXT,
                                         socio_servidor INTEGER, cpf_pos3a9 TEXT);
     """)
@@ -157,8 +157,9 @@ def _db_fusao(tmp_path):
     # `folha_middle`. Confrontando os 117 sócios cujo CPF COMPLETO já estava resolvido e cujo nome
     # consta na folha: 94 batem em **4-9**, 3 em 3-8 (coincidência) e 20 são homônimos reais. A
     # folha expõe a MESMA janela do QSA — logo a fixture agora repete os mesmos seis dígitos.
-    con.execute("INSERT INTO registros_folha VALUES('JOAO DA SILVA','XX223344XXX')")
-    con.execute("INSERT INTO registros_folha VALUES('MARIA SOUZA','XX999888XXX')")  # nome bate, dígito não
+    # 19/11/2026: a janela é da FONTE (GESPERJ 4-9, DPRJ 3-8) — a fixture declara a fonte.
+    con.execute("INSERT INTO registros_folha VALUES('JOAO DA SILVA','XX223344XXX','gesperj_estado','2026-06')")
+    con.execute("INSERT INTO registros_folha VALUES('MARIA SOUZA','XX999888XXX','gesperj_estado','2026-06')")  # nome bate, dígito não
     con.commit(); con.close()
     return p
 

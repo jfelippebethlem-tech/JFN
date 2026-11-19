@@ -59,16 +59,24 @@ def _frag(doc: Any) -> str:
     return d if len(d) == 6 else ""
 
 
-def casa_fragmento(frag_socio: str, frag_folha: str) -> bool | None:
-    """As duas janelas se sobrepõem em D4–D8. `None` = um dos lados não tem fragmento.
+def casa_fragmento(frag_socio: str, frag_folha: str, fonte: str | None = None,
+                   competencia: str | None = None) -> bool | None:
+    """O fragmento do sócio (QSA, dígitos 4–9) confere com o da folha? `None` = não dá para decidir.
 
-    A RFB mostra D4–D9 e a folha D3–D8; o trecho comum é D4–D8, ou seja, os cinco PRIMEIROS
-    dígitos do fragmento da RFB contra os cinco ÚLTIMOS do fragmento da folha. Comparar as
-    strings inteiras como se fossem a mesma janela é o erro que descartaria o casamento certo.
+    A janela da folha VARIA POR FONTE (medido 13/11 e 19/11/2026 — `identidade_pessoa`): GESPERJ mostra
+    4–9 (a mesma do QSA), DPRJ mostra 3–8. A versão anterior presumia 3–8 para toda folha e, no
+    Executivo, comparava dígitos errados (descartava a pessoa certa como homônimo). Sem `fonte` aferida
+    não há como alinhar — devolve None em vez de chutar a janela.
     """
     if not frag_socio or not frag_folha:
         return None
-    return frag_socio[0:5] == frag_folha[1:6]
+    from compliance_agent.identidade_pessoa import COMPATIVEL, INCOMPATIVEL, comparar_cpf, posicoes_folha, posicoes_qsa
+    q = posicoes_qsa(f"***{frag_socio}**")
+    f = posicoes_folha(f"XX{frag_folha}XXX", fonte, competencia)
+    if not q or not f:
+        return None
+    r, _ = comparar_cpf(q, f)
+    return True if r == COMPATIVEL else False if r == INCOMPATIVEL else None
 
 
 def montar_ctx_servidores(con: sqlite3.Connection, nomes: list[str]) -> list[dict]:
@@ -78,12 +86,12 @@ def montar_ctx_servidores(con: sqlite3.Connection, nomes: list[str]) -> list[dic
         return []
     try:
         linhas = con.execute(
-            "SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte FROM registros_folha "
+            "SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte, competencia FROM registros_folha "
             "WHERE COALESCE(nome,'') <> ''").fetchall()
     except sqlite3.OperationalError:
         return []
     return [{"nome": r[0], "cpf": r[1], "orgao": r[2], "cargo": r[3], "vinculo": r[4],
-             "fonte": r[5]} for r in linhas if _norm(r[0]) in alvo]
+             "fonte": r[5], "competencia": r[6]} for r in linhas if _norm(r[0]) in alvo]
 
 
 class C8ServidorSocio(Detector):
@@ -110,7 +118,7 @@ class C8ServidorSocio(Detector):
         for s in servidores:
             por_nome.setdefault(_norm(s.get("nome")), []).append(s)
 
-        achados, homonimos = [], 0
+        achados, homonimos, so_nome = [], 0, 0
         for socio in socios:
             nome = _norm(socio.get("nome") or socio.get("nome_socio"))
             cands = por_nome.get(nome)
@@ -119,7 +127,7 @@ class C8ServidorSocio(Detector):
             frag_s = _frag(socio.get("doc") or socio.get("cpf") or socio.get("doc_socio"))
             escolhido, corroborado, conflitou = None, False, False
             for c in cands:
-                bate = casa_fragmento(frag_s, _frag(c.get("cpf")))
+                bate = casa_fragmento(frag_s, _frag(c.get("cpf")), c.get("fonte"), c.get("competencia"))
                 if bate is True:
                     escolhido, corroborado = c, True
                     break
@@ -131,6 +139,11 @@ class C8ServidorSocio(Detector):
                 # todos os candidatos têm fragmento e TODOS conflitam ⇒ homônimo, não achado
                 if conflitou:
                     homonimos += 1
+                continue
+            if not corroborado:
+                # 19/11/2026 (dono: "homônimos têm que ser desmistificados através de outros dados"):
+                # par SÓ-POR-NOME não é achado — fica contado como indeterminado, com o dado que falta.
+                so_nome += 1
                 continue
             achados.append({
                 "socio": socio.get("nome") or socio.get("nome_socio"),
@@ -145,9 +158,16 @@ class C8ServidorSocio(Detector):
             })
 
         res.valores = {"n_socios": len(socios), "n_achados": len(achados),
-                       "homonimos_descartados": homonimos,
+                       "homonimos_descartados": homonimos, "indeterminados_so_nome": so_nome,
                        "orgao_contratante_informado": bool(orgao_contratante)}
 
+        if not achados and so_nome:
+            res.status = "nao_avaliavel"
+            res.motivo_refutacao = (
+                f"nao_avaliavel: {so_nome} sócio(s) com o MESMO NOME de servidor, mas sem CPF comparável "
+                "(a folha da fonte não publica CPF ou o QSA não traz o fragmento) — homônimo não "
+                "desambiguado não é achado")
+            return res
         if not achados:
             res.status = "descartado"
             res.motivo_refutacao = (

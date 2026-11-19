@@ -68,3 +68,18 @@ def test_nome_fora_da_folha_nao_afirma_nada():
 def test_sem_mascara_no_qsa_degrada_honesto():
     r = fusao_folha_qsa("MARIA DA SILVA SANTOS", "", _idx("MARIA DA SILVA SANTOS", "123456"))
     assert r["servidor"] is False
+
+
+def test_folha_da_DPRJ_compara_na_janela_3_a_8_e_ganha_o_digito_3():
+    """19/11/2026: a janela da folha VARIA POR FONTE — DPRJ mostra 3-8 (controle positivo: 296 × 12).
+    QSA `***123456**` (4-9) × DPRJ `X12345` (3-8) é a MESMA pessoa e revela o dígito 3."""
+    r = fusao_folha_qsa("ANA MARIA DE SOUZA", "***123456**",
+                        {"ANA MARIA DE SOUZA": {("dprj_transparencia", "912345")}})
+    assert r["servidor"] is True
+    assert r["conhecidos_3a9"] == "9123456" and r["n_candidatos"] == 100
+
+
+def test_folha_da_DPRJ_com_digito_divergente_e_homonimo():
+    r = fusao_folha_qsa("ANA MARIA DE SOUZA", "***123456**",
+                        {"ANA MARIA DE SOUZA": {("dprj_transparencia", "912399")}})
+    assert r["servidor"] is False

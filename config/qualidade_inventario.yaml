@@ -498,7 +498,7 @@ abas:
   g_fenix: {esfera: geral, afirma: "Aba 'Fênix' (geral)."}
   g_porta: {esfera: geral, afirma: "Aba 'Porta giratória' (geral)."}
   g_laranjas: {esfera: geral, afirma: "Aba 'Laranjas' (geral)."}
-  g_socserv: {esfera: geral, afirma: "Aba 'Servidor-sócio' (geral)."}
+  g_socserv: {esfera: geral, afirma: "Aba 'Sócio na folha' (geral): uma linha por pessoa, identidade desambiguada em camadas (CPF por janela da fonte, prevalência do nome, faixa etária)."}
   g_poder: {esfera: geral, afirma: "Aba 'Poder' (geral)."}
   g_conluio: {esfera: geral, afirma: "Aba 'Conluio' (geral)."}
   g_validar: {esfera: geral, afirma: "Aba 'Validar' (geral)."}
@@ -636,7 +636,7 @@ rotas:
   "/api/intel/sobrepreco": {classe: afirma, afirma: "Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD…", fonte: "compliance_agent.cruzamentos_intel"}
   "/api/intel/socio_oculto": {classe: afirma, afirma: "Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar).", fonte: "compliance_agent.cruzamentos_intel"}
   "/api/intel/socio_sancionada": {classe: afirma, afirma: "Contratada cujo sócio é sócio de empresa sancionada (vedação que alcança o RJ), com OB SIAFE paga na janela em que as duas sociedades e a sanção coexistem.", fonte: "compliance_agent.socio_de_sancionada"}
-  "/api/intel/socio_servidor": {classe: afirma, afirma: "Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse (Lei 14.133 art.", fonte: "compliance_agent.cruzamentos_intel"}
+  "/api/intel/socio_servidor": {classe: afirma, afirma: "Sócio na folha: servidor público sócio-dono de fornecedor pago pelo Estado, identidade VERIFICADO/PROVÁVEL/INDETERMINADO/HOMÔNIMO.", fonte: "compliance_agent.socio_na_folha"}
   "/api/lai/gerar": {classe: afirma, afirma: "Gera a minuta de requerimento LAI para um alvo (processo, CNPJ ou nome).", fonte: "compliance_agent.lai.gerar"}
   "/api/lai/lista": {classe: operacional, afirma: "Lista os requerimentos LAI gerados e seu estado.", fonte: "compliance_agent.lai.listar"}
   "/api/lai/prazos": {classe: operacional, afirma: "Prazos legais dos requerimentos LAI em aberto.", fonte: "compliance_agent.lai.vencendo"}
