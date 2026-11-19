@@ -56,6 +56,19 @@ def log(**kw):
     print(json.dumps(kw, ensure_ascii=False), flush=True)
 
 
+def devolver_memoria() -> None:
+    """19/11/2026: o trabalhador chegou a 5,7 GB de RSS em 10 h (o desenho prevê ~1,4 GB) — as imagens das páginas,
+    alocadas em 32 threads, fragmentam as arenas do glibc e a memória livre nunca volta ao WSL; com isso o próprio
+    trabalhador ficava em `espera_memoria` (182 de 300 eventos) e a GPU parada. Depois de cada lote: coleta e trim."""
+    import ctypes
+    import gc
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except OSError:
+        pass
+
+
 def mem_livre_gb() -> float:
     for ln in open("/proc/meminfo"):
         if ln.startswith("MemAvailable:"):
@@ -172,6 +185,7 @@ def main() -> int:
             log(ev="rsync_vm2_falhou", rc=r.returncode, erro=r.stderr[-300:]); fila = lote + fila; time.sleep(300); continue
         t_lote, pags_lote, nativas_lote = time.time(), 0, 0
         res, ruins, refazer = ler_lote([(rel, TMP / rel) for rel in lote], rec)   # ausente do rsync = ruim
+        devolver_memoria()
         for rel in ruins:
             with FALHAS.open("a") as f:
                 f.write(rel + "\n")

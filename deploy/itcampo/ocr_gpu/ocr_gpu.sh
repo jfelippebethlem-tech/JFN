@@ -6,4 +6,4 @@ cp -n /mnt/c/Users/iterj/ocr_fila.txt ~/jfn-gpu/ocr/ocr_fila.txt 2>/dev/null || 
 cp /mnt/c/Users/iterj/ocr_gpu_worker.py ~/jfn-gpu/ocr_gpu_worker.py
 bash /mnt/c/Users/iterj/vllm_surya.sh | grep -E "PRONTO|checkpoint"
 cd ~/jfn-gpu
-SURYA_INFERENCE_URL=http://127.0.0.1:8790/v1 nice -n 10 .venv/bin/python -u ocr_gpu_worker.py
+MALLOC_ARENA_MAX=2 SURYA_INFERENCE_URL=http://127.0.0.1:8790/v1 nice -n 10 .venv/bin/python -u ocr_gpu_worker.py
