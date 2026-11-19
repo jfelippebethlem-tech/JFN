@@ -126,6 +126,21 @@ def fila_varios(exercicios=(2026, 2025, 2024), db=None, max_itens: int = 20, ago
     return (sorted(falta, key=chave) + sorted(incr, key=chave) + sorted(velha, key=chave))[:max_itens]
 
 
+def bj_vencido(db=None, agora: datetime | None = None, horas: int = 20) -> bool:
+    """Bloqueio Judicial (lista única do Estado, ~105 linhas, ~2 min): relido 1×/dia no começo da varredura."""
+    agora = agora or _agora()
+    try:
+        con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=30)
+        try:
+            r = con.execute("SELECT em FROM siafe_documento_cobertura WHERE tipo='BJ' AND completo=1 "
+                            "ORDER BY em DESC LIMIT 1").fetchone()
+        finally:
+            con.close()
+    except sqlite3.OperationalError:
+        return True
+    return not r or (agora - datetime.fromisoformat(r[0])).total_seconds() > horas * 3600
+
+
 def _agora() -> datetime:
     return datetime.now()
 
@@ -172,6 +187,9 @@ def main() -> int:
     if a.exercicios:
         exs = tuple(int(x) for x in a.exercicios.split(",") if x.strip())
         trabalho = fila_varios(exs, max_itens=a.max_ugs * len(tipos), tipos=tuple(tipos))
+        if bj_vencido():
+            trabalho.insert(0, {"ug": "TODAS", "tipo": "BJ", "exercicio": max(exs), "a_partir": None,
+                                "motivo": "bloqueio_judicial_diario"})
     elif a.ugs:
         # fila DIRIGIDA (12/11/2026): o resolvedor de duplicidade precisa do PROCESSO das NEs de 2023 das UGs
         # cujas OBs vieram sem processo (SIAFE 1 desativado; o SIAFE 2 ainda serve 2023). Mesma regra de

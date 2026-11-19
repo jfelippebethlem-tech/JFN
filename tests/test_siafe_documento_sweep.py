@@ -111,3 +111,14 @@ def test_passada_para_no_login_e_no_siafe_ocupado():
     assert W._parar({"rc": 1}, "SIAFE ocupado: {...}") == "SIAFE ocupado por outra coleta"
     assert W._parar({"ok": False, "etapa": "prazo"}, "") is None
     assert W._parar({"ok": True, "ingeridas": 10}, "") is None
+
+
+def test_bloqueio_judicial_relido_uma_vez_por_dia(tmp_path):
+    p = _db_varios(tmp_path)
+    assert W.bj_vencido(db=p, agora=datetime(2026, 11, 19, 10, 0)) is True
+    c = sqlite3.connect(p)
+    c.execute("INSERT INTO siafe_documento_cobertura VALUES ('BJ','TODAS',2026,1,105,'2026-11-19 08:00:00')")
+    c.commit()
+    c.close()
+    assert W.bj_vencido(db=p, agora=datetime(2026, 11, 19, 10, 0)) is False
+    assert W.bj_vencido(db=p, agora=datetime(2026, 11, 20, 9, 0)) is True

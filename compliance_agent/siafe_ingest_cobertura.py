@@ -131,6 +131,21 @@ def medir_documentos(con, exercicios=EXERCICIOS) -> dict:
     return out
 
 
+def medir_listas(con) -> dict:
+    """Bloqueio Judicial (lista única do Estado) e DEA (por UG): linhas e estado registrado da última coleta."""
+    out = {}
+    for tipo, tab in (("BJ", "bloqueio_judicial_siafe"), ("DEA", "dea_siafe")):
+        if not _tem(con, tab):
+            out[tipo] = {"estado": "INDISPONÍVEL", "motivo": f"tabela {tab} ausente"}
+            continue
+        n, ugs = con.execute(f"SELECT COUNT(*), COUNT(DISTINCT ug_emitente) FROM {tab}").fetchone()
+        reg = con.execute("SELECT SUM(completo), COUNT(*), MAX(em) FROM siafe_documento_cobertura WHERE tipo=?",
+                          (tipo,)).fetchone() if _tem(con, "siafe_documento_cobertura") else (0, 0, None)
+        out[tipo] = {"estado": "VERIFICADO" if reg[0] else "PENDENTE", "linhas": n, "ugs": ugs,
+                     "coletas_completas": reg[0] or 0, "coletas": reg[1], "ultima": reg[2]}
+    return out
+
+
 def medir_status(con, exercicios=EXERCICIOS, hoje: datetime | None = None) -> dict:
     """STATUS CONGELADO: OB Contabilizada em estado intermediário cuja foto nunca foi refeita. Separa as recentes
     (≤ 60 dias, ainda podem estar no banco) das velhas (> 60 dias: o status da base quase certamente envelheceu)
@@ -177,7 +192,7 @@ def medir(db=None, exercicios=EXERCICIOS, hoje: datetime | None = None) -> dict:
             return {"estado": "INDISPONÍVEL", "motivo": "ob_orcamentaria_siafe ausente"}
         return {"medido_em": time.strftime("%F %T"), "exercicios": list(exercicios),
                 "ob": medir_ob(con, exercicios), "documentos": medir_documentos(con, exercicios),
-                "status": medir_status(con, exercicios, hoje)}
+                "status": medir_status(con, exercicios, hoje), "listas": medir_listas(con)}
     finally:
         con.close()
 

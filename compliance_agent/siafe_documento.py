@@ -91,6 +91,53 @@ TIPOS["GD"] = {
     PRIMARY KEY (numero, ug_emitente, exercicio))""",
     "idx": ("CREATE INDEX IF NOT EXISTS ix_gd_ob ON gd_siafe(ob, ug_emitente)",)}
 NE_RE = TIPOS["NE"]["re"]
+# BLOQUEIO JUDICIAL e DESPESA DE EXERCÍCIO ANTERIOR (19/11/2026). Mesma família de grade, outro template
+# (`pagTemplate:tblEntidadeDec`, sonda `siafe_mapear --detalhar` de 19/11). Chave = "Código".
+#  • BJ: lista ÚNICA do Estado (sem coluna de UG; código sequencial — 105 em 19/11). Controle positivo: os códigos
+#    colhidos cobrem 1..máximo (sequência sem buraco). Vínculo com OB pelo `codigo_credor` (CNPJ).
+#  • DEA: por UG (coluna "UG"), código AA+6 dígitos (26011891). Fatias por "Código começa com" AA0…AA9.
+TIPOS["BJ"] = {
+    "tela": "Bloqueio Judicial", "menu": "Execução Financeira", "tbl": "pagTemplate:tblEntidadeDec",
+    "re": re.compile(r"\b\d{1,7}\b"), "tabela": "bloqueio_judicial_siafe", "ano": None, "ug_fixa": "TODAS",
+    "dinheiro": ("valor_bloqueado",),
+    "cols": {"codigo": "numero", "codigo credor": "codigo_credor", "nome credor": "nome_credor",
+             "valor bloqueado": "valor_bloqueado", "data bloqueio": "data_bloqueio",
+             "data desbloqueio": "data_desbloqueio", "autos do bloqueio": "autos", "status": "status"},
+    "ddl": """CREATE TABLE IF NOT EXISTS bloqueio_judicial_siafe (
+    numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, codigo_credor TEXT, nome_credor TEXT,
+    valor_bloqueado REAL, data_bloqueio TEXT, data_desbloqueio TEXT, autos TEXT, status TEXT, coletado_em TEXT,
+    PRIMARY KEY (numero, ug_emitente, exercicio))""",
+    "idx": ("CREATE INDEX IF NOT EXISTS ix_bj_credor ON bloqueio_judicial_siafe(codigo_credor)",)}
+TIPOS["DEA"] = {
+    "tela": "Despesa Exercício Anterior", "menu": "Contabilidade", "tbl": "pagTemplate:tblEntidadeDec",
+    "re": re.compile(r"\b\d{8}\b"), "tabela": "dea_siafe", "ano": None, "dinheiro": ("valor",),
+    "prop_ug": "UG", "prop_numero": "Código", "base": lambda ex: str(int(ex))[2:],
+    "cols": {"codigo": "numero", "ug": "ug_emitente", "numero termo": "numero_termo", "codigo credor": "codigo_credor",
+             "status": "status", "documento registro": "doc_registro",
+             "documento reconhecimento": "doc_reconhecimento", "valor": "valor"},
+    "ddl": """CREATE TABLE IF NOT EXISTS dea_siafe (
+    numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, numero_termo TEXT, codigo_credor TEXT,
+    status TEXT, doc_registro TEXT, doc_reconhecimento TEXT, valor REAL, coletado_em TEXT,
+    PRIMARY KEY (numero, ug_emitente, exercicio))""",
+    "idx": ("CREATE INDEX IF NOT EXISTS ix_dea_credor ON dea_siafe(codigo_credor)",
+            "CREATE INDEX IF NOT EXISTS ix_dea_termo ON dea_siafe(numero_termo)")}
+
+
+SEM_CONTROLE_POSITIVO = {"DEA"}
+
+
+def cobertura_bj_sequencia(exercicio: int, db=None) -> float | None:
+    """Controle positivo do Bloqueio Judicial: o código é sequencial no Estado; colhidos ÷ maior código."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        con.execute(TIPOS["BJ"]["ddl"])
+        n, mx = con.execute("SELECT COUNT(DISTINCT numero), MAX(CAST(numero AS INTEGER)) FROM bloqueio_judicial_siafe "
+                            "WHERE exercicio=?", (int(exercicio),)).fetchone()
+    finally:
+        con.close()
+    return round(n / mx, 4) if mx else None
+
+
 
 
 def _tbl(t: dict) -> str:
@@ -168,7 +215,7 @@ def _norm(s: str) -> str:
 
 
 def _money(s: str) -> float | None:
-    s = (s or "").strip().replace(".", "").replace(",", ".")
+    s = re.sub(r"[^\d,.\-]", "", s or "").replace(".", "").replace(",", ".")   # BJ traz "R$ 42.565.673,37"
     try:
         return float(s)
     except ValueError:
@@ -183,7 +230,7 @@ def ingerir(exercicio: int, header: list[str], linhas: list[list[str]], db=None,
         col = t["cols"].get(_norm(h))
         if col and col not in idx:
             idx[col] = i
-    if "numero" not in idx or "ug_emitente" not in idx:
+    if "numero" not in idx or ("ug_emitente" not in idx and not t.get("ug_fixa")):
         return {"ok": False, "erro": "cabecalho_sem_numero_ou_ug", "header": header}
     con = sqlite3.connect(db or _DB, timeout=60)
     try:
@@ -200,7 +247,11 @@ def ingerir(exercicio: int, header: list[str], linhas: list[list[str]], db=None,
                     rec[c] = _money(rec[c])
             # `exercicio` é o ano da CONSULTA; a tela lista também os RP com saldo (no ITERJ/2025 havia NE de
             # 2002). O ano da própria NE está no número — guardado à parte para não confundir os dois.
-            rec.update({"exercicio": int(exercicio), t["ano"]: int(rec["numero"][:4]), "coletado_em": agora})
+            rec.update({"exercicio": int(exercicio), "coletado_em": agora})
+            if t.get("ano"):
+                rec[t["ano"]] = int(rec["numero"][:4])
+            if t.get("ug_fixa"):
+                rec["ug_emitente"] = t["ug_fixa"]
             cols = ",".join(rec)
             con.execute(f"INSERT OR REPLACE INTO {t['tabela']} ({cols}) VALUES ({','.join('?' * len(rec))})",
                         list(rec.values()))
@@ -273,7 +324,7 @@ async def _remover_limite(pg, tbl: str = TBL) -> str:
     return {"nada": "sem_limite", "desconhecido": f"rotulo_desconhecido:{info['rotulo'][:40]}"}[acao]
 
 
-async def _filtrar_ug(pg, ug: str, tbl: str = TBL) -> dict:
+async def _filtrar_ug(pg, ug: str, tbl: str = TBL, rotulo: str = "UG Emi") -> dict:
     """Receita do coletor da OB (validada 2026-06-07), com o id desta tabela: Propriedade/Operador por
     typeahead, valor commitado com Tab."""
     from compliance_agent import siafe_ob_orcamentaria as S
@@ -285,7 +336,7 @@ async def _filtrar_ug(pg, ug: str, tbl: str = TBL) -> dict:
         await S._click_real(pg, f"{tbl}:sdtFilter::disAcr"); await adf.wait()
     if await pg.locator(f'[id="{prop}"]').count() == 0:
         return {"ok": False, "erro": "painel de filtro não abriu"}
-    await S._typeahead(pg, prop, "UG Emi"); await adf.wait()
+    await S._typeahead(pg, prop, rotulo); await adf.wait()
     await S._typeahead(pg, op, "começa com"); await adf.wait()
     val = pg.locator('[id*="in_value_rtfFilter"]:visible').last
     if await val.count() == 0:
@@ -394,11 +445,17 @@ def fechar_cobertura(tipo: str, ug: str, exercicio: int, r: dict, db=None) -> bo
     o que as OBs citam (≥95%). Devolve o `completo` registrado e põe a cobertura medida em `r`."""
     n = r.get("colhidas", r.get("ingeridas", 0))
     completo = bool(r.get("ok")) and not r.get("capou")
-    medir = {"NL": cobertura_pela_ob, "GD": cobertura_gd_pela_ob}.get(tipo)
+    medir = {"NL": cobertura_pela_ob, "GD": cobertura_gd_pela_ob,
+             "BJ": lambda _ug, ex, db=None: cobertura_bj_sequencia(ex, db=db)}.get(tipo)
     if completo and medir:
         cob = medir(ug, exercicio, db=db)
         r["cobertura_pela_ob"] = cob
         completo = cob is None or cob >= _COBERTURA_MIN
+    # DEA: o código é sequência do ESTADO (UG 045200 tem 26001388…26011891 com buracos de outras UGs) e nada
+    # cita a DEA de fora — sem controle positivo, a coleta fica PENDENTE (lida, não provada inteira).
+    if tipo in SEM_CONTROLE_POSITIVO and completo:
+        r["sem_controle_positivo"] = True
+        completo = False
     if tipo == "NE" and completo:
         cob = cobertura_ne_pela_nl(ug, exercicio, db=db)
         r["cobertura_pela_nl"] = cob
@@ -459,9 +516,10 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
     if not await S._esperar_linha_filtro(pg, 1, adf):
         return {"ok": False, "etapa": "filtro_linha1"}
     tbl = _tbl(t)
-    await S._typeahead(pg, f"{tbl}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", "Número"); await adf.wait()
+    await S._typeahead(pg, f"{tbl}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", t.get("prop_numero", "Número"))
+    await adf.wait()
     await S._typeahead(pg, f"{tbl}:table_rtfFilter:1:cbx_op_sel_rtfFilter::content", "começa com"); await adf.wait()
-    base = f"{exercicio}{tipo}"
+    base = t["base"](exercicio) if t.get("base") else f"{exercicio}{tipo}"
     ckp = _REPO / "data" / "sei_cache" / f"siafe_doc_{tipo}_{ug_ckpt}_{exercicio}.json"
     feitas = set(json.loads(ckp.read_text())) if ckp.exists() else set()
     inicio = prefixos_incrementais(base, a_partir) if a_partir else [f"{base}{d}" for d in range(10)]
@@ -516,9 +574,10 @@ async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None 
             if not await _ir_para(pg, t["tela"], menu=t.get("menu", "Execução Orçamentária"), tbl=_tbl(t)):
                 return {"ok": False, "etapa": "navegacao"}
             lim = await _remover_limite(pg, tbl=_tbl(t))
-            f = await _filtrar_ug(pg, ug, tbl=_tbl(t))
-            if not f.get("ok"):
-                return {"ok": False, "etapa": "filtro", **f}
+            if not t.get("ug_fixa"):            # lista única do Estado (BJ) não tem coluna de UG
+                f = await _filtrar_ug(pg, ug, tbl=_tbl(t), rotulo=t.get("prop_ug", "UG Emi"))
+                if not f.get("ok"):
+                    return {"ok": False, "etapa": "filtro", **f}
             header, linhas = ([], []) if a_partir else await _colher(pg, t["re"], tbl=_tbl(t))
             if not a_partir and len(linhas) < _PLATO:
                 r = ingerir(exercicio, header, linhas, tipo=tipo)

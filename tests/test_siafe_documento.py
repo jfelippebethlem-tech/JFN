@@ -189,3 +189,43 @@ def test_ne_sem_nl_para_conferir_fica_completa_e_a_nl_depois_rebaixa(tmp_path):
     assert N.fechar_cobertura("NL", "166100", 2025, r, db=db) is True
     assert r["ne_rebaixada"] is True
     assert N.ugs_completas(sqlite3.connect(db)) == set()
+
+
+# ── 19/11/2026: Bloqueio Judicial (lista única, controle pela sequência do código) e DEA ────────────────────────
+
+_HEADER_BJ = ["Código", "Código Credor", "Nome Credor", "Valor Bloqueado", "Data Bloqueio", "Data Desbloqueio",
+              "Autos do Bloqueio", "Status"]
+
+
+def test_bloqueio_judicial_ingere_sem_coluna_de_ug_e_confere_a_sequencia(tmp_path):
+    db = tmp_path / "c.db"
+    linhas = [[str(i), "07046566000101", "Fornecedor", "R$ 42.565.673,37" if i == 5 else "R$ 0,00", "03/02/2026", "",
+               "", "Bloqueado"] for i in (1, 2, 3, 5)]                 # falta o 4
+    r = N.ingerir(2026, _HEADER_BJ, linhas, db=db, tipo="BJ")
+    assert r["ingeridas"] == 4
+    row = sqlite3.connect(db).execute("SELECT ug_emitente, valor_bloqueado FROM bloqueio_judicial_siafe "
+                                      "WHERE numero='5'").fetchone()
+    assert row == ("TODAS", 42565673.37)
+    assert N.cobertura_bj_sequencia(2026, db=db) == 0.8               # 4 de 5: buraco na sequência
+    assert N.fechar_cobertura("BJ", "TODAS", 2026, {"ok": True, "colhidas": 4}, db=db) is False
+    N.ingerir(2026, _HEADER_BJ, [["4", "1", "x", "R$ 0,00", "", "", "", "Bloqueado"]], db=db, tipo="BJ")
+    assert N.fechar_cobertura("BJ", "TODAS", 2026, {"ok": True, "colhidas": 5}, db=db) is True
+
+
+def test_dea_ingere_pela_coluna_ug_e_fatia_pelo_codigo():
+    import tempfile
+    from pathlib import Path
+    db = Path(tempfile.mkdtemp()) / "c.db"
+    cab = ["Código", "UG", "Número Termo", "Código Credor", "Status", "Documento Registro", "Documento Reconhecimento",
+           "Valor"]
+    r = N.ingerir(2026, cab, [["26011891", "045200", "SEI-030022/004923/20", "210700", "Reconhecido", "2026NP001153",
+                               "2026NP001153", "3.350,80"]], db=db, tipo="DEA")
+    assert r["ingeridas"] == 1
+    assert sqlite3.connect(db).execute("SELECT ug_emitente, valor FROM dea_siafe").fetchone() == ("045200", 3350.8)
+    assert N.TIPOS["DEA"]["base"](2026) == "26" and N.TIPOS["DEA"]["prop_ug"] == "UG"
+
+
+def test_dea_sem_controle_positivo_nao_vira_completa(tmp_path):
+    r = {"ok": True, "colhidas": 56}
+    assert N.fechar_cobertura("DEA", "045200", 2026, r, db=tmp_path / "c.db") is False
+    assert r["sem_controle_positivo"] is True
