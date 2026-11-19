@@ -141,6 +141,45 @@ def ultimo_evento(k: int) -> dict:
     return {}
 
 
+_SONDA_WSL = ("awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf \"%d %d\\n\", t, a}' /proc/meminfo; "
+              "pgrep -fc '[t]ools/sei_integra_completa.py' || true; pgrep -fc '[o]cr_gpu_worker.py' || true; "
+              "tail -n 40 ~/jfn-gpu/ocr/ocr_gpu.log")
+
+
+def maquina() -> dict:
+    """A máquina inteira para o painel da VM-1 (Sistema): GPU, Windows, WSL, sessões SEI e o trabalhador da GPU."""
+    m: dict = {}
+    try:
+        r = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total",
+                            "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=30)
+        u, usada, total = (int(x) for x in r.stdout.strip().split(","))
+        m["gpu"] = {"util_pct": u, "mem_mb": usada, "mem_total_mb": total}
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        m["gpu"] = None
+    vmmem = [p for p in psutil.process_iter(["name"]) if (p.info["name"] or "").lower().startswith("vmmem")]
+    try:
+        m["wsl_vmmem_gb"] = round(sum(p.memory_info().rss for p in vmmem) / 1e9, 1) if vmmem else None
+    except psutil.Error:
+        m["wsl_vmmem_gb"] = None
+    try:
+        r = subprocess.run(WSL + ["bash", "-c", _SONDA_WSL], capture_output=True, text=True, encoding="utf-8",
+                           timeout=60)
+        ls = r.stdout.splitlines()
+        t, a = (int(x) for x in ls[0].split()[:2])
+        m["wsl_total_gb"], m["wsl_disp_gb"] = round(t / 1e6, 1), round(a / 1e6, 1)
+        m["sessoes_sei_capturando"], m["ocr_gpu_trabalhador_vivo"] = int(ls[1]), int(ls[2]) > 0
+        evs = [json.loads(x) for x in ls[3:] if x.startswith("{")]
+        lotes = [e for e in evs if e.get("ev") == "lote"]
+        m["ocr_gpu"] = {"ultimo_evento": evs[-1] if evs else None,
+                        "lotes_nos_ultimos_40_eventos": len(lotes),
+                        "esperas_memoria_nos_ultimos_40": sum(e.get("ev") == "espera_memoria" for e in evs),
+                        "s_por_pag_ultimo_lote": lotes[-1].get("s_por_pag") if lotes else None,
+                        "restantes": lotes[-1].get("restantes") if lotes else None}
+    except (OSError, ValueError, IndexError, subprocess.TimeoutExpired):
+        m.setdefault("wsl_disp_gb", None)
+    return m
+
+
 def _arvore(pid: int) -> list[psutil.Process]:
     try:
         p = psutil.Process(pid)
@@ -157,6 +196,7 @@ def main() -> int:
     espera_ate: dict[int, float] = {}     # vaga → não relançar antes de
     totais = {"rodadas": 0, "pdfs": 0, "paginas": 0}
     ultimo_lanc, ultimo_codigo, motivo_ant = 0.0, 0.0, None
+    maq, ultima_maq = {}, 0.0
     psutil.cpu_percent(None)
     log(ev="inicio", ncpu=ncpu, piso_gb=PISO_GB, max=MAX_TRAB, threads=THREADS)
     while True:
@@ -233,6 +273,8 @@ def main() -> int:
                     rss[k] += p.memory_info().rss
                 except psutil.Error:
                     pass
+        if time.time() - ultima_maq > 300:
+            maq, ultima_maq = maquina(), time.time()
         tmp = ESTADO.with_suffix(".tmp")
         tmp.write_text(json.dumps({
             "t": time.strftime("%F %T"), "win_disp_gb": round(disp, 2), "win_total_gb": round(mem.total / 1e9, 1),
@@ -241,7 +283,7 @@ def main() -> int:
             "trabalhadores": [{"vaga": k, "pid": t["proc"].pid, "rss_mb": round(rss[k] / 1e6),
                                "suspenso": t["suspenso"], "desde_s": round(time.time() - t["desde"])}
                               for k, t in sorted(trab.items())],
-            "totais_desde_inicio": totais}, ensure_ascii=False), encoding="utf-8")
+            "totais_desde_inicio": totais, "maquina": maq}, ensure_ascii=False), encoding="utf-8")
         tmp.replace(ESTADO)
 
 
