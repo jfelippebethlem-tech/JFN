@@ -1,0 +1,22 @@
+id: gestor_recebe_da_osc
+nome: Gestor da parceria / membro da comissão de monitoramento recebe pagamento da OSC
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-310002/000054/2025
+  caso: FIA/RJ × FUNRIO (Termo de Fomento 001/2025, PTPA) — data/pericia_agentes/310002_000054_2025.json
+norma:
+  - Lei 13.019/2014, art. 35 §6º (impedimento de quem manteve relação jurídica com a OSC nos últimos 5 anos)
+  - Lei 13.019/2014, art. 61 (gestor) e art. 39/45 (vedações)
+  - Lei 8.429/1992, art. 9º (enriquecimento ilícito — só com prova; aqui é indício)
+sinal: >
+  Nome completo (≥ 3 tokens) designado gestor/comissão em portaria (com Id. Funcional/matrícula) de processo de
+  parceria aparece em documento de prestação de contas da OSC (comprovante, folha, bolsa, extrato, planilha) com
+  valor em R$ a ≤ 200 caracteres. Forte = mesmo processo; medio = outra parceria.
+explicacoes_inocentes:
+  - "Homônimo — só nome completo com ≥ 3 tokens"
+  - "Gestor como destinatário/analista do documento — função do Estado antes do nome descarta"
+  - "Documento do órgão (despacho, ofício, parecer, e-mail, portaria) — não é lido como prestação de contas"
+  - "Servidor já desligado na data do pagamento — não descartado: pedir ficha funcional"
+controle_positivo: SEI-310002/000054/2025 doc 44 (Portaria FIA 747/2025) × doc 8 (12 PIX de R$ 10.000,00)
+controle_negativo: nome curto em planilha ("PATRICIA RIBEIRO") e gestora como destinatária — testes unitários
+privacidade: CPF sempre mascarado; nome só do agente público designado (prova = a portaria)

@@ -1,0 +1,22 @@
+id: mrosc_atesto_contra_relatorio
+nome: Comissão atesta execução integral/metas cumpridas que o próprio relatório (ou o da OSC) nega
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-280001/000176/2025
+  caso: Instituto NATA × SEIJES ("60+ Reabilita") — data/pericia_agentes/280001_000176_2025.json; e Núcleo Social Bem Viver SEI-280001/000624/2025
+norma:
+  - Lei 13.019/2014, arts. 58 e 59 (monitoramento; relatório técnico com análise das metas)
+  - Lei 13.019/2014, art. 61 (deveres do gestor)
+  - Lei 13.019/2014, art. 67 (parecer técnico)
+sinal: >
+  Forte — no mesmo documento, atesto pleno ("ATESTAMOS a execução INTEGRAL e SATISFATÓRIA", "atendendo o
+  cumprimento das metas", "metas cumpridas") e negação da execução ("os polos ainda não foram efetivamente
+  implantados", "não atingindo o objetivo"). Medio — atesto pleno da fiscalização e, a até 4 documentos, relatório
+  da OSC cujo quadro de etapas não tem nenhuma concluída.
+explicacoes_inocentes:
+  - "No MROSC a 1ª parcela é antecipada pelo cronograma — o vício é o atesto, não o repasse"
+  - "A meta do período pode ser só implantação (forma cruzada não descarta: pedir o plano de trabalho)"
+  - "Atesto parcial/com ressalvas — excluído por código"
+  - "'será concluída' (futuro) não conta como etapa concluída"
+controle_positivo: SEI-280001/000176/2025 doc 23 (mesmo documento); SEI-280001/000624/2025 docs 102 × 104 (cruzado)
+controle_negativo: relatório com etapa concluída ou atesto sem negação (testes unitários com trechos reais)

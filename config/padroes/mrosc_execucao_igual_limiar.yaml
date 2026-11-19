@@ -1,0 +1,21 @@
+id: mrosc_execucao_igual_limiar
+nome: Execução da parceria declarada exatamente no limiar de liberação da parcela
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-280001/000624/2025
+  caso: Núcleo Social Bem Viver × SEIJES (Termo de Colaboração 001/2025, CONVERJ 1090) — data/pericia_agentes/280001_000624_2025.json
+norma:
+  - Lei 13.019/2014, art. 48 (liberação de parcela condicionada)
+  - Lei 13.019/2014, arts. 63, 64 e 66 (prestação de contas comprova a execução real)
+  - Lei 13.019/2014, art. 67 (parecer técnico de prestação de contas)
+sinal: >
+  Relatório de execução/prestação de contas de parceria afirma "R$ X equivale a P%" com X == round(P% × Y, 2)
+  (±R$ 0,01) para um Y impresso no mesmo documento, em contexto de execução e sem qualificador ("mais de",
+  "ao menos"). Forte quando o processo repete o cálculo exato em 2+ relatórios com valores distintos.
+explicacoes_inocentes:
+  - "Redação abreviada de 'ao menos P%' (não descartável pelo texto: pedir a planilha de execução financeira)"
+  - "Qualificador 'mais de/cerca de/ao menos' presente (Bem Viver doc 109) — excluído por código"
+  - "Parcela planejada descrita como fração do total (cronograma) — excluída por código"
+  - "P = 100% ou P < 5% — fora"
+controle_positivo: SEI-280001/000624/2025 docs 60, 85, 135 (65% × parcelas pagas, ao centavo)
+controle_negativo: SEI-280001/000624/2025 doc 109 ("mais de 65%", R$ 13.428.257,08 — valor real, não o limiar)
