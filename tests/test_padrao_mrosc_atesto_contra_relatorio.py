@@ -37,3 +37,11 @@ def test_negativo_atesto_sem_negacao():
 def test_negativo_quadro_com_etapa_concluida():
     t = "Etapa: Definição dos Polos Concluída Etapa: Capacitação Iniciada – Em andamento Etapa: Divulgação Em andamento"
     assert quadro_sem_conclusao(t) is None
+
+
+def test_negativo_nao_cumpriu_integralmente_e_constatacao_nao_atesto():
+    # INTAS SEI-310003/000389/2025 doc 82 (FP de 19/11): constatação do descumprimento, não atesto.
+    t = ("a organização da sociedade civil parceira não cumpriu integralmente as metas I e II, deixando de realizar "
+         "parcela substancial das ações. Parte significativa das atividades previstas não foi realizada conforme o "
+         "cronograma estabelecido, assim como não houve a entrega dos produtos")
+    assert avaliar_documento(t) is None

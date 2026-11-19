@@ -54,11 +54,26 @@ _NEGA = re.compile(
 _STATUS = re.compile(r"(nao iniciad[ao]|em andamento|(?<!sera )(?<!serao )conclui?d[ao]s?(?! concomitante)|finalizad[ao])")
 
 
+# FP medido (19/11, INTAS SEI-310003/000389/2025 doc 82): "a OSC NÃO cumpriu integralmente as metas" casava como
+# atesto pleno — é a constatação do descumprimento, o contrário do vício. Atesto negado não é atesto.
+_NEGADO_ANTES = re.compile(r"\b(nao|sem|deixou de|deixando de)\s+(\w+\s+){0,2}$")
+
+
+def _atesto(t: str):
+    for a in _ATESTO.finditer(t):
+        if _NEGADO_ANTES.search(t[max(0, a.start() - 30):a.start()]):
+            continue
+        if _PARCIAL.search(t[max(0, a.start() - 80):a.end() + 80]):
+            continue
+        return a
+    return None
+
+
 def avaliar_documento(texto: str) -> dict | None:
     """Atesto pleno + negação da execução no mesmo texto → {atesto, nega}."""
     t = C.norm(plano(texto))
-    a = _ATESTO.search(t)
-    if not a or _PARCIAL.search(t[max(0, a.start() - 80):a.end() + 80]):
+    a = _atesto(t)
+    if not a:
         return None
     n = _NEGA.search(t)
     if not n:
@@ -68,10 +83,8 @@ def avaliar_documento(texto: str) -> dict | None:
 
 def atesto_pleno(texto: str) -> str | None:
     t = C.norm(plano(texto))
-    a = _ATESTO.search(t)
-    if not a or _PARCIAL.search(t[max(0, a.start() - 80):a.end() + 80]):
-        return None
-    return C.trecho(t, a.start(), a.end(), 80)
+    a = _atesto(t)
+    return C.trecho(t, a.start(), a.end(), 80) if a else None
 
 
 def quadro_sem_conclusao(texto: str) -> str | None:
@@ -88,7 +101,8 @@ def _processo(pasta, man, sel):
     if not eh_parceria(man):
         return [], {}
     cob = {"parcerias_avaliadas": 1}
-    textos = {d["i"]: (d, C.ler(pasta, man, d)) for d in sel if d.get("i") is not None}
+    # o índice `i` vem como texto em parte dos manifestos ("12") — a vizinhança precisa dele inteiro
+    textos = {int(d["i"]): (d, C.ler(pasta, man, d)) for d in sel if str(d.get("i", "")).strip().isdigit()}
     fortes, medios = [], []
     for i, (d, t) in sorted(textos.items()):
         r = avaliar_documento(t)

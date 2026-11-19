@@ -45,3 +45,11 @@ def test_negativo_sem_valor_perto():
 
 def test_negativo_portaria_sem_gestor_ou_comissao():
     assert nomes_designados("Nomear Fulano Beltrano Silva, Id. Funcional 1234 para o cargo de Assessor") == []
+
+
+def test_negativo_servidor_signatario_com_cargo_apos_o_nome():
+    # FUNRIO doc 11 (FP de 19/11): o vice-presidente da FIA assina o ofício juntado à NF; não é pagamento a ele.
+    rx = _trie_regex(["arnaldo francisco de alcantara silva junior"])
+    t = C.norm("Valor R$ 353.201,77. Arnaldo Francisco de Alcantara Silva Junior Vice-Presidente - FIA/RJ "
+               "ID Funcional nº 5089831-0")
+    assert pagamentos_do_nome(t, rx) == {}

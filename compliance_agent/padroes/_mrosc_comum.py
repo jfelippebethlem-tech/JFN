@@ -15,7 +15,9 @@ import time
 from pathlib import Path
 
 _FORTE = re.compile(r"termo de (fomento|colabora)|relat[oó]rio\s+(de\s+)?execu[cç][aã]o\s+(da\s+)?osc|\bOSC\b|"
-                    r"monitoramento e avalia|mrosc|13\.019", re.I)
+                    r"monitoramento e avalia|mrosc|13\.019|termo\s+(aditivo\s+.{0,12})?(de|do)\s+conv[eê]nio|"
+                    r"registro da assinatura do conv[eê]nio|coordenador\w*\s+(geral\s+)?(de\s+)?conv[eê]nio|"
+                    r"gestor\w*\s+do\s+conv[eê]nio", re.I)
 _PLANO = re.compile(r"plano de trabalho", re.I)
 _PC = re.compile(r"presta[cç][aã]o de contas", re.I)
 

@@ -57,6 +57,11 @@ _NAO_NOME = {"governo", "estado", "secretaria", "fundacao", "comissao", "portari
 _FUNCAO_ANTES = re.compile(r"(gestor|gestora|comissao|presidente|membro|analisad\w* por|sra|senhora|ilma|"
                            r"fiscal|assinad\w* (eletronicamente )?por)(\s+d[aoe]s?\s+\w+)?\W*$")
 _MOEDA_PERTO = re.compile(r"r\$\s*\d")
+# FP medido (19/11, FUNRIO SEI-310002/000054/2025 doc 11): "arnaldo francisco de alcantara silva junior vice-presidente -
+# fia/rj id funcional" é o servidor ASSINANDO o ofício juntado à NF, não recebendo. Cargo/ID logo após o nome = signatário.
+_FUNCAO_DEPOIS = re.compile(r"\W{0,4}(vice-?\s?presidente|presidente|diretor|diretora|secretari[oa]|subsecretari[oa]|"
+                            r"gestor|gestora|coordenador|coordenadora|assessor|assessora|superintendente|"
+                            r"id\.? funcional|matricula|servidor|servidora)\b")
 
 
 def nomes_designados(texto: str) -> list[tuple[str, str]]:
@@ -103,7 +108,7 @@ def pagamentos_do_nome(texto_norm: str, rx: re.Pattern) -> dict[str, list[str]]:
     out = defaultdict(list)
     for m in rx.finditer(texto_norm):
         antes = texto_norm[max(0, m.start() - 40):m.start()]
-        if _FUNCAO_ANTES.search(antes):
+        if _FUNCAO_ANTES.search(antes) or _FUNCAO_DEPOIS.match(texto_norm, m.end()):
             continue
         viz = texto_norm[max(0, m.start() - 200):m.end() + 200]
         if not _MOEDA_PERTO.search(viz):
