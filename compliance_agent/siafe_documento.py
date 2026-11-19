@@ -185,8 +185,10 @@ def prefixos_incrementais(base: str, ultimo: str) -> list[str]:
 
 def registrar_cobertura(tipo: str, ug: str, exercicio: int, completo: bool, colhidas: int, db=None) -> None:
     """Quem lê NE/NL precisa saber se a UG está INTEIRA: 166100 ficou com 1.000 NL de uma coleta capada e o
-    detector de ordem cronológica acusou 346 quebras (04/11/2026). Coleta capada ou com erro = completo 0."""
-    con = sqlite3.connect(db or _DB, timeout=60)
+    detector de ordem cronológica acusou 346 quebras (04/11/2026). Coleta capada ou com erro = completo 0.
+    Espera até 5 min pelo lock: em 19/11/2026 uma coleta de 548 s (296100/NE/2026) falhou inteira por "database is
+    locked" nesta gravação de 1 linha, com o banco preso por outro escritor por mais de 60 s."""
+    con = sqlite3.connect(db or _DB, timeout=300)
     try:
         con.execute(_DDL_COB)
         con.execute("INSERT OR REPLACE INTO siafe_documento_cobertura VALUES (?,?,?,?,?,?)",
