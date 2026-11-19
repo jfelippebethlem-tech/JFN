@@ -111,9 +111,15 @@ def _coletar(con) -> dict[str, dict]:
 
     # s_filiado_fora — FILIAÇÃO partidária (Wayback TSE) com domicílio eleitoral fora do Rio.
     # Cobre MUITO mais gente que candidatura (não precisa ter sido candidato). Domicílio = onde vota.
+    # nome com mais de um TÍTULO eleitoral na filiação = pessoas diferentes (homônimo provado pelo TSE):
+    # o sinal não pode ser atribuído a ninguém (19/11/2026, régua identidade_pessoa)
+    multi_titulo = {r[0] for r in con.execute(
+        "SELECT nome_norm FROM pcrj_filiado GROUP BY nome_norm HAVING COUNT(DISTINCT titulo) > 1")}
     for r in con.execute(
         "SELECT nome_norm, nome, municipio, partido FROM pcrj_filiado "
         "WHERE municipio<>'' AND municipio<>'RIO DE JANEIRO'"):
+        if r["nome_norm"] in multi_titulo:
+            continue
         # todo filiado na tabela já foi casado com servidor/candidato no ingest → é alvo legítimo
         p = _p(r["nome_norm"], r["nome"])
         p["municipios"].add((r["municipio"] or "").upper())

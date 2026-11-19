@@ -160,10 +160,18 @@ def _ingresso_ym(data1: str) -> str | None:
 
 
 def _partido_de(con, nome_norm: str) -> str:
-    """Filiação partidária (foto TSE 2018) — coluna integrada, '—' se não consta."""
-    r = con.execute(
-        "SELECT partido, situacao FROM pcrj_filiado WHERE nome_norm=? "
-        "ORDER BY CASE WHEN situacao='REGULAR' THEN 0 ELSE 1 END LIMIT 1", (nome_norm,)).fetchone()
+    """Filiação partidária (foto TSE 2018) — coluna integrada, '—' se não consta.
+
+    Identidade (19/11/2026, régua identidade_pessoa): a filiação traz o TÍTULO eleitoral. Nome com mais de
+    um título na base são PESSOAS diferentes (161 nomes medidos) — pegar a primeira linha (`LIMIT 1`)
+    atribuía ao servidor o partido de um homônimo. Agora: mais de um título → não atribui partido."""
+    rs = con.execute(
+        "SELECT partido, situacao, titulo FROM pcrj_filiado WHERE nome_norm=? "
+        "ORDER BY CASE WHEN situacao='REGULAR' THEN 0 ELSE 1 END", (nome_norm,)).fetchall()
+    titulos = {r["titulo"] for r in rs if r["titulo"]}
+    if len(titulos) > 1:
+        return f"homônimo ({len(titulos)} títulos eleitorais com este nome) — não atribuído"
+    r = rs[0] if rs else None
     if not r or not r["partido"]:
         return "—"
     return r["partido"] if r["situacao"] == "REGULAR" else f"{r['partido']} (cancel.)"

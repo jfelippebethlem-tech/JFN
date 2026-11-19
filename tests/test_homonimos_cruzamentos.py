@@ -189,3 +189,16 @@ def test_comissionado_candidato_expoe_homonimo_do_tse_e_fica_indeterminado(tmp_p
     assert out["JOSE QUINTAL"]["homonimo_provavel"] and "2 candidatos DIFERENTES" in out["JOSE QUINTAL"]["identidade_motivo"]
     assert not out["MARA SOLTO"]["homonimo_provavel"]
     assert {p["identidade"] for p in out.values()} == {"INDETERMINADO"}       # sem documento comum: nunca achado
+
+
+def test_partido_nao_e_atribuido_quando_o_nome_tem_mais_de_um_titulo():
+    from compliance_agent.pcrj.pericia_beneficios import _partido_de
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE pcrj_filiado (nome_norm TEXT, partido TEXT, situacao TEXT, titulo TEXT)")
+    con.executemany("INSERT INTO pcrj_filiado VALUES (?,?,?,?)", [
+        ("JOSE QUINTAL", "AAA", "REGULAR", "111122223333"), ("JOSE QUINTAL", "BBB", "REGULAR", "999988887777"),
+        ("MARA SOLTO", "CCC", "REGULAR", "123412341234")])
+    assert _partido_de(con, "JOSE QUINTAL").startswith("homônimo (2 títulos")
+    assert _partido_de(con, "MARA SOLTO") == "CCC"
+    assert _partido_de(con, "NINGUEM") == "—"

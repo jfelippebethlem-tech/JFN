@@ -1448,7 +1448,7 @@ def socio_oculto(db_path: str | None = None, min_empresas: int = 3, limite: int 
     do mesmo dono). Exclui conselheiros de estatal (não são donos).
 
     Identidade (19/11/2026, régua `identidade_pessoa.chave_qsa`): a PESSOA é (nome, documento da Receita),
-    não o nome. A versão anterior agrupava `GROUP BY socio_nome` e fundia homônimos de CPF diferente numa
+    não o nome. A versão anterior agrupava pelo nome do sócio e fundia homônimos de CPF diferente numa
     pessoa só (7 grupos; 5 só passavam do corte de 3 empresas por causa da fusão). Sem documento no QSA = só
     o nome → INDETERMINADO, fora de `achados`."""
     from collections import defaultdict
