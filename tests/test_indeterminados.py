@@ -252,3 +252,36 @@ def test_leitura_limitada_escolhe_tipos_que_citam_a_mae(tmp_path, monkeypatch):
             {"tipo": "contrato", "titulo": "C", "texto": "c.txt"}, {"tipo": "contrato", "titulo": "D"}]
     r = I.docs_para_relacionados(tmp_path, docs)
     assert [x["titulo"] for x in r] == ["B", "C"] and r[0]["texto"] == "b" * 10
+
+
+def test_diagnosticar_junta_familia_agente_e_veredito_da_familia(tmp_path, monkeypatch):
+    import json as _json
+    import compliance_agent.ob_processo as OBP
+    con = sqlite3.connect(tmp_path / "c.db")
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, execucao_comprovada TEXT)")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, n_docs INTEGER, cnpjs TEXT)")
+    con.executemany("INSERT INTO lex_execucao VALUES (?,?)", [
+        ("SEI-100000/000001/2025", "sem_documento_execucao"), ("SEI-100000/000002/2025", "parcial"),
+        ("SEI-100000/000003/2025", "indeterminado")])
+    (tmp_path / "fam.json").write_text(_json.dumps({
+        "cita": {"SEI-100000/000001/2025": {"SEI-900000/000009/2024": 3, "SEI-100000/000002/2025": 2}},
+        "citado_por": {}, "no_acervo": ["SEI-100000/000002/2025"]}), encoding="utf-8")
+    ag = tmp_path / "ag"
+    ag.mkdir()
+    (ag / "x.json").write_text(_json.dumps({"processo": "SEI-100000/000003/2025",
+                                            "lacunas": ["edital no SEI-800000/000008/2024"]}), encoding="utf-8")
+    monkeypatch.setattr(I, "FAMILIA", tmp_path / "fam.json")
+    monkeypatch.setattr(I, "AGENTES", ag)
+    monkeypatch.setattr(I, "_CACHE_REL", tmp_path / "cache.json")
+    monkeypatch.setattr(I, "medir_arquivo", lambda ns: {"arquivo": True, "pasta": str(tmp_path), "n_docs": 10,
+                                                         "total_arvore": 10, "com_texto": 10, "exec": [],
+                                                         "exec_sem_texto": 0, "pag": [], "contr": [], "sigilo": 0})
+    monkeypatch.setattr(I, "relacionados_do_arquivo", lambda ns, pasta: [])
+    monkeypatch.setattr(OBP, "obs_por_processo", lambda *a, **k: {})
+    d = {x["sei"]: x for x in I.diagnosticar(con, log=None)}
+    um = d["SEI-100000/000001/2025"]
+    assert um["relacionados_fora"] == ["SEI-900000/000009/2024"]
+    assert um["familia_conclusiva"] == ["SEI-100000/000002/2025"]
+    assert um["causas"][0] == "execucao_avaliada_na_familia"
+    assert d["SEI-100000/000003/2025"]["relacionados_fora"] == ["SEI-800000/000008/2024"]
+    assert "ob_nao_ligada" in um["causas"]

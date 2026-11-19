@@ -265,11 +265,11 @@ def relacionados_do_arquivo(numero_sei: str, pasta: str | None) -> list[dict]:
     return relacionados_dos_documentos(docs_para_relacionados(pasta, docs), numero_sei)
 
 
-def lacunas_dos_agentes(pasta: Path = AGENTES) -> dict[str, list[dict]]:
+def lacunas_dos_agentes(pasta: Path | None = None) -> dict[str, list[dict]]:
     """Números SEI citados em `lacunas`/`lido.nao_lidos` dos laudos integrais por agente → {processo: [relacionado]}.
     O agente leu os autos inteiros: o número que ele pede é processo da família por construção (papel 'lacuna_agente')."""
     out: dict[str, list[dict]] = defaultdict(list)
-    for f in sorted(pasta.glob("*.json")):
+    for f in sorted((pasta or AGENTES).glob("*.json")):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -482,6 +482,11 @@ def diagnosticar(con: sqlite3.Connection, *, ler_texto: bool = True, max_ler: in
                 _gravar_json(_CACHE_REL, cache)
         d["autos_lidos"] = ns in cache
         rel = [x for x in rel if x["papel"] in PAPEIS_FORTES or x.get("n_docs", 0) >= 2]
+        ja = {x["numero"] for x in rel}
+        # a família do acervo (data/sei_familia.json, autos INTEIROS, diária) completa a varredura limitada: número
+        # citado por >= 2 documentos não coletivos, papel não dito
+        rel += [{"numero": n, "papel": "citado", "n_docs": k, "trecho": "sei_familia.json"}
+                for n, k in sorted((fam["cita"].get(ns) or {}).items()) if k >= 2 and n not in ja]
         rel += agentes.get(ns, [])
         d["relacionados"] = rel
         d["relacionados_fora"] = sorted({x["numero"] for x in rel if x["numero"] not in no_acervo})
