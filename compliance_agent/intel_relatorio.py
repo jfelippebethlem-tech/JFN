@@ -169,7 +169,7 @@ def _hipoteses_parentesco(d, colunas, linha) -> list:
            f"sem outro dado que ligue as pessoas, isto é hipótese para diligência, não achado. "
            f"{_esc(hs[0].get('prevalencia') or '')}.</small></p>")
     return [{"titulo": "2. Hipóteses — só sobrenome (não são achados)",
-             "html": txt + _tabela(colunas, [linha(a) for a in hs[:1000]])}]
+             "html": txt + _tabela(colunas, [linha(a) for a in tudo(hs)])}]
 
 
 def _b_fantasmas(d):
