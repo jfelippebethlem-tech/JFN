@@ -38,6 +38,37 @@ MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
 RC_LOGIN_FALHOU = 3
 RC_SEM_ARVORE = 4
 ENV = Path.home() / ".hermes" / ".env"   # por usuário: `/home/ubuntu` cravado quebrava fora desta VM
+# RENOVAÇÃO DA ABA (19/11/2026, it-campo): a aba do 150016/009553/2024 chegou a 4,9 GB de RSS no renderer após 711
+# documentos — o CDP dizia 391 `Documents` e 379 `Frames` vivos com só 4 frames na árvore: cada documento clicado deixa
+# o anterior desanexado e retido. A cada N documentos BAIXADOS o processo é reaberto numa aba nova (mesmo login) e a
+# velha fecha. 0 desliga.
+RENOVAR_ABA_DOCS = int(os.environ.get("SEI_RENOVAR_ABA_DOCS", "120"))
+
+
+def hora_de_renovar(baixados_desde: int, limite: int = RENOVAR_ABA_DOCS) -> bool:
+    return limite > 0 and baixados_desde >= limite
+
+
+async def renovar_aba(ctx, pg, reabrir):
+    """Abre o processo numa aba NOVA (`reabrir(aba) -> bool` deixa a árvore viva nela) e só então fecha a velha.
+    Falhou ou deu erro → fecha a nova e devolve a velha: a captura segue como estava, sem perder o processo."""
+    nova = await ctx.new_page()
+    try:
+        await nova.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        if await reabrir(nova):
+            try:
+                await pg.close()
+            except PWError:
+                pass
+            return nova
+        print("  aba NÃO renovada (o processo não reabriu) — sigo na aba atual", flush=True)
+    except (PWError, asyncio.TimeoutError) as e:
+        print(f"  aba NÃO renovada ({str(e)[:60]}) — sigo na aba atual", flush=True)
+    try:
+        await nova.close()
+    except PWError:
+        pass
+    return pg
 def _k(n):
     # `_k` roda no IMPORT (linha abaixo), então não pode depender de arquivo existir: o CI pegou
     # `FileNotFoundError: /home/ubuntu/.hermes/.env` importando este módulo num runner limpo.
@@ -249,14 +280,33 @@ async def main():
                      "docs": man}, ensure_ascii=False, indent=1), encoding="utf-8")
                 tmp.replace(man_path)
 
+            async def reabrir(aba) -> bool:
+                """Mesma via que deu a árvore no início; vale só se a aba nova tem árvore viva."""
+                if origem == "cracked":
+                    if not ((await SR._ler_cracked(aba, PROC)).get("documentos")):
+                        return False
+                elif not (await SR.abrir_processo(aba, PROC) and await SR.arvore_do_fonte(aba)):
+                    return False
+                return await SR._frame_arvore(aba) is not None
+
             manifest = []
             _grava(manifest, False)   # marca "em andamento" já no primeiro instante
+            baixados_desde = 0
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
                 if fp.exists() and fp.stat().st_size > 0:
                     paths.append(fp); ok = True     # retomada: não rebaixa o que já veio
                 else:
+                    if hora_de_renovar(baixados_desde):
+                        import time as _t
+                        t0 = _t.time()
+                        nova = await renovar_aba(ctx, pg, reabrir)
+                        baixados_desde = 0
+                        if nova is not pg:
+                            pg = nova
+                            print(f"  aba renovada em {_t.time() - t0:.0f}s (doc {i}/{len(docs)})", flush=True)
+                    baixados_desde += 1
                     try:
                         # REDE DE SEGURANÇA acima do orçamento do OCR (OCR_BUDGET_S=300s): o
                         # OCR de scan se AUTO-LIMITA por tempo e declara parcial, então este
