@@ -223,3 +223,19 @@ def test_navegador_fixo_oculto_por_padrao_com_ua_de_desktop(tmp_path, monkeypatc
     assert "Headless" not in ua and "Chrome/" in ua
     monkeypatch.setenv("ITCAMPO_NAVEGADOR_VISIVEL", "1")
     assert "--headless=new" not in P.comando_navegador(tmp_path / "s1", "integras", 1, "/x/chrome")
+
+
+def test_freio_de_login_tira_sessao_quando_o_login_falha_em_massa():
+    """18/11/2026, medido no `itcampo_rodadas.jsonl`: com 2 sessões, 0–10% de erro de método; com N=6 (15h–18h) e N=9
+    (18h), 100% — 17h e 18h com ZERO ok, cada processo gastando ~3 min em 25 tentativas de login; voltou a N=5/4 e o ok
+    voltou (20h: 130 de 153). O mesmo login falho em massa de 15/11 (12+3 sessões). O acelerador já não SOBE com login
+    falho, mas nada DESCIA: sessões demais com a mesma credencial seguiam derrubando umas às outras por horas."""
+    agora = 10_000.0
+    assert P.freio_de_login((0, 12), 6, 0.0, agora) == (5, agora)            # tudo falhando: desce uma
+    assert P.freio_de_login((10, 12), 6, 0.0, agora) == (5, agora)           # maioria falhando: desce
+    assert P.freio_de_login((20, 4), 6, 0.0, agora) == (6, 0.0)              # minoria: não mexe
+    assert P.freio_de_login((0, 3), 6, 0.0, agora) == (6, 0.0)               # amostra pequena demais
+    assert P.freio_de_login((0, 12), P.N_MIN, 0.0, agora) == (P.N_MIN, 0.0)  # nunca abaixo do mínimo
+    # a janela ainda guarda as falhas de antes da descida: esperar uma janela inteira antes de descer de novo
+    assert P.freio_de_login((0, 12), 5, agora, agora + 60) == (5, agora)
+    assert P.freio_de_login((0, 12), 5, agora, agora + P.JANELA_SAUDE_S) == (4, agora + P.JANELA_SAUDE_S)

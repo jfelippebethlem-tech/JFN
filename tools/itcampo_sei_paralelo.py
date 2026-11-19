@@ -713,10 +713,27 @@ def lancar(k: int, n: int, modo: str = "integras") -> None:
                      cwd="/mnt/c", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+LOGIN_MIN_AMOSTRA = 6       # logins falhos na janela antes de o freio poder agir
+
+
+def freio_de_login(saude: tuple[int, int], n: int, ultimo: float, agora: float) -> tuple[int, float]:
+    """(n, instante do último freio). Login falho em MAIORIA na janela de saúde → sai UMA sessão de íntegras.
+
+    Medido em 18/11/2026 (`itcampo_rodadas.jsonl`): com 2 sessões, 0–10% de erro de método; com N=6 e N=9, 100% — 17h e
+    18h sem nenhum ok, cada processo gastando ~3 min em 25 tentativas de login —; de volta a 5/4 sessões, o ok voltou.
+    É o nosso método: sessões demais com a MESMA credencial. O acelerador já não sobe com login falho; isto desce.
+    Uma descida por janela inteira: as falhas de antes da descida continuam na janela e não podem descer de novo."""
+    ok, login = saude
+    if (n <= N_MIN or login < LOGIN_MIN_AMOSTRA or login < ok or agora - ultimo < JANELA_SAUDE_S):
+        return n, ultimo
+    return n - 1, agora
+
+
 def rodar() -> int:
     ultimo_pull = 0.0
     minutos_baixos = 0
     minutos_folga = 0
+    ultimo_freio_login = 0.0
     while True:
         n = n_sessoes()
         disp = mem_disponivel_gb()
@@ -727,6 +744,11 @@ def rodar() -> int:
             CFG_N.write_text(f"{n2}\n")
             CFG_V.write_text(f"{v2}\n")
             n = n2
+        elif (nl := freio_de_login(_saude_local(), n, ultimo_freio_login, time.time()))[0] != n:
+            painel(f"LOGIN: maioria dos logins falhando na última meia hora — sessões {n} → {nl[0]} "
+                   "(sessões demais com a mesma credencial)")
+            CFG_N.write_text(f"{nl[0]}\n")
+            n, ultimo_freio_login = nl
         else:
             v0 = n_varredura()
             n3, v3, minutos_folga = acelerador(disp, os.getloadavg()[0], os.cpu_count() or 1, n, v0, minutos_folga,
