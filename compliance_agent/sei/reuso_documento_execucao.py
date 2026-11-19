@@ -334,10 +334,11 @@ def credor_siafe(numero: str) -> str | None:
         try:
             con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
             try:
+                from compliance_agent.cruzamentos_intel import _ob_paga
                 somas: dict[tuple[str, str], float] = defaultdict(float)
                 for proc, cred, v in con.execute(
                         "SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
-                        "WHERE status='Contabilizado' AND processo LIKE '%/%/%' AND credor IS NOT NULL "
+                        f"WHERE {_ob_paga(con)} AND processo LIKE '%/%/%' AND credor IS NOT NULL "
                         "GROUP BY 1, 2"):
                     cred = re.sub(r"\D", "", str(cred or ""))
                     if len(cred) == 14:

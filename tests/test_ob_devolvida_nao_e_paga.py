@@ -45,3 +45,21 @@ def test_ob_sem_numero_nao_e_paga():
                      (None, "Contabilizado", None, 10.0)])
     assert con.execute(f"SELECT SUM(valor) FROM ob_orcamentaria_siafe WHERE {CI._ob_paga(con)}").fetchone()[0] == 10.0
     assert con.execute(f"SELECT SUM(o.valor) FROM ob_orcamentaria_siafe o WHERE {CI._ob_paga(con, 'o')}").fetchone()[0] == 10.0
+
+
+def test_pagamento_complementar_nao_e_paga():
+    """19/11/2026: 6.905 OB 'Pagamento Complementar' (R$ 294,32 mi), todas 'Enviado Manualmente' — nunca vão ao
+    banco: o dinheiro sai na OB principal, que paga o código de barras inteiro e lista as complementares no espelho.
+    Prova: FES × Águas de Juturnaíba, 2026OB08840 = R$ 218.665,32 = NL03911 líquida 181.489,48 + complementar
+    37.175,84 (lançada 2× como 08790 e 08834); ISS Itaboraí, espelho da 2025OB01938 lista a complementar 01934."""
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, status TEXT, status_envio TEXT, "
+                "tipo_regularizacao TEXT, valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?)",
+                    [("2026OB08840", "Contabilizado", "Processado e Pago", "", 218665.32),
+                     ("2026OB08834", "Contabilizado", "Enviado Manualmente", "Pagamento Complementar", 37175.84),
+                     ("2026OB08790", "Contabilizado", "Enviado Manualmente", "Pagamento Complementar", 37175.84),
+                     ("2026OB03764", "Contabilizado", "Enviado Manualmente", "OB já encaminhada ao banco", 11437.7)])
+    for a, pre in (("", ""), ("o", "o.")):
+        tot = con.execute(f"SELECT SUM({pre}valor) FROM ob_orcamentaria_siafe {a} WHERE {CI._ob_paga(con, a)}").fetchone()[0]
+        assert round(tot, 2) == 230103.02

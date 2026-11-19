@@ -1255,7 +1255,13 @@ def _ob_paga(con, alias: str = "") -> str:
     # OB SEM NÚMERO não é pagamento: 18/11/2026, 58 linhas (R$ 11,47 mi) de UMA coleta (09/08/2026 08:05–11:36),
     # 57 com a irmã numerada de mesmo PD/valor — a soma contava a mesma OB duas vezes (SEI-080002/019260/2026 virou
     # "2 OB = o dobro da NL" num laudo de execução); a 58ª tem colunas deslocadas e valor 0.
-    return r + (f" AND COALESCE({alias + '.' if alias else ''}numero_ob,'')<>''" if "numero_ob" in cols else "")
+    a = alias + "." if alias else ""
+    # PAGAMENTO COMPLEMENTAR não vai ao banco (19/11/2026: 6.905 OB, R$ 294,32 mi, todas 'Enviado Manualmente'): a
+    # OB principal paga o código de barras inteiro e lista as complementares no espelho — somá-las conta em dobro
+    # (FES × Juturnaíba: 2026OB08840 R$ 218.665,32 = NL líquida 181.489,48 + complementar 37.175,84, lançada 2×).
+    if "tipo_regularizacao" in cols:
+        r += f" AND COALESCE({a}tipo_regularizacao,'')<>'Pagamento Complementar'"
+    return r + (f" AND COALESCE({a}numero_ob,'')<>''" if "numero_ob" in cols else "")
 
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
