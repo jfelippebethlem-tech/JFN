@@ -182,7 +182,7 @@ def ninhos_por_sala(db_path: str | None = None, receita_path: str | None = None,
                 "CNPJs que dividem a MESMA SALA (endereço + complemento), em que mais de um "
                 "recebe dinheiro público. Dividir o prédio não diz nada — 'Rua da Assembleia 10' "
                 "tem 318 CNPJs e é um edifício comercial; dividir a SALA, com dois recebendo, é "
-                "a assinatura de interposição. O grau vem do ACÚMULO de fatores (situação "
+                "um padrão cadastral que pede leitura — sinal para priorizar, não prova de interposição. O grau vem do ACÚMULO de fatores (situação "
                 "cadastral, abertura em lote, telefone comum, setores díspares), nunca de um só."),
             "ressalva": (
                 "Indício ≠ acusação. Dividir sala é lícito e comum entre empresas do mesmo dono "

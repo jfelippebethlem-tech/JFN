@@ -82,11 +82,14 @@ def construir_grafo_intel(db_path: str | None = None):
             G.add_edge(pid, _emp(r["cnpj_basico"]), tipo="socio", weight=2.0)
 
         # empresa → órgão comprador (vitórias PNCP; peso cresce com o log do valor)
+        from compliance_agent.esfera_orgao import no_rj as _no_rj
         for r in _q(con, "SELECT substr(fornecedor_cnpj,1,8) b, fornecedor_cnpj, orgao_cnpj, "
                          "orgao_nome, SUM(valor_homologado) v FROM pncp_resultado "
                          "WHERE (ordem_classificacao=1 OR (ordem_classificacao IS NULL "
                          "AND valor_homologado>0)) AND length(fornecedor_cnpj)=14 "
                          "GROUP BY b, orgao_cnpj"):
+            if not _no_rj(r["orgao_cnpj"] or "", r["orgao_nome"] or ""):
+                continue        # só comprador do RJ vira elo (dono, 19/11/2026: "esquece a parte federal")
             oid = f"org:{r['orgao_cnpj']}"
             if oid not in G:
                 G.add_node(oid, tipo="orgao", label=(r["orgao_nome"] or r["orgao_cnpj"])[:48])
@@ -154,8 +157,23 @@ def _sinais_risco(con, comunidade_basicos: set[str], pares_conluio: list) -> tup
                                   f" ({len(par_dentro)} par(es))"})
     marc = ",".join("?" * len(comunidade_basicos))
     bs = sorted(comunidade_basicos)
-    sanc = _q(con, "SELECT DISTINCT substr(cpf_cnpj,1,8) b, nome FROM sancoes_federais "
-                   f"WHERE length(cpf_cnpj)=14 AND substr(cpf_cnpj,1,8) IN ({marc})", bs)
+    # só sanção VIGENTE hoje e com ALCANCE sobre o Estado do RJ (CNF-03). 19/11/2026: 25 de 29 comunidades do topo
+    # subiam por multa ou impedimento "no órgão sancionador" de outro ente — ~/vault/aprendizados/
+    # fp-medida-alertas-comunidades-lift-2026-11-19.md
+    from datetime import date
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis, veda_ente, vigente_em
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(sancoes_federais)")}
+        extra = sql_campos_ceis(con)
+    except sqlite3.OperationalError:
+        cols, extra = set(), ""
+    sel = ", ".join(["substr(cpf_cnpj,1,8) b"] + [c if c in cols else f"NULL AS {c}" for c in
+                     ("nome", "categoria", "data_inicio", "data_fim", "orgao", "fundamentacao", "uf")]
+                    + ([extra] if extra else []))
+    hoje = date.today().isoformat()
+    sanc = [r for r in _q(con, f"SELECT {sel} FROM sancoes_federais "
+                               f"WHERE length(cpf_cnpj)=14 AND substr(cpf_cnpj,1,8) IN ({marc})", bs)
+            if vigente_em(dict(r), hoje) and veda_ente(dict(r))["veda"]]
     if sanc:
         score += 20
         sinais.append({"sinal": "sancionada", "peso": 20,

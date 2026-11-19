@@ -97,7 +97,7 @@ detectores:
     consome:
     - rotas/investigacao.py /api/comparador/dossie
     - static/js/src/abas/cockpit.js (card Caro + suspeito)
-    manchete: true
+    manchete: false   # manchete retirada do cockpit em 19/11/2026 (COR-04: FP medida alta)
     controle_positivo: tests/test_caro_e_suspeito.py::test_dossie_cruza_caro_com_sancionado
     controle_negativo: tests/test_caro_e_suspeito.py::test_sancao_posterior_a_compra_nao_e_sancionada
     hipoteses_inocentes:
@@ -106,7 +106,12 @@ detectores:
     - hipotese: sanção de outro ente sem alcance
       excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
     dominio: null
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo do domínio vazio (0); 10 achados com todas as esferas'
+      taxa: 'INDISPONÍVEL no domínio (n=0); fora dele sanção 0 falsos em 10, preço 1 falso e 9 indeterminados; 8 de 10 só tinham sanção posterior à compra'
+      fonte_primaria: 'CEIS/CNEP (sancoes_federais) e PNCP — itens'
+      onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: 5 compras caras de fornecedores sancionados
@@ -137,7 +142,12 @@ detectores:
     - hipotese: compra não conferida no PNCP
       excluida_por: compliance_agent/comparador_precos.py:economia_potencial
     dominio: compras homologadas do Estado do RJ e da Prefeitura do Rio, fora de ata; não é OB paga
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo servido (5 compras do herói) + 19 achados da mesma lógica fora do domínio (12 maiores excessos + 7 aleatórios); após a correção de 19/11, o universo servido (2 compras), conferido de novo'
+      taxa: 'antes: 1 falso e 2 indeterminados em 5 (1/3 dos decididos; 13/16 na lógica toda) → corrigido (classe CATMAT sem especificação vai a INDETERMINADO; preço acompanhado 80–125% por outro fornecedor não é outlier); depois: 0/2 (peróxido e aminofilina, VERDADEIROS)'
+      fonte_primaria: 'PNCP — itens e cabeçalho da compra (API pública), pncp_resultado/pncp_ente e verificacao_precos.db'
+      onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: R$ 5.976.128,58 de economia potencial
@@ -154,7 +164,7 @@ detectores:
     consome:
     - rotas/investigacao.py /api/comparador/vedada
     - static/js/src/abas/cockpit.js (caixa vedada)
-    manchete: true
+    manchete: false   # manchete retirada do cockpit em 19/11/2026 (COR-04: FP medida alta)
     controle_positivo: tests/test_economia_vedada.py::test_soma_sobrepreco_a_inidoneo_vigente
     controle_negativo: tests/test_economia_vedada.py::test_impedimento_federal_nao_veda_comprador_estadual
     hipoteses_inocentes:
@@ -163,7 +173,12 @@ detectores:
     - hipotese: sanção sem alcance sobre o comprador
       excluida_por: compliance_agent/sancao_abrangencia.py:veda_ente
     dominio: null
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo do domínio vazio (0 compras); 5 compras a fornecedor ''vedado'' fora do domínio conferidas'
+      taxa: 'INDISPONÍVEL no domínio (n=0); fora dele 2 falsos e 3 indeterminados (2/2 decididos) — defeitos: município não checado em veda_ente, vigência na data de publicação, ente privado na aba Prefeitura'
+      fonte_primaria: 'CEIS/CNEP (sancoes_federais: vigência e abrangência) e pncp_ente'
+      onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
   comparador.orgao_que_mais_economiza:
     modulo: compliance_agent/comparador_precos.py
     simbolo: economia_potencial (por_orgao)
@@ -181,7 +196,12 @@ detectores:
     - hipotese: compra não conferida fica fora da quebra por órgão
       excluida_por: compliance_agent/comparador_precos.py:economia_potencial
     dominio: mesma base do herói (conferido, homogêneo)
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo: 1 ente no topo (antes da correção) e o mesmo topo depois'
+      taxa: 'antes: 1/1 falso (Prefeitura partida em dois nomes; R$ 4.775,10 de R$ 9.217,50 de item falso/indeterminado) → corrigido (_norm_ente + filtros do herói); depois: Prefeitura do Rio, R$ 6.990,40 em 2 compras, 0/2 falsos'
+      fonte_primaria: 'PNCP — itens e cabeçalho da compra; pncp_ente'
+      onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: R$ 25.873.309,21 no órgão que mais economiza (conjunto genérico)
@@ -1973,7 +1993,12 @@ detectores:
     - hipotese: coparticipação em certames de mercado concentrado
       excluida_por: null
     dominio: null
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo exposto: as 30 comunidades do cache (o total 4.376 não é auditável — só 30 ficam no cache); sinal ''sancionada'' das 29 que o têm'
+      taxa: 'vínculo família-empresa-órgão: 1/30 falso (3,3%); sinal ''sancionada'': 25/29 falsos (86,2%) → corrigido em 19/11 (só sanção vigente e com alcance sobre o RJ — sancao_abrangencia); 14 das 30 são empresa única com o próprio QSA'
+      fonte_primaria: 'socios_receita, OB do SIAFE, vitórias no PNCP, CEIS/CNEP (categoria e abrangência)'
+      onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
   intel.concentracao_municipio:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: concentracao_municipio
@@ -2059,7 +2084,12 @@ detectores:
     - hipotese: natureza jurídica pública, cartório, filial com matriz ativa
       excluida_por: null
     dominio: credores PJ (14 dígitos) do Estado do RJ com data de baixa no dump da Receita
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo da manchete: os 6 CNPJs confirmados (pagos depois da baixa/inaptidão), um a um; depois da correção, os 5 que ficaram'
+      taxa: 'antes: 1 falso (OB de R$ 0,01 sem NL), 1 indeterminado, 1/5 decididos = 20% → corrigido (OB numerada ≥ R$ 1,00); depois: 0/4 decididos (IDESI, DOSIMETRIKA, R.R LIMP, OPEN; BRAGA indeterminado), R$ 8.070.661,06'
+      fonte_primaria: 'SIAFE-Rio — OB paga (ob_orcamentaria_siafe) × Receita Federal (situação, data e motivo, natureza jurídica, matriz/filial)'
+      onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: R$ 592,8 mi pagos a 146 empresas mortas
@@ -2269,7 +2299,7 @@ detectores:
     consome:
     - rotas/investigacao.py /api/intel/radar
     - static/js/src/abas/cockpit.js (card Radar, nível crítico)
-    manchete: true
+    manchete: false   # manchetes cki-radar e v63-radar retiradas em 19/11/2026 (COR-04: FP medida alta)
     controle_positivo: tests/test_cruzamentos_sancao_alcance.py::test_radar_so_marca_sancao_a_epoca_com_alcance
     controle_negativo: tests/test_cruzamentos_sancao_alcance.py::test_radar_so_marca_sancao_a_epoca_com_alcance
     hipoteses_inocentes:
@@ -2280,7 +2310,12 @@ detectores:
     - hipotese: sucessão empresarial (incorporação/fusão/cisão)
       excluida_por: compliance_agent/cruzamentos_intel.py:_pagou_apos_baixa
     dominio: fornecedores pagos pelo Estado do RJ
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: '26 fornecedores (posições 1–20 + 6 aleatórios), sinal a sinal'
+      taxa: '24/26 com score que não se sustenta (92,3%); por sinal 29/55 (52,7%); o único 🔴 cai de 52 para 30 — dupla contagem de sanção/capital via fantasma_medio, sanção pela data da OB, hub de um recebedor, capital de dump antigo'
+      fonte_primaria: 'CEIS/CNEP (vigência e alcance), OB paga com competência, fantasma_score.sinais_json, folha, Receita, PNCP'
+      onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: top 10 com 9 sinais de sanção à época; 3 críticos
@@ -2508,8 +2543,8 @@ detectores:
     grava: data/cache_intel/*.json (gerar_cache_intel) ou sob demanda
     consome:
     - rotas/investigacao.py /api/intel/ninho_sala
-    - static/js/src/abas/cockpit.js (card Ninhos de fachada)
-    manchete: true
+    - static/js/src/abas/cockpit.js (card 'CNPJs na mesma sala' — retirado em 19/11/2026)
+    manchete: false   # manchete cki-ninho retirada em 19/11/2026 (COR-04: FP medida alta)
     controle_positivo: tests/test_ninho_sala.py::test_mesma_sala_com_dois_recebendo_e_varios_fatores_e_ALTO
     controle_negativo: tests/test_ninho_sala.py::test_matriz_e_filiais_da_mesma_raiz_nao_e_ninho
     hipoteses_inocentes:
@@ -2522,7 +2557,12 @@ detectores:
     - hipotese: mesmo grupo econômico com sócio em comum
       excluida_por: null
     dominio: CNPJs com complemento que identifica unidade (sala/andar) no dump da Receita
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo: os 6 grupos de grau alto + 14 maiores de grau médio (contexto)'
+      taxa: '6 altos: 5 falsos, 1 indeterminado (5/5 = 100%); médios: 10 falsos, 4 indeterminados — sócio/marca comum, sucessão contada como morta, telefone de contador, critério de admissão contado como fator; valor de favorecido_resumo diverge da OB paga em R$ 3,45 mi'
+      fonte_primaria: 'Receita Federal (complemento, telefone, motivo da baixa), socios_fornecedor, OB paga (_ob_paga)'
+      onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: 6 grupos, R$ 1,77 bi no conjunto
@@ -2704,7 +2744,12 @@ detectores:
     - hipotese: circularidade (detector que usa a própria sanção)
       excluida_por: compliance_agent/retro_auditoria.py:avaliar_lift
     dominio: fornecedores do PNCP com sinal registrado; gabarito = sanção CEIS/CNEP de qualquer época/ente
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: 'universo: os 13 sancionados marcados pelos 5 detectores não circulares'
+      taxa: '0/13 falsos (CNPJ exato com sanção impeditiva no CEIS); lift do card 2,52 (n=27, k=4) reproduz, IC95% 1,01–5,53 — ''melhor'' não se distingue do 2º (2,13; IC 0,74–5,28)'
+      fonte_primaria: 'CEIS/CNEP (sancoes_federais) × sinal_ledger/fantasma_score'
+      onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
     lift:
       gabarito: sanção posterior no CEIS/CNEP (qualquer época/ente) — NÃO é taxa de falso positivo
       valor_cockpit: 2.12
@@ -2883,7 +2928,12 @@ detectores:
     controle_negativo: null
     hipoteses_inocentes: []
     dominio: null
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-19'
+      amostra: '34 alertas abertos, estratificados por tipo (semente 20261119) + todos os estratos de gravidade alta + o alerta exibido no Início'
+      taxa: '13/30 decididos falsos (43,3%; 4 indeterminados) — só motor de regras 5/16, gravidade alta 5/9; piso estrutural ≥ 2.035 de 6.757 abertos; a contagem do card inclui perícias PCRJ (D7–D12) e emendas (D1–D6): manchete rebaixada a ''fila de triagem'' com a taxa ao lado e cartão do último alerta retirado'
+      fonte_primaria: 'registros_folha, ob_orcamentaria_siafe, pcrj_contratos/pcrj_licitacoes, publicacoes_doerj, emendas/emenda_favorecidos, sancoes_federais, socios_receita, receita_estab'
+      onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
   rules.fracionamento_contrato:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_fracionamento_contrato

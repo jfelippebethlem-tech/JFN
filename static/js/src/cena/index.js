@@ -63,16 +63,11 @@ export const NUCLEO_COM_POSTER=new Set(['nucleo-holo-rj','nucleo-holo-prefeitura
 
 /* ══ MESA DE VIGILIA ══ */
 export const NU_NODES=[
-  {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', orb:.9,  sp:1},
   {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', orb:.66, sp:-.7},
-  // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
-  // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
-  // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
-  {id:'ninho',  lab:'mesma sala',     tab:'g_riscos', cor:'#f2b544', orb:.88, sp:.8},
+  // 19/11/2026: radar, mesma sala e caro + suspeito saíram da mesa com os cards (FP medida em fonte primária, COR-04)
   {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', orb:.6,  sp:1.15},
   {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', orb:.92, sp:-.55},
   {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', orb:.68, sp:.9},
-  {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', orb:.86, sp:-.95},
 ];
 let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[],_sweepAtivo=null,_swInt=0;
 /* v23 CARCACA REAL — a arte do reator vem do gerador (Firefly Image 5), nao do

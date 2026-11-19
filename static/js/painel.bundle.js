@@ -3477,16 +3477,11 @@
   var _nuVid = {};
   var NUCLEO_COM_POSTER = /* @__PURE__ */ new Set(["nucleo-holo-rj", "nucleo-holo-prefeitura", "nucleo-holo-transversal"]);
   var NU_NODES = [
-    { id: "radar", lab: "radar de risco", tab: "g_radar", cor: "#5fd9ff", orb: 0.9, sp: 1 },
     { id: "alertas", lab: "alertas", tab: "e_alertas", cor: "#ff7a8a", orb: 0.66, sp: -0.7 },
-    // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
-    // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
-    // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
-    { id: "ninho", lab: "mesma sala", tab: "g_riscos", cor: "#f2b544", orb: 0.88, sp: 0.8 },
+    // 19/11/2026: radar, mesma sala e caro + suspeito saíram da mesa com os cards (FP medida em fonte primária, COR-04)
     { id: "fenix", lab: "empresa morta", tab: "g_fenix", cor: "#ff9a6a", orb: 0.6, sp: 1.15 },
     { id: "com", lab: "comunidades", tab: "g_comun", cor: "#c096ff", orb: 0.92, sp: -0.55 },
-    { id: "compras", lab: "compras auditáveis", tab: "e_comp", cor: "#eec276", orb: 0.68, sp: 0.9 },
-    { id: "dossie", lab: "caro + suspeito", tab: "e_comp", cor: "#ff7ab8", orb: 0.86, sp: -0.95 }
+    { id: "compras", lab: "compras auditáveis", tab: "e_comp", cor: "#eec276", orb: 0.68, sp: 0.9 }
   ];
   var _nuRAF = 0;
   var _nuPulses = [];
@@ -6923,19 +6918,17 @@
   <section class="v63-sec v63-sec-iso" data-v63-quadro="4">
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>03 · radar composto</span>
-      <h3 class="v63-h2 v63-rv" style="--i:1">Quem soma <em class="v63-it">mais sinais.</em></h3>
-      <p class="v63-rv" style="--i:2" id="v63-iso-tx">Um detector isolado é indício fraco; vários acesos no mesmo fornecedor pedem olhar. Score 0–100, uso interno.</p>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Radar <em class="v63-it">em recalibração.</em></h3>
+      <p class="v63-rv" style="--i:2" id="v63-iso-tx">Conferido na fonte primária em 19/11/2026: em 24 de 26 fornecedores o score estava inflado — a mesma prova contada duas vezes. O ranking volta à capa depois de corrigido e medido de novo; a aba Radar segue aberta como fila interna.</p>
     </div>
-    <div class="v63-iso v63-vidro v63-rv" style="--i:2" id="v63-iso" data-manchete="v63-radar"><div class="v63-iso-cena" id="v63-iso-cena"></div><div class="v63-iso-pe v63-mono" id="v63-iso-pe"></div></div>
   </section>
 
   <section class="v63-sec v63-sec-alerta" data-v63-quadro="5">
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>04 · onde você entra</span>
       <h3 class="v63-h2 v63-rv" style="--i:1">Alerta que <em class="v63-it">chama você.</em></h3>
-      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O último alerta da base, como chega:</p>
+      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026: o exibido era um fracionamento de inexigibilidade (a regra não se aplica) e, em 34 alertas conferidos na fonte, 13 não se sustentaram. Volta quando os produtores forem corrigidos; a fila completa segue na aba Alertas.</p>
     </div>
-    <div class="v63-slack v63-vidro v63-rv v63-tilt" style="--i:2" id="v63-slack" data-manchete="v63-alerta"><div class="v63-slack-vazio v63-mono">lendo o último alerta…</div></div>
   </section>
 
   <div class="v63-ponte v63-mono v63-rv"><span>território · reator · grandes preocupações</span></div>
@@ -6961,10 +6954,8 @@
       _numOB(d);
       _numAlertas(d);
       _numAcervo(d);
-      _slack(d);
     });
     J("/api/comparador/economia").then(_numEcon);
-    J("/api/intel/radar?limite=6").then(_iso);
     J("/api/fontes/frescor").then(_frescor);
   }
   var _ok = (d) => d && !d.erro;
@@ -7068,7 +7059,7 @@
       l: "alertas abertos",
       v: a.total,
       fmt: "n",
-      s: "indícios do motor de regras, descartados fora",
+      s: "fila de triagem (motor de regras e perícias), descartados fora — em 34 conferidos na fonte em 19/11/2026, 13 não se sustentaram",
       barras: [
         { l: "alta", w: (a.alta || 0) / t, v: fmtN(a.alta || 0), c: "alta" },
         { l: "média", w: (a.media || 0) / t, v: fmtN(a.media || 0) },
@@ -7099,60 +7090,6 @@
       f: "PNCP · comparador de preços",
       estado: "PENDENTE"
     });
-  }
-  function _iso(d) {
-    const cena = document.getElementById("v63-iso-cena"), pe = document.getElementById("v63-iso-pe");
-    if (!cena) return;
-    if (!_ok(d) || !Array.isArray(d.achados)) {
-      cena.innerHTML = `<p class="v63-mono v63-vazio">${_indisp2(d)}</p>`;
-      return;
-    }
-    const top = d.achados.filter((a) => a && a.nome && !/^\d/.test(a.nome)).sort((a, b) => b.score - a.score).slice(0, 6);
-    if (!top.length) {
-      cena.innerHTML = '<p class="v63-mono v63-vazio">nenhum fornecedor com sinal no radar agora</p>';
-      return;
-    }
-    const max = Math.max(...top.map((a) => a.score), 1);
-    cena.innerHTML = `<div class="v63-iso-l">${top.map((a, i) => `<button type="button" class="v63-iso-b${i === 0 ? " topo" : ""}" style="--i:${i};--h:${(a.score / max).toFixed(3)}"
-      data-v63-dossie="${esc(a.cnpj)}" data-nome="${esc(a.nome)}" title="${esc(a.nome)} — score ${a.score} · ${a.n_sinais} sinais">
-      <span class="v63-iso-col"><i class="f"></i><i class="l"></i><i class="t"></i></span>
-      <span class="v63-iso-v v63-mono">${a.score}</span><span class="v63-iso-n">${esc(corta(a.nome, 22))}</span></button>`).join("")}</div>`;
-    if (pe) pe.innerHTML = `<i class="v63-estado pendente">PENDENTE</i> score 0–100 · ${fmtN(d.n)} fornecedores com sinal · ${fmtN(d.n_vermelho)} em nível crítico — indício para apuração interna, não acusação · fonte: radar composto (${esc(String(d.gerado_em || "").slice(0, 16))})`;
-    revelarEm(cena);
-  }
-  function _slack(d) {
-    const c = document.getElementById("v63-slack");
-    if (!c) return;
-    const lista = _ok(d) && Array.isArray(d.lista_alertas) ? d.lista_alertas : null;
-    if (!lista) {
-      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${_indisp2(d)}</div>`;
-      return;
-    }
-    if (!lista.length) {
-      c.innerHTML = '<div class="v63-slack-vazio v63-mono">nenhum alerta aberto na base</div>';
-      return;
-    }
-    const pj = lista.filter((x) => /\b\d{14}\b/.test(String(x.descricao)) && !/X{2,}|\bCPF\s+X/i.test(String(x.titulo) + String(x.descricao)));
-    if (!pj.length) {
-      c.innerHTML = `<div class="v63-slack-vazio v63-mono">${fmtN(d.alertas && d.alertas.total)} alertas abertos — nenhum sobre empresa entre os mais recentes; ver a lista completa em Estado › Alertas</div>`;
-      return;
-    }
-    const peso = { alta: 0, "média": 1, media: 1, baixa: 2 };
-    const a = [...pj].sort((x, y) => (peso[x.severidade] ?? 3) - (peso[y.severidade] ?? 3))[0];
-    const cnpj = (String(a.descricao).match(/\b(\d{14})\b/) || [])[1];
-    const sev = String(a.severidade || "baixa");
-    c.innerHTML = `<div class="v63-slack-top v63-mono"><span># alertas-jfn</span><span>${esc(_rel(String(a.criado).replace(" ", "T")))}</span></div>
-    <div class="v63-slack-msg">
-      <span class="v63-slack-av" aria-hidden="true">JFN</span>
-      <div class="v63-slack-c"><div class="v63-slack-q"><b>JFN</b><span class="v63-mono">app · ${esc(String(a.criado).slice(11, 16))}</span></div>
-        <p class="v63-slack-tx">Alerta de gravidade <b class="sev-${esc(sev.normalize("NFD").replace(/[̀-ͯ]/g, ""))}">${esc(sev)}</b>: ${esc(a.titulo)}</p>
-        <blockquote class="v63-slack-bq">${esc(corta(a.descricao, 220))}</blockquote>
-        <div class="v63-slack-campos v63-mono"><span>tipo <b>${esc(a.tipo || "—")}</b></span><span>estado <b>a conferir</b></span></div>
-        <div class="v63-slack-acoes">${cnpj ? `<a class="v63-btn sol" role="button" tabindex="0" data-v63-dossie="${cnpj}">✓ Ver dossiê</a>` : ""}
-          <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="e_alertas" data-v63-gesto="cortina">Todos os alertas</a></div>
-      </div></div>
-    <div class="v63-slack-pe v63-mono"><i class="v63-estado pendente">PENDENTE</i> indício do motor de regras · fonte: alertas (${fmtN(d.alertas && d.alertas.total)} abertos)</div>`;
-    revelarEm(c);
   }
   function _frescor(d) {
     const el = document.getElementById("v63-frescor");
@@ -10695,8 +10632,7 @@
       <div class="ck-big" id="ck-econ">R$ ——</div>
       <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
       <span class="chip" style="margin-top:8px;display:inline-block">Ver as compras →</span></div>
-      <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
-        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
+      <!-- caixa 'vedada' retirada em 19/11/2026: universo vazio e três defeitos de alcance/vigência medidos (COR-04) -->
     </div>
     <!-- v59 · A ÓRBITA. A mesa de vigília era um bloco EMPILHADO entre o herói e os cartões: a
          peça central da tela lida como mais uma faixa da página, e os oito instrumentos abaixo
@@ -10771,25 +10707,19 @@
     const g = $("ck-grid");
     if (!g) return;
     if (_v60) g.innerHTML = [
-      ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
       ckCard("alertas", "Alertas", "ckrose", "bgrose", "e_alertas"),
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
-      ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
-      ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
-      ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos"),
+      ckCard("orgao", "Ente com maior indício de sobrepreço", "ckgood", "bgteal", "e_comp"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro")
     ].join("");
     else g.innerHTML = [
-      ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
-      ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
-      ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
-      ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos")
+      ckCard("orgao", "Ente com maior indício de sobrepreço", "ckgood", "bgteal", "e_comp")
     ].join("");
     a11yfy(g);
     if (_v61) {
@@ -10822,21 +10752,8 @@
         return;
       }
       nuSet("alertas", a.total);
-      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` + (a.baixa != null ? ` · ${fmtN(a.baixa)} baixa` : "") + ` — descartados fora da conta` });
+      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` + (a.baixa != null ? ` · ${fmtN(a.baixa)} baixa` : "") + ` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>: conferidos 34 na fonte primária em 19/11/2026, 13 não se sustentaram` });
       if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média${a.baixa != null ? " · " + fmtN(a.baixa) + " baixa" : ""} (descartados fora) — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
-    });
-    if (first) J("/api/intel/ninho_sala?limite=60").then((d) => {
-      if (!d || !d.ok) {
-        ckFill("ninho", { txt: "—", meta: erroHumano(d && d.erro) });
-        return;
-      }
-      const gs = d.grupos || [], altos = gs.filter((g) => g.grau === "alto"), nAlto = d.n_alto != null ? d.n_alto : altos.length, nTot = d.n != null ? d.n : gs.length;
-      const vAlto = d.total_recebido_ob_alto != null ? d.total_recebido_ob_alto : altos.reduce((s, g) => s + (g.total_recebido_ob || 0), 0), piso = d.total_recebido_ob_alto == null && nAlto > altos.length;
-      ckFill("ninho", {
-        num: nAlto,
-        meta: `grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada` + (nTot > nAlto ? ` · outros ${fmtN(nTot - nAlto)} com menos fatores` : "") + ` — <b>${piso ? "≥ " : ""}${fmtRc(vAlto)}</b> em OB nesses grupos`
-      });
-      ckPush(altos.slice(0, 3).map((g) => ({ c: "a", h: `◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores || [])[1] || "")} · ${fmtRc(g.total_recebido_ob)}` })));
     });
     J("/api/comparador/economia").then((d) => {
       if (!d || !d.ok) {
@@ -10852,20 +10769,8 @@
       if ($("ck-sub")) $("ck-sub").innerHTML = `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: <b>Estado ${fmtRc(est.economia || 0)}</b> · <b>Prefeitura do Rio ${fmtRc(pre.economia || 0)}</b>.` + (d.economia_pendente > 0 ? ` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).` : "") + (d.economia_ata_teto > 0 ? ` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).` : "") + ` Quantidade homologada, não OB paga.`;
       ckFill("compras", { num: d.n_compras_acima_mediana, meta: "compras com indício conferido no PNCP" });
       const o = d.por_orgao && d.por_orgao[0], onm = o ? o.orgao || "" : "";
-      ckFill("orgao", { txt: o ? fmtRc(o.economia) : "—", meta: o ? `<b>${esc(onm)}</b> — acima da mediana nos indícios conferidos` : "nenhum indício conferido ainda" });
+      ckFill("orgao", { txt: o ? fmtRc(o.economia) : "—", meta: o ? `<b>${esc(onm)}</b> (ente comprador) — diferença hipotética sobre a mediana nos indícios conferidos (quantidade homologada no PNCP, não OB paga)` : "nenhum indício conferido ainda" });
       ckPush([{ c: "g", h: `✦ sobrepreço conferido <b>${fmtRc(d.economia_total || 0)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras · ${fmtN(d.n_compras_pendentes || 0)} pendentes` }]);
-    });
-    J("/api/comparador/vedada").then((d) => {
-      if (d && d.ok && d.economia_vedada_total) {
-        const b = $("ck-vedbox");
-        if (b) b.hidden = false;
-        _ckCount($("ck-ved"), d.economia_vedada_total, fmtRc);
-      }
-    });
-    J("/api/intel/radar?limite=6").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("radar", { num: d.n, meta: `fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico` });
-      ckPush((d.achados || []).slice(0, 5).map((a) => ({ c: "", h: `▸ ${_v60 ? "Radar" : "RADAR"} ${a.score} — <b>${(a.nome || "").slice(0, 30)}</b> · ${(a.sinais || []).map((s) => rot(s.sinal)).slice(0, 2).join(", ")}` })));
     });
     J("/api/intel/comunidades").then((d) => {
       if (!d || !d.ok) return;
@@ -10875,15 +10780,6 @@
       if (!d || !d.ok) return;
       const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
       ckFill("lift", { txt: b ? fmtD(b.lift, 2) + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> marca ${fmtD(b.lift, 2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)` + ((d.circulares || []).length ? ` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo` : "") : "—" });
-    });
-    J("/api/comparador/dossie").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("dossie", { num: d.n, meta: `itens ≥3× a mediana do mesmo item com fornecedor marcado · <b>${fmtN(d.n_sancionada || 0)}</b> sancionado(s) à época` });
-      const _sin = (a) => {
-        const s = (a.sinais || []).map((x) => x.sinal);
-        return s.includes("sancionada") ? "sancionada à época" : s.includes("sancionada_depois") ? "sancionada só depois" : esc(rot(s[0] || ""));
-      };
-      ckPush((d.achados || []).slice(0, 6).map((a) => ({ c: "a", h: `◉ ${esc((a.orgao || "").slice(0, 24))} pagou <b>${a.vs_mediana}× a mediana</b> — ${esc((a.fornecedor || "").slice(0, 24))} (${_sin(a)})` })));
     });
     J("/api/intel/fenix").then((d) => {
       if (!d || !d.ok) return;

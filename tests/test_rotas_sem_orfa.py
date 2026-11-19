@@ -29,7 +29,8 @@ _STATIC = _RAIZ / "static"
 
 # ── Teto da dívida. SÓ PODE CAIR. ────────────────────────────────────────────────────────────────
 # Ligou uma órfã? Abaixe o número no mesmo commit. Subir exige justificativa no corpo do commit.
-TETO_ORFAS = 0
+TETO_ORFAS = 1   # 19/11/2026: /api/intel/ninho_sala perdeu o card (FP medida 5/5 nos grupos altos, COR-04) — volta
+                 # a ter entrada quando a régua for corrigida e medida de novo; aí o teto volta a 0.
 
 # Rotas que por desenho não têm (nem devem ter) ponto de entrada no painel.
 _SEM_UI_POR_DESENHO = {

@@ -45,7 +45,7 @@ def db(tmp_path):
         ("33333333", "Maria Lima", "MARIA LIMA", "***777777**", "Sócio"),
     ])
     con.execute("INSERT INTO sancoes_federais VALUES "
-                "('11111111000111','ALFA','CEIS','Impedimento','2023-01-01','2026-12-31','CGU')")
+                "('11111111000111','ALFA','CEIS','Declaração de Inidoneidade','2023-01-01','2099-12-31','CGU')")
     con.commit()
     con.close()
     return p
@@ -83,3 +83,20 @@ def test_deterministico_mesma_seed(db):
 def test_escala_e_ressalva_presentes(db):
     d = detectar_comunidades(db_path=db, min_tamanho=3, incluir_grafo_d3=False)
     assert "0-100" in d["escala"] and "Indício" in d["ressalva"]
+
+
+# 19/11/2026 (FP medida: 25 de 29 comunidades do topo subiam por sanção sem alcance): impedimento "no órgão
+# sancionador" de outro ente, ou sanção vencida, não acende o sinal "sancionada".
+def test_sancao_sem_alcance_ou_vencida_nao_e_sinal(db):
+    import sqlite3
+    con = sqlite3.connect(db)
+    con.execute("DELETE FROM sancoes_federais")
+    con.execute("INSERT INTO sancoes_federais VALUES "
+                "('11111111000111','ALFA','CEIS','Impedimento/proibição de contratar com prazo determinado',"
+                "'2023-01-01','2099-12-31','PREFEITURA MUNICIPAL DE GOIANIA')")
+    con.execute("INSERT INTO sancoes_federais VALUES "
+                "('22222222000122','BETA','CEIS','Declaração de Inidoneidade','2010-01-01','2012-12-31','CGU')")
+    con.commit()
+    con.close()
+    d = detectar_comunidades(db_path=db, min_tamanho=3, incluir_grafo_d3=False)
+    assert all("sancionada" not in {s["sinal"] for s in c["sinais"]} for c in d["comunidades"])

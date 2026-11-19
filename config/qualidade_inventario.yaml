@@ -45,34 +45,10 @@ manchetes:
     detector: comparador.economia_potencial
     campos: {valor: economia_total, estado: por_esfera.estado.economia, prefeitura: por_esfera.prefeitura.economia,
              pendente: economia_pendente, n_pendentes: n_compras_pendentes, ata_teto: economia_ata_teto}
-  - id: ck-ved
-    superficie: "cockpit — caixa 'vedada' sob o herói (só aparece se > 0)"
-    afirma: "Sobrepreço pago a fornecedor juridicamente vedado de contratar com aquele ente na data."
-    rota: /api/comparador/vedada
-    origem: compliance_agent.comparador_precos.economia_vedada
-    fonte: "pncp_resultado, pncp_ente, sancoes_federais (compliance.db)"
-    natureza: estimado
-    esfera: estado+prefeitura
-    consome: ["dono (painel)"]
-    detector: comparador.economia_vedada
-    campos: {valor: economia_vedada_total}
-  - id: cki-radar
-    chip: nu-radar
-    superficie: "cockpit — card 'Radar de risco' + chip da mesa"
-    afirma: "Quantos fornecedores têm sinal no radar composto (0-100) e quantos estão em nível crítico."
-    rota: /api/intel/radar
-    origem: compliance_agent.cruzamentos_intel.radar_risco
-    fonte: "data/cache/radar_risco.json ← fantasma_score, favorecido_resumo, pncp_resultado, socios_fornecedor"
-    natureza: contagem
-    esfera: estado
-    consome: ["dono (painel)", "Yoda"]
-    detector: intel.radar_risco
-    campos: {contagem: n, criticos: n_vermelho}
-    lista: achados
   - id: cki-alertas
     chip: nu-alertas
     superficie: "cockpit — card 'Alertas' + chip da mesa"
-    afirma: "Total de alertas NÃO descartados do motor de regras, com quantos são de gravidade alta, média e baixa (somam o total)."
+    afirma: "Fila de triagem: total de alertas NÃO descartados (motor de regras + perícias PCRJ D7–D12 e emendas D1–D6), com alta/média/baixa (somam o total) — não são irregularidades; FP medida 13/30 em 19/11/2026, dita no card."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas, ob_orcamentaria_siafe (compliance.db)"
@@ -119,22 +95,9 @@ manchetes:
     consome: ["dono (painel)"]
     detector: intel.comunidades
     campos: {contagem: n}
-  - id: cki-dossie
-    chip: nu-dossie
-    superficie: "cockpit — card 'Caro + suspeito' + chip da mesa"
-    afirma: "Itens ≥ 3× a mediana do mesmo item com fornecedor marcado por outra fonte; quantos sancionados à época."
-    rota: /api/comparador/dossie
-    origem: compliance_agent.comparador_precos.caro_e_suspeito
-    fonte: "pncp_resultado, pncp_ente, fantasma_score, sancoes_federais"
-    natureza: contagem
-    esfera: estado+prefeitura
-    consome: ["dono (painel)"]
-    detector: comparador.caro_e_suspeito
-    campos: {contagem: n, sancionadas: n_sancionada}
-    lista: achados
   - id: cki-orgao
-    superficie: "cockpit — card 'Órgão que mais economiza'"
-    afirma: "O órgão com maior indício de sobrepreço conferido e o valor."
+    superficie: "cockpit — card 'Ente com maior indício de sobrepreço'"
+    afirma: "O ente comprador com a maior diferença hipotética sobre o preço mediano (indício de sobrepreço conferido no PNCP; quantidade homologada, não OB paga) e o valor."
     rota: /api/comparador/economia
     origem: compliance_agent.comparador_precos.economia_potencial
     fonte: "pncp_resultado, pncp_ente (compliance.db)"
@@ -144,20 +107,6 @@ manchetes:
     detector: comparador.economia_potencial
     campos: {valor: "por_orgao[0].economia", rotulo: "por_orgao[0].orgao"}
     lista: por_orgao
-  - id: cki-ninho
-    chip: nu-ninho
-    superficie: "cockpit — card 'Ninhos de fachada' + chip da mesa 'mesma sala'"
-    afirma: "Grupos na MESMA SALA com 2+ CNPJs recebendo e 3+ fatores de fachada, e o valor em OB nesses grupos."
-    rota: /api/intel/ninho_sala
-    origem: compliance_agent.ninho_sala.ninhos_por_sala
-    fonte: "data/cache/ninho_sala.json ← estabelecimentos, favorecido_resumo"
-    natureza: contagem
-    esfera: estado
-    consome: ["dono (painel)"]
-    detector: ninho_sala
-    campos: {contagem: n_alto, total: n, valor: total_recebido_ob_alto}
-    lista: grupos
-    concentracao: {lista: grupos, item: total_recebido_ob, filtro: {grau: alto}}
   - id: cki-lift
     superficie: "cockpit — card 'Melhor detector (lift)'"
     afirma: "O detector (circulares fora do cálculo) que marca mais fornecedores com sanção impeditiva de qualquer época ou ente acima da base, o lift e o n."
@@ -170,6 +119,9 @@ manchetes:
     detector: retro.lift
     campos: {indice: "detectores[max lift, circular=false].lift", rotulo: "detectores[…].detector"}
     lista: detectores
+  # 19/11/2026 (COR-04, FP medida em fonte primária — ~/vault/aprendizados/fp-medida-*-2026-11-19.md) SAÍRAM das
+  # manchetes: ck-ved (universo vazio, defeitos de alcance), cki-radar e v63-radar (24/26 scores inflados), cki-dossie
+  # (universo vazio; REFUTADO 13/11), cki-ninho (5/5 falsos nos grupos altos), v63-alerta (o exibido era falso).
   # ck-fontes saiu do cockpit em 14/11/2026 (pedido do dono): o frescor das fontes mora na aba Sistema › Motores (s_motores).
   # ── v63 FLUXO CLARO (17/11/2026): herói + quatro seções do Início, ANTES do cockpit (static/js/src/v63/inicio.js).
   #    Nenhuma rota nova: todas já declaradas abaixo. Cada número leva fonte + estado ao lado (VERIFICADO/PENDENTE/INDISPONÍVEL).
@@ -210,7 +162,7 @@ manchetes:
     campos: {valor: obs.valor_ultimo_dia, contagem: obs.n_ultimo_dia, data: obs.ultimo_dia}
   - id: v63-alertas
     superficie: "Início v63 — seção 02, número 'alertas abertos' com barras alta/média/baixa"
-    afirma: "Total de alertas NÃO descartados do motor de regras e a divisão por gravidade (somam o total)."
+    afirma: "Fila de triagem: total de alertas NÃO descartados (motor de regras + perícias PCRJ e emendas) e a divisão por gravidade (somam o total) — FP medida 13/30 em 19/11/2026, dita no número."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas (compliance.db)"
@@ -241,30 +193,6 @@ manchetes:
     consome: ["dono (painel)"]
     detector: comparador.economia_potencial
     campos: {valor: economia_total, contagem: n_compras_acima_mediana}
-  - id: v63-radar
-    superficie: "Início v63 — seção 03, barras isométricas (6 maiores scores do radar, só PJ)"
-    afirma: "Os seis fornecedores (pessoa jurídica) com maior score no radar composto 0-100 — indício interno."
-    rota: /api/intel/radar
-    origem: compliance_agent.cruzamentos_intel.radar_risco
-    fonte: "data/cache/radar_risco.json ← fantasma_score, favorecido_resumo, pncp_resultado, socios_fornecedor"
-    natureza: indice
-    esfera: estado
-    consome: ["dono (painel)"]
-    detector: intel.radar_risco
-    campos: {indice: "achados[].score", contagem: n, criticos: n_vermelho}
-    lista: achados
-  - id: v63-alerta
-    superficie: "Início v63 — seção 04, cartão de alerta (o de maior gravidade entre os 40 mais recentes que citam CNPJ — nunca pessoa física)"
-    afirma: "Um alerta aberto do motor de regras, com título, descrição e atalho para o dossiê do CNPJ citado."
-    rota: /api/compliance/painel
-    origem: rotas.investigacao.api_painel
-    fonte: "alertas (compliance.db)"
-    natureza: contagem
-    esfera: estado
-    consome: ["dono (painel)"]
-    detector: rules.engine
-    lista: lista_alertas
-
 relatorios:
   fornecedor:
     entrada: "CNPJ ou nome (POST /api/relatorio/inteligencia; /relatorio do Yoda)"

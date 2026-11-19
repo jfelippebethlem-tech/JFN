@@ -127,8 +127,7 @@ export async function renderCockpit(){
       <div class="ck-big" id="ck-econ">R$ ——</div>
       <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
       <span class="chip" style="margin-top:8px;display:inline-block">Ver as compras →</span></div>
-      <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
-        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
+      <!-- caixa 'vedada' retirada em 19/11/2026: universo vazio e três defeitos de alcance/vigência medidos (COR-04) -->
     </div>
     <!-- v59 · A ÓRBITA. A mesa de vigília era um bloco EMPILHADO entre o herói e os cartões: a
          peça central da tela lida como mais uma faixa da página, e os oito instrumentos abaixo
@@ -198,23 +197,20 @@ export function ckBoot(){
   const g=$('ck-grid');if(!g)return;
   /* v60: grade de 9 na ordem do brief, com ALERTAS (o total já vinha de `/api/compliance/painel`
      para o chip da mesa — é o mesmo número, agora também em cartão). */
-  if(_v60)g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
-    ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
+  /* 19/11/2026 (COR-04, FP medida em fonte primária — ~/vault/aprendizados/fp-medida-*-2026-11-19.md): saíram
+     Radar (24 de 26 scores inflados), Mesma sala (0 de 6 grupos altos se sustentam) e Caro + suspeito (universo
+     vazio; REFUTADO em 13/11). As abas continuam; o número só volta à capa depois de corrigido e medido de novo. */
+  if(_v60)g.innerHTML=[ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
-    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
-    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
-    ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos'),
+    ckCard('orgao','Ente com maior indício de sobrepreço','ckgood','bgteal','e_comp'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro')].join('');
-  else g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
-    ckCard('com','Comunidades','','bgteal','g_comun'),
-    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
+  else g.innerHTML=[ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
-    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
-    ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
+    ckCard('orgao','Ente com maior indício de sobrepreço','ckgood','bgteal','e_comp')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
   if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();
@@ -245,32 +241,10 @@ export function ckPull(first){
       return;}
     nuSet('alertas',a.total);
     // só alerta NÃO descartado (o servidor filtra desde 13/11/2026); as três gravidades somam o total
-    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
+    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>: conferidos 34 na fonte primária em 19/11/2026, 13 não se sustentaram`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
     if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média${a.baixa!=null?' · '+fmtN(a.baixa)+' baixa':''} (descartados fora)`
       +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
-  if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
-    /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".
-       Silêncio ≠ INDISPONÍVEL: se a rota não respondeu, o card diz isso. */
-    if(!d||!d.ok){ckFill('ninho',{txt:'—',meta:erroHumano(d&&d.erro)});return;}
-    /* Passou a ser MESMA SALA (endereço + complemento), não mesmo prédio: 'Rua da
-       Assembleia 10' tem 318 CNPJs e é edifício comercial. E o grau vem do ACÚMULO de
-       fatores — 2+ recebendo, maioria baixada, abertura em lote, telefone comum —,
-       nunca de um sinal só. Por isso o número é menor: ele agora sustenta o que diz. */
-    /* mesmo cuidado do chip de alertas: `grupos` vem cortado em ?limite=60 — quem conta
-       o total é a rota (`n_alto`, `n`), não o tamanho da página que chegou. */
-    const gs=(d.grupos||[]),altos=gs.filter(g=>g.grau==='alto'),
-          nAlto=(d.n_alto!=null?d.n_alto:altos.length),nTot=(d.n!=null?d.n:gs.length);
-    /* Revisão cética 13/11/2026 (D7): o número é de grupos de grau ALTO; o R$ ao lado era o do
-       CONJUNTO (todos os graus). Agora é a soma dos grupos ALTO — da rota quando ela traz
-       (`total_recebido_ob_alto`), senão dos altos da página, dito como piso. */
-    const vAlto=(d.total_recebido_ob_alto!=null?d.total_recebido_ob_alto
-                 :altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0)),
-          piso=(d.total_recebido_ob_alto==null&&nAlto>altos.length);
-    ckFill('ninho',{num:nAlto,
-      meta:`grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada`
-           +(nTot>nAlto?` · outros ${fmtN(nTot-nAlto)} com menos fatores`:'')
-           +` — <b>${piso?'≥ ':''}${fmtRc(vAlto)}</b> em OB nesses grupos`});
-    ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores||[])[1]||'')} · ${fmtRc(g.total_recebido_ob)}`})));});
+  // card 'mesma sala' retirado em 19/11/2026 (FP medida 100% nos 6 grupos altos — COR-04); a aba Riscos segue
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){
       // herói nunca fica preso no placeholder: erro vira mensagem humana + retry
       const big=$('ck-econ');if(big&&/—/.test(big.textContent)){big.textContent='—';
@@ -294,12 +268,9 @@ export function ckPull(first){
     const o=d.por_orgao&&d.por_orgao[0],onm=o?(o.orgao||''):'';
     // mesma base do herói (conferido, homogêneo) — antes vinha do conjunto genérico e punha
     // aluguel de imóvel comparado pela mediana de outros imóveis (R$ 25,9 mi "a recuperar").
-    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> — acima da mediana nos indícios conferidos`:'nenhum indício conferido ainda'});
+    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> (ente comprador) — diferença hipotética sobre a mediana nos indícios conferidos (quantidade homologada no PNCP, não OB paga)`:'nenhum indício conferido ainda'});
     ckPush([{c:'g',h:`✦ sobrepreço conferido <b>${fmtRc(d.economia_total||0)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras · ${fmtN(d.n_compras_pendentes||0)} pendentes`}]);});
 
-  J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.hidden=false;_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
-  J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
-    ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ ${_v60?'Radar':'RADAR'} ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
   // Revisão D8 (13/11/2026): circulares (usam sanção como insumo) saem do CÁLCULO no servidor; o filtro aqui
   // fica como segunda trava. O rótulo diz o que o número mede: sancionados de qualquer época ou ente, com n.
@@ -309,9 +280,6 @@ export function ckPull(first){
   // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
   // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
   // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.
-  J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:`itens ≥3× a mediana do mesmo item com fornecedor marcado · <b>${fmtN(d.n_sancionada||0)}</b> sancionado(s) à época`});
-    const _sin=a=>{const s=(a.sinais||[]).map(x=>x.sinal);return s.includes('sancionada')?'sancionada à época':s.includes('sancionada_depois')?'sancionada só depois':esc(rot(s[0]||''));};
-    ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${esc((a.orgao||'').slice(0,24))} pagou <b>${a.vs_mediana}× a mediana</b> — ${esc((a.fornecedor||'').slice(0,24))} (${_sin(a)})`})));});
   J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
     // "Pago a empresa MORTA" só vale para quem recebeu DEPOIS da baixa. O card mostrava
     // `total_defunta` — o conjunto AMPLO de "hoje está baixada e um dia recebeu" — e dizia

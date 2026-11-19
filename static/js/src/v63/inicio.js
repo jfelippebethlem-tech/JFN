@@ -119,19 +119,17 @@ export function v63InicioHtml() {
   <section class="v63-sec v63-sec-iso" data-v63-quadro="4">
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>03 · radar composto</span>
-      <h3 class="v63-h2 v63-rv" style="--i:1">Quem soma <em class="v63-it">mais sinais.</em></h3>
-      <p class="v63-rv" style="--i:2" id="v63-iso-tx">Um detector isolado é indício fraco; vários acesos no mesmo fornecedor pedem olhar. Score 0–100, uso interno.</p>
+      <h3 class="v63-h2 v63-rv" style="--i:1">Radar <em class="v63-it">em recalibração.</em></h3>
+      <p class="v63-rv" style="--i:2" id="v63-iso-tx">Conferido na fonte primária em 19/11/2026: em 24 de 26 fornecedores o score estava inflado — a mesma prova contada duas vezes. O ranking volta à capa depois de corrigido e medido de novo; a aba Radar segue aberta como fila interna.</p>
     </div>
-    <div class="v63-iso v63-vidro v63-rv" style="--i:2" id="v63-iso" data-manchete="v63-radar"><div class="v63-iso-cena" id="v63-iso-cena"></div><div class="v63-iso-pe v63-mono" id="v63-iso-pe"></div></div>
   </section>
 
   <section class="v63-sec v63-sec-alerta" data-v63-quadro="5">
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>04 · onde você entra</span>
       <h3 class="v63-h2 v63-rv" style="--i:1">Alerta que <em class="v63-it">chama você.</em></h3>
-      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O último alerta da base, como chega:</p>
+      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026: o exibido era um fracionamento de inexigibilidade (a regra não se aplica) e, em 34 alertas conferidos na fonte, 13 não se sustentaram. Volta quando os produtores forem corrigidos; a fila completa segue na aba Alertas.</p>
     </div>
-    <div class="v63-slack v63-vidro v63-rv v63-tilt" style="--i:2" id="v63-slack" data-manchete="v63-alerta"><div class="v63-slack-vazio v63-mono">lendo o último alerta…</div></div>
   </section>
 
   <div class="v63-ponte v63-mono v63-rv"><span>território · reator · grandes preocupações</span></div>
@@ -153,9 +151,8 @@ export function v63InicioMontar() {
   const [pEst, pPai] = [J('/api/ao-vivo/estado'), J('/api/compliance/painel')];
   pEst.then(d => { _selo(d); _run(d); });
   Promise.all([pEst, pPai]).then(([e, p]) => _nos(e, p));
-  pPai.then(d => { _numOB(d); _numAlertas(d); _numAcervo(d); _slack(d); });
+  pPai.then(d => { _numOB(d); _numAlertas(d); _numAcervo(d); });
   J('/api/comparador/economia').then(_numEcon);
-  J('/api/intel/radar?limite=6').then(_iso);
   J('/api/fontes/frescor').then(_frescor);
 }
 
@@ -236,7 +233,7 @@ function _numAlertas(d) {
   const a = _ok(d) && d.alertas;
   if (!a || a.total == null) return _num('alertas', {l: 'alertas abertos', v: null, f: _indisp(d), estado: 'INDISPONÍVEL'});
   const t = Math.max(1, a.total), baixa = a.baixa != null ? a.baixa : Math.max(0, a.total - (a.alta || 0) - (a.media || 0));
-  _num('alertas', {l: 'alertas abertos', v: a.total, fmt: 'n', s: 'indícios do motor de regras, descartados fora',
+  _num('alertas', {l: 'alertas abertos', v: a.total, fmt: 'n', s: 'fila de triagem (motor de regras e perícias), descartados fora — em 34 conferidos na fonte em 19/11/2026, 13 não se sustentaram',
     barras: [{l: 'alta', w: (a.alta || 0) / t, v: fmtN(a.alta || 0), c: 'alta'}, {l: 'média', w: (a.media || 0) / t, v: fmtN(a.media || 0)},
              {l: 'baixa', w: baixa / t, v: fmtN(baixa), c: 'baixa'}],
     f: 'motor de regras · alertas', estado: 'PENDENTE'});
@@ -252,50 +249,8 @@ function _numEcon(d) {
     s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item — estimativa, não OB paga`, f: 'PNCP · comparador de preços', estado: 'PENDENTE'});
 }
 
-/* ── barras isométricas do radar ─────────────────────────────────────────────────────────────── */
-function _iso(d) {
-  const cena = document.getElementById('v63-iso-cena'), pe = document.getElementById('v63-iso-pe');
-  if (!cena) return;
-  if (!_ok(d) || !Array.isArray(d.achados)) { cena.innerHTML = `<p class="v63-mono v63-vazio">${_indisp(d)}</p>`; return; }
-  /* só pessoa jurídica no pódio: nome que começa por número (MEI com CPF no nome) fica fora (LGPD) */
-  const top = d.achados.filter(a => a && a.nome && !/^\d/.test(a.nome)).sort((a, b) => b.score - a.score).slice(0, 6);
-  if (!top.length) { cena.innerHTML = '<p class="v63-mono v63-vazio">nenhum fornecedor com sinal no radar agora</p>'; return; }
-  const max = Math.max(...top.map(a => a.score), 1);
-  cena.innerHTML = `<div class="v63-iso-l">${top.map((a, i) => `<button type="button" class="v63-iso-b${i === 0 ? ' topo' : ''}" style="--i:${i};--h:${(a.score / max).toFixed(3)}"
-      data-v63-dossie="${esc(a.cnpj)}" data-nome="${esc(a.nome)}" title="${esc(a.nome)} — score ${a.score} · ${a.n_sinais} sinais">
-      <span class="v63-iso-col"><i class="f"></i><i class="l"></i><i class="t"></i></span>
-      <span class="v63-iso-v v63-mono">${a.score}</span><span class="v63-iso-n">${esc(corta(a.nome, 22))}</span></button>`).join('')}</div>`;
-  if (pe) pe.innerHTML = `<i class="v63-estado pendente">PENDENTE</i> score 0–100 · ${fmtN(d.n)} fornecedores com sinal · ${fmtN(d.n_vermelho)} em nível crítico — indício para apuração interna, não acusação · fonte: radar composto (${esc(String(d.gerado_em || '').slice(0, 16))})`;
-  revelarEm(cena);
-}
-
-/* ── o cartão de alerta (o "approval" do Relay) ──────────────────────────────────────────────── */
-function _slack(d) {
-  const c = document.getElementById('v63-slack'); if (!c) return;
-  const lista = _ok(d) && Array.isArray(d.lista_alertas) ? d.lista_alertas : null;
-  if (!lista) { c.innerHTML = `<div class="v63-slack-vazio v63-mono">${_indisp(d)}</div>`; return; }
-  if (!lista.length) { c.innerHTML = '<div class="v63-slack-vazio v63-mono">nenhum alerta aberto na base</div>'; return; }
-  /* LGPD: o cartão em destaque só mostra alerta sobre EMPRESA (CNPJ de 14 dígitos no texto) e nunca um
-     que cite CPF mascarado (emprego múltiplo etc.) — nome de pessoa física não vai para a vitrine. */
-  const pj = lista.filter(x => /\b\d{14}\b/.test(String(x.descricao)) && !/X{2,}|\bCPF\s+X/i.test(String(x.titulo) + String(x.descricao)));
-  if (!pj.length) { c.innerHTML = `<div class="v63-slack-vazio v63-mono">${fmtN(d.alertas && d.alertas.total)} alertas abertos — nenhum sobre empresa entre os mais recentes; ver a lista completa em Estado › Alertas</div>`; return; }
-  const peso = {alta: 0, 'média': 1, media: 1, baixa: 2};
-  const a = [...pj].sort((x, y) => (peso[x.severidade] ?? 3) - (peso[y.severidade] ?? 3))[0];
-  const cnpj = (String(a.descricao).match(/\b(\d{14})\b/) || [])[1];
-  const sev = String(a.severidade || 'baixa');
-  c.innerHTML = `<div class="v63-slack-top v63-mono"><span># alertas-jfn</span><span>${esc(_rel(String(a.criado).replace(' ', 'T')))}</span></div>
-    <div class="v63-slack-msg">
-      <span class="v63-slack-av" aria-hidden="true">JFN</span>
-      <div class="v63-slack-c"><div class="v63-slack-q"><b>JFN</b><span class="v63-mono">app · ${esc(String(a.criado).slice(11, 16))}</span></div>
-        <p class="v63-slack-tx">Alerta de gravidade <b class="sev-${esc(sev.normalize('NFD').replace(/[̀-ͯ]/g, ''))}">${esc(sev)}</b>: ${esc(a.titulo)}</p>
-        <blockquote class="v63-slack-bq">${esc(corta(a.descricao, 220))}</blockquote>
-        <div class="v63-slack-campos v63-mono"><span>tipo <b>${esc(a.tipo || '—')}</b></span><span>estado <b>a conferir</b></span></div>
-        <div class="v63-slack-acoes">${cnpj ? `<a class="v63-btn sol" role="button" tabindex="0" data-v63-dossie="${cnpj}">✓ Ver dossiê</a>` : ''}
-          <a class="v63-btn fan" role="button" tabindex="0" data-v63-ir="e_alertas" data-v63-gesto="cortina">Todos os alertas</a></div>
-      </div></div>
-    <div class="v63-slack-pe v63-mono"><i class="v63-estado pendente">PENDENTE</i> indício do motor de regras · fonte: alertas (${fmtN(d.alertas && d.alertas.total)} abertos)</div>`;
-  revelarEm(c);
-}
+/* _iso (barras do radar) e _slack (cartão do último alerta) saíram em 19/11/2026 com as duas seções (COR-04);
+   estão no histórico do git (commit anterior) para quando voltarem medidas. */
 
 function _frescor(d) {
   const el = document.getElementById('v63-frescor'); if (!el) return;
