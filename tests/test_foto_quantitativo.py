@@ -398,3 +398,8 @@ def test_ob_ligada_pela_nl_do_siafe_nao_pela_peca_rejuntada(tmp_path):
     r = fq.confrontar_medicao(pasta, pk, obs=obs)
     assert [o["numero_ob"] for o in r["obs_pagas"]] == ["2025OB01694"] and r["ligacao_ob"] == "NL"
     assert not [s for s in r["sinais"] if s["tipo"] == "OB_ANTES_DO_ATESTO"]
+
+
+def test_cabecalho_do_orgao_com_ocr_torto_nao_e_frente():
+    assert not fq.locais("MISTITUTO ESTADUAL DO AMBIENTE - IHEA\nIHSTITUTO ESTADUAL DO AMBIENTE - INEA\nMACAÉ - RIO CAPOTE\n"
+                         ) == {} and len(fq.locais("MISTITUTO ESTADUAL DO AMBIENTE - IHEA\nMACAÉ - RIO CAPOTE\n")) == 1

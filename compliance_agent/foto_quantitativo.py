@@ -397,7 +397,9 @@ _RX_LOCAL = re.compile(r"^\s*([A-ZÀ-Ü][A-ZÀ-Ü .'/()]{2,40}?)\s+[-–—]\s+(
 _GENERICO_LOCAL = {"rio", "canal", "lagoa", "braco", "corrego", "valao", "vala", "rua", "av", "avenida", "estrada",
                    "do", "da", "de", "dos", "das", "e", "est", "bota", "fora", "trecho", "margem", "foz", "ponte"}
 _NAO_LOCAL = re.compile(r"medicao|contrato|periodo|relatorio|governo|secretaria|instituto|diretor|cnpj|processo"
-                        r"|pagina|item|total|inclusive|motor|capacidade|escavadeira|caminhao|regiao hidrografica")
+                        r"|pagina|item|total|inclusive|motor|capacidade|escavadeira|caminhao|regiao hidrografica"
+                        # cabeçalho do órgão com OCR torto ("MISTITUTO ESTADUAL DO AMBIENTE - IHEA", 070002/006258/2024)
+                        r"|estadual|ambiente|\binea\b|\bihea\b")
 
 
 def _toks_local(s: str) -> frozenset:
