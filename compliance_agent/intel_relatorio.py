@@ -145,14 +145,31 @@ def _b_corrida_dezembro(d):
 
 
 def _b_socio_oculto(d):
-    ls = [f"<tr><td>{a['n_empresas']}</td><td>{_esc(a['socio'])}</td>"
+    ls = [f"<tr><td>{a['n_empresas']}</td><td>{_esc(a['socio'])}<br><small>{_esc(a.get('doc') or '')} · "
+          f"{_esc(a.get('selo') or '')}</small></td>"
           f"<td><small>{_esc(', '.join(a['empresas'][:4]))}</small></td>"
           f"<td style='text-align:right'>{_rs(a['total'])}</td></tr>"
           for a in d.get("achados", [])[:1000]]
+    nota = (f"<p><small>Pessoa = nome + documento da Receita; homônimo de CPF diferente é outra pessoa. "
+            f"Fora da lista por falta de documento (INDETERMINADO): {d.get('n_indeterminados', 0)}.</small></p>")
     return ("Sócio oculto — um dono, vários fornecedores",
             f"{d.get('n',0)} pessoas/holdings sócias de ≥3 empresas fornecedoras do Estado",
             [{"titulo": "1. Concentração societária entre fornecedores",
-              "html": _tabela(["Empresas", "Sócio / holding", "Fornecedoras (amostra)", "Total recebido"], ls)}], d)
+              "html": _tabela(["Empresas", "Sócio / holding (identidade)", "Fornecedoras (amostra)", "Total recebido"], ls)
+              + nota}], d)
+
+
+def _hipoteses_parentesco(d, colunas, linha) -> list:
+    """Seção 'hipóteses' (só sobrenome — não são achados) para nepotismo e nepotismo cruzado."""
+    hs = d.get("hipoteses") or []
+    if not hs:
+        return []
+    txt = (f"<p><small>{d.get('n_hipoteses', len(hs))} grupo(s) "
+           f"ligados SÓ pelo sobrenome. Sobrenome não é parentesco e não há base aberta de parentesco no Brasil; "
+           f"sem outro dado que ligue as pessoas, isto é hipótese para diligência, não achado. "
+           f"{_esc(hs[0].get('prevalencia') or '')}.</small></p>")
+    return [{"titulo": "2. Hipóteses — só sobrenome (não são achados)",
+             "html": txt + _tabela(colunas, [linha(a) for a in hs[:1000]])}]
 
 
 def _b_fantasmas(d):
@@ -188,9 +205,16 @@ def _b_nepcruz(d):
           f"<td>{_esc((a['orgao_a'] or '')[:26])}<br><small>autoridade: {_esc(a['autoridade_a'])}</small></td>"
           f"<td>{_esc((a['orgao_b'] or '')[:26])}<br><small>autoridade: {_esc(a['autoridade_b'])}</small></td></tr>"
           for a in d.get("achados", [])[:1000]]
+    lh = lambda a: (f"<tr><td>{_esc(a['sobrenome_a'])} ⇄ {_esc(a['sobrenome_b'])}</td>"  # noqa: E731
+                    f"<td>{_esc((a['orgao_a'] or '')[:26])}</td><td>{_esc((a['orgao_b'] or '')[:26])}</td></tr>")
+    desc = (f"<p><small>Descartados: {d.get('descartados_mesma_pessoa', 0)} par(es) em que o 'parente colocado' era "
+            f"a própria autoridade (mesmo nome e CPF, lotada em dois órgãos) e {d.get('descartados_indeterminados', 0)} "
+            f"sem CPF para distinguir.</small></p>")
     return ("Nepotismo cruzado — colocação recíproca entre órgãos",
-            f"{d.get('n',0)} pares recíprocos (dribla a SV13 do mesmo órgão)",
-            [{"titulo": "1. Pares recíprocos A⇄B", "html": _tabela(["Sobrenomes", "Órgão A", "Órgão B"], ls)}], d)
+            f"{d.get('n',0)} pares recíprocos com outro dado além do sobrenome · {d.get('n_hipoteses',0)} hipótese(s)",
+            [{"titulo": "1. Pares recíprocos A⇄B (com dado além do sobrenome)",
+              "html": _tabela(["Sobrenomes", "Órgão A", "Órgão B"], ls) + desc}]
+            + _hipoteses_parentesco(d, ["Sobrenomes", "Órgão A", "Órgão B"], lh), d)
 
 
 def _b_nepotismo(d):
@@ -201,10 +225,14 @@ def _b_nepotismo(d):
         ls.append(f"<tr><td>{'⚖️' if a['tem_autoridade'] else ''} {a['n_membros']}</td>"
                   f"<td>{_esc(a['sobrenome'])}<br><small>{int(a['concentracao']*100)}% de {a['total_folha']} na folha</small></td>"
                   f"<td>{_esc((a['orgao'] or '')[:34])}</td><td>{membros}</td></tr>")
+    lh = lambda a: (f"<tr><td>{'⚖️' if a['tem_autoridade'] else ''} {a['n_membros']}</td>"  # noqa: E731
+                    f"<td>{_esc(a['sobrenome'])}</td><td>{_esc((a['orgao'] or '')[:34])}</td>"
+                    f"<td>{'<br>'.join(_esc(m['nome']) for m in a.get('membros', [])[:6])}</td></tr>")
     return ("Nepotismo — parentes em cargo de confiança (SV13)",
-            f"{d.get('n',0)} clusters de sobrenome raro · {d.get('n_com_autoridade',0)} com autoridade nomeante",
-            [{"titulo": "1. Famílias em cargos de confiança no mesmo órgão",
-              "html": _tabela(["Nº", "Sobrenome (raridade)", "Órgão", "Membros"], ls)}], d)
+            f"{d.get('n',0)} grupos com dado além do sobrenome · {d.get('n_hipoteses',0)} hipótese(s) só por sobrenome",
+            [{"titulo": "1. Famílias em cargos de confiança no mesmo órgão (com dado além do sobrenome)",
+              "html": _tabela(["Nº", "Sobrenome (raridade)", "Órgão", "Membros"], ls)}]
+            + _hipoteses_parentesco(d, ["Nº", "Sobrenome", "Órgão", "Membros"], lh), d)
 
 
 def _b_perdedoras(d):

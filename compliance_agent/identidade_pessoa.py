@@ -230,3 +230,104 @@ def classificar(*, doc_qsa, cpf_folha, fonte_folha: str, n_folha_nome: int, n_qs
 
 
 ORDEM_SELO = {VERIFICADO: 0, PROVAVEL: 1, INDETERMINADO: 2, HOMONIMO: 3}
+
+
+# ── 2ª rodada (19/11/2026): a mesma régua para pessoa×pessoa e para parentesco ─────────────────────────
+#
+# Os módulos que ainda casavam só pelo nome (sócio oculto, nepotismo, nepotismo cruzado, grafo de famílias)
+# precisavam de três perguntas que a régua acima não respondia diretamente:
+#   1. dois registros do QSA com o mesmo nome são a mesma pessoa?            → `chave_qsa`
+#   2. dois registros de FOLHA com o mesmo nome são a mesma pessoa?          → `mesma_pessoa_folhas`
+#   3. duas pessoas DIFERENTES de mesmo sobrenome são parentes?              → `selo_parentesco`
+# A 3ª nunca se responde pelo nome: não há base aberta de parentesco no Brasil (osint/parentesco.py) e o
+# eixo do sobrenome acende em 16,9%–25,9% da base. Só vira INDÍCIO com outro dado que ligue as pessoas.
+
+INDICIO, HIPOTESE = "INDICIO", "HIPOTESE"
+
+
+def chave_qsa(nome, doc) -> tuple[str, str]:
+    """A PESSOA no QSA = (nome normalizado, documento). O mesmo nome com documento diferente é OUTRA pessoa.
+
+    CPF mascarado (`***123456**`) e CPF completo viram a mesma chave (`pf:` + dígitos 4–9 — o que a Receita
+    mostra); CNPJ (14 dígitos ou raiz de 8) vira `pj:` + raiz; sem documento → '' (só o nome: não identifica).
+    Nota: a máscara sozinha não é identidade (4% dos documentos carregam mais de um nome) — por isso o nome
+    entra na chave."""
+    nn = normalizar_nome(nome)
+    s = str(doc or "").strip()
+    d = _dig(s)
+    if "*" not in s and len(d) in (8, 14):
+        return nn, "pj:" + d[:8]
+    p = posicoes_qsa(s)
+    if p and all(i in p for i in range(4, 10)):
+        return nn, "pf:" + "".join(p[i] for i in range(4, 10))
+    return nn, ""
+
+
+def mesma_pessoa_folhas(nome_a, cpf_a, fonte_a, comp_a, nome_b, cpf_b, fonte_b, comp_b) -> dict:
+    """Dois registros de folha: mesma pessoa? Nome diferente → pessoas distintas (DISTINTAS). Mesmo nome →
+    CPF na janela aferida de cada fonte: compatível = MESMA; incompatível = homônimo (DISTINTAS); sem CPF
+    comparável = INDETERMINADO (diz o que falta)."""
+    if normalizar_nome(nome_a) != normalizar_nome(nome_b):
+        return {"resultado": "DISTINTAS", "motivo": "nomes diferentes"}
+    pa, pb = posicoes_folha(cpf_a, fonte_a, comp_a), posicoes_folha(cpf_b, fonte_b, comp_b)
+    res, n = comparar_cpf(pa, pb)
+    if res == COMPATIVEL:
+        return {"resultado": "MESMA", "motivo": f"mesmo nome e CPF igual em {n} posições"}
+    if res == INCOMPATIVEL:
+        return {"resultado": "DISTINTAS", "motivo": "mesmo nome, CPF diferente — homônimo"}
+    falta = (FALTA_CPF_FONTE.get(fonte_a if not pa else fonte_b)
+             or "as duas folhas não expõem posições do CPF em comum suficientes")
+    return {"resultado": INDETERMINADO, "motivo": f"mesmo nome; {falta}"}
+
+
+def empresas_da_pessoa_folha(con, nome, cpf, fonte, competencia=None) -> set[str]:
+    """Raízes de CNPJ em que a pessoa da FOLHA é sócia com identidade CONFERIDA pelo CPF (não pelo nome):
+    QSA de `socios_receita` e `socios_reverso` (Brasil inteiro, sócios de fornecedores), mesmo nome E CPF
+    compatível na janela aferida da folha. Folha sem CPF → conjunto vazio (nunca chute)."""
+    pf = posicoes_folha(cpf, fonte, competencia)
+    if not pf:
+        return set()
+    nn = normalizar_nome(nome)
+    achou: set[str] = set()
+    consultas = (("SELECT cnpj_basico, doc_socio FROM socios_receita WHERE nome_norm=?", (nn,)),)
+    # socios_reverso é indexado por (doc_socio, nome_norm): o prefixo da máscara vem das posições contíguas
+    # a partir da 4 que a folha mostra (GESPERJ: 4–9 inteiras; DPRJ: 4–8).
+    pref = ""
+    for i in range(4, 10):
+        if i not in pf:
+            break
+        pref += pf[i]
+    if len(pref) >= MIN_POSICOES:
+        consultas += (("SELECT cnpj_basico, doc_socio FROM socios_reverso WHERE doc_socio>=? AND doc_socio<? "
+                       "AND nome_norm=?", ("***" + pref, "***" + pref + "~", nn)),)
+    for sql, args in consultas:
+        try:
+            for raiz, doc in con.execute(sql, args):
+                if comparar_cpf(posicoes_qsa(doc), pf)[0] == COMPATIVEL:
+                    achou.add(str(raiz)[:8])
+        except Exception as e:  # tabela ausente numa base de teste: sem dado, não erro
+            if "no such table" not in str(e):
+                raise
+    return achou
+
+
+def selo_parentesco(corroboracoes: list[str] | None = None, eixo: str = "sobrenome_entre_empresas",
+                    prevalencia: str | None = None) -> dict:
+    """Selo de PARENTESCO entre pessoas distintas ligadas por sobrenome. Sem outro dado → HIPOTESE (não é
+    achado; vai com a prevalência do eixo e a explicação inocente). Com dado que ligue as pessoas (ex.:
+    co-sócias da mesma empresa, identidade conferida por CPF) → INDICIO. `prevalencia`: texto da prevalência
+    MEDIDA na base do chamador (quando ele a mede); senão vai a de `parentesco.EIXOS[eixo]`. Nunca conclusão: parentesco só se
+    prova por documento (registro civil, declaração de vínculos — `parentesco.DILIGENCIA`)."""
+    from compliance_agent.osint.parentesco import DILIGENCIA, EIXOS
+    ex = EIXOS[eixo]
+    prev = prevalencia or (f"o eixo '{ex.descricao}' acende em {str(ex.prevalencia_medida).replace('.', ',')}% "
+                           f"da base (medido em 29/07/2026) — não pode acender sozinho")
+    if corroboracoes:
+        return {"selo": INDICIO, "grau": "indicio", "corroboracoes": list(corroboracoes),
+                "motivo": "Sobrenome comum E " + "; ".join(corroboracoes) + ".",
+                "prevalencia": prev, "falta": "documento de parentesco (" + DILIGENCIA["fontes"][0] + ")"}
+    return {"selo": HIPOTESE, "grau": "hipotese_fraca", "corroboracoes": [],
+            "motivo": "Só o sobrenome liga estas pessoas — sobrenome não é parentesco.",
+            "prevalencia": prev, "exculpatoria": ex.exculpatoria,
+            "falta": "um dado que ligue as pessoas além do nome (sociedade comum com CPF conferido, endereço "
+                     "comum, declaração de vínculos familiares)"}

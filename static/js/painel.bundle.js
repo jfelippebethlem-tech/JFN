@@ -15220,21 +15220,23 @@
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding ? '<span class="tag purple">holding/PJ</span>' : ""}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas || []).slice(0, 4).join(" · "))}${(x.empresas || []).length > 4 ? " …" : ""}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--amber)">${x.n_empresas}</div><div class="dim">empresas · ${fmtRc(x.total)}</div></div></div>
-      ${leitura(`<b>${esc(x.socio)}</b> é sócio de <b>${x.n_empresas}</b> empresas que receberam do Estado (${fmtRc(x.total)} somados). Um mesmo dono em vários fornecedores permite simular concorrência entre empresas do próprio grupo — cruzar se disputam os mesmos certames/órgãos.`)}`,
+      ${leitura(`<b>${esc(x.socio)}</b> é sócio de <b>${x.n_empresas}</b> empresas que receberam do Estado (${fmtRc(x.total)} somados). Um mesmo dono em vários fornecedores permite simular concorrência entre empresas do próprio grupo — cruzar se disputam os mesmos certames/órgãos.`)}
+      ${x.motivo ? `<div class="dim" style="margin-top:4px">Identidade: <b>${esc(x.selo || "")}</b> — ${esc(x.motivo)}${x.doc ? " · " + esc(x.doc) : ""}</div>` : ""}`,
       x.n_empresas >= 5 ? "hl" : ""
     )).join("") + `</div>`;
-    h += `<div class="note">${esc(d.ressalva || "")}</div>`;
+    if (d.n_indeterminados) h += `<div class="dim" style="margin-top:10px">Fora da lista: <b>${fmtN(d.n_indeterminados)}</b> sócio(s) sem documento no QSA — só o nome coincide entre as empresas, e homônimo não desambiguado não é achado.</div>`;
+    h += `<div class="note">${esc(d.identidade || "")} ${esc(d.ressalva || "")}</div>`;
     return h;
   }
   async function renderNepotismo() {
     const d = await J("/api/intel/nepotismo?limite=150");
     if (!d.ok) return sec("Nepotismo") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const a = d.achados || [];
+    const a = d.achados || [], hip = d.hipoteses || [];
     let h = cover("geral", "Nepotismo — parentes em cargo de confiança", "Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.", "👪") + acoesAba("nepotismo", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
     registrarDrill("sobrenome100", { titulo: "Grupos em que o sobrenome cobre 100% do quadro", itens: a.filter((x) => x.concentracao >= 1), nota: "Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm." });
     h += `<div class="grid g2">${kpi(
       fmtN(d.n),
-      "Clusters familiares",
+      "Com dado além do sobrenome",
       "var(--rose)",
       "👪",
       { sobre: "Grupos de pessoas com o <b>mesmo sobrenome</b> em cargo de confiança no mesmo órgão. Sobrenome não prova parentesco e no Brasil não há base aberta de filiação — o que sustenta o sinal é a <b>prevalência</b>: o eixo só acende quando o sobrenome é raro na folha e está concentrado ali." }
@@ -15245,6 +15247,13 @@
       "⚖️",
       { sobre: "Clusters em que um dos membros ocupa cargo com <b>poder de nomear</b>. É o que separa coincidência de cadeia: a Súmula Vinculante 13 alcança a nomeação feita por quem tem a competência, não a simples presença de parentes na mesma repartição." }
     )}
+      ${kpi(
+      fmtN(d.n_hipoteses || 0),
+      "Hipóteses (só sobrenome)",
+      null,
+      "❔",
+      { sobre: "Grupos ligados <b>só pelo sobrenome</b>. Sobrenome não é parentesco e no Brasil não há base aberta de parentesco: sem outro dado que ligue as pessoas (por exemplo, serem sócias da mesma empresa com o CPF conferido), o grupo é hipótese para diligência, <b>não achado</b>." }
+    )}
       ${kpi(a.filter((x) => x.concentracao >= 1).length, "100% do sobrenome", "var(--amber)", "🎯", { drill: "sobrenome100" })}${kpi(
       a.length ? a[0].n_membros : "—",
       "Maior cluster",
@@ -15254,16 +15263,19 @@
     )}</div>`;
     h += `<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas || []).join(", ")) || "—"}. Cobertura cresce com novas folhas.</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
-    h += `<div id="nep-list" class="grid">` + a.map((x) => card(
+    const _nepCard = (x, ehHip) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade ? '<span class="tag rose">autoridade no cluster</span>' : ""}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao || "").slice(0, 44))}</div>
       <div class="dim" style="margin-top:2px">${Math.round(x.concentracao * 100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
       <table style="margin-top:10px"><tbody>${(x.membros || []).map((m) => `<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo || "")}${m.cpf_frag ? " · CPF …" + esc(m.cpf_frag) : ""}</td></tr>`).join("")}</tbody></table>
-      ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao * 100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. Sobrenome raro concentrado em cargos comissionados é o perfil de nepotismo (SV13). ${x.membros.some((m) => m.cpf_frag) ? "Fragmentos de CPF distintos confirmam pessoas diferentes." : ""} Confirmar o parentesco e a cadeia de nomeação.`)}`,
-      "hl"
-    )).join("") + `</div>`;
-    h += `<div class="note">${esc(d.ressalva || "")}</div>`;
+      ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao * 100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. ${x.membros.some((m) => m.cpf_frag) ? "Fragmentos de CPF distintos confirmam pessoas diferentes. " : ""}${ehHip ? "<b>Só o sobrenome as liga</b> — hipótese, não achado. Falta: " + esc(x.falta || "") + "." : esc(x.motivo || "") + " Confirmar o parentesco e a cadeia de nomeação."}`)}`,
+      ehHip ? "" : "hl"
+    );
+    h += `<div id="nep-list" class="grid">` + a.map((x) => _nepCard(x, false)).join("") + `</div>`;
+    if (!a.length) h += card('<div class="muted">Nenhum grupo com dado além do sobrenome que ligue as pessoas. Sobrenome sozinho não vira achado.</div>');
+    if (hip.length) h += `<div class="sec" style="margin-top:16px"><b>Hipóteses — só sobrenome (não são achados)</b><div class="dim">${esc(d.prevalencia_eixo || "")}</div></div><div class="grid">` + hip.map((x) => _nepCard(x, true)).join("") + `</div>`;
+    h += `<div class="note">${esc(d.identidade || "")} ${esc(d.ressalva || "")}</div>`;
     return h;
   }
   var _FENIX_FORA = {
@@ -15367,7 +15379,9 @@
   async function renderNepotismoCruzado() {
     const d = await J("/api/intel/nepotismo_cruzado?limite=80");
     if (!d.ok) return sec("Nepotismo cruzado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const a = d.achados || [];
+    const a = d.achados || [], hip = d.hipoteses || [];
+    const desc = `<div class="dim" style="margin-top:10px">Descartados: <b>${fmtN(d.descartados_mesma_pessoa || 0)}</b> par(es) em que o "parente colocado" era a própria autoridade (mesmo nome e mesmo CPF, lotada em dois órgãos) e <b>${fmtN(d.descartados_indeterminados || 0)}</b> sem CPF para distinguir. ${hip.length ? `<b>${fmtN(d.n_hipoteses)}</b> par(es) ligados só pelo sobrenome ficam abaixo como hipótese.` : ""}</div>`;
+    const hipH = hip.length ? `<div class="sec" style="margin-top:16px"><b>Hipóteses — só sobrenome (não são achados)</b></div><div class="grid">` + hip.map((x) => card(`<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)} <span class="tag">hipótese</span></div><div class="dim">${esc((x.orgao_a || "").slice(0, 30))} ⇄ ${esc((x.orgao_b || "").slice(0, 30))}</div>${leitura(esc(x.motivo || "") + " Falta: " + esc(x.falta || "") + ".")}`)).join("") + `</div>` : "";
     let h = cover("geral", "Nepotismo cruzado — troca de favores entre órgãos", "A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.", "🔀") + acoesAba("nepotismo_cruzado");
     h += `<div class="grid g2">${kpi(
       fmtN(d.n),
@@ -15376,7 +15390,7 @@
       "🔀",
       { sobre: "Pares de órgãos em que o padrão se INVERTE: num deles manda um sobrenome e está colocado o outro; no segundo, o contrário. É o desenho do <b>nepotismo cruzado</b> — a troca que a Súmula Vinculante 13 alcança justamente por burlar a vedação direta. Continua valendo que sobrenome não é parentesco: o par indica onde perguntar, não o que concluir." }
     )}</div>`;
-    if (!a.length) return h + card('<div class="muted">Nenhum par recíproco com o padrão rigoroso nas folhas atuais. Cresce com mais folhas. 🟢</div>') + `<div class="note">${esc(d.ressalva || "")}</div>`;
+    if (!a.length) return h + card('<div class="muted">Nenhum par recíproco com dado além do sobrenome nas folhas atuais.</div>') + desc + hipH + `<div class="note">${esc(d.identidade || "")} ${esc(d.ressalva || "")}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + a.map((x) => card(
       `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
      <div class="kv" style="margin-top:8px"><span class="k">${esc((x.orgao_a || "").slice(0, 30))}</span><b>autoridade: ${esc(x.autoridade_a)}</b></div>
@@ -15384,7 +15398,7 @@
      ${leitura(`No órgão <b>${esc((x.orgao_a || "").slice(0, 26))}</b> manda um <b>${esc(x.sobrenome_a)}</b> e há um <b>${esc(x.sobrenome_b)}</b> colocado; no <b>${esc((x.orgao_b || "").slice(0, 26))}</b> é o inverso. Padrão de troca recíproca de parentes entre órgãos — confirmar parentesco e nomeações.`)}`,
       "hl"
     )).join("") + `</div>`;
-    h += `<div class="note">${esc(d.ressalva || "")}</div>`;
+    h += desc + hipH + `<div class="note">${esc(d.identidade || "")} ${esc(d.ressalva || "")}</div>`;
     return h;
   }
   async function renderLaranjas() {

@@ -1208,18 +1208,43 @@ def _nep_familia(toks: list) -> str | None:
     return " ".join(sig[-2:]) if len(sig) >= 2 else None
 
 
+def _corroborar_familia(con, membros: list) -> list[str]:
+    """Outro dado (além do sobrenome) que ligue pessoas DISTINTAS da folha: serem sócias da MESMA empresa,
+    com a identidade de cada uma conferida pelo CPF na janela da folha (`identidade_pessoa`), nunca pelo nome.
+    Eixo 'co-ocorrência societária' (4,76% da base, pode acender — osint/parentesco.EIXOS). `membros`:
+    [{nome, cpf, fonte, competencia}]. Devolve frases de prova (sem CPF)."""
+    from compliance_agent import identidade_pessoa as _ip
+    emp = [(m["nome"], _ip.empresas_da_pessoa_folha(con, m["nome"], m.get("cpf"), m.get("fonte"),
+                                                    m.get("competencia"))) for m in membros]
+    provas = []
+    for i in range(len(emp)):
+        for j in range(i + 1, len(emp)):
+            comum = sorted(emp[i][1] & emp[j][1])
+            if comum:
+                provas.append(f"{emp[i][0]} e {emp[j][0]} são sócios da mesma empresa (CNPJ raiz "
+                              f"{', '.join(comum[:3])}) — identidade de cada um conferida pelo CPF da folha")
+    return provas
+
+
 def nepotismo(db_path: str | None = None, min_membros: int = 2, max_raridade: int = 20,
               limite: int = 120) -> dict:
     """Nepotismo (Súmula Vinculante 13 STF): ≥2 pessoas de NOMES distintos com o MESMO sobrenome de
     família RARO, ambas em cargo de confiança no MESMO órgão. Sobrenome comum é excluído; sufixos
     (Neto/Filho/Jr) são normalizados; o fragmento de CPF corrobora que são pessoas distintas. Marca
-    quando o cluster inclui uma AUTORIDADE nomeante (defensor/diretor/secretário)."""
+    quando o cluster inclui uma AUTORIDADE nomeante (defensor/diretor/secretário).
+
+    19/11/2026 (dono: "homônimos em tudo têm que ser desmistificados através de outros dados"): sobrenome
+    NÃO é parentesco. O grupo só vira ACHADO (selo INDICIO) quando outro dado liga as pessoas — hoje, serem
+    sócias da mesma empresa com identidade conferida pelo CPF (`_corroborar_familia`). Sem isso é HIPÓTESE
+    (`hipoteses`), com a prevalência do eixo medida na própria folha e a explicação inocente."""
+    from compliance_agent import identidade_pessoa as _ip
     con = _ro(db_path)
     try:
         from collections import defaultdict
         total_fam: dict[str, set] = defaultdict(set)
         org_fam: dict = defaultdict(lambda: defaultdict(dict))
-        for r in con.execute("SELECT nome, orgao_nome, cargo, cpf FROM registros_folha WHERE nome IS NOT NULL"):
+        for r in con.execute("SELECT nome, orgao_nome, cargo, cpf, fonte, competencia FROM registros_folha "
+                             "WHERE nome IS NOT NULL"):
             toks = _nep_tokens(r["nome"])
             fam = _nep_familia(toks)
             if not fam:
@@ -1231,8 +1256,24 @@ def nepotismo(db_path: str | None = None, min_membros: int = 2, max_raridade: in
                 org_fam[r["orgao_nome"]][fam][nn] = {
                     "nome": r["nome"], "cargo": r["cargo"],
                     "cpf_frag": frag if 5 <= len(frag) <= 9 else "",
+                    "cpf": r["cpf"], "fonte": r["fonte"], "competencia": r["competencia"],
                     "autoridade": bool(_NEP_AUTORIDADE.search((r["cargo"] or "").upper()))}
-        achados = []
+        # prevalência do eixo NA PRÓPRIA FOLHA: das pessoas em cargo de confiança com sobrenome não-comum,
+        # quantas dividem o sobrenome com outra pessoa de confiança do mesmo órgão
+        n_conf = n_eixo = 0
+        for fams in org_fam.values():
+            for fam, membros in fams.items():
+                if fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+                    continue
+                n_conf += len(membros)
+                if len(membros) >= 2:
+                    n_eixo += len(membros)
+        _milhar = lambda n: f"{n:,}".replace(",", ".")  # noqa: E731
+        prev_txt = (f"na folha, {_milhar(n_eixo)} de {_milhar(n_conf)} pessoas em cargo de confiança com sobrenome "
+                    f"não-comum ({f'{100 * n_eixo / max(1, n_conf):.1f}'.replace('.', ',')}%"
+                    + ") dividem o sobrenome com outra do mesmo órgão (medido agora); eixo raro, mas sobrenome "
+                    "sozinho não prova parentesco")
+        achados, hipoteses = [], []
         for org, fams in org_fam.items():
             for fam, membros in fams.items():
                 if fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
@@ -1246,16 +1287,28 @@ def nepotismo(db_path: str | None = None, min_membros: int = 2, max_raridade: in
                 if ntot > 4 and (len(membros) / ntot) < 0.5:
                     continue
                 mm = list(membros.values())
-                achados.append({
+                selo = _ip.selo_parentesco(_corroborar_familia(con, mm), prevalencia=prev_txt)
+                item = {
                     "sobrenome": fam, "orgao": org, "n_membros": len(membros),
                     "total_folha": ntot, "concentracao": round(len(membros) / ntot, 2) if ntot else 0,
                     "tem_autoridade": any(m["autoridade"] for m in mm),
-                    "membros": [{"nome": m["nome"], "cargo": m["cargo"], "cpf_frag": m["cpf_frag"]} for m in mm[:8]]})
+                    "selo": selo["selo"], "grau": selo["grau"], "motivo": selo["motivo"],
+                    "prevalencia": selo["prevalencia"], "falta": selo["falta"],
+                    "membros": [{"nome": m["nome"], "cargo": m["cargo"], "cpf_frag": m["cpf_frag"]} for m in mm[:8]]}
+                (achados if selo["selo"] == _ip.INDICIO else hipoteses).append(item)
         # autoridade no cluster + mais membros + maior concentração primeiro
-        achados.sort(key=lambda a: (not a["tem_autoridade"], -a["n_membros"], -a["concentracao"]))
+        chave = lambda a: (not a["tem_autoridade"], -a["n_membros"], -a["concentracao"])  # noqa: E731
+        achados.sort(key=chave)
+        hipoteses.sort(key=chave)
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
                 "n_com_autoridade": sum(1 for a in achados if a["tem_autoridade"]),
+                "hipoteses": hipoteses[:limite], "n_hipoteses": len(hipoteses),
+                "n_hipoteses_com_autoridade": sum(1 for a in hipoteses if a["tem_autoridade"]),
+                "prevalencia_eixo": prev_txt,
                 "folhas": sorted({r[0] for r in con.execute("SELECT DISTINCT fonte FROM registros_folha") if r[0]}),
+                "identidade": ("Sobrenome não é parentesco e não há base aberta de parentesco no Brasil. Achado "
+                               "(INDÍCIO) só quando outro dado liga as pessoas — sócias da mesma empresa, "
+                               "identidade conferida pelo CPF da folha. O resto é HIPÓTESE: não é achado."),
                 "explicacao": ("Duas ou mais pessoas de nomes distintos com o mesmo sobrenome de "
                                "família RARO, ambas em cargo de confiança no mesmo órgão — perfil de "
                                "nepotismo (Súmula Vinculante 13 do STF proíbe nomear parente para "
@@ -1392,35 +1445,80 @@ def corrida_dezembro(db_path: str | None = None, min_total: float = 2_000_000,
 def socio_oculto(db_path: str | None = None, min_empresas: int = 3, limite: int = 120) -> dict:
     """Pessoa/holding que é sócia de VÁRIAS (≥3) empresas fornecedoras do Estado — empresário oculto
     ou grupo familiar controlando um leque de fornecedores (indício de fracionamento entre 'concorrentes'
-    do mesmo dono). Exclui conselheiros de estatal (não são donos)."""
+    do mesmo dono). Exclui conselheiros de estatal (não são donos).
+
+    Identidade (19/11/2026, régua `identidade_pessoa.chave_qsa`): a PESSOA é (nome, documento da Receita),
+    não o nome. A versão anterior agrupava `GROUP BY socio_nome` e fundia homônimos de CPF diferente numa
+    pessoa só (7 grupos; 5 só passavam do corte de 3 empresas por causa da fusão). Sem documento no QSA = só
+    o nome → INDETERMINADO, fora de `achados`."""
+    from collections import defaultdict
+    from compliance_agent import identidade_pessoa as _ip
     con = _ro(db_path)
     try:
         rows = con.execute("""
-        SELECT s.socio_nome, s.socio_doc, COUNT(DISTINCT s.cnpj) n_emp, SUM(f.total_pago) tot,
-               GROUP_CONCAT(DISTINCT f.favorecido_nome) empresas
+        SELECT s.socio_nome, s.socio_doc, s.cnpj, s.cpf_resolvido, f.favorecido_nome, f.total_pago
         FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj
         WHERE s.socio_nome<>'' AND f.total_pago>0
           AND (lower(s.qualificacao) LIKE '%administrador%' OR s.qualificacao LIKE '%Sócio%' OR lower(s.qualificacao) LIKE '%titular%')
-          AND s.qualificacao NOT LIKE '%Conselh%'
-        GROUP BY s.socio_nome HAVING n_emp >= ? AND tot < 2e9
-        ORDER BY n_emp DESC, tot DESC LIMIT ?""", (min_empresas, limite)).fetchall()
-        achados = []
-        for r in rows:
-            emps = [e for e in (r["empresas"] or "").split(",") if e][:8]
-            achados.append({
-                "socio": r["socio_nome"], "doc": r["socio_doc"], "n_empresas": r["n_emp"],
-                "total": r["tot"], "empresas": emps,
-                "holding": bool(re.search(r"PARTICIPAC|HOLDING|EMPREEND|LTDA|S\.?A\.?$",
-                                          _norm_nome(r["socio_nome"]))) or r["socio_nome"].isupper()})
-        return {"ok": True, "achados": achados, "n": len(achados),
-                "explicacao": ("Mesma pessoa (ou holding) sócia de várias empresas que vendem ao Estado. "
-                               "Um dono por trás de vários fornecedores permite simular concorrência "
-                               "entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e "
-                               "concentrar contratos disfarçadamente."),
-                "ressalva": ("Ser sócio de várias empresas é lícito; o indício é a combinação com "
-                             "contratos no mesmo órgão/objeto. Cruzar QSA e certames. Indício ≠ acusação.")}
+          AND s.qualificacao NOT LIKE '%Conselh%'""").fetchall()
     finally:
         con.close()
+    pessoas: dict = defaultdict(dict)          # (nome_norm, doc) -> {cnpj: (empresa, total)}
+    docs_por_nome: dict = defaultdict(set)
+    nome_exib, resolvidos = {}, defaultdict(set)
+    for r in rows:
+        k = _ip.chave_qsa(r["socio_nome"], r["socio_doc"])
+        pessoas[k][r["cnpj"]] = (r["favorecido_nome"], r["total_pago"] or 0)
+        docs_por_nome[k[0]].add(k[1])
+        nome_exib.setdefault(k, r["socio_nome"])
+        if len(_ip._dig(r["cpf_resolvido"])) == 11:
+            resolvidos[k].add(_ip._dig(r["cpf_resolvido"]))
+    achados, indeterminados = [], []
+    for k, emps in pessoas.items():
+        if len(emps) < min_empresas:
+            continue
+        tot = sum(v for _, v in emps.values())
+        if tot >= 2e9:
+            continue
+        nn, doc = k
+        n_hom = len(docs_por_nome[nn] - {""})
+        item = {"socio": nome_exib[k], "n_empresas": len(emps), "total": tot,
+                "empresas": [e for e, _ in sorted(emps.values(), key=lambda x: -x[1])][:8],
+                "holding": doc.startswith("pj:"),
+                "doc": (f"***.{doc[3:6]}.{doc[6:9]}-**" if doc.startswith("pf:")
+                        else doc[3:] if doc else "")}
+        if not doc:
+            item.update(selo=_ip.INDETERMINADO, falta="o QSA não traz o documento deste sócio",
+                        motivo="Só o nome coincide entre as empresas; sem documento não há como separar homônimos.")
+            indeterminados.append(item)
+            continue
+        if len(resolvidos[k]) > 1:
+            item.update(selo=_ip.PROVAVEL, falta="CPF completo único",
+                        motivo="Mesmo nome e mesmos 6 dígitos do CPF na Receita, mas outras fontes resolveram "
+                               f"{len(resolvidos[k])} CPFs completos diferentes — pode haver homônimo.")
+        else:
+            prova = ("mesma raiz de CNPJ do sócio PJ em todas" if item["holding"]
+                     else "mesmo nome e mesmos 6 dígitos do CPF (Receita) em todas")
+            if n_hom > 1:
+                prova += f"; há {n_hom - 1} outro(s) sócio(s) de mesmo nome e CPF diferente, contados à parte"
+            item.update(selo=_ip.VERIFICADO, falta="", motivo=f"Mesma pessoa nas {len(emps)} empresas: {prova}.")
+        achados.append(item)
+    achados.sort(key=lambda a: (-a["n_empresas"], -a["total"]))
+    indeterminados.sort(key=lambda a: (-a["n_empresas"], -a["total"]))
+    fundidos = sum(1 for nn, ds in docs_por_nome.items() if len(ds - {""}) > 1
+                   and any(len(pessoas[(nn, d)]) for d in ds))
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "n_verificados": sum(1 for a in achados if a["selo"] == _ip.VERIFICADO),
+            "n_indeterminados": len(indeterminados), "indeterminados": indeterminados[:limite],
+            "nomes_com_homonimos": fundidos,
+            "identidade": ("Pessoa = nome + documento da Receita (CPF mascarado ou CNPJ). Mesmo nome com CPF "
+                           "diferente é outra pessoa; sem documento é INDETERMINADO e não entra na lista."),
+            "explicacao": ("Mesma pessoa (ou holding) sócia de várias empresas que vendem ao Estado. "
+                           "Um dono por trás de vários fornecedores permite simular concorrência "
+                           "entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e "
+                           "concentrar contratos disfarçadamente."),
+            "ressalva": ("Ser sócio de várias empresas é lícito; o indício é a combinação com "
+                         "contratos no mesmo órgão/objeto. Cruzar QSA e certames. Indício ≠ acusação.")}
 
 
 def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_empresa: bool = True) -> dict:
@@ -1428,32 +1526,45 @@ def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_em
     sobrenome de família RARO com ≥2 pessoas distintas, ligando as que estão em cargo de confiança
     (folha) E as que são sócias de fornecedores. Conecta pessoa→órgão (lotação) e pessoa→empresa
     (sócio, com o valor recebido). Mostra clãs que ocupam cargos E fornecem ao Estado.
-    `so_com_empresa`: só mostra famílias em que ao menos um membro tem empresa fornecedora (o cruzamento)."""
+    `so_com_empresa`: só mostra famílias em que ao menos um membro tem empresa fornecedora (o cruzamento).
+
+    19/11/2026 — identidade e parentesco pela régua (`identidade_pessoa`). Antes: o comissionado da folha e
+    o sócio do QSA de MESMO NOME viravam um nó só (casamento só pelo nome), sócios homônimos de CPF diferente
+    também, e toda família saía com selo 'alta' ("indício alto" no grafo) só pelo sobrenome. Agora:
+      · folha × QSA só se fundem com CPF compatível na janela aferida da folha; mesmo nome sem CPF
+        comparável fica em nós separados, marcados INDETERMINADO; CPF diferente = homônimo, separados;
+      · pessoa do QSA = nome + documento (`chave_qsa`);
+      · a aresta família→pessoa é 'mesmo sobrenome (hipótese)'; só vira 'parentesco (indício)' com outro
+        dado: comissionado com identidade conferida que é sócio da MESMA empresa que outro membro."""
+    from compliance_agent import identidade_pessoa as _ip
     con = _ro(db_path)
     try:
         from collections import defaultdict
-        # 1) pessoas por sobrenome-família: comissionados (folha) e sócios (fornecedor)
-        fam_pes: dict[str, dict] = defaultdict(dict)   # fam -> nome_norm -> {nome, papeis:set, orgao, empresas:[]}
-        for r in con.execute("SELECT nome, orgao_nome, cargo FROM registros_folha WHERE nome IS NOT NULL "
-                            "AND (cargo LIKE '%COMISS%' OR cargo LIKE '%ESPECIAL%' OR cargo LIKE '%ASSESSOR%' "
-                            "OR cargo LIKE '%GABINETE%' OR cargo LIKE '%DIRETOR%')"):
+
+        def _fam_ok(fam):
+            return fam and fam not in _NEP_COMUNS and not any(t in _NEP_COMUNS for t in fam.split())
+
+        fam_folha: dict = defaultdict(dict)   # fam -> nn -> {nome, orgao, cpf, fonte, competencia}
+        for r in con.execute("SELECT nome, orgao_nome, cargo, cpf, fonte, competencia FROM registros_folha "
+                             "WHERE nome IS NOT NULL AND (cargo LIKE '%COMISS%' OR cargo LIKE '%ESPECIAL%' "
+                             "OR cargo LIKE '%ASSESSOR%' OR cargo LIKE '%GABINETE%' OR cargo LIKE '%DIRETOR%')"):
             toks = _nep_tokens(r["nome"])
             fam = _nep_familia(toks)
-            if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+            if not _fam_ok(fam):
                 continue
-            nn = " ".join(toks)
-            e = fam_pes[fam].setdefault(nn, {"nome": r["nome"], "orgao": None, "empresas": []})
-            e["orgao"] = r["orgao_nome"]
-        for r in con.execute("SELECT s.socio_nome, s.cnpj, f.favorecido_nome, f.total_pago "
-                            "FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
-                            "WHERE f.total_pago>0 AND s.socio_nome<>''"):
+            fam_folha[fam][" ".join(toks)] = {"nome": r["nome"], "orgao": r["orgao_nome"], "cpf": r["cpf"],
+                                             "fonte": r["fonte"], "competencia": r["competencia"]}
+        fam_qsa: dict = defaultdict(dict)     # fam -> (nn, doc) -> {nome, doc, empresas}
+        for r in con.execute("SELECT s.socio_nome, s.socio_doc, s.cnpj, f.favorecido_nome, f.total_pago "
+                             "FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
+                             "WHERE f.total_pago>0 AND s.socio_nome<>''"):
             toks = _nep_tokens(r["socio_nome"])
             fam = _nep_familia(toks)
-            if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+            if not _fam_ok(fam):
                 continue
-            nn = " ".join(toks)
-            e = fam_pes[fam].setdefault(nn, {"nome": r["socio_nome"], "orgao": None, "empresas": []})
-            if len(e["empresas"]) < 5:
+            k = (" ".join(toks), _ip.chave_qsa(r["socio_nome"], r["socio_doc"])[1])
+            e = fam_qsa[fam].setdefault(k, {"nome": r["socio_nome"], "doc": r["socio_doc"], "empresas": []})
+            if len(e["empresas"]) < 5 and all(c != r["cnpj"] for _, _, c in e["empresas"]):
                 e["empresas"].append((r["favorecido_nome"], r["total_pago"], r["cnpj"]))
         # raridade global (pessoas distintas com esse sobrenome em TODA a folha)
         tot_fam: dict[str, set] = defaultdict(set)
@@ -1464,38 +1575,85 @@ def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_em
 
         nodes: dict[str, dict] = {}
         links: list[dict] = []
+        cont = {"fundidos_por_cpf": 0, "homonimos_separados": 0, "indeterminados": 0}
 
         def _node(nid, label, tipo, **kw):
             if nid not in nodes:
                 nodes[nid] = {"id": nid, "label": (label or "")[:40], "tipo": tipo, **kw}
             return nid
 
-        for fam, pessoas in fam_pes.items():
-            if len(pessoas) < 2:
-                continue
+        for fam in set(fam_folha) | set(fam_qsa):
             if len(tot_fam.get(fam, set())) > max_raridade:   # sobrenome pouco raro → fora
                 continue
-            tem_emp = any(p["empresas"] for p in pessoas.values())
-            tem_org = any(p["orgao"] for p in pessoas.values())
+            # pessoas: cada registro da folha casa com o sócio de mesmo nome SÓ pelo CPF
+            pessoas, usados, ambiguos = [], set(), 0
+            for nn, f in fam_folha.get(fam, {}).items():
+                pf = _ip.posicoes_folha(f["cpf"], f["fonte"], f["competencia"])
+                p = {"nome": f["nome"], "orgao": f["orgao"], "empresas": [], "identidade": "", "motivo": ""}
+                for k, q in fam_qsa.get(fam, {}).items():
+                    if k[0] != nn:
+                        continue
+                    res, npos = _ip.comparar_cpf(_ip.posicoes_qsa(q["doc"]), pf)
+                    if res == _ip.COMPATIVEL and not p["empresas"]:
+                        p.update(empresas=q["empresas"], identidade=_ip.VERIFICADO,
+                                 motivo=f"comissionado e sócio: CPF confere em {npos} posições")
+                        usados.add(k)
+                        cont["fundidos_por_cpf"] += 1
+                    elif res == _ip.INCOMPATIVEL:
+                        cont["homonimos_separados"] += 1
+                    elif res == _ip.SEM_DADO and not p["identidade"]:
+                        p.update(identidade=_ip.INDETERMINADO,
+                                 motivo="há sócio de mesmo nome, mas sem CPF comparável — nós separados")
+                        cont["indeterminados"] += 1
+                        ambiguos += 1
+                pessoas.append(p)
+            for k, q in fam_qsa.get(fam, {}).items():
+                if k not in usados:
+                    pessoas.append({"nome": q["nome"], "orgao": None, "empresas": q["empresas"],
+                                    "identidade": "", "motivo": "", "_k": k})
+            # nós separados por falta de CPF (INDETERMINADO) podem ser UMA pessoa: não contam como 2 para formar família
+            if len(pessoas) - ambiguos < 2:
+                continue
+            tem_emp = any(p["empresas"] for p in pessoas)
+            tem_org = any(p["orgao"] for p in pessoas)
             if so_com_empresa and not (tem_emp and tem_org):   # o cruzamento exige os dois lados
                 continue
-            fid = _node(f"fam:{fam}", fam, "familia", badge="alta" if tem_emp and tem_org else "media")
-            for nn, p in pessoas.items():
-                pid = _node(f"pes:{fam}:{nn}", p["nome"], "pessoa")
-                links.append({"source": fid, "target": pid, "tipo": "parentesco"})
+            # outro dado além do sobrenome: comissionado (identidade conferida) sócio da mesma empresa que outro membro
+            corr = []
+            for a in pessoas:
+                if not (a["orgao"] and a["identidade"] == _ip.VERIFICADO):
+                    continue
+                ca = {c for _, _, c in a["empresas"]}
+                for b in pessoas:
+                    if b is not a and ca & {c for _, _, c in b["empresas"]}:
+                        corr.append(f"{a['nome']} (comissionado, CPF conferido) é sócio da mesma empresa que {b['nome']}")
+            selo = _ip.selo_parentesco(corr)
+            fid = _node(f"fam:{fam}", fam, "familia", badge="alta" if corr else "hipotese",
+                        selo=selo["selo"], motivo=selo["motivo"], prevalencia=selo["prevalencia"])
+            for i, p in enumerate(pessoas):
+                pid = _node(f"pes:{fam}:{i}", p["nome"], "pessoa", identidade=p["identidade"] or None,
+                            motivo=p["motivo"] or None)
+                links.append({"source": fid, "target": pid,
+                              "tipo": "parentesco (indício)" if corr else "mesmo sobrenome (hipótese)"})
                 if p["orgao"]:
                     oid = _node(f"org:{p['orgao']}", p["orgao"], "orgao")
                     links.append({"source": pid, "target": oid, "tipo": "lotacao"})
                 for (emp, tot, cnpj) in p["empresas"]:
                     eid = _node(f"emp:{cnpj}", emp, "empresa", valor=float(tot or 0), cnpj=cnpj)
                     links.append({"source": pid, "target": eid, "tipo": "socio", "valor": float(tot or 0)})
+        fams = [n for n in nodes.values() if n["tipo"] == "familia"]
         return {"nodes": list(nodes.values()), "links": links,
-                "n_familias": sum(1 for n in nodes.values() if n["tipo"] == "familia"),
+                "n_familias": len(fams),
+                "n_familias_indicio": sum(1 for n in fams if n["selo"] == _ip.INDICIO),
+                "n_familias_hipotese": sum(1 for n in fams if n["selo"] == _ip.HIPOTESE),
                 "n_pessoas": sum(1 for n in nodes.values() if n["tipo"] == "pessoa"),
                 "n_empresas": sum(1 for n in nodes.values() if n["tipo"] == "empresa"),
+                "identidade": cont,
                 "legenda": ("Família = sobrenome raro com ≥2 pessoas. Azul=pessoa, verde=empresa "
-                            "fornecedora, roxo=órgão. Famílias que ocupam cargo de confiança E fornecem "
-                            "ao Estado. Indício ≠ acusação — sobrenome não prova parentesco.")}
+                            "fornecedora, roxo=órgão. Comissionado e sócio só são o mesmo nó quando o CPF "
+                            "confere; o sobrenome sozinho é HIPÓTESE ('mesmo sobrenome'), não parentesco — "
+                            "vira indício só com outro dado (sociedade comum com CPF conferido). "
+                            "Indício ≠ acusação.")}
     finally:
         con.close()
 
@@ -1784,14 +1942,23 @@ def nepotismo_cruzado(db_path: str | None = None, limite: int = 60) -> dict:
     """Nepotismo CRUZADO: troca de favores entre órgãos — o sobrenome raro X tem AUTORIDADE no órgão A
     e um comissionado no órgão B, enquanto o sobrenome raro Y tem autoridade no órgão B e comissionado
     no A (colocação recíproca de parentes, driblando a SV13 do mesmo órgão). Rigoroso: exige o par
-    recíproco A↔B com autoridade dos dois lados."""
+    recíproco A↔B com autoridade dos dois lados.
+
+    19/11/2026 — identidade e parentesco pela régua (`identidade_pessoa`):
+      · o "parente colocado" tem de ser OUTRA pessoa que a autoridade. Antes, 6 dos 8 pares eram a própria
+        autoridade lotada em duas secretarias (mesmo nome, mesmo CPF) — não há parente nenhum. Mesmo nome
+        e CPF compatível = mesma pessoa (descartada); mesmo nome sem CPF comparável = INDETERMINADO;
+      · sobrenome não é parentesco: o par só é ACHADO (INDICIO) se outro dado ligar autoridade e colocado
+        (sociedade comum com CPF conferido). Sem isso vai para `hipoteses`."""
+    from compliance_agent import identidade_pessoa as _ip
     con = _ro(db_path)
     try:
         from collections import defaultdict
         fam_tot: dict[str, set] = defaultdict(set)
-        aut: dict = defaultdict(dict)   # fam -> {orgao: nome_autoridade}
-        conf: dict = defaultdict(lambda: defaultdict(set))  # fam -> orgao -> {nome}
-        for r in con.execute("SELECT nome, orgao_nome, cargo FROM registros_folha WHERE nome IS NOT NULL"):
+        aut: dict = defaultdict(dict)   # fam -> {orgao: registro da autoridade}
+        conf: dict = defaultdict(lambda: defaultdict(dict))  # fam -> orgao -> {nome: registro}
+        for r in con.execute("SELECT nome, orgao_nome, cargo, cpf, fonte, competencia FROM registros_folha "
+                             "WHERE nome IS NOT NULL"):
             toks = _nep_tokens(r["nome"])
             fam = _nep_familia(toks)
             if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
@@ -1799,41 +1966,72 @@ def nepotismo_cruzado(db_path: str | None = None, limite: int = 60) -> dict:
             nn = " ".join(toks)
             fam_tot[fam].add(nn)
             cargo = (r["cargo"] or "").upper()
+            reg = {"nome": r["nome"], "cpf": r["cpf"], "fonte": r["fonte"], "competencia": r["competencia"]}
             if _NEP_CONF.search(cargo):
-                conf[fam][r["orgao_nome"]].add(nn)
+                conf[fam][r["orgao_nome"]].setdefault(nn, reg)
             if _NEP_AUTORIDADE.search(cargo):
-                aut[fam].setdefault(r["orgao_nome"], r["nome"])
+                aut[fam].setdefault(r["orgao_nome"], reg)
+
+        def _colocados(autoridade: dict, regs: dict) -> tuple[list, list, list]:
+            """Separa os 'colocados' em: outra pessoa · a própria autoridade · indeterminado."""
+            outros, mesma, indet = [], [], []
+            for reg in regs.values():
+                v = _ip.mesma_pessoa_folhas(autoridade["nome"], autoridade["cpf"], autoridade["fonte"],
+                                            autoridade["competencia"], reg["nome"], reg["cpf"], reg["fonte"],
+                                            reg["competencia"])
+                (mesma if v["resultado"] == "MESMA" else indet if v["resultado"] == _ip.INDETERMINADO
+                 else outros).append((reg, v["motivo"]))
+            return outros, mesma, indet
+
         # só sobrenomes raros
         raros = {f for f, s in fam_tot.items() if len(s) <= 20}
-        pares = []
+        pares, descartes, vistos_desc = [], {"mesma_pessoa": 0, "indeterminado": 0}, set()
         famX = [f for f in raros if f in aut]
-        for i, X in enumerate(famX):
-            if len(fam_tot[X]) > 20:
-                continue
+        for X in famX:
             for orgA, autX in aut[X].items():
-                # X tem membro (conf) em algum órgão B ≠ A
                 for orgB in conf.get(X, {}):
                     if orgB == orgA:
                         continue
-                    # existe Y raro com autoridade em B e membro em A?
                     for Y in raros:
                         if Y == X or Y not in aut:
                             continue
-                        if orgB in aut[Y] and orgA in conf.get(Y, {}):
-                            pares.append({
-                                "sobrenome_a": X, "orgao_a": orgA, "autoridade_a": autX,
-                                "sobrenome_b": Y, "orgao_b": orgB, "autoridade_b": aut[Y][orgB],
-                                "membro_a_em_b": sorted(conf[X][orgB])[:3],
-                                "membro_b_em_a": sorted(conf[Y][orgA])[:3]})
+                        if not (orgB in aut[Y] and orgA in conf.get(Y, {})):
+                            continue
+                        autY = aut[Y][orgB]
+                        oX, mX, iX = _colocados(autX, conf[X][orgB])
+                        oY, mY, iY = _colocados(autY, conf[Y][orgA])
+                        if not oX or not oY:
+                            # um dos lados só tem a própria autoridade (ou quem não dá para distinguir dela)
+                            kd = tuple(sorted([X, Y]) + sorted([orgA or "", orgB or ""]))
+                            if kd not in vistos_desc:
+                                vistos_desc.add(kd)
+                                descartes["mesma_pessoa" if (mX or mY) and not (iX or iY) else "indeterminado"] += 1
+                            continue
+                        corr = (_corroborar_familia(con, [autX] + [r for r, _ in oX[:3]])
+                                + _corroborar_familia(con, [autY] + [r for r, _ in oY[:3]]))
+                        selo = _ip.selo_parentesco(corr)
+                        pares.append({
+                            "sobrenome_a": X, "orgao_a": orgA, "autoridade_a": autX["nome"],
+                            "sobrenome_b": Y, "orgao_b": orgB, "autoridade_b": autY["nome"],
+                            "membro_a_em_b": sorted(r["nome"] for r, _ in oX)[:3],
+                            "membro_b_em_a": sorted(r["nome"] for r, _ in oY)[:3],
+                            "selo": selo["selo"], "grau": selo["grau"], "motivo": selo["motivo"],
+                            "prevalencia": selo["prevalencia"], "falta": selo["falta"]})
         # dedup por par de sobrenomes+órgãos
-        seen, uniq = set(), []
+        seen, achados, hipoteses = set(), [], []
         for p in pares:
             k = tuple(sorted([p["sobrenome_a"], p["sobrenome_b"]]) + sorted([p["orgao_a"] or "", p["orgao_b"] or ""]))
             if k in seen:
                 continue
             seen.add(k)
-            uniq.append(p)
-        return {"ok": True, "achados": uniq[:limite], "n": len(uniq),
+            (achados if p["selo"] == _ip.INDICIO else hipoteses).append(p)
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "hipoteses": hipoteses[:limite], "n_hipoteses": len(hipoteses),
+                "descartados_mesma_pessoa": descartes["mesma_pessoa"],
+                "descartados_indeterminados": descartes["indeterminado"],
+                "identidade": ("O 'parente colocado' tem de ser outra pessoa que a autoridade (nome diferente, ou "
+                               "mesmo nome com CPF diferente). Sobrenome não é parentesco: achado só com outro "
+                               "dado que ligue as pessoas; o resto é hipótese."),
                 "explicacao": ("Nepotismo cruzado (troca de favores): a família X manda no órgão A e "
                                "coloca um parente no órgão B, enquanto a família Y manda no órgão B e "
                                "coloca um parente no A. A reciprocidade dribla a Súmula Vinculante 13, "
