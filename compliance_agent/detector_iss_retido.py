@@ -259,9 +259,49 @@ def _carioca(texto: str) -> list[dict]:
     return out
 
 
+# Magé (nfs-e.mage.rj.gov.br) e o mesmo sistema em outros municípios: pares "RÓTULO:" → "R$ valor", com quebra de
+# linha em qualquer ponto do rótulo e entre o "R$" e o número. Medido em 18/11/2026: FAETEC × Scalle (Grupo Nolasco),
+# 260005/007167/2024 NFS-e 1001711 (ISS retido R$ 128.111,34) e 260005/012007/2025 NFS-e 1002673 (R$ 151.660,53) — o
+# "VALOR TOTAL DA NOTA: R$" tem DOIS-PONTOS, não "=", e nenhum extrator lia. A base é a do serviço MENOS a dedução de
+# material (LC 116/2003, art. 7º §2º, I): o ISS confere com a BASE impressa, e a NF fecha a conta sobre o VALOR SERVIÇOS.
+def _r(rot: str) -> str:
+    return r"\s*".join(rot.split()) + r":\s*(?:R\$\s*)?(" + _MOEDA + ")"
+
+
+_RE_MAGE = re.compile(
+    _r("VALOR SERVI[ÇC]OS") + r"\s*" + _r("VALOR DEDU[ÇC][ÃA]O") + r"\s*" + _r("DESC. INCOND") + r"\s*"
+    + _r("BASE DE C[ÁA]LCULO") + r"\s*AL[ÍI]QUOTA:\s*(\d{1,2}(?:,\d{1,4})?)\s*%\s*" + _r("VALOR ISS") + r"\s*"
+    + _r("VALOR ISS RETIDO") + r"\s*" + _r("DESC. COND") + r"[\s_]*" + _r("VALOR PIS") + r"\s*" + _r("VALOR COFINS")
+    + r"\s*" + _r("VALOR IR") + r"\s*" + _r("VALOR INSS") + r"\s*" + _r("VALOR CSLL") + r"\s*"
+    + _r("OUTRAS RETEN[ÇC][ÕO]ES") + r"\s*" + _r("VALOR L[ÍI]QUIDO"), re.I)
+
+
+def _mage(texto: str) -> list[dict]:
+    out, ini = [], 0
+    for m in _RE_MAGE.finditer(texto):
+        seg = texto[ini:m.end() + 400]
+        ini = m.end()
+        bruto, ded, dinc, base = (_num(m.group(k)) for k in (1, 2, 3, 4))
+        aliq = _num(m.group(5)) if "," in m.group(5) else float(m.group(5))
+        iss, iss_ret, dcond, pis, cofins, ir, inss, csll, outras, liq = (_num(m.group(k)) for k in range(6, 16))
+        fed = {"PIS": pis, "COFINS": cofins, "IRRF": ir, "INSS": inss, "CSLL": csll, "Outras": outras}
+        if abs(bruto - dinc - dcond - sum(fed.values()) - iss_ret - liq) > 0.05:
+            continue                        # a NF não fecha a própria conta (leitura errada) → não se usa
+        mr = re.search(r"ISSQN\s+RETIDO\s*\n?\s*(Sim|N[ãa]o)\b", seg, re.I)
+        retido = iss_ret > 0.004
+        if mr and (mr.group(1).lower() == "sim") != retido:
+            continue                        # bandeira e valor discordam → ambíguo, não se usa
+        if retido and not _iss_confere(base, aliq, iss_ret):
+            continue
+        mn = re.search(r"N[úu]mero da Nota:?\s*\n?\s*(\d+)", texto[max(0, m.start() - 6000):m.start()])
+        out.append(_nf("mage", mn.group(1) if mn else None, bruto, iss_ret if retido else iss, aliq, retido, fed,
+                       liq, texto[max(0, m.start() - 6000):m.end()]))
+    return out
+
+
 def extrair_nfs(texto: str) -> list[dict]:
     """NFs de serviço lidas e conferidas num texto. Formato que não fecha a própria conta não entra."""
-    for f in (_danfse, _futurize, _issnet):
+    for f in (_danfse, _futurize, _issnet, _mage):
         r = f(texto)
         if r:
             return r
@@ -507,9 +547,11 @@ def _registro(sei, cred, obs_p, r, ter) -> dict:
 
 # ───────────────────────────── varredura e resumo ─────────────────────────────
 
-def varrer(acervo: Path = ACERVO, db: Path = DB, so: str | None = None, workers: int = 1) -> dict:
+def varrer(acervo: Path = ACERVO, db: Path = DB, so: str | None = None, workers: int = 1,
+           limite: int | None = None) -> dict:
     pastas = sorted(p for p in acervo.iterdir() if p.is_dir() and processo_sei(p)) if not so else \
         [acervo / so.replace("SEI-", "").replace("/", "_")]
+    pastas = pastas[:limite] if limite else pastas
     lidas: dict[str, list[dict]] = {}
     provas: dict[str, list[str]] = {}
     cobertura = defaultdict(int)

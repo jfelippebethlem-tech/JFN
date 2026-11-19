@@ -1,0 +1,38 @@
+id: iss_declarado_retido_nao_retido
+nome: ISS declarado retido na NFS-e e não retido no pagamento (e retenção de ISS devolvida sem reemissão)
+origem:
+  processo: SEI-260005/007167/2024
+  descricao: >-
+    FAETEC × Scalle Construções (Grupo Nolasco): NFS-e de Magé 1001711 "VALOR ISS RETIDO: R$ 128.111,34",
+    "ISSQN RETIDO Sim"; OB 2024OB05071 R$ 8.438.266,82 = bruto R$ 8.540.755,89 − IRRF R$ 102.489,07 (sem o ISS).
+    Mesmo fornecedor em SEI-260005/012007/2025 (NFS-e 1002673, ISS R$ 151.660,53; OB 2025OB10766 = bruto − INSS − IRRF).
+    Sub-sinal: INEA × Lytoranea SEI-070002/019996/2025, OB de retenção 2026OB02539 (ISS, Belford Roxo,
+    R$ 1.021.316,75) com "Erro no Pagamento" e Guia de Devolução 2026GD00114, sem reemissão nos autos.
+  laudos: [data/pericia_agentes/260005_007167_2024.json, data/pericia_agentes/070002_019996_2025.json]
+  detector_base: compliance_agent/detector_iss_retido.py (extrator `_mage` acrescentado em 18/11/2026)
+norma:
+  - LC 116/2003, art. 6º (responsabilidade do tomador pela retenção) e art. 7º §2º, I (dedução de material)
+  - Lei 4.320/1964, arts. 62 a 64 (pagamento só após regular liquidação)
+  - Lei 14.133/2021, art. 141 (ordem e regularidade dos pagamentos)
+sinal:
+  nf_x_ob: >-
+    Σ bruto das NFs − Σ OB paga ao prestador fecha ao centavo com retenções federais declaradas na NF e não com
+    elas + ISS → valor do ISS pago ao prestador (VERIFICADO = forte; PENDENTE = medio).
+  retencao_devolvida: >-
+    Ordem Bancária de Retenção de ISS impressa nos autos com "Erro no Pagamento" e sem outra OB de ISS ao mesmo
+    credor e valor emitida depois, nos autos ou no SIAFE (medio; fraco se < 30 dias).
+explicacoes_inocentes:
+  - Prestador recolheu o ISS por guia própria e o Estado reembolsou (guia/DARM nos autos → PENDENTE).
+  - Retenção paga em OB separada ao Município, no processo ou na mesma NL (→ PENDENTE).
+  - Federais destacadas e não retidas pelo tomador estadual (qualquer subconjunto é aceito).
+  - Arredondamento de centavos (tolerância R$ 0,05 por NF; ISS > 20× a tolerância).
+  - OCR que troca dígito (NF precisa fechar a própria conta e o ISS conferir com base × alíquota).
+  - Reemissão da OB de retenção somada a outra guia, por outro processo, ou depois da última peça capturada.
+controle_positivo: [SEI-260005/007167/2024, SEI-260005/012007/2025, SEI-070002/019996/2025]
+controle_negativo:
+  - "NFS-e de Magé com OB = bruto − IRRF − ISS (retido corretamente) — teste unitário"
+  - "OB de retenção de ISS devolvida e reemitida depois ao mesmo credor e valor — teste unitário"
+limites:
+  - valor_pago_ob = Σ OB paga ao prestador no processo (_ob_paga) — PISO; soma por processo em revisão (frente 2bfd).
+  - OB de retenção (TIPO 13) não está em ob_orcamentaria_siafe; o sub-sinal depende da impressão juntada aos autos.
+  - gd_siafe parada em 31/08/2026.
