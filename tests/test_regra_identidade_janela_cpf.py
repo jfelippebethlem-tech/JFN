@@ -41,7 +41,17 @@ def test_ninguem_compara_fragmento_de_cpf_fatiando_string():
 TRATADOS = {
     "compliance_agent.cruzamentos_intel": ["socio_oculto", "nepotismo", "nepotismo_cruzado", "grafo_familias",
                                            "porta_giratoria"],
+    "compliance_agent.lex_conflito": ["conflito", "_identidade_socio_folha"],
+    "compliance_agent.rede_societaria": ["rede_por_socio"],
+    "compliance_agent.grafo_cartel": ["socios_compartilhados"],
+    "compliance_agent.emendas.pericia": ["d5_retroalimentacao_eleitoral"],
+    "tools.agente_publico_reverso": ["fila"],
+    "compliance_agent.investigacao_dd": ["_coletar_beneficios_pep"],
 }
+# função que delega a identidade a um auxiliar tratado acima: o auxiliar é o marcador exigido
+DELEGA = {("compliance_agent.lex_conflito", "socios_agentes_publicos"): "_identidade_socio_folha",
+          # folha municipal sem CPF: a identidade fica INDETERMINADA e a faixa FORTE é vedada
+          ("compliance_agent.pcrj.fantasma_servidor", "detectar"): "FALTA_IDENTIDADE"}
 # parentesco por sobrenome: a saída tem de separar hipótese de achado
 PARENTESCO = {"compliance_agent.cruzamentos_intel": ["nepotismo", "nepotismo_cruzado", "grafo_familias"]}
 _AGRUPA_SO_NOME = re.compile(r"GROUP BY\s+[\w.]*(?:socio_nome|nome_socio|nome_norm|\bnome)\b(?![^\"']*doc)", re.I)
@@ -64,6 +74,9 @@ def test_modulos_tratados_casam_pessoa_pela_regua_e_nao_so_pelo_nome():
             m = _AGRUPA_SO_NOME.search(corpo)
             if m:
                 erros.append(f"{mod}.{fn}: agrupa pessoa só pelo nome ({m.group(0)!r}) — use identidade_pessoa.chave_qsa")
+    for (mod, fn), marcador in DELEGA.items():
+        if marcador not in _fonte(mod, fn).split('"""', 2)[-1]:
+            erros.append(f"{mod}.{fn}: deixou de passar pela régua ({marcador})")
     for mod, fns in PARENTESCO.items():
         for fn in fns:
             corpo = _fonte(mod, fn).split('"""', 2)[-1]

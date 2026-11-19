@@ -109,7 +109,8 @@ def test_d5_retroalimentacao_eleitoral(con_semeado):
     con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio)
                    values ('11222333','JOAO DA SILVA','JOAO DA SILVA','***456789**')""")
     con.execute("""insert into doacoes_eleitorais (cpf_cnpj_doador, nome_doador, nome_candidato,
-                   valor, ano_eleicao) values ('***456789**','JOAO DA SILVA','Dep Fulano',50000,2022)""")
+                   valor, ano_eleicao) values ('12345678901','JOAO DA SILVA','Dep Fulano',50000,2022)""")
+    # o TSE traz o CPF COMPLETO; o QSA mostra os dígitos 4–9 (456789) — a régua identidade_pessoa confere
     achados = pericia.d5_retroalimentacao_eleitoral(con)
     assert len(achados) == 1
     a = achados[0]
@@ -117,7 +118,8 @@ def test_d5_retroalimentacao_eleitoral(con_semeado):
     assert "indício" in a["descricao"].lower()
 
 
-def test_d5_match_por_nome_e_indicio_fraco(con_semeado):
+def test_d5_so_por_nome_nao_vira_achado(con_semeado):
+    """19/11/2026 — par só-por-nome (sócio sem documento) e homônimo de CPF diferente não são achado."""
     con = con_semeado
     con.execute("""insert into emendas (codigo, ano, autor_raw, autor_norm, recorte)
                    values ('E3',2024,'Dep Beltrano','DEP BELTRANO','AUTOR_RJ')""")
@@ -125,14 +127,13 @@ def test_d5_match_por_nome_e_indicio_fraco(con_semeado):
                    nome_favorecido, fase, valor) values
                    ('E3','44555666000199','BETA SERVICOS','Pagamento',200000)""")
     con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio)
-                   values ('44555666','MARIA SOUZA','MARIA SOUZA','')""")
+                   values ('44555666','MARIA SOUZA','MARIA SOUZA',''),
+                          ('44555666','PAULO REIS','PAULO REIS','***111111**')""")
     con.execute("""insert into doacoes_eleitorais (cpf_cnpj_doador, nome_doador, nome_candidato,
-                   valor, ano_eleicao) values ('***000000**','Maria Souza','Dep Beltrano',10000,2022)""")
-    achados = pericia.d5_retroalimentacao_eleitoral(con)
-    assert len(achados) == 1
-    a = achados[0]
-    assert a["evidencias"]["match_tipo"] == "NOME" and a["risco"] <= 5
-    assert "homônim" in a["descricao"].lower()
+                   valor, ano_eleicao) values ('99900000011','Maria Souza','Dep Beltrano',10000,2022),
+                                              ('22233344455','Paulo Reis','Dep Beltrano',10000,2022)""")
+    assert pericia.d5_retroalimentacao_eleitoral(con) == []
+    assert pericia.d5_retroalimentacao_eleitoral.descartes == {"homonimo": 1, "sem_documento": 1}
 
 
 def test_d6_empenho_sem_pagamento(con_semeado):

@@ -316,7 +316,7 @@ def _b_nomeados(d):
 def _d_comissionados(p):
     import sqlite3
 
-    from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa
+    from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa, pessoas_tse_por_nome
     con = sqlite3.connect(f"file:{p.replace('compliance.db','pcrj.db')}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
@@ -325,10 +325,12 @@ def _d_comissionados(p):
             "matricula, cand_ano, cand_cargo, cand_cidade FROM pcrj_comissionado_candidato")]
     finally:
         con.close()
-    pessoas = agrupar_por_pessoa(rows)
+    pessoas = agrupar_por_pessoa(rows, pessoas_tse_por_nome())
     return {"ok": True, "itens": pessoas, "n": len(pessoas),
-            "ressalva": "1 linha por PESSOA (histórico de nomeações agregado); match por NOME — "
-                        "confirmar por CPF antes de citar."}
+            "n_homonimo_visivel": sum(1 for x in pessoas if x.get("homonimo_provavel")),
+            "ressalva": "1 linha por PESSOA (histórico de nomeações agregado). Identidade INDETERMINADA: a folha "
+                        "da Prefeitura não publica CPF e só o nome liga as bases — não é achado; confirmar por CPF "
+                        "antes de citar. ⚠ = homônimo visível (candidatos de CPF/título distintos no TSE)."}
 
 
 def _b_comissionados(d):
@@ -343,7 +345,8 @@ def _b_comissionados(d):
         ls.append(f"<tr><td>{_esc(x['nome_pcrj'])}{' ⚠ homônimo?' if x.get('homonimo_provavel') else ''}</td>"
                   f"<td>{postos}</td><td><small>{cands}</small></td></tr>")
     return ("Comissionados da Prefeitura do Rio × candidaturas (TSE)",
-            f"{d.get('n',0)} pessoas (histórico completo de nomeações por pessoa)",
+            f"{d.get('n',0)} pessoas casadas só pelo nome (identidade indeterminada) · "
+            f"{d.get('n_homonimo_visivel',0)} com homônimo visível",
             [{"titulo": "1. Cargo de confiança × disputa eleitoral — por pessoa",
               "html": _tabela(["Pessoa", "Histórico de nomeações", "Candidaturas"], ls)}], d)
 

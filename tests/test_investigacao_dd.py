@@ -4,6 +4,8 @@
 Puros/determinísticos (sem rede): passam `cadastral` pronto e `usar_rede=False`/`geocode=False`.
 Cobrem: marcadores residenciais, capital ínfimo, recência, situação irregular, porte, sócio único,
 honestidade (INDISPONÍVEL quando falta dado; nenhum achado quando empresa é regular)."""
+import pytest
+
 from compliance_agent import investigacao_dd as I
 from compliance_agent.investigacao_dd import (
     _cpf_completo, _marcadores_residenciais, _socio_eh_pf, investigar,
@@ -156,12 +158,14 @@ def test_beneficios_pep_sem_chave_e_honesto(monkeypatch):
 
 
 def test_pep_por_nome_gera_indicio(monkeypatch):
+    """Positivo: o CPF mascarado do PEP (CGU) confere com o do sócio (QSA) nos dígitos 4–9."""
     import compliance_agent.collectors.beneficios_sociais as bs
     monkeypatch.setattr(bs, "_chave", lambda: "k")
 
     async def fake_pep(cpf="", nome="", forcar_update=False):
         return {"verificado": True, "eh_pep": True,
-                "peps": [{"nome": nome, "funcao": "Vereador", "orgao": "Câmara Municipal"}], "motivo": ""}
+                "peps": [{"nome": nome, "cpf": "***.123.456-**", "funcao": "Vereador", "orgao": "Câmara Municipal"}],
+                "motivo": ""}
 
     async def fake_benef(cpf, forcar_update=False):
         return {"verificado": True, "recebe_beneficio": False, "beneficios": [], "motivo": ""}
@@ -169,7 +173,7 @@ def test_pep_por_nome_gera_indicio(monkeypatch):
     monkeypatch.setattr(bs, "verificar_pep", fake_pep)
     monkeypatch.setattr(bs, "verificar_beneficios", fake_benef)
     out = investigar("11222333000181",
-                     cadastral={"situacao": "ATIVA", "socios": [{"nome": "FULANO DE TAL", "doc": "***1**"}]},
+                     cadastral={"situacao": "ATIVA", "socios": [{"nome": "FULANO DE TAL", "doc": "***123456**"}]},
                      pagamentos={"total_pago": 500_000}, usar_rede=False, geocode=False)
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-PEP")
     assert h["status"] == "INDICIO"
@@ -278,3 +282,26 @@ def test_enriquecimento_capital_pelo_dump(tmp_path, monkeypatch):
     # cadastral={} não dispara rede, mas o enriquecimento do dump completa capital/porte
     assert out["cobertura"]["capital"] == "verificado"
     assert "H-CAPITAL" in _codigos(out)   # capital R$1k vs R$5mi recebidos = irrisório
+
+
+@pytest.mark.parametrize("cpf_pep,esperado", [("***.999.888-**", "1 homônimo"), ("", "1 só por nome")])
+def test_pep_homonimo_ou_sem_cpf_nao_gera_indicio(monkeypatch, cpf_pep, esperado):
+    """19/11/2026 — régua identidade_pessoa: PEP de CPF diferente é homônimo; PEP sem CPF comparável é
+    indeterminado. Nenhum dos dois vira H-PEP; a cobertura diz o que houve."""
+    import compliance_agent.collectors.beneficios_sociais as bs
+    monkeypatch.setattr(bs, "_chave", lambda: "k")
+
+    async def fake_pep(cpf="", nome="", forcar_update=False):
+        return {"verificado": True, "eh_pep": True,
+                "peps": [{"nome": nome, "cpf": cpf_pep, "funcao": "Vereador", "orgao": "Câmara"}], "motivo": ""}
+
+    async def fake_benef(cpf, forcar_update=False):
+        return {"verificado": True, "recebe_beneficio": False, "beneficios": [], "motivo": ""}
+
+    monkeypatch.setattr(bs, "verificar_pep", fake_pep)
+    monkeypatch.setattr(bs, "verificar_beneficios", fake_benef)
+    out = investigar("11222333000181",
+                     cadastral={"situacao": "ATIVA", "socios": [{"nome": "FULANO DE TAL", "doc": "***123456**"}]},
+                     pagamentos={"total_pago": 500_000}, usar_rede=False, geocode=False)
+    assert "H-PEP" not in _codigos(out)
+    assert esperado in out["cobertura"]["pep"]

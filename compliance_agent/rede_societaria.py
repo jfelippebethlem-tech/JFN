@@ -179,24 +179,47 @@ async def ingerir(cnpjs: list[str], delay: float = 0.5) -> dict:
 
 
 def rede_por_socio(cnpj: str) -> dict:
-    """Outros fornecedores que compartilham ao menos um sócio (por nome normalizado) com o CNPJ dado."""
+    """Outros fornecedores que compartilham ao menos um sócio com o CNPJ dado.
+
+    Identidade pela régua única (19/11/2026, `identidade_pessoa.chave_qsa`): o sócio em comum tem de ter o
+    MESMO nome E o mesmo documento da Receita (CPF mascarado ou CNPJ). Antes casava só pelo nome — 49 dos
+    9.965 pares de CNPJ eram homônimos de CPF diferente. Mesmo nome sem documento de um dos lados vai para
+    `indeterminados` (não entra em `relacionados`)."""
+    from compliance_agent import identidade_pessoa as ip
     cnpj = re.sub(r"\D", "", cnpj or "")
     con = _con()
     try:
-        meus = [r[0] for r in con.execute(
-            "SELECT socio_nome_norm FROM socios_fornecedor WHERE cnpj=? AND socio_nome_norm!=''", (cnpj,))]
+        meus = con.execute("SELECT socio_nome, socio_nome_norm, socio_doc FROM socios_fornecedor "
+                           "WHERE cnpj=? AND socio_nome_norm!=''", (cnpj,)).fetchall()
         if not meus:
             return {"cnpj": cnpj, "socios": [], "relacionados": [], "_nota": "sem QSA ingerido p/ este CNPJ"}
+        minhas = {ip.chave_qsa(n, d) for _, n, d in meus}
         ph = ",".join("?" * len(meus))
-        rel = con.execute(f"""
-            SELECT cnpj, MAX(razao) razao, GROUP_CONCAT(DISTINCT socio_nome) socios_comuns
-            FROM socios_fornecedor
-            WHERE socio_nome_norm IN ({ph}) AND cnpj!=? GROUP BY cnpj
-        """, meus + [cnpj]).fetchall()
-        nomes = [r[0] for r in con.execute(
-            "SELECT DISTINCT socio_nome FROM socios_fornecedor WHERE cnpj=? AND socio_nome!=''", (cnpj,))]
-        return {"cnpj": cnpj, "socios": nomes,
-                "relacionados": [{"cnpj": c, "razao": rz, "socios_comuns": sc} for c, rz, sc in rel]}
+        rel: dict[str, dict] = {}
+        indet: dict[str, dict] = {}
+        homonimos = 0
+        for c, rz, nome, nn, doc in con.execute(
+                f"SELECT cnpj, razao, socio_nome, socio_nome_norm, socio_doc FROM socios_fornecedor "
+                f"WHERE socio_nome_norm IN ({ph}) AND cnpj!=?", [m[1] for m in meus] + [cnpj]):
+            k = ip.chave_qsa(nn, doc)
+            if k in minhas and k[1]:
+                r = rel.setdefault(c, {"cnpj": c, "razao": rz, "_s": []})
+                r["_s"].append(nome)
+            elif not k[1] or (k[0], "") in minhas:
+                i = indet.setdefault(c, {"cnpj": c, "razao": rz, "_s": []})
+                i["_s"].append(nome)
+            else:
+                homonimos += 1
+        for d in list(rel.values()) + list(indet.values()):
+            d["socios_comuns"] = ",".join(sorted(set(d.pop("_s"))))
+        for c in rel:
+            indet.pop(c, None)
+            rel[c].update(selo=ip.VERIFICADO, motivo="sócio com o mesmo nome e o mesmo documento da Receita")
+        for i in indet.values():
+            i.update(selo=ip.INDETERMINADO, motivo="só o nome coincide — o QSA não traz o documento de um dos lados")
+        nomes = sorted({n for n, _, _ in meus if n})
+        return {"cnpj": cnpj, "socios": nomes, "relacionados": list(rel.values()),
+                "indeterminados": list(indet.values()), "homonimos_descartados": homonimos}
     finally:
         con.close()
 
@@ -225,7 +248,7 @@ def stats() -> dict:
         ns = con.execute("SELECT COUNT(*) FROM socios_fornecedor WHERE socio_nome_norm!=''").fetchone()[0]
         comp = con.execute("""SELECT COUNT(*) FROM (
             SELECT socio_nome_norm FROM socios_fornecedor WHERE socio_nome_norm!=''
-            GROUP BY socio_nome_norm HAVING COUNT(DISTINCT cnpj)>=2)""").fetchone()[0]
+            GROUP BY socio_nome_norm, socio_doc HAVING COUNT(DISTINCT cnpj)>=2)""").fetchone()[0]
         return {"cnpjs_com_qsa": n, "socios": ns, "socios_compartilhados_por_2+_empresas": comp}
     finally:
         con.close()

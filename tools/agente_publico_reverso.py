@@ -389,8 +389,8 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
 
     Três cortes, todos objetivos: a entidade aparece em ao menos uma das quatro torneiras (SIAFE,
     despesa municipal paga, emenda na fase de PAGAMENTO, contrato municipal — este último entra na
-    procedência e nunca no valor); o nome do agente tem UM único CPF mascarado no índice (homônimo
-    comprovado sai — os que ficam podem ser homônimos sem que a base o mostre); e a explicação
+    procedência e nunca no valor); o nome do agente tem UM único CPF mascarado no índice E esse CPF
+    confere com o da folha (régua `identidade_pessoa`; homônimo sai, sem CPF fica INDETERMINADO); e a explicação
     institucional conhecida vai marcada, nunca escondida. `fontes` diz de onde veio cada par.
     """
     from compliance_agent.reporting.intel_base import _DB
@@ -431,9 +431,24 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
     ndocs = dict(con.execute("SELECT nome_norm, COUNT(DISTINCT doc_socio) "
                              "FROM agente_publico_societario GROUP BY 1"))
     linhas = list(con.execute(
-        "SELECT nome_norm, nome_socio, cnpj_basico, cargo, orgao, comissionado, origem "
+        "SELECT nome_norm, nome_socio, cnpj_basico, cargo, orgao, comissionado, origem, doc_socio "
         "FROM agente_publico_societario"))
+    # IDENTIDADE PELA RÉGUA ÚNICA (19/11/2026, `identidade_pessoa.selo_socio_folha`). A tabela é montada só
+    # pelo NOME; "um único CPF mascarado no índice" não prova que esse CPF é o do servidor. Medido: dos
+    # 523.231 pares (nome, doc) da folha do Estado, 429.455 têm o CPF do QSA DIFERENTE do da folha
+    # (homônimo provado), 53.967 sem CPF comparável e só 39.809 conferem. Homônimo sai; sem CPF (ALERJ,
+    # folha municipal, TJRJ) fica como INDETERMINADO, depois dos conferidos — fila de diligência, não achado.
+    from compliance_agent import identidade_pessoa as _ip
+    selos = _ip.selo_socio_folha(con, {(x[1], x[7]) for x in linhas
+                                       if x[6] == "folha_estado" and x[2] in pago and ndocs.get(x[0]) == 1})
     con.close()
+
+    def _selo(nome, doc, origem):
+        if origem == "folha_estado":
+            return selos.get((nome, doc), (_ip.INDETERMINADO, "nome não reencontrado na folha"))
+        return _ip.INDETERMINADO, f"a folha de origem ({origem}) não publica CPF — só o nome coincide"
+
+    linhas = [x for x in linhas if _selo(x[1], x[7], x[6])[0] != _ip.HOMONIMO]
 
     quantos = {}
     for x in linhas:
@@ -441,12 +456,14 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
             quantos[x[2]] = quantos.get(x[2], 0) + 1
 
     out = []
-    for nome_norm, nome, raiz, cargo, orgao, com, origem in linhas:
+    for nome_norm, nome, raiz, cargo, orgao, com, origem, doc in linhas:
         if raiz not in pago or ndocs.get(nome_norm) != 1:
             continue
         rz, nat = razao.get(raiz, ("", ""))
+        selo, motivo = _selo(nome, doc, origem)
         out.append({
             "agente": nome, "cargo": cargo, "orgao": orgao, "origem": origem,
+            "identidade": selo, "identidade_motivo": motivo,
             "comissionado": bool(com), "cnpj_basico": raiz,
             "entidade": rz or f"(raiz {raiz} — razão social não capturada)",
             "terceiro_setor": nat.startswith("3"),
@@ -472,7 +489,9 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
     # `servidores_no_qsa` NÃO entra na ordem: medido, ele ordena por tamanho da empresa (MEDVIVA,
     # 10 de 125 sócios) e não por concentração. Sobram o conflito de órgão, que é quase-objetivo, o
     # cargo comissionado e o valor como desempate.
-    return sorted(out, key=lambda x: (bool(x["explicacao_institucional"]),
+    # Identidade conferida pelo CPF vem antes de tudo: o par só-por-nome é diligência de identificação.
+    return sorted(out, key=lambda x: (x["identidade"] != _ip.VERIFICADO,
+                                      bool(x["explicacao_institucional"]),
                                       not x["orgao_pagador_e_o_proprio"],
                                       not x["comissionado"],
                                       -x["valor_recebido"]))

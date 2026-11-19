@@ -223,9 +223,15 @@ async def verificar_pep(cpf: str = "", nome: str = "", forcar_update: bool = Fal
     if not ok:
         return {**base, "verificado": False, "eh_pep": None, "peps": [], "motivo": erro}
 
-    peps = [{"nome": _campo(it, "nome", "nomePep"), "funcao": _campo(it, "descricaoFuncao", "funcao"),
-             "orgao": _campo(it, "nomeOrgao", "orgaoLotacao", "siglaFuncao"),
-             "inicio": _campo(it, "dataInicioExercicio"), "fim": _campo(it, "dataFimExercicio")}
+    # Campos da API em snake_case (conferido na resposta real em 19/11/2026: cpf, nome, descricao_funcao,
+    # nome_orgao, dt_inicio_exercicio…) — os nomes camelCase antigos nunca casavam e função/órgão saíam vazios.
+    # `cpf` vem MASCARADO pela CGU (`***.123.456-**`, dígitos 4–9, a mesma janela do QSA): é o dado que
+    # desfaz o homônimo da busca por nome (régua `identidade_pessoa`).
+    peps = [{"nome": _campo(it, "nome", "nomePep"), "cpf": _campo(it, "cpf"),
+             "funcao": _campo(it, "descricao_funcao", "descricaoFuncao", "funcao"),
+             "orgao": _campo(it, "nome_orgao", "nomeOrgao", "orgaoLotacao", "sigla_funcao", "siglaFuncao"),
+             "inicio": _campo(it, "dt_inicio_exercicio", "dataInicioExercicio"),
+             "fim": _campo(it, "dt_fim_exercicio", "dataFimExercicio")}
             for it in lista if isinstance(it, dict)]
     # busca por nome pode trazer homônimos — sinal a CONFIRMAR (não acusação)
     resultado = {"verificado": True, "eh_pep": len(peps) > 0, "peps": peps,

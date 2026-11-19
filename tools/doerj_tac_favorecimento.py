@@ -251,12 +251,18 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
                         "detalhe": f"doou {moeda(total)} a {len(d)} candidato(s): " +
                                    "; ".join(f"{x[0]} ({x[1]}, {x[2]}, {x[3]}) {moeda(x[4])}" for x in d[:4]),
                         "evidencia": {"doacoes": [list(x) for x in d]}})
-        a = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem FROM agente_publico_societario WHERE cnpj_basico=? LIMIT 6",
-                        (raiz,)).fetchall()
+        # agente público no QSA: a tabela é casada só pelo NOME — a identidade se decide pela régua única
+        # (19/11/2026, `lex_conflito._identidade_socio_folha` → `identidade_pessoa`): só o sócio com CPF
+        # conferido na folha acende o sinal; homônimo sai e sem CPF (ALERJ/folha municipal) não é sinal.
+        from compliance_agent.lex_conflito import _identidade_socio_folha
+        brutos = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem, doc_socio FROM agente_publico_societario "
+                             "WHERE cnpj_basico=? LIMIT 20", (raiz,)).fetchall()
+        selos = _identidade_socio_folha(con, [(x[0], x[5]) for x in brutos if x[4] == "folha_estado"])
+        a = [x[:5] for x in brutos if selos.get((x[0], x[5]), ("",))[0] == "VERIFICADO"][:6]
         if a:
             grau = "🔴" if any(grau_agente(x[3]) == "🔴" for x in a) else "🟡"
             out.append({"sinal": "agente_publico_no_qsa", "grau": grau,
-                        "detalhe": "; ".join(f"{x[0]} — {x[1] or '?'} ({x[2] or '?'}) em {x[3] or '?'} [{x[4]}]" for x in a[:3]),
+                        "detalhe": "; ".join(f"{x[0]} — {x[1] or '?'} ({x[2] or '?'}) em {x[3] or '?'} [{x[4]}, CPF conferido]" for x in a[:3]),
                         "evidencia": {"agentes": [list(x) for x in a]}})
         cap = con.execute("SELECT capital_social, porte_txt FROM empresas_cadastro WHERE cnpj_basico=?", (raiz,)).fetchone()
         if cap and cap[0] is not None and soma_tac > 0 and float(cap[0]) < 0.01 * soma_tac:

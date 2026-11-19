@@ -49,3 +49,28 @@ def test_conflito_via_socio(tmp_path, monkeypatch):
     assert achado["valor_doacao"] == 25000.0 and achado["total_ob"] == 500000.0
     # o doador irrelevante não entra
     assert not any(x["doador"] == "Zé Ninguem" for x in rede)
+
+
+def test_conflito_homonimo_de_cpf_diferente_e_mascara_sem_nome_nao_entram(tmp_path, monkeypatch):
+    """19/11/2026 — régua `identidade_pessoa`: nome igual com CPF divergente é homônimo; sócio sem documento é
+    indeterminado; a máscara coincidente com NOME diferente não identifica ninguém. Nenhum dos três é achado."""
+    db = tmp_path / "c.db"
+    _db_sintetico(str(db))
+    con = sqlite3.connect(db)
+    con.execute("INSERT INTO ordens_bancarias VALUES (?,?)", ("44555666000199", 900000.0))
+    con.executemany("INSERT INTO socios_fornecedor VALUES (?,?,?,?,?,?,?)", [
+        ("44555666000199", "EMPRESA Y", "Maria Homonima", "MARIA HOMONIMA", "***111111**", "Socio", "2026"),
+        ("44555666000199", "EMPRESA Y", "Pedro Semdoc", "PEDRO SEMDOC", "", "Socio", "2026"),
+        ("44555666000199", "EMPRESA Y", "Outro Nome", "OUTRO NOME", "***777888**", "Socio", "2026")])
+    con.executemany("INSERT INTO doacoes_eleitorais VALUES (?,?,?,?,?,?)", [
+        ("22233344455", "Maria Homonima", "C1", "P", 2022, 500.0),     # CPF dígitos 4–9 = 334445 ≠ 111111
+        ("55566677788", "Pedro Semdoc", "C1", "P", 2022, 500.0),       # sócio sem documento
+        ("12377788899", "Fulano Diferente", "C1", "P", 2022, 500.0)])  # máscara 777888 bate, nome não
+    con.commit(); con.close()
+    monkeypatch.setenv("JFN_DB", str(db))
+    r = lc.conflito()
+    assert not any(x["empresa_cnpj"] == "44555666000199" for x in r["rede"]), r["rede"]
+    assert r["homonimos_descartados"] == 1 and r["indeterminados_sem_doc"] == 1
+    # o positivo continua: nome + CPF conferido
+    ok = next(x for x in r["rede"] if x["empresa_cnpj"] == "11222333000199")
+    assert ok["selo"] == "VERIFICADO" and "6 dígitos" in ok["motivo"]

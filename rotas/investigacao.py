@@ -2439,7 +2439,7 @@ def api_pcrj_comissionados_candidatos(limite: int = 300):
     import sqlite3 as _sq
     try:
         lim = max(1, min(int(limite or 300), 1000))
-        ck = f"pcrj:comis_cand:v2:{lim}"  # v2: payload agora é por pessoa, não por linha
+        ck = f"pcrj:comis_cand:v3:{lim}"  # v3: identidade (homônimo visível no TSE/folha)
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
         con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
@@ -2452,8 +2452,8 @@ def api_pcrj_comissionados_candidatos(limite: int = 300):
         finally:
             con.close()
 
-        from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa
-        out_pessoas = agrupar_por_pessoa(rows)
+        from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa, pessoas_tse_por_nome
+        out_pessoas = agrupar_por_pessoa(rows, pessoas_tse_por_nome())
         n_pessoas = len(out_pessoas)
         truncado = len(out_pessoas) > lim
         out_pessoas = out_pessoas[:lim]
@@ -2464,7 +2464,11 @@ def api_pcrj_comissionados_candidatos(limite: int = 300):
                               "Rio e as candidaturas do TSE. Comissionado que concorreu (ou concorre) "
                               "a cargo eletivo é sinal de aparelhamento político do cargo de confiança. "
                               "Cada pessoa aparece uma vez, com o histórico de nomeações abaixo."),
-               "ressalva": "Match por NOME (homônimo possível) — confirmar por CPF antes de citar."}
+               "identidade": ("INDETERMINADO — a folha da Prefeitura não publica CPF; só o nome liga as bases. "
+                              "Quando o TSE mostra candidatos DIFERENTES (CPF/título) com o mesmo nome, o item "
+                              "sai marcado como homônimo."),
+               "n_homonimo_visivel": sum(1 for p in out_pessoas if p.get("homonimo_provavel")),
+               "ressalva": "Match por NOME (homônimo possível) — confirmar por CPF antes de citar. Não é achado."}
         return JSONResponse(_cache_put(ck, out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2503,7 +2507,10 @@ def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
                "gerado_em": gerado,
                "explicacao": ("Sinais objetivos de servidor-fantasma (múltiplos gabinetes, cargo "
                               "incompatível, vínculo concomitante, geografia impossível…) somados em "
-                              "escore; faixa FORTE = convergência de sinais independentes."),
+                              "escore. Faixa FORTE exige identidade conferida por documento; as folhas "
+                              "da Prefeitura e da Câmara não publicam CPF e os sinais ligam as bases só "
+                              "pelo NOME, então o teto é VERIFICAR (fila de diligência, não achado)."),
+               "identidade": "INDETERMINADO — só o nome liga as bases (sem CPF na folha municipal)",
                "ressalva": ("Indício ≠ acusação. `homonimo`=1 marca nome presente em ≥3 municípios "
                             "(ambiguidade — confirmar por CPF/matrícula antes de qualquer citação).")}
         return JSONResponse(_cache_put(ck, out))

@@ -13,7 +13,14 @@ o OSINT entrega são INDÍCIOS que PRIORIZAM de quem pedir o ponto:
   s_candidato  — candidato em OUTRA cidade (base política/campanha longe) enquanto na folha.
 
 Honesto: indício ≠ prova. Nada aqui é "fantasma confirmado" — é "peça o ponto deste".
-Nunca usa base vazada. Sem CPF nas bases → casamento por nome é indício (homônimo marcado).
+Nunca usa base vazada.
+
+IDENTIDADE (19/11/2026, pedido do dono: "homônimos em tudo têm que ser desmistificados através de outros
+dados"): TODOS os sinais ligam bases pelo NOME — a folha da Prefeitura (só matrícula) e a da Câmara não
+publicam CPF, e o TSE/filiação não trazem CPF na base local. "Nome único" numa base não prova que é a mesma
+pessoa da outra. Sem documento comum a identidade é INDETERMINADA (régua `identidade_pessoa`) e a faixa
+FORTE fica vedada: o teto é VERIFICAR (fila de diligência — pedir ficha funcional/CPF e o ponto). Medido
+antes da regra: 27.304 "fortes", todos só-por-nome.
 """
 from __future__ import annotations
 
@@ -200,9 +207,16 @@ def _score(p: dict) -> tuple[int, list[str], bool]:
     return score, sinais, homonimo
 
 
-def _faixa(score: int, homonimo: bool) -> str:
-    if homonimo:
-        return "verificar" if score >= 3 else "fraco"   # homônimo nunca é 'forte'
+# Por que a identidade não se confere aqui (o "qual dado falta" do INDETERMINADO)
+FALTA_IDENTIDADE = ("identidade INDETERMINADA — as folhas da Prefeitura e da Câmara não publicam CPF; "
+                    "só o nome liga as bases (pedir ficha funcional com CPF antes de qualquer citação)")
+
+
+def _faixa(score: int, homonimo: bool, identidade: str = "INDETERMINADO") -> str:
+    """FORTE exige identidade conferida por documento (`identidade_pessoa.VERIFICADO`); par só-por-nome
+    nunca passa de VERIFICAR."""
+    if homonimo or identidade != "VERIFICADO":
+        return "verificar" if score >= 3 else "fraco"   # homônimo / só-nome nunca é 'forte'
     return "forte" if score >= 5 else "verificar" if score >= 3 else "fraco"
 
 
@@ -220,7 +234,8 @@ def detectar(db_path=None) -> dict:
         if not sinais or score == 0:
             continue
         aval += 1
-        faixa = _faixa(score, homonimo)
+        faixa = _faixa(score, homonimo)          # sem CPF em nenhuma das bases: identidade INDETERMINADA
+        sinais = sinais + [FALTA_IDENTIDADE]
         faixas[faixa] += 1
         con.execute(
             "INSERT OR REPLACE INTO pcrj_fantasma_servidor "

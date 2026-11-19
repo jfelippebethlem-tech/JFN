@@ -900,6 +900,7 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
     pep_matches: list[tuple[str, str]] = []
     benef_matches: list[tuple[str, list]] = []
     n_pep = n_benef = n_resolvidos = 0
+    pep_homonimos, pep_indeterminados = [0], [0]
     socio_mascarado = False
 
     def _tipos(b: dict) -> list:
@@ -932,13 +933,31 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
             n_pep += 1
             p = await verificar_pep(nome=nome)
             if p.get("verificado") and p.get("eh_pep"):
+                # Identidade pela régua única (19/11/2026): a busca da CGU é por NOME e traz homônimos. O PEP
+                # vem com o CPF mascarado (dígitos 4–9, a mesma janela do QSA); só conta o PEP cujo CPF confere
+                # com o do sócio (QSA ou CPF completo resolvido). CPF diferente = homônimo; sem CPF de um dos
+                # lados = indeterminado (vai na cobertura, não vira hipótese H-PEP).
+                from compliance_agent import identidade_pessoa as _ip
+                pos_socio = _ip.posicoes_qsa(cpf_full or s.get("doc"))
+                conferem, indet = [], 0
+                for x in (p.get("peps") or []):
+                    res = _ip.comparar_cpf(_ip.posicoes_qsa(x.get("cpf")), pos_socio)[0]
+                    if res == _ip.COMPATIVEL:
+                        conferem.append(x)
+                    elif res == _ip.SEM_DADO:
+                        indet += 1
+                    else:
+                        pep_homonimos[0] += 1
+                if not conferem and indet:
+                    pep_indeterminados[0] += 1
                 detalhes = []
-                for x in (p.get("peps") or [])[:2]:
+                for x in conferem[:2]:
                     parte = " — ".join(z for z in (x.get("funcao"), x.get("orgao")) if z)
                     if parte:
                         detalhes.append(parte)
                 descr = "; ".join(detalhes) if detalhes else "função/órgão não detalhados na base PEP"
-                pep_matches.append((nome, descr))
+                if conferem:
+                    pep_matches.append((nome, descr))
         if cpf_full:
             n_benef += 1
             b = await verificar_beneficios(cpf_full)
@@ -954,12 +973,14 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
             "H-PEP", "Sócio politicamente exposto (PEP) — relação política", "INDICIO", "MEDIO",
             f"{len(pep_matches)} sócio(s) com correspondência na base de Pessoas Expostas Politicamente "
             f"(PEP/CGU): {lista}. Vínculo político de sócio de empresa que contrata com o Estado é indício de "
-            "risco de conflito de interesses/favorecimento. A correspondência é por NOME e pode envolver "
-            "homônimo (o CPF do QSA é mascarado por LGPD) — confirmar identidade antes de qualquer conclusão.",
+            "risco de conflito de interesses/favorecimento. Identidade conferida: o CPF mascarado do PEP (CGU) "
+            "confere com o do sócio (QSA) nos dígitos 4–9 — homônimo da busca por nome descartado.",
             "Portal da Transparência/CGU (PEP)",
             "art. 9º Lei 14.133/21 (impedimento); Lei 12.813/13 (conflito de interesses); art. 11 Lei 8.429/92", 8))
     if n_pep:
-        cob["pep"] = f"verificado ({n_pep} sócio(s) consultado(s); {len(pep_matches)} correspondência(s) por nome)"
+        cob["pep"] = (f"verificado ({n_pep} sócio(s) consultado(s); {len(pep_matches)} com CPF conferido; "
+                      f"{pep_homonimos[0]} homônimo(s) de CPF diferente descartado(s); "
+                      f"{pep_indeterminados[0]} só por nome, sem CPF comparável — não é achado)")
     else:
         cob["pep"] = "INDISPONIVEL (sem sócio pessoa física com nome no QSA)"
 

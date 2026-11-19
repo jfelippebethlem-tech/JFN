@@ -116,11 +116,14 @@ def socios_compartilhados(cnpjs: list[str], max_consultas: int = 20) -> dict:
     FICTÍCIA / cartel (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). Aprofundamento 'c/ QSA' da
     Onda 3: pega o QSA de cada CNPJ (registry provider) e cruza por sócio.
 
-    CAVEAT honesto: o CNPJ público MASCARA o CPF do sócio (***127777**) → o casamento é por NOME (o
-    parcial do CPF corrobora). Nome pode ser ambíguo → INDÍCIO a conferir, NUNCA acusação."""
+    Identidade (19/11/2026, régua `identidade_pessoa.chave_qsa`): sócio em comum = MESMO nome E mesmo
+    documento da Receita (CPF mascarado ou CNPJ). Antes casava só pelo nome (o `doc2cnpjs` era montado e
+    nunca usado). Mesmo nome com documento diferente é homônimo; sem documento em algum dos lados é
+    INDETERMINADO e não acende `red_flag`. INDÍCIO a conferir, NUNCA acusação."""
+    from compliance_agent import identidade_pessoa as ip
     from compliance_agent.providers import lookup
-    socio2cnpjs: dict[str, set] = {}
-    doc2cnpjs: dict[str, set] = {}
+    pessoa2cnpjs: dict[tuple, set] = {}
+    exib: dict[tuple, str] = {}
     consultados, falhas = [], []
     for c in list(dict.fromkeys(re.sub(r"\D", "", x or "") for x in cnpjs if x))[:max_consultas]:
         r = lookup("registry", cnpj=c)
@@ -128,20 +131,36 @@ def socios_compartilhados(cnpjs: list[str], max_consultas: int = 20) -> dict:
             falhas.append(c); continue
         consultados.append(c)
         for s in (r.dados.get("socios") or []):
-            nome = _norm_nome(s.get("nome"))
-            if len(nome) > 5:
-                socio2cnpjs.setdefault(nome, set()).add(c)
-            doc = re.sub(r"\D", "", s.get("doc") or "")
-            if len(doc) >= 6:  # parcial mascarado corrobora
-                doc2cnpjs.setdefault(doc, set()).add(c)
-    compart = [{"socio": nome, "cnpjs": sorted(cs), "n": len(cs)}
-               for nome, cs in socio2cnpjs.items() if len(cs) >= 2]
+            k = ip.chave_qsa(s.get("nome"), s.get("doc"))
+            if len(k[0]) > 5:
+                pessoa2cnpjs.setdefault(k, set()).add(c)
+                exib.setdefault(k, _norm_nome(s.get("nome")))
+    compart, indet = [], []
+    for k, cs in pessoa2cnpjs.items():
+        if not k[1]:
+            continue
+        if len(cs) >= 2:
+            compart.append({"socio": exib[k], "cnpjs": sorted(cs), "n": len(cs), "selo": ip.VERIFICADO,
+                            "motivo": "mesmo nome e mesmo documento da Receita nos dois QSAs"})
+    por_nome: dict[str, list] = {}
+    for k, cs in pessoa2cnpjs.items():
+        por_nome.setdefault(k[0], []).append((k[1], cs))
+    homonimos = 0
+    for nome, lst in por_nome.items():
+        todos = set().union(*(cs for _, cs in lst))
+        docs = {d for d, _ in lst if d}
+        if len(todos) >= 2 and any(not d for d, _ in lst):
+            indet.append({"socio": exib[(nome, lst[0][0])], "cnpjs": sorted(todos), "n": len(todos),
+                          "selo": ip.INDETERMINADO, "motivo": "só o nome coincide — QSA sem documento de um dos lados"})
+        elif len(docs) >= 2 and len(todos) >= 2:
+            homonimos += 1
     compart.sort(key=lambda x: -x["n"])
     return {"n_consultados": len(consultados), "n_falhas": len(falhas),
             "socios_compartilhados": compart, "n_socios_comuns": len(compart),
+            "indeterminados": indet, "homonimos_separados": homonimos,
             "red_flag": bool(compart),
             "nota": "Sócio em comum entre concorrentes = indício de concorrência fictícia (Art. 90); conferir. "
-                    "CPF público mascarado → casamento por nome."}
+                    "Mesma pessoa = mesmo nome E mesmo documento da Receita; só o nome é indeterminado."}
 
 
 # ------------------------------------------------------------- concentração COLAPSADA por grupo econômico

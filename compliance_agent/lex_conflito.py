@@ -8,8 +8,9 @@ REQUISITO-CHAVE (instrução do dono): o cruzamento NÃO é só doador-CNPJ == f
 SÓCIO da contratada, não a contratada em si — é assim que se pega o vínculo escondido.
 
 ⚠️ LGPD: `socios_fornecedor.socio_doc` vem MASCARADO (ex.: `***550179**` — só 6 dígitos do meio do CPF).
-Então o match doador↔sócio é por NOME normalizado (sinal forte) corroborado pelo CPF mascarado (6 dígitos) quando
-possível — princípio de ≥2 sinais independentes (OSINT). Saída = INDÍCIO a verificar, nunca acusação.
+Então o match doador↔sócio exige NOME normalizado igual E documento compatível (o CPF completo do doador no TSE
+conferido nos 6 dígitos que o QSA mostra, pela régua `identidade_pessoa`) — 19/11/2026: antes bastava o nome.
+Saída = INDÍCIO a verificar, nunca acusação.
 
 Uso:
     cd ~/JFN && PYTHONPATH=. .venv/bin/python -m compliance_agent.lex_conflito --cnpj 12345678000199
@@ -26,6 +27,7 @@ from compliance_agent.database.models import _resolver_db
 
 
 logger = logging.getLogger(__name__)
+VERIFICADO, HOMONIMO, INDETERMINADO = "VERIFICADO", "HOMONIMO", "INDETERMINADO"   # = identidade_pessoa
 
 
 def _digits(s) -> str:
@@ -37,12 +39,6 @@ def _norm_nome(s: str) -> str:
     s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
     s = re.sub(r"[^A-Z ]", " ", s)
     return re.sub(r"\s+", " ", s).strip()
-
-
-def _mask_cpf(cpf: str) -> str:
-    """Formata um CPF de 11 dígitos no mesmo padrão mascarado do QSA: ***DDDDDD** (6 dígitos do meio)."""
-    d = _digits(cpf)
-    return f"***{d[3:9]}**" if len(d) == 11 else ""
 
 
 def _empresas_com_ob(con) -> dict[str, dict]:
@@ -179,16 +175,13 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
             f"FROM doacoes_eleitorais {where} GROUP BY cpf_cnpj_doador, nome_doador, nome_candidato, partido, ano_eleicao",
             params).fetchall()
 
-        # índice de sócios por nome_norm e por cpf mascarado (p/ o cruzamento via sócio)
-        socios_por_nome: dict[str, list[str]] = {}
-        socios_por_doc: dict[str, list[str]] = {}
+        # índice de sócios por NOME (o documento decide depois, pela régua `identidade_pessoa`)
+        from compliance_agent import identidade_pessoa as _ip
+        socios_por_nome: dict[str, list[tuple[str, str]]] = {}
         for cnpj_emp, nome_norm, doc in con.execute(
                 "SELECT cnpj, socio_nome_norm, socio_doc FROM socios_fornecedor WHERE socio_nome_norm!=''"):
-            d = _digits(cnpj_emp)
-            if nome_norm:
-                socios_por_nome.setdefault(nome_norm, []).append(d)
-            if doc:
-                socios_por_doc.setdefault(str(doc).strip(), []).append(d)
+            socios_por_nome.setdefault(_norm_nome(nome_norm), []).append((_digits(cnpj_emp), str(doc or "").strip()))
+        descartes = {"homonimo_cpf_diferente": 0, "indeterminado_sem_doc": 0}
 
         alvo_cnpj = _digits(cnpj) if cnpj else None
         rede = []
@@ -201,25 +194,29 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
             if len(dd) == 14 and dd in emp:
                 empresas_vinculadas[dd] = {"via": "direto", "sinais": ["doador_cnpj==fornecedor"]}
 
-            # (b) VIA SÓCIO: doador (PF/PJ) é SÓCIO de empresa com OB — casa por nome e/ou cpf mascarado
-            cnpjs_socio: set[str] = set()
-            if nome_norm and nome_norm in socios_por_nome:
-                cnpjs_socio |= {c for c in socios_por_nome[nome_norm]}
-            if len(dd) == 11:
-                mc = _mask_cpf(dd)
-                if mc and mc in socios_por_doc:
-                    cnpjs_socio |= set(socios_por_doc[mc])
-            for c in cnpjs_socio:
-                if c in emp:
-                    # confiança: nome + cpf-mascarado batendo = 2 sinais
-                    sinais = []
-                    if nome_norm in socios_por_nome and c in socios_por_nome[nome_norm]:
-                        sinais.append("nome_socio")
-                    if len(dd) == 11 and _mask_cpf(dd) in socios_por_doc and c in socios_por_doc[_mask_cpf(dd)]:
-                        sinais.append("cpf_mascarado")
-                    prev = empresas_vinculadas.get(c)
-                    if not prev or prev["via"] == "socio":
-                        empresas_vinculadas[c] = {"via": "socio", "sinais": sinais or ["nome_socio"]}
+            # (b) VIA SÓCIO: doador (PF/PJ) é SÓCIO de empresa com OB. Identidade pela régua única
+            # (19/11/2026): NOME igual E documento compatível — o TSE traz o CPF COMPLETO do doador e o QSA
+            # mostra os dígitos 4–9; o CNPJ do doador-PJ tem de ser o do sócio-PJ. Antes bastava o nome
+            # (≈1,5 mil pares com o CPF divergente entravam — homônimo provado) ou só a máscara com nome
+            # diferente (6 dígitos coincidem por acaso em ~3% dos doadores contra 28 mil sócios).
+            ch_doador = _ip.chave_qsa(nome_norm, dd)[1]
+            for c, doc_socio in (socios_por_nome.get(nome_norm) or []) if nome_norm else []:
+                if c not in emp:
+                    continue
+                ch_socio = _ip.chave_qsa(nome_norm, doc_socio)[1]
+                if not ch_socio or not ch_doador:
+                    descartes["indeterminado_sem_doc"] += 1      # só o nome: não é achado
+                    continue
+                if ch_socio != ch_doador:
+                    descartes["homonimo_cpf_diferente"] += 1     # mesmo nome, outra pessoa
+                    continue
+                prev = empresas_vinculadas.get(c)
+                if not prev or prev["via"] == "socio":
+                    empresas_vinculadas[c] = {
+                        "via": "socio", "sinais": ["nome_socio", "cnpj_socio" if ch_doador.startswith("pj:") else "cpf_mascarado"],
+                        "selo": _ip.VERIFICADO,
+                        "motivo": ("mesmo nome e mesmo CNPJ do sócio" if ch_doador.startswith("pj:") else
+                                   "mesmo nome e o CPF do doador (TSE) confere nos 6 dígitos que o QSA mostra")}
 
             for c, meta in empresas_vinculadas.items():
                 if alvo_cnpj and c != alvo_cnpj:
@@ -230,6 +227,8 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
                     "ano": ano, "valor_doacao": round(float(valor or 0), 2),
                     "empresa_cnpj": c, "n_ob": e["n_ob"], "total_ob": round(e["total"], 2),
                     "via": meta["via"], "sinais": meta["sinais"],
+                    "selo": meta.get("selo", _ip.VERIFICADO),
+                    "motivo": meta.get("motivo", "o CNPJ do doador é o do fornecedor"),
                 })
 
         # score simples: via direto + corroboração de 2 sinais pesa mais; ordenar por (valor_ob, valor_doacao)
@@ -247,9 +246,13 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
             r["seis"] = d.get("seis", [])
 
         return {"ok": True, "rede": rede, "n_doacoes_base": n_doacoes,
+                "homonimos_descartados": descartes["homonimo_cpf_diferente"],
+                "indeterminados_sem_doc": descartes["indeterminado_sem_doc"],
                 "_fonte": "TSE Dados Abertos + OBs (TFE/SIAFE) + QSA BrasilAPI",
-                "_nota": "INDÍCIO a verificar (presunção de legitimidade). socio_doc é mascarado (LGPD); "
-                         "match por nome+CPF-mascarado. Score = via + corroboração, não prova."}
+                "_nota": "INDÍCIO a verificar (presunção de legitimidade). Doador e sócio são a mesma pessoa só "
+                         "com NOME igual E documento compatível (CPF do TSE nos dígitos 4–9 do QSA; CNPJ igual); "
+                         "mesmo nome com CPF diferente é homônimo e sócio sem documento fica de fora "
+                         "(indeterminado). Score = via + corroboração, não prova."}
     finally:
         con.close()
 
@@ -284,18 +287,39 @@ def socios_agentes_publicos(cnpj: str) -> list[dict]:
         return []
     con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
     try:
-        rows = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem FROM agente_publico_societario "
+        rows = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem, doc_socio FROM agente_publico_societario "
                            "WHERE cnpj_basico=? LIMIT 20", (raiz,)).fetchall()
+        selos = _identidade_socio_folha(con, [(r[0], r[5]) for r in rows if r[4] == "folha_estado"])
     except sqlite3.Error as exc:
         logger.debug("agente_publico_societario indisponível para %s: %s", raiz, exc)
         return []
     finally:
         con.close()
-    return [{"nome": r[0], "cargo": r[1] or "", "vinculo": r[2] or "", "orgao": r[3] or "", "origem": r[4] or ""} for r in rows]
+    out = []
+    for r in rows:
+        if r[4] == "folha_estado":
+            selo, motivo = selos.get((r[0], r[5]), (INDETERMINADO, "nome não reencontrado na folha"))
+        else:   # ALERJ e folhas municipais não publicam CPF
+            selo, motivo = INDETERMINADO, f"a folha de origem ({r[4]}) não publica CPF — só o nome coincide"
+        if selo == HOMONIMO:
+            continue          # mesmo nome, outra pessoa (CPF diferente): não é o agente público
+        out.append({"nome": r[0], "cargo": r[1] or "", "vinculo": r[2] or "", "orgao": r[3] or "",
+                    "origem": r[4] or "", "selo": selo, "motivo": motivo})
+    return out
+
+
+def _identidade_socio_folha(con, pares: list[tuple[str, str]]) -> dict[tuple[str, str], tuple[str, str]]:
+    """(nome do sócio, doc mascarado do QSA) → (selo, motivo) contra a folha do Estado — delega à régua única
+    (`identidade_pessoa.selo_socio_folha`). `agente_publico_societario` é montada só pelo NOME
+    (tools/agente_publico_reverso.py); a identidade se decide aqui, na leitura."""
+    from compliance_agent import identidade_pessoa as ip
+    return ip.selo_socio_folha(con, pares)
 
 
 def achado_socio_agente(socios: list[dict]) -> dict | None:
     """Achado estrutural do Lex ({rf, grav, obs}) a partir dos sócios-agentes; None quando não há."""
+    # Par só-por-nome nunca vira achado (19/11/2026): só o sócio com identidade conferida pelo CPF acende.
+    socios = [s for s in (socios or []) if s.get("selo", VERIFICADO) == VERIFICADO]
     if not socios:
         return None
     def _saude(o: str) -> int:
@@ -303,14 +327,12 @@ def achado_socio_agente(socios: list[dict]) -> dict | None:
         return 2 if ("FUNDACAO SAUDE" in n or "FSERJ" in n) else 1 if "SAUDE" in n else 0
     nivel = max(_saude(s["orgao"]) for s in socios)
     grav = 4 if nivel == 2 else 3 if nivel == 1 else 2
-    def _peso(nome: str) -> str:
-        toks = [t for t in _norm_nome(nome).split() if t not in {"DE", "DA", "DO", "DOS", "DAS", "E"}]
-        return "nome forte" if len(toks) >= 3 else "nome comum — confirmar CPF"
-    linhas = "; ".join(f"{s['nome']} — {s['cargo'] or '?'} ({s['vinculo'] or '?'}) em {s['orgao'] or '?'} [{_peso(s['nome'])}]"
+    linhas = "; ".join(f"{s['nome']} — {s['cargo'] or '?'} ({s['vinculo'] or '?'}) em {s['orgao'] or '?'} [CPF conferido]"
                        for s in socios[:4])
     ente = "da própria saúde estadual (FSERJ)" if nivel == 2 else "da saúde estadual (SES)" if nivel == 1 else "de outro órgão público"
     return {"rf": "DD/SOCIO-AGENTE", "grav": grav,
-            "obs": (f"**Sócio na folha pública {ente}.** {linhas}. Casamento por NOME (folha × QSA); "
+            "obs": (f"**Sócio na folha pública {ente}.** {linhas}. Identidade conferida pelo CPF (folha × QSA, "
+                    f"régua identidade_pessoa); "
                     f"vínculo tem de valer na data do ato. Art. 14, IV da Lei 14.133 quando o ente for o contratante; "
                     f"indício, não acusação.")}
 

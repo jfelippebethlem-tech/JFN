@@ -331,3 +331,36 @@ def selo_parentesco(corroboracoes: list[str] | None = None, eixo: str = "sobreno
             "prevalencia": prev, "exculpatoria": ex.exculpatoria,
             "falta": "um dado que ligue as pessoas além do nome (sociedade comum com CPF conferido, endereço "
                      "comum, declaração de vínculos familiares)"}
+
+
+def selo_socio_folha(con, pares) -> dict:
+    """(nome do sócio, doc mascarado do QSA) → (selo, motivo) contra a FOLHA (`registros_folha`), pela régua:
+    algum registro de mesmo nome com CPF compatível = VERIFICADO; todos incompatíveis = HOMONIMO; sem CPF
+    comparável (TJRJ, Câmara, nome não reencontrado) = INDETERMINADO. Para tabelas montadas só pelo nome
+    (`agente_publico_societario`), a identidade se decide na leitura. Poucos nomes → `IN (...)`; muitos →
+    uma passada pela folha."""
+    pares = list(pares)
+    if not pares:
+        return {}
+    nomes = {normalizar_nome(n) for n, _ in pares}
+    folha: dict[str, list] = {}
+    if len(nomes) <= 500:
+        sql = f"SELECT nome, cpf, fonte, competencia FROM registros_folha WHERE nome IN ({','.join('?' * len(nomes))})"
+        cur = con.execute(sql, sorted(nomes))
+    else:
+        cur = con.execute("SELECT nome, cpf, fonte, competencia FROM registros_folha")
+    for nome, cpf, fonte, comp in cur:
+        nn = nome if nome in nomes else normalizar_nome(nome)
+        if nn in nomes:
+            folha.setdefault(nn, []).append(posicoes_folha(cpf, fonte, comp))
+    out = {}
+    for nome, doc in pares:
+        q = posicoes_qsa(doc)
+        res = {comparar_cpf(q, f)[0] for f in folha.get(normalizar_nome(nome), [])}
+        if COMPATIVEL in res:
+            out[(nome, doc)] = (VERIFICADO, "CPF do QSA confere com o da folha na janela da fonte")
+        elif res and res <= {INCOMPATIVEL}:
+            out[(nome, doc)] = (HOMONIMO, "mesmo nome, CPF diferente do da folha")
+        else:
+            out[(nome, doc)] = (INDETERMINADO, "só o nome coincide — sem CPF comparável")
+    return out

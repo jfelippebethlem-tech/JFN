@@ -163,7 +163,39 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
             "registros": n_reg, "municipio": apenas_municipio}
 
 
-def agrupar_por_pessoa(rows: list[dict]) -> list[dict]:
+def pessoas_tse_por_nome(cache_dir=None) -> dict[str, int]:
+    """nome normalizado → quantas PESSOAS distintas (CPF; título quando o CPF falta, como em 2024) se
+    candidataram no RJ com esse nome, pelos CSVs do TSE em cache. É a camada que o TSE permite: separar
+    homônimos ENTRE candidatos. Só a contagem sai daqui — CPF nunca. Sem cache → {} (sem dado)."""
+    import glob
+    from pathlib import Path
+    d = Path(cache_dir) if cache_dir else _db.DB_PATH.parent / "tse_cache"
+    docs: dict[str, set] = {}
+    for f in glob.glob(str(d / "consulta_cand_*_RJ.csv")):
+        with open(f, encoding="latin-1", newline="") as fh:
+            r = csv.reader(fh, delimiter=";")
+            h = next(r, None) or []
+            try:
+                i_nome, i_cpf = h.index("NM_CANDIDATO"), h.index("NR_CPF_CANDIDATO")
+                i_tit = h.index("NR_TITULO_ELEITORAL_CANDIDATO")
+            except ValueError:
+                continue
+            for row in r:
+                if len(row) <= max(i_nome, i_cpf, i_tit):
+                    continue
+                cpf = re.sub(r"\D", "", row[i_cpf])
+                doc = ("c" + cpf) if len(cpf) == 11 and cpf != "0" * 11 else ("t" + re.sub(r"\D", "", row[i_tit]))
+                if len(doc) > 1:
+                    docs.setdefault(normalizar(row[i_nome]), set()).add(doc)
+    # CPF e título da mesma pessoa contam uma vez quando o nome só tem um de cada tipo
+    return {n: max(sum(1 for x in v if x[0] == "c"), sum(1 for x in v if x[0] == "t")) for n, v in docs.items()}
+
+
+IDENTIDADE_FALTA = ("a folha da Prefeitura não publica CPF (só matrícula) e o TSE não publica matrícula — "
+                    "não há documento comum; só o nome liga as bases")
+
+
+def agrupar_por_pessoa(rows: list[dict], pessoas_tse: dict[str, int] | None = None) -> list[dict]:
     """Agrega as linhas brutas de pcrj_comissionado_candidato em 1 entrada por PESSOA
     (nome_norm), com histórico de postos e candidaturas — fonte única do padrão usado
     pela rota /api/pcrj/comissionados_candidatos e pelo PDF (intel_relatorio). A tabela
@@ -190,10 +222,23 @@ def agrupar_por_pessoa(rows: list[dict]) -> list[dict]:
         postos = sorted(pz["_postos"].values(), key=lambda p: p["admissao"] or "")
         cands = sorted(({"ano": a, "cargo": c, "cidade": ci} for a, c, ci in pz["_cands"]),
                        key=lambda c: c["ano"] or 0)
+        # Identidade (19/11/2026, régua identidade_pessoa): sem documento comum é INDETERMINADO. O que os
+        # dados permitem é EXPOR o homônimo: o TSE separa candidatos por CPF/título e a folha por matrícula.
+        n_tse = (pessoas_tse or {}).get(pz["nome_norm"])
+        n_pcrj = len({p["matricula"] for p in postos if p["matricula"]}) or None
+        # várias matrículas podem ser a MESMA pessoa (readmissão): entram no motivo, não marcam homônimo
+        homon = len(pz["_cidades"]) >= 3 or (n_tse or 0) >= 2
+        motivo = IDENTIDADE_FALTA
+        if (n_tse or 0) >= 2:
+            motivo += f"; {n_tse} candidatos DIFERENTES (CPF/título distintos) têm este nome no TSE"
+        if (n_pcrj or 0) >= 2:
+            motivo += f"; {n_pcrj} matrículas com este nome na Prefeitura (readmissão ou homônimo)"
         out.append({
             "nome_norm": pz["nome_norm"], "nome_pcrj": pz["nome_pcrj"],
             "postos": postos, "n_postos": len(postos), "candidaturas": cands,
-            "homonimo_provavel": len(pz["_cidades"]) >= 3,
+            "homonimo_provavel": homon,
+            "identidade": "INDETERMINADO", "identidade_motivo": motivo,
+            "pessoas_tse_com_o_nome": n_tse, "matriculas_com_o_nome": n_pcrj,
             "cand_ano_recente": max((c["ano"] for c in cands if c["ano"]), default=None),
         })
     out.sort(key=lambda p: (-(p["cand_ano_recente"] or 0), p["nome_pcrj"] or ""))

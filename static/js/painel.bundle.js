@@ -11979,6 +11979,7 @@
            <div style="font-size:13px;margin-top:4px">${esc(x.entidade)}${x.terceiro_setor ? ' <span class="dim">[3º setor]</span>' : ""}</div>
            <div class="dim" style="font-size:12px;margin-top:3px">${v || "sem desembolso — só contrato"}</div>
            ${cf}${ex}
+           ${x.identidade ? `<div class="dim" style="font-size:12px;margin-top:3px">identidade: <b>${esc(x.identidade)}</b> — ${esc(x.identidade_motivo || "")}</div>` : ""}
          </div>
          <div class="right"><div class="dim" style="font-size:12px">${(x.fontes || []).map(esc).join("<br>")}</div>
            <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} de ${fmtN(x.socios_no_qsa)} sócios</div></div>

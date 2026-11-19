@@ -3,8 +3,8 @@
 
 Todo achado carrega: escala de risco 0–10 explícita, fonte citada e texto
 "indício de" (indício ≠ acusação — regra-mãe). Valores nas 3 fases sempre
-separados (empenhado ≠ liquidado ≠ pago). Match por NOME = indício fraco
-(homônimo possível); match por CPF/CNPJ = forte.
+separados (empenhado ≠ liquidado ≠ pago). Pessoa casada só pelo NOME não é achado
+(19/11/2026, régua identidade_pessoa); nome + CPF/CNPJ conferido = forte.
 """
 from __future__ import annotations
 
@@ -335,12 +335,29 @@ def d5_retroalimentacao_eleitoral(con) -> list[dict]:
               or jfn_norm(d.nome_doador) = s.nome_norm)
         group by e.codigo, f.documento_favorecido, s.nome_socio, d.cpf_cnpj_doador,
                  d.ano_eleicao, match_tipo""").fetchall()
+    # Identidade doador × sócio pela régua única (19/11/2026, `identidade_pessoa.chave_qsa`). A igualdade
+    # `cpf_cnpj_doador = s.doc_socio` do SQL nunca casava pessoa física (CPF de 11 dígitos do TSE contra a
+    # máscara `***NNNNNN**` do QSA) — todo par PF era só-por-nome e virava achado de risco 4. Agora: PF =
+    # nome igual E CPF do TSE conferido nos dígitos 4–9 do QSA; PJ = mesmo CNPJ. O resto não é achado.
+    from compliance_agent import identidade_pessoa as _ip
+    descartes = {"homonimo": 0, "sem_documento": 0}
+    vistos = set()
     for r in rows:
-        forte = r["match_tipo"] == "CPF"
-        risco = 8 if forte else 4
-        aviso = ("" if forte else
-                 " Match apenas por NOME normalizado — homônimo é possível; "
-                 "confirmar CPF antes de qualquer uso.")
+        k_doador = _ip.chave_qsa(r["nome_doador"], r["cpf_cnpj_doador"])
+        k_socio = _ip.chave_qsa(r["nome_socio"], r["doc_socio"])
+        if not k_doador[1] or not k_socio[1]:
+            descartes["sem_documento"] += 1
+            continue
+        mesma = (k_doador[1] == k_socio[1] and
+                 (k_doador[1].startswith("pj:") or k_doador[0] == k_socio[0]))
+        if not mesma:
+            descartes["homonimo"] += 1
+            continue
+        chave = (r["codigo"], r["documento_favorecido"], k_socio, r["ano_eleicao"])
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        risco = 8
         achados.append(_achado(
             "d5_retroalimentacao_eleitoral", risco,
             f"Retroalimentação — sócio de {r['nome_favorecido']} doou para {r['autor_raw']}",
@@ -348,11 +365,13 @@ def d5_retroalimentacao_eleitoral(con) -> list[dict]:
             f"{r['nome_favorecido']} (CNPJ {r['documento_favorecido']}, R$ "
             f"{_brl(r['valor_emenda'])} recebidos da emenda {r['codigo']}), doou R$ "
             f"{_brl(r['doacao'])} à campanha de {r['autor_raw']} em {r['ano_eleicao']} "
-            f"(match por {r['match_tipo']}).{aviso} "
+            f"(mesma pessoa: nome e {'CNPJ' if k_socio[1].startswith('pj:') else 'CPF nos 6 dígitos do QSA'} "
+            f"conferem). "
             f"(fontes: QSA Receita local + doações TSE local + Portal da Transparência)",
-            {"match_tipo": r["match_tipo"], "socio": r["nome_socio"],
+            {"match_tipo": "CPF", "selo": _ip.VERIFICADO, "socio": r["nome_socio"],
              "doacao": r["doacao"], "ano_eleicao": r["ano_eleicao"],
              "cnpj": r["documento_favorecido"]}, r["codigo"]))
+    d5_retroalimentacao_eleitoral.descartes = descartes
     return achados
 
 
