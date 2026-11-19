@@ -142,6 +142,7 @@ def pares_siafe(con: sqlite3.Connection) -> Iterable[tuple[str, str, str]]:
     a fonte de pagamento da casa (Regra 2). Substitui o índice de favorecidos PF de `ordens_bancarias`, que em
     19/11/2026 não tinha mais nenhuma linha PF (só CNPJ de 14 dígitos) — o corpus "favorecidos" estava vazio
     calado. Só entra CPF com DV válido (credor de 11 dígitos que não é CPF fica de fora)."""
+    # ob-qualquer-status: aqui a OB é só cadastro do credor (CPF ↔ nome), não soma de pagamento
     for cpf, nome in con.execute("SELECT DISTINCT credor, nome_credor FROM ob_orcamentaria_siafe "
                                  "WHERE length(credor)=11"):
         c = cpf_valido(cpf)
