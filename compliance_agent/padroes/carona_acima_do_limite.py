@@ -250,7 +250,7 @@ def limite_aderente(pago: float, ata: dict) -> dict | None:
     razao = pago / tot
     if razao <= LIMITE_ADESAO_INDIVIDUAL:
         return None
-    itens = "; ".join(f"item {i['item']} {str(i.get('descricao'))[:40]!r} qtd {r['qtd']} × R$ {r['unit']}"
+    itens = "; ".join(f"item {i['item']} {str(i.get('descricao'))[:40]!r} qtd {moeda(r['qtd'])} × R$ {moeda(r['unit'])}"
                       for i in ata.get("itens", [])[:4] for r in i.get("resultados", [])[:2])
     return {"sinal": "acima_50pct_aderente", "grau": "forte" if razao > 1 else "medio",
             "razao_pago_sobre_homologado": round(razao, 2),
