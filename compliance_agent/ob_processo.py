@@ -233,11 +233,13 @@ def _camada_autos(con, k: str, achadas: dict, refs: dict, extra: dict, gd_autos:
     for e in esp:                                            # GD juntada: devolução que a base pode não ter
         if e["tipo"] == "GD" and e.get("ob") and e.get("ug") and e.get("valor") is not None:
             gd_autos.setdefault((e["ob"], e["ug"]), {})[e["numero"]] = e["valor"]
-    if not credores:
+    if not credores or not ugs:
         return
-    q = ",".join("?" * len(credores))
+    q, qu = ",".join("?" * len(credores)), ",".join("?" * len(ugs))
+    # UG no SQL: o credor de retenção (Receita, INSS) citado no espelho de IRRF tem OB em todas as UGs do Estado
     cands = [_linha(r) for r in con.execute(
-        f"SELECT {sel} FROM ob_orcamentaria_siafe WHERE {paga} AND credor IN ({q})", sorted(credores))]
+        f"SELECT {sel} FROM ob_orcamentaria_siafe WHERE {paga} AND credor IN ({q}) AND ug_emitente IN ({qu})",
+        sorted(credores) + sorted(ugs))]
     cands = [o for o in cands if (o["ug_emitente"] in ugs or o["ug_liquidante"] in ugs)
              and (o["numero_ob"], o["ug_emitente"]) not in achadas]
 
