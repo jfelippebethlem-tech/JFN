@@ -302,3 +302,59 @@ def test_periodo_do_relatorio_antes_do_inicio_do_contrato_e_erro_de_ano(tmp_path
     (pasta / "texto" / "2.txt").write_text("sem data de início", encoding="utf-8")
     s = [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "PERIODO_RELATORIO_DIVERGE"]
     assert s[0]["porque"]["classe"] == "inocente-provável"
+
+
+# ── falsos positivos da 1ª rodada no acervo (18/11/2026), cada um virou regra ───────────────────────────────
+
+def test_paralisacao_parcial_nao_e_dia_parado():
+    dias = "".join(f"Data:\n{d:02d}/02/2025\nTIRANTE; INJEÇÃO DE CALDA\nOBS: SERVIÇOS NA PONTE 3 PARALISADOS POR "
+                   f"DEPENDENCIA DE DESAPROPRIAÇÃO\n" for d in range(3, 8))
+    dias += "Data:\n08/02/2025\nNÃO HOUVERAM SERVIÇOS - FINAL DE SEMANA\n"
+    r = fq.dias_do_diario(dias, (date(2025, 2, 1), date(2025, 2, 28)))
+    assert [x["data"].day for x in r if x["parado"]] == [8]
+
+
+def test_data_por_extenso_no_rdo():
+    r = fq.dias_do_diario("DATA:\nsábado, 1 de março de 2025\nx\nDATA:\ndomingo, 2 de março de 2025\ny\n")
+    assert [x["data"] for x in r] == [date(2025, 3, 1), date(2025, 3, 2)]
+
+
+def test_carimbo_de_fluxo_do_aplicativo_nao_e_data_da_foto():
+    txt = ("Aprovado   02/12/2025 15:28\nCriado por: Ana (20/08/2025 13:40)\nEnc. Fabrício Lana    26/07/2024 10:52\n"
+           "Foto da vala 03/09/2024 08:15\n")
+    assert [d for d, _ in fq.carimbos(txt)] == [date(2024, 9, 3)]
+
+
+def test_atesto_e_a_primeira_assinatura():
+    t = ("Documento assinado eletronicamente por A, Fiscal, em 05/07/2024, às 10:00\n"
+         "Documento assinado eletronicamente por B, Coordenador, em 11/07/2024, às 09:00\n")
+    assert fq.data_do_ato(t)[0] == date(2024, 7, 5)
+
+
+def test_periodo_do_relatorio_que_cobre_parte_nao_diverge(tmp_path):
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    (pasta / "texto" / "0.txt").write_text("período de 01/01/2024 a 24/02/2024", encoding="utf-8")
+    (pasta / "texto" / "1.txt").write_text("Período: 25/01/24 a 24/02/24\nfoto", encoding="utf-8")
+    (pasta / "texto" / "2.txt").write_text("Período: 23/10/2024 a 22/11/2024\nfoto", encoding="utf-8")
+    pk = {"n": 22, "boletim": [{"i": 0, "titulo": "Anexo 22ª Medição", "texto": "texto/0.txt"}], "memoria": [],
+          "relatorio": [{"i": 1, "titulo": "Relatório Fotográfico 22ª", "texto": "texto/1.txt"}], "diario": [],
+          "aceite": [], "nl": [], "ob": []}
+    assert not [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "PERIODO_RELATORIO_DIVERGE"]
+    pk["relatorio"] = [{"i": 2, "titulo": "Relatório Fotográfico 22ª", "texto": "texto/2.txt"}]
+    assert [x for x in fq.confrontar_medicao(pasta, pk)["sinais"] if x["tipo"] == "PERIODO_RELATORIO_DIVERGE"]
+
+
+def test_periodo_da_medicao_e_o_que_contem_o_diario(tmp_path):
+    # 070002/006627/2024: o 1º "Período" do boletim era o da 1ª medição (histórico); o diário estava no mês certo
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    (pasta / "texto" / "0.txt").write_text("1ª Período: 15/12/2023 a 31/12/2023\n14ª Período: 01/03/2024 a 31/03/2024",
+                                           encoding="utf-8")
+    (pasta / "texto" / "1.txt").write_text("".join(f"Data: {d:02d}/03/2024\nescavação\n" for d in range(1, 11)),
+                                           encoding="utf-8")
+    pk = {"n": 14, "boletim": [{"i": 0, "titulo": "Anexo 14ª Medição", "texto": "texto/0.txt"}], "memoria": [],
+          "relatorio": [], "diario": [{"i": 1, "titulo": "Diário de Obras - 14ª Medição", "texto": "texto/1.txt"}],
+          "aceite": [], "nl": [], "ob": []}
+    r = fq.confrontar_medicao(pasta, pk)
+    assert r["periodo"] == ["2024-03-01", "2024-03-31"]

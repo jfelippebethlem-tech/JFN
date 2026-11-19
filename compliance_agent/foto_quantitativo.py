@@ -526,7 +526,10 @@ _RX_DATA = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 # carimbo de câmera/legenda: data COM hora. A assinatura do SEI ("em 09/04/2024, às 10:33") também tem hora — a
 # linha dela sai pelo vocabulário.
 _RX_CARIMBO = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\s*(?:[,\-–]\s*)?(?:[àa]s\s*)?(\d{1,2})[:h](\d{2})\b")
+# carimbo de FLUXO de aplicativo não é data da foto: "Aprovado 02/12/2025 15:28", "Criado por: X (20/08/2025 13:40)",
+# "Enc. Fabrício Lana 26/07/2024 10:52" (comentário do encarregado no RDO eletrônico da EMOP, 330003/002539/2024)
 _RX_LINHA_ADMIN = re.compile(r"assinad|eletronicamente|hor[aá]rio oficial|sei\b|autenticidade|c[oó]digo verificador"
+                             r"|aprovad|criado\s+por|coment|\benc\.|respons[aá]vel|relat[oó]rio\s+n|emitid"
                              r"|acao=documento|decreto|juntad|inclu[ií]do|gerado|impress", re.I)
 
 
@@ -542,11 +545,7 @@ def _d(dd, mm, aa) -> date | None:
         return None
 
 
-def periodo(texto: str) -> tuple[date, date, str] | None:
-    """(início, fim, trecho) do 1º 'Período …: dd/mm[/aaaa] a dd/mm/aaaa' do texto."""
-    m = _RX_PERIODO.search(texto or "")
-    if not m:
-        return None
+def _periodo_de(m: re.Match) -> tuple[date, date, str] | None:
     fim = _d(m.group(4), m.group(5), m.group(6))
     if fim is None:
         return None
@@ -558,6 +557,26 @@ def periodo(texto: str) -> tuple[date, date, str] | None:
     if ini is None or ini > fim or (fim - ini).days > 400:
         return None
     return ini, fim, m.group(0)
+
+
+def periodo(texto: str) -> tuple[date, date, str] | None:
+    """(início, fim, trecho) do 1º 'Período …: dd/mm[/aaaa] a dd/mm/aaaa' do texto."""
+    for m in _RX_PERIODO.finditer(texto or ""):
+        p = _periodo_de(m)
+        if p:
+            return p
+    return None
+
+
+# título de peça: "Diário DE OBRA - 2ª MED (07/03/26 a 05/04/26)"
+_RX_PERIODO_TITULO = re.compile(r"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\s*(?:a|à|á|ate|até|-|–)\s*(\d{1,2})/(\d{1,2})/(\d{2,4})")
+
+
+def periodos(texto: str, titulos: str = "") -> list[tuple[date, date, str]]:
+    """TODOS os períodos declarados no texto (e nos títulos): boletim com histórico lista os das medições anteriores."""
+    out = [p for p in (_periodo_de(m) for m in _RX_PERIODO.finditer(texto or "")) if p]
+    out += [p for p in (_periodo_de(m) for m in _RX_PERIODO_TITULO.finditer(titulos or "")) if p]
+    return list(dict.fromkeys(out))
 
 
 def carimbos(texto: str) -> list[tuple[date, str]]:
@@ -584,7 +603,8 @@ def data_do_ato(texto: str) -> tuple[date, str] | None:
     ds = [(_d(*m.groups()), m.group(0)) for m in _RX_DATA_ASSINATURA.finditer(texto or "")]
     ds = [x for x in ds if x[0]]
     if ds:
-        return max(ds)
+        # a 1ª assinatura é o ATO; as seguintes (coordenador, ordenador) são ciência/aprovação posterior
+        return min(ds)
     for m in _RX_DATA_EXTENSO.finditer(_sa(texto or "")):
         mes = _MESES.get(m.group(2))
         if mes:
@@ -608,8 +628,14 @@ def codigos(texto: str) -> set[str]:
 
 
 # ── diário de obra: dia a dia, parado ou não ─────────────────────────────────────────────────────────────────
-_RX_PARADA = re.compile(r"sem\s+atividades?|sem\s+expediente|n[aã]o\s+houve\s+(?:atividade|expediente|servi[cç]o|trabalho)"
-                        r"|paralisad[ao]|paralisa[cç][aã]o|servi[cç]os?\s+suspens|impratic[aá]vel|obra\s+parada"
+# "sábado, 1 de março de 2025" (RDO do Rio Roncador, 070002/020455/2024): a data do dia vem por extenso
+_RX_DATA_EXT = re.compile(r"\b(\d{1,2})\s+de\s+(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro"
+                          r"|outubro|novembro|dezembro)\s+de\s+(\d{4})\b", re.I)
+# "paralisado" solto NÃO é dia parado: "SERVIÇOS NA PONTE 3 PARALISADOS POR DEPENDÊNCIA DE DESAPROPRIAÇÃO" convive com
+# tirante e injeção de calda no mesmo dia (070002/004834/2024, 35ª–36ª). Só a parada do DIA/da OBRA conta.
+_RX_PARADA = re.compile(r"sem\s+atividades?|sem\s+expediente|n[aã]o\s+houve(?:ram)?\s+(?:atividades?|expediente|servi[cç]os?|trabalho)"
+                        r"|obra\s+paralisad[ao]|paralisa[cç][aã]o\s+(?:total|da\s+obra)|todos\s+os\s+servi[cç]os\s+(?:paralisad|suspens)"
+                        r"|impratic[aá]vel|obra\s+parada"
                         r"|feriado|final\s+de\s+semana", re.I)
 _RX_CHUVA = re.compile(r"chuv\w*(?:\s+(?:forte|intensa|fraca|moderada|torrencial))?", re.I)
 MIN_DIAS_MOLDE = 5
@@ -623,8 +649,8 @@ def dias_do_diario(texto: str, periodo_med: tuple | None = None) -> list[dict]:
     o que o fiscal marcou: frase presente em ≥ 90% dos dias é molde e não conta."""
     t = texto or ""
     marcas, vistas = [], set()
-    for m in _RX_DATA.finditer(t):
-        d = _d(*m.groups())
+    for m in sorted(list(_RX_DATA.finditer(t)) + list(_RX_DATA_EXT.finditer(t)), key=lambda m: m.start()):
+        d = _d(*m.groups()) if m.re is _RX_DATA else _d(m.group(1), _MESES.get(_sa(m.group(2))), m.group(3))
         if not d or d in vistas:
             continue
         if periodo_med and not (periodo_med[0] - timedelta(days=3) <= d <= periodo_med[1] + timedelta(days=3)):
@@ -675,7 +701,9 @@ _RX_NAO_FOTOGRAFAVEL = re.compile(
     r"mao[- ]de[- ]obra|engenheir|arquitet|encarregad|apontador|tecnico|vigia|vigilancia|administra|consultoria"
     r"|projeto|ensaio|amostra|analise|limite de|topograf|levantamento|seguro|taxa|licen|art\b|mobiliza|desmobiliza"
     r"|transporte|dmt|momento de transporte|disposicao final|bota[- ]fora|carga e descarga|equipe|placa de identifica"
-    r"|aluguel|locacao|caminhao|veiculo|camionete|escavadeira|retroescavadeira|trator|carreta|guindauto|rolo|motonivel",
+    r"|aluguel|locacao|caminhao|veiculo|camionete|escavadeira|retroescavadeira|trator|carreta|guindauto|rolo|motonivel"
+    r"|cafe da manha|refeicao|alimentacao|cesta basica|vale[- ]transporte|relatorio|uniforme|cracha|\bepi\b"
+    r"|equipamento de protecao|as built|cadastro",
     re.I)
 _RX_REGISTRO_DIMENSIONAL = re.compile(
     r"\btrena\b|croqui|antes\s+e\s+depois|\bantes\b|\bdepois\b|estaca|marco|gabarito|medi[cç][aã]o\s+(?:em|de)\s+campo"
@@ -836,6 +864,17 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
     td = _texto_pacote(pasta, pk["diario"])
     itens = itens_boletim(tb)
     per_b = periodo(tb) or periodo(ta)
+    # boletim com HISTÓRICO traz o período de todas as medições anteriores; com diário, vale o período declarado
+    # que contém os dias do diário (070002/006627/2024: o 1º "Período" do boletim era o da 1ª medição, 12/2023,
+    # repetido da 14ª à 30ª — o diário de cada uma estava no mês certo)
+    if td.strip():
+        cands = periodos(tb + "\n" + ta + "\n" + tr, " ".join(d["titulo"] for k in ("boletim", "relatorio", "diario",
+                                                                                     "aceite", "memoria") for d in pk[k]))
+        dd = [x["data"] for x in dias_do_diario(td)]
+        if cands and dd:
+            melhor = max(cands, key=lambda p: sum(p[0] <= x <= p[1] for x in dd))
+            if sum(melhor[0] <= x <= melhor[1] for x in dd) > 0:
+                per_b = melhor
     per_r = periodo(tr)
     per = per_b or per_r
     medidos = [x for x in itens if (x.get("per") or 0) > 0]
@@ -962,7 +1001,10 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
                            "porque": pq})
 
     # (b) período do relatório ≠ período do boletim
-    if per_b and per_r and (abs((per_b[0] - per_r[0]).days) > 3 or abs((per_b[1] - per_r[1]).days) > 3):
+    # relatório que cobre PARTE do período (ou o estende) é comum e não é vício: 070002/003457/2024, boletim 01/01–24/02
+    # × relatório 25/01–24/02. Só períodos que NÃO se tocam (ou só o ano trocado) entram.
+    disjuntos = bool(per_b and per_r) and (per_r[1] < per_b[0] or per_r[0] > per_b[1])
+    if per_b and per_r and disjuntos:
         so_ano = (per_b[0].replace(year=2000) == per_r[0].replace(year=2000)
                   and per_b[1].replace(year=2000) == per_r[1].replace(year=2000)) if per_b[0].day < 29 and per_r[0].day < 29 else False
         mi = re.search(r"in[ií]cio\s+do\s+contrato\s*:?\s*\|?\s*(\d{2})/(\d{2})/(\d{4})", tb + "\n" + td + "\n" + tr, re.I)
@@ -1056,18 +1098,25 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
             maior = max(preench.count(p) for p in set(preench))
             res["diario_dias_identicos"] = maior
             if maior / len(preench) >= 0.5:
+                todos = maior == len(preench)
+                # obra contínua repete a MESMA descrição de serviço por dias seguidos (tirante, injeção de calda…):
+                # só o diário com TODO dia preenchido igual fica sem explicação
+                pq = (_porque("sem-explicação", "todos os dias preenchidos do período trazem o mesmo conteúdo — o diário "
+                              "não registra o que mudou dia a dia", max(set(preench), key=preench.count)[:160],
+                              "diário de obra") if todos else
+                      _porque("inocente-provável", f"{maior} de {len(preench)} dias com a mesma descrição: serviço "
+                              "contínuo descrito com o mesmo texto", max(set(preench), key=preench.count)[:160],
+                              "diário de obra"))
                 sinais.append({"tipo": "DIARIO_REPETIDO", "grau": "lacuna", "dias_identicos": maior,
-                               "dias_preenchidos": len(preench),
-                               "porque": _porque("sem-explicação", "o conteúdo preenchido é o mesmo em metade ou mais dos "
-                                                 "dias — o diário não registra o que mudou dia a dia",
-                                                 max(set(preench), key=preench.count)[:160], "diário de obra")})
+                               "dias_preenchidos": len(preench), "porque": pq})
 
     # OB: ligada pela NL/OB citada nos títulos do pacote
     if obs is not None:
         lig = [o for o in obs if (o["nl"] and o["nl"] in pk["nl"]) or o["numero_ob"] in pk["ob"]]
         res["obs_pagas"] = [{k: o[k] for k in ("numero_ob", "ug", "data_emissao", "valor", "nl")} for o in lig]
         res["valor_pago_ligado"] = round(sum(o["valor"] or 0 for o in lig), 2)
-        ato = data_do_ato(ta) if ta.strip() else None
+        # só pacote com nº de medição no título: sem ele, o atesto ao lado pode ser de outra medição
+        ato = data_do_ato(ta) if ta.strip() and pk.get("n") is not None else None
         if ato:
             res["data_atesto"] = ato[0].isoformat()
             for o in lig:
