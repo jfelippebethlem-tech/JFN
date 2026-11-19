@@ -161,3 +161,12 @@ def test_superficie_retirada_perde_o_juizo_vigente_e_fonte_que_falhou_nao_poda(t
     ids = {a["id"] for a in r["avaliacoes"]}
     assert "vault:caso-z" not in ids and "vault:caso-y" in ids
     assert "painel:card-que-saiu" in ids                                    # manchetes não foram lidas: não se poda
+
+
+def test_nota_1_corrigida_e_rejulgada_antes_dos_novos_de_maior_valor():
+    cands = [_afirmacao(id=f"vault:novo{i}", valor=1e9, texto=f"novo{i}") for i in range(5)]
+    cands.append(_afirmacao(id="painel:gestao:D04", sistema="painel", valor=10.0, grau="", texto="texto corrigido"))
+    hist = {"painel:gestao:D04": {"impressao": "texto-antigo", "em": AGORA.isoformat(), "estado": "JULGADA",
+                                  "notas": {"inocente": 1, "moldura": 3}}}
+    esc = juiz.amostrar(cands, hist, 2, AGORA)
+    assert esc[0].id == "painel:gestao:D04" and len(esc) == 2

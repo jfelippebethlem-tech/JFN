@@ -197,13 +197,21 @@ def amostrar(cands: list[Afirmacao], historico: dict, n: int, agora: datetime) -
     novos = [a for a in cands if not (historico.get(a.id, {}).get("impressao") == a.impressao
                                       and historico.get(a.id, {}).get("em", "") >= limite
                                       and historico.get(a.id, {}).get("estado") == "JULGADA")]
-    novos.sort(key=lambda a: -a.risco)
-    escolhidas, por_grupo = [], {}
+    # correção à espera de confirmação primeiro: afirmação com nota ≤ 1 vigente cujo texto MUDOU (19/11/2026: as
+    # notas 1 corrigidas ficavam atrás de dezenas de casos novos de maior valor e a violação não saía)
+    def _corrigida(a: Afirmacao) -> bool:
+        h = historico.get(a.id) or {}
+        return h.get("estado") == "JULGADA" and any(isinstance(x, (int, float)) and x <= 1 for x in (h.get("notas") or {}).values())
+    novos.sort(key=lambda a: (not _corrigida(a), -a.risco))
+    corrigidas = [a for a in novos if _corrigida(a)][:n]
+    escolhidas, por_grupo = list(corrigidas), {}
+    for a in corrigidas:
+        por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
     teto = max(1, math.ceil(n / max(1, len({a.grupo for a in novos}))))
     for a in novos:
         if len(escolhidas) >= n:
             break
-        if por_grupo.get(a.grupo, 0) >= teto:
+        if a in escolhidas or por_grupo.get(a.grupo, 0) >= teto:
             continue
         escolhidas.append(a)
         por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
