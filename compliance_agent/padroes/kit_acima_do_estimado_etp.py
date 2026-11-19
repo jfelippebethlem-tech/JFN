@@ -19,6 +19,7 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "kit_acima_do_estimado_etp"
+VICIO = "homologado_acima_estimado"  # knowledge/catalogo_vicios.py
 RX_ID = re.compile(r"\bID\s*[:\-–]?\s*(\d{5,7})\b")
 RX_NUM = re.compile(r"(?<![\d.,/])(\d{1,3}(?:\.\d{3})+(?:,\d{1,10})?|\d+(?:,\d{1,10})?)(?![\d.,]*\d/|\.\d)")
 _ESTIM = ("etp", "tr", "pesquisa")
@@ -127,6 +128,7 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (ETP/TR × contrato/ata, casados pelo ID SIGA) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
+    cc.ligar(achados, VICIO, lambda a: a.get("grau") == "forte")
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos),
                                        "sem_texto": sem_texto, "sem_par_estimativa_e_contrato": sem_par,
                                        "nota": "só itens com ID SIGA e trinca qtd×unit=total nas DUAS pontas; ata sem "

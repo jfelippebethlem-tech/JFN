@@ -39,3 +39,17 @@ def test_negativo_extrato_vizinho_de_outro_credor_e_2023():
     assert lei_revogada([ADESAO, EXTRATO], "OUTRA EMPRESA QUALQUER SA") is None
     velho = Doc("arquivo", "8", "Extrato", "GLOBALTEC DATA DA ASSINATURA: 06/05/2023. FUNDAMENTO: Lei nº 8.666")
     assert lei_revogada([ADESAO, velho], "GLOBALTEC TECNOLOGIAS") is None
+
+
+def test_familia_ligada_ao_catalogo_e_ao_gradeador():
+    import importlib
+
+    from compliance_agent.knowledge.catalogo_vicios import obter
+    from compliance_agent.padroes._carona_comum import ligar
+    for m in ("carona_aderente_vedado", "carona_acima_do_limite", "preco_de_fonte_unica_interessada",
+              "inexigibilidade_bem_comum", "kit_acima_do_estimado_etp"):
+        assert obter(importlib.import_module(f"compliance_agent.padroes.{m}").VICIO) is not None, m
+    a = ligar([{"grau": "forte", "sinal": "acima_50pct_aderente"}], "carona_abusiva",
+              lambda x: x["sinal"] == "acima_50pct_aderente")[0]
+    assert a["flag"]["grau"] == "A" and a["vicio_catalogo"]["id"] == "carona_abusiva"
+    assert ligar([{"grau": "medio"}], "carona_abusiva")[0]["flag"]["grau"] == "C"

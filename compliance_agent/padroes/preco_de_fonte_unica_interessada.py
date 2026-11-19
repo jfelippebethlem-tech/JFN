@@ -20,6 +20,7 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "preco_de_fonte_unica_interessada"
+VICIO = "sobrepreco_estimativa"  # knowledge/catalogo_vicios.py
 # documentos onde a estimativa mora: TR/ETP/pesquisa e, entre os "outros", os de título de estimativa/justificativa
 _RX_TIT_ESTIM = re.compile(r"estimativa|pre[cç]o|cota[cç]|mapa|justificativa|informa[cç][aã]o d[ae] contrata|"
                            r"or[cç]amento|planilha estimativa", re.I)
@@ -102,6 +103,7 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (TR/ETP/pesquisa) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
+    cc.ligar(achados, VICIO)
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos), "sem_tr_etp_pesquisa_nos_autos": sem_doc,
                                        "sem_texto": sem_texto,
                                        "nota": "universo = processos com TR/ETP/pesquisa/estimativa juntados (por título); "

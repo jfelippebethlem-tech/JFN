@@ -21,6 +21,7 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "carona_aderente_vedado"
+VICIO = "carona_abusiva"  # knowledge/catalogo_vicios.py
 
 RX_EXTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+externo", re.I)
 RX_INTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+interno", re.I)
@@ -225,4 +226,5 @@ def varrer(limite: int | None = None) -> dict:
                 "nota": "universo = processos com prova de adesão EXTERNA deste órgão (NE Mod. 12 ou ato de adesão); "
                         "edital/ata do gerenciador nem sempre está juntado — ausência da cláusula nos autos ≠ ausência "
                         "no instrumento."})
+    cc.ligar(achados, VICIO)
     return cc.resultado(ID, avaliados, cob, achados)

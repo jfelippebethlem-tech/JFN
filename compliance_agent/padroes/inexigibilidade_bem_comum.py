@@ -17,6 +17,7 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "inexigibilidade_bem_comum"
+VICIO = "contratacao_direta_indevida"  # knowledge/catalogo_vicios.py
 _RX_TIT_INEX = re.compile(r"inexigib|exclusividade", re.I)
 
 RX_INEX = re.compile(
@@ -132,6 +133,7 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (TR/ETP e NE dos autos) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
+    cc.ligar(achados, VICIO)
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos), "ne_06_inexigibilidade": ne06,
                                        "sem_ne_titulo_de_inexigibilidade": por_titulo,
                                        "sem_texto": sem_texto, "inexigibilidade_sem_tr_etp_nos_autos": sem_tr,

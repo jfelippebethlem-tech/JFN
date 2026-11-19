@@ -255,6 +255,19 @@ def orgao(ds: list[Doc]) -> str | None:
     return None
 
 
+def ligar(achados: list[dict], vicio: str, violado=lambda a: False) -> list[dict]:
+    """Liga cada achado ao vício do catálogo canônico (`knowledge/catalogo_vicios.py`) e ao gradeador epistemológico
+    (`editais/flags.grau_flag`): teto legal excedido em número + fonte → A; indício textual isolado → C."""
+    from compliance_agent.editais.flags import grau_flag
+    from compliance_agent.knowledge.catalogo_vicios import obter
+    v = obter(vicio)
+    for a in achados:
+        a["vicio_catalogo"] = {"id": vicio, "nome": v.nome if v else None, "escalada": v.escalada if v else None}
+        a["flag"] = grau_flag(origem="deterministico", teste_status="violado" if violado(a) else None,
+                              score=0.9 if a.get("grau") == "forte" else 0.6)
+    return achados
+
+
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], **extra) -> dict:
     return {"id": id_, "gerado_em": agora(), "universo": universo, "cobertura": cobertura,
             "achados": achados, **extra}

@@ -29,6 +29,7 @@ from compliance_agent.padroes import _carona_comum as cc
 from compliance_agent.padroes import carona_aderente_vedado as cav
 
 ID = "carona_acima_do_limite"
+VICIO = "carona_abusiva"  # knowledge/catalogo_vicios.py
 PNCP = "https://pncp.gov.br/api"
 CACHE_PNCP = cc.RAIZ / "data" / "padroes" / "_cache_pncp_atas.json"
 _H = {"User-Agent": "Mozilla/5.0 (JFN padroes)"}
@@ -316,4 +317,5 @@ def varrer(limite: int | None = None) -> dict:
                        "ata licitada até 29/12/2023 ainda vigente. Não afasta: a ata no PNCP não comporta o valor pago.")
         a["fonte"] = "SEI (autos) + PNCP (atas/itens/resultados) + SIAFE (_ob_paga, piso)"
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
+    cc.ligar(achados, VICIO, lambda a: a.get("sinal") in ("acima_50pct_aderente", "acima_dobro_total"))
     return cc.resultado(ID, len(base), cob, achados)
