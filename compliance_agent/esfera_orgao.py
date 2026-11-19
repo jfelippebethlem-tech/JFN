@@ -405,7 +405,7 @@ def _classificar_unidade(cnpj: str, nome_ente: str, unidade_nome: str, municipio
 
 
 def cnpj_do_controle_pncp(numero_controle: str) -> str:
-    """'42498600000171-1-002036/2025' → '42498600000171'."""
+    """Número de controle do PNCP ('<cnpj14>-1-<seq>/<ano>') → o CNPJ de 14 dígitos do órgão."""
     return re.sub(r"\D", "", (numero_controle or "").split("-")[0])[:14]
 
 
@@ -471,7 +471,7 @@ def coletar_uf_pncp(con, cnpjs, pausa: float = 0.6, timeout: int = 30) -> dict:
                                          headers={"User-Agent": "JFN-Compliance/2.0"})
             with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 — host fixo, dado aberto
                 unis = json.loads(r.read().decode("utf-8") or "[]")
-        except Exception:
+        except (OSError, ValueError):   # rede/HTTP/timeout ou JSON inválido
             n_err += 1
             time.sleep(pausa)
             continue
