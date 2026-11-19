@@ -411,3 +411,9 @@ def test_saldo_negativo_entre_parenteses():
            "2.160,00\n91.216,80\n15.098,40\n637.605,42\n(2.017,38)\n(85.193,95)\n")
     it = fq.itens_boletim(txt)[0]
     assert (it["acum"], it["saldo"]) == (15098.4, -2017.38) and "acum+saldo=contratado" in it["fecha"]
+
+
+def test_linha_de_bdi_com_valores_nao_vira_quantidade():
+    txt = "7.1\nBDI 19%\nVB\n1,00\n2.819.728,48\n2.819.728,48\n7.731.494,64\n1.047.874,79\n8.779.369,43\n"
+    it = fq.itens_boletim(txt)[0]
+    assert it["per"] is None and it["acum"] is None

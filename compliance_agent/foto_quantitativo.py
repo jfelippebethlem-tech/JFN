@@ -320,6 +320,11 @@ def _interpretar(nums: list[float]) -> dict | None:
             item["fecha"].append("acum+saldo=contratado")
     if len(pares) >= 2 and item["acum"] is not None:
         item["fecha"].append("qtd×pu=valor em cada coluna")
+    # linha de BDI/verba (qc = 1) traz VALORES nas colunas de quantidade: 7.731.494,64 + 1.047.874,79 "fecha" e virava
+    # 1 milhão de verbas no período (330001/000418/2024). Acumulado > 10× o contratado só com o valor de cada coluna.
+    if item["acum"] is not None and item["acum"] > qc * 10 and "qtd×pu=valor em cada coluna" not in item["fecha"]:
+        item.update(ant=None, per=None, acum=None, saldo=None)
+        item["fecha"] = ["qc×pu=total"]
     return item
 
 
