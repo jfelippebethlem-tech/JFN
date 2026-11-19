@@ -7437,7 +7437,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // ../JFN/node_modules/d3-array/dist/d3-array.mjs
+  // node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -7645,7 +7645,7 @@
     };
   }
 
-  // ../JFN/node_modules/d3-geo/dist/d3-geo.mjs
+  // node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -9146,12 +9146,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // ../JFN/node_modules/topojson-client/src/identity.js
+  // node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // ../JFN/node_modules/topojson-client/src/transform.js
+  // node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -9165,13 +9165,13 @@
     };
   }
 
-  // ../JFN/node_modules/topojson-client/src/reverse.js
+  // node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // ../JFN/node_modules/topojson-client/src/feature.js
+  // node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -9239,7 +9239,7 @@
     return geometry(o);
   }
 
-  // ../JFN/node_modules/topojson-client/src/stitch.js
+  // node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -9305,7 +9305,7 @@
     return fragments;
   }
 
-  // ../JFN/node_modules/topojson-client/src/mesh.js
+  // node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -9540,7 +9540,14 @@
       <aside class="tm-ficha" id="tm-ficha" aria-live="polite" hidden></aside>
     </div>
     <div class="tm-pe" id="tm-pe">Fonte: lendo…</div>`;
-    _cineFaixa(host);
+    _cineFaixa(host, {
+      lerVivo: () => api("estado?periodo=vigentes&graus=explicito,unidade"),
+      abrir: async (k) => {
+        if (S.escopo !== "estado") await trocarEscopo("estado");
+        await abrirFicha(k);
+        if (!portal) ficha.scrollIntoView({ block: "nearest", behavior: _redMotion ? "auto" : "smooth" });
+      }
+    });
     const q = (s) => host.querySelector(s);
     const gEst = q("#tm-est"), gRio = q("#tm-rio"), cam = q("#tm-cam"), dica = q("#tm-dica"), ficha = q("#tm-ficha");
     const geo = { est: null, rio: null };
@@ -9956,20 +9963,147 @@
       if (_vivo2 && _vivo2.host === host) _vivo2 = null;
     }, host };
   }
+  var ALVOS = "/static/assets/v68/mapa3d_alvos.json";
   var _cineDesl = null;
-  function _cineFaixa(host) {
+  function _cineFaixa(host, ctx) {
     if (_cineDesl) {
       _cineDesl();
       _cineDesl = null;
     }
     const M2 = cine3d_default.mapa3d, dataRetrato = String(M2.atualizado_em || "").slice(0, 10).split("-").reverse().join("/");
+    const ret = cineRetrato(), B = "/static/assets/v68/mapa3d_fim";
     const f = document.createElement("figure");
-    f.className = "tm-cine";
+    f.className = "tm-cine fim";
     const v = cineVideo("mapa3d");
     f.appendChild(v);
-    f.insertAdjacentHTML("beforeend", `<figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b><span>${fmtN(M2.com_contrato)} de ${fmtN(M2.municipios)} municípios com contrato atribuído · altura ∝ √ valor contratado (certeza explícita + unidade) · sem relevo = nenhum contrato atribuído, não zero · valor contratado não é pago · retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo</span></figcaption>`);
+    f.insertAdjacentHTML("beforeend", `<picture class="tm-cine-fim">` + (ret ? `<source type="image/avif" srcset="${B}_m.avif"><img src="${B}_m.webp" alt="" width="1080" height="1080" decoding="async">` : `<source type="image/avif" srcset="${B}.avif 1920w, ${B}@2x.avif 2880w" sizes="100vw"><img src="${B}.webp" srcset="${B}.webp 1920w, ${B}@2x.webp 2880w" sizes="100vw" alt="" width="1920" height="1080" decoding="async">`) + `</picture><svg class="tm-cine-alvos" role="group" aria-label="Relevo: escolha um município (setas para navegar, Enter abre a ficha)"></svg><div class="tm-dica tm-cine-dica" role="status" hidden></div><figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b><span>${fmtN(M2.com_contrato)} de ${fmtN(M2.municipios)} municípios com contrato atribuído · altura ∝ √ valor contratado (certeza explícita + unidade) · sem relevo = nenhum contrato atribuído, não zero · valor contratado não é pago · retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo<i class="tm-cine-cli" hidden></i></span></figcaption>`);
     host.insertBefore(f, host.firstChild);
-    _cineDesl = cineSoVisivel(v, f);
+    const svg = f.querySelector(".tm-cine-alvos"), dica = f.querySelector(".tm-cine-dica");
+    let A5 = null, dVivo = null, dVivoP = null;
+    function encaixar() {
+      if (!A5) return;
+      const w = f.clientWidth, h = f.clientHeight, k = Math.max(w / A5.w, h / A5.h);
+      const [px, py] = (getComputedStyle(v).objectPosition || "50% 50%").split(" ").map((x) => parseFloat(x) / 100);
+      Object.assign(svg.style, {
+        left: (w - A5.w * k) * (isNaN(px) ? 0.5 : px) + "px",
+        top: (h - A5.h * k) * (isNaN(py) ? 0.5 : py) + "px",
+        width: A5.w * k + "px",
+        height: A5.h * k + "px"
+      });
+    }
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(encaixar) : null;
+    if (ro) ro.observe(f);
+    const linha = (k) => dVivo && (dVivo.municipios || []).find((x) => String(x.cod_ibge) === k);
+    const grauTxt = (l) => GRAUS.filter((g) => g[0] !== "sede" && (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b> · ${curto(l.por_grau[g[0]].valor)}`).join("<br>");
+    function mostrar(p, ev) {
+      const k = p.dataset.k, l = linha(k), nome = l && l.nome || p.dataset.nome || k, vr = +p.dataset.v, nr = +p.dataset.n;
+      const tem = l && l.n_contratos > 0;
+      dica.innerHTML = `<b>${esc(nome)}</b>` + (!dVivo ? "<span>dados vivos: INDISPONÍVEL</span>" : !tem ? "<span>sem contrato vigente atribuído (não é zero)</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span>valor contratado vigente · <b class="num">${fmtN(l.n_contratos)}</b> contratos</span>` + (l.por_grau ? `<span>${grauTxt(l)}</span>` : "")) + `<span class="tm-cine-ret">no relevo (retrato de ${esc(dataRetrato)}): ${vr > 0 ? `<b class="num">${curto(vr)}</b> · ${fmtN(nr)} contratos` : "sem relevo"}</span><span class="tm-cine-acao">clique ou Enter: abrir a ficha</span>`;
+      dica.hidden = false;
+      const r = f.getBoundingClientRect(), b = p.getBoundingClientRect();
+      const x = (ev && ev.pointerType === "mouse" ? ev.clientX : b.left + b.width / 2) - r.left;
+      const y = (ev && ev.pointerType === "mouse" ? ev.clientY : b.top + b.height / 2) - r.top;
+      dica.style.left = Math.max(8, Math.min(r.width - dica.offsetWidth - 8, x - dica.offsetWidth / 2)) + "px";
+      dica.style.top = (y - dica.offsetHeight - 14 >= 8 ? y - dica.offsetHeight - 14 : Math.min(r.height - dica.offsetHeight - 8, y + 18)) + "px";
+    }
+    const sumir = () => {
+      dica.hidden = true;
+    };
+    const carregarVivo = () => {
+      if (!dVivoP) dVivoP = ctx.lerVivo().then((d) => {
+        dVivo = d;
+      });
+      return dVivoP;
+    };
+    fetch(ALVOS, { credentials: "same-origin" }).then((r) => r.ok ? r.json() : null).then((J2) => {
+      A5 = J2 && J2[ret ? "m" : "d"];
+      if (!A5 || !A5.a || !A5.a.length) return;
+      svg.setAttribute("viewBox", `0 0 ${A5.w} ${A5.h}`);
+      svg.innerHTML = A5.a.map(([k, val, n, d]) => `<path class="tm-cine-a${val > 0 ? "" : " sem"}" data-k="${k}" data-v="${val}" data-n="${n}" d="${d}" tabindex="-1" role="button"></path>`).join("");
+      const ps = [...svg.querySelectorAll("path")];
+      const cx = new Map(ps.map((p) => {
+        const b = p.getBBox();
+        return [p, b.x + b.width / 2];
+      }));
+      ps.sort((a, b) => cx.get(a) - cx.get(b)).forEach((p) => svg.appendChild(p));
+      if (ps[0]) ps[0].tabIndex = 0;
+      const encob = M2.municipios - ps.length, cli = f.querySelector(".tm-cine-cli");
+      cli.hidden = false;
+      cli.textContent = ` · clique num município para abrir a ficha${encob > 0 ? ` (${fmtN(encob)} ficam encobertos pelo relevo: use o mapa abaixo)` : ""}`;
+      encaixar();
+      carregarVivo().then(() => ps.forEach((p) => {
+        const l = linha(p.dataset.k);
+        if (l && l.nome) {
+          p.dataset.nome = l.nome;
+          p.setAttribute("aria-label", `${l.nome}: ${l.n_contratos > 0 ? rs(l.valor_contratado) + " em " + fmtN(l.n_contratos) + " contratos vigentes" : "sem contrato atribuído"}`);
+        }
+      }));
+    }).catch(() => {
+    });
+    const alvo = (e) => e.target.closest && e.target.closest("path.tm-cine-a");
+    svg.addEventListener("pointerover", (e) => {
+      const p = alvo(e);
+      if (p) {
+        carregarVivo().then(() => {
+          if (p.matches(":hover")) mostrar(p, e);
+        });
+        mostrar(p, e);
+      }
+    });
+    svg.addEventListener("pointermove", (e) => {
+      const p = alvo(e);
+      if (p && e.pointerType === "mouse") mostrar(p, e);
+    });
+    svg.addEventListener("pointerout", (e) => {
+      if (alvo(e)) sumir();
+    });
+    svg.addEventListener("click", (e) => {
+      const p = alvo(e);
+      if (p) {
+        sumir();
+        ctx.abrir(p.dataset.k);
+      }
+    });
+    svg.addEventListener("focusin", (e) => {
+      const p = alvo(e);
+      if (p) carregarVivo().then(() => {
+        if (document.activeElement === p) mostrar(p);
+      });
+    });
+    svg.addEventListener("focusout", sumir);
+    svg.addEventListener("keydown", (e) => {
+      const p = alvo(e);
+      if (!p) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        sumir();
+        ctx.abrir(p.dataset.k);
+        return;
+      }
+      const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!passo) return;
+      e.preventDefault();
+      const ps = [...svg.querySelectorAll("path")], i = ps.indexOf(p), n = ps[(i + passo + ps.length) % ps.length];
+      p.tabIndex = -1;
+      n.tabIndex = 0;
+      n.focus();
+    });
+    let parar = cineSoVisivel(v, f);
+    v.addEventListener("playing", () => {
+      f.classList.remove("fim");
+      sumir();
+    });
+    v.addEventListener("ended", () => {
+      f.classList.add("fim");
+      parar();
+      parar = () => {
+      };
+    });
+    _cineDesl = () => {
+      parar();
+      if (ro) ro.disconnect();
+    };
   }
 
   // static/js/src/galaxia/render.js
@@ -9984,7 +10118,7 @@
     sei: "#8FA4C8"
   };
   var CRITICO = 50;
-  var BALDES = [COR2.gelo, COR2.ceu, COR2.cobalto, COR2.alerta];
+  var ALFA_SCORE = [0.42, 0.68, 0.9, 1];
   var balde = (s) => s >= CRITICO ? 3 : s >= 25 ? 2 : s >= 10 ? 1 : 0;
   function preparar(d) {
     const nos = d.nos || [], ar = d.arestas || [], tipos = d.tipos_aresta || [];
@@ -10186,24 +10320,23 @@
       }
       ctx.fill();
     }
-    const caminhos = [[], [], [], []];
+    const caminhos = [[], [], [], []], porCor = /* @__PURE__ */ new Map();
     for (const i of G.forn) {
       const n = nos[i];
-      if (dentro(n)) caminhos[balde(n.s || 0)].push(i);
+      if (!dentro(n)) continue;
+      const b = balde(n.s || 0);
+      caminhos[b].push(i);
+      if (apaga(n)) continue;
+      const ch = (n.cor || COR2.gelo) + "|" + b;
+      (porCor.get(ch) || porCor.set(ch, []).get(ch)).push(i);
     }
-    caminhos.forEach((lista, b) => {
-      if (!lista.length) return;
+    for (const [ch, lista] of porCor) {
+      const [cor, b] = ch.split("|");
       ctx.beginPath();
-      let fora = [];
       for (const i of lista) {
-        const n = nos[i];
-        if (apaga(n)) {
-          fora.push(i);
-          continue;
-        }
-        const [x, y] = T(n.x, n.y);
+        const n = nos[i], [x, y] = T(n.x, n.y);
         if (longe) {
-          const r = b >= 2 ? 1.6 : 1;
+          const r = +b >= 2 ? 1.6 : 1;
           ctx.rect(x - r, y - r, r * 2, r * 2);
         } else {
           const r = Math.max(1.6, n.r * kr(k));
@@ -10211,10 +10344,17 @@
           ctx.arc(x, y, r, 0, 6.2832);
         }
       }
-      ctx.fillStyle = BALDES[b];
+      ctx.globalAlpha = ALFA_SCORE[b];
+      ctx.fillStyle = cor;
       ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    {
+      const fora = [];
+      for (const lista of caminhos) for (const i of lista) if (apaga(nos[i])) fora.push(i);
       if (fora.length) {
         ctx.globalAlpha = 0.18;
+        ctx.fillStyle = COR2.gelo;
         ctx.beginPath();
         for (const i of fora) {
           const n = nos[i];
@@ -10224,7 +10364,7 @@
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-    });
+    }
     if (!longe) {
       ctx.beginPath();
       for (const i of caminhos[3]) {
@@ -10235,8 +10375,8 @@
         ctx.moveTo(x + r, y);
         ctx.arc(x, y, r, 0, 6.2832);
       }
-      ctx.strokeStyle = "rgba(255,196,0,.55)";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "rgba(255,176,0,.9)";
+      ctx.lineWidth = 1.6;
       ctx.stroke();
     }
     if (op.mini) {
@@ -10262,11 +10402,11 @@
       ctx.fillStyle = "#fff";
       ctx.fill();
       ctx.lineWidth = Math.max(1, r * 0.22);
-      ctx.strokeStyle = COR2.orgao;
+      ctx.strokeStyle = n.cor || COR2.orgao;
       ctx.stroke();
       ctx.beginPath();
       ctx.arc(x, y, r * 0.38, 0, 6.2832);
-      ctx.fillStyle = COR2.cobalto;
+      ctx.fillStyle = n.cor || COR2.cobalto;
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -10283,7 +10423,7 @@
       ctx.beginPath();
       ctx.arc(x, y, r * 3.2, 0, 6.2832);
       ctx.fill();
-      estrela(ctx, x, y, r, (n.nv || 0) >= 4 ? COR2.cobalto : COR2.ceu);
+      estrela(ctx, x, y, r, n.cor || ((n.nv || 0) >= 4 ? COR2.cobalto : COR2.ceu));
     }
     ctx.globalAlpha = 1;
     if (G.sel >= 0) {

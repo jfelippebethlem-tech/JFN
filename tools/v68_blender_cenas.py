@@ -11,7 +11,7 @@
 Linguagem v63: azul (#1D5BFF / #6FA8FF / #38D3FF) sobre branco-gelo, sem brilho de filtro; a profundidade
 é uma névoa clara (a cor de cada material mistura ao fundo pela distância da câmera).
 
-Uso: blender -b -P v68_blender_cenas.py -- <galaxia|mapa> <largura> <altura> <pasta_saida> [quadro_ini quadro_fim]
+Uso: blender -b -P v68_blender_cenas.py -- <galaxia|mapa|alvos> <largura> <altura> <pasta_saida> [quadro_ini quadro_fim]
 """
 import bpy
 import bmesh
@@ -222,7 +222,36 @@ def mapa():
     tc = cam.constraints.new('TRACK_TO'); tc.target = piv; tc.track_axis = 'TRACK_NEGATIVE_Z'; tc.up_axis = 'UP_Y'
     chave(piv, 'rotation_euler', [(1, Vector((0, 0, math.radians(-18)))), (NQ, Vector((0, 0, math.radians(28))))], 'LINEAR')
 
-{'galaxia': galaxia, 'mapa': mapa}[CENA]()
+def alvos():
+    """v70 · alvos de clique do relevo: monta a MESMA cena do mapa, vai ao último quadro renderizado (959, o
+    que o vídeo congela) e projeta pela câmera cada face de cada município (bpy_extras.world_to_camera_view).
+    Sai JSON em pixels do quadro W×H, com a distância à câmera para a ordem de oclusão; a união/recorte das
+    faces vira contorno na vm1 (`tools/v70_mapa_alvos.py`). Não renderiza nada (só CPU)."""
+    from bpy_extras.object_utils import world_to_camera_view
+    mapa()
+    sc.frame_set(959)
+    dg = bpy.context.evaluated_depsgraph_get(); cam = sc.camera; pc = cam.matrix_world.translation
+    out = []
+    for ob in sc.objects:
+        if not ob.name.startswith('mun_'): continue
+        mw = ob.evaluated_get(dg).matrix_world; me = ob.data
+        px = []
+        for v in me.vertices:
+            u = world_to_camera_view(sc, cam, mw @ v.co)
+            px.append((round(u.x * W, 1), round((1 - u.y) * H, 1)))
+        faces = [[px[i] for i in p.vertices] for p in me.polygons]
+        cw = mw @ (sum((v.co for v in me.vertices), Vector()) / max(1, len(me.vertices)))
+        out.append({'cod': ob.name[4:], 'dist': round((cw - pc).length, 3), 'faces': faces})
+    os.makedirs(SAIDA, exist_ok=True)
+    json.dump({'quadro': 959, 'w': W, 'h': H, 'municipios': out}, open(os.path.join(SAIDA, 'alvos_%dx%d.json' % (W, H)), 'w'), separators=(',', ':'))
+    print('ALVOS-FIM', len(out), W, H, flush=True)
+    sys.exit(0)
+
+{'galaxia': galaxia, 'mapa': mapa, 'alvos': alvos}[CENA]()
+if os.environ.get('V70_NITIDO'):          # v70 · quadro parado do relevo: câmera parada não pede rastro
+    sc.render.use_motion_blur = False
+    try: sc.eevee.taa_render_samples = 64
+    except AttributeError: pass
 os.makedirs(SAIDA, exist_ok=True)
 print('CENA-MONTADA em %.0f s' % (time.time() - T0), flush=True)
 bpy.ops.render.render(animation=True)

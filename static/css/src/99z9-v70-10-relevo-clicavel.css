@@ -1,0 +1,28 @@
+/* ══ v70 · RELEVO CLICÁVEL (par do `_cineFaixa` em `mapa/territorio.js`) ═════════════════════════════════
+   Depois que o vídeo assenta fica o último quadro nítido (re-render do it-campo, sem rastro) e, por cima,
+   os alvos SVG — o contorno visível de cada município pela mesma câmera do Blender. Durante a animação os
+   alvos ficam inertes (as alturas ainda mudam). Hover/foco: véu cobalto leve + contorno; nada muda de lugar.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 .tm-cine-fim{position:absolute;inset:0;opacity:0;transition:opacity .45s ease;pointer-events:none}
+html.v61 .tm-cine-fim img{width:100%;height:100%;object-fit:cover;object-position:50% 62%;display:block}
+html.v61 .tm-cine.fim .tm-cine-fim{opacity:1}
+html.v61 .tm-cine-alvos{position:absolute;z-index:1;overflow:visible;pointer-events:none}
+html.v61 .tm-cine.fim .tm-cine-alvos{pointer-events:auto}
+html.v61 .tm-cine-a{fill:transparent;stroke:transparent;stroke-width:2.5;stroke-linejoin:round;cursor:pointer;outline:none;
+  pointer-events:none;transition:fill .15s ease,stroke .15s ease}
+html.v61 .tm-cine.fim .tm-cine-a{pointer-events:all}
+html.v61 .tm-cine.fim .tm-cine-a:hover,html.v61 .tm-cine.fim .tm-cine-a:focus-visible{fill:rgba(29,91,255,.16);stroke:#1546D8}
+html.v61 .tm-cine.fim .tm-cine-a.sem:hover,html.v61 .tm-cine.fim .tm-cine-a.sem:focus-visible{fill:rgba(11,27,58,.08);stroke:#33476B;stroke-dasharray:7 5}
+html.v61 .tm-cine.fim .tm-cine-a:focus-visible{stroke-width:4}
+html.v61 .tm-cine-dica{z-index:3}
+html.v61 .tm-cine-dica .tm-cine-ret{border-top:1px solid var(--line-strong);margin-top:3px;padding-top:4px}
+html.v61 .tm-cine-dica .tm-cine-acao{color:var(--ink-3,#4A5D80);font-size:.6875rem}
+html.v61 .tm-cine-leg{pointer-events:none}
+html.v61 .tm-cine-cli{font-style:normal;font-weight:600;color:var(--ink)}
+html.v61 .tm-cine-cli[hidden]{display:none}
+@media (max-aspect-ratio:4/5){
+  html.v61 .tm-cine-fim img{object-position:50% 50%}
+}
+@media (prefers-reduced-motion:reduce){
+  html.v61 .tm-cine-fim,html.v61 .tm-cine-a{transition:none}
+}

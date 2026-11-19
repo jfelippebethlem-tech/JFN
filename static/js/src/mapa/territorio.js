@@ -25,7 +25,7 @@ import {fmtN, fmtR} from '../nucleo/formato.js';
 import {_redMotion, _v63} from '../capacidade/estado.js';
 import {aoVivoOuvir} from '../aovivo/estado.js';
 import {abrirDossie} from '../ui/index.js';
-import {cineVideo, cineSoVisivel} from '../cena/cine3d.js';
+import {cineVideo, cineSoVisivel, cineRetrato} from '../cena/cine3d.js';
 import CINE from '../../../assets/v68/cine3d.json';
 
 const GEO = '/static/assets/geo/';
@@ -121,7 +121,14 @@ export function mapaMontar(host) {
     </div>
     <div class="tm-pe" id="tm-pe">Fonte: lendo…</div>`;
 
-  _cineFaixa(host);
+  /* v70: o relevo é clicável — o clique cai na MESMA ficha do mapa vivo (escopo Estado). */
+  _cineFaixa(host, {
+    lerVivo: () => api('estado?periodo=vigentes&graus=explicito,unidade'),
+    abrir: async k => {
+      if (S.escopo !== 'estado') await trocarEscopo('estado');
+      await abrirFicha(k);
+      if (!portal) ficha.scrollIntoView({block: 'nearest', behavior: _redMotion ? 'auto' : 'smooth'});
+    }});
   const q = s => host.querySelector(s);
   const gEst = q('#tm-est'), gRio = q('#tm-rio'), cam = q('#tm-cam'), dica = q('#tm-dica'), ficha = q('#tm-ficha');
   const geo = {est: null, rio: null};      // {feats, path, centro: Map}
@@ -464,19 +471,106 @@ export function mapaMontar(host) {
 
 /* v68 · faixa de cinema no topo do mapa: os municípios do RJ em 3D (Blender, it-campo), extrudados por
    √(valor contratado vigente atribuído, graus explícito + unidade) — a métrica PADRÃO desta tela, num retrato
-   datado. Todo texto é código; o vídeo só toca visível (`cine3d.js`). */
+   datado. Todo texto é código; o vídeo só toca visível (`cine3d.js`).
+   v70 · CLICÁVEL: quando o vídeo assenta (ou nem toca: reduzir movimento), fica o último quadro re-renderizado
+   nítido no it-campo (sem rastro de movimento) e por cima uma camada SVG de alvos — o contorno VISÍVEL de cada
+   município projetado pela mesma câmera do Blender no mesmo quadro (`tools/v70_mapa_alvos.py`). Hover mostra o
+   VIVO da API (mesma métrica e graus do relevo) ao lado do valor do retrato que deu a altura; clique/Enter abre
+   a ficha do mapa vivo. Municípios encobertos pelo relevo não têm alvo — o mapa de baixo tem todos. */
+const ALVOS = '/static/assets/v68/mapa3d_alvos.json';
 let _cineDesl = null;
-function _cineFaixa(host) {
+function _cineFaixa(host, ctx) {
   if (_cineDesl) { _cineDesl(); _cineDesl = null; }
   const M = CINE.mapa3d, dataRetrato = String(M.atualizado_em || '').slice(0, 10).split('-').reverse().join('/');
+  const ret = cineRetrato(), B = '/static/assets/v68/mapa3d_fim';
   const f = document.createElement('figure');
-  f.className = 'tm-cine';
+  f.className = 'tm-cine fim';
   const v = cineVideo('mapa3d');           // toca uma vez e para no mapa inteiro aceso
   f.appendChild(v);
-  f.insertAdjacentHTML('beforeend', `<figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b>`
+  f.insertAdjacentHTML('beforeend', `<picture class="tm-cine-fim">`
+    + (ret ? `<source type="image/avif" srcset="${B}_m.avif"><img src="${B}_m.webp" alt="" width="1080" height="1080" decoding="async">`
+           : `<source type="image/avif" srcset="${B}.avif 1920w, ${B}@2x.avif 2880w" sizes="100vw">`
+             + `<img src="${B}.webp" srcset="${B}.webp 1920w, ${B}@2x.webp 2880w" sizes="100vw" alt="" width="1920" height="1080" decoding="async">`)
+    + `</picture><svg class="tm-cine-alvos" role="group" aria-label="Relevo: escolha um município (setas para navegar, Enter abre a ficha)"></svg>`
+    + `<div class="tm-dica tm-cine-dica" role="status" hidden></div>`
+    + `<figcaption class="tm-cine-leg"><b>Contratos vigentes do Estado, em relevo</b>`
     + `<span>${fmtN(M.com_contrato)} de ${fmtN(M.municipios)} municípios com contrato atribuído · altura ∝ √ valor contratado `
     + `(certeza explícita + unidade) · sem relevo = nenhum contrato atribuído, não zero · valor contratado não é pago · `
-    + `retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo</span></figcaption>`);
+    + `retrato de ${esc(dataRetrato)}, o mapa abaixo é o vivo<i class="tm-cine-cli" hidden></i></span></figcaption>`);
   host.insertBefore(f, host.firstChild);
-  _cineDesl = cineSoVisivel(v, f);
+  const svg = f.querySelector('.tm-cine-alvos'), dica = f.querySelector('.tm-cine-dica');
+  let A = null, dVivo = null, dVivoP = null;
+
+  /* o SVG ocupa exatamente a caixa que o `object-fit:cover` + `object-position` dá ao vídeo */
+  function encaixar() {
+    if (!A) return;
+    const w = f.clientWidth, h = f.clientHeight, k = Math.max(w / A.w, h / A.h);
+    const [px, py] = (getComputedStyle(v).objectPosition || '50% 50%').split(' ').map(x => parseFloat(x) / 100);
+    Object.assign(svg.style, {left: ((w - A.w * k) * (isNaN(px) ? .5 : px)) + 'px', top: ((h - A.h * k) * (isNaN(py) ? .5 : py)) + 'px',
+                              width: A.w * k + 'px', height: A.h * k + 'px'});
+  }
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(encaixar) : null;
+  if (ro) ro.observe(f);
+
+  const linha = k => dVivo && (dVivo.municipios || []).find(x => String(x.cod_ibge) === k);
+  const grauTxt = l => GRAUS.filter(g => g[0] !== 'sede' && (l.por_grau[g[0]] || {}).n)
+    .map(g => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b> · ${curto(l.por_grau[g[0]].valor)}`).join('<br>');
+  function mostrar(p, ev) {
+    const k = p.dataset.k, l = linha(k), nome = (l && l.nome) || p.dataset.nome || k, vr = +p.dataset.v, nr = +p.dataset.n;
+    const tem = l && l.n_contratos > 0;
+    dica.innerHTML = `<b>${esc(nome)}</b>`
+      + (!dVivo ? '<span>dados vivos: INDISPONÍVEL</span>' : !tem ? '<span>sem contrato vigente atribuído (não é zero)</span>'
+        : `<span class="num">${rs(l.valor_contratado)}</span><span>valor contratado vigente · <b class="num">${fmtN(l.n_contratos)}</b> contratos</span>`
+          + (l.por_grau ? `<span>${grauTxt(l)}</span>` : ''))
+      + `<span class="tm-cine-ret">no relevo (retrato de ${esc(dataRetrato)}): ${vr > 0 ? `<b class="num">${curto(vr)}</b> · ${fmtN(nr)} contratos` : 'sem relevo'}</span>`
+      + '<span class="tm-cine-acao">clique ou Enter: abrir a ficha</span>';
+    dica.hidden = false;
+    const r = f.getBoundingClientRect(), b = p.getBoundingClientRect();
+    const x = (ev && ev.pointerType === 'mouse' ? ev.clientX : b.left + b.width / 2) - r.left;
+    const y = (ev && ev.pointerType === 'mouse' ? ev.clientY : b.top + b.height / 2) - r.top;
+    dica.style.left = Math.max(8, Math.min(r.width - dica.offsetWidth - 8, x - dica.offsetWidth / 2)) + 'px';
+    dica.style.top = (y - dica.offsetHeight - 14 >= 8 ? y - dica.offsetHeight - 14 : Math.min(r.height - dica.offsetHeight - 8, y + 18)) + 'px';
+  }
+  const sumir = () => { dica.hidden = true; };
+  const carregarVivo = () => { if (!dVivoP) dVivoP = ctx.lerVivo().then(d => { dVivo = d; }); return dVivoP; };
+
+  fetch(ALVOS, {credentials: 'same-origin'}).then(r => (r.ok ? r.json() : null)).then(J => {
+    A = J && J[ret ? 'm' : 'd'];
+    if (!A || !A.a || !A.a.length) return;
+    svg.setAttribute('viewBox', `0 0 ${A.w} ${A.h}`);
+    /* ordem de Tab/setas: oeste → leste pelo centro da caixa (depois de pintado) */
+    svg.innerHTML = A.a.map(([k, val, n, d]) => `<path class="tm-cine-a${val > 0 ? '' : ' sem'}" data-k="${k}" data-v="${val}" data-n="${n}" d="${d}" tabindex="-1" role="button"></path>`).join('');
+    const ps = [...svg.querySelectorAll('path')];
+    const cx = new Map(ps.map(p => { const b = p.getBBox(); return [p, b.x + b.width / 2]; }));
+    ps.sort((a, b) => cx.get(a) - cx.get(b)).forEach(p => svg.appendChild(p));
+    if (ps[0]) ps[0].tabIndex = 0;
+    const encob = M.municipios - ps.length, cli = f.querySelector('.tm-cine-cli');
+    cli.hidden = false;
+    cli.textContent = ` · clique num município para abrir a ficha${encob > 0 ? ` (${fmtN(encob)} ficam encobertos pelo relevo: use o mapa abaixo)` : ''}`;
+    encaixar();
+    carregarVivo().then(() => ps.forEach(p => { const l = linha(p.dataset.k);
+      if (l && l.nome) { p.dataset.nome = l.nome; p.setAttribute('aria-label', `${l.nome}: ${l.n_contratos > 0 ? rs(l.valor_contratado) + ' em ' + fmtN(l.n_contratos) + ' contratos vigentes' : 'sem contrato atribuído'}`); } }));
+  }).catch(() => {});
+
+  const alvo = e => e.target.closest && e.target.closest('path.tm-cine-a');
+  svg.addEventListener('pointerover', e => { const p = alvo(e); if (p) { carregarVivo().then(() => { if (p.matches(':hover')) mostrar(p, e); }); mostrar(p, e); } });
+  svg.addEventListener('pointermove', e => { const p = alvo(e); if (p && e.pointerType === 'mouse') mostrar(p, e); });
+  svg.addEventListener('pointerout', e => { if (alvo(e)) sumir(); });
+  svg.addEventListener('click', e => { const p = alvo(e); if (p) { sumir(); ctx.abrir(p.dataset.k); } });
+  svg.addEventListener('focusin', e => { const p = alvo(e); if (p) carregarVivo().then(() => { if (document.activeElement === p) mostrar(p); }); });
+  svg.addEventListener('focusout', sumir);
+  svg.addEventListener('keydown', e => {
+    const p = alvo(e); if (!p) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); sumir(); ctx.abrir(p.dataset.k); return; }   // o atalho global de [role=button] chama el.click(), que <path> não tem
+    const passo = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[e.key]; if (!passo) return;
+    e.preventDefault();
+    const ps = [...svg.querySelectorAll('path')], i = ps.indexOf(p), n = ps[(i + passo + ps.length) % ps.length];
+    p.tabIndex = -1; n.tabIndex = 0; n.focus();
+  });
+
+  /* toca uma vez: enquanto anima não há alvo (as alturas mudam); assentou → quadro nítido + alvos, e não repete */
+  let parar = cineSoVisivel(v, f);
+  v.addEventListener('playing', () => { f.classList.remove('fim'); sumir(); });
+  v.addEventListener('ended', () => { f.classList.add('fim'); parar(); parar = () => {}; });
+  _cineDesl = () => { parar(); if (ro) ro.disconnect(); };
 }
