@@ -10,7 +10,7 @@ norma:
 sinal: >
   Em TR/ETP/pesquisa (não contrato/edital): (F1) ato de fonte única — "localizou apenas", "apenas uma cotação foi
   obtida", "único orçamento recebido"; (F2) estimativa "com base" em site/URL/tabela/catálogo/preço de capa/proposta
-  da própria empresa. F1+F2 forte; um só médio. Frase normativa ("deverá/poderá/será") antes do trecho é descartada.
+  da própria empresa. F1+F2 forte; F2 só médio; F1 só fraco (1ª varredura: F1 isolado era uma fonte da cesta, não a estimativa inteira). Frase normativa ("deverá/poderá/será") antes do trecho é descartada.
 explicacoes_inocentes:
   - "Obra autoral de editora única: preço de capa é o único preço público — exige NF a outros contratantes"
   - "Ata com desconto sobre tabela — a tabela é do fornecedor; pedir comparativo"

@@ -10,7 +10,9 @@ Sinais (modo verbal de ATO — "foi realizado", "localizou" — não a cláusula
   F2 base_do_vendedor — a estimativa foi feita "com base" em site/tabela/catálogo/preço de capa/proposta da própria
                         empresa (fonte interessada: art. 23 §1º e §4º da Lei 14.133 — na contratação direta, o preço
                         se justifica por notas fiscais emitidas a OUTROS contratantes).
-Grau: F1 + F2 → forte; F2 com URL/tabela do fornecedor → médio; F1 só → médio.
+Grau: F1 + F2 → forte; F2 só → médio; F1 só → FRACO. 1ª varredura (19/11/2026): os 16 F1 isolados eram, em regra,
+UMA das fontes da cesta ("Foi encontrado apenas 01 resultado" no TCE-RJ, "identificou apenas um curso") — não a
+estimativa inteira; sem F2 não sustenta médio.
 Só em TR/ETP/pesquisa/despacho de estimativa (não em edital-modelo).
 """
 from __future__ import annotations
@@ -99,7 +101,7 @@ def varrer(limite: int | None = None) -> dict:
         ob = obs.get(cc.canon(t))
         provas = [f"{k}: {v}" for k, v in r.items() if v]
         achados.append({
-            "processo": cc.canon(t), "grau": "forte" if ambos else "medio",
+            "processo": cc.canon(t), "grau": "forte" if ambos else ("medio" if r["base_do_vendedor"] else "fraco"),
             "sinal": "+".join(k for k, v in r.items() if v), "prova": " | ".join(provas),
             "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
