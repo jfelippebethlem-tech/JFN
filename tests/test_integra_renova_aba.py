@@ -66,3 +66,13 @@ def test_excecao_na_reabertura_nao_derruba_a_captura():
 def test_hora_de_renovar_conta_so_documentos_baixados():
     assert I.hora_de_renovar(120, 120) and not I.hora_de_renovar(119, 120)
     assert not I.hora_de_renovar(500, 0), "0 desliga a renovação"
+
+
+def test_reabrir_vai_ao_inicio_do_sei_antes_do_cracked():
+    """A aba nova nasce em about:blank e o cracked procura o link 'Pesquisa' na página atual — sem ir ao início do
+    SEI antes, a renovação falhava calada (medido 19/11: aba a 1,4 GB em 159 docs, mesmo id de alvo no CDP)."""
+    from pathlib import Path
+    src = Path(I.__file__).read_text(encoding="utf-8")
+    corpo = src[src.index("async def reabrir(aba)"):src.index("manifest = []")]
+    assert "ja_logado(aba)" in corpo
+    assert corpo.index("ja_logado(aba)") < corpo.index("_ler_cracked(aba")

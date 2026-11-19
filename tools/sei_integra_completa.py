@@ -281,7 +281,12 @@ async def main():
                 tmp.replace(man_path)
 
             async def reabrir(aba) -> bool:
-                """Mesma via que deu a árvore no início; vale só se a aba nova tem árvore viva."""
+                """Mesma via que deu a árvore no início; vale só se a aba nova tem árvore viva. A aba nasce em
+                about:blank e o cracked procura o link 'Pesquisa' na página atual: primeiro vai ao início do SEI
+                (mesma sessão do contexto — sem login novo; sessão caída = não renova). Medido 19/11: sem este passo
+                a renovação falhava calada e a aba seguia crescendo (1,4 GB em 159 docs)."""
+                if not await SR.ja_logado(aba):
+                    return False
                 if origem == "cracked":
                     if not ((await SR._ler_cracked(aba, PROC)).get("documentos")):
                         return False
@@ -303,9 +308,15 @@ async def main():
                         t0 = _t.time()
                         nova = await renovar_aba(ctx, pg, reabrir)
                         baixados_desde = 0
-                        if nova is not pg:
+                        renovou = nova is not pg
+                        if renovou:
                             pg = nova
                             print(f"  aba renovada em {_t.time() - t0:.0f}s (doc {i}/{len(docs)})", flush=True)
+                        # a saída da captura não chega ao log da fila: o registro fica aqui para medir a renovação
+                        with open("data/sei_aba_renovada.jsonl", "a", encoding="utf-8") as _f:
+                            _f.write(_json.dumps({"t": _t.strftime("%F %T"), "processo": PROC, "doc": i,
+                                                  "total": len(docs), "renovou": renovou,
+                                                  "s": round(_t.time() - t0, 1)}) + "\n")
                     baixados_desde += 1
                     try:
                         # REDE DE SEGURANÇA acima do orçamento do OCR (OCR_BUDGET_S=300s): o
