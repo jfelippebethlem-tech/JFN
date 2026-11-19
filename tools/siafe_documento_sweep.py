@@ -231,7 +231,8 @@ def main() -> int:
             resumo = {k: d.get(k) for k in ("ok", "ingeridas", "capou", "cobertura_pela_ob", "cobertura_pela_nl",
                                              "ne_rebaixada", "etapa", "erro")}
         except ValueError:
-            resumo = {"rc": r.returncode, "saida": (ult or r.stderr.strip()[-200:])[:200]}
+            # a causa mora no stderr (traceback): 19/11 296100/NE/2024 morreu com rc=1 e só a linha do login ficou
+            resumo = {"rc": r.returncode, "saida": ult[:200], "erro": " | ".join(r.stderr.strip().splitlines()[-3:])[:400]}
         print(f"  {ug}/{tipo}/{ex}{' (incremental)' if it.get('a_partir') else ''} em {time.time() - t0:.0f}s: "
               f"{resumo}", flush=True)
         feitos.append({**it, **resumo, "segundos": round(time.time() - t0)})
