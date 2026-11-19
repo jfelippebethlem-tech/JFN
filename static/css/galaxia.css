@@ -227,3 +227,23 @@ a{color:var(--ion)}
 .gx-voo-pular{position:absolute;top:14px;right:14px;min-width:44px;min-height:44px;padding:0 16px;border:0;border-radius:999px;
   background:rgba(255,255,255,.82);box-shadow:var(--borda);color:var(--ink-2);font:500 13px var(--sans);cursor:pointer}
 .gx-voo-pular:focus-visible{outline:2px solid var(--ion)}
+
+/* v70 · legenda de cor por órgão (paleta única config/cores_orgaos.yaml); clicar isola o aglomerado */
+.gx-orgleg{position:absolute;left:14px;top:50%;transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;gap:2px;max-width:250px;
+  padding:10px 8px;border-radius:18px;background:var(--vidro);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--borda),var(--sh)}
+.gx-orgleg[hidden]{display:none}
+.gx-orgleg-tit{font:500 11px/1.2 var(--mono);text-transform:lowercase;color:var(--ion);padding:0 6px 4px}
+.gx-orgleg-b{display:flex;align-items:center;gap:7px;min-height:28px;padding:3px 6px;border:0;border-radius:10px;background:none;
+  font:500 12px/1.25 inherit;color:var(--ink-2);text-align:left;cursor:pointer}
+.gx-orgleg-b i{flex:0 0 auto;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.9),0 0 0 2.5px rgba(11,27,58,.12)}
+.gx-orgleg-b:hover,.gx-orgleg-b[aria-pressed="true"]{background:rgba(29,91,255,.08);color:var(--ink)}
+.gx-orgleg-b:focus-visible{outline:2px solid var(--ion);outline-offset:1px}
+.gx-orgleg-b.sem{color:var(--muted)}
+.gx-orgleg-nota{font-size:10.5px;color:var(--muted);padding:4px 6px 0}
+@media (max-width:760px){
+  .gx-orgleg{top:auto;transform:none;left:10px;right:66px;bottom:calc(118px + env(safe-area-inset-bottom));max-width:none;flex-direction:row;
+    align-items:center;overflow-x:auto;scrollbar-width:none;padding:4px 6px;border-radius:14px}
+  .gx-orgleg::-webkit-scrollbar{display:none}
+  .gx-orgleg-tit,.gx-orgleg-nota{display:none}
+  .gx-orgleg-b{flex:0 0 auto;white-space:nowrap;min-height:44px}
+}

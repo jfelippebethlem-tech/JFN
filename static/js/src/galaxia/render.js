@@ -26,7 +26,7 @@ export function corScore(s) {
   if (s >= 10) return COR.ceu;
   return COR.gelo;
 }
-const BALDES = [COR.gelo, COR.ceu, COR.cobalto, COR.alerta];
+const ALFA_SCORE = [.42, .68, .9, 1];      // v70: score < 10 · 10–24 · 25–49 · crítico
 const balde = s => s >= CRITICO ? 3 : s >= 25 ? 2 : s >= 10 ? 1 : 0;
 
 /** Prepara índices: vizinhos, grade espacial, listas por tipo, raio de cada nó. */
@@ -188,29 +188,36 @@ export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
     for (const i of G.socios) { const n = nos[i]; if (!dentro(n) || apaga(n)) continue; const [x, y] = T(n.x, n.y); const r = Math.max(1.4, n.r * kr(k)); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.2832); }
     ctx.fill();
   }
-  const caminhos = [[], [], [], []];
-  for (const i of G.forn) { const n = nos[i]; if (dentro(n)) caminhos[balde(n.s || 0)].push(i); }
-  caminhos.forEach((lista, b) => {
-    if (!lista.length) return;
-    ctx.beginPath(); let fora = [];
+  /* v70: fornecedor pintado com a COR DO ÓRGÃO do aglomerado (`n.cor`, paleta única config/cores_orgaos.yaml,
+     a mesma do grafo do vault). O score continua no tamanho e na opacidade (baixo = mais transparente) e o
+     crítico ganha o anel âmbar. Um `fill` por (cor, faixa de score). */
+  const caminhos = [[], [], [], []], porCor = new Map();
+  for (const i of G.forn) { const n = nos[i]; if (!dentro(n)) continue; const b = balde(n.s || 0); caminhos[b].push(i);
+    if (apaga(n)) continue; const ch = (n.cor || COR.gelo) + '|' + b; (porCor.get(ch) || porCor.set(ch, []).get(ch)).push(i); }
+  for (const [ch, lista] of porCor) {
+    const [cor, b] = ch.split('|');
+    ctx.beginPath();
     for (const i of lista) {
-      const n = nos[i]; if (apaga(n)) { fora.push(i); continue; }
-      const [x, y] = T(n.x, n.y);
-      if (longe) { const r = b >= 2 ? 1.6 : 1; ctx.rect(x - r, y - r, r * 2, r * 2); }
+      const n = nos[i], [x, y] = T(n.x, n.y);
+      if (longe) { const r = +b >= 2 ? 1.6 : 1; ctx.rect(x - r, y - r, r * 2, r * 2); }
       else { const r = Math.max(1.6, n.r * kr(k)); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.2832); }
     }
-    ctx.fillStyle = BALDES[b]; ctx.fill();
+    ctx.globalAlpha = ALFA_SCORE[b]; ctx.fillStyle = cor; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  {
+    const fora = []; for (const lista of caminhos) for (const i of lista) if (apaga(nos[i])) fora.push(i);
     if (fora.length) {
-      ctx.globalAlpha = .18; ctx.beginPath();
+      ctx.globalAlpha = .18; ctx.fillStyle = COR.gelo; ctx.beginPath();
       for (const i of fora) { const n = nos[i]; const [x, y] = T(n.x, n.y); ctx.rect(x - 1, y - 1, 2, 2); }
       ctx.fill(); ctx.globalAlpha = 1;
     }
-  });
+  }
   /* crítico: anel amarelo fino em volta (lê mesmo no "longe") */
   if (!longe) {
     ctx.beginPath();
     for (const i of caminhos[3]) { const n = nos[i]; if (apaga(n)) continue; const [x, y] = T(n.x, n.y); const r = Math.max(1.6, n.r * kr(k)) + 2.5; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.2832); }
-    ctx.strokeStyle = 'rgba(255,196,0,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,176,0,.9)'; ctx.lineWidth = 1.6; ctx.stroke();
   }
   /* órgãos: disco branco com aro azul-marinho */
   if (op.mini) {                                         // miniatura: órgão é só um ponto marinho (o aro pesava)
@@ -223,8 +230,8 @@ export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
     const [x, y] = T(n.x, n.y), r = Math.max(longe ? 2.4 : 3.5, n.r * kr(k) * (longe ? 1.6 : 1));
     ctx.globalAlpha = apaga(n) ? .25 : 1;
     ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.lineWidth = Math.max(1, r * .22); ctx.strokeStyle = COR.orgao; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, r * .38, 0, 6.2832); ctx.fillStyle = COR.cobalto; ctx.fill();
+    ctx.lineWidth = Math.max(1, r * .22); ctx.strokeStyle = n.cor || COR.orgao; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r * .38, 0, 6.2832); ctx.fillStyle = n.cor || COR.cobalto; ctx.fill();
   }
   ctx.globalAlpha = 1;
   /* dossiês do vault: estrela com halo — os pontos mais vistosos do céu */
@@ -235,7 +242,7 @@ export function desenhar(ctx, G, cam, w, h, dt = 0, op = {}) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3.2);
     g.addColorStop(0, 'rgba(56,211,255,.55)'); g.addColorStop(.4, 'rgba(29,91,255,.16)'); g.addColorStop(1, 'rgba(29,91,255,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 3.2, 0, 6.2832); ctx.fill();
-    estrela(ctx, x, y, r, (n.nv || 0) >= 4 ? COR.cobalto : COR.ceu);
+    estrela(ctx, x, y, r, n.cor || ((n.nv || 0) >= 4 ? COR.cobalto : COR.ceu));
   }
   ctx.globalAlpha = 1;
 

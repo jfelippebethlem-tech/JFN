@@ -407,6 +407,28 @@ function blocoViz(d, filtro, titulo, max = 12) {
     + (vs.length > max ? `<li><small>+ ${fmtN(vs.length - max)} outras ligações (aproxime na galáxia para ver)</small></li>` : '') + '</ul></div>';
 }
 
+/* v70 · legenda de cor por ÓRGÃO/UG: a mesma paleta do grafo do vault (`n.cor`, config/cores_orgaos.yaml). Mostra os
+   órgãos com mais fornecedores no grafo; clicar isola o aglomerado (o mesmo filtro do seletor). O cinza é o balde
+   sem órgão, com o motivo no rótulo. */
+const _nomeOrg = t => (/[a-zà-ú]/.test(t) ? t : t.toLowerCase().replace(/(^|[\s.(/-])([a-zà-ú])/g, (m, a, b) => a + b.toUpperCase())
+  .replace(/\b(D[aeo]s?|E|Em|Para|Por)\b/g, w => w.toLowerCase())).replace(/^./, c => c.toUpperCase());
+const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t);
+function legendaOrgaos(orgs) {
+  const el = $('gx-orgleg'); if (!el) return;
+  const top = orgs.filter(n => !/^sem:|^vault:dossies$/.test(n.cl)).slice(0, 8);
+  const sem = orgs.filter(n => /^sem:|^vault:dossies$/.test(n.cl));
+  el.innerHTML = `<span class="gx-orgleg-tit">cor = órgão pagador</span>`
+    + top.map(n => `<button type="button" class="gx-orgleg-b" data-cl="${esc(n.cl)}" title="${esc(n.l)} — ${fmtN(n.nf)} fornecedores; clique para isolar">`
+      + `<i style="background:${esc(n.cor || '#8A8F98')}"></i>${esc(curto(_nomeOrg(n.l), 26))}</button>`).join('')
+    + sem.map(n => `<button type="button" class="gx-orgleg-b sem" data-cl="${esc(n.cl)}" title="${esc(n.l)} — ${fmtN(n.nf)} fornecedores">`
+      + `<i style="background:${esc(n.cor || '#8A8F98')}"></i>${esc(curto(n.l, 90))}</button>`).join('')
+    + `<span class="gx-orgleg-nota">demais órgãos: cor própria e fixa · ${fmtN(orgs.length)} órgãos no grafo</span>`;
+  el.hidden = false;
+  el.addEventListener('click', e => { const b = e.target.closest('[data-cl]'); if (!b) return;
+    const sel = $('gx-org'); sel.value = sel.value === b.dataset.cl ? '' : b.dataset.cl; sel.dispatchEvent(new Event('change'));
+    el.querySelectorAll('[data-cl]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cl === sel.value))); });
+}
+
 function corpoForn(d) {
   const no = d.no, s = no.s || 0;
   const rating = s >= CRITICO ? '🔴' : s >= 25 ? '🟡' : '🟢';
@@ -515,6 +537,7 @@ async function iniciar() {
   indice = G.nos.map((n, i) => [norm(n.l) + ' ' + norm(n.slug || ''), (n.cnpj || '') + ' ' + String(n.l).replace(/\D/g, ''), i]);
   const orgs = G.orgaos.map(i => G.nos[i]).filter(n => n.nf).sort((a, b) => b.nf - a.nf);
   $('gx-org').insertAdjacentHTML('beforeend', orgs.map(n => `<option value="${esc(n.cl)}">${esc(n.l.slice(0, 48))} (${fmtN(n.nf)})</option>`).join(''));
+  legendaOrgaos(orgs);
   const r = d.resumo || {}, f = d.fontes || {};
   const indisp = Object.entries(f).filter(([, v]) => v !== 'ok').map(([k]) => k);
   $('gx-aviso').textContent = d.aviso || $('gx-aviso').textContent;
