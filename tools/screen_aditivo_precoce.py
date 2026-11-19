@@ -60,7 +60,7 @@ def medir(db: str = "", dias: int = DIAS_PRECOCE,
             "  a.data_assinatura d_termo, a.tipo_termo, a.processo, a.qualif_acrescimo, "
             "  a.qualif_vigencia, a.qualif_reajuste, a.fundamento_legal, a.prazo_aditado_dias, "
             "  c.data_assinatura d_contrato, c.valor_inicial, c.fornecedor_nome, c.orgao_nome, "
-            "  c.objeto obj_contrato "
+            "  c.objeto obj_contrato, c.orgao_cnpj "
             "FROM contrato_aditivo a JOIN pcrj_contratos c "
             "  ON c.numero_controle_pncp = a.numero_controle_pncp "
             "WHERE a.data_assinatura IS NOT NULL AND c.data_assinatura IS NOT NULL").fetchall()
@@ -69,8 +69,11 @@ def medir(db: str = "", dias: int = DIAS_PRECOCE,
     finally:
         con.close()
 
+    from compliance_agent.esfera_orgao import no_rj
     fora = []
     for r in linhas:
+        if not no_rj(r["orgao_cnpj"] or "", r["orgao_nome"] or ""):
+            continue                       # só Estado do RJ + Prefeitura do Rio (dono, 19/11/2026)
         dt_t, dt_c = _dia(r["d_termo"]), _dia(r["d_contrato"])
         if not dt_t or not dt_c:
             continue

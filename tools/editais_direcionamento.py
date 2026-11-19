@@ -73,12 +73,14 @@ def _tem_tabela(con, nome: str) -> bool:
 
 
 def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float,
-                     raizes_cnpj: tuple[str, ...] | None = None) -> list[dict]:
+                     so_rj: bool = True) -> list[dict]:
     """Roda o enxame (5 lentes LLM free-tier) nas cláusulas RARAS (peer-diff) dos clusters avaliáveis.
 
     DEDUP (2026-07-20): pula cláusula que JÁ tem veredito — re-run não desperdiça chamada LLM nem
-    duplica linha (antes o INSERT era cego). `raizes_cnpj` (ex.: ('42498600','42498733')) restringe
-    às esferas fiscalizadas — acende o índice do RJ sem gastar LLM em edital federal fora da jurisdição."""
+    duplica linha (antes o INSERT era cego). `so_rj` restringe ao órgão do Estado do RJ (todos os Poderes e
+    órgãos autônomos com CNPJ próprio: TJRJ, ALERJ, TCE-RJ, MPRJ, DPE-RJ, UERJ…) e da Prefeitura do Rio pela
+    fonte única `esfera_orgao` — antes eram só as raízes 42498600/42498733, que deixavam esses órgãos de fora."""
+    from compliance_agent import esfera_orgao
     clusters = con.execute("select id, assinatura_objeto, membros_json from edital_cluster "
                            "where avaliavel=1").fetchall()
     ja_avaliadas = {r[0] for r in con.execute("select distinct clausula_id from clausula_veredito "
@@ -91,8 +93,8 @@ def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float,
         for c in cands:
             if c["clausula_id"] in ja_avaliadas:
                 continue  # dedup: já tem veredito — não re-bate o LLM
-            if raizes_cnpj and (c["numero_controle_pncp"] or "")[:8] not in raizes_cnpj:
-                continue  # fora da esfera-alvo — não gasta LLM
+            if so_rj and not esfera_orgao.no_rj(esfera_orgao.cnpj_do_controle_pncp(c["numero_controle_pncp"])):
+                continue  # fora do escopo RJ — não gasta LLM
             if n >= max_candidatas:
                 print(f"  [corte] {max_candidatas} candidatas avaliadas — resto no XLSX", flush=True)
                 return achados
@@ -142,8 +144,8 @@ async def main():
     ap.add_argument("--max-candidatas", type=int, default=120)
     ap.add_argument("--limiar-raridade", type=float, default=0.7)
     ap.add_argument("--so-rj", action="store_true",
-                    help="restringe o enxame às esferas estadual-RJ + municipal-Rio (CNPJ-raiz "
-                         "42498600/42498733) — acende o índice do RJ sem gastar LLM no federal")
+                    help="(padrão) restringe o enxame ao Estado do RJ + Prefeitura do Rio "
+                         "(compliance_agent/esfera_orgao) — acende o índice do RJ sem gastar LLM no federal")
     ap.add_argument("--incluir-federal", action="store_true",
                     help="inclui órgãos federais/de outros entes (fora do escopo do mandato — padrão: só RJ)")
     ap.add_argument("--sem-pdf", action="store_true")
@@ -164,8 +166,7 @@ async def main():
             print(f"clusters: {agrupar.construir_clusters(con)}", flush=True)
         # 19/11/2026, dono: "esquece a parte federal, nao queremos tratar disso" — RJ (Estado + Prefeitura do Rio) é o
         # padrão; o federal só com --incluir-federal. Antes, sem --so-rj, 6 casos 🔴 do vault eram editais federais.
-        raizes = None if args.incluir_federal else ("42498600", "42498733")
-        achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade, raizes_cnpj=raizes)
+        achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade, so_rj=not args.incluir_federal)
         achados.sort(key=lambda a: -a["risco"])
         print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
               f"{sum(1 for a in achados if a['risco'] >= 7)}", flush=True)

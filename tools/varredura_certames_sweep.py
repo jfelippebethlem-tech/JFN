@@ -31,9 +31,11 @@ def _com_clausulas(con, limite=None):
              FROM edital_clausula ec
              JOIN pncp_resultado pr ON pr.certame = ec.numero_controle_pncp
              GROUP BY ec.numero_controle_pncp ORDER BY v DESC"""
-    if limite:
-        sql += f" LIMIT {int(limite)}"
-    return [r["c"] for r in con.execute(sql)]
+    # só o RJ (Estado + Prefeitura do Rio) — dono, 19/11/2026: "esquece a parte federal"
+    from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+    alvo = certames_da_esfera(con, None)
+    cs = [r["c"] for r in con.execute(sql) if r["c"] in alvo]
+    return cs[:int(limite)] if limite else cs
 
 
 def main() -> int:

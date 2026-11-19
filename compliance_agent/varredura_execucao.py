@@ -114,12 +114,16 @@ def abrir_achados(caminho: str | None = None) -> sqlite3.Connection:
 
 
 def contratos_com_aditivo(con: sqlite3.Connection, *, ano: int | None = None,
-                          orgao: str | None = None, limite: int | None = None) -> list[str]:
+                          orgao: str | None = None, limite: int | None = None,
+                          so_rj: bool = True) -> list[str]:
     """Contratos que têm ao menos um termo aditivo coletado — só neles há o que julgar na X1/X2.
 
-    Ordena pelo valor global: quem fiscaliza começa pelo que pesa.
+    Ordena pelo valor global: quem fiscaliza começa pelo que pesa. `so_rj` (padrão, dono 19/11/2026:
+    "esquece a parte federal"): só órgão do Estado do RJ ou da Prefeitura do Rio (`esfera_orgao`).
     """
-    sql = ["SELECT c.numero_controle_pncp AS k, COALESCE(c.valor_global, c.valor_inicial, 0) v",
+    from compliance_agent import esfera_orgao
+    sql = ["SELECT c.numero_controle_pncp AS k, COALESCE(c.valor_global, c.valor_inicial, 0) v,",
+           "c.orgao_cnpj AS oc, c.orgao_nome AS onm",
            "FROM pcrj_contratos c",
            "WHERE EXISTS (SELECT 1 FROM contrato_aditivo a",
            "              WHERE a.numero_controle_pncp = c.numero_controle_pncp)"]
@@ -131,10 +135,9 @@ def contratos_com_aditivo(con: sqlite3.Connection, *, ano: int | None = None,
         sql.append("AND c.orgao_cnpj = ?")
         par.append(orgao)
     sql.append("ORDER BY v DESC")
-    if limite:
-        sql.append("LIMIT ?")
-        par.append(int(limite))
-    return [r["k"] for r in con.execute(" ".join(sql), par)]
+    ks = [r["k"] for r in con.execute(" ".join(sql), par)
+          if not so_rj or esfera_orgao.no_rj(r["oc"] or "", r["onm"] or "")]
+    return ks[:int(limite)] if limite else ks
 
 
 def _persistir(con: sqlite3.Connection, contrato: str, ctx: dict,

@@ -859,14 +859,22 @@ def api_detectores(limite: int = 25):
         # a colheita não voltar. Servir a contagem sem a data faria dado parado passar por atual —
         # é a mesma regra dos carimbos de alerta (`created_at`/`visto_em`).
         frescor: dict[str, str] = {}
+        # ESCOPO RJ (dono, 19/11/2026: "esquece a parte federal"): achado de certame/contrato de órgão federal
+        # ou de outro ente não chega ao painel — a fonte única de esfera decide pelo CNPJ do órgão.
+        from compliance_agent import esfera_orgao as _eo
+        fora_rj: dict[str, int] = {}
         for tab, chave in tabelas:
+            col_org = "orgao_cnpj" if tab != "achado_detector" else "NULL"
             try:
                 linhas = con.execute(
-                    f"SELECT detector, status, score, {chave} AS alvo, motivo, gerado_em "  # noqa: S608
-                    f"FROM {tab}").fetchall()
+                    f"SELECT detector, status, score, {chave} AS alvo, motivo, gerado_em, "  # noqa: S608
+                    f"{col_org} AS orgao_cnpj FROM {tab}").fetchall()
             except _sq.Error:
                 continue                       # tabela ausente = varredura nunca rodou, não zero
             for r in linhas:
+                if r["orgao_cnpj"] and not _eo.no_rj(r["orgao_cnpj"]):
+                    fora_rj[tab] = fora_rj.get(tab, 0) + 1
+                    continue
                 q = str(r["gerado_em"] or "")[:19]
                 if q:
                     frescor[tab] = max(frescor.get(tab, ""), q)
@@ -891,6 +899,7 @@ def api_detectores(limite: int = 25):
         "nao_avaliaveis": sum(d["nao_avaliavel"] for d in ordem),
         "detectores": ordem,
         "itens": itens[:max(1, min(int(limite), 200))],
+        "fora_do_escopo_rj": {k.replace("achado_", ""): v for k, v in fora_rj.items()},
         "fonte": {"ok": True, "banco": "data/achados.db",
                   "medido_em": {k.replace("achado_", ""): v for k, v in frescor.items()},
                   "delegado_vm2": _Path("data/.varredura_na_vm2").exists()},

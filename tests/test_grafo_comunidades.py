@@ -31,12 +31,12 @@ def db(tmp_path):
            "VALUES (?,?,?,?,?,?,?,?)")
     con.executemany(ins, [
         # clã 1: E1 e E2 (mesmo dono) vencem no órgão O1 e disputam "entre si"
-        ("K1", "O1", "SES", 1, "11111111000111", "ALFA", 90000.0, 1),
-        ("K1", "O1", "SES", 1, "22222222000122", "BETA", 0.0, 2),
-        ("K2", "O1", "SES", 1, "22222222000122", "BETA", 70000.0, 1),
-        ("K2", "O1", "SES", 1, "11111111000111", "ALFA", 0.0, 2),
+        ("K1", "O1", "SES DO ESTADO DO RIO DE JANEIRO", 1, "11111111000111", "ALFA", 90000.0, 1),
+        ("K1", "O1", "SES DO ESTADO DO RIO DE JANEIRO", 1, "22222222000122", "BETA", 0.0, 2),
+        ("K2", "O1", "SES DO ESTADO DO RIO DE JANEIRO", 1, "22222222000122", "BETA", 70000.0, 1),
+        ("K2", "O1", "SES DO ESTADO DO RIO DE JANEIRO", 1, "11111111000111", "ALFA", 0.0, 2),
         # clã 2: E3 vende p/ O2, sem relação com o clã 1
-        ("K3", "O2", "SEFAZ", 1, "33333333000133", "GAMA", 40000.0, 1),
+        ("K3", "O2", "SECRETARIA DE ESTADO DE FAZENDA RJ", 1, "33333333000133", "GAMA", 40000.0, 1),
     ])
     con.executemany("INSERT INTO socios_receita (cnpj_basico, nome_socio, nome_norm, "
                     "doc_socio, qualificacao_txt) VALUES (?,?,?,?,?)", [

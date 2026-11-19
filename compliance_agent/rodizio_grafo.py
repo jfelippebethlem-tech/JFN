@@ -379,7 +379,9 @@ def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 80
         logger.debug("ata_documento ainda ausente (sweep de atas não rodou): %s", exc)
     finally:
         con2.close()
-    return out
+    # escopo RJ (dono, 19/11/2026: "esquece a parte federal"): ata de órgão federal/de outro ente não vira achado
+    from compliance_agent.esfera_orgao import no_rj
+    return [a for a in out if no_rj(a["orgao"] or "")]
 
 
 def _nome(cnpj: str, db_path: str = "data/compliance.db") -> str:

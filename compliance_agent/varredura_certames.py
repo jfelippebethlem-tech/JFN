@@ -96,11 +96,13 @@ def abrir_achados(caminho: str | None = None) -> sqlite3.Connection:
 
 
 def certames_com_resultado(con: sqlite3.Connection, *, ano: int | None = None,
-                           orgao: str | None = None, limite: int | None = None) -> list[str]:
+                           orgao: str | None = None, limite: int | None = None,
+                           so_rj: bool = True) -> list[str]:
     """Certames que têm resultado homologado — só neles há o que julgar.
 
     Ordena pelo valor homologado do certame: quem fiscaliza começa pelo que pesa, não pela
-    ordem alfabética.
+    ordem alfabética. `so_rj` (padrão, dono 19/11/2026: "esquece a parte federal"): só compra do
+    Estado do RJ ou da Prefeitura do Rio — filtro canônico `pncp_resultados.certames_da_esfera`.
     """
     sql = ["SELECT certame, SUM(COALESCE(valor_homologado,0)) v FROM pncp_resultado",
            "WHERE COALESCE(certame,'') <> ''"]
@@ -112,10 +114,12 @@ def certames_com_resultado(con: sqlite3.Connection, *, ano: int | None = None,
         sql.append("AND orgao_cnpj = ?")
         par.append(orgao)
     sql.append("GROUP BY certame ORDER BY v DESC")
-    if limite:
-        sql.append("LIMIT ?")
-        par.append(limite)
-    return [r["certame"] for r in con.execute(" ".join(sql), par)]
+    alvo = None
+    if so_rj:
+        from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+        alvo = certames_da_esfera(con, None)
+    cs = [r["certame"] for r in con.execute(" ".join(sql), par) if alvo is None or r["certame"] in alvo]
+    return cs[:int(limite)] if limite else cs
 
 
 def _persistir(con: sqlite3.Connection, certame: str, orgao: str,

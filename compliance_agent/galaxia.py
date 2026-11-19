@@ -288,10 +288,13 @@ def _orgaos(g: _G, con, nomes_ug: dict):
         g.fontes["ob_siafe"] = "INDISPONÍVEL"
     sem = [c for c in cn if not any(v == "OB" for v in g.forn[c]["org_via"].values())]
     try:
+        from compliance_agent.esfera_orgao import no_rj
         for c, oc, on, n in _em_lotes(con, "SELECT fornecedor_documento, orgao_cnpj, MAX(orgao_nome), COUNT(*) "
                                            "FROM pcrj_contratos WHERE fornecedor_documento IN ({}) GROUP BY 1, 2", sem):
             oc = _dig(oc)
-            if len(oc) == 14:
+            # pcrj_contratos tem 82 mil contratos FEDERAIS (UNIRIO, Fiocruz, Marinha…): só órgão do RJ vira
+            # elo na galáxia (dono, 19/11/2026: "esquece a parte federal")
+            if len(oc) == 14 and no_rj(oc, on or ""):
                 g.o(f"cnpj:{oc}", on)
                 g.forn[c]["org"][f"cnpj:{oc}"] += n * 1e-3          # contrato pesa menos que OB paga
                 g.forn[c]["org_via"].setdefault(f"cnpj:{oc}", "contrato")

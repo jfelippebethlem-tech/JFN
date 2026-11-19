@@ -470,13 +470,17 @@ def _d_contratos_analise(p):
     try:
         rows = con.execute(
             """SELECT ed.numero_controle_pncp nc, ed.ano, ed.objeto, ed.valor_estimado,
-                      ci.score, ci.faixa, ci.confianca, ci.drivers_json
+                      ci.score, ci.faixa, ci.confianca, ci.drivers_json, ed.orgao_cnpj
                FROM edital_documento ed JOIN certame_indice ci
                ON ci.certame = ed.numero_controle_pncp
-               WHERE substr(ed.orgao_cnpj,1,8) IN ('42498733','42498600') AND ci.confianca > 0
+               WHERE ci.confianca > 0
                ORDER BY ci.prioridade DESC""").fetchall()
     finally:
         con.close()
+    # escopo RJ pela fonte única (Estado do RJ com todos os Poderes/órgãos autônomos + Prefeitura do Rio);
+    # antes eram só as raízes 42498600/42498733 — TJRJ, ALERJ, MPRJ, UERJ… ficavam de fora
+    from compliance_agent.esfera_orgao import no_rj
+    rows = [r for r in rows if no_rj(r["orgao_cnpj"] or "")]
     it = []
     for r in rows:
         drivers = []

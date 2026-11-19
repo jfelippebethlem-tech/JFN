@@ -25,15 +25,15 @@ def db(tmp_path):
     p = tmp_path / "c.db"
     con = sqlite3.connect(p)
     con.execute("CREATE TABLE pcrj_contratos (numero_controle_pncp TEXT, data_assinatura TEXT,"
-                " valor_inicial REAL, fornecedor_nome TEXT, orgao_nome TEXT, objeto TEXT)")
+                " valor_inicial REAL, fornecedor_nome TEXT, orgao_nome TEXT, objeto TEXT, orgao_cnpj TEXT)")
     con.execute("CREATE TABLE contrato_aditivo (numero_controle_pncp TEXT, numero_termo TEXT,"
                 " objeto TEXT, valor_acrescido REAL, data_assinatura TEXT, tipo_termo TEXT,"
                 " processo TEXT, qualif_acrescimo TEXT, qualif_vigencia TEXT,"
                 " qualif_reajuste TEXT, fundamento_legal TEXT, prazo_aditado_dias INT)")
 
-    def contrato(ncp, dia, inicial, obj="PAVIMENTACAO ASFALTICA DE VIAS"):
-        con.execute("INSERT INTO pcrj_contratos VALUES (?,?,?,?,?,?)",
-                    (ncp, dia, inicial, f"F {ncp}", "SECID", obj))
+    def contrato(ncp, dia, inicial, obj="PAVIMENTACAO ASFALTICA DE VIAS", orgao=("SECID", "42498600000171")):
+        con.execute("INSERT INTO pcrj_contratos VALUES (?,?,?,?,?,?,?)",
+                    (ncp, dia, inicial, f"F {ncp}", orgao[0], obj, orgao[1]))
 
     def termo(ncp, dia, acresc, obj, fund="Art. 125 da Lei 14.133/2021", prazo=None):
         con.execute("INSERT INTO contrato_aditivo VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -126,3 +126,18 @@ def test_cobertura_declara_o_gargalo_que_LIMITA_nao_o_confortavel(db):
         "avaliáveis não pode passar de quem tem as duas datas — o valor é restrição ADICIONAL")
     assert c["pct"] <= c["pct_so_datas"]
     assert "valor_acrescido" in c["gargalo"]
+
+
+def test_orgao_federal_fica_de_fora(db):
+    """Dono, 19/11/2026: "esquece a parte federal" — órgão federal não vira achado."""
+    con = sqlite3.connect(db)
+    # mesmo contrato precoce do controle positivo, mas do Comando da Marinha (raiz da União)
+    con.execute("INSERT INTO pcrj_contratos VALUES ('FEDERAL','2025-01-01',99600000,'F','COMANDO DA MARINHA',"
+                "'PAVIMENTACAO','00394502000144')")
+    con.execute("INSERT INTO contrato_aditivo SELECT 'FEDERAL', numero_termo, objeto, valor_acrescido, "
+                "data_assinatura, tipo_termo, processo, qualif_acrescimo, qualif_vigencia, qualif_reajuste, "
+                "fundamento_legal, prazo_aditado_dias FROM contrato_aditivo WHERE numero_controle_pncp='PRECOCE'")
+    con.commit()
+    con.close()
+    achados = {d["contrato"] for d in S.medir(db=db)}
+    assert "PRECOCE" in achados and "FEDERAL" not in achados

@@ -390,4 +390,4 @@ def test_fila_prioriza_por_valor(con):
     _contrato(con, numero_controle_pncp="b", valor_global=1_000_000.0, num_aditivos=1)
     _aditivo(con, numero_controle_pncp="a", objeto="acréscimo")
     _aditivo(con, numero_controle_pncp="b", objeto="acréscimo")
-    assert contratos_com_aditivo(con)[0] == "b", "quem fiscaliza começa pelo que pesa"
+    assert contratos_com_aditivo(con, so_rj=False)[0] == "b", "quem fiscaliza começa pelo que pesa"
