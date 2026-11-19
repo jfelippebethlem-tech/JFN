@@ -65,7 +65,13 @@ if [ "$L" -ge 6 ]; then
   # Agora as catracas (leves; leem o índice do git, que só existe aqui) rodam aqui e os testes casados vão à VM-2.
   echo "[pre-push] load $L em 2 vCPU — catracas aqui, testes casados na VM-2…"
   # shellcheck disable=SC2086
-  if ! nice -n 19 timeout 300 $PY -m pytest $CATRACAS -q --no-header -p no:cacheprovider >/tmp/pre_push.log 2>&1; then
+  # 18/11/2026: com load 14–38 as catracas levam 12–20 min; o teto de 300 s bloqueava o push SEM catraca falhando
+  # (exit 124, log sem FAILED) e 4 sessões ficaram com 28 commits presos. Teto maior + timeout dito pelo nome.
+  nice -n 19 timeout 1500 $PY -m pytest $CATRACAS -q --no-header -p no:cacheprovider >/tmp/pre_push.log 2>&1
+  rc=$?
+  if [ "$rc" -eq 124 ]; then
+    echo "[pre-push] ❌ BLOQUEADO — catracas NÃO terminaram em 1500 s (load $L): não medido, tente com a VM mais leve"; exit 1
+  elif [ "$rc" -ne 0 ]; then
     echo "[pre-push] ❌ BLOQUEADO — catraca falhando:"; grep -E "^FAILED|^ERROR|^E " /tmp/pre_push.log | head -12; exit 1
   fi
   C=$(casados)
