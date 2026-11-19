@@ -49,29 +49,22 @@ def _brain(q: str, k: int) -> list[str]:
     return _notas([r["path"] if r["source"] == "vault" else f"{r['source']}:{r['path']}" for r in C.buscar(q, k=k)])
 
 
-def _mcp(ferramenta: str, argumentos: dict):
-    """Chama o MCP do jfn-brain como um agente chama (JSON-RPC em /mcp/) — mede o caminho do Yoda e do Claude web."""
-    import urllib.error
-    import urllib.request
-    req = urllib.request.Request(
-        C.URL + "/mcp/", method="POST",
-        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                         "params": {"name": ferramenta, "arguments": argumentos}}).encode(),
-        headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
-    try:
-        with urllib.request.urlopen(req, timeout=C.TETO_S) as r:
-            res = json.loads(r.read().decode("utf-8"))["result"]
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
-        raise C.CerebroIndisponivel(f"mcp: {type(exc).__name__}: {exc}") from exc
-    if res.get("isError"):
-        raise C.CerebroIndisponivel(f"mcp {ferramenta}: {str(res.get('content'))[:120]}")
-    sc = res.get("structuredContent")
-    return sc.get("result", sc) if isinstance(sc, dict) else sc
+_mcp = C.mcp      # chama o MCP como um agente chama — mede o caminho do Yoda e do Claude web
 
 
 def _brain_mcp(q: str) -> list[str]:
     return _notas([r["path"] if r["source"] == "vault" else f"{r['source']}:{r['path']}"
                    for r in _mcp("brain_search", {"query": q, "k": 10})])
+
+
+def _brain_entity(p: dict):
+    """Cruzamento por entidade (`brain_entity` do MCP). Só se aplica a pergunta que declara `entidade`."""
+    if not p.get("entidade"):
+        return None
+    r = _mcp("brain_entity", p["entidade"])
+    if r.get("erro"):
+        raise C.CerebroIndisponivel(r["erro"])
+    return _notas([n["path"] for n in r["notas"]])
 
 
 # Cada sistema: pergunta → até 10 notas distintas, em ordem.
@@ -82,13 +75,14 @@ SISTEMAS = {
     "brain_k40": lambda q: _brain(q, 40),
     # o que o agente recebe pelo MCP (`brain_search`, k=10) — é o critério de pronto da fase 2
     "brain_mcp": _brain_mcp,
+    "brain_entity": _brain_entity,          # recebe a pergunta inteira; None = não se aplica
     "khoj": lambda q: _notas([x["nota"] for x in B._perna_khoj(q)]),
     "local_bm25": lambda q: _notas([x["nota"] for x in B._perna_local(q)]),
     # fase 1: entidade + BM25 local dão a ordem; o cérebro resgata
     "fundido": lambda q: [f["nota"] for f in B.buscar_fundido(q, 10)["notas"]],
     "fundido_com_khoj": lambda q: [f["nota"] for f in B.buscar_fundido(q, 10, com=("khoj",))["notas"]],
 }
-PADRAO = ("brain", "brain_mcp", "local_bm25", "fundido")
+PADRAO = ("brain_mcp", "brain_entity", "local_bm25", "fundido")
 
 
 def _bateria() -> dict:
@@ -97,6 +91,26 @@ def _bateria() -> dict:
 
 def carregar() -> list[dict]:
     return _bateria()["perguntas"]
+
+
+def _ha_ob_paga(sp: dict) -> bool:
+    """Existe OB PAGA (filtro da casa: cruzamentos_intel._ob_paga) para o credor — e a UG, se dada? Base ausente
+    (máquina sem o compliance.db) não reprova o gabarito: devolve True e a conferência fica para onde a base existe."""
+    import sqlite3
+    db = C.DATA / "compliance.db"
+    if not db.exists():
+        return True
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
+    try:
+        d = sp["credor"]
+        sql = f"SELECT 1 FROM ob_orcamentaria_siafe WHERE credor IN (?,?) AND {_ob_paga(con)}"
+        args = [d, B.F.grafias("cnpj", d)[1]]
+        if sp.get("ug"):
+            sql, args = sql + " AND ug_emitente=?", args + [sp["ug"]]
+        return con.execute(sql + " LIMIT 1", args).fetchone() is not None
+    finally:
+        con.close()
 
 
 def validar() -> list[str]:
@@ -110,6 +124,9 @@ def validar() -> list[str]:
         if not existentes:
             erros.append(f"{p['id']}: nenhuma nota do gabarito existe no vault ({p['ok']})")
             continue
+        sp = p.get("sql_pago")
+        if sp and not _ha_ob_paga(sp):
+            erros.append(f"{p['id']}: não há mais OB paga no SIAFE para {sp} — a resposta esperada caducou")
         lit = p.get("contem")
         if lit and not any(lit in a.read_text(encoding="utf-8", errors="replace") for a in existentes):
             erros.append(f"{p['id']}: trecho esperado {lit!r} não está em {p['ok']}")
@@ -129,14 +146,18 @@ def _placar(linhas: list[dict], sistema: str) -> dict:
            "mediana_s": round(statistics.median(tempos), 2), "max_s": round(tempos[-1], 2)}
     for k in KS:
         out[f"recall{k}"] = sum(1 for p in pos if p and p <= k)
+    # cobertura: das notas esperadas, quantas vieram entre as 10 (importa no cruzamento, onde `ok` é a lista inteira)
+    out["achadas"] = sum(m["achadas"] for m in medidas)
+    out["esperadas"] = sum(m["esperadas"] for m in medidas)
+    out["completas"] = sum(1 for m in medidas if m["achadas"] == min(m["esperadas"], 10))
     return out
 
 
-def medir(sistemas: tuple[str, ...], rotulo: str) -> dict:
+def medir(sistemas: tuple[str, ...], rotulo: str, grupos: tuple[str, ...] = ()) -> dict:
     erros = validar()
     if erros:
         raise SystemExit("GABARITO INVÁLIDO — conserte antes de medir:\n  " + "\n  ".join(erros))
-    perguntas = carregar()
+    perguntas = [p for p in carregar() if not grupos or p["grupo"] in grupos]
     ignorar = set(_bateria().get("ignorar") or [])       # notas que transcrevem as perguntas (ver o yaml)
     B.indexar(forcar=True)
     linhas = []
@@ -145,15 +166,21 @@ def medir(sistemas: tuple[str, ...], rotulo: str) -> dict:
         for s in sistemas:
             t = time.time()
             try:
-                notas = [n for n in SISTEMAS[s](p["pergunta"]) if n not in ignorar]
+                bruto = SISTEMAS[s](p if s == "brain_entity" else p["pergunta"])
+                if bruto is None:                       # sistema não se aplica a esta pergunta
+                    continue
+                notas = [n for n in bruto if n not in ignorar]
                 pos = next((i + 1 for i, n in enumerate(notas) if n in p["ok"]), None)
-                linha[s] = {"posicao": pos, "s": round(time.time() - t, 3), "top": notas[:5], "erro": None}
+                achadas = sum(1 for n in p["ok"] if n in notas)
+                linha[s] = {"posicao": pos, "s": round(time.time() - t, 3), "top": notas[:5], "erro": None,
+                            "achadas": achadas, "esperadas": len(p["ok"])}
             except C.CerebroIndisponivel as exc:
                 linha[s] = {"posicao": None, "s": round(time.time() - t, 3), "top": [], "erro": str(exc)[:160]}
         linhas.append(linha)
     grupos = sorted({l["grupo"] for l in linhas})
-    placar = {s: {"total": _placar(linhas, s), **{g: _placar([l for l in linhas if l["grupo"] == g], s) for g in grupos}}
-              for s in sistemas}
+    placar = {s: {g: m for g, m in (("total", _placar(linhas, s)),
+                                    *((g, _placar([l for l in linhas if l["grupo"] == g], s)) for g in grupos))
+                  if m["n"] or m["indisponivel"]} for s in sistemas}
     res = {"rotulo": rotulo, "medido_em": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "perguntas": len(linhas),
            "estado": "VERIFICADO" if all(placar[s]["total"]["indisponivel"] == 0 for s in sistemas) else "PARCIAL",
            "placar": placar, "linhas": linhas}
@@ -168,15 +195,15 @@ def medir(sistemas: tuple[str, ...], rotulo: str) -> dict:
 def tabela(res: dict) -> str:
     out = [f"Bateria do segundo cérebro — {res['perguntas']} perguntas · {res['medido_em']} · {res['rotulo']} · "
            f"{res['estado']}", "",
-           f"{'sistema':20s} {'grupo':6s} {'n':>3s} {'R@1':>5s} {'R@5':>5s} {'R@10':>5s} {'MRR@10':>7s} {'med s':>6s} {'máx s':>6s}"]
+           f"{'sistema':20s} {'grupo':10s} {'n':>3s} {'R@1':>5s} {'R@5':>5s} {'R@10':>5s} {'MRR@10':>7s} {'cobertura':>10s} {'med s':>6s}"]
     for s, por in res["placar"].items():
         for g, m in por.items():
             if not m["n"]:
-                out.append(f"{s:20s} {g:6s}   0   INDISPONÍVEL ({m['indisponivel']} consultas sem resposta)")
+                out.append(f"{s:20s} {g:10s}   0   INDISPONÍVEL ({m['indisponivel']} consultas sem resposta)")
                 continue
             aviso = f"  ({m['indisponivel']} indisponíveis)" if m["indisponivel"] else ""
-            out.append(f"{s:20s} {g:6s} {m['n']:3d} {m['recall1']:5d} {m['recall5']:5d} {m['recall10']:5d} "
-                       f"{m['mrr10']:7.3f} {m['mediana_s']:6.2f} {m['max_s']:6.2f}{aviso}")
+            out.append(f"{s:20s} {g:10s} {m['n']:3d} {m['recall1']:5d} {m['recall5']:5d} {m['recall10']:5d} "
+                       f"{m['mrr10']:7.3f} {str(m['achadas']) + '/' + str(m['esperadas']):>10s} {m['mediana_s']:6.2f}{aviso}")
     return "\n".join(out)
 
 
@@ -187,6 +214,7 @@ def main(argv=None) -> int:
     m = sub.add_parser("medir")
     m.add_argument("--sistemas", default=",".join(PADRAO))
     m.add_argument("--rotulo", default="rotina")
+    m.add_argument("--grupos", default="", help="só estes grupos (dono,casos,cruzamento)")
     m.add_argument("--minimo", type=int, default=0,
                    help="catraca: sai com erro se o recall@10 do `fundido` ficar abaixo deste nº de perguntas")
     sub.add_parser("ultimo")
@@ -200,12 +228,20 @@ def main(argv=None) -> int:
         desconhecidos = [s for s in sist if s not in SISTEMAS]
         if desconhecidos:
             ap.error(f"sistema desconhecido: {desconhecidos} (há: {', '.join(SISTEMAS)})")
-        res = medir(sist, a.rotulo)
+        res = medir(sist, a.rotulo, tuple(g for g in a.grupos.split(",") if g))
         print(tabela(res))
-        f = res["placar"].get("fundido", {}).get("total", {})
-        if a.minimo and (not f.get("n") or f["indisponivel"] or f["recall10"] < a.minimo):
-            print(f"CATRACA: recall@10 do fundido = {f.get('recall10', 'INDISPONÍVEL')} de {res['perguntas']} "
-                  f"(mínimo {a.minimo}) — a busca do cérebro piorou ou não respondeu.", file=sys.stderr)
+        falhas = []
+        for s in ("fundido", "brain_mcp"):           # catraca nas 56 perguntas de nota (grupos dono + casos)
+            por = res["placar"].get(s)
+            if a.minimo and por:
+                r10 = sum(por.get(g, {}).get("recall10", 0) for g in ("dono", "casos"))
+                if por["total"]["indisponivel"] or r10 < a.minimo:
+                    falhas.append(f"{s}: recall@10 = {r10} (mínimo {a.minimo}; {por['total']['indisponivel']} sem resposta)")
+        e = res["placar"].get("brain_entity", {}).get("cruzamento")
+        if a.minimo and e and (e["indisponivel"] or e["achadas"] < 0.95 * e["esperadas"]):
+            falhas.append(f"brain_entity: cobertura {e['achadas']}/{e['esperadas']} no cruzamento (mínimo 95%)")
+        if falhas:
+            print("CATRACA — a busca do cérebro piorou ou não respondeu: " + "; ".join(falhas), file=sys.stderr)
             return 1
         return 0
     print(tabela(json.loads((SAIDA / "ultimo.json").read_text(encoding="utf-8"))))

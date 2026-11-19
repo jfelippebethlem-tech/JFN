@@ -7,6 +7,12 @@
 #                curto do dono e SEM copiar o título; `resposta` = o que se espera ler; `contem` = trecho LITERAL
 #                que tem de existir na nota do gabarito (conferido por `tools/cerebro_bateria.py validar` — controle
 #                positivo do próprio gabarito: nota que mudou e perdeu o trecho derruba a validação, não o recall).
+#   grupo cruzamento  perguntas por ENTIDADE (fase 4): "quais casos envolvem o CNPJ X" e "o que a UG U pagou à empresa Y".
+#                `ok` = TODAS as notas de casos/ que citam o identificador (levantadas por grep, não pelo cérebro);
+#                `entidade` = o que se passa ao `brain_entity`; `resposta` traz o valor pago conferido no SIAFE em
+#                19/11/2026 (só OB paga, filtro cruzamentos_intel._ob_paga) — o valor cresce com a coleta, por isso
+#                `validar` confere só que AINDA existe OB paga para o par (`sql_pago`), não o número.
+#                Além da posição, mede-se a COBERTURA: quantas das notas esperadas vieram entre as 10 primeiras.
 # Medida: a nota certa entre as k primeiras NOTAS distintas devolvidas (recall@1/5/10, MRR@10).
 # Regras: pergunta nova só no FIM do grupo (ids são contrato); nunca ajustar pergunta para um buscador acertar.
 # Nada de CPF, e-mail, WhatsApp ou nome de pessoa física aqui (CNPJ e nº de processo são dado público).
@@ -437,3 +443,323 @@ perguntas:
   - casos/setur-buzzline-pagamento-antes-do-evento.md
   resposta: BTL Lisboa (NF 1249, R$ 1.370.194,19) paga em 27/02/2024, antes do evento; Contrato 010/2021
   contem: 1.370.194,19
+- id: X01
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 19.024.253/0001-23?
+  entidade:
+    ref: 19.024.253/0001-23
+  ok:
+  - casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md
+  - casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md
+  - casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md
+  - casos/faetec-scalle-outubro-2025-obras-sob-demanda.md
+  - casos/fotos-repetidas-acervo-2026-11-18.md
+  - casos/gestao-couto-analise-2026-11-13.md
+  resposta: 'SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA aparece em 6 casos; pago pelo Estado: R$ 1.601.999.298,28 em 1282 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 19.024.253/0001-23
+  sql_pago:
+    credor: '19024253000123'
+- id: X02
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 18.546.232/0001-05?
+  entidade:
+    ref: 18.546.232/0001-05
+  ok:
+  - casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md
+  - casos/degase-b7-manutec-cisao-apos-impedimento.md
+  - casos/degase-manutec-contrato-008-2020-lote-v.md
+  - casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md
+  - casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md
+  resposta: 'MANUTEC MONTAGEM E EMPREENDIMENTOS LTDA aparece em 5 casos; pago pelo Estado: R$ 22.077.341,72 em 109 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 18.546.232/0001-05
+  sql_pago:
+    credor: '18546232000105'
+- id: X03
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 12.647.362/0001-58?
+  entidade:
+    ref: 12.647.362/0001-58
+  ok:
+  - casos/auditorias-gsi-decreto-50254-2026.md
+  - casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md
+  - casos/fotos-repetidas-acervo-2026-11-18.md
+  - casos/inea-omega-tac-acima-do-teto-queimados.md
+  resposta: 'Omega Construtora E Servicos Ltda. aparece em 4 casos; pago pelo Estado: R$ 588.882.539,39 em 472 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 12.647.362/0001-58
+  sql_pago:
+    credor: '12647362000158'
+- id: X04
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 17.298.685/0001-05?
+  entidade:
+    ref: 17.298.685/0001-05
+  ok:
+  - casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md
+  - casos/degase-b7-manutec-cisao-apos-impedimento.md
+  - casos/degase-manutec-contrato-008-2020-lote-v.md
+  - casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md
+  resposta: 'Gb+ Consultoria E Servicos Eireli - Epp aparece em 4 casos; pago pelo Estado: R$ 61.748.968,46 em 428 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 17.298.685/0001-05
+  sql_pago:
+    credor: '17298685000105'
+- id: X05
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 28.470.707/0001-80?
+  entidade:
+    ref: 28.470.707/0001-80
+  ok:
+  - casos/fserj-dirigentes-socios-de-contratadas.md
+  - casos/gestao-couto-analise-2026-11-13.md
+  - casos/idesi-fserj-minuta-requerimento-informacoes.md
+  - casos/idesi-fundacao-saude-rj.md
+  resposta: 'INSTITUTO DE DESENVOLVIMENTO PARA EDUCAÇÃO, SAÚDE E INTEGRAÇÃO SOCIAL - IDESI aparece em 4 casos; pago pelo Estado: R$ 560.614.088,56 em 1256 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 28.470.707/0001-80
+  sql_pago:
+    credor: '28470707000180'
+- id: X06
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 01.920.177/0001-79?
+  entidade:
+    ref: 01.920.177/0001-79
+  ok:
+  - casos/agile-corp-seeduc-emergencia-do-incumbente.md
+  - casos/seap-milano-creche-dezembro-pago-antes-de-servido.md
+  - casos/tac-recorrente-sedsodh-2023-2026.md
+  resposta: 'Comercial Milano Brasil Ltda aparece em 3 casos; pago pelo Estado: R$ 335.701.731,73 em 4717 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 01.920.177/0001-79
+  sql_pago:
+    credor: 01920177000179
+- id: X07
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 10.190.061/0001-12?
+  entidade:
+    ref: 10.190.061/0001-12
+  ok:
+  - casos/angra-dos-reis-representacoes-tce-2026.md
+  - casos/tac-recorrente-ses-fserj-2026.md
+  - casos/tac-socios-agentes-publicos-fserj-2026.md
+  resposta: 'Tuise Representacao Comercial Ltda aparece em 3 casos; pago pelo Estado: R$ 811.954.771,90 em 777 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 10.190.061/0001-12
+  sql_pago:
+    credor: '10190061000112'
+- id: X08
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 03.314.057/0001-53?
+  entidade:
+    ref: 03.314.057/0001-53
+  ok:
+  - casos/auditorias-gsi-decreto-50254-2026.md
+  - casos/gestao-couto-analise-2026-11-13.md
+  - casos/pericia-bombeiros-funesbom-2024.md
+  resposta: 'Enge Prat Engenharia E Serviços Ltda. aparece em 3 casos; pago pelo Estado: R$ 528.425.435,88 em 1095 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 03.314.057/0001-53
+  sql_pago:
+    credor: '03314057000153'
+- id: X09
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 10.555.527/0001-36?
+  entidade:
+    ref: 10.555.527/0001-36
+  ok:
+  - casos/cafe-do-trabalhador-lote05-acf-pago-pela-capacidade.md
+  - casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md
+  - casos/tac-recorrente-sedsodh-2023-2026.md
+  resposta: 'A. C. F. DA SILVA LTDA-ME aparece em 3 casos; pago pelo Estado: R$ 142.815.621,26 em 550 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 10.555.527/0001-36
+  sql_pago:
+    credor: '10555527000136'
+- id: X10
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 24.977.781/0001-37?
+  entidade:
+    ref: 24.977.781/0001-37
+  ok:
+  - casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md
+  - casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md
+  - casos/gestao-couto-analise-2026-11-13.md
+  resposta: 'JRF Manutenção e Serviços LTDA aparece em 3 casos; pago pelo Estado: R$ 152.889.166,00 em 599 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 24.977.781/0001-37
+  sql_pago:
+    credor: '24977781000137'
+- id: X11
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 04.375.510/0001-02?
+  entidade:
+    ref: 04.375.510/0001-02
+  ok:
+  - casos/degase-mendes-dos-santos-dezembro-pago-antes-de-servido.md
+  - casos/gestao-couto-analise-2026-11-13.md
+  - casos/tac-recorrente-sedsodh-2023-2026.md
+  resposta: 'Mendes Dos Santos Suprimentos E Servicos Ltda aparece em 3 casos; pago pelo Estado: R$ 66.460.500,94 em 146 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 04.375.510/0001-02
+  sql_pago:
+    credor: '04375510000102'
+- id: X12
+  grupo: cruzamento
+  origem: gabarito por grep do CNPJ em vault/casos + SIAFE (19/11/2026)
+  pergunta: quais casos envolvem o CNPJ 09.077.954/0001-77?
+  entidade:
+    ref: 09.077.954/0001-77
+  ok:
+  - casos/degase-nova-rodovia-dezembro-pago-antes-de-servido.md
+  - casos/fserj-dirigentes-socios-de-contratadas.md
+  - casos/tac-recorrente-ses-fserj-2026.md
+  resposta: 'Restaurante Nova Rodovia 2007 Ltda aparece em 3 casos; pago pelo Estado: R$ 323.799.092,68 em 1137 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)'
+  contem: 09.077.954/0001-77
+  sql_pago:
+    credor: 09077954000177
+- id: X13
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 296100 pagou à empresa 24.006.302/0004-88?
+  entidade:
+    ref: UG 296100
+    com: 24.006.302/0004-88
+  ok:
+  - casos/ideas-instituto-saude-nao-capturado.md
+  resposta: Fundo Estadual de Saude - FES (UG 296100) pagou R$ 3.796.751.475,09 a I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE em 748 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 24.006.302/0004-88
+  sql_pago:
+    credor: '24006302000488'
+    ug: '296100'
+- id: X14
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 180100 pagou à empresa 00.801.512/0001-57?
+  entidade:
+    ref: UG 180100
+    com: 00.801.512/0001-57
+  ok:
+  - casos/agile-corp-seeduc-emergencia-do-incumbente.md
+  resposta: Secretaria de Estado de Educacao (UG 180100) pagou R$ 907.131.530,83 a AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA. em 1122 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 00.801.512/0001-57
+  sql_pago:
+    credor: 00801512000157
+    ug: '180100'
+- id: X15
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 294200 pagou à empresa 10.190.061/0001-12?
+  entidade:
+    ref: UG 294200
+    com: 10.190.061/0001-12
+  ok:
+  - casos/tac-recorrente-ses-fserj-2026.md
+  - casos/tac-socios-agentes-publicos-fserj-2026.md
+  resposta: Fundacao Saude do Estado do RIO de Janeiro (UG 294200) pagou R$ 811.954.771,90 a Tuise Representacao Comercial Ltda em 777 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 10.190.061/0001-12
+  sql_pago:
+    credor: '10190061000112'
+    ug: '294200'
+- id: X16
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 140100 pagou à empresa 21.602.870/0001-00?
+  entidade:
+    ref: UG 140100
+    com: 21.602.870/0001-00
+  ok:
+  - casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md
+  resposta: Secretaria de Estado da Casa Civil (UG 140100) pagou R$ 755.343.022,24 a Consorcio Central Da Cidadania em 230 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 21.602.870/0001-00
+  sql_pago:
+    credor: '21602870000100'
+    ug: '140100'
+- id: X17
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 404400 pagou à empresa 19.024.253/0001-23?
+  entidade:
+    ref: UG 404400
+    com: 19.024.253/0001-23
+  ok:
+  - casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md
+  - casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md
+  - casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md
+  - casos/faetec-scalle-outubro-2025-obras-sob-demanda.md
+  resposta: Fundacao Apoio a Escola Tecnica Estado RJ. (UG 404400) pagou R$ 486.713.640,37 a SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA em 585 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 19.024.253/0001-23
+  sql_pago:
+    credor: '19024253000123'
+    ug: '404400'
+- id: X18
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 243200 pagou à empresa 07.792.269/0001-05?
+  entidade:
+    ref: UG 243200
+    com: 07.792.269/0001-05
+  ok:
+  - casos/fotos-repetidas-lytoranea-cinco-contratos.md
+  resposta: Instituto Estadual do Ambiente (UG 243200) pagou R$ 455.104.626,47 a Construtora Lytoranea S.a. em 334 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 07.792.269/0001-05
+  sql_pago:
+    credor: 07792269000105
+    ug: '243200'
+- id: X19
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 660100 pagou à empresa 48.479.530/0001-90?
+  entidade:
+    ref: UG 660100
+    com: 48.479.530/0001-90
+  ok:
+  - casos/muv-sao-goncalo-grupo-vieira.md
+  resposta: Secretaria de Estado das Cidades (UG 660100) pagou R$ 266.279.346,37 a CONSORCIO MUV SAO GONCALO em 41 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: '48479530000190'
+  sql_pago:
+    credor: '48479530000190'
+    ug: '660100'
+- id: X20
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 133100 pagou à empresa 03.314.057/0001-53?
+  entidade:
+    ref: UG 133100
+    com: 03.314.057/0001-53
+  ok:
+  - casos/auditorias-gsi-decreto-50254-2026.md
+  resposta: ITERJ — Instituto de Terras e Cartografia do ERJ (UG 133100) pagou R$ 264.945.281,38 a Enge Prat Engenharia E Serviços Ltda. em 76 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 03.314.057/0001-53
+  sql_pago:
+    credor: '03314057000153'
+    ug: '133100'
+- id: X21
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 250100 pagou à empresa 02.102.125/0001-58?
+  entidade:
+    ref: UG 250100
+    com: 02.102.125/0001-58
+  ok:
+  - casos/seap-cassarotti-3ta-absorcao-lote13.md
+  resposta: Secretaria de Estado de Adm. Penitenciaria (UG 250100) pagou R$ 218.333.690,51 a CASSAROTTI FOODS - SERVICOS DE REFEICOES COLETIVAS E EVENTOS LTDA em 255 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 02.102.125/0001-58
+  sql_pago:
+    credor: 02102125000158
+    ug: '250100'
+- id: X22
+  grupo: cruzamento
+  origem: gabarito por grep (CNPJ + UG) em vault/casos + SIAFE (19/11/2026)
+  pergunta: o que a UG 044100 pagou à empresa 12.647.362/0001-58?
+  entidade:
+    ref: UG 044100
+    com: 12.647.362/0001-58
+  ok:
+  - casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md
+  resposta: Fundação Departamento de Estradas de Rodagem (UG 044100) pagou R$ 195.072.097,26 a Omega Construtora E Servicos Ltda. em 152 OB (SIAFE, só OB paga — filtro _ob_paga; medido em 19/11/2026)
+  contem: 12.647.362/0001-58
+  sql_pago:
+    credor: '12647362000158'
+    ug: '044100'

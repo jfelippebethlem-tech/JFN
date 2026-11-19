@@ -162,7 +162,7 @@ def _perna_entidade(pergunta: str) -> list[dict]:
             out += F.por_identificador(con, tipo, valor)
     finally:
         con.close()
-    return out
+    return sorted(out, key=lambda it: not it["nota"].startswith("casos/"))   # nota de caso antes da gerada (estável)
 
 
 _FUNCOES = {"entidade": _perna_entidade, "local": _perna_local, "brain": _perna_brain, "khoj": _perna_khoj}

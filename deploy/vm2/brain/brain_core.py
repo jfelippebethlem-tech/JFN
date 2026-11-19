@@ -259,6 +259,28 @@ def entity(ref: str, com: str | None = None, tipo: str | None = None) -> dict:
         return N.entidade(c, ref, com=com, tipo=tipo)
 
 
+# memórias geradas em série (uma por processo/alerta/commit): texto parecido e números diferentes POR DESENHO —
+# compará-las entre si só gera par falso
+_SERIE = "^(pericia-agente|licao-pericia|alerta|conferencia-opus|commit|couto|emenda|sobrepreco|derivado):"
+
+
+def similar_pairs(minimo: float = 0.90, limite: int = 200) -> list[dict]:
+    """Pares de memórias ATIVAS muito parecidas (fora das séries) — insumo da consolidação: mesmo fato dito duas vezes,
+    ou o mesmo fato com número diferente. Só lista; ninguém é fundido aqui."""
+    with pool().connection() as c:
+        rows = c.execute("""
+          WITH m AS (SELECT id, kind, subject, content, chave, source, created_at, emb FROM memories
+                     WHERE status='ativa' AND emb IS NOT NULL AND (chave IS NULL OR chave !~ %(serie)s))
+          SELECT a.id, b.id, 1-(a.emb <=> b.emb) AS sim, a.kind, a.subject, a.content, a.chave, a.created_at,
+                 b.kind, b.subject, b.content, b.chave, b.created_at
+          FROM m a JOIN m b ON a.id < b.id
+          WHERE 1-(a.emb <=> b.emb) >= %(min)s ORDER BY sim DESC LIMIT %(lim)s""",
+                         {"serie": _SERIE, "min": minimo, "lim": limite}).fetchall()
+    lado = lambda r, i: {"id": r[0 if i == 3 else 1], "kind": r[i], "subject": r[i + 1], "content": r[i + 2],  # noqa: E731
+                         "chave": r[i + 3], "created_at": r[i + 4].isoformat()}
+    return [{"sim": round(float(r[2]), 4), "a": lado(r, 3), "b": lado(r, 8)} for r in rows]
+
+
 def proposals(limit: int = 50) -> list[dict]:
     """Fila de revisão: o que a consolidação PROPÔS e ninguém aceitou ainda."""
     with pool().connection() as c:

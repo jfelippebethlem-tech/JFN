@@ -149,6 +149,11 @@ def api_history(ref: str):
     return B.historico(ref)
 
 
+@app.get("/api/consolidacao/pares")
+def api_pares(minimo: float = 0.90, limite: int = 200):
+    return B.similar_pairs(max(0.5, min(minimo, 0.999)), min(limite, 500))
+
+
 @app.get("/api/proposals")
 def api_proposals(limit: int = 50):
     return B.proposals(limit)

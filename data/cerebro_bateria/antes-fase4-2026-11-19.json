@@ -1,0 +1,558 @@
+{
+ "rotulo": "antes-fase4-busca-antiga",
+ "medido_em": "2026-11-19T09:04:41-0300",
+ "perguntas": 22,
+ "estado": "VERIFICADO",
+ "placar": {
+  "brain_mcp": {
+   "total": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.143,
+    "mediana_s": 0.42,
+    "max_s": 0.56,
+    "recall1": 3,
+    "recall5": 3,
+    "recall10": 4,
+    "achadas": 4,
+    "esperadas": 58,
+    "completas": 2
+   },
+   "cruzamento": {
+    "n": 22,
+    "indisponivel": 0,
+    "mrr10": 0.143,
+    "mediana_s": 0.42,
+    "max_s": 0.56,
+    "recall1": 3,
+    "recall5": 3,
+    "recall10": 4,
+    "achadas": 4,
+    "esperadas": 58,
+    "completas": 2
+   }
+  }
+ },
+ "linhas": [
+  {
+   "id": "X01",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 19.024.253/0001-23?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+    "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+    "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md",
+    "casos/fotos-repetidas-acervo-2026-11-18.md",
+    "casos/gestao-couto-analise-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.501,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/itens/couto/d10-29622057000104.md",
+     "jfn/pericias-agente/270064_000562_2023.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 6
+   }
+  },
+  {
+   "id": "X02",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 18.546.232/0001-05?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+    "casos/degase-manutec-contrato-008-2020-lote-v.md",
+    "casos/degase-manutec-dezembro-2024-pago-em-3-de-dezembro.md",
+    "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.501,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "aprendizados/processo-360.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 5
+   }
+  },
+  {
+   "id": "X03",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 12.647.362/0001-58?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md",
+    "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md",
+    "casos/fotos-repetidas-acervo-2026-11-18.md",
+    "casos/inea-omega-tac-acima-do-teto-queimados.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.423,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "notas/revisao-cetica-2026-11-13.md",
+     "aprendizados/processo-360.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X04",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 17.298.685/0001-05?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/degase-b7-manutec-cisao-apos-impedimento.md",
+    "casos/degase-manutec-contrato-008-2020-lote-v.md",
+    "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.562,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "casos/grupo-caneca-fserj.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X05",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 28.470.707/0001-80?",
+   "ok": [
+    "casos/fserj-dirigentes-socios-de-contratadas.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+    "casos/idesi-fundacao-saude-rj.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.405,
+    "top": [
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/sintese-casos-2026-06-12.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/pericias-agente/270064_000562_2023.md",
+     "jfn/pericias-agente/350010_033855_2024.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X06",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 01.920.177/0001-79?",
+   "ok": [
+    "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+    "casos/seap-milano-creche-dezembro-pago-antes-de-servido.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.374,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/pericias-agente/270064_000562_2023.md",
+     "casos/grupo-caneca-fserj.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X07",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 10.190.061/0001-12?",
+   "ok": [
+    "casos/angra-dos-reis-representacoes-tce-2026.md",
+    "casos/tac-recorrente-ses-fserj-2026.md",
+    "casos/tac-socios-agentes-publicos-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.342,
+    "top": [
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/sintese-casos-2026-06-12.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/itens/couto/d10-29622057000104.md",
+     "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X08",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 03.314.057/0001-53?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/pericia-bombeiros-funesbom-2024.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.348,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/itens/couto/d10-29622057000104.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X09",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 10.555.527/0001-36?",
+   "ok": [
+    "casos/cafe-do-trabalhador-lote05-acf-pago-pela-capacidade.md",
+    "casos/rj-alimenta-mage-tac-acf-pago-pelo-teto-ofertado.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.449,
+    "top": [
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/sintese-casos-2026-06-12.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "jfn/pericias-agente/270064_000562_2023.md",
+     "jfn/itens/couto/d10-29622057000104.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X10",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 24.977.781/0001-37?",
+   "ok": [
+    "casos/ceasa-jrf-dezembro-2024-atestado-dia-5-e-lixo-extra.md",
+    "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md",
+    "casos/gestao-couto-analise-2026-11-13.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.489,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "jfn/pericias-agente/270064_000562_2023.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "aprendizados/processo-360.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X11",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 04.375.510/0001-02?",
+   "ok": [
+    "casos/degase-mendes-dos-santos-dezembro-pago-antes-de-servido.md",
+    "casos/gestao-couto-analise-2026-11-13.md",
+    "casos/tac-recorrente-sedsodh-2023-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.465,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "aprendizados/processo-360.md",
+     "jfn/itens/couto/d10-29622057000104.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X12",
+   "grupo": "cruzamento",
+   "pergunta": "quais casos envolvem o CNPJ 09.077.954/0001-77?",
+   "ok": [
+    "casos/degase-nova-rodovia-dezembro-pago-antes-de-servido.md",
+    "casos/fserj-dirigentes-socios-de-contratadas.md",
+    "casos/tac-recorrente-ses-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.364,
+    "top": [
+     "notas/sintese-casos-2026-06-12.md",
+     "jfn/pericias-agente/150001_003857_2026.md",
+     "notas/cge-irregularidades-x-jfn-2026-11-13.md",
+     "casos/idesi-fserj-minuta-requerimento-informacoes.md",
+     "jfn/pericias-agente/270064_000562_2023.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 3
+   }
+  },
+  {
+   "id": "X13",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 296100 pagou à empresa 24.006.302/0004-88?",
+   "ok": [
+    "casos/ideas-instituto-saude-nao-capturado.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.389,
+    "top": [
+     "casos/ceasa-jrf-dezembro-tonelagem-antes-do-mes.md",
+     "casos/degase-k8com-dezembro-pago-antes-de-servido.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X14",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 180100 pagou à empresa 00.801.512/0001-57?",
+   "ok": [
+    "casos/agile-corp-seeduc-emergencia-do-incumbente.md"
+   ],
+   "brain_mcp": {
+    "posicao": 7,
+    "s": 0.412,
+    "top": [
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md",
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "hipoteses/2026-07-10-idesi-fachada-alto-valor.md",
+     "casos/secc-ioerj-contrato-009-2025-valor-acima-da-inexigibilidade.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X15",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 294200 pagou à empresa 10.190.061/0001-12?",
+   "ok": [
+    "casos/tac-recorrente-ses-fserj-2026.md",
+    "casos/tac-socios-agentes-publicos-fserj-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.391,
+    "top": [
+     "casos/tac-recorrente-ses-fserj-2026.md",
+     "casos/degase-k8com-dezembro-pago-antes-de-servido.md",
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md",
+     "casos/grupo-caneca-fserj.md",
+     "RETOMADA-2026-08-25.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 2
+   }
+  },
+  {
+   "id": "X16",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 140100 pagou à empresa 21.602.870/0001-00?",
+   "ok": [
+    "casos/poupa-tempo-rj-cidadao-faixa-dobrada-aditivo-25.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.416,
+    "top": [
+     "aprendizados/contagem-redonda-e-assinatura-de-truncamento.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/grana-guarailha-cotacoes-mesmo-telefone.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "RETOMADA-2026-08-25.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X17",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 404400 pagou à empresa 19.024.253/0001-23?",
+   "ok": [
+    "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+    "casos/faetec-scalle-contrato-001-2023-execucao-acima-do-valor.md",
+    "casos/faetec-scalle-contrato-062-2022-acrescimo-49pct.md",
+    "casos/faetec-scalle-outubro-2025-obras-sob-demanda.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.397,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/grupo-caneca-fserj.md",
+     "jfn/pericias-agente/150001_004067_2025.md",
+     "jfn/pericias-agente/080001_035583_2026.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 4
+   }
+  },
+  {
+   "id": "X18",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 243200 pagou à empresa 07.792.269/0001-05?",
+   "ok": [
+    "casos/fotos-repetidas-lytoranea-cinco-contratos.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.425,
+    "top": [
+     "casos/b7-empreendimentos-pago-sob-impedimento-do-tce-rj.md",
+     "jfn/pericias-agente/270098_000009_2024.md",
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "RETOMADA-2026-08-25.md",
+     "jfn/pericias-agente/150001_004067_2025.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X19",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 660100 pagou à empresa 48.479.530/0001-90?",
+   "ok": [
+    "casos/muv-sao-goncalo-grupo-vieira.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.424,
+    "top": [
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md",
+     "hipoteses/2026-07-10-idesi-fachada-alto-valor.md",
+     "casos/agile-corp-seeduc-emergencia-do-incumbente.md",
+     "casos/degase-k8com-dezembro-pago-antes-de-servido.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X20",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 133100 pagou à empresa 03.314.057/0001-53?",
+   "ok": [
+    "casos/auditorias-gsi-decreto-50254-2026.md"
+   ],
+   "brain_mcp": {
+    "posicao": 1,
+    "s": 0.397,
+    "top": [
+     "casos/auditorias-gsi-decreto-50254-2026.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "jfn/pericias-agente/150001_004067_2025.md",
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "hipoteses/2026-07-10-idesi-fachada-alto-valor.md"
+    ],
+    "erro": null,
+    "achadas": 1,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X21",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 250100 pagou à empresa 02.102.125/0001-58?",
+   "ok": [
+    "casos/seap-cassarotti-3ta-absorcao-lote13.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.457,
+    "top": [
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md",
+     "casos/secc-ioerj-contrato-009-2025-valor-acima-da-inexigibilidade.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "RETOMADA-2026-08-25.md",
+     "casos/secid-novacap-recap-lote5-aditivo-49.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  },
+  {
+   "id": "X22",
+   "grupo": "cruzamento",
+   "pergunta": "o que a UG 044100 pagou à empresa 12.647.362/0001-58?",
+   "ok": [
+    "casos/der-omega-ob-antes-da-analise-e-da-autorizacao.md"
+   ],
+   "brain_mcp": {
+    "posicao": null,
+    "s": 0.514,
+    "top": [
+     "casos/degase-k8com-dezembro-pago-antes-de-servido.md",
+     "casos/degase-manutec-repactuacao-24-por-cento-cct-6-por-cento.md",
+     "jfn/pericias-agente/080001_035583_2026.md",
+     "hipoteses/2026-07-10-idesi-fachada-alto-valor.md",
+     "casos/nrtt-blindados-pm-fim-de-exercicio.md"
+    ],
+    "erro": null,
+    "achadas": 0,
+    "esperadas": 1
+   }
+  }
+ ]
+}

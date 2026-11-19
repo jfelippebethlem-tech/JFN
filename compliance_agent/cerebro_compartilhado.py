@@ -23,6 +23,8 @@ CLI (para agentes sem o MCP carregado — subagentes, cron, /cc):
     python -m compliance_agent.cerebro_compartilhado buscar "<texto>" [-k 8]
     python -m compliance_agent.cerebro_compartilhado recordar "<texto>" [--kind decisoria]
     python -m compliance_agent.cerebro_compartilhado lembrar --chave K --kind semantica [--assunto A] "<fato>"
+    python -m compliance_agent.cerebro_compartilhado entidade "<CNPJ | nº SEI | UG 133100 | nº OB>" [--com "<outra>"]
+    python -m compliance_agent.cerebro_compartilhado historico "<chave | id>"
     python -m compliance_agent.cerebro_compartilhado estado
 """
 from __future__ import annotations
@@ -76,10 +78,11 @@ def recusar(texto: str) -> str | None:
     return None
 
 
-def _http(caminho: str, corpo: dict | None = None):
+def _http(caminho: str, corpo: dict | None = None, mcp: bool = False):
     req = urllib.request.Request(URL + caminho, method="POST" if corpo is not None else "GET",
                                  data=json.dumps(corpo).encode() if corpo is not None else None,
-                                 headers={"Content-Type": "application/json", "Accept": "application/json"})
+                                 headers={"Content-Type": "application/json", "Accept":
+                                          "application/json, text/event-stream" if mcp else "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=TETO_S) as r:
             return json.loads(r.read().decode("utf-8"))
@@ -100,6 +103,33 @@ def recordar(q: str, k: int = 8, kind: str | None = None) -> list[dict]:
 
 def stats() -> dict:
     return _http("/api/stats")
+
+
+def entidade(ref: str, com: str | None = None) -> dict:
+    """Cruzamento por entidade (fase 4): o que cita o CNPJ / processo SEI / UG / OB — e, com `com`, só o que cita os dois."""
+    extra = f"&com={urllib.parse.quote(com)}" if com else ""
+    return _http(f"/api/entity?ref={urllib.parse.quote(ref)}{extra}")
+
+
+def historico(ref: str) -> list[dict]:
+    """Versões de um fato (chave ou id): o que se disse, quando foi registrado, quando deixou de valer."""
+    return _http(f"/api/history?ref={urllib.parse.quote(ref)}")
+
+
+def mcp(ferramenta: str, argumentos: dict):
+    """Chama uma ferramenta do MCP do cérebro como um agente chama (JSON-RPC em /mcp/)."""
+    res = _http("/mcp/", {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                          "params": {"name": ferramenta, "arguments": argumentos}}, mcp=True)
+    try:
+        res = res["result"]
+        if res.get("isError"):
+            raise CerebroIndisponivel(f"mcp {ferramenta}: {str(res.get('content'))[:160]}")
+        sc = res.get("structuredContent")
+        if sc is None:                              # ferramenta que devolve dict livre: o JSON vem como texto
+            return json.loads(res["content"][0]["text"])
+        return sc.get("result", sc) if isinstance(sc, dict) else sc
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise CerebroIndisponivel(f"mcp {ferramenta}: resposta ilegível ({exc})") from exc
 
 
 def _con(db: Path | None = None) -> sqlite3.Connection:
@@ -166,7 +196,7 @@ def enviar_pendentes(limite: int = 20, con: sqlite3.Connection | None = None) ->
             "ORDER BY criado_em LIMIT ?", (limite,)).fetchall()
         for chave, kind, assunto, conteudo, h, mem_id in linhas:
             corpo = {"content": conteudo, "kind": kind, "subject": assunto, "source": FONTE, "confidence": 0.9,
-                     "supersedes": mem_id, "tags": ["jfn", "propagacao"]}
+                     "supersedes": mem_id, "tags": ["jfn", "propagacao"], "chave": chave}
             try:
                 resp = _http("/api/memories", corpo)
                 novo_id = int(resp["id"])
@@ -274,6 +304,11 @@ def main(argv=None) -> int:
     p.add_argument("--chave", required=True)
     p.add_argument("--kind", choices=KINDS, default="semantica")
     p.add_argument("--assunto")
+    p = sub.add_parser("entidade")
+    p.add_argument("texto", help="CNPJ, nº de processo SEI, 'UG 133100' ou nº de OB")
+    p.add_argument("--com", help="segunda entidade: só o que cita as duas")
+    p = sub.add_parser("historico")
+    p.add_argument("texto", help="chave ou id do fato")
     sub.add_parser("estado")
     a = ap.parse_args(argv)
     try:
@@ -283,6 +318,10 @@ def main(argv=None) -> int:
             print(json.dumps(buscar(a.texto, a.k), ensure_ascii=False, indent=1))
         elif a.cmd == "recordar":
             print(json.dumps(recordar(a.texto, a.k, a.kind), ensure_ascii=False, indent=1))
+        elif a.cmd == "entidade":
+            print(json.dumps(entidade(a.texto, a.com), ensure_ascii=False, indent=1))
+        elif a.cmd == "historico":
+            print(json.dumps(historico(a.texto), ensure_ascii=False, indent=1))
         elif a.cmd == "lembrar":
             print(json.dumps(lembrar(a.chave, a.texto, a.kind, a.assunto), ensure_ascii=False))
         else:
