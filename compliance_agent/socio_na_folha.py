@@ -227,7 +227,7 @@ def calcular(db_path: str | None = None) -> dict:
     try:
         try:
             ug_nome = json.loads((_REPO / "data" / "ug_index_siafe.json").read_text())["ugs"]
-        except Exception:  # noqa: BLE001 — índice ausente: UG sem nome, número intacto
+        except (OSError, ValueError, KeyError):  # índice ausente/ilegível: UG sem nome, número intacto
             ug_nome = {}
         fora: dict = {}
         socios = _socios_alvo(con, fora)
