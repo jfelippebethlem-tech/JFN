@@ -1,0 +1,22 @@
+id: carona_aderente_vedado
+nome: Carona em ata cujo instrumento não admite o órgão aderente
+familia: carona_adesao_contratacao_direta
+origem:
+  processo: SEI-420001/003312/2024
+  caso: CDEL × SEGOV — edital FDE-SP 36/00456/23/05 item 15.1 (data/pericia_agentes/420001_003312_2024.json); também SEI-150002/000471/2025 e SEI-150002/001417/2025 (CIM Jequitinhonha/MG, foro Diamantina)
+norma:
+  - Lei 8.666/1993 arts. 3º e 41 (vinculação ao instrumento convocatório)
+  - Lei 14.133/2021 art. 86 §3º (red. Lei 14.770/2023) — órgão estadual só adere a ata de gerenciador federal, estadual ou distrital
+  - Decreto RJ 46.751/2019 art. 26 (carona em ata de outro ente)
+sinal: >
+  Processo com prova de adesão EXTERNA deste órgão (NE "Adesão ao Registro de Preços Externo" ou ato de adesão) e,
+  nos autos: (V1) cláusula de limites subjetivos que nomeia como aderentes só entes de outra UF (forte) ou só a
+  Administração federal (médio); (V2) vedação de adesão por não participantes, sem condicionante (médio);
+  (V3) ata gerenciada por município (forte sob a 14.133) ou consórcio municipal de outra UF (médio).
+explicacoes_inocentes:
+  - "Anuência expressa do gerenciador + decreto do ente aderente — não afasta a cláusula do próprio edital"
+  - "Cláusula do edital do PRÓPRIO órgão (gerenciador) — fora: exige prova de adesão deste órgão"
+  - "Cláusula permissiva (qualquer órgão federal, estadual, municipal; Estado do RJ) — não conta"
+  - "Vedação do art. 86 §8º (órgãos federais) ou condicional (limite, prazo, sem anuência) — não conta"
+controle_positivo: SEI-420001/003312/2024 doc 10 item 15.1 ("Administração Pública do Estado de São Paulo e de Municípios paulistas") + doc 14 NE "12 - Adesão ao Registro de Preços Externo"
+controle_negativo: SEI-420001/006323/2025 (STEM — carona em ata FEDERAL do IFMT, cláusula permissiva) — sem sinal

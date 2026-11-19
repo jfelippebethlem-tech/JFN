@@ -1,0 +1,19 @@
+id: inexigibilidade_bem_comum
+nome: Inexigibilidade/exclusividade contradita pelo próprio TR (bem comum, outros fornecedores)
+familia: carona_adesao_contratacao_direta
+origem:
+  processo: SEI-030001/056588/2025
+  caso: MVT (TR 1.4 "bem comum … facilmente encontrados no mercado") e Estudo Play SEI-030001/064253/2025 (TR admite "outras editoras")
+norma:
+  - Lei 14.133/2021 art. 74 I e §1º (exclusividade comprovada; inviabilidade de competição)
+  - Lei 14.133/2021 art. 6º XIII (bem comum = padrões objetivamente definidos por especificações usuais de mercado)
+sinal: >
+  Processo que se declara inexigibilidade (NE "06 - Inexigibilidade" ou fundamento art. 74/25) e cujo TR/ETP afirma
+  (C1) objeto comum, "facilmente definidos e encontrados no mercado", e/ou (C2) admite outras editoras/fornecedores/
+  marcas similares. C1+C2 no art. 74 I = forte; um só = médio (C1 pode ser cópia do modelo de TR).
+explicacoes_inocentes:
+  - "Item 'bem comum' herdado do modelo de TR — por isso C1 sozinho é médio"
+  - "Atestado de exclusividade/direito autoral juntado — conferir antes de graduar"
+  - "Negação ('não é caracterizado como comum', 'não há outras editoras') — descartada"
+controle_positivo: SEI-030001/064253/2025 doc 9 (TR 1.3 + nota ao 9.1 "outras editoras") × doc 8 (art. 74, I)
+controle_negativo: SEI-030001/087803/2025 (pregão — sem inexigibilidade) e TR que nega ser comum — testes

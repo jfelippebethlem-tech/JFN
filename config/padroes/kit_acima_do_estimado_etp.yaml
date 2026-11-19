@@ -1,0 +1,18 @@
+id: kit_acima_do_estimado_etp
+nome: Preço unitário contratado acima da estimativa do próprio ETP/TR (por item SIGA)
+familia: carona_adesao_contratacao_direta
+origem:
+  processo: SEI-030001/087803/2025
+  caso: Brasil Comércio e EBN SEI-030001/063630/2025 — kit de uniforme ID SIGA 184730 estimado em R$ 278,41 no ETP; contratado a R$ 309,80 / R$ 306,50
+norma:
+  - Lei 14.133/2021 art. 59 III (desclassificação de proposta acima do orçamento estimado)
+  - Lei 14.133/2021 art. 23 (estimativa)
+sinal: >
+  Item casado pelo ID do catálogo SIGA em ETP/TR/pesquisa (estimativa) e contrato/ata (contratado); preço só vale com
+  a trinca quantidade × unitário = total (±0,5%). Contratado > MAIOR estimativa dos autos: ≥ 5% forte; 1–5% médio.
+explicacoes_inocentes:
+  - "Estimativa atualizada no edital não juntado — vale a maior estimativa dos autos"
+  - "Ata de outro processo com estimativa própria — conferir a estimativa do certame"
+  - "Número solto (código, CNPJ, página) — sem trinca não vira preço"
+controle_positivo: SEI-030001/087803/2025 doc 15 (ETP, R$ 278,41) × doc 18 (contrato, R$ 309,80) = +11,27%
+controle_negativo: item 173149 (tênis) do mesmo processo — contratado R$ 76,68 abaixo do estimado R$ 92,85

@@ -1,0 +1,19 @@
+id: preco_de_fonte_unica_interessada
+nome: Estimativa de preço de fonte única ou da tabela do próprio vendedor
+familia: carona_adesao_contratacao_direta
+origem:
+  processo: SEI-420001/003312/2024
+  caso: CDEL ("a SEGOV localizou apenas a coleção…", preço de capa no site da editora) e STEM SEI-420001/006323/2025 (preço do sítio da distribuidora educarmelhor.com)
+norma:
+  - Lei 14.133/2021 art. 23 §1º (cesta de preços) e §4º (contratação direta — notas fiscais a outros contratantes)
+  - Lei 8.666/1993 art. 26 parágrafo único III (justificativa do preço)
+sinal: >
+  Em TR/ETP/pesquisa (não contrato/edital): (F1) ato de fonte única — "localizou apenas", "apenas uma cotação foi
+  obtida", "único orçamento recebido"; (F2) estimativa "com base" em site/URL/tabela/catálogo/preço de capa/proposta
+  da própria empresa. F1+F2 forte; um só médio. Frase normativa ("deverá/poderá/será") antes do trecho é descartada.
+explicacoes_inocentes:
+  - "Obra autoral de editora única: preço de capa é o único preço público — exige NF a outros contratantes"
+  - "Ata com desconto sobre tabela — a tabela é do fornecedor; pedir comparativo"
+  - "Cláusula que manda pesquisar (dever-ser) — não conta"
+controle_positivo: SEI-420001/003312/2024 doc 7 (TR) — "localizou apenas a coleção" + "preços de capa … no site das respectivas editoras"
+controle_negativo: TR com "deverá ser obtido com base em no mínimo três cotações… Foram obtidas cinco cotações" — teste unitário; SEI-030001/087803/2025 (pregão) sem sinal

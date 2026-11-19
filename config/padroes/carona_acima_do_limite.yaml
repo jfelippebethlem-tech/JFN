@@ -1,0 +1,22 @@
+id: carona_acima_do_limite
+nome: Carona acima do limite da ata, ata fora de vigência ou contrato 2025+ sob a Lei 8.666
+familia: carona_adesao_contratacao_direta
+origem:
+  processo: SEI-420001/006323/2025
+  caso: STEM × SEGOV — ARP IFMT 90048/2024 homologou 5.000.000 un × R$ 0,66 = R$ 3,3 mi (PNCP); pago R$ 25.662.000,00 (2025OB06215); Globaltec SEI-260005/010324/2025 (contrato 06/05/2025, fundamento Lei 8.666)
+norma:
+  - Lei 14.133/2021 art. 86 §4º (50% por aderente) e §5º (dobro do total)
+  - Decreto 7.892/2013 art. 22 §§3º-4º (regime da Lei 8.666)
+  - Lei 14.133/2021 arts. 191 e 193 (revogação da Lei 8.666 em 30/12/2023)
+sinal: >
+  Ata citada nos autos (nº/ano) achada no PNCP pelo CNPJ do gerenciador; OB paga do processo (SIAFE, piso) > 50% do
+  valor HOMOLOGADO da ata (>1× forte; 0,5–1× médio). Soma das adesões do acervo à mesma ata > 2× (forte). NE de
+  adesão depois do fim da vigência (médio). Extrato assinado em 2025+ com "FUNDAMENTO: Lei 8.666", credor no mesmo
+  extrato (médio). Limites importados do X4 (detectores/x4_carona_abusiva.py).
+explicacoes_inocentes:
+  - "OB do processo soma mais de uma ata/contrato — conferir NL/NF"
+  - "Ata em 'valor de capa'/desconto: medir em unidades de capa (pago ÷ (1 − desconto))"
+  - "Ata da Lei 8.666 licitada até 29/12/2023 e ainda vigente na adesão — pedir a ata e a vigência"
+  - "Extrato vizinho na página do DOERJ — exige o nome do credor no extrato"
+controle_positivo: SEI-420001/006323/2025 — 25.662.000,00 / 3.300.000,00 = 7,78× o homologado
+controle_negativo: adesão de R$ 1,0 mi na mesma ata (30%) e extrato de 2023 — testes unitários
