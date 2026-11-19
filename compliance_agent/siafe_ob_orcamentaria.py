@@ -302,17 +302,42 @@ def _impressao(usuario: str, senha: str) -> str:
     return hmac.new(chave, f"{usuario}\0{senha}".encode(), hashlib.sha256).hexdigest()
 
 
-def _senha_bloqueada(usuario: str, senha: str) -> bool:
+# 18/11/2026 22h: a recusa das 05:10 foi PASSAGEIRA — o dono confirmou a mesma senha e o login entrou às 22h. A trava
+# permanente prendeu o SIAFE o dia inteiro. Agora a recusa trava por TRAVA_HORAS (uma tentativa por dia, no diário);
+# só RECUSAS_PARA_TRAVAR seguidas da mesma senha travam até o .env mudar (protege a conta do bloqueio).
+TRAVA_HORAS = 20.0
+RECUSAS_PARA_TRAVAR = 3
+
+
+def _ler_trava() -> dict:
     try:
-        return json.loads(_TRAVA_SENHA.read_text(encoding="utf-8")).get("impressao") == _impressao(usuario, senha)
-    except (OSError, ValueError, AttributeError):
+        d = json.loads(_TRAVA_SENHA.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _senha_bloqueada(usuario: str, senha: str, agora: float | None = None) -> bool:
+    d = _ler_trava()
+    if d.get("impressao") != _impressao(usuario, senha):
         return False
+    if int(d.get("recusas") or 1) >= RECUSAS_PARA_TRAVAR:
+        return True
+    agora = time.time() if agora is None else agora
+    try:
+        desde = time.mktime(time.strptime(str(d.get("desde")), "%Y-%m-%d %H:%M:%S"))
+    except (ValueError, OverflowError):
+        return True                                    # carimbo ilegível: lado seguro, não tenta
+    return agora - desde < TRAVA_HORAS * 3600
 
 
 def _registrar_recusa(usuario: str, senha: str) -> None:
     try:
+        imp = _impressao(usuario, senha)
+        ant = _ler_trava()
+        recusas = int(ant.get("recusas") or 1) + 1 if ant.get("impressao") == imp else 1
         _TRAVA_SENHA.parent.mkdir(parents=True, exist_ok=True)
-        _TRAVA_SENHA.write_text(json.dumps({"impressao": _impressao(usuario, senha), "desde": time.strftime("%F %T")}),
+        _TRAVA_SENHA.write_text(json.dumps({"impressao": imp, "desde": time.strftime("%F %T"), "recusas": recusas}),
                                 encoding="utf-8")
         os.chmod(_TRAVA_SENHA, 0o600)
     except OSError as exc:
