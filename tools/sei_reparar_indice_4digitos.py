@@ -31,7 +31,7 @@ sys.path.insert(0, str(_REPO))
 from tools.sei_arquivar import arquivar  # noqa: E402
 
 ARQUIVO, CACHE = _REPO / "data" / "sei_arquivo", _REPO / "data" / "sei_cache"
-OFICINA = _REPO / "data" / "sei_reparo_idx4"
+OFICINA = _REPO / "data" / "backups" / "indice4_oficina"     # gitignored e no mesmo disco (a troca é rename)
 BACKUP = _REPO / "data" / "backups" / "indice4_20261118"
 FRIO = "vm2:arquivo_frio/sei_cache"
 CAMPOS_OCR = ("ocr", "ocr_motor", "ocr_paginas", "ocr_cortado", "ocr_anterior",
