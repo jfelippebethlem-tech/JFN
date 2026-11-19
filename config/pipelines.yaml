@@ -280,5 +280,6 @@ pipelines:
     grupo: qualidade
     nota: >-
       juiz subjetivo diário (Claude pela ASSINATURA, `backend="cli"` — nunca API paga; teto de 12 chamadas/dia no
-      motor). Cron sugerido 08:10. O remédio roda o próprio juiz: ele grava o arquivo mesmo quando a assinatura
+      motor). Cron 00:05 (19/11/2026: às 08:10 as perícias da madrugada já tinham gasto o tempo diário do motor e o
+      juiz não julgava desde 15/11). O remédio roda o próprio juiz: ele grava o arquivo mesmo quando a assinatura
       está sem cota (rodada PENDENTE), então o SLO mede a TENTATIVA; o silêncio de JUÍZO é do sensor CST-15.
