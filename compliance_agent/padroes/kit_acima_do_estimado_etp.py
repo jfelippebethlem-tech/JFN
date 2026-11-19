@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _carona_comum as cc
+from compliance_agent.reporting.intel_base import moeda
 
 ID = "kit_acima_do_estimado_etp"
 VICIO = "homologado_acima_estimado"  # knowledge/catalogo_vicios.py
@@ -120,8 +121,8 @@ def varrer(limite: int | None = None) -> dict:
         ob = obs.get(cc.canon(t))
         achados.append({
             "processo": cc.canon(t), "grau": itens[0]["grau"], "sinal": "unitario_acima_do_estimado",
-            "itens": itens, "prova": " || ".join(f"ID {i['id_siga']}: R$ {i['contratado']:,.2f} × estimado R$ "
-                                                   f"{i['estimado']:,.2f} (+{i['excesso_pct']}%) — {i['prova']}"
+            "itens": itens, "prova": " || ".join(f"ID {i['id_siga']}: R$ {moeda(i['contratado'])} × estimado R$ "
+                                                   f"{moeda(i['estimado'])} (+{i['excesso_pct']}%) — {i['prova']}"
                                                    for i in itens[:4]),
             "orgao": cc.orgao(ds), "credor": cc.credor_principal(ob),
             "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],

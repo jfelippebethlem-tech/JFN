@@ -26,6 +26,7 @@ import requests
 
 from compliance_agent.detectores.x4_carona_abusiva import LIMITE_ADESAO_INDIVIDUAL, LIMITE_TOTAL_ADESOES
 from compliance_agent.padroes import _carona_comum as cc
+from compliance_agent.reporting.intel_base import moeda
 from compliance_agent.padroes import carona_aderente_vedado as cav
 
 ID = "carona_acima_do_limite"
@@ -216,8 +217,8 @@ def limite_aderente(pago: float, ata: dict) -> dict | None:
                       for i in ata.get("itens", [])[:4] for r in i.get("resultados", [])[:2])
     return {"sinal": "acima_50pct_aderente", "grau": "forte" if razao > 1 else "medio",
             "razao_pago_sobre_homologado": round(razao, 2),
-            "prova": f"PNCP ata {ata.get('controle_ata')} ({ata.get('orgao')}): homologado R$ {tot:,.2f}; {itens}"
-                     f" | SIAFE pago (piso) R$ {pago:,.2f} = {razao:.2f}× o homologado"
+            "prova": f"PNCP ata {ata.get('controle_ata')} ({ata.get('orgao')}): homologado R$ {moeda(tot)}; {itens}"
+                     f" | SIAFE pago (piso) R$ {moeda(pago)} = {str(round(razao, 2)).replace(".", ",")}× o homologado"
                      + (f" | autos: {ata['_prova_autos']}" if ata.get("_prova_autos") else "")}
 
 
@@ -303,8 +304,8 @@ def varrer(limite: int | None = None) -> dict:
             for canon, v in lst:
                 ach = next((a for a in achados if a["processo"] == canon), None)
                 s = {"sinal": "acima_dobro_total", "grau": "forte",
-                     "prova": f"PNCP ata {ctrl}: homologado R$ {tot:,.2f}; {len(lst)} adesões no acervo somam "
-                              f"R$ {soma:,.2f} ({soma / tot:.2f}×): " + ", ".join(f"{c} R$ {x:,.2f}" for c, x in lst)}
+                     "prova": f"PNCP ata {ctrl}: homologado R$ {moeda(tot)}; {len(lst)} adesões no acervo somam "
+                              f"R$ {moeda(soma)} ({str(round(soma / tot, 2)).replace(".", ",")}×): " + ", ".join(f"{c} R$ {moeda(x)}" for c, x in lst)}
                 if ach:
                     ach["sinais"].append(s)
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
