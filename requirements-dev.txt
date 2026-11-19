@@ -15,3 +15,4 @@
 pytest>=8.0            # a suíte
 pytest-timeout>=2.3    # `--timeout` por teste; sem ele, um teste pendurado trava a rodada
 ruff>=0.6              # lint chamado pelo hook de pre-commit
+shapely>=2.1          # tools/v70_mapa_alvos.py: contornos clicáveis do relevo (etapa de montagem do painel, VM-1)

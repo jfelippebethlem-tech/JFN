@@ -42,7 +42,7 @@ EXCECOES = {("oci", "tools/criar_vm_oracle2.py")}
 # 18/11/2026 — scripts de render da abertura do painel (v68/v69): rodam DENTRO do Blender (bpy/bmesh/mathutils vêm
 # do Python embutido dele) ou na GPU do it-campo (torch/diffusers/transformers da venv de lá), nunca na venv do JFN.
 # Presos a cada arquivo: o mesmo import em qualquer outro lugar volta a falhar.
-EXCECOES |= {(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
+EXCECOES |= {(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils", "bpy_extras")}
 EXCECOES |= {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
 EXCECOES |= {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")}
 # 18/11/2026 — OCR de reserva: o motor (RapidOCR/ONNX) roda na venv própria dos nós (vm2:~/ocr-reserva/.venv,
@@ -145,7 +145,7 @@ def test_quem_monta_venv_nova_consegue_RODAR_a_suite():
 
 def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
     """Se `oci` aparecer no caminho de análise, a exceção não pode cobri-lo."""
-    render = ({(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils")}
+    render = ({(m, "tools/v68_blender_cenas.py") for m in ("bpy", "bmesh", "mathutils", "bpy_extras")}
               | {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
               | {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")})
     ocr_reserva = {("rapidocr", "tools/sei_ocr_reserva.py")}
