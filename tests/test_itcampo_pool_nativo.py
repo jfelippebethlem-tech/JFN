@@ -23,8 +23,9 @@ def test_memoria_e_cpu_folgadas_respeitam_o_teto():
 
 
 def test_cpu_ocupada_por_outros_limita():
-    # 80% dos 24 núcleos ocupados por outros → sobram ~4,8 núcleos → 1 trabalhador de 4 threads
-    assert P.alvo(disp_gb=P.PISO_GB + 20, cpu_outros=80, ncpu=24, vivos=0) == 1
+    # 70% dos 24 núcleos ocupados por outros → sobram ~7,2 núcleos → 1 trabalhador (THREADS por trabalhador)
+    assert P.alvo(disp_gb=P.PISO_GB + 20, cpu_outros=70, ncpu=24, vivos=0) == int(7.2 // P.THREADS)
+    assert P.alvo(disp_gb=P.PISO_GB + 20, cpu_outros=95, ncpu=24, vivos=0) == 0
 
 
 def test_vivos_contam_na_memoria_ja_tomada():

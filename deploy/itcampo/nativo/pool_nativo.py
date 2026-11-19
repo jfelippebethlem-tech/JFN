@@ -42,8 +42,10 @@ ESTADO = BASE / "estado.json"
 LOG = BASE / "pool.log"
 PISO_GB = float(os.environ.get("JFN_NATIVO_PISO_GB", "6"))          # disponível do Windows reservado ao dono
 GB_POR_TRAB = float(os.environ.get("JFN_NATIVO_GB_POR_TRAB", "1.5"))  # pico medido do RapidOCR num PDF de 19 pág: 1,1 GB
-THREADS = int(os.environ.get("JFN_NATIVO_THREADS", "4"))
-MAX_TRAB = int(os.environ.get("JFN_NATIVO_MAX", "5"))                # 5 × 4 = 20 de 24 núcleos
+# Medido 19/11 no Windows (PDF de 12 págs, texto IDÊNTICO ao do WSL por md5): 2 threads 13,8 s/pág · 4 → 8,0 · 8 → 5,2.
+# A memória (≈1,5 GB por trabalhador) limita antes da CPU: menos trabalhadores com mais threads rendem mais por GB.
+THREADS = int(os.environ.get("JFN_NATIVO_THREADS", "6"))
+MAX_TRAB = int(os.environ.get("JFN_NATIVO_MAX", "3"))                # 3 × 6 = 18 de 24 núcleos (o WSL fica com o resto)
 CPU_PAUSA = float(os.environ.get("JFN_NATIVO_CPU_PAUSA", "60"))      # % da CPU usada pelos OUTROS com o dono ativo
 OCIOSO_S = 120
 CICLO_S = 30
