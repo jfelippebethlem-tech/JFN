@@ -1,0 +1,14 @@
+[Unit]
+Description=JFN Brain — API + MCP + painel
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/brain
+ExecStart=%h/brain/.venv/bin/uvicorn server:app --host 127.0.0.1 --port 8788 --workers 1 --proxy-headers
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Nice=5
+
+[Install]
+WantedBy=default.target

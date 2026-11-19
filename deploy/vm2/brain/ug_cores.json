@@ -1,0 +1,642 @@
+{
+"010100": {
+"cor": "#D4479A",
+"nome": "Assembleia Legislativa"
+},
+"016100": {
+"cor": "#9BA329",
+"nome": "Fundo Especial da Assembleia Legislativa Erj."
+},
+"020100": {
+"cor": "#2264CE",
+"nome": "Tribunal de Contas"
+},
+"026100": {
+"cor": "#22CE55",
+"nome": "Fundo Especial de Modernização do Controle EX"
+},
+"030100": {
+"cor": "#B8860B",
+"nome": "Tribunal de Justica"
+},
+"036100": {
+"cor": "#882D17",
+"nome": "Fundo Especial do Tribunal de Justica"
+},
+"036200": {
+"cor": "#CDDE35",
+"nome": "Fundo Especial Escola de Magistratura RJ"
+},
+"036300": {
+"cor": "#58CE22",
+"nome": "Fundo de Apoio AOS Registradores Civis de PES"
+},
+"043400": {
+"cor": "#30C0B1",
+"nome": "Ag.reg.sv.pub.conc.transp.aquav.fer.met.e ROD"
+},
+"043500": {
+"cor": "#1DAF3C",
+"nome": "Ag.reg. de Energia e Saneamento Basico do ERJ"
+},
+"044100": {
+"cor": "#7A9A01",
+"nome": "Fundação Departamento de Estradas de Rodagem"
+},
+"045200": {
+"cor": "#A33F29",
+"nome": "Empresa de Obras Publicas do Estado do RJ."
+},
+"053100": {
+"cor": "#30C0A1",
+"nome": "Instituto de Pesos e Medidas do RJ"
+},
+"060100": {
+"cor": "#CE3E22",
+"nome": "Gabinete de Segurança Institucional do Estado"
+},
+"070100": {
+"cor": "#35DE41",
+"nome": "Secretaria de Estado de Infraestrutura e Obra"
+},
+"080100": {
+"cor": "#30A3C0",
+"nome": "Vice-governadoria"
+},
+"090100": {
+"cor": "#38DE35",
+"nome": "PGE - Procuradoria Geral do Estado"
+},
+"096100": {
+"cor": "#30C05D",
+"nome": "Fundo Especial da Procuradoria Geral do ERJ"
+},
+"100100": {
+"cor": "#604E97",
+"nome": "MP - Ministerio Publico"
+},
+"106100": {
+"cor": "#4AD043",
+"nome": "Fundo Especial do Ministerio Publico do ERJ"
+},
+"110100": {
+"cor": "#3F51B5",
+"nome": "Dpge - Defensoria Publica Geral do Estado"
+},
+"116100": {
+"cor": "#A32968",
+"nome": "Fundo Especial da Defensoria Publica do ERJ"
+},
+"120200": {
+"cor": "#357EDE",
+"nome": "Subsec. de Rec. Logisticos - Sefaz-logistica"
+},
+"123400": {
+"cor": "#BE0032",
+"nome": "RIOPREVIDÊNCIA — Fundo Único de Previdência do Estado do RJ"
+},
+"123401": {
+"cor": "#355ADE",
+"nome": "Fundo Unico de Previdencia do ERJ - Alerj"
+},
+"123402": {
+"cor": "#AF1D7E",
+"nome": "Fundo Unico de Previdencia do ERJ - TCE"
+},
+"123403": {
+"cor": "#CE228C",
+"nome": "Fundo Unico de Previdencia do ERJ - Tjustica"
+},
+"123404": {
+"cor": "#B3446C",
+"nome": "Fundo Unico de Previdencia do ERJ - Executivo"
+},
+"123410": {
+"cor": "#A6CE22",
+"nome": "Fundo Unico de Previdencia do ERJ - MP"
+},
+"123414": {
+"cor": "#6EA329",
+"nome": "Fundo do Plano Previdenciario do Erj-exec."
+},
+"123422": {
+"cor": "#17A2B8",
+"nome": "Fundo Spsm - Sepm, CBMERJ e Pensão"
+},
+"123425": {
+"cor": "#DE35A3",
+"nome": "Fundo Unico de Previdencia do ERJ - Taxa Admi"
+},
+"123499": {
+"cor": "#435BD0",
+"nome": "Fundo do Plano Previdenciario do ERJ"
+},
+"124100": {
+"cor": "#1DAFAB",
+"nome": "Fund Centro EST Estat Pesq e Form Servid PUB"
+},
+"130100": {
+"cor": "#AF1DAD",
+"nome": "Secretaria de Estado de Agricultura, Pecuária"
+},
+"133100": {
+"cor": "#35DE41",
+"nome": "ITERJ — Instituto de Terras e Cartografia do ERJ"
+},
+"134100": {
+"cor": "#24CE22",
+"nome": "Fundacao Instituto de Pesca do Est. RJ"
+},
+"135300": {
+"cor": "#43D0BD",
+"nome": "Empresa de Assist Tecnica e Extensao Rural do"
+},
+"135400": {
+"cor": "#6A29A3",
+"nome": "Empresa Pesquisa Agropecuaria do Estado do RJ"
+},
+"136200": {
+"cor": "#C03067",
+"nome": "Fundo Estadual de Defesa Agropecuária"
+},
+"137100": {
+"cor": "#CE5522",
+"nome": "Companhia de Armazens e Silos do EST do RJ"
+},
+"137200": {
+"cor": "#6E35DE",
+"nome": "Centrais de Abastecimento do Estado do RJ"
+},
+"140100": {
+"cor": "#4D30C0",
+"nome": "Secretaria de Estado da Casa Civil"
+},
+"146400": {
+"cor": "#AF1D29",
+"nome": "Fundo Estadual de Fomento À Operação Seguranç"
+},
+"150100": {
+"cor": "#BBD043",
+"nome": "Secretaria de Estado de Cultura e Economia CR"
+},
+"154100": {
+"cor": "#2252CE",
+"nome": "Fund. Anita Mantuano de Artes do Estado do RJ"
+},
+"154300": {
+"cor": "#AF1D8B",
+"nome": "Fund. Teatro Municipal do RJ"
+},
+"154400": {
+"cor": "#43D0A4",
+"nome": "Fundacao Museu da Imagem e do SOM"
+},
+"156100": {
+"cor": "#811DAF",
+"nome": "Fundo Estadual de Cultura - RJ"
+},
+"160100": {
+"cor": "#00796B",
+"nome": "Secretaria de Estado de Defesa Civil e Corpo"
+},
+"166100": {
+"cor": "#4DD043",
+"nome": "Fundo Especial do Corpo de Bombeiros"
+},
+"170100": {
+"cor": "#30A3C0",
+"nome": "Secretaria de Estado de Esporte e Lazer"
+},
+"173100": {
+"cor": "#3092C0",
+"nome": "Superintendencia de Desportos do Estado do RJ"
+},
+"176100": {
+"cor": "#1DAF26",
+"nome": "Fundo Estadual de Juventude do Estado do Rio"
+},
+"180100": {
+"cor": "#875692",
+"nome": "Secretaria de Estado de Educacao"
+},
+"180300": {
+"cor": "#D0B943",
+"nome": "Conselho Estadual de Educação"
+},
+"196100": {
+"cor": "#228FCE",
+"nome": "Fundo de Terras do Estado do RIO de Janeiro"
+},
+"197100": {
+"cor": "#C0307D",
+"nome": "Companhia Estadual de Habitacao do RJ"
+},
+"200100": {
+"cor": "#9535DE",
+"nome": "Secretaria de Estado de Fazenda"
+},
+"200900": {
+"cor": "#9530C0",
+"nome": "Subsecret. de Financas - Pgto Concessionarias"
+},
+"203100": {
+"cor": "#C030BD",
+"nome": "Loteria do Est. RIO de Janeiro"
+},
+"206100": {
+"cor": "#1DAF44",
+"nome": "Fundo Especial de Administracao Fazendaria"
+},
+"207100": {
+"cor": "#29A391",
+"nome": "Companhia Fluminense de Securitização S.A."
+},
+"210100": {
+"cor": "#4356D0",
+"nome": "Secretaria de Estado de Planejamento e Gestão"
+},
+"210110": {
+"cor": "#DB35DE",
+"nome": "Subsecretaria Geral da Secretaria de Estado D"
+},
+"210600": {
+"cor": "#AC22CE",
+"nome": "Subsecretaria Militar do Gabinete de Seguranç"
+},
+"210700": {
+"cor": "#2997A3",
+"nome": "Depto Geral de Acoes Socio-educativas- Degase"
+},
+"213200": {
+"cor": "#353EDE",
+"nome": "Instituto de Região Metropolitana do RIO de J"
+},
+"213600": {
+"cor": "#DE353E",
+"nome": "Protecao e Defesa do Consumidor"
+},
+"216100": {
+"cor": "#3099C0",
+"nome": "Fundo Especial do Deposito Publico"
+},
+"216400": {
+"cor": "#8022CE",
+"nome": "Fundo Estadual de Segurança Pública do Estado"
+},
+"216500": {
+"cor": "#22CE78",
+"nome": "Fundo de Desenvolvimento da Região Metropolit"
+},
+"217100": {
+"cor": "#A3AF1D",
+"nome": "Comp.do Metropolitano do RJ em Liquidacao"
+},
+"217200": {
+"cor": "#CE2272",
+"nome": "CIA de Transp Coletivos EST do RJ em Liquid"
+},
+"217300": {
+"cor": "#6E35DE",
+"nome": "Comp Fluminense D/trens Urbanos-em Liquidacao"
+},
+"220100": {
+"cor": "#8FDE35",
+"nome": "Secretaria de Estado de Desenvolvimento Econ"
+},
+"220200": {
+"cor": "#C03092",
+"nome": "Fundo de Desenvolvimento Economico e Social."
+},
+"223200": {
+"cor": "#83CE22",
+"nome": "Junta Comercial do Estado do RIO de Janeiro."
+},
+"226100": {
+"cor": "#6722CE",
+"nome": "Fundo de Recup. Economica de Mun.fluminenses"
+},
+"226200": {
+"cor": "#43D0C2",
+"nome": "Fundo Est. Fomento AO Microcrédito Produtivo"
+},
+"226300": {
+"cor": "#7DC030",
+"nome": "FSERJ — Fundo Soberano do Estado do Rio de Janeiro"
+},
+"227100": {
+"cor": "#C0306C",
+"nome": "Companhia de Desenv Industrial do Est.do RJ"
+},
+"240100": {
+"cor": "#35AF1D",
+"nome": "Secretaria de Estado do Ambiente."
+},
+"240200": {
+"cor": "#309EC0",
+"nome": "Sea-prog.saneamento Ambiental Baia Guanabara"
+},
+"243100": {
+"cor": "#CE22A0",
+"nome": "Instituto Estadual de Engenh. e Arquitetura"
+},
+"243200": {
+"cor": "#22CE44",
+"nome": "Instituto Estadual do Ambiente"
+},
+"246300": {
+"cor": "#D043C7",
+"nome": "Fundo Estadual de Recursos Hidricos"
+},
+"250100": {
+"cor": "#8D6E3A",
+"nome": "Secretaria de Estado de Adm. Penitenciaria"
+},
+"254100": {
+"cor": "#A3299D",
+"nome": "Fundacao Santa Cabrini"
+},
+"256100": {
+"cor": "#1D29AF",
+"nome": "Fundo Especial Penitenciario"
+},
+"260100": {
+"cor": "#4643D0",
+"nome": "Secretaria de Estado de Segurança - em Extinç"
+},
+"260200": {
+"cor": "#7530C0",
+"nome": "Secretaria de Estado de Segurança Pública"
+},
+"260400": {
+"cor": "#2F7FD8",
+"nome": "Secretaria de Estado de Polícia Civil"
+},
+"261100": {
+"cor": "#008856",
+"nome": "Secretaria de Estado de Polícia Militar"
+},
+"263100": {
+"cor": "#C2185B",
+"nome": "DETRAN-RJ — Departamento de Trânsito do Estado do Rio de Janeiro"
+},
+"263200": {
+"cor": "#3FAF1D",
+"nome": "Inst. de Seguranca Publica do Estado do RJ"
+},
+"266100": {
+"cor": "#BCDE35",
+"nome": "Fundo Especial da Acadepol"
+},
+"266200": {
+"cor": "#3C1DAF",
+"nome": "Fundo Especial da Policia Civil - Funespol"
+},
+"266500": {
+"cor": "#5643D0",
+"nome": "Fundo da Policia Militar do ERJ"
+},
+"290100": {
+"cor": "#1D4EAF",
+"nome": "Secretaria de Estado de Saude"
+},
+"293100": {
+"cor": "#1D4EAF",
+"nome": "Instituto de Assist.dos Serv. do Estado do RJ"
+},
+"294200": {
+"cor": "#5B8C00",
+"nome": "Fundacao Saude do Estado do RIO de Janeiro"
+},
+"296100": {
+"cor": "#0067A5",
+"nome": "Fundo Estadual de Saude - FES"
+},
+"297100": {
+"cor": "#7635DE",
+"nome": "Instituto Vital Brazil SA"
+},
+"300100": {
+"cor": "#241DAF",
+"nome": "Secretaria de Estado de Trabalho e Renda"
+},
+"306100": {
+"cor": "#5829A3",
+"nome": "Fundo Estadual de Fomento À Economia Popular"
+},
+"306200": {
+"cor": "#AF3A1D",
+"nome": "Fundo do Trabalho do Estado do RIO de Janeiro"
+},
+"310100": {
+"cor": "#6922CE",
+"nome": "Secretaria de Estado de Transporte e Mobilida"
+},
+"313300": {
+"cor": "#29A35C",
+"nome": "Dept. de Transp. Rodov. do Est. RJ"
+},
+"316100": {
+"cor": "#1DAF90",
+"nome": "Fundo Estadual de Transporte"
+},
+"317100": {
+"cor": "#AF1D2E",
+"nome": "Comp de Desenv Rodov e Terminais do EST do RJ"
+},
+"317200": {
+"cor": "#5DDE35",
+"nome": "Comp EST de Engenharia de Transps e Logistica"
+},
+"317300": {
+"cor": "#7543D0",
+"nome": "Comp de Transp Sobre Trilhos de EST do RJ"
+},
+"320100": {
+"cor": "#BDCE22",
+"nome": "Sec.est.de Assist. Social e Direitos Humanos"
+},
+"324200": {
+"cor": "#D0B643",
+"nome": "Fundacao Leao Xiii"
+},
+"326100": {
+"cor": "#CBCE22",
+"nome": "Fundo Estadual de Assistencia Social-feas"
+},
+"326400": {
+"cor": "#DE35BC",
+"nome": "FDO de Polit.integr. Pess. Port. Deficencia"
+},
+"353100": {
+"cor": "#DE356B",
+"nome": "Departamento de Recursos Minerais"
+},
+"370100": {
+"cor": "#29A36C",
+"nome": "Encargos Gerais do Estado Supevisao - Seplag"
+},
+"370200": {
+"cor": "#F38400",
+"nome": "Encargos Gerais do Estado - Rec.s/sup. Sefaz"
+},
+"370300": {
+"cor": "#CE3B22",
+"nome": "Encargos Gerais - Precatorios Judiciais/sefaz"
+},
+"370301": {
+"cor": "#30C07D",
+"nome": "Encargos Gerais do Estado - Requisições de PE"
+},
+"370500": {
+"cor": "#33A329",
+"nome": "Encargos Gerais do Estado - Divida Publica"
+},
+"390100": {
+"cor": "#35BCDE",
+"nome": "Subsecretaria de Comunicacao Social"
+},
+"390200": {
+"cor": "#35DE6B",
+"nome": "Subsecretaria Comunic.social Descentralizacao"
+},
+"400100": {
+"cor": "#43D0C9",
+"nome": "Secretaria de Estado de Ciência, Tecnologia e"
+},
+"403200": {
+"cor": "#435FD0",
+"nome": "Proderj-centro de Tecnol.de Inf.comun. ERJ"
+},
+"404100": {
+"cor": "#43B6D0",
+"nome": "Fund.carlos Chagas Filho de Amp.a Pesquisa-rj"
+},
+"404300": {
+"cor": "#A32935",
+"nome": "Fundacao Univ. do Est. RIO de Janeiro"
+},
+"404310": {
+"cor": "#E25822",
+"nome": "Administracao Central"
+},
+"404340": {
+"cor": "#D0437E",
+"nome": "Hospital Universitario Pedro Ernesto"
+},
+"404350": {
+"cor": "#B943D0",
+"nome": "Fundação Universidade do Estado do Rio de Jan"
+},
+"404400": {
+"cor": "#E0A800",
+"nome": "Fundacao Apoio a Escola Tecnica Estado RJ."
+},
+"404500": {
+"cor": "#AF5F1D",
+"nome": "Fund.univ.est.norte Fluminense Darcy Ribeiro."
+},
+"404600": {
+"cor": "#DE353E",
+"nome": "Fund. Centro de Ciencias e Educ.sup.dist. ERJ"
+},
+"406100": {
+"cor": "#43D075",
+"nome": "Fundo de Apoio AO Desenv. Tecnologico-fatec"
+},
+"406200": {
+"cor": "#CE2267",
+"nome": "Fundo P/ Ciencias do Estado do R.j.-funcierj"
+},
+"424100": {
+"cor": "#5022CE",
+"nome": "Fundacao Para Infancia e Adolescencia"
+},
+"426100": {
+"cor": "#D06B43",
+"nome": "Fundo Para Infancia e Adolescencia"
+},
+"430100": {
+"cor": "#D0439C",
+"nome": "Sec. de Estado de Turismo"
+},
+"437100": {
+"cor": "#9222CE",
+"nome": "Companhia de Turismo do Est. RJ"
+},
+"476100": {
+"cor": "#358FDE",
+"nome": "Fundo Espec.apoio Prog. Prot/def.consumidor"
+},
+"490100": {
+"cor": "#1D68AF",
+"nome": "Secretaria de Estado Desenvolvimento Social e"
+},
+"496420": {
+"cor": "#AF5A1D",
+"nome": "Fundo Estadual de Defesa dos Direitos da Pess"
+},
+"500100": {
+"cor": "#A39529",
+"nome": "Controladoria Geral do Estado do Rio de Janei"
+},
+"506100": {
+"cor": "#ADC030",
+"nome": "Fundo de Aprimoramento do Controle Interno"
+},
+"530100": {
+"cor": "#43C9D0",
+"nome": "Secretaria de Estado de Infraestrutura e Obra"
+},
+"540100": {
+"cor": "#297AA3",
+"nome": "Secretaria Extraordinária de Representação do"
+},
+"570100": {
+"cor": "#A36E29",
+"nome": "Secretaria de Estado de Governo"
+},
+"580100": {
+"cor": "#7935DE",
+"nome": "Secretaria de Estado de Transformacao Digital"
+},
+"590100": {
+"cor": "#2239CE",
+"nome": "Secretaria de Estado da Mulher"
+},
+"596100": {
+"cor": "#4722CE",
+"nome": "Fundo Especial dos Direitos da Mulher"
+},
+"600100": {
+"cor": "#7829A3",
+"nome": "Secretaria de Estado Intergeracional de Juven"
+},
+"610100": {
+"cor": "#AF771D",
+"nome": "Secretaria de Estado do Gabinete do Governo"
+},
+"620100": {
+"cor": "#437ED0",
+"nome": "Secretaria de Estado de Defesa do Consumidor"
+},
+"620200": {
+"cor": "#22B4CE",
+"nome": "Secretaria de Estado de Defesa do Consumidor"
+},
+"630100": {
+"cor": "#434DD0",
+"nome": "Secretaria de Estado de Ação Comunitária e JU"
+},
+"640100": {
+"cor": "#47CE22",
+"nome": "Secretaria de Estado de Energia e Economia do"
+},
+"650100": {
+"cor": "#DE6535",
+"nome": "Secretaria de Estado de Habitação de Interess"
+},
+"660100": {
+"cor": "#D0439A",
+"nome": "Secretaria de Estado das Cidades"
+}
+}

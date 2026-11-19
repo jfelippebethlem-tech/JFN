@@ -32,21 +32,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sqlite3
 import sys
 import time
-import unicodedata
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from compliance_agent import cerebro_compartilhado as cerebro
+from compliance_agent import cerebro_fts as F
 from compliance_agent.cerebro_compartilhado import CerebroIndisponivel
 
 VAULT = Path(os.environ.get("JFN_VAULT") or Path.home() / "vault")
-INDICE = cerebro.DATA / "cerebro_busca" / "indice.db"
+INDICE = cerebro.DATA / "cerebro_busca" / "notas_fts.db"
 KHOJ_URL = (os.environ.get("JFN_KHOJ_URL") or "http://jfn-agent-2.tailbbe6c9.ts.net:42110").rstrip("/")
 PERNAS = ("entidade", "local", "brain")   # padrão; "khoj" só quando pedido
 K_RRF = 60
@@ -56,29 +55,8 @@ TETO_KHOJ_S = 6
 FRESCOR_INDICE_S = 600     # o índice local é conferido de novo, no máximo, a cada 10 min (igual ao cérebro)
 PULAR_PASTAS = {".obsidian", ".trash", ".stfolder", ".stversions", ".git", "node_modules", "_handoff", ".claude"}
 
-_VAZIAS = set("""a o as os um uma uns umas de da do das dos em no na nos nas por para pra pro pela pelo pelas pelos com sem
-sob sobre entre ate e ou mas que se como quando onde qual quais quem quanto quanta quantos quantas isso isto esse essa
-esses essas este esta aquele aquela aquilo ja nao sim tambem so muito mais menos todo toda todos todas tudo cada
-me mim te ele ela eles elas voce vc nos eu meu minha seu sua seus suas dele dela foi era ser sao esta estao estava
-tem tinha ter teve ha vai vamos quero queremos veja ver acha achar procure favor mostra mostrar aquele tal algum
-alguma alguns algumas mesmo mesma mesmos mesmas depois antes ao aos pra the ai la aqui ou seja porque pq""".split())
-
-_RX_CNPJ = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")
-_RX_SEI = re.compile(r"\b(\d{6})[/_](\d{6})[/_](\d{4})\b")
-_RX_UG = re.compile(r"\b(?:ug|unidade gestora)\s*(\d{6})\b", re.I)
-
-
-def _sem_acento(s: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
-
-
-def termos(pergunta: str) -> list[str]:
-    """Palavras de conteúdo da pergunta (sem acento, sem palavra vazia), na ordem, sem repetição."""
-    out: list[str] = []
-    for t in re.findall(r"[a-z0-9]+", _sem_acento(pergunta.lower())):
-        if (len(t) >= 3 or t.isdigit()) and t not in _VAZIAS and t not in out:
-            out.append(t)
-    return out
+termos = F.termos
+entidades = F.entidades
 
 
 def _nota(caminho: str) -> str:
@@ -90,65 +68,33 @@ def _nota(caminho: str) -> str:
     return c.lstrip("/")
 
 
-# ---------- perna local: BM25 (FTS5) sobre o vault ----------
-
-def _con_indice() -> sqlite3.Connection:
-    INDICE.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(INDICE, timeout=30)
-    con.execute("PRAGMA journal_mode=WAL")
-    con.execute("CREATE TABLE IF NOT EXISTS arq(caminho TEXT PRIMARY KEY, mtime REAL, tam INTEGER)")
-    con.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
-    con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS nota USING fts5(caminho UNINDEXED, titulo, nome, resumo, corpo, "
-                "tokenize='unicode61 remove_diacritics 2')")
-    return con
-
-
-def _partes(texto: str, caminho: Path) -> tuple[str, str, str]:
-    """(título, resumo, corpo) de uma nota. Frontmatter lido por regex — há nota com YAML inválido no vault."""
-    fm, corpo = "", texto
-    if texto.startswith("---"):
-        fim = texto.find("\n---", 3)
-        if fim > 0:
-            fm, corpo = texto[3:fim], texto[fim + 4:]
-    def campo(nome: str) -> str:
-        m = re.search(rf"^{nome}:\s*(.+)$", fm, re.M)
-        return m.group(1).strip().strip("\"'") if m else ""
-    h1 = re.search(r"^#\s+(.+)$", corpo, re.M)
-    titulo = campo("title") or campo("name") or (h1.group(1).strip() if h1 else caminho.stem)
-    resumo = " ".join(x for x in (campo("resumo"), campo("description"), campo("aliases"), campo("tags")) if x)
-    return titulo, resumo, corpo
-
+# ---------- perna local: BM25 (FTS5) sobre o vault — regra de busca em cerebro_fts (a mesma da VM-2) ----------
 
 def indexar(forcar: bool = False) -> dict:
     """Atualiza o índice local: só relê nota nova ou alterada (mtime+tamanho) e tira a que sumiu do vault."""
-    con = _con_indice()
+    con = F.abrir(INDICE)
     try:
         ult = con.execute("SELECT v FROM meta WHERE k='conferido_em'").fetchone()
         if not forcar and ult and time.time() - float(ult[0]) < FRESCOR_INDICE_S:
             return {"pulado": True}
         if not VAULT.is_dir():
             raise CerebroIndisponivel(f"vault não encontrado em {VAULT}")
-        conhecidos = {c: (m, t) for c, m, t in con.execute("SELECT caminho, mtime, tam FROM arq")}
+        conhecidos = F.conhecidos(con)
         vistos, novos = set(), 0
         for p in VAULT.rglob("*.md"):
             rel = p.relative_to(VAULT)
             if any(x in PULAR_PASTAS for x in rel.parts) or ".sync-conflict" in p.name:
                 continue
             st = p.stat()
-            chave = str(rel)
+            chave, assinatura = str(rel), f"{st.st_mtime}:{st.st_size}"
             vistos.add(chave)
-            if conhecidos.get(chave) == (st.st_mtime, st.st_size):
+            if conhecidos.get(chave) == assinatura:
                 continue
-            titulo, resumo, corpo = _partes(p.read_text(encoding="utf-8", errors="replace"), p)
-            con.execute("DELETE FROM nota WHERE caminho=?", (chave,))
-            con.execute("INSERT INTO nota(caminho,titulo,nome,resumo,corpo) VALUES (?,?,?,?,?)",
-                        (chave, titulo, re.sub(r"[-_]+", " ", p.stem), resumo, corpo))
-            con.execute("INSERT OR REPLACE INTO arq VALUES (?,?,?)", (chave, st.st_mtime, st.st_size))
+            F.gravar(con, chave, assinatura, p.read_text(encoding="utf-8", errors="replace"), p.stem)
             novos += 1
         sumidos = set(conhecidos) - vistos
         for chave in sumidos:
-            con.execute("DELETE FROM nota WHERE caminho=?", (chave,))
-            con.execute("DELETE FROM arq WHERE caminho=?", (chave,))
+            F.remover(con, chave)
         con.execute("INSERT OR REPLACE INTO meta VALUES ('conferido_em', ?)", (str(time.time()),))
         con.commit()
         return {"notas": len(vistos), "regravadas": novos, "removidas": len(sumidos)}
@@ -157,18 +103,12 @@ def indexar(forcar: bool = False) -> dict:
 
 
 def _perna_local(pergunta: str) -> list[dict]:
-    ts = termos(pergunta)
-    if not ts:
+    if not F.termos(pergunta):
         return []
     indexar()
-    con = _con_indice()
+    con = F.abrir(INDICE)
     try:
-        consulta = " OR ".join(f'"{t}"' for t in ts)
-        # pesos do bm25 por coluna: caminho(0) · título 6 · nome do arquivo 8 · resumo 4 · corpo 1
-        linhas = con.execute(
-            "SELECT caminho, titulo, snippet(nota, 4, '', '', ' … ', 28) FROM nota WHERE nota MATCH ? "
-            "ORDER BY bm25(nota, 0, 6, 8, 4, 1) LIMIT ?", (consulta, PROFUNDIDADE)).fetchall()
-        return [{"nota": c, "titulo": t, "trecho": s} for c, t, s in linhas]
+        return F.consultar(con, pergunta, PROFUNDIDADE)
     finally:
         con.close()
 
@@ -197,16 +137,8 @@ def _perna_khoj(pergunta: str) -> list[dict]:
     return out
 
 
-def entidades(pergunta: str) -> list[tuple[str, str]]:
-    """Identificadores determinísticos citados na pergunta: (tipo, valor) no formato do índice `ponte_entidade`."""
-    out = [("cnpj", re.sub(r"\D", "", m)) for m in _RX_CNPJ.findall(pergunta)]
-    out += [("processo", "/".join(m)) for m in _RX_SEI.findall(pergunta)]
-    out += [("ug", m) for m in _RX_UG.findall(pergunta)]
-    return out
-
-
 def _perna_entidade(pergunta: str) -> list[dict]:
-    ents = entidades(pergunta)
+    ents = F.entidades(pergunta)
     if not ents:
         return []
     out: list[dict] = []
@@ -223,19 +155,11 @@ def _perna_entidade(pergunta: str) -> list[dict]:
             pass                              # banco sem a tabela (ponte nunca rodou): a perna fica vazia
         finally:
             con.close()
-    # o identificador escrito no texto das notas (frase exata no índice local), com as grafias usuais
     indexar()
-    con = _con_indice()
+    con = F.abrir(INDICE)                     # o identificador escrito no texto das notas (frase exata)
     try:
         for tipo, valor in ents:
-            grafias = {valor}
-            if tipo == "cnpj" and len(valor) == 14:
-                grafias.add(f"{valor[:2]}.{valor[2:5]}.{valor[5:8]}/{valor[8:12]}-{valor[12:]}")
-            for g in grafias:
-                frase = '"' + " ".join(re.findall(r"\d+", g)) + '"'
-                for c, t in con.execute("SELECT caminho, titulo FROM nota WHERE nota MATCH ? "
-                                        "ORDER BY bm25(nota, 0, 6, 8, 4, 1) LIMIT 20", (frase,)):
-                    out.append({"nota": c, "titulo": t, "trecho": f"{tipo} {g} citado na nota"})
+            out += F.por_identificador(con, tipo, valor)
     finally:
         con.close()
     return out

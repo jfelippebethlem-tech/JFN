@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN Brain — indexa a cada 10 min
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

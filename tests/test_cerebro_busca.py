@@ -32,6 +32,7 @@ def test_termos_tira_acento_e_palavra_vazia():
 def test_entidades_reconhece_cnpj_processo_e_ug():
     e = B.entidades("empresa 33.780.199/0001-77 no SEI-080001/013827/2024, UG 294200")
     assert ("cnpj", "33780199000177") in e
+    assert B.entidades("protocolo 33780199000178") == []          # 14 dígitos com verificador errado não é CNPJ
     assert ("processo", "080001/013827/2024") in e
     assert ("ug", "294200") in e
     assert B.entidades("blindados da pm em 2023") == []          # controle negativo: ano não é entidade

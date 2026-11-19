@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN Brain — indexação incremental
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/brain
+ExecStart=/usr/bin/flock -n %h/brain/.index.lock %h/brain/.venv/bin/python indexer.py
+Nice=10
+CPUQuota=120%

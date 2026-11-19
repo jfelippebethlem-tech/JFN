@@ -49,19 +49,46 @@ def _brain(q: str, k: int) -> list[str]:
     return _notas([r["path"] if r["source"] == "vault" else f"{r['source']}:{r['path']}" for r in C.buscar(q, k=k)])
 
 
+def _mcp(ferramenta: str, argumentos: dict):
+    """Chama o MCP do jfn-brain como um agente chama (JSON-RPC em /mcp/) — mede o caminho do Yoda e do Claude web."""
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(
+        C.URL + "/mcp/", method="POST",
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                         "params": {"name": ferramenta, "arguments": argumentos}}).encode(),
+        headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
+    try:
+        with urllib.request.urlopen(req, timeout=C.TETO_S) as r:
+            res = json.loads(r.read().decode("utf-8"))["result"]
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+        raise C.CerebroIndisponivel(f"mcp: {type(exc).__name__}: {exc}") from exc
+    if res.get("isError"):
+        raise C.CerebroIndisponivel(f"mcp {ferramenta}: {str(res.get('content'))[:120]}")
+    sc = res.get("structuredContent")
+    return sc.get("result", sc) if isinstance(sc, dict) else sc
+
+
+def _brain_mcp(q: str) -> list[str]:
+    return _notas([r["path"] if r["source"] == "vault" else f"{r['source']}:{r['path']}"
+                   for r in _mcp("brain_search", {"query": q, "k": 10})])
+
+
 # Cada sistema: pergunta → até 10 notas distintas, em ordem.
 SISTEMAS = {
     # como o agente recebe hoje: 10 TRECHOS do cérebro (várias vezes da mesma nota)
     "brain": lambda q: _brain(q, 10),
     # teto do cérebro como está: 40 trechos reduzidos a 10 notas
     "brain_k40": lambda q: _brain(q, 40),
+    # o que o agente recebe pelo MCP (`brain_search`, k=10) — é o critério de pronto da fase 2
+    "brain_mcp": _brain_mcp,
     "khoj": lambda q: _notas([x["nota"] for x in B._perna_khoj(q)]),
     "local_bm25": lambda q: _notas([x["nota"] for x in B._perna_local(q)]),
     # fase 1: entidade + BM25 local dão a ordem; o cérebro resgata
     "fundido": lambda q: [f["nota"] for f in B.buscar_fundido(q, 10)["notas"]],
     "fundido_com_khoj": lambda q: [f["nota"] for f in B.buscar_fundido(q, 10, com=("khoj",))["notas"]],
 }
-PADRAO = ("brain", "brain_k40", "khoj", "local_bm25", "fundido", "fundido_com_khoj")
+PADRAO = ("brain", "brain_mcp", "local_bm25", "fundido")
 
 
 def _bateria() -> dict:
