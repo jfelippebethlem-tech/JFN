@@ -530,6 +530,9 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             # gravaria `captura_vazia` e seguraria o processo 7 dias por uma falha do método, não do processo.
             for causa in causas:
                 _log(f"  {proc}: {causa[:200]}")
+            if not causas:     # 18/11/2026: 25 "erro" seguidos no it-campo, ~30 s cada, sem uma linha de causa
+                fim = [ln for ln in (getattr(r1, "stdout", "") or "").splitlines() if ln.strip()][-1:]
+                _log(f"  {proc}: captura rc={rc} — {fim[0].strip()[:200] if fim else 'sem saída'}")
             return "erro"
         r2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                             cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S, text=True,

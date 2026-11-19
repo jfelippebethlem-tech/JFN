@@ -33,3 +33,14 @@ def test_captura_que_falha_deixa_a_causa_no_log(monkeypatch, tmp_path):
     linhas = _cenario(monkeypatch, tmp_path, 1, "baixando 3 docs…\nRuntimeError: frame detached\n", 0, "")
     assert F._baixar_e_arquivar("270089/001815/2023", env={}) == "erro"
     assert any("captura" in ln and "RuntimeError: frame detached" in ln for ln in linhas), linhas
+
+
+def test_captura_que_cai_antes_do_primeiro_documento_tambem_diz_a_causa(monkeypatch, tmp_path):
+    """18/11/2026, 22h no it-campo: 25 "erro" em ~30 s cada, nenhum com causa — o caminho "caiu antes de baixar
+    qualquer documento" só registrava as causas conhecidas (SEM ÁRVORE/LOGIN/cracked)."""
+    monkeypatch.setattr(F, "CACHE", tmp_path)
+    monkeypatch.setattr(F.subprocess, "run", lambda cmd, **kw: _R(1, "login OK\nplaywright: Target closed\n"))
+    linhas = []
+    monkeypatch.setattr(F, "_log", linhas.append)
+    assert F._baixar_e_arquivar("270089/001815/2023", env={}) == "erro"
+    assert any("captura" in ln and "Target closed" in ln for ln in linhas), linhas
