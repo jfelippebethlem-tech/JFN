@@ -224,21 +224,26 @@ def ob_pagas(processos: set[str]) -> dict[str, dict]:
     from compliance_agent.cruzamentos_intel import _ob_paga
     if not processos or not DB.exists():
         return {}
-    alvo = {re.sub(r"\D", "", p) for p in processos}
+    canons = sorted({p for p in processos if re.fullmatch(r"SEI-\d{6}/\d{6}/20\d{2}", p)})
+    variantes = sorted({v for c in canons for v in (c, c[4:], "SEI " + c[4:])})
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     try:
-        cur = con.execute(f"SELECT processo, numero_ob, valor, data_emissao, nome_credor, credor, ug_emitente "
-                          f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND processo LIKE '%/%/%'")
         out: dict[str, dict] = {}
-        for proc, nob, val, dt, nome, cred, ug in cur:
-            m = re.search(r"(\d{6})\D{0,3}(\d{6})\D{0,3}(20\d{2})", proc or "")
-            if not m or "".join(m.groups()) not in alvo:
-                continue
-            k = f"SEI-{m.group(1)}/{m.group(2)}/{m.group(3)}"
-            o = out.setdefault(k, {"total": 0.0, "obs": [], "piso": True,
-                                   "fonte": "SIAFE ob_orcamentaria_siafe (_ob_paga), ligação pela coluna processo — piso"})
-            o["total"] = round(o["total"] + float(val or 0), 2)
-            o["obs"].append({"ob": nob, "valor": val, "data": dt, "credor": nome, "cnpj": cred, "ug": ug})
+        # filtro no SQL (IN em C): o laço Python sobre 1,36 mi de linhas levava ~15 min na VM-1 carregada
+        for k in range(0, len(variantes), 500):
+            lote = variantes[k:k + 500]
+            cur = con.execute(f"SELECT processo, numero_ob, valor, data_emissao, nome_credor, credor, ug_emitente "
+                              f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND processo IN "
+                              f"({','.join('?' * len(lote))})", lote)
+            for proc, nob, val, dt, nome, cred, ug in cur:
+                m = re.search(r"(\d{6})\D{0,3}(\d{6})\D{0,3}(20\d{2})", proc or "")
+                if not m:
+                    continue
+                kk = f"SEI-{m.group(1)}/{m.group(2)}/{m.group(3)}"
+                o = out.setdefault(kk, {"total": 0.0, "obs": [], "piso": True,
+                                        "fonte": "SIAFE ob_orcamentaria_siafe (_ob_paga), ligação pela coluna processo — piso"})
+                o["total"] = round(o["total"] + float(val or 0), 2)
+                o["obs"].append({"ob": nob, "valor": val, "data": dt, "credor": nome, "cnpj": cred, "ug": ug})
         return out
     finally:
         con.close()
