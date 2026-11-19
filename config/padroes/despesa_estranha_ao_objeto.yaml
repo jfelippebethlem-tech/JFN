@@ -1,0 +1,22 @@
+id: despesa_estranha_ao_objeto
+nome: Festa, jantar ou almoço de servidores/autoridades pago como execução de contrato
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-050001/000054/2026
+  caso: Buzzline × SETUR — NF 004 "Jantar de encerramento de ano ... para servidores da Secretaria" R$ 137.415,45 (OB 2026OB00159); data/pericia_agentes/050001_000054_2026.json
+norma:
+  - CF art. 37 caput (moralidade, impessoalidade)
+  - Lei 4.320/1964, art. 63
+  - Lei 14.133/2021, art. 115
+sinal: >
+  Em NF/fatura/OS/atestado/medição: evento festivo/refeição cujo beneficiário (≤150 caracteres) são servidores,
+  funcionários, colaboradores ou secretários. Forte sem contexto de capacitação/plantão; médio "dia do servidor" ou
+  brindes a servidores; fraco com contexto de trabalho.
+explicacoes_inocentes:
+  - "Servidor de informática (rede, dados, storage) — excluído por código"
+  - "Alimentação em capacitação, plantão, operação — rebaixado a fraco"
+  - "Cerimonial institucional previsto no objeto — não excluído"
+controle_positivo: SEI-050001/000054/2026 doc 6; SEI-050001/000001/2025 docs 258 e 283
+controle_negativo: "'locação de servidores de rede'; 'coffee break para servidores no curso de capacitação' (fraco)"
+nao_coberto:
+  - "Reforma paga como 'complexo esportivo' (Scalle 260005/007167/2024) e festa municipal como manutenção (MRC) — exige objeto × memória de cálculo"

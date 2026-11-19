@@ -1,0 +1,25 @@
+id: atesto_antes_do_periodo
+nome: Atesto (e OB) antes do fim do período ou do evento faturado
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-050001/000054/2026
+  caso: Buzzline × SETUR — FESTURIS 06–11/11/2026 atestada em 04/11 (doc 182), OB 2026OB01391/01392 de 09/11; data/pericia_agentes/050001_000054_2026.json
+norma:
+  - Lei 4.320/1964, arts. 62 e 63 §2º (liquidação pela prestação efetiva)
+  - Lei 14.133/2021, art. 140 (recebimento) e art. 145 (vedação de pagamento antecipado)
+estende: compliance_agent/sei/fiscalizacao.py (FZ1/FZ2 do 360 — só lia o período escrito no próprio atesto)
+sinal: >
+  Última assinatura do atesto anterior ao último dia do período de serviço lido no próprio atesto ou nas NFs que ele
+  cita pelo id SEI ("NF 77(145642059)"). Forte: OB paga do processo entre o atesto e o fim do período, ou atesto
+  anterior ao início. Médio: só o atesto antecipado (1–45 dias). Fraco: > 45 dias (erro material provável).
+explicacoes_inocentes:
+  - "Concessionária: o mês é o ciclo de leitura (341 FP no FZ1) — excluída por código"
+  - "Período de vigência/garantia/aditivo do contrato, não do serviço — excluído por código"
+  - "Montagem/pré-produção que termina antes do evento (a NF fatura o evento inteiro) — não excluída"
+  - "Antecipação prevista no contrato com garantia (art. 145 §1º) — não excluída"
+controle_positivo: SEI-050001/000054/2026 doc 182 × NF doc 179; SEI-050001/000001/2025 doc 177 × NF 1378
+controle_negativo: "Atesto assinado depois do fim do período; 'vigência pelo período de 01/01/2025 a 31/12/2025'"
+nao_coberto:
+  - "Cadeia antedatada (MRC 150002/000471/2025: relatório 'de 11/03' cita NE de 16/04)"
+  - "Atesto de montagem contra cronograma 'a agendar' (Globaltec 260005/010324/2025)"
+  - "NF antes do recebimento definitivo (XPTO 420001/002401/2026) — ordem NF→atesto é a prática geral; medido no FZ como sem prova estruturada"

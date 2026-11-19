@@ -1,0 +1,21 @@
+id: ob_antes_da_entrega
+nome: Liquidação sobre pró-forma / importação em andamento e OB sem recebimento anterior
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-270006/012128/2024
+  caso: CBMERJ × Angloco — "Documento de cobrança: SEI n° (Proforma Invoice 111256454) Valor total a liquidar R$ 22.000.000,00", sem termo de recebimento; data/pericia_agentes/270006_012128_2024.json
+norma:
+  - Lei 4.320/1964, arts. 62 e 63 §2º
+  - Lei 14.133/2021, art. 145
+sinal: >
+  Documento de liquidação (título) cujo texto diz pró-forma/"importação em andamento" ou cita o número/id SEI de uma
+  pró-forma juntada, + OB paga no SIAFE (campo processo; senão NL dos autos × UG dos autos). Forte: nenhum documento
+  de recebimento e sem carta de crédito. Médio: sem recebimento com carta de crédito, ou recebimento só depois da 1ª OB.
+explicacoes_inocentes:
+  - "Carta de crédito (SWIFT MT700) com recebimento posterior nos autos — é o desenho da operação (Jacinto Marques 270006/021632/2025): FORA por código"
+  - "Recebimento anterior à 1ª OB — FORA"
+  - "Entrega provada em outro processo — não excluída (pedir o termo)"
+controle_positivo: SEI-270006/012128/2024 (Angloco), SEI-350006/002721/2025 (CZ fuzis, NL cita a pró-forma 12522397)
+controle_negativo: SEI-270006/021632/2025 (Jacinto Marques — carta de crédito + ARM 753/26 e vistoria)
+nao_coberto:
+  - "POMA 330001/001798/2025: liquidação em 2024 com 'OB já encaminhada ao banco' (regularização) — sem a palavra pró-forma"

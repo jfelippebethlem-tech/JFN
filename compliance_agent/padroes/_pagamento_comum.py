@@ -205,3 +205,23 @@ def obs_por_nl(con, nls: set[str], ugs: set[str]) -> list[dict]:
     q = (f"SELECT {', '.join(_COLS)} FROM ob_orcamentaria_siafe WHERE nl IN ({','.join('?' * len(nls))}) "
          f"AND ug_emitente IN ({','.join('?' * len(ugs))}) AND {_ob_paga(con)}")
     return [dict(zip(_COLS, r)) for r in con.execute(q, [*sorted(nls), *sorted(ugs)])]
+
+
+def grep_candidatos(padrao: str, so: list[str] | None = None, limite: int | None = None) -> dict[str, list[str]]:
+    """{tag: [nomes de .txt]} cujo texto casa `padrao` (grep -E, sem caixa) — I/O em ionice, sem abrir 10 mil pastas
+    em Python. Quem chama confere o documento contra o manifesto (órfão não conta)."""
+    import subprocess
+    alvo = [str(p / "texto") for p in pastas(so)][: limite or None]
+    out: dict[str, list[str]] = {}
+    for i in range(0, len(alvo), 400):
+        r = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "grep", "-rliE", padrao, *alvo[i:i + 400]],
+                           capture_output=True, text=True, check=False)
+        for linha in r.stdout.splitlines():
+            m = re.search(r"sei_arquivo/([^/]+)/texto/(.+)$", linha)
+            if m:
+                out.setdefault(m[1], []).append(m[2].split("/")[-1])
+    return out
+
+
+def docs_por_arquivo(man: dict) -> dict[str, dict]:
+    return {str(d["texto"]).split("/")[-1]: d for d in docs(man)}

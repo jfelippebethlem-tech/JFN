@@ -1,0 +1,17 @@
+id: reserva_tecnica_multiplicada
+nome: Reserva técnica de material aplicada a locais, pessoas, horas ou transporte
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-030001/047970/2026
+  caso: SEEDUC × Cesgranrio — relatório da contratada "utilizou 137 polos" (doc 37) × desembolso "locais | 137 | 0.05 | 144 | 1 | 1 | 7407.18" (doc 38); data/pericia_agentes/030001_047970_2026.json
+norma:
+  - Lei 4.320/1964, art. 63 §2º
+  - Lei 14.133/2021, arts. 140 e 141
+sinal: >
+  Linha de tabela com Q, p, T = ceil(Q·(1+p))·fatores em unidade/descrição de lugar, pessoa, hora, dia, viagem ou
+  transporte. Forte: outro documento do processo declara a quantidade executada = Q.
+explicacoes_inocentes:
+  - "Reserva expressamente prevista no contrato para o item — não excluída (ler cláusula de preço)"
+  - "Linhas de material impresso (caderno, prova, malote, kit) — excluídas por código"
+controle_positivo: SEI-030001/047970/2026 docs 37 × 38
+controle_negativo: "Linha 'Cadernos de prova | unidade | 1000 | 0.05 | 1050' (material: reserva legítima)"

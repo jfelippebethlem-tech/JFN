@@ -1,0 +1,18 @@
+id: beneficio_para_conta_do_orgao
+nome: Benefício a pessoa física pago à conta do próprio órgão (credor genérico)
+familia: pagamento_atesto_retencoes_mrosc
+origem:
+  processo: SEI-310001/000167/2024
+  caso: Cartão Recomeçar (SEDSODH) — OB a "CG0013218 - Programa Recomeçar", natureza 339048, "Domicílio Bancário Destino 237 - 6898 - 51322 (28165513000171)" = a própria SEDSODH; data/pericia_agentes/310001_000167_2024.json
+norma:
+  - Lei 4.320/1964, art. 63 (liquidação)
+  - Decreto RJ 48.057/2022 (Cartão Recomeçar)
+sinal: >
+  OB juntada ao SEI com credor genérico CG + natureza 3390.48/18/32 + CNPJ do domicílio destino de administração
+  pública (Receita, natureza 1xxx). Forte: ente estadual sem documento de retorno/prestação de contas nos autos;
+  médio: ente municipal, ou há documento de retorno a conferir.
+explicacoes_inocentes:
+  - "Modelo de cartão pré-pago: a Secretaria recebe e carrega via operadora — não é desvio por si; falta a prova da carga por beneficiário"
+  - "Destino privado (operadora/banco) — fora do padrão"
+controle_positivo: SEI-310001/000167/2024, SEI-310003/000233/2024, SEI-310003/000236/2024
+controle_negativo: "OB a credor CNPJ privado; OB de benefício com destino em conta de operadora"
