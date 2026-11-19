@@ -531,15 +531,23 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             for causa in causas:
                 _log(f"  {proc}: {causa[:200]}")
             return "erro"
-        rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
-                             cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        r2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
+                            cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        rc2 = r2.returncode
         if rc == RC_SEM_ARVORE or (rc == 0 and rc2 == 0 and _captura_vazia(ARQUIVO / proc.replace("/", "_"))):
             # o arquivar acima já gravou o manifesto `captura_vazia` — é ele que dá o intervalo
             for causa in causas:
                 _log(f"  {proc}: {causa[:200]}")
             return "sem_arvore" if rc == RC_SEM_ARVORE else "vazio"
         if rc != 0 or rc2 != 0:
+            # A CAUSA DO "erro" VAI PARA O LOG. Medido em 18/11/2026: 171 "erro" em 48 h e nenhuma linha dizendo o
+            # quê — a saída do arquivador ia para DEVNULL. A última linha não vazia (o `XError: …` de um traceback)
+            # é o que distingue PDF quebrado de navegador caído.
+            for etapa, r in (("captura", r1), ("arquivar", r2)):
+                if r.returncode != 0:
+                    fim = [ln for ln in (getattr(r, "stdout", "") or "").splitlines() if ln.strip()][-1:]
+                    _log(f"  {proc}: {etapa} rc={r.returncode} — {fim[0].strip()[:200] if fim else 'sem saída'}")
             return "erro"
         return "ok"
     except subprocess.TimeoutExpired:
