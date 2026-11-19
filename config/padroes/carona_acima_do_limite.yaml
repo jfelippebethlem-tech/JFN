@@ -18,5 +18,7 @@ explicacoes_inocentes:
   - "Ata em 'valor de capa'/desconto: medir em unidades de capa (pago ÷ (1 − desconto))"
   - "Ata da Lei 8.666 licitada até 29/12/2023 e ainda vigente na adesão — pedir a ata e a vigência"
   - "Extrato vizinho na página do DOERJ — exige o nome do credor no extrato"
+  - "Aditivo, prorrogação (art. 57), apostilamento e extrato de ATA da Lei 8.666 assinados em 2025+ são legais (art. 190 da 14.133) — só o CONTRATO ORIGINAL nº x/2025+ conta (1ª varredura: 32 de 33 eram desse tipo)"
+  - "PNCP não acha ata de sistema estadual/municipal (SIGA, FDE-SP, consórcios) — 'ata_nao_achada_pncp' é INDISPONÍVEL, não regularidade"
 controle_positivo: SEI-420001/006323/2025 — 25.662.000,00 / 3.300.000,00 = 7,78× o homologado
 controle_negativo: adesão de R$ 1,0 mi na mesma ata (30%) e extrato de 2023 — testes unitários

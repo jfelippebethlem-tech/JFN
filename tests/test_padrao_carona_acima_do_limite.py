@@ -26,7 +26,7 @@ def test_numero_da_ata_dos_autos():
 
 ADESAO = Doc("arquivo", "20", "Nota de Empenho", "Mod. Licitação 10 - Adesão ao Registro de Preços Interno - Pregão")
 EXTRATO = Doc("arquivo", "8", "Anexo Extrato instrumento contratual",
-              "PARTES: FAETEC e GLOBALTEC TECNOLOGIAS EDUCACIONAIS LT-\nDA.\nDATA DA A S S I N AT U R A : 06/05/2025.\n"
+              "INSTRUMENTO: Termo de Contrato N° 007/2025.\nPARTES: FAETEC e GLOBALTEC TECNOLOGIAS EDUCACIONAIS LT-\nDA.\nDATA DA A S S I N AT U R A : 06/05/2025.\n"
               "VALOR: R$ 21.352.000,00\nFUNDAMENTO: Lei nº 8.666, de 21 de junho de 1.993 e alterações")
 
 
@@ -53,3 +53,14 @@ def test_familia_ligada_ao_catalogo_e_ao_gradeador():
               lambda x: x["sinal"] == "acima_50pct_aderente")[0]
     assert a["flag"]["grau"] == "A" and a["vicio_catalogo"]["id"] == "carona_abusiva"
     assert ligar([{"grau": "medio"}], "carona_abusiva")[0]["flag"]["grau"] == "C"
+
+
+def test_negativo_aditivo_e_prorrogacao_da_8666_sao_legais():
+    # 1ª varredura: 32 de 33 "lei_revogada" eram aditivos/prorrogações (art. 190 da 14.133 mantém a lei antiga)
+    adit = Doc("arquivo", "694", "Termo Aditivo 10/2026", "SUDESTE BRASIL COOPERATIVA … 10º Termo Aditivo ao Contrato "
+               "nº 12/2022. PRAZO: 12 (doze) meses. DATA DA ASSINATURA: 06/02/2026. FUNDAMENTO LEGAL: Art. 57, §1º, "
+               "inciso II, da Lei nº 8.666/1993.")
+    assert lei_revogada([ADESAO, adit], "SUDESTE BRASIL COOPERATIVA DE TRANSPORTES") is None
+    ata = Doc("arquivo", "23", "Anexo DOERJ ARP", "EXTRATO DE ATA DE REGISTRO DE PREÇOS ATA 019/2025 GLOBALTEC. "
+              "DATA DA ASSINATURA: 18/03/2025. FUNDAMENTO LEGAL: art. 15, inc. II, da Lei 8.666/93")
+    assert lei_revogada([ADESAO, ata], "GLOBALTEC TECNOLOGIAS") is None

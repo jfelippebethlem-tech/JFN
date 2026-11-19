@@ -49,6 +49,9 @@ def _espacado(palavras: str) -> str:
 
 RX_ASSINATURA = re.compile(_espacado("DATA DA ASSINATURA") + r"\s*:?\s*(\d{2})/(\d{2})/(20\d{2})", re.I)
 RX_FUND_8666 = re.compile(r"FUNDAMENTO\s*(?:LEGAL)?\s*:?\s*(?:[^\n]{0,30})Lei\s*(?:Federal\s*)?(?:n[º°o.]*\s*)?8\.?666", re.I)
+_RX_ADITIVO = re.compile(r"aditivo|apostilamento|prorroga|art(?:igo)?\.?\s*57|art(?:igo)?\.?\s*65|renova[çc]|"
+                         r"\bata\s+de\s+registro|\bARP\b|art\.?\s*15", re.I)
+_RX_INSTRUMENTO = re.compile(r"(?:termo\s+de\s+)?contrato\s*(?:n[º°o.]*|n\s*[º°])\s*\d+\s*/\s*20(?:2[5-9])", re.I)
 RX_ADESAO_QQ = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os|ades[ãa]o\s+(?:à|a)\s+(?:ata|arp)", re.I)
 
 
@@ -225,6 +228,12 @@ def lei_revogada(ds: list[cc.Doc], credor: str | None = None) -> dict | None:
             if not f:
                 continue
             if tok and not any(w in cc.sem_acento(jan).upper() for w in tok):
+                continue
+            # só o INSTRUMENTO ORIGINAL assinado em 2025+ é sinal: aditivo, prorrogação (art. 57) e apostilamento
+            # de contrato da 8.666 seguem a lei antiga por força do art. 190 da 14.133 — legais. 1ª varredura:
+            # 32 de 33 eram aditivos/prorrogações/extratos de ata (SEI-070002/003457/2024, 420001/006022/2025…)
+            antes = d.texto[max(0, a.start() - 1500): a.start()]
+            if _RX_ADITIVO.search(antes[-700:] + d.texto[a.end(): f.end()]) or not _RX_INSTRUMENTO.search(antes):
                 continue
             return {"sinal": "lei_revogada", "grau": "medio", "data_assinatura": "/".join(a.groups()),
                     "prova": f'{d.ref} ({d.titulo[:60]}) — "{cc.trecho(d.texto, a.start(), a.end(), 10)[:120]}" … '
