@@ -15,7 +15,9 @@ from typing import Any, Iterable
 
 ESTADOS = ("VERIFICADO", "PENDENTE", "INDISPONIVEL", "REFUTADO")
 NATUREZAS = ("pago", "liquidado", "empenhado", "contratado", "teto_de_ata", "estimado", "contagem", "indice")
-ESFERAS = ("estadual", "municipal", "federal", "judiciario", "legislativo", "mista_com_quebra")
+# "sistema" = medição do PRÓPRIO JFN (frescor das coletas, estado dos motores) — não fala de ente nenhum; o
+# inventário já declara `esfera: sistema` nessas manchetes (aba Sistema, 14/11/2026). Nunca vale para gasto.
+ESFERAS = ("estadual", "municipal", "federal", "judiciario", "legislativo", "mista_com_quebra", "sistema")
 CAMPOS_PROVENIENCIA = ("fonte", "data_ref", "cobertura", "estado", "natureza", "esfera")
 
 # ───────────────────────────── PAD-03 · moeda ─────────────────────────────

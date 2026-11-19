@@ -31,7 +31,8 @@ def snapshot() -> dict:
 
 @router.get("/api/ao-vivo/estado")
 def ao_vivo_estado():
-    return snapshot()
+    from compliance_agent.proveniencia_manchetes import anexar
+    return anexar("/api/ao-vivo/estado", snapshot())
 
 
 @router.get("/api/ao-vivo/claude")

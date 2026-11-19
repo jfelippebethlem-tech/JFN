@@ -207,8 +207,9 @@ def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
     Cacheado 3600s (TTL analítico da casa; o prewarm de 30 min o mantém quente) — com 120s o prewarm
     expirava antes da visita e o panorama abria frio: 30,8 s medidos em 24/09/2026."""
+    from compliance_agent.proveniencia_manchetes import anexar as _prov
     if cache := _cache_get("painel:snapshot", 3600):
-        return JSONResponse(content=cache)
+        return JSONResponse(content=_prov("/api/compliance/painel", cache))
     try:
         from datetime import date
         import sqlalchemy as sa
@@ -310,9 +311,9 @@ def api_painel():
             except Exception as exc:
                 logger.warning("lições da memória indisponíveis p/ a investigação: %s", exc)
 
-            return JSONResponse(content=_cache_put("painel:snapshot", {
+            return JSONResponse(content=_cache_put("painel:snapshot", _prov("/api/compliance/painel", {
                 "atualizado": str(hoje),
-                "obs": {**_siafe_pago_total(), "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
+                "obs": {**_prov("/api/compliance/painel#obs", {"atualizado": str(hoje)}), **_siafe_pago_total(), "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
                         "valor_ultimo_dia": v_ultimo_dia,
                         "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
                         "valor_hoje": float(valor_hoje),
@@ -326,7 +327,7 @@ def api_painel():
                 "top_favorecidos": top,
                 "obs_recentes": obs_recentes,
                 "licoes": licoes,
-            }))
+            })))
         finally:
             s.close()
     except Exception as e:
@@ -1916,11 +1917,12 @@ def api_intel_comunidades():
     Sai do cache (construir o grafo completo não roda no request)."""
     try:
         from compliance_agent.cruzamentos_intel import ler_cache_intel
+        from compliance_agent.proveniencia_manchetes import anexar
         d = ler_cache_intel("comunidades")
         if not d:
             return JSONResponse({"ok": False, "erro": "cache ainda não gerado — "
                                  "rodar: python -m compliance_agent.cruzamentos_intel cache"})
-        return JSONResponse(d)
+        return JSONResponse(anexar("/api/intel/comunidades", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -1935,7 +1937,8 @@ def api_intel_radar(limite: int = 100):
         if not d:
             lim = max(1, min(int(limite or 100), 300))
             d = _cache_calc(f"intel:radar:{lim}", 3600, lambda: radar_risco(limite=lim))
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/intel/radar", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2005,7 +2008,8 @@ def api_comparador_economia(esfera: str = ""):
         from compliance_agent.comparador_precos import economia_potencial
         ck = f"comp:economia:{esfera or 'todas'}"
         d = _cache_calc(ck, 1800, lambda: economia_potencial(esfera=esfera or None))
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/comparador/economia", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2018,7 +2022,8 @@ def api_comparador_vedada(esfera: str = ""):
         from compliance_agent.comparador_precos import economia_vedada
         ck = f"comp:vedada:{esfera or 'todas'}"
         d = _cache_calc(ck, 1800, lambda: economia_vedada(esfera=esfera or None))
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/comparador/vedada", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2051,7 +2056,8 @@ def api_comparador_dossie(esfera: str = ""):
         from compliance_agent.comparador_precos import caro_e_suspeito
         ck = f"comp:dossie:{esfera or 'todas'}"
         d = _cache_calc(ck, 1800, lambda: caro_e_suspeito(esfera=esfera or None))
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/comparador/dossie", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2087,7 +2093,8 @@ def api_intel_lift():
     try:
         from compliance_agent.retro_auditoria import avaliar_lift
         d = _cache_calc("intel:lift", 3600, lambda: avaliar_lift())
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/intel/lift", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2210,7 +2217,8 @@ def api_intel_fenix(limite: int = 120):
         from compliance_agent.cruzamentos_intel import empresa_fenix
         lim = max(1, min(int(limite or 120), 300))
         d = _cache_calc(f"intel:fenix:{lim}", 3600, lambda: empresa_fenix(limite=lim))
-        return JSONResponse(d)
+        from compliance_agent.proveniencia_manchetes import anexar
+        return JSONResponse(anexar("/api/intel/fenix", d))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2381,15 +2389,16 @@ def api_intel_ninho_sala(limite: int = 120):
         # cache primeiro (o cálculo a frio leva ~16 s e o painel corta em 30 s); sem cache,
         # calcula ao vivo e diz que veio ao vivo — nunca fica mudo.
         from compliance_agent.cruzamentos_intel import ler_cache_intel
+        from compliance_agent.proveniencia_manchetes import anexar
         c = ler_cache_intel("ninho_sala")
         if c and c.get("ok"):
             c["do_cache"] = True
             c["grupos"] = (c.get("grupos") or [])[:limite]
-            return JSONResponse(c)
+            return JSONResponse(anexar("/api/intel/ninho_sala", c))
         from compliance_agent.ninho_sala import ninhos_por_sala
         d = ninhos_por_sala(limite=limite)
         d["do_cache"] = False
-        return JSONResponse(d)
+        return JSONResponse(anexar("/api/intel/ninho_sala", d))
     except Exception as exc:  # noqa: BLE001 — degrada honesto, nunca lista vazia
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2742,8 +2751,9 @@ def api_fontes_frescor():
     import sqlite3 as _sq
     from datetime import datetime as _dt
     try:
+        from compliance_agent.proveniencia_manchetes import anexar
         if d := _cache_get("fontes:frescor", 3600):
-            return JSONResponse(d)
+            return JSONResponse(anexar("/api/fontes/frescor", d))
         fontes = []
 
         def _add(nome, q, con, fmt="iso", detalhe=""):
@@ -2795,7 +2805,7 @@ def api_fontes_frescor():
             f["idade_dias"] = idade
             f["estado"] = _estado_frescor(idade, f.get("detalhe"))
         out = {"ok": True, "fontes": fontes, "gerado": hoje.strftime("%Y-%m-%d %H:%M")}
-        return JSONResponse(_cache_put("fontes:frescor", out))
+        return JSONResponse(anexar("/api/fontes/frescor", _cache_put("fontes:frescor", out)))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
