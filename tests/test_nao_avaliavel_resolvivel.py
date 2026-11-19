@@ -195,11 +195,12 @@ def test_ctx_sem_sancao_alguma_vira_descartado_no_c7(base):
 
 def test_ctx_traz_socios_e_servidores_para_o_c8(base):
     con = sqlite3.connect(base)
-    # a folha mostra D3-D8; o fragmento comum D4-D8 = '36481' casa com a RFB '364817'
+    # a GESPERJ mostra D4-D9, a MESMA janela da RFB (aferida em 19/11/2026, `identidade_pessoa`): '364817' casa.
+    # A fixture antiga presumia D3-D8 e uma fonte 'gesperj' sem janela aferida — a régua devolve SEM DADO nesse caso.
     con.execute("INSERT INTO registros_folha (id, cpf, nome, orgao_nome, cargo, vinculo, fonte) "
-                "VALUES (1,'XX036481XXX','Jose da Silva','SEEDUC','PROFESSOR','EFETIVO','gesperj')")
+                "VALUES (1,'XX364817XXX','Jose da Silva','SEEDUC','PROFESSOR','EFETIVO','gesperj_estado')")
     con.execute("INSERT INTO registros_folha (id, cpf, nome, orgao_nome, cargo, vinculo, fonte) "
-                "VALUES (2,'XX000000XXX','MARIA SOUZA','SES','MEDICO','EFETIVO','gesperj')")
+                "VALUES (2,'XX000000XXX','MARIA SOUZA','SES','MEDICO','EFETIVO','gesperj_estado')")
     con.commit()
     con.close()
     ctx = _ctx(base)
