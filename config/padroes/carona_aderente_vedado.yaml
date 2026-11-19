@@ -18,5 +18,9 @@ explicacoes_inocentes:
   - "Cláusula do edital do PRÓPRIO órgão (gerenciador) — fora: exige prova de adesão deste órgão"
   - "Cláusula permissiva (qualquer órgão federal, estadual, municipal; Estado do RJ) — não conta"
   - "Vedação do art. 86 §8º (órgãos federais) ou condicional (limite, prazo, sem anuência) — não conta"
+  - "Trecho que nomeia o GERENCIADOR de outra UF ('ata … da Secretaria de Saúde do Estado da Bahia') não é limite de aderente — exige 'por órgãos/entidades …' (1ª varredura: SEI-080001/018310/2024, 080002/000748/2026, 080002/012650/2025, 030001/064045/2026, 240001/000098/2026, 270060/002141/2022)"
+  - "Ata/edital de OUTRA compra na pesquisa de preços, parecer da PGE sobre o edital do próprio órgão e contrato do próprio pregão — fora (SEI-270005/001074/2024, 270006/030777/2025, 270006/039664/2025, 420001/001292/2021, 350006/002596/2024, 080004/001527/2026)"
+  - "Órgão do RJ listado como PARTICIPANTE na ata (MJSP 076/2024 — CBMERJ) — vedação de carona não o alcança (SEI-270005/000052/2026, 000628/2025, 000790/2025)"
+  - "Sem NE de adesão externa (só ato de adesão no texto) o teto é médio — o pedido pode ser de OUTRO órgão à ata do RJ (SEI-270003/001689/2025)"
 controle_positivo: SEI-420001/003312/2024 doc 10 item 15.1 ("Administração Pública do Estado de São Paulo e de Municípios paulistas") + doc 14 NE "12 - Adesão ao Registro de Preços Externo"
 controle_negativo: SEI-420001/006323/2025 (STEM — carona em ata FEDERAL do IFMT, cláusula permissiva) — sem sinal

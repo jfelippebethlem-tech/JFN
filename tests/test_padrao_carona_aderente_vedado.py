@@ -47,3 +47,28 @@ def test_negativo_vedacao_federal_art86_par8_nao_conta():
                                           "por órgãos e entidades da Administração Pública federal.")
     r = avaliar("x", [NE_EXTERNO, veda])
     assert not [s for s in r["sinais"] if s["sinal"] == "vedacao_carona"]
+
+
+def test_negativo_ata_que_nomeia_o_gerenciador_de_outro_estado():
+    # 1ª varredura: "adesão à Ata … da Secretaria de Saúde do Estado da Bahia" nomeia o GERENCIADOR (SEI-080001/018310/2024)
+    assert _ente_restrito("recomendar a adesão à Ata de Registro de Preços n° 19.004, oriunda do Pregão Eletrônico "
+                          "n.º 345/2023, da Secretaria de Saúde do Estado da Bahia") is None
+    assert _ente_restrito("decorrente de adesão à Ata de Registro de Preços nº 002/2024, celebrada pelo Estado do "
+                          "Mato Grosso, por intermédio de sua Secretaria de Estado de Educação") is None
+
+
+def test_negativo_vedacao_em_pesquisa_parecer_ou_ata_com_rj_participante():
+    pesquisa = Doc("arquivo", "19", "Pesquisa PNCP - ARP", "4.1. Não será admitida a adesão a esta ata de registro "
+                   "de preços, conforme justificativa apresentada no processo administrativo.")
+    parecer = Doc("arquivo", "0", "Parecer Jurídico", "Nota-se do item 19 que não se admitirá adesão de órgão aderente")
+    ata_mjsp = Doc("arquivo", "25", "Anexo ATA 076/2024 MJSP", "Não será admitida a adesão à ata de registro de preços "
+                   "decorrente desta licitação. FUNDO ESPECIAL DO CORPO DE BOMBEIROS DO RIO DE JANEIRO")
+    r = avaliar("x", [NE_EXTERNO, pesquisa, parecer, ata_mjsp])
+    assert not [s for s in r["sinais"] if s["sinal"] == "vedacao_carona"]
+
+
+def test_positivo_vedacao_no_edital_do_gerenciador():
+    ed = Doc("arquivo", "9", "Anexo Edital", "DA ADESÃO À ATA DE REGISTRO DE PREÇOS Não será admitida a adesão à ata "
+             "de registro de preços decorrente desta licitação.")
+    r = avaliar("x", [NE_EXTERNO, ed])
+    assert [s for s in r["sinais"] if s["sinal"] == "vedacao_carona"]

@@ -63,6 +63,16 @@ _VEDA_CONDICIONAL = re.compile(r"federa|§\s*8|limite|quantitativ|exced|superior
                                r"de\s+atas?\s+(?:de|gerenciad)|registro\s+de\s+pre[çc]os\s+(?:de|d[oa])\s|"
                                r"munic[íi]pio|distrit|estadua", re.I)
 
+# documentos que podem trazer a cláusula do INSTRUMENTO (edital/ata/TR); parecer, contrato e pesquisa ficam fora:
+# 1ª varredura — parecer da PGE comentando o edital do próprio órgão gerenciador (SEI-350006/002596/2024),
+# contrato do próprio pregão do IVB (SEI-080004/001527/2026), ARP de outra compra na "Pesquisa PNCP"
+# (SEI-270005/001074/2024, 270006/030777/2025, 270006/039664/2025, 420001/001292/2021).
+_DOCS_INSTRUMENTO = ("edital", "ata", "tr", "outro")
+_TIT_FORA = re.compile(r"pesquisa|cota[çc]|mapa\s+(?:comparativo|de\s+pre)|or[çc]amento|parecer|contrato", re.I)
+# a ata MJSP 076/2024 lista o "FUNDO ESPECIAL DO CORPO DE BOMBEIROS DO RIO DE JANEIRO" como PARTICIPANTE
+# (SEI-270005/000052/2026, 000628/2025, 000790/2025): vedação de carona não alcança participante
+_RJ = re.compile(r"rio\s+de\s+janeiro", re.I)
+
 RX_GERENCIADOR = re.compile(
     r"Ata\s+de\s+Registro\s+de\s+Pre[çc]os\s*(?:(?:n[º°o.]*|n[úu]mero)\s*[\d./\-]+\s*,?\s*)?(?:\([^)]{0,40}\)\s*)?,?\s*"
     r"(?:d[oa]|gerenciad[ao]\s+pel[oa]|realizad[ao]\s+pel[oa])\s+"
@@ -77,7 +87,14 @@ def _ente_restrito(clausula: str) -> str | None:
     c = cc.sem_acento(clausula).lower()
     if not _NAO_PARTICIPANTE.search(c):
         return None
-    alvo = c.split("que nao")[0] if "que nao" in c else c   # "…por órgãos X que não tenham participado"
+    # o ente RESTRITO vem depois de "por órgãos/entidades": "adesão à Ata … da Secretaria de Saúde do Estado da
+    # Bahia" nomeia o GERENCIADOR, não limita o aderente (1ª varredura: 6 falsos positivos — SESAB/BA, SEDUC/MT,
+    # PMES, CBMERJ como gerenciador). Sem esse sujeito, não há cláusula de limites subjetivos.
+    mp = re.search(r"\bpor\s+(?:quaisquer\s+|os\s+|outros\s+)?(?:orgaos?|entes?|entidades?)\b", c)
+    if not mp:
+        return None
+    alvo = c[mp.start():]
+    alvo = alvo.split("que nao")[0] if "que nao" in alvo else alvo   # "…por órgãos X que não tenham participado"
     if _PERMISSIVO.search(alvo):
         return None
     for uf, nome in _UF_NOMES.items():
@@ -112,20 +129,27 @@ def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
             foro, foro_uf = f'{d.ref} — "{cc.trecho(d.texto, m.start(), m.end(), 30)[:200]}"', m.group(2)
             break
     sinais: list[dict] = []
+    teto = "forte" if externo else "medio"          # sem NE de adesão externa, o ato de adesão é indício mais fraco
     for d in ds:
-        for m in RX_CLAUSULA.finditer(d.texto):
-            ente = _ente_restrito(m.group(0))
-            if ente:
-                grau = "medio" if ente.startswith("somente") else "forte"
-                sinais.append({"sinal": "restricao_ente", "grau": grau, "ente": ente,
-                               "prova": f'{d.ref} ({d.titulo[:70]}) — "{cc.trecho(d.texto, m.start(), m.end(), 60)[:420]}"'})
+        tp = cc.tipo_doc(d.titulo)
+        if tp == "pesquisa" or re.search(r"pesquisa", d.titulo, re.I):
+            continue                                # ata/edital de OUTRA compra citado na pesquisa de preços
+        fora = bool(_TIT_FORA.search(d.titulo))     # parecer/contrato: não é o instrumento do gerenciador
+        if tp in _DOCS_INSTRUMENTO and not fora:
+            for m in RX_CLAUSULA.finditer(d.texto):
+                ente = _ente_restrito(m.group(0))
+                if ente:
+                    grau = "medio" if ente.startswith("somente") else teto
+                    sinais.append({"sinal": "restricao_ente", "grau": grau, "ente": ente,
+                                   "prova": f'{d.ref} ({d.titulo[:70]}) — "{cc.trecho(d.texto, m.start(), m.end(), 60)[:420]}"'})
+                    break
+        if tp in ("edital", "ata") and not fora and not _RJ.search(d.texto):   # RJ na ata = participante
+            for m in RX_VEDA.finditer(d.texto):
+                if _VEDA_CONDICIONAL.search(m.group(0)):
+                    continue
+                sinais.append({"sinal": "vedacao_carona", "grau": "medio",
+                               "prova": f'{d.ref} ({d.titulo[:70]}) — "{cc.trecho(d.texto, m.start(), m.end(), 80)[:420]}"'})
                 break
-        for m in RX_VEDA.finditer(d.texto):
-            if _VEDA_CONDICIONAL.search(m.group(0)):
-                continue
-            sinais.append({"sinal": "vedacao_carona", "grau": "medio",
-                           "prova": f'{d.ref} ({d.titulo[:70]}) — "{cc.trecho(d.texto, m.start(), m.end(), 80)[:420]}"'})
-            break
         for m in RX_GERENCIADOR.finditer(d.texto):
             ger = re.sub(r"\s+", " ", m.group(1))[:160]
             ctx = d.texto[m.start(1): m.end(1) + 200]
@@ -136,7 +160,7 @@ def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
                 continue                                    # consórcio sem UF identificada: não afirma
             if uf == "RJ" and reg != "14133":
                 continue                                    # consórcio/município fluminense sob a 8.666: regime local
-            grau = "forte" if (municipal and reg == "14133") else "medio"
+            grau = "forte" if (municipal and reg == "14133" and externo) else "medio"
             sinais.append({"sinal": "gerenciador_municipal", "grau": grau, "gerenciador": ger, "uf": uf,
                            "uf_pelo_foro": ufm is None, "regime": reg,
                            "prova": f'{d.ref} ({d.titulo[:70]}) — "{cc.trecho(d.texto, m.start(), m.end(), 40)[:420]}"'})
