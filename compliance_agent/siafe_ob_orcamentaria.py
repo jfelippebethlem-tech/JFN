@@ -122,6 +122,11 @@ def _migrar_chave(con) -> int:
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
         # 14 consultas filtram por credor (=/IN) e cada uma varria 1,3 mi de linhas (03/11/2026).
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_credor ON ob_orcamentaria_siafe(credor)")
+        # 19/11/2026: a soma do pago por processo (`ob_processo`) liga OB por número, NL, PD e processo — sem índice,
+        # cada agente de perícia varria 1,36 mi de linhas (≈450 MB por consulta na VM-1).
+        for _ix, _col in (("ix_obsiafe_numero", "numero_ob"), ("ix_obsiafe_nl", "nl"), ("ix_obsiafe_pd", "pd"),
+                          ("ix_obsiafe_processo", "processo")):
+            con.execute(f"CREATE INDEX IF NOT EXISTS {_ix} ON ob_orcamentaria_siafe({_col})")
         con.commit()
         return n
     except sqlite3.Error:
@@ -186,6 +191,11 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
         # 14 consultas filtram por credor (=/IN) e cada uma varria 1,3 mi de linhas (03/11/2026).
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_credor ON ob_orcamentaria_siafe(credor)")
+        # 19/11/2026: a soma do pago por processo (`ob_processo`) liga OB por número, NL, PD e processo — sem índice,
+        # cada agente de perícia varria 1,36 mi de linhas (≈450 MB por consulta na VM-1).
+        for _ix, _col in (("ix_obsiafe_numero", "numero_ob"), ("ix_obsiafe_nl", "nl"), ("ix_obsiafe_pd", "pd"),
+                          ("ix_obsiafe_processo", "processo")):
+            con.execute(f"CREATE INDEX IF NOT EXISTS {_ix} ON ob_orcamentaria_siafe({_col})")
         agora = _t.strftime("%Y-%m-%d %H:%M:%S", _t.gmtime())
         campos = _COLS_SIAFE + ["exercicio", "coletado_em"]
         sql = (f"INSERT OR REPLACE INTO ob_orcamentaria_siafe ({','.join(campos)}) "
