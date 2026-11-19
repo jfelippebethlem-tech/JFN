@@ -11,6 +11,7 @@ a modalidade pela NE (um documento por processo) fica em cache em disco (`data/p
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
@@ -155,7 +156,7 @@ def carregar_cache_ne() -> dict:
 
 def salvar_cache_ne(c: dict) -> None:
     CACHE_NE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = CACHE_NE.with_suffix(".tmp")
+    tmp = CACHE_NE.with_name(f"{CACHE_NE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
     tmp.write_text(json.dumps(c, ensure_ascii=False), encoding="utf-8")
     tmp.replace(CACHE_NE)
 

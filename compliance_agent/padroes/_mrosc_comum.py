@@ -10,6 +10,7 @@ igual para ele; o fundamento citado muda (`norma`).
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -52,7 +53,7 @@ def tags_parceria(limite: int | None = None) -> list[str]:
     tags = [p.name for p in ps if (m := C.manifesto(p)) and eh_parceria(m)]
     if not limite:
         _CACHE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = _CACHE.with_suffix(".tmp")
+        tmp = _CACHE.with_name(f"{_CACHE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
         tmp.write_text(json.dumps({"pastas": len(ps), "tags": tags}), encoding="utf-8")
         tmp.replace(_CACHE)
     return tags

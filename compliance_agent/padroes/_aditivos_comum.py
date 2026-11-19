@@ -17,6 +17,7 @@ Uma porta só para o que os oito detectores da família leem — e para as armad
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import unicodedata
@@ -175,6 +176,10 @@ _RE_TIT_NAO_TERMO = re.compile(r"minuta|rascunho|proposta|solicita|parecer|despa
 def eh_termo_aditivo(doc: dict) -> bool:
     """O documento É o termo (não minuta, parecer, ofício sobre ele, nem extrato do DOERJ)."""
     t = doc.get("titulo") or ""
+    # "Termo 2º ADITIVO AO CONTRATO e PUBLICAÇÃO" (Poupa Tempo 150001/000224/2025, doc 12) é o termo com o extrato
+    # anexado: o corpo vale; o extrato é barrado trecho a trecho por `no_corpo`
+    if re.match(r"\s*termo\b[^()]{0,40}aditivo", t, re.I) and not re.search(r"minuta|rascunho", t, re.I):
+        return True
     if _RE_TIT_NAO_TERMO.search(t):
         return False
     return bool(_RE_TIT_ADITIVO.search(t)) or doc.get("tipo") == "aditivo"
@@ -341,7 +346,7 @@ def indice(reconstruir: bool = False, limite: int | None = None) -> dict:
     dado = {"gerado_em": datetime.now().isoformat(timespec="seconds"), "processos": procs}
     if not limite:
         INDICE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = INDICE.with_suffix(".tmp")
+        tmp = INDICE.with_name(f"{INDICE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
         tmp.write_text(json.dumps(dado, ensure_ascii=False), encoding="utf-8")
         tmp.replace(INDICE)
     return dado
