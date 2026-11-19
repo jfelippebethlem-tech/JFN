@@ -22,9 +22,6 @@ from compliance_agent.padroes import _carona_comum as cc
 
 ID = "carona_aderente_vedado"
 
-PREFILTRO = (r"ades(ã|a)o (à|a|ao) (ata|arp|registro de pre)|registro de pre(ç|c)os externo|aderir (à|a) ata|"
-             r"carona|n(ã|a)o[ -]participante")
-
 RX_EXTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+externo", re.I)
 RX_INTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+interno", re.I)
 # ato de adesão praticado por este órgão (não cláusula genérica de edital): pedido/autorização/termo de adesão
@@ -154,12 +151,44 @@ def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
             "prova_adesao": f'{d0.ref} — "{cc.trecho(d0.texto, m0.start(), m0.end(), 60)[:300]}"'}
 
 
+_RX_TIT_ADESAO = re.compile(r"ades[aã]o|carona|anuencia|\barp\b|ata de registro", re.I)
+
+
+def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict]:
+    """Processos de ADESÃO do acervo: NE com Mod. Licitação 12 (externa) / 10 (interna) ou, sem NE legível, título de
+    documento que fala de adesão/ARP. → [(tag, info_ne)], cobertura."""
+    cache = cc.carregar_cache_ne()
+    todos = cc.tags()[: limite or None]
+    base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
+                     "sem_ne_mas_titulo_de_adesao": 0}
+    for n, t in enumerate(todos):
+        ne = cc.modalidade_ne(t, cache)
+        cod = cc.codigo_mod(ne)
+        if cod == "12":
+            cob["ne_12_externa"] += 1
+            base.append((t, ne))
+        elif cod == "10":
+            cob["ne_10_interna"] += 1
+            base.append((t, ne))
+        elif cod is None:
+            cob["sem_ne_legivel"] += 1
+            if cc.titulos_casam(t, _RX_TIT_ADESAO):
+                cob["sem_ne_mas_titulo_de_adesao"] += 1
+                base.append((t, ne))
+        if n % 500 == 499:
+            cc.salvar_cache_ne(cache)
+    cc.salvar_cache_ne(cache)
+    return base, cob
+
+
 def varrer(limite: int | None = None) -> dict:
-    cand = cc.candidatos(PREFILTRO)
-    tags = sorted(cand)[: limite or None]
+    base, cob = base_adesao(limite)
     avaliados = sem_texto = interna = sem_ato = 0
     brutos: list[tuple[str, dict, list[cc.Doc]]] = []
-    for t in tags:
+    for t, ne in base:
+        if cc.codigo_mod(ne) == "10":
+            interna += 1                      # ata do próprio Estado: restrição de ente/municipal não se aplica
+            continue
         ds = cc.docs(t)
         if not ds:
             sem_texto += 1
@@ -192,9 +221,8 @@ def varrer(limite: int | None = None) -> dict:
                        "conferir a anuência e a cláusula no edital/ata juntados."),
             "fonte": "SEI (texto dos autos) + SIAFE (_ob_paga, piso)"})
     achados.sort(key=lambda a: ({"forte": 0, "medio": 1, "fraco": 2}[a["grau"]], -(a["valor_pago_ob"] or 0)))
-    return cc.resultado(ID, avaliados, {
-        "prefiltro_processos": len(cand), "examinados": len(tags), "sem_texto": sem_texto,
-        "adesao_interna_so": interna, "sem_prova_de_adesao_do_orgao": sem_ato,
-        "nota": "universo = processos com prova de adesão EXTERNA deste órgão; edital/ata do gerenciador nem sempre "
-                "está juntado — ausência da cláusula nos autos ≠ ausência no instrumento (PNCP não publica edital "
-                "de forma estruturada)."}, achados)
+    cob.update({"sem_texto": sem_texto, "adesao_interna": interna, "sem_prova_de_adesao_do_orgao": sem_ato,
+                "nota": "universo = processos com prova de adesão EXTERNA deste órgão (NE Mod. 12 ou ato de adesão); "
+                        "edital/ata do gerenciador nem sempre está juntado — ausência da cláusula nos autos ≠ ausência "
+                        "no instrumento."})
+    return cc.resultado(ID, avaliados, cob, achados)

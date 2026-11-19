@@ -20,9 +20,9 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "preco_de_fonte_unica_interessada"
-PREFILTRO = (r"localizou apenas|localizad[ao]s? apenas|(u|ú)nic[oa] (or(ç|c)amento|cota(ç|c)(ã|a)o|fonte)|"
-             r"apenas (um|uma|01) (or(ç|c)amento|cota(ç|c)(ã|a)o|proposta|fonte)|pre(ç|c)o de capa|valor de capa|"
-             r"pre(ç|c)os? de capa|estimad[oa].{0,200}com base")
+# documentos onde a estimativa mora: TR/ETP/pesquisa e, entre os "outros", os de título de estimativa/justificativa
+_RX_TIT_ESTIM = re.compile(r"estimativa|pre[cç]o|cota[cç]|mapa|justificativa|informa[cç][aã]o d[ae] contrata|"
+                           r"or[cç]amento|planilha estimativa", re.I)
 
 RX_F1 = re.compile(
     r"(?:localizou|localizad[oa]s?|identificou|encontrou|encontrad[oa]s?|obteve|obtid[oa]s?|recebe(?:u|mos)|"
@@ -68,12 +68,16 @@ def avaliar(ds: list[cc.Doc]) -> dict:
 
 
 def varrer(limite: int | None = None) -> dict:
-    cand = cc.candidatos(PREFILTRO)
-    tags = sorted(cand)[: limite or None]
-    universo = sem_texto = 0
+    todos = cc.tags()[: limite or None]
+    universo = sem_texto = sem_doc = 0
     brutos = []
-    for t in tags:
-        ds = cc.docs(t)
+    for t in todos:
+        rs = [r for r in cc.refs(t) if cc.tipo_doc(r.titulo) in ("tr", "etp", "pesquisa")
+              or (cc.tipo_doc(r.titulo) == "outro" and _RX_TIT_ESTIM.search(cc.sem_acento(r.titulo)))]
+        if not rs:
+            sem_doc += 1
+            continue
+        ds = [d for d in (cc.ler(r) for r in rs) if d]
         if not ds:
             sem_texto += 1
             continue
@@ -98,7 +102,7 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (TR/ETP/pesquisa) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
-    return cc.resultado(ID, universo, {"prefiltro_processos": len(cand), "examinados": len(tags),
+    return cc.resultado(ID, universo, {"processos_no_acervo": len(todos), "sem_tr_etp_pesquisa_nos_autos": sem_doc,
                                        "sem_texto": sem_texto,
-                                       "nota": "universo = processos cujo texto fala de estimativa/fonte de preço (prefiltro); "
+                                       "nota": "universo = processos com TR/ETP/pesquisa/estimativa juntados (por título); "
                                                "estimativa não juntada aos autos não é avaliável."}, achados)

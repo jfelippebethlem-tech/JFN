@@ -221,21 +221,25 @@ def limite_aderente(pago: float, ata: dict) -> dict | None:
 
 
 def varrer(limite: int | None = None) -> dict:
-    cand = cc.candidatos(cav.PREFILTRO)
-    tags = sorted(cand)[: limite or None]
+    adesoes, cob0 = cav.base_adesao(limite)
     base: list[tuple[str, list[cc.Doc], str]] = []
     sem_texto = 0
-    for t in tags:
-        ds = cc.docs(t)
+    for t, ne in adesoes:
+        cod = cc.codigo_mod(ne)
+        # interna (ata do RJ, Mod. 10): só o sinal da lei revogada — basta ler contrato/extrato/NE
+        ds = cc.docs(t, ("contrato", "empenho", "outro")) if cod == "10" else cc.docs(t)
         if not ds:
             sem_texto += 1
+            continue
+        if cod == "10":
+            base.append((t, ds, "interna"))
             continue
         r = cav.avaliar(t, ds)
         if r["adesao"]:
             base.append((t, ds, r["adesao"]))
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in base})
     cache = _cache()
-    cob = {"prefiltro_processos": len(cand), "sem_texto": sem_texto, "adesoes": len(base),
+    cob = {**cob0, "sem_texto": sem_texto, "adesoes": len(base),
            "externas": sum(1 for b in base if b[2] == "externa"), "sem_numero_de_ata": 0, "ata_nao_achada_pncp": 0,
            "pncp_indisponivel": 0, "sem_ob_paga": 0, "atas_pncp": 0}
     por_ata: dict[str, list] = {}

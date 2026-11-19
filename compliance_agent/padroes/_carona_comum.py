@@ -1,18 +1,21 @@
 """Base comum da família CARONA EM ATA (adesão) E CONTRATAÇÃO DIRETA (docs/PADROES-DE-IRREGULARIDADE.md).
 
-Leitura do acervo SEI (data/sei_arquivo/<tag> e data/sei_cache/integra_<tag>), pré-filtro por `grep` (o acervo tem
-~570 mil textos / 7 GB; ler tudo em Python a cada detector custaria horas na VM-1), trecho literal para a prova e
-OB paga do SIAFE (`_ob_paga`). Só leitura. Nada aqui decide achado: só entrega texto e número com proveniência.
+Leitura do acervo SEI (data/sei_arquivo/<tag> e data/sei_cache/integra_<tag>), trecho literal para a prova e OB paga
+do SIAFE (`_ob_paga`). Só leitura. Nada aqui decide achado: só entrega texto e número com proveniência.
+
+Custo medido em 18/11/2026 (VM-1, load 27): o acervo tem ~570 mil textos / 7 GB e a leitura a frio sai a ~7
+arquivos/s (IOPS do volume, não CPU) — grep no acervo inteiro levaria horas por detector. Por isso a seleção é pelo
+ÍNDICE DE TÍTULOS (manifestos, um arquivo por processo) e só os documentos do tipo que o detector precisa são lidos;
+a modalidade pela NE (um documento por processo) fica em cache em disco (`data/padroes/_cache_ne_carona.json`).
 """
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
-import subprocess
 import unicodedata
 from dataclasses import dataclass
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -54,33 +57,6 @@ def sem_acento(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn")
 
 
-_ACENTOS = "áàâãéêíóôõúüç"
-
-
-def _regex_c(regex_ere: str) -> str:
-    """grep -i em locale UTF-8 é ~20× mais lento; em LC_ALL=C o -i só dobra ASCII — então cada letra acentuada
-    vira (minúscula|MAIÚSCULA) explicitamente. Não usar letra acentuada dentro de [colchetes] no prefiltro."""
-    return "".join(f"({c}|{c.upper()})" if c in _ACENTOS else c for c in regex_ere)
-
-
-def candidatos(regex_ere: str) -> dict[str, set[str]]:
-    """Processos (tag) cujo texto casa `regex_ere` (grep -E, sem distinção de caixa) → nomes dos arquivos que casaram.
-    Roda com prioridade mínima de CPU e de disco (VM-1 compartilhada)."""
-    env = dict(os.environ, LC_ALL="C")
-    base = ["nice", "-n", "19", "ionice", "-c3", "grep", "-rliE", "--include=*.txt", _regex_c(regex_ere)]
-    alvos = [str(ARQUIVO)] + sorted(str(p) for p in CACHE.glob("integra_*") if p.is_dir())
-    out: dict[str, set[str]] = {}
-    for k in range(0, len(alvos), 400):        # lotes: a linha de comando tem limite
-        r = subprocess.run(base + alvos[k:k + 400], capture_output=True, text=True, env=env, check=False)
-        if r.returncode not in (0, 1):
-            raise RuntimeError(f"grep falhou ({r.returncode}): {r.stderr[:300]}")
-        for linha in r.stdout.splitlines():
-            t = tag_de(linha)
-            if t:
-                out.setdefault(t, set()).add(Path(linha).name)
-    return out
-
-
 def _ler(p: Path) -> str:
     try:
         return p.read_text(encoding="utf-8", errors="replace")
@@ -92,43 +68,108 @@ def _norm_tit(t: str) -> str:
     return re.sub(r"[^a-z0-9]", "", sem_acento(t or "").lower())[:60]
 
 
-def docs(tag: str) -> list[Doc]:
-    """Documentos do processo: o arquivo (texto já lido, com título) primeiro; da íntegra entram os títulos que o
-    arquivo não tem. Texto vazio fica de fora (INDISPONÍVEL ≠ texto sem o sinal — quem chama mede a cobertura)."""
-    saida: list[Doc] = []
+@dataclass
+class Ref:
+    fonte: str
+    i: str
+    titulo: str
+    caminhos: tuple[str, ...]      # arquivo: (texto,); íntegra: (.txt, .ocr.txt) — vale o mais longo
+
+
+@lru_cache(maxsize=None)
+def refs(tag: str) -> tuple[Ref, ...]:
+    """Documentos do processo SEM ler o texto: o arquivo (texto já lido, com título) primeiro; da íntegra entram os
+    títulos que o arquivo não tem."""
+    out: list[Ref] = []
     vistos: set[str] = set()
     d = ARQUIVO / tag
-    man = d / "manifest.json"
-    if man.exists():
-        try:
-            m = json.loads(_ler(man) or "{}")
-        except ValueError:
-            m = {}
-        for x in m.get("docs") or []:
-            p = d / str(x.get("texto") or "")
-            if not x.get("texto") or not p.is_file():
-                continue
-            txt = _ler(p)
-            if txt.strip():
-                saida.append(Doc("arquivo", str(x.get("i")), str(x.get("titulo") or ""), txt))
-                vistos.add(_norm_tit(str(x.get("titulo") or "")))
+    try:
+        m = json.loads(_ler(d / "manifest.json") or "{}")
+    except ValueError:
+        m = {}
+    for x in m.get("docs") or []:
+        if x.get("texto"):
+            out.append(Ref("arquivo", str(x.get("i")), str(x.get("titulo") or ""), (str(d / str(x["texto"])),)))
+            vistos.add(_norm_tit(str(x.get("titulo") or "")))
     di = CACHE / f"integra_{tag}"
-    mi = di / "manifest.json"
-    if mi.exists():
-        try:
-            m = json.loads(_ler(mi) or "{}")
-        except ValueError:
-            m = {}
-        for x in m.get("docs") or []:
-            tit = str(x.get("titulo") or "")
-            if _norm_tit(tit) in vistos:
-                continue
-            stem = Path(str(x.get("arquivo") or f"{int(x.get('i') or 0):03d}.pdf")).stem
-            txts = [_ler(di / f"{stem}.txt"), _ler(di / f"{stem}.ocr.txt")]
-            txt = max(txts, key=len)
-            if txt.strip():
-                saida.append(Doc("integra", str(x.get("i")), tit, txt))
-    return saida
+    try:
+        m = json.loads(_ler(di / "manifest.json") or "{}")
+    except ValueError:
+        m = {}
+    for x in m.get("docs") or []:
+        tit = str(x.get("titulo") or "")
+        if _norm_tit(tit) in vistos:
+            continue
+        stem = Path(str(x.get("arquivo") or f"{int(x.get('i') or 0):03d}.pdf")).stem
+        out.append(Ref("integra", str(x.get("i")), tit, (str(di / f"{stem}.txt"), str(di / f"{stem}.ocr.txt"))))
+    return tuple(out)
+
+
+def ler(r: Ref) -> Doc | None:
+    txt = max((_ler(Path(c)) for c in r.caminhos), key=len)
+    return Doc(r.fonte, r.i, r.titulo, txt) if txt.strip() else None
+
+
+def docs(tag: str, tipos: tuple[str, ...] | None = None) -> list[Doc]:
+    """Lê os documentos do processo (só os de `tipos`, por `tipo_doc(titulo)`, quando dado). Texto vazio fica de fora
+    (INDISPONÍVEL ≠ texto sem o sinal — quem chama mede a cobertura)."""
+    out = []
+    for r in refs(tag):
+        if tipos is None or tipo_doc(r.titulo) in tipos:
+            d = ler(r)
+            if d:
+                out.append(d)
+    return out
+
+
+def tags() -> list[str]:
+    """Todos os processos do acervo (arquivo ∪ íntegra)."""
+    a = {p.name for p in ARQUIVO.iterdir() if _RX_TAG.fullmatch(p.name)} if ARQUIVO.exists() else set()
+    b = {p.name[8:] for p in CACHE.glob("integra_*") if _RX_TAG.fullmatch(p.name[8:])} if CACHE.exists() else set()
+    return sorted(a | b)
+
+
+# ─────────────── modalidade pela NE (um documento por processo; cache em disco) ───────────────
+CACHE_NE = RAIZ / "data" / "padroes" / "_cache_ne_carona.json"
+_RX_MOD = re.compile(r"Mod\.?\s*Licita[çc][ãa]o\s*\n?\s*(\d{2})\s*-\s*([^\n]{3,80})", re.I)
+_RX_EMB = re.compile(r"Emb\.?\s*Legal\s*\n?\s*([^\n]{3,80})", re.I)
+
+
+def carregar_cache_ne() -> dict:
+    try:
+        return json.loads(CACHE_NE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def salvar_cache_ne(c: dict) -> None:
+    CACHE_NE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CACHE_NE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(c, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(CACHE_NE)
+
+
+def modalidade_ne(tag: str, cache: dict) -> dict:
+    """{"mod": "12 - Adesão ao Registro de Preços Externo - Pregão" | None, "emb": "...", "prova": "doc i — …",
+    "sem_ne": bool}. Lê a NE ORIGINAL (ou a primeira NE) — a modalidade se repete em todas as NE do contrato."""
+    if tag in cache:
+        return cache[tag]
+    rs = [r for r in refs(tag) if re.search(r"empenho", sem_acento(r.titulo), re.I)]
+    rs.sort(key=lambda r: (0 if re.search(r"original", r.titulo, re.I) else 1))
+    out = {"mod": None, "emb": None, "prova": None, "sem_ne": not rs}
+    for r in rs[:2]:
+        d = ler(r)
+        if not d:
+            continue
+        m = _RX_MOD.search(d.texto)
+        if m:
+            e = _RX_EMB.search(d.texto)
+            out = {"mod": f"{m.group(1)} - {m.group(2).strip()}", "emb": e.group(1).strip() if e else None,
+                   "prova": f'{d.ref} ({d.titulo[:50]}) — "{trecho(d.texto, m.start(), m.end(), 0)[:120]}"',
+                   "sem_ne": False}
+            break
+    cache[tag] = out
+    return out
 
 
 def trecho(texto: str, ini: int, fim: int, raio: int = 140) -> str:
@@ -217,3 +258,13 @@ def orgao(ds: list[Doc]) -> str | None:
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], **extra) -> dict:
     return {"id": id_, "gerado_em": agora(), "universo": universo, "cobertura": cobertura,
             "achados": achados, **extra}
+
+
+def codigo_mod(ne: dict) -> str | None:
+    """'12' adesão externa · '10' adesão interna · '06' inexigibilidade · … (tabela do SIAFE-RJ na NE)."""
+    m = re.match(r"(\d{2})", ne.get("mod") or "")
+    return m.group(1) if m else None
+
+
+def titulos_casam(tag: str, rx: re.Pattern) -> bool:
+    return any(rx.search(sem_acento(r.titulo)) for r in refs(tag))

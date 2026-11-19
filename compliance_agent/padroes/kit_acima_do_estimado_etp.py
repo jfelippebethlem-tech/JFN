@@ -19,8 +19,6 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "kit_acima_do_estimado_etp"
-PREFILTRO = r"\bID\s*[:\-–]?\s*[0-9]{5,7}\b"
-
 RX_ID = re.compile(r"\bID\s*[:\-–]?\s*(\d{5,7})\b")
 RX_NUM = re.compile(r"(?<![\d.,/])(\d{1,3}(?:\.\d{3})+(?:,\d{1,10})?|\d+(?:,\d{1,10})?)(?![\d.,]*\d/|\.\d)")
 _ESTIM = ("etp", "tr", "pesquisa")
@@ -95,18 +93,17 @@ def avaliar(ds: list[cc.Doc]) -> list[dict]:
 
 
 def varrer(limite: int | None = None) -> dict:
-    cand = cc.candidatos(PREFILTRO)
-    tags = sorted(cand)[: limite or None]
+    todos = cc.tags()[: limite or None]
     universo = sem_texto = sem_par = 0
     brutos = []
-    for t in tags:
-        ds = cc.docs(t)
-        if not ds:
-            sem_texto += 1
-            continue
-        tipos = {cc.tipo_doc(d.titulo) for d in ds}
+    for t in todos:
+        tipos = {cc.tipo_doc(r.titulo) for r in cc.refs(t)}
         if not (tipos & set(_ESTIM) and tipos & set(_CONTR)):
             sem_par += 1
+            continue
+        ds = cc.docs(t, _ESTIM + _CONTR)
+        if not ds:
+            sem_texto += 1
             continue
         universo += 1
         r = avaliar(ds)
@@ -130,7 +127,7 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (ETP/TR × contrato/ata, casados pelo ID SIGA) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
-    return cc.resultado(ID, universo, {"prefiltro_processos": len(cand), "examinados": len(tags),
+    return cc.resultado(ID, universo, {"processos_no_acervo": len(todos),
                                        "sem_texto": sem_texto, "sem_par_estimativa_e_contrato": sem_par,
                                        "nota": "só itens com ID SIGA e trinca qtd×unit=total nas DUAS pontas; ata sem "
                                                "coluna total não entra (o contrato entra)."}, achados)

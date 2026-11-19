@@ -17,7 +17,7 @@ import re
 from compliance_agent.padroes import _carona_comum as cc
 
 ID = "inexigibilidade_bem_comum"
-PREFILTRO = r"inexigib"
+_RX_TIT_INEX = re.compile(r"inexigib|exclusividade", re.I)
 
 RX_INEX = re.compile(
     r"\b0?6\s*-\s*Inexigibilidade|inexigibilidade[^.;]{0,160}?(?:art(?:igo)?\.?\s*74|art(?:igo)?\.?\s*25)"
@@ -80,12 +80,22 @@ def avaliar(ds: list[cc.Doc]) -> dict | None:
 
 
 def varrer(limite: int | None = None) -> dict:
-    cand = cc.candidatos(PREFILTRO)
-    tags = sorted(cand)[: limite or None]
-    universo = sem_texto = sem_tr = 0
+    cache = cc.carregar_cache_ne()
+    todos = cc.tags()[: limite or None]
+    universo = sem_texto = sem_tr = ne06 = por_titulo = 0
     brutos = []
-    for t in tags:
-        ds = cc.docs(t)
+    for n, t in enumerate(todos):
+        ne = cc.modalidade_ne(t, cache)
+        if n % 500 == 499:
+            cc.salvar_cache_ne(cache)
+        cod = cc.codigo_mod(ne)
+        if cod == "06":
+            ne06 += 1
+        elif cod is None and cc.titulos_casam(t, _RX_TIT_INEX):
+            por_titulo += 1
+        else:
+            continue
+        ds = cc.docs(t, _DOCS_TR + ("empenho", "outro") if cod is None else _DOCS_TR + ("empenho",))
         if not ds:
             sem_texto += 1
             continue
@@ -98,6 +108,7 @@ def varrer(limite: int | None = None) -> dict:
             continue
         if r["bem_comum"] or r["outros_fornecedores"]:
             brutos.append((t, r, ds))
+    cc.salvar_cache_ne(cache)
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in brutos})
     achados = []
     for t, r, ds in brutos:
@@ -121,7 +132,8 @@ def varrer(limite: int | None = None) -> dict:
             "fonte": "SEI (TR/ETP e NE dos autos) + SIAFE (_ob_paga, piso)"})
     ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
-    return cc.resultado(ID, universo, {"prefiltro_processos": len(cand), "examinados": len(tags),
+    return cc.resultado(ID, universo, {"processos_no_acervo": len(todos), "ne_06_inexigibilidade": ne06,
+                                       "sem_ne_titulo_de_inexigibilidade": por_titulo,
                                        "sem_texto": sem_texto, "inexigibilidade_sem_tr_etp_nos_autos": sem_tr,
                                        "nota": "sem TR/ETP juntado não há o que contradizer — fica fora, não é 'limpo'."},
                         achados)
