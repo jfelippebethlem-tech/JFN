@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Rotas hermes do JFN — extraído de server.py (split 2026-07-06; rede: tests/test_server_snapshot.py).
-Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
+"""Rotas do HERMES (agente de metas, missões, auditor 24 h) — split de server.py em 2026-07-06; rede:
+tests/test_server_snapshot.py. A forma dos erros (`{"erro"}` sem `ok`) é a que `static/hermes.html` lê."""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse, StreamingResponse
 
-logger = logging.getLogger(__name__)
-
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # anotação apenas; import real é lazy nos handlers
     from compliance_agent.hermes_goal import HermesGoalAgent
-from fastapi.responses import JSONResponse, StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -60,7 +59,6 @@ async def api_hermes_definir_missao(payload: dict):
             return JSONResponse({"erro": "missão vazia"}, status_code=400)
         HermesGoalAgent(session=s).definir_missao(texto)
         try:
-            import asyncio
             asyncio.create_task(mission_queue.enqueue({"tipo": "missao", "texto": texto}))
         except Exception as exc:
             logger.warning("missão definida mas não enfileirada (fica só no banco, não executa já): %s", exc)
@@ -227,11 +225,6 @@ async def api_hermes_parar(payload: Optional[dict] = None):
     try:
         await _cancelar_loop_trabalhar()
         try:
-            for _ in range(min(20, mission_queue.qsize())):
-                try:
-                    mission_queue.dequeue_nowait()
-                except Exception:
-                    break
             while not mission_queue.empty():
                 mission_queue.dequeue_nowait()
         except Exception as exc:

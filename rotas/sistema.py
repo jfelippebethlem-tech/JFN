@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Rotas sistema do JFN — extraído de server.py (split 2026-07-06; rede: tests/test_server_snapshot.py).
-Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
+"""Rotas de sistema do JFN — coleta SIAFE, sweeps, catálogos do Yoda, barramento de eventos e atividade da máquina
+(split de server.py em 2026-07-06; rede: tests/test_server_snapshot.py)."""
 from __future__ import annotations
 
 import json
 import logging
 import os
+import sqlite3
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -13,6 +15,8 @@ from typing import Optional
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+
+from rotas import apoio
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +28,23 @@ router = APIRouter()
 # flags do /sweeps/pausar). Fix 2026-07-10: base única na raiz real.
 RAIZ = Path(__file__).resolve().parent.parent
 
+
+def _ro(**kw) -> sqlite3.Connection:
+    """compliance.db SÓ LEITURA. `JFN_DATA_DIR` (o `jfn.service` o põe em ~/JFN/data) vale sobre a raiz."""
+    db = Path(os.environ.get("JFN_DATA_DIR", RAIZ / "data")) / "compliance.db"
+    return sqlite3.connect(f"file:{db}?mode=ro", uri=True, **kw)
+
+
+def _vivo(padrao: str) -> bool:
+    """Há processo cujo comando casa `padrao` (`pgrep -f`; colchete no padrão para não casar o próprio pgrep)."""
+    try:
+        return bool(subprocess.run(["pgrep", "-f", padrao], capture_output=True, timeout=3).stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def _siafe_spawn(args: list, quem: str):
     """Dispara a coleta SIAFE como subprocesso (não bloqueia a request); respeita o lockfile de sessão única."""
-    import subprocess
     import sys as _sys
     from compliance_agent import siafe_runner
     st = siafe_runner.lock_status()
@@ -65,10 +83,7 @@ def api_siafe_stats():
 
 def _calc_siafe_stats():
     try:
-        import sqlite3
-        from pathlib import Path as _P
-        db = _P(os.environ.get("JFN_DATA_DIR", RAIZ / "data")) / "compliance.db"
-        con = sqlite3.connect(str(db))
+        con = _ro()
         try:
             tem = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'").fetchone()
             if not tem:
@@ -103,7 +118,7 @@ def _calc_siafe_stats():
         # feita para esperar.
         cob = {}
         try:
-            con2 = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            con2 = _ro()
             try:
                 n_esp = con2.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
             finally:
@@ -247,11 +262,9 @@ def api_tac_ranking():
     `detector_tac`, aplicada em UMA passada sobre 1,16 milhão de OBs — cálculo que nunca pode
     acontecer dentro do request.
     """
-    import json as _json
-    from pathlib import Path as _Path
-    alvo = _Path(__file__).resolve().parent.parent / "data" / "tac_ranking_ugs.json"
+    alvo = RAIZ / "data" / "tac_ranking_ugs.json"
     try:
-        return JSONResponse(content=_json.loads(alvo.read_text(encoding="utf-8")))
+        return JSONResponse(content=json.loads(alvo.read_text(encoding="utf-8")))
     except (OSError, ValueError):
         return JSONResponse(content={
             "ok": True, "indisponivel": True,
@@ -331,16 +344,7 @@ def api_ob_retiradas():
 def api_sweeps_status():
     """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).
     Para o Yoda responder 'como está o sweep' sem se perder — texto pronto p/ Telegram."""
-    import subprocess
     base = RAIZ
-
-    def _alive(pat: str) -> bool:
-        try:
-            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True).stdout.strip())
-        except Exception:  # noqa: BLE001
-            return False
-
-    # SEI
     sei_feitos = 0
     try:
         sei_feitos = len(json.loads((base / "data/sei_cache/sei_sweep_progress.json").read_text()).get("feitos", {}))
@@ -352,16 +356,17 @@ def api_sweeps_status():
         sei_tail = _ls[-1][:170] if _ls else ""
     except Exception as exc:  # noqa: BLE001
         logger.debug("sweeps/status: sem tail de sei_sweep_loop.out: %s", exc)
-    sei_sup, sei_run = _alive("sei_supervisor.sh"), _alive("tools[.]sei_sweep")
-    sia_sup, sia_run = _alive("siafe_supervisor.sh"), _alive("siafe[_]sweep_full")
-    pausado = (base / "data/.pause_sei_sweep").exists() or (base / "data/.pause_sweep_2").exists()
+    sei_sup, sei_run = _vivo("sei_supervisor.sh"), _vivo("tools[.]sei_sweep")
+    sia_sup, sia_run = _vivo("siafe_supervisor.sh"), _vivo("siafe[_]sweep_full")
+    pausado = apoio.sei_pausado()
 
     sia_total = 0
     try:
-        import sqlite3
-        _c = sqlite3.connect(base / "data/compliance.db")
-        sia_total = _c.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
-        _c.close()
+        _c = _ro()
+        try:
+            sia_total = _c.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
+        finally:
+            _c.close()
     except Exception as exc:  # noqa: BLE001
         logger.warning("sweeps/status: falha contando ob_orcamentaria_siafe (total=0 pode ser falso): %s", exc)
 
@@ -405,18 +410,14 @@ def api_sweeps_status():
 def api_sweeps_pausar():
     """Admin (painel): PAUSA os sweeps. Cria data/.pause_sweeps (tudo) e data/.pause_sei_sweep (corta o SEI
     inclusive no meio de uma sessão — sei_sweep.py checa a flag mid-run). Os scripts do cron pulam enquanto existir."""
-    d = RAIZ / "data"
-    (d / ".pause_sweeps").touch()
-    (d / ".pause_sei_sweep").touch()
+    apoio.pausar_pelo_painel()
     return JSONResponse({"ok": True, "pausado": True})
 
 
 @router.post("/api/sweeps/retomar")
 def api_sweeps_retomar():
     """Admin (painel): RETOMA os sweeps (remove as flags de pausa). O cron horário volta a rodar."""
-    d = RAIZ / "data"
-    for f in (".pause_sweeps", ".pause_sei_sweep"):
-        (d / f).unlink(missing_ok=True)
+    apoio.retomar_pelo_painel()
     return JSONResponse({"ok": True, "pausado": False})
 
 
@@ -485,14 +486,13 @@ def api_eval_lift():
     sanção posterior é a mesma que a rota irmã `/api/intel/lift` já cacheava por 1 h. Aqui não
     havia cache nenhum, e o custo caía inteiro na aba de Acurácia a cada abertura.
     """
-    import time as _t
     try:
         from compliance_agent.reporting import painel_lift
-        if _t.time() - _LIFT_CACHE.get("t", 0) < 3600 and "d" in _LIFT_CACHE:
+        if time.time() - _LIFT_CACHE.get("t", 0) < 3600 and "d" in _LIFT_CACHE:
             return JSONResponse(content=_LIFT_CACHE["d"])
         d = painel_lift.montar()
         if d.get("estado") == "medido":  # estado degradado não fica preso por 1 h
-            _LIFT_CACHE.update({"t": _t.time(), "d": d})
+            _LIFT_CACHE.update({"t": time.time(), "d": d})
         return JSONResponse(content=d)
     # Estreito de propósito: `montar()` já é defensivo (arquivo ausente/corrompido vira estado
     # declarado), então aqui só restam falha de import e erro de leitura/forma.
@@ -589,30 +589,21 @@ _BUS_TABELAS = {
 
 async def _bus_sampler():
     import asyncio
-    import sqlite3
-    import time as _t
     marcas: dict = {}
     sei_size = None
     ciclo = 0
     vivos = {"sei": False, "siafe": False}
 
-    def _pgrep(pat):
-        import subprocess
-        try:
-            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True, timeout=3).stdout.strip())
-        except Exception:  # noqa: BLE001
-            return False
-
     while _bus_subs:
         evs = []
         try:
-            con = sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=2)
+            con = _ro(timeout=2)
             try:
                 for chave, (tabela, rotulo) in _BUS_TABELAS.items():
                     try:
                         atual = con.execute(f"SELECT MAX(rowid) FROM {tabela}").fetchone()[0] or 0
                     except sqlite3.OperationalError:
-                        continue  # tabela ainda não existe nesta base
+                        continue
                     antes = marcas.get(chave)
                     if antes is not None and atual > antes:
                         evs.append({"tipo": chave, "delta": atual - antes, "rotulo": rotulo})
@@ -632,7 +623,7 @@ async def _bus_sampler():
             logger.debug("bus: checkpoint SEI ilegível (%s)", exc)
 
         if ciclo % 3 == 0:
-            vivos = {"sei": _pgrep("tools[.]sei_sweep"), "siafe": _pgrep("siafe[_]sweep_full")}
+            vivos = {"sei": _vivo("tools[.]sei_sweep"), "siafe": _vivo("siafe[_]sweep_full")}
         try:
             l1, l5, _ = os.getloadavg()
         except OSError:
@@ -651,7 +642,7 @@ async def _bus_sampler():
         evs.append({"tipo": "pulse", "load1": round(l1, 2), "load5": round(l5, 2),
                     "mem": mem_pct, "estado": estado, "sweeps": vivos})
 
-        agora = _t.strftime("%H:%M:%S")
+        agora = time.strftime("%H:%M:%S")
         for ev in evs:
             ev["t"] = agora
             for q in list(_bus_subs):
@@ -696,12 +687,9 @@ _SIS_CACHE: dict = {"t": 0.0}
 
 
 def _sis_medidas_caras() -> dict:
-    import sqlite3
-    import subprocess
-    import time as _t
-    if _t.time() - _SIS_CACHE.get("t", 0) < 900 and "sei_arquivo_bytes" in _SIS_CACHE:
+    if time.time() - _SIS_CACHE.get("t", 0) < 900 and "sei_arquivo_bytes" in _SIS_CACHE:
         return _SIS_CACHE
-    m: dict = {"t": _t.time()}
+    m: dict = {"t": time.time()}
     base = RAIZ / "data" / "sei_arquivo"
     try:
         m["sei_arquivados"] = sum(1 for e in os.scandir(base) if e.is_dir())
@@ -713,11 +701,13 @@ def _sis_medidas_caras() -> dict:
     except Exception:  # noqa: BLE001
         m["sei_arquivo_bytes"] = None
     try:
-        con = sqlite3.connect(RAIZ / "data" / "compliance.db")
-        m["sei_fila_total"] = con.execute(
-            "SELECT COUNT(DISTINCT processo) FROM ob_orcamentaria_siafe "
-            "WHERE processo IS NOT NULL AND processo!=''").fetchone()[0]
-        con.close()
+        con = _ro()
+        try:
+            m["sei_fila_total"] = con.execute(
+                "SELECT COUNT(DISTINCT processo) FROM ob_orcamentaria_siafe "
+                "WHERE processo IS NOT NULL AND processo!=''").fetchone()[0]
+        finally:
+            con.close()
     except Exception:  # noqa: BLE001
         m["sei_fila_total"] = None
     _SIS_CACHE.clear()
@@ -730,29 +720,19 @@ def api_sistema_atividade():
     """Atividade de TODA a máquina numa resposta: sweeps vivos (e quando mexeram),
     fila SEI lida × restante, arquivo compacto (nº e bytes), pipelines (SLO) e
     aprendizados acumulados. INDISPONÍVEL vira null, nunca 0 inventado."""
-    import sqlite3
-    import subprocess
-    import time as _t
-
-    def _alive(pat: str) -> bool:
-        try:
-            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True).stdout.strip())
-        except Exception:  # noqa: BLE001
-            return False
-
     def _idade_s(rel: str):
         try:
-            return int(_t.time() - (RAIZ / rel).stat().st_mtime)
+            return int(time.time() - (RAIZ / rel).stat().st_mtime)
         except Exception:  # noqa: BLE001
             return None
 
-    pausado = (RAIZ / "data/.pause_sei_sweep").exists() or (RAIZ / "data/.pause_sweep_2").exists()
+    pausado = apoio.sei_pausado()
     sweeps = [
-        {"nome": "SEI sweep", "vivo": _alive("tools[.]sei_sweep"), "supervisor": _alive("sei_supervisor.sh"),
+        {"nome": "SEI sweep", "vivo": _vivo("tools[.]sei_sweep"), "supervisor": _vivo("sei_supervisor.sh"),
          "atividade_s": _idade_s("data/sei_cache/sei_sweep_loop.out")},
-        {"nome": "SIAFE 2 (OB)", "vivo": _alive("siafe[_]sweep_full"), "supervisor": _alive("siafe_supervisor.sh"),
+        {"nome": "SIAFE 2 (OB)", "vivo": _vivo("siafe[_]sweep_full"), "supervisor": _vivo("siafe_supervisor.sh"),
          "atividade_s": _idade_s("data/siafe_sweep_full_2.log")},
-        {"nome": "Coleta SIAFE diária", "vivo": _alive("compliance_agent[.]siafe_runner"), "supervisor": None,
+        {"nome": "Coleta SIAFE diária", "vivo": _vivo("compliance_agent[.]siafe_runner"), "supervisor": None,
          "atividade_s": _idade_s("data/siafe_cron.log")},
     ]
 
@@ -771,7 +751,7 @@ def api_sistema_atividade():
     except OSError as exc:  # vault ausente/sem permissão: INDISPONÍVEL (None), não zero
         logger.debug("sistema/atividade: não contei as notas do vault (%s)", exc)
     try:
-        con = sqlite3.connect(RAIZ / "data" / "compliance.db")
+        con = _ro()
         for chave, tab in (("memoria_db", "memoria_aprendizado"), ("fichas_sei", "sei_ficha"),
                            ("direcionamentos", "sei_direcionamento"), ("arvores_sei", "sei_arvore")):
             try:

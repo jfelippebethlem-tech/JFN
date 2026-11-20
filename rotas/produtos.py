@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Rotas produtos do JFN — extraído de server.py (split 2026-07-06; rede: tests/test_server_snapshot.py).
-Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
+"""Rotas dos PRODUTOS do JFN — relatório de fornecedor/órgão, dossiês, PPP, minuta, árvore SEI e processo 360
+(split de server.py em 2026-07-06; rede: tests/test_server_snapshot.py). Os produtos são assíncronos: a rota
+despacha, a tarefa gera e empurra no Telegram."""
 from __future__ import annotations
 
-import sys
 import logging
 import asyncio
 import os
@@ -13,11 +13,13 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from rotas import apoio
+from rotas.apoio import RAIZ, python_do_repo
+
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
-RAIZ = Path(__file__).resolve().parent.parent
 
 from compliance_agent import promessas as _promessas
 
@@ -50,24 +52,9 @@ async def retomar_promessas() -> int:
     return n
 
 
-_SWEEP_PAUSE_FLAGS = ("data/.pause_sweep_2", "data/.pause_sweep_1", "data/.pause_sei_sweep")
-
-
-
-def _python_do_repo() -> str:
-    """`.venv` do repositório quando existe; senão o intérprete que serve a rota (ambiente limpo — mesmo
-    conserto de rotas/vinculos.py, 15/11/2026)."""
-    py = RAIZ / ".venv" / "bin" / "python"
-    return str(py) if py.exists() else sys.executable
-
 def _pausar_sweeps_para_relatorio() -> None:
-    import subprocess
     try:
-        for f in _SWEEP_PAUSE_FLAGS:
-            Path(f).touch()
-        # colchete no padrão evita casar o próprio comando (lição do auto-pkill); mata por padrão seguro
-        subprocess.run(["pkill", "-f", "tools[.]sei_sweep"], check=False)
-        subprocess.run(["pkill", "-f", "siafe[_]sweep_full"], check=False)
+        apoio.pausar_para_relatorio()
     except Exception as exc:  # noqa: BLE001
         logger.warning("não pausou os sweeps antes do relatório (competem pela CPU): %s", exc)
 
@@ -76,8 +63,7 @@ def _retomar_sweeps_se_ocioso() -> None:
     if _REL_EM_CURSO:  # ainda há relatório gerando → mantém pausado
         return
     try:
-        for f in _SWEEP_PAUSE_FLAGS:
-            Path(f).unlink(missing_ok=True)
+        apoio.retomar_apos_relatorio()
     except Exception as exc:  # noqa: BLE001
         logger.warning("não despausou os sweeps (ficam parados até remover flag manualmente): %s", exc)
 
@@ -355,7 +341,7 @@ def _resolver_slug_ppp(alvo: str) -> str:
 # Cada valor é (coroutine que gera o PDF, rótulo). Extensível: mapear novo slug.
 async def _pdf_mestre_souza_aguiar() -> str:
     from compliance_agent.pcrj import pericia_mestre
-    return await pericia_mestre.gerar_pdf("complexo-hospitalar-souza-aguiar", db_path="data/pcrj.db")
+    return await pericia_mestre.gerar_pdf("complexo-hospitalar-souza-aguiar")
 
 
 _PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": (_pdf_mestre_souza_aguiar, "Perícia mestre")}
@@ -368,9 +354,9 @@ async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
     from compliance_agent.reporting import render_html as rh
     _pausar_sweeps_para_relatorio()
     try:
-        await asyncio.to_thread(ppp_ccpar.coletar_projeto, slug, db_path="data/pcrj.db")
+        await asyncio.to_thread(ppp_ccpar.coletar_projeto, slug)
         try:  # ingestão do edital (ZIP ~47MB) alimenta o corpus da perícia/lente
-            await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug, db_path="data/pcrj.db")
+            await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug)
         except Exception as exc:  # noqa: BLE001
             logger.warning("ingestão do edital CCPAR falhou (segue com D.O.): %s", exc)
         if slug in _PERICIAS_MESTRE:  # perícia mestre (íntegras + menu navegável)
@@ -380,7 +366,7 @@ async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
                 "Documento completo — íntegras + sumário navegável. Indício ≠ acusação."
         else:  # dossiê genérico automático
             from compliance_agent.pcrj import dossie_ppp
-            ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug, "data/pcrj.db")
+            ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug)
             pdf = await rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
             rotulo, titulo = "Dossiê PPP", ctx.get("titulo", slug)
             resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
@@ -409,7 +395,7 @@ async def api_ppp(payload: Optional[dict] = None):
             return JSONResponse(content={"ok": True, "tipo": "Perícia mestre", "slug": slug,
                                          "obs": "perícia aprofundada com íntegras + menu navegável"})
         from compliance_agent.pcrj import dossie_ppp
-        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug, db_path="data/pcrj.db"))
+        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug))
     key = f"ppp:{slug}"
     produto = "a perícia (mestre)" if slug in _PERICIAS_MESTRE else "o dossiê"
     if key in _REL_EM_CURSO:
@@ -522,7 +508,6 @@ async def api_responsaveis(processo: Optional[str] = None):
 
 
 def _responsaveis_payload(numero: str) -> dict:
-    import os
     import sqlite3
 
     from compliance_agent.sei.relacionados import numero_para_pasta, pasta_para_numero
@@ -705,7 +690,7 @@ async def api_ppp_triagem():
     Síncrona e rápida. Indícios p/ apuração; dossiê completo por /ppp <projeto>."""
     from compliance_agent.pcrj import triagem_ppp
     try:
-        return JSONResponse(content=await asyncio.to_thread(triagem_ppp.triar_lote, db_path="data/pcrj.db"))
+        return JSONResponse(content=await asyncio.to_thread(triagem_ppp.triar_lote))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -750,7 +735,7 @@ def api_sei_empresa_iniciar(payload: dict | None = None):
         return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
     import subprocess
     env = dict(os.environ, SEI_SEM_TG="1", PYTHONPATH=str(RAIZ))
-    cmd = [_python_do_repo(), "tools/sei_integra_fila.py",
+    cmd = [python_do_repo(), "tools/sei_integra_fila.py",
            "--empresa", cnpj, "--segundos", "7200"]
     if busca_viva:
         cmd.append("--busca-viva")
@@ -875,7 +860,7 @@ def api_processo_avaliar(payload: dict | None = None):
     if info and info["proc"].poll() is None:
         return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
     import subprocess
-    cmd = [_python_do_repo(), "tools/processo_360.py",
+    cmd = [python_do_repo(), "tools/processo_360.py",
            "--numero", numero, "--gravar"]
     if payload.get("com_llm"):
         cmd.append("--com-llm")

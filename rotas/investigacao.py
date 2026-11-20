@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Rotas investigacao do JFN — extraído de server.py (split 2026-07-06; rede: tests/test_server_snapshot.py).
-Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
+"""Rotas de investigação do JFN (split de server.py em 2026-07-06; rede: tests/test_server_snapshot.py).
+
+Também é a casa do cache do painel (`_cache_get`/`_cache_put`/`_cache_calc`, disco em `data/cache_painel`), que
+outras rotas importam — ver docs/untangle/rotas.md, pendência 9.1."""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import re
+import sqlite3
 from pathlib import Path
 from typing import Optional
 
@@ -23,16 +26,21 @@ router = APIRouter()
 # quebraram em silêncio. Fix 2026-07-10 (mesmo fix do rotas/sistema.py).
 RAIZ = Path(__file__).resolve().parent.parent
 
+
+def _ro(banco: str = "compliance.db", *, linhas: bool = False, **kw) -> sqlite3.Connection:
+    """Conexão SÓ LEITURA a `data/<banco>` do repo. `RAIZ` é lido na chamada (os testes o redirecionam)."""
+    con = sqlite3.connect(f"file:{RAIZ / 'data' / banco}?mode=ro", uri=True, **kw)
+    if linhas:
+        con.row_factory = sqlite3.Row
+    return con
+
+
 async def _grafo_rede_completa(limite: int = 120):
     """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor pago ↔ órgãos (UGs),
     a partir de ordens_bancarias. Fornecedor vira severidade='alta' se for INDICIO em verificacao_sede.
     Formato D3 que o graph.html consome: {nodes:[{id,label,tipo,...}], links:[{source,target,...}]}."""
-    import sqlite3 as _sq
-    import re as _re
-    DB = str(RAIZ / "data" / "compliance.db")
     try:
-        con = _sq.connect(f"file:{DB}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         n_forn = max(10, min(int(limite), 400))
         # 1 scan: top fornecedores por valor
         forn = con.execute(
@@ -45,7 +53,7 @@ async def _grafo_rede_completa(limite: int = 120):
         for f in forn:
             fid = "empresa:" + ((f["doc"] or f["nome"]) or "?")[:24]
             fid_de[f["nome"]] = fid
-            cnpj = _re.sub(r"\D", "", f["doc"] or "")
+            cnpj = re.sub(r"\D", "", f["doc"] or "")
             nodes.append({"id": fid, "label": (f["nome"] or "")[:40], "tipo": "empresa",
                           "valor": float(f["v"] or 0), "n_obs": f["n"],
                           "severidade": "alta" if cnpj in susp else ""})
@@ -643,10 +651,8 @@ def api_compliance_reports_limpar(payload: Optional[dict] = None):
 def api_fachada_revisar(limite: int = 50):
     """Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).
     Maior valor primeiro. Inclui motivo do flag, endereço e coordenada (link Street View no front)."""
-    import sqlite3 as _sq
-    DB = str(RAIZ / "data" / "compliance.db")
     try:
-        con = _sq.connect(f"file:{DB}?mode=ro", uri=True); con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         vetados = {r[0] for r in con.execute("SELECT cnpj FROM fachada_veredito WHERE status IN ('real','pular','fachada','indicio')")}
         rows = con.execute(
             "SELECT cnpj, razao, endereco, municipio, uf, total_recebido, nivel, evidencia, geo_lat, geo_lon, "
@@ -664,7 +670,6 @@ def api_fachada_revisar(limite: int = 50):
 def api_fachada_veredito(payload: Optional[dict] = None):
     """Salva o veredito HUMANO do validador. Body: {cnpj, veredito: suspeito|ok|mais_info, nota?}.
     suspeito→fachada (mantém INDICIO); ok→real (volta AFASTADO); mais_info→pular (fica pendente)."""
-    import sqlite3 as _sq
     import datetime as _dt
     p = payload or {}
     cnpj = str(p.get("cnpj") or "").strip()
@@ -674,9 +679,8 @@ def api_fachada_veredito(payload: Optional[dict] = None):
     if not cnpj or ver not in mapa:
         return JSONResponse(content={"ok": False, "erro": "cnpj e veredito (suspeito|ok|mais_info) obrigatórios"})
     status_vd, novo_status = mapa[ver]
-    DB = str(RAIZ / "data" / "compliance.db")
     try:
-        con = _sq.connect(DB, timeout=30); con.execute("PRAGMA busy_timeout=30000")
+        con = sqlite3.connect(RAIZ / "data" / "compliance.db", timeout=30); con.execute("PRAGMA busy_timeout=30000")
         row = con.execute("SELECT razao, endereco, total_recebido FROM verificacao_sede WHERE cnpj=?", (cnpj,)).fetchone()
         razao, endereco, tr = (row or ("", "", 0))
         con.execute(
@@ -711,13 +715,11 @@ async def api_tse_download(ano: int):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
-import sqlite3 as _sqlite3
-
 try:                                            # SQLAlchemy embrulha o erro do sqlite3
     from sqlalchemy.exc import DatabaseError as _SADatabaseError
-    _ErroDeBanco: tuple = (_sqlite3.DatabaseError, _SADatabaseError)
+    _ErroDeBanco: tuple = (sqlite3.DatabaseError, _SADatabaseError)
 except Exception:                               # pragma: no cover
-    _ErroDeBanco = (_sqlite3.DatabaseError,)
+    _ErroDeBanco = (sqlite3.DatabaseError,)
 
 _FTS_PRONTO = False
 
@@ -791,7 +793,6 @@ def api_sugestoes(q: str = "", limite: int = 8):
     nomeados (registros_folha=estado, pcrj_comissionado_candidato=prefeitura). Prefixo
     de ≥2 caracteres (por palavra, não só início do nome inteiro) — sugestão enquanto
     digita, não busca completa (isso é o /api/compliance/buscar, no Enter)."""
-    import sqlite3 as _sq
     termo = (q or "").strip().upper()
     if len(termo) < 2:
         return JSONResponse({"ok": True, "empresas": [], "nomeados": []})
@@ -801,8 +802,7 @@ def api_sugestoes(q: str = "", limite: int = 8):
     empresas: list[dict] = []
     nomeados: list[dict] = []
     try:
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         if digitos:
             rows = con.execute(
                 "SELECT favorecido_nome nome, favorecido_cpf cnpj, total_pago FROM favorecido_resumo "
@@ -822,8 +822,7 @@ def api_sugestoes(q: str = "", limite: int = 8):
     except Exception as e:  # noqa: BLE001 — best-effort: não quebra a caixa de busca
         logger.debug("busca de nomeados do estado falhou (%s) — sugestão segue sem eles", e)
     try:
-        conp = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
-        conp.row_factory = _sq.Row
+        conp = _ro("pcrj.db", linhas=True)
         rows3 = conp.execute(
             "SELECT DISTINCT nome_pcrj nome, cargo_pcrj cargo, orgao_pcrj orgao "
             "FROM pcrj_comissionado_candidato WHERE nome_pcrj LIKE ? OR nome_pcrj LIKE ? LIMIT ?",
@@ -917,10 +916,9 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
                 "_fonte": "PNCP API consulta (sem login)", "_nota": nota})
         if esfera and esfera != "todas":
             # esfera OFICIAL do ente (pncp_ente + exceções de unidade) — aba estanque no painel
-            import sqlite3 as _sq
             from compliance_agent.collectors.pncp_resultados import (
                 classificar_esfera, esferas_por_ente)
-            _c = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+            _c = _ro()
             try:
                 oficial = esferas_por_ente(_c)
             finally:
@@ -1149,7 +1147,6 @@ async def api_nucleo_comando(payload: dict = None):
 
     payload: {comando: "/pericia", args: "..."} OU {texto: "pericia a MGS Clean"} (roteador
     determinístico interpretar_texto_livre, sem LLM). Retorno: {ok, comando, resposta(markdown)}."""
-    import asyncio as _aio
     try:
         from compliance_agent.nucleo import telegram_nucleo as tn
 
@@ -1172,7 +1169,7 @@ async def api_nucleo_comando(payload: dict = None):
         if fn is None:
             return JSONResponse(content={"ok": False, "erro": f"comando desconhecido: {comando}",
                                          "comandos": sorted(handlers)}, status_code=422)
-        resposta = await _aio.to_thread(fn)
+        resposta = await asyncio.to_thread(fn)
         return JSONResponse(content={"ok": True, "comando": comando, "args": args, "resposta": resposta})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
@@ -1186,8 +1183,6 @@ async def api_nucleo_comando(payload: dict = None):
 def api_restritos(todos: int = 0):
     """Lista de controle dos processos SEI de acesso RESTRITO (data/sei_restritos.json)."""
     try:
-        import sys as _sys
-        _sys.path.insert(0, str(RAIZ))
         from tools import sei_restritos as _R
         itens = _R.listar(todos=bool(todos))
         return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
@@ -1199,8 +1194,6 @@ def api_restritos(todos: int = 0):
 def api_flags():
     """Flags vermelhos GRAVES da fiscalização (data/flags_graves.json)."""
     try:
-        import sys as _sys
-        _sys.path.insert(0, str(RAIZ))
         from tools import flags_graves as _F
         itens = _F.listar()
         return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
@@ -1218,8 +1211,7 @@ async def pagina_controle():
     Como arquivo, a tela passa a herdar o CSS do painel e entra no alcance das catracas.
     """
     from fastapi.responses import HTMLResponse
-    from pathlib import Path as _P
-    alvo = _P(__file__).resolve().parent.parent / "static" / "jfn-controle.html"
+    alvo = RAIZ / "static" / "jfn-controle.html"
     if not alvo.exists():                      # INDISPONIVEL nao e 500: diz o que falta e onde
         return HTMLResponse(
             "<h1>Controle indisponivel</h1><p>O arquivo <code>static/jfn-controle.html</code> "
@@ -1267,11 +1259,10 @@ _TETO_FONTE_VIVA = 20.0
 
 async def _com_teto(coro, rotulo: str):
     """Aguarda `coro` até o teto. Estourou → (None, nota honesta); senão → (valor, None)."""
-    import asyncio as _aio
     teto = _TETO_FONTE_VIVA
     try:
-        return await _aio.wait_for(coro, timeout=teto), None
-    except (TimeoutError, _aio.TimeoutError):
+        return await asyncio.wait_for(coro, timeout=teto), None
+    except (TimeoutError, asyncio.TimeoutError):
         return None, (f"{rotulo} não respondeu em {teto:.0f}s — INDISPONÍVEL, "
                       "não é ausência de resultado. Tente de novo ou reduza o período.")
 
@@ -1360,8 +1351,6 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
     edital_documento + certame_indice. `temas` = famílias com sinal (valor>0) do
     familias_json; certame com confiança 0 sai como analisado=False (INDISPONÍVEL ≠ 0,
     nunca "score 0"). Ordena: analisados por prioridade desc, depois os demais por ano."""
-    import json as _json
-    import sqlite3 as _sq
     # ESFERA É OBRIGATÓRIA E FECHADA (20/11/2026). Rótulo fora do vocabulário ("estadual", "todas", vazio) caía no
     # `.get()` e a rota devolvia a tabela INTEIRA — 14.015 certames, dos quais mais de 9 mil de órgão federal — na
     # aba de quem pediu. E "estado" era só a raiz 42498600: ALERJ, TJRJ, DETRAN e outros 393 certames de órgão
@@ -1375,8 +1364,7 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
     lim = max(1, min(int(limite or 600), 2000))
     termo = f"%{q.strip()}%" if q.strip() else None
     try:
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         tem_mapa = bool(con.execute("SELECT 1 FROM sqlite_master WHERE name='orgao_esfera'").fetchone())
         # raiz do ente (regra 1 da régua) + órgão com CNPJ próprio que o mapa prova ser da esfera
         onde_esfera = ("(substr(ed.orgao_cnpj,1,8) = ?" + (
@@ -1408,7 +1396,7 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
         temas = []
         if analisado and r["familias_json"]:
             try:
-                fams = _json.loads(r["familias_json"])
+                fams = json.loads(r["familias_json"])
                 temas = sorted(
                     ({"familia": nome, "valor": round(f["valor"], 2)}
                      for nome, f in fams.items() if f.get("apuravel") and (f.get("valor") or 0) > 0),
@@ -1433,7 +1421,6 @@ def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
     CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
     nome de fornecedor, nome de órgão e amostra de OBJETOS. ?esfera=estado|prefeitura|municipios|
     federal|outros filtra pela esfera OFICIAL do ente (pncp_ente). Indício OCDE a verificar, não acusação."""
-    import sqlite3 as _sq
     esf = esfera if esfera in ("estado", "prefeitura", "municipios", "federal", "outros") else None
     ck = f"conluio:{esf or 'todos'}"
     cache = _cache_get(ck, 3600)
@@ -1441,7 +1428,7 @@ def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
         return JSONResponse(cache)
     try:
         from compliance_agent.collectors.pncp_resultados import conluio_enriquecido
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con = _ro()
         try:
             dados = conluio_enriquecido(con, min_certames=max(3, int(min_certames or 4)), esfera=esf)
         finally:
@@ -1464,11 +1451,10 @@ def api_nomeados_candidatos(request: Request, esfera: str = "estado", limite: in
     declarada: VERIFICADO (CPF parcial da folha confere com o do TSE) ou PENDENTE ("possível homônimo — não
     verificado"). `total` é o total REAL do recorte; `truncado` diz se o `limite` cortou. Esfera pela fonte da
     folha (Câmara Municipal = municipal). Lógica e motivo em `compliance_agent/nomeados_candidatos.py`."""
-    import sqlite3 as _sq
     from compliance_agent import nomeados_candidatos as _N
 
     def _calc():
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con = _ro()
         try:
             return _N.cruzar(con)
         finally:
@@ -1512,11 +1498,8 @@ def api_laranjas(limite: int = 100):
     """Sócios de fornecedores do Estado que RECEBEM benefício social de subsistência (bolsa família etc.)
     — indício clássico de LARANJA/interposição (art. 337-F CP): quem figura como dono de empresa que
     recebe do Estado não deveria depender de auxílio. Só os confirmados (recebe_beneficio=1)."""
-    import json as _json
-    import sqlite3 as _sq
     try:
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         rows = con.execute(
             "SELECT socio_nome_norm, cpf_resolvido, beneficios_json, motivo, confianca "
             "FROM socio_beneficio WHERE recebe_beneficio=1 ORDER BY confianca DESC LIMIT ?",
@@ -1525,7 +1508,7 @@ def api_laranjas(limite: int = 100):
         itens = []
         for r in rows:
             try:
-                bens = _json.loads(r["beneficios_json"] or "[]")
+                bens = json.loads(r["beneficios_json"] or "[]")
             except (ValueError, TypeError):
                 bens = []
             cpf = re.sub(r"\D", "", r["cpf_resolvido"] or "")
@@ -1546,10 +1529,8 @@ def api_laranjas(limite: int = 100):
 def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
     """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢/⚪
     &ordem=score|total. Cada fornecedor é agregado (maior grau, soma de OB, achados). Indício."""
-    import sqlite3 as _sq
     try:
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         col = "total" if ordem == "total" else "score"
         params: list = []
         where = "WHERE 1=1"
@@ -1581,14 +1562,11 @@ def api_perfil(cnpj: str):
     """Dossiê 360 INSTANTÂNEO de um CNPJ, montado do banco local (sem rede): perícia (grau/achados),
     pagamento (OB total, órgãos), QSA (sócios), sede/fachada, vitórias no PNCP e sinal de laranja.
     O motor da tela de drill-down do painel. Indício a verificar, nunca acusação."""
-    import json as _json
-    import sqlite3 as _sq
     dig = "".join(c for c in (cnpj or "") if c.isdigit())
     if len(dig) != 14:
         return JSONResponse({"ok": False, "erro": "informe um CNPJ de 14 dígitos"}, status_code=400)
     try:
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         out: dict = {"ok": True, "cnpj": dig, "cnpj_fmt": f"{dig[:2]}.{dig[2:5]}.{dig[5:8]}/{dig[8:12]}-{dig[12:]}"}
         # perícia (agrega por CNPJ)
         per = con.execute(
@@ -1604,7 +1582,7 @@ def api_perfil(cnpj: str):
                           "ORDER BY score DESC LIMIT 1", (dig,)).fetchone()
         if det:
             try:
-                out["achados"] = _json.loads(det["achados_json"] or "[]")[:12]
+                out["achados"] = json.loads(det["achados_json"] or "[]")[:12]
             except (ValueError, TypeError):
                 out["achados"] = []
             out["resumo"] = det["resumo"]
@@ -1709,7 +1687,7 @@ def _perfil_municipio(con, dig: str) -> dict | None:
             "SELECT DISTINCT credor_nome n FROM pcrj_despesa "
             "WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=?",
             (raiz,))]
-    except _sqlite3.Error:
+    except sqlite3.Error:
         return None
     return {
         "pago": tot["v"] or 0.0, "linhas": tot["n"], "orgaos": tot["orgaos"],
@@ -1798,12 +1776,12 @@ def api_doerj_tac_recorrente(top: int = 20):
     sem cobertura contratual, quantas vezes, quanto. Materializado por tools/doerj_tac_recorrente
     (cruzador 23:00). Valores são os PUBLICADOS nos extratos, não OB; fornecedor '(não lido)' = extrato
     sem campo PARTES legível (conta na soma, não no ranking)."""
-    con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    con = _ro()
     try:
         try:
             tot = con.execute("SELECT count(*), count(valor), round(sum(valor),2), min(data_doe), max(data_doe), "
                               "count(DISTINCT fornecedor) FROM doerj_tac").fetchone()
-        except _sqlite3.OperationalError:
+        except sqlite3.OperationalError:
             return JSONResponse({"ok": True, "aviso": "doerj_tac ainda não materializada", "total": 0, "itens": []})
         itens = [dict(zip(("fornecedor", "n", "n_com_valor", "soma", "n_orgaos", "de", "ate", "processos"), r))
                  for r in con.execute(
@@ -1820,7 +1798,7 @@ def api_doerj_tac_recorrente(top: int = 20):
             for f, grau, sinal, det in con.execute(
                     "SELECT fornecedor, grau, sinal, detalhe FROM doerj_tac_sinal WHERE sinal <> 'cnpj_nao_localizado'"):
                 sinais.setdefault(f, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
-        except _sqlite3.OperationalError:
+        except sqlite3.OperationalError:
             logger.debug("investigacao.py:1693: exceção ignorada (era except-pass mudo)", exc_info=True)
         for it in itens:
             it["sinais"] = sorted(sinais.get(it["fornecedor"], []), key=lambda x: x["grau"] != "🔴")
@@ -1832,7 +1810,7 @@ def api_doerj_tac_recorrente(top: int = 20):
             _m = con.execute("SELECT valor, texto, em FROM doerj_tac_meta WHERE chave='concordancia_siafe'").fetchone()
             if _m:
                 concordancia = {"taxa": _m[0], "texto": _m[1], "em": _m[2]}
-        except _sqlite3.OperationalError:
+        except sqlite3.OperationalError:
             logger.debug("investigacao.py:1705: exceção ignorada (era except-pass mudo)", exc_info=True)
     finally:
         con.close()
@@ -1851,7 +1829,7 @@ def api_imprensa_orgaos(dias: int = 30, so_adversas: int = 1, limite: int = 120)
     """Imprensa sobre os ÓRGÃOS do Estado/Prefeitura (Google News RSS, sem chave; tools/noticias_orgaos, diário).
     Adversa = título com termo de risco (fraude, operação, TCE, MP…). Indício a confirmar na fonte — nunca prova."""
     import datetime as _dt
-    con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    con = _ro()
     try:
         try:
             desde = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=max(1, min(int(dias or 30), 365)))).isoformat(timespec="seconds")
@@ -1862,7 +1840,7 @@ def api_imprensa_orgaos(dias: int = 30, so_adversas: int = 1, limite: int = 120)
             por_orgao = [dict(zip(("orgao", "n", "adversas"), r)) for r in con.execute(
                 "SELECT orgao, count(*), sum(adversa) FROM noticias_orgaos WHERE data >= ? GROUP BY 1 ORDER BY 3 DESC, 2 DESC", (desde,))]
             tot = con.execute("SELECT count(*), sum(adversa), max(visto_em) FROM noticias_orgaos").fetchone()
-        except _sqlite3.OperationalError:
+        except sqlite3.OperationalError:
             return JSONResponse({"ok": True, "aviso": "noticias_orgaos ainda não coletada", "itens": [], "por_orgao": []})
     finally:
         con.close()
@@ -2055,13 +2033,11 @@ def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ
     """Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o
     contrato com o ente-alvo (default Estado-RJ). Responde 'quais são e qual a abrangência'."""
     try:
-        import sqlite3 as _sq
         from compliance_agent.sancao_abrangencia import detalhar
         c = re.sub(r"\D", "", cnpj or "")
         if len(c) != 14:
             return JSONResponse({"ok": False, "erro": "CNPJ inválido"})
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         try:
             return JSONResponse(detalhar(c, con, esfera, (uf or "RJ").upper()))
         finally:
@@ -2133,7 +2109,7 @@ def api_intel_fracionamento(limite: int = 120):
         d = fracionamento_por_objeto(limite=lim)
         try:
             aux = _cache_calc("intel:frac:30", 3600, lambda: fracionamento(limite=30))
-        except _sqlite3.Error as exc:  # o auxiliar (base travada/ausente) não derruba a definição
+        except sqlite3.Error as exc:  # o auxiliar (base travada/ausente) não derruba a definição
             aux = {"ok": False, "erro": str(exc)}
         d["auxiliar"] = {
             "titulo": "OBs do mesmo credor coladas no teto — sinal auxiliar",
@@ -2467,14 +2443,12 @@ def api_pcrj_comissionados_candidatos(limite: int = 300):
     cargo, admissão), e a variação textual de orgao_pcrj entre coletas mensais duplicava
     o mesmo vínculo em várias linhas (achado 2026-07-21); `limite` agora é por PESSOA,
     não por linha bruta. Padrão de agrupamento espelha pericia.py::_tabela_comissionados_cand."""
-    import sqlite3 as _sq
     try:
         lim = max(1, min(int(limite or 300), 1000))
         ck = f"pcrj:comis_cand:v3:{lim}"  # v3: identidade (homônimo visível no TSE/folha)
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro("pcrj.db", linhas=True)
         try:
             rows = [dict(r) for r in con.execute(
                 "SELECT nome_norm, nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, "
@@ -2509,15 +2483,13 @@ def api_pcrj_comissionados_candidatos(limite: int = 300):
 def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
     """Servidor-fantasma na folha da Câmara/PCRJ — 8 sinais determinísticos (pcrj/fantasma_servidor),
     cache materializado em pcrj_fantasma_servidor. ?faixa=forte|verificar|fraco filtra."""
-    import sqlite3 as _sq
     try:
         lim = max(1, min(int(limite or 200), 800))
         fx = faixa if faixa in ("forte", "verificar", "fraco") else ""
         ck = f"pcrj:fantasma:{fx}:{lim}"
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro("pcrj.db", linhas=True)
         try:
             cond = "WHERE faixa=?" if fx else ""
             args = ([fx] if fx else []) + [lim]
@@ -2554,14 +2526,12 @@ def api_pcrj_gastos_achados(limite_por_detector: int = 40):
     """Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na
     folha · D10 rede de sócios entre concorrentes · aditivo estourado) — lê os alertas gravados pela
     última corrida de tools/pcrj_pericia_gastos.py (dedup por título, mais recente vence)."""
-    import sqlite3 as _sq
     try:
         lim = max(5, min(int(limite_por_detector or 40), 200))
         ck = f"pcrj:gastos:{lim}"
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True)
         try:
             rows = con.execute(
                 """SELECT tipo, severidade, titulo, descricao, evidencias, MAX(id) id
@@ -2593,14 +2563,12 @@ def api_pcrj_aditivos():
     """D11 da Prefeitura contrato a contrato — acréscimos computáveis por termo × teto do art. 125,
     estado (VERIFICADO = provado no termo; PENDENTE = sinal sem prova, com o motivo) e a COBERTURA
     de termos coletados, que é o "de quantos?" do zero. Mesma régua do alerta (só leitura)."""
-    import sqlite3 as _sq
     try:
         ck = "pcrj:aditivos"
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
         from compliance_agent.pcrj.pericia_gastos import d11_avaliacao
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
-        con.row_factory = _sq.Row
+        con = _ro(linhas=True, timeout=30)
         try:
             av = d11_avaliacao(con)
         finally:
@@ -2621,7 +2589,7 @@ def api_pcrj_aditivos():
                             "cobre o período). Pagamento por contrato: INDISPONÍVEL — a despesa "
                             "CGM é por credor e cobre 2019–2023. Indício ≠ acusação.")}
         return JSONResponse(_cache_put(ck, out))
-    except (_sq.Error, OSError, KeyError, ValueError) as exc:  # base travada/ausente ou dado torto
+    except (sqlite3.Error, OSError, KeyError, ValueError) as exc:  # base travada/ausente ou dado torto
         logger.warning("api_pcrj_aditivos: %s", exc)
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -2739,7 +2707,7 @@ def _siafe_pago_total() -> dict:
     out = {"total": None, "valor_total": None, "fonte_total": "SIAFE indisponível"}
     try:
         from compliance_agent.cruzamentos_intel import _ob_paga
-        con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
+        con = _ro(timeout=30)
         try:
             n, v = con.execute(f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
                                "AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021").fetchone()
@@ -2747,7 +2715,7 @@ def _siafe_pago_total() -> dict:
             con.close()
         out = {"total": n, "valor_total": round(float(v), 2),
                "fonte_total": "OB paga no SIAFE (Contabilizada, sem devolvida pelo banco), 2021 em diante"}
-    except _sqlite3.Error as exc:
+    except sqlite3.Error as exc:
         out["fonte_total"] = f"SIAFE indisponível: {exc}"
     return _cache_put("obs:siafe_pago_total", out)
 
@@ -2757,7 +2725,6 @@ def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
     vermelho — defasagem nunca mais passa despercebida (lição SIAFE 16-17/07: MFA quebrou a coleta
     e nada avisava)."""
-    import sqlite3 as _sq
     from datetime import datetime as _dt
     try:
         from compliance_agent.proveniencia_manchetes import anexar
@@ -2774,7 +2741,7 @@ def api_fontes_frescor():
             except Exception as exc:  # noqa: BLE001
                 fontes.append({"fonte": nome, "ultimo": None, "detalhe": f"erro: {exc}"})
 
-        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con = _ro()
         try:
             from compliance_agent.siafe_runner import detalhe_frescor as _siafe_detalhe
             _add("SIAFE · OB orçamentária (coleta)", "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe", con,
@@ -2795,7 +2762,7 @@ def api_fontes_frescor():
         finally:
             con.close()
         try:
-            con2 = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
+            con2 = _ro("pcrj.db")
             try:
                 # MAX(coletado_em) varria 13,7 mi linhas (53 s, 30/10/2026). Cada competência é carregada de uma
                 # vez (DELETE + INSERT com o mesmo coletado_em): salta pelo índice de competência, 1 linha por mês.
@@ -2845,13 +2812,12 @@ def api_pericia_bateria(so_mortos: bool = False):
 
     `?so_mortos=1` devolve apenas os testes sem insumo.
     """
-    import sqlite3 as _sq
     try:
         from tools.bateria_pericia import cobertura
         r = cobertura()
     except ImportError as exc:
         return JSONResponse({"ok": False, "erro": f"módulo indisponível: {exc}"}, status_code=503)
-    except _sq.Error as exc:
+    except sqlite3.Error as exc:
         return JSONResponse({"ok": False, "erro": f"perícia não disponível: {exc}",
                              "dica": "a tabela pericia_fornecedor pode não ter sido gerada"},
                             status_code=503)
@@ -2938,7 +2904,7 @@ _CNPJ_MUNICIPIO_RIO = "42498733000148"
 def _con_integras():
     """sqlite3 nativo: pcrj_contratos tem linhas de outros entes com colunas deslocadas que
     derrubam o scanner do DuckDB na LEITURA, antes de qualquer cast."""
-    return _sqlite3.connect("data/compliance.db")
+    return _ro()
 
 
 @router.get("/api/pcrj/integras")
@@ -2948,7 +2914,7 @@ def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
     con = _con_integras()
     try:
         con.execute("SELECT 1 FROM contrato_integra LIMIT 1")
-    except _sqlite3.OperationalError:
+    except sqlite3.OperationalError:
         return JSONResponse({"itens": [], "total": 0, "aviso": "acervo ainda não capturado"})
     where, args = ["1=1"], []
     if q:
@@ -2984,7 +2950,7 @@ def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
                 "SELECT numero_controle_pncp, grau, sinal, detalhe FROM contrato_doe_sinal"):
             sinais_por.setdefault(num, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
             sinais_total += 1
-    except _sqlite3.OperationalError:       # tabela ainda não materializada: sem sinais, sem erro
+    except sqlite3.OperationalError:       # tabela ainda não materializada: sem sinais, sem erro
         logger.debug("investigacao.py:2724: exceção ignorada (era except-pass mudo)", exc_info=True)
     con.close()
     itens = [{

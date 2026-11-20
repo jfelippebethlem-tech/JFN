@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Rotas de VÍNCULOS — beneficiário final, parentesco inferido e histórico societário.
 
-Domínio novo, em módulo próprio de propósito: `rotas/investigacao.py` já tem 2.291 linhas e 98
-rotas, e somar aqui o que é um eixo inteiro só pioraria o problema. O split por domínio é o mesmo
+Domínio em módulo próprio de propósito: o eixo de vínculos é um domínio inteiro e somá-lo a
+`rotas/investigacao.py`, o maior módulo de rotas, só pioraria o problema. O split por domínio é o mesmo
 critério de 2026-07-06 (hermes / produtos / sistema / investigacao).
 
 Todas as rotas deste módulo têm uma obrigação comum: **nenhuma resposta afirma vínculo sem dizer o
@@ -12,19 +12,20 @@ anexa — quando a data pedida está fora da série de snapshots.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import sqlite3
-import sys
+
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+
+from rotas.apoio import RAIZ, python_do_repo
 
 # Erros que uma rota de LEITURA do acervo pode ver de verdade: base ocupada/corrompida, esquema
 # ausente, argumento fora de forma, módulo opcional ausente. Captura genérica aqui esconderia
 # defeito de programação — a catraca de tests/test_catraca_excepts.py cobra isso, e com razão.
 _FALHAS_DE_LEITURA = (sqlite3.Error, ValueError, KeyError, TypeError, OSError, ImportError)
-
-
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,13 +41,15 @@ _CACHE: dict[str, tuple[float, object]] = {}
 _TTL_PADRAO = 3600
 
 
-def _cache(chave: str, calcular, ttl: int = _TTL_PADRAO):
+def _cache(chave: str, calcular):
+    """Falha (`{"ok": False}`) não fica guardada: servia o erro por 1 h (`zeros_sem_causa`, até 20/11/2026)."""
     import time as _t
     v = _CACHE.get(chave)
-    if v and (_t.time() - v[0]) < ttl:
+    if v and (_t.time() - v[0]) < _TTL_PADRAO:
         return v[1]
     val = calcular()
-    _CACHE[chave] = (_t.time(), val)
+    if not (isinstance(val, dict) and val.get("ok") is False):
+        _CACHE[chave] = (_t.time(), val)
     return val
 
 
@@ -306,9 +309,6 @@ def api_resolucao_nome_cnpj():
     declarado, nunca chutado.
     """
     try:
-        import sys
-        from pathlib import Path as _P
-        sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
         from tools.resolver_nome_cnpj import relatorio
 
         con = _db_ro()
@@ -355,12 +355,10 @@ def api_patrimonio(cnpj: str = "", nome: str = ""):
     sabe.
     """
     try:
-        import sqlite3 as _sq
-
         from compliance_agent.osint.patrimonio import avaliar_empresa, avaliar_pessoa
 
         con = _db_ro()
-        con.row_factory = _sq.Row
+        con.row_factory = sqlite3.Row
         try:
             if cnpj:
                 raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
@@ -396,8 +394,6 @@ def api_agente_publico(so_comissionados: int = 0, limite: int = 60, filtro: str 
     OB estadual, despesa municipal e emenda federal não são a mesma coisa.
     """
     try:
-        import json
-
         from tools.agente_publico_reverso import _FILA_JSON
 
         # SÓ LÊ O ARQUIVO. Calcular aqui custava 22,3 s por request — a fila remonta o dicionário de
@@ -460,8 +456,6 @@ def api_osint_processos(limite: int = 80, so_conflito: int = 0):
     fichas de processo que citam aquele CNPJ.
     """
     try:
-        import json
-
         from tools.osint_x_processos import _SAIDA_JSON
 
         if not _SAIDA_JSON.exists():
@@ -495,8 +489,6 @@ def api_osint_processos(limite: int = 80, so_conflito: int = 0):
 def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
     """Empresas que dividem contato E ambas recebem do Estado — o elo que ninguém declarou."""
     try:
-        import json
-
         from tools.elos_ocultos import _SAIDA
 
         if not _SAIDA.exists():
@@ -514,11 +506,7 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
         # índice); se falhar, o dado segue sem a cobertura — nunca derruba a rota.
         cobertura_grafo = None
         try:
-            import sqlite3 as _sq3
-
-            from compliance_agent.reporting.intel_base import _DB as _db_path
-
-            _con = _sq3.connect(f"file:{_db_path}?mode=ro", uri=True)
+            _con = _db_ro()
             try:
                 _perc = _con.execute("SELECT COUNT(*) FROM grafo_persistido").fetchone()[0]
                 _uni = _con.execute(
@@ -528,7 +516,7 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
                                    "pct": round(_perc * 100.0 / _uni, 1) if _uni else None}
             finally:
                 _con.close()
-        except _sq3.Error:
+        except sqlite3.Error:
             logger.debug("cobertura do grafo indisponível — sigo sem ela")
         return JSONResponse({
             "ok": True, "gerado_em": corpo.get("gerado_em"),
@@ -562,8 +550,6 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
 def api_cocontato_certame(limite: int = 60, so_sem_explicacao: int = 0):
     """Dois participantes do MESMO certame atendendo pelo mesmo telefone ou e-mail."""
     try:
-        import json
-
         from tools.cocontato_certame import SAIDA
 
         if not SAIDA.exists():
@@ -605,8 +591,6 @@ def api_pcrj_assinaturas(limite: int = 80, so_identificadas: int = 0):
     a pergunta da fila de agente público valer também para o município.
     """
     try:
-        import json
-
         from tools.pcrj_assinaturas_x_folha import SAIDA
         from tools.pcrj_signatario_x_qsa import SAIDA as SAIDA_QSA
 
@@ -658,21 +642,14 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
     """
     try:
         import subprocess
-        from pathlib import Path
-
-        raiz = Path(__file__).resolve().parent.parent
         # so_osint usa `--osint` (TODOS os itens com sinal, em qualquer posição), não `--top`:
         # o sinal OSINT pontua pouco e cai para o fundo, então filtrar dentro do top-N dizia "0"
         # quando os itens estavam logo abaixo da janela. Corte de janela não pode virar "não há".
         _args = (["--osint"] if so_osint
                  else ["--top", str(max(1, min(limite, 300)))])
-        # .venv do repositório quando existe; senão o intérprete que serve a rota (venv limpo da
-        # rotina noturna e da VM-2 não tem `.venv` no repositório — o caminho fixo dava 500).
-        _py = raiz / ".venv" / "bin" / "python"
         r = subprocess.run(
-            [str(_py) if _py.exists() else sys.executable,
-             str(raiz / "tools" / "processo_360_ranking.py"), *_args],
-            capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
+            [python_do_repo(), str(RAIZ / "tools" / "processo_360_ranking.py"), *_args],
+            capture_output=True, text=True, timeout=300, cwd=str(RAIZ), check=False)
         if r.returncode != 0:
             return JSONResponse({"ok": False, "erro": "ranking não pôde ser calculado"},
                                 status_code=503)
@@ -735,9 +712,9 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
             return JSONResponse({"ok": False, "erro": "UG inválida"}, status_code=400)
         con = _db_ro()
         try:
-            if ug:
-                from compliance_agent.reporting.cobertura_siafe import estado_do_par
+            from compliance_agent.reporting.cobertura_siafe import estado_do_par
 
+            if ug:
                 dados = concentracao_da_ug(con, ug, ano=ano or None)
                 # A fração só vale o que valer a base. Publicar 57,5% sem dizer que 65% da amostra
                 # daquele ano NÃO está na fonte canônica é o tipo de número que envelhece mal.
@@ -747,8 +724,7 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
             # Sem UG: o ranking ordena pelo DELTA — o quanto agrupar mudou a leitura —, não pelo
             # HHI absoluto. UG dominada por um fornecedor único já aparece na medida por CNPJ e
             # não é o que esta tela existe para achar.
-            from compliance_agent.reporting.cobertura_siafe import estado_do_par
-            from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
+            from compliance_agent.ugs import nome_canonico
 
             lim = max(1, min(int(limite), 40))
             itens = _cache(f"conc_grupo:{ano}:{lim}",
@@ -841,15 +817,14 @@ def api_detectores(limite: int = 25):
     A resposta separa CONFIRMADO de NÃO AVALIÁVEL de propósito: o segundo é a medida da cobertura,
     e some quando se conta só o primeiro.
     """
-    import sqlite3 as _sq
     from pathlib import Path as _Path
 
     tabelas = (("achado_detector", "ug"), ("achado_certame", "certame"),
                ("achado_execucao", "contrato"))
     try:
-        con = _sq.connect("file:data/achados.db?mode=ro", uri=True, timeout=30)
-        con.row_factory = _sq.Row
-    except _sq.Error as exc:
+        con = sqlite3.connect("file:data/achados.db?mode=ro", uri=True, timeout=30)
+        con.row_factory = sqlite3.Row
+    except sqlite3.Error as exc:
         return JSONResponse({"ok": False, "erro": f"banco de achados indisponível: {exc}"})
     try:
         por_det: dict[str, dict] = {}
@@ -869,7 +844,7 @@ def api_detectores(limite: int = 25):
                 linhas = con.execute(
                     f"SELECT detector, status, score, {chave} AS alvo, motivo, gerado_em, "  # noqa: S608
                     f"{col_org} AS orgao_cnpj FROM {tab}").fetchall()
-            except _sq.Error:
+            except sqlite3.Error:
                 continue                       # tabela ausente = varredura nunca rodou, não zero
             for r in linhas:
                 if r["orgao_cnpj"] and not _eo.no_rj(r["orgao_cnpj"]):
@@ -984,7 +959,6 @@ def api_leitura_dupla(limite: int = 20):
     consumia — a mesma família do `achados.db`, que produzia 543 confirmados sem um leitor.
     """
     try:
-        import json as _j
 
         def _medir():
             con = _db_ro()
@@ -1010,7 +984,7 @@ def api_leitura_dupla(limite: int = 20):
             for sei, na, nd, disc, ia, trunc, regua, naus, aus in linhas:
                 if not regua:
                     regua_velha += 1
-                d = _j.loads(disc or "{}")
+                d = json.loads(disc or "{}")
                 for _campo, v in d.items():
                     e = str(v.get("estado") or "?")
                     por_estado[e] = por_estado.get(e, 0) + 1
@@ -1019,10 +993,10 @@ def api_leitura_dupla(limite: int = 20):
                 # que o campo não existe, ou o documento DECLARA que não há), 121 são ranque de
                 # valor decidido por aritmética e 45 são fato já resolvido pela Ordem Bancária.
                 # O card mostra a quebra em vez de um rótulo que não descreve o número.
-                for _c, _v in _j.loads(aus or "{}").items():
+                for _c, _v in json.loads(aus or "{}").items():
                     _e = str(_v.get("estado") or "?")
                     fora[_e] = fora.get(_e, 0) + 1
-                iad = _j.loads(ia or "{}")
+                iad = json.loads(ia or "{}")
                 for _d in _falta((iad.get("interpretacao") or {}).get("o_que_falta")):
                     _k = _d.lower().strip(" .;-")[:60]
                     faltam[_k] = faltam.get(_k, 0) + 1
@@ -1110,7 +1084,7 @@ def api_emergencia_recorrente(minimo: int = 5, limite: int = 14):
             "fonte": _fonte("compras_diretas_tcerj"),
             "ressalva": RESSALVA,
         })
-    except _FALHAS_DE_LEITURA as exc:   # já inclui sqlite3.Error
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("emergencia_recorrente falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
