@@ -889,8 +889,9 @@ class MotorCompliance:
         aparece em publicações suspeitas (rescisões, TCE, improbidade).
         """
 
-        TIPOS_SUSPEITOS = {"rescisão", "improbidade", "irregularidade", "condenação",
-                           "cassação", "multa", "embargos", "inabilitação"}
+        # Termo e favorecido têm de estar no MESMO ato e ligados entre si (ver doerj_casamento):
+        # casar o nome num ato e 'multa' em outro ato do mesmo bloco do diário gerou 29/49 FP.
+        from compliance_agent.rules.doerj_casamento import eh_orgao_publico, ocorrencias
 
         from sqlalchemy import func
         # Um favorecido por vez (não uma OB por vez): os 100 maiores da janela. O casamento com o
@@ -923,8 +924,9 @@ class MotorCompliance:
             if ob is None:
                 continue
             nome = (ob.favorecido_nome or "").strip()
-            if len(nome) < 5:
-                continue
+            cpf_cnpj = (ob.favorecido_cpf or "").strip()
+            if len(nome) < 5 or eh_orgao_publico(nome):
+                continue  # o próprio ente (Secretaria etc.) não é fornecedor sancionável
 
             doerj_hits = (
                 self.session.query(PublicacaoDOERJ)
@@ -937,31 +939,35 @@ class MotorCompliance:
             if not doerj_hits:
                 continue
 
-            # Check if any hit involves suspicious terms
+            # Todas as ocorrências (termo ligado ao favorecido no mesmo ato) — nenhuma é cortada:
+            # antes parava no 1º termo de cada publicação e o contado não batia com o exibido.
             suspeitos = []
             for hit in doerj_hits:
-                texto_low = (hit.texto or "").lower()
-                for termo in TIPOS_SUSPEITOS:
-                    if termo in texto_low:
-                        suspeitos.append({
-                            "data": str(hit.data_publicacao),
-                            "tipo_ato": hit.tipo_ato,
-                            "titulo": hit.titulo,
-                            "termo_suspeito": termo,
-                        })
-                        break
+                for oc in ocorrencias(hit.texto or "", nome, cpf_cnpj):
+                    suspeitos.append({
+                        "publicacao_id": hit.id,
+                        "data": str(hit.data_publicacao),
+                        "tipo_ato": hit.tipo_ato,
+                        "titulo": hit.titulo,
+                        "termo_suspeito": oc["termo"],
+                        "criterio": oc["criterio"],
+                        "trecho": oc["trecho"],
+                    })
 
             if suspeitos:
+                n_pubs = len({s["publicacao_id"] for s in suspeitos})
                 self._criar_alerta(
                     tipo            = "doerj_anomalia",
                     severidade      = "alta",
                     titulo          = f"OB para favorecido com publicação suspeita no DOERJ — {nome}",
                     descricao       = (
                         f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}, UG {ob.ug_codigo}) "
-                        f"tem como favorecido '{nome}', que aparece em {len(suspeitos)} "
-                        f"publicação(ões) do DOERJ com termos suspeitos: "
-                        f"{[s['termo_suspeito'] for s in suspeitos]}. "
-                        f"Verificar se os pagamentos são compatíveis com o status do favorecido."
+                        f"tem como favorecido '{nome}', citado em {n_pubs} "
+                        f"publicação(ões) do DOERJ com termo de risco no MESMO ato que o cita: "
+                        f"{sorted({s['termo_suspeito'] for s in suspeitos})} "
+                        f"({len(suspeitos)} ocorrência(s), trechos na evidência). "
+                        f"Indício, não acusação: verificar se os pagamentos são compatíveis com o "
+                        f"status do favorecido."
                     ),
                     evidencias      = {
                         "numero_ob": ob.numero_ob,
@@ -969,7 +975,13 @@ class MotorCompliance:
                         "favorecido": nome,
                         "cpf_cnpj": cpf_cnpj,
                         "doerj_suspeitos": suspeitos,
+                        "doerj_total_ocorrencias": len(suspeitos),
                         "doerj_total_hits": len(doerj_hits),
+                        "doerj_publicacoes_consultadas": [
+                            {"publicacao_id": h.id, "data": str(h.data_publicacao),
+                             "titulo": h.titulo}
+                            for h in doerj_hits
+                        ],
                     },
                     ordem_bancaria  = ob,
                 )

@@ -34,7 +34,8 @@ def sessao():
                       favorecido_cpf="12345678000199", favorecido_nome="OUTRA LTDA", valor=12345.67, status="paga"),
     ])
     s.add(PublicacaoDOERJ(data_publicacao=hoje - timedelta(days=10), tipo_ato="decisão", titulo="x",
-                          texto="condenação por improbidade administrativa", cnpjs_extraidos=f'["{CNPJ}"]'))
+                          texto=f"AGILE CORP SERVICOS, CNPJ {CNPJ}: condenação por improbidade administrativa",
+                          cnpjs_extraidos=f'["{CNPJ}"]'))   # 20/11: o termo tem de estar no MESMO ato do favorecido
     s.commit()
     return s
 
@@ -57,4 +58,4 @@ def test_regras_de_ob_respeitam_a_janela_e_o_sql(sessao):
     assert not any("2024OB9" in a.descricao for a in m._alertas_novos)
     m._alertas_novos = []
     m._regra_ob_favorecido_doerj_cruzado()
-    assert len(m._alertas_novos) == 1 and "termos suspeitos" in m._alertas_novos[0].descricao
+    assert len(m._alertas_novos) == 1 and "publicação" in m._alertas_novos[0].descricao
