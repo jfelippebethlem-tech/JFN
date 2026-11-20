@@ -71,7 +71,6 @@ def coletar(ym: str = "202605") -> dict:
                           headers={"User-Agent": _UA}, verify=False) as r:
             r.raise_for_status()
             buf = io.StringIO()
-            # decodifica em streaming (latin-1), acumula em memória modesta e parseia
             for chunk in r.iter_bytes(1 << 20):
                 buf.write(chunk.decode("latin-1", "replace"))
             buf.seek(0)

@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 # Os alertas de fracionamento saem com severidade ALTA no painel; teto errado nos dois
 # sentidos é acusar quem não devia e perder quem devia. Agora vem da fonte única, por ANO.
 from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
-from compliance_agent.limites_dispensa import LIMITES, limite_dispensa as _limite_dispensa
+from compliance_agent.limites_dispensa import limite_dispensa as _limite_dispensa
+from compliance_agent.pcrj.formato import brl as _brl
 
 
 def teto_dispensa(ano: int | None = None) -> float:
@@ -36,7 +37,6 @@ def teto_dispensa(ano: int | None = None) -> float:
     return _limite_dispensa(ano or date.today().year, "compras")
 
 
-TETO_DISPENSA_COMPRAS = teto_dispensa(2026)  # compat: consumidores antigos importam a constante
 D7_JANELA_DIAS = 90
 D7_MINIMO_REGISTROS = 3
 D8_DIAS_RECEM_ABERTA = 180
@@ -44,11 +44,6 @@ D8_VALOR_MINIMO = 100_000.0
 # art. 125: acréscimo até 25% (50% só reforma de edifício/equip.). O número vem da fonte única
 # `limites_aditivo`; aqui fica como MULTIPLICADOR (1 + teto) porque a consulta compara global×inicial.
 D10_LIMITE_ADITIVO = 1.0 + _teto_acrescimo(None)
-
-
-def _brl(v: float | None) -> str:
-    v = v or 0.0
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _sev(risco: int) -> str:
@@ -82,32 +77,26 @@ def d7_fracionamento(con, teto: float | None = None,
     medido: **46 contratos de 2024 entravam indevidamente** (teto alto demais) e **35
     contratos + 52 licitações de 2026 sumiam** (teto baixo demais). Trocar só a constante
     para a de 2026 teria PIORADO 2024, porque o teto sobe a cada ano — por isso a
-    comparação virou por exercício, no próprio SQL.
+    comparação é por exercício, com `limite_dispensa` (inclusive a regra de ano fora da tabela).
 
     `teto` explícito continua aceito e passa a valer para todos os anos (compatibilidade e
     cenário de teste); `None` = por ano, que é o correto em produção.
     """
-    if teto is None:
-        casos = " ".join(f"WHEN {a} THEN {v['compras']}" for a, v in sorted(LIMITES.items()))
-        padrao = LIMITES[max(LIMITES)]["compras"]
-        teto_sql = f"(CASE CAST(substr(data_assinatura,1,4) AS INT) {casos} ELSE {padrao} END)"
-        params: tuple = ()
-    else:
-        teto_sql, params = "?", (teto,)
-    rows = con.execute(f"""
+    rows = con.execute("""
         select orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
-               data_assinatura, valor_global, numero_controle_pncp,
-               {teto_sql} as teto_ano
+               data_assinatura, valor_global, numero_controle_pncp
         from pcrj_contratos
-        where valor_global > 0 and valor_global < {teto_sql} and data_assinatura is not null
-        order by orgao_cnpj, fornecedor_documento, data_assinatura""",
-        params * 2).fetchall()
+        where valor_global > 0 and data_assinatura is not null
+        order by orgao_cnpj, fornecedor_documento, data_assinatura""").fetchall()
     grupos: dict[tuple, list] = {}
     for r in rows:
         d = _data(r["data_assinatura"])
-        if d:
-            grupos.setdefault((r["orgao_cnpj"], r["fornecedor_documento"]), []).append((d, r))
+        if not d:
+            continue
+        teto_ano = teto if teto is not None else teto_dispensa(d.year)
+        if r["valor_global"] < teto_ano:
+            grupos.setdefault((r["orgao_cnpj"], r["fornecedor_documento"]), []).append((d, r, teto_ano))
     achados = []
     for (orgao, forn), itens in grupos.items():
         itens.sort(key=lambda x: x[0])
@@ -121,10 +110,10 @@ def d7_fracionamento(con, teto: float | None = None,
                 melhor = janela
         if not melhor:
             continue
-        soma = sum(r["valor_global"] for _, r in melhor)
-        # o teto da JANELA é o do exercício em que ela começa (o `teto_ano` já vem do SQL,
-        # por linha) — comparar a soma contra um teto de outro ano era parte do mesmo erro.
-        teto_janela = melhor[0][1]["teto_ano"]
+        soma = sum(r["valor_global"] for _, r, _ in melhor)
+        # o teto da JANELA é o do exercício em que ela começa — comparar a soma contra um teto
+        # de outro ano era parte do mesmo erro.
+        teto_janela = melhor[0][2]
         if soma <= teto_janela:
             continue        # fatias que nem somadas passam do teto não indicam fuga
         r0 = melhor[0][1]
@@ -164,7 +153,7 @@ def d7_fracionamento(con, teto: float | None = None,
             f"(fonte: PNCP, contratos/empenhos publicados)",
             {"subtipo": "fracionamento", "orgao": orgao, "fornecedor": forn,
              "n_contratos": len(melhor), "soma": soma,
-             "controles_pncp": [r["numero_controle_pncp"] for _, r in melhor]}))
+             "controles_pncp": [r["numero_controle_pncp"] for _, r, _ in melhor]}))
     return achados
 
 

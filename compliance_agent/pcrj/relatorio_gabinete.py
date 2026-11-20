@@ -8,21 +8,13 @@ o vínculo é INDÍCIO; "Requisitado"/"à disposição" indica cessão (vínculo
 """
 from __future__ import annotations
 
-import html as _html
 from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-from compliance_agent.pcrj.relatorio import (
-    _ativo,
-    _cessao_provavel,
-    _datas_pcrj,
-    _vinculo_efetivo,
-)
-
-
-def _e(x) -> str:
-    return _html.escape(str(x or ""))
+from compliance_agent.pcrj.cargos import cessao_provavel as _cessao_provavel, vinculo_efetivo as _vinculo_efetivo
+from compliance_agent.pcrj.relatorio import _ativo, _datas_pcrj
+from compliance_agent.pcrj.formato import e as _e
 
 
 def _vinculos_do_gabinete(con, gab: int) -> list[dict]:

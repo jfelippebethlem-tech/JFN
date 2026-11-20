@@ -11,15 +11,11 @@ tribunal (reclamatória/processos, que têm CAPTCHA e não automatizam). Nunca b
 """
 from __future__ import annotations
 
-import html
 from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-
-
-def _e(x) -> str:
-    return html.escape(str(x or ""))
+from compliance_agent.pcrj.formato import e as _e
 
 
 def montar_ctx(db_path=None, faixa_min: str = "forte") -> dict:

@@ -141,7 +141,6 @@ def coletar_wayback(uf: str = "RJ", pausa: float = 1.0, db_path=None) -> dict:
     sess.headers.update({"User-Agent": "JFN-Compliance/1.0"})
     agora = datetime.now(timezone.utc).isoformat()
 
-    # lista de partidos arquivados
     try:
         rows = sess.get(_WB_CDX.format(uf=uf), timeout=120).json()[1:]
     except Exception as e:  # noqa: BLE001

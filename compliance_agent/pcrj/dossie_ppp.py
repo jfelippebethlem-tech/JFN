@@ -25,7 +25,6 @@ from . import analise
 from . import lente_ppp
 from ..reporting import render_html as rh
 
-_RE_VALOR = re.compile(r"R\$\s?([\d\.]+,\d{2})")
 # valor monetário com separador de milhar, com ou sem "R$" (tabelas do D.O. trazem número cru)
 _RE_VALOR_MILHAR = re.compile(r"(\d{1,3}(?:\.\d{3})+,\d{2})")
 

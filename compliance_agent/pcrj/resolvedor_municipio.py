@@ -63,7 +63,7 @@ def _fonte_qsa(alvo: set[str]) -> dict[str, list[dict]]:
     """Sócio de empresa (Receita QSA) → município da sede. Cobertura real depende do
     dump COMPLETO da Receita (o compliance.db hoje só tem sócios de fornecedores)."""
     out: dict[str, list[dict]] = defaultdict(list)
-    comp = _db.DB_PATH.parent / "compliance.db"
+    comp = _db.COMPLIANCE_DB
     if not comp.exists():
         return out
     try:
@@ -92,7 +92,6 @@ def montar(db_path=None) -> dict:
 
     fontes = {"TSE": _fonte_tse(con, alvo), "QSA": _fonte_qsa(alvo)}
 
-    # agrega por (nome, município, uf)
     agg: dict[tuple, dict] = {}
     for evid_por_nome in fontes.values():
         for nn, evids in evid_por_nome.items():

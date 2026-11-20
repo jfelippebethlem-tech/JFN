@@ -48,7 +48,6 @@ def normalizar_processo(texto: str | None) -> str | None:
     """
     if not texto:
         return None
-    # colapsa espaços em torno dos separadores antes de casar
     t = re.sub(r"\s*([./-])\s*", r"\1", str(texto))
     m = _RE_SEIRIO.search(t)
     return m.group(0) if m else None

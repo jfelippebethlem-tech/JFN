@@ -35,7 +35,7 @@ ANOS_MUNICIPAIS = [2016, 2020, 2024]
 # Comissionado na Prefeitura do Rio: classificador canônico (pericia_beneficios). A regex local antiga
 # (\bESPECIAL\b em qualquer posição) gravava "AGENTE DE APOIO A EDUCACAO ESPECIAL" — cargo EFETIVO — como
 # comissionado: 20 registros / 16 pessoas, removidos em 29/09/2026.
-from compliance_agent.pcrj.pericia_beneficios import _cargo_comissionado  # noqa: E402
+from compliance_agent.pcrj.cargos import cargo_comissionado as _cargo_comissionado  # noqa: E402
 _ADM_MIN = 2021
 
 
@@ -126,10 +126,10 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
                 if normalizar(row.get("nome", "")) != nn:
                     continue
                 if not _cargo_comissionado(row.get("cargo", "")):
-                    continue                       # só comissionados
+                    continue
                 adm_ano = _ano(row.get("admissao", ""))
                 if not adm_ano or adm_ano < _ADM_MIN:
-                    continue                       # 2021 pra cá
+                    continue
                 achados[row.get("matricula", "?")] = row
         return nn, info, achados
 

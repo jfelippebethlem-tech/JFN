@@ -20,18 +20,16 @@ oficial de gabinetes e aponta o comissionado que ingressou antes da posse do sup
 """
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
+from compliance_agent.pcrj.cargos import cargo_comissionado as _cargo_comissionado  # noqa: F401 — nome antigo, lido por testes e tools/consulta_nominal_alta
 from compliance_agent.pcrj.folha_pref import eh_ativo
-from compliance_agent.pcrj.orgaos_siglas import decodificar  # noqa: F401 (usado via _orgaos_do_nome)
+from compliance_agent.pcrj.formato import comp_legivel as _comp_legivel
 
-BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 _REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
-_LEGISLATURA_YM = "202501"  # início da legislatura 2025–2028 (referência p/ ingresso)
 _VINCULO_COMISSIONADO = ("livre nomeação", "livre nomeacao", "requisitado")
 
 # ── NATUREZA DO VÍNCULO (clareza pedida pelo dono 2026-07-11): o relatório precisa dizer, pessoa a
@@ -44,17 +42,6 @@ _VINCULO_COMISSIONADO = ("livre nomeação", "livre nomeacao", "requisitado")
 #     e bolsistas), e o CARGO vem das consultas nominais já feitas ao contracheque
 #     (pcrj_prefeitura_consulta / pcrj_comissionado_candidato). Sem cargo conhecido, a natureza fica
 #     explicitamente "não informada pela fonte" — nunca se presume comissionamento.
-# Padrão de cargo em comissão (mesma família do _RE_COMISSIONADO canônico), com VETOS para os
-# falsos positivos conhecidos ("AGENTE DE APOIO A EDUCACAO ESPECIAL", "ESPECIALIDADE", estágios).
-_RE_CARGO_COMISSAO = re.compile(r"^ESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|^ASSESSOR|^ASSISTENTE ESPECIAL", re.IGNORECASE)
-_RE_CARGO_VETO = re.compile(r"EDUCA[CÇ][AÃ]O ESPECIAL|ESPECIALIDADE|ESTAGI", re.IGNORECASE)
-
-
-def _cargo_comissionado(cargo: str) -> bool:
-    c = (cargo or "").strip()
-    return bool(c) and bool(_RE_CARGO_COMISSAO.search(c)) and not _RE_CARGO_VETO.search(c)
-
-
 def _cargo_prefeitura(con, nome_norm: str) -> str:
     """Cargo na Prefeitura quando alguma consulta nominal já o trouxe (a folha em bloco não
     publica cargo). '' = nunca consultado / não encontrado. Só vale consulta de NOME ÚNICO
@@ -135,15 +122,6 @@ def _classificar_vinculo(con, nome_norm: str, info: dict) -> dict:
 # antes disso e ainda nomeado = equipe do titular que o suplente não trocou. Ampliar com as
 # licenças MID-mandato (titular que se afasta no meio do período) exige varrer o DOM da CMRJ.
 _POSSE_SUPLENTE = {6: "202501", 11: "202501", 20: "202501", 41: "202501", 44: "202501"}
-
-_MESES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-
-
-def _comp_legivel(ym: str) -> str:
-    try:
-        return f"{_MESES[int(ym[4:6])]}/{ym[:4]}"
-    except Exception:
-        return ym
 
 
 def _ingresso_ym(data1: str) -> str | None:
@@ -231,7 +209,7 @@ def _orgao_topo(reg: dict) -> str:
 
 
 def analisar() -> dict:
-    b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
+    b = _db.abrir_leitura(_db.BENEF_DB)
     b.row_factory = _db.sqlite3.Row
     p = _db.conectar()
 

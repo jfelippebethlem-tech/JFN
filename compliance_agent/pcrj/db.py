@@ -7,10 +7,38 @@ desenvolvimento). O cruzamento com OB/despesa, quando existir, é feito por
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "pcrj.db"
+BENEF_DB = DB_PATH.parent / "pcrj_benef.db"        # Bolsa Família/BPC — banco próprio, não disputa lock
+COMPLIANCE_DB = DB_PATH.parent / "compliance.db"
+
+
+def abrir_leitura(caminho: Path | str) -> sqlite3.Connection:
+    """Conexão SOMENTE-LEITURA a outro banco (benefícios, compliance)."""
+    return sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+
+
+def observacao_vinculo(admissao, exoneracao, matricula, valor_liq) -> str:
+    """Texto de `pcrj_vinculo_cruzado.observacao` (o vínculo na Prefeitura); `ler_observacao` lê."""
+    return (f"admissao={admissao} exoneracao={exoneracao} matricula={matricula} "
+            f"valor_liq={valor_liq}")
+
+
+_RE_OBSERVACAO = re.compile(r"admissao=(\S*)\s+exoneracao=(\S*)\s+matricula=(\S*)")
+
+
+def ler_observacao(observacao: str | None) -> dict | None:
+    """{admissao, exoneracao, matricula} como texto da fonte; exoneração ausente (gravada de `None`)
+    vira ''. Observação fora do formato → None."""
+    m = _RE_OBSERVACAO.search(observacao or "")
+    if not m:
+        return None
+    exo = m.group(2)
+    return {"admissao": m.group(1), "exoneracao": "" if exo == "None" else exo,
+            "matricula": m.group(3)}
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS pcrj_camara_servidores (

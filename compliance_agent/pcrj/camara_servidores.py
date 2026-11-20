@@ -78,7 +78,7 @@ def baixar_ano(ano: int, session: requests.Session, timeout: int = 60) -> list[d
         if not row or not _limpar(row[0]):
             continue
         campos = [_limpar(c) for c in row]
-        campos += [""] * (8 - len(campos))       # padroniza tamanho
+        campos += [""] * (8 - len(campos))
         nome, vinculo, simbolo, cargo, lotacao, data1, data2, doc_num = campos[:8]
         gab, tipo = _classificar_lotacao(lotacao)
         linhas.append({
@@ -142,7 +142,6 @@ def bridge_para_folha(db_path=None) -> dict:
     o cruzamento é por NOME. Idempotente (dedup por fonte+nome+cargo). Sem valor de remuneração (o CSV
     de dados abertos da Câmara traz cadastro/lotação, não a folha financeira)."""
     import sqlite3
-    from pathlib import Path
     con_p = _db.conectar(db_path)
     try:
         rows = con_p.execute(
@@ -150,8 +149,7 @@ def bridge_para_folha(db_path=None) -> dict:
             "WHERE nome IS NOT NULL AND TRIM(nome) != ''").fetchall()
     finally:
         con_p.close()
-    _COMP = str(Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db")
-    con = sqlite3.connect(_COMP, timeout=60)
+    con = sqlite3.connect(str(_db.COMPLIANCE_DB), timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
     ins = 0
     try:

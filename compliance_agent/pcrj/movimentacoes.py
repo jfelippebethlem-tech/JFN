@@ -12,33 +12,18 @@ Detalhamento pedido pelo dono (indício, sem CPF):
 """
 from __future__ import annotations
 
-import re
 from datetime import date, datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-
-
-def _e(x) -> str:
-    import html
-    return html.escape(str(x or ""))
-
-
-def _d(s: str | None) -> date | None:
-    s = (s or "").strip()
-    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", s)
-    if m:
-        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
-    return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+from compliance_agent.pcrj.formato import e as _e, data as _d, fmt_data as _fmt
 
 
 def _postos_pref(observacao: str) -> tuple[date | None, date | None, str]:
-    m = re.search(r"admissao=(\S*)\s+exoneracao=(\S*)", observacao or "")
-    if not m:
+    o = _db.ler_observacao(observacao)
+    if not o:
         return None, None, ""
-    exo = m.group(2)
-    return _d(m.group(1)), (_d(exo) if exo not in ("", "None") else None), m.group(1)
+    return _d(o["admissao"]), (_d(o["exoneracao"]) if o["exoneracao"] else None), o["admissao"]
 
 
 def _pessoas(con) -> list[dict]:
@@ -73,10 +58,6 @@ def _pessoas(con) -> list[dict]:
                     "gabs": gabs, "gab_label": "; ".join(f"Gab {g} ({ver.get(g,'?')})" for g in gabs),
                     "postos": postos, "cands": cands, "nome_norm": b["nome_norm"]})
     return out
-
-
-def _fmt(d: date | None) -> str:
-    return d.strftime("%d/%m/%Y") if d else "—"
 
 
 # ---- classificadores de trajetória ----

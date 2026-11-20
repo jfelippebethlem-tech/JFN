@@ -14,7 +14,6 @@ Sem CPF → o casamento servidor × candidato é por nome (indício); a confian�
 from __future__ import annotations
 
 import logging
-import html
 import re
 import sqlite3
 import time
@@ -23,6 +22,7 @@ from datetime import date, datetime, timezone
 
 from compliance_agent.pcrj import db as _db
 from compliance_agent.pcrj.nomes import normalizar
+from compliance_agent.pcrj.formato import e as _e, comp as _comp, brl_rs as _brl
 
 INICIO = "202101"                     # posse de Eduardo Paes (3º mandato): 01/01/2021
 PAES_FIM = "20260320"                 # renúncia de Paes / posse de Cavaliere: 20/03/2026
@@ -112,7 +112,7 @@ def coletar(workers: int = 2, pausa: float = 0.4, db_path=None) -> dict:
 
 
 # classificador canônico da casa (com vetos: "AGENTE DE APOIO A EDUCACAO ESPECIAL", estágios, "ESPECIALIDADE")
-from compliance_agent.pcrj.pericia_beneficios import _cargo_comissionado  # noqa: E402
+from compliance_agent.pcrj.cargos import cargo_comissionado as _cargo_comissionado  # noqa: E402
 
 
 def _data(d: str | None) -> str:
@@ -228,20 +228,8 @@ def pessoas(con) -> tuple[list[dict], dict]:
 _PARTICULAS = {"da", "de", "do", "dos", "das", "e", "d"}
 
 
-def _e(x) -> str:
-    return html.escape(str(x or ""))
-
-
-def _comp(c: str | None) -> str:
-    return f"{c[4:6]}/{c[:4]}" if c and len(c) == 6 else "—"
-
-
 def _d8(d: str | None) -> str:
     return f"{d[6:]}/{d[4:6]}/{d[:4]}" if d and len(d) == 8 else "—"
-
-
-def _brl(v) -> str:
-    return "R$ " + f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _int(n) -> str:

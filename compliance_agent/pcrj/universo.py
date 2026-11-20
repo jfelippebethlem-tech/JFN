@@ -49,21 +49,10 @@ MODALIDADE_DIRETA = "90"
 # ou pessoal, nenhum contraprestação de contrato.
 ELEMENTOS_FORA: dict[str, str] = dict(ELEMENTOS_NAO_CONTRATUAIS)
 
-# elemento → rótulo, para leitura humana do que ficou DENTRO
-ELEMENTOS_DENTRO: dict[str, str] = {
-    "30": "material de consumo", "31": "premiações e material distribuído",
-    "32": "material de distribuição gratuita", "33": "passagens e locomoção",
-    "34": "outras despesas de pessoal (contratos de terceirização)",
-    "35": "serviços de consultoria", "36": "serviços de terceiros — pessoa física",
-    "37": "locação de mão de obra", "39": "serviços de terceiros — pessoa jurídica",
-    "40": "serviços de tecnologia da informação", "51": "obras e instalações",
-    "52": "equipamentos e material permanente", "61": "aquisição de imóveis",
-    "63": "obras em andamento",
-    "92": "despesas de exercícios anteriores (contratual, mas de outro exercício — ler com nota)",
-}
-
+_GRUPO_SQL = f"substr(natureza,2,1) IN ({','.join(repr(g) for g in GRUPOS_CONTRATUAIS)})"
+_MODALIDADE_SQL = f"substr(natureza,3,2)='{MODALIDADE_DIRETA}'"
 _FILTRO_SQL = (
-    "substr(natureza,2,1) IN ('3','4') AND substr(natureza,3,2)='90' "
+    f"{_GRUPO_SQL} AND {_MODALIDADE_SQL} "
     "AND substr(natureza,5,2) NOT IN (" + ",".join(f"'{e}'" for e in sorted(ELEMENTOS_FORA)) + ") "
     "AND pago > 0"
 )
@@ -87,14 +76,12 @@ def resumo(db_path: str = DB) -> dict:
         contr = con.execute(f"SELECT count(*), sum(pago), count(DISTINCT credor_documento) "
                             f"FROM pcrj_despesa WHERE {filtro_sql()}").fetchone()
         fora_grupo = con.execute("SELECT sum(pago) FROM pcrj_despesa WHERE pago>0 "
-                                 "AND substr(natureza,2,1) NOT IN ('3','4')").fetchone()[0] or 0
+                                 f"AND NOT {_GRUPO_SQL}").fetchone()[0] or 0
         fora_mod = con.execute("SELECT sum(pago) FROM pcrj_despesa WHERE pago>0 "
-                               "AND substr(natureza,2,1) IN ('3','4') "
-                               "AND substr(natureza,3,2)<>'90'").fetchone()[0] or 0
+                               f"AND {_GRUPO_SQL} AND NOT {_MODALIDADE_SQL}").fetchone()[0] or 0
         marks = ",".join("?" for _ in ELEMENTOS_FORA)
         fora_elem = con.execute(
-            f"SELECT sum(pago) FROM pcrj_despesa WHERE pago>0 "
-            f"AND substr(natureza,2,1) IN ('3','4') AND substr(natureza,3,2)='90' "
+            f"SELECT sum(pago) FROM pcrj_despesa WHERE pago>0 AND {_GRUPO_SQL} AND {_MODALIDADE_SQL} "
             f"AND substr(natureza,5,2) IN ({marks})", tuple(sorted(ELEMENTOS_FORA))).fetchone()[0] or 0
     finally:
         con.close()

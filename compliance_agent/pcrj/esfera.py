@@ -57,7 +57,6 @@ def construir_mapa(compliance_db: str = "data/compliance.db", db_path=None) -> d
     """
     con = db.conectar(db_path)
     con.executescript(_SCHEMA_MAPA)
-    # leitura da fonte (read-only) — junta órgãos de licitações e contratos
     src = sqlite3.connect(f"file:{compliance_db}?mode=ro", uri=True)
     src.row_factory = sqlite3.Row
     orgaos: dict[str, list] = {}
@@ -91,19 +90,6 @@ def construir_mapa(compliance_db: str = "data/compliance.db", db_path=None) -> d
     con.commit()
     con.close()
     return {"orgaos": len(orgaos), "por_esfera": contagem}
-
-
-def esfera_do_cnpj(orgao_cnpj: str, db_path=None) -> str:
-    """Consulta o mapa materializado; cai no classificador se o órgão não estiver mapeado."""
-    con = db.conectar(db_path)
-    try:
-        row = con.execute("SELECT esfera FROM pcrj_orgao_esfera WHERE orgao_cnpj=?",
-                          (orgao_cnpj,)).fetchone()
-    except sqlite3.OperationalError:
-        row = None
-    finally:
-        con.close()
-    return row["esfera"] if row else classificar_esfera("", orgao_cnpj)
 
 
 if __name__ == "__main__":

@@ -108,7 +108,6 @@ def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | No
             contagem[conf] += 1
             p = res["pessoa"]
             gabs = p.get("gabs") or ""
-            # busca o(s) vereador(es) do(s) gabinete(s) da pessoa
             vereadores = []
             for gnum in [g for g in (gabs.split(",") if gabs else []) if g]:
                 vr = con.execute("SELECT vereador FROM pcrj_gabinetes WHERE gabinete_num=?",
@@ -124,7 +123,7 @@ def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | No
                      row.get("lotacao") if row else None, row.get("cargo") if row else None,
                      None, row.get("valor_liquido") if row else None, conf,
                      json.dumps(row, ensure_ascii=False) if row else None, agora))
-                if row:                       # só grava vínculo quando há match de nome
+                if row:
                     con.execute(
                         """INSERT OR REPLACE INTO pcrj_vinculo_cruzado
                            (nome_norm,nome_camara,gabinetes,cargos_camara,nome_pcrj,
@@ -135,8 +134,8 @@ def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | No
                              [x for x in (gabs.split(',') if gabs else []) if x], vereadores))
                          or gabs, p.get("cargos"), row.get("nome"), row.get("lotacao"),
                          row.get("cargo"),
-                         conf, f"admissao={row.get('admissao')} exoneracao={row.get('exoneracao')} "
-                               f"matricula={mat} valor_liq={row.get('valor_liquido')}", agora))
+                         conf, _db.observacao_vinculo(row.get("admissao"), row.get("exoneracao"),
+                                                      mat, row.get("valor_liquido")), agora))
             feitos += 1
             if feitos % 50 == 0:
                 con.commit()

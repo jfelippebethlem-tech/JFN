@@ -10,37 +10,14 @@ XVI/XVII) — a apurar por CPF/RH, nunca afirmado aqui.
 from __future__ import annotations
 
 import logging
-import html as _html
 from datetime import datetime, timezone
 
 from compliance_agent.pcrj import db as _db
-
-# Palavras que sugerem vínculo EFETIVO/carreira no Executivo (↑ concern de acúmulo).
-_EFETIVO = ("GUARDA MUNICIPAL", "PROFESSOR", "MEDICO", "MÉDICO", "ENFERMEIR",
-            "AGENTE DE ADMINISTRA", "AUXILIAR DE ENFERM", "FISCAL", "ANALISTA",
-            "TECNICO", "TÉCNICO", "ASSISTENTE SOCIAL", "PROCURADOR", "AUDITOR")
+from compliance_agent.pcrj.cargos import cessao_provavel as _cessao_provavel, vinculo_efetivo as _vinculo_efetivo
+from compliance_agent.pcrj.formato import e as _e
 
 
 logger = logging.getLogger(__name__)
-
-
-def _e(x) -> str:
-    return _html.escape(str(x or ""))
-
-
-def _vinculo_efetivo(cargo_pcrj: str) -> bool:
-    c = (cargo_pcrj or "").upper()
-    return any(k in c for k in _EFETIVO)
-
-
-def _cessao_provavel(v: dict) -> bool:
-    """Cessão/requisição (vínculo ÚNICO, NÃO acúmulo): o servidor da Prefeitura está
-    formalmente 'à disposição' da Câmara, OU a Câmara o lista como 'Requisitado'. Nesses
-    casos as duas folhas retratam o MESMO posto — não é duplo vínculo remunerado."""
-    orgao = (v.get("orgao_pcrj") or "").upper()
-    vinc = (v.get("vinculo_camara") or "").upper()
-    return ("DISP" in orgao or "DISPOSI" in orgao or "CMRJ" in orgao
-            or "REQUISITAD" in vinc)
 
 
 def _coletar(con) -> dict:
@@ -79,21 +56,18 @@ def _coletar(con) -> dict:
             "por_conf": por_conf, "vinculos": vinculos, "cand": cand}
 
 
-_RE_OBS = __import__("re").compile(r"admissao=(\S*)\s+exoneracao=(\S*)\s+matricula=(\S*)")
-
-
 def _datas_pcrj(v: dict) -> tuple[str, str, str]:
     """(admissão, exoneração, matrícula) extraídas da observação do vínculo."""
-    m = _RE_OBS.search(v.get("observacao") or "")
-    if not m:
+    o = _db.ler_observacao(v.get("observacao"))
+    if not o:
         return "", "", ""
-    exo = m.group(2)
-    return m.group(1), (exo if exo and exo != "None" else "—"), m.group(3)
+    return o["admissao"], (o["exoneracao"] or "—"), o["matricula"]
 
 
 def _ativo(v: dict) -> bool:
     """Sem data de exoneração na observação = vínculo Executivo ainda ATIVO (mais grave)."""
-    return "exoneracao= " in (v.get("observacao") or "") or "exoneracao=None" in (v.get("observacao") or "")
+    o = _db.ler_observacao(v.get("observacao"))
+    return bool(o) and not o["exoneracao"]
 
 
 def _tabela_vinculos(vinculos: list[dict], apenas_unico: bool, limite: int | None = None) -> str:

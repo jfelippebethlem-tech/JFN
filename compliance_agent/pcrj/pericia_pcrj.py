@@ -20,9 +20,9 @@ from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
 from compliance_agent.pcrj import pericia_beneficios as _pb
+from compliance_agent.pcrj.formato import comp_legivel as _comp_legivel
 
 _REPORTS = Path(__file__).resolve().parents[2] / "reports"
-BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 _PROIBIDOS = ("jfn", "yoda", "hermes", "massare", "politimonitor", "gitnexus",
               "kroll", "deloitte", "mckinsey", "claude", "opus", "anthropic")
 
@@ -30,7 +30,7 @@ _PROIBIDOS = ("jfn", "yoda", "hermes", "massare", "politimonitor", "gitnexus",
 def _fora_do_rio(nome_norms: set[str]) -> dict[str, dict]:
     """Para os nomes dados, benefício pago FORA do município do Rio (mora em outra cidade). Agrega
     o município mais frequente + programas. Uma varredura no banco de benefícios."""
-    b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
+    b = _db.abrir_leitura(_db.BENEF_DB)
     out: dict[str, dict] = {}
     for nn, mun, ben, cmin, cmax, n in b.execute(
             "SELECT nome_norm, municipio, beneficio, MIN(competencia), MAX(competencia), "
@@ -41,7 +41,7 @@ def _fora_do_rio(nome_norms: set[str]) -> dict[str, dict]:
             continue
         e = out.setdefault(nn, {"municipios": {}, "programas": {}})
         e["municipios"][mun] = e["municipios"].get(mun, 0) + n
-        e["programas"][ben] = (_pb._comp_legivel(cmin), _pb._comp_legivel(cmax))
+        e["programas"][ben] = (_comp_legivel(cmin), _comp_legivel(cmax))
     b.close()
     return out
 
@@ -306,7 +306,7 @@ def gerar_camara(dados=None) -> str:
             (sum(1 for r in camara if r["nome_norm"] in fora), "recebem fora do Rio"),
             (sum(1 for r in camara if r["certeza"] == "MÉDIA"), "certeza MÉDIA (anexo)")]
     html = _render("Perícia — Câmara Municipal do Rio: nomeados e servidores × benefício assistencial",
-                   f"Emitido em {datetime.now():%d/%m/%Y} · Período {_pb._comp_legivel(d['competencias'][0])}–{_pb._comp_legivel(d['ultima'])} · "
+                   f"Emitido em {datetime.now():%d/%m/%Y} · Período {_comp_legivel(d['competencias'][0])}–{_comp_legivel(d['ultima'])} · "
                    "Câmara + convergência com a Prefeitura", kpis, "".join(corpo))
     _verificar(html, "camara")
     dest = str(_REPORTS / f"pericia_camara_{datetime.now().date()}.html")
@@ -374,7 +374,7 @@ def gerar_prefeitura(dados=None) -> str:
             (len(prefeitura), "total no Rio (ALTA+MÉDIA)"),
             (sum(1 for r in prefeitura if r["nome_norm"] in fora), "recebem fora do Rio")]
     html = _render("Perícia — Prefeitura do Rio: nomeados, servidores e pensionistas × benefício assistencial",
-                   f"Emitido em {datetime.now():%d/%m/%Y} · Período {_pb._comp_legivel(d['competencias'][0])}–{_pb._comp_legivel(d['ultima'])} · "
+                   f"Emitido em {datetime.now():%d/%m/%Y} · Período {_comp_legivel(d['competencias'][0])}–{_comp_legivel(d['ultima'])} · "
                    "folha completa por órgão", kpis, "".join(corpo))
     _verificar(html, "prefeitura")
     dest = str(_REPORTS / f"pericia_prefeitura_{datetime.now().date()}.html")

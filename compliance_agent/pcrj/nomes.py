@@ -31,7 +31,7 @@ def normalizar(nome: str) -> str:
     # Remove indicadores ordinais ANTES do NFKD (º/ª decompõem para 'o'/'a' e sujariam o nome).
     limpo = re.sub(r"[ºª°]", " ", nome or "")
     base = sem_acento(limpo).upper()
-    base = re.sub(r"[^A-Z\s]", " ", base)      # tira pontuação, dígitos, etc.
+    base = re.sub(r"[^A-Z\s]", " ", base)
     base = re.sub(r"\s+", " ", base).strip()
     return base
 

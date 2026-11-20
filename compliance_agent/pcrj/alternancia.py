@@ -12,24 +12,14 @@ Sem CPF nas fontes → tudo é indício, não prova.
 """
 from __future__ import annotations
 
-import re
 from datetime import date, datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
+from compliance_agent.pcrj.formato import e as _e, data as _d
 
 _POSSE_SUPLENTES = date(2025, 1, 2)   # posse dos suplentes (fonte: câmara.rio, 02/01/2025)
 GABINETES_ALTERNANCIA = (6, 11, 20, 41, 44)
-
-
-def _e(x) -> str:
-    import html
-    return html.escape(str(x or ""))
-
-
-def _d(s: str | None) -> date | None:
-    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", (s or "").strip())
-    return date(int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None
 
 
 def _secao_gabinete(con, gab: int) -> dict:

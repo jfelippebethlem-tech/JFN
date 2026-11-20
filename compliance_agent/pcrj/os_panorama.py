@@ -20,6 +20,7 @@ import fitz
 import requests
 import urllib3
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.pcrj.formato import brl_rs as _reais
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -116,10 +117,6 @@ def coletar(urls: list[str] | None = None) -> dict:
         con.close()
     return {"relatorios": ok, "os_distintas": tot["o"], "headcount_total": tot["h"],
             "despesa_total": tot["d"]}
-
-
-def _reais(v) -> str:
-    return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def montar_ctx() -> dict:

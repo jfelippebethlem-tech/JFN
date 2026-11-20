@@ -22,18 +22,9 @@ from pathlib import Path
 
 from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.pcrj import db as _db
+from compliance_agent.pcrj.formato import brl as _moeda, comp_legivel as _comp_legivel
 
-BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
-COMPLIANCE_DB = _db.DB_PATH.parent / "compliance.db"
 _REPORTS = Path(__file__).resolve().parents[2] / "reports"
-_MESES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-
-
-def _comp_legivel(ym: str) -> str:
-    try:
-        return f"{_MESES[int(ym[4:6])]}/{ym[:4]}"
-    except Exception:
-        return ym
 
 
 def _frag6(doc: str | None) -> str:
@@ -45,10 +36,6 @@ def _frag6(doc: str | None) -> str:
 def _fmt_cnpj(c: str | None) -> str:
     c = re.sub(r"\D", "", c or "")
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}" if len(c) == 14 else (c or "")
-
-
-def _moeda(v: float) -> str:
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 # ── CONTROLE NEGATIVO DA FAIXA MÉDIA (2026-08-12) ───────────────────────────────────────────────
@@ -107,7 +94,7 @@ def classificar_casamento(frag_socio: str, frags_ben: set) -> tuple[str, str]:
 
 
 def analisar() -> dict:
-    b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
+    b = _db.abrir_leitura(_db.BENEF_DB)
     b.row_factory = _db.sqlite3.Row
     comps = [r[0] for r in b.execute("SELECT DISTINCT competencia FROM pcrj_beneficio ORDER BY 1")]
     ultima = comps[-1] if comps else None
@@ -140,7 +127,7 @@ def analisar() -> dict:
     # sócios de fornecedores (com CPF mascarado) + quanto cada empresa RECEBEU do Estado.
     # Pagamento = OB SIAFE 'Contabilizado' (regra da casa: só a Ordem Bancária é pago; Anulado/
     # Excluído fora; devolvida pelo banco — 'Erro no Pagamento' — também) — dá a dimensão do sinal: sócio de empresa que fatura X com o poder público.
-    cc = _db.sqlite3.connect(f"file:{COMPLIANCE_DB}?mode=ro", uri=True)
+    cc = _db.abrir_leitura(_db.COMPLIANCE_DB)
     cc.row_factory = _db.sqlite3.Row
     socios = cc.execute(
         "SELECT DISTINCT cnpj, razao, socio_nome, socio_nome_norm, socio_doc, qualificacao "

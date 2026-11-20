@@ -25,14 +25,14 @@ def _linha_do_tempo(con) -> str:
     cam = {r["a"]: r["n"] for r in con.execute(
         "SELECT ano_ingresso a, COUNT(DISTINCT nome_norm) n FROM pcrj_camara_servidores "
         "WHERE ano_ingresso IS NOT NULL GROUP BY ano_ingresso")}
-    # admissões na Prefeitura (ano) entre os vínculos indício
     adm: dict[int, int] = {}
     exo: dict[int, int] = {}
     for r in con.execute("SELECT observacao FROM pcrj_vinculo_cruzado WHERE confianca='indicio_nome_unico'"):
-        m = re.search(r"admissao=\S*/(\d{4})", r["observacao"] or "")
+        o = _db.ler_observacao(r["observacao"]) or {}
+        m = re.match(r"\S*/(\d{4})", o.get("admissao", ""))
         if m:
             adm[int(m.group(1))] = adm.get(int(m.group(1)), 0) + 1
-        me = re.search(r"exoneracao=\S*/(\d{4})", r["observacao"] or "")
+        me = re.match(r"\S*/(\d{4})", o.get("exoneracao", ""))
         if me:
             exo[int(me.group(1))] = exo.get(int(me.group(1)), 0) + 1
     anos = sorted(set(cam) | set(adm) | set(exo))

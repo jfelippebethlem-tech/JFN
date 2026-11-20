@@ -10,12 +10,12 @@ Consolida, com honestidade (sem CPF → indício por nome, homônimo possível):
 """
 from __future__ import annotations
 
-import re
 from datetime import date, datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-from compliance_agent.pcrj.relatorio import _cessao_provavel, _e, _vinculo_efetivo
+from compliance_agent.pcrj.cargos import cessao_provavel as _cessao_provavel, vinculo_efetivo as _vinculo_efetivo
+from compliance_agent.pcrj.formato import e as _e, data as _d, fmt_data as _fmt
 
 _HOJE = None  # injetável em teste; senão date.today() no uso
 
@@ -24,22 +24,12 @@ def _hoje() -> date:
     return _HOJE or date.today()
 
 
-def _d(s: str | None) -> date | None:
-    s = (s or "").strip()
-    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", s)
-    if m:
-        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
-    return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
-
-
 def _posts_pref(observacao: str) -> tuple[date | None, date | None]:
     """(admissão, exoneração|None) de um vínculo, a partir da observação."""
-    m = re.search(r"admissao=(\S*)\s+exoneracao=(\S*)", observacao or "")
-    if not m:
+    o = _db.ler_observacao(observacao)
+    if not o:
         return None, None
-    exo = m.group(2)
-    return _d(m.group(1)), (_d(exo) if exo not in ("", "None") else None)
+    return _d(o["admissao"]), (_d(o["exoneracao"]) if o["exoneracao"] else None)
 
 
 def _pessoas(con) -> list[dict]:
@@ -102,10 +92,6 @@ def _concomitante(pessoa: dict) -> bool:
         if fim >= pessoa["cam_ato"]:
             return True
     return False
-
-
-def _fmt(d: date | None) -> str:
-    return d.strftime("%d/%m/%Y") if d else "—"
 
 
 def _linha_pessoa(pz: dict) -> str:

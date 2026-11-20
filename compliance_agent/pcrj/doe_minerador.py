@@ -52,12 +52,8 @@ def valor_br(s: str) -> float:
 _RE_ATA_HEAD = re.compile(
     r"EXTRATO DA ATA DE REGISTRO DE PRE[ÇC]OS N[ºo°]?\s*(\d+)\s*/\s*(\d{4})", re.I)
 _RE_ORGAO_GESTOR = re.compile(r"[ÓO]rg[ãa]o Gestor:\s*(.+?)(?:\.|Objeto:|Processo:)", re.I | re.S)
-_RE_OBJETO = re.compile(r"Objeto:\s*(.+?)(?:Processo:|Modalidade:|Validade)", re.I | re.S)
 _RE_PROCESSO_ATA = re.compile(r"Processo:\s*([A-Z0-9./\-]+(?:/\d{2,6})?)", re.I)
 _RE_MODALIDADE = re.compile(r"Modalidade:\s*(.+?)(?:Validade|[ÓO]rg[ãa]o|$)", re.I | re.S)
-_RE_VENCEDOR = re.compile(
-    r"Empresa Vencedora:\s*(.+?)\s*[-–]\s*(?:Item|Itens|CNPJ)",
-    re.I | re.S)
 _RE_VENC_CNPJ_VALOR = re.compile(
     r"Empresa Vencedora:\s*(.+?)\s*[-–].{0,80}?CNPJ:\s*([\d./\-]+)"
     r".{0,200}?Valor Total Adjudicado:\s*R\$\s*([\d][\d.]*,\d{2,4})",
@@ -174,9 +170,7 @@ def minerar_corpus(db_path=None) -> dict:
     empenhos: list[dict] = []
     gmails: dict[str, dict] = {}
     for r in rows:
-        texto = r["texto"] if not isinstance(r, (tuple, list)) else r[4]
-        data = r["data"] if not isinstance(r, (tuple, list)) else r[1]
-        termo = r["termo_busca"] if not isinstance(r, (tuple, list)) else r[3]
+        texto, data, termo = r["texto"], r["data"], r["termo_busca"]
         for a in minerar_atas(texto):
             a["data"] = data
             a["termo_busca"] = termo
@@ -278,14 +272,8 @@ def _tipo_extrato(cabecalho: str) -> str:
 
 
 def _processos_no_texto(s: str) -> list[str]:
-    from .doweb import _RE_PROCESSO  # lazy: doweb carrega o cliente HTTP
-    vistos: list[str] = []
-    for rx in _RE_PROCESSO:
-        for m in rx.findall(s):
-            n = re.sub(r"\s+", "", m)
-            if n not in vistos:
-                vistos.append(n)
-    return vistos
+    from .doweb import extrair_processos  # lazy: doweb carrega o cliente HTTP
+    return extrair_processos(s)
 
 
 def _campo(rx: re.Pattern, s: str, n: int) -> str | None:

@@ -48,7 +48,7 @@ _BENEFICIOS = [
      "de": "202512", "ate": "999912"},           # dez/2025 em diante (meses sem pagamento vêm vazios)
 ]
 _TMP = _db.DB_PATH.parent / "tmp" / "beneficios"   # antes: scratchpad de uma sessão antiga do Claude
-BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
+BENEF_DB = _db.BENEF_DB
 RIO = "RIO DE JANEIRO"
 
 _SCHEMA = """
@@ -163,7 +163,7 @@ def _alvo_nomeados() -> dict[str, str]:
     # SÓCIOS de empresas fornecedoras do Estado/Prefeitura (QSA Receita) — para detectar dono de
     # fornecedor recebendo benefício assistencial. Banco separado (compliance.db); leitura best-effort.
     try:
-        cc = _db.sqlite3.connect(f"file:{_db.DB_PATH.parent / 'compliance.db'}?mode=ro", uri=True)
+        cc = _db.abrir_leitura(_db.COMPLIANCE_DB)
         for tab, col in (("socios_receita", "nome_norm"), ("socios_fornecedor", "socio_nome_norm")):
             try:
                 for (nn, nome) in cc.execute(

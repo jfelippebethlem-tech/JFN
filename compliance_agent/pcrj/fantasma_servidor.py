@@ -142,7 +142,7 @@ def _coletar(con) -> dict[str, dict]:
     # s_beneficio — Bolsa Família/BPC (banco dedicado pcrj_benef.db). Só conta se o nome bate
     # com 1 PESSOA ÚNICA (por fragmento de CPF); homônimo (≥3 pessoas) é ruído, descartado.
     import sqlite3
-    benef_db = _db.DB_PATH.parent / "pcrj_benef.db"
+    benef_db = _db.BENEF_DB
     if benef_db.exists():
         bc = sqlite3.connect(str(benef_db)); bc.row_factory = sqlite3.Row
         try:

@@ -13,16 +13,12 @@ empregados (ver `os_panorama.py` / memória). Impossível pela fonte pública.
 """
 from __future__ import annotations
 
-import html
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-
-
-def _e(x) -> str:
-    return html.escape(str(x or ""))
+from compliance_agent.pcrj.formato import e as _e, comp as _comp, brl_rs as _brl
 
 
 def _coletar(con) -> dict[str, dict]:
@@ -126,14 +122,6 @@ def _situacao_folha(con, nn: str, ultima: str | None) -> dict | None:
 
 
 _PARTICULAS = {"da", "de", "do", "dos", "das", "e", "d"}
-
-
-def _comp(c: str | None) -> str:
-    return f"{c[4:6]}/{c[:4]}" if c and len(c) == 6 else "—"
-
-
-def _brl(v) -> str:
-    return "R$ " + f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def montar_ctx(db_path=None) -> dict:

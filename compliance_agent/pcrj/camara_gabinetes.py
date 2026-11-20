@@ -46,7 +46,6 @@ def coletar(db_path=None, url: str = _URL) -> dict:
         for _, row in df.iterrows():
             gab = _num(row.get(1))
             vereador = str(row.get(2) or "").strip()
-            # pula cabeçalho / linhas sem número de gabinete ou sem vereador
             if gab is None or not vereador or vereador.lower() == "nan":
                 continue
             titular = vereador.rstrip("*").strip()
