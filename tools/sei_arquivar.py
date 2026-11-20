@@ -108,6 +108,11 @@ def _salvar_foto(pg: fitz.Page, destino: Path) -> bool:
             return False
 
 
+def _fotos_do_doc(destino: Path, i: int) -> list[Path]:
+    """Páginas fotográficas do doc `i` já em `fotos/`: o .jpg do arquivador ou o .webp que `sei_compactar` pôs no lugar."""
+    return [f for f in destino.glob(f"fotos/{i:03d}_p*.*") if f.suffix.lower() in (".jpg", ".webp")]
+
+
 def _slug(t: str) -> str:
     return re.sub(r"[^0-9a-z]+", "_", (t or "").lower())[:40].strip("_") or "doc"
 
@@ -211,7 +216,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                 entrada["chars"] = len(corpo)
                 entrada["reaproveitado"] = True
                 entrada["fotos"] = sorted(
-                    f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))
+                    f"fotos/{f.name}" for f in _fotos_do_doc(destino, i))
                 docs_saida.append(entrada)
                 continue
             except OSError as e:
@@ -250,6 +255,8 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                               if _pagina_com_imagem_grande(doc[p])])
         for p in list(paginas_foto)[:_MAX_FOTOS_DOC]:
             frel = f"fotos/{i:03d}_p{p + 1:02d}.jpg"
+            if not (destino / frel).exists() and (destino / frel).with_suffix(".webp").exists():
+                frel = frel[:-4] + ".webp"     # página já compactada (sei_compactar): não reextrai o JPG
             if (destino / frel).exists() or _salvar_foto(doc[p], destino / frel):
                 entrada["fotos"].append(frel)
         doc.close()
@@ -273,7 +280,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                                                encoding="utf-8")
                 docs_saida.append({"i": i, "titulo": titulo, "fase": fase, "tipo": tipo, "texto": txt_rel,
                                    "chars": len(texto), "ocr": por_ocr, "via_texto_solto": lado.name,
-                                   "fotos": sorted(f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))})
+                                   "fotos": sorted(f"fotos/{f.name}" for f in _fotos_do_doc(destino, i))})
                 break
 
     # INDISPONÍVEL ≠ 0 no ARQUIVO: docs que existem na árvore mas NÃO foram capturados

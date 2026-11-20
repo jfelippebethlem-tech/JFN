@@ -103,7 +103,9 @@ def main() -> int:
     if args.fotos:
         for d in man["docs"]:
             for f in (d.get("fotos") if isinstance(d.get("fotos"), list) else []):
-                print(raiz / f)
+                p = raiz / f
+                w = p.with_suffix(".webp")      # sei_compactar troca a página escaneada por .webp (original no it-campo)
+                print(w if not p.exists() and w.exists() else p)
         return 0
 
     if args.doc >= 0:

@@ -31,6 +31,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.foto_medicao import foto_local as _foto_local
+
 REPO = Path(__file__).resolve().parents[1]
 BASE_ACERVO = REPO / "data" / "sei_arquivo"
 BASE_CACHE = REPO / "data" / "sei_cache"
@@ -898,7 +900,7 @@ def confrontar_medicao(pasta: Path | str, pk: dict, *, obs: list[dict] | None = 
            "relatorio": [d["titulo"] for d in pk["relatorio"]], "diario": [d["titulo"] for d in pk["diario"]],
            "periodo": [per[0].isoformat(), per[1].isoformat()] if per else None,
            "n_itens_lidos": len(itens), "n_itens_medidos": len(medidos), "valor_periodo_itens": valor_periodo,
-           "n_fotos": len(fotos), "fotos_locais": sum((pasta / f).exists() for f in fotos), "sinais": [],
+           "n_fotos": len(fotos), "fotos_locais": sum(_foto_local(pasta, f) is not None for f in fotos), "sinais": [],
            "estado": "VERIFICADO" if itens else ("INDISPONÍVEL" if pk["boletim"] else "SEM_BOLETIM")}
     if not pk["relatorio"]:
         res["estado"] = "SEM_RELATORIO"

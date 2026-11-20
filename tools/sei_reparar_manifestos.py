@@ -83,7 +83,8 @@ def reparar(dir_proc: Path, aplicar: bool) -> dict | None:
         # daqui com `chars` ~71 e passaria por documento lido: o reparo fabricaria justamente a
         # mentira que a sentinela existe para achar. (2026-08-03)
         teor = acervo_texto.sem_etiqueta(conteudo, titulo)
-        fotos = sorted(p.name for p in (dir_proc / "fotos").glob(f"{i:03d}_*.jpg")) \
+        fotos = sorted(p.name for p in (dir_proc / "fotos").glob(f"{i:03d}_*.*")   # .jpg ou .webp (sei_compactar)
+                       if p.suffix.lower() in (".jpg", ".webp")) \
             if (dir_proc / "fotos").is_dir() else []
         docs.append({"i": i, "titulo": titulo, "fase": fase, "tipo": tipo,
                      "texto": f"texto/{t.name}", "chars": len(teor), "ocr": False,

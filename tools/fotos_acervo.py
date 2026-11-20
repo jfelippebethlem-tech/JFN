@@ -70,7 +70,7 @@ def fotos_de(processo: Path) -> list[Path]:
     if not d.is_dir():
         return []
     return sorted(p for p in d.iterdir()
-                  if p.is_file() and p.suffix.lower() in (".jpg", ".jpeg", ".png"))
+                  if p.is_file() and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"))   # .webp = sei_compactar
 
 
 def _phash_das_regioes(caminho: Path) -> list[int]:

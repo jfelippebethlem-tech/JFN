@@ -143,6 +143,16 @@ def _fotos_do_processo(dir_processo: Path) -> list[Path]:
     return sorted(p for p in alvo.rglob("*") if p.is_file() and p.suffix.lower() in _EXTS)
 
 
+def foto_local(dir_processo, rel: str) -> Path | None:
+    """O arquivo do manifesto (`fotos/NNN_pPP.jpg`) como está HOJE no disco: o próprio, ou a versão compacta
+    `.webp` que `tools/sei_compactar` deixou no lugar da página (original no it-campo, ver `compactado.json`)."""
+    p = Path(dir_processo) / rel
+    if p.is_file():
+        return p
+    w = p.with_suffix(".webp")
+    return w if w.is_file() else None
+
+
 _RESSALVA = ("indício a apurar, não acusação; INDISPONÍVEL ≠ irregular; ausência de EXIF não é vício; "
              "presunção de legitimidade")
 

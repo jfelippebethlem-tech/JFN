@@ -34,6 +34,9 @@ ARQUIVO = RAIZ / "data" / "sei_arquivo"
 INDICE = RAIZ / "data" / "sei_arquivo_frio.jsonl"
 NO = "vm2-ts"
 DEST = "/home/ubuntu/arquivo_frio/sei_fotos"
+# 20/11/2026: VM-2 em 93% ("vm2-ts com 14 GB — parei") e o dono liberou o it-campo de novo ("uso o it campo pro que
+# precisar"). Sem espaço na VM-2 → cai para o it-campo (C:\JFN-Arquivo\sei_fotos, onde já ficaram as de 15-16/11).
+RESERVA = ("it-campo", "/mnt/c/JFN-Arquivo/sei_fotos", "wsl -d Ubuntu -e rsync", "wsl -d Ubuntu -e bash -s", "/mnt/c")
 REGISTRO = "fotos_frio.json"
 _SLUG = __import__("re").compile(r"^\d+_\d+_\d{4}$")
 
@@ -46,10 +49,21 @@ def _sha256(p: Path) -> str:
     return h.hexdigest()
 
 
+def _compactas(pasta: Path) -> set[str]:
+    try:
+        r = json.loads((pasta / "compactado.json").read_text(encoding="utf-8"))
+        return {Path(i["webp"]).name for i in r.get("itens") or []}
+    except (OSError, ValueError, KeyError, TypeError):
+        return set()
+
+
 def nao_informativas(pasta: Path) -> list[Path]:
     """As imagens de `fotos/` que a reciclagem descarta (sem hash informativo). Ilegível NÃO sai (na dúvida, fica)."""
     out = []
+    compactas = _compactas(pasta)
     for f in FM._fotos_do_processo(pasta):
+        if f.name in compactas:   # versão compacta que sei_compactar deixou PARA ficar aqui (original já no it-campo)
+            continue
         try:
             if not FM._triar_e_hashear(f):
                 out.append(f)
@@ -77,7 +91,8 @@ def pastas(idade_min_h: float) -> list[Path]:
     return [d for _, d in sorted(res)]
 
 
-def tratar(pasta: Path, ensaio: bool) -> int:
+def tratar(pasta: Path, ensaio: bool, alvo: tuple | None = None) -> int:
+    no, dest, rsync_path = (alvo or (NO, DEST, None))[:3]
     sai = nao_informativas(pasta)
     if not sai:
         if not ensaio:   # marca a pasta como vista: a próxima rodada não re-hasheia as fotografias
@@ -92,8 +107,8 @@ def tratar(pasta: Path, ensaio: bool) -> int:
         return sum(i["bytes"] for i in itens)
     with tempfile.NamedTemporaryFile("w", delete=False) as t:
         t.write("".join(f"{pasta.name}/{i['arquivo']}\n" for i in itens))
-    r = subprocess.run(["rsync", "-a", "--remove-source-files",
-                        f"--files-from={t.name}", str(ARQUIVO) + "/", f"{NO}:{DEST}/"],
+    r = subprocess.run(["rsync", "-a", "--remove-source-files", *([f"--rsync-path={rsync_path}"] if rsync_path else []),
+                        f"--files-from={t.name}", str(ARQUIVO) + "/", f"{no}:{dest}/"],
                        capture_output=True, text=True, timeout=3600)
     Path(t.name).unlink(missing_ok=True)
     if r.returncode != 0:
@@ -101,13 +116,13 @@ def tratar(pasta: Path, ensaio: bool) -> int:
         return 0
     reg = pasta / REGISTRO
     antigo = json.loads(reg.read_text(encoding="utf-8")) if reg.exists() else {"itens": []}
-    antigo["itens"] += [{**i, "destino": f"{NO}:{DEST}/{pasta.name}/{i['arquivo']}"} for i in itens]
+    antigo["itens"] += [{**i, "destino": f"{no}:{dest}/{pasta.name}/{i['arquivo']}"} for i in itens]
     antigo["em"] = time.strftime("%Y-%m-%d %H:%M:%S")
     antigo["criterio"] = "foto_medicao._triar_e_hashear sem hash (página de documento; a reciclagem já descartava)"
     reg.write_text(json.dumps(antigo, ensure_ascii=False, indent=1), encoding="utf-8")
     with INDICE.open("a", encoding="utf-8") as f:
         f.write(json.dumps({"pasta": f"sei_arquivo/{pasta.name}/fotos", "n": len(itens),
-                            "bytes": sum(i["bytes"] for i in itens), "destino": f"{NO}:{DEST}/{pasta.name}",
+                            "bytes": sum(i["bytes"] for i in itens), "destino": f"{no}:{dest}/{pasta.name}",
                             "em": antigo["em"], "rc": 0}, ensure_ascii=False) + "\n")
     return sum(i["bytes"] for i in itens)
 
@@ -115,13 +130,29 @@ def tratar(pasta: Path, ensaio: bool) -> int:
 LIVRE_MIN_GB = 20   # a VM-2 também captura: abaixo disso as fotos esperam na VM-1
 
 
-def livre_no_gb() -> int | None:
+def livre_no_gb(no: str = NO, remoto: str | None = None, fs: str = "/") -> int | None:
     try:
-        r = subprocess.run(["ssh", "-o", "ConnectTimeout=15", NO, "df -BG --output=avail / | tail -1"],
-                           capture_output=True, text=True, timeout=30)
+        cmd = f"df -BG --output=avail {fs} | tail -1"
+        r = subprocess.run(["ssh", "-o", "ConnectTimeout=15", no, remoto or cmd],
+                           input=cmd if remoto else None, capture_output=True, text=True, timeout=60)
         return int("".join(c for c in r.stdout if c.isdigit())) if r.returncode == 0 else None
     except (subprocess.SubprocessError, ValueError):
         return None
+
+
+def escolher_destino() -> tuple | None:
+    """VM-2 se tiver ≥ LIVRE_MIN_GB; senão o it-campo (mesmo limite); senão None (nada sai da VM-1)."""
+    livre = livre_no_gb()
+    if livre is not None and livre >= LIVRE_MIN_GB:
+        return (NO, DEST, None)
+    print(f"{time.strftime('%F %T')} {NO} {'fora do ar' if livre is None else f'com {livre} GB'} — tento {RESERVA[0]}",
+          flush=True)
+    no, dest, rsync_path, remoto, fs = RESERVA
+    livre2 = livre_no_gb(no, remoto, fs)
+    if livre2 is not None and livre2 >= LIVRE_MIN_GB:
+        return (no, dest, rsync_path)
+    print(f"{time.strftime('%F %T')} {no} {'fora do ar' if livre2 is None else f'com {livre2} GB'} — parei", flush=True)
+    return None
 
 
 def main(argv=None) -> int:
@@ -134,13 +165,13 @@ def main(argv=None) -> int:
     if a.limite:
         lista = lista[:a.limite]
     total = 0
+    alvo = None
     for i, p in enumerate(lista, 1):
         if not a.ensaio and i % 50 == 1:
-            livre = livre_no_gb()
-            if livre is None or livre < LIVRE_MIN_GB:
-                print(f"{time.strftime('%F %T')} {NO} {'fora do ar' if livre is None else f'com {livre} GB'} — parei", flush=True)
+            alvo = escolher_destino()
+            if alvo is None:
                 break
-        total += tratar(p, a.ensaio)
+        total += tratar(p, a.ensaio, alvo)
         if i % 50 == 0:
             print(f"{time.strftime('%F %T')} {i}/{len(lista)} pastas · {total/1e9:.2f} GB", flush=True)
     print(json.dumps({"pastas": len(lista), "gb": round(total / 1e9, 2), "ensaio": a.ensaio}))
