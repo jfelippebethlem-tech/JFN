@@ -538,12 +538,70 @@ def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> lis
     return out
 
 
+# USO DAS MÁQUINAS (dono 19/11/2026: "vm1, vm2 e it campo sendo usados ao maximo"). Média de 15 min por núcleo; o
+# it-campo pelo próprio estado (data/itcampo_estado.json, gravado pelo supervisor de lá). Ociosa = capacidade
+# parada (mover trabalho para lá); sobrecarga = trabalho demais (tirar dali). Sem medida = INDISPONÍVEL, nunca "ok".
+OCIOSA_POR_NUCLEO, SOBRECARGA_POR_NUCLEO = 0.5, 2.5
+
+
+def _carga_vm2() -> tuple[float, int] | None:
+    try:
+        r = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes", "vm2-ts",
+                            "cat /proc/loadavg; nproc"], capture_output=True, text=True, timeout=25)
+        ln = r.stdout.split()
+        return float(ln[2]), int(ln[5])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
+
+
+def _estado_itcampo(agora: float | None = None) -> dict | None:
+    try:
+        d = json.loads((_REPO / "data" / "itcampo_estado.json").read_text(encoding="utf-8"))
+        idade = (agora or time.time()) - datetime.fromisoformat(d["t"]).timestamp()
+        return None if idade > 3600 else d
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def avaliar_maquinas(vm1: tuple[float, int] | None, vm2: tuple[float, int] | None, itc: dict | None) -> list[dict]:
+    out = []
+    for nome, med in (("vm1", vm1), ("vm2", vm2)):
+        if med is None:
+            out.append(_p("maquinas", f"{nome}:sem_medida", f"{nome.upper()}: uso não medido (INDISPONÍVEL)"))
+            continue
+        por = med[0] / max(med[1], 1)
+        if por < OCIOSA_POR_NUCLEO:
+            out.append(_p("maquinas", f"{nome}:ociosa", f"{nome.upper()} ociosa: carga 15 min {med[0]:.1f} em "
+                          f"{med[1]} núcleos", acao_humana="mover fila pesada para lá (sweeps SEI, padrões, perícia)"))
+        elif por > SOBRECARGA_POR_NUCLEO:
+            out.append(_p("maquinas", f"{nome}:sobrecarga", f"{nome.upper()} sobrecarregada: carga 15 min "
+                          f"{med[0]:.1f} em {med[1]} núcleos", acao_humana="tirar trabalho dali (it-campo tem 24 núcleos)"))
+    if itc is None:
+        out.append(_p("maquinas", "itcampo:sem_medida", "it-campo: estado ausente ou com mais de 1 h (INDISPONÍVEL)"))
+    else:
+        gpu = ((itc.get("maquina") or {}).get("gpu") or {}).get("util_pct")
+        cpu = itc.get("cpu_pct")
+        if gpu is not None and gpu < 50:
+            out.append(_p("maquinas", "itcampo:gpu_ociosa", f"it-campo: GPU em {gpu}% (OCR parado?)",
+                          acao_humana="conferir a tarefa JFN-OCR-GPU e a fila de escaneados"))
+        if cpu is not None and cpu < 40 and (itc.get("win_disp_gb") or 0) > (itc.get("piso_gb") or 3) + 4:
+            out.append(_p("maquinas", "itcampo:cpu_ociosa", f"it-campo: CPU em {cpu}% com "
+                          f"{itc.get('win_disp_gb')} GB livres", acao_humana="subir o alvo do pool nativo / mais detectores"))
+    return out
+
+
+def sensor_maquinas() -> list[dict]:
+    la = Path("/proc/loadavg").read_text().split()
+    return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo())
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
             "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
             "qualidade": sensor_qualidade,
-            "autoaprimoramento": sensor_autoaprimoramento, "certeza": sensor_certeza}
+            "autoaprimoramento": sensor_autoaprimoramento, "certeza": sensor_certeza,
+            "maquinas": sensor_maquinas}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:

@@ -470,3 +470,14 @@ def test_sensor_voz_verde_quando_configurado_e_sem_falha(tmp_path):
     py.write_text("")
     agora = time.mktime(time.strptime("2026-11-06 17:00:00", "%Y-%m-%d %H:%M:%S"))
     assert A.sensor_voz(h, py, agora) == []
+
+
+def test_avaliar_maquinas_ociosa_sobrecarga_e_indisponivel():
+    from tools.automelhoria_geral import avaliar_maquinas
+    itc_ok = {"cpu_pct": 70, "win_disp_gb": 5, "piso_gb": 3, "maquina": {"gpu": {"util_pct": 99}}}
+    assert avaliar_maquinas((2.0, 2), (2.0, 2), itc_ok) == []
+    a = {p["assinatura"] for p in avaliar_maquinas((6.0, 2), (0.4, 2), None)}
+    assert a == {"maquinas:vm1:sobrecarga", "maquinas:vm2:ociosa", "maquinas:itcampo:sem_medida"}
+    itc_parado = {"cpu_pct": 10, "win_disp_gb": 20, "piso_gb": 3, "maquina": {"gpu": {"util_pct": 0}}}
+    a = {p["assinatura"] for p in avaliar_maquinas(None, (2.0, 2), itc_parado)}
+    assert a == {"maquinas:vm1:sem_medida", "maquinas:itcampo:gpu_ociosa", "maquinas:itcampo:cpu_ociosa"}
