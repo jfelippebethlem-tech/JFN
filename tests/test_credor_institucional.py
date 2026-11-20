@@ -103,3 +103,10 @@ def test_regra_multiplas_ugs_continua_acusando_privada(receita):
     assert len(m._alertas_novos) == 1
     assert not m._alertas_novos[0].descricao.startswith("NÃO é acusação")
     assert "carimbado" in m._alertas_novos[0].descricao
+
+
+def test_emissora_de_vale_beneficio_e_institucional_so_pelo_cnae():
+    from compliance_agent.credor_institucional import institucional
+    r = institucional("69034668000156", cnae="8299702")      # Pluxee
+    assert r["institucional"] and "vale" in r["motivo"]
+    assert not institucional("11111111000191", cnae="8299799")["institucional"]   # outra 8299 não entra

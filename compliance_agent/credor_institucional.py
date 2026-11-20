@@ -33,6 +33,8 @@ _NATUREZA_EXATA = {
 # `empresas.atividade_princ` vem ora com o código de 7 dígitos, ora com a descrição.
 _CNAE_CONCESSAO = ("3511", "3512", "3513", "3514", "3520402", "3600", "3701", "3702", "6110", "6120", "6130",
                    "6141", "6142", "6143")
+# 20/11/2026: emissoras de benefício (Pluxee, VR, Green Card) eram 15 dos 32 FP que sobraram do "N UGs".
+_CNAE_BENEFICIO = ("8299702",)
 _RE_CNAE_CONCESSAO = re.compile(
     r"^\s*((GERA[ÇC][ÃA]O|TRANSMISS[ÃA]O|DISTRIBUI[ÇC][ÃA]O|COM[ÉE]RCIO\s+ATACADISTA)\s+DE\s+ENERGIA\s+EL[ÉE]TRICA|"
     r"CAPTA[ÇC][ÃA]O,?\s+TRATAMENTO\s+E\s+DISTRIBUI[ÇC][ÃA]O\s+DE\s+[ÁA]GUA|GEST[ÃA]O\s+DE\s+REDES\s+DE\s+ESGOTO|"
@@ -93,6 +95,9 @@ def institucional(cnpj: str | None, cnae: str | None = None) -> dict:
     motivos = []
     if cnae and cnae_concessao(cnae):
         motivos.append(f"concessionária de serviço público (CNAE {cnae})")
+    if cnae and _dig(cnae).startswith(_CNAE_BENEFICIO):
+        motivos.append(f"emissora de vale-alimentação/refeição/transporte — cada órgão contrata o benefício dos "
+                       f"seus servidores (CNAE {cnae})")
     m = motivo_natureza(nat)
     if m:
         motivos.append(f"{m} (natureza jurídica {nat})")
