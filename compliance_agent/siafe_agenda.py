@@ -31,7 +31,7 @@ TAREFAS = {
                         "--max-dias", "14"]},
     "documentos": {"minutos": 100,
                    "argv": ["tools/siafe_documento_sweep.py", "--exercicios", "2026,2025,2024", "--max-ugs", "12",
-                            "--ate", "23:15"]},
+                            "--tipos", "NE,NL,OBR,CT", "--ate", "23:15"]},   # OBR/CT: dono 19/11/2026, todas as UGs
 }
 
 

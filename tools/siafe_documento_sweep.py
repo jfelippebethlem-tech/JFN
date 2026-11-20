@@ -77,10 +77,12 @@ def fila(exercicio: int, db=None, max_ugs: int = 3) -> list[tuple[str, str]]:
 
 
 def _ultimo_numero(con, tipo: str, ug: str, ex: int) -> str | None:
-    tab = {"NE": "ne_siafe", "NL": "nl_siafe"}[tipo]
+    from compliance_agent.siafe_documento import TIPOS
+    t = TIPOS[tipo]
+    base = t["base"](ex) if t.get("base") else f"{ex}{tipo}"
     try:
-        r = con.execute(f"SELECT MAX(numero) FROM {tab} WHERE ug_emitente=? AND exercicio=? AND numero LIKE ?",
-                        (ug, ex, f"{ex}{tipo}%")).fetchone()
+        r = con.execute(f"SELECT MAX(numero) FROM {t['tabela']} WHERE ug_emitente=? AND exercicio=? AND numero LIKE ?",
+                        (ug, ex, f"{base}%")).fetchone()
     except sqlite3.OperationalError:
         return None
     return r[0] if r else None

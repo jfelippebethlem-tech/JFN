@@ -124,7 +124,8 @@ TIPOS["DEA"] = {
 
 # OB DE RETENÇÃO e CONTRATO (19/11/2026, sonda `siafe_mapear --detalhar` de 22h41). A OB Orçamentária é a única OB
 # coletada; a de Retenção (IRRF, INSS, ISS… repassados pelo Estado) e o cadastro de Contratos (com nº de aditivos e
-# reajustes) ficavam fora. Mesma grade da NE/NL. Sem controle positivo ainda → coleta fica PENDENTE (lida, não provada).
+# reajustes) ficavam fora. Mesma grade da NE/NL. Sem controle positivo EXTERNO: "completo" = o coletor fechou todas
+# as fatias sem teto (como a NE antes da NL) — pô-los em SEM_CONTROLE_POSITIVO faria o sweep reler tudo todo dia.
 TIPOS["OBR"] = {
     "tela": "OB de Retenção", "menu": "Execução Financeira", "tbl": "pt1:tblOrdemBancariaRetencao",
     "re": re.compile(r"\b20\d\dOB\d{5,6}\b"), "tabela": "ob_retencao_siafe", "ano": "ano_ob",
@@ -160,7 +161,7 @@ TIPOS["CT"] = {
     coletado_em TEXT, PRIMARY KEY (numero, ug_emitente, exercicio))""",
     "idx": ("CREATE INDEX IF NOT EXISTS ix_ct_contratado ON contrato_siafe(contratado)",)}
 
-SEM_CONTROLE_POSITIVO = {"DEA", "OBR", "CT"}
+SEM_CONTROLE_POSITIVO = {"DEA"}
 
 
 def cobertura_bj_sequencia(exercicio: int, db=None) -> float | None:
