@@ -17,7 +17,6 @@ Uma porta só para o que os oito detectores da família leem — e para as armad
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 import unicodedata
@@ -25,13 +24,14 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 
+from compliance_agent.padroes._comum import RAIZ, con_ro, credor_publico, ordenar
+from compliance_agent.padroes._comum import trecho as _trecho
+from compliance_agent.rotina_base import gravar_json
 from compliance_agent.sei import acervo_texto
 from compliance_agent.sei.documentos_alheios import numero_do_contexto
 
-RAIZ = Path(__file__).resolve().parents[2]
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 CACHE = RAIZ / "data" / "sei_cache"
-DB = RAIZ / "data" / "compliance.db"
 LIMIAR_ARVORE_GRANDE = 1000
 
 _RE_PROC = re.compile(r"(\d{5,6})\s*[/.]\s*(\d{5,6})\s*[/.]\s*(\d{4}|\d{2})\b")
@@ -201,16 +201,10 @@ def pct_br(s: str) -> float | None:
 
 
 def trecho(texto: str, ini: int, fim: int, folga: int = 120) -> str:
-    """Trecho literal (uma linha) em volta de [ini, fim), sem quebra — para a prova."""
-    a, b = max(0, ini - folga), min(len(texto), fim + folga)
-    return re.sub(r"\s+", " ", texto[a:b]).strip()
+    return _trecho(texto, ini, fim, folga)
 
 
 # ── SIAFE: OB paga ──────────────────────────────────────────────────────────────────────────────
-def _con():
-    return sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
-
-
 @lru_cache(maxsize=1)
 def ob_por_processo() -> dict[str, dict]:
     """chave → {valor, n, credor, nome_credor, ug}. Valor = PISO (grafias variantes normalizadas; OB sem processo
@@ -218,7 +212,7 @@ def ob_por_processo() -> dict[str, dict]:
     from compliance_agent.cruzamentos_intel import _ob_paga
     out: dict[str, dict] = {}
     try:
-        con = _con()
+        con = con_ro()
         try:
             sql = (f"SELECT processo, credor, nome_credor, ug_emitente, SUM(valor), COUNT(*) FROM ob_orcamentaria_siafe "
                    f"WHERE {_ob_paga(con)} AND processo LIKE '%/%/%' GROUP BY 1, 2, 3, 4")
@@ -237,7 +231,7 @@ def ob_por_processo() -> dict[str, dict]:
         return {}
     for r in out.values():
         cred, (nome, _) = max(r["por_credor"].items(), key=lambda kv: kv[1][1])
-        r["credor"], r["nome_credor"] = cred, nome
+        r["credor"], r["nome_credor"] = cred, credor_publico(cred, nome)
         r["valor"] = round(r["valor"], 2)
         del r["por_credor"]
     return out
@@ -256,7 +250,7 @@ def ob_mensal(chave: str) -> dict[str, float]:
     variantes = [f"%{a}/{b}/{ano}%", f"%{a}/{b}/{ano[2:]}"]
     out: dict[str, float] = {}
     try:
-        con = _con()
+        con = con_ro()
         try:
             for var in variantes:
                 for data, v in con.execute(f"SELECT data_emissao, valor FROM ob_orcamentaria_siafe WHERE "
@@ -295,8 +289,7 @@ def achado(chave: str, grau: str, prova: str, porque: str, fonte: str, **extra) 
 
 
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], funil: dict | None = None) -> dict:
-    ordem = {"forte": 0, "medio": 1, "fraco": 2}
-    achados.sort(key=lambda a: (ordem.get(a.get("grau"), 9), -(a.get("valor_pago_ob") or 0)))
+    ordenar(achados)
     return {"id": id_, "gerado_em": datetime.now().isoformat(timespec="seconds"), "universo": universo,
             "cobertura": cobertura, "funil": funil or {}, "achados": achados}
 
@@ -345,16 +338,8 @@ def indice(reconstruir: bool = False, limite: int | None = None) -> dict:
                                or d.get("tipo") in ("aditivo", "medicao", "nota_fiscal", "empenho", "liquidacao")]}
     dado = {"gerado_em": datetime.now().isoformat(timespec="seconds"), "processos": procs}
     if not limite:
-        INDICE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = INDICE.with_name(f"{INDICE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
-        tmp.write_text(json.dumps(dado, ensure_ascii=False), encoding="utf-8")
-        tmp.replace(INDICE)
+        gravar_json(INDICE, dado)
     return dado
-
-
-def ler_leve(doc: dict, teto: int | None = None) -> str:
-    """`ler` para o doc do índice (caminhos em string)."""
-    return ler(doc, teto)
 
 
 # ── leitura do TERMO: percentuais declarados, valor, data, contrato ──────────────────────────────
@@ -509,6 +494,15 @@ def declaracoes_do_processo(termos: list[tuple[dict, str]]) -> dict[str, list[di
             elif not igual["data"] and x["data"]:
                 igual.update({**x, "doc": d["i"], "titulo": d["titulo"], "fonte": d["fonte"]})
     return {c: sorted(g, key=lambda x: (x["data"] or "9999", x["doc"])) for c, g in por.items()}
+
+
+# Declaração de "acréscimo" que é reajuste/repactuação não é acréscimo de objeto: fica fora da soma e da comparação.
+RE_REAJUSTE = re.compile(r"reajust|repactua|reequil[íi]brio|\bIPCA\b|\bINCC\b|IGP-?M|corre[çc][ãa]o\s+monet", re.I)
+
+
+def objeto_dos_termos(termos: list[tuple[dict, str]]) -> str:
+    """O objeto do contrato como os termos o descrevem (início dos três primeiros) — para `limites_aditivo.tipo_objeto`."""
+    return " ".join(t[:6000] for _, t in termos[:3])
 
 
 def contrato_principal(decl: dict[str, list[dict]]) -> str | None:

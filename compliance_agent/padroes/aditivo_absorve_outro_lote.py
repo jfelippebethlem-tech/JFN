@@ -43,25 +43,19 @@ _RE_PROPRIO_TIT = re.compile(r"contrato\s*(?:n[º°o.]*\s*)?(\d{1,4}\s*/\s*\d{2,
 _RE_NUM_CONTRATO = re.compile(r"\d{1,4}\s*/\s*\d{2,4}")
 
 
-def _norm_contrato(s: str) -> str:
-    a, b = re.sub(r"\s", "", s).split("/")
-    b = ("20" + b) if len(b) == 2 else b
-    return f"{int(a)}/{b}"
-
-
 def analisar_texto(texto: str, titulo: str = "") -> list[dict]:
     """Ocorrências de absorção no corpo de um termo aditivo. Função pura (testável)."""
-    proprios = {_norm_contrato(m.group(1)) for m in _RE_PROPRIO.finditer(texto[:20000])}
-    proprios |= {_norm_contrato(m.group(1)) for m in _RE_PROPRIO_TIT.finditer(titulo or "")}
+    proprios = {C.norm_contrato(m.group(1)) for m in _RE_PROPRIO.finditer(texto[:20000])}
+    proprios |= {C.norm_contrato(m.group(1)) for m in _RE_PROPRIO_TIT.finditer(titulo or "")}
     out, vistos = [], set()
     for m in _RE_ABSORCAO.finditer(texto):
         if not C.no_corpo(texto, m.start()):
             continue
         alvo = m.group("alvo").lower()
         # peça que compila vários termos: o "próprio" é também o contrato nomeado logo antes da cláusula
-        perto = {_norm_contrato(x.group(1)) for x in _RE_PROPRIO.finditer(texto[max(0, m.start() - 2000):m.start()])}
+        perto = {C.norm_contrato(x.group(1)) for x in _RE_PROPRIO.finditer(texto[max(0, m.start() - 2000):m.start()])}
         if alvo.startswith("contrato"):
-            nums = {_norm_contrato(x) for x in _RE_NUM_CONTRATO.findall(m.group("lista"))}
+            nums = {C.norm_contrato(x) for x in _RE_NUM_CONTRATO.findall(m.group("lista"))}
             outros = nums - proprios - perto
             if not outros:
                 continue      # absorção de parte do PRÓPRIO contrato não é o vício
@@ -107,22 +101,14 @@ def varrer(limite: int | None = None) -> dict:
              "termos_alheios": 0, "com_ocorrencia": 0}
     achados = []
     for tag, p in idx.items():
-        termos = [d for d in p["docs"] if C.eh_termo_aditivo(d)]
-        if not termos:
+        if not any(C.eh_termo_aditivo(d) for d in p["docs"]):
             continue
         funil["com_termo_aditivo"] += 1
-        melhores: list[tuple[dict, dict]] = []
-        for d in termos:
-            if d.get("alheio"):
-                funil["termos_alheios"] += 1
-                continue
-            t = C.ler_leve(d)
-            if not t.strip():
-                funil["termos_sem_texto"] += 1
-                continue
-            funil["termos_lidos"] += 1
-            for oc in analisar_texto(t, d.get("titulo") or ""):
-                melhores.append((d, oc))
+        termos, fora = C.termos_do_processo(p)
+        funil["termos_alheios"] += fora["alheios"]
+        funil["termos_sem_texto"] += fora["sem_texto"]
+        funil["termos_lidos"] += len(termos)
+        melhores = [(d, oc) for d, t in termos for oc in analisar_texto(t, d.get("titulo") or "")]
         if not melhores:
             continue
         funil["com_ocorrencia"] += 1

@@ -69,7 +69,7 @@ def renovacoes(texto: str) -> list[dict]:
 
 def _ne_obra_siafe() -> set[str]:
     try:
-        con = C._con()
+        con = C.con_ro()
         try:
             return {k for (p,) in con.execute("SELECT DISTINCT processo FROM ne_siafe WHERE natureza LIKE '449051%'")
                     if (k := C.chave_processo(p))}
@@ -142,7 +142,7 @@ def varrer(limite: int | None = None) -> dict:
             porque=(f"{len(ren)} renovação(ões) pelo art. 57, II, com valor cheio (termo ≥ {RAZAO_VALOR_CHEIO:.0%} do "
                     f"valor anterior); contrato chega a R$ {moeda(maior)} (menor valor anterior lido R$ {moeda(primeiro_ant)})"
                     + ("; despesa classificada como OBRA (449051)" if prova_nat else "; objeto se declara obra/engenharia")
-                    + (". Objeto cita manutenção — avaliar se é de fato contínuo" if any(r["manutencao"] for r in ren) else "")
+                    + (". Objeto cita manutenção — avaliar se é de fato contínuo" if manut else "")
                     + ". Obra/engenharia de escopo não se prorroga com novo valor cheio (L8 art. 57 §1º; L14.133 art. 111)."),
             fonte=f"termos aditivos ({termos[0][0]['fonte']}) + NL/NE", renovacoes=[{k: r[k] for k in (
                 "doc", "valor_termo", "valor_total", "razao", "data", "contrato")} for r in ren]))

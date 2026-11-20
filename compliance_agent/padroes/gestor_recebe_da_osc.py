@@ -31,7 +31,7 @@ import re
 from collections import defaultdict
 
 from compliance_agent.padroes import _pagamento_comum as C
-from compliance_agent.padroes._mrosc_comum import eh_parceria, plano, tags_parceria
+from compliance_agent.padroes._mrosc_comum import eh_parceria, plano, universo
 
 ID = "gestor_recebe_da_osc"
 
@@ -184,20 +184,13 @@ def cruzar(desig: list[dict], pags: list[dict]) -> list[dict]:
 
 def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
     global _RX
-    so = so or tags_parceria(limite)
+    so = universo(so, limite)
     desig, cob1, _ = C.varrer_acervo(_TITULO_DESIG, _desig, so=so)
     nomes = sorted({d["nome"] for d in desig})
     _RX = _trie_regex(nomes)
     pags, cob2, _ = C.varrer_acervo(_TITULO_PAG, _pag, so=so)
     achados = cruzar(desig, pags)
-    if achados:
-        con = C.con_ro()
-        obs = C.obs_pagas(con, [a["processo"] for a in achados])
-        con.close()
-        for a in achados:
-            a["valor_pago_ob"] = C.pago(obs.get(a["processo"], []))
-            a["credor"] = "; ".join(sorted({o["nome_credor"] for o in obs.get(a["processo"], [])
-                                             if o.get("nome_credor")}))[:200]
+    C.completar_com_ob(achados)
     cob = {"designacao": cob1, "prestacao": cob2, "nomes_designados_distintos": len(nomes),
            "universo_definicao": "parcerias (títulos do manifesto) com prestação de contas lida"}
     return C.resultado(ID, cob2.get("parcerias_com_prestacao_lida", 0), cob, achados,

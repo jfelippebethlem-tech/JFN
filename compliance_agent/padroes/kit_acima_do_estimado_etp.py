@@ -134,14 +134,11 @@ def varrer(limite: int | None = None) -> dict:
             "itens": itens, "prova": " || ".join(f"ID {i['id_siga']}: R$ {moeda(i['contratado'])} × estimado R$ "
                                                    f"{moeda(i['estimado'])} (+{i['excesso_pct']}%) — {i['prova']}"
                                                    for i in itens[:4]),
-            "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
-            "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
+            **cc.campos_ob(ds, ob),
             "porque": ("Inocente possível: estimativa atualizada no edital (não juntado) ou negociação justificada nos "
                        "autos do certame; preço de ata de outro processo. Não afasta: o próprio ETP/TR juntado estima "
                        "abaixo do que foi registrado/contratado (art. 59 III da Lei 14.133)."),
             "fonte": "SEI (ETP/TR × contrato/ata, casados pelo ID SIGA) + SIAFE (_ob_paga, piso)"})
-    ordem = {"forte": 0, "medio": 1, "fraco": 2}
-    achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
     cc.ligar(achados, VICIO, lambda a: a.get("grau") == "forte")
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos),
                                        "sem_texto": sem_texto, "sem_par_estimativa_e_contrato": sem_par,

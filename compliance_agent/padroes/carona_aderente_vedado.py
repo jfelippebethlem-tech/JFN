@@ -19,18 +19,11 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _carona_comum as cc
+from compliance_agent.padroes._comum import ORDEM_GRAU
 
 ID = "carona_aderente_vedado"
 VICIO = "carona_abusiva"  # knowledge/catalogo_vicios.py
 
-RX_EXTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+externo", re.I)
-RX_INTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+interno", re.I)
-# ato de adesão praticado por este órgão (não cláusula genérica de edital): pedido/autorização/termo de adesão
-RX_ATO_ADESAO = re.compile(
-    r"(?:solicit\w+|autoriz\w+|requer\w*|pedido\s+de|termo\s+de|of[íi]cio\s+de|anu[êe]ncia\s+(?:para|à|a)\s+(?:a\s+)?)"
-    r"[^.;]{0,60}?ades[ãa]o\s+(?:à|a|ao)\s+(?:ata|arp|sistema\s+de\s+registro|registro\s+de\s+pre)"
-    r"|ades[ãa]o\s+(?:à|a)\s+(?:ata|arp)[^.;]{0,120}?(?:gerenciad[ao]|d[oa]\s+(?:IF|Instituto|Funda|Cons[óo]rcio|Prefeitura|Munic|Minist|Secretaria|Universidade))",
-    re.I)
 
 _UF_NOMES = {
     "AC": "acre", "AL": "alagoas", "AP": "amapa", "AM": "amazonas", "BA": "bahia", "CE": "ceara",
@@ -111,13 +104,7 @@ def _ente_restrito(clausula: str) -> str | None:
 def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
     """Avalia UM processo. Devolve None se não há prova de adesão deste órgão (fora do universo);
     {"adesao": ..., "sinais": [...]} caso contrário."""
-    externo = interno = ato = None
-    for d in ds:
-        externo = externo or ((d, RX_EXTERNO.search(d.texto)) if RX_EXTERNO.search(d.texto) else None)
-        interno = interno or ((d, RX_INTERNO.search(d.texto)) if RX_INTERNO.search(d.texto) else None)
-        if not ato:
-            m = RX_ATO_ADESAO.search(d.texto)
-            ato = (d, m) if m else None
+    externo, interno, ato = cc.provas_de_adesao(ds)
     if not (externo or ato):
         return {"adesao": "interna" if interno else None, "sinais": []}
     reg = cc.regime(ds)
@@ -176,42 +163,8 @@ def avaliar(tag: str, ds: list[cc.Doc]) -> dict | None:
             "prova_adesao": f'{d0.ref} — "{cc.trecho(d0.texto, m0.start(), m0.end(), 60)[:300]}"'}
 
 
-_RX_TIT_ADESAO = re.compile(r"ades[aã]o|carona|anu[eê]ncia|\barp\b|ata de registro", re.I)
-
-
-def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict]:
-    """Processos de ADESÃO do acervo: NE com Mod. Licitação 12 (externa) / 10 (interna) ou, sem NE legível, título de
-    documento que fala de adesão/ARP. → [(tag, info_ne)], cobertura."""
-    cache = cc.carregar_cache_ne()
-    todos = cc.tags()[: limite or None]
-    base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
-                     "sem_ne_mas_titulo_de_adesao": 0}
-    cc.prefetch_ne(todos, cache)
-    cc.refs_em_paralelo([t for t in todos if cc.codigo_mod(cache[t]) is None])   # títulos dos sem NE, em paralelo
-    try:
-        for n, t in enumerate(todos):
-            ne = cc.modalidade_ne(t, cache)
-            cod = cc.codigo_mod(ne)
-            if cod == "12":
-                cob["ne_12_externa"] += 1
-                base.append((t, ne))
-            elif cod == "10":
-                cob["ne_10_interna"] += 1
-                base.append((t, ne))
-            elif cod is None:
-                cob["sem_ne_legivel"] += 1
-                if cc.titulos_casam(t, _RX_TIT_ADESAO):
-                    cob["sem_ne_mas_titulo_de_adesao"] += 1
-                    base.append((t, ne))
-            if n % 500 == 499:
-                cc.salvar_cache_ne(cache)
-    finally:
-        cc.salvar_cache_ne(cache)
-    return base, cob
-
-
 def varrer(limite: int | None = None) -> dict:
-    base, cob = base_adesao(limite)
+    base, cob = cc.base_adesao(limite)
     avaliados = sem_texto = interna = sem_ato = 0
     brutos: list[tuple[str, dict, list[cc.Doc]]] = []
     externas = [(t, None) for t, ne in base if cc.codigo_mod(ne) != "10"]
@@ -233,21 +186,18 @@ def varrer(limite: int | None = None) -> dict:
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in brutos})
     achados = []
     for t, r, ds in brutos:
-        ordem = {"forte": 0, "medio": 1, "fraco": 2}
-        s = sorted(r["sinais"], key=lambda x: ordem[x["grau"]])
+        s = sorted(r["sinais"], key=lambda x: ORDEM_GRAU[x["grau"]])
         ob = obs.get(cc.canon(t))
         achados.append({
             "processo": cc.canon(t), "grau": s[0]["grau"], "sinal": s[0]["sinal"],
             "prova": " | ".join(x["prova"] for x in s) + f" | adesão: {r['prova_adesao']}"
                      + (f" | foro: {r['foro_fora_rj']}" if r.get("foro_fora_rj") else ""),
-            "sinais": s, "regime": r["regime"], "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
-            "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
+            "sinais": s, "regime": r["regime"], **cc.campos_ob(ds, ob),
             "porque": ("Inocente possível: anuência expressa do gerenciador e norma do ente aderente admitindo a carona "
                        "(RJ: Dec. 46.751/2019 art. 26). Não afasta a cláusula do PRÓPRIO instrumento que limita os "
                        "aderentes (vinculação ao edital) nem o art. 86 §3º da Lei 14.133 para gerenciador municipal; "
                        "conferir a anuência e a cláusula no edital/ata juntados."),
             "fonte": "SEI (texto dos autos) + SIAFE (_ob_paga, piso)"})
-    achados.sort(key=lambda a: ({"forte": 0, "medio": 1, "fraco": 2}[a["grau"]], -(a["valor_pago_ob"] or 0)))
     cob.update({"sem_texto": sem_texto, "adesao_interna": interna, "sem_prova_de_adesao_do_orgao": sem_ato,
                 "nota": "universo = processos com prova de adesão EXTERNA deste órgão (NE Mod. 12 ou ato de adesão); "
                         "edital/ata do gerenciador nem sempre está juntado — ausência da cláusula nos autos ≠ ausência "

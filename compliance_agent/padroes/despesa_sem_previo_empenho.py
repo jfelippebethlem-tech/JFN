@@ -25,6 +25,7 @@ import re
 from pathlib import Path
 
 from compliance_agent.padroes import _aditivos_comum as C
+from compliance_agent.sei.acervo_texto import sem_etiqueta
 
 ID = "despesa_sem_previo_empenho"
 _PRE = re.compile(rb"pr[\xc3][\xa9a]vio\s+empenho|previo\s+empenho|PR[\xc3][\x89E]VIO\s+EMPENHO|PREVIO\s+EMPENHO", re.I)
@@ -137,7 +138,7 @@ def varrer(limite: int | None = None) -> dict:
             d = _doc_do_arquivo(p["docs"], arq)
             if d is not None and d.get("alheio"):
                 continue
-            t = C.acervo_texto.sem_etiqueta(b.decode("utf-8", "ignore"))
+            t = sem_etiqueta(b.decode("utf-8", "ignore"))
             cs = confissoes(t)
             if not cs:
                 funil["normativo_descartado"] += 1

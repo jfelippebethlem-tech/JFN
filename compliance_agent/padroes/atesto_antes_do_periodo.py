@@ -45,20 +45,17 @@ TIT_ALVO = re.compile(TIT_ATESTO.pattern + "|" + TIT_NF.pattern, re.I)
 _CONCESSIONARIA = re.compile(
     r"\bCEG\b|naturgy|g[aá]s natural|\blight\b|\benel\b|\bampla\b|cedae|[aá]guas do rio|igu[aá] saneamento|"
     r"rio\+saneamento|energia el[eé]trica|telefonia|embratel|correios|fornecimento de [aá]gua|esgot", re.I)
-_MES = r"(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)"
-_MESES = {m: i for i, m in enumerate(
-    "janeiro fevereiro marco abril maio junho julho agosto setembro outubro novembro dezembro".split(), 1)}
 _A = r"\s*(?:a|à|á|ate|até|e|-|–)\s*"
 _PER = r"per[ií]odo\b[^0-9\n]{0,25}?"
 _P1 = re.compile(_PER + r"(\d{1,2}/\d{1,2}/\d{4})" + _A + r"(\d{1,2}/\d{1,2}/\d{4})", re.I)
-_P2 = re.compile(_PER + r"(?:de\s+)?(\d{1,2})(?:\s+de\s+" + _MES + r")?" + _A + r"(\d{1,2})\s+de\s+" + _MES
+_P2 = re.compile(_PER + r"(?:de\s+)?(\d{1,2})(?:\s+de\s+" + C.MES + r")?" + _A + r"(\d{1,2})\s+de\s+" + C.MES
                  + r"\s+(?:de\s+)?(\d{4})", re.I)
 # Lista de dias antes do intervalo ("PERÍODO: 15, 16, 22, 23 E 28/02 À 09/03 DE 2025") — o início é o 1º dia.
 _LISTA = r"((?:\d{1,2}\s*(?:,|e)\s*)*)"
 _P3 = re.compile(_PER + _LISTA + r"(\d{1,2})/(\d{1,2})" + _A + r"(\d{1,2})/(\d{1,2})\s*(?:de\s+|/)\s*(\d{4})", re.I)
-_P4 = re.compile(_PER + r"(\d{1,2})\s+de\s+" + _MES + r"\s+(?:de\s+)?(\d{4})", re.I)
+_P4 = re.compile(_PER + r"(\d{1,2})\s+de\s+" + C.MES + r"\s+(?:de\s+)?(\d{4})", re.I)
 _P5 = re.compile(r"(?:servi[cç]os|fornecimento|presta[cç][aã]o|repasse)[^.]{0,60}?(?:m[eê]s(?:es)?\s+de|"
-                 r"referentes?\s+ao\s+m[eê]s\s+de)\s+" + _MES + r"(?:\s*(?:,|e|a)\s*" + _MES + r")*"
+                 r"referentes?\s+ao\s+m[eê]s\s+de)\s+" + C.MES + r"(?:\s*(?:,|e|a)\s*" + C.MES + r")*"
                  r"\s*(?:de\s*|/\s*)?(\d{4})", re.I)
 _NAO_SERVICO = re.compile(r"vig[eê]ncia|garantia|aditivo|prorroga|contratual|validade|inscri[cç]", re.I)
 FOLGA_MIN_FORTE = 3     # 1–2 dias antes do fim do mês (3STRUCTURE, OB de 30/12) é calendário, não prova de antecipação
@@ -69,19 +66,6 @@ CREDOR_CONCESSIONARIA = re.compile(r"\bOI S\.?A|TELEMAR|\bCLARO\b|TELEF[OÔ]NICA
                                    r"\bENEL\b|AMPLA|\bCEG\b|NATURGY|CEDAE|[ÁA]GUAS D|COOPERATIVA DE ELETR|ENERGISA|"
                                    r"IGU[AÁ]|CORREIOS|EMPRESA BRASILEIRA DE CORREIOS", re.I)
 _RE_IDSEI = re.compile(r"\((\d{7,10})\)")
-_RE_DATA_LOCAL = re.compile(r"Rio de Janeiro\s*,\s*(\d{1,2})\s+de\s+" + _MES + r"\s+de\s+(\d{4})", re.I)
-_RE_ASS = re.compile(r"assinado eletronicamente por .{3,160}?,\s*em\s+(\d{2}/\d{2}/\d{4})", re.I | re.S)
-
-
-def _mes(s: str) -> int | None:
-    return _MESES.get(C.norm(s).replace("ç", "c"))
-
-
-def _d(a, m, d) -> date | None:
-    try:
-        return date(int(a), int(m), int(d))
-    except (ValueError, TypeError):
-        return None
 
 
 def periodos(texto: str) -> list[tuple[date | None, date, str]]:
@@ -97,40 +81,29 @@ def periodos(texto: str) -> list[tuple[date | None, date, str]]:
         if b and ok(m):
             out.append((a, b, m[0]))
     for m in _P2.finditer(t):
-        mf, ano = _mes(m[4]), int(m[5])
-        mi = _mes(m[2]) if m[2] else mf
-        b, a = _d(ano, mf, m[3]), _d(ano if (mi or 0) <= (mf or 0) else ano - 1, mi, m[1])
+        mf, ano = C.mes_num(m[4]), int(m[5])
+        mi = C.mes_num(m[2]) if m[2] else mf
+        b, a = C.data_ymd(ano, mf, m[3]), C.data_ymd(ano if (mi or 0) <= (mf or 0) else ano - 1, mi, m[1])
         if b and ok(m):
             out.append((a, b, m[0]))
     for m in _P3.finditer(t):
         ano = int(m[6])
-        b = _d(ano, m[5], m[4])
+        b = C.data_ymd(ano, m[5], m[4])
         dia_ini = re.match(r"\d{1,2}", m[1])[0] if m[1] else m[2]
-        a = _d(ano if int(m[3]) <= int(m[5]) else ano - 1, m[3], dia_ini)
+        a = C.data_ymd(ano if int(m[3]) <= int(m[5]) else ano - 1, m[3], dia_ini)
         if b and ok(m):
             out.append((a, b, m[0]))
     for m in _P4.finditer(t):
-        b = _d(m[3], _mes(m[2]), m[1])
+        b = C.data_ymd(m[3], C.mes_num(m[2]), m[1])
         if b and ok(m) and not any(x[2].startswith(m[0][:20]) for x in out):
             out.append((b, b, m[0]))
     for m in _P5.finditer(t):
-        meses = [_mes(x) for x in re.findall(_MES, m[0], re.I)]
+        meses = [C.mes_num(x) for x in re.findall(C.MES, m[0], re.I)]
         ano, mf = int(m.groups()[-1]), max(x for x in meses if x)
         if 2000 < ano < 2100:
             b = date(ano, mf, calendar.monthrange(ano, mf)[1])
             out.append((date(ano, min(x for x in meses if x), 1), b, m[0]))
     return [p for p in out if 2000 < p[1].year < 2100]
-
-
-def data_do_atesto(texto: str) -> date | None:
-    """Última assinatura eletrônica (a comissão só completa o atesto quando o último assina); sem ela, a data do
-    fecho 'Rio de Janeiro, dd de mês de aaaa'."""
-    t = re.sub(r"\s+", " ", texto or "")
-    ds = [d for d in (C.data_br(x) for x in _RE_ASS.findall(t)) if d]
-    if ds:
-        return max(ds)
-    ds = [d for d in (_d(m[3], _mes(m[2]), m[1]) for m in _RE_DATA_LOCAL.finditer(t)) if d]
-    return max(ds) if ds else None
 
 
 # Cartão de benefício (vale-refeição/alimentação): o crédito do mês é carregado no INÍCIO do mês — "serviços do mês
@@ -144,7 +117,7 @@ def avaliar_atesto(texto_atesto: str, nfs: dict[str, str]) -> dict | None:
     """Um atesto + {id SEI: texto} das NFs que ele cita → pior antecipação, ou None."""
     if _CONCESSIONARIA.search(texto_atesto[:4000]) or VALE_BENEFICIO.search(texto_atesto[:6000]):
         return None
-    assinado = data_do_atesto(texto_atesto)
+    assinado = C.data_do_atesto(texto_atesto)
     if not assinado:
         return None
     cands = [(p, "o próprio atesto") for p in periodos(texto_atesto)]

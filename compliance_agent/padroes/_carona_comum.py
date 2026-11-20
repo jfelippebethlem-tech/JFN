@@ -11,19 +11,19 @@ a modalidade pela NE (um documento por processo) fica em cache em disco (`data/p
 from __future__ import annotations
 
 import json
-import os
 import re
-import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parents[2]
+from compliance_agent.padroes._comum import DB, RAIZ, con_ro, credor_publico, documento_publico, ordenar
+from compliance_agent.padroes._comum import trecho as _trecho
+from compliance_agent.rotina_base import gravar_json
+
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 CACHE = RAIZ / "data" / "sei_cache"
-DB = RAIZ / "data" / "compliance.db"
 
 _RX_TAG = re.compile(r"(\d{6})_(\d{6})_(\d{4})")
 
@@ -155,10 +155,7 @@ def carregar_cache_ne() -> dict:
 
 
 def salvar_cache_ne(c: dict) -> None:
-    CACHE_NE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = CACHE_NE.with_name(f"{CACHE_NE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
-    tmp.write_text(json.dumps(c, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(CACHE_NE)
+    gravar_json(CACHE_NE, c)
 
 
 def modalidade_ne(tag: str, cache: dict) -> dict:
@@ -185,8 +182,7 @@ def modalidade_ne(tag: str, cache: dict) -> dict:
 
 
 def trecho(texto: str, ini: int, fim: int, raio: int = 140) -> str:
-    a, b = max(0, ini - raio), min(len(texto), fim + raio)
-    return re.sub(r"\s+", " ", texto[a:b]).strip()
+    return _trecho(texto, ini, fim, raio)
 
 
 @lru_cache(maxsize=200_000)
@@ -232,7 +228,7 @@ def ob_pagas(processos: set[str]) -> dict[str, dict]:
         return {}
     canons = sorted({p for p in processos if re.fullmatch(r"SEI-\d{6}/\d{6}/20\d{2}", p)})
     variantes = sorted({v for c in canons for v in (c, c[4:], "SEI " + c[4:])})
-    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
+    con = con_ro()
     try:
         out: dict[str, dict] = {}
         # filtro no SQL (IN em C): o laço Python sobre 1,36 mi de linhas levava ~15 min na VM-1 carregada
@@ -295,9 +291,20 @@ def orgao_ou_ug(ds: list[Doc], ob: dict | None) -> str | None:
     return f"UG {', '.join(ugs)} (SIAFE)" if ugs else None
 
 
+def campos_ob(ds: list[Doc], ob: dict | None) -> dict:
+    """Órgão, credor, valor pago (PISO) e as OB de um achado — `ob` é o item de `ob_pagas` do processo. Credor pessoa
+    física sai com o nome omitido e o CPF mascarado (`_comum`); o `ob` cru segue disponível para casar nomes."""
+    nome = credor_principal(ob)
+    doc = next((o.get("cnpj") for o in (ob or {}).get("obs", []) if (o.get("credor") or "?") == nome), None)
+    return {"orgao": orgao_ou_ug(ds, ob), "credor": credor_publico(doc, nome) if nome != "?" else nome,
+            "valor_pago_ob": ob["total"] if ob else None,
+            "obs": [{**o, "credor": credor_publico(o.get("cnpj"), o.get("credor")), "cnpj": documento_publico(o.get("cnpj"))}
+                    for o in (ob or {}).get("obs", [])[:20]]}
+
+
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], **extra) -> dict:
     return {"id": id_, "gerado_em": agora(), "universo": universo, "cobertura": cobertura,
-            "achados": achados, **extra}
+            "achados": ordenar(achados), **extra}
 
 
 # Leitura a frio é latência de disco, não CPU: 16 leituras em paralelo saem ~6× mais rápidas que em série
@@ -334,6 +341,69 @@ def refs_em_paralelo(todos: list[str]) -> None:
     """Aquece o cache de `refs` (manifestos) em paralelo."""
     with ThreadPoolExecutor(LEITORES) as ex:
         list(ex.map(refs, todos))
+
+
+# ─────────────── adesão (carona): o universo e a prova de que ESTE órgão aderiu ───────────────
+RX_ADESAO_EXTERNA = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+externo", re.I)
+RX_ADESAO_INTERNA = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+interno", re.I)
+# ato de adesão praticado por este órgão (não cláusula genérica de edital): pedido/autorização/termo de adesão
+RX_ATO_ADESAO = re.compile(
+    r"(?:solicit\w+|autoriz\w+|requer\w*|pedido\s+de|termo\s+de|of[íi]cio\s+de|anu[êe]ncia\s+(?:para|à|a)\s+(?:a\s+)?)"
+    r"[^.;]{0,60}?ades[ãa]o\s+(?:à|a|ao)\s+(?:ata|arp|sistema\s+de\s+registro|registro\s+de\s+pre)"
+    r"|ades[ãa]o\s+(?:à|a)\s+(?:ata|arp)[^.;]{0,120}?(?:gerenciad[ao]|d[oa]\s+(?:IF|Instituto|Funda|Cons[óo]rcio|Prefeitura|Munic|Minist|Secretaria|Universidade))",
+    re.I)
+
+
+def provas_de_adesao(ds: list[Doc]) -> tuple:
+    """(externo, interno, ato): o 1º (doc, match) de NE de adesão externa, de NE de adesão interna e de ato de adesão."""
+    externo = interno = ato = None
+    for d in ds:
+        externo = externo or ((d, RX_ADESAO_EXTERNA.search(d.texto)) if RX_ADESAO_EXTERNA.search(d.texto) else None)
+        interno = interno or ((d, RX_ADESAO_INTERNA.search(d.texto)) if RX_ADESAO_INTERNA.search(d.texto) else None)
+        if not ato:
+            m = RX_ATO_ADESAO.search(d.texto)
+            ato = (d, m) if m else None
+    return externo, interno, ato
+
+
+def tipo_adesao(ds: list[Doc]) -> str | None:
+    """'externa' (NE de adesão externa ou ato de adesão deste órgão) · 'interna' · None (sem prova de adesão)."""
+    externo, interno, ato = provas_de_adesao(ds)
+    return "externa" if (externo or ato) else ("interna" if interno else None)
+
+
+_RX_TIT_ADESAO = re.compile(r"ades[aã]o|carona|anu[eê]ncia|\barp\b|ata de registro", re.I)
+
+
+def base_adesao(limite: int | None = None) -> tuple[list[tuple[str, dict]], dict]:
+    """Processos de ADESÃO do acervo: NE com Mod. Licitação 12 (externa) / 10 (interna) ou, sem NE legível, título de
+    documento que fala de adesão/ARP. → [(tag, info_ne)], cobertura."""
+    cache = carregar_cache_ne()
+    todos = tags()[: limite or None]
+    base, cob = [], {"processos_no_acervo": len(todos), "sem_ne_legivel": 0, "ne_12_externa": 0, "ne_10_interna": 0,
+                     "sem_ne_mas_titulo_de_adesao": 0}
+    prefetch_ne(todos, cache)
+    refs_em_paralelo([t for t in todos if codigo_mod(cache[t]) is None])   # títulos dos sem NE, em paralelo
+    try:
+        for n, t in enumerate(todos):
+            ne = modalidade_ne(t, cache)
+            cod = codigo_mod(ne)
+            if cod == "12":
+                cob["ne_12_externa"] += 1
+                base.append((t, ne))
+            elif cod == "10":
+                cob["ne_10_interna"] += 1
+                base.append((t, ne))
+            elif cod is None:
+                cob["sem_ne_legivel"] += 1
+                if titulos_casam(t, _RX_TIT_ADESAO):
+                    cob["sem_ne_mas_titulo_de_adesao"] += 1
+                    base.append((t, ne))
+            if n % 500 == 499:
+                salvar_cache_ne(cache)
+    finally:
+        salvar_cache_ne(cache)
+    return base, cob
 
 
 def codigo_mod(ne: dict) -> str | None:

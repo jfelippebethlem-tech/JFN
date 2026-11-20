@@ -28,6 +28,7 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _pagamento_comum as C
+from compliance_agent.padroes._comum import ORDEM_GRAU
 
 ID = "despesa_estranha_ao_objeto"
 
@@ -113,11 +114,10 @@ def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
     con = C.con_ro()
     obs = C.obs_pagas(con, [C.processo(t) for t, _ in brutos])
     con.close()
-    ordem = {"forte": 0, "medio": 1, "fraco": 2}
     achados = []
     for tag, hits in brutos:
         proc = C.processo(tag)
-        hits.sort(key=lambda h: ordem[h["grau"]])
+        hits.sort(key=lambda h: ORDEM_GRAU[h["grau"]])
         h0 = hits[0]
         achados.append({
             "processo": proc, "grau": h0["grau"], "n_docs": len(hits),

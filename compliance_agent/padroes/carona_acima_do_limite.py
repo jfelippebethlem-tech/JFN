@@ -26,8 +26,9 @@ import requests
 
 from compliance_agent.detectores.x4_carona_abusiva import LIMITE_ADESAO_INDIVIDUAL, LIMITE_TOTAL_ADESOES
 from compliance_agent.padroes import _carona_comum as cc
+from compliance_agent.padroes._comum import ORDEM_GRAU
 from compliance_agent.reporting.intel_base import moeda
-from compliance_agent.padroes import carona_aderente_vedado as cav
+from compliance_agent.rotina_base import gravar_json
 
 ID = "carona_acima_do_limite"
 VICIO = "carona_abusiva"  # knowledge/catalogo_vicios.py
@@ -40,7 +41,6 @@ RX_ATA_NUM = re.compile(
     r"0*(\d{1,6})\s*/\s*(20\d{2})\b", re.I)
 RX_CNPJ = re.compile(r"\b(\d{2})\.(\d{3})\.(\d{3})/(\d{4})-(\d{2})\b")
 RX_CNPJ_UG = re.compile(r"\(CNPJ:?\s*(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\)")   # cabeçalho da NE = o próprio órgão
-RX_NE_EXTERNO = re.compile(r"ades[ãa]o\s+ao\s+registro\s+de\s+pre[çc]os\s+externo", re.I)
 RX_EMISSAO = re.compile(r"Emiss[ãa]o\s*\n?\s*(?:[^\n]*\n){0,3}?\s*(\d{2})/(\d{2})/(\d{2,4})", re.I)
 def _espacado(palavras: str) -> str:
     """'DATA DA ASSINATURA' tolerando o DOERJ que espaça letras ('A S S I N AT U R A')."""
@@ -85,10 +85,7 @@ def _cache() -> dict:
 
 
 def _salvar_cache(c: dict) -> None:
-    CACHE_PNCP.parent.mkdir(parents=True, exist_ok=True)
-    tmp = CACHE_PNCP.with_suffix(".tmp")
-    tmp.write_text(json.dumps(c, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(CACHE_PNCP)
+    gravar_json(CACHE_PNCP, c)
 
 
 _LISTAS: dict[tuple[str, int], list | None] = {}
@@ -200,7 +197,7 @@ def cnpjs_candidatos(ds: list[cc.Doc], excluir: set[str]) -> list[str]:
 
 def _data_ne_adesao(ds: list[cc.Doc]) -> tuple[date, str] | None:
     for d in ds:
-        if RX_NE_EXTERNO.search(d.texto):
+        if cc.RX_ADESAO_EXTERNA.search(d.texto):
             m = RX_EMISSAO.search(d.texto)
             if m:
                 dd, mm, aa = m.groups()
@@ -260,7 +257,7 @@ def limite_aderente(pago: float, ata: dict) -> dict | None:
 
 
 def varrer(limite: int | None = None) -> dict:
-    adesoes, cob0 = cav.base_adesao(limite)
+    adesoes, cob0 = cc.base_adesao(limite)
     base: list[tuple[str, list[cc.Doc], str]] = []
     sem_texto = 0
     cods = {t: cc.codigo_mod(ne) for t, ne in adesoes}
@@ -274,9 +271,9 @@ def varrer(limite: int | None = None) -> dict:
         if cod == "10":
             base.append((t, ds, "interna"))
             continue
-        r = cav.avaliar(t, ds)
-        if r["adesao"]:
-            base.append((t, ds, r["adesao"]))
+        tipo = cc.tipo_adesao(ds)
+        if tipo:
+            base.append((t, ds, tipo))
     obs = cc.ob_pagas({cc.canon(t) for t, _, _ in base})
     cache = _cache()
     cob = {**cob0, "sem_texto": sem_texto, "adesoes": len(base),
@@ -344,8 +341,7 @@ def varrer(limite: int | None = None) -> dict:
                                    "prova": f"PNCP vigência até {fim.isoformat()}; NE de adesão {ne[1]}"})
         if sinais:
             achados.append({"processo": canon, "sinais": sinais, "ata_pncp": ata and {k: v for k, v in ata.items() if k != "itens"},
-                            "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
-                            "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20]})
+                            **cc.campos_ob(ds, ob)})
     _salvar_cache(cache)
     # L2 — soma das adesões do acervo à mesma ata
     for ctrl, lst in por_ata.items():
@@ -359,9 +355,8 @@ def varrer(limite: int | None = None) -> dict:
                               f"R$ {moeda(soma)} ({str(round(soma / tot, 2)).replace(".", ",")}×): " + ", ".join(f"{c} R$ {moeda(x)}" for c, x in lst)}
                 if ach:
                     ach["sinais"].append(s)
-    ordem = {"forte": 0, "medio": 1, "fraco": 2}
     for a in achados:
-        a["sinais"].sort(key=lambda s: ordem[s["grau"]])
+        a["sinais"].sort(key=lambda s: ORDEM_GRAU[s["grau"]])
         a["grau"] = a["sinais"][0]["grau"]
         a["sinal"] = a["sinais"][0]["sinal"]
         a["prova"] = " | ".join(s["prova"] for s in a["sinais"])
@@ -369,6 +364,5 @@ def varrer(limite: int | None = None) -> dict:
                        "capa'/desconto muda a unidade (medir em unidades de capa: pago ÷ (1 − desconto)); 8.666 pode ser "
                        "ata licitada até 29/12/2023 ainda vigente. Não afasta: a ata no PNCP não comporta o valor pago.")
         a["fonte"] = "SEI (autos) + PNCP (atas/itens/resultados) + SIAFE (_ob_paga, piso)"
-    achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
     cc.ligar(achados, VICIO, lambda a: a.get("sinal") in ("acima_50pct_aderente", "acima_dobro_total"))
     return cc.resultado(ID, len(base), cob, achados)

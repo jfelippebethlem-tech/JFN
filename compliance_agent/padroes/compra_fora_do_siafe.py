@@ -28,6 +28,7 @@ import sqlite3
 from datetime import date
 
 from compliance_agent.padroes import _pagamento_comum as P
+from compliance_agent.padroes._comum import mascarar_cpf
 
 ID = "compra_fora_do_siafe"
 def _parametros() -> dict:
@@ -464,7 +465,7 @@ def avaliar(tag: str, unidade: str, con, rec=None) -> dict | None:
             fr = fones_receita(rec, c)
             nf["fones_receita"] = sorted(set(nf.get("fones_receita") or []) | set(fr))
             nf["fones"] = sorted(set(nf["fones"]) | set(fr))
-            conf.append({"cnpj": c, "razao_social": rz, "confirmado": bool(rz) and (
+            conf.append({"cnpj": c, "razao_social": mascarar_cpf(rz) if rz else rz, "confirmado": bool(rz) and (
                 nf["fonte_emitente"] == "chave_de_acesso" or _razao_no_texto(rz, textos.get(nf["doc"], "")))})
         nf["emitentes_conf"] = conf
     emitentes = sorted({c["cnpj"] for nf in nfs for c in nf["emitentes_conf"] if c["razao_social"]})

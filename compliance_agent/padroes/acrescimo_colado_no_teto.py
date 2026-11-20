@@ -28,12 +28,11 @@ ID = "acrescimo_colado_no_teto"
 FOLGA_PP = 1.0      # "encostado" = até 1 ponto percentual abaixo do teto
 _RE_TALVEZ_REFORMA = re.compile(r"reforma|moderniza|adequa[çc][ãa]o\s+(?:f[íi]sica|predial|d[aoe]s?\s+(?:pr[ée]dio|"
                                 r"edif|instala|complexo|unidade))|amplia[çc][ãa]o|requalifica|revitaliza", re.I)
-_RE_REAJUSTE = re.compile(r"reajust|repactua|reequil[íi]brio|\bIPCA\b|\bINCC\b|IGP-?M|corre[çc][ãa]o\s+monet", re.I)
 
 
 def avaliar(decls: list[dict], objeto: str = "") -> dict | None:
     """Função pura: declarações de UM contrato → veredito ou None."""
-    validas = [x for x in decls if not _RE_REAJUSTE.search(x.get("trecho") or "")]
+    validas = [x for x in decls if not C.RE_REAJUSTE.search(x.get("trecho") or "")]
     if not validas:
         return None
     tipo = L.tipo_objeto(objeto)
@@ -77,7 +76,7 @@ def varrer(limite: int | None = None) -> dict:
         if not c:
             continue
         funil["com_declaracao_de_acrescimo"] += 1
-        objeto = " ".join(t[:6000] for _, t in termos[:3])
+        objeto = C.objeto_dos_termos(termos)
         v = avaliar(decl[c], objeto)
         if not v:
             continue

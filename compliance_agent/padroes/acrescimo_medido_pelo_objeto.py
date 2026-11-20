@@ -28,7 +28,6 @@ from compliance_agent.reporting.intel_base import moeda
 
 ID = "acrescimo_medido_pelo_objeto"
 MESES_ANTES, PULA, MESES_DEPOIS, MIN_MESES = 6, 1, 6, 3
-_RE_REAJ = re.compile(r"reajust|repactua|reequil[íi]brio|IPCA|INCC|IGP-?M", re.I)
 
 
 def _mes(ym: str, delta: int) -> str:
@@ -72,7 +71,7 @@ def varrer(limite: int | None = None) -> dict:
             continue
         decl = C.declaracoes_do_processo(termos)
         c = C.contrato_principal(decl)
-        itens = [x for x in decl.get(c, []) if x["data"] and not _RE_REAJ.search(x["trecho"])] if c else []
+        itens = [x for x in decl.get(c, []) if x["data"] and not C.RE_REAJUSTE.search(x["trecho"])] if c else []
         if not itens:
             continue
         funil["com_declaracao_datada"] += 1
@@ -82,7 +81,7 @@ def varrer(limite: int | None = None) -> dict:
             continue
         funil["com_ob"] += 1
         mensal = C.ob_mensal(chave)
-        objeto = " ".join(t[:6000] for _, t in termos[:3])
+        objeto = C.objeto_dos_termos(termos)
         teto = L.teto_acrescimo(L.tipo_objeto(objeto))
         reajustes = sorted({C.data_assinatura_apos(t, m.end()) or "?" for _, t in termos
                             for m in re.finditer(r"reajust|repactua", t[:20000], re.I)} - {"?"})

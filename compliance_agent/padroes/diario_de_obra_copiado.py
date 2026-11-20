@@ -37,7 +37,7 @@ _RE_DATA = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
 def local(titulo: str) -> str:
     t = re.sub(r"\(\d{6,10}\)", " ", titulo or "")
     t = _RE_NUM_MED.sub(" ", t)
-    t = R._sem_acento(t)
+    t = C.sem_acento(t).lower()
     t = re.sub(r"di[a]rio\s+d[ea]\s+obras?|\brdo\b|relatorio\s+diario|\d+|[^a-z ]", " ", t)
     return " ".join(t.split())
 

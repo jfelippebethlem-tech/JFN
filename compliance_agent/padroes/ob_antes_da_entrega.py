@@ -29,7 +29,6 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _pagamento_comum as C
-from compliance_agent.padroes.atesto_antes_do_periodo import data_do_atesto
 
 ID = "ob_antes_da_entrega"
 
@@ -54,7 +53,7 @@ _TIT_NAO_ATO = re.compile(r"contrato|\bata\b|edital|termo de refer|proposta|minu
 
 
 def _data_doc(texto: str):
-    d = data_do_atesto(texto)
+    d = C.data_do_atesto(texto)
     if d:
         return d
     for x in _RE_DATA_NL.findall(texto[:1500]):

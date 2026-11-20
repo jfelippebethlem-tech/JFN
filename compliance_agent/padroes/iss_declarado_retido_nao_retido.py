@@ -32,6 +32,7 @@ import re
 from datetime import timedelta
 
 from compliance_agent.padroes import _pagamento_comum as C
+from compliance_agent.padroes._comum import credor_publico, documento_publico
 
 ID = "iss_declarado_retido_nao_retido"
 
@@ -52,7 +53,8 @@ def achado_nf_x_ob(r: dict) -> dict | None:
              f"{f' (+{len(nfs) - 1} NF)' if len(nfs) > 1 else ''}; Σ OB ao prestador R$ {C.fmt(r.get('ob') or 0)} = "
              f"bruto − {'+'.join(r.get('subconjunto_federal') or []) or 'nada'} (sem o ISS)")
     return {"processo": r["processo"], "grau": "forte" if r["estado"] == "VERIFICADO" else "medio",
-            "sinal": "nf_x_ob", "credor": r.get("credor"), "nome_credor": r.get("nome_credor"), "ug": r.get("ug"),
+            "sinal": "nf_x_ob", "credor": documento_publico(r.get("credor")),
+            "nome_credor": credor_publico(r.get("credor"), r.get("nome_credor")), "ug": r.get("ug"),
             "prova": prova, "valor_pago_ob": pago, "iss_nao_retido": r.get("iss"),
             "obs": [o.get("numero_ob") for o in r.get("obs") or []],
             "porque": (r.get("motivo") or "") + (" · PENDENTE: há OB a terceiro no processo/NL ou guia de ISS nos "

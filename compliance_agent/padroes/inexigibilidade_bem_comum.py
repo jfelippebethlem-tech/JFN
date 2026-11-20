@@ -126,15 +126,12 @@ def varrer(limite: int | None = None) -> dict:
         achados.append({
             "processo": cc.canon(t), "grau": grau, "inciso_art74": r["inciso"],
             "sinal": "bem_comum+outros_fornecedores" if ambos else ("bem_comum" if r["bem_comum"] else "outros_fornecedores"),
-            "prova": " | ".join(provas), "orgao": cc.orgao_ou_ug(ds, ob), "credor": cc.credor_principal(ob),
-            "valor_pago_ob": ob["total"] if ob else None, "obs": (ob or {}).get("obs", [])[:20],
+            "prova": " | ".join(provas), **cc.campos_ob(ds, ob),
             "porque": ("Inocente possível: o item 'bem comum' é cópia do modelo de TR (AGU/PGE) e a exclusividade está "
                        "provada por atestado de exclusividade/direito autoral juntado; 'outras editoras' pode ser só "
                        "referência de ISBN. Não afasta: o próprio TR declara mercado com vários fornecedores — exige "
                        "prova de inviabilidade de competição (art. 74 I e §1º da Lei 14.133)."),
             "fonte": "SEI (TR/ETP e NE dos autos) + SIAFE (_ob_paga, piso)"})
-    ordem = {"forte": 0, "medio": 1, "fraco": 2}
-    achados.sort(key=lambda a: (ordem[a["grau"]], -(a["valor_pago_ob"] or 0)))
     cc.ligar(achados, VICIO)
     return cc.resultado(ID, universo, {"processos_no_acervo": len(todos), "ne_06_inexigibilidade": ne06,
                                        "sem_ne_titulo_de_inexigibilidade": por_titulo,

@@ -10,10 +10,11 @@ igual para ele; o fundamento citado muda (`norma`).
 from __future__ import annotations
 
 import json
-import os
 import re
 import time
-from pathlib import Path
+
+from compliance_agent.padroes._comum import RAIZ
+from compliance_agent.rotina_base import gravar_json
 
 _FORTE = re.compile(r"termo de (fomento|colabora)|relat[oó]rio\s+(de\s+)?execu[cç][aã]o\s+(da\s+)?osc|\bOSC\b|"
                     r"monitoramento e avalia|mrosc|13\.019|termo\s+(aditivo\s+.{0,12})?(de|do)\s+conv[eê]nio|"
@@ -35,8 +36,13 @@ def plano(texto: str) -> str:
     return re.sub(r"\s+", " ", texto or "")
 
 
-_CACHE = Path(__file__).resolve().parents[2] / "data" / "padroes" / "_universo_parcerias.json"
+_CACHE = RAIZ / "data" / "padroes" / "_universo_parcerias.json"
 VALIDADE_CACHE_S = 6 * 3600
+
+
+def universo(so: list[str] | None, limite: int | None) -> list[str]:
+    """Os processos pedidos (`so`) ou, sem pedido, as parcerias do acervo."""
+    return so if so is not None else tags_parceria(limite)
 
 
 def tags_parceria(limite: int | None = None) -> list[str]:
@@ -52,8 +58,5 @@ def tags_parceria(limite: int | None = None) -> list[str]:
         ps = ps[:limite]
     tags = [p.name for p in ps if (m := C.manifesto(p)) and eh_parceria(m)]
     if not limite:
-        _CACHE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = _CACHE.with_name(f"{_CACHE.name}.{os.getpid()}.tmp")   # único por processo: --paralelo
-        tmp.write_text(json.dumps({"pastas": len(ps), "tags": tags}), encoding="utf-8")
-        tmp.replace(_CACHE)
+        gravar_json(_CACHE, {"pastas": len(ps), "tags": tags})
     return tags

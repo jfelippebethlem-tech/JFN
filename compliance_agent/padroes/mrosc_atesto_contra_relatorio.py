@@ -32,7 +32,7 @@ from __future__ import annotations
 import re
 
 from compliance_agent.padroes import _pagamento_comum as C
-from compliance_agent.padroes._mrosc_comum import eh_parceria, plano, tags_parceria
+from compliance_agent.padroes._mrosc_comum import eh_parceria, plano, universo
 
 ID = "mrosc_atesto_contra_relatorio"
 
@@ -135,16 +135,9 @@ def _processo(pasta, man, sel):
 
 
 def varrer(limite: int | None = None, so: list[str] | None = None) -> dict:
-    so = so or tags_parceria(limite)
+    so = universo(so, limite)
     achados, cob, n = C.varrer_acervo(_TITULO, _processo, so=so)
-    if achados:
-        con = C.con_ro()
-        obs = C.obs_pagas(con, [a["processo"] for a in achados])
-        con.close()
-        for a in achados:
-            a["valor_pago_ob"] = C.pago(obs.get(a["processo"], []))
-            a["credor"] = "; ".join(sorted({o["nome_credor"] for o in obs.get(a["processo"], [])
-                                             if o.get("nome_credor")}))[:200]
+    C.completar_com_ob(achados)
     cob["universo_definicao"] = "processos de parceria (títulos do manifesto, _mrosc_comum.eh_parceria)"
     return C.resultado(ID, cob.get("parcerias_avaliadas", 0), cob, achados,
                        "data/sei_arquivo/*/manifest.json + texto; ob_orcamentaria_siafe (_ob_paga, soma por processo = PISO)")
