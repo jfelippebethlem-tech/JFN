@@ -199,18 +199,18 @@ export function ckBoot(){
      para o chip da mesa — é o mesmo número, agora também em cartão). */
   /* 19/11/2026 (COR-04, FP medida em fonte primária — ~/vault/aprendizados/fp-medida-*-2026-11-19.md): saíram
      Radar (24 de 26 scores inflados), Mesma sala (0 de 6 grupos altos se sustentam) e Caro + suspeito (universo
-     vazio; REFUTADO em 13/11). As abas continuam; o número só volta à capa depois de corrigido e medido de novo. */
+     vazio; REFUTADO em 13/11). As abas continuam; o número só volta à capa depois de corrigido e medido de novo.
+     20/11/2026: saiu também 'Ente com maior indício de sobrepreço' (juiz reprovou 2×: o topo era a Prefeitura do Rio com
+     R$ 6.990,40 em 2 compras — desproporcional para manchete e fora do escopo estadual). O dado segue na aba Compras. */
   if(_v60)g.innerHTML=[ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
-    ckCard('orgao','Ente com maior indício de sobrepreço','ckgood','bgteal','e_comp'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro')].join('');
   else g.innerHTML=[ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
-    ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
-    ckCard('orgao','Ente com maior indício de sobrepreço','ckgood','bgteal','e_comp')].join('');
+    ckCard('compras','Compras auditáveis','','bgteal','e_comp')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
   if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();

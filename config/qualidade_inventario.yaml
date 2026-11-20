@@ -95,18 +95,6 @@ manchetes:
     consome: ["dono (painel)"]
     detector: intel.comunidades
     campos: {contagem: n}
-  - id: cki-orgao
-    superficie: "cockpit — card 'Ente com maior indício de sobrepreço'"
-    afirma: "O ente comprador com a maior diferença hipotética sobre o preço mediano (indício de sobrepreço conferido no PNCP; quantidade homologada, não OB paga) e o valor."
-    rota: /api/comparador/economia
-    origem: compliance_agent.comparador_precos.economia_potencial
-    fonte: "pncp_resultado, pncp_ente (compliance.db)"
-    natureza: estimado
-    esfera: estado+prefeitura
-    consome: ["dono (painel)"]
-    detector: comparador.economia_potencial
-    campos: {valor: "por_orgao[0].economia", rotulo: "por_orgao[0].orgao"}
-    lista: por_orgao
   - id: cki-lift
     superficie: "cockpit — card 'Melhor detector (lift)'"
     afirma: "O detector (circulares fora do cálculo) que marca mais fornecedores com sanção impeditiva de qualquer época ou ente acima da base, o lift e o n."
@@ -119,6 +107,7 @@ manchetes:
     detector: retro.lift
     campos: {indice: "detectores[max lift, circular=false].lift", rotulo: "detectores[…].detector"}
     lista: detectores
+  # 20/11/2026: cki-orgao SAIU da capa (juiz reprovou 2×: R$ 6.990,40 da Prefeitura do Rio em 2 compras como manchete).
   # 19/11/2026 (COR-04, FP medida em fonte primária — ~/vault/aprendizados/fp-medida-*-2026-11-19.md) SAÍRAM das
   # manchetes: ck-ved (universo vazio, defeitos de alcance), cki-radar e v63-radar (24/26 scores inflados), cki-dossie
   # (universo vazio; REFUTADO 13/11), cki-ninho (5/5 falsos nos grupos altos), v63-alerta (o exibido era falso).

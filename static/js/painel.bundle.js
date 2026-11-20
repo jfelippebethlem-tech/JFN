@@ -10711,15 +10711,13 @@
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
-      ckCard("orgao", "Ente com maior indício de sobrepreço", "ckgood", "bgteal", "e_comp"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro")
     ].join("");
     else g.innerHTML = [
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
-      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
-      ckCard("orgao", "Ente com maior indício de sobrepreço", "ckgood", "bgteal", "e_comp")
+      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp")
     ].join("");
     a11yfy(g);
     if (_v61) {
