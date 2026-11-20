@@ -33,8 +33,9 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-_DB = Path("data") / "compliance.db"
-_UG_CANONICO = Path("data") / "ug_canonico.json"
+from compliance_agent.reporting.intel_base import _DATA, _DB, moeda as _moeda
+
+_UG_CANONICO = _DATA / "ug_canonico.json"
 
 # ───────────────────────── normalização e tokens ─────────────────────────
 _STOP = {"DE", "DA", "DO", "DOS", "DAS", "E", "RJ", "ERJ", "ESTADO", "EST", "A", "O", "EM",
@@ -337,10 +338,6 @@ def depurar(db_path: str | Path | None = None) -> dict:
 
 
 # ───────────────────────── leitura (prosa honesta) ─────────────────────────
-def _moeda(v: float) -> str:
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
 def leitura(agg: dict, nome_orgao: str = "este órgão") -> str:
     """CONCLUSÃO em prosa honesta. Fato julgado pela Corte, não indício nosso."""
     if not agg.get("ok") or not agg.get("n_condenacoes"):

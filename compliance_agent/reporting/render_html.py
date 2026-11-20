@@ -16,11 +16,14 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.reporting.intel_base import _REPORTS
+
 logger = logging.getLogger(__name__)
 
-_REPORTS = Path(__file__).resolve().parent.parent.parent / "reports"
 
 _FAIXA_COR = {"BAIXO": "#2e7d32", "MÉDIO": "#f9a825", "ALTO": "#ef6c00", "EXTREMO": "#c62828"}
+# Parte dos produtores escreve a faixa sem acento ("MEDIO": dossiê mestre, avaliação 360); a cor é a mesma.
+_FAIXA_SEM_ACENTO = {"MEDIO": "MÉDIO"}
 
 _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <style>
@@ -177,7 +180,7 @@ def render_html(ctx: dict) -> str:
         "analista": ctx.get("analista", "Controle Externo (automatizado)"),
         "metodologia": ctx.get("metodologia", "Due diligence Nível II + red flags TCU/TCE-RJ"),
         "score": ctx.get("score", 0), "faixa": faixa,
-        "cor_faixa": _FAIXA_COR.get(faixa, "#777"),
+        "cor_faixa": _FAIXA_COR.get(_FAIXA_SEM_ACENTO.get(faixa, faixa), "#777"),
         "rotulo_score": ctx.get("rotulo_score", "Índice de risco"),
         # peça institucional (nota de RGF, subsídio de audiência) não tem "índice de risco de fornecedor"
         "sem_indice": bool(ctx.get("sem_indice")),

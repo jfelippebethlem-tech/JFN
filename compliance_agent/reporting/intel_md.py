@@ -9,7 +9,7 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
-from compliance_agent.reporting.intel_base import _DB, fmt_cnpj, moeda, so_digitos, cabecalho_frescor
+from compliance_agent.reporting.intel_base import _DB, esc, fmt_cnpj, moeda, so_digitos, cabecalho_frescor
 from compliance_agent.reporting.intel_analise import (
     _FEAT_ANOM, _NOTA_CARDINALIDADE, _anomalias_fornecedor, _beneficios_socios, _fatores_risco,
     _frase_cardinalidade, _red_flags, _resumo_executivo, parecer_fornecedor,
@@ -20,6 +20,9 @@ from compliance_agent import fachada_remotes as _fr
 
 _FB2_TIMEOUT = float(os.environ.get("JFN_FACHADA_B2_TIMEOUT", "20"))
 
+# Idade máxima (dias) de uma linha de `verificacao_sede` para o relatório aceitá-la SEM re-verificar.
+# Acima disso o veredito Google é considerado VELHO e o relatório re-verifica on-demand (quota-guarded).
+# 0 desliga o on-demand (só lê o que o sweep gravou — comportamento antigo; testes determinísticos).
 _SEDE_ONDEMAND_DIAS = int(os.environ.get("JFN_RELATORIO_SEDE_ONDEMAND_DIAS", "30"))
 
 
@@ -306,6 +309,9 @@ def _sede_status_cacheado(cnpj: str) -> str:
     return ((vs[0] or "").upper() if vs else "")
 
 
+# Storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket). A localização COMPLETA
+# ('remote:bucket/objeto') está em `verificacao_sede.visual_img_b2`; aqui só LEMOS do local EXATO gravado
+# (um `rclone cat`), sem failover/duplicação. A foto NÃO fica na VM — é baixada on-demand p/ embutir no PDF.
 _RCLONE_BIN = _fr.rclone_bin()
 
 
@@ -353,7 +359,6 @@ def _fachada_b2_html(cnpj: str) -> str:
     Legenda HONESTA: classe visual + fonte da imagem de rua. Se não houver foto/falhar → '' (sem ruído;
     o veredito textual de 'Realidade da sede' já cobre o caso)."""
     import base64
-    import html as _h
     d = _foto_fachada_b2(cnpj)
     if not d:
         return ""
@@ -362,8 +367,8 @@ def _fachada_b2_html(cnpj: str) -> str:
     b64 = base64.b64encode(img).decode("ascii")
     classe = (d["classe"] or "").replace("_", " ") or "—"
     fonte = d["fonte"] or "imagem de rua"
-    legenda = _h.escape(f"Classe visual: {classe} · imagem de rua, fonte {fonte}. "
-                        "Indício a confirmar in loco — não é prova de fachada.")
+    legenda = esc(f"Classe visual: {classe} · imagem de rua, fonte {fonte}. "
+                  "Indício a confirmar in loco — não é prova de fachada.")
     return (f'<figure style="margin:8px 0;text-align:center">'
             f'<img src="data:{mime};base64,{b64}" '
             f'style="max-width:48%;max-height:320px;border:1px solid #ccc;border-radius:4px"/>'
@@ -594,8 +599,6 @@ def _rodizio_fornecedor(cnpj: str, max_ugs: int = 3) -> dict:
 def _render_execucao(ctx: dict) -> str:
     """Seção 1-G — execução contratual (prova de entrega): cruza OB paga × perícia SEI (lex_execucao).
     Surfacing dos contratos pagos sem execução comprovada nos autos. Indício, não prova; INDISPONÍVEL ≠ irregular."""
-    def _brl(v):
-        return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     L: list[str] = []
     add = L.append
     add("## 1-G. EXECUÇÃO CONTRATUAL — PROVA DE ENTREGA (OB PAGA × PERÍCIA SEI)")
@@ -627,7 +630,7 @@ def _render_execucao(ctx: dict) -> str:
         add("")
         return "\n".join(L)
     tot = sum(x.get("total") or 0 for x in suspeitos)
-    add(f"🟡 **Indício:** **{len(suspeitos)}** processo(s) pago(s) — **R$ {_brl(tot)}** — sem execução comprovada nos autos:")
+    add(f"🟡 **Indício:** **{len(suspeitos)}** processo(s) pago(s) — **R$ {moeda(tot)}** — sem execução comprovada nos autos:")
     add("")
     n_pend = sum(1 for x in suspeitos if x.get("estado") == "PENDENTE")
     if n_pend:
@@ -647,7 +650,7 @@ def _render_execucao(ctx: dict) -> str:
                 _NEGA_OB.search(f"{x.get('indicios') or ''} {x.get('resumo') or ''}"):
             res = "⚠️ veredito anterior negava a OB que o SIAFE registra — em reavaliação. " + res
             n_contest += 1
-        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {'—' if x.get('nota') is None else str(x.get('nota')) + '/10'} | {x.get('estado') or 'PENDENTE'} | {res} |")
+        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {moeda(x.get('total'))} | {x.get('exec')} | {'—' if x.get('nota') is None else str(x.get('nota')) + '/10'} | {x.get('estado') or 'PENDENTE'} | {res} |")
     add("")
     if n_contest:
         add(f"> ⚠️ **{n_contest} processo(s) acima** têm veredito de execução dado antes de a perícia consultar o "
@@ -882,7 +885,6 @@ def render_md(ctx: dict) -> str:
         add(_fr)
         add("")
 
-    # 1. Sumário executivo
     add("## SUMÁRIO EXECUTIVO")
     add("")
     add(_resumo_executivo(ctx))
@@ -898,7 +900,6 @@ def render_md(ctx: dict) -> str:
         add(f"| **Total** | **{p['n_geral']}** | **{moeda(p['total_geral'])}** |")
         add("")
 
-    # 2. Perfil cadastral
     add("## 1. PERFIL CADASTRAL")
     add("")
     emp = (ctx["enriq"].get("dados") or {}).get("empresa") if ctx["enriq"].get("ok") else None
@@ -956,10 +957,8 @@ def render_md(ctx: dict) -> str:
                 "**Indício ≠ acusação.**")
     add("")
 
-    # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
     add(_render_cruzamento(ctx))
 
-    # 1-C. Cruzamento de benefícios sociais dos sócios/administradores (laranja/testa-de-ferro)
     add(_render_beneficios_socios(ctx))
 
     # 1-D0. Emendas parlamentares — recurso por indicação (eixo central de ONG/OSC; caso Con-tato)
@@ -973,13 +972,11 @@ def render_md(ctx: dict) -> str:
         ctx["rodizio_forn"] = _rodizio_fornecedor(ctx.get("cnpj", ""))
     add(_render_rodizio_fornecedor(ctx))
 
-    # 1-F. Conflito de pessoal — sócio/administrador (CPF resolvido) na folha do Estado
     add(_render_conflito_pessoal(ctx))
 
-    # 1-G. Execução contratual (prova de entrega) — OB paga × perícia SEI (lex_execucao). Surfacing de pago-sem-execução.
     add(_render_execucao(ctx))
 
-    # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
+    # Pagamentos (OBs) — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
     # A FONTE DESTES NÚMEROS É O ESPELHO, e ele tem um viés conhecido — dizer "SIAFE/TFE" como se
@@ -1024,7 +1021,6 @@ def render_md(ctx: dict) -> str:
         add("_Sem OBs registradas na base local para este CNPJ._")
         add("")
 
-    # 4. Concentração por órgão + HHI
     add("## 3. CONCENTRAÇÃO POR ÓRGÃO CONTRATANTE (HHI)")
     add("")
     if p["tem_dados"]:
@@ -1045,7 +1041,6 @@ def render_md(ctx: dict) -> str:
         add("_Indisponível sem OBs._")
         add("")
 
-    # 5. Carteira de contratos
     add("## 4. CARTEIRA DE CONTRATOS (SIAFE)")
     add("")
     c = ctx["contratos"]
@@ -1062,7 +1057,6 @@ def render_md(ctx: dict) -> str:
         add("_Nenhum contrato oficial vinculado na base local._")
         add("")
 
-    # 4-B. Contratos e compras diretas no TCE-RJ (Dados Abertos — independe do SEI/WAF)
     add("## 4-B. CONTRATOS E COMPRAS DIRETAS — TCE-RJ (Dados Abertos)")
     add("")
     try:
@@ -1120,7 +1114,6 @@ def render_md(ctx: dict) -> str:
             "(pode ser contratação municipal/federal ou ainda não publicada)._")
         add("")
 
-    # 6. Sinais de risco (do enriquecimento)
     add("## 5. SINAIS DE RISCO CORPORATIVO")
     add("")
     if ctx["enriq"].get("ok"):
@@ -1137,7 +1130,6 @@ def render_md(ctx: dict) -> str:
         add(f"> Sinais corporativos **{ctx['fonte_enriq']}** ({ctx['enriq'].get('_motivo','—')}).")
         add("")
 
-    # 7. Verificação de sanções
     add("## 6. VERIFICAÇÃO EM LISTAS RESTRITIVAS (CEIS/CNEP/CEPIM)")
     add("")
     sanc = (ctx["enriq"].get("dados") or {}).get("sancoes") if ctx["enriq"].get("ok") else None
@@ -1151,7 +1143,6 @@ def render_md(ctx: dict) -> str:
         add(f"> **{ctx['fonte_enriq']}**.")
     add("")
 
-    # 8. Matriz de risco TCU P×I (qualitativa, a partir do que temos)
     add("## 7. MATRIZ DE RISCO — METODOLOGIA TCU P×I")
     add("")
     add("Escala P (probabilidade) × I (impacto), 1–9 cada. Faixas: Baixo 1–9 | Médio 10–39 | Alto 40–79 | Extremo 80–81.")
@@ -1164,7 +1155,6 @@ def render_md(ctx: dict) -> str:
         add(f"| {fator} | {pp} | {ii} | {sc} | {faixa} |")
     add("")
 
-    # 9. Red flags com fundamento
     add("## 8. RED FLAGS DE COMPLIANCE")
     add("")
     rf = _red_flags(ctx)
@@ -1181,10 +1171,8 @@ def render_md(ctx: dict) -> str:
     # 8-B. Análise estatística (Lei de Benford) — paridade com o PDF
     add(_render_benford(ctx))
 
-    # 8-C. Anomalias nas OBs (modelo de detecção) — M2
     add(_render_anomalias(ctx))
 
-    # 9. Análise jurídica e de mérito — o PARECER escrito do JFN
     add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR")
     add("")
     raciocinio = ctx.get("raciocinio")
@@ -1199,7 +1187,6 @@ def render_md(ctx: dict) -> str:
     add(parecer_fornecedor(ctx))
     add("")
 
-    # 10. Recomendações
     add("## 10. RECOMENDAÇÕES")
     add("")
     add("**Imediato (0–30 dias):**")
@@ -1211,7 +1198,6 @@ def render_md(ctx: dict) -> str:
     add("**Estrutural:** monitoramento contínuo automatizado (timers TFE/OB) e atualização trimestral deste relatório.")
     add("")
 
-    # 11. Referências
     add("## 11. REFERÊNCIAS E FONTES")
     add("")
     add("- **Dados primários:** SIAFE-Rio / Transparência Fiscal RJ (OBs e contratos) — `data/compliance.db`.")

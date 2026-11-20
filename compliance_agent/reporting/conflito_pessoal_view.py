@@ -17,8 +17,7 @@ import sqlite3
 from pathlib import Path
 
 from compliance_agent.resolucao_cpf import _norm, middle6
-
-_DB = Path("data") / "compliance.db"
+from compliance_agent.reporting.intel_base import _DB
 
 
 def _con(db_path):

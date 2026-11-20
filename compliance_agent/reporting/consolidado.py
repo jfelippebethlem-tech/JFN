@@ -26,6 +26,7 @@ USO (CLI):
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import sqlite3
 import sys
@@ -33,10 +34,10 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, _DB, _REPORTS, _slug, moeda, so_digitos
+
 _log = logging.getLogger(__name__)
 
-_REPORTS = Path(__file__).resolve().parent.parent.parent / "reports"
-_DB = Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db"
 
 
 def _carregar_env() -> None:
@@ -84,7 +85,7 @@ def _hermes_cache_orgao(ug: str, top_nomes: list[str], limite: int = 6) -> str:
             # casa por CNPJ dos fornecedores da UG que tenham llm_grau preenchido
             cnpjs = [r[0] for r in con.execute(
                 "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
-                "AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14", (str(ug),)).fetchall()]
+                f"AND {SQL_FAVORECIDO_PJ}", (str(ug),)).fetchall()]
             if not cnpjs:
                 return ""
             qs = ",".join("?" * len(cnpjs))
@@ -124,10 +125,8 @@ def _hermes_fresco(fatos: str, titulo_alvo: str) -> str:
         prompt = (f"ALVO: {titulo_alvo}\n\nFATOS APURADOS (somente estes, não invente):\n{fatos}\n\n"
                   "Produza a análise de fraude multi-camada conforme as instruções do sistema.")
         txt = asyncio.run(_hermes(_SYS_HERMES, prompt, max_tokens=1400))
-        txt = (txt or "").strip()
-        # remove cercas de código se a IA desobedecer
-        if txt.startswith("```"):
-            txt = txt.strip("`").lstrip("markdown").strip()
+        from compliance_agent.reporting.intel_analise import sem_cercas
+        txt = sem_cercas(txt)
         return txt if len(txt) > 120 else ""
     except Exception as exc:  # noqa: BLE001
         _log.warning("Hermes fresco indisponível (%s): %s", titulo_alvo, exc)
@@ -196,7 +195,7 @@ _GRAU_COR = {"BAIXO": "#2e7d32", "MODERADO": "#2e7d32", "MÉDIO": "#f9a825", "ME
 
 
 def _esc(s: str) -> str:
-    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    return html.escape(s, quote=False)
 
 
 def _inline(s: str) -> str:
@@ -356,16 +355,6 @@ def _ler(path: str) -> str:
         return ""
 
 
-async def _render_pdf(html: str, destino: str) -> str:
-    from compliance_agent.reporting.render_html import html_to_pdf
-    return await html_to_pdf(html, destino)
-
-
-def _slug(s: str) -> str:
-    from compliance_agent.reporting.inteligencia import _slug as _s
-    return _s(s)
-
-
 async def _enviar_yoda(path_pdf: str, caption: str) -> dict:
     try:
         from compliance_agent.notifications.telegram import enviar_arquivo
@@ -444,19 +433,15 @@ def gerar_consolidado_relatorio(alvo: str, enviar: bool = False) -> dict:
 
 
 def _fatos_fornecedor(ctx: dict) -> str:
-    """Compila os FATOS de fornecedor p/ o capítulo Hermes. Reusa o compilador do módulo de fornecedor
-    quando existir; senão, um resumo determinístico mínimo (sem inventar)."""
+    """Compila os FATOS de fornecedor p/ o capítulo Hermes: o compilador do raciocínio de fornecedor; se ele
+    falhar ou vier vazio, um resumo determinístico mínimo (sem inventar)."""
     try:
-        from compliance_agent.reporting import inteligencia as it
-        for fn in ("_fatos_fornecedor", "_fatos", "_fatos_para_raciocinio"):
-            f = getattr(it, fn, None)
-            if callable(f):
-                txt = f(ctx)
-                if txt and txt.strip():
-                    return txt
+        from compliance_agent.reporting.intel_analise import _fatos_para_raciocinio
+        txt = _fatos_para_raciocinio(ctx)
+        if txt and txt.strip():
+            return txt
     except Exception as exc:  # noqa: BLE001
-        _log.warning("seção %s do consolidado falhou (some do relatório): %s", fn, exc)
-    from compliance_agent.reporting.inteligencia import moeda
+        _log.warning("fatos do fornecedor p/ o consolidado falharam (vai o resumo mínimo): %s", exc)
     p = ctx.get("pagamentos") or {}
     nome = ctx.get("nome", "—")
     if not p.get("tem_dados"):
@@ -497,7 +482,8 @@ def _assemblar(*, tipo: str, titulo: str, subtitulo: str, data: str, grau: str, 
     html = _html_consolidado(titulo, subtitulo, data, grau, capitulos, corpo_md)
     path_pdf = ""
     try:
-        path_pdf = asyncio.run(_render_pdf(html, str(_REPORTS / f"{base}.pdf")))
+        from compliance_agent.reporting.render_html import html_to_pdf
+        path_pdf = asyncio.run(html_to_pdf(html, str(_REPORTS / f"{base}.pdf")))
     except Exception as exc:  # noqa: BLE001
         _log.warning("PDF consolidado falhou: %s", exc)
 
@@ -517,7 +503,7 @@ if __name__ == "__main__":
     import json
     args = sys.argv[1:]
     if len(args) >= 2 and args[0] == "orgao":
-        cod = "".join(ch for ch in args[1] if ch.isdigit())
+        cod = so_digitos(args[1])
         r = gerar_consolidado_orgao(ug=args[1] if cod else None, orgao=None if cod else args[1], enviar=False)
     elif len(args) >= 2 and args[0] == "relatorio":
         r = gerar_consolidado_relatorio(args[1], enviar=False)

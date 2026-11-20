@@ -35,11 +35,12 @@ from compliance_agent.reporting.completude import campo, top_declarado, tudo
 # Já foi 40 no Markdown e 12 no PDF ao mesmo tempo — a mesma UG, dois números —, com o comentário
 # do código afirmando "sem limite, tudo no PDF". Diretriz do dono (2026-07-29): sem corte.
 TOP_OB_ANO: int | None = None
-from compliance_agent.reporting.inteligencia import (
-    cabecalho_frescor,
-    _DB, _REPORTS, _foto_fachada_b2, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
-    _tab_header, _tab_row, fmt_cnpj, moeda, so_digitos,
+from compliance_agent.reporting.intel_base import (
+    SQL_FAVORECIDO_PJ, _DB, _REPORTS, _slug, cabecalho_frescor, fmt_cnpj, inteiro, moeda, so_digitos,
 )
+from compliance_agent.reporting.intel_dados import _hhi
+from compliance_agent.reporting.intel_md import _foto_fachada_b2
+from compliance_agent.reporting.intel_pdf import _mc, _registrar_fonte, _render_parecer_pdf, _tab_header, _tab_row
 
 _log = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ def buscar_orgaos(termo: str, limite: int = 8) -> list[dict]:
     termo = (termo or "").strip()
     if not termo or not _DB.exists():
         return []
-    cod = "".join(ch for ch in termo if ch.isdigit())
+    cod = so_digitos(termo)
     con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
         todas = _todas_ugs(con)
@@ -199,7 +200,7 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
         itens.append({"ug": cod, "nome": nome, "n_obs": int(r["n"] or 0), "total": float(r["total"] or 0.0)})
     out["n_total"] = len(itens)
     if filtro:
-        f = _sem_acento(filtro); fdig = "".join(ch for ch in filtro if ch.isdigit())
+        f = _sem_acento(filtro); fdig = so_digitos(filtro)
         itens = [it for it in itens if f in _sem_acento(it["nome"]) or (fdig and fdig in it["ug"])]
     itens.sort(key=lambda it: it["total"], reverse=True)
     itens = itens[:max(1, limite)]
@@ -208,9 +209,8 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
     titulo = f"🏛️ *UGs / órgãos* — {out['n']}" + (f" resultado(s) para “{filtro}”" if filtro else f" de {out['n_total']} (top por pagamento)")
     linhas = [titulo, "_Use o **código** no /orgao (ex.: «relatório do órgão 036100»)._", ""]
     for it in itens:
-        nobs = f"{it['n_obs']:,}".replace(",", ".")
         linhas.append(f"• `{it['ug']}` — {it['nome']}")
-        linhas.append(f"    {nobs} OBs · R$ {moeda(it['total'])}")
+        linhas.append(f"    {inteiro(it['n_obs'])} OBs · R$ {moeda(it['total'])}")
     if not filtro and out["n_total"] > out["n"]:
         linhas += ["", f"_…{out['n_total'] - out['n']} UGs a mais. Filtre por nome: «/ug saúde», «/ug tribunal»._"]
     elif filtro and not itens:
@@ -294,7 +294,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     if not cands:
         return {"ok": False, "erro": f"Não encontrei órgão/UG para {termo!r}. Veja os códigos/nomes com /ug "
                                      f"(ex.: «/ug {termo}») e tente de novo."}
-    cod = "".join(ch for ch in termo if ch.isdigit())
+    cod = so_digitos(termo)
     eh_sugestao = cands[0].get("_match") == "sugestao"  # não houve match exato → confirmar mesmo com 1
     if not eh_sugestao and (len(cands) == 1 or (cod and any(c["ug"] == cod for c in cands))):
         escolhido = next((c for c in cands if c["ug"] == cod), cands[0])
@@ -377,10 +377,6 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     if retornar_ctx:  # consumido pelo relatório consolidado (reporting/consolidado.py) — sem re-coletar
         out["_ctx"] = ctx
     return out
-
-
-def gerar(orgao: Optional[str] = None, ug: Optional[str] = None, anos: Optional[list[int]] = None) -> dict:
-    return montar(orgao=orgao, ug=ug, anos=anos)
 
 
 def _fatos_orgao(ctx: dict) -> str:
@@ -568,7 +564,7 @@ def parecer_raciocinado_orgao(ctx: dict) -> str:
         if not fatos.strip() or fatos.startswith("- Sem"):
             return ""
         from compliance_agent.direcionamento_cerebro import gerar_sync
-        from compliance_agent.reporting.inteligencia import _normaliza_raciocinio
+        from compliance_agent.reporting.intel_analise import _normaliza_raciocinio
         txt = _normaliza_raciocinio(gerar_sync("FATOS:\n" + fatos, _SYS_RACIOCINIO_ORGAO, timeout=45.0))
         return txt if len(txt) > 80 else ""
     except Exception:  # noqa: BLE001
@@ -695,7 +691,7 @@ def _endereco_real_orgao(ug: str) -> dict:
         try:
             cnpjs = {r[0] for r in con.execute(
                 "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
-                "AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14", (str(ug),)).fetchall()}
+                f"AND {SQL_FAVORECIDO_PJ}", (str(ug),)).fetchall()}
             if not cnpjs:
                 return out
             out["n_forn"] = len(cnpjs)
@@ -775,7 +771,7 @@ def _beneficios_orgao(ug: str) -> dict:
         try:
             cnpjs = [r[0] for r in con.execute(
                 "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
-                "AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14", (str(ug),)).fetchall()]
+                f"AND {SQL_FAVORECIDO_PJ}", (str(ug),)).fetchall()]
         finally:
             con.close()
         if not cnpjs:
@@ -934,8 +930,6 @@ def _recorrentes_identicos(p: dict, min_rep: int = 4, min_valor: float = 50_000.
 
 def _secao_sei_risco_md(add, ctx: dict) -> None:
     """Seção 1-E (órgão) — processos SEI já triados de RISCO (sei_ficha) × OB paga pela UG. Indício, não prova."""
-    def _brl(v):
-        return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     add("## 1-D.1. PROCESSOS SEI DE RISCO PAGOS PELA UG (PERÍCIA DOCUMENTAL × OB)")
     add("")
     add("> Cruza os **processos SEI já triados** (perícia documental — `sei_ficha`) com os **pagamentos (OB)** desta "
@@ -954,22 +948,21 @@ def _secao_sei_risco_md(add, ctx: dict) -> None:
             "(a perícia documental SEI roda por sweep; pode não ter alcançado processos desta UG)._")
         add("")
         return
-    import json as _json
     tot = sum(x.get("total") or 0 for x in itens)
-    add(f"🟡 **{len(itens)}** processo(s) de risco com pagamento — **R$ {_brl(tot)}**:")
+    add(f"🟡 **{len(itens)}** processo(s) de risco com pagamento — **R$ {moeda(tot)}**:")
     add("")
     add("| Processo SEI | Risco | Pago (R$) | OBs | Objeto | 1ª red flag |")
     add("|---|:--:|---:|---:|---|---|")
     for x in tudo(itens):
         try:
-            rf = _json.loads(x.get("red_flags") or "[]")
+            rf = json.loads(x.get("red_flags") or "[]")
         except Exception:
             rf = []
         flag = (str(rf[0]) if rf else "")[:60].replace("|", "/")
         obj = (x.get("objeto") or "")[:45].replace("|", "/")
         risco = (x.get("nivel_risco") or "").replace("médio", "medio")
         emoji = "🔴" if risco == "alto" else "🟡"
-        add(f"| {x.get('numero_sei')} | {emoji} {risco} | {_brl(x.get('total'))} | {x.get('n_obs')} | {obj} | {flag} |")
+        add(f"| {x.get('numero_sei')} | {emoji} {risco} | {moeda(x.get('total'))} | {x.get('n_obs')} | {obj} | {flag} |")
     add("")
     add("> 🟡 **Indício a apurar:** priorizar a leitura integral dos autos acima (maior risco × maior pagamento). **Indício, não prova.**")
     add("")
@@ -1052,7 +1045,6 @@ def dados_contratos_fornecedor(ug: str, nome_ug: str = "") -> dict:
     acontecia na ORIGEM: o relatório não sabia sequer quantos ficaram de fora, e portanto nada podia
     declarar.
     """
-    import sqlite3
 
     out: dict = {"n_fornecedores": 0, "com_contrato": [], "sem_contrato": [], "erro": ""}
     nome_ug_l = (nome_ug or "").lower()
@@ -1061,7 +1053,7 @@ def dados_contratos_fornecedor(ug: str, nome_ug: str = "") -> dict:
     try:
         forns = con.execute(
             "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
-            "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 AND valor>0 "
+            f"FROM ordens_bancarias WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ} AND valor>0 "
             "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC", (ug,)).fetchall()
         out["n_fornecedores"] = len(forns)
         for f in tudo(forns):
@@ -1268,8 +1260,6 @@ def _secao_beneficios_md(add, ctx: dict) -> None:
             forn = (it.get("razao") or "—")[:38]
             add(f"| {forn} | {(it.get('nome') or '—')[:34]} | {it.get('papel', '')} | {tipos} | "
                 f"{_fonte.get(it.get('fonte', ''), it.get('fonte', '') or '—')} |")
-        if len(itens) > 20:
-            add(f"\n> (+{len(itens) - 20} vínculos com indício — detalhe na planilha XLSX.)")
         add("")
         add("> 🟡 **Indício a confirmar:** receber benefício de subsistência **e** ser sócio/gestor de "
             "fornecedor do Estado sugere **interposição de pessoas (laranja)** — confirmar no contrato social, "
@@ -1318,8 +1308,6 @@ def _secao_tce_md(add, ctx: dict) -> None:
             resp = f"{it.get('n_resp', 1)}×" if it.get("n_resp", 1) > 1 else "1"
             add(f"| {it['processo']} | {it.get('ano', '—')} | {it['tipo']} | {moeda(it['valor'])} | {resp} | "
                 f"{it['grupo_natureza'][:22]} | {it['data_sessao']} | {it['orgao_tce'][:24]}{flag} |")
-        if len(itens) > 20:
-            add(f"\n> (+{len(itens) - 20} eventos — detalhe completo na base do TCE-RJ.)")
         add("")
         if t.get("tem_media"):
             add("> ⚠ Linhas marcadas têm **correspondência de órgão incerta** (extinção/reorganização) — "
@@ -1393,8 +1381,7 @@ def _conjunto_certames_orgao(ug: str, nome: str) -> dict:
                     "_nota": f"CNPJ {r['cnpj']} resolvido ({r['metodo']}), mas sem certame indexado no corpus"}
         return {"ok": True, "resolucao": r, "avaliacao": av}
     except Exception as exc:  # noqa: BLE001 — seção é bônus; nunca derruba o /orgao (logado, não mudo)
-        import logging
-        logging.getLogger(__name__).debug("conjunto_certames indisponível p/ UG %s: %s", ug, exc)
+        _log.debug("conjunto_certames indisponível p/ UG %s: %s", ug, exc)
         return {"ok": False, "_nota": f"avaliação de conjunto indisponível: {str(exc)[:120]}"}
 
 
@@ -1405,8 +1392,7 @@ def _secao_nomeacoes_md(add, ctx: dict) -> None:
         from compliance_agent.reporting.capitulos_dossie import secao_nomeacoes_orgao
         sec = secao_nomeacoes_orgao(ctx.get("nome") or "")
     except Exception as exc:  # noqa: BLE001 — capítulo é bônus; nunca derruba o /orgao (logado)
-        import logging
-        logging.getLogger(__name__).debug("seção nomeações do órgão indisponível: %s", exc)
+        _log.debug("seção nomeações do órgão indisponível: %s", exc)
         sec = None
     if not sec:
         return
@@ -1533,7 +1519,6 @@ def _secao_tac_md(add, ctx: dict) -> None:
     ug_m = tj.get("tac_ug") or {}
     emerg = tj.get("emergencial") or {}
     wl = tj.get("worklist") or {}
-    # (a) TAC sistêmico da UG
     add(f"**TAC/indenização (sistêmico da UG):** **{ug_m.get('pct', 0):.1f}%** de R$ {moeda(ug_m.get('total', 0))} "
         f"pagos saíram fora de contrato regular — **R$ {moeda(ug_m.get('total_tac', 0))}** em "
         f"{ug_m.get('n_tac', 0)} OB(s). _Cobertura: {ug_m.get('cobertura', '—')}._")
@@ -1543,14 +1528,12 @@ def _secao_tac_md(add, ctx: dict) -> None:
             "saiu por TAC/indenização — apurar a existência de contrato, a causa da 'dívida' e a regularidade da "
             "despesa (art. 59 par. único Lei 8.666; art. 149 Lei 14.133; art. 10 Lei 8.429/92).")
         add("")
-    # (b) emergencial / dispensa (red flag irmã)
     if emerg.get("ok"):
         add(f"**Emergencial/dispensa (red flag irmã):** **{emerg.get('n_emerg', 0)}** OB(s) citam "
             f"EMERGENCIAL/DISPENSA na observação — R$ {moeda(emerg.get('total_emerg', 0))} "
             f"({emerg.get('pct', 0):.1f}% do valor com observação). Dispensa/emergência reiterada (art. 75 IV/VIII "
             "Lei 14.133; art. 24 IV Lei 8.666) reforça a hipótese de fuga ao certame. _Indício a verificar._")
         add("")
-    # (c) worklist dos fornecedores com maior TAC%
     forn = wl.get("fornecedores") or []
     if forn:
         add(f"**Worklist — fornecedores da UG com maior pagamento via TAC/indenização** "
@@ -1612,7 +1595,6 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
         "ingerido. Os demais seguem **INDISPONÍVEL** (não 'limpos').")
     add("")
 
-    # (1) sem fins lucrativos
     sf = ar.get("sem_fins_lucrativos") or []
     add("### (1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor")
     add("")
@@ -1640,7 +1622,6 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
         add("_Nenhum fornecedor com natureza jurídica sem fins lucrativos ('3xxx') entre os cobertos pelo dump._")
         add("")
 
-    # (2) rede/grupo
     rede = ar.get("rede_mesmo_orgao") or []
     veic = ar.get("veiculos_aluguel") or []
     add("### (2) Rede / grupo — administradores compartilhados")
@@ -1676,7 +1657,6 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
             "específico. Listado para due diligence, não como acusação.")
         add("")
 
-    # (3) laranja / sócio-único
     su = ar.get("socio_unico_alto_valor") or []
     add("### (3) Laranja / sócio-único de alto valor")
     add("")
@@ -1697,7 +1677,6 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
         add("_Nenhum fornecedor de alto valor com administrador único entre os cobertos pelo QSA._")
         add("")
 
-    # (4) situação cadastral (só se foi consultada)
     cad = ar.get("cadastro") or {}
     if cad.get("ok") and cad.get("achados"):
         add("### (4) Situação cadastral externa (amostra)")
@@ -1858,30 +1837,19 @@ def render_md(ctx: dict) -> str:
         add("_Nenhum padrão relevante de pagamentos de valor idêntico repetido (≥4× acima de R$ 50 mil)._")
         add("")
 
-    # 1-D. Triagem de Due Diligence (fachada/laranja) + rodízio temporal (cartel) — o coração da inteligência
     _secao_dd_md(add, ctx)
-    # 1-D.1. Processos SEI de risco já triados × OB paga pela UG (sintetiza a perícia documental no /orgao)
     _secao_sei_risco_md(add, ctx)
-    # 1-L. Contratos por fornecedor (ativos × arquivados, objeto, contratado × pago) — TCE-RJ Dados Abertos
     _secao_contratos_fornecedor_md(add, ctx)
-    # 1-E. Verificação de realidade do endereço das sedes (as empresas são reais?)
     _secao_endereco_md(add, ctx)
-    # 1-F. Benefícios sociais dos sócios/administradores (cruzamento de laranja — testa-de-ferro)
     _secao_beneficios_md(add, ctx)
-    # 1-G. Sanções do TCE-RJ ao órgão (controle externo — fato já julgado)
     _secao_tce_md(add, ctx)
-    # 1-H. Concentração OCULTA por grupo econômico (cartel / concorrência fictícia)
     _secao_concentracao_grupo_md(add, ctx)
-    # 1-I. Painel de detectores (spec de licitações) — visão unificada dos ResultadoDetector (J1 + futuros)
     _secao_painel_detectores_md(add, ctx)
     _secao_conjunto_certames_md(add, ctx)
     _secao_nomeacoes_md(add, ctx)
-    # 1-J. Pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist de co-suspeitos
     _secao_tac_md(add, ctx)
-    # 1-K. Cruzamento Receita Federal — anomalias (sem-fins / rede-grupo / veículo de aluguel / laranja)
     _secao_anomalia_receita_md(add, ctx)
 
-    # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
     add("> Por exercício, as **maiores OBs** (materiais) e o fornecedor; a **lista completa** de cada "
@@ -1950,12 +1918,14 @@ def _risco_orgao(ctx: dict) -> dict:
         from compliance_agent import lex
         ach = lex._achados_orgao(ctx)
         emoji, rotulo, just = lex._grau(ach)
-    except Exception:  # noqa: BLE001
-        ach, emoji, rotulo, just = [], "🟢", "VERDE", "sem indícios relevantes nos dados disponíveis"
+    except Exception as exc:  # noqa: BLE001 — sem o motor não há grau: INDISPONÍVEL, nunca VERDE
+        _log.warning("grau do órgão não avaliado (motor de achados falhou): %s", str(exc)[:160])
+        ach, emoji, rotulo, just = [], "", "INDISPONÍVEL", ("grau não avaliado — o motor de achados do órgão "
+                                                           "falhou (INDISPONÍVEL ≠ sem indício)")
     p = ctx.get("pagamentos") or {}
     top = float((p.get("hhi") or {}).get("top_share") or 0)
     base = sum({1: 6, 2: 12, 3: 22, 4: 34}.get(a.get("grav", 0), 0) for a in ach)
-    score = min(99, int(base + min(top, 60) * 0.5))
+    score = min(99, int(base + min(top, 60) * 0.5)) if rotulo != "INDISPONÍVEL" else None
     return {"achados": ach, "emoji": emoji, "rotulo": rotulo, "just": just, "score": score}
 
 
@@ -2423,7 +2393,6 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
                      f"{cov.get('n_com_qsa', 0)} ({cov.get('pct_qsa', 0):.0f}%) tem QSA ingerido. Os demais seguem "
                      "INDISPONIVEL (nao 'limpos')."))
 
-    # (1) sem fins lucrativos
     sf = ar.get("sem_fins_lucrativos") or []
     if sf:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
@@ -2448,7 +2417,6 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
                            "(ressalva) - recebimento provavelmente legitimo."))
         pdf.set_text_color(0, 0, 0)
 
-    # (2) rede / grupo
     rede = ar.get("rede_mesmo_orgao") or []
     if rede:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
@@ -2480,7 +2448,6 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
                        "conglomerados legitimos - NAO e, por si, anomalia. Listado para due diligence, nao como acusacao."))
         pdf.set_text_color(0, 0, 0)
 
-    # (3) laranja / socio-unico
     su = ar.get("socio_unico_alto_valor") or []
     if su:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
@@ -2550,11 +2517,11 @@ def render_pdf(ctx: dict, destino: str) -> str:
         else:
             pdf.set_text_color(255, 255, 255)
         pdf.set_font(pdf._fam, "B", 12)
-        pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {_risco['rotulo']}   ·   Score de risco do órgão: {_risco['score']}/100"),
+        pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {_risco['rotulo']}   ·   Score de risco do órgão: {'INDISPONÍVEL' if _risco['score'] is None else str(_risco['score']) + '/100'}"),
                  fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
         _mc(pdf, 4.5, _t(f"{_risco['just']}. O score é indício INTERNO de atenção (concentração + padrões ACFE), "
-                         "NÃO uma acusação. Os red flags e a matriz P×I estão abaixo; o detalhe jurídico, no Parecer Lex anexo."))
+                         "NÃO uma acusação. Os red flags e a matriz P×I estão abaixo; o detalhe jurídico, no parecer anexo."))
     else:
         _risco = {"achados": []}
 
@@ -2634,7 +2601,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
                                (str(_sc), 16, "R"), (_faixa, 28, "L")], h=4.8)
             pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
             _mc(pdf, 4, _t("Indícios a verificar (metodologia TCU P×I). Observação, fundamento legal e diligência "
-                           "sugerida de cada um estão no Parecer Lex anexo a este relatório."))
+                           "sugerida de cada um estão no Parecer jurídico anexo a este relatório."))
             pdf.set_text_color(0, 0, 0)
         else:
             _mc(pdf, 4.5, _t("Nenhum red flag automático disparou a partir dos pagamentos (OB). Presunção de "
@@ -2658,7 +2625,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
             pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
-            _maiores, _nota_ob = top_declarado(
+            _maiores, _ = top_declarado(
                 sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0)),
                 TOP_OB_ANO, "OBs do exercício", onde="na planilha XLSX anexa")
             _nota = f"{b['n']} OBs — Total: R$ {moeda(b['total'])}" + (
@@ -2701,6 +2668,6 @@ if __name__ == "__main__":
         sys.exit(1)
     anos_cli = [int(a) for a in args if a.isdigit() and len(a) == 4]
     termo_cli = " ".join(a for a in args if not (a.isdigit() and len(a) == 4)).strip()
-    res = gerar(orgao=termo_cli, anos=anos_cli or None)
+    res = montar(orgao=termo_cli, anos=anos_cli or None)
     print(json.dumps({k: v for k, v in res.items() if k != "resumo"}, ensure_ascii=False, indent=2))
     print("\nRESUMO:", res.get("resumo", ""))

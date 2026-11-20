@@ -43,6 +43,8 @@ import urllib.error
 import urllib.request
 from typing import Optional
 
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, so_digitos
+
 _log = logging.getLogger(__name__)
 
 # ── parâmetros (determinísticos, ajustáveis) ───────────────────────────────────
@@ -87,9 +89,9 @@ def _tem_tabela(con: sqlite3.Connection, nome: str) -> bool:
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (nome,)).fetchone())
 
 
-def _norm_ug(ug) -> str:
-    """UG só-dígitos (o `ug_codigo` na base é a string com zeros à esquerda, ex.: '036100')."""
-    return "".join(ch for ch in str(ug or "") if ch.isdigit())
+# UG só-dígitos (o `ug_codigo` na base é a string com zeros à esquerda, ex.: '036100').
+_norm_ug = so_digitos
+_PJ_OB = SQL_FAVORECIDO_PJ.replace("favorecido_cpf", "ob.favorecido_cpf")
 
 
 def _ressalva_nome(nome: str) -> bool:
@@ -100,13 +102,13 @@ def _ressalva_nome(nome: str) -> bool:
 # ── anomalia 1: sem fins lucrativos recebendo ──────────────────────────────────
 def _sem_fins_lucrativos(con: sqlite3.Connection, ug: str) -> list[dict]:
     rows = con.execute(
-        """
+        f"""
         SELECT em.razao_social, em.natureza_cod,
                substr(ob.favorecido_cpf,1,8) AS cb,
                SUM(ob.valor) AS v
           FROM ordens_bancarias ob
           JOIN empresas_min em ON em.cnpj_basico = substr(ob.favorecido_cpf,1,8)
-         WHERE ob.ug_codigo = ? AND length(ob.favorecido_cpf) = 14
+         WHERE ob.ug_codigo = ? AND {_PJ_OB}
            AND em.natureza_cod LIKE '3%'
          GROUP BY cb
          ORDER BY v DESC
@@ -130,11 +132,11 @@ def _sem_fins_lucrativos(con: sqlite3.Connection, ug: str) -> list[dict]:
 # ── anomalia 2a: pessoas administrando ≥2 fornecedores DO MESMO órgão ──────────
 def _rede_mesmo_orgao(con: sqlite3.Connection, ug: str) -> list[dict]:
     rows = con.execute(
-        """
+        f"""
         WITH forn AS (
             SELECT DISTINCT substr(favorecido_cpf,1,8) AS cb
               FROM ordens_bancarias
-             WHERE ug_codigo = ? AND length(favorecido_cpf) = 14
+             WHERE ug_codigo = ? AND {SQL_FAVORECIDO_PJ}
         )
         SELECT s.nome_socio, s.doc_socio,
                COUNT(DISTINCT s.cnpj_basico) AS nf,
@@ -167,11 +169,11 @@ def _veiculo_de_aluguel(con: sqlite3.Connection, ug: str) -> list[dict]:
     if not _tem_tabela(con, "socios_reverso"):
         return []
     rows = con.execute(
-        """
+        f"""
         WITH forn AS (
             SELECT DISTINCT substr(favorecido_cpf,1,8) AS cb
               FROM ordens_bancarias
-             WHERE ug_codigo = ? AND length(favorecido_cpf) = 14
+             WHERE ug_codigo = ? AND {SQL_FAVORECIDO_PJ}
         ),
         adm AS (
             SELECT DISTINCT s.nome_norm, s.nome_socio, s.doc_socio
@@ -203,13 +205,13 @@ def _veiculo_de_aluguel(con: sqlite3.Connection, ug: str) -> list[dict]:
 # ── anomalia 3: laranja / sócio-único de alto valor ───────────────────────────
 def _socio_unico_alto_valor(con: sqlite3.Connection, ug: str, piso: float) -> list[dict]:
     rows = con.execute(
-        """
+        f"""
         WITH fv AS (
             SELECT substr(favorecido_cpf,1,8) AS cb,
                    MAX(favorecido_nome) AS nm,
                    SUM(valor) AS v
               FROM ordens_bancarias
-             WHERE ug_codigo = ? AND length(favorecido_cpf) = 14
+             WHERE ug_codigo = ? AND {SQL_FAVORECIDO_PJ}
              GROUP BY cb
         )
         SELECT fv.cb, fv.nm, fv.v,
@@ -348,15 +350,15 @@ def anomalias_orgao(ug, *, valor_alto: float = _VALOR_ALTO,
         # cobertura honesta: dos fornecedores PJ da UG, quantos têm match no dump?
         n_forn = con.execute(
             "SELECT COUNT(DISTINCT substr(favorecido_cpf,1,8)) FROM ordens_bancarias "
-            "WHERE ug_codigo=? AND length(favorecido_cpf)=14", (ug,)).fetchone()[0] or 0
+            f"WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ}", (ug,)).fetchone()[0] or 0
         n_match = con.execute(
             "SELECT COUNT(DISTINCT ob.favorecido_cpf) FROM ordens_bancarias ob "
             "JOIN empresas_min em ON em.cnpj_basico=substr(ob.favorecido_cpf,1,8) "
-            "WHERE ob.ug_codigo=? AND length(ob.favorecido_cpf)=14", (ug,)).fetchone()[0] or 0
+            f"WHERE ob.ug_codigo=? AND {_PJ_OB}", (ug,)).fetchone()[0] or 0
         n_qsa = con.execute(
             "SELECT COUNT(DISTINCT ob.favorecido_cpf) FROM ordens_bancarias ob "
             "JOIN socios_receita s ON s.cnpj_basico=substr(ob.favorecido_cpf,1,8) "
-            "WHERE ob.ug_codigo=? AND length(ob.favorecido_cpf)=14", (ug,)).fetchone()[0] or 0
+            f"WHERE ob.ug_codigo=? AND {_PJ_OB}", (ug,)).fetchone()[0] or 0
 
         sem_fins = _sem_fins_lucrativos(con, ug)
         rede = _rede_mesmo_orgao(con, ug)

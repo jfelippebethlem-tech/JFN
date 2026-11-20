@@ -18,15 +18,18 @@ from compliance_agent.reporting.intel_base import _DB, _REGISTRY, moeda, so_digi
 
 logger = logging.getLogger(__name__)
 
+# timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento).
+# O relatório é ASSÍNCRONO/push (não está no caminho do `terminal` 60s do Yoda): pode esperar mais para que
+# perfil RFB, sinais corporativos (§5) e CEIS/CNEP/CEPIM (§6) populem em vez de cair em INDISPONÍVEL por egress.
+# Antes era 35s e o enriquecimento estourava na VM (2 vCPU, egress lento). Agora ~90s + retry com backoff
+# (sinal transitório) + cache por CNPJ (TTL 7 dias) para não repetir o egress a cada relatório.
+# Se mesmo assim falhar, o relatório sai com os dados REAIS locais (OBs/contratos) e marca o enriquecimento
+# como INDISPONÍVEL — degrada honesto, nunca inventa.
 _ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "90"))
-
-
+# nº de TENTATIVAS do enriquecimento (1 = sem retry). Backoff entre tentativas em _ENRIQUECE_BACKOFF s.
 _ENRIQUECE_TENTATIVAS = int(os.environ.get("JFN_RELATORIO_ENRIQUECE_TENTATIVAS", "2"))
-
-
 _ENRIQUECE_BACKOFF = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_BACKOFF", "2"))
-
-
+# TTL do cache do enriquecimento por CNPJ (s). 0 desliga o cache (testes determinísticos).
 _ENRIQUECE_CACHE_TTL = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_CACHE_TTL", str(7 * 86400)))
 
 
@@ -86,6 +89,10 @@ def _norm_alnum(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+# `buscar_candidatos` fazia `lower(favorecido_nome) LIKE '%termo%'` + GROUP BY favorecido_cpf em
+# ordens_bancarias (~1,12M linhas) → full-scan ~6-18s por chamada (não indexável: substring+função).
+# Mas há só ~73.881 favorecidos DISTINTOS. `favorecido_resumo` é o GROUP BY pré-computado (74k linhas):
+# o MESMO LIKE roda ~15× mais rápido.
 def atualizar_favorecido_resumo(db_path=None) -> dict:
     """(Re)constrói `favorecido_resumo` — o GROUP BY de ordens_bancarias por favorecido_cpf pré-computado.
     Idempotente: DROP+CREATE+INSERT numa ÚNICA transação (a tabela nunca fica vazia/parcial p/ o leitor).
@@ -282,12 +289,6 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                            "raiz": raiz, "n_estabelecimentos": len(membros)})
     ordenados = sorted(colapsados, key=lambda c: (c["total_pago"], c["n_obs"]), reverse=True)
     return ordenados[:limite]
-
-
-def resolver_empresa(termo: str) -> dict:
-    """Compat: retorna o melhor candidato único {cnpj, nome, fonte} (ou cnpj='')."""
-    c = buscar_candidatos(termo, limite=1)
-    return c[0] if c else {"cnpj": "", "nome": termo, "fonte": "nao_resolvido"}
 
 
 def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:

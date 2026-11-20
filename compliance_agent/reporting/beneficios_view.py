@@ -16,7 +16,8 @@ import json
 import sqlite3
 from pathlib import Path
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.reporting.intel_base import _DB
+
 
 # papéis de GESTÃO no QSA (sócio-administrador, diretor, presidente, administrador, conselheiro, titular)
 _PAPEL_GESTAO = ("administrador", "diretor", "presidente", "conselheiro", "titular", "liquidante")

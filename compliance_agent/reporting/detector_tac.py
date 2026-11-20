@@ -25,10 +25,12 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
-# Regex (pedido do dono): casa os instrumentos de regularização fora de contrato regular no texto livre da OB.
-# "RECONHEC...DIVIDA" tolera "RECONHECIMENTO DE DÍVIDA" (a frase natural) — janela de até 12 chars.
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, reais as _moeda, so_digitos as _digitos
+
 logger = logging.getLogger(__name__)
 
+# Regex (pedido do dono): casa os instrumentos de regularização fora de contrato regular no texto livre da OB.
+# "RECONHEC...DIVIDA" tolera "RECONHECIMENTO DE DÍVIDA" (a frase natural) — janela de até 12 chars.
 _RX_TAC = re.compile(r"AJUSTE DE CONTAS|INDENIZ|RECONHEC.{0,12}D[IÍ]VIDA", re.IGNORECASE)
 
 # Faixas de severidade por % do valor pago via TAC/indenização (sobre o universo COM observação preenchida).
@@ -49,10 +51,6 @@ def _resolver_db(db_path=None) -> Path:
         return Path(env)
     data = Path(os.environ.get("JFN_DATA_DIR", _root() / "data"))
     return data / "compliance.db"
-
-
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
 
 
 def _severidade(pct: float, total_tac: float) -> tuple[str, str]:
@@ -293,7 +291,7 @@ def worklist_tac_por_ug(ug_codigo: str, *, db_path=None, top_n: int = 12,
                 "MAX(favorecido_nome) nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
                 "SUM(CASE WHEN " + _SQL_TAC + " THEN 1 ELSE 0 END) n_tac, "  # noqa: S608 (_SQL_TAC fixo)
                 "ROUND(SUM(CASE WHEN " + _SQL_TAC + " THEN valor ELSE 0 END),2) tac "  # noqa: S608
-                "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 "
+                f"FROM ordens_bancarias WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ} "
                 "GROUP BY raiz HAVING total >= ? ORDER BY tac DESC",
                 (ug, min_total)).fetchall()
             rn = con.execute(
@@ -422,15 +420,6 @@ def _ugs_do_cnpj(cnpj: str, db: Path) -> list[tuple[str, str, float]]:
     finally:
         con.close()
     return [(str(r[0] or ""), str(r[1] or ""), float(r[2] or 0.0)) for r in rows]
-
-
-# ───────────────────────── moeda (formatação local, sem dependência) ─────────────────────────
-
-def _moeda(v) -> str:
-    try:
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (TypeError, ValueError):
-        return "R$ 0,00"
 
 
 # ───────────────────────── red flag pronta p/ render ─────────────────────────

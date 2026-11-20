@@ -15,10 +15,10 @@ tudo, o XLSX é apoio. Indício ≠ acusação; empenho ≠ liquidação ≠ pag
 """
 from __future__ import annotations
 
-import html as _html
 from datetime import datetime
 
 from compliance_agent.knowledge.jurisprudencia import buscar_acordaos
+from compliance_agent.reporting.intel_base import esc as _esc, fmt_doc, reais, so_digitos
 
 # ── metadados por detector: rótulo, o que detecta, irregularidade (p/ jurisprudência), dispositivos ──
 # `evid` lista os campos do dict `evidencias` a exibir: (chave, rótulo, formato).
@@ -156,15 +156,12 @@ _DET_META: dict[str, dict] = {
 }
 
 
-def _esc(s) -> str:
-    return _html.escape(str(s if s is not None else ""))
-
-
 def _moeda(v) -> str:
     try:
-        return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        float(v)
     except (TypeError, ValueError):
         return _esc(v)
+    return reais(v)
 
 
 def _fmt(valor, formato: str) -> str:
@@ -185,11 +182,8 @@ def _fmt(valor, formato: str) -> str:
     if formato == "bool":
         return "sim" if valor else "não"
     if formato == "doc":
-        d = "".join(ch for ch in str(valor) if ch.isdigit())
-        if len(d) == 14:
-            return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
-        if len(d) == 11:  # CPF mascarado (LGPD)
-            return f"***.{d[3:6]}.{d[6:9]}-**"
+        if len(so := so_digitos(valor)) in (11, 14):
+            return fmt_doc(so)
         return _esc(valor)
     if formato == "lista":
         itens = valor if isinstance(valor, list) else [valor]

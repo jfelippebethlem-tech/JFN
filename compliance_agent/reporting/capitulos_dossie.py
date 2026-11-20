@@ -22,6 +22,7 @@ from compliance_agent.editais.flags import grau_flag
 from compliance_agent.sei import acervo_texto
 from compliance_agent.editais.peer_diff import forca_e7
 from compliance_agent.knowledge.jurisprudencia import obter_sumula
+from compliance_agent.reporting.intel_base import esc, so_digitos as _dig
 
 # tetos de exibição do capítulo de cláusulas (evita despejar 100+ cláusulas NÃO-AFERÍVEIS)
 _MAX_SEM_VEREDITO = 20
@@ -31,11 +32,7 @@ _ARQUIVO_SEI = _REPO / "data" / "sei_arquivo"
 
 
 def _esc(s) -> str:
-    return html.escape(str(s if s is not None else "")).strip()
-
-
-def _dig(s) -> str:
-    return re.sub(r"\D", "", s or "")
+    return esc(s).strip()
 
 
 def _certames_do_fornecedor(con: sqlite3.Connection, cnpj: str) -> list[str]:

@@ -4,6 +4,7 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 """
 from __future__ import annotations
 
+import html
 import logging
 import os
 import re
@@ -17,6 +18,11 @@ _DATA = Path(os.environ.get("JFN_DATA_DIR", _ROOT / "data"))
 
 
 _DB = _DATA / "compliance.db"
+
+# "Favorecido é PJ" em `ordens_bancarias` (espelho TFE). 14 caracteres NÃO basta: o TFE grava o CPF já
+# mascarado como '999.***.***-99' — também 14 caracteres (medido 20/11/2026: 286.869 das 1.202.093 OB de
+# documento com 14 caracteres são de pessoa física; no ITERJ, 104 dos 203 "fornecedores PJ").
+SQL_FAVORECIDO_PJ = "length(favorecido_cpf)=14 AND favorecido_cpf NOT LIKE '%*%'"
 
 
 _REPORTS = _ROOT / "reports"
@@ -41,19 +47,21 @@ def cabecalho_frescor() -> str:
         con = sqlite3.connect(os.environ.get("JFN_DB", str(_DB)))
         try:
             tot = con.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0] or 0
-            cnpj = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE length(favorecido_cpf)=14").fetchone()[0] or 0
+            cnpj = con.execute(f"SELECT COUNT(*) FROM ordens_bancarias WHERE {SQL_FAVORECIDO_PJ}").fetchone()[0] or 0
             ult = con.execute("SELECT MAX(data_pagamento) FROM ordens_bancarias").fetchone()[0]
         finally:
             con.close()
         if not tot:
             return ""
         pct = round(100 * cnpj / tot)
-        return (f"> _Cobertura da base: {tot:,} OBs · {pct}% com CNPJ (PJ) · OB mais recente: {ult or '—'}. "
-                f"OB = pagamento definitivo (SIAFE/TFE-RJ); afirmações limitadas a esta cobertura._").replace(",", ".")
+        return (f"> _Cobertura da base: {inteiro(tot)} OBs · {pct}% com CNPJ (PJ) · OB mais recente: {ult or '—'}. "
+                f"OB = pagamento definitivo (SIAFE/TFE-RJ); afirmações limitadas a esta cobertura._")
     except Exception:
         return ""
 
 
+# retenção: relatórios são REGENERÁVEIS sob demanda (cada /relatorio gera de novo), então não precisam ficar
+# acumulando no disco. Mantemos só os recentes (JFN_REPORTS_RETENCAO_DIAS, default 7).
 _RETENCAO_DIAS = int(os.environ.get("JFN_REPORTS_RETENCAO_DIAS", "7"))
 
 
@@ -73,8 +81,8 @@ def _prune_reports():
         logger.debug("janitor de reports interrompido: %s", exc)
 
 
-def so_digitos(s: str) -> str:
-    return re.sub(r"\D", "", s or "")
+def so_digitos(s) -> str:
+    return re.sub(r"\D", "", str(s or ""))
 
 
 def fmt_cnpj(c: str) -> str:
@@ -82,6 +90,31 @@ def fmt_cnpj(c: str) -> str:
     if len(c) != 14:
         return c
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}"
+
+
+def fmt_doc(doc) -> str:
+    """Documento para exibição: CNPJ formatado; CPF SEMPRE mascarado (LGPD, PAD-04 — mesma máscara de
+    `qualidade.verificadores`); o resto sai só em dígitos, como `fmt_cnpj`."""
+    d = so_digitos(doc)
+    if len(d) == 11:
+        from compliance_agent.qualidade.verificadores import mascarar_cpf
+        return mascarar_cpf(d)
+    return fmt_cnpj(d)
+
+
+def esc(s) -> str:
+    """Texto para HTML (None vira vazio)."""
+    return html.escape(str(s if s is not None else ""))
+
+
+def inteiro(n) -> str:
+    """12345 -> '12.345' (milhar com ponto)."""
+    return f"{n:,}".replace(",", ".")
+
+
+def reais(v) -> str:
+    """'R$ ' + `moeda(v)` — valor inválido vira R$ 0,00 (quem precisa de outro rótulo testa antes)."""
+    return "R$ " + moeda(v)
 
 
 def moeda(v) -> str:

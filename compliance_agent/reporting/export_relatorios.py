@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Iterable
 
 from compliance_agent.database.models import OrdemBancaria, Alerta, get_session, init_db
+from compliance_agent.reporting.intel_base import reais
 
 REPORT_DIR = Path(__file__).resolve().parent.parent / "reports"
 REPORT_DIR.mkdir(exist_ok=True)
@@ -41,9 +42,10 @@ def _alert_rows(limit: int = 50):
 
 def _fmt_currency(value) -> str:
     try:
-        return f"R$ {float(value):,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
-    except Exception:
+        float(value)
+    except (TypeError, ValueError):
         return str(value)
+    return reais(value)
 
 
 def build_txt_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:

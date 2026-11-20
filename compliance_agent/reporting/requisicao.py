@@ -28,6 +28,8 @@ import logging
 import sqlite3
 from datetime import date
 
+from compliance_agent.reporting.intel_base import reais, so_digitos
+
 # Nenhuma palavra de juízo entra no texto. A lista existe para o teste poder travá-la.
 PALAVRAS_VEDADAS = ("irregular", "ilegal", "fraude", "improbidade", "desvio", "superfatur",
                     "dolo", "má-fé", "crime", "culpado", "responsabiliza")
@@ -55,7 +57,7 @@ _NOMES_ORGAO = {
 
 
 def _orgao(numero_sei: str) -> str:
-    d = "".join(c for c in str(numero_sei or "") if c.isdigit())
+    d = so_digitos(numero_sei)
     return d[:6] if len(d) >= 6 else ""
 
 
@@ -72,7 +74,7 @@ def _moeda(v) -> str:
         return "não informado"
     if f <= 0:
         return "não informado"
-    return "R$ " + f"{f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return reais(f)
 
 
 def minutas(con: sqlite3.Connection, *, limite_por_orgao: int = 60) -> list[dict]:

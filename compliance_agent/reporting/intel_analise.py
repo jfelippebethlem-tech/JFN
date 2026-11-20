@@ -14,6 +14,9 @@ from compliance_agent.reporting.intel_base import _num_brl
 
 logger = logging.getLogger(__name__)
 
+# Modelo conceitual da cadeia de despesa (ERRO CONCEITUAL a evitar: OB ≠ contrato). A relação é uma ÁRVORE:
+# um PROCESSO SEI (licitação / Registro de Preços-SRP) pode gerar VÁRIOS contratos, VÁRIOS aditivos e MUITAS
+# OBs; um CONTRATO gera VÁRIAS OBs (parcelas/medições). OB = pagamento (verdade); nunca contar OB como contrato.
 _NOTA_CARDINALIDADE = (
     "**Nota conceitual (cadeia da despesa):** a **OB (Ordem Bancária) é o pagamento** — a verdade financeira, "
     "porém **uma parcela**, não um contrato. Um **contrato** gera **várias OBs** (parcelas/medições/aditivos); "
@@ -313,13 +316,21 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
     return "\n".join("- " + x for x in L)
 
 
+def sem_cercas(t: str) -> str:
+    """Tira a cerca de código (```lang ... ```) que o LLM às vezes põe em volta da resposta. A etiqueta de
+    linguagem só sai quando é etiqueta (seguida de quebra de linha ou de JSON): em "```dados apurados…" a
+    palavra é texto."""
+    t = (t or "").strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```(?:[a-zA-Z]*(?=\n|\s*[\[{]))?\n?|\n?```$", "", t).strip()
+    return t
+
+
 def _normaliza_raciocinio(txt: str) -> str:
     """Limpa a saída do LLM: tira cercas de código e converte JSON/dict (mesmo com aspas simples) em bullets."""
     import ast
     import json as _json
-    t = (txt or "").strip()
-    if t.startswith("```"):
-        t = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", t).strip()
+    t = sem_cercas(txt)
 
     # remove marcador de bullet já presente na string (o LLM às vezes embute "- "/"• "/"* " no próprio
     # item do JSON) p/ não duplicar quando re-prefixamos com "- " → evita o "- -" no MD (§9).
@@ -603,6 +614,7 @@ _SYS_RACIOCINIO = (
 )
 
 
+# Boilerplate de licitação que NÃO distingue setor (não conta como aderência de objeto×CNAE).
 _BOILERPLATE = {
     "contratacao", "contratação", "prestacao", "prestação", "servico", "serviço", "servicos",
     "serviços", "empresa", "pessoa", "juridica", "jurídica", "especializada", "especializado",

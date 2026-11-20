@@ -211,7 +211,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             if not ugs_l:
                 return "—"
             top = "; ".join(f"{esc(u.get('nome'))} (R$ {moeda(u.get('total'))})" for u in ugs_l[:10])
-            extra = f" (+{len(ugs_l) - 3} UG)" if len(ugs_l) > 3 else ""
+            extra = f" (+{len(ugs_l) - 10} UG)" if len(ugs_l) > 10 else ""
             return top + extra
 
         def _sei_cell(r):

@@ -36,104 +36,29 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-
-
-# retenção: relatórios são REGENERÁVEIS sob demanda (cada /relatorio gera de novo), então não precisam ficar
-# acumulando no disco. Mantemos só os recentes (JFN_REPORTS_RETENCAO_DIAS, default 7).
-
-
-
-# timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento).
-# O relatório é ASSÍNCRONO/push (não está no caminho do `terminal` 60s do Yoda): pode esperar mais para que
-# perfil RFB, sinais corporativos (§5) e CEIS/CNEP/CEPIM (§6) populem em vez de cair em INDISPONÍVEL por egress.
-# Antes era 35s e o enriquecimento estourava na VM (2 vCPU, egress lento). Agora ~90s + retry com backoff
-# (sinal transitório) + cache por CNPJ (TTL 7 dias) para não repetir o egress a cada relatório.
-# Se mesmo assim falhar, o relatório sai com os dados REAIS locais (OBs/contratos) e marca o enriquecimento
-# como INDISPONÍVEL — degrada honesto, nunca inventa.
-# nº de TENTATIVAS do enriquecimento (1 = sem retry). Backoff entre tentativas em _ENRIQUECE_BACKOFF s.
-# TTL do cache do enriquecimento por CNPJ (s). 0 desliga o cache (testes determinísticos).
-# Idade máxima (dias) de uma linha de `verificacao_sede` para o relatório aceitá-la SEM re-verificar.
-# Acima disso o veredito Google é considerado VELHO e o relatório re-verifica on-demand (quota-guarded).
-# 0 desliga o on-demand (só lê o que o sweep gravou — comportamento antigo; testes determinísticos).
-
-
-# ───────────────────────────── helpers de formatação ─────────────────────────────
-
-
-
-
-
-
-
-
-
-# ───────────────────────────── resolução de empresa ─────────────────────────────
-
-
-
-
-
-# ───────────────────────────── tabela-resumo de favorecidos (ACELERAÇÃO) ─────────────────────────────
-# `buscar_candidatos` fazia `lower(favorecido_nome) LIKE '%termo%'` + GROUP BY favorecido_cpf em
-# ordens_bancarias (~1,12M linhas) → full-scan ~6-18s por chamada (não indexável: substring+função).
-# Mas há só ~73.881 favorecidos DISTINTOS. `favorecido_resumo` é o GROUP BY pré-computado (74k linhas):
-# o MESMO LIKE roda ~15× mais rápido. nome_ns = nome sem espaços, minúsculo (pré-computado p/ o fallback
-# "engeprat"→"ENGE PRAT"). Idempotente; respeita JFN_DB/_resolver_db e busy_timeout (padrão fts.py).
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ───────────────────────────── consultas compliance.db ─────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-# ───────────────────────────── enriquecimento (APIs públicas) ─────────────────────────────
-
-
-
-
-
-
-
-
-
-# ───────────────────────────── montagem do relatório ─────────────────────────────
-
-
-
-# ── Split 2026-07-06: FACHADA — inteligencia.py re-exporta tudo (callers e testes não mudam) ──
+# Split 2026-07-06: o código mora em intel_base/intel_dados/intel_analise/intel_md/intel_pdf. Aqui ficam
+# só os nomes que o orquestrador usa e os que outros módulos ainda importam daqui (lex, lex_render,
+# server, tools, testes) — nome novo de fora deve importar do módulo onde ele mora.
 from compliance_agent.reporting.intel_base import (  # noqa: F401,E402
-    _DATA, _DB, _REGISTRY, _REPORTS, _RETENCAO_DIAS, _ROOT, _prune_reports, _slug, cabecalho_frescor, fmt_cnpj, moeda, so_digitos,
+    _DB, _REPORTS, _prune_reports, _slug, cabecalho_frescor, fmt_cnpj, moeda, so_digitos,
 )
 from compliance_agent.reporting.intel_dados import (  # noqa: F401,E402
-    _ENRIQUECE_BACKOFF, _ENRIQUECE_CACHE_PREFIXO, _ENRIQUECE_CACHE_TTL, _ENRIQUECE_TENTATIVAS, _ENRIQUECE_TIMEOUT, _carregar_registro, _crescimento, _enriquece_cache_get, _enriquece_cache_set, _enriquecer, _favorecido_resumo_disponivel, _hhi, _nome_por_cnpj, _norm_alnum, _recalibrar_risco, _resolver_db_inteligencia, atualizar_favorecido_resumo, buscar_candidatos, consultar_contratos, consultar_pagamentos, resolver_empresa,
+    _crescimento, _enriquecer, _recalibrar_risco, atualizar_favorecido_resumo, buscar_candidatos,
+    consultar_contratos, consultar_pagamentos,
 )
 from compliance_agent.reporting.intel_analise import (  # noqa: F401,E402
-    _FEAT_ANOM, _NOTA_CARDINALIDADE, _anomalias_fornecedor, _fatores_risco, _fatos_para_raciocinio, _frase_cardinalidade, _gazetas_lookup, _natureza_sem_fins, _normaliza_raciocinio, _red_flags, _resumo_executivo, _termos_significativos, cardinalidade_contratual, parecer_fornecedor, parecer_raciocinado, troca_controle_societaria,
+    _NOTA_CARDINALIDADE, _anomalias_fornecedor, _fatos_para_raciocinio, _frase_cardinalidade, _gazetas_lookup,
+    _natureza_sem_fins, _normaliza_raciocinio, _resumo_executivo, _termos_significativos,
+    cardinalidade_contratual, parecer_fornecedor, parecer_raciocinado, troca_controle_societaria,
 )
 from compliance_agent.reporting.intel_md import (  # noqa: F401,E402
-    _RCLONE_BIN, _SEDE_ONDEMAND_DIAS, _add_rede_fachada, _beneficios_socios, _capital_recebido_md, _fachada_b2_html, _foto_fachada_b2, _num_brl, _realidade_sede, _realidade_sede_texto, _render_anomalias, _render_beneficios_socios, _render_benford, _render_conflito_pessoal, _render_cruzamento, _render_doacoes_tse, _render_emendas, _render_execucao, _render_rodizio_fornecedor, _rodizio_fornecedor, _sede_status_cacheado, _sede_total_pago, _sede_velho, _verificar_sede_ondemand, emendas_do_favorecido, render_md,
+    _capital_recebido_md, _num_brl, _render_anomalias, _render_beneficios_socios, _render_benford,
+    _render_doacoes_tse, _render_rodizio_fornecedor, _sede_status_cacheado, emendas_do_favorecido, render_md,
 )
 from compliance_agent.reporting.intel_pdf import (  # noqa: F401,E402
-    _emit_md_table, _mc, _registrar_fonte, _render_parecer_pdf, _tab_header, _tab_row, render_pdf, render_pdf_html,
+    _mc, _registrar_fonte, _render_parecer_pdf, render_pdf, render_pdf_html,
 )
+
 
 
 async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
@@ -340,118 +265,6 @@ def gerar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
           anos: Optional[list[int]] = None, salvar: bool = True) -> dict:
     """Wrapper síncrono para CLI/uso fora de loop async."""
     return asyncio.run(montar(cnpj=cnpj, empresa=empresa, anos=anos, salvar=salvar))
-
-
-# Modelo conceitual da cadeia de despesa (ERRO CONCEITUAL a evitar: OB ≠ contrato). A relação é uma ÁRVORE:
-# um PROCESSO SEI (licitação / Registro de Preços-SRP) pode gerar VÁRIOS contratos, VÁRIOS aditivos e MUITAS
-# OBs; um CONTRATO gera VÁRIAS OBs (parcelas/medições). OB = pagamento (verdade); nunca contar OB como contrato.
-
-
-
-
-
-
-
-
-
-
-
-
-# ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket). A localização COMPLETA
-# ('remote:bucket/objeto') está em `verificacao_sede.visual_img_b2`; aqui só LEMOS do local EXATO gravado
-# (um `rclone cat`), sem failover/duplicação. A foto NÃO fica na VM — é baixada on-demand p/ embutir no PDF.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Boilerplate de licitação que NÃO distingue setor (não conta como aderência de objeto×CNAE).
-
-
-
-
-# ───────────────────────────── render PDF (fpdf2) ─────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ───────────────────────────── CLI ─────────────────────────────

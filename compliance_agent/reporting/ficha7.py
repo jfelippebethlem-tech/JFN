@@ -17,9 +17,9 @@ risco ≥ `limiar` e no máximo `cap` por corrida; a memória do enxame evita re
 """
 from __future__ import annotations
 
-import html as _h
 
 from compliance_agent.knowledge.jurisprudencia import buscar_acordaos, obter_sumula
+from compliance_agent.reporting.intel_base import esc as _esc
 
 _LENTES_ORDEM = ["proporcionalidade", "jurisprudencia", "competicao", "refutador", "beneficiario"]
 _LENTE_ROTULO = {
@@ -30,10 +30,6 @@ _LENTE_ROTULO = {
 }
 _REFUTADOR_ROTULO = {"editais": "Defesa do edital (refutador)", "contratos": "Defesa do contrato (refutador)",
                      "emendas": "Defesa da emenda (refutador)", "pcrj": "Defesa do ato (refutador)"}
-
-
-def _esc(s) -> str:
-    return _h.escape(str(s if s is not None else ""))
 
 
 # ── V. colegiado ─────────────────────────────────────────────────────────────

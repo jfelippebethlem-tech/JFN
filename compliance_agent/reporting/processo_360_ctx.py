@@ -196,7 +196,7 @@ def render_processo_ctx(out: dict) -> dict:
         out.get("achados") or [], key=lambda a: ordem_grav.get(str(a.get("gravidade") or a.get("grau")), 9))][:3]
     return {"top_flags": top_flags,
             "titulo": f"Avaliação 360 — Processo {out['numero_sei']}",
-            "subtitulo": "O processo como um todo: cada fase e cada despacho que importam · JFN",
+            "subtitulo": "O processo como um todo: cada fase e cada despacho que importam",
             "metodologia": ("manifesto normalizado + fases/lacunas + cadeia de marcos + perícia A1-A5 "
                             "+ detectores P/E/J/C/X + acatamento com suficiência do emissor + "
                             "score de convergência (spec §7.2) + rubricas fechadas por documento"),

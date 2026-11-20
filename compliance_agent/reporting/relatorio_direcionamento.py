@@ -21,7 +21,6 @@ Fonte: clausula_veredito (enxame) + edital_documento/edital_clausula + pcrj_lici
 """
 from __future__ import annotations
 
-import html as _html
 import json
 import re
 import sqlite3
@@ -31,6 +30,7 @@ from compliance_agent.editais.indice_certame import _matriz_sv as _matriz_sv_cer
 from compliance_agent.editais.peer_diff import _SUBTIPO_PARA_TIPO_E7
 from compliance_agent.editais.teste_finalistico import avaliar as _teste_exec
 from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula, obter_sumula
+from compliance_agent.reporting.intel_base import esc as _esc, reais
 
 _LENTES_ORDEM = ["proporcionalidade", "jurisprudencia", "competicao", "refutador", "beneficiario"]
 _LENTE_ROTULO = {
@@ -47,15 +47,12 @@ _EIXO_ROTULO = {
 }
 
 
-def _esc(s) -> str:
-    return _html.escape(str(s if s is not None else ""))
-
-
 def _moeda(v) -> str:
     try:
-        return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        float(v)
     except (TypeError, ValueError):
         return "—"
+    return reais(v)
 
 
 def _data_br(iso: str | None) -> str:
