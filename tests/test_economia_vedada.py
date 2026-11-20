@@ -15,7 +15,7 @@ def db(tmp_path):
     con = sqlite3.connect(p)
     con.executescript("""
     CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
-        quantidade REAL, orgao_cnpj TEXT, orgao_nome TEXT, unidade_nome TEXT, uf TEXT,
+        quantidade REAL, orgao_cnpj TEXT, orgao_nome TEXT, unidade_nome TEXT, uf TEXT, municipio TEXT,   -- coluna da tabela real (escopo RJ lê)
         fornecedor_nome TEXT, fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT,
         certame TEXT);
     CREATE TABLE sancoes_federais (cpf_cnpj TEXT, nome TEXT, cadastro TEXT, categoria TEXT,
