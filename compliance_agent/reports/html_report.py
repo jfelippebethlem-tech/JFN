@@ -19,15 +19,14 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from compliance_agent.reporting.intel_base import moeda
+
 _REPO = Path(__file__).resolve().parent.parent.parent
 DB = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "compliance.db"
 
 
 def _brl(v):
-    try:
-        return "R$ " + f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
-        return "R$ 0,00"
+    return "R$ " + moeda(v)
 
 
 def _pct(v, t):

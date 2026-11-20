@@ -15,10 +15,8 @@ Apoio principal do parecer estadual: sinais cruzados, Lex e prorrogação (vigê
 """
 from __future__ import annotations
 
-import sqlite3
-
-import re
-
+from compliance_agent.cpf_cnpj import digitos as _digitos
+from compliance_agent.contratos.dossie import sinais_fornecedor, tem_tabela
 from compliance_agent.cruzamentos_intel import _ob_paga
 
 # os SEIS → padrões de unidade no TCE-RJ (uma família pode ter várias unidades)
@@ -42,44 +40,6 @@ def orgao_de_unidade(unidade: str) -> str | None:
     return None
 
 
-def _digitos(doc: str) -> str:
-    return re.sub(r"\D", "", doc or "")
-
-
-def _tem_tabela(con, nome: str) -> bool:
-    return bool(con.execute("select 1 from sqlite_master where type='table' and name=?",
-                            (nome,)).fetchone())
-
-
-def _sinais_fornecedor(con, doc: str) -> list[str]:
-    sinais = []
-    if not doc:
-        return sinais
-    # A VIGÊNCIA VIAJA COM O SINAL. "fornecedor sancionado (CEIS)" é atemporal, e o dossiê é sobre
-    # um contrato que TEM data: sem o período, quem lê não distingue a sanção que já valia à época
-    # daquela que começou anos depois. Medido em 2026-08-10 no detector irmão das emendas: 87,9%
-    # dos casamentos favorecido×sanção eram de sanção POSTERIOR ao ato.
-    if _tem_tabela(con, "sancoes_federais"):
-        _s = con.execute("select cadastro, data_inicio, data_fim from sancoes_federais "
-                         "where cpf_cnpj=? order by data_inicio desc limit 1", (doc,)).fetchone()
-        if _s:
-            _ini = str(_s[1] or "")[:10] or "início n/d"
-            _fim = str(_s[2] or "")[:10] or "sem fim declarado"
-            sinais.append(f"fornecedor sancionado ({_s[0] or 'CEIS'}, {_ini} a {_fim} — "
-                          "conferir se vigia na data do contrato)")
-    if _tem_tabela(con, "emenda_favorecidos") and con.execute(
-            "select 1 from emenda_favorecidos where documento_favorecido=? limit 1", (doc,)).fetchone():
-        sinais.append("favorecido de emenda federal")
-    if _tem_tabela(con, "rede_socios_fornecedores"):
-        try:
-            if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
-                           (doc[:8],)).fetchone():
-                sinais.append("sócio liga ≥2 fornecedores (rede)")
-        except sqlite3.Error:
-            pass
-    return sinais
-
-
 def _pagamentos_por_processo(con, processo: str) -> dict:
     """Soma paga no SIAFE ligada ao MESMO processo do contrato (empenho≠pago).
 
@@ -87,7 +47,7 @@ def _pagamentos_por_processo(con, processo: str) -> dict:
     `ob_processo` — nº exato e normalizado ("…/23", sem "SEI-") e NL/PD/OB juntadas nos autos —, com a devolução
     (GD) descontada; o `processo=?` literal subcontava a outra grafia e somava a OB devolvida e a reemitida.
     Um dossiê por vez: autos=True. `por_via`/`piso` dizem de onde vem cada real e se o total é piso."""
-    if not processo or not _tem_tabela(con, "ob_orcamentaria_siafe"):
+    if not processo or not tem_tabela(con, "ob_orcamentaria_siafe"):
         return {}
     from compliance_agent.ob_processo import chave_processo, obs_por_processo
     if chave_processo(processo) is None:
@@ -104,7 +64,7 @@ def _pagamentos_por_processo(con, processo: str) -> dict:
 
 def _itens_dispensa(con, processo: str) -> list[dict]:
     """Itens/preços da compra direta ligada ao processo (best-effort p/ sobrepreço)."""
-    if not processo or not _tem_tabela(con, "compras_diretas_tcerj"):
+    if not processo or not tem_tabela(con, "compras_diretas_tcerj"):
         return []
     rows = con.execute(
         "select item, objeto, valor_unitario, quantidade from compras_diretas_tcerj where processo=?",
@@ -136,7 +96,7 @@ def montar_dossie_tcerj(con, contrato_row) -> dict:
         "aditivos": [],                              # TCE-RJ não traz termos → aditivo nao_avaliavel
         "pagamentos": _pagamentos_por_processo(con, processo),
         "itens": _itens_dispensa(con, processo),
-        "sinais_fornecedor": _sinais_fornecedor(con, doc),
+        "sinais_fornecedor": sinais_fornecedor(con, doc, com_rede=True),
         "proveniencia": {"contrato": "TCE-RJ contratos_tcerj", "pagamentos": "SIAFE por processo",
                          "itens": "TCE-RJ compras_diretas", "sinais_fornecedor": "CEIS/emendas/rede"},
     }
@@ -144,7 +104,7 @@ def montar_dossie_tcerj(con, contrato_row) -> dict:
 
 def contratos_dos_seis(con, limite_por_orgao: int = 50) -> list:
     """Retorna linhas de contratos_tcerj dos seis órgãos, maior valor primeiro."""
-    if not _tem_tabela(con, "contratos_tcerj"):
+    if not tem_tabela(con, "contratos_tcerj"):
         return []
     padroes = [p for ps in ORGAOS_ESTADO.values() for p in ps]
     like = " or ".join("upper(unidade) like ?" for _ in padroes)

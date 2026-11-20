@@ -2,15 +2,11 @@
 """Registry — empresa + sócios (Brasil), base ungated hospedada. BrasilAPI → cnpj.pw (fallback)."""
 from __future__ import annotations
 
-import re
 
 import httpx
 
+from compliance_agent.cpf_cnpj import digitos as _digitos
 from .base import RateLimiter, Resultado, agora_iso
-
-
-def _digitos(s: str | None) -> str:
-    return re.sub(r"\D", "", s or "")
 
 
 class BrasilAPICNPJ:

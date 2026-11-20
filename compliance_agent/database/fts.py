@@ -198,112 +198,58 @@ def criar_indices_fts(db_path=None):
         conn.close()
 
 
-def buscar_contratos_fts(query: str, limite: int = 20) -> list[dict]:
-    """
-    Search contracts using FTS5 full-text index.
-
-    Returns a list of dicts with: id, numero, objeto, orgao, valor, data, modalidade.
-    """
+def _buscar(tabela: str, sql: str, query: str, limite: int, linha) -> list[dict]:
+    """Roda a consulta FTS5 (`MATCH ?` ... `LIMIT ?`) e mapeia cada linha; falha vira log, não '0 resultados'."""
     conn = _get_conn()
-    results: list[dict] = []
     try:
-        rows = conn.execute(
-            """
-            SELECT c.id, c.numero, c.objeto, c.orgao_contrat,
-                   c.valor_total, c.data_assinatura, c.modalidade
-            FROM fts_contratos
-            JOIN contratos c ON fts_contratos.rowid = c.id
-            WHERE fts_contratos MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (query, limite),
-        ).fetchall()
-        for row in rows:
-            results.append({
-                "id":         row["id"],
-                "numero":     row["numero"],
-                "objeto":     row["objeto"],
-                "orgao":      row["orgao_contrat"],
-                "valor":      row["valor_total"],
-                "data":       str(row["data_assinatura"]) if row["data_assinatura"] else None,
-                "modalidade": row["modalidade"],
-            })
+        return [linha(r) for r in conn.execute(sql, (query, limite)).fetchall()]
     except Exception as exc:
-        _log_falha_fts("fts_contratos", exc)
+        _log_falha_fts(tabela, exc)
+        return []
     finally:
         conn.close()
-    return results
+
+
+def _data(v) -> str | None:
+    return str(v) if v else None
+
+
+def buscar_contratos_fts(query: str, limite: int = 20) -> list[dict]:
+    """Contratos: id, numero, objeto, orgao, valor, data, modalidade."""
+    return _buscar("fts_contratos", """
+        SELECT c.id, c.numero, c.objeto, c.orgao_contrat,
+               c.valor_total, c.data_assinatura, c.modalidade
+        FROM fts_contratos
+        JOIN contratos c ON fts_contratos.rowid = c.id
+        WHERE fts_contratos MATCH ?
+        ORDER BY rank
+        LIMIT ?""", query, limite, lambda r: {
+        "id": r["id"], "numero": r["numero"], "objeto": r["objeto"], "orgao": r["orgao_contrat"],
+        "valor": r["valor_total"], "data": _data(r["data_assinatura"]), "modalidade": r["modalidade"]})
 
 
 def buscar_doerj_fts(query: str, limite: int = 20) -> list[dict]:
-    """
-    Search DOERJ publications using FTS5 full-text index.
-
-    Returns a list of dicts including a snippet excerpt from the matching text.
-    """
-    conn = _get_conn()
-    results: list[dict] = []
-    try:
-        rows = conn.execute(
-            """
-            SELECT p.id, p.titulo, p.orgao, p.tipo_ato, p.data_publicacao,
-                   snippet(fts_doerj, 1, '<b>', '</b>', '...', 32) AS excerpt
-            FROM fts_doerj
-            JOIN publicacoes_doerj p ON fts_doerj.rowid = p.id
-            WHERE fts_doerj MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (query, limite),
-        ).fetchall()
-        for row in rows:
-            results.append({
-                "id":    row["id"],
-                "titulo": row["titulo"],
-                "orgao": row["orgao"],
-                "tipo":  row["tipo_ato"],
-                "data":  str(row["data_publicacao"]) if row["data_publicacao"] else None,
-                "excerpt": row["excerpt"],
-            })
-    except Exception as exc:
-        _log_falha_fts("fts_doerj", exc)
-    finally:
-        conn.close()
-    return results
+    """Publicações do DOERJ, com o trecho (`excerpt`) que casou."""
+    return _buscar("fts_doerj", """
+        SELECT p.id, p.titulo, p.orgao, p.tipo_ato, p.data_publicacao,
+               snippet(fts_doerj, 1, '<b>', '</b>', '...', 32) AS excerpt
+        FROM fts_doerj
+        JOIN publicacoes_doerj p ON fts_doerj.rowid = p.id
+        WHERE fts_doerj MATCH ?
+        ORDER BY rank
+        LIMIT ?""", query, limite, lambda r: {
+        "id": r["id"], "titulo": r["titulo"], "orgao": r["orgao"], "tipo": r["tipo_ato"],
+        "data": _data(r["data_publicacao"]), "excerpt": r["excerpt"]})
 
 
 def buscar_alertas_fts(query: str, limite: int = 20) -> list[dict]:
-    """
-    Search alerts using FTS5 full-text index.
-
-    Returns a list of dicts with: id, titulo, descricao, tipo, severidade.
-    """
-    conn = _get_conn()
-    results: list[dict] = []
-    try:
-        rows = conn.execute(
-            """
-            SELECT a.id, a.titulo, a.descricao, a.tipo, a.severidade, a.created_at
-            FROM fts_alertas
-            JOIN alertas a ON fts_alertas.rowid = a.id
-            WHERE fts_alertas MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (query, limite),
-        ).fetchall()
-        for row in rows:
-            results.append({
-                "id":         row["id"],
-                "titulo":     row["titulo"],
-                "descricao":  row["descricao"],
-                "tipo":       row["tipo"],
-                "severidade": row["severidade"],
-                "criado_em":  str(row["created_at"]) if row["created_at"] else None,
-            })
-    except Exception as exc:
-        _log_falha_fts("fts_alertas", exc)
-    finally:
-        conn.close()
-    return results
+    """Alertas: id, titulo, descricao, tipo, severidade, criado_em."""
+    return _buscar("fts_alertas", """
+        SELECT a.id, a.titulo, a.descricao, a.tipo, a.severidade, a.created_at
+        FROM fts_alertas
+        JOIN alertas a ON fts_alertas.rowid = a.id
+        WHERE fts_alertas MATCH ?
+        ORDER BY rank
+        LIMIT ?""", query, limite, lambda r: {
+        "id": r["id"], "titulo": r["titulo"], "descricao": r["descricao"], "tipo": r["tipo"],
+        "severidade": r["severidade"], "criado_em": _data(r["created_at"])})

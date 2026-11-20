@@ -9,6 +9,9 @@ from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parents[2]
 DB = _RAIZ / "data" / "lai.db"
+# Lei 12.527/2011, art. 11, §1º: 20 dias para responder (prorrogáveis por 10, §2º).
+PRAZO_LAI_DIAS = 20
+PRORROGACAO_LAI_DIAS = 10
 STATUS = ("rascunho", "protocolado", "respondido", "negado", "recurso", "arquivado")
 
 DDL = """CREATE TABLE IF NOT EXISTS lai_requerimento (
@@ -47,7 +50,7 @@ def registrar(alvo: str, esfera: str, destinatario: str, processos: list[str], c
 
 
 def atualizar(id_: int, status: str, protocolo: str | None = None, notas: str | None = None,
-              prazo_dias: int = 20, db_path=None) -> dict:
+              prazo_dias: int = PRAZO_LAI_DIAS, db_path=None) -> dict:
     """Muda o status; 'protocolado' carimba a data e calcula o prazo de resposta (20 dias, art. 11 §1º)."""
     if status not in STATUS:
         raise ValueError(f"status inválido: {status} (use {', '.join(STATUS)})")

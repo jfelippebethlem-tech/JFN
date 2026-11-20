@@ -31,6 +31,8 @@ import collections
 import urllib.request
 import urllib.parse
 
+from compliance_agent.reporting.intel_base import moeda
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -184,28 +186,25 @@ def _relatorio(cnpj, digits, por_ano):
          "Fonte: Transparência Fiscal RJ (TFE) — empenhado (público). Gerado automaticamente.", ""]
     for ano in sorted(por_ano):
         d = por_ano[ano]
-        L.append("## %s — %d empenhos — R$ %s (empenhado)" % (ano, d["n"], _f(d["total"])))
+        L.append("## %s — %d empenhos — R$ %s (empenhado)" % (ano, d["n"], moeda(d["total"])))
         L.append("\n### Por mês")
         L.append("| Mês | Empenhos | R$ |\n|---|---:|---:|")
         for m in sorted(d["mes"]):
-            L.append("| %s | %d | %s |" % (m, d["mes"][m][0], _f(d["mes"][m][1])))
+            L.append("| %s | %d | %s |" % (m, d["mes"][m][0], moeda(d["mes"][m][1])))
         L.append("\n### Por órgão (top 12)")
         L.append("| Órgão | R$ |\n|---|---:|")
         for o, v in sorted(d["org"].items(), key=lambda x: -x[1])[:12]:
-            if o.strip(): L.append("| %s | %s |" % (o[:48], _f(v)))
+            if o.strip(): L.append("| %s | %s |" % (o[:48], moeda(v)))
         L.append("\n### Contratos citados no histórico (%d)" % len(d["contr"]))
         for k, v in sorted(d["contr"].items(), key=lambda x: -x[1]):
-            L.append("- Contrato %s — R$ %s" % (k, _f(v)))
+            L.append("- Contrato %s — R$ %s" % (k, moeda(v)))
         L.append("\n### Processos SEI (%d): %s\n" % (len(d["procs"]), ", ".join(d["procs"])))
     L.append("---\n> ⚠️ Valores EMPENHADOS (não necessariamente pagos). Lista OFICIAL de contratos e valor PAGO: ver PASSO-A-PASSO.md (etapa SIAFE).")
     open(out, "w", encoding="utf-8").write("\n".join(L))
     print("\n=== RELATÓRIO GERADO: %s ===" % out)
     for ano in sorted(por_ano):
         d = por_ano[ano]
-        print("  %s: R$ %s | %d contratos | %d processos SEI" % (ano, _f(d["total"]), len(d["contr"]), len(d["procs"])))
-
-
-def _f(x): return "{:,.2f}".format(x)
+        print("  %s: R$ %s | %d contratos | %d processos SEI" % (ano, moeda(d["total"]), len(d["contr"]), len(d["procs"])))
 
 
 def main():

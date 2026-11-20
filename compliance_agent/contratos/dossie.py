@@ -13,13 +13,15 @@ import sqlite3
 
 import asyncio
 
+from compliance_agent.esfera_orgao import RAIZ_MUNICIPIO_RIO
 
-def _tem_tabela(con, nome: str) -> bool:
+
+def tem_tabela(con, nome: str) -> bool:
     return bool(con.execute("select 1 from sqlite_master where type='table' and name=?",
                             (nome,)).fetchone())
 
 
-def _sinais_fornecedor(con, doc: str, com_rede: bool) -> list[str]:
+def sinais_fornecedor(con, doc: str, com_rede: bool) -> list[str]:
     sinais = []
     if not doc:
         return sinais
@@ -27,7 +29,7 @@ def _sinais_fornecedor(con, doc: str, com_rede: bool) -> list[str]:
     # um contrato que TEM data: sem o período, quem lê não distingue a sanção que já valia à época
     # daquela que começou anos depois. Medido em 2026-08-10 no detector irmão das emendas: 87,9%
     # dos casamentos favorecido×sanção eram de sanção POSTERIOR ao ato.
-    if _tem_tabela(con, "sancoes_federais"):
+    if tem_tabela(con, "sancoes_federais"):
         _s = con.execute("select cadastro, data_inicio, data_fim from sancoes_federais "
                          "where cpf_cnpj=? order by data_inicio desc limit 1", (doc,)).fetchone()
         if _s:
@@ -35,10 +37,10 @@ def _sinais_fornecedor(con, doc: str, com_rede: bool) -> list[str]:
             _fim = str(_s[2] or "")[:10] or "sem fim declarado"
             sinais.append(f"fornecedor sancionado ({_s[0] or 'CEIS'}, {_ini} a {_fim} — "
                           "conferir se vigia na data do contrato)")
-    if _tem_tabela(con, "emenda_favorecidos") and con.execute(
+    if tem_tabela(con, "emenda_favorecidos") and con.execute(
             "select 1 from emenda_favorecidos where documento_favorecido=? limit 1", (doc,)).fetchone():
         sinais.append("favorecido de emenda federal")
-    if com_rede and _tem_tabela(con, "rede_socios_fornecedores"):
+    if com_rede and tem_tabela(con, "rede_socios_fornecedores"):
         try:
             if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
                            (doc[:8],)).fetchone():
@@ -54,9 +56,6 @@ def _itens_default(nc: str) -> list[dict]:
         return asyncio.run(pncp.buscar_itens(nc))
     except Exception:
         return []
-
-
-RAIZ_PREFEITURA_RIO = "42498733"   # CNPJ do Município do Rio de Janeiro
 
 
 def montar_dossie(con, numero_controle_pncp: str, com_rede: bool = True, itens_fn=None) -> dict:
@@ -78,7 +77,7 @@ def montar_dossie(con, numero_controle_pncp: str, com_rede: bool = True, itens_f
     # contratante (Fiocruz, União, Estado) não tem pagamento ali: somar o CNPJ lá dava "Pago (OB)" de outra esfera e
     # outro período (19/11/2026: R$ 98,1 mi num contrato federal da Fiocruz). Outro contratante → INDISPONÍVEL.
     orgao = re.sub(r"\D", "", str(contrato.get("orgao_cnpj") or ""))
-    if orgao and not orgao.startswith(RAIZ_PREFEITURA_RIO):
+    if orgao and not orgao.startswith(RAIZ_MUNICIPIO_RIO):
         doc_pag = None
     else:
         doc_pag = doc
@@ -93,7 +92,7 @@ def montar_dossie(con, numero_controle_pncp: str, com_rede: bool = True, itens_f
         "aditivos": aditivos,
         "pagamentos": pagamentos,
         "itens": itens_fn(numero_controle_pncp),
-        "sinais_fornecedor": _sinais_fornecedor(con, doc, com_rede),
+        "sinais_fornecedor": sinais_fornecedor(con, doc, com_rede),
         "proveniencia": {
             "contrato": "pcrj_contratos (PNCP)", "aditivos": "PNCP termos api/pncp/v1",
             "pagamentos": "pcrj_despesa (ContasRio)", "itens": "PNCP itens",

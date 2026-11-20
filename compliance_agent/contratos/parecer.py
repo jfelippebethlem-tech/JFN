@@ -10,12 +10,9 @@ from __future__ import annotations
 import json
 
 from compliance_agent.enxame import memoria, orquestrador
+from compliance_agent.reporting.intel_base import moeda as _brl
 
 LIMIAR_DELIBERA = 5
-
-
-def _brl(v) -> str:
-    return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _rag(pergunta: str) -> str:
@@ -43,12 +40,11 @@ def _deliberar_achado(con, dossie: dict, achado: dict, gerar=None) -> dict:
     return orquestrador.avaliar(dl, gerar=gerar)
 
 
+_CONCLUSAO = {"direcionamento": "indício de irregularidade", "indício fraco": "diligência", "normal": "regular"}
+
+
 def _conclusao(score: int) -> str:
-    if score >= 7:
-        return "indício de irregularidade"
-    if score >= 4:
-        return "diligência"
-    return "regular"
+    return _CONCLUSAO[orquestrador.veredito(score)]
 
 
 # Foro de controle externo por esfera do órgão contratante (a base pcrj_contratos
@@ -113,6 +109,7 @@ def deliberar(con, dossie: dict, achados: list[dict], gerar=None) -> dict:
     esfera, foro = foro_do_contrato(c.get("orgao_nome") or "", c.get("orgao_cnpj") or "")
     return {
         "numero_controle_pncp": c.get("numero_controle_pncp"),
+        "fornecedor_documento": c.get("fornecedor_documento") or "",
         "relatorio": relatorio, "fundamentacao": fundamentacao,
         "conclusao": conclusao, "score": score, "voto": _voto(conclusao, dims or ["—"], foro),
         "esfera": esfera, "foro": foro,
@@ -203,7 +200,7 @@ def render_parecer_ctx(parecer: dict) -> dict:
     n_concl = "V" if sinais else "IV"
     n_voto = "VI" if sinais else "V"
     secoes.append({"titulo": f"{n_concl}. Conclusão",
-                   "html": f"<p class='conclusao {'extremo' if parecer['score']>=7 else 'medio'}'>"
+                   "html": f"<p class='conclusao {'extremo' if parecer['conclusao'] == 'indício de irregularidade' else 'medio'}'>"
                            f"<b>{_h.escape(parecer['conclusao'].upper())}</b> (score {parecer['score']}/10). "
                            "Indício ≠ acusação; presunção de legitimidade dos atos administrativos.</p>"})
     secoes.append({"titulo": f"{n_voto}. Voto", "html": f"<p>{_h.escape(parecer['voto'])}</p>"})
@@ -226,6 +223,7 @@ def gravar_e_aprender(con, parecer: dict) -> None:
          json.dumps(parecer, ensure_ascii=False, default=str)))
     con.commit()
     for f in parecer.get("fundamentacao", []):
-        memoria.registrar_veredito(con, f"contrato_{f['dimensao']}",
-                                   parecer["relatorio"].get("fornecedor", "")[:60],
+        # chave = o documento do fornecedor, a mesma que `_deliberar_achado` consulta. Até 20/11/2026 gravava
+        # "NOME (doc)"[:60] e a consulta usava o doc: a memória "não re-acusar o refutado" nunca era achada.
+        memoria.registrar_veredito(con, f"contrato_{f['dimensao']}", parecer.get("fornecedor_documento", ""),
                                    parecer["conclusao"], parecer["score"])

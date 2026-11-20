@@ -10,6 +10,8 @@ import os
 
 import httpx
 
+from compliance_agent.cpf_cnpj import digitos
+
 from .base import RateLimiter, Resultado, agora_iso
 
 
@@ -24,12 +26,15 @@ class PortalTransparenciaCEIS:
         return bool(os.getenv("PORTAL_TRANSPARENCIA_KEY", "").strip())
 
     def consultar(self, *, cnpj: str | None = None, nome: str | None = None, **_) -> Resultado:
+        c = digitos(cnpj)
+        if not c:
+            # sem CNPJ a chamada ia SEM filtro e devolvia como ok=True a 1ª página do CEIS (sanções de qualquer um)
+            return Resultado(False, None, self.id, agora_iso(), "INDISPONIVEL",
+                             "CEIS consultado só por CNPJ: busca por nome não implementada")
         self._rl.aguardar()
         key = os.getenv("PORTAL_TRANSPARENCIA_KEY", "").strip()
         try:
-            params = {"pagina": 1}
-            if cnpj:
-                params["codigoSancionado"] = cnpj
+            params = {"pagina": 1, "codigoSancionado": c}
             r = httpx.get("https://api.portaldatransparencia.gov.br/api-de-dados/ceis",
                           params=params, headers={"chave-api-dados": key}, timeout=20)
             if r.status_code == 200:

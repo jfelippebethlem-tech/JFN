@@ -2,7 +2,7 @@
 Telegram notification + remote command bot for the compliance system.
 
 ⚠️ ESTADO REAL (2026-07-06): só a metade OUTBOUND está VIVA em produção —
-`enviar_mensagem` / `enviar_arquivo` / `enviar_resumo_diario` / `enviar_alerta_urgente`,
+`enviar_mensagem` / `enviar_arquivo` / `enviar_resumo_diario`,
 usadas por server.py (_enviar_docs_telegram), scheduler.py e hermes_goal.py.
 O bot de COMANDOS (`loop_comandos`/`processar_comando` e tudo abaixo) está DESATIVADO:
 o antigo `yoda.service` foi desligado em 2026-06-06 (AMBIENTE.md) por disputar o mesmo
@@ -59,6 +59,19 @@ def _get_chat_id(override: str = "") -> str:
     )
 
 
+def _destino(chat_id: str, resumo: str) -> tuple[str, str, dict | None]:
+    """(url base, chat, resposta pronta). Aviso automático (sem chat_id) respeita o silêncio pedido pelo
+    dono em 17/11/2026; sem token ou chat → erro 'não configurado'. Resposta pronta = não enviar."""
+    if not chat_id:
+        from compliance_agent.notifications.silencio import silenciar
+        if silenciar(resumo):
+            return "", "", {"ok": True, "silenciado": True}
+    target, base = _get_chat_id(chat_id), _base_url()
+    if not base or not target:
+        return "", "", {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
+    return base, target, None
+
+
 async def enviar_mensagem(
     texto: str,
     chat_id: str = "",
@@ -75,14 +88,9 @@ async def enviar_mensagem(
     Returns:
         Telegram API response dict.
     """
-    if not chat_id:
-        from compliance_agent.notifications.silencio import silenciar
-        if silenciar(texto):     # aviso automático de sistema: dono pediu silêncio (17/11/2026)
-            return {"ok": True, "silenciado": True}
-    target = _get_chat_id(chat_id)
-    base = _base_url()
-    if not base or not target:
-        return {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
+    base, target, pronto = _destino(chat_id, texto)
+    if pronto:
+        return pronto
 
     # Telegram Markdown v1 has limits — truncate if too long
     max_len = 4096
@@ -131,14 +139,9 @@ async def enviar_arquivo(
     Returns:
         Telegram API response dict.
     """
-    if not chat_id:
-        from compliance_agent.notifications.silencio import silenciar
-        if silenciar(f"[arquivo] {Path(path).name} {caption}"):
-            return {"ok": True, "silenciado": True}
-    target = _get_chat_id(chat_id)
-    base = _base_url()
-    if not base or not target:
-        return {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
+    base, target, pronto = _destino(chat_id, f"[arquivo] {Path(path).name} {caption}")
+    if pronto:
+        return pronto
 
     file_path = Path(path)
     if not file_path.exists():
@@ -218,35 +221,6 @@ async def enviar_resumo_diario(report: dict) -> dict:
             linhas.append(f"  • {titulo}")
 
     texto = "\n".join(linhas)
-    return await enviar_mensagem(texto)
-
-
-async def enviar_alerta_urgente(
-    titulo: str,
-    descricao: str,
-    severidade: str = "alta",
-) -> dict:
-    """
-    Send an urgent alert notification to Telegram.
-
-    Args:
-        titulo:     Alert title.
-        descricao:  Alert description.
-        severidade: "alta" or "média".
-
-    Returns:
-        Telegram API response dict.
-    """
-    emoji = "🚨" if severidade == "alta" else "⚠️"
-    sev_upper = severidade.upper()
-
-    texto = (
-        f"{emoji} *ALERTA {sev_upper}*\n"
-        f"\n"
-        f"*{titulo[:200]}*\n"
-        f"\n"
-        f"{descricao[:800]}"
-    )
     return await enviar_mensagem(texto)
 
 

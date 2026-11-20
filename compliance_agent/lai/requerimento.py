@@ -8,6 +8,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.lai.registro import PRAZO_LAI_DIAS, PRORROGACAO_LAI_DIAS
+from compliance_agent.reporting.intel_base import moeda
+
 _RAIZ = Path(__file__).resolve().parents[2]
 _REQUERENTE_JSON = _RAIZ / "data" / "lai_requerente.json"
 
@@ -17,14 +20,14 @@ DESTINATARIOS = {
         "canal": "https://carioca.rio/servicos/acesso-a-informacao/ (Carioca Digital → Acesso à Informação → Novo pedido)",
         "base": ("art. 5º, XXXIII, e art. 37, caput, da Constituição Federal; arts. 7º, 8º, 10 e 11 da Lei Federal "
                  "12.527/2011 (LAI); Lei Municipal 5.394/2012 e Decreto Rio 35.606/2012"),
-        "prazo_dias": 20,
+        "prazo_dias": PRAZO_LAI_DIAS,
     },
     "estado": {
         "nome": "Serviço de Informação ao Cidadão do Estado do Rio de Janeiro (e-SIC RJ)",
         "canal": "https://www.rj.gov.br/transparencia (Acesso à Informação → e-SIC) ou o SIC do órgão detentor",
         "base": ("art. 5º, XXXIII, e art. 37, caput, da Constituição Federal; arts. 7º, 8º, 10 e 11 da Lei Federal "
                  "12.527/2011 (LAI); Decreto Estadual 46.475/2018"),
-        "prazo_dias": 20,
+        "prazo_dias": PRAZO_LAI_DIAS,
     },
 }
 
@@ -54,9 +57,10 @@ def requerente() -> dict:
 
 def _moeda(v) -> str:
     try:
-        return "R$ " + f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        float(v or 0)
     except (TypeError, ValueError):
-        return "R$ —"
+        return "R$ —"          # INDISPONÍVEL ≠ 0: `moeda` sozinha diria 0,00
+    return "R$ " + moeda(v)
 
 
 def _bloco_contratos(contratos: list[dict]) -> list[str]:
@@ -175,7 +179,7 @@ def montar(fatos: dict, esfera: str | None = None, motivo: str | None = None) ->
     L.append("")
     L.append("FORMA E PRAZO:")
     L.append(f"Requer-se a entrega em meio digital (e-mail do requerente ou link no e-SIC), em formato pesquisável, no prazo "
-             f"de {dest['prazo_dias']} dias (art. 11, §1º, LAI), prorrogável por 10 dias mediante justificativa (art. 11, §2º). "
+             f"de {dest['prazo_dias']} dias (art. 11, §1º, LAI), prorrogável por {PRORROGACAO_LAI_DIAS} dias mediante justificativa (art. 11, §2º). "
              "Caso a informação já esteja disponível em portal público, requer-se a indicação precisa do endereço eletrônico "
              "(art. 11, §6º).")
     L.append("")

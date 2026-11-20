@@ -21,12 +21,14 @@ LENTES = [
 ]
 
 _BANDA_LIMITROFE = (4, 6)
+SCORE_INDICIO_FRACO = 4
 
 
-def _veredito(score: int) -> str:
+def veredito(score: int) -> str:
+    """Faixa do escore 0-10 do colegiado — a mesma régua do parecer de contratos."""
     if score >= SCORE_DIRECIONAMENTO:
         return "direcionamento"
-    if score >= 4:
+    if score >= SCORE_INDICIO_FRACO:
         return "indício fraco"
     return "normal"
 
@@ -50,4 +52,4 @@ def avaliar(dossie: dict, gerar=None) -> dict:
     elif _BANDA_LIMITROFE[0] <= base <= _BANDA_LIMITROFE[1] and ref is not None and ref < base:
         base = ref
     score = int(round(base))
-    return {"score_final": score, "veredito": _veredito(score), "votos": votos}
+    return {"score_final": score, "veredito": veredito(score), "votos": votos}

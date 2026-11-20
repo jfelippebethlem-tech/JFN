@@ -2,9 +2,9 @@
 Detecção de anomalias estatísticas em OBs — sem dependência de ML externo.
 
 Detecta:
-  1. Fracionamento por threshold: valores sistematicamente logo abaixo de
-     limites legais (R$49.9k, R$79.9k, R$179.9k) — padrão clássico para
-     evitar licitação obrigatória (Lei 14.133/21 art. 75)
+  1. Fracionamento por threshold: valores logo abaixo do limite de dispensa
+     do ano da OB (Lei 14.133/21 art. 75, I e II, valores de `limites_dispensa`)
+     — padrão clássico para evitar licitação obrigatória
 
   2. Concentração anormal: quando os 3 maiores favorecidos absorvem > 70%
      do total pago no mês — possível direcionamento
@@ -22,6 +22,7 @@ import statistics
 from collections import defaultdict
 from datetime import date
 from typing import Optional
+from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
 
 
@@ -41,20 +42,16 @@ def detectar_fracionamento_threshold(obs: list, session) -> list[dict]:
     Flagea OBs cujo valor está entre 90% e 99% de um limite legal crítico.
     Isso indica tentativa deliberada de evitar o gatilho de licitação.
     """
-    LIMITES = {
-        "dispensa_servicos":   50_000.0,   # Lei 14.133/21 art. 75, II
-        "dispensa_obras":      30_000.0,   # art. 75, I
-        "concorrencia_peq":   165_000.0,   # art. 75 §1
-        "concorrencia_media": 1_650_000.0,
-        "concorrencia_alta":  3_300_000.0,
-    }
     alertas = []
 
     for ob in obs:
         if not ob.valor or ob.status == "cancelada":
             continue
         v = ob.valor
-        for nome_limite, limite in LIMITES.items():
+        ano = ob.data_emissao.year
+        limites = {"dispensa_servicos": limite_dispensa(ano, "compras"),   # art. 75, II
+                   "dispensa_obras": limite_dispensa(ano, "obras")}        # art. 75, I
+        for nome_limite, limite in limites.items():
             if limite * 0.90 <= v < limite:
                 pct = (v / limite) * 100
                 alertas.append({
@@ -68,7 +65,7 @@ def detectar_fracionamento_threshold(obs: list, session) -> list[dict]:
                         f"OB nº {ob.numero_ob} para '{ob.favorecido_nome}' "
                         f"tem valor R$ {moeda(v)}, apenas {100-pct:.1f}% abaixo do "
                         f"limite de {nome_limite.replace('_',' ')} "
-                        f"(R$ {limite:,.0f}). Padrão clássico de fracionamento "
+                        f"(R$ {moeda(limite)}, {ato_normativo(ano)}). Padrão clássico de fracionamento "
                         f"para fugir da obrigação de licitar."
                     ),
                     "ob_id": ob.id,

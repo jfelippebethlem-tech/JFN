@@ -23,6 +23,7 @@ from pathlib import Path
 
 import httpx
 
+from compliance_agent.cpf_cnpj import digitos as _digitos
 from .base import Resultado, agora_iso
 
 _REPO = Path(__file__).resolve().parent.parent.parent
@@ -47,10 +48,6 @@ _COLMAP = {
     "valor": ("VR_RECEITA", "VR_DOCUMENTO", "VALOR_RECEITA"),
     "uf": ("SG_UF", "UF", "SG_UF_DOADOR"),
 }
-
-
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
 
 
 def _conn() -> sqlite3.Connection:

@@ -14,14 +14,10 @@ Tudo MANUAL (o JFN só monta o link e registra no dossiê). Honesto: são pistas
 dados coletados. Sem chave, sem rede (apenas constrói URLs)."""
 from __future__ import annotations
 
-import re
 from urllib.parse import quote
 
+from compliance_agent.cpf_cnpj import digitos as _digitos
 from .base import Resultado, agora_iso
-
-
-def _digitos(s: str | None) -> str:
-    return re.sub(r"\D", "", s or "")
 
 
 class InvestigacaoHospedada:

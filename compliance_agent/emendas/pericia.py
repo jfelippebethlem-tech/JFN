@@ -12,6 +12,8 @@ import logging
 import re
 import sqlite3
 
+from compliance_agent.reporting.intel_base import moeda as _brl
+
 from .camara import norm_nome
 
 logger = logging.getLogger(__name__)
@@ -27,11 +29,6 @@ D6_FRACAO_CANCELADA = 0.5    # >50% do empenho cancelado = anúncio sem execuç�
 _ENTE_PUBLICO = re.compile(
     r"\b(FUNDO|MUNICIPIO|MUNICÍPIO|PREFEITURA|ESTADO D[EO]|SECRETARIA|UNIVERSIDADE"
     r"|INSTITUTO FEDERAL|CAMARA|CÂMARA|TRIBUNAL|COMANDO|MINISTERIO|MINISTÉRIO)\b", re.I)
-
-
-def _brl(v: float | None) -> str:
-    v = v or 0.0
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _sev(risco: int) -> str:
@@ -368,7 +365,7 @@ def d5_retroalimentacao_eleitoral(con) -> list[dict]:
             f"(mesma pessoa: nome e {'CNPJ' if k_socio[1].startswith('pj:') else 'CPF nos 6 dígitos do QSA'} "
             f"conferem). "
             f"(fontes: QSA Receita local + doações TSE local + Portal da Transparência)",
-            {"match_tipo": "CPF", "selo": _ip.VERIFICADO, "socio": r["nome_socio"],
+            {"match_tipo": "CNPJ" if k_socio[1].startswith("pj:") else "CPF", "selo": _ip.VERIFICADO, "socio": r["nome_socio"],
              "doacao": r["doacao"], "ano_eleicao": r["ano_eleicao"],
              "cnpj": r["documento_favorecido"]}, r["codigo"]))
     d5_retroalimentacao_eleitoral.descartes = descartes

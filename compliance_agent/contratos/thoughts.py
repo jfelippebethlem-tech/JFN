@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import re
 
-from compliance_agent.limites_aditivo import (
-    classificar_natureza as _classificar_natureza,
-    teto_acrescimo as _teto_acrescimo,
-)
+from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo, tipo_objeto
+from compliance_agent.reporting.intel_base import moeda as _brl
 
 # art. 125 — teto de acréscimo de valor. Os números moram em `limites_aditivo` (fonte única);
 # estes nomes seguem exportados porque o resto do módulo e os testes os usam.
@@ -23,34 +21,7 @@ SOBREPRECO_RATIO_MAX = 8.0     # acima disso = quase sempre CATMAT errado/unidad
 SOBREPRECO_MIN_N = 3           # referência só vale com base de mercado suficiente
 PRORROGACAO_MIN_EXERC = 3
 
-_RX_REFORMA = re.compile(r"reforma|edif[íi]cio|equipamento", re.IGNORECASE)
 _RX_PRORROGA = re.compile(r"prorroga|prazo\s+contratual|repactua", re.IGNORECASE)
-_RX_SEM_ACRESCIMO = re.compile(r"sem\s+acr[ée]scimo\s+de\s+valor", re.IGNORECASE)
-
-
-def _e_acrescimo_de_valor(aditivo: dict) -> bool:
-    """Distingue acréscimo de VALOR (art. 125) de prorrogação de PRAZO (art. 107).
-
-    O PNCP grava o valor do período renovado em valorAcrescido mesmo numa
-    prorrogação — o que NÃO é o acréscimo do art. 125. O campo qualif_acrescimo
-    vem '1' para quase tudo (inútil); o objeto é o discriminador confiável
-    (revisão à mão 2026-07-11: contrato AVANTY, +R$ 51mi era renovação de 12 meses).
-
-    A regra passou a viver em `limites_aditivo.classificar_natureza`, que é a mesma usada pela
-    varredura de execução e pelo intel. Esta função era uma das TRÊS respostas divergentes para
-    a mesma pergunta jurídica; e a que ficou não conhecia o reequilíbrio do art. 124, II, "d",
-    que respondeu por 45% dos falsos positivos medidos em 2026-07-29."""
-    tipo, _ = _classificar_natureza(
-        aditivo.get("objeto"), fundamento_legal=aditivo.get("fundamento_legal"),
-        qualif_acrescimo=aditivo.get("qualif_acrescimo"),
-        qualif_vigencia=aditivo.get("qualif_vigencia"),
-        qualif_reajuste=aditivo.get("qualif_reajuste"),
-        prazo_aditado_dias=aditivo.get("prazo_aditado_dias"))
-    return tipo == "valor" and (aditivo.get("valor_acrescido") or 0) > 0
-
-
-def _brl(v) -> str:
-    return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _achado(dimensao, risco, texto, norma, proveniencia) -> dict:
@@ -77,7 +48,10 @@ def t_aditivo(d: dict) -> list[dict]:
     comp = acrescimo_computavel(d.get("aditivos", []))
     soma = comp["acrescimo"]
     objetos = " ".join((a.get("objeto") or "") for a in d.get("aditivos", []))
-    limite = ADITIVO_REFORMA if _RX_REFORMA.search(objetos + " " + (c.get("objeto") or "")) else ADITIVO_LIMITE
+    # 50% só para REFORMA de edifício/equipamento (art. 125); a régua do objeto é a de `limites_aditivo`. A regex
+    # local casava "equipamento" ou "edifício" soltos: 152 de 1.301 contratos com aditivo (20/11/2026) — limpeza,
+    # telecom, engenharia clínica — ganhavam o teto de 50% sem ser reforma.
+    limite = _teto_acrescimo(tipo_objeto(objetos + " " + (c.get("objeto") or "")))
 
     achados: list[dict] = []
     if comp["lacunas"]:
