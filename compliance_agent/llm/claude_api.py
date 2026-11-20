@@ -41,8 +41,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.llm import arquivo_estado as arq
+
 logger = logging.getLogger(__name__)
 
+# ids conferidos no binário instalado (Claude Code 2.1.323, 13/11/2026) sem gastar chamada — os MESMOS do motor
+# pela assinatura (`claude_motor` importa daqui): um id só por modelo.
 MODELO_JUIZO = "claude-opus-5-5"
 MODELO_VOLUME = "claude-sonnet-5-5"
 MODELO_BARATO = "claude-haiku-5-5"
@@ -78,6 +82,15 @@ BALDE_DA_TAREFA = {
 
 ultimo_motivo: str = ""
 
+# Marca de proveniência de toda resposta que saiu daqui: `<id>@api` (síncrona) ou `<id>@api-lote#<versão>` (Batch).
+# Resposta com esta marca NÃO é da assinatura: vai à fila de conferência do Opus e nunca vira VERIFICADO sozinha.
+SUFIXO_API = "@api"
+
+
+def pela_api(modelo) -> bool:
+    """A resposta veio do Claude barato pela API paga (não da assinatura)?"""
+    return SUFIXO_API in str(modelo or "")
+
 
 def balde(tarefa: str) -> str:
     return BALDE_DA_TAREFA.get(tarefa, "reserva")
@@ -90,7 +103,8 @@ def modelo_para(tarefa: str) -> str:
 
 
 def _sem_opus(modelo: str) -> str:
-    if modelo == MODELO_JUIZO:
+    # pela FAMÍLIA, não pelo id: um Opus de outra versão também não passa pela API (decisão do dono, 13/11/2026)
+    if "opus" in (modelo or "").lower():
         logger.info("claude_api: Opus pedido pela API — rebaixado para %s (decisão do dono)", MODELO_API_PADRAO)
         return MODELO_API_PADRAO
     return modelo
@@ -138,13 +152,8 @@ def disponivel() -> bool:
 
 
 # ── livro-caixa ───────────────────────────────────────────────────────────────────────────────────────
-def _dados() -> Path:
-    from compliance_agent.llm.claude_motor import _dados as d
-    return d()
-
-
 def _gasto_arq() -> Path:
-    return _dados() / "claude_api_gasto.json"
+    return arq.dados() / "claude_api_gasto.json"
 
 
 def _agora() -> str:
@@ -158,18 +167,12 @@ def _vazio() -> dict:
 
 
 def ler_gasto() -> dict:
-    from compliance_agent.llm.claude_motor import _ler_json
-    d = _ler_json(_gasto_arq())
+    d = arq.ler_json(_gasto_arq())
     return {**_vazio(), **d} if d else _vazio()
 
 
 def _mutar(fn):
-    from compliance_agent.llm.claude_motor import _flock, _gravar_json
-    with _flock(_gasto_arq().with_suffix(".json.lock"), 15.0):
-        d = ler_gasto()
-        r = fn(d)
-        _gravar_json(_gasto_arq(), d)
-        return r
+    return arq.mutar_json(_gasto_arq(), fn, espera=15.0, ler=lambda _c: ler_gasto())
 
 
 def _b(d: dict, nome: str) -> dict:
@@ -269,7 +272,7 @@ def registrar_restantes(tarefa: str, restantes: int) -> None:
 
 # ── memória: mesma entrada não se paga duas vezes ──────────────────────────────────────────────────────
 def _memo_con() -> sqlite3.Connection:
-    con = sqlite3.connect(_dados() / "claude_api_memo.db", timeout=15)
+    con = sqlite3.connect(arq.dados() / "claude_api_memo.db", timeout=15)
     con.execute("CREATE TABLE IF NOT EXISTS memo(chave TEXT PRIMARY KEY, modelo TEXT, texto TEXT, em TEXT)")
     return con
 
@@ -340,7 +343,7 @@ def pensar_api(tarefa: str, prompt: str, *, sistema: str = "", modelo: str | Non
     global ultimo_motivo
     ultimo_motivo = ""
     modelo = _sem_opus(modelo or modelo_para(tarefa))
-    if cliente is None and os.environ.get("PYTEST_CURRENT_TEST"):
+    if cliente is None and arq.sob_pytest():
         ultimo_motivo = "API: sob pytest sem cliente dublê"
         return None
     if cliente is None and not disponivel():
@@ -404,7 +407,7 @@ def enviar_lote(tarefa: str, itens: list[tuple[str, str]], *, sistema: str = "",
     modelo = _sem_opus(modelo or modelo_para(tarefa))
     if not itens:
         return None
-    if cliente is None and (os.environ.get("PYTEST_CURRENT_TEST") or not disponivel()):
+    if cliente is None and (arq.sob_pytest() or not disponivel()):
         ultimo_motivo = "API: indisponível para lote"
         return None
     est = sum(estimativa(modelo, _tokens_aprox(sistema) + _tokens_aprox(p), max_tokens, lote=True) for _, p in itens)
@@ -433,7 +436,7 @@ def colher_lote(lote_id: str, *, cliente=None) -> dict | None:
     IDEMPOTENTE: o resultado é guardado em `data/claude_api_lotes/<id>.json` ANTES de liquidar; colher de
     novo um lote já liquidado devolve o guardado sem cobrar outra vez (a colheita do chamador pode morrer no
     meio — o cron a mata em 900 s — e precisa retomar os grupos que faltaram)."""
-    guardado = _dados() / "claude_api_lotes" / f"{lote_id}.json"
+    guardado = arq.dados() / "claude_api_lotes" / f"{lote_id}.json"
     info = ler_gasto()["lotes"].get(lote_id)
     if not info:
         return json.loads(guardado.read_text(encoding="utf-8")) if guardado.is_file() else None

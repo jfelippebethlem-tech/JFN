@@ -6,6 +6,8 @@ import pytest
 
 from compliance_agent import direcionamento_cerebro as dc
 from compliance_agent.llm import comotor as CM
+from compliance_agent.llm import contingencia
+from compliance_agent.llm import normalizadores as N
 from compliance_agent.llm import cruzamento as C
 from compliance_agent.llm.claude_motor import Pensamento
 
@@ -116,7 +118,7 @@ def test_placar_prefere_provedor_que_mais_concorda(monkeypatch):
     chamado = []
     monkeypatch.setattr(C, "preferido", lambda t: "groq")
     monkeypatch.setattr(CM, "_chamar_provedor", lambda p, prompt, s: chamado.append(p) or EXEC_VERDE)
-    monkeypatch.setattr(CM, "_gerar_sync_padrao", lambda *a, **k: pytest.fail("não devia cair na cascata fixa"))
+    monkeypatch.setattr(contingencia, "gerar_cascata", lambda *a, **k: pytest.fail("não devia cair na cascata fixa"))
     g = CM.juizo("pericia_execucao", pensar=_pensar(EXEC_VERDE), sorteio=lambda: 1.0)
     g("p")
     assert chamado == ["groq"]
@@ -125,15 +127,15 @@ def test_placar_prefere_provedor_que_mais_concorda(monkeypatch):
 
 
 @pytest.mark.parametrize("fn,txt,nivel", [
-    (CM.norm_execucao, '{"execucao_comprovada":"parcial","nota_risco_execucao":5}', 1),
-    (CM.norm_execucao, '{"execucao_comprovada":"indeterminado"}', None),
-    (CM.norm_fachada, '{"veredito":"FACHADA_PROVAVEL","confianca":"ALTA"}', 2),
-    (CM.norm_fachada, '{"veredito":"INSUFICIENTE"}', 0),
-    (CM.norm_risco, '{"risco":"médio"}', 1),
-    (CM.norm_adversarial, '{"refuta": true}', 0),
-    (CM.norm_adversarial, '{"refuta": false}', 2),
-    (CM.norm_adversarial, 'sem json', None),
-    (CM.norm_triagem, '{"prioridade":"aprofundar","nota":8}', 2),
+    (N.norm_execucao, '{"execucao_comprovada":"parcial","nota_risco_execucao":5}', 1),
+    (N.norm_execucao, '{"execucao_comprovada":"indeterminado"}', None),
+    (N.norm_fachada, '{"veredito":"FACHADA_PROVAVEL","confianca":"ALTA"}', 2),
+    (N.norm_fachada, '{"veredito":"INSUFICIENTE"}', 0),
+    (N.norm_risco, '{"risco":"médio"}', 1),
+    (N.norm_adversarial, '{"refuta": true}', 0),
+    (N.norm_adversarial, '{"refuta": false}', 2),
+    (N.norm_adversarial, 'sem json', None),
+    (N.norm_triagem, '{"prioridade":"aprofundar","nota":8}', 2),
 ])
 def test_normalizadores(fn, txt, nivel):
     assert fn(txt)[1] == nivel

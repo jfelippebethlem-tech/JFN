@@ -87,7 +87,7 @@ VERSAO_PROMPT = hashlib.sha256(_SYS.encode()).hexdigest()[:12]
 
 def motor_lote() -> str:
     from compliance_agent.llm import claude_api
-    return f"{claude_api.MODELO_API_PADRAO}@api-lote#{VERSAO_PROMPT}"
+    return f"{claude_api.MODELO_API_PADRAO}{claude_api.SUFIXO_API}-lote#{VERSAO_PROMPT}"
 
 _DDL = """CREATE TABLE IF NOT EXISTS alertas_triagem(
   alerta_id INTEGER PRIMARY KEY, prioridade TEXT, nota INTEGER, justificativa TEXT, proximo_passo TEXT,
@@ -217,6 +217,7 @@ def triar_lote(con: sqlite3.Connection, n: int = 8, *, gerar=None) -> list[dict]
     if gerar is None:
         from compliance_agent.llm.comotor import juizo
         gerar = juizo(TAREFA, conferencia=False)   # a fila de Opus da triagem é a própria coluna opus_pendente
+    from compliance_agent.llm import claude_api
     from compliance_agent.llm.comotor import ultima_chamada
     feitos = []
     for a in selecionar(con, n):
@@ -235,7 +236,7 @@ def triar_lote(con: sqlite3.Connection, n: int = 8, *, gerar=None) -> list[dict]
         if not motivo and not concordou:
             motivo = "sem segunda leitura concordante"
         exibido = str(u.get("exibido") or "")
-        sem_assinatura = not exibido.startswith("claude:") or "@api" in exibido
+        sem_assinatura = not exibido.startswith("claude:") or claude_api.pela_api(exibido)
         if sem_assinatura:            # contingência: nunca VERIFICADO sem o Opus, mesmo ⚪ com duas leituras
             estado = PENDENTE
             motivo = motivo or "feito sem o Claude da assinatura — aguarda conferência do Opus"
@@ -414,8 +415,8 @@ def vigiar_qualidade(*, avisar=None) -> dict | None:
 
 
 def _avisar(texto: str) -> bool:
-    from compliance_agent.llm.claude_motor import _avisar_telegram
-    return _avisar_telegram(texto)
+    from compliance_agent.llm.claude_motor import avisar_dono
+    return avisar_dono(texto)
 
 
 def _main(argv=None) -> int:

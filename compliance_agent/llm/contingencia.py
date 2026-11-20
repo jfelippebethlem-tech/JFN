@@ -9,7 +9,7 @@ O QUE ESTE MÓDULO GUARDA: o estado "assinatura em contingência até HH:MM", nu
 (`data/claude_contingencia.json`) que o motor e todos os consumidores leem — enquanto durar, ninguém chama o
 CLI (não se martela uma conta que já disse "volte às 2:30").
 
-TRÊS ORIGENS:
+QUATRO ORIGENS:
   · limite_assinatura — o CLI respondeu "You've hit your 5-hour limit · resets 2:30am (America/Sao_Paulo)"
     (medido em 13/11/2026 22:23: o motor classificava isso como erro "outro" e seguia tentando). A hora de
     volta é lida da própria mensagem (`hora_de_volta`); sem hora legível, pausa de `JFN_CLAUDE_PAUSA_LIMITE_S`;
@@ -25,8 +25,6 @@ promovido a VERIFICADO sem o Opus da assinatura. Custo de API não passa por aqu
 """
 from __future__ import annotations
 
-import fcntl
-import json
 import logging
 import os
 import re
@@ -34,9 +32,11 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from compliance_agent.llm import arquivo_estado as arq, orcamento
+from compliance_agent.llm.json_resposta import chaves_faltando, instrucao_schema, parse_json_llm
+
 logger = logging.getLogger(__name__)
 
-_REPO = Path(__file__).resolve().parents[2]
 FRACAO_PERTO = 0.90
 # tarefas do Opus que usam a reserva dos últimos 10% do dia (é para elas que a reserva existe)
 # Dono 20/11/2026 ("pode ligar o executor noturno da automelhoria. pode fazer tudo"): a MELHORIA também é reserva —
@@ -103,37 +103,19 @@ def hora_de_volta(texto: str, agora: float | None = None) -> float | None:
 
 
 # ── arquivo único de estado ──────────────────────────────────────────────────────────────────────────
-def _dados() -> Path:
-    return Path(os.environ.get("JFN_CLAUDE_DADOS") or (_REPO / "data"))
-
-
 def arquivo() -> Path:
-    return _dados() / "claude_contingencia.json"
+    return arq.dados() / "claude_contingencia.json"
 
 
 def _ler() -> dict:
-    try:
-        d = json.loads(arquivo().read_text(encoding="utf-8"))
-        return d if isinstance(d, dict) else {}
-    except (OSError, ValueError):
-        return {}
+    return arq.ler_json(arquivo())
 
 
 def _mutar(fn) -> dict:
-    arq = arquivo()
-    arq.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(arq.with_suffix(".json.lock"), os.O_RDWR | os.O_CREAT, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        d = _ler()
+    def f(d):
         fn(d)
-        tmp = arq.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
-        os.replace(tmp, arq)
         return d
-    finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
-        os.close(fd)
+    return arq.mutar_json(arquivo(), f, espera=None)
 
 
 def forcada() -> bool:
@@ -181,27 +163,26 @@ def sair(motivo: str = "") -> None:
 
 
 def _avisar(texto: str, avisar=None) -> None:
-    if avisar is None and os.environ.get("PYTEST_CURRENT_TEST"):
+    if avisar is None and arq.sob_pytest():
         return                              # teste nenhum manda mensagem de verdade ao dono
     try:
         if avisar is None:
-            from compliance_agent.llm.claude_motor import _avisar_telegram as avisar
+            from compliance_agent.llm.claude_motor import avisar_dono as avisar
         avisar(texto)
     except (ImportError, OSError, RuntimeError, ValueError) as e:   # aviso é melhor-esforço; o estado já foi gravado
         logger.warning("contingência: aviso não enviado (%s)", type(e).__name__)
 
 
 def _uso() -> dict:
-    """Fração do orçamento diário do motor já usada, total e por tarefa. Motor ilegível → {} (INDISPONÍVEL)."""
+    """Fração do orçamento diário do motor já usada, total e por tarefa. Uso ilegível → {} (INDISPONÍVEL)."""
     try:
-        from compliance_agent.llm import claude_motor as M
-        u = M.ler_uso()
+        u = orcamento.ler_uso()
         t = u["total"]
-        fr = max(t["chamadas"] / max(1, M.teto_total()), t["segundos"] / max(1, M.teto_segundos()))
+        fr = max(t["chamadas"] / max(1, orcamento.teto_total()), t["segundos"] / max(1, orcamento.teto_segundos()))
         perto = sorted(k for k, v in u["tarefas"].items()
-                       if v["chamadas"] >= FRACAO_PERTO * M.teto_tarefa(k) and k not in RESERVA_OPUS)
+                       if v["chamadas"] >= FRACAO_PERTO * orcamento.teto_tarefa(k) and k not in RESERVA_OPUS)
         return {"fracao": round(fr, 3), "tarefas_perto_do_teto": perto}
-    except (ImportError, OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError):
         return {}
 
 
@@ -266,7 +247,24 @@ def motivo_bloqueio(tarefa: str = "") -> str | None:
     return f"limite de uso da assinatura — pausa até {datetime.fromtimestamp(e['ate']):%H:%M}"
 
 
-# ── produção em contingência para quem chama o motor direto (sem co-motor) ───────────────────────────
+# ── a cascata da casa (a MESMA dos produtos) e a produção em contingência ─────────────────────────────
+def gerar_cascata(prompt, sistema="", timeout=45.0, json_saida=True):
+    """`direcionamento_cerebro.gerar_sync` — o caminho garantido de todo juízo sem o Claude."""
+    from compliance_agent.direcionamento_cerebro import gerar_sync
+    # mesma forma de chamada dos chamadores antigos (3 posicionais): quem substitui gerar_sync segue servindo
+    return gerar_sync(prompt, sistema, timeout) if json_saida else gerar_sync(prompt, sistema, timeout, json_saida)
+
+
+def modelo_da_cascata() -> str:
+    """Proveniência REAL da última resposta da cascata ('provedor:modelo')."""
+    try:
+        from compliance_agent import direcionamento_cerebro as dc
+        p = dc.ultimo_provedor or "desconhecido"
+        return f"{p}:{dc.ultimo_modelo}" if getattr(dc, "ultimo_modelo", "") else p
+    except ImportError:
+        return "desconhecido"
+
+
 def cascata(tarefa: str, prompt: str, *, schema=None, sistema: str = "", motivo: str = "", item: str | None = None,
             valor: float | None = None, gerar=None, timeout: float = 120.0):
     """Roda a cascata da casa (a MESMA dos produtos, `direcionamento_cerebro.gerar_sync`) no lugar do Claude e
@@ -275,13 +273,10 @@ def cascata(tarefa: str, prompt: str, *, schema=None, sistema: str = "", motivo:
     Sob pytest sem `gerar` injetado devolve None: teste nenhum chama provedor de verdade."""
     from compliance_agent.llm import conferencia_opus
     if gerar is None:
-        if os.environ.get("PYTEST_CURRENT_TEST"):
+        if arq.sob_pytest():
             return None
-        from compliance_agent.llm.comotor import _gerar_sync_padrao as gerar
-    entrada = prompt
-    if schema is not None:
-        entrada += ("\n\nResponda SOMENTE com um objeto JSON válido, sem texto fora dele, neste formato:\n"
-                    + (schema if isinstance(schema, str) else json.dumps(schema, ensure_ascii=False)))
+        gerar = gerar_cascata
+    entrada = prompt + (instrucao_schema(schema) if schema is not None else "")
     try:
         txt = gerar(entrada, sistema, timeout, True)
     except (RuntimeError, OSError, ValueError, TypeError, KeyError) as e:   # cascata fora: o chamador fica PENDENTE
@@ -291,13 +286,10 @@ def cascata(tarefa: str, prompt: str, *, schema=None, sistema: str = "", motivo:
         return None
     dados = txt
     if schema is not None:
-        from compliance_agent.llm.json_resposta import parse_json_llm
         dados = parse_json_llm(txt)
-        exigidas = schema.get("required", []) if isinstance(schema, dict) else []
-        if not isinstance(dados, dict) or any(k not in dados for k in exigidas):
+        if chaves_faltando(dados, schema) != []:
             return None                     # leitura fora do formato é descartada, nunca "consertada"
-    from compliance_agent.llm.comotor import _modelo_da_cascata
-    modelo = _modelo_da_cascata()
+    modelo = modelo_da_cascata()
     conferencia_opus.enfileirar(tarefa, item, entrada, sistema=sistema, motor=modelo, resposta=txt,
                                 motivo=motivo or (estado().get("motivo") or "Claude indisponível"), valor=valor)
     return dados, modelo

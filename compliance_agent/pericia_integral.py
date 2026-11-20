@@ -44,7 +44,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from compliance_agent.llm import claude_motor, comotor, cruzamento
+from compliance_agent.llm import claude_motor, comotor, contingencia, cruzamento
 from compliance_agent.llm.verificacao import citacao_existe
 
 logger = logging.getLogger(__name__)
@@ -657,7 +657,7 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
     if txt:
         return txt, modelo
     txt = dc.gerar_sync(prompt, sistema, timeout, json_saida)
-    return txt, comotor._modelo_da_cascata()
+    return txt, contingencia.modelo_da_cascata()
 
 
 CTX_MIN_CASCATA = 128_000

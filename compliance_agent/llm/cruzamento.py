@@ -31,6 +31,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from compliance_agent.llm import arquivo_estado as arq
+
 _REPO = Path(__file__).resolve().parents[2]
 NIVEIS = {0: "⚪", 1: "🟡", 2: "🔴"}
 AMOSTRA_MINIMA = 20
@@ -68,7 +70,7 @@ class Lado:
 
 def _teste_sem_banco_proprio() -> bool:
     """Sob pytest sem `JFN_CRUZAMENTO_DB`: não grava no banco real (teste de outro módulo passando pelo co-motor)."""
-    return bool(os.environ.get("PYTEST_CURRENT_TEST")) and not os.environ.get("JFN_CRUZAMENTO_DB")
+    return arq.sob_pytest() and not os.environ.get("JFN_CRUZAMENTO_DB")
 
 
 def caminho() -> Path:

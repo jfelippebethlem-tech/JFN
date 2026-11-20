@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from compliance_agent.llm import claude_motor
+from compliance_agent.llm import claude_motor, orcamento
 from compliance_agent.qualidade import juiz, regras, sensores
 
 FONTE = Path(juiz.__file__).read_text(encoding="utf-8")
@@ -54,7 +54,7 @@ def test_prova_backend_errado_seria_acusado():
 
 
 def test_juiz_tem_teto_proprio_no_motor():
-    assert 0 < claude_motor.TETOS_TAREFA.get("juiz_qualidade", 0) <= 20      # amostra pequena: cota é compartilhada
+    assert 0 < orcamento.TETOS_TAREFA.get("juiz_qualidade", 0) <= 20      # amostra pequena: cota é compartilhada
 
 
 def test_veredito_sai_das_notas_e_nao_da_palavra_do_modelo():

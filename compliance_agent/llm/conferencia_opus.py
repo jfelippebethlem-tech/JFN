@@ -34,6 +34,8 @@ import zlib
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.llm import arquivo_estado as arq
+
 logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parents[2]
@@ -59,7 +61,7 @@ _ORDEM = ("ORDER BY CASE WHEN nivel=2 THEN 0 WHEN nivel=1 THEN 1 WHEN nivel IS N
 
 def _sem_banco() -> bool:
     """Sob pytest sem `JFN_CONFERENCIA_DB`: não toca o banco real (teste de outro módulo passando pelo co-motor)."""
-    return bool(os.environ.get("PYTEST_CURRENT_TEST")) and not os.environ.get("JFN_CONFERENCIA_DB")
+    return arq.sob_pytest() and not os.environ.get("JFN_CONFERENCIA_DB")
 
 
 def caminho() -> Path:
@@ -87,7 +89,7 @@ def _agora() -> str:
 
 
 def _normalizar(tarefa: str, texto: str):
-    from compliance_agent.llm.comotor import NORMALIZADORES
+    from compliance_agent.llm.normalizadores import NORMALIZADORES
     fn = NORMALIZADORES.get(tarefa)
     if fn is None:
         return None, None
@@ -173,7 +175,7 @@ def _aplicar(tarefa: str, item: str | None, resposta: str, modelo: str, concorda
 
 def _registrar_divergencia(tarefa: str, item: str | None, motor: str, antes, depois, modelo_opus: str) -> None:
     """Divergência vai à propagação (derivados que dependem do juízo recalculam) e ao segundo cérebro (correção)."""
-    if os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("JFN_CONFERENCIA_PROPAGAR"):
+    if arq.sob_pytest() and not os.environ.get("JFN_CONFERENCIA_PROPAGAR"):
         return
     det = (f"conferência Opus corrigiu {tarefa} {item or '(sem item)'}: {motor} disse {antes or 'indeterminado'}; "
            f"{modelo_opus} disse {depois or 'indeterminado'} — prevalece o Opus")

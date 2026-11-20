@@ -30,14 +30,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-_REPO = Path(__file__).resolve().parents[2]
+from compliance_agent.llm import arquivo_estado as arq
+
 URL = "https://api.anthropic.com/api/oauth/usage"
 SEMANA_S = 7 * 86400
 PISO = 5.0            # % liberado logo na abertura da janela (sem isso a linha começa em 0 e trava tudo)
@@ -48,12 +48,8 @@ VALIDADE_S = 2 * 3600
 REAVALIAR_S = 15 * 60
 
 
-def _dados() -> Path:
-    return Path(os.environ.get("JFN_CLAUDE_DADOS") or _REPO / "data")
-
-
 def arquivo() -> Path:
-    return _dados() / "claude_assinatura_uso.json"
+    return arq.dados() / "claude_assinatura_uso.json"
 
 
 def _iso(ts: float) -> str:
@@ -126,10 +122,7 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
 
 
 def ler() -> dict | None:
-    try:
-        return json.loads(arquivo().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
+    return arq.ler_json(arquivo()) or None
 
 
 def nivel(agora: float | None = None) -> dict:
@@ -146,12 +139,8 @@ def medir(buscar=None) -> dict:
         return dict(nivel(agora), erro=type(e).__name__)
     c = classificar(m, agora)
     m = dict(m, nivel=c["nivel"], linha_pct=c["linha_pct"])
-    d = _dados()
-    d.mkdir(parents=True, exist_ok=True)
-    tmp = arquivo().with_suffix(".tmp")
-    tmp.write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(arquivo())
-    with (d / "claude_assinatura_uso.jsonl").open("a", encoding="utf-8") as f:
+    arq.gravar_json(arquivo(), m)
+    with (arq.dados() / "claude_assinatura_uso.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps({k: m[k] for k in ("em", "sessao_pct", "semana_pct", "linha_pct", "nivel")}) + "\n")
     return c
 

@@ -27,7 +27,6 @@ import time
 
 import httpx
 import logging
-from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -65,14 +64,6 @@ def modelo_or(perfil: str) -> str:
         logger.warning("OPENROUTER_%s_MODEL=%s não está no catálogo :free — ignorando o "
                        "override e escolhendo pelo catálogo vivo", perfil.upper(), fixo)
     return escolher(perfil) or ""
-
-# Modelo de CÓDIGO (uncensored, p/ o Hermes codar). Qwen3-Coder = SOTA aberto em código,
-# 1M de contexto, alinhamento leve (pouco recusa). APENAS :free (regra do dono). Fallbacks
-# não-Venice p/ quando o primário rate-limitar. Env: OPENROUTER_CODER_MODEL.
-# A lista fixa apodreceu igual: em 2026-07-28, 3 dos 4 ids aqui estavam mortos. O catálogo
-# resolve o primário; o env segue podendo fixar para depuração.
-OPENROUTER_MODEL_CODER = os.environ.get("OPENROUTER_CODER_MODEL", "")
-
 
 def _forcar_free(model: str) -> str:
     """GUARD anti-cobrança (regra do dono: SEMPRE `:free`). Qualquer modelo OpenRouter é forçado p/ a
@@ -119,14 +110,9 @@ def _sem_raciocinio(base_url: str, payload: dict) -> None:
         payload["chat_template_kwargs"] = {"enable_thinking": False}
 
 
-def _openai_compat_chat_sync(
-    base_url: str,
-    api_key: str,
-    model: str,
-    messages: list[dict],
-    max_tokens: int = 1024,
-    extra_headers: dict | None = None,
-) -> str:
+def _requisicao(base_url: str, api_key: str, model: str, messages: list[dict], max_tokens: int,
+                extra_headers: dict | None) -> tuple[dict, dict]:
+    """(cabeçalhos, payload) de toda chamada OpenAI-compatível — a ÚNICA porta, com e sem retry."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -149,6 +135,18 @@ def _openai_compat_chat_sync(
         "temperature": 0.1,
     }
     _sem_raciocinio(base_url, payload)
+    return headers, payload
+
+
+def _openai_compat_chat_sync(
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    max_tokens: int = 1024,
+    extra_headers: dict | None = None,
+) -> str:
+    headers, payload = _requisicao(base_url, api_key, model, messages, max_tokens, extra_headers)
 
     with httpx.Client(timeout=30) as client:
         resp = client.post(
@@ -176,8 +174,8 @@ class RespostaProvedorErro(RuntimeError):
     Herda de RuntimeError de propósito: é o que os laços de retry já capturam.
     """
 
-    # Erro embutido que NÃO melhora esperando — mesma lógica de _PERMANENTE_STATUS.
-    _PERMANENTES = {400, 401, 402, 403, 404}
+    # Erro embutido que NÃO melhora esperando — o MESMO conjunto do status HTTP (_PERMANENTE_STATUS).
+    _PERMANENTES = frozenset({400, 401, 402, 403, 404})
 
     def __init__(self, mensagem: str, codigo: int | None = None):
         super().__init__(mensagem)
@@ -260,8 +258,9 @@ def _codigo_int(v) -> int | None:
 
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 # 4xx que NÃO melhoram com espera: modelo aposentado (404), payload ruim (400), chave inválida
-# ou sem permissão (401/403). Retentar isso é só queimar relógio — ver _erro_permanente.
-_PERMANENTE_STATUS = {400, 401, 403, 404}
+# ou sem permissão (401/403), pagamento exigido (402 — o cerebras de 09/11/2026). Retentar isso é só
+# queimar relógio — ver _erro_permanente. Um conjunto só para o status HTTP e para o erro embutido em 200.
+_PERMANENTE_STATUS = RespostaProvedorErro._PERMANENTES
 
 
 def _erro_permanente(exc: Exception) -> bool:
@@ -287,9 +286,12 @@ def _erro_permanente(exc: Exception) -> bool:
     return True
 
 
+def _espera_backoff(attempt: int, base: float = 2.0, cap: float = 120.0) -> float:
+    return min(cap, base * (2 ** attempt)) + random.uniform(0, 1)
+
+
 def _sleep_backoff(attempt: int, base: float = 2.0, cap: float = 120.0) -> None:
-    delay = min(cap, base * (2 ** attempt)) + random.uniform(0, 1)
-    time.sleep(delay)
+    time.sleep(_espera_backoff(attempt, base, cap))
 
 
 def _openai_compat_chat_sync_retry(
@@ -301,20 +303,7 @@ def _openai_compat_chat_sync_retry(
     extra_headers: dict | None = None,
     max_retries: int = 4,
 ) -> str:
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if extra_headers:
-        headers.update(extra_headers)
-
-    payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }
-    _sem_raciocinio(base_url, payload)
+    headers, payload = _requisicao(base_url, api_key, model, messages, max_tokens, extra_headers)
 
     last_exc: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -358,20 +347,7 @@ async def _openai_compat_chat_retry(
     extra_headers: dict | None = None,
     max_retries: int = 4,
 ) -> str:
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if extra_headers:
-        headers.update(extra_headers)
-
-    payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }
-    _sem_raciocinio(base_url, payload)
+    headers, payload = _requisicao(base_url, api_key, model, messages, max_tokens, extra_headers)
 
     last_exc: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -386,7 +362,7 @@ async def _openai_compat_chat_retry(
                     last_exc = RuntimeError(
                         f"Retryable status {resp.status_code} from {base_url}"
                     )
-                    await asyncio.sleep(min(120.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1))
+                    await asyncio.sleep(_espera_backoff(attempt))
                     continue
                 resp.raise_for_status()
                 data = resp.json()
@@ -396,7 +372,7 @@ async def _openai_compat_chat_retry(
             if _erro_permanente(e):
                 raise            # 404/400/401/403 não melhoram esperando — ver _erro_permanente
             if attempt < max_retries:
-                await asyncio.sleep(min(120.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1))
+                await asyncio.sleep(_espera_backoff(attempt))
             else:
                 raise last_exc
     raise last_exc  # type: ignore[misc]
@@ -511,33 +487,6 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
         max_tokens=max_tokens,
         extra_headers=OPENROUTER_HEADERS,
     )
-
-
-async def coder_chat_async(prompt: str, system: str = "", max_tokens: int = 4096) -> str:
-    """Caminho de CÓDIGO do Hermes — Qwen3-Coder :free (1M ctx) + fallbacks não-Venice.
-    (O coder local via Ollama saiu em 15/11/2026.) Levanta se tudo falhar."""
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-
-    # API OpenRouter :free
-    key = _openrouter_key()
-    if not key:
-        raise RuntimeError("OPENROUTER_API_KEY não configurada (coder sem provedor).")
-    ultimo_erro = None
-    # Primário do env (se fixado) e depois a escolha viva do catálogo, sem repetir.
-    _cands = [m for m in (OPENROUTER_MODEL_CODER, modelo_or("coder"), modelo_or("smart")) if m]
-    for model in list(dict.fromkeys(_cands)):
-        try:
-            return await _openai_compat_chat_retry(
-                OPENROUTER_BASE, key, _forcar_free(model), messages,
-                max_tokens=max_tokens, extra_headers=OPENROUTER_HEADERS, max_retries=1,
-            )
-        except Exception as e:
-            ultimo_erro = e
-            await asyncio.sleep(2)
-    raise RuntimeError(f"coder_chat_async: todos os modelos :free falharam ({ultimo_erro}).")
 
 
 # ── Cerebras (gpt-oss-120b / zai-glm-4.7) — OpenAI-compat, inferência ULTRARRÁPIDA (~0,04s) ──
@@ -815,7 +764,6 @@ async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
 # num provedor morto/limitado (429) a cada request. Memória EM PROCESSO (vale dentro
 # de um lote do sweep; reinício zera). Curto p/ transitório, longo p/ chave ruim.
 _COOLDOWN: dict[str, float] = {}      # provider -> deadline (monotonic)
-_COOLDOWN_MOTIVO: dict[str, str] = {}
 
 def _classificar_erro(exc: Exception) -> tuple[str, float]:
     """(motivo, segundos_de_cooldown) por TIPO de erro — em vez de tratar tudo igual."""
@@ -842,18 +790,10 @@ def _em_cooldown(provider: str) -> bool:
 def _marcar_cooldown(provider: str, exc: Exception) -> tuple[str, float]:
     motivo, dur = _classificar_erro(exc)
     _COOLDOWN[provider] = time.monotonic() + dur
-    _COOLDOWN_MOTIVO[provider] = motivo
     return motivo, dur
 
 def _limpar_cooldown(provider: str) -> None:
     _COOLDOWN.pop(provider, None)
-    _COOLDOWN_MOTIVO.pop(provider, None)
-
-def cooldowns_ativos() -> dict[str, str]:
-    """Diagnóstico: {provedor: 'motivo (Ns)'} dos que estão em cooldown agora."""
-    now = time.monotonic()
-    return {p: f"{_COOLDOWN_MOTIVO.get(p,'?')} ({t-now:.0f}s)" for p, t in _COOLDOWN.items() if t > now}
-
 
 _TRACE_DB = pathlib.Path(__file__).resolve().parents[2] / "data" / "llm_trace.db"
 
@@ -1028,37 +968,6 @@ def _get_provider_order() -> list[str]:
 
 # ── Helpers de alto nível (sem async — para uso no motor de regras) ───────────
 
-def classificar_contrato(objeto: str, categorias: list[str]) -> str:
-    """Classifica objeto de contrato em uma categoria. Sem custo Claude."""
-    prompt = (
-        f"Classifique o objeto abaixo em UMA das categorias: {' | '.join(categorias)}\n"
-        "Responda APENAS com o nome da categoria, sem explicações.\n\n"
-        f"Objeto: {objeto[:300]}"
-    )
-    try:
-        resultado = best_free_chat(prompt, fallback=categorias[0])
-        resultado = resultado.strip().lower()
-        for cat in categorias:
-            if cat.lower() in resultado:
-                return cat
-        return categorias[0]
-    except Exception:
-        return categorias[0]
-
-
-def resumir_doerj(texto: str, max_palavras: int = 80) -> str:
-    """Resume publicação do DOERJ. Sem custo Claude."""
-    prompt = (
-        f"Resuma em no máximo {max_palavras} palavras em português, "
-        "focando em nomes de pessoas, empresas, valores e irregularidades:\n\n"
-        f"{texto[:1500]}"
-    )
-    try:
-        return best_free_chat(prompt, fallback=texto[:300] + "...")
-    except Exception:
-        return texto[:300] + "..."
-
-
 def extrair_entidades_texto(texto: str) -> dict:
     """Extrai entidades nomeadas. Sem custo Claude."""
     prompt = (
@@ -1076,40 +985,6 @@ def extrair_entidades_texto(texto: str) -> dict:
     except ValueError as exc:
         logger.debug("JSON do LLM ilegível: %s", exc)
     return {"pessoas": [], "empresas": [], "valores": [], "cpfs": [], "cnpjs": []}
-
-
-def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[str]:
-    """
-    Analisa texto de contrato em busca de red flags de fraude.
-    Usa LLM gratuito para análise de linguagem.
-    """
-    from compliance_agent.knowledge.fraudes_licitacao import TODOS_RED_FLAGS
-
-    # Primeiro: análise local por palavras-chave (sem LLM, zero custo)
-    texto_lower = (objeto + " " + orgao).lower()
-    flags_locais = [
-        f"🚩 [{pattern_id}] '{flag}'"
-        for flag, pattern_id in TODOS_RED_FLAGS
-        if flag in texto_lower
-    ]
-
-    # Depois: análise semântica via LLM gratuito (só se houver provedor disponível)
-    if not (groq_available() or openrouter_available()):
-        return flags_locais
-
-    prompt = (
-        "Analise este contrato público e liste sinais de alerta de fraude ou irregularidade.\n"
-        "Seja breve: máximo 5 itens. Se não houver, responda 'Nenhum sinal identificado'.\n\n"
-        f"Órgão: {orgao}\nObjeto: {objeto[:300]}\nValor: R$ {moeda(valor)}"
-    )
-    try:
-        llm_flags = best_free_chat(prompt, fallback="")
-        if llm_flags and "nenhum" not in llm_flags.lower():
-            flags_locais.append(f"🤖 Análise LLM: {llm_flags[:300]}")
-    except Exception as exc:  # noqa: BLE001 — flags LLM são opcionais
-        logger.debug("flags LLM indisponíveis: %s", exc)
-
-    return flags_locais
 
 
 def status_provedores() -> dict:

@@ -17,7 +17,7 @@ COMO CHAMA (copiado do que já funciona na Atena, `~/atena/atena/visao.py`):
 TRAVAS (nenhuma depende de nome de processo):
   · um `claude` por vez na VM de 2 vCPU — `fcntl.flock` em `data/claude_motor.lock` (aparece em
     /proc/locks, e o AO VIVO mostra "rodando" enquanto a trava está presa);
-  · ORÇAMENTO diário total e por tarefa (chamadas e segundos) em `data/claude_motor_uso.json`,
+  · ORÇAMENTO diário total e por tarefa (chamadas e segundos, `llm/orcamento`) em `data/claude_motor_uso.json`,
     tetos por env (`JFN_CLAUDE_MAX_CHAMADAS_DIA`, `JFN_CLAUDE_MAX_SEGUNDOS_DIA`,
     `JFN_CLAUDE_MAX_<TAREFA>`); a chamada é RESERVADA antes de rodar (processo que morre no meio conta);
   · kill-switch: `JFN_CLAUDE_MOTOR=0` ou o arquivo `data/.pause_claude_motor`;
@@ -34,7 +34,6 @@ desfecho; NUNCA o texto do prompt nem da resposta.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import logging
 import os
@@ -42,40 +41,20 @@ import re
 import signal
 import subprocess
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
+
+from compliance_agent.llm import arquivo_estado as arq
+from compliance_agent.llm import claude_api, contingencia, orcamento
+from compliance_agent.llm.orcamento import ler_uso, teto_segundos, teto_tarefa, teto_total
+from compliance_agent.llm.claude_api import MODELO_JUIZO, MODELO_VOLUME
+from compliance_agent.llm.json_resposta import chaves_faltando, instrucao_schema, parse_json_llm
 
 logger = logging.getLogger(__name__)
 
-_REPO = Path(__file__).resolve().parents[2]
-
-# ids conferidos no binário instalado (Claude Code 2.1.323, 13/11/2026) sem gastar chamada
-MODELO_VOLUME = "claude-sonnet-5-5"
-MODELO_JUIZO = "claude-opus-5-5"
-
 # a sessão nunca usa chave de API: só a assinatura
 VARIAVEIS_PROIBIDAS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
-
-TETO_CHAMADAS_DIA = 600       # 15/11/2026: dono "pode rodar o claude nas perícias de dia também" (era 320; 120 antes de 14/11)
-TETO_SEGUNDOS_DIA = 14400     # era 7200
-TETO_TAREFA_PADRAO = 10
-# Por tarefa (chamadas/dia). Soma > total de propósito: o total é quem trava; a tarefa só impede que uma
-# fila sozinha coma o dia. Ver o relatório de 13/11/2026 para a conta.
-TETOS_TAREFA = {
-    "canario": 3,
-    "pericia_execucao": 100,     # 30→100 em 15/11/2026: dono "pode rodar o claude nas perícias de dia também"
-    "pericia_fornecedor": 15,
-    "parecer_juridico": 10,
-    "triagem_alertas": 40,
-    "camada_subjetiva": 20,
-    "investigacao_risco": 10,
-    "verificacao_opus": 200,     # todo 🔴/🟡 da triagem relido pelo Opus; 30→200 em 14/11/2026 a pedido do dono
-    "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
-    "conferencia_opus": 60,      # Opus relê o que os outros modelos produziram em contingência (llm/conferencia_opus)
-    "pericia_integral": 200,     # 15/11/2026: perícia integral por processo (Opus, todos os eixos numa chamada)
-}
 
 SISTEMA_PADRAO = (
     "Você é auditor de controle externo (TCE-RJ) do sistema JFN. Responda em português do Brasil. "
@@ -97,28 +76,20 @@ class Pensamento:
 
 
 # ── caminhos (lidos a cada uso: o teste desvia por env) ─────────────────────────────────────────────
-def _dados() -> Path:
-    return Path(os.environ.get("JFN_CLAUDE_DADOS") or (_REPO / "data"))
-
-
-def _uso_arq() -> Path:
-    return _dados() / "claude_motor_uso.json"
-
-
 def _estado_arq() -> Path:
-    return _dados() / "claude_motor_estado.json"
+    return arq.dados() / "claude_motor_estado.json"
 
 
 def _trava_arq() -> Path:
-    return _dados() / "claude_motor.lock"
+    return arq.dados() / "claude_motor.lock"
 
 
 def _pausa_arq() -> Path:
-    return _dados() / ".pause_claude_motor"
+    return arq.dados() / ".pause_claude_motor"
 
 
 def _log_arq() -> Path:
-    return _dados() / "claude_motor.log"
+    return arq.dados() / "claude_motor.log"
 
 
 def _pasta_trabalho() -> Path:
@@ -139,111 +110,16 @@ def _bin() -> list[str]:
     return [achado or "claude"]
 
 
-def _int_env(nome: str, padrao: int) -> int:
-    try:
-        return int(os.environ.get(nome, "") or padrao)
-    except ValueError:
-        return padrao
-
-
-def teto_total() -> int:
-    return _int_env("JFN_CLAUDE_MAX_CHAMADAS_DIA", TETO_CHAMADAS_DIA)
-
-
-def teto_segundos() -> int:
-    return _int_env("JFN_CLAUDE_MAX_SEGUNDOS_DIA", TETO_SEGUNDOS_DIA)
-
-
-def teto_tarefa(tarefa: str) -> int:
-    return _int_env(f"JFN_CLAUDE_MAX_{tarefa.upper()}", TETOS_TAREFA.get(tarefa, TETO_TAREFA_PADRAO))
-
-
-# ── arquivos JSON com escrita atômica e trava curta própria ─────────────────────────────────────────
-@contextmanager
-def _flock(caminho: Path, espera: float):
-    """Trava de ARQUIVO (não de nome de processo). Rende True se pegou dentro de `espera` s."""
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(caminho, os.O_RDWR | os.O_CREAT, 0o600)
-    pegou = False
-    try:
-        limite = time.monotonic() + max(0.0, espera)
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                pegou = True
-                break
-            except BlockingIOError:
-                if time.monotonic() >= limite:
-                    break
-                time.sleep(0.5)
-        yield pegou
-    finally:
-        if pegou:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-        os.close(fd)
-
-
-def _ler_json(caminho: Path) -> dict:
-    try:
-        d = json.loads(caminho.read_text(encoding="utf-8"))
-        return d if isinstance(d, dict) else {}
-    except (OSError, ValueError):
-        return {}
-
-
-def _gravar_json(caminho: Path, dados: dict) -> None:
-    try:
-        caminho.parent.mkdir(parents=True, exist_ok=True)
-        tmp = caminho.with_suffix(caminho.suffix + ".tmp")
-        tmp.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
-        os.replace(tmp, caminho)
-    except OSError as e:  # registro não pode derrubar o juízo
-        logger.warning("claude_motor: não gravei %s (%s)", caminho.name, e)
-
-
-def _hoje() -> str:
-    return date.today().isoformat()
-
-
 def _agora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _uso_vazio() -> dict:
-    return {"data": _hoje(), "total": {"chamadas": 0, "segundos": 0.0, "ok": 0, "erros": 0, "bloqueadas": 0},
-            "tarefas": {}, "ultimo_erro": None, "ultima_ok": None}
-
-
-def ler_uso() -> dict:
-    d = _ler_json(_uso_arq())
-    if d.get("data") != _hoje():
-        anterior = d.get("ultimo_erro")
-        d = _uso_vazio()
-        d["ultimo_erro"] = anterior      # o último erro sobrevive à virada do dia (o painel precisa dele)
-    return d
-
-
-def _mutar_uso(fn) -> dict:
-    with _flock(_uso_arq().with_suffix(".json.lock"), 10.0):
-        d = ler_uso()
-        fn(d)
-        _gravar_json(_uso_arq(), d)
-        return d
-
-
-def _tarefa_de(d: dict, tarefa: str) -> dict:
-    return d["tarefas"].setdefault(tarefa, {"chamadas": 0, "segundos": 0.0, "ok": 0, "erros": 0, "bloqueadas": 0})
-
-
 def ler_estado() -> dict:
-    return _ler_json(_estado_arq())
+    return arq.ler_json(_estado_arq())
 
 
 def _mutar_estado(**campos) -> None:
-    with _flock(_estado_arq().with_suffix(".json.lock"), 10.0):
-        d = ler_estado()
-        d.update(campos)
-        _gravar_json(_estado_arq(), d)
+    arq.mutar_json(_estado_arq(), lambda d: d.update(campos), espera=10.0)
 
 
 def _log(linha: str) -> None:
@@ -256,33 +132,23 @@ def _log(linha: str) -> None:
 
 
 # ── portões ───────────────────────────────────────────────────────────────────────────────────────
-def motivo_desligado(*, canario: bool = False, tarefa: str = "") -> str | None:
-    """Por que o motor NÃO pode rodar agora (None = pode)."""
+def _motivo_kill_switch() -> str | None:
+    """Kill-switch do dono: vale para a assinatura E para a API paga."""
     if (os.environ.get("JFN_CLAUDE_MOTOR", "1").strip().lower() in ("0", "false", "off", "no")):
         return "desligado (JFN_CLAUDE_MOTOR=0)"
     if _pausa_arq().exists():
         return f"pausado ({_pausa_arq().name})"
-    est = ler_estado()
-    ate = est.get("bloqueado_ate")
-    if isinstance(ate, (int, float)) and ate > time.time():
-        return f"limite de uso da assinatura — pausa até {datetime.fromtimestamp(ate):%H:%M}"
-    from compliance_agent.llm import contingencia
-    m = contingencia.motivo_bloqueio(tarefa)
-    if m:
-        return m
-    if not canario and est.get("canario_ok") is False:
-        return f"desligado pelo canário de {est.get('canario_em', '?')}: {est.get('canario_motivo', '?')}"
     return None
 
 
-def _motivo_teto(d: dict, tarefa: str) -> str | None:
-    t = d["total"]
-    if t["chamadas"] >= teto_total():
-        return f"teto diário total ({teto_total()} chamadas)"
-    if t["segundos"] >= teto_segundos():
-        return f"teto diário de tempo ({teto_segundos()} s)"
-    if _tarefa_de(d, tarefa)["chamadas"] >= teto_tarefa(tarefa):
-        return f"teto diário da tarefa {tarefa} ({teto_tarefa(tarefa)} chamadas)"
+def motivo_desligado(*, canario: bool = False, tarefa: str = "") -> str | None:
+    """Por que o motor NÃO pode rodar agora (None = pode). O limite da conta mora SÓ na contingência."""
+    m = _motivo_kill_switch() or contingencia.motivo_bloqueio(tarefa)
+    if m:
+        return m
+    est = ler_estado()
+    if not canario and est.get("canario_ok") is False:
+        return f"desligado pelo canário de {est.get('canario_em', '?')}: {est.get('canario_motivo', '?')}"
     return None
 
 
@@ -317,7 +183,6 @@ def _executar_cli(cmd: list[str], entrada: str, env: dict, cwd: Path, timeout: f
 def classificar_erro(texto: str) -> str:
     """'limite' (cota da assinatura) | 'auth' (login) | 'outro'."""
     t = texto or ""
-    from compliance_agent.llm import contingencia
     if contingencia.eh_limite(t):     # inclui "You've hit your 5-hour limit" e 429/rate_limit (antes: "outro")
         return "limite"
     if re.search(r"api key|log ?in|authenticat|oauth|unauthorized|401", t, re.I):
@@ -325,26 +190,12 @@ def classificar_erro(texto: str) -> str:
     return "outro"
 
 
-def _instrucao_schema(schema) -> str:
-    return ("\n\nResponda SOMENTE com um objeto JSON válido, sem texto fora dele, neste formato:\n"
-            + (schema if isinstance(schema, str) else json.dumps(schema, ensure_ascii=False)))
-
-
-def _chaves_exigidas(schema) -> list[str]:
-    if isinstance(schema, dict):
-        if isinstance(schema.get("required"), list):
-            return [str(k) for k in schema["required"]]
-        if "properties" not in schema and "type" not in schema:
-            return list(schema.keys())      # schema dado como exemplo do objeto
-    return []
-
-
 def _falhar(tarefa: str, motivo: str, *, contar_erro: bool, segundos: float = 0.0, tipo: str = "") -> None:
     global ultimo_motivo
     ultimo_motivo = motivo
 
     def f(d):
-        tt = _tarefa_de(d, tarefa)
+        tt = orcamento.tarefa_de(d, tarefa)
         if contar_erro:
             d["total"]["erros"] += 1
             tt["erros"] += 1
@@ -354,12 +205,9 @@ def _falhar(tarefa: str, motivo: str, *, contar_erro: bool, segundos: float = 0.
             tt["bloqueadas"] += 1
         d["total"]["segundos"] = round(d["total"]["segundos"] + segundos, 1)
         tt["segundos"] = round(tt["segundos"] + segundos, 1)
-    _mutar_uso(f)
+    orcamento.mutar_uso(f)
     if contar_erro:
         _log(f"tarefa={tarefa} erro {tipo or 'erro'}: {motivo[:160]}")
-
-
-_SEM_API = ("desligado (JFN_CLAUDE_MOTOR", "pausado", "sob pytest")   # kill-switch vale para os dois backends
 
 
 def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME, timeout: float = 180.0,
@@ -367,19 +215,24 @@ def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME
            backend: str = "auto", api_cliente=None, _canario: bool = False) -> Pensamento | None:
     """Claude pela ASSINATURA primeiro; sem ela (teto, limite de uso, canário fora, trava ocupada, erro), a API
     paga com teto em dólares (`claude_api`, Haiku por padrão, nunca Opus). `backend`: auto | cli | api.
-    `None` ⇒ cair na cascata (motivo em `ultimo_motivo`). O modelo da API sai marcado `<id>@api`."""
+    `None` ⇒ cair na cascata (motivo em `ultimo_motivo`). O modelo da API sai marcado `<id>@api` (`claude_api.pela_api`)."""
     global ultimo_motivo
     r = None
     if backend in ("auto", "cli"):
         r = _pensar_cli(tarefa, prompt, schema=schema, modelo=modelo, timeout=timeout, ferramentas=ferramentas,
                         sistema=sistema, espera=espera, executar=executar, _canario=_canario)
-        if r is not None or backend == "cli" or _canario or ultimo_motivo.startswith(_SEM_API):
+        if r is not None or backend == "cli" or _canario:
             return r
+    # kill-switch (e teste sem dublê) barra a API também — decidido pelo estado, não pelo texto do motivo
+    barrado = _motivo_kill_switch() or ("sob pytest sem executor dublê" if executar is None and arq.sob_pytest() else None)
+    if barrado:
+        if backend == "api":
+            ultimo_motivo = barrado
+        return None
     if ferramentas:                     # a API aqui é só texto: tarefa com ferramenta não migra
         return None
     motivo_cli = ultimo_motivo
-    from compliance_agent.llm import claude_api
-    entrada = prompt + (_instrucao_schema(schema) if schema is not None else "")
+    entrada = prompt + (instrucao_schema(schema) if schema is not None else "")
     ini = time.monotonic()
     res = claude_api.pensar_api(tarefa, entrada, sistema=sistema or SISTEMA_PADRAO, timeout=timeout,
                                 cliente=api_cliente)
@@ -389,14 +242,13 @@ def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME
     texto, quem, usd = res
     dados = None
     if schema is not None:
-        from compliance_agent.llm.json_resposta import parse_json_llm
         dados = parse_json_llm(texto)
-        if dados is None or [k for k in _chaves_exigidas(schema) if not (isinstance(dados, dict) and k in dados)]:
+        if chaves_faltando(dados, schema) != []:
             ultimo_motivo = "API: resposta sem o JSON pedido"
             return None
-    _log(f"tarefa={tarefa} ok modelo={quem}@api {time.monotonic() - ini:.1f}s US$ {usd:.4f}")
+    _log(f"tarefa={tarefa} ok modelo={quem}{claude_api.SUFIXO_API} {time.monotonic() - ini:.1f}s US$ {usd:.4f}")
     _mutar_estado(ultima_ok_iso=_agora())
-    return Pensamento(texto=texto, modelo=f"{quem}@api", segundos=round(time.monotonic() - ini, 1), tarefa=tarefa,
+    return Pensamento(texto=texto, modelo=f"{quem}{claude_api.SUFIXO_API}", segundos=round(time.monotonic() - ini, 1), tarefa=tarefa,
                       dados=dados, extras={"backend": "api", "usd": round(usd, 6)})
 
 
@@ -406,7 +258,7 @@ def _pensar_cli(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_V
     """Uma chamada ao Claude pela assinatura. `None` ⇒ cair na cascata (motivo em `ultimo_motivo`)."""
     global ultimo_motivo
     ultimo_motivo = ""
-    if executar is None and os.environ.get("PYTEST_CURRENT_TEST"):
+    if executar is None and arq.sob_pytest():
         # guarda dura: teste nenhum chama o claude de verdade (cota da assinatura) — só com executor dublê
         ultimo_motivo = "sob pytest sem executor dublê"
         return None
@@ -417,28 +269,29 @@ def _pensar_cli(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_V
         if m:
             _falhar(tarefa, m, contar_erro=False)
             return None
-        if _motivo_teto(ler_uso(), tarefa):
-            _falhar(tarefa, _motivo_teto(ler_uso(), tarefa), contar_erro=False)
+        m = orcamento.motivo_teto(ler_uso(), tarefa)      # pré-checagem barata; a reserva confere de novo sob a trava
+        if m:
+            _falhar(tarefa, m, contar_erro=False)
             return None
-        with _flock(_trava_arq(), espera) as pegou:
+        with arq.trava(_trava_arq(), espera) as pegou:
             if not pegou:
                 _falhar(tarefa, f"ocupado: outro claude do JFN rodando há mais de {espera:.0f} s", contar_erro=False)
                 return None
             reservado = {}
 
             def reservar(d):
-                motivo = _motivo_teto(d, tarefa)
+                motivo = orcamento.motivo_teto(d, tarefa)
                 reservado["motivo"] = motivo
                 if not motivo:
                     d["total"]["chamadas"] += 1
-                    _tarefa_de(d, tarefa)["chamadas"] += 1
-            _mutar_uso(reservar)
+                    orcamento.tarefa_de(d, tarefa)["chamadas"] += 1
+            orcamento.mutar_uso(reservar)
             if reservado["motivo"]:
                 _falhar(tarefa, reservado["motivo"], contar_erro=False)
                 return None
             pasta = _pasta_trabalho()
             pasta.mkdir(mode=0o700, parents=True, exist_ok=True)
-            entrada = prompt + (_instrucao_schema(schema) if schema is not None else "")
+            entrada = prompt + (instrucao_schema(schema) if schema is not None else "")
             ini = time.monotonic()
             try:
                 rc, out, err = executar(montar_comando(modelo, sistema or SISTEMA_PADRAO, ferramentas),
@@ -485,22 +338,21 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
         return None
     dados = None
     if schema is not None:
-        from compliance_agent.llm.json_resposta import parse_json_llm
         dados = parse_json_llm(resultado)
-        faltam = [k for k in _chaves_exigidas(schema) if not (isinstance(dados, dict) and k in dados)]
-        if dados is None or faltam:
-            motivo = "resposta sem o JSON pedido" + (f" (faltam {', '.join(faltam[:5])})" if dados is not None else "")
+        faltam = chaves_faltando(dados, schema)
+        if faltam != []:
+            motivo = "resposta sem o JSON pedido" + (f" (faltam {', '.join(faltam[:5])})" if faltam else "")
             _falhar(tarefa, motivo, contar_erro=True, segundos=seg, tipo="schema")
             return None
 
     def f(d):
-        tt = _tarefa_de(d, tarefa)
+        tt = orcamento.tarefa_de(d, tarefa)
         d["total"]["ok"] += 1
         tt["ok"] += 1
         d["total"]["segundos"] = round(d["total"]["segundos"] + seg, 1)
         tt["segundos"] = round(tt["segundos"] + seg, 1)
         d["ultima_ok"] = {"em": _agora(), "tarefa": tarefa, "modelo": modelo, "segundos": round(seg, 1)}
-    _mutar_uso(f)
+    orcamento.mutar_uso(f)
     _mutar_estado(ultima_ok_iso=_agora())      # persiste à virada do dia: é o "efeito" do motor no AO VIVO
     _log(f"tarefa={tarefa} ok modelo={modelo} {seg:.1f}s")
     return Pensamento(texto=resultado, modelo=modelo, segundos=round(seg, 1), tarefa=tarefa, dados=dados,
@@ -509,15 +361,13 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
 
 def _tratar_tipo(tipo: str, motivo: str, bruto: str = "") -> None:
     if tipo == "limite":
-        from compliance_agent.llm import contingencia
-        ate = contingencia.hora_de_volta(bruto or motivo) or time.time() + _int_env("JFN_CLAUDE_PAUSA_LIMITE_S", 3600)
-        _mutar_estado(bloqueado_ate=ate, bloqueio_motivo=motivo[:200])
-        contingencia.entrar(motivo, ate)       # arquivo único: os consumidores passam aos outros modelos
-        _log(f"limite de uso da assinatura: contingência até {datetime.fromtimestamp(ate):%d/%m %H:%M}")
+        # arquivo único: o motor e os consumidores leem dele; sem hora legível, a pausa padrão é da contingência
+        d = contingencia.entrar(motivo, contingencia.hora_de_volta(bruto or motivo))
+        _log(f"limite de uso da assinatura: contingência até {datetime.fromtimestamp(d['ate']):%d/%m %H:%M}")
 
 
 # ── canário diário ────────────────────────────────────────────────────────────────────────────────
-def _avisar_telegram(texto: str) -> bool:
+def avisar_dono(texto: str) -> bool:
     try:
         import asyncio
         from compliance_agent.notifications.telegram import enviar_mensagem
@@ -534,8 +384,7 @@ def canario(*, executar=None, avisar=None) -> dict:
 
     Falha ⇒ `canario_ok=False` (o motor fica desligado) + aviso ao dono. Volta a funcionar ⇒ religa e avisa.
     """
-    avisar = avisar or _avisar_telegram
-    from compliance_agent.llm import contingencia
+    avisar = avisar or avisar_dono
     em_limite = contingencia.motivo_bloqueio("canario")
     if em_limite:
         # conta no limite não é assinatura quebrada: o canário NÃO reprova (reprovar desligava o motor até o
@@ -585,7 +434,6 @@ def painel() -> dict:
 
 def _contingencia_painel() -> dict | None:
     try:
-        from compliance_agent.llm import contingencia
         e = contingencia.estado()
         return {k: e.get(k) for k in ("ativa", "origem", "ate_iso", "motivo")}
     except (ImportError, OSError, ValueError, TypeError, KeyError):

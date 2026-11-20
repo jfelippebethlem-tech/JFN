@@ -250,7 +250,7 @@ def regravar_lote(lote_id: str) -> dict:
     from compliance_agent.llm.json_resposta import parse_json_llm
     saida = json.loads((REPO / "data" / "claude_api_lotes" / f"{lote_id}.json").read_text(encoding="utf-8"))
     from compliance_agent.llm import claude_api as C
-    modelo = f"{C.MODELO_BARATO}@api-lote#{VERSAO}"
+    modelo = f"{C.MODELO_BARATO}{C.SUFIXO_API}-lote#{VERSAO}"
     tot = {"regravadas": 0, "invalidas": 0}
     con = _con()
     try:
@@ -276,7 +276,7 @@ def regravar_lote(lote_id: str) -> dict:
 def colher(estado: dict) -> dict:
     from compliance_agent.llm import claude_api as C
     from compliance_agent.llm.json_resposta import parse_json_llm
-    modelo = f"{C.MODELO_BARATO}@api-lote#{VERSAO}"
+    modelo = f"{C.MODELO_BARATO}{C.SUFIXO_API}-lote#{VERSAO}"
     tot = {"lotes": 0, "gravadas": 0, "invalidas": 0}
     for lote_id, ids in list(estado.get("lotes", {}).items()):
         res = C.colher_lote(lote_id)

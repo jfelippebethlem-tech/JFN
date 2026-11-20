@@ -154,7 +154,8 @@ def pensar(tarefa: str, prompt: str, *, schema: dict | None = None, **kw) -> tup
         return None, motivo
     if hasattr(r, "texto"):           # `Pensamento` do motor: dados (JSON já validado) ou o texto cru
         ULTIMO_MODELO = getattr(r, "modelo", None)
-        if str(ULTIMO_MODELO or "").endswith("@api"):     # Claude barato pela API: também vai ao Opus
+        from compliance_agent.llm.claude_api import pela_api
+        if pela_api(ULTIMO_MODELO):                       # Claude barato pela API: também vai ao Opus
             try:
                 from compliance_agent.llm import conferencia_opus
                 ULTIMA_EM_CONTINGENCIA = conferencia_opus.enfileirar(

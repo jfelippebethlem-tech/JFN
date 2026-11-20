@@ -36,8 +36,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
-from compliance_agent.llm import claude_motor, cruzamento
+from compliance_agent.llm import claude_api, claude_motor, contingencia, cruzamento
 from compliance_agent.llm.cruzamento import Lado
+from compliance_agent.llm.normalizadores import NORMALIZADORES
 
 logger = logging.getLogger(__name__)
 
@@ -58,91 +59,6 @@ def ultima_chamada() -> dict:
     return dict(_ultima)
 
 
-# ── normalizadores: resposta crua → (veredito curto, nível 0/1/2 ou None, confiança 0–1 ou None) ─────────
-def _json(txt):
-    from compliance_agent.llm.json_resposta import parse_json_llm
-    d = parse_json_llm(txt or "")
-    return d if isinstance(d, dict) else {}
-
-
-def _nivel_nota(n) -> int | None:
-    try:
-        n = float(n)
-    except (TypeError, ValueError):
-        return None
-    if not 0 <= n <= 10:
-        return None
-    return 2 if n >= 7 else 1 if n >= 4 else 0
-
-
-def norm_execucao(txt):
-    d = _json(txt)
-    ex = str(d.get("execucao_comprovada") or "").strip().lower() or None
-    nivel = _nivel_nota(d.get("nota_risco_execucao"))
-    if nivel is None and ex not in ("sim", "parcial", "nao", "não"):
-        return None, None, None
-    return f"{ex or '?'}/nota {d.get('nota_risco_execucao')}", nivel, None
-
-
-_CONF = {"alta": 0.9, "media": 0.6, "média": 0.6, "baixa": 0.3}
-
-
-def norm_fachada(txt):
-    d = _json(txt)
-    v = str(d.get("veredito") or "").strip().upper()
-    nivel = {"FACHADA_PROVAVEL": 2, "INDICIOS": 1, "INDÍCIOS": 1, "INSUFICIENTE": 0}.get(v)
-    return (v or None), nivel, _CONF.get(str(d.get("confianca") or "").strip().lower())
-
-
-def norm_risco(txt):
-    d = _json(txt)
-    r = str(d.get("risco") or "").strip().lower()
-    nivel = {"baixo": 0, "médio": 1, "medio": 1, "alto": 2}.get(r)
-    return (r or None), nivel, None
-
-
-def norm_adversarial(txt):
-    d = _json(txt)
-    if "refuta" not in d:
-        return None, None, None
-    return ("refutada", 0, None) if bool(d.get("refuta")) else ("mantida", 2, None)
-
-
-def norm_triagem(txt):
-    d = _json(txt)
-    p = str(d.get("prioridade") or "").strip().lower()
-    nivel = {"aprofundar": 2, "monitorar": 1, "provavel_falso_positivo": 0}.get(p)
-    try:
-        conf = max(0.0, min(1.0, float(d.get("nota")) / 10))
-    except (TypeError, ValueError):
-        conf = None
-    return (p or None), nivel, conf
-
-
-def norm_pericia_integral(txt):
-    """Perícia integral (`compliance_agent.pericia_integral`): grau global = MÁXIMO dos eixos determinados
-    (null = INDETERMINADO fica fora; todos null ⇒ nível None). Genérico nos nomes dos eixos."""
-    e = _json(txt).get("eixos")
-    if not isinstance(e, dict) or not e:
-        return None, None, None
-    graus = {k: (v.get("grau") if isinstance(v, dict) and v.get("grau") in (0, 1, 2)
-                 and not isinstance(v.get("grau"), bool) else None) for k, v in e.items()}
-    det = [g for g in graus.values() if g is not None]
-    if not det:
-        return "indeterminado", None, None
-    return " ".join(f"{k[:4]}{'?' if g is None else g}" for k, g in graus.items())[:80], max(det), None
-
-
-NORMALIZADORES: dict[str, Callable] = {
-    "pericia_integral": norm_pericia_integral,
-    "pericia_execucao": norm_execucao,
-    "pericia_fornecedor": norm_fachada,
-    "investigacao_risco": norm_risco,
-    "camada_subjetiva": norm_adversarial,
-    "triagem_alertas": norm_triagem,
-}
-
-
 # ── a cascata, com few-shot e preferência por placar ──────────────────────────────────────────────────
 def _fracao_fewshot() -> float:
     try:
@@ -159,15 +75,6 @@ def _com_exemplos(prompt: str, exemplos: list[dict]) -> str:
             + "\n\n=== CASO ATUAL ===\n" + prompt)
 
 
-def _modelo_da_cascata() -> str:
-    try:
-        from compliance_agent import direcionamento_cerebro as dc
-        p = dc.ultimo_provedor or "desconhecido"
-        return f"{p}:{dc.ultimo_modelo}" if getattr(dc, "ultimo_modelo", "") else p
-    except ImportError:
-        return "desconhecido"
-
-
 def _chamar_provedor(provedor: str, prompt: str, sistema: str) -> str | None:
     """Chamada DIRETA ao provedor preferido pelo placar (sem passar pela ordem fixa da cascata)."""
     from compliance_agent.llm import free_llm as F
@@ -178,12 +85,6 @@ def _chamar_provedor(provedor: str, prompt: str, sistema: str) -> str | None:
     if provedor in getattr(F, "_EXTRA", {}) and F.extra_available(provedor):
         return F.extra_chat(provedor, prompt, system=sistema)
     return None
-
-
-def _gerar_sync_padrao(prompt, sistema="", timeout=45.0, json_saida=True):
-    from compliance_agent.direcionamento_cerebro import gerar_sync
-    # mesma forma de chamada dos chamadores antigos (3 posicionais): quem substitui gerar_sync segue servindo
-    return gerar_sync(prompt, sistema, timeout) if json_saida else gerar_sync(prompt, sistema, timeout, json_saida)
 
 
 def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Callable | None = None,
@@ -226,7 +127,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                 logger.debug("comotor: provedor preferido falhou (%s)", e)
         if cascata is not None:
             return cascata(p, sistema, timeout, json_saida), "cascata", bool(fs)
-        return _gerar_sync_padrao(p, sistema, timeout, json_saida), _modelo_da_cascata(), bool(fs)
+        return contingencia.gerar_cascata(p, sistema, timeout, json_saida), contingencia.modelo_da_cascata(), bool(fs)
 
     def gerar(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True, *,
               item: str | None = None) -> str:
@@ -304,7 +205,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                        outro=(r_casc[1] if (r_claude and r_casc) else None), conferencia_pendente=False)
         # produzido sem o Claude da assinatura (cascata sozinha, ou Claude barato pela API) ⇒ o Opus confere depois
         sem_assinatura = (r_claude is None and r_casc is not None) or (
-            r_claude is not None and str(r_claude.modelo).endswith("@api"))
+            r_claude is not None and claude_api.pela_api(r_claude.modelo))
         if conferencia and sem_assinatura:
             try:
                 from compliance_agent.llm import conferencia_opus

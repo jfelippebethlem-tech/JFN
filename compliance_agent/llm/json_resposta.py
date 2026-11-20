@@ -74,26 +74,7 @@ def _fragmento(texto: str, inicio: int) -> tuple[str, bool]:
 
 def _reparar(fragmento: str):
     """Fecha o que ficou aberto num fragmento cortado no meio. `None` se nada se recupera."""
-    pilha: list[str] = []
-    em_string = False
-    escapado = False
-    for c in fragmento:
-        if escapado:
-            escapado = False
-            continue
-        if c == "\\":
-            escapado = True
-            continue
-        if c == '"':
-            em_string = not em_string
-            continue
-        if em_string:
-            continue
-        if c in _ABERTURAS:
-            pilha.append(_ABERTURAS[c])
-        elif c in ("}", "]") and pilha:
-            pilha.pop()
-    cauda = ('"' if em_string else "") + "".join(reversed(pilha))
+    cauda = _reparar_cauda(fragmento)
     corpo = fragmento
     # A cauda basta quando o corte caiu depois de um valor completo. Quando caiu no meio de uma
     # chave sem valor (`{"a":1,"b":`), recua até a última vírgula de topo e tenta de novo.
@@ -164,3 +145,29 @@ def parse_json_llm(raw: str | None):
                 dados["_truncado"] = True
             return dados
     return None
+
+
+# ── o pedido e a conferência do formato (o outro lado do mesmo contrato) ──────────────────────────────
+def instrucao_schema(schema) -> str:
+    """O pedido de JSON acrescentado ao prompt — o MESMO texto para o Claude e para a cascata."""
+    return ("\n\nResponda SOMENTE com um objeto JSON válido, sem texto fora dele, neste formato:\n"
+            + (schema if isinstance(schema, str) else json.dumps(schema, ensure_ascii=False)))
+
+
+def chaves_exigidas(schema) -> list[str]:
+    """`required` do JSON Schema; schema dado como EXEMPLO do objeto ⇒ as chaves do exemplo."""
+    if isinstance(schema, dict):
+        if isinstance(schema.get("required"), list):
+            return [str(k) for k in schema["required"]]
+        if "properties" not in schema and "type" not in schema:
+            return list(schema.keys())
+    return []
+
+
+def chaves_faltando(dados, schema) -> list[str] | None:
+    """Chaves exigidas que a resposta não traz (`[]` = conforme); `None` = nem objeto JSON veio.
+
+    Leitura fora do formato é descartada pelo chamador, nunca "consertada"."""
+    if not isinstance(dados, dict):
+        return None
+    return [k for k in chaves_exigidas(schema) if k not in dados]

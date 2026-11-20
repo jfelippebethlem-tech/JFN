@@ -5,7 +5,9 @@ import subprocess
 
 import pytest
 
+from compliance_agent.llm import arquivo_estado
 from compliance_agent.llm import claude_motor as M
+from compliance_agent.llm import orcamento
 
 
 @pytest.fixture(autouse=True)
@@ -93,7 +95,7 @@ def test_teto_por_tarefa_e_total(monkeypatch):
 
 def test_teto_de_segundos(monkeypatch):
     monkeypatch.setenv("JFN_CLAUDE_MAX_SEGUNDOS_DIA", "5")
-    M._mutar_uso(lambda d: d["total"].__setitem__("segundos", 6.0))
+    orcamento.mutar_uso(lambda d: d["total"].__setitem__("segundos", 6.0))
     assert M.pensar("pericia_execucao", "a", executar=Duble(), espera=0) is None
     assert "tempo" in M.ultimo_motivo
 
@@ -109,7 +111,7 @@ def test_kill_switch_env_e_arquivo(monkeypatch, tmp_path):
 
 
 def test_trava_ocupada_devolve_none(tmp_path):
-    with M._flock(M._trava_arq(), 0):
+    with arquivo_estado.trava(M._trava_arq(), 0):
         assert M.pensar("x", "p", executar=Duble(), espera=0) is None
     assert "ocupado" in M.ultimo_motivo
 
@@ -134,7 +136,7 @@ def test_schema_extrai_json_e_confere_chaves():
 def test_uso_nao_guarda_prompt_nem_resposta():
     M.pensar("pericia_execucao", "CPF 12345678901 segredo", executar=Duble("RESPOSTA-SIGILOSA"), espera=0)
     M.pensar("pericia_execucao", "CPF 12345678901 segredo", executar=Duble(is_error=True, resultado="CPF 12345678901 segredo"), espera=0)
-    bruto = M._uso_arq().read_text() + M._log_arq().read_text()
+    bruto = orcamento.arquivo().read_text() + M._log_arq().read_text()
     assert "12345678901" not in bruto and "RESPOSTA-SIGILOSA" not in bruto
 
 
@@ -159,8 +161,8 @@ def test_canario_ok_falha_e_religa():
 def test_painel_resume_sem_conteudo():
     M.pensar("triagem_alertas", "p", executar=Duble(), espera=0)
     p = M.painel()
-    assert p["hoje"] == 1 and p["por_tarefa"]["triagem_alertas"]["teto"] == M.TETOS_TAREFA["triagem_alertas"]
-    assert p["teto"] == M.TETO_CHAMADAS_DIA and p["ligado"] is True
+    assert p["hoje"] == 1 and p["por_tarefa"]["triagem_alertas"]["teto"] == orcamento.TETOS_TAREFA["triagem_alertas"]
+    assert p["teto"] == orcamento.TETO_CHAMADAS_DIA and p["ligado"] is True
 
 
 def test_binario_achado_fora_do_path_do_cron(monkeypatch, tmp_path):

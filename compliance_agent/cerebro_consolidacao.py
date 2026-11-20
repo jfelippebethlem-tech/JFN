@@ -136,7 +136,7 @@ def _folga_do_motor() -> tuple[float, str | None]:
 def propor(con: sqlite3.Connection, *, pensar=None, folga=None, registrar_proposta=None) -> dict:
     """Pede a proposta ao Claude da ASSINATURA para os pares abertos, dentro dos três tetos. `pensar`, `folga` e
     `registrar_proposta` são injetáveis (teste)."""
-    from compliance_agent.llm import claude_motor
+    from compliance_agent.llm import claude_api, claude_motor
     pensar = pensar or claude_motor.pensar
     folga = folga or _folga_do_motor
     registrar_proposta = registrar_proposta or _proposta_no_cerebro
@@ -167,7 +167,7 @@ def propor(con: sqlite3.Connection, *, pensar=None, folga=None, registrar_propos
             r["parou_por"] = f"assinatura indisponível: {motivo}"
             break
         ocupado = 0
-        if str(p.modelo).endswith("@api"):           # cinto e suspensório: resposta que não veio da assinatura é descartada
+        if claude_api.pela_api(p.modelo):            # cinto e suspensório: resposta que não veio da assinatura é descartada
             r["parou_por"] = "resposta veio da API paga — descartada"
             break
         r["chamadas"] += 1
