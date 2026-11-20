@@ -22,6 +22,16 @@ def test_marcador_conteudo_exige_ata_real_nao_boilerplate():
     assert not AJ._RX_ATA_CONTEUDO.search(edital)
 
 
+def test_marcador_conteudo_reconhece_ata_de_realizacao_do_pregao():
+    """Sweep 19/11/2026: 'Ata-Sessao-020_2025.pdf' (54 págs, cabeçalho 'Ata de Realização do Pregão
+    Eletrônico') foi descartada como 'sem marcador de ata' — 0 atas gravadas em todas as noites (CST-03)."""
+    ata = ("Página 1 de 54 Ata de Realização do Pregão Eletrônico Número de Pregão Eletrônico: 020/2025 "
+           "Nº Ata: Nº Edital: Nº Processo: 1 020/2025 15306/2024 Objeto: CONTRATAÇÃO DE EMPRESA")
+    edital = "A realização do pregão eletrônico ocorrerá no dia 10/03/2025, às 10h, no portal."
+    assert AJ._RX_ATA_CONTEUDO.search(ata)
+    assert not AJ._RX_ATA_CONTEUDO.search(edital)      # controle negativo: edital cita a realização
+
+
 def test_extrair_texto_pdf_bom_nao_chama_ocr(monkeypatch):
     texto_rico = "ATA DE SESSÃO. " + "conteúdo " * 100
     monkeypatch.setattr(AJ, "_texto_de_pdf", lambda blob: texto_rico)

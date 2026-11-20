@@ -34,7 +34,7 @@ _RX_ATA_TITULO = re.compile(
 # 'inabilitad'/'declarada vencedora' isolados: aparecem no próprio edital ("será inabilitado o
 # licitante que…") e gerariam falso positivo. Só frases inequívocas de ata de sessão.
 _RX_ATA_CONTEUDO = re.compile(
-    r"ata\s+d[ae]\s+(?:sess|reuni|julgamento)|sess[ãa]o\s+p[úu]blica|"
+    r"ata\s+d[ae]\s+(?:sess|reuni|julgamento|realiza[çc][ãa]o\s+d[oa]\s+preg)|sess[ãa]o\s+p[úu]blica|"
     r"julgamento\s+das?\s+propostas?|mapa\s+de\s+lances|resultado\s+d[ao]\s+julgamento|"
     r"reuni[ãa]o\s+de\s+julgamento|encerrada\s+a\s+sess[ãa]o", re.I)
 _RX_CNPJ = re.compile(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}")
