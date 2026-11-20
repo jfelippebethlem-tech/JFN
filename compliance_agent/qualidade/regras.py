@@ -14,8 +14,15 @@ ARQ = REPO / "config" / "qualidade_regras.yaml"
 FAMILIAS = ("PAD", "CNF", "COR", "CST", "SUB")
 SEVERIDADES = ("bloqueante", "alta", "media")
 TIPOS = ("catraca", "sensor", "juiz", "existente", "manual")
-SISTEMAS = ("painel", "detectores", "pericias", "relatorios", "lex", "yoda", "aovivo", "vault", "coletores",
-            "llm", "infra")
+# Os sistemas a que uma regra se aplica: id → (nome no painel de conformidade, nome curto no documento canônico)
+_SISTEMAS = {"painel": ("Painel", "Painel"), "detectores": ("Detectores", "Detectores"),
+             "pericias": ("Perícias", "Perícias"), "relatorios": ("Relatórios e dossiês", "Relatórios"),
+             "lex": ("Lex", "Lex"), "yoda": ("Yoda / Hermes", "Yoda/Hermes"), "aovivo": ("AO VIVO", "AO VIVO"),
+             "vault": ("Vault (casos e notas)", "Vault"), "coletores": ("Coletores", "Coletores"),
+             "llm": ("Modelos (Claude e cascata)", "Modelos"), "infra": ("Infraestrutura e repositório", "Infra")}
+SISTEMAS = tuple(_SISTEMAS)
+NOMES_SISTEMA = {s: nomes[0] for s, nomes in _SISTEMAS.items()}
+NOMES_CURTOS = {s: nomes[1] for s, nomes in _SISTEMAS.items()}
 ESTADOS = ("VERIFICADO", "PENDENTE", "INDISPONIVEL", "REFUTADO")
 CAMPOS = ("id", "titulo", "enunciado", "porque", "medida", "aplica", "severidade", "acao", "verificadores")
 

@@ -47,6 +47,7 @@ from pathlib import Path
 from typing import Callable
 
 from compliance_agent.qualidade import regras, sensores, verificadores as v
+from compliance_agent.qualidade.arquivos import gravar_json
 
 logger = logging.getLogger(__name__)
 
@@ -118,9 +119,12 @@ class Avaliacao:
 
 
 # ───────────────────────────── de onde vêm as afirmações ─────────────────────────────
-def _mascarar(texto: str) -> str:
-    texto = re.sub(r"(?<![\d.])\d{3}\.(\d{3})\.(\d{3})-\d{2}(?!\d)", r"***.\1.\2-**", texto or "")
-    return re.sub(r"(?i)(\bcpf\b[^\d\n]{0,20})\d{3}(\d{3})(\d{3})\d{2}(?!\d)", r"\1***\2\3**", texto)
+_RE_REAIS = re.compile(r"R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})")
+
+
+def _valores_reais(texto: str) -> list[float]:
+    """Os valores "R$ 1.234,56" de um texto (o maior pesa no risco da afirmação)."""
+    return [float(x.replace(".", "").replace(",", ".")) for x in _RE_REAIS.findall(texto)]
 
 
 def _de_manchetes(ctx: sensores.Ctx) -> list[Afirmacao]:
@@ -130,7 +134,7 @@ def _de_manchetes(ctx: sensores.Ctx) -> list[Afirmacao]:
             p = ctx.payload(m["rota"])
         except RuntimeError:
             continue
-        nums = sensores._numeros(m, p)
+        nums = sensores.numeros(m, p)
         if not nums:
             continue
         extras = {k: p.get(k) for k in ("explicacao", "ressalva", "escala", "gerado_em") if isinstance(p, dict) and p.get(k)}
@@ -160,13 +164,9 @@ def _de_couto(ctx: sensores.Ctx) -> list[Afirmacao]:
 
 
 def _de_vault(ctx: sensores.Ctx) -> list[Afirmacao]:
-    pasta = ctx.vault / "casos"
     out = []
-    for arq in sorted(pasta.glob("*.md")) if pasta.is_dir() else []:
-        texto = arq.read_text(encoding="utf-8", errors="replace")
-        fm = sensores._frontmatter(texto)
-        grau = sensores.grau_do_caso(fm)
-        if not fm or not sensores._RE_GRAU_ALTO.match(grau) or not sensores.caso_aberto(fm):
+    for arq, texto, fm in sensores.casos_do_vault(ctx):
+        if not sensores.caso_alto_aberto(fm):
             continue
         valor = fm.get("valor") or fm.get("valor_total") or 0
         valor = float(valor) if isinstance(valor, (int, float)) else 0.0
@@ -235,14 +235,14 @@ def _de_yoda(ctx: sensores.Ctx) -> list[Afirmacao]:
     except _FALHAS:
         textos = []
     try:
-        textos += [("hermes", t) for t in sensores._textos_yoda(ctx, 40)]
+        textos += [("hermes", t) for t in sensores.textos_yoda(ctx, 40)]
     except _FALHAS:
         pass
     out = []
     for origem, t in textos:
         if "R$" not in t and not re.search(r"🔴|🟡", t):
             continue                                            # só resposta que AFIRMA número ou grau
-        vals = [float(x.replace(".", "").replace(",", ".")) for x in re.findall(r"R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})", t)]
+        vals = _valores_reais(t)
         rotulo, cab = (("resposta do /cc (Claude Code) ao dono", "Resposta enviada ao dono no Telegram (modo /cc):\n")
                        if origem == "cc" else ("resposta do Yoda ao dono", "Resposta enviada pelo assistente no Telegram:\n"))
         a = Afirmacao("", "yoda", rotulo, cab + t[:3500], "🔴" if "🔴" in t else "", max(vals, default=0.0), publica=False)
@@ -280,7 +280,7 @@ def _de_produtos(ctx: sensores.Ctx) -> list[Afirmacao]:
         if arq.suffix == ".html":
             bruto = re.sub(r"\s+\n", "\n", re.sub(r"<[^>]+>", " ", re.sub(r"(?is)<(script|style)\b.*?</\1>", "", bruto)))
         trecho = bruto[:4500]
-        vals = [float(x.replace(".", "").replace(",", ".")) for x in re.findall(r"R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})", trecho)]
+        vals = _valores_reais(trecho)
         pessoal = bool(_RE_PESSOAL.search(bruto))
         grau = "🔴" if "🔴" in trecho else ("🟡" if "🟡" in trecho else "")
         sistema = "lex" if base.startswith("parecer_lex") else "relatorios"
@@ -301,7 +301,7 @@ def candidatas(ctx: sensores.Ctx) -> list[Afirmacao]:
         except _FALHAS as e:
             logger.warning("juiz: fonte %s não leu (%s)", fonte.__name__, type(e).__name__)
     for a in out:
-        a.texto = _mascarar(a.texto)
+        a.texto = v.mascarar_cpfs(a.texto)
     return out
 
 
@@ -349,7 +349,7 @@ def fila(cands: list[Afirmacao], historico: dict, agora: datetime, *, revalidaca
     por_sit: dict[str, list[Afirmacao]] = {k: [] for k in _ORDEM_SITUACAO}
     vistos = set()
     for a in cands:
-        if a.id in vistos:                                       # o mesmo id duas vezes: julga-se uma
+        if a.id in vistos:
             continue
         vistos.add(a.id)
         sit = situacao(a, historico, agora)
@@ -363,7 +363,7 @@ def fila(cands: list[Afirmacao], historico: dict, agora: datetime, *, revalidaca
             grupos.add(a.grupo)
             cabecas.append(a)
     por_sit["nova"] = cabecas + [a for a in novas if a not in cabecas]
-    por_sit["revalidar"].sort(key=lambda a: str((historico.get(a.id) or {}).get("em", "")))   # mais velho antes
+    por_sit["revalidar"].sort(key=lambda a: str((historico.get(a.id) or {}).get("em", "")))
     return [a for k in _ORDEM_SITUACAO if revalidacao or k != "revalidar" for a in por_sit[k]]
 
 
@@ -526,11 +526,14 @@ def esquema(sistema: str | None = None) -> dict:
             "escalar": "true|false", "motivo_escalar": "se escalar"}
 
 
+VEREDITOS = ("aprovada", "ressalva", "reprovada")      # o nível do cruzamento com a cascata é a posição (0 · 1 · 2)
+
+
 def normalizar(txt: str):
     """Para o cruzamento com a cascata: aprovada 0 · ressalva 1 · reprovada 2."""
     d = _json(txt) or {}
     ver = str(d.get("veredito") or "").strip().lower()
-    return (ver or None), {"aprovada": 0, "ressalva": 1, "reprovada": 2}.get(ver), None
+    return (ver or None), (VEREDITOS.index(ver) if ver in VEREDITOS else None), None
 
 
 def normalizar_lote(txt: str):
@@ -544,11 +547,11 @@ def normalizar_lote(txt: str):
             notas, _ = _limpar_notas(sub)
             ver = veredito_de(notas)
             if ver:
-                niveis.append({"aprovada": 0, "ressalva": 1, "reprovada": 2}[ver])
+                niveis.append(VEREDITOS.index(ver))
     if not niveis:
         return None, None, None
     pior = max(niveis)
-    return ("aprovada", "ressalva", "reprovada")[pior], pior, None
+    return VEREDITOS[pior], pior, None
 
 
 def _json(txt: str):
@@ -728,13 +731,6 @@ def _ler(arq: Path) -> dict:
     return json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else {}
 
 
-def _gravar_json(caminho: Path, obj: dict) -> None:
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    tmp = caminho.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(caminho)
-
-
 def _podar(historico: dict, cands: list[Afirmacao]) -> None:
     """Superfície que SAIU (card retirado, achado que a régua não gera mais, caso apagado) perde o juízo vigente —
     19/11/2026: cards retirados por FP medida seguiam como SUB bloqueante para sempre. Só se poda o grupo cuja fonte
@@ -749,23 +745,17 @@ def medir_fila(ctx: sensores.Ctx | None = None, k: int | None = None) -> dict:
     """Só MEDE (sem modelo): recalcula a fila e a cobertura e grava `qualidade_juiz_fila.json`. É o derivado leve
     da propagação (`juiz_fila`): o painel e o sensor veem o que ficou pendente quando o vault ou o painel mudam; o
     julgamento continua nas janelas noturnas. Com a rodada do juiz em curso, não grava (ela grava a cada lote)."""
-    import fcntl
     ctx = ctx or sensores.Ctx()
-    ctx.dados.mkdir(parents=True, exist_ok=True)
-    with open(ctx.dados / "qualidade_juiz.lock", "w") as f:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            return {"ok": True, "gravado": False, "motivo": "rodada do juiz em curso (ela grava a cobertura a cada lote)"}
-        try:
+    try:
+        with sensores.trava(ctx.dados, "juiz", esperar=False):
             arq_f = ctx.dados / "qualidade_juiz_fila.json"
             historico = _ler(ctx.dados / "qualidade_juiz_historico.json")
             cands = candidatas(ctx)
             cob = cobertura(cands, historico, ctx.agora, _ler(arq_f), k) | {"origem": "medicao"}
-            _gravar_json(arq_f, cob)
+            gravar_json(arq_f, cob)
             return {"ok": True, "gravado": True} | {x: y for x, y in cob.items() if x not in ("pendentes_desde", "proximas")}
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+    except BlockingIOError:
+        return {"ok": True, "gravado": False, "motivo": "rodada do juiz em curso (ela grava a cobertura a cada lote)"}
 
 
 _CAMPOS_COBERTURA = ("candidatas", "julgadas_vigentes", "cobertura_pct", "pendentes", "mais_antiga_pendente_em",
@@ -808,7 +798,7 @@ def _rodar(ctx: sensores.Ctx, n: int | None, pensar: Callable | None, cascata: C
         if not julgadas and not plano and anterior:
             resumo["em"] = agora_iso                             # nada novo a julgar É rodada concluída
         for caminho, obj in ((arq_h, historico), (arq_f, cob), (arq, resumo)):
-            _gravar_json(caminho, obj)
+            gravar_json(caminho, obj)
         return resumo
 
     for lt in plano:

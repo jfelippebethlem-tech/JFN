@@ -7,6 +7,7 @@
 `matar(motivo)` cria o arquivo KILL: a produção volta à rubrica de partida e o ciclo real para até um humano apagar."""
 from __future__ import annotations
 
+import os
 import sqlite3
 import time
 from pathlib import Path
@@ -15,13 +16,13 @@ from . import config, ledger
 
 
 def matar(motivo: str) -> Path:
-    p = config.dados() / "KILL"
+    p = config.dados() / config.KILL
     p.write_text(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {motivo}\n", encoding="utf-8")
     return p
 
 
 def fonte_perdida(con, compliance_db: Path | None = None) -> list[str]:
-    db = compliance_db or config.REPO / "data" / "compliance.db"
+    db = config.compliance_db(compliance_db)
     ro = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
     try:
         atual = dict(ro.execute("SELECT numero_sei, modelo FROM lex_execucao"))
@@ -30,6 +31,35 @@ def fonte_perdida(con, compliance_db: Path | None = None) -> list[str]:
     return sorted(ns for (ns,) in con.execute("SELECT DISTINCT numero_sei FROM laudo_versao WHERE nivel_prova=?",
                                               (config.NIVEL_FONTE,))
                   if ns in atual and 0 <= ledger.nivel_gravado(atual[ns]) < config.NIVEL_FONTE)
+
+
+def fora_do_ledger(con, compliance_db: Path | None = None) -> int:
+    """Laudos de nível 2 vigentes em `lex_execucao` que o ledger ainda não tem (o ciclo não rodou depois deles)."""
+    tem = {r[0] for r in con.execute("SELECT DISTINCT numero_sei FROM laudo_versao WHERE nivel_prova=?",
+                                     (config.NIVEL_FONTE,))}
+    ro = sqlite3.connect(f"file:{config.compliance_db(compliance_db)}?mode=ro", uri=True, timeout=20)
+    try:
+        return sum(1 for ns, m in ro.execute("SELECT numero_sei, modelo FROM lex_execucao WHERE modelo LIKE '%Claude Code%'")
+                   if ledger.nivel_gravado(m) == config.NIVEL_FONTE and ns not in tem)
+    finally:
+        ro.close()
+
+
+def saude(pasta: Path, compliance_db: Path | None = None) -> dict | None:
+    """O que o sensor da automelhoria cobra, lido de uma pasta de dados do autoaprimoramento (só leitura). None =
+    sem ledger (o ciclo nunca rodou: nada a medir). Banco ilegível LEVANTA sqlite3.Error."""
+    if not (pasta / config.BANCO).exists():
+        return None
+    kill = pasta / config.KILL
+    con = sqlite3.connect(f"file:{pasta / config.BANCO}?mode=ro", uri=True, timeout=20)
+    try:
+        return {"kill": kill.read_text(encoding="utf-8")[:200] if kill.exists()
+                else "JFN_AUTOAPRIMORAMENTO_KILL=1" if os.environ.get("JFN_AUTOAPRIMORAMENTO_KILL") == "1" else None,
+                "fonte_perdida": fonte_perdida(con, compliance_db),
+                "ultimo": con.execute("SELECT MAX(capturado_em) FROM laudo_versao").fetchone()[0],
+                "fora_do_ledger": fora_do_ledger(con, compliance_db)}
+    finally:
+        con.close()
 
 
 def deriva(con, agora: float | None = None, minimo: int = 30) -> list[dict]:

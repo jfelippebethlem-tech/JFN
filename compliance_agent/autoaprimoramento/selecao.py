@@ -37,7 +37,7 @@ def _agora() -> str:
 
 
 def _ro(db: Path | None) -> sqlite3.Connection:
-    return sqlite3.connect(f"file:{db or config.REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=60)
+    return sqlite3.connect(f"file:{config.compliance_db(db)}?mode=ro", uri=True, timeout=60)
 
 
 def cruzar(con, compliance_db: Path | None = None) -> int:

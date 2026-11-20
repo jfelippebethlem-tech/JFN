@@ -74,7 +74,7 @@ def por_prompt_pareado(rotulos: list[dict], campeao: dict, desafiantes: dict[str
     if gerar is None:
         raise ValueError("reexecução por prompt exige um gerador (LLM) injetado — o dry-run não reexecuta")
     from tools import lex_execucao as LX
-    db = compliance_db or config.REPO / "data" / "compliance.db"
+    db = config.compliance_db(compliance_db)
     teto = max_casos or config.ORCAMENTO["max_casos_reexecucao"]
     ro = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
     sombra = sqlite3.connect(":memory:")

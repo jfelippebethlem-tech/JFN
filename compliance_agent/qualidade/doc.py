@@ -14,9 +14,6 @@ SAIDA = regras.REPO / "docs" / "REGRAS-DE-QUALIDADE.md"
 _SEV = {"bloqueante": "🔴 Bloqueante", "alta": "🟡 Alta", "media": "🟢 Média"}
 _TIPO = {"catraca": "Catraca (barra commit/push)", "sensor": "Sensor (produção)", "juiz": "Juiz (rubrica)",
          "existente": "Verificação já existente", "manual": "⚠ Ainda manual"}
-_SIS = {"painel": "Painel", "detectores": "Detectores", "pericias": "Perícias", "relatorios": "Relatórios",
-        "lex": "Lex", "yoda": "Yoda/Hermes", "aovivo": "AO VIVO", "vault": "Vault", "coletores": "Coletores",
-        "llm": "Modelos", "infra": "Infra"}
 
 
 def _data_br(iso: str) -> str:
@@ -40,7 +37,7 @@ def _ficha(r: regras.Regra) -> list[str]:
         f"| **Regra** | {_cel(r.enunciado)} |",
         f"| **Por quê** | {_cel(r.porque)} |",
         f"| **Como se mede** | {_cel(r.medida)} |",
-        f"| **Onde se aplica** | {', '.join(_SIS[s] for s in r.aplica)} |",
+        f"| **Onde se aplica** | {', '.join(regras.NOMES_CURTOS[s] for s in r.aplica)} |",
         f"| **Severidade** | {_SEV[r.severidade]} |",
         f"| **Quando viola** | {_cel(r.acao)} |",
         f"| **Verificação** | {_verificadores(r)} |", "",

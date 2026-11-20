@@ -58,6 +58,13 @@ def mascarar_cpf(dig: str) -> str:
     return f"***.{dig[3:6]}.{dig[6:9]}-**"
 
 
+def mascarar_cpfs(texto: str) -> str:
+    """Mascara TODO número com forma de CPF (formatado, ou 11 dígitos após a palavra "cpf"), sem conferir o dígito
+    verificador: é o que se faz antes de mandar um texto a qualquer modelo."""
+    texto = _RE_CPF_FMT.sub(lambda m: mascarar_cpf("".join(m.groups())), texto or "")
+    return _RE_CPF_CRU.sub(lambda m: m.group(0)[:m.start(1) - m.start(0)] + f"***{m.group(1)[3:9]}**", texto)
+
+
 def cpf_exposto(texto: str) -> list[str]:
     """PAD-04/CNF-08: CPF com os 11 dígitos visíveis e dígito verificador válido. A mensagem já sai mascarada."""
     achados = ["".join(m.groups()) for m in _RE_CPF_FMT.finditer(texto or "")]

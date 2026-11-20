@@ -25,7 +25,7 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
@@ -33,14 +33,10 @@ from typing import Callable
 import yaml
 
 from compliance_agent.qualidade import regras, verificadores as v
+from compliance_agent.qualidade.arquivos import REPO, dados as _dados, gravar_json
 
-REPO = Path(__file__).resolve().parents[2]
 _FALHAS = (OSError, ValueError, KeyError, TypeError, RuntimeError, sqlite3.Error, urllib.error.URLError)
 API = os.environ.get("JFN_API", "http://127.0.0.1:8000")
-
-
-def _dados() -> Path:
-    return Path(os.environ.get("JFN_DADOS") or REPO / "data")
 
 
 def _api(caminho: str, timeout: float = 25.0):
@@ -58,6 +54,7 @@ class Ctx:
     repo: Path = REPO
     api: Callable = _api
     agora: datetime = field(default_factory=datetime.now)
+    gravar: bool = True             # False: os sensores com memória (manchetes, alertas) leem, mas não regravam
     _cache: dict = field(default_factory=dict)
 
     def inventario(self) -> dict:
@@ -82,12 +79,13 @@ class Ctx:
 
 
 @contextmanager
-def trava(dados: Path, nome: str):
+def trava(dados: Path, nome: str, esperar: bool = True):
     """Trava de arquivo da rodada (`data/qualidade_<nome>.lock`): aparece em /proc/locks — é por ela que o AO VIVO
-    mostra "rodando" — e impede duas rodadas simultâneas de regravarem a mesma fotografia."""
+    mostra "rodando" — e impede duas rodadas simultâneas de regravarem a mesma fotografia. `esperar=False`: trava
+    ocupada levanta BlockingIOError em vez de esperar."""
     dados.mkdir(parents=True, exist_ok=True)
     with open(dados / f"qualidade_{nome}.lock", "w") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        fcntl.flock(f, fcntl.LOCK_EX if esperar else fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
             yield
         finally:
@@ -170,7 +168,7 @@ def _diz_concentracao(p) -> bool:
 
 
 # ───────────────────────── PAD-03/04/08 · CNF-01/09 · texto entregue ─────────────────────────
-def _textos_yoda(ctx: Ctx, limite: int = 60) -> list[str]:
+def textos_yoda(ctx: Ctx, limite: int = 60) -> list[str]:
     db = ctx.hermes / "state.db"
     if not db.exists():
         raise RuntimeError("state.db do Hermes não encontrado")
@@ -201,7 +199,7 @@ def _textos_arquivos(ctx: Ctx) -> dict[str, list[str]]:
 
 def sensor_texto_entregue(ctx: Ctx) -> list[dict]:
     """Verificadores de texto sobre o que foi ENTREGUE: últimas respostas do Yoda, JSON de análise, relatórios."""
-    fontes = {"yoda:respostas": _textos_yoda(ctx)}
+    fontes = {"yoda:respostas": textos_yoda(ctx)}
     fontes.update(_textos_arquivos(ctx))
     out = []
     for origem, textos in fontes.items():
@@ -217,7 +215,8 @@ def sensor_texto_entregue(ctx: Ctx) -> list[dict]:
 
 
 # ───────────────────────── CST-02 · variação brusca de manchete ─────────────────────────
-def _numeros(m: dict, p) -> dict[str, float]:
+def numeros(m: dict, p) -> dict[str, float]:
+    """Os números que a manchete exibe (`campos` do inventário), lidos do payload da rota."""
     out = {}
     for nome, caminho in (m.get("campos") or {}).items():
         val = v.extrair(p, caminho)
@@ -234,7 +233,7 @@ def sensor_manchetes_variacao(ctx: Ctx) -> list[dict]:
     carimbo = ctx.agora.strftime("%Y-%m-%dT%H:%M")
     for m in ctx.manchetes():
         try:
-            atual = _numeros(m, ctx.payload(m["rota"]))
+            atual = numeros(m, ctx.payload(m["rota"]))
         except RuntimeError:
             continue
         mediu += 1
@@ -250,10 +249,8 @@ def sensor_manchetes_variacao(ctx: Ctx) -> list[dict]:
             del serie[:-90]
     if ctx.manchetes() and not mediu:
         raise RuntimeError("nenhuma rota de manchete respondeu")
-    arq.parent.mkdir(parents=True, exist_ok=True)
-    tmp = arq.with_suffix(".tmp")
-    tmp.write_text(json.dumps(hist, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(arq)
+    if ctx.gravar:
+        gravar_json(arq, hist, indent=None)
     return out
 
 
@@ -334,6 +331,13 @@ def grau_do_caso(fm: dict) -> str:
 
 def caso_aberto(fm: dict) -> bool:
     return bool(_RE_ABERTO.match(str(fm.get("status") or "").strip()))
+
+
+def caso_alto_aberto(fm: dict) -> bool:
+    """O caso que pesa: grau alto e ainda aberto (o sensor cobra prova dele; o juiz o julga)."""
+    return bool(_RE_GRAU_ALTO.match(grau_do_caso(fm))) and caso_aberto(fm)
+
+
 _RE_DESFECHO = re.compile(r"(?im)^\s*(?:[#>*\-| ]*)\**\s*(?:desfecho|veredito|conclus[aã]o|status)\**\s*[:—-]\s*\**\s*"
                           r"(🟢|refutad|sem irregularidade|arquivad|n[aã]o confirmad|regular\b)")
 _RE_PROVA = re.compile(r"(?i)(doerj|d\.o\.|di[aá]rio oficial|sei-?\d|processo n|ac[oó]rd[aã]o|\bob\b|nota de empenho|"
@@ -342,7 +346,7 @@ _RE_TRECHO = re.compile(r"[«\"“][^«»\"“”\n]{25,}[»\"”]|^>\s?.{25,}",
 _RE_REFUTADA = re.compile(r"\*\*(REFUTADA|PARCIAL)\*\*")
 
 
-def _frontmatter(texto: str) -> dict:
+def frontmatter(texto: str) -> dict:
     m = _RE_FM.match(texto)
     if not m:
         return {}
@@ -353,18 +357,26 @@ def _frontmatter(texto: str) -> dict:
     return d if isinstance(d, dict) else {}
 
 
-def sensor_vault_casos(ctx: Ctx) -> list[dict]:
-    """Casos do vault: grau alto com desfecho inocente no corpo (CST-08); 🔴 aberto sem prova primária citada
-    (COR-01); caso aberto sem esfera (CNF-12); revisão com REFUTADA/PARCIAL sem errata registrada (CST-14)."""
+def casos_do_vault(ctx: Ctx) -> list[tuple[Path, str, dict]]:
+    """(arquivo, texto, frontmatter) de cada caso do vault: nota de `casos/` com frontmatter legível e `tipo`
+    caso/investigação. Pasta ausente LEVANTA (quem lê decide se é cegueira)."""
     pasta = ctx.vault / "casos"
     if not pasta.is_dir():
         raise RuntimeError(f"pasta de casos não encontrada: {pasta}")
-    out, n = [], 0
+    out = []
     for arq in sorted(pasta.glob("*.md")):
         texto = arq.read_text(encoding="utf-8", errors="replace")
-        fm = _frontmatter(texto)
-        if not fm or str(fm.get("tipo") or "caso").lower() not in ("caso", "investigacao", "investigação"):
-            continue
+        fm = frontmatter(texto)
+        if fm and str(fm.get("tipo") or "caso").lower() in ("caso", "investigacao", "investigação"):
+            out.append((arq, texto, fm))
+    return out
+
+
+def sensor_vault_casos(ctx: Ctx) -> list[dict]:
+    """Casos do vault: grau alto com desfecho inocente no corpo (CST-08); 🔴 aberto sem prova primária citada
+    (COR-01); caso aberto sem esfera (CNF-12); revisão com REFUTADA/PARCIAL sem errata registrada (CST-14)."""
+    out, n = [], 0
+    for arq, texto, fm in casos_do_vault(ctx):
         n += 1
         corpo = texto[_RE_FM.match(texto).end():]
         grau = grau_do_caso(fm)
@@ -447,9 +459,8 @@ def sensor_alertas_base(ctx: Ctx) -> list[dict]:
     if sem_chave:
         out.append(violacao("COR-12", "coletores", "ob:sem_numero", f"{sem_chave} linha(s) de OB do SIAFE sem número de OB",
                             "linha sem chave entra em dobro nas somas", "descartar/reconciliar na coleta"))
-    tmp = arq.with_suffix(".tmp")
-    tmp.write_text(json.dumps(por_tipo, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(arq)
+    if ctx.gravar:
+        gravar_json(arq, por_tipo, indent=None)
     return out
 
 
@@ -483,13 +494,14 @@ def sensor_cruzamento_motores(ctx: Ctx) -> list[dict]:
 
 # ───────────────────────── CNF-10 · gasto de API ─────────────────────────
 def sensor_gasto_api(ctx: Ctx) -> list[dict]:
-    """API paga: gasto acumulado contra o teto (US$ 100). Só LÊ o registro — este sensor não chama API nenhuma."""
+    """API paga: gasto acumulado contra o teto. Só LÊ o registro — este sensor não chama API nenhuma."""
     arq = ctx.dados / "claude_api_gasto.json"
     if not arq.exists():
         return []
     d = json.loads(arq.read_text(encoding="utf-8"))
+    from compliance_agent.llm.claude_api import teto_usd
     gasto = float(d.get("total_usd") or 0)
-    teto = float(os.environ.get("JFN_CLAUDE_API_TETO_USD") or d.get("teto_usd") or 100)
+    teto = teto_usd()                       # o MESMO teto que a API aplica (JFN_API_TETO_USD)
     if gasto >= 0.8 * teto:
         return [violacao("CNF-10", "llm", "api:teto", f"gasto de API em {gasto / teto:.0%} do teto",
                          f"US$ {gasto:.2f} de US$ {teto:.2f}", "decidir: pausar a API (kill-switch) ou rever o teto")]
@@ -607,6 +619,8 @@ def sentir(ctx: Ctx | None = None, sensores: dict | None = None) -> tuple[list[d
 def rodar(ctx: Ctx | None = None, sensores: dict | None = None, gravar: bool = True) -> dict:
     """Uma rodada completa: sente, grava a fotografia e a linha da hora no histórico. Idempotente por hora."""
     ctx = ctx or Ctx()
+    if not gravar:
+        ctx = replace(ctx, gravar=False)
     with trava(ctx.dados, "sensores"):
         return _rodar(ctx, sensores, gravar)
 
@@ -622,10 +636,7 @@ def _rodar(ctx: Ctx, sensores: dict | None, gravar: bool) -> dict:
               "por_sistema": por_sistema, "por_regra": por_regra, "total": len(violacoes),
               "bloqueantes": sum(a["severidade"] == "bloqueante" for a in violacoes)}
     if gravar:
-        ctx.dados.mkdir(parents=True, exist_ok=True)
-        tmp = ctx.dados / "qualidade_estado.tmp"
-        tmp.write_text(json.dumps(estado, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(ctx.dados / "qualidade_estado.json")
+        gravar_json(ctx.dados / "qualidade_estado.json", estado)
         _historico(ctx, estado)
     return estado
 

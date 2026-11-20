@@ -332,10 +332,12 @@ def sensor_painel() -> list[dict]:
                 cod = resp.status
         except urllib.error.HTTPError as exc:
             cod = exc.code
-        except (urllib.error.URLError, TimeoutError):
+        except (urllib.error.URLError, TimeoutError) as exc:
             # tempo esgotado é CACHE FRIO, não rota quebrada: medido 24/10 logo após reiniciar o jfn.service,
             # /fontes/frescor levou 46 s frio (carga 6,4) e 0,006 s em seguida. O remédio é o pré-aquecimento.
-            cod = 200
+            # Conexão recusada NÃO é cache frio: é a API fora do ar.
+            frio = isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError)
+            cod = 200 if frio else f"fora do ar ({type(getattr(exc, 'reason', exc)).__name__})"
         dt = time.time() - t0
         if cod != 200:
             out.append(_p("painel", rota, f"rota /api/{rota} respondeu {cod}",
@@ -446,24 +448,18 @@ def sensor_autoaprimoramento(pasta: Path | None = None, db: Path | None = None, 
     """Autoaprimoramento da perícia (docs/AUTOAPRIMORAMENTO-JFN.md): prova primária regravada por juízo mais fraco,
     kill switch ligado e ledger parado. Sem ledger ainda = nada a medir (o ciclo nunca rodou), não é problema."""
     import sqlite3
-    pasta = pasta or DATA / "autoaprimoramento"
-    if not (pasta / "auto.db").exists():
-        return []
-    from compliance_agent.autoaprimoramento import ledger, monitor
-    out = []
-    if (pasta / "KILL").exists():
-        out.append(_p("autoaprimoramento", "kill", "kill switch do autoaprimoramento ligado",
-                      (pasta / "KILL").read_text(encoding="utf-8")[:200],
-                      acao_humana="ler o motivo; resolvido, apagar data/autoaprimoramento/KILL"))
-    con = sqlite3.connect(f"file:{pasta / 'auto.db'}?mode=ro", uri=True, timeout=20)
+    from compliance_agent.autoaprimoramento import monitor
     try:
-        perdidos = monitor.fonte_perdida(con, db)
-        ultimo = con.execute("SELECT MAX(capturado_em) FROM laudo_versao").fetchone()[0]
-        novos = _conferencias_fora_do_ledger(con, db or DATA / "compliance.db", ledger)
+        s = monitor.saude(pasta or DATA / "autoaprimoramento", db or DATA / "compliance.db")
     except sqlite3.Error as e:                     # `sentir` transforma em `sensor:autoaprimoramento` (cego ≠ ok)
         raise RuntimeError(f"ledger ilegível: {type(e).__name__}: {e}") from e
-    finally:
-        con.close()
+    if s is None:
+        return []
+    out = []
+    if s["kill"] is not None:
+        out.append(_p("autoaprimoramento", "kill", "kill switch do autoaprimoramento ligado", s["kill"],
+                      acao_humana="ler o motivo; resolvido, apagar data/autoaprimoramento/KILL"))
+    perdidos, novos, ultimo = s["fonte_perdida"], s["fora_do_ledger"], s["ultimo"]
     if perdidos:
         out.append(_p("autoaprimoramento", "fonte_perdida",
                       f"{len(perdidos)} laudo(s) conferido(s) na fonte primária regravado(s) por juízo mais fraco",
@@ -478,18 +474,6 @@ def sensor_autoaprimoramento(pasta: Path | None = None, db: Path | None = None, 
                                   "`JFN_AUTOAPRIMORAMENTO=1 python -m compliance_agent.autoaprimoramento ciclo` "
                                   "(sem LLM, ~30 s) e ler data/autoaprimoramento/relatorio.md"))
     return out
-
-
-def _conferencias_fora_do_ledger(con, db: Path, ledger) -> int:
-    """Laudos de nível 2 vigentes em lex_execucao que o ledger ainda não tem (o ciclo não rodou depois deles)."""
-    import sqlite3
-    tem = {r[0] for r in con.execute("SELECT DISTINCT numero_sei FROM laudo_versao WHERE nivel_prova=2")}
-    ro = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=20)
-    try:
-        return sum(1 for ns, m in ro.execute("SELECT numero_sei, modelo FROM lex_execucao WHERE modelo LIKE '%Claude Code%'")
-                   if ledger.nivel_gravado(m) == 2 and ns not in tem)
-    finally:
-        ro.close()
 
 
 def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> list[dict]:
@@ -534,9 +518,8 @@ def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> lis
     if erros:
         out.append(_p("certeza", "extracao", f"{len(erros)} bloco(s) de fato sem extração (fonte ausente ou ilegível)",
                       "; ".join(f"{e['no']}: {e['erro']}" for e in erros[:3]), acao_humana="ver o derivado que publica o fato"))
-    graves = ("erro_de_mapa", "fonte_sem_sonda_nem_emissor", "sonda_com_erro", "derivado_falhando", "derivado_atrasado",
-              "externo_sem_agendamento", "externo_atrasado", "externo_sem_drenar")
-    for k in graves:
+    from compliance_agent.certeza.grafo import GRAVES
+    for k in GRAVES:
         itens = ((est.get("grafo") or {}).get("achados") or {}).get(k) or []
         if itens:
             out.append(_p("certeza", f"grafo:{k}", f"grafo de propagação: {k.replace('_', ' ')} ({len(itens)})",
@@ -630,13 +613,20 @@ def sensor_detectores(db: Path | None = None) -> list[dict]:
     return avaliar_precisao([(t, n, fp or 0) for t, n, fp in linhas])
 
 
-SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
-            "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
-            "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
-            "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
-            "qualidade": sensor_qualidade,
-            "autoaprimoramento": sensor_autoaprimoramento, "certeza": sensor_certeza,
-            "maquinas": sensor_maquinas, "detectores": sensor_detectores}
+# nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
+_SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
+             "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
+             "voz": (sensor_voz, "voz do Yoda"), "ronda": (sensor_ronda, "API/LLM"), "siafe": (sensor_siafe, "SIAFE"),
+             "yoda": (sensor_yoda, "minhas conversas"), "rem": (sensor_rem, "sono REM do Hermes"),
+             "dados": (sensor_dados_siafe, "dados do SIAFE"), "vm": (sensor_vm, "VM (disco/memória)"),
+             "polimonitor": (sensor_polimonitor, "Polimonitor (pm2)"), "painel": (sensor_painel, "painel/API"),
+             "filas": (sensor_filas, "filas de feedback"), "pareceres": (sensor_pareceres, "oscilação dos pareceres"),
+             "qualidade": (sensor_qualidade, "regras de qualidade"),
+             "autoaprimoramento": (sensor_autoaprimoramento, "autoaprimoramento da perícia"),
+             "certeza": (sensor_certeza, "certeza dos números"), "maquinas": (sensor_maquinas, "uso das máquinas"),
+             "detectores": (sensor_detectores, "precisão dos detectores")}
+SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
+_AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
@@ -717,9 +707,6 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
     return {"fila": fila, "novos": novos, "reincidiu": reinc, "curados": curados}
 
 
-_AREAS = ("rotinas (SLO)", "CI", "catracas de código", "serviços", "API/LLM", "SIAFE", "dados do SIAFE",
-          "VM (disco/memória)", "sono REM do Hermes", "minhas conversas", "Polimonitor (pm2)",
-          "painel/API", "filas de feedback")
 MAX_TENTATIVAS, INTERVALO_S, CARGA_MAX = 2, 20 * 3600, 4.0
 
 
@@ -820,7 +807,7 @@ def main() -> int:
         L = [f"🔁 Automelhoria: {len(r['novos'])} problema(s) novo(s), {len(r['reincidiu'])} reincidência(s)"
              + (f", {len(r['curados'])} curado(s)" if r["curados"] else "") + "."]
         for s in rem["escalados"]:
-            L.append(f"🆘 conserto automático NÃO pegou em 2 tentativas: {r['fila'][s]['titulo']}")
+            L.append(f"🆘 conserto automático NÃO pegou em {MAX_TENTATIVAS} tentativas: {r['fila'][s]['titulo']}")
         for s in (r["reincidiu"] + r["novos"])[:8]:
             it = r["fila"][s]
             L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}"

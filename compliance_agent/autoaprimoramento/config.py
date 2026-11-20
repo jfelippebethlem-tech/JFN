@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+BANCO, KILL = "auto.db", "KILL"     # dentro de dados(): o ledger e o kill switch (o sensor da automelhoria lê os dois)
+CASA = REPO / "data"        # onde moram as FONTES que o ciclo lê (compliance.db, fila do Opus, cruzamento, logs)
 ALTO = 7                    # nota de risco a partir da qual o laudo é "risco alto" (mesmo corte do resto da casa)
 NIVEL_FRACO, NIVEL_RESUMO, NIVEL_FONTE = 0, 1, 2     # hierarquia de prova: modelo de volume < Opus sobre resumo < fonte primária
 
@@ -22,13 +24,18 @@ ALFA_FP = 0.10              # taxa de falso alto tolerada numa faixa "certificad
 
 
 def dados() -> Path:
-    d = Path(os.environ.get("JFN_AUTOAPRIMORAMENTO_DIR") or REPO / "data" / "autoaprimoramento")
+    d = Path(os.environ.get("JFN_AUTOAPRIMORAMENTO_DIR") or CASA / "autoaprimoramento")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def banco() -> Path:
-    return dados() / "auto.db"
+    return dados() / BANCO
+
+
+def compliance_db(db: Path | None = None) -> Path:
+    """O banco da perícia (`lex_execucao`, `sei_ficha`, OB do SIAFE) — sempre lido só-leitura daqui."""
+    return db or CASA / "compliance.db"
 
 
 def candidatos() -> Path:
@@ -42,4 +49,4 @@ def ligado() -> bool:
 
 
 def morto() -> bool:
-    return os.environ.get("JFN_AUTOAPRIMORAMENTO_KILL") == "1" or (dados() / "KILL").exists()
+    return os.environ.get("JFN_AUTOAPRIMORAMENTO_KILL") == "1" or (dados() / KILL).exists()

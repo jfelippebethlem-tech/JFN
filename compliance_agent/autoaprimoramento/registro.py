@@ -12,7 +12,7 @@ import json
 import sqlite3
 import time
 
-from . import armadilhas, config
+from . import armadilhas, config, ledger
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS versao(
@@ -41,6 +41,13 @@ def preparar(con: sqlite3.Connection) -> None:
         con.execute("UPDATE versao SET status='campeao', promovido_em=? WHERE chave=?", (_agora(), ch))
         _evento(con, ch, "candidato", "campeao", "versão de partida: o prompt que já estava em produção", "sistema")
         con.commit()
+
+
+def abrir(caminho=None) -> sqlite3.Connection:
+    """O ledger com o registro de versões pronto (semente do campeão incluída)."""
+    con = ledger.conectar(caminho)
+    preparar(con)
+    return con
 
 
 def _evento(con, chave, de, para, motivo, quem) -> None:

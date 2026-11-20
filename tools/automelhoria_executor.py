@@ -29,8 +29,9 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
-FILA = _REPO / "data" / "automelhoria_fila.json"
-LEDGER = _REPO / "data" / "automelhoria_executor.json"
+from tools.automelhoria_geral import DATA, FILA  # noqa: E402 — a fila que o loop de sensores concilia
+
+LEDGER = DATA / "automelhoria_executor.json"
 WT_BASE = Path.home() / "JFN-automelhoria"
 TAREFA = "automelhoria_executor"
 PRAZO_S = 40 * 60
@@ -48,7 +49,7 @@ _PERMITIDAS = ["Read", "Grep", "Glob", "Edit", "Write", "MultiEdit",
 _PERMITIDAS += [f"Bash(rtk {r[5:]}" for r in _PERMITIDAS if r.startswith("Bash(git ")]
 _NEGADAS = ["Bash(git push:*)", "Bash(git reset:*)", "Bash(git checkout:*)", "Bash(rm:*)", "Bash(sudo:*)",
             "Bash(pkill:*)", "Bash(ssh:*)", "Bash(curl:*)", "WebFetch", "WebSearch",
-            "Read(//home/ubuntu/JFN/.env*)", "Read(//home/ubuntu/.config/**)", "Read(//home/ubuntu/.claude/.credentials*)"]
+            f"Read(/{_REPO}/.env*)", f"Read(/{Path.home()}/.config/**)", f"Read(/{Path.home()}/.claude/.credentials*)"]
 
 
 def slug(assinatura: str) -> str:
@@ -72,7 +73,7 @@ def escolher(fila: dict, ledger: dict, n: int, agora: float | None = None) -> li
 
 def prompt(it: dict) -> str:
     return (f"Você é o executor noturno da automelhoria do JFN. Este diretório é um git worktree SÓ SEU, numa branch "
-            f"própria; a árvore viva é /home/ubuntu/JFN (pode LER de lá, inclusive data/, nunca escrever).\n\n"
+            f"própria; a árvore viva é {_REPO} (pode LER de lá, inclusive data/, nunca escrever).\n\n"
             f"ITEM DA FILA ({it['status']}): [{it['area']}] {it['titulo']}\n"
             f"detalhe: {it.get('detalhe') or '-'}\nação indicada: {it.get('acao_humana') or '-'}\n"
             f"aberto desde {it.get('primeiro')}, {it.get('rodadas')} rodadas.\n\n"

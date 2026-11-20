@@ -39,9 +39,8 @@ def ciclo(dry_run: bool = True, pastas_agentes: list[Path] | None = None, gerar=
 
 
 def _ciclo(dry_run, pastas_agentes, gerar, n_fila, fontes) -> dict:
-    con = ledger.conectar()
+    con = registro.abrir()
     try:
-        registro.preparar(con)
         r: dict = {"em": time.strftime("%Y-%m-%dT%H:%M:%S"), "dry_run": dry_run, "pasta": str(config.dados())}
         r["importacao"] = importar.tudo(con, pastas_agentes=pastas_agentes or [], **fontes)
         r["calibracao"] = calibracao.calibrar(con)
@@ -99,9 +98,8 @@ def reexecutar(chaves: list[str], gerar, max_casos: int | None = None, complianc
     def contado(p, s, t):
         n_chamadas[0] += 1
         return gerar(p, s, t)
-    con = ledger.conectar()
+    con = registro.abrir()
     try:
-        registro.preparar(con)
         campeao = registro.campeao(con)["conteudo"]
         versoes = {}
         for ch in chaves:
@@ -155,7 +153,8 @@ def _brl(v) -> str:
 
 def relatorio(con, r: dict, fila: list[dict]) -> str:
     cal, val = r["calibracao"], r["calibracao"]["validacao"]
-    n2 = con.execute("SELECT COUNT(DISTINCT numero_sei) FROM laudo_versao WHERE nivel_prova=2").fetchone()[0]
+    n2 = con.execute("SELECT COUNT(DISTINCT numero_sei) FROM laudo_versao WHERE nivel_prova=?",
+                     (config.NIVEL_FONTE,)).fetchone()[0]
     pares = dict(con.execute("SELECT nivel_antes || '→' || nivel_depois, COUNT(*) FROM conferencia GROUP BY 1"))
     L = ["# JFN — Autoaprimoramento da perícia de execução", "",
          f"**Ciclo de {r['em']}** · {'ensaio (--dry-run)' if r['dry_run'] else 'real'} · gerado por "

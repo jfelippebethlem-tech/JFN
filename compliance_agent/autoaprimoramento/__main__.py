@@ -44,9 +44,8 @@ def _gerador_assinatura():
 
 def _proximo_candidato() -> list[str]:
     """O candidato reexecutado há mais tempo (ou nunca) — `reexecutar proximo` julga um por noite."""
-    con = ledger.conectar()
+    con = registro.abrir()
     try:
-        registro.preparar(con)
         cands = [c for (c,) in con.execute("SELECT chave FROM versao WHERE status='candidato' ORDER BY n")]
     finally:
         con.close()
@@ -118,9 +117,8 @@ def main(argv=None) -> int:
     if a.cmd == "matar":
         print("KILL em", monitor.matar(a.motivo))
         return 0
-    con = ledger.conectar()
+    con = registro.abrir()
     try:
-        registro.preparar(con)
         if a.cmd == "status":
             print(json.dumps({"ligado": config.ligado(), "kill": config.morto(), "campeao": (registro.campeao(con) or {}).get("chave"),
                               "versoes": [dict(zip(("chave", "status"), x)) for x in con.execute(
@@ -132,8 +130,8 @@ def main(argv=None) -> int:
             print("campeão de volta:", registro.rollback(con, a.quem, a.motivo))
         elif a.cmd == "teste":
             rot = ledger.consultar_teste(con, a.quem, a.motivo)
-            tab = calibracao.tabela(ledger.rotulos(con, ("treino", "validacao")))
             tr = ledger.rotulos(con, ("treino", "validacao"))
+            tab = calibracao.tabela(tr)
             base = sum(x["alto_verificado"] for x in tr) / len(tr) if tr else 0.0
             print(json.dumps(calibracao.avaliar(tab, rot, base), ensure_ascii=False, indent=1))
     finally:

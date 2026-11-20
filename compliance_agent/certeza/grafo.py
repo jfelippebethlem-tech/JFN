@@ -30,6 +30,9 @@ import yaml
 from . import config
 
 _TIPOS_SONDA = ("sql", "arquivo", "pasta", "log", "git")
+# Achados do grafo que contam como GRAVES (o resumo soma; o sensor da automelhoria abre um item por tipo)
+GRAVES = ("erro_de_mapa", "fonte_sem_sonda_nem_emissor", "sonda_com_erro", "derivado_nunca_rodou", "derivado_falhando",
+          "derivado_atrasado", "externo_sem_agendamento", "externo_atrasado", "externo_sem_drenar", "despachante_parado")
 
 
 def carregar() -> dict:
@@ -200,11 +203,9 @@ def auditar(cfg: dict | None = None, estado_prop: dict | None = None, raiz: Path
                     "depende": e.get("depende", []), "publica": e.get("publica"), "atraso": medidas.get(eid)})
     ach["externo_sem_agendamento"], ach["externo_atrasado"] = sem_cron, atrasos
 
-    graves = ("erro_de_mapa", "fonte_sem_sonda_nem_emissor", "sonda_com_erro", "derivado_nunca_rodou", "derivado_falhando",
-              "derivado_atrasado", "externo_sem_agendamento", "externo_atrasado", "externo_sem_drenar", "despachante_parado")
     return {"achados": ach, "nos": nos, "indisponiveis": indisponiveis, "emissores_de_fonte_manual": emis, "atraso_dos_externos": medidas,
             "resumo": {"fontes": len(fontes), "derivados": len(ders), "externos": len(exts),
                        "fatos_declarados": sum(len(d.get("fatos") or []) for s in ("fontes", "derivados", "externos")
                                                for d in (cfg.get(s) or {}).values()),
                        "achados": {k: len(v) for k, v in ach.items()},
-                       "graves": sum(len(ach.get(k, [])) for k in graves)}}
+                       "graves": sum(len(ach.get(k, [])) for k in GRAVES)}}

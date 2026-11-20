@@ -214,8 +214,8 @@ def valores_e_tipos(compliance_db: Path, processos: list[str]) -> tuple[dict, di
 
 def tudo(con, *, compliance_db: Path | None = None, fila_db: Path | None = None, cruz_db: Path | None = None,
          log_lote: Path | None = None, pastas_agentes: list[Path] | None = None) -> dict:
-    d = config.REPO / "data"
-    compliance_db, fila_db = compliance_db or d / "compliance.db", fila_db or d / "conferencia_opus.db"
+    d = config.CASA
+    compliance_db, fila_db = config.compliance_db(compliance_db), fila_db or d / "conferencia_opus.db"
     cruz_db, log_lote = cruz_db or d / "cruzamento_motores.db", log_lote or d / "conferir_85.log"
     r = {"fila": da_fila(con, fila_db), "lex": do_lex(con, compliance_db),
          "log_lote": do_log_lote(con, log_lote, cruz_db, "claude-opus-5-5 (conferência Opus 18/11, lote até 85%)")}

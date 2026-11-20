@@ -11,21 +11,13 @@ sensor cego aparece como cego; regra sem verificador automático aparece como d�
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 
-from compliance_agent.qualidade import catraca, regras
+from compliance_agent.qualidade import arquivos, catraca, regras
 
-REPO = Path(__file__).resolve().parents[2]
-NOMES = {"painel": "Painel", "detectores": "Detectores", "pericias": "Perícias", "relatorios": "Relatórios e dossiês",
-         "lex": "Lex", "yoda": "Yoda / Hermes", "aovivo": "AO VIVO", "vault": "Vault (casos e notas)",
-         "coletores": "Coletores", "llm": "Modelos (Claude e cascata)", "infra": "Infraestrutura e repositório"}
-_ORDEM_SEV = {"bloqueante": 0, "alta": 1, "media": 2}
-
-
-def _dados() -> Path:
-    return Path(os.environ.get("JFN_DADOS") or REPO / "data")
+NOMES = regras.NOMES_SISTEMA
+_ORDEM_SEV = {sev: i for i, sev in enumerate(regras.SEVERIDADES)}
 
 
 def _json(arq: Path):
@@ -48,7 +40,7 @@ def _tendencia(dados: Path, dias: int = 30) -> dict[str, list[dict]]:
             d = json.loads(ln)
         except ValueError:
             continue
-        por_dia[d["hora"][:10]] = d                      # a mais recente do dia vence
+        por_dia[d["hora"][:10]] = d
     out: dict[str, list[dict]] = {"_total": []}
     for dia in sorted(por_dia)[-dias:]:
         d = por_dia[dia]
@@ -65,7 +57,7 @@ def _dividas_catraca() -> list[dict]:
 
 
 def painel(dados: Path | None = None, agora: datetime | None = None) -> dict:
-    dados = dados or _dados()
+    dados = dados or arquivos.dados()
     agora = agora or datetime.now()
     rs = regras.carregar()
     foto = _json(dados / "qualidade_estado.json")
