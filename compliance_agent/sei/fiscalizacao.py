@@ -28,7 +28,8 @@ import calendar
 import re
 from datetime import date
 
-from compliance_agent.sei.instrumento_assinatura import _data, _norm, assinaturas
+from compliance_agent.sei.acervo_texto import normalizar
+from compliance_agent.sei.instrumento_assinatura import assinaturas, data_br
 
 _TITULO_ATESTO = re.compile(
     r"atestado de realiza|relat[oó]rio (t[eé]cnico )?(de|da comiss[aã]o de) fiscaliza|"
@@ -55,10 +56,10 @@ def fim_do_periodo(texto: str) -> tuple[date | None, str]:
     t = re.sub(r"\s+", " ", texto or "")
     m = _PERIODO.search(t)
     if m:
-        return _data(m.group(2)), m.group(0)
+        return data_br(m.group(2)), m.group(0)
     m = _SERVICO_DO_MES.search(t)
     if m:
-        mes, ano = _MESES.get(_norm(m.group(1)).replace("ç", "c")), int(m.group(2))
+        mes, ano = _MESES.get(normalizar(m.group(1)).replace("ç", "c")), int(m.group(2))
         if mes and 2000 < ano < 2100:
             return date(ano, mes, calendar.monthrange(ano, mes)[1]), m.group(0)
     return None, ""
@@ -73,7 +74,7 @@ def avaliar_atesto(doc: dict) -> dict | None:
     if _CONCESSIONARIA.search(texto):
         return None
     fim, trecho = fim_do_periodo(texto)
-    datas = [d for d in (_data(a["data"]) for a in assinaturas(re.sub(r"\s+", " ", texto))) if d]
+    datas = [d for d in (data_br(a["data"]) for a in assinaturas(re.sub(r"\s+", " ", texto))) if d]
     if not fim or not datas:
         return None
     assinado = max(datas)

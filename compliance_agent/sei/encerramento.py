@@ -21,10 +21,9 @@ se o processo saiu por estar em dia ou por estar cego.
 """
 from __future__ import annotations
 
-import json
-import os
-import pathlib
 import re
+
+from compliance_agent.sei import acervo_texto
 
 # "Termo de Encerramento de Processo" encerra o PROCESSO. "Termo de encerramento do contrato"
 # é peça de execução — o processo segue tramitando (pagamento, prestação de contas). Casar os
@@ -74,7 +73,7 @@ def deve_reanalisar(*, ja_lido: bool, encerrado: bool, ob_apos_leitura: bool,
     return {"reanalisar": True, "motivo": "processo vivo: pode ter documento novo desde a leitura"}
 
 
-ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+ACERVO = acervo_texto.RAIZ
 
 
 def situacao_do_processo(pasta: str, *, arvore_encerradas: set[str] | None = None) -> dict:
@@ -86,14 +85,10 @@ def situacao_do_processo(pasta: str, *, arvore_encerradas: set[str] | None = Non
     vigente). Sem manifest não se afirma nada — ausência de dado não é ausência de
     encerramento, e o campo `fonte` diz isso em vez de calar.
     """
-    numero = "SEI-" + str(pasta).replace("_", "/")
-    manifesto = ACERVO / str(pasta) / "manifest.json"
-    docs, tem_manifest = [], manifesto.is_file()
-    if tem_manifest:
-        try:
-            docs = json.loads(manifesto.read_text(encoding="utf-8")).get("docs") or []
-        except (OSError, json.JSONDecodeError, AttributeError):
-            docs, tem_manifest = [], False
+    numero = acervo_texto.pasta_para_numero(str(pasta))
+    man = acervo_texto.manifesto(ACERVO / str(pasta))
+    tem_manifest = man is not None
+    docs = (man or {}).get("docs") or []
 
     por_arquivo = encerrado_no_arquivo(docs)
     por_arvore = numero in (arvore_encerradas or set())

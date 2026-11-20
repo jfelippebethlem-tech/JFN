@@ -64,8 +64,10 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from compliance_agent.sei import acervo_texto
+
 REPO = Path(__file__).resolve().parents[2]
-BASE_ACERVO = REPO / "data" / "sei_arquivo"
+BASE_ACERVO = acervo_texto.RAIZ
 DETECTOR_ID = "sei.reuso_documento_execucao"
 
 # tipos de documento de execução física (fase `execucao`, sem aditivo/penalidade: aditivo é ato
@@ -269,11 +271,9 @@ def titulo_e_de_designacao(titulo: str) -> bool:
 
 def documentos_de_execucao(pasta: Path | str) -> tuple[list[dict], list[dict]]:
     """(com_texto, indisponiveis) dos documentos de execução de um processo do acervo."""
-    from compliance_agent.sei import acervo_texto
     pasta = Path(pasta)
-    try:
-        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    man = acervo_texto.manifesto(pasta)
+    if man is None:
         return [], []
     processo = str(man.get("processo") or pasta.name)
     ok, fora = [], []
@@ -296,11 +296,9 @@ def documentos_de_execucao(pasta: Path | str) -> tuple[list[dict], list[dict]]:
 
 def contratos_do_processo(pasta: Path | str) -> list[str]:
     """Contratos que o PROCESSO cita nos títulos e no início dos documentos de contrato/execução."""
-    from compliance_agent.sei import acervo_texto
     pasta = Path(pasta)
-    try:
-        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    man = acervo_texto.manifesto(pasta)
+    if man is None:
         return []
     c: Counter = Counter()
     for d in man.get("docs") or []:
@@ -363,10 +361,7 @@ def credor_do_processo(pasta: Path | str, docs_exec: list[dict]) -> tuple[str | 
     from compliance_agent import processo_360 as P
     from compliance_agent.sei import fases
     pasta = Path(pasta)
-    try:
-        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        man = {}
+    man = acervo_texto.manifesto(pasta) or {}
     numero = str(man.get("processo") or pasta.name)
     c = credor_siafe(numero)
     if c:
@@ -586,9 +581,8 @@ def preparar(doc: dict) -> dict:
 def _pastas_com_execucao(base: Path):
     """(pasta, manifest) dos processos que têm ao menos um documento de execução — só lê manifests."""
     for pasta in sorted(p for p in Path(base).iterdir() if (p / "manifest.json").exists()):
-        try:
-            man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        man = acervo_texto.manifesto(pasta)
+        if man is None:
             continue
         docs = [d for d in man.get("docs") or [] if isinstance(d, dict)]
         tipos = [(d, classificar_doc(d)) for d in docs]
@@ -664,11 +658,9 @@ def exportar(base: Path = BASE_ACERVO, saida: Path | None = None, limite: int | 
 
 def textos_de_contrato(pasta: Path | str) -> list[str]:
     """Corpo normalizado dos instrumentos do processo (contrato, ata de RP, ordem de início)."""
-    from compliance_agent.sei import acervo_texto
     pasta = Path(pasta)
-    try:
-        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    man = acervo_texto.manifesto(pasta)
+    if man is None:
         return []
     out = []
     for d in man.get("docs") or []:

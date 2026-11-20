@@ -3,7 +3,7 @@
 
 POR QUE ESTE MÓDULO EXISTE. `data/sei_cache/` tinha **23,1 GB em 5.965 blobs `cdp_*.json`** (91,6% do
 diretório) contra 180 MB do texto já extraído em `data/sei_arquivo/` — razão de 128×. Não é cache: é
-acumulação, porque a política de poda (`sei/indice.podar_cache`) **nunca teve um único caller** e o
+acumulação, porque a política de poda (`sei/indice.podar_cache`, apagada em 20/11/2026) **nunca teve um único caller** e o
 seu docstring prometia podar `json` que o código não tocava (só `.pdf/.html/.htm`).
 
 A ordem do dono é clara: **nada é apagado; tudo em arquivos menores.** Então o bruto é comprimido em

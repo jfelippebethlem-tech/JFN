@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import re
 
+from compliance_agent.sei.acervo_texto import numero_para_pasta
+
 # O SEI escreve o número com barra ou com ponto conforme a tela que gerou o texto.
 _RE_NUMERO = re.compile(r"SEI[-\s]?(\d{6})[/.](\d{6})[/.](\d{4})", re.IGNORECASE)
 
@@ -40,7 +42,7 @@ def separar_alheios(documentos, numero_do_processo: str) -> dict:
     fora não basta — é preciso saber de QUAL processo, para devolvê-lo ao lugar certo em vez de
     simplesmente apagar.
     """
-    alvo = str(numero_do_processo or "").replace("_", "/").replace("SEI-", "")
+    alvo = numero_para_pasta(numero_do_processo).replace("_", "/")
     proprios, alheios, sem_numero = [], [], 0
     por_processo: dict[str, int] = {}
     for doc in documentos or []:

@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import re
 
+from compliance_agent.sei.instrumento_assinatura import TIPOS_PARECER
+
 # Onde o parecer LISTA a instrução. Depois disso vem a fundamentação, e ali os números que
 # aparecem são de precedentes e normas citadas — cobrar aqueles mandaria o sweep atrás de
 # documento que nunca esteve nestes autos.
@@ -30,7 +32,6 @@ _RE_FIM_RELATORIO = re.compile(
 # números de norma e de processo citados no relatório, e a fila de captura ia atrás do que nunca
 # foi documento destes autos — medido no acervo em 2026-08-03.
 _RE_ID_SEI = re.compile(r"\b([1-9]\d{7,8})\b")   # nunca começa com zero
-_TIPOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
 _RE_NUM_PROCESSO = re.compile(r"\b(\d{6}\s*/\s*\d{6}\s*/\s*\d{4})\b")
 # Janela antes do ID onde uma citação a OUTRO processo o desqualifica como documento DESTES autos.
 # Medido no acervo: "…nos autos administrativos SEI-030029/005620/2023 sob index 51726816" — o
@@ -94,7 +95,7 @@ def _relatorio(texto: str) -> str:
 def conferir(docs: list[dict]) -> dict:
     """Documentos que o parecer diz existirem nos autos e que NÃO estão na nossa captura."""
     pareceres = [d for d in docs or []
-                 if (d.get("tipo") or "").strip().lower() in _TIPOS_PARECER]
+                 if (d.get("tipo") or "").strip().lower() in TIPOS_PARECER]
     if not pareceres:
         return {"achado": False, "indisponivel": True, "ausentes": [], "n_citados": 0,
                 "motivo": "nenhum parecer entre os documentos — sem lista externa para conferir"}

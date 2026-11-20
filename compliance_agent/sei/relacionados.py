@@ -26,22 +26,11 @@ import pathlib
 import re
 
 from compliance_agent.sei import acervo_texto
+from compliance_agent.sei.acervo_texto import numero_para_pasta, pasta_para_numero  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
 _RE_SEI = re.compile(r"SEI-\d{6}/\d{6}/\d{4}")
-_RE_PASTA = re.compile(r"^(\d{6})_(\d{6})_(\d{4})$")
-
-
-def numero_para_pasta(numero: str) -> str:
-    """`SEI-260007/004415/2025` → `260007_004415_2025` (o nome da pasta no acervo)."""
-    return str(numero or "").replace("SEI-", "").strip().replace("/", "_")
-
-
-def pasta_para_numero(pasta: str) -> str:
-    """`260007_004415_2025` → `SEI-260007/004415/2025`. Formato inesperado volta como veio."""
-    m = _RE_PASTA.match(str(pasta or "").strip())
-    return f"SEI-{m.group(1)}/{m.group(2)}/{m.group(3)}" if m else str(pasta or "")
 
 
 def _arquivo_cache(numero_sei: str, cache_dir: pathlib.Path) -> pathlib.Path | None:
@@ -89,22 +78,40 @@ def relacionados_de(numero_sei: str, cache_dir: pathlib.Path) -> list[str]:
     return vistos
 
 
+# Quem pode responder pelo processo se anuncia no texto: o ato de designação, o fiscal, o gestor,
+# o ordenador. É a régua de QUAIS documentos do pai entram quando ele passa do orçamento.
+_RE_RESPONSAVEL = re.compile(r"design|fiscal|gestor|ordenador|portaria", re.IGNORECASE)
+
+
 def textos_do_relacionado(numero_sei: str, acervo: pathlib.Path,
                           *, max_docs: int = 40) -> dict[str, str]:
     """Textos do processo relacionado, com a chave prefixada por `rel:` para a evidência
-    dizer de onde o fato veio."""
+    dizer de onde o fato veio.
+
+    QUAIS `max_docs`, não quantos. O corte era `[:40]` na ordem da árvore, que começa pelos
+    despachos de abertura — e o processo-pai (contratação) costuma ter centenas de documentos.
+    Medido em 2026-11-20 em 300 processos do acervo com mais de 40 documentos: em 28 o único
+    fiscal/gestor identificável estava depois do 40º. Escolhendo primeiro os documentos que
+    falam de designação, fiscal, gestor, ordenador ou portaria (ordem da árvore dentro de cada
+    faixa), a ficha passou a achar fiscal/gestor em 21 processos e ordenador em 8 que antes saíam
+    sem ele — e não perdeu nenhum agente que o corte antigo achava. A saída segue na ordem da
+    árvore: a ficha cita o PRIMEIRO documento em que o agente aparece.
+    """
     pasta = pathlib.Path(acervo) / numero_para_pasta(numero_sei) / "texto"
     if not pasta.is_dir():
         return {}
     import html
 
-    out: dict[str, str] = {}
-    for f in acervo_texto.arquivos_declarados(pasta.parent)[:max_docs]:
+    lidos: list[tuple[str, str]] = []
+    for f in acervo_texto.arquivos_declarados(pasta.parent):
         try:
             # sem a etiqueta do arquivo: este texto vira EVIDÊNCIA citada de um fato, e o
             # rótulo que nós escrevemos não é prova sobre o documento (ver `sei/acervo_texto`).
-            out[f"rel:{numero_sei}::{f.name}"] = acervo_texto.sem_etiqueta(
-                html.unescape(f.read_text(errors="replace")))
+            lidos.append((f.name, acervo_texto.sem_etiqueta(
+                html.unescape(f.read_text(errors="replace")))))
         except OSError:
             continue
-    return out
+    relevantes = [i for i, (_, t) in enumerate(lidos) if _RE_RESPONSAVEL.search(t)]
+    resto = [i for i, (_, t) in enumerate(lidos) if not _RE_RESPONSAVEL.search(t)]
+    escolhidos = sorted((relevantes + resto)[:max_docs])
+    return {f"rel:{numero_sei}::{lidos[i][0]}": lidos[i][1] for i in escolhidos}

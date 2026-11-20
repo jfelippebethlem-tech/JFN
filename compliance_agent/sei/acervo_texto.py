@@ -33,9 +33,47 @@ até o último `]` da linha.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import unicodedata
 from pathlib import Path
+
+# A raiz do acervo, ABSOLUTA. Antes cada leitor tinha a sua: `manifesto_norm` relativa ao módulo e
+# surda ao ambiente, `encerramento` relativa ao DIRETÓRIO CORRENTE (rodado de fora da raiz do repo,
+# todo processo saía "INDISPONÍVEL: sem manifest"). `JFN_SEI_ARQUIVO` aponta outro lugar (teste,
+# réplica). Quem precisa redirecionar num teste troca o apelido do próprio módulo.
+RAIZ = Path(os.environ.get("JFN_SEI_ARQUIVO")
+            or Path(__file__).resolve().parents[2] / "data" / "sei_arquivo")
+_RE_PASTA = re.compile(r"^(\d{6})_(\d{6})_(\d{4})$")
+
+
+def numero_para_pasta(numero: str) -> str:
+    """`SEI-260007/004415/2025` (com ou sem prefixo) → `260007_004415_2025`, o nome da pasta.
+
+    Qualquer separador vira `_`: o manifesto de duas pastas antigas grafa "SEI 330020/0007".
+    """
+    tag = re.sub(r"\D", "_", re.sub(r"^SEI-?", "", str(numero or "").strip())).strip("_")
+    return re.sub(r"_+", "_", tag)
+
+
+def pasta_para_numero(pasta: str) -> str:
+    """`260007_004415_2025` → `SEI-260007/004415/2025`. Formato inesperado volta como veio."""
+    m = _RE_PASTA.match(str(pasta or "").strip())
+    return f"SEI-{m.group(1)}/{m.group(2)}/{m.group(3)}" if m else str(pasta or "")
+
+
+def manifesto(pasta: Path | str) -> dict | None:
+    """O `manifest.json` cru da pasta. `None` = sem manifest, ilegível ou não-objeto.
+
+    `None` não é "processo sem documentos": quem chama decide entre cair no diretório, declarar
+    INDISPONÍVEL ou pular — e diz qual.
+    """
+    try:
+        man = json.loads((Path(pasta) / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return man if isinstance(man, dict) else None
 
 # A etiqueta canônica: `[<título>] (fase: X · tipo: Y)` (de `sei_arquivar`) ou `[<título>]
 # (tipo: Y)` (de `sei_arquivar_do_cache`). O `.*` é guloso e NÃO cruza linha: pega o último `]`
@@ -48,7 +86,8 @@ _RE_ETIQUETA = re.compile(r"\A\[.*\]\s*\((?:fase|tipo):[^)\n]*\)[ \t]*\r?\n?")
 _RE_ETIQUETA_NUA = re.compile(r"\A\[(.*)\][ \t]*\r?\n")
 
 
-def _norm(s: str) -> str:
+def normalizar(s: str) -> str:
+    """Sem acento, casefold, espaços colapsados — a comparação de texto que o pacote usa."""
     s = unicodedata.normalize("NFKD", (s or "").casefold())
     return re.sub(r"\s+", " ", "".join(c for c in s if not unicodedata.combining(c))).strip()
 
@@ -72,7 +111,7 @@ def sem_etiqueta(texto: str, titulo: str = "") -> str:
     t = _RE_ETIQUETA.sub("", texto or "", count=1).lstrip("\n")
     if titulo:
         m = _RE_ETIQUETA_NUA.match(t)
-        if m and _norm(m.group(1)) and _norm(m.group(1)) in _norm(titulo):
+        if m and normalizar(m.group(1)) and normalizar(m.group(1)) in normalizar(titulo):
             t = t[m.end():].lstrip("\n")
     return t
 
@@ -101,37 +140,34 @@ def tem_conteudo(caminho: Path | str, minimo: int = MIN_CHARS_CONTEUDO) -> bool:
         return False
 
 
-def arquivos_declarados(pasta: Path | str) -> list[Path]:
-    """Os `.txt` que o MANIFESTO aponta — e só eles.
+def declarados(pasta: Path | str) -> list[tuple[dict, Path]]:
+    """`(entrada do manifesto, arquivo .txt)` de cada documento que o MANIFESTO aponta — e só deles.
 
     Varrer `texto/*.txt` lê também o que sobrou de capturas anteriores: medido em 2026-08-03,
     **6.286 arquivos órfãos em 121 processos**, de um esquema de nome antigo (070002/000991/2022
     tem 486 documentos no manifesto e 1.072 arquivos na pasta). Quem varre o diretório mistura
     duas capturas do mesmo processo e conta cada documento duas vezes. O manifesto é o índice.
-    """
-    import json
 
+    Sem índice utilizável, o diretório (entrada `{}`): manifest ausente, ilegível, ou com
+    `docs: []` e `texto/*.txt` intacto no disco — índice QUEBRADO, não vazio; é a mesma avaria
+    que `tools/sei_reparar_manifestos` conserta (num caso, 210 documentos). Devolver [] apagaria
+    documentos reais da leitura em silêncio; o diretório é a melhor evidência que há.
+    """
     p = Path(pasta)
-    mf = p / "manifest.json"
-    if not mf.exists():
-        return sorted((p / "texto").glob("*.txt")) if (p / "texto").is_dir() else []
-    try:
-        man = json.loads(mf.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return sorted((p / "texto").glob("*.txt")) if (p / "texto").is_dir() else []
-    declarados = man.get("docs") or []
-    if not declarados:
-        # Índice QUEBRADO, não índice vazio: existe processo com `docs: []` no manifesto e
-        # `texto/*.txt` intacto no disco — é a mesma avaria que `tools/sei_reparar_manifestos`
-        # conserta (num caso, 210 documentos). Devolver [] aqui apagaria documentos reais da
-        # leitura em silêncio; sem índice utilizável, o diretório é a melhor evidência que há.
-        return sorted((p / "texto").glob("*.txt")) if (p / "texto").is_dir() else []
+    docs = (manifesto(p) or {}).get("docs") or []
+    if not docs:
+        return [({}, f) for f in sorted((p / "texto").glob("*.txt"))] if (p / "texto").is_dir() else []
     fora = []
-    for d in declarados:
-        rel = (d or {}).get("texto") if isinstance(d, dict) else None
+    for d in docs:
+        rel = d.get("texto") if isinstance(d, dict) else None
         if rel and (p / rel).exists():
-            fora.append(p / rel)
+            fora.append((d, p / rel))
     return fora
+
+
+def arquivos_declarados(pasta: Path | str) -> list[Path]:
+    """Os `.txt` que o manifesto aponta (ver `declarados`)."""
+    return [f for _, f in declarados(pasta)]
 
 
 def orfaos(pasta: Path | str) -> list[Path]:

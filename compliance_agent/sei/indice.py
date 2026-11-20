@@ -4,7 +4,8 @@
 Decisões de storage (pedido do dono: arquivos pequenos, cabe na VM 50GB):
 - SQLite DEDICADO `data/sei_indice.db` (NÃO o compliance.db → zero contenção de lock com o sweep SIAFE).
 - Persistir SÓ o dado ESTRUTURADO (processo, documentos, relacionados, itens de preço). ~1–3 KB/processo.
-- NUNCA guardar os PDFs/HTML a longo prazo: cache curto em data/sei_cache/, podado após extração (`podar_cache`).
+- Só o índice estruturado mora aqui. O bruto de `data/sei_cache/` NÃO se apaga (ordem do dono: "nada é apagado;
+  tudo em arquivos menores") — é comprimido por `manutencao.comprimir_cache_sei`.
 - Idempotente (chave = número do processo / url do doc). Proveniência: data da leitura + fonte.
 
 Escala estimada: 41k processos × ~2 KB ≈ ~80–120 MB. WAL p/ leituras concorrentes.
@@ -17,7 +18,6 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent.parent
 _DB = _REPO / "data" / "sei_indice.db"
-_CACHE = _REPO / "data" / "sei_cache"
 
 
 def conn() -> sqlite3.Connection:
@@ -110,19 +110,3 @@ def stats() -> dict:
                 "db_bytes": tam, "db_mb": round(tam / 1e6, 1)}
     finally:
         c.close()
-
-
-def podar_cache(idade_horas: float = 24.0) -> int:
-    """Remove arquivos de cache SEI (PDF/HTML/json brutos) mais velhos que `idade_horas` — storage-safe.
-    O índice (sei_indice.db) já tem o dado estruturado; o bruto é regenerável. Retorna nº de arquivos removidos."""
-    if not _CACHE.exists():
-        return 0
-    corte = time.time() - idade_horas * 3600
-    n = 0
-    for f in _CACHE.glob("**/*"):
-        if f.is_file() and f.suffix.lower() in (".pdf", ".html", ".htm") and f.stat().st_mtime < corte:
-            try:
-                f.unlink(); n += 1
-            except OSError:
-                pass
-    return n

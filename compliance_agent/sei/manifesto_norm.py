@@ -18,13 +18,11 @@ etiquetas do manifest (`captura_vazia`) só VETAM, nunca aprovam.
 from __future__ import annotations
 
 import copy
-import json
-import re
 from pathlib import Path
 
 from compliance_agent.sei import acervo_texto, fases
 
-_BASE = Path(__file__).resolve().parents[2] / "data" / "sei_arquivo"
+_BASE = acervo_texto.RAIZ
 
 # gordo (classificador_doc.TIPOS) → fino (fases._REGRAS). Ambíguos ficam FORA do mapa
 # e resolvem pelo título via fases.classificar (tramitacao pode ser despacho OU ofício).
@@ -64,15 +62,9 @@ def tipo_canonico(tipo_original: str | None, titulo: str) -> str:
 
 def carregar(numero_sei: str) -> dict | None:
     """Localiza a pasta do processo no acervo e devolve o manifest CRU (com `_pasta`)."""
-    tag = re.sub(r"\D", "_", re.sub(r"^SEI-?", "", str(numero_sei or ""))).strip("_")
-    tag = re.sub(r"_+", "_", tag)
-    pasta = _BASE / tag
-    mf = pasta / "manifest.json"
-    if not mf.exists():
-        return None
-    try:
-        man = json.loads(mf.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    pasta = _BASE / acervo_texto.numero_para_pasta(numero_sei)
+    man = acervo_texto.manifesto(pasta)
+    if man is None:
         return None
     man["_pasta"] = str(pasta)
     return man

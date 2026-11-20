@@ -33,10 +33,9 @@ from collections import defaultdict
 from datetime import date
 
 from compliance_agent.sei.instrumento_assinatura import (
-    _RE_CONTROLE_JURIDICO, _RE_NAO_E_PARECER, assinaturas)
+    RE_CONTROLE_JURIDICO, RE_NAO_E_PARECER, RE_NUM_CONTRATO, TIPOS_PARECER, assinaturas)
 
 _RE_VALOR = re.compile(r"R\$\s*([\d\.]{1,15},\d{2})")
-_RE_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
 _RE_DATA = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 # Referência de processo que o SEI grava no rodapé/cabeçalho de cada peça.
 # ÂNCORA LITERAL do rodapé do SEI ("Referência: Processo nº SEI-…"): é ali que a peça declara a
@@ -48,7 +47,6 @@ _RE_REF_PROCESSO = re.compile(
 
 # Controle prévio (art. 53 da Lei 14.133 / art. 38 da 8.666): parecer JURÍDICO ou de controle —
 # não o "parecer de análise" que integra o expediente de pagamento.
-_TIPOS_CONTROLE_PREVIO = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
 # Formulário de conformidade NÃO é peça opinativa: quem preenche checklist não exerce o controle
 # prévio. Falso positivo medido (080002/004433/2026): "Checklist Consolidado PGE" passava porque
 # tem 'PGE' no título. Mesma doutrina do `_RE_BOILERPLATE` do parecer_cumprimento.
@@ -79,16 +77,6 @@ def _data(txt: str) -> date | None:
         except ValueError:
             continue
     return None
-
-
-def _num_contrato(s: str) -> str:
-    """'016/2023' e '16/2023' são o MESMO contrato — o zero à esquerda é estilo de redação.
-
-    Falso positivo medido ao ligar a síntese ao 360: a contradição G2 acusava documento de
-    contrato alheio comparando as duas grafias do mesmo ajuste.
-    """
-    n, _, ano = re.sub(r"\s+", "", s or "").partition("/")
-    return f"{n.lstrip('0') or '0'}/{ano}"
 
 
 def _cmp(dstr: str) -> tuple:
@@ -122,7 +110,7 @@ def fichas(docs: list[dict], vereditos: dict[int, dict] | None = None) -> list[d
             # guarda como ESTÁ ESCRITO no documento (o entregável cita o número tal qual);
             # a comparação é que normaliza o zero à esquerda, em `contradicoes`.
             "contratos_citados": sorted({re.sub(r"\s+", "", m.group(1))
-                                         for m in _RE_CONTRATO.finditer(texto)}),
+                                         for m in RE_NUM_CONTRATO.finditer(texto)}),
             # cabeçalho + rodapé: é onde o SEI declara a que processo a peça pertence
             "ref_cabecalho": (texto[:400] + " " + texto[-600:]),
             "escala": v.get("escala"),
@@ -232,9 +220,9 @@ def contradicoes(fs: list[dict], numero: str = "") -> list[dict]:
     #    Controle prévio é o parecer JURÍDICO/de controle do art. 53; decisão é o ato que autoriza,
     #    homologa ou contrata. Expediente de liquidação não é nem um nem outro.
     de_controle = {n for f in fs
-                   if f["tipo"] in _TIPOS_CONTROLE_PREVIO
-                   and _RE_CONTROLE_JURIDICO.search(f["ref"])
-                   and not _RE_NAO_E_PARECER.search(f["ref"])
+                   if f["tipo"] in TIPOS_PARECER
+                   and RE_CONTROLE_JURIDICO.search(f["ref"])
+                   and not RE_NAO_E_PARECER.search(f["ref"])
                    for n in f["assinantes"]}
     de_decisao = {n for f in fs if f["tipo"] in _TIPOS_DECISORIOS for n in f["assinantes"]}
     for nome in sorted(de_controle & de_decisao):

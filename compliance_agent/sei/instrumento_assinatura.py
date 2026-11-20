@@ -29,10 +29,10 @@ from __future__ import annotations
 
 import difflib
 import re
-import unicodedata
 from datetime import date
 
 from compliance_agent.sei import acervo_texto
+from compliance_agent.sei.acervo_texto import normalizar
 
 # Rodapé de assinatura eletrônica do SEI-RJ, literal e estável desde o Decreto 48.209/2022.
 _RE_ASSINATURA = re.compile(
@@ -71,7 +71,10 @@ _RE_CABECALHO_ATO = re.compile(
 # quem o próprio ato nomeia como a autoridade que decide
 _RE_AUTORIDADE = re.compile(
     r"Est[ea]\s+Ordenador[a]?\s+de\s+Despesas?\s*,\s*([A-ZÀ-Ú][A-ZÀ-Ú\s\.]{5,60}?)\s*,", re.I)
-_TIPOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
+# Tipos que valem como parecer em qualquer vocabulário que chega aqui: o fino (`parecer`, depois
+# do `manifesto_norm.normalizar`) e o grosso do classificador (`parecer_juridico`, manifest cru).
+# `conferencia_captura` e `sintese_global` importam este conjunto.
+TIPOS_PARECER = frozenset({"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"})
 
 # ─── o que é, de fato, o CONTROLE PRÉVIO do art. 53 · doutrina única da casa ───
 # O tipo `parecer_juridico` do manifesto não basta: 66% dos pareceres do acervo foram tipados pelo
@@ -82,10 +85,10 @@ _TIPOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_
 # Análise para Emissão DL" (revisão de rotina do coordenador de qualidade — o mesmo falso positivo
 # que já derrubou 71 disparos do G3). Aqui a peça precisa SE ANUNCIAR como manifestação jurídica.
 # `sintese_global` importa estas duas: a doutrina mora num lugar só.
-_RE_NAO_E_PARECER = re.compile(
+RE_NAO_E_PARECER = re.compile(
     r"checklist|check-?list|lista\s+de\s+verifica|declara[çc][ãa]o\s+de\s+conformidade|"
     r"anexo\s+[úu]nico|resolu[çc][ãa]o\s+conjunta", re.I)
-_RE_CONTROLE_JURIDICO = re.compile(
+RE_CONTROLE_JURIDICO = re.compile(
     r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
     r"controladoria|auditoria|controle\s+interno|opino|opina-se|parecer\s+n[ºo°]", re.I)
 _CABECALHO_CHARS = 1500
@@ -115,9 +118,9 @@ def e_controle_juridico(ref: str, texto: str) -> bool:
     manifesto. Formulário de conformidade e declaração da própria unidade não exercem controle.
     """
     alvo = f"{ref or ''}\n{_sem_etiqueta(texto)[:_CABECALHO_CHARS]}"
-    if _RE_NAO_E_PARECER.search(alvo):
+    if RE_NAO_E_PARECER.search(alvo):
         return False
-    return bool(_RE_CONTROLE_JURIDICO.search(alvo))
+    return bool(RE_CONTROLE_JURIDICO.search(alvo))
 
 
 # O ato de autorização é aquele em que a autoridade DIZ que autoriza. O título mente nos dois
@@ -144,11 +147,6 @@ def e_ato_de_autorizacao(texto: str) -> bool:
         _RE_ROTULO_FORMULARIO.sub(" ", _sem_etiqueta(texto))))
 
 
-def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "").casefold()
-    return re.sub(r"\s+", " ", "".join(c for c in s if not unicodedata.combining(c))).strip()
-
-
 # IDENTIFICADOR ao lado do nome. É o que resolve a dúvida "é a mesma pessoa?" sem chutar: o SEI
 # grafa "FULANO, Id Funcional nº 613973-6, CPF 022.318.157-96" e a casa já tem a doutrina em
 # `agentes_publicos.chave()` ("ID funcional manda; sem ele, nome normalizado"). Semelhança de nome
@@ -162,10 +160,10 @@ _JANELA_ID = 160     # o identificador vem logo depois do nome, na mesma linha o
 
 def _identificador(nome: str, texto: str) -> tuple[str | None, str | None]:
     """(cpf, id_funcional) que aparecem logo APÓS a primeira menção ao nome. Nunca inventa."""
-    alvo = _norm(nome)
+    alvo = normalizar(nome)
     if not alvo:
         return None, None
-    base = _norm(texto)
+    base = normalizar(texto)
     pos = base.find(alvo)
     if pos < 0:                       # nome do rodapé grafado diferente do corpo: tenta o 1º nome
         primeiro = alvo.split()[0] if alvo.split() else ""
@@ -188,7 +186,7 @@ def _mesma_pessoa(a: str, b: str) -> bool:
     propósito: o PRIMEIRO nome tem de bater e o conjunto precisa de 88% de semelhança, para que
     homônimo parcial e pessoa diferente sigam divergindo.
     """
-    na, nb = _norm(a), _norm(b)
+    na, nb = normalizar(a), normalizar(b)
     if not na or not nb:
         return False
     if na in nb or nb in na:
@@ -199,7 +197,7 @@ def _mesma_pessoa(a: str, b: str) -> bool:
     return difflib.SequenceMatcher(None, na, nb).ratio() >= 0.88
 
 
-def _data(txt: str) -> date | None:
+def data_br(txt: str) -> date | None:
     try:
         d, m, a = (int(x) for x in txt.split("/"))
         return date(a, m, d)
@@ -236,7 +234,7 @@ def _ordinal(doc: dict) -> int | None:
     if anc:
         janela = texto[max(0, anc.start() - _JANELA_ANCORA):anc.start()]
         achados = [(m.end(), int(m.group(1))) for m in _RE_ORDINAL_ADITIVO.finditer(janela)]
-        achados += [(m.end(), _VALOR_EXTENSO[_norm(m.group(1))])
+        achados += [(m.end(), _VALOR_EXTENSO[normalizar(m.group(1))])
                     for m in _RE_ORDINAL_EXTENSO.finditer(janela)]
         # Com fórmula de celebração e SEM ordinal antes dela, o documento é o contrato original —
         # não se procura ordinal no resto do corpo. O Contrato 36/2023 do INEA cita "PRIMEIRO
@@ -247,7 +245,7 @@ def _ordinal(doc: dict) -> int | None:
     if m:
         return int(m.group(1))
     m = _RE_ORDINAL_EXTENSO.search(texto)
-    return _VALOR_EXTENSO[_norm(m.group(1))] if m else None
+    return _VALOR_EXTENSO[normalizar(m.group(1))] if m else None
 
 
 def _e_minuta(doc: dict) -> bool:
@@ -277,7 +275,7 @@ def _minuta_foi_atropelada(n: int, minutas: list[tuple], assinados: list[tuple])
 
     def quando(d: dict) -> tuple:
         dt = _primeira_data(d)
-        return (0, _data(dt).toordinal()) if dt and _data(dt) else (1, pos[id(d)])
+        return (0, data_br(dt).toordinal()) if dt and data_br(dt) else (1, pos[id(d)])
 
     alvo = min((quando(d) for m, d in minutas if m == n), default=None)
     if alvo is None:
@@ -299,7 +297,7 @@ def ordinal_divergente(docs: list[dict]) -> dict:
         n = _ordinal(d)
         if n is None:
             continue
-        if _norm(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
+        if normalizar(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
             continue                      # parecer/justificativa citam o ordinal, não o celebram
         if not _RE_INSTRUMENTO.search(d.get("texto") or ""):
             continue                      # sem fórmula de celebração não é o instrumento
@@ -321,7 +319,7 @@ def ordinal_divergente(docs: list[dict]) -> dict:
     # mesmo instrumento não é segundo instrumento.
     vistos: dict[int, list[frozenset]] = {}
     for n, d in assinados:
-        firmas = frozenset((_norm(a["nome"]), a["data"]) for a in assinaturas(d.get("texto") or ""))
+        firmas = frozenset((normalizar(a["nome"]), a["data"]) for a in assinaturas(d.get("texto") or ""))
         vistos.setdefault(n, []).append(firmas)
     duplicados = sorted(n for n, fs in vistos.items() if len({f for f in fs}) > 1)
     # Hipótese inocente a declarar: reemissão do MESMO termo para colher assinatura que faltava —
@@ -372,18 +370,18 @@ def autorizacao_antes_do_parecer(docs: list[dict]) -> dict:
     aut = par = None
     pareceres_sem_data: list[str] = []
     for d in docs or []:
-        tipo = _norm(d.get("tipo") or "")
+        tipo = normalizar(d.get("tipo") or "")
         texto = d.get("texto") or ""
         e_aut = tipo in _TIPOS_AUTORIZACAO or _RE_CABECALHO_ATO.search(texto[:_CABECALHO_CHARS])
         if e_aut and e_ato_de_autorizacao(texto):
             dt = _primeira_data(d)
-            if dt and (aut is None or _data(dt) < _data(aut[0])):
+            if dt and (aut is None or data_br(dt) < data_br(aut[0])):
                 aut = (dt, d)
-        elif not e_aut and tipo in _TIPOS_PARECER and e_controle_juridico(d.get("ref") or "", texto):
+        elif not e_aut and tipo in TIPOS_PARECER and e_controle_juridico(d.get("ref") or "", texto):
             dt = _primeira_data(d)
             if not dt:
                 pareceres_sem_data.append(str(d.get("ref") or ""))
-            elif par is None or _data(dt) < _data(par[0]):
+            elif par is None or data_br(dt) < data_br(par[0]):
                 par = (dt, d)
     # PARECER SEM DATA LEGÍVEL ⇒ não se compara. A comparação é "a autorização veio antes do
     # PRIMEIRO parecer"; se há parecer cuja data não se lê, o primeiro pode ser justamente ele, e
@@ -404,7 +402,7 @@ def autorizacao_antes_do_parecer(docs: list[dict]) -> dict:
                            "inversão sem as duas datas"),
                 "data_autorizacao": aut[0] if aut else None,
                 "data_parecer": par[0] if par else None}
-    if _data(aut[0]) >= _data(par[0]):
+    if data_br(aut[0]) >= data_br(par[0]):
         return {"achado": False, "indisponivel": False,
                 "data_autorizacao": aut[0], "data_parecer": par[0]}
     return {
@@ -425,7 +423,7 @@ def ato_sem_assinatura_da_autoridade(docs: list[dict]) -> dict:
     """O ato que autoriza a despesa foi assinado pela autoridade que ele nomeia como decisora?"""
     docs = _limpos(docs)
     for d in docs or []:
-        tipo = _norm(d.get("tipo") or "")
+        tipo = normalizar(d.get("tipo") or "")
         texto = d.get("texto") or ""
         if tipo not in _TIPOS_AUTORIZACAO and not _RE_CABECALHO_ATO.search(texto[:1500]):
             continue
@@ -449,7 +447,7 @@ def ato_sem_assinatura_da_autoridade(docs: list[dict]) -> dict:
                     "motivo": "documento sem rodapé de assinatura eletrônica — pode ter sido "
                               "assinado fora do SEI; ausência de rodapé não prova ausência de ato"}
         nomes = [a["nome"] for a in ass]
-        alvo = _norm(autoridade)
+        alvo = normalizar(autoridade)
         # 1) IDENTIFICADOR manda: CPF, depois Id funcional. Só cai no nome quando não há nenhum.
         cpf_a, id_a = _identificador(autoridade, texto)
         base = "nome"
@@ -520,7 +518,7 @@ def _ha_aditivo_sem_prorrogacao(docs: list[dict], atual: dict) -> bool:
     for outro in docs or []:
         if outro is atual:
             continue
-        if _norm(outro.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
+        if normalizar(outro.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
             continue
         m = _RE_OBJETO_DO_ADITIVO.search(outro.get("texto") or "")
         if m and not _RE_PRORROGA_OBJETO.search(m.group(1)):
@@ -532,7 +530,7 @@ def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
     """O ordinal declarado bate com o prazo total que o próprio instrumento anuncia?"""
     docs = _limpos(docs)
     for d in docs or []:
-        if _norm(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
+        if normalizar(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
             continue
         texto = d.get("texto") or ""
         if _e_minuta(d) or not _RE_INSTRUMENTO.search(texto):
@@ -576,12 +574,25 @@ def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
 # Achado real: "a minuta da renovação do contrato 04/2022 segue a MINUTA-PADRÃO" num processo do
 # Contrato 16/2023 — e é nessa declaração que o parecer se apoia para dar a conformidade por
 # atendida. Documento de outro contrato usado como atestado neste.
-_RE_NUM_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
+# `sintese_global` importa o padrão: as fichas guardam o número como está escrito.
+RE_NUM_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
 _RE_E_DECLARACAO = re.compile(r"\bDECLARA[ÇC][ÃA]O\b|\bDeclaro\b", re.I)
 
 
-def _num(s: str) -> str:
+def _escrito(s: str) -> str:
     return re.sub(r"\s+", "", s or "")
+
+
+def num_contrato(s: str) -> str:
+    """'016/2023' e '16/2023' são o MESMO contrato — o zero à esquerda é estilo de redação.
+
+    Falso positivo medido duas vezes: ao ligar a síntese ao 360 (a contradição G2, hoje removida,
+    comparava as duas grafias do mesmo ajuste) e no I5 — em 20/11/2026, 13 dos 29 disparos em
+    3.000 processos do acervo eram "017/2022" × "17/2022" e afins, e nenhum disparo novo surgiu
+    ao comparar sem o zero.
+    """
+    n, _, ano = _escrito(s).partition("/")
+    return f"{n.lstrip('0') or '0'}/{ano}"
 
 
 def declaracao_de_outro_contrato(docs: list[dict]) -> dict:
@@ -589,11 +600,11 @@ def declaracao_de_outro_contrato(docs: list[dict]) -> dict:
     docs = _limpos(docs)
     do_processo = None
     for d in docs or []:
-        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_INSTRUMENTO.search(
+        if normalizar(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_INSTRUMENTO.search(
                 d.get("texto") or ""):
-            m = _RE_NUM_CONTRATO.search(d.get("texto") or "")
+            m = RE_NUM_CONTRATO.search(d.get("texto") or "")
             if m:
-                do_processo = _num(m.group(1))
+                do_processo = _escrito(m.group(1))
                 break
     if not do_processo:
         return {"achado": False, "contrato_do_processo": None, "contrato_citado": None}
@@ -601,8 +612,8 @@ def declaracao_de_outro_contrato(docs: list[dict]) -> dict:
         texto = d.get("texto") or ""
         if not _RE_E_DECLARACAO.search(texto[:600]):
             continue
-        citados = {_num(m.group(1)) for m in _RE_NUM_CONTRATO.finditer(texto)}
-        if not citados or do_processo in citados:
+        citados = {_escrito(m.group(1)) for m in RE_NUM_CONTRATO.finditer(texto)}
+        if not citados or num_contrato(do_processo) in {num_contrato(c) for c in citados}:
             continue
         return {
             "achado": True, "contrato_do_processo": do_processo,
@@ -662,7 +673,7 @@ def _qtds(texto: str) -> dict[str, int]:
     """{unidade: quantidade} das ocorrências no padrão do SEI ('03 (três) aeronaves')."""
     saida: dict[str, int] = {}
     for m in _RE_QTD_UNIDADE.finditer(texto or ""):
-        uni = _norm(m.group(2)).rstrip("s")
+        uni = normalizar(m.group(2)).rstrip("s")
         if uni in _UNIDADES_NAO_OBJETO:
             continue
         saida.setdefault(uni, int(m.group(1)))
@@ -679,7 +690,7 @@ def _qtds_distintas(texto: str) -> dict[str, set]:
     """
     saida: dict[str, set] = {}
     for m in _RE_QTD_UNIDADE.finditer(texto or ""):
-        uni = _norm(m.group(2)).rstrip("s")
+        uni = normalizar(m.group(2)).rstrip("s")
         if uni in _UNIDADES_NAO_OBJETO:
             continue
         saida.setdefault(uni, set()).add(int(m.group(1)))
@@ -707,7 +718,7 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
     ref_obj = ""
     for d in docs or []:
         texto = d.get("texto") or ""
-        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_OBJETO.search(texto):
+        if normalizar(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_OBJETO.search(texto):
             obj = _qtds_distintas(texto)
             if obj:
                 ref_obj = str(d.get("ref") or "")
@@ -726,7 +737,7 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
         # VAN" da Operação Barreira Fiscal — a distribuição interna dos mesmos 30.
         # Atesto de execução é peça POSTERIOR e DE OUTRO documento; exigir isso é mais sólido do
         # que continuar afinando a regex do gatilho.
-        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO:
+        if normalizar(d.get("tipo") or "") in _TIPOS_INSTRUMENTO:
             continue
         # ATESTADO DE CAPACIDADE TÉCNICA É DO LICITANTE, E DE OUTRO CONTRATO. Ele prova a
         # experiência PASSADA da empresa perante TERCEIROS — no SEI-270356/000192/2023 o

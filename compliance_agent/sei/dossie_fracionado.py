@@ -115,25 +115,13 @@ class Plano:
 
 
 def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
-    """Documentos com texto, na ordem do processo. Sem manifest, cai no nome do arquivo."""
-    import json
-
-    pasta = pathlib.Path(pasta)
-    titulos: dict[str, str] = {}
-    try:
-        manifesto = json.loads((pasta / "manifest.json").read_text())
-        for d in manifesto.get("docs") or []:
-            alvo = (d.get("texto") or "").split("/")[-1]
-            if alvo:
-                titulos[alvo] = d.get("titulo") or ""
-    except (OSError, json.JSONDecodeError):
-        logger.debug("%s: sem manifest legível — usando o nome do arquivo como título", pasta)
-
+    """Documentos com texto, na ordem do processo. Sem manifest, título vazio (vale o nome do arquivo)."""
     docs: list[Documento] = []
     # pelo MANIFESTO, não pelo diretório: varrer `texto/*.txt` lia também as sobras de uma
     # captura anterior (6.286 arquivos órfãos em 121 processos, medido em 2026-08-03) e o
     # dossiê saía com o mesmo documento duas vezes, consumindo orçamento de token em cópia.
-    for f in acervo_texto.arquivos_declarados(pasta):
+    for entrada, f in acervo_texto.declarados(pathlib.Path(pasta)):
+        titulo = entrada.get("titulo") or ""
         try:
             txt = f.read_text(errors="replace")
         except OSError:
@@ -145,9 +133,8 @@ def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
         # sem a etiqueta do arquivo: o dossiê fracionado alimenta a IA, e o rótulo levava a NOSSA
         # classificação para dentro do documento além de consumir orçamento de token que é o
         # recurso escasso deste módulo (2026-08-03 — ver `sei/acervo_texto`).
-        docs.append(Documento(nome=f.name, titulo=titulos.get(f.name, ""),
-                              texto=acervo_texto.sem_etiqueta(html.unescape(txt),
-                                                              titulos.get(f.name, ""))))
+        docs.append(Documento(nome=f.name, titulo=titulo,
+                              texto=acervo_texto.sem_etiqueta(html.unescape(txt), titulo)))
     return docs
 
 
