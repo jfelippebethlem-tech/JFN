@@ -217,7 +217,8 @@ REPO = Path(__file__).resolve().parent.parent
 # DECLARADA e a síntese determinística fica de pé inteira, com os mesmos fatos.
 # 2026-11-20: -26 (1626->1600) — untangle de `detectores/`: o `try/except` em volta do LLM de cada rubrica
 # (copiado em 22 detectores) virou um só em `base.perguntar_rubrica`; os parsers de data copiados, um só.
-BASELINE = 1600
+# 2026-11-20: -38 (1600->1562) — untangle de `collectors/`: falha de fonte deixou de ser engolida (vira INDISPONÍVEL).
+BASELINE = 1562
 
 
 def _contar() -> int:
