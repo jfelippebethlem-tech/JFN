@@ -543,14 +543,6 @@ async def rodar_ciclo_relatorio_diario(args=None):
     except Exception as e:
         console.print(f"    [yellow]Anomalias: {e}[/yellow]")
 
-    try:
-        from compliance_agent.analysis.graph_analyzer import rodar_analise_grafo
-        grafo_alertas = await rodar_analise_grafo(session)
-        console.print(f"    {len(grafo_alertas)} alertas de grafo.")
-        alertas += grafo_alertas
-    except Exception as e:
-        console.print(f"    [yellow]Grafo: {e}[/yellow]")
-
     # 5c. Investigação na internet dos maiores favorecidos do dia
     console.print("[cyan]5c/6 Investigação web (pessoas/CNPJs)...[/cyan]")
     try:

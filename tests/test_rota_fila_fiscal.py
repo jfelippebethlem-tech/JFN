@@ -28,7 +28,7 @@ _RX_PROC = re.compile(r"^\d{6}/\d{6}/\d{4}$")
 
 
 @pytest.fixture(scope="module")
-def cli():
+def cli(servidor_sem_boot_externo):
     """O cliente entra em CONTEXTO de propósito — sem isso o `startup` não roda.
 
     Medido em 07/08/2026: `TestClient(app)` sem `with` devolvia 404 no espelho da VM-2 e 200 aqui,

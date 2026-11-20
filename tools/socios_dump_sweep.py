@@ -27,6 +27,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.osint.historico_societario import _com_espera, normalizar_doc_socio
 from compliance_agent.osint.historico_societario import nome_norm as _norm
 
@@ -240,12 +241,14 @@ def materializar_rede(con: sqlite3.Connection | None = None) -> None:
             pass
     con.execute("DROP TABLE IF EXISTS _receb_raiz")
     con.execute("DROP TABLE IF EXISTS _pessoa_raiz")
-    # total recebido por raiz (das nossas OB) — materializado p/ join eficiente (sem LIKE correlato)
-    con.execute("""
+    # total recebido por raiz — OB paga do SIAFE pela régua da casa (`_ob_paga`), nunca o espelho TFE. O SIAFE da
+    # casa cobre 2021+: é PISO para quem também recebeu em 2019–2020. Materializado p/ join eficiente.
+    con.execute(f"""
         CREATE TEMP TABLE _receb_raiz AS
-        SELECT substr(favorecido_cpf,1,8) AS raiz, SUM(valor) AS total
-        FROM ordens_bancarias WHERE length(favorecido_cpf)=14
-        GROUP BY substr(favorecido_cpf,1,8)
+        SELECT substr(o.credor,1,8) AS raiz, SUM(o.valor) AS total
+        FROM ob_orcamentaria_siafe o
+        WHERE length(o.credor)=14 AND o.credor NOT GLOB '*[^0-9]*' AND {_ob_paga(con, 'o')}
+        GROUP BY substr(o.credor,1,8)
     """)
     con.execute("CREATE INDEX _ix_receb ON _receb_raiz(raiz)")
     # junção pessoa×raiz só para pessoas que ligam ≥2 fornecedores (filtro 1º, barato)

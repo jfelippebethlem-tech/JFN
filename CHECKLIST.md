@@ -28,7 +28,6 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | Navegação autônoma do SIAFE2 com IA | `groq_agent.py` → `navigate_autonomous` | ✅ |
 | Detecção estatística de anomalias | `analysis/anomaly_detector.py` | ✅ |
 | Fracionamento, concentração, rajada fim de mês | `anomaly_detector.py` | ✅ |
-| Grafo de corrupção (servidor→empresa←UG) | `analysis/graph_analyzer.py` | ✅ |
 | **Base legal curada** (LIMPE + 24 dispositivos) | `knowledge/base_legal.py` | ✅ |
 | **Jurisprudência curada** (10 TCE-RJ + 12 TCU) | `knowledge/jurisprudencia.py` | ✅ |
 | **Fundamentação automática de alertas** | `groq_agent.py` → `_enriquecer_desc` | ✅ |

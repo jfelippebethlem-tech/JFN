@@ -13,7 +13,7 @@ Sinais:
   L3 ata_fora_de_vigencia  — NE de adesão emitida depois do fim da vigência da ata no PNCP.
   L4 lei_revogada          — extrato/contrato assinado em 2025+ com fundamento na Lei 8.666 (revogada em 30/12/2023;
                              art. 191 da 14.133 só preserva o que foi licitado sob ela — pedir a ata e a vigência).
-Limites normativos: os mesmos do X4 (`detectores.x4_carona_abusiva`), importados — não duplicados.
+Limites normativos: os do art. 86 em `limites_adesao`, os mesmos do X4.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from datetime import date
 
 import requests
 
-from compliance_agent.detectores.x4_carona_abusiva import LIMITE_ADESAO_INDIVIDUAL, LIMITE_TOTAL_ADESOES
+from compliance_agent.limites_adesao import LIMITE_ADESAO_INDIVIDUAL, LIMITE_TOTAL_ADESOES
 from compliance_agent.padroes import _carona_comum as cc
 from compliance_agent.padroes._comum import ORDEM_GRAU
 from compliance_agent.reporting.intel_base import moeda

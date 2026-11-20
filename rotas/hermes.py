@@ -224,11 +224,7 @@ async def api_hermes_parar(payload: Optional[dict] = None):
     s = get_session()
     try:
         await _cancelar_loop_trabalhar()
-        try:
-            while not mission_queue.empty():
-                mission_queue.dequeue_nowait()
-        except Exception as exc:
-            logger.debug("limpeza da fila de missões interrompida: %s", exc)
+        mission_queue.esvaziar()
         HermesGoalAgent(session=s).limpar_missao()
         return JSONResponse({"ok": True, "status": "parado"})
     except Exception as e:

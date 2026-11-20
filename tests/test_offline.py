@@ -36,15 +36,6 @@ if str(_RAIZ) not in sys.path:
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.mktemp(suffix='.db')}")
 
 
-# ─── 1. Carregador de credenciais ────────────────────────────────────────────
-
-def test_envfile_carrega_env():
-    from compliance_agent.envfile import carregar_env
-    lidos = carregar_env()
-    # Deve carregar pelo menos um arquivo (.env ou .env.txt) no ambiente de dev.
-    assert isinstance(lidos, list)
-
-
 # ─── 2. free_llm: chave dinâmica + retry ──────────────────────────────────────
 
 def test_free_llm_chave_dinamica(monkeypatch):

@@ -48,10 +48,7 @@ def _tg(texto: str):
 
 
 def _q(con, sql, p=()):
-    try:
-        return con.execute(sql, p).fetchall()
-    except Exception:
-        return []
+    return con.execute(sql, p).fetchall()
 
 
 def analisar() -> dict:

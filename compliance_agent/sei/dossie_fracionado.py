@@ -222,46 +222,6 @@ def prompt_map(lote: Lote) -> tuple[str, str]:
     return _sistema_map(), f"{_ROTEIRO_MAP}\n\n---\n\n" + "\n\n---\n\n".join(partes)
 
 
-_SISTEMA_REDUCE = (
-    "Você consolida extrações parciais de um mesmo processo administrativo num dossiê único. "
-    "Preserve TODAS as citações [doc ...] dos fatos que mantiver. Quando duas partes se "
-    "contradisserem, registre a contradição em vez de escolher uma. Não introduza nenhum fato "
-    "que não esteja nas extrações. O que faltar entra na seção de lacunas."
-)
-
-
-def _sistema_reduce() -> str:
-    try:
-        from compliance_agent.knowledge.moldura_juridica import moldura
-        return f"{_SISTEMA_REDUCE}\n\n{moldura(com_catalogo=False)}"
-    except Exception as e:  # noqa: BLE001
-        logger.warning("moldura jurídica indisponível (%s)", str(e)[:80])
-        return _SISTEMA_REDUCE
-
-
-def prompt_reduce(processo: str, blocos: list[str]) -> tuple[str, str]:
-    corpo = "\n\n".join(f"## Extração do lote {i}\n{b}" for i, b in enumerate(blocos, 1))
-    roteiro = f"""Consolide as extrações abaixo do processo {processo} em Markdown, com
-exatamente estas seções e nesta ordem:
-
-## 1. Objeto e enquadramento
-## 2. Partes e responsáveis
-## 3. Linha do tempo
-## 4. Valores
-## 5. Indícios a verificar
-## 6. Contradições entre documentos
-## 7. Lacunas
-
-Regras: valor sem origem não entra. Em "Indícios a verificar", cada item começa com o fato e
-a citação, e diz o que precisaria ser confirmado — nunca afirma irregularidade. Em "Lacunas",
-liste o que se esperaria encontrar num processo desse tipo e não foi localizado.
-
----
-
-{corpo}"""
-    return _sistema_reduce(), roteiro
-
-
 def cabecalho_md(plano: Plano, modelo: str, *, lotes_truncados: int = 0) -> str:
     """Cabeçalho de cobertura — o dossiê declara o que leu antes de dizer o que achou."""
     modo = ("leitura integral" if plano.cabe_inteiro

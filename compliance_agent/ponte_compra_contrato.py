@@ -20,7 +20,7 @@ certame e o que foi coletado de contrato. É pouco, e é MUITO mais que zero —
 
 O QUE ISSO DESTRAVA. Com a cadeia fechada, a família EXECUÇÃO do índice de certame deixa de ser
 indisponível por construção; o X3 (tríade da despesa) ganha caminho até o certame que originou o
-contrato; e o `direcionamento_consumado` pode ligar o vínculo societário do vencedor ao contrato
+contrato; e o vínculo societário do vencedor pode ser ligado ao contrato
 que ele de fato executa.
 
 HONESTIDADE: toda função devolve a COBERTURA junto do resultado. Uma ponte de 11,9% usada como se

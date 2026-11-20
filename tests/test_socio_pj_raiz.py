@@ -188,7 +188,7 @@ def _base_migracao():
     from tools import socios_reverso_build as srb
     con.execute(sds._DDL)
     con.execute(srb._DDL)
-    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, valor REAL)")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, credor TEXT, valor REAL, status TEXT)")
     pj14, pj8, pf = "22222222000155", "22222222", "***123456**"
     for mes in ("2026-06", "2026-07"):
         registrar_snapshot(con, mes, [
@@ -258,3 +258,19 @@ def test_serie_recusa_ingerir_por_cima_do_legado_de_14_digitos(monkeypatch, tmp_
     monkeypatch.setattr(ssh, "_conectar", lambda: sqlite3.connect(db))
     monkeypatch.setattr(ssh, "ingerir_snapshot", lambda *a, **k: pytest.fail("não podia ingerir"))
     assert ssh.main(["--mes", "2026-08-10"]) == 1
+
+
+def test_rede_soma_so_ob_paga_do_siafe():
+    """`total_recebido` da rede = OB paga do SIAFE (régua `_ob_paga`); OB anulada e o espelho TFE não entram."""
+    con = _base_migracao()
+    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, valor REAL)")
+    con.execute("INSERT INTO ordens_bancarias VALUES ('11111111000100', 999.0)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)", [
+        ("2024OB00001", "11111111000100", 100.0, "Contabilizado"),
+        ("2024OB00002", "44444444000100", 50.0, "Contabilizado"),
+        ("2024OB00003", "44444444000100", 7.0, "Anulado"),
+    ])
+    from tools import socios_dump_sweep as sds
+    sds.materializar_rede(con)
+    tot = con.execute("SELECT total_recebido FROM rede_socios_fornecedores WHERE n_fornecedores=2").fetchone()[0]
+    assert tot == 150.0

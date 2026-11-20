@@ -21,6 +21,7 @@ import sqlite3
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, Response
 
+from compliance_agent.cpf_cnpj import mascarar_cpf
 from compliance_agent.territorio import agrega, atribui_estado, atribui_pcrj, base
 from compliance_agent.territorio.geo import nome_municipio, norm, ras_por_ap
 
@@ -79,7 +80,7 @@ def _doc(doc: str | None) -> tuple[str | None, str]:
     d = "".join(ch for ch in (doc or "") if ch.isdigit())
     if len(d) == 14:
         return d, f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
-    return None, (f"{d[:3]}.***.***-{d[-2:]}" if len(d) == 11 else "")
+    return None, (mascarar_cpf(d) if len(d) == 11 else "")
 
 
 def _contrato(r: sqlite3.Row, conf_texto: str) -> dict:

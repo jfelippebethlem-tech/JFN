@@ -14,6 +14,16 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+
+@pytest.fixture(autouse=True)
+def _cache_isolado(tmp_path, monkeypatch):
+    """O cache é global do módulo e mora em `data/beneficios_cache.json`: sem isto, a entrada falsa de um teste
+    vazava para o resto da sessão e o próximo `_salva_cache()` real a gravava no arquivo de produção (foi assim
+    que um PEP de teste com nome "X" apareceu lá em 15/11/2026)."""
+    monkeypatch.setattr(bs, "_CACHE_FILE", tmp_path / "beneficios_cache.json")
+    monkeypatch.setattr(bs, "_cache", None)
+
+
 def test_beneficios_cpf_invalido_indisponivel(monkeypatch):
     monkeypatch.setenv("PORTAL_TRANSPARENCIA_KEY", "x")
     out = _run(bs.verificar_beneficios("123"))  # não tem 11 dígitos

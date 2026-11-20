@@ -877,11 +877,15 @@ class MissionQueue:
     async def enqueue(self, item):
         await self._queue.put(item)
 
-    async def get(self):
-        return await self._queue.get()
-
     def qsize(self):
         return self._queue.qsize()
+
+    def esvaziar(self) -> int:
+        n = 0
+        while not self._queue.empty():
+            self._queue.get_nowait()
+            n += 1
+        return n
 
 mission_queue = MissionQueue()
 

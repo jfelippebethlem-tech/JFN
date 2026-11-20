@@ -23,6 +23,7 @@ import re
 import sqlite3
 import unicodedata
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.database.models import _resolver_db
 
 
@@ -101,7 +102,7 @@ def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 1
     try:
         for cnpj_e, ugp, uge, proc, n, tot in con.execute(
                 f"SELECT credor, ug_pagadora, ug_emitente, processo, COUNT(*), COALESCE(SUM(valor),0) "
-                f"FROM ob_orcamentaria_siafe WHERE credor IN ({place}) "
+                f"FROM ob_orcamentaria_siafe WHERE credor IN ({place}) AND {_ob_paga(con)} "
                 f"GROUP BY credor, ug_pagadora, ug_emitente, processo", alvos):
             d = _digits(cnpj_e)
             if d not in out:
@@ -440,7 +441,7 @@ def lista_suja(cnpj: str | None) -> dict | None:
         iso = f"{inc[6:10]}-{inc[3:5]}-{inc[0:2]}" if len(inc) == 10 else ""
         # data_emissao do SIAFE é TEXTO DD/MM/AAAA: converter antes de comparar
         depois = con.execute(
-            "SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+            f"SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND {_ob_paga(con)} AND "
             "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?",
             (dig, iso or "9999")).fetchone()
     except sqlite3.Error as exc:
@@ -527,9 +528,10 @@ def sancoes_siga(cnpj: str | None) -> list[dict]:
         rows = con.execute("SELECT nome, enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes WHERE doc=? ORDER BY status='Vigente' DESC, data_efetivacao DESC",
                            (dig,)).fetchall()
         out = []
+        paga = _ob_paga(con)
         for nome, enq, dt, org, st in rows:
             iso = f"{dt[6:10]}-{dt[3:5]}-{dt[0:2]}" if len(dt or "") == 10 else "9999"
-            dep = con.execute("SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+            dep = con.execute(f"SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND {paga} AND "
                               "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?", (dig, iso)).fetchone()
             alc, peso = _alcance_sancao(enq)
             out.append({"nome": nome, "enquadramento": enq, "alcance": alc, "peso": peso, "desde": dt, "orgao": org, "status": st,

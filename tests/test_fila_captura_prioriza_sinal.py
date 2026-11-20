@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 def _ordenar(rows, legiveis, credores, sinal):
     """Reproduz a chave de ordenação da fila — a mesma expressão de `tools/sei_sweep`."""
@@ -79,11 +77,6 @@ def test_le_a_fila_curada_e_ignora_o_que_tem_explicacao(tmp_path, monkeypatch):
     ]}), encoding="utf-8")
     monkeypatch.setattr(M, "__file__", str(tmp_path / "tools" / "sei_sweep.py"))
     assert M._raizes_com_sinal_osint() == {"11111111"}
-
-
-@pytest.mark.skipif(True, reason="mede o acervo real; roda à mão quando se quer o número")
-def test_quantos_processos_ganham_prioridade_hoje():
-    pass
 
 
 def test_lacuna_PROVADA_pelo_parecer_vem_antes_do_sinal_osint():

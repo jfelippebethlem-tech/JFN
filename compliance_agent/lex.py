@@ -329,12 +329,13 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     aud_contrato: dict = {}
     if cnpj and _eh_servico_continuo([emp_cad.get("cnae_principal"), emp_cad.get("atividade"), ctx.get("nome")]):
         try:
+            from compliance_agent.cruzamentos_intel import _ob_paga
             from compliance_agent.pericia_sweep import periciar, _conn, _eh_nao_contratual
             cc = _conn()
             try:
                 ug_row = cc.execute(
                     "SELECT ug_emitente ug, SUM(valor) tot FROM ob_orcamentaria_siafe "
-                    "WHERE credor=? AND lower(status) LIKE 'contabiliz%' "
+                    f"WHERE credor=? AND {_ob_paga(cc)} "
                     "GROUP BY ug_emitente ORDER BY tot DESC LIMIT 1", (cnpj,)).fetchone()
                 if ug_row and ug_row["ug"] and not _eh_nao_contratual(ctx.get("nome") or ""):
                     aud_contrato = periciar(cnpj, ug_row["ug"], cc)

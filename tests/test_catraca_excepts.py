@@ -222,7 +222,11 @@ REPO = Path(__file__).resolve().parent.parent
 # (`enviar_sessao_telegram`, `enviar_forense_telegram`, `painel_extrair`).
 # 2026-11-20: -2 (1536->1534) — untangle de `tools/sei_*` (funções mortas do `sei_proc_paginado`,
 # `docs/untangle/tools-sei.md`).
-BASELINE = 1534
+# 2026-11-20: -8 (1534->1526) — passada final do untangle. A branch chegou VERMELHA em 1545: o squash da área 15
+#   perdeu a remoção de três scripts (`enviar_sessao_telegram`, `enviar_forense_telegram`, `painel_extrair`) cujo
+#   ganho a linha acima já contava. Reaplicadas as remoções; mais graph_analyzer, módulos sem chamador e excepts
+#   que escondiam `database is locked` trocados por exceção específica.
+BASELINE = 1526
 
 
 def _contar() -> int:

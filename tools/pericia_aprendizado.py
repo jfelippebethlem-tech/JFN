@@ -143,8 +143,8 @@ def rodar(max_proc: int = 400, limiar: int = 3, top: int = 6, com_llm: bool = Tr
                 novos += 1
         try:
             _regenerar_vault()
-        except Exception:
-            pass
+        except Exception as e:
+            print("[pericia_aprendizado] vault não regenerado:", str(e)[:80])
     except Exception as e:
         print("[pericia_aprendizado] lex_feedback indisponível:", str(e)[:80])
 

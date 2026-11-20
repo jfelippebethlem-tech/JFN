@@ -307,7 +307,7 @@ def render_rede_md(rede: dict) -> list[str]:
             outros = ", ".join(c.get("outros_cnpjs") or []) or "—"
             linhas.append(
                 f"- **{c['pessoa']}** liga **{c['n_fornecedores']}** fornecedores do Estado "
-                f"(outras raízes: {outros}; total recebido pela rede: {_moeda(c.get('total_recebido', 0))}) — "
+                f"(outras raízes: {outros}; OB paga à rede, SIAFE 2021+: {_moeda(c.get('total_recebido', 0))}) — "
                 "diretores/sócios compartilhados entre fornecedores é red flag de rede de fachada/laranja.")
     # outros veículos dos administradores (todo o Brasil, via socios_reverso) — externos e internos
     veic = rede.get("outros_veiculos") or []

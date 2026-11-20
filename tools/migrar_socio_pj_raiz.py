@@ -140,7 +140,7 @@ def migrar(con: sqlite3.Connection, backup: Path) -> dict:
         r = diff_snapshots(con)
         out["socio_historico"] = {k: r.get(k) for k in ("n_vinculos", "n_ativos", "n_sairam")}
         print(f"[migrar] socio_historico recalculado: {out['socio_historico']}", flush=True)
-    if _existe(con, "socios_receita") and _existe(con, "ordens_bancarias"):
+    if _existe(con, "socios_receita") and _existe(con, "ob_orcamentaria_siafe"):
         from tools.socios_dump_sweep import materializar_rede
         materializar_rede(con)
         out["rede_socios_fornecedores"] = "rematerializada"

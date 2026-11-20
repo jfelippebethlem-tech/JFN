@@ -13,8 +13,6 @@ def test_persistir_e_stats(tmp_path, monkeypatch):
         itens=[{"doc": "Planilha", "tipo_doc": "planilha_preco", "descricao": "Cânula",
                 "valor_unitario": 12.5, "cnpj": "11222333000144", "metodo": "llm_texto", "confianca": 0.8}])
     assert r["n_docs"] == 1 and r["n_relacionados"] == 1 and r["n_itens"] == 1
-    assert indice.ja_indexado("SEI-270060/002569/2022") is True
-    assert indice.ja_indexado("SEI-000/000/0000") is False
     s = indice.stats()
     assert s["processos"] == 1 and s["ok"] == 1 and s["itens_preco"] == 1 and s["relacionados"] == 1
 

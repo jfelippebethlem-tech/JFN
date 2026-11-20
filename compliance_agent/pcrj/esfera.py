@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS ix_orgao_esfera ON pcrj_orgao_esfera(esfera);
 """
 
 
-def construir_mapa(compliance_db: str = "data/compliance.db", db_path=None) -> dict:
+def construir_mapa(compliance_db=db.COMPLIANCE_DB, db_path=None) -> dict:
     """Lê os órgãos distintos da compliance.db (SÓ leitura) e materializa o mapa
     órgão→esfera em ``pcrj.db`` (``pcrj_orgao_esfera``). Não escreve na compliance.db.
     """

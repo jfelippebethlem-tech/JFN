@@ -42,6 +42,9 @@ from compliance_agent.detectores.base import (
     avaliar_rubrica,
 )
 from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula
+from compliance_agent.limites_habilitacao import (
+    ATESTADO_QUANTITATIVO_MAX_PCT, CAPITAL_PL_MAX_PCT, GARANTIA_PROPOSTA_MAX_PCT,
+)
 
 # rubrica fechada de pertinência ao risco (mesma escala do E1 — um só idioma no motor)
 _RUBRICA_PERTINENCIA = {
@@ -68,7 +71,7 @@ def _pct_do_estimado(c: dict, valor_estimado: float | None) -> float | None:
 # ───────────────────────────── testes finalísticos por tipo (CÓDIGO, limiar nunca no prompt) ─────────────────────────────
 def _teste_capital(c: dict, ve: float | None) -> tuple[str | None, str]:
     p = _pct_do_estimado(c, ve)
-    if p is not None and p > 0.10:
+    if p is not None and p > CAPITAL_PL_MAX_PCT / 100:
         return "forte", f"capital/PL = {p:.1%} do valor estimado (> 10% — teto do art. 69; Súmula TCU 275)"
     if p is not None:
         return "ausente", f"capital/PL = {p:.1%} ≤ 10% do estimado (dentro do teto legal)"
@@ -77,7 +80,7 @@ def _teste_capital(c: dict, ve: float | None) -> tuple[str | None, str]:
 
 def _teste_garantia(c: dict, ve: float | None) -> tuple[str | None, str]:
     p = _pct_do_estimado(c, ve)
-    if p is not None and p > 0.01:
+    if p is not None and p > GARANTIA_PROPOSTA_MAX_PCT / 100:
         return "forte", f"garantia de participação = {p:.1%} do valor estimado (> 1% — restritivo)"
     if p is not None:
         return "ausente", f"garantia de participação = {p:.1%} ≤ 1% do estimado"
@@ -117,7 +120,7 @@ def _teste_atestado(c: dict, ve: float | None) -> tuple[str | None, str]:
         return "forte", ((f"exige {pct:.0%} " if pct is not None else "exige ") + "dos quantitativos em atestado/CAT "
                          "do PROFISSIONAL — quantidade mínima na capacidade técnico-profissional é vedada (art. 30 §1º "
                          "I, Lei 8.666; Ac. TCU 165/2012 e 634/2021 — há doutrina divergente)")
-    if pct is not None and pct > 0.50:
+    if pct is not None and pct > ATESTADO_QUANTITATIVO_MAX_PCT / 100:
         return "forte", f"atestado exige {pct:.0%} do quantitativo (> 50% — restritivo, Súmula TCU 263)"
     return "medio", "exigência de atestado de capacidade técnica (avaliar parcela de maior relevância — Súmula 263)"
 

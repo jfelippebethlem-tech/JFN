@@ -64,7 +64,7 @@ def test_inventario_de_rotas_identico_ao_golden(request):
         raise AssertionError(f"rotas divergem do golden:\n{diff}")
 
 
-def test_smoke_gets_deterministicos():
+def test_smoke_gets_deterministicos(servidor_sem_boot_externo):
     from fastapi.testclient import TestClient
     with TestClient(_app(), raise_server_exceptions=False) as cli:
         # /status fica de fora: sobe o agente SIAFE (browser) — não é smoke offline.

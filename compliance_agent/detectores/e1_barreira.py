@@ -39,6 +39,7 @@ from compliance_agent.detectores.base import (
     perguntar_rubrica,
     sem_acentos,
 )
+from compliance_agent.limites_habilitacao import ATESTADO_QUANTITATIVO_MAX_PCT, CAPITAL_PL_MAX_PCT
 from compliance_agent.reporting.intel_base import moeda
 
 # tipos de exigência que disparam razões objetivas (chaves canônicas)
@@ -160,7 +161,7 @@ class E1Barreira(Detector):
                         exig_suspeitas.append(e)
                         res.add_evidencia(fonte="exigência de habilitação (atestado)",
                                           trecho=f"{texto[:80]} — exige {qexig} de {quant_lic} licitado ({razao:.0%})")
-                    elif razao > 0.5:
+                    elif razao > ATESTADO_QUANTITATIVO_MAX_PCT / 100:
                         score = max(score, ancora("forte"))
                         razoes.append(f"atestado exige {razao:.0%} do quantitativo licitado (>50% — restritivo, Súmula TCU 263)")
                         exig_suspeitas.append(e)
@@ -183,7 +184,7 @@ class E1Barreira(Detector):
                 vexig = _num(e.get("valor"))
                 if vexig and valor_estimado > 0:
                     pct = vexig / valor_estimado
-                    if pct > 0.10:
+                    if pct > CAPITAL_PL_MAX_PCT / 100:
                         score = max(score, ancora("forte"))
                         razoes.append(f"capital/PL exigido = {pct:.1%} do valor estimado (>10% — teto do art. 69 §3º)")
                         exig_suspeitas.append(e)

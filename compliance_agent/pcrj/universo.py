@@ -35,9 +35,10 @@ from __future__ import annotations
 
 import sqlite3
 
+from compliance_agent.pcrj.db import COMPLIANCE_DB
 from compliance_agent.pcrj.natureza_despesa import ELEMENTOS_NAO_CONTRATUAIS
 
-DB = "data/compliance.db"
+DB = str(COMPLIANCE_DB)
 
 GRUPOS_CONTRATUAIS = ("3", "4")
 MODALIDADE_DIRETA = "90"

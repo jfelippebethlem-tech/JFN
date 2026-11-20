@@ -90,13 +90,6 @@ def test_sistema_do_map_proibe_inventar_e_proibe_acusar(tmp_path):
     assert "nunca escreva zero" in baixo
 
 
-def test_reduce_manda_preservar_citacao_e_registrar_contradicao():
-    sistema, roteiro = D.prompt_reduce("SEI-X", ["bloco 1", "bloco 2"])
-    assert "[doc" in sistema
-    assert "contradição" in sistema.lower()
-    assert "Lacunas" in roteiro
-
-
 # ── cobertura declarada ───────────────────────────────────────────────────────────────────
 
 def test_documento_sem_texto_e_contado_e_denunciado(tmp_path):

@@ -40,10 +40,7 @@ from compliance_agent.detectores.base import (
     nivel_rubrica,
     perguntar_rubrica,
 )
-
-# ───────────────────────────── Limites OBJETIVOS do art. 86 (Lei 14.133/2021) ─────────────────────────────
-LIMITE_ADESAO_INDIVIDUAL = 0.50   # §4º — cada aderente até 50% do quantitativo registrado do item
-LIMITE_TOTAL_ADESOES = 2.0        # §5º — total de adesões até o DOBRO do quantitativo do item
+from compliance_agent.limites_adesao import LIMITE_ADESAO_INDIVIDUAL, LIMITE_TOTAL_ADESOES
 
 # Discriminador de preço (spec): ata cara = esquema; ata barata/justa = gestão.
 _PRECO_ATA_JUSTA = 1.0  # razão preço_ata/mercado ≤ 1.0 → ata barata/justa

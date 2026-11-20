@@ -51,6 +51,7 @@ _DB = Path(os.environ.get("JFN_DB") or (_RAIZ / "data" / "compliance.db"))
 
 # Política de storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket, teto 9,5GB). Fonte única.
 from compliance_agent import fachada_remotes as fr  # noqa: E402
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 _RCLONE = fr.rclone_bin()
@@ -168,16 +169,21 @@ def _coletar_index(con: sqlite3.Connection) -> list[dict]:
         "FROM verificacao_sede WHERE visual_img_b2 IS NOT NULL AND visual_img_b2 <> '' "
         "ORDER BY total_recebido DESC").fetchall()
     out: list[dict] = []
+    paga = _ob_paga(con)
     for r in rows:
         cnpj = re.sub(r"\D", "", str(r["cnpj"] or ""))
         # órgão/UG que MAIS pagou este CNPJ (maior materialidade) — fonte de verdade = OB
         ug_cod = ug_nome = objeto = ""
         try:
+            # OB paga do SIAFE pela régua da casa; o espelho TFE só empresta o NOME da UG (texto)
             o = con.execute(
-                "SELECT ug_codigo, ug_nome, SUM(valor) v FROM ordens_bancarias "
-                "WHERE favorecido_cpf=? GROUP BY ug_codigo ORDER BY v DESC LIMIT 1", (cnpj,)).fetchone()
+                f"SELECT ug_emitente, SUM(valor) v FROM ob_orcamentaria_siafe "
+                f"WHERE credor=? AND {paga} GROUP BY ug_emitente ORDER BY v DESC LIMIT 1", (cnpj,)).fetchone()
             if o:
-                ug_cod, ug_nome = str(o["ug_codigo"] or ""), str(o["ug_nome"] or "")
+                ug_cod = str(o["ug_emitente"] or "")
+                n = con.execute("SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL "
+                                "LIMIT 1", (ug_cod,)).fetchone()
+                ug_nome = str(n["ug_nome"] or "") if n else ""
             # objeto: uma observação representativa (a mais longa = mais informativa), só dado da despesa
             ob = con.execute(
                 "SELECT observacao FROM ordens_bancarias WHERE favorecido_cpf=? AND observacao IS NOT NULL "

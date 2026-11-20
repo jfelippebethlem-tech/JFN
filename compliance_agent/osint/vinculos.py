@@ -33,6 +33,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
+from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto
+
 # ── tipos de entidade ─────────────────────────────────────────────────────────────────────────
 TIPOS_ENTIDADE = ("pj", "pf", "endereco", "telefone", "email", "dominio", "ip", "orgao",
                   "veiculo", "processo")
@@ -374,11 +376,6 @@ def narrar(passos: list[dict]) -> str:
     return "; ".join(partes)
 
 
-def mascarar_cpf(texto: str) -> str:
-    """CPF mascarado na saída (regra da casa). A base interna segue íntegra."""
-    return re.sub(r"\b(\d{3})\.?\d{3}\.?\d{3}-?(\d{2})\b", r"\1.***.***-\2", str(texto or ""))
-
-
 def chave_publica(no: str) -> str:
     """A chave do nó como pode SAIR: `pf:` com documento íntegro tem o CPF mascarado; o resto sai como é."""
-    return mascarar_cpf(no) if no.startswith("pf:") else no
+    return mascarar_cpf_no_texto(no) if no.startswith("pf:") else no

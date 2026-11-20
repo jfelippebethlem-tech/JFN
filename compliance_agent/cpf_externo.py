@@ -139,36 +139,3 @@ def desmascarar_nome_cpf(nome: str, doc_mascarado: str, provider: ProviderNomeCp
         return Resultado(False, "", provider.nome, 1,
                          f"ambíguo: {len(confirmados)} CPFs da fonte batem nome e máscara — homônimos, não resolve")
     return Resultado(False, "", provider.nome, 1, "nenhum CPF da fonte bate a máscara (homônimo/sem registro)")
-
-
-# ───────────────────────────── provider de referência (situação-cadastral) ─────────────────────────────
-class ProviderSituacaoCadastral:
-    """Provider cpf→nome via situacao-cadastral.com (espelho de situação cadastral da Receita; método do
-    osint-brazuca). **Best-effort e honesto**: muitos espelhos têm Cloudflare/captcha → retorna ok=False com
-    motivo (NÃO inventa nome). Respeitar o ToS do site; volume baixo. Sem rede/bloqueio → INDISPONÍVEL."""
-    nome = "situacao_cadastral"
-
-    def __init__(self, base: str = "https://www.situacao-cadastral.com", timeout: float = 20.0):
-        self.base = base.rstrip("/")
-        self.timeout = timeout
-
-    def nome_por_cpf(self, cpf: str) -> dict:
-        import re
-        try:
-            import httpx
-        except Exception:
-            return {"ok": False, "nome": "", "motivo": "httpx ausente"}
-        try:
-            r = httpx.get(f"{self.base}/consulta/{_digitos(cpf)}",
-                          headers={"User-Agent": "Mozilla/5.0"}, timeout=self.timeout,
-                          follow_redirects=True)
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "nome": "", "motivo": f"rede: {str(e)[:50]}"}
-        if r.status_code in (403, 429) or "captcha" in r.text.lower() or "cf-challenge" in r.text.lower():
-            return {"ok": False, "nome": "", "motivo": f"bloqueio/captcha (HTTP {r.status_code})"}
-        if r.status_code != 200:
-            return {"ok": False, "nome": "", "motivo": f"HTTP {r.status_code}"}
-        m = re.search(r'class="dados nome"[^>]*>([^<]+)<', r.text)
-        if m:
-            return {"ok": True, "nome": m.group(1).strip(), "motivo": ""}
-        return {"ok": False, "nome": "", "motivo": "nome não encontrado na resposta"}

@@ -19,12 +19,24 @@ def test_corpus_hash_deterministico():
 
 
 def test_backup_memoria_exporta_e_roda_rotacao(tmp_path, monkeypatch):
-    monkeypatch.setattr(mc, "BACKUP_DIR", tmp_path)
+    # bancos de fixture: o teste lia a compliance.db e o nucleo_memoria.db REAIS de /home/ubuntu/JFN/data
+    repo = tmp_path / "repo"
+    (repo / "data").mkdir(parents=True)
+    for arq, tabela in (("compliance.db", "memoria_aprendizado"), ("nucleo_memoria.db", "pericias")):
+        con = sqlite3.connect(repo / "data" / arq)
+        con.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, chave TEXT, valor TEXT)")
+        con.executemany(f"INSERT INTO {tabela} (chave, valor) VALUES (?, ?)", [("a", "1"), ("b", "2")])
+        con.commit(); con.close()
+    saida = tmp_path / "backup"
+    monkeypatch.setattr(mc, "REPO", repo)
+    monkeypatch.setattr(mc, "BACKUP_DIR", saida)
+    monkeypatch.setattr(mc, "MANTER_BACKUPS", 1)
+    (saida).mkdir()
+    (saida / "memoria_aprendizado_2000-01-01.jsonl").write_text("{}\n")
     out = mc.backup_memoria()
-    assert out["memoria"] > 0, "memória de aprendizado real deve ter itens"
-    assert out["pericias"] > 0, "núcleo pericial real deve ter itens"
-    arqs = list(tmp_path.glob("*.jsonl"))
-    assert len(arqs) == 2
+    assert out == {"memoria": 2, "pericias": 2}
+    arqs = sorted(saida.glob("*.jsonl"))
+    assert len(arqs) == 2 and not (saida / "memoria_aprendizado_2000-01-01.jsonl").exists()   # rotação
     # cada linha é JSON válido com os campos da tabela
     linha = json.loads(next(open(arqs[0], encoding="utf-8")))
     assert isinstance(linha, dict) and linha

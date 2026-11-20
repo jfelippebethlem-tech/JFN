@@ -16,11 +16,12 @@ from __future__ import annotations
 
 import pytest
 
+from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto
 from compliance_agent.osint.vinculos import (
     TIPOS_ARESTA,
     GrafoVinculos,
+    chave_publica,
     classificar_endereco,
-    mascarar_cpf,
     no_pf,
     no_pj,
 )
@@ -183,12 +184,13 @@ def test_grupo_reune_so_quem_esta_ligado_por_aresta_forte():
 # ───────────────────────────── LGPD na saída ──────────────────────────────────────────────────
 
 def test_cpf_e_mascarado_na_saida():
-    assert mascarar_cpf("sócio CPF 123.456.789-00") == "sócio CPF 123.***.***-00"
-    assert mascarar_cpf("CPF 12345678900") == "CPF 123.***.***-00"
+    # PAD-04: só os dígitos 4–9. A janela antiga (D1–D3 + DV) somada à PAD-04 revelava o CPF inteiro.
+    assert chave_publica("pf:123.456.789-00") == "pf:***.456.789-**"
+    assert chave_publica("pf:12345678900") == "pf:***.456.789-**"
 
 
 def test_mascarar_nao_estraga_cnpj():
-    assert "11.222.333/0001-81" in mascarar_cpf("CNPJ 11.222.333/0001-81")
+    assert "11.222.333/0001-81" in mascarar_cpf_no_texto("CNPJ 11.222.333/0001-81")
 
 
 # ───────────────────────────── beneficiário final ─────────────────────────────────────────────

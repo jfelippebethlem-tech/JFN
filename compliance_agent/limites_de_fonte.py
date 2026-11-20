@@ -375,16 +375,3 @@ def limites(fonte: str = "") -> list[dict]:
     """Todos os limites, ou os de uma fonte (casamento por substring, sem diferenciar maiúscula)."""
     f = (fonte or "").strip().lower()
     return [asdict(x) for x in LIMITES if not f or f in x.fonte.lower()]
-
-
-def explica_vazio(fonte: str) -> str:
-    """Frase pronta para o relatório quando a consulta volta vazia.
-
-    É o antídoto do 'nada encontrado': devolve a razão conhecida, para a peça dizer LACUNA e não
-    afirmar ausência. Fonte sem limite catalogado devolve string vazia — e aí vazio é vazio mesmo.
-    """
-    for x in LIMITES:
-        if x.fonte.lower().startswith(fonte.strip().lower()[:12]):
-            return (f"LACUNA — {x.fonte}: {x.o_que_acontece} "
-                    f"Caminho alternativo: {x.caminho_alternativo} (medido em {x.medido_em}).")
-    return ""

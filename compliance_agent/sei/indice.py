@@ -87,17 +87,6 @@ def persistir(numero: str, *, objeto: str = "", tipo_processo: str = "", docs: l
     return {"numero": numero, "n_docs": len(docs), "n_relacionados": len(relacionados), "n_itens": len(itens)}
 
 
-def ja_indexado(numero: str, c: sqlite3.Connection | None = None) -> bool:
-    """True se o processo já foi lido com sucesso (p/ o sweep ser resumível e não reprocessar)."""
-    own = c is None
-    c = c or conn()
-    init_db(c)
-    row = c.execute("SELECT ok FROM sei_processo WHERE numero=?", (numero,)).fetchone()
-    if own:
-        c.close()
-    return bool(row and row[0])
-
-
 def stats() -> dict:
     c = conn()
     init_db(c)

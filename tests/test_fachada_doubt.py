@@ -208,7 +208,8 @@ def test_dd_usa_veredito_humano(tmp_path, monkeypatch):
     # investigar faz `from compliance_agent.fachada_doubt import veredito_humano` lá dentro → patch na origem
     monkeypatch.setattr("compliance_agent.fachada_doubt.veredito_humano",
                         lambda cnpj, db=None: {"status": "fachada", "em": "2026-06-13", "raw": "manual"})
-    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 1_000_000})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 1_000_000},
+                         usar_beneficios=False)   # sem consulta real ao Portal da Transparência
     cods = [h["codigo"] for h in out["hipoteses"]]
     assert "H-END-HUMANO" in cods
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-END-HUMANO")
@@ -257,7 +258,8 @@ def test_dd_veredito_indicio(monkeypatch):
     from compliance_agent import investigacao_dd as dd
     monkeypatch.setattr("compliance_agent.fachada_doubt.veredito_humano",
                         lambda cnpj, db=None: {"status": "indicio", "em": "2026-06-13", "raw": "residencial"})
-    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 500000})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 500000},
+                         usar_beneficios=False)   # sem consulta real ao Portal da Transparência
     h = [x for x in out["hipoteses"] if x["codigo"] == "H-END-HUMANO"]
     assert h and h[0]["status"] == "INDICIO"
 
@@ -270,7 +272,8 @@ def test_dd_hipoteses_google_sede(monkeypatch):
     monkeypatch.setattr(dd, "_verificacao_sede", lambda cnpj, db_path=None: {
         "status": "INDICIO", "nivel": "ALTO", "geo_tipo": "APPROXIMATE", "addr_completo": 0,
         "addr_residencial": 1, "places_achou": 0, "places_bate_nome": None, "evidencia": "x"})
-    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000},
+                         usar_beneficios=False)   # sem consulta real ao Portal da Transparência
     cods = {h["codigo"] for h in out["hipoteses"]}
     assert {"H-END-RESID-GOOGLE", "H-SEM-PERFIL", "H-ENDERECO-INVALIDO"} <= cods
 
@@ -283,6 +286,7 @@ def test_dd_google_suprimido_por_veredito_humano(monkeypatch):
     monkeypatch.setattr(dd, "_verificacao_sede", lambda cnpj, db_path=None: {
         "status": "INDICIO", "nivel": "ALTO", "geo_tipo": "APPROXIMATE", "addr_completo": 0,
         "addr_residencial": 1, "places_achou": 0, "places_bate_nome": None, "evidencia": "x"})
-    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000},
+                         usar_beneficios=False)   # sem consulta real ao Portal da Transparência
     cods = {h["codigo"] for h in out["hipoteses"]}
     assert not ({"H-END-RESID-GOOGLE", "H-SEM-PERFIL", "H-ENDERECO-INVALIDO"} & cods)

@@ -483,7 +483,7 @@ def test_api_ficha_do_municipio_por_grau_ano_e_mes(tmp_path, monkeypatch):
     assert a25["valor"] == 1000.0 and a25["pago"] == 300.0
     assert [(m["mes"], m["n"], m["valor"], m["pago"]) for m in a25["meses"]] == [("2025-02", 1, 1000.0, 0.0), ("2025-04", 0, 0.0, 100.0), ("2025-05", 0, 0.0, 200.0)]
     pf = next(c for c in f["contratos"] if c["contrato_id"] == "b")
-    assert pf["fornecedor_cnpj"] is None and pf["fornecedor_doc"] == "123.***.***-01"            # CPF nunca sai inteiro (LGPD)
+    assert pf["fornecedor_cnpj"] is None and pf["fornecedor_doc"] == "***.456.789-**"            # CPF nunca sai inteiro (LGPD)
     assert "12345678901" not in cli.get("/api/territorio/estado/3303302?periodo=tudo").text
     assert pf["grau"] == "unidade" and pf["situacao_fonte"] == "Em Aberto" and pf["status"] == "sem_vigencia"
     f = cli.get("/api/territorio/estado/3303302?periodo=tudo&graus=sede").json()

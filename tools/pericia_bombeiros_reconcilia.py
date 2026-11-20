@@ -42,8 +42,9 @@ def main():
         for ns_a, nota_a, exe_a, res_a in c.execute(
                 "SELECT numero_sei,nota_risco,execucao_comprovada,resumo FROM lex_aprofundado"):
             aprof[ns_a] = {"risco": nota_a, "exec": exe_a, "resumo": res_a}
-    except Exception:
-        pass
+    except sqlite3.OperationalError as e:
+        if "no such table" not in str(e):
+            raise
 
     res = []
     rows = c.execute("""SELECT l.numero_sei,l.execucao_comprovada,l.coerencia,l.nota_risco,l.indicios,l.duvidas,l.resumo,

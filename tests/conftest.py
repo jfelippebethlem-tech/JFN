@@ -128,3 +128,24 @@ def pytest_runtest_makereport(item, call):
         rep.longrepr = (__file__, 0,
                         "AMBIENTE sem compliance.db utilizável (tabelas ausentes) — "
                         "não é regressão de código; roda na VM com a base real")
+
+
+@pytest.fixture(scope="module")
+def servidor_sem_boot_externo():
+    """Para teste que abre `with TestClient(app)`: o ciclo de vida do `server` sobe o agente SIAFE
+    (navegador + LOGIN real com as credenciais do `.env`) e aquece o relatório consultando Receita/PNCP.
+    Teste não faz login no SIAFE (sessão única por IP: disputa a sessão do coletor) nem bate em site."""
+    import server
+    from compliance_agent.reporting import inteligencia
+
+    async def _sem_agente():
+        raise RuntimeError("agente SIAFE desligado em teste")
+
+    async def _sem_rede(*_a, **_k):
+        return {}
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(server, "get_agent", _sem_agente)
+    mp.setattr(inteligencia, "_enriquecer", _sem_rede)
+    yield
+    mp.undo()

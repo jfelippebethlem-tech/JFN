@@ -201,6 +201,7 @@ def test_dd_hipotese_socio_servidor(tmp_path, monkeypatch):
     from compliance_agent import investigacao_dd as dd
     monkeypatch.setattr("compliance_agent.resolucao_cpf.socios_servidores",
                         lambda cnpj, db_path=None: [{"nome": "JOAO DA SILVA", "cpf_pos3a9": "1223344"}])
-    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 2_000_000})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 2_000_000},
+                         usar_beneficios=False)   # sem consulta real ao Portal da Transparência
     h = [x for x in out["hipoteses"] if x["codigo"] == "H-SOCIO-SERVIDOR"]
     assert h and h[0]["status"] == "INDICIO" and h[0]["nivel"] == "ALTO"
