@@ -33,6 +33,7 @@ from compliance_agent.limites_porte import TETO_EPP, TETO_ME, TETO_MEI
 import datetime as dt
 import logging
 
+from compliance_agent.collectors.arquivos import caminho_db as _caminho_db, dir_dados as _dir_dados  # noqa: E402
 logger = logging.getLogger(__name__)
 
 # ───────────────────────── helpers ─────────────────────────
@@ -122,7 +123,7 @@ def _situacao_com_data(cnpj: str, db_path=None) -> tuple[str, dt.date | None]:
     """
     import sqlite3
     from pathlib import Path as _Path
-    base = _Path(db_path or "data/receita_estab.db")
+    base = _Path(db_path or (_dir_dados() / "receita_estab.db"))
     if not base.exists():
         return "", None
     try:
@@ -149,8 +150,7 @@ def _motivo_situacao(cnpj: str) -> str:
     """Código do MOTIVO da situação cadastral no dump da Receita ('02' incorporação, '15' inexistente de
     fato…). Base ausente → '' (o chamador trata como motivo não apurado)."""
     import sqlite3
-    from pathlib import Path as _Path
-    base = _Path("data/receita_estab.db")
+    base = (_dir_dados() / "receita_estab.db")
     if not base.exists():
         return ""
     try:
@@ -173,8 +173,7 @@ def _pico_anual_ob(cnpj: str) -> tuple[int, float] | None:
     """(ano, valor) do ANO-CALENDÁRIO em que o CNPJ mais recebeu do Estado — OB SIAFE contabilizada,
     todas as UGs (receita bruta não se mede por unidade pagadora). Sem OB/base → None."""
     import sqlite3
-    from pathlib import Path as _Path
-    base = _Path("data/compliance.db")
+    base = _caminho_db()
     if not base.exists():
         return None
     try:
@@ -193,8 +192,7 @@ def _pico_anual_ob(cnpj: str) -> tuple[int, float] | None:
 def _veredito_foto(cnpj: str) -> dict | None:
     """Veredito da foto da sede (`fachada_foto`): só julga foto que prova ser do endereço."""
     import sqlite3
-    from pathlib import Path as _Path
-    base = _Path("data/compliance.db")
+    base = _caminho_db()
     if len(_digitos(cnpj)) != 14 or not base.exists():
         return None
     try:
@@ -219,7 +217,7 @@ def _ultimo_pagamento_ob(cnpj: str, db_path=None) -> dt.date | None:
     """
     import sqlite3
     from pathlib import Path as _Path
-    base = _Path(db_path or "data/compliance.db")
+    base = _Path(db_path or _caminho_db())
     if not base.exists():
         return None
     try:
@@ -265,7 +263,7 @@ def _cadastro_dump(cnpj_basico: str, db_path=None) -> dict | None:
     tools/empresas_dump_sweep). Read-only; tabela ausente → None (degrada honesto)."""
     import sqlite3
     from pathlib import Path
-    p = Path(db_path or "data/compliance.db")
+    p = Path(db_path or _caminho_db())
     if not p.exists():
         return None
     try:
@@ -287,7 +285,7 @@ def _verificacao_sede(cnpj: str, db_path=None) -> dict | None:
     ou None. Sinais autoritativos (Geocoding+Address Validation+Places) — leitura barata, read-only."""
     import sqlite3
     from pathlib import Path
-    p = Path(db_path or "data/compliance.db")
+    p = Path(db_path or _caminho_db())
     if not p.exists():
         return None
     try:
@@ -746,7 +744,6 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
 def _validadores_sede(cnpj: str, vf: dict | None, inexistente_de_fato: bool) -> dict | None:
     """Junta os validadores independentes de sede em `fachada_validadores.veredito_combinado`."""
     import sqlite3
-    from pathlib import Path as _Path
     try:
         from compliance_agent.fachada_validadores import dominio_corporativo, site_em_cache, veredito_combinado
         from compliance_agent.geo.sede_real import telefone_valido
@@ -757,8 +754,8 @@ def _validadores_sede(cnpj: str, vf: dict | None, inexistente_de_fato: bool) -> 
     tel_outros = 0
     site_estado, site_cob = None, "INDISPONIVEL (sem e-mail de domínio próprio na Receita)"
     try:
-        if _Path("data/compliance.db").exists():
-            con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True, timeout=10)
+        if _caminho_db().exists():
+            con = sqlite3.connect(f"file:{_caminho_db()}?mode=ro", uri=True, timeout=10)
             try:
                 r = con.execute("SELECT cep_coerente, na_sala_terceiros FROM verificacao_sede_real WHERE cnpj=?",
                                 (cnpj,)).fetchone()
@@ -767,8 +764,8 @@ def _validadores_sede(cnpj: str, vf: dict | None, inexistente_de_fato: bool) -> 
             if r:
                 cep = None if r[0] is None else bool(r[0])
                 sala = r[1] or 0
-        if _Path("data/receita_estab.db").exists():
-            con = sqlite3.connect("file:data/receita_estab.db?mode=ro", uri=True, timeout=10)
+        if (_dir_dados() / "receita_estab.db").exists():
+            con = sqlite3.connect(f"file:{(_dir_dados() / 'receita_estab.db')}?mode=ro", uri=True, timeout=10)
             try:
                 e = con.execute("SELECT correio_eletronico, telefone1 FROM estabelecimentos WHERE cnpj=?",
                                 (cnpj,)).fetchone()

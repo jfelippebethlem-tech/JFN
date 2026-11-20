@@ -274,7 +274,9 @@ def test_enriquecimento_capital_pelo_dump(tmp_path, monkeypatch):
     con.execute("INSERT INTO empresas_cadastro VALUES ('11222333','ACME LTDA',1000.0,'Microempresa')")
     con.commit(); con.close()
     import compliance_agent.investigacao_dd as DD
-    monkeypatch.chdir(tmp_path)  # investigar lê 'data/compliance.db' por padrão no helper
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("JFN_DATA_DIR", str(tmp_path / "data"))  # o helper lê o banco pela régua caminho_db
+    monkeypatch.delenv("JFN_DB", raising=False)
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "compliance.db").write_bytes(p.read_bytes())
     out = DD.investigar("11222333000181", cadastral={}, pagamentos={"total_pago": 5_000_000},
