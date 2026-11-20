@@ -34,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compliance_agent import cpf_externo as ce  # noqa: E402
+from compliance_agent.credor_institucional import natureza_fora  # noqa: E402
 from compliance_agent.resolucao_cpf import _digitos, _norm, confirmar_cpf  # noqa: E402
 
 _DB = Path("data") / "compliance.db"
@@ -80,14 +81,8 @@ def registrar_consulta(con: sqlite3.Connection, nome: str, doc: str, fonte: str,
 
 # Natureza jurídica (tabela da Receita) que NÃO entra na fila humana: diretor de ente público, estatal ou companhia
 # aberta é cargo de mercado/governo, não sócio de fachada — 71 das 200 vagas eram diretores do Banco do Brasil (19/11/2026).
-_NATUREZA_FORA = ("1",)                       # 1xxx = administração pública
-_NATUREZA_FORA_EXATA = {"2011", "2038", "2046"}   # empresa pública · economia mista · S.A. aberta
+# natureza_fora: régua única em compliance_agent/credor_institucional.py (1xxx · 2011 · 2038 · 2046 · 3328).
 POR_EMPRESA = 3
-
-
-def natureza_fora(cod: str | None) -> bool:
-    c = _digitos(cod or "")
-    return bool(c) and (c.startswith(_NATUREZA_FORA) or c in _NATUREZA_FORA_EXATA)
 
 
 def priorizar(fila: list[dict], natureza: dict[str, str], n: int, por_empresa: int = POR_EMPRESA) -> list[dict]:

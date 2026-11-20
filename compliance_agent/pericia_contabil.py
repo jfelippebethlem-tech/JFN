@@ -74,6 +74,7 @@ from pathlib import Path
 from typing import Any
 
 from compliance_agent import limites_aditivo
+from compliance_agent.credor_institucional import cnae_concessao as _cnae_concessao
 
 _BASE = Path(__file__).resolve().parent.parent
 _DB = os.environ.get("JFN_DB", str(_BASE / "data" / "compliance.db"))
@@ -332,14 +333,7 @@ def regua_conservadora(valores: list[float]) -> float:
 
 # ── consumo contínuo (decisão do dono, 14/11/2026) ────────────────────────────────────────────
 # CNAE principal do credor (`empresas.atividade_princ`: ora o código de 7 dígitos, ora a descrição).
-_CNAE_CONCESSAO = ("3511", "3512", "3513", "3514", "3520402", "3600", "3701", "3702", "6110", "6120", "6130",
-                   "6141", "6142", "6143")
-_RE_CNAE_CONCESSAO = re.compile(
-    r"^\s*((GERA[ÇC][ÃA]O|TRANSMISS[ÃA]O|DISTRIBUI[ÇC][ÃA]O|COM[ÉE]RCIO\s+ATACADISTA)\s+DE\s+ENERGIA\s+EL[ÉE]TRICA|"
-    r"CAPTA[ÇC][ÃA]O,?\s+TRATAMENTO\s+E\s+DISTRIBUI[ÇC][ÃA]O\s+DE\s+[ÁA]GUA|GEST[ÃA]O\s+DE\s+REDES\s+DE\s+ESGOTO|"
-    r"ATIVIDADES\s+RELACIONADAS\s+A\s+ESGOTO|DISTRIBUI[ÇC][ÃA]O\s+DE\s+COMBUST[ÍI]VEIS\s+GASOSOS\s+POR\s+REDES|"
-    r"SERVI[ÇC]OS\s+DE\s+TELEFONIA|TELEFONIA\s+M[ÓO]VEL|TELECOMUNICA[ÇC][ÕO]ES\s+POR\s+SAT|"
-    r"OPERADORAS\s+DE\s+TELEVIS[ÃA]O\s+POR\s+ASSINATURA)", re.I)
+# CNAE de concessionária (`_cnae_concessao`): régua única em credor_institucional.py.
 _RE_CNAE_CONDOMINIO = re.compile(r"^\s*(8112-?5/?00|8112500|CONDOM[ÍI]NIOS\s+PREDIAIS)", re.I)
 _RE_OBJ_CONCESSAO = re.compile(
     r"ENERGIA\s+EL[ÉE]TRICA|FORNECIMENTO\s+DE\s+ENERGIA|[ÁA]GUA\s+E\s+(COLETA\s+DE\s+)?ESGOT|"
@@ -353,14 +347,6 @@ _RE_OBJ_CONDOMINIO = re.compile(r"COTAS?\s+(DE\s+)?CONDOM|TAXAS?\s+(DE\s+)?CONDO
 _RE_OBJ_ASSINATURA = re.compile(
     r"\bASSINATURAS?\b(?!\s+(DIGITA|ELETR[ÔO]NIC|QUALIFICAD|CERTIFICAD|D[OE]\s+CONTRATO|D[OE]\s+TERMO|D[AO]S?\s+PART))|"
     r"ACESSO\s+(A|AO|[ÀA])\s+(SERVI[ÇC]O\s+DE\s+)?(PORTAL|PLATAFORMA|BASE\s+DE\s+DADOS)", re.I)
-
-
-def _cnae_concessao(cnae: str | None) -> bool:
-    c = str(cnae or "").strip()
-    d = re.sub(r"\D", "", c)
-    if re.fullmatch(r"\d[\d.\-/ ]*", c) and len(d) == 7:
-        return d.startswith(_CNAE_CONCESSAO)
-    return bool(_RE_CNAE_CONCESSAO.search(c))
 
 
 def classe_consumo(objeto: str | None, cnae: str | None = None) -> str | None:

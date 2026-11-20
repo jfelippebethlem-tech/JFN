@@ -29,6 +29,7 @@ from compliance_agent.database.models import (
     Alerta, Contrato, Empresa, EmpresaSocio, OrdemBancaria, Pessoa,
     PublicacaoDOERJ, RegistroFolha,
 )
+from compliance_agent.credor_institucional import institucional
 from compliance_agent.reporting.intel_base import moeda
 
 
@@ -741,16 +742,23 @@ class MotorCompliance:
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
                 if row.favorecido_cpf else None
             )
+            fato = (f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
+                    f"{row.n_ugs} UGs diferentes em {row.mes}, totalizando R$ {moeda(row.total)}. "
+                    f"UGs: {row.ugs}. ")
+            # Credor institucional (concessionária, estatal, S.A. aberta, previdência dos servidores) recebe de
+            # várias UGs por natureza: 107 de 230 triagens desta regra eram falso positivo (20/11/2026). O alerta
+            # fica como rastro, mas declara que não acusa — a triagem pula o prefixo "NÃO é acusação".
+            inst = institucional(row.favorecido_cpf)
+            if inst["institucional"]:
+                descricao = (f"NÃO é acusação — credor institucional: {inst['motivo']}; receber de várias UGs "
+                             f"é esperado. " + fato)
+            else:
+                descricao = fato + "Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
             self._criar_alerta(
                 tipo       = "direcionamento",
                 severidade = "baixa",   # fornecedor grande atende várias UGs; só vira notícia com outro sinal
                 titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
-                descricao  = (
-                    f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
-                    f"{row.n_ugs} UGs diferentes em {row.mes}, totalizando R$ {moeda(row.total)}. "
-                    f"UGs: {row.ugs}. "
-                    f"Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
-                ),
+                descricao  = descricao,
                 evidencias = {
                     "favorecido_cpf": row.favorecido_cpf,
                     "favorecido_nome": row.favorecido_nome,
@@ -758,6 +766,7 @@ class MotorCompliance:
                     "n_ugs": row.n_ugs,
                     "ugs": row.ugs,
                     "total": row.total,
+                    "credor_institucional": inst["motivo"] if inst["institucional"] else None,
                 },
                 empresa = empresa,
             )
