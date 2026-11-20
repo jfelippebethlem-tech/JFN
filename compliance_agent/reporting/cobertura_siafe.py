@@ -211,6 +211,30 @@ def estado_do_par(ug: str, ano: str, *, db: str | Path | None = None) -> dict[st
     }
 
 
+ANO_EMISSAO_SIAFE = "substr(data_emissao,7,4)"
+"""Ano da OB no SIAFE: `data_emissao` é TEXTO DD/MM/AAAA — o ano são os 4 últimos, nunca os 4 primeiros."""
+ISO_EMISSAO_SIAFE = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+"""`data_emissao` do SIAFE em AAAA-MM-DD (ordenável) — montado por substr, nunca comparado cru."""
+
+ROTULO_DO_ESTADO = {"coberto": "VERIFICADO", "sem_referencia": "VERIFICADO", "parcial": "PARCIAL",
+                    "nunca_coletado": "INDISPONÍVEL", "indisponivel": "INDISPONÍVEL"}
+"""Estado de `estado_do_par` → rótulo de proveniência da peça. PARCIAL = a soma do SIAFE é PISO (falta parte
+do par na fonte canônica); INDISPONÍVEL = o par nunca foi lido no SIAFE — não é zero e não se completa com o
+espelho TFE (regra da casa: OB é SEMPRE SIAFE)."""
+
+
+def estados_dos_pares(pares, *, db: str | Path | None = None) -> dict[tuple[str, str], dict[str, Any]]:
+    """`estado_do_par` de cada (UG, exercício) + `rotulo` (VERIFICADO/PARCIAL/INDISPONÍVEL).
+
+    Para as ferramentas de caso que somam OB paga do SIAFE: os pares vêm do recorte do caso (os do SIAFE e os
+    que o espelho conhece) e o rótulo diz, linha a linha, se o número é inteiro, piso ou ausente."""
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for ug, ano in sorted({(str(u), str(a)) for u, a in pares}):
+        e = estado_do_par(ug, ano, db=db)
+        out[(ug, ano)] = {**e, "rotulo": ROTULO_DO_ESTADO.get(e.get("estado"), "INDISPONÍVEL")}
+    return out
+
+
 def medir(*, db: str | Path | None = None) -> dict[str, Any]:
     """Pares (UG, exercício) cujo total de OBs no SIAFE parou no teto de consulta.
 

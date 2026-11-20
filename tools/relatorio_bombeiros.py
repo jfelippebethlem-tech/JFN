@@ -4,12 +4,23 @@ Render HTML→PDF da casa (compliance_agent.reporting.render_html). Puxa TODAS a
 execução orçamentária, concentração/redes (dados), perícia documental Lex×Claude (reconciliação +
 lex_execucao + leitura própria dos casos prioritários), integridade do ecossistema, matriz de risco P×I,
 recomendações, proveniência. Honestidade: indício≠acusação · INDISPONÍVEL≠0 · empenho≠liquidação≠OB.
-Uso: .venv/bin/python tools/relatorio_bombeiros.py [--enviar]"""
+Uso: .venv/bin/python tools/relatorio_bombeiros.py [--enviar]
+
+OB = SIAFE (`ob_orcamentaria_siafe`) pela régua única `cruzamentos_intel._ob_paga`, nunca o espelho TFE. Cada
+exercício sai com o rótulo de cobertura do SIAFE (`cobertura_siafe.estados_dos_pares`): PARCIAL = piso,
+INDISPONÍVEL = não somado (≠ 0). Medido em 20/11/2026 (FUNESBOM 2024+): espelho 26.460 OB / R$ 1.212.816.765,57 → SIAFE pago 31.290 OB /
+R$ 1.594.219.617,21 (o espelho não tinha ~4,8 mil OB; o SIAFE inclui Restos a Pagar quitados no exercício)."""
 import sqlite3
 import json
 import asyncio
 import sys
+from datetime import date
+
 from compliance_agent.reporting.render_html import render_html, html_to_pdf
+from compliance_agent.cpf_cnpj import mascarar_doc
+from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.reporting.cobertura_siafe import ANO_EMISSAO_SIAFE, estados_dos_pares
+from compliance_agent.reporting.intel_base import inteiro
 from compliance_agent.reporting.intel_base import reais as brl
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
@@ -22,21 +33,35 @@ def tab(head, rows):
     b = "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)
     return f"<table><thead><tr>{h}</tr></thead><tbody>{b}</tbody></table>"
 
+UG_FUNESBOM = "166100"
+
+
 def dados():
-    c = con().cursor()
+    cx = con()
+    c = cx.cursor()
     d = {}
     d["exec"] = c.execute("""SELECT exercicio,ug,ROUND(SUM(empenhado),2),ROUND(SUM(liquidado),2),ROUND(SUM(pago),2)
         FROM despesa_execucao WHERE ug IN ('166100','160100') AND exercicio>='2024' GROUP BY exercicio,ug ORDER BY exercicio,ug""").fetchall()
     d["elem"] = c.execute("""SELECT elemento,ROUND(SUM(pago),2) FROM despesa_execucao
         WHERE ug='166100' AND exercicio='2024' GROUP BY elemento ORDER BY 2 DESC LIMIT 8""").fetchall()
-    d["ob_ano"] = c.execute("""SELECT exercicio,COUNT(*),ROUND(SUM(valor),2) FROM ordens_bancarias
-        WHERE ug_codigo='166100' AND exercicio>=2024 AND valor>0 GROUP BY exercicio ORDER BY exercicio""").fetchall()
-    d["top"] = c.execute("""SELECT favorecido_nome,favorecido_cpf,COUNT(*),ROUND(SUM(valor),2) FROM ordens_bancarias
-        WHERE ug_codigo='166100' AND exercicio>=2024 AND valor>0 GROUP BY favorecido_cpf ORDER BY 4 DESC LIMIT 15""").fetchall()
-    d["tot_ob"] = c.execute("SELECT COUNT(*),ROUND(SUM(valor),2) FROM ordens_bancarias WHERE ug_codigo='166100' AND exercicio>=2024 AND valor>0").fetchone()
+    # OB paga do SIAFE (régua única), exercícios 2024+ da FUNESBOM; ano pela data de emissão (texto DD/MM/AAAA)
+    pago = f"ug_emitente=? AND {ANO_EMISSAO_SIAFE}>='2024' AND valor>0 AND {_ob_paga(cx)}"
+    d["ob_ano"] = c.execute(f"""SELECT {ANO_EMISSAO_SIAFE},COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe
+        WHERE {pago} GROUP BY 1 ORDER BY 1""", (UG_FUNESBOM,)).fetchall()
+    d["top"] = c.execute(f"""SELECT MAX(nome_credor),credor,COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe
+        WHERE {pago} GROUP BY credor ORDER BY 4 DESC LIMIT 15""", (UG_FUNESBOM,)).fetchall()
+    n, v = c.execute(f"SELECT COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe WHERE {pago}",
+                     (UG_FUNESBOM,)).fetchone()
+    d["tot_ob"] = (n, v or 0.0)
+    # cobertura do SIAFE por exercício (até o corrente): o que não é VERIFICADO não é número inteiro
+    d["cob"] = {a: e["rotulo"] for (_u, a), e in estados_dos_pares(
+        {(UG_FUNESBOM, str(a)) for a in range(2024, date.today().year + 1)}, db=DB).items()}
     d["contr"] = c.execute("""SELECT COUNT(DISTINCT processo),ROUND(SUM(valor_contrato),2) FROM
         (SELECT DISTINCT processo,valor_contrato FROM contratos_tcerj WHERE unidade LIKE '%BOMBEIR%' AND CAST(ano_processo AS INT)>=2024 AND valor_contrato>0)""").fetchone()
     d["coletados"] = c.execute("SELECT COUNT(*) FROM sei_ficha WHERE numero_sei LIKE 'SEI-2700%' AND n_docs>0").fetchone()[0]
+    # rede de A. C. de Miranda no FUNESBOM: a Construtora Metropolitana (raiz 33049503) — OB paga, SIAFE
+    d["metropolitana"] = c.execute(f"SELECT COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE {pago} "
+                                   "AND credor LIKE '33049503%'", (UG_FUNESBOM,)).fetchone()[0]
     d["redes"] = c.execute("""SELECT nome_socio,n_fornecedores,ROUND(total_recebido,2) FROM rede_socios_fornecedores
         WHERE cnpjs_basicos LIKE '%33049503%' OR cnpjs_basicos LIKE '%03314057%' ORDER BY total_recebido DESC LIMIT 4""").fetchall()
     # perícia Lex×Claude (reconciliação)
@@ -99,7 +124,8 @@ def secoes(d):
       f"(SEDEC/CBMERJ — UG 160100; <b>FUNESBOM — UG 166100</b>), exercícios <b>2024 em diante</b>.</p>"
       f"<p><b>Escopo material.</b> A UG 160100 executou R$ 2,46 bi em 2024, dos quais <b>96% é folha militar</b> "
       f"(não transita por Ordem Bancária granular). A perícia de licitação/pagamento concentra-se no "
-      f"<b>FUNESBOM (166100)</b>, veículo de contratação: <b>{brl(d['tot_ob'][1])}</b> em {d['tot_ob'][0]:,} OBs (2024–2026) "
+      f"<b>FUNESBOM (166100)</b>, veículo de contratação: <b>{brl(d['tot_ob'][1])}</b> em {inteiro(d['tot_ob'][0])} OBs pagas "
+      f"(SIAFE, 2024–2026) "
       f"e <b>{totc:,} contratos distintos</b> (TCE-RJ, {brl(d['contr'][1])}).</p>"
       f"<p><b>Veredito (preliminar — perícia documental {cole}/{totc} processos coletados).</b> A triagem e a leitura "
       f"documental já firmam: (i) <b>achado crítico de método</b> — a camada de risco automatizada do ecossistema "
@@ -114,17 +140,27 @@ def secoes(d):
           [(e,u,brl(em),brl(li),brl(pg)) for e,u,em,li,pg in d["exec"]])
       + "<p><b>Composição do FUNESBOM (2024, pago) — onde está o risco de contratação:</b></p>"
       + tab(["Elemento de despesa","Pago"], [(el,brl(v)) for el,v in d["elem"]])
-      + "<p><i>59% do FUNESBOM é 'Outros Serviços de Terceiros — PJ'; o restante, obras, material e equipamentos.</i></p>"})
+      + "<p><i>59% do FUNESBOM é 'Outros Serviços de Terceiros — PJ'; o restante, obras, material e equipamentos.</i></p>"
+      + "<p><b>Ordens Bancárias pagas — FUNESBOM (SIAFE, régua da casa):</b></p>"
+      + tab(["Exercício", "OBs pagas", "Valor pago (OB)", "Cobertura SIAFE"],
+            [(a, inteiro(n), brl(v), d["cob"].get(str(a), "INDISPONÍVEL")) for a, n, v in d["ob_ano"]]
+            + [(a, "—", "INDISPONÍVEL (não somado)", r) for a, r in sorted(d["cob"].items())
+               if r == "INDISPONÍVEL" and a not in {str(x[0]) for x in d["ob_ano"]}])
+      + "<p><i>OB paga = Contabilizada e não devolvida/anulada/complementar/reemitida "
+        "(<code>cruzamentos_intel._ob_paga</code>); inclui o pagamento de Restos a Pagar de exercícios "
+        "anteriores — por isso difere do 'Pago' orçamentário do exercício na tabela acima. PARCIAL = o SIAFE da casa não tem o exercício inteiro "
+        "(valor é piso); INDISPONÍVEL ≠ 0.</i></p>"})
 
     rows_top=[]; T=d["tot_ob"][1]
     for nome,doc,n,v in d["top"]:
-        rows_top.append((str(nome)[:38], (str(doc) or "")[:14], f"{n:,}", brl(v), f"{100*v/T:.1f}%"))
+        rows_top.append((str(nome)[:38], mascarar_doc(doc), inteiro(n), brl(v),
+                         f"{100*v/T:.1f}%".replace(".", ",") if T else "—"))
     S.append({"titulo":"3. Concentração de fornecedores e redes societárias","html":
-      f"<p>Universo FUNESBOM 2024–2026: <b>{brl(T)}</b>. Os 15 maiores favorecidos:</p>"
+      f"<p>Universo FUNESBOM 2024–2026 (OB paga, SIAFE): <b>{brl(T)}</b>. Os 15 maiores favorecidos:</p>"
       + tab(["Favorecido","CNPJ/CPF","OBs","Valor","%"], rows_top)
       + "<p><b>Redes societárias (alcance estadual — não restrito aos bombeiros):</b></p>"
       + tab(["Sócio","Nº de fornecedores","Total recebido (Estado)"], [(n,f"{nf}",brl(t)) for n,nf,t in d["redes"]])
-      + "<p><i>No FUNESBOM, da rede de A. C. de Miranda apenas a Construtora Metropolitana recebeu (R$ 20,85 mi); "
+      + f"<p><i>No FUNESBOM, da rede de A. C. de Miranda apenas a Construtora Metropolitana recebeu ({brl(d['metropolitana'])}, OB paga 2024+); "
       "o demais é Estado afora. Indício de grupo econômico a apurar quanto a concorrência aparente, não imputação.</i></p>"})
 
     S.append({"titulo":"4. Achados de integridade do ecossistema (controle de qualidade)","html":
@@ -222,7 +258,7 @@ def build_ctx():
       "subtitulo":f"Execução financeira, concentração e perícia documental paralela Lex × Claude · "
                   f"{d['coletados']} de {d['contr'][0]} contratos lidos (coleta em andamento)",
       "analista":"JFN + Claude (perícia paralela)",
-      "metodologia":"OB=pago (SIAFE) · empenho≠liquidação≠OB · perícia documental SEI (fonte primária) · "
+      "metodologia":"OB=pago (SIAFE, ob_orcamentaria_siafe pela régua _ob_paga) · empenho≠liquidação≠OB · perícia documental SEI (fonte primária) · "
                     "4 camadas: Lex (fraco, volume) × heurística determinística × deepseek-v4-pro (forte, prioritários) "
                     "× leitura Claude · matriz P×I (TCU/TCE-RJ) · padrão Kroll/Deloitte",
       "faixa":"ALTO",
@@ -231,7 +267,10 @@ def build_ctx():
                    "Captura SEI rasa/divergente — re-coleta dirigida"],
       "secoes":secoes(d),
       "proveniencia":[
-        {"dado":"OBs/execução FUNESBOM 2024+","estado":"REAL","fonte":"SIAFE (ordens_bancarias, despesa_execucao)","data":"26/06/2026"},
+        {"dado":"OBs pagas FUNESBOM 2024+","estado":"REAL" if all(r == "VERIFICADO" for r in d["cob"].values()) else
+         "PARCIAL (" + ", ".join(f"{a}: {r}" for a, r in sorted(d["cob"].items()) if r != "VERIFICADO") + ")",
+         "fonte":"SIAFE (ob_orcamentaria_siafe, régua _ob_paga)","data":date.today().strftime("%d/%m/%Y")},
+        {"dado":"Execução orçamentária FUNESBOM 2024+","estado":"REAL","fonte":"SIAFE (despesa_execucao)","data":"26/06/2026"},
         {"dado":"Contratos 2024+","estado":"REAL","fonte":"TCE-RJ (contratos_tcerj, compras_diretas_tcerj)","data":"26/06/2026"},
         {"dado":"Dossiês SEI / íntegras","estado":"PARCIAL (coleta em andamento)","fonte":"SEI-RJ (itkava/CDP)","data":"26/06/2026"},
         {"dado":"Redes societárias","estado":"REAL","fonte":"rede_socios_fornecedores / Receita QSA","data":"26/06/2026"}],

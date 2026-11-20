@@ -154,3 +154,37 @@ Extras dos lotes 3–6 (10 arquivos: lentes, bateria, benefícios, CPF, catraca 
   o banco do repositório. Nenhum caller assim foi achado.
 - §4–§5 mudam saída de propósito (fila do sweep; total "outras UGs" do relatório Mobiliza).
 - A etapa 5 da skill (subagentes procurando o que sobrou) não foi feita; o §8 é o que ficou visível nesta passada.
+
+## 10. Pendências §8.1 e §8.6 fechadas (20/11/2026, 2ª passada)  `[feito]`
+
+OB = SIAFE (`ob_orcamentaria_siafe`) pela régua `_ob_paga` em `dossie_emendatio`, `relatorio_bombeiros`,
+`relatorio_engeprat_yoda`, `scorecard`, `sweep_sede_real`, `sweep_sede_google` e `tac_ranking_ugs`. O espelho TFE
+fica só como TEXTO (observação da mesma OB por número+UG; nome da UG) ou CONTAGEM que aponta lacuna — catraca em
+`tests/test_ob_siafe_ferramentas_caso.py` (controle positivo: 15 usos de `valor` do espelho na versão anterior).
+Cobertura por par UG×ano: `cobertura_siafe.estados_dos_pares` (VERIFICADO / PARCIAL = piso / INDISPONÍVEL ≠ 0).
+Medido no banco real (só leitura), espelho → SIAFE:
+
+| Ferramenta | Espelho TFE | SIAFE (OB paga) | Fora da cobertura |
+|---|---|---|---|
+| Emendatio — ONG Con-tato | 64 OB · R$ 210.376.569,26 | 71 OB · R$ 234.812.636,69 | 2020 (UGs 424100, 530100) INDISPONÍVEL |
+| Emendatio — SEAS × ONG | 21 OB · R$ 71.339.222,23 | 24 OB · R$ 93.623.901,14 | — |
+| Emendatio — SOLAZER | 52 OB · R$ 13.591.601,18 | 32 OB · R$ 7.167.476,78 | 2019–2020 (170100, 326100) INDISPONÍVEL |
+| Bombeiros — FUNESBOM 2024+ | 26.460 OB · R$ 1.212.816.765,57 | 31.290 OB · R$ 1.594.219.617,21 | — (inclui Restos a Pagar) |
+| Engeprat | 999 OB · R$ 415.096.211,79 | 1.095 OB · R$ 528.425.435,88 | 2019 (036100, 317100) INDISPONÍVEL |
+| TAC ranking (≥ R$ 300 mi) | 57 UGs · R$ 135.032.360.826,35 · mediana 0,3% | 57 UGs · R$ 134.323.232.992,88 · mediana 0,3% | 13 UGs nunca lidas; 2 com exercício PARCIAL |
+| Scorecard (golden) | 1.202.143 OB; MGS 1.336 · R$ 164.932.532,33; ITERJ 2.664 · R$ 313.470.838,12 | 1.308.490 OB; MGS 1.541 · R$ 192.380.903,89; ITERJ 3.326 · R$ 488.253.303,83 | 2021+ |
+| `sweep_sede_real` (fila pendente) | 199 | 1.144 | fornecedor pago só em 2019–2020 sai |
+
+- O espelho não tinha OBs pagas de fim de exercício que o SIAFE tem (ONG/SEAS: 2022OB00454 R$ 8.882.950,66 e
+  mais 3 de dezembro). Por isso os totais do SIAFE sobem onde a cobertura é 2021+.
+- TAC: o SIAFE lista repasse entre UGs (credor = UG), folha e precatório, que o espelho não lista; sem o corte
+  "credor CNPJ/CPF" o universo ia a R$ 421 bi e diluía a taxa. Com o corte, universo e mediana batem com o espelho.
+- Engeprat: órgão pelo CÓDIGO da UG (regra da casa). A UG 133100 (ITERJ) aparecia no espelho como "Secretaria de
+  Cidades/Infraestrutura" e era somada a ela; pelo código é o maior pagador (R$ 264.945.281,38), e o 007/2023
+  (R$ 109,6 mi) é pago por ela. A premissa da versão anterior ("007/2023 ≠ contrato ITERJ", rotulado SEINFRA)
+  passou a "a reconferir no SEI" — **decisão do dono**. O envio ao Telegram agora exige `--enviar`.
+- §8.6: `cruza_contratados_ajovem.mask` → `mascarar_cpf` (869 contratados reais conferidos: mesmos 6 dígitos);
+  o dossiê exibe a máscara PAD-04 inteira e os 3 CPFs completos que estavam no texto fixo viraram PAD-04.
+- Fora deste escopo, ainda no espelho: `fachada_b2_sync`, `socios_dump_sweep`, `lex_aprendizado_cruzado`,
+  `reporting/detector_tac` (C9 por CNPJ) e `rede_socios_fornecedores.total_recebido` (citado no relatório dos
+  Bombeiros).

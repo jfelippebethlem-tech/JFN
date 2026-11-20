@@ -16,6 +16,8 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.cpf_cnpj import mascarar_cpf
+
 REPO = Path(__file__).resolve().parent.parent
 BENEF = REPO / "data" / "pcrj_benef.db"
 PCRJ = REPO / "data" / "pcrj.db"
@@ -34,8 +36,9 @@ def frag6(cpf: str) -> str:
 
 
 def mask(cpf: str) -> str:
+    """CPF para a saída: régua única PAD-04 (`***.456.789-**`); sem 11 dígitos não há o que mostrar."""
     d = re.sub(r"\D", "", cpf or "")
-    return f"***{d[3:9]}**" if len(d) == 11 else "***"
+    return mascarar_cpf(d) if len(d) == 11 else "***"
 
 
 def main():

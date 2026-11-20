@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 """Dossiê consolidado — ONG Contato × Ambiente Jovem (SEAS) × Operação Emendatio.
 
-Reúne: (a) mapa do dinheiro real (SIAFE/TFE local, OB=pagamento) da ONG Contato e da SOLAZER;
+Reúne: (a) mapa do dinheiro real (OB paga do SIAFE, régua `_ob_paga`) da ONG Contato e da SOLAZER;
 (b) estrutura de controle a qualquer tempo; (c) fatos confirmados da Operação Emendatio (fontes
 citadas); (d) análise rigorosa do vínculo de Thiago Pampolha (institucional × parentesco não
 provado). Indícios para apuração; presunção de legitimidade; nada fabricado. HTML→PDF Kroll.
+
+PAGAMENTO = OB do SIAFE (`ob_orcamentaria_siafe`) pela régua única `cruzamentos_intel._ob_paga` — nunca o
+espelho TFE (`ordens_bancarias`). O espelho só APONTA onde o SIAFE é cego (par UG×ano não lido ou parcial, via
+`cobertura_siafe.estados_dos_pares`) e dá o nome da UG; valor dele não entra em soma. Medido em 20/11/2026: o
+SIAFE cobre 2021+ (antes, só a ALERJ) — 2019–2020 saem como INDISPONÍVEL, nunca como zero; e o espelho não
+tinha várias OBs pagas de dezembro que o SIAFE tem (ONG/SEAS: R$ 71,34 mi no espelho × R$ 93,62 mi no SIAFE).
 """
 from __future__ import annotations
 
@@ -18,27 +24,98 @@ REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "data" / "compliance.db"
 CNPJ_ONG = "03686998000118"
 CNPJ_SOL = "28008530000103"
-_NORM = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
 
 
+from compliance_agent import ugs
+from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.reporting.cobertura_siafe import ANO_EMISSAO_SIAFE as _ANO
+from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE as _ISO
+from compliance_agent.reporting.cobertura_siafe import estados_dos_pares
 from compliance_agent.reporting.intel_base import moeda as _brl
+
+CNPJ_LYTORANEA = "07792269000105"
+UG_INEA, UG_SEAS = "243200", "240100"
+DATA_QSA_ATUAL = "2025-05-14"   # ingresso da atual dirigente no QSA público (seção 3)
+
+
+def _nome_ug(con, ug) -> str:
+    """Nome da UG para exibir (o SIAFE não traz): o mais recente do espelho, senão o canônico. Rótulo, não valor."""
+    r = con.execute("SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL "
+                    "ORDER BY data_emissao DESC LIMIT 1", (ug,)).fetchone()
+    return (r[0] if r else "") or ugs.nome_canonico(ug, str(ug))
 
 
 def _ob_por_ug(con, cnpj):
-    return con.execute(
-        f"SELECT ug_codigo,MAX(ug_nome),COUNT(*),ROUND(SUM(valor),2),MIN(data_pagamento),MAX(data_pagamento) "
-        f"FROM ordens_bancarias WHERE {_NORM}=? GROUP BY ug_codigo ORDER BY 4 DESC", (cnpj,)).fetchall()
+    rows = con.execute(
+        f"SELECT ug_emitente,COUNT(*),ROUND(SUM(valor),2),MIN({_ISO}),MAX({_ISO}) FROM ob_orcamentaria_siafe "
+        f"WHERE credor=? AND {_ob_paga(con)} GROUP BY ug_emitente ORDER BY 3 DESC", (cnpj,)).fetchall()
+    return [(ug, _nome_ug(con, ug), n, v, a, b) for ug, n, v, a, b in rows]
 
 
 def _ob_por_ano(con, cnpj):
     return con.execute(
-        f"SELECT substr(data_pagamento,1,4),COUNT(*),ROUND(SUM(valor),2) FROM ordens_bancarias "
-        f"WHERE {_NORM}=? AND length(data_pagamento)>=4 GROUP BY 1 ORDER BY 1", (cnpj,)).fetchall()
+        f"SELECT {_ANO},COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe "
+        f"WHERE credor=? AND {_ob_paga(con)} GROUP BY 1 ORDER BY 1", (cnpj,)).fetchall()
+
+
+def _ob_por_ano_ug(con, cnpj, ug):
+    return con.execute(
+        f"SELECT {_ANO},COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe "
+        f"WHERE credor=? AND ug_emitente=? AND {_ob_paga(con)} GROUP BY 1 ORDER BY 1", (cnpj, ug)).fetchall()
 
 
 def _total(con, cnpj):
-    return con.execute(f"SELECT COUNT(*),ROUND(SUM(valor),2) FROM ordens_bancarias WHERE {_NORM}=?",
-                       (cnpj,)).fetchone()
+    n, v = con.execute(f"SELECT COUNT(*),ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? "
+                       f"AND {_ob_paga(con)}", (cnpj,)).fetchone()
+    return n, v or 0.0
+
+
+def _pago_ate(con, cnpj, data_iso: str) -> float:
+    """OB paga (SIAFE) ao credor emitida ANTES de `data_iso` (AAAA-MM-DD)."""
+    return con.execute(f"SELECT COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE credor=? "
+                       f"AND {_ob_paga(con)} AND {_ISO} < ?", (cnpj, data_iso)).fetchone()[0]
+
+
+def _lacunas(con, cnpj, ugs_alvo=None, anos=None) -> list[dict]:
+    """Pares (UG, ano) do credor que o SIAFE NÃO cobre inteiros — INDISPONÍVEL (nunca lido) ou PARCIAL (a soma é
+    piso). Os pares vêm do SIAFE e do espelho; do espelho sai só QUANTAS OB ele lista ali, nunca valor."""
+    filtro_t, filtro_s, par_t, par_s = "", "", [cnpj], [cnpj]
+    if ugs_alvo:
+        q = ",".join("?" * len(ugs_alvo))
+        filtro_t += f" AND ug_codigo IN ({q})"; filtro_s += f" AND ug_emitente IN ({q})"
+        par_t += list(ugs_alvo); par_s += list(ugs_alvo)
+    if anos:
+        filtro_t += " AND substr(data_emissao,1,4) BETWEEN ? AND ?"; filtro_s += f" AND {_ANO} BETWEEN ? AND ?"
+        par_t += list(anos); par_s += list(anos)
+    n_esp = {(u, a): n for u, a, n in con.execute(
+        f"SELECT ug_codigo, substr(data_emissao,1,4), COUNT(*) FROM ordens_bancarias WHERE favorecido_cpf=?"
+        f"{filtro_t} GROUP BY 1,2", par_t)}
+    pares = set(n_esp) | set(con.execute(
+        f"SELECT DISTINCT ug_emitente, {_ANO} FROM ob_orcamentaria_siafe WHERE credor=?{filtro_s}", par_s))
+    return [{"ug": u, "ano": a, "rotulo": e["rotulo"], "obs_espelho": n_esp.get((u, a), 0),
+             "pct_ausente": e.get("pct_ausente")}
+            for (u, a), e in estados_dos_pares(pares, db=DB).items() if e["rotulo"] != "VERIFICADO"]
+
+
+def _html_lacunas(lac: list[dict], quem: str) -> str:
+    """Callout das lacunas de cobertura do SIAFE (INDISPONÍVEL ≠ 0). Vazio quando o SIAFE cobre tudo."""
+    if not lac:
+        return ""
+    linhas = "".join(
+        f"<tr><td>{x['ug']}</td><td>{x['ano']}</td><td><b>{x['rotulo']}</b></td>"
+        f"<td class='num'>{x['obs_espelho']}</td></tr>" for x in lac)
+    return (f"<div class='callout warn'><div class='t'>⚠️ Fora da cobertura do SIAFE — {quem} (INDISPONÍVEL ≠ zero)"
+            "</div>A base SIAFE da casa cobre bem de 2021 em diante (antes, só a ALERJ). Nos recortes abaixo o "
+            "pagamento <b>não está somado</b>: INDISPONÍVEL = o par UG×ano nunca foi lido no SIAFE; PARCIAL = lido "
+            "em parte (o total acima é piso). O espelho TFE é usado só para apontar o recorte (nº de OB que ele "
+            "lista ali), nunca como valor pago.<table><tr><th>UG</th><th>Ano</th><th>SIAFE</th>"
+            f"<th>OB no espelho TFE (não somadas)</th></tr>{linhas}</table></div>")
+
+
+def _pad04(cpf_mask: str) -> str:
+    """Máscara já pronta (6 dígitos centrais, formato antigo `***dddddd**` ou PAD-04) → PAD-04 `***.ddd.ddd-**`."""
+    d = "".join(ch for ch in str(cpf_mask or "") if ch.isdigit())
+    return f"***.{d[:3]}.{d[3:]}-**" if len(d) == 6 else "***"
 
 
 def _secao_contratados() -> str:
@@ -83,7 +160,7 @@ def _secao_contratados() -> str:
         for a in benef_forte:
             bs = "; ".join(f"{b['programa']} ({b['de']}→{b['ate']}, {b['meses']}m)"
                            for b in _forte(a, "beneficio"))
-            out.append(f"<tr><td><b>{a['nome']}</b></td><td>…{a['cpf_mask'][-4:]}</td><td>{a['funcao']}</td><td>{bs}</td></tr>")
+            out.append(f"<tr><td><b>{a['nome']}</b></td><td>{_pad04(a['cpf_mask'])}</td><td>{a['funcao']}</td><td>{bs}</td></tr>")
         return "".join(out)
 
     cand_html = linhas_cand() or "<tr><td colspan='4' class='fonte'>Nenhum contratado com candidatura localizada no TSE.</td></tr>"
@@ -120,16 +197,21 @@ elencados. A confirmação individual exige o CPF completo (requisição formal 
 
 def _seas_obs(con):
     return con.execute(
-        f"SELECT data_pagamento,numero_ob,valor FROM ordens_bancarias WHERE {_NORM}=? AND ug_codigo='240100' "
-        f"ORDER BY data_pagamento", (CNPJ_ONG,)).fetchall()
+        f"SELECT {_ISO},numero_ob,valor FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente=? "
+        f"AND {_ob_paga(con)} ORDER BY 1, numero_ob", (CNPJ_ONG, UG_SEAS)).fetchall()
 
 
-def _secao_improbidade() -> str:
+def _secao_improbidade(lyt: list | None = None) -> str:
     """Análise jurídica autoral (não automatizada) — hipóteses de improbidade administrativa por frente,
     sob a Lei 8.429/92 com a reforma da Lei 14.230/2021. Rigor: indício ≠ acusação; a LIA pós-2021 exige
     DOLO específico; culpa/irregularidade formal não bastam. Cada linha traz o dispositivo, o elemento a
-    provar e o agente potencial — é roteiro de apuração, não juízo condenatório."""
-    return """
+    provar e o agente potencial — é roteiro de apuração, não juízo condenatório.
+    `lyt`: [(ano, R$)] da OB paga (SIAFE) à Lytoranea pelo INEA — a série do item 15.4 (iv)."""
+    lyt = lyt or []
+    lyt_tot = sum(v for _, v in lyt)
+    lyt_serie = " · ".join(f"R$ {_brl(v / 1e6)} mi ({a})" for a, v in lyt) or "INDISPONÍVEL no SIAFE"
+    lyt_jan = f"{lyt[0][0]}–{lyt[-1][0]}" if lyt else "—"
+    return f"""
 <h2>15. Análise jurídica — hipóteses de improbidade administrativa</h2>
 <div class="callout info"><div class="t">Marco legal e advertência metodológica</div>
 Análise sob a <b>Lei 8.429/92 (LIA), com a reforma da Lei 14.230/2021</b>. Três balizas da reforma
@@ -204,9 +286,9 @@ A macrodrenagem do Maxambomba já fora contratada em <b>SEI-070002/000991/2022 �
 em 2025 após execução ínfima do contrato anterior pede resposta: houve <b>distrato/rescisão</b> do de 2022?
 o que foi feito com o empenhado? há <b>sobreposição</b>? Inexecução seguida de recontratação a preço maior é
 vetor de <b>dano (art. 10)</b> se não houver justificativa técnica idônea.</div>
-<div class="callout warn"><div class="t">🚩 (iv) Concentração — Lytoranea recebeu ~R$ 321 mi do INEA (2021–2026)</div>
-A Lytoranea é credora <b>dominante</b> do INEA: R$ 20,8 mi (2021) · 45,7 (2022) · 66,6 (2023) · 68,9 (2024) ·
-88,1 (2025) · 31,7 (2026) = <b>~R$ 321 milhões</b>, além de grandes contratos em SEIOP, FDRM e SECID.
+<div class="callout warn"><div class="t">🚩 (iv) Concentração — Lytoranea recebeu R$ {_brl(lyt_tot / 1e6)} mi do INEA ({lyt_jan})</div>
+A Lytoranea é credora <b>dominante</b> do INEA (OB paga no SIAFE): {lyt_serie} = <b>R$ {_brl(lyt_tot)}</b>,
+além de grandes contratos em SEIOP, FDRM e SECID.
 Concentração dessa magnitude num único fornecedor de obras é sinal de <b>competição possivelmente
 restrita</b> — a apurar direcionamento de edital (art. 11 / art. 10, VIII). Custeio pelo <b>FECAM
 (Fonte 1.7.59.151)</b> — o <b>mesmo fundo</b> que banca o Ambiente Jovem, hoje sob notificação do MPRJ/GAEMA.</div>
@@ -244,7 +326,7 @@ def _secao_jose_ricardo() -> str:
 <h2>9. José Ricardo Ferreira de Brito — o gestor que atravessa os enredos</h2>
 <p>É a figura que costura o caso: assina/gere nos <b>dois</b> programas das entidades de Raphael
 Gonçalves (Esporte RJ→SOLAZER e Ambiente Jovem→Con-tato) e hoje ocupa uma diretoria na CEDAE, a
-estatal do acordo de R$ 900 mi (seção 10). CPF 120.362.787-44.</p>
+estatal do acordo de R$ 900 mi (seção 10). CPF ***.362.787-**.</p>
 <table><tr><th>Período</th><th>Cargo</th><th>Órgão</th></tr>
 <tr><td>2011–2013</td><td>Consultor especial</td><td>ALERJ</td></tr>
 <tr><td>—</td><td>Presidente</td><td>SUDERJ (Superintendência de Desportos)</td></tr>
@@ -319,13 +401,26 @@ confirmar em fonte primária.</div>"""
 
 
 def _secao_inea_seas(con) -> str:
-    """Maiores contratos de INEA/SEAS na gestão Pampolha (dado primário TFE) + achado de método."""
-    norm = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
-    tops = con.execute(
-        f"SELECT MAX(favorecido_nome), ug_codigo, COUNT(*), ROUND(SUM(valor),2) FROM ordens_bancarias "
-        f"WHERE ug_codigo IN ('240100','240200','243200') AND substr(data_pagamento,1,4) BETWEEN '2020' "
-        f"AND '2024' AND length({norm})=14 GROUP BY {norm},ug_codigo ORDER BY 4 DESC LIMIT 15", ()).fetchall()
+    """Maiores contratos de INEA/SEAS na gestão Pampolha (OB paga do SIAFE) + achado de método."""
     _UGN = {"240100": "SEAS", "240200": "SEAS-PSAM", "243200": "INEA"}
+    q = ",".join("?" * len(_UGN))
+    pago = con.execute(
+        f"SELECT MAX(nome_credor), ug_emitente, COUNT(*), ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe "
+        f"WHERE ug_emitente IN ({q}) AND {_ANO} BETWEEN '2020' AND '2024' AND length(credor)=14 "
+        f"AND {_ob_paga(con)} GROUP BY credor, ug_emitente ORDER BY 4 DESC", list(_UGN)).fetchall()
+    tops = pago[:15]
+
+    def _mi(trecho: str, ug: str | None = None) -> str:
+        """R$ mi pagos (SIAFE, 2020–2024) ao credor cujo nome contém `trecho` — nas UGs da seção ou em `ug`."""
+        v = sum(r[3] for r in pago if trecho in (r[0] or "").upper() and (ug is None or r[1] == ug))
+        return f"R$ {_brl(v / 1e6)} mi" if v else "INDISPONÍVEL no SIAFE"
+
+    # 2020: o SIAFE da casa não leu essas UGs (só a ALERJ antes de 2021) — dito, não somado
+    pares = set(con.execute(f"SELECT DISTINCT ug_emitente, {_ANO} FROM ob_orcamentaria_siafe WHERE ug_emitente "
+                            f"IN ({q}) AND {_ANO} BETWEEN '2020' AND '2024'", list(_UGN)))
+    pares |= {(u, str(a)) for u in _UGN for a in range(2020, 2025)}
+    lac = [{"ug": u, "ano": a, "rotulo": e["rotulo"], "obs_espelho": e.get("amostra", 0)}
+           for (u, a), e in estados_dos_pares(pares, db=DB).items() if e["rotulo"] != "VERIFICADO"]
     linhas = "".join(
         f"<tr><td>{(r[0] or '')[:42]}</td><td>{_UGN.get(r[1], r[1])}</td><td class='num'>{r[2]}</td>"
         f"<td class='num'>R$ {_brl(r[3])}</td></tr>" for r in tops if (r[0] or "") != "FOLHA DE PAGAMENTOS")
@@ -334,16 +429,18 @@ def _secao_inea_seas(con) -> str:
 <p>Pagamentos efetivos (OB) das UGs ambientais — Secretaria do Ambiente (240100), SEAS-PSAM (240200,
 saneamento da Baía de Guanabara) e INEA (243200) — na gestão de Pampolha. Maiores credores:</p>
 <table><tr><th>Credor</th><th>UG</th><th>OBs</th><th>Total pago</th></tr>{linhas}</table>
+<p class="fonte">OB paga no SIAFE (régua <code>_ob_paga</code>), exercícios 2020–2024.</p>
+{_html_lacunas(lac, "UGs ambientais, 2020–2024")}
 <div class="callout warn"><div class="t">🚩 Idoneidade — a maior credora do INEA está impedida</div>
-A <b>Construtora Lytoranea</b> (~R$ 202 mi do INEA em macrodrenagem) consta com <b>impedimento/proibição
+A <b>Construtora Lytoranea</b> ({_mi("LYTORANEA", UG_INEA)} do INEA em macrodrenagem, 2020–2024) consta com <b>impedimento/proibição
 de contratar</b> (sanção federal — Fundação Oswaldo Cruz, jun–ago/2026). Idoneidade atual comprometida.</div>
 <div class="callout info"><div class="t">Achado de método (importante)</div>
 As <b>grandes obras de INEA/SEAS foram por LICITAÇÃO</b> (critério Menor Preço, Lei 8.666) — as
 macro-obras de drenagem e saneamento passaram por concorrência. A <b>dispensa/inexigibilidade</b>, foco
 de risco, concentra-se na <b>rota de OS / contrato de gestão</b> (Ambiente Jovem R$ 96 mi; Ceperj "Mais
 Acesso" R$ 26 mi) — é ali a contratação direta, não nas obras. <b>Recorrentes</b> nas duas pastas
-ambientais (sinal a aprofundar): Hydra Engenharia (R$ 89,9 mi), Construtora Brasform (R$ 74,3 mi) e
-Trial Ambiental (R$ 37,6 mi).</div>"""
+ambientais (sinal a aprofundar): Hydra Engenharia ({_mi("HYDRA")}), Construtora Brasform ({_mi("BRASFORM")}) e
+Trial Ambiental ({_mi("TRIAL")}).</div>"""
 
 
 # ── parlamentares (subagente A, fonte A Tribuna RJ) ──────────────────────────────────
@@ -419,6 +516,9 @@ def build_html() -> str:
     sol_ug, sol_tot = _ob_por_ug(con, CNPJ_SOL), _total(con, CNPJ_SOL)
     seas = _seas_obs(con)
     inea_seas_html = _secao_inea_seas(con)   # precisa do con aberto — computa antes do close
+    ong_lac, sol_lac = _lacunas(con, CNPJ_ONG), _lacunas(con, CNPJ_SOL)
+    ong_antes_qsa = _pago_ate(con, CNPJ_ONG, DATA_QSA_ATUAL)
+    lyt = [(int(a), v) for a, _n, v in _ob_por_ano_ug(con, CNPJ_LYTORANEA, UG_INEA)]
     con.close()
     hoje = datetime.now().strftime("%d/%m/%Y")
     seas_tot = sum(r[2] for r in seas)
@@ -441,13 +541,13 @@ def build_html() -> str:
 <div class="capa">
   <div class="classif">CONFIDENCIAL — SUBSÍDIO PARA APURAÇÃO / CONTROLE EXTERNO</div>
   <h1>Pente-fino — ONG Con-tato, Projeto Ambiente Jovem (SEAS) e a Operação Emendatio</h1>
-  <div class="sub">Emitido em {hoje} · Fiscalização de controle externo · Fontes: SIAFE/TFE-RJ (pagamentos),
+  <div class="sub">Emitido em {hoje} · Fiscalização de controle externo · Fontes: SIAFE-RJ (pagamentos: OB paga, 2021+),
   Receita Federal (QSA), imprensa e órgãos oficiais (fatos da operação, com URL). OB = pagamento
   efetivo — empenho não entra. Indícios para apuração; presunção de legitimidade dos atos.</div>
 </div>
 
 <div class="kpis">
-  <div class="kpi"><div class="n">R$ {_brl(ong_tot[1])}</div><div class="l">pago pelo Estado à ONG Con-tato ({ong_tot[0]} OBs)</div></div>
+  <div class="kpi"><div class="n">R$ {_brl(ong_tot[1])}</div><div class="l">pago pelo Estado à ONG Con-tato ({ong_tot[0]} OBs, SIAFE)</div></div>
   <div class="kpi"><div class="n">R$ {_brl(seas_tot)}</div><div class="l">só da SEAS (240100), 2022–2024</div></div>
   <div class="kpi"><div class="n">R$ {_brl(sol_tot[1])}</div><div class="l">pago à SOLAZER (mesmo dono de fato)</div></div>
   <div class="kpi"><div class="n">R$ 96 mi</div><div class="l">contrato de gestão SEAS após aditivos (imprensa)</div></div>
@@ -469,10 +569,12 @@ da operação</b> e uma <b>análise rigorosa e reservada</b> do vínculo do vice
 que, até aqui, é <b>institucional</b>, não havendo fonte que o aponte como investigado nem que comprove
 parentesco com os Gonçalves.</p>
 
-<h2>1. Mapa do dinheiro — ONG Con-tato (dado primário, SIAFE/TFE)</h2>
-<p>Pagamentos efetivos por órgão pagador. Só Ordem Bancária conta como pagamento (empenho e liquidação não).</p>
+<h2>1. Mapa do dinheiro — ONG Con-tato (dado primário, SIAFE)</h2>
+<p>Pagamentos efetivos por órgão pagador. Só Ordem Bancária conta como pagamento (empenho e liquidação não):
+OB do SIAFE pela régua da casa (exclui cancelada, anulada, devolvida pelo banco, complementar e reemitida).</p>
 <table><tr><th>UG</th><th>Órgão pagador</th><th>OBs</th><th>Total pago</th><th>Período</th></tr>{ong_ug_html}
 <tr><td colspan="2"><b>TOTAL</b></td><td class="num"><b>{ong_tot[0]}</b></td><td class="num"><b>R$ {_brl(ong_tot[1])}</b></td><td></td></tr></table>
+{_html_lacunas(ong_lac, "ONG Con-tato")}
 <h3>Evolução anual</h3>
 <table><tr><th>Ano</th><th>OBs</th><th>Total pago</th></tr>{ong_ano_html}</table>
 
@@ -497,8 +599,8 @@ por outra fonte/UG). Registre-se ainda divergência de <b>R$ 6,85</b> entre o to
 declarada no 4º TA — a reconciliar.</div>
 <h3>Signatários dos instrumentos (leitura das páginas de assinatura)</h3>
 <table><tr><th>Pela SEAS (contratante)</th><th>Pela ONG Con-tato (contratada)</th></tr>
-<tr><td><b>José Ricardo Ferreira de Brito</b> — Subsecretário Executivo / depois Secretário de Estado (CPF 120.362.787-44)</td>
-<td><b>Cíntia Gonçalves Duarte</b> — Presidente (CPF 056.664.877-60). Diretor Financeiro (prest. contas 2º TA): Arilton Fernandes</td></tr></table>
+<tr><td><b>José Ricardo Ferreira de Brito</b> — Subsecretário Executivo / depois Secretário de Estado (CPF ***.362.787-**)</td>
+<td><b>Cíntia Gonçalves Duarte</b> — Presidente (CPF ***.664.877-**). Diretor Financeiro (prest. contas 2º TA): Arilton Fernandes</td></tr></table>
 <h3>Pagamentos efetivos da SEAS (SIAFE, UG 240100) — gestão Pampolha</h3>
 <table><tr><th>Data de pagamento</th><th>Nº OB</th><th>Valor</th></tr>{seas_html}
 <tr><td colspan="2"><b>TOTAL SEAS</b></td><td class="num"><b>R$ {_brl(seas_tot)}</b></td></tr></table>
@@ -509,16 +611,17 @@ declarada no 4º TA — a reconciliar.</div>
 <tr><td><b>Tathyane Ferreira Höfke</b></td><td>Diretoria Executiva (QSA atual)</td><td>ingresso no QSA em 14/05/2025</td></tr>
 <tr><td><b>Raphael da Silva Gonçalves</b></td><td>Operador de fato (imprensa); marido de Cíntia</td><td>preso na Emendatio, 09/07/2026</td></tr></table>
 <div class="callout warn"><div class="t">🚩 Troca de controle após o grosso dos pagamentos</div>
-O ingresso da atual dirigente no quadro societário público (14/05/2025) é <b>posterior</b> a R$ 148,7 milhões
-já pagos à ONG (≈71% do total) — sinal de sucessão/reorganização societária a verificar, coincidente com o
+O ingresso da atual dirigente no quadro societário público (14/05/2025) é <b>posterior</b> a R$ {_brl(ong_antes_qsa / 1e6)} milhões
+já pagos à ONG (≈{100 * ong_antes_qsa / (ong_tot[1] or 1):.0f}% do total pago no SIAFE) — sinal de sucessão/reorganização societária a verificar, coincidente com o
 avanço das investigações.</div>
 
 <h2>4. Segundo veículo do mesmo operador — SOLAZER O Clube dos Excepcionais</h2>
 <p><b>Raphael da Silva Gonçalves</b> também é <b>presidente</b> da <b>SOLAZER O Clube dos Excepcionais</b>
 (CNPJ 28.008.530/0001-03), que recebeu do Estado <b>R$ {_brl(sol_tot[1])}</b> em {sol_tot[0]} OBs:</p>
 <table><tr><th>UG</th><th>Órgão pagador</th><th>OBs</th><th>Total pago</th><th>Período</th></tr>{sol_ug_html}</table>
+{_html_lacunas(sol_lac, "SOLAZER")}
 <p>Somados os dois veículos ligados ao mesmo operador de fato, o volume de recursos públicos estaduais
-alcança <b>R$ {_brl((ong_tot[1] or 0) + (sol_tot[1] or 0))}</b> (na base local, 2019+). Ambas as entidades foram
+alcança <b>R$ {_brl((ong_tot[1] or 0) + (sol_tot[1] or 0))}</b> (OB paga no SIAFE, 2021+; 2019–2020 INDISPONÍVEL). Ambas as entidades foram
 alimentadas, entre outras fontes, pelo <b>Fundo Estadual de Assistência Social</b> (UG 326100).</p>
 <div class="callout"><div class="t">🚩 A SOLAZER já foi condenada a devolver dinheiro — caso "Esporte RJ" (TCE-RJ)</div>
 Muito antes do Ambiente Jovem, a SOLAZER foi <b>Organização Social do programa "Esporte RJ"</b> da
@@ -658,10 +761,10 @@ conteúdo substantivo consta do Anexo A pela via pública; falta o trâmite inte
 Nota de honestidade: os controladores da ONG (Cíntia, Raphael, Tathyane) <b>não constam</b> recebendo
 benefício assistencial na base do município do Rio (checagem negativa).</div>
 
-{_secao_improbidade()}
+{_secao_improbidade(lyt)}
 
 <footer>Peça de subsídio à apuração — indícios, não acusação; presunção de legitimidade dos atos
-administrativos preservada. Pagamentos: SIAFE/TFE-RJ (Ordem Bancária = pagamento). Fatos da operação:
+administrativos preservada. Pagamentos: SIAFE-RJ (Ordem Bancária paga = pagamento; fora da cobertura = INDISPONÍVEL). Fatos da operação:
 imprensa e órgãos oficiais com URL registrada no material de trabalho. CPF de terceiros mascarado (LGPD).
 Apuração formal compete aos órgãos de controle e ao Ministério Público.</footer>
 </body></html>"""

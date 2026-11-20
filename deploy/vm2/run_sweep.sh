@@ -54,7 +54,14 @@ pgrep -f "^\.venv/bin/python sei_pcrj_busca" >/dev/null || nice -n 15 timeout -k
 pgrep -f "^\\.venv/bin/python sei_pcrj_enum" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_enum.py --dias 20 --segundos 1800 >> data/sweep_cron.log 2>&1
 
 # 4) consolida, limpa DBs de shard, sincroniza p/ a VM-1
+# Shard só se apaga com o merge em rc=0: merge que falhou deixa o trabalho do dia SÓ nos shards — apagá-los
+# perdia a coleta em silêncio. Falhou → shards ficam (o próximo --merge os consolida) e nada vai à VM-1.
 .venv/bin/python sei_pcrj_sweep.py --merge >> data/sweep_cron.log 2>&1
+rc_merge=$?
+if [ "$rc_merge" -ne 0 ]; then
+  echo "$(date -Is) ERRO: --merge rc=$rc_merge — shards MANTIDOS ($(ls data/sei_pcrj_[0-9]*.db 2>/dev/null | wc -l) arquivo(s)); sem sync p/ shared-brain" >> data/sweep_cron.log
+  exit "$rc_merge"
+fi
 rm -f data/sei_pcrj_[0-9]*.db
 cp -f data/sei_pcrj.db ~/shared-brain/sei_pcrj.db 2>/dev/null
 echo "$(date -Is) sweep concluído ($N shards); DB -> shared-brain" >> data/sweep_cron.log

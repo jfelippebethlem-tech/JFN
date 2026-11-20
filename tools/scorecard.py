@@ -24,6 +24,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+from compliance_agent.reporting.intel_base import inteiro, reais  # noqa: E402
 DB = REPO / "data" / "compliance.db"
 OUT_JSON = REPO / "data" / "scorecard.json"
 OUT_MD = REPO / "data" / "scorecard.md"
@@ -69,27 +71,32 @@ def _py_totais() -> dict:
 
 
 def _golden() -> dict:
+    """Fatos canônicos de OB — SEMPRE do SIAFE (`ob_orcamentaria_siafe`) pela régua única `_ob_paga`, nunca do
+    espelho TFE. Chaves novas em 20/11/2026 (`ob_pagas`, `mgs_pago`…): o snapshot anterior media o espelho e um
+    delta entre as duas fontes seria número falso. O SIAFE da casa cobre 2021+ — antes é INDISPONÍVEL, não zero."""
     if not DB.exists():
         return {"erro": "db ausente"}
-    norm = "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')"
-    with sqlite3.connect(str(DB)) as c:
-        total = c.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
-        com_cnpj = c.execute(
-            f"SELECT SUM(CASE WHEN length({norm})=14 THEN 1 ELSE 0 END) FROM ordens_bancarias"
-        ).fetchone()[0] or 0
-        mgs = c.execute(
-            f"SELECT COUNT(*), ROUND(SUM(valor),2) FROM ordens_bancarias WHERE {norm}=?",
-            ("19088605000104",),
-        ).fetchone()
-        iterj = c.execute(
-            "SELECT COUNT(*), ROUND(SUM(valor),2) FROM ordens_bancarias WHERE ug_codigo=?",
-            ("133100",),
-        ).fetchone()
+    from compliance_agent.cruzamentos_intel import _ob_paga
+
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        pago = _ob_paga(con)
+        total, com_cnpj, ano_ini = con.execute(
+            f"SELECT COUNT(*), SUM(length(credor)=14), MIN(exercicio) FROM ob_orcamentaria_siafe "
+            f"WHERE {pago} AND exercicio>=2021").fetchone()
+        mgs = con.execute(f"SELECT COUNT(*), ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe WHERE {pago} "
+                          "AND credor=?", ("19088605000104",)).fetchone()
+        iterj = con.execute(f"SELECT COUNT(*), ROUND(SUM(valor),2) FROM ob_orcamentaria_siafe WHERE {pago} "
+                            "AND ug_emitente=?", ("133100",)).fetchone()
+    finally:
+        con.close()
     return {
-        "total_obs": total,
-        "pct_cnpj": round(100 * com_cnpj / total, 1) if total else 0,
-        "mgs_obs": mgs[0], "mgs_total": mgs[1],
-        "iterj_obs": iterj[0], "iterj_total": iterj[1],
+        "fonte_ob": "SIAFE (ob_orcamentaria_siafe, régua _ob_paga)",
+        "cobertura_ob": f"{ano_ini or 2021}+ (antes: INDISPONÍVEL no SIAFE)",
+        "ob_pagas": total,
+        "pct_ob_a_cnpj": round(100 * (com_cnpj or 0) / total, 1) if total else None,
+        "mgs_ob": mgs[0], "mgs_pago": mgs[1] or 0.0,
+        "iterj_ob": iterj[0], "iterj_pago": iterj[1] or 0.0,
     }
 
 
@@ -124,6 +131,14 @@ def _delta(novo, velho) -> str:
     return f" ({seta}{abs(d):g})"
 
 
+def _int(n) -> str:
+    return "INDISPONÍVEL" if n is None else inteiro(n)
+
+
+def _rs(v) -> str:
+    return "INDISPONÍVEL" if v is None else reais(v)
+
+
 def render_md(sc: dict, prev: dict | None) -> str:
     pv = prev or {}
     L = [
@@ -148,15 +163,17 @@ def render_md(sc: dict, prev: dict | None) -> str:
         L.append(f"| `{f}` | {loc}{_delta(loc, pgf.get(f))} |")
     g = sc["golden"]
     pg = pv.get("golden", {})
+    pct = g.get("pct_ob_a_cnpj")
     L += [
         "",
-        "## Regressão factual (Eixo D) — golden numbers",
+        f"## Regressão factual (Eixo D) — golden numbers ({g.get('fonte_ob', 'fonte não medida')}, "
+        f"{g.get('cobertura_ob', '—')})",
         "| Fato canônico | Valor |",
         "|---|---|",
-        f"| Cobertura (OBs) | {g.get('total_obs')}{_delta(g.get('total_obs'), pg.get('total_obs'))} |",
-        f"| % com CNPJ | {g.get('pct_cnpj')}% |",
-        f"| MGS Clean | {g.get('mgs_obs')} OBs · R$ {g.get('mgs_total')} |",
-        f"| ITERJ (UG 133100) | {g.get('iterj_obs')} OBs · R$ {g.get('iterj_total')} |",
+        f"| OBs pagas | {_int(g.get('ob_pagas'))}{_delta(g.get('ob_pagas'), pg.get('ob_pagas'))} |",
+        f"| % pagas a CNPJ | {'—' if pct is None else str(pct).replace('.', ',') + '%'} |",
+        f"| MGS Clean | {_int(g.get('mgs_ob'))} OBs · {_rs(g.get('mgs_pago'))} |",
+        f"| ITERJ (UG 133100) | {_int(g.get('iterj_ob'))} OBs · {_rs(g.get('iterj_pago'))} |",
         "",
         "> Eixos B (qualidade de output: /relatorio, /orgao, Lex) e C (roteamento de IAs) "
         "têm harness próprio. Ver o plano.",
