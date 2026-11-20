@@ -6,7 +6,7 @@ documentos do acervo (60%) foram lidos pelo Tesseract. O trabalhador do it-campo
 `data/sei_cache/integra_<tag>/NNN.ocr_gpu.txt` (+ `.ocr_gpu.json`); este integrador:
 
   · documento SEM texto (< 40 chars)        → preenche (texto/NNN_<slug>.txt com o cabeçalho da casa);
-  · documento que JÁ TEM texto (Tesseract/reserva) → NUNCA substitui; o da GPU fica ao lado (`.gpu.txt`);
+  · documento que JÁ TEM texto (Tesseract/reserva) → NUNCA substitui; o novo fica ao lado (`.gpu.txt` Surya, `.reserva.txt` RapidOCR);
   · documento NATIVO (texto do próprio PDF)  → NUNCA toca (texto nativo é a verdade; OCR só piora);
   · texto da GPU vazio                       → não aplica.
 Idempotente (registro em `data/sei_ocr_gpu_aplicado.jsonl`). Depois avisa a propagação (`sei_arquivado`).
@@ -154,10 +154,11 @@ def integrar() -> dict:
                     # se mede só por CNPJ — então o texto existente NUNCA é substituído: o da GPU fica AO LADO
                     # (`.gpu.txt`), como complemento para quem lê, e o canônico não muda.
                     antigo = ARQUIVO / tag / d["texto"]
-                    ao_lado = antigo.with_suffix(".gpu.txt")
+                    nome = "gpu" if motor == "surya" else "reserva"           # um arquivo ao lado POR motor
+                    ao_lado = antigo.with_suffix(f".{nome}.txt")
                     if not ao_lado.exists():
                         ao_lado.write_text(cab + texto, encoding="utf-8")
-                        d["ocr_gpu_ao_lado"] = str(ao_lado.relative_to(ARQUIVO / tag))
+                        d[f"ocr_{nome}_ao_lado"] = str(ao_lado.relative_to(ARQUIVO / tag))
                         mudou = True
                     parcial["mantidos"] += 1
                     da_pasta.append({**reg, "acao": "mantido_existente_gpu_ao_lado"})

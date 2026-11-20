@@ -65,17 +65,18 @@ def test_reserva_preenche_substitui_tesseract_e_nunca_toca_nativo(casa):
     _entrega(casa, 2, "lixo da reserva que não pode substituir o texto nativo do PDF", "reserva")
     res = G.integrar()
     d = _docs(arq)
-    assert res["preenchidos"] == 1 and res["substituidos"] == 1 and res["nativos_mantidos"] == 1
+    assert res["preenchidos"] == 1 and res["substituidos"] == 0 and res["nativos_mantidos"] == 1
     assert d[0]["ocr_motor"].startswith("reserva:") and d[0]["texto_recuperado_ocr_reserva"] is True
     assert "94.999,98" in (arq / d[0]["texto"]).read_text()
-    assert d[1]["ocr_motor"].startswith("reserva:") and "RFO" in (arq / d[1]["ocr_anterior"]).read_text()
-    assert d[1]["ocr_anterior"].endswith(".tesseract.txt")
+    # 20/11/2026 (dono: 100% acurado): texto existente NUNCA é substituído; o novo OCR fica ao lado
+    assert "ocr_motor" not in d[1] and "RFO" in (arq / d[1]["texto"]).read_text()
+    assert d[1]["ocr_reserva_ao_lado"].endswith(".reserva.txt")
     assert "lixo" not in (arq / "texto" / "002_desp.txt").read_text() and "ocr_motor" not in d[2]   # negativo
     motores = {json.loads(ln)["motor"] for ln in (casa / "ledger.jsonl").read_text().splitlines()}
     assert motores == {"reserva"}
 
 
-def test_surya_substitui_reserva_quando_chega_e_guarda_os_dois_anteriores(casa):
+def test_surya_nao_substitui_reserva_fica_ao_lado(casa):
     arq = _manifesto(casa, [{"i": 1, "titulo": "Pub", "fase": "x", "tipo": "outro", "texto": "texto/001_pub.txt",
                              "chars": 60, "ocr": True}],
                      {"001_pub.txt": "[Pub]\n\nDIÁRIO E) OFICIAL DO RFO tesseract original"})
@@ -84,10 +85,10 @@ def test_surya_substitui_reserva_quando_chega_e_guarda_os_dois_anteriores(casa):
     _entrega(casa, 1, "DIÁRIO OFICIAL DO ESTADO DO RIO DE JANEIRO lido pelo Surya na GPU", "surya")
     res = G.integrar()
     d = _docs(arq)[1]
-    assert res["substituidos"] == 1 and d["ocr_motor"].startswith("surya")
-    assert "Surya" in (arq / d["texto"]).read_text()
-    assert d["ocr_anterior"].endswith(".reserva.txt") and "reserva da VM-2" in (arq / d["ocr_anterior"]).read_text()
-    assert "tesseract original" in (arq / "texto" / "001_pub.tesseract.txt").read_text()   # o do Tesseract segue lá
+    assert res["substituidos"] == 0 and "ocr_motor" not in d
+    assert "tesseract original" in (arq / d["texto"]).read_text()                    # canônico intocado
+    assert "reserva da VM-2" in (arq / d["ocr_reserva_ao_lado"]).read_text()
+    assert "Surya" in (arq / d["ocr_gpu_ao_lado"]).read_text()
 
 
 def test_reserva_que_chega_depois_do_surya_nao_entra(casa):
