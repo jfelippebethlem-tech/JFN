@@ -225,6 +225,306 @@ def arquivo_retomado(outdir: Path, i: int, doc: dict) -> Path | None:
     return None
 
 
+# ── "GERAR PDF DO PROCESSO" EM LOTES (20/11/2026) ────────────────────────────────────────────────────────────────────
+# COMPLEMENTO do laço doc a doc, não substituto. O SEI gera um PDF de vários documentos de uma vez ("Apenas
+# selecionados", campo oculto `hdnDocumentosApenas` = `id±título¥…`) e o PDF traz um MARCADOR por documento (título +
+# nº SEI). Medido no teste real de 20/11 (5 processos): lotes de 40 = 30–40× mais rápido que doc a doc (10 docs: 11 s ×
+# 432 s/897 requisições; 738 docs: 19 lotes ~23 min × 4 timeouts de 3 h). Mas: "Todos" falha ≥ ~150 docs (HTTP 500);
+# UM documento ruim aborta o lote inteiro ("Erro na manipulação do documento X"); e 2 de 738 documentos foram OMITIDOS
+# SEM AVISO. Por isso: lote de 40, recusado sai do lote (e vai ao laço), 500/teto divide ao meio, e cada documento só
+# conta como vindo se o MARCADOR dele está no PDF — casado pelo nº SEI, NUNCA pela posição. O que faltou (omitido calado,
+# recusado, vazio, sem nº para casar) fica sem arquivo e o laço atual, que pula o que existe, busca só isso.
+# Reversão rápida: SEI_PDF_LOTES=0.
+PDF_LOTES = os.environ.get("SEI_PDF_LOTES", "1") != "0"
+TAM_LOTE = int(os.environ.get("SEI_PDF_LOTE_TAM", "40"))
+TETO_LOTE_S = int(os.environ.get("SEI_PDF_LOTE_TETO_S", "360"))        # medido: lote de 40 em 12–139 s
+# JANELA DENTRO DO browser_lock (idade_max 30 min: depois disso outro processo toma a trava como órfã). Contadas da
+# aquisição da trava: lotes novos só começam até 20 min; o laço doc a doc para aos 25 min. O que ficou retoma na
+# próxima passada a partir do que já está salvo (pelo id).
+JANELA_LOTES_S = int(os.environ.get("SEI_PDF_JANELA_S", "1200"))
+JANELA_TOTAL_S = int(os.environ.get("SEI_PDF_JANELA_TOTAL_S", "1500"))
+LOTES_DIR = "_lotes"            # PDF do lote vive aqui só até ser cortado (disco da VM a 94%: 738 docs = 3,9 GB)
+_RX_GERAR = re.compile(r"controlador\.php\?acao=procedimento_gerar_pdf[^\"'\\\s<>]*")
+_RX_ERRO_DOC = re.compile(r'Erro na manipula\w+ do documento "([^"]+)"')
+_RX_CARIMBO = re.compile(r"^.*SEI SEI-\d{6}/\d{6}/\d{4} / pg\. \d+\s*$", re.M)   # rodapé que o SEI põe em cada página
+
+
+def _num_sei(titulo: str) -> str:
+    from compliance_agent.sei.manifesto_norm import numero_sei_do_titulo
+    return numero_sei_do_titulo(titulo)
+
+
+def valor_documentos_apenas(lote: list[dict]) -> str:
+    """O `hdnDocumentosApenas` do formulário: `id±título¥id±título…` (o SEI usa o id; título higienizado)."""
+    return "¥".join(f"{id_documento(x)}±{(x.get('t') or '')[:80].replace('¥', ' ').replace('±', ' ')}" for x in lote)
+
+
+def doc_recusado(mensagem: str, lote: list[tuple[int, dict]]) -> tuple[int, dict] | None:
+    """Qual documento do lote o SEI recusou ("Erro na manipulação do documento <título>"): pelo nº SEI do título da
+    mensagem; sem nº, pelo título idêntico. Ambíguo ou ausente → None (o chamador divide o lote para isolar)."""
+    n = _num_sei(mensagem)
+    cands = [(i, x) for i, x in lote if n and _num_sei(x.get("t") or "") == n]
+    if not cands:
+        alvo = (mensagem or "").strip()
+        cands = [(i, x) for i, x in lote if (x.get("t") or "").strip() == alvo]
+    return cands[0] if len(cands) == 1 else None
+
+
+def segmentos_por_marcador(pdf: "fitz.Document") -> dict[str, list | None]:
+    """{nº SEI: [páginas (0-based)…]} pelos marcadores de nível 1. Um nº que aparece em dois marcadores fica com
+    `None` — ambíguo, não se corta (melhor ir ao laço que gravar o teor de um documento no lugar de outro)."""
+    ent = sorted(((t[1], t[2] - 1) for t in pdf.get_toc(simple=True) if t[0] == 1 and t[2] >= 1), key=lambda e: e[1])
+    seg: dict[str, list | None] = {}
+    for k, (tit, p0) in enumerate(ent):
+        p1 = ent[k + 1][1] if k + 1 < len(ent) else pdf.page_count
+        n = _num_sei(tit)
+        if not n:
+            continue
+        seg[n] = None if n in seg else list(range(p0, max(p0 + 1, p1)))
+    return seg
+
+
+def _gravar_peca(pdf: "fitz.Document", paginas: list[int], fp: Path, titulo: str) -> bool:
+    """Grava UM documento cortado do PDF do lote em `fp`: as PÁGINAS ORIGINAIS do marcador, sem a linha do carimbo de
+    rodapé do SEI (removida por redação, para não entrar no texto do acervo). Nativo sai com a camada de texto do SEI;
+    escaneado/foto sai como imagem e o `sei_arquivar` faz o OCR como hoje.
+
+    Re-renderizar o texto (`gravar_doc`) era o óbvio e custou 98% do tempo: 46 docs/663 págs em 522 s (16.643
+    `insert_textbox`) contra 3,6 s copiando as páginas — e o disco ficou igual (71 × 78 MB), com as fotos preservadas
+    (medido 20/11). Sem texto, sem imagem e sem desenho → False (vazio: o laço tenta pela árvore)."""
+    tem_teor = False
+    for p in paginas:
+        pg = pdf[p]
+        t = _RX_CARIMBO.sub("", pg.get_text("text")).strip()
+        # texto próprio, imagem (scan/foto) ou texto DESENHADO (espelho do SIAFE vem em vetor: 2.431 traços e só o
+        # carimbo como texto, medido 20/11 — o OCR do arquivador lê)
+        if len(t) >= 15 or pg.get_images() or len(pg.get_drawings()) >= 50:
+            tem_teor = True
+            break
+    if not tem_teor:
+        return False
+    peca = fitz.open()
+    try:
+        peca.insert_pdf(pdf, from_page=paginas[0], to_page=paginas[-1])   # páginas contíguas do marcador
+        for pg in peca:
+            # só a LINHA do carimbo ("<título>   SEI SEI-…/… / pg. N"), pelo bbox dela: uma faixa de largura total
+            # apagava célula de tabela e texto vizinho (medido 20/11). O `dict` só na faixa de cada "SEI SEI-" (o da
+            # página inteira custava 35 s em 663 págs). Só TEXTO sai: imagem e traço que cruzem a linha ficam.
+            # página GIRADA (anexo em paisagem, 270°): a faixa do search_for sai noutro sistema de coordenadas — lá
+            # vai o `dict` da página inteira (raro; 3 de 663 págs no 510001/001547/2025)
+            achou = False
+            faixas = [None] if pg.rotation else [fitz.Rect(pg.rect.x0, r.y0 - 1, pg.rect.x1, r.y1 + 1)
+                                                  for r in pg.search_for("SEI SEI-")]
+            for faixa in faixas:
+                for bloco in pg.get_text("dict", clip=faixa).get("blocks", []):
+                    for linha in bloco.get("lines", []):
+                        if _RX_CARIMBO.search("".join(s.get("text", "") for s in linha.get("spans", []))):
+                            pg.add_redact_annot(fitz.Rect(linha["bbox"]))
+                            achou = True
+            if achou:
+                pg.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE, graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+        peca.save(str(fp), garbage=3, deflate=True)
+    finally:
+        peca.close()
+    return True
+
+
+def cortar_lote(pdf_path: Path, lote: list[tuple[int, dict]], outdir: Path) -> dict:
+    """CONFERÊNCIA + CORTE: lista pedida × marcadores presentes. Cada documento pedido cujo nº SEI tem marcador vira
+    `outdir/NNN.pdf` (NNN = posição NA ENUMERAÇÃO ATUAL, o mesmo nome do laço) com o dono registrado pelo id.
+    Devolve {gravados, omitidos (pedido sem marcador — o SEI omite CALADO), vazios, sem_numero, extras}."""
+    r = {"gravados": [], "omitidos": [], "vazios": [], "sem_numero": [], "extras": []}
+    pdf = fitz.open(str(pdf_path))
+    try:
+        seg = segmentos_por_marcador(pdf)
+        pedidos = set()
+        for i, x in lote:
+            n = _num_sei(x.get("t") or "")
+            pedidos.add(n)
+            if not n:
+                r["sem_numero"].append(i)
+                continue
+            paginas = seg.get(n)
+            if not paginas:                     # ausente OU ambíguo
+                r["omitidos"].append(i)
+                continue
+            fp = outdir / f"{i:03d}.pdf"
+            try:
+                ok = _gravar_peca(pdf, paginas, fp, x.get("t") or "")
+            except (RuntimeError, ValueError, OSError):
+                ok = False
+            if ok and fp.exists() and fp.stat().st_size > 0:
+                registrar_dono(outdir, i, x)
+                r["gravados"].append(i)
+            else:
+                fp.unlink(missing_ok=True)
+                r["vazios"].append(i)
+        r["extras"] = sorted(n for n in seg if n not in pedidos)
+    finally:
+        pdf.close()
+    return r
+
+
+async def _url_gerar_pdf(pg) -> str | None:
+    """O link `procedimento_gerar_pdf` (com o infra_hash da sessão) — está no HTML do frame da árvore."""
+    import html as _html
+    for fr in pg.frames:
+        try:
+            m = _RX_GERAR.search(await fr.content())
+        except PWError:
+            continue
+        if m:
+            return "https://sei.rj.gov.br/sei/" + _html.unescape(m.group(0))
+    return None
+
+
+async def _pedir_lote_sei(pg, url: str, valor: str, destino: Path, teto: float = TETO_LOTE_S) -> tuple[str, str]:
+    """Submete o formulário "Gerar PDF" com os documentos do lote e espera: ("ok", "") com o PDF salvo em `destino`;
+    ("erro_doc", título que o SEI recusou); ("erro_500", texto) ou ("teto", ""). O erro vem do TEXTO da página, não
+    de um teto fixo de tamanho de lote."""
+    import time as _t
+    baixados: list = []
+
+    def ouvir(dl):              # função de verdade: o Playwright recusa builtin (`list.append`) como handler
+        baixados.append(dl)
+    paginas = list(pg.context.pages)
+    for p in paginas:
+        p.on("download", ouvir)
+
+    def _nova(p):
+        paginas.append(p)
+        p.on("download", ouvir)
+    pg.context.on("page", _nova)
+    try:
+        vf = await SR._frame_visualizacao(pg)
+        if vf is None:
+            return "erro_500", "sem ifrVisualizacao"
+        await vf.goto(url, timeout=120000)
+        vf = await SR._frame_visualizacao(pg)
+        await vf.evaluate("""(v)=>{document.getElementById('optApenas').checked=true;
+            document.getElementById('hdnDocumentosApenas').value=v;
+            document.getElementById('hdnFlagGerar').value='1';
+            document.getElementById('frmProcedimentoPdf').submit();}""", valor)
+        fim = _t.monotonic() + teto
+        while _t.monotonic() < fim:
+            await asyncio.sleep(2)
+            if baixados:
+                await baixados[0].save_as(str(destino))
+                return "ok", ""
+            try:
+                vf = await SR._frame_visualizacao(pg)
+                tx = await vf.evaluate("()=>document.body?document.body.innerText:''") if vf else ""
+            except PWError:
+                continue
+            m = _RX_ERRO_DOC.search(tx or "")
+            if m:
+                return "erro_doc", m.group(1)
+            if "Erro gerando PDF" in (tx or ""):
+                return "erro_500", (tx or "")[:200]
+        return "teto", ""
+    finally:
+        pg.context.remove_listener("page", _nova)
+        for p in paginas:
+            try:
+                p.remove_listener("download", ouvir)
+            except (PWError, ValueError, KeyError):
+                pass
+
+
+async def gerar_pdf_lotes(pg, docs: list[dict], outdir: Path, *, prazo: float | None = None, pedir=None,
+                          tam: int = TAM_LOTE) -> dict:
+    """Busca pelo "Gerar PDF" em lotes os documentos que ainda NÃO têm arquivo (retomada pelo id) e grava cada um em
+    `NNN.pdf`. `prazo` (time.monotonic) = último instante para COMEÇAR um lote. `pedir(lote, destino)` → (status, info)
+    é injetável (testes); por padrão submete o formulário do SEI na página `pg`.
+
+    Devolve {via: {i: "pdf_nativo"}, recusados [{i, motivo}], omitidos, vazios, sem_numero, pendentes_janela (posições
+    `i`), extras, lotes_ok, lotes_pedidos, erro}. Nada aqui marca captura completa: o laço seguinte decide, documento a
+    documento."""
+    import time as _t
+    r = {"via": {}, "recusados": [], "omitidos": [], "vazios": [], "sem_numero": [], "pendentes_janela": [],
+         "extras": [], "lotes_ok": 0, "lotes_pedidos": 0, "erro": None}
+    alvo = [(i, x) for i, x in enumerate(docs) if id_documento(x) and arquivo_retomado(outdir, i, x) is None]
+    if not alvo:
+        return r
+    if pedir is None:
+        url = await _url_gerar_pdf(pg)
+        if not url:
+            r["erro"] = "link procedimento_gerar_pdf não achado"
+            return r
+
+        async def pedir(lote, destino):
+            return await _pedir_lote_sei(pg, url, valor_documentos_apenas([x for _, x in lote]), destino)
+    tmp = outdir / LOTES_DIR
+    tmp.mkdir(parents=True, exist_ok=True)
+    for velho in tmp.glob("*.pdf"):           # lote de uma rodada morta no meio: nunca foi cortado, não vale
+        velho.unlink(missing_ok=True)
+    fila = [alvo[k:k + tam] for k in range(0, len(alvo), tam)]
+    seq = 0
+    while fila:
+        lote = fila.pop(0)
+        if prazo is not None and _t.monotonic() > prazo:
+            r["pendentes_janela"] += [i for i, _ in lote] + [i for lt in fila for i, _ in lt]
+            break
+        seq += 1
+        destino = tmp / f"lote_{seq:03d}.pdf"
+        r["lotes_pedidos"] += 1
+        t0 = _t.monotonic()
+        try:
+            status, info = await pedir(lote, destino)
+        except (PWError, asyncio.TimeoutError, OSError) as e:
+            status, info = "erro_500", f"{type(e).__name__}: {str(e)[:80]}"
+        print(f"  lote {seq} ({len(lote)} docs): {status} em {_t.monotonic() - t0:.0f}s"
+              + (f" — {info[:80]}" if info else ""), flush=True)
+        if status == "ok":
+            r["lotes_ok"] += 1
+            try:
+                c = cortar_lote(destino, lote, outdir)
+            except (RuntimeError, ValueError, OSError) as e:   # PDF ilegível: nada deste lote conta como vindo
+                print(f"  lote {seq}: PDF ilegível ({str(e)[:60]}) — os {len(lote)} docs vão ao laço", flush=True)
+                c = {"gravados": [], "omitidos": [i for i, _ in lote], "vazios": [], "sem_numero": [], "extras": []}
+            finally:
+                destino.unlink(missing_ok=True)   # texto já extraído: o PDF do lote não fica no disco
+            for i in c["gravados"]:
+                r["via"][i] = "pdf_nativo"
+            for k in ("omitidos", "vazios", "sem_numero", "extras"):
+                r[k] += c[k]
+            if c["omitidos"]:
+                print(f"  lote {seq}: {len(c['omitidos'])} documento(s) pedido(s) SEM marcador no PDF (omitidos "
+                      "calados pelo SEI) — vão ao laço", flush=True)
+            continue
+        destino.unlink(missing_ok=True)
+        if status == "erro_doc":
+            quem = doc_recusado(info, lote)
+            if quem is not None:
+                r["recusados"].append({"i": quem[0], "motivo": f"SEI: erro na manipulação do documento ({info[:120]})"})
+                resto = [e for e in lote if e[0] != quem[0]]
+                if resto:
+                    fila.insert(0, resto)
+                continue
+        # 500 / teto / recusa que não se identifica: divide ao meio até isolar
+        if len(lote) > 1:
+            h = len(lote) // 2
+            fila[0:0] = [lote[:h], lote[h:]]
+        else:
+            r["recusados"].append({"i": lote[0][0], "motivo": f"SEI: {status} com o documento sozinho"})
+    return r
+
+
+def resumo_lotes(res: dict, docs: list[dict]) -> dict:
+    """O que vai ao manifest (`pdf_lotes`): contagens e, por documento que NÃO veio pelo PDF, id/nº/título/motivo."""
+    def _ent(i, motivo):
+        x = docs[i]
+        return {"i": i, "id_documento": id_documento(x), "numero_sei": _num_sei(x.get("t") or ""),
+                "titulo": x.get("t") or "", "motivo": motivo}
+    return {"via_pdf": len(res["via"]), "lotes_ok": res["lotes_ok"], "lotes_pedidos": res["lotes_pedidos"],
+            "erro": res["erro"],
+            "recusados": [_ent(e["i"], e["motivo"]) for e in res["recusados"]],
+            "omitidos": [_ent(i, "sem marcador no PDF do lote") for i in res["omitidos"]],
+            "vazios": [_ent(i, "marcador sem texto nem imagem") for i in res["vazios"]],
+            "sem_numero": [_ent(i, "título sem nº SEI para casar com o marcador") for i in res["sem_numero"]],
+            "pendentes_janela": len(res["pendentes_janela"]), "extras_fora_do_pedido": res["extras"][:50]}
+
+
 async def main():
     G.cleanup_orphans()
     ok, m = G.preflight()
@@ -238,7 +538,9 @@ async def main():
             # processo quando o que houve foi a VM ocupada. 75 = EX_TEMPFAIL.
             print("ADIADO por carga:", m, flush=True)
             return 75
-    outdir = Path(f"data/sei_cache/integra_{TAG}"); outdir.mkdir(parents=True, exist_ok=True)
+    # SEI_INTEGRA_RAIZ: diretório de ENSAIO (teste real sem tocar o cache de produção); padrão data/sei_cache
+    outdir = Path(os.environ.get("SEI_INTEGRA_RAIZ") or "data/sei_cache") / f"integra_{TAG}"
+    outdir.mkdir(parents=True, exist_ok=True)
     # MUTEX REAL DO NAVEGADOR — o mesmo que `sei_reader.ler()` e `extrair_primarios_v3` usam. Este
     # roteiro abria o Playwright DIRETO, fora do lock, e por isso quem quisesse não somar dois
     # Chromium (que já derrubaram esta VM 4×) tinha de inventar uma guarda por fora.
@@ -259,6 +561,10 @@ async def main():
         # abrir/fechar janela nem relogar a cada processo. Sem ela, lança um navegador como sempre (VM-1/VM-2).
         b, ctx, fixo = await SR.navegador_sei(
             pw, args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
+        import time as _tm
+        t_lock = _tm.monotonic()              # as janelas dos lotes contam da aquisição da trava (idade_max 30 min)
+        n_req = [0]                           # requisições ao SEI nesta captura (medida do custo de cada via)
+        ctx.on("request", lambda rq: n_req.__setitem__(0, n_req[0] + ("sei.rj.gov.br" in rq.url)))
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
             if not await SR.entrar(pg, fixo=fixo, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
@@ -374,11 +680,14 @@ async def main():
                 print(f"ÁRVORE ENCOLHEU: {len(docs)} nós agora, {n_antes} numa captura anterior — "
                       "captura NÃO marcada completa", flush=True)
 
+            lotes_res: dict = {}              # resumo do "Gerar PDF" em lotes (vazio = desligado/não rodou)
+
             def _grava(man: list, completo: bool) -> None:
                 tmp = outdir / "manifest.json.tmp"   # atômico: morte no meio não corrompe
                 tmp.write_text(_json.dumps(
                     {"processo": PROC, "total_arvore": max(len(docs), n_antes),
                      "completo": completo and not encolheu,
+                     **({"pdf_lotes": lotes_res} if lotes_res else {}),
                      "docs": man}, ensure_ascii=False, indent=1), encoding="utf-8")
                 tmp.replace(man_path)
 
@@ -396,18 +705,57 @@ async def main():
                     return False
                 return await SR._frame_arvore(aba) is not None
 
+            # por qual via cada documento JÁ salvo veio numa rodada anterior (pelo id; lido antes do 1º _grava)
+            try:
+                _ant = _json.loads(man_path.read_text(encoding="utf-8"))
+                via_ant = {id_documento(e): e.get("via") for e in (_ant.get("docs") or [])
+                           if isinstance(e, dict) and e.get("via") and id_documento(e)}
+            except (OSError, ValueError, AttributeError):
+                via_ant = {}
             ret = preparar_retomada(outdir, docs)   # ANTES do primeiro _grava: lê o dono de cada PDF no manifesto anterior
             if ret["movidos"]:
                 print(f"RETOMADA POR ID: {ret['mantidos']} PDFs no lugar, {ret['movidos']} mudaram de posição "
                       f"(guardados em {RETOMADA}/ pelo id)", flush=True)
             manifest = []
             _grava(manifest, False)   # marca "em andamento" já no primeiro instante
+            # COMPLEMENTO PRIORITÁRIO: "Gerar PDF" em lotes ANTES do laço. O que vier vira `NNN.pdf` (dono pelo id) e o
+            # laço abaixo pula; o que faltar (omitido calado, recusado, vazio) o laço busca pela árvore, como sempre.
+            # Falha do complemento nunca derruba a captura — o laço segue com tudo o que faltar.
+            via_pdf: dict = {}
+            pendentes: set = set()
+            if PDF_LOTES:
+                t_l = _tm.monotonic()
+                try:
+                    res = await gerar_pdf_lotes(pg, docs, outdir, prazo=t_lock + JANELA_LOTES_S)
+                except (PWError, asyncio.TimeoutError, OSError, RuntimeError, ValueError, AttributeError,
+                        TypeError, KeyError) as e:
+                    # o complemento NUNCA derruba a captura (ensaio 20/11: um AttributeError do Playwright derrubou)
+                    print(f"PDF EM LOTES falhou ({type(e).__name__}: {str(e)[:80]}) — sigo pelo laço", flush=True)
+                    res = None
+                if res is not None:
+                    via_pdf, pendentes = res["via"], set(res["pendentes_janela"])
+                    lotes_res = resumo_lotes(res, docs)
+                    lotes_res["s"] = round(_tm.monotonic() - t_l, 1)
+                    print(f"PDF EM LOTES: {len(via_pdf)}/{len(docs)} docs em {lotes_res['s']:.0f}s "
+                          f"({res['lotes_ok']}/{res['lotes_pedidos']} lotes; recusados {len(res['recusados'])}, "
+                          f"omitidos {len(res['omitidos'])}, vazios {len(res['vazios'])}, "
+                          f"sem nº {len(res['sem_numero'])}, pendentes da janela {len(pendentes)})"
+                          + (f" — {res['erro']}" if res["erro"] else ""), flush=True)
+            cortado_janela = False
             baixados_desde = 0
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
+                via = None
                 if arquivo_retomado(outdir, i, x) is not None:
                     paths.append(fp); ok = True     # retomada PELO ID: não rebaixa o que já veio deste documento
+                    via = via_pdf.get(i) or via_ant.get(id_documento(x))
+                elif PDF_LOTES and (i in pendentes or _tm.monotonic() > t_lock + JANELA_TOTAL_S):
+                    # JANELA DO browser_lock esgotada: não tenta agora; a próxima passada retoma (pelos lotes, que são
+                    # mais rápidos) a partir do que já está salvo. A captura NÃO fecha completa.
+                    if not cortado_janela:
+                        print(f"JANELA esgotada no doc {i}/{len(docs)} — o resto fica para a próxima passada", flush=True)
+                    cortado_janela = True
                 else:
                     if hora_de_renovar(baixados_desde):
                         import time as _t
@@ -431,18 +779,22 @@ async def main():
                         # antigo). 450 = 300 do OCR + ~150 de download/render/click, com folga.
                         # Só dispara se algo travar de verdade (o request tem timeout próprio, 45s).
                         if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "450"))):
-                            paths.append(fp); ok = True
+                            paths.append(fp); ok = True; via = "arvore"
                     except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
                         print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
                 if ok:
                     registrar_dono(outdir, i, x)
                 manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
                                  "contexto": x.get("pai") or "", "url": x.get("u") or "",
-                                 "id_documento": id_documento(x), "ok": ok})
+                                 "id_documento": id_documento(x), "ok": ok, **({"via": via} if via else {})})
                 _grava(manifest, False)
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)
-            _grava(manifest, True)
+            _grava(manifest, not cortado_janela)
+            print(f"REQUISIÇÕES SEI: {n_req[0]} · via pdf_nativo {sum(1 for e in manifest if e.get('via') == 'pdf_nativo')}"
+                  f" · via arvore {sum(1 for e in manifest if e.get('via') == 'arvore')}"
+                  f" · faltando {sum(1 for e in manifest if not e['ok'])}"
+                  f" · {_tm.monotonic() - t_lock:.0f}s desde a trava", flush=True)
             # NÓ DE CAPTURA (it-campo): o lote entregue à VM-1 leva `arquivo/` e `cache/integra_<proc>/` — o PDF
             # único abaixo NÃO vai, e `sei_integra_vm2._limpar_local` o apaga depois da entrega. Montá-lo era só
             # custo: 14/11/2026, quatro deles com 0,6–1,0 GB, juntados inteiros na memória (`garbage=4`) por

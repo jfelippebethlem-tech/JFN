@@ -524,6 +524,38 @@ TETO_PROCESSO_S = int(os.environ.get("INTEGRA_TETO_PROCESSO_S", "900"))
 # o arquivador refaz o OCR dos escaneados capturados antes do `.ocr.txt`. O que ele já gravou é reaproveitado
 # na passada seguinte, mas a volta inteira se perde. O nó paralelo usa 3600; o padrão segue 900.
 TETO_ARQUIVAR_S = int(os.environ.get("INTEGRA_TETO_ARQUIVAR_S", "900"))
+# ÁRVORE GRANDE COM O "GERAR PDF" EM LOTES (20/11/2026): > 150 documentos agora andam (738 docs em ~23 min de lotes,
+# contra 4 timeouts de 3 h doc a doc), mas não cabem em 900 s. A captura se auto-limita a 25 min desde a trava do
+# navegador (`sei_integra_completa.JANELA_TOTAL_S`) e retoma pelo id na passada seguinte; o teto acompanha.
+ARVORE_GRANDE = 150
+TETO_PROCESSO_GRANDE_S = int(os.environ.get("INTEGRA_TETO_PROCESSO_GRANDE_S", "1800"))
+
+
+def _arvore_conhecida(proc: str) -> int:
+    """Maior tamanho de árvore que uma captura anterior registrou (cache e arquivo); 0 se nunca capturado."""
+    tag = re.sub(r"[^0-9]", "_", re.sub(r"^SEI-", "", proc.strip()))
+    maior = 0
+    for man in (CACHE / f"integra_{tag}" / "manifest.json", ARQUIVO / tag / "manifest.json"):
+        try:
+            d = json.loads(man.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict):
+            for v in (d.get("total_arvore"), d.get("docs_na_arvore"), len(d.get("docs") or [])):
+                try:
+                    maior = max(maior, int(v or 0))
+                except (TypeError, ValueError):
+                    pass
+    return maior
+
+
+def _teto_processo(proc: str, env: dict) -> int:
+    """Teto da captura deste processo: o padrão, ou o de árvore grande quando os lotes estão ligados e a árvore
+    conhecida passa de 150 nós."""
+    lotes = (env.get("SEI_PDF_LOTES") or os.environ.get("SEI_PDF_LOTES", "1")) != "0"
+    if lotes and _arvore_conhecida(proc) > ARVORE_GRANDE:
+        return max(TETO_PROCESSO_S, TETO_PROCESSO_GRANDE_S)
+    return TETO_PROCESSO_S
 
 
 def _causa_da_saida(saida: str) -> str:
@@ -548,7 +580,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         # stdout capturado (antes DEVNULL): a captura imprime POR QUE não abriu a árvore, e essa
         # causa morria aqui — o log da fila dizia "ok" para um processo sem nenhum documento.
         r1 = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
-                            cwd=RAIZ, env=env, timeout=TETO_PROCESSO_S, text=True,
+                            cwd=RAIZ, env=env, timeout=_teto_processo(proc, env), text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         rc = r1.returncode
         causas = _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]

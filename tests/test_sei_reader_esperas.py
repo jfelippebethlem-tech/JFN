@@ -112,7 +112,7 @@ def test_no_de_captura_nao_monta_o_pdf_unico_que_o_lote_nao_leva():
     """O desvio fica DEPOIS do manifesto completo e ANTES da junção; sem a variável, a junção segue (VM-1)."""
     from pathlib import Path
     src = (Path(SR.__file__).parent / "sei_integra_completa.py").read_text(encoding="utf-8")
-    completo, desvio, juncao = (src.index("_grava(manifest, True)"), src.index('"SEI_SEM_PDF_UNICO") == "1"'),
+    completo, desvio, juncao = (src.index("_grava(manifest, not cortado_janela)"), src.index('"SEI_SEM_PDF_UNICO") == "1"'),
                                 src.index("out = fitz.open()"))
     assert completo < desvio < juncao
     lote = (Path(SR.__file__).parent / "sei_integra_vm2.py").read_text(encoding="utf-8")
