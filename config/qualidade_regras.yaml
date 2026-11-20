@@ -409,8 +409,8 @@ regras:
     enunciado: >-
       Nenhum código chama API paga sem teto em dinheiro, registro de gasto e chave fora do código. Nunca se supõe
       camada gratuita. O juiz de qualidade e toda chamada feita em nome do Fable saem pela assinatura (CLI), com
-      `backend="cli"`, sem chave no ambiente e sem `--bare`; se a assinatura não comporta o volume, reduz-se a
-      amostra pelo valor e pelo risco.
+      `backend="cli"`, sem chave no ambiente e sem `--bare`; se a assinatura não comporta o volume, a fila do
+      juiz anda mais devagar (correção e risco primeiro) — nunca se troca de backend.
     porque: >-
       Cobrança real em chave que o comentário do código dizia ser gratuita (25/06/2026); ordem do dono em
       13/11/2026: "fable tem que usar assinatura só".
@@ -989,10 +989,16 @@ regras:
   - id: CST-15
     titulo: O juiz de qualidade roda, e o silêncio dele é falha
     enunciado: >-
-      O juiz subjetivo roda todo dia sobre amostra escolhida por valor e risco. Mais de 48 h sem rodada concluída
-      é problema; nota que cai entre rodadas sobre a mesma afirmação é variação a explicar.
-    porque: Sensores que ninguém olhava; verificador "anti-teto" que nunca disparou.
-    medida: Sensor confere a data da última rodada e a tendência das notas.
+      O juiz subjetivo roda todo dia e julga TODAS as afirmações candidatas: veredito vale enquanto o texto (a
+      impressão) não muda; o que mudou ou nunca foi julgado entra na fila, em lotes, até esvaziar. Mais de 48 h sem
+      rodada concluída é problema; afirmação sem veredito para o texto atual há mais de 48 h é problema; nota que cai
+      entre rodadas sobre a mesma afirmação é variação a explicar.
+    porque: >-
+      Sensores que ninguém olhava; verificador "anti-teto" que nunca disparou. 20/11/2026: o juiz julgava 12 de 166
+      candidatas por amostra e o texto corrigido levava dias para ser rejulgado.
+    medida: >-
+      Sensor confere a data da última rodada, a tendência das notas e a cobertura (`data/qualidade_juiz_fila.json`:
+      candidatas, julgadas vigentes, pendentes e a idade da mais antiga).
     aplica: [llm, infra]
     severidade: alta
     acao: Abre item `sensor:juiz`.

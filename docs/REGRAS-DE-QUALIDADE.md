@@ -381,7 +381,7 @@ O inventário é **vivo**: `config/qualidade_inventario.yaml` (superfícies) e `
 
 | | |
 |---|---|
-| **Regra** | Nenhum código chama API paga sem teto em dinheiro, registro de gasto e chave fora do código. Nunca se supõe camada gratuita. O juiz de qualidade e toda chamada feita em nome do Fable saem pela assinatura (CLI), com `backend="cli"`, sem chave no ambiente e sem `--bare`; se a assinatura não comporta o volume, reduz-se a amostra pelo valor e pelo risco. |
+| **Regra** | Nenhum código chama API paga sem teto em dinheiro, registro de gasto e chave fora do código. Nunca se supõe camada gratuita. O juiz de qualidade e toda chamada feita em nome do Fable saem pela assinatura (CLI), com `backend="cli"`, sem chave no ambiente e sem `--bare`; se a assinatura não comporta o volume, a fila do juiz anda mais devagar (correção e risco primeiro) — nunca se troca de backend. |
 | **Por quê** | Cobrança real em chave que o comentário do código dizia ser gratuita (25/06/2026); ordem do dono em 13/11/2026: "fable tem que usar assinatura só". |
 | **Como se mede** | Catraca: variável de chave paga só é lida no módulo de API com teto; o juiz chama o motor com `backend="cli"`. Sensor acusa gasto acumulado ≥ 80% do teto. |
 | **Onde se aplica** | Modelos, Infra, Yoda/Hermes |
@@ -891,9 +891,9 @@ O inventário é **vivo**: `config/qualidade_inventario.yaml` (superfícies) e `
 
 | | |
 |---|---|
-| **Regra** | O juiz subjetivo roda todo dia sobre amostra escolhida por valor e risco. Mais de 48 h sem rodada concluída é problema; nota que cai entre rodadas sobre a mesma afirmação é variação a explicar. |
-| **Por quê** | Sensores que ninguém olhava; verificador "anti-teto" que nunca disparou. |
-| **Como se mede** | Sensor confere a data da última rodada e a tendência das notas. |
+| **Regra** | O juiz subjetivo roda todo dia e julga TODAS as afirmações candidatas: veredito vale enquanto o texto (a impressão) não muda; o que mudou ou nunca foi julgado entra na fila, em lotes, até esvaziar. Mais de 48 h sem rodada concluída é problema; afirmação sem veredito para o texto atual há mais de 48 h é problema; nota que cai entre rodadas sobre a mesma afirmação é variação a explicar. |
+| **Por quê** | Sensores que ninguém olhava; verificador "anti-teto" que nunca disparou. 20/11/2026: o juiz julgava 12 de 166 candidatas por amostra e o texto corrigido levava dias para ser rejulgado. |
+| **Como se mede** | Sensor confere a data da última rodada, a tendência das notas e a cobertura (`data/qualidade_juiz_fila.json`: candidatas, julgadas vigentes, pendentes e a idade da mais antiga). |
 | **Onde se aplica** | Modelos, Infra |
 | **Severidade** | 🟡 Alta |
 | **Quando viola** | Abre item `sensor:juiz`. |
@@ -1023,7 +1023,7 @@ O inventário é **vivo**: `config/qualidade_inventario.yaml` (superfícies) e `
 
 ## 5. Rubricas do juiz
 
-O juiz é o Claude **pela assinatura** (nunca API paga), como juiz e co-motor: ele amostra por valor e risco o que o painel, o vault e o Yoda afirmam e dá nota em cada critério. Nas afirmações já públicas no painel, a cascata gratuita julga a mesma entrada e os dois vereditos ficam lado a lado no banco de cruzamento — a divergência calibra os outros modelos. O veredito da cascata nunca vale sozinho. Material do vault vai só ao Claude.
+O juiz é o Claude **pela assinatura** (nunca API paga), como juiz e co-motor: ele julga TUDO o que o painel, o vault, o Yoda e os produtos afirmam — fila completa por impressão do texto (o que não mudou não volta ao modelo), em lotes de 4 por chamada, por ordem de correção, risco e grupo — e dá nota em cada critério. Nas afirmações já públicas no painel, a cascata gratuita julga a mesma entrada e os dois vereditos ficam lado a lado no banco de cruzamento — a divergência calibra os outros modelos. O veredito da cascata nunca vale sozinho. Material do vault vai só ao Claude.
 
 **Escala (vale para todos os critérios)**
 
@@ -1114,10 +1114,10 @@ O juiz é o Claude **pela assinatura** (nunca API paga), como juiz e co-motor: e
 |---|---|---|---|
 | **Catracas** | `tests/test_regra_*.py` — contam o defeito por arquivo versionado; a dívida só desce, arquivo novo nasce em zero; cada uma tem a prova de que fica vermelha com o defeito | no portão de pre-push (`tools/pre_push_gate.sh`), no CI e no sensor de catracas da automelhoria | saída do pytest; base em `tests/golden/qualidade_base.json` |
 | **Sensores** | `compliance_agent/qualidade/sensores.py` — rodam sobre o dado servido (payload das manchetes, casos do vault, respostas do Yoda, motores, cruzamento) | a cada 3 h, dentro do laço de automelhoria (`tools/automelhoria_geral.py`), e como motor do AO VIVO | `data/qualidade_estado.json`; fila do Yoda (`/melhorias`); painel de conformidade |
-| **Juiz** | `compliance_agent/qualidade/juiz.py` — rubricas da seção 5, Claude pela assinatura, amostra por valor e risco | uma vez por dia (cron), dentro do orçamento diário do motor | `data/qualidade_juiz.json`; painel de conformidade |
+| **Juiz** | `compliance_agent/qualidade/juiz.py` — rubricas da seção 5, Claude pela assinatura, fila completa em lotes (`juiz --ate-esvaziar --minutos N`) | janelas noturnas (cron), dentro do orçamento diário do motor; a fila é remedida pela propagação (`juiz_fila`) | `data/qualidade_juiz.json`; painel de conformidade |
 | **Painel de conformidade** | `compliance_agent/qualidade/estado.py` → `/api/qualidade/conformidade` — por sistema: regras, violações abertas, tendência | sob demanda | aba Conformidade |
 
-Comandos: `python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|estado|doc|base --apertar}`.
+Comandos: `python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|cobertura|estado|doc|base --apertar}`.
 
 **Contratos que os verificadores também cumprem.** Sensor que não consegue medir vira problema `sensor:<nome>`, nunca "ok" (CST-10). Sem fotografia dos sensores, o painel de conformidade responde INDISPONÍVEL, não "0 violações" (PAD-02). Rodar duas vezes não duplica (CST-06). Nenhum verificador devolve dado pessoal: CPF sai mascarado na própria mensagem (PAD-04).
 

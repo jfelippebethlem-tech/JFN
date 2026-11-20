@@ -70,6 +70,13 @@ def painel(dados: Path | None = None, agora: datetime | None = None) -> dict:
     rs = regras.carregar()
     foto = _json(dados / "qualidade_estado.json")
     juiz = _json(dados / "qualidade_juiz.json")
+    cob_juiz = _json(dados / "qualidade_juiz_fila.json") or {}       # cobertura: a medição mais nova (rodada ou propagação)
+    try:                                                             # idade da pendente mais antiga contada AGORA
+        if cob_juiz.get("pendentes") and cob_juiz.get("mais_antiga_pendente_em"):
+            cob_juiz["mais_antiga_pendente_dias"] = round(
+                (agora - datetime.fromisoformat(cob_juiz["mais_antiga_pendente_em"])).total_seconds() / 86400, 2)
+    except (TypeError, ValueError):
+        pass
     tend = _tendencia(dados)
     violacoes = (foto or {}).get("violacoes", [])
     sistemas = []
@@ -105,7 +112,12 @@ def painel(dados: Path | None = None, agora: datetime | None = None) -> dict:
         "sistemas": sistemas,
         "tendencia": tend.get("_total", []),
         "juiz": None if not juiz else {k: juiz.get(k) for k in ("em", "ultima_tentativa", "motivo", "vigentes", "media", "por_criterio",
-                                                                 "reprovadas", "a_escalar", "candidatas")}
+                                                                 "reprovadas", "a_escalar", "candidatas", "julgadas_vigentes",
+                                                                 "cobertura_pct", "pendentes", "mais_antiga_pendente_dias",
+                                                                 "a_revalidar", "chamadas_para_zerar", "parada")}
+        | {k: cob_juiz[k] for k in ("candidatas", "julgadas_vigentes", "cobertura_pct", "pendentes",
+                                    "mais_antiga_pendente_dias", "a_revalidar", "chamadas_para_zerar") if k in cob_juiz}
+        | {"cobertura_em": cob_juiz.get("em")}
         | {"avaliacoes": [{k: a.get(k) for k in ("id", "sistema", "rotulo", "veredito", "notas", "motivos", "o_que_falta",
                                                   "escalar", "motivo_escalar", "juiz", "em")} for a in juiz.get("avaliacoes", [])[:40]]},
         "dividas_catraca": _dividas_catraca(),

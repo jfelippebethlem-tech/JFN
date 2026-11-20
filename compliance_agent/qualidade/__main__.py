@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|estado|doc|base}"""
+"""python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|cobertura|estado|doc|base}"""
 from __future__ import annotations
 
 import argparse
@@ -16,8 +16,13 @@ def main(argv=None) -> int:
     s.add_argument("--so", nargs="*", help="só estes sensores")
     s.add_argument("--sem-gravar", action="store_true")
     j = sub.add_parser("juiz", help="roda o juiz subjetivo (Claude pela ASSINATURA)")
-    j.add_argument("-n", type=int, default=None, help="tamanho da amostra")
-    j.add_argument("--so-amostra", action="store_true", help="mostra o que seria julgado, sem chamar o modelo")
+    j.add_argument("-n", type=int, default=None, help="máximo de afirmações nesta rodada (sem --ate-esvaziar: padrão 6)")
+    j.add_argument("--ate-esvaziar", action="store_true", help="julga a fila inteira (pendentes por impressão), em lotes")
+    j.add_argument("--minutos", type=float, default=None, help="orçamento de tempo da rodada (para limpo e grava o progresso)")
+    j.add_argument("--lote", type=int, default=None, help="afirmações por chamada (padrão 4 ou JFN_JUIZ_LOTE)")
+    j.add_argument("--so-amostra", action="store_true", help="mostra a fila e o plano de lotes, sem chamar o modelo")
+    c = sub.add_parser("cobertura", help="só MEDE a fila e a cobertura do juiz (sem modelo) → data/qualidade_juiz_fila.json")
+    c.add_argument("--lote", type=int, default=None)
     sub.add_parser("estado", help="painel de conformidade (JSON)")
     sub.add_parser("doc", help="regenera docs/REGRAS-DE-QUALIDADE.md")
     b = sub.add_parser("base", help="bases das catracas")
@@ -47,17 +52,30 @@ def main(argv=None) -> int:
     if a.cmd == "juiz":
         from compliance_agent.qualidade import juiz, sensores
         ctx = sensores.Ctx()
+        n = a.n if a.n is not None else (None if a.ate_esvaziar else juiz.AMOSTRA_PADRAO)
+        k = a.lote or juiz.lote_padrao()
         if a.so_amostra:
             import pathlib
             arq = ctx.dados / "qualidade_juiz_historico.json"
             hist = json.loads(pathlib.Path(arq).read_text(encoding="utf-8")) if arq.exists() else {}
             cands = juiz.candidatas(ctx)
-            for c in juiz.amostrar(cands, hist, a.n or juiz.AMOSTRA_PADRAO, ctx.agora):
-                print(f"{c.risco:6.1f}  {c.id:50} {c.rotulo[:60]}")
-            print(f"({len(cands)} candidatas)")
+            ordem = juiz.fila(cands, hist, ctx.agora)
+            plano = juiz.lotes(ordem if n is None else ordem[:n], k)
+            for i, lt in enumerate(plano, 1):
+                for c in lt:
+                    print(f"lote {i:3}  {juiz.situacao(c, hist, ctx.agora):9} {c.risco:6.1f}  {c.id:50} {c.rotulo[:50]}")
+            cob = juiz.cobertura(cands, hist, ctx.agora, None, k)
+            print(json.dumps({x: cob[x] for x in ("candidatas", "julgadas_vigentes", "cobertura_pct", "pendentes", "a_revalidar",
+                                                  "por_situacao", "por_grupo", "chamadas_para_zerar")}
+                             | {"nesta_rodada": {"afirmacoes": sum(map(len, plano)), "lotes": len(plano), "lote": k}},
+                             ensure_ascii=False, indent=1))
             return 0
-        r = juiz.rodar(ctx, a.n or juiz.AMOSTRA_PADRAO)
-        print(json.dumps({k: r[k] for k in r if k != "avaliacoes"}, ensure_ascii=False, indent=1))
+        r = juiz.rodar(ctx, n, lote=k, minutos=a.minutos)
+        print(json.dumps({x: r[x] for x in r if x != "avaliacoes"}, ensure_ascii=False, indent=1))
+        return 0
+    if a.cmd == "cobertura":                     # derivado `juiz_fila` da propagação: nunca chama o modelo
+        from compliance_agent.qualidade import juiz, sensores
+        print(json.dumps(juiz.medir_fila(sensores.Ctx(), a.lote), ensure_ascii=False, indent=1))
         return 0
     if a.cmd == "estado":
         from compliance_agent.qualidade import estado

@@ -162,8 +162,9 @@ def gerar(arq: Path = regras.ARQ) -> str:
             L.extend(_ficha(r))
     a("## 5. Rubricas do juiz")
     a("")
-    a("O juiz é o Claude **pela assinatura** (nunca API paga), como juiz e co-motor: ele amostra por valor e risco o que o painel, o vault e "
-      "o Yoda afirmam e dá nota em cada critério. Nas afirmações já públicas no painel, a cascata gratuita julga a mesma entrada e os dois "
+    a("O juiz é o Claude **pela assinatura** (nunca API paga), como juiz e co-motor: ele julga TUDO o que o painel, o vault, "
+      "o Yoda e os produtos afirmam — fila completa por impressão do texto (o que não mudou não volta ao modelo), em lotes de 4 "
+      "por chamada, por ordem de correção, risco e grupo — e dá nota em cada critério. Nas afirmações já públicas no painel, a cascata gratuita julga a mesma entrada e os dois "
       "vereditos ficam lado a lado no banco de cruzamento — a divergência calibra os outros modelos. O veredito da cascata nunca vale "
       "sozinho. Material do vault vai só ao Claude.")
     a("")
@@ -198,12 +199,12 @@ def gerar(arq: Path = regras.ARQ) -> str:
     a("| **Sensores** | `compliance_agent/qualidade/sensores.py` — rodam sobre o dado servido (payload das manchetes, casos do vault, respostas "
       "do Yoda, motores, cruzamento) | a cada 3 h, dentro do laço de automelhoria (`tools/automelhoria_geral.py`), e como motor do AO VIVO | "
       "`data/qualidade_estado.json`; fila do Yoda (`/melhorias`); painel de conformidade |")
-    a("| **Juiz** | `compliance_agent/qualidade/juiz.py` — rubricas da seção 5, Claude pela assinatura, amostra por valor e risco | uma vez por dia "
-      "(cron), dentro do orçamento diário do motor | `data/qualidade_juiz.json`; painel de conformidade |")
+    a("| **Juiz** | `compliance_agent/qualidade/juiz.py` — rubricas da seção 5, Claude pela assinatura, fila completa em lotes (`juiz --ate-esvaziar --minutos N`) | janelas noturnas "
+      "(cron), dentro do orçamento diário do motor; a fila é remedida pela propagação (`juiz_fila`) | `data/qualidade_juiz.json`; painel de conformidade |")
     a("| **Painel de conformidade** | `compliance_agent/qualidade/estado.py` → `/api/qualidade/conformidade` — por sistema: regras, violações "
       "abertas, tendência | sob demanda | aba Conformidade |")
     a("")
-    a("Comandos: `python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|estado|doc|base --apertar}`.")
+    a("Comandos: `python -m compliance_agent.qualidade {regras|inventario|sensores|juiz|cobertura|estado|doc|base --apertar}`.")
     a("")
     a("**Contratos que os verificadores também cumprem.** Sensor que não consegue medir vira problema `sensor:<nome>`, nunca \"ok\" (CST-10). "
       "Sem fotografia dos sensores, o painel de conformidade responde INDISPONÍVEL, não \"0 violações\" (PAD-02). Rodar duas vezes não duplica "

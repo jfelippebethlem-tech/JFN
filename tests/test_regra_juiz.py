@@ -112,12 +112,13 @@ def test_amostra_e_por_risco_nao_rejulga_e_nao_deixa_um_sistema_comer_tudo():
     cands = [_afirmacao(id=f"painel:m{i}", sistema="painel", valor=10.0 ** (9 - i), grau="manchete", texto=f"m{i}") for i in range(6)]
     cands += [_afirmacao(id="vault:c1", valor=1e5, texto="c1"), _afirmacao(id="yoda:y1", sistema="yoda", valor=1e3, grau="", texto="y1")]
     esc = juiz.amostrar(cands, {}, 4, AGORA)
-    assert [a.id for a in esc[:2]] == ["painel:m0", "painel:m1"]             # maior risco primeiro
+    # 20/11/2026: fila completa — a cabeça de cada grupo vem antes (vaga reservada), depois puro risco
+    assert esc[0].id == "painel:m0" and [a.id for a in esc] == ["painel:m0", "vault:c1", "yoda:y1", "painel:m1"]
     assert {a.sistema for a in esc} == {"painel", "vault", "yoda"}           # repartida entre os grupos presentes
     hist = {"painel:m0": {"impressao": cands[0].impressao, "em": AGORA.isoformat(), "estado": "JULGADA"}}
     assert "painel:m0" not in [a.id for a in juiz.amostrar(cands, hist, 4, AGORA)]
     hist["painel:m0"]["impressao"] = "outro-texto"                           # o texto mudou: volta a ser julgada
-    assert "painel:m0" in [a.id for a in juiz.amostrar(cands, hist, 4, AGORA)]
+    assert "painel:m0" in [a.id for a in juiz.fila(cands, hist, AGORA)]      # (depois das nunca julgadas)
 
 
 def test_rodada_grava_fotografia_e_o_sensor_abre_a_violacao(tmp_path):
@@ -151,13 +152,13 @@ def test_superficie_retirada_perde_o_juizo_vigente_e_fonte_que_falhou_nao_poda(t
     (casos / "caso-y.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nAchado sintético.\n", encoding="utf-8")
     (casos / "caso-z.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nOutro achado.\n", encoding="utf-8")
     notas = {c: 4 for c in regras.rubricas()} | {"inocente": 1}
-    juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []))
+    juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []), lote=1)
     assert len(sensores.sensor_juiz_qualidade(ctx)) == 2
     hist = json.loads((tmp_path / "qualidade_juiz_historico.json").read_text(encoding="utf-8"))
     hist["painel:card-que-saiu"] = dict(hist["vault:caso-y"], id="painel:card-que-saiu")   # grupo sem fonte lida
     (tmp_path / "qualidade_juiz_historico.json").write_text(json.dumps(hist), encoding="utf-8")
     (casos / "caso-z.md").unlink()                                          # a superfície saiu
-    r = juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []))
+    r = juiz.rodar(ctx, 3, pensar=_pensar_duble(_resposta(notas), []), lote=1)
     ids = {a["id"] for a in r["avaliacoes"]}
     assert "vault:caso-z" not in ids and "vault:caso-y" in ids
     assert "painel:card-que-saiu" in ids                                    # manchetes não foram lidas: não se poda

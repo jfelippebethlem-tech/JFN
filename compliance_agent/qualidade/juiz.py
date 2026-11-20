@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """juiz — o juiz subjetivo das regras de qualidade (família SUB), pelo Claude da ASSINATURA.
 
-O que faz: amostra o que o painel, os casos do vault e o Yoda AFIRMAM ao dono, escolhendo por valor e risco, e
+O que faz: julga TUDO o que o painel, os casos do vault, o Yoda e os produtos da casa AFIRMAM ao dono e
 dá nota de 0 a 4 em cada critério da rubrica (`config/qualidade_regras.yaml` → `rubricas`): proporção, moldura,
 hipótese inocente, padrão de auditoria, jornalista hostil, presunção de inocência, utilidade, clareza,
 acabamento. Nota ≤ 1 é violação da regra SUB correspondente (o sensor `juiz_qualidade` abre o item).
@@ -9,15 +9,26 @@ acabamento. Nota ≤ 1 é violação da regra SUB correspondente (o sensor `juiz
 REGRAS DESTE MÓDULO (ordem do dono, 13/11/2026: "fable tem que usar assinatura só"):
   · toda chamada ao Claude sai por `claude_motor.pensar(..., backend="cli")` — Claude Code CLI, sem chave no
     ambiente, sem `--bare`. NUNCA o backend automático do motor (cairia na API paga) — há catraca (`test_regra_juiz.py`);
-  · se a assinatura não comporta o volume, a amostra ENCOLHE (pelo valor e pelo risco); nunca se troca de backend;
+  · se a assinatura não comporta o volume, a fila anda mais devagar (correção e risco primeiro); nunca se troca de backend;
   · co-motor: nas afirmações que já são públicas no painel, a cascata gratuita julga a MESMA entrada em paralelo
     (`comotor.juizo`) e os dois vereditos vão lado a lado para o banco de cruzamento. O veredito da cascata nunca
     abre nem fecha violação sozinho (COR-14): sem o Claude, a avaliação fica `PENDENTE`;
   · material do vault (casos internos) vai SÓ ao Claude da assinatura — não sai para provedor gratuito;
   · CPF é mascarado antes de qualquer envio; nada do que o juiz lê é gravado no registro de uso do motor.
 
-Amostragem: cada candidata tem risco = peso do grau × materialidade do valor. Afirmação já julgada nos últimos
-7 dias com o MESMO texto não é rejulgada (o orçamento vai para o que mudou ou nunca foi visto).
+Cobertura TOTAL (20/11/2026, dono: "como que o juiz não julga tudo? precisa julgar, não apenas um baixo limite"):
+  · FILA COMPLETA: pendente = candidata sem veredito vigente para a impressão (sha1 do texto) ATUAL. Ordem:
+    (a) reprovada cuja impressão mudou (correção à espera de confirmação), (b) nunca julgada — primeiro a de maior
+    risco de CADA grupo (nenhum grupo fica sem vaga se o orçamento cortar), depois o resto por risco, (c) julgada
+    cujo texto mudou, por risco, (d) revalidação periódica (veredito com mais de REVALIDAR_DIAS, texto igual);
+  · CACHE POR CONTEÚDO: veredito vigente enquanto a impressão não muda — o que não mudou não volta ao modelo;
+  · LOTES: K afirmações (padrão LOTE_PADRAO) numa só chamada, mesma rubrica, JSON por item com o `id` ecoado; item
+    ausente, trocado ou com nota inválida volta à fila — nunca se inventa nota. Lote é homogêneo em rubrica e em
+    `publica` (material interno nunca divide chamada com o que vai à cascata);
+  · ORÇAMENTO POR TEMPO: `rodar(..., n=None, minutos=M)` processa lotes até a fila zerar, o tempo acabar ou o teto
+    do motor/contingência parar a assinatura — o progresso é gravado a cada lote (corte no meio retoma de onde parou);
+  · COBERTURA MEDIDA: `data/qualidade_juiz_fila.json` (candidatas, julgadas vigentes, cobertura %, pendentes e há
+    quanto tempo) — o painel de conformidade e o sensor CST-15 leem dali.
 """
 from __future__ import annotations
 
@@ -28,6 +39,7 @@ import math
 import os
 import re
 import sqlite3
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from functools import partial
@@ -40,8 +52,12 @@ logger = logging.getLogger(__name__)
 
 TAREFA = "juiz_qualidade"
 BACKEND = "cli"                     # assinatura. Não mude: a catraca barra.
-AMOSTRA_PADRAO = 6
-REJULGAR_DIAS = 7
+AMOSTRA_PADRAO = 6                  # `-n` sem `--ate-esvaziar`: nº de AFIRMAÇÕES (compatível com o cron antigo)
+LOTE_PADRAO = 4                     # afirmações por chamada (`--lote` ou JFN_JUIZ_LOTE)
+REVALIDAR_DIAS = 30                 # veredito de texto igual mais velho que isto vai ao FIM da fila (0 desliga)
+TIMEOUT_ITEM_S = 300.0              # prazo de uma chamada de 1 item; cada item a mais no lote soma TIMEOUT_EXTRA_S
+TIMEOUT_EXTRA_S = 150.0
+MIN_SEGUNDOS_LOTE = 180.0           # com menos que isto no orçamento de tempo, não se começa lote novo
 _FALHAS = (OSError, ValueError, KeyError, TypeError, RuntimeError, sqlite3.Error)
 _PESO_GRAU = {"🔴": 3.0, "alto": 3.0, "alta": 3.0, "critico": 3.0, "crítico": 3.0, "🟡": 2.0, "medio": 2.0,
               "médio": 2.0, "media": 2.0, "manchete": 2.5}
@@ -289,43 +305,128 @@ def candidatas(ctx: sensores.Ctx) -> list[Afirmacao]:
     return out
 
 
+def _int_env(nome: str, padrao: int) -> int:
+    try:
+        return int(os.environ.get(nome, "") or padrao)
+    except ValueError:
+        return padrao
+
+
+def lote_padrao() -> int:
+    return max(1, _int_env("JFN_JUIZ_LOTE", LOTE_PADRAO))
+
+
+def revalidar_dias() -> int:
+    return max(0, _int_env("JFN_JUIZ_REVALIDAR_DIAS", REVALIDAR_DIAS))
+
+
+def _reprovada(h: dict) -> bool:
+    return h.get("estado") == "JULGADA" and any(isinstance(x, (int, float)) and not isinstance(x, bool) and x <= 1
+                                                for x in (h.get("notas") or {}).values())
+
+
+def situacao(a: Afirmacao, historico: dict, agora: datetime) -> str:
+    """vigente · corrigida (reprovada e o texto mudou) · nova (nunca julgada) · mudada · revalidar (texto igual,
+    veredito velho). Só `vigente` e `revalidar` contam como cobertas: o veredito vale enquanto a impressão não muda."""
+    h = historico.get(a.id) or {}
+    if h.get("estado") != "JULGADA":
+        return "nova"
+    if h.get("impressao") != a.impressao:
+        return "corrigida" if _reprovada(h) else "mudada"
+    dias = revalidar_dias()
+    if dias and str(h.get("em", "")) < (agora - timedelta(days=dias)).isoformat():
+        return "revalidar"
+    return "vigente"
+
+
+_ORDEM_SITUACAO = ("corrigida", "nova", "mudada", "revalidar")
+
+
+def fila(cands: list[Afirmacao], historico: dict, agora: datetime, *, revalidacao: bool = True) -> list[Afirmacao]:
+    """A fila COMPLETA do juiz, na ordem em que deve ser julgada (ver o cabeçalho). Na faixa das nunca julgadas, a
+    de maior risco de cada grupo vem antes (vaga reservada: 20/11/2026, com 5 grupos os de maior valor enchiam a
+    amostra e Yoda/produto nunca eram julgados); depois, puro risco."""
+    por_sit: dict[str, list[Afirmacao]] = {k: [] for k in _ORDEM_SITUACAO}
+    vistos = set()
+    for a in cands:
+        if a.id in vistos:                                       # o mesmo id duas vezes: julga-se uma
+            continue
+        vistos.add(a.id)
+        sit = situacao(a, historico, agora)
+        if sit in por_sit:
+            por_sit[sit].append(a)
+    for lista in por_sit.values():
+        lista.sort(key=lambda a: (-a.risco, a.id))
+    novas, cabecas, grupos = por_sit["nova"], [], set()
+    for a in novas:
+        if a.grupo not in grupos:
+            grupos.add(a.grupo)
+            cabecas.append(a)
+    por_sit["nova"] = cabecas + [a for a in novas if a not in cabecas]
+    por_sit["revalidar"].sort(key=lambda a: str((historico.get(a.id) or {}).get("em", "")))   # mais velho antes
+    return [a for k in _ORDEM_SITUACAO if revalidacao or k != "revalidar" for a in por_sit[k]]
+
+
 def amostrar(cands: list[Afirmacao], historico: dict, n: int, agora: datetime) -> list[Afirmacao]:
-    """Por risco, pulando o que já foi julgado com o mesmo texto há menos de 7 dias; a amostra é repartida entre
-    os grupos presentes (cockpit, análise de gestão, vault, Yoda) — senão os itens de maior valor de UMA superfície
-    comeriam o juízo sobre as outras."""
-    limite = (agora - timedelta(days=REJULGAR_DIAS)).isoformat()
-    novos = [a for a in cands if not (historico.get(a.id, {}).get("impressao") == a.impressao
-                                      and historico.get(a.id, {}).get("em", "") >= limite
-                                      and historico.get(a.id, {}).get("estado") == "JULGADA")]
-    # correção à espera de confirmação primeiro: afirmação com nota ≤ 1 vigente cujo texto MUDOU (19/11/2026: as
-    # notas 1 corrigidas ficavam atrás de dezenas de casos novos de maior valor e a violação não saía)
-    def _corrigida(a: Afirmacao) -> bool:
-        h = historico.get(a.id) or {}
-        return h.get("estado") == "JULGADA" and any(isinstance(x, (int, float)) and x <= 1 for x in (h.get("notas") or {}).values())
-    novos.sort(key=lambda a: (not _corrigida(a), -a.risco))
-    corrigidas = [a for a in novos if _corrigida(a)][:n]
-    escolhidas, por_grupo = list(corrigidas), {}
-    for a in corrigidas:
-        por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
-    grupos = {a.grupo for a in novos}
-    teto = max(1, math.ceil(n / max(1, len(grupos))))
-    for a in novos:
-        if len(escolhidas) >= n:
-            break
-        if a in escolhidas or por_grupo.get(a.grupo, 0) >= teto:
-            continue
-        # vaga reservada: o 2º item de um grupo não toma a vaga de grupo ainda sem nenhum (20/11/2026: com 5 grupos
-        # e n=6, 2+2+2 dos grupos de maior valor enchia a amostra e Yoda/produto nunca eram julgados)
-        if por_grupo.get(a.grupo) and n - len(escolhidas) <= len(grupos - set(por_grupo)):
-            continue
-        escolhidas.append(a)
-        por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
-    for a in novos:                                              # sobra orçamento? completa sem o teto por sistema
-        if len(escolhidas) >= n:
-            break
-        if a not in escolhidas:
-            escolhidas.append(a)
-    return escolhidas
+    """Compatível com o `-n` antigo: as `n` primeiras da fila completa."""
+    return fila(cands, historico, agora)[:max(0, n)]
+
+
+def chave_lote(a: Afirmacao) -> tuple:
+    """Só divide chamada quem tem a MESMA rubrica e o mesmo canal (público pode ir à cascata; interno, nunca)."""
+    return (tuple(criterios_de(a.sistema)), bool(a.publica))
+
+
+def lotes(itens: list[Afirmacao], k: int) -> list[list[Afirmacao]]:
+    """Agrupa respeitando a ordem da fila: a cabeça abre o lote e ele se completa com as próximas de mesma chave."""
+    k = max(1, k)
+    restantes, out = list(itens), []
+    while restantes:
+        cab = restantes.pop(0)
+        ch, lote = chave_lote(cab), [cab]
+        for a in list(restantes):
+            if len(lote) >= k:
+                break
+            if chave_lote(a) == ch:
+                lote.append(a)
+                restantes.remove(a)
+        out.append(lote)
+    return out
+
+
+def cobertura(cands: list[Afirmacao], historico: dict, agora: datetime, anterior: dict | None = None,
+              k: int | None = None) -> dict:
+    """A medida da cobertura (sem chamar modelo). `anterior` = a fila gravada antes: guarda DESDE QUANDO cada
+    pendente está pendente com o texto atual (a idade da mais antiga é o que o sensor CST-15 cobra)."""
+    desde_ant = (anterior or {}).get("pendentes_desde") or {}
+    unicas = list({a.id: a for a in cands}.values())
+    sit = {a.id: situacao(a, historico, agora) for a in unicas}
+    pend = [a for a in unicas if sit[a.id] not in ("vigente", "revalidar")]
+    desde = {}
+    for a in pend:
+        ant = desde_ant.get(a.id) or {}
+        desde[a.id] = {"desde": ant["desde"] if ant.get("impressao") == a.impressao and ant.get("desde")
+                       else agora.isoformat(timespec="seconds"), "impressao": a.impressao, "situacao": sit[a.id]}
+    mais_antiga = min((d["desde"] for d in desde.values()), default=None)
+    ordem = fila(unicas, historico, agora)
+    julgadas = len(unicas) - len(pend)
+    plano = lotes([a for a in ordem if sit[a.id] != "revalidar"], k or lote_padrao())
+    return {
+        "em": agora.isoformat(timespec="seconds"),
+        "candidatas": len(unicas), "julgadas_vigentes": julgadas,
+        "cobertura_pct": round(100.0 * julgadas / len(unicas), 1) if unicas else 100.0,
+        "pendentes": len(pend),
+        "mais_antiga_pendente_em": mais_antiga,
+        "mais_antiga_pendente_dias": round((agora - datetime.fromisoformat(mais_antiga)).total_seconds() / 86400, 2)
+        if mais_antiga else 0.0,
+        "a_revalidar": sum(s == "revalidar" for s in sit.values()),
+        "por_situacao": {k_: sum(s == k_ for s in sit.values()) for k_ in ("vigente",) + _ORDEM_SITUACAO},
+        "por_grupo": {g: {"candidatas": sum(a.grupo == g for a in unicas), "pendentes": sum(a.grupo == g for a in pend)}
+                      for g in sorted({a.grupo for a in unicas})},
+        "lote": k or lote_padrao(), "chamadas_para_zerar": len(plano),
+        "proximas": [{"id": a.id, "situacao": sit[a.id], "risco": round(a.risco, 2)} for a in ordem[:40]],
+        "pendentes_desde": desde,
+    }
 
 
 # ───────────────────────────── o pedido ao juiz ─────────────────────────────
@@ -336,9 +437,16 @@ def criterios_de(sistema: str) -> list[str]:
     return [c for c, r in regras.rubricas().items() if sistema in por_id[r["regra"]].aplica]
 
 
-def montar_prompt(a: Afirmacao, pre: list[str]) -> str:
+_COMO_LER = ("\nCOMO LER A ENTRADA: ela foi extraída por código da tela ou do arquivo e pode chegar como campos "
+             "estruturados (JSON). NÃO julgue o formato da extração, nomes de campo nem termos internos desta ficha "
+             "(\"card\", \"cockpit\", \"chip\", códigos de regra): julgue o CONTEÚDO que o dono lê — rótulo, número, "
+             "ressalvas e o que falta. Se a entrada não traz proveniência, isso é fato a pesar (a tela não a mostra).")
+_INSTRUCAO_NOTAS = ("\nPara cada nota ≤ 2, diga em uma frase o que está errado e o que tornaria a afirmação aceitável. "
+                    "`veredito`: aprovada (todas ≥ 3) · ressalva (alguma = 2, nenhuma ≤ 1) · reprovada (alguma ≤ 1).")
+
+
+def _linhas_rubrica(crit: list[str]) -> list[str]:
     d = regras.bruto()
-    crit = criterios_de(a.sistema)
     linhas = ["RUBRICA — dê nota de 0 a 4 em cada critério (use null só se o critério realmente não se aplica):"]
     for nota, desc in d["escala"].items():
         linhas.append(f"  {nota} = {desc}")
@@ -347,19 +455,68 @@ def montar_prompt(a: Afirmacao, pre: list[str]) -> str:
             continue
         linhas.append(f"\n[{nome}] {r['pergunta']}\n  exemplo RUIM: {r['ancora_ruim'].strip()}\n  exemplo BOM: {r['ancora_boa'].strip()}")
     linhas.append("\nESCALAR AO DONO (humano) quando: " + " | ".join(d["escalar_humano"]))
+    return linhas
+
+
+def _linhas_pre(pre: list[str]) -> str:
+    return "\n".join(f"  - {p}" for p in pre[:12]) if pre else "  (nenhum)"
+
+
+def montar_prompt(a: Afirmacao, pre: list[str]) -> str:
+    linhas = _linhas_rubrica(criterios_de(a.sistema))
     linhas.append("\nPRÉ-SINAIS do verificador automático (determinístico; pode haver falso positivo — julgue você):\n"
-                  + ("\n".join(f"  - {p}" for p in pre[:12]) if pre else "  (nenhum)"))
-    linhas.append("\nCOMO LER A ENTRADA: ela foi extraída por código da tela ou do arquivo e pode chegar como campos "
-                  "estruturados (JSON). NÃO julgue o formato da extração, nomes de campo nem termos internos desta ficha "
-                  "(\"card\", \"cockpit\", \"chip\", códigos de regra): julgue o CONTEÚDO que o dono lê — rótulo, número, "
-                  "ressalvas e o que falta. Se a entrada não traz proveniência, isso é fato a pesar (a tela não a mostra).")
+                  + _linhas_pre(pre))
+    linhas.append(_COMO_LER)
     linhas.append(f"\nAFIRMAÇÃO A JULGAR (origem: {a.sistema}; grau exibido: {a.grau or 'não informado'}):\n«««\n{a.texto}\n»»»")
-    linhas.append("\nPara cada nota ≤ 2, diga em uma frase o que está errado e o que tornaria a afirmação aceitável. "
-                  "`veredito`: aprovada (todas ≥ 3) · ressalva (alguma = 2, nenhuma ≤ 1) · reprovada (alguma ≤ 1).")
+    linhas.append(_INSTRUCAO_NOTAS)
     # o formato vai NO PROMPT (e não pelo `schema` do motor): a cascata recebe o mesmo texto e precisa dele também
     linhas.append("\nResponda SOMENTE com um objeto JSON válido, sem texto fora dele, neste formato:\n"
                   + json.dumps(esquema(a.sistema), ensure_ascii=False))
     return "\n".join(linhas)
+
+
+def rotulos_lote(n: int) -> list[str]:
+    return [f"A{i}" for i in range(1, n + 1)]
+
+
+def montar_prompt_lote(lote: list[Afirmacao], pres: list[list[str]]) -> str:
+    """Um pedido para K afirmações de MESMA rubrica. Cada item é julgado sozinho; a resposta traz o `id` de volta
+    (item trocado ou faltando não vira nota de ninguém)."""
+    sistema = lote[0].sistema
+    rots = rotulos_lote(len(lote))
+    linhas = _linhas_rubrica(criterios_de(sistema))
+    linhas.append(_COMO_LER)
+    linhas.append(f"\nVOCÊ VAI JULGAR {len(lote)} AFIRMAÇÕES INDEPENDENTES. Julgue cada uma SÓ pelo que ela mesma "
+                  "apresenta: não use uma para completar ou desculpar outra e não as compare entre si. A régua é a "
+                  "mesma de quando se julga uma afirmação sozinha — o lote não afrouxa nem endurece a nota.")
+    for rot, a, pre in zip(rots, lote, pres):
+        linhas.append(f"\n════ ITEM {rot} — id: {a.id} (origem: {a.sistema}; grau exibido: {a.grau or 'não informado'}) ════"
+                      "\nPRÉ-SINAIS do verificador automático (determinístico; pode haver falso positivo — julgue você):\n"
+                      f"{_linhas_pre(pre)}\nAFIRMAÇÃO:\n«««\n{a.texto}\n»»»")
+    linhas.append(_INSTRUCAO_NOTAS)
+    um = {"id": "o id do item, copiado exatamente"} | esquema(sistema)
+    linhas.append(f"\nResponda SOMENTE com um objeto JSON válido, sem texto fora dele, com UMA entrada por item "
+                  f"({', '.join(rots)}) dentro de \"itens\", neste formato:\n"
+                  + json.dumps({"itens": {r: um for r in rots}}, ensure_ascii=False))
+    return "\n".join(linhas)
+
+
+def itens_do_lote(d: dict | None, lote: list[Afirmacao]) -> list[dict | None]:
+    """A resposta de cada item, na ordem do lote; None = ausente, malformado ou com `id` que não é o do item."""
+    bruto = d.get("itens") if isinstance(d, dict) else None
+    if isinstance(bruto, list):
+        bruto = {str(x.get("item") or x.get("rotulo") or ""): x for x in bruto if isinstance(x, dict)}
+    if not isinstance(bruto, dict):
+        return [None] * len(lote)
+    out = []
+    for rot, a in zip(rotulos_lote(len(lote)), lote):
+        sub = bruto.get(rot)
+        out.append(sub if isinstance(sub, dict) and str(sub.get("id") or "").strip() == a.id else None)
+    return out
+
+
+def timeout_lote(n: int) -> float:
+    return TIMEOUT_ITEM_S + TIMEOUT_EXTRA_S * max(0, n - 1)
 
 
 def esquema(sistema: str | None = None) -> dict:
@@ -374,6 +531,24 @@ def normalizar(txt: str):
     d = _json(txt) or {}
     ver = str(d.get("veredito") or "").strip().lower()
     return (ver or None), {"aprovada": 0, "ressalva": 1, "reprovada": 2}.get(ver), None
+
+
+def normalizar_lote(txt: str):
+    """Cruzamento de um LOTE com a cascata: o pior veredito entre os itens (das notas, por código)."""
+    d = _json(txt) or {}
+    bruto = d.get("itens")
+    subs = list(bruto.values()) if isinstance(bruto, dict) else (bruto if isinstance(bruto, list) else [])
+    niveis = []
+    for sub in subs:
+        if isinstance(sub, dict):
+            notas, _ = _limpar_notas(sub)
+            ver = veredito_de(notas)
+            if ver:
+                niveis.append({"aprovada": 0, "ressalva": 1, "reprovada": 2}[ver])
+    if not niveis:
+        return None, None, None
+    pior = max(niveis)
+    return ("aprovada", "ressalva", "reprovada")[pior], pior, None
 
 
 def _json(txt: str):
@@ -458,6 +633,11 @@ def julgar(a: Afirmacao, *, pensar: Callable | None = None, cascata: Callable | 
     if not d:
         av.juiz += " — resposta sem o JSON pedido"
         return av
+    return _aplicar(av, a, d)
+
+
+def _aplicar(av: Avaliacao, a: Afirmacao, d: dict) -> Avaliacao:
+    """Notas → veredito e escalada, por código. Sem nota válida, a avaliação fica PENDENTE (nada se inventa)."""
     av.notas, av.motivos = _limpar_notas(d, a.sistema)
     if not av.notas:
         av.juiz += " — resposta sem notas"
@@ -471,29 +651,177 @@ def julgar(a: Afirmacao, *, pensar: Callable | None = None, cascata: Callable | 
     return av
 
 
+def julgar_lote(lote: list[Afirmacao], *, pensar: Callable | None = None, cascata: Callable | None = None,
+                agora: datetime | None = None) -> list[Avaliacao]:
+    """Julga um LOTE numa chamada só (mesma rubrica, mesmo canal). Lote de 1 é `julgar`. Item que não volta com o
+    seu `id` e notas válidas fica PENDENTE (volta à fila); os outros do lote seguem julgados."""
+    if len(lote) == 1:
+        return [julgar(lote[0], pensar=pensar, cascata=cascata, agora=agora)]
+    from compliance_agent.llm import claude_motor, comotor
+    if len({chave_lote(a) for a in lote}) != 1:
+        raise ValueError("lote misturando rubricas ou canais (público × interno)")
+    agora = agora or datetime.now()
+    pres = [v.texto_entregue(a.texto) + v.ausencia_sem_controle(a.texto) for a in lote]
+    prompt = montar_prompt_lote(lote, pres)
+    prazo = timeout_lote(len(lote))
+    pensar_cli = partial(pensar or claude_motor.pensar, backend=BACKEND)
+    em = agora.isoformat(timespec="seconds")
+    avs = [Avaliacao(a.id, a.sistema, a.rotulo, a.impressao, em, "PENDENTE", pre_sinais=p[:12]) for a, p in zip(lote, pres)]
+    info_cascata: dict = {}
+    if all(a.publica for a in lote) and cruzar_com_cascata():
+        gerar = comotor.juizo(TAREFA, modelo=claude_motor.MODELO_JUIZO, normalizar=normalizar_lote, pensar=pensar_cli,
+                              cascata=cascata, timeout_claude=prazo, conferencia=False)
+        item = "lote:" + hashlib.sha1("|".join(f"{a.id}@{a.impressao}" for a in lote).encode()).hexdigest()[:16]
+        try:
+            texto = gerar(prompt, sistema=SISTEMA, timeout=120.0, json_saida=True, item=item)
+        except _FALHAS as e:
+            for av in avs:
+                av.juiz = f"indisponível ({type(e).__name__})"
+            return avs
+        ult = comotor.ultima_chamada()
+        if not str(ult.get("exibido") or "").startswith("claude:"):  # só a cascata respondeu: preliminar, nunca veredito
+            for av, a, sub in zip(avs, lote, itens_do_lote(_json(texto), lote)):
+                notas, _ = _limpar_notas(sub or {}, a.sistema)
+                av.juiz = f"sem Claude ({claude_motor.ultimo_motivo[:60]})"
+                av.cascata = {"modelo": ult.get("exibido"), "notas_preliminares": notas, "lote": len(lote)}
+            return avs
+        texto_claude, quem = texto, ult["exibido"]
+        # a divergência medida é a do LOTE (pior veredito × pior veredito): não escala item por item
+        info_cascata = {"modelo": ult.get("outro"), "divergencia_lote": ult.get("divergencia"), "grave_lote": ult.get("grave")}
+    else:
+        r = pensar_cli(TAREFA, prompt, modelo=claude_motor.MODELO_JUIZO, sistema=SISTEMA, timeout=prazo)
+        if r is None:
+            for av in avs:
+                av.juiz = f"sem Claude ({claude_motor.ultimo_motivo[:60]})"
+            return avs
+        texto_claude, quem = r.texto, f"claude:{r.modelo}"
+    d = _json(texto_claude)
+    for av, a, sub in zip(avs, lote, itens_do_lote(d, lote)):
+        av.juiz, av.cascata = f"{quem} (lote de {len(lote)})", dict(info_cascata)
+        if not d:
+            av.juiz += " — resposta sem o JSON pedido"
+        elif sub is None:
+            av.juiz += " — item ausente ou com id trocado na resposta"
+        else:
+            _aplicar(av, a, sub)
+    return avs
+
+
 # ───────────────────────────── a rodada ─────────────────────────────
-def rodar(ctx: sensores.Ctx | None = None, n: int = AMOSTRA_PADRAO, *, pensar: Callable | None = None,
-          cascata: Callable | None = None) -> dict:
-    """Uma rodada: amostra, julga, grava `data/qualidade_juiz.json` (a última) e `qualidade_juiz_historico.json`
-    (por afirmação). Rodada em que o Claude não respondeu NENHUMA não atualiza o carimbo `em` — o sensor de
-    silêncio (CST-15) tem de continuar vendo a última rodada que de fato julgou."""
+def rodar(ctx: sensores.Ctx | None = None, n: int | None = AMOSTRA_PADRAO, *, pensar: Callable | None = None,
+          cascata: Callable | None = None, lote: int | None = None, minutos: float | None = None,
+          relogio: Callable[[], float] = time.monotonic) -> dict:
+    """Uma rodada: monta a fila completa, julga em lotes e grava, A CADA LOTE, `data/qualidade_juiz.json` (fotografia),
+    `qualidade_juiz_historico.json` (por afirmação) e `qualidade_juiz_fila.json` (cobertura e pendentes).
+
+    `n` = máximo de afirmações (None = a fila inteira, `--ate-esvaziar`); `minutos` = orçamento de tempo (não se
+    começa lote com menos de MIN_SEGUNDOS_LOTE no relógio); `lote` = afirmações por chamada. Para limpo quando o
+    Claude da assinatura não responde (teto do motor, contingência, limite de uso): nunca troca de backend.
+    Rodada em que o Claude não respondeu NENHUMA não atualiza o carimbo `em` — o sensor de silêncio (CST-15) tem de
+    continuar vendo a última rodada que de fato julgou."""
     ctx = ctx or sensores.Ctx()
     with sensores.trava(ctx.dados, "juiz"):
-        return _rodar(ctx, n, pensar, cascata)
+        return _rodar(ctx, n, pensar, cascata, lote or lote_padrao(), minutos, relogio)
 
 
-def _rodar(ctx: sensores.Ctx, n: int, pensar: Callable | None, cascata: Callable | None) -> dict:
-    arq, arq_h = ctx.dados / "qualidade_juiz.json", ctx.dados / "qualidade_juiz_historico.json"
-    historico = json.loads(arq_h.read_text(encoding="utf-8")) if arq_h.exists() else {}
-    anterior = json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else {}
+def _ler(arq: Path) -> dict:
+    return json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else {}
+
+
+def _gravar_json(caminho: Path, obj: dict) -> None:
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    tmp = caminho.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(caminho)
+
+
+def _podar(historico: dict, cands: list[Afirmacao]) -> None:
+    """Superfície que SAIU (card retirado, achado que a régua não gera mais, caso apagado) perde o juízo vigente —
+    19/11/2026: cards retirados por FP medida seguiam como SUB bloqueante para sempre. Só se poda o grupo cuja fonte
+    foi lida nesta rodada (fonte que falhou não apaga nota de ninguém); Yoda não se poda (resposta entregue é fato
+    consumado)."""
+    vivos, lidos = {c.id for c in cands}, {_grupo_poda(c.id) for c in cands}
+    for hid in [h for h in historico if _grupo_poda(h) in lidos and h not in vivos]:
+        historico[hid]["estado"] = "SUPERFICIE_RETIRADA"
+
+
+def medir_fila(ctx: sensores.Ctx | None = None, k: int | None = None) -> dict:
+    """Só MEDE (sem modelo): recalcula a fila e a cobertura e grava `qualidade_juiz_fila.json`. É o derivado leve
+    da propagação (`juiz_fila`): o painel e o sensor veem o que ficou pendente quando o vault ou o painel mudam; o
+    julgamento continua nas janelas noturnas. Com a rodada do juiz em curso, não grava (ela grava a cada lote)."""
+    import fcntl
+    ctx = ctx or sensores.Ctx()
+    ctx.dados.mkdir(parents=True, exist_ok=True)
+    with open(ctx.dados / "qualidade_juiz.lock", "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return {"ok": True, "gravado": False, "motivo": "rodada do juiz em curso (ela grava a cobertura a cada lote)"}
+        try:
+            arq_f = ctx.dados / "qualidade_juiz_fila.json"
+            historico = _ler(ctx.dados / "qualidade_juiz_historico.json")
+            cands = candidatas(ctx)
+            cob = cobertura(cands, historico, ctx.agora, _ler(arq_f), k) | {"origem": "medicao"}
+            _gravar_json(arq_f, cob)
+            return {"ok": True, "gravado": True} | {x: y for x, y in cob.items() if x not in ("pendentes_desde", "proximas")}
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+_CAMPOS_COBERTURA = ("candidatas", "julgadas_vigentes", "cobertura_pct", "pendentes", "mais_antiga_pendente_em",
+                     "mais_antiga_pendente_dias", "a_revalidar", "por_situacao", "por_grupo", "chamadas_para_zerar")
+
+
+def _rodar(ctx: sensores.Ctx, n: int | None, pensar: Callable | None, cascata: Callable | None, k: int,
+           minutos: float | None, relogio: Callable[[], float]) -> dict:
+    arq, arq_h, arq_f = (ctx.dados / "qualidade_juiz.json", ctx.dados / "qualidade_juiz_historico.json",
+                         ctx.dados / "qualidade_juiz_fila.json")
+    historico, anterior, fila_ant = _ler(arq_h), _ler(arq), _ler(arq_f)
     cands = candidatas(ctx)
-    escolhidas = amostrar(cands, historico, n, ctx.agora)
-    feitas = []
-    for a in escolhidas:
-        av = julgar(a, pensar=pensar, cascata=cascata, agora=ctx.agora)
-        feitas.append(av)
-        ant = historico.get(a.id, {})
-        if av.estado == "JULGADA":
+    _podar(historico, cands)
+    ordem = fila(cands, historico, ctx.agora)
+    plano = lotes(ordem if n is None else ordem[:max(0, n)], k)
+    fim = relogio() + 60.0 * minutos if minutos else None
+    feitas: list[Avaliacao] = []
+    estado = {"chamadas": 0, "parada": ""}
+
+    def gravar() -> dict:
+        julgadas = [x for x in feitas if x.estado == "JULGADA"]
+        vigentes = [h for h in historico.values() if h.get("estado") == "JULGADA"]
+        todas_notas = [n_ for h in vigentes for n_ in h.get("notas", {}).values()]
+        por_crit = {c: _media([h["notas"][c] for h in vigentes if c in h.get("notas", {})]) for c in regras.rubricas()}
+        cob = cobertura(cands, historico, ctx.agora, fila_ant, k) | {"origem": "rodada"}
+        agora_iso = ctx.agora.isoformat(timespec="seconds")
+        resumo = {
+            "em": agora_iso if julgadas else anterior.get("em", agora_iso),
+            "ultima_tentativa": agora_iso,
+            "motivo": "" if julgadas else (feitas[-1].juiz if feitas else "nada novo a julgar"),
+            "parada": estado["parada"],
+            "amostra": sum(len(x) for x in plano), "lote": k, "lotes_planejados": len(plano), "chamadas": estado["chamadas"],
+            "julgadas_nesta_rodada": len(julgadas),
+            "pendentes_nesta_rodada": [x.id for x in feitas if x.estado != "JULGADA"],
+            "vigentes": len(vigentes), "media": _media(todas_notas), "por_criterio": por_crit,
+            "reprovadas": sorted(h["id"] for h in vigentes if h.get("veredito") == "reprovada"),
+            "a_escalar": sorted(h["id"] for h in vigentes if h.get("escalar")),
+            "avaliacoes": sorted(vigentes, key=lambda h: (min(h.get("notas", {}).values() or [9]), h["id"])),
+        } | {c: cob[c] for c in _CAMPOS_COBERTURA}
+        if not julgadas and not plano and anterior:
+            resumo["em"] = agora_iso                             # nada novo a julgar É rodada concluída
+        for caminho, obj in ((arq_h, historico), (arq_f, cob), (arq, resumo)):
+            _gravar_json(caminho, obj)
+        return resumo
+
+    for lt in plano:
+        if fim is not None and fim - relogio() < MIN_SEGUNDOS_LOTE:
+            estado["parada"] = f"orçamento de tempo ({minutos:g} min) esgotado"
+            break
+        avs = julgar_lote(lt, pensar=pensar, cascata=cascata, agora=ctx.agora)
+        estado["chamadas"] += 1
+        feitas.extend(avs)
+        for a, av in zip(lt, avs):
+            if av.estado != "JULGADA":
+                continue
+            ant = historico.get(a.id, {})
             piorou = {c: (ant.get("notas", {}).get(c), nota) for c, nota in av.notas.items()
                       if isinstance(ant.get("notas", {}).get(c), (int, float)) and nota < ant["notas"][c]}
             historico[a.id] = asdict(av) | {"piorou": piorou, "reprovada_seguidas":
@@ -501,39 +829,13 @@ def _rodar(ctx: sensores.Ctx, n: int, pensar: Callable | None, cascata: Callable
             if historico[a.id]["reprovada_seguidas"] >= 2:
                 av.escalar, av.motivo_escalar = True, av.motivo_escalar or "reprovada em duas rodadas seguidas"
                 historico[a.id]["escalar"], historico[a.id]["motivo_escalar"] = True, av.motivo_escalar
-        elif "sem Claude" in av.juiz:
-            break                                                # sem assinatura agora: parar (não insistir, não trocar de backend)
-    julgadas = [asdict(x) for x in feitas if x.estado == "JULGADA"]
-    # a fotografia traz TODAS as afirmações com juízo vigente (não só as desta rodada): o sensor lê daqui.
-    # Superfície que SAIU (card retirado, achado que a régua não gera mais, caso apagado) não tem juízo vigente —
-    # 19/11/2026: cards retirados por FP medida seguiam como SUB bloqueante para sempre. Só se poda o grupo cuja
-    # fonte foi lida nesta rodada (fonte que falhou não apaga nota de ninguém); Yoda não se poda (resposta entregue
-    # é fato consumado).
-    vivos, lidos = {c.id for c in cands}, {_grupo_poda(c.id) for c in cands}
-    for hid in [h for h in historico if _grupo_poda(h) in lidos and h not in vivos]:
-        historico[hid]["estado"] = "SUPERFICIE_RETIRADA"
-    vigentes = [h for h in historico.values() if h.get("estado") == "JULGADA"]
-    todas_notas = [n_ for h in vigentes for n_ in h.get("notas", {}).values()]
-    por_crit = {c: _media([h["notas"][c] for h in vigentes if c in h.get("notas", {})]) for c in regras.rubricas()}
-    resumo = {
-        "em": ctx.agora.isoformat(timespec="seconds") if julgadas else anterior.get("em", ctx.agora.isoformat(timespec="seconds")),
-        "ultima_tentativa": ctx.agora.isoformat(timespec="seconds"),
-        "motivo": "" if julgadas else (feitas[-1].juiz if feitas else "nada novo a julgar"),
-        "candidatas": len(cands), "amostra": len(escolhidas), "julgadas_nesta_rodada": len(julgadas),
-        "pendentes_nesta_rodada": [x.id for x in feitas if x.estado != "JULGADA"],
-        "vigentes": len(vigentes), "media": _media(todas_notas), "por_criterio": por_crit,
-        "reprovadas": sorted(h["id"] for h in vigentes if h.get("veredito") == "reprovada"),
-        "a_escalar": sorted(h["id"] for h in vigentes if h.get("escalar")),
-        "avaliacoes": sorted(vigentes, key=lambda h: (min(h.get("notas", {}).values() or [9]), h["id"])),
-    }
-    if not julgadas and not feitas and anterior:
-        resumo["em"] = ctx.agora.isoformat(timespec="seconds")   # nada novo a julgar É rodada concluída
-    ctx.dados.mkdir(parents=True, exist_ok=True)
-    for caminho, obj in ((arq_h, historico), (arq, resumo)):
-        tmp = caminho.with_suffix(".tmp")
-        tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(caminho)
-    return resumo
+        sem_claude = next((av.juiz for av in avs if "sem Claude" in av.juiz), "")
+        if sem_claude:
+            estado["parada"] = sem_claude                        # sem assinatura agora: parar (não insistir, não trocar de backend)
+        gravar()                                                 # progresso a cada lote: corte no meio retoma daqui
+        if sem_claude:
+            break
+    return gravar()
 
 
 def _grupo_poda(aid: str) -> str | None:

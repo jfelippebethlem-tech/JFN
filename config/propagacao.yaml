@@ -170,6 +170,12 @@ fontes:
     sonda: {git: [compliance_agent/detectores, compliance_agent/qualidade, config/qualidade_regras.yaml, config/qualidade_detectores.yaml, config/qualidade_inventario.yaml],
             assunto: '^(fix|feat|perf)'}
     cerebro: {de: commit, kind: experiencial, rotulo: "correção de detector/regra de qualidade", assunto: "detectores e regras de qualidade"}
+  vault_casos_md:
+    nome: Caso do vault criado ou editado (afirmação que o juiz de qualidade tem de julgar)
+    sonda: {pasta: "~/vault/casos", glob: "*.md"}
+  produtos_casa:
+    nome: Produto da casa novo (relatório de fornecedor/órgão, parecer Lex, dossiê em reports/)
+    sonda: {pasta: "reports", glob: "*_20??-??-??.md"}
   regra_iss_retido:
     nome: Correção no detector de ISS retido na NF × OB
     sonda: {git: [compliance_agent/detector_iss_retido.py]}
@@ -620,6 +626,22 @@ derivados:
     prioridade: 8
     efeito: {arquivo: data/qualidade_estado.json}
     antes: "a cada 3 h, dentro da automelhoria (cron 40 */3)"
+  juiz_fila:
+    nome: Fila e cobertura do juiz de qualidade (afirmação sem veredito para o texto atual)
+    onde: Sistema › Conformidade (juiz — cobertura, pendentes, idade da mais antiga) · sensor CST-15
+    # SEM LLM: só remede a fila (candidatas × histórico por impressão) e grava a cobertura. O JULGAMENTO continua nas
+    # janelas noturnas (cron do juiz, `--ate-esvaziar --minutos N`) — nunca se chama o Claude a cada ciclo do despachante.
+    # A trava é a da própria rodada do juiz: com ela ocupada o despachante espera (a rodada grava a cobertura a cada lote).
+    depende: [vault_casos_md, produtos_casa, governo_couto_regras, painel_ob, painel_contratos, regra_detectores]
+    comando: ["{py}", "-m", "compliance_agent.qualidade", "cobertura"]
+    trava_externa: data/qualidade_juiz.lock
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    timeout_s: 600
+    prioridade: 9
+    efeito: {arquivo: data/qualidade_juiz_fila.json}
+    antes: "não existia — o que ficava sem juízo só aparecia na rodada noturna (amostra de 6 a 12 de 166)"
   painel_ob:
     nome: Painel — caches que somam OB (por ano e mês, orçamento por órgão, Governo Couto, frescor)
     onde: Estado › Orçamento por órgão · Estado › Governo Couto · filtro Ano/Mês · Sistema › Motores (frescor)

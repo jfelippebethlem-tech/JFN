@@ -542,6 +542,20 @@ def sensor_juiz_qualidade(ctx: Ctx) -> list[dict]:
     if ctx.agora - em > timedelta(hours=48):
         out.append(violacao("CST-15", "llm", "juiz:silencio", f"o juiz de qualidade não conclui rodada desde {em:%d/%m %H:%M}",
                             d.get("motivo") or "", "ver data/qualidade_juiz.log e o orçamento do motor Claude"))
+    # cobertura (20/11/2026, dono: "precisa julgar, não apenas um baixo limite"): afirmação sem veredito para o
+    # texto ATUAL há mais de 48 h é falha — o juiz julga a fila inteira, não amostra
+    fila_arq = ctx.dados / "qualidade_juiz_fila.json"
+    if fila_arq.exists():
+        f = json.loads(fila_arq.read_text(encoding="utf-8"))
+        velhas = sorted(i for i, p in (f.get("pendentes_desde") or {}).items()
+                        if ctx.agora - datetime.fromisoformat(p["desde"]) > timedelta(hours=48))
+        if velhas and (f.get("cobertura_pct") or 0) < 100:
+            out.append(violacao("CST-15", "llm", "juiz:cobertura",
+                                f"juiz cobre {f.get('cobertura_pct')}% das afirmações: {f.get('pendentes')} pendente(s), "
+                                f"{len(velhas)} há mais de 48 h",
+                                "sem veredito para o texto atual: " + ", ".join(velhas[:8]) + ("…" if len(velhas) > 8 else ""),
+                                "python -m compliance_agent.qualidade juiz --ate-esvaziar --minutos 90 "
+                                "(ver o teto do motor Claude e a contingência)"))
     rub = regras.rubricas()
     for av in d.get("avaliacoes", []):
         for criterio, nota in (av.get("notas") or {}).items():
