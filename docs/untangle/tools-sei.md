@@ -145,7 +145,7 @@ e `propostas_sei_extrair` já usavam.
 
 ## 7. Pendente — por prioridade  `[pendente]`
 
-1. **Fila de OCR cega ao frio novo.** Desde 16/11 `sei_arquivo_frio.sh` grava em
+1. `[feito na fila e no trabalhador — §10; ligar: ver §10]` **Fila de OCR cega ao frio novo.** Desde 16/11 `sei_arquivo_frio.sh` grava em
    `vm2:~/arquivo_frio/sei_pdfs`; `sei_ocr_gpu_fila.pdfs_no_frio`, `sei_ocr_reserva`, o worker GPU
    (`deploy/itcampo/ocr_gpu/ocr_gpu_worker.py:182`), `ocr_cpu.sh` e `pool_nativo.py` leem
    `~/arquivo_frio/sei_cache`. **1.602 pastas** do índice `sei_arquivo_frio.jsonl` estão em `sei_pdfs`:
@@ -289,3 +289,53 @@ Cadeia fechada `zai, cohere, openrouter` (teto mensal server-side / guarda `:fre
 ### 9.7 Sábado (medido)
 Cache `.zst` em `sei_pais`/`sei_arvore_build`/`sei_sweep`/`sei_reparar_truncados` (e `sei_integra_fila._fila_geral`,
 que também só vê `cdp_*.json`); identificar os 42.661 faltantes pela árvore do cache; fila do OCR ver o frio da VM-2.
+
+## 10. Fila do OCR vê o frio novo — item 1 do §7  `[feito · ligar: abaixo]`
+
+**Medido (20/11 18h40, GPU do it-campo a 0% com "pendentes 0").** O frio tem TRÊS lugares, não dois: `vm2:~/arquivo_frio/sei_cache`
+(15/11, 54.488 PDFs), `vm2:~/arquivo_frio/sei_pdfs` (desde 16/11, 274 pastas, 9.099 PDFs, 19 GB) e o disco do PRÓPRIO
+it-campo `C:\JFN-Arquivo\sei_pdfs` (15–16/11, 1.019 pastas, 27.438 PDFs, 46 GB; 339 dessas entradas do índice com rc=12).
+As "1.602 pastas" do índice somam as duas últimas. Fila (mesma régua `montar`, `foi_ocr`, sem nativo, sem aplicado):
+
+| origem | documentos | pastas |
+|---|---:|---:|
+| antes (só `sei_cache` da VM-2) | 57 | 13 |
+| + `sei_pdfs` da VM-2 | **4.830** (+4.773) | 226 (+213) |
+| + disco do it-campo (`--itcampo-local`) | **14.749** (+9.919) | 1.007 |
+
+**Como.** `sei_ocr_gpu_fila` lista `sei_cache` e `sei_pdfs`; o PDF que só mora em `sei_pdfs` ganha LINK FÍSICO em
+`sei_cache/<mesmo caminho>` (mesmo disco: mesmo inode, zero byte, nada apagado nem sobrescrito; conferido por
+`samefile`) antes de entrar na fila — o trabalhador VIVO da GPU, a reserva da VM-2 e os nós de CPU do it-campo leem
+sem mudar uma linha nem reiniciar. `--medir` só conta. O trabalhador novo lê primeiro `C:\JFN-Arquivo\sei_pdfs` (sem
+baixar), confere o md5 de cada `.ocr_gpu.*` nas duas pontas (como a reserva; só o conferido sai de `out/`) e tem
+lote avulso (`OCR_BASE=… OCR_UMA_VEZ=1`). O disco do it-campo só entra com `--itcampo-local`: o trabalhador antigo
+marcaria esses PDFs como falha. O integrador grava o manifesto por `acervo_texto.mutar_manifesto` (reler-mesclar
+sob trava; trava ocupada → nada gravado nem registrado, `manifesto_ocupado`, volta na próxima).
+
+**Lote real (20 documentos de 20 processos, só `sei_pdfs` da VM-2, 5 sem texto + 15 notas fiscais lidas pelo
+Tesseract)**: link de 20/20; trabalhador novo avulso no it-campo, mesmo vLLM; 138 páginas em 162 s = **1,17 s/página**
+(0 nativas, 0 falhas); entrega md5 20/20 conferida; integrador (sob trava) 2 preenchidos + 15 substituídos, 3 fotos
+com < 40 caracteres não entraram (regra antiga: entrega apagada e não registrada).
+
+**Conferência à mão (3 documentos contra a imagem)** — documento e página certos nos 3, mas:
+- NFS-e de Cabo Frio (`020001_003960_2024` #0, R$ 100.033,95): o Surya devolveu BLOCOS VAZIOS (página torta, brasão)
+  — sumiram razão social, CNPJ do prestador e a discriminação que o Tesseract tinha; valores e retenções certos.
+- DANFE (`020001_000500_2025` #0, R$ 799.806,00): valores, datas, CNPJ do destinatário certos; bloco do emitente (CNPJ
+  30.082.317/0001-85, chave) vazio.
+- Planilha de refeições (`210108_000574_2023` #686, preenchida — antes 37 caracteres): estrutura certa, mas 4 números
+  errados num scan ruim (ALMOÇO 1.548,20 por 1.649,20; total 2.553,90 por 2.553,60; 280 e 360 por 380) e tokens
+  `<|30|>` vazados do modelo.
+Nas 15 substituições, **4 de 28 CNPJ com DV válido sumiram (3 documentos)**. O bench de 18/11 (páginas nativas
+"sujadas") não media bloco perdido. Guarda novo no integrador: substituição só entra se todo CNPJ com DV válido do
+texto atual continua no novo (`mantido_perderia_cnpj`); as 3 substituições do lote foram desfeitas sob a trava (texto
+do Tesseract de volta; registro `revertido_perderia_cnpj`). Preencher documento sem texto não muda.
+
+**Ligar (dono):** (1) integrar os commits — a propagação `sei_ocr_gpu_fila` passa a pôr o `sei_pdfs` da VM-2 na fila
+e o trabalhador VIVO já consome na próxima puxada (de hora em hora, quando a fila dele acaba); (2) para o disco do
+it-campo: depois do `git pull` no `~/JFN-worker`, copiar `deploy/itcampo/ocr_gpu/ocr_gpu_worker.py` para
+`C:\Users\iterj\` e encerrar SÓ o processo `ocr_gpu_worker.py` (o laço `jfn_ocr_gpu.ps1` relança em 120 s; o
+`vllm_surya.sh` não reinicia o vLLM que está no ar); então acrescentar `--itcampo-local` ao comando de
+`sei_ocr_gpu_fila` em `config/propagacao.yaml`. Antes do (2), a reserva da VM-2 não alcança o disco do it-campo
+(falha → o item volta à fila da GPU).
+**Pendente:** bloco vazio do Surya (o guarda só protege CNPJ; razão social/discriminação sem CNPJ podem sumir em
+substituição) e o token `<|NN|>` no texto; foto com < 40 caracteres volta à fila para sempre.

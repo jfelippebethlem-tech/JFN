@@ -13,16 +13,22 @@ camada invisível, imagens < 10% da página) não vai à GPU — o texto do pró
 da fila, 98 de 263 páginas eram nativas (NF-e impressa do portal etc.). (2) FLUXO contínuo: a rasterização roda num
 fio próprio e OCR_EM_VOO páginas ficam sempre em voo no vLLM — o laço antigo (grupos de 48 com barreira) deixava o
 vLLM com 0 requisições em ~18% das amostras do /metrics e com poucas na cauda de cada grupo.
+
+ARQUIVO FRIO NOVO (20/11/2026): o PDF que já está no disco do próprio it-campo (`C:\\JFN-Arquivo\\sei_pdfs`, levado para lá
+em 15–16/11) é lido de lá, sem baixar; o resto vem da VM-2 (`sei_cache`, onde `tools/sei_ocr_gpu_fila.py` liga por link
+físico o que mora em `sei_pdfs`). ENTREGA conferida: rsync --ignore-existing e md5 de cada arquivo nas duas pontas (a
+mesma conferência da reserva, `tools/sei_ocr_reserva.entregar`); só o conferido sai de `out/`.
+Lote avulso sem mexer no trabalhador vivo: OCR_BASE=<outra pasta> OCR_UMA_VEZ=1 (lê <pasta>/ocr_fila.txt e sai no fim).
 """
 from __future__ import annotations
 
+import hashlib
 import html as _html
 import io
 import json
 import os
 import queue
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -33,14 +39,16 @@ from pathlib import Path
 import fitz
 from PIL import Image
 
-BASE = Path.home() / "jfn-gpu" / "ocr"
+BASE = Path(os.environ.get("OCR_BASE", str(Path.home() / "jfn-gpu" / "ocr")))
+UMA_VEZ = os.environ.get("OCR_UMA_VEZ") == "1"          # lote avulso: acabou a fila, sai (não puxa a da VM-1)
+ARQUIVO_LOCAL = Path(os.environ.get("OCR_ARQUIVO_LOCAL", "/mnt/c/JFN-Arquivo/sei_pdfs"))
 FILA, FEITOS, FALHAS = BASE / "ocr_fila.txt", BASE / "feitos.txt", BASE / "falhas.txt"
 TMP, OUT = BASE / "tmp", BASE / "out"
 LOTE = int(os.environ.get("OCR_LOTE", "40"))
 MAX_PAG = int(os.environ.get("OCR_MAX_PAG", "120"))   # 200 dpi RGB ≈ 12 MB/página: 120 ≈ 1,4 GB no WSL
 EM_VOO = int(os.environ.get("OCR_EM_VOO", "32"))   # páginas em voo no vLLM (KV cache de 2,1 GiB segura ~26 rodando)
 VM1 = "vm1-ts:JFN/data/sei_cache/"
-SINAL = BASE / "SESSAO_ATIVA"          # tocado pelo ocr_servico a cada página das sessões SEI
+SINAL = Path.home() / "jfn-gpu" / "ocr" / "SESSAO_ATIVA"   # tocado pelo ocr_servico a cada página das sessões SEI
 
 
 def ceder_as_sessoes(max_s: int = 600) -> None:
@@ -146,6 +154,35 @@ def ler_lote(pdfs, rec, em_voo: int = EM_VOO):
     return res, ruins, refazer
 
 
+def _md5(p: Path) -> str:
+    return hashlib.md5(p.read_bytes()).hexdigest()
+
+
+def entregar() -> tuple[int, list[str]]:
+    """Entrega à VM-1 o que está em out/ (só o que não existe lá: --ignore-existing) e confere o md5 de CADA arquivo
+    nas duas pontas. Conferido → apagado de out/; divergente ou não entregue → fica em out/ e volta no próximo lote.
+    Devolve (rc do rsync, arquivos com md5 divergente)."""
+    arqs = sorted(p.relative_to(OUT).as_posix() for suf in (".ocr_gpu.txt", ".ocr_gpu.json") for p in OUT.rglob(f"*{suf}"))
+    if not arqs:
+        return 0, []
+    r = subprocess.run(["rsync", "-a", "--ignore-existing", "--include=*/", "--include=*.ocr_gpu.txt",
+                        "--include=*.ocr_gpu.json", "--exclude=*", str(OUT) + "/", VM1],
+                       capture_output=True, text=True, timeout=1800)
+    if r.returncode != 0:
+        return r.returncode, []
+    host, _, pasta = VM1.partition(":")
+    rr = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"cd {pasta} && xargs -d '\\n' md5sum --"],
+                        input=("\n".join(arqs) + "\n").encode(), capture_output=True, timeout=600)
+    remoto = {ln[34:]: ln[:32] for ln in rr.stdout.decode("utf-8", "replace").splitlines()}
+    ruins = []
+    for a in arqs:
+        if remoto.get(a) == _md5(OUT / a):
+            (OUT / a).unlink()
+        else:
+            ruins.append(a)
+    return (0 if rr.returncode in (0, 1) else rr.returncode), ruins     # md5sum rc 1 = algum ausente (vira ruim)
+
+
 def main() -> int:
     import surya_utf8  # acentos: o modelo gera ç/ã em Latin-1 (ver o módulo)
     surya_utf8.instalar()
@@ -158,11 +195,12 @@ def main() -> int:
     fila = [p for p in FILA.read_text().split() if p not in feitos and p not in falhas] if FILA.exists() else []
     log(ev="inicio", pendentes=len(fila), feitos=len(feitos))
     if any(OUT.rglob("*.ocr_gpu.txt")):     # sobra de lote interrompido: entrega antes de seguir
-        r = subprocess.run(["rsync", "-a", "--ignore-existing", "--include=*/", "--include=*.ocr_gpu.txt",
-                            "--include=*.ocr_gpu.json", "--exclude=*", str(OUT) + "/", VM1],
-                           capture_output=True, text=True, timeout=1800)
-        log(ev="sobra_entregue", rc=r.returncode)
+        rc, ruins = entregar()
+        log(ev="sobra_entregue", rc=rc, md5_divergente=ruins[:20])
     while True:
+        if not fila and UMA_VEZ:
+            log(ev="fim_uma_vez", feitos=len(feitos))
+            return 0
         if not fila:      # acabou: puxa a fila que a VM-1 remonta (tools/sei_ocr_gpu_fila.py); nada novo → 1 h
             r = subprocess.run(["rsync", "-a", "vm1-ts:JFN/data/sei_ocr_gpu_fila.txt", str(FILA)],
                                capture_output=True, text=True, timeout=300)
@@ -177,14 +215,16 @@ def main() -> int:
         if mem_livre_gb() < 3.0:
             log(ev="espera_memoria", livre_gb=round(mem_livre_gb(), 1)); time.sleep(120); continue
         lote, fila = fila[:LOTE], fila[LOTE:]
+        locais = {rel: ARQUIVO_LOCAL / rel for rel in lote if (ARQUIVO_LOCAL / rel).is_file()}   # disco do it-campo
+        remotos = [rel for rel in lote if rel not in locais]
         lst = TMP / "lote.txt"
-        lst.write_text("\n".join(lote) + "\n")
+        lst.write_text("\n".join(remotos) + "\n")
         r = subprocess.run(["rsync", "-a", "--files-from", str(lst), "vm2-ts:arquivo_frio/sei_cache/", str(TMP) + "/"],
-                           capture_output=True, text=True, timeout=1800)
-        if r.returncode not in (0, 23):
+                           capture_output=True, text=True, timeout=1800) if remotos else None
+        if r is not None and r.returncode not in (0, 23):
             log(ev="rsync_vm2_falhou", rc=r.returncode, erro=r.stderr[-300:]); fila = lote + fila; time.sleep(300); continue
         t_lote, pags_lote, nativas_lote = time.time(), 0, 0
-        res, ruins, refazer = ler_lote([(rel, TMP / rel) for rel in lote], rec)   # ausente do rsync = ruim
+        res, ruins, refazer = ler_lote([(rel, locais.get(rel, TMP / rel)) for rel in lote], rec)   # ausente = ruim
         devolver_memoria()
         for rel in ruins:
             with FALHAS.open("a") as f:
@@ -210,16 +250,12 @@ def main() -> int:
         for rel in lote:
             if rel not in refazer:
                 (TMP / rel).unlink(missing_ok=True)
-        # entrega à VM-1 — só o que não existe lá
-        r = subprocess.run(["rsync", "-a", "--ignore-existing", "--include=*/", "--include=*.ocr_gpu.txt",
-                            "--include=*.ocr_gpu.json", "--exclude=*", str(OUT) + "/", VM1],
-                           capture_output=True, text=True, timeout=1800)
-        if r.returncode == 0:
-            shutil.rmtree(OUT); OUT.mkdir()
+        # entrega à VM-1 — só o que não existe lá, md5 conferido nas duas pontas
+        rc, divergentes = entregar()
         dt = time.time() - t_lote
         log(ev="lote", pdfs=len(lote), paginas=pags_lote, nativas=nativas_lote, s=round(dt),
-            s_por_pag=round(dt / max(pags_lote, 1), 2),
-            entregue=r.returncode == 0, restantes=len(fila))
+            s_por_pag=round(dt / max(pags_lote, 1), 2), locais=len(locais),
+            entregue=rc == 0 and not divergentes, md5_divergente=divergentes[:20], restantes=len(fila))
     return 0
 
 

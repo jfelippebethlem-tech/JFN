@@ -10,11 +10,23 @@ RESERVA (18/11/2026, `tools/sei_ocr_reserva.py`): o que a reserva da VM-2 tem re
 fica FORA (não duplicar com a GPU); o que a reserva já aplicou volta só no FIM da fila — o Surya é mais forte e
 substitui o texto da reserva quando chegar (precedência em `tools/sei_ocr_gpu_integrar.py`).
 
-    python -m tools.sei_ocr_gpu_fila
+ARQUIVO FRIO NOVO (20/11/2026): desde 16/11 o `sei_arquivo_frio.sh` leva os escaneados para `vm2:~/arquivo_frio/sei_pdfs`
+(e de 15–16/11 para o disco do próprio it-campo, `C:\\JFN-Arquivo\\sei_pdfs`), mas a fila só olhava `sei_cache` — a GPU
+ficava ociosa com a fila vazia. Agora a fila lista as duas pastas da VM-2; o PDF que só existe em `sei_pdfs` ganha um
+LINK FÍSICO (hard link: mesmo inode, zero byte a mais, nada apagado) em `sei_cache/<mesmo caminho>` antes de entrar na
+fila — assim o trabalhador da GPU, a reserva da VM-2 e os nós de CPU do it-campo, que buscam em `sei_cache`, leem sem
+mudar nada neles. Os do disco do it-campo (`--itcampo-local`) só entram com o trabalhador novo, que lê local primeiro
+(o antigo marcaria o PDF ausente como falha).
+
+    python -m tools.sei_ocr_gpu_fila                    # grava a fila (e liga os links que ela precisa)
+    python -m tools.sei_ocr_gpu_fila --medir            # só conta, por origem; não grava nem liga nada
+    python -m tools.sei_ocr_gpu_fila --itcampo-local    # inclui C:\\JFN-Arquivo\\sei_pdfs (trabalhador novo no ar)
 """
 from __future__ import annotations
 
+import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -37,13 +49,59 @@ def _chars(d: dict) -> int:
         return 0
 
 
-def pdfs_no_frio() -> set[str]:
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "vm2",
-                        "cd ~/arquivo_frio/sei_cache && find . -name '*.pdf' -printf '%P\\n'"],
+_SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
+_REL = re.compile(r"^integra_[0-9A-Za-z_]+/[0-9]{3,}\.pdf$")     # nada de "..": o caminho vai a um script remoto
+
+
+def pdfs_no_frio() -> tuple[set[str], set[str]]:
+    """(em `sei_cache`, em `sei_pdfs`) do arquivo frio da VM-2, caminhos `integra_<tag>/NNN.pdf`."""
+    r = subprocess.run([*_SSH, "vm2", "cd ~/arquivo_frio && find sei_cache sei_pdfs -name '*.pdf' -printf '%p\\n'"],
                        capture_output=True, text=True, timeout=600)
     if r.returncode != 0:
         raise RuntimeError(f"lista do arquivo frio indisponível: {r.stderr[-200:]}")
+    cache, pdfs = set(), set()
+    for ln in r.stdout.split():
+        base, _, rel = ln.partition("/")
+        (cache if base == "sei_cache" else pdfs).add(rel)
+    return cache, pdfs
+
+
+def pdfs_no_itcampo() -> set[str]:
+    """PDFs no disco do it-campo (C:\\JFN-Arquivo\\sei_pdfs, levados para lá em 15–16/11/2026)."""
+    r = subprocess.run([*_SSH, "it-campo", "wsl -d Ubuntu bash -s"],
+                       input="cd /mnt/c/JFN-Arquivo/sei_pdfs && find . -name '*.pdf' -printf '%P\\n'\n",
+                       capture_output=True, text=True, timeout=900)
+    if r.returncode != 0:
+        raise RuntimeError(f"lista do arquivo do it-campo indisponível: {r.stderr[-200:]}")
     return set(r.stdout.split())
+
+
+_LIGAR = """import json, os
+b = os.path.expanduser("~/arquivo_frio")
+for rel in json.loads(%s):
+    a, c = os.path.join(b, "sei_pdfs", rel), os.path.join(b, "sei_cache", rel)
+    try:
+        if not os.path.lexists(c):
+            os.makedirs(os.path.dirname(c), exist_ok=True)
+            os.link(a, c)
+        if os.path.samefile(a, c):
+            print(rel)
+    except OSError:
+        pass
+"""
+
+
+def espelhar_no_sei_cache(rels: list[str]) -> set[str]:
+    """Link físico `sei_pdfs/<rel>` → `sei_cache/<rel>` na VM-2 (mesmo disco: mesmo inode, nenhum byte copiado, nada
+    apagado nem sobrescrito). Devolve os `rel` cujo `sei_cache` É o arquivo de `sei_pdfs` (conferido por inode)."""
+    rels = [r for r in rels if _REL.match(r)]
+    if not rels:
+        return set()
+    r = subprocess.run([*_SSH, "vm2", "python3 -"], input=_LIGAR % json.dumps(json.dumps(rels)),
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        raise RuntimeError(f"link no arquivo frio falhou: {r.stderr[-200:]}")
+    return set(r.stdout.split()) & set(rels)
 
 
 def tags_risco_alto() -> set[str]:
@@ -86,6 +144,11 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[st
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description="Fila do OCR por IA (GPU do it-campo)")
+    ap.add_argument("--medir", action="store_true", help="só conta a fila por origem; não grava nem liga nada")
+    ap.add_argument("--itcampo-local", action="store_true",
+                    help="inclui C:\\JFN-Arquivo\\sei_pdfs do it-campo (só com o trabalhador que lê local no ar)")
+    a = ap.parse_args()
     aplicados = set()
     if LEDGER.exists():
         for ln in LEDGER.read_text(encoding="utf-8").splitlines():
@@ -94,13 +157,24 @@ def main() -> int:
                 if e.get("motor", "surya") != "reserva":       # o da reserva volta no fim (o Surya é mais forte)
                     aplicados.add((e["tag"], int(e["i"])))
     from tools.sei_ocr_reserva import reservados_pela_reserva
-    fila = montar(pdfs_no_frio(), aplicados, tags_risco_alto(), reservados_pela_reserva())
+    cache, pdfs = pdfs_no_frio()
+    local = pdfs_no_itcampo() if a.itcampo_local else set()
+    fila = montar(cache | pdfs | local, aplicados, tags_risco_alto(), reservados_pela_reserva())
+    so_pdfs = [r for r in fila if r not in cache and r in pdfs]
+    conta = {"sei_cache": sum(r in cache for r in fila), "sei_pdfs": len(so_pdfs),
+             "itcampo_local": sum(r not in cache and r not in pdfs for r in fila)}
+    if a.medir:
+        print(json.dumps({"fila": len(fila), "pastas": len({r.split("/")[0] for r in fila}), "por_origem": conta,
+                          "ja_aplicados": len(aplicados)}))
+        return 0
+    ligados = espelhar_no_sei_cache(so_pdfs)
+    fila = [r for r in fila if r in cache or r in ligados or r in local]     # link que falhou não entra
     tmp = SAIDA.with_suffix(".tmp")
     tmp.write_text("\n".join(fila) + ("\n" if fila else ""), encoding="utf-8")
     tmp.replace(SAIDA)
-    print(json.dumps({"fila": len(fila), "ja_aplicados": len(aplicados)}))
+    print(json.dumps({"fila": len(fila), "por_origem": conta, "ligados": len(ligados),
+                      "link_falhou": len(so_pdfs) - len(ligados), "ja_aplicados": len(aplicados)}))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

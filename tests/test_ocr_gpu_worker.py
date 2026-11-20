@@ -100,3 +100,43 @@ def test_corte_de_paginas_respeita_max_pag(tmp_path, monkeypatch):
     a = _pdf(tmp_path / "a.pdf", ["escaneada"] * 4)
     res, _, _ = W.ler_lote([("a.pdf", a)], RecFalso(), em_voo=2)
     assert res["a.pdf"]["paginas"] == 2 and res["a.pdf"]["paginas_pdf"] == 4
+
+
+def test_entrega_so_apaga_o_que_tem_md5_igual_nas_duas_pontas(tmp_path, monkeypatch):
+    """20/11/2026: a entrega da GPU apagava out/ inteiro com rc 0 do rsync, sem conferir. Agora md5 de cada arquivo
+    nas duas pontas (como a reserva): igual → sai de out/; divergente ou ausente na VM-1 → fica e volta no lote seguinte."""
+    import hashlib
+    out = tmp_path / "out"
+    monkeypatch.setattr(W, "OUT", out)
+    (out / "integra_t").mkdir(parents=True)
+    for n in ("000", "001"):
+        (out / "integra_t" / f"{n}.ocr_gpu.txt").write_text(f"texto {n}")
+        (out / "integra_t" / f"{n}.ocr_gpu.json").write_text("{}")
+    md5 = {a: hashlib.md5((out / a).read_bytes()).hexdigest()
+           for a in ("integra_t/000.ocr_gpu.txt", "integra_t/000.ocr_gpu.json", "integra_t/001.ocr_gpu.json")}
+    md5["integra_t/001.ocr_gpu.json"] = "0" * 32                  # chegou diferente; 001.txt nem chegou
+    chamadas = []
+
+    def falso(argv, **kw):
+        chamadas.append(argv)
+        if argv[0] == "rsync":
+            return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        assert argv[-1] == "cd JFN/data/sei_cache/ && xargs -d '\\n' md5sum --" and argv[-2] == "vm1-ts"
+        pedidos = kw["input"].decode().split()
+        linhas = "".join(f"{md5[a]}  {a}\n" for a in pedidos if a in md5)
+        return types.SimpleNamespace(returncode=1, stdout=linhas.encode(), stderr=b"")
+    monkeypatch.setattr(W.subprocess, "run", falso)
+    rc, ruins = W.entregar()
+    assert rc == 0 and sorted(ruins) == ["integra_t/001.ocr_gpu.json", "integra_t/001.ocr_gpu.txt"]
+    assert sorted(p.name for p in (out / "integra_t").iterdir()) == ["001.ocr_gpu.json", "001.ocr_gpu.txt"]
+    assert [c[0] for c in chamadas] == ["rsync", "ssh"]
+
+
+def test_entrega_com_rsync_falho_nao_apaga_nada(tmp_path, monkeypatch):
+    out = tmp_path / "out"
+    monkeypatch.setattr(W, "OUT", out)
+    (out / "integra_t").mkdir(parents=True)
+    (out / "integra_t" / "000.ocr_gpu.txt").write_text("x")
+    monkeypatch.setattr(W.subprocess, "run", lambda argv, **kw: types.SimpleNamespace(returncode=12, stdout="", stderr="caiu"))
+    assert W.entregar() == (12, [])
+    assert (out / "integra_t" / "000.ocr_gpu.txt").exists()

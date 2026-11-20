@@ -19,7 +19,7 @@ def _monta(tmp_path, docs: list[dict], textos: dict[str, str], gpu: dict[int, st
     return arq, cache
 
 
-def test_preenche_sem_texto_substitui_tesseract_e_nunca_toca_nativo(tmp_path, monkeypatch):
+def test_preenche_sem_texto_nunca_substitui_texto_existente_e_nunca_toca_nativo(tmp_path, monkeypatch):
     monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
     monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
     monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
@@ -42,12 +42,12 @@ def test_preenche_sem_texto_substitui_tesseract_e_nunca_toca_nativo(tmp_path, mo
     assert d0["texto"] and d0["ocr"] is True and d0["ocr_motor"].startswith("surya") and d0["chars"] > 40
     assert "94.999,98" in (arq / d0["texto"]).read_text()
     assert (arq / d0["texto"]).read_text().startswith("[Nota Fiscal 53] (fase: despesa · tipo: nota_fiscal)")
-    assert "RIO DE JANEIRO" in (arq / d1["texto"]).read_text() and d1["ocr_motor"].startswith("surya")
-    assert "RFO" in (arq / d1["ocr_anterior"]).read_text()          # o texto do Tesseract fica guardado
+    # 20/11/2026 (dono: 100% acurado): texto existente NUNCA é substituído; o da GPU fica ao lado
+    assert "RFO" in (arq / d1["texto"]).read_text() and d1.get("ocr_motor") is None
+    assert "RIO DE JANEIRO" in (arq / d1["ocr_gpu_ao_lado"]).read_text()
     assert d2 == docs[2]                                              # nativo intocado
     assert "lixo" not in (arq / "texto" / "002_desp.txt").read_text()
-    assert res == {"preenchidos": 1, "substituidos": 1, "nativos_mantidos": 1, "sem_manifesto": 0, "fora_do_manifesto": 0,
-                   "processos": 1}
+    assert (res["preenchidos"], res["substituidos"], res["nativos_mantidos"]) == (1, 0, 1)
     # idempotente: segunda rodada não refaz
     assert G.integrar()["preenchidos"] == 0 and G.integrar()["substituidos"] == 0
 
@@ -112,3 +112,58 @@ def test_um_unico_caractere_quebrado_ja_barra(tmp_path, monkeypatch):
     docs = [{"i": 0, "titulo": "NL", "fase": "despesa", "tipo": "nota_liquidacao", "texto": "", "chars": 0}]
     _monta(tmp_path, docs, {}, {0: "Nota de Liquida�ão valor 1.234,56 referente ao contrato 12/2024 " * 2})
     assert G.integrar()["preenchidos"] == 0
+
+
+def test_texto_existente_nunca_e_substituido_mesmo_com_cnpj_mantido(tmp_path, monkeypatch):
+    """20/11/2026 (lote real do frio, conferido à mão): o Surya devolveu blocos vazios (razão social, CNPJ do
+    prestador, discriminação) onde o Tesseract tinha texto. Perda de bloco não se mede só por CNPJ: o texto atual fica
+    SEMPRE, inclusive quando o novo mantém todos os CNPJ; o da GPU vai ao lado (`.gpu.txt`)."""
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    docs = [{"i": 0, "titulo": "NF", "fase": "despesa", "tipo": "nota_fiscal", "texto": "texto/000_nf.txt", "chars": 90,
+             "ocr": True},
+            {"i": 1, "titulo": "NF", "fase": "despesa", "tipo": "nota_fiscal", "texto": "texto/001_nf.txt", "chars": 90,
+             "ocr": True}]
+    tess = "[NF] (fase: despesa · tipo: nota_fiscal)\n\nPrestador ARIES CNPJ 06.049,955/0001.10 valor 100.033,95 " \
+           "tomador 42.498.642/0001-02"
+    textos = {"000_nf.txt": tess, "001_nf.txt": tess}
+    gpu = {0: "Tomador CNPJ 42.498.642/0001-02 VALOR TOTAL R$ 100.033,95 (bloco do prestador veio vazio) <|30|>",
+           1: "Prestador CNPJ 06.049.955/0001-10 tomador 42.498.642/0001-02 VALOR TOTAL R$ 100.033,95"}
+    arq, _ = _monta(tmp_path, docs, textos, gpu)
+    res = G.integrar()
+    assert res["substituidos"] == 0
+    d0, d1 = json.loads((arq / "manifest.json").read_text())["docs"]
+    for d, nome in ((d0, "000_nf.txt"), (d1, "001_nf.txt")):
+        assert (arq / "texto" / nome).read_text() == tess
+        assert d["texto"] == f"texto/{nome}" and d.get("ocr_motor") is None
+    assert "<|30|>" not in (arq / d0["ocr_gpu_ao_lado"]).read_text()          # token do modelo não vaza
+    acoes = [json.loads(ln)["acao"] for ln in (tmp_path / "ledger.jsonl").read_text().splitlines()]
+    assert acoes == ["mantido_existente_gpu_ao_lado"] * 2
+
+
+def test_manifesto_gravado_sob_a_trava_e_ocupado_volta_depois(tmp_path, monkeypatch):
+    """20/11/2026: o integrador regravava o manifesto inteiro sem trava (o que a captura gravasse no meio sumia).
+    Agora é reler-mesclar-gravar sob `manifest.json.lock`; trava ocupada → nada gravado nem registrado, volta depois."""
+    import functools
+
+    from compliance_agent.llm.arquivo_estado import trava
+    from compliance_agent.sei import acervo_texto
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    monkeypatch.setattr(G, "mutar_manifesto", functools.partial(acervo_texto.mutar_manifesto, espera=0.2))
+    docs = [{"i": 0, "titulo": "NF", "fase": "despesa", "tipo": "nota_fiscal", "texto": "", "chars": 0}]
+    arq, _ = _monta(tmp_path, docs, {}, {0: "NOTA FISCAL Nº 53 valor R$ 94.999,98 serviço prestado em março"})
+    with trava(arq / "manifest.json.lock", 1) as pegou:
+        assert pegou
+        res = G.integrar()
+    assert res["preenchidos"] == 0 and res["manifesto_ocupado"] == 1
+    assert not (tmp_path / "ledger.jsonl").exists()
+    # outro escritor muda o manifesto no meio: o integrador relê e preserva o campo novo
+    man = json.loads((arq / "manifest.json").read_text())
+    man["capturado_em"] = "2026-11-20 19:00"
+    (arq / "manifest.json").write_text(json.dumps(man))
+    assert G.integrar()["preenchidos"] == 1
+    man = json.loads((arq / "manifest.json").read_text())
+    assert man["capturado_em"] == "2026-11-20 19:00" and man["docs"][0]["ocr_motor"].startswith("surya")
