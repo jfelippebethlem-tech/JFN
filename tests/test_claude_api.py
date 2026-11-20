@@ -218,3 +218,13 @@ def test_sem_ciclo_vale_o_teto_fixo(tmp_path, monkeypatch):
     f.write_text("ANTHROPIC_API_KEY_JFN=x\nJFN_API_TETO_USD=100\n")
     monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(f))
     assert A.ciclo() is None and A.limite_efetivo() == 95
+
+
+def test_camada_subjetiva_tem_saida_maior(tmp_path, monkeypatch):
+    f = tmp_path / "a.env"
+    f.write_text("ANTHROPIC_API_KEY_JFN=x\nJFN_API_TETO_USD=100\n")
+    monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(f))
+    cli = Cliente(texto='{"ok": 1}')
+    A.pensar_api("camada_subjetiva", "p1", cliente=cli)
+    A.pensar_api("triagem_alertas", "p2", cliente=cli)
+    assert [c["max_tokens"] for c in cli.criados] == [16000, 4000]

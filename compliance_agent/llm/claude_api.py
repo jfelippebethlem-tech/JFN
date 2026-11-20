@@ -80,6 +80,10 @@ BALDE_DA_TAREFA = {
     "calibracao": "calibracao", "fumaca": "calibracao",
 }
 
+# Saída máxima por tarefa (o padrão de 4.000 corta JSON longo). Medido 20/11/2026: `camada_subjetiva` (hipóteses do
+# Governo Couto) caiu 5× em "resposta cortada no max_tokens" pela API — cada uma pagou a entrada e não rendeu nada.
+MAX_TOKENS_TAREFA = {"camada_subjetiva": 16000}
+
 ultimo_motivo: str = ""
 
 # Marca de proveniência de toda resposta que saiu daqui: `<id>@api` (síncrona) ou `<id>@api-lote#<versão>` (Batch).
@@ -401,13 +405,14 @@ def _falhas():
         return (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError)
 
 
-def pensar_api(tarefa: str, prompt: str, *, sistema: str = "", modelo: str | None = None, max_tokens: int = 4000,
+def pensar_api(tarefa: str, prompt: str, *, sistema: str = "", modelo: str | None = None, max_tokens: int | None = None,
                effort: str = "medium", formato: dict | None = None, timeout: float = 180.0, cliente=None):
     """Chamada SÍNCRONA (alguém espera a resposta), dentro do teto. `(texto, modelo, usd)` ou `None` com motivo
     em `ultimo_motivo`. Nunca levanta. Para volume, use `enviar_lote`."""
     global ultimo_motivo
     ultimo_motivo = ""
     modelo = _sem_opus(modelo or modelo_para(tarefa))
+    max_tokens = max_tokens or MAX_TOKENS_TAREFA.get(tarefa, 4000)
     if cliente is None and arq.sob_pytest():
         ultimo_motivo = "API: sob pytest sem cliente dublê"
         return None
