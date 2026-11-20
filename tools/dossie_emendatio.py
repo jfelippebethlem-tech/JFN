@@ -90,6 +90,7 @@ def _lacunas(con, cnpj, ugs_alvo=None, anos=None) -> list[dict]:
     n_esp = {(u, a): n for u, a, n in con.execute(
         f"SELECT ug_codigo, substr(data_emissao,1,4), COUNT(*) FROM ordens_bancarias WHERE favorecido_cpf=?"
         f"{filtro_t} GROUP BY 1,2", par_t)}
+    # ob-qualquer-status: pares UG×ano para medir cobertura, não soma
     pares = set(n_esp) | set(con.execute(
         f"SELECT DISTINCT ug_emitente, {_ANO} FROM ob_orcamentaria_siafe WHERE credor=?{filtro_s}", par_s))
     return [{"ug": u, "ano": a, "rotulo": e["rotulo"], "obs_espelho": n_esp.get((u, a), 0),
@@ -416,6 +417,7 @@ def _secao_inea_seas(con) -> str:
         return f"R$ {_brl(v / 1e6)} mi" if v else "INDISPONÍVEL no SIAFE"
 
     # 2020: o SIAFE da casa não leu essas UGs (só a ALERJ antes de 2021) — dito, não somado
+    # ob-qualquer-status: pares UG×ano para medir cobertura, não soma
     pares = set(con.execute(f"SELECT DISTINCT ug_emitente, {_ANO} FROM ob_orcamentaria_siafe WHERE ug_emitente "
                             f"IN ({q}) AND {_ANO} BETWEEN '2020' AND '2024'", list(_UGN)))
     pares |= {(u, str(a)) for u in _UGN for a in range(2020, 2025)}

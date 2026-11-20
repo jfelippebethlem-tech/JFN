@@ -94,6 +94,7 @@ rows = [(nome_canonico(ug, nome or ug), dt, v, o) for ug, dt, v, o, nome in rows
 _n_esp = {(u, a): n for u, a, n in cur.execute(
     "SELECT ug_codigo, substr(data_emissao,1,4), COUNT(*) FROM ordens_bancarias WHERE favorecido_cpf=? GROUP BY 1,2",
     (CNPJ,))}
+# ob-qualquer-status: pares UG×ano para medir cobertura, não soma
 _pares = set(_n_esp) | set(cur.execute(
     f"SELECT DISTINCT ug_emitente, {ANO_EMISSAO_SIAFE} FROM ob_orcamentaria_siafe WHERE credor=?", (CNPJ,)))
 INDISP = [{"ug": u, "ano": a, "rotulo": e["rotulo"], "obs_espelho": _n_esp.get((u, a), 0)}
