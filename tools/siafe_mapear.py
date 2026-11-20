@@ -170,8 +170,8 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int,
                 for _ in range(espera_grade):  # a grade é pesada: espera aparecer
                     await pg.wait_for_timeout(2000)
                     info = await _ev(pg, _JS_TELA)    # aguenta contexto destruído por PPR
-                    if info["cols"] or info["sels"]:
-                        break
+                    if info["cols"]:                  # só o filtro (sels) não basta: a OB de Retenção mostra
+                        break                         # o select de UG antes da grade e saía sem colunas (19/11/2026)
                 await S._shot(pg, f"mapa_tela_{tela[:24]}")
                 out["telas"][tela] = {"achou": True, "caminho": [mod, sg], **info}
                 if detalhar:
