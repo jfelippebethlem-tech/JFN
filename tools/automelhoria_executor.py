@@ -146,7 +146,12 @@ def avisar(res: list[dict]) -> None:
                           f"Para aplicar: /cc aplique a branch {r['branch']} na branch viva, rode os testes e dê push")
         else:
             partes.append(f"\n⚪ {r['titulo'][:120]} — sem conserto commitado\n{r['resumo'][:500]}")
-    asyncio.run(enviar_mensagem("\n".join(partes)[:4000]))
+    # Pedido do dono ("pode ligar o executor"), não aviso de sistema: sem o chat explícito o filtro de silêncio de
+    # 17/11 engolia o resumo e devolvia ok=True (20/11/2026: 3 resumos sumiram assim).
+    from compliance_agent.notifications.telegram import _get_chat_id
+    r = asyncio.run(enviar_mensagem("\n".join(partes)[:4000], chat_id=_get_chat_id()))
+    if not r.get("ok") or r.get("silenciado"):
+        print(f"aviso NÃO entregue: {r}", flush=True)
 
 
 def main() -> int:
