@@ -130,6 +130,11 @@ def _ids_em_lote(con) -> set[int]:
     return ids
 
 
+# Alerta que o PRÓPRIO detector declara "NÃO é acusação" (ex.: D3 com sanção posterior ou encerrada antes da emenda)
+# não vai ao LLM: 346 dos 610 D3 triados voltaram 'provavel_falso_positivo' dizendo exatamente isso (19/11/2026).
+_SEM_ACUSACAO = "COALESCE(a.descricao,'') NOT LIKE 'NÃO é acusação%'"
+
+
 def selecionar(con: sqlite3.Connection, n: int) -> list[dict]:
     """Os `n` alertas `novo` ainda não triados (nem em lote pendente), do MAIOR valor em jogo para o menor."""
     garantir(con)
@@ -137,7 +142,7 @@ def selecionar(con: sqlite3.Connection, n: int) -> list[dict]:
     sql = (f"SELECT a.id, a.tipo, a.severidade, a.titulo, a.descricao, a.evidencias, "
            f"CASE WHEN json_valid(a.evidencias) THEN {_COALESCE} ELSE 0 END AS v "
            "FROM alertas a LEFT JOIN alertas_triagem t ON t.alerta_id = a.id "
-           "WHERE a.status = 'novo' AND t.alerta_id IS NULL ORDER BY v DESC, a.id LIMIT ?")
+           f"WHERE a.status = 'novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO} ORDER BY v DESC, a.id LIMIT ?")
     cols = ("id", "tipo", "severidade", "titulo", "descricao", "evidencias", "valor")
     linhas = [dict(zip(cols, r)) for r in con.execute(sql, (n + len(em_lote),)).fetchall()]
     return [x for x in linhas if x["id"] not in em_lote][:n]
@@ -332,7 +337,7 @@ def colher_lotes_api(con: sqlite3.Connection, *, cliente=None, gerar_b=None) -> 
         con.execute("DELETE FROM alertas_triagem_lote WHERE lote_id=?", (lote_id,))
         con.commit()
     restantes = con.execute("SELECT COUNT(*) FROM alertas a LEFT JOIN alertas_triagem t ON t.alerta_id=a.id "
-                            "WHERE a.status='novo' AND t.alerta_id IS NULL").fetchone()[0]
+                            f"WHERE a.status='novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}").fetchone()[0]
     claude_api.registrar_restantes(TAREFA, restantes)
     return gravados
 

@@ -481,3 +481,9 @@ def test_avaliar_maquinas_ociosa_sobrecarga_e_indisponivel():
     itc_parado = {"cpu_pct": 10, "win_disp_gb": 20, "piso_gb": 3, "maquina": {"gpu": {"util_pct": 0}}}
     a = {p["assinatura"] for p in avaliar_maquinas(None, (2.0, 2), itc_parado)}
     assert a == {"maquinas:vm1:sem_medida", "maquinas:itcampo:gpu_ociosa", "maquinas:itcampo:cpu_ociosa"}
+
+
+def test_avaliar_precisao_por_detector():
+    from tools.automelhoria_geral import avaliar_precisao
+    a = [p["assinatura"] for p in avaliar_precisao([("d3", 610, 346), ("d7", 793, 7), ("pouco", 10, 9)])]
+    assert a == ["detector:fp:d3"]

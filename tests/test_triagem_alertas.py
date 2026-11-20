@@ -202,3 +202,10 @@ def test_prompt_medido_no_ab_nao_muda_sem_novo_ab():
 
 
 _HASH_SYS_MEDIDO = "25cdd6329a81"
+
+
+def test_alerta_que_o_detector_declara_nao_acusacao_nao_vai_ao_llm(con):
+    con.execute("INSERT INTO alertas VALUES(6,'emendas_d3_favorecido_sancionado','baixa','D3 posterior',"
+                "'NÃO é acusação: a sanção só começou em 2026, 3 ano(s) DEPOIS da emenda de 2023',?, 'novo')",
+                (json.dumps({"valor": 9e9}),))
+    assert 6 not in [a["id"] for a in T.selecionar(con, 10)]

@@ -601,13 +601,42 @@ def sensor_maquinas() -> list[dict]:
     return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo())
 
 
+# PRECISÃO POR DETECTOR (19/11/2026, dono: "melhore todos os detectores… de forma sistemática e constante").
+# A triagem já julgou milhares de alertas, mas ninguém lia os vereditos por detector: o D3 tinha 57% de falso
+# positivo. Janela de 30 dias, para o conserto aparecer como CURA quando os vereditos novos melhorarem.
+FP_MAX, FP_MIN_N = 0.30, 30
+
+
+def avaliar_precisao(linhas: list[tuple[str, int, int]]) -> list[dict]:
+    out = []
+    for tipo, n, fp in linhas:
+        if n >= FP_MIN_N and fp / n >= FP_MAX:
+            out.append(_p("detector", f"fp:{tipo}", f"detector {tipo}: {100 * fp / n:.0f}% de provável falso "
+                          f"positivo em {n} vereditos (30 dias)",
+                          acao_humana="abrir 5 falsos positivos (justificativa na alertas_triagem), achar a regra "
+                                      "que dispara errado e corrigir no detector — não no prompt"))
+    return out
+
+
+def sensor_detectores(db: Path | None = None) -> list[dict]:
+    import sqlite3
+    con = sqlite3.connect(f"file:{db or _REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=60)
+    try:
+        linhas = con.execute(
+            "SELECT a.tipo, COUNT(*), SUM(t.prioridade='provavel_falso_positivo') FROM alertas_triagem t "
+            "JOIN alertas a ON a.id=t.alerta_id WHERE t.em >= date('now','-30 day') GROUP BY 1").fetchall()
+    finally:
+        con.close()
+    return avaliar_precisao([(t, n, fp or 0) for t, n, fp in linhas])
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
             "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres,
             "qualidade": sensor_qualidade,
             "autoaprimoramento": sensor_autoaprimoramento, "certeza": sensor_certeza,
-            "maquinas": sensor_maquinas}
+            "maquinas": sensor_maquinas, "detectores": sensor_detectores}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
