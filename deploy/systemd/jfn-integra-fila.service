@@ -5,4 +5,11 @@ Description=JFN — drena a fila de íntegras SEI (baixa+arquiva N processos)
 Type=oneshot
 WorkingDirectory=%h/JFN
 Environment=PYTHONPATH=%h/JFN
-ExecStart=%h/JFN/.venv/bin/python tools/sei_integra_fila.py --max 6
+# 1) atualiza a fila POR DINHEIRO antes de drenar. Medido em 2026-07-24: dos 22.587 processos SEI com
+#    Ordem Bancária, só 311 estavam arquivados — e os 18.843 nunca tocados somavam R$ 2,11 BILHÕES pagos.
+#    A fila antiga só enxergava o que o sweep já tinha lido, então o dinheiro grande ficava invisível.
+ExecStartPre=%h/JFN/.venv/bin/python -m tools.sei_fila_por_dinheiro --gravar --top 800
+# 2) o caso ATIVO (bombeiros/FUNESBOM) continua primeiro — investigação em curso não perde a vez.
+ExecStart=%h/JFN/.venv/bin/python tools/sei_integra_fila.py --max 4
+# 3) e então a fila por valor pago: o processo de maior exposição financeira é o próximo a ser lido.
+ExecStart=%h/JFN/.venv/bin/python tools/sei_integra_fila.py --max 4 --fila %h/JFN/data/sei_fila_dinheiro.json

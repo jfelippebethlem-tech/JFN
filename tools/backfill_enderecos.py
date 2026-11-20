@@ -21,10 +21,11 @@ from pathlib import Path
 
 import httpx
 
+from compliance_agent.collectors.arquivos import caminho_db
+from compliance_agent.cpf_cnpj import digitos
 from compliance_agent.rede_societaria import _gravar_endereco
 
 _REPO = Path(__file__).resolve().parent.parent
-_DB = _REPO / "data" / "compliance.db"
 _LOG = _REPO / "data" / "backfill_enderecos.log"
 
 
@@ -38,27 +39,23 @@ def _log(m: str) -> None:
         pass
 
 
-def _digs(v) -> str:
-    return "".join(ch for ch in str(v) if ch.isdigit())
-
-
 def _gap() -> list[str]:
-    con = sqlite3.connect(str(_DB), timeout=30)
+    con = sqlite3.connect(str(caminho_db()), timeout=30)
     con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar
     try:
         cnpjs = set()
         for (c,) in con.execute("SELECT DISTINCT credor FROM ob_orcamentaria_siafe WHERE credor IS NOT NULL"):
-            d = _digs(c)
+            d = digitos(c)
             if len(d) == 14:
                 cnpjs.add(d)
         try:
             for (c,) in con.execute("SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL"):
-                d = _digs(c)
+                d = digitos(c)
                 if len(d) == 14:
                     cnpjs.add(d)
         except Exception:
             pass
-        com_end = {_digs(r[0]) for r in con.execute("SELECT cnpj FROM endereco_fornecedor")}
+        com_end = {digitos(r[0]) for r in con.execute("SELECT cnpj FROM endereco_fornecedor")}
         return sorted(cnpjs - com_end)
     finally:
         con.close()
@@ -88,7 +85,7 @@ async def main(delay: float = 0.6) -> None:
     if not gap:
         _log("nada a fazer.")
         return
-    con = sqlite3.connect(str(_DB), timeout=30)
+    con = sqlite3.connect(str(caminho_db()), timeout=30)
     con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar
     agora = datetime.now().isoformat(timespec="seconds")
     ok = falha = 0

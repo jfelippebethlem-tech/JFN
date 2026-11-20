@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — egress Cloudflare WARP (wireproxy, SOCKS5 só em 127.0.0.1:25344; usado pelo TFE)
+After=network-online.target
+
+[Service]
+ExecStart=%h/.local/opt/warp/wireproxy -c %h/.local/opt/warp/wp.conf
+Restart=on-failure
+RestartSec=30
+Nice=10
+
+[Install]
+WantedBy=default.target

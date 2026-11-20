@@ -1,0 +1,7 @@
+[Unit]
+Description=Notifica falha da unidade %i no Telegram (OnFailure genérico)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+ExecStart=/bin/bash %h/JFN/tools/notificar_falha.sh %i

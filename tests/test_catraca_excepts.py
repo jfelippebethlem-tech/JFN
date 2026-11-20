@@ -218,7 +218,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-11-20: -26 (1626->1600) — untangle de `detectores/`: o `try/except` em volta do LLM de cada rubrica
 # (copiado em 22 detectores) virou um só em `base.perguntar_rubrica`; os parsers de data copiados, um só.
 # 2026-11-20: -38 (1600->1562) — untangle de `collectors/`: falha de fonte deixou de ser engolida (vira INDISPONÍVEL).
-BASELINE = 1562
+# 2026-11-20: -26 (1562->1536) — untangle de deploy/tools de infra: três scripts sem chamador apagados
+# (`enviar_sessao_telegram`, `enviar_forense_telegram`, `painel_extrair`).
+BASELINE = 1536
 
 
 def _contar() -> int:

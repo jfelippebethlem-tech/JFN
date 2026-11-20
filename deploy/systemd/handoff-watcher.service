@@ -1,0 +1,5 @@
+[Unit]
+Description=Watcher canal VM-2 -> Telegram
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/JFN/.venv/bin/python /home/ubuntu/JFN/tools/handoff_watcher.py

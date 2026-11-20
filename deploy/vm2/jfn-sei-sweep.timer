@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — sweep SEI da VM-2 a cada 30 min (fatia 1/2)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

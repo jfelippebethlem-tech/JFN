@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — analise pesada na VM-2 (grafo de vinculos e indice de agente publico)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN
+Environment=PYTHONPATH=/home/ubuntu/JFN
+ExecStart=/bin/bash /home/ubuntu/JFN/tools/vm2_analise.sh
+# teto pedido pelo dono: 10 GB dos 11 da maquina
+MemoryMax=10G
+Nice=15
+IOSchedulingClass=idle

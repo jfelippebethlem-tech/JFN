@@ -13,16 +13,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import pathlib
 import sqlite3
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from compliance_agent.collectors.arquivos import caminho_db  # noqa: E402
 from compliance_agent.reporting.requisicao import markdown, minutas  # noqa: E402
-
-DB = os.environ.get("JFN_DB", "data/compliance.db")
 
 
 def main() -> int:
@@ -33,7 +31,7 @@ def main() -> int:
     ap.add_argument("--limite-por-orgao", type=int, default=60)
     a = ap.parse_args()
 
-    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
+    con = sqlite3.connect(f"file:{caminho_db()}?mode=ro", uri=True, timeout=30)
     lista = minutas(con, limite_por_orgao=a.limite_por_orgao)
     con.close()
 

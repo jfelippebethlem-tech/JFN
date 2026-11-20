@@ -68,7 +68,7 @@ if [ $ATIVAR = 1 ]; then
   for s in jfn.service hermes-gateway.service chrome-jfn.service; do
     systemctl --user enable --now "$s" 2>/dev/null && ok "up $s" || no "falhou $s (systemctl --user status $s)"
   done
-  for t in jfn-ronda.timer jfn-tfe.timer jfn-tfe-ob.timer massare-daily.timer massare-market.timer; do
+  for t in jfn-ronda.timer jfn-tfe.timer jfn-tfe-ob.timer; do   # massare-* saiu da VM em 2026-07-07
     systemctl --user enable --now "$t" 2>/dev/null && ok "timer $t" || warn "timer $t (opcional)"
   done
   # NÃO ativar sweeps-serial (lane contínuo revertido — cont.25). Sweeps rodam pelo CRONTAB.

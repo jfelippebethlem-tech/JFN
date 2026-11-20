@@ -393,8 +393,7 @@
   "tools/vault_aviso_piso_siafe.py": 1
  },
  "pkill_por_padrao": {
-  "data/pull_integra_completa.sh": 1,
-  "tools/diag_telegram_poller.sh": 1
+  "data/pull_integra_completa.sh": 1
  },
  "sancao_sem_alcance": {
   "compliance_agent/contratos/dossie.py": 1,

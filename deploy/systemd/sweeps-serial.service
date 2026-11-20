@@ -1,0 +1,15 @@
+[Unit]
+Description=JFN sweeps — orquestrador SERIAL (1 sweep por vez, VM-safe)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ubuntu/JFN
+ExecStart=/bin/bash /home/ubuntu/JFN/tools/sweeps_serial.sh
+Restart=always
+RestartSec=15
+# Nice/limite p/ não competir com o jfn.service (relatórios) sob pressão
+Nice=10
+
+[Install]
+WantedBy=default.target

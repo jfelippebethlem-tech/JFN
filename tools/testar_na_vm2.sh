@@ -39,8 +39,9 @@ echo "[vm2] empacotando código…"
 # que importa scipy/shapely) e deixava de fora requirements-dev.txt — 2 falhas que a nuvem não tem.
 # Fora só os binários pesados de docs/ (PDF e key-art, ~95 MB), que nenhum teste lê.
 git ls-files -z -- . ':!docs/pdf' ':!docs/referencias' \
-  | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
-  | tar czf "$PKG" --null -T - 2>/dev/null
+  | while IFS= read -r -d '' f; do if [ -e "$f" ]; then printf '%s\0' "$f"; fi; done \
+  | tar czf "$PKG" --null -T - 2>/dev/null \
+  || { echo "[vm2] empacotamento falhou — pacote parcial não segue (o md5 seria do pacote errado)"; exit 1; }
 MD5=$(md5sum "$PKG" | cut -d' ' -f1)
 scp -q -o BatchMode=yes "$PKG" "$PAR:$TGZ" || { echo "[vm2] scp falhou — túnel fora?"; exit 1; }
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh semanal da intel PCRJ (dom 06:40, fora dos sweeps e após o fisc-refresh de seg)
+
+[Timer]
+OnCalendar=*-*-* 06:40:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -45,15 +45,20 @@ except Exception as e:
   if [ "$q" != "ok" ]; then
     # ALERTA UMA VEZ POR INCIDENTE. Avisar a cada 5 minutos seria trocar um silêncio por um
     # dilúvio — e o dono já pagou o preço do dilúvio de e-mail do CI.
+    # A marca só é gravada depois que o aviso saiu (ou foi silenciado por decisão do dono): antes ela
+    # vinha primeiro e um envio que falhasse calava o incidente para sempre.
     if [ ! -f data/.guardiao_corrompido.alertado ]; then
-      date -Is > data/.guardiao_corrompido.alertado
       echo "$(date -Is) 🔴 SONDA: quick_check=$q — corrupção REAL detectada pela sonda proativa" >> "$LOG"
-      PYTHONPATH=. .venv/bin/python -c "
+      if PYTHONPATH=. .venv/bin/python -c "
+import sys
 from tools.ronda import notificar
-notificar('🔴 <b>compliance.db CORROMPIDO</b> — a sonda de integridade do guardião falhou.\n'
+sys.exit(0 if notificar('🔴 <b>compliance.db CORROMPIDO</b> — a sonda de integridade do guardião falhou.\n'
           'NÃO é o caso do -shm morto (ali quick_check volta ok). Perícia de dado, não restart:\n'
           '<code>python -m tools.reconstruir_db --saida /tmp/novo.db --laudo /tmp/laudo.json</code>\n'
-          'Avaliações feitas a partir de agora podem sair com MENOS achado — foi o que aconteceu em 12/08.')" 2>/dev/null
+          'Avaliações feitas a partir de agora podem sair com MENOS achado — foi o que aconteceu em 12/08.') else 1)" 2>>"$LOG"
+      then date -Is > data/.guardiao_corrompido.alertado
+      else echo "$(date -Is) aviso da SONDA não saiu — tenta de novo na próxima rodada" >> "$LOG"
+      fi
     fi
     exit 1
   fi

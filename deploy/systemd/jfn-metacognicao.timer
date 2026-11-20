@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — agenda o sono REM do Hermes (diário 06:50, após o ciclo do núcleo)
+
+[Timer]
+OnCalendar=*-*-* 06:50:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN — sentinela de INTEGRIDADE do acervo (irmã do SLO, que só vê frescor)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN
+Environment=PYTHONPATH=/home/ubuntu/JFN
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/bin/bash -lc 'set -a; . ./.env; set +a; .venv/bin/python -m tools.sentinela_integridade --alerta >> data/sentinela_integridade.log 2>&1'

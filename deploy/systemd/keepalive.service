@@ -1,0 +1,15 @@
+[Unit]
+Description=JFN keepalive — guarda anti-idle LEVE (Oracle Always Free)
+After=network-online.target jfn.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Baixíssima prioridade de CPU e I/O: só serve para não parecer ociosa.
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/home/ubuntu/JFN/tools/keepalive.sh
+# Não deixa um disparo travado segurar recurso.
+TimeoutStartSec=60
+StandardOutput=journal
+StandardError=journal

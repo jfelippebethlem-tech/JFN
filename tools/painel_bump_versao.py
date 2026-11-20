@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 """Sincroniza o `?v=<hash8>` de painel.css/painel.js em static/jfn-painel.html com o conteúdo real.
 
-O PROBLEMA, MEDIDO (2026-07-31). `tools/painel_extrair.py` calcula o `?v=` UMA vez, no momento da
-extração. Depois disso ninguém mais o toca: cada edição em `static/js/painel.js` saía com a mesma
+O PROBLEMA, MEDIDO (2026-07-31). O extrator de julho (tirou o CSS/JS inline do HTML; apagado em
+20/11/2026, migração concluída) calculava o `?v=` UMA vez, no momento da extração. Depois disso
+ninguém mais o tocava: cada edição em `static/js/painel.js` saía com a mesma
 catraca `?v=66af4ca4` e o navegador servia o arquivo do cache — a correção existia no repositório e
 não chegava a ninguém. Era o `?v=` que ficava congelado no HTML, não o cache que estava errado.
 
-Este script é a peça que faltava: recalcula os dois hashes (mesma função do painel_extrair) e
-reescreve as tags. Em `--check` não escreve nada e sai != 0 se estiver defasado — é o modo que o
-gate do pre-commit usa.
+Este script é a peça que faltava: recalcula os hashes e reescreve as tags. Em `--check` não escreve
+nada e sai != 0 se estiver defasado — é o modo que o gate do pre-commit usa.
 
 Uso:
     .venv/bin/python -m tools.painel_bump_versao            # corrige o HTML

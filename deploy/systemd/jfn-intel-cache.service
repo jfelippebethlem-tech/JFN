@@ -1,0 +1,24 @@
+[Unit]
+Description=JFN — materializa cruzamentos de inteligência (sancionadas à época, perdedoras, benefício×vínculo) + esfera oficial dos entes PNCP
+After=network-online.target
+OnFailure=notificar-falha@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=PYTHONPATH=%h/JFN
+Environment=JFN_DATA_DIR=%h/JFN/data
+Nice=12
+TimeoutStartSec=7200
+# 1) atualiza esfera oficial de entes novos do PNCP (idempotente, só os que faltam)
+ExecStart=%h/JFN/.venv/bin/python -c "import sqlite3,sys; sys.path.insert(0,'.'); from compliance_agent.collectors.pncp_resultados import coletar_entes; c=sqlite3.connect('data/compliance.db',timeout=60); c.execute('PRAGMA busy_timeout=60000'); print(coletar_entes(c)); c.close()"
+# 2) re-avalia fantasmas do conjunto-alvo (persiste em fantasma_score)
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.cruzamentos_intel fantasmas
+# 3) completa preço unitário do PNCP em fatias diárias (sobrepreço) — cobertura cresce sozinha
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.pncp_resultados --backfill-precos 800
+# 4) contratos estaduais recentes (2 meses) — fase 1
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.pncp --incremental
+# 4b) fase 2 desacoplada: termos aditivos sobre contratos já coletados (fura o rate-limit do PNCP)
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.pncp --aditivos 1500
+# 5) materializa os caches pesados que o painel lê em ms
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.cruzamentos_intel cache

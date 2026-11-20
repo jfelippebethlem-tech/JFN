@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — coleta resultados estruturados do PNCP (vencedor homologado por item)
+After=network-online.target
+OnFailure=notificar-falha@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=JFN_DATA_DIR=%h/JFN/data
+Nice=10
+TimeoutStartSec=10800
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.pncp_resultados --incremental

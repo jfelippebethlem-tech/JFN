@@ -1,0 +1,16 @@
+[Unit]
+Description=JFN — bombeiros_supervisor (pericia paralela Lex×Claude, contratos FUNESBOM)
+After=jfn.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/JFN
+ExecStart=/bin/bash %h/JFN/tools/bombeiros_supervisor.sh
+Restart=always
+RestartSec=30
+Nice=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

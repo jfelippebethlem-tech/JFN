@@ -30,11 +30,9 @@ IGNORA = ("_arquivo", "__pycache__", "_SANDBOX")
 # chamadas que significam "faz o trabalho", não "define o trabalho"
 EXECUTORAS = {"run", "main", "run_until_complete", "serve", "start"}
 
-# Exceção NOMEADA (nunca contagem): `enviar_forense_telegram.py` é script de caso encerrado
-# (veredito ITERJ×MGS, junho/2026) escrito inteiro no nível do módulo, sem função importável e
-# sem `main()`. Pô-lo sob guard exigiria reindentar um script que ninguém importa — conferido:
-# nenhum `import` dele existe no projeto. Reescrever caso encerrado é risco sem retorno.
-EXCECOES = {"tools/enviar_forense_telegram.py"}
+# Exceção NOMEADA (nunca contagem). A única que houve, `enviar_forense_telegram.py` (script de caso
+# encerrado, ITERJ×MGS, junho/2026), foi apagada no untangle de 20/11/2026.
+EXCECOES: set[str] = set()
 
 
 def _chamadas_de_trabalho_no_topo(caminho: pathlib.Path) -> list[str]:

@@ -12,7 +12,7 @@ TK=$(grep -oE 'TELEGRAM_BOT_TOKEN=[^"'"'"' ]+' ~/.hermes/.env 2>/dev/null | head
 
 echo "1) parando o gateway da VM (Yoda fica ~40s fora)…"
 systemctl --user stop hermes-gateway.service 2>/dev/null
-pkill -9 -f 'hermes_cli[.]main gateway' 2>/dev/null
+for p in $(pgrep -f 'hermes_cli[.]main gateway'); do kill -9 "$p" 2>/dev/null; done   # por PID (CNF-16)
 sleep 3
 echo "   conexões telegram LOCAIS agora: $(ss -tnp 2>/dev/null | grep -c '149\.154\.') (esperado 0)"
 

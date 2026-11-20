@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — sono REM do Hermes (reflexão, auto-melhoria, RAG se mudou, backup da memória)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+ExecStart=%h/JFN/.venv/bin/python tools/hermes_metacognicao.py run
+TimeoutStartSec=1800
+Nice=10

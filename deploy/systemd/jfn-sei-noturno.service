@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — SEI sweep noturno (preenche janelas ociosas 22h-5h, guardado, 1 sessão itkava)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+ExecStart=/usr/bin/bash %h/JFN/tools/sweep_sei_noturno.sh
+TimeoutStartSec=25200
+Nice=15

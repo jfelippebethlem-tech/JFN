@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — agenda a coleta de resultados do PNCP (semanal, incremental 2 meses)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:40:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

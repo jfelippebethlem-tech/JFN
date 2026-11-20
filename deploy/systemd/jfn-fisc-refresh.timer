@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh semanal da fiscalização emendas/PCRJ (segunda 00:30, antes da fila de sweeps 04:00+ — 05:40 colidia com backfill_enderecos/cerebro_sync/metacognição e derrubou o job em 2026-07-20)
+
+[Timer]
+OnCalendar=Mon *-*-* 00:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

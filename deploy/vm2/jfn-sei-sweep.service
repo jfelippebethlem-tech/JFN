@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — sweep SEI (fatia 1/2 da VM-2)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN
+Environment=JFN_SWEEP_FATIA=1/2
+Environment=PYTHONPATH=/home/ubuntu/JFN
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/bin/bash tools/sweep_sei.sh

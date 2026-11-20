@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — agenda o digest diário de fiscalização (07:40, após o sono REM 06:50)
+
+[Timer]
+OnCalendar=*-*-* 07:40:00
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

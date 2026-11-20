@@ -22,10 +22,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from compliance_agent.collectors.arquivos import caminho_db
 from compliance_agent.verificacao_endereco import analisar_endereco, em_backoff
 
 _REPO = Path(__file__).resolve().parent.parent
-_DB = _REPO / "data" / "compliance.db"
 
 _DDL = """CREATE TABLE IF NOT EXISTS endereco_verificacao (
   cnpj TEXT PRIMARY KEY, status TEXT, nivel TEXT, exato INTEGER,
@@ -61,7 +61,7 @@ def main() -> int:
     a = ap.parse_args()
     load_dotenv(str(_REPO / ".env"))
 
-    con = sqlite3.connect(str(_DB), timeout=30)
+    con = sqlite3.connect(str(caminho_db()), timeout=30)
     con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar "database is locked"
     con.execute("PRAGMA journal_mode=WAL")
     con.execute(_DDL)

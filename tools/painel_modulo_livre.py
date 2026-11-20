@@ -242,11 +242,8 @@ def vocabulario() -> dict[str, str]:
 def livres() -> dict[str, list[dict]]:
     """Modulo -> simbolos da casa usados sem importar. Vazio e o estado correto."""
     voc = vocabulario()
-    entrada = _SRC / "entrada.js"
     fora: dict[str, list[dict]] = {}
     for p in sorted(_SRC.rglob("*.js")):
-        if p == entrada:          # o entrypoint importa tudo; e ele o dono do escopo global
-            continue
         js = p.read_text(encoding="utf-8")
         tenho = _declarados(js)
         corpo = _sem_ruido(js)

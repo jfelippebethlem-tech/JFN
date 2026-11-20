@@ -1,0 +1,7 @@
+[Unit]
+Description=Watcher canal VM-2 a cada 1min
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+[Install]
+WantedBy=timers.target

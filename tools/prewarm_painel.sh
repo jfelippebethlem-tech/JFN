@@ -75,7 +75,8 @@ URLS=(
 {
   echo "── $(date -Is) prewarm"
   for u in "${URLS[@]}"; do
-    t=$(nice -n 15 curl -s -o /dev/null -w "%{http_code} %{time_total}" "$BASE/$u")
+    # -m: sem teto, uma rota travada segurava o flock e calava todas as rodadas seguintes
+    t=$(nice -n 15 curl -s -m 600 -o /dev/null -w "%{http_code} %{time_total}" "$BASE/$u")
     echo "  $t $u"
   done
 } >> "$LOG" 2>&1

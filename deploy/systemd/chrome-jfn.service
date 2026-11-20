@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStartPre=/bin/mkdir -p /tmp/chrome-jfn
-ExecStart=/usr/bin/google-chrome --headless=new --no-sandbox --disable-gpu --no-first-run --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-jfn about:blank
+ExecStartPre=/bin/mkdir -p /home/ubuntu/chrome-jfn
+ExecStart=/snap/bin/chromium --headless=new --no-sandbox --disable-gpu --no-first-run --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/home/ubuntu/chrome-jfn about:blank
 Restart=always
 RestartSec=5
 # baixa prioridade: ponte só é usada sob demanda pelo JFN

@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN — digest diário no Yoda (novos processos SEI restritos + flags vermelhos graves)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=PYTHONPATH=%h/JFN
+ExecStart=%h/JFN/.venv/bin/python tools/digest_diario.py
+TimeoutStartSec=600
+Nice=10

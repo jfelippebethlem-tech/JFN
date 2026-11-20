@@ -1,0 +1,15 @@
+[Unit]
+Description=JFN keepalive — dispara a guarda anti-idle a cada ~7 min
+
+[Timer]
+# Primeiro disparo logo após o boot, depois a cada 7 minutos.
+OnBootSec=3min
+OnUnitActiveSec=7min
+# Pequena dispersão para não bater sempre no mesmo segundo.
+RandomizedDelaySec=45s
+AccuracySec=30s
+Persistent=true
+Unit=keepalive.service
+
+[Install]
+WantedBy=timers.target

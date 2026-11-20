@@ -31,8 +31,10 @@ fi
 
 mkdir -p "$DEST"
 say "trazendo o cache da VM-2…"
-if ! timeout 900 rsync -az --timeout=120 vm2:~/JFN/data/sei_cache/ "$DEST/" >> "$LOG" 2>&1; then
-  say "rsync falhou (rc=$?) — o cron repete"; exit 0
+timeout 900 rsync -az --timeout=120 vm2:~/JFN/data/sei_cache/ "$DEST/" >> "$LOG" 2>&1
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  say "rsync falhou (rc=$rc) — o cron repete"; exit 0
 fi
 n=$(ls "$DEST"/cdp_*.json 2>/dev/null | wc -l)
 say "cache da VM-2: $n arquivos"
@@ -92,4 +94,4 @@ else
   say "sem fila para entregar — a exportação nunca completou nesta máquina"
 fi
 
-say "fim (rc=$?) — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"
+say "fim — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"

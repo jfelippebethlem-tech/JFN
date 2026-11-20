@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — agenda a manutenção diária dos cruzamentos de inteligência
+
+[Timer]
+OnCalendar=*-*-* 07:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

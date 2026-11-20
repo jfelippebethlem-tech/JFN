@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — refresh semanal da intel PCRJ (fantasma_servidor + comissionados×candidatos)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+ExecStart=/bin/bash -c '%h/JFN/.venv/bin/python -m compliance_agent.pcrj.fantasma_servidor >> %h/JFN/data/pcrj_intel_refresh.log 2>&1; %h/JFN/.venv/bin/python -c "from compliance_agent.pcrj.comissionados_candidatos import coletar_mensal; print(coletar_mensal(budget_s=6000))" >> %h/JFN/data/pcrj_comiss_mensal.log 2>&1; %h/JFN/.venv/bin/python tools/consulta_nominal_alta.py --limite 200 >> %h/JFN/data/pcrj_intel_refresh.log 2>&1; %h/JFN/.venv/bin/python -c "from compliance_agent.pcrj.tse_candidatos import coletar; print(coletar(anos=[2026, 2024, 2022]))" >> %h/JFN/data/pcrj_intel_refresh.log 2>&1; %h/JFN/.venv/bin/python -m compliance_agent.pcrj.comissionados_gestao >> %h/JFN/data/pcrj_intel_refresh.log 2>&1'
+TimeoutStartSec=14400
+Nice=10

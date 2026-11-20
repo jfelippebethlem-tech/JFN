@@ -5,5 +5,4 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=%h/JFN
 Environment=JFN_DATA_DIR=%h/JFN/data
-ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.tfe_aberto --ano 2025
-ExecStartPost=%h/JFN/.venv/bin/python -m compliance_agent.collectors.tfe_aberto --ano 2026
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.tfe_aberto --latest

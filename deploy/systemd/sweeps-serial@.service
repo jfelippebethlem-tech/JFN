@@ -1,0 +1,14 @@
+[Unit]
+Description=JFN sweeps serial — lane %i (browser|dados)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ubuntu/JFN
+ExecStart=/bin/bash /home/ubuntu/JFN/tools/sweeps_serial.sh %i
+Restart=always
+RestartSec=15
+Nice=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN painel — Cloudflare quick tunnel (URL muda a cada restart; ver journalctl)
+After=network-online.target jfn.service
+
+[Service]
+ExecStart=/home/ubuntu/.local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8000
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

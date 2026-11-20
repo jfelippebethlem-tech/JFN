@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN — analise pesada na VM-2, a cada 6 horas
+
+[Timer]
+OnBootSec=35min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
