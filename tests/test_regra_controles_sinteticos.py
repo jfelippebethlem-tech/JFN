@@ -172,9 +172,6 @@ def _motor(linhas):
     return MotorCompliance(s)
 
 
-@pytest.mark.xfail(strict=True, reason="ACHADO: _regra_acumulo_cargo agrupa só pelo CPF mascarado (group_by cpf) e "
-                                       "alerta 'alta' juntando pessoas diferentes — a correção de 13/11 só chegou "
-                                       "a _regra_emprego_multiplo_orgaos")
 def test_acumulo_cargo_cpf_mascarado_nomes_diferentes_nao_agrupa():
     m = _motor([("***123456**", "PESSOA UM", "01"), ("***123456**", "PESSOA DOIS", "02"),
                 ("***123456**", "PESSOA TRES", "03")])

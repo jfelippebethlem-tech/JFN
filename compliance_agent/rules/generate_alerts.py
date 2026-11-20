@@ -1,28 +1,24 @@
 """
-Configuração padrão de auditoria do JFN.
+Varredura simples de OBs (ciclo do Auditor 24h do Hermes, `hermes_goal._ciclo_auditor_completo`).
 
-Arquivo único de referência para regras, limites e diretrizes que o Hermes
-deve seguir em toda análise de OBs, independentemente da UO.
-
-Regras adicionais:
-- Vedacao ao fracionamento de despesas para fugir da licitacao (Lei 14.133/2021, art. 8, paragrafo 1).
-- Limites de dispensa de licitação (Lei 14.133/2021, art. 75, I e II).
-- Verificacao de empresa irregular conforme TCU 6.100/2022 (capital, tempo de abertura,
-  CAGED, endereco residencial) — quando houver dados complementares.
-- Verificacao de conflito de interesse conforme TCU 3.654/2020, cruzando
-  favorecidos com politicos/servidores do orgao (requer base de pessoas/doacoes).
+Gera alertas `sem_sei`, `valor_redondo`, `concentracao_favorecido_ug`, `fracionamento_suspeito` e uma
+pendência fixa de investigação complementar (TCU 6.100/2022 — empresa irregular; TCU 3.654/2020 — conflito
+de interesse; publicação no PNCP), sem apontar culpado enquanto a base não tiver esses dados integrados.
 """
 from __future__ import annotations
 
 import json
 from collections import defaultdict
-from pathlib import Path
+from datetime import date
 
 from compliance_agent.database.models import get_session, init_db, Alerta
-from compliance_agent.rules.default_audit_config import CONFIG_PADRAO
+from compliance_agent.limites_dispensa import limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
 
-DB = Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db"
+# Limiares desta varredura (antes num `ConfiguracaoAuditoria` de 180 linhas do qual só estes três eram lidos).
+TOLERANCIA_VALOR_REDONDO = 50.0
+MIN_PAGAMENTOS_MESMO_FAVORECIDO_UG = 3
+MIN_PAGAMENTOS_FRACIONAMENTO = 2
 
 
 def gerar_alerta(tipo: str, severidade: str, id_ob: int | None, descricao: str, referencia: str | None = None):
@@ -55,7 +51,6 @@ def gerar_alertas(session=None) -> int:
     Reaproveita uma session se fornecida (senão abre/fecha a própria).
     """
     init_db()
-    cfg = CONFIG_PADRAO
     from sqlalchemy import select
     from compliance_agent.database.models import OrdemBancaria
 
@@ -97,7 +92,7 @@ def gerar_alertas(session=None) -> int:
     # 2) Valores redondos
     for o in obs:
         v = o["valor"]
-        if v >= 5_000 and abs(v - round(v, -2)) < cfg.valores_redondos_tolerancia:
+        if v >= 5_000 and abs(v - round(v, -2)) < TOLERANCIA_VALOR_REDONDO:
             txt = (
                 f"OB {o['numero_ob']} tem valor redondo suspeito: R$ {moeda(v)}. "
                 "Pode indicar estimativa sem cotação real ou direcionamento."
@@ -111,15 +106,14 @@ def gerar_alertas(session=None) -> int:
         chave = f"{(o['favorecido_nome'] or '').strip()}|{(o['ug_codigo'] or '').strip()}"
         chaves[chave].append(o)
     for chave, itens in chaves.items():
-        if len(itens) >= cfg.max_pagamentos_mesmo_favorecido_ug_para_alerta:
+        if len(itens) >= MIN_PAGAMENTOS_MESMO_FAVORECIDO_UG:
             total = sum(i["valor"] for i in itens)
-            ids = [i["id"] for i in itens[:3]]
             txt = (
                 f"Concentração de {len(itens)} pagamentos para "
                 f"'{chave}' totalizando R$ {moeda(total)}. "
                 "Pode indicar direcionamento ou dispensa indevida."
             )
-            gerar_alerta("concentracao_favorecido_ug", "alta", ids[0], txt, referencia=chave)
+            gerar_alerta("concentracao_favorecido_ug", "alta", itens[0]["id"], txt, referencia=chave)
             count += 1
 
     # 4) Fracionamento suspeito por mês
@@ -128,17 +122,20 @@ def gerar_alertas(session=None) -> int:
         chave = f"{(o['favorecido_nome'] or '').strip()}|{(o['ug_codigo'] or '').strip()}|{o['data_emissao'][:7]}"
         chaves_mes[chave].append(o)
     for chave, itens in chaves_mes.items():
-        if len(itens) >= cfg.min_qtd_pagamentos_fracionamento:
+        if len(itens) >= MIN_PAGAMENTOS_FRACIONAMENTO:
             total = sum(i["valor"] for i in itens)
             menor = min(i["valor"] for i in itens)
-            if total > 60_000 and menor < 50_000:
-                ids = [i["id"] for i in itens[:3]]
+            # Pagamentos que, um a um, cabem na dispensa e juntos a estouram. Aqui havia 60.000 (soma) e
+            # 50.000 (parcela) literais — o teto de 2021 congelado; o teto é do exercício da OB.
+            ano = itens[0]["data_emissao"][:4]
+            teto = limite_dispensa(int(ano) if ano.isdigit() else date.today().year, "compras")
+            if total > teto and menor < teto:
                 txt = (
                     f"Possível fracionamento em {len(itens)} pagamentos para "
                     f"'{chave}' no mês, totalizando R$ {moeda(total)}. "
                     "Verificar fraude à licitação e dispensa indevida."
                 )
-                gerar_alerta("fracionamento_suspeito", "alta", ids[0], txt, referencia=chave)
+                gerar_alerta("fracionamento_suspeito", "alta", itens[0]["id"], txt, referencia=chave)
                 count += 1
 
     # 5) Regras de empresa irregular e conflito de interesse via política

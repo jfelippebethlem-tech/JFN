@@ -19,15 +19,12 @@ O conserto é estrutural, não de prompt:
   5. favorecido localizado por CNPJ (com ou sem pontuação) ou nome normalizado (sem acento,
      pontuação, espaço duplo e hifenização de fim de linha — "INFORMÁ- TICA", "S/A" × "S.a").
 
-Módulo puro (só `re`/`unicodedata`) para ser testável sem banco.
+Sem banco (só `re`/`unicodedata` e o classificador leve `entidades_gov`), para ser testável sem banco.
 """
 from __future__ import annotations
 
 import re
 import unicodedata
-
-TERMOS_RISCO = ("rescisão", "improbidade", "irregularidade", "condenação",
-                "cassação", "multa", "embargos", "inabilitação")
 
 # Variações flexionadas de cada termo (texto já normalizado: maiúsculo, sem acento, sem hífen de
 # quebra). Antes era `termo in texto`: casava só a forma exata e perdia "IRREGULARIDADES".
@@ -41,6 +38,7 @@ _RX_TERMO = {
     "embargos": r"EMBARGOS?",
     "inabilitação": r"INABILITA(?:CAO|COES)",
 }
+TERMOS_RISCO = tuple(_RX_TERMO)
 
 # Distância máxima (caracteres) entre a menção ao favorecido e o termo, DENTRO do mesmo ato.
 JANELA = 400
@@ -175,7 +173,7 @@ def ocorrencias(texto: str, nome: str, cpf_cnpj: str = "") -> list[dict]:
     if not pads:
         return []
     cnpj_fav = re.sub(r"\D", "", cpf_cnpj or "")
-    termos = [(t, re.compile(r"(?<![A-Z])" + _RX_TERMO[t] + r"(?![A-Z])")) for t in TERMOS_RISCO]
+    termos = [(t, re.compile(r"(?<![A-Z])" + rx + r"(?![A-Z])")) for t, rx in _RX_TERMO.items()]
     achados: list[dict] = []
     for ini, fim in atos(norm):
         seg = norm[ini:fim]

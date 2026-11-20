@@ -1,58 +1,59 @@
 """
-Motor de regras de compliance e detecção de irregularidades.
+Motor de regras de compliance: cada `_regra_*` consulta o banco e emite alertas na tabela `alertas`.
 
-Regras implementadas:
-  1. Funcionário fantasma      — registro sem movimentação real
-  2. Acúmulo ilegal            — mesmo CPF em múltiplos órgãos além do permitido
-  3. Nepotismo / parentesco    — empresa de familiar recebendo contratos
-  4. Fracionamento de contrato — múltiplos contratos abaixo do limite de licitação
-  5. Direcionamento de edital  — empresa com histórico de ganhos acima do esperado
-  6. Nomeação suspeita         — nomeação para cargo após doação política
-  7. Enriquecimento atípico    — remuneração acima do teto ou evolução patrimonial
-  8. Empresa fantasma          — CNPJ com endereço de servidor público
+Folha (precisam da competência AAAA-MM):
+  - acúmulo de cargos em mais de 2 órgãos e emprego em 2+ órgãos (CF/88 art. 37, XVI)
+  - servidor com remuneração zero (indício de fantasma)
+  - remuneração acima do teto (CF/88 art. 37, XI e §11 — régua `acima_do_teto`)
+  - CPF em várias fontes de remuneração (delegada a `collectors.terceirizados`)
+Contratos e sócios:
+  - soma de dispensas do par órgão × empresa acima do teto (Lei 14.133/21, arts. 8º e 75)
+  - servidor/político sócio de contratada do próprio órgão (Súmula Vinculante 13)
+  - servidor sócio de empresa contratada (`_regra_empresa_mesmo_cep_servidor`)
+  - empresa aberta há menos de 180 dias ao assinar contrato
+Ordens bancárias (espelho TFE `ordens_bancarias`, janela recente, candidatos filtrados no SQL):
+  - fracionamento mensal, OB sem processo, favorecido em 3+ UGs, empresa nova, valor redondo,
+    favorecido com termo de risco no MESMO ato do DOERJ (`doerj_casamento`)
 
-Referências legais:
-  - Lei 8.666/93 e Lei 14.133/21 (licitações): limites por modalidade
-  - Lei 8.429/92 (improbidade administrativa)
-  - Decreto-Lei 200/67 e CF/88 art. 37 (nepotismo — Súmula Vinculante 13)
-  - Lei 9.717/98 (acúmulo de cargos)
+Toda regra emite pelo `LoteAlertas` (`rules/alerta.py`): o título é a identidade do alerta.
 """
 
 import json
-from datetime import date as _date
+import logging
+from datetime import date as _date, timedelta
 from typing import Optional
 
-from sqlalchemy import Integer
+from sqlalchemy import Integer, func
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
     Alerta, Contrato, Empresa, EmpresaSocio, OrdemBancaria, Pessoa,
     PublicacaoDOERJ, RegistroFolha,
 )
+from compliance_agent.acima_do_teto import TETO_CF_37_XI, classificar as classificar_teto
 from compliance_agent.credor_institucional import institucional
+from compliance_agent.limites_dispensa import LIMITES, ato_normativo, limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.rules.alerta import LoteAlertas
 
 
-# ── Limites legais (Lei 14.133/21) ────────────────────────────────────────────
-# O teto de DISPENSA (art. 75 I e II) não mora aqui: é por exercício e vem de
-# `compliance_agent/limites_dispensa.py`. Esta tabela chegou a trazer 30.000 para obras — valor
-# que não corresponde a exercício nenhum do art. 75 — e 50.000 para serviços, o valor original de
-# 2021 aplicado a todos os anos. As faixas de modalidade abaixo são do regime da Lei 8.666/93 e
-# seguem aqui só para os contratos antigos que ainda usam esse vocabulário.
-LIMITES_LICITACAO = {
-    "obras":          {
-        "convite":     330_000,
-        "tomada":    3_300_000,
-        "concorrencia": float("inf"),
-    },
-    "servicos":       {
-        "convite":     165_000,
-        "tomada":    1_650_000,
-        "concorrencia": float("inf"),
-    },
-}
+# Teto remuneratório: o número é o da régua `acima_do_teto` (CF art. 37, XI), não uma cópia — o nome
+# antigo segue exportado porque tools/regravar_alertas_teto.py e os testes o importam daqui.
+TETO_REMUNERATORIO_RJ = TETO_CF_37_XI
 
-TETO_REMUNERATORIO_RJ = 46_366.19   # Teto do funcionalismo RJ (valor de referência 2025)
+# Empresa aberta há menos que isto ao contratar/receber é "empresa nova" (regras de contrato e de OB).
+DIAS_EMPRESA_NOVA = 180
+
+logger = logging.getLogger(__name__)
+
+
+def _mesma_pessoa_na_folha():
+    """Chave de agrupamento de "mesma pessoa" na folha: CPF mascarado E nome.
+
+    O CPF da folha vem MASCARADO (6 dígitos do meio): agrupar só por ele juntava pessoas diferentes (revisão
+    de 13/11/2026: 99,57% dos 70.533 grupos eram de pessoas distintas, e o alerta publicava o nome de uma somado
+    à remuneração de outras)."""
+    return (RegistroFolha.cpf, func.upper(func.trim(RegistroFolha.nome)))
 
 
 class MotorCompliance:
@@ -63,7 +64,16 @@ class MotorCompliance:
 
     def __init__(self, session: Session):
         self.session = session
-        self._alertas_novos: list[Alerta] = []
+        self._lote = LoteAlertas(session)
+
+    @property
+    def _alertas_novos(self) -> list[Alerta]:
+        return self._lote.novos
+
+    @_alertas_novos.setter
+    def _alertas_novos(self, alertas: list[Alerta]):
+        """Recomeça a execução (os testes zeram a lista entre uma regra e outra)."""
+        self._lote = LoteAlertas(self.session, alertas)
 
     def executar_todas_as_regras(self, competencia: Optional[str] = None) -> list[dict]:
         """
@@ -81,7 +91,6 @@ class MotorCompliance:
         self._regra_cnpj_abertura_recente_contrato()
         self._regra_cpf_duplicado_fontes(competencia)
         self._regra_emprego_multiplo_orgaos(competencia)
-        # OB-based rules (run only when SIAFE2 data is available)
         self._regra_ob_fracionamento()
         self._regra_ob_sem_processo_sei()
         self._regra_ob_favorecido_multiplas_ugs()
@@ -103,7 +112,6 @@ class MotorCompliance:
         if not competencia:
             return
 
-        from sqlalchemy import func
         q = (
             self.session.query(
                 RegistroFolha.cpf,
@@ -115,13 +123,13 @@ class MotorCompliance:
                 RegistroFolha.cpf != "",
                 RegistroFolha.cpf.isnot(None),
             )
-            .group_by(RegistroFolha.cpf)
+            .group_by(*_mesma_pessoa_na_folha())
             .having(func.count(func.distinct(RegistroFolha.orgao_codigo)) > 2)
         )
 
         for row in q.all():
             pessoa = self.session.query(Pessoa).filter_by(cpf=row.cpf).first()
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "acumulacao",
                 severidade = "alta",
                 titulo     = f"Possível acúmulo ilegal — {row.cpf}",
@@ -135,16 +143,10 @@ class MotorCompliance:
 
     # ── Regra 2: Funcionário fantasma ─────────────────────────────────────────
     def _regra_funcionario_fantasma(self, competencia: Optional[str]):
-        """
-        Detecta padrões de funcionário fantasma:
-        - Remuneração igual a zero mas registro ativo
-        - CPF com remuneração bruta mas sem remuneração líquida
-        - Nome idêntico em > 3 registros do mesmo órgão (CPFs diferentes)
-        """
+        """Servidor na folha da competência com remuneração bruta e líquida iguais a zero."""
         if not competencia:
             return
 
-        # Zero bruto mas ativo
         zeros = (
             self.session.query(RegistroFolha)
             .filter(
@@ -156,7 +158,7 @@ class MotorCompliance:
         )
         for reg in zeros:
             pessoa = self.session.query(Pessoa).filter_by(cpf=reg.cpf).first() if reg.cpf else None
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "fantasma",
                 severidade = "média",
                 titulo     = f"Servidor com remuneração zero — {reg.nome}",
@@ -186,14 +188,12 @@ class MotorCompliance:
         # contracheque, e indenizatórias/férias/13º/retroativos não contam para o teto (CF art. 37 §11) — sem
         # composição é VERIFICAR (média), ≥2,5× o teto é RRA provável (baixa); nunca "alta". Antes: 403 alertas
         # "alta" (53% dos "alta" do Início) pelo líquido cru.
-        from compliance_agent.acima_do_teto import classificar as _classificar_teto
         for reg in acima_teto:
-            cls = _classificar_teto(reg.remuneracao_bruta or reg.remuneracao_liquida, None,
-                                    teto=TETO_REMUNERATORIO_RJ)
+            cls = classificar_teto(reg.remuneracao_bruta or reg.remuneracao_liquida, None)
             if not cls.get("acima"):
                 continue
             pessoa = self.session.query(Pessoa).filter_by(cpf=reg.cpf).first() if reg.cpf else None
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "enriquecimento",
                 severidade = "baixa" if cls["status"] == "RRA_RETROATIVO_PROVAVEL" else "média",
                 titulo     = f"Remuneração acima do teto — {reg.nome}",
@@ -218,23 +218,17 @@ class MotorCompliance:
     def _regra_fracionamento_contrato(self):
         """
         Lei 14.133/21 art. 8º: proibido fracionar compras para fugir da licitação.
-        Detecta: mesmo órgão + mesma empresa + contratos próximos no tempo
-        cujo soma supera o limite de dispensa.
+        Detecta: mesmo órgão + mesma empresa com contratos por dispensa cuja soma supera o teto de dispensa.
         """
-        from sqlalchemy import func
-
-        from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
-
         # RESSALVA de precisão, declarada em vez de silenciada: o agrupamento abaixo NÃO tem
         # janela temporal — soma todos os contratos por dispensa do par órgão×empresa, de
-        # qualquer ano, apesar de a docstring falar em 12 meses. Enquanto a janela não existir,
-        # o teto usado é o do exercício MAIS RECENTE (o maior), que é a leitura conservadora:
+        # qualquer ano. Enquanto a janela não existir, o teto usado é o do exercício MAIS RECENTE
+        # (o maior), que é a leitura conservadora:
         # erra para menos achados, nunca para acusação indevida. Corrigir a janela é mudança de
         # desenho do detector, não desta correção de fonte única.
         _exercicio_ref = _date.today().year
         _teto_dispensa = limite_dispensa(_exercicio_ref, "compras")
 
-        # Agrupa por órgão + empresa, soma valores em janela de 12 meses
         q = (
             self.session.query(
                 Contrato.orgao_contrat,
@@ -242,7 +236,7 @@ class MotorCompliance:
                 func.sum(Contrato.valor_total).label("soma"),
                 func.count(Contrato.id).label("qtd"),
             )
-            .filter(Contrato.modalidade.in_(["dispensa", "Dispensa", "dispensada", "Dispensada"]))
+            .filter(func.lower(Contrato.modalidade).in_(["dispensa", "dispensada"]))
             .group_by(Contrato.orgao_contrat, Contrato.empresa_id)
             .having(func.sum(Contrato.valor_total) > _teto_dispensa)
         )
@@ -250,7 +244,7 @@ class MotorCompliance:
         for row in q.all():
             empresa = self.session.query(Empresa).get(row.empresa_id)
             nome_emp = empresa.razao_social if empresa else f"ID {row.empresa_id}"
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "fracionamento",
                 severidade = "alta",
                 titulo     = f"Possível fracionamento — {row.orgao_contrat} × {nome_emp}",
@@ -273,7 +267,6 @@ class MotorCompliance:
         Súmula Vinculante 13 (nepotismo): detecta empresas cujos sócios são
         parentes de servidores/autoridades do mesmo órgão contratante.
         """
-        # Sócios que são servidores públicos
         socios_servidores = (
             self.session.query(EmpresaSocio)
             .join(Pessoa, EmpresaSocio.pessoa_id == Pessoa.id)
@@ -286,7 +279,6 @@ class MotorCompliance:
             if not empresa:
                 continue
 
-            # Verifica se a empresa tem contratos com o órgão do servidor
             contratos = (
                 self.session.query(Contrato)
                 .filter(
@@ -297,7 +289,7 @@ class MotorCompliance:
             )
 
             for contrato in contratos:
-                self._criar_alerta(
+                self._lote.criar(
                     tipo       = "nepotismo",
                     severidade = "alta",
                     titulo     = (
@@ -325,10 +317,12 @@ class MotorCompliance:
     # ── Regra 6: Empresa com mesmo CEP de servidor ────────────────────────────
     def _regra_empresa_mesmo_cep_servidor(self):
         """
-        Empresa cadastrada no endereço residencial de servidor público
-        é indício de empresa de fachada.
+        Empresa com servidor no quadro societário e com contrato com o governo.
+
+        Apesar do nome e do título ("possivelmente residencial"), NÃO compara endereço: `Pessoa` não tem CEP, e
+        o filtro só exige que a empresa tenha algum CEP. Título mantido por ser a identidade dos alertas já
+        gravados; ver docs/untangle/rules.md.
         """
-        # Requer que servidores tenham CEP cadastrado — cruzamento básico
         empresas_residenciais = (
             self.session.query(Empresa, Pessoa)
             .join(EmpresaSocio, EmpresaSocio.empresa_id == Empresa.id)
@@ -344,7 +338,7 @@ class MotorCompliance:
         for empresa, pessoa in empresas_residenciais:
             contratos = self.session.query(Contrato).filter_by(empresa_id=empresa.id).count()
             if contratos > 0:
-                self._criar_alerta(
+                self._lote.criar(
                     tipo       = "nepotismo",
                     severidade = "média",
                     titulo     = f"Empresa possivelmente residencial com contrato — {empresa.razao_social}",
@@ -361,10 +355,9 @@ class MotorCompliance:
     # ── Regra 7: CNPJ aberto recentemente com contrato imediato ──────────────
     def _regra_cnpj_abertura_recente_contrato(self):
         """
-        Empresa aberta menos de 6 meses antes de receber contrato público
+        Empresa aberta menos de DIAS_EMPRESA_NOVA dias antes de assinar contrato público
         é padrão clássico de empresa de fachada.
         """
-
         contratos_novas = (
             self.session.query(Contrato, Empresa)
             .join(Empresa, Contrato.empresa_id == Empresa.id)
@@ -376,30 +369,27 @@ class MotorCompliance:
         )
 
         for contrato, empresa in contratos_novas:
-            try:
-                delta = (contrato.data_assinatura - empresa.data_abertura).days
-                if 0 <= delta < 180:
-                    self._criar_alerta(
-                        tipo       = "direcionamento",
-                        severidade = "alta",
-                        titulo     = f"Empresa nova com contrato imediato — {empresa.razao_social}",
-                        descricao  = (
-                            f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}) foi aberta em "
-                            f"{empresa.data_abertura} e assinou contrato apenas {delta} dias depois "
-                            f"(contrato nº {contrato.numero}, R$ {moeda(contrato.valor_total)})."
-                        ),
-                        evidencias = {
-                            "empresa": empresa.razao_social,
-                            "cnpj": empresa.cnpj,
-                            "data_abertura": str(empresa.data_abertura),
-                            "data_contrato": str(contrato.data_assinatura),
-                            "dias": delta,
-                        },
-                        empresa  = empresa,
-                        contrato = contrato,
-                    )
-            except Exception:
-                pass
+            delta = (contrato.data_assinatura - empresa.data_abertura).days
+            if 0 <= delta < DIAS_EMPRESA_NOVA:
+                self._lote.criar(
+                    tipo       = "direcionamento",
+                    severidade = "alta",
+                    titulo     = f"Empresa nova com contrato imediato — {empresa.razao_social}",
+                    descricao  = (
+                        f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}) foi aberta em "
+                        f"{empresa.data_abertura} e assinou contrato apenas {delta} dias depois "
+                        f"(contrato nº {contrato.numero}, R$ {moeda(contrato.valor_total)})."
+                    ),
+                    evidencias = {
+                        "empresa": empresa.razao_social,
+                        "cnpj": empresa.cnpj,
+                        "data_abertura": str(empresa.data_abertura),
+                        "data_contrato": str(contrato.data_assinatura),
+                        "dias": delta,
+                    },
+                    empresa  = empresa,
+                    contrato = contrato,
+                )
 
     # ── Regra 8: CPF duplicado entre múltiplas fontes de remuneração ─────────
     def _regra_cpf_duplicado_fontes(self, competencia: Optional[str]):
@@ -424,13 +414,13 @@ class MotorCompliance:
             resultados = detectar_cpf_duplicado_entre_fontes(self.session, competencia or "")
             for item in resultados:
                 if not item.get("suspeito"):
-                    continue  # only auto-flag clearly illegal combos from this rule
+                    continue
 
                 pessoa = (
                     self.session.query(Pessoa).filter_by(cpf=item["cpf"]).first()
                     if item.get("cpf") else None
                 )
-                self._criar_alerta(
+                self._lote.criar(
                     tipo="acumulacao",
                     severidade="alta",
                     titulo=f"CPF em múltiplas fontes de remuneração — {item['cpf']}",
@@ -445,8 +435,8 @@ class MotorCompliance:
                     pessoa=pessoa,
                 )
         except Exception as exc:
-            import logging
-            logging.getLogger(__name__).error(f"Erro em _regra_cpf_duplicado_fontes: {exc}")
+            # Regra delegada a outro módulo: a falha dela não pode derrubar as demais regras da execução.
+            logger.error("Erro em _regra_cpf_duplicado_fontes: %s", exc)
 
     # ── Regra 9: Emprego múltiplo em órgãos distintos ────────────────────────
     def _regra_emprego_multiplo_orgaos(self, competencia: Optional[str]):
@@ -457,7 +447,6 @@ class MotorCompliance:
         """
         if not competencia:
             return
-        from sqlalchemy import func
         q = (
             self.session.query(
                 RegistroFolha.cpf,
@@ -472,15 +461,12 @@ class MotorCompliance:
                 RegistroFolha.cpf != "",
                 RegistroFolha.remuneracao_bruta > 0,
             )
-            # CPF da folha vem MASCARADO (6 dígitos do meio): agrupar só por ele juntava pessoas diferentes
-            # (revisão de 13/11/2026: 99,57% dos 70.533 grupos eram de pessoas distintas, e o alerta publicava
-            # o nome de uma somado à remuneração de outras). Mesma pessoa = mesmo CPF mascarado E mesmo nome.
-            .group_by(RegistroFolha.cpf, func.upper(func.trim(RegistroFolha.nome)))
+            .group_by(*_mesma_pessoa_na_folha())
             .having(func.count(func.distinct(RegistroFolha.orgao_nome)) > 1)
         )
         for row in q.all():
             pessoa = self.session.query(Pessoa).filter_by(cpf=row.cpf).first()
-            self._criar_alerta(
+            self._lote.criar(
                 tipo="acumulacao",
                 # média, não alta: acumular é lícito nos casos da CF art. 37, XVI (professor, técnico-científico,
                 # saúde), e a folha não diz o cargo com segurança para separar.
@@ -502,37 +488,6 @@ class MotorCompliance:
                 pessoa=pessoa,
             )
 
-    # ── Helper: criar alerta sem duplicar ────────────────────────────────────
-    def _criar_alerta(
-        self,
-        tipo: str,
-        severidade: str,
-        titulo: str,
-        descricao: str,
-        evidencias: dict,
-        pessoa: Optional[Pessoa] = None,
-        empresa: Optional[Empresa] = None,
-        contrato: Optional[Contrato] = None,
-        ordem_bancaria: Optional[OrdemBancaria] = None,
-    ):
-        # Evita duplicatas pelo título
-        existe = self.session.query(Alerta).filter_by(titulo=titulo[:300]).first()
-        if existe:
-            return
-
-        alerta = Alerta(
-            tipo               = tipo,
-            severidade         = severidade,
-            titulo             = titulo[:300],
-            descricao          = descricao,
-            evidencias         = json.dumps(evidencias, ensure_ascii=False, default=str),
-            pessoa_id          = pessoa.id if pessoa else None,
-            empresa_id         = empresa.id if empresa else None,
-            contrato_id        = contrato.id if contrato else None,
-            ordem_bancaria_id  = ordem_bancaria.id if ordem_bancaria else None,
-        )
-        self._alertas_novos.append(alerta)
-
     # ══════════════════════════════════════════════════════════════════════════
     # Regras baseadas em Ordens Bancárias (dados do SIAFE2)
     # ══════════════════════════════════════════════════════════════════════════
@@ -541,13 +496,12 @@ class MotorCompliance:
     # Quatro regras abaixo faziam `.query(OrdemBancaria).all()` sobre 1,18 milhão de OBs (1,7 GB de
     # RAM) e uma consulta por OB (N+1): nunca terminavam nos 900 s do cron — o passo "regras" dava
     # rc=124 e, antes do reparo do banco, morria antes por um erro de tipo com rc=0 (84 vezes).
-    # Regra da casa: candidatos filtrados NO SQL, janela recente e teto por execução. O `_criar_alerta`
+    # Regra da casa: candidatos filtrados NO SQL, janela recente e teto por execução. O `LoteAlertas`
     # já deduplica por título, então rodar de novo não repete o alerta.
     JANELA_OB_DIAS = 90
     TETO_CANDIDATOS = 300
 
     def _desde(self) -> _date:
-        from datetime import timedelta
         return _date.today() - timedelta(days=self.JANELA_OB_DIAS)
 
     # Favorecido que é ENTE PÚBLICO (transferência, tributo, fundo) não é fornecedor: "MINISTÉRIO DA
@@ -575,16 +529,11 @@ class MotorCompliance:
         2026 o teto de compras é R$ 65.492,11, ou seja, a regra acusava fracionamento em grupos
         até 31% abaixo do limite legal, com severidade "alta".
         """
-        from sqlalchemy import func
-
-        from compliance_agent.limites_dispensa import LIMITES, ato_normativo, limite_dispensa
-
         # O SQL não sabe o exercício de cada grupo, então filtra pelo MENOR teto conhecido (piso
         # que não descarta nada) e o enquadramento exato é feito no laço, ano a ano.
         LIMITE_DISPENSA = min(float(LIMITES[a]["compras"]) for a in LIMITES)
-        # Janela de ~30 dias aproximada pelo agrupamento por mês-calendário (strftime abaixo).
 
-        # Agrupa OBs por favorecido + UG + janela de 30 dias
+        # Janela de ~30 dias aproximada pelo mês-calendário (strftime no group_by).
         subq = (
             self.session.query(
                 OrdemBancaria.favorecido_cpf,
@@ -604,7 +553,6 @@ class MotorCompliance:
             .group_by(
                 OrdemBancaria.favorecido_cpf,
                 OrdemBancaria.ug_codigo,
-                # sqlite: group by month (approximate 30-day windows)
                 func.strftime("%Y-%m", OrdemBancaria.data_emissao),
             )
             .having(
@@ -621,8 +569,6 @@ class MotorCompliance:
         for row in subq:
             if self._eh_ente_publico(row.favorecido_nome):
                 continue
-            if not row.total:
-                continue
             exercicio = getattr(row.data_ini, "year", None) or _date.today().year
             teto = limite_dispensa(exercicio, "compras")
             if row.total <= teto:
@@ -631,7 +577,7 @@ class MotorCompliance:
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
                 if row.favorecido_cpf else None
             )
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "fracionamento",
                 severidade = "média",   # soma mensal > teto de dispensa com 2+ OBs é INDÍCIO fraco; o detector de verdade é o P4/pcrj_d7
                 titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
@@ -681,7 +627,7 @@ class MotorCompliance:
         )
 
         for ob in obs_sem_sei:
-            self._criar_alerta(
+            self._lote.criar(
                 tipo            = "ob_sem_processo",
                 severidade      = "média",
                 titulo          = f"OB sem processo SEI — R$ {moeda(ob.valor)} para {ob.favorecido_nome or ob.favorecido_cpf}",
@@ -708,8 +654,6 @@ class MotorCompliance:
         Pode indicar empresa 'carimbada' (favorecida em todo o estado)
         ou CPF/CNPJ laranja usado em múltiplos órgãos.
         """
-        from sqlalchemy import func
-
         resultados = (
             self.session.query(
                 OrdemBancaria.favorecido_cpf,
@@ -754,7 +698,7 @@ class MotorCompliance:
                              f"é esperado. " + fato)
             else:
                 descricao = fato + "Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
-            self._criar_alerta(
+            self._lote.criar(
                 tipo       = "direcionamento",
                 severidade = "baixa",   # fornecedor grande atende várias UGs; só vira notícia com outro sinal
                 titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
@@ -773,10 +717,9 @@ class MotorCompliance:
 
     def _regra_ob_empresa_nova(self):
         """
-        OB paga a empresa aberta há menos de 6 meses.
+        OB paga a empresa aberta há menos de DIAS_EMPRESA_NOVA dias.
         Cruza OrdemBancaria.favorecido_cpf com Empresa.cnpj e Empresa.data_abertura.
         """
-        from sqlalchemy import func
         dias = func.julianday(OrdemBancaria.data_emissao) - func.julianday(Empresa.data_abertura)
         pares = (
             self.session.query(OrdemBancaria, Empresa)
@@ -787,7 +730,7 @@ class MotorCompliance:
                 OrdemBancaria.data_emissao >= self._desde(),
                 Empresa.data_abertura.isnot(None),
                 dias >= 0,
-                dias < 180,
+                dias < DIAS_EMPRESA_NOVA,
             )
             .order_by(OrdemBancaria.valor.desc())
             .limit(self.TETO_CANDIDATOS)
@@ -795,35 +738,29 @@ class MotorCompliance:
         )
 
         for ob, empresa in pares:
-            if not empresa.data_abertura or not ob.data_emissao:
-                continue
-            try:
-                delta = (ob.data_emissao - empresa.data_abertura).days
-            except Exception:
-                continue
-            if 0 <= delta < 180:
-                self._criar_alerta(
-                    tipo            = "direcionamento",
-                    severidade      = "alta",
-                    titulo          = f"OB para empresa nova ({delta}d) — {empresa.razao_social}",
-                    descricao       = (
-                        f"OB nº {ob.numero_ob} no valor de R$ {moeda(ob.valor)} foi paga a "
-                        f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}), empresa aberta "
-                        f"apenas {delta} dias antes do pagamento ({empresa.data_abertura}). "
-                        f"Padrão de empresa criada para receber contrato específico."
-                    ),
-                    evidencias      = {
-                        "numero_ob": ob.numero_ob,
-                        "cnpj": empresa.cnpj,
-                        "razao_social": empresa.razao_social,
-                        "data_abertura": str(empresa.data_abertura),
-                        "data_ob": str(ob.data_emissao),
-                        "dias_empresa": delta,
-                        "valor": ob.valor,
-                    },
-                    empresa         = empresa,
-                    ordem_bancaria  = ob,
-                )
+            delta = (ob.data_emissao - empresa.data_abertura).days
+            self._lote.criar(
+                tipo            = "direcionamento",
+                severidade      = "alta",
+                titulo          = f"OB para empresa nova ({delta}d) — {empresa.razao_social}",
+                descricao       = (
+                    f"OB nº {ob.numero_ob} no valor de R$ {moeda(ob.valor)} foi paga a "
+                    f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}), empresa aberta "
+                    f"apenas {delta} dias antes do pagamento ({empresa.data_abertura}). "
+                    f"Padrão de empresa criada para receber contrato específico."
+                ),
+                evidencias      = {
+                    "numero_ob": ob.numero_ob,
+                    "cnpj": empresa.cnpj,
+                    "razao_social": empresa.razao_social,
+                    "data_abertura": str(empresa.data_abertura),
+                    "data_ob": str(ob.data_emissao),
+                    "dias_empresa": delta,
+                    "valor": ob.valor,
+                },
+                empresa         = empresa,
+                ordem_bancaria  = ob,
+            )
 
     def _regra_ob_valor_redondo(self):
         """
@@ -835,7 +772,6 @@ class MotorCompliance:
         """
         MINIMO = 50_000.0
 
-        from sqlalchemy import func
         obs = (
             self.session.query(OrdemBancaria)
             .filter(
@@ -851,32 +787,27 @@ class MotorCompliance:
         )
 
         for ob in obs:
-            if ob.valor is None:
-                continue
-            # "Redondo" = divisível por 1000 sem centavos
-            cents = round(ob.valor % 1000, 2)
-            if cents == 0.0:
-                self._criar_alerta(
-                    tipo            = "ob_valor_atipico",
-                    severidade      = "baixa",
-                    titulo          = f"OB com valor exatamente redondo — R$ {ob.valor:,.0f} / {ob.favorecido_nome or ob.favorecido_cpf}",
-                    descricao       = (
-                        f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) tem "
-                        f"valor exatamente redondo de R$ {moeda(ob.valor)} para "
-                        f"'{ob.favorecido_nome}'. Valores redondos grandes em OBs avulsas "
-                        f"frequentemente indicam estimativas sem respaldo técnico. "
-                        f"Verificar se há medição/fatura correspondente no processo SEI."
-                    ),
-                    evidencias      = {
-                        "numero_ob": ob.numero_ob,
-                        "ug": ob.ug_codigo,
-                        "valor": ob.valor,
-                        "favorecido": ob.favorecido_nome,
-                        "cpf_cnpj": ob.favorecido_cpf,
-                        "data": str(ob.data_emissao),
-                    },
-                    ordem_bancaria  = ob,
-                )
+            self._lote.criar(
+                tipo            = "ob_valor_atipico",
+                severidade      = "baixa",
+                titulo          = f"OB com valor exatamente redondo — R$ {ob.valor:,.0f} / {ob.favorecido_nome or ob.favorecido_cpf}",
+                descricao       = (
+                    f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) tem "
+                    f"valor exatamente redondo de R$ {moeda(ob.valor)} para "
+                    f"'{ob.favorecido_nome}'. Valores redondos grandes em OBs avulsas "
+                    f"frequentemente indicam estimativas sem respaldo técnico. "
+                    f"Verificar se há medição/fatura correspondente no processo SEI."
+                ),
+                evidencias      = {
+                    "numero_ob": ob.numero_ob,
+                    "ug": ob.ug_codigo,
+                    "valor": ob.valor,
+                    "favorecido": ob.favorecido_nome,
+                    "cpf_cnpj": ob.favorecido_cpf,
+                    "data": str(ob.data_emissao),
+                },
+                ordem_bancaria  = ob,
+            )
 
     def _regra_ob_favorecido_doerj_cruzado(self):
         """
@@ -893,7 +824,6 @@ class MotorCompliance:
         # casar o nome num ato e 'multa' em outro ato do mesmo bloco do diário gerou 29/49 FP.
         from compliance_agent.rules.doerj_casamento import eh_orgao_publico, ocorrencias
 
-        from sqlalchemy import func
         # Um favorecido por vez (não uma OB por vez): os 100 maiores da janela. O casamento com o
         # D.O. usa `cnpjs_extraidos` (coluna curta, já minerada), nunca ILIKE no `texto` de 500 mil
         # caracteres por edição — era 1,18 milhão de OBs × 39 mil páginas.
@@ -924,7 +854,6 @@ class MotorCompliance:
             if ob is None:
                 continue
             nome = (ob.favorecido_nome or "").strip()
-            cpf_cnpj = (ob.favorecido_cpf or "").strip()
             if len(nome) < 5 or eh_orgao_publico(nome):
                 continue  # o próprio ente (Secretaria etc.) não é fornecedor sancionável
 
@@ -956,7 +885,7 @@ class MotorCompliance:
 
             if suspeitos:
                 n_pubs = len({s["publicacao_id"] for s in suspeitos})
-                self._criar_alerta(
+                self._lote.criar(
                     tipo            = "doerj_anomalia",
                     severidade      = "alta",
                     titulo          = f"OB para favorecido com publicação suspeita no DOERJ — {nome}",

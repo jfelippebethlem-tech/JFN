@@ -134,10 +134,9 @@ compliance_agent/
     caged.py
     web_research.py
   rules/
-    default_audit_config.py
     generate_alerts.py
     engine.py
-    obra.py
+    doerj_casamento.py
     preco.py
   reporting/
     export_relatorios.py

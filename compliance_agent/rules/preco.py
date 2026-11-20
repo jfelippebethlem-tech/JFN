@@ -5,19 +5,19 @@ Detecta divergências de preço em categorias similares:
   - Superfaturamento: preço muito acima da mediana do mercado
   - Subfaturamento: preço suspeito por ser muito abaixo (pode indicar vantagem futura)
   - Ranking de órgãos mais caros por categoria
-  - Comparação com preços de referência (SIASG, PNCP, cotações de mercado)
 
-Usa NLP simples (TF-IDF + cosine similarity) para agrupar objetos similares.
+Categoria = primeira lista de palavras-chave de `CATEGORIAS` encontrada no objeto do contrato. Compara o
+VALOR TOTAL do contrato com a mediana da categoria — não preço unitário nem referência externa.
 """
 
-import json
 import statistics
 from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from compliance_agent.database.models import Alerta, Contrato, Empresa
+from compliance_agent.database.models import Contrato, Empresa
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.rules.alerta import LoteAlertas
 
 
 # Palavras-chave para categorias de contratos
@@ -70,7 +70,6 @@ class AnalisadorPrecos:
         if not contratos:
             return {"message": "Nenhum contrato disponível para análise."}
 
-        # Categoriza cada contrato
         por_categoria: dict[str, list[Contrato]] = defaultdict(list)
         for c in contratos:
             cat = _categorizar_objeto(c.objeto)
@@ -85,22 +84,17 @@ class AnalisadorPrecos:
             "ranking_contratos_suspeitos": [],
         }
 
-        alertas_novos = []
+        lote = LoteAlertas(self.session)
 
         for categoria, contratos_cat in por_categoria.items():
             if len(contratos_cat) < 2:
                 continue
 
-            valores = [c.valor_total for c in contratos_cat if c.valor_total > 0]
-            if not valores:
-                continue
+            valores = [c.valor_total for c in contratos_cat]
 
             mediana   = statistics.median(valores)
             media     = statistics.mean(valores)
-            try:
-                desvio = statistics.stdev(valores)
-            except statistics.StatisticsError:
-                desvio = 0
+            desvio    = statistics.stdev(valores)  # len >= 2 garantido acima
 
             # Limiar de alerta: acima de 2 desvios padrões da mediana
             limiar_alto = mediana + (2 * desvio if desvio > 0 else mediana * 0.8)
@@ -134,27 +128,23 @@ class AnalisadorPrecos:
                     }
                     resultado["superfaturamentos"].append(item)
 
-                    # Alerta no banco
-                    titulo = f"Superfaturamento — {categoria} — {c.orgao_contrat}"
-                    existe = self.session.query(Alerta).filter_by(titulo=titulo[:300]).first()
-                    if not existe:
-                        alertas_novos.append(Alerta(
-                            tipo       = "direcionamento",
-                            severidade = "alta" if desvios_acima > 3 else "média",
-                            titulo     = titulo[:300],
-                            descricao  = (
-                                f"Contrato nº {c.numero} ({c.orgao_contrat}) "
-                                f"para '{c.objeto[:100]}' com {nome_emp} "
-                                f"custa R$ {moeda(c.valor_total)}, "
-                                f"{item['acima_por']} acima da mediana de "
-                                f"R$ {moeda(mediana)} para a categoria '{categoria}'."
-                            ),
-                            evidencias  = json.dumps(item, ensure_ascii=False, default=str),
-                            empresa_id  = empresa.id if empresa else None,
-                            contrato_id = c.id,
-                        ))
+                    lote.criar(
+                        tipo       = "direcionamento",
+                        severidade = "alta" if desvios_acima > 3 else "média",
+                        titulo     = f"Superfaturamento — {categoria} — {c.orgao_contrat}",
+                        descricao  = (
+                            f"Contrato nº {c.numero} ({c.orgao_contrat}) "
+                            f"para '{c.objeto[:100]}' com {nome_emp} "
+                            f"custa R$ {moeda(c.valor_total)}, "
+                            f"{item['acima_por']} acima da mediana de "
+                            f"R$ {moeda(mediana)} para a categoria '{categoria}'."
+                        ),
+                        evidencias = item,
+                        empresa    = empresa,
+                        contrato   = c,
+                    )
 
-                elif c.valor_total < limiar_baixo and c.valor_total > 0:
+                elif c.valor_total < limiar_baixo:
                     resultado["subfaturamentos"].append({
                         "contrato": c.numero,
                         "objeto":   c.objeto[:150] if c.objeto else "",
@@ -168,7 +158,7 @@ class AnalisadorPrecos:
         # Ranking de órgãos por gasto médio por contrato
         orgao_gastos: dict[str, list[float]] = defaultdict(list)
         for c in contratos:
-            if c.orgao_contrat and c.valor_total > 0:
+            if c.orgao_contrat:
                 orgao_gastos[c.orgao_contrat].append(c.valor_total)
 
         ranking = [
@@ -192,12 +182,11 @@ class AnalisadorPrecos:
             reverse=True,
         )[:20]
 
-        # Salva alertas
-        if alertas_novos:
-            self.session.add_all(alertas_novos)
+        if lote.novos:
+            self.session.add_all(lote.novos)
             self.session.commit()
 
-        resultado["total_alertas_gerados"] = len(alertas_novos)
+        resultado["total_alertas_gerados"] = len(lote.novos)
         return resultado
 
     def comparar_categoria(self, categoria: str) -> list[dict]:
