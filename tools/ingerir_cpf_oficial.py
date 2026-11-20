@@ -21,7 +21,9 @@ from pathlib import Path
 from compliance_agent.resolucao_cpf import confirmar_cpf
 from compliance_agent.sei.extrair_cpf import validar_cpf
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DB = dir_dados() / "compliance.db"
 
 
 def _norm(s: str) -> str:
@@ -30,8 +32,7 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos
 
 
 def ingerir(pares, fonte: str, db_path: str | Path | None = None) -> dict:

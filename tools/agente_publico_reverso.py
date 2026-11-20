@@ -47,6 +47,7 @@ import time
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.credor_institucional import NATUREZA_ESTATAL
 from compliance_agent.cruzamentos_intel import _ob_paga
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -224,7 +225,7 @@ _INSTITUCIONAL = {
 # vetar demais é tão ruim quanto vetar de menos. Medido: 15 dos 538 pares.
 def e_estatal(natureza_cod: str) -> bool:
     n = str(natureza_cod or "")
-    return n.startswith("1") or n in ("2011", "2038")
+    return n.startswith("1") or n in NATUREZA_ESTATAL
 
 
 # A ABREVIAÇÃO SÓ VALE COM A NATUREZA JUNTO. `AAE` é como as Associações de Apoio à Escola

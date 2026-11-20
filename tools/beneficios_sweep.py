@@ -34,7 +34,9 @@ from compliance_agent.resolucao_cpf import (
     resolver_multi,
 )
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DB = dir_dados() / "compliance.db"
 
 
 def ensure_schema(con: sqlite3.Connection) -> None:

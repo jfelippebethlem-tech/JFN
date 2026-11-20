@@ -21,8 +21,7 @@ CNPJ_SOL = "28008530000103"
 _NORM = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
 
 
-def _brl(v) -> str:
-    return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import moeda as _brl
 
 
 def _ob_por_ug(con, cnpj):

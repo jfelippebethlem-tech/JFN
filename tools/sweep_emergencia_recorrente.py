@@ -17,7 +17,6 @@ processo. Aqui é a triagem que diz onde olhar primeiro.
 from __future__ import annotations
 
 import argparse
-import os
 import pathlib
 import sqlite3
 import sys
@@ -27,11 +26,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from compliance_agent.fracionamento_emergencia import (agrupar_emergencias,  # noqa: E402
                                                        sinais_do_dominante)
 
-DB = os.environ.get("JFN_DB", "data/compliance.db")
+from compliance_agent.collectors.arquivos import caminho_db  # noqa: E402
+
+DB = str(caminho_db())
 
 
-def _moeda(v: float) -> str:
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import moeda as _moeda  # noqa: E402
 
 
 def carregar(con: sqlite3.Connection):

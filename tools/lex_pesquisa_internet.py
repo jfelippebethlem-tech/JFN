@@ -85,8 +85,7 @@ def _conectar() -> sqlite3.Connection:
     return con
 
 
-def _norm_cnpj(c: str) -> str:
-    return re.sub(r"\D", "", c or "")
+from compliance_agent.cpf_cnpj import digitos as _norm_cnpj
 
 
 def extrair_duvidas(cnpj: str, con: sqlite3.Connection) -> tuple[str, list[str]]:

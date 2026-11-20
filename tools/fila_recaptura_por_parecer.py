@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sqlite3
 import sys
 import time
@@ -37,8 +36,7 @@ CREATE TABLE IF NOT EXISTS sei_fila_captura (
 """
 
 
-def _norm(numero: str) -> str:
-    return re.sub(r"\D", "", numero or "")
+from compliance_agent.cpf_cnpj import digitos as _norm  # noqa: E402
 
 
 def varrer(limite: int, segundos: int) -> list[dict]:

@@ -21,12 +21,8 @@ Este detector marca dois padrões, em ordem decrescente de força probatória:
 TETOS — fonte declarada
 -----------------------
 Art. 75, II (compras e serviços em geral), atualizado anualmente pelo Executivo federal
-(art. 182 da Lei 14.133) e aplicável a todos os entes:
-  2021 R$  50.000,00  (valor original da Lei 14.133/2021)
-  2023 R$  59.906,02  (Decreto nº 11.317/2022)
-  2024 R$  59.906,02
-  2025 R$  62.725,59  (Decreto nº 12.343/2024, vigente 01/01/2025) — CONFERIDO na fonte
-  2026 R$  62.725,59  (fallback; ATUALIZAR — há Decreto nº 12.807/2025 para 2026 ainda não conferido)
+(art. 182 da Lei 14.133) e aplicável a todos os entes. Valores e decreto de cada exercício:
+`compliance_agent.limites_dispensa.LIMITES` (fonte única; a tabela que ficava aqui divergiu dela).
 
 LIMITES DE FONTE — leia antes de citar qualquer número
 ------------------------------------------------------
@@ -48,7 +44,9 @@ from collections import defaultdict
 
 from compliance_agent.reporting.intel_base import moeda
 
-DB = "data/compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+DB = str(dir_dados() / "compliance.db")
 RAIZ_PCRJ = "42498733"
 
 from compliance_agent.limites_dispensa import LIMITES, limite_dispensa  # fonte única do teto (por exercício)

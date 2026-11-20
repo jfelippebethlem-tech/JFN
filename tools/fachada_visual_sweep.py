@@ -40,6 +40,7 @@ from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_RAIZ))
+from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 _DB = Path(os.environ.get("JFN_DB") or (_RAIZ / "data" / "compliance.db"))
 _VISUAIS = ("visual_classe", "visual_conf", "visual_fonte", "visual_em")
@@ -203,7 +204,7 @@ def main() -> int:
                 estado["salvos"] += 1
             if res.get("classe") in indicio and res.get("status") == "INDICIO":
                 linha = (f"  → {res.get('classe')} (conf {float(res.get('confianca') or 0):.0%}) "
-                         f"R$ {r['total_recebido']:,.0f} · {r['razao'][:40]} · {end[:60]}"
+                         f"R$ {moeda(r['total_recebido'])} · {r['razao'][:40]} · {end[:60]}"
                          + (f" · print={img_path}" if img_path else ""))
                 achados.append(linha)
                 print(linha, flush=True)

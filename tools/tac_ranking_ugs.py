@@ -108,16 +108,18 @@ def medir(db: str | Path | None = None, *, min_valor: float = MIN_VALOR) -> dict
 
 
 def main() -> int:
+    from compliance_agent.reporting.intel_base import moeda
+
     r = medir()
     SAIDA.write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8")
     if not r.get("ok") or r.get("indisponivel"):
         print(f"INDISPONÍVEL: {r.get('motivo')}")
         return 0
-    print(f"{len(r['unidades'])} unidades acima de R$ {MIN_VALOR/1e6:,.0f} mi · "
+    print(f"{len(r['unidades'])} unidades acima de R$ {moeda(MIN_VALOR/1e6)} mi · "
           f"mediana {r['mediana_pct']}% · gravado em {SAIDA}")
     for u in r["unidades"][:6]:
         print(f"   {u['ug']} {str(u['nome'])[:36]:36s} {u['pct']:5.1f}%  "
-              f"R$ {u['total_tac']/1e6:,.1f} mi de R$ {u['total']/1e6:,.1f} mi")
+              f"R$ {moeda(u['total_tac']/1e6)} mi de R$ {moeda(u['total']/1e6)} mi")
     return 0
 
 

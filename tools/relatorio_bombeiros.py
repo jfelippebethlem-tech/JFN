@@ -10,13 +10,13 @@ import json
 import asyncio
 import sys
 from compliance_agent.reporting.render_html import render_html, html_to_pdf
+from compliance_agent.reporting.intel_base import reais as brl
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
 REC = "/home/ubuntu/JFN/reports/_pericia_bombeiros_reconciliacao.json"
 FILA = "/home/ubuntu/JFN/data/bombeiros_sei_fila.json"
 
 def con(): return sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=20)
-def brl(v): return f"R$ {(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 def tab(head, rows):
     h = "".join(f"<th>{c}</th>" for c in head)
     b = "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)

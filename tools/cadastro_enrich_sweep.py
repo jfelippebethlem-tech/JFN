@@ -88,13 +88,14 @@ def _upsert(con: sqlite3.Connection, cnpj: str, d: dict) -> None:
 
 def enriquecer(limite: int = 400, min_valor: float = 100_000.0, pausa: float = 0.5) -> dict:
     from compliance_agent.providers import lookup
+    from compliance_agent.reporting.intel_base import moeda
     con = sqlite3.connect(str(_DB), timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
     con.execute("PRAGMA journal_mode=WAL")
     con.execute(_DDL)
     con.commit()
     alvos = _alvos(con, limite, min_valor)
-    print(f"[cadenrich] {len(alvos)} fornecedores-alvo (≥R${min_valor:,.0f}, sem cadastro completo)",
+    print(f"[cadenrich] {len(alvos)} fornecedores-alvo (≥R$ {moeda(min_valor)}, sem cadastro completo)",
           flush=True)
     ok = falha = 0
     t0 = time.time()

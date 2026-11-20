@@ -23,7 +23,7 @@ import re
 import unicodedata
 from collections import defaultdict
 
-from compliance_agent.pcrj.universo import conectar
+from compliance_agent.pcrj.universo import DB as DB_PADRAO, conectar
 from compliance_agent.reporting.intel_base import moeda
 
 RAIZ_PCRJ = "42498733"
@@ -44,7 +44,7 @@ def aditivos_em_serie(db_path=None, minimo: int = 3) -> dict:
     `valor_inicial` em 100% dos registros municipais, então o teste do teto de 25% (art. 125) é
     **impossível nesta base**, não negativo.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT numero_controle_pncp, ano, fornecedor_nome, fornecedor_documento, objeto, "
@@ -75,7 +75,7 @@ def vigencia_acima_do_prazo(db_path=None, anos: int = 5) -> dict:
     hipóteses do art. 108/109. Passar de 5 não é, por si, ilegalidade — exige o enquadramento
     correto. A lente ordena para conferência.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT numero_controle_pncp, fornecedor_nome, objeto, valor_global, "
@@ -127,7 +127,7 @@ def sazonalidade_das_assinaturas(db_path=None) -> dict:
     Continua sendo MEDIDA, não alarme: sazonalidade de assinatura tem explicações
     administrativas legítimas (ciclo orçamentário, renovação anual de contratos contínuos).
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT data_assinatura, valor_global FROM pcrj_contratos WHERE {_ONDE} "
@@ -172,7 +172,7 @@ def contrato_assinado_apos_o_inicio_da_vigencia(db_path=None) -> dict:
     Medido em 30/08/2026: **0 casos**. Resultado esperado é zero; o controle existe para avisar
     quando deixar de ser.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT numero_controle_pncp, fornecedor_nome, data_assinatura, vigencia_ini, "
@@ -199,7 +199,7 @@ def vencedor_contumaz(db_path=None, minimo: int = 5) -> dict:
     fornecedor recorrente concentra o risco de direcionamento, e o cruzamento com as demais
     lentes (sanção, porte, vínculo) é o que dá sentido ao número.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             "SELECT pr.fornecedor_cnpj, pr.fornecedor_nome, pr.certame, pr.valor_homologado "
@@ -241,7 +241,7 @@ def estimativa_fora_de_escala(db_path=None, fracao_do_orcamento: float = 0.10) -
     a estimativa com o **maior gasto anual efetivo do Município** medido em `pcrj_despesa`:
     estimar uma fração relevante do orçamento inteiro num único certame é implausível.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT numero_controle_pncp, ano, modalidade, objeto, valor_estimado, situacao "
@@ -299,7 +299,7 @@ def objeto_generico(db_path=None) -> dict:
     Segue sendo ESTRATO DE ATENÇÃO, não alarme: 7% do acervo é muito para fila. Serve cruzado
     com valor e com as demais lentes.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT numero_controle_pncp, ano, objeto, valor_estimado, modalidade "
@@ -333,7 +333,7 @@ def concentracao_do_terceiro_setor(db_path=None, top: int = 10) -> dict:
     mãos. Repasse concentrado não é ilícito — mas define onde a fiscalização da Lei 13.019/2014
     (prestação de contas de parceria) tem mais a perder se falhar.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             "SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
@@ -392,7 +392,7 @@ def entidade_paga_como_servico(db_path=None, razao_minima: float = 10.0,
     | **>= 10x** | **5** | **1,17%** | **R$ 309.826.411,44** |
     | >= 100x | 2 | 0,47% | R$ 123.623.020,00 |
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         transf, servico, nomes = defaultdict(float), defaultdict(float), {}
         for doc, nome, p in con.execute(

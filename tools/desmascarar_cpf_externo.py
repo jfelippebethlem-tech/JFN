@@ -37,8 +37,10 @@ from compliance_agent import cpf_externo as ce  # noqa: E402
 from compliance_agent.credor_institucional import natureza_fora  # noqa: E402
 from compliance_agent.resolucao_cpf import _digitos, _norm, confirmar_cpf  # noqa: E402
 
-_DB = Path("data") / "compliance.db"
-_FILA = Path("data") / "cpf_fila_humana.json"
+from compliance_agent.collectors.arquivos import dir_dados  # noqa: E402
+
+_DB = dir_dados() / "compliance.db"
+_FILA = dir_dados() / "cpf_fila_humana.json"
 
 # Fontes externas avaliadas em 19/11/2026 (sonda do it-campo; da VM-1 várias nem respondem — datacenter).
 FONTES_AVALIADAS = {

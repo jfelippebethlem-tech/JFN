@@ -31,20 +31,16 @@ from pathlib import Path
 
 JFN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(JFN))   # padrão dos `tools/` da casa (o cron roda como script)
+from compliance_agent.cpf_cnpj import digitos as digits  # noqa: E402
 from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
+from compliance_agent.reporting.intel_base import reais  # noqa: E402
 VAULT = Path.home() / "vault"
 DB = JFN / "data" / "compliance.db"
 HOJE = datetime.now().strftime("%Y-%m-%d")
 
 
 def brl(v) -> str:
-    if v is None:
-        return "n/d"
-    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def digits(s: str) -> str:
-    return re.sub(r"\D", "", s or "")
+    return "n/d" if v is None else reais(v)
 
 
 def mil(n) -> str:

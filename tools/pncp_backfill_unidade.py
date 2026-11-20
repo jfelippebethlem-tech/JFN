@@ -142,7 +142,8 @@ if __name__ == "__main__":
     modo = args[0] if args and args[0] in ("bulk", "certame") else "certame"
     limite = int(args[1]) if len(args) > 1 and args[1].isdigit() else 0
     # compliance.db compartilhado com o jfn.service vivo — busy_timeout alto absorve contenção
-    con = sqlite3.connect("data/compliance.db", timeout=60)
+    from compliance_agent.collectors.arquivos import caminho_db
+    con = sqlite3.connect(str(caminho_db()), timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
     try:
         if modo == "bulk":

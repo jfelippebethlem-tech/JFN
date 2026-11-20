@@ -57,6 +57,7 @@ _DB = Path(os.environ.get("JFN_DB") or (_RAIZ / "data" / "compliance.db"))
 
 # Política de storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket, teto 9,5GB). Fonte única.
 from compliance_agent import fachada_remotes as fr  # noqa: E402
+from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 _RCLONE = fr.rclone_bin()
 
@@ -992,7 +993,7 @@ def main() -> int:
             herdou = 0
         marca = "🔴 CONTRADIZ" if coer == "contradiz" else ("🟢 confirma" if coer == "confirma" else "🟡 indet.")
         linha = (f"  ✓ {r['cnpj']} {marca} · classe={classe} (conf {conf:.0%}) · letreiro={letr} · "
-                 f"R$ {r['total_recebido']:,.0f} · {r['razao'][:34]} → {img_b2} ({nb/1024:.0f} KB)"
+                 f"R$ {moeda(r['total_recebido'])} · {r['razao'][:34]} → {img_b2} ({nb/1024:.0f} KB)"
                  + (f" · +{herdou} prédio" if herdou else ""))
         print(linha, flush=True)
         if coer == "contradiz":

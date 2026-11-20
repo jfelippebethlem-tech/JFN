@@ -27,7 +27,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compliance_agent import sede_google as sg  # noqa: E402
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados  # noqa: E402
+
+_DB = dir_dados() / "compliance.db"
 
 
 def _carregar_env() -> None:

@@ -287,7 +287,7 @@ def main() -> None:
     OUT.write_text(json.dumps(achados, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     print(f"Achados confirmados (indício objetivo, sem juízo LLM): {len(achados)} → {OUT}\n")
 
-    fmt_moeda = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    from compliance_agent.reporting.intel_base import reais as fmt_moeda
     for a in achados[: args.top]:
         v = a.get("valores", {})
         print(f"  [{a['score']:.2f}] {a['unidade'][:52]} · {a['exercicio']}"

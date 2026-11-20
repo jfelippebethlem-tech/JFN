@@ -25,6 +25,7 @@ import sqlite3
 from datetime import datetime
 
 from compliance_agent.pcrj import db as pcrj_db
+from compliance_agent.reporting.intel_base import moeda
 
 _RX_EMERG = re.compile(r"art\.?\s*75,?\s*(?:inciso\s+)?VIII\b|art\.?\s*24,?\s*(?:inciso\s+)?IV\b", re.I)
 JANELA_INCUMBENCIA_DIAS = 730
@@ -215,7 +216,7 @@ def main() -> None:
     import json
     if a.top:
         for r in listar(a.top):
-            pago = f"{r['total_pago'] or 0:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            pago = moeda(r['total_pago'])
             print(f"{r['grau']} {r['favorecido_nome'][:38]:38} {r['orgao'][:30]:30} {r['processo']:24} pago R$ {pago:>16}  {r['detalhe'][:110]}")
         return
     print(json.dumps(calcular(), ensure_ascii=False))

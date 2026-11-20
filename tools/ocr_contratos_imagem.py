@@ -25,7 +25,9 @@ from compliance_agent.collectors.atas_julgamento import _ocr_pdf
 from compliance_agent.collectors.pncp import processos_sei_no_texto
 
 logger = logging.getLogger(__name__)
-DB = "data/compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+DB = str(dir_dados() / "compliance.db")
 # mesmo piso do sweep: abaixo disso o OCR não produziu texto utilizável (uma definição só
 # faria sentido num módulo comum; aqui o valor é importado para não divergir)
 from tools.sweep_integra_contratos_pcrj import MIN_CHARS_TEXTO  # noqa: E402

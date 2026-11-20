@@ -37,8 +37,7 @@ B = 1e9
 AZUL, CIANO, LARANJA, CINZA, VERM = "#0b3d91", "#0aa5c0", "#e07b00", "#8a94a6", "#b3261e"
 
 
-def brl(x, casas=2):
-    return f"R$ {x:,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import reais as brl  # noqa: E402
 
 
 def bi(x):

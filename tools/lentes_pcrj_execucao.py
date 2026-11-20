@@ -24,7 +24,7 @@ import re
 from collections import defaultdict
 
 from compliance_agent.pcrj.natureza_despesa import ELEMENTOS as ELEMENTOS_OFICIAIS
-from compliance_agent.pcrj.universo import conectar, filtro_sql
+from compliance_agent.pcrj.universo import DB as DB_PADRAO, conectar, filtro_sql
 from compliance_agent.reporting.intel_base import moeda
 
 # grupo/modalidade do universo contratual, mas SEM o filtro `pago > 0`: estas lentes procuram
@@ -54,7 +54,7 @@ def empenhado_sem_pagamento(db_path=None, piso: float = 100_000.0) -> dict:
     NÃO É o mesmo que `liquidado_sem_pagamento`: ali houve atesto — o credor cumpriu e não
     recebeu. Aqui pode não ter havido nem entrega.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         universo = con.execute(f"SELECT count(*) FROM pcrj_despesa WHERE {BASE_CONTRATUAL} "
                                f"AND empenhado > 0").fetchone()[0]
@@ -95,7 +95,7 @@ def superempenho(db_path=None, fracao: float = 0.50, piso: float = 1_000_000.0) 
     R$ 1.000.000,00 para que a diferença tenha materialidade, e ignora quem não pagou NADA (isso
     é a lente anterior, com natureza distinta).
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         universo = con.execute(f"SELECT count(*) FROM pcrj_despesa WHERE {BASE_CONTRATUAL} "
                                f"AND empenhado >= ?", (piso,)).fetchone()[0]
@@ -141,7 +141,7 @@ def fornecedor_de_exercicio_unico(db_path=None, piso: float = 10_000_000.0) -> d
     janela da base: a despesa cobre **2019–2023**. Quem aparece só em 2023 pode simplesmente ter
     continuado depois do fim da série — por isso o achado marca `no_limite_da_serie`.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT credor_documento, credor_nome, exercicio, sum(pago) FROM pcrj_despesa "
@@ -233,7 +233,7 @@ def pico_de_gasto_por_subelemento(db_path=None, fator: float = 5.0,
     R$ 1–2 milhões nos demais exercícios (**64×**), com **196 de 197 fornecedores (99,5%)
     aparecendo só naquele ano**.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT substr(natureza,5,4), exercicio, credor_documento, credor_nome, sum(pago) "
@@ -331,7 +331,7 @@ def premiacao_a_fornecedor_de_bem(db_path=None) -> dict:
     ⚠️ MASSA MODESTA, declarada: R$ 1,99 milhão não é o valor do risco, é o valor do desvio de
     classificação encontrado. A lente vale pela precisão, não pelo tamanho.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT credor_documento, credor_nome, substr(natureza,5,2), sum(pago) "
@@ -385,7 +385,7 @@ def cascata_coerente(db_path=None) -> dict:
     Medido em 30/08/2026: **0 violações em 78.595 linhas**. O resultado esperado é zero; se um
     dia deixar de ser, este controle é que avisa.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         total = con.execute("SELECT count(*) FROM pcrj_despesa").fetchone()[0]
         liq_maior = con.execute("SELECT count(*) FROM pcrj_despesa "
@@ -415,8 +415,7 @@ def cascata_coerente(db_path=None) -> dict:
 
 # ── qualidade cadastral do credor ───────────────────────────────────────────────────────────
 
-def _digitos(v) -> str:
-    return re.sub(r"\D", "", str(v or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos
 
 
 def _dv_cnpj_ok(c: str) -> bool:
@@ -456,7 +455,7 @@ def qualidade_cadastral(db_path=None) -> dict:
     4. **dígito verificador inválido** — documento que não existe. Documento **mascarado** fica
        fora deste teste: não dá para validar o que está oculto, e reprová-lo seria inventar erro.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute("SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
                            "GROUP BY 1,2").fetchall()

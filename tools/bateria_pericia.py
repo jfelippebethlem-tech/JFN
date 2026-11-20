@@ -41,7 +41,7 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 
-from compliance_agent.pcrj.universo import conectar
+from compliance_agent.pcrj.universo import DB as DB_PADRAO, conectar
 
 LIMIAR_MORTO = 0.95      # 95%+ indisponível = o teste não roda de verdade
 LIMIAR_NAO_DISCRIMINA = 0.50   # marca metade ou mais dos apurados = não ordena fila
@@ -100,7 +100,7 @@ def _classificar(status: str) -> str:
 
 def cobertura(db_path=None, limite: int | None = None) -> dict:
     """Mede, por teste de perícia, quantos itens rodaram e quantos ficaram sem insumo."""
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         sql = "SELECT achados_json FROM pericia_fornecedor WHERE achados_json IS NOT NULL"
         if limite:

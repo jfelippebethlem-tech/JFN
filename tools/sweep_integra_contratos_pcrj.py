@@ -30,7 +30,9 @@ from compliance_agent.collectors.pncp import (PncpIndisponivel, baixar_arquivos_
 
 logger = logging.getLogger(__name__)
 
-DB = "data/compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+DB = str(dir_dados() / "compliance.db")
 CNPJ_MUNICIPIO = "42498733000148"
 
 DDL = """

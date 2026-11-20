@@ -60,8 +60,7 @@ def cerca_tukey(valores: list[float]) -> float | None:
     return q3 + 1.5 * (q3 - q1)
 
 
-def _brl(v: float) -> str:
-    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import reais as _brl
 
 
 def graduar_r052(forma_1: str | None, dias: int | None) -> str:

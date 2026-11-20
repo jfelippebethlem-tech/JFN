@@ -27,7 +27,9 @@ from compliance_agent.investigacao_orgao_dd import (
     _moeda, _processos_do_fornecedor, top_fornecedores_pj,
 )
 
-_DIR = Path("data") / "dd_sweep"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DIR = dir_dados() / "dd_sweep"
 _ORDEM_GRAU = {"🔴": 0, "🟡": 1, "🟢": 2}
 
 

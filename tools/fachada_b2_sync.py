@@ -51,6 +51,7 @@ _DB = Path(os.environ.get("JFN_DB") or (_RAIZ / "data" / "compliance.db"))
 
 # Política de storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket, teto 9,5GB). Fonte única.
 from compliance_agent import fachada_remotes as fr  # noqa: E402
+from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 _RCLONE = fr.rclone_bin()
 _PREFIXO = fr.PREFIXO
@@ -272,7 +273,7 @@ def _index_html(linhas: list[dict]) -> str:
         else:
             foto_html = "<span class='n'>(outro bucket)</span>"
         try:
-            val = f"{float(ln['valor_recebido']):,.2f}"
+            val = moeda(float(ln['valor_recebido']))
         except (ValueError, TypeError):
             val = ln["valor_recebido"]
         body.append(
@@ -397,7 +398,7 @@ def main() -> int:
             bytes_tot += nb
             dist[res.get("_img_fonte") or "?"] += 1
             print(f"  ✓ {r['cnpj']} ({r['visual_classe']}, {res.get('_img_fonte')}) "
-                  f"R$ {r['total_recebido']:,.0f} · {r['razao'][:38]} → {localizacao} ({nb/1024:.0f} KB)",
+                  f"R$ {moeda(r['total_recebido'])} · {r['razao'][:38]} → {localizacao} ({nb/1024:.0f} KB)",
                   flush=True)
         if a.pausa:
             time.sleep(a.pausa)

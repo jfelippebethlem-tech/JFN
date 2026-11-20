@@ -118,8 +118,7 @@ def _money(s) -> float:
         return 0.0
 
 
-def _br(v: float) -> str:
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import moeda as _br
 
 
 def tag_processo(bruto) -> str | None:

@@ -9,6 +9,7 @@ import sqlite3
 import pathlib
 import httpx
 from compliance_agent.envfile import carregar_env
+from compliance_agent.reporting.intel_base import moeda
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
 FILA = "/home/ubuntu/JFN/data/bombeiros_sei_fila.json"
@@ -44,7 +45,7 @@ def main():
     novos.sort(key=lambda x: -x[3])
     linhas = ["🚒 *Bombeiros — novos suspeitos coletados* (_indício≠acusação_)\n"]
     for ns, obj, forn, val, fortes in novos[:8]:
-        linhas.append(f"• *{ns}* — R$ {val:,.0f}\n  {forn[:30]} · {obj[:46]}")
+        linhas.append(f"• *{ns}* — R$ {moeda(val)}\n  {forn[:30]} · {obj[:46]}")
         for f in fortes:
             linhas.append(f"  ⚠ {str(f)[:90]}")
     msg = "\n".join(linhas)

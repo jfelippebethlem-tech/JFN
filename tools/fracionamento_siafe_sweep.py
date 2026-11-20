@@ -21,7 +21,6 @@ a fila. Nunca um `DELETE` global — a lição de
 from __future__ import annotations
 
 import argparse
-import os
 import pathlib
 import sqlite3
 import sys
@@ -32,7 +31,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from compliance_agent.fracionamento_siafe import triagem  # noqa: E402
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402  formatador da casa (BR)
 
-DB = os.environ.get("JFN_DB", "data/compliance.db")
+from compliance_agent.collectors.arquivos import caminho_db  # noqa: E402
+
+DB = str(caminho_db())
 
 
 def init_schema(con: sqlite3.Connection) -> None:

@@ -33,8 +33,7 @@ import sqlite3
 _MAX_UBIQUIDADE = 40
 
 
-def _norm(c: str) -> str:
-    return re.sub(r"\D", "", c or "")
+from compliance_agent.cpf_cnpj import digitos as _norm
 
 
 def _ubiquo(con: sqlite3.Connection, raiz8: str) -> bool:

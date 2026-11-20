@@ -22,7 +22,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compliance_agent import resolucao_cpf as rc  # noqa: E402
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados  # noqa: E402
+
+_DB = dir_dados() / "compliance.db"
 
 _DDL = [
     "ALTER TABLE socios_fornecedor ADD COLUMN cpf_resolvido TEXT",

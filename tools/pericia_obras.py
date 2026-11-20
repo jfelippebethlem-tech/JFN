@@ -102,7 +102,7 @@ def main():
     L.append(f"\n## 🔴 OBRAS PARADAS/VENCIDAS-SUSPEITAS ({len(paradas)}) — vigência vencida, execução baixa\n")
     L.append("| R$ contrato | % pago | Vig. fim | Objeto | Fornecedor |\n|---:|---:|---|---|---|")
     for p in sorted(paradas, key=lambda x: -(x["valor_contrato"] or 0))[:a.top]:
-        L.append(f"| {p['valor_contrato']:,.2f} | {p['pct_pago'] if p['pct_pago'] is not None else 'n/d'}% | "
+        L.append(f"| {moeda(p['valor_contrato']) if p['valor_contrato'] is not None else 'n/d'} | {p['pct_pago'] if p['pct_pago'] is not None else 'n/d'}% | "
                  f"{p['vig_fim'] or '—'} | {p['objeto'][:42]} | {(p['fornecedor'] or '')[:26]} |")
     open(a.md, "w").write("\n".join(L))
     print(f"[perícia obras] {len(peritadas)} obras | distribuição: {dict(dist)}")

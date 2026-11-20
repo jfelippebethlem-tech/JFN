@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.geo import sede_real
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ
 
 RAIZ = Path(__file__).resolve().parent.parent
 DB = os.environ.get("JFN_DB") or str(RAIZ / "data" / "compliance.db")
@@ -65,10 +66,11 @@ def _con() -> sqlite3.Connection:
 
 def _alvos(con: sqlite3.Connection, limite: int | None, refazer: bool) -> list[str]:
     """Fornecedores por valor recebido (quem recebeu mais é apurado antes)."""
-    sql = """
+    # CPF mascarado do espelho (`999.***.***-99`) também tem 14 caracteres: a régua da casa o tira da fila
+    sql = f"""
       SELECT o.favorecido_cpf, SUM(o.valor) tot
         FROM ordens_bancarias o
-       WHERE LENGTH(COALESCE(o.favorecido_cpf,'')) = 14
+       WHERE {SQL_FAVORECIDO_PJ.replace('favorecido_cpf', 'o.favorecido_cpf')}
     """
     if not refazer:
         sql += " AND o.favorecido_cpf NOT IN (SELECT cnpj FROM verificacao_sede_real)"

@@ -22,8 +22,7 @@ from compliance_agent.reporting.pericia_fisc_rico import ctx_de_achados_rico as 
 REPO = Path(__file__).resolve().parent.parent
 
 
-def _brl(v):
-    return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import moeda as _brl  # noqa: E402
 
 
 def _panorama(con) -> str:

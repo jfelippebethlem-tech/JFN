@@ -25,7 +25,9 @@ from dotenv import load_dotenv
 from compliance_agent.investigacao_orgao_dd import _moeda, top_fornecedores_pj
 from compliance_agent.verificacao_endereco import analisar_endereco, em_backoff
 
-_DIR = Path("data") / "dd_sweep"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DIR = dir_dados() / "dd_sweep"
 _ORDEM = {"INDICIO": 0, "INDISPONIVEL": 1, "AFASTADO": 2}
 
 

@@ -22,7 +22,8 @@ from pathlib import Path
 
 import httpx
 
-REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))
+REPO = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(REPO))
+from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent.reporting.render_html import render_html  # noqa: E402
 
 UG, CNPJ = "133100", "35208086000127"
@@ -31,8 +32,7 @@ HOJE = datetime.now().strftime("%d/%m/%Y")
 CHAT = "45338178"  # dono (allowed_users do Hermes)
 
 
-def brl(x):
-    return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+from compliance_agent.reporting.intel_base import reais as brl  # noqa: E402
 
 
 def esc(s):
@@ -57,11 +57,12 @@ def dados():
     c.row_factory = sqlite3.Row
     iso = "substr(data_emissao,7,4)||substr(data_emissao,4,2)||substr(data_emissao,1,2)"
     obs = [dict(r) for r in c.execute(
-        f"SELECT numero_ob,data_emissao,competencia,valor,status,COALESCE(nl,'') nl,COALESCE(processo,'') processo "
+        f"SELECT numero_ob,data_emissao,competencia,valor,status,COALESCE(nl,'') nl,COALESCE(processo,'') processo, "
+        f"({_ob_paga(c)}) AS paga "
         f"FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente=? ORDER BY {iso},numero_ob", (CNPJ, UG))]
     outras = [tuple(r) for r in c.execute(
         "SELECT ug_emitente, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente<>? "
-        "AND status LIKE 'Contabiliz%' GROUP BY 1 ORDER BY 3 DESC", (CNPJ, UG))]
+        f"AND {_ob_paga(c)} GROUP BY 1 ORDER BY 3 DESC", (CNPJ, UG))]
     per = c.execute("SELECT grau,score,resumo,achados_json FROM pericia_fornecedor WHERE cnpj=? AND ug=?",
                     (CNPJ, UG)).fetchone()
     return obs, outras, per
@@ -69,7 +70,7 @@ def dados():
 
 def montar(fatos):
     obs, outras, per = dados()
-    pagas = [o for o in obs if str(o["status"]).lower().startswith("contabiliz")]
+    pagas = [o for o in obs if o["paga"]]
     total = sum(o["valor"] or 0 for o in pagas)
     por_ano = defaultdict(lambda: [0, 0.0])
     por_comp = defaultdict(list)

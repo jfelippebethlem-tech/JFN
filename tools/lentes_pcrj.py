@@ -35,7 +35,7 @@ import sqlite3
 from collections import defaultdict
 
 from compliance_agent.pcrj.natureza_despesa import ELEMENTOS as ELEMENTOS_OFICIAIS
-from compliance_agent.pcrj.universo import conectar, filtro_sql
+from compliance_agent.pcrj.universo import DB as DB_PADRAO, conectar, filtro_sql
 from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ def me_epp_acima_do_teto(db_path=None) -> dict:
 
     O teto é limite **inclusivo** ("até"): só marca quem passa dele.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         porte = {r[0]: (r[1], r[2]) for r in con.execute(
             "SELECT cnpj_basico, porte_cod, porte_txt FROM empresas_cadastro")}
@@ -204,7 +204,7 @@ def sancao_de_efeito_amplo(db_path=None) -> dict:
     """
     from compliance_agent.knowledge.efeito_sancao import AMPLO, efeito
 
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         sanc = defaultdict(list)
         for cpf_cnpj, cat, ini, fim in con.execute(
@@ -268,7 +268,7 @@ def pessoa_fisica_em_elemento_de_pj(db_path=None) -> dict:
     mais de um credor, concentrando R$ 155,27 mi). Por isso o agrupamento é por (documento,
     NOME), nunca por documento sozinho. CPF não é exibido — LGPD.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     marks = ",".join(f"'{e}'" for e in ELEMENTOS_TIPICOS_DE_PJ)
     try:
         universo = con.execute(f"SELECT count(*) FROM pcrj_despesa WHERE {filtro_sql()} "
@@ -300,7 +300,7 @@ def salto_de_faturamento(db_path=None, fator: float = 10.0, base_minima: float =
     passou a R$ 5.000,00 apareceria como salto de 50×, o que é ruído aritmético e não sinal.
     O par é de exercícios CONSECUTIVOS — crescimento espalhado por anos é expansão, não salto.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT credor_documento, credor_nome, exercicio, sum(pago) FROM pcrj_despesa "
@@ -339,7 +339,7 @@ def liquidado_sem_pagamento(db_path=None, piso: float = 10_000.0) -> dict:
     quitação. Aqui NÃO se aplica o filtro `pago > 0` do universo contratual, pela razão óbvia de
     que a lente procura justamente o pago igual a zero; o resto do corte permanece.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     base = ("substr(natureza,2,1) IN ('3','4') AND substr(natureza,3,2)='90'")
     try:
         universo = con.execute(f"SELECT count(*) FROM pcrj_despesa WHERE {base} "
@@ -368,7 +368,7 @@ def fornecedor_quase_exclusivo(db_path=None, corte: float = 0.80,
     A 80% o sinal volta a ser raro. Piso de R$ 5 mi por órgão-ano evita que órgão pequeno, onde
     dois pagamentos já fazem 100%, domine o resultado.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT exercicio, orgao, credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
@@ -477,7 +477,7 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
     **mascarado**. Homônimos existem, e nomes muito comuns produzem falso positivo. Cada achado
     carrega `risco_homonimia` alto quando o nome tem menos de três palavras. CPF não é exibido.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         pagos = {}
         for doc, nome, pago in con.execute(
@@ -506,7 +506,7 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
                 socios[nome_norm].add(raiz)
     finally:
         con.close()
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         freq_nomes = _frequencia_do_nome(con, {n for n, r in socios.items() if len(r) >= minimo})
     finally:
@@ -571,7 +571,7 @@ def pago_muito_acima_do_capital(db_path=None, fator: float = 100.0,
 
     Capital ausente ou zero devolve o credor FORA do universo — INDISPONÍVEL, não "capital baixo".
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         capital = {r[0]: r[1] for r in con.execute(
             "SELECT cnpj_basico, capital_social FROM empresas_cadastro "
@@ -621,7 +621,7 @@ def fornecedor_mono_cliente(db_path=None, piso: float = 5_000_000.0) -> dict:
 
     Fica fora de `LENTES`. Continua chamável para inspeção manual.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT credor_documento, credor_nome, orgao, sum(pago) FROM pcrj_despesa "
@@ -680,7 +680,7 @@ def servidor_estadual_socio_de_fornecedor(db_path=None, so_gerencia: bool = True
     Credor que é ente público (estatal, autarquia) é RESSALVADO, não somado: uma estatal não tem
     sócio pessoa física no sentido desta lente.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         pagos = {}
         for doc, nome, pago in con.execute(
@@ -789,7 +789,7 @@ def empresa_recem_criada(db_path=None, meses: int = 24, piso: float = 1_000_000.
     guarda não vê (é o caso de FRESENIUS KABI, multinacional com "3 meses" em 2019). Por isso o
     achado desta lente é candidato a exame, e o primeiro passo é conferir a constituição na fonte.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         try:
             abertura = {re.sub(r"\D", "", str(cnpj or ""))[:8]: dt for cnpj, dt in con.execute(
@@ -872,7 +872,7 @@ def concentracao_hhi(db_path=None, piso_orgao: float = 5_000_000.0,
     Órgão com concessionária ou plano de saúde no topo é RESSALVADO pelo mesmo critério
     estrutural das outras lentes: monopólio natural produz HHI alto sem que haja captura.
     """
-    con = conectar(db_path or "data/compliance.db")
+    con = conectar(db_path or DB_PADRAO)
     try:
         rows = con.execute(
             f"SELECT exercicio, orgao, credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "

@@ -29,6 +29,7 @@ async def _main() -> int:
     from sqlalchemy import func
     from compliance_agent.database.models import Empresa, OrdemBancaria, get_session
     from compliance_agent.enrichers.cnpj_enricher import enriquecer_ob_cnpj
+    from compliance_agent.reporting.intel_base import moeda
 
     session = get_session()
     ja = {c for (c,) in session.query(Empresa.cnpj).all()}
@@ -59,7 +60,7 @@ async def _main() -> int:
             sit = (r or {}).get("situacao") or "sem dado"
             feitos += 1
             print(f"[{feitos}/{args.top}] {cnpj} {nome[:45]} — {sit} "
-                  f"(recebeu R$ {total:,.0f})", flush=True)
+                  f"(recebeu R$ {moeda(total)})", flush=True)
         except Exception as e:  # noqa: BLE001
             erros += 1
             print(f"[erro] {cnpj}: {e}", flush=True)
