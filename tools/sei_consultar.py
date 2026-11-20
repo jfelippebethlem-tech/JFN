@@ -21,21 +21,18 @@ import argparse
 import json
 import re
 import sys
-import os
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-# `JFN_SEI_ARQUIVO` aponta a raiz do acervo para outro lugar — usado pelo teste, que precisa montar
-# um processo com documento sem teor sem sujar o acervo real.
-ARQUIVO = Path(os.environ.get("JFN_SEI_ARQUIVO") or (RAIZ / "data" / "sei_arquivo"))
-
-
-def _tag(proc: str) -> str:
-    return re.sub(r"[^0-9]", "_", proc)
+sys.path.insert(0, str(RAIZ))
+from compliance_agent.sei.acervo_texto import RAIZ as ARQUIVO, numero_para_pasta  # noqa: E402
 
 
 def _abrir(proc: str) -> tuple[Path, dict]:
-    d = ARQUIVO / _tag(proc)
+    # Pela porta: o `_tag` antigo trocava todo não-dígito por "_" e "SEI-070002/…" virava "____070002_…" —
+    # o formato que a própria ajuda sugere respondia "processo não arquivado" (20/11/2026: 9.996 números
+    # SEI- da casa só acham a pasta assim).
+    d = ARQUIVO / numero_para_pasta(proc)
     m = d / "manifest.json"
     if not m.exists():
         print(f"processo não arquivado: {proc}\n"

@@ -103,7 +103,7 @@ contrato 033/2023 + 1º Termo Aditivo de valor/RERRA + aditivo de prazo + todas 
 ### Íntegra / envio (já sobre o primitivo)
 `tools/sei_integra_completa.py "PROC"` (PDF único → Telegram; `SEI_SEM_TG=1` só arquiva) ·
 `tools/sei_proc_paginado.py "PROC" "kw"` (lista + OCR dos alvos) ·
-`tools/sei_docs_to_telegram.py "PROC" "kw"` — TODOS enumeram via `abrir_processo`+`arvore_do_fonte`.
+`tools/_arquivo/sei_debug_superado/sei_docs_to_telegram.py "PROC" "kw"` (arquivado em 20/11/2026) — TODOS enumeram via `abrir_processo`+`arvore_do_fonte`.
 As antigas `docs_da_pagina`/`clicar_proxima` (paginação de BUSCA) estão **aposentadas** (davam 0 na árvore).
 
 ## 4. LER o processo com IA (quando o texto não basta)  ⭐ NOVO 2026-07-28

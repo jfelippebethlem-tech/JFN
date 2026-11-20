@@ -31,7 +31,6 @@ PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz ar
 # escondeu 57 docs / 28 MB). Documentar não conserta: o conserto é esta linha.
 PROC = re.sub(r"^SEI-", "", PROC.strip())
 TAG = re.sub(r"[^0-9]", "_", PROC)
-MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
 # Códigos de saída — antes LOGIN FALHOU e SEM ÁRVORE saíam com 0 e a fila (`sei_integra_fila`)
 # chamava de "ok" uma captura sem documento nenhum (laudo dos motores, 13/11/2026: 255 "ok" em
 # 7 dias, 48 processos, todos com 0 documento). 75 (adiado por carga) já existia.

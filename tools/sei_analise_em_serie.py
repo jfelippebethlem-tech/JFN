@@ -40,7 +40,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from compliance_agent.sei import acervo_texto  # noqa: E402
 
-ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+ACERVO = acervo_texto.RAIZ          # absoluta; honra JFN_SEI_ARQUIVO
 VAULT = pathlib.Path(os.path.expanduser("~/vault/processos"))
 INDICE = pathlib.Path("data/analise_serie.json")
 DB = os.environ.get("JFN_DB", "data/compliance.db")

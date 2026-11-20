@@ -30,6 +30,8 @@ import sys
 import time
 from pathlib import Path
 
+from compliance_agent.sei.acervo_texto import foi_ocr
+
 _REPO = Path(__file__).resolve().parent.parent
 DATA = _REPO / "data"
 ARQUIVO, CACHE = DATA / "sei_arquivo", DATA / "sei_cache"
@@ -65,7 +67,7 @@ MOTOR_PADRAO = {"surya": "surya-ocr-2.5", "reserva": "reserva:rapidocr"}
 
 def _posto(d: dict) -> int:
     """Força do texto ATUAL do documento: 4 nativo · 3 Surya · 2 reserva · 1 Tesseract · 0 sem texto."""
-    if _chars(d) >= MIN_CHARS and not d.get("ocr"):    # nativo: o texto do próprio PDF é a verdade
+    if _chars(d) >= MIN_CHARS and not foi_ocr(d):    # nativo: o texto do próprio PDF é a verdade
         return 4
     if _chars(d) < MIN_CHARS or not d.get("texto"):
         return 0

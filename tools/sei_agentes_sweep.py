@@ -31,7 +31,7 @@ from compliance_agent.sei.agentes_publicos import (  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+ACERVO = acervo_texto.RAIZ          # absoluta; honra JFN_SEI_ARQUIVO
 CACHE = pathlib.Path(os.environ.get("JFN_SEI_CACHE", "data/sei_cache"))
 DB = os.environ.get("JFN_DB", "data/compliance.db")
 MAX_DOCS_POR_PROCESSO = 60

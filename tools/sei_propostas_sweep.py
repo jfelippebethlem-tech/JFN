@@ -79,7 +79,7 @@ from compliance_agent.sei import acervo_texto  # noqa: E402
 logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
-_ACERVO = _REPO / "data" / "sei_arquivo"
+_ACERVO = acervo_texto.RAIZ
 _DB = _REPO / "data" / "compliance.db"
 
 # ── seleção do alvo (as regras estão no docstring; aqui elas viram código) ───────────────────────
@@ -187,10 +187,8 @@ def _gerar_nous():
 
 
 # ── persistência ─────────────────────────────────────────────────────────────────────────────────
-def _certame_do_processo(processo: str) -> str:
-    """`080002_008019_2026` → `SEI-080002/008019/2026`. É a chave que o resto da casa usa."""
-    m = re.match(r"^(\d+)_(\d+)_(\d{4})$", processo)
-    return f"SEI-{m.group(1)}/{m.group(2)}/{m.group(3)}" if m else processo
+# `080002_008019_2026` → `SEI-080002/008019/2026`, a chave que o resto da casa usa.
+_certame_do_processo = acervo_texto.pasta_para_numero
 
 
 def _prompt_comparativo(texto: str, cnpjs: list[str]) -> str:

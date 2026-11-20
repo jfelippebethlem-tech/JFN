@@ -75,6 +75,12 @@ def manifesto(pasta: Path | str) -> dict | None:
         return None
     return man if isinstance(man, dict) else None
 
+
+def foi_ocr(doc: dict) -> bool:
+    """O texto da entrada veio de OCR? `sei_arquivar` grava bool; `sei_arquivar_do_cache` grava a STRING
+    "True"/"False" (6.640 manifests em 20/11/2026) — e `bool("False")` é verdadeiro."""
+    return str(doc.get("ocr")) == "True"
+
 # A etiqueta canônica: `[<título>] (fase: X · tipo: Y)` (de `sei_arquivar`) ou `[<título>]
 # (tipo: Y)` (de `sei_arquivar_do_cache`). O `.*` é guloso e NÃO cruza linha: pega o último `]`
 # da primeira linha, o que resolve título com colchete aninhado.

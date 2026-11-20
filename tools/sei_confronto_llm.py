@@ -29,8 +29,10 @@ import re
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.sei import acervo_texto
+
 _REPO = Path(__file__).resolve().parent.parent
-_ARQ = _REPO / "data" / "sei_arquivo"
+_ARQ = acervo_texto.RAIZ
 _GAB = _REPO / "data" / "gabaritos_sei.json"
 
 # Perguntas FECHADAS, uma por fato. Pergunta aberta não é confrontável — e o que se quer medir é a
@@ -67,7 +69,7 @@ def texto_do_processo(proc: str, max_chars: int = 120_000) -> str:
     resposta a estas perguntas mora nos documentos de contratação e despesa — não no rodapé de
     tramitação. Quando corta, o corte é DECLARADO no laudo.
     """
-    tag = re.sub(r"\D", "_", proc).strip("_")
+    tag = acervo_texto.numero_para_pasta(proc)
     pasta = _ARQ / tag
     if not pasta.is_dir():
         # A leitura integral grava PDF em `data/proc_integra/`, não texto no acervo. Ler só o

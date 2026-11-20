@@ -53,7 +53,7 @@ def parse_resultado(html: str) -> dict:
     Estados:
         com_resultado  a barra de contagem existe e é > 0
         sem_resultado  a barra existe e é 0, ou a página traz a barra vazia — zero apurado
-        nao_parseei    não achei a barra: pode ser sessão caída, WAF, layout novo. NUNCA é zero.
+        nao_parseei    não achei a barra: sessão caída ou layout novo (falha do método). NUNCA é zero.
     """
     h = html or ""
     m = _RE_EXIBINDO.search(h)

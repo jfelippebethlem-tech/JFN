@@ -20,35 +20,7 @@ from playwright.async_api import async_playwright
 PROC = sys.argv[1] if len(sys.argv) > 1 else "330020/000762/2021"
 KW = sys.argv[2] if len(sys.argv) > 2 else r"planilha|proposta|composi|custo|encargo|edital|nota fiscal|medi[çc][ãa]o|termo de refer|or[çc]ament"
 MAX_OCR = int(os.environ.get("SEI_OCR_DOCS", "4"))
-MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "25"))
 TAG = re.sub(r"[^0-9]", "_", PROC)
-
-
-async def docs_da_pagina(pg):
-    docs = {}
-    for fr in pg.frames:
-        try:
-            ds = await fr.evaluate(r"""()=>[...document.querySelectorAll('a[href*="documento_visualizar"],a[href*="acessar_documento"]')].map(a=>{const p=a.closest('tr,li,div');return {t:(a.title||a.textContent||'').trim().slice(0,75),pai:(p?p.textContent:'').replace(/\s+/g,' ').trim().slice(0,90),u:a.href};})""")
-            for d in ds:
-                docs[d["u"]] = d
-        except Exception:
-            pass
-    return docs
-
-
-async def clicar_proxima(pg, offset):
-    """Pagina via navegar('<offset>') do SEI, com RETRY (o frame de resultados re-renderiza e perde
-    a função navegar momentaneamente — flakiness que travava a paginação na pág. 5)."""
-    for tentativa in range(4):
-        for fr in pg.frames:
-            try:
-                if await fr.evaluate("()=>typeof navegar==='function'"):
-                    await fr.evaluate("(o)=>{ try{ navegar(o); }catch(e){} }", str(offset))
-                    return True
-            except Exception:
-                pass
-        await pg.wait_for_timeout(1500)  # espera o frame re-renderizar e tenta de novo
-    return False
 
 
 async def main():
@@ -70,7 +42,7 @@ async def main():
                 print("LOGIN FALHOU"); return
             print("login OK", flush=True)
             # ENUMERAÇÃO via primitivo novo (abre processo + expande pastas lazy-load pelo loader nativo).
-            # Substitui docs_da_pagina/clicar_proxima (paginação de BUSCA) que retornava 0 na árvore.
+            # (a paginação da BUSCA, que a precedeu, devolvia 0 documento na árvore)
             fr = await SR.abrir_processo(pg, PROC)
             if not fr:
                 print("SEM ÁRVORE (processo não abriu)"); return

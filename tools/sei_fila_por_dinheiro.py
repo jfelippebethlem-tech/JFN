@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 from compliance_agent.cruzamentos_intel import _ob_paga  # noqa: E402
 from compliance_agent.sei import acervo_texto  # noqa: E402
+from compliance_agent.sei.cache_arquivo import nome_logico  # noqa: E402
 
 # FOLHA, PREVIDÊNCIA E ENCARGO não são contratação — e é do credor que se sabe. Medido na fonte
 # SIAFE em 2026-08-04: 66 dos 200 maiores processos por valor pago são RIOPREV/INATIVOS, PLANO DE
@@ -73,17 +74,13 @@ def e_folha_ou_encargo(credor: str | None, cnpj: str | None = None) -> bool:
 RAIZ = Path(__file__).resolve().parent.parent
 DB = RAIZ / "data" / "compliance.db"
 CACHE = RAIZ / "data" / "sei_cache"
-ARQUIVO = RAIZ / "data" / "sei_arquivo"
+ARQUIVO = acervo_texto.RAIZ
 SAIDA = RAIZ / "data" / "sei_fila_dinheiro.json"
-
-
-def _slug(numero: str) -> str:
-    return "".join(c if c.isalnum() else "_" for c in (numero or "").replace("SEI-", "")).strip("_")
 
 
 def _ja_arquivado(numero: str) -> bool:
     """Arquivado = tem manifesto E algum texto com conteúdo. Manifesto sozinho pode ser captura vazia."""
-    d = ARQUIVO / _slug(numero)
+    d = ARQUIVO / acervo_texto.numero_para_pasta(numero)
     if not (d / "manifest.json").exists():
         return False
     # `st_size > 200` media o arquivo, e a etiqueta que nós prepomos tem mediana 71 e máximo
@@ -143,7 +140,10 @@ def levantar(fornecedor: str | None = None) -> dict:
         linhas = con.execute(sql, params).fetchall()
     finally:
         con.close()
-    cdps = {f.stem.replace("cdp_", "").replace("SEI_", "") for f in CACHE.glob("cdp_*.json")}
+    # O blob lido vive como `.json` ou, depois do `comprimir_cache_sei`, como `.json.zst` (20/11/2026: 2.353 × 9.516);
+    # olhar só o `.json` contava o processo comprimido como NUNCA TOCADO.
+    cdps = {acervo_texto.numero_para_pasta(nome_logico(f)[len("cdp_"):-len(".json")])
+            for f in [*CACHE.glob("cdp_*.json"), *CACHE.glob("cdp_*.json.zst")]}
     arquivados, lidos, faltam = [], [], []
     for numero, valor, nome, cnpj, n_ob in linhas:
         item = {"sei": numero, "score": float(valor or 0), "valor_ob": float(valor or 0),
@@ -154,7 +154,7 @@ def levantar(fornecedor: str | None = None) -> dict:
             item["flags"].append("FOLHA_OU_ENCARGO")
         if _ja_arquivado(numero):
             arquivados.append(item)
-        elif _slug(numero) in cdps or f"SEI_{_slug(numero)}" in cdps:
+        elif acervo_texto.numero_para_pasta(numero) in cdps:
             lidos.append(item)          # já lido: a fila de íntegra existente cuida
         else:
             faltam.append(item)         # nunca tocado: é este o buraco

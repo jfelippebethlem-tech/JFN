@@ -137,7 +137,9 @@ def depurar_pasta(pasta: Path, aplicar: bool = False, recomprimir_imagem: bool =
                 txt = pdf.with_suffix(".txt")
                 tmp = txt.with_name(txt.name + ".tmp")
                 tmp.write_text(texto, encoding="utf-8")
-                if tmp.read_text(encoding="utf-8") != texto:        # releitura: só apaga com o texto gravado
+                # releitura: só apaga com o texto gravado. Em BYTES: read_text troca '\r' por '\n' e todo
+                # nativo com '\r' (o PyMuPDF devolve) era recusado para sempre e reclassificado de hora em hora.
+                if tmp.read_bytes() != texto.encode("utf-8"):
                     tmp.unlink(missing_ok=True)
                     continue
                 tmp.replace(txt)

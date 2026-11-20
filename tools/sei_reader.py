@@ -1253,7 +1253,7 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
             try:
                 if not await login(pg, tentativas=tentativas_login):
                     return {"numero": numero, "texto": "", "conteudo_documentos": [],
-                            "erro": "INDISPONÍVEL: login itkava não autenticou (WAF/credencial)"}
+                            "erro": "INDISPONÍVEL: login itkava não autenticou"}
                 res = await ler_processo(pg, numero, usar_cache=usar_cache)
                 # FALLBACK CRACKED (anti-regressão, caminho SEPARADO): o ITERJ (270042) passa pelo
                 # caminho normal acima (zero risco). Se o normal NÃO trouxe documentos (típico de

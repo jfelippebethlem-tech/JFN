@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from compliance_agent.sei.acervo_texto import foi_ocr, numero_para_pasta
+
 _REPO = Path(__file__).resolve().parent.parent
 ARQUIVO = _REPO / "data" / "sei_arquivo"
 SAIDA = _REPO / "data" / "sei_ocr_gpu_fila.txt"
@@ -55,7 +57,7 @@ def tags_risco_alto() -> set[str]:
         con.close()
     except sqlite3.Error:
         return set()
-    return {str(r[0]).replace("SEI-", "").replace("/", "_") for r in rows if r[0]}
+    return {numero_para_pasta(r[0]) for r in rows if r[0]}
 
 
 def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[str] | None = None,
@@ -72,7 +74,7 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[st
             if not str(d.get("i", "")).isdigit() or str(d.get("ocr_motor", "")).startswith("surya"):
                 continue
             i = int(d["i"])
-            sem_texto, tess = _chars(d) < 40, bool(d.get("ocr")) and _chars(d) >= 40
+            sem_texto, tess = _chars(d) < 40, foi_ocr(d) and _chars(d) >= 40
             if not (sem_texto or tess) or (tag, i) in aplicados:
                 continue
             rel = f"integra_{tag}/{i:03d}.pdf"

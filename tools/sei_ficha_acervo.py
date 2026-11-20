@@ -41,7 +41,7 @@ from compliance_agent.sei import acervo_texto
 from compliance_agent.sei.classificador_doc import ordenar_para_leitura
 
 REPO = Path(__file__).resolve().parents[1]
-ACERVO = REPO / "data" / "sei_arquivo"
+ACERVO = acervo_texto.RAIZ
 DB = REPO / "data" / "compliance.db"
 ESTADO = REPO / "data" / "sei_ficha_acervo_estado.json"
 TAREFA = "extracao_sei"
@@ -59,9 +59,7 @@ def _dig(s) -> str:
     return re.sub(r"\D", "", str(s or ""))
 
 
-def numero_da_pasta(nome: str) -> str:
-    p = nome.split("_")
-    return f"SEI-{p[0]}/{p[1]}/{p[2]}" if len(p) >= 3 else nome
+numero_da_pasta = acervo_texto.pasta_para_numero
 
 
 # ── texto ─────────────────────────────────────────────────────────────────────────────────────────────

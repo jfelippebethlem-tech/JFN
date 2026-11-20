@@ -25,6 +25,8 @@ CACHE = RAIZ / "data" / "sei_cache"
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 sys.path.insert(0, str(RAIZ))
 
+from compliance_agent.sei.acervo_texto import foi_ocr  # noqa: E402
+
 MIN_UTIL = 60          # abaixo disso o OCR não trouxe nada aproveitável
 
 
@@ -52,7 +54,7 @@ def resgatar(tag: str, aplicar: bool) -> list[dict]:
     from compliance_agent.sei.ocr_docs import ocr_documento
     ganhos, mudou = [], False
     for d in (m.get("docs") or []):
-        if (d.get("chars") or 0) >= MIN_UTIL or d.get("ocr"):
+        if (d.get("chars") or 0) >= MIN_UTIL or foi_ocr(d):
             continue
         pdf = CACHE / f"integra_{tag}" / f"{d['i']:03d}.pdf"
         if not pdf.exists() or not _so_imagem(pdf):

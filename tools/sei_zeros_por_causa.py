@@ -39,11 +39,13 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from compliance_agent.sei import acervo_texto
+
 _REPO = Path(__file__).resolve().parent.parent
 _PROG = _REPO / "data" / "sei_cache" / "sei_sweep_progress.json"
 _REG = _REPO / "data" / "sei_restritos.json"
 _DB = _REPO / "data" / "compliance.db"
-_ARQ = _REPO / "data" / "sei_arquivo"
+_ARQ = acervo_texto.RAIZ          # apelido: o teste o redireciona
 
 # Estados que EXPLICAM o zero. Qualquer outra coisa (inclusive ausência de registro) é causa
 # desconhecida — e é isso que a fila persegue.
@@ -147,7 +149,7 @@ def medir(prog: Path | None = None, reg: Path | None = None,
     # `SEI-`, que as pastas não têm, e dizia "nenhum tem arquivo" — inclusive para processos com
     # 375 documentos lidos.)
     def _tem_arquivo(proc: str) -> bool:
-        return (_ARQ / proc.replace("SEI-", "").replace("/", "_")).exists()
+        return (_ARQ / acervo_texto.numero_para_pasta(proc)).exists()
 
     ja_no_arquivo = [p for p in sem_causa if _tem_arquivo(p)]
     caixa_com_arquivo = [p for p in caixa if _tem_arquivo(p)]

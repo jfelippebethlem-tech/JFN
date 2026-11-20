@@ -26,7 +26,9 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+from compliance_agent.sei import acervo_texto  # noqa: E402
+
+ACERVO = acervo_texto.RAIZ          # absoluta; honra JFN_SEI_ARQUIVO
 SAIDA = pathlib.Path("output/dossies")
 VAULT = pathlib.Path(os.path.expanduser("~/vault/processos"))
 # Retomada de dossiê interrompido por cota — ver o bloco de checkpoint em gerar().

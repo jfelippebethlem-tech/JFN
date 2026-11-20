@@ -35,13 +35,14 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
+from compliance_agent.sei import acervo_texto
 from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
 
 logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parent.parent
 CACHE = RAIZ / "data" / "sei_cache"
-ARQUIVO = RAIZ / "data" / "sei_arquivo"
+ARQUIVO = acervo_texto.RAIZ
 MIN_CHARS = 500          # cache com menos que isso não vale arquivar (é cabeçalho/erro)
 
 # ── VERIFICAÇÃO DE INTEGRIDADE (2026-07-24, depois de o dono perguntar "estão íntegros?") ──
@@ -75,10 +76,6 @@ def qualidade_cache(conteudo_documentos: list) -> str:
     return "completo" if frac <= 0.2 else "misto"
 
 
-def _slug_processo(numero: str) -> str:
-    return "".join(c if c.isalnum() else "_" for c in (numero or "").replace("SEI-", "")).strip("_")
-
-
 def _slug_arquivo(titulo: str, i: int) -> str:
     t = unicodedata.normalize("NFD", (titulo or "").lower())
     t = "".join(c for c in t if unicodedata.category(c) != "Mn")
@@ -87,7 +84,7 @@ def _slug_arquivo(titulo: str, i: int) -> str:
 
 
 def _ja_arquivado(numero: str) -> bool:
-    d = ARQUIVO / _slug_processo(numero)
+    d = ARQUIVO / acervo_texto.numero_para_pasta(numero)
     if not (d / "manifest.json").exists():
         return False
     td = d / "texto"
@@ -176,7 +173,7 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
             # para sempre. `arquivar()` afasta o arquivo antigo p/ _substituido/ (nada se apaga).
             # Confere de novo pelo slug REAL derivado do `numero` — a triagem acima usou o nome do
             # arquivo, que é um palpite bom mas não é a fonte da verdade.
-            man = ARQUIVO / _slug_processo(numero) / "manifest.json"
+            man = ARQUIVO / acervo_texto.numero_para_pasta(numero) / "manifest.json"
             try:
                 if man.stat().st_mtime >= f.stat().st_mtime:
                     continue
@@ -207,7 +204,7 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
     from compliance_agent.sei.fases import linha_do_tempo
 
     numero = item["numero"]
-    destino = ARQUIVO / _slug_processo(numero)
+    destino = ARQUIVO / acervo_texto.numero_para_pasta(numero)
     # arquivo antigo (re-arquivamento por cache mais novo): AFASTA, nunca apaga — escrever por
     # cima misturaria txt de duas gerações com conjuntos de docs diferentes.
     if aplicar and (destino / "manifest.json").exists():
@@ -398,7 +395,7 @@ def main(argv=None) -> int:
     # após disparo enquanto 98 processos tinham cache mais novo que o manifesto, 32 deles já
     # `completo` — um com 787.668 chars parados. Fila que se declara vazia não é investigada.
     novos = sum(1 for x in alvos
-                if not (ARQUIVO / _slug_processo(x["numero"]) / "manifest.json").exists())
+                if not (ARQUIVO / acervo_texto.numero_para_pasta(x["numero"]) / "manifest.json").exists())
     print(f"processos do cache a arquivar: {len(alvos):,} — {total_chars:,} caracteres "
           f"({novos:,} sem arquivo · {len(alvos) - novos:,} com cache mais novo que o arquivo)")
     if not alvos:

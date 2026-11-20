@@ -33,10 +33,11 @@ import pathlib
 import sqlite3
 from datetime import datetime
 
+from compliance_agent.sei import acervo_texto
 from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
 
 CACHE = pathlib.Path(os.environ.get("JFN_SEI_CACHE", "data/sei_cache"))
-ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+ACERVO = acervo_texto.RAIZ          # absoluta; honra JFN_SEI_ARQUIVO
 DB = os.environ.get("JFN_DB", "data/compliance.db")
 
 
@@ -267,8 +268,13 @@ def main() -> int:
                    "acervo (íntegra) — cadeado não aferível", agora)
                   for k in sorted(locais - vistos) if k in nomes]
         con.executemany("INSERT OR REPLACE INTO sei_sigilo VALUES (?,?,?,?,?,?,?,?,?)", extra)
+        # Upsert, não REPLACE: a fila tem outros seis escritores (todos OR IGNORE) e o `motivo` deles decide a
+        # prioridade em `sei_integra_fila` (execução, parecer, caso…). Este só reescreve o motivo que é dele.
         con.executemany(
-            "INSERT OR REPLACE INTO sei_fila_captura VALUES (?,?,?,?,?,?)",
+            "INSERT INTO sei_fila_captura VALUES (?,?,?,?,?,?) ON CONFLICT(numero_sei) DO UPDATE SET "
+            "sei_norm=excluded.sei_norm, total_pago=excluded.total_pago, n_docs=excluded.n_docs, "
+            "visto_em=excluded.visto_em, motivo=CASE WHEN COALESCE(motivo,'') IN "
+            "('', 'restrito', 'arvore_nao_carregou', 'nunca_capturado') THEN excluded.motivo ELSE motivo END",
             [(conh[k]["numero_sei"], k,
               "restrito" if k in restritos else
               ("arvore_nao_carregou" if cache.get(k, {}).get("arvore_carregou") == 0

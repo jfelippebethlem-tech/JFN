@@ -18,6 +18,7 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.sei.acervo_texto import pasta_para_numero
 from compliance_agent.sei.cache_arquivo import glob_cache, ler_json
 from compliance_agent.sei.extrair_cpf import extrair_cpfs
 
@@ -127,10 +128,7 @@ def varrer_acervo(db_path: str | Path | None = None, acervo: str | Path | None =
             tdir = pasta / "texto"
             if not tdir.is_dir():
                 continue
-            # o número do processo vem do NOME da pasta (030001_075841_2024 → SEI-030001/075841/2024)
-            partes = pasta.name.split("_")
-            numero = (f"SEI-{partes[0]}/{partes[1]}/{partes[2]}"
-                      if len(partes) >= 3 else pasta.name)
+            numero = pasta_para_numero(pasta.name)
             txts = sorted(tdir.glob("*.txt"))
             assinatura = f"{len(txts)}:{sum(f.stat().st_size for f in txts)}"
             if marca_arq and vistos.get(pasta.name, {}).get("a") == assinatura:

@@ -12,3 +12,6 @@ reaproveitado, mova de volta para `tools/`.
   (`sei_reader.ler()` → `sei_proc_paginado` → `sei_integra_completa` → `sei_arquivar`, sempre via
   `vm_guard`). Mantidos arquivados para não serem redescobertos e usados fora da guarda do
   `browser_lock`/`vm_guard` — ver `docs/PLAYBOOK-SEI.md`.
+  Em 20/11/2026 (untangle de `tools/sei_*`, `docs/untangle/tools-sei.md` §6) entraram `sei_docs_to_telegram`
+  (lia o token no import e enviava por fora do enviador da casa), `sei_login_retry` (login e estado próprios) e
+  `sei_reocr_backfill` (relia o SEI ao vivo) — nenhum chamador em código, cron, deploy, config ou teste.

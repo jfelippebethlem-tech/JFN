@@ -220,7 +220,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-11-20: -38 (1600->1562) — untangle de `collectors/`: falha de fonte deixou de ser engolida (vira INDISPONÍVEL).
 # 2026-11-20: -26 (1562->1536) — untangle de deploy/tools de infra: três scripts sem chamador apagados
 # (`enviar_sessao_telegram`, `enviar_forense_telegram`, `painel_extrair`).
-BASELINE = 1536
+# 2026-11-20: -2 (1536->1534) — untangle de `tools/sei_*` (funções mortas do `sei_proc_paginado`,
+# `docs/untangle/tools-sei.md`).
+BASELINE = 1534
 
 
 def _contar() -> int:
