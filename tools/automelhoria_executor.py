@@ -44,6 +44,8 @@ _PERMITIDAS = ["Read", "Grep", "Glob", "Edit", "Write", "MultiEdit",
                "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
                "Bash(git add:*)", "Bash(git commit:*)", "Bash(ls:*)", "Bash(grep:*)", "Bash(sed -n:*)",
                "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)"]
+# o `rtk` reescreve `git x` → `rtk git x`: sem a variante a regra não casa e o commit é negado (1ª rodada, 20/11/2026)
+_PERMITIDAS += [f"Bash(rtk {r[5:]}" for r in _PERMITIDAS if r.startswith("Bash(git ")]
 _NEGADAS = ["Bash(git push:*)", "Bash(git reset:*)", "Bash(git checkout:*)", "Bash(rm:*)", "Bash(sudo:*)",
             "Bash(pkill:*)", "Bash(ssh:*)", "Bash(curl:*)", "WebFetch", "WebSearch",
             "Read(//home/ubuntu/JFN/.env*)", "Read(//home/ubuntu/.config/**)", "Read(//home/ubuntu/.claude/.credentials*)"]
@@ -115,6 +117,13 @@ def executar(it: dict) -> dict:
             texto = (r.stdout or r.stderr)[-1500:]
     except subprocess.TimeoutExpired:
         texto = f"prazo de {PRAZO_S // 60} min estourado"
+    resumo = "\n".join(ln for ln in texto.splitlines() if re.match(r"(CAUSA|CONSERTO|TESTES|RISCO):", ln)) or texto[-600:]
+    # Conserto deixado na árvore sem commit (permissão negada, prazo): o EXECUTOR commita — nunca apagar trabalho feito.
+    if _git("status", "--porcelain", cwd=wt, check=False) and not re.search(r"CONSERTO:\s*NENHUM", resumo, re.I):
+        _git("add", "-A", cwd=wt, check=False)
+        msg = (re.search(r"CONSERTO:\s*(.+)", resumo) or re.search(r"(.+)", it["titulo"])).group(1)[:72]
+        _git("-c", "user.name=Executor da automelhoria", "commit", "-q", "-m",
+             f"fix(automelhoria): {msg}\n\nItem: {it['assinatura']}\n\n{resumo[:1500]}", cwd=wt, check=False)
     commits = _git("log", "--oneline", f"origin/{br_viva}..{branch}", check=False)
     stat = _git("diff", "--stat", f"origin/{br_viva}..{branch}", check=False) if commits else ""
     if not commits:                                   # sem conserto: não deixa branch nem worktree órfãos
@@ -122,8 +131,7 @@ def executar(it: dict) -> dict:
         _git("branch", "-D", branch, check=False)
     return {"assinatura": it["assinatura"], "titulo": it["titulo"], "branch": branch if commits else None,
             "commits": commits, "stat": stat.splitlines()[-1] if stat else "", "segundos": round(time.time() - t0),
-            "resumo": "\n".join(ln for ln in texto.splitlines() if re.match(r"(CAUSA|CONSERTO|TESTES|RISCO):", ln))
-            or texto[-600:], "ts": time.time()}
+            "resumo": resumo, "ts": time.time()}
 
 
 def avisar(res: list[dict]) -> None:
