@@ -14,8 +14,9 @@ from typing import Optional
 import httpx
 from bs4 import BeautifulSoup
 
+from compliance_agent.collectors.formato import valor_br
 from compliance_agent.database.models import (
-    Alerta, DecisaoTCE, Empresa,
+    DecisaoTCE,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,12 +78,9 @@ def _extract_valor_debito(ementa: str) -> float:
     pattern = r"R\$\s*([\d.,]+)"
     matches = re.findall(pattern, ementa, re.IGNORECASE)
     for m in matches:
-        try:
-            valor = float(m.replace(".", "").replace(",", "."))
-            if valor > 0:
-                return valor
-        except ValueError:
-            continue
+        valor = valor_br(m.rstrip(".,"))  # o regex leva o ponto final da frase: "R$ 1.234,56."
+        if valor and valor > 0:
+            return valor
     return 0.0
 
 
@@ -220,84 +218,3 @@ async def buscar_decisoes_tce(termo: str, session, max_resultados: int = 20) -> 
 
     return resultados
 
-
-async def verificar_sancionados(session) -> list[dict]:
-    """
-    Check the top 50 companies in the DB against TCE-RJ decisions.
-
-    For each company with condemnation decisions, creates an Alerta
-    of type 'direcionamento' with severidade 'alta'.
-
-    Args:
-        session: SQLAlchemy session.
-
-    Returns:
-        List of dicts with {'empresa', 'decisoes'} for companies with findings.
-    """
-    resultados = []
-
-    try:
-        # Get top 50 companies (by number of contracts)
-        from sqlalchemy import func
-        from compliance_agent.database.models import Contrato
-
-        top_empresas = (
-            session.query(Empresa)
-            .join(Contrato, Contrato.empresa_id == Empresa.id)
-            .group_by(Empresa.id)
-            .order_by(func.count(Contrato.id).desc())
-            .limit(50)
-            .all()
-        )
-
-        for empresa in top_empresas:
-            # Use first 30 chars of razao_social as search term
-            termo = empresa.razao_social[:30].strip()
-            decisoes = await buscar_decisoes_tce(termo, session, max_resultados=5)
-
-            condenacoes = [d for d in decisoes if d.get("tipo") == "condenação"]
-
-            if condenacoes:
-                titulo = f"Empresa sancionada pelo TCE-RJ — {empresa.razao_social}"
-                existe = session.query(Alerta).filter_by(titulo=titulo[:300]).first()
-
-                if not existe:
-                    alerta = Alerta(
-                        tipo="direcionamento",
-                        severidade="alta",
-                        titulo=titulo[:300],
-                        descricao=(
-                            f"A empresa '{empresa.razao_social}' (CNPJ {empresa.cnpj}) "
-                            f"possui {len(condenacoes)} decisão(ões) de condenação no "
-                            f"TCE-RJ. Primeira: {condenacoes[0].get('ementa', '')[:200]}"
-                        ),
-                        evidencias=json.dumps(
-                            {
-                                "cnpj": empresa.cnpj,
-                                "empresa": empresa.razao_social,
-                                "n_condenacoes": len(condenacoes),
-                                "decisoes": condenacoes[:3],
-                            },
-                            ensure_ascii=False,
-                            default=str,
-                        ),
-                        empresa_id=empresa.id,
-                    )
-                    session.add(alerta)
-
-                resultados.append({
-                    "empresa": empresa.razao_social,
-                    "decisoes": condenacoes,
-                })
-
-        session.commit()
-        logger.info(f"verificar_sancionados: {len(resultados)} empresas com condenações.")
-
-    except Exception as exc:
-        logger.error(f"Erro em verificar_sancionados: {exc}")
-        try:
-            session.rollback()
-        except Exception:
-            pass
-
-    return resultados

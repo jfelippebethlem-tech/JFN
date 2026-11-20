@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import sqlite3
 import time
@@ -31,8 +30,9 @@ from datetime import datetime
 
 import httpx
 
-_BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-_DB = os.environ.get("JFN_DB", os.path.join(_BASE, "data", "compliance.db"))
+from compliance_agent.collectors.arquivos import abrir_banco
+from compliance_agent.collectors.formato import valor_br_ou_ponto
+
 API = "https://dados.tcerj.tc.br/api/v1"
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; JFN-auditor/1.0)"}
 
@@ -59,7 +59,7 @@ _DDL = {
 
 
 def _con():
-    return sqlite3.connect(_DB)
+    return abrir_banco()
 
 
 def _ddl(con):
@@ -81,22 +81,6 @@ def _hid(*parts) -> str:
     return hashlib.sha1("|".join(str(p) for p in parts).encode()).hexdigest()[:20]
 
 
-def _fnum(v):
-    """Converte número da API p/ float. Aceita float/int e o formato BR em string ('7.188,00')."""
-    if v is None or v == "":
-        return None
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v).strip()
-    # formato BR: ponto = milhar, vírgula = decimal  ->  remove pontos, troca vírgula por ponto
-    if "," in s:
-        s = s.replace(".", "").replace(",", ".")
-    try:
-        return float(s)
-    except (TypeError, ValueError):
-        return None
-
-
 def _fetch(endpoint: str, inicio: int, limite: int, tentativas: int = 4) -> list:
     """GET paginado com BOM-aware decode + backoff."""
     url = f"{API}/{endpoint}?inicio={inicio}&limite={limite}&jsonfull=true"
@@ -109,30 +93,32 @@ def _fetch(endpoint: str, inicio: int, limite: int, tentativas: int = 4) -> list
                 return data if isinstance(data, list) else []
         except Exception as exc:  # noqa: BLE001
             if t == tentativas:
-                print(f"  [TCE-RJ] falha {endpoint} inicio={inicio}: {str(exc)[:90]}")
-                return []
+                # antes devolvia [] — o mesmo que "acabaram as páginas": a carga parava no meio e o
+                # cron imprimia o total parcial como se fosse a base inteira
+                raise RuntimeError(f"TCE-RJ {endpoint} inicio={inicio}: {str(exc)[:90]}") from exc
             time.sleep(2 * t)
-    return []
 
 
 def _ingerir_paginado(endpoint: str, tabela: str, mapper, limite: int = 1000, maxreg: int | None = None) -> int:
     con = _con(); _ddl(con)
     agora = datetime.now().isoformat(timespec="seconds")
     inicio, total = 0, 0
-    while True:
-        lote = _fetch(endpoint, inicio, limite)
-        if not lote:
-            break
-        rows = [mapper(r, agora) for r in lote]
-        cols = len(rows[0])
-        con.executemany(f"INSERT OR REPLACE INTO {tabela} VALUES ({','.join('?'*cols)})", rows)
-        con.commit()
-        total += len(lote)
-        print(f"  [{tabela}] {total} ingeridos...")
-        if len(lote) < limite or (maxreg and total >= maxreg):
-            break
-        inicio += limite
-    con.close()
+    try:
+        while True:
+            lote = _fetch(endpoint, inicio, limite)
+            if not lote:
+                break
+            rows = [mapper(r, agora) for r in lote]
+            cols = len(rows[0])
+            con.executemany(f"INSERT OR REPLACE INTO {tabela} VALUES ({','.join('?'*cols)})", rows)
+            con.commit()
+            total += len(lote)
+            print(f"  [{tabela}] {total} ingeridos...")
+            if len(lote) < limite or (maxreg and total >= maxreg):
+                break
+            inicio += limite
+    finally:
+        con.close()
     return total
 
 
@@ -141,11 +127,11 @@ def ingerir_contratos(maxreg=None) -> int:
         proc = r.get("Processo", "")
         return (_hid(proc, r.get("CPFCNPJ"), r.get("Objeto"), r.get("DataContratacao")),
                 proc, sei_norm(proc), r.get("AnoProcesso"), r.get("DataContratacao"),
-                _fnum(r.get("ValorTotalContrato")), r.get("StatusContratacao"), r.get("Unidade"),
+                valor_br_ou_ponto(r.get("ValorTotalContrato")), r.get("StatusContratacao"), r.get("Unidade"),
                 r.get("Objeto"), r.get("Fornecedor"), re.sub(r"\D", "", r.get("CPFCNPJ") or ""),
                 r.get("DataInicioVigencia"), r.get("DataFimVigencia"), r.get("CriterioJulgamento"),
-                r.get("Contratacao"), _fnum(r.get("ValorTotalEmpenhado")), _fnum(r.get("ValorTotalLiquidado")),
-                _fnum(r.get("ValorTotalPago")), agora)
+                r.get("Contratacao"), valor_br_ou_ponto(r.get("ValorTotalEmpenhado")), valor_br_ou_ponto(r.get("ValorTotalLiquidado")),
+                valor_br_ou_ponto(r.get("ValorTotalPago")), agora)
     return _ingerir_paginado("contratos_estado", "contratos_tcerj", m, maxreg=maxreg)
 
 
@@ -153,9 +139,9 @@ def ingerir_compras_diretas(maxreg=None) -> int:
     def m(r, agora):
         proc = r.get("Processo", "")
         return (_hid(proc, r.get("Item"), r.get("Objeto")), proc, sei_norm(proc), r.get("AnoProcesso"),
-                _fnum(r.get("ValorProcesso")), r.get("Objeto"), r.get("Afastamento"),
+                valor_br_ou_ponto(r.get("ValorProcesso")), r.get("Objeto"), r.get("Afastamento"),
                 r.get("EnquadramentoLegal"), r.get("Unidade"), r.get("FornecedorVencedor"),
-                r.get("Item"), str(r.get("Quantidade")), _fnum(r.get("ValorUnitario")), agora)
+                r.get("Item"), str(r.get("Quantidade")), valor_br_ou_ponto(r.get("ValorUnitario")), agora)
     return _ingerir_paginado("compras_diretas_estado", "compras_diretas_tcerj", m, maxreg=maxreg)
 
 
@@ -163,7 +149,7 @@ def ingerir_penalidades(maxreg=None) -> int:
     def m(r, agora):
         proc = r.get("Processo", "")
         return (_hid(proc, r.get("Condenacao"), r.get("Tipo")), proc, r.get("AnoCondenacao"),
-                r.get("Tipo"), _fnum(r.get("ValorPenalidade")), r.get("Condenacao"), r.get("TipoEnte"),
+                r.get("Tipo"), valor_br_ou_ponto(r.get("ValorPenalidade")), r.get("Condenacao"), r.get("TipoEnte"),
                 r.get("NomeOrgao"), r.get("GrupoNatureza"), r.get("DataSessao"), agora)
     return _ingerir_paginado("penalidades_ressarcimento_estado", "penalidades_tcerj", m, maxreg=maxreg)
 
@@ -221,12 +207,9 @@ def contratos_de_fornecedor(cnpj: str, limite: int = 100) -> list[dict]:
 
 def stats() -> dict:
     con = _con(); _ddl(con)
-    def cnt(t):
-        try:
-            return con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        except Exception:
-            return 0
-    out = {t: cnt(t) for t in ["contratos_tcerj", "compras_diretas_tcerj", "penalidades_tcerj"]}
+    # `_ddl` acabou de criar as tabelas: COUNT que falha é erro de verdade, não "0 registros"
+    out = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+           for t in ["contratos_tcerj", "compras_diretas_tcerj", "penalidades_tcerj"]}
     out["contratos_com_sei"] = con.execute("SELECT COUNT(*) FROM contratos_tcerj WHERE sei_norm!=''").fetchone()[0]
     con.close()
     return out
@@ -240,9 +223,16 @@ if __name__ == "__main__":
     ap.add_argument("--max", type=int, default=None, help="máx. de registros por base (teste)")
     a = ap.parse_args()
     if a.ingerir:
-        print(json.dumps({"contratos": ingerir_contratos(a.max),
-                          "compras_diretas": ingerir_compras_diretas(a.max),
-                          "penalidades": ingerir_penalidades(a.max)}, ensure_ascii=False, indent=2))
+        res, falhou = {}, False
+        for nome, fn in (("contratos", ingerir_contratos), ("compras_diretas", ingerir_compras_diretas),
+                         ("penalidades", ingerir_penalidades)):
+            try:
+                res[nome] = fn(a.max)
+            except RuntimeError as exc:   # o que já entrou fica (INSERT OR REPLACE); a base fica INCOMPLETA
+                res[nome], falhou = f"INDISPONIVEL: {exc}", True
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        if falhou:
+            raise SystemExit(1)
     if a.correlacionar:
         print(json.dumps(correlacionar(), ensure_ascii=False, indent=2))
     if a.stats:

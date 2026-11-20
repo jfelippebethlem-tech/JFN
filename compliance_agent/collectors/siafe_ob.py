@@ -31,6 +31,7 @@ import logging
 import re
 from datetime import date, datetime
 
+from compliance_agent.collectors.formato import valor_br
 from compliance_agent.database.models import (
     OrdemBancaria, SessaoAuditoria, get_session, init_db
 )
@@ -297,13 +298,12 @@ async def _navigate_to_ob(page) -> bool:
     return "ordembancariaorcamentaria" in page.url.lower()
 
 
-def _parse_money(s: str):
-    """Converte '1.234,56' -> 1234.56. Retorna None se não numérico."""
-    try:
-        clean = re.sub(r"[^\d,.-]", "", str(s)).replace(".", "").replace(",", ".")
-        return float(clean) if clean else None
-    except (ValueError, TypeError):
-        return None
+def _valor_tela(s) -> float | None:
+    # A célula da tela do SIAFE pode trazer sufixo/sinal ("1.234,56 D", "(1.234,56)"): o parser antigo
+    # filtrava tudo que não é número antes de converter, e sem o SIAFE (sessão única) não há como medir
+    # o que a tela de fato renderiza — mantido igual. Efeito colateral conhecido: texto com um dígito
+    # vira número (ver docs/untangle/collectors.md §1).
+    return valor_br(re.sub(r"[^\d,.-]", "", str(s)))
 
 
 def _parse_date_br(s: str):
@@ -312,87 +312,6 @@ def _parse_date_br(s: str):
         return datetime.strptime(s.strip(), "%d/%m/%Y").date()
     except (ValueError, TypeError, AttributeError):
         return None
-
-
-async def collect_ob_day(target_date: date | None = None, max_rows: int = 1000) -> dict:
-    """
-    Conecta no Chrome via CDP e lê a tabela de OBs já carregada na tela.
-    Retorna dict com: date, records, rows, header, errors.
-    """
-    from playwright.async_api import async_playwright
-
-    target_date = target_date or date.today()
-    summary = {
-        "date": target_date.isoformat(),
-        "records": 0,
-        "rows": [],
-        "header": [],
-        "errors": [],
-    }
-
-    p = await async_playwright().start()
-    browser = None
-    last_err = None
-    for attempt in range(3):
-        try:
-            browser = await p.chromium.connect_over_cdp(CDP_URL, timeout=60000)
-            break
-        except Exception as e:
-            last_err = e
-            if attempt < 2:
-                await asyncio.sleep(5)
-    if browser is None:
-        summary["errors"].append(f"CDP connect falhou: {last_err}")
-        await p.stop()
-        return summary
-
-    try:
-        # Localiza a aba do SIAFE2
-        page = None
-        for ctx in browser.contexts:
-            for pg in ctx.pages:
-                u = pg.url.lower()
-                if "siafe2.fazenda" in u and "flexvision" not in u:
-                    page = pg
-                    break
-            if page:
-                break
-        if not page and browser.contexts and browser.contexts[0].pages:
-            page = browser.contexts[0].pages[0]
-        if not page:
-            summary["errors"].append("Nenhuma aba encontrada no Chrome")
-            return summary
-
-        await _dismiss_dialogs(page)
-
-        if not await _navigate_to_ob(page):
-            summary["errors"].append(f"Não chegou na tela de OB — URL: {page.url}")
-            return summary
-
-        # Lê a grade direto
-        result = await page.evaluate(_JS_READ_OB_TABLE)
-        if not result.get("found"):
-            summary["errors"].append("Tabela tblOBOrcamentaria não encontrada na tela")
-            return summary
-
-        summary["header"] = result.get("header", [])
-        summary["rows"] = result.get("rows", [])[:max_rows]
-        summary["records"] = len(summary["rows"])
-
-        if summary["records"] == 0:
-            body = await page.inner_text("body")
-            if "limite de 1000" in body.lower() or "nenhum registro" in body.lower():
-                pass  # tabela vazia é resultado válido
-
-    except Exception as e:
-        summary["errors"].append(f"Erro de coleta: {type(e).__name__}: {e}")
-    finally:
-        try:
-            await p.stop()
-        except Exception as exc:
-            logger.debug("Playwright stop falhou na coleta de OB: %s", exc)
-
-    return summary
 
 
 # Mapa de nomes de coluna -> índice, a partir do header lido
@@ -434,7 +353,7 @@ def save_ob_records(session, summary: dict) -> int:
         favorecido_cpf = re.sub(r"\D", "", favorecido_cpf_raw)[:14] if favorecido_cpf_raw else None
         favorecido_nome = cell(row, "nome do credor")
         valor_raw = cell(row, "valor")
-        valor = _parse_money(valor_raw) if valor_raw else None
+        valor = _valor_tela(valor_raw) if valor_raw else None
         numero_processo = cell(row, "processo")
 
         raw = {header[i] if i < len(header) else f"col{i}": v
@@ -479,21 +398,6 @@ def save_ob_records(session, summary: dict) -> int:
     session.commit()
     return saved
 
-
-_JS_OPEN_FIRST_OB = r"""
-(numero) => {
-    // Find the row by OB number and click Visualizar on it
-    for (const el of document.querySelectorAll('a.x12k, a.xg2, a.x7j, td')) {
-        const t = el.textContent.trim();
-        if (t === numero) {
-            // select the row first
-            el.click();
-            return 'selected row: ' + numero;
-        }
-    }
-    return null;
-}
-"""
 
 _JS_CLICK_VISUALIZAR = r"""
 () => {
@@ -589,7 +493,7 @@ def _extract_ob_fields(detail: dict) -> dict:
                 favorecido_cpf = re.sub(r"\D", "", v)[:14]
         elif "valor" in kl and ("total" in kl or "pag" in kl or "ob" in kl or favorecido_nome):
             if not valor:
-                valor = _parse_money(v)
+                valor = _valor_tela(v)
         elif "processo" in kl or "sei" in kl:
             if not numero_processo:
                 numero_processo = v.strip()
@@ -607,7 +511,7 @@ def _extract_ob_fields(detail: dict) -> dict:
             numero_processo = m.group(1).strip()
     if not valor:
         for match in re.finditer(r"R\$\s*([\d.]+,\d{2})", body):
-            v = _parse_money(match.group(1))
+            v = _valor_tela(match.group(1))
             if v and v > 0:
                 valor = v
                 break

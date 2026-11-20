@@ -29,10 +29,17 @@ class _Cliente:
 
 
 def test_503_conta_como_falha_e_nao_como_lista_vazia():
+    # 20/11/2026 (untangle dos coletores): 503 LEVANTA PncpIndisponivel (o chamador conta o mês/página como falha)
+    # e continua contado — nunca volta como a lista vazia do "certame sem resultado".
+    import pytest
+    from compliance_agent.collectors.pncp import PncpIndisponivel
     P._FALHAS["api"] = 0
-    assert asyncio.run(P._resultado_item(_Cliente(503), "42498600000171", "2026", 1, 1)) == []
-    assert asyncio.run(P._consulta_itens(_Cliente(503), "42498600000171", "2026", 1)) == []
-    assert asyncio.run(P._consulta(_Cliente(503), "/contratacoes/publicacao", {})) is None
+    with pytest.raises(PncpIndisponivel):
+        asyncio.run(P._resultado_item(_Cliente(503), "42498600000171", "2026", 1, 1))
+    with pytest.raises(PncpIndisponivel):
+        asyncio.run(P._consulta_itens(_Cliente(503), "42498600000171", "2026", 1))
+    with pytest.raises(PncpIndisponivel):
+        asyncio.run(P._consulta(_Cliente(503), "/contratacoes/publicacao", {}))
     assert P._FALHAS["api"] == 3
 
 

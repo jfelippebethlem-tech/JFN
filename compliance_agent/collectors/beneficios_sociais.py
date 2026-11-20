@@ -20,17 +20,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
 import time
 from datetime import datetime
-from pathlib import Path
 
 import httpx
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
+from compliance_agent.collectors.portal_transparencia import chave as _chave
+from compliance_agent.collectors.portal_transparencia import consultar as _get
 
-_BASE = "https://api.portaldatransparencia.gov.br/api-de-dados"
-_TIMEOUT = 20
-_CACHE_FILE = Path("data") / "beneficios_cache.json"
+_CACHE_FILE = dir_dados() / "beneficios_cache.json"
 _CACHE_TTL = 7 * 86400  # 7 dias
 
 # (endpoint, rótulo, nome_do_param) — aceitam CPF (11) ou NIS no param `codigo`. Bolsa Família e BPC são os
@@ -50,11 +49,6 @@ _BENEFICIOS = [
 _cache: dict | None = None
 
 
-def _chave() -> str:
-    return (os.environ.get("PORTAL_TRANSPARENCIA_KEY", "")
-            or os.environ.get("TRANSPARENCIA_API_KEY", "")).strip()
-
-
 def _carrega_cache() -> dict:
     global _cache
     if _cache is None:
@@ -67,42 +61,13 @@ def _carrega_cache() -> dict:
 
 def _salva_cache() -> None:
     try:
-        _CACHE_FILE.parent.mkdir(exist_ok=True)
-        _CACHE_FILE.write_text(json.dumps(_cache, ensure_ascii=False), "utf-8")
+        gravar_atomico(_CACHE_FILE, json.dumps(_cache, ensure_ascii=False))
     except (OSError, TypeError):
         pass
 
 
 def _so_digitos(s: str) -> str:
     return re.sub(r"\D", "", str(s or ""))
-
-
-async def _get(client: httpx.AsyncClient, endpoint: str, params: dict, chave: str) -> tuple[bool, list, str]:
-    """(ok, lista, motivo). ok=False → INDISPONÍVEL (não dá p/ afirmar nada)."""
-    try:
-        r = await client.get(f"{_BASE}/{endpoint}", params={**params, "pagina": 1},
-                             headers={"chave-api-dados": chave, "Accept": "application/json"},
-                             timeout=_TIMEOUT)
-    except httpx.TimeoutException:
-        return False, [], "timeout"
-    except Exception as exc:  # noqa: BLE001
-        return False, [], str(exc)[:80]
-    if r.status_code == 200:
-        data = r.json()
-        if isinstance(data, list):
-            return True, data, ""
-        if isinstance(data, dict):
-            return True, (data.get("data") or data.get("content") or []), ""
-        return True, [], ""
-    if r.status_code in (401, 403):
-        return False, [], f"chave inválida/sem permissão (HTTP {r.status_code})"
-    if r.status_code == 400:  # expõe o motivo (a API explica o que falta: competência, CPF válido, etc.)
-        try:
-            msg = str((r.json() or {}).get("Erro na API") or "")[:90]
-        except Exception:  # noqa: BLE001
-            msg = ""
-        return False, [], f"HTTP 400{(': ' + msg) if msg else ''}"
-    return False, [], f"HTTP {r.status_code}"
 
 
 def _ultimos_meses(n: int = 3) -> list[str]:
@@ -183,7 +148,9 @@ async def verificar_beneficios(cpf: str, forcar_update: bool = False) -> dict:
             else:
                 erros.append(f"{tipo}: {erro}")
 
-    if consultados and len(erros) == consultados:  # tudo falhou → não dá p/ afirmar
+    if erros and not achados:
+        # programa que não respondeu pode ser justamente o que o CPF recebe: "não recebe" seria afirmar
+        # sobre o que não foi lido (antes: verificado=True "parcial", 7 dias no cache). Achado é prova.
         return {**base, "verificado": False, "recebe_beneficio": None, "beneficios": [],
                 "motivo": "; ".join(erros)}
     resultado = {"verificado": True, "recebe_beneficio": len(achados) > 0, "beneficios": achados,

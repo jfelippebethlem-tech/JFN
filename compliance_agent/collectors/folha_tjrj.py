@@ -15,17 +15,16 @@ from __future__ import annotations
 
 import io
 import re
-import sqlite3
 import warnings
 import zipfile
 from datetime import date
-from pathlib import Path
 
 import httpx
 
+from compliance_agent.collectors.arquivos import abrir_banco
+from compliance_agent.collectors.formato import valor_br
+
 warnings.filterwarnings("ignore")
-_REPO = Path(__file__).resolve().parent.parent.parent
-_DB = _REPO / "data" / "compliance.db"
 _URL = "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx"
 _H = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _FONTE = "tjrj_anexo8"
@@ -40,14 +39,6 @@ def _field(html: str, nome: str) -> str:
 def _cells(row: str) -> list[str]:
     return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", x)).strip()
             for x in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
-
-
-def _num(s: str) -> float:
-    s = (s or "").strip().replace(".", "").replace(",", ".")
-    try:
-        return float(s) if re.match(r"^-?\d+(\.\d+)?$", s) else 0.0
-    except ValueError:
-        return 0.0
 
 
 def baixar_mes(ano: int, mes: int, cli: httpx.Client) -> list[dict]:
@@ -82,7 +73,7 @@ def baixar_mes(ano: int, mes: int, cli: httpx.Client) -> list[dict]:
         if not nome or nome.lower() in ("nome", "total", "totais") or len(nome) < 4:
             continue
         # total de créditos = maior valor monetário da linha (proxy robusto do bruto)
-        bruto = max((_num(x) for x in cs[3:] if "," in x), default=0.0)
+        bruto = max(((valor_br(x) or 0.0) for x in cs[3:] if "," in x), default=0.0)
         out.append({"nome": nome, "lotacao": lotacao, "cargo": cargo, "competencia": comp,
                     "bruto": bruto})
     return out
@@ -92,7 +83,7 @@ def ingerir(regs: list[dict]) -> int:
     """Dedup em memória (1 leitura) + INSERT em lote (executemany) — evita 21k queries sob lock."""
     if not regs:
         return 0
-    con = sqlite3.connect(str(_DB), timeout=60)
+    con = abrir_banco()
     con.execute("PRAGMA busy_timeout=60000")
     try:
         existentes = {(n, c) for n, c in con.execute(

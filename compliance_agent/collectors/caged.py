@@ -34,14 +34,6 @@ ORGAO_URLS = {
     "defensoria": "https://defensoria.rj.def.br/transparencia",
 }
 
-# CF/88 art. 37, XVI: accumulation ONLY allowed for specific combinations
-ACUMULACAO_PERMITIDA = {
-    # (cargo_técnico, magistério) is explicitly allowed
-    frozenset({"professor", "técnico"}),
-    frozenset({"médico", "professor"}),
-    frozenset({"engenheiro", "professor"}),
-}
-
 # Keywords that suggest a technical/teaching role
 TECH_KEYWORDS = {"técnico", "tecnologista", "pesquisador", "analista", "especialista"}
 MAGISTERIO_KEYWORDS = {"professor", "docente", "magistério", "ensino"}
@@ -225,88 +217,6 @@ async def cruzar_folhas_multiplas(session) -> list[dict]:
 
     except Exception as exc:
         logger.error(f"Erro em cruzar_folhas_multiplas: {exc}")
-        try:
-            session.rollback()
-        except Exception as rb_exc:
-            logger.debug("rollback falhou: %s", rb_exc)
-
-    return suspeitos
-
-
-async def verificar_clt_publico(session) -> list[dict]:
-    """
-    Detect public servants who appear to also have CLT private employment.
-
-    Strategy: flag people on public payroll who have:
-      - Role containing 'comissionado' or 'dab'
-      - AND have months with remuneracao_bruta == 0 (suggesting they're
-        drawing a salary elsewhere while keeping the public position).
-
-    Args:
-        session: SQLAlchemy session.
-
-    Returns:
-        List of suspect RegistroFolha records.
-    """
-    suspeitos = []
-
-    try:
-        # Find active commissionados with zero-pay months
-        registros_zero = (
-            session.query(RegistroFolha)
-            .filter(
-                RegistroFolha.remuneracao_bruta == 0,
-                RegistroFolha.remuneracao_liquida == 0,
-                RegistroFolha.orgao_nome.isnot(None),
-            )
-            .filter(
-                RegistroFolha.vinculo.ilike("%comissionado%")
-                | RegistroFolha.vinculo.ilike("%dab%")
-                | RegistroFolha.cargo.ilike("%comissionado%")
-                | RegistroFolha.orgao_nome.ilike("%comissionado%")
-            )
-            .all()
-        )
-
-        for reg in registros_zero:
-            suspeito = {
-                "cpf": reg.cpf,
-                "nome": reg.nome,
-                "orgao": reg.orgao_nome,
-                "cargo": reg.cargo,
-                "competencia": reg.competencia,
-                "motivo": "Servidor comissionado com remuneração zero — possível CLT ativo em outro vínculo",
-            }
-            suspeitos.append(suspeito)
-
-            titulo = (
-                f"Servidor comissionado com remuneração zero — "
-                f"{reg.nome or reg.cpf} / {reg.orgao_nome}"
-            )
-            existe = session.query(Alerta).filter_by(titulo=titulo[:300]).first()
-            if not existe:
-                alerta = Alerta(
-                    tipo="fantasma",
-                    severidade="média",
-                    titulo=titulo[:300],
-                    descricao=(
-                        f"Servidor '{reg.nome}' (CPF {reg.cpf}), vínculo "
-                        f"'{reg.vinculo or reg.cargo}' em '{reg.orgao_nome}', "
-                        f"tem remuneração R$ 0,00 na competência {reg.competencia}. "
-                        f"Indício de duplo vínculo ou cargo fictício."
-                    ),
-                    evidencias=json.dumps(suspeito, ensure_ascii=False, default=str),
-                    pessoa_id=session.query(Pessoa).filter_by(cpf=reg.cpf).first().id
-                    if reg.cpf and session.query(Pessoa).filter_by(cpf=reg.cpf).first()
-                    else None,
-                )
-                session.add(alerta)
-
-        session.commit()
-        logger.info(f"verificar_clt_publico: {len(suspeitos)} suspeitos.")
-
-    except Exception as exc:
-        logger.error(f"Erro em verificar_clt_publico: {exc}")
         try:
             session.rollback()
         except Exception as rb_exc:

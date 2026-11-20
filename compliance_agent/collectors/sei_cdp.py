@@ -25,7 +25,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from pathlib import Path
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
 from typing import Optional, Callable
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ SEI_PESQUISA_PUBLICA = (
 )
 SEI_CONTROLADOR = "https://sei.rj.gov.br/sei/controlador.php"
 
-CACHE_DIR = Path("data/sei_cache")
+CACHE_DIR = dir_dados() / "sei_cache"
 
 # Máximo de tentativas de OCR no CAPTCHA antes de desistir
 MAX_TENTATIVAS_CAPTCHA = int(os.environ.get("SEI_CAPTCHA_TENTATIVAS", "4"))
@@ -518,9 +518,9 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
         txt = ajax or await page.inner_text("body")
 
         try:
-            Path("data/tmp").mkdir(parents=True, exist_ok=True)
-            Path("data/tmp/sei_last_search.html").write_text(await page.content(), encoding="utf-8")
-            Path("data/tmp/sei_last_search.txt").write_text(txt, encoding="utf-8")
+            (dir_dados() / "tmp").mkdir(parents=True, exist_ok=True)
+            (dir_dados() / "tmp" / "sei_last_search.html").write_text(await page.content(), encoding="utf-8")
+            (dir_dados() / "tmp" / "sei_last_search.txt").write_text(txt, encoding="utf-8")
         except Exception as exc:
             logger.debug("SEI busca %s: falha ao gravar dump em data/tmp: %s", numero, exc)
 
@@ -690,10 +690,7 @@ async def ler_processo_sei_via_chrome(
 
         resultado["_cached_at"] = datetime.now().isoformat()
         try:
-            cache_file.write_text(
-                json.dumps(resultado, ensure_ascii=False, indent=2, default=str),
-                encoding="utf-8",
-            )
+            gravar_atomico(cache_file, json.dumps(resultado, ensure_ascii=False, indent=2, default=str))
         except Exception as exc:
             logger.warning("SEI %s: falha ao gravar cache %s: %s", numero, cache_file, exc)
 
@@ -729,112 +726,6 @@ def _proxy_do_env() -> dict | None:
     if u.password:
         cfg["password"] = u.password
     return cfg
-
-
-async def ler_processo_sei_launch(
-    numero_sei: str,
-    *,
-    usar_cache: bool = True,
-    max_tentativas_captcha: int = MAX_TENTATIVAS_CAPTCHA,
-    headless: bool = True,
-) -> dict:
-    """Lê um processo SEI lançando o PRÓPRIO Chromium (Playwright launch), em vez de conectar no Chrome 9222.
-
-    É o caminho para rodar onde NÃO há Chrome debug: **GitHub Actions (IPs Azure passam pelo WAF do SEI-RJ, como
-    no SIAFE)** ou o desktop. Loga no SEI interno como `itkava` (env SEI_*) — sessão autenticada dispensa CAPTCHA.
-    Reusa exatamente os mesmos extractors da leitura via CDP. Mesmo cache (data/sei_cache/cdp_*.json)."""
-    numero = re.sub(r"\s+", "", numero_sei.strip().upper())
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_file = CACHE_DIR / f"cdp_{numero.replace('/', '_')}.json"
-    if usar_cache and cache_file.exists():
-        try:
-            cached = json.loads(cache_file.read_text(encoding="utf-8"))
-            if cached.get("_cached_at") and (
-                datetime.now() - datetime.fromisoformat(cached["_cached_at"])
-            ).total_seconds() < 86400:
-                cached["_de_cache"] = True
-                return cached
-        except Exception as exc:
-            logger.debug("SEI %s: cache %s ilegível, refazendo leitura: %s", numero, cache_file.name, exc)
-
-    from playwright.async_api import async_playwright
-    p = await async_playwright().start()
-    resultado: dict = {"numero": numero, "documentos": [], "texto": "", "captcha_resolvido": False}
-    try:
-        # Proxy opcional (decisão do Mestre: rotear o SEI por IP residencial BR, já que o WAF dropa o IP da VM).
-        # Lê PROXY_URL / SEI_PROXY_URL do .env no formato http://user:pass@host:porta. No-op se ausente.
-        proxy_cfg = _proxy_do_env()
-        if proxy_cfg:
-            resultado["_proxy"] = proxy_cfg.get("server")
-        browser = await p.chromium.launch(
-            headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"],
-            **({"proxy": proxy_cfg} if proxy_cfg else {}),
-        )
-        ctx = await browser.new_context(ignore_https_errors=True)
-        page = await ctx.new_page()
-
-        if _tem_credenciais_sei():
-            resultado["_login"] = await login_sei_interno(page)
-
-        try:
-            await page.goto(SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
-            await asyncio.sleep(2)
-        except Exception as e:
-            resultado["erro"] = f"falha ao abrir pesquisa SEI: {e}"
-            return resultado
-        if any(m in (await page.inner_text("body")).lower() for m in _WAF_MARK):
-            resultado["erro"] = "bloqueio de rede (WAF) na pesquisa — IP não autorizado (rodar no Actions/IP gov)"
-            return resultado
-
-        await page.evaluate(_JS_PREENCHE_BUSCA, numero)
-        await asyncio.sleep(0.5)
-        await page.evaluate(_JS_CLICA_PESQUISAR)
-        await asyncio.sleep(2.5)
-
-        if (await page.evaluate(_JS_DETECTA_CAPTCHA)).get("presente"):
-            for _ in range(max_tentativas_captcha):
-                await _resolver_captcha_ocr(page)
-                if not (await page.evaluate(_JS_DETECTA_CAPTCHA)).get("presente"):
-                    resultado["captcha_resolvido"] = True
-                    break
-
-        await _abrir_primeiro_resultado(page)
-        dump = await page.evaluate(_JS_LE_ARVORE_E_TEXTO)
-        resultado.update({"url": dump.get("url", ""), "title": dump.get("title", ""),
-                          "documentos": dump.get("documentos", []), "texto": dump.get("texto", "")})
-
-        textos_docs = []
-        for doc in _ordena_docs_por_cpf(resultado["documentos"])[:SEI_MAX_DOCS]:
-            url = doc.get("url")
-            if not url:
-                continue
-            try:
-                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
-                await asyncio.sleep(1.0)
-                txt = await page.evaluate("() => document.body ? document.body.innerText.slice(0, 6000) : ''")
-                if txt and len(txt) > 50:
-                    textos_docs.append({"doc": doc.get("texto", "")[:80], "conteudo": txt})
-            except Exception:
-                continue
-        resultado["conteudo_documentos"] = textos_docs
-        tot = resultado["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in textos_docs)
-        resultado["cpfs"] = sorted(set(re.findall(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}", tot)))
-        resultado["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
-        resultado["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
-        resultado["_cached_at"] = datetime.now().isoformat()
-        try:
-            cache_file.write_text(json.dumps(resultado, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        except Exception as exc:
-            logger.warning("SEI %s: falha ao gravar cache %s: %s", numero, cache_file, exc)
-        return resultado
-    except Exception as e:
-        resultado["erro"] = f"{type(e).__name__}: {e}"
-        return resultado
-    finally:
-        try:
-            await p.stop()
-        except Exception as exc:
-            logger.debug("SEI %s: falha ao encerrar playwright: %s", numero, exc)
 
 
 async def _abrir_primeiro_resultado(page) -> bool:

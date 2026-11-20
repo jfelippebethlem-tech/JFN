@@ -137,62 +137,6 @@ _PLANALTO_URLS = {
 }
 
 
-async def buscar_artigo_planalto(lei: str, artigo: str) -> str:
-    """
-    Busca o texto de um artigo específico no Planalto.
-    lei: número da lei ("14133", "8666", "8429", "12846", etc.)
-    artigo: número do artigo ("art. 7", "art. 23", etc.)
-
-    Retorna o trecho de texto encontrado ou string vazia.
-    """
-    url = _PLANALTO_URLS.get(lei.replace(".", "").replace("/", "").replace("-", ""))
-    if not url:
-        return ""
-
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, headers=_HEADERS,
-                                      follow_redirects=True) as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                return ""
-            html = resp.text
-
-            # Remove tags HTML para texto limpo
-            texto = re.sub(r"<[^>]+>", " ", html)
-            texto = re.sub(r"\s+", " ", texto)
-
-            # Localiza o artigo
-            art_num = re.sub(r"[^\d]", "", artigo)
-            padrao = rf"Art\.?\s*{art_num}[\.\º]?\s"
-            match = re.search(padrao, texto, re.IGNORECASE)
-            if not match:
-                return ""
-
-            inicio = match.start()
-            trecho = texto[inicio: inicio + 800].strip()
-            return trecho
-    except Exception:
-        return ""
-
-
-async def texto_lei_resumido(lei: str) -> str:
-    """
-    Retorna uma descrição curta sobre uma lei pelo número.
-    Usado quando não encontra no Planalto.
-    """
-    resumos = {
-        "14133": "Lei 14.133/2021 — Nova Lei de Licitações e Contratos Administrativos.",
-        "8666":  "Lei 8.666/1993 — Lei Geral de Licitações (em vigor subsidiariamente).",
-        "8429":  "Lei 8.429/1992 — Lei de Improbidade Administrativa.",
-        "12846": "Lei 12.846/2013 — Lei Anticorrupção (responsabilidade objetiva de empresas).",
-        "101":   "Lei Complementar 101/2000 — Lei de Responsabilidade Fiscal.",
-        "12527": "Lei 12.527/2011 — Lei de Acesso à Informação (LAI).",
-        "4320":  "Lei 4.320/1964 — Normas gerais de direito financeiro.",
-        "10028": "Lei 10.028/2000 — Crimes contra as finanças públicas.",
-    }
-    return resumos.get(lei.replace(".", "").replace("/", "").replace("-", ""), "")
-
-
 # ─── TCU — Jurisprudência Selecionada ────────────────────────────────────────
 
 async def buscar_tcu(termo: str, max_resultados: int = 5) -> list[dict]:

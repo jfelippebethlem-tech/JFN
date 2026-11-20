@@ -3,7 +3,6 @@ CNPJ lookup via BrasilAPI (gratuita, sem autenticação).
 Retorna dados da empresa + sócios da Receita Federal.
 """
 
-import asyncio
 import json
 import logging
 import re
@@ -90,17 +89,6 @@ async def buscar_cnpj(cnpj: str, client: Optional[httpx.AsyncClient] = None) -> 
     finally:
         if owns_client:
             await client.aclose()
-
-
-async def buscar_varios_cnpjs(cnpjs: list[str], delay: float = 0.5) -> list[dict]:
-    """Busca múltiplos CNPJs respeitando rate limit da BrasilAPI."""
-    results = []
-    async with httpx.AsyncClient(timeout=15, headers=_HEADERS) as client:
-        for cnpj in cnpjs:
-            result = await buscar_cnpj(cnpj, client=client)
-            results.append(result)
-            await asyncio.sleep(delay)
-    return results
 
 
 def salvar_empresa(dados: dict, session) -> "Empresa":

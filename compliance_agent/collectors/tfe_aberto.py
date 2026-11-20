@@ -15,27 +15,16 @@ Uso:
     python -m compliance_agent.collectors.tfe_aberto --ano 2025 --orgao "POLICIA"
 """
 import argparse
-import csv
-import io
-import os
 from collections import defaultdict
-from pathlib import Path
 
 import httpx
+from compliance_agent.collectors.arquivos import abrir_banco, dir_dados, gravar_atomico
+from compliance_agent.collectors.formato import csv_apos_preambulo, valor_br
 from compliance_agent.reporting.intel_base import moeda
 
 CKAN = "https://dadosabertos.rj.gov.br/api/3/action/package_show?id=tfe-despesa"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; JFN-Auditor/1.0)"}
-_REPO = Path(__file__).resolve().parent.parent.parent
-CACHE = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "tfe_cache"
-
-
-def _money(s):
-    s = (s or "").strip().replace(".", "").replace(",", ".")
-    try:
-        return float(s)
-    except ValueError:
-        return 0.0
+CACHE = dir_dados() / "tfe_cache"
 
 
 def _resources():
@@ -77,16 +66,16 @@ def baixar_ano(ano, use_cache=True):
     if use_cache and fp.exists() and fp.stat().st_size > 1000:
         return fp.read_text(encoding="latin-1", errors="replace")
     url = resource_url(ano)
-    txt = httpx.get(url, headers=UA, timeout=120, verify=False, follow_redirects=True).content.decode("latin-1", "replace")
-    fp.write_text(txt, encoding="latin-1")
+    r = httpx.get(url, headers=UA, timeout=120, verify=False, follow_redirects=True)
+    r.raise_for_status()
+    txt = r.content.decode("latin-1", "replace")
+    _rows(txt)  # página de erro/bloqueio levanta aqui, antes de virar cache reaproveitado para sempre
+    gravar_atomico(fp, txt, encoding="latin-1")
     return txt
 
 
 def _rows(txt):
-    """Pula as linhas de título e parseia a partir do cabeçalho ('Posição';...)."""
-    lines = txt.splitlines()
-    start = next((i for i, l in enumerate(lines) if l.replace('"', '').strip().startswith("Posição")), 0)
-    return csv.DictReader(io.StringIO("\n".join(lines[start:])), delimiter=";")
+    return csv_apos_preambulo(txt, "Posição")
 
 
 def resumo(ano, orgao_filtro=""):
@@ -98,7 +87,7 @@ def resumo(ano, orgao_filtro=""):
         org = (row.get("Nome Órgão") or row.get("Nome UO") or "?").strip()
         if orgao_filtro and orgao_filtro.upper() not in org.upper():
             continue
-        emp = _money(row.get("Valor Empenhado")); liq = _money(row.get("Valor Liquidado")); pago = _money(row.get("Valor Pago"))
+        emp, liq, pago = (valor_br(row.get(c)) or 0.0 for c in ("Valor Empenhado", "Valor Liquidado", "Valor Pago"))
         tot["empenhado"] += emp; tot["liquidado"] += liq; tot["pago"] += pago
         por_orgao[org]["empenhado"] += emp; por_orgao[org]["pago"] += pago
         n += 1
@@ -109,9 +98,7 @@ def resumo(ano, orgao_filtro=""):
 def ingest_db(ano):
     """Ingere a despesa COMPLETA (todos os elementos: folha, previdência, dívida, serviços...) numa
     tabela despesa_execucao — o quadro financeiro total (≠ só fornecedores). Idempotente por ano."""
-    import sqlite3
-    db = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "compliance.db"
-    con = sqlite3.connect(str(db))
+    con = abrir_banco()
     con.execute("""CREATE TABLE IF NOT EXISTS despesa_execucao(
         exercicio TEXT, posicao TEXT, orgao TEXT, ug TEXT, nome_ug TEXT, fonte TEXT,
         funcao TEXT, subfuncao TEXT, elemento TEXT, empenhado REAL, liquidado REAL, pago REAL)""")
@@ -124,7 +111,7 @@ def ingest_db(ano):
                      (r.get("UG") or "").strip(), (r.get("Nome UG") or "").strip(), (r.get("Nome Fonte") or "").strip(),
                      (r.get("Nome Função") or "").strip(), (r.get("Nome Sub Função") or "").strip(),
                      (r.get("Nome Elemento de Despesa") or "").strip(),
-                     _money(r.get("Valor Empenhado")), _money(r.get("Valor Liquidado")), _money(r.get("Valor Pago"))))
+                     *(valor_br(r.get(c)) or 0.0 for c in ("Valor Empenhado", "Valor Liquidado", "Valor Pago"))))
         n += 1
         if len(rows) >= 5000:
             con.executemany("INSERT INTO despesa_execucao VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows); rows = []

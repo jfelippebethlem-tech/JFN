@@ -21,6 +21,7 @@ from typing import Optional
 import logging
 
 import httpx
+from compliance_agent.collectors.arquivos import abrir_banco
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +43,6 @@ MODALIDADE_NOME = {
     4: "Concorrencia-Eletronica", 5: "Concorrencia-Presencial", 6: "Pregao-Eletronico",
     7: "Pregao-Presencial", 8: "Dispensa", 9: "Inexigibilidade", 10: "Manifestacao de Interesse",
     11: "Pre-qualificacao", 12: "Credenciamento", 13: "Leilao-Presencial",
-}
-
-# CNPJs dos principais órgãos do Estado do RJ para monitoramento
-ORGAOS_RJ = {
-    "SECRETARIA DE FAZENDA RJ":          "30636722000105",
-    "GOVERNO DO ESTADO RJ":              "42498600000148",
-    "SECRETARIA DE SAUDE RJ":            "08739068000103",
-    "SECRETARIA DE EDUCACAO RJ":         "08739068000104",
-    "DETRAN RJ":                         "09176466000109",
-    "INEA":                              "10736572000109",
 }
 
 
@@ -450,26 +441,6 @@ async def buscar_contratos_fornecedor(
             if re.sub(r"\D", "", str(c.get("niFornecedor") or "")) == cnpj]
 
 
-async def buscar_licitacoes_orgao(
-    cnpj_orgao: str,
-    data_inicial: date,
-    data_final: date,
-) -> list[dict]:
-    """Retorna licitações de um órgão em um período."""
-    cnpj = re.sub(r"\D", "", cnpj_orgao)
-    params = {
-        "cnpjOrgao": cnpj,
-        "dataInicial": data_inicial.strftime("%Y%m%d"),
-        "dataFinal": data_final.strftime("%Y%m%d"),
-        "pagina": 1,
-        "tamanhoPagina": 100,
-    }
-    result = await _get_pncp("/contratacoes/publicacao", params)
-    if not result:
-        return []
-    return result.get("data", []) or (result if isinstance(result, list) else [])
-
-
 async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict]:
     """
     Para cada OB acima de R$30k do dia, verifica se há contrato publicado
@@ -520,25 +491,6 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
 
     session.commit()
     return alertas
-
-
-async def monitorar_licitacoes_rj() -> list[dict]:
-    """
-    Coleta licitações recentes de todos os órgãos RJ monitorados.
-    Útil para alertas proativos antes de contratos suspeitos serem assinados.
-    """
-    hoje = date.today()
-    semana_passada = hoje - timedelta(days=7)
-    todas = []
-
-    for nome, cnpj in ORGAOS_RJ.items():
-        licitacoes = await buscar_licitacoes_orgao(cnpj, semana_passada, hoje)
-        for lic in licitacoes:
-            lic["orgao_nome"] = nome
-            todas.append(lic)
-        await asyncio.sleep(0.5)
-
-    return todas
 
 
 # ---------------------------------------------------------------------------
@@ -702,26 +654,10 @@ def _parse_termo(t: dict) -> dict:
     }
 
 
-async def termos_contrato(cnpj: str, ano, seq) -> list[dict]:
-    """Termos aditivos de um contrato (api/pncp/v1; 200=lista, 204=sem termos)."""
-    try:
-        async with httpx.AsyncClient(timeout=30) as c:
-            r = await c.get(f"{PNCP_BASE}/orgaos/{cnpj}/contratos/{ano}/{seq}/termos",
-                            headers={"User-Agent": "JFN-Compliance/2.0"})
-            if r.status_code != 200:
-                return []
-            return [_parse_termo(t) for t in (r.json() or [])]
-    except Exception:
-        return []
-
-
-async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
-    """'CNPJ-2-SEQ/ANO' → grava termos em contrato_aditivo. Idempotente."""
-    pr = _parse_id_pncp(numero_controle_pncp)
-    if not pr:
-        return 0
-    cnpj, ano, seq = pr
-    termos = await termos_contrato(cnpj, ano, seq)
+def _gravar_termos(con, ncp: str, termos: list[dict]) -> None:
+    """O ÚNICO gravador de `contrato_aditivo`. Eram três cópias deste INSERT (aditivos avulsos, Prefeitura,
+    Estado); quando entraram as colunas data_assinatura/tipo_termo/processo, uma delas quase ficou para
+    trás — o defeito clássico de vários escritores para a mesma tabela."""
     for row in termos:
         con.execute(
             """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
@@ -735,15 +671,28 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
                      data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
                      tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
                      processo=COALESCE(excluded.processo, processo)""",
-            {**row, "ncp": numero_controle_pncp})
+            {**row, "ncp": ncp})
+
+
+async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
+    """'CNPJ-2-SEQ/ANO' → grava termos em contrato_aditivo. Idempotente. Leitura que falhou não grava
+    nada e devolve 0 (o chamador, `tools/contratos_parecer`, não usa o número)."""
+    pr = _parse_id_pncp(numero_controle_pncp)
+    if not pr:
+        return 0
+    ok, termos = await _termos_medidos(*pr)
+    if not ok:
+        logger.warning("termos de %s: PNCP não respondeu — nada gravado", numero_controle_pncp)
+        return 0
+    _gravar_termos(con, numero_controle_pncp, termos)
     con.commit()
     return len(termos)
 
 
 async def _termos_medidos(cnpj: str, ano, seq) -> tuple[bool, list[dict]]:
-    """Como `termos_contrato`, mas separa "sem termos" (200 vazio / 204) de "não consegui ler".
-    `termos_contrato` devolve [] nos dois casos — marcar um contrato como CHECADO numa falha de
-    rede gravaria como medido ("não tem aditivo") o que não foi lido."""
+    """Termos aditivos de um contrato (api/pncp/v1), separando "sem termos" (200 vazio / 204) de "não
+    consegui ler" — (False, []). A leitura antiga devolvia [] nos dois casos, e a coleta do ESTADO
+    marcava o contrato como CHECADO com 0 aditivos numa falha de rede: nunca mais era relido."""
     try:
         async with httpx.AsyncClient(timeout=30) as c:
             r = await c.get(f"{PNCP_BASE}/orgaos/{cnpj}/contratos/{ano}/{seq}/termos",
@@ -756,9 +705,12 @@ async def _termos_medidos(cnpj: str, ano, seq) -> tuple[bool, list[dict]]:
     if r.status_code != 200:
         return False, []
     try:
-        return True, [_parse_termo(t) for t in (r.json() or [])]
+        corpo = r.json() or []
     except ValueError:
         return False, []
+    if not isinstance(corpo, list) or not all(isinstance(t, dict) for t in corpo):
+        return False, []   # 200 fora do formato: não é "sem termos" — e não derruba a rodada inteira
+    return True, [_parse_termo(t) for t in corpo]
 
 
 async def coletar_termos_municipio(con, limite: int = 600, pausa: float = 0.3,
@@ -801,20 +753,7 @@ async def coletar_termos_municipio(con, limite: int = 600, pausa: float = 0.3,
             tot["falhas"] += 1          # fica pendente: a próxima rodada tenta de novo
             await asyncio.sleep(pausa)
             continue
-        for row in termos:
-            con.execute(
-                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
-                     numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
-                     fundamento_legal, data_assinatura, tipo_termo, processo)
-                   VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
-                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
-                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
-                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
-                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
-                     processo=COALESCE(excluded.processo, processo)""",
-                {**row, "ncp": ncp})
+        _gravar_termos(con, ncp, termos)
         con.execute("UPDATE pcrj_contratos SET aditivos_checados=1, num_aditivos=? "
                     "WHERE numero_controle_pncp=?", (len(termos), ncp))
         tot["consultados"] += 1
@@ -926,28 +865,15 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
         if not pr:
             con.execute("UPDATE pcrj_contratos SET aditivos_checados=1 WHERE numero_controle_pncp=?", (ncp,))
             continue
-        cnpj, ano, seq = pr
-        termos = await termos_contrato(cnpj, ano, seq)
+        ok, termos = await _termos_medidos(*pr)
+        if not ok:
+            tot["falhas"] = tot.get("falhas", 0) + 1   # fica pendente: a próxima rodada relê
+            await asyncio.sleep(pausa)
+            continue
+        _gravar_termos(con, ncp, termos)
         acresc = 0.0
         vg_max = None
         for row in termos:
-            con.execute(
-                # MESMO conjunto de colunas do outro gravador (coletar_aditivos): este INSERT é a
-                # segunda cópia, e foi ela que quase ficou para trás quando as três colunas novas
-                # (data_assinatura, tipo_termo, processo) entraram — o defeito clássico de dois
-                # escritores para a mesma tabela.
-                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
-                     numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
-                     fundamento_legal, data_assinatura, tipo_termo, processo)
-                   VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
-                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
-                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
-                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
-                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
-                     processo=COALESCE(excluded.processo, processo)""",
-                {**row, "ncp": ncp})
             if row.get("valor_acrescido"):
                 acresc += row["valor_acrescido"]
             if row.get("valor_global"):
@@ -977,7 +903,6 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
 
 if __name__ == "__main__":
     import json
-    import sqlite3
     import sys
     from compliance_agent.coleta_lock import coleta_lock
     args = sys.argv[1:]
@@ -986,7 +911,7 @@ if __name__ == "__main__":
     # o fisc-refresh em 2026-07-20 e morreu ele próprio em 2026-07-25, ambos com 'database is
     # locked'. 60s de busy_timeout não seguram a janela matinal — 5 min seguram.
     with coleta_lock():
-        con = sqlite3.connect("data/compliance.db", timeout=300)
+        con = abrir_banco(timeout=300)
         con.execute("PRAGMA busy_timeout=300000")
         if "--termos-pcrj" in args:
             # termos aditivos da Prefeitura do Rio (D11) — resumível, só o que falta consultar

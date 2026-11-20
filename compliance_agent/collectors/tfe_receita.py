@@ -14,14 +14,14 @@ from __future__ import annotations
 import csv
 import io
 import re
-import sqlite3
 from pathlib import Path
 
 import httpx
 
-_REPO = Path(__file__).resolve().parent.parent.parent
-_DB = _REPO / "data" / "compliance.db"
-_CACHE = _REPO / "data" / "tfe_cache"
+from compliance_agent.collectors.arquivos import abrir_banco, dir_dados, gravar_atomico
+from compliance_agent.collectors.formato import valor_br
+
+_CACHE = dir_dados() / "tfe_cache"
 _CKAN = "https://dadosabertos.rj.gov.br/api/3/action/package_show"
 _PKG = "tfe-receita"
 
@@ -34,11 +34,7 @@ _VALOR_COLS = ("previsao_inicial", "previsao_atualizada", "a_realizar", "realiza
 
 
 def _num(s: str) -> float:
-    s = re.sub(r"[^\d,.-]", "", str(s or "")).replace(".", "").replace(",", ".")
-    try:
-        return float(s) if s else 0.0
-    except ValueError:
-        return 0.0
+    return valor_br(s) or 0.0
 
 
 def url_recurso() -> str:
@@ -55,9 +51,7 @@ def baixar(force: bool = False) -> Path:
     url = url_recurso()
     with httpx.stream("GET", url, timeout=120, follow_redirects=True) as r:
         r.raise_for_status()
-        with open(fp, "wb") as f:
-            for chunk in r.iter_bytes():
-                f.write(chunk)
+        gravar_atomico(fp, b"".join(r.iter_bytes()))
     return fp
 
 
@@ -98,7 +92,7 @@ def _criar_tabela(con):
 
 def ingerir(caminho: Path | None = None, limite: int | None = None) -> dict:
     """Ingere na tabela `receitas` (idempotente por chave natural). Retorna {n, anos}."""
-    con = sqlite3.connect(str(_DB))
+    con = abrir_banco()
     _criar_tabela(con)
     n = 0
     anos = set()

@@ -22,13 +22,12 @@ TJRJ e Câmara já cobrem o cruzamento nomeados×candidatos enquanto isso.
 """
 from __future__ import annotations
 
-import sqlite3
-from pathlib import Path
 
 import httpx
 
-_REPO = Path(__file__).resolve().parent.parent.parent
-_DB = _REPO / "data" / "compliance.db"
+from compliance_agent.collectors.arquivos import abrir_banco
+from compliance_agent.collectors.formato import valor_br_ou_ponto
+
 _GW = "https://api-transparencia.mprj.mp.br:8280"
 _BASE = f"{_GW}/cnmp115/1.0.0"
 _BASIC = "cERmaFZtNUpOS1VfSjFCcUNSak1IMGN6dGpVYTpwb2dVS2Fta2kzZjN3UXZWWjJXdmtpSXRYazhh"
@@ -55,13 +54,8 @@ def _g(rec: dict, chaves) -> object:
 
 
 def _num(v) -> float:
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v or "").strip().replace(".", "").replace(",", ".") if "," in str(v or "") else str(v or "").strip()
-    try:
-        return float(s) if s else 0.0
-    except ValueError:
-        return 0.0
+    # célula ilegível grava 0.0 — comportamento histórico, não régua: ver docs/untangle/collectors.md
+    return valor_br_ou_ponto(v) or 0.0
 
 
 def get_token() -> str:
@@ -110,7 +104,7 @@ def parse(records: list[dict], ano: int, mes: int) -> list[dict]:
 def ingerir(regs: list[dict]) -> dict:
     if not regs:
         return {"inseridas": 0}
-    con = sqlite3.connect(str(_DB))
+    con = abrir_banco()
     try:
         ins = 0
         for r in regs:

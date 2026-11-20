@@ -23,6 +23,7 @@ import sqlite3
 
 import httpx
 
+from compliance_agent.collectors.arquivos import abrir_banco
 from compliance_agent.collectors.pncp import _get_pncp, _parse_id_pncp, _texto_de_pdf
 
 logger = logging.getLogger(__name__)
@@ -264,7 +265,7 @@ if __name__ == "__main__":
     import sys
 
     _lim = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-    _con = sqlite3.connect("data/compliance.db", timeout=60)
+    _con = abrir_banco()
     _con.execute("PRAGMA busy_timeout=60000")
     _r = asyncio.run(coletar_atas_julgamento(_con, limite=_lim))
     _con.close()

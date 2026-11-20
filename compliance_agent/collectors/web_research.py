@@ -43,14 +43,23 @@ _TERMOS_RISCO = [
 # ─── Busca web (DuckDuckGo HTML, sem key) ─────────────────────────────────────
 
 async def buscar_ddg(termo: str, max_resultados: int = 8) -> list[dict]:
-    """Busca no DuckDuckGo (endpoint HTML). Retorna [{titulo, url, trecho}]."""
+    """Busca no DuckDuckGo (endpoint HTML). Retorna [{titulo, url, trecho}]; falha vira [] (com log)."""
+    _, resultados = await _ddg_medido(termo, max_resultados)
+    return resultados
+
+
+async def _ddg_medido(termo: str, max_resultados: int) -> tuple[bool, list[dict]]:
+    """(ok, resultados). ok=False = a busca não aconteceu (HTTP ≠ 200, rede) — quem resume não pode
+    escrever "nada encontrado". Página anti-robô com 200 e sem resultados ainda passa como ok (não há
+    marcador medido para ela)."""
     url = "https://html.duckduckgo.com/html/"
     resultados = []
     try:
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             r = await client.post(url, data={"q": termo}, headers=_HEADERS)
             if r.status_code != 200:
-                return []
+                logger.warning("DuckDuckGo HTTP %s para '%s'", r.status_code, termo)
+                return False, []
             soup = BeautifulSoup(r.text, "html.parser")
             for res in soup.select(".result")[:max_resultados]:
                 a = res.select_one(".result__a")
@@ -64,7 +73,8 @@ async def buscar_ddg(termo: str, max_resultados: int = 8) -> list[dict]:
                 })
     except Exception as exc:
         logger.warning("Falha na busca DuckDuckGo por '%s' (resultado vazio pode ser erro, não ausência): %s", termo, exc)
-    return resultados
+        return False, resultados
+    return True, resultados
 
 
 async def buscar_noticias(termo: str, max_resultados: int = 6) -> list[dict]:
@@ -150,10 +160,11 @@ async def investigar(alvo: str, cnpj: str = "") -> dict:
 
     # 2. Busca web + notícias em paralelo
     termo_busca = f'"{alvo}"'
-    web, noticias = await asyncio.gather(
-        buscar_ddg(termo_busca, 8),
+    (web_ok, web), noticias = await asyncio.gather(
+        _ddg_medido(termo_busca, 8),
         buscar_noticias(alvo, 6),
     )
+    dossie["web_indisponivel"] = not web_ok
     dossie["web"] = web
     dossie["noticias"] = noticias
 
@@ -209,7 +220,7 @@ async def _resumir_dossie(dossie: dict) -> str:
         f"ALVO: {dossie['alvo']}\n"
         f"CADASTRO: {cad_txt or 'N/D'}\n"
         f"RISCOS NOS TEXTOS: {', '.join(dossie['riscos_detectados']) or 'nenhum'}\n\n"
-        f"RESULTADOS WEB:\n{web_txt or 'nada'}\n\n"
+        f"RESULTADOS WEB:\n{web_txt or ('INDISPONÍVEL (a busca falhou — não é ausência de resultado)' if dossie.get('web_indisponivel') else 'nada')}\n\n"
         f"NOTÍCIAS:\n{not_txt or 'nada'}\n\n"
         "Faça o resumo investigativo."
     )
@@ -224,6 +235,8 @@ async def _resumir_dossie(dossie: dict) -> str:
     if dossie["riscos_detectados"]:
         return ("⚠️ Termos de risco encontrados: "
                 + ", ".join(dossie["riscos_detectados"]))
+    if dossie.get("web_indisponivel"):
+        return "Busca web INDISPONÍVEL — sem resultado não quer dizer sem risco."
     return "Nada de risco evidente encontrado na busca web."
 
 

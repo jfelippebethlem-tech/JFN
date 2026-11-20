@@ -17,35 +17,21 @@ from __future__ import annotations
 import csv
 import io
 import re
-import sqlite3
-from pathlib import Path
 
 import httpx
 
-_REPO = Path(__file__).resolve().parent.parent.parent
-_DB = _REPO / "data" / "compliance.db"
+from compliance_agent.collectors.arquivos import abrir_banco
+from compliance_agent.collectors.formato import valor_br_ou_ponto
+
 _BASE = "https://transparencia.rj.def.br"
 _PAGINA = f"{_BASE}/gastos-com-pessoal/relatorio-mensal-de-remuneracao"
 _FONTE = "dprj_transparencia"
 _ORGAO = ("DPRJ", "Defensoria Pública do Estado do RJ")
 
 
-def _num(s) -> float:
-    # pandas (XLSX) já entrega float/int — usar direto (NÃO transformar, senão corrompe o decimal)
-    if isinstance(s, (int, float)):
-        try:
-            return float(s) if s == s else 0.0  # s==s descarta NaN
-        except (ValueError, TypeError):
-            return 0.0
-    s = str(s or "").strip()
-    if not s or s in ("-", "nan", "None"):
-        return 0.0
-    if "," in s:  # formato BR do CSV: "62.420,48" -> 62420.48
-        s = s.replace(".", "").replace(",", ".")
-    try:
-        return float(s)
-    except ValueError:
-        return 0.0
+def _num(v) -> float:
+    # célula ilegível grava 0.0 — comportamento histórico, não régua: ver docs/untangle/collectors.md
+    return valor_br_ou_ponto(v) or 0.0
 
 
 def _competencia(mesano: str) -> str:
@@ -125,7 +111,7 @@ def ingerir(regs: list[dict]) -> dict:
     """Insere em registros_folha, pulando duplicatas (fonte+competencia+cpf+nome)."""
     if not regs:
         return {"inseridas": 0, "puladas": 0}
-    con = sqlite3.connect(str(_DB))
+    con = abrir_banco()
     try:
         con.execute("CREATE INDEX IF NOT EXISTS ix_folha_dedup ON registros_folha(fonte,competencia,cpf,nome)")
         ins = pul = 0
@@ -152,6 +138,7 @@ def ingerir(regs: list[dict]) -> dict:
 def _links_arquivos() -> list[str]:
     """Extrai os links de CSV/XLSX da página do relatório mensal."""
     r = httpx.get(_PAGINA, verify=False, timeout=30, follow_redirects=True)
+    r.raise_for_status()
     hrefs = re.findall(r'href="(/uploads/arquivos/[^"]+\.(?:csv|xlsx))"', r.text, re.I)
     return [(_BASE + h) for h in dict.fromkeys(hrefs)]  # dedup preservando ordem
 
@@ -159,15 +146,22 @@ def _links_arquivos() -> list[str]:
 def coletar(apenas_csv: bool = False, max_arquivos: int = 0) -> dict:
     """Baixa os arquivos de folha da DPRJ (CSV atual + XLSX histórico) e ingere — cobre 2023→agora."""
     urls = _links_arquivos()
+    if not urls:
+        # página sem nenhum link de folha: layout mudou ou é página de bloqueio — não "a DPRJ não tem folha"
+        return {"ok": False, "arquivos": 0, "inseridas": 0, "puladas": 0, "competencias": [],
+                "erro": "página do relatório mensal sem links de CSV/XLSX"}
     if apenas_csv:
         urls = [u for u in urls if u.lower().endswith(".csv")]
     if max_arquivos:
         urls = urls[:max_arquivos]
     tot_ins = tot_pul = 0
     comps = set()
+    erros = []
     for u in urls:
         try:
-            data = httpx.get(u, verify=False, timeout=90, follow_redirects=True).content
+            resp = httpx.get(u, verify=False, timeout=90, follow_redirects=True)
+            resp.raise_for_status()
+            data = resp.content
             regs = parse_xlsx_bytes(data) if u.lower().endswith(".xlsx") else parse_csv_bytes(data)
             regs = [r for r in regs if r.get("competencia")]  # ignora arquivos sem competência (não-folha)
             res = ingerir(regs)
@@ -175,9 +169,10 @@ def coletar(apenas_csv: bool = False, max_arquivos: int = 0) -> dict:
             comps.update(r["competencia"] for r in regs)
             print(f"  {u.split('/')[-1]}: {len(regs)} regs, +{res['inseridas']} ({sorted(set(r['competencia'] for r in regs))})")
         except Exception as e:
+            erros.append(f"{u.split('/')[-1]}: {type(e).__name__}: {str(e)[:80]}")
             print(f"  ERRO {u}: {type(e).__name__}: {str(e)[:80]}")
-    return {"ok": True, "arquivos": len(urls), "inseridas": tot_ins, "puladas": tot_pul,
-            "competencias": sorted(comps)}
+    return {"ok": not erros, "arquivos": len(urls), "inseridas": tot_ins, "puladas": tot_pul,
+            "competencias": sorted(comps), **({"erros": erros} if erros else {})}
 
 
 if __name__ == "__main__":

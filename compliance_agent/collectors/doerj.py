@@ -26,7 +26,7 @@ import json
 import logging
 import re
 from datetime import date, datetime, timedelta
-from pathlib import Path
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
 from typing import Optional
 
 try:
@@ -41,8 +41,8 @@ CDP_URL = "http://127.0.0.1:9222"
 IOERJ = "http://www.ioerj.com.br"
 _EDICAO_URL = IOERJ + "/portal/modules/conteudoonline/do_seleciona_edicao.php?data={b64}"
 
-_LEARN_FILE = Path(__file__).parent.parent.parent / "data" / "doerj_learning.json"
-_DIAG_DIR = Path(__file__).parent.parent.parent / "data" / "diagnostics"
+_LEARN_FILE = dir_dados() / "doerj_learning.json"
+_DIAG_DIR = dir_dados() / "diagnostics"
 
 # ── Regexes de extração ───────────────────────────────────────────────────────
 
@@ -175,13 +175,6 @@ def _inferir_secao(edicao: str, titulo: str) -> str:
     if "extra" in s or "suplemento" in s or "supl" in s:
         return "E"
     return "I"
-    if "parte ii" in s or "seção ii" in s:
-        return "II"
-    if "parte iii" in s:
-        return "III"
-    if "extra" in s or "suplemento" in s or "supl" in s:
-        return "E"
-    return "I"
 
 
 def _pub_dict(texto: str, data: date, url: str,
@@ -214,10 +207,7 @@ def _load_learning() -> dict:
 
 def _save_learning(state: dict):
     try:
-        _LEARN_FILE.parent.mkdir(exist_ok=True)
-        _LEARN_FILE.write_text(
-            json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        gravar_atomico(_LEARN_FILE, json.dumps(state, ensure_ascii=False, indent=2))
     except Exception as exc:
         logger.warning("falha ao gravar doerj_learning.json (%s): %s", _LEARN_FILE, exc)
 
@@ -295,6 +285,9 @@ class DOERJCollector:
     def __init__(self, session=None):
         self._session = session
         self._state = _load_learning()
+        # erros da última `coletar_data`: a lista devolvida é a mesma `[]` para "dia sem diário" e para
+        # "Chrome/CDP fora" — quem precisa distinguir (o __main__ do cron) olha aqui
+        self.erros_ultima_coleta: list[str] = []
 
     # ── API pública ───────────────────────────────────────────────────────────
 
@@ -315,7 +308,8 @@ class DOERJCollector:
         except Exception as e:
             print(f"[DOERJ] Chrome não acessível via CDP: {e}")
             await p.stop()
-            self._registrar_erros(data, [f"CDP: {e}"])
+            self.erros_ultima_coleta = [f"CDP: {e}"]
+            self._registrar_erros(data, self.erros_ultima_coleta)
             return publicacoes
 
         page = None
@@ -375,6 +369,7 @@ class DOERJCollector:
             try: await p.stop()
             except Exception as exc: logger.debug("falha ao parar playwright na coleta de %s: %s", data, exc)
 
+        self.erros_ultima_coleta = erros
         if erros:
             print(f"[DOERJ] Avisos em {data}: {erros}")
             self._registrar_erros(data, erros)
@@ -592,15 +587,13 @@ class DOERJCollector:
 
     def _salvar_diagnostico(self, data: date, dump: dict):
         try:
-            _DIAG_DIR.mkdir(parents=True, exist_ok=True)
-            f = _DIAG_DIR / f"doerj_edicao_{data.isoformat()}.json"
-            f.write_text(json.dumps({
+            gravar_atomico(_DIAG_DIR / f"doerj_edicao_{data.isoformat()}.json", json.dumps({
                 "url":       dump.get("url"),
                 "title":     dump.get("title"),
                 "n_links":   len(dump.get("links", [])),
                 "links":     dump.get("links", [])[:80],
                 "text_head": dump.get("text_head") or dump.get("text", "")[:1500],
-            }, ensure_ascii=False, indent=2), encoding="utf-8")
+            }, ensure_ascii=False, indent=2))
         except Exception as exc:
             logger.warning("falha ao gravar diagnóstico da edição de %s: %s", data, exc)
 
@@ -675,3 +668,7 @@ if __name__ == "__main__":
         print(f"DOERJ {alvo}: {len(pubs)} publicações")
         for p in pubs[:5]:
             print(f"  [{p['tipo_ato']}] {p['titulo'][:80]}")
+        if not pubs and c.erros_ultima_coleta:
+            # 0 com erro é INDISPONÍVEL, não "dia sem diário": sai ≠ 0 para o cron/SLO não ler como coletado
+            print(f"DOERJ {alvo}: INDISPONIVEL — {c.erros_ultima_coleta}")
+            raise SystemExit(1)

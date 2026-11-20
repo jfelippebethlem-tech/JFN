@@ -22,7 +22,7 @@ import sys
 
 import httpx
 
-from compliance_agent.collectors.pncp import CONSULTA_BASE, _parse_id_pncp
+from compliance_agent.collectors.pncp import CONSULTA_BASE, PncpIndisponivel, _parse_id_pncp
 from compliance_agent.collectors.pncp_resultados import (
     MODALIDADES_PADRAO, PNCP_PRIMEIRO_ANO_DENSO, _consulta, _meses, init_schema,
 )
@@ -112,9 +112,13 @@ async def backfill_bulk(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_ANO_DE
             tot["meses"] += 1
             for mod in MODALIDADES_PADRAO:
                 for pagina in range(1, max_paginas + 1):
-                    j = await _consulta(client, "/contratacoes/publicacao", {
-                        "dataInicial": d_ini, "dataFinal": d_fim, "uf": uf.upper(),
-                        "codigoModalidadeContratacao": mod, "pagina": pagina, "tamanhoPagina": 50})
+                    try:
+                        j = await _consulta(client, "/contratacoes/publicacao", {
+                            "dataInicial": d_ini, "dataFinal": d_fim, "uf": uf.upper(),
+                            "codigoModalidadeContratacao": mod, "pagina": pagina, "tamanhoPagina": 50})
+                    except PncpIndisponivel:   # o resto do mês × modalidade fica para a próxima passada
+                        tot["paginas_indisponiveis"] = tot.get("paginas_indisponiveis", 0) + 1
+                        break
                     data = (j or {}).get("data") or []
                     if not data:
                         break

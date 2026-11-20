@@ -16,15 +16,13 @@ Uso: python -m compliance_agent.collectors.folha_orquestrador
 from __future__ import annotations
 
 import json
-import sqlite3
 import time
-from pathlib import Path
 
 import httpx
 
-_REPO = Path(__file__).resolve().parent.parent.parent
-_DB = _REPO / "data" / "compliance.db"
-_LOG = _REPO / "data" / "folha_orquestrador.log"
+from compliance_agent.collectors.arquivos import abrir_banco, caminho_db, dir_dados
+
+_LOG = dir_dados() / "folha_orquestrador.log"
 
 
 def _no_ar(url: str, timeout: int = 12) -> bool:
@@ -102,9 +100,9 @@ _FONTES_MAPEADAS = {
 
 
 def _total_por_orgao() -> dict:
-    if not _DB.exists():
+    if not caminho_db().exists():
         return {}
-    con = sqlite3.connect(str(_DB))
+    con = abrir_banco()
     try:
         return {o: n for o, n in con.execute(
             "SELECT orgao_codigo, COUNT(*) FROM registros_folha GROUP BY orgao_codigo")}
@@ -122,7 +120,9 @@ def rodar() -> dict:
             res[orgao] = {"no_ar": True, **(run() or {})}
         except Exception as e:  # noqa: BLE001
             res[orgao] = {"no_ar": True, "erro": f"{type(e).__name__}: {str(e)[:100]}"}
-    out = {"ok": True, "fontes": res, "totais_na_base": _total_por_orgao()}
+    # fora do ar, exceção ou coletor que disse ok=False é INDISPONÍVEL — o resumo não pode dizer "ok"
+    falhas = sorted(o for o, r in res.items() if not r["no_ar"] or "erro" in r or r.get("ok") is False)
+    out = {"ok": not falhas, "falhas": falhas, "fontes": res, "totais_na_base": _total_por_orgao()}
     try:
         with open(_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{int(time.time())}] {json.dumps(out, ensure_ascii=False)}\n")

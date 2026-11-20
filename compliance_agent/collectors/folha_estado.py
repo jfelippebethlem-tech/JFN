@@ -42,18 +42,16 @@ from __future__ import annotations
 import json
 import time
 from datetime import date
-from pathlib import Path
 
 import httpx
+from compliance_agent.collectors.arquivos import abrir_banco, dir_dados, gravar_atomico
 
 _BASE = "https://www.rj.gov.br/remuneracao/api/rest"
 _H = {"User-Agent": "Mozilla/5.0 (X11; Linux) JFN-Compliance/2.0"}
 _FONTE = "gesperj_estado"
-_RAIZ = Path(__file__).resolve().parent.parent.parent
-_DB = _RAIZ / "data" / "compliance.db"
-_PROGRESSO = _RAIZ / "data" / "folha_estado_progresso.json"
+_PROGRESSO = dir_dados() / "folha_estado_progresso.json"
 # lock de instância única, como constante para o teste não disputar o flock de um run em curso
-_LOCK = _RAIZ / "data" / "folha_estado.lock"
+_LOCK = dir_dados() / "folha_estado.lock"
 _SIZE = 50  # máximo aceito pela API (validação rejeita >50 e <10)
 # TETO DE JANELA DO BACKEND. Medido em 31/07/26: a partir da página 10.000 a API devolve HTTP 200
 # com a MESMA fatia de 50 registros (páginas 12825, 12826, 12840, 12864 e 17000 têm overlap 50/50),
@@ -140,12 +138,9 @@ def _carregar_progresso() -> dict:
 
 def _salvar_progresso(comp: str, pagina: int, completa: bool = False,
                       cargo: int | None = None) -> None:
-    # write atômico: crash no meio do write_text deixaria JSON truncado → run recomeça da pág. 0
-    import os
-    tmp = _PROGRESSO.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps({"competencia": comp, "cargo": cargo, "pagina": pagina,
-                               "completa": completa}))
-    os.replace(tmp, _PROGRESSO)
+    # atômico: JSON truncado por crash faria o run recomeçar da pág. 0
+    gravar_atomico(_PROGRESSO, json.dumps({"competencia": comp, "cargo": cargo, "pagina": pagina,
+                                           "completa": completa}))
 
 
 def coletar(paginas_por_run: int = 1500, pausa: float = 0.35, db_path: str | None = None) -> dict:
@@ -160,7 +155,7 @@ def coletar(paginas_por_run: int = 1500, pausa: float = 0.35, db_path: str | Non
     except BlockingIOError:
         lock.close()
         return {"fonte": _FONTE, "erro": "já em execução (lock)", "paginas": 0, "novos": 0}
-    con = sqlite3.connect(db_path or str(_DB), timeout=60)
+    con = abrir_banco(db_path)
     con.execute("PRAGMA busy_timeout=60000")
     # migração leve: matrícula desambigua homônimos (2 "JOSE DA SILVA" PROFESSOR na mesma
     # secretaria são servidores DISTINTOS) e torna o dedup resumível sem subcontar

@@ -22,8 +22,9 @@ from datetime import date
 
 import httpx
 
+from compliance_agent.collectors.arquivos import abrir_banco, caminho_db
 from compliance_agent.collectors.pncp import (
-    CONSULTA_BASE, MODALIDADES_PADRAO, PNCP_BASE, _parse_id_pncp,
+    CONSULTA_BASE, MODALIDADES_PADRAO, PNCP_BASE, PncpIndisponivel, _parse_id_pncp,
 )
 
 _H = {"User-Agent": "JFN-Compliance/2.0"}
@@ -107,46 +108,46 @@ def veredito_da_coleta(tot: dict) -> tuple[bool, str]:
     return True, ""
 
 
-async def _consulta(client: httpx.AsyncClient, endpoint: str, params: dict) -> dict | None:
-    """GET na API de consulta com backoff em 429 (limite de requisição)."""
-    for tent in range(5):
+async def _get_medido(client: httpx.AsyncClient, url: str, params: dict | None, tentativas: int,
+                      espera_rede: float, espera_429: float, vazio: tuple[int, ...]):
+    """GET com backoff linear (rede e 429). Status em `vazio` → None ("a fonte diz que não há"); 5xx, 4xx
+    inesperado ou tentativas esgotadas → `PncpIndisponivel`. As três cópias anteriores devolviam o MESMO
+    None/[] do "não há": página de contratações que falhou encerrava o mês calada, e item cujo resultado
+    falhou entrava como item sem vencedor."""
+    motivo = "sem resposta"
+    for tent in range(tentativas):
         try:
-            r = await client.get(f"{CONSULTA_BASE}{endpoint}", params=params, headers=_H)
-        except httpx.HTTPError:
-            await asyncio.sleep(2 * (tent + 1))
+            r = await client.get(url, params=params, headers=_H)
+        except httpx.HTTPError as exc:
+            motivo = f"{type(exc).__name__}"
+            await asyncio.sleep(espera_rede * (tent + 1))
             continue
         if r.status_code == 200:
-            return r.json()
-        if r.status_code == 204:
-            return None  # sem dado na janela (honesto: não é erro)
+            try:
+                return r.json()
+            except ValueError as exc:   # 200 com HTML (WAF): indisponível, não derruba a carga inteira
+                _FALHAS["api"] += 1
+                raise PncpIndisponivel(f"{url}: HTTP 200 sem JSON") from exc
+        if r.status_code in vazio:
+            return None
         if r.status_code == 429:
-            await asyncio.sleep(5 * (tent + 1))  # backoff do rate-limit
+            motivo = "HTTP 429"
+            await asyncio.sleep(espera_429 * (tent + 1))
             continue
         _FALHAS["api"] += 1
-        return None
+        raise PncpIndisponivel(f"{url}: HTTP {r.status_code}")
     _FALHAS["api"] += 1
-    return None
+    raise PncpIndisponivel(f"{url}: {motivo} após {tentativas} tentativas")
+
+
+async def _consulta(client: httpx.AsyncClient, endpoint: str, params: dict) -> dict | None:
+    """API de consulta; 204 = sem dado na janela (honesto: não é erro)."""
+    return await _get_medido(client, f"{CONSULTA_BASE}{endpoint}", params, 5, 2, 5, vazio=(204,))
 
 
 async def _resultado_item(client: httpx.AsyncClient, cnpj: str, ano: str, seq: int, item: int) -> list[dict]:
-    for tent in range(4):
-        try:
-            r = await client.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens/{item}/resultados",
-                                 headers=_H)
-        except httpx.HTTPError:
-            await asyncio.sleep(1.5 * (tent + 1))
-            continue
-        if r.status_code == 200:
-            return r.json() or []
-        if r.status_code in (204, 404):
-            return []
-        if r.status_code == 429:
-            await asyncio.sleep(4 * (tent + 1))
-            continue
-        _FALHAS["api"] += 1
-        return []
-    _FALHAS["api"] += 1
-    return []
+    return await _get_medido(client, f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens/{item}/resultados",
+                             None, 4, 1.5, 4, vazio=(204, 404)) or []
 
 
 async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_ANO_DENSO,
@@ -168,9 +169,14 @@ async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_A
             tot["meses"] += 1
             for mod in modalidades:
                 for pagina in range(1, max_paginas + 1):
-                    j = await _consulta(client, "/contratacoes/publicacao", {
-                        "dataInicial": d_ini, "dataFinal": d_fim, "uf": uf.upper(),
-                        "codigoModalidadeContratacao": mod, "pagina": pagina, "tamanhoPagina": 50})
+                    try:
+                        j = await _consulta(client, "/contratacoes/publicacao", {
+                            "dataInicial": d_ini, "dataFinal": d_fim, "uf": uf.upper(),
+                            "codigoModalidadeContratacao": mod, "pagina": pagina, "tamanhoPagina": 50})
+                    except PncpIndisponivel as exc:
+                        # o resto deste mês × modalidade NÃO foi lido — contado, não "acabou o dado"
+                        tot.setdefault("paginas_indisponiveis", []).append(f"{d_ini} mod {mod} pág {pagina}: {exc}")
+                        break
                     data = (j or {}).get("data") or []
                     if not data:
                         break
@@ -218,7 +224,11 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
         "data_pub": (ct.get("dataPublicacaoPncp") or ct.get("dataInclusao") or "")[:10],
         "unidade_codigo": uni.get("codigoUnidade"), "unidade_nome": uni.get("nomeUnidade"),
     }
-    itens = await _consulta_itens(client, cnpj, ano, seq)
+    try:
+        itens = await _consulta_itens(client, cnpj, ano, seq)
+    except PncpIndisponivel:
+        tot["certames_itens_indisponiveis"] = tot.get("certames_itens_indisponiveis", 0) + 1
+        return 0
     gravados = 0
     for it in itens:
         num = it.get("numeroItem")
@@ -227,7 +237,11 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
         # descrição/unidade do item vêm do /itens (base do sobrepreço: "Ventilador", "Caixa"...)
         desc = (it.get("descricao") or "")[:200]
         unid = (it.get("unidadeMedida") or "").strip()
-        res = await _resultado_item(client, cnpj, ano, seq, num)
+        try:
+            res = await _resultado_item(client, cnpj, ano, seq, num)
+        except PncpIndisponivel:
+            tot["itens_resultado_indisponivel"] = tot.get("itens_resultado_indisponivel", 0) + 1
+            continue
         if res:
             tot["itens_com_resultado"] += 1
         for rr in res:
@@ -236,7 +250,7 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
                 continue
             # UPSERT: linha nova entra completa; linha já existente ganha os campos de item
             # (descrição/preço unitário/qtd) — permite o backfill de sobrepreço sobre a base atual.
-            con.execute("""INSERT INTO pncp_resultado
+            cur = con.execute("""INSERT INTO pncp_resultado
                 (certame, orgao_cnpj, orgao_nome, uf, municipio, modalidade, objeto, data_pub,
                  item, fornecedor_cnpj, fornecedor_nome, valor_homologado, ordem_classificacao,
                  porte_fornecedor, unidade_codigo, unidade_nome,
@@ -259,28 +273,14 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
                          "desc": desc, "unid": unid,
                          "vunit": rr.get("valorUnitarioHomologado"),
                          "qtd": rr.get("quantidadeHomologada")})
-            gravados += con.total_changes and 1 or 0
+            # `con.total_changes` é cumulativo da conexão: depois da 1ª escrita contava TODA linha lida
+            gravados += cur.rowcount > 0
     return gravados
 
 
 async def _consulta_itens(client, cnpj: str, ano: str, seq: int) -> list[dict]:
-    for tent in range(4):
-        try:
-            r = await client.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens", headers=_H)
-        except httpx.HTTPError:
-            await asyncio.sleep(1.5 * (tent + 1))
-            continue
-        if r.status_code == 200:
-            return r.json() or []
-        if r.status_code in (204, 404):
-            return []
-        if r.status_code == 429:
-            await asyncio.sleep(4 * (tent + 1))
-            continue
-        _FALHAS["api"] += 1
-        return []
-    _FALHAS["api"] += 1
-    return []
+    return await _get_medido(client, f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens",
+                             None, 4, 1.5, 4, vazio=(204, 404)) or []
 
 
 async def backfill_precos_unitarios(con, limite: int = 3000, pausa: float = 0.25) -> dict:
@@ -300,19 +300,27 @@ async def backfill_precos_unitarios(con, limite: int = 3000, pausa: float = 0.25
                 tot["sem_id"] += 1
                 continue
             cnpj, ano, seq = pr
-            itens = await _consulta_itens(client, cnpj, ano, seq)
+            try:
+                itens = await _consulta_itens(client, cnpj, ano, seq)
+            except PncpIndisponivel:
+                tot["indisponiveis"] = tot.get("indisponiveis", 0) + 1
+                continue
             for it in itens:
                 num = it.get("numeroItem")
                 if num is None:
                     continue
                 desc = (it.get("descricao") or "")[:200]
                 unid = (it.get("unidadeMedida") or "").strip()
-                res = await _resultado_item(client, cnpj, ano, seq, num)
+                try:
+                    res = await _resultado_item(client, cnpj, ano, seq, num)
+                except PncpIndisponivel:
+                    tot["indisponiveis"] = tot.get("indisponiveis", 0) + 1
+                    continue
                 for rr in res:
                     forn = re.sub(r"\D", "", rr.get("niFornecedor", "") or "")
                     if not forn:
                         continue
-                    con.execute("""UPDATE pncp_resultado SET
+                    cur = con.execute("""UPDATE pncp_resultado SET
                             item_descricao=COALESCE(:desc, item_descricao),
                             unidade_medida=COALESCE(:unid, unidade_medida),
                             valor_unitario=COALESCE(:vunit, valor_unitario),
@@ -320,7 +328,7 @@ async def backfill_precos_unitarios(con, limite: int = 3000, pausa: float = 0.25
                         WHERE certame=:certame AND item=:item AND fornecedor_cnpj=:forn""",
                         {"desc": desc, "unid": unid, "vunit": rr.get("valorUnitarioHomologado"),
                          "qtd": rr.get("quantidadeHomologada"), "certame": idp, "item": num, "forn": forn})
-                    tot["linhas_completadas"] += con.total_changes and 1 or 0
+                    tot["linhas_completadas"] += cur.rowcount > 0
                 await asyncio.sleep(pausa)
             tot["certames"] += 1
             if tot["certames"] % 50 == 0:
@@ -371,7 +379,7 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     return list(por_certame.values())
 
 
-def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_certames: int = 3) -> dict:
+def conluio_do_orgao(nome_orgao: str, db_path: str | None = None, min_certames: int = 3) -> dict:
     """Conluio (captura/rodízio de vencedores do PNCP) filtrado por NOME de órgão — insumo do /orgao.
     Match best-effort por LIKE no orgao_nome OU unidade_nome (contratação estadual tem orgao_nome =
     ente "Estado do Rio de Janeiro"; o órgão real é a unidade). Retorna {captura, rodizio_vencedores,
@@ -382,7 +390,7 @@ def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_c
     termo = re.sub(r"\s+", " ", (nome_orgao or "").strip()).upper()
     if len(termo) < 4:
         return {"captura": [], "rodizio_vencedores": [], "n_certames": 0}
-    con = _sq.connect(f"file:{db_path}?mode=ro", uri=True)
+    con = _sq.connect(f"file:{caminho_db(db_path)}?mode=ro", uri=True)
     con.row_factory = _sq.Row
     try:
         # base pré-migração (mode=ro não migra): degrada p/ unidade NULL em vez de 500
@@ -632,7 +640,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     # timeout alto: compliance.db é compartilhado com o jfn.service vivo — numa carga de horas o
     # busy_timeout de 5s (default) estouraria em contenção de escrita. WAL + 60s absorve.
-    con = sqlite3.connect("data/compliance.db", timeout=60)
+    con = abrir_banco()
     con.execute("PRAGMA busy_timeout=60000")
     if "--atas" in args:
         # coleta as ATAS DE JULGAMENTO reais (perdedoras) dos próximos N certames competitivos.

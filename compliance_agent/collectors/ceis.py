@@ -18,20 +18,20 @@ INDISPONÍVEL ≠ 0. O download keyless do CSV mensal foi DESCONTINUADO pela CGU
 
 import asyncio
 import json
-import os
 import re
 import time
 from datetime import date, datetime
-from pathlib import Path
 
 import httpx
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
+from compliance_agent.collectors.portal_transparencia import chave as chave_portal
+from compliance_agent.collectors.portal_transparencia import consultar
 from compliance_agent.reporting.intel_base import moeda
 
-CACHE_DIR = Path("data")
+CACHE_DIR = dir_dados()
 _CACHE_FILE = CACHE_DIR / "sancoes_cache.json"
 _CACHE_TTL = 7 * 86400  # 7 dias
 
-_BASE = "https://api.portaldatransparencia.gov.br/api-de-dados"
 # (endpoint, rótulo, nome_do_param_de_filtro, só_cnpj?): o param de filtro VARIA por endpoint —
 # CEIS/CNEP usam `codigoSancionado`; CEPIM usa `cnpjSancionado` (e só aceita CNPJ). Usar o errado
 # faz a API IGNORAR o filtro e devolver a página inteira (falso-positivo). Verificado no swagger.
@@ -40,14 +40,8 @@ _ENDPOINTS = [
     ("cnep", "CNEP", "codigoSancionado", False),
     ("cepim", "CEPIM", "cnpjSancionado", True),
 ]
-_TIMEOUT = 20
 
 _cache: dict | None = None
-
-
-def _chave() -> str:
-    return (os.environ.get("PORTAL_TRANSPARENCIA_KEY", "")
-            or os.environ.get("TRANSPARENCIA_API_KEY", "")).strip()
 
 
 def _carrega_cache() -> dict:
@@ -62,8 +56,7 @@ def _carrega_cache() -> dict:
 
 def _salva_cache() -> None:
     try:
-        CACHE_DIR.mkdir(exist_ok=True)
-        _CACHE_FILE.write_text(json.dumps(_cache, ensure_ascii=False), "utf-8")
+        gravar_atomico(_CACHE_FILE, json.dumps(_cache, ensure_ascii=False))
     except (OSError, TypeError):
         pass
 
@@ -92,29 +85,6 @@ def _normalizar(s: dict, tipo: str) -> dict:
     }
 
 
-async def _consultar(client: httpx.AsyncClient, endpoint: str, param: str, codigo: str, chave: str) -> tuple[bool, list, str]:
-    """(ok, lista_sancoes, motivo_erro). ok=False → não foi possível verificar (INDISPONÍVEL)."""
-    try:
-        r = await client.get(f"{_BASE}/{endpoint}",
-                             params={param: codigo, "pagina": 1},
-                             headers={"chave-api-dados": chave, "Accept": "application/json"},
-                             timeout=_TIMEOUT)
-    except httpx.TimeoutException:
-        return False, [], "timeout"
-    except Exception as exc:  # noqa: BLE001
-        return False, [], str(exc)[:80]
-    if r.status_code == 200:
-        data = r.json()
-        if isinstance(data, list):
-            return True, data, ""
-        if isinstance(data, dict):
-            return True, (data.get("data") or data.get("content") or []), ""
-        return True, [], ""
-    if r.status_code in (401, 403):
-        return False, [], f"chave inválida/sem permissão (HTTP {r.status_code})"
-    return False, [], f"HTTP {r.status_code}"
-
-
 async def verificar_sancao(cnpj_cpf: str, forcar_update: bool = False) -> dict:
     """
     Verifica CEIS/CNEP/CEPIM para um CNPJ/CPF via API do Portal da Transparência.
@@ -131,7 +101,7 @@ async def verificar_sancao(cnpj_cpf: str, forcar_update: bool = False) -> dict:
         return {**base, "verificado": False, "sancionado": None, "sancoes": [],
                 "motivo": f"documento inválido: {cnpj_cpf!r}"}
 
-    chave = _chave()
+    chave = chave_portal()
     if not chave:
         return {**base, "verificado": False, "sancionado": None, "sancoes": [],
                 "motivo": "sem chave — defina PORTAL_TRANSPARENCIA_KEY (ou TRANSPARENCIA_API_KEY)"}
@@ -151,13 +121,16 @@ async def verificar_sancao(cnpj_cpf: str, forcar_update: bool = False) -> dict:
             if consultados:
                 await asyncio.sleep(0.3)  # respeita o rate-limit do Portal
             consultados += 1
-            ok, lista, erro = await _consultar(client, endpoint, param, codigo, chave)
+            ok, lista, erro = await consultar(client, endpoint, {param: codigo}, chave)
             if ok:
                 todas += [_normalizar(s, tipo) for s in lista]
             else:
                 erros.append(f"{tipo}: {erro}")
 
-    if consultados and len(erros) == consultados:  # todos falharam → não dá pra afirmar nada
+    if erros and not todas:
+        # algum cadastro não respondeu e nenhum acusou: "não sancionado" seria afirmar sobre o que não foi
+        # lido (antes: verificado=True com motivo "parcial", gravado 7 dias no cache). Sanção ACHADA em
+        # qualquer cadastro, ao contrário, é prova — por isso o parcial com achado segue verificado.
         return {**base, "verificado": False, "sancionado": None, "sancoes": [],
                 "motivo": "; ".join(erros)}
 
@@ -166,6 +139,20 @@ async def verificar_sancao(cnpj_cpf: str, forcar_update: bool = False) -> dict:
     cache[codigo] = {**resultado, "_ts": time.time()}
     _salva_cache()
     return {**base, **resultado, "_cache": False}
+
+
+def _vigente(data_fim: str, ref: date) -> bool:
+    """Sanção sem fim, ou com fim em/apos `ref`. O Portal manda 'dd/mm/aaaa'; a comparação antiga era de
+    TEXTO nesse formato ('05/01/2030' < '20/11/2026'), ou seja, pelo dia do mês. Fim ilegível → vigente
+    (não declarar expirada o que não se leu)."""
+    if not data_fim:
+        return True
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(data_fim.strip()[:10], fmt).date() >= ref
+        except ValueError:
+            continue
+    return True
 
 
 async def verificar_obs_contra_sancoes(session, target_date: date = None) -> list[dict]:
@@ -199,7 +186,7 @@ async def verificar_obs_contra_sancoes(session, target_date: date = None) -> lis
             orgao = sancao.get("orgao", "")
             data_ini = sancao.get("data_inicio", "")
             data_fim = sancao.get("data_fim", "")
-            vigente = not data_fim or data_fim >= target_date.strftime("%d/%m/%Y")
+            vigente = _vigente(data_fim, target_date)
             titulo = (f"[{fonte}] Pagamento a empresa SANCIONADA — "
                       f"{ob.favorecido_nome or cpf_cnpj}")[:300]
             if session.query(Alerta).filter_by(titulo=titulo).first():
@@ -224,13 +211,14 @@ async def atualizar_cache_sancoes():
     """Probe de saúde da API de sanções (a verificação agora é por API, não por CSV mensal).
 
     Mantido p/ compatibilidade com a manutenção: confirma que a chave responde. Retorna (ok, ok)."""
-    chave = _chave()
+    chave = chave_portal()
     if not chave:
         print("  Sanções: SEM CHAVE (defina PORTAL_TRANSPARENCIA_KEY) — verificação INDISPONÍVEL")
         return False, False
     try:
         async with httpx.AsyncClient() as client:
-            ok, _, erro = await _consultar(client, "ceis", "00000000000191", chave)  # CNPJ Banco do Brasil (probe)
+            # faltava o argumento `param`: o TypeError caía no except e o probe acusava falha SEMPRE
+            ok, _, erro = await consultar(client, "ceis", {"codigoSancionado": "00000000000191"}, chave)  # BB (probe)
         print(f"  Sanções API: {'OK' if ok else 'falhou — ' + erro}")
         return ok, ok
     except Exception as exc:  # noqa: BLE001

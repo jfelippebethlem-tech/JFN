@@ -11,11 +11,12 @@ import json
 import logging
 import zipfile
 from datetime import datetime, date
-from pathlib import Path
 from typing import Optional
 
 import httpx
 
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
+from compliance_agent.collectors.formato import valor_br
 from compliance_agent.database.models import (
     Alerta, Contrato, DoacaoEleitoral, Empresa,
 )
@@ -23,7 +24,7 @@ from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
-TSE_CACHE_DIR = Path("data/tse_cache")
+TSE_CACHE_DIR = dir_dados() / "tse_cache"
 
 # TSE open data URL pattern for candidate financial disclosures
 TSE_URL_PATTERN = (
@@ -49,16 +50,6 @@ def _parse_date(value: str) -> Optional[date]:
         except ValueError:
             continue
     return None
-
-
-def _parse_value(value: str) -> float:
-    """Parse a Brazilian decimal number (comma as decimal separator)."""
-    if not value or not value.strip():
-        return 0.0
-    try:
-        return float(value.strip().replace(".", "").replace(",", "."))
-    except ValueError:
-        return 0.0
 
 
 def _get_column(row: dict, *candidates: str) -> str:
@@ -97,7 +88,7 @@ async def baixar_doacoes_ano(ano: int, session, uf: str = "RJ") -> int:
             async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
                 resp = await client.get(url)
                 resp.raise_for_status()
-                zip_path.write_bytes(resp.content)
+                gravar_atomico(zip_path, resp.content)
                 logger.info(f"ZIP salvo em {zip_path} ({len(resp.content):,} bytes)")
         except httpx.HTTPError as exc:
             logger.error(f"Erro ao baixar TSE {ano}: {exc}")
@@ -149,7 +140,7 @@ async def baixar_doacoes_ano(ano: int, session, uf: str = "RJ") -> int:
                         valor_str = _get_column(row, "VR_RECEITA", "VR_VALOR")
                         data_str = _get_column(row, "DT_RECEITA", "DT_DATA")
 
-                        valor = _parse_value(valor_str)
+                        valor = valor_br(valor_str) or 0.0
                         data_doacao = _parse_date(data_str)
 
                         # Skip if doador has no identifier

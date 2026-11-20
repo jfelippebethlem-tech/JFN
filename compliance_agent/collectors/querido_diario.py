@@ -44,8 +44,16 @@ async def buscar_historico(
 ) -> list[dict]:
     """
     Busca um termo no histórico completo do DOERJ via Querido Diário.
-    Retorna lista de publicações encontradas.
+    Retorna lista de publicações encontradas; falha vira [] com log (contrato fixado nos testes).
+    Quem vai AFIRMAR ausência a partir do resultado usa `_buscar_medido`.
     """
+    _, gazettes = await _buscar_medido(termo, desde, ate, max_resultados)
+    return gazettes
+
+
+async def _buscar_medido(termo: str, desde: Optional[date], ate: Optional[date],
+                         max_resultados: int) -> tuple[bool, list[dict]]:
+    """(ok, gazettes). ok=False = a API não respondeu o que devia — INDISPONÍVEL, não "0 publicações"."""
     params = {
         "querystring": termo,
         "territory_ids": RJ_TERRITORY,
@@ -64,21 +72,26 @@ async def buscar_historico(
                                  headers={"User-Agent": "JFN-Compliance/1.0"})
             # 200 com HTML = SPA/erro de rota: não engolir calado (foi assim que o coletor morreu).
             if r.status_code == 200 and "json" in r.headers.get("content-type", ""):
-                return r.json().get("gazettes", [])
+                return True, r.json().get("gazettes", [])
             logging.warning("QueridoDiario: resposta inesperada %s %s",
                             r.status_code, r.headers.get("content-type"))
     except Exception as e:
         logging.warning("QueridoDiario indisponível: %s", e)
-    return []
+    return False, []
 
 
 async def historico_empresa(cnpj_ou_nome: str, anos: int = 3) -> dict:
     """
     Busca o histórico completo de uma empresa no DOERJ.
     Retorna: total de aparições, tipos de publicação, primeiros resultados.
+    API fora → levanta RuntimeError. Antes devolvia `total_publicacoes: 0, tem_sancao_historica: False`,
+    que o dossiê (`tools/lex_pesquisa_internet`) publicava como "nada no DOERJ" — e a API não responde da
+    VM-1 nem do it-campo (`tools/desmascarar_cpf_externo.py`), ou seja, era o caso comum.
     """
     desde = date.today() - timedelta(days=365 * anos)
-    resultados = await buscar_historico(cnpj_ou_nome, desde=desde, max_resultados=20)
+    ok, resultados = await _buscar_medido(cnpj_ou_nome, desde, None, 20)
+    if not ok:
+        raise RuntimeError("Querido Diário indisponível — histórico do DOERJ não consultado")
 
     tipos: dict[str, int] = {}
     excerpts = []
@@ -140,7 +153,13 @@ async def enriquecer_obs_com_historico(session, target_date: date = None) -> lis
             continue
         verificados.add(nome)
 
-        hist = await historico_empresa(nome)
+        try:
+            hist = await historico_empresa(nome)
+        except RuntimeError as exc:
+            # API fora: os nomes restantes também não seriam lidos — para, mas grava os alertas já feitos
+            logging.warning("Querido Diário: %s — %d favorecido(s) sem histórico consultado",
+                            exc, len({(o.favorecido_nome or "").strip() for o in obs} - verificados) + 1)
+            break
         await asyncio.sleep(0.5)
 
         if hist["tem_sancao_historica"]:
@@ -174,7 +193,3 @@ async def enriquecer_obs_com_historico(session, target_date: date = None) -> lis
     session.commit()
     return alertas
 
-
-async def buscar_pessoa(nome: str, anos: int = 5) -> dict:
-    """Busca histórico de uma pessoa no DOERJ (nomeações, exonerações, etc.)."""
-    return await historico_empresa(nome, anos=anos)

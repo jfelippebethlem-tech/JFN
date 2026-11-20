@@ -20,10 +20,10 @@ import json
 import logging
 import re
 from datetime import datetime
-from pathlib import Path
 from urllib.parse import urljoin
 
 import httpx
+from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ SEI_BASE       = "https://portalsei.rj.gov.br"
 SEI_PESQUISA   = f"{SEI_BASE}/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
 SEI_CONTROLADOR = f"{SEI_BASE}/sei/controlador.php"
 
-CACHE_DIR = Path("data/sei_cache")
+CACHE_DIR = dir_dados() / "sei_cache"
 
 _HEADERS = {
     "User-Agent": (
@@ -126,10 +126,7 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
         resultado["diagnostico"] = diag
     resultado["_cached_at"] = datetime.now().isoformat()
     try:
-        cache_file.write_text(
-            json.dumps(resultado, ensure_ascii=False, indent=2, default=str),
-            encoding="utf-8",
-        )
+        gravar_atomico(cache_file, json.dumps(resultado, ensure_ascii=False, indent=2, default=str))
     except Exception as exc:
         logger.warning("falha ao gravar cache do SEI portal (toda consulta re-busca): %s", exc)
 
@@ -355,7 +352,7 @@ async def ler_documento_sei(url: str, usar_cache: bool = True) -> str:
             texto = re.sub(r"\n{3,}", "\n\n", texto)[:10000]
 
             if usar_cache:
-                cache_file.write_text(texto, encoding="utf-8")
+                gravar_atomico(cache_file, texto)
             return texto
 
         except Exception as e:
@@ -551,42 +548,6 @@ def _analisar_red_flags_processo(
 
 
 # ── Cruzamento SEI × SIAFE ────────────────────────────────────────────────────
-
-def cruzar_sei_siafe(session: Session, numero_sei: str) -> dict:
-    """
-    Encontra todas as despesas SIAFE vinculadas a um processo SEI.
-    Retorna: contratos, OBs (ordens bancárias), total empenhado, total pago.
-    """
-    contratos = (
-        session.query(Contrato)
-        .filter(Contrato.numero_sei.ilike(f"%{numero_sei}%"))
-        .all()
-    )
-
-    total_valor = sum(c.valor_total or 0 for c in contratos)
-    orgaos = list({c.orgao_contrat for c in contratos if c.orgao_contrat})
-    empresas = list({c.empresa.razao_social if c.empresa else "" for c in contratos} - {""})
-
-    return {
-        "numero_sei":      numero_sei,
-        "contratos":       [
-            {
-                "numero":     c.numero,
-                "objeto":     (c.objeto or "")[:200],
-                "orgao":      c.orgao_contrat,
-                "empresa":    c.empresa.razao_social if c.empresa else "N/D",
-                "valor":      c.valor_total,
-                "modalidade": c.modalidade,
-                "data":       str(c.data_assinatura) if c.data_assinatura else "",
-            }
-            for c in contratos
-        ],
-        "total_contratos": len(contratos),
-        "valor_total":     total_valor,
-        "orgaos":          orgaos,
-        "empresas":        empresas,
-    }
-
 
 def buscar_sei_por_objeto(session: Session, termo: str) -> list[dict]:
     """Busca processos SEI indexados por termo no assunto."""

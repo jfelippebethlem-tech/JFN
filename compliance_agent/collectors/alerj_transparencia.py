@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+from compliance_agent.collectors.formato import valor_br
 from compliance_agent.reporting.intel_base import moeda
 
 _BASE_REPORT = "https://transparencia.alerj.rj.gov.br/section/report/{rid}"
@@ -26,10 +27,6 @@ _RE_PAG = re.compile(
     r"^\s*(?P<natureza>\d{6})\s+(?P<credor>.+?)\s+(?P<ne>\d{4}NE\d+)\s+(?P<nl>\d{4}NL\d+)\s+"
     r"(?P<data>\d{2}/\d{2}/\d{4}).*?R\$\s*(?P<valor>\d{1,3}(?:\.\d{3})*,\d{2})\s*$")
 _RE_MESANO = re.compile(r"pagamentos realizados\s*-\s*([A-Za-zçÇ]+)\s*/?\s*(\d{4})", re.I)
-
-
-def _f(s: str) -> float:
-    return float(s.replace(".", "").replace(",", "."))
 
 
 def listar_documentos(report_id: int, timeout: int = 25) -> list[dict]:
@@ -85,7 +82,7 @@ def parsear_pagamentos(texto: str) -> dict:
         if len(credor) < 3:
             continue
         itens.append({"natureza": g.group("natureza"), "credor": credor, "empenho": g.group("ne"),
-                      "liquidacao": g.group("nl"), "data": g.group("data"), "valor": _f(g.group("valor"))})
+                      "liquidacao": g.group("nl"), "data": g.group("data"), "valor": valor_br(g.group("valor"))})
     return {"mes_ano": mes_ano, "n": len(itens), "itens": itens}
 
 

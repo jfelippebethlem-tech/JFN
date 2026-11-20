@@ -12,23 +12,18 @@ Uso:
     python -m compliance_agent.collectors.tfe_ob --ano 2026 --ingest
 """
 import argparse
-import csv
-import io
 import os
-import sqlite3
 import subprocess
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 import httpx
+from compliance_agent.collectors.arquivos import abrir_banco, caminho_db, dir_dados
+from compliance_agent.collectors.formato import csv_apos_preambulo, valor_br
 from compliance_agent.reporting.intel_base import moeda
 
-_REPO = Path(__file__).resolve().parent.parent.parent
-DATA = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data"))
-CACHE = DATA / "tfe_cache"
+CACHE = dir_dados() / "tfe_cache"
 ZIP = CACHE / "fornecedor_ob.zip"
-DB = DATA / "compliance.db"
 URL = "https://tfe.fazenda.rj.gov.br/tfe-download/fornecedor_ob.zip"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; JFN-Auditor/1.0)"}
 
@@ -60,14 +55,6 @@ def baixar(force=False):
     return ZIP
 
 
-def _money(s):
-    s = (s or "").strip().replace(".", "").replace(",", ".")
-    try:
-        return float(s)
-    except ValueError:
-        return None
-
-
 def parse_ano(ano):
     """Gera dicts de OB do ano a partir do zip."""
     if not ZIP.exists():
@@ -76,10 +63,7 @@ def parse_ano(ano):
     nome = f"fornecedor_ob{ano}.csv"
     if nome not in z.namelist():
         raise RuntimeError(f"{nome} não está no zip")
-    raw = z.read(nome).decode("latin-1", "replace")
-    lines = raw.splitlines()
-    hi = next((i for i, l in enumerate(lines) if l.replace('"', '').strip().startswith("Data da OB")), 0)
-    for r in csv.DictReader(io.StringIO("\n".join(lines[hi:])), delimiter=";"):
+    for r in csv_apos_preambulo(z.read(nome).decode("latin-1", "replace"), "Data da OB"):
         if not (r.get("Ordem Bancaria") or "").strip():
             continue
         yield r
@@ -134,15 +118,19 @@ def ingest(ano):
     Devolve (n, total, retiradas): `retiradas` é quantas OBs a fonte deixou de publicar nesta
     passada — ver `_registrar_retiradas`.
     """
-    if not DB.exists():
-        raise RuntimeError(f"banco não existe: {DB}")
+    if not caminho_db().exists():
+        raise RuntimeError(f"banco não existe: {caminho_db()}")
     from compliance_agent.reports import categorizar as cat
-    con = sqlite3.connect(str(DB))
+    con = abrir_banco()
     con.execute("CREATE INDEX IF NOT EXISTS ix_ob_numero ON ordens_bancarias(numero_ob)")
     # Lê o zip ANTES de apagar: sem a lista do que a fonte publica agora não há como saber o que
     # ela deixou de publicar — e depois do DELETE a evidência já não existe.
     publicadas = {((r.get("Ordem Bancaria") or "").strip(), (r.get("UG") or "").strip())
                   for r in parse_ano(ano)}
+    if not publicadas:
+        # nenhuma linha com "Ordem Bancaria": coluna renomeada ou arquivo vazio — não é "a fonte retirou
+        # todas as OB do ano". Seguir apagaria o exercício e registraria cada OB como retirada.
+        raise RuntimeError(f"fornecedor_ob{ano}.csv sem nenhuma OB legível — exercício mantido como estava")
     retiradas = _registrar_retiradas(con, ano, publicadas)
     con.execute("DELETE FROM ordens_bancarias WHERE categoria='tfe_ob' AND exercicio=?", (str(ano),))
     cols = ("numero_ob", "data_emissao", "data_pagamento", "ug_codigo", "ug_nome", "favorecido_cpf",
@@ -153,7 +141,7 @@ def ingest(ano):
         hist = (r.get("Histórico") or "").strip()
         nome = (r.get("Nome Credor") or "").strip()
         area = cat.area_objeto(f"{nome} {hist}", "")  # categoriza pelo credor + histórico (objeto)
-        v = _money(r.get("Valor OB"))
+        v = valor_br(r.get("Valor OB"))
         try:
             dp = datetime.strptime((r.get("Data da OB") or "").strip(), "%d/%m/%Y").date().isoformat()
         except Exception:
