@@ -43,6 +43,15 @@ SEMANA_S = 7 * 86400
 PISO = 5.0            # % liberado logo na abertura da janela (sem isso a linha começa em 0 e trava tudo)
 ALVO_SEMANA = 90.0    # % previsto na virada; o resto é do dono
 TETO_DURO = 85.0      # daqui para cima o motor só volta na semana seguinte
+# Dono, 20/11/2026: "deixe sempre as tarefas muito mais pesadas pra sábado pra avançar tudo sábado pra usar toda
+# cota semanal". No DIA da virada (sábado, das 00:00 até as 19:00) a linha vai a 100% e o teto sobe para 97% — o
+# que sobrou da semana é gasto no pesado; 3% ficam para o dono não ser travado no fim.
+TETO_FINAL = 97.0
+
+
+def dia_da_virada(volta_ts: float, agora: float) -> bool:
+    """Mesmo dia do calendário (hora local) da virada da semana, antes dela."""
+    return agora < volta_ts and datetime.fromtimestamp(agora).date() == datetime.fromtimestamp(volta_ts).date()
 FOLGA = 5.0           # faixa de ECONOMIA abaixo da linha
 VALIDADE_S = 2 * 3600
 REAVALIAR_S = 15 * 60
@@ -107,11 +116,17 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
     pct = m.get("semana_pct")
     if volta is None or pct is None:
         return dict(base, motivo="medição sem a virada da semana — sem restrição de ritmo")
-    ln = round(linha(volta, agora), 1)
-    out = dict(base, medido=True, semana_pct=pct, linha_pct=ln, semana_volta=m.get("semana_volta"))
-    if pct >= TETO_DURO:
-        return dict(out, nivel="contido", motivo=f"assinatura em {pct:.0f}% da semana (teto {TETO_DURO:.0f}%) — o resto é "
+    final = dia_da_virada(volta, agora)
+    teto = TETO_FINAL if final else TETO_DURO
+    ln = 100.0 if final else round(linha(volta, agora), 1)
+    out = dict(base, medido=True, semana_pct=pct, linha_pct=ln, semana_volta=m.get("semana_volta"),
+               janela_final=final)
+    if pct >= teto:
+        return dict(out, nivel="contido", motivo=f"assinatura em {pct:.0f}% da semana (teto {teto:.0f}%) — o resto é "
                                                  f"do dono até {m['semana_volta'][:16]}")
+    if final:
+        return dict(out, motivo=f"assinatura em {pct:.0f}% — dia da virada da semana ({m['semana_volta'][:16]}): "
+                                f"pesado liberado até {teto:.0f}%")
     if pct >= ln:
         return dict(out, nivel="contido", motivo=f"assinatura em {pct:.0f}% da semana, acima do ritmo ({ln:.0f}%) que a "
                                                  f"faz durar até {m['semana_volta'][:16]}")
