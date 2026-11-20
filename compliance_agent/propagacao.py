@@ -135,7 +135,7 @@ def conectar(db: Path | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(alvo, timeout=30)
     con.execute("PRAGMA journal_mode=WAL")
     con.executescript(DDL)
-    con.execute(cerebro.DDL)
+    cerebro.preparar(con)
     return con
 
 

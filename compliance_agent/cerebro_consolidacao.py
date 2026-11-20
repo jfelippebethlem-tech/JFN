@@ -7,10 +7,13 @@ noite; o modelo SÓ PROPÕE, numa fila de revisão; nunca API paga.
 O que faz, em ordem:
   1. COLHER (sem modelo): pede ao jfn-brain os pares de memórias ATIVAS muito parecidas, fora das séries geradas
      (`/api/consolidacao/pares`), e põe na fila o que é novo. Mesmo par nunca entra duas vezes.
-  2. PROPOR (assinatura, com teto): para cada par aberto, do mais parecido para o menos, pergunta ao Claude se é o
+  2. TRIAR (sem modelo): par em que os dois lados citam identificador (CNPJ, processo SEI, UG, OB) e NENHUM é
+     comum fecha como distintos — são memórias de mesmo molde sobre casos diferentes. Medido em 20/11/2026: 23 dos
+     34 pares abertos, com 0 chamadas ao modelo em duas noites (a assinatura cedeu à perícia integral).
+  3. PROPOR (assinatura, com teto): para cada par aberto, do mais parecido para o menos, pergunta ao Claude se é o
      MESMO FATO dito duas vezes, uma CONTRADIÇÃO (mesmo fato, número ou data diferente) ou fatos DISTINTOS. Mesmo fato
      e contradição viram PROPOSTA (status 'proposta' no cérebro — fora do recall — e linha na fila); distintos fecha.
-  3. Nada é fundido, corrigido ou apagado aqui. Aceitar é ato de gente: `aceitar <id>` / `recusar <id>`.
+  4. Nada é fundido, corrigido ou apagado aqui. Aceitar é ato de gente: `aceitar <id>` / `recusar <id>`.
 
 Tetos (os três valem ao mesmo tempo; o que estourar primeiro para a rodada e o resto fica para a noite seguinte):
   · 50 chamadas por noite (`JFN_CONSOLIDACAO_MAX`) — e o teto por tarefa do motor (`JFN_CLAUDE_MAX_CEREBRO_CONSOLIDACAO`);
@@ -20,8 +23,8 @@ Tetos (os três valem ao mesmo tempo; o que estourar primeiro para a rodada e o 
     a consolidação é a primeira a ceder.
 Só `backend="cli"`: se a assinatura não puder, a rodada PARA (não cai na API paga, não cai na cascata).
 
-    python -m compliance_agent.cerebro_consolidacao noite          # colher + propor (o que o cron chama)
-    python -m compliance_agent.cerebro_consolidacao colher         # só a parte sem modelo
+    python -m compliance_agent.cerebro_consolidacao noite          # colher + triar + propor (o que o cron chama)
+    python -m compliance_agent.cerebro_consolidacao colher         # só a parte sem modelo (colher + triar)
     python -m compliance_agent.cerebro_consolidacao fila [--estado proposto]
     python -m compliance_agent.cerebro_consolidacao aceitar <id> | recusar <id> ["motivo"]
 """
@@ -36,6 +39,7 @@ import time
 from pathlib import Path
 
 from compliance_agent import cerebro_compartilhado as cerebro
+from compliance_agent import cerebro_fts
 
 TAREFA = "cerebro_consolidacao"
 MAX_CHAMADAS = 50
@@ -91,7 +95,7 @@ def _con(db: Path | None = None) -> sqlite3.Connection:
 def colher(con: sqlite3.Connection, pares: list[dict] | None = None) -> dict:
     """Põe na fila os pares novos. `pares` injetável (teste); padrão = o que o cérebro devolve."""
     if pares is None:
-        pares = cerebro._http(f"/api/consolidacao/pares?minimo={SIM_MINIMA}&limite=300")
+        pares = cerebro.pares_semelhantes(SIM_MINIMA)
     novos = 0
     for p in pares:
         a, b = p["a"], p["b"]
@@ -103,6 +107,22 @@ def colher(con: sqlite3.Connection, pares: list[dict] | None = None) -> dict:
         novos += cur.rowcount
     con.commit()
     return {"pares_no_cerebro": len(pares), "novos_na_fila": novos}
+
+
+def triar(con: sqlite3.Connection) -> dict:
+    """Fecha como distintos, sem modelo, o par aberto cujos lados citam identificadores e não têm nenhum em comum."""
+    fechados = 0
+    abertos = con.execute("SELECT id, a_texto, b_texto FROM fila WHERE estado='aberto'").fetchall()
+    for it in abertos:
+        ea, eb = set(cerebro_fts.entidades(it["a_texto"])), set(cerebro_fts.entidades(it["b_texto"]))
+        if ea and eb and not ea & eb:
+            motivo = ("nenhum identificador em comum — A: " + ", ".join(v for _, v in sorted(ea)[:3])
+                      + " · B: " + ", ".join(v for _, v in sorted(eb)[:3]))
+            con.execute("UPDATE fila SET estado='distintos', veredito='distintos', motivo=?, modelo=?, proposto_em=? WHERE id=?",
+                        (motivo[:500], "regra:identificadores-disjuntos", time.time(), it["id"]))
+            fechados += 1
+    con.commit()
+    return {"distintos_sem_modelo": fechados, "seguem_para_o_modelo": len(abertos) - fechados}
 
 
 def _folga_do_motor() -> tuple[float, str | None]:
@@ -182,9 +202,9 @@ def _proposta_no_cerebro(it, veredito: str, texto: str) -> int | None:
     if cerebro.recusar(conteudo):
         return None
     try:
-        resp = cerebro._http("/api/memories", {"content": conteudo, "kind": it["kind"] or "semantica",
-                                               "subject": it["assunto"], "source": "consolidacao-claude-vm1",
-                                               "confidence": 0.5, "tags": ["consolidacao", veredito], "proposta": True})
+        resp = cerebro.gravar_memoria({"content": conteudo, "kind": it["kind"] or "semantica",
+                                       "subject": it["assunto"], "source": "consolidacao-claude-vm1",
+                                       "confidence": 0.5, "tags": ["consolidacao", veredito], "proposta": True})
         return int(resp["id"])
     except (cerebro.CerebroIndisponivel, KeyError, TypeError, ValueError):
         return None
@@ -200,10 +220,15 @@ def decidir(con: sqlite3.Connection, item: int, aceitar: bool, motivo: str = "")
     if aceitar and it["veredito"] == "mesmo_fato" and it["proposta"]:
         if cerebro.recusar(it["proposta"]):
             return {"erro": "o texto proposto tem dado que não pode ir ao cérebro"}
-        aplicado = cerebro._http("/api/memories", {
-            "content": it["proposta"], "kind": it["kind"] or "semantica", "subject": it["assunto"],
-            "source": cerebro.FONTE, "confidence": 0.9, "supersedes": it["a"], "chave": it["a_chave"],
-            "tags": ["consolidacao", "aceita"]})
+        if it["a_chave"]:
+            # fato com chave tem dono no registro local: gravar por fora deixaria lá o id antigo, e a próxima
+            # correção da rotina substituiria uma versão que já saiu
+            aplicado = cerebro.lembrar(it["a_chave"], it["proposta"], it["kind"] or "semantica", it["assunto"])
+        else:
+            aplicado = cerebro.gravar_memoria({
+                "content": it["proposta"], "kind": it["kind"] or "semantica", "subject": it["assunto"],
+                "source": cerebro.FONTE, "confidence": 0.9, "supersedes": it["a"], "chave": None,
+                "tags": ["consolidacao", "aceita"]})
     con.execute("UPDATE fila SET estado=?, decidido_em=?, decisao_motivo=? WHERE id=?",
                 ("aceito" if aceitar else "recusado", time.time(), motivo[:500], item))
     con.commit()
@@ -223,6 +248,7 @@ def noite() -> dict:
             out["colher"] = colher(con)
         except cerebro.CerebroIndisponivel as exc:
             out["colher"] = {"erro": f"CÉREBRO INDISPONÍVEL: {exc}"}
+        out["triar"] = triar(con)
         out["propor"] = propor(con)
         out["fila"] = resumo(con)
         arq = cerebro.DATA / "cerebro_consolidacao" / "estado.json"
@@ -250,7 +276,7 @@ def main(argv=None) -> int:
     con = _con()
     try:
         if a.cmd == "colher":
-            print(json.dumps({**colher(con), "fila": resumo(con)}, ensure_ascii=False))
+            print(json.dumps({**colher(con), **triar(con), "fila": resumo(con)}, ensure_ascii=False))
         elif a.cmd == "fila":
             print(json.dumps(resumo(con), ensure_ascii=False))
             for it in con.execute("SELECT * FROM fila WHERE estado=? ORDER BY sim DESC LIMIT 50", (a.estado,)):

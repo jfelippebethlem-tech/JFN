@@ -303,7 +303,7 @@ def test_descobertas_verificadas_vao_ao_cerebro_uma_vez_e_corrigem_quando_o_fato
     _, rotas, obter = amb
     um = V.gerar(obter)
     assert um["cerebro"] == {"novo": 2}                                # a mesma compra nas 2 esferas da simulação: 1 memória só
-    con = C._con(tmp_path / "data" / "propagacao.db")
+    con = C.conectar(tmp_path / "data" / "propagacao.db")
     linhas = dict(con.execute("SELECT chave, conteudo FROM cerebro").fetchall())
     assert set(linhas) == {"couto:D14-x", "sobrepreco:44982273000154-1-000301/2024:3"}
     assert all(C.recusar(t) is None for t in linhas.values())

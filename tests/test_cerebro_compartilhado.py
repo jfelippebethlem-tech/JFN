@@ -10,7 +10,7 @@ from compliance_agent import cerebro_compartilhado as C
 
 @pytest.fixture()
 def con(tmp_path):
-    c = C._con(tmp_path / "p.db")
+    c = C.conectar(tmp_path / "p.db")
     yield c
     c.close()
 

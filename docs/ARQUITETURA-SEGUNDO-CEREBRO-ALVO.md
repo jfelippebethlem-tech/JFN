@@ -5,7 +5,7 @@
 | **Documento** | Medição do estado atual, estado da arte conferido na fonte, arquitetura-alvo, plano em fases com critério mensurável, bateria de avaliação e Fase 1 implantada |
 | **Pedido do dono** | "faça também a melhor arquitetura para segundo cérebro" · "eu quero uma arquitetura de segundo cérebro que seja o estado da arte" |
 | **Medição** | 19/11/2026, 07:59–08:30 (BRT) — VM-1 `jfn-core` (carga 9 a 20 durante a medição) e VM-2 `JFN-Agent-2` |
-| **Estado** | **Fases 1, 2 e 4 implantadas e a consolidação (fila + teto) agendada** — autorização do dono em 19/11/2026: "pode seguir com as fases 2 e 4 e a consolidação" (§12.1). Fase 3 pendente; Fase 6 (paga) **desligada** |
+| **Estado** | **Fases 1, 2 e 4 implantadas e a consolidação (fila + teto) agendada** — autorização do dono em 19/11/2026: "pode seguir com as fases 2 e 4 e a consolidação" (§12.1). Fase 3 pendente; Fase 6 (paga) **desligada**. **Revisão crítica de 20/11/2026 em §12.2** (o que o documento prometia e o código não entregava; consertos medidos) |
 | **Antecessor** | `docs/ARQUITETURA-SEGUNDO-CEREBRO.md` (18/11/2026 — inventário e ponte). Este documento **substitui** as linhas "Khoj" e "hermes_rag" do §4.3 de lá e o §3 (que não tinha sido conferido na fonte) |
 | **Irmãos** | `docs/ARQUITETURA-DE-CERTEZA.md` · `config/propagacao.yaml` · `config/cerebro_bateria.yaml` |
 
@@ -436,6 +436,49 @@ Tempo por consulta da busca nova: mediana 1,14 s com a VM-1 em carga 20 (0,1 a 0
 - 139 memórias ativas seguem sem chave (gravadas à mão por sessões).
 - A higiene do recall (memórias em série fora do padrão) **não** foi ligada: falta medir antes com o grupo `memorias`.
 - Uma nota com YAML inválido perdia `cnpj:`/`ug:` na carga inicial — corrigido lendo do arquivo (commit `397168d4`).
+
+### 12.2 Revisão crítica de 20/11/2026 — promessa × código, defeitos medidos e consertos
+
+Medição de 20/11/2026, 02:40–03:50 (BRT), VM-1 com carga 12 a 19; dados reais só em leitura (cópias em pasta
+temporária para os testes de "depois"). Código nos commits `4abefb5d`, `0b532159`, `1f314918`, `5335e49e`,
+`0c6352c7` — **não implantados**: valem quando o branch entrar na árvore que o cron executa.
+
+**A. O que este documento prometia e o código não entregava**
+
+| # | Promessa (onde) | O que o código fazia (prova na árvore de 19/11) | Estado em 20/11 |
+|---|---|---|---|
+| L1 | "Todo fato tem prova": `prova_doc` + `prova_trecho` obrigatórios no nível 2; critério da Fase 4 "100% dos fatos de nível 2 com `prova_doc`" (§4, §5.2, §8) | `cerebro_compartilhado.py:197` montava o envio sem os campos; `cerebro_ponte.py:80` guardava só verdadeiro/falso. Medido: 0 de 200 memórias amostradas com `prova_doc`. **A Fase 4 foi dada por FEITA sem este critério** (o que se mediu foi o cruzamento 22/22) | **CONSERTADO daqui para a frente** — a ponte envia documento + trecho localizado. Os 518 laudos já enviados só ganham ponteiro se forem relidos (PENDENTE, decisão do dono) |
+| L2 | Consolidação: "contradição → fila a conferir" (§5.5) | A fila existe, mas depende do modelo: 34 pares, **0 chamadas em duas noites** (`data/cerebro_consolidacao/estado.json`). Nada determinístico | **PARCIAL** — 23 dos 34 fecham sem modelo (identificadores disjuntos); os 11 restantes cabem no teto. Contradição numérica entre memória e registro de fatos passou a ser acusada pelo verificador (L5) |
+| L3 | "Validade: fato cuja fonte foi regravada sem ele → marca `valeu_ate`" (§5.5) | Nenhum produtor escreve `valeu_de`/`valeu_ate` (`grep` em `compliance_agent/` e `tools/`: zero ocorrências) | **NÃO ENTREGUE** |
+| L4 | "Um ponto de leitura … com a mesma busca"; número mora na certeza (§4, §5.2) | `JFN_CERTEZA_CEREBRO` nunca foi ligado: 0 chaves `fato:*` no registro. Quem lê pelo MCP não recebe o valor vigente | **PARCIAL** — o comando `caso` (VM-1) abre com o valor vigente; MCP segue sem (decisão do dono: ligar a chave) |
+| L5 | Certeza confere "vault, cérebro e documentos" (irmão `ARQUITETURA-DE-CERTEZA.md`) | Só o registro LOCAL de memórias era lido; memória gravada à mão pelo MCP ficava fora. Medido: memória #456 ativa com R$ 2.270.009,39 (vigente R$ 2.560.162,04) | **CONSERTADO** — superfície `cerebro_memoria` |
+| L6 | "`MEMORY.md` ≤ 200 linhas" e carga das memórias antigas (Fase 5) | 213 linhas; 48 chaves `memoria:*` para 362 arquivos (a sonda só vê arquivo alterado) | **FERRAMENTA PRONTA** (`tools/memoria_indice.py`: 213 → 160, proposta gerada; aplicar é ato do dono). Carga das antigas: NÃO ENTREGUE |
+| L7 | "WhatsApp fora de toda camada" (§4, invariante 7) | A barreira só existe na ponte (`cerebro_ponte.py:167`); o portão comum `recusar` não a tem. 3 memórias de REGRA sobre WhatsApp estão no cérebro (#222, #223, #261) — regra, não conteúdo | **DECISÃO DO DONO** — barrar a palavra no portão comum apagaria essas regras da memória comum |
+| L8 | Risco "Índice local defasado: baixa" (§11) | Conferência a cada 10 min custa 1,7 a 3,7 s com a VM em carga (medido); o índice da VM-2 soma a sincronização (≥ 32 min medidos em 18/11) | **MITIGADO na leitura** (L4): o valor vigente vem do registro, não do índice |
+
+**B. Defeitos medidos e resultado**
+
+| Defeito | Antes | Depois | Estado |
+|---|---:|---:|---|
+| Divergências abertas no verificador de certeza (cópia do `certeza.db` de produção) | 9 | **0** | VERIFICADO |
+| — memória datada acusada como "valor superado" (`cerebro_registro`) | 4 de 4 falsas | 0 | VERIFICADO |
+| — divergência do índice que nunca curava (34 valores superados × 12 buscas por ciclo) | 5 presas, 2 delas eco da nota diária da automelhoria | 0 em 3 ciclos (36 buscas cobrem os 34) | VERIFICADO |
+| `caso` mostra o valor vigente — 9 perguntas reais (rótulo de cada fato em R$ já corrigido) | 0 de 9 (0 de 108 linhas) | **9 de 9**, no topo, com id e estado | VERIFICADO |
+| Valor superado devolvido sem aviso | 1 (memória #456, em várias perguntas) | 0 — marcado, afundado na lista, conflito contado | VERIFICADO |
+| Memória ativa com valor superado fora do alcance do verificador | 1 (#456) | acusada (`cerebro_memoria`) | VERIFICADO em teste; em produção vale no próximo ciclo depois de implantado |
+| `MEMORY.md` | 213 linhas (13 cortadas, as mais novas) | 160 na proposta; 64 de 64 ganchos mantidos; 0 referências perdidas | PROPOSTA — não aplicada |
+| Pares de consolidação abertos | 34 | 11 (23 fechados sem modelo) | VERIFICADO na cópia da fila |
+
+**C. Limites (honestidade)**
+
+- As 9 perguntas de vigência são **todas** as que o registro permite hoje (9 fatos em R$ com valor superado); não é
+  amostra — é o universo, e é pequeno. Conflito entre fontes só é detectável para fato registrado na certeza
+  (44 fatos); número que não é fato registrado continua sem árbitro.
+- O `caso` corrige a leitura na VM-1. `brain_search`/`brain_recall` do MCP (VM-2, Yoda, web) **não** ganharam o
+  aviso: exige o registro de fatos acessível à VM-2 (L4).
+- Regra da memória datada: vale a data **escrita no texto**; memória sem data segue acusada. Nota do vault segue
+  estrita (histórico lá se marca com `<!--fato-historico-->`).
+- A defasagem do índice (≥ 32 min) **não foi reduzida** — foi tornada inofensiva para número registrado.
 
 ## 13. Fontes
 

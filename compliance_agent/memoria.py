@@ -12,7 +12,6 @@ def consolidar(limite: int = 15) -> dict:
     """Memória consolidada {ok, lex_base, hermes, _fontes}."""
     out: dict = {"ok": True, "_fontes": []}
 
-    # Lex — base empírica (calibração de pesos/dosimetria), se houver
     try:
         from compliance_agent import lex_base_empirica as lbe
         stats = getattr(lbe, "stats", None) or getattr(lbe, "resumo", None)
@@ -21,7 +20,6 @@ def consolidar(limite: int = 15) -> dict:
     except Exception as e:  # noqa: BLE001
         out["lex_base"] = {"_nota": f"INDISPONÍVEL: {e}"}
 
-    # Hermes — memória do orquestrador (arquivo, se acessível)
     try:
         import json
         from pathlib import Path

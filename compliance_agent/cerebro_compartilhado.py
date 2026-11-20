@@ -52,14 +52,16 @@ MAX_CHARS = 1500
 
 DDL = """CREATE TABLE IF NOT EXISTS cerebro(
   chave TEXT PRIMARY KEY, kind TEXT, assunto TEXT, conteudo TEXT, hash TEXT,
-  mem_id INTEGER, hash_enviado TEXT, enviado_em REAL, tentativas INTEGER DEFAULT 0, erro TEXT, criado_em REAL)"""
+  mem_id INTEGER, hash_enviado TEXT, enviado_em REAL, tentativas INTEGER DEFAULT 0, erro TEXT, criado_em REAL,
+  prova_doc TEXT, prova_trecho TEXT)"""
 
 
 class CerebroIndisponivel(RuntimeError):
     """O cérebro não respondeu (rede, serviço parado, resposta ilegível)."""
 
 
-_RECUSAS = (
+RX_CNPJ = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")       # 14 dígitos: dado público, nunca recusado
+RECUSAS = (
     ("cpf", re.compile(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b")),
     ("cpf mascarado", re.compile(r"\*{3}\.?\d{3}\.?\d{3}-?\*{2}|\b\d{3}\.\*{3}\.\*{3}-\d{2}\b")),
     ("e-mail", re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")),
@@ -71,8 +73,8 @@ _RECUSAS = (
 
 def recusar(texto: str) -> str | None:
     """Motivo para NÃO mandar o texto ao cérebro, ou None se pode ir. CNPJ (14 dígitos) passa: é dado público."""
-    sem_cnpj = re.sub(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b", " ", texto or "")
-    for nome, rx in _RECUSAS:
+    sem_cnpj = RX_CNPJ.sub(" ", texto or "")
+    for nome, rx in RECUSAS:
         if rx.search(sem_cnpj):
             return nome
     return None
@@ -132,13 +134,37 @@ def mcp(ferramenta: str, argumentos: dict):
         raise CerebroIndisponivel(f"mcp {ferramenta}: resposta ilegível ({exc})") from exc
 
 
-def _con(db: Path | None = None) -> sqlite3.Connection:
-    alvo = db or DATA / "propagacao.db"
+def gravar_memoria(corpo: dict) -> dict:
+    """POST /api/memories — a resposta do cérebro ({id, status, existente?}). Quem chama já passou por `recusar`."""
+    return _http("/api/memories", corpo)
+
+
+def pares_semelhantes(minimo: float, limite: int = 300) -> list[dict]:
+    """Pares de memórias ativas com semelhança ≥ `minimo`, fora das séries geradas (insumo da consolidação)."""
+    return _http(f"/api/consolidacao/pares?minimo={minimo}&limite={int(limite)}")
+
+
+def banco() -> Path:
+    """O registro local (fila de envio, índice de entidade da ponte, estado do despachante)."""
+    return DATA / "propagacao.db"
+
+
+def conectar(db: Path | None = None) -> sqlite3.Connection:
+    alvo = db or banco()
     alvo.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(alvo, timeout=30)
     con.execute("PRAGMA journal_mode=WAL")
-    con.execute(DDL)
+    preparar(con)
     return con
+
+
+def preparar(con: sqlite3.Connection) -> None:
+    """Cria a tabela do registro e dá ao banco antigo as colunas de prova (19/11: o serviço passou a aceitá-las)."""
+    con.execute(DDL)
+    tem = {r[1] for r in con.execute("PRAGMA table_info(cerebro)")}
+    for coluna in ("prova_doc", "prova_trecho"):
+        if coluna not in tem:
+            con.execute(f"ALTER TABLE cerebro ADD COLUMN {coluna} TEXT")
 
 
 def _hash(kind: str, conteudo: str) -> str:
@@ -146,16 +172,20 @@ def _hash(kind: str, conteudo: str) -> str:
 
 
 def registrar(chave: str, conteudo: str, kind: str = "semantica", assunto: str | None = None,
-              con: sqlite3.Connection | None = None) -> str:
+              con: sqlite3.Connection | None = None, prova: tuple[str, str] | None = None) -> str:
     """Põe a descoberta no registro (fila). Devolve: 'novo' | 'corrigido' | 'igual' | 'recusado: <motivo>'.
+    `prova` = (documento primário, trecho literal conferido por código) — o ponteiro de prova do fato; acompanha
+    o texto no envio (não reabre o envio de texto igual).
 
     Não fala com a rede — quem envia é `enviar_pendentes`. Assim a rotina que descobre nunca espera o cérebro."""
     if kind not in KINDS:
         raise ValueError(f"kind deve ser um de {KINDS}")
     conteudo = " ".join((conteudo or "").split())[:MAX_CHARS]
     motivo = recusar(f"{assunto or ''} {conteudo}")
+    # prova que traz dado pessoal ou aparência de segredo (trecho literal de processo) não sai: o fato vai sem ponteiro
+    doc, trecho = prova if prova and not recusar(" ".join(prova)) else (None, None)
     proprio = con is None
-    con = con or _con()
+    con = con or conectar()
     try:
         h = _hash(kind, conteudo)
         ant = con.execute("SELECT hash, hash_enviado FROM cerebro WHERE chave=?", (chave,)).fetchone()
@@ -168,12 +198,12 @@ def registrar(chave: str, conteudo: str, kind: str = "semantica", assunto: str |
         if ant and ant[0] == h:
             return "igual"
         if ant is None:
-            con.execute("INSERT INTO cerebro(chave,kind,assunto,conteudo,hash,criado_em) VALUES (?,?,?,?,?,?)",
-                        (chave, kind, assunto, conteudo, h, time.time()))
+            con.execute("INSERT INTO cerebro(chave,kind,assunto,conteudo,hash,criado_em,prova_doc,prova_trecho) "
+                        "VALUES (?,?,?,?,?,?,?,?)", (chave, kind, assunto, conteudo, h, time.time(), doc, trecho))
             r = "novo"
         else:
-            con.execute("UPDATE cerebro SET kind=?, assunto=?, conteudo=?, hash=?, erro=NULL, tentativas=0 WHERE chave=?",
-                        (kind, assunto, conteudo, h, chave))
+            con.execute("UPDATE cerebro SET kind=?, assunto=?, conteudo=?, hash=?, erro=NULL, tentativas=0, prova_doc=?, "
+                        "prova_trecho=? WHERE chave=?", (kind, assunto, conteudo, h, doc, trecho, chave))
             r = "corrigido"
         con.commit()
         return r
@@ -187,18 +217,20 @@ def enviar_pendentes(limite: int = 20, con: sqlite3.Connection | None = None) ->
 
     Só marca como enviado com a resposta do cérebro em mãos ('gravada' ou 'duplicada' + id)."""
     proprio = con is None
-    con = con or _con()
+    con = con or conectar()
     r = {"enviadas": 0, "corrigidas": 0, "duplicadas": 0, "falhas": 0, "erro": None}
     try:
         linhas = con.execute(
-            "SELECT chave, kind, assunto, conteudo, hash, mem_id FROM cerebro "
+            "SELECT chave, kind, assunto, conteudo, hash, mem_id, prova_doc, prova_trecho FROM cerebro "
             "WHERE conteudo IS NOT NULL AND (hash_enviado IS NULL OR hash_enviado<>hash) "
             "ORDER BY criado_em LIMIT ?", (limite,)).fetchall()
-        for chave, kind, assunto, conteudo, h, mem_id in linhas:
+        for chave, kind, assunto, conteudo, h, mem_id, doc, trecho in linhas:
             corpo = {"content": conteudo, "kind": kind, "subject": assunto, "source": FONTE, "confidence": 0.9,
                      "supersedes": mem_id, "tags": ["jfn", "propagacao"], "chave": chave}
+            if doc and trecho:
+                corpo.update(prova_doc=doc, prova_trecho=trecho)
             try:
-                resp = _http("/api/memories", corpo)
+                resp = gravar_memoria(corpo)
                 novo_id = int(resp["id"])
             except (CerebroIndisponivel, KeyError, TypeError, ValueError) as exc:
                 con.execute("UPDATE cerebro SET tentativas=tentativas+1, erro=? WHERE chave=?", (str(exc)[:300], chave))
@@ -229,7 +261,7 @@ def enviar_pendentes(limite: int = 20, con: sqlite3.Connection | None = None) ->
 
 def lembrar(chave: str, conteudo: str, kind: str = "semantica", assunto: str | None = None) -> dict:
     """Registra e envia na hora (uso interativo). Rotina use `registrar` e deixe o despachante enviar."""
-    con = _con()
+    con = conectar()
     try:
         r = registrar(chave, conteudo, kind, assunto, con=con)
         if r.startswith("recusado") or r == "igual":
@@ -244,7 +276,7 @@ def lembrar(chave: str, conteudo: str, kind: str = "semantica", assunto: str | N
 def resumo(con: sqlite3.Connection | None = None) -> dict:
     """Estado do registro para o painel (Sistema › Propagação). Não fala com a rede."""
     proprio = con is None
-    con = con or _con()
+    con = con or conectar()
     try:
         tot, env, pend, rec, ult = con.execute(
             "SELECT COUNT(*), SUM(hash_enviado IS NOT NULL AND hash_enviado=hash), "
@@ -261,33 +293,6 @@ def resumo(con: sqlite3.Connection | None = None) -> dict:
     finally:
         if proprio:
             con.close()
-
-
-def caso(termo: str, k: int = 6) -> str:
-    """O que o cérebro já sabe sobre um caso — para ler ANTES de reabri-lo. Texto curto, pronto para o agente."""
-    mem = recordar(termo, k=k)
-    aviso = None
-    if os.environ.get("JFN_CEREBRO_FUNDIDO", "1") != "0":
-        # fase 1 (19/11/2026): BM25 por nota do vault local dá a ordem, o cérebro resgata — recall@10 de 33 para
-        # 56 em 56 na bateria (tools/cerebro_bateria.py). Import tardio: cerebro_busca importa este módulo.
-        from compliance_agent import cerebro_busca
-        r = cerebro_busca.buscar_fundido(termo, k=k)
-        notas = [{"path": f["nota"], "heading": None, "snippet": f["trecho"] or ""} for f in r["notas"]]
-        fora = [f"{p} {v}" for p, v in r["pernas"].items() if v.startswith("INDISPONÍVEL")]
-        aviso = "  ATENÇÃO — parte da busca não respondeu: " + "; ".join(fora) if fora else None
-    else:
-        notas = buscar(termo, k=k)
-    out = [f"CÉREBRO · o que já se sabe sobre: {termo}", ""]
-    out.append(f"Memórias dos agentes ({len(mem)}):" if mem else "Memórias dos agentes: nenhuma sobre este termo.")
-    for m in mem:
-        out.append(f"  [#{m['id']} · {m['kind']} · {m['source']} · {str(m['created_at'])[:10]}] {m['content'][:420]}")
-    out.append("")
-    out.append(f"Notas do vault ({len(notas)}):" if notas else "Notas do vault: nenhuma sobre este termo.")
-    for n in notas:
-        out.append(f"  [{n['path']} › {n.get('heading') or '—'}] {' '.join(n['snippet'].split())[:300]}")
-    if aviso:
-        out.append(aviso)
-    return "\n".join(out)
 
 
 def main(argv=None) -> int:
@@ -313,7 +318,8 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     try:
         if a.cmd == "caso":
-            print(caso(a.texto, a.k))
+            from compliance_agent import cerebro_busca      # a busca compõe este cliente; só a CLI a alcança daqui
+            print(cerebro_busca.caso(a.texto, a.k))
         elif a.cmd == "buscar":
             print(json.dumps(buscar(a.texto, a.k), ensure_ascii=False, indent=1))
         elif a.cmd == "recordar":

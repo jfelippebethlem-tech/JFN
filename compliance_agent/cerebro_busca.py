@@ -21,7 +21,13 @@ lugar (46 → 36 a 42), porque duas pernas fracas vencem uma forte. Por isso o d
 
 Só leitura, sem LLM, sem API paga, nada escrito na VM-2. Perna fora do ar NÃO vira lista vazia calada:
 `buscar_fundido` devolve `pernas` com o estado de cada uma e levanta `CerebroIndisponivel` se nenhuma respondeu.
-Desligar no `caso` do cerebro_compartilhado: `JFN_CEREBRO_FUNDIDO=0`.
+Desligar no `caso`: `JFN_CEREBRO_FUNDIDO=0`.
+
+`caso` é o que o agente lê antes de reabrir um assunto: memórias + notas, CONFERIDAS contra o registro de fatos
+(`certeza.db`). Medido em 20/11/2026: perguntando pelo rótulo de 9 fatos já corrigidos, nenhuma das 108 linhas
+devolvidas trazia o valor vigente e 1 memória ativa trazia o superado sem aviso — o índice (10 min, mais a
+sincronização) e a memória gravada à mão ficam para trás do registro. Por isso a resposta abre com o valor
+VIGENTE, marca o que traz valor superado (memória datada com o valor da data é histórico, não erro) e o afunda.
 
 CLI:
     python -m compliance_agent.cerebro_busca "<pergunta>" [-k 10] [--com khoj] [--sem brain]
@@ -43,6 +49,7 @@ from pathlib import Path
 from compliance_agent import cerebro_compartilhado as cerebro
 from compliance_agent import cerebro_fts as F
 from compliance_agent.cerebro_compartilhado import CerebroIndisponivel
+from compliance_agent.certeza import citacoes, config as certeza_config, fatos
 
 VAULT = Path(os.environ.get("JFN_VAULT") or Path.home() / "vault")
 INDICE = cerebro.DATA / "cerebro_busca" / "notas_fts.db"
@@ -142,7 +149,7 @@ def _perna_entidade(pergunta: str) -> list[dict]:
     if not ents:
         return []
     out: list[dict] = []
-    db = cerebro.DATA / "propagacao.db"
+    db = cerebro.banco()
     if db.exists():
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=10)
         try:
@@ -156,7 +163,7 @@ def _perna_entidade(pergunta: str) -> list[dict]:
         finally:
             con.close()
     indexar()
-    con = F.abrir(INDICE)                     # o identificador escrito no texto das notas (frase exata)
+    con = F.abrir(INDICE)
     try:
         for tipo, valor in ents:
             out += F.por_identificador(con, tipo, valor)
@@ -221,6 +228,93 @@ def buscar_fundido(pergunta: str, k: int = 10, sem: tuple[str, ...] = (), com: t
         ficha[n]["resgate"] = True
     ordem = base[:k - min(len(resgatadas), RESGATE)] + resgatadas
     return {"notas": [ficha[n] for n in ordem[:k]], "pernas": estado}
+
+
+# ---------- `caso`: memórias + notas, conferidas contra o registro de fatos ----------
+
+def _registro_de_fatos() -> tuple[list[dict], list[dict]] | str:
+    """(fatos vigentes, alvos com valor superado) do registro de certeza, ou o motivo de não ter lido. Só leitura:
+    não cria o banco."""
+    db = certeza_config.banco()
+    if not db.exists():
+        return f"{db} não existe"
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=10)
+        try:
+            return fatos.vigentes(con), citacoes.alvos(con)
+        finally:
+            con.close()
+    except sqlite3.Error as exc:
+        return f"{type(exc).__name__}: {exc}"
+
+
+def _fatos_da_pergunta(pergunta: str, vigentes: list[dict]) -> list[str]:
+    """Ids dos fatos cujo rótulo/apelido casa melhor com a pergunta (≥ 2 palavras de conteúdo; só os de maior casamento)."""
+    ts = set(F.termos(pergunta))
+    pontos = {}
+    for f in vigentes:
+        meta = json.loads(f["meta"] or "{}")
+        saco = set(F.termos(" ".join([f["rotulo"] or "", *map(str, meta.get("apelidos", []))])))
+        n = len(ts & saco)
+        if n >= 2 and f["valor"] is not None:
+            pontos[f["fato_id"]] = n
+    return [fid for fid, n in pontos.items() if n == max(pontos.values())][:4]
+
+
+def caso(termo: str, k: int = 6) -> str:
+    """O que o cérebro já sabe sobre um caso — para ler ANTES de reabri-lo. Texto curto, pronto para o agente."""
+    mem = cerebro.recordar(termo, k=k)
+    aviso = None
+    if os.environ.get("JFN_CEREBRO_FUNDIDO", "1") != "0":
+        r = buscar_fundido(termo, k=k)
+        notas = [{"path": f["nota"], "heading": None, "snippet": f["trecho"] or ""} for f in r["notas"]]
+        fora = [f"{p} {v}" for p, v in r["pernas"].items() if v.startswith("INDISPONÍVEL")]
+        aviso = "  ATENÇÃO — parte da busca não respondeu: " + "; ".join(fora) if fora else None
+    else:
+        notas = cerebro.buscar(termo, k=k)
+
+    reg = _registro_de_fatos()
+    vigentes, alvos = ([], []) if isinstance(reg, str) else reg
+    # memória é registro imutável: a que cita a data em que o valor valia é histórico; nota é documento vivo
+    marcas_mem = [citacoes.mencoes(m["content"], alvos) for m in mem]
+    marcas_nota = [[{**x, "historico": False} for x in citacoes.mencoes(n["snippet"], alvos)] for n in notas]
+    superado = lambda marcas: any(not x["historico"] for x in marcas)                       # noqa: E731
+    tocados = list(dict.fromkeys([x["fato_id"] for ms in marcas_mem + marcas_nota for x in ms]
+                                 + _fatos_da_pergunta(termo, vigentes)))
+
+    out = [f"CÉREBRO · o que já se sabe sobre: {termo}", ""]
+    if isinstance(reg, str):
+        out += [f"Registro de fatos: INDISPONÍVEL ({reg}) — os números abaixo não foram conferidos.", ""]
+    elif tocados:
+        por_id = {f["fato_id"]: f for f in vigentes}
+        out.append("Registro de fatos — valor VIGENTE (é o que vale; cite pelo id):")
+        for fid in tocados:
+            f = por_id[fid]
+            out.append(f"  {f['rotulo'] or fid} = {citacoes.citar(f)} [{f['estado']} · nível de prova {f['nivel_prova']}"
+                       f" · referência {str(f['data_ref'])[:10]}]")
+        n_sup = sum(map(superado, marcas_mem + marcas_nota))
+        if n_sup:
+            out.append(f"  CONFLITO entre fontes: {n_sup} de {len(mem) + len(notas)} resultado(s) abaixo trazem valor "
+                       "superado — vale o registro acima.")
+        out.append("")
+
+    def avisos(marcas: list[dict]) -> list[str]:
+        return [f"      ↳ {'histórico datado (valia na data citada)' if x['historico'] else 'VALOR SUPERADO'}: "
+                f"{x['encontrado']} — vigente {x['esperado']} (fato {x['fato_id']})"
+                for x in {(x["fato_id"], x["encontrado"]): x for x in marcas}.values()]
+
+    out.append(f"Memórias dos agentes ({len(mem)}):" if mem else "Memórias dos agentes: nenhuma sobre este termo.")
+    for m, marcas in sorted(zip(mem, marcas_mem), key=lambda p: superado(p[1])):
+        out.append(f"  [#{m['id']} · {m['kind']} · {m['source']} · {str(m['created_at'])[:10]}] {m['content'][:420]}")
+        out += avisos(marcas)
+    out.append("")
+    out.append(f"Notas do vault ({len(notas)}):" if notas else "Notas do vault: nenhuma sobre este termo.")
+    for n, marcas in sorted(zip(notas, marcas_nota), key=lambda p: superado(p[1])):
+        out.append(f"  [{n['path']} › {n.get('heading') or '—'}] {' '.join(n['snippet'].split())[:300]}")
+        out += avisos(marcas)
+    if aviso:
+        out.append(aviso)
+    return "\n".join(out)
 
 
 def main(argv=None) -> int:

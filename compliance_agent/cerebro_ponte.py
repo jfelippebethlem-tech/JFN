@@ -40,6 +40,7 @@ from pathlib import Path
 from compliance_agent import cerebro_compartilhado as cerebro
 from compliance_agent import cores_orgaos
 from compliance_agent.autoaprimoramento import armadilhas, config as auto_config
+from compliance_agent.cerebro_fts import grafias
 from compliance_agent.certeza.fatos import brl
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -52,8 +53,7 @@ DDL = """
 CREATE TABLE IF NOT EXISTS ponte_entidade(tipo TEXT, valor TEXT, chave TEXT, papel TEXT, PRIMARY KEY(tipo, valor, chave, papel));
 CREATE TABLE IF NOT EXISTS ponte_laudo(tag TEXT PRIMARY KEY, hash TEXT, conferencia TEXT);
 """
-_PESSOAL = tuple(rx for nome, rx in cerebro._RECUSAS if nome in ("cpf", "cpf mascarado", "e-mail"))
-_CNPJ = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")
+_PESSOAL = tuple(rx for nome, rx in cerebro.RECUSAS if nome in ("cpf", "cpf mascarado", "e-mail"))
 _ASPAS = re.compile(r'"([^"]+)"|“([^”]+)”')
 _CORTE = re.compile(r"\[\s*(?:\.\.\.|…)\s*\]|\(\s*(?:\.\.\.|…)\s*\)|\.\.\.|…")
 
@@ -65,7 +65,7 @@ def limpar(texto) -> str:
     def guarda(m):
         guardados.append(m.group(0))
         return f"\x00{len(guardados) - 1}\x00"
-    t = _CNPJ.sub(guarda, str(texto or ""))
+    t = cerebro.RX_CNPJ.sub(guarda, str(texto or ""))
     for rx in _PESSOAL:
         t = rx.sub("[dado pessoal omitido]", t)
     return re.sub(r"\x00(\d+)\x00", lambda m: guardados[int(m.group(1))], t)
@@ -77,17 +77,23 @@ def normalizar(texto: str) -> str:
     return re.sub(r"[\W_]+", "", (texto or "").lower())
 
 
-def citacao_conferida(prova: str, corpus_norm: str) -> bool | None:
-    """True se ALGUM trecho entre aspas existe literalmente no processo (todas as partes de um trecho com reticências
-    têm de existir); False se há trecho longo e nenhum existe; None se não há trecho que se possa conferir."""
+def trecho_localizado(prova: str, corpus_norm: str) -> str | bool | None:
+    """O trecho entre aspas que existe literalmente no processo (todas as partes de um trecho com reticências têm de
+    existir); False se há trecho longo e nenhum existe; None se não há trecho que se possa conferir."""
     viu = False
     for m in _ASPAS.finditer(prova or ""):
-        partes = [p for p in (normalizar(x) for x in _CORTE.split(m.group(1) or m.group(2))) if len(p) >= MIN_TRECHO]
+        citado = m.group(1) or m.group(2)
+        partes = [p for p in (normalizar(x) for x in _CORTE.split(citado)) if len(p) >= MIN_TRECHO]
         if partes:
             viu = True
             if all(p in corpus_norm for p in partes):
-                return True
+                return citado
     return False if viu else None
+
+
+def citacao_conferida(prova: str, corpus_norm: str) -> bool | None:
+    r = trecho_localizado(prova, corpus_norm)
+    return True if isinstance(r, str) else r
 
 
 def conferir(laudo: dict, corpus: str | None, ob_siafe) -> dict:
@@ -95,14 +101,15 @@ def conferir(laudo: dict, corpus: str | None, ob_siafe) -> dict:
     `ob_siafe(numero, ug) -> [valores]` (None = não conferido)."""
     achados = laudo.get("achados_principais") or []
     norm = normalizar(corpus) if corpus else None
-    marcas = [citacao_conferida(a.get("prova", ""), norm) if norm else None for a in achados]
+    trechos = [trecho_localizado(a.get("prova", ""), norm) if norm else None for a in achados]
+    marcas = [True if isinstance(t, str) else t for t in trechos]
     obs = [o for o in ((laudo.get("pago_ob") or {}).get("obs") or []) if isinstance(o, dict) and o.get("numero_ob")]
     ok = None
     if ob_siafe is not None:
         ok = sum(1 for o in obs if isinstance(o.get("valor"), (int, float))
                  and any(abs(v - o["valor"]) < 0.01 for v in ob_siafe(str(o["numero_ob"]), str(o.get("ug") or ""))))
     return {"achados": marcas, "nivel": 2 if any(m is True for m in marcas) else 1, "fonte_lida": norm is not None,
-            "ob_total": len(obs), "ob_ok": ok}
+            "ob_total": len(obs), "ob_ok": ok, "trecho": next((t for t in trechos if isinstance(t, str)), None)}
 
 
 def _digitos(v) -> str:
@@ -155,8 +162,11 @@ def fatos_do_laudo(laudo: dict, conf: dict) -> list[dict]:
     if resto and provados:
         partes.append(f"{resto} achado(s) sem conferência por código (nível 1) ficam só no laudo.")
     partes.append(AVISO)
+    # conferência guardada antes de 20/11/2026 não tem o trecho: o fato segue sem ponteiro até o laudo ser relido
+    prova = ((f"{proc} — texto arquivado do processo (laudo data/pericia_agentes/{tag}.json)", limpar(conf["trecho"]))
+             if conf.get("trecho") else None)
     fatos = [{"chave": f"pericia-agente:{tag}", "kind": "semantica", "assunto": limpar(cred.get("nome") or proc)[:120],
-              "texto": limpar(" ".join(partes)), "entidades": _entidades(laudo)}]
+              "texto": limpar(" ".join(partes)), "entidades": _entidades(laudo), "prova": prova}]
     licao = " ".join(str(laudo.get("aprendizado") or "").split())
     if licao:
         fatos.append({"chave": f"licao-pericia:{tag}", "kind": "procedural", "assunto": "lição candidata da perícia",
@@ -267,7 +277,7 @@ def cruzar(con: sqlite3.Connection) -> list[dict]:
 def entidade(termo: str, con: sqlite3.Connection | None = None) -> list[dict]:
     """Tudo o que o registro tem de uma empresa (CNPJ), processo (SEI) ou UG: [{chave, papel, id, texto}]."""
     proprio = con is None
-    con = con or cerebro._con()
+    con = con or cerebro.conectar()
     try:
         con.executescript(DDL)
         d = _digitos(termo)
@@ -280,16 +290,12 @@ def entidade(termo: str, con: sqlite3.Connection | None = None) -> list[dict]:
             con.close()
 
 
-def _cnpj_fmt(c: str) -> str:
-    return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}"
-
-
 def sincronizar(con: sqlite3.Connection | None = None, ob_siafe="padrao", max_novos: int = 10**6) -> dict:
     """Laudos e vereditos → registro do cérebro (fila do despachante) + índice de entidades + notas do vault.
     `max_novos` = quantos laudos novos/alterados conferir na fonte nesta rodada (a leitura do processo é o custo)."""
     novos = 0
     proprio = con is None
-    con = con or cerebro._con()
+    con = con or cerebro.conectar()
     siafe_con = None
     if ob_siafe == "padrao":
         ob_siafe, siafe_con = _ob_siafe_ro()
@@ -298,7 +304,7 @@ def sincronizar(con: sqlite3.Connection | None = None, ob_siafe="padrao", max_no
     linhas, licoes = [], []
 
     def registrar(f: dict) -> None:
-        st = cerebro.registrar(f["chave"], f["texto"], f["kind"], f["assunto"], con=con)
+        st = cerebro.registrar(f["chave"], f["texto"], f["kind"], f["assunto"], con=con, prova=f.get("prova"))
         r["registro"]["recusado" if st.startswith("recusado") else st] += 1
         con.execute("DELETE FROM ponte_entidade WHERE chave=?", (f["chave"],))
         con.executemany("INSERT OR IGNORE INTO ponte_entidade VALUES (?,?,?,?)", [(t, v, f["chave"], p) for t, v, p in f["entidades"]])
@@ -363,7 +369,7 @@ def sincronizar(con: sqlite3.Connection | None = None, ob_siafe="padrao", max_no
                     f"{r['laudos']} laudos; {r['nivel2']} com ao menos um achado de nível 2 (citação localizada por código no processo).", "",
                     "| Processo | Credor | CNPJ | Pago por OB (SIAFE) | Nível | Achados conferidos |", "|---|---|---|---:|:-:|:-:|", *linhas, "",
                     "## Empresas em mais de um processo", ""]
-            topo += [f"- **{_cnpj_fmt(x['cnpj'])}** — {len({o['chave'] for o in x['onde']})} processos: " + "; ".join(
+            topo += [f"- **{grafias('cnpj', x['cnpj'])[1]}** — {len({o['chave'] for o in x['onde']})} processos: " + "; ".join(
                 f"[[jfn/pericias-agente/{o['chave'].split(':', 1)[1]}]] ({o['papel']})" for o in x["onde"]) for x in cruz] or ["—"]
             r["notas_escritas"] += _escrever(VAULT / "jfn" / "pericias-agente.md", "\n".join(topo) + "\n")
             auto_md = ["---", "tipo: retrato", "tags: [jfn, aprendizado, pericia]", "---", "", "# Automelhoria da perícia — lições e portão", "",
@@ -392,7 +398,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if a.cmd == "sincronizar":
         r = sincronizar(max_novos=a.max_novos)
-        r["cores"] = cores_orgaos.aplicar_vault() if VAULT.is_dir() else None     # ug/orgao + cor por órgão no grafo
+        r["cores"] = cores_orgaos.aplicar_vault() if VAULT.is_dir() else None
         r["em"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         (DATA / "cerebro_ponte_estado.json").write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8")
         print(json.dumps(r, ensure_ascii=False))
@@ -400,7 +406,7 @@ def main(argv=None) -> int:
     elif a.cmd == "entidade":
         print(json.dumps(entidade(a.termo), ensure_ascii=False, indent=1))
     else:
-        con = cerebro._con()
+        con = cerebro.conectar()
         try:
             con.executescript(DDL)
             print(json.dumps(cruzar(con), ensure_ascii=False, indent=1))

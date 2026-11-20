@@ -16,6 +16,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent import cerebro_compartilhado as cer
+
 from . import citacoes, config, fatos, grafo, portoes
 
 
@@ -75,7 +77,6 @@ def _publicar_cerebro(cz: sqlite3.Connection, mudados: list[str]) -> dict:
     Só com JFN_CERTEZA_CEREBRO=1; teto por ciclo; quem envia é o despachante (`enviar_pendentes`)."""
     if not config.ligado("CEREBRO"):
         return {"estado": "desligado (JFN_CERTEZA_CEREBRO)", "n": 0}
-    from compliance_agent import cerebro_compartilhado as cer
     n, res = 0, {}
     for fid in mudados[:config.TETO_CEREBRO_CICLO]:
         f = fatos.vigente(cz, fid)
@@ -137,12 +138,13 @@ def ciclo(cfg: dict | None = None, compliance_db: Path | None = None, cz: sqlite
         g["resumo"]["achados"]["externo_sem_drenar"] = len(g["achados"]["externo_sem_drenar"])
         g["resumo"]["graves"] += len(g["achados"]["externo_sem_drenar"])
         # 4. citações e menções
+        recordar = None
         if buscar == "cerebro":
-            from compliance_agent import cerebro_compartilhado as cer
-            buscar = cer.buscar
-        v = citacoes.varrer(cz, (cfg.get("certeza") or {}).get("superficies") or {}, raiz, aplicar=True, buscar=buscar)
+            buscar, recordar = cer.buscar, cer.recordar
+        v = citacoes.varrer(cz, (cfg.get("certeza") or {}).get("superficies") or {}, raiz, aplicar=True, buscar=buscar,
+                            recordar=recordar, prop_db=cer.banco(), agora=agora)
         indis += v["indisponiveis"]
-        conc = citacoes.conciliar(cz, v["divergencias"] + recon, v["superficies_lidas"] + ["derivado"], agora)
+        conc = citacoes.conciliar(cz, v["divergencias"] + recon, v["conferidas"] + ["derivado"], agora)
         # 5. laudos
         try:
             ld = laudos(ro) if ro is not None else None

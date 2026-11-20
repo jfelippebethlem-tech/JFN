@@ -13,8 +13,12 @@ Duas formas de um texto carregar um número de fato:
      fornecedor/objeto (apelido) e o assunto (termo) do fato. Parágrafo com `<!--fato-historico-->` é narrativa
      de histórico e fica fora.
 
-Cérebro: o registro local de memórias (`propagacao.db › cerebro`) é varrido como texto; o índice remoto é consultado
-pelo valor superado (teto de consultas por ciclo) — trecho antigo que o índice ainda serve é divergência do ÍNDICE.
+Cérebro: o registro local de memórias (`propagacao.db › cerebro`) é varrido como texto. Memória é registro
+só-acréscimo (não se edita: corrige-se com versão nova), então a que DECLARA a data do que afirma é julgada pelo
+que o registro de fatos dizia NAQUELA data (`valia_na_data`) — medido em 20/11/2026: as 4 divergências abertas
+nessa superfície eram histórico correto ("medido em 18/11/2026 … R$ X"). Nota do vault é documento vivo e segue
+estrita. O índice remoto é consultado pelo valor superado (teto de consultas por ciclo, em rodízio) — trecho antigo
+que o índice ainda serve é divergência do ÍNDICE, e ela cura quando a busca DAQUELE valor volta limpa.
 Divergências têm ciclo de vida: aberta → curada → REINCIDIU (mesmo desenho da fila de automelhoria).
 """
 from __future__ import annotations
@@ -25,6 +29,7 @@ import re
 import sqlite3
 import time
 import unicodedata
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import config, fatos, portoes
@@ -32,6 +37,8 @@ from . import config, fatos, portoes
 RE_ANCORA = re.compile(r"(?P<num>R\$\s?-?[\d.]+,\d{2}|-?\d{1,3}(?:\.\d{3})+(?:,\d+)?%?|-?\d+(?:,\d+)?%?)(?P<meio>[*_`]{0,3}\s?)"
                        r"<!--\s*fato:(?P<id>[A-Za-z0-9_.:\-]+)\s*-->")
 HISTORICO = "<!--fato-historico-->"
+_RE_DATA = re.compile(r"(?<![\d/-])(?:(\d{2})/(\d{2})/(20\d{2})|(20\d{2})-(\d{2})-(\d{2}))(?![\d/-])")
+_BRT = timezone(timedelta(hours=-3))
 _GENERICOS = {"INSTITUTO", "CONSTRUTORA", "FUNDACAO", "ASSOCIACAO", "EMPRESA", "CENTRO", "COMPANHIA", "SOCIEDADE",
               "SERVICOS", "COMERCIO", "CONSORCIO", "GRUPO", "BANCO", "FUNDO", "LTDA", "COOPERATIVA"}
 DDL = """
@@ -98,13 +105,15 @@ def _sem_acento(s: str) -> str:
 
 
 def alvos(con: sqlite3.Connection) -> list[dict]:
-    """Um alvo por fato com valor superado: {fato_id, unidade, vigente, superados, apelidos, termos}."""
+    """Um alvo por fato com valor superado: {fato_id, unidade, vigente, superados, apelidos, termos, versoes,
+    pre_registro}. `versoes` = [(registrado_em, valor)] em ordem; `pre_registro` = valores de antes de o registro existir."""
     out = []
     for f in fatos.vigentes(con):
         if f["valor"] is None:
             continue
         meta = json.loads(f["meta"] or "{}")
-        antigos = {round(float(h["valor"]), 2) for h in fatos.historico(con, f["fato_id"]) if h["valor"] is not None}
+        versoes = [(h["registrado_em"], float(h["valor"])) for h in fatos.historico(con, f["fato_id"]) if h["valor"] is not None]
+        antigos = {round(v, 2) for _, v in versoes}
         antigos |= {round(float(x), 2) for x in meta.get("superados", [])}
         antigos = {a for a in antigos if not _igual(a, f["valor"], f["unidade"])}
         if not antigos:
@@ -117,6 +126,7 @@ def alvos(con: sqlite3.Connection) -> list[dict]:
             if len(prim) >= 4 and prim not in _GENERICOS:
                 ap.add(prim)
         out.append({"fato_id": f["fato_id"], "unidade": f["unidade"], "vigente": f["valor"], "superados": sorted(antigos),
+                    "versoes": versoes, "pre_registro": [float(x) for x in meta.get("superados", [])],
                     "medida": meta.get("medida") or f["fato_id"].rsplit(":", 1)[-1],
                     "apelidos": sorted(ap), "termos": [_sem_acento(t) for t in meta.get("termos", [])]})
     return out
@@ -132,9 +142,31 @@ def _tem(texto_maiusculo: str, palavras: list[str]) -> bool:
     return any(re.search(r"(?<![A-Z0-9])" + re.escape(p), texto_maiusculo) for p in palavras if p)
 
 
-def mencoes_superadas(texto: str, alvos_: list[dict]) -> list[dict]:
-    """Menção livre a valor superado. A unidade de contexto é o PARÁGRAFO (linhas seguidas sem linha em branco —
-    nota com quebra dura de linha parte a frase no meio; medido na nota da AGILE em 18/11/2026: "Em 35\nprocessos").
+def valia_na_data(texto: str, alvo: dict, valor: float) -> bool:
+    """O texto cita uma data (dd/mm/aaaa ou aaaa-mm-dd) em que `valor` ERA o do registro de fatos? Vale qualquer
+    versão vigente em algum momento daquele dia (BRT). Dia que começa antes da 1ª versão registrada aceita também
+    a 1ª versão e os valores de antes de o registro existir (`superados` do mapa)."""
+    versoes = alvo.get("versoes") or []
+    if not versoes:
+        return False
+    for d, m, a, a2, m2, d2 in _RE_DATA.findall(texto):
+        try:
+            ini = datetime(int(a or a2), int(m or m2), int(d or d2), tzinfo=_BRT).timestamp()
+        except ValueError:
+            continue
+        fim = ini + 86400
+        no_dia = [v for (t, v), (t_fim, _) in zip(versoes, versoes[1:] + [(float("inf"), None)]) if t < fim and t_fim > ini]
+        if ini < versoes[0][0]:
+            no_dia += [versoes[0][1]] + list(alvo.get("pre_registro") or [])
+        if any(_igual(valor, v, alvo["unidade"]) for v in no_dia):
+            return True
+    return False
+
+
+def mencoes(texto: str, alvos_: list[dict]) -> list[dict]:
+    """Toda menção livre a valor superado, com `historico` = o parágrafo cita a data em que o valor valia
+    (`valia_na_data`). A unidade de contexto é o PARÁGRAFO (linhas seguidas sem linha em branco — nota com quebra
+    dura de linha parte a frase no meio; medido na nota da AGILE em 18/11/2026: "Em 35\nprocessos").
       · BRL: o valor antigo, ao centavo, num parágrafo que NÃO traz o valor vigente;
       · contagem: "<antigo> <medida>" (ex.: "35 processos") num parágrafo que cita o apelido e o termo do fato.
     Parágrafo com `<!--fato-historico-->` é narrativa de histórico e fica fora."""
@@ -169,25 +201,40 @@ def mencoes_superadas(texto: str, alvos_: list[dict]) -> list[dict]:
                 out.append({"tipo": "mencao_a_valor_superado", "fato_id": a["fato_id"],
                             "linha": texto.count("\n", 0, m.start() + achado.start()) + 1,
                             "encontrado": fatos.formatar(antigo, a["unidade"]),
-                            "esperado": fatos.formatar(a["vigente"], a["unidade"])})
+                            "esperado": fatos.formatar(a["vigente"], a["unidade"]),
+                            "historico": valia_na_data(par, a, antigo)})
     return out
+
+
+def mencoes_superadas(texto: str, alvos_: list[dict], datado: bool = False) -> list[dict]:
+    """As menções que são DIVERGÊNCIA. `datado` = o texto é registro imutável (memória): a menção histórica (a que
+    cita a data em que o valor valia) não é divergência. Nota do vault é documento vivo: toda menção conta."""
+    return [{k: v for k, v in m.items() if k != "historico"} for m in mencoes(texto, alvos_)
+            if not (datado and m["historico"])]
 
 
 # ───────────────────────────── superfícies ─────────────────────────────
 def arquivos(sup: dict, raiz: Path | None = None):
     pasta = Path(os.path.expanduser(str(sup["pasta"])))
     pasta = pasta if pasta.is_absolute() else (raiz or config.REPO) / pasta
-    ign = [str(x) for x in sup.get("ignorar", [])]
     for arq in sorted(pasta.glob(sup.get("glob", "**/*.md"))):
         rel = str(arq.relative_to(pasta))
-        if arq.is_file() and not any(rel.startswith(i) or f"/{i}" in "/" + rel for i in ign):
+        if arq.is_file() and not _ignorado(rel, sup):
             yield arq, rel
 
 
+def _ignorado(rel: str, sup: dict | None) -> bool:
+    return any(rel.startswith(i) or f"/{i}" in "/" + rel for i in map(str, (sup or {}).get("ignorar", [])))
+
+
 def varrer(con: sqlite3.Connection, superficies: dict, raiz: Path | None = None, aplicar: bool = False,
-           prop_db: Path | None = None, buscar=None) -> dict:
-    """Confere todas as superfícies. Devolve {divergencias, lidos, citacoes, sincronizados, indisponiveis}.
-    `aplicar` reescreve citações divergentes (exige a chave SINCRONIZAR). `buscar` = função de busca do cérebro."""
+           prop_db: Path | None = None, buscar=None, recordar=None, agora: float | None = None) -> dict:
+    """Confere todas as superfícies. Devolve {divergencias, lidos, citacoes, sincronizados, indisponiveis,
+    superficies_lidas, conferidas}. `conferidas` = o que `conciliar` pode dar por curado: as superfícies lidas
+    inteiras mais cada consulta ao cérebro que respondeu (`cerebro_indice:<fato>:<valor>`, `cerebro_memoria:…`).
+    `aplicar` reescreve citações divergentes (exige a chave SINCRONIZAR). `buscar` / `recordar` = busca de notas e
+    de memórias do cérebro (`recordar` alcança a memória gravada à mão por sessão, que o registro local não tem)."""
+    agora = agora or time.time()
     vig = {f["fato_id"]: f for f in fatos.vigentes(con)}
     alv = alvos(con)
     aplicar = aplicar and config.ligado("SINCRONIZAR")
@@ -220,54 +267,72 @@ def varrer(con: sqlite3.Connection, superficies: dict, raiz: Path | None = None,
             for a in achados:
                 div.append({**a, "superficie": nome, "local": f"{rel}:{a['linha']}"})
     cer = (superficies or {}).get("cerebro") or {}
+    no_registro = set()
     if cer.get("registro"):
         try:
             ro = sqlite3.connect(f"file:{prop_db or config.REPO / 'data' / 'propagacao.db'}?mode=ro", uri=True, timeout=10)
             try:
                 for chave, conteudo in ro.execute("SELECT chave, conteudo FROM cerebro WHERE conteudo IS NOT NULL"):
-                    for a in conferir_citacoes(conteudo, vig) + mencoes_superadas(conteudo, alv):
+                    no_registro.add(chave)
+                    for a in conferir_citacoes(conteudo, vig) + mencoes_superadas(conteudo, alv, datado=True):
                         div.append({**a, "superficie": "cerebro_registro", "local": f"memória {chave}"})
                 lidas.add("cerebro_registro")
             finally:
                 ro.close()
         except sqlite3.Error as e:
             indis.append(f"registro local do cérebro: {type(e).__name__}: {e}")
+    buscas_ok = []
     if cer.get("busca") and buscar:
-        feitas, inteira = 0, True
-        for a in alv:
-            if a["unidade"] != "BRL":
-                continue
-            for antigo in a["superados"]:
-                if feitas >= config.TETO_BUSCAS_CEREBRO:
-                    inteira = False
-                    break
-                feitas += 1
-                s_ant = fatos.formatar(antigo, "BRL").replace("R$ ", "")
-                try:
-                    achou = buscar(s_ant, 8)
-                except (OSError, ValueError, RuntimeError) as e:
-                    indis.append(f"busca no cérebro: {type(e).__name__}: {str(e)[:120]}")
-                    inteira = False
-                    break
-                rx, rx_vig = _rx_num(antigo, "BRL"), _rx_num(a["vigente"], "BRL")
-                for h in achou or []:
-                    trecho = str(h.get("snippet") or h.get("content") or h.get("text") or "")
-                    if rx.search(trecho) and not rx_vig.search(trecho) and HISTORICO not in trecho:
-                        div.append({"tipo": "indice_do_cerebro_serve_valor_superado", "fato_id": a["fato_id"],
-                                    "superficie": "cerebro_indice", "linha": 0,
-                                    "local": f"{h.get('source', '?')}:{h.get('path', h.get('id', '?'))} › {str(h.get('heading') or '')[:80]}",
-                                    "encontrado": fatos.formatar(antigo, "BRL"), "esperado": fatos.formatar(a["vigente"], "BRL")})
+        # 34 valores superados para 12 buscas por ciclo (medido em 20/11/2026): a fila é em rodízio — primeiro o
+        # valor conferido há mais tempo — e cada busca que responde é uma unidade lida, que cura a sua divergência.
+        ultima = dict(con.execute("SELECT nome, MAX(em) FROM medida WHERE nome LIKE 'busca_indice:%' GROUP BY nome"))
+        fila = sorted(((a, antigo) for a in alv if a["unidade"] == "BRL" for antigo in a["superados"]),
+                      key=lambda p: ultima.get(f"busca_indice:{p[0]['fato_id']}:{p[1]}", 0))
+        inteira = len(fila) <= config.TETO_BUSCAS_CEREBRO
+        for a, antigo in fila[:config.TETO_BUSCAS_CEREBRO]:
+            s_ant = fatos.formatar(antigo, "BRL")
+            try:
+                achou = buscar(s_ant.replace("R$ ", ""), 8)
+                memorias = recordar(s_ant.replace("R$ ", ""), 8) if recordar else None
+            except (OSError, ValueError, RuntimeError) as e:
+                indis.append(f"busca no cérebro: {type(e).__name__}: {str(e)[:120]}")
+                inteira = False
+                break
+            nome = f"busca_indice:{a['fato_id']}:{antigo}"
+            con.execute("DELETE FROM medida WHERE nome=?", (nome,))
+            con.execute("INSERT INTO medida VALUES (?,?,?)", (nome, agora, len(achou or [])))
+            buscas_ok.append(f"cerebro_indice:{a['fato_id']}:{s_ant}")
+            if memorias is not None:
+                buscas_ok.append(f"cerebro_memoria:{a['fato_id']}:{s_ant}")
+            for mem in memorias or []:
+                if mem.get("chave") in no_registro:
+                    continue                     # memória do registro local: já julgada em `cerebro_registro`
+                for d in mencoes_superadas(str(mem.get("content") or ""), [{**a, "superados": [antigo]}], datado=True):
+                    div.append({**d, "tipo": "memoria_do_cerebro_com_valor_superado", "superficie": "cerebro_memoria",
+                                "linha": 0, "local": f"memória #{mem.get('id', '?')}"})
+            rx, rx_vig = _rx_num(antigo, "BRL"), _rx_num(a["vigente"], "BRL")
+            for h in achou or []:
+                if _ignorado(str(h.get("path") or ""), superficies.get(str(h.get("source")))):
+                    continue        # a pasta que a superfície de arquivos ignora (diário que transcreve o alarme)
+                trecho = str(h.get("snippet") or h.get("content") or h.get("text") or "")
+                if rx.search(trecho) and not rx_vig.search(trecho) and HISTORICO not in trecho:
+                    div.append({"tipo": "indice_do_cerebro_serve_valor_superado", "fato_id": a["fato_id"],
+                                "superficie": "cerebro_indice", "linha": 0,
+                                "local": f"{h.get('source', '?')}:{h.get('path', h.get('id', '?'))} › {str(h.get('heading') or '')[:80]}",
+                                "encontrado": s_ant, "esperado": fatos.formatar(a["vigente"], "BRL")})
         if inteira:
             lidas.add("cerebro_indice")
     return {"divergencias": div, "lidos": lidos, "citacoes": ncit, "sincronizados": sinc, "indisponiveis": indis,
-            "fatos_com_valor_superado": len(alv), "superficies_lidas": sorted(lidas)}
+            "fatos_com_valor_superado": len(alv), "superficies_lidas": sorted(lidas),
+            "conferidas": sorted(lidas) + buscas_ok}
 
 
 def conciliar(con: sqlite3.Connection, divergencias: list[dict], lidas: list[str] | None = None,
               agora: float | None = None) -> dict:
     """aberta → curada → REINCIDIU. A chave é (tipo, fato, superfície, local sem número de linha, valor encontrado):
-    a nota que ganha uma linha acima não vira divergência nova. Só se dá por CURADA a divergência de superfície que
-    foi lida inteira neste ciclo (`lidas`; None = todas) — superfície que não respondeu não cura nada."""
+    a nota que ganha uma linha acima não vira divergência nova. Só se dá por CURADA a divergência do que foi lido
+    neste ciclo (`lidas`; None = tudo): a superfície inteira, ou a unidade `<superfície>:<fato>:<valor encontrado>`
+    (cada busca do índice) — o que não respondeu não cura nada."""
     agora = agora or time.time()
     con.executescript(DDL)
     vistas = set()
@@ -290,8 +355,9 @@ def conciliar(con: sqlite3.Connection, divergencias: list[dict], lidas: list[str
         else:
             con.execute("UPDATE divergencia SET vista_em=?, local=?, esperado=? WHERE chave=?", (agora, d["local"], d["esperado"], chave))
     curadas = 0
-    for chave, sup in con.execute("SELECT chave, superficie FROM divergencia WHERE fechada_em IS NULL").fetchall():
-        if chave not in vistas and (lidas is None or sup in lidas):
+    for chave, sup, fid, enc in con.execute(
+            "SELECT chave, superficie, fato_id, encontrado FROM divergencia WHERE fechada_em IS NULL").fetchall():
+        if chave not in vistas and (lidas is None or sup in lidas or f"{sup}:{fid}:{enc}" in lidas):
             con.execute("UPDATE divergencia SET fechada_em=? WHERE chave=?", (agora, chave))
             curadas += 1
     return {"novas": novas, "reincidiram": reinc, "curadas": curadas,
