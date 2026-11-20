@@ -36,8 +36,8 @@ def test_niveis_pela_linha():
     assert R.classificar(m(20), agora)["nivel"] == "normal"
     assert R.classificar(m(44), agora)["nivel"] == "economia"
     assert R.classificar(m(48), agora)["nivel"] == "contido"
-    fora = VOLTA - 2 * 86400                # fora do dia da virada: teto duro 85
-    assert R.classificar(R.extrair(_bruto(86), fora), fora)["nivel"] == "contido"
+    fora = VOLTA - 2 * 86400                # fora do dia da virada: teto duro 90
+    assert R.classificar(R.extrair(_bruto(91), fora), fora)["nivel"] == "contido"
 
 
 def test_medicao_velha_ou_ausente_nao_inventa_restricao():
@@ -86,7 +86,7 @@ def test_normal_nao_ativa(monkeypatch):
     assert C.estado()["ativa"] is False
 
 
-def test_dia_da_virada_libera_o_pesado_ate_97():
+def test_dia_da_virada_libera_o_pesado_ate_100():
     """Dono 20/11/2026: pesado no sábado para usar toda a cota da semana antes da virada."""
     volta = datetime(2026, 11, 21, 19, 0).timestamp()          # sábado 19:00
     agora = datetime(2026, 11, 21, 9, 0).timestamp()           # sábado 09:00
@@ -95,6 +95,10 @@ def test_dia_da_virada_libera_o_pesado_ate_97():
     c = R.classificar(m, agora)
     assert c["nivel"] == "normal" and c["janela_final"] and c["linha_pct"] == 100.0
     m["semana_pct"] = 97.0
+    assert R.classificar(m, agora)["nivel"] == "contido"                          # 09:00: teto 97
+    tarde = datetime(2026, 11, 21, 17, 30).timestamp()                             # 17:30: os 3% guardados
+    assert R.classificar(dict(m, medido_ts=tarde), tarde)["nivel"] == "normal"
+    m["semana_pct"] = 100.0
     assert R.classificar(m, agora)["nivel"] == "contido"
-    m.update(semana_pct=86.0, semana_volta=R._iso(agora + 3 * 86400))  # fora da janela final: teto 85 vale
+    m.update(semana_pct=91.0, semana_volta=R._iso(agora + 3 * 86400))  # fora do sábado: teto 90 vale
     assert R.classificar(m, agora)["nivel"] == "contido"

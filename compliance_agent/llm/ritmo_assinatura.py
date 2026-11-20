@@ -42,11 +42,13 @@ URL = "https://api.anthropic.com/api/oauth/usage"
 SEMANA_S = 7 * 86400
 PISO = 5.0            # % liberado logo na abertura da janela (sem isso a linha começa em 0 e trava tudo)
 ALVO_SEMANA = 90.0    # % previsto na virada; o resto é do dono
-TETO_DURO = 85.0      # daqui para cima o motor só volta na semana seguinte
+TETO_DURO = 90.0      # daqui para cima o motor só volta na semana seguinte (dono 20/11/2026: 85 → 90)
 # Dono, 20/11/2026: "deixe sempre as tarefas muito mais pesadas pra sábado pra avançar tudo sábado pra usar toda
-# cota semanal". No DIA da virada (sábado, das 00:00 até as 19:00) a linha vai a 100% e o teto sobe para 97% — o
-# que sobrou da semana é gasto no pesado; 3% ficam para o dono não ser travado no fim.
-TETO_FINAL = 97.0
+# cota semanal". No DIA da virada (sábado, das 00:00 até as 19:00) a linha vai a 100% e o teto sobe para 97% (100% nas 2 h finais) — o
+# que sobrou da semana é gasto no pesado.
+TETO_FINAL = 97.0    # dono 20/11/2026: "faz o motor pra 90% e 10% amanhã" …
+TETO_FIM = 100.0     # … "3% da cota vc guarda pra usar de 17:00 às 19:00 de sábado"
+FIM_S = 2 * 3600     # as 2 h finais antes da virada
 
 
 def dia_da_virada(volta_ts: float, agora: float) -> bool:
@@ -117,7 +119,7 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
     if volta is None or pct is None:
         return dict(base, motivo="medição sem a virada da semana — sem restrição de ritmo")
     final = dia_da_virada(volta, agora)
-    teto = TETO_FINAL if final else TETO_DURO
+    teto = (TETO_FIM if volta - agora <= FIM_S else TETO_FINAL) if final else TETO_DURO
     ln = 100.0 if final else round(linha(volta, agora), 1)
     out = dict(base, medido=True, semana_pct=pct, linha_pct=ln, semana_volta=m.get("semana_volta"),
                janela_final=final)

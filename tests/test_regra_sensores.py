@@ -192,7 +192,9 @@ def test_banco_ausente_e_cegueira(tmp_path):
 
 
 # ───────────────────────── gasto, Hermes, juiz ─────────────────────────
-def test_prova_gasto_de_api_perto_do_teto(tmp_path):
+def test_prova_gasto_de_api_perto_do_teto(tmp_path, monkeypatch):
+    monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(tmp_path / "nao_existe.env"))   # não lê o teto real da máquina
+    monkeypatch.setenv("JFN_API_TETO_USD", "100")
     ctx = _ctx(tmp_path)
     ctx.dados.mkdir(parents=True)
     (ctx.dados / "claude_api_gasto.json").write_text(json.dumps({"total_usd": 85.0}))
