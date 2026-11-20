@@ -62,7 +62,7 @@ class J3DescontoAnomalo(Detector):
 
     id = "J3"
     nome = "Desconto anômalo / irrisório recorrente"
-    familia = "conluio"  # J3 — peso 0.85 (conluio) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")

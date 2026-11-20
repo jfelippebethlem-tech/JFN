@@ -36,7 +36,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # ── Rubrica (1): equivalência das falhas pareadas. Protege contra falso positivo do próprio detector.
@@ -173,7 +174,7 @@ class J7InabilitacaoSeletiva(Detector):
 
     id = "J7"
     nome = "Inabilitação seletiva (dois pesos)"
-    familia = "conluio"  # J7 — peso conluio (0.9) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -337,20 +338,10 @@ class J7InabilitacaoSeletiva(Detector):
         via `gerar`; sem LLM → nao_avaliavel honesto."""
         pre = contexto.get(chave_pre)
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, escala)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, escala)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — rubrica não auditada (honesto)"}
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, escala)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, escala)
+        return {"status": status, "motivo": motivo}

@@ -179,7 +179,6 @@ class CFachada(Detector):
 
         if not resultados:
             return [_sem_hipotese(cnpj, inv)]
-        # ordena por score desc (achado-líder primeiro)
         resultados.sort(key=lambda x: -x.score)
         return resultados
 

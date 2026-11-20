@@ -22,7 +22,9 @@ DOIS ACHADOS:
       do teto: 25%, ou 50% em reforma de edifício/equipamento (`limites_aditivo`, fonte única) → 'critico'
       (violação objetiva); com lacuna de natureza (termo misto/sem natureza) → 'forte'.
 
-HONESTIDADE. Pago = só OB Contabilizada do SIAFE (empenho ≠ liquidação ≠ OB). `valor_contrato` do TCE-RJ pode ser
+HONESTIDADE. Pago = OB do SIAFE pela régua `cruzamentos_intel._ob_paga` (Contabilizada, não devolvida pelo
+banco, não complementar, não reemitida, com número) — empenho ≠ liquidação ≠ OB. `avaliar` ainda descarta o
+que não é Contabilizado, para quem lhe passa OB crua. `valor_contrato` do TCE-RJ pode ser
 o valor inicial ou o atualizado — a fonte não diz; está na explicação inocente. Indício ≠ acusação.
 
 CALLER. `python -m compliance_agent.detectores.est_valor_contratual [--limite N] [--gravar]` (leitura do
@@ -35,6 +37,7 @@ import re
 import sqlite3
 from typing import Any
 
+from compliance_agent.cruzamentos_intel import _ob_paga
 from compliance_agent.detectores.base import ResultadoDetector, ancora
 from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo, estouro, teto_acrescimo, tipo_objeto
 from compliance_agent.reporting.intel_base import moeda
@@ -155,14 +158,14 @@ def varrer(con: sqlite3.Connection, *, limite: int | None = None) -> list[Result
     sql = ("SELECT id, processo, valor_contrato, cnpj, objeto, unidade, fornecedor FROM contratos_tcerj "
            "WHERE valor_contrato > 0 AND length(cnpj) = 14 AND processo IS NOT NULL ORDER BY cnpj")
     contratos = [dict(r) for r in con.execute(sql + (f" LIMIT {int(limite)}" if limite else ""))]
+    sql_ob = ("SELECT numero_ob, status, credor, processo, valor FROM ob_orcamentaria_siafe "
+              f"WHERE credor = ? AND {_ob_paga(con)}")
     obs_por_credor: dict[str, list[dict]] = {}
     out: list[ResultadoDetector] = []
     for c in contratos:
         if c["cnpj"] not in obs_por_credor:
             obs_por_credor.clear()            # contratos vêm ordenados por CNPJ: guarda só o credor corrente
-            obs_por_credor[c["cnpj"]] = [dict(o) for o in con.execute(
-                "SELECT numero_ob, status, credor, processo, valor FROM ob_orcamentaria_siafe WHERE credor = ?",
-                (c["cnpj"],))]
+            obs_por_credor[c["cnpj"]] = [dict(o) for o in con.execute(sql_ob, (c["cnpj"],))]
         ads = aditivos.get(processo_canonico(c["processo"]) or "")
         out += [r for r in avaliar(c, obs_por_credor[c["cnpj"]], ads) if r.status == "confirmado"]
     return out

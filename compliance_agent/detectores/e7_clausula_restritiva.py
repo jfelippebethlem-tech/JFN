@@ -221,7 +221,7 @@ class E7ClausulaRestritiva(Detector):
 
     id = "E7"
     nome = "Cláusula restritiva (análise finalística + efeito combinado)"
-    familia = "desenho_certame"  # E7 — peso desenho_certame (0.6) na convergência §7.2
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")

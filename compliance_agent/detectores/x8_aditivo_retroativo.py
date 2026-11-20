@@ -32,9 +32,8 @@ de outra natureza e muito menos grave.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
 
-from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora, evidencia
+from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora, evidencia, para_data
 from compliance_agent.reporting.intel_base import moeda
 
 # Faixas de atraso, em dias. No CÓDIGO — spec §1.3.
@@ -42,18 +41,6 @@ _DIAS_MEDIO = 30
 _DIAS_FORTE = 180
 
 _ORDEM = ("ausente", "fraco", "medio", "forte", "critico")
-
-
-def _data(v) -> date | None:
-    if isinstance(v, date):
-        return v
-    s = str(v or "")[:10]
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 def _sobe(nivel: str, passos: int = 1) -> str:
@@ -82,7 +69,7 @@ class X8AditivoRetroativo(Detector):
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
         res = self._novo(processo, status="nao_avaliavel")
 
-        vigencia = _data(contexto.get("vigencia_fim"))
+        vigencia = para_data(contexto.get("vigencia_fim"))
         if vigencia is None:
             res.motivo_refutacao = ("nao_avaliavel: vigência do contrato ausente — sem ela não há "
                                     "como saber se o termo é retroativo (campo ausente ≠ 0)")
@@ -91,7 +78,7 @@ class X8AditivoRetroativo(Detector):
 
         aditivos = [a for a in (contexto.get("aditivos") or []) if isinstance(a, dict)]
         datados = [a for a in aditivos
-                   if _data(a.get("data_assinatura") or a.get("data")) is not None]
+                   if para_data(a.get("data_assinatura") or a.get("data")) is not None]
         if not datados:
             so_publicacao = [a for a in aditivos if a.get("data_publicacao")]
             res.motivo_refutacao = (
@@ -109,11 +96,11 @@ class X8AditivoRetroativo(Detector):
 
         # A vigência corrente avança a cada termo que a estende — o 3º termo se afere contra a
         # vigência que os dois primeiros deixaram, não contra a original.
-        datados.sort(key=lambda a: _data(a.get("data_assinatura") or a.get("data")))
+        datados.sort(key=lambda a: para_data(a.get("data_assinatura") or a.get("data")))
         corrente = vigencia
         retroativos: list[dict] = []
         for a in datados:
-            assinatura = _data(a.get("data_assinatura") or a.get("data"))
+            assinatura = para_data(a.get("data_assinatura") or a.get("data"))
             if assinatura > corrente:
                 retroativos.append({
                     "numero_termo": a.get("numero_termo") or "",
@@ -122,7 +109,7 @@ class X8AditivoRetroativo(Detector):
                     "dias_apos": (assinatura - corrente).days,
                     "ja_prorrogado": corrente != vigencia,
                 })
-            nova = _data(a.get("vigencia_fim"))
+            nova = para_data(a.get("vigencia_fim"))
             if nova and nova > corrente:
                 corrente = nova
 
@@ -163,11 +150,11 @@ class X8AditivoRetroativo(Detector):
         for p in contexto.get("pagamentos") or []:
             if not isinstance(p, dict):
                 continue
-            dp = _data(p.get("data"))
+            dp = para_data(p.get("data"))
             if dp is None:
                 continue
             for r in retroativos:
-                if _data(r["vigencia_expirada_em"]) < dp < _data(r["assinatura"]):
+                if para_data(r["vigencia_expirada_em"]) < dp < para_data(r["assinatura"]):
                     pagos_no_vacuo.append({"data": dp.isoformat(), "valor": p.get("valor")})
                     break
         if pagos_no_vacuo:

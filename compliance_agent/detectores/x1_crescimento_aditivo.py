@@ -33,32 +33,26 @@ aditivo de prazo sem valor não conta no teto; nunca inventa número. Valores em
 """
 from __future__ import annotations
 
-from datetime import date, datetime
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    para_data,
+    perguntar_rubrica,
 )
+from compliance_agent.limites_aditivo import teto_acrescimo
 from compliance_agent.reporting.intel_base import moeda
 
-# ───────────────────────────── Tetos do art. 125 (Lei 14.133/2021) ─────────────────────────────
-# O número mora em `compliance_agent/limites_aditivo.py` — fonte única, como `limites_dispensa`
+# Teto do art. 125 (Lei 14.133/2021): o número mora em `limites_aditivo` — fonte única, como `limites_dispensa`
 # é para o teto de dispensa. Este módulo já foi uma das CINCO cópias divergentes.
-from compliance_agent.limites_aditivo import teto_acrescimo as _teto_da_fonte  # noqa: E402
-
 # Limiares de proximidade ao teto (CÓDIGO, nunca no prompt): fração do teto a partir da qual o acréscimo é grave.
 _FRACAO_FORTE = 0.80  # ≥80% do teto (ex.: ≥20% no padrão / ≥45% na reforma) → forte
 _FRACAO_MEDIO = 0.50  # ≥50% do teto (ex.: ≥12.5% no padrão / ≥25% na reforma) → medio
 
 # VELOCIDADE: dias do início da execução até o 1º aditivo de valor abaixo dos quais o caso agrava.
 _DIAS_ADITIVO_PRECOCE = 90
-
-
-def teto_art125(tipo_objeto: str | None) -> float:
-    """Teto de acréscimos do art.125: 50% para REFORMA de edifício/equipamento, 25% nos demais casos."""
-    return _teto_da_fonte(tipo_objeto)
 
 
 # Rubrica (1): natureza da JUSTIFICATIVA de um aditivo. LLM-opcional; degrada honesto.
@@ -73,21 +67,6 @@ _RUBRICA_PERTINENCIA = {
     "mesmo_objeto_detalhado": "ausente",     # detalhamento/quantitativo do mesmo objeto → legítimo
     "objeto_novo_disfarcado": "forte",       # escopo novo que exigiria novo certame → forte AUTÔNOMO
 }
-
-
-def _data(v) -> date | None:
-    """Parseia data tolerante a formatos comuns (ISO / br). Ausente/inválida → None (honesto)."""
-    if isinstance(v, date) and not isinstance(v, datetime):
-        return v
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, str):
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S"):
-            try:
-                return datetime.strptime(v[:19] if "T" in v else v[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
 
 
 def _tipo_aditivo(a: dict) -> str:
@@ -146,7 +125,7 @@ class X1CrescimentoAditivo(Detector):
 
     id = "X1"
     nome = "Crescimento aditivo (contrato que engorda)"
-    familia = "execucao"  # X1 — peso 0.8 (execução); estouro do teto vira score crítico (violação art.125)
+    familia = "execucao"  # estouro do teto vira score crítico (violação art.125)
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -172,7 +151,7 @@ class X1CrescimentoAditivo(Detector):
         aditivos = [a for a in aditivos if isinstance(a, dict)]
 
         tipo_objeto = contexto.get("tipo_objeto")
-        teto = teto_art125(tipo_objeto)
+        teto = teto_acrescimo(tipo_objeto)
         try:
             indice = float(contexto.get("indice_atualizacao") or 1.0)
         except (TypeError, ValueError):
@@ -253,9 +232,9 @@ class X1CrescimentoAditivo(Detector):
                 trecho=f"acréscimos {pct_acrescimo*100:.1f}% do valor atualizado (teto {teto*100:.0f}%)")
 
         # ── VELOCIDADE: dias do início da execução até o 1º aditivo de VALOR → agrava ──
-        inicio = _data(contexto.get("data_inicio_execucao"))
+        inicio = para_data(contexto.get("data_inicio_execucao"))
         dias_ate_1o = None
-        datas_valor = sorted(d for d in (_data(a.get("data")) for a in aditivos_valor) if d)
+        datas_valor = sorted(d for d in (para_data(a.get("data")) for a in aditivos_valor) if d)
         if inicio and datas_valor:
             dias_ate_1o = (datas_valor[0] - inicio).days
             valores["dias_ate_1o_aditivo_valor"] = dias_ate_1o
@@ -323,14 +302,12 @@ class X1CrescimentoAditivo(Detector):
                 pre = pre_lista[i]
             if pre is None:
                 pre = a.get("_rubrica_justificativa")
-            # aditivo precoce: 1º aditivo de valor dentro da janela
             precoce = bool(dias_ate_1o is not None and 0 <= dias_ate_1o < _DIAS_ADITIVO_PRECOCE)
             if pre is not None:
-                nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
-                if nivel is None:
-                    resultados.append({"status": "nao_avaliavel", "motivo": motivo, "precoce": precoce})
+                classe, motivo = nivel_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
+                if classe == "nao_avaliavel":
+                    resultados.append({"status": classe, "motivo": motivo, "precoce": precoce})
                 else:
-                    classe = (pre.get("nivel") or pre.get("classificacao") or "").strip().lower()
                     resultados.append({"status": classe, "motivo": motivo,
                                        "trecho": pre.get("trecho") or pre.get("citacao"), "precoce": precoce})
                 continue
@@ -347,19 +324,11 @@ class X1CrescimentoAditivo(Detector):
                 '"trecho":"<citação literal da justificativa>"}. Sem trecho, não classifique.')
             just = str(a.get("justificativa") or "")[:1000]
             prompt = f"JUSTIFICATIVA DO TERMO ADITIVO:\n{just}\n\nClassifique a natureza da justificativa."
-            try:
-                raw = gerar(prompt, sistema)
-            except Exception as ex:  # noqa: BLE001 — degrada honesto
-                resultados.append({"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})",
-                                   "precoce": precoce})
-                continue
-            from compliance_agent.detectores.base import _parse_json
-            dados = _parse_json(raw)
-            nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_JUSTIFICATIVA)
-            if nivel is None or not isinstance(dados, dict):
-                resultados.append({"status": "nao_avaliavel", "motivo": motivo, "precoce": precoce})
+            status, motivo, dados = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_JUSTIFICATIVA)
+            if status == "nao_avaliavel":
+                resultados.append({"status": status, "motivo": motivo, "precoce": precoce})
             else:
-                resultados.append({"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo,
+                resultados.append({"status": status, "motivo": motivo,
                                    "trecho": dados.get("trecho"), "precoce": precoce})
         return resultados
 
@@ -368,11 +337,10 @@ class X1CrescimentoAditivo(Detector):
         `contexto['_rubrica_pertinencia']`. Sem rubrica e sem LLM → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_pertinencia")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_PERTINENCIA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(),
-                    "motivo": motivo, "trecho": pre.get("trecho") or pre.get("citacao")}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_PERTINENCIA)
+            if status == "nao_avaliavel":
+                return {"status": status, "motivo": motivo}
+            return {"status": status, "motivo": motivo, "trecho": pre.get("trecho") or pre.get("citacao")}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — pertinência do objeto não auditada (honesto)"}
@@ -389,13 +357,7 @@ class X1CrescimentoAditivo(Detector):
             "Sem trecho, não classifique.")
         prompt = (f"OBJETO ORIGINAL: {objeto_original}\n\nDESCRIÇÃO DOS ACRÉSCIMOS:\n{descricoes}\n\n"
                   "Os acréscimos são do mesmo objeto detalhado ou objeto novo disfarçado?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_PERTINENCIA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo, "trecho": dados.get("trecho")}
+        status, motivo, dados = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_PERTINENCIA)
+        if status == "nao_avaliavel":
+            return {"status": status, "motivo": motivo}
+        return {"status": status, "motivo": motivo, "trecho": dados.get("trecho")}

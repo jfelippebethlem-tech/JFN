@@ -33,7 +33,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada de pertinência do requisito ao uso real (spec P1).
@@ -169,7 +170,7 @@ class P1EspecificacaoDirigida(Detector):
 
     id = "P1"
     nome = "Especificação dirigida / marca disfarçada"
-    familia = "desenho_certame"  # P1 desenha o certame na fase de planejamento (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"  # P1 desenha o certame na fase de planejamento
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -349,10 +350,8 @@ class P1EspecificacaoDirigida(Detector):
                 pre = r[chave_pre]
                 break
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, escala)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, escala)
+            return {"status": status, "motivo": motivo}
         if gerar is None or not suspeitos:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — rubrica não auditada (honesto)"}
         r = suspeitos[0]
@@ -363,26 +362,16 @@ class P1EspecificacaoDirigida(Detector):
             "Sem trecho, não classifique."
         )
         prompt = f"REQUISITO: {_texto_req(r)[:400]}\n\nClassifique a pertinência ao uso real."
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, escala)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, escala)
+        return {"status": status, "motivo": motivo}
 
     def _avaliar_justificativa_marca(self, contexto: dict, suspeitos: list[dict]) -> dict:
         """Rubrica de qualidade da justificativa de marca. Atalho de teste: `_rubrica_justificativa_marca` no
         contexto. Sem rubrica e sem texto/LLM → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_justificativa_marca")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_JUSTIFICATIVA_MARCA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_JUSTIFICATIVA_MARCA)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         texto_just = str(contexto.get("justificativa_marca") or "")
         if gerar is None or not texto_just:
@@ -394,13 +383,5 @@ class P1EspecificacaoDirigida(Detector):
             "Sem trecho, não classifique."
         )
         prompt = f"JUSTIFICATIVA: {texto_just[:500]}\n\nClassifique a robustez da justificativa de marca."
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_JUSTIFICATIVA_MARCA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_JUSTIFICATIVA_MARCA)
+        return {"status": status, "motivo": motivo}

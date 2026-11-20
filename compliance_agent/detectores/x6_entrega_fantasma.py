@@ -34,8 +34,9 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
 )
+from compliance_agent.llm.json_resposta import parse_json_llm
 from compliance_agent.reporting.intel_base import moeda
 
 # ───────────────────────────── Rubricas fechadas (LLM-opcional; degradam honesto) ─────────────────────────────
@@ -94,7 +95,7 @@ class X6EntregaFantasma(Detector):
 
     id = "X6"
     nome = "Entrega fantasma / atesto de fachada"
-    familia = "execucao"  # X6 — peso 0.8 (execução) na convergência §7.2
+    familia = "execucao"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -261,11 +262,10 @@ class X6EntregaFantasma(Detector):
     # ───────────────────────────── Rubrica (1): especificidade do atesto ─────────────────────────────
     def _rubrica_especificidade(self, resposta: dict | None) -> dict:
         """Atalho de teste: avalia uma resposta de rubrica já-classificada (sem rede)."""
-        nivel, _score, motivo = avaliar_rubrica(resposta, _RUBRICA_ESPECIFICIDADE)
-        if nivel is None or not isinstance(resposta, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo, "trecho": ""}
-        classe = (resposta.get("nivel") or resposta.get("classificacao") or "").strip().lower()
-        return {"status": classe, "motivo": motivo, "trecho": (resposta.get("trecho") or resposta.get("citacao") or "")}
+        status, motivo = nivel_rubrica(resposta, _RUBRICA_ESPECIFICIDADE)
+        if status == "nao_avaliavel":
+            return {"status": status, "motivo": motivo, "trecho": ""}
+        return {"status": status, "motivo": motivo, "trecho": (resposta.get("trecho") or resposta.get("citacao") or "")}
 
     def _avaliar_especificidade(self, contexto: dict, atestos: list[dict]) -> dict:
         """Rubrica fechada (1). Atalho de teste `_rubrica_especificidade` no contexto; senão LLM via `gerar`;
@@ -297,18 +297,13 @@ class X6EntregaFantasma(Detector):
             raw = gerar(prompt, sistema)
         except Exception as e:  # noqa: BLE001 — degrada honesto
             return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})", "trecho": ""}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        return self._rubrica_especificidade(dados)
+        return self._rubrica_especificidade(parse_json_llm(raw))
 
     # ───────────────────────────── Rubrica (2): verossimilhança física ─────────────────────────────
     def _rubrica_verossimilhanca(self, resposta: dict | None) -> dict:
         """Atalho de teste: avalia uma resposta de rubrica já-classificada (sem rede)."""
-        nivel, _score, motivo = avaliar_rubrica(resposta, _RUBRICA_VEROSSIMILHANCA)
-        if nivel is None or not isinstance(resposta, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        classe = (resposta.get("nivel") or resposta.get("classificacao") or "").strip().lower()
-        return {"status": classe, "motivo": motivo}
+        status, motivo = nivel_rubrica(resposta, _RUBRICA_VEROSSIMILHANCA)
+        return {"status": status, "motivo": motivo}
 
     def _avaliar_verossimilhanca(self, contexto: dict, atestos: list[dict]) -> dict:
         """Rubrica fechada (2). Atalho de teste `_rubrica_verossimilhanca`; senão LLM via `gerar`; sem nenhum →
@@ -332,9 +327,7 @@ class X6EntregaFantasma(Detector):
             raw = gerar(prompt, sistema)
         except Exception as e:  # noqa: BLE001 — degrada honesto
             return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        return self._rubrica_verossimilhanca(dados)
+        return self._rubrica_verossimilhanca(parse_json_llm(raw))
 
     # ───────────────────────────── PRODUTO FINAL: roteiro de diligência física ─────────────────────────────
     def _gerar_roteiro_diligencia(self, contexto: dict, valores: dict, razoes: list[str]) -> list[str]:

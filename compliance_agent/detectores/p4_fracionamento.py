@@ -6,12 +6,11 @@ Mecanismo: a contratação é dividida em várias DISPENSAS menores para escapar
 na dispensa por valor.
 
 PARÂMETROS OBJETIVOS (no CÓDIGO — limiar nunca vai ao prompt do LLM, spec §1.3):
-  • Soma por grupo de objeto: cluster (similaridade ≥ 0.8 ou mesmo grupo CATMAT), mesmo órgão, mesmo exercício.
+  • Soma por grupo de objeto: cluster (`objeto_similaridade`: mesmo ramo/CATMAT), mesmo órgão, mesmo exercício.
     Soma do grupo > limite de dispensa vigente E ≥2 contratações por dispensa → flag .................. 0.85 (forte)
   • Clustering sob o teto: ≥2 contratações do grupo com valor individual entre 80%–100% do limite ...... 0.85
-  • Mesmo fornecedor: ≥3 dispensas no ano p/ o mesmo CNPJ ou grupo societário (QSA cruzado) ............ 0.85
+  • Mesmo fornecedor: ≥3 dispensas no ano p/ o mesmo CNPJ ou grupo (raiz do CNPJ/grupo econômico)  0.85
   • Proximidade temporal: contratações do grupo com intervalos < 30 dias entre si .................... +0.10
-  • Sequência pós-limite: nova dispensa do grupo iniciada < 60 dias após a anterior ter consumido o limite . 0.60
 
 PARTE SUBJETIVA (LLM-OPCIONAL, degrada honesto): rubrica fechada 'os objetos do grupo são parcelas de uma MESMA
 contratação PREVISÍVEL?' [mesma-natureza-e-previsível / mesma-natureza-mas-demandas-independentes / naturezas-
@@ -27,75 +26,38 @@ limite vigente é o da DATA de cada contratação (não o atual); nunca inventa 
 """
 from __future__ import annotations
 
-import difflib
 import re
-from datetime import date, datetime
+from datetime import date
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    para_data,
+    perguntar_rubrica,
 )
 
 # ───────────────────────────── Limites de dispensa do art. 75, I/II (Lei 14.133/2021) ─────────────────────────────
 # Fonte ÚNICA verificada verbatim nos decretos (Planalto): compliance_agent/limites_dispensa.py — nunca duplicar
 # a tabela aqui (§1.5: usar o limite da DATA da contratação). I = obras/engenharia · II = demais (compras/serviços).
 from compliance_agent.limites_dispensa import LIMITES as LIMITES_DISPENSA
+from compliance_agent.limites_dispensa import limite_dispensa as _limite_da_fonte
 from compliance_agent.reporting.intel_base import moeda
 
 _DEFAULT_EXERCICIO = 2024
 
 
 def limite_dispensa(exercicio: int | None, tipo: str = "compras", *, duplicado: bool = False) -> float | None:
-    """Limite de dispensa por valor vigente no EXERCÍCIO (art. 75, I/II). `tipo`: 'obras' (engenharia) ou
-    'compras' (demais). Exercício desconhecido → cai no mais próximo ≤ exercício (decretos são cumulativos).
-    Retorna None se não houver tabela aplicável (→ detector marca nao_avaliavel, honesto)."""
+    """Limite de dispensa por valor vigente no EXERCÍCIO (art. 75, I/II), lido da régua `limites_dispensa`.
+    `tipo`: 'obras' (engenharia) ou 'compras' (demais). O que é do P4: exercício desconhecido usa
+    `_DEFAULT_EXERCICIO`, e exercício ANTERIOR à Lei 14.133 devolve None (→ nao_avaliavel, honesto) em vez do
+    teto mais recente que a régua devolve para ano fora da tabela."""
     tipo = "obras" if (tipo or "").lower().startswith("obra") else "compras"
-    if not exercicio:
-        exercicio = _DEFAULT_EXERCICIO
-    fator = 2 if duplicado else 1        # art. 75, §2º (consórcio público / agência executiva)
-    if exercicio in LIMITES_DISPENSA:
-        return LIMITES_DISPENSA[exercicio][tipo] * fator
-    anteriores = [e for e in LIMITES_DISPENSA if e <= exercicio]
-    if anteriores:
-        return LIMITES_DISPENSA[max(anteriores)][tipo] * fator
-    return None
-
-
-# ───────────────────────────── Normalização / similaridade de objeto ─────────────────────────────
-_STOP = {"de", "da", "do", "das", "dos", "e", "para", "com", "em", "a", "o", "as", "os", "no", "na",
-         "ao", "aos", "por", "ou", "um", "uma", "servico", "servicos", "aquisicao", "contratacao"}
-
-
-def _norm_objeto(s: str | None) -> str:
-    """Normaliza descrição de objeto: minúsculas, sem acento, sem pontuação, sem stopwords (p/ similaridade)."""
-    t = (s or "").lower()
-    t = (t.replace("ã", "a").replace("á", "a").replace("â", "a").replace("à", "a")
-           .replace("é", "e").replace("ê", "e").replace("í", "i").replace("ó", "o").replace("ô", "o")
-           .replace("õ", "o").replace("ú", "u").replace("ç", "c"))
-    t = re.sub(r"[^a-z0-9 ]+", " ", t)
-    toks = [w for w in t.split() if w and w not in _STOP and len(w) > 2]
-    return " ".join(toks)
-
-
-def _similar(a: str, b: str) -> float:
-    """Similaridade textual [0,1] entre dois objetos normalizados (Ratcliff/Obershelp via difflib).
-    Leve, sem embedding/dependência pesada — adequado para a VM. CATMAT casa via campo explícito (abaixo)."""
-    na, nb = _norm_objeto(a), _norm_objeto(b)
-    if not na or not nb:
-        return 0.0
-    return difflib.SequenceMatcher(None, na, nb).ratio()
-
-
-def _grupo_objeto(c: dict) -> str | None:
-    """Chave de grupo EXPLÍCITA: CATMAT/CATSER ou grupo informado. Quando presente, agrupa por igualdade
-    (mais robusto que similaridade textual)."""
-    for k in ("catmat", "catser", "grupo_objeto", "grupo"):
-        v = c.get(k)
-        if v:
-            return f"{k}:{str(v).strip().lower()}"
-    return None
+    exercicio = exercicio or _DEFAULT_EXERCICIO
+    if exercicio < min(LIMITES_DISPENSA):
+        return None
+    return _limite_da_fonte(exercicio, tipo, duplicado=duplicado)
 
 
 def clusterizar(contratacoes: list[dict], limiar: float | None = None, *,
@@ -132,18 +94,7 @@ def _is_dispensa(c: dict) -> bool | None:
 
 
 def _data(c: dict) -> date | None:
-    v = c.get("data") or c.get("data_pagamento") or c.get("data_assinatura") or c.get("data_emissao")
-    if isinstance(v, date):
-        return v
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, str):
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S"):
-            try:
-                return datetime.strptime(v[:19] if "T" in v else v[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
+    return para_data(c.get("data") or c.get("data_pagamento") or c.get("data_assinatura") or c.get("data_emissao"))
 
 
 def _exercicio(c: dict, d: date | None) -> int | None:
@@ -168,8 +119,6 @@ def _unidade_gestora(c: dict) -> str | None:
 # Dispensa POR VALOR = art. 75, incisos I (obras/engenharia) e II (compras e demais serviços). Só ELA
 # entra no somatório do §1º. Emergência/calamidade (VIII), guerra (III), hortifrúti (XII), etc. têm
 # fundamento próprio: contratar por eles não é "picar" a mesma despesa para fugir do certame.
-_RE_INCISO = re.compile(r"(?:art\.?\s*75|artigo\s*75)?[^\w]{0,12}"
-                        r"(?:inciso\s*)?\b(I{1,3}|IV|V|VI{0,3}|IX|X{1,2}I{0,3}|XIV|XV)\b", re.I)
 _RE_FUNDAMENTO_VALOR = re.compile(r"75\s*[,\s]*\s*(?:inciso\s*)?(?:I|II)\b(?!\w)|dispensa\s+(?:em\s+raz[ãa]o\s+)?"
                                   r"(?:por|de)\s+valor|baixo\s+valor|pequeno\s+valor", re.I)
 _RE_FUNDAMENTO_OUTRO = re.compile(
@@ -233,7 +182,7 @@ class P4Fracionamento(Detector):
 
     id = "P4"
     nome = "Fracionamento de despesa"
-    familia = "violacao_legal"  # art. 75 §1º — violação legal objetiva (peso 1.0 na convergência §7.2)
+    familia = "violacao_legal"  # art. 75 §1º — violação legal objetiva
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -299,7 +248,7 @@ class P4Fracionamento(Detector):
                    "III+), que não soma para este teto" if n_excluidas_inciso else ""))
             return res
 
-        disp_idxs, soma, _todos_idxs = melhor
+        disp_idxs, soma, _ = melhor
         disp = [contratacoes[i] for i in disp_idxs]
 
         # ── art. 75, §2º: os limites são DUPLICADOS para consórcio público e para autarquia/fundação
@@ -460,11 +409,8 @@ class P4Fracionamento(Detector):
                 pre = c["_rubrica_previsibilidade"]
                 break
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_PREVISIBILIDADE)
-            classe = (pre.get("nivel") or pre.get("classificacao") or "").strip().lower()
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": classe, "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_PREVISIBILIDADE)
+            return {"status": status, "motivo": motivo}
 
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — previsibilidade não auditada (honesto)"}
@@ -478,46 +424,5 @@ class P4Fracionamento(Detector):
             '"trecho":"<citação literal de um objeto que sustenta a classificação>"}. Sem trecho, não classifique.'
         )
         prompt = f"OBJETOS DAS DISPENSAS DO MESMO GRUPO:\n{objetos}\n\nClassifique a previsibilidade."
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_PREVISIBILIDADE)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        classe = (dados.get("nivel") or "").strip().lower()
-        return {"status": classe, "motivo": motivo}
-
-
-# ───────────────────────────── Adaptador: contratações a partir da DB (degrada honesto) ─────────────────────────────
-def contratacoes_do_orgao(ug_codigo: str, exercicio: int | None = None, *, con=None, limite_linhas: int = 5000) -> dict:
-    """Monta o `contexto` de P4 a partir das `ordens_bancarias` de um órgão (UG). HONESTO: a base do JFN NÃO traz
-    o marcador de modalidade/dispensa nas OBs (campo ausente) — então as contratações vêm SEM `dispensa`, e o
-    detector marcará `nao_avaliavel` (campo ausente ≠ 0). Quando a coleta PNCP/SEI enriquecer a modalidade, basta
-    preencher `dispensa`/`modalidade` que P4 passa a pontuar. Use DuckDB (read-only) p/ não pesar a VM."""
-    fechar = False
-    if con is None:
-        from compliance_agent.duckdb_util import conectar
-        con = conectar()
-        fechar = True
-    try:
-        q = ("SELECT favorecido_cpf, favorecido_nome, valor, data_pagamento, exercicio, observacao, tipo_ob "
-             "FROM db.ordens_bancarias WHERE ug_codigo = ? ")
-        params: list = [str(ug_codigo)]
-        if exercicio:
-            q += "AND exercicio = ? "
-            params.append(int(exercicio))
-        q += "ORDER BY data_pagamento LIMIT ?"
-        params.append(int(limite_linhas))
-        rows = con.execute(q, params).fetchall()
-    finally:
-        if fechar:
-            con.close()
-    contratacoes = [{
-        "favorecido_cpf": r[0], "favorecido_nome": r[1], "valor": r[2], "data_pagamento": r[3],
-        "exercicio": r[4], "objeto": (r[5] or r[6] or ""),  # OB não tem 'objeto' rico → usa observação/tipo
-        # SEM marcador de dispensa de propósito (a DB não tem) → P4 cai em nao_avaliavel honesto.
-    } for r in rows]
-    return {"processo": f"UG {ug_codigo}", "contratacoes": contratacoes}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_PREVISIBILIDADE)
+        return {"status": status, "motivo": motivo}

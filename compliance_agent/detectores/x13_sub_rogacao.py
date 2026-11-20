@@ -35,9 +35,8 @@ Régua (âncoras no CÓDIGO):
 """
 from __future__ import annotations
 
-from datetime import date
 
-from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
+from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora, para_data
 
 # Janela em que a troca de controle "conversa" com a receita pública recebida. Fora dela, a
 # coincidência temporal deixa de ser argumento — e coincidência temporal é o único argumento aqui.
@@ -53,10 +52,8 @@ _SUCESSAO = {"fusao", "fusão", "cisao", "cisão", "incorporacao", "incorporaç�
 
 
 def _dias(a: str, b: str) -> int | None:
-    try:
-        return (date.fromisoformat(str(b)[:10]) - date.fromisoformat(str(a)[:10])).days
-    except (TypeError, ValueError):
-        return None
+    da, db = para_data(a), para_data(b)
+    return (db - da).days if da and db else None
 
 
 class X13SubRogacao(Detector):

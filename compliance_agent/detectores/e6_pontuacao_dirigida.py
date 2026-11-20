@@ -32,8 +32,10 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
+from compliance_agent.llm.json_resposta import parse_json_llm
 
 # Rubrica (1) — objetividade de UM critério (spec E6). Mapeia o nível → âncora só p/ validar a citação;
 # o efeito de pontuação fica no CÓDIGO (soma de % em subjetivo_puro).
@@ -75,7 +77,7 @@ class E6PontuacaoDirigida(Detector):
 
     id = "E6"
     nome = "Pontuação técnica dirigida"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -242,9 +244,7 @@ class E6PontuacaoDirigida(Detector):
         if direto in _RUBRICA_OBJETIVIDADE:
             return direto
         if rubrica_pre is not None:
-            nivel, _score, _motivo = avaliar_rubrica(rubrica_pre, _RUBRICA_OBJETIVIDADE)
-            if nivel is not None:
-                return (rubrica_pre.get("nivel") or rubrica_pre.get("classificacao") or "").strip().lower()
+            return nivel_rubrica(rubrica_pre, _RUBRICA_OBJETIVIDADE)[0]
         return "nao_avaliavel"
 
     def _rubricas_objetividade(self, matriz: list, contexto: dict) -> list:
@@ -256,7 +256,6 @@ class E6PontuacaoDirigida(Detector):
         gerar = contexto.get("gerar")
         if gerar is None:
             return [None] * len(matriz)
-        from compliance_agent.detectores.base import _parse_json
         sistema = (
             "Você é auditor de controle externo. Classifique a OBJETIVIDADE de UM critério de pontuação técnica. "
             "Responda SOMENTE com JSON: "
@@ -276,7 +275,7 @@ class E6PontuacaoDirigida(Detector):
             except Exception:  # noqa: BLE001 — degrada honesto
                 out.append(None)
                 continue
-            out.append(_parse_json(raw))
+            out.append(parse_json_llm(raw))
         return out
 
     def _avaliar_consistencia(self, contexto: dict) -> dict:
@@ -284,11 +283,11 @@ class E6PontuacaoDirigida(Detector):
         senão LLM sobre as atas. Sem rubrica/LLM/atas → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_consistencia")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_CONSISTENCIA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_CONSISTENCIA)
+            if status == "nao_avaliavel":
+                return {"status": status, "motivo": motivo}
             return {
-                "status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(),
+                "status": status,
                 "trecho": pre.get("trecho") or pre.get("citacao"),
                 "motivo": motivo,
             }
@@ -298,7 +297,6 @@ class E6PontuacaoDirigida(Detector):
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — consistência das notas não auditada (honesto)"}
-        from compliance_agent.detectores.base import _parse_json
         sistema = (
             "Você é auditor de controle externo. Avalie a CONSISTÊNCIA da atribuição de notas na ata de julgamento. "
             "Responda SOMENTE com JSON: "
@@ -307,15 +305,10 @@ class E6PontuacaoDirigida(Detector):
         )
         ata_txt = atas if isinstance(atas, str) else "\n".join(str(a) for a in atas)
         prompt = f"ATA(S) DE JULGAMENTO:\n{ata_txt[:1500]}\n\nAs notas estão fundamentadas?"
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_CONSISTENCIA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "trecho": dados.get("trecho"), "motivo": motivo}
+        status, motivo, dados = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_CONSISTENCIA)
+        if status == "nao_avaliavel":
+            return {"status": status, "motivo": motivo}
+        return {"status": status, "trecho": dados.get("trecho"), "motivo": motivo}
 
     def _simular_troca_vencedor(self, contexto: dict, criterios_zerar: set) -> dict:
         """SIMULAÇÃO determinística (código puro): recalcula a nota total de cada proposta ZERANDO os critérios

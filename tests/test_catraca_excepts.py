@@ -215,7 +215,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-08-03: +1 (1625->1626) — `sintese_global._prosa`, fronteira de LLM: a leitura em prosa
 # é opcional e o provedor pode falhar de qualquer forma; o catch devolve a indisponibilidade
 # DECLARADA e a síntese determinística fica de pé inteira, com os mesmos fatos.
-BASELINE = 1626
+# 2026-11-20: -26 (1626->1600) — untangle de `detectores/`: o `try/except` em volta do LLM de cada rubrica
+# (copiado em 22 detectores) virou um só em `base.perguntar_rubrica`; os parsers de data copiados, um só.
+BASELINE = 1600
 
 
 def _contar() -> int:

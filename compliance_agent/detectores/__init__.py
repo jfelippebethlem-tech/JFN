@@ -73,9 +73,9 @@ from compliance_agent.detectores.x11_objeto_descaracterizado import X11ObjetoDes
 from compliance_agent.detectores.x12_benford_quantitativos import X12BenfordQuantitativos
 from compliance_agent.detectores.x13_sub_rogacao import X13SubRogacao
 
-# REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 logger = logging.getLogger(__name__)
 
+# REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 REGISTRO: dict[str, Detector] = {
     d.id: d for d in (
         P4Fracionamento(),
@@ -123,61 +123,18 @@ REGISTRO: dict[str, Detector] = {
     )
 }
 
-# pesos por detector p/ a convergência multiplicativa (§7.2): herdam o peso da família do detector.
-PESOS_DETECTOR: dict[str, float] = {
-    "P4": PESOS_FAMILIA["violacao_legal"],
-    "J1": PESOS_FAMILIA["conluio"],
-    "J2": PESOS_FAMILIA["conluio"],
-    "J3": PESOS_FAMILIA["conluio"],
-    "J4": PESOS_FAMILIA["conluio"],
-    "J5": PESOS_FAMILIA["conluio"],
-    "J6": PESOS_FAMILIA["conluio"],
-    "J7": PESOS_FAMILIA["conluio"],
-    "J8": PESOS_FAMILIA["conluio"],
-    "J9": PESOS_FAMILIA["conluio"],
-    "P3": PESOS_FAMILIA["preco"],
-    "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
-    "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
-    "C6": PESOS_FAMILIA["perfil"],
-    "C8": PESOS_FAMILIA["perfil"],
-    "E1": PESOS_FAMILIA["desenho_certame"],
-    "E2": PESOS_FAMILIA["desenho_certame"],
-    "E3": PESOS_FAMILIA["desenho_certame"],
-    "E4": PESOS_FAMILIA["desenho_certame"],
-    "E5": PESOS_FAMILIA["desenho_certame"],
-    "E6": PESOS_FAMILIA["desenho_certame"],
-    "E7": PESOS_FAMILIA["desenho_certame"],
-    "P1": PESOS_FAMILIA["desenho_certame"],
-    "P2": PESOS_FAMILIA["preco"],
-    "P5": PESOS_FAMILIA["desenho_certame"],
-    "X1": PESOS_FAMILIA["execucao"],
-    "X2": PESOS_FAMILIA["execucao"],
-    "X3": PESOS_FAMILIA["execucao"],
-    "X4": PESOS_FAMILIA["execucao"],
-    "X5": PESOS_FAMILIA["execucao"],
-    "X6": PESOS_FAMILIA["execucao"],
-    "X7": PESOS_FAMILIA["execucao"],
-    "X8": PESOS_FAMILIA["execucao"],
-    "X9": PESOS_FAMILIA["execucao"],
-    "X10": PESOS_FAMILIA["execucao"],
-    "X11": PESOS_FAMILIA["execucao"],
-    "X12": PESOS_FAMILIA["execucao"],
-    "X13": PESOS_FAMILIA["execucao"],
-}
-
-# ── Sincronia com o REGISTRO ─────────────────────────────────────────────────────────────────────
-# O dicionário acima é literal por dois motivos legítimos: alguns pesos são decisão editorial, e a
-# família C emite SUB-IDS (`C1`, `C2`, `C3/C5`, `C4` — ver `CFachada.avaliar_todos`) que não são
-# ids do REGISTRO e por isso não podem ser derivados dele.
+# Pesos por detector p/ a convergência multiplicativa (§7.2): o peso é o da FAMÍLIA do detector.
+# A família C emite SUB-IDS (`C1`, `C2`, `C3/C5`, `C4` — ver `CFachada.avaliar_todos`) que não são ids do
+# REGISTRO; entram com o peso da família de `C`.
 #
-# O que NÃO é legítimo é o inverso: detector no REGISTRO sem peso aqui. `score_processo` cai no
-# default 0.6, e a conta ficou medida: `C7` (sancionada contratada) e `P6` (contratação direta
-# indevida) são da família `violacao_legal`, peso 1.0 — pesavam 0.6, ou seja, o score
-# SUBESTIMAVA os dois sinais mais graves do sistema. `C` (empresa-fachada) perdia 0.8 para 0.6.
-# Preencher por família é o comportamento correto e é o que a linha abaixo garante, para sempre:
-# detector novo entra com o peso da sua família, sem ninguém precisar lembrar.
-for _id, _det in REGISTRO.items():
-    PESOS_DETECTOR.setdefault(_id, PESOS_FAMILIA.get(_det.familia, 0.6))
+# Era um dicionário literal ao lado do REGISTRO, e detector novo ficava sem peso: `score_processo` caía no
+# default 0.6, e a conta ficou medida — `C7` (sancionada contratada) e `P6` (contratação direta indevida),
+# família `violacao_legal`, peso 1.0, pesavam 0.6: o score SUBESTIMAVA os dois sinais mais graves do sistema.
+# Conferido em 20/11/2026: as 40 entradas literais eram todas iguais ao peso da família.
+PESOS_DETECTOR: dict[str, float] = {
+    **{d.id: PESOS_FAMILIA.get(d.familia, 0.6) for d in REGISTRO.values()},
+    **{sub: PESOS_FAMILIA[REGISTRO["C"].familia] for sub in ("C1", "C2", "C3/C5", "C4")},
+}
 
 
 def rodar_orgao(ug: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:

@@ -28,13 +28,15 @@ ausente ≠ 0); INDISPONÍVEL ≠ 0; nunca inventa número; valores em R$.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    para_data,
+    perguntar_rubrica,
 )
 from compliance_agent.reporting.intel_base import moeda
 
@@ -56,22 +58,6 @@ _RUBRICA_QUEBRA_ORDEM = {
     "alegada_sem_documento": "forte",            # alegada mas sem o ato/documento → confirma a quebra
     "inexistente": "forte",                      # nenhuma justificativa no DO → confirma a quebra
 }
-
-
-def _data(v) -> date | None:
-    """Converte uma data heterogênea (date/datetime/str ISO ou BR) em `date`. Inparseável → None (honesto)."""
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, date):
-        return v
-    if isinstance(v, str):
-        s = v.strip()
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S"):
-            try:
-                return datetime.strptime(s[:19] if "T" in s else s[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
 
 
 def _is_pronto_pagamento(tipo_objeto) -> bool:
@@ -100,7 +86,7 @@ class X3ExecucaoFinanceira(Detector):
 
     id = "X3"
     nome = "Execução financeira anômala"
-    familia = "execucao"  # X3 — fase de execução (peso 0.8 na convergência §7.2)
+    familia = "execucao"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -129,7 +115,7 @@ class X3ExecucaoFinanceira(Detector):
         # ── (a) TRÍADE com deltas muito curtos (pagamento quase imediato) ──
         ciclos: list[int] = []  # ciclo empenho→pagamento, em dias
         for p in pagamentos:
-            de, dp = _data(p.get("data_empenho")), _data(p.get("data_pagamento"))
+            de, dp = para_data(p.get("data_empenho")), para_data(p.get("data_pagamento"))
             if de and dp:
                 ciclos.append((dp - de).days)
         min_ciclo = min(ciclos) if ciclos else None
@@ -147,8 +133,8 @@ class X3ExecucaoFinanceira(Detector):
         # não se distingue não se acusa.
         def _sem_triade(p) -> bool:
             """As três datas descrevem TRÊS eventos na ordem legal, ou é leitura quebrada?"""
-            e, li, pg = (_data(p.get("data_empenho")), _data(p.get("data_liquidacao")),
-                         _data(p.get("data_pagamento")))
+            e, li, pg = (para_data(p.get("data_empenho")), para_data(p.get("data_liquidacao")),
+                         para_data(p.get("data_pagamento")))
             if e is None or pg is None:
                 return True
             if e == pg:
@@ -178,7 +164,7 @@ class X3ExecucaoFinanceira(Detector):
         # ── (b) Pagamento ANTES do atesto/medição (paga sem atestar) → forte ──
         antes_atesto = []
         for p in pagamentos:
-            da, dp = _data(p.get("data_atesto")), _data(p.get("data_pagamento"))
+            da, dp = para_data(p.get("data_atesto")), para_data(p.get("data_pagamento"))
             if da and dp and dp < da:
                 antes_atesto.append((dp, da, float(p.get("valor") or 0)))
         valores["n_pagamentos_antes_do_atesto"] = len(antes_atesto)
@@ -195,7 +181,7 @@ class X3ExecucaoFinanceira(Detector):
         total_valor = sum(float(p.get("valor") or 0) for p in pagamentos)
         valor_dezembro = 0.0
         for p in pagamentos:
-            dp = _data(p.get("data_pagamento"))
+            dp = para_data(p.get("data_pagamento"))
             if dp and dp.month == 12:
                 valor_dezembro += float(p.get("valor") or 0)
         pct_dezembro = (valor_dezembro / total_valor) if total_valor > 0 else None
@@ -283,11 +269,11 @@ class X3ExecucaoFinanceira(Detector):
     def _meses_vigencia_no_ano(self, contexto: dict, pagamentos: list[dict]) -> int | None:
         """Quantos meses do ano dos pagamentos de dezembro a vigência do contrato cobre. Sem
         `vigencia_inicio`/`vigencia_fim` no contexto → None (cobertura não verificável, honesto)."""
-        vi = _data(contexto.get("vigencia_inicio"))
-        vf = _data(contexto.get("vigencia_fim"))
+        vi = para_data(contexto.get("vigencia_inicio"))
+        vf = para_data(contexto.get("vigencia_fim"))
         if not vi or not vf:
             return None
-        anos = {d.year for d in (_data(p.get("data_pagamento")) for p in pagamentos) if d and d.month == 12}
+        anos = {d.year for d in (para_data(p.get("data_pagamento")) for p in pagamentos) if d and d.month == 12}
         if not anos:
             return None
         ano = max(anos)
@@ -308,7 +294,7 @@ class X3ExecucaoFinanceira(Detector):
         for x in fila:
             if not isinstance(x, dict):
                 continue
-            dc, dpg = _data(x.get("data_chegada")), _data(x.get("data_pago"))
+            dc, dpg = para_data(x.get("data_chegada")), para_data(x.get("data_pago"))
             if dc and dpg:
                 itens.append((dc, dpg))
         if len(itens) < 2:
@@ -330,10 +316,8 @@ class X3ExecucaoFinanceira(Detector):
         (não inventamos o juízo subjetivo; a inversão objetiva da fila, quando houver, permanece)."""
         pre = contexto.get("_rubrica_quebra")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_QUEBRA_ORDEM)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_QUEBRA_ORDEM)
+            return {"status": status, "motivo": motivo}
 
         gerar = contexto.get("gerar")
         if gerar is None:
@@ -349,13 +333,5 @@ class X3ExecucaoFinanceira(Detector):
         prompt = (
             "Há ato/justificativa publicada de quebra da ordem cronológica para os pagamentos do contrato? "
             "Classifique conforme a rubrica.")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_QUEBRA_ORDEM)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_QUEBRA_ORDEM)
+        return {"status": status, "motivo": motivo}

@@ -31,7 +31,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada da justificativa da subcontratação (spec J6). LLM-opcional; degrada honesto.
@@ -109,7 +110,7 @@ class J6SubcontratacaoCruzada(Detector):
 
     id = "J6"
     nome = "Subcontratação cruzada / consórcio anômalo"
-    familia = "conluio"  # J6 — peso 0.9 (conluio) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -246,10 +247,8 @@ class J6SubcontratacaoCruzada(Detector):
         teste: `_rubrica_subcontratacao` injetado no contexto. Sem rubrica e sem LLM → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_subcontratacao")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_SUBCONTRATACAO)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_SUBCONTRATACAO)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel",
@@ -267,13 +266,5 @@ class J6SubcontratacaoCruzada(Detector):
             f"Objeto principal do contrato: {objeto_principal[:600]}\n"
             f"Objeto(s) subcontratado(s): {objetos_sub[:1000]}\n\n"
             "A subcontratação é de especialidade real não detida pelo vencedor, ou recai sobre o núcleo do objeto?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_SUBCONTRATACAO)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_SUBCONTRATACAO)
+        return {"status": status, "motivo": motivo}

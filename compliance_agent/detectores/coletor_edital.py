@@ -40,6 +40,7 @@ from compliance_agent.detectores import (
     rodar_julgamento,
     rodar_planejamento,
 )
+from compliance_agent.llm.json_resposta import parse_json_llm
 from compliance_agent.sei.fases import classificar
 
 # ───────────────────────────── normalização de números/datas ─────────────────────────────
@@ -544,9 +545,7 @@ def _llm_extrair(faltantes: list[str], fontes: list[dict], gerar: Callable[[str,
         raw = gerar(prompt, _SYS_EXTRACAO)
     except Exception:
         return {}  # LLM caiu → honesto, nada entra
-    from compliance_agent.detectores.base import _parse_json
-
-    dados = _parse_json(raw)
+    dados = parse_json_llm(raw)
     if not isinstance(dados, dict):
         return {}
     out: dict = {}

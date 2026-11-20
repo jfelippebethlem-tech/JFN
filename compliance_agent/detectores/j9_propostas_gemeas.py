@@ -54,7 +54,7 @@ class J9PropostasGemeas(Detector):
 
     id = "J9"
     nome = "Propostas gêmeas (planilha derivada e texto copiado)"
-    familia = "conluio"  # peso 0.85 na convergência §7.2, igual a J1-J8
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")

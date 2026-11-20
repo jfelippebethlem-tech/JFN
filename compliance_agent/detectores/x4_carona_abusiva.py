@@ -37,7 +37,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # ───────────────────────────── Limites OBJETIVOS do art. 86 (Lei 14.133/2021) ─────────────────────────────
@@ -106,7 +107,7 @@ class X4CaronaAbusiva(Detector):
 
     id = "X4"
     nome = "Carona abusiva em Ata de Registro de Preços"
-    familia = "execucao"  # X4 — fase de execução (peso 0.8 §7.2); a violação de limite é crítica/confirmada
+    familia = "execucao"  # a violação de limite é crítica/confirmada
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -136,7 +137,6 @@ class X4CaronaAbusiva(Detector):
             if q is not None and q > 0:
                 registrado[it.get("item")] = q
 
-        # agrega adesões por item e por (item, aderente)
         soma_item: dict = {}
         por_item_aderente: dict = {}
         aderentes: set = set()
@@ -214,7 +214,7 @@ class X4CaronaAbusiva(Detector):
 
         # ── PARTE SUBJETIVA (LLM-opcional): duas rubricas fechadas ──
         just = self._avaliar_justificativas(contexto, adesoes)
-        rede = self._avaliar_rede(contexto)
+        rede = self._rubrica_rede(contexto)
         valores["rubrica_justificativa"] = just["status"]
         valores["rubrica_rede"] = rede["status"]
         valores["similaridade_justificativas"] = just.get("similaridade")
@@ -314,11 +314,8 @@ class X4CaronaAbusiva(Detector):
         (similaridade ≥95% entre aderentes distintos → texto_padrao); senão LLM; senão nao_avaliavel."""
         pre = contexto.get("_rubrica_justificativa")
         if pre is not None:
-            nivel, _s, motivo = avaliar_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo, "similaridade": round(sim_max, 4)}
-            classe = (pre.get("nivel") or pre.get("classificacao") or "").strip().lower()
-            return {"status": classe, "motivo": motivo, "similaridade": round(sim_max, 4)}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
+            return {"status": status, "motivo": motivo, "similaridade": round(sim_max, 4)}
 
         # derivação OBJETIVA: similaridade ≥95% entre aderentes distintos ⇒ texto_padrão (rede coordenada)
         if par_max is not None and sim_max >= _SIM_TEXTO_PADRAO:
@@ -340,33 +337,16 @@ class X4CaronaAbusiva(Detector):
         if par_max is not None:
             trechos = [par_max[0][1][:200], par_max[1][1][:200]]
         prompt = f"Justificativas de vantagem (aderentes distintos):\n{chr(10).join(trechos)[:1000]}"
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})",
-                    "similaridade": round(sim_max, 4)}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _s, motivo = avaliar_rubrica(dados, _RUBRICA_JUSTIFICATIVA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo, "similaridade": round(sim_max, 4)}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo,
-                "similaridade": round(sim_max, 4)}
-
-    def _avaliar_rede(self, contexto: dict) -> dict:
-        """Rubrica (2): padrão geográfico/político da rede de aderentes. Delega à classificação."""
-        return self._rubrica_rede(contexto)
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_JUSTIFICATIVA)
+        return {"status": status, "motivo": motivo, "similaridade": round(sim_max, 4)}
 
     def _rubrica_rede(self, contexto: dict) -> dict:
         """Classifica a rubrica (2). Atalho de teste `_rubrica_rede`; senão deriva de `vinculo_aderentes`
         (bool/dados de concentração); senão LLM; senão nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_rede")
         if pre is not None:
-            nivel, _s, motivo = avaliar_rubrica(pre, _RUBRICA_REDE)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            classe = (pre.get("nivel") or pre.get("classificacao") or "").strip().lower()
-            return {"status": classe, "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_REDE)
+            return {"status": status, "motivo": motivo}
 
         # derivação: sinal explícito de vínculo/concentração entre aderentes
         vinc = contexto.get("vinculo_aderentes")
@@ -385,13 +365,5 @@ class X4CaronaAbusiva(Detector):
             "Classifique conforme a rubrica fechada. Responda SOMENTE com JSON: "
             '{"nivel":"dispersao_natural|concentracao_anomala","trecho":"<citação literal>"}. Sem trecho, não classifique.')
         prompt = f"Municípios dos aderentes: {municipios[:1000]}\n\nDispersão natural ou concentração anômala?"
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _s, motivo = avaliar_rubrica(dados, _RUBRICA_REDE)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_REDE)
+        return {"status": status, "motivo": motivo}

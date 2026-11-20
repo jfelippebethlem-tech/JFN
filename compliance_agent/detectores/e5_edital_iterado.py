@@ -35,8 +35,9 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
 )
+from compliance_agent.llm.json_resposta import parse_json_llm
 
 # Origens de retificação que são LEGÍTIMAS por construção (spec): não pontuam.
 _ORIGENS_LEGITIMAS = {"tce", "erro_material"}
@@ -79,7 +80,7 @@ class E5EditalIterado(Detector):
 
     id = "E5"
     nome = "Edital iterado (republicações dirigidas)"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -306,12 +307,10 @@ class E5EditalIterado(Detector):
             else:
                 resposta = self._chamar_rubrica_llm(r, gerar)
 
-            nivel, _score, _motivo = avaliar_rubrica(resposta, _RUBRICA_BENEFICIARIO)
-            if nivel is None or not isinstance(resposta, dict):
-                status_por_alteracao.append("nao_avaliavel")
-                continue
-            classe = _norm(resposta.get("nivel") or resposta.get("classificacao"))
+            classe, _motivo = nivel_rubrica(resposta, _RUBRICA_BENEFICIARIO)
             status_por_alteracao.append(classe)
+            if classe == "nao_avaliavel":
+                continue
 
             if classe == "amplia_competicao":
                 amplia_zera_rodada = True
@@ -369,5 +368,4 @@ class E5EditalIterado(Detector):
             raw = gerar(prompt, sistema)
         except Exception:  # noqa: BLE001 — degrada honesto
             return None
-        from compliance_agent.detectores.base import _parse_json
-        return _parse_json(raw)
+        return parse_json_llm(raw)

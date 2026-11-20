@@ -185,7 +185,7 @@ class JAtestadoCruzado(Detector):
 
     id = "J8"
     nome = "Atestado de capacidade técnica cruzado (emissor do mesmo grupo)"
-    familia = "conluio"  # peso 0.9 na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")

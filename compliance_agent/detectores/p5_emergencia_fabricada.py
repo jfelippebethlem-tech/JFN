@@ -26,14 +26,16 @@ HONESTIDADE JFN: indício ≠ acusação; sem datas do processo → `nao_avaliav
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
+from compliance_agent.detectores.base import para_data as _to_date  # nome antigo (os testes importam)
 
 # Rubrica fechada de nexo justificativa × risco concreto (spec P5).
 _RUBRICA_NEXO = {
@@ -47,25 +49,6 @@ _RUBRICA_PREVISIBILIDADE = {
     "imprevisivel_genuino": "ausente",   # desastre/falha súbita → não pontua
     "previsivel": "forte",               # vencimento/desgaste conhecido → confirma inércia
 }
-
-
-def _to_date(v) -> date | None:
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, date):
-        return v
-    if isinstance(v, str):
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(v.strip()[:len(fmt) + 2], fmt).date()
-            except ValueError:
-                continue
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(v.strip()[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
 
 
 def _delta_dias(a: date | None, b: date | None) -> int | None:
@@ -96,7 +79,7 @@ class P5EmergenciaFabricada(Detector):
 
     id = "P5"
     nome = "Emergência fabricada"
-    familia = "desenho_certame"  # dispensa direta na fase de planejamento (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"  # dispensa direta na fase de planejamento
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -236,10 +219,8 @@ class P5EmergenciaFabricada(Detector):
         Sem rubrica e sem LLM → nao_avaliavel honesto."""
         pre = contexto.get(chave_pre)
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, escala)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, escala)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — rubrica não auditada (honesto)"}
@@ -247,13 +228,5 @@ class P5EmergenciaFabricada(Detector):
             "Você é auditor de controle externo. Classifique conforme a rubrica fechada. Responda SOMENTE com JSON: "
             '{"nivel":"<um nível da escala>","trecho":"<citação literal dos autos>"}. Sem trecho, não classifique.'
         )
-        try:
-            raw = gerar(prompt_user, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, escala)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt_user, sistema, escala)
+        return {"status": status, "motivo": motivo}

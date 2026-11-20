@@ -27,14 +27,17 @@ HONESTIDADE JFN: indício ≠ acusação; sem datas de publicação/abertura, ou
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
+from compliance_agent.detectores.base import para_datahora as _to_datetime  # nome antigo (os testes importam)
+from compliance_agent.detectores.base import para_data as _to_date  # nome antigo (os testes importam)
 
 # ───────────────────────────── Mínimos do art. 55 da Lei 14.133/2021 (dias ÚTEIS) ─────────────────────────────
 # Prazo mínimo entre a divulgação do edital e a apresentação de propostas/lances, por modalidade × critério de
@@ -68,47 +71,6 @@ def minimo_art55(modalidade: str | None, criterio: str | None = None) -> int | N
     return tabela.get(c, tabela.get(_DEFAULT_CRITERIO))
 
 
-# ───────────────────────────── parse de data/datetime ─────────────────────────────
-def _to_date(v) -> date | None:
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, date):
-        return v
-    if isinstance(v, str):
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(v.strip()[:len(fmt) + 2], fmt).date()
-            except ValueError:
-                continue
-        # último recurso: só a parte de data
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(v.strip()[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
-
-
-def _to_datetime(v) -> datetime | None:
-    if isinstance(v, datetime):
-        return v
-    if isinstance(v, date):
-        return datetime(v.year, v.month, v.day)
-    if isinstance(v, str):
-        # ATENÇÃO À ORDEM: os formatos COM hora vêm todos antes dos formatos só-data. Faltavam as
-        # variantes ISO sem segundos (`...T17:00`), que é como o PNCP costuma entregar — sem elas,
-        # "2026-07-03T17:00" casava com "%Y-%m-%d" (por causa do truncamento abaixo) e virava
-        # 00:00, DESCARTANDO A HORA em silêncio. Efeito: a regra de data-sombra (sexta após 16h,
-        # véspera de feriado) nunca disparava para data em ISO — falso negativo calado.
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M",
-                    "%d/%m/%Y %H:%M", "%Y-%m-%d", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(v.strip()[:len(fmt) + 2], fmt)
-            except ValueError:
-                continue
-    return None
-
-
 def _feriados_set(feriados) -> set[date]:
     out: set[date] = set()
     for f in (feriados or []):
@@ -123,7 +85,6 @@ def dias_uteis(inicio: date, fim: date, feriados: set[date]) -> int:
     feriados informados. Determinístico, leve (sem dependência externa). Retorna 0 se fim <= inicio."""
     if fim <= inicio:
         return 0
-    from datetime import timedelta
     n = 0
     d = inicio + timedelta(days=1)
     while d <= fim:
@@ -137,7 +98,6 @@ def _is_data_sombra(dt: datetime | None, feriados: set[date]) -> tuple[bool, str
     """Data de baixa atenção: véspera de feriado, ou sexta-feira após as 16h. Retorna (é_sombra, motivo)."""
     if dt is None:
         return False, ""
-    from datetime import timedelta
     d = dt.date()
     if (d + timedelta(days=1)) in feriados:
         return True, "véspera de feriado"
@@ -174,7 +134,7 @@ class E2Prazos(Detector):
 
     id = "E2"
     nome = "Publicidade e prazos minimizados"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2) — E2 é tipicamente AGRAVANTE
+    familia = "desenho_certame"  # E2 é tipicamente AGRAVANTE
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -312,10 +272,7 @@ class E2Prazos(Detector):
         Sem rubrica e sem LLM → ('nao_avaliavel', motivo) honesto."""
         pre = v.get("_rubrica_impacto")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_IMPACTO)
-            if nivel is None:
-                return "nao_avaliavel", motivo
-            return (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), motivo
+            return nivel_rubrica(pre, _RUBRICA_IMPACTO)
         if gerar is None:
             return "nao_avaliavel", "LLM ausente — impacto da retificação não auditado (honesto)"
         sistema = (
@@ -326,13 +283,5 @@ class E2Prazos(Detector):
         )
         prompt = (f"SEÇÃO: {v.get('secao')}\nANTES: {str(v.get('antes') or '')[:400]}\n"
                   f"DEPOIS: {str(v.get('depois') or '')[:400]}\n\nA alteração afeta a formulação de propostas?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return "nao_avaliavel", f"LLM indisponível ({str(e)[:50]})"
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_IMPACTO)
-        if nivel is None or not isinstance(dados, dict):
-            return "nao_avaliavel", motivo
-        return (dados.get("nivel") or "").strip().lower(), motivo
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_IMPACTO)
+        return status, motivo

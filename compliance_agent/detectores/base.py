@@ -16,37 +16,37 @@ Camadas (spec §1.1): 1.Extração · 2.Regras objetivas (código puro) · 3.Ava
 (§1.4) em `ResultadoDetector`. Convergência multiplicativa (§7.2): `score_processo = 1 − Π(1 − w·s)`.
 
 
-MAPA DOS 30 DETECTORES → O QUE O JFN JÁ TEM (para os próximos plugarem REUSANDO, sem duplicar)
+MAPA DOS DETECTORES → O QUE O JFN JÁ TEM (para os próximos plugarem REUSANDO, sem duplicar)
 ============================================================================================
 Convenção: ✅ já coberto (reusar) · 🟡 parcial (base existe, falta o card do detector) · ⬜ a construir.
 Os módulos citados vivem em `compliance_agent/`.
 
   FASE DE PLANEJAMENTO
-  P1  Especificação dirigida / marca disfarçada ...... 🟡 `direcionamento_cerebro` (cérebro edital+ata) +
+  P1  Especificação dirigida / marca disfarçada ...... ✅ (`detectores/p1_especificacao_dirigida.py`) · base: `direcionamento_cerebro` (cérebro edital+ata) +
                                                           `precos_extract` (extrai requisitos do TR)
-  P2  Cotações combinadas (orçamentos fachada) ....... 🟡 `precos_extract.sobrepreco_interno` (CV das cotações)
+  P2  Cotações combinadas (orçamentos fachada) ....... ✅ (`detectores/p2_cotacoes_combinadas.py`) · base: `precos_extract.sobrepreco_interno` (CV das cotações)
                                                           + `rede_societaria`/`relacoes` (vínculo cotantes)
   P3  Sobrepreço na estimativa ....................... ✅ `precos_extract` + `sobrepreco.py` + `anomalias.py`
   P4  Fracionamento de despesa ....................... ✅ `detectores/p4_fracionamento.py` (ESTE pacote)
   P5  Emergência fabricada ......................... ✅ (`detectores/p5_emergencia_fabricada.py`)
 
   FASE DE EDITAL
-  E1  Barreira de entrada (qualificação) ............. 🟡 `direcionamento_cerebro` (exigências restritivas/atestado)
+  E1  Barreira de entrada (qualificação) ............. ✅ (`detectores/e1_barreira.py`) · base: `direcionamento_cerebro` (exigências restritivas/atestado)
   E2  Publicidade e prazos minimizados ............. ✅ (`detectores/e2_prazos.py`)
   E3  Lote-pacote (agregação anticompetitiva) ...... ✅ (`detectores/e3_lote_pacote.py`)
   E4  Visita técnica como filtro ................... ✅ (`detectores/e4_visita_tecnica.py`)
   E5  Edital iterado (republicações dirigidas) ..... ✅ (`detectores/e5_edital_iterado.py`)
-  E6  Pontuação técnica dirigida ..................... 🟡 `direcionamento_cerebro` (matriz/cascata de julgamento)
+  E6  Pontuação técnica dirigida ..................... ✅ (`detectores/e6_pontuacao_dirigida.py`) · base: `direcionamento_cerebro` (matriz/cascata de julgamento)
 
   FASE DE JULGAMENTO (conluio — estatístico, exige série)
   J1  Rodízio de vencedores .......................... ✅ `grafo_cartel.concentracao_por_grupo` (HHI/grupo) +
                                                           `rodizio_temporal` (runs/alternância)
-  J2  Propostas de cobertura (screens de preço) ...... 🟡 `anomalias.py` (Benford/dispersão); falta CV/RD/DIFFP
-  J3  Desconto anômalo ............................... 🟡 `anomalias.py` / `sobrepreco.py` (desconto vs baseline)
-  J4  Supressão de propostas / licitante único ....... 🟡 `rodizio_temporal` (perdedora profissional)
+  J2  Propostas de cobertura (screens de preço) ...... ✅ (`detectores/j2_propostas_cobertura.py`) · base: `anomalias.py` (Benford/dispersão); falta CV/RD/DIFFP
+  J3  Desconto anômalo ............................... ✅ (`detectores/j3_desconto_anomalo.py`) · base: `anomalias.py` / `sobrepreco.py` (desconto vs baseline)
+  J4  Supressão de propostas / licitante único ....... ✅ (`detectores/j4_supressao_propostas.py`) · base: `rodizio_temporal` (perdedora profissional)
   J5  Digitais compartilhadas (metadados) .......... ✅ (`detectores/j5_digitais_compartilhadas.py`)
-  J6  Subcontratação cruzada / consórcio ............. 🟡 `rede_societaria`/`grafo_cartel.socios_compartilhados`
-  J7  Inabilitação seletiva (dois pesos) ............. 🟡 `direcionamento_cerebro` (lê a ata de julgamento)
+  J6  Subcontratação cruzada / consórcio ............. ✅ (`detectores/j6_subcontratacao_cruzada.py`) · base: `rede_societaria`/`grafo_cartel.socios_compartilhados`
+  J7  Inabilitação seletiva (dois pesos) ............. ✅ (`detectores/j7_inabilitacao_seletiva.py`) · base: `direcionamento_cerebro` (lê a ata de julgamento)
 
   PERFIL DO CONTRATADO
   C1  CNPJ recém-nascido ............................. 🟡 `fornecedor` enrich (idade CNPJ) — ver `enrichers/`
@@ -58,13 +58,13 @@ Os módulos citados vivem em `compliance_agent/`.
   C6  Vínculo político-financeiro (doações) .......... ✅ `grafo_poder` + tabela `doacoes_eleitorais` (TSE)
 
   EXECUÇÃO
-  X1  Crescimento aditivo (contrato engorda) ......... 🟡 `contratos` (aditivos); falta o teto art.125
+  X1  Crescimento aditivo (contrato engorda) ......... ✅ (`detectores/x1_crescimento_aditivo.py`) · base: `contratos` (aditivos); teto do art. 125 em `limites_aditivo`
   X2  Prorrogação perpétua ......................... ✅ (`detectores/x2_prorrogacao_perpetua.py`)
   X3  Execução financeira anômala .................... ✅ `ob_orcamentaria_siafe` + `ordens_bancarias`
                                                           (tríade empenho→liquidação→pagamento) + `anomalias.py`
   X4  Carona abusiva em Ata de Registro de Preços .. ✅ (`detectores/x4_carona_abusiva.py`)
   X5  Jogo de planilha ............................. ✅ (`detectores/x5_jogo_planilha.py`)
-  X6  Entrega fantasma / atesto de fachada ........... 🟡 `correlacao_sei` (atesto↔OB) + `verificacao_endereco` (C2)
+  X6  Entrega fantasma / atesto de fachada ........... ✅ (`detectores/x6_entrega_fantasma.py`) · base: `correlacao_sei` (atesto↔OB) + `verificacao_endereco` (C2)
   X7  Reequilíbrio indevido (art. 124) ............. ✅ (`detectores/x7_reequilibrio_indevido.py`)
   X8  Aditivo retroativo (fora da vigência) ....... ✅ (`detectores/x8_aditivo_retroativo.py`)
   X9  Supressão abusiva (arts. 125 e 126) ......... ✅ (`detectores/x9_supressao_abusiva.py`)
@@ -78,7 +78,7 @@ Os módulos citados vivem em `compliance_agent/`.
   · Acúmulo de cargos .............................. ✅ `acumulo_cargos.py`
   · Investigação doubt-driven (H-hipóteses) ........ ✅ `investigacao_dd` / `investigacao_orgao_dd`
   · Priorização / dual scoring (§7.3) .............. ✅ `priorizacao.py`
-  · Cérebro LLM (Gemini→Groq→Cerebras) ............. ✅ `direcionamento_cerebro` (reusado por `verificar_adversarial`)
+  · Motor LLM (co-motor Claude × cascata) .......... ✅ `llm.comotor.juizo` (usado por `verificar_adversarial`)
 
   ACRESCENTADOS EM 2026-07-28 — existiam no REGISTRO e não constavam neste mapa.
   Mapa que OMITE detector engana tanto quanto mapa que declara inexistente o que existe:
@@ -99,8 +99,10 @@ import hashlib
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable, Sequence
+
+from compliance_agent.llm.json_resposta import parse_json_llm
 
 # ───────────────────────────── Score: ÂNCORAS FIXAS (spec §1.2) ─────────────────────────────
 # A IA NUNCA inventa valores intermediários: escolhe a âncora. O código pondera/agrega.
@@ -115,11 +117,11 @@ ANCORAS: dict[str, float] = {
 # Pesos por família para a convergência multiplicativa (spec §7.2).
 PESOS_FAMILIA: dict[str, float] = {
     "violacao_legal": 1.0,   # limites art.86/125 excedidos, sancionado contratado, sócio comum
-    "conluio": 0.9,          # J1–J7
-    "perfil": 0.8,           # C1–C6 (perfil do contratado)
-    "preco": 0.8,            # P2/P3
-    "desenho_certame": 0.6,  # E1–E6
-    "execucao": 0.8,         # X1–X12
+    "conluio": 0.9,
+    "perfil": 0.8,
+    "preco": 0.8,
+    "desenho_certame": 0.6,
+    "execucao": 0.8,
 }
 
 STATUS_VALIDOS = ("confirmado", "descartado", "nao_avaliavel")
@@ -144,6 +146,37 @@ def sem_acentos(texto: str) -> str:
     import unicodedata
     t = unicodedata.normalize("NFKD", str(texto or "").lower())
     return "".join(ch for ch in t if not unicodedata.combining(ch))
+
+
+# ATENÇÃO À ORDEM: os formatos COM hora vêm todos antes dos formatos só-data. Faltavam as variantes ISO sem
+# segundos (`...T17:00`), que é como o PNCP costuma entregar — sem elas, "2026-07-03T17:00" casava com "%Y-%m-%d"
+# (por causa do truncamento) e virava 00:00, DESCARTANDO A HORA em silêncio (a data-sombra do E2 nunca disparava);
+# e os parsers próprios de X1/X2/X3/P4, sem truncar, devolviam None para ela (a data inteira sumia).
+FORMATOS_DATA = ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M",
+                 "%d/%m/%Y %H:%M", "%Y-%m-%d", "%d/%m/%Y")
+
+
+def para_datahora(v) -> datetime | None:
+    """datetime / date / texto ISO ou BR (com ou sem hora) → `datetime`. Ausente ou inparseável → None (≠ 0)."""
+    if isinstance(v, datetime):
+        return v
+    if isinstance(v, date):
+        return datetime(v.year, v.month, v.day)
+    if not isinstance(v, str):
+        return None
+    s = v.strip()
+    for fmt in FORMATOS_DATA:
+        try:
+            return datetime.strptime(s[:len(fmt) + 2], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def para_data(v) -> date | None:
+    """Como `para_datahora`, sem a hora."""
+    dt = para_datahora(v)
+    return dt.date() if dt else None
 
 
 def _agora_iso() -> str:
@@ -251,6 +284,32 @@ def avaliar_rubrica(resposta: dict | None, escala: dict[str, str],
     return nivel_ancora, ancora(nivel_ancora), f"rubrica: {nivel} → âncora {nivel_ancora}{sufixo}"
 
 
+def nivel_rubrica(resposta: dict | None, escala: dict[str, str]) -> tuple[str, str]:
+    """(nível DA RUBRICA escolhido, motivo) — ou ("nao_avaliavel", motivo) quando `avaliar_rubrica` descarta.
+
+    É o que os detectores comparam (`"generica"`, `"robusta"`…), não a âncora. Lê `nivel` ou `classificacao`, os
+    mesmos campos que `avaliar_rubrica` aceita."""
+    nivel, _score, motivo = avaliar_rubrica(resposta, escala)
+    if nivel is None:
+        return "nao_avaliavel", motivo
+    return str(resposta.get("nivel") or resposta.get("classificacao") or "").strip().lower(), motivo
+
+
+def perguntar_rubrica(gerar: Callable[[str, str], str], prompt: str, sistema: str,
+                      escala: dict[str, str]) -> tuple[str, str, dict | None]:
+    """Pergunta ao LLM e classifica pela rubrica fechada: (nível da rubrica | "nao_avaliavel", motivo, resposta).
+
+    LLM que levanta exceção ou devolve texto sem JSON degrada para `nao_avaliavel` (honesto, nunca quebra o
+    detector). `resposta` é o dicionário devolvido (para quem quer o `trecho`), ou None."""
+    try:
+        raw = gerar(prompt, sistema)
+    except Exception as ex:  # noqa: BLE001 — LLM caiu: degrada honesto
+        return "nao_avaliavel", f"LLM indisponível ({str(ex)[:50]})", None
+    dados = parse_json_llm(raw)
+    status, motivo = nivel_rubrica(dados, escala)
+    return status, motivo, dados if isinstance(dados, dict) else None
+
+
 # ───────────────────────────── Verificador adversarial (spec §1.3) ─────────────────────────────
 _SYS_ADVERSARIAL = (
     "Você é AUDITOR ADVERSARIAL de controle externo. Recebe uma EVIDÊNCIA e um ACHADO preliminar de indício de "
@@ -277,8 +336,8 @@ def verificar_adversarial(
     refuta automaticamente — retorna (refutada=False, motivo='nao_avaliavel: LLM indisponível', explicacao='').
     Indisponível ≠ refutado e ≠ confirmado: marca-se a ausência de juízo no campo de refutação, e NUNCA quebra.
 
-    `gerar`: callable SÍNCRONO (prompt, sistema)->str. Default = `direcionamento_cerebro.gerar_sync` (Gemini→Groq→
-    Cerebras). Em teste, injete um fake (sem rede).
+    `gerar`: callable SÍNCRONO (prompt, sistema)->str. Default = `llm.comotor.juizo("camada_subjetiva")`. Em teste,
+    injete um fake (sem rede).
 
     Retorna (refutada: bool, motivo_refutacao: str, explicacao_inocente: str)."""
     if gerar is None:
@@ -299,7 +358,7 @@ def verificar_adversarial(
     except Exception as e:  # noqa: BLE001 — LLM caiu: honesto, não refuta nem confirma
         return False, f"nao_avaliavel: LLM indisponível ({str(e)[:60]}) — exculpatória não realizada", ""
 
-    dados = _parse_json(raw)
+    dados = parse_json_llm(raw)
     if not isinstance(dados, dict):
         return False, "nao_avaliavel: resposta adversarial não-parseável — exculpatória descartada (honesto)", ""
 
@@ -309,13 +368,6 @@ def verificar_adversarial(
     if refuta:
         return True, motivo or "refutada pela checagem inversa", explicacao
     return False, motivo or "achado sobreviveu à checagem inversa", explicacao
-
-
-def _parse_json(raw: str | None):
-    """Extrai o 1º objeto JSON do texto do LLM (parse único da casa: `llm/json_resposta`)."""
-    from compliance_agent.llm.json_resposta import parse_json_llm
-
-    return parse_json_llm(raw)
 
 
 # ── painel adversarial: três lentes de refutação, não uma ─────────────────────────────────────

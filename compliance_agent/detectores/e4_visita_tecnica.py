@@ -33,7 +33,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica de necessidade real da visita para formular proposta (spec E4).
@@ -74,7 +75,7 @@ class E4VisitaTecnica(Detector):
 
     id = "E4"
     nome = "Visita técnica como filtro"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -213,7 +214,6 @@ class E4VisitaTecnica(Detector):
         vset = [_norm_cnpj(c) for c in visitantes if _norm_cnpj(c)]
         if not vset:
             return None
-        # dedup preservando ordem
         seen: list[str] = []
         for c in vset:
             if c not in seen:
@@ -230,10 +230,8 @@ class E4VisitaTecnica(Detector):
         Sem rubrica/LLM → nao_avaliavel honesto (não classificamos a necessidade sem auditoria)."""
         pre = contexto.get("_rubrica_necessidade")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_NECESSIDADE)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_NECESSIDADE)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — necessidade da visita não auditada (honesto)"}
@@ -247,13 +245,5 @@ class E4VisitaTecnica(Detector):
         prompt = (f"OBJETO: {str(objeto or '(não informado)')[:400]}\n\n"
                   f"CLÁUSULA DE VISITA: {str(visita)[:400]}\n\n"
                   "A visita é indispensável para formular a proposta?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_NECESSIDADE)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_NECESSIDADE)
+        return {"status": status, "motivo": motivo}

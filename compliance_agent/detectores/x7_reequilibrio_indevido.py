@@ -45,6 +45,8 @@ from compliance_agent.detectores.base import (
     ResultadoDetector,
     ancora,
     avaliar_rubrica,
+    evidencia,
+    para_data,
 )
 from compliance_agent.limites_aditivo import ato_normativo, teto_acrescimo
 from compliance_agent.reporting.intel_base import moeda
@@ -88,15 +90,15 @@ def _f(v) -> float | None:
 
 
 def _ano(data) -> str:
-    return str(data or "")[:4]
+    d = para_data(data)
+    return str(d.year) if d else str(data or "")[:4]   # só o ano ("2024") ou data impossível: o prefixo, como antes
 
 
 def _norm_indice(s) -> str:
     """'IPCA-E' / 'ipca e' / 'IPCA' → 'ipca'. Sem isso, a comparação de índices vira ruído."""
-    import re
     t = re.sub(r"[^a-z]", "", str(s or "").lower())
     for chave in ("ipca", "incc", "igpm", "igp", "inpc", "cub", "sinapi", "icv"):
-        if t.startswith(chave) or chave in t:
+        if chave in t:
             return chave
     return t
 
@@ -288,7 +290,7 @@ class X7ReequilibrioIndevido(Detector):
                 nivel, score, motivo = avaliar_rubrica(resposta, _RUBRICA_ALEA, fonte)
                 if nivel and nivel != "ausente":
                     achados.append((nivel, f"ÁLEA: {motivo}"))
-                    valores.setdefault("rubricas_alea", []).append(resposta.get("nivel"))
+                    valores.setdefault("rubricas_alea", []).append(resposta.get("nivel") or resposta.get("classificacao"))
         elif not gerar:
             lacunas.append("sem `gerar`: a rubrica de álea (parte subjetiva) ficou nao_avaliavel")
 
@@ -308,7 +310,7 @@ class X7ReequilibrioIndevido(Detector):
         res.status = "confirmado"
         res.score = ancora(nivel_final)
         res.valores = valores
-        res.evidencia = self._evidencias([e for _, e in achados])
+        res.evidencia = [evidencia("contrato_aditivo / autos do processo", t) for _, t in achados]
         res.motivo_refutacao = ""
         res.explicacao_inocente = (
             "Recomposição pode ser legítima: álea extraordinária real (mudança tributária, "
@@ -318,6 +320,3 @@ class X7ReequilibrioIndevido(Detector):
         return res
 
     # ── utilitários locais (mantêm o card independente do formato de evidência) ────────────────
-    def _evidencias(self, textos: list[str]) -> list[dict]:
-        from compliance_agent.detectores.base import evidencia
-        return [evidencia("contrato_aditivo / autos do processo", t) for t in textos]

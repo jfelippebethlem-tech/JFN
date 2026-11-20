@@ -37,7 +37,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada dos erros/idiossincrasias textuais compartilhados (spec J5). LLM-opcional; degrada honesto.
@@ -109,7 +110,7 @@ class J5DigitaisCompartilhadas(Detector):
 
     id = "J5"
     nome = "Digitais compartilhadas (metadados, redação e origem)"
-    familia = "conluio"  # J5 — peso 0.9 (conluio) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -244,11 +245,11 @@ class J5DigitaisCompartilhadas(Detector):
         injetado no contexto. Sem rubrica e sem LLM → nao_avaliavel honesto (as coincidências objetivas permanecem)."""
         pre = contexto.get("_rubrica_erros")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_ERROS)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_ERROS)
+            if status == "nao_avaliavel":
+                return {"status": status, "motivo": motivo}
             return {
-                "status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(),
+                "status": status,
                 "trecho": (pre.get("trecho") or pre.get("citacao") or "").strip(),
                 "motivo": motivo,
             }
@@ -269,17 +270,11 @@ class J5DigitaisCompartilhadas(Detector):
             "Trechos de redação das propostas (por licitante):\n" + "\n".join(amostras)[:3000] + "\n\n"
             "Há erros idênticos improváveis (mesmo erro ortográfico raro, mesma frase truncada, mesmo valor digitado "
             "errado), apenas coincidências de template de mercado, ou sem coincidências?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_ERROS)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
+        status, motivo, dados = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_ERROS)
+        if status == "nao_avaliavel":
+            return {"status": status, "motivo": motivo}
         return {
-            "status": (dados.get("nivel") or "").strip().lower(),
+            "status": status,
             "trecho": (dados.get("trecho") or dados.get("citacao") or "").strip(),
             "motivo": motivo,
         }

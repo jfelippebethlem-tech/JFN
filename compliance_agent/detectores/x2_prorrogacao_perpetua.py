@@ -28,13 +28,15 @@ HONESTIDADE JFN: indício ≠ acusação; sem `vigencia_inicio`/`vigencia_fim_at
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    para_data,
+    perguntar_rubrica,
 )
 
 # ───────────────────────────── Limiares objetivos (CÓDIGO, nunca prompt) ─────────────────────────────
@@ -55,21 +57,6 @@ _RUBRICA_VANTAJOSIDADE = {
 _CLASSES_VANTAJOSIDADE = set(_RUBRICA_VANTAJOSIDADE)
 
 
-def _data(v) -> date | None:
-    """Parse tolerante de data (str ISO/BR, date, datetime) → date, ou None."""
-    if isinstance(v, date) and not isinstance(v, datetime):
-        return v
-    if isinstance(v, datetime):
-        return v.date()
-    if isinstance(v, str):
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S"):
-            try:
-                return datetime.strptime(v[:19] if "T" in v else v[:10], fmt).date()
-            except ValueError:
-                continue
-    return None
-
-
 def _anos_entre(inicio: date, fim: date) -> float:
     """Diferença em anos (decimais) entre duas datas."""
     return round((fim - inicio).days / 365.25, 2)
@@ -88,8 +75,8 @@ def _tempo_total_anos(contexto: dict) -> tuple[float | None, str]:
         except (TypeError, ValueError):
             pass
 
-    ini = _data(contexto.get("vigencia_inicio"))
-    fim = _data(contexto.get("vigencia_fim_atual"))
+    ini = para_data(contexto.get("vigencia_inicio"))
+    fim = para_data(contexto.get("vigencia_fim_atual"))
     if ini and fim:
         return _anos_entre(ini, fim), f"vigência {ini.isoformat()} → {fim.isoformat()}"
 
@@ -97,7 +84,7 @@ def _tempo_total_anos(contexto: dict) -> tuple[float | None, str]:
     prorrogacoes = contexto.get("prorrogacoes") or []
     if ini and prorrogacoes:
         # fim de cada prorrogação por data, se houver; senão soma os 'anos'
-        datas_fim = [_data(p.get("data")) for p in prorrogacoes if isinstance(p, dict)]
+        datas_fim = [para_data(p.get("data")) for p in prorrogacoes if isinstance(p, dict)]
         datas_fim = [d for d in datas_fim if d]
         if datas_fim:
             return _anos_entre(ini, max(datas_fim)), f"vigência início {ini.isoformat()} → última prorrogação"
@@ -145,7 +132,7 @@ class X2ProrrogacaoPerpetua(Detector):
 
     id = "X2"
     nome = "Prorrogação perpétua"
-    familia = "execucao"  # X2 — peso 0.8 (execução) na convergência §7.2
+    familia = "execucao"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -301,12 +288,8 @@ class X2ProrrogacaoPerpetua(Detector):
                 continue
             # 2) rubrica pré-injetada (teste determinístico, sem rede)
             if isinstance(rubricas, (list, tuple)) and i < len(rubricas) and rubricas[i] is not None:
-                nivel, _score, motivo = avaliar_rubrica(rubricas[i], _RUBRICA_VANTAJOSIDADE)
-                classe = (rubricas[i].get("nivel") or rubricas[i].get("classificacao") or "").strip().lower()
-                if nivel is None or classe not in _CLASSES_VANTAJOSIDADE:
-                    out.append({"idx": i, "classe": "nao_avaliavel", "motivo": motivo})
-                else:
-                    out.append({"idx": i, "classe": classe, "motivo": motivo})
+                classe, motivo = nivel_rubrica(rubricas[i], _RUBRICA_VANTAJOSIDADE)
+                out.append({"idx": i, "classe": classe, "motivo": motivo})
                 continue
             # 3) LLM
             if gerar is not None:
@@ -328,16 +311,5 @@ class X2ProrrogacaoPerpetua(Detector):
         prompt = (f"Prorrogação #{idx}: fundamento='{str(p.get('fundamento') or '')[:200]}' "
                   f"preço={p.get('preco')} ref_mercado={p.get('ref_mercado')}.\n\n"
                   "Classifique a qualidade da pesquisa de vantajosidade.")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"idx": idx, "classe": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_VANTAJOSIDADE)
-        if nivel is None or not isinstance(dados, dict):
-            return {"idx": idx, "classe": "nao_avaliavel", "motivo": motivo}
-        classe = (dados.get("nivel") or "").strip().lower()
-        if classe not in _CLASSES_VANTAJOSIDADE:
-            return {"idx": idx, "classe": "nao_avaliavel", "motivo": motivo}
+        classe, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_VANTAJOSIDADE)
         return {"idx": idx, "classe": classe, "motivo": motivo}

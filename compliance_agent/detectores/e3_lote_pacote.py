@@ -32,7 +32,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica de interdependência técnica (spec E3).
@@ -81,7 +82,7 @@ class E3LotePacote(Detector):
 
     id = "E3"
     nome = "Lote-pacote (agregação anticompetitiva)"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -223,10 +224,8 @@ class E3LotePacote(Detector):
         nao_avaliavel honesto (não classificamos a qualidade sem auditoria)."""
         pre = contexto.get("_rubrica_justificativa")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
+            return {"status": status, "motivo": motivo}
         if not texto:
             # INDISPONÍVEL ≠ 0: só é "ausente dos AUTOS" (fato objetivo, omissão do dever) quando o
             # coletor afirma que pesquisou a íntegra; campo não ingerido é indisponibilidade nossa.
@@ -244,26 +243,16 @@ class E3LotePacote(Detector):
             "'demonstrada' exige ganho logístico/integração QUANTIFICADO (números). Sem trecho, não classifique."
         )
         prompt = f"JUSTIFICATIVA DE NÃO-PARCELAMENTO:\n{str(texto)[:600]}\n\nClassifique a qualidade."
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_JUSTIFICATIVA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_JUSTIFICATIVA)
+        return {"status": status, "motivo": motivo}
 
     def _avaliar_interdependencia(self, pior_lote: dict, contexto: dict) -> dict:
         """Rubrica de interdependência técnica do lote. Atalho de teste: `_rubrica_interdep` no contexto.
         Sem rubrica/LLM → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_interdep")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_INTERDEP)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_INTERDEP)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — interdependência não auditada (honesto)"}
@@ -275,13 +264,5 @@ class E3LotePacote(Detector):
         )
         prompt = (f"LOTE com {pior_lote['n_mercados']} mercados distintos: {', '.join(pior_lote['mercados'][:10])}\n\n"
                   "Há integração técnica necessária entre os itens?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as e:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(e)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_INTERDEP)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_INTERDEP)
+        return {"status": status, "motivo": motivo}

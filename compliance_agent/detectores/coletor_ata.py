@@ -27,6 +27,7 @@ from compliance_agent.detectores.coletor_edital import (
     _valor_reais,
 )
 from compliance_agent.detectores.j7_inabilitacao_seletiva import classificar_classe_falha
+from compliance_agent.llm.json_resposta import parse_json_llm
 from compliance_agent.sei.fases import classificar
 
 # ───────────────────────────── regex determinístico (decisões da ata) ─────────────────────────────
@@ -228,8 +229,8 @@ _SYS_DECISOES = (
 
 
 def _llm_extrair_decisoes(fontes: list[dict], gerar: Callable[[str, str], str] | None) -> list[dict]:
-    """Extração LLM-OPCIONAL das decisões (schema JSON fixo, citação obrigatória por item). Sem motor/《LLM caiu》
-    → [] (degrada honesto). Reusa o parser tolerante de `base._parse_json`."""
+    """Extração LLM-OPCIONAL das decisões (schema JSON fixo, citação obrigatória por item). Sem motor/LLM caiu
+    → [] (degrada honesto). Parser da casa: `llm/json_resposta.parse_json_llm`."""
     if gerar is None:
         try:
             from compliance_agent.direcionamento_cerebro import gerar_sync as gerar  # type: ignore
@@ -242,8 +243,7 @@ def _llm_extrair_decisoes(fontes: list[dict], gerar: Callable[[str, str], str] |
         raw = gerar(prompt, _SYS_DECISOES)
     except Exception:
         return []
-    from compliance_agent.detectores.base import _parse_json
-    dados = _parse_json(raw)
+    dados = parse_json_llm(raw)
     if not isinstance(dados, dict):
         return []
     out: list[dict] = []

@@ -1537,7 +1537,7 @@ detectores:
     - hipotese: aditivo só de prazo
       excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:_conta_no_teto
     - hipotese: reforma tem teto de 50%
-      excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:teto_art125
+      excluida_por: compliance_agent/limites_aditivo.py:teto_acrescimo
     - hipotese: fato superveniente documentado (rubrica)
       excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:X1CrescimentoAditivo.avaliar
     dominio: contratos com aditivos de valor (art. 125, Lei 14.133/2021)

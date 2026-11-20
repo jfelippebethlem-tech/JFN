@@ -35,7 +35,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
     sem_acentos,
 )
 from compliance_agent.reporting.intel_base import moeda
@@ -69,7 +70,6 @@ def _chave_exig(e: dict) -> str:
     if tipo:
         return tipo
     t = sem_acentos(_texto_exig(e))
-    import re
     toks = [w for w in re.sub(r"[^a-z0-9 ]+", " ", t).split() if len(w) > 3]
     return " ".join(sorted(set(toks))[:6])
 
@@ -103,7 +103,7 @@ class E1Barreira(Detector):
 
     id = "E1"
     nome = "Barreira de entrada (qualificação desproporcional)"
-    familia = "desenho_certame"  # E1–E6 (peso 0.6 na convergência §7.2)
+    familia = "desenho_certame"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -292,10 +292,8 @@ class E1Barreira(Detector):
                 pre = e["_rubrica_pertinencia"]
                 break
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_PERTINENCIA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_PERTINENCIA)
+            return {"status": status, "motivo": motivo}
         if gerar is None or not exig_suspeitas:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — pertinência não auditada (honesto)"}
         e = exig_suspeitas[0]
@@ -306,13 +304,5 @@ class E1Barreira(Detector):
             '"trecho":"<citação literal da exigência>"}. Sem trecho, não classifique.'
         )
         prompt = f"EXIGÊNCIA: {_texto_exig(e)[:400]}\n\nClassifique a pertinência ao risco de inexecução."
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_PERTINENCIA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_PERTINENCIA)
+        return {"status": status, "motivo": motivo}

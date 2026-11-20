@@ -37,7 +37,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada de similaridade das cotações (spec P2).
@@ -140,7 +141,7 @@ class P2CotacoesCombinadas(Detector):
 
     id = "P2"
     nome = "Cotações combinadas (orçamentos de fachada)"
-    familia = "preco"  # P2 contamina o preço de referência (peso 0.8 na convergência §7.2)
+    familia = "preco"  # P2 contamina o preço de referência
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -388,10 +389,8 @@ class P2CotacoesCombinadas(Detector):
         Sem rubrica e sem LLM → nao_avaliavel honesto."""
         pre = contexto.get(chave_pre)
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, escala)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, escala)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — rubrica não auditada (honesto)"}
@@ -399,13 +398,5 @@ class P2CotacoesCombinadas(Detector):
             "Você é auditor de controle externo. Classifique conforme a rubrica fechada. Responda SOMENTE com JSON: "
             '{"nivel":"<um nível da escala>","trecho":"<citação literal>"}. Sem trecho, não classifique.'
         )
-        try:
-            raw = gerar(prompt_user, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, escala)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt_user, sistema, escala)
+        return {"status": status, "motivo": motivo}

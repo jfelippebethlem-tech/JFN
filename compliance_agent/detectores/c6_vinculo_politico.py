@@ -40,7 +40,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 from compliance_agent.reporting.intel_base import moeda
 
@@ -118,7 +119,7 @@ class C6VinculoPolitico(Detector):
 
     id = "C6"
     nome = "Vínculo político-financeiro (doações eleitorais)"
-    familia = "perfil"  # C1–C6 — peso 0.8 (perfil) na convergência §7.2
+    familia = "perfil"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or contexto.get("cnpj") or "?")
@@ -365,10 +366,8 @@ class C6VinculoPolitico(Detector):
         `_rubrica_poder` injetado no contexto. Sem rubrica e sem LLM → nao_avaliavel honesto (não afirma poder)."""
         pre = contexto.get("_rubrica_poder")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_PODER)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_PODER)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel",
@@ -386,13 +385,5 @@ class C6VinculoPolitico(Detector):
             "influencia-indireta = chefe do executivo sobre pasta autônoma; sem-poder = beneficiário sem ingerência.")
         prompt = (f"Órgão contratante: {orgao}.\nBeneficiários das doações dos sócios: {benefs}\n\n"
                   "O beneficiário tinha poder decisório real (direto ou indireto) sobre essa contratação?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_PODER)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_PODER)
+        return {"status": status, "motivo": motivo}

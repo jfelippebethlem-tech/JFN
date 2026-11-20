@@ -33,7 +33,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada do padrão de cobertura (spec J2). LLM-opcional; degrada honesto.
@@ -126,7 +127,7 @@ class J2PropostasCobertura(Detector):
 
     id = "J2"
     nome = "Propostas de cobertura (screens de preço)"
-    familia = "conluio"  # J2 — peso 0.85 (conluio) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -271,10 +272,8 @@ class J2PropostasCobertura(Detector):
         Sem rubrica e sem LLM → nao_avaliavel honesto (o screen objetivo permanece)."""
         pre = contexto.get("_rubrica_cobertura")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_COBERTURA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_COBERTURA)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — padrão de cobertura não auditado (honesto)"}
@@ -285,13 +284,5 @@ class J2PropostasCobertura(Detector):
             '"trecho":"<citação literal>"}. Sem trecho, não classifique.')
         prompt = ("As propostas perdedoras ficam a percentuais ~constantes acima do vencedor (cobertura calculada) "
                   "ou com dispersão irregular de competição real?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_COBERTURA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_COBERTURA)
+        return {"status": status, "motivo": motivo}

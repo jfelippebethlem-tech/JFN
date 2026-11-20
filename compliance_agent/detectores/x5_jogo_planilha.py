@@ -36,7 +36,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 from compliance_agent.reporting.intel_base import moeda
 
@@ -105,7 +106,7 @@ class X5JogoDePlanilha(Detector):
 
     id = "X5"
     nome = "Jogo de planilha"
-    familia = "execucao"  # X5 — peso 0.8 (execução) na convergência §7.2
+    familia = "execucao"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -288,10 +289,8 @@ class X5JogoDePlanilha(Detector):
         o juízo subjetivo)."""
         pre = contexto.get("_rubrica_justificativa")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_JUSTIFICATIVA)
+            return {"status": status, "motivo": motivo}
 
         gerar = contexto.get("gerar")
         if gerar is None:
@@ -305,13 +304,5 @@ class X5JogoDePlanilha(Detector):
             '"trecho":"<citação literal da justificativa>"}. Sem trecho, não classifique.')
         prompt = (f"Justificativas dos aditivos de quantitativo: {justs[:1000] or '(nenhuma justificativa anexada)'}\n\n"
                   "Classifique a natureza da justificativa técnica das variações.")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_JUSTIFICATIVA)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_JUSTIFICATIVA)
+        return {"status": status, "motivo": motivo}

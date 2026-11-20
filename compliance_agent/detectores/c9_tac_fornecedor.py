@@ -25,8 +25,12 @@ Régua (âncoras no CÓDIGO; espelha `detector_tac._severidade`):
 """
 from __future__ import annotations
 
-from compliance_agent.coerencia_valores import _brl
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
+from compliance_agent.reporting.detector_tac import _severidade as severidade_tac
+from compliance_agent.reporting.intel_base import moeda
+
+# As faixas são as do relatório de TAC (`detector_tac._severidade`) — uma régua só para o card e o detector.
+_NIVEL_DA_FAIXA = {"ALTO": "critico", "MEDIO": "medio", "BAIXO": None}
 
 
 class C9TacFornecedor(Detector):
@@ -58,13 +62,10 @@ class C9TacFornecedor(Detector):
         res.valores = {"pct": pct, "total_tac": total_tac, "total": tac.get("total"),
                        "n": tac.get("n"), "n_tac": tac.get("n_tac"), "cobertura": cobertura}
 
-        if pct >= 50 or (pct >= 30 and total_tac >= 100_000_000):
-            nivel = "critico"
-        elif pct >= 30 or (pct >= 10 and total_tac >= 50_000_000):
-            nivel = "medio"
-        else:
+        nivel = _NIVEL_DA_FAIXA[severidade_tac(pct, total_tac)[1]]
+        if nivel is None:
             res.status = "descartado"
-            res.motivo_refutacao = (f"TAC {pct:.1f}% do valor (R$ {_brl(total_tac)}) abaixo do limiar — "
+            res.motivo_refutacao = (f"TAC {pct:.1f}% do valor (R$ {moeda(total_tac)}) abaixo do limiar — "
                                     "regularização pontual não é padrão")
             return res
 
@@ -103,6 +104,6 @@ class C9TacFornecedor(Detector):
         res.add_evidencia(
             "ordens_bancarias (observação TFE)",
             f"{pct:.1f}% do valor pago via TAC/indenização/reconhecimento de dívida "
-            f"(R$ {_brl(total_tac)} de R$ {_brl(float(tac.get('total') or 0))}; "
+            f"(R$ {moeda(total_tac)} de R$ {moeda(float(tac.get('total') or 0))}; "
             f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})")
         return res

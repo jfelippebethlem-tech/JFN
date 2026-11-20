@@ -30,7 +30,8 @@ from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
     ancora,
-    avaliar_rubrica,
+    nivel_rubrica,
+    perguntar_rubrica,
 )
 
 # Rubrica fechada da gravidade/uniformidade dos motivos de inabilitação (spec J4). LLM-opcional; degrada honesto.
@@ -80,7 +81,7 @@ class J4SupressaoPropostas(Detector):
 
     id = "J4"
     nome = "Supressão de propostas / licitante único"
-    familia = "conluio"  # J4 — peso 0.85 (conluio) na convergência §7.2
+    familia = "conluio"
 
     def avaliar(self, contexto: dict) -> ResultadoDetector:
         processo = str(contexto.get("processo") or contexto.get("id") or "?")
@@ -189,10 +190,8 @@ class J4SupressaoPropostas(Detector):
         `_rubrica_inabilitacao` injetado no contexto. Sem rubrica e sem LLM → nao_avaliavel honesto."""
         pre = contexto.get("_rubrica_inabilitacao")
         if pre is not None:
-            nivel, _score, motivo = avaliar_rubrica(pre, _RUBRICA_INABILITACAO)
-            if nivel is None:
-                return {"status": "nao_avaliavel", "motivo": motivo}
-            return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
+            status, motivo = nivel_rubrica(pre, _RUBRICA_INABILITACAO)
+            return {"status": status, "motivo": motivo}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — gravidade da inabilitação não auditada (honesto)"}
@@ -204,13 +203,5 @@ class J4SupressaoPropostas(Detector):
         motivos = "; ".join(str(x.get("motivo") or "")[:80] for x in (contexto.get("inabilitados") or []) if isinstance(x, dict))
         prompt = (f"Motivos de inabilitação na ata: {motivos[:1000]}\n\n"
                   "O rigor foi fundado e proporcional (mesma régua para todos) ou seletivo/desproporcional?")
-        try:
-            raw = gerar(prompt, sistema)
-        except Exception as ex:  # noqa: BLE001 — degrada honesto
-            return {"status": "nao_avaliavel", "motivo": f"LLM indisponível ({str(ex)[:50]})"}
-        from compliance_agent.detectores.base import _parse_json
-        dados = _parse_json(raw)
-        nivel, _score, motivo = avaliar_rubrica(dados, _RUBRICA_INABILITACAO)
-        if nivel is None or not isinstance(dados, dict):
-            return {"status": "nao_avaliavel", "motivo": motivo}
-        return {"status": (dados.get("nivel") or "").strip().lower(), "motivo": motivo}
+        status, motivo, _ = perguntar_rubrica(gerar, prompt, sistema, _RUBRICA_INABILITACAO)
+        return {"status": status, "motivo": motivo}
