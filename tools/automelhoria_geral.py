@@ -45,6 +45,7 @@ FILA = DATA / "automelhoria_fila.json"
 RELATORIOS = Path.home() / "vault" / "aprendizados" / "automelhoria"
 CATRACAS = ["tests/test_catraca_excepts.py", "tests/test_divida_except_pass.py",
             "tests/test_catraca_nao_pode_ser_tolerada.py", "tests/test_capacidade_pronta_tem_superficie.py",
+            "tests/test_catraca_modulo_sem_chamador.py",     # construído, testado, nunca rodado (20/11/2026)
             # regras de qualidade (docs/REGRAS-DE-QUALIDADE.md) — `test_regra_registro` cobra que todas estejam aqui
             "tests/test_regra_registro.py", "tests/test_regra_catracas.py", "tests/test_regra_inventario.py",
             "tests/test_regra_motores.py", "tests/test_regra_controles_detector.py",
@@ -552,7 +553,64 @@ def _estado_itcampo(agora: float | None = None) -> dict | None:
         return None
 
 
-def avaliar_maquinas(vm1: tuple[float, int] | None, vm2: tuple[float, int] | None, itc: dict | None) -> list[dict]:
+# it-campo: "ociosa" só é problema quando HÁ trabalho que ela não está fazendo (dono, 20/11/2026: "tem que fazer disso
+# um fluxo"). O laço fecha em três casos, decididos pela fila de OCR dos dois lados — a do trabalhador
+# (`ocr_gpu.restantes`) e a que a VM-1 publica (`data/sei_ocr_gpu_fila.txt`, linhas e idade):
+#   GPU parada · trabalhador sem fila · fila da VM-1 velha/ausente → REMÉDIO: regerar a fila (alimentar)
+#   GPU parada · trabalhador sem fila · fila da VM-1 nova e vazia  → nada a fazer: não é problema, não vira item
+#   GPU parada · há fila (no trabalhador, ou nova na VM-1 e ele não puxou) → trabalhador quebrado: ESCALA ao dono
+FILA_OCR = _REPO / "data" / "sei_ocr_gpu_fila.txt"
+FILA_OCR_VELHA_S = 3 * 3600
+_ALIMENTAR_OCR = "PYTHONPATH=. .venv/bin/python -m tools.sei_ocr_gpu_fila >> data/sei_ocr_gpu_fila.log 2>&1"
+
+
+def _fila_ocr(agora: float | None = None, arq: Path = FILA_OCR) -> tuple[int, float] | None:
+    """(linhas, idade em s) da fila de OCR que a VM-1 publica; None = não existe."""
+    try:
+        linhas = sum(1 for ln in arq.read_text(encoding="utf-8").splitlines() if ln.strip())
+        return linhas, (agora or time.time()) - arq.stat().st_mtime
+    except OSError:
+        return None
+
+
+def _avaliar_itcampo(itc: dict, fila_ocr: tuple[int, float] | None | bool) -> list[dict]:
+    """`fila_ocr=False` = fila não informada (comportamento antigo: ociosa vira item sem remédio)."""
+    out = []
+    maq = itc.get("maquina") or {}
+    gpu, cpu = (maq.get("gpu") or {}).get("util_pct"), itc.get("cpu_pct")
+    restantes = (maq.get("ocr_gpu") or {}).get("restantes")
+    sabe = fila_ocr is not False and restantes is not None
+    velha = fila_ocr is None or (fila_ocr is not False and fila_ocr[1] > FILA_OCR_VELHA_S)
+    publicada = 0 if not fila_ocr else fila_ocr[0]
+    ha_trabalho = None if not sabe else bool(restantes) or (publicada > 0 and not velha)
+    if gpu is not None and gpu < 50:
+        if not sabe:
+            out.append(_p("maquinas", "itcampo:gpu_ociosa", f"it-campo: GPU em {gpu}% (OCR parado?)",
+                          acao_humana="conferir a tarefa JFN-OCR-GPU e a fila de escaneados"))
+        elif restantes:
+            out.append(_p("maquinas", "itcampo:gpu_parada_com_fila", f"it-campo: GPU em {gpu}% com {restantes} "
+                          "documento(s) na fila do trabalhador — trabalhador de OCR parado",
+                          acao_humana="trabalhador quebrado (não é falta de fila): ver ~/jfn-gpu/ocr no it-campo "
+                                      "(log do ocr_gpu_worker, vLLM no ar, memória do WSL)"))
+        elif velha:
+            idade = "ausente" if fila_ocr is None else f"de {fila_ocr[1] / 3600:.1f} h atrás"
+            out.append(_p("maquinas", "itcampo:gpu_ociosa", f"it-campo: GPU em {gpu}% e fila de OCR vazia no "
+                          f"trabalhador; a fila publicada pela VM-1 é {idade}",
+                          remediar=_ALIMENTAR_OCR))
+        elif publicada:
+            out.append(_p("maquinas", "itcampo:gpu_fila_nao_puxada", f"it-campo: GPU em {gpu}% — a VM-1 publicou "
+                          f"{publicada} documento(s) há {fila_ocr[1] / 60:.0f} min e o trabalhador segue com fila vazia",
+                          acao_humana="o trabalhador não está puxando data/sei_ocr_gpu_fila.txt (evento "
+                                      "fila_da_vm1 no log dele): conferir ssh it-campo→VM-1 e o código puxado (md5)"))
+    if cpu is not None and cpu < 40 and (itc.get("win_disp_gb") or 0) > (itc.get("piso_gb") or 3) + 4 \
+            and ha_trabalho is not False:
+        out.append(_p("maquinas", "itcampo:cpu_ociosa", f"it-campo: CPU em {cpu}% com "
+                      f"{itc.get('win_disp_gb')} GB livres", acao_humana="subir o alvo do pool nativo / mais detectores"))
+    return out
+
+
+def avaliar_maquinas(vm1: tuple[float, int] | None, vm2: tuple[float, int] | None, itc: dict | None,
+                     fila_ocr: tuple[int, float] | None | bool = False) -> list[dict]:
     out = []
     for nome, med in (("vm1", vm1), ("vm2", vm2)):
         if med is None:
@@ -568,20 +626,13 @@ def avaliar_maquinas(vm1: tuple[float, int] | None, vm2: tuple[float, int] | Non
     if itc is None:
         out.append(_p("maquinas", "itcampo:sem_medida", "it-campo: estado ausente ou com mais de 1 h (INDISPONÍVEL)"))
     else:
-        gpu = ((itc.get("maquina") or {}).get("gpu") or {}).get("util_pct")
-        cpu = itc.get("cpu_pct")
-        if gpu is not None and gpu < 50:
-            out.append(_p("maquinas", "itcampo:gpu_ociosa", f"it-campo: GPU em {gpu}% (OCR parado?)",
-                          acao_humana="conferir a tarefa JFN-OCR-GPU e a fila de escaneados"))
-        if cpu is not None and cpu < 40 and (itc.get("win_disp_gb") or 0) > (itc.get("piso_gb") or 3) + 4:
-            out.append(_p("maquinas", "itcampo:cpu_ociosa", f"it-campo: CPU em {cpu}% com "
-                          f"{itc.get('win_disp_gb')} GB livres", acao_humana="subir o alvo do pool nativo / mais detectores"))
+        out += _avaliar_itcampo(itc, fila_ocr)
     return out
 
 
 def sensor_maquinas() -> list[dict]:
     la = Path("/proc/loadavg").read_text().split()
-    return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo())
+    return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo(), _fila_ocr())
 
 
 # PRECISÃO POR DETECTOR (19/11/2026, dono: "melhore todos os detectores… de forma sistemática e constante").
@@ -613,6 +664,43 @@ def sensor_detectores(db: Path | None = None) -> list[dict]:
     return avaliar_precisao([(t, n, fp or 0) for t, n, fp in linhas])
 
 
+# INTEGRAÇÃO DE AGENTES (20/11/2026). Duas sobras da integração por patch, as duas com dano medido no mesmo dia:
+# worktree esquecido (45 = 14 GB → disco a 100% → o binário do Claude Code sumiu e o juiz caiu) e remoção parada no
+# índice (14 arquivos "apagados" que seguiram no repositório). O remédio do primeiro é seguro e automático: só sai
+# worktree limpo, parado há 12 h e sem processo dentro; a branch fica. O segundo é do dono (commitar ou devolver).
+WORKTREES_MAX, DISCO_APERTADO_PCT = 10, 85
+_LIMPAR_WORKTREES = ("PYTHONPATH=. .venv/bin/python -m tools.integracao_conferir worktrees --aplicar --horas 12 "
+                     ">> data/integracao_conferir.log 2>&1")
+
+
+def avaliar_integracao(lista: list[dict], em_stage: list[str], disco_pct: float) -> list[dict]:
+    out = []
+    saem = [w for w in lista if w["pode_sair"]]
+    if saem and (len(lista) >= WORKTREES_MAX or disco_pct >= DISCO_APERTADO_PCT):
+        out.append(_p("integracao", "worktrees", f"{len(lista)} worktree(s) de agente no disco ({disco_pct:.0f}% "
+                      f"cheio); {len(saem)} limpo(s) e parado(s) já podem sair",
+                      "; ".join(Path(w["caminho"]).name for w in saem[:6]), remediar=_LIMPAR_WORKTREES))
+    elif len(lista) >= WORKTREES_MAX:
+        out.append(_p("integracao", "worktrees_presos", f"{len(lista)} worktree(s) de agente e nenhum pode sair "
+                      "sozinho (sujo, recente ou em uso)",
+                      "; ".join(f"{Path(w['caminho']).name} (sujo {w['sujo']}, parado {w['parado_h']} h)" for w in lista[:6]),
+                      acao_humana="integrar ou descartar o que está fora de commit e remover: "
+                                  "`python -m tools.integracao_conferir worktrees`"))
+    if em_stage:
+        out.append(_p("integracao", "remocao_em_stage", f"{len(em_stage)} remoção(ões) parada(s) no índice do git "
+                      "(apagado no patch, nunca commitado)", "; ".join(em_stage[:6]),
+                      acao_humana="commitar a remoção pela lista do diff (`git commit -- <caminhos>`) ou devolver "
+                                  "(`git restore --staged`); conferir com `python -m tools.integracao_conferir stage`"))
+    return out
+
+
+def sensor_integracao() -> list[dict]:
+    import shutil
+    from tools import integracao_conferir as I
+    du = shutil.disk_usage("/")
+    return avaliar_integracao(I.worktrees(horas=12), I.remocoes_em_stage(), 100 * du.used / du.total)
+
+
 # nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
 _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
@@ -624,7 +712,8 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "qualidade": (sensor_qualidade, "regras de qualidade"),
              "autoaprimoramento": (sensor_autoaprimoramento, "autoaprimoramento da perícia"),
              "certeza": (sensor_certeza, "certeza dos números"), "maquinas": (sensor_maquinas, "uso das máquinas"),
-             "detectores": (sensor_detectores, "precisão dos detectores")}
+             "detectores": (sensor_detectores, "precisão dos detectores"),
+             "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)")}
 SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
 _AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
 

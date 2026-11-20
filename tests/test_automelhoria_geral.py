@@ -483,6 +483,40 @@ def test_avaliar_maquinas_ociosa_sobrecarga_e_indisponivel():
     assert a == {"maquinas:vm1:sem_medida", "maquinas:itcampo:gpu_ociosa", "maquinas:itcampo:cpu_ociosa"}
 
 
+def test_itcampo_ociosa_fecha_o_laco_pela_fila_de_ocr():
+    """Ociosa só é problema quando há trabalho parado: fila velha → alimentar; fila vazia e nova → nada;
+    fila cheia com GPU parada → trabalhador quebrado, escala (sem remédio automático)."""
+    from tools.automelhoria_geral import FILA_OCR_VELHA_S, avaliar_maquinas
+
+    def itc(restantes, gpu=0, cpu=10):
+        return {"cpu_pct": cpu, "win_disp_gb": 20, "piso_gb": 3,
+                "maquina": {"gpu": {"util_pct": gpu}, "ocr_gpu": {"restantes": restantes}}}
+
+    def so_itc(r):
+        return {p["assinatura"]: p for p in r if "itcampo" in p["assinatura"]}
+
+    velha = so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(0), (88, FILA_OCR_VELHA_S + 1)))
+    assert "tools.sei_ocr_gpu_fila" in velha["maquinas:itcampo:gpu_ociosa"]["remediar"]
+    ausente = so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(0), None))
+    assert ausente["maquinas:itcampo:gpu_ociosa"]["remediar"]
+    assert so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(0), (0, 60))) == {}          # sem trabalho: não é problema
+    cheia = so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(340), (0, 60)))
+    assert set(cheia) == {"maquinas:itcampo:gpu_parada_com_fila", "maquinas:itcampo:cpu_ociosa"}
+    assert not cheia["maquinas:itcampo:gpu_parada_com_fila"]["remediar"]                 # quebrado → dono, não remédio
+    nao_puxou = so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(0), (88, 600)))
+    assert "maquinas:itcampo:gpu_fila_nao_puxada" in nao_puxou and not nao_puxou["maquinas:itcampo:gpu_fila_nao_puxada"]["remediar"]
+    assert so_itc(avaliar_maquinas((2.0, 2), (2.0, 2), itc(340, gpu=97, cpu=80), (0, 60))) == {}
+
+
+def test_fila_ocr_conta_linhas_e_idade(tmp_path):
+    from tools.automelhoria_geral import _fila_ocr
+    f = tmp_path / "fila.txt"
+    assert _fila_ocr(arq=f) is None
+    f.write_text("integra_a/001.pdf\n\nintegra_a/002.pdf\n")
+    n, idade = _fila_ocr(agora=f.stat().st_mtime + 120, arq=f)
+    assert n == 2 and 119 < idade < 121
+
+
 def test_avaliar_precisao_por_detector():
     from tools.automelhoria_geral import avaliar_precisao
     a = [p["assinatura"] for p in avaliar_precisao([("d3", 610, 346), ("d7", 793, 7), ("pouco", 10, 9)])]

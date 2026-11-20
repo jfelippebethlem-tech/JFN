@@ -1,0 +1,49 @@
+# Módulos de compliance_agent/ SEM chamador de produção no repositório, fotografados em 20/11/2026 (38972e5a).
+# DÍVIDA NOMEADA: a lista só encolhe (tests/test_catraca_modulo_sem_chamador.py). Um por linha; o motivo vai depois do #.
+# Legenda do motivo: [cron] agendado no crontab da VM-1, fora do repositório (levar o agendamento para um sweep/
+# propagação tira a linha daqui) · [cli] tem __main__, nenhum agendamento achado — uso manual ou morto ·
+# [biblioteca] sem __main__ e sem importador: só os testes o exercitam (N funções de teste) — ligar ou apagar é do dono.
+
+compliance_agent.analysis.curva_abc  # [biblioteca] 17 funções de teste
+compliance_agent.auditoria.auditar_fornecedor  # [cli]
+compliance_agent.auditoria.sei_auditor  # [cli]
+compliance_agent.auditoria.siafe_contratos  # [cli]
+compliance_agent.briefing  # [cli]
+compliance_agent.calibrar  # [cli]
+compliance_agent.cerebro_consolidacao  # [cron] 10 funções de teste
+compliance_agent.collectors.alerj_transparencia  # [cli] 6 funções de teste
+compliance_agent.collectors.datajud  # [cli] 11 funções de teste
+compliance_agent.collectors.folha_orquestrador  # [cron]
+compliance_agent.collectors.tfe_receita  # [biblioteca] 2 funções de teste
+compliance_agent.contratos.estado  # [biblioteca] 28 funções de teste
+compliance_agent.detectores.est_valor_contratual  # [cron] 9 funções de teste
+compliance_agent.editais.dosimetria  # [biblioteca] 18 funções de teste
+compliance_agent.enrich.exif  # [biblioteca] 8 funções de teste
+compliance_agent.enriquecimento.footprint_alvo  # [biblioteca] 9 funções de teste
+compliance_agent.eval_groundtruth  # [cli]
+compliance_agent.execucao_cerebro  # [biblioteca] 12 funções de teste
+compliance_agent.knowledge.doutrina  # [biblioteca] 12 funções de teste
+compliance_agent.notifications.test_telegram  # [cli] 1 funções de teste
+compliance_agent.nucleo.autoconsistencia  # [biblioteca] 14 funções de teste
+compliance_agent.osint.timeline  # [biblioteca] 23 funções de teste
+compliance_agent.pcrj.dossie_prioritarios  # [cli]
+compliance_agent.pcrj.dossie_prioritarios_xlsx  # [cli]
+compliance_agent.pcrj.filiados_brasilio  # [cli]
+compliance_agent.pcrj.harvester  # [cli] 3 funções de teste
+compliance_agent.pcrj.os_panorama  # [cli]
+compliance_agent.pcrj.pipeline  # [cli]
+compliance_agent.pcrj.relatorio_candidatos  # [cli] 4 funções de teste
+compliance_agent.pcrj.resolvedor_municipio  # [cli]
+compliance_agent.pcrj.sei_prefeitura  # [cli] 7 funções de teste
+compliance_agent.receita.ingest_estabelecimentos  # [cli] 8 funções de teste
+compliance_agent.reporting.consolidado  # [cli]
+compliance_agent.reporting.matriz_achados  # [biblioteca] 17 funções de teste
+compliance_agent.reporting.qualificacao_juridica  # [biblioteca] 16 funções de teste
+compliance_agent.reporting.quesitos_diligencia  # [biblioteca] 16 funções de teste
+compliance_agent.reports.html_report  # [cli]
+compliance_agent.sei.indice  # [biblioteca] 2 funções de teste
+compliance_agent.sei_driver  # [cli]
+compliance_agent.siafe_login  # [cli]
+compliance_agent.siafe_ppr  # [cli]
+compliance_agent.siafe_session  # [cli]
+compliance_agent.vantajosidade  # [biblioteca] 17 funções de teste
