@@ -81,7 +81,7 @@ def test_resposta_sem_json_ou_nota_fora_da_escala_nao_vira_veredito():
 
 def test_cpf_e_mascarado_antes_de_ir_ao_modelo(tmp_path):
     chamadas: list = []
-    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", api=lambda r: {}, agora=AGORA)
+    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", repo=tmp_path, api=lambda r: {}, agora=AGORA)
     casos = tmp_path / "vault" / "casos"
     casos.mkdir(parents=True)
     (casos / "caso-x.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nSócio de CPF 111.444.777-35.\n", encoding="utf-8")
@@ -121,7 +121,7 @@ def test_amostra_e_por_risco_nao_rejulga_e_nao_deixa_um_sistema_comer_tudo():
 
 
 def test_rodada_grava_fotografia_e_o_sensor_abre_a_violacao(tmp_path):
-    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", api=lambda r: {}, agora=AGORA)
+    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", repo=tmp_path, api=lambda r: {}, agora=AGORA)
     casos = tmp_path / "vault" / "casos"
     casos.mkdir(parents=True)
     (casos / "caso-y.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nAchado sintético.\n", encoding="utf-8")
@@ -145,7 +145,7 @@ def test_prompt_traz_rubrica_ancoras_e_formato():
 
 def test_superficie_retirada_perde_o_juizo_vigente_e_fonte_que_falhou_nao_poda(tmp_path):
     # 19/11/2026: card retirado por FP medida seguia como SUB bloqueante para sempre (não há mais o que rejulgar)
-    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", api=lambda r: {}, agora=AGORA)
+    ctx = sensores.Ctx(dados=tmp_path, vault=tmp_path / "vault", hermes=tmp_path / "h", repo=tmp_path, api=lambda r: {}, agora=AGORA)
     casos = tmp_path / "vault" / "casos"
     casos.mkdir(parents=True)
     (casos / "caso-y.md").write_text("---\ntipo: caso\ngrau: alto\nstatus: aberto\n---\nAchado sintético.\n", encoding="utf-8")

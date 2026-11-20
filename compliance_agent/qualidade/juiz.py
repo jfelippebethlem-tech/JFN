@@ -31,6 +31,7 @@ import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from functools import partial
+from pathlib import Path
 from typing import Callable
 
 from compliance_agent.qualidade import regras, sensores, verificadores as v
@@ -72,6 +73,8 @@ class Afirmacao:
 
     @property
     def grupo(self) -> str:
+        if self.id.startswith("produto:"):                       # relatório e parecer Lex: um grupo só na amostra
+            return "produto"
         return ":".join(self.id.split(":")[:2]) if self.id.startswith("painel:gestao:") else self.sistema
 
     @property
@@ -157,24 +160,121 @@ def _de_vault(ctx: sensores.Ctx) -> list[Afirmacao]:
     return out
 
 
+# Modo /cc do Yoda (desde 15/11/2026): o plugin `~/.hermes/plugins/jfn-claude` roda o Claude Code com cwd ~/JFN e
+# manda o `result` DIRETO pelo Bot API — a resposta não entra no state.db do Hermes. Ela fica no transcript da
+# sessão; o log do plugin guarda só o sha256 do que foi enviado (`sha_enviado`/`sha_resultado`).
+PASTA_CC = (Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+            / re.sub(r"[^A-Za-z0-9]", "-", str(Path.home() / "JFN")))
+_MARCADOR_CC = "[[PRECISA_OK]]"                                  # o executor tira antes de enviar (executor.MARCADOR)
+_RE_SESSAO = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def _respostas_cc(ctx: sensores.Ctx, limite: int = 40, sessoes: int = 5) -> list[str]:
+    """Respostas finais do /cc ENTREGUES ao dono, da mais nova para a mais velha. Só entra texto do assistant cujo
+    sha256 bate com o log do plugin (prova de entrega; passo intermediário não entra). Só `origem=modo_direto`
+    (Telegram) — WhatsApp/secretário nunca (regra do dono: nada do WhatsApp fora da VM)."""
+    log = ctx.hermes / "logs" / "jfn-claude.jsonl"
+    if not log.exists():
+        return []
+    entregues, ordem = set(), []                                 # ordem: sessões da mais recente à mais antiga
+    for linha in reversed(log.read_text(encoding="utf-8", errors="replace").splitlines()):
+        try:
+            ev = json.loads(linha)
+        except ValueError:
+            continue
+        if not isinstance(ev, dict) or ev.get("origem") != "modo_direto" or not ev.get("ok"):
+            continue
+        sid = str(ev.get("sessao_id") or "")
+        if not _RE_SESSAO.match(sid):
+            continue
+        entregues |= {h for h in (ev.get("sha_enviado"), ev.get("sha_resultado")) if h}
+        if sid not in ordem:
+            ordem.append(sid)
+    out, vistos = [], set()
+    for sid in ordem[:sessoes]:
+        arq = PASTA_CC / f"{sid}.jsonl"
+        if not arq.exists():
+            continue
+        textos = []
+        for linha in arq.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                ev = json.loads(linha)
+            except ValueError:
+                continue
+            msg = ev.get("message") if isinstance(ev, dict) and ev.get("type") == "assistant" else None
+            for b in (msg.get("content") if isinstance(msg, dict) else None) or []:
+                if isinstance(b, dict) and b.get("type") == "text":
+                    t = str(b.get("text") or "").replace(_MARCADOR_CC, "").strip()
+                    h = hashlib.sha256(t.encode("utf-8")).hexdigest()
+                    if h in entregues and h not in vistos:
+                        vistos.add(h)
+                        textos.append(t)
+        out += reversed(textos)
+    return out[:limite]
+
+
 def _de_yoda(ctx: sensores.Ctx) -> list[Afirmacao]:
     try:
-        textos = sensores._textos_yoda(ctx, 40)
+        textos = [("cc", t) for t in _respostas_cc(ctx)]
     except _FALHAS:
-        return []
+        textos = []
+    try:
+        textos += [("hermes", t) for t in sensores._textos_yoda(ctx, 40)]
+    except _FALHAS:
+        pass
     out = []
-    for t in textos:
+    for origem, t in textos:
         if "R$" not in t and not re.search(r"🔴|🟡", t):
             continue                                            # só resposta que AFIRMA número ou grau
         vals = [float(x.replace(".", "").replace(",", ".")) for x in re.findall(r"R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})", t)]
-        a = Afirmacao("", "yoda", "resposta do Yoda ao dono", "Resposta enviada pelo assistente no Telegram:\n" + t[:3500],
-                      "🔴" if "🔴" in t else "", max(vals, default=0.0), publica=False)
+        rotulo, cab = (("resposta do /cc (Claude Code) ao dono", "Resposta enviada ao dono no Telegram (modo /cc):\n")
+                       if origem == "cc" else ("resposta do Yoda ao dono", "Resposta enviada pelo assistente no Telegram:\n"))
+        a = Afirmacao("", "yoda", rotulo, cab + t[:3500], "🔴" if "🔴" in t else "", max(vals, default=0.0), publica=False)
         a.id = f"yoda:{a.impressao}"
         out.append(a)
     return out[:8]
 
 
-FONTES: tuple[Callable, ...] = (_de_manchetes, _de_couto, _de_vault, _de_yoda)
+# Produtos da casa (`reports/`, raiz — `reports/arquivo/` é o acervo podado): relatório de fornecedor e de órgão
+# (`inteligencia_*`), parecer Lex (`parecer_lex_*`) e dossiê (`dossie_*`, hoje só PDF — entra se houver .md/.html).
+PRODUTO_N = 6
+PRODUTO_DIAS = 30
+_RE_PRODUTO = re.compile(r"^((?:inteligencia|parecer_lex|dossie)_.+?)_(\d{4}-\d{2}-\d{2})\.(md|html)$")
+_RE_PESSOAL = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)|\*{3}\.\d{3}\.\d{3}-\*{2}|(?i:\bcpf\b)[^\d\n]{0,20}\d{11}(?!\d)")
+
+
+def _de_produtos(ctx: sensores.Ctx) -> list[Afirmacao]:
+    """Os PRODUTO_N entregáveis mais recentes (por mtime, até PRODUTO_DIAS), uma versão por produto. Vai o começo
+    do texto (capa + sumário + primeiras seções). Com dado pessoal (CPF), `publica=False`: só o Claude da assinatura."""
+    pasta = ctx.repo / "reports"
+    if not pasta.is_dir():
+        return []
+    limite = (ctx.agora - timedelta(days=PRODUTO_DIAS)).timestamp()
+    mais_novo: dict[str, Path] = {}
+    for arq in pasta.iterdir():
+        m = _RE_PRODUTO.match(arq.name)
+        if not m or not arq.is_file() or arq.stat().st_mtime < limite:
+            continue
+        base = m.group(1).rstrip("_")                            # "…cartografia__2026-11-15" (órgão) tem "_" duplo
+        if base not in mais_novo or arq.stat().st_mtime > mais_novo[base].stat().st_mtime:
+            mais_novo[base] = arq
+    out = []
+    for base, arq in sorted(mais_novo.items(), key=lambda kv: kv[1].stat().st_mtime, reverse=True)[:PRODUTO_N]:
+        bruto = arq.read_text(encoding="utf-8", errors="replace")
+        if arq.suffix == ".html":
+            bruto = re.sub(r"\s+\n", "\n", re.sub(r"<[^>]+>", " ", re.sub(r"(?is)<(script|style)\b.*?</\1>", "", bruto)))
+        trecho = bruto[:4500]
+        vals = [float(x.replace(".", "").replace(",", ".")) for x in re.findall(r"R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})", trecho)]
+        pessoal = bool(_RE_PESSOAL.search(bruto))
+        grau = "🔴" if "🔴" in trecho else ("🟡" if "🟡" in trecho else "")
+        sistema = "lex" if base.startswith("parecer_lex") else "relatorios"
+        out.append(Afirmacao(f"produto:{base}", sistema, base[:90],
+                             f"Entregável da casa enviado ao dono ({arq.name}). Início do documento:\n" + trecho,
+                             grau, max(vals, default=0.0), publica=not pessoal, pessoa_fisica=pessoal))
+    return out
+
+
+FONTES: tuple[Callable, ...] = (_de_manchetes, _de_couto, _de_vault, _de_yoda, _de_produtos)
 
 
 def candidatas(ctx: sensores.Ctx) -> list[Afirmacao]:
@@ -207,11 +307,16 @@ def amostrar(cands: list[Afirmacao], historico: dict, n: int, agora: datetime) -
     escolhidas, por_grupo = list(corrigidas), {}
     for a in corrigidas:
         por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
-    teto = max(1, math.ceil(n / max(1, len({a.grupo for a in novos}))))
+    grupos = {a.grupo for a in novos}
+    teto = max(1, math.ceil(n / max(1, len(grupos))))
     for a in novos:
         if len(escolhidas) >= n:
             break
         if a in escolhidas or por_grupo.get(a.grupo, 0) >= teto:
+            continue
+        # vaga reservada: o 2º item de um grupo não toma a vaga de grupo ainda sem nenhum (20/11/2026: com 5 grupos
+        # e n=6, 2+2+2 dos grupos de maior valor enchia a amostra e Yoda/produto nunca eram julgados)
+        if por_grupo.get(a.grupo) and n - len(escolhidas) <= len(grupos - set(por_grupo)):
             continue
         escolhidas.append(a)
         por_grupo[a.grupo] = por_grupo.get(a.grupo, 0) + 1
