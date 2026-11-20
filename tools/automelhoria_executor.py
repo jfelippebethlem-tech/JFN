@@ -80,6 +80,9 @@ def prompt(it: dict) -> str:
             "com mensagem semântica em português. Regras da casa: indício≠acusação, INDISPONÍVEL≠0, só OB é pago, CPF "
             "mascarado, nada federal (escopo só RJ), nunca inventar número, mudança cirúrgica. Se o conserto exige "
             "decisão do dono, acesso externo ou dado que você não tem, NÃO force: não commite e explique.\n"
+            "PERMISSÕES: um comando por vez — `|`, `;`, `&&` e redireção são NEGADOS (modo sem aprovação); use as "
+            "ferramentas Read/Grep/Glob para ler e filtrar em vez de pipe. Negado não é motivo para desistir: refaça "
+            "do jeito permitido.\n"
             "Termine com 4 linhas exatamente assim:\nCAUSA: ...\nCONSERTO: ... (ou NENHUM)\nTESTES: ...\nRISCO: ...")
 
 
@@ -163,7 +166,7 @@ def main() -> int:
         res.append(r)
         ledger[it["assinatura"]] = {k: r[k] for k in ("ts", "branch", "segundos")}
         LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=1), encoding="utf-8")
-        print(json.dumps({k: v for k, v in r.items() if k != "resumo"}, ensure_ascii=False), flush=True)
+        print(json.dumps(r, ensure_ascii=False), flush=True)      # o resumo no log: sem ele não se audita a rodada
     if res and not a.sem_aviso:
         avisar(res)
     return 0
