@@ -78,6 +78,50 @@ def registrar_consulta(con: sqlite3.Connection, nome: str, doc: str, fonte: str,
     con.commit()
 
 
+# Natureza jurídica (tabela da Receita) que NÃO entra na fila humana: diretor de ente público, estatal ou companhia
+# aberta é cargo de mercado/governo, não sócio de fachada — 71 das 200 vagas eram diretores do Banco do Brasil (19/11/2026).
+_NATUREZA_FORA = ("1",)                       # 1xxx = administração pública
+_NATUREZA_FORA_EXATA = {"2011", "2038", "2046"}   # empresa pública · economia mista · S.A. aberta
+POR_EMPRESA = 3
+
+
+def natureza_fora(cod: str | None) -> bool:
+    c = _digitos(cod or "")
+    return bool(c) and (c.startswith(_NATUREZA_FORA) or c in _NATUREZA_FORA_EXATA)
+
+
+def priorizar(fila: list[dict], natureza: dict[str, str], n: int, por_empresa: int = POR_EMPRESA) -> list[dict]:
+    """Ordena pela OB paga, tira natureza pública/aberta e limita sócios por empresa (variedade de alvos)."""
+    out, cont = [], {}
+    for it in sorted(fila, key=lambda x: -x["ob_paga_siafe"]):
+        if natureza_fora(natureza.get(it["cnpj"][:8])):
+            continue
+        if cont.get(it["cnpj"], 0) >= por_empresa:
+            continue
+        cont[it["cnpj"]] = cont.get(it["cnpj"], 0) + 1
+        out.append(it)
+        if len(out) >= n:
+            break
+    return out
+
+
+def _naturezas(cnpjs: set[str]) -> dict[str, str]:
+    db = _DB.parent / "receita_estab.db"
+    if not db.exists():
+        return {}
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
+    try:
+        bas = sorted({c[:8] for c in cnpjs})
+        out = {}
+        for i in range(0, len(bas), 500):
+            lote = bas[i:i + 500]
+            out.update(con.execute(f"SELECT cnpj_basico, natureza_cod FROM empresas WHERE cnpj_basico IN "
+                                   f"({','.join('?' * len(lote))})", lote).fetchall())
+        return out
+    finally:
+        con.close()
+
+
 def montar_fila(n: int) -> list[dict]:
     """Sócios mascarados sem CPF conferido, ordenados pela OB PAGA (SIAFE) da empresa. Sem CPF na saída."""
     from compliance_agent.cruzamentos_intel import _ob_paga
@@ -100,8 +144,7 @@ def montar_fila(n: int) -> list[dict]:
                          "candidatos_validos": 100 if len(p39) == 7 else 1000,
                          "fonte_humana_sugerida": "TJRJ consulta pública por nome (captcha resolvido pelo humano)",
                          "status": "PENDENTE"})
-        fila.sort(key=lambda x: -x["ob_paga_siafe"])
-        return fila[:n]
+        return priorizar(fila, _naturezas({f["cnpj"] for f in fila}), n)
     finally:
         con.close()
 
