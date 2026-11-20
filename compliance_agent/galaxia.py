@@ -63,8 +63,7 @@ _ROTULO_ALERTA = {
 }
 
 
-def _dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _dig  # noqa: E402
 
 
 def _norm(s: str) -> str:

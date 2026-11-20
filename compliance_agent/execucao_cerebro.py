@@ -20,7 +20,8 @@ from __future__ import annotations
 import logging
 
 from compliance_agent import execucao_sinais as ES
-from compliance_agent.direcionamento_cerebro import _com_fusao, _parse_json
+from compliance_agent.direcionamento_cerebro import com_fusao
+from compliance_agent.llm.json_resposta import parse_json_llm
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ async def avaliar_coerencia_atesto(texto: str = "", *, objeto: str = "", gerar=N
                           f"A IA não pôde avaliar a coerência do atesto agora ({str(e)[:40]}). Ausência de "
                           "parecer interpretativo ≠ regularidade.",
                           "reprocessar com a IA para o veredito de coerência", pecas=p, _llm_erro=str(e)[:80])
-    dados = _parse_json(raw)
+    dados = parse_json_llm(raw)
     if not isinstance(dados, dict):
         return _resolvido("pendente_reprocessar",
                           "A IA respondeu em formato inválido (não-parseável) — coerência do atesto PENDENTE.",
@@ -149,7 +150,7 @@ async def avaliar_execucao(texto: str = "", *, objeto: str = "", gerar=None, con
     # dizem que a camada subjetiva NÃO julgou — não são veredito e não podem rebaixar (nem tingir) o
     # objetivo. O estado real fica preservado em `coerencia_atesto.grau`, para o auditor ver o porquê.
     grau_llm = coer.get("grau") if coer.get("grau") in ("verde", "amarelo", "vermelho") else None
-    return _com_fusao(base, grau_llm, det.get("grau"))
+    return com_fusao(base, grau_llm, det.get("grau"))
 
 
 def guardar_snapshot_execucao(numero_sei: str, veredito: dict, *, versoes_conhecidas=(),

@@ -30,8 +30,7 @@ logger = logging.getLogger(__name__)
 VERIFICADO, HOMONIMO, INDETERMINADO = "VERIFICADO", "HOMONIMO", "INDETERMINADO"   # = identidade_pessoa
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _norm_nome(s: str) -> str:

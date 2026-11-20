@@ -75,8 +75,7 @@ def _js(s):
         return None
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 # ───────────────────────────── FICHA ─────────────────────────────

@@ -97,7 +97,7 @@ def fmt_doc(doc) -> str:
     `qualidade.verificadores`); o resto sai só em dígitos, como `fmt_cnpj`."""
     d = so_digitos(doc)
     if len(d) == 11:
-        from compliance_agent.qualidade.verificadores import mascarar_cpf
+        from compliance_agent.cpf_cnpj import mascarar_cpf
         return mascarar_cpf(d)
     return fmt_cnpj(d)
 

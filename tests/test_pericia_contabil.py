@@ -56,11 +56,11 @@ def test_parse_data(bruto, esperado):
 
 def test_cpf_em_texto_livre_e_mascarado():
     r = pc._resultado_base(pc.ESTADO, objeto="PAGAMENTO A JOAO, CPF 123.456.789-01, REFERENTE", fornecedor="X")
-    assert "123.456.789-01" not in r["objeto"] and "123.***.***-01" in r["objeto"]
+    assert "123.456.789-01" not in r["objeto"] and "***.456.789-**" in r["objeto"]  # PAD-04
 
 
 def test_mascara_cpf_e_preserva_cnpj():
-    assert pc.mascarar_doc("12345678901") == "123.***.***-01"
+    assert pc.mascarar_doc("12345678901") == "***.456.789-**"  # PAD-04
     assert pc.mascarar_doc("12345678000199") == "12.345.678/0001-99"
 
 
@@ -358,7 +358,7 @@ def test_relatorio_traz_todos_os_contratos_e_e_neutro(tmp_path):
     # nome de TERCEIRO que coincide com termo da lista não é vazamento; o texto próprio tem de sair limpo
     assert termos_proibidos(html) == ["hermes"]
     pc.garantir_neutro_exceto_dados(html, res)
-    assert "12345678901" not in html and "123.***.***-01" in html  # CPF mascarado também no PDF
+    assert "12345678901" not in html and "***.456.789-**" in html  # CPF mascarado também no PDF
     assert "135.000,00" in html                                    # separador de milhar + 2 casas
 
 
@@ -394,7 +394,7 @@ def test_csv_tem_uma_linha_por_contrato(tmp_path):
 def test_prefeitura(tmp_path):
     res = {r["id"]: r for r in pc.avaliar_prefeitura(_base_pcrj(tmp_path))}
     assert res["1"]["categoria"] == "A_MAIOR"
-    assert res["1"]["fornecedor_doc"] == "123.***.***-01"     # CPF nunca sai em claro
+    assert res["1"]["fornecedor_doc"] == "***.456.789-**"     # CPF nunca sai em claro
     # base sem `total_liquidado`: valor contratado − pago é saldo, não dívida — nada se afirma
     assert res["2"]["categoria"] == "INDETERMINADO" and res["2"]["motivo"] == "liquidado_indisponivel"
     assert res["3"]["categoria"] == "INDETERMINADO" and res["3"]["motivo"] == "valor_contrato_ausente"

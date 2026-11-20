@@ -25,8 +25,9 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
+from compliance_agent.cpf_cnpj import digitos as _digitos
+from compliance_agent.cpf_cnpj import mascarar_cpf
 from compliance_agent.resolucao_cpf import (
-    _digitos,
     _dv_cpf,
     _norm,
     confirmar_cpf,
@@ -99,7 +100,7 @@ def desmascarar_cpf_nome(nome: str, doc_mascarado: str, provider: ProviderCpfNom
         consultas += 1
         if log:
             # nunca o CPF candidato no log (LGPD): só a máscara da Receita
-            log(f"  [{consultas}/{teto}] ***.{cpf[3:6]}.{cpf[6:9]}-**: "
+            log(f"  [{consultas}/{teto}] {mascarar_cpf(cpf)}: "
                 f"{'nome recebido' if r.get('ok') else 'x ' + r.get('motivo','')}")
         if not r.get("ok"):
             if "captcha" in (r.get("motivo") or "").lower() or "bloque" in (r.get("motivo") or "").lower():
@@ -127,7 +128,7 @@ def desmascarar_nome_cpf(nome: str, doc_mascarado: str, provider: ProviderNomeCp
     for cpf in r.get("cpfs", []):
         conf = confirmar_cpf(nome, cpf, doc_mascarado)
         if log:
-            log(f"  candidato ***.{_digitos(cpf)[3:6]}.{_digitos(cpf)[6:9]}-**: "
+            log(f"  candidato {mascarar_cpf(cpf)}: "
                 f"{'CONFIRMA' if conf.get('confirmado') else 'rejeitado (máscara não bate ou nome curto)'}")
         if conf.get("confirmado"):
             confirmados.add(conf["cpf"])

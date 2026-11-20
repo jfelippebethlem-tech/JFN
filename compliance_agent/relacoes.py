@@ -18,7 +18,10 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ
+
+_DB = dir_dados() / "compliance.db"
 # endereços genéricos que NÃO caracterizam co-endereço (evita falso vínculo)
 _END_GENERICO = re.compile(r"\b(SALA|LOJA|ANDAR|S/?N|SN|ZERO|CENTRO)\b")
 
@@ -33,8 +36,7 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _orgaos_de(con, cnpj: str, limite: int = 12) -> list[dict]:
@@ -141,7 +143,7 @@ def _socio(con, nome_norm: str, nome_raw: str, limite: int) -> dict:
 def _orgao(con, ug: str, limite: int) -> dict:
     forn = con.execute(
         "SELECT favorecido_cpf, MAX(favorecido_nome) nome, COUNT(*) n, ROUND(SUM(valor),2) tot "
-        "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 "
+        f"FROM ordens_bancarias WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ} "
         "GROUP BY favorecido_cpf ORDER BY tot DESC LIMIT ?", (ug, limite)).fetchall()
     return {"ok": True, "tipo": "orgao", "alvo": ug, "n_fornecedores_top": len(forn),
             "fornecedores": [{"cnpj": f[0], "nome": f[1], "n_ob": f[2], "total": f[3] or 0.0} for f in forn],

@@ -21,6 +21,9 @@ import re
 from collections import defaultdict
 from itertools import combinations
 
+from compliance_agent.collectors.arquivos import caminho_db
+from compliance_agent.cpf_cnpj import cnpj_valido
+
 logger = logging.getLogger(__name__)
 
 # ── identidade do licitante ──────────────────────────────────────────────────
@@ -42,18 +45,6 @@ def _so_digitos(s: str) -> str:
     return "".join(c for c in (s or "") if c.isdigit())
 
 
-def _cnpj_dv_ok(c: str) -> bool:
-    """Dígitos verificadores do CNPJ (módulo 11) — separa CNPJ real de nº de processo."""
-    if len(c) != 14 or c == c[0] * 14:
-        return False
-    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    for n in (12, 13):
-        d = sum(int(a) * b for a, b in zip(c[:n], ([6] + pesos) if n == 13 else pesos)) % 11
-        if c[n] != str(0 if 11 - d > 9 else 11 - d):
-            return False
-    return True
-
-
 def extrair_participantes_ata(texto: str, janela: int = 140, orgao_cnpj: str | None = None) -> dict:
     """Best-effort: de UMA ata/julgamento, extrai os licitantes (CNPJ) e o resultado de cada um
     pelo marcador mais próximo (janela de chars). Retorna
@@ -71,7 +62,7 @@ def extrair_participantes_ata(texto: str, janela: int = 140, orgao_cnpj: str | N
     vistos: dict[str, dict] = {}
     for idx, m in enumerate(matches):
         cnpj = _so_digitos(m.group(1))
-        if "." not in m.group(1) and not _cnpj_dv_ok(cnpj):
+        if "." not in m.group(1) and not cnpj_valido(cnpj):
             continue  # 14 dígitos crus sem DV válido = nº de processo, não licitante
         if cnpj in vistos or (org and cnpj == org):
             continue
@@ -349,11 +340,11 @@ def detectar_rodizio_vencedores(registros: list[dict], min_certames: int = 5,
                         "rodízio (mesmo objeto) pede exame das propostas e do QSA. Indício ≠ acusação."}
 
 
-def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 8000) -> list[dict]:
+def coletar_atas_do_corpus(db_path: str | None = None, limite: int = 8000) -> list[dict]:
     """Lê o corpus de editais/atas já coletado (edital_documento) filtrando os que têm marcadores de
     RESULTADO (vencedor/adjudicado + inabilitado). Certame = numero_controle_pncp; órgão = orgao_cnpj."""
     import sqlite3
-    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con = sqlite3.connect(f"file:{caminho_db(db_path)}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
         rows = con.execute(
@@ -368,7 +359,7 @@ def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 80
     out = [{"certame": r["npc"], "orgao": r["orgao_cnpj"], "texto": r["texto"]}
            for r in rows if _RX_ATA_MARCADOR.search(r["texto"])]
     # atas de julgamento REAIS coletadas do PNCP (atas_julgamento — a fonte densa de perdedoras)
-    con2 = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con2 = sqlite3.connect(f"file:{caminho_db(db_path)}?mode=ro", uri=True)
     con2.row_factory = sqlite3.Row
     try:
         vistos = {a["certame"] for a in out}
@@ -384,9 +375,9 @@ def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 80
     return [a for a in out if no_rj(a["orgao"] or "")]
 
 
-def _nome(cnpj: str, db_path: str = "data/compliance.db") -> str:
+def _nome(cnpj: str, db_path: str | None = None) -> str:
     import sqlite3
-    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con = sqlite3.connect(f"file:{caminho_db(db_path)}?mode=ro", uri=True)
     try:
         r = con.execute("SELECT favorecido_nome FROM favorecido_resumo WHERE "
                         "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=? LIMIT 1",
@@ -401,7 +392,7 @@ def _nome(cnpj: str, db_path: str = "data/compliance.db") -> str:
 if __name__ == "__main__":
     import json
     import sys
-    db = sys.argv[1] if len(sys.argv) > 1 else "data/compliance.db"
+    db = sys.argv[1] if len(sys.argv) > 1 else None
     atas = coletar_atas_do_corpus(db)
     r = analisar_atas(atas, min_certames=3, min_juntos=2)
     print(f"# GRAFO DE RODÍZIO CROSS-ATA\n\nCobertura da extração: {r['cobertura_extracao']}")

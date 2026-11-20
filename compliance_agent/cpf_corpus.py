@@ -25,9 +25,13 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from compliance_agent.resolucao_cpf import _digitos, _dv_cpf, _norm
+from compliance_agent.collectors.arquivos import dir_dados
+from compliance_agent.cpf_cnpj import cpf_valido as _cpf_dv_ok
+from compliance_agent.cpf_cnpj import digitos as _digitos
+from compliance_agent.cpf_cnpj import mascarar_cpf
+from compliance_agent.resolucao_cpf import _norm
 
-_DB = Path("data") / "compliance.db"
+_DB = dir_dados() / "compliance.db"
 
 DDL = (
     "CREATE TABLE IF NOT EXISTS cpf_corpus ("
@@ -60,7 +64,7 @@ def cpf_valido(s) -> str:
     d = _digitos(raw)
     if len(d) != 11 or d == d[0] * 11:
         return ""
-    return d if _dv_cpf(d[:9]) == d[9:] else ""
+    return d if _cpf_dv_ok(d) else ""
 
 
 def _nome(row: dict, cols: tuple[str, ...]) -> str:
@@ -193,7 +197,4 @@ _RX_CPF_LOG = re.compile(r"(?<!\d)\d{11}(?!\d)|\d{3}\.\d{3}\.\d{3}-\d{2}")
 
 def sem_cpf(texto: str) -> str:
     """Rede de segurança para qualquer linha que vá a log/tela: CPF completo vira máscara da Receita."""
-    def _m(m):
-        d = _digitos(m.group(0))
-        return f"***.{d[3:6]}.{d[6:9]}-**"
-    return _RX_CPF_LOG.sub(_m, str(texto))
+    return _RX_CPF_LOG.sub(lambda m: mascarar_cpf(m.group(0)), str(texto))

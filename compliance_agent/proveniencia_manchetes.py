@@ -101,8 +101,8 @@ def mascarar_nomes(x, _chave: str = ""):
     do payload saem com o CPF mascarado — 19/11/2026: o radar servia dois CPFs inteiros no `nome` (achados 17 e 42)."""
     if isinstance(x, str):
         if _chave in _CAMPOS_NOME:
-            from compliance_agent.osint.vinculos import mascarar_cpf
-            return mascarar_cpf(x)
+            from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto
+            return mascarar_cpf_no_texto(x)
         return x
     if isinstance(x, dict):
         return {k: mascarar_nomes(v, k) for k, v in x.items()}

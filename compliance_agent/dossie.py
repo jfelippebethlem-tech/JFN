@@ -10,7 +10,6 @@ Invariante: indícios para apuração; presunção de legitimidade; CPF mascarad
 from __future__ import annotations
 
 import logging
-import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -24,8 +23,7 @@ logger = logging.getLogger(__name__)
 _REPORTS = Path(__file__).resolve().parent.parent / "reports"
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _resumo_ob(cnpj: str) -> dict:

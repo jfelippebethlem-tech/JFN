@@ -781,11 +781,7 @@ def obs_pagas_do_processo(con, processo: str) -> list[dict]:
     return mapa_obs_pagas(con, [processo]).get(chave_processo(processo) or "", [])
 
 
-def _cnpj_mascarado(doc: str) -> str:
-    d = re.sub(r"\D", "", doc or "")
-    if len(d) == 11:   # CPF (LGPD)
-        return f"***.{d[3:6]}.{d[6:9]}-**"
-    return doc or ""
+from compliance_agent.cpf_cnpj import mascarar_doc as _cnpj_mascarado  # noqa: E402
 
 
 # ── o porquê ─────────────────────────────────────────────────────────────────────────────────────────────────

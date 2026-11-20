@@ -24,7 +24,7 @@ import logging
 import re
 import sqlite3
 from pathlib import Path
-from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, moeda
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = str(_REPO / "data" / "compliance.db")
@@ -437,7 +437,7 @@ def alvos_fantasma(db_path: str | None = None, top_favorecidos: int = 300) -> di
                 alvos.setdefault(c, "rodizio")
         for r in con.execute(
                 "SELECT favorecido_cpf c, SUM(total_pago) t FROM favorecido_resumo "
-                "WHERE length(favorecido_cpf)=14 GROUP BY 1 ORDER BY t DESC LIMIT ?",
+                f"WHERE {SQL_FAVORECIDO_PJ} GROUP BY 1 ORDER BY t DESC LIMIT ?",
                 (top_favorecidos,)):
             alvos.setdefault(r["c"], "top_favorecido")
     except Exception as exc:
@@ -1413,7 +1413,7 @@ def capital_incompativel(db_path: str | None = None, min_total: float = 1_000_00
             return {"ok": False, "erro": "empresas_cadastro ausente — rodar tools/empresas_dump_sweep"}
         achados = []
         for r in con.execute("SELECT favorecido_cpf c, favorecido_nome nm, total_pago t, n_obs "
-                            "FROM favorecido_resumo WHERE length(favorecido_cpf)=14 AND total_pago>=?",
+                            f"FROM favorecido_resumo WHERE {SQL_FAVORECIDO_PJ} AND total_pago>=?",
                             (min_total,)):
             info = cap.get(r["c"][:8])
             if not info:

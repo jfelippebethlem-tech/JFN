@@ -295,9 +295,4 @@ def selecao(q: dict, ano: int | None, mes: int | None) -> dict:
     return {"rotulo": rotulo(ano, mes), **{k: m[k] for k in ("n", "c", "v")}, "status": m["status"]}
 
 
-def mascarar_doc(doc) -> str:
-    """CPF (11 dígitos) mascarado na saída — LGPD; CNPJ segue inteiro (é dado público da empresa)."""
-    d = re.sub(r"\D", "", str(doc or ""))
-    if len(d) == 11:
-        return f"***.{d[3:6]}.{d[6:9]}-**"
-    return str(doc or "")
+from compliance_agent.cpf_cnpj import mascarar_doc  # noqa: E402,F401  (periodo_fontes chama P.mascarar_doc)

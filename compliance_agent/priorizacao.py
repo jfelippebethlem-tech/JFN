@@ -93,8 +93,7 @@ _PESOS = {"materialidade": 0.30, "tipificacao": 0.30, "autoria": 0.20, "competen
 
 # ───────────────────────── helpers ─────────────────────────
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def _num(v) -> float | None:

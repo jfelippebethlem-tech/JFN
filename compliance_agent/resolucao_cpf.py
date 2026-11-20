@@ -19,11 +19,12 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DB = dir_dados() / "compliance.db"
 
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def _norm(s: str) -> str:

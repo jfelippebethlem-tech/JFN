@@ -98,8 +98,7 @@ def _con() -> sqlite3.Connection:
     return sqlite3.connect(str(_resolver_db()))
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _norm_nome(s: str) -> str:

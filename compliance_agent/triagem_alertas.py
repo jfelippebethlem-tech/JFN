@@ -30,11 +30,11 @@ import argparse
 import hashlib
 import json
 import logging
-import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto as mascarar_cpf
 from compliance_agent.llm.verificacao import PENDENTE, VERIFICADO, citacao_existe
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,6 @@ AMOSTRA_MINIMA = 20
 POR_CHAMADA = 10
 # chaves de valor por ordem de preferência — cada detector grava o seu (medido nas evidências reais)
 CHAVES_VALOR = ("valor", "soma", "total", "total_bruto", "empenhado", "total_autor", "excesso", "remuneracao")
-_RE_CPF = re.compile(r"(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)")
 
 _SYS = (
     "Você é auditor de controle externo (TCE-RJ) fazendo TRIAGEM de alertas automáticos do sistema JFN. "
@@ -104,18 +103,6 @@ def garantir(con: sqlite3.Connection) -> None:
     for c, t in _COLUNAS.items():
         if c not in tem:
             con.execute(f"ALTER TABLE alertas_triagem ADD COLUMN {c} {t}")
-
-
-def mascarar_cpf(texto: str) -> str:
-    return _RE_CPF.sub(lambda m: f"***.{m.group(2)}.{m.group(3)}-**", texto or "")
-
-
-def valor_do_alerta(evid: dict) -> float | None:
-    for k in CHAVES_VALOR:
-        v = evid.get(k) if isinstance(evid, dict) else None
-        if isinstance(v, (int, float)) and not isinstance(v, bool):
-            return float(v)
-    return None
 
 
 _COALESCE = "COALESCE(" + ",".join(

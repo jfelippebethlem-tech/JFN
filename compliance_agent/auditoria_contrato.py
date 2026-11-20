@@ -80,11 +80,7 @@ def _money(v) -> float:
         return 0.0
 
 
-def _moeda(v: float) -> str:
-    try:
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (TypeError, ValueError):
-        return "R$ 0,00"
+from compliance_agent.reporting.intel_base import reais as _moeda  # noqa: E402
 
 
 def _comp(c: str) -> str:

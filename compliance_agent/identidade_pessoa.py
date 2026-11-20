@@ -88,8 +88,7 @@ def normalizar_nome(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^A-Z ]", " ", s)).strip()
 
 
-def _dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _dig  # noqa: E402
 
 
 def posicoes_qsa(doc) -> dict[int, str]:

@@ -477,7 +477,7 @@ def fundir_graus(grau_llm, grau_det) -> dict:
                             "camada_mais_severa": severa, "nota": nota}}
 
 
-def _com_fusao(base: dict, grau_llm, grau_det) -> dict:
+def com_fusao(base: dict, grau_llm, grau_det) -> dict:
     """Aplica a fusão sobre um dict de retorno: define grau (conciliado), grau_llm, grau_det e divergencia."""
     fus = fundir_graus(grau_llm, grau_det)
     base["grau"] = fus["grau"]
@@ -574,7 +574,7 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
         # O cérebro não vê edital/ata. Se a camada objetiva achou PRESENÇA de sinal (gate próprio), o grau
         # surge dela (não fica cego); senão, indeterminado honesto (não invento juízo).
         if det_presenca:
-            return _com_fusao({**base, "dados_suficientes": True,
+            return com_fusao({**base, "dados_suficientes": True,
                     "resumo": f"O LLM não viu edital/ata claros, mas a camada determinística achou sinal "
                               f"objetivo (grau {det_presenca}) — indício a verificar.",
                     "ressalva": "veredito objetivo; buscar o edital/ata para o parecer interpretativo completo"},
@@ -595,7 +595,7 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
         raw = await gerar(messages)
     except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica. Mas o SINAL objetivo VALE.
         if det_presenca:
-            return _com_fusao({**base, "dados_suficientes": True,
+            return com_fusao({**base, "dados_suficientes": True,
                     "resumo": f"LLM indisponível ({str(e)[:50]}) — veredito pela camada determinística "
                               f"(grau {det_presenca}): sinal objetivo achado; indício a verificar.",
                     "ressalva": "veredito objetivo (LLM offline); indício a apurar, não acusação"},
@@ -612,7 +612,7 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     dados = _parse_json(raw)
     if not isinstance(dados, dict):
         if det_presenca:
-            return _com_fusao({**base, "dados_suficientes": True,
+            return com_fusao({**base, "dados_suficientes": True,
                     "resumo": f"Resposta do LLM não-parseável — veredito pela camada determinística "
                               f"(grau {det_presenca}); indício a verificar.",
                     "ressalva": "veredito objetivo (LLM não-parseável); indício a apurar, não acusação"},
@@ -638,7 +638,7 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
         # estiver 'verde', a fusão devolveria 'verde' e o caso sairia como regular quando na
         # verdade a análise interpretativa não existe.
         if det_presenca:
-            r = _com_fusao({**base, **dados, "dados_suficientes": True}, None, grau_det)
+            r = com_fusao({**base, **dados, "dados_suficientes": True}, None, grau_det)
         else:
             r = {**base, **dados, "grau": "pendente_reprocessar", "dados_suficientes": False,
                  "grau_llm": None, "grau_det": grau_det,
@@ -646,7 +646,7 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
                  "ressalva": "veredito resolvido: pendente de reprocessamento; ausência de "
                              "achado ancorado ≠ regularidade"}
     else:
-        r = _com_fusao({**base, **dados}, dados.get("grau"), grau_det)
+        r = com_fusao({**base, **dados}, dados.get("grau"), grau_det)
     r["grounding"] = grounding
     return r
 

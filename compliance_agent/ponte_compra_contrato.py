@@ -34,8 +34,8 @@ from typing import Any
 
 
 def _ro(caminho: str | None = None) -> sqlite3.Connection:
-    import os
-    db = caminho or os.environ.get("JFN_DB", "data/compliance.db")
+    from compliance_agent.collectors.arquivos import caminho_db
+    db = caminho_db(caminho)
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
     con.row_factory = sqlite3.Row
     return con

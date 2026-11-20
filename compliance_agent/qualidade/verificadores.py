@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable
 
-from compliance_agent.cpf_cnpj import cpf_valido  # noqa: F401  (fonte única; reexportado)
+from compliance_agent.cpf_cnpj import cpf_valido, mascarar_cpf  # noqa: F401  (fonte única; reexportados)
 
 ESTADOS = ("VERIFICADO", "PENDENTE", "INDISPONIVEL", "REFUTADO")
 NATUREZAS = ("pago", "liquidado", "empenhado", "contratado", "teto_de_ata", "estimado", "contagem", "indice")
@@ -44,10 +44,6 @@ _RE_CPF_CRU = re.compile(r"(?i)\bcpf\b[^\d\n]{0,20}(\d{11})(?!\d)")
 # MEI: o nome empresarial é "NOME DO TITULAR 12345678901" — o CPF cru vem depois do nome, sem a palavra "cpf"
 # (19/11/2026: dois CPFs inteiros no `nome` do radar passaram pelo sensor sem acusar)
 _RE_CPF_MEI = re.compile(r"[A-Za-zÀ-ÿ]\s+(\d{11})(?![\d/.-])")
-
-
-def mascarar_cpf(dig: str) -> str:
-    return f"***.{dig[3:6]}.{dig[6:9]}-**"
 
 
 def mascarar_cpfs(texto: str) -> str:

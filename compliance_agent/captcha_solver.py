@@ -217,16 +217,3 @@ def solve_captcha_url(
     return solve_captcha_image(tmp, lang=lang, config=config)
 
 
-def solve_captcha_pil(
-    pil_image,
-    *,
-    lang: str = "eng",
-    config: str = "--psm 7 --oem 3",
-    region: tuple[int, int, int, int] | None = None,
-) -> str:
-    arr = np.array(pil_image)
-    if region is not None:
-        x, y, w, h = region
-        arr = arr[y:y + h, x:x + w]
-    img = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-    return solve_captcha_image(img, lang=lang, config=config)

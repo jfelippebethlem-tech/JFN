@@ -71,10 +71,6 @@ def _fmt(v: float) -> str:
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _tem_moeda(texto: str, v: float) -> bool:
-    return re.search(r"(?<![\d.,])" + re.escape(_fmt(v)) + r"(?![\d])", texto) is not None
-
-
 def _iss_confere(base: float, aliq: float, iss: float) -> bool:
     return ALIQ_MIN <= aliq <= ALIQ_MAX and abs(round(base * aliq / 100, 2) - iss) <= 0.02
 

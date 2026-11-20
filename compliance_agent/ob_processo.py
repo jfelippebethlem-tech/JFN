@@ -85,8 +85,6 @@ def _brl(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
-def _dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
 
 
 # ── autos ────────────────────────────────────────────────────────────────────────────────────────────────

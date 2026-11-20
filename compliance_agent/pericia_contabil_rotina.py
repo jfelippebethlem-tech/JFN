@@ -23,6 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 from compliance_agent import pericia_contabil as P
+from compliance_agent.cpf_cnpj import mascarar_payload
 from compliance_agent.rotina_base import DATA, agora_iso, executar, gravar_json, ler_json
 
 NOME = "pericia_contabil_rotina"
@@ -36,11 +37,6 @@ _CAMPOS = ("esfera", "orgao", "ug", "contrato", "processo", "fornecedor", "forne
            "valor_mesma_nl_nao_confirmadas", "criterio_devido", "ressalvas", "fonte_pago", "grupo_ata", "grupo_n",
            "grupo_pago", "grupo_regua", "grupo_regua_conservadora", "grupo_diferenca", "grupo_n_obs")
 TOP_GRUPOS = 40
-
-
-def _mascarar(x):
-    from compliance_agent.governo_couto import _mascarar_tudo
-    return _mascarar_tudo(x)
 
 
 def _linha(r: dict) -> dict:
@@ -163,7 +159,7 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                 "itens": [_linha(r) for r in dup[:top]],
             },
         }
-    return _mascarar({
+    return mascarar_payload({
         "gerado_em": agora_iso(),
         "regua": "compliance_agent.pericia_contabil (devido até o corte × pago)",
         "tolerancia": f"|diferença| < {P.TOL_PCT:.0%} do devido ou < R$ {P.fmt_brl(P.TOL_ABS)} = conforme",

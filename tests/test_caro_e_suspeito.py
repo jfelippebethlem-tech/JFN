@@ -14,7 +14,7 @@ def db(tmp_path, monkeypatch):
     p = str(tmp_path / "t.db")
     con = sqlite3.connect(p)
     con.executescript("""
-    CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
+    CREATE TABLE pncp_resultado (orgao_cnpj TEXT, item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
         quantidade REAL, orgao_nome TEXT, unidade_nome TEXT, municipio TEXT, fornecedor_nome TEXT,
         fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT, certame TEXT);
     CREATE TABLE sancoes_federais (cpf_cnpj TEXT, nome TEXT, cadastro TEXT, categoria TEXT,
@@ -35,14 +35,14 @@ def db(tmp_path, monkeypatch):
         ("Sonda Nasogastrica 12 cm", "UN", 9.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "c3"),
         ("Sonda Nasogastrica 12 cm", "UN", 10.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-05", "c5"),
         ("Sonda Nasogastrica 12 cm", "UN", 10.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-01-06", "c6"),
-        ("Sonda Nasogastrica 12 cm", "UN", 35.0, 5, "D", "D", "RJ", "SUSPEITA LTDA", SANC, "2025-04-01", "c4"),
+        ("Sonda Nasogastrica 12 cm", "UN", 35.0, 5, "ESTADO DO RIO DE JANEIRO", "SECRETARIA DE ESTADO DE SAUDE", "RJ", "SUSPEITA LTDA", SANC, "2025-04-01", "c4"),
         # "Gaze" cara (3,5×) mas fornecedor LIMPO → NÃO entra no dossiê (fica no sobrepreço puro)
         ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-01-01", "g1"),
         ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-02-01", "g2"),
         ("Gaze 7,5 x 7,5 cm", "UN", 1.0, 5, "C", "C", "RJ", "FORN OK", LIMPO, "2025-03-01", "g3"),
         ("Gaze 7,5 x 7,5 cm", "UN", 1.1, 5, "A", "A", "RJ", "FORN OK", LIMPO, "2025-03-05", "g5"),
         ("Gaze 7,5 x 7,5 cm", "UN", 0.9, 5, "B", "B", "RJ", "FORN OK", LIMPO, "2025-03-06", "g6"),
-        ("Gaze 7,5 x 7,5 cm", "UN", 3.5, 5, "D", "D", "RJ", "FORN OK", LIMPO, "2025-04-01", "g4"),
+        ("Gaze 7,5 x 7,5 cm", "UN", 3.5, 5, "ESTADO DO RIO DE JANEIRO", "SECRETARIA DE ESTADO DE SAUDE", "RJ", "FORN OK", LIMPO, "2025-04-01", "g4"),
     ]
     con.executemany(ins, rows)
     con.execute("INSERT INTO sancoes_federais VALUES (?,?,?,?,?,?,?,?,?)",

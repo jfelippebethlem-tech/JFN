@@ -52,13 +52,6 @@ async def disable_animations(page) -> None:
         pass
 
 
-async def adf_settle(page, timeout: int = 30000) -> bool:
-    """Atalho: desliga animação + espera sync. Use após cada ação que dispara PPR
-    (clique de menu, filtro, ordenação, expand) no lugar de `wait_for_timeout` fixo."""
-    ok = await wait_adf_sync(page, timeout=timeout)
-    return ok
-
-
 _WHY_JS = ("() => { try { return (AdfPage.PAGE && AdfPage.PAGE.whyIsNotSynchronizedWithServer) "
            "? AdfPage.PAGE.whyIsNotSynchronizedWithServer() : '(sem whyIs nesta build)'; } "
            "catch (e) { return 'AdfPage.PAGE indisponível'; } }")

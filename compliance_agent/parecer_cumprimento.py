@@ -24,11 +24,11 @@ sempre RESOLVIDO (nunca 'indeterminado'/'indisponível').
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 
-from compliance_agent.direcionamento_cerebro import _com_fusao, _parse_json
+from compliance_agent.direcionamento_cerebro import com_fusao
+from compliance_agent.llm.json_resposta import parse_json_llm
 from compliance_agent.sei import acervo_texto
 from compliance_agent.sei_recomendacoes import _RE_BOILERPLATE, classificar_emissor
 
@@ -620,7 +620,7 @@ async def avaliar_parecer_cumprimento(docs: list[dict], *, gerar=None, contexto:
     grau_det = det.get("grau")
     # LLM não roda quando não há o que julgar (sem parecer/sem condicionante) nem quando não foi injetado
     if gerar is None or not det.get("condicionantes"):
-        return _com_fusao({**det, "contexto": contexto or {}}, None, grau_det)
+        return com_fusao({**det, "contexto": contexto or {}}, None, grau_det)
     pareceres = _pareceres_com_condicionantes(docs)
     corte = min((p["i"] for p in pareceres), default=-1)
     posteriores = [d for j, d in enumerate(docs or []) if j > corte]
@@ -630,17 +630,14 @@ async def avaliar_parecer_cumprimento(docs: list[dict], *, gerar=None, contexto:
         raw = await gerar(messages)
     except Exception as e:  # noqa: BLE001 — LLM indisponível: o veredito objetivo SUSTENTA (não fica cego)
         logger.debug("avaliar_parecer_cumprimento: LLM indisponível: %s", e)
-        return _com_fusao({**det, "_llm_erro": str(e)[:80],
+        return com_fusao({**det, "_llm_erro": str(e)[:80],
                            "leitura": det["leitura"] + f" (parecer interpretativo não gerado: {str(e)[:40]})"},
                           None, grau_det)
-    dados = _parse_json(raw)
+    dados = parse_json_llm(raw)
     if not isinstance(dados, dict):
-        return _com_fusao({**det, "_llm_erro": "resposta não-parseável"}, None, grau_det)
+        return com_fusao({**det, "_llm_erro": "resposta não-parseável"}, None, grau_det)
     llm = {k: dados.get(k) for k in ("cumpridas", "nao_cumpridas", "nao_verificaveis", "resumo",
                                      "analise_por_item", "dados_suficientes")}
-    return _com_fusao({**det, "llm": llm}, dados.get("grau"), grau_det)
+    return com_fusao({**det, "llm": llm}, dados.get("grau"), grau_det)
 
 
-def para_json(veredito: dict) -> str:
-    """Serializa o veredito (para persistência/snapshot). Mantém acentuação."""
-    return json.dumps(veredito, ensure_ascii=False)

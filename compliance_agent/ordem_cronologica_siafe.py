@@ -34,6 +34,7 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+from compliance_agent.credor_institucional import NATUREZA_ESTATAL  # alíneas m) e n); conservador: pode excluir estatal federal
 from compliance_agent.cruzamentos_intel import _ob_paga
 
 _REPO = Path(__file__).resolve().parents[1]
@@ -41,7 +42,6 @@ _ELEMENTOS = {"30", "35", "37", "39", "40", "51", "52"}
 _CNAE_FORA = ("35", "36", "61", "4731", "4681")
 
 _DIAS_FORTE, _DIAS_MEDIO = 30, 10
-_NAT_ESTATAL = ("2011", "2038")   # empresa pública / SEM — alíneas m) e n); conservador: pode excluir estatal federal
 
 _SQL = """SELECT l.numero, l.ug_emitente, l.exercicio, l.ano_nl, l.data_emissao, l.credor, l.nome_credor, l.valor, l.processo,
                  e.fonte, e.natureza,
@@ -88,7 +88,7 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
         nome, valor, proc, fonte, natureza, pago = (r["nome_credor"], r["valor"], r["processo"], r["fonte"],
                                                     r["natureza"], r["pago_em"])
         nat, cnae = cad.get(credor[:8], ("", ""))
-        if ((natureza or "")[4:6] not in _ELEMENTOS or not nat or nat.startswith("1") or nat in _NAT_ESTATAL
+        if ((natureza or "")[4:6] not in _ELEMENTOS or not nat or nat.startswith("1") or nat in NATUREZA_ESTATAL
                 or cnae.startswith(_CNAE_FORA)):
             continue
         # fila por UG, FONTE e ANO DA NL: Restos a Pagar têm ordem própria (Dec. 49.134 arts. 22–23, quebra com

@@ -32,14 +32,12 @@ from compliance_agent.limites_porte import TETO_EPP, TETO_ME, TETO_MEI
 
 import datetime as dt
 import logging
-import re
 
 logger = logging.getLogger(__name__)
 
 # ───────────────────────── helpers ─────────────────────────
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def _norm(s: str) -> str:
@@ -60,11 +58,7 @@ def _parse_data(s) -> dt.date | None:
     return None
 
 
-def _moeda(v: float) -> str:
-    try:
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (TypeError, ValueError):
-        return "R$ 0,00"
+from compliance_agent.reporting.intel_base import reais as _moeda  # noqa: E402
 
 
 # ───────────────────────── marcadores de endereço residencial ─────────────────────────

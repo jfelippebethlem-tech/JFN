@@ -26,6 +26,8 @@ import json
 import os
 import re
 import sqlite3
+
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ  # noqa: E402
 import unicodedata
 from datetime import datetime
 
@@ -118,9 +120,9 @@ def cnpjs_top(limite: int = 300) -> list[str]:
     from compliance_agent.duckdb_util import conectar
     con = conectar()
     try:
-        rows = con.execute("""
+        rows = con.execute(f"""
             SELECT favorecido_cpf FROM db.ordens_bancarias
-            WHERE valor>0 AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14
+            WHERE valor>0 AND favorecido_cpf IS NOT NULL AND {SQL_FAVORECIDO_PJ}
             GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT ?
         """, [limite]).fetchall()
         return [r[0] for r in rows]

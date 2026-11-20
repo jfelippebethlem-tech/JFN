@@ -16,7 +16,9 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados
+
+_DB = dir_dados() / "compliance.db"
 
 
 def _norm(s: str) -> str:

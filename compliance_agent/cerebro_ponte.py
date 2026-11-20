@@ -112,8 +112,7 @@ def conferir(laudo: dict, corpus: str | None, ob_siafe) -> dict:
             "ob_total": len(obs), "ob_ok": ok, "trecho": next((t for t in trechos if isinstance(t, str)), None)}
 
 
-def _digitos(v) -> str:
-    return re.sub(r"\D", "", str(v or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def _dinheiro(v) -> str:

@@ -13,6 +13,7 @@ from fpdf.enums import XPos, YPos
 
 logger = logging.getLogger(__name__)
 
+from compliance_agent.collectors.arquivos import caminho_db
 from compliance_agent.reporting.inteligencia import (
     _mc, _registrar_fonte, _render_parecer_pdf, fmt_cnpj, moeda, so_digitos,
 )
@@ -574,7 +575,6 @@ def _secao_responsaveis(sei: list) -> list[str]:
     o parecer é gerado sob orçamento de tempo e não pode depender de varrer o acervo. Falha de
     leitura devolve lista vazia — o parecer declara a lacuna, que é a resposta honesta.
     """
-    import os
     import sqlite3
 
     numeros = [s.get("numero_sei", "") for s in (sei or []) if s.get("numero_sei")]
@@ -582,7 +582,7 @@ def _secao_responsaveis(sei: list) -> list[str]:
         return []
     blocos: list[str] = []
     try:
-        con = sqlite3.connect(f"file:{os.environ.get('JFN_DB', 'data/compliance.db')}?mode=ro",
+        con = sqlite3.connect(f"file:{caminho_db()}?mode=ro",
                               uri=True, timeout=15)
         con.row_factory = sqlite3.Row
         for numero in numeros[:6]:

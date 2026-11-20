@@ -45,14 +45,15 @@ import sqlite3
 from datetime import datetime
 from typing import Any, Callable
 
+from compliance_agent.collectors.arquivos import caminho_db, dir_dados
 from compliance_agent.detectores import REGISTRO
 from compliance_agent.detectores.base import ResultadoDetector
 from compliance_agent.varredura_certames_ctx import montar_contexto
 
 logger = logging.getLogger(__name__)
 
-DB_LEITURA = os.environ.get("JFN_DB", "data/compliance.db")
-DB_ACHADOS = os.environ.get("JFN_DB_ACHADOS", "data/achados.db")
+DB_LEITURA = str(caminho_db())
+DB_ACHADOS = os.environ.get("JFN_DB_ACHADOS", str(dir_dados() / "achados.db"))
 
 # Detectores por certame que a base atual consegue alimentar. Manter esta lista curta e honesta
 # é o ponto: um detector que só receberia campo vazio não entra, porque `nao_avaliavel` em massa

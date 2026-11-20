@@ -74,6 +74,7 @@ from pathlib import Path
 from typing import Any
 
 from compliance_agent import limites_aditivo
+from compliance_agent.cpf_cnpj import mascarar_cpf
 from compliance_agent.credor_institucional import cnae_concessao as _cnae_concessao
 
 _BASE = Path(__file__).resolve().parent.parent
@@ -238,15 +239,14 @@ def parse_data(s: Any) -> date | None:
     return None
 
 
-def _digitos(s: Any) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def mascarar_doc(doc: Any) -> str:
     """CPF sempre mascarado (LGPD, regra da casa); CNPJ formatado."""
     d = _digitos(doc)
     if len(d) == 11:
-        return f"{d[:3]}.***.***-{d[-2:]}"
+        return mascarar_cpf(d)
     if len(d) == 14:
         return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
     return d
@@ -708,14 +708,14 @@ def _resultado_base(esfera: str, **kw) -> dict:
     return mascarar_textos(r)
 
 
-_RE_CPF_TXT = re.compile(r"\b(\d{3})\.\d{3}\.\d{3}-(\d{2})\b")
+_RE_CPF_TXT = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 
 
 def mascarar_textos(r: dict) -> dict:
     """CPF formatado dentro de texto livre (objeto, nome) — medido: 2 objetos reais traziam CPF em claro."""
     for c in ("objeto", "fornecedor", "ressalvas"):
         if r.get(c):
-            r[c] = _RE_CPF_TXT.sub(r"\1.***.***-\2", r[c])
+            r[c] = _RE_CPF_TXT.sub(lambda m: mascarar_cpf(m[0]), r[c])
     return r
 
 

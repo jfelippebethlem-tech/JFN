@@ -36,7 +36,6 @@ import httpx
 import logging
 import os
 import random
-import re
 import sqlite3
 import uuid
 import zlib
@@ -193,8 +192,7 @@ def _agora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _dig  # noqa: E402
 
 
 def _brl(v: float) -> str:

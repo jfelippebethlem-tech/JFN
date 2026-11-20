@@ -20,6 +20,8 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from compliance_agent.cpf_cnpj import mascarar_payload
+
 router = APIRouter()
 
 _RAIZ = Path(__file__).resolve().parents[1]
@@ -36,11 +38,6 @@ def _data() -> Path:
     return DATA
 
 
-def _mascarar(x):
-    from compliance_agent.governo_couto import _mascarar_tudo
-    return _mascarar_tudo(x)
-
-
 def _ler_rotina(nome: str, rotina: str, horario: str) -> JSONResponse:
     p = _data() / nome
     if not p.exists():
@@ -50,7 +47,7 @@ def _ler_rotina(nome: str, rotina: str, horario: str) -> JSONResponse:
         d = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         return JSONResponse({"ok": False, "estado": "erro", "erro": f"{type(exc).__name__}: {exc}"}, status_code=500)
-    d = _mascarar(d)
+    d = mascarar_payload(d)
     d.update(ok=True, rotina=rotina, horario=horario,
              arquivo_mtime=time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime)))
     d.setdefault("estado", "ok")
@@ -104,7 +101,7 @@ def resumir_achados(linhas: list[tuple], *, top: int = 40) -> dict:
             out.append({"detector": det, "n_confirmado": None, "n_total": 0, "por_status": {}, "ultimo": None, "n_ugs": 0,
                         "agenda": ag, "itens": [], "sem_execucao": True})
     out.sort(key=lambda x: (x["detector"] not in DETECTORES_AGENDADOS, -(x["n_confirmado"] or 0), x["detector"]))
-    return _mascarar({"detectores": out, "n_confirmados": sum(x["n_confirmado"] or 0 for x in out)})
+    return mascarar_payload({"detectores": out, "n_confirmados": sum(x["n_confirmado"] or 0 for x in out)})
 
 
 @router.get("/api/detectores_achados")

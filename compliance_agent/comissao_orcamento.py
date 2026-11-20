@@ -136,7 +136,7 @@ def _achados_da_pericia(aj: str) -> list[dict]:
 
 def _doc(cnpj: str) -> tuple[str, str]:
     """(tipo, documento exibível). Pessoa física (11 dígitos) sai com CPF MASCARADO — LGPD/regra da casa."""
-    from compliance_agent.osint.vinculos import mascarar_cpf
+    from compliance_agent.cpf_cnpj import mascarar_cpf
     d = "".join(ch for ch in str(cnpj or "") if ch.isdigit())
     return ("CPF", mascarar_cpf(d)) if len(d) == 11 else ("CNPJ", d or str(cnpj or ""))
 

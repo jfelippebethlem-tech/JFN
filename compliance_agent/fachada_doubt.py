@@ -35,7 +35,9 @@ import time as _time
 import unicodedata as _ud
 from pathlib import Path
 
-_DB = Path(os.environ.get("JFN_DB", "data/compliance.db"))
+from compliance_agent.collectors.arquivos import caminho_db
+
+_DB = caminho_db()
 _HERMES_STATE = Path(os.environ.get("HERMES_STATE_DB", str(Path.home() / ".hermes" / "state.db")))
 _CURSOR = Path("data") / ".fachada_veredito_cursor"
 
@@ -246,17 +248,6 @@ def _pano_meta(location: str) -> dict | None:
     if m.get("status") != "OK" or not m.get("location"):
         return None
     return {"lat": m["location"]["lat"], "lon": m["location"]["lng"], "date": m.get("date", "")}
-
-
-def coord_do_endereco(endereco: str) -> tuple[dict | None, str]:
-    """Coord do pano via metadata GRATUITO (Google resolve o nº internamente). Devolve ({lat,lon,date}, "")
-    ou (None, motivo). Metadata NÃO consome cota/cobrança (doc Google)."""
-    if not _gkey():
-        return None, "sem GOOGLE_MAPS_KEY"
-    if not endereco.strip():
-        return None, "endereço vazio"
-    p = _pano_meta(f"{limpa_endereco(endereco)}, Brasil")
-    return (p, "") if p else (None, "sem cobertura Street View no endereço")
 
 
 def _geocode_predio(endereco: str) -> dict | None:

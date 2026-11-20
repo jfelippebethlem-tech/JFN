@@ -95,13 +95,14 @@ def _segmentos_por_cnpj(fontes: list[dict]) -> list[tuple[str, str, str]]:
     (a decisão pode vir ANTES do CNPJ: 'foi declarada vencedora a empresa X, CNPJ Y') limitada pelo CNPJ
     anterior, e vai até o próximo CNPJ. CNPJ cru de 14 dígitos só entra com DV válido (nº de processo
     fora); CNPJ em contexto de PREÂMBULO (autoridade contratante) não é licitante."""
-    from compliance_agent.rodizio_grafo import _PREAMBULO, _cnpj_dv_ok
+    from compliance_agent.cpf_cnpj import cnpj_valido
+    from compliance_agent.rodizio_grafo import _PREAMBULO
     out: list[tuple[str, str, str]] = []
     for bloco, fonte in _blocos_com_contexto(fontes):
         matches = list(_RX_CNPJ.finditer(bloco))
         for i, m in enumerate(matches):
             cnpj = re.sub(r"\s", "", m.group(0))
-            if "." not in cnpj and not _cnpj_dv_ok(cnpj):
+            if "." not in cnpj and not cnpj_valido(cnpj):
                 continue
             ini = max(matches[i - 1].end() if i > 0 else 0, m.start() - 80)
             fim = matches[i + 1].start() if i + 1 < len(matches) else len(bloco)

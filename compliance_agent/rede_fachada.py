@@ -17,6 +17,8 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ  # noqa: E402
 from pathlib import Path
 
 
@@ -34,8 +36,7 @@ def _resolver_db(db_path=None) -> Path:
     return data / "compliance.db"
 
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
 def _ro(db: Path) -> sqlite3.Connection | None:
@@ -211,7 +212,7 @@ def _outros_veiculos(pessoas: list[dict], raiz_alvo: str, *, db_path=None) -> li
         try:
             nossas = {r[0] for r in con.execute(
                 "SELECT DISTINCT substr(favorecido_cpf,1,8) FROM ordens_bancarias "
-                "WHERE length(favorecido_cpf)=14")}
+                f"WHERE {SQL_FAVORECIDO_PJ}")}
         except sqlite3.OperationalError:
             nossas = set()
         vistos: set[str] = set()
@@ -287,11 +288,7 @@ def pacote_sinais(cnpj: str, *, total_pago: float = 0.0, cadastral: dict | None 
 
 # ───────────────────────── render markdown da rede (p/ o relatório/Lex) ─────────────────────────
 
-def _moeda(v) -> str:
-    try:
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (TypeError, ValueError):
-        return "R$ 0,00"
+from compliance_agent.reporting.intel_base import reais as _moeda  # noqa: E402
 
 
 def render_rede_md(rede: dict) -> list[str]:

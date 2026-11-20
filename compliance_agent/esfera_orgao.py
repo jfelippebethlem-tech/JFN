@@ -84,7 +84,7 @@ NATUREZA_PUBLICA: dict[str, tuple[str, str]] = {
     "1341": ("F", "Executivo"),   # União
 }
 NATUREZA_CONSORCIO = {"1210", "1228"}     # Consórcio Público de Direito Público / Privado
-NATUREZA_ESTATAL = {"2011", "2038"}       # Empresa Pública / Sociedade de Economia Mista
+from compliance_agent.credor_institucional import NATUREZA_ESTATAL  # noqa: E402  (empresa pública / SEM)
 NATUREZA_ESTADUAL = frozenset(k for k, (n, _) in NATUREZA_PUBLICA.items() if n == "E")
 NATUREZA_MUNICIPAL = frozenset(k for k, (n, _) in NATUREZA_PUBLICA.items() if n == "M")
 NATUREZA_FEDERAL = frozenset(k for k, (n, _) in NATUREZA_PUBLICA.items() if n == "F")

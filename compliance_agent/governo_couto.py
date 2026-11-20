@@ -97,20 +97,9 @@ def _limpar_ementa(t: str) -> str:
     return mascarar_texto(t.strip(" .,;:-"))
 
 
-def mascarar_texto(t: str) -> str:
-    from compliance_agent.osint.vinculos import mascarar_cpf
-    return mascarar_cpf(t)
-
-
-def _mascarar_tudo(x):
-    """Último passo antes de sair: todo texto do payload passa pela máscara de CPF (MEI traz o CPF no NOME)."""
-    if isinstance(x, str):
-        return mascarar_texto(x)
-    if isinstance(x, dict):
-        return {k: _mascarar_tudo(v) for k, v in x.items()}
-    if isinstance(x, list):
-        return [_mascarar_tudo(v) for v in x]
-    return x
+# MEI traz o CPF do titular no NOME: todo payload sai por `mascarar_payload`.
+from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto as mascarar_texto  # noqa: E402
+from compliance_agent.cpf_cnpj import mascarar_payload  # noqa: E402
 
 
 def doc_exibivel(doc: str) -> tuple[str, str]:
@@ -599,7 +588,7 @@ def _pesado() -> dict:
         for x in (con, con_ach, con_ab):
             if x is not None:
                 x.close()
-    r = _mascarar_tudo({"atos": atos, "contratacoes": ctr, "execucao": exe, "controle": ctl,
+    r = mascarar_payload({"atos": atos, "contratacoes": ctr, "execucao": exe, "controle": ctl,
                         "gerado_em": time.strftime("%Y-%m-%d %H:%M")})
     _CACHE["x"] = (time.time(), r)
     return r

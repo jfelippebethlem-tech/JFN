@@ -13,7 +13,7 @@ from compliance_agent.cruzamentos_intel import escalada_preco
 def db(tmp_path):
     p = str(tmp_path / "t.db")
     con = sqlite3.connect(p)
-    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_nome TEXT, unidade_nome TEXT,
+    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_cnpj TEXT, orgao_nome TEXT, unidade_nome TEXT,
         municipio TEXT, item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
         quantidade REAL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, ordem_classificacao INTEGER,
         data_pub TEXT)""")
@@ -23,9 +23,9 @@ def db(tmp_path):
     A = "11111111000111"
     rows = [
         # ALFA escala "lampada led" (UN): 2 → 4 → 10 em 90 dias → 5x, acima do mercado
-        ("C1", "SES", "SES", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
-        ("C2", "SES", "SES", "Lampada LED", "UN", 4.0, 100, A, "ALFA", "2025-02-20"),
-        ("C3", "SES", "SES", "Lampada LED", "UN", 10.0, 100, A, "ALFA", "2025-04-15"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "SES", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "SES", "Lampada LED", "UN", 4.0, 100, A, "ALFA", "2025-02-20"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "SES", "Lampada LED", "UN", 10.0, 100, A, "ALFA", "2025-04-15"),
         # mercado (outros fornecedores) da lampada ~ 2.0
         ("M1", "X", "X", "Lampada LED", "UN", 2.0, 50, "22222222000122", "BETA", "2025-01-01"),
         ("M2", "Y", "Y", "Lampada LED", "UN", 2.2, 50, "33333333000133", "GAMA", "2025-01-01"),
@@ -65,7 +65,7 @@ def test_fator_alto_nao_conta(db):
 def test_inicio_artefato_e_descartado(tmp_path):
     p = str(tmp_path / "a.db")
     con = sqlite3.connect(p)
-    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_nome TEXT, unidade_nome TEXT,
+    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_cnpj TEXT, orgao_nome TEXT, unidade_nome TEXT,
         municipio TEXT, item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
         quantidade REAL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, ordem_classificacao INTEGER,
         data_pub TEXT)""")
@@ -75,9 +75,9 @@ def test_inicio_artefato_e_descartado(tmp_path):
     A = "11111111000111"
     rows = [
         # início R$0,10 é artefato (< 10% da mediana de mercado ~100) → série descartada
-        ("C1", "S", "S", "Dieta", "UN", 0.10, 10, A, "ALFA", "2025-01-10"),
-        ("C2", "S", "S", "Dieta", "UN", 60.0, 10, A, "ALFA", "2025-03-10"),
-        ("C3", "S", "S", "Dieta", "UN", 125.0, 10, A, "ALFA", "2025-05-10"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "S", "Dieta", "UN", 0.10, 10, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "S", "Dieta", "UN", 60.0, 10, A, "ALFA", "2025-03-10"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "S", "Dieta", "UN", 125.0, 10, A, "ALFA", "2025-05-10"),
     ] + [(f"M{i}", "X", "X", "Dieta", "UN", 100.0, 5, f"{i:014d}", "MKT", "2025-01-01")
          for i in range(1, 7)]
     con.executemany(ins, rows)
@@ -95,7 +95,7 @@ def test_ressalva_presente(db):
 def _db_series(tmp_path, rows):
     p = str(tmp_path / "s.db")
     con = sqlite3.connect(p)
-    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_nome TEXT, unidade_nome TEXT,
+    con.execute("""CREATE TABLE pncp_resultado (certame TEXT, orgao_cnpj TEXT, orgao_nome TEXT, unidade_nome TEXT,
         municipio TEXT, item_descricao TEXT, unidade_medida TEXT, valor_unitario REAL,
         quantidade REAL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, ordem_classificacao INTEGER,
         data_pub TEXT)""")
@@ -112,9 +112,9 @@ def test_apresentacao_diferente_nao_e_escalada(tmp_path):
     # na unidade normalizada são apresentações diferentes — nenhuma série de 3
     A = "11111111000111"
     p = _db_series(tmp_path, [
-        ("C1", "S", "S", "Agua mineral", "Galão 5 L", 5.0, 10, A, "ALFA", "2025-01-10"),
-        ("C2", "S", "S", "Agua mineral", "Galão 5 L", 5.5, 10, A, "ALFA", "2025-02-10"),
-        ("C3", "S", "S", "Agua mineral", "Galão 20 L", 20.0, 10, A, "ALFA", "2025-04-10"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "S", "Agua mineral", "Galão 5 L", 5.0, 10, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "S", "Agua mineral", "Galão 5 L", 5.5, 10, A, "ALFA", "2025-02-10"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "S", "Agua mineral", "Galão 20 L", 20.0, 10, A, "ALFA", "2025-04-10"),
     ])
     d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
     assert d["n"] == 0
@@ -124,9 +124,9 @@ def test_unidade_ambigua_sai_da_serie_e_e_contada(tmp_path):
     # a 3ª compra em 'Caixa' (sem conteúdo) não pode virar o "preço final" da escalada
     A = "11111111000111"
     p = _db_series(tmp_path, [
-        ("C1", "S", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
-        ("C2", "S", "S", "Lampada LED", "UN", 2.2, 100, A, "ALFA", "2025-02-20"),
-        ("C3", "S", "S", "Lampada LED", "Caixa", 40.0, 5, A, "ALFA", "2025-04-15"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "UN", 2.2, 100, A, "ALFA", "2025-02-20"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "Caixa", 40.0, 5, A, "ALFA", "2025-04-15"),
     ])
     d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
     assert d["n"] == 0
@@ -137,9 +137,9 @@ def test_caixa_com_contagem_vira_preco_por_unidade(tmp_path):
     # 'Caixa 10 UN' a R$ 100 = R$ 10/un: a série por unidade é 2 → 4 → 10 (5×)
     A = "11111111000111"
     p = _db_series(tmp_path, [
-        ("C1", "S", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
-        ("C2", "S", "S", "Lampada LED", "UN", 4.0, 100, A, "ALFA", "2025-02-20"),
-        ("C3", "S", "S", "Lampada LED", "Caixa 10 UN", 100.0, 10, A, "ALFA", "2025-04-15"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "UN", 2.0, 100, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "UN", 4.0, 100, A, "ALFA", "2025-02-20"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "S", "Lampada LED", "Caixa 10 UN", 100.0, 10, A, "ALFA", "2025-04-15"),
     ])
     d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
     assert d["n"] == 1
@@ -153,9 +153,9 @@ def test_salto_entre_compras_consecutivas_e_indeterminado(tmp_path):
     # produto diferente (doutrina do preco_normalizado) — sai da conta, contado e com motivo.
     A = "11111111000111"
     p = _db_series(tmp_path, [
-        ("C1", "S", "S", "Dieta enteral", "Litro", 58.98, 10, A, "ALFA", "2025-01-10"),
-        ("C2", "S", "S", "Dieta enteral", "Litro", 60.0, 10, A, "ALFA", "2025-02-10"),
-        ("C3", "S", "S", "Dieta enteral", "Litro", 64590.0, 10, A, "ALFA", "2025-04-10"),
+        ("C1", "ESTADO DO RIO DE JANEIRO", "S", "Dieta enteral", "Litro", 58.98, 10, A, "ALFA", "2025-01-10"),
+        ("C2", "ESTADO DO RIO DE JANEIRO", "S", "Dieta enteral", "Litro", 60.0, 10, A, "ALFA", "2025-02-10"),
+        ("C3", "ESTADO DO RIO DE JANEIRO", "S", "Dieta enteral", "Litro", 64590.0, 10, A, "ALFA", "2025-04-10"),
     ])
     d = escalada_preco(db_path=p, min_compras=3, fator=3.0, min_span_dias=45)
     assert d["n"] == 0

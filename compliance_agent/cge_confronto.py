@@ -217,8 +217,8 @@ def _rodar(log, entrada: Path, saida: Path) -> int:
                  "com_sinal_g12": m["G1+G2"]["com_sinal"], "autos_lidos": m["todas"]["autos_lidos"],
                  "relatorios_no_acervo": len(rels)})
     hist = hist[-HIST_MAX:]
-    from compliance_agent.governo_couto import _mascarar_tudo
-    doc = _mascarar_tudo({
+    from compliance_agent.cpf_cnpj import mascarar_payload
+    doc = mascarar_payload({
         "estado": "ok", "gerado_em": agora, "curado_em": base.get("curado_em"),
         "fonte": ("relatórios AGE/CGE (Decreto 50.254/2026) lidos no acervo SEI — lista curada em "
                   f"data/{entrada.name}; JFN: sei_arquivo, sei_ficha, sei_arvore, lex_execucao, doc_veredito, "

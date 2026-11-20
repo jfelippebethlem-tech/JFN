@@ -84,14 +84,3 @@ def guardar_analise(numero_sei: str, veredito: dict, *, versao_hash: str, criado
                 logger.debug("não removeu tmp %s: %s", tmp, e)
 
 
-def ler_analise(loc: str, *, ler=None) -> dict | None:
-    """Lê um snapshot de análise do ponteiro canônico (`remote:bucket/objeto`). None se incompleto/erro.
-    `ler` injetável (default = anexos_remotes.ler_anexo)."""
-    ler = ler or _ar.ler_anexo
-    raw = ler(loc)
-    if not raw:
-        return None
-    try:
-        return json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
-    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
-        return None

@@ -22,9 +22,11 @@ _DB_RECEITA = Path(__file__).resolve().parents[1] / "data" / "receita_estab.db"
 
 # Natureza jurídica (tabela da Receita).
 _NATUREZA_PREFIXO = {"1": "administração pública (natureza 1xxx)"}
+# Estatal (empresa pública / sociedade de economia mista): também a régua de `esfera_orgao` e de
+# `ordem_cronologica_siafe` (lá, alíneas m e n).
+NATUREZA_ESTATAL = {"2011": "empresa pública", "2038": "sociedade de economia mista"}
 _NATUREZA_EXATA = {
-    "2011": "empresa pública",
-    "2038": "sociedade de economia mista",
+    **NATUREZA_ESTATAL,
     "2046": "S.A. aberta",
     "3328": "plano de benefícios de previdência complementar fechada",
 }
@@ -43,8 +45,7 @@ _RE_CNAE_CONCESSAO = re.compile(
     r"OPERADORAS\s+DE\s+TELEVIS[ÃA]O\s+POR\s+ASSINATURA)", re.I)
 
 
-def _dig(s: str | None) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _dig  # noqa: E402
 
 
 def motivo_natureza(cod: str | None) -> str | None:

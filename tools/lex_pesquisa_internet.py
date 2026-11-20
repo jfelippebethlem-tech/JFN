@@ -268,10 +268,10 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
         gerar = gerar or _gerar_default
         messages = [{"role": "system", "content": _SYS},
                     {"role": "user", "content": _montar_user(nome, cnpj, duvidas, osint, previo, cruzado)}]
-        from compliance_agent.direcionamento_cerebro import _parse_json
+        from compliance_agent.llm.json_resposta import parse_json_llm
         try:
             raw = await gerar(messages)
-            dados = _parse_json(raw) or {}
+            dados = parse_json_llm(raw) or {}
         except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica
             dados = {"resumo": f"LLM indisponível ({str(e)[:50]}) — pesquisa coletada, análise não realizada.",
                      "achados": [], "reajuste": ""}

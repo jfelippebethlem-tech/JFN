@@ -126,8 +126,7 @@ PASSO_REGRA = {
 
 # ── utilidades ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-def dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as dig  # noqa: E402
 
 
 def norm_nome(s) -> str:
@@ -1771,18 +1770,18 @@ def reaplicar_curadoria(saida: Path = SAIDA, curadoria: Path = CURADORIA) -> int
     doc, cur = ler_json(saida), carregar_curadoria(curadoria)
     if not isinstance(doc, dict) or cur is None:
         return -1
-    from compliance_agent.governo_couto import _mascarar_tudo
+    from compliance_agent.cpf_cnpj import mascarar_payload
     top = [aplicar_verificacao(curar_top10(x)) for x in cur]
     A = top + [x for x in doc.get("achados", []) if isinstance(x, dict) and not x.get("top10")]
     doc.update(achados=A, n_achados=len(A), curadoria=_estado_curadoria(cur),
                por_verificacao=dict(collections.Counter(x.get("verificacao") for x in A)))
-    gravar_json(saida, _mascarar_tudo(doc))
+    gravar_json(saida, mascarar_payload(doc))
     return len(top)
 
 
 def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, motivo_subj: str | None, ctx_info: dict,
            curadoria: list[dict] | None = None) -> dict:
-    from compliance_agent.governo_couto import _mascarar_tudo
+    from compliance_agent.cpf_cnpj import mascarar_payload
     anterior = anterior or {}
     ant = [x for x in anterior.get("achados", []) if isinstance(x, dict)]
     top = [curar_top10(x) for x in (curadoria or [])]
@@ -1813,7 +1812,7 @@ def montar(res: dict, *, anterior: dict | None, hipoteses: list[dict] | None, mo
                por_verificacao=dict(collections.Counter(x["verificacao"] for x in A)),
                indisponivel=[f"{k}: {v['indisponivel']}" for k, v in res.items() if v.get("indisponivel")],
                n_achados=len(A), achados=A)
-    return _mascarar_tudo(doc)
+    return mascarar_payload(doc)
 
 
 def _rodar(log, saida: Path, detalhe: Path, usar_motor: bool) -> int:
@@ -1845,8 +1844,8 @@ def _rodar(log, saida: Path, detalhe: Path, usar_motor: bool) -> int:
     n_det = sum(1 for x in doc["achados"] if x.get("camada") == "deterministica" and not x.get("top10"))
     doc["efeito"] = {"achados": len(doc["achados"]), "deterministicos": n_det, "hipoteses_motor": len(hip or [])}
     doc["ultimo_efeito_iso"] = info["gerado_em"] if n_det else (anterior or {}).get("ultimo_efeito_iso")
-    from compliance_agent.governo_couto import _mascarar_tudo
-    gravar_json(detalhe, _mascarar_tudo({"gerado_em": info["gerado_em"], "recorte": doc["recorte"], "regras": res}))
+    from compliance_agent.cpf_cnpj import mascarar_payload
+    gravar_json(detalhe, mascarar_payload({"gerado_em": info["gerado_em"], "recorte": doc["recorte"], "regras": res}))
     gravar_json(saida, doc)
     log.info("gravado %s (%d achados: %d determinísticos, %d hipóteses)", saida, len(doc["achados"]), n_det, len(hip or []))
     return 0

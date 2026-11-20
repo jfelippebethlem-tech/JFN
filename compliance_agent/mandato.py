@@ -11,7 +11,6 @@ contraditório; presunção de legitimidade dos atos administrativos).
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime
 from compliance_agent.reporting.intel_base import moeda
 
@@ -33,8 +32,7 @@ _CLAUSULA = ("Os elementos a seguir constituem INDÍCIOS que justificam DILIGÊN
              "e a caracterização de irregularidade compete aos órgãos de controle após o contraditório.")
 
 
-def _digits(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _contexto(base: str) -> dict:

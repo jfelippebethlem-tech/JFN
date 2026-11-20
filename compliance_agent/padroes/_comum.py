@@ -12,20 +12,15 @@ import re
 import sqlite3
 from pathlib import Path
 
+from compliance_agent.cpf_cnpj import mascarar_cpf_no_texto as mascarar_cpf
+
 RAIZ = Path(__file__).resolve().parents[2]
 DB = RAIZ / "data" / "compliance.db"
 ORDEM_GRAU = {"forte": 0, "medio": 1, "fraco": 2}
 
-_RE_CPF = re.compile(r"(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)")
-
 
 def con_ro() -> sqlite3.Connection:
     return sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
-
-
-def mascarar_cpf(texto: str) -> str:
-    """123.456.789-01 → ***.456.789-** (LGPD; nunca expor CPF inteiro)."""
-    return _RE_CPF.sub(lambda m: f"***.{m[2]}.{m[3]}-**", texto or "")
 
 
 def trecho(texto: str, ini: int, fim: int, folga: int) -> str:

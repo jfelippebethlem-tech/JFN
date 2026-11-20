@@ -61,8 +61,7 @@ _PARTICULAS = {"DA", "DE", "DO", "DAS", "DOS", "E"}
 _RE_MASC = re.compile(r"^\*{3}(\d{6})\*{2}$")
 
 
-def _dig(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _dig  # noqa: E402
 
 
 def _norm(s) -> str:

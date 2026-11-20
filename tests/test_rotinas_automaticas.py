@@ -352,7 +352,7 @@ def test_resumir_achados_agrupa_e_mostra_semanal_sem_execucao():
     assert por["C9"]["n_confirmado"] == 1 and por["C9"]["por_status"] == {"confirmado": 1, "descartado": 1}
     assert por["P7"]["n_confirmado"] == 1 and por["P7"]["agenda"]
     assert por["EST-VALOR-EXCEDIDO"]["sem_execucao"] and por["EST-VALOR-EXCEDIDO"]["n_confirmado"] is None
-    assert "456.789" not in json.dumps(r, ensure_ascii=False)                     # CPF mascarado
+    assert "123.456.789-01" not in json.dumps(r, ensure_ascii=False) and "***.456.789-**" in json.dumps(r, ensure_ascii=False)  # CPF mascarado (PAD-04)
     assert r["detectores"][0]["detector"] in ("P7", "EST-VALOR-EXCEDIDO", "EST-ADITIVO-TETO")
 
 
@@ -363,7 +363,7 @@ def test_rota_de_rotina_sem_arquivo_diz_sem_execucao(tmp_path, monkeypatch):
     assert d["ok"] and d["estado"] == "sem_execucao"
     RB.gravar_json(tmp_path / "cge_confronto.json", {"estado": "ok", "metricas": {}, "linhas": [], "x": "CPF 123.456.789-01"})
     d = json.loads(R.api_cge_confronto().body)
-    assert d["estado"] == "ok" and "456.789" not in json.dumps(d, ensure_ascii=False)
+    assert d["estado"] == "ok" and "123.456.789-01" not in json.dumps(d, ensure_ascii=False) and "***.456.789-**" in json.dumps(d, ensure_ascii=False)
 
 
 def test_caso_d18_sem_score_nao_imprime_none():

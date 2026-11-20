@@ -336,7 +336,9 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
     con = sqlite3.connect(_DB, timeout=120)
     con.row_factory = sqlite3.Row
     try:
-        filtro, params = "WHERE ob.favorecido_cpf IS NOT NULL AND length(ob.favorecido_cpf)=14", []
+        # CPF mascarado ("999.***.***-99") também tem 14 caracteres: sem o NOT LIKE ele entrava como fornecedor PJ
+        filtro, params = ("WHERE ob.favorecido_cpf IS NOT NULL AND length(ob.favorecido_cpf)=14 "
+                          "AND ob.favorecido_cpf NOT LIKE '%*%'"), []
         if ug:
             filtro += " AND ob.ug_codigo=?"
             params.append(str(ug))

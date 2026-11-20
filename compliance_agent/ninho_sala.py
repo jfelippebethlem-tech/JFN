@@ -36,6 +36,8 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+
+from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ  # noqa: E402
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -124,7 +126,7 @@ def ninhos_por_sala(db_path: str | None = None, receita_path: str | None = None,
     try:
         recebem = {r["favorecido_cpf"]: (r["total_pago"] or 0.0)
                    for r in con.execute("SELECT favorecido_cpf, total_pago FROM favorecido_resumo "
-                                        "WHERE total_pago > 0 AND length(favorecido_cpf)=14")}
+                                        f"WHERE total_pago > 0 AND {SQL_FAVORECIDO_PJ}")}
         if not recebem:
             return {"ok": False, "erro": "favorecido_resumo vazio — sem materialidade para cruzar"}
         # 1) endereço de quem RECEBE — lookup por CHAVE PRIMÁRIA, partindo do lado PEQUENO.

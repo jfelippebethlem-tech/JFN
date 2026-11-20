@@ -12,25 +12,21 @@ verificáveis"; INDISPONÍVEL ≠ 0; indício ≠ acusação. CPF de PF mascarad
 """
 from __future__ import annotations
 
-import re
 import sqlite3
 from pathlib import Path
 
 from compliance_agent.investigacao_dd import investigar
 
-_DB = Path("data") / "compliance.db"
+from compliance_agent.collectors.arquivos import dir_dados  # noqa: E402
+
+_DB = dir_dados() / "compliance.db"
 _ORDEM_GRAU = {"🔴": 0, "🟡": 1, "🟢": 2}
 
 
-def _digitos(s) -> str:
-    return re.sub(r"\D", "", str(s or ""))
+from compliance_agent.cpf_cnpj import digitos as _digitos  # noqa: E402
 
 
-def _moeda(v: float) -> str:
-    try:
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (TypeError, ValueError):
-        return "R$ 0,00"
+from compliance_agent.reporting.intel_base import reais as _moeda  # noqa: E402
 
 
 def top_fornecedores_pj(ug: str, *, top_n: int | None = 15, anos: list[int] | None = None,
