@@ -1,0 +1,173 @@
+# -*- coding: utf-8 -*-
+"""automelhoria_executor — o braço que FALTAVA na automelhoria: toda madrugada, o Opus pega os itens mais graves da fila
+única (`data/automelhoria_fila.json`), prepara o conserto COM TESTE numa branch separada e manda ao Yoda para o ✅.
+
+POR QUE EXISTE (20/11/2026). A fila tinha 24 itens abertos, 8 reincidindo desde 11/11, e ninguém agia: o sensor via, o
+aviso chegava, e o conserto dependia de alguém lembrar. O dono: "pode ligar o executor noturno da automelhoria".
+
+O QUE NUNCA FAZ: não mexe na branch viva nem na árvore de trabalho do ~/JFN (trabalha num `git worktree` próprio), não dá
+push, não toca em .env/credencial, não roda SIAFE/SEI/navegador. Aplicar é do dono: o resumo vai ao Telegram e o ✅ é
+pelo /cc do Yoda ("aplique a branch automelhoria/…"), o mesmo fluxo plano→✅→execução.
+
+Cota: tarefa `automelhoria_executor` da reserva (`llm/contingencia.RESERVA_OPUS`) — passa no nível ECONOMIA do ritmo
+semanal, nunca no CONTIDO. No máximo `--max` itens por noite, cada um com prazo.
+
+  python tools/automelhoria_executor.py --max 2            # cron 01:00
+  python tools/automelhoria_executor.py --listar           # só mostra o que pegaria
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+_REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
+FILA = _REPO / "data" / "automelhoria_fila.json"
+LEDGER = _REPO / "data" / "automelhoria_executor.json"
+WT_BASE = Path.home() / "JFN-automelhoria"
+TAREFA = "automelhoria_executor"
+PRAZO_S = 40 * 60
+REPETIR_DIAS = 7
+# só o que se conserta em código/texto do repositório; serviço, SLO, SIAFE e máquina não são deste braço
+AREAS = {"catraca": 0, "detector": 1, "qualidade": 2, "pareceres": 3, "certeza": 4, "dados": 5}
+PY = str(_REPO / ".venv" / "bin" / "python")
+
+_PERMITIDAS = ["Read", "Grep", "Glob", "Edit", "Write", "MultiEdit",
+               f"Bash({PY} -m pytest:*)", f"Bash({PY} -m ruff:*)", f"Bash({PY} -c:*)",
+               "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
+               "Bash(git add:*)", "Bash(git commit:*)", "Bash(ls:*)", "Bash(grep:*)", "Bash(sed -n:*)",
+               "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)"]
+_NEGADAS = ["Bash(git push:*)", "Bash(git reset:*)", "Bash(git checkout:*)", "Bash(rm:*)", "Bash(sudo:*)",
+            "Bash(pkill:*)", "Bash(ssh:*)", "Bash(curl:*)", "WebFetch", "WebSearch",
+            "Read(//home/ubuntu/JFN/.env*)", "Read(//home/ubuntu/.config/**)", "Read(//home/ubuntu/.claude/.credentials*)"]
+
+
+def slug(assinatura: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", assinatura.lower()).strip("-")[:50]
+
+
+def escolher(fila: dict, ledger: dict, n: int, agora: float | None = None) -> list[dict]:
+    """REINCIDIU antes de aberto; dentro disso, pela ordem de AREAS. Item tentado há < REPETIR_DIAS fica de fora."""
+    agora = agora or time.time()
+    cands = []
+    for it in fila.values():
+        if it.get("status") not in ("aberto", "REINCIDIU") or it.get("area") not in AREAS:
+            continue
+        ult = (ledger.get(it["assinatura"]) or {}).get("ts", 0)
+        if agora - ult < REPETIR_DIAS * 86400:
+            continue
+        cands.append(it)
+    cands.sort(key=lambda x: (x["status"] != "REINCIDIU", AREAS[x["area"]], x.get("primeiro") or ""))
+    return cands[:n]
+
+
+def prompt(it: dict) -> str:
+    return (f"Você é o executor noturno da automelhoria do JFN. Este diretório é um git worktree SÓ SEU, numa branch "
+            f"própria; a árvore viva é /home/ubuntu/JFN (pode LER de lá, inclusive data/, nunca escrever).\n\n"
+            f"ITEM DA FILA ({it['status']}): [{it['area']}] {it['titulo']}\n"
+            f"detalhe: {it.get('detalhe') or '-'}\nação indicada: {it.get('acao_humana') or '-'}\n"
+            f"aberto desde {it.get('primeiro')}, {it.get('rodadas')} rodadas.\n\n"
+            "Faça, nesta ordem: (1) ache a CAUSA no código/dado real (não no texto da mensagem); (2) se o conserto é de "
+            "código ou de texto versionado, escreva primeiro um teste que reproduz, depois o conserto mínimo, rode os "
+            f"testes casados com `{PY} -m pytest -q -p no:cacheprovider <arquivos>` e o ruff; (3) commite na branch "
+            "com mensagem semântica em português. Regras da casa: indício≠acusação, INDISPONÍVEL≠0, só OB é pago, CPF "
+            "mascarado, nada federal (escopo só RJ), nunca inventar número, mudança cirúrgica. Se o conserto exige "
+            "decisão do dono, acesso externo ou dado que você não tem, NÃO force: não commite e explique.\n"
+            "Termine com 4 linhas exatamente assim:\nCAUSA: ...\nCONSERTO: ... (ou NENHUM)\nTESTES: ...\nRISCO: ...")
+
+
+def _git(*args, cwd=_REPO, check=True) -> str:
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=300)
+    if check and r.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip()[:200]}")
+    return r.stdout.strip()
+
+
+def executar(it: dict) -> dict:
+    hoje = datetime.now().strftime("%Y%m%d")
+    br_viva = _git("branch", "--show-current")
+    branch = f"automelhoria/{slug(it['assinatura'])}-{hoje}"
+    wt = WT_BASE / f"{slug(it['assinatura'])}-{hoje}"
+    if wt.exists():
+        _git("worktree", "remove", "--force", str(wt), check=False)
+    _git("fetch", "-q", "origin", br_viva, check=False)
+    _git("worktree", "add", "-q", "-B", branch, str(wt), f"origin/{br_viva}")
+    claude = shutil.which("claude") or str(Path.home() / ".npm-global" / "bin" / "claude")
+    cmd = ["nice", "-n", "10", claude, "-p", prompt(it), "--model", "opus", "--output-format", "json",
+           "--permission-mode", "dontAsk", "--add-dir", str(_REPO),
+           "--allowedTools", *_PERMITIDAS, "--disallowedTools", *_NEGADAS]
+    t0 = time.time()
+    try:
+        r = subprocess.run(cmd, cwd=wt, capture_output=True, text=True, timeout=PRAZO_S)
+        try:
+            texto = json.loads(r.stdout).get("result") or ""
+        except ValueError:
+            texto = (r.stdout or r.stderr)[-1500:]
+    except subprocess.TimeoutExpired:
+        texto = f"prazo de {PRAZO_S // 60} min estourado"
+    commits = _git("log", "--oneline", f"origin/{br_viva}..{branch}", check=False)
+    stat = _git("diff", "--stat", f"origin/{br_viva}..{branch}", check=False) if commits else ""
+    if not commits:                                   # sem conserto: não deixa branch nem worktree órfãos
+        _git("worktree", "remove", "--force", str(wt), check=False)
+        _git("branch", "-D", branch, check=False)
+    return {"assinatura": it["assinatura"], "titulo": it["titulo"], "branch": branch if commits else None,
+            "commits": commits, "stat": stat.splitlines()[-1] if stat else "", "segundos": round(time.time() - t0),
+            "resumo": "\n".join(ln for ln in texto.splitlines() if re.match(r"(CAUSA|CONSERTO|TESTES|RISCO):", ln))
+            or texto[-600:], "ts": time.time()}
+
+
+def avisar(res: list[dict]) -> None:
+    import asyncio
+    from dotenv import load_dotenv
+    load_dotenv(_REPO / ".env")
+    from compliance_agent.notifications.telegram import enviar_mensagem
+    partes = ["🔧 Executor noturno da automelhoria"]
+    for r in res:
+        if r["branch"]:
+            partes.append(f"\n✅ {r['titulo'][:120]}\n{r['resumo'][:700]}\nbranch {r['branch']} · {r['stat']}\n"
+                          f"Para aplicar: /cc aplique a branch {r['branch']} na branch viva, rode os testes e dê push")
+        else:
+            partes.append(f"\n⚪ {r['titulo'][:120]} — sem conserto commitado\n{r['resumo'][:500]}")
+    asyncio.run(enviar_mensagem("\n".join(partes)[:4000]))
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--max", type=int, default=2)
+    ap.add_argument("--listar", action="store_true")
+    ap.add_argument("--sem-aviso", action="store_true")
+    a = ap.parse_args()
+    fila = json.loads(FILA.read_text(encoding="utf-8"))
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8")) if LEDGER.exists() else {}
+    itens = escolher(fila, ledger, a.max)
+    if a.listar:
+        for it in itens:
+            print(it["status"], it["area"], it["titulo"][:100])
+        return 0
+    from compliance_agent.llm import contingencia
+    bloq = contingencia.motivo_bloqueio(TAREFA)
+    if bloq:
+        print(f"[{datetime.now():%F %T}] não roda: {bloq}")
+        return 0
+    res = []
+    for it in itens:
+        print(f"[{datetime.now():%F %T}] item: {it['assinatura']}", flush=True)
+        r = executar(it)
+        res.append(r)
+        ledger[it["assinatura"]] = {k: r[k] for k in ("ts", "branch", "segundos")}
+        LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(json.dumps({k: v for k, v in r.items() if k != "resumo"}, ensure_ascii=False), flush=True)
+    if res and not a.sem_aviso:
+        avisar(res)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

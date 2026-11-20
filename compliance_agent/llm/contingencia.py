@@ -39,7 +39,11 @@ logger = logging.getLogger(__name__)
 _REPO = Path(__file__).resolve().parents[2]
 FRACAO_PERTO = 0.90
 # tarefas do Opus que usam a reserva dos últimos 10% do dia (é para elas que a reserva existe)
-RESERVA_OPUS = ("canario", "verificacao_opus", "conferencia_opus")
+# Dono 20/11/2026 ("pode ligar o executor noturno da automelhoria. pode fazer tudo"): a MELHORIA também é reserva —
+# juiz, automelhoria, consolidação do cérebro e o executor noturno passam no nível ECONOMIA do ritmo semanal (no
+# CONTIDO, acima da linha, seguem barrados: os 10% finais da semana continuam do dono).
+RESERVA_OPUS = ("canario", "verificacao_opus", "conferencia_opus",
+                "juiz_qualidade", "autoaprimoramento", "cerebro_consolidacao", "automelhoria_executor")
 MARGEM_VOLTA_S = 120          # a conta volta "às 2:30": tenta-se às 2:32
 _MAX_PAUSA_S = 8 * 86400      # limite semanal é o maior que existe; além disso a leitura da hora está errada
 
