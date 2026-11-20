@@ -1309,6 +1309,16 @@ def d07(c: Ctx) -> dict:
                 resumo=f"Fracionamento: {len(na)} séries iniciadas na gestão ({brl(soma)}), {nr} rentes ao teto")
 
 
+def _executivo_estadual_rj(controle_pncp: str, orgao_nome: str) -> bool:
+    """O contrato é do Executivo do Estado do RJ? Esfera pela régua única (`esfera_orgao`: CNPJ que abre o número
+    de controle do PNCP, depois o nome com marca do RJ) — o teste anterior era por NOME ("tem ESTADO, não tem
+    MUNIC/PREFEITURA") e aceitaria a Secretaria de Estado de qualquer UF e o conselho regional federal "do Estado
+    do Rio de Janeiro". Outro Poder (TJ, TCE, MP, Defensoria, ALERJ) continua fora: a regra é da gestão do Executivo."""
+    from compliance_agent import esfera_orgao as _eo
+    cnpj = re.sub(r"\D", "", str(controle_pncp or "").split("-")[0])[:14]
+    return _eo.esfera(cnpj, orgao_nome or "") == "estadual-rj" and not _OUTRO_PODER.search(orgao_nome or "")
+
+
 def d06(c: Ctx) -> dict:
     rows = c.W.execute(
         "SELECT a.numero_controle_pncp, a.numero_termo, a.objeto, a.valor_acrescido, a.data_assinatura, p.orgao_nome, "
@@ -1319,8 +1329,7 @@ def d06(c: Ctx) -> dict:
                             (G0,)).fetchone()
     casos = []
     for cn, termo, obj, acr, dt, org, forn, doc, vi in rows:
-        if not vi or re.search(r"MUNIC|PREFEITURA", org or "", re.I) or not re.search(r"ESTADO", org or "", re.I) \
-                or _OUTRO_PODER.search(org or ""):
+        if not vi or not _executivo_estadual_rj(cn, org):
             continue
         # prorrogação/renovação soma o valor de um NOVO período — não é acréscimo do art. 125 (medido: 14 de 15
         # "estouros" da 1ª rodada eram prorrogação ou reajuste, quase todos de outro Poder)

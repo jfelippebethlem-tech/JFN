@@ -39,6 +39,23 @@ def test_vencido_entrega_o_velho_e_renova_em_segundo_plano(monkeypatch):
     assert inv._cache_calc("k", 10, calc) == "novo"
 
 
+def test_velho_demais_nao_e_servido_espera_o_calculo(monkeypatch):
+    """20/11/2026: valor de 15 h (de antes de uma correção de esfera, recarregado do disco no restart) saiu na tela
+    como se fosse o número da casa. Acima do teto de idade o visitante espera o cálculo novo."""
+    dois_dias = time.time() - 2 * 86400
+    monkeypatch.setattr(inv, "_cache", {"k": (dois_dias, "427 empresas")})
+    monkeypatch.setattr(inv, "_cache_travas", {})
+    assert inv._cache_calc("k", 3600, lambda: "83 empresas") == "83 empresas"
+    assert inv._cache["k"][1] == "83 empresas"
+
+
+def test_vencido_ha_pouco_continua_servido(monkeypatch):
+    """Controle: dentro do teto (6 h ou 4× o TTL) o comportamento de não travar a tela segue valendo."""
+    monkeypatch.setattr(inv, "_cache", {"k": (time.time() - 2 * 3600, "velho")})
+    monkeypatch.setattr(inv, "_cache_travas", {})
+    assert inv._cache_calc("k", 3600, lambda: "novo") == "velho"
+
+
 def test_frio_sem_valor_calcula_na_hora(monkeypatch):
     monkeypatch.setattr(inv, "_cache", {})
     monkeypatch.setattr(inv, "_cache_travas", {})

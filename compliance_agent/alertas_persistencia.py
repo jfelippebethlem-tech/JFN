@@ -36,6 +36,33 @@ from typing import Iterable
 logger = logging.getLogger(__name__)
 
 
+# ── De que ESFERA é cada família de alerta ──────────────────────────────────────────────────────────────────
+# A tabela `alertas` é uma só para três produtores de esferas diferentes. O card "Alertas" do painel somava
+# tudo sob o rótulo do Estado: em 20/11/2026, de 6.762 abertos, 3.096 eram do motor de regras do Estado, 2.464 da
+# perícia de gastos da Prefeitura (`pcrj_*`) e 1.202 da perícia de emendas parlamentares FEDERAIS (`emendas_*`,
+# fora do escopo da casa). Esferas são estanques: conta-se cada uma, nunca a soma.
+ESFERA_POR_PREFIXO = (("pcrj_", "prefeitura"), ("emendas_", "federal"))
+ESFERA_PADRAO = "estado"            # motor de regras sobre OB do SIAFE, folha e DOERJ do Estado do RJ
+
+
+def esfera_do_tipo(tipo: str | None) -> str:
+    """'estado' | 'prefeitura' | 'federal' pelo prefixo do tipo do alerta (o produtor)."""
+    t = str(tipo or "")
+    return next((esf for pref, esf in ESFERA_POR_PREFIXO if t.startswith(pref)), ESFERA_PADRAO)
+
+
+def contagem_por_esfera(linhas) -> dict[str, dict[str, int]]:
+    """[(tipo, severidade, n)] → {esfera: {alta, media, baixa, total}}. 'média' e 'media' são a mesma faixa;
+    severidade ausente ou fora do vocabulário conta como baixa (alta + media + baixa = total, por esfera)."""
+    out: dict[str, dict[str, int]] = {}
+    for tipo, sev, n in linhas:
+        d = out.setdefault(esfera_do_tipo(tipo), {"alta": 0, "media": 0, "baixa": 0, "total": 0})
+        faixa = {"alta": "alta", "média": "media", "media": "media"}.get(str(sev or "").lower(), "baixa")
+        d[faixa] += int(n or 0)
+        d["total"] += int(n or 0)
+    return out
+
+
 def _garantir_visto_em(con) -> bool:
     """Cria a coluna `visto_em` se faltar. Idempotente; base antiga segue funcionando sem ela."""
     try:

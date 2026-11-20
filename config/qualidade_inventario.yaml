@@ -48,7 +48,7 @@ manchetes:
   - id: cki-alertas
     chip: nu-alertas
     superficie: "cockpit — card 'Alertas' + chip da mesa"
-    afirma: "Fila de triagem: total de alertas NÃO descartados (motor de regras + perícias PCRJ D7–D12 e emendas D1–D6), com alta/média/baixa (somam o total) — não são irregularidades; FP medida 13/30 em 19/11/2026, dita no card."
+    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras), com alta/média/baixa (somam o total); os da Prefeitura (perícia PCRJ D7–D12) e os de emendas federais vêm à parte em por_esfera, sem somar — não são irregularidades; FP medida 13/30 em 19/11/2026, dita no card."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas, ob_orcamentaria_siafe (compliance.db)"
@@ -151,7 +151,7 @@ manchetes:
     campos: {valor: obs.valor_ultimo_dia, contagem: obs.n_ultimo_dia, data: obs.ultimo_dia}
   - id: v63-alertas
     superficie: "Início v63 — seção 02, número 'alertas abertos' com barras alta/média/baixa"
-    afirma: "Fila de triagem: total de alertas NÃO descartados (motor de regras + perícias PCRJ e emendas) e a divisão por gravidade (somam o total) — FP medida 13/30 em 19/11/2026, dita no número."
+    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras) e a divisão por gravidade (somam o total); Prefeitura e emendas federais à parte, em por_esfera — FP medida 13/30 em 19/11/2026, dita no número."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas (compliance.db)"

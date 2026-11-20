@@ -89,6 +89,24 @@ def _meses(ano_ini: int, mes_ini: int, ano_fim: int, mes_fim: int):
         a, m = (a + 1, 1) if m == 12 else (a, m + 1)
 
 
+# Chamada que a API NÃO respondeu (5xx, erro de rede esgotado, 429 esgotado). Até 20/11/2026 isso voltava como
+# lista vazia, igual a "certame sem resultado": na coleta semanal de 15/11 o PNCP devolveu 503 em tudo, o resumo
+# saiu {"certames": 7573, "itens_com_resultado": 0, "gravados": 0}, o serviço terminou com sucesso e a base
+# ficou parada em 10/11 sem aviso. INDISPONÍVEL ≠ 0: a falha é contada e decide o código de saída.
+_FALHAS = {"api": 0}
+
+
+def veredito_da_coleta(tot: dict) -> tuple[bool, str]:
+    """(ok, motivo). Falha quando a API falhou e NADA foi lido — zero aí é fonte fora do ar, não mês sem resultado."""
+    falhas = int(tot.get("falhas_api") or 0)
+    if falhas and not tot.get("itens_com_resultado"):
+        return False, (f"PNCP INDISPONÍVEL: {falhas} chamada(s) sem resposta e nenhum item lido em "
+                       f"{tot.get('certames', 0)} certame(s) — a base NÃO foi atualizada nesta corrida")
+    if falhas:
+        return True, f"coleta parcial: {falhas} chamada(s) sem resposta do PNCP (o que respondeu foi gravado)"
+    return True, ""
+
+
 async def _consulta(client: httpx.AsyncClient, endpoint: str, params: dict) -> dict | None:
     """GET na API de consulta com backoff em 429 (limite de requisição)."""
     for tent in range(5):
@@ -104,7 +122,9 @@ async def _consulta(client: httpx.AsyncClient, endpoint: str, params: dict) -> d
         if r.status_code == 429:
             await asyncio.sleep(5 * (tent + 1))  # backoff do rate-limit
             continue
+        _FALHAS["api"] += 1
         return None
+    _FALHAS["api"] += 1
     return None
 
 
@@ -123,7 +143,9 @@ async def _resultado_item(client: httpx.AsyncClient, cnpj: str, ano: str, seq: i
         if r.status_code == 429:
             await asyncio.sleep(4 * (tent + 1))
             continue
+        _FALHAS["api"] += 1
         return []
+    _FALHAS["api"] += 1
     return []
 
 
@@ -140,6 +162,7 @@ async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_A
     mes_fim = mes_fim or hoje.month
     modalidades = modalidades or MODALIDADES_PADRAO
     tot = {"meses": 0, "certames": 0, "itens_com_resultado": 0, "gravados": 0}
+    _FALHAS["api"] = 0
     async with httpx.AsyncClient(timeout=40) as client:
         for d_ini, d_fim in _meses(ano_ini, mes_ini, ano_fim, mes_fim):
             tot["meses"] += 1
@@ -174,6 +197,7 @@ async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_A
                         break
                     await asyncio.sleep(pausa)
     con.commit()
+    tot["falhas_api"] = _FALHAS["api"]
     return tot
 
 
@@ -253,7 +277,9 @@ async def _consulta_itens(client, cnpj: str, ano: str, seq: int) -> list[dict]:
         if r.status_code == 429:
             await asyncio.sleep(4 * (tent + 1))
             continue
+        _FALHAS["api"] += 1
         return []
+    _FALHAS["api"] += 1
     return []
 
 
@@ -631,3 +657,9 @@ if __name__ == "__main__":
         r = asyncio.run(coletar_resultados(con, ano_ini=ai, mes_ini=mi))
     con.close()
     print(json.dumps(r, ensure_ascii=False), flush=True)
+    if "itens_com_resultado" in r:           # coleta de resultados (incremental/backfill): zero por API fora do ar
+        ok, motivo = veredito_da_coleta(r)   # sai ≠ 0 — o systemd marca falha e o OnFailure avisa
+        if motivo:
+            print(motivo, file=sys.stderr, flush=True)
+        if not ok:
+            sys.exit(1)

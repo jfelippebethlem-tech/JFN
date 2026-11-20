@@ -152,7 +152,7 @@ def test_d7_usa_o_teto_do_ANO_da_contratacao(con_semeado):
                        fornecedor_documento, fornecedor_nome, orgao_nome, tipo, valor_global,
                        data_assinatura)
                        values (?,?,?,?,?,?,?,?,?)""",
-                    (f"nc{i}", ano, "111", "222", "FORN X", "ORGAO Y", "contrato",
+                    (f"nc{i}", ano, "42498733000148", "222", "FORN X", "ORGAO Y", "contrato",
                      61_000.0, f"{ano}-03-{dia}"))
     con.commit()
     anos = {a["evidencias"]["controles_pncp"][0] for a in pericia_gastos.d7_fracionamento(con)}

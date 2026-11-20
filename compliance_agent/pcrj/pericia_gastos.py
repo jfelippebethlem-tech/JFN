@@ -65,6 +65,102 @@ def _data(s: str | None) -> date | None:
 
 
 # ── D7 — fracionamento de despesa ────────────────────────────────────────────
+# ── ESFERA: a tabela `pcrj_contratos` NÃO é só da Prefeitura ─────────────────────────────────────────
+# Medido em 20/11/2026: 82.461 contratos federais e 19.947 do Estado contra 2.588 da Prefeitura. O D11 já
+# filtrava (19/11); D7, D8, D10 e D12 varriam a tabela inteira e gravavam o resultado como "perícia de
+# gastos da Prefeitura" — 803 dos 1.010 alertas de fracionamento eram de órgão federal e 173 do Estado.
+# A esfera vem da régua única (`esfera_orgao`, via `pcrj.esfera`), nunca do nome da tabela.
+ESFERA_DA_PERICIA = "municipal-rio"
+# Detectores cujo universo é a despesa/folha da PRÓPRIA Prefeitura (CGM + contracheque): municipais na fonte.
+_DETECTORES_DE_FONTE_MUNICIPAL = frozenset({"d9_socio_na_folha"})
+
+
+def _orgaos_da_esfera(con, esfera: str = ESFERA_DA_PERICIA) -> list[str]:
+    """CNPJs de órgão de `pcrj_contratos` que a régua única classifica na esfera pedida."""
+    from compliance_agent.pcrj.esfera import classificar_esfera
+    orgaos = con.execute("select distinct orgao_cnpj, coalesce(orgao_nome,'') from pcrj_contratos "
+                         "where orgao_cnpj is not null").fetchall()
+    return sorted({o[0] for o in orgaos if classificar_esfera(o[1], o[0]) == esfera})
+
+
+def _filtro_orgaos(con, coluna: str = "orgao_cnpj", esfera: str = ESFERA_DA_PERICIA) -> tuple[str, tuple]:
+    """(trecho SQL, parâmetros) que restringe a consulta aos órgãos da esfera. Sem órgão da esfera na base
+    o trecho é falso: zero linha, não a tabela inteira."""
+    alvo = _orgaos_da_esfera(con, esfera)
+    if not alvo:
+        return "0", ()
+    return f"{coluna} in ({','.join('?' * len(alvo))})", tuple(alvo)
+
+
+def esfera_do_alerta(ev: dict) -> str:
+    """Esfera do órgão de um alerta `pcrj_*` JÁ GRAVADO, pela evidência: `orgao_cnpj` (gravado desde
+    20/11/2026), `orgao` do fracionamento ou o CNPJ que abre o número de controle do PNCP. "" quando a
+    evidência não identifica o órgão (alerta antigo de rede societária/co-endereço) — sem prova não se afirma."""
+    import re as _re
+    from compliance_agent.pcrj.esfera import classificar_esfera
+    ev = ev or {}
+    controles = [ev.get("controle")] + list(ev.get("controles_pncp") or [])[:1]
+    for bruto in (ev.get("orgao_cnpj"), ev.get("orgao"), *controles):
+        d = _re.sub(r"\D", "", str(bruto or "").split("-")[0])
+        if len(d) == 14:
+            return classificar_esfera("", d)
+    return ""
+
+
+def alerta_e_da_prefeitura(detector: str, ev: dict) -> bool:
+    """O alerta pode ser exibido como achado da Prefeitura do Rio? Detector de fonte municipal (D9) sim;
+    os que leem `pcrj_contratos` só com órgão PROVADO municipal-rio — alerta sem órgão na evidência fica de
+    fora até a próxima corrida regravá-lo com `orgao_cnpj`."""
+    if detector in _DETECTORES_DE_FONTE_MUNICIPAL:
+        return True
+    return esfera_do_alerta(ev) == ESFERA_DA_PERICIA
+
+
+# subtipo da evidência → detector de EXIBIÇÃO (corrige o histórico em que o aditivo estourado saía sob o
+# código d10 — duas análises num rótulo, antes do split do D11)
+_SUBTIPO_DETECTOR = {"fracionamento": "d7_fracionamento", "recem_aberta": "d8_credor_recem_aberto",
+                     "socio_folha": "d9_socio_na_folha", "rede_socios": "d10_rede_concorrentes",
+                     "aditivo_estourado": "d11_aditivo_estourado", "coendereco": "d12_coendereco_concorrentes"}
+
+
+def agrupar_alertas(rows: list[dict], limite: int = 40) -> dict:
+    """Alertas `pcrj_*` gravados → o que a aba da Prefeitura mostra. `rows`: {tipo, severidade, titulo,
+    descricao, evidencias(JSON)} já deduplicados e ordenados.
+
+    · só entra alerta de órgão PROVADO municipal do Rio (`alerta_e_da_prefeitura`); o resto é contado em
+      `fora_da_esfera` por detector e esfera ("sem_prova" = evidência antiga sem órgão) — nada some calado;
+    · `detectores` = TOTAL de alertas da Prefeitura por detector; `exibidos` = quantos vão na lista (≤ limite).
+      Antes a contagem era o tamanho da lista cortada: 1.010 fracionamentos apareciam como "40".
+    """
+    import json as _json
+    achados: dict[str, list] = {}
+    total: dict[str, int] = {}
+    fora: dict[str, dict[str, int]] = {}
+    for r in rows:
+        try:
+            ev = _json.loads(r.get("evidencias") or "{}")
+        except ValueError:
+            ev = {}
+        if not isinstance(ev, dict):
+            ev = {}
+        det = _SUBTIPO_DETECTOR.get(ev.get("subtipo") or "", str(r.get("tipo") or "").replace("pcrj_", ""))
+        if not alerta_e_da_prefeitura(det, ev):
+            esf = esfera_do_alerta(ev) or "sem_prova"
+            fora.setdefault(det, {})[esf] = fora.setdefault(det, {}).get(esf, 0) + 1
+            continue
+        total[det] = total.get(det, 0) + 1
+        if len(achados.setdefault(det, [])) < limite:
+            achados[det].append({"detector": det, "severidade": r.get("severidade"), "titulo": r.get("titulo"),
+                                 "descricao": r.get("descricao"), "evidencias": ev})
+    n_fora = sum(n for d in fora.values() for n in d.values())
+    return {"achados": achados, "detectores": total, "exibidos": {d: len(v) for d, v in achados.items()},
+            "fora_da_esfera": fora,
+            "nota_esfera": (f"{n_fora} alerta(s) gravado(s) ficaram FORA desta aba: órgão federal, do Estado ou "
+                            "sem órgão identificado na evidência (corrida anterior a 20/11/2026). A tabela "
+                            "pcrj_contratos guarda contratos de todas as esferas; aqui só entra órgão municipal "
+                            "do Rio provado pelo CNPJ." if n_fora else "")}
+
+
 def d7_fracionamento(con, teto: float | None = None,
                      janela_dias: int = D7_JANELA_DIAS,
                      minimo: int = D7_MINIMO_REGISTROS) -> list[dict]:
@@ -82,13 +178,15 @@ def d7_fracionamento(con, teto: float | None = None,
     `teto` explícito continua aceito e passa a valer para todos os anos (compatibilidade e
     cenário de teste); `None` = por ano, que é o correto em produção.
     """
-    rows = con.execute("""
+    onde, alvo = _filtro_orgaos(con)          # só órgão municipal do Rio (a tabela guarda federal e Estado)
+    rows = con.execute(f"""
         select orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
                data_assinatura, valor_global, numero_controle_pncp
         from pcrj_contratos
         where valor_global > 0 and data_assinatura is not null
-        order by orgao_cnpj, fornecedor_documento, data_assinatura""").fetchall()
+          and {onde}
+        order by orgao_cnpj, fornecedor_documento, data_assinatura""", alvo).fetchall()
     grupos: dict[tuple, list] = {}
     for r in rows:
         d = _data(r["data_assinatura"])
@@ -151,7 +249,8 @@ def d7_fracionamento(con, teto: float | None = None,
             f"dispensa de {r0['data_assinatura'][:4]} (R$ {_brl(teto_janela)}), somando R$ {_brl(soma)} — soma acima do teto "
             f"sugere fuga de licitação (Lei 14.133/2021, art. 75 §1º). "
             f"(fonte: PNCP, contratos/empenhos publicados)",
-            {"subtipo": "fracionamento", "orgao": orgao, "fornecedor": forn,
+            {"subtipo": "fracionamento", "orgao": orgao, "orgao_cnpj": orgao, "esfera": ESFERA_DA_PERICIA,
+             "fornecedor": forn,
              "n_contratos": len(melhor), "soma": soma,
              "controles_pncp": [r["numero_controle_pncp"] for _, r, _ in melhor]}))
     return achados
@@ -172,13 +271,18 @@ def _consulta_minhareceita(cnpj: str) -> dict | None:
 def d8_credor_recem_aberto(con, consulta_cnpj=None, dias: int = D8_DIAS_RECEM_ABERTA,
                            valor_minimo: float = D8_VALOR_MINIMO, top: int = 60) -> list[dict]:
     consulta_cnpj = consulta_cnpj or _consulta_minhareceita
-    rows = con.execute("""
+    # "firmava contratação com a PCRJ": primeiro contrato, soma e contagem SÓ dos órgãos municipais do Rio.
+    # Sem o filtro, contrato federal entrava na soma e na data (o alerta de maior valor, R$ 289,9 mi, era de
+    # consórcio sem contrato municipal).
+    onde, alvo = _filtro_orgaos(con)
+    rows = con.execute(f"""
         select fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
-               min(data_assinatura) as primeiro, sum(valor_global) as total, count(*) as n
+               min(data_assinatura) as primeiro, sum(valor_global) as total, count(*) as n,
+               min(orgao_cnpj) as orgao_cnpj
         from pcrj_contratos
-        where length(fornecedor_documento) = 14 and data_assinatura is not null
+        where length(fornecedor_documento) = 14 and data_assinatura is not null and {onde}
         group by 1 having total >= ? order by total desc limit ?""",
-        (valor_minimo, top)).fetchall()
+        alvo + (valor_minimo, top)).fetchall()
     # cadastro LOCAL primeiro (tabela empresas, backfill diário): quando a minhareceita cai,
     # o D8 inteiro zerava silenciosamente — 1.820 fornecedores têm data_abertura local
     def _abertura_local(doc: str) -> str | None:
@@ -212,6 +316,7 @@ def d8_credor_recem_aberto(con, consulta_cnpj=None, dias: int = D8_DIAS_RECEM_AB
             f"({primeiro:%d/%m/%Y}); soma R$ {_brl(r['total'])} em {r['n']} registro(s). "
             f"(fontes: PNCP + Receita Federal via minhareceita.org)",
             {"subtipo": "recem_aberta", "cnpj": r["fornecedor_documento"],
+             "orgao_cnpj": r["orgao_cnpj"], "esfera": ESFERA_DA_PERICIA,
              "idade_dias": idade, "total": r["total"]}))
     return achados
 
@@ -333,8 +438,9 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
 # ── D10 — rede societária entre fornecedores do mesmo órgão ─────────────────
 def d10_rede_concorrentes(con) -> list[dict]:
     achados = []
+    onde, alvo = _filtro_orgaos(con, "c.orgao_cnpj")     # só órgão municipal do Rio
     # mesmo sócio (nome_norm ou CPF) em ≥2 fornecedores do MESMO órgão no ano
-    rows = con.execute("""
+    rows = con.execute(f"""
         select c.orgao_cnpj, coalesce(c.orgao_nome,'') as orgao_nome, c.ano,
                s.nome_norm, s.nome_socio, s.doc_socio,
                group_concat(distinct c.fornecedor_documento) as fornecedores,
@@ -351,9 +457,10 @@ def d10_rede_concorrentes(con) -> list[dict]:
         -- ano (a tabela só tem o ano), o que é generoso de propósito: na dúvida, mantém o alerta.
          and (length(coalesce(s.data_entrada,'')) <> 8
               or s.data_entrada <= cast(c.ano as text) || '1231')
+        where {onde}
         group by c.orgao_cnpj, c.ano, s.nome_norm,
                  case when s.doc_socio != '' then s.doc_socio else s.nome_norm end
-        having count(distinct substr(c.fornecedor_documento, 1, 8)) >= 2""").fetchall()
+        having count(distinct substr(c.fornecedor_documento, 1, 8)) >= 2""", alvo).fetchall()
     for r in rows:
         forte = bool(r["doc_socio"])
         # RAIZ ≠ ESTABELECIMENTO. O `having` conta raízes (grupos econômicos), mas a evidência
@@ -382,6 +489,7 @@ def d10_rede_concorrentes(con) -> list[dict]:
             + ("" if forte else " Match por NOME normalizado — homônimo possível.")
             + " (fontes: PNCP + QSA Receita local)",
             {"subtipo": "rede_socios", "socio": r["nome_socio"], "ano": r["ano"],
+             "orgao_cnpj": r["orgao_cnpj"], "esfera": ESFERA_DA_PERICIA,
              "n_grupos": len(raizes), "grupos": raizes,
              "n_estabelecimentos": len(cnpjs),
              "fornecedores": cnpjs,
@@ -407,10 +515,7 @@ _ESFERA_D11 = "municipal-rio"
 
 
 def _contratos_da_esfera(con, esfera: str) -> list:
-    from compliance_agent.pcrj.esfera import classificar_esfera
-    orgaos = con.execute("select distinct orgao_cnpj, coalesce(orgao_nome,'') from pcrj_contratos "
-                         "where orgao_cnpj is not null").fetchall()
-    alvo = [o[0] for o in orgaos if classificar_esfera(o[1], o[0]) == esfera]
+    alvo = _orgaos_da_esfera(con, esfera)
     if not alvo:
         return []
     cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
@@ -530,16 +635,17 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
     risco médio, nunca alto sozinho; (b) CEP presente em > cep_popular empresas da base é
     endereço comercial popular (coworking/galeria) e sai do detector."""
     try:
-        rows = con.execute("""
+        onde, alvo = _filtro_orgaos(con, "c.orgao_cnpj")     # só órgão municipal do Rio
+        rows = con.execute(f"""
             select c.orgao_cnpj, coalesce(c.orgao_nome,'') as orgao_nome, c.ano, e.cep,
                    group_concat(distinct c.fornecedor_documento) as docs,
                    group_concat(distinct coalesce(c.fornecedor_nome, c.fornecedor_documento)) as nomes
             from pcrj_contratos c
             join empresas e on e.cnpj = c.fornecedor_documento
             where length(c.fornecedor_documento) = 14
-              and e.cep is not null and trim(e.cep) != ''
+              and e.cep is not null and trim(e.cep) != '' and {onde}
             group by c.orgao_cnpj, c.ano, e.cep
-            having count(distinct c.fornecedor_documento) >= 2""").fetchall()
+            having count(distinct c.fornecedor_documento) >= 2""", alvo).fetchall()
     except Exception as e:  # noqa: BLE001 — tabela empresas ausente = INDISPONÍVEL, não zero
         logger.warning("d12: cadastro local indisponível (%s) — detector não avaliável", e)
         return []
@@ -583,6 +689,7 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
             "ÉPOCA do certame não está estabelecida — é o que se pede conferir. "
             "(fontes: PNCP + cadastro local RFB)",
             {"subtipo": "coendereco", "cep": cep, "fornecedores": list(docs), "anos": sorted(g["anos"]),
+             "orgao_cnpj": r["orgao_cnpj"], "esfera": ESFERA_DA_PERICIA,
              "n_empresas_no_cep_base": n_no_cep,
              "cep_e_de": quando_foto, "coendereco_na_epoca": "nao_apurado"}))
     return achados
@@ -597,6 +704,34 @@ _DETECTORES = {
     "d11": d11_aditivo_estourado,
     "d12": d12_coendereco_concorrentes,
 }
+
+
+def retirar_alertas_de_outra_esfera(con) -> str:
+    """Apaga alerta `pcrj_*` SEM triagem cuja evidência PROVA órgão de outra esfera (federal, Estado, outro
+    município). A poda comum poupa o detector que zera (pode ser falha de fonte); aqui não há dúvida a
+    preservar — contrato do Exército nunca foi achado da Prefeitura — e sem isto os 21 "aditivos acima do
+    limite" federais ficariam para sempre em Transversal › Alertas. Alerta triado e alerta sem órgão na
+    evidência ficam (o primeiro é decisão humana; o segundo não tem prova de nada)."""
+    import json as _json
+    apagar, por_esfera = [], {}
+    for _id, ev in con.execute("select id, evidencias from alertas where tipo like 'pcrj_d%' "
+                               "and coalesce(status,'novo') = 'novo'").fetchall():
+        try:
+            d = _json.loads(ev or "{}")
+        except ValueError:
+            continue
+        esf = esfera_do_alerta(d if isinstance(d, dict) else {})
+        if esf and esf not in (ESFERA_DA_PERICIA, "indefinido"):
+            apagar.append(_id)
+            por_esfera[esf] = por_esfera.get(esf, 0) + 1
+    for i in range(0, len(apagar), 500):
+        lote = apagar[i:i + 500]
+        con.execute(f"delete from alertas where id in ({','.join('?' * len(lote))})", lote)
+    con.commit()
+    aviso = (f"{len(apagar)} alerta(s) de órgão de outra esfera retirado(s)"
+             + (f" ({', '.join(f'{k}: {v}' for k, v in sorted(por_esfera.items()))})" if apagar else ""))
+    logger.info("perícia PCRJ: %s", aviso)
+    return aviso
 
 
 def rodar_todas(con, gravar_alertas: bool = False) -> dict:
@@ -618,5 +753,6 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
         from compliance_agent.alertas_persistencia import gravar as _gravar
         poda = _gravar(con, achados, cobertura, prefixo="pcrj",
                        detectores=_DETECTORES, severidade=_sev)
+        poda += "; " + retirar_alertas_de_outra_esfera(con)
         return {"achados": achados, "cobertura": cobertura, "poda": poda}
     return {"achados": achados, "cobertura": cobertura}

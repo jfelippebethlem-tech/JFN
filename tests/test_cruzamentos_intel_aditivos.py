@@ -53,7 +53,7 @@ def db(tmp_path):
 
 
 def test_pct_sobre_acrescimo_real_exclui_reajuste(db):
-    d = aditivos_estouro(db_path=db)
+    d = aditivos_estouro(db_path=db, esfera="todas")
     assert d["ok"]
     contratos = {a["contrato"] for a in d["achados"]}
     assert "K1" not in contratos  # acréscimo real 10% < 25% — o +40% era reajuste
@@ -64,7 +64,7 @@ def test_pct_sobre_acrescimo_real_exclui_reajuste(db):
 
 
 def test_sem_acrescimo_real_marca_nao_confirmado_e_rebaixa(db):
-    d = aditivos_estouro(db_path=db)
+    d = aditivos_estouro(db_path=db, esfera="todas")
     k3 = next(a for a in d["achados"] if a["contrato"] == "K3")
     assert k3["acrescimo_confirmado"] is False
     assert k3["pct"] == pytest.approx(50.0)  # vg−vi, sem confirmação granular
@@ -76,7 +76,7 @@ def test_sem_acrescimo_real_marca_nao_confirmado_e_rebaixa(db):
 def test_no_teto_exato_NAO_e_estouro(db):
     """Art. 125: os acréscimos são admitidos ATÉ 25%. Exatamente no teto o contrato está DENTRO
     da lei — `pct >= teto` acusava ilegalidade onde não havia."""
-    d = aditivos_estouro(db_path=db)
+    d = aditivos_estouro(db_path=db, esfera="todas")
     k4 = [a for a in d["achados"] if a["contrato"] == "K4"]
     assert not k4 or k4[0]["estoura_teto"] is False, (
         "acréscimo de exatamente 25% é lícito — não pode ser marcado como estouro do art. 125")
@@ -94,7 +94,7 @@ def test_um_centavo_acima_do_teto_sai_PENDENTE_nao_some(db):
                 "('K5','EPSILON','55555555000155','MPRJ','MPRJ','serviço',100000.0,125001.0,1,'2025-12-31')")
     con.execute("INSERT INTO contrato_aditivo VALUES ('K5','1',25001.0,'acréscimo de quantitativo')")
     con.commit(); con.close()
-    d = aditivos_estouro(db_path=db)
+    d = aditivos_estouro(db_path=db, esfera="todas")
     k5 = next(a for a in d["achados"] if a["contrato"] == "K5")
     assert k5["estoura_teto"] is False
     assert k5["estado"] == "PENDENTE"
@@ -106,14 +106,14 @@ def test_declara_que_a_base_e_o_inicial_CRU(db):
     onde não há índice. Sem declarar a base, um percentual rente ao teto acusa ilegalidade que pode
     não existir — foi o que quase aconteceu com o VR Benefícios (nosso 26,4% × "25%" declarado no
     próprio termo, sobre base atualizada)."""
-    a = aditivos_estouro(db_path=db)["achados"][0]
+    a = aditivos_estouro(db_path=db, esfera="todas")["achados"][0]
     assert "atualizado" in a["base_do_percentual"]
     assert "valor_inicial" in a["base_do_percentual"]
 
 
 def test_k2_acima_da_folga_continua_VERIFICADO(db):
     """Controle positivo: 30% (acima de 25% + a folga de atualização) segue afirmado."""
-    k2 = next(a for a in aditivos_estouro(db_path=db)["achados"] if a["contrato"] == "K2")
+    k2 = next(a for a in aditivos_estouro(db_path=db, esfera="todas")["achados"] if a["contrato"] == "K2")
     assert k2["estado"] == "VERIFICADO" and k2["tipo"] == "estouro"
 
 
@@ -127,9 +127,9 @@ def test_termos_lidos_sem_acrescimo_nao_viram_estouro_pelo_global(db):
     con.execute("INSERT INTO contrato_aditivo VALUES ('K6','0',100000.0,"
                 "'Prorrogação do prazo de vigência por mais 12 meses')")
     con.commit(); con.close()
-    assert "K6" not in {a["contrato"] for a in aditivos_estouro(db_path=db)["achados"]}
+    assert "K6" not in {a["contrato"] for a in aditivos_estouro(db_path=db, esfera="todas")["achados"]}
 
 
 def test_universo_e_o_da_esfera_nao_a_tabela(db):
-    d = aditivos_estouro(db_path=db)
+    d = aditivos_estouro(db_path=db, esfera="todas")
     assert d["contratos_analisados"] == 4

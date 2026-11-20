@@ -95,14 +95,37 @@ def _total_no_ano(ev: dict, basico: str, ano: str) -> float:
     return sum(v for dt, v in ev.get(basico, ()) if dt[:4] == ano)
 
 
-def declaracoes_incompativeis(con: sqlite3.Connection, estrito: bool = True) -> list[dict]:
-    """Certames em que a empresa se declarou ME/EPP/MEI já tendo estourado o teto no ano."""
+# Escopo da casa: certame do Estado do RJ ou da Prefeitura do Rio (vocabulário de `pncp_resultados`).
+ESFERAS_DA_CASA = ("estado", "prefeitura")
+
+
+def _esfera_do_certame(reg: dict, oficial: dict) -> str:
+    """Esfera do COMPRADOR do certame pela régua única (`pncp_resultados.classificar_esfera`). Base antiga sem as
+    colunas do órgão: vale o CNPJ que abre o número de controle do PNCP."""
+    from compliance_agent.collectors.pncp_resultados import classificar_esfera
+    if not reg.get("orgao_cnpj"):
+        reg = {**reg, "orgao_cnpj": re.sub(r"\D", "", str(reg.get("certame") or "").split("-")[0])[:14]}
+    return classificar_esfera(reg, oficial)
+
+
+def declaracoes_incompativeis(con: sqlite3.Connection, estrito: bool = True,
+                              esferas: tuple | None = ESFERAS_DA_CASA) -> list[dict]:
+    """Certames em que a empresa se declarou ME/EPP/MEI já tendo estourado o teto no ano.
+
+    `esferas`: de que comprador o certame pode ser — padrão, o escopo da casa (Estado do RJ e Prefeitura do Rio);
+    None = todos (pesquisa). Até 20/11/2026 a lente da aba ESTADUAL listava certame de qualquer ente: dos 38
+    certames exibidos, 16 eram de órgão federal, 13 de outros municípios, 8 da Prefeitura e 1 do Estado. Cada
+    certame sai com a `esfera`; a empresa, com `por_esfera` e `certames_fora_do_escopo` (contado, não escondido)."""
+    from compliance_agent.collectors.pncp_resultados import esferas_por_ente
     ev = _pagamentos(con)
+    oficial = esferas_por_ente(con)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
+    extras = [c for c in ("orgao_cnpj", "orgao_nome", "unidade_nome", "municipio", "uf") if c in cols]
     achados: dict = collections.defaultdict(
-        lambda: {"nome": "", "portes": set(), "certames": [], "homologado": 0.0, "pico": 0.0})
-    for cnpj, nome, porte, data_pub, certame, valor in con.execute(
+        lambda: {"nome": "", "portes": set(), "certames": [], "homologado": 0.0, "pico": 0.0, "fora": 0})
+    for cnpj, nome, porte, data_pub, certame, valor, *org in con.execute(
             "SELECT fornecedor_cnpj, fornecedor_nome, porte_fornecedor, data_pub, certame, "
-            "valor_homologado FROM pncp_resultado WHERE porte_fornecedor IN (1,2,6)"):
+            f"valor_homologado{''.join(', ' + c for c in extras)} FROM pncp_resultado WHERE porte_fornecedor IN (1,2,6)"):
         dig = re.sub(r"\D", "", str(cnpj or ""))
         if len(dig) < 8 or not data_pub:
             continue
@@ -111,22 +134,50 @@ def declaracoes_incompativeis(con: sqlite3.Connection, estrito: bool = True) -> 
                     else _total_no_ano(ev, basico, pub[:4]))
         if recebido <= TETO_EPP:
             continue
+        esf = _esfera_do_certame({"certame": certame, **dict(zip(extras, org))}, oficial)
+        if esferas is not None and esf not in esferas:
+            achados[basico]["fora"] += 1          # certame de outro ente: fora do escopo, mas contado
+            continue
         a = achados[basico]
         a["nome"] = a["nome"] or (nome or "")
         a["portes"].add(PORTE_PNCP.get(porte, str(porte)))
         a["homologado"] += valor or 0.0
         a["pico"] = max(a["pico"], recebido)
-        a["certames"].append({"certame": certame, "data_pub": pub, "recebido_ate": recebido,
+        a["certames"].append({"certame": certame, "esfera": esf, "data_pub": pub, "recebido_ate": recebido,
                               "homologado": valor or 0.0, "porte": PORTE_PNCP.get(porte, porte)})
     saida = []
     for basico, a in achados.items():
+        if not a["certames"]:
+            continue                               # só declarou em certame de outro ente: fora da lente da casa
         a["certames"].sort(key=lambda x: -x["recebido_ate"])
+        por_esfera = collections.Counter()
+        for c in {(c["certame"], c["esfera"]) for c in a["certames"]}:
+            por_esfera[c[1]] += 1
         saida.append({"cnpj_basico": basico, "nome": a["nome"], "portes": sorted(a["portes"]),
                       "n_certames": len({c["certame"] for c in a["certames"]}),
+                      "por_esfera": dict(por_esfera), "certames_fora_do_escopo": a["fora"],
                       "homologado": a["homologado"], "recebido_pico": a["pico"],
                       "certames": a["certames"]})
     saida.sort(key=lambda x: -x["recebido_pico"])
     return saida
+
+
+def fora_do_escopo(con: sqlite3.Connection, estrito: bool = True) -> dict:
+    """O que a lente da casa deixou de fora, para ninguém ler a lista curta como "é só isso": empresas cuja
+    declaração só aparece em certame de outro ente, e certames distintos por esfera (municípios do interior,
+    órgão federal). Não é achado da casa — é o que existe na base fora do escopo, e quem pesquisa pede `esferas=None`."""
+    por_esfera: collections.Counter = collections.Counter()
+    so_fora = []
+    for x in declaracoes_incompativeis(con, estrito=estrito, esferas=None):
+        cs = {(c["certame"], c["esfera"]) for c in x["certames"]}
+        fora = [e for _, e in cs if e not in ESFERAS_DA_CASA]
+        por_esfera.update(fora)
+        if fora and len(fora) == len(cs):
+            so_fora.append(x["nome"])
+    return {"empresas_so_fora_do_escopo": len(so_fora), "nomes": sorted(so_fora)[:40],
+            "certames_por_esfera": dict(por_esfera),
+            "nota": "certames de outros entes (municípios do interior, órgãos federais) — fora do escopo da casa "
+                    "(Estado do RJ e Prefeitura do Rio); listados aqui só como contagem"}
 
 
 def main() -> int:
@@ -134,10 +185,12 @@ def main() -> int:
     ap.add_argument("--amplo", action="store_true",
                     help="mesmo ano-calendário (teto da medida) em vez do corte na data do certame")
     ap.add_argument("--limite", type=int, default=20)
+    ap.add_argument("--todas", action="store_true",
+                    help="inclui certame de outros entes (pesquisa); o padrão é Estado do RJ + Prefeitura do Rio")
     a = ap.parse_args()
 
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
-    linhas = declaracoes_incompativeis(con, estrito=not a.amplo)
+    linhas = declaracoes_incompativeis(con, estrito=not a.amplo, esferas=None if a.todas else ESFERAS_DA_CASA)
     print("declaração de ME/EPP em certame × já recebido do Estado no ano-calendário")
     print(f"  critério: {'MESMO ANO (amplo — inclui certame anterior ao estouro)' if a.amplo else 'ESTRITO — certame publicado DEPOIS de a empresa já ter estourado o teto'}")
     print(f"  teto de EPP: R$ {moeda(TETO_EPP)} (LC 123/2006, art. 3º, II)\n")

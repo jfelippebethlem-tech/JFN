@@ -45,6 +45,42 @@ ESFERA_FONTE = {
     "camara_csv": ("municipal", "Câmara Municipal do Rio de Janeiro"),
 }
 
+
+def frescor_folhas(con, agora=None) -> list[dict]:
+    """Frescor de CADA fonte de folha, com a esfera de cada uma — para /api/fontes/frescor.
+
+    Havia uma linha só, "Folhas (Estado)" = MAX(competencia) da tabela inteira: punha a Câmara MUNICIPAL do
+    Rio sob o rótulo do Estado e deixava a fonte mais nova (GESPERJ) encobrir as paradas (Defensoria em 2025-10,
+    TJRJ em 2026-05 — medido em 20/11/2026). Folha é mensal: ok até 45 dias da competência, atenção até 75,
+    crítico depois. Lista anual (Câmara: competência "2026") não tem mês — vale a data da última CARGA.
+    Tabela ausente → uma linha INDISPONÍVEL (ultimo None), nunca lista vazia."""
+    from datetime import datetime as _dt
+    agora = agora or _dt.now().astimezone()
+    try:
+        linhas = con.execute("SELECT fonte, MAX(competencia), MAX(created_at) FROM registros_folha GROUP BY fonte").fetchall()
+    except Exception as exc:  # noqa: BLE001 — a rota mostra o motivo; não derruba as demais fontes
+        return [{"chave": "", "fonte": "Folhas", "esfera": "indefinida", "ultimo": None, "idade_dias": None,
+                 "estado": "critico", "detalhe": f"erro: {exc}"}]
+    out = []
+    for fonte, comp, carga in sorted(linhas, key=lambda r: str(r[0] or "")):
+        esf, rot = ESFERA_FONTE.get(fonte, ("indefinida", fonte or "fonte desconhecida"))
+        comp = str(comp or "")
+        if re.fullmatch(r"\d{4}-\d{2}", comp):
+            ultimo, detalhe = f"{comp}-01", "competência mais nova (folha mensal)"
+        else:
+            ultimo = str(carga or "") or None
+            detalhe = f"data da última carga (lista sem competência mensal; mais nova: {comp or '—'})"
+        idade = None
+        try:
+            d = _dt.fromisoformat(str(ultimo))
+            idade = max(0, (agora - (d if d.tzinfo else d.replace(tzinfo=agora.tzinfo))).days)
+        except (TypeError, ValueError):
+            pass
+        estado = "critico" if idade is None or idade > 75 else "atencao" if idade > 45 else "ok"
+        out.append({"chave": fonte or "", "fonte": f"Folha · {rot}", "esfera": esf, "ultimo": ultimo,
+                    "idade_dias": idade, "estado": estado, "detalhe": detalhe})
+    return out
+
 VERIFICADO, PENDENTE = "VERIFICADO", "PENDENTE"
 _RE_CPF_FOLHA = re.compile(r"^XX(\d{6})XXX$")
 

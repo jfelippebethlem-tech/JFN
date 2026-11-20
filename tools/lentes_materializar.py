@@ -55,7 +55,7 @@ def materializar(limite: int = 50) -> dict:
     from pago_a_sancionado import pagos_durante_sancao
     from pago_sem_contrato import sem_contrato
     from pericia_tripla import periciar
-    from porte_declarado_certame import declaracoes_incompativeis
+    from porte_declarado_certame import declaracoes_incompativeis, fora_do_escopo
     from porte_incompativel import incompativeis
     from troca_de_controle import trocas
 
@@ -78,12 +78,16 @@ def materializar(limite: int = 50) -> dict:
         # ordena PROCESSOS por lacuna probatória, não fornecedores por sinal.
         "pericia_tripla": _seguro("pericia_tripla", periciar, con),
     }
+    # a lente de porte declarado só lista certame da casa (Estado do RJ / Prefeitura do Rio); o que ficou de fora
+    # (municípios do interior, órgão federal) vai CONTADO ao lado, para a lista curta não parecer o universo
+    porte_fora = _seguro("porte_declarado_certame.fora_do_escopo", fora_do_escopo, con, estrito=True)
     con.close()
 
     for nome, bloco in lentes.items():
         itens = bloco.pop("itens")
         bloco["n"] = len(itens) if itens is not None else None  # None = INDISPONÍVEL, não zero
         bloco["topo"] = itens[:limite] if itens else []
+    lentes["porte_declarado_certame"]["fora_do_escopo"] = porte_fora["itens"] if porte_fora["ok"] else None
     return {"gerado_em": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "limite": limite, "lentes": lentes,
             # bloco NOVO e aditivo: quem já lê `lentes` não muda de comportamento
             "pcrj": _materializar_pcrj(limite),

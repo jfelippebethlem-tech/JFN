@@ -35,7 +35,7 @@ def _socio(con, raiz, doc="***111111**"):
 
 
 def _contrato(con, cnpj14, nome):
-    con.execute("insert into pcrj_contratos values ('99','SMS',2024,?,?)", (cnpj14, nome))
+    con.execute("insert into pcrj_contratos values ('42498733000148','SMS',2024,?,?)", (cnpj14, nome))
 
 
 def test_filiais_da_mesma_raiz_nao_inflam_a_rede(con):

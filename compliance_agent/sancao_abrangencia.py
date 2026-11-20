@@ -282,6 +282,30 @@ def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ",
             "tipo": cl["tipo"], "esfera_sancionador": ente["esfera"], "uf_sancionador": ente["uf"]}
 
 
+RX_MUNICIPIO_DO_RIO = re.compile(
+    r"(prefeitura|munic[ií]pio|c[aâ]mara municipal|tribunal de contas do munic[ií]pio|secretaria municipal|"
+    r"controladoria[- ]geral do munic[ií]pio).{0,40}rio de janeiro|\bPCRJ\b|\bCGM[- ]?RIO\b|\bTCM[- ]?RJ\b", re.I)
+
+
+def veda_comprador_rj(sancao: dict, casa: str) -> dict:
+    """A sanção veda contrato do COMPRADOR DA CASA? `casa` = "estado" (Estado do RJ) | "prefeitura" (Prefeitura
+    do Rio) — o vocabulário de `pncp_resultados.classificar_esfera`. Estado: `veda_ente(estadual, RJ)`.
+    Prefeitura: `veda_ente(municipal, RJ)` compara só esfera e UF, e o impedimento de OUTRO município do RJ
+    (Niterói, Caxias) passaria — alcance de ente municipal só vale no próprio Município do Rio; alcance total
+    (inidoneidade) vale sempre. Qualquer outra `casa` → não se afirma vedação (fora do escopo)."""
+    if casa == "estado":
+        return veda_ente(sancao, "estadual", "RJ")
+    if casa == "prefeitura":
+        v = veda_ente(sancao, "municipal", "RJ")
+        if v["veda"] and v.get("abrangencia") != "total" and not RX_MUNICIPIO_DO_RIO.search(sancao.get("orgao") or ""):
+            return {**v, "veda": False,
+                    "motivo": f"{v.get('tipo')} de outro município — NÃO alcança a Prefeitura do Rio "
+                              "(risco reputacional, não vedação)"}
+        return v
+    return {"veda": False, "abrangencia": None, "tipo": None,
+            "motivo": "comprador fora do escopo (nem Estado do RJ nem Prefeitura do Rio) — vedação não afirmada"}
+
+
 def detalhar(cnpj: str, con, esfera_alvo: str = "estadual", uf_alvo: str = "RJ") -> dict:
     """Lista legível das sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA o alvo.
     Responde 'quais são e qual a abrangência'."""

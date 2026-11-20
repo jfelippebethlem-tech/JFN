@@ -30,7 +30,7 @@ def con():
 def _cenario(con, n, valor, forn="11111111000111"):
     for i in range(n):
         con.execute("insert into pcrj_contratos values (?,?,?,?,?,?,?,?,?,?)",
-                    (f"C{forn[:4]}{i}", "99", "SMS", forn, "ALFA", "material",
+                    (f"C{forn[:4]}{i}", "42498733000148", "SMS", forn, "ALFA", "material",   # órgão municipal do Rio
                      valor, valor, f"2026-01-{(i % 28) + 1:02d}", 2026))
     con.commit()
 

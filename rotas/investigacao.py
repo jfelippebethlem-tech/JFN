@@ -248,18 +248,20 @@ def api_painel():
             # Só alerta NÃO descartado (13/11/2026): os 58.253 de emprego múltiplo por CPF mascarado foram
             # descartados, mas o card seguia contando a tabela inteira ("59.024 de gravidade alta").
             ativo = sa.or_(Alerta.status.is_(None), Alerta.status != "descartado")
-            sev = {}
-            for r in (s.query(Alerta.severidade, sa.func.count(Alerta.id)).filter(ativo)
-                      .group_by(Alerta.severidade).all()):
-                k = r[0] or "baixa"
-                sev[k] = sev.get(k, 0) + r[1]
-            alta = sev.get("alta", 0)
-            media = sev.get("média", 0) + sev.get("media", 0)
-            total_ativos = sum(sev.values())
+            # ESFERAS ESTANQUES (20/11/2026): a tabela `alertas` junta o motor de regras do Estado, a perícia de
+            # gastos da Prefeitura (pcrj_*) e a de emendas federais (emendas_*). O card é do Estado: alta/media/
+            # baixa/total passam a ser SÓ dele; as outras duas saem em `por_esfera`, contadas à parte, nunca somadas.
+            from compliance_agent.alertas_persistencia import contagem_por_esfera, esfera_do_tipo
+            por_esfera = contagem_por_esfera(
+                s.query(Alerta.tipo, Alerta.severidade, sa.func.count(Alerta.id)).filter(ativo)
+                .group_by(Alerta.tipo, Alerta.severidade).all())
+            do_estado = por_esfera.get("estado", {"alta": 0, "media": 0, "baixa": 0, "total": 0})
+            alta, media, total_ativos = do_estado["alta"], do_estado["media"], do_estado["total"]
             # De que produtor vem cada alerta aberto e quando ele criou o último (17/11/2026: 1.300+ abertos eram de
             # produtores parados desde 10/08 — emendas, PCRJ D7/D10 — e o card os somava como se fossem de hoje).
             por_tipo = [
-                {"tipo": r[0], "n": r[1], "alta": int(r[2] or 0), "ultima_criacao": str(r[3])[:16] if r[3] else None}
+                {"tipo": r[0], "esfera": esfera_do_tipo(r[0]), "n": r[1], "alta": int(r[2] or 0),
+                 "ultima_criacao": str(r[3])[:16] if r[3] else None}
                 for r in (s.query(Alerta.tipo, sa.func.count(Alerta.id),
                                   sa.func.sum(sa.case((Alerta.severidade == "alta", 1), else_=0)),
                                   sa.func.max(Alerta.created_at))
@@ -267,7 +269,7 @@ def api_painel():
             ]
 
             alertas = [
-                {"tipo": a.tipo, "severidade": a.severidade, "titulo": a.titulo,
+                {"tipo": a.tipo, "esfera": esfera_do_tipo(a.tipo), "severidade": a.severidade, "titulo": a.titulo,
                  "descricao": (a.descricao or "")[:300], "data": str(a.data_referencia or ""),
                  "criado": str(a.created_at)[:16]}
                 for a in s.query(Alerta).filter(ativo).order_by(desc(Alerta.created_at)).limit(40).all()
@@ -320,8 +322,10 @@ def api_painel():
                         # espelho TFE (cobertura parcial) — rotulado, nunca o número principal (regra OB = SIAFE)
                         "tfe_total": total_obs, "tfe_valor_total": float(valor_total)},
                 "alertas": {"alta": alta, "media": media, "baixa": total_ativos - alta - media,
-                            "total": total_ativos, "criterio": "não descartados (status ≠ descartado)",
-                            "por_tipo": por_tipo},
+                            "total": total_ativos, "esfera": "estado",
+                            "criterio": ("não descartados (status ≠ descartado), só do Estado do RJ; Prefeitura do "
+                                         "Rio e emendas federais (fora do escopo) estão em por_esfera, sem somar"),
+                            "por_esfera": por_esfera, "por_tipo": por_tipo},
                 "ultima_coleta": ultima_coleta,
                 "lista_alertas": alertas,
                 "top_favorecidos": top,
@@ -1314,6 +1318,8 @@ def _cache_put(chave: str, val):
 
 _cache_travas: dict = {}
 _cache_travas_mestra = _threading.Lock()
+# Idade máxima do valor vencido que o `_cache_calc` ainda entrega enquanto recalcula (stale-while-revalidate).
+_CACHE_VELHO_MAX_S = 6 * 3600
 
 
 def _cache_calc(chave: str, ttl: int, calcular):
@@ -1327,7 +1333,11 @@ def _cache_calc(chave: str, ttl: int, calcular):
         trava = _cache_travas.setdefault(chave, _threading.Lock())
     # VENCIDO mas existente: entrega o último valor JÁ e recalcula em segundo plano (stale-while-revalidate).
     # Sem isto, quem chegava logo após o TTL esperava o cálculo inteiro — a fênix, 72,6 s (03/11/2026).
-    if (velho := _cache.get(chave)) is not None:
+    # …mas só enquanto o "último valor" for RECENTE. O cache vive em disco e volta no restart: em 20/11/2026 a aba
+    # Prefeitura › Sancionadas serviu "427 empresas, 5 à época, R$ 143.342,03" — número de antes da régua de esfera
+    # de 19/11, calculado por código que já não existia — e a visita seguinte, 83 / 0 / R$ 0,00. Velho demais não é
+    # "último valor", é número parado: aí o visitante espera o cálculo (um só, pela trava).
+    if (velho := _cache.get(chave)) is not None and _time.time() - velho[0] <= max(_CACHE_VELHO_MAX_S, 4 * ttl):
         if trava.acquire(blocking=False):
             def _renovar():
                 try:                                 # falha sobe ao threading.excepthook (logada) e o
@@ -1352,20 +1362,32 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
     nunca "score 0"). Ordena: analisados por prioridade desc, depois os demais por ano."""
     import json as _json
     import sqlite3 as _sq
-    raiz_cnpj = {"prefeitura": "42498733", "estado": "42498600"}.get(esfera)
+    # ESFERA É OBRIGATÓRIA E FECHADA (20/11/2026). Rótulo fora do vocabulário ("estadual", "todas", vazio) caía no
+    # `.get()` e a rota devolvia a tabela INTEIRA — 14.015 certames, dos quais mais de 9 mil de órgão federal — na
+    # aba de quem pediu. E "estado" era só a raiz 42498600: ALERJ, TJRJ, DETRAN e outros 393 certames de órgão
+    # estadual com CNPJ próprio ficavam de fora. A esfera vem do mapa materializado pela régua única (orgao_esfera).
+    _ESFERA = {"prefeitura": ("municipal-rio", "42498733"), "estado": ("estadual-rj", "42498600")}
+    if esfera not in _ESFERA:
+        return JSONResponse(status_code=400, content={
+            "ok": False, "erro": f"esfera '{esfera}' não existe — use 'estado' ou 'prefeitura' (esferas estanques; "
+                                 "lista vazia ou misturada aqui seria número errado, não resposta)"})
+    esfera_regua, raiz_cnpj = _ESFERA[esfera]
     lim = max(1, min(int(limite or 600), 2000))
     termo = f"%{q.strip()}%" if q.strip() else None
     try:
         con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
         con.row_factory = _sq.Row
+        tem_mapa = bool(con.execute("SELECT 1 FROM sqlite_master WHERE name='orgao_esfera'").fetchone())
+        # raiz do ente (regra 1 da régua) + órgão com CNPJ próprio que o mapa prova ser da esfera
+        onde_esfera = ("(substr(ed.orgao_cnpj,1,8) = ?" + (
+            " OR ed.orgao_cnpj IN (SELECT cnpj FROM orgao_esfera WHERE esfera = ?))" if tem_mapa else ")"))
+        par_esfera = [raiz_cnpj] + ([esfera_regua] if tem_mapa else [])
         sql = ("SELECT ed.numero_controle_pncp nc, ed.ano, ed.objeto, ed.valor_estimado, "
                "ci.score, ci.faixa, ci.confianca, ci.prioridade, ci.familias_json "
                "FROM edital_documento ed LEFT JOIN certame_indice ci "
                "ON ci.certame = ed.numero_controle_pncp WHERE 1=1")
-        params: list = []
-        if raiz_cnpj:
-            sql += " AND substr(ed.orgao_cnpj,1,8) = ?"
-            params.append(raiz_cnpj)
+        params: list = list(par_esfera)
+        sql += " AND " + onde_esfera
         if termo:
             sql += " AND ed.objeto LIKE ?"
             params.append(termo)
@@ -1376,8 +1398,7 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
         total = con.execute(
             "SELECT COUNT(*), SUM(EXISTS(SELECT 1 FROM certame_indice ci WHERE "
             "ci.certame=ed.numero_controle_pncp AND ci.confianca>0)) "
-            "FROM edital_documento ed" + (" WHERE substr(ed.orgao_cnpj,1,8)=?" if raiz_cnpj else ""),
-            ([raiz_cnpj] if raiz_cnpj else [])).fetchone()
+            "FROM edital_documento ed WHERE " + onde_esfera, par_esfera).fetchone()
         con.close()
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
@@ -1400,7 +1421,7 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
                       "faixa": r["faixa"] if analisado else None,
                       "confianca": r["confianca"], "temas": temas})
     return JSONResponse(content={
-        "ok": True, "itens": itens,
+        "ok": True, "itens": itens, "esfera": esfera,
         "resumo": {"total": total[0], "analisados": total[1] or 0},
         "ressalva": "Índice determinístico e auditável (indício ≠ acusação). Certame sem família "
                     "analisável = INDISPONÍVEL, não zero; a cobertura cresce com o enxame."})
@@ -2533,7 +2554,6 @@ def api_pcrj_gastos_achados(limite_por_detector: int = 40):
     """Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na
     folha · D10 rede de sócios entre concorrentes · aditivo estourado) — lê os alertas gravados pela
     última corrida de tools/pcrj_pericia_gastos.py (dedup por título, mais recente vence)."""
-    import json as _json
     import sqlite3 as _sq
     try:
         lim = max(5, min(int(limite_por_detector or 40), 200))
@@ -2550,26 +2570,14 @@ def api_pcrj_gastos_achados(limite_por_detector: int = 40):
                 """).fetchall()
         finally:
             con.close()
-        # o detector de EXIBIÇÃO vem do subtipo da evidência quando houver — corrige o histórico
-        # em que aditivo_estourado saía sob o código d10 (duas análises num rótulo, pré-split D11)
-        _sub2det = {"fracionamento": "d7_fracionamento", "recem_aberta": "d8_credor_recem_aberto",
-                    "socio_folha": "d9_socio_na_folha", "rede_socios": "d10_rede_concorrentes",
-                    "aditivo_estourado": "d11_aditivo_estourado",
-                    "coendereco": "d12_coendereco_concorrentes"}
-        por_det: dict[str, list] = {}
-        for r in rows:
-            ev = {}
-            try:
-                ev = _json.loads(r["evidencias"] or "{}")
-            except ValueError as e:
-                logger.debug("evidências não são JSON (%s) — registro segue sem elas", e)
-            det = _sub2det.get(ev.get("subtipo") or "", r["tipo"].replace("pcrj_", ""))
-            if len(por_det.setdefault(det, [])) >= lim:
-                continue
-            por_det[det].append({"detector": det, "severidade": r["severidade"],
-                                 "titulo": r["titulo"], "descricao": r["descricao"], "evidencias": ev})
-        contagem = {d_: len(v) for d_, v in por_det.items()}
-        out = {"ok": True, "detectores": contagem, "achados": por_det,
+        # Agrupamento, filtro de esfera e contagem moram em `pericia_gastos.agrupar_alertas` (testável):
+        # só alerta de órgão PROVADO municipal do Rio; `detectores` é o total real, não o tamanho da lista cortada.
+        from compliance_agent.pcrj.pericia_gastos import agrupar_alertas
+        g = agrupar_alertas([dict(r) for r in rows], lim)
+        por_det = g["achados"]
+        out = {"ok": True, "detectores": g["detectores"], "exibidos": g["exibidos"], "achados": por_det,
+               "esfera": "municipal-rio", "fora_da_esfera": g["fora_da_esfera"],
+               "nota_esfera": g["nota_esfera"],
                "explicacao": ("Perícia determinística sobre despesa por credor (CGM 2019-2023) + "
                               "contratos/licitações municipais (PNCP 2024+): fracionamento colado no "
                               "teto de dispensa, credor recém-aberto, sócio de credor na folha, rede "
@@ -2780,8 +2788,10 @@ def api_fontes_frescor():
             # sancoes/folha não têm coletado_em: proxy = data da sanção mais nova / competência mais nova
             _add("Sanções CEIS/CNEP", "SELECT MAX(data_inicio) FROM sancoes_federais", con,
                  detalhe="sanção mais nova · timer semanal (dom 05:40)")
-            _add("Folhas (Estado)", "SELECT MAX(competencia)||'-01' FROM registros_folha", con,
-                 detalhe="competência mais nova · DPE + CMRJ + TJRJ")
+            # folhas: uma linha por FONTE, com esfera (a Câmara do Rio é municipal) e estado próprio — o MAX da
+            # tabela inteira encobria Defensoria e TJRJ parados atrás do GESPERJ (20/11/2026)
+            from compliance_agent.nomeados_candidatos import frescor_folhas as _frescor_folhas
+            folhas = _frescor_folhas(con)
         finally:
             con.close()
         try:
@@ -2805,6 +2815,9 @@ def api_fontes_frescor():
             idade = _idade_dias(f["ultimo"], hoje)
             f["idade_dias"] = idade
             f["estado"] = _estado_frescor(idade, f.get("detalhe"))
+        # as folhas já vêm com idade e estado na régua mensal; entram depois das sanções, onde ficava a linha única
+        pos = next((i + 1 for i, f in enumerate(fontes) if f["fonte"].startswith("Sanções")), len(fontes))
+        fontes[pos:pos] = [{k: v for k, v in f.items() if k != "chave"} for f in folhas]
         out = {"ok": True, "fontes": fontes, "gerado": hoje.strftime("%Y-%m-%d %H:%M")}
         return JSONResponse(anexar("/api/fontes/frescor", _cache_put("fontes:frescor", out)))
     except Exception as exc:  # noqa: BLE001

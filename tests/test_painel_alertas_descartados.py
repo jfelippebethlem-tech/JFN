@@ -35,11 +35,22 @@ def painel(tmp_path, monkeypatch):
 
 def test_card_nao_conta_alerta_descartado(painel):
     a = painel["alertas"]
-    assert a["total"] == 9                 # 14 linhas − 5 descartadas
+    assert a["total"] == 8                 # 14 linhas − 5 descartadas − 1 da Prefeitura (pcrj_d7), contada à parte
     assert a["alta"] == 4                  # 2 novo + 1 confirmado + 1 sem status; as 5 descartadas fora
     assert a["media"] == 4                 # 'média' e 'media' somados
-    assert a["baixa"] == 1
+    assert a["baixa"] == 0
     assert a["alta"] + a["media"] + a["baixa"] == a["total"]   # a gravidade exibida bate com o total
+
+
+def test_card_do_estado_nao_soma_alerta_da_prefeitura_nem_de_emenda_federal(painel):
+    """20/11/2026: de 6.762 alertas "do Estado", 2.464 eram da perícia de gastos da Prefeitura e 1.202 de emendas
+    federais. Cada esfera é contada em separado; o total do card é só o do Estado."""
+    a = painel["alertas"]
+    assert a["esfera"] == "estado"
+    assert a["por_esfera"]["estado"]["total"] == a["total"] == 8
+    assert a["por_esfera"]["prefeitura"] == {"alta": 0, "media": 0, "baixa": 1, "total": 1}
+    assert {x["tipo"]: x["esfera"] for x in a["por_tipo"]}["pcrj_d7"] == "prefeitura"
+    assert all("esfera" in x for x in painel["lista_alertas"])
 
 
 def test_lista_da_tela_nao_traz_descartado(painel):
@@ -52,6 +63,6 @@ def test_card_diz_de_que_produtor_vem_cada_alerta_e_quando_ele_rodou(painel):
     PCRJ D7/D10) e o card os somava como se fossem de hoje. Cada tipo diz quantos abertos e a última criação."""
     t = {x["tipo"]: x for x in painel["alertas"]["por_tipo"]}
     assert t["enriquecimento"]["n"] == 3 and t["acumulacao"]["n"] == 3
-    assert sum(x["n"] for x in t.values()) == painel["alertas"]["total"]
+    assert sum(x["n"] for x in t.values() if x["esfera"] == "estado") == painel["alertas"]["total"]
     assert all("ultima_criacao" in x and "alta" in x for x in t.values())
     assert t["enriquecimento"]["alta"] == 3

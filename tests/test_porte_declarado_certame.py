@@ -10,7 +10,7 @@ import sqlite3
 import pytest
 
 from tools.porte_declarado_certame import (PEQUENO, PORTE_PNCP, TETO_EPP, _acumulado_no_ano,
-                                           _iso, declaracoes_incompativeis)
+                                           _iso, declaracoes_incompativeis, fora_do_escopo)
 
 
 def _banco():
@@ -31,7 +31,7 @@ def test_estrito_ignora_certame_ANTERIOR_ao_estouro():
     """Certame em janeiro não pode ser julgado pelo que a empresa recebeu em dezembro."""
     con = _banco()
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/12/2024', 'Contabilizado')")
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-01-10', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-01-10', '42498600000171-1-000001/2024', 1000)")
     assert declaracoes_incompativeis(con, estrito=True) == []
     # no corte amplo o mesmo caso aparece — é o teto da medida, e por isso não é o padrão
     assert len(declaracoes_incompativeis(con, estrito=False)) == 1
@@ -40,7 +40,7 @@ def test_estrito_ignora_certame_ANTERIOR_ao_estouro():
 def test_estrito_pega_certame_POSTERIOR_ao_estouro():
     con = _banco()
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/02/2024', 'Contabilizado')")
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', '42498600000171-1-000001/2024', 1000)")
     r = declaracoes_incompativeis(con, estrito=True)
     assert len(r) == 1 and r[0]["cnpj_basico"] == "11111111"
     assert r[0]["certames"][0]["recebido_ate"] == 9e6
@@ -50,7 +50,7 @@ def test_ob_nao_contabilizada_nao_e_pagamento():
     """OB Anulada/Excluída não é dinheiro que saiu — não pode compor o estouro do teto."""
     con = _banco()
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/02/2024', 'Anulado')")
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', '42498600000171-1-000001/2024', 1000)")
     assert declaracoes_incompativeis(con, estrito=True) == []
 
 
@@ -58,7 +58,7 @@ def test_ano_anterior_nao_conta_no_ano_do_certame():
     """O teto da LC 123 é POR ano-calendário: R$ 9 mi em 2023 não estoura o ano de 2024."""
     con = _banco()
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/02/2023', 'Contabilizado')")
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', '42498600000171-1-000001/2024', 1000)")
     assert declaracoes_incompativeis(con, estrito=True) == []
 
 
@@ -66,7 +66,7 @@ def test_porte_grande_declarado_nao_entra():
     """Quem se declara 'Demais' (3) não frui benefício de ME/EPP — não é achado."""
     con = _banco()
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/02/2024', 'Contabilizado')")
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 3, '2024-11-25', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 3, '2024-11-25', '42498600000171-1-000001/2024', 1000)")
     assert declaracoes_incompativeis(con, estrito=True) == []
 
 
@@ -76,7 +76,7 @@ def test_matriz_e_filial_somam():
     for suf in ("000199", "000270"):
         con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?, 3e6, '20/02/2024', 'Contabilizado')",
                     (f"11111111{suf}",))
-    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', 'c1', 1000)")
+    con.execute("INSERT INTO pncp_resultado VALUES ('11111111000199', 'X', 1, '2024-11-25', '42498600000171-1-000001/2024', 1000)")
     r = declaracoes_incompativeis(con, estrito=True)
     assert len(r) == 1 and r[0]["certames"][0]["recebido_ate"] == 6e6, "matriz+filial deviam somar 6 mi"
 
@@ -93,3 +93,23 @@ def test_acumulado_respeita_a_data():
     ev = {"11111111": [("2024-01-10", 1e6), ("2024-06-10", 5e6), ("2025-01-01", 9e6)]}
     assert _acumulado_no_ano(ev, "11111111", "2024-03-01") == 1e6
     assert _acumulado_no_ano(ev, "11111111", "2024-12-31") == 6e6
+
+
+def test_so_certame_da_casa_entra_e_o_de_fora_e_contado():
+    """20/11/2026: a lente da aba estadual listava certame de órgão federal e de outros municípios (29 de 38)."""
+    con = _banco()
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000199', 9e6, '20/02/2024', 'Contabilizado')")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('22222222000199', 9e6, '20/02/2024', 'Contabilizado')")
+    for forn, certame in (("11111111000199", "42498600000171-1-000001/2024"),     # Estado do RJ
+                          ("11111111000199", "42498733000148-1-000002/2024"),     # Prefeitura do Rio
+                          ("11111111000199", "00394452000103-1-000003/2024"),     # Comando do Exército (federal)
+                          ("22222222000199", "00394452000103-1-000004/2024")):    # só federal: fora da lente
+        con.execute("INSERT INTO pncp_resultado VALUES (?, 'X', 1, '2024-11-25', ?, 1000)", (forn, certame))
+    r = declaracoes_incompativeis(con, estrito=True)
+    assert [x["cnpj_basico"] for x in r] == ["11111111"]
+    assert r[0]["por_esfera"] == {"estado": 1, "prefeitura": 1} and r[0]["certames_fora_do_escopo"] == 1
+    assert {c["esfera"] for c in r[0]["certames"]} == {"estado", "prefeitura"}
+    todos = declaracoes_incompativeis(con, estrito=True, esferas=None)          # pesquisa: opt-in explícito
+    assert {x["cnpj_basico"] for x in todos} == {"11111111", "22222222"}
+    f = fora_do_escopo(con, estrito=True)
+    assert f["empresas_so_fora_do_escopo"] == 1 and f["certames_por_esfera"] == {"federal": 2}

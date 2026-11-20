@@ -66,8 +66,15 @@ def _ro(db_path: str | None = None) -> sqlite3.Connection:
 # ── 1. SANCIONADAS CONTRATADAS ───────────────────────────────────────────────
 
 def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) -> dict:
-    """Cruza sanções impeditivas × OB SIAFE (Estado) × vitórias PNCP (todas as esferas).
-    Por empresa: sanções, pagamentos/vitórias TOTAIS e os DURANTE a vigência ("à época").
+    """Cruza sanções impeditivas × OB SIAFE (Estado) × vitórias PNCP do ESCOPO DA CASA (Estado do RJ e
+    Prefeitura do Rio — federal, outros municípios e outros estados ficam fora e são contados em
+    `pncp_fora_do_escopo`). Por empresa: sanções, pagamentos/vitórias TOTAIS e os DURANTE a vigência ("à época").
+
+    20/11/2026: a parte PNCP testava a esfera no vocabulário errado (`classificar_esfera` devolve "estado"/
+    "prefeitura"; o teste aceitava "federal"/"estadual"/"municipal") — só órgão FEDERAL casava. As 5 empresas
+    "à época" só-PNCP da base eram todas da Marinha e afins, e vitória no Estado/Prefeitura sob sanção com
+    alcance nunca era marcada. Agora: Estado → `veda_ente(estadual, RJ)`; Prefeitura → só sanção do próprio
+    Município do Rio (`_alcanca_o_municipio_do_rio`, a de Niterói não vale).
 
     "À época" (revisão cética 13/11/2026) exige as DUAS coisas: a sanção VIGENTE na data do ato
     (`sancao_abrangencia.vigente_em` — "com prazo determinado" sem fim não se afirma) **e** com ALCANCE
@@ -128,23 +135,27 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
             oficial = esferas_por_ente(con)
         except Exception:
             oficial, classificar_esfera = {}, None
+        fora_do_escopo: dict[str, int] = {}
         if sanc:
             q_pncp = ("SELECT certame, orgao_cnpj, orgao_nome, unidade_nome, municipio, uf, "
                       "fornecedor_cnpj, fornecedor_nome, data_pub, SUM(valor_homologado) v "
                       "FROM pncp_resultado WHERE ordem_classificacao=1 AND fornecedor_cnpj IN "
                       f"({','.join('?' * len(sanc))}) GROUP BY certame, fornecedor_cnpj")
             for r in con.execute(q_pncp, list(sanc)):
-                a = _base(r["fornecedor_cnpj"], r["fornecedor_nome"])
                 esf = classificar_esfera(dict(r), oficial) if classificar_esfera else "?"
+                if esf not in ("estado", "prefeitura"):      # escopo da casa: só RJ (federal e demais fora)
+                    fora_do_escopo[esf] = fora_do_escopo.get(esf, 0) + 1
+                    continue
+                a = _base(r["fornecedor_cnpj"], r["fornecedor_nome"])
                 a["pncp"]["vitorias"] += 1
                 a["pncp"]["valor"] += r["v"] or 0.0
                 a["pncp"]["esferas"][esf] = a["pncp"]["esferas"].get(esf, 0) + 1
                 dt = (r["data_pub"] or "")[:10]
                 vigentes = [s for s in a["sancoes"] if vigente_em(s, dt)]
-                esf_alvo = esf if esf in ("federal", "estadual", "municipal") else None
-                uf_alvo = (r["uf"] or "").upper() if "uf" in r.keys() else ""
-                com_alcance = [s for s in vigentes
-                               if esf_alvo and veda_ente(s, esf_alvo, uf_alvo or "RJ")["veda"]]
+                if esf == "estado":
+                    com_alcance = [s for s in vigentes if veda_ente(s, "estadual", "RJ")["veda"]]
+                else:                                        # Prefeitura do Rio: sanção de outro município não alcança
+                    com_alcance = [s for s in vigentes if _alcanca_o_municipio_do_rio(s, veda_ente)]
                 if vigentes and not com_alcance:
                     a["pncp"]["vitorias_vigente_sem_alcance"] += 1
                 if com_alcance:
@@ -166,14 +177,15 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
         n_epoca = sum(1 for a in lista
                       if a["estado"]["obs_durante"] or a["pncp"]["vitorias_durante"])
         return {"ok": True, "empresas": lista, "n": len(lista), "n_a_epoca": n_epoca,
+                "escopo": "Estado do RJ (OB do SIAFE e PNCP) e Prefeitura do Rio (PNCP), contados em separado "
+                          "por empresa; federal, outros municípios e outros estados fora",
+                "pncp_fora_do_escopo": fora_do_escopo,
                 "ressalva": RESSALVA}
     finally:
         con.close()
 
 
-_RX_MUNICIPIO_DO_RIO = re.compile(
-    r"(prefeitura|munic[ií]pio|c[aâ]mara municipal|tribunal de contas do munic[ií]pio|secretaria municipal|"
-    r"controladoria[- ]geral do munic[ií]pio).{0,40}rio de janeiro|\bPCRJ\b|\bCGM[- ]?RIO\b|\bTCM[- ]?RJ\b", re.I)
+from compliance_agent.sancao_abrangencia import RX_MUNICIPIO_DO_RIO as _RX_MUNICIPIO_DO_RIO  # noqa: E402 — régua única
 
 
 def _alcanca_o_municipio_do_rio(sancao: dict, veda_ente) -> bool:
@@ -233,8 +245,8 @@ def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) ->
             # 3304557) e arrasta órgão FEDERAL sediado no Rio (ex.: Fiocruz) e, raramente, estadual —
             # jurisdição de outro tribunal. Descarta e contabiliza (não some com o dado em silêncio).
             esf = _cls(r["orgao_nome"] or "", r["orgao_cnpj"] or "") if _cls else "municipal-rio"
-            if esf in ("federal", "estadual-rj"):
-                descartados[esf] += 1
+            if esf != "municipal-rio":      # lista BRANCA: outro município e "indefinido" também não são a Prefeitura
+                descartados[esf] = descartados.get(esf, 0) + 1
                 continue
             a = achados.setdefault(r["c"], {
                 "cnpj": r["c"], "nome": r["fornecedor_nome"], "sancoes": sanc.get(r["c"], []),
@@ -308,8 +320,8 @@ def concentracao_municipio(db_path: str | None = None, min_contratos_orgao: int 
                 "fornecedor_nome, valor_global, valor_inicial FROM pcrj_contratos "
                 "WHERE fonte='pncp' AND length(fornecedor_documento)=14"):
             esf = _cls(r["orgao_nome"] or "", r["orgao_cnpj"] or "") if _cls else "municipal-rio"
-            if esf in ("federal", "estadual-rj"):
-                descartados[esf] += 1
+            if esf != "municipal-rio":      # lista BRANCA: outro município e "indefinido" também não são a Prefeitura
+                descartados[esf] = descartados.get(esf, 0) + 1
                 continue
             chave = _ramo_objeto(r["objeto"] or "") or "objeto não classificado"
             o = por_orgao.setdefault(chave, {"orgao": chave, "total": 0.0, "n_contratos": 0,
@@ -697,7 +709,11 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
     """Aditivos que estouram o limite legal de acréscimo (Lei 14.133 art. 125; Lei 8.666 art. 65 §1º
     — 25% p/ compras/serviços/obras, 50% p/ reforma). Usa pcrj_contratos (valor_inicial × valor_global)
     e cruza com contrato_aditivo p/ separar ACRÉSCIMO real de reajuste (qualif_acrescimo). Também
-    marca CHANGE ORDERS EM SÉRIE (≥3 aditivos — red-flag OCDE/Banco Mundial), mesmo sem estouro de valor."""
+    marca CHANGE ORDERS EM SÉRIE (≥3 aditivos — red-flag OCDE/Banco Mundial), mesmo sem estouro de valor.
+
+    `esfera`: "estado" | "prefeitura" | … (vocabulário de `pncp_resultados.ESFERAS`); None = ESCOPO DA CASA
+    (Estado do RJ + Prefeitura do Rio, com `por_esfera`); "todas" = opt-in explícito de quem pesquisa fora.
+    Até 20/11/2026 None varria a tabela inteira: 68 dos 120 achados servidos eram de órgão FEDERAL."""
     # PARÂMETRO PRIMEIRO, banco depois. Rótulo fora do vocabulário não pode virar lista vazia:
     # "estadual" (em vez de "estado") devolvia ZERO achados sobre uma base com 260 — o filtro mentia
     # com cara de resposta. E validar antes de abrir conexão faz a recusa valer também sobre base
@@ -749,21 +765,26 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             "AND valor_global<1e9 AND valor_inicial<1e9").fetchall()
         # esfera do CONTRATO = esfera oficial do ENTE dono (CNPJ embutido no nº de controle PNCP);
         # a tabela pcrj_contratos, apesar do nome, guarda contratos de TODOS os entes coletados.
-        filtro_esfera = None
-        if esfera and esfera != "todas":
+        esfera_de = None
+        alvo: set = set()
+        if esfera != "todas":
             from compliance_agent.collectors.pncp_resultados import (
-                classificar_esfera, esferas_por_ente)
+                ESFERAS_RJ, classificar_esfera, esferas_por_ente)
             oficial = esferas_por_ente(con)
+            alvo = {esfera} if esfera else set(ESFERAS_RJ)
 
-            def filtro_esfera(cc, orgao_nome, unidade):  # noqa: E306
+            def esfera_de(cc, orgao_nome, unidade):  # noqa: E306
                 cnpj_ente = re.sub(r"\D", "", str(cc or "").split("-")[0])[:14]
                 reg = {"orgao_cnpj": cnpj_ente, "orgao_nome": orgao_nome,
                        "unidade_nome": unidade, "municipio": ""}
-                return classificar_esfera(reg, oficial) == esfera
+                return classificar_esfera(reg, oficial)
         achados = []
+        fora_do_escopo: dict[str, int] = {}
         n_universo = 0   # o "de quantos?" é o da ESFERA pedida, não a tabela inteira (antes: 90.905
         for r in rows:   # contratos "analisados" na aba da Prefeitura, que tem 2,6 mil)
-            if filtro_esfera and not filtro_esfera(r["cc"], r["orgao_nome"], r["unidade"]):
+            esf_r = esfera_de(r["cc"], r["orgao_nome"], r["unidade"]) if esfera_de else None
+            if esfera_de and esf_r not in alvo:
+                fora_do_escopo[esf_r] = fora_do_escopo.get(esf_r, 0) + 1
                 continue
             n_universo += 1
             vi, vg, nad = r["vi"], r["vg"], r["num_aditivos"] or 0
@@ -780,7 +801,7 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             pct = av["pct"] if av["pct"] is not None else (av["pct_global"] or 0)
             cnpj = re.sub(r"\D", "", r["fornecedor_documento"] or "")
             achados.append({
-                "contrato": r["cc"], "fornecedor": r["fornecedor_nome"],
+                "contrato": r["cc"], "fornecedor": r["fornecedor_nome"], "esfera": esf_r,
                 "cnpj": cnpj, "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
                                            if len(cnpj) == 14 else cnpj),
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
@@ -811,9 +832,16 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
         n_estouro = sum(1 for a in achados if a["estoura_teto"])
         n_pendente = sum(1 for a in achados if a["tipo"] == "pendente")
         n_serie = sum(1 for a in achados if a["tipo"] == "serie")
+        por_esfera: dict[str, int] = {}
+        for a in achados:
+            if a["esfera"]:
+                por_esfera[a["esfera"]] = por_esfera.get(a["esfera"], 0) + 1
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
                 "n_estoura_teto": n_estouro, "n_pendente": n_pendente, "n_serie": n_serie,
                 "contratos_analisados": n_universo,
+                "escopo": ("todas as esferas (pesquisa)" if esfera == "todas" else esfera
+                           or "Estado do RJ + Prefeitura do Rio (ver por_esfera; nunca somar as duas)"),
+                "por_esfera": por_esfera, "fora_do_escopo": fora_do_escopo,
                 "explicacao": ("VERIFICADO = soma dos acréscimos quantitativos NOS TERMOS ADITIVOS "
                                "acima do teto do art. 125 da Lei 14.133 (25%; 50% só para reforma de "
                                "edifício ou equipamento; até o teto é lícito). Reajuste, repactuação, "

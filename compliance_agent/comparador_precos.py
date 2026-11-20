@@ -518,6 +518,11 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
         con.close()
 
 
+def _casa_do_certame(casas: dict[str, set] | None, certame) -> str | None:
+    """'estado' | 'prefeitura' quando o certame é de comprador da casa (mapa de `_esferas_das_linhas`); senão None."""
+    return next((e for e, cs in (casas or {}).items() if certame in cs), None)
+
+
 def _esferas_das_linhas(con, esfera: str | None) -> dict[str, set] | None:
     """Esfera(s) do ACHADO → {rótulo: certames}. 'todas' → None (sem filtro)."""
     if esfera == "todas":
@@ -674,10 +679,12 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
     fica FORA da soma e é contado à parte em `indeterminados_vedados` (não absolvido — sem
     comparação segura). Esfera do comprador vem do pncp_ente (oficial). Separa 'total'
     (inidoneidade, alcance certo) de 'ente' (impedimento)."""
-    from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_ente, vigente_em
+    from compliance_agent.sancao_abrangencia import (
+        classificar_sancao, sql_campos_ceis, veda_comprador_rj, veda_ente, vigente_em)
     con = _ro(db_path)
     try:
         certs_esf = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
+        casas = _esferas_das_linhas(con, None)  # certame → comprador da casa pela régua (estado | prefeitura)
         # sanções que vedam (algum ente) por CNPJ, com vigência
         sanc: dict[str, list] = {}
         for r in con.execute(
@@ -707,13 +714,21 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
         if cnpj not in sanc:
             return None
         data = (r["data_pub"] or "")[:10]
-        esfera_alvo = esfera.get(r["orgao_cnpj"]) or "estadual"
+        # Comprador da casa (Estado do RJ / Prefeitura do Rio) decide pela régua de esfera; o esferaId do PNCP
+        # só vale na pesquisa fora do escopo ("todas"), e sem ele NÃO se presume "estadual" (20/11/2026).
+        casa = _casa_do_certame(casas, r["certame"])
+        esfera_alvo = esfera.get(r["orgao_cnpj"])
         uf_alvo = (r["uf"] or "RJ").upper()
         melhor = None
         for s in sanc[cnpj]:
             if not vigente_em(s, data):
                 continue                       # não vigente à época (sem data não se afirma)
-            v = veda_ente(s, esfera_alvo, uf_alvo)
+            if casa:
+                v = veda_comprador_rj(s, casa)
+            elif esfera_alvo:
+                v = veda_ente(s, esfera_alvo, uf_alvo)
+            else:
+                continue                       # esfera do comprador desconhecida: vedação não afirmada
             if v["veda"] and (melhor is None or rank[v["abrangencia"]] > rank[melhor["abrangencia"]]):
                 melhor = v
         return melhor                          # None: sancionado, mas não vedava ESTE comprador à época
@@ -789,7 +804,7 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
     Sanção posterior aparece como 'sancionada_depois' (peso 1, informativo — não é vedação).
     O preço vem da mesma base homogênea do sobrepreço (unidade comprovada, sem salto, sem
     grupo heterogêneo)."""
-    from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_ente, vigente_em
+    from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_comprador_rj, veda_ente, vigente_em
     con = _ro(db_path)
     try:
         sanc: dict[str, list] = {}
@@ -816,6 +831,7 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
         except Exception:  # noqa: BLE001
             radar = {}
         certs = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
+        casas = _esferas_das_linhas(con, None)
         g = comparacao_homogenea(con, min_amostra=min_amostra, min_certames=min_certames,
                                  min_orgaos=min_orgaos)
     finally:
@@ -833,7 +849,8 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
             sinais = []
             if cnpj in sanc:
                 melhor, depois = None, False
-                esf_alvo = esfera_oficial.get(r.get("orgao_cnpj")) or "estadual"
+                casa = _casa_do_certame(casas, r["certame"])        # régua de esfera; PNCP só fora do escopo
+                esf_alvo = esfera_oficial.get(r.get("orgao_cnpj"))
                 uf_alvo = (r.get("uf") or "RJ").upper()
                 for s in sanc[cnpj]:
                     ini, fim = s.get("data_inicio") or "", s.get("data_fim") or "9999"
@@ -844,7 +861,12 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
                         continue
                     if data > fim or not vigente_em(s, data):
                         continue
-                    v = veda_ente(s, esf_alvo, uf_alvo)
+                    if casa:
+                        v = veda_comprador_rj(s, casa)
+                    elif esf_alvo:
+                        v = veda_ente(s, esf_alvo, uf_alvo)
+                    else:
+                        continue                   # esfera do comprador desconhecida: vedação não afirmada
                     if v["veda"] and (melhor is None or
                                       rank[v["abrangencia"]] > rank[melhor["abrangencia"]]):
                         melhor = v
