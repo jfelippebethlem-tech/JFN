@@ -120,7 +120,8 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
         return dict(base, motivo="medição sem a virada da semana — sem restrição de ritmo")
     final = dia_da_virada(volta, agora)
     teto = (TETO_FIM if volta - agora <= FIM_S else TETO_FINAL) if final else TETO_DURO
-    ln = 100.0 if final else round(linha(volta, agora), 1)
+    vespera = not final and 0 <= volta - agora <= 2 * 86400   # sexta (véspera): motor até o teto (dono 20/11)
+    ln = 100.0 if final else (TETO_DURO if vespera else round(linha(volta, agora), 1))
     out = dict(base, medido=True, semana_pct=pct, linha_pct=ln, semana_volta=m.get("semana_volta"),
                janela_final=final)
     if pct >= teto:

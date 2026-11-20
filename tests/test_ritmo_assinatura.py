@@ -102,3 +102,12 @@ def test_dia_da_virada_libera_o_pesado_ate_100():
     assert R.classificar(m, agora)["nivel"] == "contido"
     m.update(semana_pct=91.0, semana_volta=R._iso(agora + 3 * 86400))  # fora do sábado: teto 90 vale
     assert R.classificar(m, agora)["nivel"] == "contido"
+
+
+def test_vespera_da_virada_motor_vai_ate_90():
+    volta = datetime(2026, 11, 21, 19, 0).timestamp()
+    sexta = datetime(2026, 11, 20, 12, 0).timestamp()
+    m = {"medido_ts": sexta, "semana_pct": 82.0, "semana_volta": R._iso(volta)}
+    assert R.classificar(m, sexta)["nivel"] in ("normal", "economia")
+    m["semana_pct"] = 90.0
+    assert R.classificar(m, sexta)["nivel"] == "contido"
