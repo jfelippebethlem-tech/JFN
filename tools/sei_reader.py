@@ -211,19 +211,51 @@ async def fechar_sei(b, pg, *, fixo: bool) -> None:
 
 
 async def ja_logado(pg) -> bool:
-    """A sessão do SEI ainda vale? Sem sessão o SEI redireciona para o login do SIP."""
+    """A sessão do SEI ainda vale? Sem sessão o SEI redireciona para o login do SIP.
+
+    A URL NÃO BASTA. Medido em 20/11/2026 (it-campo, sessão s1): o navegador fixo parava na PRÓPRIA URL `/sei/` com uma
+    página de rejeição ("Web Page Blocked! … Attack ID") — e o teste só de URL dizia "logado". Nenhum relogin, e ~430
+    processos seguidos saíram "SEM ÁRVORE" com "link 'Pesquisa' NÃO ESTÁ no DOM" (89 s cada). Logado = URL do SEI E o
+    menu do SEI pintado (link 'Pesquisa' ou o campo de protocolo), com espera por condição de até 6 s."""
     try:
         await pg.goto(URL_SEI_INICIO, timeout=45000)
     except PWError:
         return False
     u = pg.url or ""
-    return u.startswith("https://sei.rj.gov.br/sei/") and "login.php" not in u
+    if not (u.startswith("https://sei.rj.gov.br/sei/") and "login.php" not in u):
+        return False
+    return await _ate(pg, lambda: _menu_ou_campo_pronto(pg), 6000, 200)
+
+
+async def _descrever_pagina(pg) -> str:
+    """URL + título + começo do texto da página — o que estava NA TELA quando um passo não achou o que procurava."""
+    try:
+        titulo = (await pg.title()) or ""
+    except PWError:
+        titulo = ""
+    try:
+        corpo = await pg.evaluate("()=>document.body?document.body.innerText:''") or ""
+    except PWError:
+        corpo = ""
+    return f"url={(pg.url or '')[:80]} título={titulo[:60]!r} texto={' '.join(corpo.split())[:120]!r}"
 
 
 async def entrar(pg, *, fixo: bool, tentativas: int = 25) -> bool:
-    """Navegador fixo já logado → não reloga (um login por sessão, não por processo)."""
-    if fixo and await ja_logado(pg):
-        return True
+    """Navegador fixo já logado → não reloga (um login por sessão, não por processo).
+
+    Fixo e NÃO logado → descarta os cookies do contexto ANTES de logar. O navegador fixo guarda o pote de cookies da
+    sessão entre processos; quando esse pote passa a ser recusado (20/11/2026, s1 do it-campo: página de rejeição em
+    `/sei/` por 16 h), relogar em cima dele não muda nada — no mesmo navegador, mesmo IP, um contexto com cookies
+    limpos logou e abriu os mesmos processos no minuto seguinte. Sessão vencida perde só cookies que já não valiam."""
+    if fixo:
+        if await ja_logado(pg):
+            return True
+        print(f"navegador fixo sem sessão válida — limpo os cookies e relogo ({await _descrever_pagina(pg)})",
+              flush=True)
+        try:
+            await pg.context.clear_cookies()
+        except PWError as exc:
+            logger.warning("navegador fixo: não consegui limpar os cookies do contexto: %s", exc)
     return await login(pg, tentativas=tentativas)
 
 
@@ -657,7 +689,8 @@ async def _ler_cracked(pg, proc: str) -> dict:
         return {"documentos": [], "relacionados": [], "via": "cracked",
                 "erro_cracked": ("campo de pesquisa não apareceu"
                                  if achou_link else
-                                 "link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)")}
+                                 "link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)")
+                                + f" — página: {await _descrever_pagina(pg)}"}
     # 2) protocolo SEM prefixo
     try:
         await pg.fill('#txtProtocoloPesquisa', proto)

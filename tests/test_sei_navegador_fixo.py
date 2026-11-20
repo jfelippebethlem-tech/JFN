@@ -19,6 +19,12 @@ class _Pg:
     async def goto(self, url, **kw):
         self.url = self._final
 
+    async def wait_for_timeout(self, ms):
+        pass
+
+    async def evaluate(self, js, *a):
+        return True          # menu do SEI pintado (a página em si é testada em test_sei_sessao_fixa_recusada)
+
     async def close(self):
         self.fechada = True
 
