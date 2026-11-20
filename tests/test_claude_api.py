@@ -165,3 +165,56 @@ def test_conferir_extracao_e_dupla_leitura():
     assert V.conferir_extracao({"valor": None}, "valor de R$ 10.500,00", fonte, ("valor",)) == (True, "")
     assert V.estado_dupla_leitura("a", "a") == "VERIFICADO" and V.estado_dupla_leitura("a", "b") == "PENDENTE"
     assert V.estado_dupla_leitura("a", None) == "PENDENTE" and V.estado_dupla_leitura(None, None) == "INDISPONIVEL"
+
+
+# ── ritmo do crédito do plano (dono, 20/11/2026: 200 USD/mês, reset dia 19, uso proporcional por dia) ────────────
+def _ciclo_env(tmp_path, monkeypatch, dia="19", usd="200"):
+    f = tmp_path / "c.env"
+    f.write_text(f"ANTHROPIC_API_KEY_JFN=x\nJFN_API_TETO_USD=100\nJFN_API_CICLO_DIA={dia}\nJFN_API_CICLO_USD={usd}\n")
+    monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(f))
+
+
+def test_ciclo_libera_proporcional_ao_dia_e_nunca_adiantado(tmp_path, monkeypatch):
+    from datetime import datetime
+    _ciclo_env(tmp_path, monkeypatch)
+    c = A.ciclo(datetime(2026, 11, 20, 12, 0))
+    assert (c["inicio"], c["fim"], c["dias"], c["dia"]) == ("2026-11-19", "2026-12-19", 30, 2)
+    assert c["liberado_usd"] == pytest.approx(200 * 2 / 30, abs=0.01)
+    assert A.ciclo(datetime(2026, 12, 18, 23, 0))["liberado_usd"] == 200.0          # último dia: tudo
+    c2 = A.ciclo(datetime(2026, 12, 19, 0, 1))                                        # virou: novo ciclo, 1/30
+    assert c2["inicio"] == "2026-12-19" and c2["dia"] == 1 and c2["liberado_usd"] == pytest.approx(200 / 31, abs=0.01)
+    assert A.ciclo(datetime(2026, 11, 5))["inicio"] == "2026-10-19"                   # antes do dia 19: ciclo anterior
+
+
+def test_ciclo_recusa_reserva_acima_do_liberado_hoje(tmp_path, monkeypatch):
+    _ciclo_env(tmp_path, monkeypatch)
+    c = A.ciclo()
+    assert A._reservar("extracao_sei", c["liberado_usd"] + 1.0) is not None           # acima do ritmo: recusa
+    assert "ritmo do crédito" in A._reservar("extracao_sei", c["liberado_usd"] + 1.0)
+    assert A._reservar("extracao_sei", 0.01) is None                                   # dentro: reserva
+
+
+def test_ciclo_base_e_o_gasto_acumulado_no_inicio(tmp_path, monkeypatch):
+    _ciclo_env(tmp_path, monkeypatch)
+
+    def ja_gastou(d):
+        d["total_usd"] = 20.0
+    A._mutar(ja_gastou)
+    c = A.ciclo()
+    assert A._reservar("extracao_sei", 0.01) is None
+    d = A.ler_gasto()
+    assert d["ciclos"][c["inicio"]] == pytest.approx(20.0)
+    assert A.limite_efetivo(d) == pytest.approx(20.0 + c["liberado_usd"])
+
+
+def test_baldes_escalam_com_o_credito_do_ciclo(tmp_path, monkeypatch):
+    _ciclo_env(tmp_path, monkeypatch, usd="200")
+    d = A.ler_gasto()
+    assert A._escala_baldes(d) == pytest.approx(2.0)
+
+
+def test_sem_ciclo_vale_o_teto_fixo(tmp_path, monkeypatch):
+    f = tmp_path / "a.env"
+    f.write_text("ANTHROPIC_API_KEY_JFN=x\nJFN_API_TETO_USD=100\n")
+    monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(f))
+    assert A.ciclo() is None and A.limite_efetivo() == 95

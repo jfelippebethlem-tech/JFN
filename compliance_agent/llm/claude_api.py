@@ -38,7 +38,7 @@ import math
 import os
 import sqlite3
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from compliance_agent.llm import arquivo_estado as arq
@@ -141,8 +141,64 @@ def teto_usd() -> float:
         return 100.0
 
 
-def limite_efetivo() -> float:
-    return max(0.0, teto_usd() - MARGEM_USD)
+def _ciclo_cfg() -> tuple[int, float] | None:
+    """Crédito de API do plano do dono (20/11/2026: "os créditos resetam dia 19/12, então faça uso proporcional por
+    dia para que os 200 usd sejam gastos completamente mas nunca tão antes do tempo"). Configurado no .env da chave
+    por `JFN_API_CICLO_DIA` (dia do mês em que o crédito renova) e `JFN_API_CICLO_USD` (crédito do ciclo).
+    Sem os dois ⇒ None e vale só o teto fixo `JFN_API_TETO_USD`."""
+    env = _ler_env()
+    dia = os.environ.get("JFN_API_CICLO_DIA") or env.get("JFN_API_CICLO_DIA")
+    usd = os.environ.get("JFN_API_CICLO_USD") or env.get("JFN_API_CICLO_USD")
+    try:
+        d, u = int(dia), float(usd)
+    except (TypeError, ValueError):
+        return None
+    return (d, u) if 1 <= d <= 28 and u > 0 else None
+
+
+def ciclo(agora: datetime | None = None) -> dict | None:
+    """Ciclo corrente do crédito: início (último dia `CICLO_DIA` passado), fim (próximo) e quanto dele já pode ter
+    sido gasto HOJE — linear por dia, contando o dia corrente inteiro (nunca adiantado: no 1º dia, 1/n do crédito)."""
+    cfg = _ciclo_cfg()
+    if cfg is None:
+        return None
+    dia, usd = cfg
+    agora = agora or datetime.now()
+    ini = agora.replace(day=dia, hour=0, minute=0, second=0, microsecond=0)
+    if agora < ini:
+        ini = (ini.replace(day=1) - timedelta(days=1)).replace(day=dia)
+    fim = (ini.replace(day=1) + timedelta(days=32)).replace(day=dia)
+    n_dias = (fim - ini).days
+    dia_corrente = min(n_dias, (agora - ini).days + 1)
+    return {"inicio": ini.date().isoformat(), "fim": fim.date().isoformat(), "usd": usd, "dias": n_dias,
+            "dia": dia_corrente, "liberado_usd": round(usd * dia_corrente / n_dias, 2)}
+
+
+def _base_ciclo(d: dict, c: dict) -> float:
+    """Gasto acumulado no início do ciclo (gravado na 1ª reserva do ciclo — o livro-caixa é cumulativo)."""
+    bases = d.setdefault("ciclos", {})
+    if c["inicio"] not in bases:
+        bases[c["inicio"]] = round(d["total_usd"] + d["reservado_usd"], 6)
+    return float(bases[c["inicio"]])
+
+
+def limite_efetivo(d: dict | None = None) -> float:
+    """Teto operante em US$ acumulados no livro-caixa. Com ciclo configurado: base do ciclo + o liberado até hoje
+    (ritmo diário); sem ciclo: teto fixo − margem."""
+    c = ciclo()
+    if c is None:
+        return max(0.0, teto_usd() - MARGEM_USD)
+    d = d if d is not None else ler_gasto()
+    base = float((d.get("ciclos") or {}).get(c["inicio"], d["total_usd"] + d["reservado_usd"]))
+    return round(base + c["liberado_usd"], 6)
+
+
+def _escala_baldes(d: dict) -> float:
+    """Baldes foram calibrados para US$ 100 no total; com o crédito do ciclo, escalam na mesma proporção."""
+    c = ciclo()
+    if c is None:
+        return 1.0
+    return max(1.0, (_base_ciclo(d, c) + c["usd"]) / sum(BALDES_USD.values()))
 
 
 def disponivel() -> bool:
@@ -215,13 +271,22 @@ def _reservar(tarefa: str, est: float) -> str | None:
             return f"API: tarefa {nome} PAUSADA ({d['pausadas'][nome].get('motivo', '?')})"
         if nome == "reserva" and os.environ.get("JFN_API_RESERVA_LIBERADA") != "1":
             return f"API: '{tarefa}' cairia na reserva, que só se usa com liberação (JFN_API_RESERVA_LIBERADA=1)"
-        if d["total_usd"] + d["reservado_usd"] + est > limite_efetivo():
+        c = ciclo()
+        if c is not None:
+            _base_ciclo(d, c)
+        lim = limite_efetivo(d)
+        if d["total_usd"] + d["reservado_usd"] + est > lim:
             d["recusadas_teto"] += 1
+            if c is not None:
+                return (f"API: ritmo do crédito — dia {c['dia']}/{c['dias']} do ciclo {c['inicio']}→{c['fim']} libera "
+                        f"US$ {c['liberado_usd']:.2f} de US$ {c['usd']:.2f}; gasto no ciclo "
+                        f"US$ {d['total_usd'] + d['reservado_usd'] - _base_ciclo(d, c):.2f}")
             return (f"API: teto total — US$ {d['total_usd']:.2f} gastos + US$ {d['reservado_usd']:.2f} em curso + "
-                    f"US$ {est:.4f} passam de US$ {limite_efetivo():.2f} (teto {teto_usd():.0f} − margem)")
-        if b["usd"] + b["reservado"] + est > BALDES_USD.get(nome, 0.0):
+                    f"US$ {est:.4f} passam de US$ {lim:.2f} (teto {teto_usd():.0f} − margem)")
+        teto_b = BALDES_USD.get(nome, 0.0) * _escala_baldes(d)
+        if b["usd"] + b["reservado"] + est > teto_b:
             d["recusadas_teto"] += 1
-            return f"API: teto do balde {nome} (US$ {BALDES_USD.get(nome, 0):.2f}) — gasto US$ {b['usd']:.2f}"
+            return f"API: teto do balde {nome} (US$ {teto_b:.2f}) — gasto US$ {b['usd']:.2f}"
         d["reservado_usd"] = round(d["reservado_usd"] + est, 6)
         b["reservado"] = round(b["reservado"] + est, 6)
         return None
@@ -481,9 +546,10 @@ def painel() -> dict:
                         "projecao_cabe": (proj <= teto) if proj is not None else None,
                         "pausada": d["pausadas"].get(nome)}
     cache = {m: {"cache_lido": v.get("cache_lido", 0), "entrada": v.get("entrada", 0)} for m, v in d["por_modelo"].items()}
-    return {"disponivel": disponivel(), "teto_usd": teto_usd(), "limite_efetivo_usd": limite_efetivo(),
+    return {"disponivel": disponivel(), "teto_usd": teto_usd(), "limite_efetivo_usd": limite_efetivo(d),
+            "ciclo": ciclo(),
             "gasto_usd": round(d["total_usd"], 6), "reservado_usd": round(d["reservado_usd"], 6),
-            "resta_usd": round(max(0.0, limite_efetivo() - d["total_usd"] - d["reservado_usd"]), 6),
+            "resta_usd": round(max(0.0, limite_efetivo(d) - d["total_usd"] - d["reservado_usd"]), 6),
             "chamadas": d["chamadas"], "recusadas_teto": d["recusadas_teto"], "baldes": baldes,
             "por_tarefa": d["por_tarefa"], "por_modelo": d["por_modelo"], "cache": cache,
             "lotes_em_curso": len(d["lotes"]), "ultima": d["ultima"], "ultimo_erro": d["ultimo_erro"],
