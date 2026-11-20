@@ -96,12 +96,18 @@ def sensor_slo() -> list[dict]:
 def sensor_ci() -> list[dict]:
     br = subprocess.run(["git", "branch", "--show-current"], cwd=_REPO, capture_output=True, text=True,
                         timeout=20).stdout.strip()
+    # CI DESLIGADO pelo dono em 15/11/2026 (e-mails): a última execução é de antes e ficaria "vermelha" para sempre.
+    # Execução de commit que não é mais o HEAD do remoto não diz nada do código de hoje → só vale a do HEAD.
+    head = subprocess.run(["git", "rev-parse", f"origin/{br}"], cwd=_REPO, capture_output=True, text=True,
+                          timeout=20).stdout.strip()
     r = subprocess.run(["gh", "run", "list", "-b", br, "-L", "8", "--json", "conclusion,status,headSha,name"],
                        cwd=_REPO, capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         raise RuntimeError(f"gh run list: {(r.stderr or r.stdout).strip()[:120]}")
     runs = [x for x in json.loads(r.stdout or "[]") if x.get("status") == "completed"
             and x.get("conclusion") not in ("skipped", "cancelled")]
+    if runs and head and runs[0]["headSha"] != head:
+        return []
     if runs and runs[0]["conclusion"] != "success":
         return [_p("ci", br, f"CI vermelho em {br}", f"commit {runs[0]['headSha'][:8]} · {runs[0]['name'][:60]}",
                    acao_humana="conserto de código: `gh run view <id> --log-failed` diz o teste/lint que quebrou")]
