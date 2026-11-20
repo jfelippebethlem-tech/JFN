@@ -281,7 +281,7 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
             # e com título só do nome eles colapsavam num só (dedup do gravador + poda por título)
             ("Sócio POSTERIOR de credor na folha — " if posterior else "Sócio de credor na folha — ")
             + f"{r['nome_socio']} × {(r['credor_nome'] or r['credor_documento'])[:44]}",
-            (f"NÃO descreve a despesa: o vínculo societário começou em {ent}, depois do último "
+            (f"NÃO é acusação — não descreve a despesa: o vínculo societário começou em {ent}, depois do último "
              f"exercício com pagamento ({ult}). " if posterior else "")
             + f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
             f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), tem "

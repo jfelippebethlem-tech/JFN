@@ -54,7 +54,7 @@ def test_socio_POSTERIOR_e_rebaixado_e_declarado(con):
     assert a["evidencias"]["vinculo_posterior"] is True
     assert a["risco"] == 3
     assert "POSTERIOR" in a["titulo"]
-    assert "NÃO descreve a despesa" in a["descricao"]
+    assert a["descricao"].startswith("NÃO é acusação") and "não descreve a despesa" in a["descricao"]
 
 
 def test_entrada_no_MESMO_ano_conta_como_vigente(con):

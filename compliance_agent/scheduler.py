@@ -35,10 +35,6 @@ from rich.console import Console
 # Carrega credenciais (.env e/ou .env.txt) ANTES de ler qualquer variável
 # ou importar módulos que capturam chaves no import (free_llm, telegram).
 from compliance_agent.envfile import carregar_env as _carregar_env
-from compliance_agent.limites_dispensa import (
-    ato_normativo as _ato_normativo,
-    limite_dispensa as _limite_dispensa,
-)
 _carregar_env()
 
 from compliance_agent.notifications.telegram import (
@@ -96,7 +92,7 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
       7. Fundamentação jurídica automática em todos os alertas
     Retorna lista de alertas (pode estar vazia).
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import Alerta
     import re
 
     alertas = []
@@ -161,37 +157,10 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
         except Exception as exc:
             logger.debug("Consulta de CNPJ %s indisponível para OB %s: %s", cpf_cnpj, ob.numero_ob, exc)
 
-    # 3. Fracionamento — múltiplas OBs para o mesmo favorecido no mesmo dia
-    if ob.favorecido_nome:
-        try:
-            outras = session.query(OrdemBancaria).filter(
-                OrdemBancaria.data_emissao == hoje,
-                OrdemBancaria.favorecido_nome == ob.favorecido_nome,
-                OrdemBancaria.id != ob.id,
-            ).count()
-            total = session.query(
-                __import__("sqlalchemy").func.sum(OrdemBancaria.valor)
-            ).filter(
-                OrdemBancaria.data_emissao == hoje,
-                OrdemBancaria.favorecido_nome == ob.favorecido_nome,
-            ).scalar() or 0
-            # O teto do art. 75 é POR EXERCÍCIO — esta linha carregava o valor de 2023 (57.208)
-            # aplicado a todos os anos, 12% abaixo do teto de 2026. Fonte única obrigatória.
-            teto = _limite_dispensa(hoje.year, "compras")
-            if outras >= 2 and total and total > teto:
-                alertas.append({
-                    "tipo": "fracionamento",
-                    "severidade": "alta",
-                    "titulo": f"Fracionamento — {ob.favorecido_nome} ({outras+1} OBs = R$ {_brl(total)})",
-                    "descricao": (
-                        f"{ob.favorecido_nome} recebeu {outras+1} OBs hoje "
-                        f"somando R$ {_brl(total)}, acima do limite de dispensa de {hoje.year} "
-                        f"(R$ {_brl(teto)} — {_ato_normativo(hoje.year)}). "
-                        f"Lei 14.133/2021 art. 75; TCU Acórdão 1.793/2011-Plenário."
-                    ),
-                })
-        except Exception as exc:
-            logger.warning("Checagem de fracionamento falhou para %s (OB %s): %s", ob.favorecido_nome, ob.numero_ob, exc)
+    # 3. Fracionamento — DESLIGADO em 19/11/2026. Esta regra (várias OB à MESMA empresa no mesmo dia, soma acima do
+    #    teto) mede o conceito errado: fracionamento é o MESMO OBJETO dividido em contratações distintas, com qualquer
+    #    fornecedor (dono, 19/11; Lei 14.133 art. 75 §1º). A triagem julgou 52% dela falso positivo (contrato licitado
+    #    pago em parcelas, concessionária). O detector certo é o derivado `fracionamento_objeto`.
 
     # 4. OB sem processo SEI e valor alto
     if not ob.numero_processo and ob.valor and ob.valor > 50_000:
