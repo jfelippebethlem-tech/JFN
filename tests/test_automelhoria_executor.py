@@ -20,3 +20,14 @@ def test_escolhe_reincidiu_e_area_de_codigo_e_nao_repete():
 def test_nunca_push_e_slug():
     assert "Bash(git push:*)" in _NEGADAS
     assert slug("detector:fp:emendas_d3") == "detector-fp-emendas-d3"
+
+
+def test_executor_roda_o_claude_sem_chave_da_api(monkeypatch, tmp_path):
+    """Opus nunca pela API paga: o CLI do executor recebe o ambiente limpo do motor (sem ANTHROPIC_API_KEY)."""
+    from compliance_agent.llm import claude_motor as M
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-teste")
+    assert "ANTHROPIC_API_KEY" not in M.ambiente_limpo()
+    import inspect
+    import tools.automelhoria_executor as E
+    fonte = inspect.getsource(E.executar)
+    assert "env=M.ambiente_limpo()" in fonte and "M._trava_arq()" in fonte and "motivo_desligado" in fonte

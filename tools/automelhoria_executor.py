@@ -109,14 +109,28 @@ def executar(it: dict) -> dict:
            "--permission-mode", "dontAsk", "--add-dir", str(_REPO),
            "--allowedTools", *_PERMITIDAS, "--disallowedTools", *_NEGADAS]
     t0 = time.time()
-    try:
-        r = subprocess.run(cmd, cwd=wt, capture_output=True, text=True, timeout=PRAZO_S)
-        try:
-            texto = json.loads(r.stdout).get("result") or ""
-        except ValueError:
-            texto = (r.stdout or r.stderr)[-1500:]
-    except subprocess.TimeoutExpired:
-        texto = f"prazo de {PRAZO_S // 60} min estourado"
+    # As travas do motor (revisão do untangle de llm/, 20/11/2026): ambiente SEM a chave da API paga (com ela o CLI
+    # cobra pela API paga — Opus nunca pela API, regra do dono), motor desligado/kill-switch respeitado e UM claude por
+    # vez na VM (a mesma trava de arquivo do claude_motor; espera até 15 min pela vez).
+    from compliance_agent.llm import arquivo_estado as arq
+    from compliance_agent.llm import claude_motor as M
+    m = M.motivo_desligado(tarefa=TAREFA)
+    if m:
+        texto = f"não rodou: {m}"
+    else:
+        with arq.trava(M._trava_arq(), 900) as pegou:
+            if not pegou:
+                texto = "não rodou: outro claude do JFN ocupou o motor por mais de 15 min"
+            else:
+                try:
+                    r = subprocess.run(cmd, cwd=wt, capture_output=True, text=True, timeout=PRAZO_S,
+                                       env=M.ambiente_limpo())
+                    try:
+                        texto = json.loads(r.stdout).get("result") or ""
+                    except ValueError:
+                        texto = (r.stdout or r.stderr)[-1500:]
+                except subprocess.TimeoutExpired:
+                    texto = f"prazo de {PRAZO_S // 60} min estourado"
     resumo = "\n".join(ln for ln in texto.splitlines() if re.match(r"(CAUSA|CONSERTO|TESTES|RISCO):", ln)) or texto[-600:]
     # Conserto deixado na árvore sem commit (permissão negada, prazo): o EXECUTOR commita — nunca apagar trabalho feito.
     if _git("status", "--porcelain", cwd=wt, check=False) and not re.search(r"CONSERTO:\s*NENHUM", resumo, re.I):
