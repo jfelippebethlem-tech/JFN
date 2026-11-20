@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """API do território (só leitura de `data/territorio.db`).
 
-    GET /api/territorio/estado?metrica=&periodo=&graus=      mapa: os 92 municípios + baldes + cobertura por grau
-    GET /api/territorio/estado/{cod_ibge}?periodo=&graus=    ficha do município (contratos, órgãos, fornecedores,
+    GET /api/territorio/estado?metrica=&periodo=&graus=      mapa: os 92 municípios + baldes + cobertura por grau + repasses
+    GET /api/territorio/estado/{cod_ibge}?periodo=&graus=    ficha do município (contratos, repasses, órgãos, fornecedores,
                                                              por ano e mês, indícios)
     GET /api/territorio/pcrj?periodo=                 mapa: as 5 APs + baldes
     GET /api/territorio/pcrj/{ap}?periodo=            ficha da AP
@@ -26,7 +26,7 @@ from compliance_agent.territorio.geo import nome_municipio, norm, ras_por_ap
 
 router = APIRouter()
 _PERIODOS = tuple(agrega.PERIODOS)
-_METRICAS = ("valor_contratado", "valor_em_execucao", "pago", "n_contratos", "n_alertas")
+_METRICAS = ("valor_contratado", "valor_em_execucao", "pago", "repasses", "investido_pago", "n_contratos", "n_alertas")
 _NOTA_ALERTAS = "INDISPONÍVEL — os alertas da casa não têm vínculo territorial (só 275 de 62 mil têm empresa vinculada)"
 _NOTA_ALERTAS_ESTADO = ("indício = contrato cujo PAGO (OB do SIAFE) supera o valor registrado, pela perícia contábil da casa; "
                         "é sinal a conferir nos termos aditivos, não acusação. Os demais alertas da casa não têm vínculo territorial")
@@ -36,9 +36,11 @@ _NOTA_EXECUCAO = ("em execução = fim da vigência (com aditivo de prazo public
                   "rescisão; o SIGA/TCE-RJ não publica aditivos — contrato Ativo lá com vigência registrada vencida conta como executado; "
                   "contrato sem fim de vigência na fonte fica fora de \"vigentes\"")
 _NOTA_GRAU = {"explicito": "município, distrito, bairro ou CEP escrito no objeto/extrato",
-              "unidade": "inferido de unidade de endereço conhecido (compradora de sítio único ou citada no objeto: CNES, ISP-RJ, TSE)",
-              "sede": "objeto da própria organização, atribuído ao município da sede do órgão (cadastro de unidades do PNCP) — o grau mais fraco"}
-_VERSAO = "12"
+              "unidade": "inferido de unidade de endereço conhecido (compradora de sítio único ou citada no objeto: CNES, ISP-RJ, TSE)"}
+_NOTA_ORGAO = ("despesa do próprio órgão (tecnologia corporativa, serviço administrativo, órgão-meio) — não é investimento em "
+               "cidade nenhuma: fica neste total à parte, nunca somado a município. Obra ou reforma de escola, unidade de saúde, "
+               "delegacia ou batalhão nunca entra aqui: vai ao município da unidade (ou a \"sem município identificado\")")
+_VERSAO = atribui_estado.VERSAO
 _TETO_CONTRATOS = 300
 
 
@@ -148,6 +150,36 @@ def _serie(linhas: list[sqlite3.Row]) -> dict:
             "criterio": "contratado pelo mês da assinatura (na falta, início da vigência); pago pelo mês da OB do SIAFE"}
 
 
+def _repasses_municipio(c, cod_ibge: str, periodo: str) -> dict:
+    """Componente "repasses e transferências" da ficha: por credor e por ano, com fonte e período. INDISPONÍVEL ≠ 0."""
+    resumo = agrega.repasses_resumo(c, periodo)
+    out = {k: resumo.get(k) for k in ("disponivel", "status", "fonte", "nota", "apurado_em", "serie_ini", "serie_fim")}
+    if not resumo["disponivel"]:
+        return {**out, "valor": None, "n_obs": None, "credores": [], "por_ano": []}
+    w = agrega.filtro_repasse(periodo)
+    linhas = c.execute(f"SELECT credor_cnpj, credor_nome, natureza_cod, ano_mes, n_obs, valor FROM territorio_repasse "
+                       f"WHERE cod_ibge=? AND {w}", (cod_ibge,)).fetchall()
+    from compliance_agent.territorio.repasses import ROTULO_NATUREZA
+    cred: dict[str, dict] = {}
+    anos: dict[str, dict] = {}
+    for r in linhas:
+        cnpj, doc = _doc(r["credor_cnpj"])
+        o = cred.setdefault(r["credor_cnpj"], {"cnpj": cnpj, "doc": doc, "nome": r["credor_nome"],
+                                               "natureza": ROTULO_NATUREZA.get(r["natureza_cod"], r["natureza_cod"]), "n_obs": 0, "valor": 0.0})
+        o["n_obs"] += r["n_obs"]
+        o["valor"] += r["valor"]
+        ano = (r["ano_mes"] or "")[:4] or "sem data"
+        a = anos.setdefault(ano, {"ano": ano, "n_obs": 0, "valor": 0.0})
+        a["n_obs"] += r["n_obs"]
+        a["valor"] += r["valor"]
+    for x in (*cred.values(), *anos.values()):
+        x["valor"] = round(x["valor"], 2)
+    ams = [r["ano_mes"] for r in linhas if r["ano_mes"]]
+    return {**out, "valor": round(sum(r["valor"] for r in linhas), 2), "n_obs": sum(r["n_obs"] for r in linhas),
+            "periodo_ini": min(ams) if ams else None, "periodo_fim": max(ams) if ams else None,
+            "credores": sorted(cred.values(), key=lambda x: -x["valor"]), "por_ano": sorted(anos.values(), key=lambda x: x["ano"], reverse=True)}
+
+
 def _ficha_estado(c, cod_ibge: str, periodo: str, graus: tuple[str, ...], conf_texto: str) -> dict:
     """Ficha do município: tudo sai da MESMA lista de contratos (uma leitura), para os totais fecharem entre si."""
     w = agrega.PERIODOS[periodo]
@@ -233,6 +265,7 @@ def territorio_estado(request: Request, metrica: str = Query("valor_contratado")
             "metrica": metrica if metrica in _METRICAS else "valor_contratado", "municipios": agrega.por_municipio(c, p, g),
             "baldes": agrega.baldes_estado(c, p), "confianca_texto": _conf_texto(c), "nota_pago": _NOTA_PAGO_ESTADO,
             "pago_apurado_em": base.meta(c, "estado_pago_em"), "nota_execucao": _NOTA_EXECUCAO, "nota_grau": _NOTA_GRAU,
+            "nota_orgao_proprio": _NOTA_ORGAO, "repasses": agrega.repasses_resumo(c, p),
             "nota_alertas": _NOTA_ALERTAS_ESTADO,
             "fora_do_escopo": {"unidade_municipal": num("estado_fora_municipal"), "fora_do_executivo": num("estado_fora_outro"),
                                "siga_cancelado": num("estado_siga_cancelado"), "siga_em_elaboracao": num("estado_siga_rascunho"),
@@ -261,6 +294,7 @@ def territorio_municipio(request: Request, cod_ibge: str, periodo: str = Query("
             "ORDER BY valor DESC LIMIT 50", (f'%"{cod_ibge}"%',))]
         f["kpis"]["n_multi"] = len(multi)
         f["contratos"] += multi
+        f["repasses"] = _repasses_municipio(c, cod_ibge, p)
         f.update(fonte=atribui_estado.FONTE, atualizado_em=base.meta(c, "atualizado_em"), cod_ibge=cod_ibge, nome=nome,
                  periodo=p, graus=list(g), nota_pago=_NOTA_PAGO_ESTADO, nota_execucao=_NOTA_EXECUCAO,
                  pago_apurado_em=base.meta(c, "estado_pago_em"))

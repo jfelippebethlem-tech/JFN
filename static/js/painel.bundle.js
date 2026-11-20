@@ -8671,9 +8671,12 @@
     ["valor_contratado", "Valor contratado", "rs"],
     ["valor_em_execucao", "Em execução", "rs"],
     ["pago", "Pago", "rs"],
+    ["repasses", "Repasses", "rs"],
+    ["investido_pago", "Pago + repasses", "rs"],
     ["n_contratos", "Nº de contratos", "n"],
     ["n_alertas", "Alertas", "n"]
   ];
+  var REPASSE = ["repasses", "investido_pago"];
   var PERIODOS = [["vigentes", "Vigentes hoje"], ["2023", "2023–hoje"], ["tudo", "Tudo"]];
   var METODO = {
     campo: "unidade compradora",
@@ -8681,14 +8684,12 @@
     unidade: "unidade citada",
     endereco: "endereço (CEP)",
     texto: "texto",
-    orgao: "órgão regional",
-    sede: "sede do órgão"
+    orgao: "órgão regional"
   };
   var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido", sem_vigencia: "Sem vigência na fonte" };
   var GRAUS = [
     ["explicito", "Explícito no texto", "explícito no texto", "#1546D8"],
-    ["unidade", "Inferido pela unidade", "inferido pela unidade", "#1E7BF0"],
-    ["sede", "Sede do órgão", "sede do órgão", "#8CBEF8"]
+    ["unidade", "Inferido pela unidade", "inferido pela unidade", "#1E7BF0"]
   ];
   var MESES3 = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   var mesRot = (am) => {
@@ -8741,7 +8742,7 @@
       periodo: "vigentes",
       dados: {},
       sel: null,
-      graus: { explicito: true, unidade: true, sede: false },
+      graus: { explicito: true, unidade: true },
       filtro: ""
     };
     host.classList.add("tm");
@@ -8831,7 +8832,7 @@
     const idDe = (l) => S.escopo === "estado" ? String(l.cod_ibge) : String(l.ap);
     const valorDe = (l) => {
       const v = l[S.metrica];
-      return v == null || !(l.n_contratos > 0) ? null : Number(v);
+      return v == null || !REPASSE.includes(S.metrica) && !(l.n_contratos > 0) ? null : Number(v);
     };
     function pintar(d) {
       const g = S.escopo === "estado" ? gEst : gRio, G = S.escopo === "estado" ? geo.est : geo.rio;
@@ -8860,8 +8861,13 @@
         const de = i ? cortes[i - 1] : vals[0], ate = i < cortes.length ? cortes[i] : vals[vals.length - 1];
         return `<span class="tm-lg"><i style="background:${c}"></i>${i === RAMPA.length - 1 ? "≥ " + curto(de, tipo) : curto(de, tipo) + (ate > de ? " – " + curto(ate, tipo) : "")}</span>`;
       }).join("");
-      q("#tm-leg").innerHTML = faixas + `<span class="tm-lg"><i class="hach"></i>${S.escopo === "estado" ? "nenhum contrato atribuído" : "sem dado"}${semDado ? ` (${fmtN(semDado)})` : ""}</span>`;
+      const vazio = S.escopo !== "estado" ? "sem dado" : S.metrica === "repasses" ? "nenhum repasse pago (ou INDISPONÍVEL)" : S.metrica === "investido_pago" ? "sem pago nem repasse" : "nenhum contrato atribuído";
+      q("#tm-leg").innerHTML = faixas + `<span class="tm-lg"><i class="hach"></i>${vazio}${semDado ? ` (${fmtN(semDado)})` : ""}</span>`;
       q("#tm-graus").hidden = S.escopo !== "estado";
+      REPASSE.forEach((m) => {
+        const c = q(`[data-tm-metrica="${m}"]`);
+        if (c) c.hidden = S.escopo !== "estado";
+      });
       const av = q("#tm-aviso");
       av.hidden = !!d;
       if (!d) av.innerHTML = "<b>dados do território: INDISPONÍVEL</b> — a API <code>/api/territorio</code> não respondeu (a rota entra no próximo reinício do serviço). O mapa mostra só as divisas.";
@@ -8876,15 +8882,19 @@
         ...GRAUS.map(([k, , longo, cor]) => ({ k, rot: "em um município — " + longo, x: b["atribuido_" + k] || z, cor, on: S.graus[k] })),
         { k: "multi", rot: "em vários municípios (valor não repartido)", x: b.multimunicipio || z, cor: "#B9C9DD" },
         { k: "regiao", rot: "só com região", x: b.regiao || z, cor: "#CFD9E6" },
-        { k: "estado", rot: "do Estado inteiro (rede, frota, âmbito estadual) ou de sede não conferida", x: b.estado_inteiro || z, cor: "#DDE5EE" },
+        { k: "estado", rot: "do Estado inteiro (rede, frota, âmbito estadual)", x: b.estado_inteiro || z, cor: "#DDE5EE" },
+        { k: "orgao", rot: "despesa do próprio órgão — sem território (não é investimento em cidade)", x: b.orgao_proprio || z, cor: "#EEF1F5" },
         { k: "sem", rot: "sem município identificado (o objeto não diz onde)", x: b.sem_municipio || z, hach: true }
       ];
       const barra = tt.valor > 0 ? `<div class="tm-cob" role="img" aria-label="Cobertura do valor por grau de certeza">${partes.filter((q2) => q2.x.valor > 0).map((q2) => `<i class="${q2.hach ? "hach" : ""}${q2.on === false ? " off" : ""}" style="flex:${(q2.x.valor / tt.valor).toFixed(5)} 1 0;${q2.hach ? "" : "background:" + q2.cor}" title="${esc(q2.rot)}: ${pc1(q2.x.valor, tt.valor)}"></i>`).join("")}</div>` : "";
       const linhas2 = partes.map((q2) => `<li${q2.on === false ? ' class="off"' : ""}><i class="${q2.hach ? "hach" : ""}" ${q2.hach ? "" : `style="background:${q2.cor}"`}></i>
-        <span>${esc(q2.rot)}${q2.on === false ? " — <em>fora do mapa (ligue em “Certeza”)</em>" : ""}</span>
+        <span>${esc(q2.rot)}${q2.on === false ? " — <em>desligado</em>" : ""}</span>
         <b class="num">${pc1(q2.x.valor, tt.valor)}</b><span class="num">${rs(q2.x.valor)}</span><span class="num tm-n">${fmtN(q2.x.n)} contratos</span></li>`).join("");
       const noMapa = GRAUS.filter((g) => S.graus[g[0]]).reduce((a, g) => a + ((b["atribuido_" + g[0]] || z).valor || 0), 0);
       const cp = b.com_pago, fe = d.fora_do_escopo || {}, dup = d.possivel_duplicidade || {}, falta = [];
+      if (b.orgao_proprio && b.orgao_proprio.n) falta.push(`<b>Despesa do próprio órgão:</b> ${esc(d.nota_orgao_proprio || "")}.`);
+      const rp = d.repasses || {};
+      falta.push(rp.disponivel ? `<b>Repasses e transferências</b> (OB paga a prefeitura, fundo, autarquia ou fundação municipal do RJ): <span class="num">${rs(rp.valor)}</span> em <b class="num">${fmtN(rp.n_obs)}</b> OBs, <b class="num">${fmtN(rp.n_municipios)}</b> municípios${rp.periodo_ini ? `, de <span class="num">${esc(mesRot(rp.periodo_ini))}</span> a <span class="num">${esc(mesRot(rp.periodo_fim))}</span>` : ""} — à parte do valor contratado; somados ao pago em “Pago + repasses”.` : `<b>Repasses e transferências:</b> <b>INDISPONÍVEL</b> (${esc(rp.status || "não apurado")}) — não é zero.`);
       if (cp) falta.push(`<b>Pago:</b> só <b class="num">${fmtN(cp.n)}</b> de <b class="num">${fmtN(tt.n)}</b> contratos têm OB do SIAFE vinculada (<span class="num">${rs(cp.pago)}</span> pagos sobre <span class="num">${rs(cp.valor)}</span> contratados); nos demais o pago é <b>INDISPONÍVEL</b>, não zero.`);
       if (b.sem_vigencia && b.sem_vigencia.n) falta.push(`<b class="num">${fmtN(b.sem_vigencia.n)}</b> contratações sem fim de vigência na fonte (<span class="num">${rs(b.sem_vigencia.valor)}</span>) ${S.periodo === "vigentes" ? "ficam <b>fora</b> de “Vigentes hoje”" : "não entram em “Vigentes hoje”"}.`);
       if (dup.n) falta.push(`<b class="num">${fmtN(dup.n)}</b> contratos (<span class="num">${rs(dup.valor)}</span>) podem estar contados <b>duas vezes</b> (PNCP e SIGA sem chave que feche) — a conferir.`);
@@ -8901,6 +8911,7 @@
       ${falta.length ? `<ul class="tm-falta">${falta.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}
       <details class="tm-crit"><summary>Critérios e fontes</summary>
         <p><b>Certeza.</b> ${GRAUS.map(([k, , longo]) => `<i>${esc(longo)}</i>: ${esc((d.nota_grau || {})[k] || "")}`).join("; ")}.</p>
+        <p><b>Repasses.</b> ${esc((d.repasses || {}).nota || "")}. Fonte: ${esc((d.repasses || {}).fonte || "—")}.</p>
         <p><b>Em execução.</b> ${esc(d.nota_execucao || "")}.</p><p><b>Pago.</b> ${esc(d.nota_pago || "")}.</p><p><b>Alertas.</b> ${esc(d.nota_alertas || "")}.</p></details>
       <div class="tm-pe2">Fonte: ${esc(d.fonte || "—")} · atualizado em <span class="num">${dmhm(d.atualizado_em)}</span>${d.pago_apurado_em ? ` · pago apurado em <span class="num">${dmhm(d.pago_apurado_em)}</span>` : ""}${d.confianca_texto === "baixa" ? " · atribuição por <b>texto</b> com confiança <b>baixa</b> (auditoria &lt; 85%)" : ""}</div>`;
     }
@@ -8912,7 +8923,7 @@
       const um = (x, rot2) => x && x.n ? `<b class="num">${fmtN(x.n)}</b> ${rot2} (<span class="num">${rs(x.valor)}</span>)` : "";
       if (S.escopo === "estado") {
         p.push(um(b.sem_municipio, "contratos sem município identificado") || '<b class="num">0</b> contratos sem município identificado');
-        p.push(um(b.multimunicipio, "em vários municípios"), um(b.estado_inteiro, "do Estado inteiro / sede"), um(b.regiao, "só com região"));
+        p.push(um(b.multimunicipio, "em vários municípios"), um(b.estado_inteiro, "do Estado inteiro"), um(b.orgao_proprio, "despesa do próprio órgão (sem território)"), um(b.regiao, "só com região"));
       } else {
         p.push(um(b.sem_ap, "contratos sem AP identificada") || '<b class="num">0</b> contratos sem AP identificada');
         p.push(um(b.multi_ap, "em várias APs"), um(b.cidade_inteira, "da cidade inteira / sede"));
@@ -8926,7 +8937,7 @@
       const d = S.dados[chave()], G = S.escopo === "estado" ? geo.est : geo.rio;
       const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome = G.nomes.get(p.dataset.k) || "";
       const tem = l && l.n_contratos > 0;
-      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.por_grau ? `<span>${GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b>${S.graus[g[0]] ? "" : " (fora)"}`).join(" · ")}</span>` : "") + (l.n_alertas ? `<span>indícios: <b class="num">${fmtN(l.n_alertas)}</b></span>` : "") + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
+      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.por_grau ? `<span>${GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b>${S.graus[g[0]] ? "" : " (fora)"}`).join(" · ")}</span>` : "") + (l.n_alertas ? `<span>indícios: <b class="num">${fmtN(l.n_alertas)}</b></span>` : "") + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : "")) + (d && S.escopo === "estado" && l ? `<span>repasses (OB paga): ${l.repasses == null ? "<b>INDISPONÍVEL</b>" : `<b class="num">${rs(l.repasses)}</b> · <span class="num">${fmtN(l.n_obs_repasses || 0)}</span> OBs`}</span>` : "");
       if (d && !tem && l && l.por_grau && GRAUS.some((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n))
         dica.innerHTML += `<span>há contratos só por <b>${GRAUS.filter((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n).map((g) => g[2]).join(", ")}</b> (grau desligado)</span>`;
       dica.hidden = false;
@@ -8998,7 +9009,8 @@
       ${k.n_multi ? `<p class="tf-nota">Participa de <b class="num">${fmtN(k.n_multi)}</b> contratos multimunicipais (valor não repartido — fica no balde "vários municípios").</p>` : ""}
       <h4>Certeza da atribuição</h4>
       <ul class="tf-grau">${(f.por_grau || []).map((g) => `<li class="${g.incluido ? "" : "off"}"><span class="tf-selo g-${esc(g.grau)}">${esc((GRAUS.find((x) => x[0] === g.grau) || [])[2] || g.grau)}</span>
-        <span class="num">${fmtN(g.n)}</span><span class="num">${rs(g.valor)}</span><small>${esc(g.nota || "")}${g.incluido ? "" : " — <b>fora desta ficha</b> (ligue em “Certeza”)"}</small></li>`).join("")}</ul>
+        <span class="num">${fmtN(g.n)}</span><span class="num">${rs(g.valor)}</span><small>${esc(g.nota || "")}${g.incluido ? "" : " — <b>desligado</b>"}</small></li>`).join("")}</ul>
+      ${repassesHTML(f.repasses)}
       <h4>Por ano e mês</h4>
       ${sr.anos.length ? sr.anos.map(ano).join("") : '<div class="dim">Sem contrato datado nesta seleção.</div>'}
       <p class="tf-nota">${esc(sr.criterio || "")}. “—” no pago = nenhuma OB <b>vinculada</b> no período (não é zero pago).${sr.sem_data && sr.sem_data.n ? ` <b class="num">${fmtN(sr.sem_data.n)}</b> contratos sem data (<span class="num">${rs(sr.sem_data.valor)}</span>) ficam fora da série.` : ""}${sr.pago_sem_serie_mensal && sr.pago_sem_serie_mensal.n ? ` <span class="num">${rs(sr.pago_sem_serie_mensal.valor)}</span> pagos sem série mensal.` : ""}</p>
@@ -9015,6 +9027,17 @@
       <input type="search" class="tf-filtro" id="tf-filtro" placeholder="Filtrar por objeto, órgão, fornecedor ou processo" aria-label="Filtrar os contratos da ficha">
       <div id="tf-lista">${contratosHTML(f)}</div>
       <p class="tf-fonte">Fonte: ${esc(f.fonte || "—")} · atualizado em <span class="num">${dmhm(f.atualizado_em)}</span>${f.pago_apurado_em ? ` · pago apurado em <span class="num">${dmhm(f.pago_apurado_em)}</span>` : ""}<br>${esc(f.nota_pago || "")}.<br>${esc(f.nota_execucao || "")}.</p>`;
+    }
+    function repassesHTML(r) {
+      if (!r) return "";
+      if (!r.disponivel) return `<h4>Repasses e transferências</h4><div class="tf-indisp"><b>INDISPONÍVEL</b> — ${esc(r.status || "não apurado")} (não é zero).</div>`;
+      const per = r.periodo_ini ? `de <span class="num">${esc(mesRot(r.periodo_ini))}</span> a <span class="num">${esc(mesRot(r.periodo_fim))}</span>` : "nenhuma OB no período";
+      return `<h4>Repasses e transferências <span class="tf-cnt num">${rs(r.valor)}</span></h4>
+      <p class="tf-nota"><b class="num">${fmtN(r.n_obs || 0)}</b> OBs pagas a entes deste município (${per}) — investimento na cidade, à parte do valor contratado.</p>
+      ${(r.credores || []).length ? `<ul class="tf-forn tf-forn2">${r.credores.map((x) => `<li><span class="tf-n">${esc(x.nome || "—")}</span><span class="num">${rs(x.valor)}</span>
+        <small>${x.doc ? `<span class="num">${esc(x.doc)}</span> · ` : ""}${esc(x.natureza || "")} · <span class="num">${fmtN(x.n_obs)}</span> OBs</small></li>`).join("")}</ul>` : ""}
+      ${(r.por_ano || []).length ? `<table class="tf-tab"><thead><tr><th>Ano</th><th>OBs</th><th>Pago</th></tr></thead><tbody>${r.por_ano.map((a) => `<tr><td>${esc(a.ano)}</td><td class="num">${fmtN(a.n_obs)}</td><td class="num">${rs(a.valor)}</td></tr>`).join("")}</tbody></table>` : ""}
+      <p class="tf-nota">Fonte: ${esc(r.fonte || "—")}${r.apurado_em ? ` · apurado em <span class="num">${dmhm(r.apurado_em)}</span>` : ""}.</p>`;
     }
     function fecharFicha() {
       S.sel = null;
@@ -9055,6 +9078,10 @@
       fecharFicha();
       sumirDica();
       S.escopo = e;
+      if (e !== "estado" && REPASSE.includes(S.metrica)) {
+        S.metrica = "valor_contratado";
+        host.querySelectorAll("[data-tm-metrica]").forEach((x) => x.classList.toggle("on", x.dataset.tmMetrica === S.metrica));
+      }
       host.querySelectorAll("[data-tm-escopo]").forEach((b) => b.classList.toggle("on", b.dataset.tmEscopo === e));
       if (e === "pcrj") {
         try {
@@ -9117,6 +9144,7 @@
         return;
       }
       if (b.dataset.tmMetrica) {
+        if (b.hidden) return;
         S.metrica = b.dataset.tmMetrica;
         host.querySelectorAll("[data-tm-metrica]").forEach((x) => x.classList.toggle("on", x === b));
         return pintar(await lerDados());
@@ -9231,7 +9259,7 @@
     const ro = typeof ResizeObserver === "function" ? new ResizeObserver(encaixar) : null;
     if (ro) ro.observe(f);
     const linha = (k) => dVivo && (dVivo.municipios || []).find((x) => String(x.cod_ibge) === k);
-    const grauTxt = (l) => GRAUS.filter((g) => g[0] !== "sede" && (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b> · ${curto(l.por_grau[g[0]].valor)}`).join("<br>");
+    const grauTxt = (l) => GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b> · ${curto(l.por_grau[g[0]].valor)}`).join("<br>");
     function mostrar(p, ev) {
       const k = p.dataset.k, l = linha(k), nome = l && l.nome || p.dataset.nome || k, vr = +p.dataset.v, nr = +p.dataset.n;
       const tem = l && l.n_contratos > 0;

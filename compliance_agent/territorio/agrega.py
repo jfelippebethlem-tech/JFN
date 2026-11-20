@@ -8,9 +8,12 @@ havendo ao menos um, é a soma dos vinculados (e a ficha mostra quantos têm ví
 `n_alertas` (Estado) = contratos do território com INDÍCIO da perícia contábil (pago acima do valor registrado);
 na PCRJ continua NULL (sem vínculo territorial dos alertas).
 
-GRAU DE CERTEZA (Estado): o mapa soma só os graus pedidos (`graus`); por padrão `explicito` + `unidade`. O grau
-`sede` é o mais fraco (objeto da organização atribuído à sede do órgão) e só entra quando a tela pede. Os baldes
-trazem SEMPRE a cobertura separada por grau — é ela que o rodapé mostra.
+GRAU DE CERTEZA (Estado): `explicito` + `unidade`. O antigo grau `sede` saiu do cálculo (dono, 20/11/2026): despesa do
+próprio órgão vai ao balde `orgao_proprio` — nunca somado a município. Os baldes trazem a cobertura separada por grau.
+
+REPASSES (Estado): OB paga a ente municipal do RJ (`repasses.py`, tabela `territorio_repasse`) — componente À PARTE
+(`repasses`), somado ao município só no `investido_pago` (pago dos contratos + repasses: os dois são OB paga).
+Período: "vigentes" = exercício corrente; "2023" = OB de 2023 em diante; "tudo" = toda a série coletada.
 """
 from __future__ import annotations
 
@@ -24,8 +27,8 @@ from compliance_agent.territorio import base
 from compliance_agent.territorio.geo import nome_municipio, ras_por_ap
 
 PERIODOS = {"vigentes": "status='em_execucao'", "2023": "(vig_fim IS NULL OR vig_fim>='2023-01-01')", "tudo": "1=1"}
-GRAUS = ("explicito", "unidade", "sede")
-GRAUS_PADRAO = ("explicito", "unidade")
+GRAUS = ("explicito", "unidade")
+GRAUS_PADRAO = GRAUS
 _COLS_EST = ("SUM(alerta IS NOT NULL) n_alertas, SUM(status='sem_vigencia') n_sem_vigencia, ")
 
 
@@ -43,6 +46,41 @@ _COLS = ("COUNT(*) n_contratos, SUM(status='em_execucao') n_em_execucao, SUM(sta
          "SUM(pago) pago, SUM(CASE WHEN pago IS NOT NULL THEN valor END) valor_com_pago, SUM(pago IS NOT NULL) n_com_pago")
 
 
+def filtro_repasse(periodo: str) -> str:
+    """Recorte das OBs de repasse pelo período da tela (lista fechada, nunca texto do pedido)."""
+    if periodo == "vigentes":
+        return f"ano_mes>='{base.agora()[:4]}-01'"
+    return "ano_mes>='2023-01'" if periodo == "2023" else "1=1"
+
+
+def repasses_por_municipio(c: sqlite3.Connection, periodo: str = "tudo") -> dict[str, dict] | None:
+    """cod_ibge → {valor, n_obs}; None = componente INDISPONÍVEL (motor não apurou ou fonte ausente) — nunca zero."""
+    if base.meta(c, "repasses_status") != "ok":
+        return None
+    try:
+        return {r[0]: {"valor": round(r[1], 2), "n_obs": r[2]} for r in c.execute(
+            f"SELECT cod_ibge, SUM(valor), SUM(n_obs) FROM territorio_repasse WHERE {filtro_repasse(periodo)} GROUP BY cod_ibge")}
+    except sqlite3.OperationalError:
+        return None
+
+
+def repasses_resumo(c: sqlite3.Connection, periodo: str = "tudo") -> dict:
+    """Total do componente para o rodapé/ficha: status, valor, nº de OBs, municípios, período coberto, o que ficou fora."""
+    from compliance_agent.territorio import repasses as R
+    st = base.meta(c, "repasses_status")
+    out = {"disponivel": st == "ok", "status": st or "INDISPONÍVEL — motor de repasses nunca rodou", "fonte": R.FONTE,
+           "nota": R.NOTA, "apurado_em": base.meta(c, "repasses_em")}
+    por = repasses_por_municipio(c, periodo)
+    if por is None:
+        return {**out, "valor": None, "n_obs": None, "n_municipios": None}
+    w = filtro_repasse(periodo)
+    ini, fim = c.execute(f"SELECT MIN(ano_mes), MAX(ano_mes) FROM territorio_repasse WHERE {w}").fetchone()
+    return {**out, "valor": round(sum(v["valor"] for v in por.values()), 2), "n_obs": sum(v["n_obs"] for v in por.values()),
+            "n_municipios": len(por), "periodo_ini": ini, "periodo_fim": fim,
+            "serie_ini": base.meta(c, "repasses_ini"), "serie_fim": base.meta(c, "repasses_fim"),
+            "fora": json.loads(base.meta(c, "repasses_fora_json", "{}") or "{}")}
+
+
 def _linha(r: sqlite3.Row) -> dict:
     d = dict(r)
     vp = d.pop("valor_com_pago", None)
@@ -52,8 +90,8 @@ def _linha(r: sqlite3.Row) -> dict:
 
 
 def por_municipio(c: sqlite3.Connection, periodo: str = "tudo", graus=GRAUS_PADRAO) -> list[dict]:
-    """Os 92 municípios. Os números somam só os `graus` pedidos; `por_grau` traz SEMPRE os três, para a tela dizer
-    quanto de cada município vem de texto explícito, de unidade e de sede."""
+    """Os 92 municípios. Os números somam só os `graus` pedidos; `por_grau` traz SEMPRE os dois. `repasses` = OB paga a
+    ente municipal (None = INDISPONÍVEL); `investido_pago` = pago dos contratos + repasses (None se os dois faltam)."""
     w = PERIODOS.get(periodo, PERIODOS["tudo"])
     nomes = nome_municipio()
     multi: dict[str, int] = {}
@@ -67,6 +105,7 @@ def por_municipio(c: sqlite3.Connection, periodo: str = "tudo", graus=GRAUS_PADR
     for r in c.execute(f"SELECT cod_ibge, grau, COUNT(*) n, COALESCE(SUM(valor),0) valor FROM territorio_contrato_estado "
                        f"WHERE cod_ibge IS NOT NULL AND multi=0 AND {w} GROUP BY cod_ibge, grau"):
         grau.setdefault(r["cod_ibge"], {})[r["grau"] or "explicito"] = {"n": r["n"], "valor": r["valor"]}
+    rep = repasses_por_municipio(c, periodo)
     out = []
     for cod, nome in sorted(nomes.items()):
         d = por.get(cod) or {"cod_ibge": cod, "n_contratos": 0, "n_em_execucao": 0, "n_executados": 0, "n_rescindidos": 0, "valor_contratado": 0.0,
@@ -74,6 +113,10 @@ def por_municipio(c: sqlite3.Connection, periodo: str = "tudo", graus=GRAUS_PADR
                              "n_sem_vigencia": 0}
         d["nome"], d["n_multi"] = nome, multi.get(cod, 0)
         d["por_grau"] = {g: grau.get(cod, {}).get(g, {"n": 0, "valor": 0.0}) for g in GRAUS}
+        r = (rep.get(cod) or {"valor": 0.0, "n_obs": 0}) if rep is not None else None
+        d["repasses"], d["n_obs_repasses"] = (r["valor"], r["n_obs"]) if r else (None, None)
+        d["investido_pago"] = (None if d["pago"] is None and d["repasses"] is None
+                               else round((d["pago"] or 0) + (d["repasses"] or 0), 2))
         out.append(d)
     return out
 
@@ -100,7 +143,9 @@ def baldes_estado(c: sqlite3.Connection, periodo: str = "tudo") -> dict:
     um = lambda cond: dict(c.execute(  # noqa: E731
         f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) valor FROM territorio_contrato_estado WHERE {cond} AND {w}").fetchone())
     b = {"sem_municipio": um("cod_ibge IS NULL AND multi=0 AND regiao IS NULL AND abrangencia IS NULL"),
-         "estado_inteiro": um("cod_ibge IS NULL AND multi=0 AND abrangencia IS NOT NULL"), "multimunicipio": um("multi=1"),
+         "estado_inteiro": um("cod_ibge IS NULL AND multi=0 AND abrangencia='estado_inteiro'"),
+         # despesa do PRÓPRIO órgão (ex-grau `sede`): sem território, não é investimento em cidade — nunca vai ao mapa
+         "orgao_proprio": um("cod_ibge IS NULL AND multi=0 AND abrangencia='orgao_proprio'"), "multimunicipio": um("multi=1"),
          "regiao": um("cod_ibge IS NULL AND multi=0 AND regiao IS NOT NULL"),
          "atribuido": um("cod_ibge IS NOT NULL AND multi=0"), "total": um("1=1")}
     # cobertura por GRAU DE CERTEZA (o banco de antes da fase 12 não tem a coluna: aí só os baldes clássicos)

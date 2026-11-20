@@ -430,8 +430,8 @@ def nota_cge(d: dict, idx: dict) -> tuple[str, str]:
 
 # ───────────────────────────── 4. contratos por município ─────────────────────────────
 _BALDES = (("atribuido", "Atribuídos a um município"), ("atribuido_explicito", "… por menção explícita no objeto"),
-           ("atribuido_unidade", "… por unidade de endereço conhecido"), ("atribuido_sede", "… pela sede do órgão"),
-           ("estado_inteiro", "Estado inteiro"), ("multimunicipio", "Vários municípios"), ("regiao", "Região"),
+           ("atribuido_unidade", "… por unidade de endereço conhecido"),
+           ("estado_inteiro", "Estado inteiro"), ("orgao_proprio", "Despesa do próprio órgão (sem território)"), ("multimunicipio", "Vários municípios"), ("regiao", "Região"),
            ("sem_municipio", "Sem município identificado"), ("total", "Total"))
 
 
@@ -449,6 +449,11 @@ def nota_territorio(est: dict, pcrj: dict, baldes: dict) -> tuple[str, str]:
          f"## 1. Cobertura — contratos {cel(est.get('periodo'))}", "", bloco(bv), "",
          f"- **Com pago apurado:** {num(cp.get('n'))} contratos · contratado {brl(cp.get('valor'))} · pago {brl(cp.get('pago'))}",
          f"- **Como o pago é apurado:** {cel(est.get('nota_pago'))}", f"- **Em execução:** {cel(est.get('nota_execucao'))}", ""]
+    rp = est.get("repasses") or {}
+    if rp:
+        c[-1:] = ["- **Repasses e transferências a entes municipais (OB paga, à parte do contratado):** "
+                  + (f"{brl(rp.get('valor'))} em {num(rp.get('n_obs'))} OBs, {num(rp.get('n_municipios'))} municípios"
+                     if rp.get("disponivel") else f"INDISPONÍVEL — {cel(rp.get('status'))}"), ""]
     if bt:
         c += [f"## 2. Cobertura — toda a base ({cel(baldes.get('periodo'))})", "", bloco(bt), ""]
     fe = est.get("fora_do_escopo") or {}

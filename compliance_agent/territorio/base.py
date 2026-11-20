@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS territorio_ap_agg(
   ap INTEGER PRIMARY KEY, ra_json TEXT, n_em_execucao INTEGER, n_executados INTEGER, valor_contratado REAL,
   valor_em_execucao REAL, pago REAL, n_alertas INTEGER, n_multi INTEGER, atualizado_em TEXT);
 CREATE TABLE IF NOT EXISTS territorio_meta(chave TEXT PRIMARY KEY, valor TEXT);
+CREATE TABLE IF NOT EXISTS territorio_repasse(
+  cod_ibge TEXT, credor_cnpj TEXT, credor_nome TEXT, natureza_cod TEXT, ano_mes TEXT, n_obs INTEGER, valor REAL);
+CREATE INDEX IF NOT EXISTS ix_trep_mun ON territorio_repasse(cod_ibge, ano_mes);
 """
 
 

@@ -14,7 +14,7 @@ import fcntl
 import sys
 import time
 
-from compliance_agent.territorio import agrega, atribui_estado, atribui_pcrj, base
+from compliance_agent.territorio import agrega, atribui_estado, atribui_pcrj, base, repasses
 
 
 def main(argv=None) -> int:
@@ -36,6 +36,7 @@ def main(argv=None) -> int:
     log(f"[territorio] início ({'completo' if a.full else 'incremental'})")
     if a.so != "pcrj":
         atribui_estado.rodar(incremental=a.incremental, log=log)
+        repasses.rodar(log=log)          # OB paga a ente municipal do RJ: uma leitura das OBs (sempre inteira, é barata)
     if a.so != "estado":
         atribui_pcrj.rodar(incremental=a.incremental, log=log)
     agrega.rodar(log=log)

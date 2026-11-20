@@ -14,8 +14,10 @@ do SIGA (R$ 3,43 bi sumiam). O que parece o mesmo contrato e não fecha a chave 
 é DECLARADO (`estado_possivel_duplicidade`).
 
 GRAU DE CERTEZA (coluna `grau`): `explicito` (município, distrito, bairro ou CEP escrito no texto) ·
-`unidade` (inferido de unidade de endereço conhecido: compradora de sítio único ou citada no objeto) ·
-`sede` (objeto da própria organização — atribuído ao município da sede do órgão, o grau mais fraco).
+`unidade` (inferido de unidade de endereço conhecido: compradora de sítio único ou citada no objeto).
+O antigo grau `sede` (objeto da organização jogado no município da sede do órgão — quase sempre a capital) NÃO
+EXISTE MAIS (dono, 20/11/2026: "sede do órgão… teria que tirar do cálculo"): despesa do próprio órgão não é
+investimento em cidade nenhuma — vai ao balde `orgao_proprio`, nunca a um município.
 
 ATRIBUIÇÃO, por ordem de força (guarda TODOS os métodos que acertaram; decide pelo mais forte):
   1. campo     unidade compradora de SÍTIO ÚNICO (`dados/unidades_regionais.csv`). Sede de órgão NÃO
@@ -27,9 +29,11 @@ ATRIBUIÇÃO, por ordem de força (guarda TODOS os métodos que acertaram; decid
   4. endereço  CEP no objeto — só a faixa da capital (20000-000 a 23799-999) é resolvida aqui.
   5. texto     dicionário dos 92 municípios (`dicionario.py`), com as armadilhas tratadas.
 
-  6. sede      só quando nada acima casou E o objeto é da organização (serviço "na sede", tecnologia
-               corporativa, despesa administrativa, órgão-meio): município da sede em `dados/sedes_orgaos.csv`
-               (cadastro de unidades do PNCP). Órgão de sede divergente/não conferida fica SEM município.
+Nada acima casou → ABRANGÊNCIA (`abrangencia`): `estado_inteiro` (rede, frota, âmbito estadual) ou `orgao_proprio`
+(serviço "na sede", tecnologia corporativa, despesa administrativa, órgão-meio). Nenhum dos dois ganha município.
+OBRA/REFORMA EM UNIDADE (escola, CIEP, posto/unidade de saúde, UPA, hospital, delegacia, batalhão…) é investimento
+NA CIDADE da unidade (dono, 20/11/2026): nunca vai a `orgao_proprio`; sem lugar achável fica "sem município"
+(INDISPONÍVEL), nunca na capital por padrão.
 
 Vários municípios → `multi=1`, lista guardada, VALOR NÃO DIVIDIDO. Sem município → fica sem.
 STATUS: `rescindido` (termo de rescisão) · `em_execucao` (vigência final, com aditivos de prazo,
@@ -54,12 +58,12 @@ from compliance_agent.territorio.dicionario import ler_municipios
 from compliance_agent.territorio.geo import RIO, nome_municipio, norm
 
 CNPJ_ESTADO = "42498600000171"
+VERSAO = "13"          # 13 (20/11/2026): sem grau `sede` (balde `orgao_proprio`); obra em unidade nunca é do órgão
 FONTE = "PNCP + TCE-RJ/SIGA + DOERJ — contratos do Estado do RJ (Poder Executivo)"
 _DADOS = Path(__file__).resolve().parent / "dados"
-FORCA = {"campo": 5, "orcamento": 4, "unidade": 3, "endereco": 2, "texto": 1, "sede": 0}
-GRAU = {"campo": "unidade", "orcamento": "unidade", "unidade": "unidade", "endereco": "explicito", "texto": "explicito",
-        "sede": "sede"}
-GRAUS = ("explicito", "unidade", "sede")
+FORCA = {"campo": 5, "orcamento": 4, "unidade": 3, "endereco": 2, "texto": 1}
+GRAU = {"campo": "unidade", "orcamento": "unidade", "unidade": "unidade", "endereco": "explicito", "texto": "explicito"}
+GRAUS = ("explicito", "unidade")
 # SIGA/TCE-RJ: registro que ainda não é contrato (em elaboração) e registro cancelado ficam fora, CONTADOS
 _SIGA_RASCUNHO = ("Em Edição", "Em Aprovação", "Aguard. Liberação")
 _SIGA_FORA = ("Cancelado",) + _SIGA_RASCUNHO
@@ -260,25 +264,44 @@ _ABR_FRASE = [
 _ABR_NATUREZA = [
     (r"SOFTWARE|LICENCAS? (?:DE USO|DE SOFTWARES?|DEFINITIVAS?|PERPETUAS?)|LICENCIAMENTO|SOLUCAO DE (?:TI|TECNOLOGIA)|DATA ?CENTER|COMPUTACAO EM NUVEM|\bNUVEM\b|"
      r"LINK DE DADOS|LINKS DE (?:DADOS|INTERNET)|TELEFONIA|SUPORTE TECNICO|FABRICA DE SOFTWARE|SISTEMA INTEGRADO|PLATAFORMA DIGITAL",
-     "tecnologia corporativa (uso de toda a organização)", "sede"),
+     "tecnologia corporativa (uso de toda a organização)", "orgao"),
     (r"COMBUSTIVE(?:L|IS)|ABASTECIMENTO DA FROTA|GERENCIAMENTO D[EA] FROTA|LOCACAO DE VEICULOS|MANUTENCAO D[EA] FROTA|VIATURAS",
      "frota (circula pelo Estado)", "estado"),
     (r"SEGUROS? (?:D[EAO]S?|PREDIAL|PATRIMONIAL|VEICULAR|TOTAL|OBRIGATORIO|GARANTIA|COLETIVO)|CONTRATACAO DE SEGUROS?|APOLICES?|"
      r"VALE (?:ALIMENTACAO|REFEICAO|TRANSPORTE)|MEIOS DE PAGAMENTO|PASSAGENS AEREAS|AGENCIAMENTO DE VIAGENS|"
      r"FOLHA DE PAGAMENTO|PLANO DE SAUDE|PLANO DE ASSISTENCIA MEDIC[OA]|ASSISTENCIA A SAUDE DO SERVIDOR|ASSISTENCIA MEDICA AOS SERVIDORES|"
      r"BENEFICIO (?:REFEICAO|ALIMENTACAO)|CARTOES ELETRONICOS|SECRETARIADO|ALMOXARIFADO VIRTUAL|NA SEDE D[AO]|EDIFICIO SEDE|PREDIO SEDE",
-     "despesa de pessoal/administrativa da organização", "sede"),
+     "despesa de pessoal/administrativa da organização", "orgao"),
     (r"CONSULTORIA|ASSESSORAMENTO|ASSESSORIA TECNICA|AUDITORIA|ESTUDOS? E PESQUISAS?|PESQUISA DE AVALIACAO|AVALIACAO EDUCACIONAL|CAPACITACAO|"
-     r"TREINAMENTO|FORMACAO CONTINUADA|CONCURSO PUBLICO|PROCESSO SELETIVO", "serviço intelectual prestado ao órgão (sem local de execução)", "sede"),
+     r"TREINAMENTO|FORMACAO CONTINUADA|CONCURSO PUBLICO|PROCESSO SELETIVO", "serviço intelectual prestado ao órgão (sem local de execução)", "orgao"),
     (r"MATERIAL DIDATICO|MATERIAL DE APOIO PEDAGOGICO|LIVROS DIDATICOS|UNIFORMES?|KITS? (?:ESCOLAR|DE UNIFORME|DE MATERIAL ESCOLAR)|MERENDA|MOBILIARIOS? ESCOLAR(?:ES)?|SALAS? DE LEITURA|"
      r"GENEROS(?: PRODUTOS)? ALIMENTICIOS|MEDICAMENTOS|INSUMOS|MATERIAL DE CONSUMO|ARMAMENTO|MUNICAO|COLETES|"
      r"AQUISICAO DE (?:HELICOPTERO|AERONAVES?|CARABINAS|PISTOLAS|FUZIS|VEICULOS|ONIBUS|AMBULANCIAS)", "aquisição distribuída à rede (sem ponto único de entrega no objeto)", "estado"),
     (r"PUBLICIDADE|PROPAGANDA|COMUNICACAO INSTITUCIONAL|SERVICOS POSTAIS|CORREIOS|"
      r"ASSINATURAS? (?:ANUA(?:L|IS)|DIGITA(?:L|IS)|D[EAO]S? (?:PERIODICOS?|JORNA(?:L|IS)|REVISTAS?|BASES?|PLATAFORMAS?|ACESSOS?|FERRAMENTAS?))|"
-     r"PUBLICACAO (?:DE|NO)|OUTSOURCING DE IMPRESSAO|SERVICOS GRAFICOS", "serviço corporativo", "sede"),
+     r"PUBLICACAO (?:DE|NO)|OUTSOURCING DE IMPRESSAO|SERVICOS GRAFICOS", "serviço corporativo", "orgao"),
 ]
 _ORGAO_MEIO = re.compile(r"PROCURADORIA GERAL|FAZENDA|PLANEJAMENTO|CASA CIVIL|CONTROLADORIA|PREVIDENCIA|JUNTA COMERCIAL|LOTERIA|"
                          r"CENTRO DE TECN|TRANSFORMACAO DIGITAL|GABINETE DE SEGURANCA|GOVERNO\b|REPRES DO GOV")
+# OBRA/REFORMA EM UNIDADE PÚBLICA: investimento NA CIDADE da unidade, nunca despesa do órgão (dono, 20/11/2026).
+# "mão de obra" não é obra; "reforma tributária/administrativa/previdenciária" não é reforma de prédio (conferência no dado
+# real, 20/11/2026: limpeza "com mão de obra" nas unidades escolares e curso sobre a reforma tributária casavam);
+# "engenharia clínica" é manutenção de EQUIPAMENTO médico, não obra no prédio
+_RE_OBRA = re.compile(r"\b(?:(?<!MAO DE )OBRAS?|REFORMAS?(?! (?:TRIBUTARIA|ADMINISTRATIVA|PREVIDENCIARIA|POLITICA|FISCAL|DO ENSINO))|CONSTRUCAO|AMPLIACAO|RECUPERACAO|RESTAURACAO|REVITALIZACAO|ADEQUACAO|"
+                      r"MANUTENCAO PREDIAL|MANUTENCAO (?:PREVENTIVA|CORRETIVA)(?: E (?:PREVENTIVA|CORRETIVA))? PREDIAL|"
+                      r"SERVICOS? DE ENGENHARIA(?! CLINICA)|IMPERMEABILIZACAO|RETROFIT)\b")
+_RE_UNID_PUBLICA = re.compile(
+    r"\b(?:ESCOLAS?|COLEGIOS?|CIEPS?|CRECHES?|UNIDADES? ESCOLAR(?:ES)?|ESCOLA TECNICA|FAETEC|CEJA|CAMPUS|CAMPI|"
+    r"POSTOS? DE SAUDE|UNIDADES? (?:BASICAS? )?DE SAUDE|CENTROS? DE SAUDE|UBS|UPAS?|UNIDADES? DE PRONTO ATENDIMENTO|"
+    r"HOSPITA(?:L|IS)|POLICLINICAS?|MATERNIDADES?|PRONTO SOCORRO|DELEGACIAS?|BATALH(?:AO|OES)|BPM|QUARTEL|QUARTEIS|"
+    r"GRUPAMENTOS?|DESTACAMENTOS?|PRESIDIOS?|PENITENCIARIAS?|UNIDADES? PRISION(?:AL|AIS)|CADEIA PUBLICA)\b")
+
+
+def obra_em_unidade(o_norm: str) -> bool:
+    """Objeto de obra/reforma/construção/ampliação/manutenção predial de unidade pública (escola, saúde, segurança)."""
+    return bool(_RE_OBRA.search(o_norm) and _RE_UNID_PUBLICA.search(o_norm))
+
+
 _RE_ABR = [(re.compile(rf"\b(?:{p})\b"), rot) for p, rot in _ABR_FRASE]
 _RE_NAT = [(re.compile(rf"\b(?:{p})\b"), rot, classe) for p, rot, classe in _ABR_NATUREZA]
 
@@ -293,22 +316,25 @@ def natureza_corporativa(o_norm: str) -> str | None:
 
 
 def abrangencia(objeto: str | None, orgao: str | None) -> tuple[str, str] | None:
-    """('estado' | 'sede', motivo) — ou None (aí é "sem município identificado").
+    """('estado' | 'orgao', motivo) — ou None (aí é "sem município identificado").
 
-    'estado' = o objeto é do Estado inteiro (âmbito estadual, rede, frota, aquisição distribuída): NUNCA ganha
-    município. 'sede' = o objeto é da própria organização (serviço na sede, tecnologia corporativa, despesa
-    administrativa, órgão-meio): pode ser atribuído à sede do órgão, no grau mais fraco."""
+    'estado' = o objeto é do Estado inteiro (âmbito estadual, rede, frota, aquisição distribuída). 'orgao' = despesa
+    do próprio órgão (serviço na sede, tecnologia corporativa, despesa administrativa, órgão-meio). NENHUM dos dois
+    ganha município. Obra/reforma em unidade pública (`obra_em_unidade`) nunca é 'orgao': só o âmbito explícito do
+    Estado inteiro a tira de "sem município"."""
     o = norm(objeto)
     for rg, rot in _RE_ABR:
         m = rg.search(o)
         if m:
             return "estado", f"Estado inteiro — {rot}: “{m.group(0).lower()}”"
+    if obra_em_unidade(o):
+        return None
     for rg, rot, classe in _RE_NAT:
         m = rg.search(o)
         if m:
-            return classe, f"{'Estado inteiro' if classe == 'estado' else 'objeto da organização'} — {rot}: “{m.group(0).lower()}”"
+            return classe, f"{'Estado inteiro' if classe == 'estado' else 'despesa do próprio órgão'} — {rot}: “{m.group(0).lower()}”"
     if _ORGAO_MEIO.search(norm(orgao)):
-        return "sede", f"sede — órgão-meio sem atividade territorial ({(orgao or '').strip()})"
+        return "orgao", f"despesa do próprio órgão — órgão-meio sem atividade territorial ({(orgao or '').strip()})"
     return None
 
 
@@ -316,13 +342,6 @@ def abrangencia_estado(objeto: str | None, orgao: str | None) -> str | None:
     """Só o motivo (compatibilidade): ver `abrangencia`."""
     ab = abrangencia(objeto, orgao)
     return ab[1] if ab else None
-
-
-def carregar_sedes() -> dict[str, tuple[str, str]]:
-    """unidade normalizada → (cod_ibge, fonte) de `dados/sedes_orgaos.csv` (cadastro de unidades do PNCP). Linha sem
-    `cod_ibge` = sede DIVERGENTE ou não conferida: não atribui (o contrato fica sem município)."""
-    with open(_DADOS / "sedes_orgaos.csv", encoding="utf-8") as f:
-        return {r["unidade_norm"]: (r["cod_ibge"], r["fonte"]) for r in csv.DictReader(f) if r["cod_ibge"]}
 
 
 def unidade_base(orgao: str | None) -> str:
@@ -341,12 +360,12 @@ def sem_endereco_da_parte(texto: str | None) -> str:
     return _RE_END_PARTE.sub(" ", texto or "")
 
 
-def atribuir(objeto: str | None, unidade: str | None, regionais, unidades, extra: str = "", sedes: dict | None = None) -> dict:
+def atribuir(objeto: str | None, unidade: str | None, regionais, unidades, extra: str = "") -> dict:
     """Aplica os métodos e decide. Função PURA (é a que os testes exercitam).
 
     `extra` = texto de outra fonte sobre o MESMO contrato (objeto do SIGA, extrato do DOERJ): soma chão aos métodos
     de lugar, mas a ABRANGÊNCIA lê só o `objeto` (o extrato fala em "assinatura", "publicação" — não é natureza).
-    `sedes` = cadastro de sedes (`carregar_sedes`); sem ele o grau `sede` não é atribuído."""
+    Sem método de lugar: `abrangencia` = 'estado_inteiro' | 'orgao_proprio' (nenhum ganha município) ou None."""
     nomes = nome_municipio()
     metodos: list[dict] = []
     u = norm(unidade)
@@ -385,14 +404,9 @@ def atribuir(objeto: str | None, unidade: str | None, regionais, unidades, extra
         if lei.regiao:
             return out
         ab = abrangencia(so_objeto, unidade)
-        if not ab:
-            return out
-        sd = (sedes or {}).get(norm(unidade_base(unidade))) if ab[0] == "sede" else None
-        if not sd:
-            out.update(abrangencia="estado_inteiro", evidencia=ab[1] + (" — sede do órgão não conferida: sem município"
-                                                                       if ab[0] == "sede" and sedes is not None else ""))
-            return out
-        metodos.append({"metodo": "sede", "cods": [sd[0]], "confianca": "baixa", "evidencia": f"{ab[1]} — sede do órgão: {sd[1]}"})
+        if ab:
+            out.update(abrangencia="estado_inteiro" if ab[0] == "estado" else "orgao_proprio", evidencia=ab[1])
+        return out
     v = metodos[0]
     out.update(metodo=v["metodo"], confianca=v["confianca"], evidencia=v["evidencia"], grau=GRAU[v["metodo"]],
                municipios=[{"cod_ibge": c, "nome": nomes.get(c, c)} for c in v["cods"]])
@@ -505,7 +519,7 @@ def _pagamentos(db_path, linhas: list[dict], log=print) -> dict[str, dict]:
 def _pagos_guardados(db: sqlite3.Connection, linhas: list[dict], hoje: str, log=print) -> dict[str, dict] | None:
     """No incremental, a perícia (≈5 min de CPU) roda no máximo UMA vez por dia: se o pago já foi apurado hoje, reusa
     o que está gravado. Contrato novo fica sem pago até a próxima apuração — com o motivo, nunca zero."""
-    if (base.meta(db, "estado_pago_em") or "")[:10] != hoje or base.meta(db, "estado_versao") != "12":
+    if (base.meta(db, "estado_pago_em") or "")[:10] != hoje or base.meta(db, "estado_versao") != VERSAO:
         return None
     ja = {r["contrato_id"]: {"pago": r["pago"], "n_obs": r["n_obs"] or 0, "motivo": r["pago_motivo"], "alerta": r["alerta"],
                              "mensal": json.loads(r["pago_mensal_json"]) if r["pago_mensal_json"] else None}
@@ -677,7 +691,7 @@ def _enriquecer_doerj(src: sqlite3.Connection, linhas: list[dict]) -> int:
 def _versao_regras() -> str:
     """Impressão digital das REGRAS (este módulo, o dicionário e os cadastros). Entra na assinatura do contrato: mudou
     regra ou cadastro, o incremental reatribui tudo sozinho — antes, alias novo só valia depois de um `--full` manual."""
-    h = hashlib.sha1(b"12")
+    h = hashlib.sha1(VERSAO.encode())
     arqs = [Path(__file__), Path(__file__).with_name("dicionario.py"), base.DATA / "territorio_unidades.csv", *sorted(_DADOS.glob("*.csv"))]
     for a in arqs:
         if a.exists():
@@ -689,7 +703,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
     hoje = date.today().isoformat()
     src = base.fonte_ro("compliance.db")
     montar_unidades(log)
-    regionais, unidades, sedes = _unidades_regionais(), carregar_unidades(), carregar_sedes()
+    regionais, unidades = _unidades_regionais(), carregar_unidades()
     adit: dict[str, dict] = {}
     for r in src.execute("SELECT numero_controle_pncp, tipo_termo, vigencia_fim, processo FROM contrato_aditivo"):
         a = adit.setdefault(r[0], {"resc": False, "fim": None, "procs": set()})
@@ -748,7 +762,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
                                        k["situacao_fonte"], regras], ensure_ascii=False, default=str, sort_keys=True).encode()).hexdigest()
         if incremental and ja.get(k["contrato_id"]) == ass:
             continue
-        at = atribuir(k["objeto"], k["orgao"], regionais, unidades, extra=k["extra"], sedes=sedes)
+        at = atribuir(k["objeto"], k["orgao"], regionais, unidades, extra=k["extra"])
         db.execute("INSERT OR REPLACE INTO territorio_contrato_estado(contrato_id,fonte,orgao,fornecedor_cnpj,fornecedor_nome,objeto,"
                    "valor,vig_ini,vig_fim,status,pago,cod_ibge,multi,municipios_json,regiao,metodo,confianca,evidencia,metodos_json,"
                    "pago_evidencia,assinatura,atualizado_em,fontes_json,abrangencia,grau,situacao_fonte,data_assinatura,processo,"
@@ -770,7 +784,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
     for chave, v in (("estado_fora_municipal", fora["municipal"]), ("estado_fora_outro", fora["outro"]),
                      ("estado_siga_cancelado", est["cancelado"]), ("estado_siga_rascunho", est["rascunho"]),
                      ("estado_siga_repetidos", est["repetidos"]), ("estado_possivel_duplicidade_n", est["dup_n"]),
-                     ("estado_possivel_duplicidade_valor", f"{est['dup_valor']:.2f}"), ("estado_versao", "12")):
+                     ("estado_possivel_duplicidade_valor", f"{est['dup_valor']:.2f}"), ("estado_versao", VERSAO)):
         base.por_meta(db, chave, str(v))
     base.por_meta(db, "estado_rodado_em", agora)
     db.commit()

@@ -157,16 +157,16 @@ def test_bpm_de_varios_municipios_e_distrito_generico_nao_casam():
     assert ae.atribuir("posse de terreno pela companhia", "CEHAB", REG, UNID)["cod_ibge"] is None
 
 
-@pytest.mark.parametrize("objeto, orgao, trecho", [
-    ("AQUISIÇÃO DE MEDICAMENTOS", "FUNDO ESTADUAL DE SAÚDE", "aquisição distribuída à rede"),
-    ("licença de software para elaboração de orçamento de obras", "Fundo Especial de Adm Fazendária", "tecnologia corporativa"),
-    ("aquisição de Material de Apoio Pedagógico para a Rede Pública Estadual de Ensino", "SECRETARIA DE ESTADO DE EDUCACAO", "rede estadual"),
-    ("CREDENCIAMENTO DE SERVIÇOS DE UNIDADES HOSPITALARES DO SETOR PRIVADO", "FUNDO ESTADUAL DE SAÚDE", "âmbito estadual"),
-    ("Aquisição de deionizador", "Secretaria de Estado da Casa Civil", "órgão-meio"),
+@pytest.mark.parametrize("objeto, orgao, trecho, balde", [
+    ("AQUISIÇÃO DE MEDICAMENTOS", "FUNDO ESTADUAL DE SAÚDE", "aquisição distribuída à rede", "estado_inteiro"),
+    ("licença de software para elaboração de orçamento de obras", "Fundo Especial de Adm Fazendária", "tecnologia corporativa", "orgao_proprio"),
+    ("aquisição de Material de Apoio Pedagógico para a Rede Pública Estadual de Ensino", "SECRETARIA DE ESTADO DE EDUCACAO", "rede estadual", "estado_inteiro"),
+    ("CREDENCIAMENTO DE SERVIÇOS DE UNIDADES HOSPITALARES DO SETOR PRIVADO", "FUNDO ESTADUAL DE SAÚDE", "âmbito estadual", "estado_inteiro"),
+    ("Aquisição de deionizador", "Secretaria de Estado da Casa Civil", "órgão-meio", "orgao_proprio"),
 ])
-def test_balde_estado_inteiro_tem_motivo_gravado(objeto, orgao, trecho):
+def test_balde_estado_inteiro_tem_motivo_gravado(objeto, orgao, trecho, balde):
     at = ae.atribuir(objeto, orgao, REG, UNID)
-    assert at["cod_ibge"] is None and at["abrangencia"] == "estado_inteiro" and trecho in at["evidencia"]
+    assert at["cod_ibge"] is None and at["abrangencia"] == balde and trecho in at["evidencia"]
 
 
 def test_sem_pista_continua_sem_municipio_e_lugar_vence_a_abrangencia():
@@ -253,7 +253,7 @@ def test_api_territorio(tmp_path, monkeypatch):
     agrega.rodar(log=lambda m: None)
     assert cli.get("/api/territorio/estado").status_code == 503          # banco de versão anterior do motor: INDISPONÍVEL
     db = base.abrir(escrita=True)
-    base.por_meta(db, "estado_versao", "12")
+    base.por_meta(db, "estado_versao", ae.VERSAO)
     db.commit()
     db.close()
     r = cli.get("/api/territorio/estado?periodo=tudo")
@@ -274,9 +274,6 @@ def test_api_territorio(tmp_path, monkeypatch):
 
 
 # ── fase 12 (14/11/2026): universo, junção um-para-um, grau de certeza, pago da perícia, ficha por ano e mês ──
-SEDES = ae.carregar_sedes()
-
-
 def test_reparo_do_interrogacao_do_siga():
     # controle positivo: "S?O GONCALO" (ã perdido na fonte) volta a ser São Gonçalo
     at = ae.atribuir("EXECUC?O DE OBRAS DE DRENAGEM NO MUNICIPIO DE S?O GONCALO", "EMOP", REG, UNID)
@@ -305,30 +302,57 @@ def test_unidade_de_sitio_unico_citada_no_objeto_de_outro_comprador():
     assert at["cod_ibge"] == RIO and at["metodo"] == "unidade" and at["grau"] == "unidade"
 
 
-def test_grau_sede_so_para_objeto_da_organizacao_e_sede_conferida():
+def test_despesa_do_proprio_orgao_vai_ao_balde_e_nunca_a_municipio():
+    """Regra do dono (20/11/2026): o antigo grau `sede` sai do cálculo — despesa do próprio órgão é balde à parte."""
     cc = "SECC - SECRETARIA DE ESTADO DA CASA CIVIL"
-    at = ae.atribuir("Aquisição de deionizador", cc, REG, UNID, sedes=SEDES)                 # órgão-meio, sede no cadastro do PNCP
-    assert at["cod_ibge"] == RIO and at["grau"] == "sede" and at["confianca"] == "baixa" and "PNCP" in at["evidencia"]
-    # negativos: (1) aquisição para a REDE e frota são do Estado inteiro, nunca da sede
-    at = ae.atribuir("AQUISIÇÃO DE MEDICAMENTOS", "FES - FUNDO ESTADUAL DE SAÚDE", REG, UNID, sedes=SEDES)
+    # controle positivo: contrato administrativo de órgão-meio → balde `orgao_proprio`, sem município e sem grau
+    at = ae.atribuir("Aquisição de deionizador", cc, REG, UNID)
+    assert at["cod_ibge"] is None and at["abrangencia"] == "orgao_proprio" and at["grau"] is None and at["metodo"] is None
+    assert "despesa do próprio órgão" in at["evidencia"]
+    at = ae.atribuir("licença de software de gestão", "EMATER-RIO - EMPR DE ASSIST TÉCN E EXT RURAL DO EST DO RJ", REG, UNID)
+    assert at["cod_ibge"] is None and at["abrangencia"] == "orgao_proprio"
+    assert "sede" not in ae.GRAU.values() and "sede" not in ae.FORCA and ae.GRAUS == ("explicito", "unidade")
+    # negativos: (1) aquisição para a REDE é do Estado inteiro, não do órgão
+    at = ae.atribuir("AQUISIÇÃO DE MEDICAMENTOS", "FES - FUNDO ESTADUAL DE SAÚDE", REG, UNID)
     assert at["cod_ibge"] is None and at["abrangencia"] == "estado_inteiro"
-    # (2) órgão cuja sede o cadastro do PNCP registra na capital mas fica fora dela: NÃO atribui
-    at = ae.atribuir("licença de software de gestão", "EMATER-RIO - EMPR DE ASSIST TÉCN E EXT RURAL DO EST DO RJ", REG, UNID, sedes=SEDES)
-    assert at["cod_ibge"] is None and at["abrangencia"] == "estado_inteiro" and "não conferida" in at["evidencia"]
-    # (3) órgão territorial sem pista continua SEM município (não é da sede)
-    at = ae.atribuir("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA EM SERVIÇOS DE VIGILÂNCIA", "SEPM - SECRETARIA DE ESTADO DE POLÍCIA MILITAR", REG, UNID, sedes=SEDES)
+    # (2) órgão territorial sem pista continua SEM município (não é do órgão nem da capital)
+    at = ae.atribuir("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA EM SERVIÇOS DE VIGILÂNCIA", "SEPM - SECRETARIA DE ESTADO DE POLÍCIA MILITAR", REG, UNID)
     assert at["cod_ibge"] is None and at["abrangencia"] is None and at["grau"] is None
-    # (4) lugar escrito vence a sede
-    at = ae.atribuir("licença de software para o campus de Resende/RJ", cc, REG, UNID, sedes=SEDES)
-    assert at["cod_ibge"] == "3304201" and at["grau"] == "explicito"
+    # (3) lugar escrito vence o balde do órgão
+    at = ae.atribuir("licença de software para o campus de Resende/RJ", cc, REG, UNID)
+    assert at["cod_ibge"] == "3304201" and at["grau"] == "explicito" and at["abrangencia"] is None
+
+
+def test_obra_em_unidade_e_investimento_na_cidade_nunca_do_orgao():
+    # controle positivo: reforma de colégio estadual em Campos → Campos (lugar escrito), nunca o órgão
+    at = ae.atribuir("REFORMA DO COLÉGIO ESTADUAL JOÃO PESSOA, NO MUNICÍPIO DE CAMPOS DOS GOYTACAZES", "SEEDUC - SECRETARIA DE ESTADO DE EDUCAÇÃO", REG, UNID)
+    assert at["cod_ibge"] == "3301009" and at["abrangencia"] is None
+    # reforma sem lugar achável: "sem município identificado" (INDISPONÍVEL) — nem órgão, nem capital
+    for obj, org in (("Reforma e manutenção predial da unidade escolar com fornecimento de material de consumo", "SEEDUC"),
+                     ("Obras de ampliação do hospital, incluindo sistema integrado de climatização", "FES - FUNDO ESTADUAL DE SAÚDE"),
+                     ("Construção da nova delegacia de polícia", "SEPOL - SECRETARIA DE ESTADO DE POLÍCIA CIVIL"),
+                     ("Reforma do posto de saúde", "SECC - SECRETARIA DE ESTADO DA CASA CIVIL")):      # mesmo órgão-meio
+        at = ae.atribuir(obj, org, REG, UNID)
+        assert at["cod_ibge"] is None and at["abrangencia"] is None and at["grau"] is None, obj
+    assert ae.obra_em_unidade(norm("REFORMA DO BATALHAO")) and ae.obra_em_unidade(norm("construção de UPA"))
+    # controles negativos: obra sem unidade pública, ou unidade sem obra, NÃO são obra em unidade
+    assert not ae.obra_em_unidade(norm("reforma do edifício sede da secretaria"))
+    assert not ae.obra_em_unidade(norm("fornecimento de merenda para escolas"))
+    assert not ae.obra_em_unidade(norm("serviços de limpeza nas unidades escolares com fornecimento de mão de obra"))
+    assert not ae.obra_em_unidade(norm("curso sobre a nova reforma tributária para servidores da escola fazendária"))
+    assert not ae.obra_em_unidade(norm("serviço de engenharia clínica: manutenção de equipamentos nas unidades de saúde"))
+    assert ae.obra_em_unidade(norm("serviços de engenharia para reforma da unidade de saúde"))
+    assert ae.atribuir("reforma do edifício sede da secretaria", "SECC - SECRETARIA DE ESTADO DA CASA CIVIL", REG, UNID)["abrangencia"] == "orgao_proprio"
+    # obra na REDE inteira continua do Estado inteiro (vários lugares), não do órgão
+    assert ae.atribuir("reforma das unidades escolares da rede estadual", "SEEDUC", REG, UNID)["abrangencia"] == "estado_inteiro"
 
 
 def test_extrato_nao_decide_a_natureza_do_objeto():
     # "data da assinatura" do extrato do DOERJ fazia o contrato virar "serviço corporativo"
     at = ae.atribuir("CONTRATAÇÃO DE EMPRESA ESPECIALIZADA EM SERVIÇOS DE VIGILÂNCIA", "SEPM", REG, UNID,
-                     extra="EXTRATO DE CONTRATO. DATA DA ASSINATURA: 01/02/2026. PUBLICACAO NO DOERJ.", sedes=SEDES)
+                     extra="EXTRATO DE CONTRATO. DATA DA ASSINATURA: 01/02/2026. PUBLICACAO NO DOERJ.")
     assert at["abrangencia"] is None and at["cod_ibge"] is None
-    assert ae.abrangencia("assinatura anual de periódicos", "SEPM")[0] == "sede"
+    assert ae.abrangencia("assinatura anual de periódicos", "SEPM")[0] == "orgao"
 
 
 def _fonte_siga(regs):
@@ -429,9 +453,10 @@ def test_api_ficha_do_municipio_por_grau_ano_e_mes(tmp_path, monkeypatch):
         ("b", "TCE-RJ/SIGA", "SES - X", "12345678901", "PESSOA FISICA", "show", 50.0, None, None, "sem_vigencia",
          None, "3303302", "unidade", "alta", "unidade", "2026-01-15", 0, None, None, "Em Aberto"),
         ("c", "PNCP", "SECC - CASA CIVIL", "22222222000122", "EMPRESA C", "software", 700.0, "2026-01-01", "2030-01-01", "em_execucao",
-         900.0, "3303302", "sede", "baixa", "sede", "2026-01-01", 1, None, "Indício (perícia contábil): pago supera o valor", None),
+         900.0, None, None, None, None, "2026-01-01", 1, None, "Indício (perícia contábil): pago supera o valor", None),
     ])
-    base.por_meta(db, "estado_versao", "12")
+    db.execute("UPDATE territorio_contrato_estado SET abrangencia='orgao_proprio' WHERE contrato_id='c'")   # ex-grau `sede`
+    base.por_meta(db, "estado_versao", ae.VERSAO)
     db.commit()
     db.close()
     agrega.rodar(log=lambda m: None)
@@ -440,18 +465,20 @@ def test_api_ficha_do_municipio_por_grau_ano_e_mes(tmp_path, monkeypatch):
     cli = TestClient(app)
     j = cli.get("/api/territorio/estado?periodo=tudo").json()
     nit = next(m for m in j["municipios"] if m["cod_ibge"] == "3303302")
-    assert j["graus"] == ["explicito", "unidade"] and nit["n_contratos"] == 2 and nit["valor_contratado"] == 1050.0    # sede fora por padrão
-    assert nit["por_grau"]["sede"] == {"n": 1, "valor": 700.0} and nit["n_alertas"] == 0
+    assert j["graus"] == ["explicito", "unidade"] and nit["n_contratos"] == 2 and nit["valor_contratado"] == 1050.0
+    assert set(nit["por_grau"]) == {"explicito", "unidade"} and nit["n_alertas"] == 0
     b = j["baldes"]
-    assert b["atribuido_explicito"]["valor"] == 1000.0 and b["atribuido_unidade"]["n"] == 1 and b["atribuido_sede"]["valor"] == 700.0
+    assert b["atribuido_explicito"]["valor"] == 1000.0 and b["atribuido_unidade"]["n"] == 1 and "atribuido_sede" not in b
+    assert b["orgao_proprio"] == {"n": 1, "valor": 700.0} and b["estado_inteiro"] == {"n": 0, "valor": 0}   # balde à parte
+    assert nit["repasses"] is None and nit["investido_pago"] == 300.0 and j["repasses"]["disponivel"] is False  # não apurado ≠ 0
     assert b["sem_vigencia"]["n"] == 1 and b["com_pago"] == {"n": 2, "valor": 1700.0, "pago": 1200.0}
     j = cli.get("/api/territorio/estado?periodo=tudo&graus=explicito,unidade,sede,inventado").json()
     nit = next(m for m in j["municipios"] if m["cod_ibge"] == "3303302")
-    assert j["graus"] == ["explicito", "unidade", "sede"] and nit["n_contratos"] == 3 and nit["n_alertas"] == 1
+    assert j["graus"] == ["explicito", "unidade"] and nit["n_contratos"] == 2 and nit["n_alertas"] == 0     # "sede" não liga nada
     assert cli.get("/api/territorio/estado?periodo=vigentes").json()["baldes"]["total"]["n"] == 2          # sem vigência não é "vigente"
     f = cli.get("/api/territorio/estado/3303302?periodo=tudo").json()
     assert f["kpis"]["n_contratos"] == 2 and f["kpis"]["n_sem_vigencia"] == 1 and f["kpis"]["pago"] == 300.0 and f["alertas"] == []
-    assert [g["n"] for g in f["por_grau"]] == [1, 1, 1] and [g["incluido"] for g in f["por_grau"]] == [True, True, False]
+    assert [g["n"] for g in f["por_grau"]] == [1, 1] and [g["incluido"] for g in f["por_grau"]] == [True, True]
     a25 = next(a for a in f["serie"]["anos"] if a["ano"] == "2025")
     assert a25["valor"] == 1000.0 and a25["pago"] == 300.0
     assert [(m["mes"], m["n"], m["valor"], m["pago"]) for m in a25["meses"]] == [("2025-02", 1, 1000.0, 0.0), ("2025-04", 0, 0.0, 100.0), ("2025-05", 0, 0.0, 200.0)]
@@ -460,7 +487,7 @@ def test_api_ficha_do_municipio_por_grau_ano_e_mes(tmp_path, monkeypatch):
     assert "12345678901" not in cli.get("/api/territorio/estado/3303302?periodo=tudo").text
     assert pf["grau"] == "unidade" and pf["situacao_fonte"] == "Em Aberto" and pf["status"] == "sem_vigencia"
     f = cli.get("/api/territorio/estado/3303302?periodo=tudo&graus=sede").json()
-    assert f["kpis"]["n_contratos"] == 1 and len(f["alertas"]) == 1 and f["serie"]["pago_sem_serie_mensal"] == {"n": 1, "valor": 900.0}
+    assert f["kpis"]["n_contratos"] == 2 and f["alertas"] == [] and f["repasses"]["valor"] is None    # o órgão nunca entra na ficha
 
 
 _DOE = ("Contrato nº 009/2023, que consiste na prestação de serviços de lo- cação de veículos. DATA DA ASSINATURA: 28/08/2026. "
@@ -503,5 +530,103 @@ def test_palavra_solta_nao_vira_natureza_corporativa():
     assert ae.abrangencia("LOCAÇÃO DE TOTENS PARA PESQUISA DE SATISFAÇÃO INCLUINDO ENTREGA GARANTIA MANUTENÇÃO GERENCIAMENTO SEGURO E LOGÍSTICA REVERSA",
                           "FSERJ - FUNDAÇÃO SAÚDE DO EST. DO RIO DE JANEIRO") is None
     assert ae.abrangencia("renovação da licença sanitária de dois técnicos", "SEPM") is None
-    assert ae.abrangencia("contratação de seguro predial", "SEPM")[0] == "sede"
-    assert ae.abrangencia("aquisição de licenças de uso do software X", "SEPM")[0] == "sede"
+    assert ae.abrangencia("contratação de seguro predial", "SEPM")[0] == "orgao"
+    assert ae.abrangencia("aquisição de licenças de uso do software X", "SEPM")[0] == "orgao"
+
+
+# ── 20/11/2026: repasses e transferências a entes municipais = investimento na cidade ──────────────────────────
+def _bases_repasse(tmp_path):
+    """compliance.db (OBs) e receita_estab.db (natureza + município do credor) mínimos, em disco (o motor abre em `ro`)."""
+    import sqlite3
+    from datetime import date
+    ano = date.today().year
+    c = sqlite3.connect(tmp_path / "compliance.db")
+    c.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, exercicio INTEGER, data_emissao TEXT, status TEXT, "
+              "status_envio TEXT, tipo_regularizacao TEXT, credor TEXT, nome_credor TEXT, valor REAL)")
+    obs = [  # (ob, credor, valor, data, status, envio)
+        ("OB1", "11249035000185", 1000.0, f"10/02/{ano}", "Contabilizado", "Processado e Pago"),      # FMS Niterói, paga
+        ("OB2", "11249035000185", 500.0, "15/03/2022", "Contabilizado", "Processado e Pago"),         # FMS Niterói, ano antigo
+        ("OB3", "11249035000185", 7777.0, f"11/02/{ano}", "Contabilizado", "Erro no Pagamento"),     # devolvida pelo banco
+        ("OB4", "11249035000185", 8888.0, f"12/02/{ano}", "Cancelado", ""),                         # não paga
+        ("OB5", "42498733000148", 300.0, f"01/04/{ano}", "Contabilizado", "Enviado Manualmente"),     # Prefeitura do Rio
+        ("OB6", "46392130000180", 400.0, f"01/04/{ano}", "Contabilizado", "Processado e Pago"),      # fundo municipal de SP
+        ("OB7", "28543098000142", 250.0, f"01/04/{ano}", "Contabilizado", "Processado e Pago"),      # NITEROI PREV (RPPS)
+        ("OB8", "39550000000100", 90.0, f"01/04/{ano}", "Contabilizado", "Processado e Pago"),       # câmara municipal
+        ("OB9", "33000167000101", 5000.0, f"01/04/{ano}", "Contabilizado", "Processado e Pago"),     # empresa privada
+        ("OB10", "12345678901", 60.0, f"01/04/{ano}", "Contabilizado", "Processado e Pago"),         # documento de 11 dígitos
+    ]
+    c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES(?,?,?,?,?,?,?,?,?,?)",
+                  [(o, "296100", int(d[-4:]), d, st, en, "", cr, "X", v) for o, cr, v, d, st, en in obs])
+    c.commit()
+    c.close()
+    r = sqlite3.connect(tmp_path / "receita_estab.db")
+    r.execute("CREATE TABLE empresas (cnpj_basico TEXT PRIMARY KEY, razao_social TEXT, natureza_cod TEXT)")
+    r.execute("CREATE TABLE estabelecimentos (cnpj TEXT PRIMARY KEY, cnpj_basico TEXT, uf TEXT, municipio TEXT)")
+    for cnpj, nome, nat, uf, mun in (("11249035000185", "FUNDO MUNICIPAL DE SAUDE DE NITEROI", "1333", "RJ", "5865"),
+                                     ("42498733000148", "MUNICIPIO DE RIO DE JANEIRO", "1244", "RJ", "6001"),
+                                     ("46392130000180", "FUNDO MUNICIPAL DE SAUDE", "1333", "SP", "7107"),
+                                     ("28543098000142", "NITEROI PREV", "1120", "RJ", "5865"),
+                                     ("39550000000100", "CAMARA MUNICIPAL DE NITEROI", "1066", "RJ", "5865"),
+                                     ("33000167000101", "EMPRESA PRIVADA S.A.", "2054", "RJ", "6001")):
+        r.execute("INSERT INTO empresas VALUES(?,?,?)", (cnpj[:8], nome, nat))
+        r.execute("INSERT INTO estabelecimentos VALUES(?,?,?,?)", (cnpj, cnpj[:8], uf, mun))
+    r.commit()
+    r.close()
+
+
+def test_classificar_credor_municipal():
+    from compliance_agent.territorio import repasses as R
+    t = R.municipios_receita()
+    assert len(t) == 92 and t["5865"] == "3303302" and t["6001"] == RIO and t["5819"] == "3301009"
+    # positivos: fundo municipal, prefeitura (inclusive a do Rio), fundação municipal do RJ
+    assert R.classificar_credor("1333", "RJ", "5865", "FUNDO MUNICIPAL DE SAUDE DE NITEROI", t) == ("3303302", None)
+    assert R.classificar_credor("1244", "RJ", "6001", "MUNICIPIO DE RIO DE JANEIRO", t) == (RIO, None)
+    assert R.classificar_credor("1155", "RJ", "5865", "FUNDACAO MUNICIPAL DE SAUDE DE NITEROI", t) == ("3303302", None)
+    # negativos: outra UF, câmara, previdência própria, SAAE, ente estadual, privada
+    assert R.classificar_credor("1333", "SP", "7107", "FUNDO MUNICIPAL DE SAUDE", t) == (None, "ente municipal de outra UF")
+    assert R.classificar_credor("1066", "RJ", "5865", "CAMARA MUNICIPAL", t)[0] is None
+    assert R.classificar_credor("1120", "RJ", "5865", "NITEROI PREV", t)[1].startswith("regime próprio")
+    assert R.classificar_credor("1120", "RJ", "5925", "SERVICO AUTONOMO DE AGUA E ESGOTO SAAE", t)[1].startswith("serviço autônomo")
+    assert R.classificar_credor("1023", "RJ", "6001", "SECRETARIA DE ESTADO", t) == (None, None)
+    assert R.classificar_credor("2062", "RJ", "6001", "EMPRESA LTDA", t) == (None, None)
+
+
+def test_repasses_ob_paga_a_ente_municipal_vai_ao_municipio(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from compliance_agent.territorio import agrega, api, base, repasses
+    monkeypatch.setattr(base, "DATA", tmp_path)
+    monkeypatch.setattr(base, "DB", tmp_path / "territorio.db")
+    db = base.abrir(escrita=True)
+    base.por_meta(db, "estado_versao", ae.VERSAO)
+    db.commit()
+    db.close()
+    app = FastAPI()
+    app.include_router(api.router)
+    cli = TestClient(app)
+    j = cli.get("/api/territorio/estado?periodo=tudo").json()
+    assert j["repasses"]["disponivel"] is False and j["municipios"][0]["repasses"] is None       # nunca apurado: INDISPONÍVEL
+    _bases_repasse(tmp_path)
+    assert repasses.rodar(log=lambda m: None)["status"] == "ok"
+    agrega.rodar(log=lambda m: None)
+    j = cli.get("/api/territorio/estado?periodo=tudo").json()
+    por = {m["cod_ibge"]: m for m in j["municipios"]}
+    # controle positivo: FMS de Niterói → Niterói (só as 2 OBs PAGAS); Prefeitura do Rio → Rio
+    assert por["3303302"]["repasses"] == 1500.0 and por["3303302"]["n_obs_repasses"] == 2
+    assert por[RIO]["repasses"] == 300.0 and por["3303302"]["investido_pago"] == 1500.0
+    # controles negativos: devolvida (7.777) e não paga (8.888) não entram; outra UF, RPPS, câmara e privada não somam
+    assert sum(m["repasses"] for m in j["municipios"]) == 1800.0 and por["3301009"]["repasses"] == 0.0
+    fora = j["repasses"]["fora"]
+    assert fora["ente municipal de outra UF"] == {"n": 1, "valor": 400.0}
+    assert fora["Poder Legislativo municipal (câmara)"]["valor"] == 90.0 and any(k.startswith("regime próprio") for k in fora)
+    assert j["repasses"]["valor"] == 1800.0 and j["repasses"]["n_municipios"] == 2 and j["repasses"]["fonte"]
+    # período: "vigentes" = exercício corrente (a OB de 2022 sai)
+    v = {m["cod_ibge"]: m for m in cli.get("/api/territorio/estado?periodo=vigentes").json()["municipios"]}
+    assert v["3303302"]["repasses"] == 1000.0
+    # ficha: componente rotulado, por credor e por ano, com fonte e período; valor contratado NÃO muda
+    f = cli.get("/api/territorio/estado/3303302?periodo=tudo").json()
+    rp = f["repasses"]
+    assert rp["valor"] == 1500.0 and rp["n_obs"] == 2 and rp["periodo_ini"] == "2022-03" and rp["fonte"]
+    assert rp["credores"][0]["nome"] == "FUNDO MUNICIPAL DE SAUDE DE NITEROI" and rp["credores"][0]["natureza"].startswith("fundo")
+    assert [a["ano"] for a in rp["por_ano"]][-1] == "2022" and f["kpis"]["valor_contratado"] == 0

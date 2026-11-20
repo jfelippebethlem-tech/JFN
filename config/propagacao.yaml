@@ -448,7 +448,7 @@ derivados:
   territorio:
     nome: Mapa por município / AP (territorio.db)
     onde: Estado › Mapa por município · Prefeitura › Mapa por AP
-    depende: [contratos_tcerj, regra_territorio]
+    depende: [contratos_tcerj, siafe_ob, regra_territorio]   # siafe_ob: repasses a entes municipais (20/11/2026)
     comando: ["{py}", "-m", "compliance_agent.territorio.cli", "--incremental"]
     trava_externa: data/territorio.lock   # a CLI segura esta trava por dentro (timer jfn-territorio também)
     peso: pesado
