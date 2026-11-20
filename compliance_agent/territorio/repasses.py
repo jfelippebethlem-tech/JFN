@@ -30,6 +30,7 @@ import sqlite3
 from pathlib import Path
 
 from compliance_agent.esfera_orgao import NATUREZA_PUBLICA
+from compliance_agent.reporting.intel_base import reais as _reais
 from compliance_agent.territorio import base
 from compliance_agent.territorio.geo import norm
 
@@ -163,6 +164,6 @@ def rodar(log=print) -> dict:
     db.commit()
     db.close()
     tot = sum(x[6] for x in r["linhas"])
-    log(f"[repasses] {sum(x[5] for x in r['linhas'])} OBs pagas a entes municipais do RJ, R$ {tot:,.2f} em "
+    log(f"[repasses] {sum(x[5] for x in r['linhas'])} OBs pagas a entes municipais do RJ, {_reais(tot)} em "
         f"{len({x[0] for x in r['linhas']})} municípios ({r['ini']}…{r['fim']}); fora: {r['fora']}")
     return {"status": "ok", "valor": tot, "fora": r["fora"]}
