@@ -2,18 +2,17 @@
 """Índice de Direcionamento de Certame — score contextual agregado 0-100 (Task 4.3 da F4).
 
 Método (docs/BENCHMARKS-EXTERNOS.md §3.2 — CRI/Fazekas + OCP/Cardinal + ARACHNE):
-  1. Flags agrupados em 6 FAMÍLIAS (transparencia, competicao, conluio, fraude_cadastral,
-     preco, execucao); **MÁXIMO por família** antes de ponderar — nunca soma: evita dupla
+  1. Flags agrupados em 7 FAMÍLIAS (`FAMILIAS`: transparencia, competicao, conluio,
+     fraude_cadastral, preco, execucao, certame_ata); **MÁXIMO por família** antes de ponderar — nunca soma: evita dupla
      contagem de flags correlacionados (single-bidding + poucos licitantes + cláusula
      restritiva são o MESMO fenômeno visto por 3 janelas).
   2. Score 0-100 = média ponderada (`_PESOS_FAMILIA`) das famílias APURÁVEIS, renormalizada
      pelos pesos apuráveis — família INDISPONÍVEL não zera nem pontua (INDISPONÍVEL ≠ 0);
-     ela só reduz `confianca` = famílias apuráveis / 6.
+     ela só reduz `confianca` = famílias apuráveis / 7.
   3. **Materialidade NUNCA entra no risco** (padrão TCU): `prioridade = score ×
      log1p(valor_total_certame)` — certame caro sobe na fila, não no risco.
-  4. Matriz S×V no contrato de `reporting/relatorio_direcionamento._matriz_risco`
-     (severidade × verossimilhança 1-5, régua 1-4/5-9/10-15/16-25) — reimplementada mínima
-     aqui em dict (o original devolve HTML acoplado à ficha).
+  4. Matriz S×V (severidade × verossimilhança 1-5) com nível e ação da régua única
+     `escalada.nivel_sv` — a mesma da ficha de cláusula (`relatorio_direcionamento._matriz_risco`).
 
 DECISÕES DE JOIN (verificadas contra data/compliance.db em 2026-07-19):
   • `clausula_veredito.numero_controle_pncp` CASA com `pncp_resultado.certame` (mesma chave
@@ -47,23 +46,14 @@ import json
 import math
 import re
 import sqlite3
-
-from pathlib import Path
+from collections import defaultdict
 
 from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
-from compliance_agent.collectors.pncp import MODALIDADE_NOME   # tabela de dominio do PNCP (existia, nao era usada)
+from compliance_agent.collectors.pncp import MODALIDADE_NOME
 from compliance_agent.cruzamentos_intel import _mediana, _norm_item, comparabilidade_item
-from compliance_agent.editais.db import DDL_CERTAME_INDICE, conectar
+from compliance_agent.editais.db import DDL_CERTAME_INDICE, SCORE_DIRECIONAMENTO, conectar, conectar_ro, consultar
+from compliance_agent.editais.escalada import REGUA_SV, nivel_sv
 from compliance_agent.editais.screens_conluio import screens
-from compliance_agent.emendas.db import _DB_PADRAO
-
-
-def _conectar_ro(db_path=None) -> sqlite3.Connection:
-    """Leitura sempre em mode=ro (regra da casa): o cálculo nunca escreve nem segura lock."""
-    p = Path(db_path) if db_path else _DB_PADRAO
-    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
-    return con
 
 FAMILIAS = ("transparencia", "competicao", "conluio", "fraude_cadastral", "preco", "execucao",
             "certame_ata")
@@ -132,14 +122,6 @@ VALOR_ADITIVO_METADE_LIMITE = 0.5
 FAIXAS_ROTULO = ("BAIXO", "MEDIO", "ALTO", "EXTREMO")
 
 
-def _q(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> list:
-    """Query tolerante a tabela ausente: fonte não coletada = INDISPONÍVEL, não crash."""
-    try:
-        return conn.execute(sql, params).fetchall()
-    except sqlite3.OperationalError:
-        return []
-
-
 def _so_digitos(s) -> str:
     return re.sub(r"\D", "", str(s or ""))
 
@@ -160,9 +142,9 @@ def _familia(flags: list[dict], fonte: str, nota: str | None = None) -> dict:
 
 # ───────────────────────────── contexto do certame (pncp_resultado) ─────────────────────────────
 def _contexto_pncp(conn: sqlite3.Connection, certame: str) -> dict:
-    rows = _q(conn, "SELECT modalidade, data_pub, fornecedor_cnpj, ordem_classificacao, "
-                    "valor_homologado, valor_unitario, item_descricao FROM pncp_resultado "
-                    "WHERE certame=?", (certame,))
+    rows = consultar(conn, "SELECT modalidade, data_pub, fornecedor_cnpj, ordem_classificacao, "
+                           "valor_homologado, valor_unitario, item_descricao FROM pncp_resultado "
+                           "WHERE certame=?", (certame,))
     vencedores = sorted({_so_digitos(r[2]) for r in rows
                          if r[2] and (r[3] == 1 or r[3] is None)})
     itens_vencedor = [(r[6], r[5]) for r in rows
@@ -213,17 +195,13 @@ def _f_transparencia(ctx: dict) -> dict:
 
 def _f_competicao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
     flags = []
-    forn_propostas = {r[0] for r in _q(conn, "SELECT DISTINCT fornecedor_cnpj FROM proposta_item "
-                                             "WHERE certame=?", (certame,))}
+    forn_propostas = {r[0] for r in consultar(conn, "SELECT DISTINCT fornecedor_cnpj FROM proposta_item "
+                                                    "WHERE certame=?", (certame,))}
     # 3ª fonte: a ATA julgada nomeia quem participou (certame_julgamento.licitantes — ponte
     # ata_para_julgamento). Fonte real de contagem; registro PNCP só do vencedor continua
     # NÃO provando licitante único (ver docstring).
-    n_ata = 0
-    try:
-        row = _q(conn, "SELECT licitantes FROM certame_julgamento WHERE certame=?", (certame,))
-        n_ata = int(row[0][0] or 0) if row else 0
-    except sqlite3.OperationalError:
-        pass  # tabela ainda não existe nesta base
+    row = consultar(conn, "SELECT licitantes FROM certame_julgamento WHERE certame=?", (certame,))
+    n_ata = int(row[0][0] or 0) if row else 0
     if forn_propostas or ctx["tem_ordem_alem_do_1o"] or n_ata:
         n = max(len(forn_propostas), ctx["n_forn_ordem"], n_ata)
         valor = (VALOR_LICITANTE_UNICO if n <= 1 else
@@ -234,8 +212,8 @@ def _f_competicao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
                            f"(proposta_item={len(forn_propostas)}, pncp ordem={ctx['n_forn_ordem']}, "
                            f"ata={n_ata})"))
     # restritividade de cláusulas (clausula_veredito casa por numero_controle_pncp — 226 na base)
-    ver = _q(conn, "SELECT score_final, veredito, forca_e7, sumula FROM clausula_veredito "
-                   "WHERE numero_controle_pncp=? AND score_final IS NOT NULL", (certame,))
+    ver = consultar(conn, "SELECT score_final, veredito, forca_e7, sumula FROM clausula_veredito "
+                          "WHERE numero_controle_pncp=? AND score_final IS NOT NULL", (certame,))
     if ver:
         top = max(ver, key=lambda r: r[0])
         flags.append(_flag("clausula_restritiva", top[0] / 10.0,
@@ -243,11 +221,11 @@ def _f_competicao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
                            + (f"; {top[3]}" if top[3] else "") + ")"))
         # efeito COMBINADO (doutrina E7/direcionamento_conjunto): várias cláusulas restritivas
         # fecham o certame mesmo quando cada uma isolada seria defensável
-        n_restritivas = sum(1 for r in ver if r[0] >= 7)
+        n_restritivas = sum(1 for r in ver if r[0] >= SCORE_DIRECIONAMENTO)
         if n_restritivas >= 2:
             flags.append(_flag("efeito_combinado",
                                0.85 if n_restritivas >= 3 else 0.6,
-                               f"{n_restritivas} cláusulas com escore ≥7/10 no mesmo edital — "
+                               f"{n_restritivas} cláusulas com escore ≥{SCORE_DIRECIONAMENTO}/10 no mesmo edital — "
                                "efeito combinado (Súmula TCU 272; Lei 14.133 art. 9º I)"))
     return _familia(flags, "proposta_item + pncp_resultado + clausula_veredito")
 
@@ -256,11 +234,8 @@ def _f_certame_ata(conn: sqlite3.Connection, certame: str) -> dict:
     """O que de fato OCORREU na sessão (certame_julgamento, persistido por editais/db.salvar_julgamento):
     inabilitação em massa, inabilitação por motivo TRIVIAL sem saneamento (art. 64 §1º c/c art. 12 III)
     e licitante único efetivo. Tabela ausente/vazia → INDISPONÍVEL (nunca 0)."""
-    try:
-        rows = _q(conn, "SELECT licitantes, inabilitados, trivialidade_json, houve_diligencia "
-                        "FROM certame_julgamento WHERE certame=?", (certame,))
-    except sqlite3.OperationalError:
-        return _familia([], "certame_julgamento (tabela ainda não criada nesta base)")
+    rows = consultar(conn, "SELECT licitantes, inabilitados, trivialidade_json, houve_diligencia "
+                           "FROM certame_julgamento WHERE certame=?", (certame,))
     if not rows:
         return _familia([], "certame_julgamento")
     lic, inab, triv_json, _dil = rows[0]
@@ -304,19 +279,19 @@ def _f_fraude_cadastral(conn: sqlite3.Connection, ctx: dict) -> dict:
                         "vencedor não identificado no certame")
     flags = []
     for cnpj in ctx["vencedores"]:
-        fs = _q(conn, "SELECT score, classificacao FROM fantasma_score WHERE cnpj=?", (cnpj,))
+        fs = consultar(conn, "SELECT score, classificacao FROM fantasma_score WHERE cnpj=?", (cnpj,))
         if fs:
             sc, cla = fs[0]
             flags.append(_flag("vencedor_fantasma", (sc or 0) / ESCALA_FANTASMA,
                                f"vencedor {cnpj}: fantasma_score {sc}/100 ({cla})"))
     # sanção VIGENTE À ÉPOCA da publicação (data_inicio ≤ data_pub ≤ data_fim; fim aberto conta)
-    if ctx["data_pub"] and _q(conn, "SELECT 1 FROM sancoes_federais LIMIT 1"):
+    if ctx["data_pub"] and consultar(conn, "SELECT 1 FROM sancoes_federais LIMIT 1"):
         sancionados = []
         for cnpj in ctx["vencedores"]:
-            hit = _q(conn, "SELECT cadastro, data_inicio, data_fim FROM sancoes_federais "
-                           "WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=? "
-                           "AND data_inicio<=? AND (data_fim IS NULL OR data_fim>=?)",
-                     (cnpj, ctx["data_pub"], ctx["data_pub"]))
+            hit = consultar(conn, "SELECT cadastro, data_inicio, data_fim FROM sancoes_federais "
+                                  "WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=? "
+                                  "AND data_inicio<=? AND (data_fim IS NULL OR data_fim>=?)",
+                            (cnpj, ctx["data_pub"], ctx["data_pub"]))
             if hit:
                 sancionados.append((cnpj, hit[0]))
         if sancionados:
@@ -334,17 +309,21 @@ def _f_preco(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
     """Sobrepreço do VENCEDOR vs mediana do item normalizado em OUTROS certames (outlier local,
     não threshold universal — Cardinal). preco_referencia_cache (CATMAT) não é joinável (ver
     docstring do módulo)."""
-    melhor: tuple[float, str] | None = None
+    melhor: tuple[float, str, str] | None = None
     apuravel = False
+    precos_por_item: dict[str, list[float]] | None = None
     for desc, vu in ctx["itens_vencedor"]:
         base = _norm_item(desc)
         if not base:
             continue
-        # filtra pelo item normalizado (feito em Python: _norm_item não existe em SQL)
-        precos = [r[1] for r in _q(conn, "SELECT item_descricao, valor_unitario FROM pncp_resultado "
-                                         "WHERE certame != ? AND valor_unitario > 0", (certame,))
-                  if _norm_item(r[0] or "") == base]
-        precos = sorted(precos)
+        if precos_por_item is None:
+            # agrupa pelo item normalizado em Python (_norm_item não existe em SQL) — uma leitura
+            # para todos os itens do vencedor
+            precos_por_item = defaultdict(list)
+            for d, v in consultar(conn, "SELECT item_descricao, valor_unitario FROM pncp_resultado "
+                                        "WHERE certame != ? AND valor_unitario > 0", (certame,)):
+                precos_por_item[_norm_item(d or "")].append(v)
+        precos = sorted(precos_por_item.get(base, ()))
         if len(precos) < MIN_AMOSTRA_PRECO:
             continue
         med = _mediana(precos)
@@ -357,7 +336,7 @@ def _f_preco(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
         ev = (f"item '{desc[:60]}': unitário do vencedor {vu:,.2f} = {razao:.2f}× a mediana "
               f"{med:,.2f} de {len(precos)} preços em outros certames")
         if comp == "FRACA":
-            ev += f" — COMPARAÇÃO FRÁCA: {motivo}"
+            ev += f" — COMPARAÇÃO FRACA: {motivo}"
         if melhor is None or valor > melhor[0]:
             melhor = (valor, ev, comp)
     if not apuravel:
@@ -376,16 +355,13 @@ def _f_execucao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
     O coletor de contratos sempre gravou `numeroControlePncpCompra`; o join é que não a usava.
     Denominador preferencial = valor_inicial do CONTRATO (base correta do art. 125); fallback
     honesto = valor homologado do certame."""
-    try:
-        contratos = _q(conn, "SELECT numero_controle_pncp, valor_inicial FROM pcrj_contratos "
-                             "WHERE numero_compra=?", (certame,))
-    except sqlite3.OperationalError:
-        contratos = []
+    contratos = consultar(conn, "SELECT numero_controle_pncp, valor_inicial FROM pcrj_contratos "
+                                "WHERE numero_compra=?", (certame,))
     # fallback legado: alguma base pode ter aditivos gravados direto na chave da compra
     chaves = [r[0] for r in contratos] or [certame]
     marks = ",".join("?" for _ in chaves)
-    rows = _q(conn, f"SELECT numero_controle_pncp, valor_acrescido FROM contrato_aditivo "
-                    f"WHERE numero_controle_pncp IN ({marks})", tuple(chaves))
+    rows = consultar(conn, f"SELECT numero_controle_pncp, valor_acrescido FROM contrato_aditivo "
+                           f"WHERE numero_controle_pncp IN ({marks})", tuple(chaves))
     base = sum(r[1] for r in contratos if r[1]) or ctx["valor_total"]
     if not rows or not base:
         nota = ("compra sem contrato vinculado (numero_compra) nem aditivo na base — "
@@ -398,7 +374,7 @@ def _f_execucao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
              VALOR_ADITIVO_METADE_LIMITE if pct > LIMITE_ADITIVO_LEGAL / 2 else 0.0)
     flags.append(_flag("aditivo_relevante", valor,
                        f"acréscimos somam {pct:.1%} do valor-base ({'contrato' if contratos else 'homologado'}) "
-                       f"em {len(rows)} termo(s) — limite legal 25%, art. 125 Lei 14.133"))
+                       f"em {len(rows)} termo(s) — limite legal {LIMITE_ADITIVO_LEGAL:.0%}, art. 125 Lei 14.133"))
     if len(rows) >= 3:
         flags.append(_flag("aditivos_em_serie", 0.6,
                            f"{len(rows)} termos aditivos no(s) contrato(s) da compra — change orders em "
@@ -412,33 +388,26 @@ def _faixa(score: float) -> str:
             else "ALTO" if score < FAIXA_ALTO_MAX else "EXTREMO")
 
 
-def _matriz_sv(faixa: str, confianca: float, n_drivers: int) -> dict:
-    """Matriz Severidade × Verossimilhança — mesmo contrato de relatorio_direcionamento.
-    _matriz_risco (escala 1-5 cada; régua do produto 1-4 baixo · 5-9 médio · 10-15 alto ·
-    16-25 crítico), reimplementada mínima em dict (o original devolve HTML da ficha).
-    Severidade = dano potencial (faixa do score); Verossimilhança = robustez do indício
-    (nº de famílias concordantes; teto 3 com confianca <0.5 — sem dado, não passa de 'possível')."""
+def matriz_sv(faixa: str, confianca: float, n_drivers: int) -> dict:
+    """Matriz Severidade × Verossimilhança (escala 1-5 cada; nível e ação pela régua única
+    `escalada.nivel_sv`). Severidade = dano potencial (faixa do score); Verossimilhança = robustez
+    do indício (nº de famílias concordantes; teto 3 com confianca <0.5 — sem dado, não passa de
+    'possível')."""
     sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}[faixa]
     ver = 5 if n_drivers >= 3 else 4 if n_drivers == 2 else 3 if n_drivers == 1 else 2
     if confianca < 0.5:
         ver = min(ver, 3)
     prod = sev * ver
-    nivel, acao = (("CRÍTICO", "representação com pedido de suspensão cautelar do certame")
-                   if prod >= 16 else
-                   ("ALTO", "diligência prioritária ao órgão; minuta de representação preparada")
-                   if prod >= 10 else
-                   ("MÉDIO", "diligência ordinária; reavaliar com a resposta do órgão")
-                   if prod >= 5 else
-                   ("BAIXO", "monitoramento; sem medida imediata"))
+    nivel, acao = nivel_sv(prod)
     return {"severidade": sev, "verossimilhanca": ver, "produto": prod, "nivel": nivel,
-            "acao": acao, "regua": "1-4 baixo · 5-9 médio · 10-15 alto · 16-25 crítico"}
+            "acao": acao, "regua": REGUA_SV}
 
 
 def calcular(certame: str, db_path=None) -> dict:
     """Calcula o Índice de Direcionamento do certame (leitura; não persiste).
     Devolve {certame, score 0-100, prioridade, faixa, confianca, familias, drivers, matriz_sv,
     valor_total, _nota}."""
-    conn = _conectar_ro(db_path)
+    conn = conectar_ro(db_path)
     try:
         ctx = _contexto_pncp(conn, certame)
         familias = {
@@ -478,7 +447,7 @@ def calcular(certame: str, db_path=None) -> dict:
         "valor_total": round(ctx["valor_total"], 2),
         "familias": familias,
         "drivers": drivers,
-        "matriz_sv": _matriz_sv(faixa, confianca, len(drivers)),
+        "matriz_sv": matriz_sv(faixa, confianca, len(drivers)),
         "_nota": ("Índice contextual de PRIORIZAÇÃO interna (§3.2 BENCHMARKS-EXTERNOS): indício "
                   "≠ acusação; presume-se a legitimidade do certame. Família INDISPONÍVEL não "
                   "pontua nem zera — reduz a confiança. Pesos iniciais dos benchmarks; "
@@ -574,14 +543,14 @@ def calcular_e_persistir(certame: str, db_path=None, gravar_caso: bool = True) -
 def _certames_com_contexto(db_path=None) -> list[str]:
     """Certames com algum sinal contextual coletado (edital, propostas ou vereditos) — o
     universo útil do índice; rodar sobre os 40k+ certames crus do PNCP seria só transparencia."""
-    conn = _conectar_ro(db_path)
+    conn = conectar_ro(db_path)
     try:
         out: set[str] = set()
         for sql in ("SELECT DISTINCT numero_controle_pncp FROM edital_documento",
                     "SELECT DISTINCT certame FROM proposta_item",
                     "SELECT DISTINCT numero_controle_pncp FROM clausula_veredito "
                     "WHERE numero_controle_pncp IS NOT NULL"):
-            out.update(r[0] for r in _q(conn, sql) if r[0])
+            out.update(r[0] for r in consultar(conn, sql) if r[0])
         return sorted(out)
     finally:
         conn.close()

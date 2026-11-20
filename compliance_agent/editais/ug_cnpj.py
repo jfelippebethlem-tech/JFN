@@ -17,9 +17,8 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
-from pathlib import Path
 
-from compliance_agent.emendas.db import _DB_PADRAO
+from compliance_agent.editais.db import conectar_ro
 
 _CONECTIVOS = {"DE", "DO", "DA", "DOS", "DAS", "E", "EM", "NO", "NA", "PARA", "A", "O"}
 _cache_candidatos: list[tuple[str, str]] | None = None
@@ -43,8 +42,7 @@ def _candidatos(db_path=None) -> list[tuple[str, str]]:
     global _cache_candidatos
     if _cache_candidatos is not None and db_path is None:
         return _cache_candidatos
-    p = Path(db_path) if db_path else _DB_PADRAO
-    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    con = conectar_ro(db_path)
     try:
         vistos: dict[str, str] = {}
         for sql in ("SELECT DISTINCT orgao_cnpj, orgao_nome FROM pncp_resultado "

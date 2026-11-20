@@ -15,6 +15,7 @@ from compliance_agent.detectores.coletor_edital import (
     _extrair_exigencias,
     _linhas_com_contexto,
 )
+from compliance_agent.limites_habilitacao import ATESTADO_QUANTITATIVO_MAX_PCT
 
 # tipo (exigências) → (eixo, subtipo)
 _EIXO_POR_TIPO = {
@@ -46,8 +47,10 @@ def _faixa(clau: dict) -> str:
     """Bucketiza o parâmetro numérico p/ a assinatura ser estável a pequenas variações."""
     pct = clau.get("quantitativo_exigido_pct")
     if pct is not None:
-        # _pct do coletor devolve FRAÇÃO (50% → 0.50); tolera fonte legada em pontos percentuais
-        return "alto" if (pct > 0.50 if pct <= 1 else pct > 50) else "baixo"
+        # _pct do coletor devolve FRAÇÃO (50% → 0.50); tolera fonte legada em pontos percentuais.
+        # A fronteira alto/baixo é o teto legal do atestado.
+        teto = ATESTADO_QUANTITATIVO_MAX_PCT
+        return "alto" if (pct > teto / 100 if pct <= 1 else pct > teto) else "baixo"
     if clau.get("valor") is not None:
         return "com_valor"
     return "na"

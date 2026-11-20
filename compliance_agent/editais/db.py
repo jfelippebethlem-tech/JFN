@@ -3,11 +3,32 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
+from compliance_agent.emendas.db import _DB_PADRAO as DB_PADRAO
 from compliance_agent.emendas.db import conectar  # reexport: mesmo helper WAL/row_factory
 
-__all__ = ["conectar", "init_schema", "DDL", "DDL_CERTAME_INDICE", "DDL_CERTAME_JULGAMENTO",
-           "salvar_julgamento"]
+__all__ = ["DB_PADRAO", "conectar", "conectar_ro", "consultar", "init_schema", "DDL", "DDL_CERTAME_INDICE",
+           "DDL_CERTAME_JULGAMENTO", "SCORE_DIRECIONAMENTO", "salvar_julgamento"]
+
+# `clausula_veredito.score_final` (0-10, colegiado do enxame) a partir do qual o veredito é
+# "direcionamento" — o enxame decide com ele, e o índice e a avaliação de conjunto contam com ele.
+SCORE_DIRECIONAMENTO = 7
+
+
+def conectar_ro(db_path=None) -> sqlite3.Connection:
+    """Leitura sempre em mode=ro (regra da casa): análise nunca escreve nem segura lock."""
+    con = sqlite3.connect(f"file:{Path(db_path) if db_path else DB_PADRAO}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    return con
+
+
+def consultar(con: sqlite3.Connection, sql: str, params: tuple = ()) -> list:
+    """Query tolerante a tabela ausente: fonte não coletada = INDISPONÍVEL (lista vazia), não crash."""
+    try:
+        return con.execute(sql, params).fetchall()
+    except sqlite3.OperationalError:
+        return []
 
 # Índice de Direcionamento de Certame (Task 4.3 — indice_certame.py); faixas BAIXO/MEDIO/ALTO/EXTREMO
 DDL_CERTAME_INDICE = """CREATE TABLE IF NOT EXISTS certame_indice (

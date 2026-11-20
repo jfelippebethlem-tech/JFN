@@ -168,8 +168,8 @@ async def main():
         # padrão; o federal só com --incluir-federal. Antes, sem --so-rj, 6 casos 🔴 do vault eram editais federais.
         achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade, so_rj=not args.incluir_federal)
         achados.sort(key=lambda a: -a["risco"])
-        print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
-              f"{sum(1 for a in achados if a['risco'] >= 7)}", flush=True)
+        print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥{ed.SCORE_DIRECIONAMENTO}): "
+              f"{sum(1 for a in achados if a['risco'] >= ed.SCORE_DIRECIONAMENTO)}", flush=True)
 
     hoje = datetime.now().date()
     fontes = [{"dado": "Editais (texto+itens)", "estado": "REAL", "fonte": "PNCP baixar_documentos",
@@ -213,7 +213,8 @@ async def main():
 
     if args.telegram and saidas:
         from compliance_agent.notifications.telegram import enviar_arquivo
-        n_dir = ctx.get("_dados", {}).get("quentes", sum(1 for a in achados if a.get("risco", 0) >= 7))
+        n_dir = ctx.get("_dados", {}).get("quentes", sum(1 for a in achados
+                                                          if a.get("risco", 0) >= ed.SCORE_DIRECIONAMENTO))
         for s in saidas:
             await enviar_arquivo(str(s), caption=f"Fiscalização de direcionamento em editais — {hoje} "
                                                  f"({n_dir} achados de direcionamento; ficha jurídica por achado)")

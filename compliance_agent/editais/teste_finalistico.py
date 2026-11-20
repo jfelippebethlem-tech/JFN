@@ -9,6 +9,9 @@ Sem número aferível → nao_aferivel (INDISPONÍVEL ≠ 0; o juízo volta ao c
 from __future__ import annotations
 
 import re
+
+from compliance_agent.limites_habilitacao import (ATESTADO_QUANTITATIVO_MAX_PCT, CAPITAL_PL_MAX_PCT,
+                                                  GARANTIA_PROPOSTA_MAX_PCT, VIGENCIA_CONTINUA_MAX_MESES)
 from compliance_agent.reporting.intel_base import moeda
 
 # percentual: "30%", "30 %", "30,5%" (a forma por extenso entre parênteses é redundante no edital)
@@ -25,6 +28,7 @@ _RE_MESES = re.compile(r"(\d{1,3})\s*(?:\([^)]*\)\s*)?m[eê]s(?:es)?", re.I)
 _RE_ANOS = re.compile(r"(\d{1,2})\s*(?:\([^)]*\)\s*)?anos?", re.I)
 _RE_INDETERMINADA = re.compile(r"indeterminad", re.I)
 _RE_MONOPOLIO = re.compile(r"monop[óo]lio", re.I)
+_ANOS_VIGENCIA = VIGENCIA_CONTINUA_MAX_MESES / 12
 _RE_CONTINUO = re.compile(r"cont[íi]nu|presta[çc][ãa]o\s+de\s+servi[çc]o", re.I)
 
 
@@ -71,13 +75,13 @@ def avaliar(subtipo: str, clausula: str, valor_estimado: float | None = None) ->
     """Roda o teste finalístico do subtipo sobre a cláusula. None = subtipo sem teste executável."""
     c = clausula or ""
     if subtipo in ("capital_patrimonio", "capital", "patrimonio"):
-        return _teto_percentual(subtipo, c, valor_estimado, 10.0,
+        return _teto_percentual(subtipo, c, valor_estimado, CAPITAL_PL_MAX_PCT,
                                 "Súmula TCU 275; Lei 8.666/93 art. 31 §3º", "capital/patrimônio líquido")
     if subtipo in ("atestado_quantitativo", "atestado"):
-        return _teto_percentual(subtipo, c, valor_estimado, 50.0,
+        return _teto_percentual(subtipo, c, valor_estimado, ATESTADO_QUANTITATIVO_MAX_PCT,
                                 "Súmula TCU 263", "quantitativo do atestado")
     if subtipo in ("garantia_proposta", "garantia"):
-        return _teto_percentual(subtipo, c, valor_estimado, 1.0,
+        return _teto_percentual(subtipo, c, valor_estimado, GARANTIA_PROPOSTA_MAX_PCT,
                                 "Lei 14.133/2021 art. 58 §1º; Súmula TCU 275", "garantia de proposta")
     if subtipo in ("marca_dirigida", "marca"):
         if _RE_EQUIV.search(c):
@@ -89,7 +93,7 @@ def avaliar(subtipo: str, clausula: str, valor_estimado: float | None = None) ->
                     "padronização prévia justificada (Súmula TCU 270; Lei 14.133/2021 art. 41 I)",
                     None, None, "Súmula TCU 270")
     if subtipo in ("faturamento_minimo", "faturamento"):
-        r = _teto_percentual(subtipo, c, valor_estimado, 10.0,
+        r = _teto_percentual(subtipo, c, valor_estimado, CAPITAL_PL_MAX_PCT,
                              "Lei 14.133/2021 art. 69 (rol restrito), Súmula TCU 275 por analogia ao capital/PL",
                              "faturamento mínimo")
         if r["status"] == "dentro_do_teto":
@@ -105,10 +109,11 @@ def avaliar(subtipo: str, clausula: str, valor_estimado: float | None = None) ->
                 return _res(subtipo, "nao_aferivel",
                             "vigência indeterminada COM menção a monopólio — possível hipótese lícita do "
                             "art. 109 (usuária de serviço público em regime de monopólio); conferir enquadramento",
-                            None, 60.0, "Lei 14.133/2021 art. 109")
+                            None, VIGENCIA_CONTINUA_MAX_MESES, "Lei 14.133/2021 art. 109")
             return _res(subtipo, "violado",
                         "vigência por prazo INDETERMINADO fora da única hipótese legal (art. 109 — serviço "
-                        "público em regime de monopólio)", None, 60.0, "Lei 14.133/2021 arts. 106-109")
+                        "público em regime de monopólio)", None, VIGENCIA_CONTINUA_MAX_MESES,
+                        "Lei 14.133/2021 arts. 106-109")
         m = _RE_MESES.search(c)
         meses = float(m.group(1)) if m else None
         if meses is None:
@@ -116,20 +121,22 @@ def avaliar(subtipo: str, clausula: str, valor_estimado: float | None = None) ->
             meses = float(m.group(1)) * 12 if m else None
         if meses is None:
             return _res(subtipo, "nao_aferivel", "cláusula não traz vigência numérica aferível",
-                        None, 60.0, "Lei 14.133/2021 art. 106")
-        if meses > 60:
+                        None, VIGENCIA_CONTINUA_MAX_MESES, "Lei 14.133/2021 art. 106")
+        if meses > VIGENCIA_CONTINUA_MAX_MESES:
             if _RE_CONTINUO.search(c):
                 return _res(subtipo, "violado",
-                            f"vigência inicial de {meses:g} meses excede o teto de 5 anos do art. 106 para "
-                            "serviços/fornecimentos contínuos (prorrogação é instituto diverso — art. 107)",
-                            meses, 60.0, "Lei 14.133/2021 art. 106")
+                            f"vigência inicial de {meses:g} meses excede o teto de {_ANOS_VIGENCIA:g} anos do art. 106 "
+                            "para serviços/fornecimentos contínuos (prorrogação é instituto diverso — art. 107)",
+                            meses, VIGENCIA_CONTINUA_MAX_MESES, "Lei 14.133/2021 art. 106")
             return _res(subtipo, "nao_aferivel",
-                        f"vigência de {meses:g} meses excede 5 anos, mas a cláusula não permite afirmar serviço "
-                        "CONTÍNUO — contrato por escopo segue regra própria (art. 111); juízo ao colegiado",
-                        meses, 60.0, "Lei 14.133/2021 arts. 106 e 111")
+                        f"vigência de {meses:g} meses excede {_ANOS_VIGENCIA:g} anos, mas a cláusula não permite "
+                        "afirmar serviço CONTÍNUO — contrato por escopo segue regra própria (art. 111); "
+                        "juízo ao colegiado",
+                        meses, VIGENCIA_CONTINUA_MAX_MESES, "Lei 14.133/2021 arts. 106 e 111")
         return _res(subtipo, "dentro_do_teto",
-                    f"vigência de {meses:g} meses respeita o teto de 5 anos do art. 106 — lícita em abstrato",
-                    meses, 60.0, "Lei 14.133/2021 art. 106")
+                    f"vigência de {meses:g} meses respeita o teto de {_ANOS_VIGENCIA:g} anos do art. 106 — "
+                    "lícita em abstrato",
+                    meses, VIGENCIA_CONTINUA_MAX_MESES, "Lei 14.133/2021 art. 106")
     if subtipo in ("recorte_temporal", "temporal"):
         m = _RE_HORAS.search(c)
         dias = round(float(m.group(1)) / 24, 2) if m else None

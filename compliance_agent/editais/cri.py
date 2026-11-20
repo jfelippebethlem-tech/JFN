@@ -41,7 +41,6 @@ from typing import Any, Sequence
 PRAZO_MINIMO_DIAS = 8
 # Mercado é "competitivo" quando outros certames do mesmo objeto atraem mais que isto.
 PROPONENTES_MERCADO_COMPETITIVO = 3
-# Decisão em menos de 1 dia ou mais de 180 é anômala nas duas pontas.
 DIAS_DECISAO_MIN = 1
 DIAS_DECISAO_MAX = 180
 

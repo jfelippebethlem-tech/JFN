@@ -433,14 +433,15 @@ def _indice_certame_payload(certame: str, db_path=None) -> dict:
     import json as _json
     import sqlite3 as _sq
     from datetime import datetime as _dt, timedelta as _td, timezone as _tz
-    from compliance_agent.editais.indice_certame import _conectar_ro, _matriz_sv, calcular
+    from compliance_agent.editais.db import conectar_ro
+    from compliance_agent.editais.indice_certame import calcular, matriz_sv
 
     certame = (certame or "").strip()
     if not certame:
         return {"ok": False, "erro": "informe ?certame=<numero de controle PNCP>"}
     row, narrativa = None, None
     try:
-        con = _conectar_ro(db_path)
+        con = conectar_ro(db_path)
         try:
             row = con.execute("SELECT * FROM certame_indice WHERE certame=?",
                               (certame,)).fetchone()
@@ -472,7 +473,7 @@ def _indice_certame_payload(certame: str, db_path=None) -> dict:
                                "familias": (_json.loads(row["familias_json"])
                                             if row["familias_json"] else {}),
                                "drivers": drivers,
-                               "matriz_sv": _matriz_sv(row["faixa"], row["confianca"] or 0.0,
+                               "matriz_sv": matriz_sv(row["faixa"], row["confianca"] or 0.0,
                                                        len(drivers))},
                     "narrativa": narrativa}
     r = calcular(certame, db_path)
@@ -678,8 +679,7 @@ async def api_conjunto_unidades(min_certames: int = 3):
     Só unidades com ≥min_certames indexados E com unidade conhecida no PNCP. Indício ≠ acusação."""
     try:
         from compliance_agent.editais.avaliacao_conjunto import avaliar_unidades
-        r = await asyncio.to_thread(avaliar_unidades, ("42498600", "42498733"), None,
-                                    max(1, min(int(min_certames), 20)))
+        r = await asyncio.to_thread(avaliar_unidades, min_certames=max(1, min(int(min_certames), 20)))
         return JSONResponse({"ok": True, **r})
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)

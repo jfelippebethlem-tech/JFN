@@ -14,29 +14,15 @@ insumo) — aqui é só o determinístico auditável.
 from __future__ import annotations
 
 import json
-import sqlite3
-from pathlib import Path
 
-from compliance_agent.emendas.db import _DB_PADRAO
+from compliance_agent.editais.db import SCORE_DIRECIONAMENTO
+from compliance_agent.editais.db import conectar_ro as _ro
+from compliance_agent.editais.db import consultar as _q
+from compliance_agent.editais.escalada import REINCIDENCIA_AUDITORIA_TEMATICA
+from compliance_agent.esfera_orgao import NO_RJ, RAIZES_RJ
 from compliance_agent.lex_base_empirica import _quantil
 
-REINCIDENCIA_AUDITORIA = 3          # mesmo subtipo restritivo em ≥3 certames → auditoria temática
 HHI_CONCENTRADO = 0.25              # HHI de vitórias acima disso = mercado concentrado (referência antitruste)
-SCORE_RESTRITIVA = 7                # cláusula com score_final ≥ 7/10 conta como restritiva
-
-
-def _ro(db_path=None) -> sqlite3.Connection:
-    p = Path(db_path) if db_path else _DB_PADRAO
-    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
-    return con
-
-
-def _q(con, sql, params=()) -> list:
-    try:
-        return list(con.execute(sql, params))
-    except sqlite3.OperationalError:
-        return []  # tabela ausente nesta base → INDISPONÍVEL, nunca inventa
 
 
 def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
@@ -59,9 +45,9 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
                        "JOIN edital_clausula ec ON ec.id = cv.clausula_id "
                        "JOIN edital_documento ed ON ed.numero_controle_pncp = cv.numero_controle_pncp "
                        "WHERE ed.orgao_cnpj = ? AND cv.score_final >= ? AND ec.subtipo IS NOT NULL "
-                       "GROUP BY ec.subtipo ORDER BY certames DESC", (orgao_cnpj, SCORE_RESTRITIVA))
+                       "GROUP BY ec.subtipo ORDER BY certames DESC", (orgao_cnpj, SCORE_DIRECIONAMENTO))
         reincidentes = [{"subtipo": r["subtipo"], "certames": r["certames"]} for r in rein]
-        auditoria = [r for r in reincidentes if r["certames"] >= REINCIDENCIA_AUDITORIA]
+        auditoria = [r for r in reincidentes if r["certames"] >= REINCIDENCIA_AUDITORIA_TEMATICA]
 
         # o que ocorreu nas sessões (quando persistido): trivialidade agregada
         julg = _q(con, "SELECT cj.trivialidade_json FROM certame_julgamento cj "
@@ -115,7 +101,7 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
 
 
 def avaliar_portfolio(db_path=None, min_certames: int = 3,
-                      esferas: tuple[str, ...] | None = ("estadual-rj", "municipal-rio")) -> dict:
+                      esferas: tuple[str, ...] | None = tuple(sorted(NO_RJ))) -> dict:
     """Portfólio: todos os órgãos com ≥ min_certames indexados, ranqueados + peer-benchmark
     (mediana do órgão vs mediana dos PARES — peer_diff um nível acima).
 
@@ -155,7 +141,7 @@ def avaliar_portfolio(db_path=None, min_certames: int = 3,
                      "− mediana dos pares (positivo = pior que os pares)"}
 
 
-def avaliar_unidades(raizes_cnpj: tuple[str, ...] = ("42498600", "42498733"),
+def avaliar_unidades(raizes_cnpj: tuple[str, ...] = tuple(RAIZES_RJ),
                      db_path=None, min_certames: int = 3) -> dict:
     """Ranking por UNIDADE/secretaria (granularidade que orgao_cnpj esconde: todo órgão estadual
     compartilha o CNPJ guarda-chuva 42498600). Agrupa os certames indexados por
@@ -209,6 +195,11 @@ def avaliar_unidades(raizes_cnpj: tuple[str, ...] = ("42498600", "42498733"),
                      "conhecida entram — cobertura cresce com PNCP/enxame (INDISPONÍVEL ≠ 0)"}
 
 
+def _num1(v) -> str:
+    # mediana/p90 são None quando todo certame indexado do órgão tem confiança 0 (INDISPONÍVEL ≠ 0)
+    return "INDISPONÍVEL" if v is None else f"{v:.1f}"
+
+
 def ctx_secao(av: dict) -> dict:
     """Converte a avaliação de um órgão no contrato de seção do dossiê ({titulo, html}) — pluga em
     `_ctx_dossie`/consolidado sem tocar no render (pipeline Kroll)."""
@@ -218,8 +209,8 @@ def ctx_secao(av: dict) -> dict:
     linhas = [
         "<table class='tabela'><tr><th>Métrica</th><th>Valor</th></tr>",
         f"<tr><td>Certames indexados</td><td>{av['n_certames_indexados']}</td></tr>",
-        f"<tr><td>Índice de certame — mediana</td><td>{av['score_mediana']:.1f}</td></tr>",
-        f"<tr><td>Índice de certame — p90</td><td>{av['score_p90']:.1f}</td></tr>",
+        f"<tr><td>Índice de certame — mediana</td><td>{_num1(av['score_mediana'])}</td></tr>",
+        f"<tr><td>Índice de certame — p90</td><td>{_num1(av['score_p90'])}</td></tr>",
         f"<tr><td>Certames ALTO/EXTREMO</td><td>{av['n_alto_extremo']}</td></tr>",
         f"<tr><td>Sessões com ata persistida</td><td>{av['sessoes_com_ata']}</td></tr>",
         f"<tr><td>Eliminações por motivo trivial sem saneamento</td><td>{av['violacoes_saneamento']}</td></tr>",

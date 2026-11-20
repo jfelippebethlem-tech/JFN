@@ -18,7 +18,7 @@ from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula
 _FORTE = {"atestado", "marca", "capital", "patrimonio", "visita", "vinculo", "geografico"}
 _MEDIO = {"indices", "amostra", "pontuacao", "temporal"}
 # subtipo → tipo canônico do catálogo E7 p/ buscar a súmula
-_SUBTIPO_PARA_TIPO_E7 = {
+SUBTIPO_PARA_TIPO_E7 = {
     "atestado": "atestado_quantitativo", "marca": "marca_dirigida",
     "capital": "capital_patrimonio", "patrimonio": "capital_patrimonio",
     "visita": "visita_tecnica", "vinculo": "vinculo_profissional",
@@ -40,7 +40,7 @@ def raridade(assin: str, pares: list[tuple]) -> float:
 def forca_e7(subtipo: str) -> tuple[str, str]:
     """(nivel, sumula). Nível pelo catálogo E7; súmula pela jurisprudência da casa."""
     nivel = "forte" if subtipo in _FORTE else ("medio" if subtipo in _MEDIO else "fraco")
-    fund = fundamentar_clausula(_SUBTIPO_PARA_TIPO_E7.get(subtipo, ""))
+    fund = fundamentar_clausula(SUBTIPO_PARA_TIPO_E7.get(subtipo, ""))
     sumulas = (fund.get("sumulas") or fund.get("dispositivos_legais") or []) if fund else []
     return nivel, (sumulas[0] if sumulas else "")
 

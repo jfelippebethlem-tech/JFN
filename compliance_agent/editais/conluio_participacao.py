@@ -57,6 +57,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
+from compliance_agent.collectors.tcerj_licitantes import MAX_HOMOLOGADO_SOBRE_ESTIMADO
 from compliance_agent.editais.screens_participacao import normalizar_nome
 from compliance_agent.osint.marca_grupo import mesmo_grupo
 
@@ -81,8 +82,6 @@ _STOP = {"AQUISICAO", "CONTRATACAO", "EMPRESA", "PARA", "PRESTACAO", "SERVICO", 
          "DIVERSOS", "DEMANDA", "CONFORME", "ESPECIFICACOES", "TERMO", "REFERENCIA", "ANEXO", "COM", "DOS",
          "DAS", "PELA", "PELO", "VISANDO", "ATRAVES", "MEDIANTE", "SOB", "REGIME", "UNIDADES", "SAUDE"}
 
-# mesmo piso do coletor (compliance_agent/collectors/tcerj_licitantes.MAX_HOMOLOGADO_SOBRE_ESTIMADO)
-MAX_HOMOLOGADO_SOBRE_ESTIMADO = 10.0
 SAIDA = Path("data/conluio/participacao.json")
 RESSALVA = ("Indício a verificar, nunca acusação. Fonte: licitantes declarados ao TCE-RJ (dados abertos, "
             "municípios jurisdicionados, 2024–2026), identificados por NOME; CNPJ só por razão social única. "

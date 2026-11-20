@@ -2,7 +2,7 @@
 """Escalada codificada — de achado a PEÇA recomendada (escalation-flagger, padrão claude-for-legal).
 
 A régua vivia só em prosa (skill analise-clausulas-br §4-§5); aqui ela RODA: recebe o score da matriz
-Severidade × Verossimilhança (produto 1-25, `indice_certame._matriz_sv`) e o contexto do certame, e
+Severidade × Verossimilhança (produto 1-25, `indice_certame.matriz_sv`) e o contexto do certame, e
 devolve a medida típica de controle externo com fundamento e urgência. Determinístico, sem LLM.
 
 Régua (skill §4): 1-4 monitorar · 5-9 diligência · 10-15 diligência prioritária + minuta · 16-25
@@ -16,15 +16,34 @@ from __future__ import annotations
 # ordem crescente de gravidade — índice = degrau da régua
 PECAS = ("monitorar", "diligencia", "diligencia_prioritaria", "representacao", "representacao_cautelar")
 
+# Régua S×V (skill §4) — a ÚNICA: `indice_certame.matriz_sv` e `reporting/relatorio_direcionamento`
+# leem daqui o nível e a ação de cada faixa do produto. (piso do produto, nível, ação), do mais grave.
+REGUA_SV = "1-4 baixo · 5-9 médio · 10-15 alto · 16-25 crítico"
+_FAIXAS_SV = (
+    (16, "CRÍTICO", "representação com pedido de suspensão cautelar do certame"),
+    (10, "ALTO", "diligência prioritária ao órgão; minuta de representação preparada"),
+    (5, "MÉDIO", "diligência ordinária; reavaliar com a resposta do órgão"),
+    (1, "BAIXO", "monitoramento; sem medida imediata"),
+)
+# mesmo padrão em ≥ N certames do órgão → auditoria temática, não representação avulsa
+REINCIDENCIA_AUDITORIA_TEMATICA = 3
+
+
+def _faixa_sv(sv: int) -> int:
+    """Índice em `_FAIXAS_SV` (0 = crítico … 3 = baixo)."""
+    return next((i for i, (piso, _, _) in enumerate(_FAIXAS_SV) if sv >= piso), len(_FAIXAS_SV) - 1)
+
+
+def nivel_sv(sv: int) -> tuple[str, str]:
+    """(nível, ação recomendada) do produto Severidade × Verossimilhança."""
+    _, nivel, acao = _FAIXAS_SV[_faixa_sv(sv)]
+    return nivel, acao
+
 
 def _degrau_por_sv(sv: int) -> int:
-    if sv <= 4:
-        return 0    # monitorar
-    if sv <= 9:
-        return 1    # diligência
-    if sv <= 15:
-        return 2    # diligência prioritária + minuta
-    return 3        # representação (cautelar vira degrau 4 pelos gatilhos de urgência)
+    """0 monitorar · 1 diligência · 2 diligência prioritária + minuta · 3 representação (a cautelar
+    vira degrau 4 pelos gatilhos de urgência)."""
+    return len(_FAIXAS_SV) - 1 - _faixa_sv(sv)
 
 
 def recomendar(sv: int, *, certame_aberto: bool = False, sessao_marcada: bool = False,
@@ -79,7 +98,7 @@ def recomendar(sv: int, *, certame_aberto: bool = False, sessao_marcada: bool = 
     if degrau == 2 and urgencia == "rotina":
         urgencia = "prioritaria"
 
-    auditoria = reincidencia_orgao >= 3
+    auditoria = reincidencia_orgao >= REINCIDENCIA_AUDITORIA_TEMATICA
     if auditoria:
         gatilhos.append(f"mesmo padrão em {reincidencia_orgao} certames do órgão — propor auditoria temática")
 

@@ -25,9 +25,12 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from compliance_agent.direcionamento_cerebro import _parse_json  # parse tolerante a cercas ```json
-from compliance_agent.editais.indice_certame import _conectar_ro, calcular, garantir_tabela
-from compliance_agent.emendas.db import conectar
+from compliance_agent.editais.db import conectar, conectar_ro, consultar
+from compliance_agent.editais.indice_certame import calcular, garantir_tabela
+from compliance_agent.limites_aditivo import teto_acrescimo
+from compliance_agent.limites_habilitacao import (ATESTADO_QUANTITATIVO_MAX_PCT, CAPITAL_PL_MAX_PCT,
+                                                  GARANTIA_PROPOSTA_MAX_PCT)
+from compliance_agent.llm.json_resposta import parse_json_llm
 from compliance_agent.reporting.intel_base import moeda
 
 PROMPT_VERSAO = "v1"
@@ -52,17 +55,19 @@ ROTULOS = {
     "d6": "integridade documental",
 }
 
-# Norma de referência — mesmos referentes dos testes finalísticos executáveis
-# (compliance_agent/editais/teste_finalistico.py) e do _PARAMS_AUDITOR do cérebro.
+# Norma de referência — os números vêm das réguas (`limites_habilitacao`, `limites_aditivo`), as mesmas
+# dos testes finalísticos executáveis (compliance_agent/editais/teste_finalistico.py) e do _PARAMS_AUDITOR
+# do cérebro (que ainda escreve os seus à mão).
 _NORMA = (
     "## NORMA DE REFERÊNCIA (avalie DESVIOS em relação a ela)\n"
     "- Lei 14.133/2021: art. 9º I 'c' (vedado frustrar competitividade com exigência "
     "impertinente); art. 41 I (marca só com justificativa técnica ou 'ou equivalente' — "
-    "Súmula TCU 270); art. 58 §1º (garantia de proposta ≤ 1% do estimado); arts. 74/75 "
-    "(inexigibilidade/dispensa exigem motivação nos autos); art. 125 (acréscimo contratual ≤ 25%).\n"
-    "- Súmula TCU 263: quantitativo de atestado limitado a 50% do objeto; vedação de somatório "
-    "de atestados sem justificativa é restritiva.\n"
-    "- Súmula TCU 275: capital social/patrimônio líquido mínimo ≤ 10% do valor estimado.\n"
+    f"Súmula TCU 270); art. 58 §1º (garantia de proposta ≤ {GARANTIA_PROPOSTA_MAX_PCT:g}% do estimado); "
+    "arts. 74/75 (inexigibilidade/dispensa exigem motivação nos autos); art. 125 (acréscimo contratual "
+    f"≤ {teto_acrescimo(None) * 100:g}%).\n"
+    f"- Súmula TCU 263: quantitativo de atestado limitado a {ATESTADO_QUANTITATIVO_MAX_PCT:g}% do objeto; "
+    "vedação de somatório de atestados sem justificativa é restritiva.\n"
+    f"- Súmula TCU 275: capital social/patrimônio líquido mínimo ≤ {CAPITAL_PL_MAX_PCT:g}% do valor estimado.\n"
     "- Ausência de motivação técnica nos autos ⇒ o ônus de justificar é da Administração."
 )
 
@@ -95,25 +100,17 @@ _SAIDA = (
 
 
 # ───────────────────────────────────── evidências ─────────────────────────────────────
-def _q(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> list:
-    """Tabela ausente = fonte não coletada = lista vazia (honesto), nunca crash."""
-    try:
-        return conn.execute(sql, params).fetchall()
-    except sqlite3.OperationalError:
-        return []
-
-
 def buscar_evidencias(certame: str, db_path=None) -> dict:
     """Trechos de evidência textual do certame (mode=ro): cláusulas do edital e atas."""
-    conn = _conectar_ro(db_path)
+    conn = conectar_ro(db_path)
     try:
         clausulas = [{"subtipo": r[0] or "clausula", "texto": r[1]}
-                     for r in _q(conn, "SELECT subtipo, texto FROM edital_clausula "
-                                       "WHERE numero_controle_pncp=? AND texto IS NOT NULL",
-                                 (certame,)) if (r[1] or "").strip()]
+                     for r in consultar(conn, "SELECT subtipo, texto FROM edital_clausula "
+                                              "WHERE numero_controle_pncp=? AND texto IS NOT NULL",
+                                        (certame,)) if (r[1] or "").strip()]
         atas = [{"titulo": r[0] or "ata", "texto": r[1]}
-                for r in _q(conn, "SELECT titulo, texto FROM ata_documento "
-                                  "WHERE certame=? AND texto IS NOT NULL", (certame,))
+                for r in consultar(conn, "SELECT titulo, texto FROM ata_documento "
+                                         "WHERE certame=? AND texto IS NOT NULL", (certame,))
                 if (r[1] or "").strip()]
     finally:
         conn.close()
@@ -160,7 +157,7 @@ def parse_rubrica(txt: str) -> dict | None:
     """JSON estrito → {d1..d6: {nota, citacao, justificativa} | None, tese, ressalvas}.
     Malformado/sem tese → None (parse honesto). Nota sem citação NÃO-VAZIA → nota None
     (não avaliável — citação verbatim é obrigatória, §3.4)."""
-    js = _parse_json(txt or "")
+    js = parse_json_llm(txt or "")
     if not isinstance(js, dict):
         return None
     tese = js.get("tese")

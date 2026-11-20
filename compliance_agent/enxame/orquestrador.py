@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import statistics
 
+from compliance_agent.editais.db import SCORE_DIRECIONAMENTO
 from compliance_agent.enxame import lentes
 
 LENTES = [
@@ -23,7 +24,7 @@ _BANDA_LIMITROFE = (4, 6)
 
 
 def _veredito(score: int) -> str:
-    if score >= 7:
+    if score >= SCORE_DIRECIONAMENTO:
         return "direcionamento"
     if score >= 4:
         return "indício fraco"

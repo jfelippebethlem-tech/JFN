@@ -26,8 +26,9 @@ import re
 import sqlite3
 from datetime import datetime
 
-from compliance_agent.editais.indice_certame import _matriz_sv as _matriz_sv_certame
-from compliance_agent.editais.peer_diff import _SUBTIPO_PARA_TIPO_E7
+from compliance_agent.editais.escalada import nivel_sv
+from compliance_agent.editais.indice_certame import matriz_sv as _matriz_sv_certame
+from compliance_agent.editais.peer_diff import SUBTIPO_PARA_TIPO_E7
 from compliance_agent.editais.teste_finalistico import avaliar as _teste_exec
 from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula, obter_sumula
 from compliance_agent.reporting.intel_base import esc as _esc, reais
@@ -112,7 +113,7 @@ def _clausula_integra(texto_edital: str | None, clausula_txt: str, trecho_fonte:
 
 def _fundamentacao(subtipo: str) -> dict:
     """Fundamentação jurídica do subtipo: tenta a chave canônica direta e o mapa curto→canônico."""
-    fund = fundamentar_clausula(subtipo) or fundamentar_clausula(_SUBTIPO_PARA_TIPO_E7.get(subtipo, ""))
+    fund = fundamentar_clausula(subtipo) or fundamentar_clausula(SUBTIPO_PARA_TIPO_E7.get(subtipo, ""))
     return fund or {}
 
 
@@ -286,7 +287,7 @@ def _bloco_fundamentacao(d: dict) -> str:
         partes.append("<p class='aviso'>⚠️ Parte das âncoras deste subtipo ainda depende de conferência "
                       "no verbatim primário (pesquisa.apps.tcu.gov.br) antes de citação em peça definitiva.</p>")
     # redação-conforme (redline): a alternativa LÍCITA que saneia a cláusula — dá objeto à diligência
-    red = _REDACAO_CONFORME.get(_SUBTIPO_PARA_TIPO_E7.get(d["subtipo"], d["subtipo"]))
+    red = _REDACAO_CONFORME.get(SUBTIPO_PARA_TIPO_E7.get(d["subtipo"], d["subtipo"]))
     if red:
         partes.append("<div class='redline'><b>Redação conforme sugerida</b> (parâmetro para a diligência — "
                       f"a cláusula deixa de ser restritiva se reescrita nestes termos): <i>“{_esc(red)}”</i></div>")
@@ -357,6 +358,9 @@ def _bloco_colegiado(d: dict) -> str:
             f"{''.join(linhas)}</table>{nota}")
 
 
+_EMOJI_NIVEL = {"CRÍTICO": "🔴", "ALTO": "🟠", "MÉDIO": "🟡", "BAIXO": "🟢"}
+
+
 def _matriz_risco(d: dict) -> str:
     """Matriz Severidade × Verossimilhança (5×5) — escala explícita, cálculo determinístico.
 
@@ -370,13 +374,8 @@ def _matriz_risco(d: dict) -> str:
     if d["raridade"] is None:
         ver = min(ver, 3)  # sem comparação entre pares, a verossimilhança não passa de "possível"
     prod = sev * ver
-    nivel, acao = (("CRÍTICO 🔴", "representação com pedido de suspensão cautelar do certame")
-                   if prod >= 16 else
-                   ("ALTO 🟠", "diligência prioritária ao órgão; minuta de representação preparada")
-                   if prod >= 10 else
-                   ("MÉDIO 🟡", "diligência ordinária; reavaliar com a resposta do órgão")
-                   if prod >= 5 else
-                   ("BAIXO 🟢", "monitoramento; sem medida imediata"))
+    nivel, acao = nivel_sv(prod)
+    nivel = f"{nivel} {_EMOJI_NIVEL[nivel]}"
     return ("<div class='matriz'><b>Matriz de risco (Severidade × Verossimilhança, escala 1–5 cada; "
             f"produto 1–25):</b> severidade <b>{sev}/5</b> × verossimilhança <b>{ver}/5</b> = "
             f"<b>{prod}/25 — {nivel}</b>. Ação recomendada: {acao}. "

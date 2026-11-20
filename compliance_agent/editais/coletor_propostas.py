@@ -26,8 +26,7 @@ import logging
 import sqlite3
 from pathlib import Path
 
-from compliance_agent.emendas.db import _DB_PADRAO
-from compliance_agent.editais.db import conectar
+from compliance_agent.editais.db import DB_PADRAO, conectar, conectar_ro
 
 log = logging.getLogger(__name__)
 
@@ -90,14 +89,14 @@ def persistir_propostas(conn: sqlite3.Connection, certame: str, propostas: list[
             continue
         vu, vt = _num(p.get("valor_unitario")), _num(p.get("valor_total"))
         if vu is None and vt is None:
-            continue  # sem valor literal não entra (não inventa)
+            continue
         try:
             item = int(p.get("item", ITEM_LANCE_GLOBAL))
         except (TypeError, ValueError):
             continue
         classificacao = p.get("classificacao")
         if isinstance(classificacao, bool) or not isinstance(classificacao, int):
-            classificacao = None  # rank só quando inteiro literal
+            classificacao = None
         conn.execute(
             "INSERT OR REPLACE INTO proposta_item (certame, item, fornecedor_cnpj, fornecedor_nome, "
             "valor_unitario, valor_total, classificacao, marca, fonte, sha_evidencia) "
@@ -111,7 +110,7 @@ def persistir_propostas(conn: sqlite3.Connection, certame: str, propostas: list[
 # ───────────────────────────── extração (reuso: coletor_ata + extrator_precos) ─────────────────────────────
 def _ler_atas(certame: str, db_path: Path | str) -> list[dict]:
     """Fontes {fonte, texto} das atas do certame — conexão READONLY, fechada logo (compliance-db-malformed)."""
-    con = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
+    con = conectar_ro(db_path)
     try:
         try:
             rows = con.execute(
@@ -160,7 +159,7 @@ def coletar_certame(certame: str, db_path: Path | str | None = None, *, gerar=No
     """Coleta e PERSISTE as propostas do certame em `proposta_item`. Devolve nº de linhas persistidas.
     Sem ata no `ata_documento` → 0 com log honesto (não inventa). `gerar` (opcional) habilita a camada
     LLM do extrator de preços unitários; sem ele, só o que o regex/tabela pegou LITERAL."""
-    db = Path(db_path) if db_path else _DB_PADRAO
+    db = Path(db_path) if db_path else DB_PADRAO
     fontes = _ler_atas(certame, db)
     if not fontes:
         log.info("certame %s: sem ata em ata_documento — 0 propostas (INDISPONÍVEL, não inventado)", certame)
@@ -182,8 +181,8 @@ def coletar_certame(certame: str, db_path: Path | str | None = None, *, gerar=No
 def backfill(db_path: Path | str | None = None, *, gerar=None) -> dict:
     """Itera os certames existentes em `ata_documento`, SERIAL, commit por certame (coletar_certame
     abre/comita/fecha por certame — VM 2 vCPU, um pesado por vez). Devolve {certames, linhas}."""
-    db = Path(db_path) if db_path else _DB_PADRAO
-    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    db = Path(db_path) if db_path else DB_PADRAO
+    con = conectar_ro(db)
     try:
         certames = [r[0] for r in con.execute(
             "SELECT DISTINCT certame FROM ata_documento WHERE certame IS NOT NULL ORDER BY certame")]
