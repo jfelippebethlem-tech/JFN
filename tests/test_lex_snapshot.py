@@ -16,11 +16,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 
-def test_parecer_lex_snapshot_identico():
+def test_parecer_lex_snapshot_identico(tmp_path):
     # Ambiente SANITIZADO: testes de outros módulos exportam env no import (NUCLEO_*, JFN_DB do
     # conftest, chaves de API) e vazariam pro subprocess, mudando seções do parecer vs golden.
     env = {k: v for k, v in os.environ.items() if k in ("PATH", "HOME", "LANG", "LC_ALL", "TZ")}
     env.update(PYTHONHASHSEED="0", JFN_LEX_LER_SEI="0", JFN_LEX_DISCURSIVO="0")
+    # 20/11/2026: o parecer lê caches de data/ (foto da sede, site próprio da fachada) e o snapshot
+    # divergia SÓ na VM-1, que tem esses caches (a VM-2 não). Golden é teste: dados isolados.
+    env["JFN_DATA_DIR"] = str(tmp_path)
     proc = subprocess.run(
         [sys.executable, str(REPO / "tools" / "lex_snapshot_check.py")],
         capture_output=True, text=True, env=env, cwd=str(REPO), timeout=300,
