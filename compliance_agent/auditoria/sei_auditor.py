@@ -112,7 +112,7 @@ def aba_sei(tries=6):
             if cand:
                 return cand[0]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em sei_auditor", exc_info=True)
         time.sleep(1.5)
     return None
 
@@ -155,7 +155,7 @@ class Aba:
         try:
             self.ws.close()
         except (OSError, websocket.WebSocketException, AttributeError):
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em sei_auditor", exc_info=True)
         time.sleep(1.5)
         self._open()
 

@@ -25,6 +25,7 @@ só filtra a cópia em memória — responde em milissegundos.
 """
 from __future__ import annotations
 
+import logging
 import json
 import math
 import os
@@ -328,7 +329,7 @@ def _orgaos(g: _G, con, nomes_ug: dict):
             for c, rz in _em_lotes(con, sql, [c for c in cn if not g.forn[c]["nome"]]):
                 g.f(c, rz)
         except sqlite3.Error:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em galaxia", exc_info=True)
 
 
 # Fornecedor sem órgão: o MOTIVO medido vira o aglomerado (um balde por motivo, nunca o texto genérico).
@@ -358,14 +359,14 @@ def _motivos_sem_orgao(g: _G, con, cs: list[str]) -> dict[str, str]:
                   (r, r + "~")):
                 out.update({c: "sem:outra_raiz" for c in cs_r})
     except sqlite3.Error:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em galaxia", exc_info=True)
     for chave, sql in (("sem:so_tfe", "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE favorecido_cpf IN ({})"),
                        ("sem:so_pncp", "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE fornecedor_cnpj IN ({})")):
         try:
             for (c,) in _em_lotes(con, sql, [c for c in cs if c not in out]):
                 out.setdefault(c, chave)
         except sqlite3.Error:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em galaxia", exc_info=True)
     return {c: out.get(c, "sem:sem_ob") for c in cs}
 
 
@@ -487,7 +488,7 @@ def montar(casos: list[dict], con: sqlite3.Connection | None = None, radar: dict
         nomes_ug = {ug: nm for ug, nm in _q(con, "SELECT ug_codigo, MAX(ug_nome) FROM ordens_bancarias "
                                                  "WHERE ug_nome IS NOT NULL GROUP BY ug_codigo") if ug}
     except sqlite3.Error:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em galaxia", exc_info=True)
     _casos(g, casos, nomes_ug)
     _radar(g, radar)
     _alertas(g, con, nomes_ug)

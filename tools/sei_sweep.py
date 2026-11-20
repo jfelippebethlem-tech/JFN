@@ -1201,7 +1201,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                         from tools import sei_restritos as _restr
                         _restr.registrar(proc, r)
                     except Exception:  # noqa: BLE001
-                        pass
+                        logging.getLogger(__name__).debug("exceção tolerada em sei_sweep", exc_info=True)
                     # SEI-2: segue a ÁRVORE de relacionados (o processo de pagamento tem pouco; a licitação/
                     # contrato relacionado tem a substância). Guarda 1<=N<=15 evita a CAIXA (~40 inbox).
                     rel = r.get("relacionados") or []
@@ -1386,7 +1386,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                         from tools import sei_restritos as _restr
                         _restr.registrar(proc, r)
                     except Exception:  # noqa: BLE001
-                        pass
+                        logging.getLogger(__name__).debug("exceção tolerada em sei_sweep", exc_info=True)
                     ficha_info = None
                     if fazer_ficha and nd:
                         try:

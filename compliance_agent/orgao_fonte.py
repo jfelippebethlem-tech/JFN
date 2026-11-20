@@ -18,6 +18,7 @@ O índice de prefixos custa uma varredura da tabela de OB (~7 s com a VM carrega
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re
@@ -63,7 +64,7 @@ def mapa_prefixos(con: sqlite3.Connection, ttl_s: float = TTL_S, cache: Path | N
         if db and d.get("db") == db and time.time() - float(d.get("gerado_ts", 0)) < ttl_s:
             return d["prefixos"]
     except (OSError, ValueError, KeyError, TypeError):
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em orgao_fonte", exc_info=True)
     pref: dict[str, dict[str, int]] = defaultdict(dict)
     for p, ug, n in con.execute("SELECT substr(processo, 5, 6), ug_emitente, COUNT(*) FROM ob_orcamentaria_siafe "
                                 "WHERE processo LIKE 'SEI-______/%' AND " + _ob_paga(con) + " GROUP BY 1, 2"):
@@ -79,7 +80,7 @@ def mapa_prefixos(con: sqlite3.Connection, ttl_s: float = TTL_S, cache: Path | N
                                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         tmp.replace(arq)
     except OSError:
-        pass                                               # sem cache em disco: só recalcula na próxima vez
+        logging.getLogger(__name__).debug("exceção tolerada em orgao_fonte", exc_info=True)                                               # sem cache em disco: só recalcula na próxima vez
     return dict(pref)
 
 

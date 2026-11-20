@@ -54,7 +54,7 @@ def cardinalidade_contratual(cnpj: str) -> dict:
                     "SELECT COUNT(*) FROM contratos WHERE empresa_id IN (%s)" % ",".join("?" * len(ids)),
                     ids).fetchone()[0] or 0)
         except sqlite3.OperationalError:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em intel_analise", exc_info=True)
     finally:
         con.close()
     out["cobertura_processo"] = round(out["n_obs_com_processo"] / out["n_obs"], 3) if out["n_obs"] else 0.0
@@ -529,7 +529,7 @@ def _red_flags(ctx: dict) -> list[tuple]:
             if rf_tac:
                 out.append((rf_tac["titulo"], rf_tac["descricao"], rf_tac["fundamento"]))
         except Exception:  # noqa: BLE001 — degrada honesto (DB/tabela ausente → sem RF-TAC)
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em intel_analise", exc_info=True)
 
     # red flag de co-localização (fornecedores na mesma sede) — vindo do cruzamento
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []

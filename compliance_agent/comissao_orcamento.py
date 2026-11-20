@@ -16,6 +16,7 @@ Valor = só OB Contabilizado do SIAFE (`total_pago` da perícia). Empenho nunca 
 """
 from __future__ import annotations
 
+import logging
 import json
 import sqlite3
 import time
@@ -88,7 +89,7 @@ def _resolucoes(con: sqlite3.Connection) -> dict[tuple, Counter]:
         for cnpj, ug, v in con.execute("SELECT cnpj, ug, veredito FROM resolucao_duplicidade"):
             out[(cnpj, str(ug))][v] += 1
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em comissao_orcamento", exc_info=True)
     return out
 
 
@@ -119,7 +120,7 @@ def _detectores(con_ach: sqlite3.Connection | None) -> dict[tuple, list[dict]]:
                                               "evidencia": (motivo or "")[:300], "score": score,
                                               "fonte": "detector"})
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em comissao_orcamento", exc_info=True)
     return out
 
 

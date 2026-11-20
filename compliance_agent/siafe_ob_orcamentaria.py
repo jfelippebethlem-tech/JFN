@@ -637,7 +637,7 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
         try:
             await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em siafe_ob_orcamentaria", exc_info=True)
         return {"ok": False, "erro": "mfa_campo_nao_encontrado", "detail": f"campo MFA inacessível: {exc}"}
     await pg.wait_for_timeout(400)
     # confirma: Enter no campo E clique no botão (o que disparar primeiro resolve)
@@ -655,7 +655,7 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
         try:
             await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em siafe_ob_orcamentaria", exc_info=True)
         return {"ok": False, "erro": "mfa_codigo_rejeitado",
                 "detail": "Código MFA preenchido mas o diálogo persiste (código errado/expirado?)."}
     siafe_coord.notificar("✅ Código MFA aceito — coleta SIAFE retomada. Dispensa de 30 dias marcada.")

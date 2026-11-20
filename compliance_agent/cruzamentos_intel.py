@@ -738,7 +738,7 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                     "FROM contrato_aditivo"):
                 por_contrato.setdefault(r["c"], []).append(dict(r))
         except sqlite3.OperationalError:
-            pass
+            logging.getLogger(__name__).debug("exceção tolerada em cruzamentos_intel", exc_info=True)
         _cols_c = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
         _chk = "aditivos_checados" if "aditivos_checados" in _cols_c else "NULL"
         # sanity: exclui valor_global lixo (> R$ 1 bi quase sempre é erro de coleta do PNCP)
@@ -1162,7 +1162,7 @@ def _ob_paga(con, alias: str = "") -> str:
             r += (f" AND NOT EXISTS (SELECT 1 FROM ob_reemitida _re WHERE _re.ob={a}numero_ob"
                   f" AND _re.ug={a}ug_emitente)")
     except sqlite3.Error:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em cruzamentos_intel", exc_info=True)
     return r + (f" AND COALESCE({a}numero_ob,'')<>''" if "numero_ob" in cols else "")
 
 _SQL_NAO_PUBLICO = (

@@ -24,6 +24,7 @@ Pausar: criar C:\\JFN-Nativo\\PAUSA. Desligar: schtasks /change /tn JFN-Nativo /
 """
 from __future__ import annotations
 
+import logging
 import ctypes
 import json
 import os
@@ -235,7 +236,7 @@ def main() -> int:
                 try:
                     meus += p.cpu_percent(None)
                 except psutil.Error:
-                    pass
+                    logging.getLogger(__name__).debug("exceção tolerada em pool_nativo", exc_info=True)
         cpu_outros = max(0.0, cpu - meus / ncpu)
         ocioso = ocioso_s()
         # freio duro de memória: o dono nunca fica sem memória
@@ -246,7 +247,7 @@ def main() -> int:
                 try:
                     p.kill()
                 except psutil.Error:
-                    pass
+                    logging.getLogger(__name__).debug("exceção tolerada em pool_nativo", exc_info=True)
             log(ev="freio_memoria", vaga=k, disp_gb=round(disp, 1))
             espera_ate[k] = time.time() + ESPERA_VAZIA_S
         motivo = deve_pausar(PAUSA.exists(), ocioso, cpu_outros)
@@ -256,7 +257,7 @@ def main() -> int:
                     try:
                         p.suspend() if motivo else p.resume()
                     except psutil.Error:
-                        pass
+                        logging.getLogger(__name__).debug("exceção tolerada em pool_nativo", exc_info=True)
                 t["suspenso"] = bool(motivo)
         if motivo != motivo_ant:
             log(ev="pausa" if motivo else "retoma", motivo=motivo, ocioso_s=round(ocioso), cpu_outros=round(cpu_outros))
@@ -282,7 +283,7 @@ def main() -> int:
                 try:
                     rss[k] += p.memory_info().rss
                 except psutil.Error:
-                    pass
+                    logging.getLogger(__name__).debug("exceção tolerada em pool_nativo", exc_info=True)
         if time.time() - ultima_maq > 300:
             maq, ultima_maq = maquina(), time.time()
         tmp = ESTADO.with_suffix(".tmp")

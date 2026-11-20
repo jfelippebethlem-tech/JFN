@@ -15,6 +15,7 @@ Uso típico:
 Regras de ouro: (1) UM browser pesado por vez, em FOREGROUND (nunca sobrepor em background);
 (2) OCR só dos docs que importam (<=6) e poucas páginas; (3) sempre limpar antes E depois."""
 from __future__ import annotations
+import logging
 import os
 import signal
 import sys
@@ -37,7 +38,7 @@ def _meminfo_available_gb() -> float:
                 if ln.startswith("MemAvailable:"):
                     return int(ln.split()[1]) / 1024 / 1024
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em vm_guard", exc_info=True)
     return 99.0
 
 
@@ -100,7 +101,7 @@ def cleanup_orphans() -> int:
         subprocess.run("rm -rf /tmp/playwright_chromiumdev_profile-* /tmp/.org.chromium.* 2>/dev/null",
                        shell=True, timeout=10)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em vm_guard", exc_info=True)
     return n
 
 

@@ -174,7 +174,7 @@ async def _cancelar_loop_trabalhar():
             try:
                 await _agent_loop_trabalhar_task
             except asyncio.CancelledError:
-                pass
+                logging.getLogger(__name__).debug("exceção tolerada em hermes", exc_info=True)
             _agent_loop_trabalhar_task = None
 
 
@@ -286,7 +286,7 @@ async def api_hermes_chat(payload: dict):
             base_curada = ("\nBASE CURADA (fonte primária conferida — quando cobrir o tema, "
                            "responda COM ela e cite):\n" + "\n".join(blocos))
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("exceção tolerada em hermes", exc_info=True)
     prompt = (
         "Você é o Hermes, agente de auditoria/compliance do Estado do RJ (controle externo). "
         "Responda em pt-BR, texto corrido (nunca JSON), técnico e direto. Indício ≠ acusação; "
