@@ -348,7 +348,7 @@ def test_siafe_ob_salva_favorecido_e_valor():
         ]
         rows = [
             ["2026OB99001", "300100", "300100", "01/06/2026", "Contabilizado",
-             "12", "6", "Orçamentária", "2026NL00338", "00394315766",
+             "12", "6", "Orçamentária", "2026NL00338", "12345678900",
              "EMPRESA TESTE LTDA", "300100", "1.250,00", "05/2026",
              "Aguardando Envio", "", "400001/00000123/2026"],
         ]
@@ -358,7 +358,7 @@ def test_siafe_ob_salva_favorecido_e_valor():
         ob = s.query(OrdemBancaria).filter_by(numero_ob="2026OB99001").first()
         assert ob is not None
         assert ob.favorecido_nome == "EMPRESA TESTE LTDA"
-        assert ob.favorecido_cpf == "00394315766"
+        assert ob.favorecido_cpf == "12345678900"
         assert ob.valor == 1250.0
         assert ob.numero_processo == "400001/00000123/2026"
     finally:
