@@ -13,7 +13,7 @@ Estrutura real da tabela (confirmada por diagnóstico em 01/06/2026):
     Assinatura Digital | Vinculação de Pagamento
 
 Ex.: 2026OB00571 | 300100 | 300100 | 01/06/2026 | Contabilizado |
-     12 | 6 | Orçamentária | 2026NL00338 | 00394315766 |
+     12 | 6 | Orçamentária | 2026NL00338 | ***.943.157-** |
      DENISE GOMES FIGUEIRINHAS | 300100 | 844,50 | 05/2026 |
      Aguardando Envio |  | 400001/00000530/2026 | 2026RE00097 | ...
 
