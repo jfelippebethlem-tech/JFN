@@ -75,10 +75,11 @@ def medir_ob(con, exercicios=EXERCICIOS) -> dict:
 
 
 def _universo(con, ex: int) -> dict[str, float]:
-    """UGs que pagaram a fornecedor (OB Contabilizada a CNPJ) no exercício → valor pago. É o universo de NE/NL."""
+    """UGs que pagaram a fornecedor (OB paga a CNPJ) no exercício → valor pago. É o universo de NE/NL.
+    "Pago" pela régua canônica `_ob_paga` (sem a devolvida pelo banco nem a reemitida) — catraca de 20/11/2026."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
     return {u: v for u, v in con.execute(
-        # ob-qualquer-status: universo de cobertura; status='Contabilizado' explícito, sem somar como 'pago'
-        "SELECT ug_emitente, SUM(valor) FROM ob_orcamentaria_siafe WHERE exercicio=? AND status='Contabilizado' "
+        f"SELECT ug_emitente, SUM(valor) FROM ob_orcamentaria_siafe WHERE exercicio=? AND {_ob_paga(con)} "
         "AND length(credor)=14 GROUP BY 1", (ex,))}
 
 
