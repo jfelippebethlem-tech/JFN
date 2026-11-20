@@ -122,8 +122,45 @@ TIPOS["DEA"] = {
     "idx": ("CREATE INDEX IF NOT EXISTS ix_dea_credor ON dea_siafe(codigo_credor)",
             "CREATE INDEX IF NOT EXISTS ix_dea_termo ON dea_siafe(numero_termo)")}
 
+# OB DE RETENÇÃO e CONTRATO (19/11/2026, sonda `siafe_mapear --detalhar` de 22h41). A OB Orçamentária é a única OB
+# coletada; a de Retenção (IRRF, INSS, ISS… repassados pelo Estado) e o cadastro de Contratos (com nº de aditivos e
+# reajustes) ficavam fora. Mesma grade da NE/NL. Sem controle positivo ainda → coleta fica PENDENTE (lida, não provada).
+TIPOS["OBR"] = {
+    "tela": "OB de Retenção", "menu": "Execução Financeira", "tbl": "pt1:tblOrdemBancariaRetencao",
+    "re": re.compile(r"\b20\d\dOB\d{5,6}\b"), "tabela": "ob_retencao_siafe", "ano": "ano_ob",
+    "dinheiro": ("valor",), "base": lambda ex: f"{int(ex)}OB",
+    "cols": {"numero": "numero", "ug emitente": "ug_emitente", "ug pagadora": "ug_pagadora",
+             "data emissao": "data_emissao", "status": "status", "tipo": "tipo", "finalidade": "finalidade",
+             "tipo de retencao": "tipo_retencao", "credor": "credor", "nome do credor": "nome_credor",
+             "ug liquidante": "ug_liquidante", "valor": "valor", "competencia": "competencia",
+             "status de envio": "status_envio", "gd": "gd", "processo": "processo", "re": "re", "pd": "pd",
+             "tipo de regularizacao": "tipo_regularizacao"},
+    "ddl": """CREATE TABLE IF NOT EXISTS ob_retencao_siafe (
+    numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, ano_ob INTEGER, ug_pagadora TEXT,
+    data_emissao TEXT, status TEXT, tipo TEXT, finalidade TEXT, tipo_retencao TEXT, credor TEXT, nome_credor TEXT,
+    ug_liquidante TEXT, valor REAL, competencia TEXT, status_envio TEXT, gd TEXT, processo TEXT, re TEXT, pd TEXT,
+    tipo_regularizacao TEXT, coletado_em TEXT,
+    PRIMARY KEY (numero, ug_emitente, exercicio))""",
+    "idx": ("CREATE INDEX IF NOT EXISTS ix_obr_pd ON ob_retencao_siafe(pd)",
+            "CREATE INDEX IF NOT EXISTS ix_obr_processo ON ob_retencao_siafe(processo)")}
+TIPOS["CT"] = {
+    "tela": "Contrato", "menu": "Contratos e Convênios", "tbl": "pt1:tblContrato",
+    "re": re.compile(r"\b\d{8}\b"), "tabela": "contrato_siafe", "ano": None, "dinheiro": ("valor",),
+    "prop_ug": "Cód. Contratante", "prop_numero": "Número Automático", "base": lambda ex: str(int(ex))[2:],
+    "cols": {"numero automatico": "numero", "numero da licitacao": "numero_licitacao",
+             "numero original": "numero_original", "natureza": "natureza", "objeto": "objeto",
+             "cod. contratante": "ug_emitente", "nome contratante": "nome_contratante",
+             "cod. contratado": "contratado", "modalidade de licitacao": "modalidade",
+             "nome do contratado": "nome_contratado", "situacao": "situacao", "valor do contrato": "valor",
+             "qtd. aditivos": "qtd_aditivos", "qtd. reajustes": "qtd_reajustes", "qtd. anexos": "qtd_anexos"},
+    "ddl": """CREATE TABLE IF NOT EXISTS contrato_siafe (
+    numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, numero_licitacao TEXT,
+    numero_original TEXT, natureza TEXT, objeto TEXT, nome_contratante TEXT, contratado TEXT, modalidade TEXT,
+    nome_contratado TEXT, situacao TEXT, valor REAL, qtd_aditivos TEXT, qtd_reajustes TEXT, qtd_anexos TEXT,
+    coletado_em TEXT, PRIMARY KEY (numero, ug_emitente, exercicio))""",
+    "idx": ("CREATE INDEX IF NOT EXISTS ix_ct_contratado ON contrato_siafe(contratado)",)}
 
-SEM_CONTROLE_POSITIVO = {"DEA"}
+SEM_CONTROLE_POSITIVO = {"DEA", "OBR", "CT"}
 
 
 def cobertura_bj_sequencia(exercicio: int, db=None) -> float | None:
