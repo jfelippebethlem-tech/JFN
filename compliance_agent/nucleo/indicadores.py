@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable
 
+from compliance_agent.limites_dispensa import limite_dispensa
 from compliance_agent.nucleo import parametros as P
 from compliance_agent.nucleo.dossie import Dossie, idade_em_dias
 
@@ -78,16 +79,25 @@ def _achado(ind: "Indicador", confianca: float, observado: str, limite: str,
 # ── Definição dos indicadores ────────────────────────────────────────────────
 # Cada função recebe (dossie) e o próprio Indicador é injetado via closure.
 
+def _teto_dispensa(c, pid: str) -> float:
+    """Teto de dispensa do EXERCÍCIO da contratação (art. 75 c/c art. 182: o decreto muda o valor todo ano).
+
+    O parâmetro `pid` é o teto do ano corrente e, sendo "lei", só pode ser endurecido por override — por
+    isso ele limita por cima. Sem data, vale o parâmetro."""
+    teto = P.valor(pid)
+    if c.data:
+        teto = min(teto, limite_dispensa(c.data.year, "obras" if pid == "limite_dispensa_obras" else "compras"))
+    return teto
+
+
 def _fracionamento(d: Dossie) -> Achado | None:
     c = d.contratacao
     if not c.data:
         return None
     janela = P.valor("fracionamento_janela_dias")
     min_ct = int(P.valor("fracionamento_min_contratos"))
-    limite_disp = (P.valor("limite_dispensa_obras")
-                   if c.categoria == "obras"
-                   else P.valor("limite_dispensa_compras"))
-    # Contratações próximas (mesmo órgão×fornecedor) dentro da janela.
+    limite_disp = _teto_dispensa(c, "limite_dispensa_obras" if c.categoria == "obras"
+                                 else "limite_dispensa_compras")
     proximas = [c]
     for h in d.historico_orgao_fornecedor:
         if h.data and abs((h.data - c.data).days) <= janela:
@@ -201,7 +211,7 @@ def _proposta_unica(d: Dossie) -> Achado | None:
     if c.propostas_validas is None:
         return None
     min_prop = int(P.valor("propostas_min_competicao"))
-    limite_vulto = P.valor("limite_dispensa_compras")
+    limite_vulto = _teto_dispensa(c, "limite_dispensa_compras")
     if c.propostas_validas < min_prop and (c.valor or 0) > limite_vulto:
         return _POR_ID["IND-DIR-01"]._mk(
             confianca=0.6,
@@ -295,8 +305,7 @@ def _valor_no_limite(d: Dossie) -> Achado | None:
         return None
     tol = P.valor("valor_redondo_tolerancia")
     for pid in ("limite_dispensa_compras", "limite_dispensa_obras"):
-        teto = P.valor(pid)
-        # entre 90% e 100% do teto, e "redondo"
+        teto = _teto_dispensa(c, pid)
         if teto * 0.90 <= c.valor <= teto:
             resto = c.valor % 100
             redondo = resto <= tol or resto >= (100 - tol)

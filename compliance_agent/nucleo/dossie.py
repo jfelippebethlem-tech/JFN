@@ -22,39 +22,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-
-# ── Validadores determinísticos ──────────────────────────────────────────────
-
-def cnpj_valido(cnpj: str | None) -> bool:
-    """Valida um CNPJ pelos dígitos verificadores (algoritmo oficial)."""
-    if not cnpj:
-        return False
-    n = re.sub(r"\D", "", str(cnpj))
-    if len(n) != 14 or len(set(n)) == 1:
-        return False
-    def dv(base: str, pesos: list[int]) -> str:
-        s = sum(int(d) * p for d, p in zip(base, pesos))
-        r = s % 11
-        return "0" if r < 2 else str(11 - r)
-    d1 = dv(n[:12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-    d2 = dv(n[:12] + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-    return n[12:] == d1 + d2
-
-
-def cpf_valido(cpf: str | None) -> bool:
-    """Valida um CPF pelos dígitos verificadores."""
-    if not cpf:
-        return False
-    n = re.sub(r"\D", "", str(cpf))
-    if len(n) != 11 or len(set(n)) == 1:
-        return False
-    def dv(base: str, fator: int) -> str:
-        s = sum(int(d) * (fator - i) for i, d in enumerate(base))
-        r = (s * 10) % 11
-        return "0" if r == 10 else str(r)
-    d1 = dv(n[:9], 10)
-    d2 = dv(n[:10], 11)
-    return n[9:] == d1 + d2
+from compliance_agent.cpf_cnpj import cnpj_valido, cpf_valido  # noqa: F401  (reexportados: fonte única)
 
 
 def para_data(v: Any) -> date | None:
@@ -71,7 +39,6 @@ def para_data(v: Any) -> date | None:
             return datetime.strptime(s[:len(fmt) + 2].strip(), fmt).date()
         except ValueError:
             continue
-    # tentativa final: ISO parcial
     try:
         return datetime.fromisoformat(s).date()
     except ValueError:

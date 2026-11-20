@@ -900,7 +900,7 @@ def obter_sumula(nome: str) -> dict | None:
     return SUMULAS.get(f"{orgao} {num}") or SUMULAS.get(f"{orgao} {num.zfill(2)}")
 
 
-def _acordao_por_numero(num: str) -> Acordao | None:
+def acordao_por_numero(num: str) -> Acordao | None:
     """Acha o Acordao cujo `numero` contém a chave curta (ex.: '1.604/2025'). None se não houver."""
     for ac in TODOS_ACORDAOS:
         if num in ac.numero:
@@ -917,7 +917,7 @@ def fundamentar_clausula(tipo_clausula: str) -> dict:
     entrada = INDICE_CLAUSULA.get((tipo_clausula or "").strip().lower())
     if not entrada:
         return {}
-    acordaos = [ac for ac in (_acordao_por_numero(n) for n in entrada.get("acordaos", [])) if ac]
+    acordaos = [ac for ac in (acordao_por_numero(n) for n in entrada.get("acordaos", [])) if ac]
     return {
         "tipo_clausula": tipo_clausula,
         "sumulas": list(entrada.get("sumulas", [])),

@@ -145,12 +145,3 @@ def ancorar(trecho: Any, fonte: Any, *, limiar: float = LIMIAR_PADRAO,
     return {**base, "similaridade": round(melhor_r, 4),
             "motivo": f"melhor similaridade {melhor_r:.2f} < limiar {limiar:.2f} — "
                       "provável paráfrase, não citação"}
-
-
-def ancorar_muitos(trechos: list[Any], fonte: Any, **kw) -> dict:
-    """Ancora uma lista e resume. `taxa_alucinacao` é a métrica que interessa medir no tempo."""
-    resultados = [ancorar(t, fonte, **kw) for t in (trechos or [])]
-    n = len(resultados) or 1
-    ancorados = [r for r in resultados if r["ancorado"]]
-    return {"n": len(resultados), "ancorados": len(ancorados),
-            "taxa_alucinacao": 1 - len(ancorados) / n, "resultados": resultados}

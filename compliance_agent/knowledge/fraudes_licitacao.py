@@ -578,10 +578,6 @@ FRAUDES: list[FraudePattern] = [
 
 FRAUDES_POR_ID: dict[str, FraudePattern] = {f.id: f for f in FRAUDES}
 
-FRAUDES_POR_CATEGORIA: dict[str, list[FraudePattern]] = {}
-for _f in FRAUDES:
-    FRAUDES_POR_CATEGORIA.setdefault(_f.categoria, []).append(_f)
-
 TODOS_RED_FLAGS: list[tuple[str, str]] = [
     (flag.lower(), f.id)
     for f in FRAUDES

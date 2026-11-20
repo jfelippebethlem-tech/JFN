@@ -105,14 +105,11 @@ def _extrair_json(bruto: str) -> dict:
     """Extrai o primeiro objeto JSON de uma resposta possivelmente suja."""
     if not bruto:
         return {}
-    # remove cercas de código
     bruto = re.sub(r"```(?:json)?", "", bruto)
-    # tenta objeto inteiro
     try:
         return json.loads(bruto.strip())
     except (ValueError, TypeError):
         pass
-    # busca o maior trecho {...}
     m = re.search(r"\{.*\}", bruto, re.DOTALL)
     if m:
         try:

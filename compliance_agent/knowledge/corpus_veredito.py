@@ -33,7 +33,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Iterator
 
-DB_PADRAO = Path("data/tcu_juris.db")
+from compliance_agent.knowledge.tcu_juris_index import abrir
 
 POLARIDADES = ("veda", "admite", "dever", "indefinida")
 ROTULOS: dict[str, str | None] = {
@@ -221,11 +221,9 @@ AREAS_PADRAO = ("Licitação", "Contrato Administrativo", "Convênio", "Responsa
 def iterar_casos(db: str | Path | None = None,
                  areas: tuple[str, ...] = AREAS_PADRAO) -> Iterator[dict]:
     """Casos rotuláveis do acervo. Índice ausente ⇒ nenhum caso, sem exceção e sem fingir."""
-    caminho = Path(db or DB_PADRAO)
-    if not caminho.exists():
+    con = abrir(db)
+    if con is None:
         return
-    con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
     try:
         marcas = ",".join("?" * len(areas))
         for linha in con.execute(
@@ -246,13 +244,11 @@ def cobertura(db: str | Path | None = None,
     Cobertura declarada é regra da casa: "300 casos" sem dizer que 1.200 foram descartados por
     tema fora do mapa faz o conjunto parecer representativo quando é enviesado pelo mapa.
     """
-    caminho = Path(db or DB_PADRAO)
+    con = abrir(db)
     resumo = {"total": 0, "casos": 0, "sem_polaridade": 0, "tema_fora_do_mapa": 0,
-              "por_rotulo": {}, "por_vicio": {}, "indice_ausente": not caminho.exists()}
-    if resumo["indice_ausente"]:
+              "por_rotulo": {}, "por_vicio": {}, "indice_ausente": con is None}
+    if con is None:
         return resumo
-    con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
     try:
         marcas = ",".join("?" * len(areas))
         for linha in con.execute(f"SELECT * FROM tcu_acordao WHERE area IN ({marcas})", areas):
@@ -269,7 +265,7 @@ def cobertura(db: str | Path | None = None,
             resumo["por_rotulo"][caso["rotulo"]] = resumo["por_rotulo"].get(caso["rotulo"], 0) + 1
             resumo["por_vicio"][caso["vicio"]] = resumo["por_vicio"].get(caso["vicio"], 0) + 1
     except sqlite3.OperationalError:
-        logging.getLogger(__name__).debug("corpus_veredito.py:270: exceção ignorada (era except-pass mudo)", exc_info=True)
+        logging.getLogger(__name__).debug("tabela tcu_acordao ausente ou ilegível — cobertura parcial", exc_info=True)
     finally:
         con.close()
     return resumo

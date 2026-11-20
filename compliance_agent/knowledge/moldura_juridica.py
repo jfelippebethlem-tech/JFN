@@ -90,6 +90,3 @@ def moldura(fase: str | None = None, *, com_catalogo: bool = True,
         partes.append(catalogo_para_prompt(fase, max_chars=max(2000, max_chars - len(_FUNDAMENTO))))
     return "\n\n".join(partes)
 
-
-def fases_disponiveis() -> list[str]:
-    return sorted({v.fase for v in CATALOGO if v.fase})

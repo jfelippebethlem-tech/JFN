@@ -30,10 +30,11 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 from typing import Any, Iterable
 
 __all__ = [
-    "SCHEMA", "criar_schema", "normalizar_doc_socio", "registrar_snapshot", "snapshots_ingeridos",
+    "SCHEMA", "criar_schema", "normalizar_doc_socio", "nome_norm", "registrar_snapshot", "snapshots_ingeridos",
     "diff_snapshots", "vinculo_na_data", "historico_do_socio", "trocas_perto_de",
 ]
 
@@ -101,8 +102,12 @@ def normalizar_doc_socio(ident: Any, doc: Any) -> str:
     return doc
 
 
-def _norm_nome(s: Any) -> str:
-    return re.sub(r"\s+", " ", str(s or "")).strip().upper()
+def nome_norm(s: Any) -> str:
+    """Nome na forma da coluna `nome_norm` (`socios_receita`, `socio_snapshot`): sem acento, maiúsculas,
+    espaços simples. Quem grava (`tools/socios_dump_sweep`, `tools/socios_serie_historica`) e quem consulta
+    usam esta; a consulta tinha cópia que mantinha o acento e "JOSÉ" nunca casava com "JOSE" gravado."""
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().upper()
+    return " ".join(s.split())
 
 
 def registrar_snapshot(con: sqlite3.Connection, fonte_mes: str, linhas: Iterable[dict], *,
@@ -119,7 +124,7 @@ def registrar_snapshot(con: sqlite3.Connection, fonte_mes: str, linhas: Iterable
     for ln in linhas:
         raiz = str(ln.get("cnpj_basico") or "").strip()
         doc = normalizar_doc_socio(ln.get("ident"), ln.get("doc_socio"))
-        nome = _norm_nome(ln.get("nome_socio") or ln.get("nome_norm"))
+        nome = nome_norm(ln.get("nome_socio") or ln.get("nome_norm"))
         if not raiz or not (doc or nome):
             continue
         raizes.add(raiz)
@@ -264,7 +269,7 @@ def vinculo_na_data(con: sqlite3.Connection, cnpj_basico: str, data: str, *,
     if doc_socio:
         cond.append("doc_socio=?"); args.append(doc_socio)
     if nome:
-        cond.append("nome_norm=?"); args.append(_norm_nome(nome))
+        cond.append("nome_norm=?"); args.append(nome_norm(nome))
     achou = con.execute(
         f"SELECT doc_socio, nome_norm, qualificacao, data_entrada FROM socio_snapshot "
         f"WHERE {' AND '.join(cond)}", args).fetchall()
@@ -297,7 +302,7 @@ def historico_do_socio(con: sqlite3.Connection, *, doc_socio: str = "", nome: st
     if doc_socio:
         cond.append("doc_socio=?"); args.append(doc_socio)
     if nome:
-        cond.append("nome_norm=?"); args.append(_norm_nome(nome))
+        cond.append("nome_norm=?"); args.append(nome_norm(nome))
     if not cond:
         return []
     con.row_factory = sqlite3.Row

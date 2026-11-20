@@ -47,7 +47,7 @@ reproduzível. O laudo é oponível num ofício ao TCE-RJ ou requerimento de CPI
 | `extracao_robusta.py` | Extração confiável com modelo fraco: schema estrito + reparo de JSON + **votação por autoconsistência** + validação. |
 | `aprendizado.py` | Registra feedback do perito, mede precisão por indicador e sugere calibração de parâmetros. |
 | `nucleo.py` | Orquestrador: `periciar(...) → Laudo` (com `.texto()` e `.para_dict()`). Com `usar_memoria=True`, cada perícia consome e alimenta a memória. |
-| `adaptador_db.py` | Liga o Núcleo à base real (models SQLAlchemy): `periciar_contrato`, `periciar_ob`, `periciar_top_obs`. |
+| `adaptador_db.py` | Liga o Núcleo à base real (models SQLAlchemy): `periciar_contrato`, `periciar_ob` (a varredura da base é o `ciclo.py`). |
 | `memoria_pericial.py` | **Memória de casos** (SQLite): referência de preço aprendida, perfil de reincidência por CNPJ, lastro do feedback. |
 | `avaliacao.py` | **Conjunto-ouro** de casos rotulados — a "suíte de testes" da perícia. Mede F1/precisão/cobertura. |
 | `autoaprimoramento.py` | **Loop de autoaprimoramento**: propõe calibrações, testa no conjunto-ouro, mantém só o que melhora, reverte o resto; tudo em diário auditável. |

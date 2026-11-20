@@ -25,21 +25,13 @@ import re
 import sqlite3
 from pathlib import Path
 
+from compliance_agent.cpf_cnpj import cnpj_valido
+
 _RECEITA = Path(os.environ.get("JFN_RECEITA_DB") or Path(__file__).resolve().parents[2] / "data" / "receita_estab.db")
 _CNPJ = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
 _TITULO = re.compile(r"pesquisa de pre|cota[cç][aã]o|or[cç]amento|mapa comparativo|planilha comparativa|proposta", re.I)
 _TIPOS = ("pesquisa_precos", "planilha_preco", "proposta")
 _EMAIL_CONTADOR = re.compile(r"contab|contador|escritorio|assessoria", re.I)
-
-
-def cnpj_valido(c: str) -> bool:
-    if len(c) != 14 or len(set(c)) == 1:
-        return False
-    def dv(n: str, pesos: list[int]) -> str:
-        r = sum(int(a) * b for a, b in zip(n, pesos)) % 11
-        return "0" if r < 2 else str(11 - r)
-    p = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    return c[12] == dv(c[:12], p) and c[13] == dv(c[:13], [6] + p)
 
 
 def _cadastro(con: sqlite3.Connection, cnpj: str) -> dict | None:

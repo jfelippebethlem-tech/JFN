@@ -29,6 +29,7 @@ from datetime import date
 
 from compliance_agent.padroes import _pagamento_comum as P
 from compliance_agent.padroes._comum import mascarar_cpf
+from compliance_agent.cpf_cnpj import cnpj_valido as cnpj_ok
 
 ID = "compra_fora_do_siafe"
 def _parametros() -> dict:
@@ -79,17 +80,6 @@ _RE_AUTORIZO = re.compile(r"\bAUTORIZO\b|autoriza[çc][ãa]o\s+(?:de|para)\s+(?:
 
 
 # ----------------------------------------------------------------------------------------------- funções puras
-def cnpj_ok(c: str) -> bool:
-    c = re.sub(r"\D", "", c or "")
-    if len(c) != 14 or len(set(c)) == 1:
-        return False
-    def dv(base, pesos):
-        s = sum(int(a) * b for a, b in zip(base, pesos)) % 11
-        return "0" if s < 2 else str(11 - s)
-    p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    return dv(c[:12], p1) == c[12] and dv(c[:13], [6] + p1) == c[13]
-
-
 def chave_ok(ch: str) -> bool:
     """DV (módulo 11) da chave de acesso NF-e de 44 dígitos."""
     if len(ch) != 44 or not ch.isdigit():

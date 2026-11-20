@@ -23,8 +23,8 @@ O QUE ESTE MÓDULO NÃO FAZ, e é o que o torna utilizável:
   · **Não usa fonte sob sigilo.** RIF/COAF, sigilo bancário e fiscal não entram aqui. Onde a
     conclusão dependeria deles, o produto emite pedido de diligência nominando a fonte necessária.
 
-LGPD: o grafo interno guarda o documento íntegro (é dado público de sócio); a exportação para
-entregável mascara CPF por padrão (`mascarar=True`), como o resto da casa.
+LGPD: o grafo interno guarda o documento íntegro (é dado público de sócio); o que sai (`caminho`,
+`beneficiario_final`, `narrar`) passa por `rotulo()`, que mascara a chave `pf:` sem rótulo.
 """
 from __future__ import annotations
 
@@ -170,6 +170,11 @@ class GrafoVinculos:
         if rotulo:
             self.rotulos[no] = rotulo
 
+    def rotulo(self, no: str) -> str:
+        """Nome de exibição do nó. Sem rótulo, a chave sai — e a chave `pf:` de quem veio com documento
+        íntegro (ex.: `tools/colher_vm2_grafo`) é o CPF inteiro: sai mascarado."""
+        return self.rotulos.get(no) or chave_publica(no)
+
     def ligar(self, origem: str, destino: str, tipo: str, *, fonte: str, data: str = "",
               detalhe: str = "", observacoes: Iterable[str] = ()) -> Aresta | None:
         """Adiciona uma aresta. Tipo desconhecido é RECUSADO — vocabulário fechado, como a rubrica.
@@ -247,7 +252,7 @@ class GrafoVinculos:
             ant, a = anterior[no]
             t = TIPOS_ARESTA[a.tipo]
             passos.append({
-                "de": self.rotulos.get(ant, ant), "para": self.rotulos.get(no, no),
+                "de": self.rotulo(ant), "para": self.rotulo(no),
                 "tipo": a.tipo, "descricao": t.descricao, "forca": a.forca,
                 "fonte": a.fonte, "data": a.data, "detalhe": a.detalhe,
                 "exculpatoria": t.exculpatoria, "observacoes": a.observacoes,
@@ -321,19 +326,19 @@ class GrafoVinculos:
                 if viz in caminho:
                     ciclo = caminho[caminho.index(viz):] + [viz]
                     if ciclo not in ciclos:
-                        ciclos.append([self.rotulos.get(x, x) for x in ciclo])
+                        ciclos.append([self.rotulo(x) for x in ciclo])
                     continue
                 nova_forca = forca * a.forca
                 if viz.startswith("pf:") or viz.startswith("pf_nome:"):
                     atual = pessoas.get(viz)
                     if atual is None or nova_forca > atual["confianca"]:
                         pessoas[viz] = {
-                            "no": viz, "rotulo": self.rotulos.get(viz, viz),
+                            "no": chave_publica(viz), "rotulo": self.rotulo(viz),
                             "confianca": round(nova_forca, 4), "saltos": saltos,
                             "documentado": viz.startswith("pf:"),
-                            "caminho": [self.rotulos.get(x, x) for x in caminho + [viz]],
+                            "caminho": [self.rotulo(x) for x in caminho + [viz]],
                         }
-                    cadeias.append({"ate": self.rotulos.get(viz, viz), "saltos": saltos,
+                    cadeias.append({"ate": self.rotulo(viz), "saltos": saltos,
                                     "confianca": round(nova_forca, 4)})
                 else:
                     subir(viz, caminho + [viz], nova_forca, saltos + 1)
@@ -342,7 +347,7 @@ class GrafoVinculos:
         lista = sorted(pessoas.values(), key=lambda d: (-d["confianca"], d["saltos"]))
         conf = (sum(p["confianca"] for p in lista) / len(lista)) if lista else 0.0
         return {
-            "pj": self.rotulos.get(pj, pj),
+            "pj": self.rotulo(pj),
             "pessoas": lista,
             "n_pessoas": len(lista),
             "ciclos": ciclos,
@@ -372,3 +377,8 @@ def narrar(passos: list[dict]) -> str:
 def mascarar_cpf(texto: str) -> str:
     """CPF mascarado na saída (regra da casa). A base interna segue íntegra."""
     return re.sub(r"\b(\d{3})\.?\d{3}\.?\d{3}-?(\d{2})\b", r"\1.***.***-\2", str(texto or ""))
+
+
+def chave_publica(no: str) -> str:
+    """A chave do nó como pode SAIR: `pf:` com documento íntegro tem o CPF mascarado; o resto sai como é."""
+    return mascarar_cpf(no) if no.startswith("pf:") else no

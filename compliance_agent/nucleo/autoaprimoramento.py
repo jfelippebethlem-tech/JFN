@@ -88,7 +88,6 @@ def _gerar_candidatos(passo: float = 0.10) -> list[Candidato]:
             if novo != p.valor:
                 candidatos.append(Candidato(p.id, novo, "perturbacao",
                                             f"varredura ±{passo:.0%}"))
-    # dedup (mantém o primeiro — feedback tem prioridade)
     vistos: set[tuple[str, float]] = set()
     unicos: list[Candidato] = []
     for c in candidatos:

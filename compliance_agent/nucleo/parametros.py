@@ -39,7 +39,6 @@ _TETO_ADITIVO_REFORMA = _teto_adit("reforma")
 _ATO_ADITIVO = _ato_aditivo()
 
 
-# Local do arquivo de overrides (calibração do perito + aprendizado).
 ARQUIVO_OVERRIDES = Path(
     os.environ.get("NUCLEO_PARAMS_FILE", "data/nucleo_parametros.json")
 )
@@ -194,7 +193,6 @@ _PADRAO: list[Parametro] = [
 
 _REGISTRO: dict[str, Parametro] = {p.id: p for p in _PADRAO}
 
-# Cache de overrides carregados do disco.
 _overrides_cache: dict[str, float] | None = None
 
 

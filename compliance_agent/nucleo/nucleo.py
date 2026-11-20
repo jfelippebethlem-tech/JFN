@@ -29,7 +29,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from compliance_agent.nucleo import parametros as P
 from compliance_agent.nucleo.dossie import Contratacao, Dossie, Fornecedor
 from compliance_agent.nucleo.extracao_robusta import Campo, LLMFn, extrair
 from compliance_agent.nucleo.indicadores import Achado, apurabilidade, avaliar_todos
@@ -194,13 +193,3 @@ def periciar(
         except Exception:
             pass  # memória indisponível nunca derruba a perícia
     return laudo
-
-
-def diagnostico_parametros() -> str:
-    """Lista todos os parâmetros efetivos e sua procedência (para a UI/perito)."""
-    linhas = ["Parâmetros da perícia (fonte única de verdade):", ""]
-    for p in P.listar():
-        linhas.append(
-            f"  {p.id}: {p.valor} {p.unidade}  [{p.fonte_valor}]  — {p.fundamento}"
-        )
-    return "\n".join(linhas)

@@ -31,6 +31,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.cpf_cnpj import cnpj_valido as _cnpj_dv, digitos as _digitos
 
 _DB = os.environ.get("JFN_DB", os.path.join(os.path.dirname(__file__), "..", "data", "compliance.db"))
 _DB = os.path.abspath(_DB)
@@ -102,19 +103,8 @@ def _dataset_hash(con) -> str:
 # ── 1. qualidade de dado / quarentena ─────────────────────────────────────────
 
 def _cnpj_valido(c: str) -> bool:
-    """Validação módulo-11 de CNPJ (14 dígitos). CPF (11) ou vazio → não barra aqui."""
-    c = "".join(ch for ch in (c or "") if ch.isdigit())
-    if len(c) != 14:
-        return True  # não é CNPJ de 14 dígitos: não invalida (pode ser CPF/PF)
-    if c == c[0] * 14:
-        return False
-    def dv(base, pesos):
-        s = sum(int(d) * p for d, p in zip(base, pesos))
-        r = s % 11
-        return "0" if r < 2 else str(11 - r)
-    d1 = dv(c[:12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-    d2 = dv(c[:13], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-    return c[12] == d1 and c[13] == d2
+    """CPF (11) ou vazio → não barra aqui; 14 dígitos → dígito verificador (fonte única `cpf_cnpj`)."""
+    return len(_digitos(c)) != 14 or _cnpj_dv(c)
 
 
 def quarentena(df: pd.DataFrame, con) -> pd.DataFrame:

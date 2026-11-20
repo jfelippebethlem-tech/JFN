@@ -33,12 +33,12 @@ import sqlite3
 from typing import Any
 
 from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.editais.screens_participacao import HHI_CONCENTRADO  # o mesmo piso dos screens
 
 # Uma pessoa em muitíssimas empresas não forma "grupo": é administrador profissional ou o efeito
 # da máscara de CPF (medido: 977 de 24.448 documentos carregam mais de um nome). Acima deste
 # limite a pessoa não é usada para unir empresas — uniria o mercado inteiro num grupo só.
 MAX_EMPRESAS_POR_PESSOA = 20
-HHI_CONCENTRADO = 0.25          # o mesmo piso já usado em `editais/screens_participacao`
 DELTA_RELEVANTE = 0.05          # abaixo disto o agrupamento não mudou a leitura
 # Fração mínima de pontes com poder de mando para o grupo ser LIDO como comandado. Calibrado no
 # acervo (2026-08-09): Cidades tem 2 administradores em 5 pontes (40%) e é comando; FSERJ tem 1 em

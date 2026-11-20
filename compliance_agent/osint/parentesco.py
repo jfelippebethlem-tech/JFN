@@ -41,10 +41,8 @@ diligência que fecharia a questão.
 """
 from __future__ import annotations
 
-import re
 import sqlite3
 from collections import defaultdict
-from typing import Any
 
 from compliance_agent.cruzamentos_intel import _nep_familia, _nep_tokens
 
@@ -320,8 +318,3 @@ def _leitura(grau: str | None, fp: float, eixos: set[str]) -> str:
     return (f"Dois ou mais eixos independentes convergem. Falso positivo esperado da ordem de "
             f"{fp:.1f}%. INDÍCIO que justifica diligência documental — segue sendo indício, e "
             "parentesco só se prova por certidão.")
-
-
-def mascarar(texto: Any) -> str:
-    """CPF mascarado na saída (regra da casa) — a base da Receita já entrega mascarado."""
-    return re.sub(r"\b(\d{3})\.?\d{3}\.?\d{3}-?(\d{2})\b", r"\1.***.***-\2", str(texto or ""))

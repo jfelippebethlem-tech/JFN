@@ -17,6 +17,7 @@ from typing import Callable
 import yaml
 
 from compliance_agent.qualidade import catraca, verificadores
+from compliance_agent.cpf_cnpj import cnpj_valido
 
 REPO = catraca.REPO
 _FORA = ("compliance_agent/qualidade/", "tests/", "docs/", "_SANDBOX/", "_PROTEGIDO/", "graphify-out/")
@@ -146,17 +147,6 @@ def achar_chave_paga(rel: str, texto: str) -> list:
 
 # ── PAD-12 · grau fixado por CNPJ dentro do código ───────────────────────────────────────────────────────
 _RE_CNPJ_LIT = re.compile(r"""['"](\d{14}|\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})['"]""")
-
-
-def cnpj_valido(d: str) -> bool:
-    d = re.sub(r"\D", "", d)
-    if len(d) != 14 or d == d[0] * 14:
-        return False
-    for n, pesos in ((12, (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)), (13, (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))):
-        r = sum(int(d[i]) * pesos[i] for i in range(n)) % 11
-        if int(d[n]) != (0 if r < 2 else 11 - r):
-            return False
-    return True
 
 
 def achar_cnpj_literal(rel: str, texto: str) -> list:

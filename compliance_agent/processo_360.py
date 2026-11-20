@@ -24,6 +24,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from compliance_agent import sei_recomendacoes
+from compliance_agent.cpf_cnpj import cnpj_valido as _cnpj_valido
 from compliance_agent.cadeia_processo import analisar_cadeia
 from compliance_agent.detectores import PESOS_DETECTOR
 from compliance_agent.detectores.base import ResultadoDetector, score_processo
@@ -375,18 +376,6 @@ def _e_ente_publico(cnpj: str) -> bool:
     except sqlite3.Error:
         return False
     return bool(row) and str(row[0] or "").startswith("1")
-_P1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-_P2 = [6] + _P1
-
-
-def _cnpj_valido(c: str) -> bool:
-    if len(c) != 14 or len(set(c)) == 1:
-        return False
-    for pesos, n in ((_P1, 12), (_P2, 13)):
-        r = sum(int(c[i]) * pesos[i] for i in range(n)) % 11
-        if int(c[n]) != (0 if r < 2 else 11 - r):
-            return False
-    return True
 
 
 # "doravante denominado CONTRATANTE" identifica o ÓRGÃO; a exigência de que CONTRATADA não

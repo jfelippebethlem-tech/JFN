@@ -430,7 +430,7 @@ def validar() -> list[str]:
     problemas: list[str] = []
     from compliance_agent.detectores import REGISTRO
     from compliance_agent.knowledge.fraudes_licitacao import FRAUDES_POR_ID
-    from compliance_agent.knowledge.jurisprudencia import INDICE_CLAUSULA, obter_sumula
+    from compliance_agent.knowledge.jurisprudencia import INDICE_CLAUSULA, acordao_por_numero, obter_sumula
     from compliance_agent.lex_redflags import _RF
 
     ids = [v.id for v in CATALOGO]
@@ -468,6 +468,14 @@ def validar() -> list[str]:
         for c in v.clausulas:
             if c not in INDICE_CLAUSULA:
                 problemas.append(f"{v.id}: tipo de cláusula '{c}' não existe no INDICE_CLAUSULA")
+                continue
+            # `fundamentar_clausula` descarta calado o acórdão que não resolve na base curada.
+            for n in INDICE_CLAUSULA[c].get("acordaos", []):
+                if acordao_por_numero(n) is None:
+                    problemas.append(f"{v.id}: acórdão '{n}' da cláusula '{c}' não resolve em TODOS_ACORDAOS")
+            for s in INDICE_CLAUSULA[c].get("sumulas", []):
+                if obter_sumula(s) is None:
+                    problemas.append(f"{v.id}: súmula '{s}' da cláusula '{c}' não resolve em SUMULAS")
         for s in v.sumulas:
             if obter_sumula(s) is None:
                 problemas.append(f"{v.id}: súmula '{s}' não resolve em SUMULAS")

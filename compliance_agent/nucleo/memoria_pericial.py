@@ -177,7 +177,6 @@ def registrar_veredito(referencia: str, veredito: str) -> int:
         con.commit()
     finally:
         con.close()
-    # Propaga para o feedback por indicador (calibração).
     from compliance_agent.nucleo import aprendizado
     for _id, achados_json in linhas:
         try:

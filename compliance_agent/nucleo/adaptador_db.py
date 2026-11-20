@@ -17,25 +17,20 @@ Uso:
     from compliance_agent.nucleo.adaptador_db import periciar_contrato, periciar_ob
 
     laudo = periciar_contrato(session, contrato_id=123)
-    laudos = list(periciar_top_obs(session, limite=100))   # varredura da base
+    laudo = periciar_ob(session, ob)    # varredura da base: nucleo/ciclo.py (OB do SIAFE, por cursor)
 """
 
 from __future__ import annotations
 
-import re
 import logging
 import statistics
-from typing import Iterator
 
+from compliance_agent.cpf_cnpj import digitos
 from compliance_agent.nucleo.dossie import Contratacao, Fornecedor
 from compliance_agent.nucleo.nucleo import Laudo, periciar
 
 
 logger = logging.getLogger(__name__)
-
-
-def _digits(v) -> str:
-    return re.sub(r"\D", "", str(v or ""))
 
 
 def _categoria(texto: str) -> str:
@@ -70,7 +65,7 @@ def _doacoes_do_fornecedor(session, cnpj: str) -> list[dict]:
         q = (session.query(DoacaoEleitoral)
              .filter(DoacaoEleitoral.cpf_cnpj_doador.like(f"{raiz}%")))
         for d in q.limit(500):
-            doc = _digits(d.cpf_cnpj_doador)
+            doc = digitos(d.cpf_cnpj_doador)
             # só a PRÓPRIA empresa ou filial (14 dígitos, mesma raiz) — CPF com
             # prefixo coincidente NÃO é a empresa doando (raiz 00000000 do BB
             # casava com CPFs 000.000.0xx-xx e gerava quid pro quo fantasma)
@@ -85,7 +80,7 @@ def _doacoes_do_fornecedor(session, cnpj: str) -> list[dict]:
 def _fornecedor_de_empresa(empresa, session=None) -> Fornecedor:
     if empresa is None:
         return Fornecedor()
-    cnpj = _digits(getattr(empresa, "cnpj", ""))
+    cnpj = digitos(getattr(empresa, "cnpj", ""))
     situacao = getattr(empresa, "situacao", "") or ""
     end_tipo = ""
     # heurística leve de endereço a partir da natureza jurídica/municipio ausente
@@ -110,14 +105,14 @@ def _referencia_categoria(session, categoria: str) -> dict[str, float]:
         return {}
     try:
         from compliance_agent.database.models import Contrato
-        valores = [
-            v for (v,) in session.query(Contrato.valor_total)
-            .filter(Contrato.valor_total.isnot(None), Contrato.valor_total > 0)
-            .all()
-        ]
+        linhas = (session.query(Contrato.valor_total, Contrato.objeto)
+                  .filter(Contrato.valor_total.isnot(None), Contrato.valor_total > 0)
+                  .all())
     except Exception:
         return {}
-    valores = [float(v) for v in valores if v]
+    # A consulta trazia TODOS os contratos e a categoria só servia para não estar vazia: o IND-SUP-01
+    # comparava cada contrato com a base inteira. Agora só os da mesma categoria do objeto.
+    valores = [float(v) for v, obj in linhas if v and _categoria(obj or "") == categoria]
     if len(valores) < 5:
         return {}
     ref = {"mediana": statistics.median(valores)}
@@ -259,7 +254,7 @@ def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
     buscado na hora na Receita (BrasilAPI) antes de periciar.
     """
     from compliance_agent.database.models import Empresa
-    cnpj = _digits(getattr(ob, "favorecido_cpf", ""))
+    cnpj = digitos(getattr(ob, "favorecido_cpf", ""))
     empresa = None
     if len(cnpj) == 14:
         empresa = session.query(Empresa).filter(Empresa.cnpj == cnpj).first()
@@ -293,20 +288,3 @@ def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
     )
     return periciar(contratacao=contratacao, fornecedor=fornecedor,
                     usar_memoria=True)
-
-
-def periciar_top_obs(session, limite: int = 100,
-                     valor_minimo: float = 100_000) -> Iterator[Laudo]:
-    """
-    Varre as maiores OBs e retorna apenas laudos com achados (risco > baixo),
-    ordenados por valor. Ideal para o Auditor 24h priorizar alvos.
-    """
-    from compliance_agent.database.models import OrdemBancaria
-    q = (session.query(OrdemBancaria)
-         .filter(OrdemBancaria.valor.isnot(None), OrdemBancaria.valor >= valor_minimo)
-         .order_by(OrdemBancaria.valor.desc())
-         .limit(limite))
-    for ob in q:
-        laudo = periciar_ob(session, ob)
-        if laudo.veredito.achados:
-            yield laudo

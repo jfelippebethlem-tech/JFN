@@ -31,7 +31,7 @@ from dataclasses import dataclass
 
 # Graus de evidência da casa (editais/flags): A CERTO · B FORTE · C SUSPEITO · D NÃO-AFERÍVEL ·
 # E EXCULPADO. Só A e B podem fundamentar peça (`pode_fundamentar_peca`).
-_FORCA_GRAU = {"A": 4, "B": 3, "C": 2, "D": 0, "E": 0}
+FORCA_GRAU = {"A": 4, "B": 3, "C": 2, "D": 0, "E": 0}
 
 
 @dataclass(frozen=True)
@@ -102,12 +102,12 @@ def atingido(grau: str, *, familias_independentes: int = 1) -> str:
     famílias, e contá-las como tal é a forma mais fácil de inflar um caso.
     """
     g = str(grau or "").strip().upper()[:1]
-    forca = _FORCA_GRAU.get(g, 0)
+    forca = FORCA_GRAU.get(g, 0)
     if forca == 0:
         return "indicio"
     melhor = "indicio"
     for s in sorted(STANDARDS.values(), key=lambda x: x.nivel):
-        if forca < _FORCA_GRAU[s.grau_minimo]:
+        if forca < FORCA_GRAU[s.grau_minimo]:
             continue
         if s.exige_convergencia and familias_independentes < 2:
             continue
@@ -131,7 +131,7 @@ def suficiente(grau: str, pretensao: str, *, familias_independentes: int = 1) ->
     falta: list[str] = []
     if not ok:
         g = str(grau or "").strip().upper()[:1]
-        if _FORCA_GRAU.get(g, 0) < _FORCA_GRAU[exigido.grau_minimo]:
+        if FORCA_GRAU.get(g, 0) < FORCA_GRAU[exigido.grau_minimo]:
             falta.append(
                 f"elevar o grau de evidência de {g or '?'} para {exigido.grau_minimo} — juízo de "
                 "IA tem teto no grau C e só sobe por corroboração determinística independente "

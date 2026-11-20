@@ -36,11 +36,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from compliance_agent.knowledge.standard_prova import FORCA_GRAU
 
-# Graus de evidência de `editais/flags` (A CERTO · B FORTE · C SUSPEITO · D NÃO-AFERÍVEL ·
-# E EXCULPADO). Só A e B fundamentam peça; a subsunção herda essa régua em vez de criar outra.
-_FORCA = {"A": 4, "B": 3, "C": 2, "D": 0, "E": 0}
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -162,7 +160,7 @@ def montar(dados: dict, fonte_documental: str = "") -> dict[str, Any]:
     if not str(d.get("subsuncao") or "").strip():
         problemas.append("sem o passo de subsunção — a ponte entre norma e fato não foi escrita")
 
-    melhor_grau = max((f.grau for f in fatos), key=lambda g: _FORCA.get(g, 0), default="D")
+    melhor_grau = max((f.grau for f in fatos), key=lambda g: FORCA_GRAU.get(g, 0), default="D")
     aferivel = not problemas
 
     s = Subsuncao(

@@ -364,17 +364,3 @@ CASOS_RJ: list[CasoCorrupcao] = [
     ),
 
 ]
-
-
-# ── Índices para acesso rápido ────────────────────────────────────────────────
-CASOS_POR_ID: dict[str, CasoCorrupcao] = {c.id: c for c in CASOS_RJ}
-
-CASOS_POR_STATUS: dict[str, list[CasoCorrupcao]] = {}
-for _c in CASOS_RJ:
-    CASOS_POR_STATUS.setdefault(_c.status, []).append(_c)
-
-TODOS_TERMOS_CASOS: list[tuple[str, str]] = [
-    (termo.lower(), caso.id)
-    for caso in CASOS_RJ
-    for termo in caso.palavras_chave
-]

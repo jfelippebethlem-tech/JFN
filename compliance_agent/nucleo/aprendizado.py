@@ -33,7 +33,7 @@ ARQUIVO_FEEDBACK = Path(
 )
 
 # Indicador → parâmetros que, se ajustados, mudam sua taxa de disparo.
-# (mesma lista que cada indicador declara em parametros_usados)
+# Só os calibráveis: o parâmetro de origem "lei" (teto de dispensa, limite de aditivo) não se calibra.
 _IND_PARAMS = {
     "IND-FRAC-01": ["fracionamento_janela_dias", "fracionamento_min_contratos"],
     "IND-EMP-01": ["empresa_nova_dias", "capital_social_min_frac"],

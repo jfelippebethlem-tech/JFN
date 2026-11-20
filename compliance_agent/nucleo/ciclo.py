@@ -27,18 +27,10 @@ import sys
 from compliance_agent.nucleo import aprendizado, memoria_pericial
 from compliance_agent.nucleo.autoaprimoramento import executar_loop, historico_evolucao
 from compliance_agent.nucleo.avaliacao import avaliar_sistema
+from compliance_agent.nucleo.dossie import para_data
 
 
 _PAGINA = 500
-
-
-def _data_siafe(txt):
-    """`data_emissao` do SIAFE é TEXTO 'dd/mm/aaaa' — vira date (a régua de sanção vigente compara ISO)."""
-    from datetime import datetime
-    try:
-        return datetime.strptime((txt or "").strip()[:10], "%d/%m/%Y").date()
-    except ValueError:
-        return None
 
 
 def _ob_siafe(row):
@@ -50,7 +42,8 @@ def _ob_siafe(row):
         numero_ob=numero_ob, ug_codigo=ug, ug_nome=ug or "", exercicio=exercicio,
         referencia_pericia=f"siafe:{numero_ob}:{ug}:{exercicio}", fonte_pericia="siafe_ob",
         favorecido_cpf=credor or "", favorecido_nome=nome or "", valor=valor,
-        data_emissao=_data_siafe(data), observacao=f"OB {numero_ob} · processo {processo or '—'}",
+        data_emissao=para_data(data),  # SIAFE grava TEXTO 'dd/mm/aaaa'; a régua de sanção compara date
+        observacao=f"OB {numero_ob} · processo {processo or '—'}",
         categoria="", tipo_ob="")
 
 

@@ -92,7 +92,6 @@ def pontuar(achados: list[Achado], valor_contrato: float | None = None) -> Vered
         / peso_total, 3
     ) if peso_total else 0.0
 
-    # Base legal consolidada (dedup preservando ordem).
     vistos: set[str] = set()
     base_legal: list[str] = []
     for a in achados:

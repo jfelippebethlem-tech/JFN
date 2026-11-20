@@ -45,11 +45,8 @@ def match_patterns(contexto: dict[str, Any], min_score: float = 0.15) -> list[di
 
     resultados = []
     for fraude in FRAUDES:
-        # Score por red_flags
         rf_score = _score_keywords(texto_busca, fraude.red_flags)
-        # Score por como_detectar (indicadores textuais)
         det_score = _score_keywords(texto_busca, fraude.como_detectar)
-        # Combina com peso maior para red_flags
         score = rf_score * 0.7 + det_score * 0.3
 
         if score >= min_score:
@@ -118,7 +115,6 @@ def analisar_contexto_completo(
     padroes = match_patterns(contexto)[:max_patterns]
     casos   = match_casos_historicos(contexto)[:max_casos]
 
-    # Calcula risco geral
     if padroes and padroes[0]["score"] >= 0.4 and padroes[0]["risco"] == "alto":
         risco_geral = "alto"
     elif padroes and padroes[0]["score"] >= 0.2:
@@ -126,7 +122,6 @@ def analisar_contexto_completo(
     else:
         risco_geral = "baixo"
 
-    # Monta resumo textual
     linhas = []
     if padroes:
         linhas.append("**Padrões de fraude detectados:**")
@@ -150,26 +145,4 @@ def analisar_contexto_completo(
         "padroes_identificados":  padroes,
         "casos_similares":        casos,
         "resumo":                 resumo,
-    }
-
-
-# ── Enriquecedor de alerta ────────────────────────────────────────────────────
-
-def enriquecer_alerta(alerta_dict: dict) -> dict:
-    """
-    Recebe um dict de alerta e adiciona contexto de padrões conhecidos.
-    Pode ser chamado após qualquer alerta ser gerado, sem custo de API.
-    """
-    contexto = {
-        "titulo":    alerta_dict.get("titulo", ""),
-        "descricao": alerta_dict.get("descricao", ""),
-        "tipo":      alerta_dict.get("tipo", ""),
-    }
-    analise = analisar_contexto_completo(contexto, max_patterns=3, max_casos=2)
-    return {
-        **alerta_dict,
-        "padroes_conhecidos": analise["padroes_identificados"],
-        "casos_similares":    analise["casos_similares"],
-        "risco_calculado":    analise["risco_geral"],
-        "contexto_historico": analise["resumo"],
     }

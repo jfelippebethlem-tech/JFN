@@ -713,17 +713,3 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
         return ("/pericia", ob.group(1))
 
     return None
-
-
-AJUDA_NUCLEO = """
-🧠 *NÚCLEO DE PERÍCIA (inteligência progressiva)*
-/pericia `<CNPJ|OB|nome>` — perícia na hora, com laudo e base legal
-/veredito `<ref> confirmado|descartado` — seu feedback ensina o sistema
-/placar — quão inteligente o sistema está (conjunto-ouro + memória)
-/ciclo\\_nucleo — roda o loop de autoaprimoramento agora
-/fornecedor `<CNPJ>` — perfil de reincidência aprendido
-/certame `<nº PNCP>` — Índice de Direcionamento do certame (famílias + drivers)
-/parametros — limiares vigentes (🔒 legais | 🔧 calibráveis)
-/evolucao — diário: o que o sistema mudou em si mesmo
-_Também entendo sem comando: "pericia a MGS Clean", "2024OB01234 confirmado"…_
-""".strip()

@@ -25,10 +25,10 @@ import os
 import sqlite3
 import subprocess
 import time
-import unicodedata
 from pathlib import Path
 
 from compliance_agent.osint.historico_societario import _com_espera, normalizar_doc_socio
+from compliance_agent.osint.historico_societario import nome_norm as _norm
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
@@ -40,11 +40,6 @@ _QUALIF_FALLBACK = {
     "05": "Administrador", "08": "Conselheiro de Administração", "10": "Diretor",
     "16": "Presidente", "49": "Sócio-Administrador", "22": "Sócio", "65": "Titular Pessoa Física",
 }
-
-
-def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().upper()
-    return " ".join(s.split())
 
 
 def _carregar_qualif() -> dict[str, str]:
