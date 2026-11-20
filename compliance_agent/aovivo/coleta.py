@@ -584,7 +584,9 @@ class Coletor:
         self.tick()
         agora = time.time()
         return {"atualizado_em": _iso(agora), "fontes": self.fontes, "motores": self.motores,
-                "eventos": self.eventos_publicos(), "eventos_min": round(sum(1 for x in self.eventos if x["_ts"] >= agora - 300) / 5, 2),
+                "eventos": self.eventos_publicos(),
+                "eventos_total": len(self.eventos),   # COR-07: os 60 últimos DE quantos guardados (anel de ANEL)
+                "eventos_min": round(sum(1 for x in self.eventos if x["_ts"] >= agora - 300) / 5, 2),
                 "resumo": {e: sum(1 for m in self.motores if m["estado"] == e and m["classe"] == "motor")
                            for e in ("rodando", "agendado", "ocioso", "falhou", "indisponivel")}
                 | {"sem_efeito": sum(1 for m in self.motores if (m.get("efeito") or {}).get("parado") and m["classe"] == "motor")}}

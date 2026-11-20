@@ -186,13 +186,17 @@ def contagem_no_teto(n: int, tetos: Iterable[int] = TETOS) -> bool:
 
 def listas_no_teto(payload: Any, caminho: str = "") -> list[str]:
     """COR-07/PAD-05: lista cujo tamanho é um limite conhecido e que não tem, ao lado, o total do universo.
-    Com o total ao lado ("N de M") não é violação — é lista cortada e declarada."""
+    Com o total ao lado ("N de M") não é violação — é lista cortada e declarada. O total pode ser genérico
+    (`_CHAVES_TOTAL`) ou o da própria lista (`<lista>_total`)."""
     out = []
     if isinstance(payload, dict):
-        tem_total = any(isinstance(payload.get(k), int) and not isinstance(payload.get(k), bool) for k in _CHAVES_TOTAL)
+        def _eh_int(x):
+            return isinstance(x, int) and not isinstance(x, bool)
+        tem_total = any(_eh_int(payload.get(k)) for k in _CHAVES_TOTAL)
         for k, v in payload.items():
             aqui = f"{caminho}.{k}" if caminho else str(k)
-            if isinstance(v, list) and contagem_no_teto(len(v)) and not tem_total:
+            if (isinstance(v, list) and contagem_no_teto(len(v)) and not tem_total
+                    and not _eh_int(payload.get(f"{k}_total"))):
                 out.append(f"COR-07 lista `{aqui}` com {len(v)} itens (tamanho de teto) sem o total ao lado")
             elif isinstance(v, dict):
                 out += listas_no_teto(v, aqui)

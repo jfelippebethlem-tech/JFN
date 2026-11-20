@@ -326,6 +326,7 @@ def api_painel():
                 "lista_alertas": alertas,
                 "top_favorecidos": top,
                 "obs_recentes": obs_recentes,
+                "obs_recentes_total": total_obs,   # COR-07: as 25 mais recentes DE quantas (espelho TFE)
                 "licoes": licoes,
             })))
         finally:
