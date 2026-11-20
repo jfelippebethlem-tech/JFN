@@ -7,7 +7,6 @@
  * o `.fade` novo entra, as fitas trocam de enquadramento, a capa ganha a palavra em itálico, os
  * blocos revelam ao entrar na tela e a cobertura azul da transição se abre.
  */
-import {_v63} from '../capacidade/estado.js';
 import {fundoMontar, fundoQuadroDaAba, fundoSoltarSecoes} from './fundo.js';
 import {molduraMontar, capaItalico} from './moldura.js';
 import {transicaoLigar, transicaoPintou} from './transicao.js';
@@ -15,7 +14,6 @@ import {microLigar} from './micro.js';
 import {revelarEm} from './revelar.js';
 
 export function v63Boot() {
-  if (!_v63) return;
   fundoMontar();
   molduraMontar();
   transicaoLigar();

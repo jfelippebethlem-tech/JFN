@@ -10,30 +10,26 @@ window.__jfnBootReadyState=document.readyState;
    Nada aqui toca DOM montado nem estado de navegacao; e o que ~40 dos 59 renders consomem.
    Sao os primeiros a sair de proposito: se algo neles quebrar, quebra tudo, e e melhor
    descobrir enquanto ainda ha pouco em jogo. */
-import {$, esc, svgIco, card, kpi, sec, spin, cover, leitura, semMedicao, btnPdf, acoesAba,
-        toggle, corta, clk} from './nucleo/dom.js';
+import {$, esc, svgIco, card, spin, toggle} from './nucleo/dom.js';
 import {ligarDrill} from './nucleo/drill.js';
-import {fmtN, fmtD, fmtPct, fmtR, fmtRc, ROTULOS, rot} from './nucleo/formato.js';
-import {J, _jCache, erroHumano} from './nucleo/http.js';
-import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
-        _pagState} from './nucleo/lista.js';
+import {J, _jCache} from './nucleo/http.js';
+import {filtrar, filtrarPag, _pagMais, _acPagPick, ordenar} from './nucleo/lista.js';
 
 /* O RELOGIO DO PAINEL. Modulo sem efeito de topo: quem o liga sao os dois pontos do SSE abaixo —
    o batimento (carga + sweep) e o evento. Sem barramento, ele nunca acorda e o painel respira
    devagar, que e a leitura honesta. */
-import {ritmoTelemetria, ritmoEvento} from './ritmo.js';
+import {ritmoTelemetria, ritmoEvento, ritmoEstado} from './ritmo.js';
 import {sabreStart, hfToggle} from './barramento/sabre.js';
 /* O DECK DA CONSCIENCIA. Modulo sem efeito de topo; quem o liga e a sequencia de boot abaixo, e
    quem o alimenta sao os mesmos ganchos do barramento — uma conexao SSE so, dois ouvintes. */
 import {conscienciaLigar, conscienciaEvento, conscienciaBatimento,
         conscienciaToggle, conscienciaRever} from './consciencia.js';
-import {ritmoEstado} from './ritmo.js';
 
 /* CAPACIDADE. `estado.js` e uma FOLHA de proposito — nao importa nada. E o que quebra o ciclo:
    `cena/*` le `_sobrio` para parar de agendar quadro, e quem ESCREVE `_sobrio` precisa dos videos
    da cena para pausa-los. Com a bandeira na folha, os dois lados a leem sem se enxergarem.
    As ~40 leituras espalhadas pelo painel nao mudaram: `export let` da binding VIVO. */
-import {_redMotion, _sobrio, _v60, _v61} from './capacidade/estado.js';
+import {_redMotion, _sobrio} from './capacidade/estado.js';
 import {movimentoBoot} from './ui/movimento.js';
 import {v60Boot} from './ui/v60.js';
 import {toqueBoot} from './ui/toque.js';
@@ -47,13 +43,15 @@ import {familiaDaAba} from './ui/revelacao.js';
 import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 /* A CENA — canvas de fundo, mesa de vigilia, videos de esfera e portal. Sem efeito de topo:
    quem a liga e a sequencia de boot abaixo. */
-import {rjbgStart, netbgStart, _rjbgTinge, nucleoStart, nucleoPulse, nuSet, nuSweepPoll,
-        NU_NODES, nucleoViva, nebulaViva, holoRJ, mesaViva, portalStart, _rjCarregar,
-        _nuHover, _setNuHover, cenaPonteiro} from './cena/index.js';
+import {rjbgStart, netbgStart, _rjbgTinge} from './cena/fundo.js';
+import {portalStart} from './cena/portal.js';
+import {cenaPonteiro} from './cena/ponteiro.js';
+import {nucleoPulse, nucleoViva, nebulaViva, _nuHover,
+        _setNuHover} from './cena/index.js';
 import {energiaPacote, energiaRever, energiaParar, energiaCenso} from './cena/energia.js';
-import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, seiBaixarZip,
-        verCruzamento, fecharCertame, abrirCertame, jsq, _wire,
-        uiLigarSpotlight, uiLigarDialogo, uiLigarA11y, vivo, revelacaoCenso} from './ui/index.js';
+import {a11yfy, jfnToast, glossario, fecharDossie, abrirDossie, seiArvore, seiBaixarZip, verCruzamento,
+        fecharCertame, abrirCertame, uiLigarSpotlight, uiLigarDialogo, uiLigarA11y, vivo,
+        revelacaoCenso} from './ui/index.js';
 
 /* AS TELAS — 59 renders. Ver `abas/index.js`. */
 import {renderCasos, ligarCasos} from './abas/casos.js';
@@ -62,11 +60,32 @@ import {renderGovernoCouto, ligarGovernoCouto} from './abas/governo_couto.js';
 import {renderOrcamentoOrgao, ligarOrcamentoOrgao} from './abas/orcamento_orgao.js';
 import {ligarPeriodo} from './abas/periodo.js';
 import {renderPericiaContabil, renderCgeJfn} from './abas/rotinas.js';
-import {renderMotoresSistema, renderComandosSistema} from './abas/sistema.js';
+import {renderMotoresSistema, renderComandosSistema, abrirCapMestra} from './abas/sistema.js';
 import {renderConformidade} from './abas/conformidade.js';
 import {renderPropagacao} from './abas/propagacao.js';
 import {renderRequerimentos, ligarRequerimentos} from './abas/requerimentos.js';
-import {ligarVinculos, ligarFila, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, sinteseProcesso, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
+import {ckBoot, renderCockpit} from './abas/cockpit.js';
+import {_compView, renderComparador, _set_compView, _set_compCat, _set_compDisp, _set_compEsf,
+        _set_compGrupo, _set_compOrd, _set_compTermo, _compCat, _compDisp, _compEsf, _compGrupo,
+        _compOrd, _compTermo} from './abas/comparador.js';
+import {ligarVinculos, renderVinculos} from './abas/vinculos.js';
+import {ligarFila, _acPick, _cjEsf, _comisView, _ctrView, _fantFaixa, _gastosDet, _perOrdem,
+        _respProc, _riscoView, acKeydown, acao, autocompletar, detRodar, fazBusca, fxConsultar,
+        instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar,
+        sinteseProcesso, renderAcoes, renderAcuracia, renderAditivos, renderAlertas,
+        renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun,
+        renderCertames, renderComissionadosPref, renderComunidades, renderConluio, renderConluioQSA,
+        renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada,
+        renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente,
+        renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao,
+        renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo,
+        renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref,
+        renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade,
+        renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas,
+        renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor,
+        renderSweeps, renderValidar, sweep, validar, _set_cjEsf, _set_comisView, _set_ctrView,
+        _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_perGrau,
+        _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
 import {renderLai, ligarLai} from './abas/lai.js';
 /* MÍDIA (2026-11-09): som de interface (desligado por padrão) e a sonda das ilustrações de vazio.
    Sem efeito de topo — liga pela chamada `ligarMidia()` na sequência de boot. */
@@ -189,13 +208,9 @@ const TABS={
 /* `esfera` e `aba` vivem em `app/estado.js` — folha que a cena tambem importa. Enquanto
    moravam aqui, o IIFE do bundle as fechava e a cena quebrava com `esfera is not defined`. */
 import {esfera, aba, setEsfera, setAba} from './app/estado.js';
-/* Movido para `abas/index.js` na v59 — ver a razão lá. Este comentário fica porque a linha que
-   estava aqui era um bug de verdade: `const` no entrypoint, USADA em `abas/`, e o esbuild podava
-   a declaração (nada no entrypoint a referenciava) deixando três usos órfãos no bundle. O sintoma
-   era `sessaoReports is not defined` ao gerar uma peça e a cada `pagehide`. */
 
 function montarSpheres(){
-  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}"${_v60?` title="${s.c}"`:''} aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
+  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" title="${s.c}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
 }
 /* v49 — A BARRA DESLOCAVA A CADA NAVEGAÇÃO, e o motivo era esta função.
    Ela reescrevia o `innerHTML` da nav INTEIRA (até 30 botões na esfera "Transversal") a cada `ir()`,
@@ -214,14 +229,14 @@ function montarTabs(){
     nav.innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
     _tabsMais();
     /* v60: o trilho de chips fica no topo; a aba ativa entra CENTRADA já na montagem */
-    if(_v60){const o=nav.querySelector('button.on');if(o)o.scrollIntoView({block:'nearest',inline:'center'});}
+    {const o=nav.querySelector('button.on');if(o)o.scrollIntoView({block:'nearest',inline:'center'});}
     return;
   }
   for(const b of nav.children)b.classList.toggle('on',b.dataset.aba===aba);
   /* v57: a aba ativa não pode ficar do lado de fora. `block:'nearest'` é o que impede
      o scrollIntoView de mexer na página (a nav é fixa no rodapé) — só rola a própria barra. */
   const _on=nav.querySelector('button.on');
-  if(_on)_on.scrollIntoView({block:'nearest',inline:_v60?'center':'nearest',behavior:_redMotion?'auto':'smooth'});
+  if(_on)_on.scrollIntoView({block:'nearest',inline:'center',behavior:_redMotion?'auto':'smooth'});
   _tabsMaisPintar();
 }
 /* ═══ v57 — A BARRA DE ABAS ESCONDIA METADE DE SI ══════════════════════════════════════════
@@ -332,7 +347,6 @@ async function ir(id){
   if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
   if(typeof nebulaViva==='function')nebulaViva();   // v37: liga o loop de video da esfera, se existir
   if(typeof nucleoViva==='function')nucleoViva();   // v53: idem para o nucleo holografico da mesa
-  if(typeof holoRJ==='function')holoRJ();           // v55: assinatura holografica do Estado
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
   /* v31: a troca era um corte — spinner sai, conteudo novo entra, e cada aba
@@ -346,7 +360,7 @@ async function ir(id){
     /* vidro/jarvis: a FAMÍLIA da aba (e "lado" quando é sub-aba — chip na mesma aba, tocado agora)
        vai escrita no `.fade`; quem decide o gesto é a gramática 7 de `ui/revelacao.js` + o CSS. */
     const _tq=jarvisToque(),_fam=(_abaAntes===id&&_tq.recente)?'lado':familiaDaAba(esfera,id);
-    const pintar=()=>{v.innerHTML=`<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;if(typeof marcarValores==='function')marcarValores(v);};
+    const pintar=()=>{v.innerHTML=`<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;marcarValores(v);};
     /* v60: a troca de aba é um crossfade de 160ms em CSS (`.fade`). A View Transition fotografa a
        tela inteira antes e depois — medido no perfil (celular, CPU 4×): era o item mais caro da
        troca, e o resultado visual que o v60 quer é só o fade. */
@@ -356,7 +370,7 @@ async function ir(id){
        duas fotografariam uma à outra no meio do gesto (`v63/transicao.js`). */
     /* v64: nem com a abertura na tela — ela cobre tudo, e o cabeçalho/abas nomeados da transição
        seriam pintados POR CIMA dela (camada da View Transition), além de fotografar a tela no boot. */
-    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))&&!document.documentElement.classList.contains('v63-tr-on')&&!document.getElementById('v64-abertura')){
+    if(document.startViewTransition&&!_redMotion&&!_sobrio&&!document.documentElement.classList.contains('v63-tr-on')&&!document.getElementById('v64-abertura')){
       const _h=document.documentElement;_h.classList.add('v61-vt');
       const _vt=document.startViewTransition(pintar);
       /* sob carga o navegador ABORTA a transição ("timeout in DOM update") e as promessas dela rejeitam —
@@ -375,23 +389,10 @@ async function ir(id){
   a11yfy(document.body);         // torna chips/spheres/.clk operáveis por teclado (audit a11y #1)
 }
 
-// ═══ A11Y — restam apenas cards <div onclick> e links <a> sem href: padrão ARIA button (foco+teclado).
-//    (chips, spheres e .clk já são <button> semânticos.) ═══
-
-// ═══ FRESCOR DE FONTES (LEDs) ═══
 /* v38: se o corpo do no (anel usinado) ja chegou do it-campo, liga a camada.
    Checagem unica no boot — 404 hoje significa "segue procedural", sem erro. */
 fetch('/static/assets/no-energia.png',{method:'HEAD'})
   .then(r=>{if(r.ok)document.body.classList.add('art-no')}).catch(()=>{});
-/* O BARRAMENTO vive em `barramento/sabre.js`. Ele recebe GANCHOS em vez de importar o que
-   precisa, e isso e desenho, nao contorcao: pulsar a mesa (`nucleoPulse`) e saber se pode animar
-   sao coisas de FORA do barramento. Importa-las la criaria um ciclo com este arquivo; recebe-las
-   aqui diz a verdade — o barramento nao conhece a cena, ele avisa quem quiser ouvir.
-
-   `_hfN` foi embora no caminho: era um contador incrementado a cada linha do holofeed e lido por
-   ninguem, em nenhum lugar do repo. */
-/* Os tres videos da cena reagem a virada do modo sobrio. Injetados por gancho em vez de
-   importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
 (async()=>{v60Boot();toqueBoot();v61Boot();v63Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
@@ -406,7 +407,7 @@ addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/i
        embarcadas tem U+2717, e U+2713 a 10px le como a letra "v". Estado de
        sistema e SINAL, nao caractere — e sinal nao depende de fonte. */
     const hs=$('hsub'); hs.textContent='';
-    hs.append(_v60?'Central de inteligência · SIAFE ':'CENTRAL DE INTELIGÊNCIA · SIAFE ');   // v60: rótulo sem caixa alta
+    hs.append('Central de inteligência · SIAFE ');   // v60: rótulo sem caixa alta
     const pt=document.createElement('i');
     pt.className='sinal '+(st.logged_in?'ok':'off');
     pt.title=st.logged_in?'SIAFE conectado':'SIAFE sem sessão';
@@ -420,7 +421,7 @@ uiLigarDialogo();
 /* v59 · o primeiro domínio delegado por `data-*`, em vez de citar 12 nomes globais em `onclick`.
    Vem junto dos outros "ligar" e ANTES do primeiro render de propósito: o ouvinte mora no
    `document`, então precisa existir antes de qualquer tela que use `data-vinc` ser pintada.
-   Ver o bloco `VINC_ACOES` em `abas/index.js` para a razão de ser Vínculos o primeiro. */
+   Ver o bloco `VINC_ACOES` em `abas/vinculos.js` para a razão de ser Vínculos o primeiro. */
 ligarVinculos();
 ligarFila();
 ligarCasos();
@@ -440,9 +441,15 @@ ligarMidia();
    (reflexo, anéis HUD, telemetria, partículas, toque). Mesma família: nada novo no `window`. */
 vidroBoot();
 jarvisBoot();
-sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();
+/* Os videos da cena reagem a virada do modo sobrio. Injetados por gancho em vez de
+   importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
+sobrioAoMudar(() => { nebulaViva(); nucleoViva(); conscienciaRever();
                       energiaRever(); });
 conscienciaLigar(ritmoEstado);
+/* O BARRAMENTO vive em `barramento/sabre.js`. Ele recebe GANCHOS em vez de importar o que
+   precisa, e isso e desenho, nao contorcao: pulsar a mesa (`nucleoPulse`) e saber se pode animar
+   sao coisas de FORA do barramento. Importa-las la criaria um ciclo com este arquivo; recebe-las
+   aqui diz a verdade — o barramento nao conhece a cena, ele avisa quem quiser ouvir. */
 sabreStart({
   /* v59 · `energiaPacote` entra no MESMO gancho da onda do piso e usa a MESMA tabela de domínio:
      um evento real, um pacote viajando do instrumento até o núcleo. Não é uma taxa imitada — é a

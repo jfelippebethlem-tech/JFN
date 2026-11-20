@@ -49,3 +49,6 @@ export const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio s
   radar_risco:'radar de risco',prioridade_valor:'prioridade por valor',grafo_familias:'grafo de famílias',aditivos:'aditivos'};
 
 export const rot = id => ROTULOS[id] || String(id || '').replace(/_/g, ' ');
+
+/* Chave de busca sem acento e em caixa alta ("Secretaria de Saúde" casa "SECRETARIA DE SAUDE"). */
+export const normalizar = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();

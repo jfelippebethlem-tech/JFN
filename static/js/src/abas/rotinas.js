@@ -4,7 +4,7 @@
 // (rotas/pericias_rotinas.py). Rotina que ainda não rodou diz "sem execução" — não é zero. Sem delegação de
 // eventos (só <details>): nada novo no `window` nem na ordem de boot.
 import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, erroHumano, cardErro} from '../nucleo/http.js';
 import {fmtN, fmtR, fmtData} from '../nucleo/formato.js';
 
 const _txt = '<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>';
@@ -102,7 +102,7 @@ export async function renderPericiaContabil(){
   const d = await J('/api/pericia_contabil', {tetoMs: 60000});
   let h = cover('estado', 'Perícia contábil de todos os contratos',
     'Valor DEVIDO até a data de corte × valor PAGO, contrato a contrato, recalculado toda madrugada. Estado: pago = só OB Contabilizada do SIAFE. Prefeitura: total pago no SIAFIC-Rio. Esferas nunca se misturam. Indício não é acusação.', '⚖️');
-  if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d)}</div>`);
+  if (!d || d.ok === false) return h + cardErro(d);
   if (d.estado === 'sem_execucao') return h + _semExec(d);
   const defs = d.definicoes || {};
   h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || '')} · <b>Tolerância:</b> ${esc(d.tolerancia || '')}</div>
@@ -171,7 +171,7 @@ export async function renderCgeJfn(){
   let h = cover('estado', 'CGE × JFN e achados dos detectores',
     'O que a Controladoria auditou (Decreto 50.254/2026) × o que o JFN tem sobre o MESMO processo — recalculado toda semana. Abaixo, tudo o que os detectores gravaram, inclusive os semanais (P7 e valor contratual). Avaliação interna de desempenho; indício não é acusação.', '🔎');
   h += sec('1. Confronto CGE × JFN (recall por processo)');
-  h += (!c || c.ok === false) ? card(`<div class="warn">${erroHumano(c)}</div>`) : _cge(c);
+  h += (!c || c.ok === false) ? cardErro(c) : _cge(c);
   h += sec('2. Achados dos detectores (achados.db)') + _detectores(dt);
   return `<div id="rt-cge">${h}${_txt}</div>`;
 }

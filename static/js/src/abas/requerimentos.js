@@ -9,9 +9,9 @@
  */
 import {$, esc, card, kpi, cover, sec, spin} from '../nucleo/dom.js';
 import {fmtN} from '../nucleo/formato.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, erroHumano, cardErro} from '../nucleo/http.js';
 import {a11yfy} from '../ui/index.js';
-import {mdNota} from './casos.js';
+import {mdNota} from '../nucleo/markdown.js';
 
 const GRUPOS = [
   {k: 'sugerido', rot: 'Sugeridos', cor: 'var(--amber)', sobre: 'Pedido que uma nota de caso aponta como próximo passo. Ainda sem texto redigido.'},
@@ -49,7 +49,7 @@ export async function renderRequerimentos() {
     'escrito numa nota de caso. Esta aba <b>só lê</b> — nada é enviado daqui. ' +
     '<b>Indício a verificar, não acusação</b>, com presunção de legitimidade do ato administrativo.', '📝');
   const d = await J('/api/requerimentos');
-  if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+  if (!d || d.ok === false) return h + cardErro(d && d.erro);
   _dados = d;
   const ps = d.por_status || {};
   h += `<div class="grid g4">${GRUPOS.slice(0, 4).map(g => kpi(fmtN(ps[g.k] || 0), g.rot, g.cor, null, {sobre: g.sobre})).join('')}</div>`;

@@ -125,6 +125,7 @@
     aditivos: "aditivos"
   };
   var rot = (id) => ROTULOS[id] || String(id || "").replace(/_/g, " ");
+  var normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
 
   // static/js/src/nucleo/drill.js
   var _REG = /* @__PURE__ */ new Map();
@@ -280,6 +281,7 @@
     const det = tec ? ` title="${esc(s).slice(0, 220)}"` : "";
     return `<span${det}>${msg}</span> <button class="btn ghost v10retry" onclick="_jCache.clear();ir(aba)">↻ Tentar de novo</button>`;
   }
+  var cardErro = (e) => card(`<div class="warn">${erroHumano(e)}</div>`);
 
   // static/js/src/nucleo/lista.js
   function filtrar(inp, sel) {
@@ -600,7 +602,6 @@
   var _redMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   var _sobrio = false;
   var _v60 = document.documentElement.classList.contains("v60");
-  var _v61flag = document.documentElement.hasAttribute("data-v61");
   var _v61 = document.documentElement.classList.contains("v61");
   function _setSobrio(v) {
     _sobrio = !!v;
@@ -873,7 +874,6 @@
   var ALVO = ".card.kpi .v, .tf-k b";
   var _io = null;
   function movimentoBoot() {
-    if (!_v61) return;
     document.addEventListener("visibilitychange", () => {
       document.querySelectorAll("#esfnebula video").forEach((v) => {
         if (document.hidden) v.pause();
@@ -953,7 +953,7 @@
     requestAnimationFrame(passo);
   }
   function flipAoVivo(cartao) {
-    if (!_v61 || _redMotion || _sobrio || !cartao) return;
+    if (_redMotion || _sobrio || !cartao) return;
     cartao.classList.remove("v61-lamina");
     void cartao.offsetWidth;
     cartao.classList.add("v61-lamina");
@@ -1292,7 +1292,6 @@
 
   // static/js/src/ui/v61.js
   function v61Boot() {
-    if (!_v61flag || !_v61) return;
     _fundo();
     _som();
     tickerMontar();
@@ -1326,7 +1325,6 @@
 
   // static/js/src/ui/v60.js
   function v60Boot() {
-    if (!_v60) return;
     const hs = $("hsub");
     if (hs) hs.textContent = "Central de inteligência · RJ";
     _acoes();
@@ -1365,7 +1363,7 @@
     v60Vivo(v);
   }
   function v60Vivo(v) {
-    if (!_v60 || !v) return;
+    if (!v) return;
     _capa(v);
     _kpiN(v);
     _graus(v);
@@ -1515,12 +1513,7 @@
       tx.appendChild(b);
     }
   }
-  var _IC = {
-    termos: _v61 ? "§v61-termos" : "§info",
-    controle: _v61 ? "§v61-controle" : "🔧",
-    sair: _v61 ? "§v61-sair" : "🚪",
-    atividade: _v61 ? "§v61-atividade" : "§sweep"
-  };
+  var _IC = { termos: "§v61-termos", controle: "§v61-controle", sair: "§v61-sair", atividade: "§v61-atividade" };
   var _ACOES = [
     ["a.help:not(.som)", _IC.termos, "Termos — o que cada conceito do painel significa"],
     ["a.ctrl", _IC.controle, "Controle do sistema"],
@@ -2310,7 +2303,6 @@
 
   // static/js/src/v63/index.js
   function v63Boot() {
-    if (!_v63) return;
     fundoMontar();
     molduraMontar();
     transicaoLigar();
@@ -2384,7 +2376,6 @@
   }
   var _ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
   function vidroBoot() {
-    if (!_v61) return;
     let val = _ler2();
     _aplicar2(val);
     const box = document.querySelector(".htop .actions");
@@ -2546,7 +2537,6 @@
     _relogio2 = _brilho = 0;
   }
   function jarvisBoot() {
-    if (!_v61) return;
     addEventListener("pointerdown", _registrarToque, { capture: true, passive: true });
     const lg = document.querySelector(".brand .lg");
     if (lg && !lg.querySelector(".jv-hud")) {
@@ -2699,14 +2689,6 @@
     });
     return blocos.length;
   }
-  var INTRO_ARESTA = 620;
-  var INTRO_NO = 300;
-  function _wireFase(msDesdeInicio) {
-    if (msDesdeInicio == null) return { aresta: 1, no: 1 };
-    const a = Math.min(1, Math.max(0, msDesdeInicio / INTRO_ARESTA));
-    const n = Math.min(1, Math.max(0, (msDesdeInicio - INTRO_ARESTA) / INTRO_NO));
-    return { aresta: 1 - Math.pow(1 - a, 3), no: 1 - Math.pow(1 - n, 3) };
-  }
 
   // static/js/src/capacidade/sobrio.js
   var _reagir = () => {
@@ -2792,16 +2774,6 @@
     if (typeof fn === "function") _reagir = fn;
   }
 
-  // static/js/src/app/estado.js
-  var esfera = "inicio";
-  var aba = "i_cockpit";
-  function setEsfera(v) {
-    esfera = v;
-  }
-  function setAba(v) {
-    aba = v;
-  }
-
   // static/js/src/cena/malha-rj.js
   var _rjCbs = [];
   var _rjLoading = false;
@@ -2836,115 +2808,203 @@
     document.head.appendChild(s);
   }
 
-  // static/js/src/cena/holomesa.js
-  var _hex2 = (a) => Math.max(0, Math.min(255, Math.round(a * 255))).toString(16).padStart(2, "0");
-  var HOLO = {
-    PL: 1.1,
-    ELEV: 0.56,
-    CAMD: 3.15,
-    SZ: 520,
-    // piso, elevação (rad), distância, resolução do bitmap
-    ESP: 0.045,
-    ARO: 1.11,
-    GIRO: -0.28,
-    // espessura da laje · aro · giro do território (rad)
-    /* ALT = teto da cena: altura do reator e do anel mais alto. Era 0.60 solto em
-       três lugares (o HT do enquadramento e os dois P(0,0.60,0) do reator), e
-       esse ar reservado acima do piso era o que fazia o TERRITÓRIO ficar numa
-       faixa fina no meio do card — o "pequeno e vazio" que o dono viu. Baixar
-       para 0.46 devolve a altura ao piso e mantém a escada de três degraus. */
-    ALT: 0.46
-  };
-  function _holoProj(x, y, z, c) {
-    const X = x * c.cy_ - z * c.sy_, Z = x * c.sy_ + z * c.cy_;
-    const Y22 = y * c.cp + Z * c.sp;
-    const Z22 = Math.max(0.42, Z * c.cp - y * c.sp + c.camd);
-    const k = c.camd / Z22;
-    return { x: c.cx + X * k * c.s, y: c.cy - Y22 * k * c.s, k, z: Z22 };
-  }
-  function _rjPlaca(M2, SZ) {
-    const c = document.createElement("canvas");
-    c.width = c.height = SZ;
-    const x = c.getContext("2d");
-    const GIRO = HOLO.GIRO;
-    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M2.w * cg + M2.h * sg, lh = M2.w * sg + M2.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M2.w * s) / 2, oy = (SZ - M2.h * s) / 2;
-    const mk = (flat) => {
-      const p = new Path2D();
-      let X = flat[0], Y = flat[1];
-      p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
-      for (let i = 2; i < flat.length; i += 2) {
-        X += flat[i];
-        Y += flat[i + 1];
-        p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
-      }
-      p.closePath();
-      return p;
-    };
-    x.translate(SZ / 2, SZ / 2);
-    x.rotate(GIRO);
-    x.translate(-SZ / 2, -SZ / 2);
-    x.lineJoin = x.lineCap = "round";
-    x.strokeStyle = "rgba(120,170,245,0.22)";
-    x.lineWidth = 0.9;
-    M2.m.forEach((f) => x.stroke(mk(f)));
-    x.shadowColor = "rgba(140,196,255,0.95)";
-    x.shadowBlur = 10;
-    x.strokeStyle = "rgba(186,218,255,0.62)";
-    x.lineWidth = 1.7;
-    M2.o.forEach((f) => x.stroke(mk(f)));
-    x.shadowBlur = 16;
-    x.shadowColor = "rgba(255,150,60,0.8)";
-    x.strokeStyle = "rgba(255,190,120,0.26)";
-    x.lineWidth = 1.1;
-    M2.o.forEach((f) => x.stroke(mk(f)));
-    return c;
-  }
-  function _rjContornoMundo(M2) {
-    const PL = HOLO.PL, SZ = HOLO.SZ, GIRO = HOLO.GIRO;
-    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M2.w * cg + M2.h * sg, lh = M2.w * sg + M2.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M2.w * s) / 2, oy = (SZ - M2.h * s) / 2;
-    return M2.o.map((flat) => {
-      const pts = [];
-      let X = flat[0], Y = flat[1];
-      const põe = () => {
-        const rx = ox + X / M2.q * s - SZ / 2, ry = oy + Y / M2.q * s - SZ / 2;
-        const sx = SZ / 2 + rx * Math.cos(GIRO) - ry * Math.sin(GIRO);
-        const sy = SZ / 2 + rx * Math.sin(GIRO) + ry * Math.cos(GIRO);
-        pts.push([sx / SZ * 2 * PL - PL, PL - sy / SZ * 2 * PL]);
-      };
-      põe();
-      for (let i = 2; i < flat.length; i += 2) {
-        X += flat[i];
-        Y += flat[i + 1];
-        põe();
-      }
-      return pts;
-    });
-  }
-  function _holoPiso(g, bmp, c, W2, H2, alt) {
-    const PL = HOLO.PL, SZ = bmp.width, NF = 26, dz = 2 * PL / NF, y = alt || 0;
-    g.clearRect(0, 0, W2, H2);
-    for (let i = 0; i < NF; i++) {
-      const zF = PL - i * dz, zN = zF - dz, sy0 = i * SZ / NF, sy1 = (i + 1) * SZ / NF, hs = sy1 - sy0;
-      const P00 = _holoProj(-PL, y, zF, c), P10 = _holoProj(PL, y, zF, c), P01 = _holoProj(-PL, y, zN, c);
-      const a = (P10.x - P00.x) / SZ, b = (P10.y - P00.y) / SZ, cc = (P01.x - P00.x) / hs, d = (P01.y - P00.y) / hs;
-      if (!isFinite(a) || !isFinite(d) || Math.abs(a * d - b * cc) < 1e-9) continue;
-      g.save();
-      g.transform(a, b, cc, d, P00.x - cc * sy0, P00.y - d * sy0);
-      g.drawImage(bmp, 0, sy0, SZ, Math.min(SZ - sy0, hs + 1), 0, sy0, SZ, Math.min(SZ - sy0, hs + 1));
-      g.restore();
-    }
-  }
-
   // static/js/src/cena/ponteiro.js
   var _ckMX = 0.5;
   var _ckMY = 0.5;
   function cenaPonteiro(x, y) {
     _ckMX = x;
     _ckMY = y;
+  }
+
+  // static/js/src/cena/fundo.js
+  var _rjbgTinge = () => {
+  };
+  function rjbgStart() {
+    const cv = $("rjbg");
+    if (!cv) return;
+    if (_v60) {
+      cv.remove();
+      return;
+    }
+    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
+    const ctx = cv.getContext("2d");
+    let W2, H2, dpr, mapC = null, raf = 0, corAtual = "";
+    const corEsf = () => getComputedStyle(document.body).getPropertyValue("--esf").trim() || "oklch(0.72 0.175 258)";
+    function build() {
+      const M2 = window.RJ_MALHA;
+      if (!M2) return;
+      const cor = corEsf();
+      corAtual = cor;
+      mapC = document.createElement("canvas");
+      mapC.width = cv.width;
+      mapC.height = cv.height;
+      const x = mapC.getContext("2d");
+      x.scale(dpr, dpr);
+      const s = Math.min(W2 / M2.w, H2 / M2.h) * 1.04;
+      const ox = W2 - M2.w * s * 0.66, oy = (H2 - M2.h * s) / 2;
+      const mk = (flat) => {
+        const p = new Path2D();
+        let X = flat[0], Y = flat[1];
+        p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
+        for (let i = 2; i < flat.length; i += 2) {
+          X += flat[i];
+          Y += flat[i + 1];
+          p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
+        }
+        p.closePath();
+        return p;
+      };
+      x.lineJoin = x.lineCap = "round";
+      x.strokeStyle = `color-mix(in oklch, ${cor} 34%, transparent)`;
+      x.lineWidth = 0.6;
+      M2.m.forEach((f) => x.stroke(mk(f)));
+      x.shadowColor = cor;
+      x.shadowBlur = 12;
+      x.strokeStyle = `color-mix(in oklch, ${cor} 78%, white 12%)`;
+      x.lineWidth = 1.5;
+      M2.o.forEach((f) => x.stroke(mk(f)));
+      cv._ox = ox;
+      cv._oy = oy;
+      cv._s = s;
+      cv._M = M2;
+    }
+    function size() {
+      dpr = Math.min(1.5, devicePixelRatio || 1);
+      W2 = innerWidth;
+      H2 = innerHeight;
+      cv.width = Math.round(W2 * dpr);
+      cv.height = Math.round(H2 * dpr);
+      cv.style.width = W2 + "px";
+      cv.style.height = H2 + "px";
+      build();
+    }
+    function draw(t) {
+      if (!mapC) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
+      if (document.hidden) {
+        if (!_sobrio) raf = requestAnimationFrame(draw);
+        return;
+      }
+      const g = ctx;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, cv.width, cv.height);
+      g.drawImage(mapC, 0, 0);
+      if (!rm) {
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const M2 = cv._M, s = cv._s;
+        const cx = cv._ox + M2.w * s * 0.42 / 1, cy = cv._oy + M2.h * s * 0.5;
+        const ang = t * 16e-5, R = Math.hypot(W2, H2);
+        const grad = g.createConicGradient ? g.createConicGradient(ang, cx, cy) : null;
+        if (grad) {
+          grad.addColorStop(0, `color-mix(in oklch, ${corAtual} 22%, transparent)`);
+          grad.addColorStop(0.06, "transparent");
+          grad.addColorStop(1, "transparent");
+          g.globalCompositeOperation = "source-atop";
+          g.fillStyle = grad;
+          g.beginPath();
+          g.arc(cx, cy, R, 0, 6.283);
+          g.fill();
+          g.globalCompositeOperation = "source-over";
+        }
+        g.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      if (!_sobrio) raf = requestAnimationFrame(draw);
+    }
+    _rjbgTinge = () => {
+      if (!window.RJ_MALHA) return;
+      if (corEsf() !== corAtual) build();
+    };
+    size();
+    addEventListener("resize", () => {
+      cancelAnimationFrame(raf);
+      size();
+      draw(performance.now());
+    }, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        cancelAnimationFrame(raf);
+        draw(performance.now());
+      }
+    });
+    _rjCarregar(() => {
+      build();
+      draw(performance.now());
+    });
+    draw(performance.now());
+  }
+  function netbgStart() {
+    const cv = $("netbg");
+    if (!cv) return;
+    if (_v60) {
+      cv.remove();
+      return;
+    }
+    const ctx = cv.getContext("2d");
+    let W2, H2, pts, raf;
+    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
+    function size() {
+      const d = Math.min(2, devicePixelRatio);
+      W2 = cv.width = innerWidth * d;
+      H2 = cv.height = innerHeight * d;
+      cv.style.width = innerWidth + "px";
+      cv.style.height = innerHeight + "px";
+      cv._d = d;
+      const n = Math.min(76, Math.floor(innerWidth / 20));
+      pts = Array.from({ length: n }, () => ({
+        x: Math.random() * W2,
+        y: Math.random() * H2,
+        z: Math.random() * 0.8 + 0.2,
+        vx: (Math.random() - 0.5) * 0.11 * d,
+        vy: (Math.random() - 0.5) * 0.11 * d,
+        r: (Math.random() * 1.5 + 0.6) * d
+      }));
+    }
+    function draw() {
+      const d = cv._d, D = 150 * d;
+      ctx.clearRect(0, 0, W2, H2);
+      const px = (_ckMX - 0.5) * 26 * d, py = (_ckMY - 0.5) * 26 * d;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (!rm) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > W2) p.vx *= -1;
+          if (p.y < 0 || p.y > H2) p.vy *= -1;
+        }
+        const ox = p.x + px * p.z, oy = p.y + py * p.z;
+        p._ox = ox;
+        p._oy = oy;
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j], qx = q.x + px * q.z, qy = q.y + py * q.z, dx = ox - qx, dy = oy - qy, dd = Math.hypot(dx, dy);
+          if (dd < D) {
+            ctx.strokeStyle = "rgba(90,210,255," + (1 - dd / D) * 0.24 + ")";
+            ctx.lineWidth = d * 0.55;
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            ctx.lineTo(qx, qy);
+            ctx.stroke();
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(ox, oy, p.r, 0, 7);
+        ctx.fillStyle = "rgba(140,228,255," + (0.38 + p.z * 0.4) + ")";
+        ctx.fill();
+      }
+      if (!rm && !_sobrio) raf = requestAnimationFrame(draw);
+    }
+    addEventListener("resize", () => {
+      cancelAnimationFrame(raf);
+      size();
+      draw();
+    });
+    document.addEventListener("visibilitychange", () => {
+      cancelAnimationFrame(raf);
+      if (!document.hidden && !_sobrio) draw();
+    });
+    size();
+    draw();
   }
 
   // static/js/src/cena/abertura.js
@@ -3281,238 +3341,21 @@
     aberturaStart(null);
   }
 
-  // static/js/src/cena/fundo.js
-  var _rjbgTinge = () => {
-  };
-  function rjbgStart() {
-    const cv = $("rjbg");
-    if (!cv) return;
-    if (_v60) {
-      cv.remove();
-      return;
-    }
-    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
-    const ctx = cv.getContext("2d");
-    let W2, H2, dpr, mapC = null, raf = 0, corAtual = "";
-    const corEsf = () => getComputedStyle(document.body).getPropertyValue("--esf").trim() || "oklch(0.72 0.175 258)";
-    function build() {
-      const M2 = window.RJ_MALHA;
-      if (!M2) return;
-      const cor = corEsf();
-      corAtual = cor;
-      mapC = document.createElement("canvas");
-      mapC.width = cv.width;
-      mapC.height = cv.height;
-      const x = mapC.getContext("2d");
-      x.scale(dpr, dpr);
-      const s = Math.min(W2 / M2.w, H2 / M2.h) * 1.04;
-      const ox = W2 - M2.w * s * 0.66, oy = (H2 - M2.h * s) / 2;
-      const mk = (flat) => {
-        const p = new Path2D();
-        let X = flat[0], Y = flat[1];
-        p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
-        for (let i = 2; i < flat.length; i += 2) {
-          X += flat[i];
-          Y += flat[i + 1];
-          p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
-        }
-        p.closePath();
-        return p;
-      };
-      x.lineJoin = x.lineCap = "round";
-      x.strokeStyle = `color-mix(in oklch, ${cor} 34%, transparent)`;
-      x.lineWidth = 0.6;
-      M2.m.forEach((f) => x.stroke(mk(f)));
-      x.shadowColor = cor;
-      x.shadowBlur = 12;
-      x.strokeStyle = `color-mix(in oklch, ${cor} 78%, white 12%)`;
-      x.lineWidth = 1.5;
-      M2.o.forEach((f) => x.stroke(mk(f)));
-      cv._ox = ox;
-      cv._oy = oy;
-      cv._s = s;
-      cv._M = M2;
-    }
-    function size() {
-      dpr = Math.min(1.5, devicePixelRatio || 1);
-      W2 = innerWidth;
-      H2 = innerHeight;
-      cv.width = Math.round(W2 * dpr);
-      cv.height = Math.round(H2 * dpr);
-      cv.style.width = W2 + "px";
-      cv.style.height = H2 + "px";
-      build();
-    }
-    function draw(t) {
-      if (!mapC) {
-        raf = requestAnimationFrame(draw);
-        return;
-      }
-      if (document.hidden) {
-        if (!_sobrio) raf = requestAnimationFrame(draw);
-        return;
-      }
-      const g = ctx;
-      g.setTransform(1, 0, 0, 1, 0, 0);
-      g.clearRect(0, 0, cv.width, cv.height);
-      g.drawImage(mapC, 0, 0);
-      if (!rm) {
-        g.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const M2 = cv._M, s = cv._s;
-        const cx = cv._ox + M2.w * s * 0.42 / 1, cy = cv._oy + M2.h * s * 0.5;
-        const ang = t * 16e-5, R = Math.hypot(W2, H2);
-        const grad = g.createConicGradient ? g.createConicGradient(ang, cx, cy) : null;
-        if (grad) {
-          grad.addColorStop(0, `color-mix(in oklch, ${corAtual} 22%, transparent)`);
-          grad.addColorStop(0.06, "transparent");
-          grad.addColorStop(1, "transparent");
-          g.globalCompositeOperation = "source-atop";
-          g.fillStyle = grad;
-          g.beginPath();
-          g.arc(cx, cy, R, 0, 6.283);
-          g.fill();
-          g.globalCompositeOperation = "source-over";
-        }
-        g.setTransform(1, 0, 0, 1, 0, 0);
-      }
-      if (!_sobrio) raf = requestAnimationFrame(draw);
-    }
-    _rjbgTinge = () => {
-      if (!window.RJ_MALHA) return;
-      if (corEsf() !== corAtual) build();
-    };
-    size();
-    addEventListener("resize", () => {
-      cancelAnimationFrame(raf);
-      size();
-      draw(performance.now());
-    }, { passive: true });
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) {
-        cancelAnimationFrame(raf);
-        draw(performance.now());
-      }
-    });
-    _rjCarregar(() => {
-      build();
-      draw(performance.now());
-    });
-    draw(performance.now());
+  // static/js/src/app/estado.js
+  var esfera = "inicio";
+  var aba = "i_cockpit";
+  function setEsfera(v) {
+    esfera = v;
   }
-  function netbgStart() {
-    const cv = $("netbg");
-    if (!cv) return;
-    if (_v60) {
-      cv.remove();
-      return;
-    }
-    const ctx = cv.getContext("2d");
-    let W2, H2, pts, raf;
-    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
-    function size() {
-      const d = Math.min(2, devicePixelRatio);
-      W2 = cv.width = innerWidth * d;
-      H2 = cv.height = innerHeight * d;
-      cv.style.width = innerWidth + "px";
-      cv.style.height = innerHeight + "px";
-      cv._d = d;
-      const n = Math.min(76, Math.floor(innerWidth / 20));
-      pts = Array.from({ length: n }, () => ({
-        x: Math.random() * W2,
-        y: Math.random() * H2,
-        z: Math.random() * 0.8 + 0.2,
-        vx: (Math.random() - 0.5) * 0.11 * d,
-        vy: (Math.random() - 0.5) * 0.11 * d,
-        r: (Math.random() * 1.5 + 0.6) * d
-      }));
-    }
-    function draw() {
-      const d = cv._d, D = 150 * d;
-      ctx.clearRect(0, 0, W2, H2);
-      const px = (_ckMX - 0.5) * 26 * d, py = (_ckMY - 0.5) * 26 * d;
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-        if (!rm) {
-          p.x += p.vx;
-          p.y += p.vy;
-          if (p.x < 0 || p.x > W2) p.vx *= -1;
-          if (p.y < 0 || p.y > H2) p.vy *= -1;
-        }
-        const ox = p.x + px * p.z, oy = p.y + py * p.z;
-        p._ox = ox;
-        p._oy = oy;
-        for (let j = i + 1; j < pts.length; j++) {
-          const q = pts[j], qx = q.x + px * q.z, qy = q.y + py * q.z, dx = ox - qx, dy = oy - qy, dd = Math.hypot(dx, dy);
-          if (dd < D) {
-            ctx.strokeStyle = "rgba(90,210,255," + (1 - dd / D) * 0.24 + ")";
-            ctx.lineWidth = d * 0.55;
-            ctx.beginPath();
-            ctx.moveTo(ox, oy);
-            ctx.lineTo(qx, qy);
-            ctx.stroke();
-          }
-        }
-        ctx.beginPath();
-        ctx.arc(ox, oy, p.r, 0, 7);
-        ctx.fillStyle = "rgba(140,228,255," + (0.38 + p.z * 0.4) + ")";
-        ctx.fill();
-      }
-      if (!rm && !_sobrio) raf = requestAnimationFrame(draw);
-    }
-    addEventListener("resize", () => {
-      cancelAnimationFrame(raf);
-      size();
-      draw();
-    });
-    document.addEventListener("visibilitychange", () => {
-      cancelAnimationFrame(raf);
-      if (!document.hidden && !_sobrio) draw();
-    });
-    size();
-    draw();
+  function setAba(v) {
+    aba = v;
   }
 
   // static/js/src/cena/index.js
   var _nebVid = {};
   var _nuVid = {};
   var NUCLEO_COM_POSTER = /* @__PURE__ */ new Set(["nucleo-holo-rj", "nucleo-holo-prefeitura", "nucleo-holo-transversal"]);
-  var NU_NODES = [
-    { id: "alertas", lab: "alertas", tab: "e_alertas", cor: "#ff7a8a", orb: 0.66, sp: -0.7 },
-    // 19/11/2026: radar, mesma sala e caro + suspeito saíram da mesa com os cards (FP medida em fonte primária, COR-04)
-    { id: "fenix", lab: "empresa morta", tab: "g_fenix", cor: "#ff9a6a", orb: 0.6, sp: 1.15 },
-    { id: "com", lab: "comunidades", tab: "g_comun", cor: "#c096ff", orb: 0.92, sp: -0.55 },
-    { id: "compras", lab: "compras auditáveis", tab: "e_comp", cor: "#eec276", orb: 0.68, sp: 0.9 }
-  ];
-  var _nuRAF = 0;
-  var _nuPulses = [];
   var _nuVals = {};
-  var _nuFlux = [];
-  var _sweepAtivo = null;
-  var _swInt = 0;
-  var _reatorArt = new Image();
-  _reatorArt.src = "/static/assets/reator-core.webp";
-  async function nuSweepPoll() {
-    const el = $("nu-sweep");
-    if (!el) return;
-    const d = await J("/api/sweeps/status");
-    const seiRun = d && d.sei && d.sei.rodando, siafeRun = d && d.siafe && d.siafe.rodando;
-    if (!d || d.erro || d.pausado || !(seiRun || siafeRun)) {
-      _sweepAtivo = null;
-      el.classList.remove("on");
-      el.innerHTML = "";
-      return;
-    }
-    _sweepAtivo = { sei: !!seiRun, siafe: !!siafeRun };
-    let det = "";
-    if (seiRun && d.sei.ultima) {
-      const m = String(d.sei.ultima).match(/UG\s*(\d+)/);
-      if (m) det = ` · UG ${m[1]}`;
-    }
-    const nome = seiRun ? "SEI · itkava" : "SIAFE 2";
-    const cnt = seiRun ? `<small>${fmtN(d.sei.feitos)} lidos</small>` : `<small>${fmtN(d.siafe.ob_orcamentaria)} OBs</small>`;
-    el.innerHTML = `<span class="dot"></span><span>alimentando · <b>${nome}</b>${det}</span>${cnt}`;
-    el.classList.add("on");
-  }
   function nuSet(id, val) {
     const el = $("nu-" + id);
     if (el == null) return;
@@ -3548,11 +3391,6 @@
   };
   function nucleoPulse(tipo) {
     if (_redMotion || !$("ck-nucleo")) return;
-    const c = EV_COR[tipo] || "95,217,255";
-    _nuPulses.push({ r: 0.14, a: 0.85, c });
-    const alvo = EV_DOMINIO[tipo];
-    if (alvo) _nuFlux.push({ id: alvo, p: 0, c });
-    if (_nuFlux.length > 24) _nuFlux.splice(0, _nuFlux.length - 24);
     _nuEvTotal++;
     const hud = $("nu-hud");
     if (hud) hud.innerHTML = `<b>${_nuEvTotal}</b> evento${_nuEvTotal === 1 ? "" : "s"} reais do barramento nesta vigília`;
@@ -3599,7 +3437,7 @@
       if (v) v.classList.remove("on");
       return;
     }
-    const semAuto = _v60 && matchMedia("(max-width:760px)").matches;
+    const semAuto = matchMedia("(max-width:760px)").matches;
     if (!v) {
       v = document.createElement("video");
       v.className = "holo";
@@ -3638,779 +3476,6 @@
     }
     v.play().catch(() => {
     });
-  }
-  async function mesaViva() {
-    const box = $("ck-nucleo");
-    if (!box) return;
-    let v = box.querySelector("video.mesa");
-    if (_v60) {
-      if (v) {
-        v.classList.remove("on");
-        v.pause();
-      }
-      return;
-    }
-    if (_redMotion || _sobrio) {
-      if (v) {
-        v.classList.remove("on");
-        v.pause();
-      }
-      return;
-    }
-    const url = "/static/assets/mesa-projecao.mp4";
-    if (_nuVid.mesa === void 0) {
-      try {
-        _nuVid.mesa = (await fetch(url, { method: "HEAD" })).ok;
-      } catch (e) {
-        _nuVid.mesa = false;
-      }
-    }
-    if (!_nuVid.mesa) {
-      if (v) v.classList.remove("on");
-      return;
-    }
-    if (!v) {
-      v = document.createElement("video");
-      v.className = "mesa";
-      v.muted = true;
-      v.loop = true;
-      v.playsInline = true;
-      v.autoplay = true;
-      v.setAttribute("aria-hidden", "true");
-      v.poster = "/static/assets/mesa-projecao.jpg";
-      v.addEventListener("playing", () => v.classList.add("on"));
-      v.innerHTML = '<source src="/static/assets/mesa-projecao.webm" type="video/webm"><source src="' + url + '" type="video/mp4">';
-      _nuEmbrulhar(box, v, "mesa");
-      v.load();
-    }
-    v.play().catch(() => {
-    });
-  }
-  function nucleoStart() {
-    const box = $("ck-nucleo"), cv = $("nucleo-cv");
-    if (!box || !cv) return;
-    nucleoViva();
-    mesaViva();
-    const rm = _redMotion, ctx = cv.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1), N = NU_NODES.length;
-    $("nu-chips").innerHTML = NU_NODES.map((n) => `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"
-       onpointerenter="_nuHover='${n.id}'" onpointerleave="_nuHover=null">
-      <small>${n.lab}</small><span class="n">—</span></button>`).join("");
-    const ANEIS3 = [{ r: 0.46, h: 0.48 }, { r: 0.74, h: 0.32 }, { r: 1, h: 0.18 }];
-    NU_NODES.forEach((n, i) => {
-      n._an = n.orb <= 0.7 ? 0 : n.orb <= 0.88 ? 1 : 2;
-      n._idx = i;
-    });
-    [0, 1, 2].forEach((a) => {
-      const nós = NU_NODES.filter((n) => n._an === a);
-      nós.forEach((n, i) => {
-        n._fase = i / nós.length * 2 * Math.PI + a * 0.7;
-      });
-    });
-    const ESP = HOLO.ESP, ARO = HOLO.ARO;
-    let W2, H2, placa = null, contorno = null, piso = null, pisoG = null, pisoSujo = true, _nuVisivel = true, _nuPintou = false;
-    const cam = {
-      cx: 0,
-      cy: 0,
-      s: 1,
-      camd: HOLO.CAMD,
-      yaw: 0,
-      tyaw: 0,
-      elev: HOLO.ELEV,
-      telev: HOLO.ELEV,
-      cp: 0,
-      sp: 0,
-      cy_: 1,
-      sy_: 0
-    };
-    window.__holoCam = cam;
-    window.__nuEstado = () => ({ vis: _nuVisivel, raf: _nuRAF });
-    function setCam() {
-      cam.cp = Math.cos(cam.elev);
-      cam.sp = Math.sin(cam.elev);
-      cam.cy_ = Math.cos(cam.yaw);
-      cam.sy_ = Math.sin(cam.yaw);
-    }
-    let _railW = 182, _compacto = false, _gradeH = 0;
-    function trilhos() {
-      _compacto = _v60 || W2 < 720;
-      box.classList.toggle("compacto", _compacto);
-      if (_compacto) {
-        if (_v60) {
-          _gradeH = 0;
-          NU_NODES.forEach((no) => {
-            no._ax = null;
-          });
-          box.style.setProperty("--grade-h", "0px");
-          return;
-        }
-        const cols = W2 < 430 ? 2 : 3, gap = 8, marg = 12;
-        const cw = Math.floor((W2 - marg * 2 - gap * (cols - 1)) / cols);
-        let ch = 0;
-        NU_NODES.forEach((no, i) => {
-          const el = $("nu-" + no.id);
-          if (!el) return;
-          el.classList.remove("r");
-          el.style.width = cw + "px";
-          el.style.minWidth = "0";
-          el.style.maxWidth = "none";
-          el.style.transform = "none";
-          el.style.right = "auto";
-          no._tf = null;
-          no._z = null;
-          ch = el.offsetHeight || 34;
-          el.style.left = marg + i % cols * (cw + gap) + "px";
-          no._ax = null;
-        });
-        const linhas = Math.ceil(NU_NODES.length / cols);
-        _gradeH = linhas * (ch + gap) + gap;
-        NU_NODES.forEach((no, i) => {
-          const el = $("nu-" + no.id);
-          if (!el) return;
-          el.style.top = Math.round(H2 - _gradeH + gap + Math.floor(i / cols) * (ch + gap)) + "px";
-        });
-        box.style.setProperty("--grade-h", _gradeH + "px");
-        return;
-      }
-      _gradeH = 0;
-      NU_NODES.forEach((no) => {
-        const el = $("nu-" + no.id);
-        if (!el) return;
-        el.classList.remove("r");
-        el.style.width = "";
-        el.style.minWidth = "";
-        el.style.maxWidth = "";
-        el.style.right = "auto";
-        el.style.left = "";
-        el.style.top = "";
-        no._tf = null;
-        no._z = null;
-        no._rail = null;
-      });
-    }
-    function size() {
-      W2 = box.clientWidth;
-      H2 = box.clientHeight;
-      cv.width = W2 * dpr;
-      cv.height = H2 * dpr;
-      cv.style.width = W2 + "px";
-      cv.style.height = H2 + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      setCam();
-      trilhos();
-      const PL = HOLO.PL, kN = cam.camd / Math.max(0.42, cam.camd - PL * cam.cp), kF = cam.camd / (cam.camd + PL * cam.cp);
-      const A5 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
-      const gut = _compacto ? 10 : 48;
-      const Hu = Math.max(150, H2 - _gradeH);
-      cam.s = Math.min(Hu * 0.965 / (A5 + B + HT), Math.max(140, W2 - 2 * gut) / (2 * PL * kN));
-      cam.cx = W2 / 2;
-      cam.cy = (Hu - (A5 + B + HT) * cam.s) / 2 + (A5 + HT) * cam.s;
-      piso = document.createElement("canvas");
-      piso.width = W2 * dpr;
-      piso.height = H2 * dpr;
-      pisoG = piso.getContext("2d");
-      pisoG.setTransform(dpr, 0, 0, dpr, 0, 0);
-      pisoSujo = true;
-      if (window.RJ_MALHA && !placa) {
-        placa = _rjPlaca(window.RJ_MALHA, HOLO.SZ);
-        contorno = _rjContornoMundo(window.RJ_MALHA);
-      }
-    }
-    const repinta = () => {
-      if (rm && cv.isConnected) draw(performance.now());
-    };
-    size();
-    repinta();
-    addEventListener("resize", () => {
-      if (cv.isConnected) {
-        size();
-        _rjMontar();
-      }
-    });
-    const _rjMontar = () => {
-      if (!cv.isConnected || !window.RJ_MALHA) return;
-      placa = _rjPlaca(window.RJ_MALHA, HOLO.SZ);
-      contorno = _rjContornoMundo(window.RJ_MALHA);
-      pisoSujo = true;
-      repinta();
-    };
-    _rjCarregar(_rjMontar);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && cv.isConnected) _rjMontar();
-    });
-    cv.style.pointerEvents = "auto";
-    cv.onpointermove = (e) => {
-      const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-      if (!rm) {
-        cam.tyaw = (mx / W2 - 0.5) * 0.46;
-        cam.telev = HOLO.ELEV + (my / H2 - 0.5) * 0.2;
-      }
-      _nuHover = null;
-      let best = 520;
-      NU_NODES.forEach((n) => {
-        if (n._x == null) return;
-        const d = (n._x - mx) ** 2 + (n._y - my) ** 2;
-        if (d < best) {
-          best = d;
-          _nuHover = n.id;
-        }
-      });
-      cv.style.cursor = _nuHover ? "pointer" : "default";
-    };
-    cv.onpointerleave = () => {
-      _nuHover = null;
-      cam.tyaw = 0;
-      cam.telev = HOLO.ELEV;
-    };
-    cv.onclick = () => {
-      const n = NU_NODES.find((q) => q.id === _nuHover);
-      if (n) ir(n.tab);
-    };
-    if ("IntersectionObserver" in window) {
-      new IntersectionObserver((es) => {
-        const antes = _nuVisivel;
-        _nuVisivel = es.some((e) => e.isIntersecting);
-        if (_nuVisivel && !antes && !rm && cv.isConnected) {
-          cancelAnimationFrame(_nuRAF);
-          draw(performance.now());
-        }
-      }, { rootMargin: "80px" }).observe(box);
-    }
-    function draw(t) {
-      if (!cv.isConnected) {
-        cancelAnimationFrame(_nuRAF);
-        _nuRAF = 0;
-        return;
-      }
-      if (!_nuVisivel) {
-        _nuRAF = 0;
-        return;
-      }
-      if (document.hidden && _nuPintou) {
-        _nuRAF = 0;
-        return;
-      }
-      if (Math.abs(cam.tyaw - cam.yaw) > 2e-4 || Math.abs(cam.telev - cam.elev) > 2e-4) {
-        cam.yaw += (cam.tyaw - cam.yaw) * 0.075;
-        cam.elev += (cam.telev - cam.elev) * 0.075;
-        setCam();
-        pisoSujo = true;
-      }
-      const P = (x, y, z) => _holoProj(x, y, z, cam);
-      ctx.clearRect(0, 0, W2, H2);
-      ctx.lineWidth = 1;
-      for (let a = 0; a < 4; a++) {
-        const r = 0.3 + a * 0.27;
-        ctx.strokeStyle = `rgba(130,180,255,${a === 3 ? 0.16 : 0.085})`;
-        ctx.beginPath();
-        for (let i = 0; i <= 64; i++) {
-          const th = i / 64 * 6.283, p = P(Math.cos(th) * r, 0, Math.sin(th) * r);
-          i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-        }
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      for (let i = 0; i <= 96; i++) {
-        const th = i / 96 * 6.283, p = P(Math.cos(th) * ARO, 0, Math.sin(th) * ARO);
-        i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-      }
-      ctx.strokeStyle = "rgba(120,175,255,0.30)";
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(150,205,255,0.10)";
-      ctx.lineWidth = 5;
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(130,180,255,0.06)";
-      for (let i = 0; i < 12; i++) {
-        const th = i / 12 * 6.283, A5 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
-        ctx.beginPath();
-        ctx.moveTo(A5.x, A5.y);
-        ctx.lineTo(B.x, B.y);
-        ctx.stroke();
-      }
-      if (contorno) {
-        contorno.forEach((anel) => {
-          ctx.beginPath();
-          anel.forEach(([x, z], i) => {
-            const p = P(x, ESP, z);
-            i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-          });
-          for (let i = anel.length - 1; i >= 0; i--) {
-            const p = P(anel[i][0], 0, anel[i][1]);
-            ctx.lineTo(p.x, p.y);
-          }
-          ctx.closePath();
-          ctx.fillStyle = "rgba(34,62,112,0.62)";
-          ctx.fill();
-          ctx.strokeStyle = "rgba(110,165,240,0.20)";
-          ctx.lineWidth = 0.7;
-          ctx.stroke();
-        });
-        ctx.beginPath();
-        contorno.forEach((anel) => {
-          anel.forEach(([x, z], i) => {
-            const p = P(x, ESP, z);
-            i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-          });
-          ctx.closePath();
-        });
-        ctx.fillStyle = "rgba(9,19,40,0.66)";
-        ctx.fill("evenodd");
-      }
-      if (placa && pisoG) {
-        if (pisoSujo) {
-          _holoPiso(pisoG, placa, cam, W2, H2, ESP);
-          pisoSujo = false;
-        }
-        ctx.drawImage(piso, 0, 0, W2, H2);
-      }
-      ANEIS3.forEach((an) => {
-        for (let s = 0; s < 8; s++) {
-          ctx.beginPath();
-          let zm = 0;
-          for (let i = 0; i <= 8; i++) {
-            const th = (s * 8 + i) / 64 * 6.283, p = P(Math.cos(th) * an.r, an.h, Math.sin(th) * an.r);
-            zm += p.z;
-            i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-          }
-          const prox = 1 - Math.min(1, Math.max(0, (zm / 9 - (cam.camd - 1.1)) / 2.2));
-          ctx.strokeStyle = `rgba(150,200,255,${(0.03 + 0.13 * prox).toFixed(3)})`;
-          ctx.lineWidth = 0.6 + 0.7 * prox;
-          ctx.stroke();
-        }
-      });
-      const pos = NU_NODES.map((n, i) => {
-        const an = ANEIS3[n._an], a = -Math.PI / 2 + (n._fase || 0) + (rm ? 0 : t * 3e-5);
-        const wx = Math.cos(a) * an.r, wz = Math.sin(a) * an.r;
-        const p = P(wx, an.h, wz), pe = P(wx, ESP, wz);
-        return { n, a, wx, wz, h: an.h, x: p.x, y: p.y, k: p.k, z: p.z, px: pe.x, py: pe.y, pk: pe.k };
-      });
-      pos.forEach((p) => {
-        p.n._x = p.x;
-        p.n._y = p.y;
-        p.n._k = p.k;
-      });
-      if (!_compacto) {
-        const _hc = P(0, HOLO.ALT, 0), _hr = 64 * _hc.k * Math.min(1.5, cam.s / 240);
-        const _cx2 = [{ x: _hc.x, y: _hc.y, w: _hr * 2, h: _hr * 2 }];
-        const _pOn = (() => {
-          const e = $("nu-sweep");
-          return !!(e && e.classList.contains("on"));
-        })();
-        if (_pOn !== draw._pOn) {
-          draw._pOn = _pOn;
-          draw._m = 999;
-        }
-        if (!draw._m || draw._m > 45) {
-          draw._m = 0;
-          NU_NODES.forEach((n) => {
-            const e = $("nu-" + n.id);
-            if (e) {
-              n._w = e.offsetWidth || 96;
-              n._h = e.offsetHeight || 34;
-            }
-          });
-          const rb = box.getBoundingClientRect();
-          const _caixa = (e) => {
-            const r = e.getBoundingClientRect();
-            return { x: r.left - rb.left + r.width / 2, y: r.top - rb.top + r.height / 2, w: r.width, h: r.height };
-          };
-          draw._fix = [];
-          const pil = $("nu-sweep");
-          if (pil && pil.classList.contains("on")) draw._fix.push(_caixa(pil));
-          const hud = $("nu-hud");
-          if (hud && hud.offsetWidth) draw._fix.push(_caixa(hud));
-        }
-        draw._m = (draw._m || 0) + 1;
-        for (const c of draw._fix || []) _cx2.push(c);
-        pos.slice().sort((a, b) => b.k - a.k).forEach((o) => {
-          const n = o.n, el = $("nu-" + n.id);
-          if (!el) return;
-          const rc = P(0, o.h, 0);
-          const sc = Math.max(0.84, Math.min(1.06, o.k));
-          const w = (n._w || 96) * sc, h = (n._h || 34) * sc;
-          const a0 = Math.atan2(o.y - rc.y, o.x - rc.x);
-          let melhor = null;
-          for (const rad of [54, 76, 100, 128]) {
-            for (const gir of [0, 0.3, -0.3, 0.62, -0.62, 0.95, -0.95, 1.3, -1.3, 1.7, -1.7, 2.2, -2.2, Math.PI]) {
-              const a = a0 + gir;
-              let x2 = o.x + Math.cos(a) * rad, y2 = o.y + Math.sin(a) * rad * 0.62 - 18;
-              x2 = Math.max(w / 2 + 8, Math.min(W2 - w / 2 - 8, x2));
-              y2 = Math.max(h + 8, Math.min(H2 - 8, y2));
-              const cy = y2 - h / 2;
-              let ov = 0;
-              for (const c of _cx2) {
-                const px = (w + c.w) / 2 + 8 - Math.abs(x2 - c.x), py = (h + c.h) / 2 + 8 - Math.abs(cy - c.y);
-                if (px > 0 && py > 0) ov += px * py;
-              }
-              if (!melhor || ov < melhor.ov) melhor = { x: x2, y: y2, ov };
-              if (!ov) break;
-            }
-            if (!melhor.ov) break;
-          }
-          const x = melhor.x, y = melhor.y;
-          _cx2.push({ x, y: y - h / 2, w, h });
-          const tf = "translate3d(" + Math.round(x) + "px," + Math.round(y) + "px,0) translate(-50%,-100%) scale(" + sc.toFixed(2) + ")";
-          if (n._tf !== tf) {
-            n._tf = tf;
-            el.style.transform = tf;
-          }
-          const z = String(2 + Math.round(40 * o.k));
-          if (n._z !== z) {
-            n._z = z;
-            el.style.zIndex = z;
-          }
-          n._lx = x;
-          n._ly = y - h / 2;
-        });
-      }
-      for (let i = 0; i < pos.length; i++) {
-        const A5 = pos[i], B = pos[(i + 1) % pos.length];
-        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A5.k, B.k)).toFixed(3) + ")";
-        ctx.lineWidth = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(A5.x, A5.y);
-        ctx.lineTo(B.x, B.y);
-        ctx.stroke();
-      }
-      const sw = !!_sweepAtivo;
-      const pulse = rm ? 1 : (sw ? 0.76 : 0.86) + (sw ? 0.24 : 0.14) * Math.sin(t * (sw ? 42e-4 : 21e-4));
-      const spin2 = rm ? 0 : t * 4e-4 * (sw ? 2.3 : 1);
-      const desenhaNo = (o) => {
-        const { n, x, y, k, px, py, pk } = o, viva = _nuHover === n.id;
-        const rp = (viva ? 18 : 13) * pk;
-        const pg = ctx.createRadialGradient(px, py, 0, px, py, rp);
-        pg.addColorStop(0, n.cor + (viva ? "8a" : "55"));
-        pg.addColorStop(0.5, n.cor + "1e");
-        pg.addColorStop(1, n.cor + "00");
-        ctx.fillStyle = pg;
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.scale(1, Math.max(0.18, cam.sp));
-        ctx.beginPath();
-        ctx.arc(0, 0, rp, 0, 6.283);
-        ctx.fill();
-        ctx.restore();
-        const bg = ctx.createLinearGradient(px, py, x, y);
-        bg.addColorStop(0, n.cor + (viva ? "77" : "44"));
-        bg.addColorStop(0.45, n.cor + (viva ? "33" : "1c"));
-        bg.addColorStop(1, n.cor + (viva ? "ee" : "99"));
-        ctx.strokeStyle = bg;
-        ctx.lineWidth = Math.max(0.9, (viva ? 2.4 : 1.7) * k);
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        const R = (viva ? 18 : 13) * k;
-        const rg = ctx.createRadialGradient(x, y, 0, x, y, R);
-        rg.addColorStop(0, n.cor + "e6");
-        rg.addColorStop(0.35, n.cor + "4a");
-        rg.addColorStop(1, n.cor + "00");
-        ctx.fillStyle = rg;
-        ctx.beginPath();
-        ctx.arc(x, y, R, 0, 6.283);
-        ctx.fill();
-        const S = (v) => v * k, idx = n._idx || 0;
-        const per = 1 + idx * 7 % 5 * 0.34;
-        const fase = idx * 1.97;
-        const pul = rm ? 0.55 : 0.5 + 0.5 * Math.sin(t * 17e-4 / per + fase);
-        const gir = rm ? 0 : t * 4e-4 / per + fase;
-        const ap = new Path2D();
-        const rb1 = S((viva ? 17 : 13) + 4.5 * pul);
-        for (let q = 0; q < 4; q++) {
-          const a0 = gir * 0.6 + q * 1.5708 - 0.34;
-          ap.moveTo(x + Math.cos(a0) * rb1, y + Math.sin(a0) * rb1);
-          ap.arc(x, y, rb1, a0, a0 + 0.68);
-          const ae = a0 + 0.68;
-          ap.moveTo(x + Math.cos(ae) * rb1, y + Math.sin(ae) * rb1);
-          ap.lineTo(x + Math.cos(ae) * (rb1 + S(3.4)), y + Math.sin(ae) * (rb1 + S(3.4)));
-        }
-        const rh = S((viva ? 9.5 : 7.4) + 1.3 * pul);
-        for (let q = 0; q < 6; q++) {
-          const a = -gir * 1.7 + q * 1.0472, hx = x + Math.cos(a) * rh, hy = y + Math.sin(a) * rh;
-          q ? ap.lineTo(hx, hy) : ap.moveTo(hx, hy);
-        }
-        ap.closePath();
-        const dxb = px - x, dyb = py - y;
-        for (let q = 1; q <= 4; q++) {
-          const u = q / 5, bx = x + dxb * u, by = y + dyb * u, lw2 = S(4.2) * (1 - u * 0.45);
-          ap.moveTo(bx - lw2, by);
-          ap.lineTo(bx + lw2, by);
-        }
-        const rb2 = S(7.5);
-        ap.moveTo(px - rb2, py);
-        ap.arc(px, py, rb2, Math.PI, Math.PI + 1.05);
-        ap.moveTo(px + rb2, py);
-        ap.arc(px, py, rb2, 0, -1.05, true);
-        ctx.strokeStyle = n.cor + (viva ? "dd" : "7a");
-        ctx.lineWidth = Math.max(0.5, S(viva ? 1.2 : 0.85));
-        ctx.stroke(ap);
-        if (!rm) {
-          const png = (t * 34e-5 / per + idx * 0.37) % 1;
-          const rp2 = S(11 + 34 * png);
-          ctx.strokeStyle = n.cor + _hex2(0.42 * (1 - png) * (viva ? 1.6 : 1));
-          ctx.lineWidth = Math.max(0.4, S(1.1 * (1 - png)));
-          ctx.beginPath();
-          ctx.arc(x, y, rp2, 0, 6.283);
-          ctx.stroke();
-          const u2 = 1 - (t * 52e-5 / per + idx * 0.29) % 1;
-          const cx2 = x + dxb * u2, cy2 = y + dyb * u2;
-          const gp = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, S(4.4));
-          gp.addColorStop(0, "rgba(255,255,255,.92)");
-          gp.addColorStop(0.4, n.cor + "aa");
-          gp.addColorStop(1, n.cor + "00");
-          ctx.fillStyle = gp;
-          ctx.beginPath();
-          ctx.arc(cx2, cy2, S(4.4), 0, 6.283);
-          ctx.fill();
-        }
-        ctx.fillStyle = "rgba(255,255,255," + Math.min(0.98, 0.34 + 0.55 * k).toFixed(2) + ")";
-        ctx.beginPath();
-        ctx.arc(x, y, (1.1 + 1.5 * k) * (0.82 + 0.32 * pul), 0, 6.283);
-        ctx.fill();
-      };
-      if (!rm) {
-        _nuFlux = _nuFlux.filter((f) => f.p < 1);
-        _nuFlux.forEach((f) => {
-          const o = pos.find((q) => q.n.id === f.id);
-          if (!o) return;
-          f.p += 0.022;
-          const e = 1 - Math.pow(1 - f.p, 2), e22 = Math.max(0, e - 0.1);
-          const at = (u) => P(o.wx * (1 - u), o.h + (0.6 - o.h) * u, o.wz * (1 - u));
-          const a = at(e), b = at(e22);
-          ctx.strokeStyle = "rgba(" + f.c + "," + (0.34 * (1 - f.p)).toFixed(2) + ")";
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-          ctx.fillStyle = "rgba(" + f.c + "," + (1 - f.p * 0.75).toFixed(2) + ")";
-          ctx.beginPath();
-          ctx.arc(a.x, a.y, 2.4 * a.k, 0, 6.283);
-          ctx.fill();
-        });
-      }
-      const base = P(0, ESP, 0), heart = P(0, HOLO.ALT, 0);
-      const desenhaProjetor = () => {
-        for (let a = 0; a < 3; a++) {
-          const rad = 0.1 + a * 0.055, seg = 10 + a * 5, dir = a % 2 ? -1 : 1;
-          ctx.strokeStyle = `rgba(150,200,255,${((0.34 - a * 0.07) * pulse).toFixed(3)})`;
-          ctx.lineWidth = Math.max(0.7, 1.7 - a * 0.35);
-          for (let s = 0; s < seg; s++) {
-            const a0 = s / seg * 6.283 + spin2 * 22 * dir;
-            ctx.beginPath();
-            for (let i = 0; i <= 6; i++) {
-              const th = a0 + i / 6 * (6.283 / seg * 0.62), p = P(Math.cos(th) * rad, ESP + 0.012, Math.sin(th) * rad);
-              i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-            }
-            ctx.stroke();
-          }
-        }
-        const col = ctx.createLinearGradient(base.x, base.y, heart.x, heart.y);
-        col.addColorStop(0, "rgba(255,176,96," + (0.3 * pulse).toFixed(2) + ")");
-        col.addColorStop(0.55, "rgba(255,190,120," + (0.2 * pulse).toFixed(2) + ")");
-        col.addColorStop(1, "rgba(255,226,170," + (0.62 * pulse).toFixed(2) + ")");
-        const poça = ctx.createRadialGradient(base.x, base.y, 0, base.x, base.y, 74 * cam.s / 240);
-        poça.addColorStop(0, "rgba(255,190,120," + (0.3 * pulse).toFixed(2) + ")");
-        poça.addColorStop(0.45, "rgba(255,170,90," + (0.1 * pulse).toFixed(2) + ")");
-        poça.addColorStop(1, "rgba(255,160,80,0)");
-        ctx.save();
-        ctx.translate(base.x, base.y);
-        ctx.scale(1, Math.max(0.18, cam.sp));
-        ctx.fillStyle = poça;
-        ctx.beginPath();
-        ctx.arc(0, 0, 74 * cam.s / 240, 0, 6.283);
-        ctx.fill();
-        ctx.restore();
-        const meia = 30 * cam.s / 240 * pulse;
-        ctx.fillStyle = col;
-        ctx.globalAlpha = 0.13;
-        ctx.beginPath();
-        ctx.moveTo(base.x - meia, base.y);
-        ctx.lineTo(base.x + meia, base.y);
-        ctx.lineTo(heart.x + 2.4, heart.y);
-        ctx.lineTo(heart.x - 2.4, heart.y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
-        ctx.moveTo(base.x, base.y);
-        ctx.lineTo(heart.x, heart.y);
-        ctx.stroke();
-        const RR = heart.k * Math.min(1.5, cam.s / 240), R = (v) => v * RR;
-        ctx.save();
-        ctx.translate(heart.x, heart.y);
-        if (_reatorArt.complete && _reatorArt.naturalWidth) {
-          const DA = R(104);
-          ctx.globalCompositeOperation = "lighter";
-          ctx.globalAlpha = Math.min(1, 0.5 * pulse);
-          ctx.drawImage(_reatorArt, -DA / 2, -DA / 2, DA, DA);
-          ctx.globalAlpha = 1;
-          ctx.globalCompositeOperation = "source-over";
-        }
-        ctx.lineWidth = R(5.5);
-        ctx.strokeStyle = `rgba(104,150,215,${(0.3 * pulse).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(0, 0, R(41), 0, 6.283);
-        ctx.stroke();
-        ctx.lineWidth = Math.max(0.6, R(1));
-        ctx.strokeStyle = `rgba(198,228,255,${(0.34 * pulse).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(0, 0, R(38.4), 0, 6.283);
-        ctx.stroke();
-        ctx.strokeStyle = `rgba(24,44,86,${(0.62 * pulse).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(0, 0, R(43.7), 0, 6.283);
-        ctx.stroke();
-        const NB = 10, folga = 0.13, giroB = spin2 * 9;
-        const pb = new Path2D();
-        for (let k = 0; k < NB; k++) {
-          const a0 = k / NB * 6.283 + giroB, a1 = a0 + 6.283 / NB - folga;
-          pb.moveTo(Math.cos(a0) * R(23), Math.sin(a0) * R(23));
-          pb.arc(0, 0, R(23), a0, a1);
-          pb.arc(0, 0, R(36.5), a1, a0, true);
-          pb.closePath();
-        }
-        const gb = ctx.createRadialGradient(0, 0, R(21), 0, 0, R(37));
-        gb.addColorStop(0, `rgba(150,205,255,${(0.3 * pulse).toFixed(3)})`);
-        gb.addColorStop(0.55, `rgba(110,165,235,${(0.16 * pulse).toFixed(3)})`);
-        gb.addColorStop(1, `rgba(70,115,190,${(0.07 * pulse).toFixed(3)})`);
-        ctx.fillStyle = gb;
-        ctx.fill(pb);
-        ctx.lineWidth = Math.max(0.5, R(0.75));
-        ctx.strokeStyle = `rgba(186,222,255,${(0.3 * pulse).toFixed(3)})`;
-        ctx.stroke(pb);
-        const pe = new Path2D();
-        for (let k = 0; k < 24; k++) {
-          const a = k / 24 * 6.283 - giroB * 1.6, cx0 = Math.cos(a), sy0 = Math.sin(a);
-          pe.moveTo(cx0 * R(37.6), sy0 * R(37.6));
-          pe.lineTo(cx0 * R(40.4), sy0 * R(40.4));
-        }
-        ctx.lineWidth = Math.max(0.5, R(1.1));
-        ctx.strokeStyle = `rgba(160,205,255,${(0.26 * pulse).toFixed(3)})`;
-        ctx.stroke(pe);
-        const gq = ctx.createRadialGradient(0, 0, 0, 0, 0, R(22));
-        gq.addColorStop(0, `rgba(255,214,150,${(0.34 * pulse).toFixed(3)})`);
-        gq.addColorStop(0.45, `rgba(255,150,70,${(0.15 * pulse).toFixed(3)})`);
-        gq.addColorStop(1, "rgba(255,130,50,0)");
-        ctx.fillStyle = gq;
-        ctx.beginPath();
-        ctx.arc(0, 0, R(22), 0, 6.283);
-        ctx.fill();
-        const pt = new Path2D(), aT = -Math.PI / 2 - spin2 * 5;
-        for (let k = 0; k < 3; k++) {
-          const a = aT + k * 2.0944, x02 = Math.cos(a) * R(15.5), y02 = Math.sin(a) * R(15.5);
-          k ? pt.lineTo(x02, y02) : pt.moveTo(x02, y02);
-        }
-        pt.closePath();
-        ctx.lineJoin = "round";
-        ctx.lineWidth = Math.max(0.8, R(1.9));
-        ctx.strokeStyle = `rgba(214,238,255,${(0.52 * pulse).toFixed(3)})`;
-        ctx.stroke(pt);
-        ctx.lineWidth = Math.max(1.4, R(5));
-        ctx.strokeStyle = `rgba(120,190,255,${(0.13 * pulse).toFixed(3)})`;
-        ctx.stroke(pt);
-        if (!rm) {
-          const pf = new Path2D();
-          for (let k = 0; k < NB; k++) {
-            const a = (k + 0.5) / NB * 6.283 + giroB;
-            const v = 0.55 + 0.45 * Math.sin(t * 26e-4 + k * 1.7);
-            pf.moveTo(Math.cos(a) * R(7), Math.sin(a) * R(7));
-            pf.lineTo(Math.cos(a) * R(7 + 15 * v), Math.sin(a) * R(7 + 15 * v));
-          }
-          ctx.lineWidth = Math.max(0.5, R(0.9));
-          ctx.strokeStyle = `rgba(226,244,255,${(0.3 * pulse).toFixed(3)})`;
-          ctx.stroke(pf);
-        }
-        if (!rm) {
-          const gir = spin2 * 7, pc = new Path2D(), pn = new Path2D();
-          for (let k = 0; k < 72; k++) {
-            const a = k / 72 * 6.283 + gir, card2 = k % 18 === 0, len = (card2 ? 6 : k % 6 === 0 ? 4 : 2.4) * RR;
-            const c0 = Math.cos(a), s0 = Math.sin(a);
-            (card2 ? pc : pn).moveTo(c0 * R(46), s0 * R(46));
-            (card2 ? pc : pn).lineTo(c0 * (R(46) + len), s0 * (R(46) + len));
-          }
-          ctx.lineWidth = Math.max(0.4, R(0.7));
-          ctx.strokeStyle = `rgba(150,200,255,${(0.16 * pulse).toFixed(3)})`;
-          ctx.stroke(pn);
-          ctx.lineWidth = Math.max(0.7, R(1.3));
-          ctx.strokeStyle = `rgba(180,220,255,${(0.4 * pulse).toFixed(3)})`;
-          ctx.stroke(pc);
-        }
-        ctx.restore();
-        const cr = 38 * pulse * heart.k * Math.min(1.4, cam.s / 240);
-        const cg = ctx.createRadialGradient(heart.x, heart.y, 0, heart.x, heart.y, cr);
-        cg.addColorStop(0, "rgba(255,244,226,1)");
-        cg.addColorStop(0.16, "rgba(255,192,120,.92)");
-        cg.addColorStop(0.4, "rgba(150,220,255,.70)");
-        cg.addColorStop(0.7, "rgba(120,150,255,.22)");
-        cg.addColorStop(1, "rgba(120,140,255,0)");
-        ctx.fillStyle = cg;
-        ctx.beginPath();
-        ctx.arc(heart.x, heart.y, cr, 0, 6.283);
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255," + (0.9 * pulse).toFixed(2) + ")";
-        ctx.beginPath();
-        ctx.arc(heart.x, heart.y, 3.4, 0, 6.283);
-        ctx.fill();
-      };
-      pos.map((o) => ({ z: o.z, f: () => desenhaNo(o) })).concat([{ z: cam.camd, f: desenhaProjetor }]).sort((a, b) => b.z - a.z).forEach((it) => it.f());
-      _nuPulses = _nuPulses.filter((p) => p.a > 0.02);
-      _nuPulses.forEach((p) => {
-        p.r += 0.019;
-        p.a *= 0.965;
-        ctx.strokeStyle = `rgba(${p.c},${p.a.toFixed(3)})`;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (let i = 0; i <= 48; i++) {
-          const th = i / 48 * 6.283, q = P(Math.cos(th) * p.r, ESP + 8e-3, Math.sin(th) * p.r);
-          i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
-        }
-        ctx.stroke();
-      });
-      if (_nuHover) {
-        const o = pos.find((q) => q.n.id === _nuHover);
-        if (o) {
-          ctx.strokeStyle = o.n.cor + "cc";
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.arc(o.x, o.y, 16 * o.k, 0, 6.283);
-          ctx.stroke();
-          ctx.strokeStyle = o.n.cor + "55";
-          ctx.setLineDash([4, 5]);
-          ctx.beginPath();
-          ctx.arc(o.x, o.y, 23 * o.k, 0, 6.283);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      }
-      pos.forEach((o) => {
-        const n = o.n, el = $("nu-" + n.id), viva = _nuHover === n.id;
-        if (el) el.classList.toggle("viva", viva);
-        if (_compacto || n._lx == null) return;
-        ctx.strokeStyle = n.cor + (viva ? "bb" : "3a");
-        ctx.lineWidth = viva ? 1.4 : 0.9;
-        ctx.beginPath();
-        ctx.moveTo(n._lx, n._ly);
-        ctx.lineTo(o.x, o.y);
-        ctx.stroke();
-      });
-      _nuPintou = true;
-      _nuRAF = rm || _sobrio || document.hidden ? 0 : requestAnimationFrame(draw);
-    }
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden || !cv.isConnected || !_nuVisivel) return;
-      cancelAnimationFrame(_nuRAF);
-      draw(performance.now());
-    });
-    cancelAnimationFrame(_nuRAF);
-    draw(performance.now());
-    nuSweepPoll();
-    clearInterval(_swInt);
-    _swInt = setInterval(() => {
-      cv.isConnected ? nuSweepPoll() : clearInterval(_swInt);
-    }, 15e3);
   }
   async function nebulaViva() {
     if (_v63) return;
@@ -4480,53 +3545,6 @@
       v.poster = _v61 ? "/static/assets/" + nome + (_cel ? "-sm" : "") + ".webp" : "/static/assets/" + nome + ".jpg";
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
-    }
-    v.play().catch(() => {
-    });
-  }
-  async function holoRJ() {
-    const host = $("holorj");
-    if (!host) return;
-    let v = host.querySelector("video");
-    const apaga = () => {
-      document.body.classList.remove("holo-on");
-      if (v) {
-        v.classList.remove("on");
-        v.pause();
-      }
-    };
-    if (_v60 || esfera !== "estado" || _redMotion || _sobrio) {
-      apaga();
-      return;
-    }
-    const url = "/static/assets/holo-rj-estado.mp4";
-    if (_nebVid.holorj === void 0) {
-      try {
-        _nebVid.holorj = (await fetch(url, { method: "HEAD" })).ok;
-      } catch (e) {
-        _nebVid.holorj = false;
-      }
-    }
-    if (!_nebVid.holorj) {
-      apaga();
-      return;
-    }
-    if (esfera !== "estado") return;
-    if (!v) {
-      v = document.createElement("video");
-      v.muted = true;
-      v.loop = true;
-      v.playsInline = true;
-      v.autoplay = true;
-      v.preload = "metadata";
-      v.poster = "/static/assets/holo-rj-estado.jpg";
-      v.setAttribute("aria-hidden", "true");
-      v.addEventListener("playing", () => {
-        v.classList.add("on");
-        document.body.classList.add("holo-on");
-      });
-      v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
-      host.appendChild(v);
     }
     v.play().catch(() => {
     });
@@ -4879,7 +3897,6 @@
       t.style.removeProperty("--ry");
     }, { passive: true });
   }
-  var _wireRAF = 0;
   var _censo = null;
   function vivo() {
     const v = $("view");
@@ -4894,7 +3911,6 @@
       const k = v.querySelector(".kpi");
       if (k) setTimeout(() => k.classList.add("beat"), 700);
     }
-    if (!rm && !_v61) v.querySelectorAll(".kpi .v").forEach(_countUp);
     v.querySelectorAll(".search").forEach((box) => {
       const inp = box.querySelector('input[oninput*="filtrar"]');
       if (!inp || box.querySelector(".az")) return;
@@ -4908,97 +3924,9 @@
       b.setAttribute("onclick", `ordenar('${m[1]}',this)`);
       box.appendChild(b);
     });
-    _wire(top, rm);
     _censo = revelar(v, rm, _sobrio);
   }
   var revelacaoCenso = () => _censo;
-  function _countUp(el) {
-    const raw = (el.textContent || "").trim();
-    const m = raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/);
-    if (!m) return;
-    const pre = m[1], suf = m[3], dec = (m[2].split(",")[1] || "").length;
-    const val = parseFloat(m[2].replace(/[.\s]/g, "").replace(",", "."));
-    if (!isFinite(val) || val === 0) return;
-    el.classList.add("counting");
-    const t0 = performance.now(), dur = 850;
-    (function step(t) {
-      const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = pre + (val * e).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
-      if (p < 1) requestAnimationFrame(step);
-      else {
-        el.textContent = raw;
-        el.classList.remove("counting");
-      }
-    })(t0);
-  }
-  var _ESF_RGB = { inicio: "99,224,255", estado: "125,175,255", prefeitura: "235,190,105", geral: "200,150,255" };
-  function _wire(nodes, rm) {
-    if (_v60) return;
-    cancelAnimationFrame(_wireRAF);
-    const C = _ESF_RGB[esfera] || _ESF_RGB.inicio;
-    const v = $("view"), fade = v && v.querySelector(".fade");
-    if (!v || !fade || nodes.length < 2) return;
-    let cv = v.querySelector(".view-wire");
-    if (!cv) {
-      cv = document.createElement("canvas");
-      cv.className = "view-wire";
-      v.insertBefore(cv, fade);
-    }
-    const cx = cv.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1), vr = v.getBoundingClientRect();
-    const W2 = v.clientWidth, H2 = Math.max(v.scrollHeight, fade.scrollHeight);
-    cv.width = W2 * dpr;
-    cv.height = H2 * dpr;
-    cv.style.width = W2 + "px";
-    cv.style.height = H2 + "px";
-    cx.scale(dpr, dpr);
-    const pts = nodes.slice(0, 46).map((el) => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left - vr.left + Math.min(r.width / 2, 80), y: r.top - vr.top + 9 };
-    });
-    const edges = [];
-    pts.forEach((a, i) => {
-      const d = pts.map((b, j) => ({ j, d: (a.x - b.x) ** 2 + (a.y - b.y) ** 2 })).filter((o) => o.j !== i).sort((p, q) => p.d - q.d).slice(0, 2);
-      d.forEach((o) => {
-        const k = i < o.j ? i + "-" + o.j : o.j + "-" + i;
-        if (!edges.some((e) => e.k === k)) edges.push({ k, a: i, b: o.j });
-      });
-    });
-    const t0i = rm ? null : performance.now();
-    function draw(t) {
-      cx.clearRect(0, 0, W2, H2);
-      const f = _wireFase(t0i == null ? null : t - t0i);
-      if (f.aresta > 0) edges.forEach((e) => {
-        const A5 = pts[e.a], B = pts[e.b];
-        cx.strokeStyle = "rgba(" + C + ",.15)";
-        cx.lineWidth = 1;
-        cx.beginPath();
-        cx.moveTo(A5.x, A5.y);
-        cx.lineTo(A5.x + (B.x - A5.x) * f.aresta, A5.y + (B.y - A5.y) * f.aresta);
-        cx.stroke();
-      });
-      if (f.no > 0) pts.forEach((p) => {
-        cx.fillStyle = "rgba(" + C + "," + (0.35 * f.no).toFixed(3) + ")";
-        cx.beginPath();
-        cx.arc(p.x, p.y, 1.6 * f.no, 0, 6.283);
-        cx.fill();
-      });
-      if (!rm) {
-        if (f.aresta >= 1) edges.forEach((e, i) => {
-          const A5 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
-          const x = A5.x + (B.x - A5.x) * ph, y = A5.y + (B.y - A5.y) * ph;
-          const g = cx.createRadialGradient(x, y, 0, x, y, 8);
-          g.addColorStop(0, "rgba(" + C + ",.8)");
-          g.addColorStop(1, "rgba(" + C + ",0)");
-          cx.fillStyle = g;
-          cx.beginPath();
-          cx.arc(x, y, 8, 0, 6.283);
-          cx.fill();
-        });
-        _wireRAF = requestAnimationFrame(draw);
-      }
-    }
-    draw(rm ? 0 : performance.now());
-  }
   var TERMOS = [
     ["🎯", "Captura de órgão", "Uma única empresa vence 80% ou mais das licitações de um órgão. Sinal de mercado fechado — merece verificação de propostas e sócios."],
     ["🔁", "Rodízio de vencedores", "2 ou 3 empresas se revezam nas vitórias de licitações PARECIDAS (mesmo tipo de objeto). Padrão clássico de combinação de propostas (OCDE)."],
@@ -5093,7 +4021,7 @@
     a11yfy(sh);
     const d = await J("/api/perfil?cnpj=" + dig);
     if (!d.ok) {
-      sh.innerHTML = `<span class="x" aria-label="Fechar" onclick="fecharDossie()">✕</span><div class="grab"></div>` + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      sh.innerHTML = `<span class="x" aria-label="Fechar" onclick="fecharDossie()">✕</span><div class="grab"></div>` + cardErro(d.erro);
       a11yfy(sh);
       return;
     }
@@ -5210,7 +4138,7 @@
   async function seiBaixarZip(cnpj) {
     const r = await J("/api/sei/empresa/zip?cnpj=" + cnpj);
     if (!r.ok) {
-      jfnToast2("Não consegui montar o ZIP agora — " + (r.erro || "tente de novo em instantes."), "rose");
+      jfnToast("Não consegui montar o ZIP agora — " + (r.erro || "tente de novo em instantes."), "rose");
       return;
     }
     window.open(r.url, "_blank");
@@ -5251,7 +4179,7 @@
     a11yfy(sh);
     const d = await J("/api/certame/indice?certame=" + encodeURIComponent(certame));
     if (!d.ok) {
-      sh.innerHTML = `<span class="x" aria-label="Fechar" onclick="fecharCertame()">✕</span><div class="grab"></div>` + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      sh.innerHTML = `<span class="x" aria-label="Fechar" onclick="fecharCertame()">✕</span><div class="grab"></div>` + cardErro(d.erro);
       a11yfy(sh);
       return;
     }
@@ -5278,7 +4206,7 @@
     sh.innerHTML = h;
     a11yfy(sh);
   }
-  function jfnToast2(msg, tipo) {
+  function jfnToast(msg, tipo) {
     let box = $("v10toasts");
     if (!box) {
       box = document.createElement("div");
@@ -5315,6 +4243,65 @@
         if (e.target === ov) fim(false);
       };
     });
+  }
+
+  // static/js/src/nucleo/markdown.js
+  var mdSimples = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+  function _inline(s) {
+    return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>").replace(/~~([^~]+)~~/g, "<s>$1</s>").replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, a, b) => `<span class="cs-wl">${b || a.split("/").pop()}</span>`).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  }
+  function mdNota(md) {
+    const L = String(md || "").replace(/<!--[\s\S]*?-->/g, "").split("\n");
+    const out = [];
+    let i = 0;
+    while (i < L.length) {
+      const l = L[i];
+      if (/^\s*\|/.test(l)) {
+        const rows = [];
+        while (i < L.length && /^\s*\|/.test(L[i])) rows.push(L[i++]);
+        const cel = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((x) => x.trim());
+        const sep = rows[1] && /^[\s|:-]+$/.test(rows[1]);
+        const head = sep ? cel(rows[0]) : null, body = rows.slice(sep ? 2 : 0).map(cel);
+        out.push(`<div class="cs-tbw"><table class="tb">${head ? `<thead><tr>${head.map((x) => `<th>${_inline(x)}</th>`).join("")}</tr></thead>` : ""}<tbody>${body.map((r) => `<tr>${r.map((x) => `<td>${_inline(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+        continue;
+      }
+      if (/^>\s?/.test(l)) {
+        const q = [];
+        while (i < L.length && /^>\s?/.test(L[i])) q.push(L[i++].replace(/^>\s?/, ""));
+        out.push(`<blockquote>${q.map(_inline).join("<br>")}</blockquote>`);
+        continue;
+      }
+      if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+        const ord = /^\s*\d+\./.test(l), it = [];
+        while (i < L.length && (/^\s*([-*]|\d+\.)\s+/.test(L[i]) || /^\s{2,}\S/.test(L[i]) && it.length)) {
+          if (/^\s*([-*]|\d+\.)\s+/.test(L[i])) it.push(L[i].replace(/^\s*([-*]|\d+\.)\s+/, ""));
+          else it[it.length - 1] += " " + L[i].trim();
+          i++;
+        }
+        out.push(`<${ord ? "ol" : "ul"}>${it.map((x) => `<li>${_inline(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>`);
+        continue;
+      }
+      const m = l.match(/^(#{1,4})\s+(.*)$/);
+      if (m) {
+        out.push(`<h${m[1].length + 1} class="cs-h">${_inline(m[2])}</h${m[1].length + 1}>`);
+        i++;
+        continue;
+      }
+      if (/^\s*(---|\*\*\*)\s*$/.test(l)) {
+        out.push("<hr>");
+        i++;
+        continue;
+      }
+      if (!l.trim()) {
+        i++;
+        continue;
+      }
+      const p = [];
+      while (i < L.length && L[i].trim() && !/^(#{1,4}\s|>|\s*\||\s*([-*]|\d+\.)\s)/.test(L[i])) p.push(L[i++]);
+      if (!p.length) p.push(L[i++]);
+      out.push(`<p>${_inline(p.join(" "))}</p>`);
+    }
+    return out.join("");
   }
 
   // static/js/src/abas/casos.js
@@ -5386,7 +4373,7 @@
       "🗂️"
     );
     const d = await J("/api/casos");
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+    if (!d || d.ok === false) return h + cardErro(d && d.erro);
     _dados = d;
     const pn = d.por_nivel || {};
     h += `<div class="grid g4">
@@ -5405,62 +4392,6 @@
     por();
     return h;
   }
-  function _inline(s) {
-    return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>").replace(/~~([^~]+)~~/g, "<s>$1</s>").replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, a, b) => `<span class="cs-wl">${b || a.split("/").pop()}</span>`).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  }
-  function mdNota(md) {
-    const L = String(md || "").replace(/<!--[\s\S]*?-->/g, "").split("\n");
-    const out = [];
-    let i = 0;
-    while (i < L.length) {
-      const l = L[i];
-      if (/^\s*\|/.test(l)) {
-        const rows = [];
-        while (i < L.length && /^\s*\|/.test(L[i])) rows.push(L[i++]);
-        const cel = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((x) => x.trim());
-        const sep = rows[1] && /^[\s|:-]+$/.test(rows[1]);
-        const head = sep ? cel(rows[0]) : null, body = rows.slice(sep ? 2 : 0).map(cel);
-        out.push(`<div class="cs-tbw"><table class="tb">${head ? `<thead><tr>${head.map((x) => `<th>${_inline(x)}</th>`).join("")}</tr></thead>` : ""}<tbody>${body.map((r) => `<tr>${r.map((x) => `<td>${_inline(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
-        continue;
-      }
-      if (/^>\s?/.test(l)) {
-        const q = [];
-        while (i < L.length && /^>\s?/.test(L[i])) q.push(L[i++].replace(/^>\s?/, ""));
-        out.push(`<blockquote>${q.map(_inline).join("<br>")}</blockquote>`);
-        continue;
-      }
-      if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
-        const ord = /^\s*\d+\./.test(l), it = [];
-        while (i < L.length && (/^\s*([-*]|\d+\.)\s+/.test(L[i]) || /^\s{2,}\S/.test(L[i]) && it.length)) {
-          if (/^\s*([-*]|\d+\.)\s+/.test(L[i])) it.push(L[i].replace(/^\s*([-*]|\d+\.)\s+/, ""));
-          else it[it.length - 1] += " " + L[i].trim();
-          i++;
-        }
-        out.push(`<${ord ? "ol" : "ul"}>${it.map((x) => `<li>${_inline(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>`);
-        continue;
-      }
-      const m = l.match(/^(#{1,4})\s+(.*)$/);
-      if (m) {
-        out.push(`<h${m[1].length + 1} class="cs-h">${_inline(m[2])}</h${m[1].length + 1}>`);
-        i++;
-        continue;
-      }
-      if (/^\s*(---|\*\*\*)\s*$/.test(l)) {
-        out.push("<hr>");
-        i++;
-        continue;
-      }
-      if (!l.trim()) {
-        i++;
-        continue;
-      }
-      const p = [];
-      while (i < L.length && L[i].trim() && !/^(#{1,4}\s|>|\s*\||\s*([-*]|\d+\.)\s)/.test(L[i])) p.push(L[i++]);
-      if (!p.length) p.push(L[i++]);
-      out.push(`<p>${_inline(p.join(" "))}</p>`);
-    }
-    return out.join("");
-  }
   async function _abrirNota(slug) {
     const ov = $("ov"), sh = $("sheet");
     if (!ov || !sh) return;
@@ -5470,7 +4401,7 @@
     a11yfy(sh);
     const d = await J("/api/casos/nota?slug=" + encodeURIComponent(slug));
     if (!d || d.ok === false) {
-      sh.innerHTML = x + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+      sh.innerHTML = x + cardErro(d && d.erro);
       a11yfy(sh);
       return;
     }
@@ -5594,7 +4525,6 @@
   }
   var _MES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   var _EST = { "VERIFICADO": ["var(--ok,#1f9d55)", "número conferido"], "PENDENTE": ["var(--amber,#b7791f)", "número a conferir"], "INDISPONÍVEL": ["var(--dim,#888)", "a fonte não tem o dado"] };
-  var _md = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
   function _selo(e) {
     const c = _EST[e] || _EST["PENDENTE"];
     return `<span title="${esc(c[1])}" style="font-size:11px;font-weight:700;color:${c[0]};white-space:nowrap">${esc(e)}</span>`;
@@ -5611,7 +4541,7 @@
   }
   function _pgManual(d) {
     const m = d.manual, c = m && m.campos || {};
-    const campos = Object.keys(c).map((k) => `<div style="margin-top:6px"><b>${esc(k)}.</b> ${_md(c[k])}</div>`).join("");
+    const campos = Object.keys(c).map((k) => `<div style="margin-top:6px"><b>${esc(k)}.</b> ${mdSimples(c[k])}</div>`).join("");
     const lista = (t, xs) => (xs || []).length ? `<div style="margin-top:8px"><b>${t}</b><ul style="margin:4px 0 0 18px;padding:0">${xs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
     const pv = d.prevalencia || {};
     const taxa = pv.taxa == null ? "não medida" : (100 * pv.taxa).toFixed(2).replace(".", ",") + "%";
@@ -5639,7 +4569,7 @@
   }
   async function _pulosCorpo(ano, mes) {
     const d = await J("/api/comissao/pulos?ano=" + encodeURIComponent(ano || 0) + "&mes=" + encodeURIComponent(mes || 0));
-    if (!d || d.ok === false) return card(`<div class="warn">${erroHumano(d)}</div>`);
+    if (!d || d.ok === false) return cardErro(d);
     const anos = (d.anos || []).map((a) => `<option value="${esc(a)}"${String(a) === String(ano) ? " selected" : ""}>${esc(a)}</option>`).join("");
     const meses = _MES.map((m, i) => i ? `<option value="${i}"${String(i) === String(mes) ? " selected" : ""}>${m}</option>` : "").join("");
     return `<div class="chips" style="align-items:center;gap:8px">
@@ -5732,7 +4662,7 @@
     h += sec("Pulos do gato: onde o orçamento esconde, adia ou maquia") + `<div id="com-pulos">${await _pulosCorpo(0, 0)}</div>`;
     const d = await J("/api/comissao/orgaos?limite=15");
     if (!d || d.ok === false) {
-      return h + card(`<div class="warn">${erroHumano(d)}</div>`);
+      return h + cardErro(d);
     }
     const t = d.totais || {};
     h += `<div class="grid g2" style="margin-top:12px">
@@ -5757,7 +4687,6 @@
   }
 
   // static/js/src/abas/governo_couto.js
-  var _norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
   var _ind = (v) => v == null ? '<span class="dim">INDISPONÍVEL</span>' : v;
   var _fonte = (b) => `<div class="dim" style="font-size:12px;margin:6px 0 10px"><b>Fonte:</b> ${esc(b.fonte || "—")}
   <br><b>Cobertura:</b> ${esc(b.cobertura || "—")}</div>`;
@@ -5866,7 +4795,7 @@
     const pc = b.por_camada || {}, pg = b.por_grau || {};
     const nv = b.itens.filter((x) => x.verificacao === "VERIFICADO").length;
     const chip = (k, v, t, on) => `<button type="button" class="chip${on ? " on" : ""}" data-gc-pt="${k}:${v}">${t}</button>`;
-    const rows = b.itens.map((x) => ({ c: x.camada, g: x.grau, o: _norm(x.orgao), h: `<tr>
+    const rows = b.itens.map((x) => ({ c: x.camada, g: x.grau, o: normalizar(x.orgao), h: `<tr>
       <td style="min-width:150px">${esc(x.grau)} <span class="dim" style="font-size:11px">· ${x.camada === "deterministica" ? "determinística" : "subjetiva"}</span><div style="margin-top:4px">${_verifTag(x)}</div></td>
       <td style="min-width:220px"><b>${esc(x.regra_ou_hipotese || "")}</b><div class="dim" style="font-size:12px">${esc(x.orgao || "")}${x.processo ? " · " + esc(x.processo) : ""}${x.fonte ? " · fonte: " + esc(x.fonte) : ""}</div>${_verif(x)}</td>
       <td class="right" style="white-space:nowrap">${x.valor_ob == null ? '<span class="dim">—</span>' : fmtR(x.valor_ob)}</td>
@@ -5887,7 +4816,7 @@
       <td style="white-space:nowrap">${_link(d.url, `<b>${esc(d.numero)}</b>`)}<div class="dim" style="font-size:11px">${fmtData(d.data)}</div></td>
       <td style="font-size:13px;min-width:200px">${esc(d.ementa)}</td>
       <td style="white-space:nowrap;font-size:12px">${esc(d.categoria)}${d.valor_ementa ? `<div>${fmtR(d.valor_ementa)}</div>` : ""}</td></tr>` }));
-    const pes = (b.pessoal || []).map((a) => ({ o: _norm(a.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(a.data)}</td>
+    const pes = (b.pessoal || []).map((a) => ({ o: normalizar(a.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(a.data)}</td>
       <td><b>${a.ato === "NOMEAR" ? "Nomeação" : "Exoneração"}</b></td><td>${esc(a.nome)}</td>
       <td style="font-size:13px;min-width:180px">${esc(a.cargo)} — ${esc(a.orgao)}</td><td>${_link(a.url, "DOERJ")}</td></tr>` }));
     return card(`${_fonte(b)}<div style="font-size:13px">${cat}</div>
@@ -5904,9 +4833,9 @@
   function _contratacoes(b) {
     if (b.estado === "indisponivel") return _indisp(b);
     const mod = (b.por_modalidade || []).map((m) => `<tr><td>${esc(m.modalidade)}</td><td class="right">${fmtN(m.n)}</td><td class="right">${fmtR(m.valor)}</td></tr>`).join("");
-    const org = (b.por_orgao || []).map((o) => ({ o: _norm(o.orgao), h: `<tr><td>${esc(o.orgao)}</td><td class="right">${fmtN(o.n)}</td>
+    const org = (b.por_orgao || []).map((o) => ({ o: normalizar(o.orgao), h: `<tr><td>${esc(o.orgao)}</td><td class="right">${fmtN(o.n)}</td>
       <td class="right">${fmtN(o.n_diretas)}</td><td class="right">${fmtR(o.valor)}</td></tr>` }));
-    const dest = (b.lista || []).map((x) => ({ o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}<div class="dim" style="font-size:11px">${esc(x.processo || "")}</div></td>
+    const dest = (b.lista || []).map((x) => ({ o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}<div class="dim" style="font-size:11px">${esc(x.processo || "")}</div></td>
       <td style="font-size:13px;min-width:220px"><b>${esc(x.fornecedor)}</b> <span class="dim" style="font-size:11px">${esc(x.doc_tipo)} ${esc(x.doc)}</span>
         <div>${esc(x.objeto)}</div><div class="dim" style="font-size:11px">${esc(x.orgao)}</div></td>
       <td style="font-size:12px">${esc(x.modalidade)}${x.emergencial_no_objeto ? "<div>objeto cita emergência</div>" : ""}${_marcas(x.marcas)}</td>
@@ -5929,7 +4858,7 @@
   function _execucao(b) {
     if (b.estado === "indisponivel") return _indisp(b);
     const a = b.anterior || {};
-    const org = (b.por_orgao || []).map((o) => ({ o: _norm(o.nome), h: `<tr><td style="min-width:180px">${esc(o.nome)} <span class="dim" style="font-size:11px">órgão ${esc(o.orgao)}</span>
+    const org = (b.por_orgao || []).map((o) => ({ o: normalizar(o.nome), h: `<tr><td style="min-width:180px">${esc(o.nome)} <span class="dim" style="font-size:11px">órgão ${esc(o.orgao)}</span>
       <div class="dim" style="font-size:11px">UG ${(o.ugs || []).map((u) => `${esc(u.ug)}: ${fmtR(u.pago)}`).join(" · ")}</div></td>
       <td class="right">${fmtN(o.n_obs)}</td><td class="right" style="white-space:nowrap">${fmtR(o.pago)}</td>
       <td class="right" style="white-space:nowrap">${o.pago_anterior == null ? '<span class="dim">sem OB</span>' : fmtR(o.pago_anterior)}</td>
@@ -5949,10 +4878,10 @@
   function _controle(b) {
     if (b.estado === "indisponivel") return _indisp(b);
     const au = b.auditorias_50254 || {}, tce = b.tce || {}, per = b.pericias || {}, det = b.detectores || {}, cs = b.casos || {};
-    const aud = (au.itens || []).map((x) => ({ o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td>
+    const aud = (au.itens || []).map((x) => ({ o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td>
       <td style="font-size:13px;min-width:220px"><b>${esc(x.titulo)}</b>${x.instaura ? ' <span class="dim">· instaura auditoria/comissão</span>' : ""}<div class="dim" style="font-size:12px">… ${esc(x.trecho)} …</div></td>
       <td>${_link(x.url, "DOERJ")}</td></tr>` }));
-    const pen = (tce.itens || []).map((x) => ({ o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td><td>${esc(x.orgao || "")}</td>
+    const pen = (tce.itens || []).map((x) => ({ o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td><td>${esc(x.orgao || "")}</td>
       <td>${esc(x.tipo || "")} <span class="dim" style="font-size:11px">${esc(x.processo || "")}</span></td><td class="right">${x.valor == null ? "—" : fmtR(x.valor)}</td></tr>` }));
     const pr = (per.itens || []).map((x) => ({ h: `<tr><td>${esc(x.grau)} <a href="#" data-gc-dossie="${esc(x.cnpj)}" data-gc-nome="${esc(x.favorecido)}">${esc(x.favorecido)}</a>
       <span class="dim" style="font-size:11px">CNPJ ${esc(x.cnpj)}</span></td><td class="right">${fmtN(x.n_ugs)}</td><td class="right">${fmtR(x.total_pago_pericia)}</td></tr>` }));
@@ -5979,7 +4908,7 @@
       return el ? el.dataset[ds] : pad;
     };
     _F = {
-      q: _norm((raiz.querySelector("[data-gc-filtro]") || {}).value),
+      q: normalizar((raiz.querySelector("[data-gc-filtro]") || {}).value),
       cam: (on('[data-gc-pt^="camada:"].on', "gcPt", "camada:") || "camada:").split(":")[1],
       gr: (on('[data-gc-pt^="grau:"].on', "gcPt", "grau:") || "grau:").split(":")[1],
       cat: on("[data-gc-cat-f].on", "gcCatF", "") || ""
@@ -5998,7 +4927,7 @@
       if (!b) return;
       ev.preventDefault();
       if (b.dataset.gcDossie) {
-        if (typeof window.abrirDossie === "function") window.abrirDossie(b.dataset.gcDossie, b.dataset.gcNome || "");
+        abrirDossie(b.dataset.gcDossie, b.dataset.gcNome || "");
         return;
       }
       if (b.dataset.gcMais) {
@@ -6032,7 +4961,7 @@
       "Tudo o que a base do JFN tem sobre a gestão iniciada em 23/03/2026 (interina): atos no DOERJ, contratações, pagamentos por OB do SIAFE e controle. Cada bloco declara fonte e cobertura. Indício não é acusação.",
       "📜"
     );
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
+    if (!d || d.ok === false) return h + cardErro(d && (d.erro || d));
     const g = d.gestao || {};
     h += card(`<div style="font-size:14px"><b>Período:</b> ${fmtData(g.inicio)} a ${fmtData(g.ate)} · ${g.interina ? "<b>gestão interina</b>" : ""}</div>
     <div class="dim" style="font-size:12px;margin-top:4px"><b>Início:</b> ${esc(g.fonte || "")}</div>
@@ -6255,7 +5184,6 @@
     "novembro",
     "dezembro"
   ];
-  var _norm2 = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
   var _ind2 = (t) => `<span class="dim" title="${esc(t || "a fonte não tem este valor neste período — não é zero")}">INDISPONÍVEL</span>`;
   var _r = (v, t) => v == null ? _ind2(t) : fmtR(v);
   var _p = (v) => v == null ? '<span class="dim">—</span>' : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
@@ -6362,7 +5290,7 @@
     <div style="overflow-x:auto"><table class="tb oo-txt"><thead><tr><th>Unidade gestora e estado de cada número</th><th class="right">Empenhado</th><th class="right">Liquidado</th><th class="right">Pago (OB do SIAFE)</th><th class="right">Pago do balancete (ref.)</th><th class="right">OB − balancete</th><th class="right">Pago ÷ emp.</th></tr></thead><tbody>${ugs}</tbody></table></div>`;
   }
   var _aberto2 = /* @__PURE__ */ new Set();
-  var _visiveis = (d) => (d.orgaos || []).filter((o) => !_S.q || _norm2(o.nome).includes(_S.q) || o.orgao === _S.q || (o.ugs || []).some((x) => _norm2(x.nome).includes(_S.q) || x.ug === _S.q));
+  var _visiveis = (d) => (d.orgaos || []).filter((o) => !_S.q || normalizar(o.nome).includes(_S.q) || o.orgao === _S.q || (o.ugs || []).some((x) => normalizar(x.nome).includes(_S.q) || x.ug === _S.q));
   function _tabela2(d) {
     const vis = _visiveis(d), t = d.total || {};
     const corpo = vis.map(_linhaOrgao).join("") || '<tr><td colspan="11" class="dim">Nenhum órgão neste filtro.</td></tr>';
@@ -6465,7 +5393,7 @@
       clearTimeout(tm);
       tm = setTimeout(() => {
         _S.qTexto = t.value;
-        _S.q = _norm2(t.value.trim());
+        _S.q = normalizar(t.value.trim());
         _repintarTabela();
       }, 180);
     });
@@ -6586,7 +5514,7 @@
       "Valor DEVIDO até a data de corte × valor PAGO, contrato a contrato, recalculado toda madrugada. Estado: pago = só OB Contabilizada do SIAFE. Prefeitura: total pago no SIAFIC-Rio. Esferas nunca se misturam. Indício não é acusação.",
       "⚖️"
     );
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d)}</div>`);
+    if (!d || d.ok === false) return h + cardErro(d);
     if (d.estado === "sem_execucao") return h + _semExec(d);
     const defs = d.definicoes || {};
     h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || "")} · <b>Tolerância:</b> ${esc(d.tolerancia || "")}</div>
@@ -6655,7 +5583,7 @@
       "🔎"
     );
     h += sec("1. Confronto CGE × JFN (recall por processo)");
-    h += !c || c.ok === false ? card(`<div class="warn">${erroHumano(c)}</div>`) : _cge(c);
+    h += !c || c.ok === false ? cardErro(c) : _cge(c);
     h += sec("2. Achados dos detectores (achados.db)") + _detectores(dt);
     return `<div id="rt-cge">${h}${_txt2}</div>`;
   }
@@ -6806,6 +5734,378 @@
     if (its) h += card(`<div style="font-weight:700;margin-bottom:6px">Próximos ${fmtN((c.itens || []).length)} da fila</div>
     <div style="overflow-x:auto"><table class="tb"><thead><tr><th>Desde</th><th>Tarefa</th><th>Item</th><th>Leitura do outro modelo (pendente)</th><th>Modelo</th><th>Por que o Claude não respondeu</th></tr></thead><tbody>${its}</tbody></table></div>`);
     return h;
+  }
+
+  // static/js/src/abas/sistema.js
+  function _quandoExistir(id, fn, tentativas = 180) {
+    const el = document.getElementById(id);
+    if (el) {
+      fn(el);
+      return;
+    }
+    if (tentativas > 0) requestAnimationFrame(() => _quandoExistir(id, fn, tentativas - 1));
+  }
+  function frescorMontar(box) {
+    J("/api/fontes/frescor").then((d) => {
+      if (!box || !box.isConnected || !d || !d.fontes) return;
+      const cor = (f) => {
+        const s = (f.estado || "").toLowerCase();
+        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
+        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
+        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
+        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
+      };
+      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
+        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
+    });
+  }
+  function blocoComandosMestres() {
+    if (typeof CAPS_MESTRAS === "undefined" || !CAPS_MESTRAS.length) return "";
+    const grupos = {};
+    for (const c of CAPS_MESTRAS) (grupos[c.grupo] = grupos[c.grupo] || []).push(c);
+    let h = `<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
+    for (const g of Object.keys(grupos)) {
+      const gi = grupos[g][0] || {};
+      h += `<div class="caps-g"><div class="caps-gt">${gi.grupo_ic ? `<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> ` : ""}${esc(gi.grupo_rot || g)}</div><div class="btns" style="flex-wrap:wrap">`;
+      for (const c of grupos[g]) {
+        const dica = esc(`${c.descricao || c.nome}${c.exemplo ? "\n\nex.: " + c.exemplo : ""}${c.rota ? "\n\n" + c.metodo + " " + c.rota : ""}`);
+        h += `<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">${esc(c.nome)}${c.cmd ? `<span class="caps-cmd">${esc(c.cmd)}</span>` : ""}</button>`;
+      }
+      h += `</div></div>`;
+    }
+    h += `<div class="note">Cada botão é uma capacidade com <b>status PRONTO</b> em <code>capabilities.yaml</code>.
+      O mesmo <code>cmd</code> serve o Telegram e o painel — uma fonte, várias superfícies.</div></div>`;
+    return h;
+  }
+  function abrirCapMestra(id) {
+    const c = (typeof CAPS_MESTRAS !== "undefined" ? CAPS_MESTRAS : []).find((x) => x.id === id);
+    if (!c) return;
+    const linha = (r, v) => `<div style="display:flex;gap:10px;margin:6px 0"><b style="min-width:104px">${r}</b><span>${v}</span></div>`;
+    const ov = $("ov"), sh = $("sheet");
+    ov.classList.add("on");
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">${esc(c.nome)}</div>
+    <div class="muted" style="font-size:13px;margin-bottom:14px">${esc(c.grupo)}</div>` + card((c.descricao ? `<p style="margin:0 0 10px">${esc(c.descricao)}</p>` : "") + (c.rota ? linha("Rota", `<code>${esc(c.metodo)} ${esc(c.rota)}</code>`) : "") + (c.cmd ? linha("No Telegram", `<code>${esc(c.cmd)}</code>`) : "") + (c.exemplo ? linha("Exemplo", `<code>${esc(c.exemplo)}</code>`) : "")) + `<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
+      ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
+    a11yfy(sh);
+  }
+  async function renderMotoresSistema() {
+    aoVivoLigar();
+    _quandoExistir("s-motores", motoresMontar);
+    _quandoExistir("s-conf", conferenciaMontar);
+    _quandoExistir("s-cruz", cruzamentoMontar);
+    _quandoExistir("s-fontes", frescorMontar);
+    return cover(
+      "sistema",
+      "Motores — o que está rodando e se os modelos concordam",
+      "Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.",
+      "⚙️"
+    ) + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section><div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div><section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section><section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
+  }
+  async function renderComandosSistema() {
+    return cover(
+      "sistema",
+      "Comandos — as funções mestras do JFN",
+      "Cada botão é uma capacidade pronta (capabilities.yaml), a mesma que o Yoda atende no Telegram. Nada é disparado sem a sua decisão.",
+      "🧭"
+    ) + (blocoComandosMestres() || '<div class="dim">Lista de comandos INDISPONÍVEL nesta carga.</div>');
+  }
+
+  // static/js/src/abas/conformidade.js
+  var _IND = '<span class="dim">indisponível</span>';
+  var _txt3 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
+  var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
+  var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
+  var _hora2 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
+  var _sinal = (v) => v == null ? '<span class="dim">—</span>' : v > 0 ? `<b style="color:var(--rose)">+${fmtN(v)}</b>` : v < 0 ? `<b style="color:var(--green)">${fmtN(v)}</b>` : "0";
+  var _nota = (v) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  function _itens(s) {
+    const it = s.itens || [];
+    if (!it.length) return `<div class="dim" style="font-size:12px">${s.violacoes_abertas == null ? "Sem fotografia dos sensores — não há como listar." : "Nenhuma violação aberta neste sistema."}</div>`;
+    const lin = it.map((a) => `<tr><td style="white-space:nowrap"><b>${esc(a.regra)}</b></td>
+      <td style="font-size:13px"><b>${esc(a.titulo)}</b><div class="dim" style="font-size:12px">${esc(a.titulo_regra || "")}</div></td>
+      <td style="font-size:13px">${esc(a.detalhe || "")}</td><td>${_sev(a.severidade)}</td>
+      <td style="font-size:13px">${esc(a.acao_humana || "")}<div class="dim" style="font-size:11px">sensor ${esc(a.sensor || "—")}</div></td></tr>`).join("");
+    const corte = s.itens_total > it.length ? `<div class="dim" style="font-size:12px;margin-top:4px">Listados ${fmtN(it.length)} de ${fmtN(s.itens_total)} (bloqueantes primeiro).</div>` : "";
+    return `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Regra</th><th>Violação</th><th>Detalhe</th><th>Severidade</th><th>Ação</th></tr></thead><tbody>${lin}</tbody></table></div>${corte}`;
+  }
+  function _sistemas(d) {
+    const lin = (d.sistemas || []).map((s) => {
+      const serie = (s.tendencia || []).slice(-7).map((t) => fmtN(t.abertas)).join(" · ");
+      const sem = (s.sem_verificador_automatico || []).length ? `<div class="dim" style="font-size:11px">${fmtN(s.sem_verificador_automatico.length)} sem verificação automática</div>` : "";
+      return `<tr class="cf-lin" title="Ver as violações de ${esc(s.nome)}" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">
+        <td><b>${esc(s.nome)}</b>${sem}</td><td class="right">${fmtN(s.regras)}</td>
+        <td class="right">${s.violacoes_abertas == null ? _IND : `<b>${fmtN(s.violacoes_abertas)}</b>`}</td>
+        <td class="right">${s.bloqueantes == null ? _IND : s.bloqueantes ? `<b style="color:var(--rose)">${fmtN(s.bloqueantes)}</b>` : "0"}</td>
+        <td style="font-size:12px">${(s.regras_violadas || []).map(esc).join(", ") || '<span class="dim">—</span>'}</td>
+        <td style="font-size:12px;white-space:nowrap">${serie || '<span class="dim">sem série</span>'} <span class="dim">(7 d:</span> ${_sinal(s.variacao_7d)}<span class="dim">)</span></td></tr>
+      <tr hidden><td colspan="6">${_itens(s)}</td></tr>`;
+    }).join("");
+    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Clique na linha para ver as violações daquele sistema. Tendência = violações abertas na última leitura de cada dia (até 7 dias); variação 7 d com sinal (+ piorou).</div>
+    <div style="overflow:auto"><table class="tb cf-txt"><thead><tr><th>Sistema</th><th class="right">Regras</th><th class="right">Violações abertas</th><th class="right">Bloqueantes</th><th>Regras violadas</th><th>Tendência</th></tr></thead><tbody>${lin}</tbody></table></div>`);
+  }
+  function _cegos(c) {
+    const ks = Object.keys(c || {});
+    if (!ks.length) return "";
+    return sec("Sensores cegos", ks.length) + card(`<div class="warn"><b>Estes sensores não conseguiram medir</b> — o que eles cobrem está INDISPONÍVEL, não conforme.</div>
+    <table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Sensor</th><th>Motivo</th></tr></thead><tbody>${ks.map((k) => `<tr><td><b>${esc(k)}</b></td><td style="font-size:13px">${esc(c[k])}</td></tr>`).join("")}</tbody></table>`);
+  }
+  function _juiz(j) {
+    if (!j || j.media == null) return sec("Juiz subjetivo") + card(`<div class="dim">Sem rodada do juiz${j && j.motivo ? ` — ${esc(j.motivo)}` : ""}. Isso não é nota boa: as regras subjetivas (SUB) ainda não foram avaliadas.</div>`);
+    const crit = Object.entries(j.por_criterio || {}).map(([c, n]) => `<tr><td>${esc(c)}</td><td class="right">${_nota(n)}</td></tr>`).join("");
+    const baixas = [];
+    for (const a of j.avaliacoes || []) {
+      for (const [c, n] of Object.entries(a.notas || {})) {
+        if (n != null && n <= 2) baixas.push({ a, c, n });
+      }
+    }
+    const lin = baixas.map(({ a, c, n }) => `<tr><td style="font-size:13px"><b>${esc(a.rotulo || a.id)}</b><div class="dim" style="font-size:11px">${esc(a.sistema || "")} · ${esc(a.veredito || "")}</div></td>
+      <td>${esc(c)}</td><td class="right"><b style="color:${n <= 1 ? "var(--rose)" : "var(--amber)"}">${fmtN(n)}</b></td>
+      <td style="font-size:13px">${esc((a.motivos || {})[c] || "")}</td><td style="font-size:13px">${esc(a.o_que_falta || "")}</td>
+      <td style="font-size:12px">${a.escalar ? `<b>sim</b>${a.motivo_escalar ? ` — ${esc(a.motivo_escalar)}` : ""}` : "não"}</td></tr>`).join("");
+    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora2(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
+    <table class="tb cf-txt" style="margin-top:8px;max-width:420px"><thead><tr><th>Critério</th><th class="right">Média</th></tr></thead><tbody>${crit}</tbody></table>
+    <details style="margin-top:10px"${baixas.length ? " open" : ""}><summary style="cursor:pointer"><b>Notas ≤ 2</b> (${fmtN(baixas.length)})</summary>
+      ${baixas.length ? `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Afirmação</th><th>Critério</th><th class="right">Nota</th><th>Motivo</th><th>O que falta</th><th>Escala ao dono</th></tr></thead><tbody>${lin}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Nenhuma nota ≤ 2 nas avaliações vigentes.</div>'}</details>`);
+  }
+  function _divida(d) {
+    const cat = (d.dividas_catraca || []).map((x) => `<tr><td>${esc(x.catraca)}</td><td class="right">${fmtN(x.ocorrencias)}</td><td class="right">${fmtN(x.itens)}</td></tr>`).join("");
+    const reg = (d.dividas_regra || []).map((x) => `<tr><td style="white-space:nowrap"><b>${esc(x.regra)}</b></td><td style="font-size:13px">${esc(x.titulo)}</td><td style="font-size:13px">${(x.falta || []).map(esc).join("<br>")}</td></tr>`).join("");
+    return sec("Dívida") + card(`<div class="dim" style="font-size:12px">Por catraca: o que já existia quando a catraca foi travada — só pode descer.</div>
+    ${cat ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Catraca</th><th class="right">Ocorrências travadas</th><th class="right">Itens</th></tr></thead><tbody>${cat}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma dívida travada em catraca.</div>'}
+    <div class="dim" style="font-size:12px;margin-top:12px">Regras ainda com verificação manual — o que falta para a máquina cobrar.</div>
+    ${reg ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Regra</th><th>Título</th><th>O que falta</th></tr></thead><tbody>${reg}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma.</div>'}`);
+  }
+  async function renderConformidade() {
+    const d = await J("/api/qualidade/conformidade");
+    let h = cover(
+      "sistema",
+      "Conformidade — regras de qualidade do JFN",
+      "Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.",
+      "✅"
+    );
+    if (!d || d.ok === false && !d.estado) return h + cardErro(d && (d.erro || d));
+    const medido = d.estado === "MEDIDO";
+    const r = d.regras || {}, j = d.juiz;
+    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora2(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
+    h += `<div class="grid g2" style="margin-top:8px">
+    ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
+    ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
+    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--rose)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
+    ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', "Nota média do juiz (0–4)", null, "🎯", { sobre: "Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa." })}
+  </div>`;
+    if (d.ok === false) return `<div id="cf-raiz">${h}</div>`;
+    h += sec("Por sistema", fmtN((d.sistemas || []).length)) + _sistemas(d);
+    h += _cegos(d.sensores_cegos);
+    h += _juiz(j);
+    h += _divida(d);
+    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora2(d.gerado_em)}` : ""}</div>`);
+    return `<div id="cf-raiz">${h}${_txt3}</div>`;
+  }
+
+  // static/js/src/abas/propagacao.js
+  var _css = "<style>.pg-txt th,.pg-txt td{text-align:left;vertical-align:top}.pg-txt th.right,.pg-txt td.right{text-align:right}</style>";
+  var _hora3 = (t) => t ? new Date(t * 1e3).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+  var _dur = (a, b) => a && b ? `${fmtN(Math.max(0, Math.round(b - a)))} s` : "—";
+  var _ha = (t, agora) => {
+    if (!t) return "—";
+    const m = Math.max(0, Math.round((agora - t) / 60));
+    return m < 60 ? `há ${fmtN(m)} min` : m < 2880 ? `há ${fmtN(Math.round(m / 60))} h` : `há ${fmtN(Math.round(m / 1440))} dias`;
+  };
+  function _nomes(d) {
+    const n = {};
+    for (const f of d.fontes || []) n[f.id] = f.nome;
+    for (const x of d.derivados || []) n[x.id] = x.nome;
+    return n;
+  }
+  function _motivos(lista, nomes, max) {
+    const vistos = /* @__PURE__ */ new Set(), out = [];
+    for (const m of lista || []) {
+      const i = m.indexOf(": ");
+      const id = i > 0 ? m.slice(0, i) : "";
+      const txt = nomes[id] ? `<b>${esc(nomes[id])}</b> — ${esc(m.slice(i + 2))}` : esc(m);
+      if (!vistos.has(txt)) {
+        vistos.add(txt);
+        out.push(txt);
+      }
+    }
+    return out.slice(0, max).join("<br>");
+  }
+  function _situacao(x, agora) {
+    if (x.ultimo_estado === "rodando") return '<b style="color:var(--accent)">recalculando agora</b>';
+    if (x.ultimo_estado === "falhou") return `<b style="color:var(--rose)">falhou</b> (${fmtN(x.falhas)}×)${x.proxima_tentativa ? ` · nova tentativa ${_hora3(x.proxima_tentativa)}` : ""}`;
+    if (x.sujo) return `<b style="color:var(--amber)">desatualizado</b> ${_ha(x.sujo_desde, agora)}${x.adiado ? `<div class="dim" style="font-size:11px">${esc(x.adiado)}</div>` : ""}`;
+    if (x.ultimo_estado === "ok") return '<b style="color:var(--green)">em dia</b>';
+    return '<span class="dim">sem evento desde que a propagação foi ligada</span>';
+  }
+  function _derivados(d) {
+    const nomes = _nomes(d);
+    const lin = (d.derivados || []).map((x) => `<tr>
+      <td><b>${esc(x.nome)}</b><div class="dim" style="font-size:11px">${esc(x.onde || "")}</div></td>
+      <td>${_situacao(x, d.gerado_em)}${x.ultimo_erro ? `<div style="font-size:12px;color:var(--rose)">${esc(x.ultimo_erro)}</div>` : ""}</td>
+      <td style="font-size:12px">${_motivos(x.motivos, nomes, 4) || '<span class="dim">—</span>'}${x.eventos_pendentes > (x.motivos || []).length ? `<div class="dim" style="font-size:11px">${fmtN(x.eventos_pendentes)} evento(s) pendente(s) no total</div>` : ""}</td>
+      <td style="white-space:nowrap;font-size:13px">${_hora3(x.ultimo_fim)}<div class="dim" style="font-size:11px">${x.ultimo_fim ? `levou ${_dur(x.ultimo_inicio, x.ultimo_fim)} · ${fmtN(x.execucoes)} execução(ões)` : "ainda não recalculado pela propagação"}</div></td>
+      <td style="font-size:12px">${esc(x.antes || "—")}</td></tr>`).join("");
+    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Cada linha é um derivado: algo que o painel mostra e que fica velho quando a fonte muda. "Antes" = como se atualizava até 14/11/2026 (esses agendamentos continuam como rede de segurança).</div>
+    <div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Derivado</th><th>Situação</th><th>O que o deixou desatualizado</th><th>Último recálculo</th><th>Antes</th></tr></thead><tbody>${lin}</tbody></table></div>`);
+  }
+  function _fontes2(d) {
+    const nomes = _nomes(d);
+    const lin = (d.fontes || []).map((f) => `<tr><td><b>${esc(f.nome)}</b></td>
+      <td style="font-size:13px">${f.manual ? '<span class="dim">manual</span>' : f.erro ? `<b style="color:var(--rose)">INDISPONÍVEL</b><div style="font-size:12px">${esc(f.erro)}</div>` : f.visto_em ? `conferida ${_ha(f.visto_em, d.gerado_em)}` : '<span class="dim">ainda não conferida</span>'}</td>
+      <td style="font-size:13px;white-space:nowrap">${f.mudou_em ? _hora3(f.mudou_em) : '<span class="dim">sem mudança desde a ligação</span>'}</td>
+      <td style="font-size:12px">${(f.alimenta || []).map((x) => esc(nomes[x] || x)).join(", ") || '<span class="dim">só o segundo cérebro</span>'}</td></tr>`).join("");
+    return card(`<div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Fonte / evento</th><th>Sonda</th><th>Última mudança percebida</th><th>Suja</th></tr></thead><tbody>${lin}</tbody></table></div>
+    <div class="dim" style="font-size:12px;margin-top:6px">Sonda que não consegue medir aparece como INDISPONÍVEL — isso não quer dizer que a fonte não mudou.</div>`);
+  }
+  function _execucoes(d) {
+    const ex = d.execucoes || [], nomes = _nomes(d);
+    if (!ex.length) return card('<div class="dim">Nenhum recálculo feito pela propagação até agora.</div>');
+    const lin = ex.map((e) => `<tr><td style="white-space:nowrap">${_hora3(e.inicio)}</td><td><b>${esc(nomes[e.derivado] || e.derivado)}</b></td>
+      <td>${e.estado === "ok" ? '<b style="color:var(--green)">recalculado</b>' : '<b style="color:var(--rose)">falhou</b>'}</td>
+      <td class="right">${_dur(e.inicio, e.fim)}</td>
+      <td style="font-size:12px">${_motivos(e.motivos, nomes, 3)}${e.erro ? `<div style="color:var(--rose)">${esc(e.erro)}</div>` : ""}</td></tr>`).join("");
+    return card(`<div style="max-height:420px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Início</th><th>Derivado</th><th>Resultado</th><th class="right">Duração</th><th>Motivo / erro</th></tr></thead><tbody>${lin}</tbody></table></div>`);
+  }
+  function _eventos2(d) {
+    const ev = d.eventos || [], nomes = _nomes(d);
+    if (!ev.length) return card('<div class="dim">Nenhum evento registrado ainda.</div>');
+    return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap">${_hora3(e.quando)}</td><td><b>${esc(nomes[e.fonte] ? (e.detalhe.startsWith("recalculado") ? "Derivado: " : "") + nomes[e.fonte] : e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join("")}</tbody></table></div>`);
+  }
+  function _cerebro(c, agora) {
+    if (!c) return "";
+    const ult = (c.ultimas || []).map((m) => `<tr><td style="white-space:nowrap">${_hora3(m.quando)}</td><td>${esc(m.kind)}</td><td style="font-size:13px"><b>${esc(m.assunto || m.chave)}</b><div style="font-size:12px">${esc(m.texto)}</div></td><td class="right">#${fmtN(m.id)}</td></tr>`).join("");
+    return sec("Segundo cérebro", fmtN(c.gravadas)) + card(`<div style="font-size:13px">Descobertas duráveis (número de manchete corrigido, correção de regra, alerta verificado, decisão e lição registradas) seguem para a memória comum dos agentes. <b>${fmtN(c.gravadas)}</b> gravada(s) · <b>${fmtN(c.pendentes)}</b> na fila · ${fmtN(c.recusadas)} recusada(s) por conter dado pessoal ou segredo · último envio ${c.ultimo_envio ? _ha(c.ultimo_envio, agora) : "—"}.</div>
+    ${c.pendentes && c.ultimo_erro ? `<div class="warn" style="margin-top:6px">Fila parada: ${esc(c.ultimo_erro)}. As descobertas ficam guardadas e seguem quando o cérebro responder.</div>` : ""}
+    ${ult ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Enviada</th><th>Tipo</th><th>Memória</th><th class="right">Nº</th></tr></thead><tbody>${ult}</tbody></table></div>` : ""}`);
+  }
+  function _certeza(c) {
+    if (!c || c.ok === false) return sec("Certeza", "—") + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(c && (c.motivo || c.erro) || "sem estado da camada de certeza")}. Não quer dizer que os números estão certos: a tela não tem como saber.</div>`);
+    const r = c.resumo || {}, pe = r.por_estado || {}, pn = r.por_nivel_prova || {};
+    const alerta = (r.divergencias_abertas || 0) + (r.violacoes_de_contrato || 0) + (r.grafo_achados_graves || 0);
+    return sec("Certeza — cada número com prova", fmtN(r.fatos)) + card(`<div style="font-size:13px">Todo número publicado é um <b>fato com id</b>, fonte e nível de prova (2 = fonte primária lida; 1 = juízo sobre resumo). Só <b>VERIFICADO</b> sobe ao painel como certo.
+    <b>${fmtN(pe.VERIFICADO || 0)}</b> verificado(s) · <b>${fmtN(pe.PENDENTE || 0)}</b> pendente(s) · <b>${fmtN(pe["A CONFERIR"] || 0)}</b> a conferir ·
+    nível 2: <b>${fmtN(pn["2"] || 0)}</b> · nível 1: <b>${fmtN(pn["1"] || 0)}</b> · aguardando recálculo: ${fmtN(r.fatos_aguardando_recalculo || 0)}.</div>
+    ${alerta ? `<div class="warn" style="margin-top:6px">${fmtN(r.divergencias_abertas || 0)} divergência(s) aberta(s) · ${fmtN(r.violacoes_de_contrato || 0)} violação(ões) de contrato · ${fmtN(r.grafo_achados_graves || 0)} achado(s) grave(s) no grafo de dependências.</div>` : ""}
+    <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/certeza</code> · <code>docs/ARQUITETURA-DE-CERTEZA.md</code> · estado de ${esc(c.gerado_em_iso || "—")}</div>`);
+  }
+  async function renderPropagacao() {
+    const [d, cz] = await Promise.all([J("/api/sistema/propagacao"), J("/api/sistema/certeza").catch((e) => ({ ok: false, erro: String(e) }))]);
+    let h = cover(
+      "sistema",
+      "Propagação — o que mudou puxa o que depende",
+      "Quando uma fonte muda (OB nova, status recoletado, processo SEI capturado, contrato novo, regra corrigida), tudo o que depende dela é marcado como desatualizado e recalculado sozinho, um trabalho pesado por vez. Aqui se vê o que está desatualizado, o que foi recalculado e o que falhou.",
+      "🔁"
+    );
+    if (!d || d.ok === false && !d.estado) return h + cardErro(d && (d.erro || d));
+    if (d.ok === false) return h + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem estado da propagação")}. Não quer dizer que está tudo em dia: a tela não tem como saber.</div>`);
+    const r = d.resumo || {}, u = d.ultimo_ciclo;
+    h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora3(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora3(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
+    h += `<div class="grid g2" style="margin-top:8px">
+    ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
+    ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--rose)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
+    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? "var(--rose)" : null, "📡", { sobre: "Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou." })}
+    ${kpi(fmtN((d.cerebro || {}).gravadas), "Descobertas no segundo cérebro", null, "🧠", { sobre: "Memórias gravadas no cérebro compartilhado dos agentes a partir desta máquina, com resposta do cérebro confirmando a gravação (tabela cerebro de data/propagacao.db)." })}
+  </div>`;
+    h += sec("Derivados", fmtN(r.derivados)) + _derivados(d);
+    h += sec("Recálculos recentes", fmtN((d.execucoes || []).length)) + _execucoes(d);
+    h += sec("Fontes e eventos", fmtN(r.fontes)) + _fontes2(d);
+    h += sec("Últimos eventos", fmtN((d.eventos || []).length)) + _eventos2(d);
+    h += _cerebro(d.cerebro, d.gerado_em);
+    h += _certeza(cz);
+    h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora3(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
+    return `<div id="pg-raiz">${h}${_css}</div>`;
+  }
+
+  // static/js/src/abas/requerimentos.js
+  var GRUPOS = [
+    { k: "sugerido", rot: "Sugeridos", cor: "var(--amber)", sobre: "Pedido que uma nota de caso aponta como próximo passo. Ainda sem texto redigido." },
+    { k: "minuta", rot: "Com minuta", cor: "var(--accent)", sobre: "Texto redigido, aguardando revisão do titular. Não protocolado." },
+    { k: "protocolado", rot: "Protocolados", cor: "var(--gold)", sobre: "Enviado ao destinatário; aguardando resposta." },
+    { k: "respondido", rot: "Respondidos", cor: "var(--green)", sobre: "Resposta recebida." },
+    { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
+  ];
+  var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
+  var _n3 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
+  var _dados2 = null;
+  function _cardReq(r) {
+    return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
+    <div class="cs-topo">
+      <span class="cs-nivel">${esc(r.id)}</span>
+      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
+      ${r.data_sugestao ? `<span class="dim cs-data">${esc(r.data_sugestao)}</span>` : ""}
+    </div>
+    <h3 class="cs-tit">${esc(r.titulo)}</h3>
+    ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
+    <div class="cs-tags"><span class="tag teal">${_n3(r.pedidos.length, "pedido", "pedidos")}</span>
+      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n3(r.pendencias.length, "pendência", "pendências")}</span>
+      ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
+    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
+    <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
+      ${r.caso ? `<button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button>` : ""}</div>
+  </article>`;
+  }
+  async function renderRequerimentos() {
+    let h = cover(
+      "geral",
+      "Requerimentos — pedidos de informação sugeridos",
+      "O que as investigações indicam <b>pedir a um órgão</b> para fechar uma dúvida: cada item nasce de um próximo passo escrito numa nota de caso. Esta aba <b>só lê</b> — nada é enviado daqui. <b>Indício a verificar, não acusação</b>, com presunção de legitimidade do ato administrativo.",
+      "📝"
+    );
+    const d = await J("/api/requerimentos");
+    if (!d || d.ok === false) return h + cardErro(d && d.erro);
+    _dados2 = d;
+    const ps = d.por_status || {};
+    h += `<div class="grid g4">${GRUPOS.slice(0, 4).map((g) => kpi(fmtN(ps[g.k] || 0), g.rot, g.cor, null, { sobre: g.sobre })).join("")}</div>`;
+    if (!d.total) return h + card('<div class="dim">Nenhum requerimento cadastrado em <code>~/vault/requerimentos/</code>.</div>');
+    for (const g of GRUPOS) {
+      const it = d.itens.filter((r) => r.status === g.k);
+      if (it.length) h += sec(g.rot, it.length) + `<div class="cs-grade">${it.map(_cardReq).join("")}</div>`;
+    }
+    return h;
+  }
+  var _lista = (tit, itens, ord) => `<h3 class="cs-h">${tit}</h3>` + (itens.length ? `<${ord ? "ol" : "ul"}>${itens.map((x) => `<li>${esc(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>` : '<p class="dim">Nenhum item registrado na nota.</p>');
+  var _semAncoras = (md) => String(md || "").replace(/^<a id="[^"]*"><\/a>\s*$/gm, "").replace(/^\[↑ topo\]\(#[^)]*\)\s*$/gm, "").replace(/\[([^\]]+)\]\(#[^)]*\)/g, "$1");
+  async function _abrir(slug) {
+    const ov = $("ov"), sh = $("sheet");
+    if (!ov || !sh) return;
+    const r = (_dados2 && _dados2.itens || []).find((k) => k.slug === slug);
+    if (!r) return;
+    const x = '<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>';
+    const naVault = /\.md$/.test(r.minuta);
+    const corpo = (minuta) => `<div class="cs-nota" data-rq-folha="${esc(slug)}" style="--cs:${_cor2(r.status)}">
+    <div class="cs-topo"><span class="cs-nivel">${esc(r.id)} · ${esc(r.status)}</span>
+      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
+      ${r.data_sugestao ? `<span class="dim cs-data">sugerido em ${esc(r.data_sugestao)}</span>` : ""}</div>
+    <h2 class="cs-h">${esc(r.titulo)}</h2>
+    ${r.destinatario ? `<p><b>Destinatário:</b> ${esc(r.destinatario)}</p>` : ""}
+    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
+    ${_lista("Pedidos", r.pedidos, true)}
+    <h3 class="cs-h">Fundamento</h3><p>${r.fundamento ? esc(r.fundamento) : '<span class="dim">Não registrado na nota.</span>'}</p>
+    ${_lista("Pendências", r.pendencias)}
+    ${r.origem ? `<div class="dim cs-fonte">Origem: <code>${esc(r.origem)}</code></div>` : ""}
+    ${r.caso ? `<div class="btns"><button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button></div>` : ""}
+    <hr><h3 class="cs-h">Minuta</h3>
+    ${naVault ? `<div class="dim cs-fonte">Fonte: <code>${esc(r.minuta)}</code></div>${minuta}` : r.minuta ? `<p class="dim">Fora do vault — não exibida aqui: <code>${esc(r.minuta)}</code></p>` : '<p class="dim">Ainda não há minuta.</p>'}
+    <div class="note">Nota do vault: <code>requerimentos/${esc(slug)}.md</code> — editar lá; esta folha só lê e não envia nada.</div></div>`;
+    ov.classList.add("on");
+    sh.innerHTML = x + corpo(naVault ? spin("Abrindo a minuta…") : "");
+    a11yfy(sh);
+    if (!naVault) return;
+    const d = await J("/api/requerimentos/minuta?slug=" + encodeURIComponent(slug));
+    const no = sh.querySelector(".cs-nota");
+    if (!ov.classList.contains("on") || !no || no.dataset.rqFolha !== slug) return;
+    sh.innerHTML = x + corpo(!d || d.ok === false ? `<div class="warn">${erroHumano(d && d.erro)}</div>` : mdNota(_semAncoras(d.markdown)));
+    a11yfy(sh);
+  }
+  function ligarRequerimentos() {
+    document.addEventListener("click", (ev) => {
+      const a = ev.target.closest && ev.target.closest("[data-rq-abrir]");
+      if (a) {
+        ev.preventDefault();
+        _abrir(a.dataset.rqAbrir);
+      }
+    });
   }
 
   // static/js/src/v63/inicio.js
@@ -6974,7 +6274,7 @@
     s.textContent = n ? "running" : "em espera";
     s.className = "v63-selo" + (n ? " on" : "");
     const pe = document.getElementById("v63-fluxo-pe");
-    if (pe) pe.textContent = `${fmtN(n)} ${n === 1 ? "motor rodando" : "motores rodando"} · ${String(d.eventos_min ?? "—").replace(".", ",")} eventos/min · ${_hora2(d.atualizado_em)}`;
+    if (pe) pe.textContent = `${fmtN(n)} ${n === 1 ? "motor rodando" : "motores rodando"} · ${String(d.eventos_min ?? "—").replace(".", ",")} eventos/min · ${_hora4(d.atualizado_em)}`;
   }
   function _nos(e, p) {
     const set = (id, t) => {
@@ -6982,7 +6282,7 @@
       if (el) el.textContent = corta(t, 22);
     };
     const mot = (id) => _ok(e) && Array.isArray(e.motores) ? e.motores.find((m) => m.id === id) : null;
-    const est = (m) => !m ? "indisponível" : m.estado === "rodando" ? "rodando agora" : m.estado === "agendado" && m.proxima ? `agendado · ${_hora2(m.proxima)}` : m.estado;
+    const est = (m) => !m ? "indisponível" : m.estado === "rodando" ? "rodando agora" : m.estado === "agendado" && m.proxima ? `agendado · ${_hora4(m.proxima)}` : m.estado;
     set("sei", est(mot("sei-noturno")));
     if (_ok(p) && p.obs && p.obs.ultimo_dia) set("siafe", `${_dataCurta(p.obs.ultimo_dia)} · ${fmtN(p.obs.n_ultimo_dia)} OB`);
     else set("siafe", "indisponível");
@@ -7003,7 +6303,7 @@
       l.innerHTML = `<li class="v63-run-x">${_indisp2(d)}</li>`;
       return;
     }
-    document.getElementById("v63-run-id").textContent = `run · ${_hora2(d.atualizado_em)}`;
+    document.getElementById("v63-run-id").textContent = `run · ${_hora4(d.atualizado_em)}`;
     document.getElementById("v63-run-ev").textContent = `${String(d.eventos_min ?? "—").replace(".", ",")} ev/min`;
     const ord = { rodando: 0, falhou: 1, indisponivel: 2, ocioso: 3, agendado: 4 };
     const ms = d.motores.filter((m) => m.classe !== "infra").sort((a, b) => (ord[a.estado] ?? 5) - (ord[b.estado] ?? 5) || _t(b.ultimo_evento) - _t(a.ultimo_evento)).slice(0, 7);
@@ -7011,7 +6311,7 @@
     l.innerHTML = ms.map((m, i) => {
       const at = (m.atividade || []).reduce((s, x) => s + x, 0);
       const ic = m.estado === "rodando" ? "●" : m.estado === "falhou" || m.estado === "indisponivel" ? "!" : m.estado === "agendado" ? "○" : "✓";
-      const qd = m.ultimo_evento ? _rel(m.ultimo_evento.t) : m.proxima ? "às " + _hora2(m.proxima) : "";
+      const qd = m.ultimo_evento ? _rel(m.ultimo_evento.t) : m.proxima ? "às " + _hora4(m.proxima) : "";
       const tit = m.ultimo_evento ? m.ultimo_evento.texto : m.descricao || "";
       return `<li class="v63-run-i e-${esc(m.estado)}" style="--i:${i}" title="${esc(tit)}">
       <span class="v63-run-ic" aria-hidden="true">${ic}</span><span class="v63-run-n">${esc(m.nome)}</span>
@@ -7112,7 +6412,7 @@
   function _t(ev) {
     return ev && ev.t ? Date.parse(ev.t) || 0 : 0;
   }
-  function _hora2(iso) {
+  function _hora4(iso) {
     const t = Date.parse(iso);
     if (!t) return "—";
     const d = new Date(t);
@@ -9365,7 +8665,7 @@
   var GEO = "/static/assets/geo/";
   var W = 800;
   var H = 520;
-  var RAMPA = _v63 ? ["#EEF4FF", "#C2D6FF", "#86ADFF", "#4A80FF", "#1546D8"] : ["#EAF4FF", "#B9D9FB", "#6FAEF6", "#1E7BF0", "#0A3E8C"];
+  var RAMPA = ["#EEF4FF", "#C2D6FF", "#86ADFF", "#4A80FF", "#1546D8"];
   var RIO = "3304557";
   var METRICAS = [
     ["valor_contratado", "Valor contratado", "rs"],
@@ -9386,7 +8686,7 @@
   };
   var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido", sem_vigencia: "Sem vigência na fonte" };
   var GRAUS = [
-    ["explicito", "Explícito no texto", "explícito no texto", _v63 ? "#1546D8" : "#0A3E8C"],
+    ["explicito", "Explícito no texto", "explícito no texto", "#1546D8"],
     ["unidade", "Inferido pela unidade", "inferido pela unidade", "#1E7BF0"],
     ["sede", "Sede do órgão", "sede do órgão", "#8CBEF8"]
   ];
@@ -10574,56 +9874,12 @@
       else el.textContent = fmt(to);
     })(performance.now());
   }
-  function frescorMontar(box) {
-    J("/api/fontes/frescor").then((d) => {
-      if (!box || !box.isConnected || !d || !d.fontes) return;
-      const cor = (f) => {
-        const s = (f.estado || "").toLowerCase();
-        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
-        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
-        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
-        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
-      };
-      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
-        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
-    });
-  }
-  function blocoComandosMestres() {
-    if (typeof CAPS_MESTRAS === "undefined" || !CAPS_MESTRAS.length) return "";
-    const grupos = {};
-    for (const c of CAPS_MESTRAS) (grupos[c.grupo] = grupos[c.grupo] || []).push(c);
-    let h = `<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
-    for (const g of Object.keys(grupos)) {
-      const gi = grupos[g][0] || {};
-      h += `<div class="caps-g"><div class="caps-gt">${gi.grupo_ic ? `<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> ` : ""}${esc(gi.grupo_rot || g)}</div><div class="btns" style="flex-wrap:wrap">`;
-      for (const c of grupos[g]) {
-        const dica = esc(`${c.descricao || c.nome}${c.exemplo ? "\n\nex.: " + c.exemplo : ""}${c.rota ? "\n\n" + c.metodo + " " + c.rota : ""}`);
-        h += `<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">${esc(c.nome)}${c.cmd ? `<span class="caps-cmd">${esc(c.cmd)}</span>` : ""}</button>`;
-      }
-      h += `</div></div>`;
-    }
-    h += `<div class="note">Cada botão é uma capacidade com <b>status PRONTO</b> em <code>capabilities.yaml</code>.
-      O mesmo <code>cmd</code> serve o Telegram e o painel — uma fonte, várias superfícies.</div></div>`;
-    return h;
-  }
-  function abrirCapMestra(id) {
-    const c = (typeof CAPS_MESTRAS !== "undefined" ? CAPS_MESTRAS : []).find((x) => x.id === id);
-    if (!c) return;
-    const linha = (r, v) => `<div style="display:flex;gap:10px;margin:6px 0"><b style="min-width:104px">${r}</b><span>${v}</span></div>`;
-    const ov = $("ov"), sh = $("sheet");
-    ov.classList.add("on");
-    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
-    <div style="font-weight:800;font-size:17px;margin-bottom:4px">${esc(c.nome)}</div>
-    <div class="muted" style="font-size:13px;margin-bottom:14px">${esc(c.grupo)}</div>` + card((c.descricao ? `<p style="margin:0 0 10px">${esc(c.descricao)}</p>` : "") + (c.rota ? linha("Rota", `<code>${esc(c.metodo)} ${esc(c.rota)}</code>`) : "") + (c.cmd ? linha("No Telegram", `<code>${esc(c.cmd)}</code>`) : "") + (c.exemplo ? linha("Exemplo", `<code>${esc(c.exemplo)}</code>`) : "")) + `<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
-      ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
-    a11yfy(sh);
-  }
   async function renderCockpit() {
-    const v61 = _v61 ? `<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
+    const v61 = `<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
       <button type="button" class="chip c61-ir-motores" onclick="ir('s_motores')">Motores · ver todos</button></aside>
-    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>` : "";
-    const html = `${_v63 ? v63InicioHtml() : ""}<div class="ck${_v61 ? " ck61" : ""}">${v61}
+    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`;
+    const html = `${v63InicioHtml()}<div class="ck ck61">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead" role="link" tabindex="0" style="cursor:pointer" title="Abrir as compras com sobrepreço (Comparador › Economia possível)"
@@ -10683,8 +9939,8 @@
     if (!el) return;
     const v = el.querySelector(".val"), m = el.querySelector(".meta");
     const _novo = num != null && isFinite(num) ? fmtN(Math.round(num)) : txt != null ? String(txt) : null;
-    const _mudou = _v61 && _novo != null && el.dataset.v61Val !== void 0 && el.dataset.v61Val !== _novo;
-    if (_v61 && _novo != null && el.dataset.v61Val === _novo) {
+    const _mudou = _novo != null && el.dataset.v61Val !== void 0 && el.dataset.v61Val !== _novo;
+    if (_novo != null && el.dataset.v61Val === _novo) {
     } else if (_mudou) {
       v.textContent = _novo;
       flipAoVivo(el);
@@ -10706,28 +9962,19 @@
   function ckBoot() {
     const g = $("ck-grid");
     if (!g) return;
-    if (_v60) g.innerHTML = [
+    g.innerHTML = [
       ckCard("alertas", "Alertas", "ckrose", "bgrose", "e_alertas"),
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro")
     ].join("");
-    else g.innerHTML = [
-      ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
-      ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
-      ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
-      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp")
-    ].join("");
     a11yfy(g);
-    if (_v61) {
-      aoVivoLigar();
-      reatorMontar($("c61-reator"));
-      mapaMontar($("c61-mapa"));
-      preocupacoesMontar($("c61-preoc"));
-    } else nucleoStart();
-    if (!_v61) requestAnimationFrame(() => energiaLigar());
-    if (_v63) v63InicioMontar();
+    aoVivoLigar();
+    reatorMontar($("c61-reator"));
+    mapaMontar($("c61-mapa"));
+    preocupacoesMontar($("c61-preoc"));
+    v63InicioMontar();
     galaxiaPreviewMontar($("gx-prev"));
     ckPull(true);
     clearInterval(_ckTimer);
@@ -10790,334 +10037,6 @@
     });
   }
 
-  // static/js/src/abas/sistema.js
-  function _quandoExistir(id, fn, tentativas = 180) {
-    const el = document.getElementById(id);
-    if (el) {
-      fn(el);
-      return;
-    }
-    if (tentativas > 0) requestAnimationFrame(() => _quandoExistir(id, fn, tentativas - 1));
-  }
-  async function renderMotoresSistema() {
-    aoVivoLigar();
-    _quandoExistir("s-motores", motoresMontar);
-    _quandoExistir("s-conf", conferenciaMontar);
-    _quandoExistir("s-cruz", cruzamentoMontar);
-    _quandoExistir("s-fontes", frescorMontar);
-    return cover(
-      "sistema",
-      "Motores — o que está rodando e se os modelos concordam",
-      "Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.",
-      "⚙️"
-    ) + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section><div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div><section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section><section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
-  }
-  async function renderComandosSistema() {
-    return cover(
-      "sistema",
-      "Comandos — as funções mestras do JFN",
-      "Cada botão é uma capacidade pronta (capabilities.yaml), a mesma que o Yoda atende no Telegram. Nada é disparado sem a sua decisão.",
-      "🧭"
-    ) + (blocoComandosMestres() || '<div class="dim">Lista de comandos INDISPONÍVEL nesta carga.</div>');
-  }
-
-  // static/js/src/abas/conformidade.js
-  var _IND = '<span class="dim">indisponível</span>';
-  var _txt3 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
-  var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
-  var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
-  var _hora3 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
-  var _sinal = (v) => v == null ? '<span class="dim">—</span>' : v > 0 ? `<b style="color:var(--rose)">+${fmtN(v)}</b>` : v < 0 ? `<b style="color:var(--green)">${fmtN(v)}</b>` : "0";
-  var _nota = (v) => v == null ? "—" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-  function _itens(s) {
-    const it = s.itens || [];
-    if (!it.length) return `<div class="dim" style="font-size:12px">${s.violacoes_abertas == null ? "Sem fotografia dos sensores — não há como listar." : "Nenhuma violação aberta neste sistema."}</div>`;
-    const lin = it.map((a) => `<tr><td style="white-space:nowrap"><b>${esc(a.regra)}</b></td>
-      <td style="font-size:13px"><b>${esc(a.titulo)}</b><div class="dim" style="font-size:12px">${esc(a.titulo_regra || "")}</div></td>
-      <td style="font-size:13px">${esc(a.detalhe || "")}</td><td>${_sev(a.severidade)}</td>
-      <td style="font-size:13px">${esc(a.acao_humana || "")}<div class="dim" style="font-size:11px">sensor ${esc(a.sensor || "—")}</div></td></tr>`).join("");
-    const corte = s.itens_total > it.length ? `<div class="dim" style="font-size:12px;margin-top:4px">Listados ${fmtN(it.length)} de ${fmtN(s.itens_total)} (bloqueantes primeiro).</div>` : "";
-    return `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Regra</th><th>Violação</th><th>Detalhe</th><th>Severidade</th><th>Ação</th></tr></thead><tbody>${lin}</tbody></table></div>${corte}`;
-  }
-  function _sistemas(d) {
-    const lin = (d.sistemas || []).map((s) => {
-      const serie = (s.tendencia || []).slice(-7).map((t) => fmtN(t.abertas)).join(" · ");
-      const sem = (s.sem_verificador_automatico || []).length ? `<div class="dim" style="font-size:11px">${fmtN(s.sem_verificador_automatico.length)} sem verificação automática</div>` : "";
-      return `<tr class="cf-lin" title="Ver as violações de ${esc(s.nome)}" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">
-        <td><b>${esc(s.nome)}</b>${sem}</td><td class="right">${fmtN(s.regras)}</td>
-        <td class="right">${s.violacoes_abertas == null ? _IND : `<b>${fmtN(s.violacoes_abertas)}</b>`}</td>
-        <td class="right">${s.bloqueantes == null ? _IND : s.bloqueantes ? `<b style="color:var(--rose)">${fmtN(s.bloqueantes)}</b>` : "0"}</td>
-        <td style="font-size:12px">${(s.regras_violadas || []).map(esc).join(", ") || '<span class="dim">—</span>'}</td>
-        <td style="font-size:12px;white-space:nowrap">${serie || '<span class="dim">sem série</span>'} <span class="dim">(7 d:</span> ${_sinal(s.variacao_7d)}<span class="dim">)</span></td></tr>
-      <tr hidden><td colspan="6">${_itens(s)}</td></tr>`;
-    }).join("");
-    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Clique na linha para ver as violações daquele sistema. Tendência = violações abertas na última leitura de cada dia (até 7 dias); variação 7 d com sinal (+ piorou).</div>
-    <div style="overflow:auto"><table class="tb cf-txt"><thead><tr><th>Sistema</th><th class="right">Regras</th><th class="right">Violações abertas</th><th class="right">Bloqueantes</th><th>Regras violadas</th><th>Tendência</th></tr></thead><tbody>${lin}</tbody></table></div>`);
-  }
-  function _cegos(c) {
-    const ks = Object.keys(c || {});
-    if (!ks.length) return "";
-    return sec("Sensores cegos", ks.length) + card(`<div class="warn"><b>Estes sensores não conseguiram medir</b> — o que eles cobrem está INDISPONÍVEL, não conforme.</div>
-    <table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Sensor</th><th>Motivo</th></tr></thead><tbody>${ks.map((k) => `<tr><td><b>${esc(k)}</b></td><td style="font-size:13px">${esc(c[k])}</td></tr>`).join("")}</tbody></table>`);
-  }
-  function _juiz(j) {
-    if (!j || j.media == null) return sec("Juiz subjetivo") + card(`<div class="dim">Sem rodada do juiz${j && j.motivo ? ` — ${esc(j.motivo)}` : ""}. Isso não é nota boa: as regras subjetivas (SUB) ainda não foram avaliadas.</div>`);
-    const crit = Object.entries(j.por_criterio || {}).map(([c, n]) => `<tr><td>${esc(c)}</td><td class="right">${_nota(n)}</td></tr>`).join("");
-    const baixas = [];
-    for (const a of j.avaliacoes || []) {
-      for (const [c, n] of Object.entries(a.notas || {})) {
-        if (n != null && n <= 2) baixas.push({ a, c, n });
-      }
-    }
-    const lin = baixas.map(({ a, c, n }) => `<tr><td style="font-size:13px"><b>${esc(a.rotulo || a.id)}</b><div class="dim" style="font-size:11px">${esc(a.sistema || "")} · ${esc(a.veredito || "")}</div></td>
-      <td>${esc(c)}</td><td class="right"><b style="color:${n <= 1 ? "var(--rose)" : "var(--amber)"}">${fmtN(n)}</b></td>
-      <td style="font-size:13px">${esc((a.motivos || {})[c] || "")}</td><td style="font-size:13px">${esc(a.o_que_falta || "")}</td>
-      <td style="font-size:12px">${a.escalar ? `<b>sim</b>${a.motivo_escalar ? ` — ${esc(a.motivo_escalar)}` : ""}` : "não"}</td></tr>`).join("");
-    return sec("Juiz subjetivo", fmtN(j.vigentes)) + card(`<div style="font-size:13px">Rodada de ${_hora3(j.em)} · média geral <b>${_nota(j.media)}</b> (escala 0–4) · ${fmtN((j.reprovadas || []).length)} reprovada(s) · ${fmtN((j.a_escalar || []).length)} a escalar ao dono</div>
-    <table class="tb cf-txt" style="margin-top:8px;max-width:420px"><thead><tr><th>Critério</th><th class="right">Média</th></tr></thead><tbody>${crit}</tbody></table>
-    <details style="margin-top:10px"${baixas.length ? " open" : ""}><summary style="cursor:pointer"><b>Notas ≤ 2</b> (${fmtN(baixas.length)})</summary>
-      ${baixas.length ? `<div style="max-height:520px;overflow:auto"><table class="tb cf-txt"><thead><tr><th>Afirmação</th><th>Critério</th><th class="right">Nota</th><th>Motivo</th><th>O que falta</th><th>Escala ao dono</th></tr></thead><tbody>${lin}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Nenhuma nota ≤ 2 nas avaliações vigentes.</div>'}</details>`);
-  }
-  function _divida(d) {
-    const cat = (d.dividas_catraca || []).map((x) => `<tr><td>${esc(x.catraca)}</td><td class="right">${fmtN(x.ocorrencias)}</td><td class="right">${fmtN(x.itens)}</td></tr>`).join("");
-    const reg = (d.dividas_regra || []).map((x) => `<tr><td style="white-space:nowrap"><b>${esc(x.regra)}</b></td><td style="font-size:13px">${esc(x.titulo)}</td><td style="font-size:13px">${(x.falta || []).map(esc).join("<br>")}</td></tr>`).join("");
-    return sec("Dívida") + card(`<div class="dim" style="font-size:12px">Por catraca: o que já existia quando a catraca foi travada — só pode descer.</div>
-    ${cat ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Catraca</th><th class="right">Ocorrências travadas</th><th class="right">Itens</th></tr></thead><tbody>${cat}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma dívida travada em catraca.</div>'}
-    <div class="dim" style="font-size:12px;margin-top:12px">Regras ainda com verificação manual — o que falta para a máquina cobrar.</div>
-    ${reg ? `<table class="tb cf-txt" style="margin-top:6px"><thead><tr><th>Regra</th><th>Título</th><th>O que falta</th></tr></thead><tbody>${reg}</tbody></table>` : '<div class="dim" style="font-size:12px">Nenhuma.</div>'}`);
-  }
-  async function renderConformidade() {
-    const d = await J("/api/qualidade/conformidade");
-    let h = cover(
-      "sistema",
-      "Conformidade — regras de qualidade do JFN",
-      "Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.",
-      "✅"
-    );
-    if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
-    const medido = d.estado === "MEDIDO";
-    const r = d.regras || {}, j = d.juiz;
-    h += card(medido ? `<div style="font-size:14px"><b style="color:var(--green)">MEDIDO</b> em ${_hora3(d.medido_em)}</div>` : `<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem fotografia dos sensores")}. Não é zero: a tela não está dizendo que não há violação, e sim que não tem como saber.</div>`);
-    h += `<div class="grid g2" style="margin-top:8px">
-    ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
-    ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
-    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--rose)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
-    ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', "Nota média do juiz (0–4)", null, "🎯", { sobre: "Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa." })}
-  </div>`;
-    if (d.ok === false) return `<div id="cf-raiz">${h}</div>`;
-    h += sec("Por sistema", fmtN((d.sistemas || []).length)) + _sistemas(d);
-    h += _cegos(d.sensores_cegos);
-    h += _juiz(j);
-    h += _divida(d);
-    h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora3(d.gerado_em)}` : ""}</div>`);
-    return `<div id="cf-raiz">${h}${_txt3}</div>`;
-  }
-
-  // static/js/src/abas/propagacao.js
-  var _css = "<style>.pg-txt th,.pg-txt td{text-align:left;vertical-align:top}.pg-txt th.right,.pg-txt td.right{text-align:right}</style>";
-  var _hora4 = (t) => t ? new Date(t * 1e3).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
-  var _dur = (a, b) => a && b ? `${fmtN(Math.max(0, Math.round(b - a)))} s` : "—";
-  var _ha = (t, agora) => {
-    if (!t) return "—";
-    const m = Math.max(0, Math.round((agora - t) / 60));
-    return m < 60 ? `há ${fmtN(m)} min` : m < 2880 ? `há ${fmtN(Math.round(m / 60))} h` : `há ${fmtN(Math.round(m / 1440))} dias`;
-  };
-  function _nomes(d) {
-    const n = {};
-    for (const f of d.fontes || []) n[f.id] = f.nome;
-    for (const x of d.derivados || []) n[x.id] = x.nome;
-    return n;
-  }
-  function _motivos(lista, nomes, max) {
-    const vistos = /* @__PURE__ */ new Set(), out = [];
-    for (const m of lista || []) {
-      const i = m.indexOf(": ");
-      const id = i > 0 ? m.slice(0, i) : "";
-      const txt = nomes[id] ? `<b>${esc(nomes[id])}</b> — ${esc(m.slice(i + 2))}` : esc(m);
-      if (!vistos.has(txt)) {
-        vistos.add(txt);
-        out.push(txt);
-      }
-    }
-    return out.slice(0, max).join("<br>");
-  }
-  function _situacao(x, agora) {
-    if (x.ultimo_estado === "rodando") return '<b style="color:var(--accent)">recalculando agora</b>';
-    if (x.ultimo_estado === "falhou") return `<b style="color:var(--rose)">falhou</b> (${fmtN(x.falhas)}×)${x.proxima_tentativa ? ` · nova tentativa ${_hora4(x.proxima_tentativa)}` : ""}`;
-    if (x.sujo) return `<b style="color:var(--amber)">desatualizado</b> ${_ha(x.sujo_desde, agora)}${x.adiado ? `<div class="dim" style="font-size:11px">${esc(x.adiado)}</div>` : ""}`;
-    if (x.ultimo_estado === "ok") return '<b style="color:var(--green)">em dia</b>';
-    return '<span class="dim">sem evento desde que a propagação foi ligada</span>';
-  }
-  function _derivados(d) {
-    const nomes = _nomes(d);
-    const lin = (d.derivados || []).map((x) => `<tr>
-      <td><b>${esc(x.nome)}</b><div class="dim" style="font-size:11px">${esc(x.onde || "")}</div></td>
-      <td>${_situacao(x, d.gerado_em)}${x.ultimo_erro ? `<div style="font-size:12px;color:var(--rose)">${esc(x.ultimo_erro)}</div>` : ""}</td>
-      <td style="font-size:12px">${_motivos(x.motivos, nomes, 4) || '<span class="dim">—</span>'}${x.eventos_pendentes > (x.motivos || []).length ? `<div class="dim" style="font-size:11px">${fmtN(x.eventos_pendentes)} evento(s) pendente(s) no total</div>` : ""}</td>
-      <td style="white-space:nowrap;font-size:13px">${_hora4(x.ultimo_fim)}<div class="dim" style="font-size:11px">${x.ultimo_fim ? `levou ${_dur(x.ultimo_inicio, x.ultimo_fim)} · ${fmtN(x.execucoes)} execução(ões)` : "ainda não recalculado pela propagação"}</div></td>
-      <td style="font-size:12px">${esc(x.antes || "—")}</td></tr>`).join("");
-    return card(`<div class="dim" style="font-size:12px;margin-bottom:6px">Cada linha é um derivado: algo que o painel mostra e que fica velho quando a fonte muda. "Antes" = como se atualizava até 14/11/2026 (esses agendamentos continuam como rede de segurança).</div>
-    <div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Derivado</th><th>Situação</th><th>O que o deixou desatualizado</th><th>Último recálculo</th><th>Antes</th></tr></thead><tbody>${lin}</tbody></table></div>`);
-  }
-  function _fontes2(d) {
-    const nomes = _nomes(d);
-    const lin = (d.fontes || []).map((f) => `<tr><td><b>${esc(f.nome)}</b></td>
-      <td style="font-size:13px">${f.manual ? '<span class="dim">manual</span>' : f.erro ? `<b style="color:var(--rose)">INDISPONÍVEL</b><div style="font-size:12px">${esc(f.erro)}</div>` : f.visto_em ? `conferida ${_ha(f.visto_em, d.gerado_em)}` : '<span class="dim">ainda não conferida</span>'}</td>
-      <td style="font-size:13px;white-space:nowrap">${f.mudou_em ? _hora4(f.mudou_em) : '<span class="dim">sem mudança desde a ligação</span>'}</td>
-      <td style="font-size:12px">${(f.alimenta || []).map((x) => esc(nomes[x] || x)).join(", ") || '<span class="dim">só o segundo cérebro</span>'}</td></tr>`).join("");
-    return card(`<div style="overflow:auto"><table class="tb pg-txt"><thead><tr><th>Fonte / evento</th><th>Sonda</th><th>Última mudança percebida</th><th>Suja</th></tr></thead><tbody>${lin}</tbody></table></div>
-    <div class="dim" style="font-size:12px;margin-top:6px">Sonda que não consegue medir aparece como INDISPONÍVEL — isso não quer dizer que a fonte não mudou.</div>`);
-  }
-  function _execucoes(d) {
-    const ex = d.execucoes || [], nomes = _nomes(d);
-    if (!ex.length) return card('<div class="dim">Nenhum recálculo feito pela propagação até agora.</div>');
-    const lin = ex.map((e) => `<tr><td style="white-space:nowrap">${_hora4(e.inicio)}</td><td><b>${esc(nomes[e.derivado] || e.derivado)}</b></td>
-      <td>${e.estado === "ok" ? '<b style="color:var(--green)">recalculado</b>' : '<b style="color:var(--rose)">falhou</b>'}</td>
-      <td class="right">${_dur(e.inicio, e.fim)}</td>
-      <td style="font-size:12px">${_motivos(e.motivos, nomes, 3)}${e.erro ? `<div style="color:var(--rose)">${esc(e.erro)}</div>` : ""}</td></tr>`).join("");
-    return card(`<div style="max-height:420px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Início</th><th>Derivado</th><th>Resultado</th><th class="right">Duração</th><th>Motivo / erro</th></tr></thead><tbody>${lin}</tbody></table></div>`);
-  }
-  function _eventos2(d) {
-    const ev = d.eventos || [], nomes = _nomes(d);
-    if (!ev.length) return card('<div class="dim">Nenhum evento registrado ainda.</div>');
-    return card(`<div style="max-height:360px;overflow:auto"><table class="tb pg-txt"><thead><tr><th>Quando</th><th>Fonte</th><th>O que mudou</th></tr></thead><tbody>${ev.map((e) => `<tr><td style="white-space:nowrap">${_hora4(e.quando)}</td><td><b>${esc(nomes[e.fonte] ? (e.detalhe.startsWith("recalculado") ? "Derivado: " : "") + nomes[e.fonte] : e.fonte)}</b></td><td style="font-size:13px">${esc(e.detalhe)}</td></tr>`).join("")}</tbody></table></div>`);
-  }
-  function _cerebro(c, agora) {
-    if (!c) return "";
-    const ult = (c.ultimas || []).map((m) => `<tr><td style="white-space:nowrap">${_hora4(m.quando)}</td><td>${esc(m.kind)}</td><td style="font-size:13px"><b>${esc(m.assunto || m.chave)}</b><div style="font-size:12px">${esc(m.texto)}</div></td><td class="right">#${fmtN(m.id)}</td></tr>`).join("");
-    return sec("Segundo cérebro", fmtN(c.gravadas)) + card(`<div style="font-size:13px">Descobertas duráveis (número de manchete corrigido, correção de regra, alerta verificado, decisão e lição registradas) seguem para a memória comum dos agentes. <b>${fmtN(c.gravadas)}</b> gravada(s) · <b>${fmtN(c.pendentes)}</b> na fila · ${fmtN(c.recusadas)} recusada(s) por conter dado pessoal ou segredo · último envio ${c.ultimo_envio ? _ha(c.ultimo_envio, agora) : "—"}.</div>
-    ${c.pendentes && c.ultimo_erro ? `<div class="warn" style="margin-top:6px">Fila parada: ${esc(c.ultimo_erro)}. As descobertas ficam guardadas e seguem quando o cérebro responder.</div>` : ""}
-    ${ult ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Enviada</th><th>Tipo</th><th>Memória</th><th class="right">Nº</th></tr></thead><tbody>${ult}</tbody></table></div>` : ""}`);
-  }
-  function _certeza(c) {
-    if (!c || c.ok === false) return sec("Certeza", "—") + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(c && (c.motivo || c.erro) || "sem estado da camada de certeza")}. Não quer dizer que os números estão certos: a tela não tem como saber.</div>`);
-    const r = c.resumo || {}, pe = r.por_estado || {}, pn = r.por_nivel_prova || {};
-    const alerta = (r.divergencias_abertas || 0) + (r.violacoes_de_contrato || 0) + (r.grafo_achados_graves || 0);
-    return sec("Certeza — cada número com prova", fmtN(r.fatos)) + card(`<div style="font-size:13px">Todo número publicado é um <b>fato com id</b>, fonte e nível de prova (2 = fonte primária lida; 1 = juízo sobre resumo). Só <b>VERIFICADO</b> sobe ao painel como certo.
-    <b>${fmtN(pe.VERIFICADO || 0)}</b> verificado(s) · <b>${fmtN(pe.PENDENTE || 0)}</b> pendente(s) · <b>${fmtN(pe["A CONFERIR"] || 0)}</b> a conferir ·
-    nível 2: <b>${fmtN(pn["2"] || 0)}</b> · nível 1: <b>${fmtN(pn["1"] || 0)}</b> · aguardando recálculo: ${fmtN(r.fatos_aguardando_recalculo || 0)}.</div>
-    ${alerta ? `<div class="warn" style="margin-top:6px">${fmtN(r.divergencias_abertas || 0)} divergência(s) aberta(s) · ${fmtN(r.violacoes_de_contrato || 0)} violação(ões) de contrato · ${fmtN(r.grafo_achados_graves || 0)} achado(s) grave(s) no grafo de dependências.</div>` : ""}
-    <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/certeza</code> · <code>docs/ARQUITETURA-DE-CERTEZA.md</code> · estado de ${esc(c.gerado_em_iso || "—")}</div>`);
-  }
-  async function renderPropagacao() {
-    const [d, cz] = await Promise.all([J("/api/sistema/propagacao"), J("/api/sistema/certeza").catch((e) => ({ ok: false, erro: String(e) }))]);
-    let h = cover(
-      "sistema",
-      "Propagação — o que mudou puxa o que depende",
-      "Quando uma fonte muda (OB nova, status recoletado, processo SEI capturado, contrato novo, regra corrigida), tudo o que depende dela é marcado como desatualizado e recalculado sozinho, um trabalho pesado por vez. Aqui se vê o que está desatualizado, o que foi recalculado e o que falhou.",
-      "🔁"
-    );
-    if (!d || d.ok === false && !d.estado) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
-    if (d.ok === false) return h + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || "sem estado da propagação")}. Não quer dizer que está tudo em dia: a tela não tem como saber.</div>`);
-    const r = d.resumo || {}, u = d.ultimo_ciclo;
-    h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora4(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora4(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
-    h += `<div class="grid g2" style="margin-top:8px">
-    ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
-    ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--rose)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
-    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? "var(--rose)" : null, "📡", { sobre: "Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou." })}
-    ${kpi(fmtN((d.cerebro || {}).gravadas), "Descobertas no segundo cérebro", null, "🧠", { sobre: "Memórias gravadas no cérebro compartilhado dos agentes a partir desta máquina, com resposta do cérebro confirmando a gravação (tabela cerebro de data/propagacao.db)." })}
-  </div>`;
-    h += sec("Derivados", fmtN(r.derivados)) + _derivados(d);
-    h += sec("Recálculos recentes", fmtN((d.execucoes || []).length)) + _execucoes(d);
-    h += sec("Fontes e eventos", fmtN(r.fontes)) + _fontes2(d);
-    h += sec("Últimos eventos", fmtN((d.eventos || []).length)) + _eventos2(d);
-    h += _cerebro(d.cerebro, d.gerado_em);
-    h += _certeza(cz);
-    h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora4(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
-    return `<div id="pg-raiz">${h}${_css}</div>`;
-  }
-
-  // static/js/src/abas/requerimentos.js
-  var GRUPOS = [
-    { k: "sugerido", rot: "Sugeridos", cor: "var(--amber)", sobre: "Pedido que uma nota de caso aponta como próximo passo. Ainda sem texto redigido." },
-    { k: "minuta", rot: "Com minuta", cor: "var(--accent)", sobre: "Texto redigido, aguardando revisão do titular. Não protocolado." },
-    { k: "protocolado", rot: "Protocolados", cor: "var(--gold)", sobre: "Enviado ao destinatário; aguardando resposta." },
-    { k: "respondido", rot: "Respondidos", cor: "var(--green)", sobre: "Resposta recebida." },
-    { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
-  ];
-  var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
-  var _n3 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
-  var _dados2 = null;
-  function _cardReq(r) {
-    return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
-    <div class="cs-topo">
-      <span class="cs-nivel">${esc(r.id)}</span>
-      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
-      ${r.data_sugestao ? `<span class="dim cs-data">${esc(r.data_sugestao)}</span>` : ""}
-    </div>
-    <h3 class="cs-tit">${esc(r.titulo)}</h3>
-    ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
-    <div class="cs-tags"><span class="tag teal">${_n3(r.pedidos.length, "pedido", "pedidos")}</span>
-      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n3(r.pendencias.length, "pendência", "pendências")}</span>
-      ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
-    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
-    <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
-      ${r.caso ? `<button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button>` : ""}</div>
-  </article>`;
-  }
-  async function renderRequerimentos() {
-    let h = cover(
-      "geral",
-      "Requerimentos — pedidos de informação sugeridos",
-      "O que as investigações indicam <b>pedir a um órgão</b> para fechar uma dúvida: cada item nasce de um próximo passo escrito numa nota de caso. Esta aba <b>só lê</b> — nada é enviado daqui. <b>Indício a verificar, não acusação</b>, com presunção de legitimidade do ato administrativo.",
-      "📝"
-    );
-    const d = await J("/api/requerimentos");
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
-    _dados2 = d;
-    const ps = d.por_status || {};
-    h += `<div class="grid g4">${GRUPOS.slice(0, 4).map((g) => kpi(fmtN(ps[g.k] || 0), g.rot, g.cor, null, { sobre: g.sobre })).join("")}</div>`;
-    if (!d.total) return h + card('<div class="dim">Nenhum requerimento cadastrado em <code>~/vault/requerimentos/</code>.</div>');
-    for (const g of GRUPOS) {
-      const it = d.itens.filter((r) => r.status === g.k);
-      if (it.length) h += sec(g.rot, it.length) + `<div class="cs-grade">${it.map(_cardReq).join("")}</div>`;
-    }
-    return h;
-  }
-  var _lista = (tit, itens, ord) => `<h3 class="cs-h">${tit}</h3>` + (itens.length ? `<${ord ? "ol" : "ul"}>${itens.map((x) => `<li>${esc(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>` : '<p class="dim">Nenhum item registrado na nota.</p>');
-  var _semAncoras = (md) => String(md || "").replace(/^<a id="[^"]*"><\/a>\s*$/gm, "").replace(/^\[↑ topo\]\(#[^)]*\)\s*$/gm, "").replace(/\[([^\]]+)\]\(#[^)]*\)/g, "$1");
-  async function _abrir(slug) {
-    const ov = $("ov"), sh = $("sheet");
-    if (!ov || !sh) return;
-    const r = (_dados2 && _dados2.itens || []).find((k) => k.slug === slug);
-    if (!r) return;
-    const x = '<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>';
-    const naVault = /\.md$/.test(r.minuta);
-    const corpo = (minuta) => `<div class="cs-nota" data-rq-folha="${esc(slug)}" style="--cs:${_cor2(r.status)}">
-    <div class="cs-topo"><span class="cs-nivel">${esc(r.id)} · ${esc(r.status)}</span>
-      ${r.prioridade ? `<span class="cs-sit">prioridade ${esc(r.prioridade)}</span>` : ""}
-      ${r.data_sugestao ? `<span class="dim cs-data">sugerido em ${esc(r.data_sugestao)}</span>` : ""}</div>
-    <h2 class="cs-h">${esc(r.titulo)}</h2>
-    ${r.destinatario ? `<p><b>Destinatário:</b> ${esc(r.destinatario)}</p>` : ""}
-    ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
-    ${_lista("Pedidos", r.pedidos, true)}
-    <h3 class="cs-h">Fundamento</h3><p>${r.fundamento ? esc(r.fundamento) : '<span class="dim">Não registrado na nota.</span>'}</p>
-    ${_lista("Pendências", r.pendencias)}
-    ${r.origem ? `<div class="dim cs-fonte">Origem: <code>${esc(r.origem)}</code></div>` : ""}
-    ${r.caso ? `<div class="btns"><button type="button" class="btn ghost" data-cs-abrir="${esc(r.caso)}">Ver o caso</button></div>` : ""}
-    <hr><h3 class="cs-h">Minuta</h3>
-    ${naVault ? `<div class="dim cs-fonte">Fonte: <code>${esc(r.minuta)}</code></div>${minuta}` : r.minuta ? `<p class="dim">Fora do vault — não exibida aqui: <code>${esc(r.minuta)}</code></p>` : '<p class="dim">Ainda não há minuta.</p>'}
-    <div class="note">Nota do vault: <code>requerimentos/${esc(slug)}.md</code> — editar lá; esta folha só lê e não envia nada.</div></div>`;
-    ov.classList.add("on");
-    sh.innerHTML = x + corpo(naVault ? spin("Abrindo a minuta…") : "");
-    a11yfy(sh);
-    if (!naVault) return;
-    const d = await J("/api/requerimentos/minuta?slug=" + encodeURIComponent(slug));
-    const no = sh.querySelector(".cs-nota");
-    if (!ov.classList.contains("on") || !no || no.dataset.rqFolha !== slug) return;
-    sh.innerHTML = x + corpo(!d || d.ok === false ? `<div class="warn">${erroHumano(d && d.erro)}</div>` : mdNota(_semAncoras(d.markdown)));
-    a11yfy(sh);
-  }
-  function ligarRequerimentos() {
-    document.addEventListener("click", (ev) => {
-      const a = ev.target.closest && ev.target.closest("[data-rq-abrir]");
-      if (a) {
-        ev.preventDefault();
-        _abrir(a.dataset.rqAbrir);
-      }
-    });
-  }
-
   // static/js/src/abas/comparador.js
   var _compView = "catalogo";
   var _compTermo = "";
@@ -11148,7 +10067,7 @@
   async function _compItemView(voltar) {
     const d = await J("/api/comparador/item?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&grupo=" + encodeURIComponent(_compGrupo.grupo) + "&unidade=" + encodeURIComponent(_compGrupo.un || ""));
     let h = `<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     h += `<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida || "")}</span></h3>`;
     h += `<div class="grid g2">${kpi(fmtR(d.mediana_geral), "Mediana do item", "var(--amber)", "⚖️", { sobre: "Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da 'economia' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida." })}${kpi(
       fmtN(d.n_orgaos),
@@ -11190,7 +10109,7 @@
     let h = _compEsfChips();
     if (_compGrupo) return h + await _compItemView("voltar ao catálogo");
     const d = await J("/api/comparador/catalogo?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const cats = d.categorias || [];
     if (!_compCat || !cats.find((c) => c.id === _compCat)) {
       h += `<div class="dim" style="margin:0 0 10px">${fmtN(d.n_grupos)} itens com preço comparável, por categoria — toque para abrir o submenu:</div>`;
@@ -11224,7 +10143,7 @@
     if (_compGrupo) return h + await _compItemView("voltar à busca");
     if (!_compTermo) return h;
     const d = await J("/api/comparador/buscar?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&termo=" + encodeURIComponent(_compTermo));
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     if (!d.grupos.length) {
       h += card(`<div class="warn">Nenhum item casa TODAS as palavras de "${esc(_compTermo)}".</div>`);
       if ((d.parecidos || []).length) {
@@ -11242,7 +10161,7 @@
   }
   async function _compOrgaos() {
     const d = await J("/api/comparador/orgaos?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return cardErro(d.erro);
     const linha = (x, bom) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
     <div class="right"><div class="num" style="font-weight:800;color:${bom ? "var(--green)" : "var(--rose)"}">${x.razao_mediana}×</div><div class="dim">${bom ? "abaixo" : "acima"} do mercado</div></div></div>`, !bom ? "hl" : "");
@@ -11253,7 +10172,7 @@
   }
   async function _compEconomia() {
     const d = await J("/api/comparador/economia?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return cardErro(d.erro);
     let h = `<div style="text-align:center;margin:10px 0 18px">
     <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL — SOBREPREÇO CONFERIDO (PNCP)</div>
     <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
@@ -11293,7 +10212,7 @@
   }
   async function _compDossie() {
     const d = await J("/api/comparador/dossie?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return cardErro(d.erro);
     const a = d.achados || [];
     let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
     registrarDrill("compDoisSinais", { titulo: "Casos com dois ou mais sinais", itens: a.filter((x) => x.sinais.length >= 2), nota: "Sinal isolado explica-se; dois pedem verificação." });
@@ -11332,7 +10251,7 @@
   }
   async function _compForn() {
     const d = await J("/api/comparador/fornecedores?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return cardErro(d.erro);
     const linha = (x, caro) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id ? clk(x.id, x.nome) : esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
     <div class="right"><div class="num" style="font-weight:800;color:${caro ? "var(--rose)" : "var(--green)"}">${x.razao_mediana}×</div><div class="dim">${caro ? "acima" : "abaixo"} do mercado</div></div></div>`, caro ? "hl" : "");
@@ -11405,7 +10324,7 @@
       h += leitura(n < 2 ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.` : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
       h += `<div class="note" style="margin-top:8px">Fonte: ${esc(s.fonte || "")}</div>`;
     } else {
-      h += card(`<div class="warn">${erroHumano(s.erro)}</div>`);
+      h += cardErro(s.erro);
     }
     h += sec("Consultar uma empresa");
     h += card(`<div class="search"><span class="mag"></span>
@@ -11461,7 +10380,7 @@
     o.innerHTML = card('<div class="dim">subindo a cadeia societária…</div>');
     const d = await J("/api/osint/beneficiario_final?cnpj=" + encodeURIComponent(c));
     if (d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const cob = d.cobertura || {}, ps = d.pessoas || [];
@@ -11526,7 +10445,7 @@
     o.innerHTML = card('<div class="dim">cruzando telefone e e-mail em 6,17 milhões de estabelecimentos…</div>');
     const d = await J("/api/osint/contato_compartilhado?cnpj=" + encodeURIComponent(c));
     if (d.erro) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const ar = d.arestas || [], cob = d.cobertura || {}, desc = d.descartados || {};
@@ -11584,7 +10503,7 @@
     o.innerHTML = card('<div class="dim">casando matrículas do SEI com a folha da Prefeitura…</div>');
     const d = await J("/api/pcrj/assinaturas?limite=150");
     if (d.erro || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const it = d.itens || [];
@@ -11677,7 +10596,7 @@
     o.innerHTML = card('<div class="dim">cruzando participantes de 4.517 certames com 6,17 milhões de estabelecimentos…</div>');
     const d = await J("/api/osint/cocontato_certame?limite=120");
     if (d.erro || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const it = d.itens || [];
@@ -11725,7 +10644,7 @@
     o.innerHTML = card('<div class="dim">cruzando contato compartilhado com quem recebeu do Estado…</div>');
     const d = await J("/api/osint/elos_ocultos?limite=120" + (soSemExplicacao ? "&so_sem_explicacao=1" : ""));
     if (d.erro || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const it = d.itens || [];
@@ -11783,7 +10702,7 @@
     o.innerHTML = card('<div class="dim">cruzando a fila de agente público com as fichas de processo…</div>');
     const d = await J("/api/osint/processos?limite=120" + (soConflito ? "&so_conflito=1" : ""));
     if (d.erro || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const it = d.itens || [];
@@ -11835,7 +10754,7 @@
     o.innerHTML = card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
     const d = await J("/api/osint/agente_publico?limite=250&filtro=" + encodeURIComponent(filtro || "apTodos"));
     if (d.erro || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const FILTROS = {
@@ -11896,7 +10815,7 @@
     o.innerHTML = card('<div class="dim">medindo eixos…</div>');
     const d = await J("/api/osint/parentesco?cnpj=" + encodeURIComponent(c));
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const cor = { indicio: "var(--rose)", hipotese: "var(--amber)", hipotese_fraca: null }[d.grau] || null;
@@ -11965,7 +10884,7 @@
     o.innerHTML = card('<div class="dim">consultando a série…</div>');
     const d = await J(`/api/osint/vinculo_na_data?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const cor = { SIM: "var(--rose)", NAO: null, INDISPONIVEL: "var(--amber)" }[d.resposta] || null;
@@ -12028,7 +10947,7 @@
     o.innerHTML = card('<div class="dim">procurando trocas de quadro…</div>');
     const d = await J(`/api/osint/trocas_societarias?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro || d.motivo)}</div>`);
+      o.innerHTML = cardErro(d.erro || d.motivo);
       return;
     }
     let h = sec("Trocas de quadro societário perto de " + esc(dt));
@@ -12098,7 +11017,7 @@
     o.innerHTML = card('<div class="dim">montando a rede…</div>');
     const d = await J("/api/grafo?alvo=" + encodeURIComponent(c) + "&saltos=2");
     if (d && d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const nos = d.nos || [], ar = d.arestas || [];
@@ -12132,7 +11051,7 @@
     o.innerHTML = card('<div class="dim">exportando…</div>');
     const d = await J("/api/grafo/ftm?alvo=" + encodeURIComponent(c) + "&saltos=2");
     if (d && d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const ents = d.entidades || d.entities || [];
@@ -12151,7 +11070,7 @@
     o.innerHTML = card('<div class="dim">consultando a série…</div>');
     const d = await J("/api/osint/historico_socio?nome=" + encodeURIComponent(n));
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const vs = d.vinculos || [];
@@ -12172,7 +11091,7 @@
     o.innerHTML = card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
     const d = await J("/api/osint/conluio_municipal?limite=400");
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
+      o.innerHTML = cardErro(d.motivo || d.erro);
       return;
     }
     const c = d.cobertura || {};
@@ -12238,7 +11157,7 @@
     o.innerHTML = card('<div class="dim">consultando…</div>');
     const d = await J("/api/osint/resolucao_nome_cnpj");
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
+      o.innerHTML = cardErro(d.motivo || d.erro);
       return;
     }
     o.innerHTML = sec("Resolução razão social → CNPJ (catálogo nacional da Receita)") + `<div class="grid g2">${kpi(
@@ -12280,7 +11199,7 @@
     o.innerHTML = card('<div class="dim">medindo os eixos de interposição…</div>');
     const d = await J("/api/osint/interposicao?cnpj=" + encodeURIComponent(c));
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const socios = d.socios || d.perfis || [];
@@ -12299,7 +11218,7 @@
     o.innerHTML = card('<div class="dim">comparando capacidade declarada e recebimento…</div>');
     const d = await J("/api/osint/patrimonio?cnpj=" + encodeURIComponent(c));
     if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     let h = sec("Capacidade declarada × recebimento público");
@@ -12434,7 +11353,7 @@
     o.innerHTML = card('<div class="dim">recalculando a fila sobre o acervo de hoje…</div>');
     const d = await J("/api/fiscal/fila?limite=60" + (soOsint ? "&so_osint=1" : ""));
     if (!d || d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+      o.innerHTML = cardErro(d && d.erro);
       return;
     }
     const it = d.itens || [];
@@ -12734,7 +11653,7 @@
        ${s.prosa ? `<div style="margin-top:10px">${esc(s.prosa)}</div>` : ""}`
       );
     } catch (e) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+      o.innerHTML = cardErro(String(e));
     }
   }
   async function pecaGerar(rota, campo) {
@@ -12757,7 +11676,7 @@
       }
       o.innerHTML = card(`<div class="ok">Acionado.</div><div class="dim" style="margin-top:6px">${esc(d.mensagem || d.status || "A peça chega no Telegram quando terminar.")}</div>`);
     } catch (e) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+      o.innerHTML = cardErro(String(e));
     }
   }
   async function renderFontesExternas() {
@@ -12782,13 +11701,12 @@
     h += `<div class="note">Ausência de resultado numa fonte externa é <b>INDISPONÍVEL</b>, não prova de inexistência: a cobertura de cada base é parcial e declarada por ela mesma.</div>`;
     const lim = await J("/api/fontes/limites");
     if (lim && lim.ok && (lim.itens || []).length) {
-      const _mdLim = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
       h += sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
       h += card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>` + lim.itens.map((x) => `<tr>
-          <td><b>${_mdLim(x.fonte)}</b></td>
+          <td><b>${mdSimples(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo === "bloqueio" ? "medio" : "alto"}">${x.tipo === "bloqueio" ? "bloqueio" : "limite da fonte"}</span></td>
-          <td>${_mdLim(x.o_que_acontece)}</td>
-          <td class="dim">${_mdLim(x.caminho_alternativo)}</td>
+          <td>${mdSimples(x.o_que_acontece)}</td>
+          <td class="dim">${mdSimples(x.caminho_alternativo)}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join("") + `</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
         a base simplesmente não tem aquele campo, e insistir é queimar sessão. Este quadro existe para
@@ -12806,7 +11724,7 @@
     o.innerHTML = card('<div class="dim">consultando…</div>');
     const d = await J(rota + "?alvo=" + encodeURIComponent(v) + "&cnpj=" + encodeURIComponent(v) + "&q=" + encodeURIComponent(v));
     if (d && d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      o.innerHTML = cardErro(d.erro);
       return;
     }
     const linhas = Object.entries(d || {}).filter(([k]) => k !== "ok" && k !== "erro").map(([k, v2]) => {
@@ -12821,7 +11739,7 @@
   }
   async function renderHubFisico() {
     const d = await J("/api/intel/hub_compartilhado?limite=150");
-    if (!d.ok) return sec("Hub compartilhado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Hub compartilhado") + cardErro(d.erro);
     const a = d.grupos || d.achados || d.hubs || [];
     const _ehAlto = (x) => x.risco === "alto";
     let h = cover(
@@ -13334,7 +12252,7 @@
         `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 4e3)}</pre>`
       );
     } catch (e) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+      o.innerHTML = cardErro(String(e));
     }
   }
   async function renderMissoes() {
@@ -13380,7 +12298,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ objetivo: t, titulo: t })
     });
-    jfnToast2("Missão enfileirada.", "green");
+    jfnToast("Missão enfileirada.", "green");
     $("ms-txt").value = "";
     setTimeout(missaoListar, 400);
   }
@@ -13423,7 +12341,7 @@
   async function renderSancionadas(esf) {
     const pSoc = J("/api/intel/socio_sancionada");
     const d = await J("/api/intel/sancionadas?limite=1000");
-    if (!d.ok) return sec("Sancionadas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(esf === "estado" ? ["sancoes_estado"] : ["sancoes_estado", "sancoes_prefeitura"], "Sanções por ano e mês de início");
+    if (!d.ok) return sec("Sancionadas") + cardErro(d.erro) + blocoPeriodo(esf === "estado" ? ["sancoes_estado"] : ["sancoes_estado", "sancoes_prefeitura"], "Sanções por ano e mês de início");
     let emp = d.empresas || [];
     const carregadas = emp.length;
     if (esf === "estado") emp = emp.filter((e) => e.estado.obs > 0);
@@ -13480,7 +12398,7 @@
   }
   var _FORCA = { forte: ["rose", "forte — mesmo ramo e mesmo endereço/telefone"], medio: ["amber", "médio — um critério"], fraco: ["accent", "fraco — só o sócio"] };
   function _blocoSocioSancionada(r) {
-    if (!r || !r.ok) return sec("Sanção contornada pelo sócio") + card(`<div class="warn">${erroHumano(r && r.erro)}</div>`);
+    if (!r || !r.ok) return sec("Sanção contornada pelo sócio") + cardErro(r && r.erro);
     const a = r.achados || [];
     let h = sec("Sanção contornada pelo sócio") + `<div class="muted" style="margin:-4px 2px 10px;font-size:13px">Contratada cujo sócio é sócio de empresa <b>punida com vedação que alcança o RJ</b>. Conta só a OB SIAFE paga na janela em que as duas sociedades e a sanção coexistem. Força pelos critérios do TCU (Ac. 1831/2014-Plenário): mesmo ramo (CNAE) e mesmo endereço/telefone.</div>`;
     if (!a.length) return h + card('<div class="muted">Nenhuma contratada nessa situação com pagamento na janela.</div>');
@@ -13500,7 +12418,7 @@
   var _obTxt = (g) => g.ob_pago_total == null ? '<span class="dim">OB: INDISPONÍVEL (sem OB ligável pelo processo)</span>' : `OB paga (SIAFE): <b>${fmtR(g.ob_pago_total)}</b> <span class="dim">em ${fmtN(g.ob_processos_ligados)} de ${fmtN(g.n_contratacoes)} processos</span>`;
   async function renderFracionamento() {
     const d = await J("/api/intel/fracionamento?limite=120");
-    if (!d.ok) return sec("Fracionamento") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Fracionamento") + cardErro(d.erro);
     const g = d.grupos || [];
     let h = cover(
       "estado",
@@ -13553,7 +12471,7 @@
   }
   async function renderCertames() {
     const d = await J("/api/conjunto/portfolio?min_certames=3");
-    if (!d.ok) return sec("Certames") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Certames") + cardErro(d.erro);
     const o = d.orgaos || [];
     let h = cover(
       "estado",
@@ -13608,7 +12526,7 @@
   }
   async function renderCartelMun() {
     const d = await J("/api/intel/concentracao_municipio?limite=60");
-    if (!d.ok) return sec("Concentração — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Concentração — Prefeitura") + cardErro(d.erro);
     const a = d.orgaos || [];
     let h = cover(
       "prefeitura",
@@ -13639,7 +12557,7 @@
   }
   async function renderSancionadasMun() {
     const d = await J("/api/intel/sancionadas_municipio?limite=300");
-    if (!d.ok) return sec("Sancionadas — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(["sancoes_prefeitura"], "Sanções por ano e mês de início");
+    if (!d.ok) return sec("Sancionadas — Prefeitura") + cardErro(d.erro) + blocoPeriodo(["sancoes_prefeitura"], "Sanções por ano e mês de início");
     const emp = d.empresas || [];
     const aepoca = emp.filter((e) => (e.contratos_durante || 0) > 0);
     let h = cover(
@@ -13698,7 +12616,7 @@
   }
   async function renderAditivos(esf = "estado") {
     const d = await J("/api/intel/aditivos?limite=120&esfera=" + esf);
-    if (!d.ok) return sec("Aditivos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo([esf === "prefeitura" ? "aditivos_prefeitura" : "aditivos_estado"], "Termos aditivos por ano e mês");
+    if (!d.ok) return sec("Aditivos") + cardErro(d.erro) + blocoPeriodo([esf === "prefeitura" ? "aditivos_prefeitura" : "aditivos_estado"], "Termos aditivos por ano e mês");
     const a = d.achados || [];
     let h = cover(
       esf,
@@ -13757,7 +12675,7 @@
   }
   async function renderSobrepreco(esf = "estado") {
     const d = await J("/api/intel/sobrepreco?limite=120&esfera=" + esf);
-    if (!d.ok) return sec("Sobrepreço") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sobrepreço") + cardErro(d.erro);
     const a = d.achados || [], ind = d.indeterminados || {};
     let h = cover(
       esf,
@@ -13828,7 +12746,7 @@
   }
   async function renderEscalada(esf = "estado") {
     const d = await J("/api/intel/escalada?limite=120&esfera=" + esf);
-    if (!d.ok) return sec("Escalada") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Escalada") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover(esf, "Escalada de preço — o mesmo fornecedor sobe o preço no tempo", "Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.", "🪜") + acoesAba("escalada");
     if (!a.length) {
@@ -13873,7 +12791,7 @@
         'Empresa que compete "sempre" e nunca vence é o perfil clássico de <b>proposta de cobertura</b> (OCDE bid rigging): existe para dar aparência de disputa e legitimar o vencedor combinado. Quanto mais vezes perde junto do MESMO vencedor, mais forte o indício.',
         "🎭"
       ) + chips + acoesAba("perdedoras");
-      if (!d2.ok) return h2 + card(`<div class="warn">${erroHumano(d2.erro)}</div>`);
+      if (!d2.ok) return h2 + cardErro(d2.erro);
       const cov = d2.cobertura_extracao || {};
       registrarDrill("perdedorasContumazes", {
         titulo: "Perdedoras contumazes — participam e nunca vencem",
@@ -13904,7 +12822,7 @@
       "Score 0-100 por <b>8 sinais objetivos</b> (situação irregular na Receita, capital incompatível com o que recebe, endereço-ninho, endereço residencial, aberta às vésperas do 1º contrato, sócio único + capital baixo, CNAE incompatível, sanção). Aplicado ao conjunto-alvo: vencedoras de captura/rodízio, perdedoras contumazes, sancionadas e top favorecidos.",
       "👻"
     ) + chips + acoesAba("fantasmas");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const emp = (d.empresas || []).filter((e) => e.classificacao !== "sem_cadastro");
     const _lin = (e) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj, e.razao_social || e.cnpj)}<div class="dim">${esc(e.cnpj)} · ${rot(e.origem || "—")}</div></div><div class="right"><div class="num" style="font-weight:800">${e.score ?? "—"}</div><div class="dim">/100 ${esc(e.classificacao || "")}</div></div></div>`);
     registrarDrill("fantasmaAlto", { titulo: "Empresas com risco ALTO de fachada", itens: emp.filter((e) => e.classificacao === "alto"), render: _lin, nota: "Score 0-100 por 8 sinais objetivos; indício de fachada, não prova." });
@@ -13960,7 +12878,7 @@
       "Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina. Cada card é <b>uma pessoa</b>, com o histórico completo de nomeações — não mais uma linha por vínculo.",
       "🗳️"
     ) + chips + acoesAba("comissionados");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const it = d.comissionados || [];
     const nCidades = new Set(it.flatMap((x) => (x.candidaturas || []).map((c) => c.cidade)).filter(Boolean)).size;
     registrarDrill("comissCandidatos", {
@@ -14002,7 +12920,7 @@
       "Pessoas que recebiam <b>Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial</b> (programas para quem tem baixa renda) <b>no mesmo mês</b> em que tinham salário como servidor/comissionado da Prefeitura ou Câmara do Rio. Meses fora do vínculo NÃO entram (justiça na contagem). É <b>indício de renda incompatível a apurar</b> — nunca acusação: pode haver dependente no mesmo CPF, homônimo ou erro de base. Cada linha traz o <b>nome</b>, o órgão, o cargo e o período.",
       "🍞"
     ) + (chips || "");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const r = d.resumo || {};
     h += `<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
     h += `<div class="grid g2">${kpi(fmtN(d.n_casos), "Pessoas identificadas", "var(--amber)", "👥", drillSeCompleto("pessoasIdentificadas", d.n_casos, d.casos || d.itens || [], { titulo: "Pessoas identificadas", nota: "Identificação por nome — confirmar homônimo antes de qualquer juízo." }) || { sobre: "Pessoas cujo nome na folha municipal casou com o cadastro de benefício. Identificação por nome carrega homônimo — o recorte com CPF conferido está no KPI ao lado, e é ele que sustenta qualquer afirmação individual. A gaveta está desligada porque a lista vem paginada." })}${kpi(
@@ -14148,7 +13066,7 @@
   }
   async function painelD11() {
     const d = await J("/api/pcrj/aditivos");
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return cardErro(d.erro);
     const c = d.contagem || {}, cob = d.cobertura || {}, it = d.itens || [];
     let h = `<div class="grid g2" style="margin-top:12px">${kpi(
       fmtN(c.VERIFICADO || 0),
@@ -14243,7 +13161,7 @@
       "Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.",
       "👻"
     ) + acoesAba("fantasmas_pcrj");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const fx = d.faixas || {};
     h += `<div class="grid g2">${kpi(
       fmtN(fx.forte),
@@ -14293,7 +13211,7 @@
       "Lente determinística sobre editais/anexos de PPP da CCPAR: garantia com receita de saúde, aporte público, PMI-captura, prazo, valor vs RCL. O dossiê pericial completo (perícia mestre, íntegras normativas) sai por /ppp no Yoda.",
       "🏗️"
     );
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return h + cardErro(d.erro);
     const r = d.resumo || {};
     h += `<div class="grid g2">${kpi(
       fmtN(r.projetos),
@@ -14349,7 +13267,7 @@
     }
     const d = await J("/api/certames/lista?esfera=prefeitura&limite=600");
     let h = cover("prefeitura", "Contratações do município — cada uma com a sua análise", "Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.", "📄") + chips + acoesAba("contratos_analise");
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`) + blocoPeriodo(["contratos_prefeitura", "aditivos_prefeitura"], "Contratos e aditivos por ano e mês");
+    if (!d.ok) return h + cardErro(d.erro) + blocoPeriodo(["contratos_prefeitura", "aditivos_prefeitura"], "Contratos e aditivos por ano e mês");
     const its = d.itens || [], rs2 = d.resumo || {};
     h += `<div class="grid g2">${kpi(
       fmtN(rs2.total),
@@ -14388,7 +13306,7 @@
     const d = await J("/api/pncp/conluio" + (esf ? "?esfera=" + esf : ""));
     const rotulos2 = { estado: "órgãos estaduais", prefeitura: "Prefeitura do Rio", municipios: "demais municípios do RJ", federal: "órgãos federais no RJ", "": "todas as esferas" };
     const rot2 = rotulos2[esf] ?? esf;
-    if (!d.ok) return sec("Conluio") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Conluio") + cardErro(d.erro);
     const cov = d.cobertura || {}, cap = d.captura || [], rod = d.rodizio_vencedores || [], esfs = d.esferas || {};
     let h = cover(
       esf === "prefeitura" ? "prefeitura" : esf === "estado" ? "estado" : "geral",
@@ -14614,7 +13532,7 @@
     clearTimeout(demora);
     const tit = esf === "todos" ? "Nomeados × candidatos (todas as esferas)" : "Nomeados × candidatos (Estado)";
     let h = cover(esf === "todos" ? "geral" : "estado", tit, "Servidor público que aparece numa folha coletada (Executivo estadual/GESPERJ, Defensoria, TJRJ" + (esf === "todos" ? ", Câmara Municipal do Rio" : "") + ") e também numa candidatura registrada no TSE. <b>Cada cartão é uma pessoa</b> e diz se o vínculo foi <b>VERIFICADO</b> (os 6 dígitos de CPF que a folha publica conferem com o CPF da candidatura) ou está <b>PENDENTE</b> — possível homônimo, só o nome coincide. Ser candidato é direito político; isto é indício de relação político-administrativa, não irregularidade.", "🏛️") + acoesAba("nomeados");
-    if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+    if (!d || d.ok === false) return h + cardErro(d && d.erro);
     const it = d.itens || [];
     const ver = it.filter((x) => x.verificacao === "VERIFICADO"), pen = it.filter((x) => x.verificacao !== "VERIFICADO");
     h += `<div class="grid g2">${kpi(fmtN(d.total), "Pessoas no cruzamento", null, "🏛️", { sobre: `Total REAL de pessoas desta esfera — não é teto de consulta. ${fmtN(d.n_candidaturas)} candidaturas no total.` })}${kpi(fmtN(d.n_verificados), "Verificadas pelo CPF", "var(--teal)", "✔", { sobre: "O CPF parcial publicado na folha (6 dígitos) confere com o CPF da candidatura no TSE (consulta_cand, dados abertos). É a mesma pessoa." })}
@@ -14685,7 +13603,7 @@
   }
   async function renderSocioServidor() {
     const d = await J("/api/intel/socio_servidor");
-    if (!d.ok) return sec("Sócio na folha") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sócio na folha") + cardErro(d.erro);
     const ps = d.pessoas || [], ind = d.indeterminados || [], hom = d.homonimos || [], c = d.contagem || {};
     const obArt9 = ps.reduce((s, x) => s + (x.ob_mesmo_orgao || 0), 0);
     let h = cover(
@@ -14734,7 +13652,7 @@
   }
   async function renderCapital() {
     const d = await J("/api/intel/capital_incompativel?limite=150");
-    if (!d.ok) return sec("Capital irrisório") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Capital irrisório") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Capital irrisório — sem lastro para o que faturou", "Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.", "🫧") + acoesAba("capital_incompativel");
     registrarDrill("capitalIrrisorio", { titulo: "Empresas com capital social de até R$ 1.000", itens: a.filter((x) => x.capital <= 1e3), nota: "Capital irrisório frente ao recebido é indício de fachada, não prova." });
@@ -14771,7 +13689,7 @@
   }
   async function renderPrioridade() {
     const d = await J("/api/intel/prioridade_valor?limite=80");
-    if (!d.ok) return sec("Prioridade por valor em risco") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Prioridade por valor em risco") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Prioridade — onde a auditoria rende mais", "Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.", "⚡") + acoesAba("prioridade_valor");
     registrarDrill("sinalMedioMais", { titulo: "Com sinal médio ou alto (score ≥ 25)", itens: a.filter((x) => x.score >= 25), nota: "" });
@@ -14802,7 +13720,7 @@
   }
   async function renderFornecedorDependente() {
     const d = await J("/api/intel/fornecedor_dependente?limite=150");
-    if (!d.ok) return sec("Cativos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Cativos") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", 'Fornecedor cativo — "empresa do órgão"', "Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.", "🔗") + acoesAba("fornecedor_dependente");
     registrarDrill("dep100Orgao", { titulo: "Fornecedores que faturam ~100% com um único órgão", itens: a.filter((x) => x.share >= 0.99), nota: "Dependência total de um comprador é indício de captura — cabe verificar o objeto." });
@@ -14839,7 +13757,7 @@
   }
   async function renderCorridaDezembro() {
     const d = await J("/api/intel/corrida_dezembro?limite=150");
-    if (!d.ok) return sec("Dezembro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Dezembro") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Corrida do empenho de dezembro", 'Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.', "📅") + acoesAba("corrida_dezembro");
     registrarDrill("dez100", { titulo: "Fornecedores com ~100% do faturamento em dezembro", itens: a.filter((x) => x.share >= 0.99), nota: "Concentração no fim do exercício pede exame do empenho e da entrega." });
@@ -14876,7 +13794,7 @@
   }
   async function renderRadar() {
     const d = await J("/api/intel/radar?limite=150");
-    if (!d.ok) return sec("Radar") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Radar") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Radar de risco — todos os detectores somados", "Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.", "🎯") + acoesAba("radar_risco");
     const _nVerm = Number(d.n_vermelho || 0), _maior = a.length ? Number(a[0].score) : null;
@@ -14912,7 +13830,7 @@
   }
   async function renderConluioQSA() {
     const d = await J("/api/intel/conluio_qsa");
-    if (!d.ok) return sec("Conluio QSA") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Conluio QSA") + cardErro(d.erro);
     const a = d.pares || [];
     const cob = d.cobertura || {};
     let h = cover("geral", "Conluio direto — vencedor × perdedora do mesmo dono", 'Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.', "🤝") + acoesAba("conluio_qsa");
@@ -14961,7 +13879,7 @@
   }
   async function renderComunidades() {
     const d = await J("/api/intel/comunidades");
-    if (!d.ok) return sec("Comunidades") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Comunidades") + cardErro(d.erro);
     const a = d.comunidades || [];
     const g = d.grafo || {};
     let h = cover("geral", "Comunidades — clusters família-empresa-órgão (Louvain)", "Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.", "🧩") + acoesAba("comunidades", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
@@ -15009,7 +13927,7 @@
   }
   async function renderRetro() {
     const d = await J("/api/intel/retro");
-    if (!d.ok) return sec("Retro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Retro") + cardErro(d.erro);
     const ps = d.por_sinal || {};
     const ex = d.exemplos || [];
     const j = d.janela || {};
@@ -15086,7 +14004,7 @@
   }
   async function renderSocioOculto() {
     const d = await J("/api/intel/socio_oculto?limite=150");
-    if (!d.ok) return sec("Sócio oculto") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sócio oculto") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Sócio oculto — um dono, vários fornecedores", "Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.", "🫥") + acoesAba("socio_oculto");
     registrarDrill("holdings", { titulo: "Casos em que o sócio é PJ (holding)", itens: a.filter((x) => x.holding), nota: "Sócio PJ é o degrau que permite subir a cadeia até a pessoa física." });
@@ -15125,7 +14043,7 @@
   }
   async function renderNepotismo() {
     const d = await J("/api/intel/nepotismo?limite=150");
-    if (!d.ok) return sec("Nepotismo") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Nepotismo") + cardErro(d.erro);
     const a = d.achados || [], hip = d.hipoteses || [];
     let h = cover("geral", "Nepotismo — parentes em cargo de confiança", "Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.", "👪") + acoesAba("nepotismo", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
     registrarDrill("sobrenome100", { titulo: "Grupos em que o sobrenome cobre 100% do quadro", itens: a.filter((x) => x.concentracao >= 1), nota: "Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm." });
@@ -15181,7 +14099,7 @@
   };
   async function renderFenix() {
     const d = await J("/api/intel/fenix?limite=150");
-    if (!d.ok) return sec("Fênix") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Fênix") + cardErro(d.erro);
     const a = d.achados || [];
     const _fenixLeitura = (x) => {
       const quem = `<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita`;
@@ -15234,7 +14152,7 @@
   }
   async function renderPortaGiratoria() {
     const d = await J("/api/intel/porta_giratoria?limite=150");
-    if (!d.ok) return sec("Porta giratória") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Porta giratória") + cardErro(d.erro);
     const a = d.achados || [];
     let h = cover("geral", "Porta giratória — ex-servidor virou fornecedor", "Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.", "🚪") + acoesAba("porta_giratoria");
     registrarDrill("confiancaAlta", { titulo: "Cruzamentos com confiança ALTA (casados por CPF)", itens: a.filter((x) => x.confianca === "ALTA"), nota: "Confiança ALTA = documento, não nome. É a única faixa que dispensa checar homônimo." });
@@ -15273,7 +14191,7 @@
   }
   async function renderNepotismoCruzado() {
     const d = await J("/api/intel/nepotismo_cruzado?limite=80");
-    if (!d.ok) return sec("Nepotismo cruzado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Nepotismo cruzado") + cardErro(d.erro);
     const a = d.achados || [], hip = d.hipoteses || [];
     const desc = `<div class="dim" style="margin-top:10px">Descartados: <b>${fmtN(d.descartados_mesma_pessoa || 0)}</b> par(es) em que o "parente colocado" era a própria autoridade (mesmo nome e mesmo CPF, lotada em dois órgãos) e <b>${fmtN(d.descartados_indeterminados || 0)}</b> sem CPF para distinguir. ${hip.length ? `<b>${fmtN(d.n_hipoteses)}</b> par(es) ligados só pelo sobrenome ficam abaixo como hipótese.` : ""}</div>`;
     const hipH = hip.length ? `<div class="sec" style="margin-top:16px"><b>Hipóteses — só sobrenome (não são achados)</b></div><div class="grid">` + hip.map((x) => card(`<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)} <span class="tag">hipótese</span></div><div class="dim">${esc((x.orgao_a || "").slice(0, 30))} ⇄ ${esc((x.orgao_b || "").slice(0, 30))}</div>${leitura(esc(x.motivo || "") + " Falta: " + esc(x.falta || "") + ".")}`)).join("") + `</div>` : "";
@@ -15298,7 +14216,7 @@
   }
   async function renderLaranjas() {
     const d = await J("/api/laranjas");
-    if (!d.ok) return sec("Laranjas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Laranjas") + cardErro(d.erro);
     const it = d.itens || [];
     let h = cover("geral", "Laranjas — sócio que recebe benefício", "Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).", "🎭");
     if (!it.length) return h + card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>') + `<div class="note">${esc(d.aviso || "")}</div>`;
@@ -15477,7 +14395,7 @@
   async function sweep(a) {
     if (a === "pausar" && !await jfnConfirm("Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.", "⏸ Pausar tudo")) return;
     await J("/api/sweeps/" + a, { method: "POST" });
-    jfnToast2(a === "pausar" ? "Sweeps pausados." : "Sweeps retomados.", "green");
+    jfnToast(a === "pausar" ? "Sweeps pausados." : "Sweeps retomados.", "green");
     setTimeout(() => ir(aba), 500);
   }
   var _valLista = [];
@@ -16387,7 +15305,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         body: JSON.stringify({ alvo, esfera: $("lai-esfera")?.value || "", motivo: $("lai-motivo")?.value || "", telegram: Number($("lai-tg")?.value || "1") })
       });
       if (!d || !d.ok) {
-        o.innerHTML = card(`<div class="warn">${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
+        o.innerHTML = cardErro((d || {}).erro || "a API não respondeu");
         return;
       }
       const avisos = (d.avisos || []).map((a) => `<div class="warn">${esc(a)}</div>`).join("");
@@ -16401,7 +15319,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         tb.insertAdjacentHTML("afterbegin", _linha2({ ...d, status: "rascunho", vencido: false }));
       }
     } catch (e) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+      o.innerHTML = cardErro(String(e));
     }
   }
   async function laiStatus(id, status) {
@@ -16514,7 +15432,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin('Buscando "' + esc(q) + '"…');
     const r = await J("/api/acervo/buscar?q=" + encodeURIComponent(q) + "&esfera=" + encodeURIComponent(esf) + "&limite=100", { tetoMs: 6e4 });
     if (!r || !r.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano((r || {}).erro || "a busca não respondeu")}</div>`);
+      o.innerHTML = cardErro((r || {}).erro || "a busca não respondeu");
       return;
     }
     const it = r.hits || [];
@@ -16664,7 +15582,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin("Reunindo tudo sobre " + esc(numero) + "…");
     const f = await J("/api/acervo/processo?numero=" + encodeURIComponent(numero), { tetoMs: 9e4 });
     if (!f || !f.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano((f || {}).erro || "ficha indisponível")}</div>`);
+      o.innerHTML = cardErro((f || {}).erro || "ficha indisponível");
       return;
     }
     _ultimaFicha = f;
@@ -16723,7 +15641,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin("lendo documento " + esc(seq) + "…");
     const d = await J("/api/acervo/documento?numero=" + encodeURIComponent(numero) + "&seq=" + encodeURIComponent(seq), { tetoMs: 3e4 });
     if (!d || !d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano((d || {}).erro || "sem texto")}</div>`);
+      o.innerHTML = cardErro((d || {}).erro || "sem texto");
       return;
     }
     o.innerHTML = card(`<div style="font-weight:700">${esc(d.titulo || seq)}</div><pre style="white-space:pre-wrap;font-size:12px;max-height:520px;overflow:auto">${esc(d.texto || "")}</pre>`);
@@ -16770,7 +15688,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       } else if (a === "abrir") acervoAbrir(b.dataset.numero);
       else if (a === "ler") acervoLer(b.dataset.numero, b.dataset.seq);
       else if (a === "acao") acervoAcao(b.dataset.rota, JSON.parse(b.dataset.body || "{}"));
-      else if (a === "dossie" && typeof window.abrirDossie === "function") window.abrirDossie(b.dataset.cnpj, b.dataset.nome);
+      else if (a === "dossie") abrirDossie(b.dataset.cnpj, b.dataset.nome);
     });
   }
 
@@ -16894,7 +15812,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ]
   };
   function montarSpheres() {
-    $("spheres").innerHTML = SPHERES.map((s) => `<button type="button" class="sph ${s.id} ${s.id === esfera ? "on" : ""}"${_v60 ? ` title="${s.c}"` : ""} aria-pressed="${s.id === esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join("");
+    $("spheres").innerHTML = SPHERES.map((s) => `<button type="button" class="sph ${s.id} ${s.id === esfera ? "on" : ""}" title="${s.c}" aria-pressed="${s.id === esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join("");
   }
   var _tabsEsfera = null;
   function montarTabs() {
@@ -16904,7 +15822,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       _tabsEsfera = esfera;
       nav.innerHTML = TABS[esfera].map((t) => `<button class="${t.id === aba ? "on" : ""}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join("");
       _tabsMais();
-      if (_v60) {
+      {
         const o = nav.querySelector("button.on");
         if (o) o.scrollIntoView({ block: "nearest", inline: "center" });
       }
@@ -16912,7 +15830,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     }
     for (const b of nav.children) b.classList.toggle("on", b.dataset.aba === aba);
     const _on = nav.querySelector("button.on");
-    if (_on) _on.scrollIntoView({ block: "nearest", inline: _v60 ? "center" : "nearest", behavior: _redMotion ? "auto" : "smooth" });
+    if (_on) _on.scrollIntoView({ block: "nearest", inline: "center", behavior: _redMotion ? "auto" : "smooth" });
     _tabsMaisPintar();
   }
   function _tabsMais() {
@@ -17028,7 +15946,6 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (typeof _rjbgTinge === "function") _rjbgTinge();
     if (typeof nebulaViva === "function") nebulaViva();
     if (typeof nucleoViva === "function") nucleoViva();
-    if (typeof holoRJ === "function") holoRJ();
     const meu = ++_nav;
     const v = $("view");
     v.innerHTML = spin();
@@ -17038,9 +15955,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       const _tq = jarvisToque(), _fam = _abaAntes === id && _tq.recente ? "lado" : familiaDaAba(esfera, id);
       const pintar = () => {
         v.innerHTML = `<div class="fade" data-esf="${esfera}" data-aba="${id}" data-fam="${_fam}" style="--jv-dir:${_tq.dir}">${html}</div>`;
-        if (typeof marcarValores === "function") marcarValores(v);
+        marcarValores(v);
       };
-      if (document.startViewTransition && !_redMotion && (!_v60 || _v61 && !_sobrio) && !document.documentElement.classList.contains("v63-tr-on") && !document.getElementById("v64-abertura")) {
+      if (document.startViewTransition && !_redMotion && !_sobrio && !document.documentElement.classList.contains("v63-tr-on") && !document.getElementById("v64-abertura")) {
         const _h = document.documentElement;
         _h.classList.add("v61-vt");
         const _vt = document.startViewTransition(pintar);
@@ -17090,7 +16007,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (st.exercicio) {
       const hs = $("hsub");
       hs.textContent = "";
-      hs.append(_v60 ? "Central de inteligência · SIAFE " : "CENTRAL DE INTELIGÊNCIA · SIAFE ");
+      hs.append("Central de inteligência · SIAFE ");
       const pt = document.createElement("i");
       pt.className = "sinal " + (st.logged_in ? "ok" : "off");
       pt.title = st.logged_in ? "SIAFE conectado" : "SIAFE sem sessão";
@@ -17119,8 +16036,6 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();
-    holoRJ();
-    mesaViva();
     conscienciaRever();
     energiaRever();
   });

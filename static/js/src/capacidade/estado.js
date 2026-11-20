@@ -35,11 +35,14 @@ export let _sobrio = false;
    recarrega. Mora nesta folha pelo mesmo motivo das outras duas — `cena/*` e `ui/*` a leem para
    NÃO iniciar os laços das camadas ambientes que o v60 aposentou. */
 export const _v60 = document.documentElement.classList.contains('v60');
+/* AS TRÊS BANDEIRAS (`_v60`, `_v61`, `_v63`) SÃO CONSTANTES VERDADEIRAS: o <head> as liga em toda carga
+   (decisão do dono, 11/11 e 17/11/2026). Os ramos "desligado" saíram do painel (untangle 20/11); os
+   leitores que sobraram são blocos mortos que um teste fixa pelo texto — `nebulaViva`, `rjbgStart`/
+   `netbgStart`, a órbita de `cena/energia.js` — e a mesa do núcleo (`cena/index.js::trilhos`). Ver
+   `docs/untangle/painel.md` §9.6. Bandeira nova não entra aqui: versão que vira padrão perde o `if`. */
 
-/* v61 TRON CLARO (2026-11-11): o tema claro, sempre ligado (o script do <head> põe `v61` e `data-v61`
-   em toda carga). As duas bandeiras são iguais desde que a volta ao escuro saiu (11/11) e o resto do
-   tema escuro foi apagado na v63 (17/11); ficam as duas porque ~30 pontos as leem. */
-export const _v61flag = document.documentElement.hasAttribute('data-v61');
+/* v61 TRON CLARO (2026-11-11): o tema claro, sempre ligado (o script do <head> põe `v61` em toda
+   carga; a volta ao escuro saiu em 11/11 e o resto do tema escuro foi apagado na v63, 17/11). */
 export const _v61 = document.documentElement.classList.contains('v61');
 
 /** Único caminho de escrita da bandeira de sobriedade. Chamado só por `capacidade/sobrio.js`. */

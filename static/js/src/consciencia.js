@@ -230,7 +230,7 @@ export function conscienciaRever() {
   const d = $('consciencia'); if (d && _aberto) fundoVivo(d);
 }
 
-export function conscienciaAbrir() {
+function conscienciaAbrir() {
   const d = $('consciencia'); if (!d || _aberto) return;
   _aberto = true;
   d.hidden = false;
@@ -244,7 +244,7 @@ export function conscienciaAbrir() {
   const f = d.querySelector('.cs-fechar'); if (f) f.focus();
 }
 
-export function conscienciaFechar() {
+function conscienciaFechar() {
   const d = $('consciencia'); if (!d || !_aberto) return;
   _aberto = false;
   clearInterval(_relogio); _relogio = 0;

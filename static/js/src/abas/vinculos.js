@@ -17,11 +17,10 @@
  *
  * Sem efeito de topo.
  */
-import {$, esc, svgIco, card, kpi, sec, cover, leitura, corta, clk} from '../nucleo/dom.js';
+import {$, esc, card, kpi, sec, cover, leitura} from '../nucleo/dom.js';
 import {registrarDrill, drillSeCompleto} from '../nucleo/drill.js';
-import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
-import {J, erroHumano} from '../nucleo/http.js';
-import {abrirDossie} from '../ui/index.js';
+import {fmtN, fmtRc} from '../nucleo/formato.js';
+import {J, erroHumano, cardErro} from '../nucleo/http.js';
 
 // ═══ VÍNCULOS — beneficiário final · parentesco · histórico societário ═══
 export async function renderVinculos(){
@@ -45,7 +44,7 @@ export async function renderVinculos(){
       : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
     h+=`<div class="note" style="margin-top:8px">Fonte: ${esc(s.fonte||'')}</div>`;
   }else{
-    h+=card(`<div class="warn">${erroHumano(s.erro)}</div>`);
+    h+=cardErro(s.erro);
   }
 
   h+=sec('Consultar uma empresa');
@@ -90,13 +89,13 @@ export async function renderVinculos(){
   return h;
 }
 
-export function _vincCnpj(){const v=($('vinc-cnpj')?.value||'').replace(/\D/g,'');return v.length>=8?v:'';}
+function _vincCnpj(){const v=($('vinc-cnpj')?.value||'').replace(/\D/g,'');return v.length>=8?v:'';}
 
-export async function vincConsultar(){
+async function vincConsultar(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">subindo a cadeia societária…</div>');
   const d=await J('/api/osint/beneficiario_final?cnpj='+encodeURIComponent(c));
-  if(d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const cob=d.cobertura||{}, ps=d.pessoas||[];
   /* Participação cruzada circular é ACHADO — o módulo a trata como estrutura que dificulta
      identificar quem está por trás. Um número desses sem caminho para as cadeias é inútil. */
@@ -137,7 +136,7 @@ export async function vincConsultar(){
   o.innerHTML=h;
 }
 
-export async function vincContato(){
+async function vincContato(){
   // TELEFONE E E-MAIL COMPARTILHADOS — as arestas mais fortes da régua depois de `mesma_sala`
   // (0,70 e 0,80), sobre 6.171.766 estabelecimentos da Receita que estavam indexados e SEM UM
   // ÚNICO CONSUMIDOR. Duas empresas de raízes diferentes que dividem central telefônica é o sinal
@@ -146,7 +145,7 @@ export async function vincContato(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">cruzando telefone e e-mail em 6,17 milhões de estabelecimentos…</div>');
   const d=await J('/api/osint/contato_compartilhado?cnpj='+encodeURIComponent(c));
-  if(d.erro){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro){o.innerHTML=cardErro(d.erro);return;}
   const ar=d.arestas||[], cob=d.cobertura||{}, desc=d.descartados||{};
   let h=sec('Contato compartilhado — '+esc(c));
   registrarDrill('contatoArestas',{titulo:'Empresas ligadas por telefone ou e-mail',itens:ar,
@@ -185,14 +184,14 @@ export async function vincContato(){
   o.innerHTML=h;
 }
 
-export async function vincAssinaturasPcrj(){
+async function vincAssinaturasPcrj(){
   // QUEM DECIDIU, no município. O SEI da Prefeitura publica a MATRÍCULA de quem assina cada
   // despacho; a folha municipal tem matrícula e nome. Identificação por CADASTRO — mais forte que
   // casamento por nome, que carrega 4,7% de homônimo comprovado no índice do QSA.
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">casando matrículas do SEI com a folha da Prefeitura…</div>');
   const d=await J('/api/pcrj/assinaturas?limite=150');
-  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro||d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const it=d.itens||[];
   /* UNIDADE: o KPI conta MATRÍCULAS, a gaveta contava ASSINATURAS — 51 contra 110, e 18 contra 38.
      Nenhum dos dois números estava errado; eles medem coisas diferentes, e a mesma pessoa assina
@@ -272,13 +271,13 @@ export async function vincAssinaturasPcrj(){
   o.innerHTML=h;
 }
 
-export async function vincCocontato(){
+async function vincCocontato(){
   // O TESTE CLÁSSICO DE BID RIGGING, e aqui não há hipótese sobre "empresas ligadas": é o MESMO
   // certame, com os dois nomes na mesma ata. Quem disputa não deveria atender pelo mesmo contato.
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">cruzando participantes de 4.517 certames com 6,17 milhões de estabelecimentos…</div>');
   const d=await J('/api/osint/cocontato_certame?limite=120');
-  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro||d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const it=d.itens||[];
   let h=sec('Mesmo certame, mesmo contato');
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares no mesmo certame','var(--amber)','⚖️',{drill:'ccTodos'})}
@@ -309,14 +308,14 @@ export async function vincCocontato(){
   o.innerHTML=h;
 }
 
-export async function vincElosOcultos(soSemExplicacao){
+async function vincElosOcultos(soSemExplicacao){
   // A PERGUNTA QUE O GRAFO EXISTE PARA RESPONDER: duas empresas que disputam o mesmo dinheiro
   // público atendem pelo mesmo telefone ou e-mail? Ou são o mesmo grupo — e a disputa entre elas é
   // aparente — ou há uma mão comum que ninguém declarou.
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">cruzando contato compartilhado com quem recebeu do Estado…</div>');
   const d=await J('/api/osint/elos_ocultos?limite=120'+(soSemExplicacao?'&so_sem_explicacao=1':''));
-  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro||d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const it=d.itens||[];
   let h=sec('Elos ocultos — contato compartilhado × dinheiro público');
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares com os DOIS lados pagos','var(--amber)','🔗',{drill:'eoTodos'})}
@@ -360,7 +359,7 @@ export async function vincElosOcultos(soSemExplicacao){
   o.innerHTML=h;
 }
 
-export async function vincOsintProcessos(soConflito){
+async function vincOsintProcessos(soConflito){
   // A CORRELAÇÃO QUE FALTAVA. Inteligência sobre empresa não fiscaliza nada sozinha: quem fiscaliza
   // abre AUTOS. Aqui a fila de agente público encontra as fichas de processo que citam o CNPJ —
   // e o conflito PELO PROCESSO é mais forte que o conflito pelo pagamento, porque o caminho do
@@ -368,7 +367,7 @@ export async function vincOsintProcessos(soConflito){
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">cruzando a fila de agente público com as fichas de processo…</div>');
   const d=await J('/api/osint/processos?limite=120'+(soConflito?'&so_conflito=1':''));
-  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro||d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const it=d.itens||[];
   const nConf=(d.itens||[]).filter(x=>(x.agentes||[]).some(a=>a.conflito_pelo_processo||a.conflito_de_orgao)).length;
   let h=sec('OSINT × processos lidos');
@@ -401,7 +400,7 @@ export async function vincOsintProcessos(soConflito){
   o.innerHTML=h;
 }
 
-export async function vincAgentePublico(filtro){
+async function vincAgentePublico(filtro){
   // AGENTE PÚBLICO NO QUADRO SOCIETÁRIO. Não pede CNPJ: a pergunta é sobre a FILA inteira — 251 mil
   // nomes das folhas do Estado e da ALERJ cruzados com o QSA nacional (27,6 mi de linhas). O que
   // chega aqui já passou por três cortes: entidade que recebeu dinheiro público, nome com um único
@@ -409,7 +408,7 @@ export async function vincAgentePublico(filtro){
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
   const d=await J('/api/osint/agente_publico?limite=250&filtro='+encodeURIComponent(filtro||'apTodos'));
-  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d.erro||d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   // CADA KPI TEM UM CAMINHO PARA O DADO. `filtro` é o nome da fatia que o número representa —
   // clicar em "68 comissionados" mostra os 68, não outra tela com outro número.
   const FILTROS={
@@ -468,11 +467,11 @@ export async function vincAgentePublico(filtro){
   o.innerHTML=h;
 }
 
-export async function vincParentesco(){
+async function vincParentesco(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">medindo eixos…</div>');
   const d=await J('/api/osint/parentesco?cnpj='+encodeURIComponent(c));
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro);return;}
   const cor={indicio:'var(--rose)',hipotese:'var(--amber)',hipotese_fraca:null}[d.grau]||null;
   let h=sec('Parentesco inferido — CNPJ raiz '+esc(d.cnpj_basico));
   h+=`<div class="grid g2">${kpi(esc(d.grau||'nenhum eixo'),'Grau',cor,'👪',
@@ -508,12 +507,12 @@ export async function vincParentesco(){
   o.innerHTML=h;
 }
 
-export async function vincNaData(){
+async function vincNaData(){
   const c=_vincCnpj(), dt=($('vinc-data')?.value||''); const o=$('vinc-out');
   if(!c||!dt){o.innerHTML=card('<div class="warn">Informe CNPJ e data.</div>');return;}
   o.innerHTML=card('<div class="dim">consultando a série…</div>');
   const d=await J(`/api/osint/vinculo_na_data?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro);return;}
   const cor={SIM:'var(--rose)',NAO:null,INDISPONIVEL:'var(--amber)'}[d.resposta]||null;
   let h=sec('Havia vínculo societário em '+esc(dt)+'?');
   h+=`<div class="grid g2">${kpi(esc(d.resposta),'Resposta',cor,'⚖️',
@@ -540,13 +539,13 @@ export async function vincNaData(){
   o.innerHTML=h;
 }
 
-export async function vincTrocas(){
+async function vincTrocas(){
   const c=_vincCnpj(), dt=($('vinc-data')?.value||''); const o=$('vinc-out');
   if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   if(!dt){o.innerHTML=card('<div class="warn">Informe a data de referência (homologação, assinatura ou pagamento).</div>');return;}
   o.innerHTML=card('<div class="dim">procurando trocas de quadro…</div>');
   const d=await J(`/api/osint/trocas_societarias?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro||d.motivo)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro||d.motivo);return;}
   let h=sec('Trocas de quadro societário perto de '+esc(dt));
   const _troca=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
       <div style="min-width:0"><div style="font-weight:700">${esc(x.nome||'')}</div>
@@ -572,7 +571,7 @@ export async function vincTrocas(){
   o.innerHTML=h;
 }
 
-export async function vincPrevalencia(){
+async function vincPrevalencia(){
   const o=$('vinc-prev'); o.innerHTML='<div class="dim">medindo na base…</div>';
   const d=await J('/api/osint/parentesco/prevalencia');
   if(!d.ok){o.innerHTML=`<div class="warn">${erroHumano(d.erro)}</div>`;return;}
@@ -590,11 +589,11 @@ export async function vincPrevalencia(){
 
 
 
-export async function vincGrafo(){
+async function vincGrafo(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">montando a rede…</div>');
   const d=await J('/api/grafo?alvo='+encodeURIComponent(c)+'&saltos=2');
-  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d&&d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const nos=d.nos||[], ar=d.arestas||[];
   /* Os três números SÃO os três arrays desta resposta — mesmo universo, sem página no meio. */
   registrarDrill('grafoNos',{titulo:'Nós da rede (2 saltos)',itens:nos,
@@ -611,22 +610,22 @@ export async function vincGrafo(){
       <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`)+
     leitura('A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.');
 }
-export async function vincFtm(){
+async function vincFtm(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">exportando…</div>');
   const d=await J('/api/grafo/ftm?alvo='+encodeURIComponent(c)+'&saltos=2');
-  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d&&d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   const ents=d.entidades||d.entities||[];
   o.innerHTML=sec('FollowTheMoney')+card(
     `<div class="dim">${fmtN(ents.length)} entidade(s) no vocabulário FtM — interopera com Aleph e Gephi sem migrar nada.</div>
      <pre style="white-space:pre-wrap;font-size:11.5px;margin-top:8px;max-height:300px;overflow:auto">${esc(JSON.stringify(ents.slice(0,20),null,1))}</pre>`);
 }
-export async function vincHistoricoPessoa(){
+async function vincHistoricoPessoa(){
   const n=($('vinc-pessoa')?.value||'').trim(); const o=$('vinc-out');
   if(!n){o.innerHTML=card('<div class="warn">Informe o nome do sócio.</div>');return;}
   o.innerHTML=card('<div class="dim">consultando a série…</div>');
   const d=await J('/api/osint/historico_socio?nome='+encodeURIComponent(n));
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro);return;}
   const vs=d.vinculos||[];
   if(!vs.length){o.innerHTML=card(`<div class="note">Nenhum vínculo desta pessoa na série. <b>INDISPONÍVEL não é ausência</b>: a série cobre só as raízes-alvo do acervo, não o Brasil inteiro.</div>`);return;}
   let h=sec('Sociedades de '+esc(n),vs.length)+`<table class="tb"><thead><tr><th>CNPJ raiz</th><th>Qualificação</th><th>Visto de</th><th>até</th><th>Situação</th></tr></thead><tbody>`;
@@ -638,10 +637,10 @@ export async function vincHistoricoPessoa(){
   o.innerHTML=h;
 }
 
-export async function vincConluioMunicipal(){
+async function vincConluioMunicipal(){
   const o=$('vinc-out'); o.innerHTML=card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
   const d=await J('/api/osint/conluio_municipal?limite=400');
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.motivo||d.erro);return;}
   const c=d.cobertura||{};
   let h=sec('Conluio municipal — sócio em comum entre vencedor e perdedora');
   /* CADA LINHA DE `achados` É UM PAR, NÃO UM CERTAME — 42 pares para 31 certames na medição de
@@ -682,10 +681,10 @@ export async function vincConluioMunicipal(){
   o.innerHTML=h;
 }
 
-export async function vincResolucao(){
+async function vincResolucao(){
   const o=$('vinc-out'); o.innerHTML=card('<div class="dim">consultando…</div>');
   const d=await J('/api/osint/resolucao_nome_cnpj');
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.motivo||d.erro);return;}
   o.innerHTML=sec('Resolução razão social → CNPJ (catálogo nacional da Receita)')+
     `<div class="grid g2">${kpi(fmtN(d.nomes),'Nomes no universo',null,null,
         {sobre:'Razões sociais que aparecem em atas e editais sem CNPJ ao lado — o problema que esta rotina existe para resolver. Nome sem documento não cruza com nada: não vira QSA, não vira sanção, não vira pagamento.'})}
@@ -699,22 +698,22 @@ export async function vincResolucao(){
     `<div class="note">${esc(d.nota||'')}</div>`;
 }
 
-export async function vincInterposicao(){
+async function vincInterposicao(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">medindo os eixos de interposição…</div>');
   const d=await J('/api/osint/interposicao?cnpj='+encodeURIComponent(c));
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro);return;}
   const socios=d.socios||d.perfis||[];
   let h=sec('Perfil de laranja (interposição) — CNPJ raiz '+esc(c.slice(0,8)));
   h+=leitura('Este módulo marcava <b>55%</b> da base até a prevalência de cada eixo ser medida: empresa com um só sócio é <b>54,9%</b> do normal, e sócio com mais de 80 anos é <b>1,87%</b>. Depois da calibragem, 1,4%. Eixo que acende na maioria mede a base, não o alvo.');
   h+=card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,4000)}</pre>`);
   o.innerHTML=h;
 }
-export async function vincPatrimonio(){
+async function vincPatrimonio(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
   o.innerHTML=card('<div class="dim">comparando capacidade declarada e recebimento…</div>');
   const d=await J('/api/osint/patrimonio?cnpj='+encodeURIComponent(c));
-  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){o.innerHTML=cardErro(d.erro);return;}
   let h=sec('Capacidade declarada × recebimento público');
   h+=leitura('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
   h+=card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,3000)}</pre>`);

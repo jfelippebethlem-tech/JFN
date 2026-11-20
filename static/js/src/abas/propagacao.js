@@ -4,7 +4,7 @@
 // o estado que o despachante grava (cron a cada 5 min, fora do processo do painel) — não dispara nada daqui.
 // Base ausente ou despachante parado = INDISPONÍVEL/PARADO, nunca "nada sujo". Custo de API/assinatura não aparece.
 import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, cardErro} from '../nucleo/http.js';
 import {fmtN} from '../nucleo/formato.js';
 
 const _css = '<style>.pg-txt th,.pg-txt td{text-align:left;vertical-align:top}.pg-txt th.right,.pg-txt td.right{text-align:right}</style>';
@@ -105,7 +105,7 @@ export async function renderPropagacao(){
   const [d, cz] = await Promise.all([J('/api/sistema/propagacao'), J('/api/sistema/certeza').catch(e => ({ok: false, erro: String(e)}))]);
   let h = cover('sistema', 'Propagação — o que mudou puxa o que depende',
     'Quando uma fonte muda (OB nova, status recoletado, processo SEI capturado, contrato novo, regra corrigida), tudo o que depende dela é marcado como desatualizado e recalculado sozinho, um trabalho pesado por vez. Aqui se vê o que está desatualizado, o que foi recalculado e o que falhou.', '🔁');
-  if (!d || (d.ok === false && !d.estado)) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
+  if (!d || (d.ok === false && !d.estado)) return h + cardErro(d && (d.erro || d));
   if (d.ok === false) return h + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || 'sem estado da propagação')}. Não quer dizer que está tudo em dia: a tela não tem como saber.</div>`);
   const r = d.resumo || {}, u = d.ultimo_ciclo;
   h += card(d.estado === 'ok'

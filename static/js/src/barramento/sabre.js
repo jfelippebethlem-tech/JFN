@@ -24,7 +24,7 @@ import {fmtN, fmtD} from '../nucleo/formato.js';
 
 const COR_ESTADO = {ok: 'var(--teal)', carga: 'var(--amber)', critico: 'var(--rose)'};
 
-export const COR_EVENTO = {
+const COR_EVENTO = {
   ob_siafe: 'var(--gold)', ob_tfe: 'var(--gold)', alerta: 'var(--rose)', radar: 'var(--rose)',
   clausula: 'var(--violet)', pericia: 'var(--green)', ata: 'var(--blue)', sei_doc: 'var(--teal)',
 };

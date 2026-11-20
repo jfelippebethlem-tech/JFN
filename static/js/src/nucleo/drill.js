@@ -30,7 +30,7 @@ const _NOMES = ['razao_social', 'nome', 'nome_socio', 'orgao_nome', 'entidade', 
                 'descricao', 'objeto', 'chave', 'sobrenome', 'item'];
 const _DOCS = ['cnpj', 'cnpj_fmt', 'cnpj_basico', 'documento', 'cpf', 'processo', 'numero'];
 
-export function linhaGenerica(x) {
+function linhaGenerica(x) {
   if (x == null || typeof x !== 'object') return card(esc(String(x)));
   const tit = _NOMES.map(k => x[k]).find(v => v != null && v !== '') ?? '—';
   const doc = _DOCS.map(k => x[k]).find(v => v != null && v !== '');
@@ -82,13 +82,8 @@ export function drillSeCompleto(nome, total, itens, cfg) {
    para o teste de contrato poder citá-lo. */
 export const TETO_LINHAS_GAVETA = 800;
 
-/** Limpa o registro da aba anterior — conjunto velho reaparecendo em tela nova é pior que nenhum. */
-export function limparDrill() { _REG.clear(); }
-
-export function temDrill(nome) { return _REG.has(nome); }
-
 /** Abre a gaveta com as linhas da métrica. Sem alvo registrado, não faz nada e não lança. */
-export function abrirDrill(nome) {
+function abrirDrill(nome) {
   const d = _REG.get(nome);
   const alvo = $('drill-out') || $('view');
   if (!d || !alvo) return;
@@ -114,7 +109,7 @@ export function abrirDrill(nome) {
 
 
 /** Abre a PROCEDÊNCIA de uma métrica que não tem linhas: o que mede, de onde vem, como se refaz. */
-export function abrirSobre(titulo, texto) {
+function abrirSobre(titulo, texto) {
   const alvo = $('drill-out') || $('view');
   if (!alvo) return;
   const box = $('drill-box');

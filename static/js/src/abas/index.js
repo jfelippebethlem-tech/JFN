@@ -1,40 +1,29 @@
-/* AS TELAS — as 59 abas do painel, cada uma uma funcao que recebe dado e devolve HTML.
+/* AS TELAS — as abas do painel que ainda nao ganharam modulo de dominio proprio, cada uma uma
+ * funcao que recebe dado e devolve HTML. O catalogo `TABS` (qual render cada aba usa) mora em
+ * `entrada.js`, que importa daqui; as abas que ja sairam (cockpit, comparador, vinculos, casos,
+ * comissao…) sao importadas pelo `entrada.js` direto do modulo delas.
  *
- * Saem em UM modulo, e nao nos sete dominios que o plano previa, pelo mesmo motivo da cena: aqui
- * elas estao em DUAS faixas separadas pelo catalogo `TABS`, e o proprio arquivo explica por que —
- * `TABS` e `const` e referencia o render na AVALIACAO, entao um `const renderX` declarado depois
- * daria TDZ e mataria o boot em silencio, coisa que ja aconteceu. Separar por dominio exige
- * classificar 59 funcoes e resolver as que sao compartilhadas entre esferas (`renderSobrepreco`,
- * `renderConluio` e `renderPoder` aparecem em duas ou tres, com argumento diferente) — isso e
- * trabalho de classificacao, nao de mudanca de arquivo, e fica para um corte proprio.
- *
- * O que se ganha ja: o entrypoint deixa de ser onde as telas moram. Ele passa a ser o catalogo,
- * a sequencia de boot e a ponte.
+ * `renderSobrepreco`, `renderConluio` e `renderPoder` servem duas ou tres esferas, com argumento
+ * diferente — separar por dominio exige classificar essas compartilhadas, e fica para um corte
+ * proprio.
  */
-import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, btnPdf, acoesAba,
-        toggle, corta, clk, avisoDemora} from '../nucleo/dom.js';
-import {drillSeCompleto, limparDrill, registrarDrill} from '../nucleo/drill.js';
-import {fmtN, fmtD, fmtData, fmtPct, fmtR, fmtRc, ROTULOS, rot} from '../nucleo/formato.js';
-import {J, _jCache, erroHumano} from '../nucleo/http.js';
-import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
-        _pagState} from '../nucleo/lista.js';
-import {_redMotion, _sobrio} from '../capacidade/estado.js';
+import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, acoesAba, toggle, corta,
+        clk, avisoDemora} from '../nucleo/dom.js';
+import {drillSeCompleto, registrarDrill} from '../nucleo/drill.js';
+import {fmtN, fmtD, fmtData, fmtPct, fmtR, fmtRc, rot} from '../nucleo/formato.js';
+import {J, erroHumano, cardErro} from '../nucleo/http.js';
+import {filtrar, buscaPag, listaPaginada, ordenar} from '../nucleo/lista.js';
+import {mdSimples} from '../nucleo/markdown.js';
 import {esfera, aba} from '../app/estado.js';
-import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
-import {energiaLigar} from '../cena/energia.js';
-import {abrirDossie, abrirCertame, verCruzamento, jsq, seiArvore, seiBaixarZip,
-        a11yfy, holografar, jfnToast, jfnConfirm} from '../ui/index.js';
+import {abrirDossie, abrirCertame, jsq, jfnToast, jfnConfirm} from '../ui/index.js';
 import {blocoPeriodo} from './periodo.js';
 
 // ═══ RESPONSÁVEIS pelo processo (ordenador · gestor · fiscal) ═══
-// Declarado ANTES de TABS de propósito: TABS é `const` e referencia o render na avaliação —
-// um `const renderX` declarado depois daria TDZ e mataria o boot em silêncio (já aconteceu).
-// `async function` é hoisted, mas a ordem aqui é explícita para quem vier depois.
 export let _respProc='';
 // O payload traz `cargo`, e o extrator às vezes deposita ali o e-mail da assinatura do
 // documento. E-mail pessoal de servidor não vai para a tela: mostra-se o cargo só quando é
 // cargo. O dado continua no banco; o que não se faz é publicá-lo.
-export const _ehEmail=s=>/@/.test(String(s||''));
+const _ehEmail=s=>/@/.test(String(s||''));
 export async function renderResponsaveis(){
   let h=cover('estado','Responsáveis pelo processo','Quem responde por um processo SEI: ordenador de despesa, gestor e fiscal do contrato, com ID funcional quando o documento o traz.','🧑‍⚖️');
   h+=`<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter')this.blur()"></div>`;
@@ -70,9 +59,6 @@ export async function renderResponsaveis(){
 // dossiê completo, o dossiê mestre, a minuta .docx pronta para o gabinete assinar, e todo o eixo
 // de vínculos. Rota órfã não é detalhe de UI: é trabalho feito que não vira decisão de fiscalização.
 // A catraca que impede isso de voltar a crescer é tests/test_rotas_sem_orfa.py.
-//
-// ⚠️ Estes renders ficam ANTES de `const TABS` de propósito: TABS é const e referencia o render na
-// avaliação — declarar depois daria TDZ e mataria o boot em silêncio (já custou 13 versões).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 // ═══ PEÇAS — os produtos entregáveis que não tinham botão ═══
@@ -124,11 +110,11 @@ export async function renderPecas(){
   return h;
 }
 
-export async function filaFiscal(soOsint){
+async function filaFiscal(soOsint){
   const o=$('ff-out');
   o.innerHTML=card('<div class="dim">recalculando a fila sobre o acervo de hoje…</div>');
   const d=await J('/api/fiscal/fila?limite=60'+(soOsint?'&so_osint=1':''));
-  if(!d||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d&&d.erro)}</div>`);return;}
+  if(!d||d.ok===false){o.innerHTML=cardErro(d&&d.erro);return;}
   const it=d.itens||[];
   if(!it.length){
     o.innerHTML=card(soOsint
@@ -484,7 +470,7 @@ export async function sinteseProcesso(){
        ${contr?`<div style="margin-top:10px;font-weight:700">Contradições entre documentos (${s.contradicoes.length})</div><ul>${contr}</ul>`
               :'<div class="dim" style="margin-top:8px">Nenhuma contradição entre documentos pela leitura do conjunto.</div>'}
        ${s.prosa?`<div style="margin-top:10px">${esc(s.prosa)}</div>`:''}`);
-  }catch(e){ o.innerHTML=card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+  }catch(e){ o.innerHTML=cardErro(String(e)); }
 }
 
 export async function pecaGerar(rota,campo){
@@ -501,7 +487,7 @@ export async function pecaGerar(rota,campo){
       return;
     }
     o.innerHTML=card(`<div class="ok">Acionado.</div><div class="dim" style="margin-top:6px">${esc(d.mensagem||d.status||'A peça chega no Telegram quando terminar.')}</div>`);
-  }catch(e){ o.innerHTML=card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+  }catch(e){ o.innerHTML=cardErro(String(e)); }
 }
 
 // ═══ FONTES EXTERNAS — os seis providers que ninguém alcançava ═══
@@ -527,14 +513,13 @@ export async function renderFontesExternas(){
   const lim=await J('/api/fontes/limites');
   if(lim&&lim.ok&&(lim.itens||[]).length){
     /* o texto vem de limites_de_fonte.py com **negrito** e `código` — aparecia com os asteriscos crus */
-    const _mdLim=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`(.+?)`/g,'<code>$1</code>');
     h+=sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
     h+=card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>`
       +lim.itens.map(x=>`<tr>
-          <td><b>${_mdLim(x.fonte)}</b></td>
+          <td><b>${mdSimples(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo==='bloqueio'?'medio':'alto'}">${x.tipo==='bloqueio'?'bloqueio':'limite da fonte'}</span></td>
-          <td>${_mdLim(x.o_que_acontece)}</td>
-          <td class="dim">${_mdLim(x.caminho_alternativo)}</td>
+          <td>${mdSimples(x.o_que_acontece)}</td>
+          <td class="dim">${mdSimples(x.caminho_alternativo)}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join('')
       +`</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
@@ -549,7 +534,7 @@ export async function fxConsultar(rota){
   if(!v){o.innerHTML=card('<div class="warn">Informe o alvo.</div>');return;}
   o.innerHTML=card('<div class="dim">consultando…</div>');
   const d=await J(rota+'?alvo='+encodeURIComponent(v)+'&cnpj='+encodeURIComponent(v)+'&q='+encodeURIComponent(v));
-  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(d&&d.ok===false){o.innerHTML=cardErro(d.erro);return;}
   /* v58: era JSON.stringify cru num <pre> — o operador tinha de LER JSON para saber se a fonte
      respondeu. Agora os campos escalares viram tabela (o que a fonte disse), e o JSON completo
      fica atrás de um <details> para quem precisa do bruto. Campo composto (lista/objeto) não é
@@ -569,7 +554,7 @@ export async function fxConsultar(rota){
 // ═══ HUB FÍSICO — uma âncora, vários CNPJs (detector novo que nasceu sem aba) ═══
 export async function renderHubFisico(){
   const d=await J('/api/intel/hub_compartilhado?limite=150');
-  if(!d.ok)return sec('Hub compartilhado')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Hub compartilhado')+cardErro(d.erro);
   /* A rota devolve `grupos` (chave, valor, n_cnpjs, risco, motivo, n_recebem_ob). A tela lia
      `achados`/`hubs`, que a rota nunca enviou: 200 grupos na resposta, zero na tela. */
   const a=d.grupos||d.achados||d.hubs||[];
@@ -646,7 +631,7 @@ export async function renderAcuracia(){
   return h;
 }
 
-export function _acuLiftHtml(lf){
+function _acuLiftHtml(lf){
   let h='';
   // Mesmo caso da hermenêutica: painel_lift devolve estado='sem_medicao' + mensagem quando a
   // retro-auditoria não fecha nesta base — vale mostrar o motivo, não uma tabela vazia.
@@ -674,7 +659,7 @@ export function _acuLiftHtml(lf){
 // Cada um destes existia no backend, com teste, e sem uma tela: anomalias por PyOD, rodízio
 // temporal, conflito doador↔contrato, sobrepreço contra mediana de mercado, co-endereço,
 // concentração geográfica e as duas leituras do D.O. do Rio.
-export const _DETS_ORFAOS=[
+const _DETS_ORFAOS=[
   {id:'anomalias', rota:'/api/anomalias?top=40', tl:'Anomalias nos pagamentos',
    ic:'🌡️', desc:'Ordens bancárias que fogem do padrão do próprio órgão (ensemble de detecção de outlier + Benford). Outlier não é irregularidade: é onde vale olhar primeiro.', campo:'alertas'},
   {id:'rodizio', rota:'/api/rodizio?top=40', tl:'Rodízio de vencedores',
@@ -1045,7 +1030,7 @@ export async function instAcionar(rota,metodo){
     const d=await J(rota, metodo==='POST'?{method:'POST'}:undefined);
     o.innerHTML=sec(esc(rota))+card(
       `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,4000)}</pre>`);
-  }catch(e){ o.innerHTML=card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+  }catch(e){ o.innerHTML=cardErro(String(e)); }
 }
 
 // ═══ MISSÕES DO HERMES — a fila paralela que só existia no backend ═══
@@ -1093,7 +1078,7 @@ export async function missaoVer(id){
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
-export async function frescorHtml(){
+async function frescorHtml(){
   const d=await J('/api/fontes/frescor');
   if(!d.ok)return '';
   const rows=(d.fontes||[]).map(f=>{
@@ -1131,7 +1116,7 @@ export async function renderPanoramaEstado(){
 export async function renderSancionadas(esf){
   const pSoc=J('/api/intel/socio_sancionada');            // em paralelo: não atrasa a lista principal
   const d=await J('/api/intel/sancionadas?limite=1000');   // teto da rota = 1000 > n(770): cobre a base
-  if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(esf==='estado'?['sancoes_estado']:['sancoes_estado','sancoes_prefeitura'],'Sanções por ano e mês de início');
+  if(!d.ok)return sec('Sancionadas')+cardErro(d.erro)+blocoPeriodo(esf==='estado'?['sancoes_estado']:['sancoes_estado','sancoes_prefeitura'],'Sanções por ano e mês de início');
   let emp=d.empresas||[];const carregadas=emp.length;   // ANTES do corte de esfera — é o que o filtro varre
   if(esf==='estado')emp=emp.filter(e=>e.estado.obs>0);
   const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
@@ -1170,7 +1155,7 @@ export async function renderSancionadas(esf){
    é sócio da punida. A lista acima só olha o CNPJ contratado e não vê isso. */
 const _FORCA={forte:['rose','forte — mesmo ramo e mesmo endereço/telefone'],medio:['amber','médio — um critério'],fraco:['accent','fraco — só o sócio']};
 function _blocoSocioSancionada(r){
-  if(!r||!r.ok)return sec('Sanção contornada pelo sócio')+card(`<div class="warn">${erroHumano(r&&r.erro)}</div>`);
+  if(!r||!r.ok)return sec('Sanção contornada pelo sócio')+cardErro(r&&r.erro);
   const a=r.achados||[];
   let h=sec('Sanção contornada pelo sócio')+`<div class="muted" style="margin:-4px 2px 10px;font-size:13px">Contratada cujo sócio é sócio de empresa <b>punida com vedação que alcança o RJ</b>. Conta só a OB SIAFE paga na janela em que as duas sociedades e a sanção coexistem. Força pelos critérios do TCU (Ac. 1831/2014-Plenário): mesmo ramo (CNAE) e mesmo endereço/telefone.</div>`;
   if(!a.length)return h+card('<div class="muted">Nenhuma contratada nessa situação com pagamento na janela.</div>');
@@ -1192,7 +1177,7 @@ const _obTxt=g=>g.ob_pago_total==null?'<span class="dim">OB: INDISPONÍVEL (sem 
   :`OB paga (SIAFE): <b>${fmtR(g.ob_pago_total)}</b> <span class="dim">em ${fmtN(g.ob_processos_ligados)} de ${fmtN(g.n_contratacoes)} processos</span>`;
 export async function renderFracionamento(){
   const d=await J('/api/intel/fracionamento?limite=120');
-  if(!d.ok)return sec('Fracionamento')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Fracionamento')+cardErro(d.erro);
   const g=d.grupos||[];
   let h=cover('estado','Fracionamento de despesa — o mesmo objeto picado em várias contratações',
     'A mesma necessidade — objetos de <b>mesma natureza</b>, do mesmo ramo de atividade — dividida em <b>várias contratações distintas</b> no exercício para que cada parcela caiba na dispensa por valor. A lei manda somar, por <b>unidade gestora</b> e <b>exercício</b>, tudo o que foi contratado com objetos de mesma natureza (Lei 14.133/2021, art. 75, §1º). <b>O fornecedor não entra no critério</b>: as parcelas costumam ir para empresas diferentes.','✂️')+acoesAba('fracionamento');
@@ -1232,7 +1217,7 @@ export async function renderFracionamento(){
 // ═══ CERTAMES — conjunto por órgão (Estado) ═══
 export async function renderCertames(){
   const d=await J('/api/conjunto/portfolio?min_certames=3');
-  if(!d.ok)return sec('Certames')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Certames')+cardErro(d.erro);
   const o=d.orgaos||[];
   let h=cover('estado','Certames — o padrão de cada órgão licitante',
     'Todos os certames indexados de cada órgão, avaliados <b>como conjunto</b>: mediana do Índice de Direcionamento (0-100, 7 famílias — inclui o que <b>ocorreu na sessão</b>: eliminações em massa ou por motivo trivial sem saneamento, art. 64 §1º), <b>reincidência</b> da mesma cláusula restritiva (≥3 certames = auditoria temática) e <b>desvio frente aos pares</b>. Um certame ruim pode ser acaso; um padrão de órgão nunca é.','🧮')+acoesAba('certames');
@@ -1282,7 +1267,7 @@ export async function renderCertames(){
 // ═══ CONCENTRAÇÃO × PREFEITURA (HHI por ramo de objeto — análogo municipal do Cartel) ═══
 export async function renderCartelMun(){
   const d=await J('/api/intel/concentracao_municipio?limite=60');
-  if(!d.ok)return sec('Concentração — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Concentração — Prefeitura')+cardErro(d.erro);
   const a=d.orgaos||[];
   let h=cover('prefeitura','Concentração de fornecedor por mercado municipal',
     'Para cada <b>ramo de objeto</b> (limpeza, TI, veículos…), quem domina os contratos do Município do Rio: <b>top-share</b> (≥60% forte · ≥40% médio — régua R8) e <b>HHI</b> (>2.500 = mercado altamente concentrado, referência CADE). <b>Base = valor CONTRATADO</b> do PNCP — a PCRJ não publica pagamento por credor 2024+; concentração de contrato é screen de captura, não medida de execução.','🔗');
@@ -1310,7 +1295,7 @@ export async function renderCartelMun(){
 // ═══ SANCIONADAS × PREFEITURA (contrato municipal DURANTE sanção impeditiva — TCM-RJ) ═══
 export async function renderSancionadasMun(){
   const d=await J('/api/intel/sancionadas_municipio?limite=300');   // n=238 → cabe inteiro; filtro em memória, não no DOM
-  if(!d.ok)return sec('Sancionadas — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(['sancoes_prefeitura'],'Sanções por ano e mês de início');
+  if(!d.ok)return sec('Sancionadas — Prefeitura')+cardErro(d.erro)+blocoPeriodo(['sancoes_prefeitura'],'Sanções por ano e mês de início');
   const emp=d.empresas||[];const aepoca=emp.filter(e=>(e.contratos_durante||0)>0);
   let h=cover('prefeitura','Sancionadas contratadas pela Prefeitura do Rio',
     'Empresas com sanção <b>impeditiva</b> (CEIS: impedimento, suspensão, inidoneidade) que assinaram contrato com o <b>Município do Rio</b>. <b>À ÉPOCA</b> = assinatura DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156 §§4º-5º). Competência: <b>TCM-RJ</b>. Órgãos federais/estaduais são excluídos do corte.','🚫')+acoesAba('sancionadas_municipio');
@@ -1345,7 +1330,7 @@ export async function renderSancionadasMun(){
 
 export async function renderAditivos(esf='estado'){
   const d=await J('/api/intel/aditivos?limite=120&esfera='+esf);
-  if(!d.ok)return sec('Aditivos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo([esf==='prefeitura'?'aditivos_prefeitura':'aditivos_estado'],'Termos aditivos por ano e mês');
+  if(!d.ok)return sec('Aditivos')+cardErro(d.erro)+blocoPeriodo([esf==='prefeitura'?'aditivos_prefeitura':'aditivos_estado'],'Termos aditivos por ano e mês');
   const a=d.achados||[];
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
@@ -1388,7 +1373,7 @@ const _VERIF_TAG={VERIFICADO:['teal','VERIFICADO no PNCP'],PENDENTE:['amber','PE
 function _fmtPU(v){return v==null?'—':(v>=1?fmtR(v):'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4}));}
 export async function renderSobrepreco(esf='estado'){
   const d=await J('/api/intel/sobrepreco?limite=120&esfera='+esf);
-  if(!d.ok)return sec('Sobrepreço')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Sobrepreço')+cardErro(d.erro);
   const a=d.achados||[], ind=d.indeterminados||{};
   let h=cover(esf,'Sobrepreço — mesmo item, mesma unidade, acima da mediana',
     'Compara só o <b>mesmo item na mesma unidade e apresentação</b> (galão com galão, copo com copo; caixa com quantidade declarada vira preço por unidade). Sinaliza o preço unitário <b>normalizado</b> ≥ 2× a mediana do grupo e fora da banda robusta (z ≥ 3,5). Grupo com salto de preço ≥ 4× ou dispersão p90/p10 > 4 mistura produtos e <b>não</b> gera achado. Unidade ambígua fica <b>INDETERMINADA</b>, fora da conta. Fonte: preço unitário homologado do PNCP.','📈')+acoesAba('sobrepreco');
@@ -1435,7 +1420,7 @@ export async function renderSobrepreco(esf='estado'){
 // ═══ ESCALADA DE PREÇO (mesmo fornecedor sobe o preço do mesmo item no tempo) ═══
 export async function renderEscalada(esf='estado'){
   const d=await J('/api/intel/escalada?limite=120&esfera='+esf);
-  if(!d.ok)return sec('Escalada')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Escalada')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover(esf,'Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','🪜')+acoesAba('escalada');
   if(!a.length){
@@ -1479,7 +1464,7 @@ export async function renderRiscos(){
     const d=await J('/api/intel/perdedoras');
     let h=cover('geral','Perdedoras contumazes — participam e NUNCA vencem',
       'Empresa que compete "sempre" e nunca vence é o perfil clássico de <b>proposta de cobertura</b> (OCDE bid rigging): existe para dar aparência de disputa e legitimar o vencedor combinado. Quanto mais vezes perde junto do MESMO vencedor, mais forte o indício.','🎭')+chips+acoesAba('perdedoras');
-    if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if(!d.ok)return h+cardErro(d.erro);
     const cov=d.cobertura_extracao||{};
     registrarDrill('perdedorasContumazes',{titulo:'Perdedoras contumazes — participam e nunca vencem',
       itens:(d.perdedoras||[]),
@@ -1499,7 +1484,7 @@ export async function renderRiscos(){
   const d=await J('/api/intel/fantasmas?limite=60');
   let h=cover('geral','Radar de empresas-fantasma',
     'Score 0-100 por <b>8 sinais objetivos</b> (situação irregular na Receita, capital incompatível com o que recebe, endereço-ninho, endereço residencial, aberta às vésperas do 1º contrato, sócio único + capital baixo, CNAE incompatível, sanção). Aplicado ao conjunto-alvo: vencedoras de captura/rodízio, perdedoras contumazes, sancionadas e top favorecidos.','👻')+chips+acoesAba('fantasmas');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const emp=(d.empresas||[]).filter(e=>e.classificacao!=='sem_cadastro');
   /* CADA MÉTRICA REGISTRA O CONJUNTO QUE ELA CONTA — mesmo universo, sempre: `alto` e `medio` saem
      do mesmo `emp` que alimenta os números, e "sem cadastro" sai da lista bruta. "Empresas no alvo"
@@ -1557,7 +1542,7 @@ export async function renderComissionadosPref(){
   const d=await J('/api/pcrj/comissionados_candidatos?limite=1000');
   let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
     'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina. Cada card é <b>uma pessoa</b>, com o histórico completo de nomeações — não mais uma linha por vínculo.','🗳️')+chips+acoesAba('comissionados');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const it=d.comissionados||[];  // agora 1 item por PESSOA, com postos[] e candidaturas[]
   const nCidades=new Set(it.flatMap(x=>(x.candidaturas||[]).map(c=>c.cidade)).filter(Boolean)).size;
   /* Conferido na rota viva antes de ligar: `n_pessoas` do servidor e o tamanho da lista são os
@@ -1590,7 +1575,7 @@ export async function renderBeneficiosPref(chips){
   chips=(chips||'')+acoesAba('beneficios');
   let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
     'Pessoas que recebiam <b>Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial</b> (programas para quem tem baixa renda) <b>no mesmo mês</b> em que tinham salário como servidor/comissionado da Prefeitura ou Câmara do Rio. Meses fora do vínculo NÃO entram (justiça na contagem). É <b>indício de renda incompatível a apurar</b> — nunca acusação: pode haver dependente no mesmo CPF, homônimo ou erro de base. Cada linha traz o <b>nome</b>, o órgão, o cargo e o período.','🍞')+(chips||'');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const r=d.resumo||{};
   // legenda dos dois eixos que confundiam: IDENTIDADE (quem é a pessoa) × BENEFÍCIO (o que recebeu)
   h+=`<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
@@ -1690,9 +1675,9 @@ function _adtCartao(x){
     <div class="dim" style="font-size:12px;margin-top:4px">Prova: ${prova?`<a href="${prova}" target="_blank" rel="noopener">termos no PNCP (API pública)</a>`:esc(x.prova||'PNCP')} · ${esc(x.ato||'Lei 14.133/2021, art. 125')} · base: valor inicial publicado, não atualizado</div>`,
     v?'hl':'');
 }
-export async function painelD11(){
+async function painelD11(){
   const d=await J('/api/pcrj/aditivos');
-  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return cardErro(d.erro);
   const c=d.contagem||{},cob=d.cobertura||{},it=d.itens||[];
   let h=`<div class="grid g2" style="margin-top:12px">${kpi(fmtN(c.VERIFICADO||0),'Estouro VERIFICADO no termo','var(--rose)','🚨',
       {sobre:'Acréscimo quantitativo somado NOS TERMOS ADITIVOS acima do teto do art. 125 (25%; 50% só em reforma). Só estes viram alerta.'})}${kpi(fmtN(c.PENDENTE||0),'PENDENTES de prova','var(--amber)','⏳',
@@ -1704,7 +1689,7 @@ export async function painelD11(){
     :card(`<div class="muted">Nenhum contrato da Prefeitura com acréscimo acima do limite nem pendente — sobre ${fmtN(cob.termos_consultados||0)} contrato(s) com termos consultados de ${fmtN(cob.contratos||0)}.</div>`);
   return h+`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
 }
-export const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucessão de contratações do mesmo objeto/credor somando acima do teto de dispensa (Lei 14.133 art. 75)'],
+const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucessão de contratações do mesmo objeto/credor somando acima do teto de dispensa (Lei 14.133 art. 75)'],
   d8_credor_recem_aberto:['🐣','Credor recém-aberto','empresa criada há <180 dias já recebendo da Prefeitura'],
   d9_socio_na_folha:['👔','Sócio de credor na folha','sócio de empresa contratada com vínculo na folha municipal (Lei 14.133 art. 9º)'],
   d10_rede_concorrentes:['🕸️','Rede entre concorrentes','sócios em comum entre empresas que disputam os mesmos certames'],
@@ -1753,7 +1738,7 @@ export async function renderFantasmasPref(){
   const d=await J('/api/pcrj/fantasmas?'+qsF.toString());
   let h=cover('prefeitura','Sinais de servidor-fantasma — Câmara/Prefeitura',
     'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻')+acoesAba('fantasmas_pcrj');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const fx=d.faixas||{};
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴',
         {sobre:'Servidores da folha municipal com o conjunto MAIS FORTE de sinais de vínculo apenas formal. Faixa é ordem de diligência, não conclusão: nenhum caso aqui afirma que a pessoa não trabalha — afirma que o cruzamento não achou o que deveria achar se ela trabalhasse.'})}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡',
@@ -1779,7 +1764,7 @@ export async function renderPPPPref(){
   const d=await J('/api/ppp/triagem');
   let h=cover('prefeitura','PPPs e concessões — triagem de red flags',
     'Lente determinística sobre editais/anexos de PPP da CCPAR: garantia com receita de saúde, aporte público, PMI-captura, prazo, valor vs RCL. O dossiê pericial completo (perícia mestre, íntegras normativas) sai por /ppp no Yoda.','🏗️');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const r=d.resumo||{};
   h+=`<div class="grid g2">${kpi(fmtN(r.projetos),'Projetos triados',null,'🏗️',
         {sobre:'Parcerias público-privadas e concessões municipais submetidas à triagem. É o denominador: PPP fora desta contagem não foi avaliada, e não avaliar não é aprovar.'})}${kpi(fmtN(r.alto),'Grau ALTO','var(--rose)','🔴',
@@ -1796,7 +1781,7 @@ export async function renderPPPPref(){
   h+=leitura('PPP transfere risco de décadas para o ente público. As três flags vermelhas — garantia com receita da saúde (CF art. 167 IV), aporte público e PMI ressarcida pelo vencedor — são as que a jurisprudência trata como as mais graves.');
   return h;
 }
-export const _TEMA_ROTULO={transparencia:'transparência',competicao:'competição',conluio:'conluio',fraude_cadastral:'fraude cadastral',preco:'preço',execucao:'execução',certame_ata:'sessão/ata'};
+const _TEMA_ROTULO={transparencia:'transparência',competicao:'competição',conluio:'conluio',fraude_cadastral:'fraude cadastral',preco:'preço',execucao:'execução',certame_ata:'sessão/ata'};
 export let _ctrView='analise';
 export async function renderContratosPref(){
   const chips=`<div class="chips">
@@ -1813,7 +1798,7 @@ export async function renderContratosPref(){
   }
   const d=await J('/api/certames/lista?esfera=prefeitura&limite=600');
   let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips+acoesAba('contratos_analise');
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`)+blocoPeriodo(['contratos_prefeitura','aditivos_prefeitura'],'Contratos e aditivos por ano e mês');
+  if(!d.ok)return h+cardErro(d.erro)+blocoPeriodo(['contratos_prefeitura','aditivos_prefeitura'],'Contratos e aditivos por ano e mês');
   const its=d.itens||[],rs=d.resumo||{};
   h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄',
         {sobre:'Certames municipais capturados. É o denominador de tudo nesta aba: certame fora da base não foi considerado regular — não foi visto.'})}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮',
@@ -1845,7 +1830,7 @@ export async function renderConluio(esf){
   const d=await J('/api/pncp/conluio'+(esf?'?esfera='+esf:''));
   const rotulos={estado:'órgãos estaduais',prefeitura:'Prefeitura do Rio',municipios:'demais municípios do RJ',federal:'órgãos federais no RJ','':'todas as esferas'};
   const rot=rotulos[esf]??esf;
-  if(!d.ok)return sec('Conluio')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Conluio')+cardErro(d.erro);
   const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[],esfs=d.esferas||{};
   let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,
     'Vencedor homologado de cada item (fonte: PNCP, esfera OFICIAL do ente). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado — cada achado explica por que importa.','🕸️')+acoesAba('conluio');
@@ -1921,8 +1906,8 @@ export async function renderPericias(){
 }
 
 // ═══ AUTOCOMPLETE genérico (empresas + nomeados, /api/sugestoes) ═══
-export let _acTimer=null,_acItens=[],_acCb=null,_acSelIdx=-1;
-export function _acRenderSel(box){[...box.querySelectorAll('.ac-item')].forEach((el,i)=>el.classList.toggle('sel',i===_acSelIdx));}
+let _acTimer=null,_acItens=[],_acCb=null,_acSelIdx=-1;
+function _acRenderSel(box){[...box.querySelectorAll('.ac-item')].forEach((el,i)=>el.classList.toggle('sel',i===_acSelIdx));}
 export function _acPick(i){const it=_acItens[i];if(!it)return;document.querySelectorAll('.ac-box.on').forEach(b=>b.classList.remove('on'));if(_acCb)_acCb(it);}
 export function autocompletar(input,boxSel,onPick){
   clearTimeout(_acTimer);
@@ -1962,7 +1947,7 @@ export function acKeydown(ev,input,boxSel,onEnterSemSelecao){
   if(!input.closest('form')){ev.preventDefault();onEnterSemSelecao();}
 }
 // ═══ BUSCA universal ═══
-export let _bq='';
+let _bq='';
 export async function renderBuscar(){
   return cover('geral','Busca universal','Procure por empresa, CNPJ, órgão, contrato ou termo. Clique num resultado para o dossiê 360.','🔎')+
     /* v54: o campo passa a viver dentro de um <form>. Medido pelo it-campo: com "limpeza"
@@ -2028,7 +2013,7 @@ export async function renderPoder(esf){
   clearTimeout(demora);
   const tit=esf==='todos'?'Nomeados × candidatos (todas as esferas)':'Nomeados × candidatos (Estado)';
   let h=cover(esf==='todos'?'geral':'estado',tit,'Servidor público que aparece numa folha coletada (Executivo estadual/GESPERJ, Defensoria, TJRJ'+(esf==='todos'?', Câmara Municipal do Rio':'')+') e também numa candidatura registrada no TSE. <b>Cada cartão é uma pessoa</b> e diz se o vínculo foi <b>VERIFICADO</b> (os 6 dígitos de CPF que a folha publica conferem com o CPF da candidatura) ou está <b>PENDENTE</b> — possível homônimo, só o nome coincide. Ser candidato é direito político; isto é indício de relação político-administrativa, não irregularidade.','🏛️')+acoesAba('nomeados');
-  if(!d||d.ok===false)return h+card(`<div class="warn">${erroHumano(d&&d.erro)}</div>`);
+  if(!d||d.ok===false)return h+cardErro(d&&d.erro);
   const it=d.itens||[];
   const ver=it.filter(x=>x.verificacao==='VERIFICADO'),pen=it.filter(x=>x.verificacao!=='VERIFICADO');
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pessoas no cruzamento',null,'🏛️',{sobre:`Total REAL de pessoas desta esfera — não é teto de consulta. ${fmtN(d.n_candidaturas)} candidaturas no total.`})}${kpi(fmtN(d.n_verificados),'Verificadas pelo CPF','var(--teal)','✔',{sobre:'O CPF parcial publicado na folha (6 dígitos) confere com o CPF da candidatura no TSE (consulta_cand, dados abertos). É a mesma pessoa.'})}
@@ -2096,7 +2081,7 @@ function _snfCurto(x) {
 }
 export async function renderSocioServidor(){
   const d=await J('/api/intel/socio_servidor');
-  if(!d.ok)return sec('Sócio na folha')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Sócio na folha')+cardErro(d.erro);
   const ps=d.pessoas||[], ind=d.indeterminados||[], hom=d.homonimos||[], c=d.contagem||{};
   const obArt9=ps.reduce((s,x)=>s+(x.ob_mesmo_orgao||0),0);
   let h=cover('geral','Sócio na folha — servidor público sócio de fornecedor do Estado',
@@ -2122,7 +2107,7 @@ export async function renderSocioServidor(){
 // ═══ FORNECEDOR DEPENDENTE / CATIVO ═══
 export async function renderCapital(){
   const d=await J('/api/intel/capital_incompativel?limite=150');
-  if(!d.ok)return sec('Capital irrisório')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Capital irrisório')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Capital irrisório — sem lastro para o que faturou','Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.','🫧')+acoesAba('capital_incompativel');
   registrarDrill('capitalIrrisorio',{titulo:'Empresas com capital social de até R$ 1.000',itens:a.filter(x=>x.capital<=1000),nota:'Capital irrisório frente ao recebido é indício de fachada, não prova.'});
@@ -2143,7 +2128,7 @@ export async function renderCapital(){
 }
 export async function renderPrioridade(){
   const d=await J('/api/intel/prioridade_valor?limite=80');
-  if(!d.ok)return sec('Prioridade por valor em risco')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Prioridade por valor em risco')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Prioridade — onde a auditoria rende mais','Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.','⚡')+acoesAba('prioridade_valor');
   registrarDrill('sinalMedioMais',{titulo:'Com sinal médio ou alto (score ≥ 25)',itens:a.filter(x=>x.score>=25),nota:''});
@@ -2164,7 +2149,7 @@ export async function renderPrioridade(){
 }
 export async function renderFornecedorDependente(){
   const d=await J('/api/intel/fornecedor_dependente?limite=150');
-  if(!d.ok)return sec('Cativos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Cativos')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Fornecedor cativo — "empresa do órgão"','Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.','🔗')+acoesAba('fornecedor_dependente');
   registrarDrill('dep100Orgao',{titulo:'Fornecedores que faturam ~100% com um único órgão',itens:a.filter(x=>x.share>=0.99),nota:'Dependência total de um comprador é indício de captura — cabe verificar o objeto.'});
@@ -2186,7 +2171,7 @@ export async function renderFornecedorDependente(){
 // ═══ CORRIDA DE DEZEMBRO ═══
 export async function renderCorridaDezembro(){
   const d=await J('/api/intel/corrida_dezembro?limite=150');
-  if(!d.ok)return sec('Dezembro')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Dezembro')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Corrida do empenho de dezembro','Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.','📅')+acoesAba('corrida_dezembro');
   registrarDrill('dez100',{titulo:'Fornecedores com ~100% do faturamento em dezembro',itens:a.filter(x=>x.share>=0.99),nota:'Concentração no fim do exercício pede exame do empenho e da entrega.'});
@@ -2208,7 +2193,7 @@ export async function renderCorridaDezembro(){
 // ═══ RADAR DE RISCO (score composto) ═══
 export async function renderRadar(){
   const d=await J('/api/intel/radar?limite=150');
-  if(!d.ok)return sec('Radar')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Radar')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Radar de risco — todos os detectores somados','Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.','🎯')+acoesAba('radar_risco');
   // a cor era 'var(--rose)' FIXA: com zero críticos o painel mostrava "0" em vermelho
@@ -2236,7 +2221,7 @@ export async function renderRadar(){
 // ═══ CONLUIO DIRETO (vencedor × perdedora × QSA) ═══
 export async function renderConluioQSA(){
   const d=await J('/api/intel/conluio_qsa');
-  if(!d.ok)return sec('Conluio QSA')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Conluio QSA')+cardErro(d.erro);
   const a=d.pares||[];const cob=d.cobertura||{};
   let h=cover('geral','Conluio direto — vencedor × perdedora do mesmo dono','Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.','🤝')+acoesAba('conluio_qsa');
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares vencedor×perdedora','var(--rose)','🤝',
@@ -2263,7 +2248,7 @@ export async function renderConluioQSA(){
 // ═══ COMUNIDADES (Louvain) ═══
 export async function renderComunidades(){
   const d=await J('/api/intel/comunidades');
-  if(!d.ok)return sec('Comunidades')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Comunidades')+cardErro(d.erro);
   const a=d.comunidades||[];const g=d.grafo||{};
   let h=cover('geral','Comunidades — clusters família-empresa-órgão (Louvain)','Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.','🧩')+acoesAba('comunidades',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
   // mesmo conserto do radar: zero cluster crítico não é alarme (cor e 🚨 eram fixos)
@@ -2299,7 +2284,7 @@ export async function renderComunidades(){
 // ═══ RETRO-AUDITORIA (hindsight) ═══
 export async function renderRetro(){
   const d=await J('/api/intel/retro');
-  if(!d.ok)return sec('Retro')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Retro')+cardErro(d.erro);
   const ps=d.por_sinal||{};const ex=d.exemplos||[];const j=d.janela||{};
   const nsin=Object.values(ps).reduce((s,x)=>s+x.n_sinais,0);
   const ncor=Object.values(ps).reduce((s,x)=>s+x.n_sancao_depois,0);
@@ -2327,7 +2312,7 @@ export async function renderRetro(){
 }
 
 // bloco de LIFT: valida cada detector contra o gabarito objetivo (sanções)
-export async function _liftBloco(){
+async function _liftBloco(){
   const d=await J('/api/intel/lift');
   if(!d.ok)return '';
   const det=d.detectores||[];
@@ -2349,7 +2334,7 @@ export async function _liftBloco(){
 // ═══ SÓCIO OCULTO ═══
 export async function renderSocioOculto(){
   const d=await J('/api/intel/socio_oculto?limite=150');
-  if(!d.ok)return sec('Sócio oculto')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Sócio oculto')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🫥')+acoesAba('socio_oculto');
   registrarDrill('holdings',{titulo:'Casos em que o sócio é PJ (holding)',itens:a.filter(x=>x.holding),nota:'Sócio PJ é o degrau que permite subir a cadeia até a pessoa física.'});
@@ -2373,7 +2358,7 @@ export async function renderSocioOculto(){
 // ═══ NEPOTISMO ═══
 export async function renderNepotismo(){
   const d=await J('/api/intel/nepotismo?limite=150');
-  if(!d.ok)return sec('Nepotismo')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Nepotismo')+cardErro(d.erro);
   const a=d.achados||[], hip=d.hipoteses||[];
   let h=cover('geral','Nepotismo — parentes em cargo de confiança','Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.','👪')+acoesAba('nepotismo',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
   registrarDrill('sobrenome100',{titulo:'Grupos em que o sobrenome cobre 100% do quadro',itens:a.filter(x=>x.concentracao>=1),nota:'Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm.'});
@@ -2406,7 +2391,7 @@ const _FENIX_FORA={natureza_publica:'é órgão ou ente público, não empresa',
   pagamento_judicial:'é pagamento por decisão judicial ou restituição (Encargos Gerais, processo da PGE)'};
 export async function renderFenix(){
   const d=await J('/api/intel/fenix?limite=150');
-  if(!d.ok)return sec('Fênix')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Fênix')+cardErro(d.erro);
   const a=d.achados||[];
   // O texto de cada item pedia ao leitor "verificar se os pagamentos são posteriores à
   // baixa" — pergunta que o dado JÁ responde desde que a data da baixa entrou no detector.
@@ -2455,7 +2440,7 @@ export async function renderFenix(){
 // ═══ PORTA GIRATÓRIA ═══
 export async function renderPortaGiratoria(){
   const d=await J('/api/intel/porta_giratoria?limite=150');
-  if(!d.ok)return sec('Porta giratória')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Porta giratória')+cardErro(d.erro);
   const a=d.achados||[];
   let h=cover('geral','Porta giratória — ex-servidor virou fornecedor','Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.','🚪')+acoesAba('porta_giratoria');
   registrarDrill('confiancaAlta',{titulo:'Cruzamentos com confiança ALTA (casados por CPF)',itens:a.filter(x=>x.confianca==='ALTA'),nota:'Confiança ALTA = documento, não nome. É a única faixa que dispensa checar homônimo.'});
@@ -2479,7 +2464,7 @@ export async function renderPortaGiratoria(){
 // ═══ NEPOTISMO CRUZADO ═══
 export async function renderNepotismoCruzado(){
   const d=await J('/api/intel/nepotismo_cruzado?limite=80');
-  if(!d.ok)return sec('Nepotismo cruzado')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return sec('Nepotismo cruzado')+cardErro(d.erro);
   const a=d.achados||[], hip=d.hipoteses||[];
   const desc=`<div class="dim" style="margin-top:10px">Descartados: <b>${fmtN(d.descartados_mesma_pessoa||0)}</b> par(es) em que o "parente colocado" era a própria autoridade (mesmo nome e mesmo CPF, lotada em dois órgãos) e <b>${fmtN(d.descartados_indeterminados||0)}</b> sem CPF para distinguir. ${hip.length?`<b>${fmtN(d.n_hipoteses)}</b> par(es) ligados só pelo sobrenome ficam abaixo como hipótese.`:''}</div>`;
   const hipH=hip.length?`<div class="sec" style="margin-top:16px"><b>Hipóteses — só sobrenome (não são achados)</b></div><div class="grid">`+hip.map(x=>card(`<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)} <span class="tag">hipótese</span></div><div class="dim">${esc((x.orgao_a||'').slice(0,30))} ⇄ ${esc((x.orgao_b||'').slice(0,30))}</div>${leitura(esc(x.motivo||'')+' Falta: '+esc(x.falta||'')+'.')}`)).join('')+`</div>`:'';
@@ -2497,7 +2482,7 @@ export async function renderNepotismoCruzado(){
 }
 
 export async function renderLaranjas(){
-  const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+cardErro(d.erro);
   const it=d.itens||[];
   let h=cover('geral','Laranjas — sócio que recebe benefício','Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).','🎭');
   if(!it.length)return h+card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>')+`<div class="note">${esc(d.aviso||'')}</div>`;
@@ -2515,7 +2500,7 @@ export async function renderCartel(){
   return h;
 }
 // glossário: traduz os CÓDIGOS crípticos dos alertas p/ linguagem simples
-export const TIPO_ALERTA={
+const TIPO_ALERTA={
   pcrj_d7_fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas em várias notas para caber abaixo do limite e não fazer licitação.'],
   pcrj_d10_rede_concorrentes:['🕸️','Rede de concorrentes','Empresas ligadas entre si (mesmo sócio/endereço) que disputam as mesmas licitações — concorrência de fachada.'],
   pcrj_d9_socio_na_folha:['🕴️','Sócio na folha','Sócio de empresa fornecedora que também é servidor público — conflito de interesse.'],
@@ -2523,7 +2508,7 @@ export const TIPO_ALERTA={
   sobrepreco:['📈','Sobrepreço','Preço muito acima da mediana de mercado.'],
   acumulacao:['👥','Acumulação de vínculos','Mesmo CPF em vínculos de órgãos distintos na mesma competência — possível acúmulo vedado (CF art. 37, XVI); a conferir.'],
 };
-export const SEV_LEGENDA={
+const SEV_LEGENDA={
   alta:['🔴','Alta','Indício forte — priorize a verificação.'],
   media:['🟡','Média','Merece checagem, mas o sinal é mais fraco ou depende de confirmação documental.'],
   baixa:['⚪','Baixa','Sinal fraco / informativo.'],
@@ -2638,12 +2623,12 @@ export async function renderSweeps(){
   return h;
 }
 export async function sweep(a){if(a==='pausar'&&!await jfnConfirm('Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.','⏸ Pausar tudo'))return;await J('/api/sweeps/'+a,{method:'POST'});jfnToast(a==='pausar'?'Sweeps pausados.':'Sweeps retomados.','green');setTimeout(()=>ir(aba),500);}
-export let _valLista=[],_valIdx=0;
+let _valLista=[],_valIdx=0;
 export async function renderValidar(){
   const d=await J('/api/fachada/revisar?limite=200');_valLista=(d&&d.fachadas)||[];_valIdx=0;
   return cover('geral','Validador de fachada','Fachadas flagradas p/ revisão humana. Veja o Street View, decida, e a base atualiza.','🏢')+`<div id="val-card">${_valCard()}</div>`;
 }
-export function _valCard(){
+function _valCard(){
   if(_valIdx>=_valLista.length)return card('<div class="muted">Tudo revisado nesta sessão. Recarregue p/ mais.</div>');
   const f=_valLista[_valIdx];
   const maps=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps/@${f.geo_lat},${f.geo_lon},19z`:`https://www.google.com/maps/search/${encodeURIComponent((f.endereco||'')+', '+(f.municipio||''))}`;
@@ -2689,7 +2674,7 @@ export async function acao(tipo){
   const linha=[d.empresa||d.orgao||val,d.risco?('risco '+d.risco):'',d.grau_lex?('Lex '+d.grau_lex):'',d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
   out.innerHTML=`✅ ${esc(linha)}\n${esc((d.resumo||'').slice(0,500))}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:var(--accent)">abrir PDF</a>`:'');
 }
-export async function pollarPdf(out,termo,t0,antes){
+async function pollarPdf(out,termo,t0,antes){
   const slug=(termo||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,12);
   for(let i=0;i<36;i++){await new Promise(r=>setTimeout(r,5000));
     const pdfs=((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf');
@@ -2723,38 +2708,7 @@ export function _set_gastosDet(v){_gastosDet=v;}
 export function _set_perOrdem(v){_perOrdem=v;}
 export function _set_respProc(v){_respProc=v;}
 export function _set_riscoView(v){_riscoView=v;}
-
-/* Estes vieram de declaracao MULTIPLA (`let _compView='catalogo', _compTermo='', ...`),
-   que o meu gerador de setters nao reconheceu na primeira passada — mesma cegueira que o
-   extrator da ponte ja tinha tido. O sintoma foi recursao infinita no getter do window. */
 export function _set_perGrau(v){_perGrau=v;}
-
-/* ── O COCKPIT SAIU (v59, §6.2-B) ────────────────────────────────────────────────────────────
-   `abas/cockpit.js` leva a aba Início inteira: a tela, a montagem depois do paint, os oito
-   instrumentos, o ticker e o puxador. O reexport mantém a porta: `entrada.js` continua importando
-   `renderCockpit`, `ckBoot` e companhia daqui, e a linha de import dele não muda uma vírgula.
-   Ver o cabeçalho de lá para por que o eixo do corte é DOMÍNIO e não esfera. */
-export {renderCockpit, ckBoot, ckCard, ckFill, ckPush, ckPull, _ckCount, _ckTimer, _ckTick, _CK,
-        blocoComandosMestres, abrirCapMestra} from './cockpit.js';
-
-/* ── O COMPARADOR SAIU (v59, §6.2-B) ─────────────────────────────────────────────────────────
-   `abas/comparador.js` leva a tela, as seis visões e os sete estados com seus setters. Ele é o
-   caso que prova o eixo: duas esferas o consomem, e como DOMÍNIO isso é um módulo importado duas
-   vezes em vez de um "compartilhado" a ser arbitrado. */
-export {renderComparador, _compEsfChips, _compItemView, _montarGrupoCard, _compCatalogo,
-        _compBuscar, _unOf, _compOrgaos, _compEconomia, _blocoVedada, _compDossie, _compForn,
-        _compView, _compTermo, _compGrupo, _compCat, _compEsf, _compDisp, _compOrd,
-        _set_compView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd,
-        _set_compTermo} from './comparador.js';
-
-/* ── VÍNCULOS SAIU (v59, §6.2-B) ─────────────────────────────────────────────────────────────
-   Era o corte difícil: o domínio vivia em DUAS faixas separadas por quatro blocos alheios. O
-   interleavamento é obstáculo para recortar texto, não para cortar por domínio — as duas faixas
-   só se referenciavam por nome, e nome não tem endereço. Ver o cabeçalho de lá. */
-export {renderVinculos, DRILL_ACOES, _vincCnpj, vincConsultar, vincParentesco, vincContato, vincAgentePublico, vincOsintProcessos, vincElosOcultos, vincCocontato, vincAssinaturasPcrj, vincNaData, vincTrocas,
-        vincPrevalencia, vincGrafo, vincFtm, vincHistoricoPessoa, vincConluioMunicipal,
-        vincResolucao, vincInterposicao, vincPatrimonio, VINC_ACOES,
-        ligarVinculos} from './vinculos.js';
 
 // O ACRÉSCIMO LOGO DEPOIS DA ASSINATURA. A CGE apontou 45,4% dezessete dias após assinar um
 // contrato de pavimentação da SECID: desequilíbrio superveniente não se forma em duas semanas, e
@@ -3066,7 +3020,7 @@ async function consorcioVeiculo(){
 // relação ao bloco de cima: aqui o DENOMINADOR viaja com o número. Os R$ 89,62 bi brutos do
 // Município incluem folha (R$ 21,18 bi), intra-orçamentária (R$ 27,83 bi) e precatório; só
 // R$ 30,64 bi (34,2%) são contratação. Publicar contagem municipal sem isso não se lê.
-export const _LENTE_MUN_LINHA={
+const _LENTE_MUN_LINHA={
   me_epp_acima_do_teto:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.porte||'')} · ${esc(String(x.exercicio||''))} · ${x.razao?fmtN(Math.round(x.razao))+'× o teto':''}</div>`,
   sancao_de_efeito_amplo:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(String(x.exercicio||''))} · ${esc(String((x.sancoes&&x.sancoes[0]&&x.sancoes[0][0])||'').slice(0,52))}</div>`,
   pessoa_fisica_em_elemento_de_pj:x=>`<b>${esc((x.credor||'').slice(0,40))}</b>${x.mascarado?' <span class="tag amber">documento mascarado</span>':''}<div class="dim">${esc(x.elemento_txt||'')} · ${esc(String(x.exercicio||''))} · ${esc((x.orgao||'').slice(0,34))}</div>`,
@@ -3092,7 +3046,7 @@ export const _LENTE_MUN_LINHA={
   entidade_paga_como_servico:x=>`<b>${esc((x.entidade||'').slice(0,40))}</b><div class="dim">serviço ${fmtRc(x.pago_como_servico)} × parceria ${fmtRc(x.pago_como_transferencia)} (${x.razao?fmtN(Math.round(x.razao))+'×':''})</div>`,
   qualidade_cadastral:x=>`<b>${esc((x.razoes||[]).slice(0,2).join(' · ').slice(0,52))}</b><div class="dim">${fmtN(x.n_razoes)} razões sob o mesmo documento${x.documento_mascarado?' · <span class="tag amber">mascarado</span>':''}</div>`,
 };
-export const _LENTE_MUN_VALOR={
+const _LENTE_MUN_VALOR={
   salto_de_faturamento:x=>x.pago_depois, empenhado_sem_pagamento:x=>x.empenhado,
   superempenho:x=>x.nao_executado, concentracao_hhi:x=>x.total_orgao,
   pico_de_gasto_por_subelemento:x=>x.pago_no_pico, premiacao_a_fornecedor_de_bem:x=>x.pago_como_premiacao,
@@ -3108,8 +3062,8 @@ export const _LENTE_MUN_VALOR={
 // Medido: 83,3% dos itens são INDISPONÍVEL, 20 dos 24 testes não rodam por falta de insumo, e
 // NENHUM item chega a CONFIRMADO no acervo inteiro. INDISPONÍVEL é ausência de EXAME, não de
 // irregularidade — e a diferença precisa estar na tela, não só no JSON.
-export const _UTIL_COR={UTIL:'green','NAO DISCRIMINA':'amber',INERTE:'amber','SEM INSUMO':'rose'};
-export async function _bateriaPericia(){
+const _UTIL_COR={UTIL:'green','NAO DISCRIMINA':'amber',INERTE:'amber','SEM INSUMO':'rose'};
+async function _bateriaPericia(){
   let d;
   try{ d=await J('/api/pericia/bateria'); }
   catch(e){ return card(`<div class="warn">bateria de perícia: ${esc(String(e&&e.message||e))}</div>`); }
@@ -3144,7 +3098,7 @@ export async function _bateriaPericia(){
   return h;
 }
 
-export async function _lentesMunicipais(){
+async function _lentesMunicipais(){
   let d;
   try{ d=await J('/api/lentes?esfera=municipal&top=25'); }
   catch(e){ return card(`<div class="warn">lentes municipais: ${esc(String(e&&e.message||e))}</div>`); }
@@ -3183,7 +3137,7 @@ export async function _lentesMunicipais(){
   return h;
 }
 
-export const _DIM_ROTULO={TAMANHO:'porte × pago',SANCAO:'sanção vigente',DEPENDENCIA:'dependência mútua'};
+const _DIM_ROTULO={TAMANHO:'porte × pago',SANCAO:'sanção vigente',DEPENDENCIA:'dependência mútua'};
 export async function renderLentes(){
   let h=cover('estado','Lentes cruzadas',
     'Quatro detectores independentes sobre a mesma base de pagamento (OB SIAFE). O que ordena a fila não é acender numa lente — é acender em <b>mais de uma</b>.','🔬');

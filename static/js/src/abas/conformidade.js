@@ -4,7 +4,7 @@
 // e o painel diz isso em vez de mostrar "0 violações". Sem delegação de eventos: a linha do sistema abre a lista
 // de itens alternando a linha seguinte (handler inline sem nome global — nada novo no `window`).
 import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, cardErro} from '../nucleo/http.js';
 import {fmtN} from '../nucleo/formato.js';
 
 const _IND = '<span class="dim">indisponível</span>';
@@ -81,7 +81,7 @@ export async function renderConformidade(){
   const d = await J('/api/qualidade/conformidade');
   let h = cover('sistema', 'Conformidade — regras de qualidade do JFN',
     'Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.', '✅');
-  if (!d || (d.ok === false && !d.estado)) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
+  if (!d || (d.ok === false && !d.estado)) return h + cardErro(d && (d.erro || d));
   const medido = d.estado === 'MEDIDO';
   const r = d.regras || {}, j = d.juiz;
   h += card(medido

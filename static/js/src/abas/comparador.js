@@ -19,10 +19,10 @@
  *
  * Sem efeito de topo.
  */
-import {$, esc, svgIco, card, kpi, sec, cover, leitura, corta, clk} from '../nucleo/dom.js';
+import {$, esc, svgIco, card, kpi, sec, cover, leitura, clk} from '../nucleo/dom.js';
 import {drillSeCompleto, registrarDrill} from '../nucleo/drill.js';
-import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {fmtN, fmtR, fmtRc, rot} from '../nucleo/formato.js';
+import {J, cardErro} from '../nucleo/http.js';
 import {buscaPag, listaPaginada} from '../nucleo/lista.js';
 import {aba} from '../app/estado.js';
 
@@ -47,13 +47,13 @@ export async function renderComparador(){
   return h+await _compBuscar();
 }
 // esfera do comparador (todas as visões respeitam)
-export const _compEsfChips=()=>`<div class="chips" style="margin:0 0 10px">
+const _compEsfChips=()=>`<div class="chips" style="margin:0 0 10px">
   ${['todas','estado','prefeitura'].map(e=>`<button type="button" class="chip ${_compEsf===e?'on':''}" onclick="_compEsf='${e}';ir(aba)">${e==='todas'?'🌐 Todas as esferas':e==='estado'?'🏛️ Estado':'🏙️ Prefeitura·Rio'}</button>`).join('')}</div>`;
 // visão de UM item (órgãos × fornecedores) — usada pelo catálogo E pela busca
-export async function _compItemView(voltar){
+async function _compItemView(voltar){
   const d=await J('/api/comparador/item?esfera='+(_compEsf==='todas'?'':_compEsf)+'&grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
   let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
   h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️',{sobre:'Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da \'economia\' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida.'})}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️',
         {sobre:'Quantos compradores públicos distintos têm compra registrada deste item. É o que dá sustentação à mediana: mediana calculada sobre poucos órgãos descreve aqueles órgãos, não o mercado.'})}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢',
@@ -67,17 +67,17 @@ export async function _compItemView(voltar){
   h+=sec('Fornecedores — do mais caro ao mais barato')+`<div class="grid">`+d.fornecedores.slice(0,30).map(linha).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export const _montarGrupoCard=g=>card(
+const _montarGrupoCard=g=>card(
   `<div onclick='_compGrupo=${JSON.stringify({grupo:g.grupo,un:_unOf(g)})};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida||'')}</span></div>
     <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
     <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao>=5?'var(--rose)':'var(--amber)'}">${g.dispersao!=null?g.dispersao+'×':'—'}</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
   g.dispersao>=10?'hl':'');
-export async function _compCatalogo(){
+async function _compCatalogo(){
   let h=_compEsfChips();
   if(_compGrupo)return h+await _compItemView('voltar ao catálogo');
   const d=await J('/api/comparador/catalogo?esfera='+(_compEsf==='todas'?'':_compEsf));
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   const cats=d.categorias||[];
   if(!_compCat||!cats.find(c=>c.id===_compCat)){
     // MENU: categorias com contagem e amostra do que tem dentro
@@ -105,14 +105,14 @@ export async function _compCatalogo(){
   h+=listaPaginada('cat-list',gs,_montarGrupoCard,60,g=>(g.exemplo||'').slice(0,60));
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export async function _compBuscar(){
+async function _compBuscar(){
   let h=_compEsfChips();
   h+=`<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir(aba)}"></div>
     <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir(aba)">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir(aba)">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir(aba)">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir(aba)">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
   if(_compGrupo)return h+await _compItemView('voltar à busca');
   if(!_compTermo)return h;
   const d=await J('/api/comparador/buscar?esfera='+(_compEsf==='todas'?'':_compEsf)+'&termo='+encodeURIComponent(_compTermo));
-  if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return h+cardErro(d.erro);
   if(!d.grupos.length){
     h+=card(`<div class="warn">Nenhum item casa TODAS as palavras de "${esc(_compTermo)}".</div>`);
     if((d.parecidos||[]).length){
@@ -125,10 +125,10 @@ export async function _compBuscar(){
   h+=`<div class="grid">`+d.grupos.map(_montarGrupoCard).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
-export async function _compOrgaos(){
+function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
+async function _compOrgaos(){
   const d=await J('/api/comparador/orgaos?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
-  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return cardErro(d.erro);
   const linha=(x,bom)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
     <div class="right"><div class="num" style="font-weight:800;color:${bom?'var(--green)':'var(--rose)'}">${x.razao_mediana}×</div><div class="dim">${bom?'abaixo':'acima'} do mercado</div></div></div>`,!bom?'hl':'');
@@ -137,9 +137,9 @@ export async function _compOrgaos(){
   h+=sec('🔴 Pagam ACIMA do mercado (auditar preços)')+`<div class="grid">`+(d.piores||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export async function _compEconomia(){
+async function _compEconomia(){
   const d=await J('/api/comparador/economia?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
-  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return cardErro(d.erro);
   let h=`<div style="text-align:center;margin:10px 0 18px">
     <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL — SOBREPREÇO CONFERIDO (PNCP)</div>
     <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
@@ -159,7 +159,7 @@ export async function _compEconomia(){
   h+=bloco(svgIco('🏢')+' Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export async function _blocoVedada(){
+async function _blocoVedada(){
   const d=await J('/api/comparador/vedada?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok||!d.economia_vedada_total)return '';
   const ABR={total:'inidôneas (veda todos)',ente:'impedidas no ente',orgao:'órgão'};
@@ -176,9 +176,9 @@ export async function _blocoVedada(){
       <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(f.economia_vedada)}</div></div></div>`)).join('')+`</div></div>`;
   return h;
 }
-export async function _compDossie(){
+async function _compDossie(){
   const d=await J('/api/comparador/dossie?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
-  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return cardErro(d.erro);
   const a=d.achados||[];
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
   registrarDrill('compDoisSinais',{titulo:'Casos com dois ou mais sinais',itens:a.filter(x=>x.sinais.length>=2),nota:'Sinal isolado explica-se; dois pedem verificação.'});
@@ -203,9 +203,9 @@ export async function _compDossie(){
     'hl');}).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-export async function _compForn(){
+async function _compForn(){
   const d=await J('/api/comparador/fornecedores?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
-  if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  if(!d.ok)return cardErro(d.erro);
   const linha=(x,caro)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
     <div class="right"><div class="num" style="font-weight:800;color:${caro?'var(--rose)':'var(--green)'}">${x.razao_mediana}×</div><div class="dim">${caro?'acima':'abaixo'} do mercado</div></div></div>`,caro?'hl':'');

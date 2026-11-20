@@ -10,12 +10,11 @@
 //  · As unidades de cada órgão só entram no DOM quando o órgão é aberto (são ~300 linhas).
 import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {fmtN, fmtR, fmtData} from '../nucleo/formato.js';
+import {fmtN, fmtR, fmtData, normalizar} from '../nucleo/formato.js';
 import {periodoAtual} from './periodo.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro',
   'novembro', 'dezembro'];
-const _norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 const _ind = t => `<span class="dim" title="${esc(t || 'a fonte não tem este valor neste período — não é zero')}">INDISPONÍVEL</span>`;
 const _r = (v, t) => (v == null ? _ind(t) : fmtR(v));
 const _p = v => (v == null ? '<span class="dim">—</span>'
@@ -126,8 +125,8 @@ function _detalhe(o){
 }
 
 const _aberto = new Set();
-const _visiveis = d => (d.orgaos || []).filter(o => !_S.q || _norm(o.nome).includes(_S.q) || o.orgao === _S.q
-  || (o.ugs || []).some(x => _norm(x.nome).includes(_S.q) || x.ug === _S.q));
+const _visiveis = d => (d.orgaos || []).filter(o => !_S.q || normalizar(o.nome).includes(_S.q) || o.orgao === _S.q
+  || (o.ugs || []).some(x => normalizar(x.nome).includes(_S.q) || x.ug === _S.q));
 
 function _tabela(d){
   const vis = _visiveis(d), t = d.total || {};
@@ -213,7 +212,7 @@ export function ligarOrcamentoOrgao(){
     const t = ev.target;
     if (!t || !t.matches || !t.matches('[data-oo-filtro]')) return;
     clearTimeout(tm);
-    tm = setTimeout(() => { _S.qTexto = t.value; _S.q = _norm(t.value.trim()); _repintarTabela(); }, 180);
+    tm = setTimeout(() => { _S.qTexto = t.value; _S.q = normalizar(t.value.trim()); _repintarTabela(); }, 180);
   });
 }
 

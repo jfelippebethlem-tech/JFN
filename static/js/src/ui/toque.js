@@ -137,7 +137,7 @@ function _listas(raiz) {
   }
 }
 
-export function toqueVivo(raiz) {
+function toqueVivo(raiz) {
   if (!raiz) return;
   for (const t of raiz.querySelectorAll('table')) _preparar(t);
   _listas(raiz);

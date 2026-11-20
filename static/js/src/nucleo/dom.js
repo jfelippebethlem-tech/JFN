@@ -112,7 +112,7 @@ export const semMedicao = (d, t) => card(`<div style="font-weight:700">${esc(t)}
 // botão "Gerar PDF" (padrão Kroll) para qualquer aba de inteligência.
 // O `onclick` cita `gerarPdfIntel` por NOME, resolvido no escopo global pela ponte — não é import:
 // handler inline não enxerga escopo de módulo, e é justamente por isso que a ponte existe.
-export const btnPdf = tipo => `<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
+const btnPdf = tipo => `<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
 
 // barra de ação da aba (PDF + eventuais extras), colocada logo após o cover
 export const acoesAba = (tipo, extra) => `<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra || ''}</div>`;

@@ -4,12 +4,10 @@
  * boot, que não faz nada sem a flag. Sem `html.v61` o painel é a v60, byte a byte.
  * Não tem efeito de topo (o boot é ordenado pelo entrypoint, não pelo import).
  */
-import {_v61, _v61flag} from '../capacidade/estado.js';
 import {tickerMontar, abrirHistorico} from './aovivo.js';
 import {svgIco} from '../nucleo/dom.js';
 
 export function v61Boot() {
-  if (!_v61flag || !_v61) return;
   _fundo();
   _som();
   tickerMontar();

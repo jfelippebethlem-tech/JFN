@@ -16,12 +16,12 @@
    `abrirDossie` e `verCruzamento` chamam as duas, e sem o import o dossie morreria com
    `sec is not defined` no clique. Nao aparecia no `painel_boot_check` porque ele percorre
    as 60 abas e nao abre dossie — foi `painel_modulo_livre` que achou, em 40 ms. */
-import {$, esc, corta, card, spin, clk, svgIco, sec, leitura} from '../nucleo/dom.js';
-import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
-import {J, _jCache, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _sobrio, _v60, _v61} from '../capacidade/estado.js';
+import {$, esc, card, spin, svgIco, sec, leitura} from '../nucleo/dom.js';
+import {fmtN, fmtRc} from '../nucleo/formato.js';
+import {J, cardErro} from '../nucleo/http.js';
+import {_sobrio} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
-import {revelar, _wireFase} from './revelacao.js';
+import {revelar} from './revelacao.js';
 import {somTocar} from './midia.js';
 
 export function a11yfy(root){
@@ -43,7 +43,7 @@ export function a11yfy(root){
       leitor de tela nem roubar clique. Marca `data-hlx` para nunca duplicar. */
 const HLX_SEL='.btn,.chip,.tab,.lnk,.ck-inst,.nu-chip,.htop a';
 let _hlxN=0;
-export function holografar(root){
+function holografar(root){
   const alvo=root||document;
   let els;
   try{els=alvo.querySelectorAll(HLX_SEL);}catch(_){return;}
@@ -90,7 +90,7 @@ let _spotEl=null,_spotRect=null,_spotEv=null,_spotRaf=0;
 /* Os quatro ouvintes do spotlight eram efeito de TOPO. Efeito de topo em modulo roda na
    ordem do IMPORT, nao na do entrypoint — reordena o boot em silencio. Viram funcao; quem
    chama e a sequencia de boot, que e o unico lugar onde o boot acontece. */
-export function _spotPinta(){
+function _spotPinta(){
   _spotRaf=0;
   const t=_spotEl,e=_spotEv;if(!t||!e)return;
   if(!_spotRect)_spotRect=t.getBoundingClientRect();
@@ -125,7 +125,6 @@ export function uiLigarSpotlight(){
 }
 
 // ═══ VIDA GLOBAL — o cockpit em toda aba (cascata · contagem · malha de luz) ═══
-let _wireRAF=0;
 /* O que a última revelação tocou. Existe para a sonda e o teste PROVAREM que a gramática entrou —
    animação que não acontece não quebra nada e não aparece em revisão de código, que foi exatamente
    como o `--i` do v34 passou versões inteiras sem nunca numerar uma linha de tabela. */
@@ -142,7 +141,6 @@ export function vivo(){
      sóbrio). Os dois contadores no mesmo nó brigavam: um lia o quadro intermediário do outro como
      valor final e o KPI chegou a mostrar número errado e negativo ("-29.317" em vez de 21.990,
      g_conluio, 14/11/2026). */
-  if(!rm&&!_v61)v.querySelectorAll('.kpi .v').forEach(_countUp);
   // 3) A→Z em TODA busca de lista (vale pra tudo; padrão continua por risco/valor)
   v.querySelectorAll('.search').forEach(box=>{
     const inp=box.querySelector('input[oninput*="filtrar"]'); if(!inp||box.querySelector('.az'))return;
@@ -151,8 +149,6 @@ export function vivo(){
     b.title='Ordenar por nome do fornecedor (A→Z) · clique de novo p/ voltar à ordem por risco';
     b.setAttribute('onclick',`ordenar('${m[1]}',this)`);box.appendChild(b);
   });
-  // 4) malha de luz ligando os cards
-  _wire(top,rm);
   /* 5) as gramáticas de revelação (v59): tabela linha a linha, ranking crescendo da base, rankings
      irmãos por lados opostos, seção riscando, chips em leque. Só marca classe e `--i`; nenhuma
      leitura de geometria, nenhum trabalho por quadro. Vem por último porque a única coisa que ela
@@ -160,65 +156,6 @@ export function vivo(){
   _censo=revelar(v,rm,_sobrio);
 }
 export const revelacaoCenso=()=>_censo;
-export function _countUp(el){
-  const raw=(el.textContent||'').trim();
-  const m=raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/); if(!m)return;
-  const pre=m[1],suf=m[3],dec=(m[2].split(',')[1]||'').length;
-  const val=parseFloat(m[2].replace(/[.\s]/g,'').replace(',','.'));
-  if(!isFinite(val)||val===0)return;
-  el.classList.add('counting');const t0=performance.now(),dur=850;
-  (function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
-    el.textContent=pre+(val*e).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf;
-    if(p<1)requestAnimationFrame(step);else{el.textContent=raw;el.classList.remove('counting');}})(t0);
-}
-const _ESF_RGB={inicio:'99,224,255',estado:'125,175,255',prefeitura:'235,190,105',geral:'200,150,255'};
-export function _wire(nodes,rm){
-  if(_v60)return;   // v60: a malha de luz atrás dos cards saiu (linha cruzando texto) — sem canvas, sem RAF
-  cancelAnimationFrame(_wireRAF);
-  const C=_ESF_RGB[esfera]||_ESF_RGB.inicio;
-  const v=$('view'),fade=v&&v.querySelector('.fade'); if(!v||!fade||nodes.length<2)return;
-  let cv=v.querySelector('.view-wire');
-  if(!cv){cv=document.createElement('canvas');cv.className='view-wire';v.insertBefore(cv,fade);}
-  const cx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),vr=v.getBoundingClientRect();
-  const W=v.clientWidth,H=Math.max(v.scrollHeight,fade.scrollHeight);
-  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';cx.scale(dpr,dpr);
-  const pts=nodes.slice(0,46).map(el=>{const r=el.getBoundingClientRect();
-    return {x:r.left-vr.left+Math.min(r.width/2,80),y:r.top-vr.top+9};});
-  // arestas: cada nó liga aos 2 vizinhos mais próximos (grafo esparso, sem cruzar tudo)
-  const edges=[];
-  pts.forEach((a,i)=>{const d=pts.map((b,j)=>({j,d:(a.x-b.x)**2+(a.y-b.y)**2})).filter(o=>o.j!==i).sort((p,q)=>p.d-q.d).slice(0,2);
-    d.forEach(o=>{const k=i<o.j?i+'-'+o.j:o.j+'-'+i;if(!edges.some(e=>e.k===k))edges.push({k,a:i,b:o.j});});});
-  /* v59 — A MALHA É TRAÇADA, e as arestas vêm ANTES dos nós (gramática 6 de `revelacao.js`).
-     Ela nascia pronta no primeiro quadro, e grafo que nasce pronto não se lê como grafo: vira
-     textura de fundo. Traçado, ele conta a estrutura na ordem em que ela existe — primeiro o fio
-     que liga um card ao outro, depois o nó acendendo sobre o que já está ligado.
-
-     A intro NÃO é um segundo laço de animação: é o mesmo `draw` lendo duas frações do relógio que
-     ele já recebia. Custo por quadro: dois `Math.pow`. Com movimento reduzido, `t0i` fica nulo e
-     `_wireFase` devolve 1 e 1 — a malha nasce inteira, como antes.
-
-     A aresta cresce do nó A para o B em vez de aparecer com opacidade: linha que se ESTENDE diz
-     "isto liga aquilo"; linha que só surge diz "há um risco aqui". */
-  const t0i=rm?null:performance.now();
-  function draw(t){
-    cx.clearRect(0,0,W,H);
-    const f=_wireFase(t0i==null?null:t-t0i);
-    if(f.aresta>0)edges.forEach(e=>{const A=pts[e.a],B=pts[e.b];
-      cx.strokeStyle='rgba('+C+',.15)';cx.lineWidth=1;
-      cx.beginPath();cx.moveTo(A.x,A.y);
-      cx.lineTo(A.x+(B.x-A.x)*f.aresta,A.y+(B.y-A.y)*f.aresta);cx.stroke();});
-    if(f.no>0)pts.forEach(p=>{cx.fillStyle='rgba('+C+','+(.35*f.no).toFixed(3)+')';
-      cx.beginPath();cx.arc(p.x,p.y,1.6*f.no,0,6.283);cx.fill();});
-    /* O pacote só viaja depois que o fio existe inteiro. Um pulso correndo por uma aresta ainda
-       pela metade sai da linha e flutua no vazio — foi o que apareceu na primeira passada. */
-    if(!rm){if(f.aresta>=1)edges.forEach((e,i)=>{const A=pts[e.a],B=pts[e.b],ph=((t/1400)+i*0.16)%1;
-      const x=A.x+(B.x-A.x)*ph,y=A.y+(B.y-A.y)*ph;
-      const g=cx.createRadialGradient(x,y,0,x,y,8);g.addColorStop(0,'rgba('+C+',.8)');g.addColorStop(1,'rgba('+C+',0)');
-      cx.fillStyle=g;cx.beginPath();cx.arc(x,y,8,0,6.283);cx.fill();});
-      _wireRAF=requestAnimationFrame(draw);}
-  }
-  draw(rm?0:performance.now());
-}
 
 // ═══ GLOSSÁRIO ═══
 const TERMOS=[
@@ -261,7 +198,7 @@ export function fecharDossie(){$('ov').classList.remove('on');}
 let _ovGatilho=null;
 const _ovFocaveis=r=>[...r.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')]
   .filter(e=>e.offsetWidth||e.offsetHeight||e.getClientRects().length);
-export function _ovTecla(e){
+function _ovTecla(e){
   const ov=document.getElementById('ov');
   if(!ov||!ov.classList.contains('on'))return;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();fecharDossie();return;}
@@ -305,7 +242,7 @@ export async function abrirDossie(cnpj,nome){
   sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin('Montando dossiê de '+esc(nome||dig)+'…')}`;
   a11yfy(sh);
   const d=await J('/api/perfil?cnpj='+dig);
-  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharDossie()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);a11yfy(sh);return;}
+  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharDossie()">✕</span><div class="grab"></div>`+cardErro(d.erro);a11yfy(sh);return;}
   const per=d.pericia||{},ob=d.ob||{},pncp=d.pncp||{},sede=d.sede||{};
   const sv=(sede.lat&&sede.lon)?`https://www.google.com/maps?layer=c&cbll=${sede.lat},${sede.lon}`:(sede.endereco?`https://www.google.com/maps/search/${encodeURIComponent(sede.endereco+', '+(sede.municipio||''))}`:null);
   let h=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>`;
@@ -426,7 +363,7 @@ export async function abrirCertame(certame){
   sh.innerHTML=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>${spin('Calculando índice de '+esc(certame)+'…')}`;
   a11yfy(sh);
   const d=await J('/api/certame/indice?certame='+encodeURIComponent(certame));
-  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharCertame()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);a11yfy(sh);return;}
+  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharCertame()">✕</span><div class="grab"></div>`+cardErro(d.erro);a11yfy(sh);return;}
   const ix=d.indice||{},fam=ix.familias||{},sv=ix.matriz_sv||{},drivers=ix.drivers||[];
   const cor=ix.faixa==='EXTREMO'||ix.faixa==='ALTO'?'var(--rose)':ix.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
   let h=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>`;

@@ -22,10 +22,9 @@
  *
  * Sem efeito de topo.
  */
-import {$, esc, svgIco, card, kpi, sec, cover, corta, clk} from '../nucleo/dom.js';
-import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
+import {$, esc} from '../nucleo/dom.js';
+import {fmtN, fmtD, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _v60, _v61, _v63} from '../capacidade/estado.js';
 import {v63InicioHtml, v63InicioMontar} from '../v63/inicio.js';
 import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
@@ -33,13 +32,12 @@ import {preocupacoesMontar} from './preocupacoes.js';
 import {mapaMontar} from '../mapa/territorio.js';
 import {flipAoVivo} from '../ui/movimento.js';
 import {aba, esfera} from '../app/estado.js';
-import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
-import {energiaLigar} from '../cena/energia.js';
-import {a11yfy, abrirDossie} from '../ui/index.js';
+import {nuSet, NU_NODES} from '../cena/index.js';
+import {a11yfy} from '../ui/index.js';
 import {galaxiaPreviewHtml, galaxiaPreviewMontar} from './galaxia_inicio.js';   // 16/11: preview leve da galáxia (fim do Início)
 
 // ═══ COCKPIT (aba Início) — command deck ao vivo ═══
-export let _ckTimer=null;
+let _ckTimer=null;
 /* ── TERRITÓRIO GLOBAL — o Estado do RJ atrás de toda aba ──────────────────
    Desenha a malha REAL do IBGE num offscreen (1× por tamanho/cor), tingida pela
    cor da esfera ativa, e no RAF passa só uma varredura de radar + respiração
@@ -48,77 +46,18 @@ export let _ckTimer=null;
 
 /* v10: _ckSpark/_ckSynth removidos — gerador de série sintética (Math.random) sem caller,
    proibido pelo PRODUCT.md ("dado sintético = proibido"). Sparkline real, quando vier, nasce de série da API. */
-export function _ckCount(el,to,fmt,ms=1000){if(!el)return;const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
+function _ckCount(el,to,fmt,ms=1000){if(!el)return;const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
   const t0=performance.now();(function s(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(s);else el.textContent=fmt(to);})(performance.now());}
-export const _CK={teal:'#5fd9ff',gold:'#eec276',good:'#5fe0a1',amber:'#f2b544',rose:'#ff7a8a'};
-
-/* ══ v49 · UM BOTÃO POR FUNÇÃO MESTRA (pedido do dono) ══════════════════════════════════════════
-   A lista vem de `CAPS_MESTRAS` (static/js/caps.js), GERADA de capabilities.yaml pelo
-   tools/gerar_superficie_caps.py. Escrever os botões aqui à mão criaria a quinta cópia da mesma
-   lista — e a casa já tem cicatriz de lista duplicada divergindo em silêncio.
-
-   As rotas aparecem como string literal no arquivo gerado de propósito: é assim que as duas
-   catracas de rota (órfãs, teto 0; e sem-superfície) enxergam que a capacidade tem porta de
-   entrada. Fosse `fetch('/api/lista')` em runtime, elas acusariam órfãs que não são órfãs. */
-/* Frescor das fontes — saiu do Início para a esfera Sistema em 14/11/2026 (pedido do dono). */
-export function frescorMontar(box){
-  J('/api/fontes/frescor').then(d=>{if(!box||!box.isConnected||!d||!d.fontes)return;
-    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
-      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';
-      return f.idade_dias==null?'#63718f':(f.idade_dias<=2?'#5fe0a1':(f.idade_dias<=10?'#f2b544':'#ff7a8a'));};
-    box.innerHTML=`<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">`+
-      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)}"></span>
-        <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
-}
-export function blocoComandosMestres(){
-  if(typeof CAPS_MESTRAS==='undefined'||!CAPS_MESTRAS.length)return '';
-  const grupos={};
-  for(const c of CAPS_MESTRAS)(grupos[c.grupo]=grupos[c.grupo]||[]).push(c);
-  let h=`<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
-  for(const g of Object.keys(grupos)){
-    const gi=grupos[g][0]||{};
-    h+=`<div class="caps-g"><div class="caps-gt">${gi.grupo_ic?`<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> `:''}${esc(gi.grupo_rot||g)}</div><div class="btns" style="flex-wrap:wrap">`;
-    for(const c of grupos[g]){
-      const dica=esc(`${c.descricao||c.nome}${c.exemplo?'\n\nex.: '+c.exemplo:''}${c.rota?'\n\n'+c.metodo+' '+c.rota:''}`);
-      h+=`<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">`
-        +`${esc(c.nome)}${c.cmd?`<span class="caps-cmd">${esc(c.cmd)}</span>`:''}</button>`;
-    }
-    h+=`</div></div>`;
-  }
-  h+=`<div class="note">Cada botão é uma capacidade com <b>status PRONTO</b> em <code>capabilities.yaml</code>.
-      O mesmo <code>cmd</code> serve o Telegram e o painel — uma fonte, várias superfícies.</div></div>`;
-  return h;
-}
-
-/* O clique abre a ficha da capacidade com a rota, o método e um exemplo. NÃO dispara sozinho:
-   várias destas geram peça pesada (PDF, planilha) ou escrevem no banco, e disparo acidental num
-   painel de auditoria é caro — o botão leva ao comando, quem decide é a pessoa. */
-export function abrirCapMestra(id){
-  const c=(typeof CAPS_MESTRAS!=='undefined'?CAPS_MESTRAS:[]).find(x=>x.id===id);
-  if(!c)return;
-  const linha=(r,v)=>`<div style="display:flex;gap:10px;margin:6px 0"><b style="min-width:104px">${r}</b><span>${v}</span></div>`;
-  const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
-  sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
-    <div style="font-weight:800;font-size:17px;margin-bottom:4px">${esc(c.nome)}</div>
-    <div class="muted" style="font-size:13px;margin-bottom:14px">${esc(c.grupo)}</div>`
-    +card((c.descricao?`<p style="margin:0 0 10px">${esc(c.descricao)}</p>`:'')
-      +(c.rota?linha('Rota',`<code>${esc(c.metodo)} ${esc(c.rota)}</code>`):'')
-      +(c.cmd?linha('No Telegram',`<code>${esc(c.cmd)}</code>`):'')
-      +(c.exemplo?linha('Exemplo',`<code>${esc(c.exemplo)}</code>`):''))
-    +`<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
-      ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
-  a11yfy(sh);
-}
 
 export async function renderCockpit(){
   /* v61: o mapa do território (centro-esquerda) e a coluna do reator (direita) entram ANTES do
      resto; a mesa de vigília antiga segue no DOM, oculta pelo CSS, e o laço dela não é iniciado. */
-  const v61=_v61?`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
+  const v61=`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
     <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
       <button type="button" class="chip c61-ir-motores" onclick="ir('s_motores')">Motores · ver todos</button></aside>
-    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`:'';
+    <section class="c61-preoc" id="c61-preoc" aria-label="Sinais críticos"></section>`;
   /* v63: o herói e as quatro seções no estilo Relay entram ANTES do cockpit (`v63/inicio.js`) */
-  const html=`${_v63?v63InicioHtml():''}<div class="ck${_v61?' ck61':''}">${v61}
+  const html=`${v63InicioHtml()}<div class="ck ck61">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead" role="link" tabindex="0" style="cursor:pointer" title="Abrir as compras com sobrepreço (Comparador › Economia possível)"
@@ -179,20 +118,20 @@ export function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst"
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
   <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
   </div>`;}
-export function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
+function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   /* v61: a 1ª leitura conta de 0 ao valor; quando o número MUDA numa leitura seguinte (a cada 30 s),
      ele troca com flip + lâmina de luz em vez de recontar do zero. */
   const _novo=num!=null&&isFinite(num)?fmtN(Math.round(num)):(txt!=null?String(txt):null);
-  const _mudou=_v61&&_novo!=null&&el.dataset.v61Val!==undefined&&el.dataset.v61Val!==_novo;
-  if(_v61&&_novo!=null&&el.dataset.v61Val===_novo){/* mesmo valor: nada a animar */}
+  const _mudou=_novo!=null&&el.dataset.v61Val!==undefined&&el.dataset.v61Val!==_novo;
+  if(_novo!=null&&el.dataset.v61Val===_novo){/* mesmo valor: nada a animar */}
   else if(_mudou){v.textContent=_novo;flipAoVivo(el);}
   else if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
   if(_novo!=null)el.dataset.v61Val=_novo;
   if(meta!=null){m.innerHTML=meta;m.classList.remove("esperando");}
   nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
 }
-export let _ckTick=[];
-export function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
+let _ckTick=[];
+function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
 export function ckBoot(){
   const g=$('ck-grid');if(!g)return;
   /* v60: grade de 9 na ordem do brief, com ALERTAS (o total já vinha de `/api/compliance/painel`
@@ -202,29 +141,19 @@ export function ckBoot(){
      vazio; REFUTADO em 13/11). As abas continuam; o número só volta à capa depois de corrigido e medido de novo.
      20/11/2026: saiu também 'Ente com maior indício de sobrepreço' (juiz reprovou 2×: o topo era a Prefeitura do Rio com
      R$ 6.990,40 em 2 compras — desproporcional para manchete e fora do escopo estadual). O dado segue na aba Compras. */
-  if(_v60)g.innerHTML=[ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
+  g.innerHTML=[ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro')].join('');
-  else g.innerHTML=[ckCard('com','Comunidades','','bgteal','g_comun'),
-    ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
-    ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
-    ckCard('compras','Compras auditáveis','','bgteal','e_comp')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
-  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));}   // v61: o reator vivo no lugar da mesa
-  else nucleoStart();
-  /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
-     instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de
-     largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo
-     layout — `getBoundingClientRect` no mesmo quadro leria a posição anterior. */
-  if(!_v61)requestAnimationFrame(()=>energiaLigar());
-  if(_v63)v63InicioMontar();          // v63: depois do paint, como o resto do cockpit
+  aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));   // v61: o reator vivo no lugar da mesa
+  v63InicioMontar();          // v63: depois do paint, como o resto do cockpit
   galaxiaPreviewMontar($('gx-prev'));   // 16/11: canvas 2D pintado uma vez; a galáxia 3D abre em /galaxia
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
-export function ckPull(first){
+function ckPull(first){
   _ckTick=[];
   /* O chip anunciava `lista_alertas.length` — o TAMANHO DA PÁGINA (40), não a contagem
      (7.058). Trocar uma grandeza pela outra no chip mais visível da mesa é o mesmo pecado

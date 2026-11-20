@@ -9,10 +9,10 @@
 // trocava de aba no meio, voltava para o spinner de novo. Agora cada tabela entra com as primeiras linhas e um
 // "Mostrar mais"; o filtro por órgão varre TODAS as linhas em memória (não só as que estão na tela) e repinta.
 import {esc, card, kpi, sec, cover, avisoDemora} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
-import {fmtN, fmtR, fmtData, fmtPct} from '../nucleo/formato.js';
+import {J, cardErro} from '../nucleo/http.js';
+import {fmtN, fmtR, fmtData, fmtPct, normalizar} from '../nucleo/formato.js';
+import {abrirDossie} from '../ui/index.js';
 
-const _norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 const _ind = v => (v == null ? '<span class="dim">INDISPONÍVEL</span>' : v);
 const _fonte = b => `<div class="dim" style="font-size:12px;margin:6px 0 10px"><b>Fonte:</b> ${esc(b.fonte || '—')}
   <br><b>Cobertura:</b> ${esc(b.cobertura || '—')}</div>`;
@@ -95,7 +95,7 @@ function _pontos(b){
   const pc = b.por_camada || {}, pg = b.por_grau || {};
   const nv = b.itens.filter(x => x.verificacao === 'VERIFICADO').length;
   const chip = (k, v, t, on) => `<button type="button" class="chip${on ? ' on' : ''}" data-gc-pt="${k}:${v}">${t}</button>`;
-  const rows = b.itens.map(x => ({c: x.camada, g: x.grau, o: _norm(x.orgao), h: `<tr>
+  const rows = b.itens.map(x => ({c: x.camada, g: x.grau, o: normalizar(x.orgao), h: `<tr>
       <td style="min-width:150px">${esc(x.grau)} <span class="dim" style="font-size:11px">· ${x.camada === 'deterministica' ? 'determinística' : 'subjetiva'}</span><div style="margin-top:4px">${_verifTag(x)}</div></td>
       <td style="min-width:220px"><b>${esc(x.regra_ou_hipotese || '')}</b><div class="dim" style="font-size:12px">${esc(x.orgao || '')}${x.processo ? ' · ' + esc(x.processo) : ''}${x.fonte ? ' · fonte: ' + esc(x.fonte) : ''}</div>${_verif(x)}</td>
       <td class="right" style="white-space:nowrap">${x.valor_ob == null ? '<span class="dim">—</span>' : fmtR(x.valor_ob)}</td>
@@ -117,7 +117,7 @@ function _atos(b){
       <td style="white-space:nowrap">${_link(d.url, `<b>${esc(d.numero)}</b>`)}<div class="dim" style="font-size:11px">${fmtData(d.data)}</div></td>
       <td style="font-size:13px;min-width:200px">${esc(d.ementa)}</td>
       <td style="white-space:nowrap;font-size:12px">${esc(d.categoria)}${d.valor_ementa ? `<div>${fmtR(d.valor_ementa)}</div>` : ''}</td></tr>`}));
-  const pes = (b.pessoal || []).map(a => ({o: _norm(a.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(a.data)}</td>
+  const pes = (b.pessoal || []).map(a => ({o: normalizar(a.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(a.data)}</td>
       <td><b>${a.ato === 'NOMEAR' ? 'Nomeação' : 'Exoneração'}</b></td><td>${esc(a.nome)}</td>
       <td style="font-size:13px;min-width:180px">${esc(a.cargo)} — ${esc(a.orgao)}</td><td>${_link(a.url, 'DOERJ')}</td></tr>`}));
   return card(`${_fonte(b)}<div style="font-size:13px">${cat}</div>
@@ -136,9 +136,9 @@ function _marcas(m){
 function _contratacoes(b){
   if (b.estado === 'indisponivel') return _indisp(b);
   const mod = (b.por_modalidade || []).map(m => `<tr><td>${esc(m.modalidade)}</td><td class="right">${fmtN(m.n)}</td><td class="right">${fmtR(m.valor)}</td></tr>`).join('');
-  const org = (b.por_orgao || []).map(o => ({o: _norm(o.orgao), h: `<tr><td>${esc(o.orgao)}</td><td class="right">${fmtN(o.n)}</td>
+  const org = (b.por_orgao || []).map(o => ({o: normalizar(o.orgao), h: `<tr><td>${esc(o.orgao)}</td><td class="right">${fmtN(o.n)}</td>
       <td class="right">${fmtN(o.n_diretas)}</td><td class="right">${fmtR(o.valor)}</td></tr>`}));
-  const dest = (b.lista || []).map(x => ({o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}<div class="dim" style="font-size:11px">${esc(x.processo || '')}</div></td>
+  const dest = (b.lista || []).map(x => ({o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}<div class="dim" style="font-size:11px">${esc(x.processo || '')}</div></td>
       <td style="font-size:13px;min-width:220px"><b>${esc(x.fornecedor)}</b> <span class="dim" style="font-size:11px">${esc(x.doc_tipo)} ${esc(x.doc)}</span>
         <div>${esc(x.objeto)}</div><div class="dim" style="font-size:11px">${esc(x.orgao)}</div></td>
       <td style="font-size:12px">${esc(x.modalidade)}${x.emergencial_no_objeto ? '<div>objeto cita emergência</div>' : ''}${_marcas(x.marcas)}</td>
@@ -162,7 +162,7 @@ function _contratacoes(b){
 function _execucao(b){
   if (b.estado === 'indisponivel') return _indisp(b);
   const a = b.anterior || {};
-  const org = (b.por_orgao || []).map(o => ({o: _norm(o.nome), h: `<tr><td style="min-width:180px">${esc(o.nome)} <span class="dim" style="font-size:11px">órgão ${esc(o.orgao)}</span>
+  const org = (b.por_orgao || []).map(o => ({o: normalizar(o.nome), h: `<tr><td style="min-width:180px">${esc(o.nome)} <span class="dim" style="font-size:11px">órgão ${esc(o.orgao)}</span>
       <div class="dim" style="font-size:11px">UG ${(o.ugs || []).map(u => `${esc(u.ug)}: ${fmtR(u.pago)}`).join(' · ')}</div></td>
       <td class="right">${fmtN(o.n_obs)}</td><td class="right" style="white-space:nowrap">${fmtR(o.pago)}</td>
       <td class="right" style="white-space:nowrap">${o.pago_anterior == null ? '<span class="dim">sem OB</span>' : fmtR(o.pago_anterior)}</td>
@@ -183,10 +183,10 @@ function _execucao(b){
 function _controle(b){
   if (b.estado === 'indisponivel') return _indisp(b);
   const au = b.auditorias_50254 || {}, tce = b.tce || {}, per = b.pericias || {}, det = b.detectores || {}, cs = b.casos || {};
-  const aud = (au.itens || []).map(x => ({o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td>
+  const aud = (au.itens || []).map(x => ({o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td>
       <td style="font-size:13px;min-width:220px"><b>${esc(x.titulo)}</b>${x.instaura ? ' <span class="dim">· instaura auditoria/comissão</span>' : ''}<div class="dim" style="font-size:12px">… ${esc(x.trecho)} …</div></td>
       <td>${_link(x.url, 'DOERJ')}</td></tr>`}));
-  const pen = (tce.itens || []).map(x => ({o: _norm(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td><td>${esc(x.orgao || '')}</td>
+  const pen = (tce.itens || []).map(x => ({o: normalizar(x.orgao), h: `<tr><td style="white-space:nowrap">${fmtData(x.data)}</td><td>${esc(x.orgao || '')}</td>
       <td>${esc(x.tipo || '')} <span class="dim" style="font-size:11px">${esc(x.processo || '')}</span></td><td class="right">${x.valor == null ? '—' : fmtR(x.valor)}</td></tr>`}));
   const pr = (per.itens || []).map(x => ({h: `<tr><td>${esc(x.grau)} <a href="#" data-gc-dossie="${esc(x.cnpj)}" data-gc-nome="${esc(x.favorecido)}">${esc(x.favorecido)}</a>
       <span class="dim" style="font-size:11px">CNPJ ${esc(x.cnpj)}</span></td><td class="right">${fmtN(x.n_ugs)}</td><td class="right">${fmtR(x.total_pago_pericia)}</td></tr>`}));
@@ -211,7 +211,7 @@ function _controle(b){
 function _filtrar(){
   const raiz = document.getElementById('gc-raiz'); if (!raiz) return;
   const on = (sel, ds, pad) => { const el = raiz.querySelector(sel); return el ? el.dataset[ds] : pad; };
-  _F = {q: _norm((raiz.querySelector('[data-gc-filtro]') || {}).value),
+  _F = {q: normalizar((raiz.querySelector('[data-gc-filtro]') || {}).value),
     cam: (on('[data-gc-pt^="camada:"].on', 'gcPt', 'camada:') || 'camada:').split(':')[1],
     gr: (on('[data-gc-pt^="grau:"].on', 'gcPt', 'grau:') || 'grau:').split(':')[1],
     cat: on('[data-gc-cat-f].on', 'gcCatF', '') || ''};
@@ -226,7 +226,7 @@ export function ligarGovernoCouto(){
     const b = ev.target && ev.target.closest && ev.target.closest('[data-gc-pt],[data-gc-cat-f],[data-gc-dossie],[data-gc-mais]');
     if (!b) return;
     ev.preventDefault();
-    if (b.dataset.gcDossie) { if (typeof window.abrirDossie === 'function') window.abrirDossie(b.dataset.gcDossie, b.dataset.gcNome || ''); return; }
+    if (b.dataset.gcDossie) { abrirDossie(b.dataset.gcDossie, b.dataset.gcNome || ''); return; }
     if (b.dataset.gcMais) {
       const t = _T[b.dataset.gcMais]; if (!t) return;
       t.mostr = b.dataset.gcTodas ? Infinity : t.mostr + _LOTE * 2;
@@ -249,7 +249,7 @@ export async function renderGovernoCouto(){
   _T = {}; _F = {q: '', cam: '', gr: '', cat: ''};
   let h = cover('estado', 'Governo Couto — gestão do governador em exercício',
     'Tudo o que a base do JFN tem sobre a gestão iniciada em 23/03/2026 (interina): atos no DOERJ, contratações, pagamentos por OB do SIAFE e controle. Cada bloco declara fonte e cobertura. Indício não é acusação.', '📜');
-  if (!d || d.ok === false) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
+  if (!d || d.ok === false) return h + cardErro(d && (d.erro || d));
   const g = d.gestao || {};
   h += card(`<div style="font-size:14px"><b>Período:</b> ${fmtData(g.inicio)} a ${fmtData(g.ate)} · ${g.interina ? '<b>gestão interina</b>' : ''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px"><b>Início:</b> ${esc(g.fonte || '')}</div>

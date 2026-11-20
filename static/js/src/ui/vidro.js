@@ -12,7 +12,6 @@
  * bloqueado) — sem armazenamento o controle funciona igual, só não lembra na próxima carga.
  * Sem efeito de topo; quem liga é `vidroBoot()` na sequência de boot (`entrada.js`).
  */
-import {_v61} from '../capacidade/estado.js';
 
 const CHAVE = 'jfn_vidro';
 /* [token, rótulo, mín, máx, passo, padrão, unidade, formatação] — o padrão é o do CSS */
@@ -48,7 +47,6 @@ const _ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
   + '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 
 export function vidroBoot() {
-  if (!_v61) return;
   let val = _ler();
   _aplicar(val);
   const box = document.querySelector('.htop .actions'); if (!box || document.querySelector('[data-vidro-abrir]')) return;

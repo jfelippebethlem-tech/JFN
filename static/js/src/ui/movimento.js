@@ -10,14 +10,13 @@
  * `prefers-reduced-motion` e o modo sóbrio (FPS medido baixo) desligam contagem e flip.
  */
 import {$} from '../nucleo/dom.js';
-import {_v61, _redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion, _sobrio} from '../capacidade/estado.js';
 
 const RE_NUM = /^(R\$\s?)?(-?\d{1,3}(?:\.\d{3})*|-?\d+)(?:,(\d+))?(\s?(?:%|×|x))?$/;
 const ALVO = '.card.kpi .v, .tf-k b';
 let _io = null;
 
 export function movimentoBoot() {
-  if (!_v61) return;
   document.addEventListener('visibilitychange', () => {
     document.querySelectorAll('#esfnebula video').forEach(v => {
       if (document.hidden) v.pause(); else if (v.classList.contains('on')) v.play().catch(() => {});
@@ -85,7 +84,7 @@ function _contar(el) {
 
 /** Um número do cartão mudou AO VIVO: flip curto no valor + lâmina de luz na borda superior. */
 export function flipAoVivo(cartao) {
-  if (!_v61 || _redMotion || _sobrio || !cartao) return;
+  if (_redMotion || _sobrio || !cartao) return;
   cartao.classList.remove('v61-lamina'); void cartao.offsetWidth; cartao.classList.add('v61-lamina');
   const v = cartao.querySelector('.val,.v');
   if (v) { v.classList.remove('v61-flip'); void v.offsetWidth; v.classList.add('v61-flip'); }

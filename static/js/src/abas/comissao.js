@@ -4,9 +4,10 @@
 // Dados: GET /api/comissao/orgaos (compliance_agent/comissao_orcamento.py) e /api/comissao/pecas.
 // Indício não é acusação; valor = OB Contabilizado do SIAFE (empenho nunca é "pago").
 import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, cardErro} from '../nucleo/http.js';
 import {fmtN, fmtR} from '../nucleo/formato.js';
 import {quando} from '../aovivo/formato.js';
+import {mdSimples} from '../nucleo/markdown.js';
 
 const _ROT = {
   'T07-DUPLICIDADE-COMP': 'Competência paga 2×',
@@ -92,7 +93,6 @@ function _guardar(fn){ const k=String(++_lazySeq); _lazy.set(k, fn); return k; }
 
 const _MES = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const _EST = {'VERIFICADO':['var(--ok,#1f9d55)','número conferido'],'PENDENTE':['var(--amber,#b7791f)','número a conferir'],'INDISPONÍVEL':['var(--dim,#888)','a fonte não tem o dado']};
-const _md = t => esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`(.+?)`/g,'<code>$1</code>');
 
 function _selo(e){ const c=_EST[e]||_EST['PENDENTE']; return `<span title="${esc(c[1])}" style="font-size:11px;font-weight:700;color:${c[0]};white-space:nowrap">${esc(e)}</span>`; }
 
@@ -109,7 +109,7 @@ function _pgAchado(a, i){
 
 function _pgManual(d){
   const m=d.manual, c=(m&&m.campos)||{};
-  const campos=Object.keys(c).map(k=>`<div style="margin-top:6px"><b>${esc(k)}.</b> ${_md(c[k])}</div>`).join('');
+  const campos=Object.keys(c).map(k=>`<div style="margin-top:6px"><b>${esc(k)}.</b> ${mdSimples(c[k])}</div>`).join('');
   const lista=(t,xs)=>(xs||[]).length?`<div style="margin-top:8px"><b>${t}</b><ul style="margin:4px 0 0 18px;padding:0">${xs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
   const pv=d.prevalencia||{};
   const taxa=pv.taxa==null?'não medida':(100*pv.taxa).toFixed(2).replace('.',',')+'%';
@@ -140,7 +140,7 @@ function _pgDetector(d){
 
 async function _pulosCorpo(ano, mes){
   const d=await J('/api/comissao/pulos?ano='+encodeURIComponent(ano||0)+'&mes='+encodeURIComponent(mes||0));
-  if(!d||d.ok===false) return card(`<div class="warn">${erroHumano(d)}</div>`);
+  if(!d||d.ok===false) return cardErro(d);
   const anos=(d.anos||[]).map(a=>`<option value="${esc(a)}"${String(a)===String(ano)?' selected':''}>${esc(a)}</option>`).join('');
   const meses=_MES.map((m,i)=>i?`<option value="${i}"${String(i)===String(mes)?' selected':''}>${m}</option>`:'').join('');
   return `<div class="chips" style="align-items:center;gap:8px">
@@ -211,7 +211,7 @@ export async function renderComissao(){
   h+=await _pecas();
   h+=sec('Pulos do gato: onde o orçamento esconde, adia ou maquia')+`<div id="com-pulos">${await _pulosCorpo(0,0)}</div>`;
   const d=await J('/api/comissao/orgaos?limite=15');
-  if(!d||d.ok===false){ return h+card(`<div class="warn">${erroHumano(d)}</div>`); }
+  if(!d||d.ok===false){ return h+cardErro(d); }
   const t=d.totais||{};
   h+=`<div class="grid g2" style="margin-top:12px">
     ${kpi(fmtN(t.orgaos),'Órgãos com fornecedor periciado',null,'🏛️',{sobre:'Órgãos (UG do SIAFE) que pagaram por OB Contabilizada a ao menos um fornecedor com perícia 🔴/🟡. Mede exposição do órgão, não irregularidade do órgão.'})}

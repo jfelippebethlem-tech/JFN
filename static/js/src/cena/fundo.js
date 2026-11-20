@@ -18,7 +18,6 @@
  */
 import {$} from '../nucleo/dom.js';
 import {_sobrio, _v60} from '../capacidade/estado.js';
-import {esfera} from '../app/estado.js';
 import {_rjCarregar} from './malha-rj.js';
 import {_ckMX, _ckMY} from './ponteiro.js';
 

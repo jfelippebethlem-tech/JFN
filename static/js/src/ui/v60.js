@@ -9,11 +9,9 @@
  * Não tem efeito de topo (o boot é ordenado pelo entrypoint, não pelo import).
  */
 import {$, svgIco} from '../nucleo/dom.js';
-import {_v60, _v61} from '../capacidade/estado.js';
 import {v61TemaItem} from './v61.js';
 
 export function v60Boot() {
-  if (!_v60) return;
   /* rótulo do cabeçalho: sentence case na ORIGEM (o CSS não baixa "RJ"/"SIAFE" sem estragar a sigla) */
   const hs = $('hsub'); if (hs) hs.textContent = 'Central de inteligência · RJ';
   _acoes();
@@ -50,8 +48,8 @@ function _observar() {
   v60Vivo(v);
 }
 
-export function v60Vivo(v) {
-  if (!_v60 || !v) return;
+function v60Vivo(v) {
+  if (!v) return;
   _capa(v);
   _kpiN(v);
   _graus(v);
@@ -83,7 +81,7 @@ function _cockpit(v) {
 }
 
 /** Copia a janela do holofeed para o mini-card do cockpit (quando ele existe). */
-export function v60FeedEspelhar() {
+function v60FeedEspelhar() {
   const ul = $('hflist'); if (!ul) return;
   document.querySelectorAll('.v60-feed').forEach(d => {
     const n = d.querySelector('.v60-feed-n'), l = d.querySelector('ul'), z = d.querySelector('.v60-feed-vz');
@@ -208,8 +206,7 @@ function _capa(v) {
    As quatro ações continuam sendo os MESMOS elementos e as MESMAS funções; só ganham ícone (do set
    da casa) e rótulo acessível. O som não tem glifo no set — fica com o ponto de estado + o texto. */
 /* v61: glifos próprios (`_ICO_V61` em `nucleo/dom.js`) no lugar dos emprestados */
-const _IC = {termos: _v61 ? '§v61-termos' : '§info', controle: _v61 ? '§v61-controle' : '🔧', sair: _v61 ? '§v61-sair' : '🚪',
-             atividade: _v61 ? '§v61-atividade' : '§sweep'};
+const _IC = {termos: '§v61-termos', controle: '§v61-controle', sair: '§v61-sair', atividade: '§v61-atividade'};
 const _ACOES = [
   ['a.help:not(.som)', _IC.termos, 'Termos — o que cada conceito do painel significa'],
   ['a.ctrl', _IC.controle, 'Controle do sistema'],
@@ -232,7 +229,7 @@ function _acoes() {
 }
 
 /** O menu "⋯": as quatro ações do cabeçalho + a atividade ao vivo, em linhas de 48px no #sheet. */
-export function v60Mais() {
+function v60Mais() {
   const ov = $('ov'), sh = $('sheet'); if (!ov || !sh) return;
   const som = document.querySelector('.htop [data-som]');
   const ligado = !!(som && som.classList.contains('on'));

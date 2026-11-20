@@ -17,7 +17,7 @@
  * Sem efeito de topo; quem liga é `jarvisBoot()` na sequência de boot (`entrada.js`).
  */
 import {$} from '../nucleo/dom.js';
-import {_v61, _redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {aoVivo, aoVivoOuvir, motoresRodando} from '../aovivo/estado.js';
 import {ritmoEstado} from '../ritmo.js';
 
@@ -112,7 +112,6 @@ function _ligarRelogios() {
 function _pararRelogios() { clearInterval(_relogio); clearInterval(_brilho); _relogio = _brilho = 0; }
 
 export function jarvisBoot() {
-  if (!_v61) return;
   addEventListener('pointerdown', _registrarToque, {capture: true, passive: true});
 
   /* anéis HUD em volta do logo */

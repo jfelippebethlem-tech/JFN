@@ -3,7 +3,7 @@
 // reports/ + registro com prazo em data/lai.db. O protocolo no e-SIC é humano (gov.br do requerente):
 // o painel entrega o texto pronto para colar e acompanha o prazo de 20 dias.
 import {$, esc, card, kpi, sec, cover} from '../nucleo/dom.js';
-import {J, erroHumano} from '../nucleo/http.js';
+import {J, erroHumano, cardErro} from '../nucleo/http.js';
 import {fmtN} from '../nucleo/formato.js';
 
 function _linha(it){
@@ -69,7 +69,7 @@ async function laiGerar(){
   try{
     const d = await J('/api/lai/gerar',{method:'POST',headers:{'Content-Type':'application/json'},tetoMs:90000,
       body: JSON.stringify({alvo, esfera:$('lai-esfera')?.value||'', motivo:$('lai-motivo')?.value||'', telegram: Number($('lai-tg')?.value||'1')})});
-    if(!d || !d.ok){ o.innerHTML = card(`<div class="warn">${erroHumano((d||{}).erro||'a API não respondeu')}</div>`); return; }
+    if(!d || !d.ok){ o.innerHTML = cardErro((d||{}).erro||'a API não respondeu'); return; }
     const avisos = (d.avisos||[]).map(a=>`<div class="warn">${esc(a)}</div>`).join('');
     o.innerHTML = card(`<div class="ok">${esc(d.resumo)}</div>${avisos}
       <div class="dim" style="margin-top:6px">Destinatário: ${esc(d.destinatario)}<br>Canal: ${esc(d.canal)}</div>
@@ -77,7 +77,7 @@ async function laiGerar(){
         <button type="button" class="btn ghost" data-lai="copiar">📋 copiar texto</button></div>
       <details style="margin-top:8px"><summary>texto do requerimento</summary><pre id="lai-texto" style="white-space:pre-wrap;font-size:12px">${esc(d.texto||'')}</pre></details>`);
     const tb = document.querySelector('table.tb tbody'); if(tb){ tb.insertAdjacentHTML('afterbegin', _linha({...d, status:'rascunho', vencido:false})); }
-  }catch(e){ o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+  }catch(e){ o.innerHTML = cardErro(String(e)); }
 }
 
 async function laiStatus(id, status){

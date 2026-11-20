@@ -20,7 +20,7 @@ export function filtrar(inp, sel) {
 
 // ═══ LISTA PAGINADA incremental — nunca trava o DOM (lote pequeno por vez) e nunca esconde
 // dado atrás de um cap fixo (o resto sempre alcançável via "carregar mais", não perdido) ═══
-export const _pagState = {};
+const _pagState = {};
 
 function _pagFiltrados(st) {
   if (!st.filtro) return st.itens;

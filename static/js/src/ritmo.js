@@ -148,5 +148,3 @@ export function quadroLigar(fn) {
   _pintores.add(fn); _ult = _ult || performance.now(); _armar();
   return () => _pintores.delete(fn);
 }
-/** Quantos pintores vivos (para o relatório de desempenho: tem de haver UM laço, não N). */
-export function quadroInscritos() { return _pintores.size; }

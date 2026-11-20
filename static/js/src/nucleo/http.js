@@ -3,7 +3,7 @@
  * As duas coisas vivem juntas de propósito: `erroHumano` só existe para traduzir o que o `J`
  * devolve quando dá errado. Separá-las deixaria a tradução órfã do contrato que ela traduz.
  */
-import {esc} from './dom.js';
+import {esc, card} from './dom.js';
 
 // 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário.
 // + cache de navegação (TTL 90s, só GET): voltar numa aba já vista abre INSTANTÂNEO sem perder
@@ -70,3 +70,7 @@ export function erroHumano(e) {
   // escopo global, que a ponte alimenta. Import aqui não serviria para nada.
   return `<span${det}>${msg}</span> <button class="btn ghost v10retry" onclick="_jCache.clear();ir(aba)">↻ Tentar de novo</button>`;
 }
+
+/* O cartão de falha de TODA tela — a mesma moldura em volta do `erroHumano`. Era escrito à mão
+   (`card(`<div class="warn">${erroHumano(d.erro)}</div>`)`) 82 vezes em 15 módulos. */
+export const cardErro = e => card(`<div class="warn">${erroHumano(e)}</div>`);
