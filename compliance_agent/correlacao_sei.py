@@ -159,14 +159,18 @@ def estado_do_laudo(modelo: str | None, nota: int | None = None) -> tuple[str, s
     altos que o Opus manteve lendo o resumo, cerca de um terço se confirmou na íntegra do SEI + OB do SIAFE — esse
     laudo sai 'A CONFERIR', com a taxa de confirmação calibrada (compliance_agent/autoaprimoramento/calibracao.py)."""
     m = str(modelo or "").strip()
+    # Haiku pela API paga (`@api`) é "outro modelo" até o Opus conferir: `"claude" in m` aceitava
+    # `claude-haiku-5-5@api` como VERIFICADO (untangle de llm/, 20/11/2026: ~420 laudos sem conferência no painel).
+    from compliance_agent.llm.claude_api import pela_api
+    claude_ok = "claude" in m.lower() and (" (conferência" in m or not pela_api(m.split(" (conferência")[0]))
     if nota is not None:
         from compliance_agent.autoaprimoramento.calibracao import confianca
         c = confianca(m, nota)
         if c["estado"] == "VERIFICADO_NA_FONTE":
             return "VERIFICADO", c["texto"]
         if c["estado"] == "A_CONFERIR_NA_FONTE":
-            return ("A CONFERIR" if "claude" in m.lower() else "PENDENTE"), c["texto"]
-    if "claude" in m.lower():
+            return ("A CONFERIR" if claude_ok else "PENDENTE"), c["texto"]
+    if claude_ok:
         return "VERIFICADO", "conferido/feito pelo Claude"
     if m.startswith("regra:"):
         return "REGRA", "regra determinística (sem documento de execução nos autos capturados)"

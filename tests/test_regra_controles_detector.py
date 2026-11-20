@@ -139,3 +139,12 @@ def test_prova_refutado_em_manchete_entra_na_lista_de_atencao(tmp_path):
     rev = {"veredito": "REFUTADA", "afirmado": "a", "sustentado": "b"}
     p = _yaml(tmp_path, m=_entrada(manchete=True, revisao_2026_11_13=rev), n=_entrada(revisao_2026_11_13=rev))
     assert D.dividas(p)["refutado_em_manchete"] == {"m": 1}
+
+
+def test_laudo_do_haiku_pela_api_nao_e_verificado_sem_o_opus():
+    """Regra da casa: nada VERIFICADO antes do Opus. `claude-haiku-5-5@api` é outro modelo até a conferência."""
+    from compliance_agent.correlacao_sei import estado_do_laudo
+    assert estado_do_laudo("claude-haiku-5-5@api")[0] == "PENDENTE"
+    assert estado_do_laudo("claude-haiku-5-5@api (conferência Opus)")[0] == "VERIFICADO"
+    assert estado_do_laudo("claude-opus-5-5")[0] == "VERIFICADO"
+    assert estado_do_laudo("gemini-3.6-flash")[0] == "PENDENTE"
