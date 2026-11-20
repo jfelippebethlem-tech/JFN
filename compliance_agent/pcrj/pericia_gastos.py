@@ -229,20 +229,32 @@ def d8_credor_recem_aberto(con, consulta_cnpj=None, dias: int = D8_DIAS_RECEM_AB
 
 # ── D9 — sócio de credor ∈ folha municipal ──────────────────────────────────
 def _folha_padrao() -> dict[str, dict]:
-    """nome_norm → {orgao, cargo} da competência mais recente da folha PCRJ."""
+    """nome_norm → {orgao, cargo, fonte, cpf, tipo_folha, n_pessoas} da competência mais recente da folha PCRJ.
+
+    A folha da Prefeitura (contracheque, ArquivoTC*.csv) NÃO publica CPF — só NOME, MATRÍCULA, SIGLA_UA,
+    TIPO_FOLHA e valores (cabeçalho conferido em 20/11/2026). `cpf` vai vazio e a régua de identidade declara
+    o INDETERMINADO. `n_pessoas` = matrículas distintas com o nome (teto: uma pessoa pode ter 2 vínculos)."""
     from compliance_agent.pcrj.db import conectar as conectar_folha
+    from compliance_agent.pcrj.folha_pref import eh_ativo
     fol = conectar_folha()
     comp = fol.execute("select max(competencia) from pcrj_folha_pref").fetchone()[0]
-    out = {}
-    for r in fol.execute("""select nome_norm, orgao from pcrj_folha_pref
-                            where competencia = ?""", (comp,)):
-        out[r[0]] = {"orgao": r[1], "cargo": ""}
+    out: dict[str, dict] = {}
+    for nn, orgao, mat, tipo in fol.execute("""select nome_norm, orgao, matricula, tipo_folha from pcrj_folha_pref
+                                               where competencia = ?""", (comp,)):
+        h = out.setdefault(nn, {"orgao": orgao, "cargo": "", "fonte": "pcrj_folha_pref", "cpf": "",
+                                "competencia": comp, "tipo_folha": tipo, "_mats": set()})
+        h["_mats"].add(mat)
+        if not eh_ativo(tipo):      # algum vínculo de aposentado/pensionista: a faixa etária não descarta
+            h["tipo_folha"] = tipo
+    for h in out.values():
+        h["n_pessoas"] = len(h.pop("_mats"))
     return out
 
 
 def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[dict]:
-    """QSA dos credores PCRJ × folha municipal por nome normalizado.
-    Sem CPF em nenhuma das pontas → SEMPRE indício (homônimo possível)."""
+    """QSA dos credores PCRJ × folha municipal por nome normalizado, com selo de `identidade_pessoa`:
+    HOMÔNIMO → não alerta; VERIFICADO/PROVÁVEL → alerta mais forte; INDETERMINADO (folha sem CPF) →
+    indício só-nome, declarando o dado que falta."""
     # O VÍNCULO TEM DE SER VIGENTE NO EXERCÍCIO. Sócio que entrou no quadro depois da despesa não
     # descreve a despesa — é a mesma lição do E.3.2 (`screen_coparticipacao_relacionados`), onde o
     # filtro de `data_entrada` derrubou os dois maiores pares da lista. Medido em 2026-08-10 sobre
@@ -250,20 +262,30 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
     # com vão de até 7 anos. `min(data_entrada)` contra `max(exercicio)`: basta ter sido sócio em
     # ALGUM exercício em que o credor recebeu — critério conservador, que não derruba o indício por
     # detalhe de data, mas separa quem não podia estar lá.
+    # IDENTIDADE (20/11/2026): 189 de 506 vereditos da triagem = provável FP, quase todos "só o nome". O par
+    # passa pela régua única `identidade_pessoa` (CPF posicional, prevalência, faixa etária). QSA sem as
+    # colunas (base parcial) → SEM DADO, nunca erro.
+    cols = {c[1] for c in con.execute("pragma table_info(socios_receita)")}
     rows = con.execute("""
         select s.nome_norm, s.nome_socio, s.cnpj_basico,
                d.credor_nome, d.credor_documento, sum(d.pago) as pago,
                max(cast(d.exercicio as integer)) as ultimo_exercicio,
-               min(substr(coalesce(s.data_entrada,''), 1, 4)) as entrada_ano
+               min(substr(coalesce(s.data_entrada,''), 1, 4)) as entrada_ano,
+               {doc} as doc_socio, {faixa} as faixa_etaria
         from pcrj_despesa d
         join socios_receita s
           on length(d.credor_documento) = 14
          and s.cnpj_basico = substr(d.credor_documento, 1, 8)
-        group by s.nome_norm, s.cnpj_basico, d.credor_documento""").fetchall()
+        group by s.nome_norm, s.cnpj_basico, d.credor_documento""".format(
+        doc="max(s.doc_socio)" if "doc_socio" in cols else "''",
+        faixa="max(s.faixa_etaria)" if "faixa_etaria" in cols else "''")).fetchall()
     if not rows:
         return []                       # sem QSA×credor não há o que cruzar
     if folha_norm is None:
         folha_norm = _folha_padrao()    # 12M linhas → só carrega se precisar
+    from compliance_agent import identidade_pessoa as IP
+    from compliance_agent.pcrj.folha_pref import eh_ativo
+    n_qsa: dict[str, int] = {}
     achados = []
     for r in rows:
         # guard anti-homônimo: nome com <3 tokens (JOAO SILVA) gera ruído em massa
@@ -273,25 +295,48 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
         hit = folha_norm.get(r["nome_norm"])
         if not hit:
             continue
+        if r["nome_norm"] not in n_qsa:
+            n_qsa[r["nome_norm"]] = (con.execute("select count(distinct doc_socio) from socios_receita "
+                                                 "where nome_norm=?", (r["nome_norm"],)).fetchone()[0] or 2
+                                     if "doc_socio" in cols else 2)    # sem dado → "comum" (conservador)
+        tipo = hit.get("tipo_folha") or ""
+        sel = IP.classificar(doc_qsa=r["doc_socio"], cpf_folha=hit.get("cpf"),
+                             fonte_folha=hit.get("fonte") or "pcrj_folha_pref",
+                             n_folha_nome=hit.get("n_pessoas") or 2, n_qsa_nome=n_qsa[r["nome_norm"]],
+                             faixa_etaria=r["faixa_etaria"], competencia=hit.get("competencia"),
+                             vinculo=tipo if eh_ativo(tipo) else f"PENSIONISTA/APOSENTADO ({tipo})")
+        if sel["selo"] == IP.HOMONIMO:
+            continue                    # mesmo nome, outra pessoa (motivo na régua) — não é achado
+        por_cpf = sel["selo"] in (IP.VERIFICADO, IP.PROVAVEL)
         ent, ult = str(r["entrada_ano"] or ""), r["ultimo_exercicio"]
         posterior = bool(ent.isdigit() and ult and int(ent) > int(ult))
+        # 20/11/2026: 21 dos 189 FP da triagem eram credor com R$ 0,00 pago — sem dinheiro não há conflito na despesa
+        sem_pago = not (r["pago"] or 0) > 0
+        risco = 3 if (posterior or sem_pago) else (7 if sel["selo"] == IP.VERIFICADO else 6 if por_cpf else 5)
+        vinculo_txt = (f"está na folha municipal com identidade {sel['selo']} — {sel['motivo']} "
+                       f"(lotação {hit.get('orgao') or 'n/d'}). Confirmar matrícula e data do vínculo "
+                       f"antes de qualquer uso." if por_cpf else
+                       f"tem HOMÔNIMO na folha municipal (lotação {hit.get('orgao') or 'n/d'}). Match "
+                       f"somente por nome normalizado — homônimo é possível. {sel['motivo']} Confirmar "
+                       f"CPF/matrícula antes de qualquer uso.")
         achados.append(_achado(
-            "d9_socio_na_folha", 3 if posterior else 5,
+            "d9_socio_na_folha", risco,
             # o CREDOR entra no título: o mesmo sócio em três credores distintos são três achados,
             # e com título só do nome eles colapsavam num só (dedup do gravador + poda por título)
             ("Sócio POSTERIOR de credor na folha — " if posterior else "Sócio de credor na folha — ")
             + f"{r['nome_socio']} × {(r['credor_nome'] or r['credor_documento'])[:44]}",
             (f"NÃO é acusação — não descreve a despesa: o vínculo societário começou em {ent}, depois do último "
-             f"exercício com pagamento ({ult}). " if posterior else "")
+             f"exercício com pagamento ({ult}). " if posterior else
+             "NÃO é acusação — o credor não tem pagamento da PCRJ (R$ 0,00 pago). " if sem_pago else "")
             + f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
-            f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), tem "
-            f"HOMÔNIMO na folha municipal (lotação {hit.get('orgao') or 'n/d'}). Match "
-            f"somente por nome normalizado — homônimo é possível; confirmar CPF/matrícula "
-            f"antes de qualquer uso. (fontes: Open_Data_Empenhos CGM + QSA Receita + "
-            f"folha PCRJ via contracheque)",
+            f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), "
+            + vinculo_txt + " (fontes: Open_Data_Empenhos CGM + QSA Receita + "
+            "folha PCRJ via contracheque)",
             {"subtipo": "socio_folha", "socio": r["nome_socio"],
              "credor": r["credor_documento"], "lotacao": hit.get("orgao"),
-             "match_tipo": "NOME", "entrada_socio_ano": ent or None,
+             "match_tipo": "CPF" if por_cpf else "NOME", "identidade": sel["selo"],
+             "identidade_motivo": sel["motivo"], "identidade_falta": sel["falta"],
+             "entrada_socio_ano": ent or None,
              "ultimo_exercicio": ult, "vinculo_posterior": posterior}))
     return achados
 

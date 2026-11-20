@@ -64,11 +64,14 @@ ROTULO_FONTE = {
     "dprj_transparencia": "Defensoria Pública (DPRJ)",
     "tjrj_anexo8": "Tribunal de Justiça (TJRJ)",
     "camara_csv": "Câmara Municipal do Rio",
+    "pcrj_folha_pref": "Prefeitura do Rio (contracheque)",
 }
 # Por que a fonte não permite conferir CPF (o "qual dado falta" do INDETERMINADO)
 FALTA_CPF_FONTE = {
     "tjrj_anexo8": "a folha do TJRJ (anexo VIII) não publica CPF",
     "camara_csv": "a folha da Câmara Municipal do Rio não publica CPF",
+    # contracheque ArquivoTC*.csv: NOME;MATRICULA;SIGLA_UA;TIPO_FOLHA;valores — cabeçalho conferido em 20/11/2026
+    "pcrj_folha_pref": "a folha da Prefeitura do Rio (contracheque) não publica CPF",
 }
 
 # Faixa etária da Receita (QSA): código → rótulo
