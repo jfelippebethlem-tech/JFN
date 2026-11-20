@@ -238,6 +238,17 @@ def construir(limite: int = 0) -> dict:
     cur = con.cursor()
     arquivos = [p for p in CACHE.glob("*.json")
                 if "checkpoint" not in p.name and "progress" not in p.name]
+    # OB PAGA do SIAFE (`correlacao_sei.obs_siafe_por_processos`, régua `_ob_paga`), num lote só: até 20/11/2026
+    # vinha do espelho TFE, um processo por vez — `total_pago`/`ultima_ob`/`encerrado` ignoravam o que só o SIAFE
+    # tem e somavam OB cancelada. O número vem do nome do blob; o que o nome não der é buscado no laço.
+    pedidos = {}
+    for p in arquivos:
+        m = re.search(r"(\d{6})_(\d+)_(\d{4})", p.name)
+        if m:
+            pedidos[p] = f"SEI-{m[1]}/{m[2]}/{m[3]}"
+    lote = correlacao_sei.obs_siafe_por_processos(sorted(set(pedidos.values())))   # base sem SIAFE ⇒ {}
+    from compliance_agent.ob_processo import chave_processo
+    lote_por_chave = {chave_processo(k): v for k, v in lote.items()}
     feitos = pulados = 0
     for p in arquivos:
         if limite and feitos >= limite:
@@ -255,7 +266,9 @@ def construir(limite: int = 0) -> dict:
             pulados += 1
             continue
         try:
-            obs = correlacao_sei.obs_por_processo(numero)
+            k = chave_processo(numero)
+            obs = (lote_por_chave.get(k, []) if p in pedidos and k == chave_processo(pedidos[p])
+                   else correlacao_sei.obs_por_processo(numero))
         except Exception:  # noqa: BLE001
             obs = []
         txt, r = _digest_txt(numero, ficha, rec, obs)

@@ -87,8 +87,10 @@ def _ja_arquivado(numero: str) -> bool:
     d = ARQUIVO / acervo_texto.numero_para_pasta(numero)
     if not (d / "manifest.json").exists():
         return False
-    td = d / "texto"
-    return td.is_dir() and any(f.stat().st_size > 200 for f in td.glob("*.txt"))
+    # régua única (`manifesto_norm.conferir_documentos`): algum documento DECLARADO veio com texto. O antigo
+    # "algum .txt > 200 bytes" contava órfão de captura anterior e etiqueta longa como arquivo pronto.
+    from compliance_agent.sei import manifesto_norm
+    return manifesto_norm.conferir_documentos(d)["com_texto"] > 0
 
 
 # VEREDITO POR BLOB, PERSISTIDO. Medido em 2026-08-27: `ler_json` custa ~715 ms por cache (os

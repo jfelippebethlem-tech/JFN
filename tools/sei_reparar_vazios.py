@@ -216,23 +216,34 @@ def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
         a["txt"].write_text(f"{cabecalho}\n\n{texto}" if cabecalho else texto, encoding="utf-8")
         # o manifesto guarda `chars`/`ocr`: mantê-los coerentes com o arquivo é o que faz o resto do
         # sistema parar de tratar o documento como vazio.
-        m = por_manifest.setdefault(a["manifest"], json.loads(a["manifest"].read_text()))
-        for d in m.get("docs") or []:
-            if str(d.get("i")) == str(a["i"]):
-                # NÚMERO, não texto: gravar `str` aqui matou o drenador `sei_integra_fila --geral`
-                # de 24/07 a 09/08 (`'>=' not supported between str and int`), com 1.972 manifests
-                # já contaminados. Quem lê agora coage, mas o produtor não pode reincidir.
-                d["chars"] = len(texto)
-                d["ocr"] = True
-                # data REAL do reparo: a constante fixa datava de julho um reparo feito hoje, e
-                # `reparado_em` só serve para responder "quando isto foi recuperado".
-                d["reparado_em"] = _dt.date.today().isoformat()
-    for man, m in por_manifest.items():
-        man.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+        # NÚMERO, não texto: gravar `str` aqui matou o drenador `sei_integra_fila --geral`
+        # de 24/07 a 09/08 (`'>=' not supported between str and int`), com 1.972 manifests
+        # já contaminados. Quem lê agora coage, mas o produtor não pode reincidir.
+        # data REAL do reparo: a constante fixa datava de julho um reparo feito hoje, e
+        # `reparado_em` só serve para responder "quando isto foi recuperado".
+        por_manifest.setdefault(a["manifest"], {})[str(a["i"])] = {
+            "chars": len(texto), "ocr": True, "reparado_em": _dt.date.today().isoformat(),
+            "_texto": str(a["txt"].relative_to(a["manifest"].parent))}
+    # RELER-MESCLAR-GRAVAR sob trava (`acervo_texto.mutar_manifesto`), um manifesto por vez e só no fim: o OCR acima
+    # leva minutos, e regravar o objeto lido no começo apagava o que a captura/o arquivamento gravaram no meio.
+    # Só se mexe na entrada de mesmo `i` QUE AINDA APONTA para o mesmo .txt — se o manifesto foi refeito e o índice
+    # mudou de documento, o reparo daquela entrada não é aplicado (o .txt já foi gravado e segue declarado por ela).
+    gravados = 0
+    for man, mudancas in por_manifest.items():
+        def _aplica(m, mudancas=mudancas):
+            n = 0
+            for d in m.get("docs") or []:
+                mud = mudancas.get(str(d.get("i"))) if isinstance(d, dict) else None
+                if mud and d.get("texto") == mud["_texto"]:
+                    d.update({k: v for k, v in mud.items() if not k.startswith("_")})
+                    n += 1
+            return n > 0
+        if acervo_texto.mutar_manifesto(man.parent, _aplica):
+            gravados += 1
     return {"alvos": len(alvos), "recuperados": recuperados, "irrecuperaveis": irrecuperaveis,
             "nao_conferidos": nao_conferidos,
             "chars_recuperados": chars_total, "aplicado": aplicar,
-            "manifests_atualizados": len(por_manifest)}
+            "manifests_atualizados": gravados}
 
 
 def main(argv=None) -> int:

@@ -41,6 +41,10 @@ _DDL = """CREATE TABLE IF NOT EXISTS sei_busca_credor (
     cnpj TEXT, ug TEXT, ano INTEGER, estado TEXT, n_total INTEGER, candidatos_json TEXT, buscado_em TEXT,
     PRIMARY KEY (cnpj, ug, ano))"""
 _RETENTAR_DIAS = 3
+# Desde 20/11/2026 a busca diz COMO a paginação acabou (`fim_paginacao`); antes disso um `com_resultado`/`sem_resultado`
+# podia ser lista cortada no teto de páginas sem que ninguém soubesse. Resultado anterior a este marco é refeito uma vez
+# e, até lá, o resolvedor o trata como PARCIAL (medido em 20/11: 10 linhas — uma `sem_resultado` com 1 candidato).
+INICIO_FIM_PAGINACAO = "2026-11-20T13:00:00"
 
 
 def cnpj_fmt(c: str) -> str:
@@ -128,14 +132,19 @@ def pendentes(c, todas: list[tuple]) -> list[tuple]:
         return todas
     limite = (datetime.now() - timedelta(days=_RETENTAR_DIAS)).isoformat(timespec="seconds")
     return [k for k in todas if k not in feitos
-            or (feitos[k][0] not in ("com_resultado", "sem_resultado") and (feitos[k][1] or "") < limite)]
+            or (feitos[k][0] not in ("com_resultado", "sem_resultado") and (feitos[k][1] or "") < limite)
+            or (feitos[k][1] or "") < INICIO_FIM_PAGINACAO]
 
 
-def buscar(cnpj: str, ano: int, sigla: str) -> dict:
-    env = dict(os.environ, SEI_BUSCA_PAGINAS="10")
-    r = subprocess.run([sys.executable, str(REPO / "tools" / "sei_busca_mgs.py"), cnpj_fmt(cnpj),
-                        f"--de=01/01/{ano}", f"--ate=31/12/{ano + 1}", f"--orgao=^{re.escape(sigla)}$"],
-                       capture_output=True, text=True, timeout=900, env=env, cwd=REPO)
+def buscar(cnpj: str, ano: int, sigla: str, paginas: int = 10) -> dict:
+    env = dict(os.environ, SEI_BUSCA_PAGINAS=str(paginas))
+    try:
+        r = subprocess.run([sys.executable, str(REPO / "tools" / "sei_busca_mgs.py"), cnpj_fmt(cnpj),
+                            f"--de=01/01/{ano}", f"--ate=31/12/{ano + 1}", f"--orgao=^{re.escape(sigla)}$"],
+                           capture_output=True, text=True, timeout=900, env=env, cwd=REPO)
+    except subprocess.TimeoutExpired:
+        # a busca maior pode não caber no relógio: é FALHA do método, refeita depois — nunca resultado
+        return {"ok": False, "erro": f"busca passou de 900 s ({paginas} páginas)"}
     out = r.stdout.strip()
     i = out.find("{")
     try:
@@ -153,6 +162,11 @@ def main() -> int:
     pref = prefixos_por_ug(ro)
     siglas = siglas_por_ug(ro)
     fila = pendentes(ro, chaves(ro))
+    try:
+        parciais = {(cn, str(ug), int(ano)) for cn, ug, ano in ro.execute(
+            "SELECT cnpj, ug, ano FROM sei_busca_credor WHERE estado='com_resultado_parcial'")}
+    except sqlite3.OperationalError:
+        parciais = set()
     ro.close()
     print(f"[{time.strftime('%F %T')}] {len(fila)} chave(s) pendentes; lote {a.lote}", flush=True)
     if a.dry_run:
@@ -166,13 +180,19 @@ def main() -> int:
         elif not siglas.get(ug):
             estado, cands, n = "sem_orgao_sei", [], 0      # sem filtro de órgão a busca não cabe no slot
         else:
+            # quem já voltou PARCIAL é refeito com teto maior: a lista inteira, não a mesma lista cortada de novo
             with browser_lock(espera_max=1800):
-                d = buscar(cnpj, ano, siglas[ug])
+                d = buscar(cnpj, ano, siglas[ug], paginas=25 if (cnpj, ug, ano) in parciais else 10)
             estado = d.get("estado") or ("erro" if not d.get("ok") else "nao_parseei")
             if d.get("vm_guard"):
                 estado = "adiado_carga"
             n = d.get("n_total") or 0
             cands = filtrar(d.get("todos") or {}, pref[ug])
+            # LISTA CORTADA NÃO É RESULTADO FINAL: a paginação parou no teto (ou caiu) antes da última página. Os
+            # candidatos vão para a captura do mesmo jeito, mas o estado declara a leitura parcial — não entra como
+            # `com_resultado` (terminal) e o resolvedor não aceita "candidato único" dela.
+            if d.get("parcial") and estado in ("com_resultado", "sem_resultado"):
+                estado = "com_resultado_parcial"
         c = sqlite3.connect(DB, timeout=120)
         try:
             c.execute(_DDL)

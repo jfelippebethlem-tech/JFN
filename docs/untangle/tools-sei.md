@@ -97,9 +97,9 @@ e `propostas_sei_extrair` já usavam.
   se atualizam; motivo só se for um dos três do inventário. Hoje **0** linhas mudariam (2.780
   conhecidos sem texto, chave exata) — a próxima gravação sai idêntica; conferido em banco de memória.
 - `[pendente]` read-modify-write sem reler o disco ou sem tmp+rename:
-  - `sei_reparar_vazios` (L219–231) lê o manifesto, faz OCR documento a documento (minutos) e regrava
+  - `[feito — §9.4]` `sei_reparar_vazios` (L219–231) lê o manifesto, faz OCR documento a documento (minutos) e regrava
     sem reler e sem atomicidade — o caso grave;
-  - `sei_refichar` (L66–87) lê o blob, ~60 s de LLM, grava sem reler: documentos que o sweep gravou
+  - `[feito — §9.4]` `sei_refichar` (L66–87) lê o blob, ~60 s de LLM, grava sem reler: documentos que o sweep gravou
     no intervalo somem;
   - sem atomicidade: `sei_arquivar` L372, `sei_arquivar_do_cache` L291/L298/L364,
     `sei_reparar_manifestos` L70/L108, `sei_descontaminar` L146, `sei_integra_vm2._tirar_da_fila`;
@@ -151,7 +151,7 @@ e `propostas_sei_extrair` já usavam.
    `~/arquivo_frio/sei_cache`. **1.602 pastas** do índice `sei_arquivo_frio.jsonl` estão em `sei_pdfs`:
    os escaneados delas não entram na fila. O conserto atravessa `deploy/` e o it-campo (frente GPU
    1118-0004) — avisado no quadro.
-2. **OB do espelho TFE onde a regra é SIAFE com `_ob_paga`** (CLAUDE.md, NÃO REINVENTAR 1):
+2. `[feito em 5 — §9.1; restam sei_sweep.run_pais e sei_direcionamento_varre]` **OB do espelho TFE onde a regra é SIAFE com `_ob_paga`** (CLAUDE.md, NÃO REINVENTAR 1):
    - `sei_integra_fila._valor_por_processo` soma `ordens_bancarias` sem `_ob_paga` e ordena a fila
      geral, a releitura (`[:10]`) e a fila exportada à VM-2. Medido: TFE tem 184.133 processos, o SIAFE
      pago 279.504; **96.482 processos com OB paga no SIAFE têm score 0** nessa fila (frente 1113).
@@ -166,7 +166,7 @@ e `propostas_sei_extrair` já usavam.
      devolve TODOS os pais em silêncio.
    - `sei_direcionamento_varre.total_pago` é soma de valores da ficha, não OB.
    Mudam número publicado: precisam do ok do dono.
-3. **Treze réguas de "arquivado/completo/vazio"** (limiares 40, 50, 80, 200 bytes, 500 chars;
+3. `[feito — §9.3]` **Treze réguas de "arquivado/completo/vazio"** (limiares 40, 50, 80, 200 bytes, 500 chars;
    `total_arvore` × `docs_na_arvore` para o mesmo fato) — `sei_integra_fila._arquivado_ok`,
    `_captura_vazia`, `manifesto_norm.captura_integra`, `sei_arquivar_do_cache._ja_arquivado`,
    `sei_triagem_pericia` (60% por arquivo em disco, conta órfão e etiqueta: falha de captura vira
@@ -174,7 +174,7 @@ e `propostas_sei_extrair` já usavam.
    `manifesto_norm.captura_integra` + `acervo_texto.docs_com_conteudo`. Mexe na fila viva (frente 1113).
    Efeito já visível: processo descontaminado tem `total_arvore` contando as peças alheias e
    `_arquivado_ok` devolve False para sempre (recaptura eterna).
-4. **"Cada documento citado veio?" não é perguntado na captura.** Nenhuma ferramenta de captura chama
+4. `[feito — §9.2/§9.3]` **"Cada documento citado veio?" não é perguntado na captura.** Nenhuma ferramenta de captura chama
    `conferencia_captura.conferir`; quatro marcas para "não veio" (`nao_capturado`,
    `declarado_sem_teor`, `sem_conteudo`, lacuna `captura_truncada`) e só a primeira entra em
    `nao_capturados`. A retomada do `sei_integra_completa` (L304) é POSICIONAL (`{i:03d}.pdf`) sobre
@@ -186,7 +186,7 @@ e `propostas_sei_extrair` já usavam.
    informativo"), `sei_consultar._ler_texto` (o `--grep` casa a etiqueta), `sei_cpf_sweep`
    (`texto/*.txt` com órfãos), `sei_ficha_acervo._bytes_texto`, `sei_dossie_md._maiores`. Trocar por
    `acervo_texto.declarados` + `ler` muda texto que vai à IA e os placares: pede rodada comparada.
-6. **Cortes por posição**: `sei_agentes_sweep` `[:60]` documentos e `relacionados_de(...)[:3]` (art. 117
+6. `[feito em agentes e busca_credor — §9.5]` **Cortes por posição**: `sei_agentes_sweep` `[:60]` documentos e `relacionados_de(...)[:3]` (art. 117
    falso — o mesmo defeito que `relacionados.textos_do_relacionado` já corrigiu), `sei_ficha._prompt`
    `texto[:4500]`, `sei_processo_integral` `[:500]` com PDF dizendo "instrução completa",
    `sei_integra_fila._fila_inscrita` `LIMIT limite*4` antes do filtro, `sei_direcionamento_llm` (três
@@ -200,7 +200,7 @@ e `propostas_sei_extrair` já usavam.
    guardas de leitura truncada/caixa do caminho normal; `sei_descontaminar._integra` só aceita o
    manifesto de cache no formato lista antigo; `sei_restritos` tem `REPO=/home/ubuntu/JFN` cravado
    (no worker da VM-2 o registro diverge do que `sei_integra_vm2` lê).
-8. **Custo**: `sei_leitura_dupla._gerar_cadeia_curta` faz `setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")`
+8. `[feito na leitura dupla — §9.6; sei_ficha.MODELO_BARATO segue anotado]` **Custo**: `sei_leitura_dupla._gerar_cadeia_curta` faz `setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")`
    (Gemini desligado por cobrança; Cerebras fora desde 09/11) e `sei_ficha.MODELO_BARATO` diz "free tier
    generoso" — conferir billing antes de volume.
 
@@ -210,3 +210,82 @@ e `propostas_sei_extrair` já usavam.
 `sei_integra_vm2.py`: duas filas com regras diferentes (a da VM-2 tem tetos por fonte, `dinheiro`,
 restritos e quarentena; a local não), 8 cópias de `replace("/", "_")`, 4 leituras de manifest à mão,
 9 privados importados de um pelo outro. `fila_recaptura_por_parecer.py` grava a fila sem prefixo.
+
+## 9. Rodada de 20/11/2026 (tarde) — itens 2, 3, 4, 6 e 8 do §7  `[feito]`
+
+Prova: mesmo harness só-leitura (código BASE f7772701 × DEPOIS, `data/` real, `compliance.db` `mode=ro`); manifest
+só gravado no 9.3, depois do ensaio, por `acervo_texto.mutar_manifesto` (reler-mesclar-gravar sob trava), pulando
+pasta mexida há < 2 h. Nenhum acesso ao SEI/SIAFE.
+
+### 9.1 OB do SIAFE pela régua `_ob_paga`
+`correlacao_sei.pago_siafe_por_processo` (agregado, chave canônica `SEI-UUUUUU/NNNNNN/AAAA`, grafias do mesmo processo
+somadas) e `obs_siafe_por_processos` (camadas de `ob_processo`, GD descontada; `obs_por_processo` virou seu atalho).
+- Fila de íntegras (`_valor_por_processo`, logo `_fila_geral`, releitura e `montar_fila` da VM-2): processos com valor
+  184.133 → **297.368**; soma R$ 41.133.302.204,77 → **R$ 173.525.473.114,10**; **116.762** processos saem do zero.
+  Fila geral (285 cdp `.json` não arquivados): zerados 199 → 175; top 20 reordenado (1º: SEI-330001/000568/2025,
+  R$ 76.286.238,23, antes fora do top). `montar_fila(300)` igual (as 300 vagas são de execução/indeterminado/bombeiros/
+  dinheiro, esta já SIAFE). Releitura por OB: só OB paga do SIAFE (TFE e cancelada saíram); 5 dos 10 mudaram.
+- `sei_leitura_dupla.pagamento_do_processo` (acervo, 10.777 processos): com OB 4.939 → **6.281**; total R$ 17,16 bi →
+  R$ 63,16 bi; 24 processos só tinham OB no TFE (sem pagamento no SIAFE) e deixam de ter.
+- `sei_arvore_build` (818 dossiês com ficha): com pagamento 356 → **443**; `total_pago` R$ 2.113.816.741,75 →
+  R$ 3.983.847.323,58.
+- `sei_zeros_por_causa` (painel `/api/fiscal/zeros_sem_causa`): `credor_generico.classificar_por_processo(so_pagas=True)`;
+  valor da fila R$ 10.298.617.530,53 → **R$ 10.134.681.718,43**; sem causa R$ 8.371.704.937,33 → R$ 8.210.797.840,05;
+  fornecedor R$ 2.396.610.065,41 → R$ 2.355.043.376,57 (contagens iguais: 7.339 zeros, 1.842 sem causa).
+- `sei_analise_em_serie`: soma da fila R$ 14.708.396.626,49 → R$ 14.288.676.119,55 (com valor 5.193 → 5.237); credor
+  dominante por valor, não `MIN(nome_credor)`.
+- `[pendente]` `sei_sweep.run_pais --cnpj`, `sei_direcionamento_varre.total_pago`, `sei_sweep` L355 (`'Contabilizado'`).
+
+### 9.2 Retomada da íntegra pelo `id_documento`
+`sei_integra_completa.preparar_retomada`/`arquivo_retomado`/`registrar_dono`: `NNN.pdf` só fica no lugar se o dono
+(manifesto anterior + `_retomada/donos.json`) é o documento atual da posição; o resto vai para `_retomada/<id>.pdf`
+(nada apagado) e volta quando o seu documento aparece. Manifesto ganha `id_documento`; `sei_arquivar` só reaproveita
+`.txt` cuja etiqueta é do mesmo título. Defeito reproduzido em lista sintética reordenada (teste).
+Acervo real: 416.830 documentos com nº no título; 167.526 conferíveis pelo "código verificador" do próprio texto;
+12.596 trazem outro verificador — **10.851 de documento de OUTRO processo** (anexo com cópia: portaria publicada,
+contrato assinado antes — legítimo), **1.745 de um irmão** do mesmo processo (277 processos; suspeito, não provado) e
+**30 com corpo idêntico ao do irmão** em **4 processos** (deslocamento constante: 070002/005517/2022, 070002/017819/2023,
+070002/017821/2023, 260004/000355/2022) — PDF trocado provado. Os 4 já estavam em `sei_fila_captura`; marcados
+`recaptura: PDF trocado` (motivo antigo preservado em `| antes:`), que `_fila_execucao` relê mesmo arquivado.
+
+### 9.3 Conferência documento a documento — régua única
+`manifesto_norm.conferir_documentos(pasta)`: cada documento veio (texto com teor ou imagem)? Faltantes com
+`i/id_documento/numero_sei/titulo/motivo` (`nao_capturado`, `declarado_sem_teor`, `sem_conteudo`, `so_etiqueta`,
+`sem_texto`); árvore = maior de `total_arvore`/`docs_na_arvore` menos peças alheias tiradas; `captura_completa` só com
+árvore medida e nada faltando. Derivam dela: `captura_integra` (tamanho da árvore), `_arquivado_ok`, os dois
+`_ja_arquivado`, `textos_locais`, `sei_triagem_pericia`, `pericia_tripla.captura_completa`; `sei_arquivar` grava a
+conferência a cada arquivamento; `sei_arquivar --conferir-acervo [--gravar]`.
+- Acervo (10.786 manifests): árvore medida 9.355 (1.431 sem medida); antes 2.635 com `captura_completa=True` →
+  **7.497 completos** e **1.858 incompletos**; 422.079 documentos, 417.032 vieram, **5.047 faltantes identificados**
+  (nao_capturado 3.292 · declarado_sem_teor 1.177 · so_etiqueta 578) e **42.661 faltando sem identificação** (árvore
+  maior que o manifesto — quais, só pela árvore do cache `.zst`: sábado).
+- Efeito nas réguas: `_arquivado_ok` 8.757 → 8.767 (+7 com teor no disco e `chars` velho; mais 3 pastas novas);
+  `captura_integra` 8.131 → 8.124 (12 perdem: `total_arvore` agora conta, ex. 030001/045095/2024 com 169 de 292; 2
+  ganham: descontaminados); `pericia_tripla` completos 5.481 → 5.539.
+- Conferidos à mão: 270131/000548/2023 (65 de 65, completo); 030001/045095/2024 (169 de 292 — o cache diz
+  `completo: False`, 123 sem identificação); 030001/020694/2025 (34 de 34 listados, faltam o i=12 "PD PDs zipadas
+  (98511108)" e o i=30 "Fiscalização Mensal (93758868)" — `ok: False` no cache, sem PDF).
+
+### 9.4 Reler-mesclar-gravar
+`acervo_texto.mutar_manifesto` e `cache_arquivo.mutar_json` (trava `fcntl`, releitura, gravação atômica; não recriam
+manifesto não-objeto). `sei_reparar_vazios` e `sei_refichar` passam por eles; `sei_arquivar` grava sob a mesma trava.
+Teste com dois escritores concorrentes e reprodução do apagamento (falha no código base).
+
+### 9.5 Corte "os N primeiros"
+`sei_agentes_sweep`: processo inteiro e todos os relacionados inteiros; relacionado fora do acervo ou captura
+incompleta → lacuna `*_leitura_parcial` (ausência não afirmada); lacunas do processo recalculadas a cada passada.
+Amostra de 100 pastas (`--so-conta`, só leitura): processos com fiscal 32 → 34; lacuna do art. 117 afirmada **55 → 16**,
+e 37 passam a sair como leitura parcial. Custo: 145 s → 909 s na amostra (lê os relacionados inteiros; o pai é
+guardado entre processos) — não tem cron; varredura inteira estimada em ~1 dia de VM-1.
+`sei_busca_mgs` devolve `fim_paginacao`/`parcial`; `sei_busca_credor` grava `com_resultado_parcial` e refaz com 25
+páginas; `resolver_duplicidade_nf` não aceita "candidato único" de lista parcial. As 10 buscas anteriores (8
+`com_resultado`, 2 `sem_resultado` — uma com 1 candidato) não sabiam se a lista era inteira: tratadas como parciais e
+refeitas uma vez.
+
+### 9.6 Custo da leitura dupla
+Cadeia fechada `zai, cohere, openrouter` (teto mensal server-side / guarda `:free`), chamada provedor a provedor, sem
+`FREE_LLM_ONLY` e sem cair na cascata geral; Gemini e Cerebras nunca; nenhum disponível → `indisponivel`.
+
+### 9.7 Sábado (medido)
+Cache `.zst` em `sei_pais`/`sei_arvore_build`/`sei_sweep`/`sei_reparar_truncados` (e `sei_integra_fila._fila_geral`,
+que também só vê `cdp_*.json`); identificar os 42.661 faltantes pela árvore do cache; fila do OCR ver o frio da VM-2.

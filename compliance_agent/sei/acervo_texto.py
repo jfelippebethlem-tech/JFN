@@ -76,6 +76,31 @@ def manifesto(pasta: Path | str) -> dict | None:
     return man if isinstance(man, dict) else None
 
 
+def mutar_manifesto(pasta: Path | str, fn, *, espera: float | None = 120):
+    """Reler → `fn(man)` → gravar o `manifest.json`, sob a trava `manifest.json.lock` — a ÚNICA forma de alterar um
+    manifesto que já existe. `fn` muda o dict no lugar e devolve False para não gravar. Manifesto ausente, ilegível
+    ou não-objeto: nada é gravado e devolve None (não se recria índice por cima do que não se leu).
+
+    Por quê: `sei_reparar_vazios` (OCR de minutos) e outros leitores-escritores liam o manifesto no começo e
+    regravavam o objeto velho no fim — o que outro escritor (captura, arquivamento, reparo) gravou no meio sumia.
+    A trava é de ARQUIVO (`fcntl`, `/proc/locks`); sem pegar a trava em `espera` s, não grava (devolve None)."""
+    from compliance_agent.llm.arquivo_estado import trava
+    alvo = Path(pasta) / "manifest.json"
+    with trava(alvo.with_name(alvo.name + ".lock"), espera) as pegou:
+        if not pegou:
+            return None
+        man = manifesto(pasta)
+        if man is None:
+            return None
+        r = fn(man)
+        if r is False:
+            return r
+        tmp = alvo.with_name(alvo.name + ".tmp")
+        tmp.write_text(json.dumps(man, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, alvo)
+        return r
+
+
 def foi_ocr(doc: dict) -> bool:
     """O texto da entrada veio de OCR? `sei_arquivar` grava bool; `sei_arquivar_do_cache` grava a STRING
     "True"/"False" (6.640 manifests em 20/11/2026) — e `bool("False")` é verdadeiro."""

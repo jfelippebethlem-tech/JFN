@@ -35,8 +35,4 @@ def test_sem_token_cai_na_cadeia_curta_em_vez_de_estourar(monkeypatch):
 
 
 def test_a_cadeia_curta_nao_percorre_os_doze(monkeypatch):
-    import os
-    monkeypatch.delenv("FREE_LLM_ONLY", raising=False)
-    M._gerar_cadeia_curta()
-    assert len(os.environ["FREE_LLM_ONLY"].split(",")) <= 4, (
-        "cascata longa custou 7,5 h de espera para 12% de sucesso")
+    assert len(M._GRATIS_LEITURA) <= 4, "cascata longa custou 7,5 h de espera para 12% de sucesso"

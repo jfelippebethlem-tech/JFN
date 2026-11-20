@@ -18,7 +18,7 @@ try:
 except Exception:
     pass
 
-from compliance_agent.sei.cache_arquivo import escrever_json, glob_cache, ler_json, nome_logico
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, mutar_json, nome_logico
 from tools.sei_ficha import STEPFUN, _refresh_nous_se_preciso, conteudo_real, extrair_ficha
 
 CACHE = _ROOT / "data" / "sei_cache"
@@ -81,10 +81,17 @@ async def main():
             erros += 1
             print(f"  ERRO {nome_logico(caminho)}: {f['_erro'][:90]}", flush=True)
             continue
-        d["ficha"] = f
-        d["_ficha_modelo"] = "stepfun:free"
-        d["_ficha_schema"] = CAMPO_NOVO
-        escrever_json(caminho, d)  # preserva `.zst` — `write_text` corromperia o blob comprimido
+        # RELER-MESCLAR-GRAVAR sob trava: a ficha leva ~60 s de LLM, e gravar o `d` lido lá em cima apagava o que o
+        # sweep gravou no blob nesse intervalo (documentos, cadeia). Só as três chaves da ficha mudam no blob RELIDO.
+        def _mescla(atual, f=f):
+            if not isinstance(atual, dict):
+                return False
+            atual.update({"ficha": f, "_ficha_modelo": "stepfun:free", "_ficha_schema": CAMPO_NOVO})
+            return True
+        if not mutar_json(caminho, _mescla):   # preserva `.zst`; blob sumiu/ilegível ou trava ocupada → não grava
+            erros += 1
+            print(f"  NÃO GRAVADO {nome_logico(caminho)}: blob ilegível ou trava ocupada", flush=True)
+            continue
         feitos += 1
         # reporta presença da perícia (o schema v2) + a situação, robusto ao tipo.
         tem_per = "perícia✓" if isinstance(f.get("pericia_contabil"), dict) else "perícia—"

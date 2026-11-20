@@ -107,9 +107,13 @@ def captura_completa() -> set[str]:
             j = json.loads(m.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        n_docs = len([x for x in (j.get("docs") or []) if isinstance(x, dict)])
-        na_arvore = j.get("docs_na_arvore")
-        if n_docs and na_arvore and n_docs >= na_arvore and not (j.get("lacunas") or []):
+        # régua única do acervo (`manifesto_norm.conferir_documentos`): CADA documento da árvore veio — não "a lista
+        # tem o tamanho da árvore" (documento listado e não capturado contava como presente), e `total_arvore` da
+        # íntegra conta tanto quanto `docs_na_arvore` do cache.
+        from compliance_agent.sei import manifesto_norm
+        if not isinstance(j, dict):
+            continue
+        if manifesto_norm.conferir_documentos(d, j)["captura_completa"] and not (j.get("lacunas") or []):
             p = d.name.split("_")
             if len(p) == 3:
                 ok.add(f"{p[0]}/{p[1]}/{p[2]}")

@@ -464,18 +464,48 @@ def _gerar_nous():
     return gerar
 
 
-def _gerar_cadeia_curta():
-    """Rede de segurança quando o nous não tem token — CADEIA CURTA, porque a cascata é que era lenta.
+# CADEIA SÓ DE GRATUITOS COM GUARDA REAL (§4.1 — "nunca assumir free tier"; 20/11/2026). Até aqui a cadeia era
+# `setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")`: o Gemini está DESLIGADO por cobrança (a chave tem billing
+# e créditos de trial não cobrem a API) e o Cerebras saiu em 09/11 (era crédito único); o `setdefault` ainda cedia a
+# um FREE_LLM_ONLY do ambiente, e lista que o filtro esvaziasse caía na cascata INTEIRA (Gemini incluído). Aqui a
+# lista é fechada e chamada provedor a provedor: zai e cohere com teto mensal server-side (`free_llm._MONTH_CAP`),
+# openrouter com a guarda que força `:free`. Nenhum disponível → "" → a leitura sai INDISPONÍVEL, nunca paga.
+_GRATIS_LEITURA = ("zai", "cohere", "openrouter")
+_NUNCA = frozenset({"gemini", "cerebras"})
 
-    Medido em 4 h de sweep: com o cerebras em 429 (cota do dia, 50 vezes), cada leitura percorria os
-    DOZE provedores somando o timeout de todos — 437 chamadas, 54 sucessos (12%), 7,5 h de espera
-    acumulada. A lista curta foi escolhida pelo que de fato respondeu nessas 4 h (zai 15/32,
-    cohere 9/9, cerebras 9/59 quando a cota permite). Gemini fica no fim, alcançável mas raro.
-    """
-    import os
-    os.environ.setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")
-    from compliance_agent.llm.camada_triagem import gerar_triagem
-    return gerar_triagem()
+
+def _gerar_cadeia_curta():
+    """Rede de segurança quando o nous não tem token: SÓ `_GRATIS_LEITURA`, nunca a cascata geral do `free_llm`."""
+    from compliance_agent.llm import free_llm as F
+    ordem = [p for p in _GRATIS_LEITURA if p not in _NUNCA and not F.desligado(p)]
+
+    def gerar(prompt: str, sistema: str = "") -> str:
+        import time
+
+        import httpx
+        for p in ordem:
+            if F._em_cooldown(p):
+                continue
+            ini = time.monotonic()
+            try:
+                if p == "openrouter":
+                    if not F.openrouter_available():
+                        continue
+                    r = F.openrouter_chat(prompt, system=sistema)
+                else:
+                    if not F.extra_available(p):     # inclui o teto mensal (§4.1)
+                        continue
+                    r = F.extra_chat(p, prompt, system=sistema)
+            except (OSError, RuntimeError, ValueError, KeyError, TypeError, httpx.HTTPError) as e:
+                # provedor fora: o próximo, e o erro fica no trace
+                F._trace(p, False, int((time.monotonic() - ini) * 1000), f"{type(e).__name__}: {e}")
+                F._marcar_cooldown(p, e)
+                continue
+            F._trace(p, bool((r or "").strip()), int((time.monotonic() - ini) * 1000))
+            if (r or "").strip():
+                return r
+        return ""
+    return gerar
 
 
 def _interpretar(texto: str, proc: str, gerar) -> dict:
@@ -629,6 +659,9 @@ def pagamento_do_processo(proc: str) -> dict:
 
     O confronto muda de natureza para melhor: em vez de duas leituras do mesmo texto, passa a ser o
     que o processo DIZ contra o que foi PAGO — que é a pergunta da fiscalização.
+
+    FONTE: SIAFE, só OB paga (`_ob_paga`, Guia de Devolução descontada) — `correlacao_sei.obs_por_processo`. Até
+    20/11/2026 lia o espelho TFE e o árbitro `_ob_arbitra` comparava com OB cancelada/anulada.
     """
     from compliance_agent.correlacao_sei import obs_por_processo
     obs = obs_por_processo(proc)

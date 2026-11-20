@@ -85,7 +85,8 @@ def _ja_arquivado(numero: str) -> bool:
         return False
     # `st_size > 200` media o arquivo, e a etiqueta que nós prepomos tem mediana 71 e máximo
     # medido de 478 caracteres — um arquivo só-rótulo podia passar por documento capturado.
-    return acervo_texto.docs_com_conteudo(d) > 0
+    from compliance_agent.sei import manifesto_norm
+    return manifesto_norm.conferir_documentos(d)["com_texto"] > 0   # régua única do acervo
 
 
 def levantar(fornecedor: str | None = None) -> dict:

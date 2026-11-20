@@ -205,13 +205,18 @@ async def main():
             # Capado originalmente porque 20×networkidle travava; com 369 registros, porém, 5
             # páginas = 70 resultados e a lista PARECE completa sem ser — foi o que me enganou
             # em 18/09/2026. Quem precisa do universo inteiro sobe o teto explicitamente.
+            # COMO A PAGINAÇÃO ACABOU vai no resultado: lista colhida até o TETO é PARCIAL e não autoriza afirmar
+            # ausência nem "candidato único" (20/11/2026: o teto era gravado como resultado final).
+            fim_paginacao = "teto_de_paginas"
             for _ in range(int(os.environ.get("SEI_BUSCA_PAGINAS", "5"))):
                 antes = len(achados)
                 try:
                     prox = await pg.evaluate(r"""()=>{const a=[...document.querySelectorAll('a')].find(e=>/pr[oó]xim|seguinte|^›$|^»$/i.test(((e.innerText||'')+' '+(e.title||'')).trim())&&!/desabilit|disabled/i.test(e.className||''));if(a){a.click();return true;}return false;}""")
                 except Exception:
+                    fim_paginacao = "erro_na_paginacao"
                     break
                 if not prox:
+                    fim_paginacao = "ultima_pagina"
                     break
                 await pg.wait_for_timeout(2500)
                 await colher()
@@ -228,6 +233,7 @@ async def main():
                 except Exception as e:                       # nunca derrubar a busca por causa do rastro
                     print(f"[aviso] parcial não gravou: {type(e).__name__}: {e}", file=sys.stderr)
                 if len(achados) == antes:  # não cresceu → fim
+                    fim_paginacao = "pagina_sem_novos"
                     break
             pagamentos = {n: t for n, t in achados.items() if re.search(r"pagament", t, re.I)}
             # o que a página DIZ, ao lado do que nós colhemos: se `estado` é `nao_parseei`, um
@@ -237,6 +243,8 @@ async def main():
                       "estado": laudo["estado"], "exibindo": laudo["exibindo"],
                               "considerar_docs": DOCS, "setup": setup, "interessado_dbg": inter_dbg,
                               "diag_submit": diag, "n_registros": reg, "n_total": len(achados),
+                              "fim_paginacao": fim_paginacao,
+                              "parcial": fim_paginacao in ("teto_de_paginas", "erro_na_paginacao"),
                               "n_pagamentos": len(pagamentos),
                               "pagamentos": dict(sorted(pagamentos.items())),
                               "todos": dict(sorted(achados.items()))}

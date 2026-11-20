@@ -85,21 +85,82 @@ def variantes_sei(sei: str) -> list[str]:
     return [nu, f"SEI-{nu}"] if nu else []
 
 
-def obs_por_processo(sei: str) -> list[dict]:
-    """Todas as OBs (TFE) vinculadas a um processo SEI. Para o Lex saber o que o processo pagou."""
-    if not _DB.exists():
-        return []
-    v = variantes_sei(sei)
-    if not v:
-        return []
-    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+def pago_siafe_por_processo(con: sqlite3.Connection) -> dict[str, float]:
+    """`{SEI-UUUUUU/NNNNNN/AAAA: soma das OB PAGAS no SIAFE}` — uma varredura agregada da tabela.
+
+    A régua de "pago" é a única da casa (`cruzamentos_intel._ob_paga`: sem cancelada/anulada/erro no pagamento/
+    complementar/reemitida/sem número). As grafias do mesmo processo (`SEI-080001/1211/2024`, sem prefixo, ano com
+    dois dígitos) somam na mesma chave canônica. Serve para PRIORIZAR (fila de íntegras): não desconta Guia de
+    Devolução — o total auditável por processo é `ob_processo.obs_por_processo`. Base sem SIAFE ⇒ {}."""
+    from compliance_agent.ob_processo import _canonico, chave_processo
+    out: dict[str, float] = {}
     try:
-        rows = con.execute(
-            "SELECT numero_ob, data_pagamento, ug_codigo, ug_nome, favorecido_cpf, favorecido_nome, valor, exercicio "
-            "FROM ordens_bancarias WHERE numero_sei IN (?,?) ORDER BY data_pagamento", tuple(v)).fetchall()
-        return [dict(r) for r in rows]
+        rows = con.execute(f"SELECT processo, SUM(valor) FROM ob_orcamentaria_siafe "
+                           f"WHERE {_ob_paga(con)} AND COALESCE(processo,'')<>'' GROUP BY processo").fetchall()
+    except sqlite3.Error:
+        return {}
+    for proc, v in rows:
+        k = chave_processo(proc)
+        if k and v:
+            c = _canonico(k)
+            out[c] = round(out.get(c, 0.0) + float(v), 2)
+    return out
+
+
+def obs_siafe_por_processos(numeros: list[str], con: sqlite3.Connection | None = None) -> dict[str, list[dict]]:
+    """`{número pedido: [OB paga]}` pelo SIAFE — nunca pelo espelho TFE (CLAUDE.md, NÃO REINVENTAR 1).
+
+    Medido em 20/11/2026: o espelho TFE (`ordens_bancarias.numero_sei`) tem 184.133 processos; o SIAFE pago, 279.504
+    — quem lia o TFE via "sem OB" onde o SIAFE tem pagamento. A ligação é a canônica (`ob_processo.obs_por_processo`:
+    nº do processo exato/normalizado/grafia irregular, NL/PD/OB juntadas nos autos, Guia de Devolução descontada);
+    `valor` é o EFETIVO (pago menos devolvido) e OB integralmente devolvida não entra. Formato das linhas mantido do
+    leitor antigo (`numero_ob`, `data_pagamento` ISO, `ug_codigo`, `favorecido_cpf`, `favorecido_nome`, `valor`,
+    `exercicio`) + `via`/`fonte`. Lote: uma varredura da tabela (2.168 processos ≈ 10 s, ~490 MB de pico)."""
+    from compliance_agent.ob_processo import chave_processo, obs_por_processo as _obs
+    if con is None and not _DB.exists():
+        return {}
+    dono = con is None
+    con = con or sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=60)
+    try:
+        por_chave = _obs(con, list(numeros), autos=True, so_pagos=True)
+        credores = {o["credor"] for d in por_chave.values() for o in d["obs"] if o.get("credor")}
+        nomes: dict[str, str] = {}
+        lista = sorted(credores)
+        for i in range(0, len(lista), 500):
+            parte = lista[i:i + 500]
+            q = ",".join("?" * len(parte))
+            # ob-qualquer-status: só o NOME do credor (metadado), não soma pagamento
+            for cred, nome in con.execute(f"SELECT credor, MAX(nome_credor) FROM ob_orcamentaria_siafe "
+                                          f"WHERE credor IN ({q}) GROUP BY credor", parte):
+                nomes[cred] = nome or ""
+    except sqlite3.Error:
+        return {}
     finally:
-        con.close()
+        if dono:
+            con.close()
+    out: dict[str, list[dict]] = {}
+    for n in numeros:
+        d = por_chave.get(chave_processo(n) or "")
+        if not d:
+            continue
+        linhas = []
+        for o in d["obs"]:
+            if (o.get("valor_efetivo") or 0) <= 0:
+                continue
+            dt = str(o.get("data") or "")
+            iso = f"{dt[6:10]}-{dt[3:5]}-{dt[0:2]}" if len(dt) == 10 and dt[2] == "/" else dt
+            linhas.append({"numero_ob": o["numero_ob"], "data_pagamento": iso, "ug_codigo": o.get("ug", ""),
+                           "favorecido_cpf": o.get("credor", ""), "favorecido_nome": nomes.get(o.get("credor"), ""),
+                           "valor": o["valor_efetivo"], "exercicio": iso[:4] if iso[:4].isdigit() else "",
+                           "via": o.get("via", ""), "fonte": "SIAFE"})
+        if linhas:
+            out[n] = linhas
+    return out
+
+
+def obs_por_processo(sei: str) -> list[dict]:
+    """OBs PAGAS (SIAFE) de um processo SEI — o que o processo pagou. Ver `obs_siafe_por_processos`."""
+    return obs_siafe_por_processos([sei]).get(sei, []) if variantes_sei(sei) else []
 
 
 def processo_de_ob(numero_ob: str) -> str:

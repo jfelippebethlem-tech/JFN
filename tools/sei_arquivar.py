@@ -117,6 +117,16 @@ def _slug(t: str) -> str:
     return re.sub(r"[^0-9a-z]+", "_", (t or "").lower())[:40].strip("_") or "doc"
 
 
+def _etiqueta_e_de(txt: Path, titulo: str) -> bool:
+    """O `.txt` do acervo é do documento `titulo`? Lê só a 1ª linha (`[título] (fase: … · tipo: …)`)."""
+    try:
+        with txt.open(encoding="utf-8", errors="ignore") as f:
+            linha = f.readline()
+    except OSError:
+        return False
+    return linha.startswith(f"[{titulo}] (fase:")
+
+
 def _modalidade(tipos: set[str]) -> str:
     if "contratacao_direta" in tipos:
         return "dispensa/inexigibilidade"
@@ -148,6 +158,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     # Latente no acervo de 2026-08-23 (83 diretórios com PDF, todos com manifesto), mas
     # capturas SÃO interrompidas: descoberto por um teste que montou o caso sem manifesto.
     alheios_i: set[int] = set()
+    ids_doc: dict[int, str] = {}
     captura_completa = None   # None = manifesto antigo (não declara); True/False = novo
     total_arvore = None
     mpath = origem / "manifest.json"
@@ -183,6 +194,9 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             alheios_i = set()
         for e in bruto:
             titulos[int(e["i"])] = e.get("titulo") or e.get("contexto") or ""
+            # o IDENTIFICADOR do documento na árvore (gravado pela captura; nos manifestos antigos, na url do nó)
+            m_id = re.search(r"id_documento=(\d+)", str(e.get("url") or ""))
+            ids_doc[int(e["i"])] = str(e.get("id_documento") or (m_id.group(1) if m_id else ""))
 
     docs_saida, tipos_vistos = [], set()
     for pdf in sorted(origem.glob("[0-9][0-9][0-9]*.pdf")):
@@ -205,7 +219,12 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         # NADA no log denunciava: cada disparo parecia progresso. Reaproveitar o texto já extraído
         # torna o trabalho monotônico; o disparo seguinte continua de onde o anterior parou.
         # O OCR é o custo (minutos por PDF de imagem); ler o txt de volta custa microssegundos.
-        pronto = next(destino.glob(f"texto/{i:03d}_*.txt"), None)
+        # O TEXTO REAPROVEITADO TEM DE SER DESTE DOCUMENTO, não da posição: a captura pode reordenar a árvore entre
+        # rodadas (`sei_integra_completa.preparar_retomada`), e `texto/{i:03d}_*.txt` podia ser de OUTRO título que
+        # ocupou o índice i antes — colava o teor de um documento no título de outro (20/11/2026). Vale o .txt cuja
+        # etiqueta traz este título.
+        pronto = next((t for t in destino.glob(f"texto/{i:03d}_*.txt")
+                       if _etiqueta_e_de(t, titulo)), None)
         if pronto is not None and pronto.stat().st_mtime >= pdf.stat().st_mtime:
             try:
                 bruto_txt = pronto.read_text("utf-8", errors="ignore")
@@ -295,6 +314,9 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                            "texto": "", "chars": 0, "ocr": False, "fotos": [],
                            "nao_capturado": True})
     docs_saida.sort(key=lambda d: d["i"])
+    for d in docs_saida:
+        if ids_doc.get(d["i"]):
+            d["id_documento"] = ids_doc[d["i"]]
 
     # fases/lacunas SÓ pelos capturados: um doc não-capturado não tem conteúdo, então
     # NÃO pode fazer a fase dele parecer coberta (senão lacunas() mentiria).
@@ -369,9 +391,34 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         manifest["aviso"] = (
             f"Captura PARCIAL ({len(docs_saida)} de {total_arvore or '?'} documentos da árvore) — "
             "download interrompido. Lacunas não afirmadas: retomar antes de concluir.")
-    (destino / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    if alheios_i:
+        manifest["alheios_fora"] = len(alheios_i)   # peças de outro processo: saem do tamanho da árvore
+    # CONFERÊNCIA DOCUMENTO A DOCUMENTO (régua única `manifesto_norm.conferir_documentos`): `captura_completa` passa a
+    # dizer "todo documento da árvore veio" — só com a árvore medida; o "download chegou ao fim" da captura fica em
+    # `download_completo`. Cada um que não veio vai em `docs_faltantes` com id/nº/título/motivo.
+    _registrar_conferencia(destino, manifest, captura_completa)
+    destino.mkdir(parents=True, exist_ok=True)
+    from compliance_agent.llm.arquivo_estado import trava
+    alvo = destino / "manifest.json"
+    with trava(alvo.with_name(alvo.name + ".lock"), 120):   # mesma trava de quem relê-mescla (`mutar_manifesto`)
+        tmp = alvo.with_name(alvo.name + ".tmp")
+        tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(alvo)
     return manifest
+
+
+def _registrar_conferencia(destino: Path, manifest: dict, download_completo) -> None:
+    from compliance_agent.sei import manifesto_norm
+    conf = manifesto_norm.conferir_documentos(destino, manifest)
+    manifest["download_completo"] = download_completo
+    if conf["medido"]:
+        manifest["captura_completa"] = conf["captura_completa"]
+    manifest["docs_faltantes"] = conf["docs_faltantes"]
+    manifest["conferencia_documentos"] = {
+        "em": datetime.now(timezone.utc).isoformat(timespec="seconds"), "medido": conf["medido"],
+        "total_arvore": conf["total_arvore"], "n_docs": conf["n_docs"], "vieram": conf["vieram"],
+        "com_texto": conf["com_texto"], "faltantes": len(conf["docs_faltantes"]),
+        "faltam_sem_identificacao": conf["faltam_sem_identificacao"]}
 
 
 def arquivar_pendentes(ocr: bool = True, apagar_pdf: bool = False) -> int:
@@ -419,6 +466,93 @@ def arquivar_pendentes(ocr: bool = True, apagar_pdf: bool = False) -> int:
     return 0
 
 
+def _ids_da_captura(pasta: Path) -> dict[tuple[int, str], str]:
+    """{(i, título): id_documento} do manifesto da íntegra no cache — só vale onde o TÍTULO também casa."""
+    try:
+        c = json.loads((CACHE / f"integra_{pasta.name}" / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for e in (c.get("docs") if isinstance(c, dict) else c) or []:
+        if not isinstance(e, dict):
+            continue
+        m_id = re.search(r"id_documento=(\d+)", str(e.get("url") or ""))
+        ident = str(e.get("id_documento") or (m_id.group(1) if m_id else ""))
+        try:
+            if ident:
+                out[(int(e.get("i")), str(e.get("titulo") or ""))] = ident
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def conferir_acervo(gravar: bool = False, idade_min_h: float = 2.0) -> dict:
+    """Conferência DOCUMENTO A DOCUMENTO de todo o acervo (`manifesto_norm.conferir_documentos`).
+
+    Ensaio por padrão (não grava). Com `gravar`, só onde a árvore foi MEDIDA, por `acervo_texto.mutar_manifesto`
+    (reler-mesclar-gravar sob trava), e nunca em pasta mexida há menos de `idade_min_h` horas (worker vivo).
+    Grava `captura_completa` (todo documento veio), `docs_faltantes` [{i, id_documento, numero_sei, titulo, motivo}],
+    `conferencia_documentos` (números) e preserva o "download chegou ao fim" antigo em `download_completo`."""
+    import time as _t
+    from collections import Counter
+    from compliance_agent.sei import acervo_texto, manifesto_norm
+    c: Counter = Counter()
+    motivos: Counter = Counter()
+    agora = _t.time()
+    for pasta in sorted(p for p in ARQUIVO.iterdir() if p.is_dir()):
+        man = acervo_texto.manifesto(pasta)
+        if man is None:
+            c["sem_manifest"] += 1
+            continue
+        c["manifests"] += 1
+        c["antes_captura_completa_true"] += man.get("captura_completa") is True
+        conf = manifesto_norm.conferir_documentos(pasta, man)
+        if not conf["medido"]:
+            c["arvore_nao_medida"] += 1
+            continue
+        c["arvore_medida"] += 1
+        c["completos"] += conf["captura_completa"]
+        c["incompletos"] += not conf["captura_completa"]
+        c["docs"] += conf["n_docs"]
+        c["docs_vieram"] += conf["vieram"]
+        c["docs_faltantes"] += len(conf["docs_faltantes"])
+        c["faltam_sem_identificacao"] += conf["faltam_sem_identificacao"]
+        motivos.update(f["motivo"] for f in conf["docs_faltantes"])
+        if not gravar:
+            continue
+        try:
+            recente = max(f.stat().st_mtime for f in [pasta / "manifest.json", *pasta.glob("texto")])
+        except (OSError, ValueError):
+            recente = agora
+        if agora - recente < idade_min_h * 3600:
+            c["pulado_pasta_recente"] += 1
+            continue
+        ids = _ids_da_captura(pasta)
+
+        def _aplica(m, pasta=pasta, ids=ids):
+            cf = manifesto_norm.conferir_documentos(pasta, m)      # sobre o manifesto RELIDO
+            if not cf["medido"]:
+                return False
+            for f in cf["docs_faltantes"]:
+                try:
+                    f["id_documento"] = f["id_documento"] or ids.get((int(f["i"]), f["titulo"]), "")
+                except (TypeError, ValueError):
+                    pass
+            if "download_completo" not in m:
+                m["download_completo"] = m.get("captura_completa")
+            m["captura_completa"] = cf["captura_completa"]
+            m["docs_faltantes"] = cf["docs_faltantes"]
+            m["conferencia_documentos"] = {
+                "em": datetime.now(timezone.utc).isoformat(timespec="seconds"), "medido": True,
+                "total_arvore": cf["total_arvore"], "n_docs": cf["n_docs"], "vieram": cf["vieram"],
+                "com_texto": cf["com_texto"], "faltantes": len(cf["docs_faltantes"]),
+                "faltam_sem_identificacao": cf["faltam_sem_identificacao"]}
+            return True
+        if acervo_texto.mutar_manifesto(pasta, _aplica):
+            c["gravados"] += 1
+    return {"contagem": dict(c), "motivos": dict(motivos.most_common()), "gravado": gravar}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("processo", nargs="?", default="",
@@ -429,7 +563,14 @@ def main() -> int:
     ap.add_argument("--apagar-pdf", action="store_true",
                     help="remove os NNN.pdf após converter (economia de disco)")
     ap.add_argument("--sem-ocr", action="store_true")
+    ap.add_argument("--conferir-acervo", action="store_true",
+                    help="confere CADA documento da árvore em todo o acervo (ensaio; grava só com --gravar)")
+    ap.add_argument("--gravar", action="store_true", help="com --conferir-acervo: grava no manifest (sob trava)")
     args = ap.parse_args()
+
+    if args.conferir_acervo:
+        print(json.dumps(conferir_acervo(gravar=args.gravar), ensure_ascii=False, indent=1))
+        return 0
 
     if args.pendentes:
         return arquivar_pendentes(ocr=not args.sem_ocr,

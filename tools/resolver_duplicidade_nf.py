@@ -319,9 +319,16 @@ def completar_pelo_empenho(obs: list[dict], cnpj: str, ug: str, mapa: dict) -> l
 def mapa_busca(c) -> dict:
     """(cnpj, ug, ano) → [numero_sei] dos processos de PAGAMENTO achados pela busca no SEI
     (`tools/sei_busca_credor.py`, tabela `sei_busca_credor`). Sem a tabela → {}."""
+    # Busca que parou no teto de páginas (`estado='com_resultado_parcial'`) entra marcada: a lista é cortada e
+    # "candidato único" dela não prova nada (20/11/2026).
+    # Resultado anterior a `INICIO_FIM_PAGINACAO` não sabia se a lista era inteira: também parcial até ser refeito.
+    from tools.sei_busca_credor import INICIO_FIM_PAGINACAO
     try:
-        return {(cn, str(ug), int(ano)): json.loads(cj or "[]") for cn, ug, ano, cj in
-                c.execute("SELECT cnpj, ug, ano, candidatos_json FROM sei_busca_credor")}
+        return {(cn, str(ug), int(ano)): ({"parcial": True, "candidatos": json.loads(cj or "[]")}
+                                          if est == "com_resultado_parcial" or (em or "") < INICIO_FIM_PAGINACAO
+                                          else json.loads(cj or "[]"))
+                for cn, ug, ano, cj, est, em in
+                c.execute("SELECT cnpj, ug, ano, candidatos_json, estado, buscado_em FROM sei_busca_credor")}
     except sqlite3.OperationalError:
         return {}
 
@@ -336,10 +343,14 @@ def completar_pela_busca(obs: list[dict], cnpj: str, ug: str, mapa: dict) -> lis
         mm = _comp_mm_aaaa(o.get("competencia")) or ""
         if not mm[-4:].isdigit():
             continue
-        cands = mapa.get((cnpj, str(ug), int(mm[-4:]))) or []
-        if len(cands) == 1:
+        ent = mapa.get((cnpj, str(ug), int(mm[-4:]))) or []
+        parcial = isinstance(ent, dict) and ent.get("parcial")
+        cands = ent.get("candidatos", []) if isinstance(ent, dict) else ent
+        if len(cands) == 1 and not parcial:      # único de lista CORTADA não é único
             o["processo"], o["processo_fonte"] = cands[0], "busca_sei"
             continue
+        if len(cands) == 1 and parcial:
+            o["processo_fonte_nota"] = "busca_sei parcial: candidato único de lista cortada — não atribuído"
         v = float(o.get("valor") or 0)
         casam = []
         for p in cands:

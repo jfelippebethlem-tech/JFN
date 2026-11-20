@@ -123,6 +123,108 @@ def arvore_anterior(man_path: Path) -> int:
         return 0
 
 
+_RX_ID_DOC = re.compile(r"id_documento=(\d+)")
+_RX_PECA = re.compile(r"^(\d{3,})\.pdf$")
+RETOMADA = "_retomada"          # subpasta onde ficam, pelo id, os PDFs que mudaram de posição (nada é apagado)
+
+
+def id_documento(entrada: dict) -> str:
+    """O IDENTIFICADOR do documento na árvore do SEI (`id_documento` da url do nó), ou "" se não houver."""
+    if entrada.get("id_documento"):
+        return str(entrada["id_documento"])
+    m = _RX_ID_DOC.search(str(entrada.get("u") or entrada.get("url") or ""))
+    return m.group(1) if m else ""
+
+
+def _mover(origem: Path, destino: Path) -> None:
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    origem.replace(destino)
+    ocr = origem.with_suffix(".ocr.txt")
+    if ocr.exists():
+        ocr.replace(destino.with_suffix(".ocr.txt"))
+
+
+def preparar_retomada(outdir: Path, docs: list[dict]) -> dict:
+    """A RETOMADA É PELO ID, NUNCA PELA POSIÇÃO. Deixa em `NNN.pdf` só o PDF cujo dono (pelo manifesto anterior) é o
+    documento que a enumeração ATUAL põe na posição NNN; o resto vai para `_retomada/<id>.pdf` (ou
+    `_retomada/sem_id_NNN.pdf`, dono desconhecido) e volta por `arquivo_retomado` quando o seu documento aparecer.
+
+    Por quê: a enumeração da árvore não é determinística (`arvore_anterior`) e a retomada antiga dizia "existe
+    `{i:03d}.pdf` → é o documento i" — numa lista que mudou entre rodadas isso colava o PDF de um documento no título
+    de outro (o `sei_reparar_vazios` mediu 6 de 7 PDFs conferíveis errados, 04/08/2026). Dono desconhecido (manifesto
+    antigo sem url/id, ou ausente) NÃO é reaproveitado no lugar: vazio é lacuna declarada, trocado é prova falsa."""
+    import json as _json
+    try:
+        ant = _json.loads((outdir / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        ant = {}
+    entradas = ant.get("docs") if isinstance(ant, dict) else ant
+    dono = {str(e.get("arquivo") or ""): id_documento(e) for e in (entradas or []) if isinstance(e, dict)}
+    dono.update({k: v for k, v in _donos(outdir).items() if v})   # rodada que morreu no meio: o registro vale mais
+    atual = {i: id_documento(x) for i, x in enumerate(docs)}
+    mantidos = movidos = 0
+    ficam: dict[str, str] = {}
+    for fp in sorted(outdir.glob("*.pdf")):
+        m = _RX_PECA.match(fp.name)
+        if not m:
+            continue
+        i, quem = int(m.group(1)), dono.get(fp.name, "")
+        if quem and atual.get(i) == quem:
+            mantidos += 1
+            ficam[fp.name] = quem
+            continue
+        _mover(fp, outdir / RETOMADA / (f"{quem}.pdf" if quem else f"sem_id_{fp.name}"))
+        movidos += 1
+    _gravar_donos(outdir, ficam)
+    return {"mantidos": mantidos, "movidos": movidos}
+
+
+DONOS = "donos.json"            # {NNN.pdf: id_documento} de cada PDF no lugar — sobrevive à rodada que morre no meio
+
+
+def _donos(outdir: Path) -> dict[str, str]:
+    import json as _json
+    try:
+        d = _json.loads((outdir / RETOMADA / DONOS).read_text(encoding="utf-8"))
+        return {str(k): str(v) for k, v in d.items()} if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _gravar_donos(outdir: Path, donos: dict[str, str]) -> None:
+    import json as _json
+    alvo = outdir / RETOMADA / DONOS
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    tmp = alvo.with_suffix(".tmp")
+    tmp.write_text(_json.dumps(donos, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(alvo)
+
+
+def registrar_dono(outdir: Path, i: int, doc: dict) -> None:
+    """Grava que `NNN.pdf` é do documento `doc` (chamar logo depois de baixá-lo ou retomá-lo)."""
+    ident = id_documento(doc)
+    if ident:
+        d = _donos(outdir)
+        d[f"{i:03d}.pdf"] = ident
+        _gravar_donos(outdir, d)
+
+
+def arquivo_retomado(outdir: Path, i: int, doc: dict) -> Path | None:
+    """O PDF já baixado DESTE documento (posição `i` da enumeração atual), ou None. Depois de `preparar_retomada`,
+    `NNN.pdf` existente é do documento certo; senão, o PDF dele pode estar em `_retomada/<id>.pdf` (veio noutra
+    posição numa rodada anterior) — volta para `NNN.pdf` com data nova, para o `sei_arquivar` reextrair o texto."""
+    fp = outdir / f"{i:03d}.pdf"
+    if fp.exists() and fp.stat().st_size > 0:
+        return fp
+    ident = id_documento(doc)
+    guardado = outdir / RETOMADA / f"{ident}.pdf" if ident else None
+    if guardado is not None and guardado.exists() and guardado.stat().st_size > 0:
+        _mover(guardado, fp)
+        os.utime(fp)
+        return fp
+    return None
+
+
 async def main():
     G.cleanup_orphans()
     ok, m = G.preflight()
@@ -294,14 +396,18 @@ async def main():
                     return False
                 return await SR._frame_arvore(aba) is not None
 
+            ret = preparar_retomada(outdir, docs)   # ANTES do primeiro _grava: lê o dono de cada PDF no manifesto anterior
+            if ret["movidos"]:
+                print(f"RETOMADA POR ID: {ret['mantidos']} PDFs no lugar, {ret['movidos']} mudaram de posição "
+                      f"(guardados em {RETOMADA}/ pelo id)", flush=True)
             manifest = []
             _grava(manifest, False)   # marca "em andamento" já no primeiro instante
             baixados_desde = 0
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
-                if fp.exists() and fp.stat().st_size > 0:
-                    paths.append(fp); ok = True     # retomada: não rebaixa o que já veio
+                if arquivo_retomado(outdir, i, x) is not None:
+                    paths.append(fp); ok = True     # retomada PELO ID: não rebaixa o que já veio deste documento
                 else:
                     if hora_de_renovar(baixados_desde):
                         import time as _t
@@ -328,9 +434,11 @@ async def main():
                             paths.append(fp); ok = True
                     except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
                         print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
+                if ok:
+                    registrar_dono(outdir, i, x)
                 manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
                                  "contexto": x.get("pai") or "", "url": x.get("u") or "",
-                                 "ok": ok})
+                                 "id_documento": id_documento(x), "ok": ok})
                 _grava(manifest, False)
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)

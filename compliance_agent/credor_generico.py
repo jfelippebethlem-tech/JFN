@@ -63,8 +63,8 @@ def _cnpjs_publicos(con: sqlite3.Connection) -> set[str]:
         return set()
 
 
-def classificar_por_processo(con: sqlite3.Connection,
-                             status: str | None = None) -> dict[str, dict[str, float]]:
+def classificar_por_processo(con: sqlite3.Connection, status: str | None = None, *,
+                             so_pagas: bool = False) -> dict[str, dict[str, float]]:
     """`{processo: {fornecedor, publico, generico, total}}` — uma varredura só da tabela de OB.
 
     Três populações dividem o campo `credor`, e só a primeira é contratação:
@@ -76,13 +76,20 @@ def classificar_por_processo(con: sqlite3.Connection,
     `status` filtra a OB (use `"Contabilizado"` para somar só o que foi de fato pago). Quem PUBLICA
     número tem de passá-lo: a casa já somou OB CANCELADA numa fila do fiscal. Quem só PRIORIZA pode
     deixar em branco — para ordenar, a OB cancelada não muda quem é fornecedor.
+
+    `so_pagas=True` aplica a régua ÚNICA de pagamento (`cruzamentos_intel._ob_paga`) — é o que quem publica deve
+    usar. `status="Contabilizado"` era cópia divergente dela: em 20/11/2026 deixava entrar OB com "Erro no
+    Pagamento" (devolvida pelo banco), "Pagamento Complementar" (dobro), reemitida e sem número.
     """
     publicos = _cnpjs_publicos(con)
     fora: dict[str, dict[str, float]] = {}
     sql = ("SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
            "WHERE COALESCE(processo,'') <> ''")
     args: tuple = ()
-    if status:
+    if so_pagas:
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        sql += f" AND {_ob_paga(con)}"
+    elif status:
         sql += " AND status = ?"
         args = (status,)
     try:

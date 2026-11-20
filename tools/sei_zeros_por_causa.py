@@ -129,9 +129,10 @@ def medir(prog: Path | None = None, reg: Path | None = None,
             # `123400`, `CG0006026`) e só R$ 3,73 bi é pagamento a CNPJ/CPF. Publicar o total como
             # exposição fiscalizável superestima — é a família dos quatro números de manchete já
             # corrigidos. A régua é a da casa (`credor_generico`), a mesma que a fila do sweep usa.
-            # `Contabilizado` é obrigatório aqui porque este número vai para o PAINEL: a casa já
-            # somou OB cancelada numa fila do fiscal.
-            for num, c in _classificar(con, status="Contabilizado").items():
+            # Só OB PAGA, pela régua única `_ob_paga`, porque este número vai para o PAINEL: a casa já
+            # somou OB cancelada numa fila do fiscal. (Até 20/11/2026 era `status='Contabilizado'`, cópia
+            # que deixava entrar erro no pagamento, complementar e reemitida.)
+            for num, c in _classificar(con, so_pagas=True).items():
                 if num in alvo:
                     valor[num] = c["total"]
                     forn[num] = c["fornecedor"]

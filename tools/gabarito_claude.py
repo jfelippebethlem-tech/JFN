@@ -178,7 +178,9 @@ def favorecido_pela_ob(proc: str) -> str | None:
       · **vários favorecidos** — processo que pagou a mais de um não tem resposta única, e escolher
         o maior seria inventar critério que o documento não tem.
 
-    RESSALVA DE FONTE, medida e declarada: `obs_por_processo` lê o ESPELHO TFE, não o SIAFE. A regra
+    FONTE (20/11/2026): `obs_por_processo` passou a ler o SIAFE (OB paga, régua `_ob_paga`) — o SIAFE pago tem
+    279.504 processos contra 184.133 do espelho. O histórico abaixo é da época do TFE.
+    RESSALVA DE FONTE (histórica): `obs_por_processo` lia o ESPELHO TFE, não o SIAFE. A regra
     da casa manda usar SIAFE para o CAMPO — mas o espelho é quem tem cobertura (o SIAFE guarda ~21%
     das OBs dele). Medida a concordância entre os dois sobre A QUAL PROCESSO cada OB pertence, com a
     chave completa `(numero_ob, exercicio, ug)`: **94% concordam, 5% divergem** (10.037 OBs). Este

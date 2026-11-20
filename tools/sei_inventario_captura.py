@@ -123,11 +123,21 @@ def ler_caches() -> dict[str, dict]:
 
 
 def textos_locais() -> set[str]:
-    """Processos com pelo menos um .txt capturado."""
+    """Processos com pelo menos um documento que VEIO com texto (régua única `manifesto_norm.conferir_documentos`).
+
+    Existir `.txt` não é ter texto: o arquivo pode ter só a etiqueta que nós escrevemos, ou ser sobra de captura
+    anterior que o manifesto não declara. Pasta sem manifest legível segue pelo critério antigo (há `.txt`)."""
+    from compliance_agent.sei import manifesto_norm
     if not ACERVO.is_dir():
         return set()
-    return {so_digitos(p.name) for p in ACERVO.iterdir()
-            if p.is_dir() and (p / "texto").is_dir() and any((p / "texto").glob("*.txt"))}
+    out = set()
+    for p in ACERVO.iterdir():
+        if not (p.is_dir() and (p / "texto").is_dir() and any((p / "texto").glob("*.txt"))):
+            continue
+        conf = manifesto_norm.conferir_documentos(p)
+        if conf.get("motivo") == "sem manifest legível" or conf["com_texto"] > 0:
+            out.add(so_digitos(p.name))
+    return out
 
 
 REGISTRO_RESTRITOS = pathlib.Path(os.environ.get("JFN_SEI_RESTRITOS", "data/sei_restritos.json"))

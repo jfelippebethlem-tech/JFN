@@ -79,19 +79,33 @@ def _pagos_por_chave(*, so_contratacao: bool = True) -> dict[str, float]:
 
     pagos: dict[str, float] = {}
     try:
-        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
-        for numero, nome, total in con.execute(
-            "SELECT processo, MIN(nome_credor), SUM(COALESCE(valor,0)) "
-            "FROM ob_orcamentaria_siafe WHERE COALESCE(processo,'') <> '' GROUP BY processo"
-        ):
+        for numero, _cred, nome, total in _pagos_por_credor():
+            # POR CREDOR, não por processo: `MIN(nome_credor)` escolhia um nome qualquer do processo e
+            # decidia o processo inteiro por ele (o mesmo defeito que a fila por dinheiro corrigiu em 04/08).
             if so_contratacao and eh_nao_fornecedor(nome or ""):
                 continue
             if (k := _chave(numero)):
                 pagos[k] = pagos.get(k, 0.0) + float(total or 0)
-        con.close()
     except sqlite3.Error as e:
         print(f"aviso: não consegui ler pagamentos ({e}) — fila sai sem ordenação por valor")
     return pagos
+
+
+def _pagos_por_credor(processo_like: str | None = None) -> list[tuple]:
+    """`(processo, credor, nome, soma)` das OB PAGAS do SIAFE — régua única `_ob_paga`.
+
+    Até 20/11/2026 somava toda OB do processo, cancelada/anulada/erro no pagamento inclusive, e o nome do
+    credor era `MIN(nome_credor)` do processo. `processo_like` restringe a varredura (nota de um processo só)."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
+    try:
+        filtro, args = ("AND processo LIKE ?", (processo_like,)) if processo_like else ("", ())
+        return con.execute(
+            "SELECT processo, credor, MAX(nome_credor), SUM(COALESCE(valor,0)) FROM ob_orcamentaria_siafe "
+            f"WHERE COALESCE(processo,'') <> '' AND {_ob_paga(con)} {filtro} GROUP BY processo, credor",
+            args).fetchall()
+    finally:
+        con.close()
 
 
 def fila(limite: int | None = None) -> list[tuple[str, float]]:
@@ -294,20 +308,21 @@ def natureza_do_pagamento(pasta: str) -> tuple[str | None, float]:
     total = nao_forn = 0.0
     principal, maior = None, 0.0
     try:
-        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
-        for numero, nome, soma in con.execute(
-            "SELECT processo, MIN(nome_credor), SUM(COALESCE(valor,0)) FROM ob_orcamentaria_siafe "
-            "WHERE COALESCE(processo,'') <> '' GROUP BY processo"
-        ):
+        # o nº sequencial (sem zeros à esquerda) sempre aparece no campo, qualquer que seja a grafia; a chave
+        # de dígitos reconfere abaixo. Sem o LIKE, cada nota varria a tabela inteira.
+        seq = str(int(alvo[6:-4])) if alvo[6:-4].isdigit() else ""
+        por_credor: dict[str, list] = {}
+        for numero, cred, nome, soma in _pagos_por_credor(f"%{seq}%" if seq else None):
             if _chave(numero) != alvo:
                 continue
-            v = float(soma or 0)
+            e = por_credor.setdefault(str(cred or nome or ""), [nome, 0.0])
+            e[1] += float(soma or 0)
+        for nome, v in por_credor.values():
             total += v
             if eh_nao_fornecedor(nome or ""):
                 nao_forn += v
-            if v > maior:
+            if v > maior:            # o credor DOMINANTE: onde o dinheiro foi
                 principal, maior = nome, v
-        con.close()
     except sqlite3.Error as e:
         logger_msg = f"natureza do pagamento indisponível para {pasta} ({e})"
         print(f"    aviso: {logger_msg}")

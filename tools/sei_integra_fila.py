@@ -173,13 +173,22 @@ def _arquivado_ok(dir_arq: Path) -> bool:
         m = json.loads(man.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return True
+    if not isinstance(m, dict):
+        return True                     # manifesto fora do formato: não julgo o teor
     docs = m.get("docs") or []
     if not docs:
         return False
     entradas = [d for d in docs if isinstance(d, dict)]
     if len(entradas) != len(docs):
         return True                     # manifesto fora do formato: não julgo o teor
-    if any(_chars(d) >= 40 for d in entradas):
+    # RÉGUA ÚNICA (`manifesto_norm.conferir_documentos`, 20/11/2026): o teor é medido no DISCO, documento a documento
+    # (o `chars` do manifesto podia estar velho ou vir como texto), e o tamanho da árvore é o maior de
+    # `total_arvore`/`docs_na_arvore` sem as peças de outro processo que o arquivo tirou.
+    from compliance_agent.sei import manifesto_norm
+    conf = manifesto_norm.conferir_documentos(dir_arq, m)
+    # teor no DISCO decide; o `chars` do manifesto só soma (manifesto sem `texto` por entrada — formato de escritor
+    # antigo — continua lido como antes)
+    if conf["com_texto"] > 0 or any(_chars(d) >= 40 for d in entradas):
         # tem teor — MAS re-captura se a captura está INCOMPLETA:
         # (a) menos docs que a árvore (total_arvore) → captura parou no meio (timeout) e
         #     centenas de docs nunca foram tentados (260007/004617 = 215 de 646!);
@@ -187,17 +196,13 @@ def _arquivado_ok(dir_arq: Path) -> bool:
         # Sem isto o processo ficava PRESO por 'tem texto' (14 arquivos incompletos +
         # 12 com falha, 2026-07-23). Auto-limitante: captura completa → docs == total_arvore
         # (capturados + declarados) e falhas == declaradas → não repete.
-        total = m.get("total_arvore")
-        if total and len(entradas) < total:
-            return False
-        # o arquivo montado do CACHE grava a árvore como `docs_na_arvore`, não `total_arvore`: medido em 25/09/2026,
-        # 809 processos truncados (28.705 documentos faltando — INEA 34/2023 com 124 de 817) eram dados por prontos.
-        # Piso de 5 docs ou 10%: diferença de 1 documento costuma ser peça restrita, e reler não a traz.
-        try:
-            arvore = int(m.get("docs_na_arvore") or 0)
-        except (TypeError, ValueError):
-            arvore = 0
-        if not total and arvore and arvore - len(entradas) >= max(5, 0.10 * arvore):
+        # captura da íntegra (`total_arvore`): qualquer documento a menos é captura que parou no meio.
+        # o arquivo montado do CACHE grava a árvore como `docs_na_arvore`: medido em 25/09/2026, 809 processos
+        # truncados (28.705 documentos faltando — INEA 34/2023 com 124 de 817) eram dados por prontos.
+        # Piso de 5 docs ou 10% nesse caso: diferença de 1 documento costuma ser peça restrita, e reler não a traz.
+        falta = conf["faltam_sem_identificacao"]
+        arvore = conf["total_arvore"] or 0
+        if falta and falta >= (1 if m.get("total_arvore") else max(5, 0.10 * arvore)):
             return False
         if _tem_falha_nao_declarada(dir_arq, m):
             return False
@@ -288,18 +293,18 @@ def _tem_falha_nao_declarada(dir_arq: Path, arq_manifest: dict) -> bool:
 
 
 def _valor_por_processo() -> dict:
-    """Valor total pago (OB) por processo SEI — p/ priorizar o arquivo por EXPOSIÇÃO. {} se sem DB."""
+    """Valor PAGO (OB do SIAFE, régua `_ob_paga`) por processo SEI — p/ priorizar o arquivo por EXPOSIÇÃO.
+
+    Chave `SEI-UUUUUU/NNNNNN/AAAA`. Até 20/11/2026 somava o espelho TFE (`ordens_bancarias`) sem filtro de status:
+    184.133 processos contra 279.504 pagos no SIAFE — 96.482 processos com OB paga ficavam com prioridade ZERO, e OB
+    cancelada contava como paga. {} se sem DB."""
     if not DB.exists():
         return {}
     import sqlite3
-    con = sqlite3.connect(str(DB))
+    from compliance_agent.correlacao_sei import pago_siafe_por_processo
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     try:
-        rows = con.execute(
-            "SELECT numero_sei, ROUND(SUM(valor),2) FROM ordens_bancarias "
-            "WHERE numero_sei LIKE 'SEI-%/%/20%' GROUP BY numero_sei").fetchall()
-        return {p: (v or 0) for p, v in rows}
-    except sqlite3.Error:
-        return {}
+        return pago_siafe_por_processo(con)
     finally:
         con.close()
 
@@ -321,7 +326,7 @@ def _fila_geral() -> list[dict]:
         proc = _proc_limpo(num)
         if not proc or _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
             continue
-        out.append({"sei": num, "score": valores.get(num, 0)})
+        out.append({"sei": num, "score": valores.get(f"SEI-{proc}", 0)})
     out.sort(key=lambda e: -(e.get("score") or 0))
     return out
 
@@ -376,6 +381,10 @@ def _fila_inscrita(limite: int = 40) -> list[str]:
 # a inscrição comum nunca os recapturaria. Esta fonte vem antes de tudo e RELÊ mesmo o arquivado. Auto-limitante:
 # sai da fila quando o manifesto do arquivo fica mais novo que a inscrição (`visto_em`, UTC).
 MOTIVO_EXECUCAO = "laudo de execução risco alto sem documento de execução"
+# PDF TROCADO (20/11/2026): documento do acervo cujo corpo é IDÊNTICO ao de um irmão do mesmo processo e traz o código
+# verificador do irmão, não o seu — a retomada posicional colou o PDF de um no título de outro. Relê mesmo arquivado,
+# como a execução (a retomada agora é por `id_documento` e o reaproveitamento de texto exige o mesmo título).
+MOTIVO_PDF_TROCADO = "recaptura: PDF trocado"
 
 
 def _fila_execucao() -> list[str]:
@@ -387,9 +396,10 @@ def _fila_execucao() -> list[str]:
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     try:
         con.execute("PRAGMA busy_timeout=15000")
-        linhas = con.execute("SELECT numero_sei, COALESCE(visto_em,'') FROM sei_fila_captura WHERE motivo LIKE ? "
+        linhas = con.execute("SELECT numero_sei, COALESCE(visto_em,'') FROM sei_fila_captura "
+                             "WHERE motivo LIKE ? OR motivo LIKE ? "
                              "ORDER BY COALESCE(total_pago,0) DESC, numero_sei",
-                             (MOTIVO_EXECUCAO + "%",)).fetchall()
+                             (MOTIVO_EXECUCAO + "%", MOTIVO_PDF_TROCADO + "%")).fetchall()
     except sqlite3.Error:
         return []
     finally:
@@ -443,21 +453,17 @@ def _fila_reler_por_ob(max_reler: int = 10) -> list[str]:
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     try:
         con.execute("PRAGMA busy_timeout=15000")
-        # SIAFE (fonte rica; data dd/mm/aaaa) + TFE espelho (ISO) — vale o MAX das duas
+        # SÓ O SIAFE, só OB PAGA (`_ob_paga`): até 20/11/2026 somava o espelho TFE e OB cancelada/anulada — OB
+        # que não foi pagamento fazia o processo "andar" e voltar à releitura.
+        from compliance_agent.cruzamentos_intel import _ob_paga
         for proc, d in con.execute(
                 "SELECT processo, MAX(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)"
                 "||'-'||substr(data_emissao,1,2)) FROM ob_orcamentaria_siafe "
-                "WHERE processo LIKE '%______/______/20%' AND length(data_emissao)=10 "
+                f"WHERE processo LIKE '%______/______/20%' AND length(data_emissao)=10 AND {_ob_paga(con)} "
                 "GROUP BY processo"):
             p = _proc_limpo(proc)
             if p and d:
                 ultima_ob[p] = max(ultima_ob.get(p, ""), d)
-        for proc, d in con.execute(
-                "SELECT numero_sei, MAX(data_emissao) FROM ordens_bancarias "
-                "WHERE numero_sei LIKE 'SEI-%/%/20%' GROUP BY numero_sei"):
-            p = _proc_limpo(proc)
-            if p and d:
-                ultima_ob[p] = max(ultima_ob.get(p, ""), str(d)[:10])
         valores = _valor_por_processo()
     except sqlite3.Error:
         return []

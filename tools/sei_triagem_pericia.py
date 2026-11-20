@@ -479,9 +479,10 @@ def periciar(pasta: Path) -> dict | None:
     # **96%** dos casos. "Sem-marca" é arquivador antigo que não preenchia o campo,
     # não captura ruim. Pior: os **214 processos com lacuna declarada são TODOS
     # "sem-marca"** — o gate pela etiqueta jogava fora exatamente o que interessa.
-    _txt = pasta / "texto"
-    _n_txt = len(list(_txt.glob("*"))) if _txt.exists() else 0
-    captura_integra = bool(docs) and _n_txt >= max(1, int(len(docs) * 0.6))
+    # A régua é a da casa (`manifesto_norm.captura_integra`, fatos de `conferir_documentos`): contar ARQUIVO em
+    # `texto/` contava órfão de captura anterior e .txt só com a etiqueta — falha de captura virava lacuna do processo.
+    from compliance_agent.sei import manifesto_norm
+    captura_integra = bool(docs) and manifesto_norm.captura_integra(man, pasta)[0]
     lac = man.get("lacunas") or []
     return {
         "processo": man.get("processo") or pasta.name,

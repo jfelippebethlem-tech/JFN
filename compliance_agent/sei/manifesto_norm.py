@@ -18,6 +18,7 @@ etiquetas do manifest (`captura_vazia`) só VETAM, nunca aprovam.
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 
 from compliance_agent.sei import acervo_texto, fases
@@ -107,12 +108,115 @@ def normalizar(manifest: dict) -> dict:
     return man
 
 
+_RE_NUM_TITULO = re.compile(r"\((\d{7,10})\)\s*$")
+_RE_NUM_SOLTO = re.compile(r"(?<!\d)(\d{7,10})(?!\d)")
+
+
+def numero_sei_do_titulo(titulo: str) -> str:
+    """O nº SEI do documento que a árvore põe no título ("Despacho … (121323702)"); "" se não houver."""
+    t = str(titulo or "")
+    m = _RE_NUM_TITULO.search(t)
+    if m:
+        return m.group(1)
+    soltos = _RE_NUM_SOLTO.findall(t)
+    return soltos[-1] if soltos else ""
+
+
+def _inteiro(v) -> int:
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def tamanho_da_arvore(manifest: dict) -> int | None:
+    """Quantos documentos DESTE processo a árvore do SEI tem, pelo que o manifesto mediu; None = não medido.
+
+    Dois nomes para o mesmo fato: `total_arvore` (captura da íntegra) e `docs_na_arvore` (arquivo montado do cache
+    do sweep) — vale o maior. As peças de OUTRO processo que a íntegra trouxe e o arquivo tirou (`alheios_fora` do
+    `sei_arquivar`, `descontaminado.removidos` do `sei_descontaminar`) saem da conta: senão o processo descontaminado
+    ficava "incompleto" para sempre e voltava à recaptura eterna."""
+    arvore = max(_inteiro(manifest.get("total_arvore")), _inteiro(manifest.get("docs_na_arvore")))
+    if arvore <= 0:
+        return None
+    desc = manifest.get("descontaminado")
+    fora = _inteiro(manifest.get("alheios_fora")) + (_inteiro(desc.get("removidos")) if isinstance(desc, dict) else 0)
+    return max(0, arvore - fora)
+
+
+def _tem_foto(doc: dict) -> bool:
+    f = doc.get("fotos")
+    return bool(f) and str(f).strip() not in ("[]", "")
+
+
+def motivo_falta(pasta: Path, doc: dict) -> str | None:
+    """Por que ESTE documento não veio — ou None se veio (texto com teor no disco, ou página de imagem guardada).
+
+    As quatro marcas de "não veio" que os escritores usam viram um motivo só cada: `nao_capturado` (a captura não
+    trouxe), `declarado_sem_teor`, `sem_conteudo` (PDF sem texto e sem imagem), e o que nenhuma marca diz mas o disco
+    mostra — `so_etiqueta` (o .txt só tem o rótulo que nós escrevemos) e `sem_texto` (nenhum .txt declarado)."""
+    for marca in ("nao_capturado", "declarado_sem_teor", "sem_conteudo"):
+        if str(doc.get(marca) or "").lower() in ("true", "1"):
+            return marca
+    rel = doc.get("texto")
+    if rel and acervo_texto.tem_conteudo(pasta / rel):
+        return None
+    if _tem_foto(doc):
+        return None                         # documento-imagem (fotografia, escaneado sem OCR): o teor é a imagem
+    return "so_etiqueta" if rel and (pasta / rel).exists() else "sem_texto"
+
+
+def conferir_documentos(pasta: Path | str, manifest: dict | None = None) -> dict:
+    """CADA documento da árvore veio? A régua ÚNICA de "captura completa" do acervo.
+
+    Pedido do dono (20/11/2026): "checar se a íntegra baixada tem todos os documentos mencionados individualmente".
+    Até aqui havia 13 réguas divergentes (limiares de 40/50/80/200 bytes e 500 chars, `total_arvore` × `docs_na_arvore`,
+    60% por arquivo em disco); esta responde documento a documento e as outras passam a derivar daqui.
+
+    Devolve `medido` (a árvore tem tamanho conhecido), `total_arvore` (já sem peças alheias), `n_docs`, `vieram`,
+    `com_texto` (vieram COM texto — o que a leitura usa), `docs_faltantes` [{i, id_documento, numero_sei, titulo,
+    motivo}], `faltam_sem_identificacao` (a árvore é maior que o manifesto e o manifesto não diz quais) e
+    `captura_completa` — True SÓ com árvore medida, todo documento presente e nenhum faltando sem identificação."""
+    pasta = Path(pasta)
+    man = manifest if manifest is not None else acervo_texto.manifesto(pasta)
+    if not isinstance(man, dict):
+        return {"medido": False, "motivo": "sem manifest legível", "total_arvore": None, "n_docs": 0,
+                "vieram": 0, "com_texto": 0, "docs_faltantes": [], "faltam_sem_identificacao": 0,
+                "captura_completa": False}
+    docs = [d for d in (man.get("docs") or []) if isinstance(d, dict)]
+    arvore = tamanho_da_arvore(man)
+    faltantes, vieram, com_texto = [], 0, 0
+    for d in docs:
+        motivo = motivo_falta(pasta, d)
+        if motivo is None:
+            vieram += 1
+            rel = d.get("texto")
+            com_texto += bool(rel and acervo_texto.tem_conteudo(pasta / rel))
+            continue
+        faltantes.append({"i": d.get("i"), "id_documento": str(d.get("id_documento") or ""),
+                          "numero_sei": numero_sei_do_titulo(d.get("titulo")),
+                          "titulo": str(d.get("titulo") or ""), "motivo": motivo})
+    if not docs:
+        # ÍNDICE QUEBRADO (`docs: []` com `texto/*.txt` intacto — o que `sei_reparar_manifestos` conserta): o diretório
+        # é a melhor evidência do que veio (`acervo_texto.declarados`), mas sem índice nada é "completo".
+        com_texto = vieram = acervo_texto.docs_com_conteudo(pasta)
+    sem_ident = max(0, arvore - len(docs)) if arvore is not None else 0
+    return {"medido": arvore is not None, "total_arvore": arvore, "n_docs": len(docs), "vieram": vieram,
+            "com_texto": com_texto, "docs_faltantes": faltantes, "faltam_sem_identificacao": sem_ident,
+            "captura_completa": bool(arvore is not None and docs and not faltantes and sem_ident == 0)}
+
+
 def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bool, dict]:
-    """(íntegra?, evidência). Texto no disco decide; etiquetas do manifest só vetam."""
+    """(íntegra?, evidência). Texto no disco decide; etiquetas do manifest só vetam.
+
+    O tamanho da árvore vem de `conferir_documentos` (régua única); o texto, dos documentos que o manifesto EM DISCO
+    declara (`acervo_texto.docs_com_conteudo`). O que é só desta função é o LIMIAR de avaliabilidade (60% com
+    texto) — não é outra régua de "completo"."""
     docs = [d for d in (manifest.get("docs") or []) if isinstance(d, dict)]
     pasta = Path(pasta or manifest.get("_pasta") or "")
     txt = pasta / "texto"
     n_txt = len(list(txt.glob("*"))) if txt.exists() else 0
+    conf = conferir_documentos(pasta, manifest)
     # CONTAR ARQUIVO NÃO É CONTAR TEXTO. 10.332 dos 45.161 arquivos do acervo (22,9%) trazem só a
     # etiqueta `[título] (fase: … · tipo: …)` que nós mesmos escrevemos — zero conteúdo. Contando
     # arquivos, 7 processos passavam por ÍNTEGROS com quase metade dos textos vazios e recebiam
@@ -146,7 +250,8 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     # Quem arquiva sabe o tamanho da árvore: está em `documentos` no próprio cache que ele lê.
     # `docs_na_arvore` grava esse fato no manifesto, e aqui ele MANDA quando existe — a heurística
     # do 40 fica só para os manifestos legados, que não têm o campo.
-    na_arvore = manifest.get("docs_na_arvore")
+    # `conferir_documentos.total_arvore` = o maior de `total_arvore`/`docs_na_arvore`, sem as peças alheias tiradas.
+    na_arvore = conf["total_arvore"]
     if isinstance(na_arvore, int) and na_arvore > 0:
         teto_de_coleta = len(docs) < na_arvore
     else:

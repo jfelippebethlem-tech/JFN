@@ -110,6 +110,28 @@ _UNIDADE = {"B": 1, "KB": 1024, "KiB": 1024, "MB": 1024 ** 2, "MiB": 1024 ** 2,
 
 
 @lru_cache(maxsize=8192)
+def mutar_json(caminho: Path, fn, *, espera: float | None = 120):
+    """Reler → `fn(obj)` → gravar um blob do cache, sob a trava `<nome lógico>.lock`, preservando `.json`/`.zst`.
+
+    Para quem gasta minutos entre ler e gravar (LLM, OCR): grava-se sobre o blob RELIDO, não sobre a cópia do
+    começo — o que o sweep gravou no meio não some. `fn` devolve False para não gravar. Blob ausente/ilegível ou
+    trava não obtida em `espera` s: nada é gravado e devolve None."""
+    from compliance_agent.llm.arquivo_estado import trava
+    caminho = Path(caminho)
+    logico = caminho.with_name(nome_logico(caminho))
+    with trava(logico.with_name(logico.name + ".lock"), espera) as pegou:
+        if not pegou:
+            return None
+        obj = ler_json(logico)
+        if obj is None:
+            return None
+        r = fn(obj)
+        if r is False:
+            return r
+        escrever_json(logico, obj)
+        return r
+
+
 def _tamanho_logico(caminho_str: str, mtime: float) -> int:
     """Tamanho do conteúdo DESCOMPRIMIDO, para comparar `.json` com `.json.zst`.
 
