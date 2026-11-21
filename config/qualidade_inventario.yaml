@@ -338,7 +338,7 @@ agendamentos:
   digest_diario: {fonte_codigo: tools/digest_diario.py, envia: "digest diário dos achados novos", canal: Telegram}
   pipelines_slo: {fonte_codigo: tools/pipelines_slo.py, envia: "SLO de frescor por etapa; avisa o que parou", canal: Telegram}
   propagacao: {fonte_codigo: compliance_agent/propagacao.py, envia: "recálculo do que ficou desatualizado + descobertas duráveis ao segundo cérebro (cron */5)", canal: "painel (Sistema › Propagação) + jfn-brain"}
-  automelhoria: {fonte_codigo: tools/automelhoria_geral.py, envia: "fila única de automelhoria; avisa só com novidade", canal: Telegram}
+  automelhoria: {fonte_codigo: tools/automelhoria_geral.py, envia: "fila única de automelhoria; fura o silêncio só o item ESCALADO (2 remédios sem cura), uma vez, entrega conferida por message_id; novidades seguem sob o silêncio", canal: Telegram}
   yoda_autoauditoria: {fonte_codigo: tools/yoda_autoauditoria.py, envia: "falhas de conversa do Yoda (nova/reincidente)", canal: "Telegram + vault"}
   canario_claude: {fonte_codigo: compliance_agent/llm/claude_motor.py, envia: "canário diário do co-motor Claude", canal: "AO VIVO (data/claude_motor_estado.json)"}
   triagem_amarelos: {fonte_codigo: tools/triagem_amarelos.py, envia: "triagem dos alertas amarelos", canal: Telegram}

@@ -209,3 +209,59 @@ def test_alerta_que_o_detector_declara_nao_acusacao_nao_vai_ao_llm(con):
                 "'NÃO é acusação: a sanção só começou em 2026, 3 ano(s) DEPOIS da emenda de 2023',?, 'novo')",
                 (json.dumps({"valor": 9e9}),))
     assert 6 not in [a["id"] for a in T.selecionar(con, 10)]
+
+
+# ── decisão 3 (20/11/2026): detector com FP ≥ 50% sai sozinho da triagem e volta sozinho ─────────────────
+def _vereditos(con, tipo, n, fp, em="now"):
+    """`n` alertas de `tipo` já julgados (`fp` como provável falso positivo), com a data do veredito `em`."""
+    T.garantir(con)
+    base = con.execute("SELECT COALESCE(MAX(id),0) FROM alertas").fetchone()[0] + 1
+    for i in range(n):
+        con.execute("INSERT INTO alertas VALUES(?,?,?,?,?,?,?)", (base + i, tipo, "baixa", "t", "d", "{}", "novo"))
+        con.execute("INSERT INTO alertas_triagem(alerta_id,prioridade,em,opus_pendente) VALUES(?,?,datetime(?),0)",
+                    (base + i, "provavel_falso_positivo" if i < fp else "monitorar", em))
+    con.commit()
+
+
+def test_detector_com_metade_de_falso_positivo_sai_da_triagem_e_o_alerta_fica(con):
+    _vereditos(con, "direcionamento", 30, 15)                      # 50% em 30: exatamente no corte → sai
+    assert T.detectores_suspensos(con) == {"direcionamento": (30, 15)}
+    ids = [a["id"] for a in T.selecionar(con, 10)]
+    assert 2 not in ids and ids == [3, 1, 4]                       # o alerta 2 (direcionamento) não vai ao juiz
+    assert con.execute("SELECT status FROM alertas WHERE id=2").fetchone()[0] == "novo"   # e segue gravado
+
+
+def test_abaixo_do_corte_ou_amostra_pequena_nao_suspende(con):
+    _vereditos(con, "direcionamento", 30, 14)                      # 46,7%: fica
+    _vereditos(con, "pcrj_d7_fracionamento", 29, 29)               # 100% mas n=29 < 30: não mede, fica
+    assert T.detectores_suspensos(con) == {}
+    assert [a["id"] for a in T.selecionar(con, 10)] == [2, 3, 1, 4]
+
+
+def test_detector_volta_sozinho_quando_os_vereditos_saem_da_janela(con):
+    _vereditos(con, "direcionamento", 40, 40, em="-31 days")       # todo o histórico ruim, fora da janela
+    assert T.detectores_suspensos(con) == {}
+    assert 2 in [a["id"] for a in T.selecionar(con, 10)]
+
+
+def test_fila_do_opus_pula_detector_suspenso_sem_perder_o_item(con):
+    T.triar_lote(con, 2, gerar=_gerar(_r("aprofundar"), _r("aprofundar")))   # alertas 2 e 3 esperam o Opus
+    _vereditos(con, "direcionamento", 30, 30)
+    vistos = []
+
+    def opus(t, p, **k):
+        vistos.append(p)
+        return Pensamento(texto=_r("aprofundar"), modelo="claude-opus-5-5", segundos=1, tarefa=t)
+    T.verificar_com_opus(con, 10, pensar=opus, avisar=lambda *_: None)
+    assert len(vistos) == 1 and "ALERTA #3" in vistos[0]          # só o pcrj_d7 foi julgado
+    assert _estado(con, 2)[2] == 1                                 # o 2 espera a volta do detector
+
+
+def test_o_corte_mora_num_lugar_so():
+    import inspect
+
+    from tools import automelhoria_geral as A
+    assert (T.FP_SUSPENDE, T.FP_MIN_N, T.FP_JANELA_DIAS) == (0.50, 30, 30)
+    assert "0.50" not in inspect.getsource(A) and not hasattr(A, "FP_MIN_N")
+    t = A.avaliar_precisao([("d3", 610, 346), ("d6", 228, 80)])
+    assert "SUSPENSO" in t[0]["titulo"] and "SUSPENSO" not in t[1]["titulo"]   # 57% sai; 35% só avisa

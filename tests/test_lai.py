@@ -90,3 +90,19 @@ def test_alvo_sem_arvore_vai_para_a_prioridade_do_sweep(tmp_path, monkeypatch):
     g._priorizar_no_sweep(["SME-PRO-2025/38233", "000700.007924/2026-97"])
     g._priorizar_no_sweep(["SME-PRO-2025/38233"])   # idempotente
     assert (tmp_path / "prio.txt").read_text().split() == ["SME-PRO-2025/38233", "000700.007924/2026-97"]
+
+
+def test_fiscal_sai_so_pelo_nome_nos_fatos_e_no_requerimento(tmp_path):
+    # decisão 4 do dono (20/11/2026): o documento do ContasRio, cruzado com a máscara da casa, fecha o CPF
+    import json
+    db = _base(tmp_path)
+    c = sqlite3.connect(db)
+    c.execute("UPDATE contasrio_fiscal SET fiscal_nome='FISCAL DE TESTE', fiscal_doc='987.***.***-65'")
+    c.commit()
+    c.close()
+    f = fatos_do_alvo("2509437", db)
+    assert f["fiscais"] == [{"contrato": "2509437", "fiscal_nome": "FISCAL DE TESTE"}]
+    t = montar(f)["texto"]
+    assert "FISCAL DE TESTE" in t                                   # controle positivo: o fiscal está no texto
+    for saida in (json.dumps(f, ensure_ascii=False), t):
+        assert "***" not in saida and "987." not in saida and "-65" not in saida

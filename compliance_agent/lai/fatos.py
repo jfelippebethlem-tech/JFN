@@ -123,7 +123,8 @@ def _fiscais(con, contratos: list[str]) -> list[dict]:
     if not contratos or not _tem(con, "contasrio_fiscal"):
         return []
     q = ",".join("?" * len(contratos))
-    rows = con.execute(f"SELECT contrato, fiscal_nome, fiscal_doc FROM contasrio_fiscal WHERE contrato IN ({q})", contratos).fetchall()
+    # só o nome: o documento do ContasRio, com outra máscara cruzada, fecha o CPF (decisão 4 do dono, 20/11/2026)
+    rows = con.execute(f"SELECT contrato, fiscal_nome FROM contasrio_fiscal WHERE contrato IN ({q})", contratos).fetchall()
     return [dict(r) for r in rows]
 
 

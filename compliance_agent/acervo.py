@@ -28,6 +28,10 @@ DB_SEI_RJ = _RAIZ / "data" / "sei_rj_catalogo.db"      # catálogo da pesquisa p
 # timer de 2 min) consulta a pesquisa pública do SEI.RIO e escreve respostas/ — Syncthing, um escritor por pasta.
 CONSULTA_PCRJ = Path.home() / "shared-brain" / "sei_pcrj_consulta"
 ARQUIVO_SEI = _RAIZ / "data" / "sei_arquivo"
+# Selo FIXO do texto que a ficha SEI traz do modelo barato (Haiku pela API, ou a cascata gratuita do sweep): análise,
+# perícias, red flags e resumo nunca passaram por conferência humana nem do Opus — o painel não pode exibi-los como
+# análise (decisão 8 do dono, revisão crítica de 20/11/2026). Vai em toda ficha que tem `sei_ficha`.
+SELO_FICHA = "triagem automática — não conferida"
 
 _RX_ESTADO = re.compile(r"(\d{6})\D{0,3}(\d{6})\D{0,3}(20\d{2})")
 _RX_PCRJ = re.compile(r"^\d{6}\.\d{6}/20\d{2}-\d{2}$")
@@ -104,7 +108,8 @@ def _ficha_estado(canon: str) -> dict:
                                         "cnpjs": _js(r["cnpjs"]) or [], "partes": _js(r["partes"]) or r["partes"], "valores": _js(r["valores"]) or r["valores"]})
                 f["pericias"] = {"red_flags": _js(r["red_flags"]) or r["red_flags"], "contabil": _js(r["pericia_contabil"]) or r["pericia_contabil"],
                                  "juridica": _js(r["pericia_juridica"]) or r["pericia_juridica"], "analise": r["analise"], "nivel_risco": r["nivel_risco"],
-                                 "fonte_modelo": r["fonte_modelo"], "atualizado_em": r["atualizado_em"]}
+                                 "fonte_modelo": r["fonte_modelo"], "atualizado_em": r["atualizado_em"], "selo": SELO_FICHA}
+                f["identidade"]["resumo_selo"] = SELO_FICHA
             f["cobertura"]["sei_ficha"] = "lida" if r else "ausente"
         if _tem(con, "processo_avaliacao"):
             r = con.execute(f"SELECT * FROM processo_avaliacao WHERE numero_sei IN ({q})", vars_).fetchone()
@@ -447,8 +452,10 @@ def _ficha_prefeitura(numero: str) -> dict:
                 "vigencia_ini, vigencia_fim, url_ccon FROM contasrio_contrato WHERE upper(processo)=upper(?)", (numero,))]
             if _tem(con, "contasrio_fiscal") and f["contratos"]:
                 ids = [c["contrato"] for c in f["contratos"]]
-                for x in con.execute(f"SELECT contrato, fiscal_nome, fiscal_doc FROM contasrio_fiscal WHERE contrato IN ({','.join('?' * len(ids))})", ids):
-                    f["agentes"].append({"nome": x["fiscal_nome"], "papel": "fiscal do contrato", "cargo": x["fiscal_doc"], "contrato": x["contrato"]})
+                # só o NOME (decisão 4 do dono, 20/11/2026): `fiscal_doc` chega do ContasRio com máscara diferente da
+                # casa (053.***.***-21) e, cruzado com outra tela que mostra o miolo, o CPF fecha (LGPD)
+                for x in con.execute(f"SELECT contrato, fiscal_nome FROM contasrio_fiscal WHERE contrato IN ({','.join('?' * len(ids))})", ids):
+                    f["agentes"].append({"nome": x["fiscal_nome"], "papel": "fiscal do contrato", "cargo": None, "contrato": x["contrato"]})
             f["obs"] = {"fonte": "ContasRio (pago pelo Município, não OB do SIAFE)", "n": len(f["contratos"]),
                         "total": round(sum(c.get("total_pago") or 0 for c in f["contratos"]), 2), "por_credor": []}
         if _tem(con, "pcrj_emergencia_sinal"):

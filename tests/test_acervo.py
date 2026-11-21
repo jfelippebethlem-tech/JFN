@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 
 from compliance_agent import acervo
@@ -155,3 +156,76 @@ def test_consulta_ao_vivo_pcrj_pedido_resposta(tmp_path, monkeypatch):
     f = acervo.ficha("000700.007924/2026-97")
     assert f["consulta_ao_vivo"]["documentos"][0]["numero"] == "5479825"
     assert f["cobertura"]["consulta_ao_vivo"].startswith("SEI.RIO consultado em 2026-09-24")
+
+
+# ── decisão 4 (20/11/2026): fiscal do ContasRio sai só pelo NOME ──────────────────────────────────────────
+# O ContasRio mascara o CPF como 053.***.***-21 (3 primeiros + DV); outra tela da casa mostra o miolo — cruzadas,
+# o CPF fecha. Nenhuma saída pode carregar o documento, em máscara nenhuma.
+_DOC_FISCAL = "987.***.***-65"                      # sintético
+_RX_DOC = re.compile(r"\d{3}\.?[\d*]{3}\.?[\d*]{3}-?\d{2}|\*{3}")
+
+
+def _tem_documento(txt: str) -> bool:
+    return bool(_RX_DOC.search(txt)) or "987" in txt or "-65" in txt
+
+
+def test_conferencia_de_documento_acha_o_que_procura():
+    assert _tem_documento(json.dumps({"cargo": _DOC_FISCAL}))          # controle positivo da própria régua
+    assert _tem_documento("98712345665") and not _tem_documento("FISCAL DE TESTE · contrato 2608939")
+
+
+def test_ficha_mostra_o_fiscal_pelo_nome_e_nunca_o_documento(tmp_path, monkeypatch):
+    _bases(tmp_path, monkeypatch)
+    p = sqlite3.connect(tmp_path / "pcrj.db")
+    p.execute("CREATE TABLE contasrio_fiscal (contrato, fiscal_nome, fiscal_doc)")
+    p.execute("INSERT INTO contasrio_fiscal VALUES ('2608939','FISCAL DE TESTE',?)", (_DOC_FISCAL,))
+    p.commit()
+    p.close()
+    f = acervo.ficha("000700.007924/2026-97")
+    fiscais = [a for a in f["agentes"] if a["papel"] == "fiscal do contrato"]
+    assert [a["nome"] for a in fiscais] == ["FISCAL DE TESTE"]          # o nome chega
+    assert not _tem_documento(json.dumps(fiscais, ensure_ascii=False))  # o documento não, em campo nenhum
+    assert "***" not in json.dumps(f, ensure_ascii=False)
+
+
+# ── decisão 8 (20/11/2026): texto do modelo barato da ficha SEI leva selo fixo no painel ────────────────────
+def _cliente():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from rotas.acervo import router
+    app = FastAPI()
+    app.include_router(router)
+    return TestClient(app)
+
+
+def test_rota_da_ficha_leva_o_selo_onde_ha_texto_do_modelo(tmp_path, monkeypatch):
+    _bases(tmp_path, monkeypatch)
+    c = sqlite3.connect(tmp_path / "compliance.db")
+    c.execute("CREATE TABLE sei_ficha (numero_sei, objeto, modalidade, fundamento_legal, resumo, cnpjs, partes, valores, "
+              "red_flags, pericia_contabil, pericia_juridica, analise, nivel_risco, fonte_modelo, atualizado_em)")
+    c.execute("INSERT INTO sei_ficha VALUES ('SEI-080001/000633/2024','obj','pregão','art. 28','resumo do modelo','[]','[]',"
+              "'[]','[\"rf\"]','contábil do modelo','jurídica do modelo','análise do modelo','medio',"
+              "'claude-haiku-5-5@api-lote#acervo-v2','2026-11-20')")
+    c.commit()
+    c.close()
+    r = _cliente().get("/api/acervo/processo", params={"numero": "080001/000633/2024"})
+    p, ident = r.json()["pericias"], r.json()["identidade"]
+    assert r.status_code == 200 and p["analise"] == "análise do modelo"
+    assert p["selo"] == acervo.SELO_FICHA == "triagem automática — não conferida"
+    assert ident["resumo"] == "resumo do modelo" and ident["resumo_selo"] == acervo.SELO_FICHA
+
+
+def test_ficha_sem_texto_do_modelo_nao_inventa_selo(tmp_path, monkeypatch):
+    _bases(tmp_path, monkeypatch)                                     # sem sei_ficha: nada a selar
+    f = _cliente().get("/api/acervo/processo", params={"numero": "080001/000633/2024"}).json()
+    assert "selo" not in (f.get("pericias") or {}) and "resumo_selo" not in f["identidade"]
+
+
+def test_painel_exibe_o_selo_em_cada_texto_do_modelo():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[1] / "static/js/src/abas/acervo.js").read_text(encoding="utf-8")
+    assert "const SELO_FICHA = 'triagem automática — não conferida'" in js
+    for rotulo in ("Perícia contábil (ficha) ${_selo(p.selo)}", "Perícia jurídica (ficha) ${_selo(p.selo)}",
+                   "${_selo(p.selo)}</div>${_rico(p.red_flags)}", "${_selo(id.resumo_selo)} ${esc(String(id.resumo)"):
+        assert rotulo in js, rotulo

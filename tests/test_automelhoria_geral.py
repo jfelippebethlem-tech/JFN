@@ -521,3 +521,71 @@ def test_avaliar_precisao_por_detector():
     from tools.automelhoria_geral import avaliar_precisao
     a = [p["assinatura"] for p in avaliar_precisao([("d3", 610, 346), ("d7", 793, 7), ("pouco", 10, 9)])]
     assert a == ["detector:fp:d3"]
+
+
+# ── decisão 7 (20/11/2026): o canal reabre SÓ para o item escalado, uma vez, com entrega conferida ───────────
+class _Telegram:
+    """Dublê do Telegram: guarda o que seria enviado; `resposta` imita a API (ou o silêncio)."""
+
+    def __init__(self, resposta=None):
+        self.enviados, self.resposta = [], resposta
+
+    def __call__(self, texto):
+        self.enviados.append(texto)
+        return self.resposta if self.resposta is not None else {"ok": True, "result": {"message_id": 100 + len(self.enviados)}}
+
+
+def _fila_escalada(tmp_path, monkeypatch):
+    monkeypatch.setattr(__import__("os"), "getloadavg", lambda: (0.5, 0, 0))
+    r = A.conciliar([_rem("x"), _rem("y"), A._p("ci", "z", "titulo z")], tmp_path / "fila.json", agora=1_000)
+    for t in (1_000, 1_000 + A.INTERVALO_S, 1_000 + 2 * A.INTERVALO_S):   # 2 remédios sem cura → x e y escalam
+        A.remediar(r["fila"], agora=t, executar=lambda c, l: None)
+    r["fila"]["slo:y"]["status"] = "curado"                                # curado não avisa
+    return r["fila"]
+
+
+def test_so_o_escalado_aberto_e_avisado_marcado_e_uma_vez(tmp_path, monkeypatch):
+    fila = _fila_escalada(tmp_path, monkeypatch)
+    tg = _Telegram()
+    assert A.avisar_escalados(fila, enviar=tg) == ["slo:x"]
+    (txt,) = tg.enviados
+    assert txt.startswith("🆘 ESCALADO") and "titulo x" in txt and "2× sem cura" in txt
+    assert fila["slo:x"]["escalado_msg_id"] == 101 and fila["slo:x"]["escalado_avisado"]
+    assert A.avisar_escalados(fila, enviar=tg) == [] and len(tg.enviados) == 1   # uma vez por item
+    assert "ci:z" not in "".join(tg.enviados)                                    # não escalado: segue calado
+
+
+def test_ok_sem_message_id_nao_conta_como_entregue(tmp_path, monkeypatch):
+    # o silêncio devolve {"ok": True, "silenciado": True} SEM enviar (memória telegram-silencio-devolve-ok)
+    fila = _fila_escalada(tmp_path, monkeypatch)
+    for falsa in ({"ok": True, "silenciado": True}, {"ok": False, "error": "x"}, {}):
+        assert A.avisar_escalados(fila, enviar=_Telegram(falsa)) == []
+        assert "escalado_avisado" not in fila["slo:x"]                          # tenta de novo na próxima rodada
+    assert A.avisar_escalados(fila, enviar=_Telegram()) == ["slo:x"]
+
+
+def test_main_avisa_escalado_e_mantem_o_resto_em_silencio(tmp_path, monkeypatch):
+    import json
+    import sys
+    fila = _fila_escalada(tmp_path, monkeypatch)
+    fila_p = tmp_path / "fila.json"
+    fila_p.write_text(json.dumps(fila))
+    monkeypatch.setattr(A, "FILA", fila_p)
+    conciliar = A.conciliar                           # o padrão `fila_path=FILA` foi fixado na definição
+    monkeypatch.setattr(A, "conciliar", lambda p, dispensados=frozenset(): conciliar(p, fila_p, dispensados=dispensados))
+    monkeypatch.setattr(A, "RELATORIOS", tmp_path / "rel")
+    monkeypatch.setattr(A, "dispensados_dono", lambda: set())
+    novo = A._p("ci", "novo", "problema novo")
+    monkeypatch.setattr(A, "sentir", lambda: ([_rem("x"), A._p("ci", "z", "titulo z"), novo], {}))
+    monkeypatch.setattr(A, "remediar", lambda f: {"feitos": [], "escalados": [], "adiados": []})
+    tg, gerais, silenciados = _Telegram(), [], []
+    from compliance_agent import siafe_coord
+    from compliance_agent.notifications import silencio
+    monkeypatch.setattr(siafe_coord, "enviar_ao_dono", tg)
+    monkeypatch.setattr(siafe_coord, "notificar", gerais.append)
+    monkeypatch.setattr(silencio, "silenciar", lambda t, origem="": silenciados.append(t) or True)
+    monkeypatch.setattr(sys, "argv", ["automelhoria_geral"])
+    assert A.main() == 0
+    assert len(tg.enviados) == 1 and "titulo x" in tg.enviados[0]               # o escalado passou
+    assert gerais == [] and len(silenciados) == 1 and "problema novo" in silenciados[0]   # a novidade, calada
+    assert json.loads(fila_p.read_text())["slo:x"]["escalado_msg_id"] == 101

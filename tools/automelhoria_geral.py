@@ -638,15 +638,20 @@ def sensor_maquinas() -> list[dict]:
 # PRECISÃO POR DETECTOR (19/11/2026, dono: "melhore todos os detectores… de forma sistemática e constante").
 # A triagem já julgou milhares de alertas, mas ninguém lia os vereditos por detector: o D3 tinha 57% de falso
 # positivo. Janela de 30 dias, para o conserto aparecer como CURA quando os vereditos novos melhorarem.
-FP_MAX, FP_MIN_N = 0.30, 30
+# O corte de SUSPENSÃO da triagem (FP ≥ 50%) e a amostra mínima moram em compliance_agent/triagem_alertas.py (um
+# lugar só); aqui fica só o corte do AVISO (30%), que pede conserto antes de o detector chegar a ser suspenso.
+FP_MAX = 0.30
 
 
 def avaliar_precisao(linhas: list[tuple[str, int, int]]) -> list[dict]:
+    from compliance_agent.triagem_alertas import FP_MIN_N, FP_SUSPENDE, suspenso
     out = []
     for tipo, n, fp in linhas:
         if n >= FP_MIN_N and fp / n >= FP_MAX:
+            fora = suspenso(n, fp)
             out.append(_p("detector", f"fp:{tipo}", f"detector {tipo}: {100 * fp / n:.0f}% de provável falso "
-                          f"positivo em {n} vereditos (30 dias)",
+                          f"positivo em {n} vereditos (30 dias)"
+                          + (f" — SUSPENSO da triagem (≥ {FP_SUSPENDE:.0%}); alertas seguem gravados" if fora else ""),
                           acao_humana="abrir 5 falsos positivos (justificativa na alertas_triagem), achar a regra "
                                       "que dispara errado e corrigir no detector — não no prompt"))
     return out
@@ -654,21 +659,23 @@ def avaliar_precisao(linhas: list[tuple[str, int, int]]) -> list[dict]:
 
 def sensor_detectores(db: Path | None = None) -> list[dict]:
     import sqlite3
+
+    from compliance_agent.triagem_alertas import precisao_por_detector
     con = sqlite3.connect(f"file:{db or _REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=60)
     try:
-        linhas = con.execute(
-            "SELECT a.tipo, COUNT(*), SUM(t.prioridade='provavel_falso_positivo') FROM alertas_triagem t "
-            "JOIN alertas a ON a.id=t.alerta_id WHERE t.em >= date('now','-30 day') GROUP BY 1").fetchall()
+        linhas = precisao_por_detector(con)
     finally:
         con.close()
-    return avaliar_precisao([(t, n, fp or 0) for t, n, fp in linhas])
+    return avaliar_precisao(linhas)
 
 
 # INTEGRAÇÃO DE AGENTES (20/11/2026). Duas sobras da integração por patch, as duas com dano medido no mesmo dia:
 # worktree esquecido (45 = 14 GB → disco a 100% → o binário do Claude Code sumiu e o juiz caiu) e remoção parada no
 # índice (14 arquivos "apagados" que seguiram no repositório). O remédio do primeiro é seguro e automático: só sai
-# worktree limpo, parado há 12 h e sem processo dentro; a branch fica. O segundo é do dono (commitar ou devolver).
-WORKTREES_MAX, DISCO_APERTADO_PCT = 10, 85
+# worktree limpo, parado há 12 h, sem processo dentro e INTEGRADO (ponta ancestral do HEAD ou conteúdo já aplicado);
+# a branch fica. Decisão 6 do dono (20/11/2026): integrado sai sempre, sem esperar o disco apertar — guardar worktree
+# integrado não protege nada. O segundo é do dono (commitar ou devolver).
+WORKTREES_MAX = 10
 _LIMPAR_WORKTREES = ("PYTHONPATH=. .venv/bin/python -m tools.integracao_conferir worktrees --aplicar --horas 12 "
                      ">> data/integracao_conferir.log 2>&1")
 
@@ -676,14 +683,15 @@ _LIMPAR_WORKTREES = ("PYTHONPATH=. .venv/bin/python -m tools.integracao_conferir
 def avaliar_integracao(lista: list[dict], em_stage: list[str], disco_pct: float) -> list[dict]:
     out = []
     saem = [w for w in lista if w["pode_sair"]]
-    if saem and (len(lista) >= WORKTREES_MAX or disco_pct >= DISCO_APERTADO_PCT):
+    if saem:
         out.append(_p("integracao", "worktrees", f"{len(lista)} worktree(s) de agente no disco ({disco_pct:.0f}% "
-                      f"cheio); {len(saem)} limpo(s) e parado(s) já podem sair",
+                      f"cheio); {len(saem)} limpo(s), parado(s) e já integrado(s) podem sair",
                       "; ".join(Path(w["caminho"]).name for w in saem[:6]), remediar=_LIMPAR_WORKTREES))
     elif len(lista) >= WORKTREES_MAX:
         out.append(_p("integracao", "worktrees_presos", f"{len(lista)} worktree(s) de agente e nenhum pode sair "
-                      "sozinho (sujo, recente ou em uso)",
-                      "; ".join(f"{Path(w['caminho']).name} (sujo {w['sujo']}, parado {w['parado_h']} h)" for w in lista[:6]),
+                      "sozinho (sujo, recente, em uso ou com trabalho fora do HEAD)",
+                      "; ".join(f"{Path(w['caminho']).name} (sujo {w['sujo']}, parado {w['parado_h']} h, "
+                                f"{'integrado' if w.get('integrado') else 'não integrado'})" for w in lista[:6]),
                       acao_humana="integrar ou descartar o que está fora de commit e remover: "
                                   "`python -m tools.integracao_conferir worktrees`"))
     if em_stage:
@@ -840,6 +848,38 @@ def _executar_destacado(cmd: str, log: Path) -> None:
                          start_new_session=True, env=_env_sessao())
 
 
+# AVISO SÓ DO ESCALADO (decisão 7 do dono, 20/11/2026). Os avisos de sistema estão silenciados desde 17/11
+# (notifications/silencio) e "escalar ao dono" não chegava a ninguém. Reabre-se o canal SÓ para o item ESCALADO
+# (2 remédios automáticos sem cura), marcado como tal, UMA vez por item (`escalado_avisado` fica gravado na fila e
+# não volta). Tudo o mais segue silenciado. Entrega = `result.message_id` na resposta do Telegram; sem ele, o item
+# não é marcado e tenta de novo na rodada seguinte (o silêncio devolve ok=True SEM enviar).
+def _texto_escalado(it: dict) -> str:
+    return (f"🆘 ESCALADO — automelhoria\n[{it['area']}] {it['titulo']}\n"
+            f"Remédio automático tentado {len(it.get('acoes') or [])}× sem cura"
+            + (f": {it['remediar'][:200]}" if it.get("remediar") else "") + "\n"
+            + (f"👤 {it['acao_humana'][:200]}\n" if it.get("acao_humana") else "")
+            + "Precisa de você. Detalhe: /melhorias")
+
+
+def avisar_escalados(fila: dict, enviar=None, agora: float | None = None) -> list[str]:
+    """Avisa (uma vez) cada item escalado e ainda aberto; devolve as assinaturas entregues."""
+    if enviar is None:
+        from compliance_agent.siafe_coord import enviar_ao_dono as enviar
+    quando = datetime.fromtimestamp(agora or time.time()).strftime("%Y-%m-%d %H:%M")
+    entregues = []
+    for sig, it in fila.items():
+        if not it.get("escalado") or it.get("escalado_avisado") or it["status"] in ("curado", "dispensado"):
+            continue
+        r = enviar(_texto_escalado(it))
+        mid = ((r or {}).get("result") or {}).get("message_id") if isinstance(r, dict) else None
+        if not mid:
+            logger.warning("escalado %s NÃO entregue (sem message_id): %s", sig, str(r)[:200])
+            continue
+        it.update(escalado_avisado=quando, escalado_msg_id=mid)
+        entregues.append(sig)
+    return entregues
+
+
 def resumo(fila: dict, max_itens: int = 15) -> str:
     abertos = sorted(((s, it) for s, it in fila.items() if it["status"] not in ("curado", "dispensado")),
                      key=lambda x: (x[1]["status"] != "REINCIDIU", x[1]["area"], x[1]["primeiro"]))
@@ -881,22 +921,22 @@ def main() -> int:
     problemas, medidos = sentir()
     r = conciliar(problemas, dispensados=dispensados_dono())
     rem = remediar(r["fila"])
+    avisados = [] if a.sem_aviso else avisar_escalados(r["fila"])
     FILA.write_text(json.dumps(r["fila"], ensure_ascii=False, indent=1), encoding="utf-8")
     txt = resumo(r["fila"], max_itens=60)
     md = (f"# Automelhoria geral — {datetime.now():%Y-%m-%d %H:%M}\n\n"
           f"Sensores (problemas achados; `None` = não mediu): `{json.dumps(medidos, ensure_ascii=False)}`\n\n"
           f"Novos: {len(r['novos'])} · reincidências: {len(r['reincidiu'])} · curados nesta rodada: "
           f"{len(r['curados'])} · remédios lançados: {rem['feitos']} · escalados: {rem['escalados']} · "
-          f"adiados por carga: {rem['adiados']}\n\n```\n{txt}\n```\n")
+          f"escalados avisados ao dono: {avisados} · adiados por carga: {rem['adiados']}\n\n```\n{txt}\n```\n")
     RELATORIOS.mkdir(parents=True, exist_ok=True)
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")
     print(md)
-    if (r["novos"] or r["reincidiu"] or rem["escalados"]) and not a.sem_aviso:
+    # o escalado já foi pelo canal próprio (avisar_escalados); este resumo de novidades segue sob o silêncio
+    if (r["novos"] or r["reincidiu"]) and not a.sem_aviso:
         from compliance_agent.siafe_coord import notificar
         L = [f"🔁 Automelhoria: {len(r['novos'])} problema(s) novo(s), {len(r['reincidiu'])} reincidência(s)"
              + (f", {len(r['curados'])} curado(s)" if r["curados"] else "") + "."]
-        for s in rem["escalados"]:
-            L.append(f"🆘 conserto automático NÃO pegou em {MAX_TENTATIVAS} tentativas: {r['fila'][s]['titulo']}")
         for s in (r["reincidiu"] + r["novos"])[:8]:
             it = r["fila"][s]
             L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}"

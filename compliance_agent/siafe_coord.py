@@ -59,6 +59,21 @@ def notificar(texto: str) -> bool:
         return False
 
 
+def enviar_ao_dono(texto: str) -> dict:
+    """Como `notificar`, mas devolve a RESPOSTA do Telegram: a entrega se confere por `result.message_id`, nunca
+    por um "ok" (memória telegram-silencio-devolve-ok, 20/11/2026). Não passa pelo silêncio: quem chama decide."""
+    tok = _token()
+    if not tok:
+        return {"ok": False, "error": "TELEGRAM_BOT_TOKEN ausente"}
+    data = urllib.parse.urlencode({"chat_id": CHAT_ID, "text": texto}).encode()
+    req = urllib.request.Request(f"https://api.telegram.org/bot{tok}/sendMessage", data=data)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read().decode("utf-8") or "{}")
+    except (OSError, ValueError) as exc:        # URLError/HTTPError/timeout são OSError; corpo torto é ValueError
+        return {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
+
 def set_status(estado: str, msg: str = ""):
     """Escreve o flag (usado pelo Yoda ao receber o aviso do Jorge, e pelo coletor para 'coletor_rodando')."""
     _FLAG.parent.mkdir(parents=True, exist_ok=True)

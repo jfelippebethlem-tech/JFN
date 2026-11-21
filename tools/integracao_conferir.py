@@ -12,8 +12,10 @@ POR QUE EXISTE (20/11/2026, duas falhas do mesmo dia, as duas da integração do
     python -m tools.integracao_conferir stage                                    # remoção parada no índice
     python -m tools.integracao_conferir worktrees [--aplicar] [--horas 6]        # lista / remove os que já podem sair
 
-`worktrees --aplicar` só remove worktree LIMPO (nada fora de commit), PARADO há `--horas` e SEM processo vivo dentro.
-A branch fica: os commits do agente continuam no repositório. Sujo, recente ou em uso nunca é tocado — vai listado.
+`worktrees --aplicar` só remove worktree LIMPO (nada fora de commit), PARADO há `--horas`, SEM processo vivo dentro e
+INTEGRADO (decisão 6 do dono, 20/11/2026): a ponta já está no HEAD (ancestral) ou o conteúdo do que o agente mudou já
+está aplicado no HEAD (diff vazio, nos caminhos que a branch tocou, contra o HEAD — é a integração por patch). A branch
+fica: os commits do agente continuam no repositório. Sujo, recente, em uso ou não integrado nunca é tocado — vai listado.
 """
 from __future__ import annotations
 
@@ -66,14 +68,36 @@ def _processos_dentro(caminho: Path) -> int:
     return n
 
 
+def integrado(ponta: str, head: str, repo: Path | None = None, com_branch: bool = True) -> str | None:
+    """'ancestral' (a ponta já está no HEAD), 'aplicado' (os caminhos que a branch mudou estão iguais no HEAD) ou
+    None (há trabalho do agente que o HEAD não tem). Sem branch (HEAD destacado) só vale 'ancestral': removido o
+    worktree, nada mais segura os commits."""
+    r = subprocess.run(["git", "merge-base", "--is-ancestor", ponta, head], cwd=repo or _REPO, capture_output=True,
+                       timeout=120)
+    if r.returncode == 0:
+        return "ancestral"
+    if r.returncode != 1 or not com_branch:
+        return None
+    base = _git("merge-base", head, ponta, cwd=repo).strip()
+    mudou = _git("diff", "--name-only", "--no-renames", base, ponta, cwd=repo).splitlines()
+    if not mudou:
+        return "aplicado"
+    falta = _git("diff", "--name-only", "--no-renames", head, ponta, "--", *mudou, cwd=repo).strip()
+    return None if falta else "aplicado"
+
+
 def worktrees(repo: Path | None = None, agora: float | None = None, horas: float = HORAS_PARADO) -> list[dict]:
-    """Os worktrees de agente, cada um com o que decide se pode sair: sujo, idade da última atividade, processos."""
+    """Os worktrees de agente, cada um com o que decide se pode sair: sujo, idade da última atividade, processos e
+    se o trabalho já está integrado no HEAD do repositório principal."""
     repo = repo or _REPO
     agora = agora or time.time()
+    head = _git("rev-parse", "HEAD", cwd=repo).strip()
     out, atual = [], {}
     for ln in _git("worktree", "list", "--porcelain", cwd=repo).splitlines() + [""]:
         if ln.startswith("worktree "):
             atual = {"caminho": ln[9:]}
+        elif ln.startswith("HEAD "):
+            atual["ponta"] = ln[5:]
         elif ln.startswith("branch "):
             atual["branch"] = ln[7:].removeprefix("refs/heads/")
         elif not ln and atual:
@@ -84,8 +108,9 @@ def worktrees(repo: Path | None = None, agora: float | None = None, horas: float
                 sujo = len(_git("status", "--porcelain", cwd=c).splitlines())
                 parado_h = (agora - max(marcas)) / 3600 if marcas else 0.0
                 vivos = _processos_dentro(c)
-                atual.update(sujo=sujo, parado_h=round(parado_h, 1), processos=vivos,
-                             pode_sair=sujo == 0 and vivos == 0 and parado_h >= horas)
+                integ = integrado(atual["ponta"], head, repo, com_branch=bool(atual.get("branch")))
+                atual.update(sujo=sujo, parado_h=round(parado_h, 1), processos=vivos, integrado=integ,
+                             pode_sair=sujo == 0 and vivos == 0 and parado_h >= horas and integ is not None)
                 out.append(atual)
             atual = {}
     return out
@@ -124,7 +149,7 @@ def main() -> int:
     lista = worktrees(horas=a.horas)
     feitos = remover(lista) if a.aplicar else []
     print(json.dumps({"worktrees": len(lista), "podem_sair": sum(x["pode_sair"] for x in lista), "removidos": feitos,
-                      "ficam": [{k: x[k] for k in ("caminho", "sujo", "parado_h", "processos")}
+                      "ficam": [{k: x[k] for k in ("caminho", "sujo", "parado_h", "processos", "integrado")}
                                 for x in lista if not x["pode_sair"]]}, ensure_ascii=False, indent=1))
     return 0
 

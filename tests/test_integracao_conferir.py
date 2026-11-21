@@ -79,10 +79,67 @@ def test_sensor_da_automelhoria_remedia_worktree_e_escala_remocao():
     from tools.automelhoria_geral import avaliar_integracao
     pode = {"caminho": "/r/.claude/worktrees/a", "pode_sair": True, "sujo": 0, "parado_h": 20.0, "processos": 0}
     preso = {"caminho": "/r/.claude/worktrees/b", "pode_sair": False, "sujo": 3, "parado_h": 1.0, "processos": 0}
-    assert avaliar_integracao([pode, preso], [], 60.0) == []                 # poucos e disco folgado: não é problema
+    assert avaliar_integracao([preso], [], 60.0) == []                       # poucos presos e disco folgado: nada
+    (p,) = avaliar_integracao([pode, preso], [], 60.0)        # integrado sai sempre, sem esperar o disco (decisão 6)
+    assert p["assinatura"] == "integracao:worktrees" and "integracao_conferir worktrees --aplicar" in p["remediar"]
     (p,) = avaliar_integracao([pode, preso], [], 94.0)
     assert p["assinatura"] == "integracao:worktrees" and "integracao_conferir worktrees --aplicar" in p["remediar"]
     (p,) = avaliar_integracao([preso] * 10, [], 60.0)
     assert p["assinatura"] == "integracao:worktrees_presos" and not p["remediar"]
     (p,) = avaliar_integracao([], ["tools/x.py"], 60.0)
     assert p["assinatura"] == "integracao:remocao_em_stage" and not p["remediar"] and "tools/x.py" in p["detalhe"]
+
+
+# ── decisão 6 (20/11/2026): só sai worktree cujo trabalho já está no HEAD ──────────────────────────────────
+def _commit_no_agente(w, nome="novo.py", txt="x = 1\n"):
+    (w / nome).write_text(txt)
+    _git(w, "add", nome)
+    _git(w, "commit", "-qm", f"agente cria {nome}")
+
+
+def _por_branch(repo):
+    return {w["branch"]: w for w in I.worktrees(repo, agora=time.time() + 13 * 3600, horas=12)}
+
+
+def test_worktree_com_commit_fora_do_head_nao_sai(repo):
+    _commit_no_agente(_agente(repo, "solto"))
+    w = _por_branch(repo)["worktree-solto"]
+    assert w["sujo"] == 0 and w["processos"] == 0 and w["integrado"] is None and not w["pode_sair"]
+
+
+def test_worktree_cuja_ponta_esta_no_head_sai(repo):
+    w = _agente(repo, "merge")
+    _commit_no_agente(w)
+    _git(repo, "merge", "-q", "--no-edit", "worktree-merge")
+    item = _por_branch(repo)["worktree-merge"]
+    assert item["integrado"] == "ancestral" and item["pode_sair"]
+    assert I.remover([item], repo) == [str(w)] and not w.exists()
+    assert "worktree-merge" in subprocess.run(["git", "branch", "--list"], cwd=repo, capture_output=True,
+                                              text=True).stdout              # a branch fica
+
+
+def test_worktree_integrado_por_patch_sai_e_patch_parcial_fica(repo):
+    w = _agente(repo, "patch")
+    _commit_no_agente(w, "a.py", "a = 1\n")
+    _commit_no_agente(w, "b.py", "b = 2\n")
+    (repo / "a.py").write_text("a = 1\n")                    # integração por patch: só o a.py chegou
+    _git(repo, "add", "a.py")
+    _git(repo, "commit", "-qm", "integra a.py")
+    assert _por_branch(repo)["worktree-patch"]["integrado"] is None          # b.py ainda só no agente
+    (repo / "b.py").write_text("b = 2\n")
+    (repo / "outro.py").write_text("# o HEAD andou com outra coisa\n")
+    _git(repo, "add", "b.py", "outro.py")
+    _git(repo, "commit", "-qm", "integra b.py e segue")
+    item = _por_branch(repo)["worktree-patch"]
+    assert item["integrado"] == "aplicado" and item["pode_sair"]
+
+
+def test_worktree_destacado_so_sai_se_ancestral(repo):
+    w = repo / ".claude" / "worktrees" / "solto"
+    _git(repo, "worktree", "add", "-q", "--detach", str(w))
+    _commit_no_agente(w, "a.py", "a = 1\n")
+    (repo / "a.py").write_text("a = 1\n")
+    _git(repo, "add", "a.py")
+    _git(repo, "commit", "-qm", "conteúdo igual, commit diferente")
+    (item,) = I.worktrees(repo, agora=time.time() + 13 * 3600, horas=12)
+    assert "branch" not in item and item["integrado"] is None and not item["pode_sair"]   # sem branch, o commit sumiria

@@ -121,17 +121,53 @@ def _ids_em_lote(con) -> set[int]:
 # não vai ao LLM: 346 dos 610 D3 triados voltaram 'provavel_falso_positivo' dizendo exatamente isso (19/11/2026).
 _SEM_ACUSACAO = "COALESCE(a.descricao,'') NOT LIKE 'NÃO é acusação%'"
 
+# DETECTOR SUSPENSO DA TRIAGEM (decisão 3 do dono, revisão crítica de 20/11/2026). Detector cujo veredito da própria
+# triagem é "provável falso positivo" em metade ou mais dos casos gasta o juiz julgando o erro do detector. Ele sai
+# SOZINHO da fila (lote do Haiku, co-motor e fila do Opus); o alerta segue gravado em `alertas`, intacto — só não é
+# julgado. A medida é a mesma do sensor `detectores` da automelhoria (vereditos de `alertas_triagem` × `alertas.tipo`
+# nos últimos FP_JANELA_DIAS dias). Volta sozinho quando a taxa da janela fica abaixo do corte ou a amostra cai abaixo
+# de FP_MIN_N: sem julgamento novo, os vereditos velhos saem da janela em até 30 dias e o detector volta em
+# "liberdade vigiada" — se ainda errar, juntam-se FP_MIN_N vereditos e ele sai de novo. Corte num lugar só: aqui.
+FP_SUSPENDE, FP_MIN_N, FP_JANELA_DIAS = 0.50, 30, 30
+
+
+def precisao_por_detector(con: sqlite3.Connection, dias: int = FP_JANELA_DIAS) -> list[tuple[str, int, int]]:
+    """[(tipo, vereditos, provável falso positivo)] na janela — a medida única (triagem e automelhoria)."""
+    return [(t, n, fp or 0) for t, n, fp in con.execute(
+        "SELECT a.tipo, COUNT(*), SUM(t.prioridade='provavel_falso_positivo') FROM alertas_triagem t "
+        "JOIN alertas a ON a.id=t.alerta_id WHERE t.em >= date('now', ?) GROUP BY 1", (f"-{int(dias)} day",))]
+
+
+def suspenso(n: int, fp: int) -> bool:
+    return n >= FP_MIN_N and fp / n >= FP_SUSPENDE
+
+
+def detectores_suspensos(con: sqlite3.Connection) -> dict[str, tuple[int, int]]:
+    """{tipo: (vereditos, falsos positivos)} dos detectores fora da triagem agora. Só leitura (serve à conexão
+    `mode=ro` do painel); quem escreve chama `garantir` antes."""
+    return {t: (n, fp) for t, n, fp in precisao_por_detector(con) if suspenso(n, fp)}
+
+
+def fora_dos_suspensos(con: sqlite3.Connection, coluna: str = "a.tipo") -> tuple[str, list[str]]:
+    """Fragmento SQL (` AND coluna NOT IN (...)`) + parâmetros; vazio se nenhum detector está suspenso."""
+    tipos = sorted(detectores_suspensos(con))
+    if not tipos:
+        return "", []
+    return f" AND COALESCE({coluna},'') NOT IN ({','.join('?' * len(tipos))})", tipos
+
 
 def selecionar(con: sqlite3.Connection, n: int) -> list[dict]:
-    """Os `n` alertas `novo` ainda não triados (nem em lote pendente), do MAIOR valor em jogo para o menor."""
+    """Os `n` alertas `novo` ainda não triados (nem em lote pendente), do MAIOR valor em jogo para o menor.
+    Alerta de detector suspenso (FP ≥ FP_SUSPENDE) não entra."""
     garantir(con)
     em_lote = _ids_em_lote(con)
+    fora, params = fora_dos_suspensos(con)
     sql = (f"SELECT a.id, a.tipo, a.severidade, a.titulo, a.descricao, a.evidencias, "
            f"CASE WHEN json_valid(a.evidencias) THEN {_COALESCE} ELSE 0 END AS v "
            "FROM alertas a LEFT JOIN alertas_triagem t ON t.alerta_id = a.id "
-           f"WHERE a.status = 'novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO} ORDER BY v DESC, a.id LIMIT ?")
+           f"WHERE a.status = 'novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}{fora} ORDER BY v DESC, a.id LIMIT ?")
     cols = ("id", "tipo", "severidade", "titulo", "descricao", "evidencias", "valor")
-    linhas = [dict(zip(cols, r)) for r in con.execute(sql, (n + len(em_lote),)).fetchall()]
+    linhas = [dict(zip(cols, r)) for r in con.execute(sql, (*params, n + len(em_lote))).fetchall()]
     return [x for x in linhas if x["id"] not in em_lote][:n]
 
 
@@ -324,8 +360,10 @@ def colher_lotes_api(con: sqlite3.Connection, *, cliente=None, gerar_b=None) -> 
                 gravados += 1
         con.execute("DELETE FROM alertas_triagem_lote WHERE lote_id=?", (lote_id,))
         con.commit()
+    fora, params = fora_dos_suspensos(con)
     restantes = con.execute("SELECT COUNT(*) FROM alertas a LEFT JOIN alertas_triagem t ON t.alerta_id=a.id "
-                            f"WHERE a.status='novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}").fetchone()[0]
+                            f"WHERE a.status='novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}{fora}",
+                            params).fetchone()[0]
     claude_api.registrar_restantes(TAREFA, restantes)
     return gravados
 
@@ -347,9 +385,11 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
     from compliance_agent.llm import claude_motor, cruzamento
     pensar = pensar or claude_motor.pensar
     garantir(con)
-    rows = con.execute("SELECT alerta_id, prioridade, motor FROM alertas_triagem WHERE opus_pendente=1 "
-                       "ORDER BY CASE prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 ELSE 2 END, valor DESC "
-                       "LIMIT ?", (n,)).fetchall()   # 🔴 primeiro: são 273 de 5.145 na fila do Opus (14/11)
+    fora, params = fora_dos_suspensos(con)      # detector suspenso: o item espera, com opus_pendente=1, a volta dele
+    rows = con.execute("SELECT t.alerta_id, t.prioridade, t.motor FROM alertas_triagem t "
+                       "LEFT JOIN alertas a ON a.id=t.alerta_id WHERE t.opus_pendente=1" + fora +
+                       " ORDER BY CASE t.prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 ELSE 2 END, "
+                       "t.valor DESC LIMIT ?", (*params, n)).fetchall()   # 🔴 primeiro: 273 de 5.145 na fila (14/11)
     feitos = []
     for aid, prio, motor in rows:
         a = (_por_ids(con, [aid]) or [None])[0]

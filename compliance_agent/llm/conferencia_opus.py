@@ -249,7 +249,10 @@ def _triagem_pendente() -> int | None:
     try:
         con = sqlite3.connect(f"file:{_REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=5)
         try:
-            return con.execute("SELECT COUNT(*) FROM alertas_triagem WHERE opus_pendente=1").fetchone()[0]
+            from compliance_agent.triagem_alertas import fora_dos_suspensos
+            fora, params = fora_dos_suspensos(con)   # detector suspenso da triagem não está na fila do Opus
+            return con.execute("SELECT COUNT(*) FROM alertas_triagem t LEFT JOIN alertas a ON a.id=t.alerta_id "
+                               "WHERE t.opus_pendente=1" + fora, params).fetchone()[0]
         finally:
             con.close()
     except sqlite3.Error:

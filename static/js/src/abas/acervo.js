@@ -13,6 +13,10 @@ let _q = '', _esf = 'todos', _ultimaFicha = null;
 const GRAU = g => { const s = String(g || '').toUpperCase();
   if (/EXTREMO|ALTO|🔴|CRIT/.test(s)) return 'var(--rose)'; if (/MEDIO|MÉDIO|🟡|ATEN/.test(s)) return 'var(--amber)'; return null; };
 const tag = (t, cor) => t ? `<span class="tag" ${cor ? `style="color:${cor};border-color:${cor}"` : ''}>${esc(t)}</span>` : '';
+// Selo FIXO do texto do modelo barato da ficha SEI (decisão 8 do dono, 20/11/2026): o texto vem da rota
+// (`pericias.selo`, compliance_agent/acervo.SELO_FICHA); se a rota não mandar, o selo aparece assim mesmo.
+const SELO_FICHA = 'triagem automática — não conferida';
+const _selo = s => `<span class="tag selo-triagem" style="color:var(--amber);border-color:var(--amber)" title="Texto gerado por modelo de linguagem sobre o processo; não foi conferido por pessoa nem pelo Opus. Use como pista, nunca como análise.">⚠ ${esc(s || SELO_FICHA)}</span>`;
 
 function _acervoKpis(st){
   if (!st || !st.ok) return '<div class="dim">Estatísticas do acervo indisponíveis agora (a busca funciona).</div>';
@@ -201,8 +205,8 @@ function _secLeitura(f){
 function _secPericias(f){
   const p = f.pericias || {}; let h = _secReconciliacao(f);
   if (p.contabil || p.juridica || p.red_flags) {
-    h += `<div class="grid two">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_rico(p.contabil)}`) : ''}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_rico(p.juridica)}`) : ''}</div>`;
-    if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_rico(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || '—')} · ${esc(p.atualizado_em || '')}</div>`);
+    h += `<div class="grid two">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha) ${_selo(p.selo)}</div>${_rico(p.contabil)}`) : ''}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha) ${_selo(p.selo)}</div>${_rico(p.juridica)}`) : ''}</div>`;
+    if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))} ${_selo(p.selo)}</div>${_rico(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || '—')} · ${esc(p.atualizado_em || '')}</div>`);
   }
   const a = f.avaliacao_360;
   if (a) {
@@ -228,7 +232,7 @@ async function acervoAbrir(numero){
   h += card(`<div style="font-weight:700;font-size:15px">${esc(id.objeto || id.tipo || '(sem objeto na base)')}</div>
     <div class="dim" style="margin-top:4px">${[id.modalidade, id.fundamento_legal, id.unidade || id.orgao, id.situacao, id.lifecycle, id.sistema].filter(Boolean).map(esc).join(' · ')}</div>
     <div style="margin-top:6px">${tag(id.nivel_risco, GRAU(id.nivel_risco))} ${f.avaliacao_360 ? tag('360: ' + f.avaliacao_360.grau, GRAU(f.avaliacao_360.grau)) : ''} ${f.n_achados ? tag(f.n_achados + ' achado(s)', 'var(--rose)') : ''} ${id.disponivel_na_pesquisa_publica === 0 ? tag('indisponível na pesquisa pública', 'var(--amber)') : ''}</div>
-    ${id.resumo ? `<div style="margin-top:8px">${esc(String(id.resumo).slice(0, 900))}</div>` : ''}
+    ${id.resumo ? `<div style="margin-top:8px">${_selo(id.resumo_selo)} ${esc(String(id.resumo).slice(0, 900))}</div>` : ''}
     <div style="margin-top:8px"><b>Cobertura:</b> ${Object.entries(cob).map(([k, v]) => `<span class="tag">${esc(k)}: ${esc(v)}</span>`).join(' ')}</div>
     <div class="btns" style="margin-top:8px">${(f.acoes || []).map(a => a.metodo === 'dossie'
       ? `<button type="button" class="btn ghost" data-acervo="dossie" data-cnpj="${esc(a.cnpj)}" data-nome="${esc(a.nome || '')}">${esc(a.rotulo)}</button>`
