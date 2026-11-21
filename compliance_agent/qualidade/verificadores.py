@@ -23,7 +23,9 @@ ESFERAS = ("estadual", "municipal", "federal", "judiciario", "legislativo", "mis
 CAMPOS_PROVENIENCIA = ("fonte", "data_ref", "cobertura", "estado", "natureza", "esfera")
 
 # ───────────────────────────── PAD-03 · moeda ─────────────────────────────
-_RE_REAIS = re.compile(r"R\$\s?(?P<num>\d[\d.,]*\d|\d)(?P<abrev>\s?(?:mil|mi|bi|milhões|milhão|bilhões|bilhão)\b)?")
+# 21/11/2026: faixa abreviada ("R$ 111 a 120 mi/mês", texto da gestão Couto) — a abreviação vale para os dois lados
+_RE_REAIS = re.compile(r"R\$\s?(?P<num>\d[\d.,]*\d|\d)(?:\s?(?:a|–|-)\s?\d[\d.,]*(?=\s?(?:mil|mi|bi|milh|bilh)))?"
+                       r"(?P<abrev>\s?(?:mil|mi|bi|milhões|milhão|bilhões|bilhão)\b)?")
 _RE_EXATO = re.compile(r"^\d{1,3}(\.\d{3})*,\d{2}$")
 _RE_ABREV = re.compile(r"^\d{1,3}(\.\d{3})*(,\d{1,2})?$")
 
@@ -69,7 +71,8 @@ _RE_ACUSA = re.compile(r"(?i)(?<![\wÀ-ÿ-])(" + "|".join(TERMOS_ACUSATORIOS) + 
 QUALIFICADORES = (r"ind[ií]cios?", r"sina(?:l|is)", r"suspeitas?", r"hip[oó]teses?", r"poss[ií]ve(?:l|is)",
                   r"a verificar", r"a conferir", r"a apurar", r"risco", r"perfil", r"candidat[oa]s?", r"n[aã]o comprovad",
                   r"n[aã]o [eé]", r"sem prova", r"alegad", r"supost", r"potencia(?:l|is)", r"≠", r"nunca", r"score",
-                  r"triagem", r"fator(?:es)?", r"apura[cç][aã]o", r"n[aã]o acusa", r"presun")
+                  r"triagem", r"fator(?:es)?", r"apura[cç][aã]o", r"n[aã]o acusa", r"presun",
+                  r"sem concluir")  # 21/11/2026: «… sem concluir por fraude» é a ressalva, não a acusação
 _RE_QUALIF = re.compile(r"(?i)(" + "|".join(QUALIFICADORES) + r")")
 _RE_CORTE = re.compile(r"(?<!\d)[.!?]+(?!\d)|[.!?]+(?=\s|$)|\n|\|")
 

@@ -13,8 +13,10 @@ CPF_SINT = "111.444.777-35"
 def test_moeda_fora_do_padrao_e_acusada():
     for ruim in ("R$ 1234.56", "R$ 1,234.56", "R$ 1234567,89", "R$ 1.234.567", "R$1234"):
         assert v.moeda_fora_do_padrao(f"pagou {ruim} ao credor"), ruim
-    for bom in ("R$ 1.234.567,89", "R$ 0,50", "R$ 16,4 mi", "R$ 2,47 bi", "R$ 13 mil", "R$ 592,8 mi"):
+    for bom in ("R$ 1.234.567,89", "R$ 0,50", "R$ 16,4 mi", "R$ 2,47 bi", "R$ 13 mil", "R$ 592,8 mi",
+                "R$ 111 a 120 mi/mês"):     # 21/11/2026: faixa abreviada
         assert not v.moeda_fora_do_padrao(f"pagou {bom} ao credor"), bom
+    assert v.moeda_fora_do_padrao("cerca de R$ 111 a 120 por mês")                # faixa sem abreviação segue acusada
 
 
 def test_cpf_exposto_e_acusado():
@@ -31,6 +33,7 @@ def test_linguagem_acusatoria_e_acusada():
     assert v.linguagem_acusatoria("Empresa fantasma recebeu do órgão")
     assert not v.linguagem_acusatoria("Indício de perfil fantasma, a verificar no cadastro")
     assert not v.linguagem_acusatoria("Sanção não é prova de fraude; é sinal para priorizar a leitura")
+    assert not v.linguagem_acusatoria("A regra D03 registra 21 de 100 estreantes, sem concluir por fraude")
     assert not v.linguagem_acusatoria("Laranjal Paulista assinou o convênio")      # palavra dentro de outra não conta
 
 
