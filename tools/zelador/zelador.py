@@ -14,7 +14,7 @@ O ciclo (sempre nesta ordem; QUALQUER falha numa etapa → `abortar`: nada é ap
                  nada de banco vivo (*.db/-wal/-shm/-journal) · nada de código nem worktree · nada listado
                  numa fila viva (ex.: OCR) · teto de GB e de arquivos por ciclo.
   4. ENVIO       cada unidade (arquivo ou pacote .tar de uma pasta) sobe a TODOS os destinos da política
-                 (re-obtível: Drive; insubstituível: Drive + B2) e cada cópia é conferida por hash NESTE ciclo.
+                 (re-obtível: Drive; insubstituível: Drive + a 2ª que couber no grátis) e cada cópia é conferida.
   5. ÍNDICE      importa manifestos antigos, inventaria as nuvens, marca cópias sumidas/divergentes.
   6. LIBERAR     (só `--aplicar`, só sem abortar, só depois do ensaio limpo): por unidade, a trava
                  `liberado_para_apagar` (cópias exigidas conferidas NESTE ciclo); por arquivo, mesmo tamanho,
@@ -240,23 +240,40 @@ class Ciclo:
     recusados: dict = field(default_factory=dict)
     liberado_bytes: int = 0
     regenerado_bytes: int = 0
+    nuvens_antes: dict = field(default_factory=dict)
 
     def falhar(self, msg: str) -> None:
         self.falhas.append(msg)
         A.journal(self.con, "falha", self.perfil.nome, msg, self.id)
 
 
-def destinos_exigidos(perfil: Perfil) -> set[str]:
-    return {d for r in perfil.raizes for d in A.POLITICA[A.CLASSES[r.classe]]}
+def vagas_exigidas(perfil: Perfil) -> set[tuple[str, ...]]:
+    vagas = {v for r in perfil.raizes for v in A.POLITICA[A.CLASSES[r.classe]]}
+    return vagas | set(A.POLITICA["insubstituivel"])            # o índice é exportado sempre
 
 
 def prevoo(c: Ciclo) -> None:
+    """Montagens + binário do rclone + POR NUVEM: acessível, uso real medido no remoto (about/size) e consumo
+    do dia/mês contra os limites grátis da config. Vaga sem nenhum remoto utilizável = falha (aborta)."""
     for m in c.perfil.montagens:
         if not os.path.ismount(m):
             c.falhar(f"montagem ausente: {m}")
-    for d in sorted(destinos_exigidos(c.perfil)):
-        if not c.rc.acessivel(A.DESTINOS[d]):
-            c.falhar(f"destino inacessível: {d}")
+    ver = c.rc.versao()
+    if not ver:
+        c.falhar(f"rclone não responde: {c.rc.binario}")
+    c.acoes.append(f"rclone {c.rc.binario} · {ver}")
+    for vaga in sorted(vagas_exigidas(c.perfil)):
+        uteis = []
+        for d in vaga:
+            if not c.rc.acessivel(A.DESTINOS[d]):
+                c.acoes.append(f"pré-voo {d}: inacessível ou recusado")
+                continue
+            uteis.append(d)
+        if not uteis:
+            c.falhar(f"destino inacessível: {'|'.join(vaga)}")
+    c.nuvens_antes = A.estado_nuvens(c.rc)
+    for d, e in c.nuvens_antes.items():
+        c.acoes.append(f"pré-voo {d}: usado {e['usado_gb']} GB · alvo {e['alvo_gb']} GB · hoje {e['hoje']}")
     livre = shutil.disk_usage(A._tmp_base()).free / 1e9
     if livre < 5:
         c.falhar(f"só {livre:.1f} GB livres para empacotar")
@@ -343,7 +360,7 @@ def enviar(c: Ciclo) -> None:
             ja = A.unidade_do_indice(c.con, ass, arquivos, base, raiz.original)
             if ja is not None:                  # já subiu antes: só reconfere (neste ciclo) — sem reenviar
                 res = A.reconferir_unidade(c.con, c.rc, ja, c.id)
-                if all(v == "ok" for v in res.values()):
+                if A.vagas_satisfeitas(ja.natureza, A.copias_ok(res)):
                     c.enviados.append((ja, raiz))
                     c.acoes.append(f"já na nuvem, reconferido {ja.chave} → {sorted(res)}")
                     continue
@@ -354,7 +371,7 @@ def enviar(c: Ciclo) -> None:
                 u = A.unidade_pacote(alvo, arquivos, raiz.classe, tmp, c.id, original_de=raiz.original)
             u.assinatura = ass
             res = A.enviar_unidade(c.con, c.rc, u, c.id)
-            if any(v != "ok" for v in res.values()):
+            if not A.vagas_satisfeitas(u.natureza, A.copias_ok(res)):
                 c.falhar(f"cópia não conferida {u.chave}: {res}")
             else:
                 c.enviados.append((u, raiz))
@@ -573,14 +590,14 @@ def rodar(perfil: Perfil, aplicar: bool, teto_gb: float | None = None, rc: A.Rcl
         except OSError as e:
             c.falhar(f"importar manifestos: {e}")
         inv = A.inventariar_nuvens(con, c.rc)          # foto das 3 nuvens; cópia do índice que sumiu = falha
-        for nome in ("r2", "b2", "gdrive"):
+        for nome in A.NUVENS["remotos"]:
             if inv.get(nome) == "erro":
                 c.falhar(f"inventário de {nome} falhou")
         for chave, dest in inv.get("copias_sumidas_ou_divergentes", [])[:20]:
             c.falhar(f"cópia sumida/divergente na nuvem: {dest} {chave}")
     if aplicar and not c.falhas and c.enviados:
-        exp = A.exportar_indice(con, c.rc)      # o índice (com o que vai sair) nas duas nuvens ANTES de apagar
-        if any(v != "ok" for v in exp.values()):
+        exp = A.exportar_indice(con, c.rc)      # o índice (com o que vai sair) em 2 provedores ANTES de apagar
+        if not A.indice_exportado(exp):
             c.falhar(f"índice não exportado antes de liberar: {exp}")
     if aplicar and not c.falhas:
         renovar_abertos()                       # a foto de abertos é refeita na hora de apagar
@@ -589,17 +606,21 @@ def rodar(perfil: Perfil, aplicar: bool, teto_gb: float | None = None, rc: A.Rcl
         regeneraveis(c, executar=aplicar)
     if aplicar:
         exp = A.exportar_indice(con, c.rc)
-        if any(v != "ok" for v in exp.values()):
+        if not A.indice_exportado(exp):
             c.falhar(f"índice não exportado: {exp}")
     depois = disco_pct()
     status = "abortado" if c.falhas else "ok"
+    recusas = list(dict.fromkeys(c.rc.orcamento.recusas)) if c.rc.orcamento else []
+    for m in recusas:
+        A.journal(con, "recusado_prevoo", perfil.nome, m, c.id)
     rel = {
         "ciclo": c.id, "modo": "aplicar" if aplicar else "ensaio", "status": status,
         "disco_pct_antes": round(antes, 1), "disco_pct_depois": round(depois, 1),
         "candidatos": len(c.candidatos), "candidatos_gb": round(sum(c_[3] for c_ in c.candidatos) / 1e9, 2),
         "enviados": len(c.enviados), "liberado_gb": round(c.liberado_bytes / 1e9, 2),
         "regenerado_gb": round(c.regenerado_bytes / 1e9, 2), "recusados": c.recusados,
-        "falhas": c.falhas, "acoes": c.acoes[:400],
+        "falhas": c.falhas, "recusas_prevoo": recusas[:200], "nuvens_antes": c.nuvens_antes,
+        "nuvens_depois": A.estado_nuvens(c.rc) if c.nuvens_antes else {}, "acoes": c.acoes[:400],
         "lista_candidatos": [f"{r.classe}\t{a}\t{len(fs)}\t{t}" for r, a, fs, t, _ in c.candidatos][:2000],
     }
     con.execute("UPDATE ciclos SET fim=?, status=?, resumo=? WHERE id=?",
@@ -610,12 +631,15 @@ def rodar(perfil: Perfil, aplicar: bool, teto_gb: float | None = None, rc: A.Rcl
     if not aplicar and not c.falhas:
         flag.write_text(json.dumps({"ciclo": c.id, "em": A.agora(), "candidatos": len(c.candidatos)}), encoding="utf-8")
     houve_acao = c.liberado_bytes or c.regenerado_bytes or c.enviados
-    if c.falhas or depois > perfil.aviso_disco_pct or (aplicar and houve_acao):
+    if c.falhas or recusas or depois > perfil.aviso_disco_pct or (aplicar and houve_acao):
         txt = (f"🗄️ Zelador {perfil.nome} — {status.upper()} ({rel['modo']})\n"
                f"Disco {antes:.0f}% → {depois:.0f}% · liberado {rel['liberado_gb']} GB + regenerável "
                f"{rel['regenerado_gb']} GB · {len(c.enviados)} unidade(s) guardada(s) na nuvem\n")
         if c.falhas:
             txt += "🆘 ESCALADO — nada foi apagado neste ciclo:\n" + "\n".join(f"• {f[:300]}" for f in c.falhas[:8])
+        if recusas:
+            txt += ("\n🆘 ESCALADO — recusado pelo pré-voo (limite GRÁTIS da nuvem; não foi feito):\n" +
+                    "\n".join(f"• {m[:300]}" for m in recusas[:8]))
         if depois > perfil.aviso_disco_pct:
             txt += f"\n⚠️ disco acima de {perfil.aviso_disco_pct:.0f}%"
         rel["avisado"] = avisar_fn(txt)

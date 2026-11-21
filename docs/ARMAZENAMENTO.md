@@ -5,9 +5,10 @@
 > desligado" · "vamos usar e ensinar todos a usarem os armazenamentos em cloud" · "tem que indexar tudo e organizar
 > pra todos saberem" · "duas cópias na nuvem? assim gasta o dobro" · "automatize isso sem margem pra erro".
 >
-> **Código:** `compliance_agent/armazenamento.py` (porta única + índice) · `tools/zelador/zelador.py` (ciclo
-> semanal, um perfil por máquina) · testes `tests/test_armazenamento_zelador.py` (controle positivo e negativo de
-> cada trava).
+> **Código:** `compliance_agent/armazenamento.py` (porta única + índice + pré-voo por nuvem) ·
+> `config/armazenamento_nuvens.json` (fonte ÚNICA dos remotos e dos limites grátis, §6) · `tools/zelador/zelador.py`
+> (ciclo semanal, um perfil por máquina) · testes `tests/test_armazenamento_zelador.py` (controle positivo e
+> negativo de cada trava e de cada limite grátis).
 
 ---
 
@@ -32,7 +33,7 @@
 |---|---|---|---|
 | **Quente** | VM-1 (`~/JFN/data`), VM-2 (`~/JFN`, `~/JFN-worker`) | bancos vivos, `sei_arquivo`, caches em uso, filas | cada pipeline |
 | **Morno** | VM-2 `~/arquivo_frio` | PDFs escaneados à espera do OCR da GPU (a fila `tools/sei_ocr_gpu_fila.py` só enxerga o que existe aqui) | `tools/sei_arquivo_frio.sh` (VM-1 → VM-2, de hora em hora) |
-| **Frio** | **Google Drive** pasta `JFN/` (cota 400 GiB da conta do dono) + **B2** `jfn-backup-jorge` | tudo o que não é lido no dia a dia; backups | zelador semanal, com índice |
+| **Frio** | **Google Drive** pasta `JFN/` (cota 400 GiB da conta do dono) + 2ª cópia no grátis: **B2** `jfn-backup-jorge`, **R2** `jorgefelippe`, **MEGA** `JFN/` (e as próximas, só por config) | tudo o que não é lido no dia a dia; backups | zelador semanal, com índice e pré-voo de limite grátis (§6) |
 | **Serviço** | R2 `jorgefelippe` (`fachadas/`, `anexos/`) | arquivos servidos por URL (saída sem custo) | quem publica |
 | **Cache/processamento** | it-campo (GPU, OCR, réplicas de sessão) | nada que as VMs precisem; pode desligar sem perda | — |
 
@@ -46,7 +47,7 @@
 | Natureza | Classes | Cópias | Destino(s) | Por quê |
 |---|---|---|---|---|
 | **Re-obtível** (a fonte pública tem) | `sei_pdf`, `sei_foto`, `sei_cache`, `sei_arvore`, `quarentena`, `substituido`, `tse`, `pncp`, `receita`, `coleta_cache` | **1** | Drive | o provedor já replica internamente; perder = baixar de novo da fonte (índice guarda origem e hash) |
-| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + B2 | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
+| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + o 1º de `segunda_copia` que couber no grátis (B2 → R2 → MEGA) | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
 
 Retenção e gatilhos (perfis em `tools/zelador/zelador.py::perfis()`):
 
@@ -103,9 +104,12 @@ Cada zelador sobe o seu índice a **duas** nuvens (`gdrive:indice/<maq>.db`, `b2
 
 `python tools/zelador/zelador.py --perfil {vm1|vm2|itcampo} {--ensaio|--aplicar} [--teto-gb N]`
 
-1. **Pré-voo** — rclone responde em cada destino exigido; montagens do perfil presentes (VM-1: sshfs do it-campo;
-   it-campo: `/mnt/c`); ≥ 5 GB para empacotar. Falhou → aborta.
-2. **Recuperação** — baixa uma amostra (2 por destino) do que já está na nuvem e confere o md5. Falhou → aborta.
+1. **Pré-voo** — binário do rclone (o oficial em `~/.local/bin` primeiro) responde; em cada vaga da política, ao
+   menos um remoto acessível; **por nuvem**: uso real medido no remoto e consumo do dia/mês contra os limites grátis
+   (§6); montagens do perfil presentes (VM-1: sshfs do it-campo; it-campo: `/mnt/c`); ≥ 5 GB para empacotar.
+   Falhou → aborta. O que o pré-voo recusar no meio do ciclo não é feito e é escalado.
+2. **Recuperação** — confere pela listagem (hash do provedor) uma amostra de cada remoto e baixa UMA cópia pequena
+   por remoto dentro do teto de amostra (B2 ≤ 50 MB/dia). Hash errado → aborta.
 3. **Candidatos** — só raízes da lista branca; por arquivo: exclusão explícita, não-symlink, idade mínima
    (mtime **e** ctime), ninguém com o arquivo aberto (foto única de `/proc/*/fd`), fora da fila viva (VM-2: fila do
    OCR, recusada se tiver mais de 2 dias); um arquivo preso segura a pasta inteira. Teto de GB e de arquivos por
@@ -125,31 +129,73 @@ Cada zelador sobe o seu índice a **duas** nuvens (`gdrive:indice/<maq>.db`, `b2
 
 ---
 
-## 6. Custo mensal (tabelas oficiais lidas em 21/11/2026)
+## 6. Nuvens SÓ no grátis — limites, pré-voo e contador (decisão do dono, 21/11/2026)
 
-| Provedor | Preço | Grátis | Saída | Fonte |
-|---|---|---|---|---|
-| Cloudflare R2 Standard | US$ 0,015/GB-mês | 10 GB-mês, 1 mi Classe A, 10 mi Classe B | grátis | developers.cloudflare.com/r2/pricing |
-| Backblaze B2 | US$ 6,95/TB-mês (US$ 0,00695/GB) | 10 GB | grátis até 3× o armazenado; depois US$ 0,01/GB | backblaze.com/cloud-storage/pricing |
-| Google Drive (Google One) | plano já contratado pelo dono (cota medida: 400 GiB) | 15 GB em qualquer conta | — | one.google.com/about/plans (a página lida listou 100 GB = R$ 9,99/mês; o plano de 400 GiB não aparece) |
+> **Dono, 21/11:** "o teto é zero mesmo, quero tudo grátis ali" · "use o grátis do backblaze… tudo dele".
+> **Nunca** subir cap no Backblaze nem habilitar cobrança em nuvem nenhuma. Drive = principal; B2/R2 (e as nuvens
+> grátis que forem sendo ligadas) = 2ª cópia do insubstituível e o grátis que sobra, cheio até o alvo.
 
-| Cenário | R2 | B2 | Drive | Total incremental |
-|---|---|---|---|---|
-| **Antes** (21/11, medido): `frio/` duplicado em R2 e B2 | 13,23 GB → US$ 0,06 | 17,30 GB → US$ 0,05 | 3,53 GB | **≈ US$ 0,11/mês** |
-| **Depois** (frio ~200 GB no Drive; insubstituível ~9 GB em Drive+B2; R2 só serviço) | < 10 GB → US$ 0,00 | < 10 GB → US$ 0,00 | ~210 GB de 400 GiB | **≈ US$ 0,00/mês** |
-| Se o Drive encher: o excedente re-obtível vai para o B2 | — | US$ 1,39 por 200 GB | — | |
-| (comparação: os mesmos 200 GB no R2) | US$ 2,85 | — | — | |
+**Fonte única:** `config/armazenamento_nuvens.json` — caminho (`raiz`, `frio`, `indice`), como medir o uso
+(`about` | `size`), capacidade, margem, reserva, limites grátis e a URL oficial de cada número. Nenhum outro lugar
+repete esses números. **Remoto novo** (koofr, pcloud, box, idrive e2, filen, yandex, jottacloud, protondrive,
+onedrive, dropbox, internxt…) entra **só** por config: um bloco em `remotos` + o nome em `segunda_copia` (ordem =
+preferência) — testado em `test_remoto_novo_entra_so_pela_config`.
 
-Atenção (1): o rclone usa o **cliente OAuth padrão do próprio rclone**, compartilhado no mundo todo; o Drive responde
-`403 rateLimitExceeded` ("Queries per minute" do projeto 202264815644) e um tar de 80 MB chegou a ficar 10 min em
-backoff (21/11). Enquanto o dono não criar o cliente próprio (passo em §9), o destino do re-obtível pode ser trocado
-por `JFN_DESTINO_REOBTIVEL=r2` (mesma regra de 1 cópia; US$ 0,015/GB, saída grátis) — foi o que a VM-2 usou em 21/11
-a 98% de disco. O que ainda está no disco volta ao Drive sozinho no ciclo seguinte (a reconferência não acha a cópia
-no Drive e reenvia); o que já saiu do disco migra R2 → Drive com `consolidar-legado`.
+### 6.1 Limites aplicados (conferidos nas páginas oficiais em 21/11/2026)
 
-Atenção (2): o B2 tem **teto diário de Classe B/download** configurado na conta (21/11: `403 download_cap_exceeded`
-ao copiar B2 → Drive). Enquanto o teto estiver no mínimo, restaurar do B2 falha — o zelador testa a recuperação
-de cada destino e AVISA. Ajuste em B2 › Caps & Alerts (passo do dono).
+| Remoto | Armazenamento (alvo = limite − margem − reserva) | Operações / download | Fonte oficial |
+|---|---|---|---|
+| **Drive** (`gdrive:`, principal) | cota da conta pelo `rclone about` (429,5 GB); margem 5 GB | — | one.google.com/about/plans |
+| **B2** (`b2:jfn-backup-jorge`) | 10 GB − 0,5 margem − 1,7 reserva* = **7,8 GB** | **1 GB/dia** de download · **2.500 Classe B/dia** · **2.500 Classe C/dia** · amostra de recuperação **≤ 50 MB/dia** | backblaze.com/cloud-storage/pricing ("First 10GB storage is always free") · backblaze.com/cloud-storage/transaction-pricing (classe de cada chamada) · backblaze.com/docs/cloud-storage-data-caps-and-alerts ("Usage counters reset daily at 12:00 AM GMT") · Caps & Alerts da conta (teto US$ 0,00; grátis 1 GB / 2.500 B / 2.500 C por dia; `403 download_cap_exceeded` medido) |
+| **R2** (`r2:jorgefelippe`) | 10 GB − 0,5 = **9,5 GB** | **1 milhão Classe A/mês** · **10 milhões Classe B/mês** · saída grátis | developers.cloudflare.com/r2/pricing ("Storage 10 GB-month / month", "Class A Operations 1 million requests / month", "Class B Operations 10 million requests / month", "no charges for egress") |
+| **MEGA** (`mega:JFN`) | o `rclone about` (20 GiB = 21,47 GB) − 0,5 = **20,97 GB** | **1 GB/dia** de download (teto NOSSO: o MEGA não publica número para a conta grátis) | mega.io/pricing ("Transfer: Free — Limited") · help.mega.io/plans-storage/space-storage/transfer-quota ("based on the data transferred to your IP address during the last six hours"; "Uploading files uses your storage quota, but not your transfer quota") |
+
+\* reserva do B2: `tools/backup_compliance.sh` (domingo 03:50) sobe a 4ª cópia semanal (~1,5 GB) **antes** de girar
+para 3. Observação: a página de preços do B2 hoje diz "Class A, B, and C API calls are free for pay-as-you-go"; a
+conta do dono está no grátis com teto US$ 0,00 e o Caps & Alerts dela mostra o grátis diário de 1 GB / 2.500 B /
+2.500 C — vale o MAIS restritivo.
+
+### 6.2 Como o pré-voo decide (`compliance_agent/armazenamento.py::Orcamento`)
+
+* **Antes de cada chamada do rclone** a um remoto da config: `custo_operacao()` estima o que ela gasta (B2: HEAD,
+  download e `get_file_info` = Classe B; `authorize_account` + `list_buckets` + listagem = Classe C, 2 por
+  invocação; upload = Classe A, grátis. R2: Put/List/Copy/multipart = Classe A; Get/Head = Classe B; Delete grátis.
+  MEGA: só os bytes baixados). Se `gasto do período + custo > limite × partilha da máquina` → **não faz**.
+* **Contador local** por remoto e período (dia e mês **UTC** — o B2 zera às 00:00 GMT) em
+  `~/.zelador/consumo_nuvens.json` (com trava de arquivo). A chamada que aconteceu conta, mesmo se falhou.
+* **Partilha** (as três máquinas falam com a MESMA conta): VM-1 60 %, VM-2 30 %, it-campo 10 % de cada limite
+  diário/mensal (`partilha_por_maquina`; somadas nunca passam do grátis — testado).
+* **Uso real** medido no remoto no início do processo (`rclone about` no Drive/MEGA; `rclone size` da raiz no
+  B2/R2 — conta TUDO do bucket, inclusive `compliance/` e `fachadas/`), somado a cada upload. **Sem medida = não
+  sobe** (fechado por padrão).
+* **O provedor disse "cap exceeded" / 403** → o remoto fica **esgotado até 00:00 UTC** e nada mais é pedido a ele.
+* **Insubstituível**: principal + a 2ª cópia no **primeiro remoto de `segunda_copia` que couber** (B2 → R2 → MEGA);
+  se o escolhido falhar, o próximo. Nenhum coube → `recusado`, o local fica e o ciclo escala.
+* **Recusa nunca é silenciosa**: vai para `journal` (`recusado` / `recusado_prevoo`), para o relatório
+  (`recusas_prevoo`) e para o dono pelo canal de escalados (Telegram do zelador, `🆘 ESCALADO — recusado pelo
+  pré-voo`), mesmo num ciclo sem nenhuma outra falha.
+* **Recuperação de teste** (`testar_recuperacao`): confere o hash pela **listagem** (`lsjson --hash`, sem baixar)
+  de até N cópias por remoto e baixa **uma** amostra (a menor) só se o pré-voo deixar (B2 ≤ 50 MB/dia × partilha).
+  Remoto sem hash na listagem (MEGA) só se confere por download — mesmo teto. Download recusado com a listagem ok
+  não é falha; hash errado é.
+
+Comandos: `python -m compliance_agent.armazenamento nuvens` (uso × alvo × consumo de cada remoto) ·
+`… consolidar-legado [--aplicar]` (re-obtível do R2/B2 → Drive, hash conferido, só então apaga do R2/B2; roda em
+cada máquina sobre o prefixo dela, porque o índice dela é quem conhece os pacotes) · `… encher [--aplicar] [--item
+nome…]` (ocupa o grátis que sobra nos remotos de `enchimento.remotos`, na ordem de `enchimento.itens`:
+insubstituível primeiro — snapshots consistentes dos bancos de trabalho próprio —, depois o re-obtível mais caro;
+cada item também no Drive; chave estável por item, o novo substitui o velho).
+
+### 6.3 Uso por nuvem — antes × depois (medido pelo próprio pré-voo)
+
+USO_ANTES_DEPOIS
+
+Atenção (1): o rclone usa o **cliente OAuth padrão do próprio rclone**, compartilhado no mundo todo (e que o rclone
+avisa que será aposentado em 2026); o Drive responde `403 rateLimitExceeded` ("Queries per minute" do projeto
+202264815644) e um tar de 80 MB chegou a ficar 10 min em backoff (21/11). Enquanto o dono não criar o cliente próprio
+(passo em §9), o destino do re-obtível pode ser trocado por `JFN_DESTINO_REOBTIVEL=r2` (mesma regra de 1 cópia) —
+**dentro do alvo grátis do R2**: o pré-voo recusa o que passar de 9,5 GB. O que ainda está no disco volta ao Drive
+sozinho no ciclo seguinte; o que já saiu do disco migra R2 → Drive com `consolidar-legado`.
 
 ---
 
@@ -179,9 +225,9 @@ recusa.
 
 ## 9. Passos do dono (uma vez)
 
-1. **B2 › Caps & Alerts**: subir o teto diário de *Download Bandwidth* e de *Class B Transactions* (ex.: US$ 1/dia
-   cada). Com o teto atual, HEAD e download do B2 dão 403 — a recuperação de teste falha e o zelador ABORTA (correto:
-   cópia que não volta não é cópia). Medido em 21/11: `403 download_cap_exceeded`.
+1. ~~B2 › Caps & Alerts: subir o teto~~ — **revogado pelo dono em 21/11: o teto fica em US$ 0,00.** Em vez disso
+   o pré-voo (§6) não deixa o JFN passar do grátis diário; se o B2 responder 403/cap, o remoto fica esgotado até
+   00:00 UTC e a 2ª cópia vai para o próximo remoto grátis.
 2. **Cliente OAuth próprio do Drive** (tira o gargalo do cliente compartilhado): console.cloud.google.com → projeto
    novo "jfn-rclone" → APIs e serviços → ativar *Google Drive API* → Tela de consentimento OAuth (Externo, adicionar
    o próprio e-mail como usuário de teste) → Credenciais → *ID do cliente OAuth* → tipo **App para computador** →

@@ -1,0 +1,99 @@
+{
+  "_doc": [
+    "FONTE ÚNICA das nuvens do JFN: caminhos, capacidade e limites grátis de cada remoto do rclone.",
+    "Lida por compliance_agent/armazenamento.py (porta única) e tools/zelador/zelador.py — nenhum outro lugar",
+    "repete estes números. Remoto novo (koofr, pcloud, box, filen...) entra SÓ aqui: um bloco em 'remotos' e o",
+    "nome em 'segunda_copia' (ordem = preferência). Política do dono (21/11/2026): SÓ no grátis, teto de gasto",
+    "ZERO; re-obtível = 1 cópia no principal; insubstituível = principal + 1 cópia num remoto de 'segunda_copia'",
+    "(o primeiro que couber). Preços/limites conferidos nas páginas oficiais (URL em 'fontes') — nunca de memória.",
+    "Unidades: bytes decimais (1 GB = 1e9, mais conservador que GiB). Dia/mês contados em UTC (B2 zera 00:00 GMT).",
+    "'partilha_por_maquina': fração do limite DIÁRIO/MENSAL de operações e download que cada máquina pode gastar",
+    "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
+  ],
+  "principal": "gdrive",
+  "segunda_copia": ["b2", "r2", "mega"],
+  "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
+  "partilha_desconhecida": 0.1,
+  "remotos": {
+    "gdrive": {
+      "tipo": "drive",
+      "raiz": "gdrive:",
+      "frio": "gdrive:frio",
+      "indice": "gdrive:indice",
+      "medir": "about",
+      "margem_gb": 5,
+      "preferencia_download": 2,
+      "limites": {},
+      "fontes": ["https://one.google.com/about/plans (cota da conta: rclone about mediu 400 GiB em 21/11/2026)"]
+    },
+    "b2": {
+      "tipo": "b2",
+      "raiz": "b2:jfn-backup-jorge",
+      "frio": "b2:jfn-backup-jorge/frio",
+      "indice": "b2:jfn-backup-jorge/indice",
+      "medir": "size",
+      "armazenamento_gb": 10,
+      "margem_gb": 0.5,
+      "reserva_gb": 1.7,
+      "_reserva": "tools/backup_compliance.sh (domingo 03:50) sobe a 4ª cópia (~1,5 GB) ANTES de girar para 3",
+      "amostra_download_mb_dia": 50,
+      "preferencia_download": 9,
+      "limites": {"download_bytes_dia": 1000000000, "classe_b_dia": 2500, "classe_c_dia": 2500},
+      "fontes": [
+        "https://www.backblaze.com/cloud-storage/pricing ('First 10GB storage is always free.')",
+        "https://www.backblaze.com/cloud-storage/transaction-pricing (classes A/B/C por chamada da API)",
+        "https://www.backblaze.com/docs/cloud-storage-data-caps-and-alerts ('Each category includes a number of free transactions [...] Usage counters reset daily at 12:00 AM GMT.')",
+        "Caps & Alerts da conta (dono, 21/11/2026, teto US$ 0,00): grátis 1 GB/dia de download, 2.500 Classe B/dia, 2.500 Classe C/dia; 403 download_cap_exceeded medido ao passar"
+      ]
+    },
+    "r2": {
+      "tipo": "s3",
+      "raiz": "r2:jorgefelippe",
+      "frio": "r2:jorgefelippe/frio",
+      "indice": "r2:jorgefelippe/indice",
+      "medir": "size",
+      "armazenamento_gb": 10,
+      "margem_gb": 0.5,
+      "preferencia_download": 1,
+      "limites": {"classe_a_mes": 1000000, "classe_b_mes": 10000000},
+      "fontes": [
+        "https://developers.cloudflare.com/r2/pricing/ (Free tier: 'Storage | 10 GB-month / month', 'Class A Operations | 1 million requests / month', 'Class B Operations | 10 million requests / month', 'There are no charges for egress bandwidth'; DeleteObject grátis; só Standard storage)"
+      ]
+    },
+    "mega": {
+      "tipo": "mega",
+      "raiz": "mega:JFN",
+      "frio": "mega:JFN/frio",
+      "indice": "mega:JFN/indice",
+      "medir": "about",
+      "margem_gb": 0.5,
+      "preferencia_download": 3,
+      "limites": {"download_bytes_dia": 1000000000},
+      "_limites": "MEGA não publica número para a conta grátis ('Transfer: Free — Limited'); a cota é por IP nas últimas 6 h. 1 GB/dia é teto NOSSO, conservador. Armazenamento: o que o `rclone about` medir (20 GiB em 21/11/2026).",
+      "fontes": [
+        "https://mega.io/pricing (conta Free: 'Transfer Free Limited')",
+        "https://help.mega.io/plans-storage/space-storage/transfer-quota ('MEGA calculates download limits (for [...] those with a free account) based on the data transferred to your IP address during the last six hours.' · 'Uploading files uses your storage quota, but not your transfer quota.')"
+      ]
+    }
+  },
+  "enchimento": {
+    "_doc": "O que vai para o espaço grátis que sobra nos remotos de 'segunda_copia' (encher B2/R2 até o alvo = limite − margem − reserva), em ORDEM de prioridade: insubstituível primeiro, depois o re-obtível mais caro de refazer. Cada item também fica no principal. Chave estável por item (o novo substitui o velho: espaço limitado). sqlite = cópia consistente (API de backup) + gzip.",
+    "remotos": ["b2", "r2"],
+    "itens": [
+      {"nome": "compliance.db", "tipo": "sqlite", "caminho": "JFN/data/compliance.db", "classe": "backup_db", "remotos": ["r2"], "_remotos": "o B2 já guarda 3 semanais (tools/backup_compliance.sh)"},
+      {"nome": "conferencia_opus.db", "tipo": "sqlite", "caminho": "JFN/data/conferencia_opus.db", "classe": "backup_db"},
+      {"nome": "achados.db", "tipo": "sqlite", "caminho": "JFN/data/achados.db", "classe": "backup_db"},
+      {"nome": "nucleo_memoria.db", "tipo": "sqlite", "caminho": "JFN/data/nucleo_memoria.db", "classe": "backup_db"},
+      {"nome": "cruzamento_motores.db", "tipo": "sqlite", "caminho": "JFN/data/cruzamento_motores.db", "classe": "backup_db"},
+      {"nome": "propagacao.db", "tipo": "sqlite", "caminho": "JFN/data/propagacao.db", "classe": "backup_db"},
+      {"nome": "claude_api_memo.db", "tipo": "sqlite", "caminho": "JFN/data/claude_api_memo.db", "classe": "backup_db"},
+      {"nome": "llm_trace.db", "tipo": "sqlite", "caminho": "JFN/data/llm_trace.db", "classe": "backup_db"},
+      {"nome": "territorio.db", "tipo": "sqlite", "caminho": "JFN/data/territorio.db", "classe": "backup_db"},
+      {"nome": "sei_rj_catalogo.db", "tipo": "sqlite", "caminho": "JFN/data/sei_rj_catalogo.db", "classe": "backup_db"},
+      {"nome": "pcrj_benef.db", "tipo": "sqlite", "caminho": "JFN/data/pcrj_benef.db", "classe": "backup_db"},
+      {"nome": "pcrj.db", "tipo": "sqlite", "caminho": "JFN/data/pcrj.db", "classe": "backup_db"},
+      {"nome": "tcu_juris.db", "tipo": "sqlite", "caminho": "JFN/data/tcu_juris.db", "classe": "backup_db"},
+      {"nome": "dadosabertos_rj.db", "tipo": "sqlite", "caminho": "JFN/data/dadosabertos_rj.db", "classe": "backup_db"}
+    ]
+  }
+}

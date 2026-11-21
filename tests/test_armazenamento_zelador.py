@@ -6,8 +6,10 @@ caem) para provar que nada é apagado sem a cópia exigida conferida por hash NO
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -17,9 +19,19 @@ from tools.zelador import zelador as Z
 
 
 class NuvemFalsa(A.Rclone):
-    def __init__(self, base: Path, mentir_envio=(), corromper=(), fora=()):
+    """`uso_extra`: bytes que cada remoto "já tem" além do que esta nuvem gravou (para encher até o teto)."""
+    def __init__(self, base: Path, mentir_envio=(), corromper=(), fora=(), uso_extra=None):
         super().__init__()
         self.base, self.mentir, self.corromper, self.fora = base, set(mentir_envio), set(corromper), set(fora)
+        self.uso_extra = dict(uso_extra or {})
+
+    def versao(self):
+        return "rclone v-falso"
+
+    def medir_uso(self, nome):
+        raiz = self._p(A.NUVENS["remotos"][nome]["raiz"])
+        usado = sum(f.stat().st_size for f in raiz.rglob("*") if f.is_file()) if raiz.exists() else 0
+        return {"usado": float(usado + self.uso_extra.get(nome, 0)), "total": 20e9, "como": "falso"}
 
     def _p(self, remoto: str) -> Path:
         return self.base / remoto.replace(":", "/")
@@ -30,7 +42,7 @@ class NuvemFalsa(A.Rclone):
                 return d
         return "indice"
 
-    def enviar(self, local, remoto):
+    def enviar(self, local, remoto, substitui=0):
         d = self._dest(remoto)
         if d in self.fora:
             return False, "caiu"
@@ -39,17 +51,23 @@ class NuvemFalsa(A.Rclone):
         p = self._p(remoto)
         p.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(local, p)
+        if self.orcamento is not None and A.nome_remoto(remoto):          # como o Rclone real: soma o enviado
+            self.orcamento.somar_uso(A.nome_remoto(remoto), p.stat().st_size - substitui)
         if d in self.corromper:
             with open(p, "ab") as f:
                 f.write(b"X")
         return True, ""
 
-    def baixar(self, remoto, local):
+    def baixar(self, remoto, local, nbytes=0, amostra=False):
+        nome, motivo = self._gate("baixar", remoto, nbytes, amostra=amostra)     # o pré-voo de verdade
+        if motivo:
+            return False, motivo
         p = self._p(remoto)
         if not p.exists():
             return False, "não existe"
         Path(local).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(p, local)
+        self._registrar(nome, "baixar", subprocess.CompletedProcess([], 0, "", ""), p.stat().st_size, amostra=amostra)
         return True, ""
 
     def stat(self, remoto):
@@ -59,7 +77,7 @@ class NuvemFalsa(A.Rclone):
         h = hashlib.md5(p.read_bytes()).hexdigest()
         return {"Size": p.stat().st_size, "Hashes": {"md5": h}}
 
-    def hash_baixando(self, remoto, tipo="md5"):
+    def hash_baixando(self, remoto, tipo="md5", nbytes=0):
         p = self._p(remoto)
         return hashlib.md5(p.read_bytes()).hexdigest() if p.exists() else None
 
@@ -78,6 +96,7 @@ def amb(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "cache_frio", lambda: tmp_path / "cache")
     monkeypatch.setattr(A, "caminho_indice", lambda: tmp_path / "indice.db")
     monkeypatch.setattr(A, "dir_indices_outros", lambda: tmp_path / "outros")
+    monkeypatch.setattr(A, "caminho_consumo", lambda: tmp_path / "consumo.json")
     monkeypatch.setattr(Z, "idade_dias", lambda p: 999.0)
     monkeypatch.setattr(Z, "_ABERTOS", set())
     monkeypatch.setattr(Z, "abertos_agora", lambda: set())
@@ -167,12 +186,37 @@ def test_copia_corrompida_nao_apaga(amb):
 
 def test_insubstituivel_exige_dois_provedores(amb):
     tmp, raiz = amb
+    segunda = A.POLITICA["insubstituivel"][1]
     f = _arquivos(raiz)[0]
-    r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem", fora={"b2"}), con=A.conectar())
-    assert r["copias"] == {"gdrive": "ok", "b2": "sumida"} and f.exists()
+    r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem", fora=set(segunda)),
+                  con=A.conectar())
+    assert r["copias"]["gdrive"] == "ok" and not A.copias_ok(r["copias"]) & set(segunda) and f.exists()
     g = _arquivos(raiz)[1]
     r = A.guardar(g, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem"), con=A.conectar())
-    assert r["copias"] == {"gdrive": "ok", "b2": "ok"} and not g.exists()
+    assert r["copias"] == {"gdrive": "ok", segunda[0]: "ok"} and not g.exists()
+
+
+def test_segunda_copia_vai_para_a_que_couber(amb):
+    """Dono 21/11: insubstituível = Drive + B2 OU R2 — a que couber. B2 no teto → R2; B2 caiu → R2."""
+    tmp, raiz = amb
+    b2 = A.NUVENS["remotos"]["b2"]
+    cheio = (b2["armazenamento_gb"] - b2["margem_gb"] - b2.get("reserva_gb", 0)) * 1e9
+    f, g = _arquivos(raiz)[:2]
+    r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem", uso_extra={"b2": cheio}),
+                  con=A.conectar())
+    assert r["copias"] == {"gdrive": "ok", "r2": "ok"} and r["apagado"]
+    r = A.guardar(g, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem", fora={"b2"}), con=A.conectar())
+    assert r["copias"] == {"gdrive": "ok", "b2": "sumida", "r2": "ok"} and r["apagado"]
+
+
+def test_nenhuma_segunda_copia_cabe_recusa_e_nao_apaga(amb):
+    tmp, raiz = amb
+    cheios = {n: 25e9 for n in A.POLITICA["insubstituivel"][1]}
+    f = _arquivos(raiz)[0]
+    nuvem = NuvemFalsa(tmp / "nuvem", uso_extra=cheios)
+    r = A.guardar(f, "backup_db", apagar_local=True, rc=nuvem, con=A.conectar())
+    assert r["copias"]["|".join(A.POLITICA["insubstituivel"][1])] == "recusado" and f.exists()
+    assert nuvem.orcamento.recusas
 
 
 def test_conferencia_de_ciclo_anterior_nao_vale(amb):
@@ -377,3 +421,198 @@ def test_indice_que_nao_sobe_antes_de_liberar_nao_apaga(amb):
     antes = _arquivos(raiz)
     rel = Z.rodar(_perfil(raiz), aplicar=True, rc=SemIndice(tmp / "nuvem"), con=con, avisar_fn=lambda t: True)
     assert rel["status"] == "abortado" and _arquivos(raiz) == antes
+
+
+# ── pré-voo por nuvem: limites GRÁTIS da config, controle positivo (no limite passa) e negativo (acima recusa) ──
+class RcloneDeMentira(A.Rclone):
+    """O Rclone de verdade (pré-voo, contador, recusa), só o PROCESSO é falso: `_run` responde como o rclone."""
+
+    def __init__(self, uso=None, stderr_copyto="", rc_copyto=0):
+        super().__init__(binario="rclone-de-mentira")
+        self.uso_fake = dict(uso or {})
+        self.stderr_copyto, self.rc_copyto = stderr_copyto, rc_copyto
+        self.chamadas = []
+
+    def _run(self, args, timeout=None):
+        self.chamadas.append(args)
+        cp = subprocess.CompletedProcess
+        nome = str(args[-1]).split(":", 1)[0]
+        if args[0] == "size":
+            return cp(args, 0, json.dumps({"count": 10, "bytes": self.uso_fake.get(nome, 0)}), "")
+        if args[0] == "about":
+            return cp(args, 0, json.dumps({"total": 20e9, "free": 20e9 - self.uso_fake.get(nome, 0)}), "")
+        if args[0] == "copyto":
+            if self.rc_copyto == 0 and ":" not in str(args[2]):
+                Path(args[2]).write_bytes(b"x")
+            return cp(args, self.rc_copyto, "", self.stderr_copyto)
+        if args[0] == "lsjson":
+            return cp(args, 0, json.dumps({"Size": 1, "Hashes": {}}), "")
+        return cp(args, 0, "", "")
+
+
+def _partilha(maq="vm1"):
+    return A.NUVENS["partilha_por_maquina"][maq]
+
+
+def _rc(tmp_path, **kw):
+    rc = RcloneDeMentira(**kw)
+    rc.orcamento = A.Orcamento(caminho=tmp_path / "consumo.json", maq="vm1")
+    return rc
+
+
+def _fazer(rc, nome, op, tmp_path):
+    alvo = A.NUVENS["remotos"][nome]["frio"] + "/x"
+    if op == "baixar":
+        return rc.baixar(alvo, tmp_path / "baixado", nbytes=1000)[0]
+    if op == "stat":
+        return rc.stat(alvo) is not None
+    return rc.acessivel(alvo)
+
+
+@pytest.mark.parametrize("nome,chave,op", [
+    ("b2", "download_bytes_dia", "baixar"), ("b2", "classe_b_dia", "stat"), ("b2", "classe_c_dia", "acessivel"),
+    ("r2", "classe_a_mes", "acessivel"), ("r2", "classe_b_mes", "stat"), ("mega", "download_bytes_dia", "baixar"),
+])
+def test_limite_de_operacao_passa_no_limite_e_recusa_acima(tmp_path, nome, chave, op):
+    rc = _rc(tmp_path)
+    contador, _ = chave.rsplit("_", 1)
+    teto = A.NUVENS["remotos"][nome]["limites"][chave] * _partilha()
+    pedido = A.custo_operacao(A.NUVENS["remotos"][nome]["tipo"], op, 1000)[contador]
+    rc.orcamento.registrar(nome, {contador: teto - pedido})        # depois desta operação: exatamente no teto
+    n0 = len(rc.chamadas)
+    assert _fazer(rc, nome, op, tmp_path) and len(rc.chamadas) == n0 + 1          # positivo: chegou ao rclone
+    assert not _fazer(rc, nome, op, tmp_path) and len(rc.chamadas) == n0 + 1      # negativo: nem chamou
+    assert rc.orcamento.recusas and contador in rc.orcamento.recusas[-1]
+
+
+@pytest.mark.parametrize("nome", ["b2", "r2", "mega"])
+def test_armazenamento_passa_ate_o_alvo_e_recusa_acima(tmp_path, nome):
+    cfg = A.NUVENS["remotos"][nome]
+    total = (cfg.get("armazenamento_gb") or 20) * 1e9                       # MEGA: o que o `about` mediu
+    alvo = total - (cfg.get("margem_gb", 0) + cfg.get("reserva_gb", 0)) * 1e9
+    rc = _rc(tmp_path, uso={nome: alvo - 1000})
+    f = tmp_path / "f.bin"
+    f.write_bytes(b"0" * 1000)
+    assert rc.enviar(f, cfg["frio"] + "/f.bin")[0]                          # positivo: fecha no alvo
+    ok, err = rc.enviar(f, cfg["frio"] + "/g.bin")                         # negativo: 1000 B acima
+    assert not ok and err.startswith("RECUSADO") and "alvo" in err
+
+
+def test_sem_medida_de_uso_nao_sobe(tmp_path):
+    class SemMedida(RcloneDeMentira):
+        def _run(self, args, timeout=None):
+            if args[0] in ("size", "about"):
+                return subprocess.CompletedProcess(args, 1, "", "falhou")
+            return super()._run(args, timeout)
+    rc = SemMedida()
+    rc.orcamento = A.Orcamento(caminho=tmp_path / "c.json", maq="vm1")
+    f = tmp_path / "f.bin"
+    f.write_bytes(b"0")
+    ok, err = rc.enviar(f, A.NUVENS["remotos"]["b2"]["frio"] + "/f.bin")
+    assert not ok and "não medido" in err
+    assert rc.enviar(f, "gdrive:frio/f.bin")[0] is False                    # o principal também é medido
+
+
+def test_provedor_diz_cap_exceeded_esgota_ate_00h_utc(tmp_path):
+    rc = _rc(tmp_path, rc_copyto=1, stderr_copyto="ERROR : 403 download_cap_exceeded")
+    alvo = A.NUVENS["remotos"]["b2"]["frio"] + "/x"
+    assert not rc.baixar(alvo, tmp_path / "b", nbytes=10)[0]
+    assert rc.stat(alvo) is None and "esgotado" in rc.orcamento.recusas[-1]     # nem chama mais o B2 hoje
+    est = json.loads((tmp_path / "consumo.json").read_text())
+    est["b2"]["esgotado_ate"] = "2000-01-01T00:00:00+00:00"                     # o dia virou
+    (tmp_path / "consumo.json").write_text(json.dumps(est))
+    assert rc.stat(alvo) is not None                                           # controle positivo
+
+
+def test_partilha_entre_maquinas(tmp_path):
+    lim = A.NUVENS["remotos"]["b2"]["limites"]["download_bytes_dia"]
+    for maq in ("vm1", "vm2"):
+        o = A.Orcamento(caminho=tmp_path / f"{maq}.json", maq=maq)
+        assert o.recusa("b2", {"download_bytes": lim * _partilha(maq)}) is None
+        assert o.recusa("b2", {"download_bytes": lim * _partilha(maq) + 1})
+    assert sum(A.NUVENS["partilha_por_maquina"].values()) <= 1.0              # somadas, nunca passam do grátis
+
+
+def test_recuperacao_confere_pela_listagem_e_amostra_do_b2_tem_teto(amb):
+    tmp, raiz = amb
+    nuvem = NuvemFalsa(tmp / "nuvem", fora={"r2", "mega"})
+    con = A.conectar()
+    for f in _arquivos(raiz)[:3]:
+        A.guardar(f, "backup_db", rc=nuvem, con=con)                       # gdrive + b2
+    res = A.testar_recuperacao(con, nuvem, amostra=3)
+    b2 = [r for r in res if r["destino"] == "b2"]
+    assert [r["modo"] for r in b2].count("listagem") == 3 and any(r["modo"] == "download" for r in b2)
+    assert all(r["ok"] for r in res)
+    teto = A.NUVENS["remotos"]["b2"]["amostra_download_mb_dia"] * 1e6 * nuvem.orcamento.partilha()
+    nuvem.orcamento.registrar("b2", {"amostra_bytes": teto})                 # a amostra do dia acabou
+    res = A.testar_recuperacao(con, nuvem, amostra=3)
+    b2 = [r for r in res if r["destino"] == "b2"]
+    assert any(r["modo"] == "download recusado" for r in b2) and all(r["ok"] for r in res)
+    for p in (tmp / "nuvem" / "b2").rglob("*"):                               # negativo: B2 estragado aparece
+        if p.is_file():
+            p.write_bytes(b"estragado")
+    assert not all(r["ok"] for r in A.testar_recuperacao(con, nuvem, amostra=3) if r["destino"] == "b2")
+
+
+def test_remoto_novo_entra_so_pela_config(amb, tmp_path_factory):
+    tmp, raiz = amb
+    cfg = json.loads(A.caminho_config_nuvens().read_text(encoding="utf-8"))
+    cfg["remotos"]["koofr"] = {"tipo": "koofr", "raiz": "koofr:JFN", "frio": "koofr:JFN/frio",
+                               "indice": "koofr:JFN/indice", "medir": "about", "margem_gb": 0.5,
+                               "preferencia_download": 4, "limites": {"download_bytes_dia": 1e9}}
+    cfg["segunda_copia"] = ["koofr", *cfg["segunda_copia"]]
+    novo = tmp_path_factory.mktemp("cfg") / "nuvens.json"
+    novo.write_text(json.dumps(cfg), encoding="utf-8")
+    try:
+        A.configurar(novo)
+        assert "koofr" in A.DESTINOS and A.POLITICA["insubstituivel"][1][0] == "koofr"
+        f = _arquivos(raiz)[0]
+        conteudo = f.read_bytes()
+        r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem"), con=A.conectar())
+        assert r["copias"] == {"gdrive": "ok", "koofr": "ok"} and r["apagado"]
+        assert A.obter(str(f), rc=NuvemFalsa(tmp / "nuvem")).read_bytes() == conteudo
+    finally:
+        A.configurar()
+    assert "koofr" not in A.DESTINOS                                          # controle: sem a config, não existe
+
+
+def test_ciclo_com_recusa_do_prevoo_escala_e_nao_apaga(amb):
+    tmp, raiz = amb
+    con = A.conectar()
+    perfil = Z.Perfil("teste", raizes=[Z.Raiz(raiz, "backup_db", idade_dias=1)], aviso_disco_pct=101)
+    cheios = {n: 25e9 for n in A.POLITICA["insubstituivel"][1]}
+    Z.rodar(perfil, aplicar=False, rc=NuvemFalsa(tmp / "nuvem"), con=con, avisar_fn=lambda t: True)
+    avisos, antes = [], _arquivos(raiz)
+    rel = Z.rodar(perfil, aplicar=True, rc=NuvemFalsa(tmp / "nuvem", uso_extra=cheios), con=con,
+                  avisar_fn=lambda t: avisos.append(t) or True)
+    assert rel["status"] == "abortado" and _arquivos(raiz) == antes and rel["recusas_prevoo"]
+    assert avisos and "pré-voo" in avisos[0] and "ESCALADO" in avisos[0]
+    assert con.execute("SELECT COUNT(*) FROM journal WHERE acao='recusado_prevoo'").fetchone()[0] >= 1
+
+
+def test_encher_respeita_alvo_e_prioridade(amb, monkeypatch):
+    import sqlite3
+    tmp, raiz = amb
+    monkeypatch.setattr(A, "HOME", tmp)
+    for nome, n in (("a.db", 30000), ("b.db", 30000)):
+        c = sqlite3.connect(tmp / nome)
+        c.execute("CREATE TABLE t(x)")
+        c.execute("INSERT INTO t VALUES(?)", (os.urandom(n),))       # incompressível
+        c.commit()
+        c.close()
+    itens = [{"nome": "a.db", "tipo": "sqlite", "caminho": "a.db", "classe": "backup_db"},
+             {"nome": "b.db", "tipo": "sqlite", "caminho": "b.db", "classe": "backup_db"},
+             {"nome": "ausente.db", "tipo": "sqlite", "caminho": "nao.db", "classe": "backup_db"}]
+    b2 = A.NUVENS["remotos"]["b2"]
+    alvo_b2 = (b2["armazenamento_gb"] - b2["margem_gb"] - b2.get("reserva_gb", 0)) * 1e9
+    tam_a = A.snapshot_sqlite_gz(tmp / "a.db", tmp / "medida" / "a.db.gz").stat().st_size   # o .gz real
+    nuvem = NuvemFalsa(tmp / "nuvem", uso_extra={"b2": alvo_b2 - tam_a - 1})   # no B2 só cabe o 1º
+    con = A.conectar()
+    plano = A.encher(con, nuvem, aplicar=False, itens=itens, remotos=["b2", "r2"])
+    assert plano[0]["destinos_plano"] == ["gdrive", "r2"] and plano[0]["talvez_comprimido"] == ["b2"]
+    assert plano[2]["status"] == "ausente"
+    assert not (tmp / "nuvem").exists()                                      # o plano não sobe nada
+    feito = A.encher(con, nuvem, aplicar=True, itens=itens, remotos=["b2", "r2"])
+    assert A.copias_ok(feito[0]["copias"]) == {"gdrive", "b2", "r2"}
+    assert A.copias_ok(feito[1]["copias"]) == {"gdrive", "r2"}               # o 2º não cabe mais no B2
+    assert A.obter(str(tmp / "a.db.gz"), rc=nuvem).exists()
