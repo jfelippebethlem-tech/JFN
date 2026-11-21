@@ -42,7 +42,9 @@ logger = logging.getLogger(__name__)
 _REPO = Path(__file__).resolve().parents[2]
 TAREFA = "conferencia_opus"
 MAX_TENTATIVAS = 3
-_RE_RECUSA_ITEM = re.compile(r"safeguards flagged", re.I)      # recusa por conteúdo do item, não falta de cota
+# falha do ITEM, não falta de cota: recusa por conteúdo; prazo estourado (a mesma entrada estoura de novo — 21/11/2026)
+_RE_RECUSA_ITEM = re.compile(r"safeguards flagged|passou do prazo", re.I)
+TIMEOUT_S = 600.0       # a perícia integral (até 240 mil caracteres) leva 200–220 s no Opus e tem 600 s; aqui eram 300
 # tarefa → "modulo:funcao(item, dados_opus, modelo_opus, concorda) -> bool" que regrava o registro do consumidor
 APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
                "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia"}
@@ -213,15 +215,15 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
         for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:
             entrada = zlib.decompress(blob).decode("utf-8", "replace") if blob else ""
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",
-                       timeout=300.0)
+                       timeout=TIMEOUT_S)
             if p is None:
                 if not _RE_RECUSA_ITEM.search(claude_motor.ultimo_motivo or ""):
                     break                              # sem assinatura agora: para sem gastar tentativa
-                # recusa do CONTEÚDO deste item (21/11/2026: o topo travou a fila 2,5 dias) — gasta tentativa e segue
+                # falha DESTE item (21/11/2026: o topo travou a fila 2,5 dias) — gasta tentativa e segue
                 con.execute("UPDATE fila SET tentativas=tentativas+1, status=CASE WHEN tentativas+1>=? THEN 'erro' "
                             "ELSE 'pendente' END WHERE id=?", (MAX_TENTATIVAS, fid))
                 con.commit()
-                feitos.append({"id": fid, "tarefa": tarefa, "item": item, "estado": "Opus recusou o conteúdo"})
+                feitos.append({"id": fid, "tarefa": tarefa, "item": item, "estado": "Opus recusou ou estourou o prazo"})
                 continue
             v_op, n_op = _normalizar(tarefa, p.texto)
             tinha_regua = ver is not None or niv is not None

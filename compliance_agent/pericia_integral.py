@@ -184,6 +184,15 @@ NOMES_EIXOS: tuple[str, ...] = tuple(e["nome"] for e in EIXOS)
 VALORES_PONTO = ("conforme", "desconforme", "nao_se_aplica", "indeterminado")
 REGIMES = ("8666", "14133", "13303", "outro", "indeterminado")
 _NIVEL_PONTO = {"conforme": 0, "desconforme": 1}
+# eixos gravados pelo agente Claude Code (18/11/2026): ponto = {"status": "atende"|"nao_atende"|…, "citacao": …}
+_PONTO_AGENTE = {"atende": "conforme", "nao_atende": "desconforme"}
+
+
+def _status_ponto(v) -> str:
+    if isinstance(v, dict):
+        v = v.get("status")
+    v = str(v or "indeterminado")
+    return _PONTO_AGENTE.get(v, v)
 
 _FALHAS_DB = (sqlite3.Error, OSError)
 
@@ -539,7 +548,8 @@ def _veredito_eixo(e: dict) -> str:
     g = e.get("grau")
     v = f"grau {g if g is not None else 'indeterminado'}"
     if e.get("achados"):
-        v += ": " + e["achados"][0]["descricao"][:60]
+        a = e["achados"][0]          # dict da perícia; texto nos eixos gravados pelo agente Claude Code (18/11/2026)
+        v += ": " + str(a.get("descricao") or "" if isinstance(a, dict) else a)[:60]
     return v
 
 
@@ -569,7 +579,7 @@ def _cruzar_pontos(processo: str, eixo: str, a: dict, modelo_ref: str, b: dict, 
     textos = {p["id"]: p["texto"] for e in EIXOS if e["nome"] == eixo for p in e["pontos"]}
     n = 0
     for pid in textos:
-        va, vb = pa.get(pid, "indeterminado"), pb.get(pid, "indeterminado")
+        va, vb = _status_ponto(pa.get(pid)), _status_ponto(pb.get(pid))
         if va not in _NIVEL_PONTO and vb not in _NIVEL_PONTO:
             continue
         try:

@@ -377,3 +377,19 @@ def test_regras_de_julgamento_no_prompt_de_todo_modelo():
         assert r in pr
     assert PI._fonte_do_prompt(pr).find("REGRAS DE JULGAMENTO") == -1
     assert PI.VERSAO_PROMPT == "pi-3" and PI.FRACAO_CALIBRACAO == 0.0
+
+
+def test_veredito_do_eixo_aceita_achado_em_texto():
+    """21/11/2026: 2.370 eixos gravados pelo agente Claude Code (18/11) têm `achados` como lista de TEXTO; o aplicador
+    da conferência do Opus quebrava (TypeError) e a divergência não era aplicada."""
+    assert PI._veredito_eixo({"grau": 1, "achados": ["30% da hora paga como improdutiva sem apontamento"]}) \
+        == "grau 1: 30% da hora paga como improdutiva sem apontamento"
+    assert PI._veredito_eixo({"grau": 2, "achados": [{"descricao": "sem atesto"}]}) == "grau 2: sem atesto"
+    assert PI._veredito_eixo({"grau": None, "achados": []}) == "grau indeterminado"
+
+
+def test_ponto_no_formato_do_agente_vira_a_regua_da_casa():
+    assert PI._status_ponto({"status": "atende", "citacao": "doc 7"}) == "conforme"
+    assert PI._status_ponto({"status": "nao_atende"}) == "desconforme"
+    assert PI._status_ponto({"status": "nao_se_aplica"}) == "nao_se_aplica"
+    assert PI._status_ponto("desconforme") == "desconforme" and PI._status_ponto(None) == "indeterminado"

@@ -322,3 +322,16 @@ def test_negativo_sem_assinatura_ainda_para_sem_gastar_tentativa():
     for _ in range(Q.MAX_TENTATIVAS + 1):
         assert Q.conferir(5, pensar=sem_cota) == []
     assert Q.painel()["erros"] == 0 and Q.pendente("pericia_execucao", "x")
+
+
+def test_prazo_estourado_no_item_gasta_tentativa_e_segue():
+    for item, valor in (("grande", 9e9), ("pequeno", 1.0)):
+        Q.enfileirar("pericia_execucao", item, f"prompt {item}", motor="groq:x", resposta=_exec("nao", 9), valor=valor)
+
+    def opus(t, p, **k):
+        if p == "prompt grande":
+            M.ultimo_motivo = "passou do prazo de 600 s"
+            return None
+        return Pensamento(texto=_exec("parcial", 6), modelo="claude-opus-5-5", segundos=1, tarefa=t)
+    Q.conferir(5, pensar=opus)
+    assert not Q.pendente("pericia_execucao", "pequeno") and Q.pendente("pericia_execucao", "grande")
