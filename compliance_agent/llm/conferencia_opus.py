@@ -29,6 +29,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import zlib
 from datetime import datetime
@@ -41,6 +42,7 @@ logger = logging.getLogger(__name__)
 _REPO = Path(__file__).resolve().parents[2]
 TAREFA = "conferencia_opus"
 MAX_TENTATIVAS = 3
+_RE_RECUSA_ITEM = re.compile(r"safeguards flagged", re.I)      # recusa por conteúdo do item, não falta de cota
 # tarefa → "modulo:funcao(item, dados_opus, modelo_opus, concorda) -> bool" que regrava o registro do consumidor
 APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
                "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia"}
@@ -213,7 +215,14 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",
                        timeout=300.0)
             if p is None:
-                break                                  # sem assinatura agora: para sem gastar tentativa
+                if not _RE_RECUSA_ITEM.search(claude_motor.ultimo_motivo or ""):
+                    break                              # sem assinatura agora: para sem gastar tentativa
+                # recusa do CONTEÚDO deste item (21/11/2026: o topo travou a fila 2,5 dias) — gasta tentativa e segue
+                con.execute("UPDATE fila SET tentativas=tentativas+1, status=CASE WHEN tentativas+1>=? THEN 'erro' "
+                            "ELSE 'pendente' END WHERE id=?", (MAX_TENTATIVAS, fid))
+                con.commit()
+                feitos.append({"id": fid, "tarefa": tarefa, "item": item, "estado": "Opus recusou o conteúdo"})
+                continue
             v_op, n_op = _normalizar(tarefa, p.texto)
             tinha_regua = ver is not None or niv is not None
             if tinha_regua and v_op is None and n_op is None:        # Opus fora do formato: não vale como conferência

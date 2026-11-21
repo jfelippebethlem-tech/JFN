@@ -291,3 +291,34 @@ def test_rota_do_painel_nao_expoe_custo():
     j = TestClient(app).get("/api/ao-vivo/conferencia-opus").json()
     assert j["disponivel"] and j["pendentes"] == 1 and j["itens"][0]["item"] == "sei:SEI-5"
     assert not any(k in json.dumps(j).lower() for k in ("usd", "us$", "custo", "chamadas"))
+
+
+def test_recusa_de_conteudo_do_opus_nao_trava_a_fila_inteira(monkeypatch):
+    """21/11/2026: o item do topo recebia "safeguards flagged" (recusa por conteúdo, não por cota) toda hora desde
+    19/11 03:28; `conferir` parava sem gastar tentativa e 4.747 itens ficaram 2,5 dias sem conferência."""
+    for item, valor in (("topo", 9e9), ("segundo", 1.0)):
+        Q.enfileirar("pericia_execucao", item, f"prompt {item}", motor="groq:x", resposta=_exec("nao", 9), valor=valor)
+    recusa = "o claude respondeu com erro (outro): API Error: Opus 5.5's safeguards flagged this message"
+
+    def opus(t, p, **k):
+        if p == "prompt topo":
+            M.ultimo_motivo = recusa
+            return None
+        return Pensamento(texto=_exec("parcial", 6), modelo="claude-opus-5-5", segundos=1, tarefa=t)
+    for _ in range(Q.MAX_TENTATIVAS):
+        feitos = Q.conferir(5, pensar=opus)
+        assert any(f.get("item") == "segundo" for f in feitos) or not Q.pendente("pericia_execucao", "segundo")
+    assert not Q.pendente("pericia_execucao", "segundo")
+    assert Q.pendente("pericia_execucao", "topo")                 # recusado nunca vira VERIFICADO; vai a "erro"
+    assert Q.painel()["erros"] == 1
+
+
+def test_negativo_sem_assinatura_ainda_para_sem_gastar_tentativa():
+    Q.enfileirar("pericia_execucao", "x", "prompt x", motor="groq:x", resposta=_exec("nao", 9))
+
+    def sem_cota(t, p, **k):
+        M.ultimo_motivo = "contingência — limite da assinatura"
+        return None
+    for _ in range(Q.MAX_TENTATIVAS + 1):
+        assert Q.conferir(5, pensar=sem_cota) == []
+    assert Q.painel()["erros"] == 0 and Q.pendente("pericia_execucao", "x")
