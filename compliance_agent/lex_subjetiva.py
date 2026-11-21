@@ -83,8 +83,8 @@ def avaliar(alvo: str, fatos: list[dict], achados: list[dict], lacunas: list[str
         try:
             from compliance_agent.llm import claude_motor
             motivo = claude_motor.ultimo_motivo or ""
-        except Exception:  # noqa: BLE001
-            pass
+        except ImportError as exc:                 # sem o motor, o motivo fica genérico (e é dito)
+            logger.debug("motivo do motor indisponível: %s", exc)
         return {"estado": "INDISPONÍVEL", "motivo": f"Opus pela assinatura indisponível ({motivo or 'sem resposta'})"}
     modelo = str(getattr(r, "modelo", "") or "")
     if "@api" in modelo or "opus" not in modelo.lower():
