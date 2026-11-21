@@ -58,18 +58,46 @@ def _dir_sz(d: Path) -> int:
     return sum(_sz(p) for p in d.rglob("*") if p.is_file()) if d.exists() else 0
 
 
-def checkpoint_wal(db: str = _DB) -> dict:
-    """Devolve o WAL ao banco e trunca o arquivo .db-wal (maior ganho de disco)."""
+_WAL_TETO = 64 * 1024 * 1024
+_MODO_CHECKPOINT = "TRUNCATE"   # trocado só pelo teste, para simular o `busy` que o cron via
+
+
+def checkpoint_wal(db: str = _DB, teto_wal: int = _WAL_TETO, timeout: float = 60,
+                   tentativas: int = 20, intervalo_s: float = 3.0) -> dict:
+    """Devolve o WAL ao banco e trunca o arquivo .db-wal (maior ganho de disco).
+
+    SEGUNDA VIA (21/11/2026). O TRUNCATE precisa de um instante sem NENHUM leitor no WAL; com a sonda
+    de integridade, os sweeps e o servidor, voltou `busy` em toda rodada e o arquivo ficou em 4,5 GB
+    com ~1.000 quadros em uso. Se ele não encolheu: `journal_size_limit` + checkpoint RESTART + uma
+    escrita NEUTRA (`user_version` = o próprio valor; ninguém na casa usa o campo). Essa escrita é a
+    que reinicia o log, e o SQLite trunca o arquivo ao teto no commit. Nenhum dado muda; se outro
+    escritor chegar antes, ela só vira um quadro a mais e a próxima rodada tenta de novo."""
     antes = _sz(db + "-wal")
-    con = sqlite3.connect(db, timeout=60)
+    reinicio = False
+    con = sqlite3.connect(db, timeout=timeout)
     try:
         # garante WAL e checkpoint completo
         con.execute("PRAGMA journal_mode=WAL")
-        res = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+        con.execute(f"PRAGMA journal_size_limit={int(teto_wal)}")
+        res = con.execute(f"PRAGMA wal_checkpoint({_MODO_CHECKPOINT})").fetchone()
         con.commit()
+        # O reinício do log é UMA tentativa de trava, sem busy handler (walRestartLog): basta um leitor
+        # com marca no WAL naquele instante. Medido 21/11: servidor, sweeps e pytest sempre há algum —
+        # então algumas tentativas espaçadas, cada uma custando no máximo um quadro de 1 página.
+        for i in range(tentativas):
+            if _sz(db + "-wal") <= teto_wal:
+                break
+            if i:
+                time.sleep(intervalo_s)
+            con.execute("PRAGMA wal_checkpoint(RESTART)").fetchone()
+            v = int(con.execute("PRAGMA user_version").fetchone()[0])
+            con.execute(f"PRAGMA user_version={v}")   # fora de transação implícita: commit na hora
+            con.commit()
+            reinicio = _sz(db + "-wal") <= teto_wal
     finally:
         con.close()
-    return {"wal_antes": antes, "wal_depois": _sz(db + "-wal"), "pragma": res}
+    return {"wal_antes": antes, "wal_depois": _sz(db + "-wal"), "pragma": res,
+            "reinicio_log": reinicio}
 
 
 _VACUUM_MIN_LIVRE_PCT = 5.0

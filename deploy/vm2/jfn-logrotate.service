@@ -1,0 +1,8 @@
+[Unit]
+Description=JFN — rotação + gzip -9 dos logs grandes da VM-2 (copytruncate; deploy/logrotate/jfn-vm2.conf)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate -s /home/ubuntu/.local/state/jfn-logrotate.state /home/ubuntu/.config/logrotate/jfn-vm2.conf
+Nice=19
+IOSchedulingClass=idle

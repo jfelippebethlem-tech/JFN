@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — rotação diária dos logs grandes da VM-2
+
+[Timer]
+OnCalendar=*-*-* 08:15:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
