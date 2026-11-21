@@ -44,6 +44,9 @@ TAREFA = "conferencia_opus"
 MAX_TENTATIVAS = 3
 # falha do ITEM, não falta de cota: recusa por conteúdo; prazo estourado (a mesma entrada estoura de novo — 21/11/2026)
 _RE_RECUSA_ITEM = re.compile(r"safeguards flagged|passou do prazo", re.I)
+# a trava do motor é uma só e a perícia integral a segura ~200 s por processo: com a espera padrão (90 s) a rodada
+# desistia no 3º item (medido 21/11 20:30); o cron é horário com teto de 1.500 s, esperar a vez não custa cota
+ESPERA_TRAVA_S = 420.0
 TIMEOUT_S = 600.0       # a perícia integral (até 240 mil caracteres) leva 200–220 s no Opus e tem 600 s; aqui eram 300
 # tarefa → "modulo:funcao(item, dados_opus, modelo_opus, concorda) -> bool" que regrava o registro do consumidor
 APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
@@ -215,7 +218,7 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
         for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:
             entrada = zlib.decompress(blob).decode("utf-8", "replace") if blob else ""
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",
-                       timeout=TIMEOUT_S)
+                       timeout=TIMEOUT_S, espera=ESPERA_TRAVA_S)
             if p is None:
                 if not _RE_RECUSA_ITEM.search(claude_motor.ultimo_motivo or ""):
                     break                              # sem assinatura agora: para sem gastar tentativa
