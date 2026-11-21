@@ -228,3 +228,15 @@ def test_camada_subjetiva_tem_saida_maior(tmp_path, monkeypatch):
     A.pensar_api("camada_subjetiva", "p1", cliente=cli)
     A.pensar_api("triagem_alertas", "p2", cliente=cli)
     assert [c["max_tokens"] for c in cli.criados] == [16000, 4000]
+
+
+def test_avulso_soma_ao_limite_e_juizo_vai_ao_sonnet(tmp_path, monkeypatch):
+    """Dono 20/11/2026: US$ 50 avulsos do crédito do plano; Opus pedido vira Sonnet (não Haiku); Opus nunca."""
+    f = tmp_path / "c.env"
+    f.write_text("ANTHROPIC_API_KEY_JFN=x\nJFN_API_CICLO_DIA=19\nJFN_API_CICLO_USD=200\nJFN_API_AVULSO_USD=50\n")
+    monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(f))
+    c = A.ciclo()
+    assert A.limite_efetivo(A.ler_gasto()) == pytest.approx(c["liberado_usd"] + 50)
+    assert A._sem_opus("claude-opus-5-5") == A.MODELO_VOLUME and "opus" not in A._sem_opus("claude-opus-5-5")
+    f.write_text("ANTHROPIC_API_KEY_JFN=x\nJFN_API_CICLO_DIA=19\nJFN_API_CICLO_USD=200\n")
+    assert A._sem_opus("claude-opus-5-5") == A.MODELO_API_PADRAO       # sem avulso: Haiku, como antes

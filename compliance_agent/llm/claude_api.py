@@ -107,10 +107,13 @@ def modelo_para(tarefa: str) -> str:
 
 
 def _sem_opus(modelo: str) -> str:
-    # pela FAMÍLIA, não pelo id: um Opus de outra versão também não passa pela API (decisão do dono, 13/11/2026)
+    # pela FAMÍLIA, não pelo id: um Opus de outra versão também não passa pela API (decisão do dono, 13/11/2026).
+    # Com a liberação AVULSA (dono, 20/11/2026: "bora usar os créditos de api pra não terminar a cota"), o juízo que
+    # pedia Opus cai no Sonnet — melhor que o Haiku; a resposta segue marcada @api e vai à conferência do Opus.
     if "opus" in (modelo or "").lower():
-        logger.info("claude_api: Opus pedido pela API — rebaixado para %s (decisão do dono)", MODELO_API_PADRAO)
-        return MODELO_API_PADRAO
+        destino = MODELO_VOLUME if _avulso_usd() > 0 else MODELO_API_PADRAO
+        logger.info("claude_api: Opus pedido pela API — rebaixado para %s (decisão do dono)", destino)
+        return destino
     return modelo
 
 
@@ -186,6 +189,16 @@ def _base_ciclo(d: dict, c: dict) -> float:
     return float(bases[c["inicio"]])
 
 
+def _avulso_usd() -> float:
+    """Liberação AVULSA (fora do ritmo diário) do crédito do plano — `JFN_API_AVULSO_USD` no .env da chave.
+    Dono, 20/11/2026: "pode usar 50 dólares dos créditos da claude ultra" para não esgotar a cota da assinatura."""
+    bruto = os.environ.get("JFN_API_AVULSO_USD") or _ler_env().get("JFN_API_AVULSO_USD") or "0"
+    try:
+        return max(0.0, float(bruto))
+    except ValueError:
+        return 0.0
+
+
 def limite_efetivo(d: dict | None = None) -> float:
     """Teto operante em US$ acumulados no livro-caixa. Com ciclo configurado: base do ciclo + o liberado até hoje
     (ritmo diário); sem ciclo: teto fixo − margem."""
@@ -194,7 +207,7 @@ def limite_efetivo(d: dict | None = None) -> float:
         return max(0.0, teto_usd() - MARGEM_USD)
     d = d if d is not None else ler_gasto()
     base = float((d.get("ciclos") or {}).get(c["inicio"], d["total_usd"] + d["reservado_usd"]))
-    return round(base + c["liberado_usd"], 6)
+    return round(base + c["liberado_usd"] + _avulso_usd(), 6)
 
 
 def _escala_baldes(d: dict) -> float:
@@ -202,7 +215,7 @@ def _escala_baldes(d: dict) -> float:
     c = ciclo()
     if c is None:
         return 1.0
-    return max(1.0, (_base_ciclo(d, c) + c["usd"]) / sum(BALDES_USD.values()))
+    return max(1.0, (_base_ciclo(d, c) + c["usd"] + _avulso_usd()) / sum(BALDES_USD.values()))
 
 
 def disponivel() -> bool:
