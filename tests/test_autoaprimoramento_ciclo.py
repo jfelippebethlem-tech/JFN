@@ -19,6 +19,9 @@ def auto(tmp_path, monkeypatch):
     monkeypatch.setenv("JFN_AUTOAPRIMORAMENTO_DIR", str(tmp_path / "auto"))
     monkeypatch.delenv("JFN_AUTOAPRIMORAMENTO", raising=False)
     monkeypatch.delenv("JFN_AUTOAPRIMORAMENTO_KILL", raising=False)
+    # 21/11/2026: com o cache vazio, L._regras_calibracao() chamava llm.memoria.lembrar → create_all no banco de
+    # PRODUÇÃO (em checkout limpo criava data/compliance.db; passada-final.md §6.5). As lições de memória não são o alvo.
+    monkeypatch.setattr(L, "_REGRAS_CACHE", [])
     con = ledger.conectar()
     registro.preparar(con)
     yield con

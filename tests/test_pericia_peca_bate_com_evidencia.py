@@ -13,6 +13,7 @@ primeira coisa que achou foi um defeito anterior.
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -31,6 +32,8 @@ def _mapa_da_peca() -> dict:
 
 def _chaves_reais() -> dict[str, set[str]]:
     """Chaves de evidência que cada detector realmente produz, medidas no acervo."""
+    if not Path("data/compliance.db").exists():      # 21/11/2026: em checkout limpo o connect levantava em vez de pular
+        return {}
     con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True, timeout=60)
     con.row_factory = sqlite3.Row
     saida: dict[str, set[str]] = {}

@@ -20,8 +20,10 @@
 #   bash tools/pre_push_gate.sh            # usado pelo hook .git/hooks/pre-push
 #   bash tools/pre_push_gate.sh --so-catracas
 set -u
-cd /home/ubuntu/JFN || exit 0
-PY=.venv/bin/python
+# 21/11/2026: era `cd /home/ubuntu/JFN` fixo — o push que sai de um worktree media o checkout principal (outro HEAD,
+# outro índice) e aprovava sem ter rodado os testes do que ia (docs/untangle/passada-final.md §7.5). O venv é um só.
+cd "$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ubuntu/JFN)" || exit 0
+PY=/home/ubuntu/JFN/.venv/bin/python
 [ -x "$PY" ] || { echo "[pre-push] venv ausente — não medi"; exit 0; }
 
 # O inventário de rotas ENTROU em 2026-08-11, e estava prometido no cabeçalho desde o primeiro dia
