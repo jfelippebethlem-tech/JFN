@@ -630,8 +630,7 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
     function parar(){v.classList.remove('on');v.pause();v.removeAttribute('src');try{v.load()}catch(_){}}
     function ligar(){
       if(rm.matches||poupa){parar();return;}
-      var src=window.JFN_LOGIN_V61?'/static/login/v61/fluxo'+(matchMedia('(max-width:760px)').matches?'-m':'')+'.mp4'
-              :'/static/login/login-'+(larga.matches?'169':'916')+'.mp4';
+      var src='/static/login/v61/fluxo'+(matchMedia('(max-width:760px)').matches?'-m':'')+'.mp4';
       if(v.getAttribute('src')===src)return;
       v.classList.remove('on');v.src=src;
       var p=v.play();if(p&&p.catch)p.catch(function(){});

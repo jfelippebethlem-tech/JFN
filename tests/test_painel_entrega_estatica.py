@@ -18,7 +18,7 @@ def cli():
 
 def test_video_nao_e_gzipado_e_range_fica_integro(cli):
     h = {"Accept-Encoding": "gzip", "Range": "bytes=0-1023"}
-    r = cli.get("/static/assets/portal-hero.mp4", headers=h)
+    r = cli.get("/static/assets/v68/fluxo_hero.mp4", headers=h)   # portal-hero.mp4 saiu (tema escuro, 21/11)
     assert r.status_code == 206
     assert "content-encoding" not in r.headers
     assert len(r.content) == 1024
