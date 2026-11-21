@@ -54,7 +54,9 @@ FIM_S = 2 * 3600     # as 2 h finais antes da virada
 def dia_da_virada(volta_ts: float, agora: float) -> bool:
     """Mesmo dia do calendário (hora local) da virada da semana, antes dela."""
     return agora < volta_ts and datetime.fromtimestamp(agora).date() == datetime.fromtimestamp(volta_ts).date()
-FOLGA = 5.0           # faixa de ECONOMIA abaixo da linha
+FOLGA = 5.0           # faixa de ECONOMIA abaixo da linha…
+FOLGA_REL = 0.2       # …mas no máximo 20% da linha: logo após a virada a linha é baixa (5% na 1ª hora) e a faixa
+                      # fixa de 5 pontos punha o motor em economia já com 0,3% usado (21/11)
 VALIDADE_S = 2 * 3600
 REAVALIAR_S = 15 * 60
 
@@ -133,7 +135,7 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
     if pct >= ln:
         return dict(out, nivel="contido", motivo=f"assinatura em {pct:.0f}% da semana, acima do ritmo ({ln:.0f}%) que a "
                                                  f"faz durar até {m['semana_volta'][:16]}")
-    if pct >= ln - FOLGA:
+    if pct >= ln - min(FOLGA, ln * FOLGA_REL):
         return dict(out, nivel="economia", motivo=f"assinatura em {pct:.0f}% da semana, perto do ritmo ({ln:.0f}%) — "
                                                   f"só o Opus que confere")
     return dict(out, motivo=f"assinatura em {pct:.0f}% da semana, abaixo do ritmo ({ln:.0f}%)")

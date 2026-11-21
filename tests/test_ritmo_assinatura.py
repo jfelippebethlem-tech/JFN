@@ -111,3 +111,14 @@ def test_vespera_da_virada_motor_vai_ate_90():
     assert R.classificar(m, sexta)["nivel"] in ("normal", "economia")
     m["semana_pct"] = 90.0
     assert R.classificar(m, sexta)["nivel"] == "contido"
+
+
+def test_logo_apos_a_virada_a_faixa_de_economia_e_proporcional():
+    """21/11: 1% usado logo após a virada (linha ~5%) caía em economia pela faixa fixa de 5 pontos."""
+    agora = VOLTA - R.SEMANA_S + 3600       # 1 h depois da virada
+    ln = R.linha(VOLTA, agora)
+    assert ln < 10
+    m = lambda p: R.extrair(_bruto(p), agora)
+    assert R.classificar(m(1), agora)["nivel"] == "normal"
+    assert R.classificar(m(ln - 0.3), agora)["nivel"] == "economia"
+    assert R.classificar(m(ln + 0.5), agora)["nivel"] == "contido"
