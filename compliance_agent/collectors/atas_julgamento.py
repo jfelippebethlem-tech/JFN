@@ -25,6 +25,7 @@ import httpx
 
 from compliance_agent.collectors.arquivos import abrir_banco
 from compliance_agent.collectors.pncp import _get_pncp, _parse_id_pncp, _texto_de_pdf
+from compliance_agent.collectors.pncp_resultados import certames_da_esfera
 
 logger = logging.getLogger(__name__)
 
@@ -155,10 +156,17 @@ async def _certames_pendentes(con, limite: int) -> list[tuple[str, str]]:
         f"AND p.certame NOT IN (SELECT certame FROM ata_documento) "
         f"AND p.certame NOT IN (SELECT certame FROM ata_exame WHERE examinado_em > datetime('now', "
         f"  CASE WHEN motivo IN ({','.join('?' * len(_MOTIVOS_TRANSITORIOS))}) THEN ? ELSE ? END)) "
-        f"ORDER BY prio, p.data_pub DESC LIMIT ?",
+        f"ORDER BY prio, p.data_pub DESC",
         (*_MODALIDADES_COMPETITIVAS, *_MOTIVOS_TRANSITORIOS, f"-{_REEXAME_INDISPONIVEL_DIAS} days",
-         f"-{_REEXAME_DIAS} days", limite)).fetchall()
-    return [(r[0], r[1]) for r in rows]
+         f"-{_REEXAME_DIAS} days")).fetchall()
+    # 21/11/2026: só Estado do RJ + Prefeitura do Rio (dono 19/11, filtro canônico). Antes, 323 dos 400 da
+    # noite eram de outros entes (municípios do interior, federais) e o motor gravava 0 ata do escopo.
+    rf, con.row_factory = con.row_factory, sqlite3.Row      # o filtro lê as colunas pelo nome
+    try:
+        alvo = certames_da_esfera(con, None)
+    finally:
+        con.row_factory = rf
+    return [(r[0], r[1]) for r in rows if alvo is None or r[0] in alvo][:limite]
 
 
 def _anotar(tot: dict, certame: str, titulo: str, motivo: str, teto: int = 12) -> None:

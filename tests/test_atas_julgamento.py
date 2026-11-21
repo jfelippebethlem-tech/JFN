@@ -57,10 +57,12 @@ def test_extrair_texto_sem_ocr_devolve_pdf_pobre(monkeypatch):
 def _db_certames(tmp_path, n=5):
     """Banco sintético: `n` certames competitivos com vencedor; nenhum com ata."""
     con = sqlite3.connect(str(tmp_path / "c.db"))
-    con.execute("CREATE TABLE pncp_resultado(certame, orgao_cnpj, modalidade, ordem_classificacao, data_pub)")
+    con.execute("CREATE TABLE pncp_resultado(certame, orgao_cnpj, modalidade, ordem_classificacao, data_pub, "
+                "orgao_nome, unidade_nome, municipio)")
     con.execute("CREATE TABLE certame_indice(certame, faixa)")
-    con.executemany("INSERT INTO pncp_resultado VALUES (?,?,6,1,?)",
-                    [(f"00000000000100-1-{i:06d}/2026", "00000000000100", f"2026-01-{i + 1:02d}")
+    con.executemany("INSERT INTO pncp_resultado VALUES (?,?,6,1,?,?,?,?)",      # órgão do Estado do RJ (escopo)
+                    [(f"42498600000171-1-{i:06d}/2026", "42498600000171", f"2026-01-{i + 1:02d}",
+                      "ESTADO DO RIO DE JANEIRO", "SECRETARIA DE ESTADO DE FAZENDA", "Rio de Janeiro")
                      for i in range(n)])
     con.commit()
     return con
@@ -83,6 +85,17 @@ def test_cursor_dias_seguidos_examinam_certames_diferentes(tmp_path, monkeypatch
     assert len(dia1) == 2 and len(dia2) == 2 and dia1.isdisjoint(dia2)
     motivos = dict(con.execute("SELECT certame, motivo FROM ata_exame"))
     assert set(motivos) == dia1 and set(motivos.values()) == {"sem_arquivo_no_pncp"}
+
+
+def test_fila_so_tem_certame_do_escopo_rj(tmp_path):
+    """21/11/2026: 323 dos 400 da noite eram de municípios do interior e federais (fora do escopo, dono 19/11)."""
+    import asyncio
+    con = _db_certames(tmp_path, n=2)
+    con.execute("INSERT INTO pncp_resultado VALUES (?,?,6,1,?,?,?,?)",
+                ("29115466000114-1-000016/2025", "29115466000114", "2026-02-01",
+                 "MUNICIPIO DE CONCEICAO DE MACABU", "PREFEITURA MUNICIPAL DE CONCEICAO DE MACABU", "Conceição de Macabu"))
+    fila = {c for c, _ in asyncio.run(AJ._certames_pendentes(con, 10))}
+    assert len(fila) == 2 and "29115466000114-1-000016/2025" not in fila
 
 
 def test_fila_esgotada_e_declarada(tmp_path, monkeypatch):
