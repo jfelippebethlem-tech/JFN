@@ -88,6 +88,9 @@ def configurar(caminho: Path | str | None = None) -> dict:
     reob = os.environ.get("JFN_DESTINO_REOBTIVEL", principal)
     if reob not in rem:
         raise ValueError(f"JFN_DESTINO_REOBTIVEL inválido: {reob}")
+    for n in (principal, reob):         # `so_copia_extra` (ex.: TeraBox): nunca cópia única
+        if rem[n].get("so_copia_extra"):
+            raise ValueError(f"{n} é só 2ª/3ª cópia (so_copia_extra) — não pode ser principal nem o re-obtível")
     NUVENS = cfg
     DESTINOS = {n: c["frio"] for n, c in rem.items()}
     INDICE_REMOTO = {n: c["indice"] for n, c in rem.items() if c.get("indice") and (n == principal or n in segunda)}
@@ -388,12 +391,17 @@ class Orcamento:
         if au is None:
             return f"{nome}: uso real não medido — sem medida não sobe (fechado por padrão)"
         alvo, usado = au
+        maxi = NUVENS["remotos"][nome].get("max_arquivo_gb")
+        if maxi and nbytes > float(maxi) * 1e9:
+            return f"{nome}: arquivo de {nbytes / 1e9:.2f} GB > teto de {maxi} GB por arquivo"
         if usado - substitui + nbytes > alvo:
             return (f"{nome}: armazenado {usado / 1e9:.2f} GB + {nbytes / 1e9:.3f} GB > alvo {alvo / 1e9:.2f} GB "
                     f"(limite − margem − reserva)")
         return None
 
     def somar_uso(self, nome: str, nbytes: int) -> None:
+        if nbytes < 0 and NUVENS["remotos"].get(nome, {}).get("apagar_libera") is False:
+            return                          # apagado vai para a lixeira do provedor: a cota não volta
         if self.uso.get(nome):
             self.uso[nome]["usado"] = float(self.uso[nome]["usado"]) + nbytes
 
@@ -531,6 +539,42 @@ class Rclone:
         self._registrar(nd, "enviar", r, nbytes)
         if r.returncode == 0 and nd and self.orcamento:
             self.orcamento.somar_uso(nd, nbytes)
+        return r.returncode == 0, (r.stderr or "")[-500:]
+
+    def copiar_lote(self, origem: str, destino: str, itens: list[tuple[str, int]]) -> tuple[bool, str]:
+        """Remoto → remoto de MUITOS objetos num processo só (`copy --files-from`): o rclone resolve cada pasta
+        do Drive uma vez (cópia avulsa = ~2 min por arquivo com o cliente OAuth compartilhado, medido 21/11).
+        `itens` = [(caminho relativo à base, bytes)]. Orça a soma na origem e no destino. O rc não é prova: quem
+        chama confere pela listagem."""
+        no, nd = nome_remoto(origem), nome_remoto(destino)
+        total = sum(n for _, n in itens)
+        custos = {}
+        for nome, op in ((no, "baixar"), (nd, "enviar")):
+            if nome is None or self.orcamento is None:
+                continue
+            c: dict[str, float] = {}
+            for _, n in itens:
+                for k, v in self._custo(nome, op, n, 0, False).items():
+                    c[k] = c.get(k, 0) + v
+            motivo = self.orcamento.recusa(nome, c) or (self.orcamento.cabe(nome, total, self) if op == "enviar"
+                                                        else None)
+            if motivo:
+                self.orcamento.recusas.append(f"copiar_lote {origem} → {destino}: {motivo}")
+                return False, "RECUSADO pelo pré-voo (limite grátis): " + motivo
+            custos[nome] = c
+        with tempfile.NamedTemporaryFile("w", suffix=".lista", dir=_tmp_base(), delete=False) as f:
+            f.write("\n".join(rel for rel, _ in itens) + "\n")
+        try:
+            r = self._run(["copy", "--checksum", "--files-from-raw", f.name, "--transfers", "4", "--no-traverse",
+                           origem, destino])
+        finally:
+            Path(f.name).unlink(missing_ok=True)
+        for nome, c in custos.items():
+            self.orcamento.registrar(nome, c)
+            if r.returncode != 0 and NUVENS["remotos"][nome].get("limites") and _RX_CAP.search(r.stderr or ""):
+                self.orcamento.esgotar(nome, (r.stderr or "")[-300:])
+        if r.returncode == 0 and nd and self.orcamento:
+            self.orcamento.somar_uso(nd, total)
         return r.returncode == 0, (r.stderr or "")[-500:]
 
     def stat(self, remoto: str) -> dict | None:
@@ -1186,63 +1230,101 @@ def consolidar_legado(con: sqlite3.Connection, rc: Rclone, aplicar: bool = False
                       ignorar: set[str] | None = None, maq: str | None = None) -> list[dict]:
     """`frio/` do R2 e do B2 eram cópias iguais (offload-nuvem.sh) e o R2 recebeu o re-obtível da VM-2 em 21/11:
     os dois passaram dos 10 GB grátis. Política: re-obtível → só o principal (Drive); insubstituível → principal
-    + o que couber no grátis (fica onde está). Para cada objeto do R2 desta máquina (`<maq>/…`, o índice dela é
-    quem sabe dos pacotes): garante a cópia no Drive conferida por hash e SÓ ENTÃO apaga o re-obtível do R2 e
-    do B2. `ignorar`: caminhos que não vão ao Drive nem ficam (duplicata provada à parte)."""
+    + o que couber no grátis (fica onde está). Só o prefixo desta máquina (`<maq>/…`: o índice dela é quem sabe
+    dos pacotes). Conferência pela LISTAGEM (uma `lsjson -R --hash` por remoto, antes e depois da cópia — o
+    `stat` de um objeto no Drive leva 1–2 min com o cliente OAuth compartilhado): só o re-obtível cuja cópia no
+    principal tem o MESMO tamanho e o MESMO md5 da listagem é apagado do R2 e do B2. `ignorar`: caminhos que
+    não vão ao Drive nem ficam (duplicata provada à parte)."""
     maq = maq or maquina()
     principal = NUVENS["principal"]
-    r2 = {i["Path"]: i for i in (rc.listar(DESTINOS["r2"]) or [])}
-    b2 = {i["Path"]: i for i in (rc.listar(DESTINOS["b2"]) or [])}
+    pref = f"{maq}/"
+
+    def lista(d: str) -> dict | None:
+        itens = rc.listar(f"{DESTINOS[d]}/{maq}")
+        return None if itens is None else {pref + i["Path"]: i for i in itens}
+
+    def hs(i: dict) -> dict:
+        return {k.lower(): (v or "").lower() for k, v in ((i or {}).get("Hashes") or {}).items()}
+
+    def no_principal(gd: dict, path: str, tam: int, md5: str) -> str:
+        g = gd.get(path)
+        if g is None:
+            return "sumida"
+        if int(g.get("Size", -1)) != tam:
+            return "divergente"
+        h = hs(g).get("md5")
+        return "ok" if h == md5 else ("divergente" if h else "sem_hash")
+
+    r2, b2, gd = lista("r2"), lista("b2"), lista(principal)
     if not r2:
         raise ErroArmazenamento("listagem do R2 vazia ou falhou — nada a consolidar")
-    out = []
+    if gd is None:
+        raise ErroArmazenamento(f"listagem do principal ({principal}) falhou — sem ela nada sai do R2/B2")
+    regs = []
     for path, o in sorted(r2.items()):
-        if (ignorar and path in ignorar) or not path.startswith(f"{maq}/"):
+        if ignorar and path in ignorar:
             continue
-        ja = con.execute("SELECT classe, natureza FROM unidades WHERE chave=?", (path,)).fetchone()
+        ja = con.execute("SELECT classe FROM unidades WHERE chave=?", (path,)).fetchone()
         classe = ja["classe"] if ja else classe_por_caminho(path)
-        nat = CLASSES[classe]
         tam = int(o.get("Size", -1))
-        md5 = ((o.get("Hashes") or {}).get("md5") or "").lower() or rc.hash_baixando(url("r2", path), "md5", tam)
-        sha1 = rc.hash_baixando(url("r2", path), "sha1", tam) if nat == "insubstituivel" else ""
+        md5 = hs(o).get("md5") or rc.hash_baixando(url("r2", path), "md5", tam) or ""
+        reg = {"path": path, "classe": classe, "natureza": CLASSES[classe], "bytes": tam, "md5": md5,
+               "_no_indice": bool(ja)}
         if not md5:
-            out.append({"path": path, "status": "sem md5 no R2"})
-            continue
-        reg = {"path": path, "classe": classe, "natureza": nat, "bytes": tam}
-        st, _, det = conferir_copia(rc, principal, path, tam, md5, sha1 or "-")
-        if st != "ok" and aplicar:
-            ok, err = rc.copiar(url("r2", path), url(principal, path), tam)
-            st, _, det = conferir_copia(rc, principal, path, tam, md5, sha1 or "-")
-            if st != "ok":
-                det = f"{det} | {err[-200:]}"
-        reg[principal] = st
-        if st != "ok":
-            reg["detalhe"] = det[:300]
-        b = b2.get(path)
-        bsha = ((b or {}).get("Hashes") or {}).get("sha1", "").lower() if b else ""
-        reg["b2"] = "ausente" if not b else ("ok" if (int(b.get("Size", -2)) == tam and (not sha1 or bsha == sha1))
-                                             else "divergente")
-        if not ja:                          # o que o índice não conhecia entra como arquivo (nunca rebaixa pacote)
+            reg[principal] = "sem md5 no R2"
+        else:
+            reg[principal] = no_principal(gd, path, tam, md5)
+        b = (b2 or {}).get(path)
+        reg["b2"] = "não listado" if b2 is None else ("ausente" if not b else
+                                                       ("ok" if int(b.get("Size", -2)) == tam else "divergente"))
+        reg["_b2_sha1"] = hs(b).get("sha1", "") if b else ""
+        regs.append(reg)
+    if aplicar:
+        faltam = [r for r in regs if r["md5"] and r[principal] != "ok"]
+        copiados = len(faltam)
+        for i in range(0, len(faltam), 100):              # lotes de 100: uma falha não perde a rodada inteira
+            lote = faltam[i:i + 100]
+            ok, err = rc.copiar_lote(f"{DESTINOS['r2']}/{maq}", f"{DESTINOS[principal]}/{maq}",
+                                     [(r["path"][len(pref):], r["bytes"]) for r in lote])
+            if not ok:
+                for r in lote:
+                    r["erro_copia"] = err[-200:]
+        if copiados:
+            gd = lista(principal)
+            if gd is None:
+                raise ErroArmazenamento("relistagem do principal falhou depois da cópia — nada sai do R2/B2")
+            for reg in regs:
+                if reg["md5"]:
+                    reg[principal] = no_principal(gd, reg["path"], reg["bytes"], reg["md5"])
+    out = []
+    for reg in regs:
+        path, tam, md5, nat, classe = reg["path"], reg["bytes"], reg["md5"], reg["natureza"], reg["classe"]
+        if not reg.pop("_no_indice"):        # o que o índice não conhecia entra como arquivo (nunca rebaixa pacote)
             con.execute("INSERT OR IGNORE INTO unidades(chave, maquina, origem, tipo, classe, natureza, processo, "
                         "cnpj, bytes, md5, sha1, n_membros, criado_em, ciclo, assinatura) "
                         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (path, maq, "/home/ubuntu/" + path.split("/", 1)[1], "arquivo", classe, nat,
-                         processo_de(path), cnpj_de(path), tam, md5, sha1, 1, agora(), "consolidacao-legado", ""))
+                         processo_de(path), cnpj_de(path), tam, md5, reg["_b2_sha1"], 1, agora(),
+                         "consolidacao-legado", ""))
             con.execute("INSERT OR IGNORE INTO membros VALUES(?,?,?,?,?,?,?,?,?)",
                         (maq, "/home/ubuntu/" + path.split("/", 1)[1], path, "", tam, md5,
                          processo_de(path), cnpj_de(path), "antes de 21/11 (offload-nuvem.sh)"))
+        b2sha = reg.pop("_b2_sha1")
         for d, s_ in ((principal, reg[principal]), ("b2", reg["b2"]), ("r2", "ok")):
-            if s_ == "ausente":
+            if s_ in ("ausente", "não listado") or (d == principal and not md5):
                 continue
             con.execute("INSERT OR REPLACE INTO copias VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                        (path, d, url(d, path), s_, "sha1" if d == "b2" else "md5", sha1 if d == "b2" else md5,
-                         tam, None, agora(), "consolidacao-legado" if s_ == "ok" else None, ""))
+                        (path, d, url(d, path), s_, "sha1" if d == "b2" else "md5", b2sha if d == "b2" else md5,
+                         tam, None, agora(), "consolidacao-legado" if s_ == "ok" else None, "listagem"))
         con.commit()
-        sai = (["r2"] + (["b2"] if b else [])) if nat == "reobtivel" and reg[principal] == "ok" else []
+        sai = []
+        if nat == "reobtivel" and reg[principal] == "ok":
+            sai = ["r2"] + (["b2"] if reg["b2"] in ("ok", "divergente") else [])
         reg["sai"] = sai
         if aplicar:
             for d in sai:
-                journal(con, "apagar_nuvem", url(d, path), f"fica: {principal} (md5 conferido)", "consolidacao-legado")
+                journal(con, "apagar_nuvem", url(d, path), f"fica: {principal} (tamanho e md5 da listagem conferidos)",
+                        "consolidacao-legado")
                 ok, err = rc.apagar(url(d, path))
                 if ok:
                     con.execute("DELETE FROM copias WHERE chave=? AND destino=?", (path, d))
@@ -1321,7 +1403,9 @@ def encher(con: sqlite3.Connection, rc: Rclone, aplicar: bool = False, itens: li
         sqlite_ = it.get("tipo") == "sqlite"
         original = Path(str(src) + ".gz") if sqlite_ else src
         chave = chave_de(original, maq)
-        antigos = {d: int((rc.stat(url(d, chave)) or {}).get("Size", 0) or 0) for d in [principal, *remotos]}
+        # o que a mesma chave já ocupa em cada remoto (o novo substitui): pelo índice, sem `stat` (1–2 min no Drive)
+        antigos = {d: int((con.execute("SELECT bytes FROM copias WHERE chave=? AND destino=? AND status='ok'",
+                                       (chave, d)).fetchone() or [0])[0] or 0) for d in [principal, *remotos]}
         estimado = src.stat().st_size
         cabem = [d for d in remotos if rc.pode_enviar(d, estimado, substitui=antigos[d]) is None]
         # o .gz de um banco SQLite raramente fica abaixo de 1/4 do cru: abaixo disso nem vale gerar o snapshot

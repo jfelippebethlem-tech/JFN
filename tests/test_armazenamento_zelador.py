@@ -211,7 +211,7 @@ def test_segunda_copia_vai_para_a_que_couber(amb):
 
 def test_nenhuma_segunda_copia_cabe_recusa_e_nao_apaga(amb):
     tmp, raiz = amb
-    cheios = {n: 25e9 for n in A.POLITICA["insubstituivel"][1]}
+    cheios = {n: 2e12 for n in A.POLITICA["insubstituivel"][1]}
     f = _arquivos(raiz)[0]
     nuvem = NuvemFalsa(tmp / "nuvem", uso_extra=cheios)
     r = A.guardar(f, "backup_db", apagar_local=True, rc=nuvem, con=A.conectar())
@@ -580,7 +580,7 @@ def test_ciclo_com_recusa_do_prevoo_escala_e_nao_apaga(amb):
     tmp, raiz = amb
     con = A.conectar()
     perfil = Z.Perfil("teste", raizes=[Z.Raiz(raiz, "backup_db", idade_dias=1)], aviso_disco_pct=101)
-    cheios = {n: 25e9 for n in A.POLITICA["insubstituivel"][1]}
+    cheios = {n: 2e12 for n in A.POLITICA["insubstituivel"][1]}
     Z.rodar(perfil, aplicar=False, rc=NuvemFalsa(tmp / "nuvem"), con=con, avisar_fn=lambda t: True)
     avisos, antes = [], _arquivos(raiz)
     rel = Z.rodar(perfil, aplicar=True, rc=NuvemFalsa(tmp / "nuvem", uso_extra=cheios), con=con,
@@ -616,3 +616,115 @@ def test_encher_respeita_alvo_e_prioridade(amb, monkeypatch):
     assert A.copias_ok(feito[0]["copias"]) == {"gdrive", "b2", "r2"}
     assert A.copias_ok(feito[1]["copias"]) == {"gdrive", "r2"}               # o 2º não cabe mais no B2
     assert A.obter(str(tmp / "a.db.gz"), rc=nuvem).exists()
+
+
+class NuvemListavel(NuvemFalsa):
+    """Lista de verdade (Path relativo à base, Size, md5) e copia remoto → remoto — para a consolidação."""
+
+    def listar(self, base):
+        raiz = self._p(base)
+        if not raiz.exists():
+            return []
+        return [{"Path": f.relative_to(raiz).as_posix(), "Size": f.stat().st_size,
+                 "Hashes": {"md5": hashlib.md5(f.read_bytes()).hexdigest()}} for f in raiz.rglob("*") if f.is_file()]
+
+    def copiar(self, origem, destino, nbytes):
+        d = self._p(destino)
+        d.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(self._p(origem), d)
+        if self._dest(destino) in self.corromper:
+            with open(d, "ab") as f:
+                f.write(b"X")
+        return True, ""
+
+    def copiar_lote(self, origem, destino, itens):
+        for rel, n in itens:
+            self.copiar(f"{origem}/{rel}", f"{destino}/{rel}", n)
+        return True, ""
+
+    def apagar(self, remoto):
+        self._p(remoto).unlink()
+        return True, ""
+
+
+def _semear_legado(nuvem, maq="teste"):
+    """Um re-obtível (sei_cache) e um insubstituível (backup) iguais no R2 e no B2, como o offload-nuvem.sh fez."""
+    objs = {f"{maq}/JFN/data/sei_cache/INTEGRA_070002_021988_2025.pdf": os.urandom(4000),
+            f"{maq}/compliance-20260809.db.gz": os.urandom(3000)}
+    for rel, dado in objs.items():
+        for d in ("r2", "b2"):
+            p = nuvem._p(A.url(d, rel))
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(dado)
+    return objs
+
+
+def test_consolidar_legado_so_apaga_reobtivel_com_copia_conferida_pela_listagem(amb):
+    tmp, _ = amb
+    nuvem = NuvemListavel(tmp / "nuvem")
+    objs = _semear_legado(nuvem)
+    reob, insub = sorted(objs, key=lambda k: "sei_cache" not in k)
+    con = A.conectar()
+    ensaio = {r["path"]: r for r in A.consolidar_legado(con, nuvem, aplicar=False)}
+    assert ensaio[reob]["gdrive"] == "sumida" and ensaio[reob]["sai"] == []        # ensaio: nada sai
+    assert nuvem._p(A.url("r2", reob)).exists()
+    feito = {r["path"]: r for r in A.consolidar_legado(con, nuvem, aplicar=True)}
+    assert feito[reob]["gdrive"] == "ok" and feito[reob]["sai"] == ["r2", "b2"]
+    assert not nuvem._p(A.url("r2", reob)).exists() and not nuvem._p(A.url("b2", reob)).exists()
+    assert nuvem._p(A.url("gdrive", reob)).read_bytes() == objs[reob]
+    assert feito[insub]["sai"] == [] and nuvem._p(A.url("r2", insub)).exists()     # insubstituível fica
+    assert nuvem._p(A.url("b2", insub)).exists() and nuvem._p(A.url("gdrive", insub)).exists()
+    acoes = [r["acao"] for r in con.execute("SELECT acao FROM journal WHERE acao='apagar_nuvem'")]
+    assert len(acoes) == 2                                                         # journal antes de cada apagar
+
+
+def test_consolidar_legado_copia_divergente_nao_apaga(amb):
+    tmp, _ = amb
+    nuvem = NuvemListavel(tmp / "nuvem", corromper={"gdrive"})
+    objs = _semear_legado(nuvem)
+    reob = next(k for k in objs if "sei_cache" in k)
+    feito = {r["path"]: r for r in A.consolidar_legado(A.conectar(), nuvem, aplicar=True)}
+    assert feito[reob]["gdrive"] == "divergente" and feito[reob]["sai"] == []
+    assert nuvem._p(A.url("r2", reob)).read_bytes() == objs[reob] and nuvem._p(A.url("b2", reob)).exists()
+
+
+def test_consolidar_legado_so_mexe_no_prefixo_da_maquina(amb):
+    tmp, _ = amb
+    nuvem = NuvemListavel(tmp / "nuvem")
+    _semear_legado(nuvem, maq="outra")
+    _semear_legado(nuvem)
+    feito = A.consolidar_legado(A.conectar(), nuvem, aplicar=True)
+    assert feito and all(r["path"].startswith("teste/") for r in feito)
+    assert all(p.exists() for p in (tmp / "nuvem" / "r2").rglob("*") if "outra" in str(p))
+
+
+def test_copiar_lote_orca_a_soma_e_recusa_acima(tmp_path):
+    rc = _rc(tmp_path, uso={"r2": 0})
+    origem, destino = A.DESTINOS["r2"] + "/vm1", A.DESTINOS["gdrive"] + "/vm1"
+    itens = [(f"a/{i}.pdf", 1000) for i in range(3)]
+    assert rc.copiar_lote(origem, destino, itens)[0]                              # positivo: um processo só
+    assert [c[:2] for c in rc.chamadas if c[0] == "copy"] == [["copy", "--checksum"]]
+    teto = A.NUVENS["remotos"]["r2"]["limites"]["classe_b_mes"] * _partilha()
+    rc.orcamento.registrar("r2", {"classe_b": teto - 5})                          # cabem 2 objetos (2 B cada)
+    ok, err = rc.copiar_lote(origem, destino, itens)                              # negativo: 3 × 2 = 6 > 5
+    assert not ok and err.startswith("RECUSADO") and len([c for c in rc.chamadas if c[0] == "copy"]) == 1
+
+
+def test_terabox_so_copia_extra_nunca_unica_e_teto_por_arquivo(tmp_path, monkeypatch):
+    """Coordenador 21/11: TeraBox só 2ª/3ª cópia, 4 GB por arquivo, apagar não devolve a cota."""
+    cfg = A.NUVENS["remotos"]["terabox"]
+    assert cfg["so_copia_extra"] and A.POLITICA["insubstituivel"][1][-1] == "terabox"
+    assert all("terabox" not in v for natureza in A.POLITICA for v in A.POLITICA[natureza][:1])
+    monkeypatch.setenv("JFN_DESTINO_REOBTIVEL", "terabox")
+    with pytest.raises(ValueError):
+        A.configurar()                                                         # negativo: cópia única recusada
+    monkeypatch.delenv("JFN_DESTINO_REOBTIVEL")
+    A.configurar()
+    rc = _rc(tmp_path, uso={"terabox": 0})
+    teto = int(cfg["max_arquivo_gb"] * 1e9)
+    assert rc.pode_enviar("terabox", teto) is None                            # positivo: no teto passa
+    assert "por arquivo" in rc.pode_enviar("terabox", teto + 1)               # negativo: acima recusa
+    rc.orcamento.alvo_e_usado("terabox", rc)
+    antes = rc.orcamento.uso["terabox"]["usado"]
+    rc.orcamento.somar_uso("terabox", -1000)
+    assert rc.orcamento.uso["terabox"]["usado"] == antes                      # lixeira: a cota não volta

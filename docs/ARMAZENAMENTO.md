@@ -47,7 +47,7 @@
 | Natureza | Classes | Cópias | Destino(s) | Por quê |
 |---|---|---|---|---|
 | **Re-obtível** (a fonte pública tem) | `sei_pdf`, `sei_foto`, `sei_cache`, `sei_arvore`, `quarentena`, `substituido`, `tse`, `pncp`, `receita`, `coleta_cache` | **1** | Drive | o provedor já replica internamente; perder = baixar de novo da fonte (índice guarda origem e hash) |
-| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + o 1º de `segunda_copia` que couber no grátis (B2 → R2 → MEGA) | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
+| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + o 1º de `segunda_copia` que couber no grátis (B2 → R2 → MEGA → TeraBox) | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
 
 Retenção e gatilhos (perfis em `tools/zelador/zelador.py::perfis()`):
 
@@ -150,6 +150,13 @@ preferência) — testado em `test_remoto_novo_entra_so_pela_config`.
 | **R2** (`r2:jorgefelippe`) | 10 GB − 0,5 = **9,5 GB** | **1 milhão Classe A/mês** · **10 milhões Classe B/mês** · saída grátis | developers.cloudflare.com/r2/pricing ("Storage 10 GB-month / month", "Class A Operations 1 million requests / month", "Class B Operations 10 million requests / month", "no charges for egress") |
 | **MEGA** (`mega:JFN`) | o `rclone about` (20 GiB = 21,47 GB) − 0,5 = **20,97 GB** | **1 GB/dia** de download (teto NOSSO: o MEGA não publica número para a conta grátis) | mega.io/pricing ("Transfer: Free — Limited") · help.mega.io/plans-storage/space-storage/transfer-quota ("based on the data transferred to your IP address during the last six hours"; "Uploading files uses your storage quota, but not your transfer quota") |
 
+| **TeraBox** (`terabox:JFN`, WebDAV local do OpenList na VM-1) | 1.024 GiB (1.099,5 GB, medido por `size` — o `about` não informa a cota) − 5 = **1.094,5 GB** | **4 GB por arquivo** (teto aplicado, ainda não confirmado) · ~0,65 MB/s | coordenador da sessão, 21/11 (remoto provado por hash); limites do grátis não conferidos em página oficial |
+
+**TeraBox — restrições (21/11):** `so_copia_extra: true` → **nunca cópia única** (o `configurar()` recusa como
+principal ou como destino do re-obtível; é o último de `segunda_copia`, só 2ª/3ª cópia) · `max_arquivo_gb: 4`
+(o pré-voo recusa arquivo maior) · `apagar_libera: false` (apagado vai para a lixeira: o contador não devolve a
+cota) · só a VM-1 alcança (127.0.0.1:5244); na VM-2 ele aparece como inacessível e a vaga segue com os outros.
+
 \* reserva do B2: `tools/backup_compliance.sh` (domingo 03:50) sobe a 4ª cópia semanal (~1,5 GB) **antes** de girar
 para 3. Observação: a página de preços do B2 hoje diz "Class A, B, and C API calls are free for pay-as-you-go"; a
 conta do dono está no grátis com teto US$ 0,00 e o Caps & Alerts dela mostra o grátis diário de 1 GB / 2.500 B /
@@ -169,7 +176,7 @@ conta do dono está no grátis com teto US$ 0,00 e o Caps & Alerts dela mostra o
   B2/R2 — conta TUDO do bucket, inclusive `compliance/` e `fachadas/`), somado a cada upload. **Sem medida = não
   sobe** (fechado por padrão).
 * **O provedor disse "cap exceeded" / 403** → o remoto fica **esgotado até 00:00 UTC** e nada mais é pedido a ele.
-* **Insubstituível**: principal + a 2ª cópia no **primeiro remoto de `segunda_copia` que couber** (B2 → R2 → MEGA);
+* **Insubstituível**: principal + a 2ª cópia no **primeiro remoto de `segunda_copia` que couber** (B2 → R2 → MEGA → TeraBox);
   se o escolhido falhar, o próximo. Nenhum coube → `recusado`, o local fica e o ciclo escala.
 * **Recusa nunca é silenciosa**: vai para `journal` (`recusado` / `recusado_prevoo`), para o relatório
   (`recusas_prevoo`) e para o dono pelo canal de escalados (Telegram do zelador, `🆘 ESCALADO — recusado pelo

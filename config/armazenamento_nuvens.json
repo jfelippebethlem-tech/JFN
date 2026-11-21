@@ -11,7 +11,7 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega"],
+  "segunda_copia": ["b2", "r2", "mega", "terabox"],
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
@@ -74,6 +74,22 @@
         "https://mega.io/pricing (conta Free: 'Transfer Free Limited')",
         "https://help.mega.io/plans-storage/space-storage/transfer-quota ('MEGA calculates download limits (for [...] those with a free account) based on the data transferred to your IP address during the last six hours.' · 'Uploading files uses your storage quota, but not your transfer quota.')"
       ]
+    },
+    "terabox": {
+      "tipo": "webdav",
+      "raiz": "terabox:JFN",
+      "frio": "terabox:JFN/frio",
+      "indice": "terabox:JFN/indice",
+      "medir": "size",
+      "armazenamento_gb": 1099.5,
+      "margem_gb": 5,
+      "max_arquivo_gb": 4,
+      "so_copia_extra": true,
+      "apagar_libera": false,
+      "preferencia_download": 8,
+      "limites": {},
+      "_restricoes": "Coordenador, 21/11/2026: WebDAV LOCAL do OpenList na VM-1 (127.0.0.1:5244; a VM-2 não alcança), 1.024 GiB, prova de hash ok, ~0,65 MB/s. NUNCA cópia única (so_copia_extra: não pode ser principal nem destino do re-obtível) — só 2ª/3ª cópia, por isso é o ÚLTIMO de segunda_copia; 4 GB por arquivo (ainda NÃO confirmado — aplicado como teto); o `about` não informa a cota (medida por `size` contra 1.024 GiB = 1.099,5 GB); arquivo apagado provavelmente vai para a lixeira (apagar_libera: false — apagar não devolve espaço na conta).",
+      "fontes": ["coordenador da sessão, 21/11/2026 (remoto montado e provado por hash); limites do TeraBox grátis não conferidos em página oficial"]
     }
   },
   "enchimento": {
