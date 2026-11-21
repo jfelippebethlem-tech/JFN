@@ -59,6 +59,17 @@ def test_comandos_do_mapa_nao_chamam_api_paga():
         assert " modelo" not in linha and "juiz" not in linha and "api-" not in linha, did
 
 
+def test_teto_do_vinculo_ob_contrato_tem_folga_sobre_a_rodada_medida():
+    """21/11/2026: `regra --gravar` relê todo o acervo dos processos de pagamento (5.030 processos, ~0,75 MB de texto
+    cada, sob `nice 15`). A maior rodada que TERMINOU levou 1.796 s (execução 213 de data/propagacao.db) com teto de
+    1.800 s; 12 das 25 últimas estouraram o teto e não gravaram nada. Teto com folga de 1,5× sobre a rodada medida e
+    abaixo do intervalo mínimo (duas rodadas nunca se sobrepõem)."""
+    d = P.carregar(RAIZ / "config" / "propagacao.yaml")["derivados"]["vinculo_ob_contrato"]
+    maior_rodada_ok_s = 1796
+    assert int(d["timeout_s"]) >= 1.5 * maior_rodada_ok_s
+    assert int(d["timeout_s"]) < int(d["intervalo_min_s"])
+
+
 def test_validar_acusa_ciclo_e_dependencia_inexistente():
     erros = P.validar(_cfg(a=_der(["b"]), b=_der(["a"]), c=_der(["nao_existe"]), d=_der([])))
     assert any("ciclo" in e for e in erros)

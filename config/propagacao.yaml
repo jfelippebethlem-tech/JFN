@@ -226,7 +226,9 @@ derivados:
     peso: pesado
     debounce_s: 1800
     intervalo_min_s: 10800
-    timeout_s: 1800
+    # 21/11/2026: 1800 → 3600. Relê o acervo inteiro (5.030 processos); a maior rodada que terminou levou 1.796 s e
+    # 12 das 25 últimas estouraram 1800 s sem gravar nada (tests/test_propagacao.py::test_teto_do_vinculo_ob_contrato_…)
+    timeout_s: 3600
     prioridade: 2
     antes: "diário 00:30 (cron). A leitura por modelo (01:50, API paga) NÃO é propagada"
   pericia_contabil:
