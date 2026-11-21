@@ -1,0 +1,9 @@
+[Unit]
+Description=Zelador de armazenamento do JFN — semanal
+
+[Timer]
+OnCalendar=Sun 05:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

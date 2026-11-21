@@ -13,7 +13,7 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 a="$root/AGENTS.md"
 [ -f "$a" ] || exit 0
 # ~500 bytes = já é o ponteiro; acima disso, o bloco completo voltou
-[ "$(stat -c%s "$a")" -le 700 ] && exit 0
+[ "$(stat -c%s "$a")" -le 760 ] && exit 0
 
 cat > "$a" <<'PONTEIRO'
 <!-- gitnexus:start -->
@@ -26,6 +26,8 @@ As regras do GitNexus para este projeto vivem em **`CLAUDE.md`** (bloco gerado, 
 `tools/gitnexus_enxugar.sh` (pre-commit) devolve este arquivo ao ponteiro sempre que o analyze o
 reinfla. Uma fonte, um custo.
 <!-- gitnexus:end -->
+
+Armazenamento: nada parado na VM — `python -m compliance_agent.armazenamento guardar|onde|obter` (docs/ARMAZENAMENTO.md).
 PONTEIRO
 echo "[pre-commit] AGENTS.md reinflado pelo gitnexus analyze — reduzido ao ponteiro"
 git add "$a" 2>/dev/null || true

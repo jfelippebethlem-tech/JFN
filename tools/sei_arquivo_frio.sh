@@ -27,11 +27,21 @@ if [ "$livre_no" -lt "$LIVRE_MIN_GB" ]; then
   echo "$(date '+%F %T') $NO com só ${livre_no} GB livres (< $LIVRE_MIN_GB) — escaneados ficam na VM-1 hoje"; exit 0
 fi
 lista=$(mktemp)
-$PY - "$lista" <<'PY'
+# 21/11/2026: a checagem de espaço era SÓ no início — uma rodada levou 23 GB e encheu a VM-2 (86% → 98%).
+# Agora a lista cabe no orçamento: (livre na VM-2 − LIVRE_MIN_GB); o que não cabe fica para a próxima hora.
+$PY - "$lista" "$(( (livre_no - LIVRE_MIN_GB) * 1000000000 ))" <<'PY'
 import sys, time
 from pathlib import Path
 from tools.sei_depurar_pdfs import pastas_elegiveis, CACHE, ARQUIVO
-Path(sys.argv[1]).write_text("".join(f"{d.name}/\n" for d in pastas_elegiveis(CACHE, 2.0, ARQUIVO)))
+orcamento, usado, out = int(sys.argv[2]), 0, []
+for d in pastas_elegiveis(CACHE, 2.0, ARQUIVO):
+    tam = sum(f.stat().st_size for f in d.glob("[0-9][0-9][0-9]*.pdf") if f.is_file())
+    if usado + tam > orcamento:
+        continue
+    usado += tam
+    out.append(f"{d.name}/\n")
+Path(sys.argv[1]).write_text("".join(out))
+print(f"orçamento {orcamento/1e9:.1f} GB · {len(out)} pasta(s) · {usado/1e9:.1f} GB", file=sys.stderr)
 PY
 n=$(wc -l < "$lista")
 rc=0

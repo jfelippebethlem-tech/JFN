@@ -1,0 +1,11 @@
+# VM-2: ~/.config/systemd/user/zelador-armazenamento.service (docs/ARMAZENAMENTO.md)
+[Unit]
+Description=Zelador de armazenamento do JFN (perfil vm2)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=JFN_MAQUINA=vm2 PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# a fila do OCR mora na VM-1: sem cópia fresca (< 2 dias) o zelador recusa as raízes que dependem dela
+ExecStartPre=-/usr/bin/scp -q -o ConnectTimeout=30 vm1-ts:JFN/data/sei_ocr_gpu_fila.txt %h/.zelador/fila_ocr_vm1.txt
+ExecStart=/usr/bin/flock -n %h/.zelador/zelador.lock /usr/bin/timeout 21600 /usr/bin/nice -n 15 /usr/bin/ionice -c3 %h/JFN/.venv/bin/python tools/zelador/zelador.py --perfil vm2 --aplicar

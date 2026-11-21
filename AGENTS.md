@@ -8,3 +8,5 @@ As regras do GitNexus para este projeto vivem em **`CLAUDE.md`** (bloco gerado, 
 `tools/gitnexus_enxugar.sh` (pre-commit) devolve este arquivo ao ponteiro sempre que o analyze o
 reinfla. Uma fonte, um custo.
 <!-- gitnexus:end -->
+
+Armazenamento: nada parado na VM — `python -m compliance_agent.armazenamento guardar|onde|obter` (docs/ARMAZENAMENTO.md).

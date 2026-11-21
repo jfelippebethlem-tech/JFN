@@ -1,0 +1,5 @@
+# Zelador de armazenamento — VM-1 (docs/ARMAZENAMENTO.md). Domingo 04:30, depois do backup_compliance (03:50)
+# e da manutenção (03:00), antes do gitnexus (04:00 termina rápido) e longe do enxame/SIAFE.
+30 4 * * 0 cd /home/ubuntu/JFN && flock -n data/locks/zelador.lock env JFN_MAQUINA=vm1 timeout 21600 nice -n 15 ionice -c3 .venv/bin/python tools/zelador/zelador.py --perfil vm1 --aplicar >> data/zelador.log 2>&1
+# Diário: baixa os índices das outras máquinas (para `onde`/`obter` acharem tudo) e avisa ciclo abortado, disco > 85% ou zelador parado há > 8 dias.
+50 5 * * * cd /home/ubuntu/JFN && env JFN_MAQUINA=vm1 timeout 900 .venv/bin/python tools/zelador/zelador.py --vigiar >> data/zelador.log 2>&1
