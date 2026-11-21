@@ -253,9 +253,12 @@ def _de_yoda(ctx: sensores.Ctx) -> list[Afirmacao]:
 
 # Produtos da casa (`reports/`, raiz — `reports/arquivo/` é o acervo podado): relatório de fornecedor e de órgão
 # (`inteligencia_*`), parecer Lex (`parecer_lex_*`) e dossiê (`dossie_*`, hoje só PDF — entra se houver .md/.html).
-PRODUTO_N = 6
+PRODUTO_N = 12    # 21/11/2026: 6 → 12 com as famílias novas (eram ~10 produtos nos últimos 30 dias)
 PRODUTO_DIAS = 30
-_RE_PRODUTO = re.compile(r"^((?:inteligencia|parecer_lex|dossie)_.+?)_(\d{4}-\d{2}-\d{2})\.(md|html)$")
+# 21/11/2026: + peças da Comissão de Orçamento (comissao_P*), relatório de contrato, trajetória das finanças e perícia
+# Enge Prat — estavam em reports/ e o juiz nunca as julgava (só inteligencia/parecer_lex/dossie).
+_RE_PRODUTO = re.compile(r"^((?:inteligencia|parecer_lex|dossie|comissao_P\d+|contrato|trajetoria|engeprat)_.+?)"
+                         r"_(\d{4}-\d{2}-\d{2})\.(md|html)$")
 _RE_PESSOAL = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)|\*{3}\.\d{3}\.\d{3}-\*{2}|(?i:\bcpf\b)[^\d\n]{0,20}\d{11}(?!\d)")
 
 

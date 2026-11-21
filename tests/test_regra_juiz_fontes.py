@@ -114,9 +114,11 @@ def test_produtos_entram_com_grupo_proprio_e_sem_o_que_nao_e_produto(tmp_path, m
     _produto(rep, "inteligencia_beta_ltda_2026-07-01.md", RELATORIO, 140)           # velho demais
     _produto(rep, "comissao_P12_rreo_2026_4B.html", "<p>R$ 1,00</p>", 1)             # fora do padrão
     _produto(rep, "notas_soltas_2026-11-19.md", "R$ 5,00", 1)                       # fora do padrão
+    _produto(rep, "comissao_P13_fiscalizacao_2026-11-17.html", "<p>R$ 3,00</p>", 1)  # peça datada da Comissão: entra
     _produto(rep / "arquivo" / "2026-11", "inteligencia_gama_ltda_2026-11-19.md", RELATORIO, 1)  # subpasta não
     ps = {a.id: a for a in juiz.candidatas(ctx) if a.grupo == "produto"}
-    assert set(ps) == {"produto:inteligencia_alfa_ltda", "produto:parecer_lex_alfa_ltda"}
+    assert set(ps) == {"produto:inteligencia_alfa_ltda", "produto:parecer_lex_alfa_ltda",
+                       "produto:comissao_P13_fiscalizacao"}
     rel, lex = ps["produto:inteligencia_alfa_ltda"], ps["produto:parecer_lex_alfa_ltda"]
     assert rel.sistema == "relatorios" and lex.sistema == "lex"                    # sistemas que a rubrica conhece
     assert juiz.criterios_de(rel.sistema) and juiz.criterios_de(lex.sistema)
