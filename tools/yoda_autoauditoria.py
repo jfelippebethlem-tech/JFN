@@ -57,7 +57,10 @@ _SEGREDO = re.compile(r"(sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}|gh[pousr]_
 _PREFIXO = re.compile(r"^\[[^\]]{0,60}id=\d+\]\s*")
 # "user" que NÃO é o dono: injeções do próprio gateway/agente. Contá-las fabricava falha (medido: 1ª rodada
 # de 150 dias tinha "falhas" em avisos de processo em background e em resumos de compactação).
-_INJECAO = re.compile(r"^\[(IMPORTANT: Background process|CONTEXT COMPACTION|System:|Continuing toward)", re.I)
+# 21/11/2026: "[Message withheld: a pre_llm_call policy hook blocked it.]" é o turno do modo /cc — o plugin
+# jfn-claude responde por fora do LLM (modo_direto.ao_llm), então a sessão não guarda a resposta: 27 falsas falhas.
+_INJECAO = re.compile(r"^\[(IMPORTANT: Background process|CONTEXT COMPACTION|System:|Continuing toward|"
+                      r"Message withheld: a pre_llm_call)", re.I)
 _SKILL = re.compile(r'^\[IMPORTANT: The user has invoked the "([\w-]+)" skill')
 
 

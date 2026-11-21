@@ -21,7 +21,9 @@ def test_incapaz_e_repeticao_do_caso_siafe():
 
 def test_injecao_do_sistema_nao_e_falha_do_dono():
     msgs = [_m("user", "[IMPORTANT: Background process proc_1 completed (exit code -15).", 100),
-            _m("user", "[CONTEXT COMPACTION — REFERENCE ONLY] resumo", 101)]
+            _m("user", "[CONTEXT COMPACTION — REFERENCE ONLY] resumo", 101),
+            _m("user", "[Message withheld: a pre_llm_call policy hook blocked it.]", 102),   # modo /cc
+            _m("user", "[Message withheld: a pre_llm_call policy hook blocked it.]", 103)]
     assert Y.detectar(msgs) == []
 
 
