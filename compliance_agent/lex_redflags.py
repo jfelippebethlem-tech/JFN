@@ -12,6 +12,16 @@ import re
 
 # Red flags (resumo operacional; detalhe em docs/LEX-BASE-JURIDICA.md)
 _RF = {
+    # Inconsistências de REGISTRO provadas pelo código no próprio SIAFE (lex_fatos.achados_contabeis, 20/11/2026).
+    "C-PAGO>NL": ("Pagamento acima do valor liquidado na mesma nota de liquidação",
+                  "Arts. 62-64 Lei 4.320/64 (pagamento só após a regular liquidação e no valor liquidado)"),
+    # Escalada do pago entre exercícios (OB SIAFE). Era emitida como R12 ("planejamento de fachada"), cujo nome,
+    # defesa e vício do catálogo falam de DFD/ETP genéricos — o parecer chamava um salto de pagamento de
+    # "planejamento de fachada" sem ter lido o planejamento (20/11/2026).
+    "F-ESCALADA": ("Escalada abrupta do valor pago entre exercícios",
+                   "Arts. 5º, 18 e 125 Lei 14.133/2021 (planejamento e limites de acréscimo); arts. 62-63 Lei 4.320/64"),
+    "C-OB<NL": ("Ordem bancária emitida antes da liquidação que a fundamenta",
+                "Arts. 62-63 Lei 4.320/64 (a liquidação precede o pagamento)"),
     # Achados ESTRUTURAIS da DD (prefixo DD/) com identidade própria — sem entrada aqui o parecer imprimia o
     # código duas vezes e aplicava a defesa de FACHADA a um Termo de Ajuste de Contas (visto em 10/09/2026).
     "DD/TAC-RECORRENTE": ("Pagamento por Termo de Ajuste de Contas como rotina (serviço contínuo sem contrato)",
@@ -108,6 +118,15 @@ def _ramo_objeto(obj) -> str:
     palavras = [w for w in re.findall(r"[a-zçãõáéíóúâêô]+", t) if len(w) > 4][:2]
     return " ".join(palavras) or "objeto"
 _MATRIZ = {
+    "C-PAGO>NL": ("OB emitida sobre NL já esgotada, reemissão sem baixa ou NL corrigida a menor após o pagamento",
+                  "pagamento sem liquidação correspondente (dano potencial no excedente)",
+                  "requisitar os espelhos das NL e OB citadas e a Guia de Devolução, se houver"),
+    "F-ESCALADA": ("novos contratos/aditivos, demanda nova ou pagamento acumulado de exercício anterior",
+                   "acréscimo sem lastro contratual ou acima do limite do art. 125",
+                   "confrontar o salto com os contratos e aditivos vigentes em cada exercício"),
+    "C-OB<NL": ("lançamento contábil retroativo (regularização) ou pagamento antecipado à liquidação",
+                "pagamento sem prévia verificação do direito do credor",
+                "requisitar o atesto/medição e o espelho da NL; conferir a data do atesto × data da OB"),
     "R2": ("possível divisão da despesa para fugir da modalidade/teto de dispensa",
            "elisão do dever de licitar; restrição à competição e risco de sobrepreço",
            "consolidar a demanda e licitar; apurar o planejamento (DFD/ETP)"),
@@ -198,6 +217,12 @@ def _grau(achados: list) -> tuple:
 # defesa NÃO é refutada pelos dados (a explicação inocente sobrevive) → rebaixado a "monitoramento" (não
 # representação). Protege a credibilidade: indício ≠ acusação; presunção de regularidade. Por família de RF.
 _EXCULPATORIO = {
+    "C-PAGO>NL": "A NL pode ter sido reduzida (anulação parcial) depois do pagamento, com a diferença devolvida por "
+                 "Guia de Devolução não ingerida, ou a OB pode ser reemissão de outra devolvida pelo banco.",
+    "F-ESCALADA": "O salto pode decorrer de contrato novo vencido em licitação regular, de aditivo dentro do limite legal "
+                  "ou do pagamento, num exercício, de serviço prestado em exercício anterior (restos a pagar).",
+    "C-OB<NL": "A NL pode ser lançamento de regularização emitido depois para formalizar um pagamento cuja liquidação "
+               "material (atesto) ocorreu antes — falha de registro, não pagamento sem direito do credor.",
     "R2": "Em serviços contínuos, dispensas emergenciais sucessivas podem cobrir o intervalo entre o fim de "
           "um contrato e a conclusão de novo pregão — fracionamento só se confirma com mesmo objeto/local sob o teto.",
     "R3": "A pesquisa de preços pode existir no processo SEI e apenas não ter sido lida nesta varredura "
@@ -227,6 +252,9 @@ _EXCULPATORIO = {
            "divergido com motivação idônea registrada em documento apartado (LINDB art. 22).",
     "DD": "Sinais cadastrais isolados (endereço residencial, capital baixo, empresa recente) são comuns em "
           "microempresas legítimas e, sozinhos, não caracterizam fachada/laranja.",
+    "DD/H-END-HUMANO": "A imagem de rua pode estar desatualizada ou mostrar só a fachada de um imóvel que abriga a "
+                       "empresa em andar superior ou fundos; empresas de obra operam sobretudo nos canteiros. O "
+                       "veredito visual precisa de vistoria in loco e de prova de operação (RAIS, contratos, ART).",
     "DD/TAC-RECORRENTE": "O Termo de Ajuste de Contas é o instrumento legítimo para indenizar serviço já prestado quando "
                          "a nova licitação atrasou; um ou dois termos podem refletir transição contratual regular, e a "
                          "responsabilidade pela lacuna pode ter sido apurada em processo apartado.",
@@ -264,7 +292,9 @@ def _exculpatorio(achados: list) -> list[dict]:
     for a in achados or []:
         try:
             rf = a.get("rf", "")
-            defesa = _EXCULPATORIO.get(_fam_exculpatorio(rf), "Pode haver explicação administrativa regular para o fato.")
+            # achado que traz a PRÓPRIA explicação inocente (padrões da casa registram as inocentes não excluídas)
+            defesa = (a.get("inocente") or _EXCULPATORIO.get(_fam_exculpatorio(rf),
+                                                           "Pode haver explicação administrativa regular para o fato."))
             grav = int(a.get("grav", 0) or 0)
             obs = (a.get("obs") or "").lower()
             socio_comum = "sócio" in obs and ("comum" in obs or "irmã" in obs or "compartilh" in obs)
@@ -317,6 +347,9 @@ _MOTIVO_IMPROBIDADE_RF = {
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
 _RF_DESTINATARIO = {
+    "C-PAGO>NL": ("debito",),
+    "C-OB<NL": ("debito",),
+    "F-ESCALADA": (),
     "R2": ("improbidade",),
     "R3": ("debito",),
     "R4": ("debito",),

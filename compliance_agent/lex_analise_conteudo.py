@@ -380,6 +380,15 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
 
 # ── Detecção data-driven (carteira de pagamentos) ─────────────────────────────
 
+def _pct_br(v: float, casas: int = 1) -> str:
+    """58.33 → '58,3'; 3400 → '3.400' (padrão BR — o parecer imprimia '58.3%' e '+3400%')."""
+    return f"{v:,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _fonte_pag(p: dict) -> str:
+    return p.get("fonte") or "OBs do contexto (fonte não declarada)"
+
+
 def _detectar(ctx: dict) -> list[dict]:
     """Indícios a partir dos dados financeiros (OBs). Cada item: {rf, obs, grav(1-5)}."""
     p = ctx.get("pagamentos") or {}
@@ -387,7 +396,7 @@ def _detectar(ctx: dict) -> list[dict]:
     if not p.get("tem_dados"):
         return achados
     # Serviço CONTÍNUO (limpeza/vigilância/mão de obra): a escalada de faturamento é, em regra, legítima
-    # (renovações/aditivos de contrato plurianual). Calibra o R12 (crescimento) como o R2 já trata o fracionamento.
+    # (renovações/aditivos de contrato plurianual). Calibra o F-ESCALADA (crescimento; era R12, que é planejamento de fachada lido no documento) como o R2 já trata o fracionamento.
     emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
     continuo = _eh_servico_continuo([emp.get("cnae_principal"), emp.get("atividade"), ctx.get("nome")])
     hhi = p.get("hhi", {})
@@ -395,27 +404,40 @@ def _detectar(ctx: dict) -> list[dict]:
     org_top = next(iter(p.get("por_orgao_geral", {})), "—")
     if top >= 60:
         achados.append({"rf": "R8", "grav": 4,
-                        "obs": f"{top:.1f}% do valor pago concentrado em um único órgão (**{org_top}**) — "
-                               "concentração extrema para um prestador de serviços."})
+                        "obs": f"{_pct_br(top)}% do valor pago concentrado em um único órgão (**{org_top}**) — "
+                               f"concentração extrema para um prestador de serviços. Fonte: {_fonte_pag(p)}."})
     elif top >= 40:
-        achados.append({"rf": "R8", "grav": 3, "obs": f"Concentração relevante ({top:.1f}%) em **{org_top}**."})
+        achados.append({"rf": "R8", "grav": 3, "obs": f"Concentração relevante ({_pct_br(top)}% do valor pago) em "
+                                                      f"**{org_top}**. Fonte: {_fonte_pag(p)}."})
     anos = p.get("anos", [])
-    if len(anos) >= 2:
-        t0 = p["por_ano"][anos[0]]["total"] or 0
-        t1 = p["por_ano"][anos[-1]]["total"] or 0
+    # Escalada só entre exercícios COMPLETOS da relação: fora o 1º ano com pagamento (a relação começa no meio dele)
+    # e o exercício em curso (ano da data do parecer). Sem isso o ano de início vira base minúscula e o salto, artefato:
+    # Engeprat, 1 OB de R$ 73 mil em 2021 (início) contra R$ 57,8 mi em 2026 (em curso) saía "+78.838%" (20/11/2026).
+    cur = str(ctx.get("data") or "")[:4]
+    completos = [a for a in anos[1:] if str(a) != cur]
+    fora = ([f"{anos[0]} (ano de início da relação)"] if anos else []) + (
+        [f"{cur} (exercício em curso)"] if any(str(a) == cur for a in anos) else [])
+    nota_fora = f" Fora da comparação, por incompletos: {'; '.join(fora)}." if fora else ""
+    if len(completos) >= 2:
+        anos_cmp = completos
+        t0 = p["por_ano"][anos_cmp[0]]["total"] or 0
+        t1 = p["por_ano"][anos_cmp[-1]]["total"] or 0
         if t0 > 0 and t1 > t0 * 3:
             pct = (t1 - t0) / t0 * 100
             if continuo:  # serviço contínuo: escalada legítima a justificar — sem rotular 'fachada' nem grav alto
-                achados.append({"rf": "R12", "grav": 2,
+                achados.append({"rf": "F-ESCALADA", "grav": 2,
                                 "obs": f"**Escalada de faturamento a justificar:** pagamentos de R$ {moeda(t0)} "
-                                       f"({anos[0]}) para R$ {moeda(t1)} ({anos[-1]}) — {pct:+.0f}%. Em serviço contínuo, "
+                                       f"({anos_cmp[0]}) para R$ {moeda(t1)} ({anos_cmp[-1]}) — +{_pct_br(pct, 0)}%. Em serviço contínuo, "
                                        "crescimento por renovação/aditivo de contrato plurianual é comum — verificar o "
                                        "lastro contratual (aditivos/postos de trabalho), sem presumir planejamento de fachada."})
             else:
-                achados.append({"rf": "R12", "grav": 3,
-                                "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos[0]}) para "
-                                       f"R$ {moeda(t1)} ({anos[-1]}) — {pct:+.0f}%."})
-    zeros = sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln.get("valor") == 0)
+                achados.append({"rf": "F-ESCALADA", "grav": 3,
+                                "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos_cmp[0]}) para "
+                                       f"R$ {moeda(t1)} ({anos_cmp[-1]}) — +{_pct_br(pct, 0)}% (primeiro × último exercício "
+                                       f"completo com pagamento).{nota_fora} Fonte: {_fonte_pag(p)}."})
+    # a base SIAFE do Lex (lex_fatos.pagamentos) tira a OB de valor zero das linhas pagas e a conta à parte
+    zeros = (int(p["n_regularizacoes"]) if "n_regularizacoes" in p else
+             sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln.get("valor") == 0))
     if zeros >= 3:
         achados.append({"rf": "R10", "grav": 2,
                         "obs": f"{zeros} ordens bancárias de valor R$ 0,00 (estornos/regularizações) — verificar a regularidade da liquidação."})

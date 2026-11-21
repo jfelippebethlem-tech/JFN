@@ -52,9 +52,22 @@ def _ctx_controle(socios):
                                        2024: _blk([{"data": "2025-01-01", "valor": 10_000_000, "orgao": "X"}])}}}
 
 
+def _patch_siafe(monkeypatch):
+    """20/11/2026: o Lex lê o pago do SIAFE (lex_fatos.base_siafe), não os pagamentos do contexto — a mesma
+    série do contexto do teste entra como base SIAFE sintética (R$ 40 mi em 2022 + R$ 10 mi em 2025)."""
+    from compliance_agent import lex_fatos
+    pagas = [{"numero_ob": f"OB{i}", "ug_emitente": "999999", "data": d, "data_emissao": d, "valor": v,
+              "exercicio": int(d[:4]), "credor": "19088605000104", "nome_credor": "MGS CLEAN", "nl": "",
+              "processo": ""} for i, (d, v) in enumerate((("2022-06-01", 40_000_000.0), ("2025-01-01", 10_000_000.0)))]
+    base = {"estado": "VERIFICADO", "motivo": "", "tipo": "fornecedor", "pagas": pagas, "regularizacoes": [],
+            "nao_pagas": [], "ne": [], "nl": [], "coletado_em": "", "fonte": lex_fatos.FONTE_OB}
+    monkeypatch.setattr(lex_fatos, "base_siafe", lambda **_: base)
+
+
 def test_r6_troca_de_controle_dispara(monkeypatch):
     """R6: sócio entra DEPOIS de R$40M já pagos → indício de sucessão/interposição."""
     lex = _patch_tcerj(monkeypatch, "")
+    _patch_siafe(monkeypatch)
     an = lex._analise(_ctx_controle([{"nome": "NOVO DONO", "data_entrada": "2024-12-11"}]), ler_sei=False)
     r6 = [a for a in an["achados"] if a["rf"] == "R6"]
     assert r6 and "posterior" in r6[0]["obs"]
@@ -62,5 +75,6 @@ def test_r6_troca_de_controle_dispara(monkeypatch):
 
 def test_r6_nao_dispara_socio_antigo(monkeypatch):
     lex = _patch_tcerj(monkeypatch, "")
+    _patch_siafe(monkeypatch)
     an = lex._analise(_ctx_controle([{"nome": "DONO ORIGINAL", "data_entrada": "2010-01-01"}]), ler_sei=False)
     assert not any(a["rf"] == "R6" for a in an["achados"])

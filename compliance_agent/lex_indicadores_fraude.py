@@ -177,7 +177,12 @@ def sinais_do_contexto(ctx: dict, analise: dict | None = None) -> dict:
         sinais["edital_restritivo"] = True
     if any(r.startswith("R2") for r in rfs):  # R2 = fracionamento (R9 é aditivo — mapeava errado)
         sinais["fracionamento"] = True
-    if any(r.startswith("R8") for r in rfs):
+    # R8 cobre duas coisas: concentração do pago num órgão (sem dado de licitante) e co-ocorrência/sócio em comum
+    # entre fornecedores. Só a segunda é "coincidência de participantes" — a primeira disparava o indicador sem
+    # nenhum dado de certame (20/11/2026).
+    if any(str(a.get("rf", "")).upper().startswith("R8") and any(
+            t in str(a.get("obs", "")).lower() for t in ("cartel", "rodízio", "co-ocorr", "sócio"))
+           for a in (analise or {}).get("achados", [])):
         sinais["coincidencia_participantes"] = True
     if any(r.startswith("R3") for r in rfs):
         sinais["desconto_atipico"] = True

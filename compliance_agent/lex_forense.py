@@ -138,8 +138,10 @@ def linha_do_tempo(emp: dict, linhas: list[dict], achados: list[dict]) -> list[t
     if emp.get("data_abertura"):
         ev.append((emp["data_abertura"], "Abertura do CNPJ na Receita Federal"))
     for s in (emp.get("socios") or []):
-        if s.get("entrada"):
-            ev.append((s["entrada"], f"Entrada de sócio/administrador: {(s.get('nome') or '—')[:40]}"))
+        # o enriquecimento real grava `data_entrada`; só `entrada` era lido e os sócios sumiam da linha do tempo
+        ent = s.get("entrada") or s.get("data_entrada") or ""
+        if ent:
+            ev.append((ent, f"Entrada de sócio/administrador: {(s.get('nome') or '—')[:40]}"))
     datadas = [(ln.get("data"), float(ln.get("valor") or 0)) for ln in linhas
                if isinstance(ln.get("data"), str) and len(ln.get("data") or "") >= 10]
     if datadas:
@@ -177,6 +179,16 @@ _DISCRIMINANTES = {
            "captura do órgão/rodízio combinado entre fornecedores",
            "atas dos certames: nº de propostas VÁLIDAS, cascata de desclassificações e QSA/endereços "
            "dos derrotados (derrotado-fantasma que nunca vence em lugar nenhum = cartel de cobertura)"),
+    "F-ESCALADA": ("contrato novo ou aditivo regular, ou restos a pagar de exercício anterior",
+                   "acréscimo sem lastro contratual ou acima do limite do art. 125 da Lei 14.133/2021",
+                   "contratos e aditivos vigentes em cada exercício (valor e data) × pago por exercício; "
+                   "inscrição em restos a pagar das OBs do ano do salto"),
+    "C-PAGO>NL": ("NL anulada parcialmente após o pagamento, com Guia de Devolução não ingerida",
+                  "pagamento acima do direito liquidado do credor",
+                  "espelhos da NL e das OBs que a citam + Guias de Devolução (gd_siafe) do período"),
+    "C-OB<NL": ("NL de regularização emitida depois de liquidação material anterior",
+                "pagamento antes da verificação do direito do credor",
+                "atesto/medição e nota fiscal: data do atesto × data da OB"),
     "R10": ("regularizações contábeis normais (anulação e reempenho)",
             "ciclo de empenho-estorno para reter dotação ou mascarar liquidação irregular",
             "documentos de anulação no SIAFE (motivo declarado) + cronologia estorno→novo empenho"),

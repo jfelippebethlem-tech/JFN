@@ -76,9 +76,13 @@ def test_parecer_md_surfa_exculpatorio_e_destinatario():
         {"rf": "R4", "grav": 3, "obs": "Preço acima da referência."},          # forte → TCE/TCU
     ]
     md = lex.parecer_md(_ctx(), _analise_stub(achados))
-    assert "PASSO EXCULPATÓRIO" in md, "subseção exculpatória ausente do parecer"
-    assert "Destinatário recomendado" in md, "destinatário recomendado ausente do parecer"
-    assert "TCE-RJ" in md and "CADE" in md, "destinatários por família ausentes"
+    assert "passo exculpatório" in md.lower(), "subseção exculpatória ausente do parecer"
+    assert "Proposta de encaminhamento" in md, "encaminhamento ausente do parecer"
+    # 20/11/2026 — encaminhamento DERIVADO dos achados: o forte (R4, defesa afastada) sustenta representação ao
+    # tribunal de contas; o fraco (R8 de concentração, defesa plausível) fica em monitoramento e NÃO vai ao CADE
+    # (o parecer antigo listava MP/CADE/CGE para qualquer achado — recomendação que não decorria dos fatos).
+    assert "Representação ao TCE-RJ" in md
+    assert "CADE" not in md.split("Proposta de encaminhamento", 1)[1].split("## 9.", 1)[0]
     # Achado fraco rebaixado a monitoramento aparece textualmente.
     assert "monitoramento" in md.lower()
     assert "rebaixado" in md.lower()

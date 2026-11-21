@@ -7,6 +7,7 @@ parecer_md(ctx) sem análise pronta importa lex._analise tardiamente (evita cicl
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from fpdf.enums import XPos, YPos
@@ -15,265 +16,8 @@ logger = logging.getLogger(__name__)
 
 from compliance_agent.collectors.arquivos import caminho_db
 from compliance_agent.reporting.inteligencia import (
-    _mc, _registrar_fonte, _render_parecer_pdf, fmt_cnpj, moeda, so_digitos,
+    _mc, _registrar_fonte, _render_parecer_pdf, fmt_cnpj, so_digitos,
 )
-from compliance_agent.lex_redflags import (
-    _RF, _anatomia, _eh_servico_continuo, _elemento_subjetivo, _fmt_proc,
-)
-
-def _padrao_temporal(p: dict) -> dict:
-    """Métricas temporais dos pagamentos: janela, crescimento máximo ano-a-ano e share de dezembro.
-    Trabalha sobre TODAS as linhas (por_ano.linhas é completo — intel_dados não amostra)."""
-    por_ano = p.get("por_ano") or {}
-    anos = sorted(a for a in por_ano if a)
-    out: dict = {"anos": anos}
-    if len(anos) >= 2:
-        cresc = []
-        for a0, a1 in zip(anos, anos[1:]):
-            t0 = por_ano[a0].get("total") or 0
-            t1 = por_ano[a1].get("total") or 0
-            if t0 > 0 and t1 > t0:
-                cresc.append((a0, a1, (t1 / t0 - 1) * 100, t0, t1))
-        if cresc:
-            out["maior_salto"] = max(cresc, key=lambda c: c[2])
-    tot = dez = 0.0
-    datas = []
-    for bloco in por_ano.values():
-        for ln in bloco.get("linhas") or []:
-            v = float(ln.get("valor") or 0)
-            d = ln.get("data") or ""
-            if v > 0:
-                tot += v
-                if isinstance(d, str) and len(d) >= 7 and d[5:7] == "12":
-                    dez += v
-            if isinstance(d, str) and len(d) >= 10 and d[4:5] == "-":
-                datas.append(d[:10])
-    if tot > 0:
-        out["dez_share"] = dez / tot * 100
-    if datas:
-        out["primeira"], out["ultima"] = min(datas), max(datas)
-    return out
-
-
-def _idade_na_primeira_ob(emp: dict, temporal: dict) -> float | None:
-    """Anos entre a abertura da empresa e a 1ª OB recebida (None quando falta data)."""
-    ab = (emp.get("data_abertura") or "").strip()
-    pr = temporal.get("primeira") or ""
-    if len(ab) >= 10 and len(pr) >= 10 and ab[4:5] == "-":
-        try:
-            from datetime import date
-            d0 = date(int(ab[:4]), int(ab[5:7]), int(ab[8:10]))
-            d1 = date(int(pr[:4]), int(pr[5:7]), int(pr[8:10]))
-            return max(0.0, (d1 - d0).days / 365.25)
-        except ValueError:
-            return None
-    return None
-
-
-def _linhas_de_evidencia(ctx: dict, analise: dict) -> list[tuple[str, bool, str]]:
-    """Triangulação: cada linha INDEPENDENTE de evidência, se apontou indício e o resumo.
-    Padrão de auditoria (ISSAI 100/300): a força do conjunto vem da CONVERGÊNCIA de fontes
-    independentes, não da soma de sinais correlacionados."""
-    achados = analise.get("achados") or []
-    tcerj = analise.get("tcerj") or {}
-    cartel = analise.get("cartel") or {}
-    cruzado = analise.get("cruzado") or {}
-    inv = analise.get("investigacao") or {}
-    direc = analise.get("direcionamento") or {}
-    lidos = [x for x in (analise.get("leituras") or []) if x.get("lido")]
-    rfs = {str(a.get("rf", "")) for a in achados}
-    linhas: list[tuple[str, bool, str]] = []
-    fin = [r for r in rfs if r.startswith("R") and r not in ("R6", "R8", "R11")]
-    linhas.append(("Financeira (OBs SIAFE/TFE)", bool(fin),
-                   f"red flags {', '.join(sorted(fin))}" if fin else "padrão de pagamento sem disparo"))
-    if lidos:
-        doc = [r for r in rfs if r.startswith("DOC")]
-        linhas.append(("Documental (íntegra SEI)", bool(doc),
-                       f"{len(lidos)} processo(s) lidos" + (f"; disparos {', '.join(sorted(doc))}" if doc else ", sem disparo")))
-    if tcerj.get("n_contratos") or tcerj.get("n_compras_diretas"):
-        linhas.append(("Registral (TCE-RJ Dados Abertos)", bool(tcerj.get("n_diretas_dispensa")),
-                       f"{tcerj.get('n_contratos', 0)} contrato(s), {tcerj.get('n_diretas_dispensa', 0)} por afastamento de licitação"))
-    if cartel.get("vizinhos") or cruzado.get("co_ocorrencia_com_socio_comum"):
-        forte = bool(cruzado.get("co_ocorrencia_com_socio_comum"))
-        linhas.append(("Societária/rede (QSA × co-ocorrência)", forte or "R8" in rfs,
-                       "sócio em comum com co-ocorrente" if forte else "co-ocorrência estreita a verificar"))
-    hips = inv.get("hipoteses") or []
-    if hips:
-        conf = [h for h in hips if h.get("status") in ("CONFIRMADO", "INDICIO")]
-        linhas.append(("Due diligence (fachada/laranja)", bool(conf),
-                       f"{len(conf)}/{len(hips)} hipótese(s) com indício" if conf else f"{len(hips)} hipótese(s), nenhuma confirmada"))
-    if direc.get("grau"):
-        g = str(direc.get("grau")).lower()
-        linhas.append(("Direcionamento de certame", g == "vermelho",
-                       f"grau {g} (score {direc.get('score', 0)}/100)"))
-    return linhas
-
-
-def _analise_merito(ctx: dict, analise: dict) -> str:
-    """Prosa de mérito (parecer raciocinado) — perfil e aderência cadastral, padrão temporal,
-    concentração, contratação direta, TRIANGULAÇÃO de linhas de evidência e standard probatório.
-    Cada bloco só entra quando há dado real (INDISPONÍVEL ≠ 0); a régua empírica é contexto de
-    calibragem, nunca prova (indício ≠ acusação)."""
-    p = ctx.get("pagamentos") or {}
-    emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
-    achados = analise.get("achados", [])
-    continuo = _eh_servico_continuo([emp.get("cnae_principal"), emp.get("atividade"), ctx.get("nome")])
-    total = p.get("total_geral") or p.get("total") or 0
-    nob = p.get("n_geral") or p.get("n_obs") or 0
-    norg = len(p.get("por_orgao_geral") or {}) or len({
-        ln.get("orgao") for b in (p.get("por_ano") or {}).values()
-        for ln in (b.get("linhas") or []) if ln.get("orgao")})
-    temporal = _padrao_temporal(p)
-    L = []
-    try:
-        from compliance_agent.lex_base_empirica import contexto_empirico_md
-        _emp = contexto_empirico_md(ctx.get("cnpj"))
-        if _emp:
-            L.append(_emp)
-    except Exception as exc:
-        logger.warning("contexto empírico do Lex indisponível p/ %s (seção some do parecer): %s", ctx.get("cnpj"), exc)
-
-    # 1. Perfil e aderência cadastral × exposição
-    natureza = ("prestadora de **serviços contínuos** (limpeza/conservação/vigilância/mão de obra)"
-                if continuo else "fornecedora do Estado")
-    L.append(
-        f"**1. Perfil do fornecedor e aderência cadastral.** Trata-se de empresa {natureza}, com exposição de "
-        f"**R$ {moeda(total)}** em " + f"{nob:,}".replace(",", ".") + f" ordens bancárias junto a {norg} órgão(s) no período"
-        + (f" (janela observada: {temporal['primeira']} a {temporal['ultima']})" if temporal.get("primeira") else "")
-        + ". " + (
-            "Para esse segmento, a presença em múltiplos órgãos — cada um com contrato próprio, em regra por pregão "
-            "e com vigência de até 10 anos (arts. 106-107 da Lei 14.133/2021) — é a **estrutura ordinária do "
-            "mercado** e não evidencia, por si só, irregularidade." if continuo else
-            "A pulverização entre órgãos, isoladamente, não indica irregularidade."))
-    idade = _idade_na_primeira_ob(emp, temporal)
-    cap = emp.get("capital_social")
-    perfil = []
-    if idade is not None:
-        if idade < 2:
-            perfil.append(
-                "a empresa recebeu a primeira OB estadual **" + f"{idade:.1f}".replace(".", ",") + " ano(s)** após a abertura do CNPJ "
-                f"({emp.get('data_abertura')}) — contratação de pessoa jurídica recém-constituída não é vedada "
-                "(livre iniciativa, art. 170 CF/88), mas desloca o exame para a **demonstração concreta de "
-                "capacidade técnica e econômico-financeira** exigível na habilitação (arts. 62, 66-69 da "
-                "Lei 14.133/2021)" + ("; histórico operacional inexistente somado a exposição dessa ordem é "
-                "indício clássico de interposição a apurar" if total >= 1_000_000 else
-                " — registrar para acompanhamento da escalada de exposição"))
-        else:
-            perfil.append(f"há **{idade:.0f} anos** de existência formal antes da primeira OB observada — "
-                          "maturidade cadastral compatível com fornecimento regular")
-    if cap and total and float(cap) > 0:
-        mult = total / float(cap)
-        if mult >= 100:
-            perfil.append(
-                "a exposição equivale a **" + f"{mult:,.0f}".replace(",", ".") + f"×** o capital social registrado (R$ {moeda(cap)}) — razão "
-                "dessa ordem não é ilícita per se, porém esvazia a função de garantia do capital e reforça a "
-                "necessidade de aferir a qualificação econômico-financeira efetivamente exigida e demonstrada "
-                "(art. 69 da Lei 14.133/2021: balanço patrimonial, certidões, capital mínimo ou garantia)")
-        elif mult >= 10:
-            perfil.append("a exposição equivale a **" + f"{mult:,.0f}".replace(",", ".") + f"×** o capital social (R$ {moeda(cap)}) — proporção "
-                          "relevante, usual em serviços intensivos em mão de obra, a contextualizar com o balanço")
-    sit = (emp.get("situacao") or "").upper()
-    if sit and sit != "ATIVA":
-        perfil.append(f"a situação cadastral na RFB é **{sit}** — fornecedor não-ATIVO recebendo recurso público "
-                      "exige verificação imediata da regularidade fiscal mantida durante a execução (art. 92 da "
-                      "Lei 14.133/2021 — manutenção das condições de habilitação — e jurisprudência pacífica do TCU: "
-                      "a regularidade deve subsistir ao longo da execução)")
-    if perfil:
-        L.append("No plano cadastral, " + "; ".join(perfil) + ".")
-
-    # 2. Padrão temporal dos pagamentos
-    tempo = []
-    salto = temporal.get("maior_salto")
-    if salto:
-        a0, a1, pct, t0, t1 = salto
-        if pct >= 150:
-            tempo.append(
-                "o valor pago saltou **" + f"{pct:,.0f}".replace(",", ".") + f"%** de {a0} (R$ {moeda(t0)}) para {a1} (R$ {moeda(t1)}) — "
-                "escalada dessa magnitude pede confronto com os instrumentos que a lastrearam (novos contratos? "
-                "aditivos? — teto de 25%/50% do art. 125 da Lei 14.133/2021; sucessivos aditivos que dobram o "
-                "objeto configuram burla ao dever de licitar)")
-        elif pct >= 60:
-            tempo.append("crescimento de **" + f"{pct:,.0f}".replace(",", ".") + f"%** entre {a0} e {a1} — expansão relevante, compatível com "
-                         "novos certames vencidos; conferir se houve licitação própria para cada incremento")
-    dez = temporal.get("dez_share")
-    if dez is not None and dez >= 25:
-        tempo.append(
-            f"**{dez:.0f}%** do valor foi pago em dezembros — concentração de fim de exercício («corrida de "
-            "empenho») é padrão sensível: liquidação e atesto sob pressão de prazo degradam o controle (arts. "
-            "62-63 da Lei 4.320/64 exigem liquidação REAL antes do pagamento; conferir medições/atestos dos "
-            "pagamentos de dezembro)")
-    if tempo:
-        L.append("**2. Padrão temporal.** No eixo do tempo, " + "; ".join(tempo) + ".")
-
-    # 3. Concentração e competitividade
-    hhi = p.get("hhi", {})
-    if hhi.get("top_share", 0):
-        top_orgao = next(iter(p.get("por_orgao_geral") or {}), "")
-        L.append(
-            "**3. Concentração.** O índice de concentração (HHI) é **" + str(hhi.get('indice')).replace(".", ",")
-            + f"** ({hhi.get('nivel')}), com o maior contratante — {top_orgao} — respondendo por **"
-            + str(hhi.get('top_share')).replace(".", ",") + "%** do valor. " + (
-                "Concentração elevada num único órgão, ainda que possa decorrer de mérito técnico, atrai o exame "
-                "da competitividade real dos certames (art. 11, I-II, da Lei 14.133/2021: seleção da proposta apta "
-                "a gerar o resultado mais vantajoso E tratamento isonômico) — verificar quantos licitantes "
-                "compareceram, quantos foram desclassificados e por quê (a cascata de desclassificações é o "
-                "mecanismo clássico de direcionamento — Súmula TCU 263 sobre exigências restritivas)."
-                if hhi.get("top_share", 0) >= 50 else
-                "O grau é compatível com atuação difusa, sem alerta específico de captura de órgão."))
-
-    # 4. Contratação direta
-    tcerj = analise.get("tcerj") or {}
-    if tcerj.get("n_diretas_dispensa"):
-        L.append(
-            f"**4. Contratação direta.** O TCE-RJ registra **{tcerj.get('n_diretas_dispensa')} contratação(ões) "
-            "por dispensa/inexigibilidade**. " + (
-                "Em serviços contínuos, a dispensa emergencial costuma cobrir o intervalo entre o fim de um contrato "
-                "e a conclusão do novo pregão — regular quando justificada, temporária e instruída (art. 72 da Lei "
-                "14.133/2021 lista as peças obrigatórias do processo de contratação direta; art. 75 traz as "
-                "hipóteses). O exame deve focar a **reiteração do mesmo objeto/local sob o teto** — aí sim "
-                "fracionamento vedado (art. 75, §1º) — e a emergência **fabricada** por desídia administrativa "
-                "(jurisprudência pacífica do TCU: a emergência decorrente da falta de planejamento não legitima a "
-                "dispensa, sem prejuízo da contratação para afastar o risco, com apuração de responsabilidade)."
-                if continuo else
-                "Cabe verificar, uma a uma: o enquadramento legal invocado, a instrução exigida pelo art. 72 da "
-                "Lei 14.133/2021 (estudo técnico, estimativa, razão de escolha, justificativa de preço) e a "
-                "eventual sucessão do mesmo objeto sob o teto (art. 75, §1º — fracionamento)."))
-
-    # 5. Triangulação — convergência de linhas independentes de evidência
-    linhas_ev = _linhas_de_evidencia(ctx, analise)
-    if linhas_ev:
-        pos = [nome for nome, hit, _ in linhas_ev if hit]
-        detalhe = "; ".join(f"{nome}: {'⚠ ' if hit else '✓ '}{res}" for nome, hit, res in linhas_ev)
-        if len(pos) >= 2:
-            forca = (
-                f"**{len(pos)} linhas independentes** apontam no mesmo sentido ({', '.join(pos)}) — é a "
-                "**convergência**, não o sinal isolado, que confere força ao conjunto (evidência suficiente e "
-                "apropriada, ISSAI 100/300; na prova indiciária, indícios múltiplos, graves, precisos e "
-                "concordantes autorizam a conclusão — art. 239 CPP, aplicado analogicamente ao processo de contas).")
-        elif len(pos) == 1:
-            forca = (f"apenas **1 linha** ({pos[0]}) disparou; sem corroboração independente, o conjunto NÃO "
-                     "sustenta mais que diligência — sinal único é hipótese de trabalho, não achado maduro.")
-        else:
-            forca = ("**nenhuma linha** de evidência disparou — as fontes independentes se corroboram no sentido "
-                     "da regularidade; a presunção de legitimidade sai REFORÇADA do cruzamento.")
-        L.append("**5. Triangulação (análise cruzada).** Linhas examinadas — " + detalhe + ". " + forca)
-
-    # 6. Síntese e standard probatório
-    graves = [a for a in achados if a.get("grav", 0) >= 3]
-    L.append(
-        "**6. Síntese e standard probatório.** " +
-        (f"Convergem **{len(achados)} indício(s)**, {len(graves)} de maior gravidade, sustentando a classificação "
-         f"**{analise.get('rotulo')}**. " if achados
-         else "Não há indícios relevantes nos dados disponíveis. ") +
-        "Reitere-se o standard: os apontamentos são **indícios** sob **presunção de legitimidade** dos atos "
-        "administrativos (o ônus de provar o vício recai sobre quem o invoca — Meirelles); na interpretação das "
-        "condutas valem os arts. 20-22 da LINDB (consequências práticas da decisão; obstáculos e dificuldades REAIS "
-        "do gestor; primazia da realidade sobre o formalismo) e só o **erro grosseiro** responsabiliza o agente "
-        "público (art. 28 LINDB). A confirmação de qualquer achado depende de diligência documental nos processos "
-        "SEI (edital/TR, pesquisa de preços, atas, atestos, medições) e de **contraditório** (art. 5º, LV, CF/88). "
-        "Este parecer **não** constitui juízo de irregularidade, improbidade ou crime.")
-    return "\n\n".join(L)
-
 
 _BADGE_STATUS = {"CONFIRMADO": "🔴 CONFIRMADO", "INDICIO": "🟡 INDÍCIO",
                  "AFASTADO": "🟢 AFASTADO", "INDISPONIVEL": "⚪ INDISPONÍVEL"}
@@ -606,489 +350,106 @@ def _secao_responsaveis(sei: list) -> list[str]:
 
 
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
+    """Parecer REFERÊNCIA de fornecedor (markdown) — por eixos e em duas camadas (`lex_parecer.montar`).
+
+    20/11/2026: o renderizador antigo (seções II…VII) dizia 🟢 "nenhum indício" e, no mérito, citava como
+    relevantes sinais que não entravam no grau; misturava fontes (TFE no contexto × SIAFE) e numerava fora de
+    ordem. A montagem agora vive em `lex_parecer` e lê só a base única de fatos (`lex_fatos`)."""
     if analise is None:
         from compliance_agent.lex import _analise  # tardio: evita ciclo com a fachada lex.py
         analise = _analise(ctx)
-    cnpj = analise["cnpj"]
-    sei = analise["sei"]
-    leituras = analise["leituras"]
-    achados = analise["achados"]
-    emoji, rotulo, just = analise["emoji"], analise["rotulo"], analise["just"]
-    tcerj = analise.get("tcerj") or {}
-    cartel = analise.get("cartel") or {}
-    cruzado = analise.get("cruzado") or {}
-    exculpatorio = analise.get("exculpatorio") or []
-    destinatarios = analise.get("destinatarios") or []
-    # 1º item exculpatório por RF (p/ III-B refletir o rebaixamento a 'monitoramento' quando a defesa sobrevive).
-    _exc_por_rf = {}
-    for _e in exculpatorio:
-        _exc_por_rf.setdefault(_e.get("rf"), _e)
-    p = ctx.get("pagamentos") or {}
-    lidos = [l for l in leituras if l.get("lido")]
-    L = []
-    add = L.append
-
-    add(f"# PARECER JURÍDICO PRELIMINAR — {ctx.get('nome','')}")
-    add("### Avaliação fático-jurídica de contratação, licitação e pagamentos")
-    add("")
-    add("*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
-    add("")
-    add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Controle Externo (automatizado)")
-    classif = "COM Achado" if achados else "SEM Achado"
-    add(f"**Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **{classif}**.")
-    add(f"**Grau de atenção:** {emoji} **{rotulo}** — {just}.")
-    add("")
-    add("---")
-    add("")
-
-    # I. Identificação
-    add("## I. IDENTIFICAÇÃO")
-    add("")
-    add(f"- **Fornecedor:** {ctx.get('nome','')} (CNPJ {fmt_cnpj(cnpj)})")
-    if p.get("tem_dados"):
-        add(f"- **Exposição:** R$ {moeda(p['total_geral'])} em {p['n_geral']} OBs, {len(p.get('por_orgao_geral',{}))} órgãos, "
-            f"exercícios {', '.join(map(str, p.get('anos', [])))}")
-    add(f"- **Processos SEI vinculados (origem das OBs):** {len(sei)} identificado(s) na base correlacionada (SIAFE); "
-        f"**{len(lidos)} lido(s) na íntegra** nesta análise.")
-    add("")
-
-    # II. Fatos
-    add("## II. FATOS — processos administrativos")
-    add("")
-    if sei:
-        add("Cada Ordem Bancária remete a um processo SEI (DFD → ETP → TR/edital → contrato → empenho → liquidação → OB). "
-            "Processos vinculados a este fornecedor:")
-        add("")
-        add("| Processo SEI | Nº de OBs | Valor pago (R$) |")
-        add("|---|---:|---:|")
-        for s in sei:
-            add(f"| {s.get('numero_sei')} | {s.get('n_obs')} | {moeda(s.get('total'))} |")
-        add("")
-    else:
-        add("> Ainda não há processos SEI correlacionados a este CNPJ na base. **Diligência:** rodar a coleta SIAFE "
-            "(tela OB Orçamentária) e a correlação para puxar os processos.")
-        add("")
-
-    # II-B. Leitura da íntegra
-    add("## II-B. LEITURA DOS PROCESSOS SEI (íntegra)")
-    add("")
-    if lidos:
-        add(f"Foram abertos e lidos o inteiro teor de **{len(lidos)} processo(s)** no sistema eletrônico (pesquisa pública), "
-            "extraindo objeto, modalidade, documentos, partes (CNPJs) e valores:")
-        add("")
-        for l in lidos:
-            add(f"### Processo {l.get('numero')}")
-            if l.get("tipo"):
-                add(f"- **Tipo/título:** {l['tipo']}")
-            if l.get("objeto"):
-                add(f"- **Objeto (lido):** {l['objeto']}")
-            add(f"- **Modalidade/fundamento aparente:** {l.get('modalidade','—')}")
-            add(f"- **Documentos no processo:** {l.get('n_docs',0)} (lidos na íntegra: {l.get('n_docs_lidos',0)})")
-            if l.get("cnpjs"):
-                add(f"- **CNPJs no processo:** {', '.join(l['cnpjs'][:6])}")
-            if l.get("valores"):
-                add(f"- **Valores citados:** {', '.join(l['valores'][:6])}")
-            add(f"- **OBs deste processo:** {l.get('n_obs','—')} (R$ {moeda(l.get('total'))})")
-            add("")
-    else:
-        nao = [l for l in leituras if not l.get("lido")]
-        if nao:
-            motivos = "; ".join(f"{l.get('numero')}: {l.get('erro') or 'sem texto'}" for l in nao[:5])
-            add(f"> A leitura automática não retornou o inteiro teor nesta execução ({motivos}). Causas comuns: "
-                "CAPTCHA não resolvido pelo OCR, processo restrito/sigiloso, ou Chrome de leitura (9222) indisponível. "
-                "**Diligência:** reexecutar a leitura (o cache é preenchido) ou abrir manualmente.")
-        else:
-            add("> Não houve leitura de íntegra nesta execução (sem processos correlacionados ou leitura desabilitada).")
-        add("")
-
-    # II-B2. RESPONSÁVEIS — quem responde pelos atos do processo.
-    # Sem esta seção o parecer descreve o QUE aconteceu e cala sobre QUEM praticou, e
-    # responsabilização sem individualização não existe: "João da Silva, fiscal" não identifica
-    # ninguém num quadro de 200 mil servidores — por isso o ID funcional entra sempre que houver.
-    # A ausência é declarada como LACUNA, nunca como inexistência de responsável: em 97% dos
-    # processos do acervo o ato de designação simplesmente não foi capturado.
-    add("## II-B2. RESPONSÁVEIS IDENTIFICADOS")
-    add("")
-    _blocos_resp = _secao_responsaveis(sei)
-    if _blocos_resp:
-        for _b in _blocos_resp:
-            add(_b)
-            add("")
-    else:
-        add("> Nenhum responsável foi identificado nos documentos lidos. Isso é **lacuna de "
-            "captura ou de instrução**, não afirmação de que o processo corra sem responsável "
-            "designado — o ato de designação frequentemente não integra o processo de pagamento. "
-            "**Diligência:** requisitar o ato de designação de fiscal e gestor (art. 117 da Lei "
-            "14.133/2021).")
-        add("")
-
-    # II-C. Contratos e compras diretas no TCE-RJ (Dados Abertos — independe do SEI/WAF)
-    add("## II-C. CONTRATOS E COMPRAS DIRETAS — TCE-RJ (Dados Abertos)")
-    add("")
-    if tcerj.get("n_contratos") or tcerj.get("n_compras_diretas"):
-        add(f"A base de **Dados Abertos do TCE-RJ** (controle externo) registra, para este fornecedor, "
-            f"**{tcerj.get('n_contratos',0)} contrato(s)** (R$ {moeda(tcerj.get('soma_contratos',0))}) e "
-            f"**{tcerj.get('n_compras_diretas',0)} compra(s) direta(s)** (R$ {moeda(tcerj.get('soma_compras',0))}), "
-            f"dos quais **{tcerj.get('n_diretas_dispensa',0)} por dispensa/inexigibilidade**. Esta fonte é oficial e "
-            "não depende da leitura do SEI.")
-        add("")
-        if tcerj.get("contratos"):
-            add("**Contratos formais (maiores por valor):**")
-            add("")
-            add("| Processo | Ano | Objeto | Critério | Valor contrato (R$) | Unidade |")
-            add("|---|---:|---|---|---:|---|")
-            for c in tcerj["contratos"]:
-                obj = (c.get("objeto") or "").strip()
-                obj = (obj[:55] + "…") if len(obj) > 55 else (obj or "—")
-                add(f"| {_fmt_proc(c.get('processo',''))} | {c.get('ano_processo','')} | {obj} | "
-                    f"{c.get('criterio_julgamento') or '—'} | {moeda(c.get('valor_contrato'))} | "
-                    f"{(c.get('unidade') or '')[:30]} |")
-            add("")
-        if tcerj.get("compras"):
-            add("**Compras diretas (dispensa/inexigibilidade — fundamento legal citado):**")
-            add("")
-            add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
-            add("|---|---:|---|---|---|---:|")
-            for c in tcerj["compras"]:
-                obj = (c.get("objeto") or "").strip()
-                obj = (obj[:45] + "…") if len(obj) > 45 else (obj or "—")
-                enq = (c.get("enquadramento_legal") or "").strip()
-                enq = (enq[:55] + "…") if len(enq) > 55 else (enq or "—")
-                add(f"| {_fmt_proc(c.get('processo',''))} | {c.get('ano_processo','')} | {obj} | "
-                    f"{c.get('afastamento') or '—'} | {enq} | {moeda(c.get('valor'))} |")
-            add("")
-    else:
-        add("> Não há contratos nem compras diretas deste CNPJ na base de Dados Abertos do TCE-RJ. Isso pode "
-            "ocorrer quando a contratação é municipal, federal, ou ainda não publicada — **diligência:** confirmar "
-            "no PNCP e no próprio processo SEI.")
-        add("")
-
-    # II-D. Rede fornecedor↔órgão (Onda 3 — indício de rodízio/cartel)
-    vz = cartel.get("vizinhos") or []
-    if vz:
-        add("## II-D. REDE FORNECEDOR–ÓRGÃO (indício de rodízio/cartel)")
-        add("")
-        add(f"O favorecido atua em **{cartel.get('n_orgaos',0)} órgão(s)**. Outros fornecedores **não-ubíquos** "
-            "(excluídas utilities/tributos) que atuam nos **mesmos** órgãos — co-ocorrência estreita é indício de "
-            "rodízio/cartel (bid rigging, art. 36 Lei 12.529) a **verificar** (sócios, endereços, datas de proposta):")
-        add("")
-        add("| Fornecedor co-ocorrente | Órgãos em comum | Footprint total | Valor nesses órgãos (R$) |")
-        add("|---|---:|---:|---:|")
-        for v in vz[:8]:
-            add(f"| {(v.get('nome') or '')[:40]} | {v.get('orgaos_comuns')} | {v.get('footprint_total')} | "
-                f"{moeda(v.get('valor_nos_orgaos'))} |")
-        add("")
-        add("> Co-ocorrência **não prova** conluio (podem ser do mesmo ramo legítimo). É ponto de diligência: "
-            "cruzar quadro societário (QSA), endereços e a cronologia das propostas nas licitações comuns.")
-        add("")
-        # cruzamento por sócio (Onda 4) — quando há QSA ingerido
-        match = cruzado.get("co_ocorrencia_com_socio_comum") or []
-        if match:
-            add("**⚠ Indício forte — co-ocorrência COM sócio em comum (QSA):**")
-            add("")
-            add("| Fornecedor | Órgãos em comum | Sócio(s) compartilhado(s) |")
-            add("|---|---:|---|")
-            for m in match[:6]:
-                add(f"| {(m.get('nome') or '')[:38]} | {m.get('orgaos_comuns')} | {(m.get('socios_comuns') or '')[:50]} |")
-            add("")
-            add("> Compartilhar sócio **e** atuar nos mesmos órgãos eleva o indício (possível cartel/laranja/"
-                "empresas-irmãs — art. 337-F CP; art. 36 Lei 12.529). Diligência: confirmar no contrato social e nas atas.")
-            add("")
-
-    # II-E. Investigação de Due Diligence (fachada/laranja) — o Lex apresenta a investigação que conduziu.
-    inv = analise.get("investigacao") or {}
-    _secao_investigacao(add, inv, cnpj=so_digitos(ctx.get("cnpj", "")))
-
-    # II-E.2. Auditoria de contrato contínuo (bateria T01–T22) — só renderiza se houver acervo de contrato.
-    _secao_auditoria_contrato(add, analise.get("auditoria_contrato") or {})
-
-    # II-F. Direcionamento de licitação (parecer LLM on-demand) — SURFACE do veredito dos top-score.
-    _secao_direcionamento(add, analise.get("direcionamento"))
-
-    # II-G. Pesquisa-internet (Fase 5) — dúvidas pesquisadas, aprendizado e re-ajuste (SURFACE).
-    _secao_pesquisa(add, analise.get("pesquisa"))
-
-    # II-G.1. Aprendizado cruzado — padrões em fornecedores ligados (mesmos sócios/veículos), SURFACE.
-    _secao_padroes_ligados(add, (analise.get("pesquisa") or {}).get("cruzado") or "")
-
-    # II-H. Análise forense quantitativa (Benford/redondos/sazonalidade/cadência/rastreabilidade/timeline).
-    try:
-        from compliance_agent import lex_forense as _lf
-        _forense = _lf.secao_forense_md(ctx, analise)
-        if _forense:
-            add(_forense)
-    except Exception as exc:  # noqa: BLE001 — seção some, parecer não cai
-        logger.warning("análise forense quantitativa falhou (seção II-H some do parecer): %s", exc)
-
-    # III. Matriz de Achados + análise por red flag
-    add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
-    add("")
-    add("*Modelo TCU/ISSAI/CGU: **critério × condição → causa → efeito**, com evidência e recomendação "
-        "(metodologia de controle externo).*")
-    add("")
-    if achados:
-        add("| # | Critério (norma) | Condição (situação) | Causa provável | Efeito potencial | Recomendação |")
-        add("|---|---|---|---|---|---|")
-        for an in (_anatomia(a) for a in achados):
-            cond = an["condicao"].replace("**", "").replace("|", "/")
-            cond = (cond[:90] + "…") if len(cond) > 90 else cond
-            crit = (an["criterio"][:55] + "…") if len(an["criterio"]) > 55 else an["criterio"]
-            add(f"| {an['rf']} | {crit} | {cond} | {an['causa']} | {an['efeito']} | {an['recomendacao']} |")
-        add("")
-        add("> **Evidência** de todos os achados: Ordens Bancárias (SIAFE/TFE) e contratos/compras diretas do "
-            "TCE-RJ (Dados Abertos); quando lida, a íntegra do processo SEI. **Conclusão:** os itens acima são "
-            "**indícios** que sustentam a classificação como Nota Técnica COM Achado, sujeitos a contraditório.")
-    else:
-        add("> **Nota Técnica SEM Achado** — não há indício que sustente um achado. Mantém-se a presunção de "
-            "regularidade dos atos administrativos.")
-    add("")
-
-    # III-B. Detalhe por indício
-    add("## III-B. DETALHAMENTO DOS INDÍCIOS (red flags do controle externo)")
-    add("")
-    if analise.get("tem_leitura_doc"):
-        add("*Indícios marcados abaixo combinam os dados financeiros (OBs) com a **leitura do inteiro teor** dos processos.*")
-        add("")
-    # Os indícios DD/* (fachada/laranja) são apresentados na seção II-E (não duplicar aqui).
-    achados_rf = [a for a in achados if not str(a.get("rf", "")).startswith("DD/")]
-    if achados_rf:
-        for a in achados_rf:
-            nome, fund = _RF.get(a["rf"], (a["rf"], ""))
-            add(f"### {a['rf']} — {nome}")
-            add(f"- **Observação:** {a['obs']}")
-            add(f"- **Fundamento:** {fund}")
-            # Análise discursiva (onde no documento + por quê o mecanismo), ancorada no trecho real do SEI.
-            if a.get("analise"):
-                add(f"- **Análise (onde e por quê):** {a['analise']}")
-                if a.get("trecho"):
-                    add(f"  > _Trecho do processo {a.get('numero_proc','')}:_ «{a['trecho'][:300]}»")
-            add("- **Diligência sugerida:** confrontar com edital (especificações), pesquisa de preços, mapa de "
-                "licitantes/sócios, atestos e aditivos do processo SEI.")
-            # Encaminhamento por severidade (o que FAZER com este indício) — dirige a ação, não só descreve.
-            # Respeita o passo exculpatório: achado cuja defesa inocente SOBREVIVE → rebaixado a monitoramento.
-            g = a.get("grav", 0)
-            _exc = _exc_por_rf.get(a.get("rf"))
-            if _exc and _exc.get("sobrevive"):
-                add(f"- **Encaminhamento:** gravidade {g}/5 — a explicação inocente mais plausível **não foi "
-                    "refutada** pelos dados (ver passo exculpatório); rebaixado a **monitoramento**, não representação.")
-            elif g >= 3:
-                add(f"- **⤴ Encaminhamento:** indício relevante (gravidade {g}/5) — cabe **requerimento** ao órgão "
-                    "exigindo a justificativa documental; persistindo a dúvida, representação ao TCE-RJ/MP-RJ.")
-            else:
-                add(f"- **Encaminhamento:** gravidade {g}/5 — manter em diligência/monitoramento; reavaliar com mais dados.")
-            add("")
-    elif any(str(a.get("rf", "")).startswith("DD/") for a in achados):
-        add("Nenhum indício a partir dos dados financeiros/documentais; os achados desta análise são de "
-            "**fachada/laranja** e estão detalhados na seção II-E (Investigação de Due Diligence).")
-        add("")
-    else:
-        add("Nenhum indício automático disparou a partir dos dados financeiros nem da leitura documental disponível. "
-            "Mantém-se a presunção de regularidade.")
-        add("")
-
-    # IV. Matriz P×I
-    add("## IV. MATRIZ DE RISCO (P × I — metodologia TCU)")
-    add("")
-    add("| Indício | P (1-5) | I (1-5) | Score | Faixa |")
-    add("|---|---:|---:|---:|---|")
-    for a in achados:
-        nome = _RF.get(a["rf"], (a["rf"], ""))[0]
-        pp = min(5, 2 + a["grav"] // 2); ii = a["grav"]
-        sc = pp * ii
-        faixa = "Baixo" if sc <= 4 else "Médio" if sc <= 9 else "Alto" if sc <= 14 else "Extremo"
-        add(f"| {a['rf']} {nome} | {pp} | {ii} | {sc} | {faixa} |")
-    if not achados:
-        add("| — | — | — | — | — |")
-    add("")
-
-    # III-C. Triagem por indicadores de risco de fraude (lex_indicadores_fraude)
-    try:
-        from compliance_agent import lex_indicadores_fraude as _lif
-        _sinais = _lif.sinais_do_contexto(ctx, analise)
-        add(_lif.parecer_indicadores_md(_lif.triagem(_sinais)))
-        add("")
-    except Exception as exc:
-        logger.warning("triagem de indicadores de fraude falhou (seção III-C some do parecer): %s", exc)
-
-    # IV-B. Análise de mérito (parecer raciocinado)
-    add("## IV-B. ANÁLISE DE MÉRITO")
-    add("")
-    add(_analise_merito(ctx, analise))
-    add("")
-
-    # IV-D. Defesa contra si mesmo (passo exculpatório obrigatório) — protege a credibilidade do parecer.
-    add("## IV-D. DEFESA CONTRA SI MESMO — PASSO EXCULPATÓRIO")
-    add("")
-    add("*Para cada indício, a **explicação inocente mais plausível** e se os dados a refutam. Achado cuja "
-        "defesa **não é refutada** pelos dados fica apenas como **monitoramento** — não representação "
-        "(presunção de legitimidade; a dúvida sobre a economicidade favorece o gestor).*")
-    add("")
-    if exculpatorio:
-        add("| Indício | Explicação inocente mais plausível | Os dados refutam? | Encaminhamento |")
-        add("|---|---|---|---|")
-        for e in exculpatorio:
-            nome = _RF.get(e.get("rf"), (e.get("rf"), ""))[0]
-            defesa = (e.get("defesa") or "").replace("|", "/")
-            defesa = (defesa[:120] + "…") if len(defesa) > 120 else defesa
-            refuta = "**Sim** — defesa afastada" if not e.get("sobrevive") else "Não — defesa plausível"
-            enc = "monitoramento" if e.get("sobrevive") else "representação"
-            add(f"| {e.get('rf')} {nome} | {defesa} | {refuta} | **{enc}** |")
-        add("")
-        _monit = [e for e in exculpatorio if e.get("sobrevive")]
-        if _monit:
-            add(f"> **{len(_monit)} indício(s)** tiveram a explicação inocente considerada **plausível** (não "
-                "refutada pelos dados) e foram **rebaixados a monitoramento**, não representação. "
-                "Isso preserva a credibilidade do parecer: indício ≠ acusação.")
-        else:
-            add("> Em todos os indícios os **dados refutam** a explicação inocente (convergência/cruzamento "
-                "confirmatório) — sustentam encaminhamento, não mero monitoramento.")
-    else:
-        add("> Sem indícios a submeter ao passo exculpatório — presunção de regularidade mantida.")
-    add("")
-    try:  # IV-D.2 — cenários benigno×risco com teste discriminante (lex_forense)
-        from compliance_agent import lex_forense as _lf2
-        _cen = _lf2.secao_cenarios_md(analise)
-        if _cen:
-            add(_cen)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("cenários discriminantes falharam (seção some do parecer): %s", exc)
-
-    # IV-B-bis. Triagem ilegalidade × improbidade (elemento subjetivo) — doutrina §5.1 / Lei 14.230/2021.
-    # Conservador: separa o que é controle de contas (a maioria) do que TOCA improbidade (só com sinal de dolo).
-    if achados:
-        add("### Triagem: ilegalidade × improbidade (elemento subjetivo)")
-        add("")
-        add("*Doutrina (Garcia & Pacheco Alves; Medina Osório): **ilegalidade é o gênero; improbidade é a espécie "
-            "qualificada pelo DOLO**. Pós-Lei 14.230/2021 não há improbidade culposa; o art. 10 exige **dano efetivo "
-            "comprovado** (não in re ipsa); o art. 11 é rol taxativo. Aponta-se INDÍCIO a apurar — não se afirma dolo.*")
-        add("")
-        add("| Indício | Elemento subjetivo (triagem) | Encaminhamento doutrinário |")
-        add("|---|---|---|")
-        _n_dolo = 0
-        for a in achados:
-            rf = a.get("rf", "")
-            nome = _RF.get(rf, (rf, ""))[0]
-            classe, _ = _elemento_subjetivo(a)
-            if classe.startswith("dolo"):
-                _n_dolo += 1
-                enc = "improbidade (MP-RJ) — *a apurar dolo + dano efetivo*"
-            else:
-                enc = "**controle de contas (TCE-RJ)** — não improbidade"
-            add(f"| {rf} {nome} | {classe} | {enc} |")
-        add("")
-        if _n_dolo == 0:
-            add("> **Nenhum indício com sinal de dolo.** Pela cláusula-mãe e pela Lei 14.230/2021, o conjunto é "
-                "**ilegalidade/irregularidade a apurar em controle de contas (TCE-RJ)** — NÃO improbidade. "
-                "Presunção de legitimidade; a dúvida sobre a economicidade favorece o gestor.")
-        else:
-            add(f"> {_n_dolo} indício(s) com **sinal de elemento subjetivo** (apurar dolo + dano antes de cogitar "
-                "improbidade); os demais são controle de contas. Indício ≠ acusação.")
-        add("")
-
-    # IV-C. Proposta preliminar de sanção administrativa (dosimetria — lex_sancoes)
-    # CALIBRAGEM (auditoria 2026-06-18): a dosimetria só incide sobre achados cuja
-    # defesa foi REFUTADA pelos dados (representação). Achados rebaixados a
-    # monitoramento (explicação inocente plausível) NÃO entram na base de sanção —
-    # senão um parecer 🟡 de indícios fracos projeta multa grave (ex.: R$27 mi sem
-    # dolo nem dano efetivo), violando indício≠acusação e a doutrina (sanção exige
-    # convergência + materialidade/dolo, não indício estatístico isolado).
-    try:
-        from compliance_agent import lex_sancoes
-        _monit_rfs = {e.get("rf") for e in (exculpatorio or []) if e.get("sobrevive")}
-        _achados_sancao = [a for a in achados if a.get("rf") not in _monit_rfs]
-        if _achados_sancao:
-            _valor_sancao = (ctx.get("pagamentos") or {}).get("total_geral") or 0
-            _prop_sancao = lex_sancoes.sugerir_sancoes(_achados_sancao, valor_contrato=_valor_sancao, regime="14133")
-            add(lex_sancoes.parecer_sancionatorio_md(_prop_sancao))
-            add("")
-        else:
-            add("## IV-C. Proposta preliminar de sanção administrativa")
-            add("")
-            add("> **Não se propõe sanção nesta fase.** Todos os indícios tiveram a explicação inocente "
-                "considerada **plausível** (passo exculpatório) e permanecem como **monitoramento**, não "
-                "representação. Sanção administrativa pressupõe achado com defesa **afastada pelos dados** e, "
-                "para multa, **dano efetivo mensurado** ou **dolo indiciado** — ausentes aqui. Indício ≠ acusação.")
-            add("")
-    except Exception as exc:
-        logger.warning("seção IV-C (sanção) falhou e some do parecer: %s", exc)
-
-    # V. Conclusão
-    add("## V. CONCLUSÃO — GRAU DE ATENÇÃO")
-    add("")
-    add(f"**{emoji} {rotulo}.** {just[0].upper()+just[1:]}.")
-    add("")
-
-    # VI. Recomendações
-    add("## VI. RECOMENDAÇÕES DE ENCAMINHAMENTO")
-    add("")
-    # Destinatário recomendado por tipo/família de achado (conluio→MP+CADE · débito→TCE/TCU · improbidade/penal→MP · PAR→CGU/CGE).
-    if destinatarios:
-        add("**Destinatário recomendado** (derivado das famílias dos achados presentes):")
-        add("")
-        add("| Destinatário | Fundamento / tipo de achado |")
-        add("|---|---|")
-        for d in destinatarios:
-            add(f"| **{d.get('destinatario')}** | {d.get('motivo')} |")
-        add("")
-        add("> O roteamento acima segue o enquadramento do playbook (conluio/cartel → MP + CADE; débito/cautelar → "
-            "TCE-RJ/TCU; improbidade/penal → MP; PAR anticorrupção → CGU/CGE) e **não** antecipa juízo de mérito — "
-            "o encaminhamento concreto observa o passo exculpatório (seção IV-D).")
-        add("")
-    else:
-        add("> **Destinatário recomendado:** nenhum encaminhamento específico — sem achado que indique competência "
-            "de controle externo, MP, CADE ou CGE (presunção de regularidade).")
-        add("")
-    add("- **Diligência documental:** confrontar, nos processos SEI, o edital/TR (especificações), a pesquisa "
-        "de preços (cesta — Acórdão 1875/2021-TCU), o mapa de licitantes (sócios/endereços) e os atestos/medições.")
-    add("- **Controle externo:** havendo indício de dano, representar ao **TCE-RJ** (jurisdição sobre a despesa estadual).")
-    add("- **Demais órgãos:** ciência ao **MP-RJ** (improbidade) e ao **CADE** (conluio/bid rigging, Lei 12.529) se cabível; "
-        "PAR (Lei 12.846) e ciência à **CGE-RJ** (controle interno).")
-    add("  > Cautela na qualificação de improbidade (Lei 8.429/92 pós-Lei 14.230/2021): exige-se **dolo** nos "
-        "arts. 9/10/11 (**STF Tema 1199, ARE 843989/PR**) e, no **art. 10**, **dano efetivo** — fim do dano presumido "
-        "(**STJ REsp 1.929.685/TO**, 1ª T., 2024). Aponta-se o indício; a tipificação é do MP-RJ/Judiciário.")
-    add("  > Esfera penal (referência, não imputação): desvios podem tangenciar **CP arts. 312 (peculato), 316 "
-        "(concussão), 317 (corrupção passiva), 333 (corrupção ativa)** e os crimes licitatórios da **Lei 14.133, "
-        "arts. 337-E a 337-P**. Dispensa/inexigibilidade irregular hoje é **art. 337-E CP** (ex-art. 89/8.666 — "
-        "*continuidade típica*, STJ REsp 2.069.436, não abolitio). Confirmar conduta e dolo antes de qualquer juízo.")
-    add("  > Base normativa estadual (RJ): Lei 14.133 regulamentada pelo **Decreto 47.680/2021** + **Resoluções "
-        "SEPLAG 179/180/2023** e **PGE 4.937/2023**; controle interno na **CGE-RJ** (Lei 7.989/2018); o rito de "
-        "Tomada de Contas é a **Deliberação TCE-RJ 279/2017**, cujo **art. 7º** exige apenas *elementos que indiquem* "
-        "— o mesmo limiar de **indício** deste parecer.")
-    add("")
-
-    # VII. Ressalvas
-    add("## VII. RESSALVAS")
-    add("")
-    add("> 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. "
-        "2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — "
-        "TCE-RJ, Proc. 101.922-9/12). 3. **Não se afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e "
-        "Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. "
-        "5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.")
-    add("")
-    add(f"_Parecer gerado automaticamente por sistema de controle externo em {ctx.get('data','')}. "
-        "Fundamentação em doutrina de Direito Administrativo e controle externo "
-        "(doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._")
-
+    from compliance_agent import lex_parecer
+    texto = lex_parecer.montar(ctx, analise)
     # GATE DE CITAÇÕES — último instante antes de o texto virar entregável (o PDF também passa
     # por aqui, via render_pdf). Acórdão que não existe no acervo do TCU é suprimido; colegiado
     # errado é corrigido; o que não se confirmou vai declarado na nota ao pé. Nunca derruba a
     # geração: falha do gate degrada para "não conferido", e diz isso na peça.
     from compliance_agent.reporting.gate_citacoes import sanear_parecer
     try:
-        return sanear_parecer("\n".join(L), contexto="parecer Lex")
+        return sanear_parecer(texto, contexto="parecer Lex")
     except Exception as e:  # índice corrompido, disco cheio: a peça sai, sem o carimbo
         logging.warning("gate de citações indisponível (%s) — parecer emitido sem conferência", e)
-        return "\n".join(L)
+        return texto
+
+
+_FAIXA_DO_GRAU = {"VERDE": "BAIXO", "AMARELO": "MÉDIO", "VERMELHO": "ALTO"}
+
+
+def secoes_do_md(md: str) -> tuple[str, list[dict]]:
+    """Markdown do parecer → (título, seções {titulo, html}) para o funil da casa (`render_html`). Cada '## '
+    vira seção; o que vem antes (metadados da capa) vira a seção de abertura. Nada do texto fica de fora."""
+    from compliance_agent.reporting.consolidado import _md_to_html
+    titulo, secoes, atual, corpo = "", [], "Identificação do parecer", []
+    for ln in md.split("\n"):
+        if ln.startswith("# ") and not titulo:
+            titulo = ln[2:].strip()
+            continue
+        if ln.startswith("## "):
+            if any(x.strip() for x in corpo):
+                secoes.append({"titulo": atual, "html": _md_to_html("\n".join(corpo))})
+            atual, corpo = ln[3:].strip(), []
+            continue
+        corpo.append(ln)
+    if any(x.strip() for x in corpo):
+        secoes.append({"titulo": atual, "html": _md_to_html("\n".join(corpo))})
+    if secoes:   # alinhamento numérico à direita (o conversor marca a coluna; o template não tinha a regra)
+        secoes[0]["html"] = "<style>td.num,th.num{text-align:right;white-space:nowrap}</style>" + secoes[0]["html"]
+    return titulo, secoes
+
+
+def _pdf_html(ctx: dict, destino: str, analise: dict, md: str) -> str:
+    """PDF pela régua da casa: `render_html` (capa, rating, seções, gate de citações) → `html_to_pdf`."""
+    import asyncio
+    import concurrent.futures
+
+    from compliance_agent.reporting.render_html import html_to_pdf, render_html
+    titulo, secoes = secoes_do_md(md)
+    rotulo = analise.get("rotulo") or ""
+    try:
+        from compliance_agent.lex_parecer import score
+        sc = score(analise.get("achados") or [])
+    except Exception:  # noqa: BLE001
+        sc = 0
+    n = len(analise.get("achados") or [])
+    html = render_html({
+        "titulo": titulo or f"Parecer — {ctx.get('nome', '')}",
+        "subtitulo": (f"CNPJ {fmt_cnpj(ctx.get('cnpj', ''))}" if so_digitos(ctx.get("cnpj", ""))
+                      else f"Unidade Gestora (UG) {ctx.get('ug', '—')}") + f" · {ctx.get('nome', '')}",
+        "classificacao": "CONFIDENCIAL — USO INTERNO · CONTROLE EXTERNO",
+        "data": ctx.get("data", ""), "metodologia": "eixos jurídico, financeiro, contábil e de integridade; "
+                                                    "instrução TCE-RJ; camadas determinística e subjetiva",
+        "score": sc, "faixa": _FAIXA_DO_GRAU.get(rotulo, "BAIXO"), "sem_indice": rotulo not in _FAIXA_DO_GRAU,
+        "rotulo_score": "Índice de atenção (soma P×I)",
+        "top_flags": [f"Grau {analise.get('emoji', '')} {rotulo}", f"{n} indício(s)"]
+                     + [str(a.get("rf")) for a in (analise.get("achados") or [])[:6]],
+        "secoes": secoes, "_dados": {"md": md},
+        "ressalva": "Indícios para apuração; presunção de legitimidade dos atos administrativos. Pagamento = OB paga "
+                    "do SIAFE. Nenhum dado indisponível foi fabricado.",
+    })
+
+    def _rodar():
+        return asyncio.run(html_to_pdf(html, destino))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:   # funciona dentro e fora de event loop
+        return ex.submit(_rodar).result(timeout=300)
 
 
 def render_pdf(ctx: dict, destino: str, analise: dict | None = None, md: str | None = None) -> str:
-    """PDF do parecer Lex — mesma estética do JFN (capa azul + texto corrido). `md` opcional permite
-    reaproveitar a estética para o parecer de ÓRGÃO (sem recomputar o fornecedor)."""
-    from fpdf import FPDF
+    """PDF do parecer Lex pela régua da casa (`render_html` → `html_to_pdf`); a versão FPDF compacta fica como
+    fallback quando o navegador headless não está disponível. `md` opcional reaproveita o parecer de ÓRGÃO."""
     if analise is None:
         from compliance_agent.lex import _analise  # tardio: evita ciclo com a fachada lex.py
         analise = _analise(ctx)
     md = md if md is not None else parecer_md(ctx, analise)
+    if os.environ.get("JFN_LEX_PDF_FPDF") != "1":
+        try:
+            return _pdf_html(ctx, destino, analise, md)
+        except Exception as exc:  # noqa: BLE001 — sem Chromium/Playwright: cai no FPDF e diz no log
+            logger.warning("PDF do Lex pela régua HTML falhou (%s) — fallback FPDF", str(exc)[:160])
+    return _render_pdf_fpdf(ctx, destino, analise, md)
+
+
+def _render_pdf_fpdf(ctx: dict, destino: str, analise: dict, md: str) -> str:
+    from fpdf import FPDF
     rotulo = analise["rotulo"]
     cor = {"VERMELHO": (220, 53, 69), "AMARELO": (255, 150, 0), "VERDE": (40, 167, 69)}.get(rotulo, (90, 90, 90))
 

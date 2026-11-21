@@ -36,7 +36,6 @@ compliance_agent.pcrj.relatorio_candidatos  # [cli] 4 funções de teste
 compliance_agent.pcrj.resolvedor_municipio  # [cli]
 compliance_agent.pcrj.sei_prefeitura  # [cli] 7 funções de teste
 compliance_agent.receita.ingest_estabelecimentos  # [cli] 8 funções de teste
-compliance_agent.reporting.consolidado  # [cli]
 compliance_agent.reporting.matriz_achados  # [biblioteca] 17 funções de teste
 compliance_agent.reporting.qualificacao_juridica  # [biblioteca] 16 funções de teste
 compliance_agent.reporting.quesitos_diligencia  # [biblioteca] 16 funções de teste

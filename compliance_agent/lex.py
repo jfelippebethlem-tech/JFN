@@ -48,11 +48,11 @@ from compliance_agent.lex_analise_conteudo import (  # noqa: F401
     _modalidade, _objeto_valido, _trecho, analisar_texto_edital, analise_discursiva,
 )
 from compliance_agent.lex_render import (  # noqa: F401
-    _analise_merito, _secao_auditoria_contrato, _secao_direcionamento, _secao_investigacao,
+    _secao_auditoria_contrato, _secao_direcionamento, _secao_investigacao,
     _secao_pacote_fachada, _secao_padroes_ligados, _secao_pesquisa, parecer_md, render_pdf,
 )
 from compliance_agent.lex_orgao import (  # noqa: F401
-    _achados_orgao, _ob_zero_da_ug, _parecer_orgao_md, gerar_orgao,
+    _achados_orgao, _ob_zero_da_ug, _parecer_orgao_md, analise_orgao, gerar_orgao,
 )
 
 
@@ -118,10 +118,29 @@ def _cartel_do_fornecedor(cnpj: str) -> dict:
 
 
 def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
-    """Computa TODA a análise UMA vez (lê o SEI uma vez) e devolve o dossiê para md/pdf."""
+    """Computa TODA a análise UMA vez (lê o SEI uma vez) e devolve o dossiê para md/pdf.
+
+    20/11/2026 — BASE ÚNICA DE FATOS (`lex_fatos`): o pago sai do SIAFE (`_ob_paga`) numa consulta só e
+    SUBSTITUI os pagamentos do contexto (que no /relatorio vêm do espelho TFE). Todo consumidor abaixo —
+    red flags, forense, due diligence, sanção — passa a ler a mesma série; o cadastro também é um só
+    (`lex_fatos.cadastro`), entregue à due diligence para que capital e abertura não sejam 'INDISPONÍVEL'
+    numa seção e número em outra. O contexto do chamador não é alterado (cópia rasa)."""
+    from compliance_agent import lex_fatos as _lf
     cnpj = ctx.get("cnpj", "")
-    sei = _sei_do_fornecedor(cnpj)
+    ctx = dict(ctx)
+    base = _lf.base_siafe(cnpj=cnpj)
+    ctx["pagamentos"] = _lf.pagamentos(base)
+    exe = _lf.execucao(base)
+    procs = _lf.processos(base, exe)
+    cad = _lf.cadastro(ctx)
+    # processos SEI do fornecedor = os que a cadeia OB→NL→NE do SIAFE resolve (valor = OB paga do SIAFE).
+    # O correlacionador antigo unia o espelho TFE e mostrava "valor pago" do TFE — fora da régua.
+    sei = _priorizar_sei([{"numero_sei": x["processo"], "n_obs": x["n_obs"], "total": x["pago"]}
+                          for x in procs if x.get("canon")])
     ach_dados = _detectar(ctx)
+    ach_contabil = _lf.achados_contabeis(exe)
+    padroes = _lf.padroes_do_alvo({x["canon"] for x in procs if x.get("canon")}, cnpj)
+    ach_padroes = _lf.achados_padroes(padroes)
 
     # Onda 2 — contratos/compras do TCE-RJ (não dependem do SEI/WAF)
     itens_tcerj = _contratos_tcerj(cnpj)
@@ -218,8 +237,8 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
         from compliance_agent.investigacao_dd import investigar
         p_inv = ctx.get("pagamentos") or {}
         total_pago = p_inv.get("total_geral") or 0.0
-        investigacao = investigar(cnpj, cadastral=None, pagamentos={
-            "total_pago": total_pago,
+        investigacao = investigar(cnpj, cadastral=_lf.cadastral_para_dd(cad), pagamentos={
+            "total_pago": total_pago, "n_obs": p_inv.get("n_geral") or 0,
             "primeira_data": _primeira_data_pag(p_inv),
         })
         for h in investigacao.get("hipoteses", []):
@@ -344,11 +363,28 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
         except Exception:  # noqa: BLE001 — motor degrada honesto; ausência não derruba o parecer
             aud_contrato = {}
 
-    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
+    # A bateria de contrato contínuo tinha "grau próprio" fora do grau do parecer: a peça podia sair 🟢 com um
+    # teste CONFIRMADO impresso logo acima (duas conclusões). O que ela confirma ou indicia entra como achado.
+    ach_aud = []
+    for h in (aud_contrato or {}).get("achados") or []:
+        if h.get("status") in ("CONFIRMADO", "INDICIO"):
+            alto = str(h.get("nivel") or "").upper() == "ALTO"
+            grav = (4 if alto else 3) if h["status"] == "CONFIRMADO" else (3 if alto else 2)
+            ach_aud.append({"rf": f"A/{h.get('codigo', '')}", "grav": grav, "eixo": "financeiro",
+                            "obs": f"**{h.get('titulo', '')}** ({h.get('status')}). {h.get('evidencia', '')} "
+                                   f"Fonte: {h.get('fonte', '—')}."})
+    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural
+                             + ach_contabil + ach_padroes + ach_aud)
     emoji, rotulo, just = _grau(achados)
+    if not achados and not (ctx["pagamentos"].get("tem_dados")):
+        # sem pagamento SIAFE e sem indício: não há base nem para a presunção "verde" — declarar.
+        emoji, rotulo, just = ("⚪", "INDETERMINADO",
+                               "nenhuma OB paga localizada no SIAFE para este CNPJ e nenhum indício nas demais fontes "
+                               "— sem base factual para graduar (INDISPONÍVEL ≠ regularidade)")
     exculpatorio = _exculpatorio(achados)
     destinatarios = _destinatarios(achados)
-    return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
+    return {"cnpj": cnpj, "ctx": ctx, "base": base, "execucao": exe, "processos": procs, "cadastro": cad,
+            "padroes": padroes, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "cruzado": cruzado, "investigacao": investigacao, "direcionamento": direcionamento,
             "pesquisa": pesquisa, "auditoria_contrato": aud_contrato,

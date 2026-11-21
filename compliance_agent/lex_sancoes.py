@@ -384,7 +384,7 @@ def parecer_sancionatorio_md(proposta: dict) -> str:
     add("")
     m = proposta.get("multa")
     if m:
-        add(f"**Multa estimada:** {m['percentual_efetivo']*100:.1f}% → R$ {moeda(m['valor'])} "
+        add(f"**Multa estimada:** {m['percentual_efetivo']*100:.1f}".replace(".", ",") + f"% → R$ {moeda(m['valor'])} "
             f"(teto {m['teto']*100:.0f}%; {m['base_legal']}). {m['nota']}")
         add("")
     pr = proposta.get("prazos")
