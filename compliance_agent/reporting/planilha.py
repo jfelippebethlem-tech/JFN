@@ -79,12 +79,16 @@ def gerar(ctx: dict, destino: str, modo: str = "fornecedor") -> str:
     linha = 4
     if p.get("tem_dados"):
         # KPIs
+        _cob = p.get("cobertura") or {}
+        _cob_txt = _cob.get("estado", "VERIFICADO") + (f" — {_cob['texto']}" if _cob.get("texto") else "")
         kpis = [("Total pago (R$)", p["total_geral"], _FMT_MOEDA),
                 ("Nº de OBs", p["n_geral"], "#,##0"),
                 (("Fornecedores" if modo == "orgao" else "Órgãos"),
                  p.get("n_fornecedores") if modo == "orgao" else len(p.get("por_orgao_geral", {})), "#,##0"),
                 ("HHI (concentração)", p["hhi"].get("indice"), "#,##0.0"),
-                ("Maior fatia (%)", p["hhi"].get("top_share"), "#,##0.0")]
+                ("Maior fatia (%)", p["hhi"].get("top_share"), "#,##0.0"),
+                ("Fonte do pago", "SIAFE — só OB paga (régua _ob_paga); espelho TFE fora da soma", "@"),
+                ("Cobertura do SIAFE", _cob_txt, "@")]
         ws[f"A{linha}"] = "Indicadores"; ws[f"A{linha}"].font = Font(bold=True, size=11, color=_AZUL)
         linha += 1
         for nome, val, fmt in kpis:

@@ -10,7 +10,13 @@ Lei 8.666/93; art. 149 Lei 14.133/21) que, quando recorrentes e em alto valor, i
 emergencial perpetuada e fuga ao dever de licitar.
 
 Função PURA e testável (recebe linhas (valor, observacao) ou um DB path). HONESTO: o % é um indício
-quantitativo, não acusação; INDISPONÍVEL (sem `observacao`) ≠ 0%. A regex casa o texto livre da OB (SIAFE).
+quantitativo, não acusação; INDISPONÍVEL (sem `observacao`) ≠ 0%. A regex casa o texto livre da OB.
+
+FONTE (21/11/2026, revisão crítica D4): VALOR = OB PAGA do SIAFE (`ob_orcamentaria_siafe`, régua única
+`cruzamentos_intel._ob_paga`); a OBSERVAÇÃO — onde o marcador de TAC vive, e que o SIAFE não traz — é lida da
+MESMA OB no espelho TFE (número + UG), como em `tools/tac_ranking_ugs.py`. OB paga sem par no espelho conta como
+sem observação. Até esta data o detector somava `ordens_bancarias.valor` (espelho) como "pago". Exercício fora da
+cobertura do SIAFE vai em `cobertura_siafe` (INDISPONÍVEL/PARCIAL) — o % é do que foi lido, nunca do espelho.
 
 Quem consome:
   • `/relatorio` (reporting/inteligencia._red_flags) → RF-TAC por CNPJ.
@@ -25,7 +31,7 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
-from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, reais as _moeda, so_digitos as _digitos
+from compliance_agent.reporting.intel_base import SQL_CREDOR_PJ_SIAFE, SQL_CREDOR_TERCEIRO_SIAFE, reais as _moeda, so_digitos as _digitos
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +115,25 @@ def medir_tac(linhas) -> dict:
             "pct": round(pct, 1), "n_sem_obs": n_sem_obs, "cobertura": cobertura}
 
 
+def _sql_ob_paga_com_obs(con, filtro: str) -> str:
+    """SELECT (valor, observacao, credor, nome_credor, ug) da OB PAGA do SIAFE no `filtro` (colunas do SIAFE, sem
+    alias); a observação vem da MESMA OB no espelho TFE (número + UG) — texto, nunca valor."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    return ("SELECT s.valor valor, (SELECT t.observacao FROM ordens_bancarias t WHERE t.numero_ob=s.numero_ob "
+            "AND t.ug_codigo=s.ug_emitente LIMIT 1) observacao, s.credor credor, s.nome_credor nome_credor, "
+            f"s.ug_emitente ug FROM ob_orcamentaria_siafe s WHERE {_ob_paga(con, 's')} AND {filtro}")
+
+
+def _cobertura_siafe(con, db: Path, **recorte) -> dict:
+    """Lacunas de cobertura do SIAFE no recorte (INDISPONÍVEL/PARCIAL por UG×ano) — `cobertura_siafe` do resultado."""
+    from compliance_agent.reporting.cobertura_siafe import lacunas_do_recorte, resumo_lacunas
+    try:
+        lac = lacunas_do_recorte(con, db=db, **recorte)
+    except sqlite3.Error:
+        return {"estado": "INDISPONÍVEL", "texto": "cobertura do SIAFE não medida", "lacunas": []}
+    return {"lacunas": lac, **resumo_lacunas(lac)}
+
+
 def _ro_conn(db: Path) -> sqlite3.Connection | None:
     if not db.exists():
         return None
@@ -136,15 +161,15 @@ def tac_por_cnpj(cnpj: str, *, db_path=None) -> dict:
         return out
     try:
         try:
-            linhas = con.execute(
-                "SELECT valor, observacao FROM ordens_bancarias WHERE favorecido_cpf LIKE ?",
-                (f"{raiz}%",)).fetchall()
+            linhas = [r[:2] for r in con.execute(_sql_ob_paga_com_obs(con, "s.credor GLOB ?"), (f"{raiz}*",))]
         except sqlite3.OperationalError:
             linhas = []
+        cob = _cobertura_siafe(con, db, credor_raiz=raiz)
     finally:
         con.close()
     out = medir_tac(linhas)
-    out.update({"cnpj": _digitos(cnpj), "raiz": raiz})
+    out.update({"cnpj": _digitos(cnpj), "raiz": raiz, "cobertura_siafe": cob,
+                "fonte_valor": "SIAFE (régua _ob_paga); observação do espelho TFE pela mesma OB"})
     return out
 
 
@@ -154,8 +179,9 @@ def tac_por_cnpj(cnpj: str, *, db_path=None) -> dict:
 def _mapa_cnpj_ug(caminho: str) -> dict:
     """Mapa `CNPJ → UG onde ele mais recebeu`, montado numa VARREDURA ÚNICA.
 
-    `replace(replace(replace(favorecido_cpf,…)))` não usa índice: cada consulta por CNPJ lê 1,16
-    milhão de OBs e custa **8,45 segundos**. Medido em 2026-08-04, na mesma sessão em que esta
+    "Onde mais recebeu" = OB PAGA do SIAFE (régua `_ob_paga`), nunca o espelho TFE (21/11/2026).
+    Histórico: `replace(replace(replace(favorecido_cpf,…)))` no espelho não usava índice: cada consulta por
+    CNPJ lia 1,16 milhão de OBs e custava **8,45 segundos**. Medido em 2026-08-04, na mesma sessão em que esta
     consulta foi introduzida: a reavaliação do acervo caiu de 0,8 s para 3,3 s por processo, e um
     cache por CNPJ não resolveria — com ~1.000 fornecedores distintos, seriam horas só nas
     primeiras chamadas.
@@ -164,11 +190,12 @@ def _mapa_cnpj_ug(caminho: str) -> dict:
     """
     mapa: dict[str, tuple[float, str]] = {}
     try:
+        from compliance_agent.cruzamentos_intel import _ob_paga
         con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
         try:
             for cpf, ug, v in con.execute(
-                    "SELECT replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-',''), "
-                    "       ug_codigo, SUM(valor) FROM ordens_bancarias GROUP BY 1, 2"):
+                    f"SELECT credor, ug_emitente, SUM(valor) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
+                    "GROUP BY 1, 2"):
                 if not cpf or not ug:
                     continue
                 valor = float(v or 0)
@@ -239,18 +266,21 @@ def tac_por_ug(ug_codigo: str, *, db_path=None) -> dict:
     nome = ""
     try:
         try:
-            linhas = con.execute(
-                "SELECT valor, observacao FROM ordens_bancarias WHERE ug_codigo=?", (ug,)).fetchall()
+            # credor TERCEIRO (CNPJ/CPF): repasse entre unidades e folha não diluem a taxa (cf. tac_ranking_ugs)
+            linhas = [r[:2] for r in con.execute(
+                _sql_ob_paga_com_obs(con, "s.ug_emitente=? AND " + SQL_CREDOR_TERCEIRO_SIAFE), (ug,))]
             r = con.execute(
                 "SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL LIMIT 1",
                 (ug,)).fetchone()
             nome = (r[0] if r else "") or ""
         except sqlite3.OperationalError:
             linhas = []
+        cob = _cobertura_siafe(con, db, ug=ug)
     finally:
         con.close()
     out = medir_tac(linhas)
-    out.update({"ug_codigo": ug, "ug_nome": nome})
+    out.update({"ug_codigo": ug, "ug_nome": nome, "cobertura_siafe": cob,
+                "fonte_valor": "SIAFE (régua _ob_paga); observação do espelho TFE pela mesma OB"})
     return out
 
 
@@ -286,12 +316,13 @@ def worklist_tac_por_ug(ug_codigo: str, *, db_path=None, top_n: int = 12,
         return out
     try:
         try:
+            # valor = OB paga do SIAFE; observação da mesma OB no espelho (ver `_sql_ob_paga_com_obs`)
             rows = con.execute(
-                "SELECT substr(favorecido_cpf,1,8) raiz, MAX(favorecido_cpf) cnpj, "
-                "MAX(favorecido_nome) nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
+                "SELECT substr(credor,1,8) raiz, MAX(credor) cnpj, "
+                "MAX(nome_credor) nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
                 "SUM(CASE WHEN " + _SQL_TAC + " THEN 1 ELSE 0 END) n_tac, "  # noqa: S608 (_SQL_TAC fixo)
                 "ROUND(SUM(CASE WHEN " + _SQL_TAC + " THEN valor ELSE 0 END),2) tac "  # noqa: S608
-                f"FROM ordens_bancarias WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ} "
+                f"FROM ({_sql_ob_paga_com_obs(con, 's.ug_emitente=? AND ' + SQL_CREDOR_PJ_SIAFE)}) "
                 "GROUP BY raiz HAVING total >= ? ORDER BY tac DESC",
                 (ug, min_total)).fetchall()
             rn = con.execute(
@@ -378,7 +409,8 @@ def medir_emergencial(ug_codigo: str, *, db_path=None) -> dict:
                 "SUM(CASE WHEN " + _SQL_EMERG + " THEN 1 ELSE 0 END) n_emerg, "  # noqa: S608 (_SQL_EMERG fixo)
                 "ROUND(SUM(CASE WHEN " + _SQL_EMERG + " THEN valor ELSE 0 END),2) total_emerg, "  # noqa: S608
                 "SUM(CASE WHEN observacao IS NULL OR TRIM(observacao)='' THEN 1 ELSE 0 END) n_sem_obs "
-                "FROM ordens_bancarias WHERE ug_codigo=?", (ug,)).fetchone()
+                f"FROM ({_sql_ob_paga_com_obs(con, 's.ug_emitente=? AND ' + SQL_CREDOR_TERCEIRO_SIAFE)})",
+                (ug,)).fetchone()
         except sqlite3.OperationalError:
             return out
     finally:
@@ -404,17 +436,18 @@ def medir_emergencial(ug_codigo: str, *, db_path=None) -> dict:
 
 
 def _ugs_do_cnpj(cnpj: str, db: Path) -> list[tuple[str, str, float]]:
-    """UGs pagadoras de um CNPJ (código, nome, total pago a ele por essa UG), maior→menor."""
+    """UGs pagadoras de um CNPJ (código, nome, total pago a ele por essa UG — OB paga do SIAFE), maior→menor."""
     raiz = _digitos(cnpj)[:8]
     con = _ro_conn(db)
     if not con or not raiz:
         return []
     try:
         try:
+            from compliance_agent.cruzamentos_intel import _ob_paga
             rows = con.execute(
-                "SELECT ug_codigo, MAX(ug_nome), SUM(valor) FROM ordens_bancarias "
-                "WHERE favorecido_cpf LIKE ? GROUP BY ug_codigo ORDER BY SUM(valor) DESC",
-                (f"{raiz}%",)).fetchall()
+                "SELECT ug_emitente, '', SUM(valor) FROM ob_orcamentaria_siafe "
+                f"WHERE credor GLOB ? AND {_ob_paga(con)} GROUP BY ug_emitente ORDER BY SUM(valor) DESC",
+                (f"{raiz}*",)).fetchall()
         except sqlite3.OperationalError:
             rows = []
     finally:
@@ -467,7 +500,9 @@ def red_flag_tac(cnpj: str, *, db_path=None, com_ug: bool = True) -> dict | None
     desc = (" ".join(partes) + " Regularização *a posteriori* de despesa sem contrato regular, quando "
             "recorrente e vultosa, indica contratação informal/emergencial perpetuada e fuga ao dever de "
             "licitar — apurar a existência de contrato, a causa da 'dívida' e a regularidade dos pagamentos. "
-            "(Indício quantitativo; INDISPONÍVEL ≠ 0% — depende da observação da OB.)")
+            "(Indício quantitativo; INDISPONÍVEL ≠ 0% — depende da observação da OB. Valor = OB paga do SIAFE"
+            + (f"; {(m.get('cobertura_siafe') or {}).get('texto')}" if (m.get("cobertura_siafe") or {}).get("texto")
+               else "") + ".)")
     fund = ("Art. 59, par. único, Lei 8.666/93 (indenização por serviços executados sem contrato); "
             "art. 149 Lei 14.133/21; art. 37 CF/88 (dever de licitar); art. 10 Lei 8.429/92; "
             "ACFE — payments outside contract / off-contract spend.")

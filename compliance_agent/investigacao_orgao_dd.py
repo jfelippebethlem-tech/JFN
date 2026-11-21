@@ -31,22 +31,25 @@ from compliance_agent.reporting.intel_base import reais as _moeda  # noqa: E402
 
 def top_fornecedores_pj(ug: str, *, top_n: int | None = 15, anos: list[int] | None = None,
                         ordem: str = "desc", db_path: str | Path | None = None) -> list[dict]:
-    """Fornecedores PJ (CNPJ de 14 díg) de uma UG, por total pago (OB = pagamento).
+    """Fornecedores PJ (CNPJ de 14 díg) de uma UG, por total pago — OB PAGA do SIAFE (régua `_ob_paga`), nunca
+    o espelho TFE (21/11/2026). `primeira_data` = emissão da 1ª OB paga (AAAA-MM-DD).
 
     top_n=None → todos (p/ varrer a cauda). ordem='asc' → menores primeiro (cauda fachada-prone)."""
     p = Path(db_path or _DB)
     if not p.exists():
         return []
     direcao = "ASC" if ordem == "asc" else "DESC"
-    q = ("SELECT favorecido_cpf, MAX(favorecido_nome), ROUND(SUM(valor),2), COUNT(*), MIN(data_pagamento) "
-         "FROM ordens_bancarias WHERE ug_codigo=? AND valor>0")
-    params: list = [str(ug)]
-    if anos:
-        q += " AND exercicio IN (%s)" % ",".join("?" * len(anos))
-        params += [str(a) for a in anos]
-    q += f" GROUP BY favorecido_cpf ORDER BY SUM(valor) {direcao}"
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.reporting.cobertura_siafe import ANO_EMISSAO_SIAFE, ISO_EMISSAO_SIAFE
     con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
     try:
+        q = (f"SELECT credor, MAX(nome_credor), ROUND(SUM(valor),2), COUNT(*), MIN({ISO_EMISSAO_SIAFE}) "
+             f"FROM ob_orcamentaria_siafe WHERE ug_emitente=? AND valor>0 AND {_ob_paga(con)}")
+        params: list = [str(ug)]
+        if anos:
+            q += f" AND {ANO_EMISSAO_SIAFE} IN (%s)" % ",".join("?" * len(anos))
+            params += [str(a) for a in anos]
+        q += f" GROUP BY credor ORDER BY SUM(valor) {direcao}"
         rows = con.execute(q, params).fetchall()
     finally:
         con.close()

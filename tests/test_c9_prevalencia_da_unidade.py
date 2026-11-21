@@ -75,12 +75,14 @@ def test_o_mapa_cnpj_ug_e_montado_numa_passada_so(tmp_path):
 
     db = tmp_path / "c.db"
     con = _s.connect(db)
-    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, valor REAL, "
-                "observacao TEXT)")
-    con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?)", [
-        ("28.470.707/0001-80", "294200", 900.0, ""),
-        ("28.470.707/0001-80", "080002", 100.0, ""),   # UG minoritária: não pode vencer
-        ("11.111.111/0001-11", "133100", 50.0, ""),
+    # "onde mais recebeu" = OB PAGA do SIAFE (21/11/2026); a OB anulada não pode virar a UG dominante
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, status TEXT, credor TEXT, "
+                "valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?)", [
+        ("2024OB00001", "294200", "Contabilizado", "28470707000180", 900.0),
+        ("2024OB00002", "080002", "Contabilizado", "28470707000180", 100.0),   # UG minoritária: não pode vencer
+        ("2024OB00003", "080002", "Anulado", "28470707000180", 5000.0),        # anulada não é pagamento
+        ("2024OB00004", "133100", "Contabilizado", "11111111000111", 50.0),
     ])
     con.commit(); con.close()
     DT._mapa_cnpj_ug.cache_clear()

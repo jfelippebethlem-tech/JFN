@@ -43,7 +43,7 @@ import urllib.error
 import urllib.request
 from typing import Optional
 
-from compliance_agent.reporting.intel_base import SQL_FAVORECIDO_PJ, so_digitos
+from compliance_agent.reporting.intel_base import SQL_CREDOR_PJ_SIAFE, SQL_FAVORECIDO_PJ, so_digitos
 
 _log = logging.getLogger(__name__)
 
@@ -92,6 +92,7 @@ def _tem_tabela(con: sqlite3.Connection, nome: str) -> bool:
 # UG só-dígitos (o `ug_codigo` na base é a string com zeros à esquerda, ex.: '036100').
 _norm_ug = so_digitos
 _PJ_OB = SQL_FAVORECIDO_PJ.replace("favorecido_cpf", "ob.favorecido_cpf")
+_PJ_SIAFE = SQL_CREDOR_PJ_SIAFE.replace("credor", "ob.credor")
 
 
 def _ressalva_nome(nome: str) -> bool:
@@ -101,14 +102,16 @@ def _ressalva_nome(nome: str) -> bool:
 
 # ── anomalia 1: sem fins lucrativos recebendo ──────────────────────────────────
 def _sem_fins_lucrativos(con: sqlite3.Connection, ug: str) -> list[dict]:
+    # valor recebido = OB PAGA do SIAFE (régua `_ob_paga`), nunca o espelho TFE (21/11/2026)
+    from compliance_agent.cruzamentos_intel import _ob_paga
     rows = con.execute(
         f"""
         SELECT em.razao_social, em.natureza_cod,
-               substr(ob.favorecido_cpf,1,8) AS cb,
+               substr(ob.credor,1,8) AS cb,
                SUM(ob.valor) AS v
-          FROM ordens_bancarias ob
-          JOIN empresas_min em ON em.cnpj_basico = substr(ob.favorecido_cpf,1,8)
-         WHERE ob.ug_codigo = ? AND {_PJ_OB}
+          FROM ob_orcamentaria_siafe ob
+          JOIN empresas_min em ON em.cnpj_basico = substr(ob.credor,1,8)
+         WHERE ob.ug_emitente = ? AND {_ob_paga(con, "ob")} AND {_PJ_SIAFE}
            AND em.natureza_cod LIKE '3%'
          GROUP BY cb
          ORDER BY v DESC
@@ -204,14 +207,16 @@ def _veiculo_de_aluguel(con: sqlite3.Connection, ug: str) -> list[dict]:
 
 # ── anomalia 3: laranja / sócio-único de alto valor ───────────────────────────
 def _socio_unico_alto_valor(con: sqlite3.Connection, ug: str, piso: float) -> list[dict]:
+    # "alto valor" = OB PAGA do SIAFE (régua `_ob_paga`), nunca o espelho TFE (21/11/2026)
+    from compliance_agent.cruzamentos_intel import _ob_paga
     rows = con.execute(
         f"""
         WITH fv AS (
-            SELECT substr(favorecido_cpf,1,8) AS cb,
-                   MAX(favorecido_nome) AS nm,
+            SELECT substr(credor,1,8) AS cb,
+                   MAX(nome_credor) AS nm,
                    SUM(valor) AS v
-              FROM ordens_bancarias
-             WHERE ug_codigo = ? AND {SQL_FAVORECIDO_PJ}
+              FROM ob_orcamentaria_siafe
+             WHERE ug_emitente = ? AND {_ob_paga(con)} AND {SQL_CREDOR_PJ_SIAFE}
              GROUP BY cb
         )
         SELECT fv.cb, fv.nm, fv.v,

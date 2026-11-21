@@ -36,7 +36,7 @@ from compliance_agent.reporting.completude import campo, top_declarado, tudo
 # do código afirmando "sem limite, tudo no PDF". Diretriz do dono (2026-07-29): sem corte.
 TOP_OB_ANO: int | None = None
 from compliance_agent.reporting.intel_base import (
-    SQL_FAVORECIDO_PJ, _DB, _REPORTS, _slug, cabecalho_frescor, fmt_cnpj, inteiro, moeda, so_digitos,
+    SQL_CREDOR_PJ_SIAFE, SQL_CREDOR_TERCEIRO_SIAFE, SQL_FAVORECIDO_PJ, _DB, _REPORTS, _slug, cabecalho_frescor, fmt_cnpj, inteiro, moeda, so_digitos,
 )
 from compliance_agent.reporting.intel_dados import _hhi
 from compliance_agent.reporting.intel_md import _foto_fachada_b2
@@ -82,18 +82,33 @@ def _tokens_sig(s: str) -> list[str]:
     return [t for t in _sem_acento(s).split() if t and t not in _STOP_UG]
 
 
+def _pago_siafe_por_ug(con) -> dict[str, tuple[int, float, int]]:
+    """{UG: (nº de OB paga, total pago, nº de credores)} — SIAFE pela régua `_ob_paga`, nunca o espelho TFE."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    try:
+        return {str(u).strip(): (int(n or 0), float(v or 0.0), int(f or 0)) for u, n, v, f in con.execute(
+            "SELECT ug_emitente, COUNT(*), ROUND(SUM(valor),2), COUNT(DISTINCT credor) FROM ob_orcamentaria_siafe "
+            f"WHERE {_ob_paga(con)} AND {SQL_CREDOR_TERCEIRO_SIAFE} AND valor>0 AND ug_emitente IS NOT NULL "
+            "GROUP BY ug_emitente")}
+    except sqlite3.OperationalError:     # base sem a tabela do SIAFE: nada pago conhecido (INDISPONÍVEL, não 0)
+        return {}
+
+
 def _todas_ugs(con) -> list[dict]:
-    """Todas as UGs com métricas (uma query). Reusado por buscar_orgaos."""
+    """Todas as UGs com métricas. Reusado por buscar_orgaos. NOME da UG vem do espelho TFE (texto) e do índice
+    SIAFE; nº de OB e total pago vêm do SIAFE (régua `_ob_paga`) — UG que o SIAFE não tem fica com 0 só para
+    ordenar a lista de candidatos (a pergunta ao Mestre Jorge diz INDISPONÍVEL, não R$ 0,00)."""
+    pago = _pago_siafe_por_ug(con)
     rows = con.execute(
-        "SELECT ug_codigo, MAX(ug_nome) ug_nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
-        "COUNT(DISTINCT favorecido_cpf) forn FROM ordens_bancarias "
-        "WHERE valor>0 AND ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+        "SELECT ug_codigo, MAX(ug_nome) ug_nome FROM ordens_bancarias "
+        "WHERE ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
     out = []
     for r in rows:
         cod = str(r["ug_codigo"]).strip()
+        n, v, f = pago.get(cod, (0, 0.0, 0))
         out.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or (r["ug_nome"] or f"UG {cod}"),
-                    "total_pago": float(r["total"] or 0.0), "n_obs": int(r["n"] or 0),
-                    "n_forn": int(r["forn"] or 0), "_raw": r["ug_nome"] or ""})
+                    "total_pago": v, "n_obs": n, "n_forn": f, "_raw": r["ug_nome"] or "",
+                    "pago_siafe": cod in pago})
     # Funde o índice SIAFE autoritativo (data/ug_index_siafe.json): 444/596 UGs não existem no
     # espelho TFE e eram INVISÍVEIS ao resolvedor (ex.: Fundo Soberano 226300 — achado 2026-07-11).
     # O nome curto do índice ("DETRAN-RJ", "FSERJ") entra no _raw p/ casar a sigla que o humano digita.
@@ -109,8 +124,10 @@ def _todas_ugs(con) -> list[dict]:
             if curto and curto.lower() not in u["_raw"].lower():
                 u["_raw"] += f" {curto}"
         else:
+            n, v, f = pago.get(cod, (0, 0.0, 0))
             out.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or curto or f"UG {cod}",
-                        "total_pago": 0.0, "n_obs": 0, "n_forn": 0, "_raw": curto or ""})
+                        "total_pago": v, "n_obs": n, "n_forn": f, "_raw": curto or "",
+                        "pago_siafe": cod in pago})
     return out
 
 
@@ -179,15 +196,17 @@ def _sem_acento(s: str) -> str:
 def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
     """Catálogo das UGs (órgãos) das OBs: código + nome canônico + nº de OBs + total pago. É o /UG do Yoda
     — para o Mestre Jorge saber quais códigos/nomes existem e então pedir o /orgao certo. Filtro opcional
-    (acento-INsensível) por nome OU código. Honesto: só OBs com valor>0; total = pagamento (OB), nunca empenho."""
+    (acento-INsensível) por nome OU código. Honesto: total = OB PAGA do SIAFE (régua `_ob_paga`), nunca empenho
+    nem o espelho TFE; UG que só o espelho conhece sai com o pagamento INDISPONÍVEL (`total` None), não zero."""
     out = {"ok": True, "filtro": filtro or "", "n": 0, "n_total": 0, "ugs": [], "texto": ""}
     if not _DB.exists():
         out["ok"] = False; out["texto"] = "Base local indisponível."; return out
     con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
         rows = con.execute(
-            "SELECT ug_codigo, MAX(ug_nome) ug_nome, COUNT(*) n, ROUND(SUM(valor),2) total "
-            "FROM ordens_bancarias WHERE valor>0 AND ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+            "SELECT ug_codigo, MAX(ug_nome) ug_nome "
+            "FROM ordens_bancarias WHERE ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+        pago = _pago_siafe_por_ug(con)
     except sqlite3.OperationalError:
         # base existe mas sem a tabela (ex.: criada vazia pelo ORM) — INDISPONÍVEL, não 500 (CI 29/10/2026)
         out["ok"] = False; out["texto"] = "Base local indisponível (sem a tabela de ordens bancárias)."; return out
@@ -197,12 +216,17 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
     for r in rows:
         cod = str(r["ug_codigo"]).strip()
         nome = ugs.nome_canonico(cod, "") or (r["ug_nome"] or f"UG {cod}")
-        itens.append({"ug": cod, "nome": nome, "n_obs": int(r["n"] or 0), "total": float(r["total"] or 0.0)})
+        n, v, _f = pago.get(cod, (0, None, 0))
+        itens.append({"ug": cod, "nome": nome, "n_obs": n, "total": v})
+    _vistas = {it["ug"] for it in itens}
+    for cod, (n, v, _f) in pago.items():           # UG paga no SIAFE que o espelho não conhece
+        if cod not in _vistas:
+            itens.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or f"UG {cod}", "n_obs": n, "total": v})
     out["n_total"] = len(itens)
     if filtro:
         f = _sem_acento(filtro); fdig = so_digitos(filtro)
         itens = [it for it in itens if f in _sem_acento(it["nome"]) or (fdig and fdig in it["ug"])]
-    itens.sort(key=lambda it: it["total"], reverse=True)
+    itens.sort(key=lambda it: it["total"] or 0.0, reverse=True)
     itens = itens[:max(1, limite)]
     out["ugs"] = itens; out["n"] = len(itens)
     # texto pronto p/ Telegram (markdown)
@@ -210,7 +234,8 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
     linhas = [titulo, "_Use o **código** no /orgao (ex.: «relatório do órgão 036100»)._", ""]
     for it in itens:
         linhas.append(f"• `{it['ug']}` — {it['nome']}")
-        linhas.append(f"    {inteiro(it['n_obs'])} OBs · R$ {moeda(it['total'])}")
+        linhas.append(f"    {inteiro(it['n_obs'])} OBs pagas (SIAFE) · R$ {moeda(it['total'])}" if it["total"] is not None
+                      else "    pagamento INDISPONÍVEL no SIAFE da casa (não é zero)")
     if not filtro and out["n_total"] > out["n"]:
         linhas += ["", f"_…{out['n_total'] - out['n']} UGs a mais. Filtre por nome: «/ug saúde», «/ug tribunal»._"]
     elif filtro and not itens:
@@ -222,7 +247,10 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
 # ───────────────────────────── consulta ─────────────────────────────
 
 def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
-    """OBs pagas PELA UG, por ano, com linhas individuais (favorecido) + concentração por favorecido."""
+    """OBs PAGAS pela UG (SIAFE, régua `_ob_paga` — nunca o espelho TFE) a credor TERCEIRO (CNPJ/CPF; repasse
+    entre unidades e folha ficam fora, como no espelho), por ano, com linhas individuais
+    (favorecido) + concentração por favorecido. Exercício que o SIAFE da casa não cobre inteiro vai em `cobertura`
+    (INDISPONÍVEL/PARCIAL, com a contagem de OB do espelho) — o total é piso, não completado com o espelho."""
     out = {"tem_dados": False, "ug": ug, "anos": [], "total_geral": 0.0, "n_geral": 0,
            "por_ano": OrderedDict(), "por_favorecido_geral": {}, "hhi": {}, "n_fornecedores": 0}
     if not _DB.exists():
@@ -230,16 +258,26 @@ def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
     con = sqlite3.connect(_DB)
     con.row_factory = sqlite3.Row
     try:
-        q = ("SELECT numero_ob, data_pagamento, data_emissao, favorecido_cpf, favorecido_nome, valor, exercicio "
-             "FROM ordens_bancarias WHERE ug_codigo=?")
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.reporting.cobertura_siafe import (
+            ANO_EMISSAO_SIAFE, ISO_EMISSAO_SIAFE, lacunas_do_recorte, resumo_lacunas)
+        q = (f"SELECT numero_ob, {ISO_EMISSAO_SIAFE} data_pagamento, credor favorecido_cpf, "
+             f"nome_credor favorecido_nome, valor, CAST({ANO_EMISSAO_SIAFE} AS INTEGER) exercicio "
+             f"FROM ob_orcamentaria_siafe WHERE ug_emitente=? AND {_ob_paga(con)} AND {SQL_CREDOR_TERCEIRO_SIAFE}")
         params: list = [str(ug)]
         if anos:
-            q += " AND exercicio IN (%s)" % ",".join("?" * len(anos))
+            q += f" AND CAST({ANO_EMISSAO_SIAFE} AS INTEGER) IN (%s)" % ",".join("?" * len(anos))
             params += list(anos)
-        q += " ORDER BY exercicio, data_pagamento, numero_ob"
-        rows = con.execute(q, params).fetchall()
+        q += " ORDER BY 6, 2, numero_ob"
+        try:
+            rows = con.execute(q, params).fetchall()
+        except sqlite3.OperationalError:     # base sem a tabela do SIAFE: INDISPONÍVEL, não zero
+            rows = []
+        lac = lacunas_do_recorte(con, ug=str(ug), anos=anos, db=_DB)
     finally:
         con.close()
+    out["fonte_ob"] = "SIAFE (ob_orcamentaria_siafe, régua _ob_paga)"
+    out["cobertura"] = {"lacunas": lac, **resumo_lacunas(lac, n_siafe=len(rows))}
     if not rows:
         return out
 
@@ -253,7 +291,7 @@ def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
         nome = (r["favorecido_nome"] or "—").strip()
         cnpj = so_digitos(r["favorecido_cpf"] or "")
         forn_cnpjs.add(cnpj)
-        data = (r["data_pagamento"] or r["data_emissao"] or "—")
+        data = (r["data_pagamento"] or "—")
         bloco["n"] += 1
         bloco["total"] += valor
         bloco["por_favorecido"][nome] += valor
@@ -301,7 +339,9 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     else:
         opcoes = [{"n": i + 1, "ug": c["ug"], "nome": c["nome"], "total_pago": c["total_pago"], "n_obs": c["n_obs"]}
                   for i, c in enumerate(cands)]
-        linhas = [f"{o['n']}) {o['nome']} (UG {o['ug']}) — R$ {moeda(o['total_pago'])} em {o['n_obs']} OBs" for o in opcoes]
+        linhas = [f"{o['n']}) {o['nome']} (UG {o['ug']}) — "
+                  + (f"R$ {moeda(o['total_pago'])} em {o['n_obs']} OBs pagas (SIAFE)" if o["n_obs"]
+                     else "pagamento INDISPONÍVEL no SIAFE da casa") for o in opcoes]
         cabec = (f"Não achei um órgão exato para \"{termo}\". Você quis dizer:"
                  if eh_sugestao else
                  f"Encontrei {len(opcoes)} órgãos para \"{termo}\". Qual deles, Mestre Jorge?")
@@ -992,7 +1032,7 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
     add("")
     add("> Para cada maior fornecedor PJ pago por esta UG, os **contratos registrados no TCE-RJ (Dados Abertos)** — "
         "**vigentes (ativos)** e **encerrados/arquivados** — com **objeto**, processo, vigência, critério de "
-        "julgamento e **valor contratado**. Confronta-se com o **pago pela UG** (espelho TFE — magnitude movimentada). "
+        "julgamento e **valor contratado**. Confronta-se com o **pago pela UG** (OB paga do SIAFE). "
         "Contrato registrado em **unidade diversa** desta UG é marcado (◇) — é a carteira do fornecedor, contexto. "
         "**Checagem documental, não acusação** (presunção de legitimidade; só a NF/medição fecha valor).")
     add("")
@@ -1051,10 +1091,11 @@ def dados_contratos_fornecedor(ug: str, nome_ug: str = "") -> dict:
     con = sqlite3.connect(_DB)
     con.row_factory = sqlite3.Row
     try:
+        from compliance_agent.cruzamentos_intel import _ob_paga     # "pago pela UG" = OB paga do SIAFE
         forns = con.execute(
-            "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
-            f"FROM ordens_bancarias WHERE ug_codigo=? AND {SQL_FAVORECIDO_PJ} AND valor>0 "
-            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC", (ug,)).fetchall()
+            "SELECT credor cnpj, MAX(nome_credor) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
+            f"FROM ob_orcamentaria_siafe WHERE ug_emitente=? AND {SQL_CREDOR_PJ_SIAFE} AND valor>0 "
+            f"AND {_ob_paga(con)} GROUP BY credor ORDER BY SUM(valor) DESC", (str(ug),)).fetchall()
         out["n_fornecedores"] = len(forns)
         for f in tudo(forns):
             nome = (f["nome"] or "—").strip()
@@ -1713,7 +1754,7 @@ def render_md(ctx: dict) -> str:
             f"Órgão superior: {alias.get('orgao_superior','—')}. Nas Ordens Bancárias os pagamentos podem "
             f"aparecer rotulados pelo nome do órgão superior — aqui são atribuídos pela UG.")
         add("")
-    add(f"**Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)  |  **Fonte:** TFE-RJ (espelho de OBs, D-1 — magnitude movimentada; pagamento auditado = SIAFE)")
+    add(f"**Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)  |  **Fonte:** SIAFE-Rio (só OB paga, régua `_ob_paga`; o espelho TFE não entra em soma)")
     add("")
     add("---")
     add("")
@@ -1736,6 +1777,8 @@ def render_md(ctx: dict) -> str:
             add(f"| {a} | {b['n']} | {nf} | {moeda(b['total'])} |")
         add(f"| **Total** | **{p['n_geral']}** | **{p['n_fornecedores']}** | **{moeda(p['total_geral'])}** |")
         add("")
+    from compliance_agent.reporting.intel_md import _cobertura_ob_md
+    _cobertura_ob_md(add, p)     # exercício fora da cobertura do SIAFE: dito, nunca completado com o espelho
 
     # Concentração por favorecido + HHI
     add("## 1. CONCENTRAÇÃO POR FORNECEDOR (HHI)")
@@ -2537,6 +2580,12 @@ def render_pdf(ctx: dict, destino: str) -> str:
         pdf.set_font(pdf._fam, "B", 9)
         _tab_row(pdf, [("Total", 36, "L"), (str(p["n_geral"]), 26, "R"), (str(p["n_fornecedores"]), 26, "R"),
                        (moeda(p["total_geral"]), 62, "R")])
+        pdf.set_font(pdf._fam, "I", 7)
+        _cob = p.get("cobertura") or {}
+        _mc(pdf, 4, _t("Fonte: SIAFE-Rio, só OB paga (régua _ob_paga); o espelho TFE não entra em soma."
+                       + (f" Cobertura: {_cob['texto']} — do espelho, só a contagem "
+                          f"({_cob.get('obs_espelho_fora', 0)} OB em exercício INDISPONÍVEL, não somadas)."
+                          if _cob.get("texto") else "")))
 
         # Concentração por fornecedor
         pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)

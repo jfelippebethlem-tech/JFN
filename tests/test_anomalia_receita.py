@@ -52,6 +52,13 @@ def _seed(db_path: str) -> None:
     con.executemany(
         "INSERT INTO ordens_bancarias (ug_codigo,favorecido_cpf,favorecido_nome,valor) VALUES (?,?,?,?)", obs
     )
+    # VALOR recebido = OB PAGA do SIAFE (21/11/2026): as mesmas OB, contabilizadas, + uma ANULADA de 1 bi que não
+    # pode fazer a BETA (2 sócios) virar "alto valor" nem inflar a associação
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, status TEXT, credor TEXT, "
+                "nome_credor TEXT, valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?)",
+                    [(f"2024OB{i:05d}", ug, "Contabilizado", cpf, nome, v) for i, (ug, cpf, nome, v) in enumerate(obs)]
+                    + [("2024OB09999", UG, "Anulado", "11111111000199", "ASSOCIACAO X", 1e9)])
     con.executemany(
         "INSERT INTO empresas_min (cnpj_basico,razao_social,natureza_cod,fonte_mes) VALUES (?,?,?,?)",
         [

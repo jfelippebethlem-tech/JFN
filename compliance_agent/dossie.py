@@ -27,20 +27,38 @@ from compliance_agent.cpf_cnpj import digitos as _digits  # noqa: E402
 
 
 def _resumo_ob(cnpj: str) -> dict:
-    """Total pago, nº de OBs e concentração por UG (OB = pagamento)."""
+    """Total pago, nº de OBs e concentração por UG — OB PAGA do SIAFE (régua `cruzamentos_intel._ob_paga`), nunca o
+    espelho TFE (até 21/11/2026 somava `ordens_bancarias.valor`). Par UG×ano fora da cobertura do SIAFE vai em
+    `cobertura` (INDISPONÍVEL/PARCIAL, com a contagem do espelho) — o total é piso, INDISPONÍVEL ≠ 0."""
     _DB = _resolver_db()
     if not _DB.exists():
         return {"_nota": "INDISPONÍVEL: compliance.db ausente"}
-    con = sqlite3.connect(str(_DB))
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.reporting.cobertura_siafe import lacunas_do_recorte, resumo_lacunas
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
     try:
-        rows = con.execute(
-            "SELECT ug_codigo, MAX(ug_nome), SUM(valor), COUNT(*) FROM ordens_bancarias "
-            "WHERE REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')=? "
-            "GROUP BY ug_codigo ORDER BY SUM(valor) DESC", (cnpj,)).fetchall()
+        try:
+            rows = con.execute(
+                "SELECT ug_emitente, '', SUM(valor), COUNT(*) FROM ob_orcamentaria_siafe "
+                f"WHERE credor=? AND {_ob_paga(con)} GROUP BY ug_emitente ORDER BY SUM(valor) DESC",
+                (cnpj,)).fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+        lac = lacunas_do_recorte(con, credor_raiz=cnpj, db=_DB)
+        nomes = {}
+        for r in rows:     # nome da UG para exibir: texto do espelho, nunca valor
+            try:
+                rn = con.execute("SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL "
+                                 "LIMIT 1", (r[0],)).fetchone()
+            except sqlite3.OperationalError:
+                rn = None
+            nomes[r[0]] = (rn[0] if rn else "") or ""
     finally:
         con.close()
+    cobertura = {"lacunas": lac, **resumo_lacunas(lac, n_siafe=sum(r[3] for r in rows))}
     if not rows:
-        return {"total_ob": 0.0, "n_ob": 0, "ugs": [], "concentracao_top_ug": None}
+        return {"total_ob": 0.0 if not lac else None, "n_ob": 0, "ugs": [], "concentracao_top_ug": None,
+                "fonte": "SIAFE (régua _ob_paga)", "cobertura": cobertura}
     total = sum(r[2] or 0 for r in rows)
     top = (rows[0][2] or 0) / total if total else 0
     from compliance_agent import ugs as _ugs  # nome canônico da UG (ITERJ p/ 133100), igual aos relatórios
@@ -49,8 +67,10 @@ def _resumo_ob(cnpj: str) -> dict:
         "n_ob": sum(r[3] for r in rows),
         "n_ugs": len(rows),
         "concentracao_top_ug": round(top, 3),
-        "ugs": [{"ug": r[0], "nome": _ugs.nome_canonico(str(r[0]), fallback="") or r[1],
+        "ugs": [{"ug": r[0], "nome": _ugs.nome_canonico(str(r[0]), fallback="") or nomes.get(r[0]) or str(r[0]),
                  "total": round(r[2] or 0, 2)} for r in rows],   # TODAS as UGs (dossiê completo)
+        "fonte": "SIAFE (régua _ob_paga)",
+        "cobertura": cobertura,
     }
 
 
@@ -82,15 +102,15 @@ def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
         _DB = _resolver_db()
         if entradas and _DB.exists():
             recente = max(entradas)
-            con = sqlite3.connect(str(_DB))
+            from compliance_agent.cruzamentos_intel import _ob_paga     # "já pagos" = OB paga do SIAFE
+            from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE
+            con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
             try:
-                norm = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
                 antes = con.execute(
-                    f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ordens_bancarias WHERE {norm}=? "
-                    "AND data_pagamento IS NOT NULL AND length(data_pagamento)=10 AND data_pagamento<?",
-                    (cnpj, recente)).fetchone()
-                tg = con.execute(f"SELECT COALESCE(SUM(valor),0) FROM ordens_bancarias WHERE {norm}=?",
-                                 (cnpj,)).fetchone()[0] or 0
+                    f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE credor=? "
+                    f"AND {_ob_paga(con)} AND {ISO_EMISSAO_SIAFE} < ?", (cnpj, recente)).fetchone()
+                tg = con.execute(f"SELECT COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE credor=? "
+                                 f"AND {_ob_paga(con)}", (cnpj,)).fetchone()[0] or 0
             finally:
                 con.close()
             n_antes, tot_antes = antes[0], antes[1] or 0
@@ -191,7 +211,7 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception as e:  # noqa: BLE001
         d["score"] = {"_nota": f"INDISPONÍVEL: {e}"}
 
-    d["_fontes"] = "BrasilAPI · CEIS/CNEP · OB(TFE/SIAFE) · TSE · Grafo de Poder"
+    d["_fontes"] = "BrasilAPI · CEIS/CNEP · OB paga (SIAFE) · TSE · Grafo de Poder"
     d["_nota"] = ("Indícios para apuração interna; presunção de legitimidade dos atos. "
                   "Nenhum bloco indisponível foi fabricado.")
 
@@ -280,6 +300,12 @@ async def gerar_pdf_completo(alvo: str) -> dict:
     return {"ok": True, "path_pdf": path, "titulo": ctx.get("subtitulo") or ctx["titulo"]}
 
 
+def _html_lacunas_ob(ob: dict) -> str:
+    """Lacunas de cobertura do SIAFE no recorte do CNPJ (INDISPONÍVEL ≠ 0) — mesma peça do /relatorio."""
+    from compliance_agent.reporting.intel_pdf import _lacunas_ob_html
+    return _lacunas_ob_html(ob)
+
+
 def _brl(v) -> str:
     try:
         return f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -357,12 +383,14 @@ def _ctx_dossie(d: dict) -> dict:
         secoes.append({"titulo": "3. Concentração de pagamentos por órgão (OB)",
                        "chart": C.barras([u["nome"] or u["ug"] for u in ugs],
                                          [(u["total"] / total) for u in ugs], "Participação por UG"),
-                       "html": "<p class='nota'>OB = pagamento efetivo (empenho não entra). "
+                       "html": "<p class='nota'>OB = pagamento efetivo (empenho não entra). Fonte: SIAFE-Rio, "
+                               "só OB paga (régua <code>_ob_paga</code>); o espelho TFE não entra em soma. "
                                f"Total pago: R$ {_brl(ob.get('total_ob', 0))} em {ob.get('n_ob', 0)} "
-                               f"OBs sobre {ob.get('n_ugs', 0)} UG(s).</p>"})
+                               f"OBs sobre {ob.get('n_ugs', 0)} UG(s).</p>" + _html_lacunas_ob(ob)})
     else:
         secoes.append({"titulo": "3. Pagamentos (OB)",
-                       "html": f"<p class='nota'>{_esc(ob.get('_nota') or 'Sem OB deste favorecido na base (pode ser fornecedor municipal/federal ou fora da cobertura).')}</p>"})
+                       "html": f"<p class='nota'>{_esc(ob.get('_nota') or 'Sem OB paga deste favorecido no SIAFE da casa (pode ser fornecedor municipal/federal ou fora da cobertura).')}</p>"
+                               + _html_lacunas_ob(ob)})
 
     # 4) Conflito doador↔contrato (TSE)
     rede_conf = conf.get("rede") or []
@@ -441,7 +469,10 @@ def _ctx_dossie(d: dict) -> dict:
         "top_flags": [c["flag"] for c in (sc.get("contribuicoes") or [])[:3]],
         "secoes": secoes,
         "proveniencia": [
-            {"dado": "Pagamentos (OB)", "estado": "REAL", "fonte": "TFE/SIAFE", "data": d.get("gerado_em", "")[:10]},
+            {"dado": "Pagamentos (OB)",
+             "estado": ("REAL" if ((ob.get("cobertura") or {}).get("estado", "VERIFICADO") == "VERIFICADO")
+                        else f"{ob['cobertura']['estado']} ({ob['cobertura']['texto']})"),
+             "fonte": "SIAFE (ob_orcamentaria_siafe, régua _ob_paga)", "data": d.get("gerado_em", "")[:10]},
             {"dado": "Cadastro/QSA", "estado": "REAL" if cad.get("razao_social") else "INDISPONÍVEL",
              "fonte": "BrasilAPI", "data": d.get("gerado_em", "")[:10]},
             {"dado": "Sanções", "estado": "REAL" if san.get("verificado") else "INDISPONÍVEL",

@@ -4,7 +4,7 @@
 Constrói a vizinhança de um alvo por EXPANSÃO LOCAL (BFS limitado em saltos e fanout) —
 não carrega o grafo inteiro (1,1M OBs) em memória. Arestas vêm das tabelas reais:
   cnpj —[socio]→ pessoa (QSA, socios_fornecedor)
-  cnpj —[pago_por]→ ug (ordens_bancarias)
+  cnpj —[pago_por]→ ug (OB paga do SIAFE, régua `_ob_paga` — nunca o espelho TFE)
   pessoa —[doou]→ candidato (doacoes_eleitorais)
   cnpj —[co_endereco]→ cnpj (endereco_fornecedor)
   pessoa —[servidor]→ ug (registros_folha)
@@ -147,10 +147,10 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
     if tipo == "cnpj":
         cnpj = val
         # UGs que pagaram (pago_por)
+        from compliance_agent.cruzamentos_intel import _ob_paga     # total_ob = OB PAGA do SIAFE
         for ug, ugn, tot in con.execute(
-                "SELECT ug_codigo, MAX(ug_nome), SUM(valor) FROM ordens_bancarias "
-                "WHERE REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')=? "
-                "GROUP BY ug_codigo ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, _FANOUT)):
+                f"SELECT ug_emitente, '', SUM(valor) FROM ob_orcamentaria_siafe WHERE credor=? AND {_ob_paga(con)} "
+                "GROUP BY ug_emitente ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, _FANOUT)):
             # nome CANÔNICO da UG (ITERJ p/ 133100), consistente com /relatorio e /orgao — não o
             # ug_nome cru da OB (que às vezes traz o órgão superior). Fallback ao nome cru.
             from compliance_agent import ugs as _ugs
@@ -209,9 +209,11 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
     elif tipo == "ug":
         ug = val
         # top empresas pagas
+        from compliance_agent.cruzamentos_intel import _ob_paga     # total_ob = OB PAGA do SIAFE
         for cpf, nm, tot in con.execute(
-                "SELECT favorecido_cpf, MAX(favorecido_nome), SUM(valor) FROM ordens_bancarias "
-                "WHERE ug_codigo=? GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT ?",
+                "SELECT credor, MAX(nome_credor), SUM(valor) FROM ob_orcamentaria_siafe "
+                f"WHERE ug_emitente=? AND {_ob_paga(con)} AND length(credor)=14 AND credor NOT GLOB '*[^0-9]*' "
+                "GROUP BY credor ORDER BY SUM(valor) DESC LIMIT ?",
                 (ug, _FANOUT)):
             if len(_digits(cpf)) == 14:
                 out.append((f"cnpj:{_digits(cpf)}", "pago_por",

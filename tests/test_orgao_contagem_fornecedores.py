@@ -41,6 +41,12 @@ def db_um_cnpj_duas_grafias(tmp_path, monkeypatch):
         ("OB3", "2025-03-01", None, "22222222222222", "BETA SERVICOS SA",  300.0, 2025, UG),
     ]
     con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?,?,?,?,?)", linhas)
+    # o pago vem do SIAFE (régua `_ob_paga`, 21/11/2026): as mesmas OB, contabilizadas
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT, status TEXT,"
+                " credor TEXT, nome_credor TEXT, valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)",
+                    [(n, ug, f"{d[8:10]}/{d[5:7]}/{d[:4]}", "Contabilizado", c, nm, v)
+                     for n, d, _e, c, nm, v, _x, ug in linhas])
     con.commit(); con.close()
     monkeypatch.setattr(O, "_DB", p)
     return p

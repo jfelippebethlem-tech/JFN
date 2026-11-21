@@ -124,7 +124,8 @@ def atualizar_favorecido_resumo(db_path=None) -> dict:
             " nome_match TEXT,"        # todas as grafias distintas (lower) — haystack do LIKE primário
             " nome_ns TEXT)"           # nome_match só-alfanumérico — haystack do fallback sem-espaço
         )
-        # 1) métricas + nome de exibição, por CPF (rápido — agregado direto)
+        # 1) métricas + nome de exibição, por CPF (rápido — agregado direto). espelho-fora-do-produto: tabela
+        #    derivada do espelho para CASAR NOME; o /relatorio não publica `total_pago` dela (vem do SIAFE).
         con.execute(
             "INSERT INTO favorecido_resumo (favorecido_cpf, favorecido_nome, n_obs, total_pago, nome_match, nome_ns) "
             "SELECT favorecido_cpf, MAX(favorecido_nome), COUNT(*), ROUND(SUM(valor),2), '', '' "
@@ -160,6 +161,8 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
     Resolve por CNPJ OU por nome (inclusive PARCIAL). Retorna lista de candidatos
     [{cnpj, nome, fonte, total_pago, n_obs}], rankeados por valor pago (empresas com dados de OB
     aparecem primeiro — são as mais relevantes para auditoria). Lista vazia = nada encontrado.
+    `total_pago`/`n_obs` = OB PAGA do SIAFE (régua `_ob_paga`); o espelho TFE (e a `favorecido_resumo` que dele
+    deriva) serve só para CASAR O NOME — valor dele não vai à pergunta de desambiguação (21/11/2026).
     """
     termo = (termo or "").strip()
     dig = so_digitos(termo)
@@ -210,10 +213,9 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                     _add(r["cnpj"], r["nome"], "obs")
             else:
                 for r in con.execute(
-                    "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
-                    "ROUND(SUM(valor),2) total FROM ordens_bancarias "
+                    "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n FROM ordens_bancarias "
                     "WHERE lower(favorecido_nome) LIKE ? AND favorecido_cpf IS NOT NULL "
-                    "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50",
+                    "GROUP BY favorecido_cpf ORDER BY n DESC LIMIT 50",
                     (f"%{alvo}%",)):
                     _add(r["cnpj"], r["nome"], "obs")
             # fallback SEM-ESPAÇO: "engeprat" (junto) não casa "ENGE PRAT" no LIKE normal. Colapsa os espaços
@@ -235,26 +237,16 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                             _add(r["cnpj"], r["nome"], "obs")
                     else:
                         for r in con.execute(
-                            "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
-                            "ROUND(SUM(valor),2) total FROM ordens_bancarias "
+                            "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n FROM ordens_bancarias "
                             "WHERE REPLACE(lower(favorecido_nome), ' ', '') LIKE ? AND favorecido_cpf IS NOT NULL "
-                            "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50", (f"%{alvo_ns}%",)):
+                            "GROUP BY favorecido_cpf ORDER BY n DESC LIMIT 50", (f"%{alvo_ns}%",)):
                             _add(r["cnpj"], r["nome"], "obs")
-            # preenche métricas de OB para todos os candidatos. Com a tabela-resumo, n_obs/total_pago já estão
-            # pré-agregados por CNPJ (lookup por PK, instantâneo); senão soma no scan de OB (índice por cpf).
+            # preenche métricas de OB para todos os candidatos — OB PAGA do SIAFE (índice de `credor`, barato).
+            from compliance_agent.cruzamentos_intel import _ob_paga
             for cnpj, c in cands.items():
-                if usa_resumo:
-                    r = con.execute(
-                        "SELECT n_obs n, total_pago total FROM favorecido_resumo WHERE favorecido_cpf=?",
-                        (cnpj,)).fetchone()
-                    if r is None:  # candidato veio só do registro/empresas (sem OB) — métricas zeradas
-                        c["n_obs"] = 0
-                        c["total_pago"] = 0.0
-                        continue
-                else:
-                    r = con.execute(
-                        "SELECT COUNT(*) n, ROUND(SUM(valor),2) total FROM ordens_bancarias WHERE favorecido_cpf=?",
-                        (cnpj,)).fetchone()
+                r = con.execute(
+                    "SELECT COUNT(*) n, ROUND(SUM(valor),2) total FROM ob_orcamentaria_siafe "
+                    f"WHERE credor=? AND {_ob_paga(con)}", (cnpj,)).fetchone()
                 c["n_obs"] = int(r["n"] or 0)
                 c["total_pago"] = float(r["total"] or 0.0)
         except Exception as exc:
@@ -293,7 +285,11 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
 
 def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
     """
-    OBs pagas ao fornecedor (ordens_bancarias). Retorna estrutura por ano com as linhas individuais.
+    OBs PAGAS ao fornecedor — SIAFE (`ob_orcamentaria_siafe`, régua única `cruzamentos_intel._ob_paga`), nunca o
+    espelho TFE. Até 21/11/2026 isto somava `ordens_bancarias.valor` e chamava de "pago" (revisão crítica D4).
+    Par UG×ano que o SIAFE da casa não cobre inteiro vai em `cobertura` (INDISPONÍVEL/PARCIAL, com a CONTAGEM de
+    OB que o espelho lista ali) — o total é então piso, nunca completado com valor do espelho.
+    Retorna estrutura por ano com as linhas individuais.
 
     {
       "tem_dados": bool,
@@ -315,17 +311,36 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
     con = sqlite3.connect(_DB)
     con.row_factory = sqlite3.Row
     try:
-        # LIKE raiz% casa todos os estabelecimentos (matriz 0001 + filiais 0002+) da mesma empresa
-        q = ("SELECT numero_ob, data_pagamento, data_emissao, ug_codigo, ug_nome, valor, exercicio, "
-             "favorecido_cpf, favorecido_nome FROM ordens_bancarias WHERE favorecido_cpf LIKE ?")
-        params: list = [f"{raiz}%"]
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.reporting.cobertura_siafe import (
+            ANO_EMISSAO_SIAFE, ISO_EMISSAO_SIAFE, lacunas_do_recorte, resumo_lacunas)
+        # GLOB raiz* casa todos os estabelecimentos (matriz 0001 + filiais 0002+) e usa o índice de `credor`
+        q = (f"SELECT numero_ob, {ISO_EMISSAO_SIAFE} data_pagamento, ug_emitente ug_codigo, valor, "
+             f"CAST({ANO_EMISSAO_SIAFE} AS INTEGER) exercicio, credor favorecido_cpf, nome_credor favorecido_nome "
+             f"FROM ob_orcamentaria_siafe WHERE credor GLOB ? AND {_ob_paga(con)}")
+        params: list = [f"{raiz}*"]
         if anos:
-            q += " AND exercicio IN (%s)" % ",".join("?" * len(anos))
+            q += f" AND CAST({ANO_EMISSAO_SIAFE} AS INTEGER) IN (%s)" % ",".join("?" * len(anos))
             params += list(anos)
-        q += " ORDER BY exercicio, data_pagamento, numero_ob"
-        rows = con.execute(q, params).fetchall()
+        q += " ORDER BY 5, 2, numero_ob"
+        try:
+            rows = con.execute(q, params).fetchall()
+        except sqlite3.OperationalError:     # base sem a tabela do SIAFE: INDISPONÍVEL, não zero
+            rows = []
+        lac = lacunas_do_recorte(con, credor_raiz=raiz, anos=anos, db=_DB)
+        # nome da UG para exibir (o SIAFE não traz): texto do espelho, nunca valor
+        nomes_ug: dict = {}
+        for u in {r["ug_codigo"] for r in rows}:
+            try:
+                rn = con.execute("SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL "
+                                 "LIMIT 1", (u,)).fetchone()
+            except sqlite3.OperationalError:
+                rn = None
+            nomes_ug[u] = (rn[0] if rn else "") or ""
     finally:
         con.close()
+    out["fonte_ob"] = "SIAFE (ob_orcamentaria_siafe, régua _ob_paga)"
+    out["cobertura"] = {"lacunas": lac, **resumo_lacunas(lac, n_siafe=len(rows))}
     if not rows:
         return out
 
@@ -348,8 +363,8 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
         est["n"] += 1
         est["total"] += valor
         # rótulo canônico da unidade gestora (corrige o nome do órgão superior nas OBs)
-        orgao = ugs.rotulo(r["ug_codigo"], r["ug_nome"] or "—")
-        data = (r["data_pagamento"] or r["data_emissao"] or "—")
+        orgao = ugs.rotulo(r["ug_codigo"], nomes_ug.get(r["ug_codigo"]) or "—")
+        data = (r["data_pagamento"] or "—")
         # mês do pagamento (ISO YYYY-MM-DD); 0 quando a data não vem
         mes = 0
         if isinstance(data, str) and len(data) >= 7 and data[4:5] == "-":

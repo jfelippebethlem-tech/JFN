@@ -17,8 +17,10 @@ USO (API, chamado pelo server.py):
     # res = {ok, cnpj, empresa, risco, score, resumo, path_md, path_pdf, fonte}
 
 FONTES DE DADO (e honestidade — princípio do JFN: Empenho ≠ Pagamento):
-  - **OBs pagas** (`data/compliance.db` → ordens_bancarias): dado REAL de PAGAMENTO (Ordem Bancária = fonte
-    de verdade). É a espinha financeira do relatório, com **uma tabela por ano** (2023, 2024, 2025, 2026).
+  - **OBs pagas** (`data/compliance.db` → `ob_orcamentaria_siafe`, régua única `cruzamentos_intel._ob_paga`): dado
+    REAL de PAGAMENTO (Ordem Bancária = fonte de verdade), nunca o espelho TFE (`ordens_bancarias`, que até
+    21/11/2026 era somado aqui). É a espinha financeira do relatório, com **uma tabela por ano**; exercício fora da
+    cobertura do SIAFE sai INDISPONÍVEL/PARCIAL (`pagamentos["cobertura"]`), nunca completado com o espelho.
   - **Contratos** (`data/compliance.db` → contratos): carteira oficial coletada do SIAFE.
   - **Perfil cadastral / sanções / rede societária / sinais de risco**: `relatorio_riscos.gerar_relatorio_risco`
     (APIs públicas — Receita/PNCP/CEIS-CNEP). É best-effort: se o egress da VM falhar, o relatório sai assim
@@ -103,7 +105,8 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
             "total_pago": c["total_pago"], "n_obs": c["n_obs"],
         } for i, c in enumerate(candidatos)]
         linhas = [f"{o['n']}) {o['nome']} — CNPJ {o['cnpj_fmt']}"
-                  + (f" — R$ {moeda(o['total_pago'])} movimentados em {o['n_obs']} OBs (bruto TFE)" if o["n_obs"] else " — sem OBs na base")
+                  + (f" — R$ {moeda(o['total_pago'])} pagos em {o['n_obs']} OBs (SIAFE)" if o["n_obs"]
+                     else " — sem OB paga no SIAFE da casa (INDISPONÍVEL, não zero)")
                   for o in opcoes]
         pergunta = (f"Encontrei {len(opcoes)} empresas para \"{termo}\". Qual delas, Mestre Jorge?\n"
                     + "\n".join(linhas)

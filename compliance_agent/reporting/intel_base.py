@@ -23,6 +23,14 @@ _DB = _DATA / "compliance.db"
 # mascarado como '999.***.***-99' — também 14 caracteres (medido 20/11/2026: 286.869 das 1.202.093 OB de
 # documento com 14 caracteres são de pessoa física; no ITERJ, 104 dos 203 "fornecedores PJ").
 SQL_FAVORECIDO_PJ = "length(favorecido_cpf)=14 AND favorecido_cpf NOT LIKE '%*%'"
+# O mesmo corte no SIAFE (`ob_orcamentaria_siafe.credor`): CNPJ = 14 DÍGITOS. O SIAFE não mascara CPF (11 dígitos),
+# mas tem código interno de 14 caracteres com letra (ex.: 'CG0004700…', folha/repasse) — que não é fornecedor.
+SQL_CREDOR_PJ_SIAFE = "length(credor)=14 AND credor NOT GLOB '*[^0-9]*'"
+# Credor TERCEIRO (CNPJ ou CPF) — o universo que o espelho TFE sempre listou. O SIAFE traz também repasse entre
+# unidades (credor = UG de 6 dígitos) e folha/encargos/precatório (códigos 'CG…'/'EC…'): medido em 21/11/2026, no
+# ITERJ 482 OB / R$ 64,29 mi e na FSERJ 1.948 OB / R$ 1,12 bi. Somá-los no "pago pela UG" mudaria o universo do
+# /orgao (HHI, concentração por fornecedor) — mesmo corte de `tools/tac_ranking_ugs._TERCEIRO`.
+SQL_CREDOR_TERCEIRO_SIAFE = "length(credor) IN (11, 14) AND credor NOT GLOB '*[^0-9]*'"
 
 
 _REPORTS = _ROOT / "reports"

@@ -155,8 +155,25 @@ def _sede_velho(verificado_em: Optional[str]) -> bool:
         return True
 
 
+def _cobertura_ob_md(add, p: dict) -> None:
+    """Callout das lacunas de cobertura do SIAFE no recorte do fornecedor (INDISPONÍVEL ≠ 0). Nada quando cobre."""
+    cob = (p or {}).get("cobertura") or {}
+    lac = cob.get("lacunas") or []
+    if not lac:
+        return
+    add(f"> ⚠️ **Fora da cobertura do SIAFE — {cob.get('estado')}.** {cob.get('texto')}. Nesses pares UG×ano o "
+        "pagamento **não está somado** (INDISPONÍVEL = nunca lido no SIAFE; PARCIAL = lido em parte, o total é "
+        "piso). Do espelho TFE, só a contagem de OB que ele lista ali — nunca o valor.")
+    add("")
+    add("| UG | Exercício | SIAFE | OB no espelho TFE (não somadas) |")
+    add("|---|---|---|---:|")
+    for x in lac:
+        add(f"| {x['ug']} | {x['ano']} | **{x['rotulo']}** | {x['obs_espelho']} |")
+    add("")
+
+
 def _sede_total_pago(cnpj: str) -> float:
-    """Total pago (OBs) a TODA a raiz do fornecedor — usado p/ calibrar o veredito de sede (Places só nos
+    """Total pago (OB paga do SIAFE, régua `_ob_paga`) a TODA a raiz do fornecedor — usado p/ calibrar o veredito de sede (Places só nos
     relevantes; INDÍCIO ALTO exige magnitude). Best-effort: 0.0 se a base não responde."""
     if not _DB.exists():
         return 0.0
@@ -164,8 +181,9 @@ def _sede_total_pago(cnpj: str) -> float:
     try:
         con = sqlite3.connect(str(_DB))
         try:
-            r = con.execute("SELECT SUM(valor) FROM ordens_bancarias WHERE favorecido_cpf LIKE ?",
-                            (f"{raiz}%",)).fetchone()
+            from compliance_agent.cruzamentos_intel import _ob_paga
+            r = con.execute(f"SELECT SUM(valor) FROM ob_orcamentaria_siafe WHERE credor GLOB ? AND {_ob_paga(con)}",
+                            (f"{raiz}*",)).fetchone()
             return float((r[0] if r else 0) or 0.0)
         finally:
             con.close()
@@ -569,9 +587,10 @@ def _rodizio_fornecedor(cnpj: str, max_ugs: int = 3) -> dict:
     try:
         con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
         try:
+            from compliance_agent.cruzamentos_intel import _ob_paga    # "as UGs que mais pagam" = OB paga do SIAFE
             ugs = [str(r[0]) for r in con.execute(
-                "SELECT ug_codigo FROM ordens_bancarias WHERE favorecido_cpf=? AND ug_codigo IS NOT NULL "
-                "GROUP BY ug_codigo ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, max_ugs)).fetchall()]
+                f"SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE credor=? AND {_ob_paga(con)} "
+                "GROUP BY ug_emitente ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, max_ugs)).fetchall()]
         finally:
             con.close()
         if not ugs:
@@ -875,8 +894,9 @@ def render_md(ctx: dict) -> str:
     add("")
     add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)")
     add("**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
-    add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (espelho TFE-RJ; o SIAFE distingue "
-        f"status mas está parcialmente coletado) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
+    _cob = (p.get("cobertura") or {})
+    add(f"**Classificação de fonte:** OBs = **{'REAL' if _cob.get('estado', 'VERIFICADO') == 'VERIFICADO' else _cob['estado']}** "
+        f"(SIAFE, só OB paga — régua `_ob_paga`) · Contratos = REAL · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
     add("")
     add("---")
     add("")
@@ -899,6 +919,7 @@ def render_md(ctx: dict) -> str:
             add(f"| {a} | {b['n']} | {moeda(b['total'])} |")
         add(f"| **Total** | **{p['n_geral']}** | **{moeda(p['total_geral'])}** |")
         add("")
+    _cobertura_ob_md(add, p)
 
     add("## 1. PERFIL CADASTRAL")
     add("")
@@ -979,22 +1000,16 @@ def render_md(ctx: dict) -> str:
     # Pagamentos (OBs) — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
-    # A FONTE DESTES NÚMEROS É O ESPELHO, e ele tem um viés conhecido — dizer "SIAFE/TFE" como se
-    # fosse uma coisa só escondia os dois lados. Medido em 2026-08-09: o espelho traz 1.159.305 OBs
-    # contra 244.949 da fonte canônica (que está 21,1% coletada), mas NÃO carrega o status — não dá
-    # para excluir OB cancelada por lá. No universo em que dá para medir (o SIAFE), 9,7% do valor
-    # não é "Contabilizado" (Excluído 8,1% · Anulado 1,5% · Não contabilizado 0,2%).
-    add("> **Fonte: espelho TFE-RJ** (Ordem Bancária = dado definitivo de pagamento). Por exercício, "
-        "as **maiores OBs** (materiais); a **lista completa** está na **planilha XLSX** deste "
-        "relatório. OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam).")
+    # FONTE = SIAFE, só OB PAGA (régua única `cruzamentos_intel._ob_paga`). Até 21/11/2026 esta seção somava o
+    # espelho TFE — que não publica status (OB anulada/devolvida/complementar entrava somada) e não tem dezembro
+    # inteiro. Onde o SIAFE da casa não cobre o par UG×ano, o total é piso e a lacuna é DITA (INDISPONÍVEL ≠ 0).
+    add("> **Fonte: SIAFE-Rio** (`ob_orcamentaria_siafe`) — só **OB paga** (Contabilizada, não devolvida pelo "
+        "banco, sem complementar nem reemitida; régua `_ob_paga`). Ordem Bancária = dado definitivo de "
+        "pagamento. Por exercício, as **maiores OBs** (materiais); a **lista completa** está na **planilha "
+        "XLSX** deste relatório. O espelho TFE não entra em soma: serve só para apontar exercício fora da "
+        "cobertura do SIAFE (abaixo, quando houver).")
     add("")
-    add("> ⚠️ **O que este total inclui e o que ele não distingue.** O espelho é hoje a fonte mais "
-        "COMPLETA (1,16 milhão de OBs contra 245 mil já coletadas do SIAFE), mas **não publica o "
-        "status da OB** — cancelamento e anulação entram somados. No universo em que dá para "
-        "medir, **9,7% do valor não é OB contabilizada**. O SIAFE distingue status e traz processo, "
-        "NL e competência, mas a coleta dele está incompleta (`reporting.cobertura_siafe`). Para "
-        "peça que dependa do valor exato de um credor, conferir no SIAFE o que ele já tem.")
-    add("")
+    _cobertura_ob_md(add, p)
     add(f"> {_NOTA_CARDINALIDADE}")
     card = ctx.get("cardinalidade") or {}
     if card.get("n_obs"):
@@ -1080,7 +1095,7 @@ def render_md(ctx: dict) -> str:
         if _soma_ctr and _pago:
             _r = _pago / _soma_ctr * 100
             add(f"> **Contratado vs. pago:** R$ {moeda(_soma_ctr)} contratados (TCE-RJ) × R$ {moeda(_pago)} pagos "
-                f"em OBs (SIAFE/TFE) = **{_r:.0f}%** de execução financeira sobre o valor contratado registrado. "
+                f"em OB paga (SIAFE) = **{_r:.0f}%** de execução financeira sobre o valor contratado registrado. "
                 "(Pago superior ao contratado pode indicar aditivos/contratos não listados — verificar.)")
             add("")
         if _ctr:

@@ -58,11 +58,12 @@ def obs_e_sei(cnpj: str) -> dict:
         return out
     con = sqlite3.connect(_DB, timeout=120)
     try:
-        # total_pago = total recebido do Estado (TODAS as UGs); só valores positivos
-        # (exclui estornos/anulações de sinal negativo). Não filtra por UG aqui de propósito.
+        # total_pago = total recebido do Estado (TODAS as UGs) — OB PAGA do SIAFE (régua `_ob_paga`), nunca o
+        # espelho TFE (21/11/2026); só valores positivos. Não filtra por UG aqui de propósito.
+        from compliance_agent.cruzamentos_intel import _ob_paga
         row = con.execute(
             "SELECT COUNT(*), COALESCE(SUM(CASE WHEN valor>0 THEN valor ELSE 0 END),0) "
-            "FROM ordens_bancarias WHERE favorecido_cpf=?",
+            f"FROM ob_orcamentaria_siafe WHERE credor=? AND {_ob_paga(con)}",
             (cnpj,)).fetchone()
         out["n_obs"], out["total_pago"] = int(row[0] or 0), float(row[1] or 0.0)
 
@@ -321,7 +322,8 @@ def clusters_mesmo_endereco(min_forn: int = 2, limite: int = 50, so_com_obs: boo
 def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limite: int = 20) -> dict:
     """Cidades que concentram os FORNECEDORES de um órgão (ou de todo o Estado, se ug=None).
 
-    Cruza ordens_bancarias (pagamentos) com endereco_fornecedor (cidade-sede do CNPJ). É um red flag
+    Cruza a OB PAGA do SIAFE (régua `_ob_paga`; o espelho TFE não entra em soma desde 21/11/2026) com
+    endereco_fornecedor (cidade-sede do CNPJ). É um red flag
     clássico quando muitos fornecedores de uma UG têm sede na MESMA cidade pequena/distante (empresas
     de fachada / direcionamento). Honesto sobre COBERTURA: só ranqueia o que tem endereço ingerido.
 
@@ -336,20 +338,23 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
     con = sqlite3.connect(_DB, timeout=120)
     con.row_factory = sqlite3.Row
     try:
-        # CPF mascarado ("999.***.***-99") também tem 14 caracteres: sem o NOT LIKE ele entrava como fornecedor PJ
-        filtro, params = ("WHERE ob.favorecido_cpf IS NOT NULL AND length(ob.favorecido_cpf)=14 "
-                          "AND ob.favorecido_cpf NOT LIKE '%*%'"), []
+        # credor PJ = 14 DÍGITOS (o SIAFE tem código interno de 14 caracteres com letra, que não é fornecedor)
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.reporting.cobertura_siafe import ANO_EMISSAO_SIAFE
+        filtro, params = ("WHERE length(ob.credor)=14 AND ob.credor NOT GLOB '*[^0-9]*' "
+                          f"AND {_ob_paga(con, 'ob')}"), []
         if ug:
-            filtro += " AND ob.ug_codigo=?"
+            filtro += " AND ob.ug_emitente=?"
             params.append(str(ug))
         if anos:
-            filtro += " AND ob.exercicio IN (%s)" % ",".join("?" * len(anos))
+            filtro += f" AND {ANO_EMISSAO_SIAFE.replace('data_emissao', 'ob.data_emissao')} IN (%s)" % \
+                ",".join("?" * len(anos))
             params += [str(a) for a in anos]
 
         # universo: total pago e nº de fornecedores do órgão (denominador da cobertura)
         tot = con.execute(
-            f"SELECT COALESCE(SUM(ob.valor),0), COUNT(DISTINCT ob.favorecido_cpf) "
-            f"FROM ordens_bancarias ob {filtro}", params).fetchone()
+            f"SELECT COALESCE(SUM(ob.valor),0), COUNT(DISTINCT ob.credor) "
+            f"FROM ob_orcamentaria_siafe ob {filtro}", params).fetchone()   # {filtro} leva _ob_paga(con, 'ob')
         total_pago, total_forn = float(tot[0] or 0.0), int(tot[1] or 0)
         if total_pago <= 0 and total_forn == 0:
             out["_nota"] = "Nenhuma OB para este filtro."
@@ -359,11 +364,11 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
         rows = con.execute(
             f"""SELECT ef.municipio AS municipio, ef.uf AS uf,
                        SUM(ob.valor) AS total_pago,
-                       COUNT(DISTINCT ob.favorecido_cpf) AS n_forn,
+                       COUNT(DISTINCT ob.credor) AS n_forn,
                        COUNT(*) AS n_obs
-                FROM ordens_bancarias ob
-                JOIN endereco_fornecedor ef ON ef.cnpj = ob.favorecido_cpf
-                {filtro} AND length(ob.favorecido_cpf)=14 AND length(ef.cnpj)=14
+                FROM ob_orcamentaria_siafe ob  -- o filtro abaixo leva _ob_paga
+                JOIN endereco_fornecedor ef ON ef.cnpj = ob.credor
+                {filtro} AND length(ef.cnpj)=14
                   AND ef.municipio IS NOT NULL AND ef.municipio!=''
                 GROUP BY ef.municipio, ef.uf
                 ORDER BY total_pago DESC""", params).fetchall()

@@ -74,14 +74,20 @@ def test_severidade_faixas():
 # ───────────────────────── integração com DB tmp ─────────────────────────
 
 def _mkdb(path, linhas):
-    # favorecido_nome com DEFAULT NULL: inserts de 5 colunas (cpf,ug,ug_nome,valor,obs) seguem válidos;
-    # a worklist (que usa MAX(favorecido_nome)) lê NULL → "—", como no DB real quando o nome falta.
+    # VALOR vem do SIAFE (OB paga, régua `_ob_paga`); a OBSERVAÇÃO vem da MESMA OB no espelho (número + UG) — por
+    # isso cada linha vira uma OB nos dois lados. favorecido_nome NULL no espelho e nome_credor NULL no SIAFE: a
+    # worklist (MAX(nome)) lê NULL → "—", como no DB real quando o nome falta.
     con = sqlite3.connect(str(path))
-    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, "
-                "ug_nome TEXT, valor REAL, observacao TEXT, favorecido_nome TEXT DEFAULT NULL)")
-    con.executemany(
-        "INSERT INTO ordens_bancarias (favorecido_cpf, ug_codigo, ug_nome, valor, observacao) "
-        "VALUES (?,?,?,?,?)", linhas)
+    con.execute("CREATE TABLE ordens_bancarias (numero_ob TEXT, data_emissao TEXT, favorecido_cpf TEXT, "
+                "ug_codigo TEXT, ug_nome TEXT, valor REAL, observacao TEXT, favorecido_nome TEXT DEFAULT NULL)")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT, "
+                "status TEXT, credor TEXT, nome_credor TEXT, valor REAL)")
+    for i, (cpf, ug, ug_nome, valor, obs) in enumerate(linhas):
+        n = f"2024OB{i:05d}"
+        con.execute("INSERT INTO ordens_bancarias (numero_ob, data_emissao, favorecido_cpf, ug_codigo, ug_nome, "
+                    "valor, observacao) VALUES (?,?,?,?,?,?,?)", (n, "2024-03-10", cpf, ug, ug_nome, valor, obs))
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)",
+                    (n, ug, "10/03/2024", "Contabilizado", cpf, None, valor))
     con.commit()
     con.close()
 

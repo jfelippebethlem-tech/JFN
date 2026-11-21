@@ -45,6 +45,14 @@ def _db_isolado(tmp_path):
         s.commit()
     finally:
         s.close()
+    # o pago do dossiê vem do SIAFE (régua `_ob_paga`, 21/11/2026): a mesma OB, contabilizada
+    import sqlite3
+    con = sqlite3.connect(db_path)
+    con.execute("CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, "
+                "data_emissao TEXT, status TEXT, credor TEXT, nome_credor TEXT, valor REAL, exercicio INTEGER)")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('2026OBSMOKE1','133100','10/01/2026','Contabilizado',?,"
+                "'DOSSIE SMOKE LTDA',250000.0,2026)", (_CNPJ,))
+    con.commit(); con.close()
     return db_path
 
 

@@ -23,6 +23,20 @@ from compliance_agent.reporting.intel_md import (
 logger = logging.getLogger(__name__)
 
 
+def _lacunas_ob_html(p: dict) -> str:
+    """Callout HTML das lacunas de cobertura do SIAFE no recorte (INDISPONÍVEL ≠ 0). Vazio quando cobre tudo."""
+    cob = (p or {}).get("cobertura") or {}
+    lac = cob.get("lacunas") or []
+    if not lac:
+        return ""
+    linhas = "".join(f"<tr><td>{x['ug']}</td><td>{x['ano']}</td><td><b>{x['rotulo']}</b></td>"
+                     f"<td>{x['obs_espelho']}</td></tr>" for x in lac)
+    return ("<div class='callout warn'><div class='t'>⚠️ Fora da cobertura do SIAFE (INDISPONÍVEL ≠ zero)</div>"
+            f"{cob.get('texto', '')}. Nesses pares UG×ano o pagamento <b>não está somado</b>: INDISPONÍVEL = nunca "
+            "lido no SIAFE; PARCIAL = lido em parte (o total é piso). Do espelho TFE, só a contagem de OB.<table>"
+            "<tr><th>UG</th><th>Ano</th><th>SIAFE</th><th>OB no espelho TFE (não somadas)</th></tr>"
+            f"{linhas}</table></div>")
+
 def _registrar_fonte(pdf) -> tuple[str, bool]:
     """Registra DejaVu (Unicode) se disponível. Retorna (familia, eh_unicode).
     Italico mapeia para o regular (DejaVuSans nao tem oblique no pacote core)."""
@@ -334,8 +348,10 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                           "<table><tr><th>CNPJ</th><th>Tipo</th><th>Razão social (na OB)</th><th>OBs</th><th>Pago</th></tr>"
                           f"{linhas_e}</table>")
         secoes.append({"titulo": "5. Pagamentos (Ordens Bancárias) — por Órgão (UG) × Ano",
-                       "html": "<p class='nota'>OB = pagamento (dado definitivo, SIAFE/TFE-RJ). Cada célula = total pago "
+                       "html": "<p class='nota'>OB = pagamento (dado definitivo). Fonte: SIAFE-Rio, só OB paga (régua "
+                               "<code>_ob_paga</code>; o espelho TFE não entra em soma). Cada célula = total pago "
                                f"àquele órgão naquele exercício ({p['n_geral']} OBs no total). Detalhe por OB individual no XLSX.</p>"
+                               + _lacunas_ob_html(p)
                                + estab_html
                                + f"<table>{thead}{body}</table>",
                        "chart": spark})
@@ -626,7 +642,10 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         "score": ctx.get("score", 0), "faixa": faixa, "top_flags": top, "secoes": secoes,
         "metodologia": "Due diligence Nível II + red flags TCU/TCE-RJ + conflito TSE",
         "proveniencia": [
-            {"dado": "Pagamentos (OB)", "estado": "REAL", "fonte": "SIAFE/TFE", "data": ctx["data"]},
+            {"dado": "Pagamentos (OB)",
+             "estado": ("REAL" if (p.get("cobertura") or {}).get("estado", "VERIFICADO") == "VERIFICADO"
+                        else f"{p['cobertura']['estado']} ({p['cobertura']['texto']})"),
+             "fonte": "SIAFE (ob_orcamentaria_siafe, régua _ob_paga)", "data": ctx["data"]},
             {"dado": "Cadastro/QSA", "estado": "REAL" if emp else "INDISPONÍVEL", "fonte": "BrasilAPI", "data": ctx["data"]},
             {"dado": "Doações eleitorais", "estado": "REAL", "fonte": "TSE", "data": ctx["data"]},
         ],
@@ -678,8 +697,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
     _mc(pdf, 5, _t(_resumo_executivo(ctx)))
     pdf.ln(2)
     pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
-    _mc(pdf, 4, _t(f"Fonte: OBs/contratos = REAL (SIAFE/TFE) · perfil/sanções/rede = {ctx['fonte_enriq']}. "
-                            "OB = pagamento (dado definitivo). Empenho ≠ pagamento."))
+    _cob_txt = (p.get("cobertura") or {}).get("texto") or ""
+    _mc(pdf, 4, _t(f"Fonte: OBs = SIAFE (só OB paga) · contratos = REAL · perfil/sanções/rede = {ctx['fonte_enriq']}. "
+                   "OB = pagamento (dado definitivo). Empenho ≠ pagamento."
+                   + (f" Cobertura do SIAFE: {_cob_txt} (espelho TFE não somado)." if _cob_txt else "")))
     pdf.set_text_color(0, 0, 0)
 
     # Exposição por exercício

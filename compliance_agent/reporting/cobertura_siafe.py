@@ -235,6 +235,61 @@ def estados_dos_pares(pares, *, db: str | Path | None = None) -> dict[tuple[str,
     return out
 
 
+def lacunas_do_recorte(con, *, credor_raiz: str | None = None, ug: str | None = None, anos=None,
+                       db: str | Path | None = None) -> list[dict[str, Any]]:
+    """Pares (UG, ano) de um recorte de produto que o SIAFE NÃO cobre inteiros — INDISPONÍVEL ou PARCIAL.
+
+    O recorte é um credor (raiz de 8 dígitos: matriz + filiais) e/ou uma UG, opcionalmente em `anos`. Os pares
+    vêm do SIAFE e do espelho TFE; do espelho sai só QUANTAS OB ele lista no par (`obs_espelho`), nunca valor —
+    é o padrão de `tools/dossie_emendatio._lacunas`, posto aqui para os produtos (/relatorio, /orgao, dossiê)
+    não copiarem a regra. Lista vazia = tudo VERIFICADO (ou recorte vazio dos dois lados)."""
+    ft, fs, pt, ps = [], [], [], []
+    if credor_raiz:
+        ft.append("favorecido_cpf GLOB ?"); fs.append("credor GLOB ?")
+        pt.append(f"{credor_raiz}*"); ps.append(f"{credor_raiz}*")
+    if ug:
+        ft.append("ug_codigo = ?"); fs.append("ug_emitente = ?")
+        pt.append(str(ug)); ps.append(str(ug))
+    if anos:
+        q = ",".join("?" * len(anos))
+        ft.append(f"substr(data_emissao,1,4) IN ({q})"); fs.append(f"{ANO_EMISSAO_SIAFE} IN ({q})")
+        pt += [str(a) for a in anos]; ps += [str(a) for a in anos]
+    wt, ws = " AND ".join(ft) or "1", " AND ".join(fs) or "1"
+    try:
+        n_esp = {(str(u), str(a)): n for u, a, n in con.execute(
+            f"SELECT ug_codigo, substr(data_emissao,1,4), COUNT(*) FROM ordens_bancarias WHERE {wt} "
+            "AND ug_codigo IS NOT NULL GROUP BY 1,2", pt)}
+    except sqlite3.OperationalError:
+        n_esp = {}
+    try:
+        # ob-qualquer-status: pares UG×ano para medir cobertura, não soma
+        pares = set(n_esp) | {(str(u), str(a)) for u, a in con.execute(
+            f"SELECT DISTINCT ug_emitente, {ANO_EMISSAO_SIAFE} FROM ob_orcamentaria_siafe WHERE {ws}", ps)}
+    except sqlite3.OperationalError:
+        pares = set(n_esp)
+    return [{"ug": u, "ano": a, "rotulo": e["rotulo"], "obs_espelho": n_esp.get((u, a), 0),
+             "pct_ausente": e.get("pct_ausente")}
+            for (u, a), e in estados_dos_pares(pares, db=db).items() if e["rotulo"] != "VERIFICADO"]
+
+
+def resumo_lacunas(lac: list[dict[str, Any]], n_siafe: int | None = None) -> dict[str, Any]:
+    """Estado do total de um produto a partir das lacunas: VERIFICADO (nenhuma), PARCIAL (soma é piso) ou
+    INDISPONÍVEL (há lacuna e o SIAFE não tem nenhuma OB paga do recorte, `n_siafe == 0`) — e o texto curto que
+    a peça imprime. INDISPONÍVEL ≠ 0: o total zero do SIAFE, nesse caso, não é publicado como zero."""
+    if not lac:
+        return {"estado": "VERIFICADO", "texto": "", "anos_indisponiveis": [], "anos_parciais": [],
+                "obs_espelho_fora": 0}
+    ind = sorted({x["ano"] for x in lac if x["rotulo"] == "INDISPONÍVEL"})
+    par = sorted({x["ano"] for x in lac if x["rotulo"] == "PARCIAL"})
+    partes = []
+    if ind:
+        partes.append(f"exercício(s) {', '.join(ind)} INDISPONÍVEL(IS) no SIAFE da casa — não somados")
+    if par:
+        partes.append(f"exercício(s) {', '.join(par)} PARCIAL(IS) — a soma é piso")
+    return {"estado": "INDISPONÍVEL" if n_siafe == 0 else "PARCIAL", "texto": "; ".join(partes), "anos_indisponiveis": ind, "anos_parciais": par,
+            "obs_espelho_fora": sum(x["obs_espelho"] for x in lac if x["rotulo"] == "INDISPONÍVEL")}
+
+
 def medir(*, db: str | Path | None = None) -> dict[str, Any]:
     """Pares (UG, exercício) cujo total de OBs no SIAFE parou no teto de consulta.
 
