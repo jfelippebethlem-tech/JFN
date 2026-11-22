@@ -13,7 +13,7 @@ ARGS=(ciclo --max-ler 150 --max-externo 300)
 echo "[$(date '+%F %T')] réplica → it-campo"
 rm -f "$D"
 if timeout -k 60 2400 "${S[@]}" < deploy/itcampo/replica/replica_sync.sh \
-   && timeout -k 60 5400 "${S[@]}" < deploy/itcampo/replica/indeterminados_remoto.sh && [ -s "$D" ]; then
+   && timeout -k 60 3600 "${S[@]}" < deploy/itcampo/replica/indeterminados_remoto.sh && [ -s "$D" ]; then
   echo "[$(date '+%F %T')] it-campo ok — conferência por amostra e ciclo local"
   exec nice -n 10 .venv/bin/python -m compliance_agent.indeterminados "${ARGS[@]}" --diagnostico-de "$D"
 fi

@@ -343,11 +343,14 @@ derivados:
     # tabelas TCE-RJ/SIGA/DOERJ já coletadas. A fila_captura.json é lida pelo drenador (sei_integra_fila._fila_indeterminados);
     # a reperícia é do lex_execucao (_recapturados: captura mais nova que o laudo).
     depende: [sei_lex, sei_arquivado, sei_lote, siafe_ob, contratos_tcerj, doerj]
-    comando: ["{py}", "-m", "compliance_agent.indeterminados", "ciclo", "--max-ler", "150", "--max-externo", "300"]
+    # 22/11/2026: a leitura dos autos roda na réplica do it-campo (sem teto) e volta com md5; o ciclo só a usa se a
+    # amostra re-diagnosticada aqui bater campo a campo (importar_diagnostico) — senão, o ciclo local de antes.
+    # Teste de igualdade real: 63 de 63 laudos idênticos (md5 igual), 6 s no it-campo × 132 s na VM-1.
+    comando: ["bash", "tools/indeterminados_no_itcampo.sh"]
     peso: pesado
     debounce_s: 1800
     intervalo_min_s: 21600
-    timeout_s: 3000
+    timeout_s: 7200
     prioridade: 6
     efeito: {arquivo: data/indeterminados/estado.json}
     antes: "não existia — 4.296 laudos sem conclusão (18/11/2026) sem causa medida; processo-mãe citado nos autos não entrava em fila"
