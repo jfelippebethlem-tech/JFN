@@ -102,3 +102,30 @@ def test_doc_binario_antigo_extrai_com_libreoffice():
     txt = texto_de_office(body)
     assert "MINUTA DE RESOLUCAO" in txt
     assert "500 mil" in txt
+
+
+def _docx_com_xml_quebrado() -> bytes:
+    """docx cujo document.xml tem elemento inválido — o lxml do python-docx levanta XMLSyntaxError."""
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("[Content_Types].xml",
+                   '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                   '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                   '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-'
+                   'officedocument.wordprocessingml.document.main+xml"/></Types>')
+        z.writestr("_rels/.rels",
+                   '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/'
+                   'relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/'
+                   '2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')
+        z.writestr("word/document.xml", '<?xml version="1.0"?>\n<w:document xmlns:w="x"><w:body><w:p><1x/>'
+                                        '</w:p></w:body></w:document>')
+    return buf.getvalue()
+
+
+def test_xml_quebrado_nao_derruba_a_captura():
+    """21/11/2026: `lxml.etree.XMLSyntaxError: StartTag: invalid element name` saiu do `texto_de_office` e derrubou a
+    captura inteira (rc=1) — 37 vezes em 3 dias, 330001/001026/2024 19 vezes sem nunca capturar. A promessa é
+    'nunca levanta': anexo ilegível dá '' e o documento fica como não capturado, o resto do processo segue."""
+    assert texto_de_office(_docx_com_xml_quebrado(), "application/vnd.openxmlformats-officedocument."
+                                                       "wordprocessingml.document") == ""

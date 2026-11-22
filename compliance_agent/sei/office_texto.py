@@ -29,8 +29,11 @@ def _erros_parse():
     from xlrd.biffh import XLRDError
     from xlrd.compdoc import CompDocError
     from docx.opc.exceptions import PackageNotFoundError
+    # XML interno quebrado (docx/xlsx gerado por sistema terceiro): o lxml levanta XMLSyntaxError, que NÃO é
+    # ValueError — saía daqui e derrubava a captura inteira do processo (21/11/2026: 37 capturas rc=1 em 3 dias).
+    from lxml.etree import XMLSyntaxError
     return (BadZipFile, InvalidFileException, XLRDError, CompDocError,
-            PackageNotFoundError, ValueError, KeyError, OSError, TypeError, IndexError)
+            PackageNotFoundError, XMLSyntaxError, ValueError, KeyError, OSError, TypeError, IndexError)
 
 
 _ERROS_PARSE = _erros_parse()
