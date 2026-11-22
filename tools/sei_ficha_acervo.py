@@ -15,6 +15,10 @@ O QUE FAZ, e onde mora cada garantia (diretriz do dono, 13/11/2026: "não pode t
      API, balde `extracao_sei` do `claude_api` (teto em dólar, reserva antes de enviar). Nunca Opus pela API.
   3b. COLETA GRÁTIS ANTES DO HAIKU (22/11/2026, seção "COLETA GRÁTIS" abaixo): consenso de modelos grátis provados;
      só a coleta, sem juízo; qualquer grave/silêncio → o processo vai ao Haiku. Desliga com JFN_FICHA_GRATIS=0.
+  3c. JUÍZO NO HAIKU sobre a coleta grátis (22/11/2026, seção "JUÍZO DO HAIKU"): lote próprio no mesmo balde, só os
+     campos de juízo, mesma conferência; pendente = `fonte_modelo` terminando em `-coleta`.
+  3d. TETO EM US$ DA API → ASSINATURA (seção "TRANSBORDO"): o que sobrar vai ao `claude_motor` só pelo CLI; o
+     governador de ritmo manda; recusou → fica na fila. Nunca chamada paga extra.
   4. CONFERÊNCIA POR CÓDIGO contra o texto (`llm/verificacao`): documento só entra com o trecho LITERAL achado na
      fonte; red flag só com a citação `[Doc: … — "trecho"]` achada; valor/CNPJ/data/parte só se aparecem no texto.
      O resto é DESCARTADO, nunca corrigido — e contado.
@@ -27,7 +31,9 @@ O QUE FAZ, e onde mora cada garantia (diretriz do dono, 13/11/2026: "não pode t
      fica em `verificacao.nivel_risco_modelo`; a coluna `nivel_risco` fica "" (não avaliado) — quem gradua é a
      camada de juízo (perícia de execução, Processo 360), nunca o modelo barato.
   5. A ficha continua sendo ÍNDICE DE TRIAGEM (ver o cabeçalho de `tools/sei_ficha`): nada daqui vira 🔴/🟡 sem a
-     camada de juízo por cima. `fonte_modelo` = `claude-haiku-5-5@api-lote#acervo-v1`.
+     camada de juízo por cima. `fonte_modelo` = `claude-haiku-5-5@api-lote#acervo-v2` (Haiku pela API),
+     `claude-haiku-5-5@assinatura#acervo-v2` (pela assinatura), `<grátis>@gratis#acervo-v2-coleta` (só coleta,
+     juízo pendente) e `…-coleta+claude-haiku-5-5@api-lote-juizo` / `…+claude-haiku-5-5@assinatura-juizo`.
 
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha_acervo --estado
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha_acervo --ciclo --lote 400     # colhe o que terminou e envia
@@ -685,6 +691,166 @@ def _registrar_recusas(pasta: str, tentativas: list) -> None:
         print(f"  ⚠️  recusa do grátis não registrada ({type(exc).__name__}: {exc})", flush=True)
 
 
+# ── JUÍZO DO HAIKU SOBRE A COLETA GRÁTIS (22/11/2026) ─────────────────────────────────────────────────
+# Pedido do dono: a ficha grátis saía sem juízo (red flags, análise, perícias) — o `lex_execucao` recebia red_flags
+# vazio e a tela do acervo ficava sem perícias. Agora o processo coletado pelo grátis ganha um passo de JUÍZO no Haiku
+# (mesmo balde `extracao_sei`, Batch): o Haiku recebe o texto + os FATOS JÁ CONFERIDOS e devolve SÓ os campos de
+# JUIZO, que passam pela MESMA conferência literal (`conferir`). Os fatos da coleta nunca são sobrescritos.
+# PENDÊNCIA: `fonte_modelo` termina em `-coleta` até o juízo ser gravado (a fila do juízo é essa marca no banco);
+# juízo que falha deixa a coleta gravada e o processo na fila (MAX_TENTATIVAS, chave `J-<pasta>` em `tentativas`).
+JUIZO_PREFIXO = "J-"          # custom_id do item de juízo no lote (Batch aceita [A-Za-z0-9_-])
+MAX_TOKENS_JUIZO = 12_000     # reserva; o custo é o que a resposta usa
+_COLETA = ("objeto", "modalidade", "fundamento_legal", "valores", "cnpjs", "partes", "datas", "documentos", "resumo",
+           "situacao")
+_LISTAS = ("valores", "cnpjs", "partes", "datas", "documentos")
+SISTEMA_JUIZO = (
+    "Você é auditor de controle externo (TCE-RJ). Recebe o TEXTO de um processo SEI (cada peça com o cabeçalho "
+    "=== DOCUMENTO: título ===) e os FATOS JÁ CONFERIDOS por código contra esse texto. Faça SÓ o juízo de auditoria; "
+    "não reescreva nem acrescente fatos de coleta. Toda red flag começa pela fonte: [Doc: título do cabeçalho — "
+    "\"trecho copiado LITERAL do documento\"] e depois o indício a verificar. Valor, CNPJ, data ou nº de documento só "
+    "se estiver no texto. Indício não é acusação; ausência de documento é INDISPONÍVEL, não irregularidade; presunção "
+    "de regularidade; empenho ≠ liquidação ≠ OB (só a OB é pago). Responda em português do Brasil.")
+SCHEMA_JUIZO = {
+    "red_flags": ["[Doc: título — \"trecho verbatim\"] o indício a verificar"],
+    "nivel_risco": "baixo|medio|alto",
+    "analise": "2-4 frases: o que chama atenção, por quê, e o que verificar",
+    "pericia_contabil": {"achados": ["indício contábil"], "verificar": ["o que conferir (NF/OB paga)"], "conclusao": ""},
+    "pericia_juridica": {"achados": ["vício/indício + artigo"], "verificar": ["o que conferir"], "conclusao": ""},
+    "duvidas": ["o que não deu para determinar e por quê"],
+    "relevante": True,
+}
+
+
+def prompt_juizo(texto: str, coleta: dict) -> tuple[str, str]:
+    """(sistema, prompt) do juízo. O formato vai no sistema (fixo, em cache no lote); o item variável no fim."""
+    fatos = json.dumps({k: coleta.get(k) for k in _COLETA}, ensure_ascii=False)
+    sistema = SISTEMA_JUIZO + "\n\nResponda SOMENTE com um objeto JSON neste formato:\n" + json.dumps(
+        SCHEMA_JUIZO, ensure_ascii=False)
+    return sistema, f"FATOS JÁ CONFERIDOS (coleta):\n{fatos}\n\nTEXTO:\n{texto}\n\nJUÍZO:"
+
+
+def conferir_juizo(coleta: dict, juizo: dict, fonte: str) -> tuple[dict, dict]:
+    """(só os campos de JUIZO, conferidos como os do Haiku; contagem). Chave de coleta vinda do juízo é ignorada."""
+    base = {k: coleta.get(k) or [] for k in ("valores", "cnpjs", "datas", "partes")}   # parcelas das contas
+    base["documentos"] = []
+    base.update({k: juizo[k] for k in JUIZO if k in juizo})
+    out, rel = conferir(base, fonte)
+    j = {k: out.get(k) for k in JUIZO}
+    j["relevante"] = bool(juizo.get("relevante"))
+    return j, {k: rel[k] for k in ("red_flags", "narrativa", "nivel_risco_modelo")}
+
+
+def _coluna(k: str, v):
+    if k not in _LISTAS:
+        return v or ""
+    try:
+        x = json.loads(v or "[]")
+    except ValueError:
+        return []
+    return x if isinstance(x, list) else []
+
+
+def _pendentes(con: sqlite3.Connection, numero: str | None = None) -> list[tuple[str, str, dict, str]]:
+    """[(numero, fonte_modelo, coleta, verificacao)] das fichas grátis SEM juízo (`fonte_modelo` termina em -coleta)."""
+    sql = (f"SELECT numero_sei, fonte_modelo, verificacao, {','.join(_COLETA)} FROM sei_ficha "
+           "WHERE fonte_modelo LIKE '%@gratis#%-coleta'" + (" AND numero_sei=?" if numero else ""))
+    return [(n, fm, {k: _coluna(k, v) for k, v in zip(_COLETA, cols)}, verif or "")
+            for n, fm, verif, *cols in con.execute(sql, (numero,) if numero else ())]
+
+
+def fila_juizo(con: sqlite3.Connection, estado: dict) -> list[dict]:
+    """Fichas da coleta grátis que esperam o juízo, fora de lote em curso e sem tentativas esgotadas."""
+    em_lote = {cid for ids in estado.get("lotes", {}).values() for cid in ids}
+    out = []
+    for numero, fm, coleta, _ in _pendentes(con):
+        pasta = acervo_texto.numero_para_pasta(numero)
+        cid = JUIZO_PREFIXO + pasta
+        if cid in em_lote or estado.get("tentativas", {}).get(cid, 0) >= MAX_TENTATIVAS or not (ACERVO / pasta).is_dir():
+            continue
+        out.append({"pasta": pasta, "numero": numero, "fonte_modelo": fm, "coleta": coleta})
+    return out
+
+
+def aplicar_juizo(con: sqlite3.Connection, pasta: str, juizo: dict, origem: str, extra: dict | None = None) -> bool:
+    """Grava o juízo CONFERIDO na ficha pendente (só colunas de juízo, `fonte_modelo` e `verificacao`). `origem` =
+    `<modelo>@api-lote` | `<modelo>@assinatura`. False = a ficha não está mais pendente (nada gravado)."""
+    numero = numero_da_pasta(pasta)
+    pend = _pendentes(con, numero)
+    if not pend:
+        return False
+    _, fm, coleta, verif_txt = pend[0]
+    texto, _ = texto_para_ficha(ACERVO / pasta)
+    j, rel = conferir_juizo(coleta, juizo, fonte_de_conferencia(ACERVO / pasta, texto))
+    try:
+        verif = json.loads(verif_txt) if verif_txt else {}
+    except ValueError:
+        verif = {}
+    verif["juizo"] = {"modelo": origem, "conferido": rel, "em": datetime.now().isoformat(timespec="seconds"),
+                      **(extra or {})}
+    per = lambda k: json.dumps(j[k], ensure_ascii=False) if isinstance(j.get(k), dict) else ""  # noqa: E731
+    cur = con.execute(
+        "UPDATE sei_ficha SET analise=?, nivel_risco='', relevante=?, red_flags=?, pericia_contabil=?, "
+        "pericia_juridica=?, fonte_modelo=?, verificacao=?, atualizado_em=? WHERE numero_sei=? AND fonte_modelo=?",
+        (_escalar(j.get("analise")), 1 if j["relevante"] else 0, json.dumps(j.get("red_flags") or [], ensure_ascii=False),
+         per("pericia_contabil"), per("pericia_juridica"), f"{fm}+{origem}-juizo", json.dumps(verif, ensure_ascii=False),
+         datetime.now().isoformat(timespec="seconds"), numero, fm))
+    return cur.rowcount == 1
+
+
+# ── TRANSBORDO PARA A ASSINATURA no teto em dólares da API (22/11/2026) ───────────────────────────────
+# Pedido do dono: o que a API recusar POR TETO (total, balde ou ritmo do crédito — os três são o teto em US$) vai à
+# ASSINATURA pelo `claude_motor.pensar(..., backend="cli")` — só o CLI, nunca o recuo para a API paga. O governador
+# (kill-switch, contingência, ritmo semanal, teto diário da tarefa no `orcamento`) continua mandando: recusou → o
+# processo fica na fila para o próximo ciclo; nada aqui muda teto. Pausa por qualidade NÃO transborda.
+ASSINATURA_ATE_S = 1000       # não começa chamada nova depois disto no ciclo (o cron mata aos 1.500 s)
+ASSINATURA_TIMEOUT_S = 240
+_ERRO_DO_ITEM = ("resposta sem o JSON pedido", "passou do prazo")   # culpa da resposta: conta tentativa e segue
+
+
+def _recusa_por_teto(motivo: str) -> bool:
+    return str(motivo or "").startswith(("API: teto total", "API: teto do balde", "API: ritmo do crédito"))
+
+
+def pela_assinatura(estado: dict, sobra: list[tuple[str, str, str, str]], t0: float) -> dict:
+    """`sobra` = [(tipo 'ficha'|'juizo', custom_id, sistema, prompt)]. Para no 1º bloqueio do governador."""
+    from compliance_agent.llm import claude_api as C
+    from compliance_agent.llm import claude_motor as M
+    from compliance_agent.llm.json_resposta import parse_json_llm
+    tot = {"fichas": 0, "juizos": 0, "falhas": 0, "parou": ""}
+    for tipo, cid, sistema, prompt in sobra:
+        if time.monotonic() - t0 > ASSINATURA_ATE_S:
+            tot["parou"] = "tempo do ciclo"
+            break
+        schema = SCHEMA_JUIZO if tipo == "juizo" else None
+        r = M.pensar(TAREFA, prompt, schema=schema, modelo=C.MODELO_BARATO, sistema=sistema, backend="cli",
+                     timeout=ASSINATURA_TIMEOUT_S)
+        dados = None if r is None else (r.dados if schema is not None else parse_json_llm(r.texto))
+        if r is None and not str(M.ultimo_motivo or "").startswith(_ERRO_DO_ITEM):
+            tot["parou"] = M.ultimo_motivo or "assinatura recusou"
+            break                                   # bloqueio não é culpa do processo: fica na fila, sem tentativa
+        if not isinstance(dados, dict) or dados.get("_truncado"):
+            estado["tentativas"][cid] = estado.get("tentativas", {}).get(cid, 0) + 1
+            tot["falhas"] += 1
+            continue
+        con = _con()
+        try:
+            _garantir_coluna(con)
+            if tipo == "juizo":
+                tot["juizos"] += aplicar_juizo(con, cid[len(JUIZO_PREFIXO):], dados, f"{C.MODELO_BARATO}@assinatura")
+            else:
+                texto, cob = texto_para_ficha(ACERVO / cid)
+                ficha_ok, rel = conferir(dados, fonte_de_conferencia(ACERVO / cid, texto))
+                gravar(con, numero_da_pasta(cid), ficha_ok, {"versao": VERSAO, "cobertura": cob, "conferido": rel,
+                                                             "origem": "assinatura"},
+                       f"{C.MODELO_BARATO}@assinatura#{VERSAO}")
+                tot["fichas"] += 1
+            con.commit()
+        finally:
+            con.close()
+    _gravar_estado(estado)
+    return tot
+
+
 # ── gravação ──────────────────────────────────────────────────────────────────────────────────────────
 def _garantir_coluna(con: sqlite3.Connection) -> None:
     cols = {r[1] for r in con.execute("PRAGMA table_info(sei_ficha)")}
@@ -736,6 +902,8 @@ def regravar_lote(lote_id: str) -> dict:
     try:
         _garantir_coluna(con)
         for pasta, bruto in saida.items():
+            if pasta.startswith(JUIZO_PREFIXO):
+                continue                 # lote de JUÍZO: não é ficha (apagaria a coleta e gravaria juízo no lugar)
             ficha = parse_json_llm(bruto) if bruto else None
             if not isinstance(ficha, dict) or ficha.get("_truncado"):
                 tot["invalidas"] += 1
@@ -771,6 +939,12 @@ def colher(estado: dict) -> dict:
                 if not isinstance(ficha, dict) or ficha.get("_truncado"):
                     estado["tentativas"][pasta] = estado.get("tentativas", {}).get(pasta, 0) + 1
                     tot["invalidas"] += 1
+                    continue
+                if pasta.startswith(JUIZO_PREFIXO):          # juízo sobre a coleta grátis
+                    ok = aplicar_juizo(con, pasta[len(JUIZO_PREFIXO):], ficha, f"{C.MODELO_BARATO}{C.SUFIXO_API}-lote",
+                                       {"lote": lote_id})
+                    tot["juizos" if ok else "juizo_sem_ficha_pendente"] = tot.get(
+                        "juizos" if ok else "juizo_sem_ficha_pendente", 0) + 1
                     continue
                 texto, cob = texto_para_ficha(ACERVO / pasta)
                 ficha_ok, rel = conferir(ficha, fonte_de_conferencia(ACERVO / pasta, texto))
@@ -822,15 +996,43 @@ def enviar(estado: dict, n: int) -> dict:
                 continue
             gratis["ao_haiku"] += 1
         itens.append((c["pasta"], prompt))
-    if not itens:
-        return {"enviados": 0, "fila": len(cands), "gratis": gratis}
-    lote = C.enviar_lote(TAREFA, itens, sistema=sistema, max_tokens=MAX_TOKENS, effort="low")
-    if not lote:
-        return {"enviados": 0, "fila": len(cands), "motivo": C.ultimo_motivo, "gratis": gratis}
-    estado.setdefault("lotes", {})[lote] = [cid for cid, _ in itens]
-    _gravar_estado(estado)
-    return {"enviados": len(itens), "fila": len(cands), "lote": lote,
-            "pago_no_lote": round(sum(c["pago"] for c in cands[:n]), 2), "gratis": gratis}
+    out = {"enviados": 0, "fila": len(cands), "gratis": gratis}
+    sobra = []                     # o que a API recusou POR TETO → assinatura (22/11/2026)
+    if itens:
+        lote = C.enviar_lote(TAREFA, itens, sistema=sistema, max_tokens=MAX_TOKENS, effort="low")
+        if lote:
+            estado.setdefault("lotes", {})[lote] = [cid for cid, _ in itens]
+            _gravar_estado(estado)
+            out.update(enviados=len(itens), lote=lote, pago_no_lote=round(sum(c["pago"] for c in cands[:n]), 2))
+        else:
+            out["motivo"] = C.ultimo_motivo
+            if _recusa_por_teto(C.ultimo_motivo):
+                sobra += [("ficha", cid, sistema, p) for cid, p in itens]
+    # JUÍZO do Haiku sobre o que o grátis coletou (os deste ciclo e os pendentes de antes)
+    con = _con()
+    try:
+        _garantir_coluna(con)
+        pend = fila_juizo(con, estado)[:n]
+    finally:
+        con.close()
+    itens_j, sist_j = [], ""
+    for p in pend:
+        texto, _ = texto_para_ficha(ACERVO / p["pasta"])
+        sist_j, pr = prompt_juizo(texto, p["coleta"])
+        itens_j.append((JUIZO_PREFIXO + p["pasta"], pr))
+    if itens_j:
+        lote_j = C.enviar_lote(TAREFA, itens_j, sistema=sist_j, max_tokens=MAX_TOKENS_JUIZO, effort="low")
+        if lote_j:
+            estado.setdefault("lotes", {})[lote_j] = [cid for cid, _ in itens_j]
+            _gravar_estado(estado)
+            out["juizo"] = {"enviados": len(itens_j), "lote": lote_j}
+        else:
+            out["juizo"] = {"enviados": 0, "motivo": C.ultimo_motivo}
+            if _recusa_por_teto(C.ultimo_motivo):
+                sobra += [("juizo", cid, sist_j, pr) for cid, pr in itens_j]
+    if sobra:
+        out["assinatura"] = pela_assinatura(estado, sobra, t0)
+    return out
 
 
 def main() -> int:
@@ -851,9 +1053,12 @@ def main() -> int:
         con = _con()
         try:
             n = len(fila(con, estado))
+            _garantir_coluna(con)
+            juizo_pendente = len(_pendentes(con))
         finally:
             con.close()
-        print(json.dumps({"fila": n, "lotes_em_curso": {k: len(v) for k, v in estado["lotes"].items()},
+        print(json.dumps({"fila": n, "juizo_pendente": juizo_pendente,
+                          "lotes_em_curso": {k: len(v) for k, v in estado["lotes"].items()},
                           "esgotados": sorted(k for k, v in estado["tentativas"].items() if v >= MAX_TENTATIVAS)},
                          ensure_ascii=False))
         return 0
