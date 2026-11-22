@@ -647,7 +647,7 @@ def ficha_gratis(pasta: Path, sistema: str, prompt: str, texto: str, geradores: 
     for modelo, gerar in geradores:
         try:
             bruto = gerar(sistema, prompt)
-        except Exception as exc:  # noqa: BLE001 — um grátis fora não derruba o ciclo; o Haiku faz o processo
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:   # o Haiku faz o processo
             tentativas.append({"modelo": modelo, "motivo": f"erro {type(exc).__name__}"})
             break
         ficha = parse_json_llm(bruto) if bruto else None
