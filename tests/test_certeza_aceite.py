@@ -447,7 +447,7 @@ def test_f5_mapa_real_fecha_a_cadeia_e_a_certeza_e_folha():
         assert b["id"].split(":")[0] == b["id"].split(":")[0].lower() and b.get("fonte") and b.get("medidas"), (no, i)
         assert ("arquivo" in b) != ("sql" in b), (no, i)
         assert "estado" in b or "estado_por" in b, (no, i)
-        assert "nivel_prova" in b or "nivel_por" in b, (no, i)
+        assert "nivel_prova" in b or "nivel_por" in b or "nivel_prova_por" in b, (no, i)   # *_por = o que fatos._por lê
         assert b["id"] not in ids, f"id de fato repetido: {b['id']}"
         ids.add(b["id"])
         for m in b["medidas"].values():

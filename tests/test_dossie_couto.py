@@ -29,9 +29,11 @@ def _ob(con, numero, ug, data, valor, credor="11222333000181", nome="ACME LTDA",
 @pytest.fixture
 def con():
     c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
     c.execute(f"CREATE TABLE ob_orcamentaria_siafe({', '.join(_COLS)})")
     c.execute("CREATE TABLE ob_reemitida(ob, ug, valor)")
-    c.execute("CREATE TABLE sancoes_federais(cadastro, cpf_cnpj, nome, data_inicio, data_fim)")
+    c.execute("CREATE TABLE sancoes_federais(cadastro, cpf_cnpj, nome, categoria, data_inicio, data_fim, orgao, uf, "
+              "processo, fundamentacao, abrangencia, esfera_sancionador, data_publicacao)")
     c.execute("CREATE TABLE contratos_tcerj(processo, sei_norm)")
     _ob(c, "2026OB00001", "180100", "10/04/2026", 1000.00)
     _ob(c, "2026OB00002", "180100", "11/04/2026", 500.00, envio="Enviado ao Banco")           # paga, sem confirmação
@@ -44,7 +46,12 @@ def con():
     _ob(c, "2025OB00001", "180100", "10/04/2025", 400.00)                                     # ano anterior
     _ob(c, "2026OB00009", "180100", "16/04/2026", 3000.00, credor="CG0004700", nome="FOLHA DE PAGAMENTOS")
     _ob(c, "2026OB00010", "180100", "16/04/2026", 200.00, credor="296100", nome="FUNDO ESTADUAL DE SAUDE")
-    c.execute("INSERT INTO sancoes_federais VALUES ('CEIS','11.222.333/0001-81','ACME','2026-01-01','2027-01-01')")
+    c.execute("INSERT INTO sancoes_federais VALUES ('CEIS','11222333000181','ACME','Declaração de Inidoneidade sem "
+              "prazo determinado','2026-01-01','','CONTROLADORIA-GERAL DA UNIAO','DF','1','Lei 14.133/2021, art. 156, IV',"
+              "'Todas as Esferas em todos os Poderes','FEDERAL','2026-01-02')")
+    c.execute("INSERT INTO sancoes_federais VALUES ('CEIS','55666777000188','BETA','Impedimento/proibição de contratar "
+              "com prazo determinado','2026-01-01','2027-01-01','PREFEITURA DE OUTRA CIDADE','SP','2','Lei 10.520/2002, "
+              "art. 7','Na esfera e no ente federativo do órgão sancionador','MUNICIPAL','2026-01-02')")
     c.execute("INSERT INTO contratos_tcerj VALUES ('SEI-180001/000001/2026','180001/000001/2026')")
     return c
 
@@ -85,6 +92,8 @@ def test_prova_primaria_reconferida(con):
     assert dc.conferir_prova(con, paga, it, "OB 2026OB09999 · UG 180100 · 2026-04-10 · R$ 1,00")["resultado"] == "ausente"
     assert dc.conferir_prova(con, paga, it, "CEIS — Impedimento de contratar")["resultado"] == "confere"
     assert dc.conferir_prova(con, paga, {"cnpj": "99999999000199"}, "CEIS — x")["resultado"] == "ausente"
+    # registro existe mas o alcance não chega ao Estado do RJ (impedimento municipal de outra UF): a prova não sustenta
+    assert dc.conferir_prova(con, paga, {"cnpj": "55666777000188"}, "CEIS — x")["resultado"] == "diverge"
     assert dc.conferir_prova(con, paga, it, "contrato no espelho do TCE-RJ, processo SEI-180001/000001/2026")[
         "resultado"] == "confere"
     assert dc.conferir_prova(con, paga, it, "fantasma_score = 90 (alto)")["resultado"] == "nao_reconferivel"
@@ -118,7 +127,7 @@ def _render(dados):
 
 def test_documento_aprovado_e_todo_numero_rastreia(con):
     html, fatos = _render(_dados(con, [_achado()]))
-    assert "<!--fato:dossie_couto:exec.total.couto:valor-->" in html
+    assert "<!--fato:dossie_couto:brl:exec.total.couto:valor-->" in html
     v = dc.verificar(html, fatos, [_achado()], pdf_texto=None)
     assert v["aprovado"], v["falhas"]
     assert v["n_numeros_citados"] > 20
@@ -135,8 +144,8 @@ def test_verificador_reprova_numero_sem_fato(con):
 
 def test_verificador_reprova_valor_que_nao_bate_com_o_registro(con):
     html, fatos = _render(_dados(con, [_achado()]))
-    adulterado = html.replace('data-fato="dossie_couto:exec.total.couto:valor">R$ 4.830,00',
-                              'data-fato="dossie_couto:exec.total.couto:valor">R$ 4.831,00', 1)
+    adulterado = html.replace('data-fato="dossie_couto:brl:exec.total.couto:valor">R$ 4.830,00',
+                              'data-fato="dossie_couto:brl:exec.total.couto:valor">R$ 4.831,00', 1)
     assert adulterado != html
     assert not dc.verificar(adulterado, fatos, [_achado()], None)["aprovado"]
 

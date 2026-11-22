@@ -468,7 +468,7 @@ derivados:
     efeito: {arquivo: data/dossie_couto/verificacao.json}
     antes: "não existia — a análise da gestão era nota do vault escrita à mão (13/11/2026) e a aba do painel"
     fatos:
-      - id: "dossie_couto:{chave}"
+      - id: "dossie_couto:brl:{chave}"
         arquivo: data/dossie_couto/fatos.json
         lista: brl
         data_ref: gerado_em
@@ -480,7 +480,7 @@ derivados:
         base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
         medidas:
           valor: {campo: valor, unidade: BRL}
-      - id: "dossie_couto:{chave}"
+      - id: "dossie_couto:contagem:{chave}"
         arquivo: data/dossie_couto/fatos.json
         lista: contagem
         data_ref: gerado_em
@@ -492,7 +492,7 @@ derivados:
         base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
         medidas:
           valor: {campo: valor, unidade: contagem}
-      - id: "dossie_couto:{chave}"
+      - id: "dossie_couto:percentual:{chave}"
         arquivo: data/dossie_couto/fatos.json
         lista: percentual
         data_ref: gerado_em
@@ -504,7 +504,7 @@ derivados:
         base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
         medidas:
           valor: {campo: valor, unidade: percentual}
-      - id: "dossie_couto:{chave}"
+      - id: "dossie_couto:indice:{chave}"
         arquivo: data/dossie_couto/fatos.json
         lista: indice
         data_ref: gerado_em

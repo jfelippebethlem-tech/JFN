@@ -148,14 +148,16 @@ class Registro:
     """Todo número que o dossiê imprime nasce aqui, com id, fonte, consulta e estado. Mesmo id com dois valores é
     erro (o documento não pode afirmar duas coisas sobre o mesmo fato)."""
 
+    LISTA = {"BRL": "brl", "contagem": "contagem", "percentual": "percentual", "indice": "indice"}
+
     def __init__(self, data_ref: str):
         self.data_ref = data_ref
         self.f: dict[str, dict] = {}
+        self.por_chave: dict[str, str] = {}
 
     def put(self, chave: str, valor, unidade: str, rotulo: str, fonte: str, consulta: str, *, estado: str = "VERIFICADO",
             nivel: int = 2, natureza: str = "contagem", base: str = "") -> str:
         chave = re.sub(r"[^A-Za-z0-9.\-]+", "_", chave).strip("_.") or "x"
-        fid = f"{FAMILIA}:{chave}:valor"
         if valor is None:
             estado = "INDISPONIVEL"
         else:
@@ -167,6 +169,10 @@ class Registro:
             estado = "A CONFERIR"
         if natureza == "pago" and estado == "VERIFICADO" and base != BASE_PAGO_CONFIRMADO:
             estado = "A CONFERIR"
+        fid = f"{FAMILIA}:{self.LISTA[unidade]}:{chave}:valor"
+        if chave in self.por_chave and self.por_chave[chave] != fid:
+            raise ValueError(f"fato {chave} com duas unidades")
+        self.por_chave[chave] = fid
         novo = {"chave": chave, "fato_id": fid, "valor": valor, "unidade": unidade, "rotulo": mascarar(rotulo),
                 "fonte": fonte, "consulta": consulta, "estado": estado, "nivel": nivel, "natureza": natureza,
                 "base": base or "", "exibido": exibir(valor, unidade)}
@@ -176,7 +182,21 @@ class Registro:
         self.f.setdefault(fid, novo)
         return fid
 
+    def ref(self, x: str) -> str:
+        """Aceita o id completo ou a forma curta `dossie_couto:<chave>:valor` / `<chave>`."""
+        if x in self.f:
+            return x
+        chave = x.split(":", 1)[1].rsplit(":", 1)[0] if x.startswith(FAMILIA + ":") else x
+        return self.por_chave[chave]
+
+    def tem(self, x: str) -> bool:
+        try:
+            return self.ref(x) in self.f
+        except KeyError:
+            return False
+
     def span(self, fid: str) -> str:
+        fid = self.ref(fid)
         f = self.f[fid]
         return f'<span class="fato" data-fato="{fid}">{_e(f["exibido"])}</span><!--fato:{fid}-->'
 
@@ -185,9 +205,8 @@ class Registro:
 
     def publicar(self) -> dict:
         listas = {"brl": [], "contagem": [], "percentual": [], "indice": []}
-        nome = {"BRL": "brl", "contagem": "contagem", "percentual": "percentual", "indice": "indice"}
         for f in sorted(self.f.values(), key=lambda x: x["fato_id"]):
-            listas[nome[f["unidade"]]].append(f)
+            listas[self.LISTA[f["unidade"]]].append(f)
         return {"gerado_em": self.data_ref, "n": len(self.f), **listas}
 
 
@@ -272,8 +291,11 @@ def _classe_sql(paga: str) -> str:
 def _varrer(con: sqlite3.Connection, ini: str, fim: str, paga: str) -> list[list]:
     """UMA varredura da janela: agrupa por UG × credor × tipo de OB × classe (pago confirmado, pago sem confirmação
     de envio, ou o motivo de NÃO ser pagamento). Pessoa física é agregada na própria consulta (nem o nome sai)."""
+    # ob-qualquer-status: a varredura CLASSIFICA cada OB (paga confirmada, paga sem confirmação ou o motivo de NÃO ser
+    # pagamento, pela regra única `_ob_paga`); a soma de pago usa só as classes pagas, o resto vai a "fora da soma".
     sql = (f"SELECT ug_emitente, CASE WHEN length(credor)=11 THEN 'PF' ELSE credor END c, "
            f"CASE WHEN length(credor)=11 THEN '' ELSE MAX(nome_credor) END, COALESCE(tipo_ob,''), {_classe_sql(paga)} k, "
+           # ob-qualquer-status (classifica; a soma de pago usa só as classes pagas)
            f"COUNT(*), ROUND(SUM(valor),2), MAX({_ISO}) FROM ob_orcamentaria_siafe "
            f"WHERE exercicio=? AND {_ISO} BETWEEN ? AND ? GROUP BY 1, 2, 4, 5")
     return [list(r) for r in con.execute(sql, (_ano(ini), ini, fim))]
@@ -290,6 +312,7 @@ def coletar_ob(con: sqlite3.Connection, inicio: str = INICIO, hoje: str | None =
         return {"estado": "indisponivel", "erro": "nenhuma OB paga no período", "inicio": inicio}
     ini_a, fim_a = _menos_um_ano(inicio), _menos_um_ano(fim)
     ga = _varrer(con, ini_a, fim_a, paga)
+    # ob-qualquer-status: metadado da coleta (rowid da réplica para a amostra igual), não soma
     mx = con.execute("SELECT MAX(rowid), MAX(coletado_em) FROM ob_orcamentaria_siafe").fetchone()
     return {"estado": "ok", "inicio": inicio, "fim": fim, "inicio_ant": ini_a, "fim_ant": fim_a,
             "colunas": ["ug", "credor", "nome", "tipo_ob", "classe", "n", "valor", "max_data"],
@@ -499,10 +522,16 @@ def conferir_prova(con: sqlite3.Connection, paga: str, item: dict, prova: str) -
         cnpj = _dig(item.get("cnpj"))
         if len(cnpj) != 14:
             return {"tipo": "CEIS", "resultado": "nao_reconferivel", "detalhe": "sem CNPJ no item para conferir"}
-        n = con.execute("SELECT COUNT(*) FROM sancoes_federais WHERE replace(replace(replace(cpf_cnpj,'.',''),'/',''),"
-                        "'-','')=? AND cadastro IN ('CEIS','CNEP')", (cnpj,)).fetchone()[0]
-        return {"tipo": "CEIS", "cnpj": cnpj, "resultado": "confere" if n else "ausente",
-                "detalhe": f"{n} registro(s) no CEIS/CNEP para o CNPJ" if n else "sem registro no CEIS/CNEP hoje"}
+        # alcance pela régua única da casa (CNF-03): o registro tem de existir E vedar contratar com o Estado do RJ
+        from compliance_agent.sancao_abrangencia import detalhar
+        d = detalhar(cnpj, con)
+        if not d["n"]:
+            return {"tipo": "CEIS", "cnpj": cnpj, "resultado": "ausente", "detalhe": "sem registro no CEIS/CNEP hoje"}
+        if not d["veda_contrato_alvo"]:
+            return {"tipo": "CEIS", "cnpj": cnpj, "resultado": "diverge",
+                    "detalhe": f"{d['n']} registro(s), mas nenhum veda contratar com o Estado do RJ pela régua de alcance"}
+        return {"tipo": "CEIS", "cnpj": cnpj, "resultado": "confere",
+                "detalhe": f"{d['n']} registro(s) no CEIS/CNEP; ao menos um veda contratar com o Estado do RJ"}
     s = _RX_SEI.search(prova)
     if s and "contrato" in prova.lower():
         sei = s.group(0)
@@ -1184,11 +1213,11 @@ class Montador:
                      f"{self.reg.span(FAMILIA + ':ctr.mod.dispensa_emergencial.n:valor')} contratos, "
                      f"{self.reg.span(FAMILIA + ':ctr.mod.dispensa_emergencial.valor:valor')} contratados"
                      + (f" ({self.reg.span(FAMILIA + ':ctr.mod.dispensa_emergencial.var:valor')} sobre o ano anterior)"
-                        if FAMILIA + ":ctr.mod.dispensa_emergencial.var:valor" in self.reg.f else "")
+                        if self.reg.tem("ctr.mod.dispensa_emergencial.var") else "")
                      + f". Termos de Ajuste de Contas — serviço executado sem contrato — somaram "
                      f"{self.reg.span(FAMILIA + ':tac.valor:valor')} reconhecidos no Diário Oficial"
                      + (f" ({self.reg.span(FAMILIA + ':tac.var:valor')} sobre a mesma janela do ano anterior)"
-                        if FAMILIA + ":tac.var:valor" in self.reg.f else "") + ".</p>")
+                        if self.reg.tem("tac.var") else "") + ".</p>")
         if ach.get("estado") == "ok":
             casos = [i for i in ach["itens"] if i["passou"] and not re.fullmatch(r"D\d\d", str(i["id"]))]
             graves = [i for i in casos if i["grau"] == "🔴"]
@@ -1384,8 +1413,8 @@ class Montador:
                            ("contratado por dispensa emergencial", "ctr.mod.dispensa_emergencial.valor"),
                            ("reconhecido em TAC (sem contrato)", "tac.valor"),
                            ("decretos assinados pelo governador em exercício", "atos.decretos.n")):
-            fid = f"{FAMILIA}:{chave}:valor"
-            if fid in self.reg.f:
+            fid = chave
+            if self.reg.tem(fid):
                 kpis.append(f'<div class="kpi"><b>{self.reg.span(fid)}</b><span>{_e(rot)}</span></div>')
         sumario = {"id": "s0", "titulo": _ancora("s0", "Sumário"), "titulo_txt": "Sumário", "page_break": False,
                    "html": _CSS + f'<div class="kpis">{"".join(kpis)}</div>'
