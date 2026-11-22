@@ -74,6 +74,10 @@ def _isola_db(request, tmp_path, monkeypatch):
         monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "llm_trace_teste.db"))
     # 22/11/2026: a fila de íntegras grava o tempo por etapa de cada processo — processo de teste não entra na medição.
     monkeypatch.setenv("JFN_INTEGRA_ETAPAS", str(tmp_path / "sei_integra_etapas_teste.jsonl"))
+    # 22/11/2026: a porta PAGA do OpenRouter (`llm/openrouter_pago`) nunca enxerga a chave real em teste — sem arquivo
+    # de chave ela fica desligada; quem testa a porta aponta para um arquivo falso. Livro de gasto também desviado.
+    monkeypatch.setenv("JFN_OR_PAGO_ENV", str(tmp_path / "sem_chave_paga.env"))
+    monkeypatch.setenv("JFN_OR_PAGO_GASTO", str(tmp_path / "openrouter_pago_gasto_teste.json"))
     yield
 
 

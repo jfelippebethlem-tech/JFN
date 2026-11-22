@@ -875,7 +875,7 @@ _TRACE_DB = pathlib.Path(__file__).resolve().parents[2] / "data" / "llm_trace.db
 
 
 def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
-           tokens_in: int | None = None, tokens_out: int | None = None) -> None:
+           tokens_in: int | None = None, tokens_out: int | None = None, usd: float | None = None) -> None:
     """Telemetria LOCAL mínima da cadeia (só metadados — nunca prompt/resposta; sigilo por design).
 
     Veredito Langfuse 2026-07-07: self-host (Postgres+ClickHouse+Redis+S3) inviável na VM 2vCPU;
@@ -883,6 +883,7 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
     Consulta: sqlite3 data/llm_trace.db 'SELECT provedor, ok, COUNT(*), AVG(ms) FROM llm_trace GROUP BY 1,2'.
     11/11/2026: + `modelo`, `tokens_in`, `tokens_out` (o caminho do Gemini das perícias ficou sem trace de
     14/08 a 11/11 — volume desconhecido). `JFN_LLM_TRACE_DB` desvia o arquivo (teste não suja a medição real).
+    22/11/2026: + `usd` (custo REAL devolvido pelo provedor pago — `llm/openrouter_pago`); grátis fica NULL.
     """
     import os
     import sqlite3
@@ -891,12 +892,12 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
         con.execute("CREATE TABLE IF NOT EXISTS llm_trace("
                     "ts TEXT DEFAULT (datetime('now')), provedor TEXT, ok INT, ms INT, erro TEXT)")
         cols = {r[1] for r in con.execute("PRAGMA table_info(llm_trace)")}
-        for c, t in (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT")):
+        for c, t in (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("usd", "REAL")):
             if c not in cols:   # base antiga (só ts..erro): migra no lugar, sem perder linha
                 con.execute(f"ALTER TABLE llm_trace ADD COLUMN {c} {t}")
-        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out) "
-                    "VALUES(?,?,?,?,?,?,?)",
-                    (provider, int(ok), ms, (erro or "")[:200], modelo or None, tokens_in, tokens_out))
+        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out, usd) "
+                    "VALUES(?,?,?,?,?,?,?,?)",
+                    (provider, int(ok), ms, (erro or "")[:200], modelo or None, tokens_in, tokens_out, usd))
         con.commit()
         con.close()
     except (sqlite3.Error, OSError):

@@ -367,3 +367,85 @@ def test_recusa_que_nao_e_teto_nao_vai_a_assinatura(monkeypatch, tmp_path):
     monkeypatch.setattr(M, "pensar", lambda *a, **k: pytest.fail("pausa por qualidade não transborda"))
     r = A.enviar(A._ler_estado(), 10)
     assert "assinatura" not in r and r["motivo"].startswith("API: tarefa extracao_sei PAUSADA")
+
+
+# ── PAGO BARATO DO OPENROUTER entre o grátis e o Haiku (22/11/2026) ────────────────────────────────────────────────
+# Pedido do dono: usar a conta paga do OpenRouter até restarem US$ 10; depois só grátis. Ordem: grátis → pago → Haiku.
+# O pago só coleta (mesma régua de graves, mesma conferência; juízo no Haiku); a ficha grátis LIMPA do consenso que
+# falhou entra na união; `liberar` recusou (piso/limite/teto/kill-switch) → nenhuma chamada paga, segue ao Haiku.
+EXTRA = dict(BOA, partes=["ALFA SERVIÇOS LTDA", "Secretaria de Estado de Saúde"])
+_CALADOS = {"gemini-3.5-flash-lite": "", "particle-ai/particle-1:free": ""}
+
+
+def _pago(monkeypatch, tmp_path, gratis, pago, liberar=(True, "")):
+    """`gratis` = {modelo: resposta} (mesma para todo processo); `pago` = resposta do pago ou None (não pode chamar)."""
+    db, C = _ambiente(monkeypatch, tmp_path, {P1: ""})
+    monkeypatch.setenv("JFN_FICHA_GRATIS", "gem:gemini-3.5-flash-lite,or:particle-ai/particle-1:free")
+    monkeypatch.setattr(A, "_gerar_gratis", lambda prov, modelo: (lambda s, p: gratis[modelo]))
+    from compliance_agent.llm import openrouter_pago as OP
+    chamadas, liberacoes = [], []
+    monkeypatch.setattr(OP, "ligado", lambda: (True, ""))
+    monkeypatch.setattr(OP, "liberar", lambda est: liberacoes.append(est) or liberar)
+    monkeypatch.setattr(OP, "estado", lambda: {"ligado": True})
+
+    def chamar(modelo, sistema, prompt, max_tokens=0):
+        if pago is None:
+            pytest.fail("chamada paga sem liberação")
+        chamadas.append(modelo)
+        return pago
+    monkeypatch.setattr(OP, "chamar", chamar)
+    monkeypatch.delenv("JFN_FICHA_OR_PAGO_MODELOS", raising=False)
+    lotes = []
+    monkeypatch.setattr(C, "enviar_lote", lambda tarefa, itens, **k: lotes.append(itens) or f"l{len(lotes)}")
+    return db, chamadas, liberacoes, lotes
+
+
+def test_pago_fecha_o_que_o_gratis_nao_fechou_unindo_a_gratis_limpa(monkeypatch, tmp_path):
+    db, chamadas, liberacoes, lotes = _pago(
+        monkeypatch, tmp_path, {"gemini-3.5-flash-lite": json.dumps(BOA, ensure_ascii=False),
+                                "particle-ai/particle-1:free": ""},          # particle calou: consenso grátis falha
+        json.dumps(EXTRA, ensure_ascii=False))
+    r = A.enviar(A._ler_estado(), 10)
+    assert chamadas == [A.PAGO_PADRAO] and liberacoes == [A.PAGO_SUBLOTE * A.PAGO_USD_EST]
+    assert r["or_pago"]["gravadas"] == 1 and r["enviados"] == 0 and r["gratis"]["ao_haiku"] == 1
+    f = _linha(db, A.numero_da_pasta(P1))
+    assert f["fonte_modelo"] == f"gemini-3.5-flash-lite+{A.PAGO_PADRAO}@orpago#acervo-v2-coleta"
+    assert json.loads(f["verificacao"])["consenso"] == ["gemini-3.5-flash-lite", A.PAGO_PADRAO]
+    assert [cid for cid, _ in lotes[0]] == ["J-" + P1]                          # o juízo continua no Haiku
+
+
+def test_pago_com_grave_vai_ao_haiku(monkeypatch, tmp_path):
+    db, chamadas, _, lotes = _pago(monkeypatch, tmp_path, _CALADOS,
+                                   json.dumps(_com(cnpjs=["99.999.999/0001-99"]), ensure_ascii=False))
+    r = A.enviar(A._ler_estado(), 10)
+    assert chamadas and r["or_pago"]["ao_haiku"] == 1 and [cid for cid, _ in lotes[0]] == [P1]
+    assert _linha(db, A.numero_da_pasta(P1)) is None
+
+
+@pytest.mark.parametrize("motivo", ["piso da conta: US$ 10.05 − US$ 0.15 < US$ 10.00 — daqui em diante só grátis",
+                                    "limite da chave: restam US$ 0.02 < US$ 0.15", "teto do dia: …"])
+def test_liberar_recusado_nao_chama_o_pago_e_segue_ao_haiku(monkeypatch, tmp_path, motivo):
+    _, _, liberacoes, lotes = _pago(monkeypatch, tmp_path, _CALADOS, None, liberar=(False, motivo))
+    r = A.enviar(A._ler_estado(), 10)
+    assert len(liberacoes) == 1 and r["or_pago"]["parou"] == motivo and [cid for cid, _ in lotes[0]] == [P1]
+
+
+def test_kill_switch_nao_toca_o_pago(monkeypatch, tmp_path):
+    _, _, liberacoes, lotes = _pago(monkeypatch, tmp_path, _CALADOS, None)
+    from compliance_agent.llm import openrouter_pago as OP
+    monkeypatch.setattr(OP, "ligado", lambda: (False, "desligado (JFN_FICHA_OR_PAGO=0)"))
+    r = A.enviar(A._ler_estado(), 10)
+    assert liberacoes == [] and r["or_pago"]["parou"].startswith("desligado") and [c for c, _ in lotes[0]] == [P1]
+
+
+def test_cadeia_paga_recusa_free_e_desliga_por_env(monkeypatch):
+    monkeypatch.setenv("JFN_FICHA_OR_PAGO_MODELOS", "qwen/qwen3.7-flash,particle-ai/particle-1:free,lixo")
+    assert A.cadeia_paga() == ["qwen/qwen3.7-flash"]
+    monkeypatch.setenv("JFN_FICHA_OR_PAGO_MODELOS", "0")
+    assert A.cadeia_paga() == []
+
+
+def test_sem_mock_a_porta_paga_fica_desligada_nos_testes():
+    """conftest aponta JFN_OR_PAGO_ENV para arquivo inexistente: a chave real nunca entra num teste."""
+    from compliance_agent.llm import openrouter_pago as OP
+    assert OP.ligado() == (False, "sem chave paga")

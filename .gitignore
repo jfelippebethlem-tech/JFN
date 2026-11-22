@@ -269,3 +269,6 @@ data/conluio/
 # saídas das varreduras de padrões (18/11/2026)
 data/padroes/
 data/cpf_fila_humana.json
+
+# 22/11/2026: livro de gasto da porta paga do OpenRouter (llm/openrouter_pago) — dinheiro, nunca versionar
+data/openrouter_pago_gasto.json

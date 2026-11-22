@@ -17,6 +17,9 @@ O QUE FAZ, e onde mora cada garantia (diretriz do dono, 13/11/2026: "não pode t
      só a coleta, sem juízo; qualquer grave/silêncio → o processo vai ao Haiku. Desliga com JFN_FICHA_GRATIS=0.
   3c. JUÍZO NO HAIKU sobre a coleta grátis (22/11/2026, seção "JUÍZO DO HAIKU"): lote próprio no mesmo balde, só os
      campos de juízo, mesma conferência; pendente = `fonte_modelo` terminando em `-coleta`.
+  3c'. PAGO BARATO DO OPENROUTER entre o grátis e o Haiku (22/11/2026, seção "PAGO BARATO"): só coleta, mesma
+     régua de graves e conferência; porta paga separada (`llm/openrouter_pago`) com piso de US$ 10 na conta, limite
+     da chave, teto do dia e kill-switch JFN_FICHA_OR_PAGO=0. Recusou → grátis → Haiku, como antes.
   3d. TETO EM US$ DA API → ASSINATURA (seção "TRANSBORDO"): o que sobrar vai ao `claude_motor` só pelo CLI; o
      governador de ritmo manda; recusou → fica na fila. Nunca chamada paga extra.
   4. CONFERÊNCIA POR CÓDIGO contra o texto (`llm/verificacao`): documento só entra com o trecho LITERAL achado na
@@ -32,8 +35,8 @@ O QUE FAZ, e onde mora cada garantia (diretriz do dono, 13/11/2026: "não pode t
      camada de juízo (perícia de execução, Processo 360), nunca o modelo barato.
   5. A ficha continua sendo ÍNDICE DE TRIAGEM (ver o cabeçalho de `tools/sei_ficha`): nada daqui vira 🔴/🟡 sem a
      camada de juízo por cima. `fonte_modelo` = `claude-haiku-5-5@api-lote#acervo-v2` (Haiku pela API),
-     `claude-haiku-5-5@assinatura#acervo-v2` (pela assinatura), `<grátis>@gratis#acervo-v2-coleta` (só coleta,
-     juízo pendente) e `…-coleta+claude-haiku-5-5@api-lote-juizo` / `…+claude-haiku-5-5@assinatura-juizo`.
+     `claude-haiku-5-5@assinatura#acervo-v2` (pela assinatura), `<grátis>@gratis#acervo-v2-coleta` e
+     `<grátis+pago>@orpago#acervo-v2-coleta` (só coleta, juízo pendente) e `…-coleta+claude-haiku-5-5@api-lote-juizo` / `…+claude-haiku-5-5@assinatura-juizo`.
 
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha_acervo --estado
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha_acervo --ciclo --lote 400     # colhe o que terminou e envia
@@ -641,12 +644,15 @@ def unir_fichas(fichas: list[dict]) -> dict:
     return out
 
 
-def ficha_gratis(pasta: Path, sistema: str, prompt: str, texto: str, geradores: list) -> tuple[dict, dict, str] | None:
+def ficha_gratis(pasta: Path, sistema: str, prompt: str, texto: str, geradores: list,
+                 previas: list | None = None, limpas: list | None = None) -> tuple[dict, dict, str] | None:
     """(ficha conferida, verificação, modelos) do CONSENSO grátis; None → o processo vai ao Haiku.
 
     TODOS os modelos da cadeia têm de responder com JSON válido e SEM grave (`graves_coleta`); vale a UNIÃO dos itens
     (bancada de 22/11: a união de dois grátis achou mais itens conferidos por processo que o Haiku; um grátis sozinho,
-    não). Um que falhe ou invente → o processo inteiro vai ao Haiku."""
+    não). Um que falhe ou invente → o processo inteiro vai ao Haiku.
+    `previas` = [(modelo, ficha)] JÁ sem grave (de uma etapa anterior) que entram na união; `limpas` (lista) recebe
+    as [(modelo, ficha)] sem grave desta etapa, mesmo quando o consenso falha — a etapa paga as reaproveita."""
     from compliance_agent.llm.json_resposta import parse_json_llm
     fonte = fonte_de_conferencia(pasta, texto)
     tentativas, fichas = [], []
@@ -666,15 +672,55 @@ def ficha_gratis(pasta: Path, sistema: str, prompt: str, texto: str, geradores: 
             break
         tentativas.append({"modelo": modelo, "motivo": "ok"})
         fichas.append(ficha)
+        if limpas is not None:
+            limpas.append((modelo, ficha))
     if not fichas or len(fichas) < len(geradores):
         _registrar_recusas(pasta.name, tentativas)
         return None
-    ok, rel = conferir(coleta_gratis(unir_fichas(fichas), fonte), fonte)
-    return ok, {"conferido": rel, "juizo": "fora (coleta grátis: o juízo é da camada de juízo)",
-                "consenso": [m for m, _ in geradores]}, "+".join(m for m, _ in geradores)
+    modelos = [m for m, _ in previas or []] + [m for m, _ in geradores]
+    ok, rel = conferir(coleta_gratis(unir_fichas([f for _, f in previas or []] + fichas), fonte), fonte)
+    return ok, {"conferido": rel, "juizo": "fora (coleta: o juízo é da camada de juízo)",
+                "consenso": modelos}, "+".join(modelos)
 
 
 RECUSAS = REPO / "data" / "sei_ficha_gratis_recusas.jsonl"
+
+
+# ── PAGO BARATO DO OPENROUTER entre o grátis e o Haiku (22/11/2026) ──────────────────────────────────
+# Pedido do dono: "Pode usar [a conta iterjremoto do OpenRouter] até ele ficar com US$ 10 de saldo; depois disso apenas
+# os modelos gratuitos" — objetivo: velocidade e poupar o Haiku. Ordem: grátis (consenso) → PAGO → Haiku.
+#   · só COLETA, como o grátis: mesma régua `graves_coleta` (um grave/silêncio → o processo vai ao Haiku), mesma
+#     conferência literal (`conferir`), o juízo continua no Haiku (`fonte_modelo` `…@orpago#acervo-v2-coleta`);
+#   · a ficha grátis que veio LIMPA no consenso que falhou entra na união (`PAGO_COM_GRATIS_LIMPO`, bancada);
+#   · a chamada sai SÓ pela porta paga `llm/openrouter_pago` (chave própria, recusa `:free`; a guarda `:free` do
+#     free_llm fica intacta). Antes de cada SUB-LOTE (`PAGO_SUBLOTE` processos) `liberar(estimativa)`: kill-switch
+#     `JFN_FICHA_OR_PAGO=0`, teto do dia em US$, piso de US$ 10 na CONTA (GET /credits) e limite da chave (GET /key).
+#     Recusou → o resto do ciclo segue grátis → Haiku, como antes.
+# Bancada de 22/11 (2ª rodada, 120 processos da amostra, régua por código, ~/.local/state/jfn-bancada-ficha-20261122/
+# res/tabela_pago.json): deepseek-v4.1-flash SOZINHO cobre 67,7% do pool contra 59,8% do Haiku, com 0,84 grave/100
+# itens contra 1,18 (residuais 5 × 15); no arranjo grátis→pago→Haiku, o Haiku cai de 30 para 15 em 109 processos e a
+# cobertura sobe de 74,6% para 76,3% sem grave a mais. qwen3.7-flash (31,6%), gemini-2.5-flash-lite (40,6%, 1,47
+# grave/100) e mistral-small-3.2 (250–360 s por processo) ficaram de fora.
+PAGO_PADRAO = "deepseek/deepseek-v4.1-flash"
+PAGO_COM_GRATIS_LIMPO = True  # união com a grátis limpa: 62×26 vitórias sobre o Haiku contra 61×27 sem ela
+PAGO_USD_EST = 0.015         # por processo e modelo: ≥ o maior custo medido (US$ 0,0141; média US$ 0,0047)
+PAGO_SUBLOTE = 25            # um GET de saldo a cada 25 processos (estimativa do sub-lote = 25 × PAGO_USD_EST)
+PAGO_TETO_S = 1000           # não começa chamada paga depois disto no ciclo (o cron mata aos 1.500 s)
+
+
+def cadeia_paga() -> list[str]:
+    """Modelos PAGOS de `JFN_FICHA_OR_PAGO_MODELOS` (vírgula; "0"/"" desliga). `:free` é recusado aqui — grátis não
+    passa pela porta paga."""
+    import os
+    bruto = os.environ.get("JFN_FICHA_OR_PAGO_MODELOS", PAGO_PADRAO).strip()
+    if bruto.lower() in ("", "0", "off"):
+        return []
+    return [m.strip() for m in bruto.split(",") if "/" in m and not m.strip().endswith(":free")]
+
+
+def _gerar_pago(modelo: str):
+    from compliance_agent.llm import openrouter_pago as OP
+    return lambda sistema, prompt: OP.chamar(modelo, sistema, prompt, MAX_TOKENS)
 
 
 def _registrar_recusas(pasta: str, tentativas: list) -> None:
@@ -753,7 +799,8 @@ def _coluna(k: str, v):
 def _pendentes(con: sqlite3.Connection, numero: str | None = None) -> list[tuple[str, str, dict, str]]:
     """[(numero, fonte_modelo, coleta, verificacao)] das fichas grátis SEM juízo (`fonte_modelo` termina em -coleta)."""
     sql = (f"SELECT numero_sei, fonte_modelo, verificacao, {','.join(_COLETA)} FROM sei_ficha "
-           "WHERE fonte_modelo LIKE '%@gratis#%-coleta'" + (" AND numero_sei=?" if numero else ""))
+           "WHERE (fonte_modelo LIKE '%@gratis#%-coleta' OR fonte_modelo LIKE '%@orpago#%-coleta')"
+           + (" AND numero_sei=?" if numero else ""))
     return [(n, fm, {k: _coluna(k, v) for k, v in zip(_COLETA, cols)}, verif or "")
             for n, fm, verif, *cols in con.execute(sql, (numero,) if numero else ())]
 
@@ -973,6 +1020,10 @@ def enviar(estado: dict, n: int) -> dict:
     # coleta grátis primeiro (22/11/2026); o que ela não fechar sem grave vai ao Haiku neste mesmo ciclo
     geradores = [(m, g) for prov, m in cadeia_gratis() if (g := _gerar_gratis(prov, m)) is not None]
     gratis = {"gravadas": 0, "ao_haiku": 0, "modelos": [m for m, _ in geradores]}
+    from compliance_agent.llm import openrouter_pago as OP
+    pagos = [(m, _gerar_pago(m)) for m in cadeia_paga()] if OP.ligado()[0] else []
+    pago = {"gravadas": 0, "ao_haiku": 0, "modelos": [m for m, _ in pagos], "parou": "" if pagos else OP.ligado()[1]}
+    liberados = 0
     t0 = time.monotonic()
     itens, sistema = [], ""
     for c in cands[:n]:
@@ -980,8 +1031,9 @@ def enviar(estado: dict, n: int) -> dict:
         if len(texto) < MIN_TEXTO:
             continue
         sistema, prompt = sistema_e_prompt(texto)
+        limpas: list = []
         if geradores and time.monotonic() - t0 < GRATIS_TETO_S:
-            res = ficha_gratis(ACERVO / c["pasta"], sistema, prompt, texto, geradores)
+            res = ficha_gratis(ACERVO / c["pasta"], sistema, prompt, texto, geradores, limpas=limpas)
             if res is not None:
                 ficha_ok, verif, modelo = res
                 con = _con()
@@ -995,8 +1047,30 @@ def enviar(estado: dict, n: int) -> dict:
                 gratis["gravadas"] += 1
                 continue
             gratis["ao_haiku"] += 1
+        if pagos and not pago["parou"] and time.monotonic() - t0 >= PAGO_TETO_S:
+            pago["parou"] = "tempo do ciclo"
+        if pagos and not pago["parou"] and liberados <= 0:
+            ok, motivo = OP.liberar(PAGO_SUBLOTE * PAGO_USD_EST * len(pagos))
+            liberados, pago["parou"] = (PAGO_SUBLOTE, "") if ok else (0, motivo)
+        if pagos and not pago["parou"]:
+            liberados -= 1
+            res = ficha_gratis(ACERVO / c["pasta"], sistema, prompt, texto, pagos,
+                               previas=limpas if PAGO_COM_GRATIS_LIMPO else None)
+            if res is not None:
+                ficha_ok, verif, modelo = res
+                con = _con()
+                try:
+                    _garantir_coluna(con)
+                    gravar(con, numero_da_pasta(c["pasta"]), ficha_ok,
+                           {"versao": VERSAO, "cobertura": cob, **verif}, f"{modelo}@orpago#{VERSAO}-coleta")
+                    con.commit()
+                finally:
+                    con.close()
+                pago["gravadas"] += 1
+                continue
+            pago["ao_haiku"] += 1
         itens.append((c["pasta"], prompt))
-    out = {"enviados": 0, "fila": len(cands), "gratis": gratis}
+    out = {"enviados": 0, "fila": len(cands), "gratis": gratis, "or_pago": pago}
     sobra = []                     # o que a API recusou POR TETO → assinatura (22/11/2026)
     if itens:
         lote = C.enviar_lote(TAREFA, itens, sistema=sistema, max_tokens=MAX_TOKENS, effort="low")
@@ -1050,6 +1124,7 @@ def main() -> int:
     estado.setdefault("lotes", {})
     estado.setdefault("tentativas", {})
     if a.estado or not a.ciclo:
+        from compliance_agent.llm import openrouter_pago as OP
         con = _con()
         try:
             n = len(fila(con, estado))
@@ -1059,7 +1134,8 @@ def main() -> int:
             con.close()
         print(json.dumps({"fila": n, "juizo_pendente": juizo_pendente,
                           "lotes_em_curso": {k: len(v) for k, v in estado["lotes"].items()},
-                          "esgotados": sorted(k for k, v in estado["tentativas"].items() if v >= MAX_TENTATIVAS)},
+                          "esgotados": sorted(k for k, v in estado["tentativas"].items() if v >= MAX_TENTATIVAS),
+                          "or_pago": OP.estado()},
                          ensure_ascii=False))
         return 0
     t0 = time.monotonic()
