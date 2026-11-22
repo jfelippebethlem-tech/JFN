@@ -289,3 +289,52 @@ def test_sweep_se_recupera_de_lock_e_nao_contamina_os_pares_seguintes(banco, mon
     monkeypatch.setattr(ps, "_gravar", gravar_com_lock)
     r = ps.sweep(min_obs=1)
     assert estado["falhou"] and r["periciados"] == r["de"] and r["de"] > 0, r
+
+
+# 21/11/2026: o filtro de grau era por LINHA (WHERE) — "Não verificável" listava B, que é 🟢 noutra UG, e a soma do
+# fornecedor saía só das linhas do grau pedido. O filtro vale sobre o grau AGREGADO do fornecedor.
+def test_api_pericias_filtra_pelo_grau_agregado(tmp_path, monkeypatch):
+    import json
+    from rotas import investigacao as inv
+    (tmp_path / "data").mkdir()
+    c = sqlite3.connect(tmp_path / "data" / "compliance.db")
+    c.execute(ps._DDL)
+    c.executemany("INSERT INTO pericia_fornecedor(cnpj,ug,favorecido,grau,score,total_pago) VALUES (?,?,?,?,?,?)",
+                  [("11111111000199", "1", "A", "⚪", 0, 1.0), ("22222222000188", "1", "B", "⚪", 0, 1.0),
+                   ("22222222000188", "2", "B", "🔴", 70, 5.0), ("33333333000177", "1", "C", "🟡", 30, 2.0)])
+    c.commit(); c.close()
+    monkeypatch.setattr(inv, "RAIZ", tmp_path)
+    so = lambda g: {i["cnpj"]: (i["grau"], i["total"]) for i in json.loads(inv.api_pericias(grau=g).body)["itens"]}
+    assert so("⚪") == {"11111111000199": ("⚪", 1.0)}
+    assert so("🔴") == {"22222222000188": ("🔴", 6.0)}          # soma as DUAS UGs do fornecedor
+    assert so("🟡") == {"33333333000177": ("🟡", 2.0)}
+    assert json.loads(inv.api_pericias(grau="🟡").body)["por_grau"] == {"🔴": 1, "🟡": 1, "🟢": 0, "⚪": 1}
+
+
+# 21/11/2026: o dossiê 360 (/api/perfil) somava o espelho TFE como "Pago pelo Estado (OB)". Agora é a OB PAGA do SIAFE;
+# sem a tabela do SIAFE o bloco é INDISPONÍVEL, nunca zero.
+def test_api_perfil_paga_pelo_siafe_nao_pelo_espelho(tmp_path, monkeypatch):
+    import json
+    from rotas import investigacao as inv
+    (tmp_path / "data").mkdir()
+    c = sqlite3.connect(tmp_path / "data" / "compliance.db")
+    c.execute(ps._DDL)
+    for ddl in ("ordens_bancarias(favorecido_cpf, valor, ug_codigo, ug_nome, favorecido_nome)",
+                "socios_fornecedor(cnpj, socio_nome, qualificacao, socio_servidor)",
+                "verificacao_sede(cnpj, razao, endereco, municipio, uf, status, nivel, evidencia, geo_lat, geo_lon,"
+                " addr_residencial)",
+                "pncp_resultado(fornecedor_cnpj, certame, valor_homologado, orgao_cnpj, ordem_classificacao)"):
+        c.execute(f"CREATE TABLE {ddl}")
+    c.execute("INSERT INTO ordens_bancarias VALUES ('11111111000199', 999.0, '1', 'X', 'A')")
+    c.commit()
+    monkeypatch.setattr(inv, "RAIZ", tmp_path)
+    sem = json.loads(inv.api_perfil("11111111000199").body)
+    assert sem["ob"] is None and "SIAFE" in sem["ob_indisponivel"]          # TFE não vira "pago"
+    c.execute("CREATE TABLE ob_orcamentaria_siafe(credor, valor, ug_emitente, nome_credor, status)")
+    c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?)",
+                  [("11111111000199", 100.0, "133100", "A", "Contabilizado"),
+                   ("11111111000199", 50.0, "133100", "A", "Excluído")])
+    c.commit(); c.close()
+    com = json.loads(inv.api_perfil("11111111000199").body)
+    assert com["ob"]["total"] == 100.0 and com["ob"]["orgaos"] == 1 and "ob_indisponivel" not in com
+    assert com["orgaos"][0]["ug"] == "133100" and com["orgaos"][0]["total"] == 100.0

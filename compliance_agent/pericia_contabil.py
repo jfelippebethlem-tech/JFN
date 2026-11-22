@@ -529,13 +529,20 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
     cols = _colunas(con, "ob_orcamentaria_siafe")
     c_gd = "gd" if "gd" in cols else "''"
     c_env = "status_envio" if "status_envio" in cols else "''"
+    # Mesma régua de `_ob_paga` para o que NÃO é pagamento novo (21/11/2026): a OB "Pagamento Complementar" não vai ao
+    # banco (a principal já paga o código de barras inteiro — somá-la conta em dobro) e a 1ª emissão de OB REEMITIDA
+    # (`ob_reemitida`) foi substituída pela que pagou. Medido no A_MAIOR do Estado: 2 de 50 linhas tocadas, R$ 20.711,10.
+    fora = " AND COALESCE(tipo_regularizacao,'')<>'Pagamento Complementar'" if "tipo_regularizacao" in cols else ""
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ob_reemitida'").fetchone():
+        fora += (" AND NOT EXISTS (SELECT 1 FROM ob_reemitida _re WHERE _re.ob=ob_orcamentaria_siafe.numero_ob"
+                 " AND _re.ug=ob_orcamentaria_siafe.ug_emitente)")
     from compliance_agent.siafe_gd import devolvido_por_ob
     devolvido = devolvido_por_ob(con)       # {} sem a tabela: segue a regra de piso
     vistos: set = set()
     brutas: list = []
     for num, ex, ug, dt, proc, cred, val, nl, comp, gd, env in con.execute(
             "SELECT numero_ob, exercicio, ug_emitente, data_emissao, processo, credor, valor, nl, competencia, "
-            f"{c_gd}, {c_env} FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+            f"{c_gd}, {c_env} FROM ob_orcamentaria_siafe WHERE status='Contabilizado'{fora}"):
         c = _digitos(cred)
         if c not in credores or not str(num or "").strip():
             continue

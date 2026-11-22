@@ -32,7 +32,9 @@ from compliance_agent.duckdb_util import conectar
 from compliance_agent.database.models import _resolver_db
 
 
-_TERCEIRO = "length(credor) IN (11, 14) AND credor NOT GLOB '*[^0-9]*'"
+# Este SQL roda no DuckDB (conectar()). A forma SQLite `credor NOT GLOB '*[^0-9]*'` não parseia lá (/api/cartel
+# dava 500, 21/11/2026) e o glob do DuckDB nega com `[!...]`, não `[^...]` — regex explícita, sem ambiguidade.
+_TERCEIRO = "length(credor) IN (11, 14) AND regexp_full_match(credor, '[0-9]+')"
 """Credor TERCEIRO (CNPJ/CPF), o universo do espelho: sem repasse entre unidades nem folha/encargos ('CG…')."""
 
 

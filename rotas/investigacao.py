@@ -114,16 +114,20 @@ def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20)
     try:
         from compliance_agent import grafo_cartel as G
         top = max(1, min(int(top or 20), 100))
-        # captura/dependencia varrem a base inteira (~3s) e não dependem de cnpj → cache curto
-        ck = f"cartel:{modo}:{top}" if modo in ("captura", "dependencia") else None
-        if ck and (cache := _cache_get(ck, 300)):
-            return JSONResponse(cache)
+        # captura/dependencia varrem a base inteira e não dependem de cnpj. Medido 21/11/2026 sob carga: 24 s e 51 s
+        # (não ~3 s) → `_cache_calc` (um cálculo por chave + entrega o último valor enquanto recalcula), TTL 1 h:
+        # a OB do SIAFE muda por dia, não por minuto.
+        if modo in ("captura", "dependencia"):
+            def _calc():
+                dados = (G.dependencia_fornecedores(limite=top) if modo == "dependencia"
+                         else G.captura_orgaos(limite=top))
+                return {"ok": True, "modo": modo, "dados": dados,
+                        "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."}
+            return JSONResponse(_cache_calc(f"cartel:{modo}:{top}", 3600, _calc))
         if modo == "vizinhanca":
             if not cnpj:
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
             dados = G.vizinhanca_cartel(cnpj, limite=top)
-        elif modo == "dependencia":
-            dados = G.dependencia_fornecedores(limite=top)
         elif modo == "rede":  # fornecedores com sócio em comum (Onda 4)
             if not cnpj:
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
@@ -142,8 +146,6 @@ def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20)
             dados = G.captura_orgaos(limite=top)
         out = {"ok": True, "modo": modo, "dados": dados,
                "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."}
-        if ck:
-            _cache_put(ck, out)
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1536,9 +1538,12 @@ def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "sc
         if q:
             where += " AND (favorecido LIKE ? OR cnpj LIKE ?)"
             params += [f"%{q}%", f"%{q.replace('.', '').replace('/', '').replace('-', '')}%"]
+        # O filtro de grau vale sobre o grau AGREGADO do fornecedor (HAVING), não por linha (21/11/2026): com `WHERE
+        # grau=?` o chip "Atenção" mostrava como 🟡 quem é 🔴 noutra UG, "Não verificável" listava quem tem 🟡 noutra
+        # unidade, e total pago/indícios somavam só as linhas do grau pedido — o fornecedor aparecia menor do que é.
+        having = ""
         if grau:
-            where += " AND grau = ?"
-            params.append(grau)
+            having = "HAVING grau = ?"
         # ⚪ (nada verificável) é estado próprio: o antigo `ELSE '🟢'` pintava de "limpo" o não-determinado.
         rows = con.execute(
             f"SELECT cnpj, MAX(favorecido) favorecido, "
@@ -1547,11 +1552,19 @@ def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "sc
             f"            WHEN SUM(CASE WHEN grau='🟢' THEN 1 ELSE 0 END)>0 THEN '🟢' ELSE '⚪' END grau, "
             f"       MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
             f"       SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs "
-            f"FROM pericia_fornecedor {where} GROUP BY cnpj "
-            f"ORDER BY {col} DESC LIMIT ?", (*params, max(10, min(int(limite or 60), 300)))).fetchall()
+            f"FROM pericia_fornecedor {where} GROUP BY cnpj {having} "
+            f"ORDER BY {col} DESC LIMIT ?", (*params, *([grau] if grau else []),
+                                             max(10, min(int(limite or 60), 300)))).fetchall()
+        # quantos fornecedores há em cada grau (agregado, mesma busca `q`, sem o filtro de grau) — os chips da aba dizem
+        # o tamanho de cada fila em vez de só a página de 80
+        por_grau = {g: n for g, n in con.execute(
+            "SELECT g, COUNT(*) FROM (SELECT CASE WHEN SUM(grau='🔴')>0 THEN '🔴' WHEN SUM(grau='🟡')>0 THEN '🟡' "
+            f"WHEN SUM(grau='🟢')>0 THEN '🟢' ELSE '⚪' END g FROM pericia_fornecedor {where} GROUP BY cnpj) GROUP BY g",
+            params).fetchall()}
         con.close()
         itens = [dict(r) for r in rows]
-        return JSONResponse({"ok": True, "total": len(itens), "itens": itens})
+        return JSONResponse({"ok": True, "total": len(itens), "itens": itens,
+                             "por_grau": {g: por_grau.get(g, 0) for g in ("🔴", "🟡", "🟢", "⚪")}})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -1585,16 +1598,28 @@ def api_perfil(cnpj: str):
             except (ValueError, TypeError):
                 out["achados"] = []
             out["resumo"] = det["resumo"]
-        # pagamento (OB TFE) + órgãos
-        ob = con.execute("SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, COUNT(DISTINCT ug_codigo) ugs, "
-                         "MAX(favorecido_nome) nome FROM ordens_bancarias WHERE favorecido_cpf=?",
-                         (dig,)).fetchone()
-        out["ob"] = {"n": ob["n"], "total": ob["v"], "orgaos": ob["ugs"]} if ob and ob["n"] else None
+        # pagamento + órgãos: OB PAGA do SIAFE (`_ob_paga`), nunca o espelho TFE (21/11/2026: o 360 lia `ordens_bancarias`
+        # e mostrava a MGS Clean com R$ 164,9 mi "pagos pelo Estado" — o SIAFE paga R$ 192,4 mi). Sem a tabela do SIAFE o
+        # bloco é INDISPONÍVEL (`ob_indisponivel`), nunca zero.
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        ob = None
+        out["orgaos"] = []
+        try:
+            paga = _ob_paga(con)
+            ob = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, COUNT(DISTINCT ug_emitente) ugs, "
+                             f"MAX(nome_credor) nome FROM ob_orcamentaria_siafe WHERE credor=? AND {paga}",
+                             (dig,)).fetchone()
+            from compliance_agent import ugs as _ugs
+            top_org = con.execute(f"SELECT ug_emitente, SUM(valor) v FROM ob_orcamentaria_siafe "
+                                  f"WHERE credor=? AND valor>0 AND {paga} GROUP BY ug_emitente ORDER BY v DESC LIMIT 8",
+                                  (dig,)).fetchall()
+            out["orgaos"] = [{"ug": r["ug_emitente"], "nome": _ugs.nome_canonico(str(r["ug_emitente"]), fallback=""),
+                              "total": r["v"]} for r in top_org]
+        except sqlite3.Error as exc:
+            out["ob_indisponivel"] = f"SIAFE indisponível: {exc}"
+        out["ob"] = {"n": ob["n"], "total": ob["v"], "orgaos": ob["ugs"],
+                     "fonte": "SIAFE — OB paga (ob_orcamentaria_siafe, _ob_paga)"} if ob and ob["n"] else None
         out["nome"] = (out.get("pericia") or {}).get("nome") or (ob["nome"] if ob else None) or "—"
-        top_org = con.execute("SELECT ug_codigo, COALESCE(ug_nome,'') nome, SUM(valor) v FROM ordens_bancarias "
-                              "WHERE favorecido_cpf=? AND valor>0 GROUP BY ug_codigo ORDER BY v DESC LIMIT 8",
-                              (dig,)).fetchall()
-        out["orgaos"] = [{"ug": r["ug_codigo"], "nome": r["nome"], "total": r["v"]} for r in top_org]
         # QSA
         soc = con.execute("SELECT socio_nome, qualificacao, socio_servidor FROM socios_fornecedor "
                           "WHERE cnpj=? LIMIT 12", (dig,)).fetchall()
@@ -2813,7 +2838,9 @@ def api_pericia_bateria(so_mortos: bool = False):
     """
     try:
         from tools.bateria_pericia import cobertura
-        r = cobertura()
+        # 28,8 s medido no percurso do painel (21/11/2026) — varre os 744 mil itens da bateria; o acervo muda por
+        # rodada de perícia, não por minuto: 10 min de cache, um cálculo por vez
+        r = _cache_calc("pericia:bateria", 600, cobertura)
     except ImportError as exc:
         return JSONResponse({"ok": False, "erro": f"módulo indisponível: {exc}"}, status_code=503)
     except sqlite3.Error as exc:

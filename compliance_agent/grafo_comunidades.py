@@ -262,6 +262,10 @@ def detectar_comunidades(db_path: str | None = None, min_tamanho: int = 4, top: 
     # o corte vem DEPOIS da contagem: `n` era len(out) já truncado, então o painel exibia
     # `top` (30) como se fosse o número de comunidades detectadas — página no lugar do total.
     n_total = len(out)
+    # `n` conta TODO agrupamento pessoa+empresa com ≥ min_tamanho nós — quase sempre uma empresa e seus sócios, sem
+    # sinal nenhum. Como manchete ("4.376 comunidades", 21/11/2026) dizia mais do que mede; o card usa a contagem
+    # por rating, que é o número com sinal de risco (🟡/🔴) sobre a base inteira, não só sobre as `top` mostradas.
+    n_por_rating = {r: sum(1 for c in out if c["rating"] == r) for r in ("🔴", "🟡", "🟢")}
     out = out[:top]
 
     d3 = None
@@ -276,7 +280,7 @@ def detectar_comunidades(db_path: str | None = None, min_tamanho: int = 4, top: 
                          "weight": round(sub.edges[u, v].get("weight", 1.0), 2)}
                         for u, v in sub.edges]}
 
-    return {"ok": True, "comunidades": out, "n": n_total, "mostradas": len(out),
+    return {"ok": True, "comunidades": out, "n": n_total, "n_por_rating": n_por_rating, "mostradas": len(out),
             "grafo": {"nos": G.number_of_nodes(), "arestas": G.number_of_edges(),
                       "comunidades_brutas": len(comm)},
             "d3": d3, "articuladores": articuladores(H, seed=seed),

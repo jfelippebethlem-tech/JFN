@@ -78,7 +78,10 @@ async def api_lai_prazos(dias: int = 3):
 @router.get("/api/pcrj/saude")
 async def api_pcrj_saude(md: int = 0):
     from tools.pcrj_saude import laudo, md as _md
-    l = await asyncio.to_thread(laudo)
+    from rotas.investigacao import _cache_calc
+    # Medido 21/11/2026 no percurso do painel: 49 s (count/max sem índice em pcrj_processo_doc, que guarda as íntegras).
+    # As etapas são diárias/semanais — 10 min de cache com um cálculo por vez (single-flight + último valor) bastam.
+    l = dict(await asyncio.to_thread(_cache_calc, "pcrj:saude", 600, laudo))
     if md:
         l["md"] = _md(l)
     return JSONResponse(content={"ok": True, **l})

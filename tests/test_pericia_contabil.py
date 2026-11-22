@@ -691,3 +691,24 @@ def test_manchete_a_maior_soma_o_que_passa_do_VALOR_CONTRATADO_nao_do_pro_rata(t
     assert e["excesso_a_maior_pro_rata"] == pytest.approx(r["diferenca"])
     c = pc.consolidar([r], "orgao")[0]
     assert c["excesso_a_maior"] == pytest.approx(20_000.0)
+
+
+# 21/11/2026: "Pagamento Complementar" não vai ao banco (a OB principal já paga o código de barras inteiro) e a 1ª
+# emissão de OB reemitida foi substituída — a mesma régua de `_ob_paga`. Somá-las inflava o "pago acima do contratado".
+def test_complementar_e_reemitida_nao_somam_no_pago(tmp_path):
+    db = _base_estado(tmp_path)
+    con = sqlite3.connect(db)
+    con.execute("ALTER TABLE ob_orcamentaria_siafe ADD COLUMN tipo_regularizacao TEXT")
+    con.execute("CREATE TABLE ob_reemitida (ob TEXT, ug TEXT)")
+    O = ("INSERT INTO ob_orcamentaria_siafe (numero_ob,ug_emitente,ug_pagadora,data_emissao,status,credor,"
+         "nome_credor,processo,valor,exercicio,tipo_regularizacao) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    con.executemany(O, [
+        ("2024OB00071", "100100", "100100", "12/04/2024", "Contabilizado", "11111111000111", "A",
+         "SEI-100001/000001/2024", 7_000.0, 2024, "Pagamento Complementar"),
+        ("2024OB00072", "100100", "100100", "13/04/2024", "Contabilizado", "11111111000111", "A",
+         "SEI-100001/000001/2024", 9_000.0, 2024, None),
+    ])
+    con.execute("INSERT INTO ob_reemitida VALUES ('2024OB00072', '100100')")
+    con.commit(); con.close()
+    res = {r["id"]: r for r in pc.avaliar_estado(db, corte=date(2026, 7, 1))}
+    assert res["A"]["pago"] == pytest.approx(135_000.0)     # nem a complementar nem a reemitida entram
