@@ -510,12 +510,14 @@ def _gerar_openrouter_free(modelo: str):
         erro = ""
         saida = ""
         msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
-        cab, carga = F._requisicao(F.OPENROUTER_BASE, F._openrouter_key(), modelo, msgs, 8000, None)
+        chave = F._openrouter_key()          # rodízio: a 1ª chave do pool sem cota diária estourada (22/11/2026)
+        cab, carga = F._requisicao(F.OPENROUTER_BASE, chave, modelo, msgs, 8000, None)
         try:
             r = httpx.post(f"{F.OPENROUTER_BASE}/chat/completions", headers=cab, json=carga,
                            timeout=_TIMEOUT_OPENROUTER_S)
             if r.status_code >= 400:
                 erro = f"HTTP {r.status_code}"
+                F.notar_openrouter(chave, r.status_code, r.text)   # 429 diário tira a chave; a próxima assume
             else:
                 esc = (r.json().get("choices") or [{}])[0]
                 saida = (esc.get("message") or {}).get("content") or ""

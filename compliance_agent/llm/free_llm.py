@@ -294,6 +294,20 @@ def _sleep_backoff(attempt: int, base: float = 2.0, cap: float = 120.0) -> None:
     time.sleep(_espera_backoff(attempt, base, cap))
 
 
+def _trocar_chave_or(base_url: str, headers: dict, resp) -> bool:
+    """429 de cota DIÁRIA no OpenRouter: marca a chave e põe a próxima viva nos cabeçalhos. True = repetir já."""
+    if base_url != OPENROUTER_BASE or resp.status_code != 429:
+        return False
+    atual = headers.get("Authorization", "").split()[-1]
+    if not notar_openrouter(atual, 429, resp.text):
+        return False
+    prox = _openrouter_key()
+    if not prox or prox == atual:
+        return False
+    headers["Authorization"] = f"Bearer {prox}"
+    return True
+
+
 def _openai_compat_chat_sync_retry(
     base_url: str,
     api_key: str,
@@ -314,6 +328,8 @@ def _openai_compat_chat_sync_retry(
                     json=payload,
                     headers=headers,
                 )
+                if _trocar_chave_or(base_url, headers, resp):
+                    continue                     # chave estourou a cota DIÁRIA: a próxima do pool, sem esperar
                 if resp.status_code in _RETRYABLE_STATUS:
                     last_exc = RuntimeError(
                         f"Retryable status {resp.status_code} from {base_url}"
@@ -358,6 +374,8 @@ async def _openai_compat_chat_retry(
                     json=payload,
                     headers=headers,
                 )
+                if _trocar_chave_or(base_url, headers, resp):
+                    continue                     # chave estourou a cota DIÁRIA: a próxima do pool, sem esperar
                 if resp.status_code in _RETRYABLE_STATUS:
                     last_exc = RuntimeError(
                         f"Retryable status {resp.status_code} from {base_url}"
@@ -431,8 +449,66 @@ OPENROUTER_HEADERS = {
 }
 
 
+# RODÍZIO DE CHAVES (dono 22/11/2026: "em cada e-mail do OpenRouter uma chave diferente, cada um uma cota separada
+# gratuita"). Pool = OPENROUTER_API_KEY, OPENROUTER_API_KEY_RESERVA, OPENROUTER_API_KEY_<n> (nessa ordem, sem
+# repetir). A chave que estoura o limite DIÁRIO dos `:free` (429 "free-models-per-day") sai até a virada UTC e a
+# próxima assume; 429 passageiro (fila do provedor) não esgota ninguém. O estado guarda só o sha1[:8] da chave.
+# A chave PAGA (OPENROUTER_PAGO_API_KEY) NUNCA entra aqui — este pool é só do caminho `:free`.
+_OR_ESGOTADAS = pathlib.Path(os.environ.get("JFN_DATA_DIR") or pathlib.Path(__file__).resolve().parents[2] / "data") \
+    / "openrouter_chaves_esgotadas.json"
+_OR_DIARIO = re.compile(r"per-day|daily limit|free-models-per-day", re.I)
+
+
+def _dia_utc() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _h_chave(k: str) -> str:
+    import hashlib
+    return hashlib.sha1(k.encode()).hexdigest()[:8]
+
+
+def _openrouter_chaves() -> list[str]:
+    nomes = ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY_RESERVA"] + sorted(
+        (n for n in os.environ if re.fullmatch(r"OPENROUTER_API_KEY_\d+", n)), key=lambda n: int(n.rsplit("_", 1)[1]))
+    out: list[str] = []
+    for n in nomes:
+        v = (os.environ.get(n) or (OPENROUTER_API_KEY if n == "OPENROUTER_API_KEY" else "")).strip()
+        if v and v not in out:
+            out.append(v)
+    return out
+
+
+def _or_esgotadas() -> dict:
+    try:
+        d = json.loads(_OR_ESGOTADAS.read_text())
+    except (OSError, ValueError):
+        return {}
+    hoje = _dia_utc()
+    return {h: dia for h, dia in d.items() if dia == hoje}
+
+
+def notar_openrouter(chave: str, status: int, corpo: str) -> bool:
+    """Anota a resposta do OpenRouter; True = a chave estourou o limite diário e saiu do rodízio até a virada UTC."""
+    if status != 429 or not _OR_DIARIO.search(corpo or ""):
+        return False
+    d = _or_esgotadas()
+    d[_h_chave(chave)] = _dia_utc()
+    try:
+        _OR_ESGOTADAS.parent.mkdir(parents=True, exist_ok=True)
+        _OR_ESGOTADAS.write_text(json.dumps(d))
+    except OSError:
+        logger.debug("não consegui gravar a chave esgotada do OpenRouter")
+    return True
+
+
 def _openrouter_key() -> str:
-    return os.environ.get("OPENROUTER_API_KEY", OPENROUTER_API_KEY)
+    """A 1ª chave do pool que não estourou o limite diário hoje (todas esgotadas → a 1ª; o 429 segue honesto)."""
+    ks = _openrouter_chaves()
+    if not ks:
+        return ""
+    esg = _or_esgotadas()
+    return next((k for k in ks if _h_chave(k) not in esg), ks[0])
 
 
 def openrouter_available() -> bool:
