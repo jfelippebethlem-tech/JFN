@@ -110,3 +110,56 @@ def test_emissora_de_vale_beneficio_e_institucional_so_pelo_cnae():
     r = institucional("69034668000156", cnae="8299702")      # Pluxee
     assert r["institucional"] and "vale" in r["motivo"]
     assert not institucional("11111111000191", cnae="8299799")["institucional"]   # outra 8299 não entra
+
+
+# ── Segundo sinal (21/11/2026) ────────────────────────────────────────────────────────────────────────────────
+# Fornecedor privado de porte também recebe de várias UGs por natureza: 233 triados desta regra, 129 provável falso
+# positivo e 0 'aprofundar' depois da conferência do Opus. A hipótese do nome (laranja "carimbado") só se sustenta
+# com porte incompatível. Os casos abaixo são os do acervo real (nomes trocados, números preservados).
+from types import SimpleNamespace
+
+from compliance_agent.rules.engine import _segundo_sinal_dispersao
+
+
+def _emp(porte, cap, nome="ALFA LTDA", natureza=None):
+    return SimpleNamespace(porte=porte, capital_social=cap, razao_social=nome, natureza_jur=natureza)
+
+
+def test_fornecedor_de_porte_sem_segundo_sinal_nao_acusa():
+    # controle negativo real: EXTREME DIGITAL — DEMAIS, capital R$ 4.250.001, R$ 18,18 mi num mês (Opus: monitorar)
+    assert _segundo_sinal_dispersao("14139773000168", _emp("DEMAIS", 4_250_001.0), 18_182_021.0)["estado"] == "ausente"
+
+
+def test_associacao_com_capital_zero_nao_e_capital_incompativel():
+    # controle negativo real: CIEE — Associação Privada, capital R$ 0,00 (2 triados, ambos sem indício)
+    s = _segundo_sinal_dispersao("33661745000150", _emp("DEMAIS", 0.0, "CENTRO DE INTEGRACAO EMPRESA ESCOLA",
+                                                         "Associação Privada"), 4_332_271.98)
+    assert s["estado"] == "ausente"
+
+
+@pytest.mark.parametrize("doc, emp, total, trecho", [
+    ("***123456**", None, 900_000.0, "pessoa física"),                       # CPF mascarado
+    ("11111111000191", _emp("MICRO EMPRESA", 10_000.0), 2_000_000.0, "MICRO EMPRESA"),
+    ("11111111000191", _emp("DEMAIS", 1_000.0), 2_000_000.0, "incompatível"),  # 2.000× o capital
+])
+def test_segundo_sinal_presente_acusa(doc, emp, total, trecho):
+    s = _segundo_sinal_dispersao(doc, emp, total)
+    assert s["estado"] == "presente" and trecho in s["motivo"]
+
+
+def test_cadastro_indisponivel_nao_absolve():
+    assert _segundo_sinal_dispersao("11111111000191", None, 1.0)["estado"] == "indisponivel"
+    assert _segundo_sinal_dispersao("11111111000191", _emp(None, None), 1.0)["estado"] == "indisponivel"
+
+
+def test_regra_multiplas_ugs_grande_sem_segundo_sinal_vira_rastro(receita):
+    from compliance_agent.database.models import Empresa
+    s = _sessao(PRIVADA, "APPA SERVICOS TEMPORARIOS E EFETIVOS LTDA")
+    s.add(Empresa(cnpj=PRIVADA, razao_social="APPA SERVICOS TEMPORARIOS E EFETIVOS LTDA", porte="DEMAIS",
+                  capital_social=5_000_000.0))
+    s.commit()
+    m = MotorCompliance(s)
+    m._alertas_novos = []
+    m._regra_ob_favorecido_multiplas_ugs()
+    a = m._alertas_novos[0]
+    assert a.descricao.startswith("NÃO é acusação — dispersão por UG sem segundo sinal")

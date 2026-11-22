@@ -56,6 +56,42 @@ def _mesma_pessoa_na_folha():
     return (RegistroFolha.cpf, func.upper(func.trim(RegistroFolha.nome)))
 
 
+# Regra "favorecido em N UGs": receber de várias UGs é o normal de fornecedor de porte; a hipótese do nome (CPF/CNPJ
+# laranja "carimbado" em todo o estado) só se sustenta com um SEGUNDO SINAL de porte incompatível. Medido 21/11/2026:
+# 233 triados desta regra, 129 provável falso positivo; dos 4 'aprofundar', os 4 rebaixados pelo Opus a 'monitorar'
+# (114 conferidos: 0 aprofundar). Régua de capital = a de `empresa_fantasma._s_capital` (recebido/capital ≥ 500).
+_PORTES_PEQUENOS = ("MICRO EMPRESA", "EMPRESA DE PEQUENO PORTE", "ME", "EPP")
+RAZAO_CAPITAL_INCOMPATIVEL = 500
+
+
+def _segundo_sinal_dispersao(doc, empresa, total) -> dict:
+    """{'estado': 'presente'|'ausente'|'indisponivel', 'motivo'} — o que torna a dispersão por UG um indício.
+
+    presente: pessoa física (doc ≠ 14 dígitos), porte ME/EPP, ou capital ≤ 0 / total do mês ≥ 500× o capital.
+    ausente: empresa com porte E capital conhecidos e nenhum dos três. indisponivel: sem cadastro/porte/capital —
+    INDISPONÍVEL não absolve, então segue para a triagem como antes."""
+    d = "".join(ch for ch in str(doc or "") if ch.isdigit())
+    if len(d) != 14:
+        return {"estado": "presente", "motivo": "favorecido pessoa física"}
+    if empresa is None:
+        return {"estado": "indisponivel", "motivo": "cadastro da empresa INDISPONÍVEL"}
+    porte = str(empresa.porte or "").strip().upper()
+    cap = empresa.capital_social
+    if porte in _PORTES_PEQUENOS:
+        return {"estado": "presente", "motivo": f"porte {porte}"}
+    # Associação/fundação/OS têm capital zero por natureza (CIEE: capital R$ 0,00) — mesma ressalva da régua de origem.
+    from compliance_agent.empresa_fantasma import _e_sem_fins_lucrativos
+    sem_fins = _e_sem_fins_lucrativos(
+        {"razao_social": f"{empresa.razao_social or ''} {getattr(empresa, 'natureza_jur', None) or ''}"})
+    if (cap is not None and not sem_fins
+            and (cap <= 0 or (total or 0) / cap >= RAZAO_CAPITAL_INCOMPATIVEL)):
+        return {"estado": "presente",
+                "motivo": f"capital R$ {moeda(cap)} incompatível com R$ {moeda(total or 0)} no mês"}
+    if not porte or cap is None:
+        return {"estado": "indisponivel", "motivo": "porte ou capital social INDISPONÍVEL"}
+    return {"estado": "ausente", "motivo": f"porte {porte}, capital R$ {moeda(cap)}"}
+
+
 class MotorCompliance:
     """
     Executa todas as regras de compliance contra o banco de dados
@@ -693,11 +729,16 @@ class MotorCompliance:
             # várias UGs por natureza: 107 de 230 triagens desta regra eram falso positivo (20/11/2026). O alerta
             # fica como rastro, mas declara que não acusa — a triagem pula o prefixo "NÃO é acusação".
             inst = institucional(row.favorecido_cpf)
+            sinal = _segundo_sinal_dispersao(row.favorecido_cpf, empresa, row.total)
             if inst["institucional"]:
                 descricao = (f"NÃO é acusação — credor institucional: {inst['motivo']}; receber de várias UGs "
                              f"é esperado. " + fato)
+            elif sinal["estado"] == "ausente":
+                descricao = (f"NÃO é acusação — dispersão por UG sem segundo sinal ({sinal['motivo']}); "
+                             f"fornecedor de porte atende vários órgãos. " + fato)
             else:
-                descricao = fato + "Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
+                descricao = (fato + f"Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado "
+                             f"({sinal['motivo']}).")
             self._lote.criar(
                 tipo       = "direcionamento",
                 severidade = "baixa",   # fornecedor grande atende várias UGs; só vira notícia com outro sinal
@@ -711,6 +752,7 @@ class MotorCompliance:
                     "ugs": row.ugs,
                     "total": row.total,
                     "credor_institucional": inst["motivo"] if inst["institucional"] else None,
+                    "segundo_sinal": sinal,
                 },
                 empresa = empresa,
             )

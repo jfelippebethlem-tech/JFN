@@ -238,6 +238,18 @@ def test_abaixo_do_corte_ou_amostra_pequena_nao_suspende(con):
     assert [a["id"] for a in T.selecionar(con, 10)] == [2, 3, 1, 4]
 
 
+def test_veredito_de_ramo_que_hoje_nao_acusa_fica_fora_da_medida(con):
+    """Catraca da classe "medida conta o ramo já corrigido" (21/11/2026): D9 tinha 37% de FP na janela, mas 158 dos
+    190 eram de alertas que hoje se declaram "NÃO é acusação" (a triagem já os pula). A taxa mede o que o detector
+    ainda manda ao juiz — senão o detector consertado segue suspenso por 30 dias."""
+    _vereditos(con, "pcrj_d9_socio_na_folha", 30, 30)              # 30 FP antigos…
+    con.execute("UPDATE alertas SET descricao='NÃO é acusação — sócio entrou depois do último pagamento' "
+                "WHERE tipo='pcrj_d9_socio_na_folha'")              # …de um ramo que hoje não acusa
+    _vereditos(con, "pcrj_d9_socio_na_folha", 30, 3)               # controle: os que acusam, 10%
+    assert dict((t, (n, fp)) for t, n, fp in T.precisao_por_detector(con))["pcrj_d9_socio_na_folha"] == (30, 3)
+    assert T.detectores_suspensos(con) == {}
+
+
 def test_detector_volta_sozinho_quando_os_vereditos_saem_da_janela(con):
     _vereditos(con, "direcionamento", 40, 40, em="-31 days")       # todo o histórico ruim, fora da janela
     assert T.detectores_suspensos(con) == {}

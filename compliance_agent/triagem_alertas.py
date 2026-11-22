@@ -132,10 +132,15 @@ FP_SUSPENDE, FP_MIN_N, FP_JANELA_DIAS = 0.50, 30, 30
 
 
 def precisao_por_detector(con: sqlite3.Connection, dias: int = FP_JANELA_DIAS) -> list[tuple[str, int, int]]:
-    """[(tipo, vereditos, provável falso positivo)] na janela — a medida única (triagem e automelhoria)."""
+    """[(tipo, vereditos, provável falso positivo)] na janela — a medida única (triagem e automelhoria).
+
+    Mede o que o detector AINDA manda ao juiz: veredito de alerta que hoje se declara "NÃO é acusação" (ramo já
+    corrigido) fica fora. Sem isso a taxa de 21/11/2026 do D9 era 37% (158 dos 190 FP eram de ramos que a triagem
+    já pula; nos que acusam, 32 de 346 = 9%) e um detector consertado seguia suspenso por até 30 dias."""
     return [(t, n, fp or 0) for t, n, fp in con.execute(
         "SELECT a.tipo, COUNT(*), SUM(t.prioridade='provavel_falso_positivo') FROM alertas_triagem t "
-        "JOIN alertas a ON a.id=t.alerta_id WHERE t.em >= date('now', ?) GROUP BY 1", (f"-{int(dias)} day",))]
+        f"JOIN alertas a ON a.id=t.alerta_id WHERE t.em >= date('now', ?) AND {_SEM_ACUSACAO} GROUP BY 1",
+        (f"-{int(dias)} day",))]
 
 
 def suspenso(n: int, fp: int) -> bool:

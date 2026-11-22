@@ -97,6 +97,7 @@ def test_sancao_vigente_mas_NAO_impeditiva_nao_acusa(con):
     assert a["evidencias"]["vigencia_na_emenda"] == "nao_impeditiva"
     assert a["risco"] == 4
     assert "NÃO veda contratar" in a["descricao"]
+    assert a["descricao"].startswith("NÃO é acusação")   # prefixo que a triagem pula
 
 
 def test_publicacao_extraordinaria_tambem_nao_impede(con):
@@ -128,6 +129,7 @@ def test_impedimento_de_OUTRO_ente_vigente_nao_e_indicio_grave(con):
     assert a["evidencias"]["vigencia_na_emenda"] == "sem_alcance"
     assert a["risco"] < 5
     assert "Indício grave" not in a["descricao"] and "NÃO alcança" in a["descricao"]
+    assert a["descricao"].startswith("NÃO é acusação")
 
 
 def test_inidoneidade_de_todas_as_esferas_segue_indicio_grave(con):
@@ -136,3 +138,4 @@ def test_inidoneidade_de_todas_as_esferas_segue_indicio_grave(con):
                         uf="DF", abrangencia="Todas as Esferas em todos os Poderes")
     a = _um(con)
     assert a["evidencias"]["vigencia_na_emenda"] == "vigente" and a["risco"] == 9
+    assert not a["descricao"].startswith("NÃO é acusação")   # controle positivo: este segue para a triagem

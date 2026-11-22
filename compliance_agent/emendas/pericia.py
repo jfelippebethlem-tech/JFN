@@ -207,11 +207,13 @@ def d3_favorecido_sancionado(con) -> list[dict]:
                        "irregularidade na emenda")
         elif vigencia == "encerrada":
             explica = f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"
+        # sem_alcance/nao_impeditiva levam o prefixo "NÃO é acusação" (convenção da triagem): 17 de 17 triados
+        # voltaram provável falso positivo repetindo o que a descrição já dizia (medido 21/11/2026).
         elif vigencia == "sem_alcance":
-            explica = (f"A sanção estava vigente, mas NÃO alcança o pagador da emenda federal "
+            explica = (f"NÃO é acusação: a sanção estava vigente, mas NÃO alcança o pagador da emenda federal "
                        f"({alcance['motivo']}). Risco reputacional a conferir, não vedação de contratar")
         elif vigencia == "nao_impeditiva":
-            explica = (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que NÃO veda "
+            explica = (f"NÃO é acusação: a sanção estava vigente, mas é '{r['categoria']}' — categoria que NÃO veda "
                        "contratar (multa e publicação extraordinária são penalidades, não "
                        "impedimento). Não sustenta acusação de contratação irregular")
         else:
