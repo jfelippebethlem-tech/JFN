@@ -217,7 +217,36 @@ cada item também no Drive; chave estável por item, o novo substitui o velho).
 
 ### 6.3 Uso por nuvem — antes × depois (medido pelo próprio pré-voo)
 
-USO_ANTES_DEPOIS
+Uso em GB (10⁹ bytes), medido pelo pré-voo (`rclone about` no Drive e nas cotas de conta; `rclone size` da raiz
+no B2/R2, que conta o bucket inteiro). **Antes** = pré-voo de 21/11 19:56 (Drive/B2/R2/MEGA) e, para os remotos
+ligados depois, a 1ª medição (ensaio de 21/11 22:57). **Depois** = pré-voo do ciclo real da VM-1, 22/11 05:45.
+
+| Remoto | Antes | Após consolidar (22/11 00:10) | Depois | Alvo grátis | Situação |
+|---|---:|---:|---:|---:|---|
+| Drive (`gdrive:`) | 10,92 | 29,48 | 39,49 | 424,50 | principal: recebeu todo o re-obtível |
+| B2 | **14,19** | 6,09 | 7,13 | 7,80 | era 4,19 acima do limite de 10; agora dentro do alvo |
+| R2 | **22,20** | 2,01 | 8,69 | 9,50 | era 12,20 acima; agora dentro do alvo |
+| MEGA | 0,00 | — | 0,00 | 20,97 | reserva da 2ª cópia (B2/R2 couberam) |
+| Dropbox (`JFN/`) | 0,08 | — | 0,08 | 107,52 | reserva |
+| Blomp | 0,00 | — | 0,00 | 41,95 | reserva |
+| Koofr | 0,00 | — | 0,00 | 10,24 | reserva |
+| Box | 0,02 | — | 0,02 | 10,24 | reserva |
+| pCloud | 0,09 | — | 0,09 | 3,99 | reserva |
+| Jottacloud | 0,01 | — | 0,01 | 4,70 | reserva |
+| TeraBox | 0,00 | — | 0,00 | 1.094,50 | só cópia extra, nunca única |
+
+**O que foi para onde (21–22/11):**
+
+* **Consolidação** (`consolidar-legado --aplicar`, md5 do Drive conferido pela listagem antes de apagar):
+  VM-1 — 82 re-obtíveis (8,11 GB) R2+B2 → Drive (80 em 21/11, os 2 que deram timeout em 22/11); VM-2 — 403
+  re-obtíveis do prefixo `vm2/` (12,08 GB) R2 → Drive. Nada apagado sem a cópia conferida.
+* **Enchimento** (`encher --aplicar`, snapshot consistente + gzip, sempre também no Drive): insubstituível
+  primeiro — 14 bancos (3,54 GB .gz; o `compliance.db` de 6,19 GB vira 1,68 GB e vai só ao R2, porque o B2 já guarda os
+  semanais do `backup_compliance.sh`); depois o re-obtível mais caro — `receita_estab.db` (1,47 GB) e
+  `compliance_analitico.db` (1,67 GB), no R2. B2 recebeu 0,64 GB (o que cabia no alvo), R2 6,68 GB. Sobra
+  0,67 GB no B2 e 0,81 GB no R2: nenhum item restante cabe (o pré-voo pulou, sem recusa).
+* **Ciclo real da VM-1** (22/11 05:35): 20 unidades guardadas, 0,01 GB liberado + 0,2 GB regenerável, sem falha
+  e sem recusa do pré-voo.
 
 Atenção (1): o rclone usa o **cliente OAuth padrão do próprio rclone**, compartilhado no mundo todo (e que o rclone
 avisa que será aposentado em 2026); o Drive responde `403 rateLimitExceeded` ("Queries per minute" do projeto
