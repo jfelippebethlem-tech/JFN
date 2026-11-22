@@ -547,7 +547,8 @@ def test_recuperacao_confere_pela_listagem_e_amostra_do_b2_tem_teto(amb):
     nuvem.orcamento.registrar("b2", {"amostra_bytes": teto})                 # a amostra do dia acabou
     res = A.testar_recuperacao(con, nuvem, amostra=3)
     b2 = [r for r in res if r["destino"] == "b2"]
-    assert any(r["modo"] == "download recusado" for r in b2) and all(r["ok"] for r in res)
+    assert any(r["modo"] == "download adiado" for r in b2) and all(r["ok"] for r in res)
+    assert not nuvem.orcamento.recusas                                       # adiado não é recusa escalada
     for p in (tmp / "nuvem" / "b2").rglob("*"):                               # negativo: B2 estragado aparece
         if p.is_file():
             p.write_bytes(b"estragado")
@@ -557,23 +558,23 @@ def test_recuperacao_confere_pela_listagem_e_amostra_do_b2_tem_teto(amb):
 def test_remoto_novo_entra_so_pela_config(amb, tmp_path_factory):
     tmp, raiz = amb
     cfg = json.loads(A.caminho_config_nuvens().read_text(encoding="utf-8"))
-    cfg["remotos"]["koofr"] = {"tipo": "koofr", "raiz": "koofr:JFN", "frio": "koofr:JFN/frio",
-                               "indice": "koofr:JFN/indice", "medir": "about", "margem_gb": 0.5,
+    cfg["remotos"]["filen"] = {"tipo": "filen", "raiz": "filen:JFN", "frio": "filen:JFN/frio",
+                               "indice": "filen:JFN/indice", "medir": "about", "margem_gb": 0.5,
                                "preferencia_download": 4, "limites": {"download_bytes_dia": 1e9}}
-    cfg["segunda_copia"] = ["koofr", *cfg["segunda_copia"]]
+    cfg["segunda_copia"] = ["filen", *cfg["segunda_copia"]]
     novo = tmp_path_factory.mktemp("cfg") / "nuvens.json"
     novo.write_text(json.dumps(cfg), encoding="utf-8")
     try:
         A.configurar(novo)
-        assert "koofr" in A.DESTINOS and A.POLITICA["insubstituivel"][1][0] == "koofr"
+        assert "filen" in A.DESTINOS and A.POLITICA["insubstituivel"][1][0] == "filen"
         f = _arquivos(raiz)[0]
         conteudo = f.read_bytes()
         r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem"), con=A.conectar())
-        assert r["copias"] == {"gdrive": "ok", "koofr": "ok"} and r["apagado"]
+        assert r["copias"] == {"gdrive": "ok", "filen": "ok"} and r["apagado"]
         assert A.obter(str(f), rc=NuvemFalsa(tmp / "nuvem")).read_bytes() == conteudo
     finally:
         A.configurar()
-    assert "koofr" not in A.DESTINOS                                          # controle: sem a config, não existe
+    assert "filen" not in A.DESTINOS                                          # controle: sem a config, não existe
 
 
 def test_ciclo_com_recusa_do_prevoo_escala_e_nao_apaga(amb):
@@ -728,3 +729,55 @@ def test_terabox_so_copia_extra_nunca_unica_e_teto_por_arquivo(tmp_path, monkeyp
     antes = rc.orcamento.uso["terabox"]["usado"]
     rc.orcamento.somar_uso("terabox", -1000)
     assert rc.orcamento.uso["terabox"]["usado"] == antes                      # lixeira: a cota não volta
+
+
+# ── o caso que o dono recebeu (21/11, ensaio da VM-1): amostra do B2 de 39.125.860 B > saldo 30.000.000 B ──
+def _caso_b2(amb, com_pequeno):
+    tmp, raiz = amb
+    grande = raiz / "INTEGRA_080002_023009_2024_p5.pdf"
+    grande.write_bytes(os.urandom(39_125_860))
+    nuvem = NuvemFalsa(tmp / "nuvem", fora={"r2", "mega", "terabox", "dropbox", "blomp", "koofr", "box",
+                                             "pcloud", "jottacloud"})
+    nuvem.orcamento = A.Orcamento(caminho=tmp / "consumo.json", maq="vm1")   # partilha 60% → 30.000.000 B
+    con = A.conectar()
+    A.guardar(grande, "backup_db", rc=nuvem, con=con)                     # gdrive + b2
+    if com_pequeno:
+        A.guardar(next(f for f in _arquivos(raiz) if f != grande), "backup_db", rc=nuvem, con=con)
+    return nuvem, con
+
+
+def test_caso_do_dono_amostra_escolhe_a_que_cabe_no_saldo(amb):
+    nuvem, con = _caso_b2(amb, com_pequeno=True)                          # positivo: há uma que cabe
+    res = [r for r in A.testar_recuperacao(con, nuvem, amostra=2, maximo_mb=300) if r["destino"] == "b2"]
+    assert any(r["modo"] == "download" and r["ok"] for r in res)
+    assert not any("INTEGRA_080002_023009_2024_p5" in r["chave"] and r["modo"] == "download" for r in res)
+    assert not nuvem.orcamento.recusas
+
+
+def test_caso_do_dono_sem_saida_adia_e_nao_escala(amb):
+    tmp, raiz = amb
+    nuvem, con = _caso_b2(amb, com_pequeno=False)                         # só a grande: nenhuma cabe hoje
+    res = [r for r in A.testar_recuperacao(con, nuvem, amostra=2, maximo_mb=300) if r["destino"] == "b2"]
+    assert [r["modo"] for r in res].count("download adiado") == 1 and all(r["ok"] for r in res)
+    assert not nuvem.orcamento.recusas
+    perfil = Z.Perfil("teste", raizes=[Z.Raiz(tmp / "vazio", "quarentena")], aviso_disco_pct=101)
+    avisos = []
+    rel = Z.rodar(perfil, aplicar=False, rc=nuvem, con=con, avisar_fn=lambda t: avisos.append(t) or True)
+    assert rel["status"] == "ok" and not rel["recusas_prevoo"] and avisos == []   # o aviso do dono não volta
+
+
+def test_recusa_sem_alternativa_continua_escalando(amb):
+    """Controle: quando NÃO há saída (nenhuma 2ª cópia cabe), escala — o adiamento não engole recusa real."""
+    tmp, raiz = amb
+    nuvem = NuvemFalsa(tmp / "nuvem", uso_extra={n: 2e12 for n in A.POLITICA["insubstituivel"][1]})
+    r = A.guardar(_arquivos(raiz)[0], "backup_db", rc=nuvem, con=A.conectar())
+    assert "recusado" in r["copias"].values() and nuvem.orcamento.recusas
+
+
+def test_koofr_nao_recebe_o_que_nao_devolve_e_box_tem_teto_por_arquivo(tmp_path):
+    rc = _rc(tmp_path, uso={"koofr": 0, "box": 0})
+    k = A.NUVENS["remotos"]["koofr"]["frio"]
+    assert rc.pode_enviar("koofr", 10, alvo=k + "/x.gz") is None               # positivo: .gz volta
+    assert "não devolve" in rc.pode_enviar("koofr", 10, alvo=k + "/x.bin")     # negativo: .bin não volta
+    teto = int(A.NUVENS["remotos"]["box"]["max_arquivo_gb"] * 1e9)
+    assert rc.pode_enviar("box", teto) is None and "por arquivo" in rc.pode_enviar("box", teto + 1)

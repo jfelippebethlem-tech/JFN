@@ -47,7 +47,7 @@
 | Natureza | Classes | Cópias | Destino(s) | Por quê |
 |---|---|---|---|---|
 | **Re-obtível** (a fonte pública tem) | `sei_pdf`, `sei_foto`, `sei_cache`, `sei_arvore`, `quarentena`, `substituido`, `tse`, `pncp`, `receita`, `coleta_cache` | **1** | Drive | o provedor já replica internamente; perder = baixar de novo da fonte (índice guarda origem e hash) |
-| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + o 1º de `segunda_copia` que couber no grátis (B2 → R2 → MEGA → TeraBox) | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
+| **Insubstituível** (trabalho próprio) | `backup_db`, `trabalho`, `sessao_claude`, `indice`, `relatorio`, `midia` | **2, provedores diferentes** | Drive + o 1º de `segunda_copia` que couber no grátis (B2 → R2 → MEGA → … → TeraBox, ordem da config) | falha de UM provedor (conta, cobrança, exclusão) não pode levar a única cópia |
 
 Retenção e gatilhos (perfis em `tools/zelador/zelador.py::perfis()`):
 
@@ -152,6 +152,21 @@ preferência) — testado em `test_remoto_novo_entra_so_pela_config`.
 
 | **TeraBox** (`terabox:JFN`, WebDAV local do OpenList na VM-1) | 1.024 GiB (1.099,5 GB, medido por `size` — o `about` não informa a cota) − 5 = **1.094,5 GB** | **4 GB por arquivo** (teto aplicado, ainda não confirmado) · ~0,65 MB/s | coordenador da sessão, 21/11 (remoto provado por hash); limites do grátis não conferidos em página oficial |
 
+**Remotos grátis ligados em 21/11 (coordenador; todos com prova de sha256; cota pelo `rclone about`):**
+
+| Remoto | Cota grátis | Restrição aplicada pela config | Hash na listagem |
+|---|---|---|---|
+| `dropbox:JFN` | 102 GiB (Basic) | a raiz tem pastas PESSOAIS do dono — o JFN só escreve em `JFN/` | só o do Dropbox → confere por download |
+| `blomp:JFN` | 40 GiB | — | md5 |
+| `koofr:JFN` | 10 GiB | `extensoes_proibidas: [".bin"]` — o Koofr recusa baixar `.bin` (aceita `.dat`, `.zst`, `.gz`): não sobe o que não volta | md5 |
+| `box:JFN` | 10 GiB | `max_arquivo_gb: 0.25` (250 MB por arquivo) | sha1 |
+| `pcloud:JFN` | 4 GiB | — | md5, sha1 |
+| `jottacloud:JFN` | 4,66 GiB | `apagar_libera: false` (apagado vai para a lixeira e continua ocupando) | md5 |
+| `yandex:` | — | **fora** (`remotos_fora`): 403 até o dono confirmar o telefone | — |
+
+Ordem da 2ª cópia (`segunda_copia`): B2 → R2 → MEGA → Dropbox → Blomp → Koofr → Box → pCloud → Jottacloud →
+TeraBox (lento, nunca cópia única: sempre o último).
+
 **TeraBox — restrições (21/11):** `so_copia_extra: true` → **nunca cópia única** (o `configurar()` recusa como
 principal ou como destino do re-obtível; é o último de `segunda_copia`, só 2ª/3ª cópia) · `max_arquivo_gb: 4`
 (o pré-voo recusa arquivo maior) · `apagar_libera: false` (apagado vai para a lixeira: o contador não devolve a
@@ -176,9 +191,16 @@ conta do dono está no grátis com teto US$ 0,00 e o Caps & Alerts dela mostra o
   B2/R2 — conta TUDO do bucket, inclusive `compliance/` e `fachadas/`), somado a cada upload. **Sem medida = não
   sobe** (fechado por padrão).
 * **O provedor disse "cap exceeded" / 403** → o remoto fica **esgotado até 00:00 UTC** e nada mais é pedido a ele.
-* **Insubstituível**: principal + a 2ª cópia no **primeiro remoto de `segunda_copia` que couber** (B2 → R2 → MEGA → TeraBox);
+* **Insubstituível**: principal + a 2ª cópia no **primeiro remoto de `segunda_copia` que couber** (B2 → R2 → MEGA → … → TeraBox, ordem da config);
   se o escolhido falhar, o próximo. Nenhum coube → `recusado`, o local fica e o ciclo escala.
-* **Recusa nunca é silenciosa**: vai para `journal` (`recusado` / `recusado_prevoo`), para o relatório
+* **Resolve antes de escalar** (dono, 21/11: "resolva quando der esse erro"): quem tem alternativa consulta o
+  pré-voo **sem** registrar recusa (`Rclone.pode()`, `pode_enviar()`) e só chama o rclone no remoto que cabe —
+  a 2ª cópia vai para o próximo remoto; o índice, para o próximo remoto grátis; o `obter()` baixa do próximo
+  remoto que tem a cópia; a amostra de recuperação escolhe a menor cópia que cabe no saldo do dia e, se
+  nenhuma couber, **adia para o dia seguinte** (`download adiado`; a listagem já provou o hash). Caso que
+  originou a regra (ensaio da VM-1, 21/11): amostra do B2 de 39.125.860 B contra saldo de 30.000.000 B —
+  reproduzido em `test_caso_do_dono_*` (positivo: escolhe a que cabe; sem saída: adia e NÃO avisa).
+* **Recusa sem saída nunca é silenciosa**: vai para `journal` (`recusado` / `recusado_prevoo`), para o relatório
   (`recusas_prevoo`) e para o dono pelo canal de escalados (Telegram do zelador, `🆘 ESCALADO — recusado pelo
   pré-voo`), mesmo num ciclo sem nenhuma outra falha.
 * **Recuperação de teste** (`testar_recuperacao`): confere o hash pela **listagem** (`lsjson --hash`, sem baixar)

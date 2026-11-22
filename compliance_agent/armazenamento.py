@@ -449,13 +449,29 @@ class Rclone:
         nome = nome_remoto(remoto)
         if nome is None or self.orcamento is None:
             return None, None
-        motivo = self.orcamento.recusa(nome, self._custo(nome, op, nbytes, 0, amostra))
-        if motivo is None and op == "enviar":
-            motivo = self.orcamento.cabe(nome, nbytes, self, substitui)
+        motivo = self._motivo(nome, op, remoto, nbytes, amostra, substitui)
         if motivo:
             self.orcamento.recusas.append(f"{op} {remoto}: {motivo}")
             return nome, "RECUSADO pelo pré-voo (limite grátis): " + motivo
         return nome, None
+
+    def _motivo(self, nome: str, op: str, remoto: str, nbytes: int, amostra: bool = False,
+                substitui: int = 0) -> str | None:
+        motivo = self.orcamento.recusa(nome, self._custo(nome, op, nbytes, 0, amostra))
+        if motivo is None and op == "enviar":
+            ext = [e.lower() for e in NUVENS["remotos"][nome].get("extensoes_proibidas", [])]
+            if remoto and any(str(remoto).lower().endswith(e) for e in ext):
+                return f"{nome}: o provedor não devolve arquivo {', '.join(ext)} (não sobe o que não volta)"
+            motivo = self.orcamento.cabe(nome, nbytes, self, substitui)
+        return motivo
+
+    def pode(self, op: str, remoto: str, nbytes: int = 0, amostra: bool = False) -> str | None:
+        """Consulta pura do pré-voo (NÃO registra recusa): quem tem alternativa pergunta antes e só chama o
+        rclone no remoto que cabe — recusa com saída não é escalada (dono, 21/11)."""
+        nome = nome_remoto(remoto)
+        if nome is None or self.orcamento is None:
+            return None
+        return self._motivo(nome, op, remoto, nbytes, amostra)
 
     def _registrar(self, nome: str | None, op: str, r: subprocess.CompletedProcess, nbytes: int = 0,
                    n_objetos: int = 0, amostra: bool = False) -> None:
@@ -466,12 +482,11 @@ class Rclone:
         if r.returncode != 0 and NUVENS["remotos"][nome].get("limites") and _RX_CAP.search(r.stderr or ""):
             self.orcamento.esgotar(nome, (r.stderr or "")[-300:])
 
-    def pode_enviar(self, nome: str, nbytes: int, substitui: int = 0) -> str | None:
+    def pode_enviar(self, nome: str, nbytes: int, substitui: int = 0, alvo: str = "") -> str | None:
         """Consulta pura (não registra recusa): None = o upload cabe nos limites grátis de `nome`."""
         if self.orcamento is None or nome not in NUVENS.get("remotos", {}):
             return None
-        return self.orcamento.recusa(nome, self._custo(nome, "enviar", nbytes, 0, False)) or \
-            self.orcamento.cabe(nome, nbytes, self, substitui)
+        return self._motivo(nome, "enviar", alvo, nbytes, False, substitui)
 
     # chamadas ---------------------------------------------------------------------------------------------
     def versao(self) -> str | None:
@@ -779,14 +794,15 @@ def enviar_unidade(con: sqlite3.Connection, rc: Rclone, u: Unidade, ciclo: str,
             res[vaga[0]] = _enviar_a(con, rc, u, vaga[0], ciclo)
             continue
         for d in vaga:
-            if rc.pode_enviar(d, u.bytes) is not None:
+            if rc.pode_enviar(d, u.bytes, alvo=url(d, u.chave)) is not None:
                 continue
             res[d] = _enviar_a(con, rc, u, d, ciclo)
             if res[d] == "ok":
                 break
         else:
             if not any(res.get(d) == "ok" for d in vaga):
-                motivos = "; ".join(f"{d}: {rc.pode_enviar(d, u.bytes)}" for d in vaga if d not in res)
+                motivos = "; ".join(f"{d}: {rc.pode_enviar(d, u.bytes, alvo=url(d, u.chave))}" for d in vaga
+                                    if d not in res)
                 journal(con, "recusado", u.chave, f"nenhum remoto da vaga {vaga} coube: {motivos}", ciclo)
                 if rc.orcamento is not None:
                     rc.orcamento.recusas.append(f"enviar {u.chave}: nenhum de {'|'.join(vaga)} coube — {motivos}")
@@ -959,7 +975,9 @@ def obter(caminho: str | Path, restaurar: bool = False, rc: Rclone | None = None
         for m in ms:
             cps = {c["destino"]: c for c in con.execute(
                 "SELECT * FROM copias WHERE chave=? AND status='ok'", (m["chave"],)).fetchall()}
-            for d in [d for d in PREFERENCIA_DOWNLOAD if d in cps]:
+            ordem = [d for d in PREFERENCIA_DOWNLOAD if d in cps]
+            livres = [d for d in ordem if rc.pode("baixar", cps[d]["url"], int(m["ubytes"] or 0)) is None]
+            for d in livres or ordem[:1]:   # nenhum cabe → tenta o 1º só para a recusa ficar registrada
                 with tempfile.TemporaryDirectory(dir=_tmp_base()) as td:
                     baixado = Path(td) / "u"
                     ok, _ = rc.baixar(cps[d]["url"], baixado, nbytes=int(m["ubytes"] or 0))
@@ -1101,14 +1119,19 @@ def testar_recuperacao(con: sqlite3.Connection, rc: Rclone, amostra: int = 3, ma
                 continue
             res.append({"chave": r["chave"], "destino": d, "ok": st == "ok", "modo": "listagem",
                         "detalhe": det if st != "ok" else ""})
-        for r in sorted(sem_hash or escolhidos, key=lambda x: int(x["bytes"] or 0))[:1]:
+        # UM download: a menor cópia que CABE no saldo do dia (consulta pura, sem recusa). Nenhuma cabe →
+        # adiado para amanhã (o contador zera 00:00 UTC): a listagem já provou as cópias com hash; não escala.
+        cands = sorted(sem_hash or lst, key=lambda x: int(x["bytes"] or 0))
+        cabe = [r for r in cands if rc.pode("baixar", r["url"], int(r["bytes"] or 0), amostra=True) is None][:1]
+        if not cabe and cands:
+            res.append({"chave": cands[0]["chave"], "destino": d, "ok": True, "modo": "download adiado",
+                        "detalhe": "nenhuma cópia cabe no saldo de amostra de hoje — fica para o próximo dia "
+                                   "(zera 00:00 UTC); " + (rc.pode("baixar", cands[0]["url"], int(cands[0]["bytes"]
+                                                                                              or 0), True) or "")})
+        for r in cabe:
             with tempfile.TemporaryDirectory(dir=_tmp_base()) as td:
                 p = Path(td) / "t"
                 ok, err = rc.baixar(r["url"], p, nbytes=int(r["bytes"] or 0), amostra=True)
-                if not ok and err.startswith("RECUSADO"):
-                    res.append({"chave": r["chave"], "destino": d, "ok": r not in sem_hash, "modo": "download recusado",
-                                "detalhe": err[:300]})
-                    continue
                 h = hashes(p)[0] if ok and p.exists() else None
                 res.append({"chave": r["chave"], "destino": d, "ok": h == r["md5"], "modo": "download",
                             "detalhe": "" if h == r["md5"] else (err or f"hash {h} ≠ {r['md5']}")[-300:]})
@@ -1132,6 +1155,10 @@ def exportar_indice(con: sqlite3.Connection, rc: Rclone, maq: str | None = None)
                 if d not in INDICE_REMOTO:
                     continue
                 u = f"{INDICE_REMOTO[d]}/{maq}.db"
+                pulo = rc.pode_enviar(d, snap.stat().st_size, alvo=u) if len(vaga) > 1 else None
+                if pulo:
+                    out[d] = "pulado: " + pulo[:250]
+                    continue
                 ok, err = rc.enviar(snap, u)
                 if not ok and err.startswith("RECUSADO"):
                     out[d] = err[:300]

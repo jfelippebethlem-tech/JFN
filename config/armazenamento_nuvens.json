@@ -11,7 +11,8 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "terabox"],
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "terabox"],
+  "remotos_fora": {"yandex": "existe no rclone.conf mas responde 403 até o dono confirmar o telefone — fica fora até lá (coordenador, 21/11/2026)"},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
@@ -90,6 +91,43 @@
       "limites": {},
       "_restricoes": "Coordenador, 21/11/2026: WebDAV LOCAL do OpenList na VM-1 (127.0.0.1:5244; a VM-2 não alcança), 1.024 GiB, prova de hash ok, ~0,65 MB/s. NUNCA cópia única (so_copia_extra: não pode ser principal nem destino do re-obtível) — só 2ª/3ª cópia, por isso é o ÚLTIMO de segunda_copia; 4 GB por arquivo (ainda NÃO confirmado — aplicado como teto); o `about` não informa a cota (medida por `size` contra 1.024 GiB = 1.099,5 GB); arquivo apagado provavelmente vai para a lixeira (apagar_libera: false — apagar não devolve espaço na conta).",
       "fontes": ["coordenador da sessão, 21/11/2026 (remoto montado e provado por hash); limites do TeraBox grátis não conferidos em página oficial"]
+    },
+    "dropbox": {
+      "tipo": "dropbox", "raiz": "dropbox:JFN", "frio": "dropbox:JFN/frio", "indice": "dropbox:JFN/indice",
+      "medir": "about", "margem_gb": 2, "preferencia_download": 4, "limites": {},
+      "_restricoes": "Basic grátis, 102 GiB (rclone about 21/11/2026). A conta tem pastas PESSOAIS do dono na raiz — o JFN só escreve em dropbox:JFN. A listagem dá só o hash próprio do Dropbox (nem md5 nem sha1): a cópia se confere por download.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (remoto ligado, prova de sha256 ok; cota pelo `rclone about`)"]
+    },
+    "blomp": {
+      "tipo": "swift", "raiz": "blomp:JFN", "frio": "blomp:JFN/frio", "indice": "blomp:JFN/indice",
+      "medir": "about", "margem_gb": 1, "preferencia_download": 5, "limites": {},
+      "_restricoes": "40 GiB (rclone about 21/11/2026); md5 na listagem.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok)"]
+    },
+    "koofr": {
+      "tipo": "koofr", "raiz": "koofr:JFN", "frio": "koofr:JFN/frio", "indice": "koofr:JFN/indice",
+      "medir": "about", "margem_gb": 0.5, "preferencia_download": 6, "limites": {},
+      "extensoes_proibidas": [".bin"],
+      "_restricoes": "10 GiB. RECUSA o download de arquivo .bin (aceita .dat, .zst, .gz): o pré-voo não sobe para cá o que não volta. md5 na listagem.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok; .bin recusado no download, medido)"]
+    },
+    "box": {
+      "tipo": "box", "raiz": "box:JFN", "frio": "box:JFN/frio", "indice": "box:JFN/indice",
+      "medir": "about", "margem_gb": 0.5, "max_arquivo_gb": 0.25, "preferencia_download": 6, "limites": {},
+      "_restricoes": "10 GiB; 250 MB por arquivo (conta grátis) — o pré-voo recusa acima. sha1 na listagem.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok)"]
+    },
+    "pcloud": {
+      "tipo": "pcloud", "raiz": "pcloud:JFN", "frio": "pcloud:JFN/frio", "indice": "pcloud:JFN/indice",
+      "medir": "about", "margem_gb": 0.3, "preferencia_download": 6, "limites": {},
+      "_restricoes": "4 GiB (rclone about); md5 e sha1 na listagem.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok)"]
+    },
+    "jottacloud": {
+      "tipo": "jottacloud", "raiz": "jottacloud:JFN", "frio": "jottacloud:JFN/frio", "indice": "jottacloud:JFN/indice",
+      "medir": "about", "margem_gb": 0.3, "apagar_libera": false, "preferencia_download": 7, "limites": {},
+      "_restricoes": "4,66 GiB (5,0 GB pelo rclone about). O que se apaga vai para a LIXEIRA e continua ocupando a cota (apagar_libera: false). md5 na listagem.",
+      "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok)"]
     }
   },
   "enchimento": {
