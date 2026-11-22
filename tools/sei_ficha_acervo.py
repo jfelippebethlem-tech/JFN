@@ -144,7 +144,9 @@ def fila(con: sqlite3.Connection, estado: dict) -> list[dict]:
     for c in cands:
         c["pago"] = round((obs.get(_chave_processo(c["numero"])) or {}).get("total", 0.0), 2)
     cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))
-    return cands
+    # FOCO (22/11/2026): metade do lote do período Couto, cada metade por valor pago (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(cands, lambda c: data_processo(c["numero"]))
 
 
 # ── prompt (o canônico da ficha, sem o corte de 4.500 caracteres do modelo grátis) ────────────────────────

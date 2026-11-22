@@ -1095,17 +1095,19 @@ export async function renderPanoramaEstado(){
      esta decisão com número novo — o gatilho é o painel passar de ~3 s. */
   const [st,p,cj,sc]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio?esfera=estado'),J('/api/intel/sancionadas?limite=1')]);
   const a=p.alertas||{},o=p.obs||{};const coletaErro=/erro/i.test(p.ultima_coleta||'');
-  const nc=(cj.captura||[]).length+(cj.rodizio_vencedores||[]).length;
+  // INDISPONÍVEL ≠ 0 (21/11/2026): rota que falhou mostrava "0 alertas" / "0 conluio" — agora diz que não respondeu
+  const nc=cj&&cj.ok!==false?(cj.captura||[]).length+(cj.rodizio_vencedores||[]).length:'INDISPONÍVEL';
+  const aOk=a.total!=null;
   let h=cover('estado','Estado do Rio de Janeiro','Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).','🏛️');
   if(coletaErro)h+=`<div class="warn">Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
   h+=`<div class="grid g2">
     ${kpi(fmtN(o.total),'Ordens Bancárias',null,'💳','e_siafe')}${kpi(fmtRc(o.valor_total),'Valor fiscalizado',null,'💰','e_siafe')}
-    ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨','e_alertas')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️','e_conluio')}
-    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫','e_sanc')}${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)',null,'e_alertas')}
+    ${kpi(aOk?fmtN(a.total):'INDISPONÍVEL','Alertas ativos',(a.alta?'var(--rose)':null),'🚨','e_alertas')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️','e_conluio')}
+    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫','e_sanc')}${kpi(aOk?fmtN(a.alta||0):'INDISPONÍVEL','🔴 Alta','var(--rose)',null,'e_alertas')}
     ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+esc(st.exercicio||'—'),null,null,'e_siafe')}${kpi(o.ultimo_dia?fmtN(o.n_ultimo_dia):'INDISPONÍVEL',o.ultimo_dia?'OBs pagas em '+esc(fmtData(o.ultimo_dia))+' (SIAFE)':'OBs — último dia (SIAFE)',null,null,{sobre:'Ordens bancárias CONTABILIZADAS no SIAFE no dia mais recente com pagamento coletado'+(o.ultimo_dia?' ('+fmtData(o.ultimo_dia)+': '+fmtR(o.valor_ultimo_dia||0)+')':'')+'. O SIAFE é coletado todo dia. O espelho TFE (dados abertos), base do total de OBs deste painel, está publicado só até '+(o.tfe_ultimo_dia?fmtData(o.tfe_ultimo_dia):'—')+': a fonte tem atraso de semanas — não é falha de coleta.'})}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
-    ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+    ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">por grau (grave, atenção, não verificável), pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
   h+=blocoPeriodo(['ob_siafe','contratacoes_tcerj','contratos_estado'],'Pagamentos e contratações por ano e mês');
   h+=`<div style="height:16px"></div>`+await frescorHtml();
   h+=`<div style="height:14px"></div>`+card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado||'—')}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro?'color:#f0c078':''}">${esc(p.ultima_coleta||'—')}</b></div>`);
@@ -1887,21 +1889,28 @@ export function _cnpjEstab(c){
 }
 export async function renderPericias(){
   const d=await J('/api/pericias?limite=80&ordem='+_perOrdem+(_perGrau?'&grau='+encodeURIComponent(_perGrau):''));
-  const it=d.itens||[];
+  const it=d.itens||[],pg=d.por_grau||null,nG=g=>pg?` <span class="dim">${fmtN(pg[g]||0)}</span>`:'';
+  const pgTot=pg?Object.values(pg).reduce((a,b)=>a+b,0):null;
   let h=cover('estado','Perícias de fornecedor','Grau 🔴🟡🟢 só com o que foi verificado; ⚪ = não verificável (falta dado-fonte), nunca atenção. Clique num nome para o dossiê 360.','⚖️');
+  // falha da rota é INDISPONÍVEL — antes caía no "nenhum fornecedor casa esse filtro" (21/11/2026)
+  if(!d.ok)return h+cardErro(d.erro);
+  /* 21/11/2026: cada chip diz o tamanho da fila (grau agregado por fornecedor, /api/pericias → por_grau) e
+     "Grave" vem antes de "Atenção" — a ordem de leitura de quem faz triagem. */
   h+=`<div class="chips">
-    <button type="button" class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos</button>
-    <button type="button" class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção</button>
-    <button type="button" class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">Grave</button>
-    <button type="button" class="chip ${_perGrau==='⚪'?'on':''}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável</button>
+    <button type="button" class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos${pg?` <span class="dim">${fmtN(pgTot)}</span>`:''}</button>
+    <button type="button" class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">Grave${nG('🔴')}</button>
+    <button type="button" class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção${nG('🟡')}</button>
+    <button type="button" class="chip ${_perGrau==='⚪'?'on':''}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável${nG('⚪')}</button>
     <button type="button" class="chip ${_perOrdem==='total'?'on':''}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem==='total'?'ordenar: R$':'ordenar: score'}</button></div>`;
   h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
+  const tot=pg?(_perGrau?(pg[_perGrau]||0):pgTot):null;
+  if(tot!=null&&tot>it.length)h+=`<div class="dim" style="margin:4px 2px 8px">mostrando os ${fmtN(it.length)} primeiros de ${fmtN(tot)} por ${_perOrdem==='total'?'total pago':'score'} — o filtro de texto atua nesta página; para um fornecedor fora dela, use Buscar</div>`;
   h+=`<div id="per-list" class="grid">`+it.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj,x.favorecido||x.cnpj)}</div>
       <div class="dim">${esc(_cnpjEstab(x.cnpj))}</div>
       <div class="dim">${(x.indicios||0)} indício(s) · ${x.ugs} órgão(s) · ${fmtN(x.n_obs)} OBs</div></div>
       <div class="right"><div style="font-size:18px">${x.grau||'⚪'}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`)).join('')+`</div>`;
-  if(!it.length)h+=card('<div class="muted">Nenhum fornecedor casa esse filtro — a busca varre nome, CNPJ e objeto; tente um pedaço do nome ou só os dígitos do CNPJ.</div>');
+  if(!it.length)h+=card(`<div class="muted">Nenhum fornecedor com grau ${esc(_perGrau||'registrado')} na perícia.</div>`);
   return h;
 }
 
@@ -2492,11 +2501,13 @@ export async function renderLaranjas(){
 export async function renderCartel(){
   const c=await J('/api/cartel');const d=(c.dados||[]).slice(0,20);
   let h=cover('estado','Concentração & cartel · SIAFE','Órgãos onde um fornecedor concentra a maior fatia do valor pago (top share por UG). Complementa o conluio do PNCP com o lado do pagamento.','🔗');
+  // falha da rota é INDISPONÍVEL, não "sem concentração" (até 21/11 o 500 aparecia como "Sem dados")
+  if(!c.ok)return h+cardErro(c.erro||'cálculo indisponível');
   if(!d.length)return h+card('<div class="muted">Sem dados de concentração.</div>');
   const maxS=Math.max(1,...d.map(u=>u.top_share||0));
   h+=card(`<div class="barw">`+d.slice(0,10).map(u=>{const cor=u.top_share>=90?'var(--rose-d)':u.top_share>=70?'var(--amber-d)':null;
-    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,58))}</span><span class="num" style="font-weight:700;color:${cor?(u.top_share>=90?'var(--rose)':'var(--amber)'):'#fff'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
-  h+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join('')+`</div>`;
+    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,58))}</span><span class="num" style="font-weight:700;color:${cor?(u.top_share>=90?'var(--rose)':'var(--amber)'):'var(--ink)'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
+  h+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'var(--ink)'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join('')+`</div>`;
   return h;
 }
 // glossário: traduz os CÓDIGOS crípticos dos alertas p/ linguagem simples

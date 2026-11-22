@@ -649,7 +649,7 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
         if dc._gemini_keys() and not _em_cooldown("gemini"):
             msgs = [{"role": "system", "content": sistema}, {"role": "user", "content": prompt}]
             fut = asyncio.run_coroutine_threadsafe(
-                dc.gerar_gemini(msgs, max_tokens=MAX_TOKENS_SAIDA, json_saida=json_saida), dc._bg_loop())
+                dc.gerar_gemini(msgs, max_tokens=MAX_TOKENS_SAIDA, json_saida=json_saida, tarefa=TAREFA), dc._bg_loop())
             txt = fut.result(timeout=timeout)
             if txt and txt.strip():
                 _limpar_cooldown("gemini")
@@ -664,7 +664,7 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
     txt, modelo = _openrouter_longo(prompt, sistema)
     if txt:
         return txt, modelo
-    txt = dc.gerar_sync(prompt, sistema, timeout, json_saida)
+    txt = dc.gerar_sync(prompt, sistema, timeout, json_saida, tarefa=TAREFA)
     return txt, contingencia.modelo_da_cascata()
 
 
@@ -691,7 +691,9 @@ def _openrouter_longo(prompt: str, sistema: str) -> tuple[str, str]:
         return "", ""
     ctx = {m["id"]: m.get("ctx") or 0 for m in openrouter_catalogo.catalogo()}
     msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
-    for mid in openrouter_catalogo.escolher_varios("documento", n=4):
+    from compliance_agent.llm import cascata_ajuste      # 404 sai; rebaixado nesta tarefa vai para o fim
+    for mid in cascata_ajuste.ordenar(openrouter_catalogo.escolher_varios("documento", n=4), TAREFA,
+                                      chave=lambda m: f"openrouter:{m}"):
         if ctx.get(mid, 0) < CTX_MIN_CASCATA:
             continue
         modelo = free_llm._forcar_free(mid)
@@ -860,14 +862,15 @@ def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO)
         c["ob"] = obs.get(_chave_processo(c["numero"]))
         c["pago"] = round((c["ob"] or {}).get("total", 0.0), 2)
     cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))
-    out = []
-    for c in cands:                                    # íntegra é cara de medir: só até encher o limite
-        if len(out) >= limite:
-            break
-        ok, nat = _elegivel(Path(c["pasta"]), naturezas)
-        if ok:
-            out.append(c | {"natureza": nat})
-    return out
+
+    def _elegiveis():                                  # íntegra é cara de medir: só até encher o limite
+        for c in cands:
+            ok, nat = _elegivel(Path(c["pasta"]), naturezas)
+            if ok:
+                yield c | {"natureza": nat}
+    # FOCO (22/11/2026): metade do lote do período Couto, cada metade na ordem por valor pago (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(_elegiveis(), lambda c: data_processo(c["numero"]), limite=limite)
 
 
 def rodar(limite: int, *, so_cascata: bool = False, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO,

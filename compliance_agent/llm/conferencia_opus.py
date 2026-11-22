@@ -204,17 +204,28 @@ def _registrar_divergencia(tarefa: str, item: str | None, motor: str, antes, dep
         logger.warning("conferência Opus: correção não registrada no cérebro (%s)", type(e).__name__)
 
 
+def _data_do_item(item: str | None) -> str | None:
+    """Item `sei:<processo>` (perícia integral, perícia de execução) → data do período Couto; outro item → None."""
+    from compliance_agent.foco import data_processo
+    return data_processo(item[4:]) if (item or "").startswith("sei:") else None
+
+
 def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) -> list[dict]:
     """O Opus da assinatura confere até `n` itens da fila. Sem cota (ou assinatura ainda em contingência) para e
     retoma na próxima rodada — a fila não se perde e nada é promovido enquanto isso."""
+    from compliance_agent.foco import intercalar
     from compliance_agent.llm import claude_motor, cruzamento
     pensar = pensar or claude_motor.pensar
     proprio = con is None
     con = con or conectar()
     feitos: list[dict] = []
     try:
-        rows = con.execute("SELECT id,tarefa,item,entrada,sistema,motor,veredito,nivel FROM fila "
-                           f"WHERE status='pendente' {_ORDEM} LIMIT ?", (max(1, n),)).fetchall()
+        # FOCO (22/11/2026): metade do lote do período Couto; dentro de cada metade, `_ORDEM` (compliance_agent/foco).
+        # A entrada (blob) só é lida para os escolhidos.
+        ids = intercalar(con.execute(f"SELECT id, item FROM fila WHERE status='pendente' {_ORDEM}"),
+                         lambda r: _data_do_item(r[1]), limite=max(1, n))
+        rows = [con.execute("SELECT id,tarefa,item,entrada,sistema,motor,veredito,nivel FROM fila WHERE id=?",
+                            (fid,)).fetchone() for fid, _ in ids]
         for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:
             entrada = zlib.decompress(blob).decode("utf-8", "replace") if blob else ""
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",

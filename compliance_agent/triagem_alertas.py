@@ -156,19 +156,39 @@ def fora_dos_suspensos(con: sqlite3.Connection, coluna: str = "a.tipo") -> tuple
     return f" AND COALESCE({coluna},'') NOT IN ({','.join('?' * len(tipos))})", tipos
 
 
+# Data do FATO no alerta (não a da detecção): as chaves que os detectores gravam nas evidências, da mais à menos
+# específica. Prefeitura do Rio (pcrj_*, esfera municipal) nunca é período Couto — Couto é o Governo do Estado.
+_CHAVES_DATA_FATO = ("data_ob", "data_pagamento", "data_fim", "data", "data_ini", "mes")
+
+
+def data_do_alerta(a: dict):
+    """Data do fato do alerta (para a cota do período Couto) ou None — sem data, o alerta vai para o resto."""
+    if str(a.get("tipo") or "").startswith("pcrj_"):
+        return None
+    try:
+        ev = json.loads(a.get("evidencias") or "{}")
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(ev, dict) or str(ev.get("esfera") or "").startswith("municipal"):
+        return None
+    return next((ev[k] for k in _CHAVES_DATA_FATO if ev.get(k)), None)
+
+
 def selecionar(con: sqlite3.Connection, n: int) -> list[dict]:
     """Os `n` alertas `novo` ainda não triados (nem em lote pendente), do MAIOR valor em jogo para o menor.
-    Alerta de detector suspenso (FP ≥ FP_SUSPENDE) não entra."""
+    Alerta de detector suspenso (FP ≥ FP_SUSPENDE) não entra. FOCO (22/11/2026): metade do lote com fato do
+    período Couto (`data_do_alerta`), cada metade por valor (compliance_agent/foco)."""
+    from compliance_agent.foco import intercalar
     garantir(con)
     em_lote = _ids_em_lote(con)
     fora, params = fora_dos_suspensos(con)
     sql = (f"SELECT a.id, a.tipo, a.severidade, a.titulo, a.descricao, a.evidencias, "
            f"CASE WHEN json_valid(a.evidencias) THEN {_COALESCE} ELSE 0 END AS v "
            "FROM alertas a LEFT JOIN alertas_triagem t ON t.alerta_id = a.id "
-           f"WHERE a.status = 'novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}{fora} ORDER BY v DESC, a.id LIMIT ?")
+           f"WHERE a.status = 'novo' AND t.alerta_id IS NULL AND {_SEM_ACUSACAO}{fora} ORDER BY v DESC, a.id")
     cols = ("id", "tipo", "severidade", "titulo", "descricao", "evidencias", "valor")
-    linhas = [dict(zip(cols, r)) for r in con.execute(sql, (*params, n + len(em_lote))).fetchall()]
-    return [x for x in linhas if x["id"] not in em_lote][:n]
+    linhas = (dict(zip(cols, r)) for r in con.execute(sql, params))
+    return intercalar((x for x in linhas if x["id"] not in em_lote), data_do_alerta, limite=n)
 
 
 def texto_do_alerta(a: dict) -> str:
@@ -386,12 +406,16 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
     pensar = pensar or claude_motor.pensar
     garantir(con)
     fora, params = fora_dos_suspensos(con)      # detector suspenso: o item espera, com opus_pendente=1, a volta dele
-    rows = con.execute("SELECT t.alerta_id, t.prioridade, t.motor FROM alertas_triagem t "
-                       "LEFT JOIN alertas a ON a.id=t.alerta_id WHERE t.opus_pendente=1" + fora +
-                       " ORDER BY CASE t.prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 ELSE 2 END, "
-                       "t.valor DESC LIMIT ?", (*params, n)).fetchall()   # 🔴 primeiro: 273 de 5.145 na fila (14/11)
+    # FOCO (22/11/2026): metade do lote com fato do período Couto; dentro de cada metade, 🔴 primeiro e valor
+    from compliance_agent.foco import intercalar
+    rows = intercalar(con.execute("SELECT t.alerta_id, t.prioridade, t.motor, a.tipo, a.evidencias "
+                                  "FROM alertas_triagem t "
+                                  "LEFT JOIN alertas a ON a.id=t.alerta_id WHERE t.opus_pendente=1" + fora +
+                                  " ORDER BY CASE t.prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 "
+                                  "ELSE 2 END, t.valor DESC", params),   # 🔴 primeiro: 273 de 5.145 na fila (14/11)
+                      lambda r: data_do_alerta({"tipo": r[3], "evidencias": r[4]}), limite=n)
     feitos = []
-    for aid, prio, motor in rows:
+    for aid, prio, motor, _tipo, _ev in rows:
         a = (_por_ids(con, [aid]) or [None])[0]
         if a is None:
             continue

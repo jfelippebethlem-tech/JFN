@@ -1,0 +1,12 @@
+# Régua do Sonnet por tarefa — o piso contra o qual a automelhoria compara os modelos grátis e fracos.
+#
+# Regra do dono (20/11/2026, `bancada-free-vs-sonnet`): modelo grátis só fica numa tarefa se acerta >= Sonnet (ambos
+# julgados pelo Opus) e sem erro grave. O loop (`tools/automelhoria_modelos.py`) REBAIXA na cadeia da tarefa o modelo
+# cuja divergência GRAVE do Opus mediu acima da do Sonnet NA MESMA TAREFA — e só com régua medida: sem entrada aqui
+# (e sem pares Sonnet × Opus no mesmo item em `data/cruzamento_motores.db`), não rebaixa, só abre o item
+# `sem_regua_sonnet` pedindo a bancada.
+#
+# Cada entrada é um número MEDIDO na bancada (mesma tarefa, mesma régua de "grave" = um 🔴 contra um ⚪):
+#   <tarefa>: {taxa_grave: 0.04, n: 100, fonte: "bancada AAAA-MM-DD, <onde está o resultado>"}
+# Vazio em 22/11/2026: a bancada de 20–21/11 mediu a COLETA (T1/T2, régua por campo), não a perícia (régua por nível).
+referencia_sonnet: {}

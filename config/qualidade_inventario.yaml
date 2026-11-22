@@ -85,8 +85,8 @@ manchetes:
     campos: {contagem: n_compras_acima_mediana}
   - id: cki-com
     chip: nu-com
-    superficie: "cockpit — card 'Comunidades' + chip da mesa"
-    afirma: "Quantos clusters família-empresa-órgão (Louvain) foram detectados."
+    superficie: "cockpit — card 'Comunidades com sinal de risco' + chip da mesa"
+    afirma: "Quantos agrupamentos pessoa+empresa (Louvain) têm sinal de risco 🔴/🟡 sobre a base inteira; o total de agrupamentos (sem triagem) vai como contexto. Proximidade, não prova de conluio."
     rota: /api/intel/comunidades
     origem: compliance_agent.grafo_comunidades.detectar_comunidades
     fonte: "data/cache/comunidades.json ← fantasma_score, sancoes_federais, socios_fornecedor"
@@ -94,10 +94,10 @@ manchetes:
     esfera: estado
     consome: ["dono (painel)"]
     detector: intel.comunidades
-    campos: {contagem: n}
+    campos: {contagem: "n_por_rating[🔴]+n_por_rating[🟡]", total: n}
   - id: cki-lift
     superficie: "cockpit — card 'Melhor detector (lift)'"
-    afirma: "O detector (circulares fora do cálculo) que marca mais fornecedores com sanção impeditiva de qualquer época ou ente acima da base, o lift e o n."
+    afirma: "O detector (circulares fora do cálculo, n não pequeno) com lift > 1 que marca mais fornecedores com sanção impeditiva de qualquer época ou ente acima da base, o lift e o n; sem nenhum acima de 1, diz 'nenhum' (lift < 1 é anti-sinal)."
     rota: /api/intel/lift
     origem: compliance_agent.retro_auditoria.avaliar_lift
     fonte: "fantasma_score, sanções (gabarito objetivo)"
@@ -161,16 +161,16 @@ manchetes:
     detector: rules.engine
     campos: {contagem: alertas.total, alta: alertas.alta, media: alertas.media, baixa: alertas.baixa}
   - id: v63-acervo
-    superficie: "Início v63 — seção 02, número 'ordens bancárias no acervo'"
-    afirma: "Quantas ordens bancárias o espelho TFE tem na base, com a data da última publicada."
+    superficie: "Início v63 — seção 02, número 'ordens bancárias pagas no acervo'"
+    afirma: "Quantas OB pagas (Contabilizadas, sem devolvida pelo banco) o SIAFE tem de 2021 em diante, e o valor; o espelho TFE (parcial) vai como contexto rotulado."
     rota: /api/compliance/painel
-    origem: rotas.investigacao.api_painel
-    fonte: "ordens_bancarias (espelho TFE, compliance.db)"
+    origem: rotas.investigacao._siafe_pago_total
+    fonte: "ob_orcamentaria_siafe (SIAFE, filtro _ob_paga); contexto: ordens_bancarias (espelho TFE)"
     natureza: contagem
     esfera: estado
     consome: ["dono (painel)"]
     detector: null
-    campos: {contagem: obs.total, data: obs.tfe_ultimo_dia}
+    campos: {contagem: obs.total, valor: obs.valor_total, data: obs.tfe_ultimo_dia}
   - id: v63-econ
     superficie: "Início v63 — seção 02, número 'economia potencial'"
     afirma: "Mesmo número do herói do cockpit (ck-econ): indícios de sobrepreço ≥ 2× a mediana, estimativa — não OB paga."

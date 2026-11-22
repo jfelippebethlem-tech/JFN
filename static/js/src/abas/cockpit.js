@@ -144,7 +144,7 @@ export function ckBoot(){
   g.innerHTML=[ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
     ckCard('fenix','Pago a CNPJ baixado ou inapto','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
-    ckCard('com','Comunidades','','bgteal','g_comun'),
+    ckCard('com','Comunidades com sinal de risco','','bgteal','g_comun'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
   aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));   // v61: o reator vivo no lugar da mesa
@@ -189,7 +189,8 @@ function ckPull(first){
     _ckCount($('ck-econ'),d.economia_total||0,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=
       `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: `
-      +`<b>Estado ${fmtRc(est.economia||0)}</b> · <b>Prefeitura do Rio ${fmtRc(pre.economia||0)}</b>.`
+      // esfera sem compra conferida não é "R$ 0,00 de economia": não há indício conferido lá (21/11/2026)
+      +`<b>Estado ${est.n?fmtRc(est.economia):'nenhuma conferida'}</b> · <b>Prefeitura do Rio ${pre.n?fmtRc(pre.economia):'nenhuma conferida'}</b>.`
       +(d.economia_pendente>0?` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).`:'')
       +(d.economia_ata_teto>0?` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).`:'')
       +` Quantidade homologada, não OB paga.`;
@@ -200,12 +201,22 @@ function ckPull(first){
     ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> (ente comprador) — diferença hipotética sobre a mediana nos indícios conferidos (quantidade homologada no PNCP, não OB paga)`:'nenhum indício conferido ainda'});
     ckPush([{c:'g',h:`✦ sobrepreço conferido <b>${fmtRc(d.economia_total||0)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras · ${fmtN(d.n_compras_pendentes||0)} pendentes`}]);});
 
-  J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
+  /* 21/11/2026: o card exibia `d.n` (4.376) como "clusters família-empresa-órgão" — mas `n` conta TODO agrupamento
+     pessoa+empresa com ≥4 nós, quase sempre uma empresa e seus sócios, sem sinal algum (nenhum era 🔴). A manchete
+     passa a ser os que têm sinal de risco (🔴+🟡, `n_por_rating` sobre a base inteira); o total vira contexto. */
+  J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;const r=d.n_por_rating;
+    if(!r){ckFill('com',{txt:'—',meta:`contagem por risco ainda não calculada (próximo recálculo do cache) · ${fmtN(d.n)} agrupamentos pessoa+empresa, sem triagem — proximidade, não indício`});return;}
+    ckFill('com',{num:(r['🔴']||0)+(r['🟡']||0),meta:`com sinal de risco (<b class="ckrose">${fmtN(r['🔴']||0)}</b> 🔴 · ${fmtN(r['🟡']||0)} 🟡) entre ${fmtN(d.n)} agrupamentos pessoa+empresa (Louvain) — proximidade societária, <b>não prova de conluio</b>`});});
   // Revisão D8 (13/11/2026): circulares (usam sanção como insumo) saem do CÁLCULO no servidor; o filtro aqui
   // fica como segunda trava. O rótulo diz o que o número mede: sancionados de qualquer época ou ente, com n.
-  J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?fmtD(b.lift,2)+'×':'—',meta:b?`<b>${rot(b.detector)}</b> marca ${fmtD(b.lift,2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)`
-      +((d.circulares||[]).length?` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo`:''):'—'});});
+  /* 21/11/2026: o "melhor" lift medido era 0,85× e o card dizia "marca 0,85× MAIS sancionados que a base" — lift < 1 é
+     anti-sinal pela própria explicação da rota. Só conta como "melhor detector" quem passa de 1 com n não pequeno;
+     sem nenhum, o card diz isso em vez de promover o menos ruim. */
+  J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const ord=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0));
+    const b=ord.find(x=>(x.lift||0)>1&&!x.n_pequeno),circ=(d.circulares||[]).length?` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo`:'';
+    if(!b){const m=ord[0];ckFill('lift',{txt:'nenhum',meta:`nenhum detector marca mais fornecedores sancionados que a base (taxa-base ${fmtD((d.taxa_base||0)*100,1)}%)`
+      +(m?` · o maior é <b>${rot(m.detector)}</b> com ${fmtD(m.lift,2)}× (abaixo de 1 = anti-sinal)`:'')+circ});return;}
+    ckFill('lift',{txt:fmtD(b.lift,2)+'×',meta:`<b>${rot(b.detector)}</b> marca ${fmtD(b.lift,2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)`+circ});});
   // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
   // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
   // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.

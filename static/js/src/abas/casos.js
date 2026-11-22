@@ -73,8 +73,25 @@ function _cardCaso(c) {
   </article>`;
 }
 
+/* 21/11/2026: o chip de gravidade mostrava a contagem de TODOS os casos enquanto a lista abria em "aberto" —
+   "🔴 alto · 5" e 2 cartões na tela. A contagem do chip segue os OUTROS filtros (situação e texto) em vigor. */
+function _contarChips() {
+  const q = _f.q.trim().toLowerCase(), cont = {};
+  for (const c of _dados.casos || []) {
+    if (_f.situacao && c.situacao !== _f.situacao) continue;
+    if (q && ![c.titulo, c.resumo, c.entidade, c.slug, (c.tags || []).join(' '), (c.sei || []).join(' '),
+      (c.cnpjs || []).join(' ')].join(' ').toLowerCase().includes(q)) continue;
+    cont[c.nivel_rotulo] = (cont[c.nivel_rotulo] || 0) + 1;
+  }
+  for (const b of document.querySelectorAll('[data-cs-f="nivel"]')) {
+    const n = NIVEIS.find(x => x.k === b.dataset.csV);
+    if (n) b.textContent = `${n.ic} ${n.k} · ${fmtN(cont[n.k] || 0)}`;
+  }
+}
+
 function _pintarLista() {
   const el = $('cs-lista'); if (!el || !_dados) return;
+  _contarChips();
   const it = _filtrados();
   el.innerHTML = `<div class="dim cs-conta">${fmtN(it.length)} de ${fmtN(_dados.total)} casos</div>` + (it.length
     ? `<div class="cs-grade">${it.map(_cardCaso).join('')}</div>`

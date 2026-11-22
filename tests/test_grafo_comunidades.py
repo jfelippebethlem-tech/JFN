@@ -100,3 +100,13 @@ def test_sancao_sem_alcance_ou_vencida_nao_e_sinal(db):
     con.close()
     d = detectar_comunidades(db_path=db, min_tamanho=3, incluir_grafo_d3=False)
     assert all("sancionada" not in {s["sinal"] for s in c["sinais"]} for c in d["comunidades"])
+
+
+# 21/11/2026: o card do Início exibia `n` (todo agrupamento pessoa+empresa, quase sempre empresa + sócios, sem sinal)
+# como "comunidades". A contagem por rating é a base da manchete e precisa somar `n` — sobre a base inteira, não a página.
+def test_contagem_por_rating_cobre_a_base_inteira(db):
+    d = detectar_comunidades(db_path=db, min_tamanho=3, top=1, incluir_grafo_d3=False)
+    por = d["n_por_rating"]
+    assert set(por) == {"🔴", "🟡", "🟢"}
+    assert sum(por.values()) == d["n"]
+    assert por["🔴"] >= 1 and d["mostradas"] == 1

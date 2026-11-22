@@ -727,20 +727,24 @@ def main() -> int:
         fila.sort(key=lambda e: -(e.get("score") or 0))
         candidatos = [e.get("sei", "") for e in fila]
 
-    alvos = []
-    n_vazio_recente = 0
-    for sei in candidatos:
-        proc = _proc_limpo(sei)
-        if not proc or proc in reservados:
-            continue                      # reservado = a VM-2 está capturando agora
-        if _arquivado_ok(ARQUIVO / proc.replace("/", "_")) and f"SEI-{proc}" not in reler:
-            continue                      # já arquivado COM conteúdo — resumível (exceto re-ler por OB)
-        if _vazio_recente(ARQUIVO / proc.replace("/", "_")):
-            n_vazio_recente += 1          # voltou vazio há < DIAS_ESPERA_VAZIO — volta depois sozinho
-            continue
-        alvos.append(proc)
-        if not args.segundos and len(alvos) >= args.max:
-            break                         # sem orçamento de tempo → corta em --max (comportamento antigo)
+    vazios = [0]
+
+    def _filtrados():
+        for sei in candidatos:
+            proc = _proc_limpo(sei)
+            if not proc or proc in reservados:
+                continue                  # reservado = a VM-2 está capturando agora
+            if _arquivado_ok(ARQUIVO / proc.replace("/", "_")) and f"SEI-{proc}" not in reler:
+                continue                  # já arquivado COM conteúdo — resumível (exceto re-ler por OB)
+            if _vazio_recente(ARQUIVO / proc.replace("/", "_")):
+                vazios[0] += 1            # voltou vazio há < DIAS_ESPERA_VAZIO — volta depois sozinho
+                continue
+            yield proc
+    # FOCO (22/11/2026): metade dos alvos do período Couto; dentro de cada metade, a ordem acima
+    # (compliance_agent/foco). Sem orçamento de tempo → corta em --max (comportamento antigo).
+    from compliance_agent.foco import data_processo, intercalar
+    alvos = intercalar(_filtrados(), data_processo, limite=None if args.segundos else args.max)
+    n_vazio_recente = vazios[0]
     if n_vazio_recente:
         _log(f"{n_vazio_recente} processo(s) com captura vazia há menos de {DIAS_ESPERA_VAZIO} dia(s) "
              "ficam para depois (intervalo, não veredito: a causa do vazio não foi medida)")

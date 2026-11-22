@@ -100,6 +100,9 @@ for r in con.execute("select * from processo_avaliacao"):
     fila.append((pts, r["numero_sei"]))
 con.close()
 fila.sort(reverse=True)
+# FOCO (22/11/2026): metade do slot no período Couto; dentro de cada metade, o mais grave primeiro
+from compliance_agent.foco import data_processo, intercalar
+fila = intercalar(fila, lambda t: data_processo(t[1]))
 
 def tem_pendente(numero):
     """Sobrou documento elegível por rubrica sem veredito na versão vigente?"""
