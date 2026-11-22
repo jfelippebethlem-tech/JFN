@@ -456,12 +456,14 @@ def _cnpjs_da_ficha(con: sqlite3.Connection, ns: str) -> set[str]:
 
 
 def diagnosticar(con: sqlite3.Connection, *, ler_texto: bool = True, max_ler: int | None = None,
-                 log=print) -> list[dict]:
+                 log=print, so: set[str] | None = None) -> list[dict]:
     """Uma linha por laudo sem conclusão, com as causas medidas. Texto dos autos lido só quando o manifesto mudou
     desde a última leitura (cache por mtime) — o ciclo inteiro não relê 100 mil arquivos. `max_ler` limita as
     leituras por rodada (I/O: ~1 processo/5 s com carga alta); o resto entra nas próximas, maior pago primeiro."""
     from compliance_agent.ob_processo import chave_processo, obs_por_processo
     laudos = _laudos_sem_conclusao(con)
+    if so is not None:
+        laudos = [t for t in laudos if t[0] in so]
     lex = dict(con.execute("SELECT numero_sei, execucao_comprovada FROM lex_execucao"))
     ficha_em = {ns: (n, em) for ns, n, em in con.execute("SELECT numero_sei, n_docs, atualizado_em FROM sei_ficha")}
     ficha = {ns: n for ns, (n, _) in ficha_em.items()}
@@ -607,12 +609,59 @@ def resumo(diag: list[dict], con: sqlite3.Connection | None = None) -> dict:
     return r
 
 
+# ── diagnóstico feito FORA da VM-1 (réplica só-leitura do it-campo) ─────────────────────────────────────────────────
+# A parte pesada do ciclo é ler os autos (I/O: ~1 processo/5 s com carga alta na VM-1, teto de 150 por rodada). Ela
+# não usa LLM nem rede, então roda na réplica do it-campo (tools/indeterminados_no_itcampo.sh) e o JSON volta. Aqui
+# ele só é ACEITO se uma amostra re-diagnosticada na VM-1 der o mesmo resultado, campo a campo; qualquer divergência
+# rejeita o lote inteiro e o ciclo roda local como antes. Laudo novo (não estava na réplica) é diagnosticado aqui.
+CAMPOS_IGUALDADE = ("estado", "causas", "relacionados_fora", "familia_conclusiva", "n_docs", "ob_n", "ob_total",
+                    "arquivo_desatualizado")
+MAX_FALTANTES_IMPORTACAO = 200
+
+
+def assinatura(d: dict) -> tuple:
+    return tuple(json.dumps(d.get(k), sort_keys=True) for k in CAMPOS_IGUALDADE)
+
+
+def importar_diagnostico(con: sqlite3.Connection, remoto: list[dict], *, amostra: int = 30,
+                         log=print) -> tuple[list[dict] | None, dict]:
+    """(diagnóstico aceito ou None, relatório da conferência). Amostra = metade maiores pagos + metade espalhada."""
+    locais = {ns for ns, _ in _laudos_sem_conclusao(con)}
+    por = {d["sei"]: d for d in remoto if isinstance(d, dict) and d.get("sei") in locais}
+    faltam = locais - set(por)
+    rel = {"remoto": len(remoto), "aceitos": len(por), "faltavam_na_replica": len(faltam),
+           "sairam_desde_a_replica": len({d.get("sei") for d in remoto if isinstance(d, dict)} - locais)}
+    if not por or len(faltam) > MAX_FALTANTES_IMPORTACAO:
+        rel["rejeitado"] = "réplica velha demais" if por else "diagnóstico remoto vazio"
+        return None, rel
+    chaves = sorted(por, key=lambda s: (-(por[s].get("ob_total") or 0.0), s))
+    meio = max(1, amostra // 2)
+    passo = max(1, len(chaves) // meio)
+    conf = set(chaves[:meio]) | set(chaves[::passo][:meio])
+    ref = {d["sei"]: d for d in diagnosticar(con, ler_texto=True, max_ler=None, log=None, so=conf | faltam)}
+    diverg = [ns for ns in sorted(conf) if ns in ref and assinatura(ref[ns]) != assinatura(por[ns])]
+    rel.update({"amostra": len(conf), "divergentes": diverg[:20], "n_divergentes": len(diverg)})
+    if diverg or len(conf - set(ref)) > 0:
+        rel["rejeitado"] = "amostra divergente" if diverg else "amostra sem referência local"
+        return None, rel
+    for ns in faltam:
+        if ns in ref:
+            por[ns] = ref[ns]
+    return list(por.values()), rel
+
+
 def ciclo(*, maximo_externo: int = 400, ler_texto: bool = True, max_ler: int | None = 300, enfileirar_db: bool = True,
-          dias_externo: int = 7, log=print) -> dict:
+          dias_externo: int = 7, log=print, diagnostico_de: Path | None = None) -> dict:
     con = sqlite3.connect(DB, timeout=120)
     con.execute("PRAGMA busy_timeout=120000")
     try:
-        diag = diagnosticar(con, ler_texto=ler_texto, max_ler=max_ler, log=log)
+        diag, importacao = None, None
+        if diagnostico_de is not None:
+            diag, importacao = importar_diagnostico(con, _ler_json(Path(diagnostico_de), []), log=log)
+            if log:
+                log(f"importação do it-campo: {json.dumps(importacao, ensure_ascii=False)}")
+        if diag is None:
+            diag = diagnosticar(con, ler_texto=ler_texto, max_ler=max_ler, log=log)
         rel_alvos, fila = alvos_de_captura(diag)
         no_fila = {r[0] for r in con.execute("SELECT numero_sei FROM sei_fila_captura")}
         desconhecidos = {a["numero"] for a in rel_alvos} - no_fila
@@ -624,6 +673,8 @@ def ciclo(*, maximo_externo: int = 400, ler_texto: bool = True, max_ler: int | N
                      "relacionados_fora_da_fila_antes": len(desconhecidos), "inscritos_agora": entraram,
                      "fila_json": len(fila)}
         r["externo"] = ext
+        if importacao is not None:
+            r["importacao_itcampo"] = importacao
         _gravar_json(ESTADO_JSON, r)
         _gravar_json(SAIDA / "diagnostico.json", diag)
         return r
@@ -639,6 +690,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sem-texto", action="store_true", help="não lê os autos (usa só o cache de relacionados)")
     ap.add_argument("--dias-externo", type=int, default=7, help="reconsulta fontes externas mais velhas que N dias")
     ap.add_argument("--max-ler", type=int, default=300, help="processos com autos varridos por rodada (0 = sem teto)")
+    ap.add_argument("--diagnostico-de", type=Path, default=None,
+                    help="ciclo: usa o diagnóstico feito na réplica do it-campo (aceito só se a amostra conferir)")
     a = ap.parse_args(argv)
     if a.acao == "diagnosticar":
         con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=120)
@@ -650,7 +703,7 @@ def main(argv: list[str] | None = None) -> int:
         _gravar_json(SAIDA / "diagnostico.json", diag)
     else:
         r = ciclo(maximo_externo=a.max_externo, ler_texto=not a.sem_texto, max_ler=a.max_ler or None,
-                  dias_externo=a.dias_externo)
+                  dias_externo=a.dias_externo, diagnostico_de=a.diagnostico_de)
     print(json.dumps({k: v for k, v in r.items() if k != "por_estado"}, ensure_ascii=False, indent=1))
     return 0
 

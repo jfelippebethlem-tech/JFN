@@ -336,6 +336,48 @@ def test_controle_negativo_sem_marca_de_desatualizado(tmp_path, monkeypatch, tot
     assert not d["arquivo_desatualizado"] and not fila[0].get("desatualizado")
 
 
+# ── diagnóstico feito na réplica do it-campo: aceito só se a amostra re-diagnosticada aqui der igual ────────────────
+def _con_dois(tmp_path, monkeypatch):
+    import compliance_agent.ob_processo as OBP
+    con = sqlite3.connect(tmp_path / "c.db")
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, execucao_comprovada TEXT)")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, n_docs INTEGER, cnpjs TEXT, atualizado_em TEXT)")
+    con.executemany("INSERT INTO lex_execucao VALUES (?, 'indeterminado')",
+                    [("SEI-100000/000001/2025",), ("SEI-100000/000002/2025",)])
+    monkeypatch.setattr(I, "FAMILIA", tmp_path / "fam.json")
+    monkeypatch.setattr(I, "AGENTES", tmp_path / "ag")
+    monkeypatch.setattr(I, "_CACHE_REL", tmp_path / "cache.json")
+    monkeypatch.setattr(I, "medir_arquivo", lambda ns: {"arquivo": False})
+    monkeypatch.setattr(OBP, "obs_por_processo", lambda *a, **k: {})
+    return con
+
+
+def test_importacao_igual_e_aceita_e_laudo_novo_e_diagnosticado_aqui(tmp_path, monkeypatch):
+    con = _con_dois(tmp_path, monkeypatch)
+    local = I.diagnosticar(con, log=None)
+    remoto = [d for d in local if d["sei"] == "SEI-100000/000001/2025"] + [{"sei": "SEI-999999/000009/2020"}]
+    diag, rel = I.importar_diagnostico(con, remoto, log=None)
+    assert rel.get("rejeitado") is None and rel["n_divergentes"] == 0
+    assert sorted(d["sei"] for d in diag) == ["SEI-100000/000001/2025", "SEI-100000/000002/2025"]
+    assert rel["faltavam_na_replica"] == 1 and rel["sairam_desde_a_replica"] == 1
+
+
+def test_importacao_com_um_campo_divergente_e_rejeitada_inteira(tmp_path, monkeypatch):
+    con = _con_dois(tmp_path, monkeypatch)
+    remoto = I.diagnosticar(con, log=None)
+    remoto[0] = {**remoto[0], "causas": ["lacuna_do_processo"]}          # controle positivo: um campo trocado
+    diag, rel = I.importar_diagnostico(con, remoto, log=None)
+    assert diag is None and rel["rejeitado"] == "amostra divergente" and rel["n_divergentes"] == 1
+
+
+def test_importacao_de_replica_velha_e_rejeitada(tmp_path, monkeypatch):
+    con = _con_dois(tmp_path, monkeypatch)
+    monkeypatch.setattr(I, "MAX_FALTANTES_IMPORTACAO", 0)
+    remoto = [d for d in I.diagnosticar(con, log=None) if d["sei"].endswith("1/2025")]
+    assert I.importar_diagnostico(con, remoto, log=None)[0] is None
+    assert I.importar_diagnostico(con, [], log=None)[1]["rejeitado"] == "diagnóstico remoto vazio"
+
+
 def test_drenador_recaptura_o_desatualizado_mesmo_com_manifesto_completo(tmp_path, monkeypatch):
     import json as _json
     import tools.sei_integra_fila as F
