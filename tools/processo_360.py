@@ -59,7 +59,9 @@ def _lote_por_rodizio(n: int) -> list[str]:
 
     novos = [p for p in do_disco if p not in avaliados]
     velhos = sorted((p for p in do_disco if p in avaliados), key=lambda p: avaliados[p])
-    return (novos + velhos)[:n]
+    # FOCO (22/11/2026): metade do lote do período Couto; dentro de cada metade, o rodízio acima
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(novos + velhos, data_processo, limite=n)
 
 
 def _imprimir(out: dict) -> None:

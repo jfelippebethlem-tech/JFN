@@ -431,7 +431,10 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         rows = _intercalar_estrato(rows, estrato, topo, TETO_VINCULO_OB)
         _log(f"fila: {len(_ESTRATOS['vinculo'])} processos de PAGAMENTO do vínculo OB↔contrato intercalados "
              f"logo abaixo da contratação direta (teto {TETO_VINCULO_OB:.0%} do lote)")
-    return rows
+    # FOCO (22/11/2026): metade da fila do período Couto; dentro de cada metade, TODA a ordem acima (topo, estrato,
+    # legível, valor) — compliance_agent/foco. Fila da VM-1, exportada à VM-2 e ao it-campo (vm2_sweep_geral).
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(rows, lambda r: data_processo(r[0]))
 
 
 # Estrato VÍNCULO OB↔CONTRATO. Teto = fração máxima de cada lote (0 desliga). `_ESTRATOS` guarda os conjuntos da

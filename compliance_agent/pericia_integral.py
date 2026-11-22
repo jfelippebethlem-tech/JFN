@@ -862,14 +862,15 @@ def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO)
         c["ob"] = obs.get(_chave_processo(c["numero"]))
         c["pago"] = round((c["ob"] or {}).get("total", 0.0), 2)
     cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))
-    out = []
-    for c in cands:                                    # íntegra é cara de medir: só até encher o limite
-        if len(out) >= limite:
-            break
-        ok, nat = _elegivel(Path(c["pasta"]), naturezas)
-        if ok:
-            out.append(c | {"natureza": nat})
-    return out
+
+    def _elegiveis():                                  # íntegra é cara de medir: só até encher o limite
+        for c in cands:
+            ok, nat = _elegivel(Path(c["pasta"]), naturezas)
+            if ok:
+                yield c | {"natureza": nat}
+    # FOCO (22/11/2026): metade do lote do período Couto, cada metade na ordem por valor pago (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(_elegiveis(), lambda c: data_processo(c["numero"]), limite=limite)
 
 
 def rodar(limite: int, *, so_cascata: bool = False, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO,

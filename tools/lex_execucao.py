@@ -560,10 +560,11 @@ def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     pago = mapa_obs_siafe(con, [r[0] for r in rows], autos=False) if rows else {}
     rows.sort(key=lambda r: (r[0] not in primeiro,
                              -(pago.get(_chave_processo(r[0])) or {}).get("total", 0.0)))   # estável: n_docs no empate
+    # FOCO (22/11/2026): metade do lote do período Couto; dentro de cada metade, a ordem acima (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    rows = intercalar((r for r in rows if r[0] not in ja), lambda r: data_processo(r[0]), limite=top)
     out = []
     for ns, obj, val, docs, rf in rows:
-        if ns in ja:
-            continue
         try:
             dl = json.loads(docs) if docs else []
         except Exception:
@@ -575,8 +576,6 @@ def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
         except Exception:
             rfl = []
         out.append((ns, obj or "", val or "", dl, rfl))
-        if len(out) >= top:
-            break
     return out
 
 

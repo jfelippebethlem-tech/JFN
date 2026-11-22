@@ -160,7 +160,9 @@ def fila() -> list[dict]:
         if re.sub(r"\D", "", x["numero"]) not in ja_todos:
             saida.append(x)
 
-    return ordenar(saida)
+    # FOCO (22/11/2026): metade da fila do período Couto; dentro de cada metade, a ordem de `ordenar`
+    from compliance_agent.foco import data_processo, intercalar
+    return intercalar(ordenar(saida), lambda x: data_processo(x["numero"]))
 
 
 # Buraco que ainda cabe num slot de leitura. O gigante de 956 documentos estourou o slot e não

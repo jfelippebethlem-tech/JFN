@@ -1,0 +1,16 @@
+# foco.yaml — PONTO ÚNICO de configuração do foco das filas (lido só por compliance_agent/foco.py).
+#
+# Pedido do dono (22/11/2026, 00h50): "vamos focar no governo Couto? 50% do esforço destinado ao período dele."
+# Toda fila que consome esforço (máquina, assinatura Claude, IAs grátis, captura SEI) monta o lote com `fracao`
+# de itens do período Couto — na ordem que a fila já usava dentro do grupo (ex.: valor pago) — e o resto com o
+# restante; faltou item Couto, completa com o resto (a máquina nunca fica ociosa).
+#
+# O INÍCIO do período NÃO mora aqui: é a constante única `compliance_agent/governo_couto.py: INICIO` (gestão
+# interina desde 23/03/2026 — DOERJ 24/03/2026). Duplicar a data aqui seria a mesma armadilha da constante
+# copiada que vira falso positivo quando uma das cópias muda. 23/03 é dia de transição: nas filas, que tratam
+# OB/execução/contratação, vale a DATA (≥ 23/03/2026 é Couto); atos do governador seguem pela assinatura (aba).
+#
+# ligado: false → todas as filas voltam à ordem antiga, sem mexer em código.
+periodo_couto:
+  ligado: true
+  fracao: 0.5

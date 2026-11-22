@@ -222,8 +222,10 @@ def main(argv=None) -> int:
     # CONTRATAÇÃO primeiro; folha/encargo entra depois, declarada — não some.
     lidos_contr = [i for i in r["lidos_nao_arquivados"] if not i.get("folha")]
     lidos_folha = [i for i in r["lidos_nao_arquivados"] if i.get("folha")]
-    fila = (r["nunca_tocados_contratacao"] + lidos_contr
-            + r["nunca_tocados_folha"] + lidos_folha)[:a.top]
+    # FOCO (22/11/2026): metade da fila do período Couto; dentro de cada metade, a ordem acima (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    fila = intercalar(r["nunca_tocados_contratacao"] + lidos_contr + r["nunca_tocados_folha"] + lidos_folha,
+                      lambda i: data_processo(i["sei"]), limite=a.top)
     print(f"\n  fora do alvo (folha/previdência/encargo): "
           f"{len(r['nunca_tocados_folha']):,} processos · "
           f"R$ {moeda(r['dinheiro_folha'])} — vão para o FIM da fila, não somem")

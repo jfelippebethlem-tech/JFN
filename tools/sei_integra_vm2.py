@@ -182,24 +182,32 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | 
               ("bombeiros", [e.get("sei", "") for e in bomb], k_bombeiros),
               ("dinheiro", [e.get("sei", "") for e in dinheiro], max_n),
               ("geral", geral, max_n)]
+    # FOCO (22/11/2026): metade da fila do período Couto (compliance_agent/foco); dentro de cada metade, a ordem
+    # das fontes acima. O teto de cada fonte vale por metade — senão o Couto da fonte "geral" nunca era alcançado.
+    from compliance_agent.foco import data_processo, eh_couto, intercalar
     vistos: set[str] = set()
-    out: list[dict] = []
-    for fonte, seis, teto in fontes:
-        n_fonte = 0
-        for sei in seis:
-            if len(out) >= max_n or n_fonte >= teto:
-                break
-            proc = F._proc_limpo(sei)
-            if not proc or proc in vistos or proc in excluir:
-                continue
-            vistos.add(proc)
-            pasta = F.ARQUIVO / proc.replace("/", "_")
-            if F._arquivado_ok(pasta) and f"SEI-{proc}" not in reler:
-                continue
-            if F._vazio_recente(pasta):
-                continue
-            out.append({"sei": f"SEI-{proc}", "fonte": fonte})
-            n_fonte += 1
+
+    def _candidatos():
+        for fonte, seis, teto in fontes:
+            n_fonte = {True: 0, False: 0}
+            for sei in seis:
+                if min(n_fonte.values()) >= teto:
+                    break
+                proc = F._proc_limpo(sei)
+                if not proc or proc in vistos or proc in excluir:
+                    continue
+                couto = eh_couto(data_processo(proc))
+                if n_fonte[couto] >= teto:
+                    continue
+                vistos.add(proc)
+                pasta = F.ARQUIVO / proc.replace("/", "_")
+                if F._arquivado_ok(pasta) and f"SEI-{proc}" not in reler:
+                    continue
+                if F._vazio_recente(pasta):
+                    continue
+                n_fonte[couto] += 1
+                yield {"sei": f"SEI-{proc}", "fonte": fonte}
+    out = intercalar(_candidatos(), lambda e: data_processo(e["sei"]), limite=max_n)
     # `--fila` reordena por score: o score é a POSIÇÃO, para a VM-2 seguir exatamente esta ordem
     for i, e in enumerate(out):
         e["score"] = len(out) - i

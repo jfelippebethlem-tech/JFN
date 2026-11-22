@@ -531,7 +531,10 @@ def alvos_de_captura(diag: list[dict]) -> tuple[list[dict], list[dict]]:
             f = fila.setdefault(d["sei"], {"sei": d["sei"], "pago": 0.0, "motivo": d["causas"][0], "filhos": []})
             f["pago"] = max(f["pago"], d.get("ob_total") or 0.0)
             f["motivo"] = d["causas"][0]
-    ordem = sorted(fila.values(), key=lambda x: (-x["pago"], x["sei"]))
+    # FOCO (22/11/2026): metade da fila do período Couto, cada metade por valor pago (compliance_agent/foco)
+    from compliance_agent.foco import data_processo, intercalar
+    ordem = intercalar(sorted(fila.values(), key=lambda x: (-x["pago"], x["sei"])),
+                       lambda x: data_processo(x["sei"]))
     for x in ordem:
         x["pago"] = round(x["pago"], 2)
     return rel_alvos, ordem

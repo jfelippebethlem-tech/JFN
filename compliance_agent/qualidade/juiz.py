@@ -358,6 +358,12 @@ def fila(cands: list[Afirmacao], historico: dict, agora: datetime, *, revalidaca
         sit = situacao(a, historico, agora)
         if sit in por_sit:
             por_sit[sit].append(a)
+    # FOCO (22/11/2026): em cada situação, metade com afirmação sobre o período Couto (aba de gestão), cada metade
+    # na ordem de risco (compliance_agent/foco). A vaga reservada de cada grupo vem antes e não entra na cota.
+    from compliance_agent.foco import intercalar
+
+    def _couto(a: Afirmacao) -> bool:
+        return a.id.startswith("painel:gestao:")
     for lista in por_sit.values():
         lista.sort(key=lambda a: (-a.risco, a.id))
     novas, cabecas, grupos = por_sit["nova"], [], set()
@@ -365,8 +371,10 @@ def fila(cands: list[Afirmacao], historico: dict, agora: datetime, *, revalidaca
         if a.grupo not in grupos:
             grupos.add(a.grupo)
             cabecas.append(a)
-    por_sit["nova"] = cabecas + [a for a in novas if a not in cabecas]
+    por_sit["nova"] = cabecas + intercalar([a for a in novas if a not in cabecas], _couto)
     por_sit["revalidar"].sort(key=lambda a: str((historico.get(a.id) or {}).get("em", "")))
+    for k in ("corrigida", "mudada", "revalidar"):
+        por_sit[k] = intercalar(por_sit[k], _couto)
     return [a for k in _ORDEM_SITUACAO if revalidacao or k != "revalidar" for a in por_sit[k]]
 
 
