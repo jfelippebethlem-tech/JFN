@@ -580,8 +580,9 @@ class Rclone:
         with tempfile.NamedTemporaryFile("w", suffix=".lista", dir=_tmp_base(), delete=False) as f:
             f.write("\n".join(rel for rel, _ in itens) + "\n")
         try:
+            # timeout pelo volume: o Drive com o cliente compartilhado fez ~1 MB/s em 21/11 (lote de 6,4 GB > 2 h)
             r = self._run(["copy", "--checksum", "--files-from-raw", f.name, "--transfers", "4", "--no-traverse",
-                           origem, destino])
+                           origem, destino], timeout=max(self.timeout, int(total / 300_000)))
         finally:
             Path(f.name).unlink(missing_ok=True)
         for nome, c in custos.items():
