@@ -582,8 +582,8 @@ def _registrar_etapas(proc: str, status: str, total_s: float) -> None:
     try:
         with Path(os.environ.get("JFN_INTEGRA_ETAPAS") or ETAPAS).open("a", encoding="utf-8") as f:
             f.write(json.dumps(reg, ensure_ascii=False) + "\n")
-    except OSError:
-        pass
+    except OSError as exc:      # medida é acessória: não derruba a fila, mas diz que não gravou
+        print(f"etapas de {proc} não gravadas: {exc}", file=sys.stderr, flush=True)
 
 
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
@@ -609,7 +609,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             try:
                 _ETAPA.update(json.loads(m_et.group(1)))
             except ValueError:
-                pass
+                _ETAPA["etapas_ilegiveis"] = m_et.group(1)[:200]
         causas = _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]
         if rc == RC_LOGIN_FALHOU:
             # login não completou: nada se sabe do processo — não arquiva vazio (que o seguraria)
