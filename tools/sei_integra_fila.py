@@ -434,7 +434,9 @@ def _fila_indeterminados(limite: int = 40) -> list[str]:
     out: list[str] = []
     for e in (d.get("fila") or []) if isinstance(d, dict) else []:
         proc = _proc_limpo(str((e or {}).get("sei") or ""))
-        if proc and not _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
+        # `desatualizado` (21/11/2026): arquivo montado do cache e o sweep viu MAIS documentos depois — o manifesto
+        # se diz completo e `_arquivado_ok` o pulava para sempre (326 laudos). A marca some após a íntegra.
+        if proc and ((e or {}).get("desatualizado") or not _arquivado_ok(ARQUIVO / proc.replace("/", "_"))):
             out.append(f"SEI-{proc}")
         if len(out) >= limite:
             break

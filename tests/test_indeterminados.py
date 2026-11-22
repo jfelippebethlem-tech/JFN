@@ -259,7 +259,7 @@ def test_diagnosticar_junta_familia_agente_e_veredito_da_familia(tmp_path, monke
     import compliance_agent.ob_processo as OBP
     con = sqlite3.connect(tmp_path / "c.db")
     con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, execucao_comprovada TEXT)")
-    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, n_docs INTEGER, cnpjs TEXT)")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, n_docs INTEGER, cnpjs TEXT, atualizado_em TEXT)")
     con.executemany("INSERT INTO lex_execucao VALUES (?,?)", [
         ("SEI-100000/000001/2025", "sem_documento_execucao"), ("SEI-100000/000002/2025", "parcial"),
         ("SEI-100000/000003/2025", "indeterminado")])
@@ -294,3 +294,58 @@ def test_relacionado_sem_credor_conhecido_fica_pendente(externas):
     assert {e["estado"] for e in via if e["fonte"].startswith("TCE-RJ")} == {"PENDENTE"}
     proprio = I.fontes_externas(idx, "SEI-030029/002156/2022", cnpjs=set())
     assert {e["estado"] for e in proprio if e["fonte"].startswith("TCE-RJ")} == {"VERIFICADO"}
+
+
+# ── arquivo do CACHE envelhecido (21/11/2026) ─────────────────────────────────────────────────────────────────────
+# 326 laudos "captura_truncada" (R$ 47,9 mi) nunca eram recapturados: o arquivo foi montado do cache do sweep
+# (`docs_na_arvore`, sem íntegra), o sweep viu MAIS documentos depois (SEI-080001/031830/2025: arquivo de 25/07 com 3,
+# ficha de 31/07 com 7) e a fila do SEI, que só conhece o manifesto "completo", o pulava para sempre.
+def _diag_um(tmp_path, monkeypatch, *, total_arvore, gerado_em, ficha_n, ficha_em):
+    import compliance_agent.ob_processo as OBP
+    con = sqlite3.connect(tmp_path / "c.db")
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, execucao_comprovada TEXT)")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, n_docs INTEGER, cnpjs TEXT, atualizado_em TEXT)")
+    con.execute("INSERT INTO lex_execucao VALUES ('SEI-080001/031830/2025','sem_documento_execucao')")
+    con.execute("INSERT INTO sei_ficha VALUES ('SEI-080001/031830/2025',?,NULL,?)", (ficha_n, ficha_em))
+    monkeypatch.setattr(I, "FAMILIA", tmp_path / "fam.json")
+    monkeypatch.setattr(I, "AGENTES", tmp_path / "ag")
+    monkeypatch.setattr(I, "_CACHE_REL", tmp_path / "cache.json")
+    monkeypatch.setattr(I, "medir_arquivo", lambda ns: {
+        "arquivo": True, "pasta": str(tmp_path), "n_docs": 3, "gerado_em": gerado_em, "total_arvore": total_arvore,
+        "com_texto": 3, "exec": [], "exec_sem_texto": 0, "pag": [], "contr": [], "sigilo": 0})
+    monkeypatch.setattr(I, "relacionados_do_arquivo", lambda ns, pasta: [])
+    monkeypatch.setattr(OBP, "obs_por_processo", lambda *a, **k: {})
+    d = I.diagnosticar(con, log=None)[0]
+    return d, I.alvos_de_captura([d])[1]
+
+
+def test_arquivo_do_cache_com_ficha_mais_nova_vai_a_recaptura_mesmo_completo(tmp_path, monkeypatch):
+    d, fila = _diag_um(tmp_path, monkeypatch, total_arvore=0, gerado_em="2026-07-25T01:24:56+00:00",
+                       ficha_n=7, ficha_em="2026-07-31 13:13:43")              # o caso real
+    assert d["causas"][0] == "captura_truncada" and d["arquivo_desatualizado"] is True
+    assert fila[0].get("desatualizado") is True
+
+
+@pytest.mark.parametrize("total_arvore, ficha_em", [
+    (3, "2026-07-31 13:13:43"),       # íntegra já medida: a árvore dela vale, a marca não volta (sem recaptura eterna)
+    (0, "2026-07-20 10:00:00"),       # ficha MAIS VELHA que o arquivo: não é processo que andou
+])
+def test_controle_negativo_sem_marca_de_desatualizado(tmp_path, monkeypatch, total_arvore, ficha_em):
+    d, fila = _diag_um(tmp_path, monkeypatch, total_arvore=total_arvore, gerado_em="2026-07-25T01:24:56+00:00",
+                       ficha_n=7, ficha_em=ficha_em)
+    assert not d["arquivo_desatualizado"] and not fila[0].get("desatualizado")
+
+
+def test_drenador_recaptura_o_desatualizado_mesmo_com_manifesto_completo(tmp_path, monkeypatch):
+    import json as _json
+    import tools.sei_integra_fila as F
+    arq = tmp_path / "sei_arquivo"
+    (arq / "100000_000001_2025" / "texto").mkdir(parents=True)
+    (arq / "100000_000001_2025" / "texto" / "000_a.txt").write_text("x" * 100, encoding="utf-8")
+    (arq / "100000_000001_2025" / "manifest.json").write_text(
+        _json.dumps({"docs": [{"chars": 100, "texto": "texto/000_a.txt"}], "gerado_em": "2026-11-01"}), encoding="utf-8")
+    (tmp_path / "indeterminados").mkdir()
+    (tmp_path / "indeterminados" / "fila_captura.json").write_text(_json.dumps({"fila": [
+        {"sei": "SEI-100000/000001/2025", "desatualizado": True}]}), encoding="utf-8")
+    monkeypatch.setattr(F, "ARQUIVO", arq)
+    assert F._fila_indeterminados() == ["SEI-100000/000001/2025"]

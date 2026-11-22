@@ -222,6 +222,7 @@ def medir_arquivo(numero_sei: str) -> dict:
     docs = manifesto_norm.normalizar(man)["docs"]
     tipos = {x.get("tipo") or "?" for x in docs}
     return {"arquivo": True, "pasta": str(man.get("_pasta") or ""), "n_docs": len(docs),
+            "gerado_em": str(man.get("gerado_em") or ""),
             "total_arvore": _int(man.get("total_arvore")), "captura_vazia": bool(man.get("captura_vazia")),
             "com_texto": sum(1 for x in docs if _int(x.get("chars")) >= 200),
             "exec": sorted(TIPOS_EXEC & tipos), "pag": sorted(TIPOS_PAG & tipos), "contr": sorted(TIPOS_CONTR & tipos),
@@ -435,6 +436,11 @@ def _gravar_json(p: Path, obj) -> None:
     tmp.replace(p)
 
 
+def _ts(s) -> str:
+    """Carimbo comparável: ISO com 'T' e fuso (manifesto) × 'AAAA-MM-DD HH:MM:SS' do SQLite (ficha), ambos UTC."""
+    return str(s or "")[:19].replace("T", " ")
+
+
 def _laudos_sem_conclusao(con: sqlite3.Connection) -> list[tuple[str, str | None]]:
     return con.execute("SELECT numero_sei, execucao_comprovada FROM lex_execucao WHERE execucao_comprovada IS NULL "
                        "OR execucao_comprovada IN (?, ?)", ESTADOS).fetchall()
@@ -457,7 +463,8 @@ def diagnosticar(con: sqlite3.Connection, *, ler_texto: bool = True, max_ler: in
     from compliance_agent.ob_processo import chave_processo, obs_por_processo
     laudos = _laudos_sem_conclusao(con)
     lex = dict(con.execute("SELECT numero_sei, execucao_comprovada FROM lex_execucao"))
-    ficha = dict(con.execute("SELECT numero_sei, n_docs FROM sei_ficha"))
+    ficha_em = {ns: (n, em) for ns, n, em in con.execute("SELECT numero_sei, n_docs, atualizado_em FROM sei_ficha")}
+    ficha = {ns: n for ns, (n, _) in ficha_em.items()}
     fam = _ler_json(FAMILIA, {"cita": {}, "citado_por": {}, "no_acervo": []})
     no_acervo = set(fam.get("no_acervo") or [])
     agentes = lacunas_dos_agentes()
@@ -469,6 +476,10 @@ def diagnosticar(con: sqlite3.Connection, *, ler_texto: bool = True, max_ler: in
     for i, (ns, est) in enumerate(laudos):
         d = {"sei": ns, "estado": est, **medir_arquivo(ns), "ficha_ndocs": ficha.get(ns)}
         if d.get("arquivo") and (ficha.get(ns) or 0) > d["n_docs"]:
+            # o sweep viu DEPOIS do arquivo montado do CACHE (sem íntegra: `total_arvore` 0): o processo andou e o
+            # arquivo está velho. A fila do SEI só conhece o manifesto (que se diz completo) e o pulava para sempre —
+            # 326 laudos, R$ 47,9 mi, em 21/11/2026. Depois da íntegra a árvore medida vale e a marca não volta.
+            d["arquivo_desatualizado"] = (not d["total_arvore"]) and _ts(ficha_em[ns][1]) > _ts(d.get("gerado_em"))
             d["total_arvore"] = max(d["total_arvore"], ficha[ns])       # o sweep viu mais documentos que a captura
         p = pago.get(chave_processo(ns) or "") or {}
         d["ob_n"], d["ob_total"] = p.get("n", 0), round(p.get("total", 0.0) or 0.0, 2)
@@ -531,6 +542,8 @@ def alvos_de_captura(diag: list[dict]) -> tuple[list[dict], list[dict]]:
             f = fila.setdefault(d["sei"], {"sei": d["sei"], "pago": 0.0, "motivo": d["causas"][0], "filhos": []})
             f["pago"] = max(f["pago"], d.get("ob_total") or 0.0)
             f["motivo"] = d["causas"][0]
+            if d["causas"][0] == "captura_truncada" and d.get("arquivo_desatualizado"):
+                f["desatualizado"] = True        # a fila do SEI recaptura mesmo com o manifesto "completo"
     # FOCO (22/11/2026): metade da fila do período Couto, cada metade por valor pago (compliance_agent/foco)
     from compliance_agent.foco import data_processo, intercalar
     ordem = intercalar(sorted(fila.values(), key=lambda x: (-x["pago"], x["sei"])),
