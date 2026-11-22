@@ -71,6 +71,7 @@ _RENDER_SANEADOS = (
     "compliance_agent/reporting/inteligencia_orgao.py",
     "compliance_agent/intel_relatorio.py",
     "compliance_agent/reporting/capitulos_dossie.py",
+    "compliance_agent/reporting/dossie_couto.py",
 )
 
 # Dois defeitos diferentes moram no mesmo `[:N]`, e o conserto de cada um é outro:
