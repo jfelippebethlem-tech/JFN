@@ -72,6 +72,8 @@ def _isola_db(request, tmp_path, monkeypatch):
     # HTTP mockado não pode entrar no `data/llm_trace.db` real e inflar a medição de volume (§4.1).
     if not __import__("os").environ.get("JFN_LLM_TRACE_DB"):
         monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "llm_trace_teste.db"))
+    # 22/11/2026: a fila de íntegras grava o tempo por etapa de cada processo — processo de teste não entra na medição.
+    monkeypatch.setenv("JFN_INTEGRA_ETAPAS", str(tmp_path / "sei_integra_etapas_teste.jsonl"))
     yield
 
 

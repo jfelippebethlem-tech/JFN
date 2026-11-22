@@ -54,3 +54,16 @@ def test_erro_do_playwright_mostra_a_mensagem_nao_o_call_log():
     assert "TargetClosedError" in F._causa_da_saida(saida)
     assert F._causa_da_saida("baixando 3 docs…\n") == "baixando 3 docs…"
     assert F._causa_da_saida("") == "sem saída"
+
+
+def test_tempo_por_etapa_vai_ao_registro(monkeypatch, tmp_path):
+    """22/11/2026: a fila só sabia o total por processo — onde o tempo vai (login, árvore, lotes, laço, arquivar)
+    não se media. A captura imprime `ETAPAS {json}` e a fila grava uma linha por processo."""
+    _cenario(monkeypatch, tmp_path, 0, 'login OK\nETAPAS {"login_s": 12.5, "lotes_s": 40.0, "via_pdf": 3}\n', 0, "")
+    monkeypatch.setenv("JFN_INTEGRA_ETAPAS", str(tmp_path / "etapas.jsonl"))
+    monkeypatch.setattr(F.time, "sleep", lambda s: None)
+    F._rodar_fila(["270089/001815/2023"], env={}, deadline=None, log=lambda m: None)
+    import json
+    reg = json.loads((tmp_path / "etapas.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert reg["processo"] == "270089/001815/2023" and reg["status"] == "ok"
+    assert reg["login_s"] == 12.5 and reg["via_pdf"] == 3 and "captura_s" in reg and "arquivar_s" in reg

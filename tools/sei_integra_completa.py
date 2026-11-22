@@ -526,6 +526,8 @@ def resumo_lotes(res: dict, docs: list[dict]) -> dict:
 
 
 async def main():
+    import time as _tm0
+    t_ini = _tm0.monotonic()
     G.cleanup_orphans()
     ok, m = G.preflight()
     print("PREFLIGHT:", ok, m, flush=True)
@@ -563,12 +565,18 @@ async def main():
             pw, args=G.guarded_launch_args(os.environ.get("SEI_CHROMIUM_ARGS", "").split() or None))
         import time as _tm
         t_lock = _tm.monotonic()              # as janelas dos lotes contam da aquisição da trava (idade_max 30 min)
+        # TEMPO POR ETAPA (22/11/2026): a fila só via o total por processo; onde o tempo vai (trava, login, árvore,
+        # lotes, laço doc a doc) não se media. Uma linha `ETAPAS {json}` no fim da captura; a fila a guarda.
+        etapas = {"espera_trava_s": round(t_lock - t_ini, 1)}
         n_req = [0]                           # requisições ao SEI nesta captura (medida do custo de cada via)
         ctx.on("request", lambda rq: n_req.__setitem__(0, n_req[0] + ("sei.rj.gov.br" in rq.url)))
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
             if not await SR.entrar(pg, fixo=fixo, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
             print("login OK", flush=True)
+            etapas["login_s"] = round(_tm.monotonic() - t_lock, 1)
+            etapas["navegador_fixo"] = bool(fixo)
+            t_arv = _tm.monotonic()
             # ENUMERAÇÃO — caminho CRACKED primeiro (mesmo do ler() canônico): abre processos de OUTRA
             # unidade que o itkava VÊ mas o abrir_processo/arvore_do_fonte não abre (070002/INEA,
             # 070026/SEAS). Provado 2026-07-13: INEA 070002/004135/2025 = 274 docs via cracked. Fallback:
@@ -627,6 +635,8 @@ async def main():
             # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
             docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
                     for d in arv if d.get("url")]
+            etapas["arvore_s"] = round(_tm.monotonic() - t_arv, 1)
+            etapas["arvore_n"] = len(docs)
             print(f"baixando {len(docs)} docs…", flush=True)
             paths = []
 
@@ -743,6 +753,7 @@ async def main():
                           + (f" — {res['erro']}" if res["erro"] else ""), flush=True)
             cortado_janela = False
             baixados_desde = 0
+            t_laco = _tm.monotonic()
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
@@ -791,6 +802,12 @@ async def main():
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)
             _grava(manifest, not cortado_janela)
+            etapas.update({"lotes_s": lotes_res.get("s", 0.0), "laco_s": round(_tm.monotonic() - t_laco, 1),
+                           "via_pdf": sum(1 for e in manifest if e.get("via") == "pdf_nativo"),
+                           "via_arvore": sum(1 for e in manifest if e.get("via") == "arvore"),
+                           "faltando": sum(1 for e in manifest if not e["ok"]), "cortado_janela": cortado_janela,
+                           "requisicoes": n_req[0]})
+            print("ETAPAS " + _json.dumps(etapas, ensure_ascii=False), flush=True)
             print(f"REQUISIÇÕES SEI: {n_req[0]} · via pdf_nativo {sum(1 for e in manifest if e.get('via') == 'pdf_nativo')}"
                   f" · via arvore {sum(1 for e in manifest if e.get('via') == 'arvore')}"
                   f" · faltando {sum(1 for e in manifest if not e['ok'])}"

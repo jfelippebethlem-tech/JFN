@@ -568,6 +568,24 @@ def _causa_da_saida(saida: str) -> str:
     return linhas[-1][:200] if linhas else "sem saída"
 
 
+# TEMPO POR ETAPA (22/11/2026): uma linha por processo — captura (com o `ETAPAS` que ela imprime: trava, login, árvore,
+# lotes, laço) e arquivamento. Antes só havia o total por processo no log; "onde o tempo vai" não se media.
+ETAPAS = RAIZ / "data" / "sei_integra_etapas.jsonl"
+_RX_ETAPAS = re.compile(r"^ETAPAS (\{.*\})$", re.M)
+_ETAPA: dict = {}
+
+
+def _registrar_etapas(proc: str, status: str, total_s: float) -> None:
+    import socket
+    reg = {"ts": time.strftime("%F %T"), "no": socket.gethostname(), "raiz": RAIZ.name, "processo": proc,
+           "status": status, "total_s": round(total_s, 1), **_ETAPA}
+    try:
+        with Path(os.environ.get("JFN_INTEGRA_ETAPAS") or ETAPAS).open("a", encoding="utf-8") as f:
+            f.write(json.dumps(reg, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
     """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'adiado' | 'erro'.
 
@@ -576,6 +594,8 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
     A íntegra parcial já ficou salva pelo manifesto incremental — a próxima passada
     retoma. Converter em status deixa o loop seguir para o próximo processo.
     """
+    _ETAPA.clear()
+    t0 = time.monotonic()
     try:
         # stdout capturado (antes DEVNULL): a captura imprime POR QUE não abriu a árvore, e essa
         # causa morria aqui — o log da fila dizia "ok" para um processo sem nenhum documento.
@@ -583,6 +603,13 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
                             cwd=RAIZ, env=env, timeout=_teto_processo(proc, env), text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         rc = r1.returncode
+        _ETAPA["captura_s"] = round(time.monotonic() - t0, 1)
+        m_et = _RX_ETAPAS.search(getattr(r1, "stdout", "") or "")
+        if m_et:
+            try:
+                _ETAPA.update(json.loads(m_et.group(1)))
+            except ValueError:
+                pass
         causas = _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]
         if rc == RC_LOGIN_FALHOU:
             # login não completou: nada se sabe do processo — não arquiva vazio (que o seguraria)
@@ -605,6 +632,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
                             cwd=RAIZ, env=env, timeout=TETO_ARQUIVAR_S, text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         rc2 = r2.returncode
+        _ETAPA["arquivar_s"] = round(time.monotonic() - t0 - _ETAPA["captura_s"], 1)
         if rc == RC_SEM_ARVORE or (rc == 0 and rc2 == 0 and _captura_vazia(ARQUIVO / proc.replace("/", "_"))):
             # o arquivar acima já gravou o manifesto `captura_vazia` — é ele que dá o intervalo
             for causa in causas:
@@ -620,6 +648,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
             return "erro"
         return "ok"
     except subprocess.TimeoutExpired:
+        _ETAPA["timeout_em"] = "arquivar" if "captura_s" in _ETAPA else "captura"
         return "timeout"
     except OSError:
         return "erro"
@@ -634,7 +663,9 @@ def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
             log(f"orçamento esgotado — encerrando limpo ({feitos} feitos)")
             break
         log(f"ÍNTEGRA {proc} …")
+        t_proc = time.monotonic()
         status = _baixar_e_arquivar(proc, env)
+        _registrar_etapas(proc, status, time.monotonic() - t_proc)
         log(f"  {proc}: {status}")
         feitos += 1
         # Se a VM está ocupada, o preflight recusa TODOS — desfilar a fila inteira colhendo
