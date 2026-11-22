@@ -800,3 +800,24 @@ def test_aviso_do_zelador_passa_pelo_silencio_da_casa(tmp_path, monkeypatch):
     assert not (tmp_path / "estado" / "aviso-pendente.txt").exists()
     monkeypatch.setenv("JFN_TELEGRAM_PEDIDO", "1")                       # controle positivo: pedido do dono sai
     assert Z.avisar("relatório pedido") is True and enviados == ["relatório pedido"]
+
+
+def test_backups_subpasta_vira_um_pacote_e_o_primeiro_nivel_sobe_solto(tmp_path, monkeypatch):
+    """Ciclo real da VM-1, 22/11: data/backups/manifestos_20260723 (354 JSON) subia arquivo a arquivo (~33 s cada
+    no Drive) e o ciclo não fechava. Agora: 1º nível solto, cada subpasta UM pacote."""
+    raiz = tmp_path / "backups"
+    (raiz / "manifestos").mkdir(parents=True)
+    for i in range(5):
+        (raiz / "manifestos" / f"{i}.json").write_text(str(i))
+    (raiz / "solto.json").write_text("x")
+    velho = 1_600_000_000
+    for f in [*raiz.rglob("*")]:
+        os.utime(f, (velho, velho))
+    monkeypatch.setattr(Z, "idade_dias", lambda p: 99.0)
+    perfil = Z.Perfil("teste", raizes=[Z.Raiz(raiz, "backup_db", modo="arquivos", idade_dias=1, recursivo=False),
+                                       Z.Raiz(raiz, "backup_db", idade_dias=1)], aviso_disco_pct=101)
+    c = Z.Ciclo(perfil, aplicar=False, rc=None, con=A.conectar(tmp_path / "i.db"), teto_gb=40.0)
+    Z.coletar(c)
+    unidades = sorted((str(alvo.relative_to(raiz)), len(arqs)) for _, alvo, arqs, _, _ in c.candidatos)
+    assert unidades == [("manifestos", 5), ("solto.json", 1)]
+    assert "não é arquivo regular" not in c.recusados          # a subpasta não conta como recusa no modo raso

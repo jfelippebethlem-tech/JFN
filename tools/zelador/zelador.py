@@ -76,6 +76,7 @@ class Raiz:
     original: object = None
     fila_viva: list = field(default_factory=list)   # arquivos com listas de relativos que não podem sair
     so_backup: bool = False                         # sobe e indexa, mas não apaga o local
+    recursivo: bool = True                          # 'arquivos': False = só o 1º nível (as subpastas vão em pacote)
 
 
 def _itcampo_original(p: Path) -> Path:
@@ -116,7 +117,10 @@ def perfis() -> dict[str, Perfil]:
                      padrao="*.jsonl"),
                 Raiz(Path("/tmp/claude-1001/-home-ubuntu"), "trabalho", idade_dias=14),
                 Raiz(HOME, "backup_db", modo="arquivos", idade_dias=30, padrao="*.db.gz"),
-                Raiz(J / "data" / "backups", "backup_db", modo="arquivos", idade_dias=14),
+                # 1º nível um a um; cada subpasta num .tar (ciclo de 22/11: 354 JSON pequenos de
+                # manifestos_20260723 subindo um a um levaram ~33 s cada no Drive e o ciclo não fechou em 2 h)
+                Raiz(J / "data" / "backups", "backup_db", modo="arquivos", idade_dias=14, recursivo=False),
+                Raiz(J / "data" / "backups", "backup_db", idade_dias=14),
             ],
             montagens=[HOME / "Desktop" / "it-campo"],
             caches_regeneraveis=[".cache/pip", ".cache/uv", ".npm/_cacache", ".cache/go-build", ".cache/node-gyp"],
@@ -310,7 +314,10 @@ def coletar(c: Ciclo) -> None:
             continue
         grupos: list[tuple[Path, list[Path]]] = []
         if raiz.modo == "arquivos":
-            for f in sorted(raiz.caminho.rglob(raiz.padrao)) if raiz.caminho != HOME else sorted(raiz.caminho.glob(raiz.padrao)):
+            raso = raiz.caminho == HOME or not raiz.recursivo
+            for f in sorted(raiz.caminho.glob(raiz.padrao) if raso else raiz.caminho.rglob(raiz.padrao)):
+                if raso and f.is_dir() and not f.is_symlink():
+                    continue                    # subpasta: é de outra raiz (modo pastas), não unidade solta
                 grupos.append((f, [f]))
         else:
             for sub in sorted(p for p in raiz.caminho.iterdir() if p.is_dir() and not p.is_symlink()):

@@ -147,7 +147,11 @@
       {"nome": "pcrj_benef.db", "tipo": "sqlite", "caminho": "JFN/data/pcrj_benef.db", "classe": "backup_db"},
       {"nome": "pcrj.db", "tipo": "sqlite", "caminho": "JFN/data/pcrj.db", "classe": "backup_db"},
       {"nome": "tcu_juris.db", "tipo": "sqlite", "caminho": "JFN/data/tcu_juris.db", "classe": "backup_db"},
-      {"nome": "dadosabertos_rj.db", "tipo": "sqlite", "caminho": "JFN/data/dadosabertos_rj.db", "classe": "backup_db"}
+      {"nome": "dadosabertos_rj.db", "tipo": "sqlite", "caminho": "JFN/data/dadosabertos_rj.db", "classe": "backup_db"},
+      {"nome": "receita_estab.db", "tipo": "sqlite", "caminho": "JFN/data/receita_estab.db", "classe": "receita",
+       "_por_que": "re-obtível, mas refazer exige baixar e reprocessar o dump inteiro da Receita — o mais caro de recuperar"},
+      {"nome": "compliance_analitico.db", "tipo": "sqlite", "caminho": "JFN/data/compliance_analitico.db", "classe": "coleta_cache",
+       "_por_que": "derivado do compliance.db; refazer leva horas de VM — só no grátis que sobrar"}
     ]
   }
 }
