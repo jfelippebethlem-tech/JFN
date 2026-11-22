@@ -781,3 +781,22 @@ def test_koofr_nao_recebe_o_que_nao_devolve_e_box_tem_teto_por_arquivo(tmp_path)
     assert "não devolve" in rc.pode_enviar("koofr", 10, alvo=k + "/x.bin")     # negativo: .bin não volta
     teto = int(A.NUVENS["remotos"]["box"]["max_arquivo_gb"] * 1e9)
     assert rc.pode_enviar("box", teto) is None and "por arquivo" in rc.pode_enviar("box", teto + 1)
+
+
+def test_aviso_do_zelador_passa_pelo_silencio_da_casa(tmp_path, monkeypatch):
+    """Dono, 22/11: "não quero o Yoda falando mais sem que eu peça". Silêncio ativo → nada vai ao Telegram e o
+    aviso fica em data/telegram_silenciado.jsonl (origem zelador); com JFN_TELEGRAM_PEDIDO=1 (controle) sai."""
+    from compliance_agent.notifications import silencio
+    monkeypatch.setattr(silencio, "DATA", tmp_path)
+    monkeypatch.setattr(Z, "ESTADO", tmp_path / "estado")
+    (tmp_path / "telegram_silencio.json").write_text('{"ativo": true}')
+    enviados = []
+    monkeypatch.setattr(Z, "_enviar_telegram", lambda t: enviados.append(t) or {"result": {"message_id": 1}})
+    monkeypatch.delenv("JFN_TELEGRAM_PEDIDO", raising=False)
+    assert Z.avisar("🆘 ESCALADO — teste") is True
+    assert enviados == []
+    reg = [json.loads(x) for x in (tmp_path / "telegram_silenciado.jsonl").read_text().splitlines()]
+    assert reg[-1]["origem"] == "zelador" and reg[-1]["inicio"].startswith("🆘 ESCALADO")
+    assert not (tmp_path / "estado" / "aviso-pendente.txt").exists()
+    monkeypatch.setenv("JFN_TELEGRAM_PEDIDO", "1")                       # controle positivo: pedido do dono sai
+    assert Z.avisar("relatório pedido") is True and enviados == ["relatório pedido"]

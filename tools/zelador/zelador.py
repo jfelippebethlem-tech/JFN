@@ -520,7 +520,19 @@ def _enviar_telegram(texto: str) -> dict:
 
 def avisar(texto: str) -> bool:
     """Entrega conferida por `message_id` (o "ok" do Telegram já mentiu nesta casa). Sem entrega → fica em
-    ~/.zelador/aviso-pendente.txt e o zelador da VM-1 (`--vigiar`) repassa pelo índice exportado."""
+    ~/.zelador/aviso-pendente.txt e o zelador da VM-1 (`--vigiar`) repassa pelo índice exportado.
+    Dono, 22/11: "não quero o Yoda falando mais sem que eu peça" → passa pelo silêncio da casa
+    (`data/telegram_silenciado.jsonl`); só sai com JFN_TELEGRAM_PEDIDO=1. Silenciado conta como tratado."""
+    try:
+        from compliance_agent.notifications import silencio
+        if silencio.silenciar(texto, origem="zelador"):
+            return True
+    except ImportError as exc:                     # sem o módulo do silêncio, não fala: registra e para aqui
+        logger.warning("silêncio indisponível (%s) — aviso NÃO enviado", exc)
+        ESTADO.mkdir(parents=True, exist_ok=True)
+        with open(ESTADO / "aviso-silenciado.txt", "a", encoding="utf-8") as f:
+            f.write(f"{A.agora()}\n{texto}\n\n")
+        return True
     try:
         r = _enviar_telegram(texto[:3900])
         if ((r or {}).get("result") or {}).get("message_id"):
