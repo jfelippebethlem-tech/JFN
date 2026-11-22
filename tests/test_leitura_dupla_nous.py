@@ -30,7 +30,7 @@ def test_o_leitor_padrao_do_volume_e_o_nous():
 
 def test_sem_token_cai_na_cadeia_curta_em_vez_de_estourar(monkeypatch):
     """Degradar honesto: sem credencial do nous a leitura continua, por outro caminho."""
-    monkeypatch.setattr(M, "_gerar_nous", lambda: None)
+    monkeypatch.setattr(M, "_gerar_nous", lambda *a, **k: None)
     assert M._gerar_cadeia_curta() is not None
 
 

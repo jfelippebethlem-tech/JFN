@@ -400,7 +400,10 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
         # stepfun:free (100% grátis/sem limite — diretriz do dono: gemini FORA do sweep)". Sem
         # limite é justamente o que a cascata não tinha: o cerebras estourou 429 cinquenta vezes e
         # cada leitura passou a percorrer doze provedores.
-        gerar = _gerar_nous() or _gerar_cadeia_curta()
+        #
+        # 21/11/2026: na frente, SÓ os grátis que passaram na bancada (≥ Sonnet pelo Opus, zero invenção por código —
+        # `_APROVADOS_LEITURA`); o caminho de antes fica como reserva, na mesma ordem.
+        gerar = _encadear(*_gerar_aprovados(), _gerar_nous() or _gerar_cadeia_curta())
     return _interpretar(texto, proc, gerar)
 
 
@@ -413,8 +416,9 @@ def _registrar_trace(provedor: str, ok: bool, ms: int, erro: str = "") -> None:
         print(f"  ⚠️  trace indisponível ({type(exc).__name__})", file=sys.stderr)
 
 
-def _gerar_nous():
-    """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta."""
+def _gerar_nous(modelo_fixo: str | None = None):
+    """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta.
+    `modelo_fixo`: um modelo do nous já aprovado na bancada (sem troca automática — se ele falhar, a cadeia segue)."""
     try:
         from tools.sei_ficha import _MAX_TOKENS as _TETO, _nous_cred, marcar_morto, modelo_morto, modelo_sweep
         tok, base = _nous_cred()
@@ -438,14 +442,15 @@ def _gerar_nous():
         # `max_tokens` alto de propósito: stepfun é modelo de RACIOCÍNIO e gasta tokens no campo
         # `reasoning` ANTES do `content`. Teto baixo devolve content vazio com finish_reason
         # 'length', que chega aqui como "JSON inválido" — a mesma lição que o sei_ficha já pagou.
-        modelo = modelo_sweep()
+        modelo = modelo_fixo or modelo_sweep()
         while True:  # modelo do catálogo grátis morreu -> próximo da lista (sei_ficha.MODELOS_SWEEP)
             r = httpx.post(f"{base}/chat/completions", timeout=200,
                            headers={"Authorization": f"Bearer {tok}"},
                            json={"model": modelo, "temperature": 0.1, "max_tokens": _TETO, "top_p": 0.9,
                                  "messages": [{"role": "system", "content": sistema},
                                               {"role": "user", "content": prompt}]})
-            if r.status_code < 400 or not modelo_morto(r.status_code, r.text) or not (modelo := marcar_morto(modelo, r.status_code, r.text)):
+            if (modelo_fixo or r.status_code < 400 or not modelo_morto(r.status_code, r.text)
+                    or not (modelo := marcar_morto(modelo, r.status_code, r.text))):
                 break
         try:
             r.raise_for_status()
@@ -470,8 +475,83 @@ def _gerar_nous():
 # um FREE_LLM_ONLY do ambiente, e lista que o filtro esvaziasse caía na cascata INTEIRA (Gemini incluído). Aqui a
 # lista é fechada e chamada provedor a provedor: zai e cohere com teto mensal server-side (`free_llm._MONTH_CAP`),
 # openrouter com a guarda que força `:free`. Nenhum disponível → "" → a leitura sai INDISPONÍVEL, nunca paga.
-_GRATIS_LEITURA = ("zai", "cohere", "openrouter")
+# 21/11/2026: cohere SAIU — na bancada (100 processos, Opus da assinatura) acertou 81,4% contra 88,0% do Sonnet nos
+# mesmos processos; a regra do dono é "grátis só entra se ≥ Sonnet". zai ficou INDISPONÍVEL na bancada (estourou os
+# 150 s) e segue como estava, sem medição que o tire.
+_GRATIS_LEITURA = ("zai", "openrouter")
 _NUNCA = frozenset({"gemini", "cerebras"})
+
+# APROVADOS NA BANCADA (dono 20/11: "grátis só entra na tarefa se ≥ Sonnet, ambos julgados pelo Opus, e zero erro
+# grave"). Bancada de 20–21/11/2026: 100 processos da fila do acervo, prompt/janela/parser DESTE módulo, conferência
+# literal por código contra a fonte + Opus da assinatura no que o código não decide; comparação PAREADA nos 76–77
+# processos 100% adjudicados:
+#   particle-ai/particle-1:free   93,1% × Sonnet 88,6% (27 × 40 erros), 0 invenção · mediana 20,7 s
+#   qwen/qwen4-max:free (nous)    90,0% × Sonnet 88,0% (37 × 42 erros), 0 invenção · mediana 106 s; 429 "fair-share"
+# Fora: as 4 Nemotron `:free` (inventaram valor/dispositivo contra a fonte), cohere e dots-3-note (< Sonnet; o dots
+# saiu do catálogo do OpenRouter em 21/11). Scripts e resultados: ~/.local/state/jfn-bancada-free-20261120/.
+_APROVADOS_LEITURA = (("openrouter", "particle-ai/particle-1:free"), ("nous", "qwen/qwen4-max:free"))
+_TIMEOUT_OPENROUTER_S = 60      # mediana 20,7 s na bancada; a janela inteira tem `_LIMITE_S` = 150 s para a cadeia toda
+
+
+def _gerar_openrouter_free(modelo: str):
+    """Um modelo `:free` ESPECÍFICO do OpenRouter, pela porta única `free_llm._requisicao` (força `:free`, sem raciocínio).
+    `None` sem chave; modelo sem `:free` é recusado (§4.1 — a chave tem teto 0, mas a guarda não depende disso)."""
+    from compliance_agent.llm import free_llm as F
+    if not modelo.endswith(":free"):
+        raise ValueError(f"modelo não-grátis na leitura dupla: {modelo}")
+    if not F.openrouter_available():
+        return None
+
+    def gerar(prompt: str, sistema: str = "") -> str:
+        import time
+
+        import httpx
+        ini = time.monotonic()
+        erro = ""
+        saida = ""
+        msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
+        cab, carga = F._requisicao(F.OPENROUTER_BASE, F._openrouter_key(), modelo, msgs, 8000, None)
+        try:
+            r = httpx.post(f"{F.OPENROUTER_BASE}/chat/completions", headers=cab, json=carga,
+                           timeout=_TIMEOUT_OPENROUTER_S)
+            if r.status_code >= 400:
+                erro = f"HTTP {r.status_code}"
+            else:
+                esc = (r.json().get("choices") or [{}])[0]
+                saida = (esc.get("message") or {}).get("content") or ""
+                if not saida:
+                    erro = f"content vazio (finish={esc.get('finish_reason')})"
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            erro = f"{type(exc).__name__}: {exc}"[:120]
+        F._trace("openrouter", bool(saida), int((time.monotonic() - ini) * 1000), erro, modelo=modelo)
+        return saida
+    return gerar
+
+
+def _gerar_aprovados() -> list:
+    """Os geradores dos `_APROVADOS_LEITURA`, na ordem; `None` onde falta credencial (o `_encadear` pula)."""
+    out = []
+    for prov, modelo in _APROVADOS_LEITURA:
+        out.append(_gerar_openrouter_free(modelo) if prov == "openrouter" else _gerar_nous(modelo))
+    return out
+
+
+def _encadear(*geradores):
+    """O primeiro gerador que devolver texto vence; vazio, `None` ou erro → o próximo. Nada responde → ""
+    (a leitura sai INDISPONÍVEL, nunca inventada nem paga)."""
+    vivos = [g for g in geradores if g is not None]
+
+    def gerar(prompt: str, sistema: str = "") -> str:
+        for g in vivos:
+            try:
+                r = g(prompt, sistema)
+            except Exception as exc:  # noqa: BLE001 — um provedor fora não derruba a leitura; o próximo tenta
+                print(f"  ⚠️  gerador da leitura falhou ({type(exc).__name__}) — próximo", file=sys.stderr)
+                continue
+            if (r or "").strip():
+                return r
+        return ""
+    return gerar
 
 
 def _gerar_cadeia_curta():

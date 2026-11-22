@@ -32,7 +32,7 @@ def test_sem_gratuito_disponivel_sai_indisponivel_e_nao_chama_pago(monkeypatch):
     monkeypatch.setattr(F, "openrouter_available", lambda: False)
     monkeypatch.setattr(F, "extra_available", lambda p: False)
     monkeypatch.setenv("FREE_LLM_ONLY", "gemini")          # nem o ambiente reabre a porta
-    monkeypatch.setattr(M, "_gerar_nous", lambda: None)
+    monkeypatch.setattr(M, "_gerar_nous", lambda *a, **k: None)
     r = M.extrair_interpretativo("texto do processo " * 50, "SEI-000000/000000/2026")
     assert r.get("estado") == "indisponivel"
     assert chamados == [], f"chamou provedor fora da lista: {chamados}"
@@ -43,7 +43,7 @@ def test_usa_o_gratuito_da_lista(monkeypatch):
     chamados: list[str] = []
     _sem_rede(monkeypatch, chamados)
     monkeypatch.setattr(F, "openrouter_available", lambda: False)
-    monkeypatch.setattr(F, "extra_available", lambda p: p == "cohere")
+    monkeypatch.setattr(F, "extra_available", lambda p: p == "zai")
     monkeypatch.setattr(F, "extra_chat", lambda p, *a, **k: chamados.append(p) or '{"ok": 1}')
     assert M._gerar_cadeia_curta()("prompt", "sistema") == '{"ok": 1}'
-    assert chamados == ["cohere"]
+    assert chamados == ["zai"]
