@@ -121,9 +121,10 @@ def test_porta_paga_recusa_modelo_gratis(pago):
     assert pago["posts"] == []
 
 
-def test_guarda_free_do_free_llm_intacta():
-    """O caminho grátis continua forçando `:free` — a porta paga não abriu brecha nele."""
+def test_guarda_free_do_free_llm_intacta(monkeypatch):
+    """O caminho grátis continua forçando `:free` — a porta paga não abriu brecha nele — e a chave paga, mesmo no
+    ambiente, nunca entra no pool de chaves grátis."""
     _, carga = F._requisicao(F.OPENROUTER_BASE, "k", "qwen/qwen3.7-flash", [{"role": "user", "content": "x"}], 10, None)
     assert carga["model"] == "qwen/qwen3.7-flash:free"
-    import inspect
-    assert "OPENROUTER_PAGO" not in inspect.getsource(F)                       # o grátis não conhece a chave paga
+    monkeypatch.setenv("OPENROUTER_PAGO_API_KEY", "sk-or-paga-teste")
+    assert "sk-or-paga-teste" not in F._openrouter_chaves()
