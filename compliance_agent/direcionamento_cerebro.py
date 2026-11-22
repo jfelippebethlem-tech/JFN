@@ -160,17 +160,23 @@ def _quota_429(r) -> str:
         return ""
 
 
-async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
+async def _gerar_default(messages: list[dict], json_saida: bool = True, tarefa: str | None = None) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
-    Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
+    Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica).
+
+    `tarefa` (22/11/2026): só para aplicar `llm/cascata_ajuste` — modelo rebaixado NA tarefa vai para o fim do seu
+    degrau (o Groq, para depois dos extras); modelo `fora` (404) sai. Sem tarefa, a ordem é a de sempre."""
     # cooldown por TIPO de erro (mesma lógica do free_llm.best_free_chat — não re-bater provedor morto)
     global ultimo_provedor, ultimo_modelo
     from compliance_agent.llm.free_llm import _em_cooldown, _marcar_cooldown, _limpar_cooldown
     import time as _t
     erros = []
+    from compliance_agent.llm import cascata_ajuste
+    reb = cascata_ajuste.rebaixados(tarefa)
     if _gemini_keys() and not _em_cooldown("gemini"):
         try:
-            r = await gerar_gemini(messages, json_saida=json_saida)
+            # a tarefa só segue quando há uma: quem substitui gerar_gemini (testes, chamadores antigos) segue servindo
+            r = await gerar_gemini(messages, json_saida=json_saida, **({"tarefa": tarefa} if tarefa else {}))
             if r and r.strip():
                 _limpar_cooldown("gemini")
                 ultimo_provedor = "gemini"
@@ -179,7 +185,7 @@ async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
         except Exception as e:  # noqa: BLE001
             _marcar_cooldown("gemini", e)
             erros.append(f"gemini: {str(e)[:50]}")
-    if not _em_cooldown("groq"):
+    if "groq" not in reb and not _em_cooldown("groq"):
         _ini = _t.monotonic()
         try:
             r = await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
@@ -209,6 +215,9 @@ async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
         for prov in (["nvidia", "cohere"] + [p for p in _EXTRA if p not in ("nvidia", "cohere")]):
             if extra_available(prov):
                 provedores.append((prov, lambda p=prov: extra_chat_async(p, usr_txt, sys_txt, max_tokens=2000)))
+        if "groq" in reb:                            # rebaixado na tarefa: depois dos extras, não antes
+            provedores.append(("groq", lambda: _groq_gerar(messages)))
+        provedores = cascata_ajuste.ordenar(provedores, tarefa, chave=lambda p: p[0])
         for nome, chamada in provedores:
             if _em_cooldown(nome):
                 continue
@@ -255,13 +264,15 @@ def _bg_loop():
     return _BG_LOOP
 
 
-def gerar_sync(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True) -> str:
+def gerar_sync(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True, *,
+               tarefa: str | None = None) -> str:
     """Chamada LLM SÍNCRONA robusta (de qualquer contexto, sync ou async) via loop dedicado persistente.
     Reusa _gerar_default (Gemini rotacionado). Em teste, injete um mock — não chame isto."""
     import asyncio
     msgs = [{"role": "system", "content": sistema or "Você é auditor de controle externo do JFN."},
             {"role": "user", "content": prompt}]
-    fut = asyncio.run_coroutine_threadsafe(_gerar_default(msgs, json_saida=json_saida), _bg_loop())
+    kw = {"tarefa": tarefa} if tarefa else {}       # sem tarefa, a chamada de sempre (quem substitui segue servindo)
+    fut = asyncio.run_coroutine_threadsafe(_gerar_default(msgs, json_saida=json_saida, **kw), _bg_loop())
     return fut.result(timeout=timeout)
 
 
@@ -327,7 +338,7 @@ _GEMINI_RR = 0
 
 
 async def gerar_gemini(messages: list[dict], model: str | None = None,
-                       max_tokens: int | None = None, json_saida: bool = True) -> str:
+                       max_tokens: int | None = None, json_saida: bool = True, tarefa: str | None = None) -> str:
     """Gemini robusto: ROTAÇÃO do pool de chaves (round-robin) × MODELOS em cascata (buckets de RPM
     distintos no free tier) × backoff. Adapta messages OpenAI→Gemini (system → systemInstruction)."""
     global _GEMINI_RR, ultimo_modelo
@@ -347,6 +358,9 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
         ([_env1] if _env1 else []) + [m.strip() for m in os.environ.get(
             "DIRECIONAMENTO_GEMINI_MODELS",
             "gemini-3-flash-preview,gemini-3.6-flash,gemini-3.5-flash,gemini-2.5-flash").split(",") if m.strip()]))
+    if not model:   # 22/11/2026: modelo que sumiu (404) sai; rebaixado na tarefa vai para o fim (llm/cascata_ajuste)
+        from compliance_agent.llm import cascata_ajuste
+        modelos = cascata_ajuste.ordenar(modelos, tarefa, chave=lambda m: f"gemini:{m}")
     sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
     body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],

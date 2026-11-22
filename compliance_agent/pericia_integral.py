@@ -649,7 +649,7 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
         if dc._gemini_keys() and not _em_cooldown("gemini"):
             msgs = [{"role": "system", "content": sistema}, {"role": "user", "content": prompt}]
             fut = asyncio.run_coroutine_threadsafe(
-                dc.gerar_gemini(msgs, max_tokens=MAX_TOKENS_SAIDA, json_saida=json_saida), dc._bg_loop())
+                dc.gerar_gemini(msgs, max_tokens=MAX_TOKENS_SAIDA, json_saida=json_saida, tarefa=TAREFA), dc._bg_loop())
             txt = fut.result(timeout=timeout)
             if txt and txt.strip():
                 _limpar_cooldown("gemini")
@@ -664,7 +664,7 @@ def _cascata_longa(prompt: str, sistema: str = "", timeout: float = TIMEOUT_CASC
     txt, modelo = _openrouter_longo(prompt, sistema)
     if txt:
         return txt, modelo
-    txt = dc.gerar_sync(prompt, sistema, timeout, json_saida)
+    txt = dc.gerar_sync(prompt, sistema, timeout, json_saida, tarefa=TAREFA)
     return txt, contingencia.modelo_da_cascata()
 
 
@@ -691,7 +691,9 @@ def _openrouter_longo(prompt: str, sistema: str) -> tuple[str, str]:
         return "", ""
     ctx = {m["id"]: m.get("ctx") or 0 for m in openrouter_catalogo.catalogo()}
     msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
-    for mid in openrouter_catalogo.escolher_varios("documento", n=4):
+    from compliance_agent.llm import cascata_ajuste      # 404 sai; rebaixado nesta tarefa vai para o fim
+    for mid in cascata_ajuste.ordenar(openrouter_catalogo.escolher_varios("documento", n=4), TAREFA,
+                                      chave=lambda m: f"openrouter:{m}"):
         if ctx.get(mid, 0) < CTX_MIN_CASCATA:
             continue
         modelo = free_llm._forcar_free(mid)

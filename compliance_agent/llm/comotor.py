@@ -36,7 +36,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
-from compliance_agent.llm import claude_api, claude_motor, contingencia, cruzamento
+from compliance_agent.llm import cascata_ajuste, claude_api, claude_motor, contingencia, cruzamento
 from compliance_agent.llm.cruzamento import Lado
 from compliance_agent.llm.normalizadores import NORMALIZADORES
 
@@ -119,7 +119,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
         if cascata is None and normalizar is not None:
             try:
                 pref = cruzamento.preferido(tarefa)
-                if pref:
+                if pref and pref not in cascata_ajuste.rebaixados(tarefa):   # rebaixado pela automelhoria: não fura a fila
                     r = _chamar_provedor(pref, p, sistema)
                     if r and r.strip():
                         return r, pref, bool(fs)
@@ -127,6 +127,10 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                 logger.debug("comotor: provedor preferido falhou (%s)", e)
         if cascata is not None:
             return cascata(p, sistema, timeout, json_saida), "cascata", bool(fs)
+        if cascata_ajuste.rebaixados(tarefa):        # 22/11/2026: a cadeia desta tarefa tem modelo rebaixado
+            from compliance_agent.direcionamento_cerebro import gerar_sync
+            return (gerar_sync(p, sistema, timeout, json_saida, tarefa=tarefa), contingencia.modelo_da_cascata(),
+                    bool(fs))
         return contingencia.gerar_cascata(p, sistema, timeout, json_saida), contingencia.modelo_da_cascata(), bool(fs)
 
     def gerar(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True, *,

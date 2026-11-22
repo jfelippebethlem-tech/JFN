@@ -709,6 +709,19 @@ def sensor_integracao() -> list[dict]:
     return avaliar_integracao(I.worktrees(horas=12), I.remocoes_em_stage(), 100 * du.used / du.total)
 
 
+# MODELOS GRÁTIS E FRACOS (dono 22/11/2026: "faça a automelhoria atuar também nos modelos grátis e mais fracos que o
+# Opus"). Divergência do Opus por modelo × tarefa, disponibilidade (404, cota, janela) e candidatos do catálogo vivo;
+# o remédio seguro (rebaixar/tirar na cadeia, `llm/cascata_ajuste`) e o banco de casos negativos moram em
+# `tools/automelhoria_modelos.py`. Banco travado/ilegível vira `sensor:modelos` (cego ≠ ok), nunca derruba a rodada.
+def sensor_modelos() -> list[dict]:
+    import sqlite3
+    from tools import automelhoria_modelos
+    try:
+        return automelhoria_modelos.sensor()
+    except sqlite3.Error as e:
+        raise RuntimeError(f"banco: {e}") from e
+
+
 # nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
 _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
@@ -721,7 +734,8 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "autoaprimoramento": (sensor_autoaprimoramento, "autoaprimoramento da perícia"),
              "certeza": (sensor_certeza, "certeza dos números"), "maquinas": (sensor_maquinas, "uso das máquinas"),
              "detectores": (sensor_detectores, "precisão dos detectores"),
-             "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)")}
+             "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)"),
+             "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)")}
 SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
 _AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
 
@@ -933,6 +947,9 @@ def main() -> int:
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")
     print(md)
     # o escalado já foi pelo canal próprio (avisar_escalados); este resumo de novidades segue sob o silêncio
+    # a área `modelos` não entra no aviso de novidades (dono 22/11/2026: o Yoda só fala quando pedido) — fica na fila
+    r["novos"] = [s for s in r["novos"] if r["fila"][s]["area"] != "modelos"]
+    r["reincidiu"] = [s for s in r["reincidiu"] if r["fila"][s]["area"] != "modelos"]
     if (r["novos"] or r["reincidiu"]) and not a.sem_aviso:
         from compliance_agent.siafe_coord import notificar
         L = [f"🔁 Automelhoria: {len(r['novos'])} problema(s) novo(s), {len(r['reincidiu'])} reincidência(s)"
