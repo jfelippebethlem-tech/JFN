@@ -1,0 +1,6 @@
+{
+  "_o_que_e": "Chaves Gemini do pool da casa com PROVA de free tier (§4.1 'nunca assumir free tier'): cada uma devolveu 429 com a métrica de cota '...FreeTier...' (generate_content_free_tier_requests). Identificador = sha1(chave)[:6], NUNCA a chave. Lido por tools/sei_ficha_acervo._chaves_gemini_free: chave fora desta lista não é chamada pela ficha grátis.",
+  "_fonte": "bancadas de 20–22/11/2026: ~/.local/state/jfn-bancada-free-20261120/res/gemini_cota*.json (campo prova_free) e ~/.local/state/jfn-bancada-ficha-20261122/res/gemini_cota.json",
+  "_quando_rever": "chave nova no pool só entra aqui depois de um 429 FreeTier medido; billing religado num projeto = tirar a chave daqui",
+  "kids": ["6e7a1b", "85fac3", "ea070c", "026a01", "8af5f9", "c9500b", "c8b7b8", "9fc63c"]
+}

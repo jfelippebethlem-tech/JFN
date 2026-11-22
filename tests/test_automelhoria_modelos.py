@@ -340,3 +340,27 @@ def test_groq_rebaixado_vai_para_depois_dos_extras(ajuste, monkeypatch, tmp_path
     cascata_ajuste.rebaixar("t", "groq", "m", {})
     assert asyncio.run(DC._gerar_default(msgs, tarefa="t")) == "openrouter"
     assert asyncio.run(DC._gerar_default(msgs, tarefa="outra")) == "groq"
+
+
+# ───────────────────────── f) graves da ficha grátis (22/11/2026) ─────────────────────────
+def test_grave_da_ficha_gratis_vira_item_por_modelo_e_categoria(tmp_path):
+    rec = tmp_path / "recusas.jsonl"
+    linhas = [{"em": "2026-11-21T10:00:00", "pasta": "p1", "tentativas": [
+                  {"modelo": "gemini-x", "motivo": "grave", "graves": ["resumo: R$ 146,5 milh", "datas: 01/01/2020"]}]},
+              {"em": "2026-11-21T11:00:00", "pasta": "p2", "tentativas": [
+                  {"modelo": "gemini-x", "motivo": "grave", "graves": ["resumo: R$ 9 mi"]},
+                  {"modelo": "outro", "motivo": "sem resposta válida"}]},
+              {"em": "2026-11-01T11:00:00", "pasta": "velho", "tentativas": [            # fora da janela de 7 dias
+                  {"modelo": "gemini-x", "motivo": "grave", "graves": ["cnpjs: 1"]}]}]
+    rec.write_text("\n".join(json.dumps(x) for x in linhas) + "\nlixo\n", encoding="utf-8")
+    probs = M.avaliar_ficha_gratis(rec, {}, agora=AGORA)
+    assert sorted(_sig(probs)) == ["modelos:ficha_gratis_grave:gemini-x:datas",
+                                   "modelos:ficha_gratis_grave:gemini-x:resumo"]
+    assert "2 processo" in next(p["titulo"] for p in probs if p["assinatura"].endswith(":resumo"))
+
+
+def test_grave_medido_na_bancada_abre_item_e_bancada_limpa_nao(tmp_path):
+    bancada = {"ficha_gratis": {"modelo": "gemini-x", "fonte": "bancada 22/11", "graves": {"resumo": 3, "datas": 0}}}
+    probs = M.avaliar_ficha_gratis(tmp_path / "nao_existe.jsonl", bancada, agora=AGORA)
+    assert _sig(probs) == ["modelos:ficha_gratis_grave:gemini-x:resumo"]
+    assert M.avaliar_ficha_gratis(tmp_path / "nao_existe.jsonl", {}, agora=AGORA) == []

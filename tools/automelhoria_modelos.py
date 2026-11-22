@@ -447,6 +447,62 @@ def medir(cruz: Path | None = None, trace: Path | None = None, agora: datetime |
             "disp": disp, "modelos_com_pares": com_pares}
 
 
+RECUSAS_FICHA = DATA / "sei_ficha_gratis_recusas.jsonl"
+
+
+def avaliar_ficha_gratis(recusas: Path = RECUSAS_FICHA, bancadas: dict | None = None,
+                         agora: datetime | None = None) -> list[dict]:
+    """Graves da COLETA GRÁTIS da ficha do acervo (22/11/2026) → um item por (modelo, categoria do grave).
+
+    Duas fontes: (1) as recusas de produção dos últimos 7 dias (`tools/sei_ficha_acervo._registrar_recusas` — o
+    processo foi ao Haiku porque o grátis inventou número/CNPJ/data/citação); (2) os graves que a BANCADA mediu e
+    `config/modelos_regua.yaml` (`bancadas_coleta`) registra — ficam abertos até a bancada seguinte medir zero."""
+    agora = agora or datetime.now()
+    desde = (agora - timedelta(days=JANELA_DIAS)).isoformat(timespec="seconds")
+    cont: dict[tuple[str, str], set] = {}
+    try:
+        linhas = recusas.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        linhas = []
+    for ln in linhas:
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            continue
+        if str(r.get("em") or "") < desde:
+            continue
+        for t in r.get("tentativas") or []:
+            if t.get("motivo") != "grave":
+                continue
+            for g in t.get("graves") or []:
+                cat = str(g).split(":", 1)[0].split("(", 1)[0].strip() or "?"
+                cont.setdefault((str(t.get("modelo")), cat), set()).add(r.get("pasta"))
+    probs = [_p(f"ficha_gratis_grave:{mod}:{cat}",
+                f"ficha grátis ({mod}): grave de {cat} em {len(ps)} processo(s) em {JANELA_DIAS} dias — foram ao Haiku",
+                f"exemplos: {', '.join(sorted(str(p) for p in ps)[:5])} · data/sei_ficha_gratis_recusas.jsonl",
+                acao_humana="abrir as recusas, achar a regra que o modelo quebrou e medir o remédio na bancada "
+                            "(lição no sistema da ficha grátis só com número COM × SEM)")
+             for (mod, cat), ps in sorted(cont.items())]
+    for nome, b in (bancadas or {}).items():
+        if not isinstance(b, dict):
+            continue
+        for cat, n in sorted((b.get("graves") or {}).items()):
+            if n and (str(b.get("modelo")), cat) not in cont:
+                probs.append(_p(f"ficha_gratis_grave:{b.get('modelo')}:{cat}",
+                                f"ficha grátis ({b.get('modelo')}): {n} grave(s) de {cat} medido(s) na bancada",
+                                f"{nome} · {b.get('fonte', '')}",
+                                acao_humana="remédio medido na bancada; a próxima bancada com zero fecha o item"))
+    return probs
+
+
+def _bancadas_coleta(regua_yaml: Path = REGUA) -> dict:
+    import yaml
+    try:
+        return (yaml.safe_load(regua_yaml.read_text(encoding="utf-8")) or {}).get("bancadas_coleta") or {}
+    except (OSError, ValueError):
+        return {}
+
+
 def sensor(aplicar: bool = True, agora: datetime | None = None, catalogo_md: Path | None = CATALOGO_FALHAS) -> list[dict]:
     from compliance_agent.llm import cascata_ajuste
     m = medir(agora=agora)
@@ -456,6 +512,7 @@ def sensor(aplicar: bool = True, agora: datetime | None = None, catalogo_md: Pat
     p_disp, tirar = avaliar_disponibilidade(m["disp"])
     probs += p_disp
     probs += avaliar_candidatos(catalogo_atual(), medidos(modelos_pares=m["modelos_com_pares"]))
+    probs += avaliar_ficha_gratis(RECUSAS_FICHA, _bancadas_coleta(), agora=agora)
     if aplicar:
         for t, mod, motivo, num in rebaixar:
             if cascata_ajuste.rebaixar(t, mod, motivo, num):

@@ -10,3 +10,29 @@
 #   <tarefa>: {taxa_grave: 0.04, n: 100, fonte: "bancada AAAA-MM-DD, <onde está o resultado>"}
 # Vazio em 22/11/2026: a bancada de 20–21/11 mediu a COLETA (T1/T2, régua por campo), não a perícia (régua por nível).
 referencia_sonnet: {}
+
+# Bancadas de COLETA (régua por campo, por código contra o texto — não é a régua por nível da perícia acima). Lido por
+# `tools/automelhoria_modelos.avaliar_ficha_gratis`: cada categoria com grave > 0 vira item `ficha_gratis_grave:*` na
+# fila da automelhoria até uma bancada nova medir zero.
+bancadas_coleta:
+  ficha_gratis:
+    tarefa: extracao_sei (tools/sei_ficha_acervo — ficha do acervo SEI)
+    modelo: "gemini-3.5-flash-lite+particle-ai/particle-1:free"
+    arranjo: "consenso: os dois respondem sem grave → união dos itens conferidos; senão o Haiku faz o processo"
+    n: 103
+    fonte: "bancada 2026-11-22, ~/.local/state/jfn-bancada-ficha-20261122/ (analisar.py, bootstrap2.py)"
+    medido:
+      cobertura_por_processo: {arranjo: 0.824, haiku: 0.752, dif_ic95: [0.038, 0.107]}
+      melhor_x_pior_que_haiku: "51×21 (31 empates)"
+      graves_por_100_itens: {arranjo: 0.24, haiku: 1.07, dif_ic95: [-0.0115, -0.0053]}
+      residuais_que_a_conferencia_nao_pega: {arranjo: 3, haiku: 14}
+      processos_feitos_pelo_gratis: 0.728
+      sozinhos_nao_passam: "flash-lite 65,0% × Haiku 78,5% (n=200); particle 72,7% × 75,2% (n=103); 3.1/2.5-flash-lite piores"
+    graves:          # graves BRUTOS na bancada (flash-lite em 200 processos, particle em 103; o processo foi ao Haiku)
+      valores: 12
+      datas: 13
+      cnpjs: 10
+      documentos: 8
+      fundamento_legal: 5
+      resumo: 7
+      ponto: 4

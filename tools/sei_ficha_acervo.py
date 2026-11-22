@@ -13,6 +13,8 @@ O QUE FAZ, e onde mora cada garantia (diretriz do dono, 13/11/2026: "não pode t
      Teto DECLARADO (`TETO_TOTAL`/`TETO_DOC`); o que ficou de fora vai contado em `verificacao`.
   3. EXTRAÇÃO pelo prompt canônico da ficha (`tools/sei_ficha`: mesmo schema, mesmo exemplo) — Haiku 5.5 pela Batch
      API, balde `extracao_sei` do `claude_api` (teto em dólar, reserva antes de enviar). Nunca Opus pela API.
+  3b. COLETA GRÁTIS ANTES DO HAIKU (22/11/2026, seção "COLETA GRÁTIS" abaixo): consenso de modelos grátis provados;
+     só a coleta, sem juízo; qualquer grave/silêncio → o processo vai ao Haiku. Desliga com JFN_FICHA_GRATIS=0.
   4. CONFERÊNCIA POR CÓDIGO contra o texto (`llm/verificacao`): documento só entra com o trecho LITERAL achado na
      fonte; red flag só com a citação `[Doc: … — "trecho"]` achada; valor/CNPJ/data/parte só se aparecem no texto.
      O resto é DESCARTADO, nunca corrigido — e contado.
@@ -398,6 +400,291 @@ def conferir(ficha: dict, fonte: str) -> tuple[dict, dict]:
     return out, rel
 
 
+# ── COLETA GRÁTIS (22/11/2026) ────────────────────────────────────────────────────────────────────────
+# Pedido do dono ("mede e liga o que passar"): o Haiku pago era 80% do gasto da API (US$ 19,94 de 24,94). Bancada de
+# 22/11 (~/.local/state/jfn-bancada-ficha-20261122/, 200 processos já fichados pelo Haiku, mesmo prompt/janela, régua
+# por código contra o texto): NENHUM grátis sozinho iguala o Haiku por processo (flash-lite 65% × 78%); o CONSENSO
+# gemini-3.5-flash-lite + particle-1:free (união, os dois sem grave, senão Haiku) achou mais itens conferidos em 51 × 21
+# processos (+7,2 p.p., IC95% +3,8 a +10,7; n=103) e inventou menos (0,24 × 1,07 graves/100 itens) — fez 73% dos
+# processos sem o Haiku. Números em config/modelos_regua.yaml (`bancadas_coleta.ficha_gratis`).
+# Regras que valem aqui, sem exceção:
+#   · grátis só COLETA: o juízo (análise, red flags, perícias, dúvidas, relevante, nível) SAI da ficha grátis — quem
+#     gradua é a camada de juízo (perícia de execução, Processo 360);
+#   · a ficha grátis só é gravada se NADA do que afirma com número/CNPJ/data/citação/documento for inventado
+#     (`graves_coleta` vazio); um grave, JSON inválido ou silêncio → o processo vai ao Haiku, como antes;
+#   · e passa pela MESMA conferência literal do Haiku (`conferir`) antes de gravar — nunca vira dado sem conferência;
+#   · desliga com JFN_FICHA_GRATIS=0; Gemini só nas chaves com prova FreeTier; OpenRouter só `:free`.
+GRATIS_PADRAO = "gem:gemini-3.5-flash-lite,or:particle-ai/particle-1:free"   # consenso (os dois têm de responder)
+PROVA_FREE_TIER = REPO / "config" / "gemini_prova_free_tier.json"
+GRATIS_TETO_S = 900          # tempo máximo do ciclo gastando com o grátis (o cron mata o ciclo aos 1.500 s)
+GRATIS_MAX_TOKENS = 32_000   # o 3.5-flash-lite não raciocina; a ficha cabe com folga
+JUIZO = ("analise", "nivel_risco", "red_flags", "pericia_contabil", "pericia_juridica", "duvidas", "relevante")
+_SITUACAO_DECLARADA = {"arquivado": ("arquive", "arquivad", "arquivament"),
+                       "concluido": ("conclus", "conclui", "concluid", "encerrad", "encerrament"),
+                       "em andamento": ("em andamento",)}
+_ART = re.compile(r"art(?:igo)?s?\.?\s*(\d{1,3})", re.I)
+_LEI = re.compile(r"(?<![\d.])(\d{1,2}\.\d{3})(?:/\d{2,4})?(?!\d)")
+_NUMERO = re.compile(r"\d[\d.,]*\d|\d")
+_PALAVRA = re.compile(r"[a-z]{4,}")
+_TITULO = re.compile(r"^=== DOCUMENTO: (.*?) ===$", re.M)
+
+
+def cadeia_gratis() -> list[tuple[str, str]]:
+    """[(provedor, modelo)] de `JFN_FICHA_GRATIS` ("0"/"off"/"" desliga). Provedores: gem (Gemini, só chave com prova
+    FreeTier) e or (OpenRouter, só `:free`). O resto é recusado em silêncio — nunca vira chamada paga."""
+    import os
+    bruto = os.environ.get("JFN_FICHA_GRATIS", GRATIS_PADRAO).strip()
+    if bruto.lower() in ("", "0", "off", "nao", "não", "false"):
+        return []
+    out = []
+    for item in bruto.split(","):
+        prov, _, modelo = item.strip().partition(":")
+        if prov == "gem" and modelo.startswith("gemini-"):
+            out.append((prov, modelo))
+        elif prov == "or" and modelo.endswith(":free"):
+            out.append((prov, modelo))
+    return out
+
+
+def _chaves_gemini_free() -> list[str]:
+    """As chaves do pool da casa (respeita GEMINI_DISABLED) cuja PROVA de free tier está registrada: 429 com a métrica
+    `…FreeTier…` (sha1[:6] da chave em `PROVA_FREE_TIER`, nunca a chave). Sem prova lida → nenhuma chave."""
+    import hashlib
+    from compliance_agent.direcionamento_cerebro import _gemini_keys
+    try:
+        kids = set(json.loads(PROVA_FREE_TIER.read_text(encoding="utf-8")).get("kids") or [])
+    except (OSError, ValueError):
+        return []
+    return [k for k in _gemini_keys() if hashlib.sha1(k.encode()).hexdigest()[:6] in kids]
+
+
+_GEMINI_ESGOTADO: dict[tuple[str, str], str] = {}     # (chave, modelo) → dia em que a cota diária acabou
+
+
+def _gerar_gratis(prov: str, modelo: str):
+    """Gerador (sistema, prompt) → texto ("" = não respondeu: o processo vai ao Haiku)."""
+    import httpx
+    if prov == "or":
+        from compliance_agent.llm import free_llm as F
+        if not F.openrouter_available():
+            return None
+
+        def gerar_or(sistema: str, prompt: str) -> str:
+            cab, carga = F._requisicao(F.OPENROUTER_BASE, F._openrouter_key(), modelo,
+                                       [{"role": "system", "content": sistema}, {"role": "user", "content": prompt}],
+                                       16_000, None)                       # _requisicao força `:free`
+            ini, saida, erro = time.monotonic(), "", ""
+            try:
+                r = httpx.post(f"{F.OPENROUTER_BASE}/chat/completions", headers=cab, json=carga, timeout=180)
+                if r.status_code != 200:
+                    erro = f"HTTP {r.status_code}"
+                else:
+                    saida = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+            except (httpx.HTTPError, ValueError) as exc:
+                erro = type(exc).__name__
+            F._trace("openrouter", bool(saida), int((time.monotonic() - ini) * 1000), erro, modelo=modelo)
+            return saida
+        return gerar_or
+
+    chaves = _chaves_gemini_free()
+    if not chaves:
+        return None
+    from compliance_agent.direcionamento_cerebro import _quota_429, _trace
+
+    def gerar_gem(sistema: str, prompt: str) -> str:
+        hoje = datetime.now().strftime("%F")
+        corpo = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                 "systemInstruction": {"parts": [{"text": sistema}]},
+                 "generationConfig": {"temperature": 0.1, "maxOutputTokens": GRATIS_MAX_TOKENS,
+                                      "responseMimeType": "application/json"}}
+        for k in chaves:
+            if _GEMINI_ESGOTADO.get((k, modelo)) == hoje:
+                continue
+            ini = time.monotonic()
+            try:
+                r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent",
+                               params={"key": k}, json=corpo, timeout=180)
+            except httpx.HTTPError as exc:
+                _trace("gemini", False, ini, type(exc).__name__, modelo=modelo)
+                continue
+            _trace("gemini", r.status_code == 200, ini, "" if r.status_code == 200 else
+                   f"{r.status_code} {_quota_429(r) if r.status_code == 429 else ''}".strip(), modelo=modelo)
+            if r.status_code == 429:
+                if "PerDay" in _quota_429(r):
+                    _GEMINI_ESGOTADO[(k, modelo)] = hoje       # cota do dia: esta chave não tenta mais hoje
+                continue
+            if r.status_code in (500, 503, 404):
+                return ""                                     # alta demanda do MODELO: as outras chaves dão o mesmo
+            if r.status_code != 200:
+                continue
+            cand = (r.json().get("candidates") or [{}])[0]
+            if cand.get("finishReason") == "MAX_TOKENS":
+                return ""                                     # resposta cortada não é resposta
+            return "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts", [])
+                           if not p.get("thought"))
+        return ""
+    return gerar_gem
+
+
+def _nucleo_inventado(campo: str, item, F: _Fonte) -> bool:
+    """O item TEM núcleo conferível (CNPJ, data completa, valor) e ele não está no texto em grafia alguma.
+    Item sem núcleo conferível ("Jun/2025", parte parafraseada) é descartado pela conferência, mas não é invenção."""
+    s = str(item)
+    if campo == "cnpjs":
+        m = re.search(r"\d[\d./\s-]{12,22}\d", s)
+        return bool(m) and _dig(m.group(0)) not in F.cnpjs
+    if campo == "datas":
+        m = _F_DATA.search(s)
+        return bool(m) and not F.tem_data(m.group(0))
+    m = _NUMERO.search(s)                                     # valores
+    if not m:
+        return False
+    tok = m.group(0).rstrip(".,")
+    if F.tem_numero(tok):
+        return False
+    for grafia in (tok.replace(",", ""), tok.replace(".", "").replace(",", ".")):     # 12369.6 · 12.369,60
+        if re.fullmatch(r"\d+(?:\.\d+)?", grafia) and round(float(grafia) * 100) in F.centavos:
+            return False
+    return not F.tem_derivado(tok if "," in tok else tok.replace(".", ","))
+
+
+def _trecho_inventado(trecho, fn: str, F: _Fonte) -> bool:
+    """Citação NÃO literal só é invenção se traz número (≥ 3 dígitos) ausente do texto ou se menos da metade das
+    palavras existe nele. OCR corrigido pelo modelo ("qua- tro" → "quatro") é descartado, mas não é invenção."""
+    t = str(trecho or "").strip()
+    if not t or trecho_confere(t, fn):
+        return False
+    for n in _NUMERO.findall(t):
+        d = _dig(n)
+        if len(d) >= 3 and d not in F.numeros and not F.tem_numero(n.rstrip(".,")):
+            return True
+    pal = _PALAVRA.findall(V._normal(t))
+    return bool(pal) and sum(p in fn for p in pal) / len(pal) < 0.5
+
+
+def graves_coleta(ficha: dict, fonte: str) -> list[str]:
+    """O que a ficha AFIRMA com número/CNPJ/data/citação/documento e o texto não tem — a régua da bancada de 22/11.
+    Lista vazia = nada inventado (o descarte sem juízo segue para a conferência, como no Haiku)."""
+    fn = V._normal(fonte)
+    F = _Fonte(fonte, fn)
+    F.definir_parcelas({k: v for k, v in ficha.items() if k not in JUIZO})
+    graves = [f"{k}: {str(x)[:80]}" for k in ("valores", "cnpjs", "datas") for x in (ficha.get(k) or [])
+              if x not in (None, "") and _nucleo_inventado(k, x, F)]
+    titulos = [V._normal(t) for t in _TITULO.findall(fonte)]
+    for d in ficha.get("documentos") or []:
+        if not isinstance(d, dict):
+            continue
+        if _trecho_inventado(d.get("trecho"), fn, F):
+            graves.append(f"documentos(trecho): {str(d.get('trecho'))[:80]}")
+        ref = V._normal(str(d.get("doc_ref") or ""))
+        if ref and not (len(ref) >= 4 and (ref in fn or any(ref in t or t in ref for t in titulos if len(t) >= 4))):
+            graves.append(f"documentos(doc_ref): {str(d.get('doc_ref'))[:80]}")
+        graves += [f"ponto: {x}" for x in fatos_sem_fonte(str(d.get("ponto") or ""), F)]
+    fund = str(ficha.get("fundamento_legal") or "")
+    graves += [f"fundamento_legal: {lei}" for lei in _LEI.findall(fund)
+               if lei not in fn and lei.replace(".", "") not in fn]
+    graves += [f"fundamento_legal: art. {a}" for a in _ART.findall(fund)
+               if not re.search(rf"art(?:igo)?s?\.?\s*{a}(?!\d)", fn)]
+    for k in ("objeto", "modalidade", "resumo"):
+        graves += [f"{k}: {x}" for x in fatos_sem_fonte(str(ficha.get(k) or ""), F)]
+    return graves
+
+
+def coleta_gratis(ficha: dict, fonte: str) -> dict:
+    """A ficha grátis SEM o juízo, e a situação só se o texto a DECLARA (a bancada achou o modelo grátis escrevendo
+    "em andamento" em 40 de 55 processos sem nenhuma palavra disso no texto)."""
+    out = dict(ficha)
+    for k in JUIZO:
+        out[k] = [] if k in ("red_flags", "duvidas") else (False if k == "relevante" else "")
+    sit = V._normal(str(ficha.get("situacao") or ""))
+    fn = V._normal(fonte)
+    cat = next((c for c in _SITUACAO_DECLARADA if c in sit), "")
+    out["situacao"] = cat if cat and any(p in fn for p in _SITUACAO_DECLARADA[cat]) else ""
+    return out
+
+
+def _chave_item(campo: str, item) -> str:
+    """Forma canônica para juntar o MESMO item escrito por modelos diferentes (valor em centavos, CNPJ em dígitos…)."""
+    s = str(item)
+    if campo == "valores" and (m := _MOEDA.search(s)) and (v := _float_br(m.group(1))) is not None:
+        return f"v{round(v * 100)}"
+    if campo == "cnpjs" and (m := _CNPJ.search(s)):
+        return _dig(m.group(0))
+    if campo == "datas" and (m := _DATA.search(s)):
+        return _nucleo_data(m.group(0))
+    if campo == "documentos" and isinstance(item, dict):
+        return V._normal(str(item.get("doc_ref") or ""))[:60] or V._normal(str(item.get("trecho") or ""))[:60]
+    return V._normal(_SEM_PARENTESE.sub("", s))[:40]
+
+
+def unir_fichas(fichas: list[dict]) -> dict:
+    """CONSENSO por união: as listas de coleta juntam os itens de todos (sem repetir o mesmo item); o texto corrido é o
+    do 1º modelo que o escreveu. Cada item segue passando pela conferência literal depois."""
+    out = dict(fichas[0])
+    for k in ("valores", "cnpjs", "datas", "partes", "documentos"):
+        vistos, lista = set(), []
+        for f in fichas:
+            for x in f.get(k) or []:
+                if x in (None, "") or (c := _chave_item(k, x)) in vistos:
+                    continue
+                vistos.add(c)
+                lista.append(x)
+        out[k] = lista
+    for k in ("objeto", "modalidade", "fundamento_legal", "resumo", "situacao"):
+        out[k] = next((f.get(k) for f in fichas if str(f.get(k) or "").strip()), "")
+    return out
+
+
+def ficha_gratis(pasta: Path, sistema: str, prompt: str, texto: str, geradores: list) -> tuple[dict, dict, str] | None:
+    """(ficha conferida, verificação, modelos) do CONSENSO grátis; None → o processo vai ao Haiku.
+
+    TODOS os modelos da cadeia têm de responder com JSON válido e SEM grave (`graves_coleta`); vale a UNIÃO dos itens
+    (bancada de 22/11: a união de dois grátis achou mais itens conferidos por processo que o Haiku; um grátis sozinho,
+    não). Um que falhe ou invente → o processo inteiro vai ao Haiku."""
+    from compliance_agent.llm.json_resposta import parse_json_llm
+    fonte = fonte_de_conferencia(pasta, texto)
+    tentativas, fichas = [], []
+    for modelo, gerar in geradores:
+        try:
+            bruto = gerar(sistema, prompt)
+        except Exception as exc:  # noqa: BLE001 — um grátis fora não derruba o ciclo; o Haiku faz o processo
+            tentativas.append({"modelo": modelo, "motivo": f"erro {type(exc).__name__}"})
+            break
+        ficha = parse_json_llm(bruto) if bruto else None
+        if not isinstance(ficha, dict) or ficha.get("_truncado"):
+            tentativas.append({"modelo": modelo, "motivo": "sem resposta válida"})
+            break
+        graves = graves_coleta(ficha, fonte)
+        if graves:
+            tentativas.append({"modelo": modelo, "motivo": "grave", "graves": graves[:6], "n_graves": len(graves)})
+            break
+        tentativas.append({"modelo": modelo, "motivo": "ok"})
+        fichas.append(ficha)
+    if not fichas or len(fichas) < len(geradores):
+        _registrar_recusas(pasta.name, tentativas)
+        return None
+    ok, rel = conferir(coleta_gratis(unir_fichas(fichas), fonte), fonte)
+    return ok, {"conferido": rel, "juizo": "fora (coleta grátis: o juízo é da camada de juízo)",
+                "consenso": [m for m, _ in geradores]}, "+".join(m for m, _ in geradores)
+
+
+RECUSAS = REPO / "data" / "sei_ficha_gratis_recusas.jsonl"
+
+
+def _registrar_recusas(pasta: str, tentativas: list) -> None:
+    """Os graves do grátis (o processo foi ao Haiku) ficam registrados para a automelhoria (sensor `modelos`)."""
+    if not any(t.get("motivo") == "grave" for t in tentativas):
+        return
+    linha = json.dumps({"em": datetime.now().isoformat(timespec="seconds"), "pasta": pasta,
+                        "tentativas": tentativas}, ensure_ascii=False)
+    linha = re.sub(r"(?<!\d)\d{3}\.?\d{3}\.?\d{3}-\d{2}(?!\d)", "CPF#mascarado", linha)    # LGPD: nunca CPF no log
+    try:
+        with RECUSAS.open("a", encoding="utf-8") as f:
+            f.write(linha + "\n")
+    except OSError as exc:
+        print(f"  ⚠️  recusa do grátis não registrada ({type(exc).__name__}: {exc})", flush=True)
+
+
 # ── gravação ──────────────────────────────────────────────────────────────────────────────────────────
 def _garantir_coluna(con: sqlite3.Connection) -> None:
     cols = {r[1] for r in con.execute("PRAGMA table_info(sei_ficha)")}
@@ -509,22 +796,41 @@ def enviar(estado: dict, n: int) -> dict:
     finally:
         con.close()
     C.registrar_restantes(TAREFA, len(cands))
+    # coleta grátis primeiro (22/11/2026); o que ela não fechar sem grave vai ao Haiku neste mesmo ciclo
+    geradores = [(m, g) for prov, m in cadeia_gratis() if (g := _gerar_gratis(prov, m)) is not None]
+    gratis = {"gravadas": 0, "ao_haiku": 0, "modelos": [m for m, _ in geradores]}
+    t0 = time.monotonic()
     itens, sistema = [], ""
     for c in cands[:n]:
-        texto, _ = texto_para_ficha(ACERVO / c["pasta"])
+        texto, cob = texto_para_ficha(ACERVO / c["pasta"])
         if len(texto) < MIN_TEXTO:
             continue
         sistema, prompt = sistema_e_prompt(texto)
+        if geradores and time.monotonic() - t0 < GRATIS_TETO_S:
+            res = ficha_gratis(ACERVO / c["pasta"], sistema, prompt, texto, geradores)
+            if res is not None:
+                ficha_ok, verif, modelo = res
+                con = _con()
+                try:
+                    _garantir_coluna(con)
+                    gravar(con, numero_da_pasta(c["pasta"]), ficha_ok,
+                           {"versao": VERSAO, "cobertura": cob, **verif}, f"{modelo}@gratis#{VERSAO}-coleta")
+                    con.commit()
+                finally:
+                    con.close()
+                gratis["gravadas"] += 1
+                continue
+            gratis["ao_haiku"] += 1
         itens.append((c["pasta"], prompt))
     if not itens:
-        return {"enviados": 0, "fila": len(cands)}
+        return {"enviados": 0, "fila": len(cands), "gratis": gratis}
     lote = C.enviar_lote(TAREFA, itens, sistema=sistema, max_tokens=MAX_TOKENS, effort="low")
     if not lote:
-        return {"enviados": 0, "fila": len(cands), "motivo": C.ultimo_motivo}
+        return {"enviados": 0, "fila": len(cands), "motivo": C.ultimo_motivo, "gratis": gratis}
     estado.setdefault("lotes", {})[lote] = [cid for cid, _ in itens]
     _gravar_estado(estado)
     return {"enviados": len(itens), "fila": len(cands), "lote": lote,
-            "pago_no_lote": round(sum(c["pago"] for c in cands[:n]), 2)}
+            "pago_no_lote": round(sum(c["pago"] for c in cands[:n]), 2), "gratis": gratis}
 
 
 def main() -> int:
