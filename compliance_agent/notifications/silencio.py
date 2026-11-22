@@ -23,10 +23,13 @@ PEDIDO: contextvars.ContextVar[bool] = contextvars.ContextVar("telegram_pedido",
 
 
 def ativo() -> bool:
+    # FALHA FECHADA (22/11/2026). Faltando o arquivo, o silêncio valia DESLIGADO: um ciclo do zelador rodado de um
+    # worktree (sem `data/telegram_silencio.json`) mandou aviso ao dono depois da regra "Yoda só fala quando eu
+    # pedir". Sem arquivo ou ilegível = silêncio LIGADO; desligar exige {"ativo": false} explícito.
     try:
         return bool(json.loads((DATA / "telegram_silencio.json").read_text()).get("ativo"))
     except (OSError, ValueError):
-        return False
+        return True
 
 
 def silenciar(texto: str, origem: str = "") -> bool:

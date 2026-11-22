@@ -19,8 +19,12 @@ def test_aviso_automatico_silenciado_e_resposta_a_comando_passa(tmp_path, monkey
     assert silencio.silenciar("x") is False
 
 
-def test_sem_arquivo_de_silencio_tudo_passa(tmp_path, monkeypatch):
+def test_sem_arquivo_de_silencio_fica_silenciado(tmp_path, monkeypatch):
+    """Worktree/checkout sem o arquivo NÃO pode falar com o dono (aviso do zelador vazou assim em 22/11)."""
     monkeypatch.setattr(silencio, "DATA", tmp_path)
+    monkeypatch.delenv("JFN_TELEGRAM_PEDIDO", raising=False)
+    assert silencio.silenciar("x") is True
+    (tmp_path / "telegram_silencio.json").write_text(json.dumps({"ativo": False}))
     assert silencio.silenciar("x") is False
 
 
