@@ -552,7 +552,7 @@ def avisar(texto: str) -> bool:
     return False
 
 
-def vigiar_outros(avisar_fn=avisar, dias_max: float = 8.5) -> list[str]:
+def vigiar_outros(avisar_fn=avisar, dias_max: float = 38.5) -> list[str]:  # 38,5 d: ciclo mensal (dono 22/11/2026)
     """VM-1, diário: lê os índices das outras máquinas (sincronizados da nuvem) e avisa ciclo abortado, disco
     acima de 85% ou zelador que parou de rodar — o silêncio de um zelador também é falha."""
     est = ESTADO / "vigiados.json"

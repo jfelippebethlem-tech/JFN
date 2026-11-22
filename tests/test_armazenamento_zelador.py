@@ -361,7 +361,7 @@ def test_vigiar_avisa_abortado_e_parado_uma_vez(amb, monkeypatch):
     tmp, raiz = amb
     (tmp / "outros").mkdir()
     con = A.conectar(tmp / "outros" / "vm2.db")
-    velho = (dt.datetime.now() - dt.timedelta(days=20)).isoformat(timespec="seconds")
+    velho = (dt.datetime.now() - dt.timedelta(days=45)).isoformat(timespec="seconds")
     con.execute("INSERT INTO ciclos VALUES('vm2-x','vm2','vm2','aplicar',?,?, 'abortado', ?)",
                 (velho, velho, '{"disco_pct_depois": 91, "falhas": ["destino inacessível: gdrive"]}'))
     con.commit()

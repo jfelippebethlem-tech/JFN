@@ -4,5 +4,5 @@
 #   2. rclone.conf:     scp da VM-1 (~/.config/rclone/rclone.conf, chmod 600) — o mesmo remoto gdrive:/b2:
 #   3. código:          ~/jfn-zelador/{compliance_agent/{__init__,armazenamento}.py, tools/{__init__,zelador/{__init__,zelador}}.py}
 #   4. ensaio:          cd ~/jfn-zelador && JFN_MAQUINA=itcampo python3 tools/zelador/zelador.py --perfil itcampo --ensaio
-# Domingo 06:30 (o WSL precisa estar de pé; Persistent não existe no cron — se perder a janela, roda no outro domingo).
-30 6 * * 0 cd ~/jfn-zelador && flock -n ~/.zelador/zelador.lock env JFN_MAQUINA=itcampo timeout 43200 nice -n 15 python3 tools/zelador/zelador.py --perfil itcampo --aplicar >> ~/.zelador/zelador.log 2>&1
+# 1º domingo do mês 06:30 (dono 22/11/2026: mensal). O WSL precisa estar de pé; sem Persistent no cron — perdeu a janela, roda no mês seguinte.
+30 6 1-7 * * [ "$(date +\%u)" = 7 ] && cd ~/jfn-zelador && flock -n ~/.zelador/zelador.lock env JFN_MAQUINA=itcampo timeout 43200 nice -n 15 python3 tools/zelador/zelador.py --perfil itcampo --aplicar >> ~/.zelador/zelador.log 2>&1

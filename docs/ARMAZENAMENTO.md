@@ -100,7 +100,7 @@ Cada zelador sobe o seu índice a **duas** nuvens (`gdrive:indice/<maq>.db`, `b2
 
 ---
 
-## 5. Zelador semanal — o ciclo e as travas
+## 5. Zelador mensal (1º domingo; dono 22/11/2026) — o ciclo e as travas
 
 `python tools/zelador/zelador.py --perfil {vm1|vm2|itcampo} {--ensaio|--aplicar} [--teto-gb N]`
 
@@ -261,9 +261,9 @@ sozinho no ciclo seguinte; o que já saiu do disco migra R2 → Drive com `conso
 
 | Máquina | Como | Quando |
 |---|---|---|
-| VM-1 | crontab (`deploy/zelador/crontab-vm1.txt`) | domingo 04:30 |
-| VM-2 | timer do systemd do usuário (`deploy/zelador/zelador-armazenamento.{service,timer}`) | domingo 05:30 |
-| it-campo | cron do WSL (`deploy/zelador/crontab-itcampo.txt`), precisa de rclone no WSL | domingo 06:30 |
+| VM-1 | crontab (`deploy/zelador/crontab-vm1.txt`) | 1º domingo do mês 04:30 |
+| VM-2 | timer do systemd do usuário (`deploy/zelador/zelador-armazenamento.{service,timer}`) | 1º domingo do mês 05:30 |
+| it-campo | cron do WSL (`deploy/zelador/crontab-itcampo.txt`), precisa de rclone no WSL | 1º domingo do mês 06:30 |
 
 Primeira rodada de cada máquina: `--ensaio` (grava `~/.zelador/ensaio_ok-<perfil>.json`); sem ele, `--aplicar`
 recusa.

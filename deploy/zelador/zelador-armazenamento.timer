@@ -1,8 +1,8 @@
 [Unit]
-Description=Zelador de armazenamento do JFN — semanal
+Description=Zelador de armazenamento do JFN — mensal (1º domingo; dono 22/11/2026)
 
 [Timer]
-OnCalendar=Sun 05:30
+OnCalendar=Sun *-*-01..07 05:30
 Persistent=true
 
 [Install]
