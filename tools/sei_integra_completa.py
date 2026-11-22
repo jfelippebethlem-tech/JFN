@@ -637,6 +637,8 @@ async def main():
                     for d in arv if d.get("url")]
             etapas["arvore_s"] = round(_tm.monotonic() - t_arv, 1)
             etapas["arvore_n"] = len(docs)
+            if dump.get("tempos"):
+                etapas["arvore_tempos"] = dump["tempos"]
             print(f"baixando {len(docs)} docs…", flush=True)
             paths = []
 

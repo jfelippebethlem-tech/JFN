@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 from playwright.async_api import Error as PWError
@@ -670,6 +671,10 @@ async def _ler_cracked(pg, proc: str) -> dict:
     Degrada honesto: marca ``cadeado``/``n_docs_restritos`` (alguns docs do processo podem ser restritos)
     e nunca inventa. Retorna o mesmo formato de dump de ``_extrair_de_todos_frames`` + ``via``/``url``."""
     proto = re.sub(r"(?i)^sei[-\s]*", "", (proc or "").strip())  # SEM prefixo 'SEI-'
+    # TEMPO POR PASSO (22/11/2026): a enumeração é 43% do tempo de captura no it-campo (~29 s por processo de ~22
+    # docs, medido em sei_integra_etapas.jsonl) — os marcos dizem qual espera come o tempo. Só medida.
+    _t0 = time.monotonic()
+    _tempos: dict = {}
     # 1) abre a Pesquisa interna (clique REAL preserva a sessão)
     # O CLIQUE PRECISA DIZER SE ACHOU O LINK. Ele era `void`: quando o `<a>` de Pesquisa não estava
     # no DOM, nada acontecia e o erro saía como "campo de pesquisa não apareceu" — que aponta para o
@@ -691,6 +696,7 @@ async def _ler_cracked(pg, proc: str) -> dict:
                                  if achou_link else
                                  "link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)")
                                 + f" — página: {await _descrever_pagina(pg)}"}
+    _tempos["pesquisa_s"] = round(time.monotonic() - _t0, 1)
     # 2) protocolo SEM prefixo
     try:
         await pg.fill('#txtProtocoloPesquisa', proto)
@@ -754,6 +760,7 @@ async def _ler_cracked(pg, proc: str) -> dict:
         await pg.wait_for_load_state("networkidle", timeout=15000)
     except PWError as exc:
         logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
+    _tempos["submeter_s"] = round(time.monotonic() - _t0 - sum(_tempos.values()), 1)
     # "Nenhum resultado encontrado." é resposta definitiva (ver `ler_processo`): sem árvore a esperar. Antes
     # vinham 24 s de `_esperar_arvore` + extração para devolver o mesmo vazio (sonda de 14/11/2026: 45,1 s).
     await _ate(pg, lambda: _resultado_arvore_ou_nada(pg), 4000)
@@ -767,15 +774,18 @@ async def _ler_cracked(pg, proc: str) -> dict:
     # 5) espera ATIVA o ifrArvore antes de extrair
     achou_arvore = await _esperar_arvore(pg)
     await pg.wait_for_timeout(1500)
+    _tempos["esperar_arvore_s"] = round(time.monotonic() - _t0 - sum(_tempos.values()), 1)
     if os.environ.get("SEI_DEBUG_SHOT"):
         try:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"], full_page=True)
         except PWError as exc:
             logger.debug("screenshot de debug (SEI_DEBUG_SHOT) falhou: %s", exc)
     dump = await _extrair_de_todos_frames(pg)
+    _tempos["extrair_s"] = round(time.monotonic() - _t0 - sum(_tempos.values()), 1)
     dump["via"] = "cracked"
     dump["url"] = pg.url
     dump["arvore_carregou"] = achou_arvore
+    dump["tempos"] = _tempos
     return dump
 
 
