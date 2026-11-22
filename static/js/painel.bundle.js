@@ -4358,9 +4358,30 @@
     <div class="btns"><button type="button" class="btn" data-cs-abrir="${esc(c.slug)}">Ler o dossiê</button></div>
   </article>`;
   }
+  function _contarChips() {
+    const q = _f2.q.trim().toLowerCase(), cont = {};
+    for (const c of _dados.casos || []) {
+      if (_f2.situacao && c.situacao !== _f2.situacao) continue;
+      if (q && ![
+        c.titulo,
+        c.resumo,
+        c.entidade,
+        c.slug,
+        (c.tags || []).join(" "),
+        (c.sei || []).join(" "),
+        (c.cnpjs || []).join(" ")
+      ].join(" ").toLowerCase().includes(q)) continue;
+      cont[c.nivel_rotulo] = (cont[c.nivel_rotulo] || 0) + 1;
+    }
+    for (const b of document.querySelectorAll('[data-cs-f="nivel"]')) {
+      const n = NIVEIS.find((x) => x.k === b.dataset.csV);
+      if (n) b.textContent = `${n.ic} ${n.k} · ${fmtN(cont[n.k] || 0)}`;
+    }
+  }
   function _pintarLista() {
     const el = $("cs-lista");
     if (!el || !_dados) return;
+    _contarChips();
     const it = _filtrados();
     el.innerHTML = `<div class="dim cs-conta">${fmtN(it.length)} de ${fmtN(_dados.total)} casos</div>` + (it.length ? `<div class="cs-grade">${it.map(_cardCaso).join("")}</div>` : card('<div class="dim">Nenhum caso com esses filtros.</div>'));
     a11yfy(el);
@@ -10040,7 +10061,7 @@
       }
       const pe = d.por_esfera || {}, est = pe.estado || {}, pre = pe.prefeitura || {};
       _ckCount($("ck-econ"), d.economia_total || 0, fmtRc, first ? 1300 : 900);
-      if ($("ck-sub")) $("ck-sub").innerHTML = `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: <b>Estado ${fmtRc(est.economia || 0)}</b> · <b>Prefeitura do Rio ${fmtRc(pre.economia || 0)}</b>.` + (d.economia_pendente > 0 ? ` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).` : "") + (d.economia_ata_teto > 0 ? ` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).` : "") + ` Quantidade homologada, não OB paga.`;
+      if ($("ck-sub")) $("ck-sub").innerHTML = `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: <b>Estado ${est.n ? fmtRc(est.economia) : "nenhuma conferida"}</b> · <b>Prefeitura do Rio ${pre.n ? fmtRc(pre.economia) : "nenhuma conferida"}</b>.` + (d.economia_pendente > 0 ? ` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).` : "") + (d.economia_ata_teto > 0 ? ` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).` : "") + ` Quantidade homologada, não OB paga.`;
       ckFill("compras", { num: d.n_compras_acima_mediana, meta: "compras com indício conferido no PNCP" });
       const o = d.por_orgao && d.por_orgao[0], onm = o ? o.orgao || "" : "";
       ckFill("orgao", { txt: o ? fmtRc(o.economia) : "—", meta: o ? `<b>${esc(onm)}</b> (ente comprador) — diferença hipotética sobre a mediana nos indícios conferidos (quantidade homologada no PNCP, não OB paga)` : "nenhum indício conferido ainda" });

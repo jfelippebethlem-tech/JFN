@@ -581,7 +581,15 @@ class Coletor:
         return [{k: v for k, v in x.items() if not k.startswith("_")} for x in evs]
 
     def snapshot(self) -> dict:
-        self.tick()
+        # Com leitura anterior em mãos, a leitura vencida (systemd + logs + contadores) roda em 2º plano e a resposta
+        # sai com o último retrato — que tem no máximo alguns segundos. Medido 21/11/2026 sob carga: a rota pagava a
+        # leitura dentro do request e as visitas concorrentes esperavam a trava — 8 a 40 s para pintar o Início.
+        # Sem retrato (1ª visita) a leitura continua síncrona: nada de motor vazio por timing.
+        if self.motores and time.time() - self._ult >= INTERVALO:
+            if not self._trava.locked():
+                threading.Thread(target=self.tick, daemon=True, name="aovivo:tick").start()
+        else:
+            self.tick()
         agora = time.time()
         return {"atualizado_em": _iso(agora), "fontes": self.fontes, "motores": self.motores,
                 "eventos": self.eventos_publicos(),

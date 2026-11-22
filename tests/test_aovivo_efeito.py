@@ -153,3 +153,21 @@ def test_efeito_por_log_desde_ignora_o_ok_que_mentia(tmp_path):
     with open(log, "a") as fh:
         fh.write("[2026-11-14 03:40:00]   000001/000003/2026: ok\n")
     assert coleta.medir_efeito(cfg) == datetime(2026, 11, 14, 3, 40).timestamp()
+
+
+# 21/11/2026: com retrato em mãos, a leitura vencida vai para 2º plano — o request não espera systemd/logs (8–40 s sob
+# carga no percurso do painel). Sem retrato (1ª visita) a leitura segue síncrona.
+def test_snapshot_vencido_nao_espera_a_leitura(monkeypatch):
+    import threading
+    import time as _t
+    monkeypatch.setattr(coleta, "catalogo", lambda: [])
+    monkeypatch.setattr(coleta, "travas_presas", lambda: set())
+    lento = threading.Event()
+    monkeypatch.setattr(coleta, "ler_systemd", lambda units: (lento.wait(5), {})[1])
+    c = coleta.Coletor()
+    c.motores = [{"id": "x", "estado": "ocioso", "classe": "motor"}]
+    c._ult = _t.time() - 60                                    # retrato vencido
+    t0 = _t.time()
+    snap = c.snapshot()
+    assert _t.time() - t0 < 1.0 and snap["motores"][0]["id"] == "x"
+    lento.set()

@@ -189,7 +189,8 @@ function ckPull(first){
     _ckCount($('ck-econ'),d.economia_total||0,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=
       `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: `
-      +`<b>Estado ${fmtRc(est.economia||0)}</b> · <b>Prefeitura do Rio ${fmtRc(pre.economia||0)}</b>.`
+      // esfera sem compra conferida não é "R$ 0,00 de economia": não há indício conferido lá (21/11/2026)
+      +`<b>Estado ${est.n?fmtRc(est.economia):'nenhuma conferida'}</b> · <b>Prefeitura do Rio ${pre.n?fmtRc(pre.economia):'nenhuma conferida'}</b>.`
       +(d.economia_pendente>0?` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).`:'')
       +(d.economia_ata_teto>0?` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).`:'')
       +` Quantidade homologada, não OB paga.`;
