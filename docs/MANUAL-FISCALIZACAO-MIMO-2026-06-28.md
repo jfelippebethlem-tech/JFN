@@ -75,7 +75,7 @@
 
 Prioridade	#	Achado	Ação Concreta
 P0	1	access_token FB/IG em query string	Mover para header Authorization: Bearer e nunca logar URLs com tokens.
-P0	3	Login sem rate limit + senha padrão admin123	Adicionar rate limit (ex.: upstash/ratelimit) e forçar troca de senha no primeiro login.
+P0	3	Login sem rate limit + senha padrão (removida do documento — ver o arquivo de credenciais do dono)	Adicionar rate limit (ex.: upstash/ratelimit) e forçar troca de senha no primeiro login.
 P0	7	.env.example com credenciais reais	Remover valores reais do exemplo, gerar AUTH_SECRET com openssl rand -base64 32, documentar setup seguro.
 P1	10	/api/acoes POST sem CSRF	Proteger com token CSRF (NextAuth já fornece) ou validar Origin/Referer + double-submit cookie.
 P1	4	Rotas POST Telegram/keywords sem CSRF	Validar X-Telegram-Bot-Api-Secret-Token header em todas as rotas webhook do Telegram.
