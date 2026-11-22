@@ -110,6 +110,20 @@ async def _resultado_arvore_ou_nada(pg) -> bool:
     return pesquisa_sem_resultado(await pg.evaluate(_JS_FIM_DO_CORPO))
 
 
+ESPERA_POR_RESPOSTA = os.environ.get("SEI_CRACKED_ESPERA_RESPOSTA", "1") != "0"
+
+
+async def _resposta_da_pesquisa(pg) -> bool:
+    """Pós-Pesquisar do cracked: a árvore (ifrArvore), um link de processo na lista de resultados, o aviso de
+    restrito ou "Nenhum resultado encontrado" — nada disso está no formulário antes do clique."""
+    if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
+        return True
+    corpo = await pg.evaluate("()=>document.body?document.body.innerText:''")
+    if pesquisa_sem_resultado(corpo) or aviso_restrito(corpo):
+        return True
+    return bool(await pg.evaluate("()=>!!document.querySelector('a[href*=\"procedimento_trabalhar\"]')"))
+
+
 async def _arvore_ou_aviso_restrito(pg) -> bool:
     """Pós-pesquisa rápida: o frame da árvore existe OU o SEI já declarou o processo restrito."""
     if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
@@ -749,17 +763,30 @@ async def _ler_cracked(pg, proc: str) -> dict:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"].replace(".png", "_form.png"), full_page=True)
         except PWError as exc:
             logger.debug("screenshot de debug do formulário (SEI_DEBUG_SHOT) falhou: %s", exc)
-    # 4) clicar 'Pesquisar' UMA vez + esperar a NAVEGAÇÃO (sem duplo-submit, sem _abrir_primeiro_resultado)
-    try:
-        async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
-            await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click();}""")
-    except PWError as exc:
-        # navegação pode não disparar como 'navigation' (frameset) — segue p/ a espera ativa da árvore
-        logger.debug("expect_navigation após Pesquisar (cracked) não disparou: %s", exc)
-    try:
-        await pg.wait_for_load_state("networkidle", timeout=15000)
-    except PWError as exc:
-        logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
+    # 4) clicar 'Pesquisar' UMA vez + esperar a RESPOSTA (sem duplo-submit, sem _abrir_primeiro_resultado)
+    _js_pesquisar = r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click();}"""
+    if ESPERA_POR_RESPOSTA:
+        # 22/11/2026, medido no it-campo (marcos `tempos`): este passo levava 28–41 s em processos de 11–34 docs, a
+        # resposta já pintada — o `expect_navigation` não dispara no frameset (corre os 25 s) e o `networkidle`
+        # nunca chega (o SEI segue fazendo requisições) e corre mais 15 s. Agora: espera a RESPOSTA aparecer —
+        # frame da árvore, link de processo na lista ou "Nenhum resultado" —, com o mesmo teto de 40 s. Nenhum
+        # dos três existe no formulário antes do clique. Reversão: SEI_CRACKED_ESPERA_RESPOSTA=0.
+        try:
+            await pg.evaluate(_js_pesquisar)
+        except PWError as exc:
+            logger.debug("clique em Pesquisar (cracked) interrompido pela navegação: %s", exc)
+        await _ate(pg, lambda: _resposta_da_pesquisa(pg), 40000, 250)
+    else:
+        try:
+            async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
+                await pg.evaluate(_js_pesquisar)
+        except PWError as exc:
+            # navegação pode não disparar como 'navigation' (frameset) — segue p/ a espera ativa da árvore
+            logger.debug("expect_navigation após Pesquisar (cracked) não disparou: %s", exc)
+        try:
+            await pg.wait_for_load_state("networkidle", timeout=15000)
+        except PWError as exc:
+            logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
     _tempos["submeter_s"] = round(time.monotonic() - _t0 - sum(_tempos.values()), 1)
     # "Nenhum resultado encontrado." é resposta definitiva (ver `ler_processo`): sem árvore a esperar. Antes
     # vinham 24 s de `_esperar_arvore` + extração para devolver o mesmo vazio (sonda de 14/11/2026: 45,1 s).

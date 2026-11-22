@@ -157,3 +157,25 @@ def test_liberar_memoria_pdf_nao_quebra_e_o_leitor_chama_depois_do_ocr():
     ocr_docs.liberar_memoria_pdf()                      # idempotente, sem PDF aberto, em qualquer libc
     src = Path(SR.__file__).read_text(encoding="utf-8")
     assert src.index("ocr_documento(body, tipo=tipo))") < src.index("liberar_memoria_pdf()       #")
+
+
+class _PaginaPesquisa(_Pagina):
+    """Página da pesquisa: `corpo` = innerText; `tem_link` = há link de processo (procedimento_trabalhar)."""
+    def __init__(self, frames=(), corpo="", tem_link=False):
+        super().__init__(frames)
+        self.corpo, self.tem_link = corpo, tem_link
+
+    async def evaluate(self, js, *a):
+        return self.tem_link if "procedimento_trabalhar" in js else self.corpo
+
+
+def test_resposta_da_pesquisa_nao_confunde_o_formulario_com_a_resposta():
+    """22/11/2026: o submit do cracked esperava `expect_navigation` (25 s, não dispara no frameset) + `networkidle`
+    (15 s, nunca chega) — 28–41 s por processo com a resposta já na tela. A espera nova volta quando a RESPOSTA
+    pintou; o formulário de pesquisa (antes do clique) não pode contar como resposta."""
+    r = lambda pg: asyncio.run(SR._resposta_da_pesquisa(pg))
+    assert r(_PaginaPesquisa(corpo="Pesquisar em: Processos Documentos  Protocolo: [  ]")) is False
+    assert r(_PaginaPesquisa(frames=[_Frame(name="ifrArvore")])) is True
+    assert r(_PaginaPesquisa(corpo="Nenhum resultado encontrado.")) is True
+    assert r(_PaginaPesquisa(corpo="Unidade atual não possui acesso ao processo restrito SEI-270006/000001/2024")) is True
+    assert r(_PaginaPesquisa(corpo="1 registro", tem_link=True)) is True
