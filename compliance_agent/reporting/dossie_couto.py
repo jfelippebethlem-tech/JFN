@@ -1043,12 +1043,16 @@ class Montador:
         h.append(_tabela(["Categoria", "Decretos"], lin, {1}))
         orc = [d for d in dec if d["categoria"] == "orçamentário"]
         h.append("<h3>5.2 Decretos com efeito orçamentário (lista integral)</h3>")
-        por_tipo = defaultdict(lambda: [0, 0.0])
+        por_tipo = defaultdict(lambda: [0, 0.0, 0])          # [decretos, soma, decretos COM valor na ementa]
         for d in orc:
-            por_tipo[d.get("tipo_orc", "outro")][0] += 1
-            por_tipo[d.get("tipo_orc", "outro")][1] += d.get("valor_ementa") or 0
+            t = por_tipo[d.get("tipo_orc", "outro")]
+            t[0] += 1
+            if d.get("valor_ementa") is not None:
+                t[1] += d["valor_ementa"]
+                t[2] += 1
+        # tipo sem nenhum valor na ementa: INDISPONÍVEL, não R$ 0,00 (o decreto não declara valor no título)
         lin = [[_e(k), self._n(f"atos.orc.tipo.{re.sub(r'[^a-z]+', '_', gc._sem_acento(k).lower())}.n", v[0], f"decretos — {k}", Fd, "por tipo"),
-                self.reg.v(f"atos.orc.tipo.{re.sub(r'[^a-z]+', '_', gc._sem_acento(k).lower())}.valor", v[1], "BRL",
+                self.reg.v(f"atos.orc.tipo.{re.sub(r'[^a-z]+', '_', gc._sem_acento(k).lower())}.valor", v[1] if v[2] else None, "BRL",
                            f"valor nas ementas — {k}", Fd, "soma do primeiro valor em R$ da ementa", natureza="autorizado",
                            estado="A CONFERIR", nivel=1)]
                for k, v in sorted(por_tipo.items(), key=lambda kv: -kv[1][1])]
