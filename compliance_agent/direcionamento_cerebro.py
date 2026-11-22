@@ -335,6 +335,21 @@ def _gemini_keys() -> list:
 
 
 _GEMINI_RR = 0
+# (chave, modelo) com a cota DIÁRIA do free tier estourada (429 com `...PerDay...` na métrica) → instante em que ela
+# volta (meia-noite do Pacífico). 22/11/2026: medido em 7 dias, 86 mil das 92 mil tentativas Gemini do trace eram
+# 429 "PerDay" — cada chamada re-batia todas as chaves de todos os modelos já esgotados no dia (~1,2 s cada) antes
+# de achar um par vivo. Memória EM PROCESSO, como o cooldown do free_llm.
+_GEMINI_ESGOTADO: dict = {}
+
+
+def _volta_da_cota_diaria(agora: float | None = None) -> float:
+    """Próxima meia-noite em America/Los_Angeles (virada da cota diária da Gemini API), em epoch."""
+    import time as _t
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/Los_Angeles")
+    d = datetime.fromtimestamp(_t.time() if agora is None else agora, tz)
+    return (datetime(d.year, d.month, d.day, tzinfo=tz) + timedelta(days=1)).timestamp()
 
 
 async def gerar_gemini(messages: list[dict], model: str | None = None,
@@ -378,8 +393,13 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
         for mi, mdl in enumerate(modelos):
             for tentativa in range(2 if mi == 0 else 1):
                 so_rate = True
+                pulados = 0
                 for off in range(n):
                     key = keys[(_GEMINI_RR + off) % n]
+                    if _GEMINI_ESGOTADO.get((key, mdl), 0.0) > _t.time():
+                        pulados += 1                 # cota do dia já estourada neste par: nem tenta
+                        erros.append(f"{mdl}:429d")
+                        continue
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{mdl}:generateContent?key={key}"
                     corpo = body
                     if mdl.startswith("gemini-2.5"):
@@ -393,7 +413,10 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                         if r.status_code != 200:
                             # cada tentativa HTTP é requisição feita (conta na cota e, se houver billing, na
                             # fatura) — vai ao trace com a métrica de cota do 429 quando houver
-                            _trace("gemini", False, _ini, f"{r.status_code} {_quota_429(r)}".strip(), modelo=mdl)
+                            _cota = _quota_429(r)
+                            _trace("gemini", False, _ini, f"{r.status_code} {_cota}".strip(), modelo=mdl)
+                            if r.status_code == 429 and "PerDay" in _cota:
+                                _GEMINI_ESGOTADO[(key, mdl)] = _volta_da_cota_diaria()
                         if r.status_code in (429, 403, 401):
                             erros.append(f"{mdl}:{r.status_code}")
                             continue
@@ -428,7 +451,7 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                         _trace("gemini", False, _ini, f"{type(e).__name__}: {e}", modelo=mdl)
                         erros.append(str(e)[:20])
                         so_rate = False
-                if mi == 0 and tentativa == 0 and so_rate:
+                if mi == 0 and tentativa == 0 and so_rate and pulados < n:
                     await _aio.sleep(3.0)
                 else:
                     break
