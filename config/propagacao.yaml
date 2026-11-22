@@ -159,7 +159,7 @@ fontes:
     cerebro: {de: commit, kind: experiencial, rotulo: "correção no mapa por município", assunto: "território"}
   regra_governo_couto:
     nome: Correção nas regras da gestão Couto
-    sonda: {git: [compliance_agent/governo_couto.py, compliance_agent/governo_couto_regras.py]}
+    sonda: {git: [compliance_agent/governo_couto.py, compliance_agent/governo_couto_regras.py, compliance_agent/reporting/dossie_couto.py]}
     cerebro: {de: commit, kind: experiencial, rotulo: "correção nas regras da gestão Couto", assunto: "governo Couto"}
   regra_orcamento:
     nome: Correção no orçamento por órgão
@@ -450,6 +450,72 @@ derivados:
     prioridade: 6
     efeito: {arquivo: data/governo_couto_suspeitas.json}
     antes: "semanal, domingo 08:10 (cron); desde 14/11/2026 a rede é diária, 19:05, e só roda se o arquivo tiver mais de 20 h"
+  dossie_couto:
+    nome: Dossiê-mestre da gestão Couto (PDF verificado — execução por OB paga, contratações, atos, achados nos portões)
+    onde: reports/dossie_governo_couto_<data>.html/.pdf (vigente em data/dossie_couto/vigente.json) · fatos no registro da certeza
+    # Comando único. A varredura de OB das duas janelas (Couto × mesma janela do ano anterior) roda no it-campo sobre a
+    # réplica só-leitura; o JSON volta com md5 conferido e a VM-1 refaz uma AMOSTRA de UGs no banco vivo (tem de dar
+    # igual). HTML, PDF numerado e verificador rodam aqui: reprova se número não rastreia a fato com id, se achado não
+    # tem prova primária reconferida ou se o PDF perdeu conteúdo do HTML — reprovado NÃO substitui o vigente (rc 2).
+    # Sem it-campo e VM-1 em carga > 7 → rc 75 (tenta de novo). Leve: o pesado é do it-campo (mesmo arranjo de `padroes`).
+    depende: [siafe_ob, siafe_status, contratos_tcerj, compras_diretas_tcerj, doerj, sancoes, governo_couto_regras, regra_governo_couto]
+    comando: ["bash", "tools/dossie_couto.sh"]
+    peso: leve
+    debounce_s: 3600
+    intervalo_min_s: 43200
+    timeout_s: 7200
+    prioridade: 7
+    efeito: {arquivo: data/dossie_couto/verificacao.json}
+    antes: "não existia — a análise da gestão era nota do vault escrita à mão (13/11/2026) e a aba do painel"
+    fatos:
+      - id: "dossie_couto:{chave}"
+        arquivo: data/dossie_couto/fatos.json
+        lista: brl
+        data_ref: gerado_em
+        rotulo: "{rotulo}"
+        fonte: "Dossiê-mestre da gestão Couto — fato impresso no PDF vigente (fonte primária de cada fato no campo fonte e no Anexo D)"
+        estado_por: {campo: estado, padrao: PENDENTE, mapa: {VERIFICADO: VERIFICADO, "A CONFERIR": "A CONFERIR", PENDENTE: PENDENTE, INDISPONIVEL: INDISPONIVEL}}
+        nivel_prova_por: {campo: nivel, padrao: 1, mapa: {0: 0, 1: 1, 2: 2}}
+        natureza_por: {campo: natureza, padrao: indicio, mapa: {pago: pago, nao_pago: nao_pago, contratado: contratado, reconhecido: reconhecido, autorizado: autorizado, regua: regua, contagem: contagem, penalidade: penalidade}}
+        base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
+        medidas:
+          valor: {campo: valor, unidade: BRL}
+      - id: "dossie_couto:{chave}"
+        arquivo: data/dossie_couto/fatos.json
+        lista: contagem
+        data_ref: gerado_em
+        rotulo: "{rotulo}"
+        fonte: "Dossiê-mestre da gestão Couto — fato impresso no PDF vigente (fonte primária de cada fato no campo fonte e no Anexo D)"
+        estado_por: {campo: estado, padrao: PENDENTE, mapa: {VERIFICADO: VERIFICADO, "A CONFERIR": "A CONFERIR", PENDENTE: PENDENTE, INDISPONIVEL: INDISPONIVEL}}
+        nivel_prova_por: {campo: nivel, padrao: 1, mapa: {0: 0, 1: 1, 2: 2}}
+        natureza_por: {campo: natureza, padrao: indicio, mapa: {pago: pago, nao_pago: nao_pago, contratado: contratado, reconhecido: reconhecido, autorizado: autorizado, regua: regua, contagem: contagem, penalidade: penalidade}}
+        base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
+        medidas:
+          valor: {campo: valor, unidade: contagem}
+      - id: "dossie_couto:{chave}"
+        arquivo: data/dossie_couto/fatos.json
+        lista: percentual
+        data_ref: gerado_em
+        rotulo: "{rotulo}"
+        fonte: "Dossiê-mestre da gestão Couto — fato impresso no PDF vigente (fonte primária de cada fato no campo fonte e no Anexo D)"
+        estado_por: {campo: estado, padrao: PENDENTE, mapa: {VERIFICADO: VERIFICADO, "A CONFERIR": "A CONFERIR", PENDENTE: PENDENTE, INDISPONIVEL: INDISPONIVEL}}
+        nivel_prova_por: {campo: nivel, padrao: 1, mapa: {0: 0, 1: 1, 2: 2}}
+        natureza_por: {campo: natureza, padrao: indicio, mapa: {pago: pago, nao_pago: nao_pago, contratado: contratado, reconhecido: reconhecido, autorizado: autorizado, regua: regua, contagem: contagem, penalidade: penalidade}}
+        base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
+        medidas:
+          valor: {campo: valor, unidade: percentual}
+      - id: "dossie_couto:{chave}"
+        arquivo: data/dossie_couto/fatos.json
+        lista: indice
+        data_ref: gerado_em
+        rotulo: "{rotulo}"
+        fonte: "Dossiê-mestre da gestão Couto — fato impresso no PDF vigente (fonte primária de cada fato no campo fonte e no Anexo D)"
+        estado_por: {campo: estado, padrao: PENDENTE, mapa: {VERIFICADO: VERIFICADO, "A CONFERIR": "A CONFERIR", PENDENTE: PENDENTE, INDISPONIVEL: INDISPONIVEL}}
+        nivel_prova_por: {campo: nivel, padrao: 1, mapa: {0: 0, 1: 1, 2: 2}}
+        natureza_por: {campo: natureza, padrao: indicio, mapa: {pago: pago, nao_pago: nao_pago, contratado: contratado, reconhecido: reconhecido, autorizado: autorizado, regua: regua, contagem: contagem, penalidade: penalidade}}
+        base_por: {campo: base, padrao: "", mapa: {ob_contabilizada_confirmada: ob_contabilizada_confirmada, ob_contabilizada_sem_confirmacao: ob_contabilizada_sem_confirmacao}}
+        medidas:
+          valor: {campo: valor, unidade: indice}
   territorio:
     nome: Mapa por município / AP (territorio.db)
     onde: Estado › Mapa por município · Prefeitura › Mapa por AP

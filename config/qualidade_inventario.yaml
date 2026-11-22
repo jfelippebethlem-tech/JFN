@@ -207,6 +207,12 @@ relatorios:
     saida: "pdf (dossiê 360 + fachada + cláusulas + parecer)"
     consome: ["dono (Telegram)"]
     gates: [garantir_neutro, render_html]
+  dossie_governo_couto:
+    entrada: "comando único `bash tools/dossie_couto.sh` (derivado dossie_couto da propagação)"
+    fonte_codigo: compliance_agent/reporting/dossie_couto.py
+    saida: "html + pdf numerado em reports/ (dossie_governo_couto_<data>) + data/dossie_couto/{fatos,verificacao,vigente}.json"
+    consome: ["dono (arquivo)", "Comissão de Orçamento (peça)"]
+    gates: [garantir_neutro, render_html]
   dossie_mestre:
     entrada: "órgão ou portfólio (POST /api/dossie/mestre)"
     fonte_codigo: compliance_agent/reporting/dossie_mestre.py
