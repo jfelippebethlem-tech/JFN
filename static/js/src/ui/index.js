@@ -250,10 +250,10 @@ export async function abrirDossie(cnpj,nome){
       <div style="min-width:0"><div style="font-weight:800;font-size:17px;line-height:1.2">${esc(d.nome)}</div>
       <div class="dim">${esc(d.cnpj_fmt)}${per.score!=null?` · score perícia ${per.score}`:''}</div></div></div>`;
   h+=`<div class="mini">
-      <div class="b"><div class="v">${fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB)</div></div>
-      <div class="b"><div class="v">${fmtN(ob.orgaos)}</div><div class="l">Órgãos pagadores</div></div>
+      <div class="b"><div class="v"${d.ob_indisponivel?` title="${esc(d.ob_indisponivel)}"`:''}>${d.ob_indisponivel?'INDISPONÍVEL':fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB · SIAFE)</div></div>
+      <div class="b"><div class="v">${d.ob_indisponivel?'—':fmtN(ob.orgaos||0)}</div><div class="l">Órgãos pagadores</div></div>
       <div class="b"><div class="v">${fmtN(pncp.certames||0)}</div><div class="l">Vitórias no PNCP</div></div>
-      <div class="b"><div class="v" style="color:${(per.indicios||0)?'var(--amber)':'#fff'}">${fmtN(per.indicios||0)}</div><div class="l">Indícios na perícia</div></div></div>`;
+      <div class="b"><div class="v" style="color:${(per.indicios||0)?'var(--amber)':'var(--ink)'}">${fmtN(per.indicios||0)}</div><div class="l">Indícios na perícia</div></div></div>`;
   if(d.resumo)h+=card(`<div style="font-size:13.5px;color:var(--mut)">${esc(d.resumo).slice(0,600)}</div>`);
   if((d.socios||[]).length)h+=`<div style="height:12px"></div>`+sec('Quadro societário (QSA)',d.socios.length)+card(`<table><tbody>${d.socios.map(s=>`<tr><td>${esc(s.nome)}${s.servidor?' <span class="tag rose">servidor</span>':''}</td><td class="dim">${esc(s.qualificacao||'')}</td></tr>`).join('')}</tbody></table>`);
   if((d.orgaos||[]).length)h+=`<div style="height:12px"></div>`+sec('Órgãos que mais pagaram')+card(`<table><tbody>${d.orgaos.map(o=>`<tr><td>${esc(o.nome||o.ug)}</td><td>${fmtRc(o.total)}</td></tr>`).join('')}</tbody></table>`);
@@ -269,7 +269,7 @@ export async function abrirDossie(cnpj,nome){
       <div class="b"><div class="v">${fmtRc(mun.pago)}</div><div class="l">Pago pela Prefeitura</div></div>
       <div class="b"><div class="v">${fmtN(mun.orgaos)}</div><div class="l">Órgãos municipais</div></div>
       <div class="b"><div class="v">${esc(mun.periodo||'—')}</div><div class="l">Exercícios</div></div>
-      <div class="b"><div class="v" style="color:${(mun.lentes||[]).length?'var(--amber)':'#fff'}">${fmtN((mun.lentes||[]).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
+      <div class="b"><div class="v" style="color:${(mun.lentes||[]).length?'var(--amber)':'var(--ink)'}">${fmtN((mun.lentes||[]).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
     if((mun.razoes_sociais||[]).length>1)
       h+=card(`<div class="kv"><span class="k">Razões sociais sob este CNPJ</span><b class="right" style="max-width:64%">${mun.razoes_sociais.map(esc).join(' · ')}</b></div>`+
               leitura('O mesmo CNPJ aparece com mais de uma razão social — troca de nome ou matriz/filial. 0,96% das raízes do acervo estão nesse caso; agrupar pelo NOME partiria a empresa em duas.'));

@@ -4032,10 +4032,10 @@
       <div style="min-width:0"><div style="font-weight:800;font-size:17px;line-height:1.2">${esc(d.nome)}</div>
       <div class="dim">${esc(d.cnpj_fmt)}${per.score != null ? ` · score perícia ${per.score}` : ""}</div></div></div>`;
     h += `<div class="mini">
-      <div class="b"><div class="v">${fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB)</div></div>
-      <div class="b"><div class="v">${fmtN(ob.orgaos)}</div><div class="l">Órgãos pagadores</div></div>
+      <div class="b"><div class="v"${d.ob_indisponivel ? ` title="${esc(d.ob_indisponivel)}"` : ""}>${d.ob_indisponivel ? "INDISPONÍVEL" : fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB · SIAFE)</div></div>
+      <div class="b"><div class="v">${d.ob_indisponivel ? "—" : fmtN(ob.orgaos || 0)}</div><div class="l">Órgãos pagadores</div></div>
       <div class="b"><div class="v">${fmtN(pncp.certames || 0)}</div><div class="l">Vitórias no PNCP</div></div>
-      <div class="b"><div class="v" style="color:${per.indicios || 0 ? "var(--amber)" : "#fff"}">${fmtN(per.indicios || 0)}</div><div class="l">Indícios na perícia</div></div></div>`;
+      <div class="b"><div class="v" style="color:${per.indicios || 0 ? "var(--amber)" : "var(--ink)"}">${fmtN(per.indicios || 0)}</div><div class="l">Indícios na perícia</div></div></div>`;
     if (d.resumo) h += card(`<div style="font-size:13.5px;color:var(--mut)">${esc(d.resumo).slice(0, 600)}</div>`);
     if ((d.socios || []).length) h += `<div style="height:12px"></div>` + sec("Quadro societário (QSA)", d.socios.length) + card(`<table><tbody>${d.socios.map((s) => `<tr><td>${esc(s.nome)}${s.servidor ? ' <span class="tag rose">servidor</span>' : ""}</td><td class="dim">${esc(s.qualificacao || "")}</td></tr>`).join("")}</tbody></table>`);
     if ((d.orgaos || []).length) h += `<div style="height:12px"></div>` + sec("Órgãos que mais pagaram") + card(`<table><tbody>${d.orgaos.map((o) => `<tr><td>${esc(o.nome || o.ug)}</td><td>${fmtRc(o.total)}</td></tr>`).join("")}</tbody></table>`);
@@ -4046,7 +4046,7 @@
       <div class="b"><div class="v">${fmtRc(mun.pago)}</div><div class="l">Pago pela Prefeitura</div></div>
       <div class="b"><div class="v">${fmtN(mun.orgaos)}</div><div class="l">Órgãos municipais</div></div>
       <div class="b"><div class="v">${esc(mun.periodo || "—")}</div><div class="l">Exercícios</div></div>
-      <div class="b"><div class="v" style="color:${(mun.lentes || []).length ? "var(--amber)" : "#fff"}">${fmtN((mun.lentes || []).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
+      <div class="b"><div class="v" style="color:${(mun.lentes || []).length ? "var(--amber)" : "var(--ink)"}">${fmtN((mun.lentes || []).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
       if ((mun.razoes_sociais || []).length > 1)
         h += card(`<div class="kv"><span class="k">Razões sociais sob este CNPJ</span><b class="right" style="max-width:64%">${mun.razoes_sociais.map(esc).join(" · ")}</b></div>` + leitura("O mesmo CNPJ aparece com mais de uma razão social — troca de nome ou matriz/filial. 0,96% das raízes do acervo estão nesse caso; agrupar pelo NOME partiria a empresa em duas."));
       if ((mun.por_elemento || []).length)
@@ -6372,21 +6372,22 @@
   function _numAcervo(d) {
     if (!_ok(d) || !d.obs || d.obs.total == null) return _num2("acervo", { l: "ordens bancárias no acervo", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
     _num2("acervo", {
-      l: "ordens bancárias no acervo",
+      l: "ordens bancárias pagas no acervo",
       v: d.obs.total,
       fmt: "n",
-      s: `espelho TFE até ${_dataCurta(d.obs.tfe_ultimo_dia)} (publicado com ~3 semanas de atraso)`,
-      f: "TFE · ordens_bancarias",
+      s: `OB pagas no SIAFE de 2021 em diante (Contabilizadas, sem devolvidas pelo banco)` + (d.obs.valor_total != null ? ` — <b>${fmtR(d.obs.valor_total)}</b>` : "") + (d.obs.tfe_total != null ? ` · espelho TFE (parcial, até ${_dataCurta(d.obs.tfe_ultimo_dia)}): ${fmtN(d.obs.tfe_total)} OB` : ""),
+      f: "SIAFE · ob_orcamentaria_siafe",
       estado: "VERIFICADO"
     });
   }
   function _numEcon(d) {
     if (!_ok(d) || d.economia_total == null) return _num2("econ", { l: "economia potencial", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
+    const pe = d.por_esfera || {}, esf = (k) => pe[k] && pe[k].n ? `${fmtR(pe[k].economia)} em ${fmtN(pe[k].n)}` : "nenhuma conferida";
     _num2("econ", {
       l: "economia potencial",
       v: d.economia_total,
       fmt: "R$",
-      s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item — estimativa, não OB paga`,
+      s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item, conferidas no PNCP — Estado: ${esf("estado")} · Prefeitura do Rio: ${esf("prefeitura")} — estimativa, não OB paga`,
       f: "PNCP · comparador de preços",
       estado: "PENDENTE"
     });
@@ -6674,7 +6675,7 @@
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../../../node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -6882,7 +6883,7 @@
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -8383,12 +8384,12 @@
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../../../node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../../../node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -8402,13 +8403,13 @@
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../../../node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../../../node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -8476,7 +8477,7 @@
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../../../node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -8542,7 +8543,7 @@
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../../../node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -9994,7 +9995,7 @@
       ckCard("alertas", "Alertas", "ckrose", "bgrose", "e_alertas"),
       ckCard("fenix", "Pago a CNPJ baixado ou inapto", "ckrose", "bgrose", "g_fenix"),
       ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
-      ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
+      ckCard("com", "Comunidades com sinal de risco", "", "bgteal", "g_comun"),
       ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro")
     ].join("");
     a11yfy(g);
@@ -10047,12 +10048,23 @@
     });
     J("/api/intel/comunidades").then((d) => {
       if (!d || !d.ok) return;
-      ckFill("com", { num: d.n, meta: "clusters família-empresa-órgão (Louvain)" });
+      const r = d.n_por_rating;
+      if (!r) {
+        ckFill("com", { txt: "—", meta: `contagem por risco ainda não calculada (próximo recálculo do cache) · ${fmtN(d.n)} agrupamentos pessoa+empresa, sem triagem — proximidade, não indício` });
+        return;
+      }
+      ckFill("com", { num: (r["🔴"] || 0) + (r["🟡"] || 0), meta: `com sinal de risco (<b class="ckrose">${fmtN(r["🔴"] || 0)}</b> 🔴 · ${fmtN(r["🟡"] || 0)} 🟡) entre ${fmtN(d.n)} agrupamentos pessoa+empresa (Louvain) — proximidade societária, <b>não prova de conluio</b>` });
     });
     J("/api/intel/lift").then((d) => {
       if (!d || !d.ok) return;
-      const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
-      ckFill("lift", { txt: b ? fmtD(b.lift, 2) + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> marca ${fmtD(b.lift, 2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)` + ((d.circulares || []).length ? ` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo` : "") : "—" });
+      const ord = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0));
+      const b = ord.find((x) => (x.lift || 0) > 1 && !x.n_pequeno), circ = (d.circulares || []).length ? ` · ${fmtN(d.circulares.length)} detectores circulares fora do cálculo` : "";
+      if (!b) {
+        const m = ord[0];
+        ckFill("lift", { txt: "nenhum", meta: `nenhum detector marca mais fornecedores sancionados que a base (taxa-base ${fmtD((d.taxa_base || 0) * 100, 1)}%)` + (m ? ` · o maior é <b>${rot(m.detector)}</b> com ${fmtD(m.lift, 2)}× (abaixo de 1 = anti-sinal)` : "") + circ });
+        return;
+      }
+      ckFill("lift", { txt: fmtD(b.lift, 2) + "×", meta: `<b>${rot(b.detector)}</b> marca ${fmtD(b.lift, 2)}× mais fornecedores sancionados que a base (${fmtN(b.sancionados)} de ${fmtN(b.n)}; sanção de qualquer época ou ente — não mede irregularidade)` + circ });
     });
     J("/api/intel/fenix").then((d) => {
       if (!d || !d.ok) return;
@@ -12350,17 +12362,18 @@
     const [st, p, cj, sc] = await Promise.all([J("/status"), J("/api/compliance/painel"), J("/api/pncp/conluio?esfera=estado"), J("/api/intel/sancionadas?limite=1")]);
     const a = p.alertas || {}, o = p.obs || {};
     const coletaErro = /erro/i.test(p.ultima_coleta || "");
-    const nc = (cj.captura || []).length + (cj.rodizio_vencedores || []).length;
+    const nc = cj && cj.ok !== false ? (cj.captura || []).length + (cj.rodizio_vencedores || []).length : "INDISPONÍVEL";
+    const aOk = a.total != null;
     let h = cover("estado", "Estado do Rio de Janeiro", "Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).", "🏛️");
     if (coletaErro) h += `<div class="warn">Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
     h += `<div class="grid g2">
     ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳", "e_siafe")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰", "e_siafe")}
-    ${kpi(fmtN(a.total ?? 0), "Alertas ativos", a.alta ? "var(--rose)" : "#fff", "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
-    ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(fmtN(a.alta ?? 0), "🔴 Alta", "var(--rose)", null, "e_alertas")}
+    ${kpi(aOk ? fmtN(a.total) : "INDISPONÍVEL", "Alertas ativos", a.alta ? "var(--rose)" : null, "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
+    ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(aOk ? fmtN(a.alta || 0) : "INDISPONÍVEL", "🔴 Alta", "var(--rose)", null, "e_alertas")}
     ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"), null, null, "e_siafe")}${kpi(o.ultimo_dia ? fmtN(o.n_ultimo_dia) : "INDISPONÍVEL", o.ultimo_dia ? "OBs pagas em " + esc(fmtData(o.ultimo_dia)) + " (SIAFE)" : "OBs — último dia (SIAFE)", null, null, { sobre: "Ordens bancárias CONTABILIZADAS no SIAFE no dia mais recente com pagamento coletado" + (o.ultimo_dia ? " (" + fmtData(o.ultimo_dia) + ": " + fmtR(o.valor_ultimo_dia || 0) + ")" : "") + ". O SIAFE é coletado todo dia. O espelho TFE (dados abertos), base do total de OBs deste painel, está publicado só até " + (o.tfe_ultimo_dia ? fmtData(o.tfe_ultimo_dia) : "—") + ": a fonte tem atraso de semanas — não é falha de coleta." })}</div>`;
     h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
-    ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+    ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">por grau (grave, atenção, não verificável), pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
     h += blocoPeriodo(["ob_siafe", "contratacoes_tcerj", "contratos_estado"], "Pagamentos e contratações por ano e mês");
     h += `<div style="height:16px"></div>` + await frescorHtml();
     h += `<div style="height:14px"></div>` + card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado || "—")}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro ? "color:#f0c078" : ""}">${esc(p.ultima_coleta || "—")}</b></div>`);
@@ -13412,22 +13425,26 @@
   }
   async function renderPericias() {
     const d = await J("/api/pericias?limite=80&ordem=" + _perOrdem + (_perGrau ? "&grau=" + encodeURIComponent(_perGrau) : ""));
-    const it = d.itens || [];
+    const it = d.itens || [], pg = d.por_grau || null, nG = (g) => pg ? ` <span class="dim">${fmtN(pg[g] || 0)}</span>` : "";
+    const pgTot = pg ? Object.values(pg).reduce((a, b) => a + b, 0) : null;
     let h = cover("estado", "Perícias de fornecedor", "Grau 🔴🟡🟢 só com o que foi verificado; ⚪ = não verificável (falta dado-fonte), nunca atenção. Clique num nome para o dossiê 360.", "⚖️");
+    if (!d.ok) return h + cardErro(d.erro);
     h += `<div class="chips">
-    <button type="button" class="chip ${_perGrau === "" ? "on" : ""}" onclick="_perGrau='';ir('e_pericias')">Todos</button>
-    <button type="button" class="chip ${_perGrau === "🟡" ? "on" : ""}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção</button>
-    <button type="button" class="chip ${_perGrau === "🔴" ? "on" : ""}" onclick="_perGrau='🔴';ir('e_pericias')">Grave</button>
-    <button type="button" class="chip ${_perGrau === "⚪" ? "on" : ""}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável</button>
+    <button type="button" class="chip ${_perGrau === "" ? "on" : ""}" onclick="_perGrau='';ir('e_pericias')">Todos${pg ? ` <span class="dim">${fmtN(pgTot)}</span>` : ""}</button>
+    <button type="button" class="chip ${_perGrau === "🔴" ? "on" : ""}" onclick="_perGrau='🔴';ir('e_pericias')">Grave${nG("🔴")}</button>
+    <button type="button" class="chip ${_perGrau === "🟡" ? "on" : ""}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção${nG("🟡")}</button>
+    <button type="button" class="chip ${_perGrau === "⚪" ? "on" : ""}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável${nG("⚪")}</button>
     <button type="button" class="chip ${_perOrdem === "total" ? "on" : ""}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem === "total" ? "ordenar: R$" : "ordenar: score"}</button></div>`;
     h += `<div class="search"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
+    const tot = pg ? _perGrau ? pg[_perGrau] || 0 : pgTot : null;
+    if (tot != null && tot > it.length) h += `<div class="dim" style="margin:4px 2px 8px">mostrando os ${fmtN(it.length)} primeiros de ${fmtN(tot)} por ${_perOrdem === "total" ? "total pago" : "score"} — o filtro de texto atua nesta página; para um fornecedor fora dela, use Buscar</div>`;
     h += `<div id="per-list" class="grid">` + it.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj, x.favorecido || x.cnpj)}</div>
       <div class="dim">${esc(_cnpjEstab(x.cnpj))}</div>
       <div class="dim">${x.indicios || 0} indício(s) · ${x.ugs} órgão(s) · ${fmtN(x.n_obs)} OBs</div></div>
       <div class="right"><div style="font-size:18px">${x.grau || "⚪"}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`
     )).join("") + `</div>`;
-    if (!it.length) h += card('<div class="muted">Nenhum fornecedor casa esse filtro — a busca varre nome, CNPJ e objeto; tente um pedaço do nome ou só os dígitos do CNPJ.</div>');
+    if (!it.length) h += card(`<div class="muted">Nenhum fornecedor com grau ${esc(_perGrau || "registrado")} na perícia.</div>`);
     return h;
   }
   var _acTimer = null;
@@ -14256,13 +14273,14 @@
     const c = await J("/api/cartel");
     const d = (c.dados || []).slice(0, 20);
     let h = cover("estado", "Concentração & cartel · SIAFE", "Órgãos onde um fornecedor concentra a maior fatia do valor pago (top share por UG). Complementa o conluio do PNCP com o lado do pagamento.", "🔗");
+    if (!c.ok) return h + cardErro(c.erro || "cálculo indisponível");
     if (!d.length) return h + card('<div class="muted">Sem dados de concentração.</div>');
     const maxS = Math.max(1, ...d.map((u) => u.top_share || 0));
     h += card(`<div class="barw">` + d.slice(0, 10).map((u) => {
       const cor = u.top_share >= 90 ? "var(--rose-d)" : u.top_share >= 70 ? "var(--amber-d)" : null;
-      return `<div><div class="row"><span class="lab">${esc((u.ug_nome || u.ug || "").slice(0, 58))}</span><span class="num" style="font-weight:700;color:${cor ? u.top_share >= 90 ? "var(--rose)" : "var(--amber)" : "#fff"}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4, u.top_share / maxS * 100)}%${cor ? `;background:${cor}` : ""}"></span></div></div>`;
+      return `<div><div class="row"><span class="lab">${esc((u.ug_nome || u.ug || "").slice(0, 58))}</span><span class="num" style="font-weight:700;color:${cor ? u.top_share >= 90 ? "var(--rose)" : "var(--amber)" : "var(--ink)"}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4, u.top_share / maxS * 100)}%${cor ? `;background:${cor}` : ""}"></span></div></div>`;
     }).join("") + `</div>`);
-    h += `<div style="height:14px"></div><div class="grid">` + d.map((u) => card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome || "")} <span class="dim">(${esc(u.ug || "")})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor || "—")}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share >= 90 ? "var(--rose)" : u.top_share >= 70 ? "var(--amber)" : "#fff"}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join("") + `</div>`;
+    h += `<div style="height:14px"></div><div class="grid">` + d.map((u) => card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome || "")} <span class="dim">(${esc(u.ug || "")})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor || "—")}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share >= 90 ? "var(--rose)" : u.top_share >= 70 ? "var(--amber)" : "var(--ink)"}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join("") + `</div>`;
     return h;
   }
   var TIPO_ALERTA = {

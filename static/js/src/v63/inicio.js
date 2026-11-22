@@ -240,13 +240,20 @@ function _numAlertas(d) {
 }
 function _numAcervo(d) {
   if (!_ok(d) || !d.obs || d.obs.total == null) return _num('acervo', {l: 'ordens bancárias no acervo', v: null, f: _indisp(d), estado: 'INDISPONÍVEL'});
-  _num('acervo', {l: 'ordens bancárias no acervo', v: d.obs.total, fmt: 'n',
-    s: `espelho TFE até ${_dataCurta(d.obs.tfe_ultimo_dia)} (publicado com ~3 semanas de atraso)`, f: 'TFE · ordens_bancarias', estado: 'VERIFICADO'});
+  /* 21/11/2026: `obs.total` é OB PAGA no SIAFE desde 18/11 (`_siafe_pago_total`), mas o rótulo seguia dizendo "espelho
+     TFE · ordens_bancarias" — o número certo com a fonte errada. O espelho TFE (parcial) vai como contexto, rotulado. */
+  _num('acervo', {l: 'ordens bancárias pagas no acervo', v: d.obs.total, fmt: 'n',
+    s: `OB pagas no SIAFE de 2021 em diante (Contabilizadas, sem devolvidas pelo banco)`
+      + (d.obs.valor_total != null ? ` — <b>${fmtR(d.obs.valor_total)}</b>` : '')
+      + (d.obs.tfe_total != null ? ` · espelho TFE (parcial, até ${_dataCurta(d.obs.tfe_ultimo_dia)}): ${fmtN(d.obs.tfe_total)} OB` : ''),
+    f: 'SIAFE · ob_orcamentaria_siafe', estado: 'VERIFICADO'});
 }
 function _numEcon(d) {
   if (!_ok(d) || d.economia_total == null) return _num('econ', {l: 'economia potencial', v: null, f: _indisp(d), estado: 'INDISPONÍVEL'});
+  /* 21/11/2026: o total era 100% da Prefeitura do Rio sem dizer a esfera (esferas estanques); agora diz de onde vem. */
+  const pe = d.por_esfera || {}, esf = k => pe[k] && pe[k].n ? `${fmtR(pe[k].economia)} em ${fmtN(pe[k].n)}` : 'nenhuma conferida';
   _num('econ', {l: 'economia potencial', v: d.economia_total, fmt: 'R$',
-    s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item — estimativa, não OB paga`, f: 'PNCP · comparador de preços', estado: 'PENDENTE'});
+    s: `<b>${fmtN(d.n_compras_acima_mediana)}</b> compras ≥ 2× a mediana do mesmo item, conferidas no PNCP — Estado: ${esf('estado')} · Prefeitura do Rio: ${esf('prefeitura')} — estimativa, não OB paga`, f: 'PNCP · comparador de preços', estado: 'PENDENTE'});
 }
 
 /* _iso (barras do radar) e _slack (cartão do último alerta) saíram em 19/11/2026 com as duas seções (COR-04);
