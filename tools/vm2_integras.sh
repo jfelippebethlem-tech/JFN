@@ -35,7 +35,18 @@ flock -w 3600 9 || { say "trava do navegador ocupada há 1 h — pula"; exit 0; 
 [ -f "$W/data/.pause_vm2_integras" ] && { say "pausado (.pause_vm2_integras) — pulei"; exit 0; }
 
 # código atual da VM-1 (fast-forward; se falhar, roda com o que tem e registra)
-git -C "$W" pull --ff-only -q 2>>"$LOG" || say "git pull falhou — seguindo com $(git -C "$W" rev-parse --short HEAD)"
+# 22/11/2026: o pull falhava desde 20/11 14h ("local changes would be overwritten") por um arquivo com a MESMA
+# mudança que já estava no upstream (deploy/vm2/run_sweep.sh aplicado à mão) — a VM-2 ficou 34 commits atrás, SEM
+# o "Gerar PDF" em lotes: 52% do tempo dela em timeouts de 900 s doc a doc. Arquivo local idêntico ao upstream
+# volta ao HEAD antes do pull (a mudança chega pelo próprio pull); diferente do upstream fica e é dito no log.
+git -C "$W" fetch -q 2>>"$LOG"
+UP=$(git -C "$W" rev-parse -q --verify '@{u}')
+if [ -n "$UP" ]; then
+  for f in $(git -C "$W" diff --name-only); do
+    git -C "$W" diff --quiet "$UP" -- "$f" && git -C "$W" checkout -q -- "$f" && say "local = upstream, restaurado p/ o pull: $f"
+  done
+fi
+git -C "$W" pull --ff-only -q 2>>"$LOG" || say "git pull falhou — seguindo com $(git -C "$W" rev-parse --short HEAD) (ATRÁS de $(git -C "$W" rev-list --count HEAD..@{u} 2>/dev/null) commit(s); locais: $(git -C "$W" diff --name-only | tr '\n' ' '))"
 
 # 1) a VM-1 monta a fila (mesmo critério do código de lá) e grava a reserva
 FILA="$W/data/fila_vm2.json"
