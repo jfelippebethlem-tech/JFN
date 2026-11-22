@@ -42,6 +42,8 @@ def con():
     _ob(c, "2026OB00007", "180100", "15/04/2026", 80.00, tipo_ob="RPP")
     _ob(c, "2026OB00008", "180100", "10/03/2026", 9999.00)                                    # antes da gestão
     _ob(c, "2025OB00001", "180100", "10/04/2025", 400.00)                                     # ano anterior
+    _ob(c, "2026OB00009", "180100", "16/04/2026", 3000.00, credor="CG0004700", nome="FOLHA DE PAGAMENTOS")
+    _ob(c, "2026OB00010", "180100", "16/04/2026", 200.00, credor="296100", nome="FUNDO ESTADUAL DE SAUDE")
     c.execute("INSERT INTO sancoes_federais VALUES ('CEIS','11.222.333/0001-81','ACME','2026-01-01','2027-01-01')")
     c.execute("INSERT INTO contratos_tcerj VALUES ('SEI-180001/000001/2026','180001/000001/2026')")
     return c
@@ -49,11 +51,13 @@ def con():
 
 def test_coletar_ob_so_soma_o_que_e_pagamento(con):
     ob = dc.coletar_ob(con, "2026-03-23", "2026-11-22")
-    assert ob["fim"] == "2026-04-15" and ob["fim_ant"] == "2025-04-15"
+    assert ob["fim"] == "2026-04-16" and ob["fim_ant"] == "2025-04-16"
     ag = dc.agregar_ob(ob, {"ug_orgao": {"180100": "18"}, "nome_orgao": {"18": "Educação"}, "nome_ug": {}})
     t = ag["couto"]["total"]
-    assert t["valor"] == 1630.00            # 1000 + 500 + 50 + 80 (devolvida, complementar, anulada e março fora)
-    assert t["confirmada"] == 1130.00 and t["sem_confirmacao"] == 500.00
+    assert t["valor"] == 4830.00            # 1000+500+50+80+3000+200 (devolvida, complementar, anulada e março fora)
+    assert t["confirmada"] == 4330.00 and t["sem_confirmacao"] == 500.00
+    # folha/previdência sai por credor GENÉRICO do SIAFE: é pagamento, não transferência; só UG é intragovernamental
+    assert ag["couto"]["intra"] == [1, 200.00] and ag["couto"]["generico_total"] == [1, 3000.00]
     assert ag["anterior"]["total"]["valor"] == 400.00
     assert ag["couto"]["pf"] == [1, 50.00]
     assert "12345678901" not in str(ob) and "FULANO" not in str(ob), "pessoa física não pode sair da varredura"
@@ -120,7 +124,7 @@ def test_documento_aprovado_e_todo_numero_rastreia(con):
     assert v["n_numeros_citados"] > 20
     ids = {f["fato_id"] for lst in ("brl", "contagem", "percentual", "indice") for f in fatos[lst]}
     assert all(re.match(r"^[a-z][a-z0-9_]*(:[A-Za-z0-9_.\-]+)+$", i) for i in ids), "id fora do padrão do registro"
-    assert "R$ 1.630,00" in html
+    assert "R$ 4.830,00" in html
 
 
 def test_verificador_reprova_numero_sem_fato(con):
@@ -131,8 +135,8 @@ def test_verificador_reprova_numero_sem_fato(con):
 
 def test_verificador_reprova_valor_que_nao_bate_com_o_registro(con):
     html, fatos = _render(_dados(con, [_achado()]))
-    adulterado = html.replace('data-fato="dossie_couto:exec.total.couto:valor">R$ 1.630,00',
-                              'data-fato="dossie_couto:exec.total.couto:valor">R$ 1.631,00', 1)
+    adulterado = html.replace('data-fato="dossie_couto:exec.total.couto:valor">R$ 4.830,00',
+                              'data-fato="dossie_couto:exec.total.couto:valor">R$ 4.831,00', 1)
     assert adulterado != html
     assert not dc.verificar(adulterado, fatos, [_achado()], None)["aprovado"]
 
@@ -208,3 +212,14 @@ def test_tipo_de_decreto_orcamentario():
     assert dc.tipo_orcamentario("ABRE CRÉDITO ESPECIAL À SECRETARIA") == "crédito especial"
     assert dc.tipo_orcamentario("ESTABELECE LIMITES DE EMPENHO") == "contingenciamento e limites"
     assert dc.tipo_orcamentario("ALTERA O QUADRO DE DETALHAMENTO DA DESPESA") == "programação orçamentária/financeira"
+
+
+def test_janela_anterior_sem_cobertura_e_indisponivel_nao_zero():
+    c = sqlite3.connect(":memory:")
+    c.execute("CREATE TABLE doerj_tac(data_doe, fornecedor, cnpj, valor, orgao)")
+    c.execute("INSERT INTO doerj_tac VALUES ('2026-01-02','X LTDA','11222333000181',100.0,'SES')")
+    c.execute("INSERT INTO doerj_tac VALUES ('2026-04-02','X LTDA','11222333000181',50.0,'SES')")
+    r = dc.coletar_tac(c)
+    assert r["janelas"]["couto"]["valor"] == 50.0
+    ant = r["janelas"]["anterior"]
+    assert ant["indisponivel"] and ant["valor"] is None and ant["n"] is None

@@ -344,12 +344,23 @@ def _poder(orgao: str) -> str:
     return PODER.get(str(orgao), "Executivo")
 
 
+def _janela_coberta(con: sqlite3.Connection, tabela: str, col: str, ini: str) -> tuple[bool, str | None]:
+    """A fonte começa ANTES do início da janela? Se não, a janela é INDISPONÍVEL (a coleta não alcança), não zero."""
+    d0 = con.execute(f"SELECT MIN({col}) FROM {tabela}").fetchone()[0]
+    return (bool(d0) and str(d0) <= ini), (str(d0) if d0 else None)
+
+
 def coletar_contratacoes(con: sqlite3.Connection) -> dict:
     diretas = {r[0]: (r[1], r[2]) for r in con.execute(
         "SELECT sei_norm, afastamento, enquadramento_legal FROM compras_diretas_tcerj WHERE sei_norm IS NOT NULL")}
     ult = con.execute("SELECT MAX(substr(data_contratacao,1,10)) FROM contratos_tcerj").fetchone()[0]
     out = {"ultimo_registro": ult, "janelas": {}}
     for jan, ini, fim in (("couto", INICIO, ult), ("anterior", _menos_um_ano(INICIO), _menos_um_ano(ult))):
+        ok, d0 = _janela_coberta(con, "contratos_tcerj", "substr(data_contratacao,1,10)", ini)
+        if not ok:
+            out["janelas"][jan] = {"inicio": ini, "fim": fim, "indisponivel": f"o espelho começa em {d0}", "modalidades": {},
+                                   "lista": [], "n_cancelados": None}
+            continue
         rows = con.execute(
             "SELECT processo, sei_norm, substr(data_contratacao,1,10), valor_contrato, status, unidade, objeto, "
             "fornecedor, cnpj FROM contratos_tcerj WHERE substr(data_contratacao,1,10) BETWEEN ? AND ?", (ini, fim)).fetchall()
@@ -381,6 +392,11 @@ def coletar_aditivos(con: sqlite3.Connection) -> dict:
     ult = con.execute("SELECT MAX(substr(data_assinatura,1,10)) FROM contrato_aditivo").fetchone()[0]
     out = {"ultimo_registro": ult, "janelas": {}}
     for jan, ini, fim in (("couto", INICIO, ult), ("anterior", _menos_um_ano(INICIO), _menos_um_ano(ult))):
+        ok, d0 = _janela_coberta(con, "contrato_aditivo", "substr(data_assinatura,1,10)", ini)
+        if not ok:
+            out["janelas"][jan] = {"inicio": ini, "fim": fim, "indisponivel": f"a coleta começa em {d0}", "n": None,
+                                   "n_sem_valor": None, "valor_acrescido": None}
+            continue
         n = n_sem = 0
         v = 0.0
         for ctrl, val in con.execute("SELECT numero_controle_pncp, valor_acrescido FROM contrato_aditivo WHERE "
@@ -400,6 +416,11 @@ def coletar_tac(con: sqlite3.Connection) -> dict:
     ult = con.execute("SELECT MAX(data_doe) FROM doerj_tac").fetchone()[0]
     out = {"ultimo_registro": ult, "janelas": {}}
     for jan, ini, fim in (("couto", INICIO, ult), ("anterior", _menos_um_ano(INICIO), _menos_um_ano(ult))):
+        ok, d0 = _janela_coberta(con, "doerj_tac", "data_doe", ini)
+        if not ok:
+            out["janelas"][jan] = {"inicio": ini, "fim": fim, "indisponivel": f"a coleta do Diário começa em {d0}",
+                                   "n": None, "valor": None, "n_sem_valor": None, "fornecedores": []}
+            continue
         rows = con.execute("SELECT fornecedor, cnpj, valor, orgao FROM doerj_tac WHERE data_doe BETWEEN ? AND ?",
                            (ini, fim)).fetchall()
         por = defaultdict(lambda: {"n": 0, "valor": 0.0, "orgaos": set(), "cnpj": ""})
@@ -589,6 +610,7 @@ def agregar_ob(ob: dict, cad: dict) -> dict:
         t = {"n": 0, "valor": 0.0, "confirmada": 0.0, "sem_confirmacao": 0.0}
         poder, orgao, ugs, cred, rp, fora = (defaultdict(lambda: [0, 0.0]) for _ in range(6))
         nomes_cred, pf, intra = {}, [0, 0.0], [0, 0.0]
+        gen: dict = defaultdict(lambda: [0, 0.0, ""])
         for ug, c, nome, tob, k, n, v, _d in ob[jan]:
             v = float(v or 0)
             if k not in ("confirmada", "sem_confirmacao"):
@@ -610,12 +632,19 @@ def agregar_ob(ob: dict, cad: dict) -> dict:
                 cred[d][0] += n
                 cred[d][1] += v
                 nomes_cred.setdefault(d, mascarar(nome or ""))
-            else:
-                intra[0] += n
+            elif re.fullmatch(r"\d{6}", str(c)):
+                intra[0] += n                  # credor é UG do próprio Estado: transferência intragovernamental
                 intra[1] += v
-        r[jan] = {"total": {k: (round(x, 2) if isinstance(x, float) else x) for k, x in t.items()},
+            else:
+                g = gen[str(c)]                # credor genérico do SIAFE (folha, previdência, benefícios, dívida…)
+                g[0] += n
+                g[1] += v
+                g[2] = g[2] or mascarar(nome or "")
+        r[jan] = {"generico": {k: list(x) for k, x in gen.items()},
+                  "total": {k: (round(x, 2) if isinstance(x, float) else x) for k, x in t.items()},
                   "poder": dict(poder), "orgao": dict(orgao), "ug": dict(ugs), "credor": dict(cred),
-                  "nomes_credor": nomes_cred, "pf": pf, "intra": intra, "rp": dict(rp), "fora": dict(fora)}
+                  "nomes_credor": nomes_cred, "pf": pf, "intra": intra,
+                  "generico_total": [sum(x[0] for x in gen.values()), sum(x[1] for x in gen.values())], "rp": dict(rp), "fora": dict(fora)}
     r["nome_orgao"], r["nome_ug"], r["ug_orgao"] = nomes_org, nome_ug, u2o
     return r
 
@@ -679,7 +708,7 @@ class Montador:
         return self.reg.v(chave, valor, "contagem", rotulo, fonte, consulta, **k)
 
     def _var(self, chave, atual, ant, rotulo, fonte) -> str:
-        if not ant:
+        if not ant or atual is None:
             return "—"
         return self.reg.v(chave, (atual / ant - 1) * 100, "indice", f"variação percentual — {rotulo}", fonte,
                           "calculada: (período Couto ÷ mesma janela do ano anterior − 1) × 100",
@@ -721,15 +750,16 @@ class Montador:
              f"bancária o espelho ainda não confirma). O SIAFE soma, além de fornecedores, transferências entre unidades, "
              f"repasses, folha e encargos — o total não é só compra.</p>",
              f'<div class="callout g2"><b>Dupla contagem possível nas transferências.</b> OB cujo credor é uma unidade '
-             f"gestora do próprio Estado (repasse, descentralização, duodécimo quando sai por OB) pode reaparecer como OB da "
-             f"unidade que recebe. Essas OB somam "
-             f"{self._pago('exec.intra.valor', c['intra'][1], 'pago a credor UG/ente — período Couto', 'soma')} no período "
-             f"({self._pago('exec.intra.valor_ant', p['intra'][1], 'pago a credor UG/ente — mesma janela do ano anterior', 'soma')} "
-             f"no ano anterior). Excluídas, o pago a terceiros fica em "
+             f"gestora do próprio Estado (código de UG — repasse, descentralização, aporte a fundo) pode reaparecer como OB "
+             f"da unidade que recebe. Essas OB somam "
+             f"{self._pago('exec.intra.valor', c['intra'][1], 'pago a credor que é UG do Estado — período Couto', 'soma')} no período "
+             f"({self._pago('exec.intra.valor_ant', p['intra'][1], 'pago a credor que é UG do Estado — mesma janela do ano anterior', 'soma')} "
+             f"no ano anterior). Excluídas, o pago fica em "
              f"{self._pago('exec.liquido.couto', c['total']['valor'] - c['intra'][1], 'pago excluídas as OB a credor UG do Estado — período Couto', 'total menos OB a credor UG')} "
              f"contra {self._pago('exec.liquido.anterior', p['total']['valor'] - p['intra'][1], 'pago excluídas as OB a credor UG do Estado — ano anterior', 'total menos OB a credor UG')} "
              f"({self._var('exec.liquido.var', c['total']['valor'] - c['intra'][1], p['total']['valor'] - p['intra'][1], 'pago excluídas as OB a credor UG', F)}). "
-             f"As tabelas por Poder, órgão e UG mostram o total emitido por cada unidade (inclui o que ela repassou).</div>"]
+             f"Folha, previdência, benefícios e dívida saem por credor genérico do SIAFE (Capítulo 3.4) e continuam na "
+             f"soma — são pagamento. As tabelas por Poder, órgão e UG mostram o total emitido por cada unidade.</div>"]
         # 3.1 por Poder
         h.append("<h3>3.1 Por Poder</h3>")
         lin = []
@@ -787,9 +817,29 @@ class Montador:
         h.append(f"<p>Pessoas físicas (agregadas, sem identificação — LGPD): "
                  f"{self._n('exec.pf.n', c['pf'][0], 'OB pagas a pessoas físicas — período Couto', F, 'contagem')} OB, "
                  f"{self._pago('exec.pf.valor', c['pf'][1], 'pago a pessoas físicas — período Couto', 'soma')}. "
-                 f"Credor que é unidade do próprio Estado ou outro ente (transferências): "
-                 f"{self._n('exec.intra.n', c['intra'][0], 'OB a credor não-PJ/não-PF (UG, ente) — período Couto', F, 'contagem')} OB, "
-                 f"{self._pago('exec.intra.valor', c['intra'][1], 'pago a credor UG/ente — período Couto', 'soma')}.</p>")
+                 f"Credor que é unidade gestora do próprio Estado (transferências): "
+                 f"{self._n('exec.intra.n', c['intra'][0], 'OB a credor que é UG do Estado — período Couto', F, 'contagem')} OB, "
+                 f"{self._pago('exec.intra.valor', c['intra'][1], 'pago a credor que é UG do Estado — período Couto', 'soma')}.</p>")
+        h.append("<h3>3.4.1 Credores genéricos do SIAFE (folha, previdência, benefícios, dívida)</h3>")
+        gen = sorted(c["generico"].items(), key=lambda kv: -kv[1][1])
+        gvis, gnota = top_declarado(gen, 60, "credores genéricos", onde="na soma logo abaixo")
+        lin = []
+        for cod, (n, v, nome) in gvis:
+            ant = p["generico"].get(cod, [0, 0.0, ""])
+            kk = re.sub(r"[^A-Za-z0-9]+", "_", cod)
+            lin.append([f'<span class="mono">{_e(cod)}</span>', texto_com_fatos(self.reg, campo(nome, 70), f"exec.gen.{kk}.nome", F, estado="VERIFICADO"),
+                        self._n(f"exec.gen.{kk}.n", n, f"OB pagas ao credor genérico {cod} — {jan}", F, "por credor genérico"),
+                        self._pago(f"exec.gen.{kk}.couto", v, f"pago ao credor genérico {cod} ({nome}) — {jan}", "por credor genérico"),
+                        self._pago(f"exec.gen.{kk}.anterior", ant[1], f"pago ao credor genérico {cod} ({nome}) — {jan_a}", "por credor genérico")])
+        h.append("<p>O SIAFE paga folha, aposentadorias e pensões, auxílios e parcelas de dívida a CREDORES GENÉRICOS (código "
+                 "próprio, não CNPJ nem CPF) — o beneficiário final não aparece na OB. Período: "
+                 f"{self._n('exec.gen.total.n', c['generico_total'][0], 'OB a credor genérico do SIAFE — período Couto', F, 'contagem')} OB, "
+                 f"{self._pago('exec.gen.total.couto', c['generico_total'][1], 'pago a credor genérico do SIAFE — período Couto', 'soma')} "
+                 f"(ano anterior: {self._pago('exec.gen.total.anterior', p['generico_total'][1], 'pago a credor genérico do SIAFE — ano anterior', 'soma')}).</p>")
+        h.append(_tabela(["Código", "Credor genérico", "OB", "Pago (Couto)", "Pago (ano anterior)"], lin, {2, 3, 4}))
+        if gnota:
+            h.append(f"<p class='nota'>{_e(gnota)} Demais: "
+                     f"{self._pago('exec.gen.demais.valor', sum(x[1] for _c, x in gen[len(gvis):]), 'pago aos credores genéricos fora da tabela', 'soma')}.</p>")
         # 3.5 restos a pagar
         h.append("<h3>3.5 Restos a pagar pagos no período</h3>")
         lin = []
@@ -863,7 +913,9 @@ class Montador:
                      "Licitação ou sem registro de contratação direta")
             tc = sum(x["valor"] for x in jc["modalidades"].values())
             for m in ordem:
-                x, y = jc["modalidades"].get(m, {"n": 0, "valor": 0}), ja["modalidades"].get(m, {"n": 0, "valor": 0})
+                x = jc["modalidades"].get(m, {"n": 0, "valor": 0})
+                y = (ja["modalidades"].get(m, {"n": 0, "valor": 0}) if not ja.get("indisponivel")
+                     else {"n": None, "valor": None})
                 k = _k(m)
                 lin.append([_e(m), self._n(f"ctr.mod.{k}.n", x["n"], f"contratos — {m} — período Couto", F, "por modalidade"),
                             self.reg.v(f"ctr.mod.{k}.valor", x["valor"], "BRL", f"contratado — {m} — período Couto", F,
@@ -873,6 +925,8 @@ class Montador:
                             self.reg.v(f"ctr.mod.{k}.valor_ant", y["valor"], "BRL", f"contratado — {m} — ano anterior", F,
                                        "por modalidade", natureza="contratado"),
                             self._var(f"ctr.mod.{k}.var", x["valor"], y["valor"], f"contratado — {m}", F)])
+            if ja.get("indisponivel"):
+                lin.append([f"Ano anterior INDISPONÍVEL: {_e(ja['indisponivel'])}", "", "", "", "", "", ""])
             h.append(_tabela(["Modalidade", "Contratos", "Contratado (Couto)", "% do valor", "Contratos (ano ant.)",
                               "Contratado (ano ant.)", "Variação"], lin, {1, 2, 3, 4, 5, 6}))
             em = [x for x in jc["lista"] if x["modalidade"] == "Dispensa — emergencial"]
@@ -894,9 +948,11 @@ class Montador:
                      f"{self._n('adit.n_sem', x['n_sem_valor'], 'aditivos sem valor no PNCP — período Couto', Fa, 'contagem')} sem "
                      f"valor publicado; acréscimo declarado de "
                      f"{self.reg.v('adit.valor', x['valor_acrescido'], 'BRL', 'valor acrescido por aditivos — período Couto', Fa, 'soma', natureza='contratado')}. "
-                     f"Mesma janela do ano anterior: {self._n('adit.n_ant', y['n'], 'aditivos — ano anterior', Fa, 'contagem')} termos, "
-                     f"{self.reg.v('adit.valor_ant', y['valor_acrescido'], 'BRL', 'valor acrescido por aditivos — ano anterior', Fa, 'soma', natureza='contratado')}.</p>"
-                     '<div class="callout g2"><b>Cobertura parcial.</b> O PNCP só tem o que o órgão publicou; parte dos '
+                     + (f"Mesma janela do ano anterior: INDISPONÍVEL — {_e(y['indisponivel'])} (não é zero).</p>"
+                        if y.get("indisponivel") else
+                        f"Mesma janela do ano anterior: {self._n('adit.n_ant', y['n'], 'aditivos — ano anterior', Fa, 'contagem')} termos, "
+                        f"{self.reg.v('adit.valor_ant', y['valor_acrescido'], 'BRL', 'valor acrescido por aditivos — ano anterior', Fa, 'soma', natureza='contratado')}.</p>")
+                     + '<div class="callout g2"><b>Cobertura parcial.</b> O PNCP só tem o que o órgão publicou; parte dos '
                      'termos sai sem valor. Não é o universo de aditivos do Estado e não permite afirmar ausência de '
                      'acréscimo acima de <span class="limiar">25%</span> (Lei 14.133/2021, art. 125).</div>')
         else:
@@ -909,9 +965,12 @@ class Montador:
                      f"o atestado, publicado, de que houve execução fora de contrato. De {_br(x['inicio'])} a "
                      f"{_br(x['fim'])}: {self._n('tac.n', x['n'], 'TACs publicados — período Couto', Ft, 'contagem')} extratos, "
                      f"{self.reg.v('tac.valor', x['valor'], 'BRL', 'valor reconhecido em TAC — período Couto', Ft, 'soma', natureza='reconhecido')} "
-                     f"reconhecidos. Mesma janela do ano anterior: {self._n('tac.n_ant', y['n'], 'TACs publicados — ano anterior', Ft, 'contagem')} "
-                     f"extratos, {self.reg.v('tac.valor_ant', y['valor'], 'BRL', 'valor reconhecido em TAC — ano anterior', Ft, 'soma', natureza='reconhecido')} "
-                     f"(variação {self._var('tac.var', x['valor'], y['valor'], 'valor reconhecido em TAC', Ft)}).</p>")
+                     f"reconhecidos. "
+                     + (f"Mesma janela do ano anterior: INDISPONÍVEL — {_e(y['indisponivel'])}; a comparação com o governo "
+                        f"anterior não é possível por esta fonte (não é zero).</p>" if y.get("indisponivel") else
+                        f"Mesma janela do ano anterior: {self._n('tac.n_ant', y['n'], 'TACs publicados — ano anterior', Ft, 'contagem')} "
+                        f"extratos, {self.reg.v('tac.valor_ant', y['valor'], 'BRL', 'valor reconhecido em TAC — ano anterior', Ft, 'soma', natureza='reconhecido')} "
+                        f"(variação {self._var('tac.var', x['valor'], y['valor'], 'valor reconhecido em TAC', Ft)}).</p>"))
             vis, nota = top_declarado(x["fornecedores"], 40, "fornecedores com TAC", onde="no Diário Oficial")
             lin = [[_e(campo(f["fornecedor"], 60)), f'<span class="mono">{_e(f["cnpj"] or "—")}</span>',
                     self._n(f"tac.forn.{i}.n", f["n"], f"TACs — {f['fornecedor']}", Ft, "por fornecedor"),
@@ -1210,6 +1269,12 @@ class Montador:
         if "janelas" in ct:
             L.append(["Contratos depois do último registro do espelho do TCE-RJ", "INDISPONÍVEL",
                       f"espelho até {_br(ct.get('ultimo_registro'))}", "atualização do espelho"])
+        for rot, bloco in (("Contratações", d.get("contratacoes")), ("Termos aditivos", d.get("aditivos")),
+                           ("Termos de Ajuste de Contas", d.get("tac"))):
+            ant = ((bloco or {}).get("janelas") or {}).get("anterior") or {}
+            if ant.get("indisponivel"):
+                L.append([f"{rot} — mesma janela do ano anterior", "INDISPONÍVEL", ant["indisponivel"],
+                          "coleta retroativa da fonte; até lá, sem comparação com o governo anterior"])
         L.append(["Modalidade de licitação dos contratos sem contratação direta", "INDISPONÍVEL",
                   "o espelho do TCE-RJ não publica a modalidade", "requerer o processo SEI"])
         L.append(["Universo de termos aditivos", "PARCIAL", "o PNCP só tem o que o órgão publicou; parte sem valor",
