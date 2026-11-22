@@ -10,7 +10,7 @@ set -u
 # stdin = /dev/null — senão o primeiro ssh/rsync filho comeria o resto do script.
 main() {
   B=~/jfn-gpu/ocr-cpu
-  K=${1:-2}; T=${2:-6}; ORC=${3:-1500}
+  K=${1:-2}; T=${2:-6}; ORC=${3:-1500}; MEMMIN=${4:-6}; NPDF=${5:-8}   # 4º/5º: o vigia da VM-1 afina pela medida
   cd "$B" || return 1
   exec 9>"$B/.ocr_cpu.lock"
   flock -n 9 || { echo "rodada anterior viva — pula"; return 0; }
@@ -21,11 +21,11 @@ main() {
   R=$(ssh -o BatchMode=yes vm1-ts 'md5sum < JFN/tools/sei_ocr_reserva.py' | cut -d' ' -f1)
   [ "$L" = "$R" ] || { echo "md5 do código diverge ($L != $R)"; return 1; }
   mv "$B/sei_ocr_reserva.py.novo" "$B/sei_ocr_reserva.py"
-  export JFN_FRIO_REMOTO=vm2-ts:arquivo_frio/sei_cache/ JFN_OCR_MEM_MIN_GB=6 JFN_OCR_THREADS=$T \
+  export JFN_FRIO_REMOTO=vm2-ts:arquivo_frio/sei_cache/ JFN_OCR_MEM_MIN_GB=$MEMMIN JFN_OCR_THREADS=$T \
          JFN_OCR_RESERVA_DIR=$B JFN_VM1_SSH=vm1-ts OMP_NUM_THREADS=$T
   for k in $(seq 1 "$K"); do
     timeout -k 60 $((ORC + 300)) nice -n 10 "$B/.venv/bin/python" "$B/sei_ocr_reserva.py" rodar --paralelo \
-        --orcamento "$ORC" --n 8 --no "itcampo-$k" >> "$B/ocr_cpu_$k.log" 2>&1 &
+        --orcamento "$ORC" --n "$NPDF" --no "itcampo-$k" >> "$B/ocr_cpu_$k.log" 2>&1 &
     sleep 20      # escalona: as reservas na VM-1 são serializadas por trava, e a carga sobe aos poucos
   done
   wait

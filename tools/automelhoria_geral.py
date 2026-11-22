@@ -630,9 +630,44 @@ def avaliar_maquinas(vm1: tuple[float, int] | None, vm2: tuple[float, int] | Non
     return out
 
 
+# it-campo OCIOSO POR MAIS DE 2 H (dono 21/11/2026 23h55: "mantenha it campo sempre sendo usado ao máximo"). O vigia
+# (tools/itcampo_vigia.py, cron */15) grava uma leitura por passada e já dispara lote quando pode; se mesmo assim TODAS
+# as leituras de 2 h acusam CPU sobrando, o remédio automático não alcança (memória, fila vazia) → item na fila, SEM
+# remédio (só a fila; o dono não quer o Yoda falando sem pedido, 22/11/2026).
+VIGIA_HIST = _REPO / "data" / "itcampo_vigia.jsonl"
+ITCAMPO_OCIOSO_S, ITCAMPO_OCIOSO_PCT = 2 * 3600, 50.0
+
+
+def avaliar_itcampo_ocioso(hist: list[dict], agora: float) -> list[dict]:
+    def ts(m):
+        return datetime.strptime(m["t"], "%Y-%m-%d %H:%M:%S").timestamp()
+
+    def cpu(m):
+        return m.get("win_cpu") if m.get("win_cpu") is not None else m.get("wsl_cpu")
+
+    lidas = [m for m in hist if m.get("ok") and cpu(m) is not None and agora - ts(m) <= ITCAMPO_OCIOSO_S + 900]
+    # precisa de 2 h COBERTAS (a mais velha da janela com ≥ 2 h) e de leitura recente (vigia vivo)
+    if len(lidas) < 6 or agora - ts(lidas[0]) < ITCAMPO_OCIOSO_S or agora - ts(lidas[-1]) > 1800:
+        return []
+    if any(cpu(m) >= ITCAMPO_OCIOSO_PCT for m in lidas):
+        return []
+    mem = sum(1 for m in lidas if "memória" in (m.get("decisao") or ""))
+    disparos = sum(1 for m in lidas if m.get("disparou"))
+    media = sum(cpu(m) for m in lidas) / len(lidas)
+    return [_p("maquinas", "itcampo:ocioso_2h", f"it-campo ocioso há > 2 h: CPU média {media:.0f}% em {len(lidas)} "
+               f"leituras ({disparos} lote(s) disparado(s) pelo vigia)",
+               f"decisões: {mem} por memória do WSL; última: {lidas[-1].get('decisao')}",
+               acao_humana=("a memória do WSL é o teto — ver .wslconfig (ação do dono, reinício do WSL)" if mem * 2 >=
+                            len(lidas) else "sem trabalho para a CPU: ver a fila do OCR e o tools/itcampo_vigia.py"))]
+
+
 def sensor_maquinas() -> list[dict]:
     la = Path("/proc/loadavg").read_text().split()
-    return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo(), _fila_ocr())
+    hist = []
+    if VIGIA_HIST.exists():
+        hist = [json.loads(ln) for ln in VIGIA_HIST.read_text(encoding="utf-8").splitlines()[-40:] if ln.strip()]
+    return avaliar_maquinas((float(la[2]), os.cpu_count() or 1), _carga_vm2(), _estado_itcampo(), _fila_ocr()) \
+        + avaliar_itcampo_ocioso(hist, time.time())
 
 
 # PRECISÃO POR DETECTOR (19/11/2026, dono: "melhore todos os detectores… de forma sistemática e constante").

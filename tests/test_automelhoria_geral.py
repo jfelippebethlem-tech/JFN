@@ -589,3 +589,25 @@ def test_main_avisa_escalado_e_mantem_o_resto_em_silencio(tmp_path, monkeypatch)
     assert len(tg.enviados) == 1 and "titulo x" in tg.enviados[0]               # o escalado passou
     assert gerais == [] and len(silenciados) == 1 and "problema novo" in silenciados[0]   # a novidade, calada
     assert json.loads(fila_p.read_text())["slo:x"]["escalado_msg_id"] == 101
+
+
+def test_itcampo_ocioso_2h_so_com_duas_horas_cobertas_e_todas_ociosas():
+    from datetime import datetime as dt
+    agora = dt(2026, 11, 22, 3, 0, 0).timestamp()
+
+    def hist(cpus, decisao="memória do WSL 4.1 GB < 4.5", fim_min=0):
+        n = len(cpus)
+        return [{"t": dt.fromtimestamp(agora - (fim_min + (n - 1 - i) * 15) * 60).strftime("%Y-%m-%d %H:%M:%S"),
+                 "ok": True, "win_cpu": c, "decisao": decisao, "disparou": False} for i, c in enumerate(cpus)]
+
+    ocioso = A.avaliar_itcampo_ocioso(hist([30] * 9), agora)                 # 2 h cobertas, tudo < 50%
+    assert [p["assinatura"] for p in ocioso] == ["maquinas:itcampo:ocioso_2h"]
+    assert "wslconfig" in ocioso[0]["acao_humana"]                           # a memória decidiu a maioria
+    assert not ocioso[0].get("remediar")                                     # sem remédio = nunca escala ao Telegram
+    assert A.avaliar_itcampo_ocioso(hist([30] * 8 + [70]), agora) == []      # uma leitura ocupada basta
+    assert A.avaliar_itcampo_ocioso(hist([30] * 5), agora) == []             # só 1 h de medida: não conclui
+    assert A.avaliar_itcampo_ocioso(hist([30] * 9, fim_min=45), agora) == []  # vigia parado: não conclui
+    sem = A.avaliar_itcampo_ocioso(hist([30] * 9, decisao="1ª leitura ociosa (espera a 2ª)"), agora)
+    assert "fila" in sem[0]["acao_humana"]
+    falhas = [dict(m, ok=False) for m in hist([30] * 9)]
+    assert A.avaliar_itcampo_ocioso(falhas, agora) == []                     # INDISPONÍVEL nunca vira "ocioso"
