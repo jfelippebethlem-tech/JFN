@@ -614,6 +614,13 @@ def sessao(k: int, segundos: int, modo: str = "integras") -> int:
     # da reserva: o processo gigante termina dentro dela, na mesma sessão (outra árvore recomeçaria do zero)
     os.environ.setdefault("INTEGRA_TETO_ARQUIVAR_S", "3600")       # ver sei_integra_fila.TETO_ARQUIVAR_S
     os.environ.setdefault("INTEGRA_TETO_PROCESSO_S", "10800")      # tesseract: 1 thread por OCR (12 OCRs não disputam 24 núcleos)
+    # A JANELA DOS LOTES (sei_integra_completa: 20 min de lotes, 25 de captura desde a trava) foi feita para a VM-1, onde
+    # outro processo toma o browser_lock como órfão aos 30 min. Aqui cada sessão tem a SUA árvore e o seu lock — ninguém
+    # disputa — e ela cortava o gigante aos 25 min contra a intenção do teto de 3 h acima: 210108/000103/2023 saiu com
+    # 800/1.843, 180007/000770/2022 com 19/1.418 (4×) — parcial vai à quarentena e a sessão seguinte recomeça do zero
+    # (medido 22/11/2026). A janela acompanha o teto: lotes até 2 h, captura até 2,5 h (sobra para o arquivamento).
+    os.environ.setdefault("SEI_PDF_JANELA_S", "7200")
+    os.environ.setdefault("SEI_PDF_JANELA_TOTAL_S", "9000")
     # Dono, 15/11/2026: às 19h "não use headless pra isso nunca"; às 21h, com as janelas atrapalhando o uso do notebook,
     # "tente uma sessão headless ou algum jeito de não interferir comigo". A captura usa o navegador FIXO da sessão
     # (oculto, UA de desktop — `comando_navegador`); SEI_HEADED=1 vale só para o lançamento de reserva, se o fixo não
