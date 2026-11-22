@@ -180,6 +180,10 @@ def comparar_com_referencia(novos: dict[str, str], ref: dict[str, str]) -> tuple
     if not ref:
         return None, "sem leitura independente na VM-1"
     titulos_ref = {t for t in ref if t}
+    if not titulos_ref:
+        # leitura antiga com texto mas SEM título (chave ""): nada a comparar ≠ divergência. 21/11/2026: 11 íntegras
+        # completas (291/291 docs) iam à quarentena com "só 0/0 títulos" e voltavam à fila para recaptura igual.
+        return None, "leitura da VM-1 sem títulos para comparar"
     par = {t: c for t in titulos_ref if (c := _titulo_correspondente(t, novos))}
     comuns = list(par)
     cobertura = len(comuns) / max(1, len(titulos_ref))

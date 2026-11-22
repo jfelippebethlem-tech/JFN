@@ -212,3 +212,13 @@ def test_referencia_so_com_cabecalho_nao_reprova_captura_completa():
             for k, v in ref.items()}
     ok2, _ = V.comparar_com_referencia(novos, ref2)
     assert ok2 is False
+
+
+def test_referencia_sem_nenhum_titulo_e_sem_referencia_nao_reprovacao():
+    """21/11/2026: 11 íntegras COMPLETAS do it-campo (ex.: 330005/000018/2025, 291/291 docs, 289 legíveis) foram à
+    quarentena com "só 0/0 títulos da leitura da VM-1 reaparecem" e voltaram à fila — 4 recapturas iguais cada. A
+    leitura antiga guardou texto SEM título (chave ""): zero títulos para comparar é falta de referência, não
+    divergência."""
+    novos = {"despacho de encaminhamento 1": "texto do despacho", "nota fiscal 2": "texto da nota"}
+    ok, nota = C.comparar_com_referencia(novos, {"": "texto antigo sem título"})
+    assert ok is None, nota
