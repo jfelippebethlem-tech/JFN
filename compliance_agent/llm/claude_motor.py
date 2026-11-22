@@ -354,9 +354,23 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
         d["ultima_ok"] = {"em": _agora(), "tarefa": tarefa, "modelo": modelo, "segundos": round(seg, 1)}
     orcamento.mutar_uso(f)
     _mutar_estado(ultima_ok_iso=_agora())      # persiste à virada do dia: é o "efeito" do motor no AO VIVO
-    _log(f"tarefa={tarefa} ok modelo={modelo} {seg:.1f}s")
+    _log(f"tarefa={tarefa} ok modelo={modelo} {seg:.1f}s{_tokens_do_corpo(corpo)}")
     return Pensamento(texto=resultado, modelo=modelo, segundos=round(seg, 1), tarefa=tarefa, dados=dados,
                       extras={k: corpo.get(k) for k in ("num_turns", "duration_ms") if k in corpo})
+
+
+def _tokens_do_corpo(corpo: dict) -> str:
+    """Tokens da chamada, do `usage` que o CLI devolve no JSON — só para MEDIR o custo por tarefa (22/11/2026: o
+    log tinha só segundos, e a parte do motor na cota semanal saía de regressão). Sem `usage` legível: vazio."""
+    u = corpo.get("usage")
+    if not isinstance(u, dict):
+        return ""
+    try:
+        v = [int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens",
+                                           "output_tokens")]
+    except (TypeError, ValueError):
+        return ""
+    return " tok in={} cw={} cr={} out={}".format(*v)
 
 
 def _tratar_tipo(tipo: str, motivo: str, bruto: str = "") -> None:

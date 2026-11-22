@@ -192,3 +192,25 @@ def test_instalacao_do_usuario_vence_o_claude_de_sistema_no_path(monkeypatch, tm
     import shutil
     monkeypatch.setattr(shutil, "which", lambda n: "/usr/bin/claude")
     assert M._bin() == [str(usuario)]
+
+
+def test_log_registra_tokens_do_usage_do_cli():
+    """22/11/2026: o log do motor só tinha segundos; o custo por tarefa saía de regressão sobre a cota semanal."""
+    corpo = {"type": "result", "subtype": "success", "is_error": False, "result": "ok",
+             "usage": {"input_tokens": 3, "cache_creation_input_tokens": 70000, "cache_read_input_tokens": 9000,
+                       "output_tokens": 1234}}
+    r = M.pensar("pericia_integral", "P", executar=Duble(saida=json.dumps(corpo)), espera=0)
+    assert r and r.texto == "ok"
+    linha = [l for l in M._log_arq().read_text(encoding="utf-8").splitlines() if "tarefa=pericia_integral ok" in l][-1]
+    assert linha.endswith("s tok in=3 cw=70000 cr=9000 out=1234")
+
+
+@pytest.mark.parametrize("usage", [None, "x", {"input_tokens": "nao-numero"}])
+def test_usage_ausente_ou_torto_nao_derruba_a_chamada(usage):
+    corpo = {"type": "result", "subtype": "success", "is_error": False, "result": "ok"}
+    if usage is not None:
+        corpo["usage"] = usage
+    r = M.pensar("pericia_integral", "P", executar=Duble(saida=json.dumps(corpo)), espera=0)
+    assert r and r.texto == "ok"
+    linha = [l for l in M._log_arq().read_text(encoding="utf-8").splitlines() if "tarefa=pericia_integral ok" in l][-1]
+    assert " tok " not in linha
