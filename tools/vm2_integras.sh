@@ -23,6 +23,12 @@ export JFN_CLAUDE_MAX_CHAMADAS_DIA="${JFN_CLAUDE_MAX_CHAMADAS_DIA:-60}"
 export JFN_CLAUDE_MAX_CONFERENCIA_VM2="${JFN_CLAUDE_MAX_CONFERENCIA_VM2:-40}"
 unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 PY="$W/.venv/bin/python"
+# CARGA QUE ADIA A CAPTURA (22/11/2026): o preflight do vm_guard recusa com load1 > 1,7 (régua da VM-1, que caiu 4×).
+# Na VM-2 a carga vem quase toda da SUÍTE dos agentes (tools/testar_na_vm2.sh, nice 15 + ionice idle) e do sweep
+# PCRJ — a captura (nice 10) ganha a CPU deles, mas o load average conta os dois. Medido 01:00–02:13: 9 de 12
+# processos "adiado" (151 s cada) e a rodada encerrada às 01:23 → 41 min parada; em 24 h, 36 adiados. A trava de
+# MEMÓRIA (2,5 GB livres) continua valendo inteira; só a régua de load sobe para o que a VM-2 roda no dia a dia.
+export VM_GUARD_MAX_LOAD="${VM_GUARD_MAX_LOAD:-3.5}"
 LOG="$W/data/vm2_integras.log"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
@@ -90,6 +96,12 @@ while [ $((FIM - SECONDS)) -ge 300 ]; do
     "cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 batida" 2>>"$LOG"
   say "devolução rc=$RC"
   # sem nenhum processo tentado de fato (fila vazia ou só adiados por carga): encerra a rodada
-  echo "$RES" | "$PY" -c "import json,sys;d=json.loads(sys.stdin.read() or '{}');sys.exit(0 if any(s not in ('adiado','login') for s in d.get('status',{}).values()) else 1)" || break
+  # fatia só de adiados por carga: espera a carga ceder (5 min) e tenta de novo DENTRO da rodada — sair aqui deixava
+  # a VM-2 parada até o próximo disparo do timer (22/11/2026: 41 min). Fila vazia ou login caído: encerra como antes.
+  OCUPADO=$(echo "$RES" | "$PY" -c "import json,sys;d=json.loads(sys.stdin.read() or '{}');v=list(d.get('status',{}).values());print('ok' if any(s not in ('adiado','login') for s in v) else ('carga' if v and all(s=='adiado' for s in v) else 'fim'))")
+  if [ "$OCUPADO" = carga ] && [ $((FIM - SECONDS)) -ge 600 ]; then
+    say "fatia só de adiados por carga ($(cut -d' ' -f1 /proc/loadavg)) — espero 5 min e sigo na rodada"; sleep 300; continue
+  fi
+  [ "$OCUPADO" = ok ] || break
 done
 say "fim"
