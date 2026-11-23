@@ -364,3 +364,18 @@ def test_grave_medido_na_bancada_abre_item_e_bancada_limpa_nao(tmp_path):
     probs = M.avaliar_ficha_gratis(tmp_path / "nao_existe.jsonl", bancada, agora=AGORA)
     assert _sig(probs) == ["modelos:ficha_gratis_grave:gemini-x:resumo"]
     assert M.avaliar_ficha_gratis(tmp_path / "nao_existe.jsonl", {}, agora=AGORA) == []
+
+
+def test_regua_do_sonnet_medida_no_yaml_real_e_lida_pelo_sensor():
+    """Catraca (23/11/2026): a bancada mediu o Sonnet × Opus nas três tarefas em que o rebaixamento age. Entrada
+    malformada (sem n, n < AMOSTRA_MIN, sem fonte, taxa fora de [0,1]) some calada do `regua_sonnet` e o rebaixamento
+    volta a não agir — então cada uma tem de sobreviver à leitura do próprio sensor, com a fonte e o IC registrados."""
+    import yaml
+    bruto = (yaml.safe_load(M.REGUA.read_text(encoding="utf-8")) or {}).get("referencia_sonnet") or {}
+    lida = M.regua_sonnet(None, M.REGUA)
+    for t in ("pericia_execucao", "pericia_integral", "triagem_alertas"):
+        assert t in lida, f"régua do Sonnet de {t} ausente ou descartada pelo sensor: {bruto.get(t)}"
+        e = lida[t]
+        assert 0.0 <= e["taxa_grave"] <= 1.0 and e["n"] >= M.AMOSTRA_MIN and e.get("fonte")
+        lo, hi = e["ic95"]
+        assert lo <= e["taxa_grave"] <= hi

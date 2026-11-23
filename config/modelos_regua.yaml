@@ -8,8 +8,23 @@
 #
 # Cada entrada é um número MEDIDO na bancada (mesma tarefa, mesma régua de "grave" = um 🔴 contra um ⚪):
 #   <tarefa>: {taxa_grave: 0.04, n: 100, fonte: "bancada AAAA-MM-DD, <onde está o resultado>"}
-# Vazio em 22/11/2026: a bancada de 20–21/11 mediu a COLETA (T1/T2, régua por campo), não a perícia (régua por nível).
-referencia_sonnet: {}
+# 23/11/2026: bancada ~/.local/state/jfn-bancada-regua-sonnet-20261123/ (bancada.py, analisar.py, res/*.jsonl). Sonnet 5.5
+# pela assinatura (claude -p, sem --bare), MESMA entrada e MESMO sistema do Opus, normalizador da própria tarefa:
+#   · triagem_alertas — gabarito = leitura do Opus já gravada no cruzamento (prompt vigente desde 14/11), prompt remontado
+#     do alerta; a citação passa pela mesma conferência (`triagem_alertas._conferir`);
+#   · pericia_integral — gabarito = resposta do Opus da fila de conferência; a entrada exata veio do backup de 18/11
+#     (`data/backups/conferencia_opus_antes_siafe_limpo_20261118.db`); pares = grau global + eixos após a conferência
+#     literal (`pericia_integral.interpretar`), como o cruzamento grava; eixos do mesmo processo não são independentes;
+#   · pericia_execucao — a fila apaga a entrada ao conferir: Opus E Sonnet novos na mesma entrada pendente (amostra
+#     aleatória, semente 20261123).
+# Zero grave nas três: o IC95 superior (Wilson) é o que a amostra permite afirmar — o sensor compara a taxa pontual.
+referencia_sonnet:
+  triagem_alertas: {taxa_grave: 0.0, n: 54, graves: 0, ic95: [0.0, 0.0664], concordancia_exata: 0.852,
+                    fonte: "bancada 2026-11-23, ~/.local/state/jfn-bancada-regua-sonnet-20261123/res/triagem_alertas.jsonl"}
+  pericia_execucao: {taxa_grave: 0.0, n: 50, graves: 0, ic95: [0.0, 0.0714], concordancia_exata: 0.74,
+                     fonte: "bancada 2026-11-23, ~/.local/state/jfn-bancada-regua-sonnet-20261123/res/pericia_execucao.jsonl"}
+  pericia_integral: {taxa_grave: 0.0, n: 82, graves: 0, ic95: [0.0, 0.0448], processos: 12, concordancia_exata: 0.866,
+                     fonte: "bancada 2026-11-23, ~/.local/state/jfn-bancada-regua-sonnet-20261123/res/pericia_integral.jsonl"}
 
 # Bancadas de COLETA (régua por campo, por código contra o texto — não é a régua por nível da perícia acima). Lido por
 # `tools/automelhoria_modelos.avaliar_ficha_gratis`: cada categoria com grave > 0 vira item `ficha_gratis_grave:*` na
