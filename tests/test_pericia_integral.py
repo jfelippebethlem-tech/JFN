@@ -472,8 +472,8 @@ def test_linha_do_tempo_do_processo_inteiro_vem_em_ordem_cronologica(tmp_path, m
     proc = "100001/000002/2025"
     c.executemany("INSERT INTO fatos(processo, doc_id, tipo, valor, descricao, citacao, estado, versao) "
                   "VALUES(?,?,?,?,?,?,'VERIFICADO','li-2')",
-                  [(proc, "sei:2", "data", "2025-12-26", "reforço de empenho", "26/12/2025"),
-                   (proc, "sei:1", "data", "2025-11-30", "fim dos eventos", "30/11/2025")])
+                  [(proc, "sei:2", "data", "26/12/2025", "reforço de empenho", "26/12/2025"),
+                   (proc, "sei:1", "data", "30/11/25", "fim dos eventos", "30/11/2025")])
     c.commit()
     monkeypatch.setattr(PI, "FATOS_DB", db)
     texto, info = PI._bloco_fatos("SEI-" + proc)
@@ -507,4 +507,21 @@ def test_lista_nomeada_de_refazer_vale_ate_a_pericia_posterior(tmp_path, monkeyp
                 "VALUES('r2','SEI-100001/000009/2025','_global',1,'{}',?,'2026-11-23T15:00:00')", (PI.VERSAO_PROMPT,))
     con.commit()
     assert PI._refazer_por_leitura(con) == set()                     # refeito depois da marca: sai
+    con.close()
+
+
+
+def test_refazer_nao_troca_laudo_do_opus_pela_cascata(tmp_path, monkeypatch):
+    import json as _j
+    monkeypatch.setattr(PI, "FATOS_DB", tmp_path / "sem.db")
+    arq = tmp_path / "refazer.json"
+    arq.write_text(_j.dumps({"SEI-100001/000010/2025": {"em": "2026-11-23 14:00:00", "motivo": "x"}}))
+    monkeypatch.setattr(PI, "REFAZER_ARQ", arq)
+    con = sqlite3.connect(PI.DB)
+    PI._garantir_tabela(con)
+    con.execute("INSERT INTO pericia_integral(rodada,processo,eixo,grau,achados,modelo,versao_prompt,conferido_opus,"
+                "criado_em) VALUES('r','SEI-100001/000010/2025','_global',1,'{}','claude:claude-opus-5-5',?,1,"
+                "'2026-11-20T09:00:00')", (PI.VERSAO_PROMPT,))
+    con.commit()
+    assert PI._refazer_por_leitura(con) == set()
     con.close()

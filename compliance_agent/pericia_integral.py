@@ -61,6 +61,7 @@ TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
 # FASE 6 do plano de reescrita (23/11/2026): com leitura integral feita, a entrada leva os FATOS VERIFICADOS do processo
 # inteiro (100% do texto lido; citação literal conferida por código) e o texto bruto das peças-chave cai para caber.
 FATOS_DB = Path(__file__).resolve().parents[1] / "data" / "evidencias.db"
+_FATOS_DB_PADRAO = FATOS_DB
 FATOS_VERSAO = "li-2"
 TETO_FATOS = 100_000
 REFAZER_ARQ = Path(__file__).resolve().parents[1] / "data" / "pericia_refazer.json"
@@ -206,6 +207,22 @@ def _status_ponto(v) -> str:
     return _PONTO_AGENTE.get(v, v)
 
 _FALHAS_DB = (sqlite3.Error, OSError)
+try:
+    import psycopg as _psycopg
+    _FALHAS_FATOS: tuple = (sqlite3.Error, _psycopg.Error)
+except ImportError:                                        # sem psycopg: só o ramo SQLite existe
+    _FALHAS_FATOS = (sqlite3.Error,)
+
+
+def _con_fatos():
+    """Leitor dos fatos da leitura integral: PostgreSQL com `JFN_EVIDENCIAS_DSN` no ambiente (Fase 3), salvo quando
+    `FATOS_DB` aponta para outro arquivo (caminho explícito é sempre SQLite, como em `evidencias.conectar`); senão o
+    SQLite só-leitura. O SQL dos leitores serve aos dois (`_Pg` troca `?` por `%s`)."""
+    from compliance_agent import evidencias as E
+    dsn = os.environ.get(E.ENV_DSN, "")
+    if dsn.startswith(("postgresql://", "postgres://")) and FATOS_DB == _FATOS_DB_PADRAO:
+        return E._Pg(dsn)
+    return sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
 
 
 def _agora() -> str:
@@ -362,20 +379,36 @@ def numero_da_pasta(nome: str) -> str:
     return f"SEI-{p[0]}/{p[1]}/{p[2]}" if len(p) >= 3 else nome
 
 
+def _data_iso(v: str | None) -> str | None:
+    """'AAAA-MM-DD', 'dd/mm/aaaa' ou 'dd/mm/aa' → 'AAAA-MM-DD' (válida); senão None. 23/11: a linha do tempo saiu
+    vazia em todos os laudos porque os fatos guardam a data como 'dd/mm/aaaa'."""
+    v = (v or "").strip()
+    m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", v)
+    if m:
+        a, me, d = int(m[1]), int(m[2]), int(m[3])
+    else:
+        m = re.fullmatch(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})", v)
+        if not m:
+            return None
+        d, me, a = int(m[1]), int(m[2]), int(m[3])
+        a = a + 2000 if a < 100 else a
+    return f"{a:04d}-{me:02d}-{d:02d}" if 1 <= me <= 12 and 1 <= d <= 31 and 1990 <= a <= 2100 else None
+
+
 def _bloco_fatos(numero: str, tipos: set[str] | None = None, teto: int = TETO_FATOS) -> tuple[str, dict]:
     """Fatos VERIFICADOS da leitura integral do processo (`data/evidencias.db`), em ordem de importância fiscalizatória,
     sem repetidos, até `TETO_FATOS`. ("", {}) quando não há leitura integral."""
     proc = numero.replace("SEI-", "")
     try:
-        con = sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
-    except sqlite3.Error:
+        con = _con_fatos()
+    except _FALHAS_FATOS:
         return "", {}
     try:
         lido = con.execute("SELECT leitura, fracao, em FROM leituras WHERE processo=? AND versao=?",
                            (proc, FATOS_VERSAO)).fetchone()
         rows = con.execute("SELECT doc_id, tipo, valor, descricao, citacao FROM fatos WHERE processo=? AND versao=? "
                            "AND estado='VERIFICADO'", (proc, FATOS_VERSAO)).fetchall()
-    except sqlite3.Error:
+    except _FALHAS_FATOS:
         return "", {}
     finally:
         con.close()
@@ -403,9 +436,9 @@ def _bloco_fatos(numero: str, tipos: set[str] | None = None, teto: int = TETO_FA
     # (ato posterior ao pagamento, despacho datado antes do que cita). Entra antes da lista por tipo.
     datados = []
     for doc, tipo, valor, desc, cit in unicos:
-        m = re.match(r"(\d{4})-(\d{2})-(\d{2})$", valor or "") if tipo == "data" else None
-        if m:
-            datados.append((valor, doc, desc or "", cit))
+        iso = _data_iso(valor) if tipo == "data" else None
+        if iso:
+            datados.append((iso, doc, desc or "", cit))
     datados.sort()
     tl, t_total = [], 0
     for d, doc, desc, cit in datados:
@@ -905,11 +938,13 @@ def _refazer_por_leitura(con: sqlite3.Connection) -> set[str]:
     nova recebe os fatos verificados do processo inteiro (Fase 6, 23/11/2026). Só estes são refeitos: o resto não
     melhoraria e gastaria cota."""
     try:
-        ev = sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
-        lidos = {_dig(p): em for p, em in ev.execute("SELECT processo, em FROM leituras WHERE versao=?",
-                                                      (FATOS_VERSAO,))}
-        ev.close()
-    except sqlite3.Error:
+        ev = _con_fatos()
+        try:
+            lidos = {_dig(p): em for p, em in ev.execute("SELECT processo, em FROM leituras WHERE versao=?",
+                                                          (FATOS_VERSAO,))}
+        finally:
+            ev.close()
+    except _FALHAS_FATOS:
         lidos = {}                                     # sem banco de fatos: ainda vale a lista nomeada
     try:
         ult = {_dig(p): em for p, em in con.execute(
@@ -927,7 +962,16 @@ def _refazer_por_leitura(con: sqlite3.Connection) -> set[str]:
         d = _dig(proc)
         if d in ult and str((m or {}).get("em") or "") > str(ult[d] or "")[:19].replace("T", " "):
             refazer.add(d)
-    return refazer
+    # 23/11/2026 (supervisão): refazer com a CASCATA um laudo cujo último é do Opus/agente Claude PIORA — 2 laudos
+    # caíram de 10 e 4 achados para 0. O defeito da citação de campo calculado era da cascata (387 de 402 laudos).
+    try:
+        fortes = {_dig(p) for p, co, mod in con.execute(
+            "SELECT processo, conferido_opus, modelo FROM pericia_integral p WHERE eixo='_global' AND criado_em="
+            "(SELECT MAX(criado_em) FROM pericia_integral q WHERE q.processo=p.processo AND q.eixo='_global')")
+            if co == 1 or str(mod or "").startswith(("claude", "agente"))}
+    except sqlite3.OperationalError:
+        fortes = set()
+    return refazer - fortes
 
 
 def _ja_periciados(con: sqlite3.Connection) -> set[str]:
