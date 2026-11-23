@@ -20,6 +20,20 @@
 #   bash tools/pre_push_gate.sh            # usado pelo hook .git/hooks/pre-push
 #   bash tools/pre_push_gate.sh --so-catracas
 set -u
+# 23/11/2026: a VM-1 travou por memória (swap 100%, load 142) com DOIS portões rodando juntos (agentes diferentes
+# empurrando ao mesmo tempo) e com portões ÓRFÃOS: um push abortado por tempo matava o git e o pytest do portão
+# seguia (pai = systemd). Agora: (1) o portão roda no seu próprio grupo de processos e morre junto se o git morrer;
+# (2) um portão por vez na máquina — o segundo espera a vez (até 30 min) em vez de somar outro pytest.
+if [ -z "${JFN_GATE_GRUPO:-}" ]; then
+  export JFN_GATE_GRUPO=1 JFN_GATE_GIT=$PPID
+  exec setsid -w bash "$0" "$@"
+fi
+( while kill -0 "$JFN_GATE_GIT" 2>/dev/null; do sleep 5; done; kill -TERM -- -$$ 2>/dev/null ) &
+exec 9>/tmp/jfn-pre-push.lock
+if ! flock -n 9; then
+  echo "[pre-push] outro push está no portão — esperando a vez (até 30 min) para não somar pytest na VM…"
+  flock -w 1800 9 || { echo "[pre-push] ❌ BLOQUEADO — outro portão ocupou 30 min; tente de novo"; exit 1; }
+fi
 # 21/11/2026: era `cd /home/ubuntu/JFN` fixo — o push que sai de um worktree media o checkout principal (outro HEAD,
 # outro índice) e aprovava sem ter rodado os testes do que ia (docs/untangle/passada-final.md §7.5). O venv é um só.
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ubuntu/JFN)" || exit 0
