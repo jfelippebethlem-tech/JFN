@@ -58,11 +58,11 @@ def _texto_pdf(doc: fitz.Document) -> tuple[str, list[int]]:
     return "\n\n".join(p for p in partes if p), pobres
 
 
-def _ocr_pdf(pdf_bytes: bytes) -> str:
+def _ocr_pdf(pdf_bytes: bytes, completar_mistas: bool = False) -> str:
     """OCR do PDF inteiro via módulo da casa (fail-open: sem OCR → '')."""
     try:
         from compliance_agent.sei.ocr_docs import ocr_documento
-        return (ocr_documento(pdf_bytes, tipo="pdf") or "").strip()
+        return (ocr_documento(pdf_bytes, tipo="pdf", completar_mistas=completar_mistas) or "").strip()
     except Exception:
         return ""
 
@@ -253,6 +253,12 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             t2 = _ocr_da_captura(pdf) or _ocr_pdf(pdf.read_bytes())
             if len(t2) > len(texto):
                 texto, entrada["ocr"] = t2, True
+        elif ocr and any(_pagina_com_imagem_grande(doc[p]) for p in pobres):
+            # documento MISTO: tem texto, mas também página escaneada que o OCR do documento inteiro nunca via.
+            # Só as escaneadas vão ao OCR; o texto nativo segue inteiro (ocr_docs._completar_paginas_escaneadas).
+            t2 = _ocr_pdf(pdf.read_bytes(), completar_mistas=True)
+            if len(t2) > len(texto):
+                texto, entrada["ocr"], entrada["ocr_paginas"] = t2, True, "mistas"
 
         # PDF sem texto E sem imagem: o documento NÃO tem teor gravado. Marca neutra de
         # propósito — a causa se apurou depois (nosso insert_textbox falhava calado, ver

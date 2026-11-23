@@ -336,7 +336,71 @@ def liberar_memoria_pdf() -> None:
         log.debug("liberar_memoria_pdf: malloc_trim indisponível: %s", exc)
 
 
-def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por") -> str:
+# Documento MISTO (23/11/2026): a decisão de OCR era do documento inteiro — média ≥ 40 caracteres por página e o
+# texto nativo voltava sozinho, sem as páginas escaneadas do meio (capa digitada + nota fiscal escaneada). Página
+# escaneada = sem camada de texto (< MIN_CHARS_POR_PAGINA) E com imagem cobrindo ≥ 35% dela (o mesmo critério de
+# `tools/sei_arquivar._pagina_com_imagem_grande`); logotipo em página digitada não conta. OCR_PAGINAS_MISTAS=0 desliga.
+_FRACAO_IMAGEM_PAGINA = 0.35
+
+
+def paginas_escaneadas(dados: bytes) -> list[int]:
+    """Índices (0-based) das páginas sem camada de texto e com imagem grande. [] se não houver ou se o PDF não abrir."""
+    try:
+        import fitz
+        with fitz.open(stream=dados, filetype="pdf") as doc:
+            out = []
+            for i in range(doc.page_count):
+                pg = doc.load_page(i)
+                if len((pg.get_text() or "").strip()) >= MIN_CHARS_POR_PAGINA:
+                    continue
+                area = abs(pg.rect)
+                if any(abs(fitz.Rect(im["bbox"])) >= _FRACAO_IMAGEM_PAGINA * area for im in pg.get_image_info()):
+                    out.append(i)
+            return out
+    except ImportError:
+        return []
+    except (RuntimeError, ValueError, OSError, TypeError) as exc:
+        log.warning("paginas_escaneadas: PDF não abriu (%s)", exc)
+        return []
+
+
+def _completar_paginas_escaneadas(dados: bytes, lang: str) -> str:
+    """Texto nativo de TODAS as páginas, na ordem, com o OCR acrescentado nas páginas escaneadas. '' quando não há
+    página escaneada (ou o OCR não rendeu nada) — quem chama fica com o texto nativo de sempre. O texto nativo nunca
+    é trocado: a página escaneada leva o pouco nativo que tinha e, depois, o OCR."""
+    escaneadas = paginas_escaneadas(dados)
+    if not escaneadas or not _tesseract_ok():
+        return ""
+    import fitz
+    from PIL import Image
+    with fitz.open(stream=dados, filetype="pdf") as doc:
+        nativos = [doc.load_page(i).get_text() or "" for i in range(doc.page_count)]   # cru: sai byte a byte
+
+        def _imagens():
+            for i in escaneadas:
+                pix = doc.load_page(i).get_pixmap(dpi=200)
+                yield Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+        partes, feitas = _ocr_ate_orcamento(_imagens(), lang, OCR_BUDGET_S)
+    ocr = dict(zip(escaneadas, partes))
+    if not any((t or "").strip() for t in ocr.values()):
+        return ""
+    # mesma junção de `_texto_nativo_pdf` ("\n" entre páginas, texto cru): o OCR entra logo após a página que leu,
+    # e o texto nativo de cada página sai idêntico ao que a extração nativa devolveria
+    paginas = []
+    for i, nat in enumerate(nativos):
+        extra = (ocr.get(i) or "").strip()
+        paginas.append(f"{nat}\n{extra}\n" if extra else nat)
+    texto = "\n".join(paginas).strip()
+    if feitas < len(escaneadas):
+        texto += (f"\n\n[⚠️ OCR PARCIAL: transcritas {feitas} de {len(escaneadas)} páginas escaneadas deste "
+                  "documento (limite de tempo de processamento). As demais NÃO foram lidas; reprocessar com "
+                  "OCR_BUDGET_S maior se necessário.]")
+    return texto
+
+
+def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por",
+                  completar_mistas: bool = False) -> str:
     """Lê um documento do SEI (PDF ou imagem), usando OCR quando for um SCAN.
 
     Parâmetros
@@ -347,6 +411,9 @@ def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por"
         Força o tratamento. ``None`` → detecta por sufixo/magic number.
     lang : str
         Idioma do tesseract (default "por"; cai p/ "eng" se o traineddata faltar).
+    completar_mistas : bool
+        PDF com texto nativo que também tem páginas ESCANEADAS: faz OCR só delas e devolve tudo na ordem
+        (`_completar_paginas_escaneadas`). Default False = comportamento antigo (o leitor ao vivo não paga o custo).
 
     Retorno
     -------
@@ -383,6 +450,10 @@ def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por"
     # --- Caminho PDF: texto nativo primeiro ---
     texto, n_pag = _texto_nativo_pdf(dados)
     if texto.strip() and not eh_escaneado(texto, n_pag):
+        if completar_mistas and os.environ.get("OCR_PAGINAS_MISTAS", "1") != "0":
+            misto = _completar_paginas_escaneadas(dados, lang)
+            if misto:
+                return misto
         return texto.strip()
 
     # Vazio/ínfimo → provável SCAN → render + OCR.
