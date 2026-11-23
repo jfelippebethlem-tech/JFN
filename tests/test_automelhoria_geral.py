@@ -611,3 +611,45 @@ def test_itcampo_ocioso_2h_so_com_duas_horas_cobertas_e_todas_ociosas():
     assert "fila" in sem[0]["acao_humana"]
     falhas = [dict(m, ok=False) for m in hist([30] * 9)]
     assert A.avaliar_itcampo_ocioso(falhas, agora) == []                     # INDISPONÍVEL nunca vira "ocioso"
+
+
+# ─── sensor "plataforma" (plano de reescrita 23/11/2026: os achados dos planos externos viram vigília permanente) ───
+
+def test_cobertura_de_leitura_baixa_acusa_e_completa_cura():
+    p = A.avaliar_cobertura_leitura(total=1_000, alcancavel=173, procs=100, procs_cortados=77)
+    assert [x["assinatura"] for x in p] == ["plataforma:cobertura_leitura"]
+    assert "17,3%" in p[0]["titulo"] and "77" in p[0]["detalhe"]
+    assert A.avaliar_cobertura_leitura(total=1_000, alcancavel=1_000, procs=100, procs_cortados=0) == []
+    assert A.avaliar_cobertura_leitura(total=0, alcancavel=0, procs=0, procs_cortados=0) == []
+
+
+def test_disco_de_outra_maquina():
+    assert A.avaliar_disco("vm2", 96.0)[0]["assinatura"] == "plataforma:disco_vm2"
+    assert A.avaliar_disco("vm2", 79.0) == []
+
+
+def test_fila_que_cresce_mais_do_que_esvazia():
+    p = A.avaliar_vazao_fila("conferencia_opus", entrada_7d=5_000, saida_7d=330, pendentes=5_750)
+    assert p and p[0]["assinatura"] == "plataforma:vazao_conferencia_opus"
+    assert A.avaliar_vazao_fila("conferencia_opus", entrada_7d=300, saida_7d=320, pendentes=5_750) == []
+    assert A.avaliar_vazao_fila("conferencia_opus", entrada_7d=50, saida_7d=0, pendentes=40) == []   # fila pequena
+
+
+def _rod(ts, proc, arvore, seg):
+    return {"ts": ts, "procs": {proc: {"status": "ok", "arvore": arvore, "segundos": seg}}}
+
+
+def test_recaptura_sem_novidade_mede_tempo_nao_contagem():
+    rods = [_rod("2026-11-20 01:00:00", "A", 10, 100), _rod("2026-11-20 02:00:00", "A", 10, 100),
+            _rod("2026-11-20 03:00:00", "A", 12, 100), _rod("2026-11-20 04:00:00", "B", 5, 100)]
+    frac, n = A.fracao_recaptura_igual(rods)
+    assert n == 1 and abs(frac - 0.25) < 1e-9            # 1 recaptura igual de 4 capturas, 100 s de 400 s
+    assert A.avaliar_recaptura(frac, n)[0]["assinatura"] == "plataforma:recaptura_igual"
+    assert A.avaliar_recaptura(0.04, 3) == []
+
+
+def test_cache_do_opus_desperdicado():
+    p = A.avaliar_cache_opus(cache_escrito=1_300_000, cache_lido=90_000, chamadas=12)
+    assert p and p[0]["assinatura"] == "plataforma:cache_opus"
+    assert A.avaliar_cache_opus(cache_escrito=100_000, cache_lido=900_000, chamadas=12) == []
+    assert A.avaliar_cache_opus(cache_escrito=1_000, cache_lido=0, chamadas=3) == []          # amostra pequena

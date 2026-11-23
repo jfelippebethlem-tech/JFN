@@ -757,6 +757,158 @@ def sensor_modelos() -> list[dict]:
         raise RuntimeError(f"banco: {e}") from e
 
 
+# ─── PLATAFORMA (dono, 23/11/2026: "essas ideias do gemini e chatgpt eram pra automelhoria sempre ir fazendo e
+# acusando"). Cada achado da avaliação dos planos externos (docs/PLANO-PLATAFORMA-EVIDENCIAS.md) vira vigília:
+# o problema fica aberto até a fase que o resolve entregar, e REINCIDE se voltar.
+PLAT_COBERTURA_MIN = 0.95       # fração dos caracteres do acervo que a perícia integral alcança
+PLAT_DISCO_MAX = 85.0
+PLAT_RECAPTURA_MAX = 0.10       # fração do TEMPO de captura gasta recapturando árvore igual
+PLAT_CACHE_MIN = 0.30           # cache lido ÷ (lido + escrito) do Opus pela assinatura
+RODADAS_ITCAMPO = DATA / "itcampo_rodadas.jsonl"
+
+
+def avaliar_cobertura_leitura(total: int, alcancavel: int, procs: int, procs_cortados: int) -> list[dict]:
+    if total <= 0 or alcancavel / total >= PLAT_COBERTURA_MIN:
+        return []
+    frac = f"{100 * alcancavel / total:.1f}".replace(".", ",")
+    return [_p("plataforma", "cobertura_leitura", f"a perícia integral alcança só {frac}% do texto do acervo",
+               f"{procs_cortados} de {procs} processos com texto passam do teto (240k no total, 12k por peça); "
+               "o corte por peça não é declarado no laudo",
+               acao_humana="Fase 4 do docs/PLANO-PLATAFORMA-EVIDENCIAS.md: leitura integral em fatias com "
+                           "citação verificada e cobertura gravada por laudo")]
+
+
+def avaliar_disco(maquina: str, pct: float) -> list[dict]:
+    if pct < PLAT_DISCO_MAX:
+        return []
+    return [_p("plataforma", f"disco_{maquina}", f"disco da {maquina} em {pct:.0f}%",
+               "acima de 85% o frio para de receber e a VM-1 enche atrás (23/11: VM-2 96% travou o frio)",
+               acao_humana="mover re-obtível para o HD externo do it-campo pela porta única (Fase 0a do plano)")]
+
+
+def avaliar_vazao_fila(nome: str, entrada_7d: int, saida_7d: int, pendentes: int) -> list[dict]:
+    if pendentes < 100 or entrada_7d <= 1.2 * saida_7d:
+        return []
+    return [_p("plataforma", f"vazao_{nome}", f"fila {nome} cresce mais do que esvazia",
+               f"7 dias: entraram {entrada_7d}, saíram {saida_7d}; {pendentes} pendentes — nunca zera",
+               acao_humana="Fase 5 do plano: a fila entra por risco + amostra estratificada, não por falta de cota")]
+
+
+def fracao_recaptura_igual(rodadas: list[dict]) -> tuple[float, int]:
+    """Fração do tempo de captura gasta em recaptura com a MESMA árvore da captura anterior do processo."""
+    ultima: dict[str, int] = {}
+    total = igual = 0.0
+    n = 0
+    for r in sorted(rodadas, key=lambda r: r.get("ts", "")):
+        for proc, d in (r.get("procs") or {}).items():
+            if d.get("status") != "ok":
+                continue
+            seg = float(d.get("segundos") or 0)
+            total += seg
+            arv = d.get("arvore")
+            if arv is not None and ultima.get(proc) == arv:
+                igual += seg
+                n += 1
+            if arv is not None:
+                ultima[proc] = arv
+    return (igual / total if total else 0.0), n
+
+
+def avaliar_recaptura(frac: float, n: int) -> list[dict]:
+    if frac < PLAT_RECAPTURA_MAX:
+        return []
+    return [_p("plataforma", "recaptura_igual",
+               f"{100 * frac:.0f}% do tempo de captura é recaptura sem documento novo",
+               f"{n} recapturas com a mesma árvore da captura anterior (7 dias, it-campo)",
+               acao_humana="Fases 0e/2 do plano: guarda de convergência (árvore+motivo) e captura por delta")]
+
+
+def avaliar_cache_opus(cache_escrito: int, cache_lido: int, chamadas: int) -> list[dict]:
+    if chamadas < 10 or cache_escrito + cache_lido == 0:
+        return []
+    frac = cache_lido / (cache_lido + cache_escrito)
+    if frac >= PLAT_CACHE_MIN:
+        return []
+    return [_p("plataforma", "cache_opus", f"Opus reaproveita só {100 * frac:.0f}% do prompt em cache",
+               f"{chamadas} chamadas em 7 dias: {cache_escrito} tokens escritos no cache, {cache_lido} lidos — "
+               "a parte variável vem antes da fixa",
+               acao_humana="Fase 4 do plano: instruções e schema fixos ANTES da entrada em todos os prompts")]
+
+
+def _cobertura_acervo() -> tuple[int, int, int, int]:
+    from compliance_agent.pericia_integral import TETO_DOC, TETO_TEXTO
+    total = alc = procs = cortados = 0
+    for m in (DATA / "sei_arquivo").glob("*/manifest.json"):
+        try:
+            cs = [int(d.get("chars") or 0) for d in json.loads(m.read_text()).get("docs", []) if d.get("texto")]
+        except (OSError, ValueError, AttributeError):
+            continue
+        if not cs:
+            continue
+        t, a = sum(cs), min(sum(min(c, TETO_DOC) for c in cs), TETO_TEXTO)
+        total, alc, procs, cortados = total + t, alc + a, procs + 1, cortados + (a < t)
+    return total, alc, procs, cortados
+
+
+def _disco_vm2() -> float | None:
+    try:
+        r = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes", "vm2-ts",
+                            "df --output=pcent / | tail -1"], capture_output=True, text=True, timeout=25)
+        return float(r.stdout.strip().rstrip("%"))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def _vazao_opus(agora: float | None = None) -> tuple[int, int, int]:
+    import sqlite3
+    desde = datetime.fromtimestamp((agora or time.time()) - 7 * 86400).strftime("%Y-%m-%d %H:%M:%S")
+    con = sqlite3.connect(f"file:{DATA / 'conferencia_opus.db'}?mode=ro", uri=True)
+    try:
+        ent = con.execute("SELECT COUNT(*) FROM fila WHERE criado_em >= ?", (desde,)).fetchone()[0]
+        sai = con.execute("SELECT COUNT(*) FROM fila WHERE conferido_em >= ?", (desde,)).fetchone()[0]
+        pend = con.execute("SELECT COUNT(*) FROM fila WHERE status = 'pendente'").fetchone()[0]
+    finally:
+        con.close()
+    return ent, sai, pend
+
+
+def _rodadas_7d(agora: float | None = None) -> list[dict]:
+    desde = datetime.fromtimestamp((agora or time.time()) - 7 * 86400).strftime("%Y-%m-%d %H:%M:%S")
+    out = []
+    for ln in RODADAS_ITCAMPO.read_text(errors="replace").splitlines():
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            continue                      # linha corrompida (3 medidas em 23/11) não cega o sensor
+        if r.get("ts", "") >= desde:
+            out.append(r)
+    return out
+
+
+def _cache_opus(agora: float | None = None) -> tuple[int, int, int]:
+    desde = datetime.fromtimestamp((agora or time.time()) - 7 * 86400).strftime("%Y-%m-%d %H:%M:%S")
+    cw = cr = n = 0
+    for ln in (DATA / "claude_motor.log").read_text(errors="replace").splitlines():
+        if "tarefa=conferencia_opus ok" not in ln or ln[1:20] < desde:
+            continue
+        m = re.search(r"cw=(\d+) cr=(\d+)", ln)
+        if m:
+            cw, cr, n = cw + int(m[1]), cr + int(m[2]), n + 1
+    return cw, cr, n
+
+
+def sensor_plataforma() -> list[dict]:
+    out = avaliar_cobertura_leitura(*_cobertura_acervo())
+    pct = _disco_vm2()
+    if pct is None:                       # INDISPONÍVEL ≠ 0: VM-2 fora do ar não vira "disco ok"
+        raise RuntimeError("vm2-ts não respondeu ao df")
+    out += avaliar_disco("vm2", pct)
+    out += avaliar_vazao_fila("conferencia_opus", *_vazao_opus())
+    out += avaliar_recaptura(*fracao_recaptura_igual(_rodadas_7d()))
+    out += avaliar_cache_opus(*_cache_opus())
+    return out
+
+
 # nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
 _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
@@ -770,7 +922,9 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "certeza": (sensor_certeza, "certeza dos números"), "maquinas": (sensor_maquinas, "uso das máquinas"),
              "detectores": (sensor_detectores, "precisão dos detectores"),
              "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)"),
-             "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)")}
+             "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)"),
+             "plataforma": (sensor_plataforma, "plano de reescrita (cobertura de leitura, disco VM-2, fila do Opus, "
+                                               "recaptura, cache)")}
 SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
 _AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
 
