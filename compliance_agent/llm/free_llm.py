@@ -884,20 +884,26 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
     11/11/2026: + `modelo`, `tokens_in`, `tokens_out` (o caminho do Gemini das perícias ficou sem trace de
     14/08 a 11/11 — volume desconhecido). `JFN_LLM_TRACE_DB` desvia o arquivo (teste não suja a medição real).
     22/11/2026: + `usd` (custo REAL devolvido pelo provedor pago — `llm/openrouter_pago`); grátis fica NULL.
+    23/11/2026: + `tarefa` (estágio: `JFN_LLM_TAREFA` ou o nome do script em execução) — linha de base de tokens
+    por estágio da reescrita (docs/PLANO-PLATAFORMA-EVIDENCIAS.md, Fase 0d).
     """
     import os
     import sqlite3
+    import sys
     try:
         con = sqlite3.connect(os.environ.get("JFN_LLM_TRACE_DB") or _TRACE_DB, timeout=2)
         con.execute("CREATE TABLE IF NOT EXISTS llm_trace("
                     "ts TEXT DEFAULT (datetime('now')), provedor TEXT, ok INT, ms INT, erro TEXT)")
         cols = {r[1] for r in con.execute("PRAGMA table_info(llm_trace)")}
-        for c, t in (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("usd", "REAL")):
+        for c, t in (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("usd", "REAL"),
+                     ("tarefa", "TEXT")):
             if c not in cols:   # base antiga (só ts..erro): migra no lugar, sem perder linha
                 con.execute(f"ALTER TABLE llm_trace ADD COLUMN {c} {t}")
-        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out, usd) "
-                    "VALUES(?,?,?,?,?,?,?,?)",
-                    (provider, int(ok), ms, (erro or "")[:200], modelo or None, tokens_in, tokens_out, usd))
+        tarefa = os.environ.get("JFN_LLM_TAREFA") or (pathlib.Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else None)
+        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out, usd, tarefa) "
+                    "VALUES(?,?,?,?,?,?,?,?,?)",
+                    (provider, int(ok), ms, (erro or "")[:200], modelo or None, tokens_in, tokens_out, usd,
+                     (tarefa or None) and tarefa[:60]))
         con.commit()
         con.close()
     except (sqlite3.Error, OSError):
