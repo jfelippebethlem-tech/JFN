@@ -84,9 +84,27 @@ espaço. O HD é **lugar, não cópia extra** (dono, 23/11/2026). O que não se 
 """
 
 
-def _fila_ocr() -> set[str]:
+def _fila_ocr(rels: list[str] | None = None) -> set[str]:
+    """Pendentes de OCR = os da fila da GPU MAIS todo PDF cujo documento no manifesto do arquivo ainda não tem
+    texto (< 40 caracteres). 23/11/2026: a fila sozinha deu 0 pendentes num lote em que 15 estavam sem texto."""
     f = RAIZ / "data" / "sei_ocr_gpu_fila.txt"
-    return {ln.strip() for ln in f.read_text().splitlines() if ln.strip()} if f.is_file() else set()
+    out = {ln.strip() for ln in f.read_text().splitlines() if ln.strip()} if f.is_file() else set()
+    mans: dict[str, dict] = {}
+    for rel in rels or []:
+        pasta, _, arq = rel.partition("/")
+        if not (pasta.startswith("integra_") and arq[:3].isdigit()):
+            continue
+        tag = pasta[len("integra_"):]
+        if tag not in mans:
+            try:
+                mans[tag] = {str(d.get("i")): d for d in json.loads((RAIZ / "data" / "sei_arquivo" / tag /
+                                                                     "manifest.json").read_text()).get("docs") or []}
+            except (OSError, ValueError):
+                mans[tag] = {}
+        d = mans[tag].get(str(int(arq[:3])))
+        if d is not None and int(d.get("chars") or 0) < 40:
+            out.add(rel)
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -94,14 +112,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--publicar", action="store_true", help="sobe índice e LEIAME para o HD")
     a = ap.parse_args(argv)
     em = time.strftime("%Y-%m-%d %H:%M")
-    fila = _fila_ocr()
     todas: list[dict] = []
     for src, dst in PARES.items():
         lista_f, check_f = MIG / f"lista_{src}.json", MIG / f"check_{src}.txt"
         if not (lista_f.is_file() and check_f.is_file()):
             print(f"{src}: migração ainda sem lista/conferência — nada a indexar", file=sys.stderr)
             continue
-        linhas = montar(src, dst, json.loads(lista_f.read_text()), check_f.read_text(), fila, em)
+        lista = json.loads(lista_f.read_text())
+        fila = _fila_ocr([x["Path"] for x in lista])
+        linhas = montar(src, dst, lista, check_f.read_text(), fila, em)
         (MIG / f"indice_{src}.jsonl").write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in linhas))
         sai = [x["origem_rel"] for x in linhas if x["sai_da_vm2"]]
         (MIG / f"sai_da_vm2_{src}.txt").write_text("".join(f"{r}\n" for r in sai))
