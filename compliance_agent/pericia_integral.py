@@ -479,7 +479,9 @@ _SISTEMA_EXTRA = (
     "fatos; (2) cada achado traz a CITAÇÃO LITERAL copiada da entrada — o código confere letra a letra e descarta "
     "achado com citação que não existe; (3) documento que não está na entrada ⇒ grau null (INDETERMINADO) e o "
     "documento faltante vai em `lacunas`, nunca grau de irregularidade; (4) sobrepreço só com base de preço "
-    "presente na entrada; (5) Empenho ≠ Liquidação ≠ OB — pagamento é só a OB; (6) indício, não acusação."
+    "presente na entrada; (5) Empenho ≠ Liquidação ≠ OB — pagamento é só a OB; (6) indício, não acusação; (7) a "
+    "citação do achado vem de um DOCUMENTO dos autos ou de um FATO VERIFICADO («…»), nunca dos blocos calculados "
+    "pelo sistema (JSON de evidências) — esses são contexto; ausência apontada por eles é lacuna, não achado."
 )
 
 
@@ -569,6 +571,9 @@ def _pontos(bruto: dict, ids: tuple[str, ...]) -> dict:
     return out
 
 
+_RX_CITA_CAMPO = re.compile(r'"\s*[a-z_]{2,40}\s*"\s*:')          # fragmento JSON: "campo": …
+
+
 def conferir_eixo(bruto, fonte: str, ids_pontos: tuple[str, ...] = ()) -> dict:
     """Confere as citações do eixo contra a fonte. Achado sem citação literal cai; 🟡/🔴 sem achado = null."""
     if not isinstance(bruto, dict):
@@ -581,6 +586,13 @@ def conferir_eixo(bruto, fonte: str, ids_pontos: tuple[str, ...] = ()) -> dict:
         if not isinstance(a, dict):
             continue
         cit = str(a.get("citacao") or "")
+        if _RX_CITA_CAMPO.search(cit):
+            # 23/11/2026 (supervisão do 1º laudo com fatos): achados de grau 2 citavam o BLOCO CALCULADO pelo sistema
+            # ('"veredito": "SEM_PARECER_LOCALIZADO"', '"resumo": …') — achado por ausência, que pela R1 é lacuna. O
+            # bloco existe na entrada (contexto), mas achado tem de citar DOCUMENTO.
+            fora.append({"citacao": cit[:300], "descricao": str(a.get("descricao") or "")[:200],
+                         "motivo": "cita campo calculado pelo sistema, não documento dos autos"})
+            continue
         if citacao_existe(cit, fonte):
             ok.append({"documento": str(a.get("documento") or "")[:200], "citacao": cit[:400],
                        "descricao": str(a.get("descricao") or "")[:300], "grau": _grau(a.get("grau")),

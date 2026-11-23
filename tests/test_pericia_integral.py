@@ -479,3 +479,13 @@ def test_linha_do_tempo_do_processo_inteiro_vem_em_ordem_cronologica(tmp_path, m
     texto, info = PI._bloco_fatos("SEI-" + proc)
     assert texto.startswith("LINHA DO TEMPO") and info["linha_do_tempo"] == 2
     assert texto.index("30/11/2025 [sei:1]") < texto.index("26/12/2025 [sei:2]")
+
+
+def test_achado_que_cita_campo_calculado_pelo_sistema_cai_e_grau_vira_indeterminado():
+    """Supervisão 23/11: grau 2 com citação '"veredito": "SEM_PARECER_LOCALIZADO"' (bloco calculado, ausência)."""
+    fonte = TXT_PARECER + '\n[controle] {"veredito": "SEM_PARECER_LOCALIZADO", "pareceres": []}'
+    r = _resposta({"controle_interno_externo": 2},
+                  {"controle_interno_externo": [{"documento": "bloco", "descricao": "sem parecer",
+                                                 "citacao": '"veredito": "SEM_PARECER_LOCALIZADO"', "grau": 2}]})
+    e = PI.interpretar(r, fonte)["controle_interno_externo"]
+    assert e["grau"] is None and e["achados"] == [] and "campo calculado" in e["descartados"][0]["motivo"]
