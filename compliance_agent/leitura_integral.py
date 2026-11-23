@@ -92,11 +92,26 @@ def _partes(texto: str, alvo: int, sobreposicao: int) -> list[str]:
     return [b if k == 0 else blocos[k - 1][-sobreposicao:] + b for k, b in enumerate(blocos)]
 
 
+def eh_tabela(texto: str) -> bool:
+    """Planilha/tabela exportada: grande, muito dígito e linhas curtas (células). Medido 23/11/2026: os 119 maiores
+    documentos do acervo (460 M caracteres) são planilhas — orçamento de obra de 23.633 páginas com 1,1 mi de linhas,
+    tabela CMED pública de 7 M em cada processo que a anexa. Amostra de 400 processos: 14,5% do texto. A IA não lê
+    1 milhão de células com confiança; o CÓDIGO lê todas (extrator de tabela, Fase 5) — cobertura 'por código'."""
+    n = len(texto)
+    if n <= 20_000:
+        return False
+    linhas = texto.splitlines() or [""]
+    dig = sum(ch.isdigit() for ch in texto) / n
+    curtas = sum(len(ln.strip()) < 25 for ln in linhas) / len(linhas)
+    return dig > 0.25 and curtas > 0.6
+
+
 def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO) -> tuple[list[dict], dict]:
     fatias: list[dict] = []
     atual: list[dict] = []
     tam = 0
-    existentes = 0
+    existentes = tabela = 0
+    tabelas: list[str] = []
 
     def fecha():
         nonlocal atual, tam
@@ -107,6 +122,10 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
 
     for d in _docs(pasta):
         existentes += len(d["texto"])
+        if eh_tabela(d["texto"]):
+            tabela += len(d["texto"])
+            tabelas.append(d["doc_id"])
+            continue
         if len(d["texto"]) > alvo:
             fecha()
             partes = _partes(d["texto"], alvo, sobreposicao)
@@ -119,9 +138,11 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
         atual.append(d)
         tam += len(d["texto"])
     fecha()
-    # cobertura pela CONSTRUÇÃO: todo documento com texto entrou (inteiro ou em partes que o cobrem)
-    return fatias, {"chars_existentes": existentes, "chars_enviados": existentes,
-                    "fracao": 1.0 if existentes else 0.0, "leitura": "integral" if existentes else "sem_texto"}
+    # cobertura pela CONSTRUÇÃO: todo documento com texto entrou na IA (inteiro ou em partes que o cobrem) ou foi
+    # separado como tabela para o leitor por código — nada fica de fora sem estar declarado
+    return fatias, {"chars_existentes": existentes, "chars_enviados": existentes - tabela, "chars_tabela": tabela,
+                    "docs_tabela": tabelas, "fracao": 1.0 if existentes else 0.0,
+                    "leitura": "integral" if existentes else "sem_texto"}
 
 
 # ── 2. máscara reversível ─────────────────────────────────────────────────────────────────────────────

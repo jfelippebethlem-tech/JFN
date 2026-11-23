@@ -26,7 +26,8 @@ def test_fatias_cobrem_todo_o_texto_sem_cortar_documento_que_cabe(tmp_path):
                                                  ("Atesto (33333333)", "C" * 300)])
     fatias, cob = L.fatiar(p, alvo=700)
     assert [[d["doc_id"] for d in f["docs"]] for f in fatias] == [["sei:11111111", "sei:22222222"], ["sei:33333333"]]
-    assert cob == {"chars_existentes": 900, "chars_enviados": 900, "fracao": 1.0, "leitura": "integral"}
+    assert cob == {"chars_existentes": 900, "chars_enviados": 900, "chars_tabela": 0, "docs_tabela": [], "fracao": 1.0,
+                   "leitura": "integral"}
 
 
 def test_documento_maior_que_a_fatia_e_dividido_com_sobreposicao_e_nada_se_perde(tmp_path):
@@ -80,3 +81,13 @@ def test_projecao_de_custo_usa_o_preco_do_lote_e_conta_todas_as_fatias():
     pj = L.projetar([{"texto": "x" * 25_000}, {"texto": "y" * 25_000}], saida_tokens=1000)
     assert pj["fatias"] == 2 and pj["tokens_entrada"] >= 20_000 and pj["usd"] > 0
     assert pj["usd"] == pytest.approx(pj["usd_sem_lote"] / 2)
+
+
+def test_planilha_vai_para_o_leitor_por_codigo_e_continua_na_cobertura(tmp_path):
+    planilha = "\n".join(f"{k} | 1.234,{k % 100:02d} | 0,00" for k in range(3000))
+    p = _pasta(tmp_path, "100001_000003_2025", [("Despacho (55555555)", "Encaminhe-se o processo. " * 20),
+                                                 ("Planilha orçamentária (66666666)", planilha)])
+    fatias, cob = L.fatiar(p)
+    assert [d["doc_id"] for f in fatias for d in f["docs"]] == ["sei:55555555"]
+    assert cob["docs_tabela"] == ["sei:66666666"] and cob["chars_tabela"] == len(planilha)
+    assert cob["chars_enviados"] + cob["chars_tabela"] == cob["chars_existentes"]
