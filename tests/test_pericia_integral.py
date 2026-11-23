@@ -489,3 +489,22 @@ def test_achado_que_cita_campo_calculado_pelo_sistema_cai_e_grau_vira_indetermin
                                                  "citacao": '"veredito": "SEM_PARECER_LOCALIZADO"', "grau": 2}]})
     e = PI.interpretar(r, fonte)["controle_interno_externo"]
     assert e["grau"] is None and e["achados"] == [] and "campo calculado" in e["descartados"][0]["motivo"]
+
+
+def test_lista_nomeada_de_refazer_vale_ate_a_pericia_posterior(tmp_path, monkeypatch):
+    import json as _j
+    monkeypatch.setattr(PI, "FATOS_DB", tmp_path / "sem.db")
+    arq = tmp_path / "refazer.json"
+    arq.write_text(_j.dumps({"SEI-100001/000009/2025": {"em": "2026-11-23 14:00:00", "motivo": "cita campo calculado"}}))
+    monkeypatch.setattr(PI, "REFAZER_ARQ", arq)
+    con = sqlite3.connect(PI.DB)
+    PI._garantir_tabela(con)
+    con.execute("INSERT INTO pericia_integral(rodada,processo,eixo,grau,achados,versao_prompt,criado_em) "
+                "VALUES('r','SEI-100001/000009/2025','_global',2,'{}',?,'2026-11-20T09:00:00')", (PI.VERSAO_PROMPT,))
+    con.commit()
+    assert PI._refazer_por_leitura(con) == {PI._dig("100001/000009/2025")}
+    con.execute("INSERT INTO pericia_integral(rodada,processo,eixo,grau,achados,versao_prompt,criado_em) "
+                "VALUES('r2','SEI-100001/000009/2025','_global',1,'{}',?,'2026-11-23T15:00:00')", (PI.VERSAO_PROMPT,))
+    con.commit()
+    assert PI._refazer_por_leitura(con) == set()                     # refeito depois da marca: sai
+    con.close()

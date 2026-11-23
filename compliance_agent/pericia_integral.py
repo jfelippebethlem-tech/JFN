@@ -63,6 +63,7 @@ TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
 FATOS_DB = Path(__file__).resolve().parents[1] / "data" / "evidencias.db"
 FATOS_VERSAO = "li-2"
 TETO_FATOS = 100_000
+REFAZER_ARQ = Path(__file__).resolve().parents[1] / "data" / "pericia_refazer.json"
 TETO_TEXTO_COM_FATOS = 140_000
 _PRIO_FATO = {t: i for i, t in enumerate(("ressalva", "condicao", "decisao", "ato", "parecer", "justificativa", "valor",
                                           "ob", "ne", "nf", "contrato", "aditivo", "quantidade", "cnpj", "objeto",
@@ -909,15 +910,24 @@ def _refazer_por_leitura(con: sqlite3.Connection) -> set[str]:
                                                       (FATOS_VERSAO,))}
         ev.close()
     except sqlite3.Error:
-        return set()
-    if not lidos:
-        return set()
+        lidos = {}                                     # sem banco de fatos: ainda vale a lista nomeada
     try:
         ult = {_dig(p): em for p, em in con.execute(
             "SELECT processo, MAX(criado_em) FROM pericia_integral WHERE eixo='_global' GROUP BY processo")}
     except sqlite3.OperationalError:
         return set()
-    return {d for d, em in lidos.items() if d in ult and str(em or "") > str(ult[d] or "")[:19].replace("T", " ")}
+    refazer = {d for d, em in lidos.items() if d in ult and str(em or "") > str(ult[d] or "")[:19].replace("T", " ")}
+    # lista NOMEADA (data/pericia_refazer.json: {processo: {"em": "AAAA-MM-DD HH:MM:SS", "motivo": …}}) — ex.: 23/11,
+    # 216 processos com achado citando campo calculado. Sai da lista sozinho ao ganhar perícia posterior à marca.
+    try:
+        marcados = json.loads(REFAZER_ARQ.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        marcados = {}
+    for proc, m in marcados.items():
+        d = _dig(proc)
+        if d in ult and str((m or {}).get("em") or "") > str(ult[d] or "")[:19].replace("T", " "):
+            refazer.add(d)
+    return refazer
 
 
 def _ja_periciados(con: sqlite3.Connection) -> set[str]:
