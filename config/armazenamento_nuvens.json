@@ -11,7 +11,7 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "terabox"],
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "terabox"],
   "remotos_fora": {},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
@@ -141,6 +141,12 @@
       "medir": "about", "margem_gb": 0.3, "preferencia_download": 8, "limites": {},
       "_restricoes": "5 GiB (rclone about). Conta jfelippebethlem@gmail.com com telefone de recuperação (o Disk recusava com 403 DiskUnsupportedUserAccountType antes disso). hard_delete=true no rclone.conf: sem isso o apagado vai para a lixeira e continua ocupando a cota. Lento (~1 MB/s). md5 na listagem.",
       "fontes": ["coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 1,0 MB/s subida, 1,2 MB/s descida)"]
+    },
+    "filen": {
+      "tipo": "filen", "raiz": "filen:JFN", "frio": "filen:JFN/frio", "indice": "filen:JFN/indice",
+      "medir": "about", "margem_gb": 0.5, "apagar_libera": false, "preferencia_download": 8, "limites": {},
+      "_restricoes": "10 GiB (rclone about). Conta jfbethlem@proton.me; rclone precisa de e-mail, senha e api_key (exportada pela Filen CLI em ~/.local/share/filen-cli). Cifra de ponta a ponta no cliente: subida LENTA na VM-1 (0,3 MB/s com load 8). O apagado vai para a lixeira e continua ocupando a cota até `rclone cleanup filen:` (apagar_libera: false). Hash na listagem: blake3 (não md5).",
+      "fontes": ["coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 0,3 MB/s subida, 1,1 MB/s descida; about = 10 GiB)"]
     }
   },
   "enchimento": {

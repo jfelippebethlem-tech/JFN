@@ -558,23 +558,23 @@ def test_recuperacao_confere_pela_listagem_e_amostra_do_b2_tem_teto(amb):
 def test_remoto_novo_entra_so_pela_config(amb, tmp_path_factory):
     tmp, raiz = amb
     cfg = json.loads(A.caminho_config_nuvens().read_text(encoding="utf-8"))
-    cfg["remotos"]["filen"] = {"tipo": "filen", "raiz": "filen:JFN", "frio": "filen:JFN/frio",
-                               "indice": "filen:JFN/indice", "medir": "about", "margem_gb": 0.5,
+    cfg["remotos"]["nuvem_ficticia"] = {"tipo": "filen", "raiz": "nuvem_ficticia:JFN", "frio": "nuvem_ficticia:JFN/frio",
+                               "indice": "nuvem_ficticia:JFN/indice", "medir": "about", "margem_gb": 0.5,
                                "preferencia_download": 4, "limites": {"download_bytes_dia": 1e9}}
-    cfg["segunda_copia"] = ["filen", *cfg["segunda_copia"]]
+    cfg["segunda_copia"] = ["nuvem_ficticia", *cfg["segunda_copia"]]
     novo = tmp_path_factory.mktemp("cfg") / "nuvens.json"
     novo.write_text(json.dumps(cfg), encoding="utf-8")
     try:
         A.configurar(novo)
-        assert "filen" in A.DESTINOS and A.POLITICA["insubstituivel"][1][0] == "filen"
+        assert "nuvem_ficticia" in A.DESTINOS and A.POLITICA["insubstituivel"][1][0] == "nuvem_ficticia"
         f = _arquivos(raiz)[0]
         conteudo = f.read_bytes()
         r = A.guardar(f, "backup_db", apagar_local=True, rc=NuvemFalsa(tmp / "nuvem"), con=A.conectar())
-        assert r["copias"] == {"gdrive": "ok", "filen": "ok"} and r["apagado"]
+        assert r["copias"] == {"gdrive": "ok", "nuvem_ficticia": "ok"} and r["apagado"]
         assert A.obter(str(f), rc=NuvemFalsa(tmp / "nuvem")).read_bytes() == conteudo
     finally:
         A.configurar()
-    assert "filen" not in A.DESTINOS                                          # controle: sem a config, não existe
+    assert "nuvem_ficticia" not in A.DESTINOS                                          # controle: sem a config, não existe
 
 
 def test_ciclo_com_recusa_do_prevoo_escala_e_nao_apaga(amb):
