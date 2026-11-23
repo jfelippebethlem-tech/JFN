@@ -301,20 +301,27 @@ def _texto_por_valor(pasta: Path, teto: int) -> tuple[str, dict]:
         man = {}
     docs = [d for d in (man.get("docs") or []) if isinstance(d, dict) and d.get("texto")]
     partes, total, lidos, fora = [], 0, 0, []
+    existentes = cortados = 0          # 23/11/2026: o laudo declara o quanto NÃO leu (17,3% do acervo era o alcance)
     for d in ordenar_para_leitura(docs):
         t = acervo_texto.ler(pasta, d).strip()
         if len(t) < 40:
             continue
+        existentes += len(t)
         titulo = str(d.get("titulo") or "").strip() or "(sem título)"
         if total >= teto:
             fora.append(titulo)
             continue
-        t = t[: min(TETO_DOC, teto - total)]
+        cabe = min(TETO_DOC, teto - total)
+        cortados += len(t) > cabe
+        t = t[:cabe]
         partes.append(f"--- DOCUMENTO: {titulo} ---\n{t}")
         total += len(t)
         lidos += 1
+    fracao = round(total / existentes, 4) if existentes else 0.0
     return "\n\n".join(partes), {"docs_com_texto": len(docs), "docs_lidos": lidos, "docs_fora_do_teto": len(fora),
-                                 "titulos_fora_do_teto": fora[:30], "chars": total}
+                                 "titulos_fora_do_teto": fora[:30], "chars": total, "chars_existentes": existentes,
+                                 "docs_cortados_por_dentro": cortados, "fracao_lida": fracao,
+                                 "leitura": "integral" if existentes and total >= existentes else "parcial"}
 
 
 def _pago(numero: str, obs: dict | None) -> dict | None:

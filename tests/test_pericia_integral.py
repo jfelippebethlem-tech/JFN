@@ -154,6 +154,17 @@ def test_entrada_le_por_valor_com_teto_e_ob_como_pagamento():
     assert "R$ 1.234.567,80" in e["bloco"] and "OB" in e["bloco"]
     assert "E7" in e["bloco"]
     assert e["valor_pago"] == pytest.approx(1234567.8)
+    c = e["cobertura"]                  # 23/11/2026: o laudo declara o quanto NÃO leu
+    assert c["leitura"] == "parcial" and 0 < c["fracao_lida"] < 1 and c["chars_existentes"] > c["chars"]
+
+
+def test_cobertura_integral_quando_tudo_cabe_e_corte_por_dentro_declarado():
+    p = _pasta(PI.ACERVO, "100001_000009_2025", [("Parecer Jurídico", TXT_PARECER)])
+    e = PI.montar_entrada(p, avaliar=_avaliar, coletar=_sem_evidencia, teto_chars=10**6)
+    assert e["cobertura"]["leitura"] == "integral" and e["cobertura"]["fracao_lida"] == 1.0
+    assert e["cobertura"]["docs_cortados_por_dentro"] == 0
+    e = PI.montar_entrada(p, avaliar=_avaliar, coletar=_sem_evidencia, teto_chars=60)
+    assert e["cobertura"]["docs_cortados_por_dentro"] == 1 and e["cobertura"]["leitura"] == "parcial"
 
 
 # ── juízo: null, verificação literal ───────────────────────────────────────────────────────────────────
