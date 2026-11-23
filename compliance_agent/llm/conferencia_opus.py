@@ -50,7 +50,9 @@ ESPERA_TRAVA_S = 420.0
 TIMEOUT_S = 600.0       # a perícia integral (até 240 mil caracteres) leva 200–220 s no Opus e tem 600 s; aqui eram 300
 # tarefa → "modulo:funcao(item, dados_opus, modelo_opus, concorda) -> bool" que regrava o registro do consumidor
 APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
-               "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia"}
+               "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia",
+               # número divergente do OCR por IA: só decisão com base objetiva no texto vira registro (23/11/2026)
+               "ocr_ia_numero": "tools.sei_ocr_ia_conferir:aplicar_conferencia"}
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS fila(
