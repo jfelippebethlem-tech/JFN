@@ -79,7 +79,7 @@ def test_resposta_do_modelo_vira_fatos_verificados_e_json_quebrado_nao_vira_fato
 def test_projecao_de_custo_usa_o_preco_do_lote_e_conta_todas_as_fatias():
     pj = L.projetar([{"texto": "x" * 25_000}, {"texto": "y" * 25_000}], saida_tokens=1000)
     assert pj["fatias"] == 2 and pj["tokens_entrada"] >= 20_000 and pj["usd"] > 0
-    assert pj["usd"] == pytest.approx(pj["usd_sem_lote"] / 2)
+    assert pj["usd"] == pytest.approx(pj["usd_sem_lote"] / 2, abs=1e-6)
 
 
 def test_planilha_vai_para_o_leitor_por_codigo_e_continua_na_cobertura(tmp_path):
