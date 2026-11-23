@@ -432,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         procs = [ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()]
         itens, mapas, resumo = [], {}, {"processos": 0, "fatias": 0, "usd": 0.0, "fora_da_porta": 0}
         lidos = {r[0] for r in con.execute("SELECT sha FROM docs_lidos WHERE versao=?", (VERSAO_PROMPT,))}
+        coberturas: dict[str, tuple] = {}
         novos: list[tuple] = []
         aceitos: list[str] = []
         for proc in procs:
@@ -463,10 +464,7 @@ def main(argv: list[str] | None = None) -> int:
                 itens.append((cid, texto))
                 mapas[cid] = {"processo": proc, "mapa": mapa, "docs": [d["doc_id"] for d in f["docs"]],
                               "sha": hashlib.sha256(texto.encode()).hexdigest()}
-            with con:
-                con.execute("INSERT OR REPLACE INTO leituras VALUES(?,?,?,?,?,?,?,?,?,?)",
-                            (proc, TAREFA, VERSAO_PROMPT, cob["chars_existentes"], cob["chars_enviados"], cob["fracao"],
-                             cob["leitura"], len(fatias), None, E._agora()))
+            coberturas[proc] = (cob, len(fatias))     # só vira registro de leitura se o lote for ENVIADO
         resumo["usd"] = round(resumo["usd"], 4)
         print(json.dumps(resumo, ensure_ascii=False))
         if not a.enviar:
@@ -479,8 +477,10 @@ def main(argv: list[str] | None = None) -> int:
         guarda.parent.mkdir(parents=True, exist_ok=True)
         guarda.write_text(json.dumps(mapas, ensure_ascii=False), encoding="utf-8")
         with con:
-            con.executemany("UPDATE leituras SET lote=? WHERE processo=? AND estagio=? AND versao=?",
-                            [(lote, p, TAREFA, VERSAO_PROMPT) for p in aceitos])
+            # 23/11: a projeção (sem --enviar) gravava o registro de leitura — o processo seria pulado sem ter sido lido
+            con.executemany("INSERT OR REPLACE INTO leituras VALUES(?,?,?,?,?,?,?,?,?,?)",
+                            [(p, TAREFA, VERSAO_PROMPT, c["chars_existentes"], c["chars_enviados"], c["fracao"],
+                              c["leitura"], nf, lote, E._agora()) for p, (c, nf) in coberturas.items()])
             con.executemany("INSERT OR IGNORE INTO docs_lidos VALUES(?,?,?,?,?,?)",
                             [(*n, lote, E._agora()) for n in novos])
         print(f"lote {lote}: {len(itens)} fatias")
