@@ -112,7 +112,7 @@ for k in ks:
     try:
         textos[k] = ler(k)
         erro = ""
-    except Exception as e:                            # bancada: a página que falha fica registrada, não para
+    except (RuntimeError, ValueError, OSError, TypeError, KeyError, IndexError, MemoryError) as e:  # bancada: a página que falha fica registrada, não para
         erro = f"{type(e).__name__}: {str(e)[:300]}"
     tempos[k] = {"s": round(time.time() - t0, 2), "pico_rss_mb": rss_mb(), "erro": erro}
     out_t.write_text(json.dumps(textos, ensure_ascii=False))
