@@ -91,15 +91,14 @@ def entrega_crua(tag: str, i, motor: str) -> str:
     """Texto cru que o trabalhador entregou (com `[página N]`) — dá a página de cada número."""
     suf = ".ocr_gpu.txt" if motor.startswith("surya") else ".ocr_reserva.txt"
     p = CACHE / f"integra_{tag}" / f"{int(i):03d}{suf}"
-    for q in (p, p.with_name(p.name + ".zst")):
-        try:
-            if q.suffix == ".zst":
-                import zstandard
-                return zstandard.ZstdDecompressor().decompress(q.read_bytes()).decode("utf-8", "replace")
-            return q.read_text(encoding="utf-8", errors="replace")
-        except (OSError, ImportError, ValueError):
-            continue
-    return ""
+    # 23/11/2026: era `import zstandard` (não declarado e AUSENTE da venv da VM-1: o .zst virava "" calado). A porta
+    # da casa descomprime pelo binário zstd e avisa quando não consegue — ausente, nunca vazio.
+    from compliance_agent.sei.cache_arquivo import ler_bytes
+    try:
+        cru = ler_bytes(p)
+    except OSError:
+        cru = None
+    return cru.decode("utf-8", "replace") if cru else ""
 
 
 def ler_pdf_remoto(tag: str, i, paginas: list[int] | None, no: str = "vm2") -> dict:

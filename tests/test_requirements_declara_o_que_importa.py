@@ -51,6 +51,12 @@ EXCECOES |= {("rapidocr", "tools/sei_ocr_reserva.py")}
 # 19/11/2026 — nó NATIVO do Windows do it-campo: `carga()` lê CPU/memória do Windows com psutil, só quando
 # os.name == "nt" (venv C:\\JFN-Nativo\\venv); na VM-1/VM-2 o ramo nunca roda.
 EXCECOES |= {("psutil", "tools/sei_ocr_reserva.py")}
+# 23/11/2026 — renovação da sessão do MediaFire: o cron roda com /opt/stealth/venv (patchright + Chromium em xvfb),
+# nunca com a venv do JFN.
+EXCECOES |= {("patchright", "tools/zelador/mediafire_sessao.py")}
+# 23/11/2026 — Fase 3 do plano: o ramo PostgreSQL de `evidencias` (import só dentro dele) espera a instalação na
+# VM-2; ao instalar, declarar `psycopg[binary]` com versão e apagar esta linha.
+EXCECOES |= {("psycopg", "compliance_agent/evidencias.py")}
 
 
 def _modulos_locais() -> set[str]:
