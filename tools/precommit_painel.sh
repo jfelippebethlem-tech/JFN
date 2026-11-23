@@ -15,6 +15,8 @@ set -u
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 cd "$root" || exit 0
 py="$root/.venv/bin/python"
+# worktree de agente não tem .venv: o da árvore principal (git-common-dir) — sem isso o gate saía calado (23/11)
+[ -x "$py" ] || py="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.venv/bin/python"
 [ -x "$py" ] || { echo "[pre-commit] venv ausente — gate do painel NÃO rodou" >&2; exit 0; }
 
 # ── 0-A. bundle em dia com o fonte ───────────────────────────────────────────────────────────────

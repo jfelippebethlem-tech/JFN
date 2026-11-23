@@ -22,6 +22,8 @@ mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM 2>/dev/nul
 [ "${#staged[@]}" -eq 0 ] && exit 0
 
 ruff="$root/.venv/bin/ruff"
+# worktree de agente não tem .venv: o da árvore principal (git-common-dir) — sem isso o gate saía calado (23/11)
+[ -x "$ruff" ] || ruff="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.venv/bin/ruff"
 [ -x "$ruff" ] || ruff="ruff"
 if ! command -v "$ruff" >/dev/null 2>&1; then
   echo "[pre-commit] ruff ausente — gate de lint NÃO rodou (instale: uv pip install ruff)" >&2
