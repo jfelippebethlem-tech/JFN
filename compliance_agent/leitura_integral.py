@@ -54,6 +54,27 @@ assinatura, ressalva."""
 
 
 # ── 1. fatiamento ─────────────────────────────────────────────────────────────────────────────────────
+def portao(pasta: Path) -> tuple[bool, str]:
+    """Porta do lote (dono, 23/11/2026: "só entra no lote o que sabemos ser 100% correto"): só processo com a
+    captura DECLARADA completa, sem documento faltando e não vazia. Estado desconhecido não é completo (medido:
+    8.834 de 12.707 passam; o resto vai para recaptura antes de ser lido)."""
+    try:
+        man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, "manifesto ilegível"
+    if man.get("captura_vazia"):
+        return False, "captura vazia"
+    if man.get("docs_faltantes"):
+        return False, "documentos faltando na captura"
+    if man.get("captura_completa") is not True:
+        return False, "captura não declarada completa"
+    return True, ""
+
+
+def _eh_ocr(d: dict) -> bool:
+    return bool(d.get("ocr") or d.get("ocr_motor"))
+
+
 def _docs(pasta: Path) -> list[dict]:
     from compliance_agent.sei import acervo_texto
     man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
@@ -68,7 +89,8 @@ def _docs(pasta: Path) -> list[dict]:
         texto = acervo_texto.ler(pasta, d).strip()
         if texto:
             out.append({"doc_id": base if vistos[base] == 1 else f"{base}#{vistos[base]}",
-                        "titulo": str(d.get("titulo") or "").strip(), "texto": texto})
+                        "titulo": str(d.get("titulo") or "").strip(), "texto": texto, "ocr": _eh_ocr(d),
+                        "sha": hashlib.sha256(texto.encode("utf-8")).hexdigest()})
     return out
 
 
@@ -106,12 +128,19 @@ def eh_tabela(texto: str) -> bool:
     return dig > 0.25 and curtas > 0.6
 
 
-def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO) -> tuple[list[dict], dict]:
+def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO,
+           ja_lidos: set[str] | None = None) -> tuple[list[dict], dict]:
+    """Só vai à IA o texto que sabemos certo e ainda não lido: texto NATIVO do PDF (OCR — por IA ou Tesseract, que
+    errou 8% na bancada de 23/11 — espera a confirmação por página), fora de tabela, e cujo sha256 não foi lido
+    antes (`ja_lidos`, mesma versão do prompt) nem aparece de novo no próprio processo. Tudo o que não vai fica
+    DECLARADO na cobertura com o motivo; `fracao` conta só o que foi de fato lido (IA ou reaproveitado)."""
     fatias: list[dict] = []
     atual: list[dict] = []
     tam = 0
-    existentes = tabela = 0
-    tabelas: list[str] = []
+    vistos = set(ja_lidos or ())
+    soma = {"tabela": 0, "ocr_pendente": 0, "duplicado": 0, "enviados": 0}
+    listas: dict[str, list[str]] = {"tabela": [], "ocr_pendente": [], "duplicados": []}
+    existentes = 0
 
     def fecha():
         nonlocal atual, tam
@@ -121,28 +150,41 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
         atual, tam = [], 0
 
     for d in _docs(pasta):
-        existentes += len(d["texto"])
-        if eh_tabela(d["texto"]):
-            tabela += len(d["texto"])
-            tabelas.append(d["doc_id"])
+        n = len(d["texto"])
+        existentes += n
+        if d["sha"] in vistos:
+            soma["duplicado"] += n
+            listas["duplicados"].append(d["doc_id"])
             continue
-        if len(d["texto"]) > alvo:
+        if d["ocr"]:
+            soma["ocr_pendente"] += n
+            listas["ocr_pendente"].append(d["doc_id"])
+            continue
+        if eh_tabela(d["texto"]):
+            soma["tabela"] += n
+            listas["tabela"].append(d["doc_id"])
+            continue
+        vistos.add(d["sha"])
+        soma["enviados"] += n
+        if n > alvo:
             fecha()
             partes = _partes(d["texto"], alvo, sobreposicao)
             for k, t in enumerate(partes, 1):
                 atual = [dict(d, texto=t, titulo=f"{d['titulo']} [parte {k}/{len(partes)}]")]
                 fecha()
             continue
-        if tam + len(d["texto"]) > alvo:
+        if tam + n > alvo:
             fecha()
         atual.append(d)
-        tam += len(d["texto"])
+        tam += n
     fecha()
-    # cobertura pela CONSTRUÇÃO: todo documento com texto entrou na IA (inteiro ou em partes que o cobrem) ou foi
-    # separado como tabela para o leitor por código — nada fica de fora sem estar declarado
-    return fatias, {"chars_existentes": existentes, "chars_enviados": existentes - tabela, "chars_tabela": tabela,
-                    "docs_tabela": tabelas, "fracao": 1.0 if existentes else 0.0,
-                    "leitura": "integral" if existentes else "sem_texto"}
+    lido = soma["enviados"] + soma["duplicado"]
+    return fatias, {"chars_existentes": existentes, "chars_enviados": soma["enviados"], "chars_tabela": soma["tabela"],
+                    "chars_ocr_pendente": soma["ocr_pendente"], "chars_duplicado": soma["duplicado"],
+                    "docs_tabela": listas["tabela"], "docs_ocr_pendente": listas["ocr_pendente"],
+                    "docs_duplicados": listas["duplicados"],
+                    "fracao": round(lido / existentes, 4) if existentes else 0.0,
+                    "leitura": "sem_texto" if not existentes else ("integral" if lido == existentes else "parcial")}
 
 
 # ── 2. máscara reversível ─────────────────────────────────────────────────────────────────────────────
@@ -223,6 +265,8 @@ CREATE TABLE IF NOT EXISTS fatos(id INTEGER PRIMARY KEY, processo TEXT NOT NULL,
   valor TEXT, descricao TEXT, citacao TEXT, estado TEXT NOT NULL, motivo TEXT, motor TEXT, versao TEXT,
   payload_sha TEXT, em TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_fatos_proc ON fatos(processo, estado);
+CREATE TABLE IF NOT EXISTS docs_lidos(sha TEXT NOT NULL, versao TEXT NOT NULL, processo TEXT, doc_id TEXT, lote TEXT,
+  em TEXT NOT NULL, PRIMARY KEY(sha, versao));
 """
 
 
@@ -257,7 +301,11 @@ def main(argv: list[str] | None = None) -> int:
         if a.limite:
             pastas = pastas[: a.limite]
         tot = {"processos": 0, "fatias": 0, "tokens_entrada": 0, "usd": 0.0}
+        tot["fora_da_porta"] = 0
         for p in pastas:
+            if not portao(p)[0]:
+                tot["fora_da_porta"] += 1
+                continue
             try:
                 f, _ = fatiar(p)
             except (OSError, ValueError):
@@ -273,13 +321,24 @@ def main(argv: list[str] | None = None) -> int:
     con = _con()
     if a.cmd == "piloto":
         procs = [ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()]
-        itens, mapas, resumo = [], {}, {"processos": 0, "fatias": 0, "usd": 0.0}
+        itens, mapas, resumo = [], {}, {"processos": 0, "fatias": 0, "usd": 0.0, "fora_da_porta": 0}
+        lidos = {r[0] for r in con.execute("SELECT sha FROM docs_lidos WHERE versao=?", (VERSAO_PROMPT,))}
+        novos: list[tuple] = []
+        aceitos: list[str] = []
         for proc in procs:
             pasta = _pasta_do(proc)
-            if not (pasta / "manifest.json").is_file():
-                print(f"sem acervo: {proc}", file=sys.stderr)
+            ok, motivo = portao(pasta)
+            if not ok:
+                resumo["fora_da_porta"] += 1
+                print(f"fora da porta: {proc} — {motivo}", file=sys.stderr)
                 continue
-            fatias, cob = fatiar(pasta)
+            aceitos.append(proc)
+            fatias, cob = fatiar(pasta, ja_lidos=lidos)
+            for f in fatias:
+                for d in f["docs"]:
+                    if d["sha"] not in lidos:
+                        lidos.add(d["sha"])
+                        novos.append((d["sha"], VERSAO_PROMPT, proc, d["doc_id"]))
             r = projetar(fatias)
             resumo["processos"] += 1
             resumo["fatias"] += r["fatias"]
@@ -307,7 +366,9 @@ def main(argv: list[str] | None = None) -> int:
         guarda.write_text(json.dumps(mapas, ensure_ascii=False), encoding="utf-8")
         with con:
             con.executemany("UPDATE leituras SET lote=? WHERE processo=? AND estagio=? AND versao=?",
-                            [(lote, p, TAREFA, VERSAO_PROMPT) for p in procs])
+                            [(lote, p, TAREFA, VERSAO_PROMPT) for p in aceitos])
+            con.executemany("INSERT OR IGNORE INTO docs_lidos VALUES(?,?,?,?,?,?)",
+                            [(*n, lote, E._agora()) for n in novos])
         print(f"lote {lote}: {len(itens)} fatias")
         return 0
 
@@ -319,18 +380,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{lote}: em curso")
             continue
         mapas = json.loads(arq.read_text(encoding="utf-8"))
-        n = {"VERIFICADO": 0, "INDISPONIVEL": 0, "resposta_invalida": 0, "sem_resposta": 0}
+        n = {"VERIFICADO": 0, "A_CONFIRMAR_OCR": 0, "INDISPONIVEL": 0, "resposta_invalida": 0, "sem_resposta": 0}
         for cid, info in mapas.items():
             resp = saida.get(cid)
             if resp is None:
                 n["sem_resposta"] += 1
                 continue
             pasta = _pasta_do(info["processo"])
-            textos = {d["doc_id"]: mascarar(d["texto"])[0] for d in _docs(pasta) if d["doc_id"] in set(info["docs"])}
+            docs = [d for d in _docs(pasta) if d["doc_id"] in set(info["docs"])]
+            textos = {d["doc_id"]: mascarar(d["texto"])[0] for d in docs}
+            de_ocr = {d["doc_id"] for d in docs if d["ocr"]}
             fatos = interpretar(resp, textos)
             if fatos is None:
                 n["resposta_invalida"] += 1
                 continue
+            for f in fatos:     # citação existe, mas o TEXTO veio de OCR ainda não confirmado: não é certo
+                if f["estado"] == "VERIFICADO" and f.get("doc_id") in de_ocr:
+                    f["estado"], f["motivo"] = "A_CONFIRMAR_OCR", "texto do documento veio de OCR não confirmado"
             with con:
                 for f in fatos:
                     n[f["estado"]] += 1

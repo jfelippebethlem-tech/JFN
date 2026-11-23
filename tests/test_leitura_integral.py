@@ -26,8 +26,7 @@ def test_fatias_cobrem_todo_o_texto_sem_cortar_documento_que_cabe(tmp_path):
                                                  ("Atesto (33333333)", "C" * 300)])
     fatias, cob = L.fatiar(p, alvo=700)
     assert [[d["doc_id"] for d in f["docs"]] for f in fatias] == [["sei:11111111", "sei:22222222"], ["sei:33333333"]]
-    assert cob == {"chars_existentes": 900, "chars_enviados": 900, "chars_tabela": 0, "docs_tabela": [], "fracao": 1.0,
-                   "leitura": "integral"}
+    assert (cob["chars_existentes"], cob["chars_enviados"], cob["fracao"], cob["leitura"]) == (900, 900, 1.0, "integral")
 
 
 def test_documento_maior_que_a_fatia_e_dividido_com_sobreposicao_e_nada_se_perde(tmp_path):
@@ -91,3 +90,37 @@ def test_planilha_vai_para_o_leitor_por_codigo_e_continua_na_cobertura(tmp_path)
     assert [d["doc_id"] for f in fatias for d in f["docs"]] == ["sei:55555555"]
     assert cob["docs_tabela"] == ["sei:66666666"] and cob["chars_tabela"] == len(planilha)
     assert cob["chars_enviados"] + cob["chars_tabela"] == cob["chars_existentes"]
+
+
+# ── porta do lote (dono, 23/11/2026: "só entra no lote o que sabemos ser 100% correto e não duplicado") ──
+def _man(p, **kw):
+    m = json.loads((p / "manifest.json").read_text())
+    m.update(kw)
+    (p / "manifest.json").write_text(json.dumps(m))
+
+
+def test_so_processo_com_captura_completa_passa_na_porta(tmp_path):
+    p = _pasta(tmp_path, "100001_000004_2025", [("Contrato (11111111)", "texto " * 20)])
+    assert L.portao(p) == (False, "captura não declarada completa")          # desconhecido ≠ completo
+    _man(p, captura_completa=True, docs_faltantes=[{"i": 9}])
+    assert L.portao(p) == (False, "documentos faltando na captura")
+    _man(p, captura_completa=True, docs_faltantes=[])
+    assert L.portao(p) == (True, "")
+
+
+def test_texto_de_ocr_espera_confirmacao_e_duplicado_nao_reenvia(tmp_path):
+    p = _pasta(tmp_path, "100001_000005_2025", [("Contrato (11111111)", "cláusula " * 20),
+                                                 ("NF escaneada (22222222)", "valor 1.000,00 " * 10),
+                                                 ("Cópia do contrato (33333333)", "cláusula " * 20)])
+    m = json.loads((p / "manifest.json").read_text())
+    m["docs"][1]["ocr"] = True
+    m["docs"][1]["ocr_motor"] = "tesseract"
+    (p / "manifest.json").write_text(json.dumps(m))
+    fatias, cob = L.fatiar(p)
+    assert [d["doc_id"] for f in fatias for d in f["docs"]] == ["sei:11111111"]      # 3º é cópia idêntica do 1º
+    assert cob["docs_ocr_pendente"] == ["sei:22222222"] and cob["docs_duplicados"] == ["sei:33333333"]
+    assert cob["chars_enviados"] + cob["chars_ocr_pendente"] + cob["chars_duplicado"] + cob["chars_tabela"] \
+        == cob["chars_existentes"]
+    sha_1 = fatias[0]["docs"][0]["sha"]
+    fatias2, cob2 = L.fatiar(p, ja_lidos={sha_1})                                    # lido em lote anterior
+    assert fatias2 == [] and cob2["docs_duplicados"] == ["sei:11111111", "sei:33333333"]
