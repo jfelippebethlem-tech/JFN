@@ -150,3 +150,25 @@ def test_porta_por_processo_inteiro_ocr_ou_documento_sem_texto_barram_o_processo
     m["docs"].append({"i": 2, "titulo": "Anexo (33333333)", "tipo": "anexo"})       # sem texto capturado
     (p / "manifest.json").write_text(json.dumps(m))
     assert L.portao(p) == (False, "documento sem texto")
+
+
+# ── leitor de tabela por código (Fase 5): 100% das linhas, citação = a própria linha ──────────────────────
+def test_tabela_lida_por_codigo_extrai_toda_linha_com_numero_e_le_uma_vez_so(tmp_path, monkeypatch):
+    monkeypatch.setattr(L.E, "RAIZ", tmp_path)
+    con = L.E.conectar(tmp_path / "ev.db")
+    con.executescript(L._DDL)
+    def brl(k):
+        return f"{k // 1000}.{k % 1000:03d}" if k >= 1000 else str(k)
+    planilha = "\n".join(f"{k} | Item {k} | R$ {brl(k)},50 | 0,00" for k in range(1, 3001))
+    p = _pasta(tmp_path, "100001_000007_2025", [("Despacho (55555555)", "Encaminhe-se. " * 20),
+                                                 ("Planilha (66666666)", planilha)])
+    r = L.ler_tabelas(con, p)
+    assert r == {"tabelas": 1, "novas": 1, "linhas_com_numero": 3000}
+    assert L.ler_tabelas(con, p)["novas"] == 0                                   # mesma tabela (sha): uma vez só
+    lidas = L.tabelas_lidas(con)
+    fatias, cob = L.fatiar(p, tabelas_lidas=lidas)
+    assert cob["chars_tabela"] == 0 and cob["chars_tabela_lida"] == len(planilha) and cob["leitura"] == "integral"
+    linhas = L.linhas_da_tabela(lidas_sha := next(iter(lidas)))
+    assert len(linhas) == 3000 and linhas[-1]["citacao"] == "3000 | Item 3000 | R$ 3.000,50 | 0,00"
+    assert ("valor", "3000.50") in {(n["tipo"], n["norma"]) for n in linhas[-1]["numeros"]}
+    assert lidas_sha

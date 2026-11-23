@@ -150,11 +150,12 @@ def eh_tabela(texto: str) -> bool:
     linhas = texto.splitlines() or [""]
     dig = sum(ch.isdigit() for ch in texto) / n
     curtas = sum(len(ln.strip()) < 25 for ln in linhas) / len(linhas)
-    return dig > 0.25 and curtas > 0.6
+    colunadas = sum(ln.count("|") >= 2 for ln in linhas) / len(linhas)     # "a | b | c" (amostra: '0 | #VALUE! | …')
+    return dig > 0.25 and (curtas > 0.6 or colunadas > 0.6)
 
 
 def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO,
-           ja_lidos: set[str] | None = None) -> tuple[list[dict], dict]:
+           ja_lidos: set[str] | None = None, tabelas_lidas: set[str] | None = None) -> tuple[list[dict], dict]:
     """Só vai à IA o texto que sabemos certo e ainda não lido: texto NATIVO do PDF (OCR — por IA ou Tesseract, que
     errou 8% na bancada de 23/11 — espera a confirmação por página), fora de tabela, e cujo sha256 não foi lido
     antes (`ja_lidos`, mesma versão do prompt) nem aparece de novo no próprio processo. Tudo o que não vai fica
@@ -163,7 +164,8 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
     atual: list[dict] = []
     tam = 0
     vistos = set(ja_lidos or ())
-    soma = {"tabela": 0, "ocr_pendente": 0, "duplicado": 0, "enviados": 0}
+    soma = {"tabela": 0, "tabela_lida": 0, "ocr_pendente": 0, "duplicado": 0, "enviados": 0}
+    tabelas_lidas = tabelas_lidas or set()
     listas: dict[str, list[str]] = {"tabela": [], "ocr_pendente": [], "duplicados": []}
     existentes = 0
 
@@ -186,6 +188,9 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
             listas["ocr_pendente"].append(d["doc_id"])
             continue
         if eh_tabela(d["texto"]):
+            if d["sha"] in tabelas_lidas:            # lida por CÓDIGO (ler_tabelas): 100% das linhas, citação literal
+                soma["tabela_lida"] += n
+                continue
             soma["tabela"] += n
             listas["tabela"].append(d["doc_id"])
             continue
@@ -203,13 +208,65 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
         atual.append(d)
         tam += n
     fecha()
-    lido = soma["enviados"] + soma["duplicado"]
+    lido = soma["enviados"] + soma["duplicado"] + soma["tabela_lida"]
     return fatias, {"chars_existentes": existentes, "chars_enviados": soma["enviados"], "chars_tabela": soma["tabela"],
+                    "chars_tabela_lida": soma["tabela_lida"],
                     "chars_ocr_pendente": soma["ocr_pendente"], "chars_duplicado": soma["duplicado"],
                     "docs_tabela": listas["tabela"], "docs_ocr_pendente": listas["ocr_pendente"],
                     "docs_duplicados": listas["duplicados"],
                     "fracao": round(lido / existentes, 4) if existentes else 0.0,
                     "leitura": "sem_texto" if not existentes else ("integral" if lido == existentes else "parcial")}
+
+
+# ── 1b. leitor de tabela por CÓDIGO ───────────────────────────────────────────────────────────────────
+def _arq_tabela(sha: str) -> Path:
+    return E.RAIZ / "data" / "leitura_integral" / "tabelas" / f"{sha}.jsonl.gz"
+
+
+def ler_tabelas(con, pasta: Path) -> dict:
+    """Lê 100% das linhas de cada tabela/planilha do processo (as que a IA não lê — `eh_tabela`): todo número
+    crítico (valor, CNPJ, data, NE/OB/processo/contrato — `sei/ocr_ia_prova.extrair`) com a LINHA inteira como
+    citação (literal por construção). Guarda por sha256 do conteúdo: tabela pública repetida em vários processos
+    (ex.: CMED, 7 M caracteres) é lida uma vez só. Sem custo de API."""
+    import gzip
+    from compliance_agent.sei import ocr_ia_prova as P
+    feitos = tabelas_lidas(con)
+    r = {"tabelas": 0, "novas": 0, "linhas_com_numero": 0}
+    for d in _docs(pasta):
+        if d["ocr"] or not eh_tabela(d["texto"]):
+            continue
+        r["tabelas"] += 1
+        if d["sha"] in feitos:
+            continue
+        linhas = []
+        for k, ln in enumerate(d["texto"].splitlines(), 1):
+            ns = P.extrair(ln)
+            if ns:
+                linhas.append({"linha": k, "citacao": ln.strip()[:500],
+                               "numeros": [{"tipo": x["tipo"], "norma": x["norma"]} for x in ns]})
+        arq = _arq_tabela(d["sha"])
+        arq.parent.mkdir(parents=True, exist_ok=True)
+        with gzip.open(arq, "wt", encoding="utf-8") as f:
+            for x in linhas:
+                f.write(json.dumps(x, ensure_ascii=False) + "\n")
+        with con:
+            con.execute("INSERT INTO tabelas_lidas(sha, processo, doc_id, linhas, linhas_com_numero, em) "
+                        "VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                        (d["sha"], pasta.name, d["doc_id"], len(d["texto"].splitlines()), len(linhas), E._agora()))
+        feitos.add(d["sha"])
+        r["novas"] += 1
+        r["linhas_com_numero"] += len(linhas)
+    return r
+
+
+def tabelas_lidas(con) -> set[str]:
+    return {x[0] for x in con.execute("SELECT sha FROM tabelas_lidas")}
+
+
+def linhas_da_tabela(sha: str) -> list[dict]:
+    import gzip
+    with gzip.open(_arq_tabela(sha), "rt", encoding="utf-8") as f:
+        return [json.loads(x) for x in f]
 
 
 # ── 2. máscara reversível ─────────────────────────────────────────────────────────────────────────────
@@ -314,6 +371,8 @@ CREATE TABLE IF NOT EXISTS fatos(id INTEGER PRIMARY KEY, processo TEXT NOT NULL,
   valor TEXT, descricao TEXT, citacao TEXT, estado TEXT NOT NULL, motivo TEXT, motor TEXT, versao TEXT,
   payload_sha TEXT, em TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_fatos_proc ON fatos(processo, estado);
+CREATE TABLE IF NOT EXISTS tabelas_lidas(sha TEXT PRIMARY KEY, processo TEXT, doc_id TEXT, linhas INTEGER,
+  linhas_com_numero INTEGER, em TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS docs_lidos(sha TEXT NOT NULL, versao TEXT NOT NULL, processo TEXT, doc_id TEXT, lote TEXT,
   em TEXT NOT NULL, PRIMARY KEY(sha, versao));
 """
@@ -382,8 +441,9 @@ def main(argv: list[str] | None = None) -> int:
                 resumo["fora_da_porta"] += 1
                 print(f"fora da porta: {proc} — {motivo}", file=sys.stderr)
                 continue
-            fatias, cob = fatiar(pasta, ja_lidos=lidos)
-            if cob["docs_tabela"]:          # tabela espera o leitor por código: o processo inteiro espera junto
+            ler_tabelas(con, pasta)          # tabela: lida por CÓDIGO antes (sem custo); a IA lê o resto
+            fatias, cob = fatiar(pasta, ja_lidos=lidos, tabelas_lidas=tabelas_lidas(con))
+            if cob["docs_tabela"]:          # tabela que o código não conseguiu ler: o processo inteiro espera junto
                 resumo["fora_da_porta"] += 1
                 print(f"fora da porta: {proc} — tabela aguardando o leitor por código", file=sys.stderr)
                 continue
