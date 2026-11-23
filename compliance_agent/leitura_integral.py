@@ -323,15 +323,17 @@ def _data_na_citacao(valor: str, cit: str) -> bool | None:
     return bool(num or ext)
 
 
-def verificar(fato: dict, textos: dict[str, str]) -> dict:
-    """VERIFICADO só se a citação existe no documento citado e o valor (dígitos, quando tem ≥ 3) está nela."""
+def verificar(fato: dict, textos: dict[str, str], normalizados: dict[str, str] | None = None) -> dict:
+    """VERIFICADO só se a citação existe no documento citado e o valor (dígitos, quando tem ≥ 3) está nela.
+    `normalizados` = textos já com espaços normalizados (23/11: normalizar o documento inteiro A CADA fato deixava a
+    colheita presa em CPU — centenas de fatos × documentos de centenas de KB)."""
     cit, doc = _norm(fato.get("citacao")), str(fato.get("doc_id") or "")
     motivo = ""
     if not cit:
         motivo = "sem citação"
     elif doc not in textos:
         motivo = f"documento {doc!r} não está na fatia"
-    elif cit not in _norm(textos[doc]):
+    elif cit not in (normalizados[doc] if normalizados and doc in normalizados else _norm(textos[doc])):
         motivo = "citação não existe no documento"
     else:
         data = _data_na_citacao(str(fato.get("valor") or ""), cit) if fato.get("tipo") == "data" else None
@@ -350,7 +352,8 @@ def interpretar(resposta: str, textos: dict[str, str]) -> list[dict] | None:
         dados = None
     if not isinstance(dados, dict) or not isinstance(dados.get("fatos"), list):
         return None
-    return [verificar(f, textos) for f in dados["fatos"] if isinstance(f, dict)]
+    normalizados = {k: _norm(v) for k, v in textos.items()}            # uma vez por fatia, não por fato
+    return [verificar(f, textos, normalizados) for f in dados["fatos"] if isinstance(f, dict)]
 
 
 # ── 5. projeção de custo (antes de gastar) ────────────────────────────────────────────────────────────
