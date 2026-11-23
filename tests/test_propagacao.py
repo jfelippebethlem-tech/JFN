@@ -213,6 +213,33 @@ def test_um_pesado_por_ciclo_e_carga_alta_adia(con):
     assert feitos == [] and "carga" in con.execute("SELECT adiado FROM derivado WHERE id='b'").fetchone()[0]
 
 
+def test_pesado_respeita_o_semaforo_unico_da_vm1(con, tmp_path):
+    """23/11/2026: 5 pesados ao mesmo tempo com swap 100% — o despachante e os crons pesados (`tools/pesado.sh`)
+    passam a dividir UMA trava (`locks/pesado_vm1.lock`): ocupada por um cron, o derivado pesado espera; o leve não.
+    Enquanto roda, o derivado pesado segura a trava (um cron pesado que chegar espera)."""
+    import fcntl
+    cfg = _cfg(a=_der(["f"], peso="pesado"), c=_der(["f"]))
+    P.emitir(con, cfg, "f", "mudou")
+    (tmp_path / "locks").mkdir(exist_ok=True)
+    cron = open(tmp_path / "locks" / "pesado_vm1.lock", "w")
+    fcntl.flock(cron, fcntl.LOCK_EX | fcntl.LOCK_NB)                  # um cron pesado está rodando
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["c"]
+    assert "semáforo" in con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0]
+    fcntl.flock(cron, fcntl.LOCK_UN)
+    cron.close()
+
+    def rodar(did, d):
+        if did == "a":                                                  # durante o pesado, a trava está tomada
+            with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:
+                with pytest.raises(BlockingIOError):
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True, None
+    assert [x["id"] for x in P.despachar(con, cfg, carga=lambda: (0.0,), executar=rodar)] == ["a"]
+    with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:     # e foi solta no fim
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
 def test_derivado_espera_o_de_que_depende_quando_esse_esta_pronto(con):
     cfg = _cfg(x=_der(["f"], peso="pesado", prioridade=0), a=_der(["f"], peso="pesado", prioridade=1), b=_der(["f", "a"]))
     P.emitir(con, cfg, "f", "mudou")

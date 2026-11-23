@@ -580,12 +580,26 @@ def _carga_efetiva(c) -> float:
     return max(c[0], c[1]) if len(c) > 1 else c[0]
 
 
+def _semaforo_pesado():
+    """Semáforo ÚNICO de trabalho pesado da VM-1, dividido com os crons pesados (`tools/pesado.sh`) — 23/11/2026:
+    5 pesados ao mesmo tempo com swap 100% (o "um pesado por ciclo" não via os crons). Devolve o arquivo com a
+    trava tomada (o chamador solta) ou None se outro pesado a segura."""
+    (DATA / "locks").mkdir(exist_ok=True)
+    fh = open(DATA / "locks" / "pesado_vm1.lock", "w")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fh.close()
+        return None
+    return fh
+
+
 def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None) -> list[dict]:
     """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo."""
     t0, feitos, pesado_feito = time.time(), [], False
     ders = cfg["derivados"]
     while time.time() - t0 < ORCAMENTO_CICLO_S:
-        sujos, agora, escolhido = _sujos(con, ders), time.time(), None
+        sujos, agora, escolhido, semaforo = _sujos(con, ders), time.time(), None, None
         ordem = sorted((i for i in sujos if i in ders), key=lambda i: (ders[i].get("prioridade", 5), sujos[i]["primeiro"]))
         def relogio(did: str) -> str | None:
             """Motivo PRÓPRIO do derivado para ainda não rodar (janela de junção, recuo, intervalo) — ou None."""
@@ -626,6 +640,8 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             elif (c := _carga_efetiva(carga())) > (
                     teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL[peso]):
                 motivo = f"carga {c:.1f} acima do teto {teto:.0f}"
+            elif peso == "pesado" and (semaforo := _semaforo_pesado()) is None:
+                motivo = "semáforo de pesado da VM-1 ocupado (cron pesado rodando)"
             con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
             if motivo is None:
                 escolhido = did
@@ -642,6 +658,10 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             ok, erro = rodar(did, d)
         except (OSError, subprocess.SubprocessError, ValueError, KeyError) as exc:
             ok, erro = False, f"{type(exc).__name__}: {exc}"[:300]
+        finally:
+            if semaforo is not None:
+                fcntl.flock(semaforo, fcntl.LOCK_UN)
+                semaforo.close()
         fim = time.time()
         pesado_feito = pesado_feito or d.get("peso") == "pesado"
         if ok:
