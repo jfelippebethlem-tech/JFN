@@ -167,3 +167,50 @@ def test_manifesto_gravado_sob_a_trava_e_ocupado_volta_depois(tmp_path, monkeypa
     assert G.integrar()["preenchidos"] == 1
     man = json.loads((arq / "manifest.json").read_text())
     assert man["capturado_em"] == "2026-11-20 19:00" and man["docs"][0]["ocr_motor"].startswith("surya")
+
+
+def test_entrega_descartada_e_registrada_para_a_fila_nao_reapresentar_para_sempre(tmp_path, monkeypatch):
+    """22/11/2026: a entrega vazia (< 40 chars) ou com acento cortado era apagada SEM registro; o trabalhador já a tinha
+    em feitos.txt e nunca relê — a fila reapresentava os mesmos 95 documentos a cada rodada. Com leitura conferida
+    (nenhum erro de inferência), o descarte é registrado; sem ela, segue sem registro (teste da entrega vazia, 18/11)."""
+    import tools.sei_ocr_gpu_fila as F
+    monkeypatch.setattr(G, "ARQUIVO", tmp_path / "sei_arquivo")
+    monkeypatch.setattr(G, "CACHE", tmp_path / "sei_cache")
+    monkeypatch.setattr(G, "LEDGER", tmp_path / "ledger.jsonl")
+    monkeypatch.setattr(F, "ARQUIVO", tmp_path / "sei_arquivo")
+    docs = [{"i": 1, "titulo": "Foto", "fase": "x", "tipo": "relatorio_fotografico", "texto": "", "chars": 0},
+            {"i": 2, "titulo": "NF", "fase": "x", "tipo": "nota_fiscal", "texto": "texto/002_nf.txt", "chars": 60,
+             "ocr": True}]
+    arq, cache = _monta(tmp_path, docs, {"002_nf.txt": "[NF] (fase: x · tipo: nota_fiscal)\n\ntexto do tesseract ok"},
+                        {1: "[página 1]\n  ", 2: "NOTA FISCAL ELETR�NICA valor R$ 1.234,56 prestador"})
+    for i in (1, 2):                                                            # trabalhador novo: leitura conferida
+        (cache / f"{i:03d}.ocr_gpu.json").write_text(json.dumps({"motor": "surya-ocr-2.5", "leitura_conferida": True}))
+    G.integrar()
+    assert not list(cache.glob("*.ocr_gpu.*"))                                  # entrega descartada continua apagada
+    assert "tesseract" in (arq / "texto" / "002_nf.txt").read_text()            # texto existente intocado
+    reg = [json.loads(ln) for ln in (tmp_path / "ledger.jsonl").read_text().splitlines()]
+    assert {(r["i"], r["acao"]) for r in reg} == {(1, "descartado_sem_texto"), (2, "descartado_corrompido")}
+    aplicados = {(r["tag"], int(r["i"])) for r in reg if r.get("motor", "surya") != "reserva"}
+    frio = {"integra_111_222_2024/001.pdf", "integra_111_222_2024/002.pdf"}
+    assert F.montar(frio, aplicados) == []                                      # a fila não os reapresenta
+
+
+def test_trabalhador_devolve_a_fila_pagina_com_erro_de_inferencia_engolido_pelo_surya(tmp_path):
+    """22/11/2026: o Surya engole o erro do vLLM e devolve bloco error=True sem html; o PDF saía 'feito' e vazio."""
+    import importlib.util
+    import types
+    from pathlib import Path
+    import fitz
+    spec = importlib.util.spec_from_file_location(
+        "ocr_gpu_worker_t", Path(__file__).resolve().parent.parent / "deploy/itcampo/ocr_gpu/ocr_gpu_worker.py")
+    W = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(W)
+    W.BASE, W.SINAL = tmp_path, tmp_path / "SESSAO_ATIVA"
+    doc = fitz.open()
+    doc.new_page().insert_text((40, 60), "Anexo")                   # curta: vai ao OCR
+    doc.save(tmp_path / "a.pdf")
+
+    def rec(imgs):
+        return [types.SimpleNamespace(blocks=[types.SimpleNamespace(html="", error=True, reading_order=0)])]
+    res, ruins, refazer = W.ler_lote([("x/a.pdf", tmp_path / "a.pdf")], rec, em_voo=1)
+    assert res == {} and refazer == ["x/a.pdf"] and ruins == []

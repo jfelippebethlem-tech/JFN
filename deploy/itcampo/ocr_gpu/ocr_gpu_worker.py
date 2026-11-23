@@ -138,7 +138,14 @@ def ler_lote(pdfs, rec, em_voo: int = EM_VOO):
             if rel in falhou:
                 continue
             try:
-                res[rel]["textos"][i] = _texto(rec([img])[0])
+                pagina = rec([img])[0]
+                # 22/11/2026: o Surya ENGOLE o erro de inferência (vLLM fora, reinício) e devolve o bloco com
+                # error=True e html vazio — o PDF saía "feito" com páginas vazias, o integrador descartava a entrega e
+                # a fila o reapresentava para sempre (95 documentos; relidos, 38 de 40 tinham texto). Bloco com erro
+                # e sem texto = falha da chamada: o PDF volta à fila como qualquer outra falha.
+                if any(getattr(b, "error", False) and not getattr(b, "html", "") for b in pagina.blocks):
+                    raise RuntimeError("bloco com erro de inferência (Surya devolveu vazio)")
+                res[rel]["textos"][i] = _texto(pagina)
             except (OSError, ValueError, RuntimeError) as e:    # falha da chamada: o PDF volta à fila
                 falhou.add(rel)
                 log(ev="pagina_falhou", pdf=rel, pagina=i + 1, erro=f"{type(e).__name__}: {str(e)[:200]}")
@@ -241,6 +248,7 @@ def main() -> int:
                 {"motor": "surya-ocr-2.5 (vLLM, RTX 5070, it-campo)", "paginas": r["paginas"],
                  "paginas_pdf": r["paginas_pdf"], "cortado": r["paginas_pdf"] > r["paginas"],
                  "paginas_nativas": [i + 1 for i in r["nativas"]], "chars": len(texto),
+                 "leitura_conferida": True,      # nenhuma página com erro de inferência: vazio aqui é vazio de fato
                  "em": time.strftime("%F %T")}, ensure_ascii=False))
             pags_lote += r["paginas"]
             nativas_lote += len(r["nativas"])

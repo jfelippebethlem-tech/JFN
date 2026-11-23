@@ -138,9 +138,15 @@ def integrar() -> dict:
                     da_pasta.append({**reg, "acao": "nativo_mantido"})
                     continue
                 if "\ufffd" in texto or len(texto) < MIN_CHARS:  # acento cortado (U+FFFD) ou motor sem texto: não entra
-                    parcial["corrompidos"] += int("\ufffd" in texto)   # apaga a entrega e NÃO registra: a releitura pode chegar
+                    parcial["corrompidos"] += int("\ufffd" in texto)
                     g.unlink(missing_ok=True)
                     gmeta.unlink(missing_ok=True)
+                    # Não registra (a releitura pode chegar) — SALVO leitura conferida pelo trabalhador (22/11/2026:
+                    # sem erro de inferência em nenhuma página): aí o vazio é do documento e, sem registro, a fila o
+                    # reapresentaria para sempre ao trabalhador, que já o tem em feitos.txt. O texto atual fica.
+                    if meta.get("leitura_conferida"):
+                        da_pasta.append({**reg, "acao": "descartado_corrompido" if "\ufffd" in texto
+                                         else "descartado_sem_texto"})
                     continue
                 if atual >= posto:                          # já tem texto de motor igual ou mais forte (Surya > reserva)
                     parcial["mantidos"] += 1
