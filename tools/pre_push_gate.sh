@@ -28,7 +28,11 @@ if [ -z "${JFN_GATE_GRUPO:-}" ]; then
   export JFN_GATE_GRUPO=1 JFN_GATE_GIT=$PPID
   exec setsid -w bash "$0" "$@"
 fi
-( while kill -0 "$JFN_GATE_GIT" 2>/dev/null; do sleep 5; done; kill -TERM -- -$$ 2>/dev/null ) &
+# 23/11/2026 08h40: o vigia herdava a saída do portão — o `rtk git push` esperava o fim dessa saída, o vigia esperava
+# o git morrer: 5 h em deadlock com os testes já aprovados (153 ok às 03:20). Agora sem herdar a saída e morto no fim.
+( while kill -0 "$JFN_GATE_GIT" 2>/dev/null; do sleep 5; done; kill -TERM -- -$$ 2>/dev/null ) >/dev/null 2>&1 </dev/null &
+VIGIA=$!
+trap 'kill "$VIGIA" 2>/dev/null' EXIT
 exec 9>/tmp/jfn-pre-push.lock
 if ! flock -n 9; then
   echo "[pre-push] outro push está no portão — esperando a vez (até 30 min) para não somar pytest na VM…"
