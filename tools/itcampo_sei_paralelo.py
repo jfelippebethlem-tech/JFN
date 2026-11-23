@@ -251,7 +251,17 @@ def saude_sei(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_
     return ok, login
 
 
-def _saude_local() -> tuple[int, int]:
+def recuperou(registros: list[dict], agora: float, janela_s: int = JANELA_SAUDE_S) -> bool:
+    """O desfecho mais recente (ok ou login) na janela é `ok`? Então a captura já se recuperou do episódio."""
+    ultimo = None
+    for r in sorted((r for r in registros if agora - _ts(r.get("ts", "")) <= janela_s), key=lambda r: r.get("ts", "")):
+        for p in (r.get("procs") or {}).values():
+            if p.get("status") in ("ok", "login"):
+                ultimo = p["status"]
+    return ultimo == "ok"
+
+
+def _rodadas_locais() -> list[dict]:
     regs = []
     try:
         with RODADAS.open(encoding="utf-8") as f:
@@ -262,7 +272,11 @@ def _saude_local() -> tuple[int, int]:
                     continue
     except OSError:
         pass
-    return saude_sei(regs, time.time())
+    return regs
+
+
+def _saude_local() -> tuple[int, int]:
+    return saude_sei(_rodadas_locais(), time.time())
 
 
 def acelerador(disp_gb: float | None, carga1: float, ncpu: int, n: int, v: int,
@@ -723,15 +737,18 @@ def lancar(k: int, n: int, modo: str = "integras") -> None:
 LOGIN_MIN_AMOSTRA = 6       # logins falhos na janela antes de o freio poder agir
 
 
-def freio_de_login(saude: tuple[int, int], n: int, ultimo: float, agora: float) -> tuple[int, float]:
+def freio_de_login(saude: tuple[int, int], n: int, ultimo: float, agora: float,
+                   recuperou: bool = False) -> tuple[int, float]:
     """(n, instante do último freio). Login falho em MAIORIA na janela de saúde → sai UMA sessão de íntegras.
 
     Medido em 18/11/2026 (`itcampo_rodadas.jsonl`): com 2 sessões, 0–10% de erro de método; com N=6 e N=9, 100% — 17h e
     18h sem nenhum ok, cada processo gastando ~3 min em 25 tentativas de login —; de volta a 5/4 sessões, o ok voltou.
     É o nosso método: sessões demais com a MESMA credencial. O acelerador já não sobe com login falho; isto desce.
-    Uma descida por janela inteira: as falhas de antes da descida continuam na janela e não podem descer de novo."""
+    Uma descida por janela inteira: as falhas de antes da descida continuam na janela e não podem descer de novo.
+    22/11/2026: o login voltou às 20:43 e o freio desceu às 20:46 pelas falhas ainda na janela — com o desfecho mais
+    recente `ok` (`recuperou`), não desce."""
     ok, login = saude
-    if (n <= N_MIN or login < LOGIN_MIN_AMOSTRA or login < ok or agora - ultimo < JANELA_SAUDE_S):
+    if (recuperou or n <= N_MIN or login < LOGIN_MIN_AMOSTRA or login < ok or agora - ultimo < JANELA_SAUDE_S):
         return n, ultimo
     return n - 1, agora
 
@@ -751,7 +768,8 @@ def rodar() -> int:
             CFG_N.write_text(f"{n2}\n")
             CFG_V.write_text(f"{v2}\n")
             n = n2
-        elif (nl := freio_de_login(_saude_local(), n, ultimo_freio_login, time.time()))[0] != n:
+        elif (nl := freio_de_login(saude_sei(regs := _rodadas_locais(), time.time()), n, ultimo_freio_login,
+                                   time.time(), recuperou=recuperou(regs, time.time())))[0] != n:
             painel(f"LOGIN: maioria dos logins falhando na última meia hora — sessões {n} → {nl[0]} "
                    "(sessões demais com a mesma credencial)")
             CFG_N.write_text(f"{nl[0]}\n")

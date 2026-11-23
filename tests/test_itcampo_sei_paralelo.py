@@ -239,3 +239,21 @@ def test_freio_de_login_tira_sessao_quando_o_login_falha_em_massa():
     # a janela ainda guarda as falhas de antes da descida: esperar uma janela inteira antes de descer de novo
     assert P.freio_de_login((0, 12), 5, agora, agora + 60) == (5, agora)
     assert P.freio_de_login((0, 12), 5, agora, agora + P.JANELA_SAUDE_S) == (4, agora + P.JANELA_SAUDE_S)
+
+
+def test_freio_de_login_nao_desce_quando_a_captura_ja_se_recuperou():
+    """22/11/2026 (`itcampo_rodadas.jsonl`): episódio de login falho 20:03–20:43 em TODAS as sessões ao mesmo tempo.
+    Às 20:43 os logins voltaram (n=5); às 20:46 o freio desceu 5 → 4 contando as falhas que ainda estavam na janela de
+    30 min — a captura já estava saudável. O desfecho MAIS RECENTE manda: se é `ok`, não desce."""
+    agora = P._ts("2026-11-22 20:46:09")
+    def reg(ts, *st):
+        return {"ts": ts, "no": "itcampo", "procs": {f"1/1/{ts[-5:]}{i}": {"status": s} for i, s in enumerate(st)}}
+    regs = [reg("2026-11-22 20:31:17", "login", "login", "login"),
+            reg("2026-11-22 20:44:31", "login", "login", "ok"),
+            reg("2026-11-22 20:45:32", "login", "ok", "ok")]
+    assert P.recuperou(regs, agora) is True
+    assert P.freio_de_login((3, 9), 5, 0.0, agora, recuperou=True) == (5, 0.0)
+    assert P.freio_de_login((3, 9), 5, 0.0, agora, recuperou=False) == (4, agora)
+    # 20:16: só falha nos registros recentes → não recuperou
+    assert P.recuperou([reg("2026-11-22 20:15:23", "login", "login", "sem_arvore")], P._ts("2026-11-22 20:16:06")) is False
+    assert P.recuperou([], agora) is False
