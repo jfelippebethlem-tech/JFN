@@ -1,20 +1,151 @@
 ---
 tipo: plano
 projeto: JFN
-atualizado: 2026-11-23
+atualizado: 2026-11-23 (versão aprovada pelo dono, 04h20)
 frente: 1123-0334-jfn-core-1d82
 fontes: [~/Plano_Diretor_de_Otimizacao_e_Arquitetura_Estado_da_Arte_-_Sweep_SEI.pdf (Gemini), ~/Plano_Diretor_Arquitetura_Sweep_SEI_Reescrita_Total.pdf (ChatGPT)]
 ---
 
-# Plano de Reescrita — Plataforma de Evidências do Sweep SEI
+# Plano — JFN como Plataforma de Evidências (sessão de 23/11/2026)
 
-> **Decisão do dono (23/11/2026):** "se for pra reescrever o sistema, vamos à luta" · "acho que deveria ler tudo
-> mesmo" (resumo por IA pode omitir, inventar ou falsear). Este documento avalia os dois planos externos contra o
-> código e os dados **medidos** em 23/11 e fixa o desenho executivo.
+## 1. Contexto
+
+**Pedido do dono.** Ele enviou dois planos externos:
+- Gemini: `~/Plano_Diretor_de_Otimizacao_e_Arquitetura_Estado_da_Arte_-_Sweep_SEI.pdf`;
+- ChatGPT: `~/Plano_Diretor_Arquitetura_Sweep_SEI_Reescrita_Total.pdf`.
+
+E pediu, nas palavras dele ou em resumo fiel:
+- seguir o espírito dos planos; reescrever se valer ("vamos à luta");
+- **ler 100% do texto**, sem resumo de IA como substituto;
+- automelhoria que vigia e acusa;
+- HD externo organizado e indexado;
+- usar VM-1, VM-2 e it-campo do melhor jeito, **com tudo funcionando sem o it-campo**;
+- menos erro, menos token, mais qualidade, velocidade e confiabilidade, pensando no longo prazo.
+
+**Decisões do dono nesta sessão:**
+- Failover: **VM-3 grátis como testemunha**, se a cota oficial permitir; senão, o it-campo.
+- Leitura integral: **mistura de API com teto, por prioridade, e assinatura.**
+
+### Achados medidos (base do desenho)
+
+| Achado | Número |
+|---|---|
+| Texto do acervo que a perícia integral alcança | **17,3%**; 8.321 de 10.730 processos cortados pelo teto de 240k caracteres, 12k por peça |
+| Recaptura sem documento novo | **25%** do tempo de captura, 798 casos em 7 dias |
+| Fila do Opus em 7 dias | entraram 5.433, saíram 267; 5.751 pendentes |
+| Concordância do Opus com os motores baratos | **28%** (108 de 379) |
+| Reaproveitamento do cache do Opus pela assinatura | 7% |
+| Disco | VM-1 89%; **VM-2 96%** (112 GB de frio) |
+| Carga | VM-1 com load 8–12 e swap cheio; **VM-2 com load 1,6** |
+| Estado do ciclo | 3 bancos SQLite, cerca de 25 JSON/JSONL soltos, 2 árvores de PDF, 4 grafias do mesmo processo |
+| Leituras do processo pela IA | 4 a 6 por processo, nenhuma completa |
+| Documentos com número SEI no título | 99,2% de 518.756 |
+| GPU do it-campo | RTX 5070 com **8 GB** |
+
+### Pesquisa externa (fontes oficiais, 23/11)
+- **Temporal:** pede cerca de 7 núcleos e 13 GB. No it-campo, faria tudo parar quando o notebook fecha. **Fora.**
+- **Fila:** fila sobre PostgreSQL com `SKIP LOCKED`.
+- **Failover automático:** exige 3 nós.
+- **Recall da IA:** cai a partir de cerca de 32k tokens (NoLiMa, Context Rot). Por isso, fatias de 8 a 16k tokens.
+- **Custo:** Batch da Anthropic custa 50% menos, e o cache de prompt soma a esse desconto. Haiku 5.5 custa US$ 0,10 por milhão de tokens de entrada; **reconferir na página oficial antes de ligar.**
+- **Preços do Gemini:** dobram em 01/12/2026 e em 01/01/2027.
+
+## 2. Já entregue nesta sessão
+
+Commits locais; o push sai pelo portão.
+- `f21bc7a0`, `6f43c82e`: a depuração do frio passa pelo semáforo e pela carga.
+- `ee290fa6`: sensor `plataforma` na automelhoria (5 vigílias) e `docs/PLANO-PLATAFORMA-EVIDENCIAS.md`.
+- `dacaa738`: `llm_trace` passa a gravar a tarefa.
+- `e39607ce`: o laudo declara a cobertura real.
+- `b9215330`: guarda de convergência da recaptura, lida do log (29 processos).
+- `03b485e9`: semáforo único de pesado (`tools/pesado.sh` e despachante); 7 linhas de crontab embrulhadas. Backup em `~/.config/jfn/backups/crontab-20261123-0353.txt`.
+- `db65bce7`: estado da Fase 0.
+- **Não commitado:** `compliance_agent/evidencias.py` e `tests/test_evidencias.py` (8 testes verdes). A carga de teste foi adiada pelo semáforo, com load 11.
+- **Em curso** (só copia e confere): VM-2 → `D:\JFN-Frio\sei\{pdfs_escaneados,integras_cache}` via rclone pela VM-1, em `~/JFN/data/hd_migracao/`. A primeira tentativa, pelo WSL, deu ENOMEM e deixou sobras em `D:\JFN-Frio\sei_pdfs` e em `sei_cache`.
+- RTK mantido (economia medida de 82,5%), com `ps` nas exceções.
+
+## 3. Arquitetura-alvo
+
+**Regra:** cada função tem um dono e uma volta. Nada essencial depende do it-campo.
+
+| Papel | Dono | Volta |
+|---|---|---|
+| Estado canônico em PostgreSQL 16 (identidade, filas, fatos, leituras, laudos v2) | **VM-2** | Fases 1–5: WAL contínuo para nuvem grátis e restauração testada toda semana na VM-1. Fase 6: réplica viva na VM-1 já aliviada, com a VM-3 grátis de testemunha (`pg_auto_failover`) e o it-campo de reserva |
+| Painel, API, Yoda e `compliance.db` legado | VM-1 | — |
+| Captura SEI | it-campo (N sessões) e VM-2 (1 sessão) | só a VM-2; a VM-1 em último caso (regra atual) |
+| Conferência e arquivamento das entregas | **VM-2** (sai da VM-1) | VM-1 |
+| OCR | GPU do it-campo, por job com prazo | a reserva em CPU da VM-2 assume quando o prazo vence, o que fecha a janela INDETERMINADA de 105 min |
+| Leitura por IA em volume | Batch da Anthropic chamado da VM-2, com teto no console; e a assinatura | cascata atual |
+| Juízo de risco | Opus pela assinatura | a fila espera; o item nunca vira VERIFICADO sem ele |
+| PDF original | quente na VM-2 **até o OCR terminar**; depois morno no HD (`D:\JFN-Frio`, indexado); frio no Drive pela porta única | o PDF pendente de OCR nunca sai da VM-2 |
+| Texto do acervo | VM-1 (painel e Yoda), com cópia única para a VM-2 conferida por md5 | — |
+
+**Núcleo de dados:**
+- **`processos`:** uma chave canônica `NNNNNN/NNNNNN/AAAA` e uma única função de normalização, que acaba com as 4 grafias.
+- **`arvores`:** hash de cada captura.
+- **`documentos`:** identificador `sei:<nº>` ou `pos:<i>`; número repetido vira `#2` e nunca some.
+- **`versoes`:** sha256; nada é sobrescrito.
+- **`paginas`:** perfil de cada página (nativa, escaneada ou branca).
+- **`artefatos`:** texto por página × motor@versão, com bbox e limite de disco.
+- **`fatos`:** valor, trecho literal, documento, página, posição, motor e verificação.
+- **`leituras`:** cobertura por processo × estágio.
+- **`jobs`:** reserva atômica (`UPDATE … WHERE id=(SELECT … FOR UPDATE SKIP LOCKED) RETURNING`), prazo pelo relógio do servidor, ficha de posse, teto de tentativas e estado de quarentena.
+- **`eventos`:** registro de eventos.
+- **Regra de migração:** uma única direção de verdade por tabela, com data de corte. O legado vira leitura derivada e **nunca há escrita nos dois lados.**
+
+**Leitura integral comprovada:**
+1. O código monta o índice do processo.
+2. O texto é cortado em fatias de 8 a 16k tokens, sem quebrar documento quando couber.
+3. O código **mascara CPF e conta bancária** antes de enviar, com mapa reversível que fica local. Peça sigilosa não sai.
+4. A IA extrai fatos com citação literal: Haiku em lote, com o prefixo fixo em cache.
+5. O código confere cada citação. **Fato sem citação conferida fica INDISPONÍVEL.**
+6. O fato fica guardado pela chave `(sha do documento, versão do prompt, modelo)`; documento inalterado não é relido.
+7. Perícia, Lex e ficha consomem esses fatos e releem o trecho original quando precisam.
+8. A cobertura é gravada; abaixo de 100%, a leitura é "parcial".
+9. O hash de cada payload enviado à API fica registrado.
+
+**Ordem de leitura, conforme a decisão do dono:** por valor pago e risco. A API trabalha até o teto que o dono fixar. A assinatura cobre o que entra novo e o juízo.
+
+## 4. Fases
+
+A ordem foi revista para entregar cedo o ganho principal e validar custo e qualidade antes da infraestrutura.
+
+| # | Fase | Entregas | Critério de saída |
+|---|---|---|---|
+| 0 | **Fechar a segurança operacional** | Ler `check_*.txt` da migração. Gerar `D:\JFN-Frio\_indice\indice.jsonl` e `00-LEIAME.md`; registrar no índice único e no jfn-brain. Apagar da VM-2 só o que foi conferido, mantendo os PDFs pendentes de OCR. Limpar as sobras no HD. Fazer o push. `MemoryHigh` no `jfn.service`. Tokens de OpenRouter, Nous e Groq no trace. md5 em `colher_vm2.sh` e no frio. Commit de `evidencias.py` com a correção da reserva | VM-2 abaixo de 70% de disco; nenhum fluxo sem md5; o sensor deixa de acusar `disco_vm2` |
+| 1 | **Piloto da leitura integral** | Fatiador, máscara de CPF e conta, verificador de citação e cliente Batch sobre os arquivos que já existem. Fatos no SQLite do `evidencias.py`. **50 processos**, já conferidos pelo Opus, mais 30 com fatos anotados à mão (ouro de extração) | Tokens e custo reais medidos e projetados para o acervo; recall ≥ Opus no ouro; 0 citação inexistente aceita; o dono fixa o teto |
+| 2 | **Fila do Opus por risco** | Entrada por divergência, valor, detector grave e baixa confiança, mais amostra estratificada. Os 5.751 pendentes são triados e o restante recebe "NÃO JULGADO — fila", visível no painel. Laudos antigos marcados com a cobertura real | A saída da fila alcança a entrada; o painel não mostra item não julgado como limpo |
+| 3 | **Fundação** | PostgreSQL na VM-2 (tuning para 2 vCPU e 11 GB). WAL-G ou pgBackRest para nuvem grátis, com restauração semanal automática na VM-1. Esquema; `evidencias.py` portado, com testes de concorrência no PostgreSQL. Cópia do texto para a VM-2 com md5. Carga dos 12,6 mil manifestos. Conferir a cota grátis oficial e abrir a VM-3 se houver | Carga bate 100% com os manifestos; restauração testada; worker derrubado sem perda nem efeito em dobro; disco da VM-2 abaixo de 60% |
+| 4 | **Captura por delta** | Jobs de captura com reserva. O worker baixa só documento novo ou retificado. Entrega e conferência na VM-2 | Modo sombra por 7 dias: zero documento novo perdido; recaptura igual abaixo de 5%; processos novos por hora em alta |
+| 5 | **Documento e OCR** | Perfil por página, incluindo página em branco. Jobs por página com prazo (GPU ou reserva). bbox gravada; conferência por recorte; SIAFE como nível A. Ouro de OCR com cerca de 200 páginas | Não inferior ao atual no ouro; 0 valor inventado em campo crítico; OCR anda com o it-campo desligado |
+| 6 | **Leitura integral plena e migração** | Batch por prioridade, até o teto. Perícia, Lex, ficha e 360 consomem fatos. Legado desligado módulo a módulo. Réplica viva na VM-1, testemunha na VM-3 | Cobertura de 100% nos processos lidos; VM-1 com load abaixo de 3 sustentado; failover testado |
+
+**Sensores novos na automelhoria**, com aviso pelo Yoda só quando o dono pedir: custo por dia e por processo, idade do job mais velho por fila, jobs em quarentena, atraso do WAL, resultado do último teste de restauração e cobertura de leitura.
+
+## 5. Arquivos críticos
+- `compliance_agent/evidencias.py`: núcleo. Corrigir `reservar`, que hoje faz SELECT e depois UPDATE (linhas ~116–127).
+- `compliance_agent/pericia_integral.py`: teto em `:59-60`, cobertura em `_texto_por_valor`.
+- `compliance_agent/llm/claude_api.py`: cache em `:409`; o cliente Batch fica ao lado.
+- `compliance_agent/llm/conferencia_opus.py`: regra de entrada da fila.
+- `compliance_agent/sei/classificador_doc.py`: `ordenar_para_leitura`.
+- `compliance_agent/sei/acervo_texto.py`: `ler`.
+- `tools/sei_integra_vm2.py`, `tools/vm2_conferencia.py`, `tools/itcampo_sei_paralelo.py`: captura e entrega.
+- `tools/sei_ocr_gpu_fila.py`, `tools/sei_ocr_reserva.py`, `deploy/itcampo/ocr_gpu/ocr_gpu_worker.py`: OCR.
+- `tools/colher_vm2.sh`, `tools/sei_arquivo_frio.sh`: md5.
+- `tools/automelhoria_geral.py`: sensores.
+- `compliance_agent/armazenamento.py` e `config/armazenamento_nuvens.json`: o HD como lugar.
+- `docs/PLANO-PLATAFORMA-EVIDENCIAS.md`: plano versionado, a manter igual a este.
+
+## 6. Verificação
+- **Testes:** em lotes, na VM-2 (`tools/testar_na_vm2.sh`). Nunca pytest amplo na VM-1.
+- **Controle positivo e negativo nos dados reais** antes de qualquer troca. Modo sombra antes de desligar o legado.
+- **Antes e depois sempre no mesmo universo:** cobertura de leitura, recaptura igual, processos novos por hora, load da VM-1, fila do Opus (entrada × saída), custo por processo, acurácia no ouro.
+- **API paga:** teto no console da Anthropic e estimativa de requisições × preço antes de ligar qualquer lote.
+- **Fechamento de cada etapa:** reescrever `~/vault/RETOMADA.md`; fato durável no jfn-brain; memória quando valer; quadro `1123-0334-jfn-core-1d82` atualizado; commit semântico e push.
 
 ---
 
-## 1. Veredito sobre os dois planos
+## Anexo A — Veredito item a item sobre os dois planos externos
 
 | Proposta | Plano | Medido no sistema (23/11) | Decisão |
 |---|---|---|---|
@@ -37,96 +168,3 @@ fontes: [~/Plano_Diretor_de_Otimizacao_e_Arquitetura_Estado_da_Arte_-_Sweep_SEI.
 **GPU do it-campo:** RTX 5070 **8 GB** de VRAM (o Gemini supôs 12 GB) — muda o tamanho de VLM viável.
 
 ---
-
-## 2. Princípios (não negociáveis)
-
-1. **Ler 100% do texto, e provar.** Nenhum estágio de IA trabalha sobre resumo feito por IA. Cobertura
-   (caracteres lidos ÷ caracteres do processo) é gravada por processo; < 100% ⇒ "leitura parcial", nunca conclusão.
-2. **Índice ≠ resumo.** O índice do processo é extraído **por código** (tipo, página, valores, CNPJ, datas, com
-   posição literal). É mapa e verificador, nunca substituto.
-3. **Toda afirmação da IA cita trecho literal**, e o código confere que o trecho existe no texto (doc, página,
-   posição). Citação que não bate é descartada e registrada.
-4. **Proveniência por campo:** motor, versão, página, caixa (bbox), confiança. "Valor encontrado no SIAFE" e
-   "valor lido no documento" são fatos diferentes.
-5. **Nada substitui o legado sem paridade:** modo sombra nos mesmos processos, comparação com o ouro, e só então
-   troca. Desligar legado = decisão registrada.
-6. **Idempotência antes de paralelismo:** chave única por trabalho; reserva com prazo e ficha de posse (fencing).
-7. Invariantes da casa seguem: OB do SIAFE = pago; INDISPONÍVEL ≠ 0; indício ≠ acusação; só RJ; nuvem só grátis.
-
----
-
-## 3. Leitura integral comprovada (substitui o "IR resumido")
-
-```
-texto completo do processo (nativo + OCR, por página)
-   │
-   ├─► ÍNDICE (código): docs, páginas, tipo, fase, valores/CNPJ/datas/NE/OB com posição  ── determinístico
-   │
-   ├─► FATIAS (≤ teto prático, sem cortar documento ao meio quando couber; 100% dos caracteres)
-   │      └─► IA por fatia: fatos + citação literal  ──► verificador de citação (código)
-   │
-   ├─► JUNÇÃO: fatos verificados + índice + SIAFE ──► perícia / Lex / ficha (releem o trecho original quando precisam)
-   │
-   └─► COBERTURA gravada: chars lidos / chars totais; fatias com erro ⇒ reprocessa ou marca parcial
-```
-
-- Hoje há cortes: perícia 240k chars (12k/doc), ficha 60k (8k/peça), Lex 12k. **Medido 23/11 em 10.730
-  processos arquivados:** a perícia integral não alcança o texto inteiro em **8.321 (77,5%)**; lê no máximo
-  **17,3%** dos 7,19 bi de caracteres do acervo; nos cortados, cobertura mediana 52,6% (p10 14,6%); 19,4% das peças
-  passam de 12k e são cortadas por dentro (corte NÃO declarado no laudo; só os docs fora do teto global são).
-  Os detectores por código leem tudo. A nova leitura **remove todos os cortes** e substitui por fatiamento.
-- **Imediato (antes da Fase 4):** gravar em cada laudo existente a cobertura real (chars lidos ÷ total) e tirar do
-  estado VERIFICADO o laudo com cobertura baixa até ser relido.
-- Economia vem de **não reler**: fatos por documento ficam guardados pela chave
-  `sha256(conteúdo) + versão do prompt + modelo`; documento inalterado não é relido em captura nova.
-- Despacho de rotina **é lido** (pode ir a modelo mais barato); não é podado.
-
----
-
-## 4. Arquitetura-alvo (dimensionada às máquinas reais)
-
-| Camada | Escolha | Por que não a dos planos |
-|---|---|---|
-| Estado canônico | `data/evidencias.db` (SQLite WAL) atrás de uma camada de acesso única com SQL portável | PostgreSQL somaria ~0,5–1 GB numa VM com swap cheio; a camada permite migrar depois sem tocar consumidores |
-| Fila / workflow | tabela `jobs` com `idempotency_key` UNIQUE, `lease_ate`, `fencing` crescente, estados e tentativas classificadas; despachante existente (`propagacao.py`) | Temporal/NATS exigem servidores próprios; o ganho deles (retomada, idempotência) cabe numa tabela |
-| Originais | endereçados por `sha256`; morno no **HD externo do it-campo** (ao lado da GPU); frio no Drive pela porta única | MinIO duplicaria a porta única de armazenamento |
-| Trabalhadores | captura e GPU no it-campo; CPU (Tesseract, RapidOCR, compactação, depuração, testes) na VM-2; VM-1 só banco, painel, coordenação | — |
-
-**Esquema mínimo** (Fase 1): `processos`, `arvores` (tree_hash por captura), `documentos` (processo, id_documento
-SEI), `versoes` (sha256 do original), `paginas` (perfil: nativa/escaneada/branca), `artefatos` (texto por página ×
-motor × versão, bbox), `fatos` (valor normalizado, trecho literal, doc, página, bbox, motor, estado de verificação),
-`leituras` (cobertura por processo e estágio), `jobs`, `eventos`.
-
-Chaves:
-```
-documento   = (sistema, processo, id_documento_sei)
-versao      = sha256(bytes do original)
-arvore      = sha256(json canônico ordenado das entradas da árvore)
-job_captura = sha256(processo + arvore + versao_da_politica)
-artefato    = sha256(documento + versao + tipo + motor@versão)
-```
-
----
-
-## 5. Fases, critérios de saída e estado
-
-| Fase | Entregas | Critério de saída (medido) | Estado |
-|---|---|---|---|
-| **0. Segurança operacional** | (a) HD externo como morno: frio da VM-2 → `D:` com hash conferido, VM-2 < 80%; (b) `vm_guard` pausa captura/import com disco ≥ 85% (VM-1/VM-2); (c) crons pesados passam pela trava de carga/despachante; `MemoryHigh` no `jfn.service`; (d) `llm_trace` grava tarefa e tokens de todos os provedores (linha de base); (e) guarda de convergência: mesma árvore + mesmo motivo 2× ⇒ para e vai ao reparo | Load sem 2 pesados simultâneos por 24 h; disco VM-1/VM-2 < 80%; recaptura igual < 5% do tempo de captura; tokens por estágio visíveis | (a) em curso: cópia VM-2 → `D:\JFN-Frio` (23/11 03h46); (b) **não** no `preflight` (impacto CRÍTICO: 26 chamadores, pararia a captura da VM-2) → vigiado pelo sensor `plataforma`; (c) semáforo único `03b485e9`/`6f43c82e` (falta `MemoryHigh` no `jfn.service`); (d) `dacaa738` (falta tokens de openrouter/nous/groq); (e) `b9215330` (29 processos convergentes); vigília `ee290fa6`; cobertura no laudo `e39607ce` |
-| **1. Fundação** | `evidencias.db` + camada de acesso; backfill dos 12.604 `manifest.json`; jobs com lease/fencing | Backfill bate 100% com os manifestos; teste de queda de worker sem perda nem efeito em dobro | — |
-| **2. Captura por delta** | `tree_hash`; nó recebe a lista `(id_documento, sha)` já guardada; baixa só novo/retificado; versão antiga preservada | Replay 16–23/11 + A/B ao vivo: zero documento novo perdido; processos novos/h ↑ | — |
-| **3. Documento e OCR** | perfil por página (incl. branca); bbox gravada; conferência por recorte; SIAFE como nível A; **ouro de ~200 páginas** estratificado com dupla conferência | Não inferior ao atual no ouro; inventado = 0 em campo crítico; tempo por campo medido | — |
-| **4. Leitura integral** | índice determinístico; fatiamento 100%; verificador de citação; cache de fatos por sha; prefixo fixo antes do variável | Modo sombra em ≥ 50 processos já conferidos pelo Opus: recall de achados ≥ legado, cobertura 100%, 0 citação inexistente aceita | — |
-| **5. Fila do Opus por risco** | entra por divergência, valor alto, detector grave, baixa confiança em campo crítico, **amostra estratificada** de controle; recall medido pela amostra | Vazão da fila ≥ entrada; recall da amostra registrado por mês | — |
-| **6. Migração** | perícia, Lex, ficha e 360 consomem a plataforma; legado desligado módulo a módulo | Paridade + decisão registrada por módulo | — |
-
----
-
-## 6. Riscos
-
-| Risco | Mitigação |
-|---|---|
-| Leitura integral aumenta tokens | cache de fatos por sha (não reler), prefixo fixo, rotina em modelo barato; medir custo por processo na Fase 0 antes de ligar |
-| HD externo desplugado | presença conferida antes de ler/gravar; ausência ⇒ "INDISPONÍVEL", nunca "não existe"; Drive mantém a cópia |
-| Reescrita parada no meio | cada fase entrega valor sozinha e não quebra o legado |
-| SQLite como gargalo de escrita | um escritor (coordenador); workers devolvem lotes; camada de acesso permite PostgreSQL depois |
