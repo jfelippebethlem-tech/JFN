@@ -428,8 +428,10 @@ def aptos_por_valor(con) -> list[str]:
           if p.parent.name.replace("_", "/") not in ja and portao(p.parent)[0]]
     val: dict[str, float] = {}
     try:
+        from compliance_agent.cruzamentos_intel import _ob_paga
         db = sqlite3.connect(f"file:{E.RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=60)
-        for proc, v in db.execute("SELECT processo, SUM(valor) FROM ob_orcamentaria_siafe GROUP BY processo"):
+        for proc, v in db.execute(f"SELECT processo, SUM(valor) FROM ob_orcamentaria_siafe WHERE {_ob_paga(db)} "
+                                  "GROUP BY processo"):          # regra CNF-02: só OB paga, até para ordenar
             k = chave_processo(proc or "")
             if k:
                 val[k] = val.get(k, 0.0) + (v or 0.0)
