@@ -134,6 +134,14 @@ A ordem foi revista para entregar cedo o ganho principal e validar custo e quali
 | 6 | — | depois de 3–5 |
 | — | Fase 3 dependia do disco da VM-2 (após a migração). **VM-3 grátis NÃO cabe** (doc oficial Oracle Always Free, conferida 23/11: A1 = 2 OCPU/12 GB por conta, já usado por cada VM; 2 Micro AMD grátis por conta, mas o disco grátis é 200 GB por conta somando boot — as VMs atuais já usam ~191–194 GB) ⇒ testemunha = **it-campo** (escolha de reserva do dono). Alternativa só do dono: 3ª conta grátis (termos da Oracle não conferidos) |
 
+**Atualização 23/11 13h20:** lotes 3 e 4 pela API (221 processos de OB, ~110 mil fatos verificados; custo real 1,3–1,5×
+o projetado → `FATOR_REAL` 1,5); **balde extracao_sei fechado** (US$ 35,15/35). Braço da **assinatura** no cron
+(`35 */2`, governador de ritmo decide; processo só vira lido inteiro). Leitor de **tabela por código** (231 tabelas,
+3,6 mi linhas). Porta por processo inteiro aceita OCR confirmado: **36 processos 100% confirmados** já. Restritos
+(478 dos 500 de maior valor, R$ 18,77 bi) = permissão do itkava no SIP — dono trata com o SEI. Próximos: conferência
+das páginas `a_conferir` (23 docs) por leitura de OUTRA família de motor (RapidOCR na VM-2 para doc de Tesseract;
+Tesseract para doc de Surya) ou Opus; Fase 6 (perícia/Lex consomem fatos).
+
 **Medidas do acervo que orientam a leitura integral:** processo mediano 146 mil caracteres; 10% maiores = 71% do
 texto; os 119 maiores documentos (460 M caracteres) são planilhas (lidas por código); 72,7% do texto é nativo e
 27,1% veio de OCR (espera confirmação por página); 8.834 de 12.707 processos têm captura declarada completa.
