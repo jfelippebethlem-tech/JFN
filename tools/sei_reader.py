@@ -60,11 +60,16 @@ async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
     return False
 
 
+_ULTIMO_ERRO_GOTO = ""        # erro da última navegação falha (o `login` o devolve como motivo)
+
+
 async def _goto_retry(pg, url, n=8):
+    global _ULTIMO_ERRO_GOTO
     for _ in range(n):
         try:
             r = await pg.goto(url, wait_until="domcontentloaded", timeout=20000); return r.status if r else None
-        except PWError:
+        except PWError as exc:
+            _ULTIMO_ERRO_GOTO = " ".join(str(exc).split())[:200]
             await pg.wait_for_timeout(2500)
     return None
 
@@ -278,13 +283,20 @@ async def login(pg, tentativas=40, orgao: str | None = None) -> bool:
     """Loga no SEI interno (itkava) vencendo o flap do WAF. Retorna True se autenticou.
 
     `orgao` escolhe a unidade da sessão (sigla ou parte do nome). Sem ele, ITERJ —
-    comportamento histórico dos 18 chamadores existentes."""
+    comportamento histórico dos 18 chamadores existentes.
+
+    Falhando, o motivo da ÚLTIMA tentativa fica em `ULTIMA_FALHA_LOGIN` (22/11/2026: 42 logins falhos no it-campo sem
+    uma linha de causa — rede, formulário ou SEI recusando não se distinguiam)."""
+    global ULTIMA_FALHA_LOGIN
+    ULTIMA_FALHA_LOGIN = ""
     for _ in range(tentativas):
         if not await _goto_retry(pg, URL, 3):
+            ULTIMA_FALHA_LOGIN = f"navegação ao login falhou: {_ULTIMO_ERRO_GOTO or 'sem resposta'}"
             continue
         form = await pg.evaluate(r"""()=>{const q=s=>document.querySelector(s);const o=q('#selOrgao')||q('select');
           return {user:!!q('input[name="txtUsuario"]'),pwd:!!q('#pwdSenha'),opts:o?[...o.options].map(x=>({v:x.value,t:(x.text||'').trim()})):[]};}""")
         if not form["user"] or not form["pwd"]:
+            ULTIMA_FALHA_LOGIN = f"formulário de login ausente: {await _descrever_pagina(pg)}"
             await pg.wait_for_timeout(2000); continue
         await pg.fill('input[name="txtUsuario"]', U)
         try: await pg.fill('#pwdSenha', P)
@@ -297,8 +309,12 @@ async def login(pg, tentativas=40, orgao: str | None = None) -> bool:
         await _ate(pg, lambda: _sair_do_login(pg), 6000)
         if "login.php" not in pg.url:
             return True
+        ULTIMA_FALHA_LOGIN = f"continuou no login depois de enviar: {await _descrever_pagina(pg)}"
         await pg.wait_for_timeout(1500)
     return False
+
+
+ULTIMA_FALHA_LOGIN = ""
 
 
 async def abrir_pesquisa(pg) -> bool:

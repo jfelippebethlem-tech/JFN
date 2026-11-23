@@ -572,7 +572,7 @@ async def main():
         ctx.on("request", lambda rq: n_req.__setitem__(0, n_req[0] + ("sei.rj.gov.br" in rq.url)))
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
-            if not await SR.entrar(pg, fixo=fixo, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
+            if not await SR.entrar(pg, fixo=fixo, tentativas=25): print(f"LOGIN FALHOU — {SR.ULTIMA_FALHA_LOGIN or 'sem motivo registrado'}", flush=True); return RC_LOGIN_FALHOU
             print("login OK", flush=True)
             etapas["login_s"] = round(_tm.monotonic() - t_lock, 1)
             etapas["navegador_fixo"] = bool(fixo)
