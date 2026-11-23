@@ -74,6 +74,7 @@ BALDE_DA_TAREFA = {
     "triagem_alertas": "triagem_alertas",
     "normalizacao_itens": "normalizacao_itens",
     "extracao_sei": "extracao_sei",
+    "leitura_integral": "extracao_sei",   # 23/11/2026: extração de fatos do SEI com citação (plano aprovado)
     "pericia_execucao": "revisao_cetica", "pericia_fornecedor": "revisao_cetica",
     "parecer_juridico": "revisao_cetica", "camada_subjetiva": "revisao_cetica",
     "investigacao_risco": "revisao_cetica", "revisao_cetica": "revisao_cetica",
