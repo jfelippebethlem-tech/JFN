@@ -290,3 +290,31 @@ def test_releitura_precalculada_nao_volta_depois_de_recapturada(monkeypatch, tmp
     (tmp_path / "pre.json").write_text(json.dumps({"ts": ts_pre, "geral": [],
                                                    "reler": ["SEI-500000/000001/2025", "SEI-500000/000002/2025"]}))
     assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-500000/000002/2025"]
+
+
+def _conf(ts, proc, st, arvore=18, teor=2):
+    if st == "APROVADO":
+        return f"[{ts}] CONFERÊNCIA {proc}: APROVADO [ok] {{\"docs\": {arvore}, \"arvore\": {arvore}}} motivos=[]"
+    return (f"[{ts}] CONFERÊNCIA {proc}: QUARENTENA [ok] {{\"docs\": {arvore}, \"arvore\": {arvore}, \"com_teor\": {teor}, "
+            f"\"juizo_claude\": {{\"legivel\": true}}}} motivos=['só {teor}/{arvore} documentos com teor (< 60%)']")
+
+
+def test_recaptura_convergente_mesma_arvore_mesmo_motivo_sai_por_7_dias(monkeypatch, tmp_path):
+    """23/11/2026 (plano de reescrita, Fase 0e): a guarda antiga lia pastas da quarentena que o frio leva à VM-2 após
+    6 h. O log é permanente: mesma árvore + mesma categoria de motivo nas 2 últimas reprovações, sem aprovação
+    depois, = recapturar não muda nada; fica fora 7 dias e vai ao reparo."""
+    _isolar(monkeypatch, tmp_path)
+    agora = time.strftime("%Y-%m-%d %H:%M:%S")
+    velho = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - 9 * 86400))
+    linhas = [_conf(agora, "100000/000001/2025", "QUARENTENA", 18, 2),
+              _conf(agora, "100000/000001/2025", "QUARENTENA", 18, 3),      # números do motivo variam: mesma categoria
+              _conf(agora, "100000/000002/2025", "QUARENTENA", 18),
+              _conf(agora, "100000/000002/2025", "QUARENTENA", 25),          # árvore cresceu: recapturar vale
+              _conf(agora, "100000/000003/2025", "QUARENTENA"),
+              _conf(agora, "100000/000003/2025", "QUARENTENA"),
+              _conf(agora, "100000/000003/2025", "APROVADO"),                # aprovado depois: livre
+              _conf(velho, "100000/000004/2025", "QUARENTENA"),
+              _conf(velho, "100000/000004/2025", "QUARENTENA"),              # fora da janela de 7 dias
+              _conf(agora, "100000/000005/2025", "QUARENTENA")]              # uma só reprovação
+    (tmp_path / "data" / "vm2_conferencia.log").write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    assert V._recaptura_convergente() == {"100000/000001/2025"}

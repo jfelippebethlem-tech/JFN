@@ -181,10 +181,51 @@ def _quarentena_repetida(horas: float = 24, limite: int = QUARENTENA_MAX) -> set
     return {proc for proc, k in n.items() if k >= limite}
 
 
+CONVERGENCIA_DIAS = 7
+_RX_CONF = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] CONFERÊNCIA (\d{6}/\d{6}/\d{4}): (APROVADO|QUARENTENA)\b(.*)$")
+
+
+def _recaptura_convergente(dias: float = CONVERGENCIA_DIAS, cauda_bytes: int = 16_000_000) -> set[str]:
+    """Recaptura que não muda nada (plano de reescrita, Fase 0e — 23/11/2026).
+
+    Medido: 25% do tempo de captura do it-campo (16–23/11) era recaptura com a mesma árvore. A guarda acima conta
+    pastas de `data/vm2_quarentena`, que o `sei_arquivo_frio.sh` leva à VM-2 depois de 6 h — a janela de 24 h vira
+    ~6 h quando o frio anda. Esta lê o LOG da conferência (permanente): as 2 últimas conferências do processo são
+    QUARENTENA com a MESMA árvore e a MESMA categoria de motivo (números trocados por #) e nenhuma aprovação depois
+    ⇒ fora da exportação por `dias` a contar da última. Árvore que cresce libera na hora (há documento novo). Não
+    aprova nada: a quarentena segue para revisão/reparo."""
+    log = RAIZ / "data" / "vm2_conferencia.log"
+    try:
+        with log.open("rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - cauda_bytes))
+            linhas = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return set()
+    ultimos: dict[str, list[tuple[str, str, str, str]]] = {}
+    for ln in linhas:
+        m = _RX_CONF.match(ln)
+        if not m:
+            continue
+        ts, proc, st, resto = m.groups()
+        arv = re.search(r'"arvore": (\d+)', resto)
+        mot = resto.split("motivos=", 1)[1] if "motivos=" in resto else ""
+        ultimos.setdefault(proc, []).append((ts, st, arv.group(1) if arv else "", re.sub(r"\d+", "#", mot)))
+    corte = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - dias * 86400))
+    out = set()
+    for proc, ev in ultimos.items():
+        if len(ev) < 2:
+            continue
+        (_, s1, a1, m1), (t2, s2, a2, m2) = ev[-2], ev[-1]
+        if s1 == s2 == "QUARENTENA" and a1 and a1 == a2 and m1 == m2 and t2 >= corte:
+            out.add(proc)
+    return out
+
+
 def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | None = None) -> list[dict]:
     """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral.
     `excluir` = processos reservados por OUTRO nó (nenhum processo é capturado por dois nós ao mesmo tempo)."""
-    excluir = set(excluir or set()) | _restritos_confirmados() | _quarentena_repetida()
+    excluir = set(excluir or set()) | _restritos_confirmados() | _quarentena_repetida() | _recaptura_convergente()
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
     pre = _pre()
