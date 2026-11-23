@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Integração da plataforma de evidências com o PostgreSQL (docs/PLANO-PLATAFORMA-EVIDENCIAS.md, Fase 3).
 
-Roda SÓ com `JFN_EVIDENCIAS_DSN=postgresql://...` no ambiente (banco de TESTE: as tabelas são esvaziadas).
+Roda SÓ com `JFN_EVIDENCIAS_DSN=postgresql://...` no ambiente, SEMPRE num ESQUEMA TEMPORÁRIO criado e apagado aqui —
+23/11/2026: a versão anterior fazia `TRUNCATE jobs` nas tabelas REAIS do banco de produção (família do incidente do
+Polimonitor: teste contra o banco de verdade).
 Critério de saída da Fase 3: worker derrubado sem perda nem efeito em dobro — reserva concorrente real (threads com
 conexões próprias) e prazo vencido pelo relógio do servidor."""
 import os
@@ -17,16 +19,32 @@ pytestmark = pytest.mark.skipif(not DSN.startswith(("postgresql://", "postgres:/
                                 reason="sem JFN_EVIDENCIAS_DSN (PostgreSQL de teste)")
 
 
+@pytest.fixture(scope="module")
+def dsn_teste():
+    import uuid
+
+    import psycopg
+    nome = f"tmp_evid_pg_{uuid.uuid4().hex[:10]}"
+    with psycopg.connect(DSN, autocommit=True) as c:
+        c.execute(f"CREATE SCHEMA {nome}")
+    try:
+        yield DSN + ("&" if "?" in DSN else "?") + f"options=-csearch_path%3D{nome}"
+    finally:
+        with psycopg.connect(DSN, autocommit=True) as c:
+            c.execute(f"DROP SCHEMA {nome} CASCADE")
+
+
 @pytest.fixture()
-def con():
-    c = E.conectar(DSN)
+def con(dsn_teste):
+    c = E.conectar(dsn_teste)
     with c:
-        c.execute("TRUNCATE jobs RESTART IDENTITY")
+        c.execute("TRUNCATE jobs RESTART IDENTITY")                     # só no esquema temporário
     yield c
     c.close()
 
 
-def test_conectar_sem_argumento_usa_o_dsn_do_ambiente():
+def test_conectar_sem_argumento_usa_o_dsn_do_ambiente(dsn_teste, monkeypatch):
+    monkeypatch.setenv(E.ENV_DSN, dsn_teste)
     c = E.conectar()
     try:
         assert E._e_pg(c)
@@ -43,7 +61,7 @@ def test_fila_basica_no_pg(con):
     assert E.reservar(con, "ocr", dono="c", prazo_s=60) is None
 
 
-def test_reserva_concorrente_50_jobs_nenhum_entregue_duas_vezes(con):
+def test_reserva_concorrente_50_jobs_nenhum_entregue_duas_vezes(con, dsn_teste):
     for k in range(50):
         E.enfileirar(con, "x", f"k{k}")
     vistos: list[str] = []
@@ -51,7 +69,7 @@ def test_reserva_concorrente_50_jobs_nenhum_entregue_duas_vezes(con):
     erros: list[BaseException] = []
 
     def worker(nome: str) -> None:
-        c = E.conectar(DSN)                                                    # conexão própria por thread
+        c = E.conectar(dsn_teste)                                              # conexão própria por thread
         try:
             while True:
                 j = E.reservar(c, "x", dono=nome, prazo_s=300)
