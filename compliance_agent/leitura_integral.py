@@ -354,12 +354,18 @@ def interpretar(resposta: str, textos: dict[str, str]) -> list[dict] | None:
 
 
 # ── 5. projeção de custo (antes de gastar) ────────────────────────────────────────────────────────────
+# real ÷ projetado MEDIDO (23/11/2026): li-2 1,18; lote 3 1,50 (US$ 7,37 × 4,91 em 4.239 fatias). A estimativa de
+# tokens de entrada (2,5 chars/token) fica abaixo do tokenizador real em português; o fator mantém a projeção honesta.
+FATOR_REAL = 1.5
+
+
 def projetar(fatias: list[dict], saida_tokens: int = 1500) -> dict:
     from compliance_agent.llm import claude_api as C
     tok = sum(C._tokens_aprox(f["texto"]) for f in fatias)
     usd = sum(C.estimativa(C.MODELO_BARATO, C._tokens_aprox(f["texto"]), saida_tokens, lote=True) for f in fatias)
     sem = sum(C.estimativa(C.MODELO_BARATO, C._tokens_aprox(f["texto"]), saida_tokens, lote=False) for f in fatias)
-    return {"fatias": len(fatias), "tokens_entrada": tok, "usd": round(usd, 6), "usd_sem_lote": round(sem, 6)}
+    return {"fatias": len(fatias), "tokens_entrada": tok, "usd": round(usd * FATOR_REAL, 6),
+            "usd_sem_lote": round(sem * FATOR_REAL, 6)}
 
 
 # ── persistência (data/evidencias.db) ─────────────────────────────────────────────────────────────────
