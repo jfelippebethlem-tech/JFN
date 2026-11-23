@@ -271,3 +271,22 @@ def test_exportar_simultaneo_de_dois_nos_nao_reserva_o_mesmo_processo(monkeypatc
         t.join()
     a, b = ({e["sei"] for e in out[no]} for no in ("itcampo5", "itcampo6"))
     assert a and b and not (a & b)
+
+
+def test_releitura_precalculada_nao_volta_depois_de_recapturada(monkeypatch, tmp_path):
+    """23/11/2026 (it-campo, s1): `140001/039864/2025` e `030001/005404/2026` foram capturados ok a cada volta (00:37,
+    00:44, 00:48 …). Estavam na lista `reler` PRÉ-CALCULADA às 00:25 (vale 26 h) — e quem está em `reler` pula o
+    filtro de já arquivado. Arquivo regravado DEPOIS do pré-cálculo já leu as OB que o pré-cálculo conhecia: sai."""
+    _isolar(monkeypatch, tmp_path)
+    monkeypatch.setattr(V, "PRE", tmp_path / "pre.json")
+    monkeypatch.setattr(F, "_fila_geral", lambda: [])
+    monkeypatch.setattr(F, "_fila_inscrita", lambda: [])
+    for tag in ("500000_000001_2025", "500000_000002_2025"):
+        _arquivo_bom(F.ARQUIVO / tag)
+    ts_pre = time.time() - 3600
+    velho = ts_pre - 86400                                      # 500000/000002: arquivo ANTERIOR ao pré-cálculo
+    for f in (F.ARQUIVO / "500000_000002_2025" / "texto").glob("*.txt"):
+        os.utime(f, (velho, velho))
+    (tmp_path / "pre.json").write_text(json.dumps({"ts": ts_pre, "geral": [],
+                                                   "reler": ["SEI-500000/000001/2025", "SEI-500000/000002/2025"]}))
+    assert [e["sei"] for e in V.montar_fila(10)] == ["SEI-500000/000002/2025"]

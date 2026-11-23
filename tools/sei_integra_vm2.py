@@ -87,6 +87,22 @@ def _pre() -> dict | None:
         return None
 
 
+def _reler_vigente(reler: list[str], ts_pre: float) -> list[str]:
+    """A releitura PRÉ-CALCULADA só vale enquanto o arquivo for anterior ao pré-cálculo. Regravado depois, ele já leu
+    as OB que o pré-cálculo conhecia — continuar na lista (que pula o filtro de já arquivado) era recapturar o mesmo
+    processo a cada volta por até 26 h (23/11/2026, it-campo s1). Mesma medida de `_fila_reler_por_ob`: o texto."""
+    out = []
+    for sei in reler:
+        txt = F.ARQUIVO / (F._proc_limpo(sei) or "?").replace("/", "_") / "texto"
+        try:
+            mtime = max(f.stat().st_mtime for f in txt.glob("*.txt"))
+        except ValueError:
+            mtime = 0.0
+        if mtime <= ts_pre:
+            out.append(sei)
+    return out
+
+
 RETENTAR_RESTRITO_DIAS = 30
 
 
@@ -172,7 +188,7 @@ def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS, excluir: set[str] | 
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
     pre = _pre()
-    reler = pre["reler"] if pre else F._fila_reler_por_ob()
+    reler = _reler_vigente(pre["reler"], float(pre.get("ts") or 0)) if pre else F._fila_reler_por_ob()
     geral_cdp = pre["geral"] if pre else [c["sei"] for c in F._fila_geral()]
     geral = list(dict.fromkeys(F._fila_inscrita() + geral_cdp + reler))
     execucao = F._fila_execucao()       # recaptura prioritária (18/11/2026): relê mesmo o já arquivado
