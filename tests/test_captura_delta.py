@@ -94,7 +94,8 @@ def test_encaixe_desligado_e_sombra(tmp_path):
     (tmp_path / "TAG").mkdir()
     (tmp_path / "TAG" / "manifest.json").write_text(json.dumps(_manifesto(ARV)), encoding="utf-8")
     onde = {"pasta_exportados": tmp_path / "vazio", "arquivo": tmp_path}
-    assert D.encaixe("TAG", ARV, env={}, **onde) == (set(), None)                       # desligado
+    assert D.encaixe("TAG", ARV, env={"JFN_CAPTURA_DELTA": "off"}, **onde) == (set(), None)   # desligado
+    assert D.modo({}) == "sombra"                                                          # padrão: sombra
     assert D.encaixe("TAG", ARV, env={"JFN_CAPTURA_DELTA": "0"}, **onde) == (set(), None)
     assert D.encaixe("OUTRO", ARV, env={"JFN_CAPTURA_DELTA": "1"}, **onde) == (set(), None)   # sem guardados
     pular, reg = D.encaixe("TAG", ARV, env={"JFN_CAPTURA_DELTA": "sombra"}, **onde)

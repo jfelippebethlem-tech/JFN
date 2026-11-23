@@ -694,10 +694,14 @@ async def main():
                       "captura NÃO marcada completa", flush=True)
 
             lotes_res: dict = {}              # resumo do "Gerar PDF" em lotes (vazio = desligado/não rodou)
-            # CAPTURA POR DELTA (Fase 4, modo sombra): só com JFN_CAPTURA_DELTA=1|sombra E guardados do processo.
-            # Sem a variável: pular vazio e delta_reg None — captura idêntica à de antes.
+            # CAPTURA POR DELTA (Fase 4): sombra é o PADRÃO desde 23/11/2026 (só registra o plano); `=1` filtra; `=0`
+            # desliga. Sem guardados do processo: pular vazio e delta_reg None — captura idêntica à de antes.
+            # Falha do plano NUNCA derruba a captura: vira registro de erro e a captura segue completa.
             from compliance_agent.captura_delta import encaixe as _delta
-            delta_pular, delta_reg = _delta(TAG, docs)
+            try:
+                delta_pular, delta_reg = _delta(TAG, docs)
+            except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as e_delta:
+                delta_pular, delta_reg = set(), {"modo": "erro", "erro": f"{type(e_delta).__name__}: {e_delta}"[:200]}
 
             def _grava(man: list, completo: bool) -> None:
                 tmp = outdir / "manifest.json.tmp"   # atômico: morte no meio não corrompe

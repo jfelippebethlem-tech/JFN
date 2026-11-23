@@ -133,9 +133,11 @@ def carregar_guardados(dados: str | dict) -> dict[str, dict]:
 
 # ── ponto de encaixe (tools/sei_integra_completa.py) ─────────────────────────────────────────────────────────────────
 def modo(env=None) -> str:
-    """"" (desligado), "filtrar" (`JFN_CAPTURA_DELTA=1`) ou "sombra" (`JFN_CAPTURA_DELTA=sombra`)."""
-    v = str((os.environ if env is None else env).get("JFN_CAPTURA_DELTA", "")).strip().lower()
-    return "filtrar" if v == "1" else "sombra" if v == "sombra" else ""
+    """"filtrar" (`JFN_CAPTURA_DELTA=1`), desligado (`=0`/`off`) ou "sombra" — o PADRÃO desde 23/11/2026 (plano de
+    reescrita, Fase 4: 7 dias de sombra em todos os nós). A sombra só registra o plano no manifesto da captura; baixa
+    tudo como antes e o `sei_arquivar` só usa o registro no modo "filtrar"."""
+    v = str((os.environ if env is None else env).get("JFN_CAPTURA_DELTA", "sombra")).strip().lower()
+    return "filtrar" if v in ("1", "filtrar") else "" if v in ("0", "off", "desligado", "") else "sombra"
 
 
 def guardados_do_processo(tag: str, pasta_exportados: Path | str = GUARDADOS_DIR,
