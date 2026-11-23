@@ -126,3 +126,21 @@ def test_gerar_pdf_lotes_sem_pular_pede_o_mesmo(tmp_path):
     assert sorted(set(sem)) == [0, 1, 2]
     assert roda(pular=frozenset()) == sem
     assert 1 not in roda(pular={1}, prazo=None)
+
+
+def test_no_grava_os_guardados_que_vieram_na_fila_e_o_encaixe_os_le(tmp_path, monkeypatch):
+    """Fase 4: a fila exportada leva os guardados; o nó grava data/sei_guardados/<tag>.json; o encaixe acha."""
+    import json as _json
+    import tools.sei_integra_fila as F
+    from compliance_agent import captura_delta as D
+    monkeypatch.setattr(F, "RAIZ", tmp_path)
+    g = {"tag": "100001_000001_2025", "processo": "100001/000001/2025", "hash": "h",
+         "docs": [["sei:11111111", "Contrato (11111111)", 500, ""]]}
+    fila = [{"sei": "SEI-100001/000001/2025", "guardados": g}, {"sei": "SEI-100001/000002/2025"},
+            {"sei": "x", "guardados": {"tag": "../../etc"}}]                      # tag inválida não vira arquivo
+    assert F._gravar_guardados(fila) == 1
+    arq = tmp_path / "data" / "sei_guardados" / "100001_000001_2025.json"
+    assert _json.loads(arq.read_text())["docs"][0][0] == "sei:11111111"
+    lidos = D.guardados_do_processo("100001_000001_2025", pasta_exportados=tmp_path / "data" / "sei_guardados",
+                                    arquivo=tmp_path / "nada")
+    assert lidos == {"sei:11111111": {"titulo": "Contrato (11111111)", "chars": 500, "id_documento": ""}}

@@ -307,6 +307,12 @@ def _exportar(max_n: int, no: str, validade_h: float | None, k_bombeiros: int) -
     if no == "vm2":
         excluir |= _timeouts_seguidos_vm2()
     fila = montar_fila(max_n, k_bombeiros=k_bombeiros, excluir=excluir)
+    # Fase 4 (23/11/2026): o nó não tem o arquivo da VM-1 — leva os guardados do processo junto (captura por delta)
+    from compliance_agent.captura_delta import exportar_guardados
+    for e in fila:
+        tag = F._proc_limpo(e["sei"]).replace("/", "_")
+        if (F.ARQUIVO / tag / "manifest.json").is_file():
+            e["guardados"] = exportar_guardados(tag, F.ARQUIVO)
     reg = {"ts": time.time(), "host": no, "procs": [F._proc_limpo(e["sei"]) for e in fila]}
     if validade_h:
         reg["validade_h"] = validade_h

@@ -681,6 +681,22 @@ def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
     return feitos
 
 
+def _gravar_guardados(fila: list[dict]) -> int:
+    """Captura por delta (plano de reescrita, Fase 4 — 23/11/2026): o nó (it-campo/VM-2) não tem o arquivo da VM-1;
+    os guardados de cada processo vêm na fila exportada e viram `data/sei_guardados/<tag>.json` neste clone, que é
+    onde `compliance_agent.captura_delta` os procura. Sem `JFN_CAPTURA_DELTA` no ambiente, nada muda na captura."""
+    pasta = RAIZ / "data" / "sei_guardados"
+    n = 0
+    for e in fila:
+        g = e.get("guardados") if isinstance(e, dict) else None
+        if not (isinstance(g, dict) and re.fullmatch(r"\d{6}_\d{6}_\d{4}", str(g.get("tag") or ""))):
+            continue
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / f"{g['tag']}.json").write_text(json.dumps(g, ensure_ascii=False), encoding="utf-8")
+        n += 1
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=int(os.environ.get("INTEGRA_FILA_MAX", "2")))
@@ -728,6 +744,7 @@ def main() -> int:
         fila = json.loads(fila_path.read_text(encoding="utf-8"))
         fila.sort(key=lambda e: -(e.get("score") or 0))
         candidatos = [e.get("sei", "") for e in fila]
+        _gravar_guardados(fila)
 
     vazios = [0]
 
