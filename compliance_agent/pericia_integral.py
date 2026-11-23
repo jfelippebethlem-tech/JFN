@@ -219,7 +219,7 @@ def _con_fatos():
     `FATOS_DB` aponta para outro arquivo (caminho explícito é sempre SQLite, como em `evidencias.conectar`); senão o
     SQLite só-leitura. O SQL dos leitores serve aos dois (`_Pg` troca `?` por `%s`)."""
     from compliance_agent import evidencias as E
-    dsn = os.environ.get(E.ENV_DSN, "")
+    dsn = E.dsn_vigente()
     if dsn.startswith(("postgresql://", "postgres://")) and FATOS_DB == _FATOS_DB_PADRAO:
         return E._Pg(dsn)
     return sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
