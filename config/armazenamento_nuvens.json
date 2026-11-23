@@ -11,8 +11,8 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "terabox"],
-  "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)"},
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "drime", "terabox"],
+  "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)", "proton": "Proton Drive 5 GB ligado como `proton:` via WebDAV do OpenList (o backend nativo do rclone recebe redirect para HTTP e recusa). Conteúdo volta íntegro (sha256), mas o tamanho listado vem 168 bytes maior (cifrado) → a conferência por tamanho reprova; fica fora até a conferência aceitar isso (coordenador, 22/11/2026)"},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
@@ -147,6 +147,12 @@
       "medir": "about", "margem_gb": 0.5, "apagar_libera": false, "preferencia_download": 8, "limites": {},
       "_restricoes": "10 GiB (rclone about). Conta jfbethlem@proton.me; rclone precisa de e-mail, senha e api_key (exportada pela Filen CLI em ~/.local/share/filen-cli). Cifra de ponta a ponta no cliente: subida LENTA na VM-1 (0,3 MB/s com load 8). O apagado vai para a lixeira e continua ocupando a cota até `rclone cleanup filen:` (apagar_libera: false). Hash na listagem: blake3 (não md5).",
       "fontes": ["coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 0,3 MB/s subida, 1,1 MB/s descida; about = 10 GiB)"]
+    },
+    "drime": {
+      "tipo": "drime", "raiz": "drime:JFN", "frio": "drime:JFN/frio", "indice": "drime:JFN/indice",
+      "medir": "about", "margem_gb": 1.0, "preferencia_download": 7, "limites": {},
+      "_restricoes": "20 GiB grátis sem cartão (drime.cloud/pricing). Conta jfelippebethlem@gmail.com; token de API 'jfn-rclone' (Settings > Developers). hard_delete=true no rclone.conf. Sem hash na listagem → conferência por download. Limites de tráfego não publicados.",
+      "fontes": ["https://drime.cloud/pricing ('20 GB free forever, no credit card required') e https://rclone.org/drime/ — lidos 22/11/2026", "coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 1,2 MB/s subida, 2,3 MB/s descida; about = 20 GiB)"]
     }
   },
   "enchimento": {
