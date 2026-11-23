@@ -432,7 +432,8 @@ def test_entrada_leva_os_fatos_verificados_da_leitura_integral_e_declara(tmp_pat
     p = _pasta(PI.ACERVO, "100001_000001_2025", [("Parecer Jurídico", TXT_PARECER)])
     e = PI.montar_entrada(p, avaliar=_avaliar, coletar=_sem_evidencia)
     assert "FATOS VERIFICADOS" in e["documentos"] and e["documentos"].count("entrega parcial do item 3") == 1
-    assert e["documentos"].index("ressalva") < e["documentos"].index("02/01/2025")      # ressalva antes de data
+    lista = e["documentos"][e["documentos"].index("FATOS VERIFICADOS DA LEITURA"):]      # lista por tipo (após a linha do tempo)
+    assert lista.index("ressalva") < lista.index("02/01/2025")                          # ressalva antes de data
     assert "R$ 999,00" not in e["documentos"]                                          # recusado não entra
     assert e["cobertura"]["fatos_verificados"] == 2 and e["cobertura"]["leitura_integral"] == "integral"
 
@@ -458,3 +459,23 @@ def test_fila_refaz_e_prioriza_quem_ganhou_leitura_integral_depois_da_pericia(tm
     refazer = PI._refazer_por_leitura(con)
     con.close()
     assert refazer == {PI._dig("100001/000007/2025")}          # leitura depois da perícia; o outro, antes
+
+
+def test_linha_do_tempo_do_processo_inteiro_vem_em_ordem_cronologica(tmp_path, monkeypatch):
+    import sqlite3 as _sq
+    db = tmp_path / "ev.db"
+    c = _sq.connect(db)
+    c.executescript("CREATE TABLE fatos(id INTEGER PRIMARY KEY, processo TEXT, doc_id TEXT, tipo TEXT, valor TEXT, "
+                    "descricao TEXT, citacao TEXT, estado TEXT, versao TEXT); CREATE TABLE leituras(processo TEXT, "
+                    "estagio TEXT, versao TEXT, chars_existentes INT, chars_enviados INT, fracao REAL, leitura TEXT, "
+                    "fatias INT, lote TEXT, em TEXT);")
+    proc = "100001/000002/2025"
+    c.executemany("INSERT INTO fatos(processo, doc_id, tipo, valor, descricao, citacao, estado, versao) "
+                  "VALUES(?,?,?,?,?,?,'VERIFICADO','li-2')",
+                  [(proc, "sei:2", "data", "2025-12-26", "reforço de empenho", "26/12/2025"),
+                   (proc, "sei:1", "data", "2025-11-30", "fim dos eventos", "30/11/2025")])
+    c.commit()
+    monkeypatch.setattr(PI, "FATOS_DB", db)
+    texto, info = PI._bloco_fatos("SEI-" + proc)
+    assert texto.startswith("LINHA DO TEMPO") and info["linha_do_tempo"] == 2
+    assert texto.index("30/11/2025 [sei:1]") < texto.index("26/12/2025 [sei:2]")

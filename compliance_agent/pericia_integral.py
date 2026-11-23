@@ -37,6 +37,7 @@ import logging
 import os
 import random
 import sqlite3
+import re
 import uuid
 import zlib
 from datetime import datetime
@@ -396,9 +397,28 @@ def _bloco_fatos(numero: str, tipos: set[str] | None = None, teto: int = TETO_FA
             continue
         linhas.append(ln)
         total += len(ln) + 1
+    # LINHA DO TEMPO do processo inteiro (dono 23/11: "leitura ampla do processo pra tomada de conclusões"): os fatos
+    # datados em ordem cronológica, com o documento de origem — é onde aparece a contradição entre documentos
+    # (ato posterior ao pagamento, despacho datado antes do que cita). Entra antes da lista por tipo.
+    datados = []
+    for doc, tipo, valor, desc, cit in unicos:
+        m = re.match(r"(\d{4})-(\d{2})-(\d{2})$", valor or "") if tipo == "data" else None
+        if m:
+            datados.append((valor, doc, desc or "", cit))
+    datados.sort()
+    tl, t_total = [], 0
+    for d, doc, desc, cit in datados:
+        ln = f"- {d[8:10]}/{d[5:7]}/{d[:4]} [{doc}] {desc} «{cit}»"
+        if t_total + len(ln) > teto // 4:
+            break
+        tl.append(ln)
+        t_total += len(ln) + 1
     cab = ("FATOS VERIFICADOS DA LEITURA INTEGRAL (100% do texto do processo lido em fatias; cada citação «…» foi "
            "conferida literalmente no documento; use-os como prova e cite a citação exata):")
-    info = {"fatos_verificados": len(linhas), "fatos_fora_do_teto": fora,
+    if tl:
+        cab = ("LINHA DO TEMPO DO PROCESSO INTEIRO (datas verificadas, em ordem cronológica — confronte a cronologia "
+               "entre documentos):\n" + "\n".join(tl) + "\n\n" + cab)
+    info = {"fatos_verificados": len(linhas), "fatos_fora_do_teto": fora, "linha_do_tempo": len(tl),
             "leitura_integral": (lido[0] if lido else "desconhecida"), "leitura_integral_em": (lido[2] if lido else None)}
     return cab + "\n" + "\n".join(linhas), info
 
