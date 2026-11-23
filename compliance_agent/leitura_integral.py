@@ -516,13 +516,26 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+_CACHE_DOCS: dict[str, list[dict]] = {}
+
+
+def _docs_mascarados(processo: str) -> list[dict]:
+    """Documentos do processo já mascarados, lidos UMA vez por colheita (23/11/2026: a colheita relia e remascarava
+    o processo inteiro a cada fatia — 200 fatias = 200 leituras; o lote 4 estourou 58 min). Cache pequeno: só o
+    processo corrente e o anterior (as fatias de um processo vêm juntas)."""
+    if processo not in _CACHE_DOCS:
+        if len(_CACHE_DOCS) >= 2:
+            _CACHE_DOCS.pop(next(iter(_CACHE_DOCS)))
+        _CACHE_DOCS[processo] = [dict(d, mascarado=mascarar(d["texto"])[0]) for d in _docs(_pasta_do(processo))]
+    return _CACHE_DOCS[processo]
+
+
 def _gravar(con, info: dict, resp: str | None, n: dict, motor: str) -> None:
     if resp is None:
         n["sem_resposta"] += 1
         return
-    pasta = _pasta_do(info["processo"])
-    docs = [d for d in _docs(pasta) if d["doc_id"] in set(info["docs"])]
-    textos = {d["doc_id"]: mascarar(d["texto"])[0] for d in docs}
+    docs = [d for d in _docs_mascarados(info["processo"]) if d["doc_id"] in set(info["docs"])]
+    textos = {d["doc_id"]: d["mascarado"] for d in docs}
     de_ocr = {d["doc_id"] for d in docs if d["ocr"]}
     fatos = interpretar(resp, textos)
     if fatos is None:
