@@ -30,7 +30,7 @@ Só `confirmado` é prova. Documento que não é de IA passa direto (`vale_como_
 fora dos documentos da IA.
 
     from compliance_agent.sei import ocr_ia_prova as P
-    P.vale_como_prova(tag, doc, "cnpj", "12.345.678/0001-95")
+    P.vale_como_prova(tag, doc, "cnpj", cnpj_lido)
     P.texto_para_prova(pasta, doc, texto)   # texto com os números NÃO confirmados trocados por ⟦a conferir⟧
 """
 from __future__ import annotations
