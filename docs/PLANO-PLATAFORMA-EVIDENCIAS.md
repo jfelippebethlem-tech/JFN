@@ -142,6 +142,15 @@ o projetado → `FATOR_REAL` 1,5); **balde extracao_sei fechado** (US$ 35,15/35)
 das páginas `a_conferir` (23 docs) por leitura de OUTRA família de motor (RapidOCR na VM-2 para doc de Tesseract;
 Tesseract para doc de Surya) ou Opus; Fase 6 (perícia/Lex consomem fatos).
 
+**Atualização 23/11 14h35 (dono: "tá autorizado a fazer a melhor arquitetura"):** **PostgreSQL VIGENTE** — banco
+`jfn_evidencias` no servidor já existente da VM-2 (compartilhado com o jfn-brain; acesso só Tailnet; 512 MB de buffer);
+cópia SQLite→PG conferida (310 leituras, 133.750 fatos, 13.621 docs_lidos, 231 tabelas); `evidencias.dsn_vigente()` faz
+todo processo fora da suíte usar o PG; suíte PG em esquema temporário (a antiga esvaziava a tabela real de jobs);
+backup noturno 02:40 pela porta única. Perícia: fatos verificados + LINHA DO TEMPO do processo inteiro na entrada;
+achado que cita campo calculado cai (444 achados/216 processos medidos); refação só onde o vigente é da cascata (2
+regressões desfeitas); 171 na fila. Lex recebe fatos de execução. Próximo: workers de OCR/captura reservando jobs no PG
+(`evidencias.reservar`, SKIP LOCKED) para tirar a coordenação de arquivos JSON.
+
 **Medidas do acervo que orientam a leitura integral:** processo mediano 146 mil caracteres; 10% maiores = 71% do
 texto; os 119 maiores documentos (460 M caracteres) são planilhas (lidas por código); 72,7% do texto é nativo e
 27,1% veio de OCR (espera confirmação por página); 8.834 de 12.707 processos têm captura declarada completa.
