@@ -57,6 +57,15 @@ VERSAO_PROMPT = "pi-3"   # pi-3: regras de calibração por eixo (divergências 
 # caracteres de documentos por processo. 80k (1º desenho) leu 8 de 198 docs no processo-prova de 15/11; o dono quer o
 # Claude "pensando profundo em cada processo" — 240k (~65k tokens) cabem no Opus e no Gemini com folga.
 TETO_TEXTO = int(os.environ.get("JFN_PERICIA_INTEGRAL_TETO", "240000"))
+# FASE 6 do plano de reescrita (23/11/2026): com leitura integral feita, a entrada leva os FATOS VERIFICADOS do processo
+# inteiro (100% do texto lido; citação literal conferida por código) e o texto bruto das peças-chave cai para caber.
+FATOS_DB = Path(__file__).resolve().parents[1] / "data" / "evidencias.db"
+FATOS_VERSAO = "li-2"
+TETO_FATOS = 100_000
+TETO_TEXTO_COM_FATOS = 140_000
+_PRIO_FATO = {t: i for i, t in enumerate(("ressalva", "condicao", "decisao", "ato", "parecer", "justificativa", "valor",
+                                          "ob", "ne", "nf", "contrato", "aditivo", "quantidade", "cnpj", "objeto",
+                                          "data", "assinatura"))}
 TETO_DOC = 12_000            # uma peça gigante não come a janela das outras
 TETO_EVIDENCIA = 3_000       # por fonte determinística
 MIN_TEXTO = 400              # bytes de texto na pasta abaixo disto: nada a periciar
@@ -351,11 +360,56 @@ def numero_da_pasta(nome: str) -> str:
     return f"SEI-{p[0]}/{p[1]}/{p[2]}" if len(p) >= 3 else nome
 
 
+def _bloco_fatos(numero: str) -> tuple[str, dict]:
+    """Fatos VERIFICADOS da leitura integral do processo (`data/evidencias.db`), em ordem de importância fiscalizatória,
+    sem repetidos, até `TETO_FATOS`. ("", {}) quando não há leitura integral."""
+    proc = numero.replace("SEI-", "")
+    try:
+        con = sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
+    except sqlite3.Error:
+        return "", {}
+    try:
+        lido = con.execute("SELECT leitura, fracao, em FROM leituras WHERE processo=? AND versao=?",
+                           (proc, FATOS_VERSAO)).fetchone()
+        rows = con.execute("SELECT doc_id, tipo, valor, descricao, citacao FROM fatos WHERE processo=? AND versao=? "
+                           "AND estado='VERIFICADO'", (proc, FATOS_VERSAO)).fetchall()
+    except sqlite3.Error:
+        return "", {}
+    finally:
+        con.close()
+    if not rows:
+        return "", {}
+    vistos, unicos = set(), []
+    for r in rows:
+        k = (r[1], r[2], r[4])
+        if k not in vistos:
+            vistos.add(k)
+            unicos.append(r)
+    unicos.sort(key=lambda r: (_PRIO_FATO.get(r[1] or "", 99), r[0] or ""))
+    linhas, total, fora = [], 0, 0
+    for doc, tipo, valor, desc, cit in unicos:
+        ln = f"- [{doc}] {tipo}{(': ' + valor) if valor else ''} — {desc or ''} «{cit}»"
+        if total + len(ln) > TETO_FATOS:
+            fora += 1
+            continue
+        linhas.append(ln)
+        total += len(ln) + 1
+    cab = ("FATOS VERIFICADOS DA LEITURA INTEGRAL (100% do texto do processo lido em fatias; cada citação «…» foi "
+           "conferida literalmente no documento; use-os como prova e cite a citação exata):")
+    info = {"fatos_verificados": len(linhas), "fatos_fora_do_teto": fora,
+            "leitura_integral": (lido[0] if lido else "desconhecida"), "leitura_integral_em": (lido[2] if lido else None)}
+    return cab + "\n" + "\n".join(linhas), info
+
+
 def montar_entrada(pasta: Path | str, *, avaliar: Callable | None = None, obs: dict | None = None,
                    coletar: Callable | None = None, teto_chars: int | None = None) -> dict:
     pasta = Path(pasta)
     numero = numero_da_pasta(pasta.name)
-    documentos, cobertura = _texto_por_valor(pasta, teto_chars or TETO_TEXTO)
+    fatos, info_fatos = _bloco_fatos(numero)
+    documentos, cobertura = _texto_por_valor(pasta, teto_chars or (TETO_TEXTO_COM_FATOS if fatos else TETO_TEXTO))
+    if fatos:
+        documentos = fatos + "\n\n" + documentos
+        cobertura = {**cobertura, **info_fatos}
     if not documentos.strip():
         return {"processo": numero, "status": "SEM_TEXTO", "cobertura": cobertura}
     if avaliar is None:
@@ -811,6 +865,27 @@ def _bytes_texto(pasta: Path) -> int:
     return sum(f.stat().st_size for f in t.glob("*.txt")) if t.is_dir() else 0
 
 
+def _refazer_por_leitura(con: sqlite3.Connection) -> set[str]:
+    """Processos (dígitos) cuja LEITURA INTEGRAL (`data/evidencias.db`) é mais nova que a última perícia — a perícia
+    nova recebe os fatos verificados do processo inteiro (Fase 6, 23/11/2026). Só estes são refeitos: o resto não
+    melhoraria e gastaria cota."""
+    try:
+        ev = sqlite3.connect(f"file:{FATOS_DB}?mode=ro", uri=True, timeout=30)
+        lidos = {_dig(p): em for p, em in ev.execute("SELECT processo, em FROM leituras WHERE versao=?",
+                                                      (FATOS_VERSAO,))}
+        ev.close()
+    except sqlite3.Error:
+        return set()
+    if not lidos:
+        return set()
+    try:
+        ult = {_dig(p): em for p, em in con.execute(
+            "SELECT processo, MAX(criado_em) FROM pericia_integral WHERE eixo='_global' GROUP BY processo")}
+    except sqlite3.OperationalError:
+        return set()
+    return {d for d, em in lidos.items() if d in ult and str(em or "") > str(ult[d] or "")[:19].replace("T", " ")}
+
+
 def _ja_periciados(con: sqlite3.Connection) -> set[str]:
     try:
         return {_dig(r[0]) for r in con.execute("SELECT DISTINCT processo FROM pericia_integral WHERE versao_prompt=?",
@@ -851,6 +926,8 @@ def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO)
     con = _ro()
     try:
         feitos = _ja_periciados(con)
+        refazer = _refazer_por_leitura(con)            # Fase 6: leitura integral mais nova que a perícia ⇒ refaz
+        feitos -= refazer
         cands = []
         for p in (ACERVO.iterdir() if ACERVO.is_dir() else ()):
             if not p.is_dir():
@@ -868,7 +945,7 @@ def fila(limite: int, naturezas: tuple[str, ...] | None = NATUREZAS_CONTRATACAO)
     for c in cands:
         c["ob"] = obs.get(_chave_processo(c["numero"]))
         c["pago"] = round((c["ob"] or {}).get("total", 0.0), 2)
-    cands.sort(key=lambda c: (-c["pago"], -c["bytes"]))
+    cands.sort(key=lambda c: (_dig(c["numero"]) not in refazer, -c["pago"], -c["bytes"]))
 
     def _elegiveis():                                  # íntegra é cara de medir: só até encher o limite
         for c in cands:

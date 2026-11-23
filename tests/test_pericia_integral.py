@@ -25,6 +25,7 @@ def _isolado(tmp_path, monkeypatch):
     monkeypatch.delenv("JFN_CLAUDE_CONTINGENCIA", raising=False)
     monkeypatch.setattr(PI, "DB", tmp_path / "compliance.db")
     monkeypatch.setattr(PI, "ACERVO", tmp_path / "acervo")
+    monkeypatch.setattr(PI, "FATOS_DB", tmp_path / "sem_fatos.db")          # nunca o banco real de fatos
     con = sqlite3.connect(tmp_path / "compliance.db")
     con.execute("CREATE TABLE ob_orcamentaria_siafe(processo TEXT, valor REAL, data_emissao TEXT, status TEXT)")
     con.commit()
@@ -404,3 +405,56 @@ def test_ponto_no_formato_do_agente_vira_a_regua_da_casa():
     assert PI._status_ponto({"status": "nao_atende"}) == "desconforme"
     assert PI._status_ponto({"status": "nao_se_aplica"}) == "nao_se_aplica"
     assert PI._status_ponto("desconforme") == "desconforme" and PI._status_ponto(None) == "indeterminado"
+
+
+# ── Fase 6 do plano (23/11/2026): a perícia recebe os FATOS VERIFICADOS da leitura integral ──────────────
+def test_entrada_leva_os_fatos_verificados_da_leitura_integral_e_declara(tmp_path, monkeypatch):
+    import sqlite3 as _sq
+    db = tmp_path / "ev.db"
+    c = _sq.connect(db)
+    c.executescript("CREATE TABLE fatos(id INTEGER PRIMARY KEY, processo TEXT, doc_id TEXT, tipo TEXT, valor TEXT, "
+                    "descricao TEXT, citacao TEXT, estado TEXT, motivo TEXT, motor TEXT, versao TEXT, payload_sha TEXT, "
+                    "em TEXT); CREATE TABLE leituras(processo TEXT, estagio TEXT, versao TEXT, chars_existentes INT, "
+                    "chars_enviados INT, fracao REAL, leitura TEXT, fatias INT, lote TEXT, em TEXT);")
+    proc = "100001/000001/2025"
+    c.executemany("INSERT INTO fatos(processo, doc_id, tipo, valor, descricao, citacao, estado, versao, em) "
+                  "VALUES(?,?,?,?,?,?,?,?,?)",
+                  [(proc, "sei:9", "ressalva", "", "fiscal aponta entrega parcial", "entrega parcial do item 3",
+                    "VERIFICADO", "li-2", "x"),
+                   (proc, "sei:9", "ressalva", "", "fiscal aponta entrega parcial", "entrega parcial do item 3",
+                    "VERIFICADO", "li-2", "x"),                                         # repetido: entra uma vez
+                   (proc, "sei:8", "data", "2025-01-02", "assinatura", "02/01/2025", "VERIFICADO", "li-2", "x"),
+                   (proc, "sei:7", "valor", "999.00", "inventado", "R$ 999,00", "INDISPONIVEL", "li-2", "x")])
+    c.execute("INSERT INTO leituras VALUES(?,?,?,?,?,?,?,?,?,?)", (proc, "leitura_integral", "li-2", 5000, 5000, 1.0,
+                                                                   "integral", 1, "lote", "2026-11-23 10:00:00"))
+    c.commit()
+    monkeypatch.setattr(PI, "FATOS_DB", db)
+    p = _pasta(PI.ACERVO, "100001_000001_2025", [("Parecer Jurídico", TXT_PARECER)])
+    e = PI.montar_entrada(p, avaliar=_avaliar, coletar=_sem_evidencia)
+    assert "FATOS VERIFICADOS" in e["documentos"] and e["documentos"].count("entrega parcial do item 3") == 1
+    assert e["documentos"].index("ressalva") < e["documentos"].index("02/01/2025")      # ressalva antes de data
+    assert "R$ 999,00" not in e["documentos"]                                          # recusado não entra
+    assert e["cobertura"]["fatos_verificados"] == 2 and e["cobertura"]["leitura_integral"] == "integral"
+
+
+def test_fila_refaz_e_prioriza_quem_ganhou_leitura_integral_depois_da_pericia(tmp_path, monkeypatch):
+    import sqlite3 as _sq
+    db = tmp_path / "ev.db"
+    c = _sq.connect(db)
+    c.execute("CREATE TABLE leituras(processo TEXT, estagio TEXT, versao TEXT, chars_existentes INT, chars_enviados INT,"
+              " fracao REAL, leitura TEXT, fatias INT, lote TEXT, em TEXT)")
+    c.execute("INSERT INTO leituras VALUES('100001/000007/2025','leitura_integral','li-2',1,1,1,'integral',1,'l',"
+              "'2026-11-23 12:00:00')")
+    c.execute("INSERT INTO leituras VALUES('100001/000008/2025','leitura_integral','li-2',1,1,1,'integral',1,'l',"
+              "'2026-11-20 12:00:00')")
+    c.commit()
+    monkeypatch.setattr(PI, "FATOS_DB", db)
+    con = sqlite3.connect(PI.DB)
+    PI._garantir_tabela(con)
+    for proc in ("SEI-100001/000007/2025", "SEI-100001/000008/2025"):
+        con.execute("INSERT INTO pericia_integral(rodada,processo,eixo,grau,achados,versao_prompt,criado_em) "
+                    "VALUES('r',?,'_global',0,'{}',?,'2026-11-22T09:00:00')", (proc, PI.VERSAO_PROMPT))
+    con.commit()
+    refazer = PI._refazer_por_leitura(con)
+    con.close()
+    assert refazer == {PI._dig("100001/000007/2025")}          # leitura depois da perícia; o outro, antes
