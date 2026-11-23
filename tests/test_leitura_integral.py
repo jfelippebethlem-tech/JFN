@@ -124,3 +124,13 @@ def test_texto_de_ocr_espera_confirmacao_e_duplicado_nao_reenvia(tmp_path):
     sha_1 = fatias[0]["docs"][0]["sha"]
     fatias2, cob2 = L.fatiar(p, ja_lidos={sha_1})                                    # lido em lote anterior
     assert fatias2 == [] and cob2["docs_duplicados"] == ["sei:11111111", "sei:33333333"]
+
+
+def test_data_por_extenso_confere_com_o_valor_normalizado():
+    """Piloto 23/11: 220 fatos de data recusados por rigidez — 'Rio de Janeiro, 12 de junho de 2026' × '12/06/2026'."""
+    txt = {"d": "Rio de Janeiro, 12 de junho de 2026. Publicado em 03/07/2026."}
+    ok = {"tipo": "data", "valor": "12/06/2026", "doc_id": "d", "citacao": "Rio de Janeiro, 12 de junho de 2026"}
+    assert L.verificar(ok, txt)["estado"] == "VERIFICADO"
+    assert L.verificar(dict(ok, valor="2026-07-03", citacao="Publicado em 03/07/2026"), txt)["estado"] == "VERIFICADO"
+    assert L.verificar(dict(ok, valor="13/06/2026"), txt)["estado"] == "INDISPONIVEL"      # dia errado
+    assert L.verificar(dict(ok, valor="12/07/2026"), txt)["estado"] == "INDISPONIVEL"      # mês errado

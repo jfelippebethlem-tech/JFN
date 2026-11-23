@@ -218,6 +218,29 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", str(s or "")).strip()
 
 
+_MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+          "novembro", "dezembro")
+
+
+def _data_na_citacao(valor: str, cit: str) -> bool | None:
+    """Data do valor (dd/mm/aaaa ou aaaa-mm-dd) presente na citação, com mês em número OU por extenso. None = o
+    valor não é data reconhecível (cai na regra geral). Piloto 23/11: 220 datas por extenso recusadas por rigidez."""
+    m = re.fullmatch(r"\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*", valor) or None
+    if m:
+        d, me, a = int(m[1]), int(m[2]), m[3]
+    else:
+        m = re.fullmatch(r"\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*", valor)
+        if not m:
+            return None
+        a, me, d = m[1], int(m[2]), int(m[3])
+    if not 1 <= me <= 12:
+        return False
+    c = cit.lower()
+    num = re.search(rf"(?<!\d)0?{d}[/.-]0?{me}[/.-]{a}(?!\d)", c)
+    ext = re.search(rf"(?<!\d)0?{d}º?\s+(de\s+)?{_MESES[me - 1]}\s+(de\s+)?{a}(?!\d)", c)
+    return bool(num or ext)
+
+
 def verificar(fato: dict, textos: dict[str, str]) -> dict:
     """VERIFICADO só se a citação existe no documento citado e o valor (dígitos, quando tem ≥ 3) está nela."""
     cit, doc = _norm(fato.get("citacao")), str(fato.get("doc_id") or "")
@@ -229,8 +252,9 @@ def verificar(fato: dict, textos: dict[str, str]) -> dict:
     elif cit not in _norm(textos[doc]):
         motivo = "citação não existe no documento"
     else:
+        data = _data_na_citacao(str(fato.get("valor") or ""), cit) if fato.get("tipo") == "data" else None
         dig = re.sub(r"\D", "", str(fato.get("valor") or ""))
-        if len(dig) >= 3 and dig.lstrip("0") not in re.sub(r"\D", "", cit):
+        if data is False or (data is None and len(dig) >= 3 and dig.lstrip("0") not in re.sub(r"\D", "", cit)):
             motivo = "valor não está dentro da citação"
     return dict(fato, estado="INDISPONIVEL" if motivo else "VERIFICADO", motivo=motivo or None)
 
@@ -294,6 +318,7 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--processos", required=True, help="arquivo com um número de processo por linha")
     pl.add_argument("--enviar", action="store_true", help="sem isto, só projeta")
     sub.add_parser("colher")
+    sub.add_parser("reverificar")
     a = ap.parse_args(argv)
 
     if a.cmd == "projetar":
@@ -357,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(resumo, ensure_ascii=False))
         if not a.enviar:
             return 0
-        lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=C.MODELO_BARATO, max_tokens=4000)
+        lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=C.MODELO_BARATO, max_tokens=8000)  # 4000 cortou 11% (piloto)
         if not lote:
             print(f"lote recusado: {C.ultimo_motivo}", file=sys.stderr)
             return 1
@@ -372,44 +397,54 @@ def main(argv: list[str] | None = None) -> int:
         print(f"lote {lote}: {len(itens)} fatias")
         return 0
 
-    # colher
-    for arq in sorted((E.RAIZ / "data" / "leitura_integral").glob("*.mapas.json")):
+    # colher / reverificar
+    pasta_li = E.RAIZ / "data" / "leitura_integral"
+    alvos = sorted(pasta_li.glob("*.mapas.json")) if a.cmd == "colher" else sorted(pasta_li.glob("*.mapas.colhido"))
+    for arq in alvos:
         lote = arq.name.split(".")[0]
-        saida = C.colher_lote(lote)
-        if saida is None:
-            print(f"{lote}: em curso")
-            continue
+        if a.cmd == "colher":
+            saida = C.colher_lote(lote)
+            if saida is None:
+                print(f"{lote}: em curso")
+                continue
+        else:                          # reverificar: resultado guardado pela colheita, sem chamar a API de novo
+            saida = json.loads((E.RAIZ / "data" / "claude_api_lotes" / f"{lote}.json").read_text(encoding="utf-8"))
         mapas = json.loads(arq.read_text(encoding="utf-8"))
         n = {"VERIFICADO": 0, "A_CONFIRMAR_OCR": 0, "INDISPONIVEL": 0, "resposta_invalida": 0, "sem_resposta": 0}
         for cid, info in mapas.items():
-            resp = saida.get(cid)
-            if resp is None:
-                n["sem_resposta"] += 1
-                continue
-            pasta = _pasta_do(info["processo"])
-            docs = [d for d in _docs(pasta) if d["doc_id"] in set(info["docs"])]
-            textos = {d["doc_id"]: mascarar(d["texto"])[0] for d in docs}
-            de_ocr = {d["doc_id"] for d in docs if d["ocr"]}
-            fatos = interpretar(resp, textos)
-            if fatos is None:
-                n["resposta_invalida"] += 1
-                continue
-            for f in fatos:     # citação existe, mas o TEXTO veio de OCR ainda não confirmado: não é certo
-                if f["estado"] == "VERIFICADO" and f.get("doc_id") in de_ocr:
-                    f["estado"], f["motivo"] = "A_CONFIRMAR_OCR", "texto do documento veio de OCR não confirmado"
             with con:
-                for f in fatos:
-                    n[f["estado"]] += 1
-                    con.execute("INSERT INTO fatos(processo, doc_id, tipo, valor, descricao, citacao, estado, motivo, "
-                                "motor, versao, payload_sha, em) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                                (info["processo"], f.get("doc_id"), f.get("tipo"),
-                                 desmascarar(str(f.get("valor") or ""), info["mapa"]), f.get("descricao"),
-                                 desmascarar(str(f.get("citacao") or ""), info["mapa"]), f["estado"], f.get("motivo"),
-                                 C.MODELO_BARATO, VERSAO_PROMPT, info["sha"], E._agora()))
-        arq.rename(arq.with_suffix(".colhido"))
+                con.execute("DELETE FROM fatos WHERE payload_sha=?", (info["sha"],))
+            _gravar(con, info, saida.get(cid), n, C.MODELO_BARATO)
+        if a.cmd == "colher":
+            arq.rename(arq.with_suffix(".colhido"))
         print(f"{lote}: {n}")
     return 0
 
+
+def _gravar(con, info: dict, resp: str | None, n: dict, motor: str) -> None:
+    if resp is None:
+        n["sem_resposta"] += 1
+        return
+    pasta = _pasta_do(info["processo"])
+    docs = [d for d in _docs(pasta) if d["doc_id"] in set(info["docs"])]
+    textos = {d["doc_id"]: mascarar(d["texto"])[0] for d in docs}
+    de_ocr = {d["doc_id"] for d in docs if d["ocr"]}
+    fatos = interpretar(resp, textos)
+    if fatos is None:
+        n["resposta_invalida"] += 1
+        return
+    for f in fatos:     # citação existe, mas o TEXTO veio de OCR ainda não confirmado: não é certo
+        if f["estado"] == "VERIFICADO" and f.get("doc_id") in de_ocr:
+            f["estado"], f["motivo"] = "A_CONFIRMAR_OCR", "texto do documento veio de OCR não confirmado"
+    with con:
+        for f in fatos:
+            n[f["estado"]] += 1
+            con.execute("INSERT INTO fatos(processo, doc_id, tipo, valor, descricao, citacao, estado, motivo, motor, "
+                        "versao, payload_sha, em) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (info["processo"], f.get("doc_id"), f.get("tipo"),
+                         desmascarar(str(f.get("valor") or ""), info["mapa"]), f.get("descricao"),
+                         desmascarar(str(f.get("citacao") or ""), info["mapa"]), f["estado"], f.get("motivo"),
+                         motor, VERSAO_PROMPT, info["sha"], E._agora()))
 
 if __name__ == "__main__":
     sys.exit(main())
