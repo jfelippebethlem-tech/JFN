@@ -11,8 +11,8 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "terabox"],
-  "remotos_fora": {"yandex": "existe no rclone.conf mas responde 403 até o dono confirmar o telefone — fica fora até lá (coordenador, 21/11/2026)"},
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "terabox"],
+  "remotos_fora": {},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
@@ -128,6 +128,19 @@
       "medir": "about", "margem_gb": 0.3, "apagar_libera": false, "preferencia_download": 7, "limites": {},
       "_restricoes": "4,66 GiB (5,0 GB pelo rclone about). O que se apaga vai para a LIXEIRA e continua ocupando a cota (apagar_libera: false). md5 na listagem.",
       "fontes": ["coordenador da sessão, 21/11/2026 (prova de sha256 ok)"]
+    },
+    "idrive": {
+      "tipo": "s3", "raiz": "idrive:jfn-jfelippe/JFN", "frio": "idrive:jfn-jfelippe/JFN/frio", "indice": "idrive:jfn-jfelippe/JFN/indice",
+      "medir": "size", "armazenamento_gb": 10, "margem_gb": 1.0, "preferencia_download": 6,
+      "limites": {"download_bytes_mes": 3000000000},
+      "_restricoes": "IDrive e2 grátis 10 GB (região Oregon-2, s3.us-west-4.idrivee2.com). S3 sem `about` → mede com size. Saída grátis só até 3× o volume armazenado (acima: US$ 0,01/GB) e passar de 10 GB cobra US$ 0,006/GB/mês → margem 1 GB e download 3 GB/mês (= 3× de 1 GB, conservador). Chave 'jfn-rclone' sem permissão de apagar bucket.",
+      "fontes": ["https://www.idrive.com/s3-storage-e2/pricing ('Try with 10 GB Free'; 'Download less than or equal to 3X your active storage volume for free'; 'Free API Calls'; overuse $0.006/GB/Month; egress $0.01/GB beyond free) — lido 22/11/2026", "coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 3,3 MB/s subida, 3,0 MB/s descida)"]
+    },
+    "yandex": {
+      "tipo": "yandex", "raiz": "yandex:JFN", "frio": "yandex:JFN/frio", "indice": "yandex:JFN/indice",
+      "medir": "about", "margem_gb": 0.3, "preferencia_download": 8, "limites": {},
+      "_restricoes": "5 GiB (rclone about). Conta jfelippebethlem@gmail.com com telefone de recuperação (o Disk recusava com 403 DiskUnsupportedUserAccountType antes disso). hard_delete=true no rclone.conf: sem isso o apagado vai para a lixeira e continua ocupando a cota. Lento (~1 MB/s). md5 na listagem.",
+      "fontes": ["coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 1,0 MB/s subida, 1,2 MB/s descida)"]
     }
   },
   "enchimento": {
