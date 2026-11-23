@@ -398,6 +398,27 @@ def _prompt(fatia: dict) -> tuple[str, dict]:
     return mascarar(fatia["texto"])
 
 
+def aptos_por_valor(con) -> list[str]:
+    """Processos que passam na porta e ainda não foram lidos nesta versão, por valor de OB no SIAFE (desc). Ordem só
+    para priorizar — nenhum valor daqui vai a relatório."""
+    import sqlite3
+    from compliance_agent.ob_processo import chave_processo
+    ja = {r[0] for r in con.execute("SELECT processo FROM leituras WHERE versao=?", (VERSAO_PROMPT,))}
+    ok = [p.parent.name.replace("_", "/") for p in sorted(E.ARQUIVO.glob("*/manifest.json"))
+          if p.parent.name.replace("_", "/") not in ja and portao(p.parent)[0]]
+    val: dict[str, float] = {}
+    try:
+        db = sqlite3.connect(f"file:{E.RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=60)
+        for proc, v in db.execute("SELECT processo, SUM(valor) FROM ob_orcamentaria_siafe GROUP BY processo"):
+            k = chave_processo(proc or "")
+            if k:
+                val[k] = val.get(k, 0.0) + (v or 0.0)
+        db.close()
+    except sqlite3.Error:
+        pass
+    return sorted(ok, key=lambda x: -val.get(chave_processo(x), 0.0))
+
+
 def ler_pela_assinatura(con, procs: list[str], *, pensar=None, limite_fatias: int = 0) -> dict:
     """Braço da ASSINATURA da leitura integral (dono 23/11: "mistura" API com teto + assinatura; o balde da API fechou
     em US$ 35,15). Mesma porta, mesmo fatiador, mesma verificação literal. `backend="cli"`: nunca cai na API paga.
@@ -468,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("colher")
     sub.add_parser("reverificar")
     asg = sub.add_parser("assinatura", help="lê pela assinatura (sem API paga) até a cota parar")
-    asg.add_argument("--processos", required=True)
+    asg.add_argument("--processos", default="", help="arquivo com processos; vazio = aptos por valor de OB")
     asg.add_argument("--limite-fatias", type=int, default=0)
     a = ap.parse_args(argv)
 
@@ -496,7 +517,8 @@ def main(argv: list[str] | None = None) -> int:
 
     con = _con()
     if a.cmd == "assinatura":
-        procs = [ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()]
+        procs = ([ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()] if a.processos
+                 else aptos_por_valor(con))
         print(json.dumps(ler_pela_assinatura(con, procs, limite_fatias=a.limite_fatias), ensure_ascii=False))
         return 0
     if a.cmd == "piloto":
