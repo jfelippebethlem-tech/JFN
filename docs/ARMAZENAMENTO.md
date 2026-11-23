@@ -24,6 +24,12 @@
    e entrega em `~/.cache/jfn-frio/…` (ou no lugar original com `--restaurar`). Leitor novo que não acha um arquivo
    local deve chamar `obter()` antes de concluir "não existe".
 5. **Visão geral:** `python -m compliance_agent.armazenamento resumo`.
+6. **HD externo (it-campo `D:\JFN-Frio` e qualquer disco que vier; dono 23/11/2026):** toda subida só termina com o
+   **índice e o LEIAME do disco atualizados** — `python -m tools.hd_indice --publicar` (→ `_indice/indice.jsonl` +
+   `00-LEIAME.md` no disco; cópia em `data/hd_migracao/indice_*.jsonl`). Árvore por fonte (`sei/pdfs_escaneados`,
+   `sei/integras_cache`…), nunca pasta solta na raiz; md5 (`rclone check`) antes de apagar a origem; PDF pendente de
+   OCR não sai da origem; registrar no jfn-brain onde está o quê. Disco novo: criar `_indice/`, `00-LEIAME.md` e as
+   pastas por fonte antes da 1ª cópia. O HD é MORNO (pode estar desligado): nada que as VMs precisem fica só nele.
 
 ---
 
