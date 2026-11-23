@@ -875,7 +875,8 @@ _TRACE_DB = pathlib.Path(__file__).resolve().parents[2] / "data" / "llm_trace.db
 
 
 def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
-           tokens_in: int | None = None, tokens_out: int | None = None, usd: float | None = None) -> None:
+           tokens_in: int | None = None, tokens_out: int | None = None, usd: float | None = None,
+           chars_in: int | None = None, chars_out: int | None = None) -> None:
     """Telemetria LOCAL mínima da cadeia (só metadados — nunca prompt/resposta; sigilo por design).
 
     Veredito Langfuse 2026-07-07: self-host (Postgres+ClickHouse+Redis+S3) inviável na VM 2vCPU;
@@ -885,7 +886,8 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
     14/08 a 11/11 — volume desconhecido). `JFN_LLM_TRACE_DB` desvia o arquivo (teste não suja a medição real).
     22/11/2026: + `usd` (custo REAL devolvido pelo provedor pago — `llm/openrouter_pago`); grátis fica NULL.
     23/11/2026: + `tarefa` (estágio: `JFN_LLM_TAREFA` ou o nome do script em execução) — linha de base de tokens
-    por estágio da reescrita (docs/PLANO-PLATAFORMA-EVIDENCIAS.md, Fase 0d).
+    por estágio da reescrita (docs/PLANO-PLATAFORMA-EVIDENCIAS.md, Fase 0d). + `chars_in`/`chars_out`: caracteres
+    EXATOS enviados/recebidos na cadeia grátis, cujos provedores não devolvem a contagem de tokens (não é estimativa).
     """
     import os
     import sqlite3
@@ -896,14 +898,14 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "", modelo: str = "",
                     "ts TEXT DEFAULT (datetime('now')), provedor TEXT, ok INT, ms INT, erro TEXT)")
         cols = {r[1] for r in con.execute("PRAGMA table_info(llm_trace)")}
         for c, t in (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("usd", "REAL"),
-                     ("tarefa", "TEXT")):
+                     ("tarefa", "TEXT"), ("chars_in", "INT"), ("chars_out", "INT")):
             if c not in cols:   # base antiga (só ts..erro): migra no lugar, sem perder linha
                 con.execute(f"ALTER TABLE llm_trace ADD COLUMN {c} {t}")
         tarefa = os.environ.get("JFN_LLM_TAREFA") or (pathlib.Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else None)
-        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out, usd, tarefa) "
-                    "VALUES(?,?,?,?,?,?,?,?,?)",
+        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro, modelo, tokens_in, tokens_out, usd, tarefa, "
+                    "chars_in, chars_out) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                     (provider, int(ok), ms, (erro or "")[:200], modelo or None, tokens_in, tokens_out, usd,
-                     (tarefa or None) and tarefa[:60]))
+                     (tarefa or None) and tarefa[:60], chars_in, chars_out))
         con.commit()
         con.close()
     except (sqlite3.Error, OSError):
@@ -949,7 +951,8 @@ def best_free_chat(
                 resp = extra_chat(provider, prompt, system=system)
             if resp is not None and str(resp).strip():
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
-                _trace(provider, True, int((time.monotonic() - _ini) * 1000))
+                _trace(provider, True, int((time.monotonic() - _ini) * 1000),
+                       chars_in=len(prompt) + len(system or ""), chars_out=len(str(resp)))
                 return resp
             if resp is not None:  # "" = resposta vazia — NÃO é resposta; segue a cadeia
                 _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")
@@ -998,7 +1001,8 @@ async def best_free_chat_async(
                 resp = await extra_chat_async(provider, prompt, system=system)
             if resp is not None and str(resp).strip():
                 _limpar_cooldown(provider)
-                _trace(provider, True, int((time.monotonic() - _ini) * 1000))
+                _trace(provider, True, int((time.monotonic() - _ini) * 1000),
+                       chars_in=len(prompt) + len(system or ""), chars_out=len(str(resp)))
                 return resp
             if resp is not None:  # "" = resposta vazia — NÃO é resposta; segue a cadeia
                 _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")

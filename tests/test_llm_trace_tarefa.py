@@ -34,3 +34,13 @@ def test_base_antiga_migra_sem_perder_linha(tmp_path, monkeypatch):
     free_llm._trace("gemini", True, 7)
     assert sqlite3.connect(db).execute("SELECT provedor, tarefa FROM llm_trace ORDER BY rowid").fetchall() == \
         [("groq", None), ("gemini", "lex_execucao")]
+
+
+def test_cadeia_gratis_grava_caracteres_exatos(tmp_path, monkeypatch):
+    db = tmp_path / "t.db"
+    monkeypatch.setenv("JFN_LLM_TRACE_DB", str(db))
+    monkeypatch.setattr(free_llm, "_get_provider_order", lambda: ["groq"])
+    monkeypatch.setattr(free_llm, "groq_available", lambda: True)
+    monkeypatch.setattr(free_llm, "groq_chat", lambda prompt, system="", smart=False: "resposta")
+    assert free_llm.best_free_chat("abcde", system="xy") == "resposta"
+    assert sqlite3.connect(db).execute("SELECT provedor, chars_in, chars_out FROM llm_trace").fetchone() == ("groq", 7, 8)
