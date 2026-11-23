@@ -70,6 +70,18 @@ PREFERENCIA_DOWNLOAD: tuple[str, ...] = ()
 POLITICA: dict[str, tuple[tuple[str, ...], ...]] = {}
 
 
+def caminho_suspensas() -> Path:
+    """Nuvens suspensas NESTA máquina por um verificador (ex.: tools/mediafire_sessao.py): {nome: motivo}."""
+    return Path(os.environ.get("JFN_NUVENS_SUSPENSAS") or HOME / ".zelador" / "nuvens_suspensas.json")
+
+
+def suspensas() -> dict:
+    try:
+        return json.loads(caminho_suspensas().read_text(encoding="utf-8")) or {}
+    except (OSError, ValueError):
+        return {}
+
+
 def configurar(caminho: Path | str | None = None) -> dict:
     """(Re)carrega a config das nuvens e deriva DESTINOS/INDICE_REMOTO/PREFERENCIA_DOWNLOAD/POLITICA.
 
@@ -82,7 +94,8 @@ def configurar(caminho: Path | str | None = None) -> dict:
     cfg = json.loads(Path(caminho or caminho_config_nuvens()).read_text(encoding="utf-8"))
     rem = cfg["remotos"]
     principal = cfg["principal"]
-    segunda = tuple(n for n in cfg.get("segunda_copia", []) if n in rem and n != principal)
+    fora = suspensas()                  # remoto suspenso pelo verificador sai da 2ª cópia até voltar
+    segunda = tuple(n for n in cfg.get("segunda_copia", []) if n in rem and n != principal and n not in fora)
     if principal not in rem or not segunda:
         raise ValueError("config das nuvens: principal ausente ou segunda_copia vazia")
     reob = os.environ.get("JFN_DESTINO_REOBTIVEL", principal)
@@ -427,9 +440,18 @@ class Rclone:
                                                  "--timeout", "300s"])
     orcamento: Orcamento | None = field(default_factory=lambda: Orcamento())
 
+    @staticmethod
+    def args_do_remoto(args: list[str]) -> list[str]:
+        """Remoto com `tamanho_listado_confiavel: false` (Proton: a listagem dá o tamanho cifrado) → --ignore-size,
+        senão o próprio rclone apaga a cópia boa ('corrupted on transfer: sizes differ'). O hash decide."""
+        if any(not NUVENS["remotos"][n].get("tamanho_listado_confiavel", True)
+               for n in filter(None, map(nome_remoto, args))):
+            return [*args, "--ignore-size"]
+        return args
+
     def _run(self, args: list[str], timeout: int | None = None) -> subprocess.CompletedProcess:
         try:
-            return subprocess.run([self.binario, *args, *self.extra], capture_output=True, text=True,
+            return subprocess.run([self.binario, *self.args_do_remoto(args), *self.extra], capture_output=True, text=True,
                                   timeout=timeout or self.timeout)
         except subprocess.TimeoutExpired as e:
             return subprocess.CompletedProcess(e.cmd, 124, "", "timeout")
@@ -651,6 +673,14 @@ def url(destino: str, chave: str) -> str:
     return f"{DESTINOS[destino]}/{chave}"
 
 
+def tamanho_confere(destino: str, listado, real: int) -> bool:
+    """Tamanho da listagem = real. Remoto com `tamanho_listado_confiavel: false` não reprova aqui: lá só o hash
+    BAIXADO prova a cópia (ver conferir_copia)."""
+    if not NUVENS["remotos"].get(destino, {}).get("tamanho_listado_confiavel", True):
+        return True
+    return int(listado if listado is not None else -1) == int(real)
+
+
 def conferir_copia(rc: Rclone, destino: str, chave: str, bytes_: int, md5: str, sha1: str,
                    permitir_download: bool = True) -> tuple[str, str, str]:
     """('ok'|'sumida'|'divergente'|'sem_hash', hash_tipo, detalhe). Só 'ok' conta como cópia.
@@ -662,7 +692,7 @@ def conferir_copia(rc: Rclone, destino: str, chave: str, bytes_: int, md5: str, 
     st = rc.stat(u)
     if st is None:
         return "sumida", "", f"não listado em {u}"
-    if int(st.get("Size", -1)) != int(bytes_):
+    if not tamanho_confere(destino, st.get("Size"), bytes_):
         return "divergente", "", f"tamanho {st.get('Size')} ≠ {bytes_}"
     hs = {k.lower(): (v or "").lower() for k, v in (st.get("Hashes") or {}).items()}
     if hs.get("md5"):
@@ -1166,7 +1196,7 @@ def exportar_indice(con: sqlite3.Connection, rc: Rclone, maq: str | None = None)
                     continue
                 st = rc.stat(u)
                 hs = {k.lower(): (v or "").lower() for k, v in ((st or {}).get("Hashes") or {}).items()}
-                bom = bool(st) and int(st.get("Size", -1)) == snap.stat().st_size and \
+                bom = bool(st) and tamanho_confere(d, st.get("Size"), snap.stat().st_size) and \
                     (hs.get("md5") == md5 or hs.get("sha1") == sha1 or
                      (not hs.get("md5") and not hs.get("sha1") and rc.hash_baixando(u, "md5", snap.stat().st_size) == md5))
                 out[d] = "ok" if bom else f"falhou {err[-200:]}"

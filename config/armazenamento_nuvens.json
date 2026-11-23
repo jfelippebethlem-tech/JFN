@@ -11,8 +11,8 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "drime", "dosya", "mediafire", "terabox"],
-  "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)", "proton": "Proton Drive 5 GB ligado como `proton:` via WebDAV do OpenList (o backend nativo do rclone recebe redirect para HTTP e recusa). Conteúdo volta íntegro (sha256), mas o tamanho listado vem 168 bytes maior (cifrado) → a conferência por tamanho reprova; fica fora até a conferência aceitar isso (coordenador, 22/11/2026)"},
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "drime", "dosya", "mediafire", "proton", "terabox"],
+  "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)"},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
@@ -159,6 +159,13 @@
       "medir": "about", "margem_gb": 0.3, "preferencia_download": 7, "limites": {},
       "_restricoes": "5 GiB grátis sem cartão e sem expirar; download nunca cobrado (dosya.dev/pricing). Conta pelo Google jfelippebethlem@gmail.com; chave de API 'jfn-rclone'. Hash na listagem: sha256 (não md5/sha1) → conferência por download.",
       "fontes": ["https://dosya.dev/pricing ('Free isn't a trial', 'Every feature ships on Free', '$0 per GB downloaded') — lido 22/11/2026", "coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 1,3 MB/s subida, 2,1 MB/s descida; about = 5 GiB)"]
+    },
+    "proton": {
+      "tipo": "webdav", "raiz": "proton:JFN", "frio": "proton:JFN/frio", "indice": "proton:JFN/indice",
+      "medir": "size", "armazenamento_gb": 5, "margem_gb": 0.5, "tamanho_listado_confiavel": false,
+      "preferencia_download": 8, "limites": {},
+      "_restricoes": "Proton Drive Free 5 GB, conta jfbethlem@proton.me. Sem rclone nativo utilizável (o backend protondrive recebe redirect para HTTP e recusa): WebDAV do OpenList (127.0.0.1:5244/dav/proton, só a VM-1 alcança). Cifra de ponta a ponta: a listagem dá o tamanho CIFRADO e nenhum hash — medido 23/11/2026: 1.000 B → +53, 1 MiB → +56, 5.000.000 B → +116, 12 MiB → +168 (cresce por bloco, NÃO é constante). Por isso `tamanho_listado_confiavel: false`: o rclone roda com --ignore-size (senão apaga a cópia boa: 'corrupted on transfer: sizes differ') e a cópia SÓ vale conferida por download + md5 (conferir_copia). `size` superestima um pouco o uso (conservador). Não oficial: nunca cópia única.",
+      "fontes": ["https://proton.me/drive/pricing ('5 GB of storage, photos and documents'; não publica limite de download) — lido 23/11/2026", "medição 23/11/2026: 4 arquivos (1 kB a 12 MiB) via OpenList, md5 baixado idêntico nos 4"]
     },
     "mediafire": {
       "tipo": "webdav", "raiz": "mediafire:JFN", "frio": "mediafire:JFN/frio", "indice": "mediafire:JFN/indice",

@@ -821,3 +821,63 @@ def test_backups_subpasta_vira_um_pacote_e_o_primeiro_nivel_sobe_solto(tmp_path,
     unidades = sorted((str(alvo.relative_to(raiz)), len(arqs)) for _, alvo, arqs, _, _ in c.candidatos)
     assert unidades == [("manifestos", 5), ("solto.json", 1)]
     assert "não é arquivo regular" not in c.recusados          # a subpasta não conta como recusa no modo raso
+
+
+# ── Proton (22-23/11): a listagem do WebDAV do OpenList dá o tamanho CIFRADO (+53, +56, +116, +168 B medidos em
+#    1 kB, 1 MiB, 5 MB e 12 MiB — NÃO é constante) e nenhum hash → a cópia só se confere baixando ─────────────
+class ListagemCifrada(RcloneDeMentira):
+    """`lsjson` devolve tamanho+delta e nenhum hash; `hashsum --download` devolve o md5 do conteúdo."""
+    def __init__(self, delta, md5_baixado, **kw):
+        super().__init__(**kw)
+        self.delta, self.md5_baixado = delta, md5_baixado
+
+    def _run(self, args, timeout=None):
+        self.chamadas.append(args)
+        if args[0] == "lsjson":
+            return subprocess.CompletedProcess(args, 0, json.dumps({"Size": 1000 + self.delta, "Hashes": {}}), "")
+        if args[0] == "hashsum":
+            return subprocess.CompletedProcess(args, 0, f"{self.md5_baixado}  x\n", "")
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+
+def test_proton_tamanho_listado_nao_conta_so_o_hash_baixado(tmp_path):
+    assert "proton" in A.POLITICA["insubstituivel"][1] and A.POLITICA["insubstituivel"][1][-1] == "terabox"
+    rc = ListagemCifrada(168, "a" * 32)
+    rc.orcamento = None
+    assert A.conferir_copia(rc, "proton", "k", 1000, "a" * 32, "s") == ("ok", "md5-download", "")   # positivo
+    assert A.conferir_copia(rc, "proton", "k", 1000, "b" * 32, "s")[0] == "divergente"           # conteúdo errado
+    assert A.conferir_copia(rc, "proton", "k", 1000, "a" * 32, "s", permitir_download=False)[0] == "sem_hash"
+    assert A.conferir_copia(rc, "drime", "k", 1000, "a" * 32, "s")[0] == "divergente"            # os outros: igual
+
+
+def test_proton_rclone_ignora_tamanho_so_nele(tmp_path):
+    """O próprio rclone recusa a cópia ('corrupted on transfer: sizes differ', medido 23/11) sem --ignore-size."""
+    f = tmp_path / "f"
+    assert "--ignore-size" in A.Rclone.args_do_remoto(["copyto", str(f), A.DESTINOS["proton"] + "/x"])
+    assert "--ignore-size" in A.Rclone.args_do_remoto(["copyto", A.DESTINOS["proton"] + "/x", str(f)])
+    assert "--ignore-size" not in A.Rclone.args_do_remoto(["copyto", str(f), A.DESTINOS["drime"] + "/x"])
+
+
+def test_nuvem_suspensa_sai_da_segunda_copia_ate_voltar(tmp_path, monkeypatch):
+    """MediaFire (23/11): o verificador que não renova a sessão suspende o remoto num arquivo local; volta sozinho."""
+    susp = tmp_path / "suspensas.json"
+    monkeypatch.setenv("JFN_NUVENS_SUSPENSAS", str(susp))
+    A.configurar()
+    assert "mediafire" in A.POLITICA["insubstituivel"][1]                     # controle: sem suspensão, está
+    susp.write_text(json.dumps({"mediafire": "sessão não renovou"}))
+    A.configurar()
+    assert "mediafire" not in A.POLITICA["insubstituivel"][1] and "drime" in A.POLITICA["insubstituivel"][1]
+    susp.write_text("{}")
+    A.configurar()
+    assert "mediafire" in A.POLITICA["insubstituivel"][1]
+
+
+def test_mediafire_sessao_que_nao_renova_suspende_e_a_que_volta_libera(tmp_path, monkeypatch):
+    from tools.zelador import mediafire_sessao as M
+    monkeypatch.setenv("JFN_NUVENS_SUSPENSAS", str(tmp_path / "s.json"))
+    monkeypatch.setattr(M, "recarregar", lambda cookie=None: "success/work")
+    monkeypatch.setattr(M, "login_headless", lambda: None)                  # captcha/2FA: sem cookie
+    monkeypatch.setattr(M, "lista", lambda: False)
+    assert M.main([]) == 2 and "mediafire" in A.suspensas()                 # negativo: suspenso
+    monkeypatch.setattr(M, "lista", lambda: True)
+    assert M.main([]) == 0 and "mediafire" not in A.suspensas()             # positivo: voltou sozinho

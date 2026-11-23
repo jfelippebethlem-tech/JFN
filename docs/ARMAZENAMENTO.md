@@ -165,12 +165,29 @@ preferência) — testado em `test_remoto_novo_entra_so_pela_config`.
 | `yandex:` | — | **fora** (`remotos_fora`): 403 até o dono confirmar o telefone | — |
 
 Ordem da 2ª cópia (`segunda_copia`): B2 → R2 → MEGA → Dropbox → Blomp → Koofr → Box → pCloud → Jottacloud →
-TeraBox (lento, nunca cópia única: sempre o último).
+… → Dosya → MediaFire → Proton → TeraBox (lento, nunca cópia única: sempre o último).
 
 **TeraBox — restrições (21/11):** `so_copia_extra: true` → **nunca cópia única** (o `configurar()` recusa como
 principal ou como destino do re-obtível; é o último de `segunda_copia`, só 2ª/3ª cópia) · `max_arquivo_gb: 4`
 (o pré-voo recusa arquivo maior) · `apagar_libera: false` (apagado vai para a lixeira: o contador não devolve a
 cota) · só a VM-1 alcança (127.0.0.1:5244); na VM-2 ele aparece como inacessível e a vaga segue com os outros.
+
+**Proton e MediaFire (23/11, WebDAV do OpenList na VM-1, penúltimos de `segunda_copia`, antes do TeraBox):**
+
+* **Proton** (`proton:JFN`, 5 GB grátis — proton.me/drive/pricing) · `tamanho_listado_confiavel: false`: a listagem
+  dá o tamanho **cifrado** e nenhum hash. Medido em 4 arquivos: 1.000 B → +53, 1 MiB → +56, 5.000.000 B → +116,
+  12 MiB → +168 — **não é constante** (cresce por bloco), então não há tolerância de tamanho: o rclone roda com
+  `--ignore-size` só nesse remoto (sem isso ele mesmo apaga a cópia boa: "corrupted on transfer: sizes differ") e a
+  cópia **só vale conferida por download + md5** (`conferir_copia`; sem download = `sem_hash`, não conta). Gasta um
+  download por cópia — o Proton não publica limite de download no grátis.
+* **MediaFire** (`mediafire:JFN`): o driver do OpenList só aceita **cookie** (nem e-mail/senha nem token renovável)
+  e o `session_token` que ele tira do cookie morre em horas sem se renovar. `tools/zelador/mediafire_sessao.py`
+  (cron 04:20, antes do zelador) recarrega o storage com token vazio; se o remoto não listar, faz **login headless**
+  (patchright + Chromium em xvfb, e-mail/senha de `~/.config/jfn/nuvens.env`, sem captcha medido em 23/11) e grava o
+  cookie novo (`~/.config/jfn/mediafire.cookie`, 0600). Não voltou → escreve `mediafire` em
+  `~/.zelador/nuvens_suspensas.json` e o `configurar()` o tira da 2ª cópia até um dia em que volte (sem aviso ao
+  Yoda; registro em `data/mediafire_sessao.log`). Se o MediaFire passar a exigir captcha/2FA, o remoto fica suspenso
+  sozinho — aí é tirá-lo da config para `remotos_fora`.
 
 \* reserva do B2: `tools/backup_compliance.sh` (domingo 03:50) sobe a 4ª cópia semanal (~1,5 GB) **antes** de girar
 para 3. Observação: a página de preços do B2 hoje diz "Class A, B, and C API calls are free for pay-as-you-go"; a
