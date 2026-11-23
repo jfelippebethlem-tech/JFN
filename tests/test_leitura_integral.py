@@ -134,3 +134,19 @@ def test_data_por_extenso_confere_com_o_valor_normalizado():
     assert L.verificar(dict(ok, valor="2026-07-03", citacao="Publicado em 03/07/2026"), txt)["estado"] == "VERIFICADO"
     assert L.verificar(dict(ok, valor="13/06/2026"), txt)["estado"] == "INDISPONIVEL"      # dia errado
     assert L.verificar(dict(ok, valor="12/07/2026"), txt)["estado"] == "INDISPONIVEL"      # mês errado
+
+
+def test_porta_por_processo_inteiro_ocr_ou_documento_sem_texto_barram_o_processo(tmp_path):
+    """Dono 23/11: 'nos processos que temos certeza que o ocr, a extração, estão todos certos em tudo pra não ter que
+    gastar duas vezes' — processo com qualquer pendência espera inteiro; o que entra é lido uma vez, por completo."""
+    p = _pasta(tmp_path, "100001_000006_2025", [("Contrato (11111111)", "texto " * 20), ("NF (22222222)", "x " * 30)])
+    _man(p, captura_completa=True, docs_faltantes=[])
+    assert L.portao(p) == (True, "")
+    m = json.loads((p / "manifest.json").read_text())
+    m["docs"][1]["ocr_motor"] = "surya"
+    (p / "manifest.json").write_text(json.dumps(m))
+    assert L.portao(p) == (False, "documento de OCR ainda não confirmado")
+    m["docs"][1].pop("ocr_motor")
+    m["docs"].append({"i": 2, "titulo": "Anexo (33333333)", "tipo": "anexo"})       # sem texto capturado
+    (p / "manifest.json").write_text(json.dumps(m))
+    assert L.portao(p) == (False, "documento sem texto")

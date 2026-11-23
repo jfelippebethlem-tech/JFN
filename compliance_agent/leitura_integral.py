@@ -73,6 +73,13 @@ def portao(pasta: Path) -> tuple[bool, str]:
         return False, "documentos faltando na captura"
     if man.get("captura_completa") is not True:
         return False, "captura não declarada completa"
+    docs = [d for d in man.get("docs") or [] if isinstance(d, dict)]
+    # dono 23/11: "nos processos que temos certeza que o ocr, a extração, estão todos certos em tudo pra não ter que
+    # gastar duas vezes" — qualquer pendência barra o PROCESSO inteiro, que é lido uma vez só quando estiver pronto
+    if any(_eh_ocr(d) for d in docs):
+        return False, "documento de OCR ainda não confirmado"
+    if any(not d.get("texto") for d in docs):
+        return False, "documento sem texto"
     return True, ""
 
 
@@ -362,8 +369,12 @@ def main(argv: list[str] | None = None) -> int:
                 resumo["fora_da_porta"] += 1
                 print(f"fora da porta: {proc} — {motivo}", file=sys.stderr)
                 continue
-            aceitos.append(proc)
             fatias, cob = fatiar(pasta, ja_lidos=lidos)
+            if cob["docs_tabela"]:          # tabela espera o leitor por código: o processo inteiro espera junto
+                resumo["fora_da_porta"] += 1
+                print(f"fora da porta: {proc} — tabela aguardando o leitor por código", file=sys.stderr)
+                continue
+            aceitos.append(proc)
             for f in fatias:
                 for d in f["docs"]:
                     if d["sha"] not in lidos:
