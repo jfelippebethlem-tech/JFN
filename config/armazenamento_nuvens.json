@@ -12,7 +12,7 @@
   ],
   "principal": "gdrive",
   "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "terabox"],
-  "remotos_fora": {},
+  "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)"},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
   "remotos": {
