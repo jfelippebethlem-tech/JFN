@@ -22,8 +22,11 @@ Registro durável: `data/sei_ocr_confirmacao.jsonl` (só acrescenta; a última l
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import sqlite3
+import sys
 import time
 from collections import Counter
 from pathlib import Path
@@ -147,7 +150,7 @@ def avaliar_processo(pasta: Path, *, siafe: bool = True) -> list[dict]:
     if siafe:
         try:
             externos = P.fontes_externas(str(man.get("processo") or tag.replace("_", "/")))
-        except Exception:      # noqa: BLE001 — fonte externa indisponível não derruba a avaliação (só não ajuda)
+        except (sqlite3.Error, OSError, ValueError):   # fonte externa indisponível não derruba a avaliação
             externos = None
     out = []
     for d in man.get("docs") or []:
@@ -181,3 +184,50 @@ def confirmados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
     except OSError:
         return set()
     return {k for k, e in ultimo.items() if e == "confirmado"}
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Avalia os processos com documento de OCR e captura completa e grava o registro (o que a porta da leitura
+    integral consulta). `--limite` controla a rodada; processos já avaliados nesta versão são pulados."""
+    ap = argparse.ArgumentParser(description="Confirmação do OCR por documento (Fase 5)")
+    ap.add_argument("--limite", type=int, default=50)
+    a = ap.parse_args(argv)
+    feitos = {r_tag for r_tag, _ in _avaliados()}
+    n = 0
+    for m in sorted((RAIZ / "data" / "sei_arquivo").glob("*/manifest.json")):
+        if n >= a.limite:
+            break
+        tag = m.parent.name
+        if tag in feitos:
+            continue
+        try:
+            man = json.loads(m.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if man.get("captura_completa") is not True or not any(
+                isinstance(d, dict) and (d.get("ocr") or d.get("ocr_motor")) for d in man.get("docs") or []):
+            continue
+        registrar(avaliar_processo(m.parent))
+        n += 1
+    print(f"{n} processo(s) avaliado(s); confirmados no registro: {len(confirmados())}")
+    return 0
+
+
+def _avaliados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
+    out = set()
+    try:
+        with arq.open(encoding="utf-8") as f:
+            for ln in f:
+                try:
+                    r = json.loads(ln)
+                except ValueError:
+                    continue
+                if r.get("versao") == VERSAO:
+                    out.add((r["tag"], str(r["i"])))
+    except OSError:
+        pass
+    return out
+
+
+if __name__ == "__main__":
+    sys.exit(main())

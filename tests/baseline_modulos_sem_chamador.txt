@@ -46,3 +46,4 @@ compliance_agent.siafe_login  # [cli]
 compliance_agent.siafe_ppr  # [cli]
 compliance_agent.siafe_session  # [cli]
 compliance_agent.vantajosidade  # [biblioteca] 17 funções de teste
+compliance_agent.leitura_integral  # [cli] 23/11/2026 — lote manual da leitura integral; o ritmo e o teto da API são decisão do dono ("vamos vendo isso aos poucos") — Fase 1/6 do docs/PLANO-PLATAFORMA-EVIDENCIAS.md

@@ -76,11 +76,23 @@ def portao(pasta: Path) -> tuple[bool, str]:
     docs = [d for d in man.get("docs") or [] if isinstance(d, dict)]
     # dono 23/11: "nos processos que temos certeza que o ocr, a extração, estão todos certos em tudo pra não ter que
     # gastar duas vezes" — qualquer pendência barra o PROCESSO inteiro, que é lido uma vez só quando estiver pronto
-    if any(_eh_ocr(d) for d in docs):
+    if any(_eh_ocr(d) and (pasta.name, str(d.get("i"))) not in _ocr_confirmados() for d in docs):
         return False, "documento de OCR ainda não confirmado"
     if any(not d.get("texto") for d in docs):
         return False, "documento sem texto"
     return True, ""
+
+
+_CONF: set | None = None
+
+
+def _ocr_confirmados() -> set:
+    """(tag, i) com OCR CONFIRMADO por leitura independente (`sei/ocr_confirmacao`, Fase 5) — esses entram como certos."""
+    global _CONF
+    if _CONF is None:
+        from compliance_agent.sei import ocr_confirmacao
+        _CONF = ocr_confirmacao.confirmados()
+    return _CONF
 
 
 def _eh_ocr(d: dict) -> bool:
@@ -102,6 +114,7 @@ def _docs(pasta: Path) -> list[dict]:
         if texto:
             out.append({"doc_id": base if vistos[base] == 1 else f"{base}#{vistos[base]}",
                         "titulo": str(d.get("titulo") or "").strip(), "texto": texto, "ocr": _eh_ocr(d),
+                        "i": str(d.get("i")),
                         "sha": hashlib.sha256(texto.encode("utf-8")).hexdigest()})
     return out
 
@@ -168,7 +181,7 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
             soma["duplicado"] += n
             listas["duplicados"].append(d["doc_id"])
             continue
-        if d["ocr"]:
+        if d["ocr"] and (pasta.name, d["i"]) not in _ocr_confirmados():
             soma["ocr_pendente"] += n
             listas["ocr_pendente"].append(d["doc_id"])
             continue
