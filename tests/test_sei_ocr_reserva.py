@@ -360,3 +360,83 @@ def test_rodar_nao_rele_o_que_ja_esta_lido_e_pendente_de_entrega(tmp_path, monke
     monkeypatch.setattr(R, "entregar", lambda rels, saida: (rels, []))
     assert R.rodar(60, 8, "no-x") == 0
     assert baixados == [] and concluido["entregues"] == [rel]
+
+
+# ── 23/11/2026: 2ª leitura do RapidOCR para os documentos do Surya (trava de prova do OCR por IA) ─────────────────
+def test_reserva_depois_do_surya_fica_ao_lado_como_segunda_leitura(casa):
+    arq = _manifesto(casa, [{"i": 0, "titulo": "NF", "fase": "d", "tipo": "nota_fiscal", "texto": "", "chars": 0}])
+    _entrega(casa, 0, "NOTA FISCAL lida pelo Surya na GPU, valor R$ 1.234,56 em março", "surya")
+    G.integrar()
+    _entrega(casa, 0, "NOTA FISCAL lida pela reserva, valor R$ 1.234,56 em marco", "reserva")
+    G.integrar()
+    d = _docs(arq)[0]
+    assert d["ocr_motor"].startswith("surya") and "Surya" in (arq / d["texto"]).read_text()     # canônico intocado
+    assert d["ocr_reserva_ao_lado"].endswith(".reserva.txt")
+    assert "pela reserva" in (arq / d["ocr_reserva_ao_lado"]).read_text()
+    assert (arq / d["texto"]).with_suffix(".reserva.txt") == arq / d["ocr_reserva_ao_lado"]  # onde a trava lê
+
+
+def test_reserva_sobre_reserva_nao_cria_ao_lado(casa):
+    arq = _manifesto(casa, [{"i": 0, "titulo": "NF", "fase": "d", "tipo": "nota_fiscal", "texto": "", "chars": 0}])
+    _entrega(casa, 0, "NOTA FISCAL lida pela reserva, valor R$ 1.234,56 em março de 2025", "reserva")
+    G.integrar()
+    (casa / "sei_cache" / f"integra_{TAG}" / "000.ocr_reserva.txt").write_text("outra leitura da reserva qualquer")
+    (casa / "ledger.jsonl").write_text("")            # força reprocessar a mesma entrega
+    G.integrar()
+    assert "ocr_reserva_ao_lado" not in _docs(arq)[0]                    # mesmo motor não confirma a si mesmo
+
+
+def test_reservar_pega_primeiro_a_fila_da_conferencia_mesmo_com_gpu_ativa(casa, monkeypatch):
+    monkeypatch.setattr(R, "FILA_CONFERENCIA", casa / "fila_conferencia.txt")
+    fila = [f"integra_t/{i:04d}.pdf" for i in range(R.MARGEM + 50)]
+    monkeypatch.setattr(R, "pulso_gpu", lambda: _pulso(False, fila))
+    tirados = []
+    monkeypatch.setattr(R, "_tirar_da_fila_gpu", lambda rels, md5: tirados.append(rels) or "OK")
+    conf = ["integra_c/001.pdf", "integra_c/002.pdf", "integra_c/003.pdf"]
+    R.FILA_CONFERENCIA.write_text("\n".join(conf) + "\n")
+    (casa / "sei_cache" / "integra_c").mkdir()
+    (casa / "sei_cache" / "integra_c" / "003.ocr_reserva.txt").write_text("já lido, falta integrar")
+    itens = R.reservar(5, "vm2")["itens"]                       # nó da VM-2, GPU ATIVA: só a conferência
+    assert itens == conf[:2] and tirados == []                  # nunca mexe na fila da GPU por eles
+    e = json.loads(R.ESTADO.read_text())
+    assert e["integra_c/001.pdf"]["conferencia"] is True
+    assert R.reservar(5, "vm2-b")["itens"] == []                 # outro nó não pega o mesmo item
+    R.PAUSA.write_text("dono")
+    assert R.reservar(5, "vm2-c")["itens"] == []                 # pausa vale para a conferência também
+
+
+def test_rodar_le_o_pdf_do_disco_local_sem_baixar_nem_apagar(tmp_path, monkeypatch):
+    """22/11: a fila passou a ter PDFs só no disco do it-campo (C:\\JFN-Arquivo\\sei_pdfs); a reserva do it-campo
+    baixava da VM-2, não achava e marcava falha (184 falhas, 0 entregas desde 22/11 18h)."""
+    import subprocess as sp
+    monkeypatch.setattr(R, "BASE_NO", tmp_path)
+    monkeypatch.setattr(R, "PAUSA", tmp_path / ".pausa")
+    monkeypatch.setattr(R, "FRIO_REMOTO", "vm2-ts:x/")
+    monkeypatch.setattr(R, "PDFS_LOCAIS", tmp_path / "JFN-Arquivo" / "sei_pdfs")
+    monkeypatch.setattr(R, "carga", lambda: (0.0, 99.0))
+    local, remoto = "integra_1/000.pdf", "integra_1/001.pdf"
+    (tmp_path / "JFN-Arquivo" / "sei_pdfs" / "integra_1").mkdir(parents=True)
+    (tmp_path / "JFN-Arquivo" / "sei_pdfs" / local).write_bytes(b"%PDF-local")
+    concluido, baixados, lidos = {}, [], []
+
+    def ssh(cmd, entrada=None, timeout=300):
+        if cmd.startswith("concluir"):
+            concluido.update(json.loads(entrada))
+        return sp.CompletedProcess([], 0, json.dumps({"itens": [local, remoto], "motivo": "teste"}), "")
+
+    def baixar(itens, dest):
+        baixados.extend(itens)
+        for r in itens:
+            (dest / r).parent.mkdir(parents=True, exist_ok=True)
+            (dest / r).write_bytes(b"%PDF-baixado")
+        return dest
+
+    monkeypatch.setattr(R, "_ssh_vm1", ssh)
+    monkeypatch.setattr(R, "_baixar", baixar)
+    monkeypatch.setattr(R, "motor_ocr", lambda: None)
+    monkeypatch.setattr(R, "ler_pdf", lambda eng, pdf: lidos.append(pdf.read_bytes()) or ("texto lido " * 20, 1, 1))
+    monkeypatch.setattr(R, "entregar", lambda rels, saida: (rels, []))
+    assert R.rodar(60, 8, "itcampo-x") == 0
+    assert baixados == [remoto] and sorted(lidos) == [b"%PDF-baixado", b"%PDF-local"]
+    assert (tmp_path / "JFN-Arquivo" / "sei_pdfs" / local).exists()          # o arquivo do disco nunca é apagado
+    assert sorted(concluido["entregues"]) == [local, remoto] and concluido["falhas"] == []

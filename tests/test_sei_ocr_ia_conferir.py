@@ -91,3 +91,49 @@ def test_aplicador_do_opus_so_com_base_objetiva(acervo):
     assert not C.aplicar_conferencia(item, '{"decisao": "indecidivel", "base": "nenhuma"}', "opus", None)
     assert C.aplicar_conferencia(item, '{"decisao": "B", "base": "extenso", "justificativa": "x"}', "opus", None)
     assert P.estado(TAG, 7, "valor", "100083.95") == "errado"
+
+
+# ── 23/11/2026: rodada automática (2ª leitura do RapidOCR ao lado, OCR do PDF na VM-2, fila da reserva) ──────────
+def _ao_lado_reserva(pasta, texto):
+    (pasta / "texto" / "007_nf.reserva.txt").write_text("[NF 1] (tipo: nota_fiscal)\n\n" + texto, encoding="utf-8")
+
+
+def test_reserva_ao_lado_nova_reabre_o_documento_e_confirma(acervo):
+    d = acervo_texto.manifesto(acervo)["docs"][0]
+    P.registrar(C.confirmar_documento(acervo, d, usar_pdf=False)["resultados"])
+    assert C._ja_decidido(acervo, d)                                   # nada novo: não refaz
+    _ao_lado_reserva(acervo, f"NOTA FISCAL\nPrestador CNPJ {CNPJ}\nValor total R$ 100.033,95\nEmissao 05/03/2024")
+    assert not C._ja_decidido(acervo, d)                               # 2ª leitura nova ainda não tentada
+    P.registrar(C.confirmar_documento(acervo, d, usar_pdf=False)["resultados"])
+    assert P.estado(TAG, 7, "cnpj", P.normalizar("cnpj", CNPJ)) == "confirmado"
+    assert P.estado(TAG, 7, "valor", "100083.95") == "divergente"      # a IA trocou 3→8: não vira prova
+    assert C._ja_decidido(acervo, d)                                   # já tentada: não refaz de novo
+
+
+def test_fila_da_reserva_so_ia_pendente_sem_reserva_ao_lado(acervo, monkeypatch, tmp_path):
+    monkeypatch.setattr(C, "FILA_RESERVA", tmp_path / "fila_reserva.txt")
+    d = acervo_texto.manifesto(acervo)["docs"][0]
+    P.registrar(C.confirmar_documento(acervo, d, usar_pdf=False)["resultados"])
+    assert C.fila_reserva() == [f"integra_{TAG}/007.pdf"]
+    C.gravar_fila_reserva()
+    assert C.FILA_RESERVA.read_text().split() == [f"integra_{TAG}/007.pdf"]
+    _ao_lado_reserva(acervo, f"NOTA FISCAL CNPJ {CNPJ}")
+    assert C.fila_reserva() == []                                      # negativo: já tem a leitura do RapidOCR
+
+
+def test_leitura_na_vm2_usa_o_resultado_remoto_e_queda_adia(acervo, monkeypatch):
+    import subprocess as sp
+    d = acervo_texto.manifesto(acervo)["docs"][0]
+    chamadas = []
+
+    def run_ok(argv, input=None, capture_output=True, timeout=None):
+        chamadas.append(argv)
+        return sp.CompletedProcess(argv, 0, json.dumps({"pdf": "vm2:x", "paginas": [1], "segundos": {"1": 2.0},
+                                                         "leituras": {"tesseract": f"CNPJ {CNPJ}"}}).encode(), b"")
+    monkeypatch.setattr(C.subprocess, "run", run_ok)
+    r = C.confirmar_documento(acervo, d, ler_em="vm2")
+    assert chamadas and chamadas[0][-2] == "vm2" and "tools.sei_ocr_ia_conferir ler" in chamadas[0][-1]
+    assert {x["tipo"]: x["estado"] for x in r["resultados"]}["cnpj"] == "confirmado" and not r.get("adiado")
+    monkeypatch.setattr(C.subprocess, "run", lambda *a, **k: sp.CompletedProcess(a, 255, b"", b"ssh: timeout"))
+    r = C.confirmar_documento(acervo, d, ler_em="vm2")
+    assert r["adiado"] and r["resultados"] == []                        # VM-2 fora: não grava a_conferir sem tentar

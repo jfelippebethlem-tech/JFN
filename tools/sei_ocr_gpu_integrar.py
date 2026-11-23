@@ -149,6 +149,16 @@ def integrar() -> dict:
                                          else "descartado_sem_texto"})
                     continue
                 if atual >= posto:                          # já tem texto de motor igual ou mais forte (Surya > reserva)
+                    if atual == 3 and motor == "reserva" and d.get("texto"):
+                        # 23/11/2026: o RapidOCR sobre documento do Surya é a 2ª leitura de OUTRA família que a trava
+                        # de prova (`sei/ocr_ia_prova.leituras_ao_lado`) lê — fica ao lado; o canônico não muda.
+                        ao_lado = (ARQUIVO / tag / d["texto"]).with_suffix(".reserva.txt")
+                        if not ao_lado.exists():
+                            cab = f"[{d.get('titulo', '')}] (fase: {d.get('fase', '')} · tipo: {d.get('tipo', '')})\n\n"
+                            ao_lado.write_text(cab + texto, encoding="utf-8")
+                            d["ocr_reserva_ao_lado"] = str(ao_lado.relative_to(ARQUIVO / tag))
+                            mudou = True
+                            reg["ao_lado"] = True
                     parcial["mantidos"] += 1
                     da_pasta.append({**reg, "acao": "mantido_superior", "motor_atual": str(d.get("ocr_motor") or "")})
                     continue

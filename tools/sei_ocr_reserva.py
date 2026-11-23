@@ -65,6 +65,9 @@ LOG = DATA / "sei_ocr_reserva.log"                 # VM-1: uma linha JSON por de
 LEDGER = DATA / "sei_ocr_gpu_aplicado.jsonl"
 FILA_VM1 = DATA / "sei_ocr_gpu_fila.txt"
 PAUSA = DATA / ".pause_ocr_reserva"
+# 23/11/2026: documentos do Surya com número a conferir/divergente (`tools/sei_ocr_ia_conferir.gravar_fila_reserva`)
+# — a 2ª leitura do RapidOCR vai primeiro para eles; não disputam com a GPU (ela já os leu).
+FILA_CONFERENCIA = DATA / "sei_ocr_reserva_conferir.txt"
 ITCAMPO = os.environ.get("JFN_ITCAMPO_SSH", "it-campo")
 VM1 = os.environ.get("JFN_VM1_SSH", "vm1-ts")
 VM1_JFN = os.environ.get("JFN_VM1_DIR", "/home/ubuntu/JFN")
@@ -75,6 +78,10 @@ FRIO_REMOTO = os.environ.get("JFN_FRIO_REMOTO", "")   # nó sem o arquivo frio (
 # Windows, fora da memória do WSL (onde a reserva cedia sempre: "memória livre 3,2 GB < 6,0"); o TRANSPORTE (ssh/rsync
 # com as chaves vm1-ts/vm2-ts) continua pelo WSL — é só rede, sem memória que dispute com o Surya.
 NATIVO_WIN = os.name == "nt"
+# Disco do it-campo (15–16/11/2026): PDFs que só existem em C:\\JFN-Arquivo\\sei_pdfs (`sei_ocr_gpu_fila
+# --itcampo-local`). Lidos no lugar — nunca baixados nem apagados. Na VM-2 o caminho não existe (sem efeito).
+PDFS_LOCAIS = Path(os.environ.get("JFN_PDFS_LOCAIS") or
+                   (r"C:\JFN-Arquivo\sei_pdfs" if NATIVO_WIN else "/mnt/c/JFN-Arquivo/sei_pdfs"))
 
 
 def _wsl_caminho(a: str) -> str:
@@ -302,14 +309,25 @@ def reservar(n: int, no: str, paralelo: bool = False) -> dict:
                     estado[rel].pop("tirar_pendente", None)
                 p = pulso_gpu()                          # o md5 mudou com a retirada
             _log(ev="retirada_pendente", itens=len(pend), resultado=r)
+        conf: list[str] = []
+        if len(sobra) < n and FILA_CONFERENCIA.exists():
+            for rel in FILA_CONFERENCIA.read_text(encoding="utf-8").split():
+                e = estado.get(rel) or {}
+                if len(sobra) + len(conf) >= n:
+                    break
+                if rel.endswith(".pdf") and "/" in rel and e.get("estado") in (None, "falha") \
+                        and not e.get("conferencia") and not _arq_reserva(rel).exists():
+                    conf.append(rel)
+            for rel in conf:
+                estado[rel] = {"estado": "reservado", "no": no, "em": _agora(), "ts": agora, "conferencia": True}
         novos: list[str] = []
-        if (p["parada"] or (paralelo and p["ssh"])) and len(sobra) < n:
+        if (p["parada"] or (paralelo and p["ssh"])) and len(sobra) + len(conf) < n:
             aplicados_arq, aplicados_doc = _ledger()
             pendentes = p["pendentes"] if p["ssh"] else \
                 (FILA_VM1.read_text(encoding="utf-8").split() if FILA_VM1.exists() else [])
             excluir = set(estado) | {rel for rel in pendentes if _rel_doc(rel) in aplicados_doc
                                      or (CACHE / (rel[:-4] + ".ocr_gpu.txt")).exists() or _arq_reserva(rel).exists()}
-            novos = escolher(pendentes, excluir, n - len(sobra))
+            novos = escolher(pendentes, excluir, n - len(sobra) - len(conf))
             if novos and p["ssh"]:
                 r = _tirar_da_fila_gpu(novos, p["fila_md5"])
                 if not r.startswith("OK"):
@@ -321,8 +339,9 @@ def reservar(n: int, no: str, paralelo: bool = False) -> dict:
         for rel in sobra:
             estado[rel].update(em=_agora(), ts=agora)
         _gravar_estado(estado)
-        itens = sobra + novos
-        _log(ev="reservar", no=no, itens=len(itens), sobra=len(sobra), novos=len(novos), gpu_parada=p["parada"],
+        itens = sobra + conf + novos
+        _log(ev="reservar", no=no, itens=len(itens), sobra=len(sobra), conferencia=len(conf), novos=len(novos),
+             gpu_parada=p["parada"],
              ssh=p["ssh"], pendentes_gpu=None if p["pendentes"] is None else len(p["pendentes"]), motivo=p["motivo"])
         return {"itens": itens, "gpu_parada": p["parada"], "motivo": p["motivo"]}
 
@@ -508,9 +527,11 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
         return 0
     saida.mkdir(parents=True, exist_ok=True)
     frio = FRIO
+    locais = {r for r in itens if (PDFS_LOCAIS / r).is_file()}
     if FRIO_REMOTO:
         try:
-            frio = _baixar([r for r in itens if not (saida / r[:-4]).with_suffix(".ocr_reserva.txt").exists()],
+            frio = _baixar([r for r in itens if r not in locais
+                            and not (saida / r[:-4]).with_suffix(".ocr_reserva.txt").exists()],
                            BASE_NO / "pdfs" / no)
         except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
             print(json.dumps({"ev": "baixar_falhou", "erro": str(e)[:300]}, ensure_ascii=False), flush=True)
@@ -525,7 +546,7 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
         if not ok:
             motivo_fim = f"cedeu: {porque}"
             break
-        pdf = frio / rel
+        pdf = PDFS_LOCAIS / rel if rel in locais else frio / rel
         destino = saida / rel[:-4]
         if destino.with_suffix(".ocr_reserva.txt").exists() and destino.with_suffix(".ocr_reserva.json").exists():
             # já lido numa rodada anterior e ainda não conferido na VM-1 (entrega caiu): não relê. Reler regravava o
@@ -544,7 +565,7 @@ def rodar(orcamento: int, n: int, no: str, paralelo: bool = False) -> int:
             falhas.append(rel)
             continue
         finally:
-            if FRIO_REMOTO:
+            if FRIO_REMOTO and rel not in locais:       # só a cópia baixada; o disco local fica
                 (frio / rel).unlink(missing_ok=True)
         destino.parent.mkdir(parents=True, exist_ok=True)
         destino.with_suffix(".ocr_reserva.txt").write_text(texto, encoding="utf-8", newline="\n")

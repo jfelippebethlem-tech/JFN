@@ -312,6 +312,22 @@ derivados:
     prioridade: 7
     efeito: {arquivo: data/sei_ocr_gpu_fila.txt}
     antes: "nenhum — criado em 18/11/2026"
+  sei_ocr_ia_conferir:
+    nome: Confirmação dos números lidos pelo OCR por IA (2ª leitura independente — trava de prova)
+    onde: data/sei_ocr_ia_conferencia.jsonl (prova dos documentos do Surya) · fila da 2ª leitura do RapidOCR data/sei_ocr_reserva_conferir.txt
+    # 23/11/2026, dono: rodada automática. O OCR da página (Tesseract) roda na VM-2 (`--ler-em vm2`: comando `ler` no
+    # clone ~/JFN-worker, nice 19/ionice idle, PDF do arquivo frio de lá); a VM-1 só lê o acervo, o SIAFE e grava o
+    # registro — por isso "leve" (mesmo critério de `padroes`). VM-2 fora → a rodada para sem gravar nada (adiado).
+    # Ao fim regrava a fila priorizada da reserva (docs do Surya com número pendente e sem `.reserva.txt` ao lado).
+    depende: [sei_ocr_gpu]
+    comando: ["{py}", "-m", "tools.sei_ocr_ia_conferir", "confirmar", "--limite", "40", "--ler-em", "vm2", "--orcamento-s", "3000"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 21600
+    timeout_s: 3600
+    prioridade: 7
+    efeito: {arquivo: data/sei_ocr_ia_conferencia.jsonl}
+    antes: "nenhum — confirmação só à mão (trava de prova de 23/11/2026, registro ainda vazio)"
   propostas_sei:
     nome: Preços das propostas/cotações dos autos SEI → proposta_item (só linha em que q × unitário = total) + J9
     onde: proposta_item (fonte sei_proposta) → J9 propostas gêmeas · screens de conluio

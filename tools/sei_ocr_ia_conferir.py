@@ -36,6 +36,11 @@ from compliance_agent.sei import ocr_ia_prova as P
 DATA = P.DATA
 CACHE = DATA / "sei_cache"
 FICHAS = DATA / "sei_ocr_ia_fichas"
+# Fila PRIORIZADA da 2ª leitura do RapidOCR (23/11/2026): documento de IA com número a conferir/divergente e sem
+# `.reserva.txt` ao lado. A reserva (`tools/sei_ocr_reserva.reservar`) pega daqui antes da fila da GPU.
+FILA_RESERVA = DATA / "sei_ocr_reserva_conferir.txt"
+# Nó que faz o OCR do PDF na rodada automática (dono, 23/11: a VM-1 não calcula OCR). Ele tem o arquivo frio.
+_VM2_JFN = "~/JFN-worker"
 _SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
 
 
@@ -97,8 +102,54 @@ def entrega_crua(tag: str, i, motor: str) -> str:
     return ""
 
 
+def ler_pdf_remoto(tag: str, i, paginas: list[int] | None, no: str = "vm2") -> dict:
+    """Segunda leitura (`P.ler_pdf`) calculada em OUTRO nó — o comando `ler` deste módulo no clone `~/JFN-worker`.
+    PDF que a VM-1 já tem vai pela entrada padrão; senão o nó o acha no próprio arquivo frio. Queda do transporte →
+    RuntimeError (quem chama ADIA o documento: nada é gravado sem a tentativa)."""
+    local = pdf_do_documento(tag, i, trazer=False)
+    cmd = (f"cd {_VM2_JFN} && PYTHONPATH=. nice -n 19 ionice -c3 .venv/bin/python -m tools.sei_ocr_ia_conferir ler "
+           f"{_rel(tag, i)}" + (f" --paginas {','.join(map(str, paginas))}" if paginas else "")
+           + (" --stdin" if local else ""))
+    r = subprocess.run([*_SSH, no, cmd], input=local.read_bytes() if local else None, capture_output=True,
+                       timeout=1800)
+    ult = (r.stdout.decode("utf-8", "replace").strip().splitlines() or [""])[-1]
+    if r.returncode == 3 and not local:                    # o nó não tem o PDF: o armazenamento da VM-1 tenta trazer
+        pdf = pdf_do_documento(tag, i)
+        if pdf:
+            r = subprocess.run([*_SSH, no, cmd + " --stdin"], input=pdf.read_bytes(), capture_output=True,
+                               timeout=1800)
+            ult = (r.stdout.decode("utf-8", "replace").strip().splitlines() or [""])[-1]
+    if r.returncode == 3:
+        return {"pdf": "INDISPONÍVEL", "leituras": {}, "paginas": [], "segundos": {}}
+    if r.returncode != 0:
+        raise RuntimeError(f"{no} rc={r.returncode}: {r.stderr.decode('utf-8', 'replace')[-200:]}")
+    return json.loads(ult)
+
+
+def cmd_ler(a) -> int:
+    """(no nó de OCR) `ler <rel> [--paginas 1,3] [--stdin]` → JSON de `P.ler_pdf` numa linha; rc 3 = sem PDF."""
+    import tempfile
+    paginas = [int(x) for x in a.paginas.split(",")] if a.paginas else None
+    if a.stdin:
+        with tempfile.NamedTemporaryFile(suffix=".pdf") as t:
+            t.write(sys.stdin.buffer.read())
+            t.flush()
+            lido = P.ler_pdf(t.name, paginas)
+        lido["pdf"] = f"stdin:{a.rel}"
+    else:
+        cand = [CACHE / a.rel] + [Path.home() / "arquivo_frio" / b / a.rel for b in ("sei_cache", "sei_pdfs")]
+        pdf = next((c for c in cand if c.exists()), None)
+        if pdf is None:
+            print(json.dumps({"erro": "sem_pdf", "rel": a.rel}))
+            return 3
+        lido = P.ler_pdf(pdf, paginas)
+        lido["pdf"] = str(pdf)
+    print(json.dumps(lido, ensure_ascii=False))
+    return 0
+
+
 # ── confirmar ────────────────────────────────────────────────────────────────────────────────────
-def confirmar_documento(pasta: Path, d: dict, *, usar_pdf: bool = True, con=None) -> dict:
+def confirmar_documento(pasta: Path, d: dict, *, usar_pdf: bool = True, con=None, ler_em: str | None = None) -> dict:
     tag, i = pasta.name, int(d["i"])
     texto = acervo_texto.ler(pasta, d)
     numeros = P.extrair(texto)
@@ -107,7 +158,19 @@ def confirmar_documento(pasta: Path, d: dict, *, usar_pdf: bool = True, con=None
     if not numeros:
         return out
     leituras = P.leituras_ao_lado(pasta, d)
-    if usar_pdf:
+    if usar_pdf and ler_em:
+        paginas = P.paginas_com(numeros, P.paginas_da_ia(entrega_crua(tag, i, str(d.get("ocr_motor") or ""))))
+        t0 = time.monotonic()
+        try:
+            lido = ler_pdf_remoto(tag, i, paginas or None, ler_em)
+        except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as e:
+            out.update(adiado=True, pdf=f"{ler_em} indisponível: {str(e)[:120]}")
+            return out
+        out["pdf"] = lido.get("pdf")
+        leituras.update(lido.get("leituras") or {})
+        out["paginas"], out["seg_por_pagina"] = lido.get("paginas") or [], lido.get("segundos") or {}
+        out["segundos_ocr"] = round(time.monotonic() - t0, 1)
+    elif usar_pdf:
         pdf = pdf_do_documento(tag, i)
         out["pdf"] = str(pdf) if pdf else "INDISPONÍVEL"
         if pdf:
@@ -142,8 +205,46 @@ def _do_processo(pasta: Path, con=None) -> tuple[dict, dict]:
 
 
 def _ja_decidido(pasta: Path, d: dict) -> bool:
+    """Todo número já tem decisão — salvo o pendente (a conferir/divergente, automático) que ganhou uma segunda
+    leitura AO LADO ainda não tentada (ex.: o `.reserva.txt` do RapidOCR que chegou depois): esse é refeito."""
     texto = acervo_texto.ler(pasta, d)
-    return all(P.decisao(pasta.name, d["i"], n["tipo"], n["norma"]) for n in P.extrair(texto))
+    novas = None
+    for n in P.extrair(texto):
+        e = P.decisao(pasta.name, d["i"], n["tipo"], n["norma"])
+        if not e:
+            return False
+        if e.get("estado") in ("a_conferir", "divergente") and not e.get("por"):
+            novas = set(P.leituras_ao_lado(pasta, d)) if novas is None else novas
+            if novas - set(e.get("fontes_tentadas") or []):
+                return False
+    return True
+
+
+def fila_reserva() -> list[str]:
+    """PDFs (`integra_<tag>/NNN.pdf`) dos documentos do Surya com número pendente e SEM a leitura do RapidOCR ao
+    lado, na ordem de `pendentes()` (laudo de execução em risco → divergente → maior valor)."""
+    out, vistos, mans = [], set(), {}
+    for e in pendentes():
+        rel = _rel(e["tag"], e["i"])
+        if rel in vistos:
+            continue
+        vistos.add(rel)
+        pasta = acervo_texto.RAIZ / e["tag"]
+        if e["tag"] not in mans:
+            mans[e["tag"]] = {str(x.get("i")): x for x in (acervo_texto.manifesto(pasta) or {}).get("docs") or []}
+        d = mans[e["tag"]].get(str(e["i"]))
+        if d and d.get("texto") and str(d.get("ocr_motor") or "").startswith("surya") and \
+                not (pasta / d["texto"]).with_suffix(".reserva.txt").exists():     # lida já (mesmo curta): não volta
+            out.append(rel)
+    return out
+
+
+def gravar_fila_reserva() -> int:
+    fila = fila_reserva()
+    tmp = FILA_RESERVA.with_suffix(".tmp")
+    tmp.write_text("".join(f"{r}\n" for r in fila), encoding="utf-8")
+    tmp.replace(FILA_RESERVA)
+    return len(fila)
 
 
 def cmd_confirmar(a) -> int:
@@ -152,13 +253,21 @@ def cmd_confirmar(a) -> int:
     except OSError:
         pass
     con = None
-    feitos, conta, t0 = [], {e: 0 for e in P.ESTADOS}, time.monotonic()
+    feitos, conta, t0, motivo_fim = [], {e: 0 for e in P.ESTADOS}, time.monotonic(), "lote concluído"
+    if a.ler_em:                                   # o clone do nó roda o código desta revisão
+        subprocess.run([*_SSH, a.ler_em, f"git -C {_VM2_JFN} pull --ff-only -q"], capture_output=True, timeout=120)
     for pasta, d in docs_ia(a.tag):
         if len(feitos) >= a.limite:
             break
+        if a.orcamento_s and time.monotonic() - t0 > a.orcamento_s:
+            motivo_fim = f"orçamento de {a.orcamento_s}s"
+            break
         if not a.refazer and _ja_decidido(pasta, d):
             continue
-        r = confirmar_documento(pasta, d, usar_pdf=not a.sem_pdf, con=con)
+        r = confirmar_documento(pasta, d, usar_pdf=not a.sem_pdf, con=con, ler_em=a.ler_em)
+        if r.get("adiado"):                        # nó de OCR fora: para a rodada; nada gravado sem a tentativa
+            motivo_fim = r["pdf"]
+            break
         feitos.append(r)
         for x in r["resultados"]:
             conta[x["estado"]] += 1
@@ -169,7 +278,9 @@ def cmd_confirmar(a) -> int:
                          ensure_ascii=False), flush=True)
     resumo = {"documentos": len(feitos), "numeros": sum(conta.values()), **conta,
               "por_fonte": _por_fonte(feitos), "por_tipo": _por_tipo(feitos),
-              "segundos": round(time.monotonic() - t0, 1), "gravado": not a.ensaio}
+              "segundos": round(time.monotonic() - t0, 1), "gravado": not a.ensaio, "motivo_fim": motivo_fim}
+    if not a.ensaio:
+        resumo["fila_reserva"] = gravar_fila_reserva()
     print(json.dumps(resumo, ensure_ascii=False))
     if a.saida:
         Path(a.saida).write_text(json.dumps(feitos, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -421,6 +532,13 @@ def main(argv=None) -> int:
     c.add_argument("--sem-pdf", action="store_true", help="sem Tesseract: só ao lado, SIAFE e outros documentos")
     c.add_argument("--refazer", action="store_true", help="inclui documentos já decididos")
     c.add_argument("--saida", help="grava o resultado completo (JSON) neste arquivo")
+    c.add_argument("--ler-em", help="nó (ssh) que faz o OCR do PDF, ex. vm2 — a VM-1 não calcula OCR")
+    c.add_argument("--orcamento-s", type=int, help="para de abrir documento novo depois deste tempo")
+    lr = sub.add_parser("ler", help="(no nó de OCR) segunda leitura de um PDF → JSON")
+    lr.add_argument("rel")
+    lr.add_argument("--paginas")
+    lr.add_argument("--stdin", action="store_true")
+    sub.add_parser("fila-reserva", help="regrava a fila priorizada da 2ª leitura do RapidOCR")
     p = sub.add_parser("pendentes")
     p.add_argument("--limite", type=int, default=50)
     p.add_argument("--json", action="store_true")
@@ -441,7 +559,8 @@ def main(argv=None) -> int:
     o.add_argument("--ensaio", action="store_true")
     a = ap.parse_args(argv)
     return {"confirmar": cmd_confirmar, "pendentes": cmd_pendentes, "ficha": cmd_ficha, "marcar": cmd_marcar,
-            "opus": cmd_opus}[a.cmd](a)
+            "opus": cmd_opus, "ler": cmd_ler,
+            "fila-reserva": lambda a: print(json.dumps({"fila_reserva": gravar_fila_reserva()})) or 0}[a.cmd](a)
 
 
 if __name__ == "__main__":
