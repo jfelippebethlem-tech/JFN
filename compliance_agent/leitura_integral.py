@@ -307,7 +307,7 @@ CREATE TABLE IF NOT EXISTS docs_lidos(sha TEXT NOT NULL, versao TEXT NOT NULL, p
 
 
 def _con():
-    con = E.conectar()
+    con = E.conectar(E.DB)      # SQLite explícito até a migração (executescript não existe no adaptador do PostgreSQL)
     con.executescript(_DDL)
     return con
 
