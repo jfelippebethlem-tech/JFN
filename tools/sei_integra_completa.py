@@ -432,7 +432,7 @@ async def _pedir_lote_sei(pg, url: str, valor: str, destino: Path, teto: float =
 
 
 async def gerar_pdf_lotes(pg, docs: list[dict], outdir: Path, *, prazo: float | None = None, pedir=None,
-                          tam: int = TAM_LOTE) -> dict:
+                          tam: int = TAM_LOTE, pular: set | frozenset = frozenset()) -> dict:
     """Busca pelo "Gerar PDF" em lotes os documentos que ainda NÃO têm arquivo (retomada pelo id) e grava cada um em
     `NNN.pdf`. `prazo` (time.monotonic) = último instante para COMEÇAR um lote. `pedir(lote, destino)` → (status, info)
     é injetável (testes); por padrão submete o formulário do SEI na página `pg`.
@@ -443,7 +443,8 @@ async def gerar_pdf_lotes(pg, docs: list[dict], outdir: Path, *, prazo: float | 
     import time as _t
     r = {"via": {}, "recusados": [], "omitidos": [], "vazios": [], "sem_numero": [], "pendentes_janela": [],
          "extras": [], "lotes_ok": 0, "lotes_pedidos": 0, "erro": None}
-    alvo = [(i, x) for i, x in enumerate(docs) if id_documento(x) and arquivo_retomado(outdir, i, x) is None]
+    alvo = [(i, x) for i, x in enumerate(docs)
+            if i not in pular and id_documento(x) and arquivo_retomado(outdir, i, x) is None]
     if not alvo:
         return r
     if pedir is None:
@@ -693,6 +694,10 @@ async def main():
                       "captura NÃO marcada completa", flush=True)
 
             lotes_res: dict = {}              # resumo do "Gerar PDF" em lotes (vazio = desligado/não rodou)
+            # CAPTURA POR DELTA (Fase 4, modo sombra): só com JFN_CAPTURA_DELTA=1|sombra E guardados do processo.
+            # Sem a variável: pular vazio e delta_reg None — captura idêntica à de antes.
+            from compliance_agent.captura_delta import encaixe as _delta
+            delta_pular, delta_reg = _delta(TAG, docs)
 
             def _grava(man: list, completo: bool) -> None:
                 tmp = outdir / "manifest.json.tmp"   # atômico: morte no meio não corrompe
@@ -700,6 +705,7 @@ async def main():
                     {"processo": PROC, "total_arvore": max(len(docs), n_antes),
                      "completo": completo and not encolheu,
                      **({"pdf_lotes": lotes_res} if lotes_res else {}),
+                     **({"delta": delta_reg} if delta_reg else {}),
                      "docs": man}, ensure_ascii=False, indent=1), encoding="utf-8")
                 tmp.replace(man_path)
 
@@ -738,7 +744,7 @@ async def main():
             if PDF_LOTES:
                 t_l = _tm.monotonic()
                 try:
-                    res = await gerar_pdf_lotes(pg, docs, outdir, prazo=t_lock + JANELA_LOTES_S)
+                    res = await gerar_pdf_lotes(pg, docs, outdir, prazo=t_lock + JANELA_LOTES_S, pular=delta_pular)
                 except (PWError, asyncio.TimeoutError, OSError, RuntimeError, ValueError, AttributeError,
                         TypeError, KeyError) as e:
                     # o complemento NUNCA derruba a captura (ensaio 20/11: um AttributeError do Playwright derrubou)
@@ -763,6 +769,8 @@ async def main():
                 if arquivo_retomado(outdir, i, x) is not None:
                     paths.append(fp); ok = True     # retomada PELO ID: não rebaixa o que já veio deste documento
                     via = via_pdf.get(i) or via_ant.get(id_documento(x))
+                elif i in delta_pular:
+                    via = "delta_guardado"      # já está no arquivo canônico com texto: não rebaixa (ok fica False)
                 elif PDF_LOTES and (i in pendentes or _tm.monotonic() > t_lock + JANELA_TOTAL_S):
                     # JANELA DO browser_lock esgotada: não tenta agora; a próxima passada retoma (pelos lotes, que são
                     # mais rápidos) a partir do que já está salvo. A captura NÃO fecha completa.
