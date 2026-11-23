@@ -151,6 +151,11 @@ achado que cita campo calculado cai (444 achados/216 processos medidos); refaç�
 regressões desfeitas); 171 na fila. Lex recebe fatos de execução. Próximo: workers de OCR/captura reservando jobs no PG
 (`evidencias.reservar`, SKIP LOCKED) para tirar a coordenação de arquivos JSON.
 
+**Atualização 23/11 17h50:** migração do HD CONCLUÍDA — 85.391 arquivos (sei_pdfs 19.957 + sei_cache 65.434) no
+`D:\JFN-Frio\sei\`, conferidos por md5 (0 divergentes); só o conferido e fora da fila de OCR saiu da VM-2; disco da VM-2
+**96% → 55%** (critério da Fase 0 "<70%" e da Fase 3 "<60%" atingidos). Índice em `D:\JFN-Frio\_indice\indice.jsonl` e
+`data/hd_migracao/indice_*.jsonl`; sobras da 1ª tentativa removidas.
+
 **Medidas do acervo que orientam a leitura integral:** processo mediano 146 mil caracteres; 10% maiores = 71% do
 texto; os 119 maiores documentos (460 M caracteres) são planilhas (lidas por código); 72,7% do texto é nativo e
 27,1% veio de OCR (espera confirmação por página); 8.834 de 12.707 processos têm captura declarada completa.
