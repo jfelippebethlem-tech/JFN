@@ -31,26 +31,31 @@ from pathlib import Path
 from compliance_agent import evidencias as E
 
 TAREFA = "leitura_integral"
-VERSAO_PROMPT = "li-1"
+VERSAO_PROMPT = "li-2"   # li-1 → li-2 (23/11): + atos/decisões — 36 de 75 achados do Opus eram atos não extraídos
 ALVO_CHARS = 40_000
 SOBREPOSICAO = 1_500
 
 SISTEMA = """Você é um extrator de FATOS de autos de processo administrativo do Estado do Rio de Janeiro.
-Leia TODO o trecho recebido. Para cada documento (bloco "=== DOC <doc_id> | <título> ==="), extraia os fatos
-objetivos que constarem do texto: valores em R$ (com o que representam), CNPJ, datas de atos, números de nota de
-empenho (NE), ordem bancária (OB), nota fiscal (NF), contrato, aditivo, quantidades medidas/entregues, objeto,
-quem atesta/assina e qualquer ressalva, glosa, divergência ou irregularidade que o PRÓPRIO texto afirme.
+Leia TODO o trecho recebido. Para cada documento (bloco "=== DOC <doc_id> | <título> ==="), registre:
+
+A) DADOS: valores em R$ (com o que representam), CNPJ, datas de atos, nota de empenho (NE), ordem bancária (OB),
+   nota fiscal (NF), contrato, aditivo, quantidades medidas/entregues, objeto.
+B) ATOS E DECISÕES: toda autorização, aprovação, determinação, homologação, ratificação, dispensa, prorrogação,
+   repasse, pagamento autorizado, glosa, recusa ou devolução — QUEM decidiu (cargo/unidade) e O QUÊ.
+C) FUNDAMENTOS: justificativas, motivações, conclusões de parecer jurídico/técnico/controle interno e as
+   condições, ressalvas, pendências ou exigências que o próprio texto registre (inclusive "sem", "pendente",
+   "vencido", "não consta", "em desacordo").
 
 Regras absolutas:
-- Cada fato traz "citacao": um trecho COPIADO LITERALMENTE do documento (até 300 caracteres), que contém o valor.
+- Cada fato traz "citacao": um trecho COPIADO LITERALMENTE do documento (até 300 caracteres) que sustenta o fato.
   Não parafraseie, não complete, não corrija. Se não houver trecho literal, NÃO registre o fato.
-- "doc_id" é o do bloco de onde a citação foi copiada.
-- Não conclua, não julgue, não resuma. Marcadores como [CPF_1] ou [CONTA_1] são copiados como estão.
-- Ausência de algo no trecho não é fato.
+- "doc_id" é o do bloco de onde a citação foi copiada. "valor" só para dados (A); para atos e fundamentos, vazio.
+- Não conclua, não julgue, não acrescente o que o texto não diz. Marcadores como [CPF_1] ou [CONTA_1] são
+  copiados como estão. Ausência de algo no trecho não é fato.
 
-Responda SÓ com JSON: {"fatos": [{"tipo": "...", "valor": "...", "descricao": "até 15 palavras",
+Responda SÓ com JSON: {"fatos": [{"tipo": "...", "valor": "...", "descricao": "até 20 palavras",
 "citacao": "...", "doc_id": "..."}]}. Tipos: valor, cnpj, data, ne, ob, nf, contrato, aditivo, quantidade, objeto,
-assinatura, ressalva."""
+ato, decisao, justificativa, parecer, condicao, ressalva, assinatura."""
 
 
 # ── 1. fatiamento ─────────────────────────────────────────────────────────────────────────────────────
