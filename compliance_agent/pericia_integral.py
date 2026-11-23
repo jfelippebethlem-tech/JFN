@@ -360,7 +360,7 @@ def numero_da_pasta(nome: str) -> str:
     return f"SEI-{p[0]}/{p[1]}/{p[2]}" if len(p) >= 3 else nome
 
 
-def _bloco_fatos(numero: str) -> tuple[str, dict]:
+def _bloco_fatos(numero: str, tipos: set[str] | None = None, teto: int = TETO_FATOS) -> tuple[str, dict]:
     """Fatos VERIFICADOS da leitura integral do processo (`data/evidencias.db`), em ordem de importância fiscalizatória,
     sem repetidos, até `TETO_FATOS`. ("", {}) quando não há leitura integral."""
     proc = numero.replace("SEI-", "")
@@ -377,19 +377,21 @@ def _bloco_fatos(numero: str) -> tuple[str, dict]:
         return "", {}
     finally:
         con.close()
-    if not rows:
-        return "", {}
     vistos, unicos = set(), []
     for r in rows:
+        if tipos is not None and r[1] not in tipos:
+            continue
         k = (r[1], r[2], r[4])
         if k not in vistos:
             vistos.add(k)
             unicos.append(r)
+    if not unicos:
+        return "", {}
     unicos.sort(key=lambda r: (_PRIO_FATO.get(r[1] or "", 99), r[0] or ""))
     linhas, total, fora = [], 0, 0
     for doc, tipo, valor, desc, cit in unicos:
         ln = f"- [{doc}] {tipo}{(': ' + valor) if valor else ''} — {desc or ''} «{cit}»"
-        if total + len(ln) > TETO_FATOS:
+        if total + len(ln) > teto:
             fora += 1
             continue
         linhas.append(ln)

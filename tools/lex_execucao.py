@@ -213,6 +213,8 @@ def _ressalva_ob(d: dict) -> str:
 TIPOS_EXECUCAO = ("aceite", "medicao", "nota_fiscal", "relatorio_fotografico", "fiscalizacao")
 SEM_DOC_EXECUCAO = "sem_documento_execucao"
 _TETO_TEXTO_DOC, _TETO_TEXTO_TOTAL = 4000, 12000
+_TIPOS_EXECUCAO = {"nf", "quantidade", "assinatura", "ressalva", "condicao", "ato", "decisao", "ob", "valor"}
+_TETO_FATOS_EXEC = 30_000
 
 
 def evidencia_execucao(numero_sei: str, documentos: list[dict]) -> dict:
@@ -390,6 +392,12 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
                        f"{_TETO_TEXTO_DOC} caracteres por peça — julgue SOBRE ESTE TEXTO):\n"
                        + "\n".join(f"--- [{tp}] {tit} ---\n{tx}" for tp, tit, tx in ev["textos"])
                        + "\n--- FIM ---\n\n")
+    # FASE 6 (23/11/2026): fatos VERIFICADOS de execução da leitura integral do processo inteiro (o texto acima é
+    # cortado em 12 mil caracteres). Citação literal conferida por código; ausência aqui NÃO prova ausência nos autos.
+    from compliance_agent.pericia_integral import _bloco_fatos
+    fatos_exec, _ = _bloco_fatos(numero_sei, tipos=_TIPOS_EXECUCAO, teto=_TETO_FATOS_EXEC)
+    if fatos_exec:
+        bloco_texto = fatos_exec + "\n\n" + bloco_texto
     docs_txt = "\n".join(f"- [{d.get('tipo','?')}] {d.get('ponto','')}" for d in documentos[:40] if isinstance(d, dict))
     prompt = (
         f"OBJETO CONTRATADO: {objeto or '(não informado na ficha)'}\n"

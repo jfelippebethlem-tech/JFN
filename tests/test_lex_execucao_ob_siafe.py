@@ -153,3 +153,19 @@ def test_fila_pelo_valor_pago_antes_de_n_docs():
     ])
     assert [a[0] for a in L._alvos(con, 3, False)] == [
         "SEI-330002/031566/2024", "SEI-330002/031567/2024", "SEI-999999/000009/2024"]
+
+
+def test_prompt_leva_os_fatos_de_execucao_da_leitura_integral(monkeypatch):
+    """Fase 6 (23/11/2026): o Lex lia 12 mil caracteres; com leitura integral, recebe os fatos VERIFICADOS de
+    execução do processo inteiro (só os tipos de execução)."""
+    from compliance_agent import pericia_integral as PI
+    vistos = []
+    monkeypatch.setattr(PI, "_bloco_fatos", lambda n, tipos=None, teto=0: (
+        "FATOS VERIFICADOS DA LEITURA INTEGRAL\n- [sei:1] nf: 123 — NF «NF nº 123»", {}) if "nf" in (tipos or ()) else ("", {}))
+
+    def _gerar(prompt, sistema, t):
+        vistos.append(prompt)
+        raise TimeoutError
+    L.avaliar_processo(None, "SEI-330002/031566/2024", "obj", "",
+                       [{"tipo": "aceite", "ponto": "Termo de recebimento definitivo"}], [], _gerar, {})
+    assert "FATOS VERIFICADOS DA LEITURA INTEGRAL" in vistos[0] and "«NF nº 123»" in vistos[0]
