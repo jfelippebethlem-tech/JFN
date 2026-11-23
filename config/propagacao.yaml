@@ -312,6 +312,20 @@ derivados:
     prioridade: 7
     efeito: {arquivo: data/sei_ocr_gpu_fila.txt}
     antes: "nenhum — criado em 18/11/2026"
+  sei_ocr_confirmacao:
+    nome: Confirmação do OCR por documento (qualquer motor) — porta da leitura integral
+    onde: data/sei_ocr_confirmacao.jsonl (estado por documento + páginas a conferir)
+    # 23/11/2026, plano de reescrita Fase 5 (dono: "só entra no lote o que sabemos ser 100% correto"): documento de OCR
+    # só vale com leitura independente concordando em todo número e nas palavras. Roda depois da aplicação do OCR da
+    # GPU (que traz a 2ª leitura dos documentos de Tesseract); só lê acervo e SIAFE e grava o registro → leve.
+    depende: [sei_ocr_gpu]
+    comando: ["{py}", "-m", "compliance_agent.sei.ocr_confirmacao", "--limite", "40"]
+    peso: leve
+    debounce_s: 1800
+    intervalo_min_s: 10800
+    timeout_s: 3600
+    prioridade: 7
+
   sei_ocr_ia_conferir:
     nome: Confirmação dos números lidos pelo OCR por IA (2ª leitura independente — trava de prova)
     onde: data/sei_ocr_ia_conferencia.jsonl (prova dos documentos do Surya) · fila da 2ª leitura do RapidOCR data/sei_ocr_reserva_conferir.txt

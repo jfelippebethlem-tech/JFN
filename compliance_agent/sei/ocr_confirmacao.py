@@ -163,15 +163,17 @@ def avaliar_processo(pasta: Path, *, siafe: bool = True) -> list[dict]:
     return out
 
 
-def registrar(linhas: list[dict], arq: Path = REGISTRO) -> None:
+def registrar(linhas: list[dict], arq: Path | None = None) -> None:
+    arq = arq or REGISTRO
     arq.parent.mkdir(parents=True, exist_ok=True)
     with arq.open("a", encoding="utf-8") as f:
         for ln in linhas:
             f.write(json.dumps(ln, ensure_ascii=False) + "\n")
 
 
-def confirmados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
+def confirmados(arq: Path | None = None) -> set[tuple[str, str]]:
     """(tag, i) cuja ÚLTIMA avaliação é `confirmado` — o que a porta da leitura integral aceita."""
+    arq = arq or REGISTRO
     ultimo: dict[tuple[str, str], str] = {}
     try:
         with arq.open(encoding="utf-8") as f:
@@ -187,34 +189,40 @@ def confirmados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Avalia os processos com documento de OCR e captura completa e grava o registro (o que a porta da leitura
-    integral consulta). `--limite` controla a rodada; processos já avaliados nesta versão são pulados."""
+    """Avalia processos com documento de OCR e captura completa e grava o registro (o que a porta da leitura integral
+    consulta). Candidatos: nunca avaliados nesta versão OU que ganharam aplicação de OCR da GPU (2ª leitura) depois
+    da última avaliação. Ordem: 'liberadores' (≤ 5 documentos de OCR e o resto pronto) primeiro."""
     ap = argparse.ArgumentParser(description="Confirmação do OCR por documento (Fase 5)")
     ap.add_argument("--limite", type=int, default=50)
     a = ap.parse_args(argv)
-    feitos = {r_tag for r_tag, _ in _avaliados()}
-    n = 0
-    for m in sorted((RAIZ / "data" / "sei_arquivo").glob("*/manifest.json")):
-        if n >= a.limite:
-            break
+    ultima = _ultima_avaliacao()
+    novidade = _ultima_aplicacao_gpu()
+    cands = []
+    for m in (RAIZ / "data" / "sei_arquivo").glob("*/manifest.json"):
         tag = m.parent.name
-        if tag in feitos:
+        if tag in ultima and novidade.get(tag, "") <= ultima[tag]:
             continue
         try:
             man = json.loads(m.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if man.get("captura_completa") is not True or not any(
-                isinstance(d, dict) and (d.get("ocr") or d.get("ocr_motor")) for d in man.get("docs") or []):
+        docs = [d for d in man.get("docs") or [] if isinstance(d, dict)]
+        n_ocr = sum(1 for d in docs if d.get("ocr") or d.get("ocr_motor"))
+        if man.get("captura_completa") is not True or not n_ocr:
             continue
-        registrar(avaliar_processo(m.parent))
-        n += 1
-    print(f"{n} processo(s) avaliado(s); confirmados no registro: {len(confirmados())}")
+        libera = not man.get("docs_faltantes") and all(d.get("texto") for d in docs) and n_ocr <= 5
+        cands.append((0 if libera else 1, n_ocr, tag, m.parent))
+    cands.sort()
+    for _, _, _, pasta in cands[: a.limite]:
+        registrar(avaliar_processo(pasta))
+    print(f"{min(len(cands), a.limite)} de {len(cands)} candidato(s) avaliado(s); confirmados no registro: "
+          f"{len(confirmados())}")
     return 0
 
 
-def _avaliados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
-    out = set()
+def _ultima_avaliacao(arq: Path | None = None) -> dict[str, str]:
+    arq = arq or REGISTRO
+    out: dict[str, str] = {}
     try:
         with arq.open(encoding="utf-8") as f:
             for ln in f:
@@ -223,7 +231,25 @@ def _avaliados(arq: Path = REGISTRO) -> set[tuple[str, str]]:
                 except ValueError:
                     continue
                 if r.get("versao") == VERSAO:
-                    out.add((r["tag"], str(r["i"])))
+                    out[r["tag"]] = max(out.get(r["tag"], ""), str(r.get("em") or ""))
+    except OSError:
+        pass
+    return out
+
+
+def _ultima_aplicacao_gpu(arq: Path | None = None) -> dict[str, str]:
+    arq = arq or RAIZ / "data" / "sei_ocr_gpu_aplicado.jsonl"
+    out: dict[str, str] = {}
+    try:
+        with arq.open(encoding="utf-8") as f:
+            for ln in f:
+                try:
+                    r = json.loads(ln)
+                except ValueError:
+                    continue
+                em = str(r.get("em") or r.get("ts") or "")
+                if r.get("tag") and em > out.get(r["tag"], ""):
+                    out[r["tag"]] = em
     except OSError:
         pass
     return out

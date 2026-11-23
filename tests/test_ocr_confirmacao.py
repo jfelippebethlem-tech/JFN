@@ -50,3 +50,29 @@ def test_rotulo_com_ruido_nao_derruba_numero_identico_mas_numero_diferente_derru
     outra = CANON.replace("CONTRATO Nº 012/2024", "C0NTRATO Nº 013/2024")
     r = C.confirmar(CANON, {"x": outra})
     assert r["estado"] == "a_conferir" and r["numeros_a_conferir"][0]["tipo"] == "contrato"
+
+
+def test_reavalia_so_quem_ganhou_segunda_leitura_e_liberador_vem_primeiro(tmp_path, monkeypatch):
+    import json
+    base = tmp_path / "data" / "sei_arquivo"
+    for tag, n in (("111_000001_2024", 9), ("111_000002_2024", 2)):
+        (base / tag / "texto").mkdir(parents=True)
+        docs = []
+        for i in range(n):
+            (base / tag / "texto" / f"{i:03d}.txt").write_text("Valor R$ 1.000,00 pago " * 5, encoding="utf-8")
+            docs.append({"i": i, "ocr": True, "texto": f"texto/{i:03d}.txt", "titulo": "x"})
+        (base / tag / "manifest.json").write_text(json.dumps({"captura_completa": True, "docs": docs}))
+    monkeypatch.setattr(C, "RAIZ", tmp_path)
+    monkeypatch.setattr(C, "REGISTRO", tmp_path / "reg.jsonl")
+    ordem = []
+    real = C.avaliar_processo
+    monkeypatch.setattr(C, "avaliar_processo", lambda p, **k: ordem.append(p.name) or real(p, siafe=False))
+    C.main(["--limite", "10"])
+    assert ordem == ["111_000002_2024", "111_000001_2024"]                   # liberador (2 docs de OCR) primeiro
+    ordem.clear()
+    C.main(["--limite", "10"])
+    assert ordem == []                                                         # nada novo: não reavalia
+    (tmp_path / "data" / "sei_ocr_gpu_aplicado.jsonl").write_text(
+        json.dumps({"tag": "111_000001_2024", "i": 0, "em": "2999-01-01 00:00:00"}) + "\n")
+    C.main(["--limite", "10"])
+    assert ordem == ["111_000001_2024"]                                        # ganhou 2ª leitura: reavalia
