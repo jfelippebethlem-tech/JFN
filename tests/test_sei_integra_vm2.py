@@ -246,3 +246,28 @@ def test_sem_log_nenhum_processo_sai(monkeypatch, tmp_path):
     _isolar(monkeypatch, tmp_path)
     monkeypatch.setattr(F, "LOG", tmp_path / "nao_existe.log")
     assert V._timeouts_seguidos_vm2() == set()
+
+
+def test_exportar_simultaneo_de_dois_nos_nao_reserva_o_mesmo_processo(monkeypatch, tmp_path):
+    """22/11/2026 (it-campo): sessões que pediam fila no MESMO segundo (s5+s6 às 20:02:30; s1+s2+s4 às 23:56:07)
+    recebiam a MESMA fila — cada `exportar` lia as reservas alheias antes de a outra gravar a sua. Terminando juntas,
+    pediam juntas de novo: 4 sessões em passo travado, 35% das capturas em dobro (medido em 22 h com n=4)."""
+    import threading
+    monkeypatch.setattr(V, "RAIZ", tmp_path)
+    (tmp_path / "data").mkdir()
+    todos = [f"300000/{i:06d}/2025" for i in range(6)]
+
+    def montar(max_n, k_bombeiros=0, excluir=()):
+        livres = [p for p in todos if p not in excluir][:max_n]
+        time.sleep(0.3)                                    # a montagem real leva segundos
+        return [{"sei": f"SEI-{p}"} for p in livres]
+
+    monkeypatch.setattr(V, "montar_fila", montar)
+    out = {}
+    ts = [threading.Thread(target=lambda no=no: out.__setitem__(no, V.exportar(3, no, 3.0))) for no in ("itcampo5", "itcampo6")]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    a, b = ({e["sei"] for e in out[no]} for no in ("itcampo5", "itcampo6"))
+    assert a and b and not (a & b)

@@ -236,6 +236,16 @@ def _reservas_alheias(no: str) -> set[str]:
 
 def exportar(max_n: int, no: str = "vm2", validade_h: float | None = None,
              k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
+    # 22/11/2026: dois nós pedindo no mesmo segundo liam as reservas alheias antes de qualquer um gravar a sua e
+    # levavam a MESMA fila (it-campo: sessões em passo travado, 35% das capturas em dobro). Ler-montar-gravar é um só
+    # passo, sob trava de arquivo.
+    import fcntl
+    with open(RAIZ / "data" / ".integras_exportar.lock", "a") as trava:
+        fcntl.flock(trava, fcntl.LOCK_EX)
+        return _exportar(max_n, no, validade_h, k_bombeiros)
+
+
+def _exportar(max_n: int, no: str, validade_h: float | None, k_bombeiros: int) -> list[dict]:
     excluir = _reservas_alheias(no)
     if no == "vm2":
         excluir |= _timeouts_seguidos_vm2()
