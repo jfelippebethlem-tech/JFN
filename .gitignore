@@ -276,3 +276,6 @@ data/openrouter_pago_gasto.json
 # trava do OCR por IA (compliance_agent/sei/ocr_ia_prova.py): registro de conferência e folhas — dado, não código
 data/sei_ocr_ia_conferencia.jsonl*
 data/sei_ocr_ia_fichas/
+
+# 23/11/2026: mapa da máscara reversível da leitura integral (CPF e conta REAIS) — nunca versionar
+data/leitura_integral/
