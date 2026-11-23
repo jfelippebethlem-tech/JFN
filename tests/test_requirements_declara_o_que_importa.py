@@ -51,6 +51,10 @@ EXCECOES |= {("rapidocr", "tools/sei_ocr_reserva.py")}
 # 19/11/2026 — nó NATIVO do Windows do it-campo: `carga()` lê CPU/memória do Windows com psutil, só quando
 # os.name == "nt" (venv C:\\JFN-Nativo\\venv); na VM-1/VM-2 o ramo nunca roda.
 EXCECOES |= {("psutil", "tools/sei_ocr_reserva.py")}
+# 23/11/2026 — login headless do MediaFire (zelador, cron 04:20): `patchright` NÃO pode entrar em requirements.txt
+# porque fixa greenlet/pyee novos e quebra o `playwright==1.44.0` já declarado (pip acusa conflito). O import é tardio
+# e guardado por `except ImportError` em `login_headless()` — sem o pacote, o remoto se suspende e o log diz por quê.
+EXCECOES |= {("patchright", "tools/zelador/mediafire_sessao.py")}
 
 
 def _modulos_locais() -> set[str]:
@@ -152,7 +156,8 @@ def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
               | {(m, "tools/v69_abertura_blender.py") for m in ("bpy", "bmesh", "mathutils")}
               | {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")})
     ocr_reserva = {("rapidocr", "tools/sei_ocr_reserva.py"), ("psutil", "tools/sei_ocr_reserva.py")}
-    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render | ocr_reserva, \
+    zelador = {("patchright", "tools/zelador/mediafire_sessao.py")}  # conflita com o playwright==1.44.0 fixado
+    assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render | ocr_reserva | zelador, \
         "exceção nova em EXCECOES: justifique no comentário por que o pacote não é declarado"
 
 
