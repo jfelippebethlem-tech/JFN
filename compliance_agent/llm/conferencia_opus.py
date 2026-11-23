@@ -64,6 +64,34 @@ CREATE TABLE IF NOT EXISTS fila(
 CREATE INDEX IF NOT EXISTS ix_fila_status ON fila(status, nivel, valor);
 CREATE INDEX IF NOT EXISTS ix_fila_item ON fila(tarefa, item);
 """
+# AMOSTRA DE CONTROLE (plano de reescrita, Fase 2 — 23/11/2026): o ⚪ (nível 0 ou sem nível) fica sempre no fim da
+# `_ORDEM` e nunca era conferido — o falso negativo do motor barato nunca foi medido (e o Opus concordou só em 28%
+# dos conferidos). 1 vaga a cada `AMOSTRA_A_CADA` do lote vai a um ⚪ SORTEADO; cada sorteio fica em
+# `conferencia_opus_amostra.jsonl` para medir o recall ("quantos ⚪ o Opus pôs em 🟡/🔴").
+AMOSTRA_A_CADA = 8
+
+
+def AMOSTRA_ARQ() -> Path:
+    return arq.dados() / "conferencia_opus_amostra.jsonl"
+
+
+def _com_amostra(con: sqlite3.Connection, ids: list, n: int) -> list:
+    k = n // AMOSTRA_A_CADA
+    if k <= 0:
+        return ids
+    escolhidos = {fid for fid, _ in ids}
+    limpos = [r for r in con.execute("SELECT id, item FROM fila WHERE status='pendente' AND COALESCE(nivel,0)=0 "
+                                     "ORDER BY RANDOM() LIMIT ?", (k + len(ids),)) if r[0] not in escolhidos][:k]
+    if not limpos:
+        return ids
+    base = [r for r in ids if r[0] not in {fid for fid, _ in limpos}][: max(0, n - len(limpos))]
+    AMOSTRA_ARQ().parent.mkdir(parents=True, exist_ok=True)
+    with AMOSTRA_ARQ().open("a", encoding="utf-8") as f:
+        for fid, item in limpos:
+            f.write(json.dumps({"id": fid, "item": item, "em": _agora()}, ensure_ascii=False) + "\n")
+    return base + list(limpos)
+
+
 _ORDEM = ("ORDER BY CASE WHEN nivel=2 THEN 0 WHEN nivel=1 THEN 1 WHEN nivel IS NULL THEN 2 ELSE 3 END, "
           "COALESCE(valor,0) DESC, id")
 
@@ -226,6 +254,7 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
         # A entrada (blob) só é lida para os escolhidos.
         ids = intercalar(con.execute(f"SELECT id, item FROM fila WHERE status='pendente' {_ORDEM}"),
                          lambda r: _data_do_item(r[1]), limite=max(1, n))
+        ids = _com_amostra(con, list(ids), max(1, n))
         rows = [con.execute("SELECT id,tarefa,item,entrada,sistema,motor,veredito,nivel FROM fila WHERE id=?",
                             (fid,)).fetchone() for fid, _ in ids]
         for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:

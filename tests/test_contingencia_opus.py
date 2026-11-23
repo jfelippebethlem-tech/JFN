@@ -335,3 +335,20 @@ def test_prazo_estourado_no_item_gasta_tentativa_e_segue():
         return Pensamento(texto=_exec("parcial", 6), modelo="claude-opus-5-5", segundos=1, tarefa=t)
     Q.conferir(5, pensar=opus)
     assert not Q.pendente("pericia_execucao", "pequeno") and Q.pendente("pericia_execucao", "grande")
+
+
+def test_amostra_de_controle_dos_limpos_entra_no_lote_e_fica_registrada():
+    """Plano de reescrita, Fase 2 (23/11/2026): os ⚪ (nível 0) ficavam sempre no fim e nunca eram conferidos —
+    falso negativo do motor barato nunca medido. 1 vaga a cada 8 do lote vai a um ⚪ sorteado, registrado."""
+    import json as _json
+    for k in range(8):
+        Q.enfileirar("pericia_execucao", f"r{k}", f"prompt r{k}", motor="groq:x", resposta=_exec("nao", 9), valor=1e6)
+    for k in range(3):
+        Q.enfileirar("pericia_execucao", f"z{k}", f"prompt z{k}", motor="groq:x", resposta=_exec("sim", 1), valor=1.0)
+    ordem = []
+    Q.conferir(8, pensar=lambda t, p, **k: ordem.append(p) or Pensamento(texto=_exec("sim", 1), modelo="claude-opus-5-5",
+                                                                         segundos=1, tarefa=t))
+    assert len(ordem) == 8 and sum(p.startswith("prompt z") for p in ordem) == 1
+    reg = Q.AMOSTRA_ARQ()
+    linhas = [_json.loads(x) for x in reg.read_text().splitlines()]
+    assert len(linhas) == 1 and linhas[0]["item"].startswith("z")
