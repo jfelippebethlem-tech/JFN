@@ -149,8 +149,8 @@ def _ja_decidido(pasta: Path, d: dict) -> bool:
 def cmd_confirmar(a) -> int:
     try:
         os.nice(19)
-    except OSError:
-        pass
+    except OSError as ex:
+        print(f"  aviso: sem baixar prioridade (os.nice): {ex}", file=sys.stderr)
     con = None
     feitos, conta, t0 = [], {e: 0 for e in P.ESTADOS}, time.monotonic()
     for pasta, d in docs_ia(a.tag):
@@ -377,8 +377,9 @@ def cmd_opus(a) -> int:
                     P.extrair(e["literal"]), P.paginas_da_ia(entrega_crua(e["tag"], e["i"],
                                                                           str(d.get("ocr_motor") or "")))) or None,
                     max_paginas=3)["leituras"].values())
-            except (OSError, RuntimeError, ValueError):
-                pass
+            except (OSError, RuntimeError, ValueError) as ex:
+                print(f"  aviso: 2ª leitura do PDF indisponível ({e['tag']}#{e['i']}): {type(ex).__name__}: {ex}",
+                      file=sys.stderr)
         entrada = _PERGUNTA.format(tipo=e["tipo"], a=e["literal"], b=e.get("literal_2"),
                                    ctx_a=_contexto(ia, e["literal"]), ctx_b=_contexto(seg, e.get("literal_2") or ""))
         item = json.dumps({"tag": e["tag"], "i": e["i"], "tipo": e["tipo"], "norma": e["norma"],
