@@ -304,7 +304,7 @@ derivados:
     nome: Fila do OCR por IA (o que o Tesseract leu ou ficou sem texto e ainda tem PDF no arquivo frio)
     onde: it-campo (trabalhador ocr_gpu_worker puxa data/sei_ocr_gpu_fila.txt quando a dele acaba)
     depende: [sei_arquivado, ocr_gpu]
-    comando: ["{py}", "-m", "tools.sei_ocr_gpu_fila"]
+    comando: ["{py}", "-m", "tools.sei_ocr_gpu_fila", "--itcampo-local"]   # 22/11: trabalhador do repo (lê o disco do it-campo) no ar
     peso: leve
     debounce_s: 1800
     intervalo_min_s: 21600
