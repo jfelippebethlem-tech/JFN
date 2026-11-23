@@ -232,3 +232,27 @@ def test_retomada_REEXTRAI_quando_o_pdf_e_mais_novo(tmp_path):
 
     assert sorted((destino / "texto").glob("*.txt"))[0].stat().st_mtime_ns != antes, (
         "não reextraiu apesar de o PDF ser mais novo que o txt")
+
+
+def test_captura_por_delta_mantem_os_guardados_do_arquivo_e_acrescenta_os_novos(tmp_path):
+    """Fase 4 (23/11/2026): na captura por delta a pasta traz SÓ os documentos novos. Sem a junção, os mantidos
+    viravam 'não capturado' e a guarda 'nunca regredir' descartava a captura nova inteira."""
+    from tools.sei_arquivar import arquivar
+    destino = tmp_path / "arq"
+    (destino / "texto").mkdir(parents=True)
+    (destino / "texto" / "000_contrato.txt").write_text("[Contrato (11111111)] (fase: x · tipo: y)\n\ncláusula " * 5,
+                                                        encoding="utf-8")
+    (destino / "manifest.json").write_text(json.dumps({"processo": "P", "docs": [
+        {"i": 0, "titulo": "Contrato (11111111)", "fase": "contratacao", "tipo": "contrato",
+         "texto": "texto/000_contrato.txt", "chars": 40, "ocr": False, "fotos": []}]}), encoding="utf-8")
+    origem = tmp_path / "integra_P"
+    origem.mkdir()
+    _pdf_min(origem / "001.pdf", "nota fiscal nova " * 20)                     # só o NOVO veio
+    (origem / "manifest.json").write_text(json.dumps({
+        "completo": True, "total_arvore": 2,
+        "docs": [{"i": 0, "titulo": "Contrato (11111111)"}, {"i": 1, "titulo": "Nota fiscal (22222222)"}],
+        "delta": {"modo": "filtrar", "manter": [{"i": 0, "doc_id": "sei:11111111"}]}}), encoding="utf-8")
+    m = arquivar(origem, destino, processo="")
+    por = {d["i"]: d for d in m["docs"]}
+    assert por[0]["texto"] == "texto/000_contrato.txt" and por[0].get("mantido_delta") is True
+    assert not por[0].get("nao_capturado") and por[1]["chars"] > 0 and not por[1].get("nao_capturado")

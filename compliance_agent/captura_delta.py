@@ -166,5 +166,6 @@ def encaixe(tag: str, arvore_viva: list[dict], env=None, **onde) -> tuple[set[in
     p = plano_de_captura(arvore_viva, g)
     reg = {"modo": m, "baixados": len(p["baixar"]), "mantidos": len(p["manter"]),
            "removidos": len(p["removidos"]), "arvore_igual": p["arvore_igual"], "hash": p["hash"],
-           "retificados": [b["doc_id"] for b in p["baixar"] if b.get("preservar_anterior")]}
+           "retificados": [b["doc_id"] for b in p["baixar"] if b.get("preservar_anterior")],
+           "manter": [{"i": e["i"], "doc_id": e["doc_id"]} for e in p["manter"]]}   # o sei_arquivar junta estes
     return ({e["i"] for e in p["manter"]} if m == "filtrar" else set()), reg

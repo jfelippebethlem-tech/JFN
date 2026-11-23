@@ -160,6 +160,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     alheios_i: set[int] = set()
     ids_doc: dict[int, str] = {}
     captura_completa = None   # None = manifesto antigo (não declara); True/False = novo
+    delta = None              # captura por delta (compliance_agent/captura_delta): os mantidos vêm do arquivo anterior
     total_arvore = None
     mpath = origem / "manifest.json"
     if mpath.exists():
@@ -169,6 +170,7 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         if isinstance(bruto, dict):
             captura_completa = bool(bruto.get("completo"))
             total_arvore = bruto.get("total_arvore")
+            delta = bruto.get("delta") if isinstance(bruto.get("delta"), dict) else None
             bruto = bruto.get("docs") or []
         # DOCUMENTO DE OUTRO PROCESSO NÃO ENTRA. A íntegra do SEI às vezes traz peças alheias
         # junto: medido em 2026-07-29, `080001/000744/2024` (R$ 51,6 mi, repasse do Fundo
@@ -307,6 +309,27 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                                    "chars": len(texto), "ocr": por_ocr, "via_texto_solto": lado.name,
                                    "fotos": sorted(f"fotos/{f.name}" for f in _fotos_do_doc(destino, i))})
                 break
+
+    # CAPTURA POR DELTA (plano de reescrita, Fase 4 — 23/11/2026): a pasta traz SÓ os documentos novos/retificados;
+    # os que o plano MANTEVE já estão no arquivo com texto. A entrada deles é copiada do manifesto anterior (casada
+    # pela identidade estável sei:<nº>|pos:<i>, não pela posição) — sem isto viravam "não capturado" e a guarda
+    # "nunca regredir" descartava a captura nova inteira.
+    if delta and delta.get("modo") == "filtrar" and delta.get("manter") and (destino / "manifest.json").exists():
+        from compliance_agent.captura_delta import _ids_estaveis
+        try:
+            prev = [d for d in json.loads((destino / "manifest.json").read_text(encoding="utf-8")).get("docs") or []
+                    if isinstance(d, dict)]
+        except (OSError, ValueError):
+            prev = []
+        por_id = dict(zip(_ids_estaveis([(d.get("titulo", ""), d.get("i")) for d in prev]), prev))
+        tem = {d["i"] for d in docs_saida}
+        for m in delta["manter"]:
+            ant = por_id.get(str(m.get("doc_id")))
+            i_m = m.get("i")
+            if i_m in tem or i_m in alheios_i or not ant or ant.get("nao_capturado") or not ant.get("texto"):
+                continue
+            docs_saida.append({**ant, "i": i_m, "mantido_delta": True})
+            tipos_vistos.add(ant.get("tipo") or "outros")
 
     # INDISPONÍVEL ≠ 0 no ARQUIVO: docs que existem na árvore mas NÃO foram capturados
     # (formato raro — ZIP de PDFs, .odt, etc.) entram MARCADOS, com o título, para o
