@@ -19,12 +19,12 @@ DEST=$FRIO/sei_pdfs
 LIVRE_MIN_GB=20                    # a VM-2 também captura: abaixo disso o frio espera (nada sai da VM-1)
 echo "$(date '+%F %T') início — livre: $(df -h / | awk 'NR==2{print $4}')"
 # 23/11/2026: a depuração (CPU) rodava com qualquer carga — achada junto de 4 outros pesados com swap 100%.
-# Só roda com load ≤ 6 (régua do arquivar_cache_lane); disco ≥ 92% roda mesmo assim (é ela que libera espaço).
-load1=$(cut -d' ' -f1 /proc/loadavg); uso=$(df --output=pcent / | tail -1 | tr -dc 0-9)
-if awk -v l="$load1" 'BEGIN{exit !(l <= 6)}' || [ "$uso" -ge 92 ]; then
+# Passa pelo semáforo único de pesado da VM-1 (tools/pesado.sh); disco ≥ 92% roda já (é ela que libera espaço).
+uso=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+if [ "$uso" -ge 92 ]; then              # emergência de disco: roda já (é ela que libera espaço)
   nice -n 15 ionice -c3 timeout 10800 $PY -m tools.sei_depurar_pdfs --aplicar --sem-recomprimir --idade-min-h 2 2>/dev/null | tail -1
-else
-  echo "$(date '+%F %T') depuração adiada: load $load1 > 6 e disco ${uso}% < 92%"
+else                                     # senão, pelo semáforo único de pesado da VM-1 (espera até 20 min; carga ≤ 6)
+  tools/pesado.sh sei_depurar_pdfs 1200 timeout 10800 $PY -m tools.sei_depurar_pdfs --aplicar --sem-recomprimir --idade-min-h 2 2>/dev/null | tail -1
 fi
 livre_no=$(timeout 30 ssh -o ConnectTimeout=15 "$NO" "df -BG --output=avail / | tail -1 | tr -dc 0-9" 2>/dev/null)
 if [ -z "$livre_no" ]; then
