@@ -122,6 +122,18 @@ A ordem foi revista para entregar cedo o ganho principal e validar custo e quali
 
 **Sensores novos na automelhoria**, com aviso pelo Yoda só quando o dono pedir: custo por dia e por processo, idade do job mais velho por fila, jobs em quarentena, atraso do WAL, resultado do último teste de restauração e cobertura de leitura.
 
+### Estado da execução (23/11/2026, 05h20)
+| Fase | Feito | Falta |
+|---|---|---|
+| 0 | semáforo de pesado, depuração com carga, guarda de convergência, sensor `plataforma`, cobertura no laudo, trace com tarefa e caracteres, `MemoryHigh` 3,5 GB no `jfn.service` (pico medido 3,3 GB), `tools/hd_indice.py` | migração VM-2 → HD (rclone pela VM-1, ~5 MB/s, término ~11h) → índice/LEIAME/brain → apagar da VM-2 só o conferido e fora da fila de OCR. md5 extra em `colher_vm2.sh`/frio: **dispensado** (rsync já confere cada arquivo; `colher_vm2` nem está no cron) |
+| 1 | `leitura_integral.py` com porta do lote (captura completa + texto nativo + sha não lido), máscara de CPF/conta, verificador literal (datas por extenso), reverificação sem gasto. Lote li-1: 50 proc, US$ 1,12, 3.733 verificados, 820 recusados (303 citações inexistentes barradas), 7.798 de OCR a confirmar; 36/75 achados do Opus eram atos não extraídos → prompt li-2 | colher li-2 (`msgbatch_016R7jtM6gEsW3MMycNa3dE7`, 39 proc, 253 fatias) e comparar; ouro de extração (30 processos anotados) |
+| 2 | amostra de controle dos ⚪ na fila do Opus (1 a cada 8). Leitores de `lex_execucao`: conferido que já marcam estado por motor (`certeza/orquestrador` calibra por nível; `correlacao_sei` usa `estado_do_laudo`; `cge_confronto`/`indeterminados` não apresentam veredito) | medir recall pela amostra após ~1 semana |
+| 3–6 | — | Fase 3 depende do disco da VM-2 (após a migração) |
+
+**Medidas do acervo que orientam a leitura integral:** processo mediano 146 mil caracteres; 10% maiores = 71% do
+texto; os 119 maiores documentos (460 M caracteres) são planilhas (lidas por código); 72,7% do texto é nativo e
+27,1% veio de OCR (espera confirmação por página); 8.834 de 12.707 processos têm captura declarada completa.
+
 ## 5. Arquivos críticos
 - `compliance_agent/evidencias.py`: núcleo. Corrigir `reservar`, que hoje faz SELECT e depois UPDATE (linhas ~116–127).
 - `compliance_agent/pericia_integral.py`: teto em `:59-60`, cobertura em `_texto_por_valor`.
