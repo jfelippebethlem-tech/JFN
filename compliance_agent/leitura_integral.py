@@ -398,6 +398,64 @@ def _prompt(fatia: dict) -> tuple[str, dict]:
     return mascarar(fatia["texto"])
 
 
+def ler_pela_assinatura(con, procs: list[str], *, pensar=None, limite_fatias: int = 0) -> dict:
+    """Braço da ASSINATURA da leitura integral (dono 23/11: "mistura" API com teto + assinatura; o balde da API fechou
+    em US$ 35,15). Mesma porta, mesmo fatiador, mesma verificação literal. `backend="cli"`: nunca cai na API paga.
+    Sem cota no meio do processo ⇒ PARA sem marcá-lo como lido (as fatias feitas ficam; a próxima rodada as refaz
+    sem duplicar — `_gravar` apaga pelo sha do payload). Processo só vira 'lido' com TODAS as fatias de volta."""
+    from compliance_agent.llm import claude_api as C
+    if pensar is None:
+        from compliance_agent.llm import claude_motor
+
+        def pensar(tarefa, prompt, **kw):
+            return claude_motor.pensar(tarefa, prompt, backend="cli", modelo=C.MODELO_BARATO, timeout=600, **kw)
+    lidos = {r[0] for r in con.execute("SELECT sha FROM docs_lidos WHERE versao=?", (VERSAO_PROMPT,))}
+    ja = {r[0] for r in con.execute("SELECT processo FROM leituras WHERE versao=?", (VERSAO_PROMPT,))}
+    r = {"processos_lidos": 0, "fatias": 0, "parou_sem_cota": False}
+    for proc in procs:
+        if proc in ja:
+            continue
+        pasta = _pasta_do(proc)
+        if not portao(pasta)[0]:
+            continue
+        ler_tabelas(con, pasta)
+        fatias, cob = fatiar(pasta, ja_lidos=lidos, tabelas_lidas=tabelas_lidas(con))
+        if cob["docs_tabela"]:
+            continue
+        n = {"VERIFICADO": 0, "A_CONFIRMAR_OCR": 0, "INDISPONIVEL": 0, "resposta_invalida": 0, "sem_resposta": 0}
+        completo = True
+        for f in fatias:
+            texto, mapa = mascarar(f["texto"])
+            resp = pensar(TAREFA, texto, sistema=SISTEMA)
+            if resp is None:
+                completo = False
+                r["parou_sem_cota"] = True
+                break
+            info = {"processo": proc, "mapa": mapa, "docs": [d["doc_id"] for d in f["docs"]],
+                    "sha": hashlib.sha256(texto.encode()).hexdigest()}
+            with con:
+                con.execute("DELETE FROM fatos WHERE payload_sha=?", (info["sha"],))
+            _gravar(con, info, getattr(resp, "texto", None), n, f"{C.MODELO_BARATO}@assinatura")
+            r["fatias"] += 1
+            if limite_fatias and r["fatias"] >= limite_fatias:
+                completo = completo and f is fatias[-1]
+                break
+        if not completo:
+            break
+        with con:
+            con.execute("INSERT OR REPLACE INTO leituras VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        (proc, TAREFA, VERSAO_PROMPT, cob["chars_existentes"], cob["chars_enviados"], cob["fracao"],
+                         cob["leitura"], len(fatias), "assinatura", E._agora()))
+            con.executemany("INSERT OR IGNORE INTO docs_lidos VALUES(?,?,?,?,?,?)",
+                            [(d["sha"], VERSAO_PROMPT, proc, d["doc_id"], "assinatura", E._agora())
+                             for f in fatias for d in f["docs"]])
+        lidos |= {d["sha"] for f in fatias for d in f["docs"]}
+        r["processos_lidos"] += 1
+        if limite_fatias and r["fatias"] >= limite_fatias:
+            break
+    return r
+
+
 def main(argv: list[str] | None = None) -> int:
     from compliance_agent.llm import claude_api as C
     ap = argparse.ArgumentParser(description="Leitura integral comprovada (piloto)")
@@ -409,6 +467,9 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--enviar", action="store_true", help="sem isto, só projeta")
     sub.add_parser("colher")
     sub.add_parser("reverificar")
+    asg = sub.add_parser("assinatura", help="lê pela assinatura (sem API paga) até a cota parar")
+    asg.add_argument("--processos", required=True)
+    asg.add_argument("--limite-fatias", type=int, default=0)
     a = ap.parse_args(argv)
 
     if a.cmd == "projetar":
@@ -434,6 +495,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     con = _con()
+    if a.cmd == "assinatura":
+        procs = [ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()]
+        print(json.dumps(ler_pela_assinatura(con, procs, limite_fatias=a.limite_fatias), ensure_ascii=False))
+        return 0
     if a.cmd == "piloto":
         procs = [ln.strip() for ln in Path(a.processos).read_text().splitlines() if ln.strip()]
         itens, mapas, resumo = [], {}, {"processos": 0, "fatias": 0, "usd": 0.0, "fora_da_porta": 0}

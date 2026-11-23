@@ -172,3 +172,33 @@ def test_tabela_lida_por_codigo_extrai_toda_linha_com_numero_e_le_uma_vez_so(tmp
     assert len(linhas) == 3000 and linhas[-1]["citacao"] == "3000 | Item 3000 | R$ 3.000,50 | 0,00"
     assert ("valor", "3000.50") in {(n["tipo"], n["norma"]) for n in linhas[-1]["numeros"]}
     assert lidas_sha
+
+
+# ── braço da ASSINATURA (dono: "mistura API com teto + assinatura"; balde da API fechou em 23/11) ──────
+def test_assinatura_le_processo_inteiro_e_so_marca_lido_se_todas_as_fatias_voltaram(tmp_path, monkeypatch):
+    import types
+    monkeypatch.setattr(L.E, "RAIZ", tmp_path)
+    monkeypatch.setattr(L.E, "ARQUIVO", tmp_path)
+    con = L.E.conectar(tmp_path / "ev.db")
+    con.executescript(L._DDL)
+    p = _pasta(tmp_path, "100001_000008_2025", [("Contrato (11111111)", "Valor global R$ 483.333,33 do contrato. " * 3)])
+    _man(p, captura_completa=True, docs_faltantes=[])
+    resp = '{"fatos": [{"tipo": "valor", "valor": "483333.33", "doc_id": "sei:11111111", "citacao": "R$ 483.333,33"}]}'
+    r = L.ler_pela_assinatura(con, ["100001/000008/2025"], pensar=lambda *a, **k: types.SimpleNamespace(texto=resp))
+    assert r == {"processos_lidos": 1, "fatias": 1, "parou_sem_cota": False}
+    assert con.execute("SELECT estado FROM fatos WHERE processo='100001/000008/2025'").fetchall() == [("VERIFICADO",)]
+    assert con.execute("SELECT lote FROM leituras WHERE processo='100001/000008/2025'").fetchone() == ("assinatura",)
+    # de novo: já lido, nada a fazer
+    assert L.ler_pela_assinatura(con, ["100001/000008/2025"], pensar=lambda *a, **k: None)["processos_lidos"] == 0
+
+
+def test_assinatura_sem_cota_para_sem_marcar_lido(tmp_path, monkeypatch):
+    monkeypatch.setattr(L.E, "RAIZ", tmp_path)
+    monkeypatch.setattr(L.E, "ARQUIVO", tmp_path)
+    con = L.E.conectar(tmp_path / "ev.db")
+    con.executescript(L._DDL)
+    p = _pasta(tmp_path, "100001_000009_2025", [("Contrato (11111111)", "texto do contrato " * 10)])
+    _man(p, captura_completa=True, docs_faltantes=[])
+    r = L.ler_pela_assinatura(con, ["100001/000009/2025"], pensar=lambda *a, **k: None)
+    assert r == {"processos_lidos": 0, "fatias": 0, "parou_sem_cota": True}
+    assert con.execute("SELECT COUNT(*) FROM leituras").fetchone()[0] == 0
