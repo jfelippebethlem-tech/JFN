@@ -140,3 +140,14 @@ def test_entrega_com_rsync_falho_nao_apaga_nada(tmp_path, monkeypatch):
     monkeypatch.setattr(W.subprocess, "run", lambda argv, **kw: types.SimpleNamespace(returncode=12, stdout="", stderr="caiu"))
     assert W.entregar() == (12, [])
     assert (out / "integra_t" / "000.ocr_gpu.txt").exists()
+
+
+def test_pdf_local_procura_em_todas_as_raizes_na_ordem_e_hd_ausente_nao_quebra(tmp_path, monkeypatch):
+    """23/11/2026: os PDFs migraram para o HD externo (D:\\JFN-Frio\\sei\\…); o trabalhador lê local de várias
+    raízes, na ordem. HD desplugado = a raiz não existe e o item segue para o caminho antigo (VM-2)."""
+    c, hd = tmp_path / "c", tmp_path / "hd_desplugado"
+    (c / "integra_1").mkdir(parents=True)
+    (c / "integra_1" / "001.pdf").write_bytes(b"%PDF")
+    monkeypatch.setattr(W, "ARQUIVOS_LOCAIS", [hd, c])
+    assert W.pdf_local("integra_1/001.pdf") == c / "integra_1" / "001.pdf"
+    assert W.pdf_local("integra_1/002.pdf") is None

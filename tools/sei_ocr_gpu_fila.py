@@ -37,6 +37,8 @@ _REPO = Path(__file__).resolve().parent.parent
 ARQUIVO = _REPO / "data" / "sei_arquivo"
 SAIDA = _REPO / "data" / "sei_ocr_gpu_fila.txt"
 LEDGER = _REPO / "data" / "sei_ocr_gpu_aplicado.jsonl"
+HD_MIGRACAO = _REPO / "data" / "hd_migracao"        # índice do HD externo do it-campo (tools/hd_indice.py)
+LIBERADOR_MAX_OCR = 5
 PRIOR = {"nota_fiscal": 0, "proposta": 0, "planilha_preco": 0, "ordem_bancaria": 1, "liquidacao": 1, "medicao": 1, "atesto": 1,
          "empenho": 2, "contrato": 2, "termo_aditivo": 2, "autorizacao_despesa": 3, "parecer_juridico": 3, "ata": 3,
          "edital": 4}
@@ -74,6 +76,34 @@ def pdfs_no_itcampo() -> set[str]:
     if r.returncode != 0:
         raise RuntimeError(f"lista do arquivo do it-campo indisponível: {r.stderr[-200:]}")
     return set(r.stdout.split())
+
+
+def pdfs_no_hd() -> set[str]:
+    """PDFs no HD externo do it-campo (D:\\JFN-Frio\\sei\\…), pelo ÍNDICE conferido por md5 — sem varrer a rede.
+    23/11/2026: 19.942 PDFs de vm2 sei_pdfs saíram da VM-2 para lá; sem isto a fila deixaria de vê-los. O
+    trabalhador lê o HD local (`OCR_ARQUIVOS_LOCAIS`); HD desplugado = o item volta na próxima fila."""
+    out: set[str] = set()
+    for f in sorted(HD_MIGRACAO.glob("indice_*.jsonl")):
+        for ln in f.read_text(encoding="utf-8").splitlines():
+            try:
+                r = json.loads(ln)
+            except ValueError:
+                continue
+            if r.get("conferido") and _REL.match(str(r.get("origem_rel") or "")):
+                out.add(r["origem_rel"])
+    return out
+
+
+def _liberador(man: dict, docs: list) -> bool:
+    """Processo que fica 100% pronto para a leitura integral relendo só a sua parte de OCR: captura completa, todo
+    documento com texto e no máximo `LIBERADOR_MAX_OCR` documentos de OCR (Fase 5 — medido 23/11: 2.722 processos
+    se liberam com 6.872 documentos)."""
+    if man.get("captura_completa") is not True or man.get("docs_faltantes") or man.get("captura_vazia"):
+        return False
+    if any(not d.get("texto") for d in docs if isinstance(d, dict)):
+        return False
+    n = sum(1 for d in docs if isinstance(d, dict) and (d.get("ocr") in (True, "True") or d.get("ocr_motor")))
+    return 0 < n <= LIBERADOR_MAX_OCR
 
 
 _LIGAR = """import json, os
@@ -125,9 +155,11 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[st
     for mp in ARQUIVO.glob("*/manifest.json"):
         tag = mp.parent.name
         try:
-            docs = json.loads(mp.read_text(encoding="utf-8")).get("docs") or []
+            man = json.loads(mp.read_text(encoding="utf-8"))
+            docs = man.get("docs") or []
         except (OSError, ValueError):
             continue
+        libera = _liberador(man, docs)
         for d in docs:
             if not str(d.get("i", "")).isdigit() or str(d.get("ocr_motor", "")).startswith("surya"):
                 continue
@@ -137,7 +169,8 @@ def montar(frio: set[str], aplicados: set[tuple[str, int]], prioritarios: set[st
                 continue
             rel = f"integra_{tag}/{i:03d}.pdf"
             if rel in frio and rel not in reservados:
-                classe = 2 if str(d.get("ocr_motor", "")).startswith("reserva") else 0 if tag in prioritarios else 1
+                classe = 2 if str(d.get("ocr_motor", "")).startswith("reserva") else \
+                    0 if (tag in prioritarios or libera) else 1
                 alvo.append((classe, PRIOR.get(d.get("tipo"), 5), 0 if sem_texto else 1, rel))
     alvo.sort()
     return [r for *_, r in alvo]
@@ -159,16 +192,18 @@ def main() -> int:
     from tools.sei_ocr_reserva import reservados_pela_reserva
     cache, pdfs = pdfs_no_frio()
     local = pdfs_no_itcampo() if a.itcampo_local else set()
-    fila = montar(cache | pdfs | local, aplicados, tags_risco_alto(), reservados_pela_reserva())
+    hd = pdfs_no_hd() if a.itcampo_local else set()      # o HD é lido pelo trabalhador do it-campo, como o local
+    fila = montar(cache | pdfs | local | hd, aplicados, tags_risco_alto(), reservados_pela_reserva())
     so_pdfs = [r for r in fila if r not in cache and r in pdfs]
     conta = {"sei_cache": sum(r in cache for r in fila), "sei_pdfs": len(so_pdfs),
-             "itcampo_local": sum(r not in cache and r not in pdfs for r in fila)}
+             "itcampo_local": sum(r in local and r not in cache and r not in pdfs for r in fila),
+             "hd": sum(r in hd and r not in cache and r not in pdfs and r not in local for r in fila)}
     if a.medir:
         print(json.dumps({"fila": len(fila), "pastas": len({r.split("/")[0] for r in fila}), "por_origem": conta,
                           "ja_aplicados": len(aplicados)}))
         return 0
     ligados = espelhar_no_sei_cache(so_pdfs)
-    fila = [r for r in fila if r in cache or r in ligados or r in local]     # link que falhou não entra
+    fila = [r for r in fila if r in cache or r in ligados or r in local or r in hd]   # link que falhou não entra
     tmp = SAIDA.with_suffix(".tmp")
     tmp.write_text("\n".join(fila) + ("\n" if fila else ""), encoding="utf-8")
     tmp.replace(SAIDA)

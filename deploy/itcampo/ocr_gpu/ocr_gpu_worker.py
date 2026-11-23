@@ -42,6 +42,19 @@ from PIL import Image
 BASE = Path(os.environ.get("OCR_BASE", str(Path.home() / "jfn-gpu" / "ocr")))
 UMA_VEZ = os.environ.get("OCR_UMA_VEZ") == "1"          # lote avulso: acabou a fila, sai (não puxa a da VM-1)
 ARQUIVO_LOCAL = Path(os.environ.get("OCR_ARQUIVO_LOCAL", "/mnt/c/JFN-Arquivo/sei_pdfs"))
+# 23/11/2026: o morno da VM-2 foi para o HD externo do it-campo (D:\JFN-Frio, índice em _indice/indice.jsonl). Lê
+# local de várias raízes, na ordem; HD desplugado = a raiz não existe e o item segue o caminho antigo (rsync da VM-2).
+ARQUIVOS_LOCAIS = [Path(p) for p in os.environ.get(
+    "OCR_ARQUIVOS_LOCAIS",
+    f"{ARQUIVO_LOCAL}:/mnt/d/JFN-Frio/sei/pdfs_escaneados:/mnt/d/JFN-Frio/sei/integras_cache").split(":") if p]
+
+
+def pdf_local(rel: str) -> Path | None:
+    for raiz in ARQUIVOS_LOCAIS:
+        p = raiz / rel
+        if p.is_file():
+            return p
+    return None
 FILA, FEITOS, FALHAS = BASE / "ocr_fila.txt", BASE / "feitos.txt", BASE / "falhas.txt"
 TMP, OUT = BASE / "tmp", BASE / "out"
 LOTE = int(os.environ.get("OCR_LOTE", "40"))
@@ -222,7 +235,7 @@ def main() -> int:
         if mem_livre_gb() < 3.0:
             log(ev="espera_memoria", livre_gb=round(mem_livre_gb(), 1)); time.sleep(120); continue
         lote, fila = fila[:LOTE], fila[LOTE:]
-        locais = {rel: ARQUIVO_LOCAL / rel for rel in lote if (ARQUIVO_LOCAL / rel).is_file()}   # disco do it-campo
+        locais = {rel: p for rel in lote if (p := pdf_local(rel))}       # disco do it-campo e HD externo
         remotos = [rel for rel in lote if rel not in locais]
         lst = TMP / "lote.txt"
         lst.write_text("\n".join(remotos) + "\n")
