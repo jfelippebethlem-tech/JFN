@@ -11,7 +11,7 @@
     "(as três falam com a MESMA conta; o contador é local). Armazenamento não é partilhado: é medido no remoto."
   ],
   "principal": "gdrive",
-  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "drime", "dosya", "terabox"],
+  "segunda_copia": ["b2", "r2", "mega", "dropbox", "blomp", "koofr", "box", "pcloud", "jottacloud", "idrive", "yandex", "filen", "drime", "dosya", "mediafire", "terabox"],
   "remotos_fora": {"internxt": "conta grátis criada (22/11/2026), mas o plano grátis NÃO permite acesso por programa: rclone e a CLI oficial respondem 402 \"access not allowed for this user tier\" — só pelo site; fica fora (coordenador, 22/11/2026)", "proton": "Proton Drive 5 GB ligado como `proton:` via WebDAV do OpenList (o backend nativo do rclone recebe redirect para HTTP e recusa). Conteúdo volta íntegro (sha256), mas o tamanho listado vem 168 bytes maior (cifrado) → a conferência por tamanho reprova; fica fora até a conferência aceitar isso (coordenador, 22/11/2026)"},
   "partilha_por_maquina": {"vm1": 0.6, "vm2": 0.3, "itcampo": 0.1},
   "partilha_desconhecida": 0.1,
@@ -159,6 +159,12 @@
       "medir": "about", "margem_gb": 0.3, "preferencia_download": 7, "limites": {},
       "_restricoes": "5 GiB grátis sem cartão e sem expirar; download nunca cobrado (dosya.dev/pricing). Conta pelo Google jfelippebethlem@gmail.com; chave de API 'jfn-rclone'. Hash na listagem: sha256 (não md5/sha1) → conferência por download.",
       "fontes": ["https://dosya.dev/pricing ('Free isn't a trial', 'Every feature ships on Free', '$0 per GB downloaded') — lido 22/11/2026", "coordenador da sessão, 22/11/2026 (prova de 10 MB: sha256 idêntico, 1,3 MB/s subida, 2,1 MB/s descida; about = 5 GiB)"]
+    },
+    "mediafire": {
+      "tipo": "webdav", "raiz": "mediafire:JFN", "frio": "mediafire:JFN/frio", "indice": "mediafire:JFN/indice",
+      "medir": "size", "armazenamento_gb": 10, "margem_gb": 0.5, "preferencia_download": 8, "limites": {},
+      "_restricoes": "MediaFire Basic grátis: '10 GB of active-account storage', 5 GB por arquivo. Sem rclone nativo: WebDAV do OpenList (127.0.0.1:5244/dav/mediafire, driver MediaFire por COOKIE de sessão em ~/.config/jfn/mediafire.cookie — expira: refazer login do navegador e recopiar). Conta jfelippebethlem@gmail.com. Sem `about` → size. Não oficial: nunca cópia única.",
+      "fontes": ["https://www.mediafire.com/upgrade/ ('Basic 10 GB storage… 10 GB of active-account storage… 5 GB per file') — lido 22/11/2026", "coordenador da sessão, 22/11/2026 (prova de 10 MB via OpenList: sha256 idêntico, tamanho exato, 0,5 MB/s subida, 1,2 MB/s descida)"]
     }
   },
   "enchimento": {
