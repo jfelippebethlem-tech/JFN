@@ -101,8 +101,13 @@ async def _login() -> str | None:
 
 def login_headless() -> str | None:
     try:
+        from patchright.async_api import Error as ErroNavegador
+    except ImportError as ex:
+        print(f"  login impossível: {type(ex).__name__}")
+        return None
+    try:
         cookie = asyncio.run(asyncio.wait_for(_login(), 240))
-    except Exception as ex:               # navegador/rede: registra a classe, nunca o conteúdo
+    except (ErroNavegador, OSError, KeyError, asyncio.TimeoutError) as ex:   # registra a classe, nunca o conteúdo
         print(f"  login falhou: {type(ex).__name__}")
         return None
     if cookie:
@@ -134,7 +139,7 @@ def main(argv=None) -> int:
             cookie = login_headless()
             st = recarregar(cookie) if cookie else "sem cookie de sessão (captcha/2FA/senha?)"
             ok = bool(cookie) and lista()
-    except Exception as ex:
+    except (OSError, KeyError, ValueError, StopIteration) as ex:      # URLError é OSError
         ok, st = False, f"{passo}: {type(ex).__name__}"
     marcar(ok, st)
     print(f"{agora} mediafire {'ok' if ok else 'SUSPENSO'} ({passo}: {st})")
