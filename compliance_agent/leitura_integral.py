@@ -377,6 +377,7 @@ CREATE TABLE IF NOT EXISTS fatos(id INTEGER PRIMARY KEY, processo TEXT NOT NULL,
   valor TEXT, descricao TEXT, citacao TEXT, estado TEXT NOT NULL, motivo TEXT, motor TEXT, versao TEXT,
   payload_sha TEXT, em TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_fatos_proc ON fatos(processo, estado);
+CREATE INDEX IF NOT EXISTS ix_fatos_sha ON fatos(payload_sha);
 CREATE TABLE IF NOT EXISTS tabelas_lidas(sha TEXT PRIMARY KEY, processo TEXT, doc_id TEXT, linhas INTEGER,
   linhas_com_numero INTEGER, em TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS docs_lidos(sha TEXT NOT NULL, versao TEXT NOT NULL, processo TEXT, doc_id TEXT, lote TEXT,
