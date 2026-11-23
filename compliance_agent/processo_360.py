@@ -31,7 +31,7 @@ from compliance_agent.detectores.base import ResultadoDetector, score_processo
 from compliance_agent.editais.escalada import recomendar
 from compliance_agent.editais.flags import grau_flag
 from compliance_agent.execucao_fatos import contexto_x1, contexto_x3
-from compliance_agent.sei import acervo_texto, fases, manifesto_norm
+from compliance_agent.sei import acervo_texto, fases, manifesto_norm, ocr_ia_prova
 
 VERSAO = "360.1"
 _DB = Path(__file__).resolve().parents[1] / "data" / "compliance.db"
@@ -409,7 +409,9 @@ def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
     # o contratante ganhar por repetição, e foi o próprio teste desta regra que mostrou isso.
     contratantes: set[str] = set()
     for d in alvo:
-        texto = _texto_de(pasta, d, teto=30_000)
+        # 23/11/2026: CNPJ de documento lido pelo OCR por IA só conta CONFIRMADO (`sei/ocr_ia_prova`) — o não
+        # confirmado sai do texto de prova como ⟦a conferir⟧; doc nativo/Tesseract passa igual.
+        texto = ocr_ia_prova.texto_para_prova(pasta, d, _texto_de(pasta, d, teto=30_000))
         for m in _RX_CNPJ.finditer(texto):
             c = "".join(m.groups())
             # 00394… = base da União (ministérios); nunca é o contratado

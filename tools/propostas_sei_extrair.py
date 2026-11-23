@@ -50,6 +50,8 @@ import sys
 import time
 from pathlib import Path
 
+from compliance_agent.sei import ocr_ia_prova
+
 _REPO = Path(__file__).resolve().parent.parent
 DATA = _REPO / "data"
 ARQUIVO = DATA / "sei_arquivo"
@@ -455,7 +457,18 @@ def processar(raiz: Path = ARQUIVO, *, cadastro=None, limite: int | None = None)
         med["docs_com_linha"] += 1
         if cadastro and cnpj not in nomes:
             nomes[cnpj] = (cadastro(cnpj) or {}).get("razao") or ""
+        # 23/11/2026 (`sei/ocr_ia_prova`): documento lido pelo OCR por IA só entra com o CNPJ e os valores da linha
+        # CONFIRMADOS por fonte independente; o resto fica contado como a conferir (não vira preço de referência).
+        ia = {"i": doc["i"], "ocr_motor": doc["motor"]}
+        if ocr_ia_prova.eh_ocr_ia(ia) and not ocr_ia_prova.vale_como_prova(doc["tag"], ia, "cnpj", cnpj):
+            med["linhas_ocr_ia_a_conferir"] = med.get("linhas_ocr_ia_a_conferir", 0) + len(r["linhas"])
+            continue
         for ln in r["linhas"]:
+            if ocr_ia_prova.eh_ocr_ia(ia) and not all(
+                    ocr_ia_prova.vale_como_prova(doc["tag"], ia, "valor", v)
+                    for v in (ln["valor_unitario"], ln["valor_total"]) if v is not None):
+                med["linhas_ocr_ia_a_conferir"] = med.get("linhas_ocr_ia_a_conferir", 0) + 1
+                continue
             med["linhas_validas"] += 1
             med["linhas_validas_ocr"] += doc["ocr"]
             med["item_sem_numero"] += not ln["item_literal"]

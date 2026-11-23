@@ -237,3 +237,21 @@ def test_cnpj_so_no_rodape_identifica_se_for_o_unico_privado():
     dois = um + "\nSubcontratada: OUTRA LTDA CNPJ 11.444.777/0001-61"
     assert X.fornecedor_do_documento(um) == ("11222333000181", "ok_corpo")
     assert X.fornecedor_do_documento(dois) == (None, "ambiguo")
+
+
+def test_proposta_lida_por_ocr_de_ia_so_entra_confirmada(acervo, tmp_path, monkeypatch):
+    """23/11/2026 (`sei/ocr_ia_prova`): proposta cujo texto veio do OCR por IA não vira preço de referência com CNPJ
+    ou valores não confirmados; confirmados por segunda leitura, entra igual à nativa."""
+    from compliance_agent.sei import ocr_ia_prova as P
+    monkeypatch.setattr(P, "LEDGER", tmp_path / "conf.jsonl")
+    tag = "080002_019237_2024"
+    mp = acervo / tag / "manifest.json"
+    man = json.loads(mp.read_text())
+    man["docs"][1].update(ocr="True", ocr_motor="surya-ocr-2.5")
+    mp.write_text(json.dumps(man))
+    m = X.processar(acervo)["medidas"]
+    assert (m["linhas_validas"], m["linhas_ocr_ia_a_conferir"]) == (3, 3)
+    texto = (acervo / tag / man["docs"][1]["texto"]).read_text()
+    P.registrar([{"tag": tag, "i": 1, **x} for x in P.confirmar_numeros(P.extrair(texto), {"tesseract": texto})])
+    m = X.processar(acervo)["medidas"]
+    assert (m["linhas_validas"], m.get("linhas_ocr_ia_a_conferir", 0)) == (6, 0)

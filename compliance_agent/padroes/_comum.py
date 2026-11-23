@@ -46,6 +46,28 @@ def documento_publico(documento):
     return mascarar_cpf(str(documento)) if eh_pessoa_fisica(documento) else documento
 
 
+def travar_ocr_ia(achados: list[dict]) -> list[dict]:
+    """Trava do OCR por IA (23/11/2026, `sei/ocr_ia_prova`): achado cuja PROVA cita número crítico (CNPJ, R$, data,
+    nº de processo/contrato/ata/NF) que só existe em documento lido pela IA e ainda não confirmado cai para `fraco`
+    e leva `ocr_ia_a_conferir` (o grau original fica em `grau_antes_ocr_ia`). Processo sem documento de IA: intocado."""
+    from compliance_agent.sei import acervo_texto, ocr_ia_prova
+    por_tag: dict[str, set] = {}
+    for a in achados:
+        prova = a.get("prova")
+        prova = " ".join(map(str, prova)) if isinstance(prova, (list, tuple)) else str(prova or "")
+        if not a.get("processo") or not prova:
+            continue
+        tag = acervo_texto.numero_para_pasta(a["processo"])
+        if tag not in por_tag:
+            por_tag[tag] = ocr_ia_prova.numeros_a_conferir_do_processo(tag)
+        pend = sorted({n["literal"] for n in ocr_ia_prova.extrair(prova) if (n["tipo"], n["norma"]) in por_tag[tag]})
+        if pend:
+            a["ocr_ia_a_conferir"] = pend
+            if ORDEM_GRAU.get(a.get("grau"), 9) < ORDEM_GRAU["fraco"]:
+                a["grau_antes_ocr_ia"], a["grau"] = a.get("grau"), "fraco"
+    return achados
+
+
 def ordenar(achados: list[dict]) -> list[dict]:
     """Ordem da saída: grau (forte → fraco), depois maior valor pago."""
     achados.sort(key=lambda a: (ORDEM_GRAU.get(a.get("grau"), 9), -(a.get("valor_pago_ob") or 0)))

@@ -18,7 +18,7 @@ from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
-from compliance_agent.padroes._comum import DB, RAIZ, con_ro, credor_publico, documento_publico, ordenar
+from compliance_agent.padroes._comum import DB, RAIZ, con_ro, credor_publico, documento_publico, ordenar, travar_ocr_ia
 from compliance_agent.padroes._comum import trecho as _trecho
 from compliance_agent.rotina_base import gravar_json
 
@@ -304,7 +304,7 @@ def campos_ob(ds: list[Doc], ob: dict | None) -> dict:
 
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], **extra) -> dict:
     return {"id": id_, "gerado_em": agora(), "universo": universo, "cobertura": cobertura,
-            "achados": ordenar(achados), **extra}
+            "achados": ordenar(travar_ocr_ia(achados)), **extra}
 
 
 # Leitura a frio é latência de disco, não CPU: 16 leituras em paralelo saem ~6× mais rápidas que em série

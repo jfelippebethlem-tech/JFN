@@ -52,7 +52,7 @@ from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.llm import verificacao as V
-from compliance_agent.sei import acervo_texto
+from compliance_agent.sei import acervo_texto, ocr_ia_prova
 from compliance_agent.sei.classificador_doc import ordenar_para_leitura
 
 REPO = Path(__file__).resolve().parents[1]
@@ -94,8 +94,20 @@ def fonte_de_conferencia(pasta: Path, janela: str) -> str:
 
     Medido em 20/11/2026 (12 fatos "ausentes" abertos à mão): 5 estavam no processo, fora da janela de HOJE — o acervo
     muda entre o envio do lote e a conferência (recaptura, OCR restaurado, `--regravar` dias depois) e a ordem por
-    valor fiscalizatório muda junto. O fato que está no processo é verdadeiro; ausente é o que não está em peça alguma."""
-    return janela + "\n\n" + "\n\n".join(acervo_texto.ler(pasta, d) for d in _docs(pasta))
+    valor fiscalizatório muda junto. O fato que está no processo é verdadeiro; ausente é o que não está em peça alguma.
+
+    OCR POR IA (23/11/2026, `sei/ocr_ia_prova`): número crítico que só existe em documento lido pela IA e ainda não
+    confirmado sai da FONTE DE CONFERÊNCIA como ⟦a conferir⟧ — a ficha não o grava como fato (é descartado e contado,
+    como todo fato sem fonte); o texto enviado ao modelo e o acervo não mudam."""
+    docs = _docs(pasta)
+    textos = [(d, acervo_texto.ler(pasta, d)) for d in docs]
+    ia = set().union(*[{(n["tipo"], n["norma"]) for n in ocr_ia_prova.nao_confirmados(pasta.name, d, t)}
+                       for d, t in textos]) if any(ocr_ia_prova.eh_ocr_ia(d) for d in docs) else set()
+    if ia:   # o mesmo número num documento NÃO-IA do processo continua valendo
+        ia -= set().union(*[{(n["tipo"], n["norma"]) for n in ocr_ia_prova.extrair(t)}
+                            for d, t in textos if not ocr_ia_prova.eh_ocr_ia(d)])
+    return ocr_ia_prova.mascarar_por_chaves(janela, ia) + "\n\n" + "\n\n".join(
+        ocr_ia_prova.mascarar_por_chaves(t, ia) if ocr_ia_prova.eh_ocr_ia(d) else t for d, t in textos)
 
 
 def texto_para_ficha(pasta: Path) -> tuple[str, dict]:

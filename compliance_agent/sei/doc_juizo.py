@@ -25,7 +25,7 @@ import unicodedata
 from pathlib import Path
 
 from compliance_agent.editais.flags import grau_flag
-from compliance_agent.sei import acervo_texto
+from compliance_agent.sei import acervo_texto, ocr_ia_prova
 from compliance_agent.llm.json_resposta import parse_json_llm
 
 TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
@@ -271,6 +271,18 @@ def _conn(con):
     return sqlite3.connect(str(_DB), timeout=15), True
 
 
+def _anotar_ocr_ia(v: dict, pasta: Path, d: dict, texto: str) -> dict:
+    """23/11/2026 (`sei/ocr_ia_prova`): documento lido pelo OCR por IA — o juízo leva a lista dos números críticos do
+    texto ainda NÃO confirmados (`ocr_ia_a_conferir`): o veredito vale como leitura do documento, não como prova
+    desses números. Documento que não é de IA: o veredito sai igual."""
+    pend = sorted({n["literal"] for n in ocr_ia_prova.nao_confirmados(pasta.name, d, texto)})
+    if pend:
+        v["ocr_ia_a_conferir"] = pend
+    else:
+        v.pop("ocr_ia_a_conferir", None)
+    return v
+
+
 def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                 gerar=None, con=_DB_PADRAO) -> dict:
     """Julga os docs-chave do processo. `gerar(prompt, sistema)->str` injetável (teste).
@@ -328,7 +340,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                         if tentativas_antes:
                             antigo.update({"pendente": True, "tentativas": tentativas_antes})
                             pendentes += 1
-                        vereditos.append(antigo)
+                        vereditos.append(_anotar_ocr_ia(antigo, pasta, d, texto))
                         continue
 
             rubrica = RUBRICAS[d["tipo"]]
@@ -353,7 +365,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
             score = {1: 0.0, 2: 0.6, 3: 0.85}.get(v.get("escala"))
             v.update({"i": d.get("i"), "tipo": d.get("tipo"), "titulo": d.get("titulo"),
                       "grau": grau_flag(origem="llm", score=score)})
-            vereditos.append(v)
+            vereditos.append(_anotar_ocr_ia(v, pasta, d, texto))
             if c is not None:
                 c.execute("insert or replace into doc_veredito (numero_sei, doc_i, "
                           "tipo_canonico, hash_texto, rubrica_versao, modelo, escala, "

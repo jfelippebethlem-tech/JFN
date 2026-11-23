@@ -47,6 +47,7 @@ if __package__ in (None, ""):
 
 from compliance_agent import pericia_sweep as ps  # noqa: E402
 from compliance_agent.duplicidade_competencia import _comp_mm_aaaa, detectar  # noqa: E402
+from compliance_agent.sei import ocr_ia_prova  # noqa: E402
 
 REPO = Path("/home/ubuntu/JFN")
 DB = REPO / "data" / "compliance.db"
@@ -444,11 +445,16 @@ def extrair_nfs(docs: list[dict]) -> list[dict]:
             continue
         vistos.add(chave)
         bm = _RX_BENIGNO.search(t)
+        # 23/11/2026 (`sei/ocr_ia_prova`): NF lida pelo OCR por IA só é prova com número, CNPJ e valor CONFIRMADOS
+        a_conferir = [c for c, tipo, v in (("numero", "nf", numero), ("cnpj", "cnpj", cnpj),
+                                           ("valor", "valor", valor or liquido)) if v
+                      and not ocr_ia_prova.vale_como_prova(str(doc.get("tag") or ""), doc, tipo, v)]
         mt = _RX_TITULO_MES.search(tit)       # "Nota Fiscal n° 187-1 janeiro 2024" — o servidor escreve o mês
         desc = (_comp(mt[1], mt[2]) if mt else None) or competencia_descritiva(doc.get("texto") or "")
         out.append({"numero": numero, "cnpj": cnpj, "competencia": desc or competencia_do_texto(doc.get("texto") or ""),
                     "comp_desc": bool(desc), "valor": valor or liquido, "liquido": liquido,
-                    "titulo": (doc.get("titulo") or "")[:90], "benigno": bm[0] if bm else ""})
+                    "titulo": (doc.get("titulo") or "")[:90], "benigno": bm[0] if bm else "",
+                    **({"ocr_ia_a_conferir": a_conferir} if a_conferir else {})})
     return out
 
 
@@ -477,7 +483,8 @@ def textos_do_processo(tag: str) -> list[dict]:
         except (OSError, ValueError):
             continue
         if txt.strip():
-            docs.append({"titulo": x.get("titulo") or "", "tipo": x.get("tipo") or "", "texto": txt})
+            docs.append({"titulo": x.get("titulo") or "", "tipo": x.get("tipo") or "", "texto": txt,
+                         "tag": tag, "i": x.get("i"), "ocr_motor": x.get("ocr_motor")})   # trava do OCR por IA
     if docs:
         return docs
     cache = _ler_cache(tag) or {}
@@ -664,6 +671,17 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
            "capturar": [], "camada": "deterministica", "citacao": ""}
     com_texto = {t: p for t, p in procs.items() if p["docs"]}
     sem_texto = sorted(t for t, p in procs.items() if not p["docs"])
+    # 23/11/2026: NF de OCR por IA com número/CNPJ/valor ainda NÃO confirmado não fecha nada pela NF (nem CONFIRMADO,
+    # nem AFASTADO): só o histórico da OB (SIAFE, não OCR) ainda pode afastar; senão INDETERMINADO até a conferência.
+    nf_ia = sorted({f"{numero_sei(t)} NF {n['numero']} ({', '.join(n['ocr_ia_a_conferir'])})"
+                    for t, p in com_texto.items() for n in p["nfs"] if n.get("ocr_ia_a_conferir")})
+    if nf_ia:
+        h = afastado_pelo_historico(comp, obs)
+        if h:
+            return {**res, "veredito": "AFASTADO", "motivo": h[0], "citacao": h[1], "camada": "historico_ob"}
+        return {**res, "veredito": "INDETERMINADO", "camada": "ocr_ia_a_conferir",
+                "motivo": "NF lida por OCR de IA ainda a conferir — " + "; ".join(nf_ia)
+                          + " (python -m tools.sei_ocr_ia_conferir pendentes)"}
 
     # (1) CONFIRMADO — a mesma NF é a NF de 2 OBs: casada por valor nas duas, ou cobrando esta competência em 2
     # processos de pagamento distintos. Vale mesmo com outro processo ainda sem texto. NF de retroativo/glosa não.

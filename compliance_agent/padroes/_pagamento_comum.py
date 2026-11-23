@@ -20,7 +20,7 @@ import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
-from compliance_agent.padroes._comum import RAIZ, con_ro, credor_publico, mascarar_cpf, ordenar  # noqa: F401  (C.mascarar_cpf nos detectores)
+from compliance_agent.padroes._comum import RAIZ, con_ro, credor_publico, mascarar_cpf, ordenar, travar_ocr_ia  # noqa: F401  (C.mascarar_cpf nos detectores)
 from compliance_agent.padroes._comum import trecho as _trecho
 from compliance_agent.rotina_base import gravar_json
 
@@ -165,7 +165,7 @@ def pago(obs: list[dict]) -> float | None:
 
 
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], fonte: str) -> dict:
-    ordenar(achados)
+    ordenar(travar_ocr_ia(achados))
     return {"id": id_, "gerado_em": datetime.now().isoformat(timespec="seconds"), "universo": universo,
             "cobertura": cobertura, "fonte": fonte,
             "funil": {g: sum(1 for a in achados if a.get("grau") == g) for g in ("forte", "medio", "fraco")},

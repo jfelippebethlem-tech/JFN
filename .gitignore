@@ -272,3 +272,7 @@ data/cpf_fila_humana.json
 
 # 22/11/2026: livro de gasto da porta paga do OpenRouter (llm/openrouter_pago) — dinheiro, nunca versionar
 data/openrouter_pago_gasto.json
+
+# trava do OCR por IA (compliance_agent/sei/ocr_ia_prova.py): registro de conferência e folhas — dado, não código
+data/sei_ocr_ia_conferencia.jsonl*
+data/sei_ocr_ia_fichas/

@@ -24,7 +24,7 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 
-from compliance_agent.padroes._comum import RAIZ, con_ro, credor_publico, ordenar
+from compliance_agent.padroes._comum import RAIZ, con_ro, credor_publico, ordenar, travar_ocr_ia
 from compliance_agent.padroes._comum import trecho as _trecho
 from compliance_agent.rotina_base import gravar_json
 from compliance_agent.sei import acervo_texto
@@ -289,7 +289,7 @@ def achado(chave: str, grau: str, prova: str, porque: str, fonte: str, **extra) 
 
 
 def resultado(id_: str, universo: int, cobertura: dict, achados: list[dict], funil: dict | None = None) -> dict:
-    ordenar(achados)
+    ordenar(travar_ocr_ia(achados))
     return {"id": id_, "gerado_em": datetime.now().isoformat(timespec="seconds"), "universo": universo,
             "cobertura": cobertura, "funil": funil or {}, "achados": achados}
 
