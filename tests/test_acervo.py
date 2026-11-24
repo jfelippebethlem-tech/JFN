@@ -7,6 +7,7 @@ import re
 import sqlite3
 
 from compliance_agent import acervo
+from compliance_agent.database.datas_iso import coluna_gerada
 
 
 def test_norm_reconhece_as_grafias_do_estado_e_da_prefeitura():
@@ -27,11 +28,11 @@ def _bases(tmp_path, monkeypatch):
         '[{"cnpj": "10497795000149", "nome": "Fundo Municipal De Saude", "valor": 115000000.0}]','/x.txt','2026-09-01','ativo','2026-08-01','',0,NULL);
     CREATE TABLE processo_avaliacao (numero_sei, score100, grau, faixa, achados_json, lacunas_json, docs_chave_json, acatamento_json, escalada_json, cnpj_vencedor, confianca, cobertura_json, avaliado_em, versao, sintese_json);
     INSERT INTO processo_avaliacao VALUES ('080001/000633/2024', 72.5, 'ALTO', 'ALTO', '[{"codigo":"A1","grau":"alto","diz":"contrato antes do parecer","apoio":"doc 3"}]', '[]', '[]', NULL, NULL, '10497795000149', 'media', NULL, '2026-09-02', 3, NULL);
-    CREATE TABLE ob_orcamentaria_siafe (numero_ob, ug_emitente, credor, nome_credor, data_emissao, processo, valor, status);
+    CREATE TABLE ob_orcamentaria_siafe (numero_ob, ug_emitente, credor, nome_credor, data_emissao, processo, valor, status, {ISO});
     INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB1','080001','10497795000149','FUNDO MUN SAUDE','01/03/2025','SEI-080001/000633/2024', 1000.0, 'Contabilizado');
     INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB2','080001','10497795000149','FUNDO MUN SAUDE','01/04/2025','SEI-080001/000633/2024', 2000.0, 'Contabilizado');
     INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB3','080001','10497795000149','FUNDO MUN SAUDE','02/04/2025','SEI-080001/000633/2024', 9000.0, 'Anulado');
-    """)
+    """.replace("{ISO}", coluna_gerada("data_emissao")))   # banco em head (0002_datas_iso)
     c.commit(); c.close()
     pc = tmp_path / "pcrj.db"
     p = sqlite3.connect(pc)

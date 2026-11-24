@@ -2,7 +2,7 @@
 """Migrações do compliance.db pelo Alembic — porta única (O4.2 do plano Esteira Única, 24/11/2026).
 
     python -m compliance_agent.database.migrar status   [--db CAMINHO]   # atual × head (sai 0 só se iguais)
-    python -m compliance_agent.database.migrar stamp    [--db CAMINHO]   # marca o banco existente como head
+    python -m compliance_agent.database.migrar stamp    [--db CAMINHO]   # marca o banco existente na base (0001)
     python -m compliance_agent.database.migrar upgrade  [--db CAMINHO]   # aplica revisões pendentes
     python -m compliance_agent.database.migrar diff     [--db CAMINHO]   # autogenerate SÓ LEITURA: modelo × banco
 
@@ -38,6 +38,9 @@ LEGADO_ATUAL = "_alembic_version"            # tabela do runner caseiro (não é
 LEGADO_NOVO = "_jfn_migracoes_legado"
 LEGADO_ESPERADO = frozenset({"001_extract_raw_json_data", "002_categorize_ordens_bancarias",
                              "003_missoes_auditoria"})
+# O legado prova só 001–003, que a BASE absorve: o stamp carimba a base, nunca o head. Carimbar o head
+# (desde a 0002_datas_iso) marcaria como aplicada uma revisão que nunca rodou naquele banco.
+REVISAO_BASE = "0001_base"
 
 
 def incluir_objeto(objeto, nome, tipo, refletido, par_no_modelo):
@@ -119,7 +122,10 @@ def verificar_schema(db_path=None) -> dict:
 
 
 def carimbar(db_path=None) -> dict:
-    """`stamp head` num banco EXISTENTE, com a trava do legado, e renomeia a tabela caseira."""
+    """`stamp` da BASE num banco EXISTENTE, com a trava do legado, e renomeia a tabela caseira.
+
+    Banco já carimbado não é tocado (re-carimbar a base faria um banco em head "voltar" sem desfazer nada).
+    Depois do stamp, `upgrade` aplica as revisões posteriores à base."""
     from alembic import command
 
     db = _resolver_db(db_path)
@@ -134,8 +140,10 @@ def carimbar(db_path=None) -> dict:
         if legado["faltam"]:
             raise MigracaoRecusada(f"migrações caseiras NÃO aplicadas: {legado['faltam']} — a base as "
                                    "absorve, carimbar esconderia o defeito")
+        if _atual(c) is not None:
+            return estado(db)
     with engine.begin() as c:
-        command.stamp(_config(c), "head")
+        command.stamp(_config(c), REVISAO_BASE)
         if legado["tabela"] == LEGADO_ATUAL:
             c.execute(text(f'ALTER TABLE "{LEGADO_ATUAL}" RENAME TO "{LEGADO_NOVO}"'))
     return estado(db)

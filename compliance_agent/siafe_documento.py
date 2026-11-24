@@ -34,6 +34,8 @@ import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from compliance_agent.database.datas_iso import coluna_gerada
+
 _REPO = Path(__file__).resolve().parents[1]
 _DB = _REPO / "data" / "compliance.db"
 TBL = "pt1:tblDocumento"
@@ -53,11 +55,12 @@ TIPOS = {
            "ano": "ano_ne", "dinheiro": ("valor",),
            "cols": {**_COMUM, "fonte": "fonte", "natureza": "natureza",
                     "tipo de reconhecimento de passivo": "tipo_reconhecimento_passivo"},
-           "ddl": """CREATE TABLE IF NOT EXISTS ne_siafe (
+           "ddl": f"""CREATE TABLE IF NOT EXISTS ne_siafe (
     numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, ano_ne INTEGER,
     data_emissao TEXT, doc_alt TEXT, tipo_alt TEXT, status TEXT, credor TEXT, nome_credor TEXT,
     fonte TEXT, natureza TEXT, precatorio TEXT, processo TEXT, tipo_reconhecimento_passivo TEXT,
     assinatura_eletronica TEXT, valor REAL, coletado_em TEXT,
+    {coluna_gerada('data_emissao')},
     PRIMARY KEY (numero, ug_emitente, exercicio))""",
            "idx": ("CREATE INDEX IF NOT EXISTS ix_ne_credor ON ne_siafe(credor)",
                    "CREATE INDEX IF NOT EXISTS ix_ne_processo ON ne_siafe(processo)")},
@@ -65,11 +68,12 @@ TIPOS = {
            "ano": "ano_nl", "dinheiro": ("valor", "valor_retido"),
            "cols": {**_COMUM, "ne": "ne", "nl rec.": "nl_rec", "status comp.": "status_comp", "gd": "gd",
                     "valor retido": "valor_retido"},
-           "ddl": """CREATE TABLE IF NOT EXISTS nl_siafe (
+           "ddl": f"""CREATE TABLE IF NOT EXISTS nl_siafe (
     numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, ano_nl INTEGER,
     data_emissao TEXT, doc_alt TEXT, tipo_alt TEXT, status TEXT, ne TEXT, nl_rec TEXT, status_comp TEXT,
     credor TEXT, nome_credor TEXT, gd TEXT, precatorio TEXT, processo TEXT, valor_retido REAL,
     assinatura_eletronica TEXT, valor REAL, coletado_em TEXT,
+    {coluna_gerada('data_emissao')},
     PRIMARY KEY (numero, ug_emitente, exercicio))""",
            "idx": ("CREATE INDEX IF NOT EXISTS ix_nl_ne ON nl_siafe(ne)",
                    "CREATE INDEX IF NOT EXISTS ix_nl_credor ON nl_siafe(credor)")},

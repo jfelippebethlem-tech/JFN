@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
+from compliance_agent.database.datas_iso import coluna_gerada
 from compliance_agent.recursos import browser_lock_async
 import json
 import logging
@@ -112,6 +113,7 @@ def _migrar_chave(con) -> int:
             "CREATE TABLE ob_orcamentaria_siafe__novo ("
             + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c != "valor")
             + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
+            + coluna_gerada("data_emissao") + ", "      # O4.3: a reconstrução não pode perder a coluna gerada
             "PRIMARY KEY (numero_ob, ug_emitente, exercicio))")
         con.execute(f"INSERT OR REPLACE INTO ob_orcamentaria_siafe__novo ({lista}) "
                     f"SELECT {lista} FROM ob_orcamentaria_siafe")
@@ -125,7 +127,8 @@ def _migrar_chave(con) -> int:
         # 19/11/2026: a soma do pago por processo (`ob_processo`) liga OB por número, NL, PD e processo — sem índice,
         # cada agente de perícia varria 1,36 mi de linhas (≈450 MB por consulta na VM-1).
         for _ix, _col in (("ix_obsiafe_numero", "numero_ob"), ("ix_obsiafe_nl", "nl"), ("ix_obsiafe_pd", "pd"),
-                          ("ix_obsiafe_processo", "processo")):
+                          ("ix_obsiafe_processo", "processo"),
+                          ("ix_ob_orcamentaria_siafe_data_emissao_iso", "data_emissao_iso")):   # O4.3
             con.execute(f"CREATE INDEX IF NOT EXISTS {_ix} ON ob_orcamentaria_siafe({_col})")
         con.commit()
         return n
@@ -184,6 +187,7 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
             "CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe ("
             + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c not in ("valor",))
             + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
+            + coluna_gerada("data_emissao") + ", "      # O4.3: banco novo já nasce com a data ISO
             "PRIMARY KEY (numero_ob, ug_emitente, exercicio))"
         )
         _migrar_chave(con)

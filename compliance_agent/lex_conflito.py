@@ -24,6 +24,7 @@ import sqlite3
 import unicodedata
 
 from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.database.datas_iso import expr_iso
 from compliance_agent.database.models import _resolver_db
 
 
@@ -501,6 +502,10 @@ def _alcance_sancao(enq: str) -> tuple[str, int]:
     return "advertência/multa", 1
 
 
+# `siga_sancoes.data_efetivacao` é texto 'DD/MM/AAAA': ordenar o texto cru põe o dia na frente (O4.3).
+_ISO_EFETIVACAO = expr_iso("data_efetivacao")
+
+
 def sancoes_siga(cnpj: str | None) -> list[dict]:
     dig = _digits(cnpj or "")
     _DB = _resolver_db()
@@ -508,7 +513,8 @@ def sancoes_siga(cnpj: str | None) -> list[dict]:
         return []
     con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
     try:
-        rows = con.execute("SELECT nome, enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes WHERE doc=? ORDER BY status='Vigente' DESC, data_efetivacao DESC",
+        rows = con.execute("SELECT nome, enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes WHERE doc=? ORDER BY status='Vigente' DESC, "
+                           f"{_ISO_EFETIVACAO} DESC",
                            (dig,)).fetchall()
         out = []
         paga = _ob_paga(con)

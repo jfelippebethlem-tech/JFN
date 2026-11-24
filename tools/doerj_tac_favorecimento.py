@@ -36,6 +36,7 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
+from compliance_agent.database.datas_iso import expr_iso  # noqa: E402
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 DB = _REPO / "data" / "compliance.db"
@@ -309,7 +310,7 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
         # registro ESTADUAL de sanções (Portal SIGA, tools/siga_sancoes): vigente = 🔴 se veda contratar
         try:
             sc = con.execute("SELECT enquadramento, data_efetivacao, orgao_apenador FROM siga_sancoes WHERE doc=? AND status='Vigente' "
-                             "ORDER BY data_efetivacao DESC LIMIT 3", (cnpj,)).fetchall()
+                             f"ORDER BY {expr_iso('data_efetivacao')} DESC LIMIT 3", (cnpj,)).fetchall()
         except sqlite3.OperationalError:
             sc = []
         if sc:

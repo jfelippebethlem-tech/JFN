@@ -616,7 +616,7 @@ def buscar(q: str, esfera: str = "todos", limite: int = 60) -> dict:
                         add(_hit("estado", nn[1], f"TAC: {r['obj'] or ''}", r["org"], None, None, None, "doerj_tac", r["ult"],
                                  {"fornecedor": r["forn"], "n_tac": r["n"], "soma_tac_publicada": r["soma"]}))
             if _tem(con, "ob_orcamentaria_siafe") and e_cnpj:
-                for r in con.execute("SELECT processo, nome_credor, count(*) n, round(sum(valor),2) total, max(data_emissao) ultima FROM ob_orcamentaria_siafe "
+                for r in con.execute("SELECT processo, nome_credor, count(*) n, round(sum(valor),2) total, max(data_emissao_iso) ultima FROM ob_orcamentaria_siafe "
                                      f"WHERE credor LIKE ? AND processo LIKE 'SEI-%' AND {_ob_paga(con)} GROUP BY processo ORDER BY total DESC LIMIT ?", (f"%{dig[:8]}%", lim)):
                     nn = norm(r["processo"])
                     if nn:
