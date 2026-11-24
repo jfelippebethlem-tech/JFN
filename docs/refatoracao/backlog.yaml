@@ -16,8 +16,8 @@ itens:
   # O1 — Inventário, capacidade, motor de fluxo
   - {id: O1.1, dep: [O0.1], maq: vm1, estado: feito, nota: "inventário: 235 jobs (vm1 197, vm2 20, itcampo 18), 29 duplicações; config/jobs.yaml fora do git (topologia), cópia no vault", titulo: "tools/inventario_jobs.py -> catálogo de tudo que roda"}
   - {id: O1.2, dep: [O1.1], maq: vm1, estado: feito, nota: "143 scripts mapeados, 0 sem destino; 74 com regra única a portar; 47 aposentar", titulo: "Mapa script -> estágio/lente (55 por órgão, 29 perícias, 22 Lex, 15 captura, 48 sweeps)"}
-  - {id: O1.3, dep: [O1.1], maq: vm2, estado: pendente, titulo: "tools/baseline_refatoracao.py (linha de base reproduzível)"}
-  - {id: O1.4, dep: [], maq: vm1, estado: pendente, titulo: "ADR-001 matriz de autoridade + esqueletos ADR-002..011"}
+  - {id: O1.3, dep: [O1.1], maq: vm2, estado: feito, nota: "953583ad: baseline reproduzível; saída em ~/.local/share/jfn/baseline/", titulo: "tools/baseline_refatoracao.py (linha de base reproduzível)"}
+  - {id: O1.4, dep: [], maq: vm1, estado: feito, nota: "953583ad: ADR-001 + 002..011", titulo: "ADR-001 matriz de autoridade + esqueletos ADR-002..011"}
   - {id: O1.5, dep: [], maq: vm1, estado: feito, nota: "executor = tools/sweep_avaliacao_total.sh:41 -> analisar.py --rodar -> MotorCompliance (_regra_ob_fracionamento); 175 alertas tipo fracionamento, último 24/11 04:54; parado na parada de obras", titulo: "Descobrir executor real do MotorCompliance"}
   - {id: O1.6, dep: [O1.1], maq: vm1, estado: feito, nota: "VM-1 118,8 h/dia de parede (navegador 25,8 h, LLM 47,8 h); sem it-campo OCR ~19 PDF/dia vs ~1.016 e captura ≤ 1/3", titulo: "Capacidade horas/dia por estágio e máquina (com e sem it-campo)"}
   - {id: O1.7, dep: [O0.2], maq: vm2, estado: feito, nota: "ecf795b0: schema fluxo pronto e testado em esquema temporário; aplicar no banco real é a O2", titulo: "Schema fluxo no PG (jobs evoluída, eventos, agenda, grafo, nos, metricas) + teste de concorrência"}
@@ -57,7 +57,7 @@ itens:
   - {id: O5.4, dep: [O5.2], maq: vm2, estado: pendente, titulo: "E13 calibração contínua + ouro sem vazamento"}
   - {id: O5.5, dep: [O5.2], maq: vm2, estado: pendente, titulo: "Limpeza de zumbis e lotes"}
   # O6 — IA
-  - {id: O6.1, dep: [O1.8], maq: vm2, estado: pendente, titulo: "Gateway LLM (trace, roteamento+teto, cache composto, schema estrito) + release_ia"}
+  - {id: O6.1, dep: [O1.8], maq: vm2, estado: em_curso, nota: "d328a6e4: (a) trace + (b) roteamento/teto feitos; faltam (c) cache composto, (d) schema estrito, Batch, máscara; 100 pontos de chamada mapeados", titulo: "Gateway LLM (trace, roteamento+teto, cache composto, schema estrito) + release_ia"}
   - {id: O6.2, dep: [O6.1], maq: vm2, estado: pendente, titulo: "Prompt injection: spotlighting + dual-LLM + iscas"}
   - {id: O6.3, dep: [O6.1], maq: vm2, estado: pendente, titulo: "E8 destravado (Batch Haiku, teto US$100/mês)"}
   - {id: O6.4, dep: [O6.3], maq: vm2+itcampo, estado: pendente, titulo: "E11 perícia única (29 perícias + 22 Lex viram eixos, paridade)"}
