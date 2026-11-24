@@ -18,6 +18,13 @@ API paga) relê a mesma entrada, por gravidade (🔴 → 🟡 → indeterminado 
     entrada (`resposta_conferida`) — produto regenerado sai com o Opus, sem nova chamada;
   · a divergência é registrada na propagação (fonte `conferencia_opus`) e no segundo cérebro.
 
+ENTRADA POR RISCO (E12/O6.5, 24/11/2026): com `JFN_CONFERENCIA_RISCO=1` só fica `pendente` o que tem risco
+(`llm/conferencia_risco`: divergência, valor, grave, baixa confiança, amostra 1/8); o resto entra como `nao_julgado`
+— "NÃO JULGADO — fila", visível no painel e NUNCA limpo (`pendente()` continua True). Sem a variável, a de sempre.
+DOIS EXECUTORES (O1.9): a rodada escolhe it-campo ou VM-2 (`llm/conferencia_executor`) com a mesma trava de ritmo.
+PISO DE CONCORDÂNCIA: motor da cascata que concorda < 60% com o Opus numa tarefa de juízo (n ≥ 20) é rebaixado
+naquela tarefa (`llm/cascata_ajuste`), ao fim de cada rodada.
+
 A triagem de alertas tem fila própria e mais antiga (`alertas_triagem.opus_pendente`, consumida por
 `triagem_alertas --opus`); `painel()` soma as duas para o dono ver uma fila só.
 """
@@ -31,11 +38,13 @@ import logging
 import os
 import re
 import sqlite3
+import time
 import zlib
 from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.llm import arquivo_estado as arq
+from compliance_agent.llm import conferencia_risco as risco
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +62,14 @@ APLICADORES = {"pericia_execucao": "tools.lex_execucao:aplicar_conferencia",
                "pericia_integral": "compliance_agent.pericia_integral:aplicar_conferencia",
                # número divergente do OCR por IA: só decisão com base objetiva no texto vira registro (23/11/2026)
                "ocr_ia_numero": "tools.sei_ocr_ia_conferir:aplicar_conferencia"}
+# aplicador que bate em "database is locked" (compliance.db com outro escritor além do busy_timeout de 120 s —
+# 22/11/2026 18:35, 2 vereditos do Opus da perícia integral perdidos) tenta de novo depois destas esperas
+RETENTAR_S = (10.0, 30.0)
+_RE_TRANSITORIO = re.compile(r"locked|busy", re.I)
+# piso de concordância da cascata com o Opus (plano mestre v2, E12): abaixo dele, com amostra mínima, rebaixa
+PISO_CONCORDANCIA = 0.60
+PISO_AMOSTRA_MIN = 20
+_STATUS_ABERTOS = ("pendente", "erro", risco.NAO_JULGADO)
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS fila(
@@ -148,15 +165,23 @@ def enfileirar(tarefa: str, item: str | None, entrada: str, *, sistema: str = ""
         con = con or conectar()
         try:
             ch = chave_de(tarefa, entrada, sistema)
+            status, motivos = "pendente", None
+            if risco.ativo():                    # entrada por risco (E12): o sem-risco entra NÃO JULGADO, visível
+                risco.garantir_coluna(con)
+                status, ms = risco.decidir_entrada(con, tarefa=tarefa, item=item, chave=ch, motor=motor, nivel=nivel,
+                                                   veredito=veredito, resposta=resposta or "", valor=valor)
+                motivos = ",".join(ms) or None
             con.execute(
-                "INSERT INTO fila(chave,tarefa,item,entrada,sistema,motor,resposta,veredito,nivel,valor,motivo,criado_em) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(chave) DO UPDATE SET item=excluded.item, "
+                "INSERT INTO fila(chave,tarefa,item,entrada,sistema,motor,resposta,veredito,nivel,valor,motivo,criado_em,"
+                "status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(chave) DO UPDATE SET item=excluded.item, "
                 "entrada=excluded.entrada, motor=excluded.motor, resposta=excluded.resposta, veredito=excluded.veredito, "
                 "nivel=excluded.nivel, valor=excluded.valor, motivo=excluded.motivo, criado_em=excluded.criado_em, "
-                "status='pendente', tentativas=0 WHERE fila.status IN ('pendente','erro')",
+                "status=excluded.status, tentativas=0 WHERE fila.status IN ('pendente','erro','nao_julgado')",
                 (ch, tarefa, item, zlib.compress(entrada.encode("utf-8", "replace")), sistema, motor or "desconhecido",
                  (resposta or "")[:60000], (veredito or None) and str(veredito)[:80], nivel, valor,
-                 (motivo or "")[:200], _agora()))
+                 (motivo or "")[:200], _agora(), status))
+            if motivos is not None or status != "pendente":
+                con.execute("UPDATE fila SET risco=? WHERE chave=? AND status=?", (motivos, ch, status))
             con.commit()
             return True
         finally:
@@ -168,14 +193,15 @@ def enfileirar(tarefa: str, item: str | None, entrada: str, *, sistema: str = ""
 
 
 def pendente(tarefa: str, item: str, con: sqlite3.Connection | None = None) -> bool:
-    """O item tem resultado de contingência ainda não conferido? (True ⇒ o consumidor NÃO pode dar VERIFICADO.)"""
+    """O item tem resultado de contingência ainda não conferido? (True ⇒ o consumidor NÃO pode dar VERIFICADO.)
+    NÃO JULGADO conta como pendente: fora da fila do Opus não é o mesmo que limpo."""
     if _sem_banco() and con is None:
         return False
     proprio = con is None
     con = con or conectar()
     try:
-        return con.execute("SELECT 1 FROM fila WHERE tarefa=? AND item=? AND status IN ('pendente','erro') LIMIT 1",
-                           (tarefa, item)).fetchone() is not None
+        return con.execute("SELECT 1 FROM fila WHERE tarefa=? AND item=? AND status IN (?,?,?) LIMIT 1",
+                           (tarefa, item, *_STATUS_ABERTOS)).fetchone() is not None
     finally:
         if proprio:
             con.close()
@@ -202,12 +228,21 @@ def _aplicar(tarefa: str, item: str | None, resposta: str, modelo: str, concorda
     alvo = APLICADORES.get(tarefa)
     if not alvo or not item:
         return None
-    try:
-        mod, fn = alvo.split(":")
-        return int(bool(getattr(importlib.import_module(mod), fn)(item, resposta, modelo, concorda)))
-    except (ImportError, AttributeError, sqlite3.Error, OSError, ValueError, TypeError, KeyError) as e:
-        logger.warning("conferência Opus: aplicador de %s falhou (%s)", tarefa, type(e).__name__)
-        return 0
+    for espera in (*RETENTAR_S, None):
+        try:
+            mod, fn = alvo.split(":")
+            return int(bool(getattr(importlib.import_module(mod), fn)(item, resposta, modelo, concorda)))
+        except sqlite3.OperationalError as e:
+            if espera is None or not _RE_TRANSITORIO.search(str(e)):
+                logger.warning("conferência Opus: aplicador de %s falhou (OperationalError: %s)", tarefa, str(e)[:160])
+                return 0
+            logger.info("conferência Opus: aplicador de %s esbarrou em %s — nova tentativa em %.0f s", tarefa,
+                        str(e)[:80], espera)
+            time.sleep(espera)
+        except (ImportError, AttributeError, sqlite3.Error, OSError, ValueError, TypeError, KeyError) as e:
+            logger.warning("conferência Opus: aplicador de %s falhou (%s: %s)", tarefa, type(e).__name__, str(e)[:160])
+            return 0
+    return 0
 
 
 def _registrar_divergencia(tarefa: str, item: str | None, motor: str, antes, depois, modelo_opus: str) -> None:
@@ -240,12 +275,30 @@ def _data_do_item(item: str | None) -> str | None:
     return data_processo(item[4:]) if (item or "").startswith("sei:") else None
 
 
-def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) -> list[dict]:
+def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None, escolher=None, ritmo=None,
+             executar_em=None, piso: bool = True) -> list[dict]:
     """O Opus da assinatura confere até `n` itens da fila. Sem cota (ou assinatura ainda em contingência) para e
-    retoma na próxima rodada — a fila não se perde e nada é promovido enquanto isso."""
+    retoma na próxima rodada — a fila não se perde e nada é promovido enquanto isso.
+    Em produção (sem `pensar` injetado) a rodada passa pela trava de ritmo e escolhe o executor (it-campo | VM-2,
+    `llm/conferencia_executor`); teste injeta `escolher`/`ritmo`/`executar_em`."""
     from compliance_agent.foco import intercalar
     from compliance_agent.llm import claude_motor, cruzamento
+    from compliance_agent.llm import conferencia_executor as exe
+    producao = pensar is None
     pensar = pensar or claude_motor.pensar
+    executar, executor = None, None
+    if producao or escolher is not None or ritmo is not None:
+        barrado = (ritmo or exe.motivo_ritmo)(TAREFA)
+        if barrado:
+            logger.info("conferência Opus: rodada não confere — %s", barrado)
+            return []
+        executor, porque = (escolher or exe.escolher)()
+        if executor is None:
+            logger.warning("conferência Opus: nenhum executor da assinatura disponível — %s", porque)
+            return []
+        logger.info("conferência Opus: executor %s", porque)
+        executar = (executar_em or exe.executar_em)(executor)
+    extra = {"executar": executar} if executar is not None else {}
     proprio = con is None
     con = con or conectar()
     feitos: list[dict] = []
@@ -260,7 +313,7 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
         for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:
             entrada = zlib.decompress(blob).decode("utf-8", "replace") if blob else ""
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",
-                       timeout=TIMEOUT_S, espera=ESPERA_TRAVA_S)
+                       timeout=TIMEOUT_S, espera=ESPERA_TRAVA_S, **extra)
             if p is None:
                 if not _RE_RECUSA_ITEM.search(claude_motor.ultimo_motivo or ""):
                     break                              # sem assinatura agora: para sem gastar tentativa
@@ -285,19 +338,85 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None) 
             except (sqlite3.Error, OSError, ValueError) as e:
                 logger.warning("conferência Opus: cruzamento não gravado (%s)", type(e).__name__)
             aplicado = _aplicar(tarefa, item, p.texto, p.modelo, concorda)
+            # aplicador que falhou: a ENTRADA fica (o aplicador da perícia integral relê dela) para `reaplicar`;
+            # antes ela era apagada e o veredito do Opus nunca chegava ao registro (22/11/2026)
             con.execute("UPDATE fila SET status='conferido', conferido_em=?, modelo_opus=?, veredito_opus=?, "
-                        "nivel_opus=?, resposta_opus=?, concorda=?, aplicado=?, entrada=NULL WHERE id=?",
+                        "nivel_opus=?, resposta_opus=?, concorda=?, aplicado=?, "
+                        "entrada=CASE WHEN ? THEN entrada ELSE NULL END WHERE id=?",
                         (_agora(), p.modelo, (v_op or None) and str(v_op)[:80], n_op, p.texto[:60000], concorda,
-                         aplicado, fid))
+                         aplicado, int(aplicado == 0), fid))
             con.commit()
             if concorda == 0:                          # prosa sem régua (None) não tem o que comparar
                 _registrar_divergencia(tarefa, item, motor, ver, v_op, p.modelo)
             feitos.append({"id": fid, "tarefa": tarefa, "item": item, "motor": motor, "antes": ver, "opus": v_op,
-                           "concorda": concorda, "aplicado": aplicado})
+                           "concorda": concorda, "aplicado": aplicado, "executor": executor})
+        if piso and feitos:
+            aplicar_piso(con)
         return feitos
     finally:
         if proprio:
             con.close()
+
+
+def reaplicar(n: int = 50, con: sqlite3.Connection | None = None) -> list[dict]:
+    """Conferido cujo aplicador falhou (aplicado=0), com aplicador e com a ENTRADA guardada: roda o aplicador de novo
+    com a resposta do Opus já gravada — sem nova chamada. Aplicou ⇒ aplicado=1 e a entrada é apagada. Sem a entrada
+    (os 4 de antes de 24/11) não reaplica: o aplicador da perícia integral leria a entrada de OUTRA linha do item."""
+    proprio = con is None
+    con = con or conectar()
+    out = []
+    try:
+        marcas = ",".join("?" * len(APLICADORES))
+        rows = con.execute(f"SELECT id, tarefa, item, resposta_opus, modelo_opus, concorda, entrada IS NOT NULL FROM fila "
+                           f"WHERE status='conferido' AND aplicado=0 AND resposta_opus IS NOT NULL AND entrada IS NOT NULL "
+                           f"AND tarefa IN ({marcas}) ORDER BY id LIMIT ?", (*APLICADORES, n)).fetchall()
+        for fid, tarefa, item, resp, modelo, concorda, tem_entrada in rows:
+            ap = _aplicar(tarefa, item, resp, modelo or "", concorda)
+            if ap == 1:
+                con.execute("UPDATE fila SET aplicado=1, entrada=NULL WHERE id=?", (fid,))
+                con.commit()
+            out.append({"id": fid, "tarefa": tarefa, "item": item, "aplicado": ap, "tinha_entrada": bool(tem_entrada)})
+        return out
+    finally:
+        if proprio:
+            con.close()
+
+
+def _motor_da_cascata(motor: str | None) -> str | None:
+    """Rótulo do `cascata_ajuste` para o motor gravado na fila; None = não é um modelo da cascata (Claude pela API,
+    'cascata' agregada, desconhecido) — não há o que rebaixar."""
+    m = (motor or "").split("#", 1)[0].strip()
+    if not m or m in ("cascata", "desconhecido") or m.startswith("claude"):
+        return None
+    return m
+
+
+def concordancia_por_motor(con: sqlite3.Connection) -> list[dict]:
+    """Concordância Opus × motor por tarefa de JUÍZO (as que têm normalizador), só conferidos com régua."""
+    from compliance_agent.llm.normalizadores import NORMALIZADORES
+    out = []
+    for tarefa, motor, n, a in con.execute("SELECT tarefa, motor, COUNT(*), SUM(concorda=1) FROM fila WHERE "
+                                           "status='conferido' AND concorda IS NOT NULL GROUP BY 1, 2"):
+        if tarefa in NORMALIZADORES:
+            out.append({"tarefa": tarefa, "motor": motor, "n": n, "concordou": a or 0,
+                        "taxa": round((a or 0) / n, 3) if n else None, "modelo": _motor_da_cascata(motor)})
+    return out
+
+
+def aplicar_piso(con: sqlite3.Connection, *, rebaixar=None, aplicar: bool = True) -> list[dict]:
+    """Rebaixa (por tarefa) o motor da cascata que concorda < `PISO_CONCORDANCIA` com o Opus em n ≥
+    `PISO_AMOSTRA_MIN`. `aplicar=False` só lista (sombra). Idempotente (o `cascata_ajuste` ignora o repetido)."""
+    from compliance_agent.llm import cascata_ajuste
+    rebaixar = rebaixar or cascata_ajuste.rebaixar
+    abaixo = []
+    for c in concordancia_por_motor(con):
+        if c["modelo"] is None or c["n"] < PISO_AMOSTRA_MIN or c["taxa"] >= PISO_CONCORDANCIA:
+            continue
+        c["novo"] = bool(rebaixar(c["tarefa"], c["modelo"], f"concordância com o Opus {c['taxa']:.0%} < piso "
+                                  f"{PISO_CONCORDANCIA:.0%} (conferência Opus)",
+                                  {"n": c["n"], "concordou": c["concordou"], "taxa": c["taxa"]})) if aplicar else None
+        abaixo.append(c)
+    return abaixo
 
 
 def _triagem_pendente() -> int | None:
@@ -331,12 +450,12 @@ def painel() -> dict:
         try:
             out["por_tarefa"] = [
                 {"tarefa": t, "motor": m, "pendentes": p, "graves": g, "conferidos": c, "concordou": a, "divergiu": d,
-                 "erro": er}
-                for t, m, p, g, c, a, d, er in con.execute(
+                 "erro": er, "nao_julgados": nj}
+                for t, m, p, g, c, a, d, er, nj in con.execute(
                     "SELECT tarefa, motor, SUM(status='pendente'), SUM(status='pendente' AND nivel=2), "
                     "SUM(status='conferido'), SUM(status='conferido' AND concorda=1), "
-                    "SUM(status='conferido' AND COALESCE(concorda,0)=0), SUM(status='erro') "
-                    "FROM fila GROUP BY tarefa, motor ORDER BY 3 DESC, 1")]
+                    "SUM(status='conferido' AND COALESCE(concorda,0)=0), SUM(status='erro'), "
+                    "SUM(status='nao_julgado') FROM fila GROUP BY tarefa, motor ORDER BY 3 DESC, 1")]
             out["itens"] = [
                 {"tarefa": t, "item": i, "motor": m, "veredito": v, "nivel": n, "desde": em, "motivo": mo}
                 for t, i, m, v, n, em, mo in con.execute(
@@ -349,17 +468,32 @@ def painel() -> dict:
     pt = out["por_tarefa"]
     return dict(out, disponivel=True, pendentes=sum(x["pendentes"] or 0 for x in pt),
                 conferidos=sum(x["conferidos"] or 0 for x in pt), divergencias=sum(x["divergiu"] or 0 for x in pt),
-                erros=sum(x["erro"] or 0 for x in pt))
+                erros=sum(x["erro"] or 0 for x in pt), nao_julgados=sum(x["nao_julgados"] or 0 for x in pt),
+                rotulo_nao_julgado=risco.ROTULO_NAO_JULGADO)
 
 
 def _main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Fila de conferência do Opus (resultados produzidos em contingência)")
     ap.add_argument("--conferir", type=int, metavar="N", help="o Opus da assinatura confere até N itens")
+    ap.add_argument("--reaplicar", type=int, metavar="N", help="reaplica até N conferidos cujo aplicador falhou")
+    ap.add_argument("--piso", action="store_true", help="concordância por motor × tarefa e quem cairia no piso")
+    ap.add_argument("--aplicar-piso", action="store_true", help="com --piso: grava o rebaixamento (cascata_ajuste)")
     a = ap.parse_args(argv)
+    if a.reaplicar:
+        print(json.dumps(reaplicar(a.reaplicar), ensure_ascii=False))
+        return 0
+    if a.piso:
+        con = conectar()
+        try:
+            print(json.dumps({"todos": concordancia_por_motor(con),
+                              "abaixo_do_piso": aplicar_piso(con, aplicar=a.aplicar_piso)}, ensure_ascii=False, indent=1))
+        finally:
+            con.close()
+        return 0
     if a.conferir:
         r = conferir(a.conferir)
         print(f"[{_agora()}] conferência Opus: {len(r)} item(ns) — "
-              + json.dumps([{k: x.get(k) for k in ('tarefa', 'item', 'antes', 'opus', 'concorda', 'aplicado', 'estado')
+              + json.dumps([{k: x.get(k) for k in ('tarefa', 'item', 'antes', 'opus', 'concorda', 'aplicado', 'estado', 'executor')
                              if x.get(k) is not None} for x in r], ensure_ascii=False))
         return 0
     print(json.dumps(painel(), ensure_ascii=False, indent=1))
