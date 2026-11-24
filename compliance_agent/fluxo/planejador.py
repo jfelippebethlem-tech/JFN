@@ -24,7 +24,7 @@ from compliance_agent.fluxo import fila
 
 CHAVE_LIDERANCA = 42
 FUSO = ZoneInfo("America/Sao_Paulo")
-NO_SEM_HEARTBEAT_S = 300            # §3.5: heartbeat sumido por > 5 min = nó fora
+NO_SEM_HEARTBEAT_S = fila.NO_SEM_HEARTBEAT_S   # §3.5: heartbeat sumido por > 5 min = nó fora
 FILA_ATRASADA_S = 900               # job elegível esperando mais que isto = ATRASADO
 AGENDA_ATRASADA_S = 600             # horário vencido sem virar job = planejador parado
 
@@ -104,14 +104,15 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
     """Horário vencido vira job com chave `<tipo>:agenda:<id>:<horário>` (idempotente: dois planejadores, ou um
     que caiu no meio, não duplicam). Atraso de N horários gera UMA execução, não N (o trabalho é idempotente e
     recupera o estado; rajada de atrasados só congestionaria). Agenda nova (`proximo` NULL) só ganha o horário:
-    não dispara no deploy. `contrato` = recursos/prioridade por tipo (do registro de estágios)."""
+    não dispara no deploy. SEM SOBREPOSIÇÃO (O2.2, como o systemd fazia): se já há job do mesmo tipo em fila ou
+    reservado (de outro horário ou de evento), o horário passa sem virar job. `contrato` = recursos/prioridade."""
     contrato = contrato or {}
     n = 0
     with con.transaction():
         linhas = con.execute("SELECT id, cron_expr, proximo, tipo_job, payload, now() FROM agenda WHERE ativo AND "
                              "(proximo IS NULL OR proximo <= now()) FOR UPDATE SKIP LOCKED").fetchall()
         for ag_id, expr, proximo, tipo, payload, agora in linhas:
-            if proximo is not None:
+            if proximo is not None and not _pendente(con, tipo, ignorar_ritmo=True):
                 c = contrato.get(tipo, {})
                 novo = fila.enfileirar(con, tipo, f"{tipo}:agenda:{ag_id}:{proximo.isoformat()}", payload,
                                        prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
@@ -120,6 +121,45 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
                 n += novo is not None
             con.execute("UPDATE agenda SET proximo = %s WHERE id = %s", (Cron(expr).proximo(agora), ag_id))
     return n
+
+
+def _pendente(con, tipo: str, ignorar_ritmo: bool = False) -> str | None:
+    """'reservado' / 'fila' se há job deste tipo rodando / esperando (qualquer chave), senão None. `ignorar_ritmo`
+    (agenda): job de evento em fila esperando o guarda da assinatura não conta — a agenda (o cron-rede de antes)
+    não obedece o ritmo e não pode ser calada por ele (2ª sombra, O2.2)."""
+    filtro = " AND NOT (estado = 'fila' AND payload ? 'ritmo')" if ignorar_ritmo else ""
+    r = con.execute("SELECT max(estado) FROM jobs WHERE tipo = %s AND estado IN ('fila', 'reservado')" + filtro,
+                    (tipo,)).fetchone()
+    return r[0] if r else None
+
+
+def sincronizar_agenda(con, linhas: list[Mapping]) -> dict:
+    """`fluxo.agenda` ← `grafo.agenda_linhas()`, idempotente. Linha NOVA entra com `ativo = false` (religar é a O9.0,
+    uma a uma); linha existente tem cron/tipo/payload atualizados e o `ativo` preservado — cron mudado zera o
+    `proximo` (recalcula sem disparar). Linha que saiu do yaml é DESLIGADA, nunca apagada (histórico)."""
+    out = {"novas": 0, "atualizadas": 0, "iguais": 0, "desativadas": 0}
+    with con.transaction():
+        atuais = {i: (c, t, p) for i, c, t, p in con.execute(
+            "SELECT id, cron_expr, tipo_job, payload FROM agenda FOR UPDATE")}
+        for x in linhas:
+            Cron(x["cron_expr"])                                       # cron inválido não entra
+            novo = (x["cron_expr"], x["tipo_job"], dict(x.get("payload") or {}))
+            if x["id"] not in atuais:
+                con.execute("INSERT INTO agenda(id, cron_expr, tipo_job, payload, ativo) VALUES (%s, %s, %s, %s, "
+                            "false)", (x["id"], novo[0], novo[1], json.dumps(novo[2])))
+                out["novas"] += 1
+            elif atuais[x["id"]] == novo:
+                out["iguais"] += 1
+            else:
+                con.execute("UPDATE agenda SET cron_expr = %s, tipo_job = %s, payload = %s, proximo = CASE WHEN "
+                            "cron_expr = %s THEN proximo END WHERE id = %s",
+                            (novo[0], novo[1], json.dumps(novo[2]), novo[0], x["id"]))
+                out["atualizadas"] += 1
+        sairam = sorted(set(atuais) - {x["id"] for x in linhas})
+        if sairam:
+            out["desativadas"] = con.execute("UPDATE agenda SET ativo = false WHERE id = ANY(%s) AND ativo",
+                                             (sairam,)).rowcount
+    return out
 
 
 # ── (b) eventos → dependentes ─────────────────────────────────────────────────────────────────────────
@@ -131,9 +171,12 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
     perderia. Devolve quantos eventos foram processados.
 
     Campos do dependente (config/fluxo.yaml via grafo.grafo_planejador): `agrupar` — recálculo da base inteira, UM
-    job por tipo (chave = o tipo), qualquer que seja a fonte; `intervalo_min_s` — job já concluído há menos que isto
-    reabre com espera até completar o intervalo (o `intervalo_min_s` do despachante antigo); `payload` — base do
-    payload do job (rotina, teto de tempo), a que se soma o `evento`."""
+    job por tipo (chave = o tipo), qualquer que seja a fonte; e, agrupado, QUALQUER job do tipo em fila (inclusive o
+    da agenda: rede fundida) absorve o evento e qualquer um rodando o adia; `intervalo_min_s` — reabre com espera
+    até completar o intervalo desde a última execução do TIPO (agenda conta, como a rede contava no despachante);
+    `abre_janela` — False quando a fonte é outra rotina: evento de derivado não abre janela de junção (debounce 0,
+    regra de propagacao._sujos); `payload` — base do payload do job, a que se soma o `evento`.
+    A espera pelo derivado a montante pronto fica na reserva (`payload.montante`, fila.reservar)."""
     contrato = contrato or {}
     feitos = 0
     with con.transaction():
@@ -144,11 +187,21 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
             for dep in grafo.get(fonte, []):
                 dep = {"tipo": dep} if isinstance(dep, str) else dep
                 c = contrato.get(dep["tipo"], {})
-                chave_dep = dep["tipo"] if dep.get("agrupar") else f"{dep['tipo']}:{chave or fonte}"
-                atraso = float(dep.get("debounce_s", 0))
+                agrupar = bool(dep.get("agrupar"))
+                chave_dep = dep["tipo"] if agrupar else f"{dep['tipo']}:{chave or fonte}"
+                if agrupar:
+                    pend = _pendente(con, dep["tipo"])
+                    if pend == "reservado":
+                        adiar = True
+                        continue
+                    if pend == "fila":
+                        continue                                    # junta no job que já espera
+                atraso = float(dep.get("debounce_s", 0)) if dep.get("abre_janela", True) else 0.0
                 if dep.get("intervalo_min_s"):
-                    ha = con.execute("SELECT extract(epoch FROM now() - concluido_em) FROM jobs WHERE chave = %s "
-                                     "AND estado IN ('feito', 'falhou_efeito')", (chave_dep,)).fetchone()
+                    ha = con.execute("SELECT extract(epoch FROM now() - max(concluido_em)) FROM jobs WHERE "
+                                     + ("tipo = %s" if agrupar else "chave = %s")
+                                     + " AND estado IN ('feito', 'falhou_efeito')",
+                                     (dep["tipo"] if agrupar else chave_dep,)).fetchone()
                     if ha and ha[0] is not None:
                         atraso = max(atraso, float(dep["intervalo_min_s"]) - float(ha[0]))
                 novo = fila.enfileirar(con, dep["tipo"], chave_dep,

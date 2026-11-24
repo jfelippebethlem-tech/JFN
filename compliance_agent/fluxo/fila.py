@@ -107,28 +107,63 @@ def estado_de(con, chave: str) -> str | None:
 
 
 def reservar(con, no: str, recursos_livres: Mapping[str, int] | Iterable[str], prazo_s: float = 300.0,
-             tipos: Iterable[str] | None = None) -> Job | None:
-    """Reserva, numa operação atômica, o job em fila de maior prioridade cujos recursos estão TODOS livres neste nó.
-    SKIP LOCKED: a linha que outro nó está reservando agora é pulada — nem espera, nem é entregue em dobro. Empate
-    de prioridade: o job que prefere este nó vem antes; depois o mais antigo."""
+             tipos: Iterable[str] | None = None, *, tetos: Mapping[str, int] | None = None,
+             ritmo_bloqueado: Iterable[str] | None = None) -> Job | None:
+    """Reserva, numa operação atômica, o job em fila de maior prioridade cujos recursos estão TODOS livres neste nó
+    e que passa nas restrições da reserva (O2.2 — o que a sombra de 24/11 mediu que faltava):
+      · NÓ (`payload.nos`): restrição dura — só um nó da lista reserva; os de `volta.nos` só quando NENHUM nó da
+        lista tem heartbeat nos últimos 5 min (§3.5). Sem `payload.nos`, qualquer nó;
+      · TETO por fonte/provedor (`payload.concorrencia` × `tetos`): a etiqueta já com N jobs RESERVADOS no mundo
+        todo não reserva mais; `por_fonte:<rotina>` lê o teto de `por_fonte`;
+      · RITMO da assinatura: job com `payload.ritmo` na lista `ritmo_bloqueado` fica na fila;
+      · MONTANTE (`payload.montante`): espera o derivado a montante que está RODANDO ou PRONTO (elegível há menos de
+        ESPERA_MONTANTE_MAX_S) — o que ainda junta eventos, ou está barrado há muito, não segura ninguém.
+    A reserva é serializada por advisory lock de transação (senão dois nós contariam o mesmo teto ao mesmo tempo).
+    Empate de prioridade: o job que prefere este nó vem antes; depois o mais antigo."""
     if isinstance(recursos_livres, Mapping):
         livres = sorted(k for k, n in recursos_livres.items() if n > 0)
     else:
         livres = sorted(set(recursos_livres))
     if not livres:
         return None
-    filtro_tipo, params = "", [no, float(prazo_s), livres]
-    if tipos is not None:
-        filtro_tipo, params = " AND tipo = ANY(%s)", params + [list(tipos)]
-    r = con.execute(
-        "UPDATE jobs SET estado = 'reservado', dono = %s, ficha = nextval('fichas'), tentativas = tentativas + 1, "
-        "prazo = now() + make_interval(secs => %s), heartbeat_em = now(), iniciado_em = now() "
-        "WHERE id = (SELECT id FROM jobs WHERE estado = 'fila' AND disponivel_em <= now() AND recursos <@ %s"
-        f"{filtro_tipo} ORDER BY prioridade, (no_preferido IS DISTINCT FROM %s), disponivel_em, id "
-        "LIMIT 1 FOR UPDATE SKIP LOCKED) "
-        "RETURNING id, tipo, chave, ficha, payload, recursos, tentativas, max_tentativas, correlation_id, volta",
-        params + [no]).fetchone()
+    params = {"no": no, "prazo": float(prazo_s), "livres": livres, "tetos": json.dumps(dict(tetos or {})),
+              "ritmo": sorted(set(ritmo_bloqueado or ())), "sem_hb": NO_SEM_HEARTBEAT_S,
+              "espera": ESPERA_MONTANTE_MAX_S, "tipos": list(tipos) if tipos is not None else None}
+    with con.transaction():
+        con.execute("SELECT pg_advisory_xact_lock(%s)", (CHAVE_RESERVA,))
+        r = con.execute(_SQL_RESERVAR, params).fetchone()
     return Job(*r) if r else None
+
+
+NO_SEM_HEARTBEAT_S = 300            # = planejador.NO_SEM_HEARTBEAT_S (§3.5)
+ESPERA_MONTANTE_MAX_S = 1800        # montante elegível há mais que isto está barrado por fora: não segura o dependente
+CHAVE_RESERVA = 4243                # advisory lock da reserva (≠ 42 da liderança)
+_SQL_RESERVAR = """
+UPDATE jobs SET estado = 'reservado', dono = %(no)s, ficha = nextval('fichas'), tentativas = tentativas + 1,
+       prazo = now() + make_interval(secs => %(prazo)s), heartbeat_em = now(), iniciado_em = now()
+WHERE id = (
+  SELECT j.id FROM jobs j
+  WHERE j.estado = 'fila' AND j.disponivel_em <= now() AND j.recursos <@ %(livres)s::text[]
+    AND (%(tipos)s::text[] IS NULL OR j.tipo = ANY(%(tipos)s::text[]))
+    AND (NOT (j.payload ? 'nos') OR j.payload->'nos' ? %(no)s
+         OR (coalesce(j.volta->'nos' ? %(no)s, false)
+             AND NOT EXISTS (SELECT 1 FROM nos x WHERE x.heartbeat_em > now() - make_interval(secs => %(sem_hb)s)
+                             AND j.payload->'nos' ? x.no)))
+    AND NOT (j.payload ? 'ritmo' AND j.payload->>'ritmo' = ANY(%(ritmo)s::text[]))
+    AND NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(coalesce(j.payload->'concorrencia', '[]'::jsonb)) t(tag)
+      WHERE (SELECT count(*) FROM jobs r WHERE r.estado = 'reservado' AND r.payload->'concorrencia' ? t.tag)
+            >= coalesce((%(tetos)s::jsonb ->> split_part(t.tag, ':', 1))::int, 2147483647))
+    AND NOT EXISTS (
+      SELECT 1 FROM jobs u
+      WHERE j.payload ? 'montante'
+        AND u.tipo IN (SELECT jsonb_array_elements_text(j.payload->'montante'))
+        AND (u.estado = 'reservado'
+             OR (u.estado = 'fila' AND u.disponivel_em <= now()
+                 AND u.disponivel_em > now() - make_interval(secs => %(espera)s))))
+  ORDER BY j.prioridade, (j.no_preferido IS DISTINCT FROM %(no)s), j.disponivel_em, j.id
+  LIMIT 1 FOR UPDATE OF j SKIP LOCKED)
+RETURNING id, tipo, chave, ficha, payload, recursos, tentativas, max_tentativas, correlation_id, volta"""
 
 
 def heartbeat(con, ficha: int, prazo_s: float = 300.0) -> bool:

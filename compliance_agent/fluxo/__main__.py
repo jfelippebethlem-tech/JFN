@@ -4,6 +4,7 @@
     python -m compliance_agent.fluxo supervisor --no vm1 [--uma-volta] [--isolamento auto|systemd|subprocesso]
     python -m compliance_agent.fluxo saude [--esperados vm1,vm2,itcampo]
     python -m compliance_agent.fluxo eco <chave>        # enfileira um job E0 de teste (prova ponta a ponta)
+    python -m compliance_agent.fluxo agenda sincronizar  # fluxo.agenda ← config/fluxo.yaml (linha nova: ativo=false)
 O schema: `python -m compliance_agent.fluxo.schema verificar|aplicar`.
 """
 from __future__ import annotations
@@ -28,6 +29,10 @@ def main(argv: list[str] | None = None) -> int:
     h.add_argument("--esperados", default="")
     e = sub.add_parser("eco")
     e.add_argument("chave")
+    ag = sub.add_parser("agenda")
+    ag_sub = ag.add_subparsers(dest="acao", required=True)
+    sinc = ag_sub.add_parser("sincronizar", help="grava a agenda do yaml; linha nova entra DESLIGADA (O9.0 religa)")
+    sinc.add_argument("--grafo", default=None, help="caminho do fluxo.yaml (padrão: config/fluxo.yaml)")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     if a.cmd == "supervisor":
@@ -44,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if a.cmd == "saude":
             r = planejador.saude(con, tuple(n for n in a.esperados.split(",") if n))
+        elif a.cmd == "agenda":
+            from compliance_agent.fluxo import grafo
+            r = {"esquema": fila.esquema_vigente(),
+                 **planejador.sincronizar_agenda(con, grafo.carregar(a.grafo).agenda_linhas())}
         else:
             r = {"id": fila.enfileirar(con, "eco", f"eco:{a.chave}", {"origem": "cli"})}
     finally:

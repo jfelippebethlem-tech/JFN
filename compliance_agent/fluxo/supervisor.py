@@ -34,6 +34,7 @@ from typing import Callable, Mapping
 
 from compliance_agent.evidencias import ENV_DSN, dsn_vigente
 from compliance_agent.fluxo import fila, governador, planejador, schema
+from compliance_agent.fluxo import grafo as grafo_mod
 from compliance_agent.fluxo.fila import Job, Resultado
 
 log = logging.getLogger("jfn.fluxo.supervisor")
@@ -89,6 +90,17 @@ def systemd_disponivel() -> bool:
     return r.returncode == 0
 
 
+def motivo_ritmo(tarefa: str) -> str | None:
+    """O MESMO guarda de LLM do despachante antigo (`propagacao._motivo_ritmo`): `llm/contingencia.motivo_bloqueio`,
+    que lê `llm/ritmo_assinatura` e o teto diário do motor. None = pode; leitura que falha = espera (nunca fura o
+    teto). Atenção: o arquivo de medição mora na máquina que roda `ritmo_assinatura --medir` (VM-1)."""
+    try:
+        from compliance_agent.llm import contingencia
+        return contingencia.motivo_bloqueio(tarefa)
+    except (ImportError, OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        return f"guarda de ritmo ilegível ({type(exc).__name__}: {exc})"[:300]
+
+
 def _rss_kb(pid: int) -> int:
     try:
         for ln in Path(f"/proc/{pid}/status").read_text().splitlines():
@@ -117,7 +129,11 @@ class Supervisor:
     dsn: str | None = None
     esquema: str | None = None
     slots: dict[str, int] | None = None
-    grafo: Mapping[str, list] | None = None
+    grafo: Mapping[str, list] | None = None        # None = config/fluxo.yaml (grafo.carregar)
+    contrato: Mapping[str, Mapping] | None = None
+    tetos: Mapping[str, int] | None = None
+    ritmos: set[str] | None = None
+    ritmo: Callable[[str], str | None] = motivo_ritmo
     prazo_s: float = 120.0
     isolamento: str = "auto"                    # auto | systemd | subprocesso
     chave_lideranca: int = planejador.CHAVE_LIDERANCA
@@ -128,6 +144,14 @@ class Supervisor:
         self.dsn = self.dsn or dsn_vigente()
         self.esquema = schema.validar_esquema(self.esquema or fila.esquema_vigente())
         self.slots = dict(self.slots if self.slots is not None else governador.SLOTS_INICIAIS.get(self.no, {}))
+        if self.grafo is None:                       # o grafo real: inválido ⇒ o supervisor não sobe (portão)
+            g = grafo_mod.carregar()
+            self.grafo = g.grafo_planejador()
+            self.contrato = g.contrato() if self.contrato is None else self.contrato
+            self.tetos = g.tetos() if self.tetos is None else self.tetos
+            self.ritmos = g.ritmos() if self.ritmos is None else self.ritmos
+        self.tetos = dict(self.tetos or {})
+        self.ritmos = set(self.ritmos or ())
         if self.isolamento == "auto":
             self.isolamento = "systemd" if systemd_disponivel() else "subprocesso"
         self.con = fila.conectar(self.dsn, self.esquema)
@@ -294,7 +318,7 @@ class Supervisor:
         r: dict = {"no": self.no}
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
             self._ultimo_plano = time.monotonic()
-            r["planejador"] = planejador.ciclo(self.con, self.grafo)
+            r["planejador"] = planejador.ciclo(self.con, self.grafo, self.contrato)
         r["colhidos"] = self._colher()
         r["leases_perdidos"] = self._renovar()
         m = self.medir()
@@ -303,8 +327,12 @@ class Supervisor:
         self._aplicar_acao(d)
         self._registrar_no(m, d)
         livres, lancados = dict(d.livres), 0
+        bloqueados = sorted(t for t in self.ritmos if self.ritmo(t))
+        if bloqueados:
+            r["ritmo_bloqueado"] = bloqueados
         while not self._parar:
-            job = fila.reservar(self.con, self.no, livres, self.prazo_s)
+            job = fila.reservar(self.con, self.no, livres, self.prazo_s, tetos=self.tetos,
+                                ritmo_bloqueado=bloqueados)
             if job is None:
                 break
             for rec in job.recursos:

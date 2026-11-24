@@ -9,7 +9,8 @@
 #   estagios      E1–E18: recursos (= slots do governador), nós, volta (máquina alternativa), timeout_s, prioridade
 #                 (menor = antes), efeito (descrição verificável), concorrência por fonte/provedor, dependência.
 #                 E13 → E10 NÃO é aresta: o tier calibrado é configuração que o E10 lê (senão haveria ciclo).
-#   concorrencia  teto GLOBAL por fonte/provedor (todas as máquinas); aplicação na reserva = O2.2.
+#   concorrencia  teto GLOBAL por fonte/provedor (todas as máquinas), aplicado na RESERVA (fila.reservar, O2.2);
+#                 `por_fonte` vale por rotina (etiqueta por_fonte:<rotina>). `ritmo` = guarda da assinatura.
 #   fontes        nomes de evento (a sonda ainda mora no propagacao.yaml até a O3).
 #   rotinas       o que rodava, pelo estágio `legado` (comando atual, sem reescrever): agenda (cron 5 campos, hora de
 #                 Brasília; args por horário) e/ou evento (depende, debounce_s, intervalo_min_s, agrupar). `{py}` =
@@ -1723,6 +1724,7 @@ rotinas:
     nos: [vm1]
   sei_ocr_gpu:
     estagio: E5
+    recursos: [cpu_leve]   # integra/enche a fila na VM-1 (peso leve); a GPU é do it-campo (O2.2)
     descricao: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
     comando: ['{py}', -m, tools.sei_ocr_gpu_integrar]
     timeout_s: 1800
@@ -1738,6 +1740,7 @@ rotinas:
     nos: [vm1]
   sei_ocr_gpu_fila:
     estagio: E5
+    recursos: [cpu_leve]   # integra/enche a fila na VM-1 (peso leve); a GPU é do it-campo (O2.2)
     descricao: Fila do OCR por IA (o que o Tesseract leu ou ficou sem texto e ainda tem PDF no arquivo frio)
     comando: ['{py}', -m, tools.sei_ocr_gpu_fila, --itcampo-local]
     timeout_s: 900
@@ -1872,6 +1875,7 @@ rotinas:
     nos: [vm1]
   siafe_status_releitura:
     estagio: E1
+    concorrencia: [siafe_sessao]   # siafe_agenda: nunca com o SIAFE ocupado (O2.2)
     descricao: Releitura do status das OB não finais (2024–2026) e consolidação dos últimos 60 dias no SIAFE
     comando: ['{py}', -m, compliance_agent.siafe_agenda, status]
     timeout_s: 300
@@ -1887,6 +1891,7 @@ rotinas:
     nos: [vm1]
   siafe_documentos_varredura:
     estagio: E1
+    concorrencia: [siafe_sessao]   # siafe_agenda: nunca com o SIAFE ocupado (O2.2)
     descricao: NE e NL de todas as UGs (2024–2026), por valor pago, incremental no exercício corrente
     comando: ['{py}', -m, compliance_agent.siafe_agenda, documentos]
     timeout_s: 300
@@ -2177,7 +2182,8 @@ rotinas:
     efeito: {descricao: 'Perícia de execução (Lex) — fila por evento, dentro do ritmo da assinatura: rodou até o fim sem traceback', so_rc: o derivado não
         declara arquivo de efeito no propagacao.yaml; declarar ao portar}
     concorrencia: [assinatura_claude]
-    nota: ritmo 'lex_execucao' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2 · trava_externa data/.fila_analise_lex.lock é segurada
+    ritmo: lex_execucao
+    nota: trava_externa data/.fila_analise_lex.lock é segurada
       pela própria tarefa
     recursos: [llm]
     prioridade: 70
@@ -2198,7 +2204,8 @@ rotinas:
     efeito: {descricao: 'Ficha do processo SEI — fila por evento, dentro do ritmo: rodou até o fim sem traceback', so_rc: o derivado não declara arquivo
         de efeito no propagacao.yaml; declarar ao portar}
     concorrencia: [assinatura_claude]
-    nota: ritmo 'sei_ficha' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2 · trava_externa data/.fila_analise_ficha.lock é segurada
+    ritmo: sei_ficha
+    nota: trava_externa data/.fila_analise_ficha.lock é segurada
       pela própria tarefa
     recursos: [llm]
     prioridade: 70
@@ -2220,7 +2227,7 @@ rotinas:
         arquivo de efeito no propagacao.yaml; declarar ao portar}
     trava: data/locks/triagem_lote.lock
     concorrencia: [assinatura_claude]
-    nota: ritmo 'triagem' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2
+    ritmo: triagem
     recursos: [llm]
     prioridade: 75
     evento:
@@ -2241,7 +2248,7 @@ rotinas:
         não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
     trava: data/locks/conferencia_opus.lock
     concorrencia: [assinatura_claude]
-    nota: ritmo 'conferencia_opus' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2
+    ritmo: conferencia_opus
     recursos: [llm]
     prioridade: 75
     evento:
