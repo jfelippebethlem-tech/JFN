@@ -99,27 +99,58 @@ def _fetch(endpoint: str, inicio: int, limite: int, tentativas: int = 4) -> list
             time.sleep(2 * t)
 
 
-def _ingerir_paginado(endpoint: str, tabela: str, mapper, limite: int = 1000, maxreg: int | None = None) -> int:
+# Parada dura do paginador (O4.11, 24/11/2026). A maior base (contratos_estado) tem ~41 mil linhas = 41 páginas de
+# 1.000; 200 páginas é 5× isso. Teto atingido NÃO é "acabou": é base INCOMPLETA e sai como erro.
+TETO_PAGINAS = 200
+
+
+def _hash_pagina(lote: list) -> str:
+    return hashlib.sha256(json.dumps(lote, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+def _ingerir_paginado(endpoint: str, tabela: str, mapper, limite: int = 1000, maxreg: int | None = None,
+                      teto_paginas: int = TETO_PAGINAS, buscar=None) -> int:
+    """Pagina `inicio`/`limite` até página vazia ou curta — e PARA quando a página se repete.
+
+    POR QUE (24/11/2026). A API do TCE-RJ não devolve página vazia depois do fim: repete página cheia. O laço só
+    parava em vazia/curta, então girava até o `timeout 3000` do cron ou um "database is locked" — o log chegou a
+    23.637.012 "ingeridos" para 40.620 contratos, e compras diretas e penalidades (as bases seguintes do mesmo
+    --ingerir) pararam em 09/08/2026 porque nunca eram alcançadas. Agora: hash da página repetido OU página sem
+    nenhum id novo = fim; `teto_paginas` = RuntimeError (incompleto, nunca "acabou"). Devolve ids DISTINTOS
+    gravados — a soma de len(lote) contava a mesma página milhões de vezes. `buscar(endpoint, inicio, limite)`
+    é injetável para teste (nenhum teste toca a rede)."""
+    buscar = buscar or _fetch
     con = _con(); _ddl(con)
     agora = datetime.now().isoformat(timespec="seconds")
-    inicio, total = 0, 0
+    inicio, paginas, ids, hashes = 0, 0, set(), set()
     try:
         while True:
-            lote = _fetch(endpoint, inicio, limite)
+            if paginas >= teto_paginas:
+                raise RuntimeError(f"TCE-RJ {endpoint}: teto de {teto_paginas} páginas atingido sem fim de "
+                                   f"paginação ({len(ids)} registros distintos) — base INCOMPLETA")
+            lote = buscar(endpoint, inicio, limite)
+            paginas += 1
             if not lote:
                 break
+            h = _hash_pagina(lote)
             rows = [mapper(r, agora) for r in lote]
+            novos = {r[0] for r in rows} - ids
+            if h in hashes or not novos:
+                print(f"  [{tabela}] página inicio={inicio} repete página já lida — fim da paginação "
+                      f"({len(ids)} distintos)")
+                break
+            hashes.add(h)
+            ids |= novos
             cols = len(rows[0])
             con.executemany(f"INSERT OR REPLACE INTO {tabela} VALUES ({','.join('?'*cols)})", rows)
             con.commit()
-            total += len(lote)
-            print(f"  [{tabela}] {total} ingeridos...")
-            if len(lote) < limite or (maxreg and total >= maxreg):
+            print(f"  [{tabela}] {len(ids)} ingeridos...")
+            if len(lote) < limite or (maxreg and len(ids) >= maxreg):
                 break
             inicio += limite
     finally:
         con.close()
-    return total
+    return len(ids)
 
 
 def ingerir_contratos(maxreg=None) -> int:

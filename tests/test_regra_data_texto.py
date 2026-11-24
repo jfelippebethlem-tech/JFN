@@ -173,7 +173,11 @@ def test_migracao_e_datas_iso_tem_a_mesma_expressao_e_as_mesmas_tabelas():
     assert rev.COLUNAS == datas_iso.COLUNAS_ISO
     for col in set(rev.COLUNAS.values()):
         assert rev._expr(col) == datas_iso.expr_iso(col)
-    assert rev.down_revision == migrar.REVISAO_BASE and migrar.head() == rev.revision
+    assert rev.down_revision == migrar.REVISAO_BASE
+    # 0002 está na linhagem do head (a 0003 do O4.11 encadeia nela)
+    from alembic.script import ScriptDirectory
+    linhagem = {r.revision for r in ScriptDirectory.from_config(migrar._config()).iterate_revisions(migrar.head(), "base")}
+    assert rev.revision in linhagem
 
 
 def test_expressao_ordena_certo_e_texto_fora_do_formato_vira_null():

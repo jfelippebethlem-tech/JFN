@@ -38,7 +38,7 @@ def _tabelas(db):
 # ── (b) revisão base ────────────────────────────────────────────────────────────────────────────
 
 def test_head_e_a_base_e_a_base_e_no_op():
-    assert migrar.head() == "0002_datas_iso"                             # O4.3 — testes em test_regra_data_texto
+    assert migrar.head() == "0003_ingestao_quarentena"                   # O4.3 (0002) + O4.11 (0003, test_ingestao_contrato)
     assert migrar.REVISAO_BASE == "0001_base"
     arvore = ast.parse(BASE.read_text(encoding="utf-8"))
     corpos = {f.name: f.body for f in arvore.body if isinstance(f, ast.FunctionDef)}
@@ -84,14 +84,14 @@ def test_banco_antigo_stamp_upgrade_e_status_em_head(tmp_path):
 
     depois = migrar.carimbar(db)
     # stamp carimba a BASE (o legado só prova 001–003); o upgrade aplica o resto
-    assert depois["atual"] == "0001_base" and depois["head"] == "0002_datas_iso" and depois["ok"] is False
+    assert depois["atual"] == "0001_base" and depois["head"] == "0003_ingestao_quarentena" and depois["ok"] is False
     t = _tabelas(db)
     assert migrar.LEGADO_NOVO in t and migrar.LEGADO_ATUAL not in t and "alembic_version" in t
     assert depois["legado"]["aplicadas"] == sorted(migrar.LEGADO_ESPERADO)
 
     assert migrar.atualizar(db)["ok"]
     de_novo = migrar.carimbar(db)                                        # idempotente: banco carimbado não volta
-    assert de_novo["ok"] and de_novo["atual"] == "0002_datas_iso"
+    assert de_novo["ok"] and de_novo["atual"] == "0003_ingestao_quarentena"
     assert migrar.main(["status", "--db", str(db)]) == 0
 
 
@@ -154,10 +154,10 @@ def test_verificar_schema_banco_ausente_e_pendente(tmp_path):
     db = tmp_path / "vivo.db"
     _banco_antigo(db)
     r = migrar.verificar_schema(db)
-    assert r["ok"] is False and "SEM CARIMBO" in r["motivo"] and r["head"] == "0002_datas_iso"
+    assert r["ok"] is False and "SEM CARIMBO" in r["motivo"] and r["head"] == "0003_ingestao_quarentena"
     migrar.carimbar(db)
     r = migrar.verificar_schema(db)
-    assert r["ok"] is False and "0001_base" in r["motivo"]               # carimbado na base, 0002 pendente
+    assert r["ok"] is False and "0001_base" in r["motivo"]               # carimbado na base, 0002 e 0003 pendentes
     migrar.atualizar(db)
     assert migrar.verificar_schema(db)["ok"] is True
 

@@ -54,6 +54,7 @@ from compliance_agent.cruzamentos_intel import _mediana, _norm_item, comparabili
 from compliance_agent.editais.db import DDL_CERTAME_INDICE, SCORE_DIRECIONAMENTO, conectar, conectar_ro, consultar
 from compliance_agent.editais.escalada import REGUA_SV, nivel_sv
 from compliance_agent.editais.screens_conluio import screens
+from compliance_agent.sancao_abrangencia import vigente_em
 
 FAMILIAS = ("transparencia", "competicao", "conluio", "fraude_cadastral", "preco", "execucao",
             "certame_ata")
@@ -284,14 +285,17 @@ def _f_fraude_cadastral(conn: sqlite3.Connection, ctx: dict) -> dict:
             sc, cla = fs[0]
             flags.append(_flag("vencedor_fantasma", (sc or 0) / ESCALA_FANTASMA,
                                f"vencedor {cnpj}: fantasma_score {sc}/100 ({cla})"))
-    # sanção VIGENTE À ÉPOCA da publicação (data_inicio ≤ data_pub ≤ data_fim; fim aberto conta)
+    # sanção VIGENTE À ÉPOCA da publicação pela régua única `sancao_abrangencia.vigente_em` (O4.11, 24/11/2026):
+    # fim aberto só conta quando a categoria NÃO é "com prazo determinado" (682 linhas sem data final no snapshot)
     if ctx["data_pub"] and consultar(conn, "SELECT 1 FROM sancoes_federais LIMIT 1"):
         sancionados = []
         for cnpj in ctx["vencedores"]:
-            hit = consultar(conn, "SELECT cadastro, data_inicio, data_fim FROM sancoes_federais "
-                                  "WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=? "
-                                  "AND data_inicio<=? AND (data_fim IS NULL OR data_fim>=?)",
-                            (cnpj, ctx["data_pub"], ctx["data_pub"]))
+            hit = [(cad, ini, fim) for cad, ini, fim, cat in consultar(
+                       conn, "SELECT cadastro, data_inicio, data_fim, categoria FROM sancoes_federais "
+                             "WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=? "
+                             "AND data_inicio<=? AND (data_fim IS NULL OR data_fim>=?)",
+                       (cnpj, ctx["data_pub"], ctx["data_pub"]))
+                   if vigente_em({"data_inicio": ini, "data_fim": fim, "categoria": cat}, ctx["data_pub"])]
             if hit:
                 sancionados.append((cnpj, hit[0]))
         if sancionados:

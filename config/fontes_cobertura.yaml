@@ -1,0 +1,706 @@
+# fontes_cobertura.yaml — CONTRATO DE INGESTÃO do JFN (O4.11 do plano Esteira Única; doc 2 §40).
+#
+# Validado por compliance_agent.ingestao.contrato (Pydantic); medido pelos 6 sensores de
+# compliance_agent.ingestao.sensores; lote e quarentena em compliance_agent.ingestao.quarentena
+# (tabelas `ingestao_lote` e `ingestao_quarentena`, migração Alembic 0003_ingestao_quarentena).
+#   python -m compliance_agent.ingestao validar        # contrato + cobertura das 36 fontes de config/propagacao.yaml
+#   python -m compliance_agent.ingestao medir --db <cópia do snapshot> --imutavel
+#
+# Campos por fonte:
+#   natureza       externa (dado que vem de fora: tem chave, domínio, SLO) | interna (regra no git, laudo, memória)
+#   dono           quem responde pela fonte (papel, não pessoa)
+#   frequencia     diaria | semanal | mensal | sob_demanda | evento
+#   estado         ATIVA | PARCIAL (coleta incompleta conhecida) | PARADA (coletor não roda) |
+#                  CONGELADA_NA_ORIGEM (a fonte parou de publicar) | INDISPONIVEL (a fonte nos recusa)
+#   slo_frescor_h  atraso máximo da coluna_frescor (horas) antes do sensor de atualidade acusar ATRASADO
+#   chave_natural  identidade do registro NA FONTE (nunca o rowid nosso)
+#   campos         tipo (texto|inteiro|real|data_iso|data_br|datahora_iso|cnpj|cpf_cnpj|processo_sei|ug|ano),
+#                  obrigatorio, critico (entra na completude), regex, minimo/maximo, dominio
+#   teto_paginas   parada dura do paginador (nunca "acabou": teto atingido = base INCOMPLETA)
+#   efemera        true = some da origem se não for coletada a tempo (notícia, RSS); false = re-obtível
+#   propagacao     ids de config/propagacao.yaml que esta fonte alimenta (todas as 36 têm de estar cobertas)
+#   recuperacao    comando da recuperação da lacuna para a religação O9.0 — NADA aqui roda sozinho
+#
+# Sem topologia sensível: nenhum host interno, IP, porta, credencial ou caminho de máquina.
+# Números de estado medidos no snapshot congelado de 24/11/2026 (md5 b20799beee1cb0a130689ccec1665ca2);
+# diagnóstico completo em ~/vault/refatoracao/ingestao-diagnostico-20261124.md.
+
+versao: 1
+revisado_em: 2026-11-24
+
+fontes:
+
+  # ─── SIAFE-Rio 2 (navegador, sessão única; só ele é PAGO — Empenho ≠ Liquidação ≠ OB) ────────────────
+  siafe_ob:
+    nome: OB orçamentária do SIAFE-Rio 2 (fonte canônica do pagamento)
+    natureza: externa
+    dono: frente SIAFE (coleta E1 coletar:siafe)
+    coletor: compliance_agent.siafe_ob_orcamentaria
+    frequencia: diaria
+    estado: PARCIAL
+    motivo_estado: >-
+      completude por (UG, exercício) não provada: 80 pares 2021–2026 com < 100 OB e pares como 370300/2024
+      (500 OB, densidade 6,8% da faixa numérica, nada antes de 22/08) — recolher por UG na O9.0
+    tabela: ob_orcamentaria_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 36
+    chave_natural: [numero_ob, ug_emitente, exercicio]
+    campos:
+      numero_ob: {tipo: texto, obrigatorio: true, critico: true, regex: '\d{4}OB\d{5}'}
+      ug_emitente: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true, minimo: 2016, maximo: 2027}
+      data_emissao: {tipo: data_br, obrigatorio: true, critico: true}
+      status: {tipo: texto, obrigatorio: true, critico: true, dominio: [Contabilizado, Anulado, Excluído, Não contabilizado]}
+      status_envio:
+        tipo: texto
+        dominio: [Processado e Pago, Enviado Manualmente, Erro no Pagamento, Enviado ao Banco, Parcialmente Pago,
+                  Aguardando Envio, Aguardando Geração RE]
+      credor: {tipo: texto, obrigatorio: true, critico: true}
+      valor: {tipo: real, obrigatorio: true, critico: true, minimo: 0}
+      processo: {tipo: texto}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: data_no_exercicio, campos: [data_emissao, exercicio]}
+    efemera: false
+    propagacao: [siafe_ob]
+    observacao: >-
+      SIAFE 2 só serve os exercícios 2023–2027 (SIAFE 1 desativado em 10/11/2026): 2016–2022 já não é re-obtível.
+      Teto de 1.000 linhas por consulta (platô real 981–997) — furado por fatia de número e por UG. Pago = _ob_paga
+      (cruzamentos_intel): Contabilizado, sem Erro no Pagamento, sem Pagamento Complementar, sem reemitida, com número.
+    recuperacao: >-
+      PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_ob_orcamentaria --por-ug <UG> --exercicio <ANO>
+      (um par por vez, fila = pares com densidade < 30% ou contagem redonda; bash tools/siafe_drenar_capados.sh 0 lista)
+
+  siafe_status:
+    nome: Recoleta do status de envio das OB (devolvida pelo banco, paga)
+    natureza: externa
+    dono: frente SIAFE
+    coletor: compliance_agent.siafe_status_ob
+    frequencia: diaria
+    tabela: ob_status_recoleta
+    coluna_frescor: recoletado_em
+    slo_frescor_h: 36
+    chave_natural: [exercicio, data_emissao]
+    campos:
+      exercicio: {tipo: ano, obrigatorio: true}
+      data_emissao: {tipo: texto, obrigatorio: true, critico: true}
+      recoletado_em: {tipo: datahora_iso, obrigatorio: true, critico: true}
+    propagacao: [siafe_status]
+
+  siafe_gd:
+    nome: Guia de Devolução do SIAFE
+    natureza: externa
+    dono: frente SIAFE
+    coletor: compliance_agent.siafe_gd
+    frequencia: diaria
+    tabela: gd_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 48
+    chave_natural: [numero, ug_emitente, exercicio]
+    campos:
+      numero: {tipo: texto, obrigatorio: true, critico: true}
+      ug_emitente: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      data_emissao: {tipo: data_br, critico: true}
+      valor: {tipo: real, critico: true, minimo: 0}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: data_no_exercicio, campos: [data_emissao, exercicio]}
+    propagacao: [siafe_gd]
+
+  siafe_ne:
+    nome: Nota de Empenho por UG (empenho NÃO é pagamento)
+    natureza: externa
+    dono: frente SIAFE
+    coletor: tools/siafe_documento_sweep.py
+    frequencia: semanal
+    estado: PARCIAL
+    motivo_estado: >-
+      NE completa em 5 pares (UG, ano) — 296100/2024 e 133100, 166100, 294200, 296100/2025 — de ~371 pares (UG, ano) com OB
+      em 2024–2026; a fila de NE 2023 (27 UGs) nunca rendeu: 3 noites morreram no login (MFA), 9 na guarda
+      --load-max 4.5 às 23:20 (load 5,3–35,2) e 1 no SIAFE ocupado
+    tabela: ne_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [numero, ug_emitente, exercicio]
+    campos:
+      numero: {tipo: texto, obrigatorio: true, critico: true, regex: '\d{4}NE\d{5}'}
+      ug_emitente: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      data_emissao: {tipo: data_br, critico: true}
+      credor: {tipo: texto, critico: true}
+      processo: {tipo: texto, critico: true}
+      valor: {tipo: real, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: data_no_exercicio, campos: [data_emissao, exercicio]}
+    propagacao: [siafe_ob]
+    reconciliacao: siafe_documento_cobertura.completo (fatias abaixo do platô) × linhas gravadas
+    recuperacao: >-
+      PYTHONPATH=. .venv/bin/python tools/siafe_documento_sweep.py --exercicios 2026,2025,2024 --tipos NE,NL
+      --minutos 90 --max-ugs 4   (sem --load-max 4.5: a linha de base da VM é 3–5; no fluxo, o governador decide)
+
+  siafe_nl:
+    nome: Nota de Liquidação por UG (liquidação NÃO é pagamento)
+    natureza: externa
+    dono: frente SIAFE
+    coletor: tools/siafe_documento_sweep.py
+    frequencia: semanal
+    estado: PARCIAL
+    motivo_estado: NL completa em 4 pares de 2025 (+ 296100/2024 por fatias); demais UGs nunca lidas
+    tabela: nl_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [numero, ug_emitente, exercicio]
+    campos:
+      numero: {tipo: texto, obrigatorio: true, critico: true, regex: '\d{4}NL\d{5}'}
+      ug_emitente: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      data_emissao: {tipo: data_br, critico: true}
+      ne: {tipo: texto, critico: true}
+      valor: {tipo: real, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: data_no_exercicio, campos: [data_emissao, exercicio]}
+    propagacao: [siafe_ob]
+    recuperacao: (mesmo comando da NE — a varredura colhe NE e NL do par)
+
+  siafe_dea:
+    nome: Despesa de Exercícios Anteriores (SIAFE)
+    natureza: externa
+    dono: frente SIAFE
+    coletor: compliance_agent.siafe_documento
+    frequencia: semanal
+    estado: PARCIAL
+    motivo_estado: só 2026 e incompleto (siafe_documento_cobertura DEA/2026 completo=0)
+    tabela: dea_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [numero, ug_emitente, exercicio]
+    campos:
+      numero: {tipo: texto, obrigatorio: true, critico: true}
+      ug_emitente: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      valor: {tipo: real, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+
+  siafe_bloqueio_judicial:
+    nome: Bloqueio judicial (SIAFE)
+    natureza: externa
+    dono: frente SIAFE
+    coletor: compliance_agent.siafe_documento
+    frequencia: diaria
+    tabela: bloqueio_judicial_siafe
+    coluna_frescor: coletado_em
+    slo_frescor_h: 48
+    chave_natural: [numero, ug_emitente, exercicio]
+    campos:
+      numero: {tipo: texto, obrigatorio: true, critico: true}
+      ug_emitente: {tipo: texto, obrigatorio: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      valor_bloqueado: {tipo: real, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+
+  # ─── TFE / dados abertos da SEFAZ (espelho; nunca fonte de pagamento) ───────────────────────────────
+  tfe_ob:
+    nome: OB a fornecedor do TFE (fornecedor_ob.zip) — espelho D-1, só credor CNPJ
+    natureza: externa
+    dono: frente SIAFE
+    coletor: compliance_agent.collectors.tfe_ob
+    frequencia: semanal
+    estado: INDISPONIVEL
+    motivo_estado: >-
+      a SEFAZ recusa IP de datacenter desde 28/10/2026 (página "IP listado em catálogo de abuso; outra origem ou
+      OuvERJ") — testado de VM-1, VM-2, WARP, GitHub/Azure, Tor e proxy de tradução; dado mais novo 01/10/2026.
+      Não é coleta atrasada: é fonte INDISPONÍVEL até resposta da OuvERJ ou origem residencial
+    tabela: ordens_bancarias
+    coluna_frescor: data_emissao
+    formato_frescor: data_iso
+    slo_frescor_h: 216
+    chave_natural: [numero_ob, ug_codigo, exercicio]
+    campos:
+      numero_ob: {tipo: texto, obrigatorio: true, critico: true, regex: '\d{4}OB\d{5}'}
+      ug_codigo: {tipo: ug, obrigatorio: true, critico: true}
+      exercicio: {tipo: ano, obrigatorio: true}
+      data_emissao: {tipo: data_iso, obrigatorio: true, critico: true}
+      favorecido_cpf: {tipo: cpf_cnpj, critico: true}
+      valor: {tipo: real, obrigatorio: true, critico: true, minimo: 0}
+    consistencia:
+      - {tipo: data_no_exercicio, campos: [data_emissao, exercicio]}
+    efemera: false
+    observacao: >-
+      `coletado_em` vem NULO em todas as 1.202.093 linhas tfe_ob — o frescor é medido pela data da OB mais nova.
+      A base fica como está (o zip anterior é mantido); OB/pagamento é SEMPRE o SIAFE.
+    recuperacao: >-
+      só de origem residencial ou após resposta da OuvERJ:
+      .venv/bin/python -m compliance_agent.collectors.tfe_ob --baixar && for a in 2025 2026; do
+      .venv/bin/python -m compliance_agent.collectors.tfe_ob --ano $a --ingest; done
+
+  tfe_despesa_ckan:
+    nome: TFE Despesa agregada (CKAN dadosabertos.rj.gov.br, dataset tfe-despesa) — sem OB, sem favorecido
+    natureza: externa
+    dono: frente orçamento
+    coletor: compliance_agent.collectors.tfe_aberto
+    frequencia: semanal
+    estado: CONGELADA_NA_ORIGEM
+    motivo_estado: >-
+      o publicador parou em 14/07/2025 (posição 07/2025) apesar de dizer D-1; o coletor semanal relata
+      "inalterados 13" — honesto. Substituto: painéis da CGE (cge_execucao_despesa, cge_ne_credor)
+    tabela: despesa_execucao
+    coluna_frescor: posicao
+    formato_frescor: data_iso
+    slo_frescor_h: 744
+    chave_natural: [exercicio, posicao, ug, fonte, elemento, funcao, subfuncao]
+    campos:
+      exercicio: {tipo: ano, obrigatorio: true}
+      posicao: {tipo: texto, obrigatorio: true, critico: true, regex: '\d{2}/\d{4}'}
+      ug: {tipo: texto, obrigatorio: true, critico: true}
+      fonte: {tipo: texto}
+      elemento: {tipo: texto}
+      funcao: {tipo: texto}
+      subfuncao: {tipo: texto}
+      pago: {tipo: real, critico: true}
+    observacao: posicao é MM/AAAA (texto) — o sensor de atualidade não lê esse formato e declara INDISPONÍVEL pelo estado
+
+  # ─── TCE-RJ dados abertos ─────────────────────────────────────────────────────────────────────────────
+  contratos_tcerj:
+    nome: Contratos do Estado (TCE-RJ dados abertos, contratos_estado)
+    natureza: externa
+    dono: frente contratos
+    coletor: compliance_agent.collectors.tcerj_aberto
+    frequencia: semanal
+    estado: PARCIAL
+    motivo_estado: >-
+      paginação sem fim: a API repete página além do total e o laço só parava em página vazia/curta — o log
+      chega a 23.637.012 "ingeridos" para 40.620 linhas; a carga morre no timeout de 3.000 s ou em "database is
+      locked" e as bases seguintes (compras diretas, penalidades) nunca rodam. Conserto: parada por hash de
+      página repetida + teto_paginas (24/11/2026)
+    tabela: contratos_tcerj
+    coluna_frescor: ingerido_em
+    slo_frescor_h: 192
+    chave_natural: [id]
+    campos:
+      id: {tipo: texto, obrigatorio: true, regex: '[0-9a-f]{20}'}
+      processo: {tipo: texto, critico: true}
+      ano_processo: {tipo: ano, critico: true}
+      data_contratacao: {tipo: texto, critico: true}
+      valor_contrato: {tipo: real, critico: true, minimo: 0}
+      cnpj: {tipo: cpf_cnpj, critico: true}
+      vig_inicio: {tipo: texto}
+      vig_fim: {tipo: texto}
+      ingerido_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: ordem, campos: [vig_inicio, vig_fim]}
+    teto_paginas: 200
+    propagacao: [contratos_tcerj]
+    observacao: id = sha1(Processo|CPFCNPJ|Objeto|DataContratacao)[:20] — a API não publica identificador próprio
+    recuperacao: PYTHONPATH=. timeout 3000 nice -n 15 .venv/bin/python -m compliance_agent.collectors.tcerj_aberto --ingerir
+
+  compras_diretas_tcerj:
+    nome: Compras diretas do Estado (dispensa/inexigibilidade, TCE-RJ)
+    natureza: externa
+    dono: frente contratos
+    coletor: compliance_agent.collectors.tcerj_aberto
+    frequencia: semanal
+    estado: PARADA
+    motivo_estado: >-
+      última ingestão 09/08/2026 (20.113 linhas): roda DEPOIS de contratos no mesmo --ingerir, e contratos nunca
+      termina (paginação sem fim) — consertado em 24/11/2026, recuperar na O9.0
+    tabela: compras_diretas_tcerj
+    coluna_frescor: ingerido_em
+    slo_frescor_h: 192
+    chave_natural: [id]
+    campos:
+      id: {tipo: texto, obrigatorio: true, regex: '[0-9a-f]{20}'}
+      processo: {tipo: texto, critico: true}
+      ano_processo: {tipo: ano, critico: true}
+      valor: {tipo: real, critico: true, minimo: 0}
+      enquadramento_legal: {tipo: texto, critico: true}
+      ingerido_em: {tipo: datahora_iso, obrigatorio: true}
+    teto_paginas: 200
+    propagacao: [compras_diretas_tcerj]
+    recuperacao: PYTHONPATH=. timeout 3000 nice -n 15 .venv/bin/python -m compliance_agent.collectors.tcerj_aberto --ingerir
+
+  penalidades_tcerj:
+    nome: Penalidades e ressarcimentos (TCE-RJ)
+    natureza: externa
+    dono: frente contratos
+    coletor: compliance_agent.collectors.tcerj_aberto
+    frequencia: semanal
+    estado: PARADA
+    motivo_estado: mesma causa das compras diretas (terceira base do --ingerir, nunca alcançada)
+    tabela: penalidades_tcerj
+    coluna_frescor: ingerido_em
+    slo_frescor_h: 192
+    chave_natural: [id]
+    campos:
+      id: {tipo: texto, obrigatorio: true}
+      processo: {tipo: texto, critico: true}
+      valor: {tipo: real, critico: true}
+      ingerido_em: {tipo: datahora_iso, obrigatorio: true}
+    teto_paginas: 50
+
+  tcerj_licitante:
+    nome: Licitantes vencedores e perdedores dos certames MUNICIPAIS (TCE-RJ)
+    natureza: externa
+    dono: frente editais
+    coletor: compliance_agent.collectors.tcerj_licitantes
+    frequencia: mensal
+    estado: PARADA
+    motivo_estado: >-
+      sem agendamento algum: uma coleta manual em 29/07/2026 (2024–2026; 125.251 linhas). Paginação com a
+      mesma fragilidade (página que falha encerra calada; página repetida não para) — consertado com o mesmo
+      guarda de hash/teto em 24/11/2026
+    tabela: tcerj_licitante
+    coluna_frescor: coletado_em
+    slo_frescor_h: 744
+    chave_natural: [ente, ano, processo, participante, resultado]
+    campos:
+      ente: {tipo: texto, obrigatorio: true, critico: true}
+      ano: {tipo: ano, obrigatorio: true}
+      processo: {tipo: texto, obrigatorio: true, critico: true}
+      participante: {tipo: texto, obrigatorio: true, critico: true}
+      resultado: {tipo: texto, obrigatorio: true, dominio: [VENCEDOR, PERDEDOR]}
+      qtd_participantes: {tipo: inteiro, critico: true, minimo: 1}
+      valor_homologacao: {tipo: real, minimo: 0}
+      valor_estimado: {tipo: real, minimo: 0}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    teto_paginas: 300
+    propagacao: [tcerj_licitante]
+    reconciliacao: QuantidadeParticipante declarado × participantes coletados por certame
+    recuperacao: >-
+      for a in 2024 2025 2026; do PYTHONPATH=. nice -n 15 .venv/bin/python -m compliance_agent.collectors.tcerj_licitantes
+      --ano $a; done
+
+  # ─── SIGA, PNCP ───────────────────────────────────────────────────────────────────────────────────────
+  siga_contratos:
+    nome: Contratos do Portal SIGA por CNPJ (AMOSTRA DIRIGIDA — fornecedores de TAC)
+    natureza: externa
+    dono: frente contratos
+    coletor: tools/siga_contratos.py
+    frequencia: semanal
+    estado: PARCIAL
+    motivo_estado: >-
+      por desenho cobre só os 131 CNPJs de doerj_tac_sinal, não o universo — 4.687 contratos não se comparam aos
+      40.620 do TCE-RJ (6.386 CNPJs); nos MESMOS CNPJs, 2023–2026: SIGA 2.661 × TCE-RJ 2.658
+    tabela: siga_contratos
+    coluna_frescor: visto_em
+    slo_frescor_h: 192
+    chave_natural: [id_contrato]
+    campos:
+      id_contrato: {tipo: texto, obrigatorio: true, critico: true}
+      cnpj: {tipo: cnpj, obrigatorio: true, critico: true}
+      data: {tipo: data_br, critico: true}
+      processo: {tipo: texto, critico: true}
+      valor: {tipo: real, minimo: 0}
+      visto_em: {tipo: datahora_iso, obrigatorio: true}
+    teto_paginas: 10
+    propagacao: [contratos_tcerj]
+    reconciliacao: recordsFiltered do paginate.action × linhas por CNPJ (status ≠ 200 hoje encerra calado)
+
+  siga_sancoes:
+    nome: Sanções do Portal SIGA
+    natureza: externa
+    dono: frente contratos
+    coletor: tools/siga_sancoes.py
+    frequencia: semanal
+    tabela: siga_sancoes
+    coluna_frescor: visto_em
+    slo_frescor_h: 192
+    chave_natural: [id_sancao]
+    campos:
+      id_sancao: {tipo: texto, obrigatorio: true, critico: true}
+      doc: {tipo: texto, critico: true}
+      data_efetivacao: {tipo: texto, critico: true}
+      visto_em: {tipo: datahora_iso, obrigatorio: true}
+
+  siga_pca:
+    nome: Plano de Contratações Anual (SIGA)
+    natureza: externa
+    dono: frente contratos
+    coletor: tools/siga_pca.py
+    frequencia: semanal
+    tabela: siga_pca_itens
+    coluna_frescor: visto_em
+    slo_frescor_h: 192
+    chave_natural: [pca, codigo_item]
+    campos:
+      pca: {tipo: texto, obrigatorio: true}
+      codigo_item: {tipo: texto, obrigatorio: true}
+      vl_total: {tipo: real, critico: true, minimo: 0}
+      visto_em: {tipo: datahora_iso, obrigatorio: true}
+
+  contrato_aditivo:
+    nome: Termos aditivos (PNCP)
+    natureza: externa
+    dono: frente contratos
+    coletor: compliance_agent.collectors.pncp
+    frequencia: diaria
+    tabela: contrato_aditivo
+    coluna_frescor: coletado_em
+    slo_frescor_h: 48
+    chave_natural: [numero_controle_pncp, sequencial_termo]
+    campos:
+      numero_controle_pncp: {tipo: texto, obrigatorio: true, critico: true}
+      sequencial_termo: {tipo: inteiro, obrigatorio: true}
+      valor_acrescido: {tipo: real}
+      data_assinatura: {tipo: texto, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    propagacao: [contratos_tcerj, pcrj_base]
+
+  pncp_resultado:
+    nome: Resultado de item de certame (PNCP)
+    natureza: externa
+    dono: frente editais
+    coletor: compliance_agent.collectors.pncp_resultados
+    frequencia: diaria
+    tabela: pncp_resultado
+    coluna_frescor: coletado_em
+    slo_frescor_h: 48
+    chave_natural: [certame, item, fornecedor_cnpj]
+    campos:
+      certame: {tipo: texto, obrigatorio: true, critico: true}
+      item: {tipo: texto, obrigatorio: true}
+      fornecedor_cnpj: {tipo: texto, obrigatorio: true, critico: true}
+      valor_homologado: {tipo: real, critico: true, minimo: 0}
+      data_pub: {tipo: texto}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    propagacao: [contratos_tcerj]
+
+  # ─── Sanções ───────────────────────────────────────────────────────────────────────────────────────────
+  sancoes_federais:
+    nome: CEIS / CNEP (Portal da Transparência)
+    natureza: externa
+    dono: frente sanções
+    coletor: compliance_agent.collectors.ceis
+    frequencia: semanal
+    tabela: sancoes_federais
+    coluna_frescor: data_publicacao
+    formato_frescor: data_iso
+    slo_frescor_h: 336
+    chave_natural: [cadastro, cpf_cnpj, categoria, data_inicio, orgao]
+    campos:
+      cadastro: {tipo: texto, obrigatorio: true, dominio: [CEIS, CNEP, CEPIM]}
+      cpf_cnpj: {tipo: cpf_cnpj, obrigatorio: true, critico: true}
+      categoria: {tipo: texto, obrigatorio: true, critico: true}
+      data_inicio: {tipo: data_iso, critico: true}
+      data_fim: {tipo: data_iso}
+      orgao: {tipo: texto}
+      data_publicacao: {tipo: data_iso}
+    consistencia:
+      - {tipo: ordem, campos: [data_inicio, data_fim]}
+    propagacao: [sancoes]
+    observacao: >-
+      VIGÊNCIA É NA DATA DO FATO, nunca hoje: 24.707 de 25.475 têm data_fim nula ou futura — nula é legítima em
+      "sem prazo determinado", multa e publicação extraordinária, mas 682 são "COM prazo determinado" sem data
+      final, e três consultas (detector C7, indice_certame, nucleo/adaptador_db) contavam fim nulo como vigente.
+      Régua única: sancao_abrangencia.vigente_em(sancao, data_do_ato). Sem coluna de coleta: frescor pela
+      data_publicacao mais nova (proxy declarado).
+
+  # ─── Diários oficiais ──────────────────────────────────────────────────────────────────────────────────
+  doerj:
+    nome: Diário Oficial do Estado (DOERJ) — PDF integral por edição
+    natureza: externa
+    dono: frente DOERJ
+    coletor: compliance_agent.collectors.doerj
+    frequencia: diaria
+    estado: PARCIAL
+    motivo_estado: >-
+      só 2026 (216 edições, 02/01–23/11; 16 dias úteis sem edição, quase todos feriados); 2024–2025 NUNCA
+      coletados — o CLI só recebe UMA data e o cron só pede ontem/hoje; não houve backfill
+    tabela: publicacoes_doerj
+    coluna_frescor: created_at
+    slo_frescor_h: 36
+    chave_natural: [data_publicacao, titulo]
+    campos:
+      data_publicacao: {tipo: data_iso, obrigatorio: true, critico: true}
+      titulo: {tipo: texto, obrigatorio: true, critico: true}
+      orgao: {tipo: texto, critico: true}
+      tipo_ato: {tipo: texto}
+      url_fonte: {tipo: texto, critico: true}
+      created_at: {tipo: datahora_iso, obrigatorio: true}
+    efemera: false
+    propagacao: [doerj]
+    observacao: contrato_doe_evento e doerj_tac são DERIVADOS desta tabela (mesma sonda na propagação)
+    recuperacao: >-
+      d=2024-01-02; while [ "$d" != 2026-01-01 ]; do [ "$(date -d $d +%u)" -le 6 ] && PYTHONPATH=. timeout 1500
+      nice -n 12 .venv/bin/python -m compliance_agent.collectors.doerj $d; d=$(date -I -d "$d + 1 day"); done
+      (idempotente: dedupe por data+título; ~620 edições; 1 navegador por vez; casos abertos primeiro)
+
+  # ─── Prefeitura do Rio ─────────────────────────────────────────────────────────────────────────────────
+  pcrj_despesa:
+    nome: Despesa da Prefeitura (Contas Rio)
+    natureza: externa
+    dono: frente PCRJ
+    coletor: compliance_agent.pcrj.contasrio
+    frequencia: mensal
+    estado: PARADA
+    motivo_estado: última coleta 10/07/2026 (medido no snapshot); causa não diagnosticada nesta frente
+    tabela: pcrj_despesa
+    coluna_frescor: coletado_em
+    slo_frescor_h: 960
+    chave_natural: [id]
+    campos:
+      id: {tipo: texto, obrigatorio: true}
+      exercicio: {tipo: ano, obrigatorio: true, critico: true}
+      credor_documento: {tipo: texto, critico: true}
+      pago: {tipo: real, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    propagacao: [pcrj_base]
+
+  pcrj_contratos:
+    nome: Contratos da Prefeitura (PNCP)
+    natureza: externa
+    dono: frente PCRJ
+    coletor: tools/pcrj_gastos_coletar.py
+    frequencia: semanal
+    tabela: pcrj_contratos
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [numero_controle_pncp]
+    campos:
+      numero_controle_pncp: {tipo: texto, obrigatorio: true, critico: true}
+      fornecedor_documento: {tipo: texto, critico: true}
+      valor_global: {tipo: real, critico: true, minimo: 0}
+      vigencia_ini: {tipo: texto}
+      vigencia_fim: {tipo: texto}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    consistencia:
+      - {tipo: ordem, campos: [vigencia_ini, vigencia_fim]}
+    propagacao: [pcrj_base]
+
+  pcrj_licitacoes:
+    nome: Licitações da Prefeitura (PNCP)
+    natureza: externa
+    dono: frente PCRJ
+    coletor: tools/pcrj_gastos_coletar.py
+    frequencia: semanal
+    tabela: pcrj_licitacoes
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [numero_controle_pncp]
+    campos:
+      numero_controle_pncp: {tipo: texto, obrigatorio: true, critico: true}
+      valor_estimado: {tipo: real, minimo: 0}
+      data_abertura: {tipo: texto, critico: true}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    propagacao: [pcrj_base]
+
+  emendas:
+    nome: Emendas parlamentares (Portal da Transparência / Câmara)
+    natureza: externa
+    dono: frente emendas
+    coletor: tools/emendas_coletar.py
+    frequencia: semanal
+    tabela: emendas
+    coluna_frescor: coletado_em
+    slo_frescor_h: 192
+    chave_natural: [codigo]
+    campos:
+      codigo: {tipo: texto, obrigatorio: true, critico: true}
+      ano: {tipo: ano, obrigatorio: true}
+      autor_raw: {tipo: texto, critico: true}
+      pago: {tipo: real}
+      coletado_em: {tipo: datahora_iso, obrigatorio: true}
+    propagacao: [emendas_base]
+
+  # ─── Folha, SEI, imprensa ──────────────────────────────────────────────────────────────────────────────
+  registros_folha:
+    nome: Folha de pagamento (Estado, MPRJ, TJRJ, DPRJ)
+    natureza: externa
+    dono: frente folha
+    coletor: compliance_agent.collectors.folha_orquestrador
+    frequencia: mensal
+    tabela: registros_folha
+    coluna_frescor: created_at
+    slo_frescor_h: 960
+    chave_natural: [fonte, orgao_codigo, matricula, competencia]
+    campos:
+      fonte: {tipo: texto, obrigatorio: true}
+      orgao_codigo: {tipo: texto, critico: true}
+      matricula: {tipo: texto, critico: true}
+      competencia: {tipo: texto, obrigatorio: true, critico: true}
+      remuneracao_bruta: {tipo: real, minimo: 0}
+      created_at: {tipo: datahora_iso, obrigatorio: true}
+
+  sei_arvore:
+    nome: Processo SEI capturado (árvore + íntegra; lotes da VM-2 e do it-campo conferidos)
+    natureza: externa
+    dono: frente SEI (E2/E3)
+    coletor: tools/sei_sweep.py
+    frequencia: diaria
+    tabela: sei_arvore
+    coluna_frescor: atualizado_em
+    slo_frescor_h: 48
+    chave_natural: [numero_sei]
+    campos:
+      numero_sei: {tipo: texto, obrigatorio: true, critico: true}
+      n_docs: {tipo: inteiro, critico: true, minimo: 0}
+      txt_path: {tipo: texto, critico: true}
+      atualizado_em: {tipo: datahora_iso, obrigatorio: true}
+    efemera: false
+    propagacao: [sei_lote, sei_arquivado]
+    observacao: documento restrito/sigiloso é lacuna declarada (sei_sigilo), não captura vazia
+
+  noticias_orgaos:
+    nome: Imprensa sobre os órgãos (Google News RSS)
+    natureza: externa
+    dono: frente OSINT
+    coletor: tools/noticias_orgaos.py
+    frequencia: diaria
+    tabela: noticias_orgaos
+    coluna_frescor: visto_em
+    slo_frescor_h: 36
+    chave_natural: [url]
+    campos:
+      url: {tipo: texto, obrigatorio: true, critico: true}
+      orgao: {tipo: texto, critico: true}
+      titulo: {tipo: texto, critico: true}
+      data: {tipo: texto}
+      visto_em: {tipo: datahora_iso, obrigatorio: true}
+    efemera: true
+    observacao: >-
+      EFÊMERA: o RSS só devolve a janela recente — dia sem coleta é notícia perdida, sem recuperação.
+      Indício a confirmar na fonte primária, nunca prova.
+
+  # ─── Internas (derivadas, regras, decisões) — no mapa para cobrir a propagação; sem chave nem domínio ─────
+  derivados_sei:
+    nome: Ficha, parecer de execução (Lex), leitura dupla e OCR do acervo SEI
+    natureza: interna
+    dono: frente leitura/perícia (E4–E8)
+    coletor: tools/fila_analise_sei.sh
+    frequencia: evento
+    propagacao: [sei_ficha, sei_lex, sei_leitura_dupla, ocr_gpu, ocr_reserva]
+
+  triagem_e_revisao:
+    nome: Veredito da triagem, revisão humana de alerta e conferência do Opus
+    natureza: interna
+    dono: frente triagem (E12)
+    coletor: manual
+    frequencia: evento
+    propagacao: [triagem, revisao_humana, conferencia_opus]
+
+  pericia_e_casos:
+    nome: Laudo de perícia por agente, caso do vault, produto da casa, registro da automelhoria
+    natureza: interna
+    dono: frente casos (E14–E16)
+    coletor: manual
+    frequencia: evento
+    propagacao: [pericia_agentes, vault_casos_md, produtos_casa, autoaprimoramento_registro]
+
+  regras_codigo:
+    nome: Correção de régua no código (perícia, emendas, PCRJ, vínculo, território, Couto, orçamento, detectores, ISS, fracionamento)
+    natureza: interna
+    dono: quem comita a régua (catraca + teste)
+    coletor: git
+    frequencia: evento
+    propagacao: [regra_pericia, regra_emendas, regra_pcrj, regra_vinculo, regra_territorio, regra_governo_couto,
+                 regra_orcamento, regra_detectores, regra_iss_retido, regra_fracionamento]
+
+  decisoes:
+    nome: Decisão do dono e lição registrada na memória dos agentes
+    natureza: interna
+    dono: dono do projeto
+    coletor: manual
+    frequencia: evento
+    propagacao: [decisao_dono, memoria_claude]

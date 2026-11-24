@@ -32,6 +32,8 @@ Escreve em tabela própria (`tcerj_licitante`) no banco principal, como os demai
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import sqlite3
 from typing import Any, Callable, Iterable, Iterator
@@ -42,6 +44,7 @@ BASE_URL = "https://dados.tcerj.tc.br/api/v1"
 ROTAS = {"vencedor": ("licitante_vencedor_municipio", "LicitantesVencedores"),
          "perdedor": ("licitante_perdedor_municipio", "LicitantesPerdedores")}
 PAGINA = 1000
+TETO_PAGINAS = 300     # maior rota×ano coletada (perdedor 2024) = 34.659 linhas = 35 páginas; 300 ≈ 8× de folga
 
 DDL = """
 CREATE TABLE IF NOT EXISTS tcerj_licitante (
@@ -113,7 +116,7 @@ def _buscar_http(rota: str, params: dict) -> dict:
 
 
 def coletar(tipo: str, *, ano: int | None = None, municipio: str | None = None,
-            limite_total: int | None = None, pagina: int = PAGINA,
+            limite_total: int | None = None, pagina: int = PAGINA, teto_paginas: int = TETO_PAGINAS,
             buscar: Callable[[str, dict], dict] | None = None) -> Iterator[dict]:
     """Itera registros normalizados de `vencedor` ou `perdedor`, paginando.
 
@@ -123,8 +126,14 @@ def coletar(tipo: str, *, ano: int | None = None, municipio: str | None = None,
         raise ValueError(f"tipo desconhecido: {tipo!r} (use {tuple(ROTAS)})")
     rota, chave = ROTAS[tipo]
     buscar = buscar or _buscar_http
-    inicio, vistos = 0, 0
+    inicio, vistos, paginas, hashes = 0, 0, 0, set()
     while True:
+        if paginas >= teto_paginas:
+            # teto atingido NÃO é "acabou": a base fica INCOMPLETA e o log diz (O4.11, 24/11/2026)
+            logger.warning("tcerj_licitantes: teto de %d páginas em %s sem fim de paginação — coleta INCOMPLETA",
+                           teto_paginas, rota)
+            return
+        paginas += 1
         params: dict[str, Any] = {"inicio": inicio, "limite": pagina}
         if ano:
             params["ano"] = int(ano)
@@ -139,6 +148,13 @@ def coletar(tipo: str, *, ano: int | None = None, municipio: str | None = None,
         registros = corpo.get(chave) or []
         if not registros:
             return
+        # a API do TCE-RJ repete página cheia depois do fim (contratos_estado: 23,6 mi "ingeridos" para 40.620
+        # linhas) — página repetida é fim, não dado novo
+        h = hashlib.sha256(json.dumps(registros, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+        if h in hashes:
+            logger.info("tcerj_licitantes: página inicio=%s de %s repete página já lida — fim", inicio, rota)
+            return
+        hashes.add(h)
         for reg in registros:
             linha = normalizar(reg, resultado_padrao=tipo.upper())
             if linha is None:

@@ -30,6 +30,7 @@ from __future__ import annotations
 import sqlite3
 
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
+from compliance_agent.sancao_abrangencia import vigente_em
 
 # categorias CEIS/CNEP que VEDAM contratar (art. 156 §§4º-5º; art. 87 III-IV da 8.666)
 _IMPEDITIVAS = ("impedimento", "proibicao de contratar", "proibição de contratar",
@@ -84,9 +85,9 @@ class C7SancionadaContratada(Detector):
         origem = str(contexto.get("data_referencia_origem") or "").strip()
         nota_origem = f" [data de referência: {origem}]" if origem else ""
 
-        vigentes = [s for s in sancoes
-                    if (s.get("data_inicio") or "9999") <= data
-                    and (not s.get("data_fim") or s["data_fim"] >= data)]
+        # régua única da vigência NA DATA DO FATO (O4.11, 24/11/2026): "com prazo determinado" sem data final
+        # não se afirma vigente — 682 linhas do CEIS/CNEP no snapshot; o filtro antigo as contava para sempre
+        vigentes = [s for s in sancoes if vigente_em(s, data)]
         impeditivas = [s for s in vigentes if _eh_impeditiva(s.get("categoria"))]
         res.valores = {
             "data_referencia": data,
