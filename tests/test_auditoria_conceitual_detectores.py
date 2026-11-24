@@ -356,3 +356,35 @@ def test_lex_nao_diz_50_por_cento_para_servicos():
     from compliance_agent.lex_sancoes import RF_PARA_GRAVIDADE
     nota = RF_PARA_GRAVIDADE["R9"][2]
     assert "serviços)" not in nota and "reforma" in nota
+
+
+# ── aditivos_estouro: "série" é de ACRÉSCIMOS, não de qualquer termo ───────────────────────────────────
+
+def _base_aditivos(tmp_path, termos):
+    db = tmp_path / "a.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE pcrj_contratos (numero_controle_pncp TEXT, fornecedor_nome TEXT, fornecedor_documento TEXT,"
+                " orgao_nome TEXT, unidade TEXT, objeto TEXT, valor_inicial REAL, valor_global REAL, num_aditivos INT,"
+                " vigencia_fim TEXT)")
+    con.execute("CREATE TABLE contrato_aditivo (numero_controle_pncp TEXT, objeto TEXT, valor_acrescido REAL,"
+                " data_assinatura TEXT, sequencial_termo INT, tipo_termo TEXT)")
+    con.execute("INSERT INTO pcrj_contratos VALUES ('C1','VIG LTDA','22222222000100','SEEDUC','U',"
+                "'serviço de vigilância',1000000,1150000,3,'2027-01-01')")
+    for i, (obj, v) in enumerate(termos):
+        con.execute("INSERT INTO contrato_aditivo VALUES ('C1',?,?,?,?, 'Termo Aditivo')",
+                    (obj, v, f"2025-0{i + 1}-10", i + 1))
+    con.commit()
+    return str(db)
+
+
+def test_tres_prorrogacoes_nao_sao_serie_de_acrescimo(tmp_path):
+    from compliance_agent.cruzamentos_intel import aditivos_estouro
+    db = _base_aditivos(tmp_path, [("Prorrogação do prazo de vigência por 12 meses", 0)] * 3)
+    assert aditivos_estouro(db, esfera="todas")["n_serie"] == 0
+
+
+def test_tres_acrescimos_em_datas_distintas_sao_serie(tmp_path):
+    from compliance_agent.cruzamentos_intel import aditivos_estouro
+    db = _base_aditivos(tmp_path, [("Acréscimo quantitativo de 5% do objeto", 50000)] * 3)
+    r = aditivos_estouro(db, esfera="todas")
+    assert r["n_serie"] == 1 and r["achados"][0]["n_termos_acrescimo"] == 3

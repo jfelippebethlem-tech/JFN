@@ -829,7 +829,16 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             # incoerência de base; PENDENTE = há sinal, a prova não fecha (motivo declarado).
             estouro = av["estado"] == "VERIFICADO"
             pendente = av["estado"] == "PENDENTE"
-            serie = nad >= 3
+            # SÉRIE de acréscimos, não de termos: prorrogação de contínuo e reajuste também são "aditivo". Com os
+            # termos lidos, contam só os de natureza VALOR em datas distintas (24/11/2026: dos 138 contratos com termos
+            # lidos, 100 não tinham nenhum termo de acréscimo e só 5 tinham 3+). Sem termos lidos, fica o
+            # `num_aditivos` do PNCP, com a natureza declarada INDETERMINADA no item.
+            if ads:
+                n_acresc = len({t.get("data") or t.get("seq") for t in av["termos"] if t.get("natureza") == "valor"})
+                serie = n_acresc >= 3
+            else:
+                n_acresc = None
+                serie = nad >= 3
             if not (estouro or pendente or serie):
                 continue
             pct = av["pct"] if av["pct"] is not None else (av["pct_global"] or 0)
@@ -841,6 +850,9 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
                 "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
                 "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": av["teto_pct"],
+                "n_termos_acrescimo": n_acresc,
+                "serie_natureza": ("termos de acréscimo" if n_acresc is not None
+                                   else "indeterminada — termos não lidos (pode ser prorrogação/reajuste)"),
                 # O art. 125 mede sobre o "valor inicial ATUALIZADO", e aqui a base é o inicial CRU:
                 # a varredura roda sobre todo o PNCP, onde não há índice nem data-base para corrigir.
                 # O efeito é superestimar. Medido em 2026-08-10 no caso VR Benefícios: o termo declara
