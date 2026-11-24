@@ -58,16 +58,16 @@ async def renovar_aba(ctx, pg, reabrir):
         if await reabrir(nova):
             try:
                 await pg.close()
-            except PWError:
-                pass
+            except PWError as e:
+                print(f"  aba antiga não fechou ({str(e)[:60]}) — sigo na nova", file=sys.stderr, flush=True)
             return nova
         print("  aba NÃO renovada (o processo não reabriu) — sigo na aba atual", flush=True)
     except (PWError, asyncio.TimeoutError) as e:
         print(f"  aba NÃO renovada ({str(e)[:60]}) — sigo na aba atual", flush=True)
     try:
         await nova.close()
-    except PWError:
-        pass
+    except PWError as e:
+        print(f"  aba nova não fechou ({str(e)[:60]}) — sigo na atual", file=sys.stderr, flush=True)
     return pg
 def _k(n):
     # `_k` roda no IMPORT (linha abaixo), então não pode depender de arquivo existir: o CI pegou
@@ -427,8 +427,8 @@ async def _pedir_lote_sei(pg, url: str, valor: str, destino: Path, teto: float =
         for p in paginas:
             try:
                 p.remove_listener("download", ouvir)
-            except (PWError, ValueError, KeyError):
-                pass
+            except (PWError, ValueError, KeyError) as e:
+                print(f"  ouvinte de download já removido ({type(e).__name__})", file=sys.stderr, flush=True)
 
 
 async def gerar_pdf_lotes(pg, docs: list[dict], outdir: Path, *, prazo: float | None = None, pedir=None,
@@ -841,7 +841,7 @@ async def main():
                     s = fitz.open(str(fp))
                     if s.is_pdf and s.page_count: out.insert_pdf(s)
                     s.close()
-                except (RuntimeError, ValueError, OSError): pass
+                except (RuntimeError, ValueError, OSError) as e: print(f"  ÍNTEGRA: {fp.name} fora do PDF consolidado ({type(e).__name__}: {str(e)[:60]})", file=sys.stderr, flush=True)
             full = Path(f"data/sei_cache/INTEGRA_{TAG}.pdf"); out.save(str(full), deflate=True, garbage=4)
             sz = full.stat().st_size; print(f"ÍNTEGRA: {len(paths)} docs, {out.page_count} págs, {sz/1024/1024:.1f}MB", flush=True)
             # envia (divide se >45MB); SEI_SEM_TG=1 → só baixa/arquiva, sem Telegram

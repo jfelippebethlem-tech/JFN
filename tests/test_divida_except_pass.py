@@ -50,7 +50,13 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 #   (marca de fila vazia em `sei_leitura_dupla`, submit e espera de rede em `sei_busca_mgs`): 150.
 # 2026-11-20: 150→145 — passada final do untangle: scripts de uso único reapagados e dois `pass` curados
 #   (`pericia_bombeiros_reconcilia` só tolera "no such table"; `pericia_aprendizado` passa a imprimir a falha).
-TETO_MUDOS_PRODUCAO = 145
+# 2026-11-24: a catraca chegou VERMELHA em 160 (dívida acumulada desde 20/11) e travava o push → curei 17:
+#   5 em `v68_blender_cenas` (fallback de versão do Blender passa a dizer qual atributo faltou), 4 em
+#   `sei_integra_completa` (aba/ouvinte não fechados e documento FORA do PDF consolidado da íntegra),
+#   3 em `lex_pesquisa_internet` (migração, llm_json ilegível, data ilegível → repesquisa), 2 em
+#   `siafe_sweep_full` (log em disco → `OSError`; cache de UGs ilegível) e 3 no arquivado `sei_arvore_completa`
+#   (README do `_arquivo` manda manter). Nenhum fluxo mudou — só stderr com contexto. 160 → 143.
+TETO_MUDOS_PRODUCAO = 143
 
 
 def _mudos(py: Path) -> list[int]:

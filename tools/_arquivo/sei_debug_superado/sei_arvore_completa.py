@@ -32,8 +32,8 @@ async def todos_docs_dos_frames(pg):
             ds = await fr.evaluate(r"""()=>[...document.querySelectorAll('a[href*="documento_visualizar"],a[href*="acessar_documento"]')].map(a=>{const p=a.closest('tr,li,div,span');return {t:(a.title||a.textContent||'').trim().slice(0,70),pai:(p?p.textContent:'').replace(/\s+/g,' ').trim().slice(0,90),u:a.href};})""")
             for d in ds:
                 docs[d["u"]] = d
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  frame sem leitura de documentos ({type(e).__name__})", file=sys.stderr, flush=True)
     return list(docs.values())
 
 
@@ -74,14 +74,14 @@ async def main():
                         return a?a.href:null;}""", alvo_num)
                     if href:
                         abriu = href; break
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  frame sem link do processo ({type(e).__name__})", file=sys.stderr, flush=True)
             if abriu:
                 try:
                     async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
                         await pg.goto(abriu, wait_until="domcontentloaded", timeout=25000)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  navegação ao processo não confirmada ({type(e).__name__}) — sigo esperando a árvore", file=sys.stderr, flush=True)
                 # espera ATIVA a ifrArvore montar a árvore inteira
                 for _ in range(10):
                     await pg.wait_for_timeout(1500)

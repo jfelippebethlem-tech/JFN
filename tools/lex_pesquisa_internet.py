@@ -24,6 +24,7 @@ import asyncio
 import json
 import re
 import sqlite3
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -80,8 +81,8 @@ def _conectar() -> sqlite3.Connection:
         if "cruzado" not in cols:
             con.execute("ALTER TABLE lex_pesquisa ADD COLUMN cruzado TEXT")
             con.commit()
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as e:
+        print(f"[lex_pesquisa] migração da coluna 'cruzado' não aplicada ({e})", file=sys.stderr)
     return con
 
 
@@ -120,8 +121,8 @@ def extrair_duvidas(cnpj: str, con: sqlite3.Connection) -> tuple[str, list[str]]
                     _add(j.get("ressalva"))
                     for ex in (j.get("exigencias_restritivas") or [])[:3]:
                         _add(ex.get("por_que_restringe"))
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e:  # noqa: BLE001
+                    print(f"[lex_pesquisa] llm_json ilegível — ressalvas do LLM fora da consulta ({type(e).__name__})", file=sys.stderr)
 
     # 2) red_flags + análise ('o que verificar') das fichas das árvores do fornecedor
     if con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sei_ficha'").fetchone():
@@ -418,8 +419,8 @@ def rodar(top_n: int = 4, cnpj: str | None = None, min_score: int = 1, forcar: b
                     if (datetime.now() - datetime.fromisoformat(row[0].replace("Z", ""))).days < _REAVALIAR_DIAS:
                         pulados += 1
                         continue
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    print(f"[lex_pesquisa] data da última pesquisa ilegível ({row[0]!r}: {e}) — repesquiso", file=sys.stderr)
         res = asyncio.run(pesquisar(cd, gravar_vault=gravar_vault, con=con))
         feitos += 1
         out.append({"cnpj": cd, "nome": res.get("nome"), "status": res.get("status", "ok"),

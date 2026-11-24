@@ -55,8 +55,8 @@ def _log(sistema, m):
     try:
         with open(_REPO / "data" / f"siafe_sweep_full_{sistema}.log", "a", encoding="utf-8") as f:
             f.write(line + "\n")
-    except Exception:
-        pass
+    except OSError as e:
+        print(f"[siafe_sweep_full] log de S{sistema} não gravado em disco ({e})", file=sys.stderr)
 
 
 async def _ler_ugs(login_url, sistema) -> list[str]:
@@ -66,8 +66,8 @@ async def _ler_ugs(login_url, sistema) -> list[str]:
     if cache.exists():
         try:
             return json.loads(cache.read_text())
-        except (OSError, ValueError):
-            pass
+        except (OSError, ValueError) as e:
+            print(f"[siafe_sweep_full] cache de UGs de S{sistema} ilegível ({type(e).__name__}) — releio do SIAFE", file=sys.stderr)
     from playwright.async_api import async_playwright
     import compliance_agent.siafe_ob_orcamentaria as M
     import os as _os

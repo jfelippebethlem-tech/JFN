@@ -45,16 +45,16 @@ sc.render.fps = FPS; sc.frame_start, sc.frame_end, sc.frame_step = Q0, Q1, PASSO
 sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = W, H, 100
 for eng in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
     try: sc.render.engine = eng; break
-    except TypeError: pass
+    except TypeError: print(f'[v68] motor {eng} indisponível nesta versão do Blender — tento o próximo', file=sys.stderr)
 try: sc.eevee.taa_render_samples = 24
-except AttributeError: pass
+except AttributeError: print('[v68] eevee.taa_render_samples ausente — amostragem padrão do motor', file=sys.stderr)
 sc.view_settings.view_transform = 'Standard'; sc.view_settings.look = 'None'
 sc.render.image_settings.file_format = 'PNG'; sc.render.image_settings.color_depth = '8'
 sc.render.image_settings.color_mode = 'RGB'      # RGBA quebra o RIFE ncnn (listras) — medido 18/11
 sc.render.filepath = os.path.join(SAIDA, '')
 sc.render.use_motion_blur = True
 try: sc.render.motion_blur_shutter = .35
-except AttributeError: pass
+except AttributeError: print('[v68] motion_blur_shutter ausente — obturador padrão', file=sys.stderr)
 w = bpy.data.worlds.new('fundo'); sc.world = w; w.use_nodes = True
 bg = w.node_tree.nodes['Background']; bg.inputs[0].default_value = (*FUNDO, 1); bg.inputs[1].default_value = 1.0
 
@@ -100,7 +100,7 @@ def chave(ob, prop, quadros_valores, interp='BEZIER'):
         try:
             for fc in ob.animation_data.action.fcurves:
                 for k in fc.keyframe_points: k.interpolation = interp
-        except AttributeError: pass
+        except AttributeError: print(f'[v68] fcurves indisponível ({ob.name}.{prop}) — interpolação padrão', file=sys.stderr)
 
 def h01(i):                              # hash determinístico em [0,1)
     return ((i * 2654435761) % 4294967296) / 4294967296
@@ -251,7 +251,7 @@ def alvos():
 if os.environ.get('V70_NITIDO'):          # v70 · quadro parado do relevo: câmera parada não pede rastro
     sc.render.use_motion_blur = False
     try: sc.eevee.taa_render_samples = 64
-    except AttributeError: pass
+    except AttributeError: print('[v68] eevee.taa_render_samples ausente (V70_NITIDO) — amostragem padrão', file=sys.stderr)
 os.makedirs(SAIDA, exist_ok=True)
 print('CENA-MONTADA em %.0f s' % (time.time() - T0), flush=True)
 bpy.ops.render.render(animation=True)
