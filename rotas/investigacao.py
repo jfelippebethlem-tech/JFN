@@ -231,7 +231,7 @@ def api_painel():
     Cacheado 3600s (TTL analítico da casa; o prewarm de 30 min o mantém quente) — com 120s o prewarm
     expirava antes da visita e o panorama abria frio: 30,8 s medidos em 24/09/2026."""
     from compliance_agent.proveniencia_manchetes import anexar as _prov
-    if cache := _cache_get("painel:snapshot", 3600):
+    if cache := _cache_get("painel:snapshot:v2", 3600):
         return JSONResponse(content=_prov("/api/compliance/painel", cache))
     try:
         from datetime import date
@@ -338,7 +338,7 @@ def api_painel():
             siafe = dict(_siafe_pago_total())   # cópia: o dict vem do cache em memória
             top = siafe.pop("top", None)
             siafe.pop("_top400", None)
-            return JSONResponse(content=_cache_put("painel:snapshot", _prov("/api/compliance/painel", {
+            return JSONResponse(content=_cache_put("painel:snapshot:v2", _prov("/api/compliance/painel", {
                 "atualizado": str(hoje),
                 "obs": {**_prov("/api/compliance/painel#obs", {"atualizado": str(hoje)}), **siafe, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
                         "valor_ultimo_dia": v_ultimo_dia,
