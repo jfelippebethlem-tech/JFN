@@ -158,5 +158,9 @@ def servidor_sem_boot_externo():
     mp = pytest.MonkeyPatch()
     mp.setattr(server, "get_agent", _sem_agente)
     mp.setattr(inteligencia, "_enriquecer", _sem_rede)
+    # O4.2: o boot barra /api/* com 503 se o schema Alembic não estiver em head — o banco do ambiente de
+    # teste não é o vivo carimbado. A trava em si tem teste próprio (tests/test_migrar_alembic.py).
+    from compliance_agent.database import migrar
+    mp.setattr(migrar, "verificar_schema", lambda *_a, **_k: {"ok": True, "atual": "teste", "head": "teste"})
     yield
     mp.undo()

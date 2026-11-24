@@ -145,6 +145,8 @@ class Rotina(_Base):
     timeout_s: int | None = Field(default=None, gt=0)
     prioridade: int | None = None
     concorrencia: list[str] = Field(default_factory=list)
+    ritmo: str | None = None                      # tarefa do guarda de ritmo da assinatura (llm/contingencia)
+    volta: Volta | None = None                    # nós alternativos SÓ quando a rotina declara (legado é preso)
     trava: str | None = None
     condicao: Condicao | None = None
     agenda: list[AgendaItem] = Field(default_factory=list)
@@ -248,22 +250,55 @@ class Grafo(_Base):
 
     # ── consumidores ──
     def contrato_da_rotina(self, rid: str) -> dict:
+        """`nos` = restrição DURA da reserva; `volta` só existe quando a ROTINA a declara — a rotina legada roda no
+        nó em que rodava (compliance.db mora na VM-1) e a volta do estágio só vale quando o estágio for portado (O2.2)."""
         r, e = self.rotinas[rid], self.estagios[self.rotinas[rid].estagio]
         nos = r.nos or e.nos
         return {"recursos": list(r.recursos or e.recursos),
                 "prioridade": r.prioridade if r.prioridade is not None else e.prioridade,
-                "volta": {"nos": list(e.volta.nos), "estagio": r.estagio},
+                "volta": {"nos": list(r.volta.nos), "estagio": r.estagio} if r.volta else None,
+                "nos": list(nos),
                 "no_preferido": nos[0] if nos else None,
                 "timeout_s": r.timeout_s or e.timeout_s}
+
+    def concorrencia_da_rotina(self, rid: str) -> list[str]:
+        """Etiquetas de teto da rotina (só as da ROTINA: as do estágio descrevem o estágio portado, não o comando
+        legado). `por_fonte` vira `por_fonte:<rotina>` — o teto é por fonte, não um global para todas."""
+        return [f"por_fonte:{rid}" if c == "por_fonte" else c for c in self.rotinas[rid].concorrencia]
+
+    def montante(self, rid: str) -> list[str]:
+        """Tipos de job das rotinas de que esta depende (as fontes ficam de fora: não são jobs)."""
+        r = self.rotinas[rid]
+        return [tipo_da_rotina(d) for d in (r.evento.depende if r.evento else []) if d in self.rotinas]
+
+    def tetos(self) -> dict[str, int]:
+        """Etiqueta de concorrência → máximo de jobs RESERVADOS ao mesmo tempo (todas as máquinas)."""
+        return {k: c.max for k, c in self.concorrencia.items()}
+
+    def ritmos(self, so_ativas: bool = True) -> set[str]:
+        return {r.ritmo for r in self.rotinas.values() if r.ritmo and (r.ativa or not so_ativas)}
 
     def contrato(self) -> dict[str, dict]:
         """tipo de job → recursos/prioridade/volta/no_preferido (o que o planejador grava em cada job)."""
         return {tipo_da_rotina(rid): self.contrato_da_rotina(rid) for rid in self.rotinas}
 
-    def payload(self, rid: str, args: list[str] | None = None) -> dict:
-        p = {"rotina": rid, "timeout_s": self.contrato_da_rotina(rid)["timeout_s"] + 60}
+    def payload(self, rid: str, args: list[str] | None = None, *, evento: bool = False) -> dict:
+        """Payload do job. Leva as restrições que `fila.reservar` aplica: `nos`, `concorrencia`, `montante` (o
+        dependente espera o derivado a montante que está pronto) e — SÓ no job de EVENTO — `ritmo`: é o que valia
+        antes da parada (o despachante consultava o guarda da assinatura; o cron-rede da mesma rotina, não — os
+        scripts seguem pela cascata em contingência). Estender o ritmo à agenda é decisão do dono (O2.2)."""
+        c = self.contrato_da_rotina(rid)
+        p = {"rotina": rid, "timeout_s": c["timeout_s"] + 60}
         if args:
             p["args"] = list(args)
+        if c["nos"]:
+            p["nos"] = c["nos"]
+        if conc := self.concorrencia_da_rotina(rid):
+            p["concorrencia"] = conc
+        if evento and self.rotinas[rid].ritmo:
+            p["ritmo"] = self.rotinas[rid].ritmo
+        if mont := self.montante(rid):
+            p["montante"] = mont
         return p
 
     def grafo_planejador(self, so_ativas: bool = True) -> dict[str, list[dict]]:
@@ -275,9 +310,10 @@ class Grafo(_Base):
                 continue
             dep = {"tipo": tipo_da_rotina(rid), "debounce_s": r.evento.debounce_s,
                    "intervalo_min_s": r.evento.intervalo_min_s, "agrupar": r.evento.agrupar,
-                   "payload": self.payload(rid)}
+                   "payload": self.payload(rid, evento=True)}
             for fonte in r.evento.depende:
-                g.setdefault(fonte, []).append(dep)
+                # evento de DERIVADO (fonte que é rotina) não abre janela de junção (propagacao._sujos)
+                g.setdefault(fonte, []).append({**dep, "abre_janela": fonte not in self.rotinas})
         return g
 
     def agenda_linhas(self, so_ativas: bool = True) -> list[dict]:
@@ -290,6 +326,23 @@ class Grafo(_Base):
                 out.append({"id": rid if len(r.agenda) == 1 else f"{rid}#{i + 1}", "cron_expr": item.cron,
                             "tipo_job": tipo_da_rotina(rid), "payload": self.payload(rid, item.args)})
         return out
+
+
+def rotinas_sem_slot(g: "Grafo") -> list[tuple[str, list[str], list[str]]]:
+    """Rotinas ATIVAS que pedem recurso que nenhum dos seus nós (nos + volta) tem nos slots do governador: com o nó
+    como restrição dura na reserva (O2.2) elas nunca rodariam (o planejador as mostraria BLOQUEADO). Não é erro de
+    carga porque hoje há dívida DECLARADA — navegador legado na VM-1, que a §3.4 zera —, travada pela catraca
+    tests/test_fluxo_o22.py (a lista não pode crescer) e resolvida antes da O9.0."""
+    out = []
+    for rid, r in g.rotinas.items():
+        if not r.ativa or r.estagio not in g.estagios:
+            continue
+        c = g.contrato_da_rotina(rid)
+        nos = list(c["nos"]) + list((c["volta"] or {}).get("nos") or [])
+        falta = [x for x in c["recursos"] if not any(SLOTS_INICIAIS.get(n, {}).get(x) for n in nos)]
+        if falta:
+            out.append((rid, falta, nos))
+    return out
 
 
 def tipo_da_rotina(rid: str) -> str:
@@ -345,7 +398,7 @@ def carregar(caminho: Path | str | None = None) -> Grafo:
 
 
 @lru_cache(maxsize=4)
-def carregar_cache(caminho: str | None = None) -> Grafo:
+def carregar_grafo_cache(caminho: str | None = None) -> Grafo:
     return carregar(caminho)
 
 
@@ -359,6 +412,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({"ok": True, "estagios": len(g.estagios), "rotinas": len(g.rotinas),
                       "ativas": sum(r.ativa for r in g.rotinas.values()),
                       "agenda": len(g.agenda_linhas()), "fontes_com_dependentes": len(g.grafo_planejador()),
+                      "sem_slot": [rid for rid, _f, _n in rotinas_sem_slot(g)],
                       "efeito_so_rc": len(fracos)}, ensure_ascii=False))
     return 0
 

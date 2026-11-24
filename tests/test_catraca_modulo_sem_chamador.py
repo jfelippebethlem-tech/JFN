@@ -71,7 +71,10 @@ def _importados(p: Path, fonte: str) -> set[str]:
 # o chamador é o carregador. Entrar aqui exige que o carregador exista e rode — por isso a lista é curta e nomeada.
 _PLUGINS = {
     "compliance_agent.padroes": "tools/padroes_varrer descobre cada detector do diretório",
-    "compliance_agent.database.migrations": "migrações numeradas, aplicadas por nome de arquivo",
+    # 24/11/2026 (O4.2): o runner caseiro de database/migrations/ saiu — o carregador agora é o Alembic,
+    # pelo `script_location` que database/migrar.py monta (env.py + uma revisão por arquivo em versions/).
+    "compliance_agent.database.alembic": "env.py carregado pelo Alembic (migrar._config)",
+    "compliance_agent.database.alembic.versions": "revisões descobertas pelo Alembic no diretório",
 }
 _CITACAO = re.compile(rf"{PACOTE}(?:[./]\w+)+")
 

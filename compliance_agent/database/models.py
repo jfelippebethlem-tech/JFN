@@ -5,16 +5,15 @@ Uses SQLite via SQLAlchemy. All public-servant, company, contract,
 payroll, and relationship data is stored here before graph analysis.
 """
 
-import importlib.util
 import logging
 import os
-import sys
+import threading
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Integer, Float, Date, DateTime, Boolean,
     Text, ForeignKey, Index, create_engine, event, text
 )
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 from pathlib import Path
 
 
@@ -403,34 +402,61 @@ class MissaoAuditoria(Base):
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
+# Um engine por (processo, arquivo) — DB-01 da auditoria 24/11/2026: antes, CADA chamada criava um engine
+# novo (pool novo descartado depois) e registrava mais um listener; a conexão ociosa sumia e o processo
+# ficava sem conexão nenhuma (ver guarda_wal.py). A chave leva o PID: engine herdado por fork não é
+# reaproveitado no filho (pool do pai não atravessa fork).
+_ENGINES: dict = {}
+_ENGINES_LOCK = threading.Lock()
+
+
+def _pragmas_sqlite(conn, _registro):
+    """Listener ÚNICO de pragmas, registrado uma vez por engine."""
+    conn.execute("PRAGMA journal_mode=WAL")      # leituras concorrentes
+    conn.execute("PRAGMA busy_timeout=30000")    # espera o lock (não erra na hora)
+    conn.execute("PRAGMA foreign_keys=ON")
+
+
 def get_engine(db_path=None):
     db_path = _resolver_db(db_path)
-    db_path.parent.mkdir(exist_ok=True)
-    # timeout=30: espera até 30s pelo write lock em vez de falhar na hora ("database is locked") quando um
-    # sweep concorrente escreve o compliance.db (lição §8 — todo writer precisa disso).
-    engine = create_engine(f"sqlite:///{db_path}", echo=False, connect_args={"timeout": 30})
-    # Enable WAL mode for concurrent reads
-    @event.listens_for(engine, "connect")
-    def set_wal(conn, _):
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")  # espera o lock (não erra na hora)
-        conn.execute("PRAGMA foreign_keys=ON")
+    chave = (os.getpid(), str(db_path.resolve()))
+    with _ENGINES_LOCK:
+        engine = _ENGINES.get(chave)
+        if engine is None:
+            db_path.parent.mkdir(exist_ok=True)
+            # timeout=30: espera até 30s pelo write lock em vez de falhar na hora ("database is locked")
+            # quando um sweep concorrente escreve o compliance.db (lição §8 — todo writer precisa disso).
+            engine = create_engine(f"sqlite:///{db_path}", echo=False, connect_args={"timeout": 30})
+            event.listen(engine, "connect", _pragmas_sqlite)
+            _ENGINES[chave] = engine
     return engine
 
 
 def get_session(engine=None):
+    """Sessão no engine do processo. NÃO cria tabela: schema é de `init_db` (explícito) + Alembic."""
     if engine is None:
         engine = get_engine()
-    Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     return Session()
 
 
 def init_db(db_path=None):
-    """Create all tables and apply incremental migrations. Safe to call multiple times."""
+    """Cria as tabelas que faltam (create_all) e os índices FTS. Seguro chamar várias vezes.
+
+    NÃO migra (O4.2, 24/11/2026): migração é só `python -m compliance_agent.database.migrar upgrade`,
+    explícita e com versão Alembic. Banco criado do ZERO aqui nasce carimbado no head. O runner caseiro
+    (`_migrate` + tabela `_alembic_version`) saiu; `_sync_columns` só roda com JFN_SYNC_COLUMNS=1.
+    """
     engine = get_engine(db_path)
+    from sqlalchemy import inspect as _sa_inspect
+    banco_novo = not _sa_inspect(engine).get_table_names()
     Base.metadata.create_all(engine)
-    _migrate(engine)
+    if os.environ.get("JFN_SYNC_COLUMNS") == "1":
+        # DESLIGADO por padrão desde 24/11/2026; remoção definitiva prevista para 01/12/2026 (O4.2 d).
+        _sync_columns(engine)
+    if banco_novo:
+        from compliance_agent.database.migrar import carimbar_banco_novo
+        carimbar_banco_novo(engine)
     _criar_indices_fts_seguro(db_path)
     return engine
 
@@ -484,58 +510,6 @@ def _sync_columns(engine):
                 try:
                     conn.execute(text(ddl))
                     conn.commit()
-                    print(f"Schema-sync: coluna {table.name}.{col.name} adicionada.")
+                    logger.warning("Schema-sync: coluna %s.%s adicionada.", table.name, col.name)
                 except Exception as e:
-                    print(f"Schema-sync: nao foi possivel adicionar {table.name}.{col.name}: {e}")
-
-
-def _migrate(engine):
-    """Apply incremental migrations."""
-    migrations_dir = Path(__file__).parent / "migrations"
-    if not migrations_dir.exists():
-        return
-
-    # Antes de qualquer migração de dados: garante que o schema físico tem
-    # todas as colunas do modelo (bancos antigos podem estar defasados).
-    _sync_columns(engine)
-
-    # Keep track of applied migrations in a simple table
-    with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS _alembic_version (
-                version_num VARCHAR(32) NOT NULL PRIMARY KEY
-            )
-        """))
-        conn.commit()
-
-    applied_migrations = set()
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT version_num FROM _alembic_version"))
-        for row in result:
-            applied_migrations.add(row[0])
-        conn.commit()
-
-    for migration_file in sorted(migrations_dir.glob("*.py")):
-        version_num = migration_file.stem  # e.g., "001_extract_raw_json_data"
-        if version_num in applied_migrations:
-            continue
-
-        try:
-            spec = importlib.util.spec_from_file_location(version_num, migration_file)
-            mod = importlib.util.module_from_spec(spec)
-            sys.modules[version_num] = mod
-            spec.loader.exec_module(mod)
-
-            with Session(engine) as session:
-                mod.upgrade(session)
-                session.execute(text("INSERT INTO _alembic_version (version_num) VALUES (:version_num)"),
-                                {"version_num": version_num})
-                session.commit()
-            print(f"Migração {version_num} aplicada com sucesso.")
-        except Exception as e:
-            # Política: migração com defeito NÃO derruba o agente autônomo.
-            # Registra o erro e segue — a migração será tentada de novo no
-            # próximo boot (não foi marcada como aplicada). O schema-sync já
-            # garantiu as colunas, então o app funciona mesmo sem o enriquecimento.
-            print(f"Erro ao aplicar migração {version_num} (seguindo mesmo assim): {e}")
-            continue
+                    logger.error("Schema-sync: não foi possível adicionar %s.%s: %s", table.name, col.name, e)

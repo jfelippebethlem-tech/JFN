@@ -181,6 +181,16 @@ async def lifespan(app: FastAPI):
     print(f"[guarda-wal] conexão guardiã {'ATIVA' if _ok_wal else 'AUSENTE'} — "
           f"{'-wal/-shm não serão desvinculados' if _ok_wal else 'painel volta a depender do guardião de restart'}")
 
+    # O4.2: schema Alembic tem de estar em head; senão as rotas de dados respondem 503 (`_schema_em_head`).
+    from compliance_agent.database.migrar import verificar_schema
+    _ESTADO_SCHEMA.clear()
+    _ESTADO_SCHEMA.update(verificar_schema())
+    if _ESTADO_SCHEMA["ok"]:
+        logger.info("schema do compliance.db em head (%s)", _ESTADO_SCHEMA["head"])
+    else:
+        logger.error("schema do compliance.db NÃO está em head — rotas de dados em 503: %s",
+                     _ESTADO_SCHEMA.get("motivo"))
+
     # Promessa feita ao Mestre não pode morrer com o processo: o que o run anterior prometeu e não
     # entregou volta à fila agora (o Yoda diz "te envio em ~1–2 min" e a geração é um create_task).
     try:
@@ -405,6 +415,25 @@ async def _manutencao(request: Request, call_next):
                         if k.lower() not in (b"content-length", b"etag", b"last-modified")]
     novo.raw_headers.append((b"content-length", str(len(corpo)).encode()))
     return novo
+
+
+# O4.2 (24/11/2026): o boot exige schema Alembic em head (`migrar.verificar_schema`, no lifespan).
+# Migração pendente → as rotas de DADOS (/api/* fora dos isentos) respondem 503 honesto em vez de
+# servir sobre schema pela metade. Antes do lifespan rodar (TestClient sem `with`) o estado é vazio
+# e nada é barrado — a régua vale para o processo que bootou de verdade.
+_ESTADO_SCHEMA: dict = {}
+_SCHEMA_ISENTOS = ("/api/sistema", "/api/ao-vivo", "/api/territorio")  # saúde, motores, territorio.db
+
+
+@app.middleware("http")
+async def _schema_em_head(request: Request, call_next):
+    path = request.url.path
+    if (_ESTADO_SCHEMA.get("ok") is False and path.startswith("/api/")
+            and not path.startswith(_SCHEMA_ISENTOS)):
+        return JSONResponse({"erro": "schema do banco com migração pendente — dados não servidos",
+                             "motivo": _ESTADO_SCHEMA.get("motivo"), "atual": _ESTADO_SCHEMA.get("atual"),
+                             "head": _ESTADO_SCHEMA.get("head")}, status_code=503)
+    return await call_next(request)
 
 
 app.add_middleware(_GZipSemMidia, minimum_size=1024)

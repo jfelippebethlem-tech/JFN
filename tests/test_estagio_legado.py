@@ -25,9 +25,9 @@ def _estagios():
 @pytest.fixture()
 def raiz(tmp_path, monkeypatch):
     monkeypatch.setattr(L, "RAIZ", tmp_path)
-    G.carregar_cache.cache_clear()
+    G.carregar_grafo_cache.cache_clear()
     yield tmp_path
-    G.carregar_cache.cache_clear()
+    G.carregar_grafo_cache.cache_clear()
 
 
 def _grafo(raiz, monkeypatch, **rotinas):
@@ -42,7 +42,7 @@ def _grafo(raiz, monkeypatch, **rotinas):
     arq = raiz / "fluxo.yaml"
     arq.write_text(yaml.safe_dump(base, allow_unicode=True), encoding="utf-8")
     monkeypatch.setenv(L.ENV_GRAFO, str(arq))
-    G.carregar_cache.cache_clear()
+    G.carregar_grafo_cache.cache_clear()
     return G.carregar(arq)
 
 

@@ -48,7 +48,7 @@ class FalhaTransitoria(RuntimeError):
 
 
 def _grafo() -> G.Grafo:
-    return G.carregar_cache(os.environ.get(ENV_GRAFO) or None)
+    return G.carregar_grafo_cache(os.environ.get(ENV_GRAFO) or None)
 
 
 def _rotina_id(payload: dict, ctx: Contexto) -> str:
@@ -141,7 +141,7 @@ def handler(payload: dict, ctx: Contexto) -> Resultado:
         raise ErroPermanente(f"rotina '{rid}' não está no config/fluxo.yaml")
     if not r.ativa:
         raise ErroPermanente(f"rotina '{rid}' inativa: {r.bloqueio}")
-    nos = r.nos or g.estagios[r.estagio].nos
+    nos = (r.nos or g.estagios[r.estagio].nos) + (r.volta.nos if r.volta else [])
     if nos and ctx.no not in nos:
         raise FalhaTransitoria(f"rotina '{rid}' roda em {nos}, não em {ctx.no}")
     agora = _agora()
