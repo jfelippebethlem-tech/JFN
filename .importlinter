@@ -1,0 +1,40 @@
+# import-linter — contratos de camada do plano mestre v2 (§3.9). Rodar: `lint-imports` (pacote import-linter).
+# Enquanto o import-linter não está no requirements-dev, a MESMA checagem roda no CI por
+# tests/test_dominio_sem_io.py (AST + import em subprocesso). Mudou aqui → mude lá.
+# `ignore_imports` é o legado tolerado: lista que SÓ PODE ENCOLHER.
+[importlinter]
+root_packages =
+    compliance_agent
+    rotas
+include_external_packages = True
+
+[importlinter:contract:dominio-sem-io]
+name = dominio não importa I/O
+type = forbidden
+source_modules =
+    compliance_agent.dominio
+forbidden_modules =
+    fastapi
+    starlette
+    uvicorn
+    sqlalchemy
+    alembic
+    psycopg
+    psycopg2
+    apsw
+    requests
+    httpx
+    aiohttp
+    urllib3
+    anthropic
+    openai
+    google
+    playwright
+    patchright
+    selenium
+    rotas
+    compliance_agent.database
+    compliance_agent.llm
+    compliance_agent.collectors
+ignore_imports =
+    compliance_agent.dominio.pagamento -> compliance_agent.cruzamentos_intel
