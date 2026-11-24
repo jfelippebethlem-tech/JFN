@@ -1,0 +1,354 @@
+# -*- coding: utf-8 -*-
+"""Supervisor do motor de fluxo — um por máquina (`jfn-fluxo@<no>.service`; plano mestre v2 §3.3).
+
+O laço SÓ ESCOLHE. Cada volta:
+  1. mede a pressão (governador) e grava o heartbeat do nó em `nos`;
+  2. se tiver a liderança (advisory lock 42), roda o planejador;
+  3. colhe os filhos que terminaram: handler ok → filho de CONFERÊNCIA do efeito → concluir (feito/falhou_efeito,
+     eventos na mesma transação) · erro → falhar (backoff/quarentena) · tempo estourado → mata e falha;
+  4. renova o lease dos filhos vivos — lease perdido (outro nó assumiu) ⇒ mata o filho, o trabalho dele não vale;
+  5. reserva jobs enquanto houver slot livre e lança cada um em SUBPROCESSO ISOLADO:
+     `systemd-run --user --scope --slice=jfn-jobs.slice -p MemoryMax=… -p CPUWeight=…` + `timeout`, quando o
+     systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_AS), nice e `timeout`.
+Entre voltas espera `LISTEN jfn_jobs` (job novo acorda na hora), no máximo 60 s — 2 s com filho rodando.
+
+Catraca (tests/test_fluxo_supervisor.py): este módulo não importa `compliance_agent.aplicacao` e o handler roda
+num PID diferente do supervisor. Matar o supervisor no meio não perde o job: o lease vence e o planejador o
+devolve à fila (o estágio é idempotente pela chave).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import resource
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Mapping
+
+from compliance_agent.evidencias import ENV_DSN, dsn_vigente
+from compliance_agent.fluxo import fila, governador, planejador, schema
+from compliance_agent.fluxo.fila import Job, Resultado
+
+log = logging.getLogger("jfn.fluxo.supervisor")
+RAIZ = Path(__file__).resolve().parents[2]
+MODULO_FILHO = "compliance_agent.fluxo.executar"
+
+# teto por recurso: (MemoryMax, CPUWeight, tempo máximo em s). Job com vários recursos pega o mais folgado.
+LIMITES: dict[str, tuple[str, int, int]] = {
+    "cpu_leve": ("1G", 50, 900), "cpu_pesado": ("3G", 30, 3600), "navegador": ("3G", 50, 3600),
+    "gpu": ("6G", 50, 7200), "llm": ("1G", 20, 1800), "materializar": ("1G", 200, 600), "disco": ("1G", 20, 3600),
+}
+LIMITE_CONFERIR = ("512M", 50, 120)
+PLANEJAR_A_CADA_S = 10.0
+ESPERA_OCIOSA_S = 60.0
+ESPERA_COM_FILHO_S = 2.0
+SAIDA_PERMANENTE = 3                  # = executar.SAIDA_PERMANENTE (sem importar o filho: catraca)
+
+
+def _bytes(txt: str) -> int:
+    mult = {"K": 1 << 10, "M": 1 << 20, "G": 1 << 30}
+    return int(float(txt[:-1]) * mult[txt[-1]]) if txt[-1] in mult else int(txt)
+
+
+def limites_do_job(recursos: list[str], payload: Mapping | None = None) -> tuple[str, int, int]:
+    escolhidos = [LIMITES.get(r, LIMITES["cpu_leve"]) for r in (recursos or ["cpu_leve"])]
+    mem = max((m for m, _, _ in escolhidos), key=_bytes)
+    peso = min(p for _, p, _ in escolhidos)
+    tempo = int((payload or {}).get("timeout_s") or max(t for _, _, t in escolhidos))
+    return mem, peso, tempo
+
+
+def montar_comando(fase: str, entrada: Path, saida: Path, limites: tuple[str, int, int], isolamento: str,
+                   python: str = sys.executable) -> list[str]:
+    """Função pura: o argv exato do filho. `isolamento` = 'systemd' ou 'subprocesso'."""
+    mem, peso, tempo = limites
+    base = [python, "-m", MODULO_FILHO, fase, str(entrada), str(saida)]
+    if shutil.which("timeout"):
+        base = ["timeout", "-k", "10", str(tempo)] + base
+    if isolamento == "systemd":
+        return ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-jobs.slice",
+                "-p", f"MemoryMax={mem}", "-p", f"CPUWeight={peso}", "--"] + base
+    return base
+
+
+def systemd_disponivel() -> bool:
+    """O systemd do usuário aceita escopo transitório? (cron sem barramento e contêiner não aceitam)."""
+    if not shutil.which("systemd-run"):
+        return False
+    try:
+        r = subprocess.run(["systemd-run", "--user", "--scope", "--quiet", "true"], capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return r.returncode == 0
+
+
+def _rss_kb(pid: int) -> int:
+    try:
+        for ln in Path(f"/proc/{pid}/status").read_text().splitlines():
+            if ln.startswith("VmRSS:"):
+                return int(ln.split()[1])
+    except (OSError, ValueError):
+        pass
+    return 0
+
+
+@dataclass
+class Filho:
+    job: Job
+    fase: str                                   # 'rodar' | 'conferir'
+    proc: subprocess.Popen
+    pasta: Path
+    inicio: float
+    tempo_max: float
+    resultado: dict | None = None
+    parado: bool = False                        # SIGSTOP do governador
+
+
+@dataclass
+class Supervisor:
+    no: str
+    dsn: str | None = None
+    esquema: str | None = None
+    slots: dict[str, int] | None = None
+    grafo: Mapping[str, list] | None = None
+    prazo_s: float = 120.0
+    isolamento: str = "auto"                    # auto | systemd | subprocesso
+    chave_lideranca: int = planejador.CHAVE_LIDERANCA
+    medir: Callable[[], governador.Medida] = governador.medir
+    filhos: list[Filho] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.dsn = self.dsn or dsn_vigente()
+        self.esquema = schema.validar_esquema(self.esquema or fila.esquema_vigente())
+        self.slots = dict(self.slots if self.slots is not None else governador.SLOTS_INICIAIS.get(self.no, {}))
+        if self.isolamento == "auto":
+            self.isolamento = "systemd" if systemd_disponivel() else "subprocesso"
+        self.con = fila.conectar(self.dsn, self.esquema)
+        v = schema.verificar(self.con, self.esquema)
+        if not v["ok"]:
+            raise RuntimeError(f"schema {self.esquema} incompleto: {v['faltando']}")
+        self._con_lider = None
+        self._lider = False
+        self._ultimo_plano = 0.0
+        self._contido_seguidas = 0
+        self._parar = False
+        self.versao = self._versao()
+
+    # ── utilidades ──
+    @staticmethod
+    def _versao() -> str | None:
+        try:
+            r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=RAIZ, capture_output=True, text=True,
+                               timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        return r.stdout.strip() or None
+
+    def _ocupados(self) -> dict[str, int]:
+        out: dict[str, int] = {}
+        for f in self.filhos:
+            for r in f.job.recursos:
+                out[r] = out.get(r, 0) + 1
+        return out
+
+    def _env_filho(self) -> dict:
+        env = dict(os.environ)
+        env[ENV_DSN] = self.dsn
+        env[fila.ENV_ESQUEMA] = self.esquema
+        env["PYTHONPATH"] = os.pathsep.join(p for p in (str(RAIZ), env.get("PYTHONPATH", "")) if p)
+        return env
+
+    # ── liderança ──
+    def _liderar(self) -> bool:
+        if self._con_lider is None or self._con_lider.closed:
+            self._con_lider = fila.conectar(self.dsn, self.esquema)
+        self._lider = planejador.tentar_lideranca(self._con_lider, self.chave_lideranca)
+        return self._lider
+
+    # ── filhos ──
+    def _lancar(self, job: Job, fase: str, pasta: Path | None = None, resultado: dict | None = None) -> None:
+        pasta = pasta or Path(tempfile.mkdtemp(prefix=f"jfn-fluxo-{job.id}-"))
+        entrada, saida = pasta / f"{fase}.entrada.json", pasta / f"{fase}.saida.json"
+        entrada.write_text(json.dumps({"tipo": job.tipo, "chave": job.chave, "ficha": job.ficha, "no": self.no,
+                                       "tentativa": job.tentativas, "correlation_id": job.correlation_id,
+                                       "payload": job.payload, "resultado": resultado}, default=str),
+                           encoding="utf-8")
+        lim = LIMITE_CONFERIR if fase == "conferir" else limites_do_job(job.recursos, job.payload)
+        cmd = montar_comando(fase, entrada, saida, lim, self.isolamento)
+        mem = _bytes(lim[0])
+
+        def _teto():                                     # só no ramo sem systemd: prlimit + nice
+            resource.setrlimit(resource.RLIMIT_AS, (mem * 2, mem * 2))   # AS > RSS: folga para o mapa do Python
+            os.nice(10)
+        with open(pasta / f"{fase}.stderr", "wb") as err:
+            proc = subprocess.Popen(cmd, cwd=RAIZ, env=self._env_filho(), stdout=subprocess.DEVNULL, stderr=err,
+                                    start_new_session=True,
+                                    preexec_fn=_teto if self.isolamento != "systemd" else None)
+        self.filhos.append(Filho(job=job, fase=fase, proc=proc, pasta=pasta, inicio=time.monotonic(),
+                                 tempo_max=lim[2] + 15, resultado=resultado))
+        log.info("lançou %s %s (ficha %s, pid %s)", fase, job.chave, job.ficha, proc.pid)
+
+    @staticmethod
+    def _matar(f: Filho) -> None:
+        try:
+            os.killpg(f.proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        f.proc.wait(timeout=30)
+
+    def _encerrar(self, f: Filho) -> None:
+        self.filhos.remove(f)
+        shutil.rmtree(f.pasta, ignore_errors=True)
+
+    def _stderr(self, f: Filho) -> str:
+        try:
+            return (f.pasta / f"{f.fase}.stderr").read_text(encoding="utf-8", errors="replace")[-1500:]
+        except OSError:
+            return ""
+
+    def _colher(self) -> dict:
+        r = {"feito": 0, "falhou_efeito": 0, "falhou": 0, "recusado": 0}
+        for f in list(self.filhos):
+            rc = f.proc.poll()
+            if rc is None:
+                if time.monotonic() - f.inicio > f.tempo_max:
+                    self._matar(f)
+                    self._contar(r, fila.falhar(self.con, f.job.ficha, f"tempo estourado na fase {f.fase}",
+                                                True, "timeout"), "falhou")
+                    self._encerrar(f)
+                continue
+            saida = f.pasta / f"{f.fase}.saida.json"
+            try:
+                dados = json.loads(saida.read_text(encoding="utf-8")) if saida.exists() else {}
+            except ValueError:
+                dados = {}
+            if rc == 0 and f.fase == "rodar":
+                self.filhos.remove(f)                    # a mesma pasta segue para a conferência
+                self._lancar(f.job, "conferir", f.pasta, dados)
+                continue
+            if rc == 0:
+                res = Resultado(efeito=(f.resultado or {}).get("efeito") or {},
+                                efeito_conferido=bool(dados.get("conferido")),
+                                eventos=(f.resultado or {}).get("eventos") or [])
+                estado = fila.concluir(self.con, f.job.ficha, res)
+                self._contar(r, estado, estado or "recusado")
+            elif rc == SAIDA_PERMANENTE:
+                self._contar(r, fila.falhar(self.con, f.job.ficha, dados.get("erro") or self._stderr(f), False,
+                                            "permanente"), "falhou")
+            else:
+                self._contar(r, fila.falhar(self.con, f.job.ficha, f"rc={rc} {self._stderr(f)}", True,
+                                            "conferencia" if f.fase == "conferir" else "erro"), "falhou")
+            self._encerrar(f)
+        return r
+
+    @staticmethod
+    def _contar(r: dict, estado: str | None, chave: str) -> None:
+        r["recusado" if estado is None else chave] += 1
+
+    def _renovar(self) -> int:
+        perdidos = 0
+        for f in list(self.filhos):
+            if not fila.heartbeat(self.con, f.job.ficha, self.prazo_s):
+                log.warning("lease perdido: %s (ficha %s) — filho morto", f.job.chave, f.job.ficha)
+                self._matar(f)
+                self._encerrar(f)
+                perdidos += 1
+        return perdidos
+
+    def _aplicar_acao(self, d: governador.Decisao) -> None:
+        if d.acao in ("matar", "suspender") and self.filhos:
+            alvo = max((f for f in self.filhos if not f.parado), key=lambda f: _rss_kb(f.proc.pid), default=None)
+            if alvo and d.acao == "matar":
+                log.warning("governador: SIGKILL em %s (%s)", alvo.job.chave, d.motivos)
+                self._matar(alvo)
+                fila.falhar(self.con, alvo.job.ficha, f"morto pelo governador: {d.motivos}", True, "pressao")
+                self._encerrar(alvo)
+            elif alvo and not any(f.parado for f in self.filhos):     # um suspenso por vez
+                log.warning("governador: SIGSTOP em %s (%s)", alvo.job.chave, d.motivos)
+                os.killpg(alvo.proc.pid, signal.SIGSTOP)
+                alvo.parado = True
+        elif d.estado == "folga":
+            for f in self.filhos:
+                if f.parado:
+                    os.killpg(f.proc.pid, signal.SIGCONT)
+                    f.parado = False
+
+    # ── a volta ──
+    def _registrar_no(self, m: governador.Medida, d: governador.Decisao) -> None:
+        self.con.execute(
+            "INSERT INTO nos(no, capacidades, slots, psi, versao_codigo, heartbeat_em) VALUES (%s, %s, %s, %s, %s, "
+            "now()) ON CONFLICT (no) DO UPDATE SET capacidades = EXCLUDED.capacidades, slots = EXCLUDED.slots, "
+            "psi = EXCLUDED.psi, versao_codigo = EXCLUDED.versao_codigo, heartbeat_em = now()",
+            (self.no, json.dumps({"isolamento": self.isolamento, "lider": self._lider}), json.dumps(self.slots),
+             json.dumps({**m.como_dict(), "estado": d.estado, "motivos": d.motivos, "livres": d.livres}),
+             self.versao))
+
+    def uma_volta(self) -> dict:
+        r: dict = {"no": self.no}
+        if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
+            self._ultimo_plano = time.monotonic()
+            r["planejador"] = planejador.ciclo(self.con, self.grafo)
+        r["colhidos"] = self._colher()
+        r["leases_perdidos"] = self._renovar()
+        m = self.medir()
+        d = governador.decidir(m, self.slots, self._ocupados(), self._contido_seguidas)
+        self._contido_seguidas = self._contido_seguidas + 1 if d.estado == "contido" else 0
+        self._aplicar_acao(d)
+        self._registrar_no(m, d)
+        livres, lancados = dict(d.livres), 0
+        while not self._parar:
+            job = fila.reservar(self.con, self.no, livres, self.prazo_s)
+            if job is None:
+                break
+            for rec in job.recursos:
+                livres[rec] = livres.get(rec, 0) - 1
+            self._lancar(job, "rodar")
+            lancados += 1
+        r.update(estado=d.estado, lancados=lancados, rodando=len(self.filhos))
+        return r
+
+    def drenar(self, limite_s: float = 300.0) -> dict:
+        """Espera os filhos desta volta terminarem e serem concluídos (modo --uma-volta e testes)."""
+        tot = {"feito": 0, "falhou_efeito": 0, "falhou": 0, "recusado": 0}
+        fim = time.monotonic() + limite_s
+        while self.filhos and time.monotonic() < fim:
+            time.sleep(0.2)
+            for k, v in self._colher().items():
+                tot[k] += v
+            self._renovar()
+        return tot
+
+    def parar(self, *_):
+        """SIGTERM: mata os filhos e devolve os jobs à fila já (sem esperar o lease vencer)."""
+        self._parar = True
+        for f in list(self.filhos):
+            self._matar(f)
+            fila.falhar(self.con, f.job.ficha, "supervisor parado (SIGTERM)", True, "parada")
+            self._encerrar(f)
+
+    def rodar(self) -> None:
+        import psycopg
+        signal.signal(signal.SIGTERM, self.parar)
+        escuta = psycopg.connect(self.dsn, autocommit=True)
+        escuta.execute("LISTEN jfn_jobs")
+        try:
+            while not self._parar:
+                log.info("%s", self.uma_volta())
+                espera = ESPERA_COM_FILHO_S if self.filhos else ESPERA_OCIOSA_S
+                for _ in escuta.notifies(timeout=espera, stop_after=1):
+                    pass
+        finally:
+            escuta.close()
+            self.fechar()
+
+    def fechar(self) -> None:
+        for c in (self._con_lider, self.con):
+            if c is not None and not c.closed:
+                c.close()

@@ -1,0 +1,12 @@
+[Unit]
+# Fatia onde rodam TODOS os jobs do motor de fluxo (escopos `systemd-run --user --scope --slice=jfn-jobs.slice`).
+# Peso baixo diante do painel (jfn.service CPUWeight=1000) e do PostgreSQL na VM-2 (§3.4).
+# MemoryMax = RAM − 3 GB por máquina: 11,9 GB nas VMs ⇒ 8.9G; it-campo (WSL, ~24 GB) ⇒ ajustar por drop-in
+# (`systemctl --user edit jfn-jobs.slice`) na O1.10.
+# O1.8 (24/11/2026): só o arquivo. Instalar é a O2.
+Description=JFN — fatia dos jobs do motor de fluxo
+
+[Slice]
+CPUWeight=50
+IOWeight=50
+MemoryMax=8.9G

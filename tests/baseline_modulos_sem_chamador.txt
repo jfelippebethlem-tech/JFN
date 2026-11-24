@@ -46,3 +46,8 @@ compliance_agent.siafe_login  # [cli]
 compliance_agent.siafe_ppr  # [cli]
 compliance_agent.siafe_session  # [cli]
 compliance_agent.vantajosidade  # [biblioteca] 17 funções de teste
+compliance_agent.dominio.contrato_id  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
+compliance_agent.dominio.documento_id  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
+compliance_agent.dominio.estados  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
+compliance_agent.dominio.pagamento  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
+compliance_agent.dominio.processo_id  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3

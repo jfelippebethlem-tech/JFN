@@ -1,0 +1,31 @@
+[Unit]
+# Supervisor do motor de fluxo, um por máquina: jfn-fluxo@vm1, jfn-fluxo@vm2, jfn-fluxo@itcampo
+# (plano mestre v2 §3.3; ADR-012). O laço SÓ ESCOLHE: cada job roda num escopo transitório dentro de
+# jfn-jobs.slice, com MemoryMax/CPUWeight/timeout próprios — nunca dentro deste processo.
+# O1.8 (24/11/2026): só o arquivo. Instalar e habilitar é a O2 (parada de obras).
+Description=JFN — supervisor do motor de fluxo (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/JFN
+Environment=PYTHONPATH=%h/JFN
+# DSN do PostgreSQL da VM-2 (JFN_EVIDENCIAS_DSN); o arquivo fica fora do git
+EnvironmentFile=-%h/.config/jfn/pg_evidencias.env
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.fluxo supervisor --no %i
+# o supervisor é leve por construção; passou disto, é defeito dele e o systemd o derruba e o reinicia.
+# ATENÇÃO: sem systemd do usuário o isolamento cai para subprocesso e os filhos ficam NESTE cgroup (dentro dos
+# 256M) — em produção o `nos.capacidades.isolamento` tem de dizer 'systemd'.
+MemoryMax=256M
+CPUWeight=100
+# SIGTERM: o supervisor mata os filhos e devolve os jobs à fila na hora (sem esperar o lease vencer)
+KillMode=mixed
+TimeoutStopSec=40
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
