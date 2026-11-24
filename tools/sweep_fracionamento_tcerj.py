@@ -82,7 +82,20 @@ def _inciso_valor(enquadramento: str | None) -> bool | None:
 # desenho, não a fuga). Medido no sweep de 19/11/2026: FEC 2025/2026 (chamada pública, 9 e 20 credenciados),
 # UERJ (inscrições e anuidades) e GSI (juros e multas do INSS) acendiam como "fracionamento".
 _RE_NAO_CONTRATACAO = re.compile(
-    r"inscri[çc](?:[ãa]o|[õo]es)|anuidade|juros\s+e\s+multas|credenci|chamada\s+p[úu]blica", re.I)
+    r"inscri[çc](?:[ãa]o|[õo]es)|anuidade|juros\s+e\s+multas|credenci|chamada\s+p[úu]blica|"
+    # 23/11/2026: dívida de exercício anterior (DEA) é pagar o que já foi consumido, não contratar; e consumo de
+    # luz/água/esgoto da distribuidora é serviço contínuo de concessionária (inexigibilidade), não fracionável.
+    # Medido: CODERTE 2025, INEA 2023, IVB 2023 e EMOP 2024 somavam conta de Light/Ampla/Energisa/Águas do Rio.
+    r"reconhecimento\s+de\s+d[íi]vida|exerc[íi]cios?\s+anteriores|\bDEA\b|"
+    r"consumo\s+de\s+(?:energia|[áa]gua)|fornecimento\s+de\s+energia|[áa]gua\s+e\s+(?:tratamento\s+de\s+)?esgoto",
+    re.I)
+
+
+def _nao_fornecedor(nome: str | None) -> bool:
+    from compliance_agent.entidades_gov import eh_nao_fornecedor
+    from compliance_agent.fracionamento_siafe import _CREDOR_NAO_LICITAVEL
+    n = (nome or "").strip()
+    return bool(n) and bool(_CREDOR_NAO_LICITAVEL.search(n) or eh_nao_fornecedor(n))
 
 
 def _dispensa_por_valor(afastamento: str | None, enquadramento: str | None,
@@ -164,8 +177,11 @@ def carregar_grupos(db_path: Path = DB, ano: int | None = None,
             "valor": valor,
             "modalidade": r["afastamento"],
             # flag EXPLÍCITA p/ o _is_dispensa do P4: só dispensa POR VALOR conta p/ fracionamento
-            "dispensa": _dispensa_por_valor(r["afastamento"], r["enquadramento"], valor,
-                                            int(r["ano_processo"]), tipo_obj, r["objeto"]),
+            # fornecedor que não é compra licitável (concessionária, ente público, tributo) não soma — a MESMA
+            # peneira da triagem SIAFE (fonte única: fracionamento_siafe._CREDOR_NAO_LICITAVEL + entidades_gov)
+            "dispensa": (not _nao_fornecedor(r["fornecedor"])
+                         and _dispensa_por_valor(r["afastamento"], r["enquadramento"], valor,
+                                                 int(r["ano_processo"]), tipo_obj, r["objeto"])),
             "exercicio": int(r["ano_processo"]),
             "fornecedor": r["fornecedor"],
             "tipo_obj": tipo_obj,

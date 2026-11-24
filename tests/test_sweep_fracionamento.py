@@ -110,3 +110,25 @@ def test_tipo_obj_obras_vs_compras():
     assert _tipo_obj("reforma predial e obra de engenharia") == "obras"
     assert _tipo_obj("aquisição de café") == "compras"
     assert _tipo_obj(None) == "compras"
+
+
+def test_conta_de_concessionaria_e_dea_nao_sao_fracionamento(tmp_path):
+    # luz/água da distribuidora = serviço contínuo de concessionária; DEA = pagar o já consumido (23/11/2026)
+    db = _db_fixture(tmp_path, [
+        ("P-20/2025", 2025, 28_511.39, "DESPESA ESTIMADA COM O CONSUMO DE ENERGIA ELÉTRICA", "Dispensa - Pequenas Compras", "UG C", "AMPLA ENERGIA E SERVIÇOS S/A"),
+        ("P-21/2025", 2025, 30_000.0, "pagamento de faturas", "Dispensa - Pequenas Compras", "UG C", "LIGHT SERVICOS DE ELETRICIDADE SA"),
+        ("P-22/2025", 2025, 20_000.0, "RECONHECIMENTO DE DÍVIDA DE EXERCÍCIOS ANTERIORES - DEA", "Dispensa - Pequenas Compras", "UG C", "X LTDA"),
+        ("P-23/2025", 2025, 10_872.55, "FORNECIMENTO DE ÁGUA E TRATAMENTO DE ESGOTO", "Dispensa - Pequenas Compras", "UG C", "AGUAS DO RIO 4 SPE S.A"),
+    ])
+    grupos = carregar_grupos(db_path=db)
+    assert not any(c["dispensa"] for c in grupos[("UG C", 2025)])
+    assert rodar_sweep(grupos) == []
+
+
+def test_contratacao_com_ente_publico_nao_soma(tmp_path):
+    # certificado digital comprado da Imprensa Oficial (ente público) — contratação entre órgãos, não fuga do teto
+    db = _db_fixture(tmp_path, [
+        ("P-30/2025", 2025, 40_000.0, "aquisição de certificado digital", "Dispensa - Pequenas Compras", "UG D", "IMPRENSA OFICIAL DO ESTADO DO RIO DE JANEIRO"),
+        ("P-31/2025", 2025, 35_000.0, "aquisição de certificado digital A3", "Dispensa - Pequenas Compras", "UG D", "IMPRENSA OFICIAL DO ESTADO DO RIO DE JANEIRO"),
+    ])
+    assert rodar_sweep(carregar_grupos(db_path=db)) == []

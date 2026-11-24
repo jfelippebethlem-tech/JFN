@@ -2125,22 +2125,14 @@ def api_intel_lift():
 def api_intel_fracionamento(limite: int = 120):
     """Fracionamento de despesa pelo OBJETO (Lei 14.133 art. 75 §1º): unidade gestora × exercício ×
     natureza do objeto, soma das dispensas por valor contra o teto do ano, qualquer que seja o fornecedor.
-    O agrupamento antigo por CREDOR+UG+mês segue só como `auxiliar` — sinal secundário, não a definição."""
+    O agrupamento por CREDOR+UG+mês não é servido: mede pagamento de contrato contínuo, não fracionamento."""
     try:
-        from compliance_agent.cruzamentos_intel import fracionamento
         from compliance_agent.fracionamento_objeto import fracionamento_por_objeto
         lim = max(1, min(int(limite or 120), 300))
         d = fracionamento_por_objeto(limite=lim)
-        try:
-            aux = _cache_calc("intel:frac:30", 3600, lambda: fracionamento(limite=30))
-        except sqlite3.Error as exc:  # o auxiliar (base travada/ausente) não derruba a definição
-            aux = {"ok": False, "erro": str(exc)}
-        d["auxiliar"] = {
-            "titulo": "OBs do mesmo credor coladas no teto — sinal auxiliar",
-            "rotulo": ("Sinal auxiliar, NÃO é a definição de fracionamento: mesmo credor, mesma UG e mesmo mês "
-                       "com várias OBs logo abaixo do teto de dispensa. Serve para achar onde puxar os processos; "
-                       "o fracionamento só se afirma pela soma do MESMO OBJETO acima."),
-            "n": aux.get("n"), "grupos": aux.get("grupos", []), "ok": aux.get("ok", False)}
+        # 23/11/2026: a lista "mesmo credor + UG + mês" SAIU da tela. Ela mede PAGAMENTO, não contratação:
+        # enchia de serviço contínuo (luz, vigilância, publicidade, combustível — um contrato pago mês a mês)
+        # e de transferência a ente público. Fracionamento é o MESMO OBJETO em contratações distintas.
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
