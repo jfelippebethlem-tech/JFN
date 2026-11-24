@@ -671,3 +671,6 @@ if __name__ == "__main__":
             print(motivo, file=sys.stderr, flush=True)
         if not ok:
             sys.exit(1)
+        if r.get("itens_com_resultado"):     # evento de verdade (24/11/2026); a sonda (pncp_resultado) segue como rede
+            from compliance_agent import propagacao
+            propagacao.avisar("contratos_tcerj", f"PNCP: {r['itens_com_resultado']} item(ns) com resultado coletado(s)")

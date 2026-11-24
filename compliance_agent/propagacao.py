@@ -172,6 +172,27 @@ def emitir(con: sqlite3.Connection, cfg: dict, fonte: str, detalhe: str, quando:
     return eid
 
 
+def avisar(fonte: str, detalhe: str) -> int | None:
+    """Evento de verdade do PRODUTOR (Etapa 2, 24/11/2026): o coletor que terminou com sucesso avisa na hora, com o
+    QUE mudou; a sonda segue como rede de segurança (o evento duplicado cai na mesma janela de junção). Nunca derruba
+    o coletor: falha vira aviso no stderr e None. Sob pytest não grava (a base é a de produção), salvo
+    JFN_PROPAGACAO_EM_TESTE=1."""
+    if os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("JFN_PROPAGACAO_EM_TESTE"):
+        return None
+    try:
+        cfg = carregar()
+        if fonte not in cfg["fontes"]:
+            raise KeyError(f"fonte '{fonte}' não está em config/propagacao.yaml")
+        con = conectar()
+        try:
+            return emitir(con, cfg, fonte, detalhe)
+        finally:
+            con.close()
+    except (OSError, ValueError, KeyError, sqlite3.Error, yaml.YAMLError) as exc:
+        print(f"propagação: evento de {fonte} não emitido ({type(exc).__name__}: {exc})", file=sys.stderr)
+        return None
+
+
 # ───────────────────────────── sondas ─────────────────────────────
 class SondaFalhou(RuntimeError):
     """A sonda não conseguiu medir a fonte (isto NÃO é 'sem mudança')."""

@@ -161,6 +161,12 @@ def main() -> int:
         print(f"sancoes_federais: {n} registros gravados", flush=True)
     finally:
         con.close()
+    # evento de verdade (24/11/2026): o snapshot é DELETE + INSERT — com a mesma contagem, MAX(rowid) da sonda não
+    # muda e a troca de conteúdo passava em branco
+    import sys
+    sys.path.insert(0, str(RAIZ))             # o timer roda `python tools/ingerir_ceis_cnep.py`, sem PYTHONPATH
+    from compliance_agent import propagacao
+    propagacao.avisar("sancoes", f"CEIS/CNEP: snapshot de {n} sanção(ões) regravado")
     return 0
 
 

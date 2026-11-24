@@ -231,6 +231,10 @@ if __name__ == "__main__":
             except RuntimeError as exc:   # o que já entrou fica (INSERT OR REPLACE); a base fica INCOMPLETA
                 res[nome], falhou = f"INDISPONIVEL: {exc}", True
         print(json.dumps(res, ensure_ascii=False, indent=2))
+        from compliance_agent import propagacao      # evento de verdade (24/11/2026); a sonda segue como rede
+        for nome, fonte in (("contratos", "contratos_tcerj"), ("compras_diretas", "compras_diretas_tcerj")):
+            if isinstance(res.get(nome), int) and res[nome]:
+                propagacao.avisar(fonte, f"TCE-RJ dados abertos: {res[nome]} registro(s) de {nome} ingerido(s)")
         if falhou:
             raise SystemExit(1)
     if a.correlacionar:

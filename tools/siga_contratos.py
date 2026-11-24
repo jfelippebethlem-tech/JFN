@@ -149,6 +149,9 @@ def main() -> int:
     alvos = a.cnpj + (cnpjs_tac() if a.tac else [])
     r = materializar(alvos, detalhar=a.detalhar)
     print(f"[siga] {r['cnpjs']} CNPJs → {r['contratos']} contratos ({r['detalhados']} detalhados)")
+    if r["contratos"]:   # evento de verdade (24/11/2026); a sonda de contratos_tcerj lê siga_contratos como rede
+        from compliance_agent import propagacao
+        propagacao.avisar("contratos_tcerj", f"SIGA: {r['contratos']} contrato(s) de {r['cnpjs']} CNPJ(s) materializados")
     return 0
 
 

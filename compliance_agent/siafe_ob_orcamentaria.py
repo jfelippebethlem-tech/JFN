@@ -232,6 +232,9 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
         con.close()
     if recusadas:
         logger.warning("ingerir: %d OB(s) de outro ano recusadas para o exercício %s", recusadas, exercicio)
+    if n:   # evento de verdade para o grafo (24/11/2026); a sonda MAX(rowid) segue como rede
+        from compliance_agent import propagacao
+        propagacao.avisar("siafe_ob", f"{n} OB(s) do exercício {exercicio} ingeridas do SIAFE (total {tot})")
     return {"ok": True, "ingeridas": n, "recusadas_outro_ano": recusadas, "total_tabela": tot,
             "exercicio": exercicio}
 

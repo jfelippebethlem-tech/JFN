@@ -511,3 +511,43 @@ def test_pesado_sh_devolve_a_vez_com_pedido_fresco(tmp_path):
     os.utime(pedido, (time.time() - 3600, time.time() - 3600))         # pedido velho: roda normal
     r = subprocess.run(["bash", str(sh), "teste", "5", "touch", str(marca)], env=env, timeout=30)
     assert r.returncode == 0 and marca.exists()
+
+
+# ───────────── evento de verdade do produtor (24/11/2026) ─────────────
+def test_avisar_grava_evento_e_suja_dependentes(tmp_path, monkeypatch):
+    import yaml
+    cfgp = tmp_path / "p.yaml"
+    cfgp.write_text(yaml.safe_dump(_cfg(a=_der(["f"]))))
+    monkeypatch.setattr(P, "CONFIG", cfgp)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    assert P.avisar("f", "OB nova") is None                             # sob pytest, sem a chave: não grava
+    monkeypatch.setenv("JFN_PROPAGACAO_EM_TESTE", "1")
+    eid = P.avisar("f", "1.234 OB(s) ingeridas")
+    con = sqlite3.connect(tmp_path / "propagacao.db")
+    assert con.execute("SELECT fonte, detalhe FROM evento WHERE id=?", (eid,)).fetchone() == ("f", "1.234 OB(s) ingeridas")
+    assert con.execute("SELECT derivado FROM pendencia WHERE evento_id=?", (eid,)).fetchall() == [("a",)]
+    con.close()
+
+
+def test_avisar_fonte_desconhecida_nao_derruba_o_coletor(tmp_path, monkeypatch, capsys):
+    import yaml
+    cfgp = tmp_path / "p.yaml"
+    cfgp.write_text(yaml.safe_dump(_cfg(a=_der(["f"]))))
+    monkeypatch.setattr(P, "CONFIG", cfgp)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    monkeypatch.setenv("JFN_PROPAGACAO_EM_TESTE", "1")
+    assert P.avisar("nao_existe", "x") is None
+    assert "não emitido" in capsys.readouterr().err
+
+
+def test_todo_avisar_do_repositorio_aponta_fonte_do_mapa():
+    """Catraca: coletor que avisa fonte que não existe no yaml perderia o evento calado (só stderr)."""
+    import re
+    fontes = set(P.carregar(RAIZ / "config" / "propagacao.yaml")["fontes"])
+    rx = re.compile(r"propagacao\.avisar\(\s*\"([a-z_]+)\"")
+    achados = {}
+    for arq in list((RAIZ / "compliance_agent").rglob("*.py")) + list((RAIZ / "tools").glob("*.py")):
+        for f in rx.findall(arq.read_text(encoding="utf-8", errors="ignore")):
+            achados.setdefault(f, []).append(arq.name)
+    assert {"siafe_ob", "contratos_tcerj", "sancoes"} <= set(achados)
+    assert set(achados) <= fontes, {f: a for f, a in achados.items() if f not in fontes}
