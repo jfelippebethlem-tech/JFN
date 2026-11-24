@@ -50,6 +50,16 @@ _RX_ASSOC_ME = re.compile(
     r"\bassoc|\bfunda[çc][ãa]o\b|\binstituto\b|\bliga\b|\bme\b\.?$|\bmei\b|\beireli\b|\bepp\b", re.I)
 
 
+# Instrumento de REGIME PRÓPRIO, que não é contratação direta da 14.133 (MAPA-DE-REGIMES, linhas 2–4, 10–11; medido
+# 24/11/2026 na regra 2: 7 dos 12 primeiros eram contrato de gestão com OS, convênio entre órgãos ou credor interno; na
+# regra 1, 41 de 261 eram inscrição em curso/capacitação; na regra 4, 15 de 27 eram termo aditivo e 9 credenciamento):
+# contrato de gestão (Lei 9.637), termo de colaboração/fomento (Lei 13.019), convênio (14.133 art. 184), credenciamento
+# (art. 79), inscrição em curso/evento de capacitação (art. 74, III, "f") e termo aditivo de contrato existente.
+_RX_REGIME_PROPRIO = re.compile(
+    r"contrato\s+de\s+gest[ãa]o|termo\s+de\s+(?:colabora[çc][ãa]o|fomento)|\bconv[êe]nio|credenci|"
+    r"inscri[çc](?:[ãa]o|[õo]es)|capacita[çc][ãa]o|termo\s+aditivo|\baditivo\b", re.I)
+
+
 def _modalidade(txt: str) -> str:
     t = (txt or "").lower()
     if "inexig" in t:
@@ -79,6 +89,18 @@ class P7DiretaDeRisco(Detector):
             return res
         if valor is None or float(valor) <= 0:
             res.motivo_refutacao = "nao_avaliavel: contratação direta sem valor empenhado apurável (INDISPONÍVEL ≠ 0)"
+            return res
+        doc = re.sub(r"\D", "", str(contexto.get("credor") or ""))
+        if contexto.get("credor") is not None and len(doc) not in (11, 14):
+            res.status = "descartado"     # código de unidade/ente como credor: movimentação interna, não contratação
+            res.motivo_refutacao = "descartado: credor sem CNPJ/CPF (código de unidade ou ente) — não é contratação"
+            return res
+        hist = " ".join(str(contexto.get(k) or "") for k in ("historico", "subitem"))
+        m = _RX_REGIME_PROPRIO.search(hist)
+        if m:
+            res.status = "descartado"
+            res.motivo_refutacao = (f"descartado: instrumento de regime próprio ('{m.group(0)}') — contrato de gestão, "
+                                    "parceria, convênio, credenciamento, inscrição ou aditivo não é contratação direta nova")
             return res
         valor = float(valor)
         texto = " ".join(str(contexto.get(k) or "") for k in ("historico", "subitem"))

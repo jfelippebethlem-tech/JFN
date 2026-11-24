@@ -406,3 +406,28 @@ def test_x8_prorrogacao_apos_a_vigencia_continua_confirmando():
     r = X8AditivoRetroativo().avaliar({"processo": "P", "vigencia_fim": "2024-12-31",
                                        "aditivos": [{"objeto": "Prorrogação de prazo", "data_assinatura": "2025-06-01"}]})
     assert r.status == "confirmado"
+
+
+# ── P7: contrato de gestão, convênio, credenciamento, inscrição, aditivo e credor-unidade ficam fora ──
+
+def _p7(**kw):
+    from compliance_agent.detectores.p7_direta_de_risco import P7DiretaDeRisco
+    ctx = {"processo": "P", "modalidade": "Dispensa", "valor": 5_000_000.0, "ano": 2025, "credor": "22222222000100",
+           "credor_nome": "X LTDA", "historico": "prestação de serviço contínuo de limpeza mensal"}
+    ctx.update(kw)
+    return P7DiretaDeRisco().avaliar(ctx)
+
+
+@pytest.mark.parametrize("hist", ["Contrato de gestão — hospital estadual, serviço contínuo",
+                                  "Convênio com o INEA, serviço contínuo", "Credenciamento de clínicas, serviço contínuo",
+                                  "Termo aditivo ao contrato 12/2021, serviço contínuo"])
+def test_p7_regime_proprio_nao_e_direta_de_risco(hist):
+    assert _p7(historico=hist).status == "descartado"
+
+
+def test_p7_credor_codigo_de_unidade_nao_e_contratacao():
+    assert _p7(credor="133100").status == "descartado"
+
+
+def test_p7_dispensa_de_continuo_acima_do_teto_continua_acendendo():
+    assert _p7().status == "confirmado"
