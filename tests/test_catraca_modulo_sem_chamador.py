@@ -93,6 +93,10 @@ def orfaos() -> frozenset[str]:
     for p in _arquivos():
         if p.relative_to(RAIZ).parts[0] == "tests":
             continue
+        # config/jobs.yaml é o INVENTÁRIO do que rodava (O1.1 da Esteira Única): cita todo módulo do crontab
+        # antigo, inclusive os aposentados — citar no inventário não é chamar (24/11/2026).
+        if p.relative_to(RAIZ).as_posix() == "config/jobs.yaml":
+            continue
         if p.suffix == ".py":
             fonte = p.read_text(encoding="utf-8", errors="replace")
             proprio = _modulo_de(p)

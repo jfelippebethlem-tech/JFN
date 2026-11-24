@@ -279,3 +279,6 @@ data/sei_ocr_ia_fichas/
 
 # 23/11/2026: mapa da máscara reversível da leitura integral (CPF e conta REAIS) — nunca versionar
 data/leitura_integral/
+
+# Inventário operacional (O1.1 Esteira Única) — topologia, não vai ao repo público; cópia no vault
+config/jobs.yaml

@@ -6,20 +6,20 @@ versao: 2
 itens:
   # O0 — Contenção
   - {id: O0.0, dep: [], maq: vm1+itcampo, estado: feito, titulo: "Backup conferido + fotografia das 3 máquinas"}
-  - {id: O0.7, dep: [O0.0], maq: todas, estado: em_curso, titulo: "Parada de obras (crontab #PARADA-20261124, timers, tarefas, snapshot congelado)"}
+  - {id: O0.7, dep: [O0.0], maq: todas, estado: feito, nota: "parada 12:25; snapshot md5 0 divergência no it-campo D:/JFN-Frio/snapshot-20261124", titulo: "Parada de obras (crontab #PARADA-20261124, timers, tarefas, snapshot congelado)"}
   - {id: O0.1, dep: [], maq: vm1, estado: feito, titulo: "Backlog + frente no quadro + notas às frentes vivas"}
   - {id: O0.2, dep: [O0.7], maq: vm2, estado: pendente, titulo: "Disco VM-2 < 75% + swap 4 GB"}
-  - {id: O0.3, dep: [O0.7], maq: vm1, estado: pendente, titulo: "Painel falha-fechado (bind local, Secure, epoch, rate limit) + modo só leitura"}
+  - {id: O0.3, dep: [O0.7], maq: vm1, estado: em_curso, nota: "84d7d9e0 no ar: bind 127.0.0.1, Secure, epoch, rate limit SQLite, manutenção só leitura; FALTA JFN_ENV=producao (senha do dono tem 18 < 20) e /ws em manutenção", titulo: "Painel falha-fechado (bind local, Secure, epoch, rate limit) + modo só leitura"}
   - {id: O0.4, dep: [O0.7], maq: vm1+vm2, estado: pendente, titulo: "SSRF (redirect manual validado) + egress nftables"}
-  - {id: O0.5, dep: [], maq: vm1, estado: pendente, titulo: "Não piorar o repo: scan_pii + gitleaks nos hooks; workflows de coleta desligados"}
+  - {id: O0.5, dep: [], maq: vm1, estado: em_curso, nota: "feito 78c6906a: scan_pii + hooks + workflows sem input e desligados; falta gitleaks", titulo: "Não piorar o repo: scan_pii + gitleaks nos hooks; workflows de coleta desligados"}
   - {id: O0.6, dep: [O0.5], maq: itcampo, estado: pendente, titulo: "Preparar (sem executar) a limpeza do histórico", tags: [irreversivel]}
   # O1 — Inventário, capacidade, motor de fluxo
-  - {id: O1.1, dep: [O0.1], maq: vm1, estado: pendente, titulo: "tools/inventario_jobs.py -> catálogo de tudo que roda"}
-  - {id: O1.2, dep: [O1.1], maq: vm1, estado: pendente, titulo: "Mapa script -> estágio/lente (55 por órgão, 29 perícias, 22 Lex, 15 captura, 48 sweeps)"}
+  - {id: O1.1, dep: [O0.1], maq: vm1, estado: feito, nota: "inventário: 235 jobs (vm1 197, vm2 20, itcampo 18), 29 duplicações; config/jobs.yaml fora do git (topologia), cópia no vault", titulo: "tools/inventario_jobs.py -> catálogo de tudo que roda"}
+  - {id: O1.2, dep: [O1.1], maq: vm1, estado: feito, nota: "143 scripts mapeados, 0 sem destino; 74 com regra única a portar; 47 aposentar", titulo: "Mapa script -> estágio/lente (55 por órgão, 29 perícias, 22 Lex, 15 captura, 48 sweeps)"}
   - {id: O1.3, dep: [O1.1], maq: vm2, estado: pendente, titulo: "tools/baseline_refatoracao.py (linha de base reproduzível)"}
   - {id: O1.4, dep: [], maq: vm1, estado: pendente, titulo: "ADR-001 matriz de autoridade + esqueletos ADR-002..011"}
-  - {id: O1.5, dep: [], maq: vm1, estado: pendente, titulo: "Descobrir executor real do MotorCompliance"}
-  - {id: O1.6, dep: [O1.1], maq: vm1, estado: pendente, titulo: "Capacidade horas/dia por estágio e máquina (com e sem it-campo)"}
+  - {id: O1.5, dep: [], maq: vm1, estado: feito, nota: "executor = tools/sweep_avaliacao_total.sh:41 -> analisar.py --rodar -> MotorCompliance (_regra_ob_fracionamento); 175 alertas tipo fracionamento, último 24/11 04:54; parado na parada de obras", titulo: "Descobrir executor real do MotorCompliance"}
+  - {id: O1.6, dep: [O1.1], maq: vm1, estado: feito, nota: "VM-1 118,8 h/dia de parede (navegador 25,8 h, LLM 47,8 h); sem it-campo OCR ~19 PDF/dia vs ~1.016 e captura ≤ 1/3", titulo: "Capacidade horas/dia por estágio e máquina (com e sem it-campo)"}
   - {id: O1.7, dep: [O0.2], maq: vm2, estado: pendente, titulo: "Schema fluxo no PG (jobs evoluída, eventos, agenda, grafo, nos, metricas) + teste de concorrência"}
   - {id: O1.8, dep: [O1.7], maq: todas, estado: pendente, titulo: "compliance_agent/fluxo/ supervisor+planejador+governador PSI + units systemd"}
   - {id: O1.9, dep: [], maq: vm2, estado: bloqueado_dono, titulo: "CLI do Claude na VM-2 (login do dono) como 2º executor da conferência"}
