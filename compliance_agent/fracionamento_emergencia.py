@@ -66,9 +66,25 @@ _RE_EMERGENCIA = re.compile(r"emergenc|emerg[êe]ncia", re.IGNORECASE)
 # "Art. 75. VIII", "art.24, inciso IV"). Os OUTROS incisos ficam de fora de propósito: o inciso II
 # é dispensa por VALOR e tem régua própria; misturá-los devolveria a confusão que este módulo
 # existe para desfazer.
+#
+# 23/11/2026 — medido no espelho: a régua perdia a redação DOMINANTE da 8.666 no TCE-RJ, com o inciso ANTES do
+# artigo ("Em conformidade com o Inciso IV, do Art. 24 da lei 8666/93": 357 processos, R$ 1,26 bi) e "ARTIGO 24 DO
+# INCISO IV"; perdia a emergência da ESTATAL (Lei 13.303, art. 29, XV — 40 linhas: EMOP, CEASA, IVB); e lia o art.
+# 75, XVIII como VIII (o \D absorvia o "X"). Numeral romano agora é palavra inteira.
 _RE_ENQ_EMERGENCIA = re.compile(
-    r"(?:art\.?\s*)?75\D{0,6}VIII"                      # Lei 14.133/2021, art. 75, VIII
-    r"|(?:art\.?\s*)?24\D{0,10}IV(?![IVX])",             # Lei 8.666/93, art. 24, IV
+    r"(?:art\.?\s*)?75\D{0,6}(?<![IVX])VIII(?![IVX])"                     # Lei 14.133/2021, art. 75, VIII
+    r"|(?:art\.?\s*)?24\D{0,14}(?<![IVX])IV(?![IVX])"                     # Lei 8.666/93, art. 24, IV
+    r"|inciso\s*IV(?![IVX])\D{0,15}art\.?\s*24\b"                          # ... inciso antes do artigo
+    r"|inciso\s*VIII(?![IVX])\D{0,15}art\.?\s*75\b"
+    r"|13\.?303(?:/\d{2,4})?\D{0,20}29\D{0,6}(?<![IVX])XV(?![IVX])"          # Lei 13.303/2016, art. 29, XV
+    r"|29\D{0,6}(?<![IVX])XV(?![IVX])\D{0,25}13\.?303",
+    re.IGNORECASE)
+# Enquadramento que NOMEIA um dispositivo (artigo + inciso). Quando ele existe e não é o emergencial, a palavra
+# "emergencial" no objeto NÃO converte a contratação em emergência: medido 23/11/2026, 101 linhas com objeto
+# "emergencial" e enquadramento de outro inciso — art. 75, II (dispensa por VALOR), art. 74, I (exclusividade),
+# art. 24, II/XI — entravam na recorrência de emergência, que é exatamente a confusão que este módulo desfaz.
+_RE_ENQ_DETERMINADO = re.compile(
+    r"\bart(?:igo)?\.?\s*\d+[^\n]*?(?<![A-Za-z])[IVXL]+(?![A-Za-z\d])|\binc(?:iso|\.)\s*[IVXL]+(?![A-Za-z\d])",
     re.IGNORECASE)
 
 RESSALVA = ("indício a apurar, não afirmação de irregularidade: a dispensa emergencial é "
@@ -82,9 +98,12 @@ def eh_emergencial(objeto: str | None, enquadramento: str | None = None) -> bool
     `enquadramento` é opcional para não quebrar o chamador antigo, mas quem tem a coluna deve
     passá-la: ela é a prova documental, e o texto do objeto é só o indício de linguagem.
     """
-    if _RE_EMERGENCIA.search(str(objeto or "")):
+    enq = str(enquadramento or "")
+    if _RE_ENQ_EMERGENCIA.search(enq):
         return True
-    return bool(_RE_ENQ_EMERGENCIA.search(str(enquadramento or "")))
+    if _RE_ENQ_DETERMINADO.search(enq):
+        return False                    # dispositivo nomeado e não emergencial: o objeto não o sobrepõe
+    return bool(_RE_EMERGENCIA.search(str(objeto or "")))
 
 
 def agrupar_emergencias(linhas, *, minimo: int = 5) -> list[dict]:
