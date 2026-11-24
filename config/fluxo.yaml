@@ -486,6 +486,23 @@ rotinas:
     agenda:
     - {cron: 40 2 * * *}
     origem: [vm1-cron-backup-evidencias-pg-sh]
+  restauracao_semanal:
+    estagio: E17
+    descricao: 'Restauração semanal conferida (O8.2, 3-2-1-1-0): md5 do MD5SUMS, PG temporário + pg_restore do jfn_evidencias, cópia + quick_check do compliance.db, contagens EXATAS contra as da origem que viajam com o backup; grava backup.restauracao_ok e backup.restauracao_quando em fluxo.metricas'
+    comando: ['{py}', -m, tools.restauracao_semanal, semanal, --no, itcampo]
+    recursos: [disco]
+    nos: [itcampo]
+    volta: {nos: [vm2], nota: 'na VM-2 exige JFN_RESTAURO_FONTE (pasta com MD5SUMS) e JFN_RESTAURO_PG_BIN no ambiente do nó'}
+    timeout_s: 7200
+    prioridade: 60
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0. Antes de ligar: (1) o worker do it-campo precisa de psycopg + DSN pelo resolvedor (hoje não tem); (2) um produtor semanal tem de depositar no HD a pasta snapshot-AAAAMMDD com MD5SUMS, o dump do PG, o compliance.db e as contagens da origem tiradas no MESMO instante (pg_contagens.json e contagens*.json) — sem elas a rotina falha de propósito'
+    nota: 'Primeira restauração real em 24/11/2026 no it-campo (PG 18.6 sem root, binários extraídos por dpkg -x em ~/jfn-restauro/pg). O dump noturno de 24/11 02:40 era anterior à carga de 15:55–16:12 UTC: restaurado ≠ contagem viva, por isso a régua tem de ser a contagem gravada junto com o backup'
+    env: {JFN_RESTAURO_FONTE: /mnt/d/JFN-Frio}
+    agenda:
+    - {cron: 0 7 * * 0}
+    origem: [o8.2-plano-mestre-v2]
+    efeito: {descricao: 'a restauração conferiu todas as tabelas contra a origem e as duas linhas da métrica foram regravadas e recontadas em fluxo.metricas', log_contem: 'restauracao_semanal: conferida (\d+)/\1 tabelas, métrica gravada execucao=[0-9a-f]{12}'}
   manutencao_diaria:
     estagio: E17
     descricao: Manutenção diária (logs, temporários)
