@@ -5,6 +5,10 @@
 # REGISTRADA no repo contra fonte primária (lift contra sanção posterior NÃO é FP). A revisão cética de
 # 13/11/2026 (amostra conferida em fonte primária, fora do repo) vai em `revisao_2026_11_13`.
 # Código: compliance_agent/qualidade/detectores.py · catracas: tests/test_regra_controles_detector.py
+# O5.1: `estado` (ativo|sem_varredura|a_portar|fundido + fundido_em) é curado; `tier`, `tier_motivo`,
+# `fp_ic95` e `manchete_efetiva` são CALCULADOS (compliance_agent/qualidade/detectores.py:campos_calculados)
+# e gravados por `python tools/registro_tiers.py --gravar` — não editar à mão. fp_medida.n/falsos =
+# decididos/falsos da versão vigente (transcritos do `taxa`), estratificada e cobertura para o tier 1.
 detectores:
   acima_do_teto:
     modulo: compliance_agent/acima_do_teto.py
@@ -25,6 +29,11 @@ detectores:
       excluida_por: compliance_agent/acima_do_teto.py:classificar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   acumulo_cargos:
     modulo: compliance_agent/acumulo_cargos.py
     simbolo: cruzar
@@ -49,6 +58,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   anomalias:
     modulo: compliance_agent/anomalias.py
     simbolo: rodar
@@ -66,6 +80,11 @@ detectores:
       excluida_por: compliance_agent/entidades_gov.py:eh_nao_fornecedor
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   cge_confronto:
     modulo: compliance_agent/cge_confronto.py
     simbolo: confrontar
@@ -85,6 +104,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   comparador.caro_e_suspeito:
     modulo: compliance_agent/comparador_precos.py
     simbolo: caro_e_suspeito
@@ -112,10 +136,19 @@ detectores:
       taxa: 'INDISPONÍVEL no domínio (n=0); fora dele sanção 0 falsos em 10, preço 1 falso e 9 indeterminados; 8 de 10 só tinham sanção posterior à compra'
       fonte_primaria: 'CEIS/CNEP (sancoes_federais) e PNCP — itens'
       onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
+      n: 0
+      falsos: 0
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: 5 compras caras de fornecedores sancionados
       sustentado: 0 sancionadas à época
+    estado: ativo
+    tier: 3
+    tier_motivo: medida_sem_contagem_de_decididos
+    fp_ic95: null
+    manchete_efetiva: false
   comparador.economia_potencial:
     modulo: compliance_agent/comparador_precos.py
     simbolo: economia_potencial
@@ -148,10 +181,19 @@ detectores:
       taxa: 'antes: 1 falso e 2 indeterminados em 5 (1/3 dos decididos; 13/16 na lógica toda) → corrigido (classe CATMAT sem especificação vai a INDETERMINADO; preço acompanhado 80–125% por outro fornecedor não é outlier); depois: 0/2 (peróxido e aminofilina, VERDADEIROS)'
       fonte_primaria: 'PNCP — itens e cabeçalho da compra (API pública), pncp_resultado/pncp_ente e verificacao_precos.db'
       onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
+      n: 2
+      falsos: 0
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: R$ 5.976.128,58 de economia potencial
       sustentado: ≤ R$ 5,02 mi como teto teórico; pago INDISPONÍVEL
+    estado: ativo
+    tier: 2
+    tier_motivo: n=2<30; amostra_nao_estratificada; ic95_sup=65.8%>25%; cobertura_desconhecida
+    fp_ic95: [0.0, 0.6576]
+    manchete_efetiva: false
   comparador.economia_vedada:
     modulo: compliance_agent/comparador_precos.py
     simbolo: economia_vedada
@@ -179,6 +221,15 @@ detectores:
       taxa: 'INDISPONÍVEL no domínio (n=0); fora dele 2 falsos e 3 indeterminados (2/2 decididos) — defeitos: município não checado em veda_ente, vigência na data de publicação, ente privado na aba Prefeitura'
       fonte_primaria: 'CEIS/CNEP (sancoes_federais: vigência e abrangência) e pncp_ente'
       onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
+      n: 0
+      falsos: 0
+      estratificada: false
+      cobertura: null
+    estado: ativo
+    tier: 3
+    tier_motivo: medida_sem_contagem_de_decididos
+    fp_ic95: null
+    manchete_efetiva: false
   comparador.orgao_que_mais_economiza:
     modulo: compliance_agent/comparador_precos.py
     simbolo: economia_potencial (por_orgao)
@@ -202,10 +253,19 @@ detectores:
       taxa: 'antes: 1/1 falso (Prefeitura partida em dois nomes; R$ 4.775,10 de R$ 9.217,50 de item falso/indeterminado) → corrigido (_norm_ente + filtros do herói); depois: Prefeitura do Rio, R$ 6.990,40 em 2 compras, 0/2 falsos'
       fonte_primaria: 'PNCP — itens e cabeçalho da compra; pncp_ente'
       onde: '~/vault/aprendizados/fp-medida-comparador-2026-11-19.md'
+      n: 2
+      falsos: 0
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: R$ 25.873.309,21 no órgão que mais economiza (conjunto genérico)
       sustentado: R$ 5.336.162,40 na base homogênea
+    estado: ativo
+    tier: 2
+    tier_motivo: n=2<30; amostra_nao_estratificada; ic95_sup=65.8%>25%; cobertura_desconhecida
+    fp_ic95: [0.0, 0.6576]
+    manchete_efetiva: false
   competencia_futura:
     modulo: compliance_agent/pagamento_competencia_futura.py
     simbolo: pagamento_competencia_futura
@@ -229,6 +289,11 @@ detectores:
       excluida_por: compliance_agent/pagamento_competencia_futura.py:pagamento_competencia_futura
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D01:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d01_02_17
@@ -259,6 +324,11 @@ detectores:
     dominio: contratos do espelho TCE-RJ assinados de 23/03/2026 ao último mês completo ingerido das compras diretas × mesmo
       intervalo do ano anterior
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D02:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d01_02_17
@@ -285,6 +355,11 @@ detectores:
     dominio: contratos do espelho TCE-RJ assinados a partir de 23/03/2026 com processo no espelho de compras diretas de
       caráter emergencial
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D03:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d03
@@ -310,6 +385,11 @@ detectores:
     dominio: OB contabilizada do SIAFE a credor cuja 1a OB (desde 2021) cai na gestão iniciada em 23/03/2026, >= R$ 500
       mil
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D04:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d04
@@ -347,6 +427,11 @@ detectores:
       afirmado: 239 credores, R$ 638,6 mi em OB × porte atual
       sustentado: contratos 112 / R$ 270,5 mi após retirar empenhos, ARP, cancelados e duplicatas; mede porte atual, não
         o do ano do certame
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D05:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d05
@@ -373,6 +458,11 @@ detectores:
     dominio: OB contabilizada do Executivo estadual (SIAFE) de 23/03/2026 ao último mês completo × mesmo intervalo do ano
       anterior
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D06:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d06
@@ -398,6 +488,11 @@ detectores:
       excluida_por: null
     dominio: termos aditivos do PNCP assinados a partir de 23/03/2026 em contratos de órgão estadual (Executivo)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D07:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d07
@@ -422,6 +517,11 @@ detectores:
       excluida_por: null
     dominio: séries de OB do exercício corrente (siafe_fracionamento) com 1a OB a partir de 23/03/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D08:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d08_09
@@ -447,6 +547,11 @@ detectores:
       excluida_por: null
     dominio: contratos assinados de 23/03/2026 a 06/04/2026 × mesmo intervalo de 2025; OB contabilizada diária desde 01/01/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D09:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d08_09
@@ -468,6 +573,11 @@ detectores:
       excluida_por: null
     dominio: OB contabilizada do SIAFE de 16/03/2026 a 22/03/2026 × média semanal desde 01/01/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D10:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d10
@@ -501,6 +611,11 @@ detectores:
       veredito: PARCIAL
       afirmado: 22 credores sem histórico, R$ 1,02 bi
       sustentado: 'sem histórico falso em >= 8 dos 22 (63,3% do valor): filial, sucessora, grupo, consórcio'
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D11:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d11
@@ -524,6 +639,11 @@ detectores:
       excluida_por: null
     dominio: decretos publicados no DOERJ a partir de 23/03/2026 × 01/01-22/03/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D12:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d12
@@ -547,6 +667,11 @@ detectores:
       excluida_por: null
     dominio: atos publicados no DOERJ a partir de 23/03/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D13:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d13
@@ -580,6 +705,11 @@ detectores:
       veredito: PARCIAL
       afirmado: 282 credores, R$ 330,4 mi sócio agente público, por nome
       sustentado: dos 9 comissionados, 7 coincidem em nome + 6 dígitos do CPF; 1 no mesmo órgão pagador
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D14:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d14
@@ -614,6 +744,11 @@ detectores:
       veredito: PARCIAL
       afirmado: 100 credores, R$ 333,3 mi sancionada paga na vigência
       sustentado: núcleo com alcance sobre o RJ ≈ R$ 146,7 mi / 16 credores; 56% era sanção de outro ente
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D15:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d15
@@ -638,6 +773,11 @@ detectores:
       excluida_por: null
     dominio: OB contabilizada do SIAFE na gestão iniciada em 23/03/2026
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D16:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d16
@@ -658,6 +798,11 @@ detectores:
       excluida_por: null
     dominio: extratos de TAC no DOERJ desde 01/01/2026 (pré-gestão × gestão iniciada em 23/03/2026)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D17:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d01_02_17
@@ -678,6 +823,11 @@ detectores:
     dominio: processos do exercício corrente no espelho de compras diretas do TCE-RJ (não recorta pela data de início da
       gestão)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D18:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d18
@@ -705,6 +855,11 @@ detectores:
       veredito: REFUTADA
       afirmado: 6 credores, R$ 103,4 mi fachada/fantasma
       sustentado: 0 com fachada documentada
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D19:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d19
@@ -724,6 +879,11 @@ detectores:
       excluida_por: null
     dominio: competências da folha de 2026-03 ao último mês completo
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   couto.D20:
     modulo: compliance_agent/governo_couto_regras.py
     simbolo: d20
@@ -744,6 +904,11 @@ detectores:
       excluida_por: null
     dominio: OB do SIAFE com status Anulado/Excluído de 23/03/2026 ao último mês completo × mesmo intervalo do ano anterior
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   dea_recorrente:
     modulo: compliance_agent/dea_recorrente.py
     simbolo: dea_recorrente
@@ -764,6 +929,12 @@ detectores:
       excluida_por: compliance_agent/dea_recorrente.py:dea_recorrente
     dominio: null
     fp_medida: null
+    estado: fundido
+    fundido_em: orcamento.pg03_dea_recorrente
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.C6VinculoPolitico:
     modulo: compliance_agent/detectores/c6_vinculo_politico.py
     simbolo: C6VinculoPolitico
@@ -791,6 +962,11 @@ detectores:
       excluida_por: null
     dominio: contratos com QSA do contratado e doações TSE nos 2 ciclos eleitorais anteriores ao contrato
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.C7SancionadaContratada:
     modulo: compliance_agent/detectores/c7_sancionada_contratada.py
     simbolo: C7SancionadaContratada
@@ -815,6 +991,11 @@ detectores:
       excluida_por: compliance_agent/detectores/c7_sancionada_contratada.py:C7SancionadaContratada.avaliar
     dominio: contratados com data de referência conhecida, sanções CEIS/CNEP e SIGA-RJ
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.C8ServidorSocio:
     modulo: compliance_agent/detectores/c8_servidor_socio.py
     simbolo: C8ServidorSocio
@@ -839,6 +1020,11 @@ detectores:
       excluida_por: compliance_agent/detectores/c8_servidor_socio.py:C8ServidorSocio.avaliar
     dominio: fornecedores com QSA da RFB e folhas de pagamento coletadas
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.C9TacFornecedor:
     modulo: compliance_agent/detectores/c9_tac_fornecedor.py
     simbolo: C9TacFornecedor
@@ -862,6 +1048,11 @@ detectores:
       excluida_por: null
     dominio: credores com observação de OB legível no espelho TFE (ordens_bancarias.observacao)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.CFachada:
     modulo: compliance_agent/detectores/c_fachada.py
     simbolo: CFachada
@@ -887,6 +1078,11 @@ detectores:
       excluida_por: null
     dominio: fornecedores por CNPJ
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E1Barreira:
     modulo: compliance_agent/detectores/e1_barreira.py
     simbolo: E1Barreira
@@ -911,6 +1107,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e1_barreira.py:E1Barreira.avaliar
     dominio: editais com exigências de habilitação e valor estimado/quantitativo ou ≥3 análogos
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E2Prazos:
     modulo: compliance_agent/detectores/e2_prazos.py
     simbolo: E2Prazos
@@ -932,6 +1133,11 @@ detectores:
       excluida_por: null
     dominio: editais com modalidade na tabela do art. 55 e datas de publicação/abertura
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E3LotePacote:
     modulo: compliance_agent/detectores/e3_lote_pacote.py
     simbolo: E3LotePacote
@@ -955,6 +1161,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e3_lote_pacote.py:E3LotePacote._avaliar_justificativa
     dominio: editais com lotes e itens classificados CATMAT/CATSER
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E4VisitaTecnica:
     modulo: compliance_agent/detectores/e4_visita_tecnica.py
     simbolo: E4VisitaTecnica
@@ -975,6 +1186,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e4_visita_tecnica.py:E4VisitaTecnica.avaliar
     dominio: editais com cláusula de visita técnica
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E5EditalIterado:
     modulo: compliance_agent/detectores/e5_edital_iterado.py
     simbolo: E5EditalIterado
@@ -995,6 +1211,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e5_edital_iterado.py:E5EditalIterado.avaliar
     dominio: editais com histórico de versões/retificações
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E6PontuacaoDirigida:
     modulo: compliance_agent/detectores/e6_pontuacao_dirigida.py
     simbolo: E6PontuacaoDirigida
@@ -1013,6 +1234,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e6_pontuacao_dirigida.py:E6PontuacaoDirigida._simular_troca_vencedor
     dominio: certames de técnica/técnica e preço com matriz de pontuação
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E7ClausulaRestritiva:
     modulo: compliance_agent/detectores/e7_clausula_restritiva.py
     simbolo: E7ClausulaRestritiva
@@ -1037,6 +1263,11 @@ detectores:
       excluida_por: compliance_agent/detectores/e7_clausula_restritiva.py:E7ClausulaRestritiva._pertinencia
     dominio: editais com cláusulas extraídas (edital_clausula)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.E8DesertoDirigido:
     modulo: compliance_agent/detectores/e8_deserto_dirigido.py
     simbolo: E8DesertoDirigido
@@ -1057,6 +1288,11 @@ detectores:
       excluida_por: null
     dominio: série de certames do mesmo objeto com campo de situação
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J1Cartel:
     modulo: compliance_agent/detectores/j1_cartel.py
     simbolo: J1Cartel
@@ -1080,6 +1316,11 @@ detectores:
       excluida_por: null
     dominio: unidades gestoras estaduais com pagamentos a fornecedores
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J2PropostasCobertura:
     modulo: compliance_agent/detectores/j2_propostas_cobertura.py
     simbolo: J2PropostasCobertura
@@ -1100,6 +1341,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j2_propostas_cobertura.py:J2PropostasCobertura.avaliar
     dominio: certames com ≥3 propostas classificadas (PNCP)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J3DescontoAnomalo:
     modulo: compliance_agent/detectores/j3_desconto_anomalo.py
     simbolo: J3DescontoAnomalo
@@ -1121,6 +1367,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j3_desconto_anomalo.py:J3DescontoAnomalo._recorrencia
     dominio: certames com valor estimado e homologado
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J4SupressaoPropostas:
     modulo: compliance_agent/detectores/j4_supressao_propostas.py
     simbolo: J4SupressaoPropostas
@@ -1143,6 +1394,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j4_supressao_propostas.py:J4SupressaoPropostas.avaliar
     dominio: certames com contagem de licitantes classificados
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J5DigitaisCompartilhadas:
     modulo: compliance_agent/detectores/j5_digitais_compartilhadas.py
     simbolo: J5DigitaisCompartilhadas
@@ -1163,6 +1419,11 @@ detectores:
       excluida_por: null
     dominio: certames com arquivos de proposta e metadados de ≥2 licitantes
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J6SubcontratacaoCruzada:
     modulo: compliance_agent/detectores/j6_subcontratacao_cruzada.py
     simbolo: J6SubcontratacaoCruzada
@@ -1181,6 +1442,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j6_subcontratacao_cruzada.py:J6SubcontratacaoCruzada.avaliar
     dominio: contratos com subcontratadas ou consórcio e lista de licitantes
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J7InabilitacaoSeletiva:
     modulo: compliance_agent/detectores/j7_inabilitacao_seletiva.py
     simbolo: J7InabilitacaoSeletiva
@@ -1201,6 +1467,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j7_inabilitacao_seletiva.py:J7InabilitacaoSeletiva.avaliar
     dominio: atas de habilitação com ≥2 decisões da mesma comissão
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.J9PropostasGemeas:
     modulo: compliance_agent/detectores/j9_propostas_gemeas.py
     simbolo: J9PropostasGemeas
@@ -1219,6 +1490,11 @@ detectores:
       excluida_por: compliance_agent/sei/conluio_propostas.py:markup_uniforme
     dominio: certames com ≥2 propostas itemizadas
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.JAtestadoCruzado:
     modulo: compliance_agent/detectores/j_atestado_cruzado.py
     simbolo: JAtestadoCruzado
@@ -1240,6 +1516,11 @@ detectores:
       excluida_por: compliance_agent/detectores/j_atestado_cruzado.py:vinculos_emissor_licitante
     dominio: habilitação com texto de atestados e CNPJ do licitante (Ac. TCU 725/2026)
     fp_medida: null
+    estado: sem_varredura
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P1EspecificacaoDirigida:
     modulo: compliance_agent/detectores/p1_especificacao_dirigida.py
     simbolo: P1EspecificacaoDirigida
@@ -1273,6 +1554,11 @@ detectores:
       excluida_por: null
     dominio: certames com termo de referência/requisitos (Lei 14.133/2021, art. 41)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P2CotacoesCombinadas:
     modulo: compliance_agent/detectores/p2_cotacoes_combinadas.py
     simbolo: P2CotacoesCombinadas
@@ -1295,6 +1581,11 @@ detectores:
       excluida_por: compliance_agent/detectores/p2_cotacoes_combinadas.py:P2CotacoesCombinadas.avaliar
     dominio: pesquisa de preços da fase de planejamento (IN SEGES 65/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P3Sobrepreco:
     modulo: compliance_agent/detectores/p3_sobrepreco.py
     simbolo: P3Sobrepreco
@@ -1318,6 +1609,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P4Fracionamento:
     modulo: compliance_agent/detectores/p4_fracionamento.py
     simbolo: P4Fracionamento
@@ -1365,6 +1661,11 @@ detectores:
       taxa: 78 → 69 achados (61 com soma acima do teto); o topo SEDSODH 2024 tinha 47 dispensas de 4 ramos encadeados (R$ 2.072.390,60) e passou a 13 só de alimentação (R$ 668.010,00)
       fonte_primaria: TCE-RJ — compras diretas (objeto, enquadramento, fornecedor por processo); OB do SIAFE pelo processo
       onde: ~/vault/aprendizados/fracionamento-e-por-objeto-nao-por-fornecedor.md
+    estado: ativo
+    tier: 3
+    tier_motivo: medida_sem_contagem_de_decididos
+    fp_ic95: null
+    manchete_efetiva: false
   det.P5EmergenciaFabricada:
     modulo: compliance_agent/detectores/p5_emergencia_fabricada.py
     simbolo: P5EmergenciaFabricada
@@ -1390,6 +1691,11 @@ detectores:
       excluida_por: compliance_agent/detectores/p5_emergencia_fabricada.py:P5EmergenciaFabricada.avaliar
     dominio: dispensa emergencial (art. 75, VIII, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P6DiretaIndevida:
     modulo: compliance_agent/detectores/p6_direta_indevida.py
     simbolo: P6DiretaIndevida
@@ -1414,6 +1720,11 @@ detectores:
       excluida_por: compliance_agent/detectores/p6_direta_indevida.py:P6DiretaIndevida.avaliar
     dominio: dispensa PNCP (modalidade 8), teto do exercício da publicação (limites_dispensa 2021–2026)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.P7DiretaDeRisco:
     modulo: compliance_agent/detectores/p7_direta_de_risco.py
     simbolo: P7DiretaDeRisco
@@ -1436,6 +1747,11 @@ detectores:
       excluida_por: null
     dominio: notas de empenho do painel CGE (06/02/2023 a 01/06/2026, 99 UGs)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X10AditivoDesinstruido:
     modulo: compliance_agent/detectores/x10_aditivo_desinstruido.py
     simbolo: X10AditivoDesinstruido
@@ -1458,6 +1774,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X11ObjetoDescaracterizado:
     modulo: compliance_agent/detectores/x11_objeto_descaracterizado.py
     simbolo: X11ObjetoDescaracterizado
@@ -1480,6 +1801,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x11_objeto_descaracterizado.py:X11ObjetoDescaracterizado.avaliar
     dominio: alterações contratuais (art. 126, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X12BenfordQuantitativos:
     modulo: compliance_agent/detectores/x12_benford_quantitativos.py
     simbolo: X12BenfordQuantitativos
@@ -1500,6 +1826,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x12_benford_quantitativos.py:X12BenfordQuantitativos.avaliar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X13SubRogacao:
     modulo: compliance_agent/detectores/x13_sub_rogacao.py
     simbolo: X13SubRogacao
@@ -1522,6 +1853,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x13_sub_rogacao.py:X13SubRogacao.avaliar
     dominio: contratos em execução (art. 137, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X1CrescimentoAditivo:
     modulo: compliance_agent/detectores/x1_crescimento_aditivo.py
     simbolo: X1CrescimentoAditivo
@@ -1548,6 +1884,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x1_crescimento_aditivo.py:X1CrescimentoAditivo.avaliar
     dominio: contratos com aditivos de valor (art. 125, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X2ProrrogacaoPerpetua:
     modulo: compliance_agent/detectores/x2_prorrogacao_perpetua.py
     simbolo: X2ProrrogacaoPerpetua
@@ -1570,6 +1911,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x2_prorrogacao_perpetua.py:X2ProrrogacaoPerpetua.avaliar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X3ExecucaoFinanceira:
     modulo: compliance_agent/detectores/x3_execucao_financeira.py
     simbolo: X3ExecucaoFinanceira
@@ -1594,6 +1940,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x3_execucao_financeira.py:X3ExecucaoFinanceira.avaliar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X4CaronaAbusiva:
     modulo: compliance_agent/detectores/x4_carona_abusiva.py
     simbolo: X4CaronaAbusiva
@@ -1614,6 +1965,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x4_carona_abusiva.py:X4CaronaAbusiva.avaliar
     dominio: atas de registro de preços (art. 86, §§4º-5º, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X5JogoDePlanilha:
     modulo: compliance_agent/detectores/x5_jogo_planilha.py
     simbolo: X5JogoDePlanilha
@@ -1636,6 +1992,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x5_jogo_planilha.py:X5JogoDePlanilha.avaliar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X6EntregaFantasma:
     modulo: compliance_agent/detectores/x6_entrega_fantasma.py
     simbolo: X6EntregaFantasma
@@ -1656,6 +2017,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x6_entrega_fantasma.py:X6EntregaFantasma.avaliar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X7ReequilibrioIndevido:
     modulo: compliance_agent/detectores/x7_reequilibrio_indevido.py
     simbolo: X7ReequilibrioIndevido
@@ -1680,6 +2046,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x7_reequilibrio_indevido.py:X7ReequilibrioIndevido.avaliar
     dominio: aditivos de recomposição (art. 124, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X8AditivoRetroativo:
     modulo: compliance_agent/detectores/x8_aditivo_retroativo.py
     simbolo: X8AditivoRetroativo
@@ -1704,6 +2075,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   det.X9SupressaoAbusiva:
     modulo: compliance_agent/detectores/x9_supressao_abusiva.py
     simbolo: X9SupressaoAbusiva
@@ -1726,6 +2102,11 @@ detectores:
       excluida_por: compliance_agent/detectores/x9_supressao_abusiva.py:X9SupressaoAbusiva.avaliar
     dominio: supressões contratuais (arts. 125 e 126, Lei 14.133/2021)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   duplicidade_competencia:
     modulo: compliance_agent/duplicidade_competencia.py
     simbolo: detectar
@@ -1749,6 +2130,11 @@ detectores:
       excluida_por: null
     dominio: contrato contínuo com pagamento mensal
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   editais.indice_certame:
     modulo: compliance_agent/editais/indice_certame.py
     simbolo: calcular
@@ -1769,6 +2155,11 @@ detectores:
       excluida_por: compliance_agent/editais/indice_certame.py:calcular
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   iss_nao_retido:
     modulo: compliance_agent/detector_iss_retido.py
     simbolo: decidir
@@ -1807,6 +2198,11 @@ detectores:
     - tests/test_detector_iss_retido.py::test_ambiguo_quando_a_conta_fecha_com_e_sem_o_iss
     - tests/test_detector_iss_retido.py::test_controle_positivo_real
     - tests/test_detector_iss_retido.py::test_controle_negativo_real_idesi_ago_2024
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   empresa_fantasma:
     modulo: compliance_agent/empresa_fantasma.py
     simbolo: avaliar_cnpj
@@ -1834,6 +2230,11 @@ detectores:
       excluida_por: compliance_agent/empresa_fantasma.py:avaliar_perfil
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   fachada_doubt:
     modulo: compliance_agent/fachada_doubt.py
     simbolo: candidatos
@@ -1855,6 +2256,11 @@ detectores:
       excluida_por: compliance_agent/fachada_doubt.py:candidatos
     dominio: credores com endereço residencial geocodificado
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   fracionamento_emergencia:
     modulo: compliance_agent/fracionamento_emergencia.py
     simbolo: agrupar_emergencias
@@ -1874,6 +2280,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   fracionamento_siafe:
     modulo: compliance_agent/fracionamento_siafe.py
     simbolo: triagem
@@ -1898,6 +2309,11 @@ detectores:
       excluida_por: compliance_agent/fracionamento_siafe.py:triagem
     dominio: OB do Estado por exercício e UG; teto de compliance_agent/limites_dispensa.py do exercício
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.aditivos_estouro:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: aditivos_estouro
@@ -1925,6 +2341,16 @@ detectores:
       taxa: 169/169 não afirmáveis — 167 sem acréscimo computável em termo (global − inicial) e 2 com termo incoerente com o contrato
       fonte_primaria: PNCP — termos aditivos (contrato_aditivo) e contrato (pcrj_contratos)
       onde: ~/vault/aprendizados/d11-global-menos-inicial-nao-e-acrescimo.md
+      n: 169
+      falsos: 169
+      estratificada: false
+      cobertura: null
+    estado: fundido
+    fundido_em: det.X1CrescimentoAditivo
+    tier: 2
+    tier_motivo: amostra_nao_estratificada; ponto=100.0%>15%; ic95_sup=100.0%>25%; cobertura_desconhecida
+    fp_ic95: [0.9778, 1.0]
+    manchete_efetiva: false
   pcrj.d11_aditivo_estourado:
     modulo: compliance_agent/pcrj/pericia_gastos.py
     simbolo: d11_aditivo_estourado
@@ -1959,6 +2385,16 @@ detectores:
       taxa: 28/28 indevidos — 0 da Prefeitura (federal e Estado na tabela), 25 sem termo aditivo, 3 "confirmados" com termo incoerente
       fonte_primaria: PNCP — contrato e termos aditivos de cada controle
       onde: ~/vault/aprendizados/d11-global-menos-inicial-nao-e-acrescimo.md
+      n: 28
+      falsos: 28
+      estratificada: false
+      cobertura: null
+    estado: fundido
+    fundido_em: det.X1CrescimentoAditivo
+    tier: 2
+    tier_motivo: n=28<30; amostra_nao_estratificada; ponto=100.0%>15%; ic95_sup=100.0%>25%; cobertura_desconhecida
+    fp_ic95: [0.8794, 1.0]
+    manchete_efetiva: false
   intel.capital_incompativel:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: capital_incompativel
@@ -1979,6 +2415,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.comunidades:
     modulo: compliance_agent/grafo_comunidades.py
     simbolo: detectar_comunidades
@@ -2005,6 +2446,15 @@ detectores:
       taxa: 'vínculo família-empresa-órgão: 1/30 falso (3,3%); sinal ''sancionada'': 25/29 falsos (86,2%) → corrigido em 19/11 (só sanção vigente e com alcance sobre o RJ — sancao_abrangencia); 14 das 30 são empresa única com o próprio QSA'
       fonte_primaria: 'socios_receita, OB do SIAFE, vitórias no PNCP, CEIS/CNEP (categoria e abrangência)'
       onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
+      n: 30
+      falsos: 1
+      estratificada: false
+      cobertura: null
+    estado: ativo
+    tier: 2
+    tier_motivo: amostra_nao_estratificada; sem_elegibilidade; cobertura_desconhecida
+    fp_ic95: [0.0059, 0.1667]
+    manchete_efetiva: false
   intel.concentracao_municipio:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: concentracao_municipio
@@ -2022,6 +2472,11 @@ detectores:
       excluida_por: null
     dominio: contratos da Prefeitura do Rio
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.conluio_qsa:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: conluio_qsa
@@ -2044,6 +2499,11 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:_certames_vencedor_perdedora
     dominio: certames com resultado no PNCP ou ata e QSA dos dois lados
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.corrida_dezembro:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: corrida_dezembro
@@ -2061,6 +2521,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.empresa_fenix:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: empresa_fenix
@@ -2096,10 +2561,19 @@ detectores:
       taxa: 'antes: 1 falso (OB de R$ 0,01 sem NL), 1 indeterminado, 1/5 decididos = 20% → corrigido (OB numerada ≥ R$ 1,00); depois: 0/4 decididos (IDESI, DOSIMETRIKA, R.R LIMP, OPEN; BRAGA indeterminado), R$ 8.070.661,06'
       fonte_primaria: 'SIAFE-Rio — OB paga (ob_orcamentaria_siafe) × Receita Federal (situação, data e motivo, natureza jurídica, matriz/filial)'
       onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
+      n: 4
+      falsos: 0
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: REFUTADA
       afirmado: R$ 592,8 mi pagos a 146 empresas mortas
       sustentado: ~R$ 16,4 mi em 14 CNPJs
+    estado: ativo
+    tier: 2
+    tier_motivo: n=4<30; amostra_nao_estratificada; ic95_sup=49.0%>25%; cobertura_desconhecida
+    fp_ic95: [0.0, 0.4899]
+    manchete_efetiva: false
   intel.escalada_preco:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: escalada_preco
@@ -2119,6 +2593,11 @@ detectores:
       excluida_por: null
     dominio: séries de compras do mesmo item no PNCP com span mínimo
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.fornecedor_dependente:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: fornecedor_dependente
@@ -2136,6 +2615,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.fracionamento:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: fracionamento
@@ -2157,6 +2641,12 @@ detectores:
       excluida_por: null
     dominio: OB do Estado do RJ; teto de dispensa de compliance_agent/limites_dispensa.py
     fp_medida: null
+    estado: fundido
+    fundido_em: fracionamento_siafe
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.grafo_familias:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: grafo_familias
@@ -2176,6 +2666,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.hub_compartilhado:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: hub_compartilhado
@@ -2200,6 +2695,11 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:_hub_risco
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.nepotismo:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: nepotismo
@@ -2217,6 +2717,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.nepotismo_cruzado:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: nepotismo_cruzado
@@ -2236,6 +2741,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.perdedoras_contumazes:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: perdedoras_contumazes
@@ -2254,6 +2764,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.porta_giratoria:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: porta_giratoria
@@ -2275,6 +2790,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.prioridade_valor:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: prioridade_valor
@@ -2293,6 +2813,11 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:prioridade_valor
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.radar_risco:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: radar_risco
@@ -2324,10 +2849,19 @@ detectores:
       taxa: '24/26 com score que não se sustenta (92,3%); por sinal 29/55 (52,7%); o único 🔴 cai de 52 para 30 — dupla contagem de sanção/capital via fantasma_medio, sanção pela data da OB, hub de um recebedor, capital de dump antigo'
       fonte_primaria: 'CEIS/CNEP (vigência e alcance), OB paga com competência, fantasma_score.sinais_json, folha, Receita, PNCP'
       onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
+      n: 26
+      falsos: 24
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: top 10 com 9 sinais de sanção à época; 3 críticos
       sustentado: 2 sinais alcançam o Estado; críticos 3 → 1 (sem sanção)
+    estado: ativo
+    tier: 2
+    tier_motivo: n=26<30; amostra_nao_estratificada; ponto=92.3%>15%; ic95_sup=97.9%>25%; cobertura_desconhecida
+    fp_ic95: [0.7586, 0.9786]
+    manchete_efetiva: false
   intel.ranking_fantasmas:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: ranking_fantasmas
@@ -2348,6 +2882,12 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: fundido
+    fundido_em: empresa_fantasma
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.sancionadas_contratadas:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: sancionadas_contratadas
@@ -2372,6 +2912,12 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:sancionadas_contratadas
     dominio: OB do Estado do RJ (SIAFE-Rio, 2021+) × CEIS/CNEP; sanção avaliada na data de cada OB
     fp_medida: null
+    estado: fundido
+    fundido_em: det.C7SancionadaContratada
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.sancionadas_municipio:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: sancionadas_municipio
@@ -2392,6 +2938,11 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:sancionadas_municipio
     dominio: contratos da Prefeitura do Rio (competência TCM-RJ)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.sobrepreco:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: sobrepreco
@@ -2411,6 +2962,11 @@ detectores:
       excluida_por: compliance_agent/cruzamentos_intel.py:sobrepreco
     dominio: itens homologados no PNCP com unidade comparável e amostra mínima
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.socio_oculto:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: socio_oculto
@@ -2431,6 +2987,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   intel.socio_servidor:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: socio_servidor
@@ -2453,6 +3014,12 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: fundido
+    fundido_em: det.C8ServidorSocio
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   lex.redflags:
     modulo: compliance_agent/lex_conflito.py
     simbolo: achado_sancao_siga
@@ -2474,6 +3041,11 @@ detectores:
       excluida_por: compliance_agent/lex_conflito.py:achado_lista_suja
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   ligacoes_conluio:
     modulo: compliance_agent/ligacoes_conluio.py
     simbolo: levantar
@@ -2508,6 +3080,11 @@ detectores:
       excluida_por: null
     dominio: fornecedores que já são nós da galáxia (4.627 CNPJs em 18/11/2026), raízes distintas; certames do PNCP, propostas nos autos SEI e licitantes TCE-RJ resolvidos por razão social única
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   conluio_participacao:
     modulo: compliance_agent/editais/conluio_participacao.py
     simbolo: levantar
@@ -2541,6 +3118,11 @@ detectores:
       excluida_por: null
     dominio: licitantes municipais declarados ao TCE-RJ (91 entes, 2024–2026), identificados por nome; CNPJ por nome_cnpj_resolvido + razão única/prefixo
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   ninho_sala:
     modulo: compliance_agent/ninho_sala.py
     simbolo: ninhos_por_sala
@@ -2571,10 +3153,19 @@ detectores:
       taxa: '6 altos: 5 falsos, 1 indeterminado (5/5 = 100%); médios: 10 falsos, 4 indeterminados — sócio/marca comum, sucessão contada como morta, telefone de contador, critério de admissão contado como fator; valor de favorecido_resumo diverge da OB paga em R$ 3,45 mi'
       fonte_primaria: 'Receita Federal (complemento, telefone, motivo da baixa), socios_fornecedor, OB paga (_ob_paga)'
       onde: '~/vault/aprendizados/fp-medida-fenix-radar-ninho-2026-11-19.md'
+      n: 5
+      falsos: 5
+      estratificada: false
+      cobertura: null
     revisao_2026_11_13:
       veredito: PARCIAL
       afirmado: 6 grupos, R$ 1,77 bi no conjunto
       sustentado: R$ 17,76 mi nos 6; 70% num par do mesmo grupo econômico
+    estado: ativo
+    tier: 2
+    tier_motivo: n=5<30; amostra_nao_estratificada; ponto=100.0%>15%; ic95_sup=100.0%>25%; cobertura_desconhecida
+    fp_ic95: [0.5655, 1.0]
+    manchete_efetiva: false
   ordem_cronologica:
     modulo: compliance_agent/ordem_cronologica_siafe.py
     simbolo: ordem_cronologica
@@ -2601,6 +3192,11 @@ detectores:
       excluida_por: compliance_agent/ordem_cronologica_siafe.py:ordem_cronologica
     dominio: UGs do Estado com NL e OB completas na base
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   pericia_contabil:
     modulo: compliance_agent/pericia_contabil.py
     simbolo: avaliar_estado
@@ -2645,6 +3241,11 @@ detectores:
       veredito: REFUTADA
       afirmado: 293 pagos a maior / R$ 29,67 mi; 208 duplicidades
       sustentado: 0 confirmados nos 10 maiores; 174 de 208 eram devolução + reemissão
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   vinculo_ob_contrato:
     modulo: compliance_agent/vinculo_ob_contrato.py
     simbolo: rodar_regra
@@ -2678,6 +3279,11 @@ detectores:
     - tests/test_vinculo_ob_contrato.py::test_dupla_leitura_so_verifica_quando_as_duas_concordam
     - tests/test_vinculo_ob_contrato.py::test_desdobramento_de_ata_e_citacao_em_ata_nao_verificam
     - tests/test_vinculo_ob_contrato.py::test_citacao_so_com_o_numero_nao_liga_o_pagamento
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   processo_360:
     modulo: compliance_agent/processo_360.py
     simbolo: avaliar
@@ -2698,6 +3304,11 @@ detectores:
       excluida_por: compliance_agent/processo_360.py:grau_com_captura
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   radar:
     modulo: compliance_agent/radar.py
     simbolo: ciclo
@@ -2714,6 +3325,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rede_fachada:
     modulo: compliance_agent/rede_fachada.py
     simbolo: pacote_sinais
@@ -2733,6 +3349,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   retro.lift:
     modulo: compliance_agent/retro_auditoria.py
     simbolo: avaliar_lift
@@ -2758,6 +3379,10 @@ detectores:
       taxa: '0/13 falsos (CNPJ exato com sanção impeditiva no CEIS); lift do card 2,52 (n=27, k=4) reproduz, IC95% 1,01–5,53 — ''melhor'' não se distingue do 2º (2,13; IC 0,74–5,28)'
       fonte_primaria: 'CEIS/CNEP (sancoes_federais) × sinal_ledger/fantasma_score'
       onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
+      n: 13
+      falsos: 0
+      estratificada: false
+      cobertura: null
     lift:
       gabarito: sanção posterior no CEIS/CNEP (qualquer época/ente) — NÃO é taxa de falso positivo
       valor_cockpit: 2.12
@@ -2767,6 +3392,11 @@ detectores:
       veredito: PARCIAL
       afirmado: melhor detector concentra fraude 2,12×
       sustentado: 2,1× mais sancionados (qualquer época/ente), n=88
+    estado: ativo
+    tier: 2
+    tier_motivo: n=13<30; amostra_nao_estratificada; cobertura_desconhecida
+    fp_ic95: [0.0, 0.2281]
+    manchete_efetiva: false
   rules.acumulacao:
     modulo: compliance_agent/rules/engine.py
     simbolo: 'MotorCompliance (alertas tipo ''acumulacao'': _regra_acumulo_cargo, _regra_cpf_duplicado_fontes, _regra_emprego_multiplo_orgaos)'
@@ -2792,6 +3422,11 @@ detectores:
       veredito: REFUTADA
       afirmado: 59.024 alertas de gravidade alta
       sustentado: ~771 (58.253 eram colisão de CPF mascarado)
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.acumulo_cargo:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_acumulo_cargo
@@ -2815,6 +3450,11 @@ detectores:
     fp_medida: null
     controle_xfail:
     - tests/test_regra_controles_sinteticos.py::test_acumulo_cargo_cpf_mascarado_nomes_diferentes_nao_agrupa
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.cnpj_abertura_recente_contrato:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_cnpj_abertura_recente_contrato
@@ -2835,6 +3475,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.cpf_duplicado_fontes:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_cpf_duplicado_fontes
@@ -2854,6 +3499,11 @@ detectores:
       excluida_por: compliance_agent/collectors/terceirizados.py:detectar_cpf_duplicado_entre_fontes
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.emprego_multiplo_orgaos:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_emprego_multiplo_orgaos
@@ -2875,6 +3525,11 @@ detectores:
       excluida_por: null
     dominio: folha estadual de uma competência (CPF mascarado)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.empresa_mesmo_cep_servidor:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_empresa_mesmo_cep_servidor
@@ -2895,6 +3550,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.empresa_parente:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_empresa_parente
@@ -2916,6 +3576,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.engine:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance.executar_todas_as_regras
@@ -2942,6 +3607,15 @@ detectores:
       taxa: '13/30 decididos falsos (43,3%; 4 indeterminados) — só motor de regras 5/16, gravidade alta 5/9; piso estrutural ≥ 2.035 de 6.757 abertos; a contagem do card inclui perícias PCRJ (D7–D12) e emendas (D1–D6): manchete rebaixada a ''fila de triagem'' com a taxa ao lado e cartão do último alerta retirado'
       fonte_primaria: 'registros_folha, ob_orcamentaria_siafe, pcrj_contratos/pcrj_licitacoes, publicacoes_doerj, emendas/emenda_favorecidos, sancoes_federais, socios_receita, receita_estab'
       onde: '~/vault/aprendizados/fp-medida-alertas-comunidades-lift-2026-11-19.md'
+      n: 30
+      falsos: 13
+      estratificada: true
+      cobertura: null
+    estado: ativo
+    tier: 2
+    tier_motivo: ponto=43.3%>15%; ic95_sup=60.8%>25%; sem_elegibilidade; cobertura_desconhecida
+    fp_ic95: [0.2738, 0.608]
+    manchete_efetiva: false
   rules.fracionamento_contrato:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_fracionamento_contrato
@@ -2961,6 +3635,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.funcionario_fantasma:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_funcionario_fantasma
@@ -2978,6 +3657,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_empresa_nova:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_empresa_nova
@@ -2998,6 +3682,11 @@ detectores:
       excluida_por: null
     dominio: OB recente (janela de 90 dias)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_favorecido_doerj_cruzado:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_favorecido_doerj_cruzado
@@ -3018,6 +3707,11 @@ detectores:
       excluida_por: null
     dominio: OB recente (janela de 90 dias)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_favorecido_multiplas_ugs:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_favorecido_multiplas_ugs
@@ -3037,6 +3731,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_fracionamento:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_fracionamento
@@ -3062,6 +3761,12 @@ detectores:
       excluida_por: null
     dominio: OB recente (janela de 90 dias); teto de compliance_agent/limites_dispensa.py do exercício
     fp_medida: null
+    estado: fundido
+    fundido_em: fracionamento_siafe
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_sem_processo_sei:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_sem_processo_sei
@@ -3079,6 +3784,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: OB recente (janela de 90 dias)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.ob_valor_redondo:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_ob_valor_redondo
@@ -3096,6 +3806,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: OB recente (janela de 90 dias)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   rules.remuneracao_acima_teto:
     modulo: compliance_agent/rules/engine.py
     simbolo: MotorCompliance._regra_remuneracao_acima_teto
@@ -3115,6 +3830,12 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: fundido
+    fundido_em: acima_do_teto
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   sancao_abrangencia:
     modulo: compliance_agent/sancao_abrangencia.py
     simbolo: veda_ente
@@ -3142,6 +3863,11 @@ detectores:
       excluida_por: compliance_agent/sancao_abrangencia.py:teto_legal
     dominio: sanções CEIS/CNEP contra o Executivo do Estado do RJ (alvo configurável)
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   sobrepreco:
     modulo: compliance_agent/sobrepreco.py
     simbolo: sobrepreco
@@ -3161,6 +3887,11 @@ detectores:
       excluida_por: compliance_agent/sobrepreco.py:_classificar
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   socio_de_sancionada:
     modulo: compliance_agent/socio_de_sancionada.py
     simbolo: socio_de_sancionada
@@ -3183,6 +3914,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   tools.contrato_acima_do_porte:
     modulo: tools/contrato_acima_do_porte.py
     simbolo: acima_do_porte
@@ -3218,6 +3954,11 @@ detectores:
       excluida_por: null
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   tools.porte_declarado_certame:
     modulo: tools/porte_declarado_certame.py
     simbolo: declaracoes_incompativeis
@@ -3250,6 +3991,11 @@ detectores:
       excluida_por: null
     dominio: certames do PNCP-RJ 2024-2026 × OB contabilizada do SIAFE no ano-calendário do certame
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   tools.porte_incompativel:
     modulo: tools/porte_incompativel.py
     simbolo: incompativeis
@@ -3280,6 +4026,11 @@ detectores:
       excluida_por: null
     dominio: OB contabilizada do SIAFE (todos os exercícios coletados), por ano-calendário
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   triagem_alertas:
     modulo: compliance_agent/triagem_alertas.py
     simbolo: triar_lote
@@ -3296,6 +4047,11 @@ detectores:
     hipoteses_inocentes: []
     dominio: null
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg01_suplementacao_decreto:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: suplementacao_por_decreto
@@ -3316,6 +4072,11 @@ detectores:
       excluida_por: null
     dominio: "decretos de crédito suplementar do Executivo estadual publicados na Parte I do DOERJ; exercício com limite cadastrado em LIMITE_LOA"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg03_dea_recorrente:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: dea_recorrente
@@ -3339,6 +4100,11 @@ detectores:
       excluida_por: null
     dominio: "UGs e exercícios com nota de empenho coletada (siafe_documento_cobertura); credor com CNPJ; aplicação direta"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg04_restos_a_pagar:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: restos_a_pagar
@@ -3358,6 +4124,11 @@ detectores:
       excluida_por: null
     dominio: "ente consolidado (Estado do RJ), RREO Anexo 07, 2021 em diante"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg05_caixa_art_42:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: caixa_art_42
@@ -3377,6 +4148,11 @@ detectores:
       excluida_por: null
     dominio: "Poder Executivo, RGF Anexo 05, 3º quadrimestre, 2021 em diante"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg06_troca_de_fonte:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: troca_de_fonte
@@ -3399,6 +4175,11 @@ detectores:
       excluida_por: null
     dominio: "decretos de crédito do Executivo; fontes STN 759 e detalhamento estadual 122 no portal da CGE"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg07_reserva_contingencia:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: reserva_de_contingencia
@@ -3419,6 +4200,11 @@ detectores:
       excluida_por: null
     dominio: "ente consolidado, RREO Anexo 01; dotação inicial por UG do portal da CGE"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg09_empenho_dezembro:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: empenho_em_dezembro
@@ -3441,6 +4227,11 @@ detectores:
       excluida_por: null
     dominio: "UGs do Estado com R$ 1 milhão ou mais empenhado em exercício encerrado; grupos 3, 4 e 5"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg10_ordem_cronologica:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: ordem_cronologica
@@ -3466,6 +4257,12 @@ detectores:
       excluida_por: null
     dominio: "OB orçamentária contabilizada a credor com CNPJ, com liquidação do próprio exercício"
     fp_medida: null
+    estado: fundido
+    fundido_em: ordem_cronologica
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   orcamento.pg15_minimos_rp:
     modulo: compliance_agent/pulos_do_gato.py
     simbolo: minimos_com_restos_a_pagar
@@ -3485,6 +4282,11 @@ detectores:
       excluida_por: null
     dominio: "ente consolidado, RREO Anexos 02 e 14, 6º bimestre, 2021 em diante"
     fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   sei.reuso_documento_execucao:
     modulo: compliance_agent/sei/reuso_documento_execucao.py
     simbolo: comparar
@@ -3526,3 +4328,1176 @@ detectores:
     - tests/test_reuso_documento_execucao.py::test_negativo_planilha_de_medicao_da_mesma_ata_nao_dispara_por_trecho
     - tests/test_reuso_documento_execucao.py::test_real_sehis_os_cinco_diarios_tem_o_mesmo_corpo_e_disparam
     - tests/test_reuso_documento_execucao.py::test_real_eureka_relatorio_modelo_nos_tres_pagamentos
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+
+  # ─── O5.1 (24/11/2026): produtores que estavam FORA do registro — padrões (compliance_agent/padroes/),
+  # EST-VALOR, perícias de emendas (D1–D6) e PCRJ (D7–D12) que gravam em `alertas`, e as regras únicas
+  # portáveis dos sweeps e do lex_fatos (estado a_portar). Controles escolhidos pelo NOME do teste
+  # (test_positivo*/test_negativo*); sem teste claro, null. Hipóteses dos padrões copiadas do YAML do
+  # padrão, sem exclusão por código conferida (excluida_por: null = dívida honesta).
+  padrao.acrescimo_colado_no_teto:
+    modulo: compliance_agent/padroes/acrescimo_colado_no_teto.py
+    simbolo: varrer
+    afirma: Acréscimos declarados somando no teto (24–25% / 49–50%) ou acima; teto pelo bruto
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/acrescimo_colado_no_teto.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_acrescimo_colado_no_teto.py::test_positivo_brasform_soma_encostada
+    controle_negativo: tests/test_padrao_acrescimo_colado_no_teto.py::test_negativo_25_exatos_e_permitido_e_reforma_tem_50
+    hipoteses_inocentes:
+    - hipotese: Bases diferentes (valor inicial atualizado de cada data) — a soma é aproximação
+      excluida_por: null
+    - hipotese: Termo de reajuste que fala em 'acréscimo' — excluído
+      excluida_por: null
+    - hipotese: Mesmo termo em várias peças — deduplicado
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/acrescimo_colado_no_teto.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.acrescimo_medido_pelo_objeto:
+    modulo: compliance_agent/padroes/acrescimo_medido_pelo_objeto.py
+    simbolo: varrer
+    afirma: Percentual declarado no termo × crescimento real do pago mensal (OB) depois dele
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/acrescimo_medido_pelo_objeto.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_acrescimo_medido_pelo_objeto.py::test_positivo_seleta
+    controle_negativo: tests/test_padrao_acrescimo_medido_pelo_objeto.py::test_negativo_crescimento_compativel_com_o_declarado
+    hipoteses_inocentes:
+    - hipotese: Reajuste/repactuação no período — o achado lista os termos de reajuste a ≤ 7 meses
+      excluida_por: null
+    - hipotese: Pagamento de competências atrasadas — mediana, não média
+      excluida_por: null
+    - hipotese: OB por processo é PISO (grafias normalizadas; OB sem processo fica fora)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/acrescimo_medido_pelo_objeto.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.aditivo_absorve_outro_lote:
+    modulo: compliance_agent/padroes/aditivo_absorve_outro_lote.py
+    simbolo: varrer
+    afirma: Termo aditivo de "acréscimo quantitativo" que absorve o objeto de OUTRO contrato/lote
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/aditivo_absorve_outro_lote.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_aditivo_absorve_outro_lote.py::test_positivo_seleta_absorve_lote_12
+    controle_negativo: tests/test_padrao_aditivo_absorve_outro_lote.py::test_negativo_absorcao_do_proprio_contrato
+    hipoteses_inocentes:
+    - hipotese: Continuidade de serviço essencial — justifica emergencial ou nova licitação, não aditivo (não excluída)
+      excluida_por: null
+    - hipotese: Absorção de parte do PRÓPRIO contrato — excluída pelo número
+      excluida_por: null
+    - hipotese: Extrato de outro ato na página do DOERJ colada ao termo — excluído (trecho tem de estar no corpo)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/aditivo_absorve_outro_lote.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.atesto_antes_do_periodo:
+    modulo: compliance_agent/padroes/atesto_antes_do_periodo.py
+    simbolo: varrer
+    afirma: Atesto (e OB) antes do fim do período ou do evento faturado
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/atesto_antes_do_periodo.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_atesto_antes_do_periodo.py::test_controle_positivo_periodo_na_nf_citada
+    controle_negativo: tests/test_padrao_atesto_antes_do_periodo.py::test_negativo_vigencia_nao_e_periodo_de_servico
+    hipoteses_inocentes:
+    - hipotese: 'Concessionária: o mês é o ciclo de leitura (341 FP no FZ1) — excluída por código'
+      excluida_por: null
+    - hipotese: Período de vigência/garantia/aditivo do contrato, não do serviço — excluído por código
+      excluida_por: null
+    - hipotese: Montagem/pré-produção que termina antes do evento (a NF fatura o evento inteiro) — não excluída
+      excluida_por: null
+    - hipotese: Antecipação prevista no contrato com garantia (art. 145 §1º) — não excluída
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/atesto_antes_do_periodo.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.beneficio_para_conta_do_orgao:
+    modulo: compliance_agent/padroes/beneficio_para_conta_do_orgao.py
+    simbolo: varrer
+    afirma: Benefício a pessoa física pago à conta do próprio órgão (credor genérico)
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/beneficio_para_conta_do_orgao.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_beneficio_para_conta_do_orgao.py::test_controle_positivo_le_ob
+    controle_negativo: tests/test_padrao_beneficio_para_conta_do_orgao.py::test_negativo_credor_cnpj_privado_nao_e_padrao
+    hipoteses_inocentes:
+    - hipotese: 'Modelo de cartão pré-pago: a Secretaria recebe e carrega via operadora — não é desvio por si; falta a prova
+        da carga por beneficiário'
+      excluida_por: null
+    - hipotese: Destino privado (operadora/banco) — fora do padrão
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/beneficio_para_conta_do_orgao.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.carona_acima_do_limite:
+    modulo: compliance_agent/padroes/carona_acima_do_limite.py
+    simbolo: varrer
+    afirma: Carona acima do limite da ata, ata fora de vigência ou contrato 2025+ sob a Lei 8.666
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/carona_acima_do_limite.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_carona_acima_do_limite.py::test_positivo_stem_estoura_50pct
+    controle_negativo: tests/test_padrao_carona_acima_do_limite.py::test_negativo_adesao_dentro_do_limite
+    hipoteses_inocentes:
+    - hipotese: OB do processo soma mais de uma ata/contrato — conferir NL/NF
+      excluida_por: null
+    - hipotese: 'Ata em ''valor de capa''/desconto: medir em unidades de capa (pago ÷ (1 − desconto))'
+      excluida_por: null
+    - hipotese: Ata da Lei 8.666 licitada até 29/12/2023 e ainda vigente na adesão — pedir a ata e a vigência
+      excluida_por: null
+    - hipotese: Extrato vizinho na página do DOERJ — exige o nome do credor no extrato
+      excluida_por: null
+    - hipotese: 'Aditivo, prorrogação (art. 57), apostilamento e extrato de ATA da Lei 8.666 assinados em 2025+ são legais
+        (art. 190 da 14.133) — só o CONTRATO ORIGINAL nº x/2025+ conta (1ª varredura: 32 de 33 eram desse tipo)'
+      excluida_por: null
+    - hipotese: PNCP não acha ata de sistema estadual/municipal (SIGA, FDE-SP, consórcios) — 'ata_nao_achada_pncp' é INDISPONÍVEL,
+        não regularidade
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: carona_adesao_contratacao_direta
+    especificacao: config/padroes/carona_acima_do_limite.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.carona_aderente_vedado:
+    modulo: compliance_agent/padroes/carona_aderente_vedado.py
+    simbolo: varrer
+    afirma: Carona em ata cujo instrumento não admite o órgão aderente
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/carona_aderente_vedado.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_carona_aderente_vedado.py::test_positivo_cdel_restricao_a_paulistas
+    controle_negativo: tests/test_padrao_carona_aderente_vedado.py::test_negativo_clausula_permissiva_e_ente_rj
+    hipoteses_inocentes:
+    - hipotese: Anuência expressa do gerenciador + decreto do ente aderente — não afasta a cláusula do próprio edital
+      excluida_por: null
+    - hipotese: 'Cláusula do edital do PRÓPRIO órgão (gerenciador) — fora: exige prova de adesão deste órgão'
+      excluida_por: null
+    - hipotese: Cláusula permissiva (qualquer órgão federal, estadual, municipal; Estado do RJ) — não conta
+      excluida_por: null
+    - hipotese: Vedação do art. 86 §8º (órgãos federais) ou condicional (limite, prazo, sem anuência) — não conta
+      excluida_por: null
+    - hipotese: 'Trecho que nomeia o GERENCIADOR de outra UF (''ata … da Secretaria de Saúde do Estado da Bahia'') não é limite
+        de aderente — exige ''por órgãos/entidades …'' (1ª varredura: SEI-080001/018310/2024, 080002/000748/2026, 080002/012650/2025,
+        030001/064045/2026, 240001/000098/2026, 270060/002141/2022)'
+      excluida_por: null
+    - hipotese: Ata/edital de OUTRA compra na pesquisa de preços, parecer da PGE sobre o edital do próprio órgão e contrato
+        do próprio pregão — fora (SEI-270005/001074/2024, 270006/030777/2025, 270006/039664/2025, 420001/001292/2021, 350006/002596/2024,
+        080004/001527/2026)
+      excluida_por: null
+    - hipotese: Órgão do RJ listado como PARTICIPANTE na ata (MJSP 076/2024 — CBMERJ) — vedação de carona não o alcança (SEI-270005/000052/2026,
+        000628/2025, 000790/2025)
+      excluida_por: null
+    - hipotese: Sem NE de adesão externa (só ato de adesão no texto) o teto é médio — o pedido pode ser de OUTRO órgão à ata
+        do RJ (SEI-270003/001689/2025)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: carona_adesao_contratacao_direta
+    especificacao: config/padroes/carona_aderente_vedado.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.compra_fora_do_siafe:
+    modulo: compliance_agent/padroes/compra_fora_do_siafe.py
+    simbolo: varrer
+    afirma: Compra fora do SIAFE — bem incorporado com NF contra o órgão, sem NE e sem OB ao emitente
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/compra_fora_do_siafe.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_compra_fora_do_siafe.py::test_positivo_nf_contra_orgao_e_valor_tabular
+    controle_negativo: tests/test_padrao_compra_fora_do_siafe.py::test_negativo_mesma_raiz_e_telefone_zerado_nao_sao_irmas
+    hipoteses_inocentes:
+    - hipotese: REDE/FUNESBOM (verba de operacionalização / verba própria da unidade) — classificada verba_operacionalizacao
+      excluida_por: null
+    - hipotese: Suprimento de fundos (servidor suprido) — classificada suprimento_de_fundos_provavel
+      excluida_por: null
+    - hipotese: Doação (termo de doação) — classificada doacao
+      excluida_por: null
+    - hipotese: NE nos autos ou OB da SEDEC ao emitente — dentro_do_siafe, fora do padrão
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: execucao_orcamentaria
+    especificacao: config/padroes/compra_fora_do_siafe.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.despesa_estranha_ao_objeto:
+    modulo: compliance_agent/padroes/despesa_estranha_ao_objeto.py
+    simbolo: varrer
+    afirma: Festa, jantar ou almoço de servidores/autoridades pago como execução de contrato
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/despesa_estranha_ao_objeto.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_despesa_estranha_ao_objeto.py::test_controle_positivo
+    controle_negativo: tests/test_padrao_despesa_estranha_ao_objeto.py::test_negativo_servidor_de_informatica
+    hipoteses_inocentes:
+    - hipotese: Servidor de informática (rede, dados, storage) — excluído por código
+      excluida_por: null
+    - hipotese: Alimentação em capacitação, plantão, operação — rebaixado a fraco
+      excluida_por: null
+    - hipotese: Cerimonial institucional previsto no objeto — não excluído
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/despesa_estranha_ao_objeto.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.despesa_sem_previo_empenho:
+    modulo: compliance_agent/padroes/despesa_sem_previo_empenho.py
+    simbolo: varrer
+    afirma: Despesa sem prévio empenho — confissão nos autos ou NE original posterior à NF
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/despesa_sem_previo_empenho.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_despesa_sem_previo_empenho.py::test_positivo_confissao_cobrape
+    controle_negativo: tests/test_padrao_despesa_sem_previo_empenho.py::test_negativo_texto_normativo
+    hipoteses_inocentes:
+    - hipotese: NE global/estimativa no processo do contrato — (b) exige NE original juntada e nunca usa ausência como prova
+      excluida_por: null
+    - hipotese: Reconhecimento de dívida (L4.320 art. 37) — rito próprio
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/despesa_sem_previo_empenho.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.diario_de_obra_copiado:
+    modulo: compliance_agent/padroes/diario_de_obra_copiado.py
+    simbolo: varrer
+    afirma: Diário de obra de uma medição copiado de outra medição do mesmo processo
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/diario_de_obra_copiado.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_diario_de_obra_copiado.py::test_positivo_mesmo_rdo_em_formatos_de_data_diferentes
+    controle_negativo: tests/test_padrao_diario_de_obra_copiado.py::test_negativo_diarios_com_atividades_diferentes
+    hipoteses_inocentes:
+    - hipotese: Obra parada — diário 'sem atividade' repetido (anotado)
+      excluida_por: null
+    - hipotese: Período que atravessa duas medições juntado nas duas
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/diario_de_obra_copiado.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.execucao_acima_do_valor_antes_do_aditivo:
+    modulo: compliance_agent/padroes/execucao_acima_do_valor_antes_do_aditivo.py
+    simbolo: varrer
+    afirma: Execução medida acima do valor do contrato antes do termo aditivo que daria cobertura
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/execucao_acima_do_valor_antes_do_aditivo.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_execucao_acima_do_valor_antes_do_aditivo.py::test_positivo_scalle_acima_antes_do_1o_ta
+    controle_negativo: tests/test_padrao_execucao_acima_do_valor_antes_do_aditivo.py::test_negativo_dentro_do_valor_ate_o_aditivo
+    hipoteses_inocentes:
+    - hipotese: Planilha com reajuste embutido (reajuste não exige aditivo) — conferir
+      excluida_por: null
+    - hipotese: Contrato juntado é outro — exigido o mesmo número quando legível
+      excluida_por: null
+    - hipotese: Itens de outro contrato na planilha — documentos alheios excluídos
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/execucao_acima_do_valor_antes_do_aditivo.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.faixa_de_volume_estendida:
+    modulo: compliance_agent/padroes/faixa_de_volume_estendida.py
+    simbolo: varrer
+    afirma: Aditivo "de 25%" que estende a faixa de volume remunerado; internet contada como atendimento
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/faixa_de_volume_estendida.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_faixa_de_volume_estendida.py::test_positivo_poupa_tempo
+    controle_negativo: tests/test_padrao_faixa_de_volume_estendida.py::test_negativo_faixa_mantida
+    hipoteses_inocentes:
+    - hipotese: '''Havendo saldo contratual'': o valor do termo segue 25% — o vício é remunerar volume não licitado'
+      excluida_por: null
+    - hipotese: Internet prevista no TR como serviço remunerado — conferir o TR
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/faixa_de_volume_estendida.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.gestor_recebe_da_osc:
+    modulo: compliance_agent/padroes/gestor_recebe_da_osc.py
+    simbolo: varrer
+    afirma: Gestor da parceria / membro da comissão de monitoramento recebe pagamento da OSC
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/gestor_recebe_da_osc.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_gestor_recebe_da_osc.py::test_positivo_pago_e_designado_no_mesmo_processo
+    controle_negativo: tests/test_padrao_gestor_recebe_da_osc.py::test_negativo_nome_curto_nao_casa
+    hipoteses_inocentes:
+    - hipotese: Homônimo — só nome completo com ≥ 3 tokens
+      excluida_por: null
+    - hipotese: Gestor como destinatário/analista do documento — função do Estado antes do nome descarta
+      excluida_por: null
+    - hipotese: Documento do órgão (despacho, ofício, parecer, e-mail, portaria) — não é lido como prestação de contas
+      excluida_por: null
+    - hipotese: 'Servidor já desligado na data do pagamento — não descartado: pedir ficha funcional'
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/gestor_recebe_da_osc.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.inexigibilidade_bem_comum:
+    modulo: compliance_agent/padroes/inexigibilidade_bem_comum.py
+    simbolo: varrer
+    afirma: Inexigibilidade/exclusividade contradita pelo próprio TR (bem comum, outros fornecedores)
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/inexigibilidade_bem_comum.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_inexigibilidade_bem_comum.py::test_positivo_estudo_play_forte
+    controle_negativo: tests/test_padrao_inexigibilidade_bem_comum.py::test_negativo_tr_que_nega_ser_comum_e_pregao
+    hipoteses_inocentes:
+    - hipotese: Item 'bem comum' herdado do modelo de TR — por isso C1 sozinho é médio
+      excluida_por: null
+    - hipotese: Atestado de exclusividade/direito autoral juntado — conferir antes de graduar
+      excluida_por: null
+    - hipotese: 'Negação (''não é caracterizado como comum'', ''não há outras editoras'', ''inexistência de outros fornecedores''
+        — esta é a JUSTIFICATIVA da exclusividade) — descartada (falso positivo da 1ª varredura: SEI-240002/003084/2025, 270006/012496/2025)'
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: carona_adesao_contratacao_direta
+    especificacao: config/padroes/inexigibilidade_bem_comum.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.iss_declarado_retido_nao_retido:
+    modulo: compliance_agent/padroes/iss_declarado_retido_nao_retido.py
+    simbolo: varrer
+    afirma: ISS declarado retido na NFS-e e não retido no pagamento (e retenção de ISS devolvida sem reemissão)
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/iss_declarado_retido_nao_retido.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_iss_declarado_retido_nao_retido.py::test_positivo_scalle_ob_sem_iss_acende_forte
+    controle_negativo: tests/test_padrao_iss_declarado_retido_nao_retido.py::test_negativo_ob_com_iss_retido_nao_acende
+    hipoteses_inocentes:
+    - hipotese: Prestador recolheu o ISS por guia própria e o Estado reembolsou (guia/DARM nos autos → PENDENTE).
+      excluida_por: null
+    - hipotese: A própria NF declara "ISS a ser recolhido no município de execução das obras pelo Prestador devido a Decisão
+      excluida_por: null
+    - hipotese: Retenção paga em OB separada ao Município, no processo ou na mesma NL (→ PENDENTE).
+      excluida_por: null
+    - hipotese: Federais destacadas e não retidas pelo tomador estadual (qualquer subconjunto é aceito).
+      excluida_por: null
+    - hipotese: Arredondamento de centavos (tolerância R$ 0,05 por NF; ISS > 20× a tolerância).
+      excluida_por: null
+    - hipotese: OCR que troca dígito (NF precisa fechar a própria conta e o ISS conferir com base × alíquota).
+      excluida_por: null
+    - hipotese: Reemissão da OB de retenção somada a outra guia, por outro processo, ou depois da última peça capturada.
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: fundido
+    fundido_em: iss_nao_retido
+    familia: null
+    especificacao: config/padroes/iss_declarado_retido_nao_retido.yaml (YAML INVÁLIDO na linha 28 — lido por regex)
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.kit_acima_do_estimado_etp:
+    modulo: compliance_agent/padroes/kit_acima_do_estimado_etp.py
+    simbolo: varrer
+    afirma: Preço unitário contratado acima da estimativa do próprio ETP/TR (por item SIGA)
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/kit_acima_do_estimado_etp.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_kit_acima_do_estimado_etp.py::test_positivo_kit_acima_do_etp
+    controle_negativo: tests/test_padrao_kit_acima_do_estimado_etp.py::test_negativo_tenis_abaixo_e_estimativa_maior_no_tr
+    hipoteses_inocentes:
+    - hipotese: Estimativa atualizada no edital não juntado — vale a maior estimativa dos autos
+      excluida_por: null
+    - hipotese: Ata de outro processo com estimativa própria — conferir a estimativa do certame
+      excluida_por: null
+    - hipotese: Número solto (código, CNPJ, página) — sem trinca não vira preço; unitário sem 'R$' antes não vira preço
+      excluida_por: null
+    - hipotese: 'Excesso > 100% = leitura cruzada, descartada e contada (1ª varredura: SEI-030001/023009/2025 kit lido no
+        ID do tênis, +233%; SEI-270057/000012/2023 ''4,5 MM'' lido como preço)'
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: carona_adesao_contratacao_direta
+    especificacao: config/padroes/kit_acima_do_estimado_etp.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.mrosc_atesto_contra_relatorio:
+    modulo: compliance_agent/padroes/mrosc_atesto_contra_relatorio.py
+    simbolo: varrer
+    afirma: Comissão atesta execução integral/metas cumpridas que o próprio relatório (ou o da OSC) nega
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/mrosc_atesto_contra_relatorio.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_mrosc_atesto_contra_relatorio.py::test_positivo_mesmo_documento
+    controle_negativo: tests/test_padrao_mrosc_atesto_contra_relatorio.py::test_negativo_atesto_parcial
+    hipoteses_inocentes:
+    - hipotese: No MROSC a 1ª parcela é antecipada pelo cronograma — o vício é o atesto, não o repasse
+      excluida_por: null
+    - hipotese: 'A meta do período pode ser só implantação (forma cruzada não descarta: pedir o plano de trabalho)'
+      excluida_por: null
+    - hipotese: Atesto parcial/com ressalvas — excluído por código
+      excluida_por: null
+    - hipotese: '''será concluída'' (futuro) não conta como etapa concluída'
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/mrosc_atesto_contra_relatorio.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.mrosc_execucao_igual_limiar:
+    modulo: compliance_agent/padroes/mrosc_execucao_igual_limiar.py
+    simbolo: varrer
+    afirma: Execução da parceria declarada exatamente no limiar de liberação da parcela
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/mrosc_execucao_igual_limiar.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_mrosc_execucao_igual_limiar.py::test_positivo_valor_e_exatamente_65_por_cento_da_base
+    controle_negativo: tests/test_padrao_mrosc_execucao_igual_limiar.py::test_negativo_mais_de
+    hipoteses_inocentes:
+    - hipotese: 'Redação abreviada de ''ao menos P%'' (não descartável pelo texto: pedir a planilha de execução financeira)'
+      excluida_por: null
+    - hipotese: Qualificador 'mais de/cerca de/ao menos' presente (Bem Viver doc 109) — excluído por código
+      excluida_por: null
+    - hipotese: Parcela planejada descrita como fração do total (cronograma) — excluída por código
+      excluida_por: null
+    - hipotese: P = 100% ou P < 5% — fora
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/mrosc_execucao_igual_limiar.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.ob_antes_da_entrega:
+    modulo: compliance_agent/padroes/ob_antes_da_entrega.py
+    simbolo: varrer
+    afirma: Liquidação sobre pró-forma / importação em andamento e OB sem recebimento anterior
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/ob_antes_da_entrega.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_ob_antes_da_entrega.py::test_controle_positivo_sem_recebimento_sem_carta
+    controle_negativo: tests/test_padrao_ob_antes_da_entrega.py::test_negativo_jacinto_carta_de_credito_com_recebimento_posterior
+    hipoteses_inocentes:
+    - hipotese: '"Carta de crédito (SWIFT MT700) com recebimento posterior nos autos — é o desenho da operação (Jacinto Marques
+        270006/021632/2025): FORA por código"'
+      excluida_por: null
+    - hipotese: '"Recebimento anterior à 1ª OB — FORA"'
+      excluida_por: null
+    - hipotese: '"Entrega provada em outro processo — não excluída (pedir o termo)"'
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/ob_antes_da_entrega.yaml (YAML INVÁLIDO na linha 28 — lido por regex)
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.obra_renovada_como_continuo:
+    modulo: compliance_agent/padroes/obra_renovada_como_continuo.py
+    simbolo: varrer
+    afirma: Obra/serviço de engenharia de escopo prorrogado como "serviço contínuo" com valor cheio
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/obra_renovada_como_continuo.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_obra_renovada_como_continuo.py::test_positivo_renovacao_com_valor_cheio
+    controle_negativo: tests/test_padrao_obra_renovada_como_continuo.py::test_negativo_acrescimo_pontual_nao_e_valor_cheio
+    hipoteses_inocentes:
+    - hipotese: Manutenção predial/conservação é contínua mesmo com natureza de obra — anotado se o objeto diz manutenção
+      excluida_por: null
+    - hipotese: Erro isolado de classificação orçamentária
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/obra_renovada_como_continuo.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.preco_de_fonte_unica_interessada:
+    modulo: compliance_agent/padroes/preco_de_fonte_unica_interessada.py
+    simbolo: varrer
+    afirma: Estimativa de preço de fonte única ou da tabela do próprio vendedor
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/preco_de_fonte_unica_interessada.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_preco_de_fonte_unica_interessada.py::test_positivo_cdel_fonte_unica_e_capa
+    controle_negativo: tests/test_padrao_preco_de_fonte_unica_interessada.py::test_negativo_regra_de_pesquisa_e_cesta
+    hipoteses_inocentes:
+    - hipotese: 'Obra autoral de editora única: preço de capa é o único preço público — exige NF a outros contratantes'
+      excluida_por: null
+    - hipotese: Ata com desconto sobre tabela — a tabela é do fornecedor; pedir comparativo
+      excluida_por: null
+    - hipotese: Cláusula que manda pesquisar (dever-ser) — não conta
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: carona_adesao_contratacao_direta
+    especificacao: config/padroes/preco_de_fonte_unica_interessada.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.reserva_tecnica_multiplicada:
+    modulo: compliance_agent/padroes/reserva_tecnica_multiplicada.py
+    simbolo: varrer
+    afirma: Reserva técnica de material aplicada a locais, pessoas, horas ou transporte
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    - ob_orcamentaria_siafe (_ob_paga)
+    grava: data/padroes/reserva_tecnica_multiplicada.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_reserva_tecnica_multiplicada.py::test_controle_positivo_locais_e_horas
+    controle_negativo: tests/test_padrao_reserva_tecnica_multiplicada.py::test_negativo_material_impresso
+    hipoteses_inocentes:
+    - hipotese: Reserva expressamente prevista no contrato para o item — não excluída (ler cláusula de preço)
+      excluida_por: null
+    - hipotese: Linhas de material impresso (caderno, prova, malote, kit) — excluídas por código
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: pagamento_atesto_retencoes_mrosc
+    especificacao: config/padroes/reserva_tecnica_multiplicada.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  padrao.retificacao_altera_valor:
+    modulo: compliance_agent/padroes/retificacao_altera_valor.py
+    simbolo: varrer
+    afirma: Retificação/rerratificação/apostila que muda valor; número × extenso divergentes
+    fonte:
+    - data/sei_arquivo (texto integral do processo)
+    grava: data/padroes/retificacao_altera_valor.json (via tools/padroes_varrer.py)
+    consome:
+    - compliance_agent/lex_fatos.py (padroes_do_alvo)
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: tests/test_padrao_retificacao_altera_valor.py::test_positivo_geo_numero_diferente_do_extenso
+    controle_negativo: tests/test_padrao_retificacao_altera_valor.py::test_negativo_numero_igual_ao_extenso_e_erro_de_uma_palavra
+    hipoteses_inocentes:
+    - hipotese: Erro material corrigido sem efeito financeiro — conferir NL/OB
+      excluida_por: null
+    - hipotese: Apostila de reajuste (permitida) — o achado registra se cita reajuste
+      excluida_por: null
+    - hipotese: Extenso mal redigido ('vinte e milhões') — recusado pelo parser (não vira divergência)
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    familia: aditivos_execucao_contratual
+    especificacao: config/padroes/retificacao_altera_valor.yaml
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  est.valor_excedido:
+    modulo: compliance_agent/detectores/est_valor_contratual.py
+    simbolo: avaliar
+    afirma: Indício de pagamento (Σ OB contabilizada, mesmo credor e processo) acima do valor contratado mais os aditivos
+      conhecidos (EST-VALOR-EXCEDIDO)
+    fonte:
+    - contratos_tcerj
+    - ob_orcamentaria_siafe (_ob_paga)
+    - contrato_aditivo
+    grava: achado_detector (via python -m compliance_agent.detectores.est_valor_contratual --gravar)
+    consome:
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/test_est_valor_contratual.py::test_pago_acima_do_contratado_sem_aditivo_registrado
+    controle_negativo: tests/test_est_valor_contratual.py::test_aditivo_de_valor_que_cobre_o_pago_afasta
+    hipoteses_inocentes:
+    - hipotese: aditivo ou reajuste que cobre o pago
+      excluida_por: compliance_agent/detectores/est_valor_contratual.py:avaliar
+    - hipotese: OB anulada, de outro credor ou de outro processo
+      excluida_por: compliance_agent/detectores/est_valor_contratual.py:_pago
+    - hipotese: valor_contrato do TCE-RJ pode ser o atualizado (a fonte não diz)
+      excluida_por: null
+    - hipotese: reajuste por apostila (art. 136) sem aditivo coletado
+      excluida_por: null
+    dominio: 'contratos do TCE-RJ casados à OB do SIAFE pelo processo SEI + CNPJ (cobertura parcial declarada: 58 de 300 sorteados
+      casaram em 13/11/2026)'
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  est.aditivo_teto:
+    modulo: compliance_agent/detectores/est_valor_contratual.py
+    simbolo: avaliar
+    afirma: Indício de acréscimo de valor por aditivo acima do teto do art. 125 (25%; 50% em reforma) (EST-ADITIVO-TETO)
+    fonte:
+    - contratos_tcerj
+    - ob_orcamentaria_siafe (_ob_paga)
+    - contrato_aditivo
+    grava: achado_detector (via python -m compliance_agent.detectores.est_valor_contratual --gravar)
+    consome:
+    - rotas/pericias_rotinas.py
+    manchete: false
+    controle_positivo: tests/test_est_valor_contratual.py::test_aditivo_acima_do_teto_e_reforma_tem_50
+    controle_negativo: tests/test_est_valor_contratual.py::test_reajuste_nao_conta_no_teto_mas_cobre_o_pago
+    hipoteses_inocentes:
+    - hipotese: reajuste/reequilíbrio não é acréscimo (natureza)
+      excluida_por: compliance_agent/limites_aditivo.py:classificar_natureza
+    - hipotese: reforma de edifício/equipamento tem teto de 50%
+      excluida_por: compliance_agent/detectores/est_valor_contratual.py:avaliar
+    dominio: 'contratos do TCE-RJ casados à OB do SIAFE pelo processo SEI + CNPJ (cobertura parcial declarada: 58 de 300 sorteados
+      casaram em 13/11/2026)'
+    fp_medida: null
+    estado: fundido
+    fundido_em: det.X1CrescimentoAditivo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D1:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d1_pix_impedida
+    afirma: Indício de emenda PIX (transferência especial) a ente impedido de receber
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d1_pix_impedida, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_emendas.py::test_d1_pix_impedida
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D2:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d2_concentracao_autor
+    afirma: Indício de carteira de emendas do autor concentrada (≥ 50%) num destino
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d2_concentracao_autor, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_emendas.py::test_d2_concentracao_autor
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D3:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d3_favorecido_sancionado
+    afirma: Indício de emenda paga a favorecido com sanção impeditiva vigente
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d3_favorecido_sancionado, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_emendas_d3_vigencia.py::test_sancao_vigente_na_emenda_e_risco_alto
+    controle_negativo: tests/test_emendas_d3_vigencia.py::test_sancao_POSTERIOR_nao_acusa
+    hipoteses_inocentes:
+    - hipotese: sanção posterior à emenda
+      excluida_por: compliance_agent/emendas/pericia.py:d3_favorecido_sancionado
+    - hipotese: sanção não impeditiva ou de outro ente
+      excluida_por: compliance_agent/emendas/pericia.py:d3_favorecido_sancionado
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D4:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d4_favorecido_fantasma
+    afirma: Indício de emenda a favorecido com perfil de fachada
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d4_favorecido_fantasma, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_emendas.py::test_d4_favorecido_fantasma_injetado
+    controle_negativo: tests/test_pericia_emendas.py::test_d4_pula_entes_publicos
+    hipoteses_inocentes:
+    - hipotese: favorecido é ente público
+      excluida_por: compliance_agent/emendas/pericia.py:d4_favorecido_fantasma
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D5:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d5_retroalimentacao_eleitoral
+    afirma: Indício de retroalimentação eleitoral (favorecido ligado a doador do autor)
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d5_retroalimentacao_eleitoral, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_emendas.py::test_d5_retroalimentacao_eleitoral
+    controle_negativo: tests/test_pericia_emendas.py::test_d5_so_por_nome_nao_vira_achado
+    hipoteses_inocentes:
+    - hipotese: homônimo (casamento só por nome)
+      excluida_por: compliance_agent/emendas/pericia.py:d5_retroalimentacao_eleitoral
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  emendas.D6:
+    modulo: compliance_agent/emendas/pericia.py
+    simbolo: d6_empenho_sem_pagamento
+    afirma: Indício de emenda anunciada sem execução (> 50% do empenho cancelado)
+    fonte:
+    - emendas (transferegov/Câmara)
+    - sancoes_federais
+    - ob_orcamentaria_siafe
+    grava: alertas (tipo emendas_d6_empenho_sem_pagamento, via tools/emendas_pericia.py → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_emendas.py::test_d6_empenho_sem_pagamento
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  pcrj.d7_fracionamento:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d7_fracionamento
+    afirma: Indício de fracionamento em contratações da Prefeitura do Rio (soma no ano acima do teto de dispensa do ano)
+    fonte:
+    - pcrj_contratos / PNCP (esfera municipal-Rio)
+    - empresas
+    - folha PCRJ
+    grava: alertas (tipo pcrj_d7_…, via pericia_gastos.rodar_todas → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_gastos.py::test_d7_fracionamento
+    controle_negativo: tests/test_pericia_gastos.py::test_d7_ignora_acima_do_teto
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  pcrj.d8_credor_recem_aberto:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d8_credor_recem_aberto
+    afirma: Indício de credor aberto há menos de 180 dias com ≥ R$ 100 mil
+    fonte:
+    - pcrj_contratos / PNCP (esfera municipal-Rio)
+    - empresas
+    - folha PCRJ
+    grava: alertas (tipo pcrj_d8_…, via pericia_gastos.rodar_todas → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_gastos.py::test_d8_credor_recem_aberto
+    controle_negativo: null
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  pcrj.d9_socio_na_folha:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d9_socio_na_folha
+    afirma: Indício de sócio de credor da Prefeitura que é servidor da folha municipal
+    fonte:
+    - pcrj_contratos / PNCP (esfera municipal-Rio)
+    - empresas
+    - folha PCRJ
+    grava: alertas (tipo pcrj_d9_…, via pericia_gastos.rodar_todas → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_gastos.py::test_d9_socio_na_folha
+    controle_negativo: tests/test_pcrj_d9_identidade.py::test_cpf_incompativel_e_homonimo_nao_alerta
+    hipoteses_inocentes:
+    - hipotese: homônimo (CPF incompatível)
+      excluida_por: compliance_agent/pcrj/pericia_gastos.py:d9_socio_na_folha
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  pcrj.d10_rede_concorrentes:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d10_rede_concorrentes
+    afirma: Indício de rede entre concorrentes (sócio/contato comum) com aditivos
+    fonte:
+    - pcrj_contratos / PNCP (esfera municipal-Rio)
+    - empresas
+    - folha PCRJ
+    grava: alertas (tipo pcrj_d10_…, via pericia_gastos.rodar_todas → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_gastos.py::test_d10_rede_concorrentes_e_aditivos
+    controle_negativo: tests/test_pericia_gastos.py::test_d10_nao_acusa_rede_que_ainda_nao_existia
+    hipoteses_inocentes: []
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  pcrj.d12_coendereco_concorrentes:
+    modulo: compliance_agent/pcrj/pericia_gastos.py
+    simbolo: d12_coendereco_concorrentes
+    afirma: Indício de concorrentes no mesmo endereço (guarda de CEP popular > 5 empresas)
+    fonte:
+    - pcrj_contratos / PNCP (esfera municipal-Rio)
+    - empresas
+    - folha PCRJ
+    grava: alertas (tipo pcrj_d12_…, via pericia_gastos.rodar_todas → alertas_persistencia.gravar)
+    consome:
+    - painel (alertas)
+    - triagem_alertas
+    manchete: false
+    controle_positivo: tests/test_pericia_gastos.py::test_d12_coendereco_entre_concorrentes
+    controle_negativo: tests/test_pericia_gastos.py::test_d12_guard_cep_popular
+    hipoteses_inocentes:
+    - hipotese: CEP popular (centro comercial com muitas empresas)
+      excluida_por: compliance_agent/pcrj/pericia_gastos.py:d12_coendereco_concorrentes
+    dominio: null
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  a_portar.p4_obra_e_lei_8666_tcerj:
+    modulo: tools/sweep_fracionamento_tcerj.py
+    simbolo: _tipo_obj
+    afirma: 'Regra do P4 que só existe no sweep: objeto de obra/engenharia (reforma = art. 75, I; ''mão de obra'' fora) e
+      contratação da Lei 8.666 medida contra o teto maior da 14.133'
+    fonte:
+    - compras_diretas_tcerj
+    grava: output/sweep_fracionamento_tcerj.json
+    consome:
+    - aba Estado › Fracionamento (derivado fracionamento_objeto)
+    manchete: false
+    controle_positivo: tests/test_sweep_fracionamento.py::test_tipo_obj_obras_vs_compras
+    controle_negativo: tests/test_sweep_fracionamento.py::test_sweep_dispensa_emergencial_nao_e_fracionamento
+    hipoteses_inocentes:
+    - hipotese: '''mão de obra'' não é obra'
+      excluida_por: tools/sweep_fracionamento_tcerj.py:_tipo_obj
+    dominio: dispensas por valor do espelho TCE-RJ (compras_diretas_tcerj)
+    fp_medida: null
+    estado: a_portar
+    portar_para: det.P4Fracionamento
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  a_portar.p5_dedup_por_processo:
+    modulo: tools/sweep_emergencia_recorrente.py
+    simbolo: carregar
+    afirma: 'Regra do P5 que só existe no sweep: emergência recorrente deduplicada por PROCESSO (MAX do valor — a soma por
+      item inflava 2,3×) e pelo enquadramento legal, não só pelo objeto'
+    fonte:
+    - compras_diretas_tcerj
+    grava: relatório md do sweep (tools/sweep_emergencia_recorrente.py)
+    consome:
+    - vault (relatório)
+    manchete: false
+    controle_positivo: tests/test_emergencia_recorrente.py::test_recorrencia_no_mesmo_fornecedor_e_sinal_mais_forte
+    controle_negativo: tests/test_emergencia_recorrente.py::test_emergencia_pontual_nao_vira_achado
+    hipoteses_inocentes:
+    - hipotese: emergência pontual
+      excluida_por: tools/sweep_emergencia_recorrente.py:carregar
+    dominio: contratações emergenciais do espelho TCE-RJ
+    fp_medida: null
+    estado: a_portar
+    portar_para: det.P5EmergenciaFabricada
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  a_portar.lex_fatos.c_pago_maior_que_nl:
+    modulo: compliance_agent/lex_fatos.py
+    simbolo: achados_contabeis
+    afirma: Soma das OB acima do valor liquidado na mesma NL (C-PAGO>NL; grav 3 se excesso ≥ R$ 100 mil)
+    fonte:
+    - ob_orcamentaria_siafe (_ob_paga)
+    - nl_siafe
+    grava: parecer Lex (eixo contábil)
+    consome:
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: NL complementar/reforço lançada depois
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: a_portar
+    portar_para: E10 (detector contábil genérico)
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  a_portar.lex_fatos.c_ob_antes_da_nl:
+    modulo: compliance_agent/lex_fatos.py
+    simbolo: achados_contabeis
+    afirma: OB paga antes da NL que a liquida (C-OB<NL)
+    fonte:
+    - ob_orcamentaria_siafe (_ob_paga)
+    - nl_siafe
+    grava: parecer Lex (eixo contábil)
+    consome:
+    - compliance_agent/lex_parecer.py
+    manchete: false
+    controle_positivo: null
+    controle_negativo: null
+    hipoteses_inocentes:
+    - hipotese: NL complementar/reforço lançada depois
+      excluida_por: null
+    dominio: null
+    fp_medida: null
+    estado: a_portar
+    portar_para: E10 (detector contábil genérico)
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false

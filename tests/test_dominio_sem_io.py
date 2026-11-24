@@ -21,7 +21,8 @@ RAIZ = Path(__file__).resolve().parents[1]
 DOMINIO = RAIZ / "compliance_agent" / "dominio"
 
 STDLIB_OK = {"__future__", "re", "dataclasses", "enum", "typing", "functools", "itertools", "collections",
-             "datetime", "decimal", "unicodedata", "math"}
+             "datetime", "decimal", "unicodedata", "math", "hashlib", "json",
+             "pydantic"}   # pydantic (O5.2, dominio/achado.py): validação de esquema, sem I/O; já no requirements
 PERMITIDOS = {"compliance_agent.cpf_cnpj"}                     # puro: só `re` (conferido abaixo)
 IGNORE_IMPORTS = {("compliance_agent.dominio.pagamento", "compliance_agent.cruzamentos_intel")}
 PROIBIDOS = ("fastapi", "starlette", "uvicorn", "sqlalchemy", "alembic", "psycopg", "psycopg2", "apsw", "sqlite3",
@@ -79,9 +80,14 @@ def test_importlinter_tem_o_mesmo_contrato():
 
 def test_importar_o_dominio_nao_carrega_io():
     codigo = (
-        "import sys, json, importlib; import compliance_agent; antes = set(sys.modules); "
+        # pydantic (permitido, O5.2) é pré-carregado como o compliance_agent, COM um modelo descartável construído
+        # (na 2.14 é a construção do 1º modelo que puxa `socket` da stdlib, sem fazer I/O): o que se mede é o que o
+        # CÓDIGO do domínio acrescenta — o import direto de I/O já é barrado pela AST acima.
+        "import sys, json, importlib, decimal, datetime; import compliance_agent, pydantic; "
+        "type('M', (pydantic.BaseModel,), {'__annotations__': {'d': decimal.Decimal, 't': datetime.datetime, "
+        "'s': str}, 's': pydantic.Field(default='a', pattern='^a$')}); antes = set(sys.modules); "
         "[importlib.import_module('compliance_agent.dominio.' + m) for m in "
-        "('digitos','processo_id','documento_id','contrato_id','pagamento','estados')]; "
+        "('digitos','processo_id','documento_id','contrato_id','pagamento','estados','achado')]; "
         "print(json.dumps(sorted(set(sys.modules) - antes)))"
     )
     r = subprocess.run([sys.executable, "-c", codigo], cwd=RAIZ, capture_output=True, text=True, timeout=120)
