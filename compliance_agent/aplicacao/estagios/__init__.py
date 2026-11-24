@@ -11,7 +11,8 @@ Cada estágio é um tipo de job com contrato fixo:
 
 Quem roda handler e efeito é SEMPRE o processo-filho `compliance_agent.fluxo.executar`, nunca o supervisor
 (catraca em tests/test_fluxo_supervisor.py). E0 "eco" (teste) e, desde a O2.1, `legado:<rotina>` (estagios/legado.py:
-roda o comando que rodava antes da parada); os estágios reais chegam na O3+.
+roda o comando que rodava antes da parada), E18 `observar` (O8.1: sensores → fluxo.metricas); os outros estágios
+reais chegam na O3+.
 """
 from __future__ import annotations
 
@@ -74,8 +75,36 @@ def _eco_efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return r is not None and r[0] == str(ctx.ficha)
 
 
+# ── E18 "observar": sensores → fluxo.metricas (O8.1; compliance_agent/fluxo/sensores.py) ──────────────────────────
+def _observar(payload: dict, ctx: Contexto) -> Resultado:
+    """Uma coleta dos sensores do nó. A etiqueta `coleta` deriva da chave + ficha: a reexecução do MESMO job (outra
+    ficha) é outra coleta — série temporal, não estado — e a conferência conta só as linhas desta."""
+    from compliance_agent.fluxo import sensores
+    con = fila.conectar()
+    try:
+        r = sensores.coletar(con, ctx.no, grupos=payload.get("grupos") or None, forcar=bool(payload.get("forcar")),
+                             coleta=f"{ctx.chave}#{ctx.ficha}")
+    finally:
+        con.close()
+    return Resultado(efeito={"coleta": r["coleta"], "gravadas": r["gravadas"], "pulados": r["pulados"]},
+                     eventos=[{"fonte": "observar", "tipo": "metricas", "chave": r["coleta"]}])
+
+
+def _observar_efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
+    """Relê o PG: as linhas com a etiqueta desta coleta existem e são exatamente as declaradas (> 0)."""
+    from compliance_agent.fluxo import sensores
+    declaradas = int(resultado.efeito.get("gravadas") or 0)
+    con = fila.conectar()
+    try:
+        n = sensores.contar_coleta(con, str(resultado.efeito.get("coleta") or ""))
+    finally:
+        con.close()
+    return declaradas > 0 and n == declaradas
+
+
 REGISTRO: dict[str, Estagio] = {
     "eco": Estagio(handler=_eco, efeito=_eco_efeito, recursos=["cpu_leve"], prioridade=100),
+    "observar": Estagio(handler=_observar, efeito=_observar_efeito, recursos=["cpu_leve"], prioridade=25),
 }
 
 

@@ -27,13 +27,13 @@ itens:
   # O2 — Zero cron
   - {id: O2.1, dep: [O1.8], maq: vm1, estado: feito, nota: "6c3fedd7: fluxo.yaml 151 rotinas; schema fluxo aplicado no PG real; sombra 2,7x → O2.2", titulo: "config/fluxo.yaml + planejador em replay dos logs"}
   - {id: O2.2, dep: [O2.1], maq: vm1, estado: feito, nota: "1004e9a1: sombra 0,91x (slots) / 1,95x (capacidade legado, explicado); agenda sincronizar pronta e inativa", titulo: "Planejador corrigido pela sombra (cadeia, tetos, sem sobreposição, nó)"}
-  - {id: O2.3, dep: [O2.1], maq: vm1, estado: em_curso, nota: "navegador transitório VM-1 só p/ 15 legadas até O3.3; ritmo também na agenda; religar_o90 --ensaio", titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
+  - {id: O2.3, dep: [O2.1], maq: vm1, estado: feito, nota: "religar_o90 (--ensaio), ritmo no PG, reserva p95 11 ms, ponte de eventos, fluxo_002 (aplicar no R0)", nota: "navegador transitório VM-1 só p/ 15 legadas até O3.3; ritmo também na agenda; religar_o90 --ensaio", titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
   - {id: O2.4, dep: [O2.1], maq: vm2, estado: pendente, titulo: "Uma árvore só na VM-2 + deploy por evento"}
   - {id: O2.5, dep: [O2.1], maq: todas, estado: pendente, titulo: "Portão de push e catracas como jobs da VM-2 (push_divida)"}
   - {id: O2.6, dep: [O1.6], maq: todas, estado: pendente, titulo: "48 h de governador: metas de capacidade"}
   # O3 — Identidade e captura/texto
-  - {id: O3.1, dep: [O1.7], maq: vm2, estado: pendente, titulo: "Carga dos 12,6 mil manifestos (identidade única)"}
-  - {id: O3.2, dep: [O3.1], maq: vm2, estado: pendente, titulo: "aquisicao + transformacao"}
+  - {id: O3.1, dep: [O1.7], maq: vm2, estado: feito, nota: "63e18bd2: 16.594 processos/595.092 docs/586.311 versões no PG; paridade 100%", titulo: "Carga dos 12,6 mil manifestos (identidade única)"}
+  - {id: O3.2, dep: [O3.1], maq: vm2, estado: feito, nota: "63e18bd2: aquisicao(legado) + transformacao + hash_de", titulo: "aquisicao + transformacao"}
   - {id: O3.3, dep: [O3.1], maq: itcampo+vm2, estado: pendente, titulo: "E2/E3 unificados; lente bombeiros substitui sweep/supervisor (paridade)"}
   - {id: O3.4, dep: [O3.3], maq: todas, estado: pendente, titulo: "E4-E7 + filas JSON migradas"}
   - {id: O3.5, dep: [O3.4], maq: vm2, estado: pendente, titulo: "Captura delta ligada (replay dos manifestos)"}
@@ -42,9 +42,9 @@ itens:
   - {id: O4.1, dep: [], maq: vm2, estado: feito, nota: "382a0870: dominio com paridade (111 passed); bug achado lex_execucao._chave_processo (492 grafias)", titulo: "compliance_agent/dominio/ com paridade"}
   - {id: O4.2, dep: [O4.1], maq: vm2, estado: feito, nota: "5de37f8d; carimbado no vivo 24/11 ~15h40 (backup ~/backup-pre-alembic-20261124.db md5 = snapshot); _sync_columns remover em 01/12", titulo: "Alembic real (engine cache, stamp, fail-fast, fim do _sync_columns)"}
   - {id: O4.3, dep: [O4.1], maq: vm1, estado: feito, nota: "cba39ce6; 0002 aplicada no vivo 24/11 ~16h (MAX cru dava 31/12/2025; ISO dá 2026-11-23)", titulo: "data_emissao_iso + catraca"}
-  - {id: O4.4, dep: [O4.1], maq: vm2, estado: pendente, titulo: "regime por contrato", tags: [juridico]}
-  - {id: O4.5, dep: [O4.1], maq: vm2, estado: pendente, titulo: "tetos por lei/ente/data", tags: [juridico]}
-  - {id: O4.6, dep: [O4.1], maq: vm2, estado: pendente, titulo: "natureza do pagamento + origem do exercício", tags: [juridico]}
+  - {id: O4.4, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "regime por contrato", tags: [juridico]}
+  - {id: O4.5, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "tetos por lei/ente/data", tags: [juridico]}
+  - {id: O4.6, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "natureza do pagamento + origem do exercício", tags: [juridico]}
   - {id: O4.7, dep: [O4.4, O4.5, O4.6], maq: vm2, estado: pendente, titulo: "E9 elegibilidade + teste arquitetural"}
   - {id: O4.8, dep: [O4.7], maq: vm2, estado: pendente, titulo: "fracionamento correto + identidade + regra temporal + convergência", tags: [juridico]}
   - {id: O4.9, dep: [O4.7], maq: vm2, estado: pendente, titulo: "lote de correções jurídicas", tags: [juridico]}

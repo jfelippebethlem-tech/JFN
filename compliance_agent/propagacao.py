@@ -25,8 +25,16 @@ lê avançou? a chave do cache foi regravada?). Sonda que falha é erro declarad
 Estado em `data/propagacao.db` (base própria, pequena); o painel lê em Sistema › Propagação
 (`/api/sistema/propagacao`). Descobertas duráveis seguem para o segundo cérebro (`cerebro_compartilhado`).
 
+⚠ SUBSTITUÍDO PELO MOTOR DE FLUXO (O2.3, 24/11/2026 — plano mestre v2 §3.3): o `ciclo` (cron */5) e o seu
+`despachar` são aposentados. Quem recalcula derivado agora é o planejador do `jfn-fluxo`
+(compliance_agent/fluxo/planejador.py, grafo em config/fluxo.yaml); o resto do ciclo — sondas, eventos dos produtores,
+descobertas → cérebro, poda — segue em `ponte-fluxo` (rotina `propagacao_ponte`, E18), que entrega os eventos ao
+`fluxo.eventos`. O `ciclo` fica SÓ como desfazer da religação (crontab `#PARADA-20261124`) e é removido na O9.1,
+depois de 14 dias de religação estável. Não chamar `ciclo` e `ponte-fluxo` juntos: dividem a mesma trava.
+
 CLI:
-    python -m compliance_agent.propagacao ciclo                 # o que o cron chama
+    python -m compliance_agent.propagacao ciclo                 # LEGADO (desfazer da O9.0): sonda + despachante
+    python -m compliance_agent.propagacao ponte-fluxo           # o que o fluxo chama: sonda → fluxo.eventos
     python -m compliance_agent.propagacao estado                # JSON do painel
     python -m compliance_agent.propagacao mapa                  # mapa de dependências em Markdown
     python -m compliance_agent.propagacao emitir <fonte> "<detalhe>"
@@ -900,7 +908,12 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
 
 
 def ciclo(cfg: dict | None = None, db: Path | None = None) -> dict:
-    """Um ciclo completo sob trava de arquivo. Trava ocupada = outro ciclo trabalhando; sai sem fazer nada."""
+    """Um ciclo completo sob trava de arquivo. Trava ocupada = outro ciclo trabalhando; sai sem fazer nada.
+
+    SUBSTITUÍDO (O2.3): o motor de fluxo faz o despacho; este ciclo só existe como desfazer da religação (O9.0) e
+    sai na O9.1. Paridade: `ponte_fluxo` (abaixo) faz o resto do que este ciclo fazia."""
+    print("propagação: AVISO — `ciclo` foi substituído pelo motor de fluxo (O2.3); rodando como DESFAZER da "
+          "religação. O caminho vigente é `ponte-fluxo` + jfn-fluxo.", file=sys.stderr)
     cfg = cfg or carregar()
     erros = validar(cfg)
     if erros:
@@ -927,6 +940,63 @@ def ciclo(cfg: dict | None = None, db: Path | None = None) -> dict:
         con.commit()
         return r
     finally:
+        con.close()
+        trava.close()
+
+
+CHAVE_PONTE = "fluxo_ultimo_evento"
+
+
+def ponte_fluxo(cfg: dict | None = None, db: Path | None = None, con_fluxo=None) -> dict:
+    """O `ciclo` sem o despachante (O2.3): sondas das fontes, descobertas → cérebro, envio ao cérebro e poda — e
+    cada evento novo do `propagacao.db` (sonda OU `avisar` do produtor) é ENTREGUE ao `fluxo.eventos`, de onde o
+    planejador suja os derivados (config/fluxo.yaml). Mesma trava do `ciclo`: os dois nunca rodam juntos.
+
+    Entrega pelo marcador `meta.fluxo_ultimo_evento` (id do último evento entregue), gravado DEPOIS do PG: queda no
+    meio reentrega — o evento repetido cai no mesmo job (chave do dependente), não duplica trabalho. Primeira rodada
+    sem marcador começa do evento mais novo: o histórico antigo não vira rajada (a lacuna da parada é recuperada pela
+    religação, E1 com `desde`). As pendências do despachante não são tocadas: no desfazer ele as encontra."""
+    cfg = cfg or carregar()
+    erros = validar(cfg)
+    if erros:
+        raise ValueError("config/propagacao.yaml inválido: " + "; ".join(erros))
+    DATA.mkdir(parents=True, exist_ok=True)
+    trava = open(DATA / ".propagacao.lock", "w")
+    try:
+        fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        trava.close()
+        return {"ocupado": True}
+    con = conectar(db)
+    proprio = con_fluxo is None
+    try:
+        t0 = time.time()
+        eventos = sondar(con, cfg)
+        achados = descobertas_sql(con, cfg)
+        envio = cerebro.enviar_pendentes(con=con)
+        marca = con.execute("SELECT v FROM meta WHERE k = ?", (CHAVE_PONTE,)).fetchone()
+        maximo = con.execute("SELECT COALESCE(MAX(id), 0) FROM evento").fetchone()[0]
+        desde = int(marca[0]) if marca else maximo - eventos      # 1ª rodada: só o que esta sonda acabou de ver
+        novos = con.execute("SELECT id, fonte, quando, detalhe FROM evento WHERE id > ? ORDER BY id",
+                            (desde,)).fetchall()
+        if novos:
+            from compliance_agent.fluxo import fila
+            if proprio:
+                con_fluxo = fila.conectar()
+            with con_fluxo.transaction():
+                for eid, fonte, quando, det in novos:
+                    fila.emitir(con_fluxo, fonte, "mudou", None,
+                                {"detalhe": (det or "")[:400], "propagacao_id": eid, "quando": quando})
+        ultimo = novos[-1][0] if novos else max(desde, 0)
+        con.execute("INSERT OR REPLACE INTO meta(k, v) VALUES (?, ?)", (CHAVE_PONTE, str(ultimo)))
+        con.execute("DELETE FROM evento WHERE id < (SELECT MAX(id) FROM evento) - ? "
+                    "AND id NOT IN (SELECT evento_id FROM pendencia) AND id <= ?", (EVENTOS_GUARDADOS, ultimo))
+        con.commit()
+        return {"ponte_fluxo": {"sondados": eventos, "entregues": len(novos), "ultimo": ultimo},
+                "descobertas": achados, "cerebro": envio, "segundos": round(time.time() - t0, 1)}
+    finally:
+        if proprio and con_fluxo is not None:
+            con_fluxo.close()
         con.close()
         trava.close()
 
@@ -1008,6 +1078,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Propagação automática do JFN")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("ciclo")
+    sub.add_parser("ponte-fluxo")
     sub.add_parser("estado")
     sub.add_parser("mapa")
     ex = sub.add_parser("executar")          # corpo do pesado destacado (lançado pelo despachante, não à mão)
@@ -1027,6 +1098,10 @@ def main(argv=None) -> int:
     if a.cmd == "ciclo":
         r = ciclo(cfg)
         print(time.strftime("%F %T"), json.dumps(r, ensure_ascii=False), flush=True)
+        return 0
+    if a.cmd == "ponte-fluxo":
+        r = ponte_fluxo(cfg)
+        print(time.strftime("%F %T"), json.dumps(r, ensure_ascii=False, default=str), flush=True)
         return 0
     if a.cmd == "estado":
         print(json.dumps(estado(cfg), ensure_ascii=False, indent=1))

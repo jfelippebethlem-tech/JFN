@@ -810,3 +810,29 @@ def api_conciliacao_ob_tfe(ano: Optional[int] = None):
              "maiores_so_tfe": [x for x in d["maiores_so_tfe"] if str(x.get("data", ""))[:4] == a],
              "maiores_so_siafe": [x for x in d["maiores_so_siafe"] if str(x.get("data", ""))[:4] == a]}
     return JSONResponse(d)
+
+
+@router.get("/api/sistema/slos")
+def api_sistema_slos():
+    """Estado por SLO do E18 `observar` (O8.1): a ÚLTIMA medida de cada nó × sensor em `fluxo.metricas`, julgada pelos
+    limites de config/slos.yaml, e o estado global honesto (pior medido; nada medido = INDISPONIVEL; saudável com SLO
+    sem medida = DEGRADADO). Medida além da janela do SLO = INDISPONIVEL. Só leitura (sessão READ ONLY no PG, teto de
+    5 s): funciona em modo manutenção. Sem PG a resposta é INDISPONIVEL com o motivo — nunca zero, nunca 'ok'."""
+    from compliance_agent.fluxo import sensores as S
+    try:
+        slos = S.carregar_slos()
+    except (OSError, ValueError) as e:                 # yaml ausente/inválido (ValidationError é ValueError)
+        return JSONResponse({"ok": False, "estado": "INDISPONIVEL", "motivo": f"config/slos.yaml inválido: {e}"},
+                            status_code=500)
+    fonte = "fluxo.metricas (última linha por nó × sensor) + config/slos.yaml"
+    try:
+        con = S.conectar_leitura()
+        try:
+            linhas = S.ler_ultimos(con, slos)
+        finally:
+            con.close()
+    except S._erros() as e:                             # PG fora / sem DSN: nada medido não é saudável
+        r = S.estado_slos([], slos)
+        return JSONResponse({**r, "ok": False, "fonte": fonte,
+                             "motivo": f"fluxo.metricas inacessível ({type(e).__name__}): estado não medido"})
+    return JSONResponse({"ok": True, "fonte": fonte, **S.estado_slos(linhas, slos)})

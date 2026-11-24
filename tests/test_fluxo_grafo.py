@@ -86,7 +86,9 @@ def test_yaml_real_derivados_da_propagacao_estao_todos(real):
     for did, d in prop["derivados"].items():
         r = real.rotinas[did]
         assert r.evento and sorted(r.evento.depende) == sorted(d["depende"])
-        assert r.evento.intervalo_min_s == int(d.get("intervalo_min_s", 0))
+        # D3 (dono, 24/11): certeza e conformidade com o DOBRO do intervalo do propagacao.yaml (cadeia longa)
+        fator = 2 if did in ("certeza", "conformidade") else 1
+        assert r.evento.intervalo_min_s == fator * int(d.get("intervalo_min_s", 0)), did
         if (d.get("efeito") or {}).get("arquivo"):
             assert r.efeito.arquivo == d["efeito"]["arquivo"]
 

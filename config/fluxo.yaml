@@ -33,6 +33,20 @@ concorrencia:
   api_paga: {max: 1, motivo: 'API paga com teto de US$ 100/mês: um consumidor por vez (nunca assumir free tier)'}
   painel: {max: 1, motivo: 'recálculo do cache do painel: um pedido por vez (o painel entrega o anterior e recalcula em 2º plano)'}
   disco_vm1: {max: 1, motivo: 'uma rotina de disco pesada por vez na VM-1 (WAL, backup, compactação)'}
+# Slot TRANSITÓRIO (decisão D1 do dono, 24/11/2026): a §3.4 dá 0 navegador à VM-1, mas 15 rotinas legadas de navegador
+# estão presas ao compliance.db (que mora na VM-1) até o E1–E3 sair dela. 1 slot de navegador na VM-1 SÓ para estas 15,
+# até a O3.3. A reserva recusa o slot a qualquer outro tipo (fila.reservar `restritos`) e a catraca
+# tests/test_fluxo_o23.py impede a lista de crescer ou o transitório de mudar de nó/recurso. Sombra §8.5/§8.6.
+transitorios:
+  navegador_vm1:
+    maquina: vm1
+    recurso: navegador
+    slots: 1
+    transitorio_ate: O3.3
+    motivo: 'rotinas legadas de navegador presas ao compliance.db da VM-1 (sombra §8.6, decisão 1-a); sai quando o E1–E3 for portado'
+    rotinas: [siafe_runner_diario, siafe_runner_retentar, siafe_drenar_capados, siafe_documento_sweep, sweep_sei, sweep_dados,
+      sei_integra_fila, integra_fila_dinheiro, varredura_sei_lane, sweep_integra_contratos_pcrj, doerj, pcrj_sei_busca_termos,
+      sei_busca_credor, verificacao_humana_manter, sweep_sei_noturno]
 estagios:
   E1:
     tipo: coletar
@@ -1239,10 +1253,11 @@ rotinas:
   ritmo_assinatura:
     estagio: E18
     descricao: Ritmo da assinatura (medir)
-    comando: ['{py}', -m, compliance_agent.llm.ritmo_assinatura, --medir]
+    comando: ['{py}', -m, compliance_agent.fluxo, ritmo, medir]
     recursos: [cpu_leve]
     timeout_s: 60
-    nota: segue no cron durante a parada (--medir só lê)
+    nota: 'segue no cron durante a parada (--medir só lê). No fluxo (O2.3) a mesma medição é PUBLICADA em fluxo.metricas
+      para os supervisores fora da VM-1 (compliance_agent/fluxo/ritmo.py; ausente ou velha = porta fechada)'
     agenda:
     - {cron: '*/10 * * * *'}
     origem: [vm1-cron-compliance-agent-llm-ritmo-assinatura]
@@ -2078,7 +2093,7 @@ rotinas:
     evento:
       depende: [regra_detectores, pericia_contabil, governo_couto_regras, cge_confronto]
       debounce_s: 300
-      intervalo_min_s: 3600
+      intervalo_min_s: 7200   # D3 (dono, 24/11): 1 h → 2 h — cadeia longa sujava o tempo todo (sombra §8.4: +3,6 h de job/dia)
       agrupar: true
     origem: [vm1-deriv-conformidade]
     nos: [vm1]
@@ -2342,10 +2357,68 @@ rotinas:
     evento:
       depende: [iss_nao_retido, pericia_contabil, conluio_participacao, cge_confronto, vault_casos, vault_retratos, siafe_status, sei_lex, triagem, memoria_claude]
       debounce_s: 600
-      intervalo_min_s: 3600
+      intervalo_min_s: 7200   # D3 (dono, 24/11): 1 h → 2 h — cadeia longa sujava o tempo todo (sombra §8.4: +3,6 h de job/dia)
       agrupar: true
     origem: [vm1-deriv-certeza]
     nos: [vm1]
+  propagacao_ponte:
+    estagio: E18
+    descricao: Sondas das fontes e eventos dos produtores (propagacao.db) entregues ao fluxo.eventos — o ciclo antigo sem o despachante
+    comando: ['{py}', -m, compliance_agent.propagacao, ponte-fluxo]
+    recursos: [cpu_leve]
+    timeout_s: 600
+    nota: 'O2.3: paridade do `propagacao.ciclo` (sondar + descobertas_sql + cerebro.enviar_pendentes + poda); `despachar` sai — quem
+      recalcula derivado é o planejador. Mesma trava do ciclo (data/.propagacao.lock): os dois nunca rodam juntos (desfazer seguro)'
+    agenda:
+    - {cron: '2-59/5 * * * *'}
+    origem: [vm1-cron-compliance-agent-propagacao-ciclo]
+    nos: [vm1]
+    efeito: {descricao: 'a ponte imprimiu o resumo da rodada (eventos entregues ao fluxo)', log_contem: '"ponte_fluxo":'}
+  observar_vm1:
+    estagio: E18
+    descricao: 'E18 observar (vm1): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, vm1]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 1200
+    prioridade: 25
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@vm1 estiver no ar; até lá a coleta só roda à mão'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    agenda:
+    - {cron: '*/10 * * * *'}
+    origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
+    efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
+  observar_vm2:
+    estagio: E18
+    descricao: 'E18 observar (vm2): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, vm2]
+    recursos: [cpu_leve]
+    nos: [vm2]
+    timeout_s: 1200
+    prioridade: 25
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@vm2 estiver no ar; até lá a coleta só roda à mão'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    agenda:
+    - {cron: '3-59/10 * * * *'}
+    origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
+    efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
+  observar_itcampo:
+    estagio: E18
+    descricao: 'E18 observar (itcampo): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, itcampo]
+    recursos: [cpu_leve]
+    nos: [itcampo]
+    timeout_s: 1200
+    prioridade: 25
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@itcampo estiver no ar; até lá a coleta só roda à mão'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    agenda:
+    - {cron: '6-59/10 * * * *'}
+    origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
+    efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
 duplicacoes:
 - mantida: triagem_lote
   descartadas: []
@@ -2409,7 +2482,9 @@ duplicacoes:
   motivo: cron já comentado antes da parada; o derivado é o gatilho
 fora:
 - origem: [vm1-cron-compliance-agent-propagacao-ciclo]
-  motivo: o despachante é substituído pelo planejador (O2.3 aposenta)
+  motivo: 'o despachante (`propagacao.despachar`) é substituído pelo planejador (O2.3 aposenta); o resto do `ciclo` — sondas
+    das 36 fontes, eventos dos produtores (`avisar`), descobertas → cérebro, poda — segue na rotina `propagacao_ponte` (E18), que
+    entrega os eventos ao fluxo.eventos'
 - origem: [vm1-cron-tools-itcampo-vigia]
   motivo: 'inventário: aposentar (o heartbeat do nó em fluxo.nos substitui)'
 - origem: [vm1-cron-sleep]

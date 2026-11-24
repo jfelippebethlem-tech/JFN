@@ -5,6 +5,7 @@
     python -m compliance_agent.fluxo saude [--esperados vm1,vm2,itcampo]
     python -m compliance_agent.fluxo eco <chave>        # enfileira um job E0 de teste (prova ponta a ponta)
     python -m compliance_agent.fluxo agenda sincronizar  # fluxo.agenda ← config/fluxo.yaml (linha nova: ativo=false)
+    python -m compliance_agent.fluxo ritmo medir|status  # assinatura: mede e publica em fluxo.metricas / o que o motor lê
 O schema: `python -m compliance_agent.fluxo.schema verificar|aplicar`.
 """
 from __future__ import annotations
@@ -33,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     ag_sub = ag.add_subparsers(dest="acao", required=True)
     sinc = ag_sub.add_parser("sincronizar", help="grava a agenda do yaml; linha nova entra DESLIGADA (O9.0 religa)")
     sinc.add_argument("--grafo", default=None, help="caminho do fluxo.yaml (padrão: config/fluxo.yaml)")
+    rt = sub.add_parser("ritmo", help="ritmo da assinatura no PG (fluxo/ritmo.py)")
+    rt.add_argument("acao", choices=("medir", "status"))
+    rt.add_argument("--no", default="vm1")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     if a.cmd == "supervisor":
@@ -53,6 +57,14 @@ def main(argv: list[str] | None = None) -> int:
             from compliance_agent.fluxo import grafo
             r = {"esquema": fila.esquema_vigente(),
                  **planejador.sincronizar_agenda(con, grafo.carregar(a.grafo).agenda_linhas())}
+        elif a.cmd == "ritmo":
+            from compliance_agent.fluxo import ritmo
+            if a.acao == "medir":
+                r = ritmo.medir_e_publicar(con, a.no)
+            else:
+                m, idade = ritmo.ler(con)
+                r = {"medicao": m, "idade_s": idade,
+                     "motivo_por_tarefa": {t: ritmo.motivo(con, t) for t in ("triagem", "conferencia_opus", "canario")}}
         else:
             r = {"id": fila.enfileirar(con, "eco", f"eco:{a.chave}", {"origem": "cli"})}
     finally:

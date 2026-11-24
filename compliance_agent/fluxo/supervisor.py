@@ -9,7 +9,9 @@ O laço SÓ ESCOLHE. Cada volta:
   4. renova o lease dos filhos vivos — lease perdido (outro nó assumiu) ⇒ mata o filho, o trabalho dele não vale;
   5. reserva jobs enquanto houver slot livre e lança cada um em SUBPROCESSO ISOLADO:
      `systemd-run --user --scope --slice=jfn-jobs.slice -p MemoryMax=… -p CPUWeight=…` + `timeout`, quando o
-     systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_AS), nice e `timeout`.
+     systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_AS), nice e `timeout`. Na reserva: só
+     estágio LIBERADO (O9.0), slot transitório do yaml só para as rotinas dele (D1) e o ritmo da assinatura lido
+     do PG (fluxo/ritmo.py; sem medição = porta fechada) somado ao guarda local.
 Entre voltas espera `LISTEN jfn_jobs` (job novo acorda na hora), no máximo 60 s — 2 s com filho rodando.
 
 Catraca (tests/test_fluxo_supervisor.py): este módulo não importa `compliance_agent.aplicacao` e o handler roda
@@ -133,7 +135,8 @@ class Supervisor:
     contrato: Mapping[str, Mapping] | None = None
     tetos: Mapping[str, int] | None = None
     ritmos: set[str] | None = None
-    ritmo: Callable[[str], str | None] = motivo_ritmo
+    ritmo: Callable[[str], str | None] | None = None   # None = PG (fluxo/ritmo.py) + guarda local (motivo_ritmo)
+    restritos: Mapping[str, list[str]] | None = None   # slot transitório do nó → tipos que podem usá-lo (D1)
     prazo_s: float = 120.0
     isolamento: str = "auto"                    # auto | systemd | subprocesso
     chave_lideranca: int = planejador.CHAVE_LIDERANCA
@@ -143,9 +146,13 @@ class Supervisor:
     def __post_init__(self):
         self.dsn = self.dsn or dsn_vigente()
         self.esquema = schema.validar_esquema(self.esquema or fila.esquema_vigente())
-        self.slots = dict(self.slots if self.slots is not None else governador.SLOTS_INICIAIS.get(self.no, {}))
+        slots_dados = self.slots is not None
+        self.slots = dict(self.slots if slots_dados else governador.SLOTS_INICIAIS.get(self.no, {}))
         if self.grafo is None:                       # o grafo real: inválido ⇒ o supervisor não sobe (portão)
             g = grafo_mod.carregar()
+            if not slots_dados:                      # §3.4 + o transitório declarado no yaml (D1), nada além
+                self.slots = g.slots_do_no(self.no)
+            self.restritos = g.restritos_do_no(self.no) if self.restritos is None else self.restritos
             self.grafo = g.grafo_planejador()
             self.contrato = g.contrato() if self.contrato is None else self.contrato
             self.tetos = g.tetos() if self.tetos is None else self.tetos
@@ -154,7 +161,10 @@ class Supervisor:
         self.ritmos = set(self.ritmos or ())
         if self.isolamento == "auto":
             self.isolamento = "systemd" if systemd_disponivel() else "subprocesso"
+        self.restritos = dict(self.restritos or {})
         self.con = fila.conectar(self.dsn, self.esquema)
+        if self.ritmo is None:
+            self.ritmo = self._motivo_ritmo
         v = schema.verificar(self.con, self.esquema)
         if not v["ok"]:
             raise RuntimeError(f"schema {self.esquema} incompleto: {v['faltando']}")
@@ -314,6 +324,12 @@ class Supervisor:
              json.dumps({**m.como_dict(), "estado": d.estado, "motivos": d.motivos, "livres": d.livres}),
              self.versao))
 
+    def _motivo_ritmo(self, tarefa: str) -> str | None:
+        """O ritmo publicado no PG (vale em qualquer nó; ausente/velho = porta fechada) E o guarda local da
+        contingência (limite da conta, teto diário do motor — arquivos da VM-1). Qualquer um fechando, fecha."""
+        from compliance_agent.fluxo import ritmo as ritmo_pg
+        return ritmo_pg.motivo(self.con, tarefa) or motivo_ritmo(tarefa)
+
     def uma_volta(self) -> dict:
         r: dict = {"no": self.no}
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
@@ -332,7 +348,7 @@ class Supervisor:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:
             job = fila.reservar(self.con, self.no, livres, self.prazo_s, tetos=self.tetos,
-                                ritmo_bloqueado=bloqueados)
+                                ritmo_bloqueado=bloqueados, liberacao=True, restritos=self.restritos)
             if job is None:
                 break
             for rec in job.recursos:

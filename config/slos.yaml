@@ -1,0 +1,635 @@
+# slos.yaml — SLOs do estágio E18 `observar` (plano mestre v2 §3.2 E18, §3.3 fluxo.metricas, §3.10 inv. 5, §11;
+# doc 2 §9 e §26). Validado por Pydantic em compliance_agent/fluxo/sensores.py (`carregar_slos`).
+#
+# Cada SLO julga UM sensor (o `nome` da linha em fluxo.metricas) com limites NUMÉRICOS:
+#   sentido     max = o valor tem de ficar ABAIXO do limite (idade, atraso, contagem de falha)
+#               min = o valor tem de ficar ACIMA do limite (disco livre, cobertura, vazão)
+#   saudavel    dentro dele → SAUDAVEL
+#   degradado   (opcional) entre `saudavel` e este → DEGRADADO; além dele → `pior`
+#   pior        estado quando passa do último limite: DEGRADADO | ATRASADO | BLOQUEADO
+#   janela_s    validade da medida: a última linha mais velha que isto é INDISPONIVEL (medida velha não é "ok" —
+#               §3.10 inv. 5: visão além do SLO não está ok)
+#   escopo      maquina = um estado por máquina (`nos`) · global = uma medida para o sistema (fila do PG, WAL do PG)
+#   aplica_se   (opcional) o SLO só vale quando outro sensor passa de um valor; fora disso SAUDAVEL com o motivo
+#   remediar    REMÉDIO DECLARADO (O8.4 consome): o que fazer quando sai do SLO. Nada aqui reinicia serviço nem mata
+#               processo sozinho — o vigia antigo que agia em silêncio virou texto que a automelhoria/o dono executa.
+# Sensor que não conseguiu medir grava valor NaN + estado INDISPONIVEL (nunca 0). Estado forçado pelo próprio sensor
+# (quick_check falhou, restauração falhou, painel não respondeu) prevalece se for pior que o limite.
+# Limites marcados "inicial" são ponto de partida declarado, a calibrar com a série real (O1.10 / O8.4).
+# Sem topologia sensível (ADR-011): nada de host, IP, porta interna ou caminho de casa.
+versao: 1
+slos:
+  # ── máquina (cada nó) ─────────────────────────────────────────────────────────────────────────────────────────
+  psi_cpu:
+    sensor: psi.cpu_some
+    descricao: pressão de CPU (PSI some avg60, % do tempo com tarefa esperando CPU)
+    unidade: '%'
+    sentido: max
+    saudavel: 40
+    degradado: 60
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: media
+    fonte: /proc/pressure/cpu
+    runbook: governador §3.4 (contido > 60)
+    remediar: 'o governador já corta slots pesados; persistindo, ver o maior job do nó e o PSI por cgroup'
+    origem: [governador, vm_guard, automelhoria_geral.maquinas]
+  psi_mem_some:
+    sensor: psi.mem_some
+    descricao: pressão de memória (PSI some avg60)
+    unidade: '%'
+    sentido: max
+    saudavel: 10
+    degradado: 25
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: alta
+    fonte: /proc/pressure/memory
+    runbook: governador §3.4 (contido mem some > 10)
+    remediar: 'conferir RSS por job (ps --sort=-rss); 1 pesado por vez; reduzir slot do recurso no nó'
+    origem: [governador, vm_guard]
+  psi_mem_full:
+    sensor: psi.mem_full
+    descricao: pressão TOTAL de memória (PSI full avg60 — todas as tarefas paradas em memória)
+    unidade: '%'
+    sentido: max
+    saudavel: 1
+    degradado: 5
+    pior: BLOQUEADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: critica
+    fonte: /proc/pressure/memory
+    runbook: governador §3.4 (mem full > 5 ⇒ matar o maior job)
+    remediar: 'o supervisor do fluxo mata o maior job (ação do governador, registrada em fluxo.nos); fora do fluxo: dono decide'
+    origem: [governador]
+  psi_io_some:
+    sensor: psi.io_some
+    descricao: pressão de E/S (PSI some avg60) — inicial
+    unidade: '%'
+    sentido: max
+    saudavel: 20
+    degradado: 40
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: media
+    fonte: /proc/pressure/io
+    runbook: O8.3 disco > 85%
+    remediar: 'adiar E7/E17 (disco) e VACUUM; conferir quem escreve (iotop)'
+    origem: [automelhoria_geral.maquinas]
+  psi_io_full:
+    sensor: psi.io_full
+    descricao: pressão TOTAL de E/S (PSI full avg60) — inicial
+    unidade: '%'
+    sentido: max
+    saudavel: 5
+    degradado: 20
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: alta
+    fonte: /proc/pressure/io
+    runbook: O8.3 disco > 85%
+    remediar: 'idem psi_io_some; SQLite com VACUUM/escrita longa trava as rotas de leitura'
+    origem: [vacuum-semanal-travava-coletores]
+  disco_livre:
+    sensor: disco.livre_pct
+    descricao: espaço livre na raiz
+    unidade: '%'
+    sentido: min
+    saudavel: 25
+    degradado: 10
+    pior: BLOQUEADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: critica
+    fonte: shutil.disk_usage('/')
+    runbook: O8.3 disco > 85% (§11.3 VM-2 < 75%)
+    remediar: 'porta única do armazenamento (python -m compliance_agent.armazenamento guardar … / zelador); nunca rclone/rm avulso'
+    origem: [automelhoria_geral.vm, automelhoria_geral.plataforma, governador]
+  disco_tendencia:
+    sensor: disco.tendencia_pp_dia
+    descricao: tendência do uso do disco (pontos percentuais por dia, regressão das últimas 72 h; + = enchendo)
+    unidade: pp/dia
+    sentido: max
+    saudavel: 1
+    degradado: 2
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: alta
+    fonte: fluxo.metricas (série de disco.livre_pct do próprio nó)
+    runbook: 'doc 2 §26: disco a 80% pode ser aceitável; perigoso se cresce 2% ao dia'
+    remediar: 'achar quem cresce (du por pasta de data/) e mandar para a nuvem pela porta única antes de chegar ao limite'
+    origem: [doc2 §26]
+  swap:
+    sensor: swap.uso_pct
+    descricao: swap em uso
+    unidade: '%'
+    sentido: max
+    saudavel: 50
+    degradado: 80
+    pior: BLOQUEADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: alta
+    fonte: /proc/meminfo
+    runbook: §11.3 (swap < 50%); a VM-1 já caiu com swap 100%
+    remediar: 'governador contém (swap > 50%); conferir vazamento do maior RSS; nunca pkill -f'
+    origem: [governador, vm_guard]
+  memoria_disponivel:
+    sensor: mem.disponivel_gb
+    descricao: memória disponível (MemAvailable)
+    unidade: GB
+    sentido: min
+    saudavel: 2.5
+    degradado: 0.7
+    pior: BLOQUEADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2, itcampo]
+    dono: infra
+    severidade: alta
+    fonte: /proc/meminfo
+    runbook: vm_guard (MIN_FREE_GB 2,5) + automelhoria_geral.vm (< 700 MB)
+    remediar: 'não abrir navegador/OCR novo; ver o maior RSS; 1 pesado por vez'
+    origem: [vm_guard, automelhoria_geral.vm]
+  navegador_orfaos:
+    sensor: navegador.orfaos
+    descricao: processos de navegador do Playwright órfãos (pai morto), fora o navegador fixo e o chrome-jfn
+    unidade: processos
+    sentido: max
+    saudavel: 0
+    degradado: 3
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1, vm2]
+    dono: captura
+    severidade: media
+    fonte: tools/vm_guard._meus_chromium_pids(somente_orfaos=True)
+    runbook: vm_guard (freeze de 20/06/2026)
+    remediar: 'python tools/vm_guard.py (cleanup_orphans) À MÃO ou pelo job da automelhoria — o sensor não mata nada'
+    origem: [vm_guard]
+  # ── painel (VM-1) ─────────────────────────────────────────────────────────────────────────────────────────────
+  painel_resposta:
+    sensor: painel.latencia_ms
+    descricao: tempo de resposta do painel (/painel na porta local); sem resposta ⇒ BLOQUEADO
+    unidade: ms
+    sentido: max
+    saudavel: 1000
+    degradado: 5000
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1]
+    dono: painel
+    severidade: critica
+    fonte: GET /painel (200/302/303/401 = processo vivo respondendo)
+    runbook: 'painel sempre no ar (dono 13/11): sem resposta 2× seguidas = processo travado'
+    remediar: 'systemctl --user restart jfn.service — DECLARADO para a sessão/dono; o sensor não reinicia (era o painel_vigia)'
+    origem: [painel_vigia, ronda, keepalive]
+  painel_malformed:
+    sensor: painel.rotas_malformed
+    descricao: rotas de leitura do painel devolvendo "database disk image is malformed" (WAL-index morto no processo)
+    unidade: rotas
+    sentido: max
+    saudavel: 0
+    pior: BLOQUEADO
+    janela_s: 5400
+    escopo: maquina
+    nos: [vm1]
+    dono: painel
+    severidade: critica
+    fonte: GET em 4 rotas que leem o compliance.db (as mesmas do guardião)
+    runbook: 'guardião: arquivo íntegro (quick_check ok) ⇒ restart cura; arquivo corrompido ⇒ NÃO reiniciar, perícia'
+    remediar: 'se integridade_compliance = SAUDAVEL: restart do jfn.service (declarado); senão python -m tools.reconstruir_db (dono)'
+    origem: [guardiao_db_malformed]
+  # ── motor de fluxo (PG, global) ───────────────────────────────────────────────────────────────────────────────
+  fila_espera:
+    sensor: fila.idade_max_s
+    descricao: espera do job elegível mais velho na fila (now − disponivel_em)
+    unidade: s
+    sentido: max
+    saudavel: 900
+    degradado: 3600
+    pior: ATRASADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: alta
+    fonte: fluxo.jobs
+    runbook: 'planejador.saude: fila elegível parada > 15 min = ATRASADO'
+    remediar: 'conferir nós vivos (fluxo.nos) e se o recurso pedido existe em algum nó (BLOQUEADO)'
+    origem: [pipelines_slo, planejador.saude]
+  fila_backlog:
+    sensor: fila.elegiveis
+    descricao: jobs elegíveis na fila — inicial
+    unidade: jobs
+    sentido: max
+    saudavel: 500
+    degradado: 5000
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: media
+    fonte: fluxo.jobs
+    runbook: doc 2 §9 (backlog por prioridade; evitar backlog oculto)
+    remediar: 'ver tipos com mais backlog (fila.idade_s.por_tipo) e a vazão por nó'
+    origem: [doc2 §9]
+  fila_quarentena:
+    sensor: fila.quarentena
+    descricao: jobs em quarentena (dead-letter)
+    unidade: jobs
+    sentido: max
+    saudavel: 0
+    degradado: 10
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: alta
+    fonte: fluxo.jobs (estado = 'quarentena')
+    runbook: 'quarentena = erro permanente ou tentativas esgotadas; erro_tipo + erro_resumo dizem por quê'
+    remediar: 'ler erro_resumo; corrigir a causa; reabrir pelo enfileirar(reabrir) — nunca apagar a linha'
+    origem: [planejador.saude]
+  fila_orfaos:
+    sensor: fila.orfaos
+    descricao: jobs reservados com lease vencido (ninguém renovou e o planejador não recuperou)
+    unidade: jobs
+    sentido: max
+    saudavel: 0
+    pior: ATRASADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: alta
+    fonte: fluxo.jobs (estado = 'reservado' AND prazo < now())
+    runbook: 'lease vencido sem recuperação = planejador fora (advisory lock 42 sem dono)'
+    remediar: 'conferir o supervisor líder; fila.recuperar_vencidos roda no ciclo do planejador'
+    origem: [doc2 §9 (jobs órfãos)]
+  fila_conclusao:
+    sensor: fila.conclusoes_h
+    descricao: jobs concluídos com efeito conferido na última hora (só vale com fila elegível)
+    unidade: jobs/h
+    sentido: min
+    saudavel: 1
+    pior: ATRASADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    aplica_se: {sensor: fila.elegiveis, maior_que: 0}
+    dono: fluxo
+    severidade: alta
+    fonte: fluxo.jobs (estado = 'feito' AND concluido_em > now() − 1 h)
+    runbook: 'fila com trabalho e zero conclusão = motor parado ou todo job falhando o efeito'
+    remediar: 'ver falhou_efeito/quarentena recentes e o heartbeat dos nós'
+    origem: [doc2 §9 (taxa de conclusão)]
+  nos_heartbeat:
+    sensor: fluxo.nos_sem_heartbeat
+    descricao: máquinas do fluxo (vm1, vm2, itcampo) sem heartbeat nos últimos 5 min
+    unidade: nós
+    sentido: max
+    saudavel: 0
+    degradado: 1
+    pior: BLOQUEADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: alta
+    fonte: fluxo.nos (heartbeat_em)
+    runbook: '§3.5 modo sem it-campo: 1 nó fora = DEGRADADO (anda com vazão menor); todos fora = BLOQUEADO'
+    remediar: 'systemctl --user status jfn-fluxo@<no> no nó; it-campo só reinicia com PIN presencial'
+    origem: [itcampo_vigia, keepalive]
+  wal_pg:
+    sensor: wal.pg_arquivo_atraso_s
+    descricao: atraso do arquivamento contínuo de WAL do PostgreSQL (now − last_archived_time)
+    unidade: s
+    sentido: max
+    saudavel: 900
+    degradado: 3600
+    pior: ATRASADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: backup
+    severidade: alta
+    fonte: pg_settings.archive_mode + pg_stat_archiver
+    runbook: deploy/vm2/postgres/backup.md §2.4 (failed_count subindo = WAL acumulando na VM-2)
+    remediar: 'conferir credencial/rede do WAL-G e o espaço do pg_wal; archive_mode=off ⇒ INDISPONIVEL até a O8.2'
+    origem: [backup.md]
+  # ── dados, IA e custo (VM-1: compliance.db, llm_trace.db, conferencia_opus.db moram lá) ───────────────────────
+  frescor_fontes:
+    sensor: frescor.fontes_atrasadas
+    descricao: fontes externas ATIVA/PARCIAL com a última coleta além do SLO do contrato de ingestão
+    unidade: fontes
+    sentido: max
+    saudavel: 0
+    degradado: 3
+    pior: ATRASADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: ingestao
+    severidade: alta
+    fonte: config/fontes_cobertura.yaml (slo_frescor_h) + compliance_agent.ingestao.sensores.atualidade
+    runbook: '§11.12 frescor 36/36; detalhe por fonte em frescor.atraso_h'
+    remediar: 'comando `recuperacao` da fonte no contrato (O9.0); durante a parada de obras o atraso é esperado e declarado'
+    origem: [pipelines_slo, automelhoria_geral.dados]
+  llm_custo_mes:
+    sensor: llm.custo_mes_usd
+    descricao: gasto pago do mês (UTC) com LLM — gateway quando já grava; até lá livro-caixa da API + trace antigo
+    unidade: USD
+    sentido: max
+    saudavel: 85
+    degradado: 100
+    pior: BLOQUEADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: llm
+    severidade: critica
+    fonte: 'data/llm_trace.db (gateway: mesma soma de gasto_mes_usd; trace antigo: usd > 0) + data/claude_api_gasto.json (livro-caixa, só se começou no mês); teto em config/llm_politica.yaml'
+    runbook: '§11.9 custo ≤ US$ 100/mês; corte de 85% = só tarefa crítica'
+    remediar: 'o gateway já recusa acima do corte; conferir as tarefas mais caras no llm_trace'
+    origem: [automelhoria_geral.modelos, gateway orcamento_mensal]
+  pericia_cobertura:
+    sensor: pericia.cobertura_chars
+    descricao: caracteres do acervo que a perícia integral alcança ÷ caracteres do acervo
+    unidade: fração
+    sentido: min
+    saudavel: 0.9
+    pior: DEGRADADO
+    janela_s: 43200
+    escopo: maquina
+    nos: [vm1]
+    dono: pericia
+    severidade: alta
+    fonte: tools/automelhoria_geral._cobertura_acervo (manifestos de data/sei_arquivo)
+    runbook: '§11.9 cobertura ≥ 90% nos refeitos (linha de base 17,3%)'
+    remediar: 'leitura integral (E8) dos processos cortados no teto — O6'
+    origem: [automelhoria_geral.plataforma, baseline_refatoracao]
+  opus_vazao:
+    sensor: opus.saida_por_entrada_7d
+    descricao: fila de conferência do Opus — conferidos ÷ entrados nos últimos 7 dias
+    unidade: razão
+    sentido: min
+    saudavel: 1.0
+    degradado: 0.5
+    pior: ATRASADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: llm
+    severidade: alta
+    fonte: data/conferencia_opus.db (fila.criado_em × fila.conferido_em)
+    runbook: '§11.9 fila do Opus com saída ≥ entrada por 7 dias'
+    remediar: 'cortar a entrada na origem (poda pré-despacho) ou ampliar a conferência na janela 23h–06h'
+    origem: [automelhoria_geral.plataforma]
+  opus_pendentes:
+    sensor: opus.pendentes
+    descricao: itens pendentes na fila de conferência do Opus — inicial
+    unidade: itens
+    sentido: max
+    saudavel: 500
+    degradado: 3000
+    pior: ATRASADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: llm
+    severidade: media
+    fonte: data/conferencia_opus.db (status = 'pendente')
+    runbook: '§2 linha de base: 6.501 pendentes'
+    remediar: 'idem opus_vazao'
+    origem: [baseline_refatoracao]
+  # ── backup, WAL e integridade (VM-1) ──────────────────────────────────────────────────────────────────────────
+  backup_compliance:
+    sensor: backup.compliance_idade_h
+    descricao: idade do último backup off-box do compliance.db (semanal)
+    unidade: h
+    sentido: max
+    saudavel: 192
+    degradado: 360
+    pior: ATRASADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: backup
+    severidade: critica
+    fonte: data/backup_compliance_cron.log (linhas '✓ off-box', data do nome do arquivo)
+    runbook: O8.2 3-2-1-1-0 (RPO metadados 24 h é a meta; hoje é semanal)
+    remediar: 'bash tools/backup_compliance.sh (dono/sessão); conferir a rotação no remoto'
+    origem: [backup_compliance]
+  backup_evidencias_pg:
+    sensor: backup.evidencias_pg_idade_h
+    descricao: idade do último pg_dump do jfn_evidencias guardado com sucesso (diário)
+    unidade: h
+    sentido: max
+    saudavel: 26
+    degradado: 50
+    pior: ATRASADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: backup
+    severidade: critica
+    fonte: "data/backup_evidencias_pg.log ('dump ok' seguido de 'armazenamento rc=0')"
+    runbook: O8.2 (RPO metadados 24 h)
+    remediar: 'bash tools/backup_evidencias_pg.sh (dono/sessão)'
+    origem: [backup_evidencias_pg]
+  restauracao_pg:
+    sensor: restauracao.pg_idade_h
+    descricao: idade do último teste de restauração do PG conferido por contagens; teste falhou ⇒ BLOQUEADO
+    unidade: h
+    sentido: max
+    saudavel: 192
+    degradado: 360
+    pior: ATRASADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: backup
+    severidade: critica
+    fonte: data/plataforma/restauracao_pg.json (deploy/vm2/postgres/restaurar_teste.sh)
+    runbook: '§11.11 restauração semanal automática como sensor; O8.2 move para o it-campo'
+    remediar: 'bash deploy/vm2/postgres/restaurar_teste.sh (exige WAL-G — O8.2); falhou ⇒ ler detalhe no json'
+    origem: [backup.md §3]
+  wal_compliance:
+    sensor: sqlite.wal_mb
+    descricao: tamanho do -wal do compliance.db (checkpoint atrasado incha o WAL e as leituras)
+    unidade: MB
+    sentido: max
+    saudavel: 256
+    degradado: 1024
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1]
+    dono: backup
+    severidade: media
+    fonte: tamanho de data/compliance.db-wal
+    runbook: 'checkpoint_wal (E17, a cada 6 h); wal_keeper segura o -wal aberto de propósito'
+    remediar: "python -c 'from compliance_agent.manutencao import checkpoint_wal as c; print(c())' fora da janela do painel"
+    origem: [checkpoint_wal, persist-wal-sentinela-por-processo]
+  integridade_compliance:
+    sensor: sqlite.quick_check
+    descricao: PRAGMA quick_check(1) do compliance.db (1 = ok); espaçado de 1 h como o guardião
+    unidade: ok
+    sentido: min
+    saudavel: 1
+    pior: BLOQUEADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: dados
+    severidade: critica
+    fonte: sqlite3 mode=ro, ionice -c3 nice 19
+    runbook: 'guardião 12/08/2026: corrupção real viveu 13 h invisível e apagou 19 achados'
+    remediar: 'NÃO reiniciar; perícia de dado: python -m tools.reconstruir_db --saida /tmp/novo.db --laudo /tmp/laudo.json (dono)'
+    origem: [guardiao_db_malformed]
+  # ── vigias de domínio que já mediam (VM-1) ────────────────────────────────────────────────────────────────────
+  pipelines_frescor:
+    sensor: pipelines.atrasadas
+    descricao: etapas de config/pipelines.yaml com o output além do SLO (stale) ou sem output (ausente)
+    unidade: etapas
+    sentido: max
+    saudavel: 0
+    degradado: 3
+    pior: ATRASADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: fluxo
+    severidade: media
+    fonte: tools/pipelines_slo.checar()
+    runbook: 'caso sei_supervisor 07/07: 28 dias starvando sem erro no journal'
+    remediar: 'por etapa: ver o produtor no fluxo.yaml; durante a parada de obras o atraso é esperado'
+    origem: [pipelines_slo]
+  sentinela_qualidade:
+    sensor: integridade.violacoes
+    descricao: invariantes da sentinela de integridade violadas (cache obeso, corte no teto, arquivo vazio…)
+    unidade: invariantes
+    sentido: max
+    saudavel: 0
+    degradado: 2
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: dados
+    severidade: alta
+    fonte: tools/sentinela_integridade.checar()
+    runbook: 'madrugada de 02/08: produziu no prazo, conteúdo corrompido'
+    remediar: 'evidência por invariante (rotulos.detalhe); consertar o produtor, não a medida'
+    origem: [sentinela_integridade]
+  regras_qualidade:
+    sensor: qualidade.bloqueantes
+    descricao: violações BLOQUEANTES das regras de qualidade (fotografia do compliance_agent.qualidade sensores)
+    unidade: violações
+    sentido: max
+    saudavel: 0
+    degradado: 5
+    pior: DEGRADADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: qualidade
+    severidade: alta
+    fonte: data/qualidade_estado.json (idade da fotografia em rotulos.medido_em)
+    runbook: docs/REGRAS-DE-QUALIDADE.md
+    remediar: 'cada violação traz acao_humana; corrigir na superfície, nunca calar a regra'
+    origem: [conformidade]
+  assinatura_ritmo:
+    sensor: assinatura.ritmo_pp
+    descricao: uso semanal da assinatura menos a linha de ritmo (pp; + = acima do ritmo que a faz durar até sábado 19 h)
+    unidade: pp
+    sentido: max
+    saudavel: 0
+    degradado: 10
+    pior: DEGRADADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: llm
+    severidade: media
+    fonte: data/claude_assinatura_uso.json + llm/ritmo_assinatura.classificar
+    runbook: 'contido ⇒ o motor não chama o Claude; tudo vai à cascata e à fila do Opus'
+    remediar: 'nenhum: o ritmo já contém sozinho; o dono decide liberar'
+    origem: [ritmo_assinatura]
+  handoff_vm2:
+    sensor: handoff.nao_lidos
+    descricao: passagens da VM-2 (shared-brain/_handoff/from-vm2) ainda não vistas
+    unidade: arquivos
+    sentido: max
+    saudavel: 0
+    degradado: 5
+    pior: DEGRADADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: dono
+    severidade: baixa
+    fonte: inbox de passagem × cursor .core_seen.json
+    runbook: 'dono 17/11: sem aviso de sistema no Telegram; aparece aqui'
+    remediar: 'ler a passagem no painel Sistema; o envio ao Telegram foi aposentado'
+    origem: [handoff_watcher]
+  yoda_falhas:
+    sensor: yoda.falhas_abertas
+    descricao: falhas de conversa do Yoda abertas ou reincidentes (fila da autoauditoria)
+    unidade: falhas
+    sentido: max
+    saudavel: 0
+    degradado: 5
+    pior: DEGRADADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: yoda
+    severidade: baixa
+    fonte: data/yoda_melhorias_fila.json
+    runbook: tools/yoda_autoauditoria.py (fora do JFN, só a leitura vem para cá)
+    remediar: 'yoda_autoauditoria resolver <assinatura> depois do conserto conferido'
+    origem: [yoda_autoauditoria]
+  automelhoria_reincidiu:
+    sensor: automelhoria.reincidiu
+    descricao: problemas da fila única da automelhoria marcados REINCIDIU (conserto que não pegou)
+    unidade: itens
+    sentido: max
+    saudavel: 0
+    degradado: 5
+    pior: DEGRADADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: automelhoria
+    severidade: alta
+    fonte: data/automelhoria_fila.json
+    runbook: O8.4 (automelhoria consome o E18)
+    remediar: 'automelhoria_executor (O8.4) com critério forte; reincidência é o achado mais importante da fila'
+    origem: [automelhoria_geral, automelhoria_executor]

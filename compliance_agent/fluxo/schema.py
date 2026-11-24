@@ -24,7 +24,7 @@ PASTA_SQL = RAIZ / "deploy" / "vm2" / "postgres"
 ESQUEMA_PADRAO = "fluxo"
 _RX_IDENT = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 
-# o que a O1.7 promete: tabela → colunas obrigatórias (verificar confere uma a uma)
+# o que a O1.7/O2.3 prometem: tabela → colunas obrigatórias (verificar confere uma a uma)
 TABELAS = {
     "jobs": ("id", "tipo", "chave", "estado", "prioridade", "recursos", "dono", "prazo", "ficha", "heartbeat_em",
              "tentativas", "max_tentativas", "disponivel_em", "erro_tipo", "erro_resumo", "correlation_id",
@@ -35,6 +35,8 @@ TABELAS = {
     "metricas": ("no", "nome", "valor", "quando", "rotulos"),
     "jobs_arquivo": ("id", "chave", "estado"),
     "migracoes": ("versao", "aplicada_em"),
+    "liberacao": ("estagio", "liberado_em", "por", "nota"),                       # fluxo_002 (O9.0)
+    "eventos_arquivo": ("id", "fonte", "tipo", "quando", "processado_em"),         # fluxo_002 (histórico)
 }
 
 

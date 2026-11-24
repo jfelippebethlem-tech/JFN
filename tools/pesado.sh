@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ⚠ SUBSTITUÍDO PELO MOTOR DE FLUXO (O2.3, 24/11/2026 — plano mestre v2 §3.4): o semáforo de pesado da VM-1 virou
+# o governador por PSI do jfn-fluxo (compliance_agent/fluxo/governador.py: slot `cpu_pesado`, só com folga) e o
+# teto por recurso/fonte da reserva (compliance_agent/fluxo/fila.py). Os 3 crons que passavam por aqui são rotinas do
+# config/fluxo.yaml com recurso `cpu_pesado`: gitnexus → gitnexus_refresh (E17), ocr_contratos_imagem (E5),
+# sei_compactar (E7); `fantasmas` já estava comentado antes da parada. Fica SÓ como desfazer da religação (crontab
+# #PARADA-20261124) e sai na O9.1, depois de 14 dias de religação estável.
 # Semáforo ÚNICO de trabalho pesado da VM-1 (23/11/2026 — plano de reescrita, Fase 0c).
 # Achado: 5 pesados ao mesmo tempo com swap 100% (sei_depurar_pdfs, vinculo_ob_contrato, sei_compactar, tesseract,
 # leitura dupla). O despachante de propagação (compliance_agent/propagacao.py::_semaforo_pesado) divide esta MESMA
@@ -10,6 +16,7 @@
 #   Roda com nice 15 + ionice idle e SEGURA a trava até o comando terminar.
 set -u
 nome=${1:?nome}; espera=${2:?espera_max_s}; shift 2
+echo "pesado.sh: AVISO — substituído pelo governador do jfn-fluxo (O2.3); rodando como desfazer da religação" >&2
 cd /home/ubuntu/JFN || exit 1
 mkdir -p data/locks
 carga_max=${PESADO_CARGA_MAX:-6}

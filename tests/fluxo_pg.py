@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Apoio dos testes do motor de fluxo no PostgreSQL: SEMPRE num esquema temporário criado aqui com o MESMO
-deploy/vm2/postgres/fluxo_001.sql e apagado no fim (23/11/2026: a suíte antiga esvaziava a tabela real).
+deploy/vm2/postgres/fluxo_*.sql e apagado no fim (23/11/2026: a suíte antiga esvaziava a tabela real).
 Sem `JFN_EVIDENCIAS_DSN=postgresql://…` no ambiente, os testes PG são pulados com o motivo."""
 import os
 import random
@@ -36,7 +36,7 @@ def con(esquema_tmp):
     """Conexão no esquema temporário, com as tabelas esvaziadas antes de cada teste (só no temporário)."""
     from compliance_agent.fluxo import fila
     c = fila.conectar(DSN, esquema_tmp)
-    c.execute("TRUNCATE jobs, eventos, agenda, nos, metricas RESTART IDENTITY")
+    c.execute("TRUNCATE jobs, eventos, agenda, nos, metricas, liberacao, eventos_arquivo RESTART IDENTITY")
     yield c
     c.close()
 

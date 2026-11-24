@@ -80,7 +80,16 @@ def test_ocupado_acima_do_slot_nao_vira_negativo():
 
 
 def test_slots_iniciais_da_secao_3_4():
+    """A §3.4 segue dando 0 navegador à VM-1; o único navegador lá é o TRANSITÓRIO declarado no yaml (D1, 24/11),
+    restrito às rotinas listadas e com prazo (O3.3)."""
+    from compliance_agent.fluxo import grafo
     assert G.SLOTS_INICIAIS["vm1"]["materializar"] == 1 and "navegador" not in G.SLOTS_INICIAIS["vm1"]
+    g = grafo.carregar()
+    assert g.slots_do_no("vm1")["navegador"] == 1
+    assert {k: (t.maquina, t.recurso, t.slots) for k, t in g.transitorios.items()} == {
+        "navegador_vm1": ("vm1", "navegador", 1)}
+    assert {k: v for k, v in g.slots_do_no("vm1").items() if k != "navegador"} == G.SLOTS_INICIAIS["vm1"]
+    assert g.slots_do_no("vm2") == G.SLOTS_INICIAIS["vm2"] and g.slots_do_no("itcampo") == G.SLOTS_INICIAIS["itcampo"]
     assert G.SLOTS_INICIAIS["vm2"]["navegador"] == 1 and "gpu" not in G.SLOTS_INICIAIS["vm2"]
     assert G.SLOTS_INICIAIS["itcampo"]["gpu"] == 1 and G.SLOTS_INICIAIS["itcampo"]["navegador"] == 6
 

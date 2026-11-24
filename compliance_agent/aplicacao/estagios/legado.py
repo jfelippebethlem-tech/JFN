@@ -7,7 +7,7 @@ substitui a rotina quando for portado (O3–O8); até lá ela fica marcada com o
 
 handler(payload, ctx):
   · `payload.rotina` (ou o sufixo do tipo `legado:<rotina>`) escolhe a rotina; `payload.args` soma argumentos do
-    horário (ex.: a data do DOERJ);
+    horário (ex.: a data do DOERJ); `payload.desde` (job de religação, O9.0) vira `JFN_DESDE` no ambiente;
   · rotina inativa ⇒ ErroPermanente (quarentena, com o `bloqueio` do yaml); nó fora de `nos` ⇒ falha transitória;
   · `condicao.dia_semana_iso` falsa hoje ⇒ "pulado" declarado (o `[ "$(date +%u)" = 7 ] &&` do cron antigo);
   · trava por rotina (flock não bloqueante, o MESMO arquivo que o cron/despachante usavam) ocupada ⇒ transitória;
@@ -45,6 +45,9 @@ _RX_ENV = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*
 
 class FalhaTransitoria(RuntimeError):
     """Tentar de novo pode dar certo (trava ocupada, rc ≠ 0, teto de tempo)."""
+
+
+ENV_DESDE = "JFN_DESDE"      # data ISO da parada: a coleta que sabe ler isto recupera a lacuna (a que não sabe ignora)
 
 
 def _grafo() -> G.Grafo:
@@ -164,6 +167,8 @@ def handler(payload: dict, ctx: Contexto) -> Resultado:
         except BlockingIOError:
             raise FalhaTransitoria(f"trava {trava_p.name} ocupada (a rotina já roda fora deste job)") from None
         env = montar_env(r)
+        if payload.get("desde"):                         # religação (O9.0): E1 recupera a lacuna desde a parada
+            env[ENV_DESDE] = str(payload["desde"])
         inicio = time.time()
         rcs: list[int] = []
         with (RAIZ / log_rel).open("ab") as log:

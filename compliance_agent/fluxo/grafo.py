@@ -206,6 +206,30 @@ class Fora(_Base):
     motivo: str
 
 
+class Transitorio(_Base):
+    """Slot TRANSITÓRIO (decisão D1 do dono, 24/11, antes da O9.0): `slots` de `recurso` num nó onde a §3.4 dá 0,
+    SÓ para as `rotinas` listadas, até a onda `transitorio_ate`. A reserva (fila.reservar, `restritos`) recusa o
+    slot a qualquer outro tipo; a catraca tests/test_fluxo_o23.py impede a lista de crescer."""
+    maquina: str                                  # (não `no`: o YAML 1.1 lê `no:` como booleano)
+    recurso: str
+    slots: int = Field(ge=1)
+    transitorio_ate: str = Field(pattern=r"^O\d+\.\d+$")
+    motivo: str = Field(min_length=10)
+    rotinas: list[str] = Field(min_length=1)
+
+    @field_validator("maquina")
+    @classmethod
+    def _no(cls, v):
+        _checar_nos([v])
+        return v
+
+    @field_validator("recurso")
+    @classmethod
+    def _recurso(cls, v):
+        _checar_recursos([v])
+        return v
+
+
 class Grafo(_Base):
     versao: int
     nos: list[str]
@@ -215,10 +239,25 @@ class Grafo(_Base):
     rotinas: dict[str, Rotina]
     duplicacoes: list[Duplicacao] = Field(default_factory=list)
     fora: list[Fora] = Field(default_factory=list)
+    transitorios: dict[str, Transitorio] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _coerencia(self):
         erros: list[str] = []
+        for tid, t in self.transitorios.items():
+            if SLOTS_INICIAIS.get(t.maquina, {}).get(t.recurso):
+                erros.append(f"transitório {tid}: {t.maquina} já tem {t.recurso} na §3.4 — transitório só onde o slot é 0")
+            for rid in t.rotinas:
+                r = self.rotinas.get(rid)
+                if r is None:
+                    erros.append(f"transitório {tid}: rotina {rid} não existe")
+                    continue
+                if r.estagio in self.estagios:
+                    c = self.contrato_da_rotina(rid)
+                    if t.recurso not in c["recursos"] or c["nos"] != [t.maquina]:
+                        erros.append(f"transitório {tid}: {rid} não pede {t.recurso} presa a {t.maquina} (não precisa)")
+        if len({t.maquina for t in self.transitorios.values()}) != len(self.transitorios):
+            erros.append("um transitório por nó")
         falta = [e for e in ESTAGIOS if e not in self.estagios]
         sobra = [e for e in self.estagios if e not in ESTAGIOS]
         if falta or sobra:
@@ -278,24 +317,38 @@ class Grafo(_Base):
     def ritmos(self, so_ativas: bool = True) -> set[str]:
         return {r.ritmo for r in self.rotinas.values() if r.ritmo and (r.ativa or not so_ativas)}
 
+    def slots_do_no(self, no: str) -> dict[str, int]:
+        """Slots da §3.4 do nó MAIS o transitório declarado para ele (D1) — o supervisor sobe com isto."""
+        out = dict(SLOTS_INICIAIS.get(no, {}))
+        for t in self.transitorios.values():
+            if t.maquina == no:
+                out[t.recurso] = out.get(t.recurso, 0) + t.slots
+        return out
+
+    def restritos_do_no(self, no: str) -> dict[str, list[str]]:
+        """recurso transitório do nó → tipos de job que podem usá-lo (fila.reservar recusa os outros)."""
+        return {t.recurso: sorted(tipo_da_rotina(r) for r in t.rotinas)
+                for t in self.transitorios.values() if t.maquina == no}
+
     def contrato(self) -> dict[str, dict]:
         """tipo de job → recursos/prioridade/volta/no_preferido (o que o planejador grava em cada job)."""
         return {tipo_da_rotina(rid): self.contrato_da_rotina(rid) for rid in self.rotinas}
 
     def payload(self, rid: str, args: list[str] | None = None, *, evento: bool = False) -> dict:
-        """Payload do job. Leva as restrições que `fila.reservar` aplica: `nos`, `concorrencia`, `montante` (o
-        dependente espera o derivado a montante que está pronto) e — SÓ no job de EVENTO — `ritmo`: é o que valia
-        antes da parada (o despachante consultava o guarda da assinatura; o cron-rede da mesma rotina, não — os
-        scripts seguem pela cascata em contingência). Estender o ritmo à agenda é decisão do dono (O2.2)."""
+        """Payload do job. Leva as restrições que `fila.reservar` aplica: `estagio` (portão da religação — só sai
+        quando o estágio estiver em `liberacao`), `nos`, `concorrencia`, `montante` (o dependente espera o derivado a
+        montante que está pronto) e `ritmo` — no job de EVENTO e, desde a decisão D2 do dono (24/11), também no da
+        AGENDA: o guarda da assinatura vale para as 4 rotinas fundidas inteiras, não só para o lado evento.
+        `evento` fica na assinatura para os chamadores (grafo_planejador/agenda_linhas) dizerem de onde vem."""
         c = self.contrato_da_rotina(rid)
-        p = {"rotina": rid, "timeout_s": c["timeout_s"] + 60}
+        p = {"rotina": rid, "estagio": self.rotinas[rid].estagio, "timeout_s": c["timeout_s"] + 60}
         if args:
             p["args"] = list(args)
         if c["nos"]:
             p["nos"] = c["nos"]
         if conc := self.concorrencia_da_rotina(rid):
             p["concorrencia"] = conc
-        if evento and self.rotinas[rid].ritmo:
+        if self.rotinas[rid].ritmo:
             p["ritmo"] = self.rotinas[rid].ritmo
         if mont := self.montante(rid):
             p["montante"] = mont
@@ -330,16 +383,18 @@ class Grafo(_Base):
 
 def rotinas_sem_slot(g: "Grafo") -> list[tuple[str, list[str], list[str]]]:
     """Rotinas ATIVAS que pedem recurso que nenhum dos seus nós (nos + volta) tem nos slots do governador: com o nó
-    como restrição dura na reserva (O2.2) elas nunca rodariam (o planejador as mostraria BLOQUEADO). Não é erro de
-    carga porque hoje há dívida DECLARADA — navegador legado na VM-1, que a §3.4 zera —, travada pela catraca
-    tests/test_fluxo_o22.py (a lista não pode crescer) e resolvida antes da O9.0."""
+    como restrição dura na reserva (O2.2) elas nunca rodariam (o planejador as mostraria BLOQUEADO). A rotina coberta
+    por um slot TRANSITÓRIO declarado (`transitorios`, decisão D1) tem slot; a catraca tests/test_fluxo_o23.py exige
+    a lista vazia e trava o transitório (só as 15 rotinas de navegador legado da VM-1, até a O3.3)."""
     out = []
     for rid, r in g.rotinas.items():
         if not r.ativa or r.estagio not in g.estagios:
             continue
         c = g.contrato_da_rotina(rid)
         nos = list(c["nos"]) + list((c["volta"] or {}).get("nos") or [])
-        falta = [x for x in c["recursos"] if not any(SLOTS_INICIAIS.get(n, {}).get(x) for n in nos)]
+        trans = {(t.maquina, t.recurso) for t in g.transitorios.values() if rid in t.rotinas}
+        falta = [x for x in c["recursos"]
+                 if not any(SLOTS_INICIAIS.get(n, {}).get(x) or (n, x) in trans for n in nos)]
         if falta:
             out.append((rid, falta, nos))
     return out

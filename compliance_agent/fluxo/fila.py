@@ -108,7 +108,8 @@ def estado_de(con, chave: str) -> str | None:
 
 def reservar(con, no: str, recursos_livres: Mapping[str, int] | Iterable[str], prazo_s: float = 300.0,
              tipos: Iterable[str] | None = None, *, tetos: Mapping[str, int] | None = None,
-             ritmo_bloqueado: Iterable[str] | None = None) -> Job | None:
+             ritmo_bloqueado: Iterable[str] | None = None, liberacao: bool = False,
+             restritos: Mapping[str, Iterable[str]] | None = None) -> Job | None:
     """Reserva, numa operação atômica, o job em fila de maior prioridade cujos recursos estão TODOS livres neste nó
     e que passa nas restrições da reserva (O2.2 — o que a sombra de 24/11 mediu que faltava):
       · NÓ (`payload.nos`): restrição dura — só um nó da lista reserva; os de `volta.nos` só quando NENHUM nó da
@@ -118,8 +119,15 @@ def reservar(con, no: str, recursos_livres: Mapping[str, int] | Iterable[str], p
       · RITMO da assinatura: job com `payload.ritmo` na lista `ritmo_bloqueado` fica na fila;
       · MONTANTE (`payload.montante`): espera o derivado a montante que está RODANDO ou PRONTO (elegível há menos de
         ESPERA_MONTANTE_MAX_S) — o que ainda junta eventos, ou está barrado há muito, não segura ninguém.
+      · LIBERAÇÃO (`liberacao=True`, o supervisor sempre): job com `payload.estagio` só sai se o estágio estiver em
+        `liberacao` (O9.0: o planejador libera estágio por estágio; antes disso o job espera na fila, nada se perde);
+      · RESTRITOS (`restritos` = recurso → tipos permitidos): o slot TRANSITÓRIO declarado no yaml (D1: navegador
+        na VM-1) só serve aos tipos da lista — rotina nova não usa o slot.
     A reserva é serializada por advisory lock de transação (senão dois nós contariam o mesmo teto ao mesmo tempo).
-    Empate de prioridade: o job que prefere este nó vem antes; depois o mais antigo."""
+    Empate de prioridade: o job que prefere este nó vem antes; depois o mais antigo.
+    Custo (O2.3, 10 mil jobs em fila): os conjuntos que não dependem do candidato — etiquetas de teto cheias, tipos
+    a montante que seguram, nós vivos, estágios liberados — são calculados UMA vez por reserva (CTE) e o candidato
+    só testa `?|` no payload; a versão com subconsulta por linha media p95 96 ms."""
     if isinstance(recursos_livres, Mapping):
         livres = sorted(k for k, n in recursos_livres.items() if n > 0)
     else:
@@ -128,7 +136,12 @@ def reservar(con, no: str, recursos_livres: Mapping[str, int] | Iterable[str], p
         return None
     params = {"no": no, "prazo": float(prazo_s), "livres": livres, "tetos": json.dumps(dict(tetos or {})),
               "ritmo": sorted(set(ritmo_bloqueado or ())), "sem_hb": NO_SEM_HEARTBEAT_S,
-              "espera": ESPERA_MONTANTE_MAX_S, "tipos": list(tipos) if tipos is not None else None}
+              "espera": ESPERA_MONTANTE_MAX_S, "tipos": list(tipos) if tipos is not None else None,
+              "liberacao": bool(liberacao)}
+    restritos = {r: sorted(set(t)) for r, t in (restritos or {}).items()}
+    if len(restritos) > 1:
+        raise ValueError("um recurso transitório por nó (o yaml só declara um)")
+    params.update(rec_restrito=list(restritos), tipos_permitidos=next(iter(restritos.values()), []))
     with con.transaction():
         con.execute("SELECT pg_advisory_xact_lock(%s)", (CHAVE_RESERVA,))
         r = con.execute(_SQL_RESERVAR, params).fetchone()
@@ -139,28 +152,33 @@ NO_SEM_HEARTBEAT_S = 300            # = planejador.NO_SEM_HEARTBEAT_S (§3.5)
 ESPERA_MONTANTE_MAX_S = 1800        # montante elegível há mais que isto está barrado por fora: não segura o dependente
 CHAVE_RESERVA = 4243                # advisory lock da reserva (≠ 42 da liderança)
 _SQL_RESERVAR = """
+WITH ocupadas AS (
+  SELECT t.tag, count(*) AS n FROM jobs r, jsonb_array_elements_text(r.payload->'concorrencia') t(tag)
+  WHERE r.estado = 'reservado' AND jsonb_typeof(r.payload->'concorrencia') = 'array' GROUP BY t.tag),
+cheias AS (
+  SELECT coalesce(array_agg(tag), '{}') AS tags FROM ocupadas
+  WHERE n >= coalesce((%(tetos)s::jsonb ->> split_part(tag, ':', 1))::int, 2147483647)),
+seguram AS (
+  SELECT coalesce(array_agg(DISTINCT u.tipo), '{}') AS tipos FROM jobs u
+  WHERE u.estado = 'reservado'
+     OR (u.estado = 'fila' AND u.disponivel_em <= now() AND u.disponivel_em > now() - make_interval(secs => %(espera)s))),
+vivos AS (
+  SELECT coalesce(array_agg(x.no), '{}') AS nos FROM nos x
+  WHERE x.heartbeat_em > now() - make_interval(secs => %(sem_hb)s)),
+liberados AS (SELECT coalesce(array_agg(l.estagio), '{}') AS estagios FROM liberacao l)
 UPDATE jobs SET estado = 'reservado', dono = %(no)s, ficha = nextval('fichas'), tentativas = tentativas + 1,
        prazo = now() + make_interval(secs => %(prazo)s), heartbeat_em = now(), iniciado_em = now()
 WHERE id = (
-  SELECT j.id FROM jobs j
+  SELECT j.id FROM jobs j, cheias, seguram, vivos, liberados
   WHERE j.estado = 'fila' AND j.disponivel_em <= now() AND j.recursos <@ %(livres)s::text[]
     AND (%(tipos)s::text[] IS NULL OR j.tipo = ANY(%(tipos)s::text[]))
     AND (NOT (j.payload ? 'nos') OR j.payload->'nos' ? %(no)s
-         OR (coalesce(j.volta->'nos' ? %(no)s, false)
-             AND NOT EXISTS (SELECT 1 FROM nos x WHERE x.heartbeat_em > now() - make_interval(secs => %(sem_hb)s)
-                             AND j.payload->'nos' ? x.no)))
+         OR (coalesce(j.volta->'nos' ? %(no)s, false) AND NOT (j.payload->'nos' ?| vivos.nos)))
     AND NOT (j.payload ? 'ritmo' AND j.payload->>'ritmo' = ANY(%(ritmo)s::text[]))
-    AND NOT EXISTS (
-      SELECT 1 FROM jsonb_array_elements_text(coalesce(j.payload->'concorrencia', '[]'::jsonb)) t(tag)
-      WHERE (SELECT count(*) FROM jobs r WHERE r.estado = 'reservado' AND r.payload->'concorrencia' ? t.tag)
-            >= coalesce((%(tetos)s::jsonb ->> split_part(t.tag, ':', 1))::int, 2147483647))
-    AND NOT EXISTS (
-      SELECT 1 FROM jobs u
-      WHERE j.payload ? 'montante'
-        AND u.tipo IN (SELECT jsonb_array_elements_text(j.payload->'montante'))
-        AND (u.estado = 'reservado'
-             OR (u.estado = 'fila' AND u.disponivel_em <= now()
-                 AND u.disponivel_em > now() - make_interval(secs => %(espera)s))))
+    AND NOT (coalesce(j.payload->'concorrencia', '[]'::jsonb) ?| cheias.tags)
+    AND NOT (coalesce(j.payload->'montante', '[]'::jsonb) ?| seguram.tipos)
+    AND (NOT %(liberacao)s OR NOT (j.payload ? 'estagio') OR j.payload->>'estagio' = ANY(liberados.estagios))
+    AND (NOT (j.recursos && %(rec_restrito)s::text[]) OR j.tipo = ANY(%(tipos_permitidos)s::text[]))
   ORDER BY j.prioridade, (j.no_preferido IS DISTINCT FROM %(no)s), j.disponivel_em, j.id
   LIMIT 1 FOR UPDATE OF j SKIP LOCKED)
 RETURNING id, tipo, chave, ficha, payload, recursos, tentativas, max_tentativas, correlation_id, volta"""

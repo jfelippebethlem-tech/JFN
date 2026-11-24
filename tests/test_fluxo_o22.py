@@ -66,7 +66,8 @@ def test_payload_leva_as_restricoes_da_reserva(base):
     g = G.validar_dict(base)
     p = g.payload("sx", evento=True)
     assert p["nos"] == ["vm1"] and p["ritmo"] == "triagem"
-    assert "ritmo" not in g.payload("sx")                        # agenda: como o cron-rede, sem o guarda
+    assert g.payload("sx")["ritmo"] == "triagem"                 # D2 (24/11): o guarda vale também na agenda
+    assert p["estagio"] == "E1"                                   # portão da religação (O2.3)
     assert p["concorrencia"] == ["siafe_sessao", "por_fonte:sx"]   # por_fonte é teto POR fonte, não um global
     assert g.payload("dn")["montante"] == ["legado:up"]             # f1 é fonte, não rotina: não entra
     assert "montante" not in g.payload("up") and g.tetos() == {"por_fonte": 1, "siafe_sessao": 1,
@@ -92,7 +93,8 @@ def test_yaml_real_ritmo_e_sessao_siafe_declarados():
     ritmo = {rid: r.ritmo for rid, r in g.rotinas.items() if r.ritmo}
     assert ritmo == {"lex_execucao_fila": "lex_execucao", "sei_fichas_fila": "sei_ficha", "triagem_lote": "triagem",
                      "conferencia_opus_fila": "conferencia_opus"}
-    assert all("ritmo" not in x["payload"] for x in g.agenda_linhas())
+    com_ritmo = {x["payload"]["rotina"] for x in g.agenda_linhas() if "ritmo" in x["payload"]}
+    assert com_ritmo == set(ritmo)                                 # D2: as 4 fundidas levam o ritmo na agenda
     deps = {d["tipo"]: d for ds in g.grafo_planejador().values() for d in ds}
     assert deps["legado:triagem_lote"]["payload"]["ritmo"] == "triagem"
     for rid in ("siafe_status_releitura", "siafe_documentos_varredura"):
@@ -218,8 +220,8 @@ def test_por_fonte_e_um_teto_por_rotina(con, base):
 @precisa_pg
 def test_ritmo_bloqueado_nao_reserva(con, base):
     g = G.validar_dict(base)
-    _enq(con, g, "sx", chave="legado:sx:agenda:sx:x", evento=False)          # agenda: o guarda não segura
-    assert fila.reservar(con, "vm1", {"cpu_leve": 1}, ritmo_bloqueado={"triagem"}).chave.startswith("legado:sx:ag")
+    _enq(con, g, "sx", chave="legado:sx:agenda:sx:x", evento=False)          # D2: a agenda também obedece
+    assert fila.reservar(con, "vm1", {"cpu_leve": 1}, ritmo_bloqueado={"triagem"}) is None
     con.execute("DELETE FROM jobs")
     _enq(con, g, "sx")
     assert fila.reservar(con, "vm1", {"cpu_leve": 1}, ritmo_bloqueado={"triagem"}) is None
@@ -316,8 +318,8 @@ def test_cli_agenda_sincronizar_existe():
 
 
 
-# dívida declarada (O2.2): rotinas legadas de navegador presas à VM-1, onde a §3.4 dá 0 slot de navegador. Com o nó
-# duro na reserva elas ficariam BLOQUEADO — decidir antes da O9.0 (slot transitório na VM-1 ou portar E1–E3).
+# dívida declarada (O2.2): rotinas legadas de navegador presas à VM-1, onde a §3.4 dá 0 slot de navegador. Decidido
+# (D1, 24/11): slot TRANSITÓRIO de navegador na VM-1 só para estas, até a O3.3 — catraca em tests/test_fluxo_o23.py.
 NAVEGADOR_NA_VM1 = {"siafe_runner_diario", "siafe_runner_retentar", "siafe_drenar_capados", "siafe_documento_sweep",
                     "sweep_sei", "sweep_dados", "sei_integra_fila", "integra_fila_dinheiro", "varredura_sei_lane",
                     "sweep_integra_contratos_pcrj", "doerj", "pcrj_sei_busca_termos", "sei_busca_credor",
@@ -328,8 +330,7 @@ def test_catraca_rotinas_sem_slot_so_a_divida_declarada():
     """A 1ª sombra (capacidade infinita) escondia: sei_ocr_gpu herdava `gpu` do E5 presa à VM-1 (corrigido no yaml);
     a lista abaixo é a dívida que sobra, e só pode diminuir."""
     sem = G.rotinas_sem_slot(G.carregar())
-    assert {rid for rid, _f, _n in sem} <= NAVEGADOR_NA_VM1
-    assert all(f == ["navegador"] and n == ["vm1"] for _r, f, n in sem)
+    assert sem == []                                   # D1: as 15 têm o slot transitório; nenhuma outra sem slot
 
 
 def test_rotinas_sem_slot_detecta(base):
@@ -338,15 +339,16 @@ def test_rotinas_sem_slot_detecta(base):
 
 
 @precisa_pg
-def test_job_de_evento_preso_no_ritmo_nao_cala_a_agenda(con, base):
-    """A 2ª sombra mediu: o job de EVENTO da rede fundida (lex) preso pelo ritmo (contido 70 % da janela) impedia a
-    agenda de materializar — a rotina parava. A agenda (o cron-rede de antes) não obedece o ritmo: tem de seguir."""
+def test_job_preso_no_ritmo_segura_a_agenda_sem_empilhar(con, base):
+    """D2 (dono, 24/11): o ritmo vale para a rotina fundida INTEIRA. O job de evento preso no ritmo conta como
+    pendente — a agenda não enfileira outro a cada horário (senão N jobs presos soltariam juntos quando abrisse)."""
     base["rotinas"]["sx"]["evento"] = {"depende": ["f1"]}
     g = G.validar_dict(base)
     _enq(con, g, "sx")                                                       # job de evento, com ritmo
     for x in g.agenda_linhas():
         con.execute("INSERT INTO agenda(id, cron_expr, tipo_job, payload, proximo) VALUES (%s, %s, %s, %s, "
                     "now() - interval '1 minute')", (x["id"], x["cron_expr"], x["tipo_job"], json.dumps(x["payload"])))
-    assert P.materializar_agenda(con, g.contrato()) == 1
-    j = fila.reservar(con, "vm1", {"cpu_leve": 2}, ritmo_bloqueado={"triagem"})
-    assert ":agenda:" in j.chave and fila.reservar(con, "vm1", {"cpu_leve": 2}, ritmo_bloqueado={"triagem"}) is None
+    assert P.materializar_agenda(con, g.contrato()) == 0
+    assert con.execute("SELECT count(*) FROM jobs").fetchone()[0] == 1
+    assert fila.reservar(con, "vm1", {"cpu_leve": 2}, ritmo_bloqueado={"triagem"}) is None
+    assert fila.reservar(con, "vm1", {"cpu_leve": 2}, ritmo_bloqueado=set()) is not None   # abriu: roda uma vez

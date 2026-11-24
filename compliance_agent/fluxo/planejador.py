@@ -112,7 +112,7 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
         linhas = con.execute("SELECT id, cron_expr, proximo, tipo_job, payload, now() FROM agenda WHERE ativo AND "
                              "(proximo IS NULL OR proximo <= now()) FOR UPDATE SKIP LOCKED").fetchall()
         for ag_id, expr, proximo, tipo, payload, agora in linhas:
-            if proximo is not None and not _pendente(con, tipo, ignorar_ritmo=True):
+            if proximo is not None and not _pendente(con, tipo):
                 c = contrato.get(tipo, {})
                 novo = fila.enfileirar(con, tipo, f"{tipo}:agenda:{ag_id}:{proximo.isoformat()}", payload,
                                        prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
@@ -123,12 +123,11 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
     return n
 
 
-def _pendente(con, tipo: str, ignorar_ritmo: bool = False) -> str | None:
-    """'reservado' / 'fila' se há job deste tipo rodando / esperando (qualquer chave), senão None. `ignorar_ritmo`
-    (agenda): job de evento em fila esperando o guarda da assinatura não conta — a agenda (o cron-rede de antes)
-    não obedece o ritmo e não pode ser calada por ele (2ª sombra, O2.2)."""
-    filtro = " AND NOT (estado = 'fila' AND payload ? 'ritmo')" if ignorar_ritmo else ""
-    r = con.execute("SELECT max(estado) FROM jobs WHERE tipo = %s AND estado IN ('fila', 'reservado')" + filtro,
+def _pendente(con, tipo: str) -> str | None:
+    """'reservado' / 'fila' se há job deste tipo rodando / esperando (qualquer chave), senão None. Desde a decisão
+    D2 do dono (24/11) o ritmo da assinatura vale também para a AGENDA das 4 rotinas fundidas: o job preso no ritmo
+    conta como pendente — ignorá-lo (O2.2) faria cada horário enfileirar mais um job preso, que soltariam juntos."""
+    r = con.execute("SELECT max(estado) FROM jobs WHERE tipo = %s AND estado IN ('fila', 'reservado')",
                     (tipo,)).fetchone()
     return r[0] if r else None
 
