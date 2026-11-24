@@ -24,6 +24,7 @@ dele. Prioriza pela proximidade temporal entre os pagamentos.
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 import statistics
@@ -55,6 +56,34 @@ _CREDOR_NAO_LICITAVEL = re.compile(
 # "UNIPESSOAL"; `vivo` pegava "PLASVIVO"; `energia` solto pegava instaladora solar e de nobreak (Inducta R$ 61,27 mi);
 # `uni[ãa]o` pegava "Uniao Norte Fluminense Eng." (R$ 201,38 mi). Agora palavra inteira, União só como ente e energia
 # só a distribuidora (Light, Ampla, Enel, Energisa) e a Vibra (combustível, contínuo).
+
+
+# Decisão do dono (24/11/2026): esta fila é SINAL DE ONDE PUXAR, não achado, até a triagem resolver o processo-mãe da
+# CONTRATAÇÃO. Motivo medido em 23/11: o `processo` da OB é, na SES, o processo de PAGAMENTO (um SEI por fatura) — dos 4
+# objetos lidos entre os 40 primeiros, 3 eram liquidação/parcela/fatura —, e dos 44 grupos de 2024–25 com empenho
+# conhecido, 35 eram DEA/indenização (elemento 92/93).
+SINAL = "sinal de onde puxar — agrega PAGAMENTO por credor/UG; não lê a contratação (processo-mãe a resolver)"
+
+# Elemento de despesa que NÃO é contratação (MCASP 11ª ed., pp. 96–97; Lei 4.320 art. 37): 91 sentença judicial,
+# 92 despesa de exercício anterior (paga o já consumido), 93 indenização/restituição. Lido da NE pela NL da OB.
+_ELEMENTO_NAO_CONTRATACAO = ("91", "92", "93")
+
+
+def _nl_nao_contratacao(con: sqlite3.Connection, exercicio: int) -> set[tuple]:
+    """(UG, NL) das liquidações cujo empenho é sentença/DEA/indenização. Sem as tabelas de NL/NE → conjunto vazio
+    (o empenho é INDISPONÍVEL; nada é excluído por suposição)."""
+    try:
+        tem = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                                         "AND name IN ('nl_siafe','ne_siafe')")}
+        if tem != {"nl_siafe", "ne_siafe"}:
+            return set()
+        rows = con.execute(
+            "SELECT l.ug_emitente, l.numero, e.natureza FROM nl_siafe l JOIN ne_siafe e "
+            "ON e.numero = l.ne AND e.ug_emitente = l.ug_emitente WHERE l.exercicio = ?", (exercicio,)).fetchall()
+    except sqlite3.Error:
+        logging.getLogger(__name__).debug("NL/NE ilegíveis — sem exclusão por natureza", exc_info=True)
+        return set()
+    return {(ug, nl) for ug, nl, nat in rows if str(nat or "")[4:6] in _ELEMENTO_NAO_CONTRATACAO}
 
 
 def _data(s: str | None) -> date | None:
@@ -100,16 +129,18 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
     Cada candidato traz UG, credor, n_obs, soma, intervalo mediano, prioridade, processos e a ressalva
     honesta do que a fonte NÃO permite afirmar."""
     con.row_factory = sqlite3.Row
-    sql = ("SELECT ug_emitente, credor, nome_credor, data_emissao, valor, processo, numero_ob, status "
-           "FROM ob_orcamentaria_siafe WHERE exercicio = ?")
+    cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+    sql = ("SELECT ug_emitente, credor, nome_credor, data_emissao, valor, processo, numero_ob, status"
+           + (", nl" if "nl" in cols else ", NULL AS nl") + " FROM ob_orcamentaria_siafe WHERE exercicio = ?")
     params: list = [exercicio]
     if limite_ug:
         sql += " AND ug_emitente = ?"
         params.append(limite_ug)
     linhas = con.execute(sql, params).fetchall()
     limite = limite_dispensa(exercicio, tipo)
+    nao_contratacao = _nl_nao_contratacao(con, exercicio)
     grupos: dict[tuple, list[dict]] = {}
-    desc_status = desc_credor = 0
+    desc_status = desc_credor = desc_natureza = 0
     for r in linhas:
         if not _pago(r["status"]):
             desc_status += 1
@@ -122,6 +153,9 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
         # legal, não contratação: fracionar é juridicamente impossível ali.
         if not nome or _CREDOR_NAO_LICITAVEL.search(nome) or eh_nao_fornecedor(nome):
             desc_credor += 1
+            continue
+        if (r["ug_emitente"], r["nl"]) in nao_contratacao:
+            desc_natureza += 1                 # DEA / indenização / sentença pela natureza do empenho
             continue
         valor = float(r["valor"] or 0)
         if valor <= 0 or valor >= limite:      # acima do teto ⇒ não é a manobra da dispensa por valor
@@ -151,6 +185,7 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
         mediana = statistics.median(intervalos) if intervalos else None
         candidatos.append({
             "grau": "a_verificar",             # NUNCA vermelho: falta objeto e modalidade
+            "natureza_sinal": SINAL,
             "ug_emitente": ug, "credor": credor, "nome_credor": obs[0]["nome_credor"],
             "exercicio": exercicio, "n_obs": len(obs), "n_processos": len(processos_distintos),
             "soma": round(soma, 2),
@@ -183,6 +218,7 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
     candidatos.sort(key=lambda c: (-c["prioridade"], -c["soma"]))
     return {"candidatos": candidatos, "obs_lidas": len(linhas),
             "obs_descartadas_status": desc_status, "obs_descartadas_credor": desc_credor,
+            "obs_descartadas_natureza": desc_natureza, "natureza_sinal": SINAL,
             "grupos_descartados_processo_unico": desc_processo_unico,
             "exercicio": exercicio, "limite_dispensa": limite, "ato": ato_normativo(exercicio),
             "fonte": "fracionamento_siafe (OB paga — §2)"}

@@ -65,7 +65,9 @@ _MESES = {m: i + 1 for i, m in enumerate("JANEIRO FEVEREIRO MARÇO ABRIL MAIO JU
                                          "NOVEMBRO DEZEMBRO".split())}
 
 # Grau da RÉGUA (atribuído na análise de 13/11/2026 ao tipo de sinal). Regra sem caso sai ⚪.
-GRAU_REGRA = {"D01": "⚪", "D02": "🟡", "D03": "🟡", "D04": "🟡", "D05": "🟡", "D06": "⚪", "D07": "🟡", "D08": "⚪",
+# D07 → ⚪ (decisão do dono, 24/11/2026): a régua siafe_fracionamento agrega PAGAMENTO e não lê a contratação — é SINAL de
+# onde puxar até a triagem resolver o processo-mãe; nunca achado nem manchete.
+GRAU_REGRA = {"D01": "⚪", "D02": "🟡", "D03": "🟡", "D04": "🟡", "D05": "🟡", "D06": "⚪", "D07": "⚪", "D08": "⚪",
               "D09": "🟡", "D10": "🟡", "D11": "⚪", "D12": "⚪", "D13": "🟡", "D14": "🟡", "D15": "⚪", "D16": "🔴",
               "D17": "🟡", "D18": "🟡", "D19": "⚪", "D20": "⚪"}
 # D14 (regra agregada) é 🟡: ela soma PAGAMENTOS na vigência, e o que a sanção veda é contratar. O 🔴 fica no CASO
@@ -746,6 +748,43 @@ def d04(c: Ctx) -> dict:
                        "global acima do teto (valor global não é receita anual)")
 
 
+_CACHE_REGIME_PROPRIO: dict = {}
+
+
+def _direta_de_regime_proprio(cnpj, fornecedor, linhas_diretas) -> str | None:
+    """Motivo pelo qual a contratação direta NÃO mede fuga de licitação (decisão do dono, 24/11/2026), ou None:
+    - estatal contratando pela Lei 13.303 (regime próprio de licitação, art. 29) — EMOP, CEASA;
+    - concessionária de serviço público (CNAE da Receita: energia, água/esgoto, gás, telefonia) — Light, Ampla,
+      Águas do Rio; inexigibilidade por inviabilidade de competição;
+    - ente público ou estatal como CONTRATADO (natureza 1xxx, 2011, 2038) — Correios, SAAE; art. 75, IX;
+    - na falta do CNPJ na Receita, a peneira canônica de nome (`entidades_gov`, `fracionamento_siafe`).
+    Medido 23/11/2026: das 6 unidades com "salto", SEEDUC (92%), DEGASE (93%) e DETRAN (85% Correios) eram isso."""
+    if any("13.303" in (e or "") or "13303" in (e or "") for (_, _, _, _, e, _, _) in linhas_diretas):
+        return "estatal — Lei 13.303"
+    if not linhas_diretas:
+        return None
+    from compliance_agent import credor_institucional as ci
+    d = dig(cnpj)
+    if len(d) == 14:
+        if d not in _CACHE_REGIME_PROPRIO:
+            rec = ci._receita(d)
+            nat, cnae = rec if rec else (None, None)
+            m = None
+            if cnae and ci.cnae_concessao(cnae):
+                m = "concessionária de serviço público"
+            elif nat and (str(nat).startswith("1") or str(nat) in ci.NATUREZA_ESTATAL):
+                m = "ente público ou estatal contratado"
+            _CACHE_REGIME_PROPRIO[d] = m
+        if _CACHE_REGIME_PROPRIO[d]:
+            return _CACHE_REGIME_PROPRIO[d]
+    from compliance_agent.entidades_gov import eh_nao_fornecedor
+    from compliance_agent.fracionamento_siafe import _CREDOR_NAO_LICITAVEL
+    n = fornecedor or ""
+    if eh_nao_fornecedor(n) or _CREDOR_NAO_LICITAVEL.search(n):
+        return "concessionária ou ente público (pelo nome)"
+    return None
+
+
 def d01_02_17(c: Ctx) -> dict:
     from compliance_agent.fracionamento_emergencia import agrupar_emergencias, eh_emergencial
     diretas = collections.defaultdict(list)
@@ -759,14 +798,23 @@ def d01_02_17(c: Ctx) -> dict:
     fim = min(fim_mes_anterior(ult), c.G1)
     fim_b = menos_um_ano(fim)
 
-    def janela(d0, d1):
+    fora = {"n": 0, "valor": 0.0, "motivos": collections.Counter()}
+
+    def janela(d0, d1, conta_fora=False):
         t = collections.defaultdict(lambda: [0, 0.0, 0, 0.0])
-        for sei, val, uni, proc, dc, obj, st in c.W.execute(
-                "SELECT sei_norm, valor_contrato, unidade, processo, data_contratacao, objeto, status FROM m.contratos_tcerj "
-                "WHERE substr(data_contratacao,1,10) BETWEEN ? AND ?", (d0, d1)):
+        for sei, val, uni, proc, dc, obj, st, cnpj, forn in c.W.execute(
+                "SELECT sei_norm, valor_contrato, unidade, processo, data_contratacao, objeto, status, cnpj, fornecedor "
+                "FROM m.contratos_tcerj WHERE substr(data_contratacao,1,10) BETWEEN ? AND ?", (d0, d1)):
             ato = ato_do_contrato(c, sei, proc, dc, obj, st)
             if ato["cancelado"] or ato["nao_contrato"] or not (d0 <= ato["data"] <= d1):
                 continue                # ata/empenho/cancelado, ou assinado fora da janela (data do DOERJ)
+            mot = _direta_de_regime_proprio(cnpj, forn, diretas.get(sei) or [])
+            if mot:                     # decisão do dono 24/11/2026: fora da conta (numerador E denominador)
+                if conta_fora:
+                    fora["n"] += 1
+                    fora["valor"] += val or 0
+                    fora["motivos"][mot] += 1
+                continue
             a = t[uni]
             a[0] += 1
             a[1] += val or 0
@@ -774,7 +822,7 @@ def d01_02_17(c: Ctx) -> dict:
                 a[2] += 1
                 a[3] += val or 0
         return t
-    tg, tb = janela(G0, fim), janela(c.B0, fim_b)
+    tg, tb = janela(G0, fim, conta_fora=True), janela(c.B0, fim_b)
     tab = []
     for uni, (n, v, nd, vd) in tg.items():
         nb, vb, ndb, vdb = tb.get(uni, [0, 0, 0, 0])
@@ -792,7 +840,11 @@ def d01_02_17(c: Ctx) -> dict:
     ag = tot(tg, 3) / tot(tg, 1) if tot(tg, 1) else None
     ab = tot(tb, 3) / tot(tb, 1) if tot(tb, 1) else None
     r01 = dict(criterio=f"contratos do espelho TCE-RJ assinados {G0}→{fim}; \"direta\" = processo no espelho de compras "
-                        "diretas do TCE-RJ. Sinal: unidade com >=R$10 mi diretos, >=50% do valor e +20 p.p. sobre o ano anterior",
+                        "diretas do TCE-RJ. Sinal: unidade com >=R$10 mi diretos, >=50% do valor e +20 p.p. sobre o ano anterior. "
+                        "Fora da conta (regime próprio, não fuga de licitação): concessionária de serviço público e ente "
+                        "público como contratado (CNAE/natureza da Receita, peneira canônica de nome) e contratação de "
+                        "estatal pela Lei 13.303",
+               fora_da_conta=dict(n=fora["n"], valor=round(fora["valor"], 2), motivos=dict(fora["motivos"])),
                geral=dict(n=tot(tg, 0), valor=round(tot(tg, 1), 2), n_direta=tot(tg, 2), valor_direta=round(tot(tg, 3), 2)),
                geral_ano_anterior=dict(n=tot(tb, 0), valor=round(tot(tb, 1), 2), n_direta=tot(tb, 2),
                                        valor_direta=round(tot(tb, 3), 2)),
@@ -1303,9 +1355,12 @@ def d07(c: Ctx) -> dict:
     na = sorted((x for x in casos if (x["primeira_ob"] or "") >= G0), key=lambda x: -(x["prioridade"] or 0))
     soma = round(sum(x["soma"] or 0 for x in na), 2)
     nr = sum((x["rente_teto"] or 0) >= 2 for x in na)
-    return dict(criterio=f"tabela siafe_fracionamento (régua do sistema) exercício {ano}; recorte: série iniciada na gestão",
-                n_ano=len(casos), n=len(na), soma=soma, n_rente=nr, casos=na[:40], valor_ob=soma,
-                resumo=f"Fracionamento: {len(na)} séries iniciadas na gestão ({brl(soma)}), {nr} rentes ao teto")
+    from compliance_agent.fracionamento_siafe import SINAL
+    return dict(criterio=f"tabela siafe_fracionamento (régua do sistema) exercício {ano}; recorte: série iniciada na gestão. "
+                         f"SINAL, não achado: {SINAL}",
+                natureza=SINAL, n_ano=len(casos), n=len(na), soma=soma, n_rente=nr, casos=na[:40], valor_ob=soma,
+                resumo=f"SINAL de onde puxar (não é achado) — séries de pagamento rentes ao teto: {len(na)} iniciadas na "
+                       f"gestão ({brl(soma)}), {nr} rentes ao teto; falta ler a contratação")
 
 
 def _executivo_estadual_rj(controle_pncp: str, orgao_nome: str) -> bool:

@@ -252,6 +252,8 @@ detectores:
       excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
     - hipotese: contrato assinado fora da janela (data de registro no TCE-RJ ≠ data da assinatura no DOERJ)
       excluida_por: compliance_agent/governo_couto_regras.py:ato_do_contrato
+    - hipotese: concessionária, ente público/estatal contratado (art. 75, IX) e estatal pela Lei 13.303
+      excluida_por: compliance_agent/governo_couto_regras.py:_direta_de_regime_proprio
     - hipotese: contratação direta legítima (concessionária, inexigibilidade real) ou mudança de mix de objetos
       excluida_por: null
     dominio: contratos do espelho TCE-RJ assinados de 23/03/2026 ao último mês completo ingerido das compras diretas × mesmo
@@ -408,11 +410,15 @@ detectores:
     - static/js/src/abas/governo_couto.js
     - rotas/governo_couto.py
     - compliance_agent/governo_couto.py
-    manchete: true
+    manchete: false
     controle_positivo: null
     controle_negativo: null
     hipoteses_inocentes:
     - hipotese: compras de objetos distintos ao mesmo credor; série de pequenas despesas legítimas
+      excluida_por: null
+    - hipotese: DEA, indenização ou sentença (elemento 91/92/93 do empenho)
+      excluida_por: compliance_agent/fracionamento_siafe.py:_nl_nao_contratacao
+    - hipotese: processo da OB é o de PAGAMENTO, não o da contratação — por isso é SINAL (grau ⚪), não achado
       excluida_por: null
     dominio: séries de OB do exercício corrente (siafe_fracionamento) com 1a OB a partir de 23/03/2026
     fp_medida: null
