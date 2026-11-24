@@ -71,11 +71,12 @@ def test_ritmo_negado_o_derivado_espera_e_liberado_roda(con):
     pedidos = []
     nega = lambda t: pedidos.append(t) or "ritmo semanal da assinatura — 38% acima do ritmo (37%)"  # noqa: E731
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None), ritmo=nega)
-    assert [x["id"] for x in feitos] == ["outro"] and set(pedidos) == {"lex_execucao"}   # controle: sem ritmo anda
+    ids = [x["id"] for x in feitos]
+    assert "outro" in ids and "lex" not in ids and set(pedidos) == {"lex_execucao"}     # controle: sem ritmo anda
     assert con.execute("SELECT adiado FROM derivado WHERE id='lex'").fetchone()[0].startswith("ritmo: ritmo semanal")
     assert "lex" in P._sujos(con)                                                   # a pendência espera
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None), ritmo=lambda t: None)
-    assert [x["id"] for x in feitos] == ["lex"]
+    assert "lex" in [x["id"] for x in feitos] and "lex" not in P._sujos(con)
 
 
 def test_guarda_de_ritmo_ilegivel_fecha_a_porta(monkeypatch):

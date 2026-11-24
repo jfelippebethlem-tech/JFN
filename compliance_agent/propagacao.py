@@ -775,7 +775,7 @@ def _motivo_ritmo(tarefa: str) -> str | None:
     try:
         from compliance_agent.llm import contingencia
         return contingencia.motivo_bloqueio(tarefa)
-    except Exception as exc:  # noqa: BLE001 — qualquer falha do guarda fecha a porta
+    except (ImportError, OSError, ValueError, TypeError, KeyError, AttributeError) as exc:   # falha do guarda fecha a porta
         return f"guarda de ritmo ilegível ({type(exc).__name__})"
 
 
