@@ -59,11 +59,21 @@ function _seletor(d){
     ${d.execucao_parcial ? `<div class="warn" style="margin-top:8px">O balancete deste exercício parou num dia de dentro do mês. As OB do SIAFE aparecem até o fim do mês e NÃO são comparadas com ele.</div>` : ''}`);
 }
 
+/* Trilha do dinheiro (arte gerada, 24/11/2026) acima do placar: Empenho ≠ Liquidação ≠ OB, e só a OB é
+   "pago". Ícone que não carrega some (onerror) e o texto fica — a lição não depende da imagem. */
+function _trilha(){
+  const p = (img, t, s) => `<figure class="tg-passo"><img src="/static/assets/gen/trilha-${img}.webp" width="64" height="64" alt="" loading="lazy" decoding="async" onerror="this.remove()"><figcaption><b>${t}</b><span>${s}</span></figcaption></figure>`;
+  return `<div class="trilha-gasto" role="note" aria-label="Estágios da despesa: empenho, liquidação e ordem bancária; só a ordem bancária é pagamento">
+    ${p('empenho', 'Empenho', 'reserva o dinheiro — pode ser anulado')}<i aria-hidden="true">→</i>
+    ${p('liquidacao', 'Liquidação', 'entrega atestada — ainda não pago')}<i aria-hidden="true">→</i>
+    ${p('ob', 'OB', 'ordem bancária — só isto é pago')}</div>`;
+}
+
 function _placar(d){
   const t = d.total || {}, f = t.faltam || {};
   const parc = k => (f[k] ? ` Soma incompleta: ${f[k]} unidade(s) sem este valor.` : '');
   const ob = t.ob || {};
-  return `<div class="grid g2" style="margin-top:12px">
+  return _trilha() + `<div class="grid g2" style="margin-top:12px">
     ${kpi(_r(t.dotacao_atualizada), 'Dotação atualizada', null, '🏦', {sobre: `Dotação inicial ${t.dotacao_inicial == null ? 'INDISPONÍVEL' : fmtR(t.dotacao_inicial)} mais créditos adicionais, menos anulações, na posição publicada. ${d.colunas.dotacao_atualizada}${parc('dotacao_atualizada')}`})}
     ${kpi(_r(t.empenhado), 'Empenhado' + (t.taxa_empenho == null ? '' : ` — ${_p(t.taxa_empenho)} da dotação`), null, '📝', {sobre: `${d.colunas.empenhado} Período: ${d.periodo}.${parc('empenhado')}`})}
     ${kpi(_r(t.liquidado), 'Liquidado', null, '📦', {sobre: `${d.colunas.liquidado}${parc('liquidado')}`})}

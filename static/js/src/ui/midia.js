@@ -29,7 +29,9 @@ const SFX = {
   dossie: {src: '/static/assets/sfx/dossie.mp3', vol: 0.12, intervalo: 600},
 };
 const CHAVE = 'jfn.som';
-const ILUS = {doc: '/static/assets/gen/vazio-doc.webp', rede: '/static/assets/gen/vazio-rede.webp'};
+// 24/11/2026: as versões `-claro` (traço escuro, fundo transparente) — as originais eram fundo preto com
+// `screen`, que no tema claro some (screen sobre quase-branco = quase-branco).
+const ILUS = {doc: '/static/assets/gen/vazio-doc-claro.webp', rede: '/static/assets/gen/vazio-rede-claro.webp'};
 
 let _ligado = false;
 const _audio = {};        // tipo -> HTMLAudioElement (criado só depois de ligar)

@@ -1887,6 +1887,12 @@ export function _cnpjEstab(c){
   if(d.length!==14)return d?'CNPJ '+d:'';
   return 'CNPJ '+d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12)+(d.slice(8,12)==='0001'?' · matriz':' · filial '+d.slice(8,12));
 }
+/* Selos de grau (arte gerada, 24/11/2026): o grau lido pela FORMA, não só pela cor — octógono = grave,
+   triângulo = atenção, círculo = sem indício, anel tracejado = não verificável (daltonismo, impressão P&B).
+   Peça que não carrega volta a ser o emoji de sempre (onerror troca a imagem pelo alt). */
+const _SELO={'🔴':['grave','Grave'],'🟡':['atencao','Atenção'],'🟢':['sem','Sem indício verificado'],'⚪':['nv','Não verificável']};
+function _selo(g,px){const s=_SELO[g];if(!s)return esc(g||'⚪');
+  return `<img class="selo" src="/static/assets/gen/selo-${s[0]}.webp" width="${px}" height="${px}" alt="${g}" title="${s[1]}" loading="lazy" decoding="async" onerror="this.replaceWith(this.alt)">`;}
 export async function renderPericias(){
   const d=await J('/api/pericias?limite=80&ordem='+_perOrdem+(_perGrau?'&grau='+encodeURIComponent(_perGrau):''));
   const it=d.itens||[],pg=d.por_grau||null,nG=g=>pg?` <span class="dim">${fmtN(pg[g]||0)}</span>`:'';
@@ -1898,9 +1904,9 @@ export async function renderPericias(){
      "Grave" vem antes de "Atenção" — a ordem de leitura de quem faz triagem. */
   h+=`<div class="chips">
     <button type="button" class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos${pg?` <span class="dim">${fmtN(pgTot)}</span>`:''}</button>
-    <button type="button" class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">Grave${nG('🔴')}</button>
-    <button type="button" class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção${nG('🟡')}</button>
-    <button type="button" class="chip ${_perGrau==='⚪'?'on':''}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável${nG('⚪')}</button>
+    <button type="button" class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">${_selo('🔴',16)}Grave${nG('🔴')}</button>
+    <button type="button" class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">${_selo('🟡',16)}Atenção${nG('🟡')}</button>
+    <button type="button" class="chip ${_perGrau==='⚪'?'on':''}" onclick="_perGrau='⚪';ir('e_pericias')">${_selo('⚪',16)}Não verificável${nG('⚪')}</button>
     <button type="button" class="chip ${_perOrdem==='total'?'on':''}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem==='total'?'ordenar: R$':'ordenar: score'}</button></div>`;
   h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
   const tot=pg?(_perGrau?(pg[_perGrau]||0):pgTot):null;
@@ -1909,7 +1915,7 @@ export async function renderPericias(){
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj,x.favorecido||x.cnpj)}</div>
       <div class="dim">${esc(_cnpjEstab(x.cnpj))}</div>
       <div class="dim">${(x.indicios||0)} indício(s) · ${x.ugs} órgão(s) · ${fmtN(x.n_obs)} OBs</div></div>
-      <div class="right"><div style="font-size:18px">${x.grau||'⚪'}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`)).join('')+`</div>`;
+      <div class="right"><div style="font-size:18px">${_selo(x.grau||'⚪',40)}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`)).join('')+`</div>`;
   if(!it.length)h+=card(`<div class="muted">Nenhum fornecedor com grau ${esc(_perGrau||'registrado')} na perícia.</div>`);
   return h;
 }

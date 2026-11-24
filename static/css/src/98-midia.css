@@ -4,14 +4,15 @@
    aparecem depois que a peça carregou (`html.ilus-doc` / `html.ilus-rede`, ver ui/midia.js): peça
    ausente = o vazio de sempre, sem buraco reservado.
      doc  = MEDI e não achei      rede = NÃO DEU PARA SABER (INDISPONÍVEL ≠ 0)
-   O fundo das peças é preto: `screen` faz o preto sumir no vidro escuro do cartão. */
+   24/11/2026: peças `-claro` com fundo TRANSPARENTE e traço escuro (o painel é só tema claro). As antigas
+   eram fundo preto + `screen`, que sobre o cartão quase-branco dava quase-branco: a figura sumia. */
 @layer v59 {
   .ilus{display:none}
   html.ilus-doc .card.vazio-ilus>.ilus.doc,
   html.ilus-rede .card.vazio-ilus>.ilus.rede{display:block;width:96px;height:96px;margin:0 auto 10px;
-    background:center/contain no-repeat;mix-blend-mode:screen;opacity:.92;pointer-events:none}
-  html.ilus-doc .card.vazio-ilus>.ilus.doc{background-image:url(/static/assets/gen/vazio-doc.webp)}
-  html.ilus-rede .card.vazio-ilus>.ilus.rede{background-image:url(/static/assets/gen/vazio-rede.webp)}
+    background:center/contain no-repeat;mix-blend-mode:normal;opacity:.92;pointer-events:none}
+  html.ilus-doc .card.vazio-ilus>.ilus.doc{background-image:url(/static/assets/gen/vazio-doc-claro.webp)}
+  html.ilus-rede .card.vazio-ilus>.ilus.rede{background-image:url(/static/assets/gen/vazio-rede-claro.webp)}
   html.ilus-doc .card.vazio-ilus:has(>.ilus.doc),
   html.ilus-rede .card.vazio-ilus:has(>.ilus.rede){text-align:center;padding-top:18px}
   html.ilus-doc .card.vazio-ilus:has(>.ilus.doc)>.dim,
@@ -24,8 +25,8 @@
   html.ilus-rede .card>.warn:has(>.v10retry){flex-wrap:wrap;justify-content:center;text-align:center;
     row-gap:8px;padding-top:14px}
   html.ilus-rede .card>.warn:has(>.v10retry)::before{content:"";flex:0 0 100%;height:88px;
-    background:url(/static/assets/gen/vazio-rede.webp) center/contain no-repeat;
-    mix-blend-mode:screen;opacity:.9;pointer-events:none}
+    background:url(/static/assets/gen/vazio-rede-claro.webp) center/contain no-repeat;
+    mix-blend-mode:normal;opacity:.9;pointer-events:none}
 
   /* botão "Som" do cabeçalho: herda o vidro/hover de `.help`; o ponto diz o estado sem depender
      de glifo de fonte (lição do v27: ✓/✗ não existem nas três fontes embarcadas). */
@@ -36,4 +37,26 @@
   .htop a.som.on{color:var(--tx);border-color:color-mix(in oklch,var(--ion) 50%,transparent)}
   .htop a.som.on .som-d{background:var(--ion);box-shadow:0 0 7px color-mix(in oklch,var(--ion) 75%,transparent)}
   .htop a.som:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+}
+
+/* ══ ARTE GERADA (24/11/2026) — selos de grau da perícia e trilha Empenho → Liquidação → OB ═══════
+   Peças com fundo transparente (static/assets/gen/). Sem peça: selo volta a ser emoji, trilha fica só texto. */
+@layer v59 {
+  img.selo{display:inline-block;vertical-align:middle;object-fit:contain}
+  .chip img.selo{margin:-2px 5px 0 0}
+  .trilha-gasto{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0 2px;
+    padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+  .trilha-gasto>i{font-style:normal;color:var(--tx2);font-size:18px;flex:0 0 auto}
+  .tg-passo{display:flex;align-items:center;gap:8px;margin:0;min-width:0;flex:1 1 0}
+  .tg-passo img{width:64px;height:64px;flex:0 0 auto}
+  .tg-passo figcaption{display:flex;flex-direction:column;min-width:0;font-size:12px;line-height:1.3}
+  .tg-passo figcaption b{font-size:14px;color:var(--tx)}
+  .tg-passo figcaption span{color:var(--tx2)}
+  .tg-passo:last-child figcaption b{color:var(--teal)}
+  @media (max-width:600px){
+    .trilha-gasto{gap:4px;padding:8px}
+    .tg-passo{flex-direction:column;text-align:center;gap:2px}
+    .tg-passo img{width:44px;height:44px}
+    .tg-passo figcaption{font-size:11px}
+  }
 }
