@@ -40,7 +40,7 @@ itens:
   # O4 — Domínio
   - {id: O4.1, dep: [], maq: vm2, estado: feito, nota: "382a0870: dominio com paridade (111 passed); bug achado lex_execucao._chave_processo (492 grafias)", titulo: "compliance_agent/dominio/ com paridade"}
   - {id: O4.2, dep: [O4.1], maq: vm2, estado: feito, nota: "5de37f8d; carimbado no vivo 24/11 ~15h40 (backup ~/backup-pre-alembic-20261124.db md5 = snapshot); _sync_columns remover em 01/12", titulo: "Alembic real (engine cache, stamp, fail-fast, fim do _sync_columns)"}
-  - {id: O4.3, dep: [O4.1], maq: vm1, estado: pendente, titulo: "data_emissao_iso + catraca"}
+  - {id: O4.3, dep: [O4.1], maq: vm1, estado: feito, nota: "cba39ce6; 0002 aplicada no vivo 24/11 ~16h (MAX cru dava 31/12/2025; ISO dá 2026-11-23)", titulo: "data_emissao_iso + catraca"}
   - {id: O4.4, dep: [O4.1], maq: vm2, estado: pendente, titulo: "regime por contrato", tags: [juridico]}
   - {id: O4.5, dep: [O4.1], maq: vm2, estado: pendente, titulo: "tetos por lei/ente/data", tags: [juridico]}
   - {id: O4.6, dep: [O4.1], maq: vm2, estado: pendente, titulo: "natureza do pagamento + origem do exercício", tags: [juridico]}
