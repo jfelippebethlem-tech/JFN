@@ -19,7 +19,9 @@ def test_escolher_db_prefere_snapshot_fresco_e_cai_para_o_vivo_com_motivo(tmp_pa
     snap.write_bytes(b"x")
     agora = time.time()
     assert escolher_db(None, analitico=str(snap), agora=agora) == (str(snap), "snapshot")
-    assert escolher_db(None, analitico=str(snap), idade_max_h=1, agora=agora + 3 * 3600)[1].startswith("vivo: snapshot com")
+    # 24/11/2026: cópia velha NÃO vai ao inode vivo — fica a cópia, marcada como defasada (o painel leu o vivo por 2 dias)
+    alvo, motivo = escolher_db(None, analitico=str(snap), idade_max_h=1, agora=agora + 3 * 3600)
+    assert alvo == str(snap) and motivo.startswith("snapshot defasado")
     assert escolher_db("/outro/banco.db", analitico=str(snap)) == ("/outro/banco.db", "pedido")
 
 

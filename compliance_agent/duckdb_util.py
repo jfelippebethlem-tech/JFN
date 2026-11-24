@@ -37,7 +37,10 @@ def escolher_db(db: str | None, analitico: str = _DB_ANALITICO, idade_max_h: flo
     except OSError:
         return _DB, "vivo: snapshot ausente"
     if idade_h > idade_max_h:
-        return _DB, f"vivo: snapshot com {idade_h:.0f} h"
+        # 24/11/2026: velha ≠ motivo para ir ao inode vivo. De 22/11 11:16 a 24/11 o painel leu o compliance.db VIVO
+        # pelo DuckDB (cruzador adiado 3 noites por carga) — DuckDB na VM-1 soltando os locks do processo do painel.
+        # Dado defasado com aviso é honesto; lock solto no banco vivo não é. Fica a cópia, marcada como defasada.
+        return analitico, f"snapshot defasado: {idade_h:.0f} h"
     return analitico, "snapshot"
 
 
@@ -46,6 +49,8 @@ def conectar(db: str | None = None):
     import duckdb
     import logging
     alvo, motivo = escolher_db(db)
+    if motivo.startswith("snapshot defasado"):
+        logging.getLogger(__name__).warning("duckdb na cópia analítica DEFASADA (%s) — rode tools/snapshot_analitico", motivo)
     if motivo.startswith("vivo"):
         logging.getLogger(__name__).warning("duckdb no banco VIVO (%s) — os locks do processo caem a cada consulta; rode tools/snapshot_analitico", motivo)
     con = duckdb.connect()
