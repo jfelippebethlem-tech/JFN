@@ -14,10 +14,15 @@ e os de rede ficam disponíveis explicitamente:
 Marcar num lugar só evita poluir 6 arquivos com decorators e mantém o critério
 auditável. Ver docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md.
 """
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+# O0.3 (24/11/2026): o painel é falha-fechado — `testclient` (TestClient in-process) só conta como
+# localhost com JFN_ENV=teste. Fixado ANTES de qualquer `import server` dos módulos de teste.
+os.environ.setdefault("JFN_ENV", "teste")
 
 # `tests/` no sys.path para que os módulos de teste possam importar `helpers_ambiente`
 # (o "este ambiente tem os dados?" de um lugar só). Sem isto o import falha na COLETA, que é

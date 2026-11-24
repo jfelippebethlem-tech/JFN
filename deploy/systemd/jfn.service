@@ -9,7 +9,15 @@ WorkingDirectory=%h/JFN
 Environment=JFN_DATA_DIR=%h/JFN/data
 Environment=JFN_HOST=127.0.0.1
 Environment=JFN_PORT=8000
-ExecStart=%h/JFN/.venv/bin/python %h/JFN/server.py --host 0.0.0.0 --port 8000
+# O0.3 (24/11/2026) painel falha-fechado: bind só no loopback (Funnel e Cloudflare apontam para
+# 127.0.0.1:8000), cookie Secure, e — na parada de obras — só leitura com faixa de manutenção.
+Environment=COOKIE_SECURE=1
+Environment=JFN_MANUTENCAO=1
+Environment="JFN_MANUTENCAO_DESDE=2026-11-24 12:25"
+# PENDENTE do dono: ligar quando JFN_DASH_PASSWORD tiver >= 20 caracteres (hoje o boot em produção
+# recusaria — `server.py --checar-config` diz o motivo sem mostrar valor).
+#Environment=JFN_ENV=producao
+ExecStart=%h/JFN/.venv/bin/python %h/JFN/server.py --port 8000
 # Parada travada (browser/consulta longa) virava SIGKILL aos 90 s e alarme OnFailure a cada restart manual (10/09): 30 s bastam.
 TimeoutStopSec=30
 Restart=always

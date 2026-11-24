@@ -7,9 +7,10 @@ import server
 
 
 @pytest.fixture
-def cli(monkeypatch):
+def cli(monkeypatch, tmp_path):
     monkeypatch.setattr(server, "_DASH_SENHA", "senha-de-teste")
-    monkeypatch.setattr(server, "_LOGIN_FALHAS", {})
+    monkeypatch.setattr(server, "_RATELIMIT_DB", tmp_path / "auth_ratelimit.db")  # rate limit persistente (O0.3)
+    monkeypatch.setattr(server, "_MANUTENCAO", False)
     return TestClient(server.app)
 
 
@@ -30,7 +31,8 @@ def test_login_certo_zera_e_senha_nao_ascii_nao_quebra(cli):
     assert cli.post("/login_jfn", data={"senha": "ção"}, follow_redirects=False).status_code == 303
     r = cli.post("/login_jfn", data={"senha": "senha-de-teste"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == "/painel"
-    assert server._LOGIN_FALHAS == {}
+    import time
+    assert server._rl_falhas("testclient", time.time()) == 0
 
 
 def test_cabecalhos_de_seguranca(cli):

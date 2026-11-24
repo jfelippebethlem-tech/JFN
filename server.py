@@ -36,6 +36,7 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
+    Response,
 )
 from fastapi.staticfiles import StaticFiles
 
@@ -368,47 +369,126 @@ class _GZipSemMidia(GZipMiddleware):
         await super().__call__(scope, receive, send)
 
 
+# ── Manutenção (parada de obras, O0.7/O0.3) ─────────────────────────────────────────────────────
+# Registrado ANTES do GZip para ficar por dentro dele: a faixa entra no HTML ainda sem compressão.
+# Fica também por dentro do `_auth_jfn` (registrado depois = mais externo): quem não tem sessão leva
+# 401/303 antes; quem tem (ou é o Yoda local) e tenta escrever leva 503. Flags e data: ver `_MANUTENCAO`.
+_ESCRITA = ("POST", "PUT", "PATCH", "DELETE")
+
+
+def _faixa_manutencao() -> bytes:
+    import html as _html
+    txt = _html.escape(f"Em manutenção — dados congelados em {_MANUTENCAO_DESDE}")
+    return (f'<div id="jfn-manutencao" role="status" style="position:sticky;top:0;z-index:2147483647;'
+            f'margin:0;padding:8px 16px;background:#7a4b00;color:#fff;font:600 14px/1.4 system-ui,sans-serif;'
+            f'text-align:center;letter-spacing:.01em">{txt}</div>').encode()
+
+
+@app.middleware("http")
+async def _manutencao(request: Request, call_next):
+    if not _MANUTENCAO:
+        return await call_next(request)
+    if request.method in _ESCRITA and request.url.path not in _MANUTENCAO_ISENTOS:
+        return JSONResponse({"manutencao": True, "desde": _MANUTENCAO_DESDE,
+                             "erro": "painel em manutenção — somente leitura"}, status_code=503)
+    resp = await call_next(request)
+    ctype = resp.headers.get("content-type", "")
+    if resp.status_code != 200 or not ctype.startswith("text/html") or resp.headers.get("content-encoding"):
+        return resp
+    corpo = b"".join([c async for c in resp.body_iterator])
+    faixa = _faixa_manutencao()
+    i = corpo.lower().find(b"<body")
+    j = corpo.find(b">", i) if i >= 0 else -1
+    corpo = corpo[:j + 1] + faixa + corpo[j + 1:] if j >= 0 else faixa + corpo
+    novo = Response(content=corpo, status_code=200)
+    novo.raw_headers = [(k, v) for k, v in resp.raw_headers
+                        if k.lower() not in (b"content-length", b"etag", b"last-modified")]
+    novo.raw_headers.append((b"content-length", str(len(corpo)).encode()))
+    return novo
+
+
 app.add_middleware(_GZipSemMidia, minimum_size=1024)
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
-# Filosofia: o JFN expõe dados sensíveis de auditoria (CPF/casos). Quando o servidor é exposto à rede
-# (host 0.0.0.0 + Security List Oracle, igual ao Bond), TUDO passa a exigir login_jfn — EXCETO chamadas
-# de localhost (o Yoda chama 127.0.0.1:8000 internamente e NÃO pode quebrar). Cookie HMAC-assinado, sem deps.
-# `secure` é gated por env COOKIE_SECURE (lição do Bond: secure=true descarta o cookie em HTTP puro).
+# FALHA-FECHADO (plano mestre v2, O0.3 / §3.11, 24/11/2026). O JFN expõe dados sensíveis de auditoria
+# (CPF/casos): TUDO exige login_jfn — EXCETO loopback de verdade (127.0.0.1/::1) SEM cabeçalho de proxy
+# (o Yoda chama 127.0.0.1:8000 internamente e NÃO pode quebrar). Não existe mais "sem senha = gate
+# desligado": sem senha ninguém de fora entra. Com JFN_ENV=producao o boot ABORTA se faltar senha
+# (≥ 20), secret (≥ 32, separado da senha) ou COOKIE_SECURE=1 — ver `_validar_config_producao`.
+# Cookie HMAC-assinado com epoch de revogação (JFN_DASH_EPOCH: trocar derruba todas as sessões).
+_JFN_ENVS = ("producao", "local", "teste")
+_JFN_ENV = os.environ.get("JFN_ENV", "local").strip().lower()
 _DASH_SENHA = os.environ.get("JFN_DASH_PASSWORD", "")
-# Sem JFN_DASH_SECRET/JFN_DASH_PASSWORD, gera secret ALEATÓRIO por processo (não mais o literal
-# "jfn-dev-secret", que tornava o cookie de sessão forjável por quem conhecesse o default).
-_DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or _DASH_SENHA or secrets.token_hex(32)).encode()
+# Secret NUNCA cai para a senha. Fora de produção, sem JFN_DASH_SECRET, gera um aleatório por processo.
+_DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or secrets.token_hex(32)).encode()
 _DASH_COOKIE = "jfn_session"
-_DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
+_DASH_TTL_PADRAO = 7 * 24 * 3600  # 7 dias
+_DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(_DASH_TTL_PADRAO)))
+_DASH_EPOCH = os.environ.get("JFN_DASH_EPOCH", "1").strip() or "1"
 _DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
-_DASH_LOCAL = {"127.0.0.1", "::1", "localhost", "testclient", None, ""}  # "testclient" = TestClient in-process (testes/Yoda)
+
+
+def _hosts_locais(jfn_env: str) -> set:
+    """Loopback real. `testclient` (TestClient in-process) só com JFN_ENV=teste; None/"" nunca."""
+    return {"127.0.0.1", "::1"} | ({"testclient"} if jfn_env == "teste" else set())
+
+
+_DASH_LOCAL = _hosts_locais(_JFN_ENV)
 # Os dois túneis (Cloudflare e Tailscale Funnel) entregam o visitante da INTERNET pela porta 127.0.0.1.
 # Hoje quem salva é o uvicorn reescrever request.client a partir do X-Forwarded-For — padrão implícito
 # (proxy_headers), que um upgrade ou flag muda sem aviso e abriria o painel inteiro. Por isso a isenção
 # de localhost exige também que NÃO haja cabeçalho de proxy: o Yoda nunca manda nenhum.
 _DASH_PROXY_HDRS = ("x-forwarded-for", "x-real-ip", "forwarded", "cf-connecting-ip", "tailscale-user-login")
 # Login sem limite de tentativa = senha adivinhável pela internet. 5 erros em 15 min por IP → 429.
-_LOGIN_FALHAS: dict[str, list[float]] = {}
+# Persistente em SQLite: restart do serviço não zera a contagem.
+_RATELIMIT_DB = Path(os.environ.get("JFN_DATA_DIR", "data")) / "auth_ratelimit.db"
 _LOGIN_MAX, _LOGIN_JANELA = 5, 15 * 60
+# Manutenção (parada de obras): leitura passa, escrita → 503; HTML leva a faixa.
+_MANUTENCAO = os.environ.get("JFN_MANUTENCAO", "").lower() in ("1", "true", "yes")
+_MANUTENCAO_DESDE = os.environ.get("JFN_MANUTENCAO_DESDE", "").strip() or "data não informada"
+_MANUTENCAO_ISENTOS = ("/login_jfn", "/logout_jfn", "/login", "/logout")
 _SEC_HDRS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
              "Referrer-Policy": "same-origin", "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
              "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"}
 
 
+def _validar_config_producao(env=None) -> list:
+    """Problemas de configuração que impedem subir em produção. Nunca cita VALOR de segredo."""
+    env = os.environ if env is None else env
+    jfn_env = (env.get("JFN_ENV") or "local").strip().lower()
+    if jfn_env not in _JFN_ENVS:
+        return [f"JFN_ENV inválido (aceitos: {', '.join(_JFN_ENVS)})"]
+    if jfn_env != "producao":
+        return []
+    probs = []
+    senha = env.get("JFN_DASH_PASSWORD") or ""
+    secret = env.get("JFN_DASH_SECRET") or ""
+    if len(senha) < 20:
+        probs.append(f"JFN_DASH_PASSWORD ausente ou curta ({len(senha)} < 20 caracteres)")
+    if len(secret) < 32:
+        probs.append(f"JFN_DASH_SECRET ausente ou curto ({len(secret)} < 32 caracteres)")
+    if secret and secret == senha:
+        probs.append("JFN_DASH_SECRET igual à senha — tem de ser separado")
+    if (env.get("COOKIE_SECURE") or "").lower() not in ("1", "true", "yes"):
+        probs.append("COOKIE_SECURE=1 ausente")
+    return probs
+
+
 def _dash_token() -> str:
     exp = str(int(time.time()) + _DASH_TTL)
-    sig = hmac.new(_DASH_SECRET, exp.encode(), hashlib.sha256).hexdigest()
-    return f"{exp}.{sig}"
+    msg = f"{_DASH_EPOCH}.{exp}"
+    sig = hmac.new(_DASH_SECRET, msg.encode(), hashlib.sha256).hexdigest()
+    return f"{msg}.{sig}"
 
 
 def _dash_token_ok(tok: str | None) -> bool:
-    if not tok or "." not in tok:
+    if not tok or tok.count(".") < 2:
         return False
-    exp, sig = tok.rsplit(".", 1)
-    good = hmac.new(_DASH_SECRET, exp.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, good):
+    msg, sig = tok.rsplit(".", 1)
+    epoch, exp = msg.rsplit(".", 1)
+    good = hmac.new(_DASH_SECRET, msg.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, good) or not hmac.compare_digest(epoch, _DASH_EPOCH):
         return False
     try:
         return int(exp) > int(time.time())
@@ -416,12 +496,33 @@ def _dash_token_ok(tok: str | None) -> bool:
         return False
 
 
+def _rl_conn():
+    import sqlite3
+    _RATELIMIT_DB.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(_RATELIMIT_DB), timeout=5)
+    con.execute("CREATE TABLE IF NOT EXISTS falhas (ip TEXT NOT NULL, t REAL NOT NULL)")
+    return con
+
+
+def _rl_falhas(ip: str, agora: float) -> int:
+    with _rl_conn() as con:
+        con.execute("DELETE FROM falhas WHERE t < ?", (agora - _LOGIN_JANELA,))
+        return con.execute("SELECT COUNT(*) FROM falhas WHERE ip = ?", (ip,)).fetchone()[0]
+
+
+def _rl_registrar(ip: str, agora: float) -> None:
+    with _rl_conn() as con:
+        con.execute("INSERT INTO falhas (ip, t) VALUES (?, ?)", (ip, agora))
+
+
+def _rl_zerar(ip: str) -> None:
+    with _rl_conn() as con:
+        con.execute("DELETE FROM falhas WHERE ip = ?", (ip,))
+
+
 @app.middleware("http")
 async def _auth_jfn(request: Request, call_next):
-    # Sem senha configurada → gate DESLIGADO (modo dev/local, comportamento legado preservado).
-    if not _DASH_SENHA:
-        return await call_next(request)
-    cliente = request.client.host if request.client else ""
+    cliente = request.client.host if request.client else None
     path = request.url.path
     via_proxy = any(h in request.headers for h in _DASH_PROXY_HDRS)
     if ((cliente in _DASH_LOCAL and not via_proxy)  # Yoda interno (127.0.0.1) nunca é barrado
@@ -664,17 +765,15 @@ async def _cabecalhos_seguranca(request: Request, call_next):
 async def login_jfn_post(request: Request, senha: str = Form("")):
     ip = request.client.host if request.client else ""
     agora = time.time()
-    falhas = [t for t in _LOGIN_FALHAS.get(ip, []) if agora - t < _LOGIN_JANELA]
-    if len(falhas) >= _LOGIN_MAX:
-        _LOGIN_FALHAS[ip] = falhas
+    if _rl_falhas(ip, agora) >= _LOGIN_MAX:
         return HTMLResponse("Muitas tentativas. Aguarde 15 minutos.", status_code=429)
     if _DASH_SENHA and hmac.compare_digest(senha.encode(), _DASH_SENHA.encode()):
-        _LOGIN_FALHAS.pop(ip, None)
+        _rl_zerar(ip)
         resp = RedirectResponse("/painel", status_code=303)
         resp.set_cookie(_DASH_COOKIE, _dash_token(), max_age=_DASH_TTL,
                         httponly=True, samesite="lax", secure=_DASH_COOKIE_SECURE)
         return resp
-    _LOGIN_FALHAS[ip] = falhas + [agora]
+    _rl_registrar(ip, agora)
     return RedirectResponse("/login_jfn?erro=1", status_code=303)
 
 
@@ -1306,9 +1405,13 @@ async def websocket_chat(ws: WebSocket):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="SIAFE2 Finance Agent — Servidor Web")
-    parser.add_argument("--host", default="0.0.0.0", help="Host (padrão: 0.0.0.0 = acessível na rede)")
+    # Bind vem de JFN_HOST (padrão 127.0.0.1): os túneis (Funnel/Cloudflare) apontam para o loopback.
+    parser.add_argument("--host", default=os.environ.get("JFN_HOST", "127.0.0.1"),
+                        help="Host (padrão: $JFN_HOST ou 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8000, help="Porta (padrão: 8000)")
     parser.add_argument("--visible", action="store_true", help="Browser visível no PC")
+    parser.add_argument("--checar-config", action="store_true",
+                        help="Só valida a configuração de produção (sai 0 ok / 1 problema) sem subir")
     return parser.parse_args()
 
 
@@ -1336,6 +1439,21 @@ app.include_router(_r_aovivo.router)
 def main():
     global _args
     _args = parse_args()
+
+    probs = _validar_config_producao()
+    if _args.checar_config:
+        jfn_env = os.environ.get("JFN_ENV", "local")
+        if probs:
+            print(f"[checar-config] JFN_ENV={jfn_env}: FALHA")
+            for p in probs:
+                print(f"  - {p}")
+            raise SystemExit(1)
+        print(f"[checar-config] JFN_ENV={jfn_env}: ok")
+        raise SystemExit(0)
+    if probs:
+        logger.error("configuração de produção recusada — o painel NÃO sobe: %s", "; ".join(probs))
+        print("[boot] configuração de produção recusada:", *probs, sep="\n  - ")
+        raise SystemExit(1)
 
     # Print access info
     import socket
