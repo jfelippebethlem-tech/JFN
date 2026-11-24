@@ -249,8 +249,8 @@ def gravar_fila_reserva() -> int:
 def cmd_confirmar(a) -> int:
     try:
         os.nice(19)
-    except OSError:
-        pass
+    except OSError as exc:
+        print(f"[conferir] sem baixar prioridade (nice 19): {exc}", file=sys.stderr)
     con = None
     feitos, conta, t0, motivo_fim = [], {e: 0 for e in P.ESTADOS}, time.monotonic(), "lote concluído"
     if a.ler_em:                                   # o clone do nó roda o código desta revisão
@@ -487,8 +487,9 @@ def cmd_opus(a) -> int:
                     P.extrair(e["literal"]), P.paginas_da_ia(entrega_crua(e["tag"], e["i"],
                                                                           str(d.get("ocr_motor") or "")))) or None,
                     max_paginas=3)["leituras"].values())
-            except (OSError, RuntimeError, ValueError):
-                pass
+            except (OSError, RuntimeError, ValueError) as exc:
+                print(f"[conferir] releitura do PDF falhou em {e['tag']}#{e['i']}: {exc!r} — sigo só com o texto",
+                      file=sys.stderr)
         entrada = _PERGUNTA.format(tipo=e["tipo"], a=e["literal"], b=e.get("literal_2"),
                                    ctx_a=_contexto(ia, e["literal"]), ctx_b=_contexto(seg, e.get("literal_2") or ""))
         item = json.dumps({"tag": e["tag"], "i": e["i"], "tipo": e["tipo"], "norma": e["norma"],

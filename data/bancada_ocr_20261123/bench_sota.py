@@ -96,8 +96,8 @@ elif motor == "deepdoc":
             try:                                   # TSR: [[{label, bbox, score}, ...]] por recorte
                 res = tsr([im.crop((x0, y0, x1, y1))])
                 celulas += len(res[0]) if res and isinstance(res[0], list) else 0
-            except (ValueError, TypeError, IndexError):
-                pass
+            except (ValueError, TypeError, IndexError) as exc:
+                print(f"[bench_sota] TSR falhou no recorte {k}: {exc!r} — células não contadas", file=sys.stderr)
         estrutura[k] = {"regioes": len(tipos), "tipos": sorted(set(t for t in tipos if t)), "tabelas": len(tabelas),
                         "elementos_tsr": celulas}
         (OUT / "estrutura_deepdoc.json").write_text(json.dumps(estrutura, ensure_ascii=False))

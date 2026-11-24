@@ -50,6 +50,9 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 #   (marca de fila vazia em `sei_leitura_dupla`, submit e espera de rede em `sei_busca_mgs`): 150.
 # 2026-11-20: 150→145 — passada final do untangle: scripts de uso único reapagados e dois `pass` curados
 #   (`pericia_bombeiros_reconcilia` só tolera "no such table"; `pericia_aprendizado` passa a imprimir a falha).
+# 2026-11-24: a ponta chegou VERMELHA em 153 — 8 `pass` mudos novos dos commits de 23/11 (captura_delta,
+#   evidencias, leitura_integral, ocr_confirmacao ×2, bench_sota, sei_ocr_ia_conferir ×2). Curados todos: ausência
+#   normal de arquivo virou checagem explícita; falha real deixa rastro no stderr (o DSN nunca é impresso). Teto fica 145.
 TETO_MUDOS_PRODUCAO = 145
 
 

@@ -436,8 +436,9 @@ def aptos_por_valor(con) -> list[str]:
             if k:
                 val[k] = val.get(k, 0.0) + (v or 0.0)
         db.close()
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:           # ordem por valor INDISPONÍVEL — não é valor zero
+        print(f"[leitura_integral] OB paga indisponível para ordenar ({exc}) — ordem sem o critério de valor",
+              file=sys.stderr)
     return sorted(ok, key=lambda x: -val.get(chave_processo(x), 0.0))
 
 

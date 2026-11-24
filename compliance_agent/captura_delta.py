@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 from compliance_agent.evidencias import hash_arvore, id_sei
@@ -145,10 +146,12 @@ def guardados_do_processo(tag: str, pasta_exportados: Path | str = GUARDADOS_DIR
     """Guardados do processo: o exportado (`<pasta>/<tag>.json`, no nó) ou, onde houver, o manifesto do arquivo.
     None se não há nenhum dos dois (a captura segue como hoje)."""
     exp = Path(pasta_exportados) / f"{tag}.json"
-    try:
-        return carregar_guardados(exp.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError, IndexError):
-        pass
+    if exp.exists():                       # ausente é o caso normal (sem exportado): vai direto ao manifesto
+        try:
+            return carregar_guardados(exp.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError, IndexError) as exc:
+            print(f"[captura_delta] guardados exportados ilegíveis em {exp.name}: {exc!r} — sigo pelo manifesto",
+                  file=sys.stderr)
     try:
         man = json.loads((Path(arquivo) / tag / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):

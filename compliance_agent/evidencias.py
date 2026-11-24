@@ -61,12 +61,15 @@ def dsn_vigente() -> str:
     v = os.environ.get(ENV_DSN, "")
     if v or "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
         return v
+    if not ARQ_DSN.exists():               # máquina sem o arquivo: sem DSN, como antes
+        return ""
     try:
         for ln in ARQ_DSN.read_text(encoding="utf-8").splitlines():
             if ln.startswith(ENV_DSN + "="):
                 return ln.split("=", 1)[1].strip()
-    except OSError:
-        pass
+    except OSError as exc:                 # só o tipo do erro: o conteúdo do arquivo é credencial
+        print(f"[evidencias] arquivo de DSN ilegível ({type(exc).__name__}) — sem PostgreSQL neste processo",
+              file=sys.stderr)
     return ""
 
 _RX_ID = re.compile(r"(?:^|[\s(])(\d{7,10})\)?\s*$")

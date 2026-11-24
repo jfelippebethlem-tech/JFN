@@ -223,6 +223,8 @@ def main(argv: list[str] | None = None) -> int:
 def _ultima_avaliacao(arq: Path | None = None) -> dict[str, str]:
     arq = arq or REGISTRO
     out: dict[str, str] = {}
+    if not arq.exists():                   # registro ainda não criado: nada avaliado/aplicado
+        return out
     try:
         with arq.open(encoding="utf-8") as f:
             for ln in f:
@@ -232,14 +234,16 @@ def _ultima_avaliacao(arq: Path | None = None) -> dict[str, str]:
                     continue
                 if r.get("versao") == VERSAO:
                     out[r["tag"]] = max(out.get(r["tag"], ""), str(r.get("em") or ""))
-    except OSError:
-        pass
+    except OSError as exc:
+        print(f"[ocr_confirmacao] registro ilegível {arq.name}: {exc!r} — tratado como vazio", file=sys.stderr)
     return out
 
 
 def _ultima_aplicacao_gpu(arq: Path | None = None) -> dict[str, str]:
     arq = arq or RAIZ / "data" / "sei_ocr_gpu_aplicado.jsonl"
     out: dict[str, str] = {}
+    if not arq.exists():                   # registro ainda não criado: nada avaliado/aplicado
+        return out
     try:
         with arq.open(encoding="utf-8") as f:
             for ln in f:
@@ -250,8 +254,8 @@ def _ultima_aplicacao_gpu(arq: Path | None = None) -> dict[str, str]:
                 em = str(r.get("em") or r.get("ts") or "")
                 if r.get("tag") and em > out.get(r["tag"], ""):
                     out[r["tag"]] = em
-    except OSError:
-        pass
+    except OSError as exc:
+        print(f"[ocr_confirmacao] registro ilegível {arq.name}: {exc!r} — tratado como vazio", file=sys.stderr)
     return out
 
 
