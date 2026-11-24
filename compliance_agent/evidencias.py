@@ -142,9 +142,19 @@ def hash_arvore(ids: list[str]) -> str:
     return hashlib.sha256(json.dumps(sorted(ids)).encode()).hexdigest()
 
 
+def versao_texto(pasta: Path, d: dict) -> tuple[str, int, str] | None:
+    """(sha256, chars, ocr) do TEXTO do documento como o acervo o serve (sem a etiqueta nossa); None sem texto.
+    A mesma conta para `importar_pasta` e `tools/evidencias_carga_manifestos.py` (O3.1)."""
+    from compliance_agent.sei import acervo_texto
+    texto = acervo_texto.ler(pasta, d) if d.get("texto") else ""
+    if not texto:
+        return None
+    return (hashlib.sha256(texto.encode("utf-8")).hexdigest(), len(texto),
+            str(d.get("ocr_motor") or ("ocr" if d.get("ocr") else "nativo")))
+
+
 def importar_pasta(con: Conexao, pasta: Path, origem: str = "sei_arquivo") -> dict:
     """Registra um processo do acervo. Idempotente: rodar de novo sem mudança não cria nada."""
-    from compliance_agent.sei import acervo_texto
     man = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
     processo = str(man.get("processo") or pasta.name.replace("_", "/"))
     em = _agora()
@@ -158,10 +168,9 @@ def importar_pasta(con: Conexao, pasta: Path, origem: str = "sei_arquivo") -> di
         vistos[base] = vistos.get(base, 0) + 1
         doc_id = base if vistos[base] == 1 else f"{base}#{vistos[base]}"
         linhas_doc.append((processo, doc_id, d.get("i"), d.get("titulo"), d.get("tipo"), d.get("fase"), em))
-        texto = acervo_texto.ler(pasta, d) if d.get("texto") else ""
-        if texto:
-            linhas_ver.append((processo, doc_id, hashlib.sha256(texto.encode("utf-8")).hexdigest(), len(texto),
-                               origem, str(d.get("ocr_motor") or ("ocr" if d.get("ocr") else "nativo")), em))
+        v = versao_texto(pasta, d)
+        if v:
+            linhas_ver.append((processo, doc_id, v[0], v[1], origem, v[2], em))
     with con:
         con.execute("INSERT INTO processos VALUES(?,?,?,?) ON CONFLICT(processo) DO UPDATE SET ultima_em=excluded.ultima_em",
                     (processo, pasta.name, em, em))
