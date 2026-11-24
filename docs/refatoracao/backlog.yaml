@@ -91,3 +91,4 @@ itens:
   - {id: O10.4, dep: [O10.3], maq: vm1, estado: bloqueado_dono, titulo: "Revisão do dono por tela"}
   - {id: O10.5, dep: [O10.1], maq: vm1, estado: pendente, titulo: "Toggles criativos na estética atual (componente único, acessível)"}
   - {id: O10.6, dep: [O7.1, O10.1], maq: vm1+itcampo, estado: pendente, titulo: "Cidade 3D (prédio=entidade, altura=OB paga) e desmonte em voxels (empenho→liquidado→pago; achado refutado) em 6 abas — §18; código próprio (git-city é AGPL)"}
+  - {id: O10.7, dep: [O7.1, O10.1], maq: vm1, estado: pendente, titulo: "Globo com arcos (three-globe MIT): UG→sede do fornecedor por OB paga, repasses a municípios, vínculos fortes, tráfego entre máquinas — §18.1"}
