@@ -52,11 +52,41 @@ def test_todo_comando_do_mapa_existe_no_repositorio():
             assert (RAIZ / argv[1]).exists(), did
 
 
-def test_comandos_do_mapa_nao_chamam_api_paga():
-    """A leitura por modelo do vínculo (Batch API) e o juiz não entram na propagação."""
+# 24/11/2026 (dono: "sim, dentro do ritmo"): fila de LLM entra no grafo SÓ pelo guarda de ritmo da assinatura
+_LLM = ("lex_execucao", "fila_analise_sei.sh", "triagem_alertas", "conferencia_opus", "sei_ficha_acervo")
+
+
+def test_comandos_do_mapa_so_chamam_llm_pelo_guarda_de_ritmo():
+    """A leitura por modelo do vínculo (Batch API) e o juiz seguem fora; fila de LLM só com `ritmo:` declarado."""
     for did, d in P.carregar(RAIZ / "config" / "propagacao.yaml")["derivados"].items():
         linha = " ".join(d.get("comando", []))
         assert " modelo" not in linha and "juiz" not in linha and "api-" not in linha, did
+        if any(x in linha for x in _LLM):
+            assert d.get("ritmo"), f"{did} chama LLM sem o guarda `ritmo:`"
+
+
+def test_ritmo_negado_o_derivado_espera_e_liberado_roda(con):
+    cfg = _cfg(lex=_der(["f"], ritmo="lex_execucao"), outro=_der(["f"]))
+    P.emitir(con, cfg, "f", "processo capturado")
+    pedidos = []
+    nega = lambda t: pedidos.append(t) or "ritmo semanal da assinatura — 38% acima do ritmo (37%)"  # noqa: E731
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None), ritmo=nega)
+    assert [x["id"] for x in feitos] == ["outro"] and set(pedidos) == {"lex_execucao"}   # controle: sem ritmo anda
+    assert con.execute("SELECT adiado FROM derivado WHERE id='lex'").fetchone()[0].startswith("ritmo: ritmo semanal")
+    assert "lex" in P._sujos(con)                                                   # a pendência espera
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None), ritmo=lambda t: None)
+    assert [x["id"] for x in feitos] == ["lex"]
+
+
+def test_guarda_de_ritmo_ilegivel_fecha_a_porta(monkeypatch):
+    from compliance_agent.llm import contingencia
+
+    def quebra(_t):
+        raise ValueError("arquivo ilegível")
+    monkeypatch.setattr(contingencia, "motivo_bloqueio", quebra)
+    assert P._motivo_ritmo("lex_execucao").startswith("guarda de ritmo ilegível")
+    monkeypatch.setattr(contingencia, "motivo_bloqueio", lambda t: None)
+    assert P._motivo_ritmo("lex_execucao") is None
 
 
 def test_teto_do_vinculo_ob_contrato_tem_folga_sobre_a_rodada_medida():
@@ -632,3 +662,39 @@ def test_pesado_que_termina_com_erro_registra_falha_no_filho(tmp_path, monkeypat
     assert est == "falhou" and "código 1" in erro
     assert con.execute("SELECT estado FROM execucao WHERE derivado='pes'").fetchone()[0] == "falhou"
     con.close()
+
+
+def test_leve_destacado_roda_sem_o_semaforo_de_pesado(tmp_path, monkeypatch):
+    """Fila de LLM (espera de rede) roda destacada SEM tomar o semáforo de pesado da VM-1."""
+    import fcntl
+    import yaml
+    cfg = {"fontes": {"f": {"nome": "Fonte", "sonda": {}}},
+           "derivados": {"fila": _der(["f"], destacado=True, comando=["sleep", "2"])}, "cerebro": []}
+    cfgp = tmp_path / "p.yaml"
+    cfgp.write_text(yaml.safe_dump(cfg))
+    monkeypatch.setattr(P, "CONFIG", cfgp)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    (tmp_path / "locks").mkdir()
+    cron = open(tmp_path / "locks" / "pesado_vm1.lock", "w")
+    fcntl.flock(cron, fcntl.LOCK_EX | fcntl.LOCK_NB)                   # um pesado segura o semáforo
+    con = P.conectar(tmp_path / "p.db")
+    P.emitir(con, cfg, "f", "mudou")
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999, ritmo=lambda t: None)
+    assert feitos and feitos[0]["id"] == "fila" and feitos[0]["destacado"]
+    _esperar_fim(con, "fila")
+    assert con.execute("SELECT ultimo_estado FROM derivado WHERE id='fila'").fetchone()[0] == "ok"
+    cron.close()
+    con.close()
+
+
+def test_cache_espera_o_deploy_e_comando_nao(con, tmp_path):
+    """24/11/2026: caches pediam rota ao painel no meio do restart do deploy (URLError)."""
+    cfg = _cfg(cache=dict(_der(["f"]), tipo="cache", prefixos=["x:"], urls={"x": "x:"}), cmd=_der(["f"]))
+    P.emitir(con, cfg, "f", "mudou")
+    (tmp_path / ".deploy_em_curso").touch()
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["cmd"]
+    assert con.execute("SELECT adiado FROM derivado WHERE id='cache'").fetchone()[0] == "painel reiniciando (deploy em curso)"
+    import os
+    os.utime(tmp_path / ".deploy_em_curso", (time.time() - 700, time.time() - 700))   # marca velha: não segura
+    assert [x["id"] for x in P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))] == ["cache"]

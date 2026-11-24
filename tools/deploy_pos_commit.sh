@@ -41,6 +41,9 @@ estado() {  # ok motivo
 
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}   # gancho de agente/cron não tem o barramento
 log "deploy ${base:0:8}..${head:0:8}: $(echo "$mudou" | wc -l) arquivo(s) de código — reiniciando jfn.service"
+# os derivados tipo cache do grafo pedem rotas ao painel: durante o restart esperam (propagacao._deploy_em_curso)
+touch data/.deploy_em_curso
+trap 'rm -f data/.deploy_em_curso' EXIT
 if ! systemctl --user restart jfn.service >> "$LOG" 2>&1; then
   log "FALHOU: systemctl restart"; estado false "systemctl --user restart jfn.service falhou"; exit 0
 fi

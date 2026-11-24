@@ -806,6 +806,63 @@ derivados:
     intervalo_min_s: 3600
     prioridade: 6
     antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  # 24/11/2026 — decisão do dono ("sim, dentro do ritmo"): as filas de LLM passam a ser DESPACHADAS por evento,
+  # sempre pelo guarda `ritmo:` (propagacao._motivo_ritmo → llm/contingencia.motivo_bloqueio → llm/ritmo_assinatura +
+  # teto diário do motor). Ritmo negado = espera ("ritmo: …"), nunca fura. Os tetos por provedor
+  # (data/.llm_month_cap.json) seguem dentro do free_llm, em cada chamada. Rodam DESTACADOS (sessão própria, sem o
+  # semáforo de pesado — é espera de rede, não CPU). O cron antigo de cada um (externos:, abaixo) é a rede.
+  lex_execucao_fila:
+    nome: Perícia de execução (Lex) — fila por evento, dentro do ritmo da assinatura
+    onde: Processo 360 · laudos de execução (lex_execucao)
+    depende: [sei_arquivado, sei_lote, sei_ficha, siafe_ob, ocr_gpu]
+    comando: ["bash", "tools/fila_analise_sei.sh", "lex"]
+    trava_externa: data/.fila_analise_lex.lock
+    ritmo: lex_execucao
+    destacado: true
+    timeout_s: 1900
+    debounce_s: 300
+    intervalo_min_s: 1800
+    prioridade: 6
+    antes: "cron 13,43 * * * * (fila_analise_sei.sh lex), sem olhar evento"
+  sei_fichas_fila:
+    nome: Ficha do processo SEI — fila por evento, dentro do ritmo
+    onde: acervo SEI → sei_ficha
+    depende: [sei_arquivado, sei_lote, ocr_gpu]
+    comando: ["bash", "tools/fila_analise_sei.sh", "ficha"]
+    trava_externa: data/.fila_analise_ficha.lock
+    ritmo: sei_ficha
+    destacado: true
+    timeout_s: 1700
+    debounce_s: 300
+    intervalo_min_s: 1800
+    prioridade: 6
+    antes: "cron 7 * * * * (fila_analise_sei.sh ficha)"
+  triagem_lote:
+    nome: Triagem dos alertas (duas leituras) — por evento, dentro do ritmo
+    onde: Transversal › Alertas (triagem)
+    depende: [revisao_humana, sancoes]
+    comando: ["{py}", "-m", "compliance_agent.triagem_alertas", "--lote", "2"]
+    trava: data/locks/triagem_lote.lock
+    ritmo: triagem
+    destacado: true
+    timeout_s: 1500
+    debounce_s: 600
+    intervalo_min_s: 3600
+    prioridade: 7
+    antes: "cron 17 8-22 * * * (--lote 2)"
+  conferencia_opus_fila:
+    nome: Conferência do Opus do que saiu em contingência — por evento, dentro do ritmo
+    onde: Sistema › Conferência do Opus
+    depende: [sei_lex, triagem]
+    comando: ["{py}", "-m", "compliance_agent.llm.conferencia_opus", "--conferir", "30"]
+    trava: data/locks/conferencia_opus.lock
+    ritmo: conferencia_opus
+    destacado: true
+    timeout_s: 1500
+    debounce_s: 600
+    intervalo_min_s: 3600
+    prioridade: 7
+    antes: "cron 25 * * * * (--conferir 30)"
   # 24/11/2026: o cron de hora em hora (~55 min de cada hora, timeout 3300) segurava o semáforo de pesado da VM-1
   # quase 24 h por dia. Pelo grafo ele roda com a MENOR prioridade (9): só pega o semáforo quando nenhum outro
   # pesado está sujo. O cron fica como rede a cada 3 h. Nada se perde: o original só sai depois do sha256 conferido

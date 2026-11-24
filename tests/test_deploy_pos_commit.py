@@ -54,6 +54,7 @@ def test_commit_em_rotas_reinicia_e_confere_200(tmp_path):
     assert "restart jfn.service" in (tmp_path / "systemctl.log").read_text()
     est = json.loads((repo / "data" / "deploy_estado.json").read_text())
     assert est["ok"] is True
+    assert not (repo / "data" / ".deploy_em_curso").exists()      # a marca que pausa os caches sai no fim
     assert (repo / "data" / "deploy_ultimo_commit.txt").exists()
     os.remove(tmp_path / "systemctl.log")
     assert _rodar(tmp_path, env).returncode == 0                   # mesmo HEAD: não reinicia de novo

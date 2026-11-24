@@ -721,7 +721,7 @@ def _lancar_destacado(con: sqlite3.Connection, did: str, d: dict, max_id: int, i
         trava.close()
         raise OSError(f"trava {trava_arq.name} ocupada") from None
     db = con.execute("PRAGMA database_list").fetchone()[2]
-    fds = (semaforo.fileno(), trava.fileno())
+    fds = ((semaforo.fileno(),) if semaforo is not None else ()) + (trava.fileno(),)
     env = dict(os.environ, PYTHONPATH=str(RAIZ), JFN_DATA_DIR=str(DATA), JFN_PROPAGACAO_YAML=str(CONFIG))
     try:
         with _log_do(did).open("ab") as log:
@@ -759,6 +759,26 @@ def executar_destacado(did: str, max_id: int, inicio: float, db: Path, fds: tupl
         con.close()
 
 
+def _deploy_em_curso() -> bool:
+    """`tools/deploy_pos_commit.sh` reiniciando o painel (24/11/2026: painel_sancoes e painel_prefeitura falharam com
+    URLError às 09:49, no meio do restart). Marca com mais de 10 min = deploy que morreu; não segura mais nada."""
+    try:
+        return time.time() - (DATA / ".deploy_em_curso").stat().st_mtime < 600
+    except OSError:
+        return False
+
+
+def _motivo_ritmo(tarefa: str) -> str | None:
+    """Guarda ÚNICO de LLM do despachante (dono, 24/11/2026: "sim, dentro do ritmo"): derivado com `ritmo: <tarefa>`
+    só roda se o governador da assinatura deixar (`llm/contingencia.motivo_bloqueio`, que lê `llm/ritmo_assinatura`
+    e o teto diário do motor). Não deixou = espera; leitura que falha = espera (nunca fura o teto)."""
+    try:
+        from compliance_agent.llm import contingencia
+        return contingencia.motivo_bloqueio(tarefa)
+    except Exception as exc:  # noqa: BLE001 — qualquer falha do guarda fecha a porta
+        return f"guarda de ritmo ilegível ({type(exc).__name__})"
+
+
 def _teto_carga(peso: str, sujo_ha: float, slo: float, memoria) -> float:
     if sujo_ha >= slo and memoria() >= MEMORIA_MIN_ATRASADO_MB:
         return CARGA_TETO_ATRASADO
@@ -766,7 +786,7 @@ def _teto_carga(peso: str, sujo_ha: float, slo: float, memoria) -> float:
 
 
 def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None,
-              memoria=_memoria_disponivel_mb, destacar=None) -> list[dict]:
+              memoria=_memoria_disponivel_mb, destacar=None, ritmo=_motivo_ritmo) -> list[dict]:
     """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo. Pesado sem `executar` injetado roda
     DESTACADO (`destacar`, padrão `_lancar_destacado`): o ciclo segue com os leves."""
     t0, feitos, pesado_feito = time.time(), [], False
@@ -817,6 +837,10 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 motivo = "aguardando derivado de que depende"
             elif _trava_ocupada(did, d):
                 motivo = "já rodando fora do despachante (cron ou à mão)"
+            elif d.get("tipo") == "cache" and _deploy_em_curso():
+                motivo = "painel reiniciando (deploy em curso)"
+            elif d.get("ritmo") and (r := ritmo(d["ritmo"])):
+                motivo = f"ritmo: {r}"[:300]
             elif peso == "pesado" and pesado_feito:
                 motivo = "um pesado por ciclo"
             elif (c := _carga_efetiva(carga())) > (
@@ -843,7 +867,7 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
         motivos, inicio = _motivos(con, did), time.time()
         con.execute("UPDATE derivado SET ultimo_inicio=?, ultimo_estado='rodando', adiado=NULL WHERE id=?", (inicio, did))
         con.commit()
-        if destacar and d.get("peso") == "pesado" and semaforo is not None:
+        if destacar and ((d.get("peso") == "pesado" and semaforo is not None) or d.get("destacado")):
             try:
                 pid = destacar(con, did, d, s["max_id"], inicio, semaforo)
             except (OSError, subprocess.SubprocessError) as exc:
@@ -854,8 +878,9 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 con.commit()
                 feitos.append({"id": did, "destacado": True, "pid": pid})
             finally:
-                semaforo.close()                 # SEM unlock: o filho herdou a trava; só esta cópia fecha
-            pesado_feito = True
+                if semaforo is not None:
+                    semaforo.close()             # SEM unlock: o filho herdou a trava; só esta cópia fecha
+            pesado_feito = pesado_feito or d.get("peso") == "pesado"
             continue
         rodar = executar or (_rodar_cache if d.get("tipo") == "cache" else _rodar_comando)
         try:
