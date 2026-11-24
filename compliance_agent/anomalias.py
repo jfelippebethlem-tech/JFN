@@ -189,9 +189,12 @@ def regras(df: pd.DataFrame, con) -> int:
     # R_FRACIONAMENTO_SAMEDAY: mesmo fornecedor+UG+dia, várias OBs somando > limite de dispensa
     if "data_emissao" in df_c:
         sd = (df_c.groupby(["favorecido_cpf", "ug_codigo", "data_emissao", "exercicio"])
-                .agg(n=("id", "size"), soma=("valor", "sum"), maxid=("id", "max")).reset_index())
+                .agg(n=("id", "size"), soma=("valor", "sum"), maxv=("valor", "max"), maxid=("id", "max")).reset_index())
         sd["teto"] = sd["exercicio"].map(_teto)
-        sd = sd[(sd["n"] >= 2) & (sd["soma"] > sd["teto"])]
+        # 23/11/2026: sem `maxv < teto` a regra acusava grupo com OB individual ACIMA do teto — parcela de contrato,
+        # não fatia (fatiar é caber embaixo). Mesma correção de `rules/engine._regra_ob_fracionamento`, onde 106 dos
+        # 107 alertas gravados eram isso; a regra do MÊS, abaixo, já exigia.
+        sd = sd[(sd["n"] >= 2) & (sd["soma"] > sd["teto"]) & (sd["maxv"] < sd["teto"])]
         for _, r in sd.iterrows():
             flags.append((int(r["maxid"]), "R_FRACIONAMENTO_SAMEDAY", 0.3,
                           f"{int(r['n'])} OBs ao mesmo fornecedor pela UG {r['ug_codigo']} em {r['data_emissao']} "

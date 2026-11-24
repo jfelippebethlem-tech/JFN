@@ -2133,19 +2133,21 @@ detectores:
   intel.fracionamento:
     modulo: compliance_agent/cruzamentos_intel.py
     simbolo: fracionamento
-    afirma: 'Indício de fracionamento: OBs pequenas coladas ao mesmo credor somando acima do teto'
+    afirma: 'SINAL de onde puxar (não achado): OBs pequenas coladas ao mesmo credor, em processos distintos, somando acima do teto'
     fonte:
     - ob_orcamentaria_siafe
     grava: sob demanda
     consome:
-    - rotas/investigacao.py /api/intel/fracionamento
+    - tools/autoauditoria.py (sintonia) e CLI do módulo — a rota /api/intel/fracionamento não lista mais os grupos
     manchete: false
-    controle_positivo: null
-    controle_negativo: null
+    controle_positivo: tests/test_auditoria_conceitual_detectores.py::test_fracionamento_exige_processos_distintos
+    controle_negativo: tests/test_auditoria_conceitual_detectores.py::test_fracionamento_nao_acusa_ente_publico
     hipoteses_inocentes:
     - hipotese: credor ente público/intragovernamental
-      excluida_por: compliance_agent/cruzamentos_intel.py:_SQL_NAO_PUBLICO
+      excluida_por: compliance_agent/cruzamentos_intel.py:registrar_peneira
     - hipotese: parcelas de um mesmo contrato licitado
+      excluida_por: compliance_agent/cruzamentos_intel.py:fracionamento
+    - hipotese: processo da OB é o de PAGAMENTO/indenização (DEA), não o de contratação
       excluida_por: null
     dominio: OB do Estado do RJ; teto de dispensa de compliance_agent/limites_dispensa.py
     fp_medida: null
@@ -3041,11 +3043,17 @@ detectores:
     - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
     - triagem_alertas
     manchete: true
-    controle_positivo: null
-    controle_negativo: null
+    controle_positivo: tests/test_auditoria_conceitual_detectores.py::test_obs_pequenas_em_processos_distintos_acendem
+    controle_negativo: tests/test_auditoria_conceitual_detectores.py::test_ob_acima_do_teto_nao_e_fracionamento
     hipoteses_inocentes:
     - hipotese: ente público credor
-      excluida_por: compliance_agent/rules/engine.py:_eh_ente_publico
+      excluida_por: compliance_agent/rules/engine.py:_regra_ob_fracionamento
+    - hipotese: OB individual acima do teto (parcela de contrato/concessão)
+      excluida_por: compliance_agent/rules/engine.py:_regra_ob_fracionamento
+    - hipotese: parcelas do mesmo processo
+      excluida_por: compliance_agent/rules/engine.py:_regra_ob_fracionamento
+    - hipotese: processo da OB é o de PAGAMENTO (um por fatura), não o de contratação
+      excluida_por: null
     dominio: OB recente (janela de 90 dias); teto de compliance_agent/limites_dispensa.py do exercício
     fp_medida: null
   rules.ob_sem_processo_sei:

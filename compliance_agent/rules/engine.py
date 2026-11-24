@@ -23,7 +23,7 @@ import logging
 from datetime import date as _date, timedelta
 from typing import Optional
 
-from sqlalchemy import Integer, func
+from sqlalchemy import Integer, case, func
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
@@ -568,6 +568,14 @@ class MotorCompliance:
         # O SQL não sabe o exercício de cada grupo, então filtra pelo MENOR teto conhecido (piso
         # que não descarta nada) e o enquadramento exato é feito no laço, ano a ano.
         LIMITE_DISPENSA = min(float(LIMITES[a]["compras"]) for a in LIMITES)
+        # 23/11/2026 — dos 107 alertas gravados, 106 tinham OB individual ACIMA do teto (Riocard: 2 OBs, R$ 136 mi;
+        # Amil, Barcas, Metrô, Agevap): parcela de contrato/concessão, não compra fatiada. Fatiar é caber EMBAIXO do
+        # teto — cada OB tem de ser inferior ao teto do SEU exercício (art. 75, II: "valores inferiores a"), e as
+        # OBs têm de vir de pelo menos 2 PROCESSOS distintos (várias OBs do mesmo processo são parcelas de um só).
+        teto_do_ano = case(
+            *[(func.strftime("%Y", OrdemBancaria.data_emissao) == str(a), float(LIMITES[a]["compras"]))
+              for a in LIMITES],
+            else_=float(limite_dispensa(_date.today().year, "compras")))
 
         # Janela de ~30 dias aproximada pelo mês-calendário (strftime no group_by).
         subq = (
@@ -584,6 +592,7 @@ class MotorCompliance:
                 OrdemBancaria.favorecido_cpf.isnot(None),
                 OrdemBancaria.valor.isnot(None),
                 OrdemBancaria.valor > 0,
+                OrdemBancaria.valor < teto_do_ano,
                 OrdemBancaria.data_emissao >= self._desde(),
             )
             .group_by(
@@ -593,7 +602,8 @@ class MotorCompliance:
             )
             .having(
                 func.count(OrdemBancaria.id) >= 2,
-                func.sum(OrdemBancaria.valor) > LIMITE_DISPENSA,
+                func.count(func.distinct(func.nullif(OrdemBancaria.numero_processo, ""))) >= 2,
+                func.sum(OrdemBancaria.valor) >= LIMITE_DISPENSA,
             )
             # sem janela e sem teto esta regra gravou 68.893 alertas "alta" numa execução (10/09) —
             # o painel lista os 40 mais novos: o resto vira ruído que enterra os alertas de verdade
@@ -602,12 +612,29 @@ class MotorCompliance:
             .all()
         )
 
+        from sqlalchemy import text as _text
+        from sqlalchemy.exc import SQLAlchemyError
+        from compliance_agent.entidades_gov import eh_administracao_publica, eh_nao_fornecedor
+        from compliance_agent.fracionamento_siafe import _CREDOR_NAO_LICITAVEL
+        try:    # natureza jurídica 1xxx da Receita = ente público, qualquer que seja a grafia ("Sec.de Estado Da ...")
+            publicos = set()
+            if self.session.execute(_text(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas_cadastro'")).first():
+                publicos = {r[0] for r in self.session.execute(_text(
+                    "SELECT cnpj_basico, natureza_cod FROM empresas_cadastro WHERE natureza_cod LIKE '1%'"))
+                    if eh_administracao_publica(r[1])}
+        except SQLAlchemyError:
+            logger.debug("empresas_cadastro indisponível — só a peneira de nome", exc_info=True)
+            publicos = set()
         for row in subq:
-            if self._eh_ente_publico(row.favorecido_nome):
+            nome = row.favorecido_nome or ""
+            # peneira fonte única (a mesma da triagem SIAFE e do P4): ente público, tributo, concessionária
+            if (self._eh_ente_publico(nome) or eh_nao_fornecedor(nome) or _CREDOR_NAO_LICITAVEL.search(nome)
+                    or (row.favorecido_cpf or "")[:8] in publicos):
                 continue
             exercicio = getattr(row.data_ini, "year", None) or _date.today().year
             teto = limite_dispensa(exercicio, "compras")
-            if row.total <= teto:
+            if row.total < teto:        # somar EXATAMENTE o teto já não cabe na dispensa ("inferiores a")
                 continue
             empresa = (
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
