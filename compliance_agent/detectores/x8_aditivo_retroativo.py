@@ -36,6 +36,13 @@ from __future__ import annotations
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora, evidencia, para_data
 from compliance_agent.reporting.intel_base import moeda
 
+import re as _re
+
+# Termo que NÃO aditiva o contrato (24/11/2026, medido: 6 dos 37 "retroativos" eram termo de rescisão): rescisão,
+# distrato e encerramento extinguem; apostilamento não é aditivo (14.133 art. 136). Assinar rescisão depois do fim da
+# vigência não é prorrogar contrato morto.
+_RE_NAO_ADITA = _re.compile(r"rescis|distrat|encerrament|apostil", _re.I)
+
 # Faixas de atraso, em dias. No CÓDIGO — spec §1.3.
 _DIAS_MEDIO = 30
 _DIAS_FORTE = 180
@@ -76,7 +83,8 @@ class X8AditivoRetroativo(Detector):
             res.valores = {"tem_vigencia": False}
             return res
 
-        aditivos = [a for a in (contexto.get("aditivos") or []) if isinstance(a, dict)]
+        aditivos = [a for a in (contexto.get("aditivos") or []) if isinstance(a, dict)
+                    and not _RE_NAO_ADITA.search(f"{a.get('tipo_termo') or ''} {a.get('objeto') or ''}")]
         datados = [a for a in aditivos
                    if para_data(a.get("data_assinatura") or a.get("data")) is not None]
         if not datados:

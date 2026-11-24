@@ -388,3 +388,21 @@ def test_tres_acrescimos_em_datas_distintas_sao_serie(tmp_path):
     db = _base_aditivos(tmp_path, [("Acréscimo quantitativo de 5% do objeto", 50000)] * 3)
     r = aditivos_estouro(db, esfera="todas")
     assert r["n_serie"] == 1 and r["achados"][0]["n_termos_acrescimo"] == 3
+
+
+# ── X8: rescisão e apostilamento não são aditivo retroativo ────────────────────────────────────────────
+
+@pytest.mark.parametrize("termo", [{"tipo_termo": "Termo de Rescisão"}, {"objeto": "Apostilamento de reajuste"},
+                                   {"objeto": "Distrato amigável do contrato"}])
+def test_x8_rescisao_apos_a_vigencia_nao_e_retroativo(termo):
+    from compliance_agent.detectores.x8_aditivo_retroativo import X8AditivoRetroativo
+    r = X8AditivoRetroativo().avaliar({"processo": "P", "vigencia_fim": "2024-12-31",
+                                       "aditivos": [{**termo, "data_assinatura": "2025-06-01"}]})
+    assert r.status != "confirmado"
+
+
+def test_x8_prorrogacao_apos_a_vigencia_continua_confirmando():
+    from compliance_agent.detectores.x8_aditivo_retroativo import X8AditivoRetroativo
+    r = X8AditivoRetroativo().avaliar({"processo": "P", "vigencia_fim": "2024-12-31",
+                                       "aditivos": [{"objeto": "Prorrogação de prazo", "data_assinatura": "2025-06-01"}]})
+    assert r.status == "confirmado"
