@@ -437,3 +437,77 @@ def test_paciencia_sobe_o_teto_da_leve_em_vez_de_descer(con, monkeypatch):
     con.execute("UPDATE evento SET quando = quando - ?", (P.CARGA_PACIENCIA_S + 60,))   # sujo há mais de 2 h
     feitos = P.despachar(con, cfg, carga=lambda: (16.0,), executar=lambda *_: (True, None))
     assert [x["id"] for x in feitos] == ["lv"]
+
+
+# ───────────── fome do despachante (24/11/2026: pesados 20–45 h parados, dependentes atrás deles) ─────────────
+def test_dependente_nao_espera_derivado_barrado_pela_carga_ou_semaforo(con, tmp_path):
+    import fcntl
+    cfg = _cfg(a=_der(["f"], peso="pesado", prioridade=1), b=_der(["f", "a"], prioridade=2))
+    P.emitir(con, cfg, "f", "mudou")
+    (tmp_path / "locks").mkdir(exist_ok=True)
+    cron = open(tmp_path / "locks" / "pesado_vm1.lock", "w")
+    fcntl.flock(cron, fcntl.LOCK_EX | fcntl.LOCK_NB)                  # sei_compactar segura o semáforo
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert [x["id"] for x in feitos] == ["b"]                          # antes: b "aguardando derivado" para sempre
+    assert "semáforo" in con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0]
+    cron.close()
+
+
+def test_pesado_atrasado_pede_a_vez_e_a_retira_quando_pega_o_semaforo(con, tmp_path):
+    import fcntl
+    cfg = _cfg(a=_der(["f"], peso="pesado"))
+    P.emitir(con, cfg, "f", "mudou", quando=time.time() - P.CARGA_PACIENCIA_S - 60)
+    (tmp_path / "locks").mkdir(exist_ok=True)
+    cron = open(tmp_path / "locks" / "pesado_vm1.lock", "w")
+    fcntl.flock(cron, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    assert P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None)) == []
+    pedido = tmp_path / "locks" / "pesado_vm1.pedido"
+    assert json.loads(pedido.read_text())["derivado"] == "a"
+    assert "vez pedida" in con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0]
+    fcntl.flock(cron, fcntl.LOCK_UN)
+    cron.close()
+    assert [x["id"] for x in P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))] == ["a"]
+    assert not pedido.exists()
+
+
+def test_pesado_recente_nao_pede_a_vez(con, tmp_path):
+    import fcntl
+    cfg = _cfg(a=_der(["f"], peso="pesado"))
+    P.emitir(con, cfg, "f", "mudou")
+    (tmp_path / "locks").mkdir(exist_ok=True)
+    cron = open(tmp_path / "locks" / "pesado_vm1.lock", "w")
+    fcntl.flock(cron, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))
+    assert not (tmp_path / "locks" / "pesado_vm1.pedido").exists()
+    cron.close()
+
+
+def test_alem_do_slo_o_teto_de_carga_sobe_so_com_memoria(con):
+    cfg = _cfg(a=_der(["f"], peso="pesado"))
+    P.emitir(con, cfg, "f", "mudou", quando=time.time() - 3 * 3600)    # SLO 2 h estourado
+    assert P.despachar(con, cfg, carga=lambda: (20.0,), executar=lambda *_: (True, None), memoria=lambda: 500) == []
+    assert "teto 12" in con.execute("SELECT adiado FROM derivado WHERE id='a'").fetchone()[0]   # sem memória: não
+    feitos = P.despachar(con, cfg, carga=lambda: (20.0,), executar=lambda *_: (True, None), memoria=lambda: 6000)
+    assert [x["id"] for x in feitos] == ["a"]
+    P.emitir(con, cfg, "f", "de novo")                                   # recente: teto normal (7)
+    assert P.despachar(con, cfg, carga=lambda: (20.0,), executar=lambda *_: (True, None), memoria=lambda: 6000) == []
+
+
+def test_pesado_sh_devolve_a_vez_com_pedido_fresco(tmp_path):
+    """tools/pesado.sh: com pedido fresco do despachante, toma a trava, devolve e sai 0 sem rodar o comando."""
+    import subprocess
+    src = (RAIZ / "tools" / "pesado.sh").read_text().replace("cd /home/ubuntu/JFN", f"cd {tmp_path}")
+    sh = tmp_path / "pesado.sh"
+    sh.write_text(src)
+    (tmp_path / "data" / "locks").mkdir(parents=True)
+    pedido = tmp_path / "data" / "locks" / "pesado_vm1.pedido"
+    pedido.write_text('{"derivado": "lentes"}')
+    marca = tmp_path / "rodou"
+    env = {"PATH": "/usr/bin:/bin", "PESADO_CARGA_MAX": "999"}
+    r = subprocess.run(["bash", str(sh), "teste", "5", "touch", str(marca)], env=env, timeout=30)
+    assert r.returncode == 0 and not marca.exists()
+    assert "vez pedida pelo despachante" in (tmp_path / "data" / "pesado_vm1.log").read_text()
+    import os
+    os.utime(pedido, (time.time() - 3600, time.time() - 3600))         # pedido velho: roda normal
+    r = subprocess.run(["bash", str(sh), "teste", "5", "touch", str(marca)], env=env, timeout=30)
+    assert r.returncode == 0 and marca.exists()

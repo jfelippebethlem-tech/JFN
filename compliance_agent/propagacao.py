@@ -68,6 +68,15 @@ CARGA_PACIENCIA_S = 7200
 # Depois da paciência o teto SOBE, nunca desce (18/11/2026: o 12 único descia o da leve de 14 para 12; com a VM-1
 # em carga 14–17 a tarefa leve ficava mais presa quanto mais esperava).
 CARGA_TETO_FINAL = {"leve": 18.0, "pesado": 12.0}
+# Além do SLO (24/11/2026): a VM-1 vive em carga 14–22 e os pesados ficavam 20–45 h parados enquanto o cron-rede
+# rodava o MESMO comando sem olhar carga nenhuma. Passado o SLO o teto vira este (o semáforo único de pesado e o
+# `nice 15` continuam) — desde que haja memória: a trava de 23/11 foi swap 100%, não CPU.
+CARGA_TETO_ATRASADO = 30.0
+MEMORIA_MIN_ATRASADO_MB = 1500
+# Pedido de vez no semáforo (24/11/2026): `sei_compactar` (de hora em hora, ~55 min, flock -w 1500) segurava a
+# trava 24 h por dia e o despachante, que só tenta sem esperar, nunca a pegava. Pesado atrasado bloqueado SÓ pelo
+# semáforo grava este pedido; `tools/pesado.sh` que toma a trava com pedido fresco a devolve e sai (adiado).
+PEDIDO_PESADO_VALIDADE_S = 900
 RECUO_BASE_S, RECUO_MAX_S = 1800, 6 * 3600
 EVENTOS_GUARDADOS = 3000
 # SLO do derivado (24/11/2026, Etapa 2): o estado dizia "ok" com 24 de 36 derivados sujos, 17 há mais de 2 h — só o
@@ -594,6 +603,26 @@ def _carga_efetiva(c) -> float:
     return max(c[0], c[1]) if len(c) > 1 else c[0]
 
 
+def _memoria_disponivel_mb() -> float:
+    with contextlib.suppress(OSError, ValueError):
+        for ln in Path("/proc/meminfo").read_text().splitlines():
+            if ln.startswith("MemAvailable:"):
+                return int(ln.split()[1]) / 1024
+    return 0.0
+
+
+def _pedir_vez_pesado(did: str) -> None:
+    (DATA / "locks").mkdir(exist_ok=True)
+    tmp = DATA / "locks" / "pesado_vm1.pedido.tmp"
+    tmp.write_text(json.dumps({"derivado": did, "quando": time.time()}), encoding="utf-8")
+    tmp.replace(DATA / "locks" / "pesado_vm1.pedido")
+
+
+def _retirar_pedido_pesado() -> None:
+    with contextlib.suppress(FileNotFoundError):
+        (DATA / "locks" / "pesado_vm1.pedido").unlink()
+
+
 def _semaforo_pesado():
     """Semáforo ÚNICO de trabalho pesado da VM-1, dividido com os crons pesados (`tools/pesado.sh`) — 23/11/2026:
     5 pesados ao mesmo tempo com swap 100% (o "um pesado por ciclo" não via os crons). Devolve o arquivo com a
@@ -608,12 +637,23 @@ def _semaforo_pesado():
     return fh
 
 
-def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None) -> list[dict]:
+def _teto_carga(peso: str, sujo_ha: float, slo: float, memoria) -> float:
+    if sujo_ha >= slo and memoria() >= MEMORIA_MIN_ATRASADO_MB:
+        return CARGA_TETO_ATRASADO
+    return CARGA_MAX[peso] if sujo_ha < CARGA_PACIENCIA_S else CARGA_TETO_FINAL[peso]
+
+
+def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None,
+              memoria=_memoria_disponivel_mb) -> list[dict]:
     """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo."""
     t0, feitos, pesado_feito = time.time(), [], False
     ders = cfg["derivados"]
     while time.time() - t0 < ORCAMENTO_CICLO_S:
         sujos, agora, escolhido, semaforo = _sujos(con, ders), time.time(), None, None
+        # motivo de quem já foi avaliado NESTA passada: o dependente só espera um derivado que pode rodar agora.
+        # 24/11/2026: perícia, certeza, juiz e retratos ficavam 10–40 h "aguardando derivado de que depende" atrás
+        # de um pesado que o semáforo ou a carga seguravam — o relógio dele estava livre, ele não.
+        barrado: dict[str, str] = {}
         ordem = sorted((i for i in sujos if i in ders), key=lambda i: (ders[i].get("prioridade", 5), sujos[i]["primeiro"]))
         def relogio(did: str) -> str | None:
             """Motivo PRÓPRIO do derivado para ainda não rodar (janela de junção, recuo, intervalo) — ou None."""
@@ -644,18 +684,24 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 pass
             # só espera o derivado de que depende se ESSE está pronto para rodar; se ele ainda junta eventos ou
             # está no intervalo mínimo, este roda já e será sujo de novo quando o outro terminar
-            elif any(dep in sujos and dep in ders and relogio(dep) is None and not any(x["id"] == dep for x in feitos)
-                     for dep in d.get("depende", [])):
+            elif any(dep in sujos and dep in ders and relogio(dep) is None and dep not in barrado
+                     and not any(x["id"] == dep for x in feitos) for dep in d.get("depende", [])):
                 motivo = "aguardando derivado de que depende"
             elif _trava_ocupada(did, d):
                 motivo = "já rodando fora do despachante (cron ou à mão)"
             elif peso == "pesado" and pesado_feito:
                 motivo = "um pesado por ciclo"
             elif (c := _carga_efetiva(carga())) > (
-                    teto := CARGA_MAX[peso] if agora - s["primeiro"] < CARGA_PACIENCIA_S else CARGA_TETO_FINAL[peso]):
+                    teto := _teto_carga(peso, agora - s["primeiro"], slo_s(d, cfg), memoria)):
                 motivo = f"carga {c:.1f} acima do teto {teto:.0f}"
             elif peso == "pesado" and (semaforo := _semaforo_pesado()) is None:
                 motivo = "semáforo de pesado da VM-1 ocupado (cron pesado rodando)"
+                if agora - s["primeiro"] >= CARGA_PACIENCIA_S:
+                    _pedir_vez_pesado(did)
+                    motivo += " — vez pedida ao pesado.sh"
+            if motivo and motivo != "um pesado por ciclo" and motivo != "aguardando derivado de que depende" \
+                    and relogio(did) is None:
+                barrado[did] = motivo               # barrado por fora (carga, semáforo, trava) — não pelo relógio
             con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
             if motivo is None:
                 escolhido = did
@@ -664,6 +710,8 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
         if escolhido is None:
             break
         did, d, s = escolhido, ders[escolhido], sujos[escolhido]
+        if semaforo is not None:
+            _retirar_pedido_pesado()
         motivos, inicio = _motivos(con, did), time.time()
         con.execute("UPDATE derivado SET ultimo_inicio=?, ultimo_estado='rodando', adiado=NULL WHERE id=?", (inicio, did))
         con.commit()

@@ -19,6 +19,14 @@ exec 8>data/locks/pesado_vm1.lock
 if ! flock -w "$espera" 8; then
   log "adiado: semáforo ocupado por ${espera}s"; exit 0
 fi
+# 24/11/2026: derivado do grafo de propagação ATRASADO pediu a vez (compliance_agent/propagacao.py::_pedir_vez_pesado).
+# Sem isto o sei_compactar (de hora em hora, ~55 min) emendava uma rodada na outra e o despachante, que só tenta
+# sem esperar, nunca pegava a trava (pesados do grafo parados 20–45 h). Pedido fresco = devolve a trava e sai.
+pedido=data/locks/pesado_vm1.pedido
+validade=${PESADO_PEDIDO_VALIDADE_S:-900}
+if [ -f "$pedido" ] && [ $(( $(date +%s) - $(stat -c %Y "$pedido") )) -lt "$validade" ]; then
+  log "adiado: vez pedida pelo despachante ($(head -c 120 "$pedido"))"; exit 0
+fi
 while ! awk -v l="$(cut -d' ' -f1 /proc/loadavg)" -v m="$carga_max" 'BEGIN{exit !(l <= m)}'; do
   if [ $(( $(date +%s) - ini )) -ge "$espera" ]; then
     log "adiado: carga $(cut -d' ' -f1 /proc/loadavg) > $carga_max"; exit 0
