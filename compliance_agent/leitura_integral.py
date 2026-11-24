@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from compliance_agent import evidencias as E
+from compliance_agent.dominio.mascara import _RE_CONTA, _RE_CPF, desmascarar, mascarar  # noqa: F401 — reexportação
 
 TAREFA = "leitura_integral"
 VERSAO_PROMPT = "li-2"   # li-1 → li-2 (23/11): + atos/decisões — 36 de 75 achados do Opus eram atos não extraídos
@@ -270,29 +271,8 @@ def linhas_da_tabela(sha: str) -> list[dict]:
 
 
 # ── 2. máscara reversível ─────────────────────────────────────────────────────────────────────────────
-_RE_CPF = re.compile(r"(?<![\d./])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\d/])")
-_RE_CONTA = re.compile(r"(?i)\b(c/c|conta(?:\s+corrente)?|ag[êe]ncia|ag\.)(\s*(?:n[º°o.]*)?\s*:?\s*)(\d[\d.\-xX]{2,})")
-
-
-def mascarar(texto: str) -> tuple[str, dict]:
-    mapa: dict[str, str] = {}
-    rev: dict[str, str] = {}
-
-    def marca(tipo: str, original: str) -> str:
-        if original not in rev:
-            rev[original] = f"[{tipo}_{sum(1 for k in mapa if k.startswith('[' + tipo)) + 1}]"
-            mapa[rev[original]] = original
-        return rev[original]
-
-    t = _RE_CPF.sub(lambda m: marca("CPF", m[0]), texto)
-    t = _RE_CONTA.sub(lambda m: m[1] + m[2] + marca("CONTA", m[3]), t)
-    return t, mapa
-
-
-def desmascarar(texto: str, mapa: dict) -> str:
-    for k, v in mapa.items():
-        texto = texto.replace(k, v)
-    return texto
+# Centralizada em `dominio/mascara.py` (24/11/2026, O6.1: o gateway LLM usa a mesma); reexportada aqui com o
+# comportamento idêntico (`mascarar(texto)` sem `estrito`); o import está no topo do módulo.
 
 
 # ── 4. verificação literal ────────────────────────────────────────────────────────────────────────────

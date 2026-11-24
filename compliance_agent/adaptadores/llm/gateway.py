@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""gateway — a porta ÚNICA de chamada a LLM do JFN (plano mestre v2 §6 "Gateway LLM", O6.1 partes a e b).
+"""gateway — a porta ÚNICA de chamada a LLM do JFN (plano mestre v2 §6 "Gateway LLM", O6.1 a–d, O6.2).
 
 O QUE FAZ HOJE (24/11/2026). `chamar()` NÃO tem backend próprio: DELEGA ao caminho que já existe e já funciona —
 `llm/free_llm.best_free_chat` (camada 1), `llm/claude_motor.pensar(backend="cli")` (camada 2, assinatura) e
@@ -20,9 +20,24 @@ O QUE REAPROVEITA (não duplica): o orçamento DIÁRIO da assinatura (`llm/orcam
 (`claude_api._reservar`: teto total, baldes, pausa) continua valendo dentro de `pensar_api`; o teto mensal daqui é
 uma trava A MAIS (a mais apertada ganha). A estimativa conservadora de tokens é a do próprio `claude_api`.
 
-O QUE AINDA NÃO FAZ (partes c e d do O6.1): cache composto com prefixo fixo e schema estrito + validação pós-parse
-(documento existe, sha confere, página ≤ total, trecho é substring). Também não MASCARA CPF/conta antes do envio
-(§3.11) — hoje a classe `pessoal`/`restrito` é recusada em todo provedor enquanto não houver ✅ do dono.
+  (c) CACHE COMPOSTO opcional (`cache=True`; `adaptadores/llm/cache.py`): chave = sha256 de documentos (id, versão
+      sha256, sha do texto, versão da extração), mensagens, prompt_version, modelo, regra, schema, contexto, classe e
+      camadas candidatas; hit/miss na coluna `cache` do trace. PREFIXO FIXO: o sistema só leva texto estável (o
+      marcador aleatório nunca entra nele) e as instruções do chamador vêm antes do bloco de dados;
+  (d) SCHEMA ESTRITO (Pydantic `model_validate_json(strict=True)`, ou o dict/str antigo) e validação pós-parse
+      das citações por verificador injetável (`adaptadores/llm/saida.py`): citação que não confere é descartada;
+      nenhuma sobrou ⇒ `estado=INDETERMINADO_FALHA_CITACAO` (sem escalar para camada mais cara). `ABSTEVE(motivo)`
+      é resposta válida (`estado=ABSTEVE`, `saida=Saida(ABSTEVE, motivo)`);
+  MÁSCARA (§3.11): todo texto que sai (mensagens, documentos, metadados) passa por `dominio/mascara.mascarar(...,
+      estrito=True)` com UM mapa local por chamada; sobrou CPF com DV válido ⇒ `MascaraFalhou` (nada sai). A resposta
+      volta desmascarada. A classe `pessoal`/`restrito` continua recusada em todo provedor sem ✅ do dono;
+  O6.2 PROMPT INJECTION (`adaptadores/llm/prompt_seguro.py`): `documentos` entram por datamarking (linha a linha
+      com token aleatório da chamada) + regra de sistema "conteúdo marcado é dado"; `ferramentas` é recusado
+      (dual-LLM); resposta que obedece instrução embutida é DESCARTADA (a camada conta como falha, motivo no trace).
+
+O QUE AINDA NÃO FAZ: Batch (`enviar_lote`/`colher_lote`), provedores DC/hermes/nous/HTTP direto como camadas, preço do
+OpenRouter pago, conferência de `offset` da citação. Quem embute documento DENTRO de `mensagens` (em vez de
+`documentos`) fica sem datamarking — a migração dos chamadores precisa mover o documento para `documentos`.
 
 CONTRATO. Sucesso ⇒ `Resposta`. Recusa de política/classe/orçamento ⇒ exceção tipada (`TarefaDeterministica`,
 `ClasseDadoRecusada`, `OrcamentoEsgotado`), nunca silêncio. Todas as camadas falharam ⇒ `SemProvedor` com os
@@ -37,13 +52,19 @@ import os
 import sqlite3
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
 import yaml
 
+from compliance_agent.adaptadores.llm import cache as C
+from compliance_agent.adaptadores.llm import prompt_seguro as PS
+from compliance_agent.adaptadores.llm import saida as S
+from compliance_agent.adaptadores.llm.prompt_seguro import Documento
+from compliance_agent.adaptadores.llm.saida import ABSTEVE, INDETERMINADO_FALHA_CITACAO, RESPONDIDO  # noqa: F401
+from compliance_agent.dominio import mascara as M
 from compliance_agent.llm import arquivo_estado as arq
 
 logger = logging.getLogger(__name__)
@@ -68,6 +89,10 @@ class ClasseDadoRecusada(GatewayErro):
 
 class OrcamentoEsgotado(GatewayErro):
     """Só havia caminho pago e o teto mensal (ou o corte de 85%) barrou."""
+
+
+class MascaraFalhou(GatewayErro):
+    """Depois da máscara ainda sobrou CPF com DV válido no que iria ao provedor: nada é enviado."""
 
 
 class SemProvedor(GatewayErro):
@@ -114,6 +139,8 @@ class Resposta:
     output_hash: str
     trace_id: str
     extras: dict = field(default_factory=dict)
+    estado: str = RESPONDIDO               # RESPONDIDO | ABSTEVE | INDETERMINADO_FALHA_CITACAO
+    saida: object = None                   # dominio.estados.Saida quando ABSTEVE (com o motivo)
 
 
 Backend = Callable[..., "Retorno | None"]
@@ -198,7 +225,10 @@ _COLUNAS = (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("u
             ("origem", "TEXT"), ("trace_id", "TEXT"), ("prompt_version", "TEXT"), ("input_hash", "TEXT"),
             ("output_hash", "TEXT"), ("camada", "INT"), ("classe_dado", "TEXT"), ("tokens_cache", "INT"),
             ("tokens_cache_escrito", "INT"), ("custo_usd", "REAL"), ("custo_fonte", "TEXT"), ("pago", "INT"),
-            ("retry", "INT"), ("motivo_escalonamento", "TEXT"), ("release_ia", "TEXT"))
+            ("retry", "INT"), ("motivo_escalonamento", "TEXT"), ("release_ia", "TEXT"),
+            # O6.1 (c)/(d), §3.11, O6.2
+            ("cache", "TEXT"), ("estado", "TEXT"), ("injecao_suspeita", "INT"), ("citacoes_descartadas", "INT"),
+            ("mascarados", "INT"))
 
 
 def _trace_db() -> Path:
@@ -402,18 +432,6 @@ def _com_schema(prompt: str, schema) -> str:
     return prompt + (instrucao_schema(schema) if schema is not None else "")
 
 
-def _parse(texto: str, schema):
-    """(dados, motivo). Sem schema ⇒ (None, None)."""
-    if schema is None:
-        return None, None
-    from compliance_agent.llm.json_resposta import chaves_faltando, parse_json_llm
-    dados = parse_json_llm(texto)
-    falta = chaves_faltando(dados, schema)
-    if falta != []:
-        return None, "resposta sem o JSON pedido" + (f" (faltam {', '.join(falta[:5])})" if falta else "")
-    return dados, None
-
-
 def _backend_free(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, timeout) -> Retorno | None:
     from compliance_agent.llm import free_llm
     texto = free_llm.best_free_chat(_com_schema(prompt, schema), system=sistema, smart=True, fallback="")
@@ -517,26 +535,67 @@ def _estimativa_api(tarefa: str, modelo_pref: str | None, sistema: str, prompt: 
 
 
 # ── a porta ──────────────────────────────────────────────────────────────────────────────────────────
+def _mascarar_entrada(sistema: str, prompt: str, docs: list, mapa: dict) -> tuple[str, str, list]:
+    """Máscara com UM mapa, na ordem fixa sistema → prompt → documentos (mesma entrada ⇒ mesmo mapa). Só o conteúdo
+    é mascarado: o cabeçalho que o gateway escreve (ids, sha256) não — um sha com 11 dígitos seguidos viraria
+    `[CPF_n]` e a citação nunca conferiria."""
+    sm, _ = M.mascarar(sistema, mapa, estrito=True)
+    pm, _ = M.mascarar(prompt, mapa, estrito=True)
+    dm = []
+    for d in docs:
+        pags = tuple(M.mascarar(p, mapa, estrito=True)[0] for p in d.paginas) if d.paginas else None
+        texto = "\n".join(pags) if pags else M.mascarar(d.texto, mapa, estrito=True)[0]
+        meta = {k: M.mascarar(str(v), mapa, estrito=True)[0] for k, v in (d.metadados or {}).items()}
+        dm.append(replace(d, texto=texto, paginas=pags, metadados=meta))
+    return sm, pm, dm
+
+
+def _expostos(sistema: str, prompt: str, docs: list) -> int:
+    partes = [sistema, prompt] + [d.texto for d in docs] + [str(v) for d in docs for v in d.metadados.values()]
+    return sum(M.cpfs_expostos(p) for p in partes)
+
+
 def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pref: str | None = None,
            schema=None, classe_dado: str, max_tokens: int | None = None, timeout: float = 180.0,
-           backends: dict[str, Backend] | None = None) -> Resposta:
-    """Uma chamada de LLM pela política. Ver o docstring do módulo para o contrato."""
+           backends: dict[str, Backend] | None = None, documentos: list[Documento] | None = None,
+           exigir_citacao: bool = False, verificador: S.Verificador | None = None, regra: str | None = None,
+           contexto=None, cache: bool = False, ferramentas=None) -> Resposta:
+    """Uma chamada de LLM pela política. Ver o docstring do módulo para o contrato.
+
+    `documentos`: o que o modelo LÊ (entra com datamarking; nunca embuta documento em `mensagens`).
+    `exigir_citacao`: a saída precisa de `citacoes` conferidas (pede `schema`). `verificador(citacao, {id: Documento})
+    -> (ok, motivo)` troca o verificador padrão. `regra`/`contexto`: componentes extras da chave do cache.
+    `ferramentas`: sempre recusado (dual-LLM)."""
     if not tarefa or not isinstance(tarefa, str):
         raise GatewayErro("tarefa obrigatória")
     if not prompt_version:
         raise GatewayErro("prompt_version obrigatório (rastreabilidade: nucleo/prompt_versao)")
     if classe_dado not in CLASSES:
         raise ClasseDadoRecusada(f"classe_dado '{classe_dado}' inválida; use uma de {', '.join(CLASSES)}")
+    if ferramentas:
+        raise GatewayErro("dual-LLM: o gateway não entrega ferramentas a modelo — quem lê documento nunca as recebe "
+                          "e os backends de hoje são só texto")
+    if exigir_citacao and schema is None:
+        raise GatewayErro("exigir_citacao pede schema (as citações vêm no JSON, em 'citacoes')")
+    docs = list(documentos or [])
+    if any(not isinstance(d, Documento) for d in docs):
+        raise GatewayErro("documentos: use adaptadores.llm.prompt_seguro.Documento")
+    if len({d.documento_id for d in docs}) != len(docs):
+        raise GatewayErro("documentos: documento_id repetido")
     pol, tab = politica(), precos()
     pt = politica_da_tarefa(tarefa, pol)
     camadas = pt["camadas"]
     if not camadas or camadas == [0] or 0 in camadas:
         raise TarefaDeterministica(f"tarefa '{tarefa}' é camada 0 (determinística) na política — não chama LLM")
-    sistema, prompt = _achatar(mensagens)
+    sistema0, prompt0 = _achatar(mensagens)
     backends = {**BACKENDS, **(backends or {})}
-    input_hash = _sha([sistema, prompt, schema, modelo_pref])
-    chars_in = len(sistema) + len(prompt)
+    schema_b, schema_r = S.schema_para_backend(schema), S.repr_schema(schema)
+    resumo_docs = PS.resumo_documentos(docs)
+    input_hash = _sha([sistema0, prompt0, schema_r, modelo_pref] + ([resumo_docs] if docs else []))
+    chars_in = len(sistema0) + len(prompt0) + sum(len(d.texto) for d in docs)
     tid = uuid.uuid4().hex[:16]
+    base = {"origem": "gateway", "trace_id": tid, "tarefa": tarefa[:60], "prompt_version": prompt_version,
+            "input_hash": input_hash, "classe_dado": classe_dado, "chars_in": chars_in}
 
     candidatos, recusas_classe = [], []
     for c in camadas:
@@ -546,10 +605,58 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
         m = motivo_classe(classe_dado, prov, pol)
         (recusas_classe.append(f"camada {c}: {m}") if m else candidatos.append((c, prov)))
     if not candidatos:
-        _gravar({"origem": "gateway", "trace_id": tid, "tarefa": tarefa[:60], "ok": 0, "ms": 0,
-                 "erro": "recusado: classe de dado", "prompt_version": prompt_version, "input_hash": input_hash,
-                 "classe_dado": classe_dado, "chars_in": chars_in, "motivo_escalonamento": " | ".join(recusas_classe)})
+        _gravar({**base, "ok": 0, "ms": 0, "erro": "recusado: classe de dado",
+                 "motivo_escalonamento": " | ".join(recusas_classe)})
         raise ClasseDadoRecusada(f"tarefa '{tarefa}', classe '{classe_dado}': " + " | ".join(recusas_classe))
+
+    # máscara (§3.11) e montagem com prefixo fixo + datamarking (O6.2)
+    mapa: dict[str, str] = {}
+    sist_m, prompt_m, docs_m = _mascarar_entrada(sistema0, prompt0, docs, mapa)
+    if _expostos(sist_m, prompt_m, docs_m):
+        _gravar({**base, "ok": 0, "ms": 0, "erro": "recusado: máscara", "mascarados": len(mapa)})
+        raise MascaraFalhou(f"tarefa '{tarefa}': CPF com DV válido sobrou depois da máscara — nada foi enviado")
+    token = PS.novo_token("\n".join([d.texto for d in docs_m] + [str(v) for d in docs_m
+                                                                 for v in d.metadados.values()])) if docs else None
+    sistema, prompt = PS.montar(sist_m, prompt_m, docs_m, token=token, abstencao=schema is not None,
+                                citacao=exigir_citacao)
+    n_susp, alvos = PS.alvos_de_injecao(docs, sistema0 + "\n" + prompt0) if docs else (None, set())
+
+    def desm(t: str) -> str:
+        return M.desmascarar(t, mapa)
+
+    def processar(texto, dados):
+        return S.processar(texto, dados, schema=schema, exigir_citacao=exigir_citacao, documentos=docs,
+                           verificador=verificador, desmascarar=desm)
+
+    comuns = {"injecao_suspeita": n_susp, "mascarados": len(mapa)}
+    comp = ch = None
+    if cache:
+        comp = C.componentes(montagem=PS.VERSAO_MONTAGEM, tarefa=tarefa, sistema=sistema0, prompt=prompt0,
+                             documentos=resumo_docs, prompt_version=prompt_version, modelo=modelo_pref, regra=regra,
+                             schema=schema_r, contexto=contexto, classe_dado=classe_dado, candidatos=candidatos,
+                             exigir_citacao=exigir_citacao)
+        ch = C.chave(comp)
+        ini = time.monotonic()
+        hit = C.ler(ch)
+        if hit is not None:
+            proc = processar(hit["texto"], hit["dados"])
+            if proc.estado in (RESPONDIDO, ABSTEVE):
+                ms = int((time.monotonic() - ini) * 1000)
+                _gravar({**base, **comuns, "provedor": hit["provedor"], "camada": hit["camada"], "ok": 1, "ms": ms,
+                         "modelo": hit["modelo"], "pago": 0, "output_hash": _sha(hit["texto"]),
+                         "chars_out": len(hit["texto"]), "custo_usd": 0.0, "custo_fonte": "cache", "retry": 0,
+                         "release_ia": hit["release_ia"], "cache": "hit", "estado": proc.estado,
+                         "citacoes_descartadas": len(proc.descartadas)})
+                return Resposta(texto=desm(hit["texto"]), dados=proc.dados, tarefa=tarefa, provedor=hit["provedor"],
+                                camada=hit["camada"], modelo=hit["modelo"], custo_usd=0.0, tokens_in=None,
+                                tokens_out=None, tokens_cache=None, latencia_ms=ms, retry=0,
+                                motivo_escalonamento=None, release_ia=hit["release_ia"], input_hash=input_hash,
+                                output_hash=_sha(hit["texto"]), trace_id=tid, estado=proc.estado, saida=proc.saida,
+                                extras={"custo_fonte": "cache", "memo": False, "cache": "hit",
+                                        "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas})
+            logger.warning("gateway: acerto de cache reprovado na validação de hoje (%s) — trata como miss",
+                           proc.erro or proc.estado)
+    comuns["cache"] = "miss" if cache else None
 
     motivos: list[str] = list(recusas_classe)
     so_orcamento = True       # todas as camadas viáveis caíram por orçamento? (para o tipo da exceção)
@@ -573,29 +680,29 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
             rid, recusa = _reservar(est, pt["critica"], pol)
             if recusa:
                 motivos.append(f"{prov}: {recusa}")
-                _gravar({"origem": "gateway", "trace_id": tid, "tarefa": tarefa[:60], "provedor": prov,
-                         "camada": camada, "ok": 0, "ms": 0, "erro": "recusado: orçamento", "pago": 1,
-                         "prompt_version": prompt_version, "input_hash": input_hash, "classe_dado": classe_dado,
-                         "chars_in": chars_in, "modelo": modelo_est, "motivo_escalonamento": recusa[:300]})
+                _gravar({**base, **comuns, "provedor": prov, "camada": camada, "ok": 0, "ms": 0,
+                         "erro": "recusado: orçamento", "pago": 1, "modelo": modelo_est,
+                         "motivo_escalonamento": recusa[:300]})
                 continue
         so_orcamento = False
         ini = time.monotonic()
         ret, erro = None, ""
         try:
-            ret = backends[prov](tarefa=tarefa, sistema=sistema, prompt=prompt, schema=schema,
+            ret = backends[prov](tarefa=tarefa, sistema=sistema, prompt=prompt, schema=schema_b,
                                  modelo_pref=modelo_pref, max_tokens=mt, timeout=timeout)
             if ret is None:
                 erro = "resposta vazia"
         except Exception as e:      # noqa: BLE001 — backend nunca derruba o gateway; o TIPO vai ao trace
             erro = f"{type(e).__name__}: {str(e)[:160]}"
         ms = int((time.monotonic() - ini) * 1000)
-        dados = None
+        proc = None
         if ret is not None and not erro:
-            dados = ret.dados
-            if schema is not None and dados is None:
-                dados, m = _parse(ret.texto, schema)
-                if m:
-                    erro = m
+            ob = PS.obediencia(desm(ret.texto), alvos, token) if docs else None
+            if ob:
+                erro = ob
+            else:
+                proc = processar(ret.texto, ret.dados)
+                erro = proc.erro
         modelo = (ret.modelo if ret else None) or (modelo_est if pago else None)
         custo, fonte = None, None
         if ret is not None:
@@ -612,25 +719,31 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
             custo, fonte = est, "estimativa_falha"
         release = f"{prompt_version}+{modelo or prov}"
         ok = ret is not None and not erro
-        _gravar({"origem": "gateway", "trace_id": tid, "tarefa": tarefa[:60], "provedor": prov, "camada": camada,
-                 "ok": int(ok), "ms": ms, "erro": erro[:200] or None, "modelo": modelo, "pago": int(pago),
-                 "prompt_version": prompt_version, "input_hash": input_hash,
-                 "output_hash": _sha(ret.texto) if ret is not None else None, "classe_dado": classe_dado,
-                 "chars_in": chars_in, "chars_out": len(ret.texto) if ret is not None else None,
+        _gravar({**base, **comuns, "provedor": prov, "camada": camada, "ok": int(ok), "ms": ms,
+                 "erro": erro[:200] or None, "modelo": modelo, "pago": int(pago),
+                 "output_hash": _sha(ret.texto) if ret is not None else None,
+                 "chars_out": len(ret.texto) if ret is not None else None,
                  "tokens_in": ret.tokens_in if ret else None, "tokens_out": ret.tokens_out if ret else None,
                  "tokens_cache": ret.tokens_cache_lido if ret else None,
                  "tokens_cache_escrito": ret.tokens_cache_escrito if ret else None,
                  "custo_usd": custo, "custo_fonte": fonte, "retry": tentativa,
-                 "motivo_escalonamento": (" | ".join(motivos))[:500] or None, "release_ia": release[:120]})
+                 "motivo_escalonamento": (" | ".join(motivos))[:500] or None, "release_ia": release[:120],
+                 "estado": proc.estado if proc else None,
+                 "citacoes_descartadas": len(proc.descartadas) if proc else None})
         _liberar(rid)
         if ok:
             registrar_sucesso(prov)
-            return Resposta(texto=ret.texto, dados=dados, tarefa=tarefa, provedor=prov, camada=camada, modelo=modelo,
-                            custo_usd=custo, tokens_in=ret.tokens_in, tokens_out=ret.tokens_out,
+            if cache and proc.estado in (RESPONDIDO, ABSTEVE):
+                C.gravar(ch, comp, tarefa=tarefa, texto=ret.texto, dados=ret.dados, estado=proc.estado,
+                         provedor=prov, camada=camada, modelo=modelo, release_ia=release)
+            return Resposta(texto=desm(ret.texto), dados=proc.dados, tarefa=tarefa, provedor=prov, camada=camada,
+                            modelo=modelo, custo_usd=custo, tokens_in=ret.tokens_in, tokens_out=ret.tokens_out,
                             tokens_cache=ret.tokens_cache_lido, latencia_ms=ms, retry=tentativa,
                             motivo_escalonamento=" | ".join(motivos) or None, release_ia=release,
-                            input_hash=input_hash, output_hash=_sha(ret.texto), trace_id=tid,
-                            extras={"custo_fonte": fonte, "memo": ret.memo})
+                            input_hash=input_hash, output_hash=_sha(ret.texto), trace_id=tid, estado=proc.estado,
+                            saida=proc.saida,
+                            extras={"custo_fonte": fonte, "memo": ret.memo, "cache": comuns["cache"],
+                                    "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas})
         registrar_falha(prov, pol)
         motivos.append(f"{prov}: {erro}")
         tentativa += 1
