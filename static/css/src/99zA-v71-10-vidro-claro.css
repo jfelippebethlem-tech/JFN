@@ -1,0 +1,82 @@
+/* ══ v71 · VIDRO CLARO (2026-11-24) — "quero mais glassy o painel pra ficar bonito" ════════════════
+   O vidro da v61/v63 existia, mas grosso: cartão a .72, gaveta do dossiê a .96 SEM desfoque, celular
+   todo opaco. Aqui ele fica de verdade — e com os mesmos três freios de sempre escritos, não herdados.
+
+   REGRAS DESTE ESTRATO
+   · Vem depois dos `99z9-*` e não é camadado: TODO seletor começa por `html.v63` (o padrão do painel).
+   · Valores só nos tokens `--vg-*` do BODY (é no body que o modo sóbrio e o celular os sobrescrevem;
+     custom property resolvida no <html> não "ouviria" isso — mesma lição do `99z2-v61-95-vidro`).
+   · Só o cartão de PRIMEIRO nível de `#view` vira vidro. Cartão dentro de cartão e linha de lista
+     continuam lisos (vidro sobre vidro some e custa um backdrop por linha).
+   · LEGIBILIDADE NÃO NEGOCIA: alfa mínimo .62 no desktop (com desfoque) e .84 no celular (sem
+     desfoque atrás de cartão). Medido com `tools/auditar_contraste_pixel.py` — ver commit.
+   · Celular: desfoque MENOR e só no trilho de abas e na gaveta (2 camadas, não dezenas). A
+     decisão medida da v60 (nada de desfoque atrás de cartão no celular: 97 tarefas longas em 30 s,
+     CPU 4×) continua valendo para os cartões — eles ganham brilho e borda de vidro, não blur.
+   QUEDAS: sem `backdrop-filter` (@supports) → superfície quase sólida; modo sóbrio (`fps-baixo`) →
+   o estrato camadado da casa já pinta `--bg2` e tira o blur, e aqui o vidro não o religa;
+   `prefers-reduced-transparency` → tudo sólido. Nada aqui anima: `prefers-reduced-motion` não tem o
+   que desligar.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+html.v63 body{
+  --vg-alfa:.62;                 /* cartões, KPIs */
+  --vg-alfa-barra:.64;           /* trilho de abas */
+  --vg-alfa-forte:.80;           /* gaveta do dossiê (texto longo, tabela) */
+  --vg-blur:18px; --vg-blur-forte:26px; --vg-sat:1.5;
+  --vg-borda:rgba(255,255,255,.62);
+  /* realce na borda de cima: a luz bate no vidro e escorre até ~metade */
+  --vg-brilho:linear-gradient(180deg,rgba(255,255,255,.58) 0,rgba(255,255,255,.16) 26%,rgba(255,255,255,0) 52%);
+  --vg-sh:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.22),
+          0 1px 2px rgba(11,27,58,.05),0 8px 22px -10px rgba(29,91,255,.16),0 26px 52px -26px rgba(11,27,58,.16);
+  --vg-sh-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.3),
+          0 1px 2px rgba(11,27,58,.06),0 14px 30px -12px rgba(29,91,255,.24),0 32px 60px -28px rgba(11,27,58,.2);
+}
+@media (max-width:760px){
+  html.v63 body{--vg-alfa:.84;--vg-alfa-barra:.76;--vg-alfa-forte:.86;--vg-blur:10px;--vg-blur-forte:14px;--vg-sat:1.35}
+}
+
+/* ── cartões de primeiro nível ─────────────────────────────────────────────────────────────── */
+html.v63 #view :is(.card,.ck-inst,.ck-hero,.grid.v60-lista,.v60-feed):not(.card .card):not(.grid.v60-lista > .card){
+  background:var(--vg-brilho),rgba(255,255,255,var(--vg-alfa));
+  border:1px solid var(--vg-borda);box-shadow:var(--vg-sh)}
+@media (min-width:761px){
+  html.v63 #view :is(.card,.ck-inst,.ck-hero,.grid.v60-lista,.v60-feed):not(.card .card):not(.grid.v60-lista > .card){
+    backdrop-filter:blur(var(--vg-blur)) saturate(var(--vg-sat));
+    -webkit-backdrop-filter:blur(var(--vg-blur)) saturate(var(--vg-sat))}
+}
+@media (hover:hover){
+  html.v63 #view :is(.card,.ck-inst):not(.card .card):not(.grid.v60-lista > .card):hover{
+    background:var(--vg-brilho),rgba(255,255,255,calc(var(--vg-alfa) + .08));box-shadow:var(--vg-sh-hi)}
+}
+
+/* ── trilho de abas ─────────────────────────────────────────────────── */
+html.v63 nav.tabs{background:var(--vg-brilho),rgba(247,250,255,var(--vg-alfa-barra));
+  backdrop-filter:blur(var(--vg-blur)) saturate(var(--vg-sat));-webkit-backdrop-filter:blur(var(--vg-blur)) saturate(var(--vg-sat));
+  border-bottom:1px solid var(--vg-borda)}
+/* O cabeçalho do celular fica OPACO de propósito (`99-cauda-important`, v50, medido: a barra cobre 18% da
+   tela e o conteúdo rolaria nítido sob o texto) — vidro lá só no trilho de abas. */
+
+/* ── gaveta do dossiê (#sheet) e painel «Ajustar vidro» ────────────────────────────────────── */
+html.v63 .ov .sheet{background:var(--vg-brilho),rgba(255,255,255,var(--vg-alfa-forte));border:1px solid var(--vg-borda);
+  backdrop-filter:blur(var(--vg-blur-forte)) saturate(var(--vg-sat));-webkit-backdrop-filter:blur(var(--vg-blur-forte)) saturate(var(--vg-sat));
+  box-shadow:var(--vg-sh-hi)}
+/* KPIs e cartões DENTRO da gaveta: vidro leve sobre o vidro (sem segundo desfoque) */
+html.v63 .ov .sheet :is(.card,.kpi):not(.card .card){background:var(--vg-brilho),rgba(255,255,255,.55);border-color:var(--vg-borda)}
+
+/* ══ QUEDAS ═════════════════════════════════════════════════════════════════════════════════ */
+/* 1 · navegador sem backdrop-filter: transparência sem desfoque deixaria o fundo NÍTIDO sob o texto */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  html.v63 body{--vg-alfa:.95;--vg-alfa-barra:.96;--vg-alfa-forte:.97}
+}
+/* 2 · modo sóbrio (FPS medido abaixo do piso): opaco e sem desfoque, como a casa manda */
+html.v63 body.fps-baixo{--vg-alfa:.96;--vg-alfa-barra:.96;--vg-alfa-forte:.97}
+html.v63 body.fps-baixo #view :is(.card,.ck-inst,.ck-hero,.grid.v60-lista,.v60-feed),
+html.v63 body.fps-baixo nav.tabs, html.v63 body.fps-baixo .ov .sheet{
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+/* 3 · transparência reduzida: tudo sólido */
+@media (prefers-reduced-transparency:reduce){
+  html.v63 body{--vg-alfa:1;--vg-alfa-barra:1;--vg-alfa-forte:1;--vg-brilho:linear-gradient(transparent,transparent)}
+  html.v63 #view :is(.card,.ck-inst,.ck-hero,.grid.v60-lista,.v60-feed),
+  html.v63 nav.tabs, html.v63 .ov .sheet{backdrop-filter:none;-webkit-backdrop-filter:none}
+}
