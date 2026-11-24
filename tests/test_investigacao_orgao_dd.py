@@ -16,6 +16,13 @@ def _db(tmp_path, linhas):
                 "valor REAL, data_pagamento TEXT, numero_sei TEXT, numero_processo TEXT, exercicio TEXT)")
     con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?,?,?,?,?)",
                     [(ug, cpf, nm, v, "2020-01-01", sei, proc, ex) for ug, cpf, nm, v, sei, proc, ex in linhas])
+    # 21/11/2026 (f4874258): o total pago saiu do espelho TFE e veio da OB PAGA do SIAFE — a fixture espelha as
+    # mesmas linhas em ob_orcamentaria_siafe (os processos do fornecedor seguem lidos de ordens_bancarias)
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (ug_emitente TEXT, credor TEXT, nome_credor TEXT, valor REAL, "
+                "data_emissao TEXT, status TEXT, numero_ob TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)",
+                    [(ug, cpf, nm, v, f"01/01/{ex}", "Contabilizado", f"{ex}OB{i:05d}")
+                     for i, (ug, cpf, nm, v, sei, proc, ex) in enumerate(linhas)])
     con.commit()
     con.close()
     return p
