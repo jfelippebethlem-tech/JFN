@@ -10,13 +10,10 @@ compliance_agent.auditoria.sei_auditor  # [cli]
 compliance_agent.auditoria.siafe_contratos  # [cli]
 compliance_agent.briefing  # [cli]
 compliance_agent.calibrar  # [cli]
-compliance_agent.cerebro_consolidacao  # [cron] 10 funções de teste
 compliance_agent.collectors.alerj_transparencia  # [cli] 6 funções de teste
 compliance_agent.collectors.datajud  # [cli] 11 funções de teste
-compliance_agent.collectors.folha_orquestrador  # [cron]
 compliance_agent.collectors.tfe_receita  # [biblioteca] 2 funções de teste
 compliance_agent.contratos.estado  # [biblioteca] 28 funções de teste
-compliance_agent.detectores.est_valor_contratual  # [cron] 9 funções de teste
 compliance_agent.editais.dosimetria  # [biblioteca] 18 funções de teste
 compliance_agent.enrich.exif  # [biblioteca] 8 funções de teste
 compliance_agent.enriquecimento.footprint_alvo  # [biblioteca] 9 funções de teste
@@ -51,3 +48,4 @@ compliance_agent.dominio.documento_id  # O4.1 Esteira Única (24/11): chave can�
 compliance_agent.dominio.estados  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
 compliance_agent.dominio.pagamento  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
 compliance_agent.dominio.processo_id  # O4.1 Esteira Única (24/11): chave canônica nova; chamadores entram no estrangulamento O9.3
+compliance_agent.fluxo.prioridade  # O2.1 Esteira Única (24/11): prioridade única (§3.7); o planejador a chama ao enfileirar E2/E3 quando o estágio for portado (O3)

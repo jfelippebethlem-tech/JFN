@@ -262,7 +262,7 @@ def medir_analitico(u: dict) -> list[dict]:
     out = [metrica("dados.analitico_bytes", p.stat().st_size, consulta=f"stat {p.name}", grupo=g, origem="data/",
                    plano="5,9 GB")]
     con = abrir_sqlite(p, imutavel=False)
-    out.append(medir_sql(con, "dados.analitico_frescor_siafe_ob", "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe",
+    out.append(medir_sql(con, "dados.analitico_frescor_siafe_ob", "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe",  # ob-qualquer-status: frescor (metadado), não soma
                          grupo=g, origem="data/compliance_analitico.db",
                          descricao="comparar com frescor.siafe_ob do universo = defasagem"))
     if con is not None:
@@ -414,7 +414,7 @@ def medir_despachante(u: dict) -> list[dict]:
         sys.path.insert(0, str(RAIZ))
         from compliance_agent.propagacao import _sujos, slo_s
         cfg = yaml.safe_load(git_show("config/propagacao.yaml")) or {}
-    except Exception as e:  # noqa: BLE001 — qualquer falha de import/leitura = INDISPONIVEL, nunca 0
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error, subprocess.SubprocessError) as e:  # falha de import/leitura = INDISPONIVEL, nunca 0
         return [indisponivel("despachante", f"config/propagacao indisponível: {e}", grupo=g, origem=org)]
     fontes, derivs = cfg.get("fontes") or {}, cfg.get("derivados") or {}
     out = [metrica("despachante.fontes", len(fontes), consulta="len(propagacao.yaml:fontes)", grupo=g, origem=org,
@@ -453,7 +453,7 @@ def medir_cobertura_pericia() -> list[dict]:
         sys.path.insert(0, str(RAIZ))
         from tools.automelhoria_geral import _cobertura_acervo
         total, alc, procs, cortados = _cobertura_acervo()
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error, subprocess.SubprocessError) as e:  # = INDISPONIVEL
         return [indisponivel("pericia.cobertura_chars", f"{type(e).__name__}: {e}", consulta=cons, grupo=g,
                              origem=org)]
     if total <= 0:
@@ -558,7 +558,7 @@ def medir_detectores() -> list[dict]:
     try:
         import yaml
         r = avaliar_detectores(yaml.safe_load(git_show(arq)))
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error, subprocess.SubprocessError) as e:  # = INDISPONIVEL
         return [indisponivel("detectores.total", f"{type(e).__name__}: {e}", grupo=g, origem=org)]
     return [metrica(f"detectores.{k}", v, consulta=f"yaml {arq}: detectores.* ({k})", grupo=g, origem=org,
                     plano=planos.get(k)) for k, v in r.items()]

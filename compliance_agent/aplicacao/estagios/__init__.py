@@ -10,7 +10,8 @@ Cada estágio é um tipo de job com contrato fixo:
   · os eventos que sujam os estágios seguintes vão em `Resultado.eventos`.
 
 Quem roda handler e efeito é SEMPRE o processo-filho `compliance_agent.fluxo.executar`, nunca o supervisor
-(catraca em tests/test_fluxo_supervisor.py). Por ora só o E0 "eco", de teste; os estágios reais chegam na O2/O3.
+(catraca em tests/test_fluxo_supervisor.py). E0 "eco" (teste) e, desde a O2.1, `legado:<rotina>` (estagios/legado.py:
+roda o comando que rodava antes da parada); os estágios reais chegam na O3+.
 """
 from __future__ import annotations
 
@@ -76,4 +77,16 @@ def _eco_efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
 REGISTRO: dict[str, Estagio] = {
     "eco": Estagio(handler=_eco, efeito=_eco_efeito, recursos=["cpu_leve"], prioridade=100),
 }
+
+
+def estagio_de(tipo: str) -> Estagio | None:
+    """O estágio que roda um tipo de job: nome exato no REGISTRO, ou a família antes do `:` — `legado:<rotina>`
+    (O2.1) é um tipo por rotina do config/fluxo.yaml, todos rodados pelo mesmo handler `legado`."""
+    if tipo in REGISTRO:
+        return REGISTRO[tipo]
+    familia = tipo.split(":", 1)[0]
+    if familia == "legado":
+        from compliance_agent.aplicacao.estagios import legado     # import tardio: só o filho que roda legado paga
+        return legado.ESTAGIO
+    return REGISTRO.get(familia)
 

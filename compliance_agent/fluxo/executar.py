@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-from compliance_agent.aplicacao.estagios import REGISTRO, Contexto, ErroPermanente
+from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, estagio_de
 from compliance_agent.fluxo.fila import Resultado
 
 SAIDA_PERMANENTE = 3
@@ -24,7 +24,7 @@ SAIDA_PERMANENTE = 3
 def main(argv: list[str] | None = None) -> int:
     modo, entrada, saida = (argv if argv is not None else sys.argv[1:])[:3]
     e = json.loads(Path(entrada).read_text(encoding="utf-8"))
-    estagio = REGISTRO.get(e["tipo"])
+    estagio = estagio_de(e["tipo"])
     if estagio is None:
         Path(saida).write_text(json.dumps({"erro": f"estágio desconhecido: {e['tipo']}"}), encoding="utf-8")
         return SAIDA_PERMANENTE

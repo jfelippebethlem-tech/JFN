@@ -1,0 +1,367 @@
+# -*- coding: utf-8 -*-
+"""O grafo da Esteira Única: `config/fluxo.yaml` validado por Pydantic no carregamento (plano mestre v2 §3.3, O2.1).
+
+O yaml declara três coisas, e só elas:
+  · `estagios` — os 18 tipos de job (E1–E18) com recursos, nós, volta (máquina alternativa), timeout, efeito
+    verificável, prioridade, concorrência por fonte/provedor e dependência entre estágios;
+  · `fontes` — os nomes de evento que sujam rotinas (vindos de config/propagacao.yaml; a sonda continua lá até a O3);
+  · `rotinas` — o que rodava antes da parada, cada uma apontando para o comando legado ATUAL (estágio `legado`,
+    compliance_agent/aplicacao/estagios/legado.py), disparada por `agenda` (cron de 5 campos, hora de Brasília) e/ou
+    por `evento` (dependências, debounce, intervalo mínimo).
+
+Carregar falha (ErroGrafo/ValidationError) — e o deploy não segue — quando: falta estágio, recurso não existe no
+governador, cron inválido, dependência aponta para o nada, rotina sem efeito declarado, ou há CICLO (entre estágios
+ou entre rotinas). Sem topologia sensível no yaml (ADR-011): nós são só vm1/vm2/itcampo, comandos relativos à raiz.
+
+Consumidores: o planejador recebe `grafo_planejador()` e `contrato()`; a agenda do PG nasce de `agenda_linhas()`.
+"""
+from __future__ import annotations
+
+import re
+from functools import lru_cache
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from compliance_agent.fluxo.governador import SLOTS_INICIAIS
+from compliance_agent.fluxo.planejador import Cron
+
+RAIZ = Path(__file__).resolve().parents[2]
+CAMINHO = RAIZ / "config" / "fluxo.yaml"
+PREFIXO_LEGADO = "legado:"
+ESTAGIOS = tuple(f"E{i}" for i in range(1, 19))
+RECURSOS = frozenset(r for slots in SLOTS_INICIAIS.values() for r in slots)
+NOS = frozenset(SLOTS_INICIAIS)
+LOG_SEM_PADRAO = r"Traceback \(most recent call last\)"
+_RX_ID = re.compile(r"^[a-z][a-z0-9_]{1,62}$")
+
+
+class ErroGrafo(ValueError):
+    """O grafo é inválido (ciclo, referência quebrada): o deploy não segue."""
+
+
+class _Base(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class Concorrencia(_Base):
+    max: int = Field(ge=0)
+    motivo: str
+
+
+class Volta(_Base):
+    nos: list[str] = Field(default_factory=list)
+    nota: str | None = None
+
+    @field_validator("nos")
+    @classmethod
+    def _nos(cls, v):
+        fora = sorted(set(v) - NOS)
+        if fora:
+            raise ValueError(f"nó desconhecido na volta: {fora}")
+        return v
+
+
+class Estagio(_Base):
+    tipo: str
+    nome: str
+    recursos: list[str]
+    nos: list[str]
+    volta: Volta
+    timeout_s: int = Field(gt=0)
+    prioridade: int = 100
+    efeito: str = Field(min_length=10)
+    concorrencia: list[str] = Field(default_factory=list)
+    depende: list[str] = Field(default_factory=list)
+    sem_itcampo: str | None = None
+
+    @field_validator("recursos")
+    @classmethod
+    def _recursos(cls, v):
+        return _checar_recursos(v)
+
+    @field_validator("nos")
+    @classmethod
+    def _nos(cls, v):
+        return _checar_nos(v)
+
+
+class Efeito(_Base):
+    """Conferência do estágio legado: rc==0 de todos os passos E o que está aqui. `arquivo` = regravado depois do
+    início; `log_contem` = a saída DESTA execução casa o regex; `log_sem` = não casa (padrão: traceback). Sem
+    `arquivo` nem `log_contem`, `so_rc` diz por que não há prova melhor (dívida declarada, não silêncio)."""
+    descricao: str = Field(min_length=10)
+    arquivo: str | None = None
+    log_contem: str | None = None
+    log_sem: str | None = LOG_SEM_PADRAO
+    so_rc: str | None = None
+
+    @model_validator(mode="after")
+    def _prova(self):
+        if not (self.arquivo or self.log_contem or self.so_rc):
+            raise ValueError("efeito sem prova: declare arquivo, log_contem ou so_rc (motivo)")
+        for rx in (self.log_contem, self.log_sem):
+            if rx:
+                re.compile(rx)
+        if self.arquivo and (self.arquivo.startswith("/") or ".." in Path(self.arquivo).parts):
+            raise ValueError(f"efeito.arquivo tem de ser relativo à raiz do repo: {self.arquivo}")
+        return self
+
+
+class AgendaItem(_Base):
+    cron: str
+    args: list[str] = Field(default_factory=list)
+
+    @field_validator("cron")
+    @classmethod
+    def _cron(cls, v):
+        Cron(v)                                   # levanta ValueError se não for 5 campos válidos
+        return v
+
+
+class Evento(_Base):
+    depende: list[str] = Field(min_length=1)
+    debounce_s: int = Field(default=0, ge=0)
+    intervalo_min_s: int = Field(default=0, ge=0)
+    agrupar: bool = True                          # recálculo da base inteira: UM job por rotina, não um por fonte
+
+
+class Condicao(_Base):
+    dia_semana_iso: int = Field(ge=1, le=7)       # 7 = domingo (o `[ "$(date +%u)" = 7 ]` do cron antigo)
+
+
+class Rotina(_Base):
+    estagio: str
+    descricao: str = Field(min_length=5)
+    comando: list[str] | None = None
+    passos: list[list[str]] | None = None
+    parar_no_erro: bool = False
+    env: dict[str, str] = Field(default_factory=dict)
+    carregar_env: bool = False
+    path_extra: list[str] = Field(default_factory=list)
+    recursos: list[str] | None = None
+    nos: list[str] | None = None
+    timeout_s: int | None = Field(default=None, gt=0)
+    prioridade: int | None = None
+    concorrencia: list[str] = Field(default_factory=list)
+    trava: str | None = None
+    condicao: Condicao | None = None
+    agenda: list[AgendaItem] = Field(default_factory=list)
+    evento: Evento | None = None
+    efeito: Efeito
+    ativa: bool = True
+    bloqueio: str | None = None
+    origem: list[str] = Field(default_factory=list)
+    nota: str | None = None
+
+    @field_validator("estagio")
+    @classmethod
+    def _estagio(cls, v):
+        if v not in ESTAGIOS:
+            raise ValueError(f"estágio desconhecido: {v}")
+        return v
+
+    @field_validator("recursos")
+    @classmethod
+    def _recursos(cls, v):
+        return None if v is None else _checar_recursos(v)
+
+    @field_validator("nos")
+    @classmethod
+    def _nos(cls, v):
+        return None if v is None else _checar_nos(v)
+
+    @model_validator(mode="after")
+    def _forma(self):
+        if (self.comando is None) == (self.passos is None):
+            raise ValueError("declare exatamente um de `comando` ou `passos`")
+        for argv in self.argvs():
+            if not argv or not all(isinstance(a, str) and a for a in argv):
+                raise ValueError("argv vazio")
+            if any(a.startswith("/home/") or a.startswith("~/") for a in argv):
+                raise ValueError(f"caminho de casa no comando (topologia fora do yaml): {argv}")
+        if not self.agenda and self.evento is None:
+            raise ValueError("rotina sem gatilho: declare `agenda` e/ou `evento`")
+        if not self.ativa and not self.bloqueio:
+            raise ValueError("rotina inativa precisa de `bloqueio` (por que não religa)")
+        if self.trava and (self.trava.startswith("/") or ".." in Path(self.trava).parts):
+            raise ValueError("trava tem de ser relativa à raiz do repo")
+        return self
+
+    def argvs(self) -> list[list[str]]:
+        return [self.comando] if self.comando is not None else list(self.passos or [])
+
+
+class Duplicacao(_Base):
+    mantida: str
+    descartadas: list[str]
+    motivo: str
+
+
+class Fora(_Base):
+    origem: list[str]
+    motivo: str
+
+
+class Grafo(_Base):
+    versao: int
+    nos: list[str]
+    concorrencia: dict[str, Concorrencia]
+    estagios: dict[str, Estagio]
+    fontes: dict[str, str]
+    rotinas: dict[str, Rotina]
+    duplicacoes: list[Duplicacao] = Field(default_factory=list)
+    fora: list[Fora] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _coerencia(self):
+        erros: list[str] = []
+        falta = [e for e in ESTAGIOS if e not in self.estagios]
+        sobra = [e for e in self.estagios if e not in ESTAGIOS]
+        if falta or sobra:
+            erros.append(f"estágios: faltam {falta}, sobram {sobra}")
+        _checar_nos(self.nos)
+        for eid, e in self.estagios.items():
+            erros += [f"{eid}: depende de estágio inexistente {d}" for d in e.depende if d not in self.estagios]
+            erros += [f"{eid}: concorrência {c} não declarada" for c in e.concorrencia if c not in self.concorrencia]
+        for rid, r in self.rotinas.items():
+            if not _RX_ID.match(rid):
+                erros.append(f"id de rotina inválido: {rid!r}")
+            erros += [f"{rid}: concorrência {c} não declarada" for c in r.concorrencia if c not in self.concorrencia]
+            if r.evento:
+                erros += [f"{rid}: depende de '{d}', que não é fonte nem rotina" for d in r.evento.depende
+                          if d not in self.fontes and d not in self.rotinas]
+        for d in self.duplicacoes:
+            if d.mantida not in self.rotinas:
+                erros.append(f"duplicação: rotina mantida '{d.mantida}' não existe")
+        if erros:
+            raise ErroGrafo("; ".join(erros))
+        ciclo = achar_ciclo({k: v.depende for k, v in self.estagios.items()})
+        if ciclo:
+            raise ErroGrafo("ciclo de dependência entre estágios: " + " → ".join(ciclo))
+        ciclo = achar_ciclo({k: [d for d in (r.evento.depende if r.evento else []) if d in self.rotinas]
+                             for k, r in self.rotinas.items()})
+        if ciclo:
+            raise ErroGrafo("ciclo de dependência entre rotinas: " + " → ".join(ciclo))
+        return self
+
+    # ── consumidores ──
+    def contrato_da_rotina(self, rid: str) -> dict:
+        r, e = self.rotinas[rid], self.estagios[self.rotinas[rid].estagio]
+        nos = r.nos or e.nos
+        return {"recursos": list(r.recursos or e.recursos),
+                "prioridade": r.prioridade if r.prioridade is not None else e.prioridade,
+                "volta": {"nos": list(e.volta.nos), "estagio": r.estagio},
+                "no_preferido": nos[0] if nos else None,
+                "timeout_s": r.timeout_s or e.timeout_s}
+
+    def contrato(self) -> dict[str, dict]:
+        """tipo de job → recursos/prioridade/volta/no_preferido (o que o planejador grava em cada job)."""
+        return {tipo_da_rotina(rid): self.contrato_da_rotina(rid) for rid in self.rotinas}
+
+    def payload(self, rid: str, args: list[str] | None = None) -> dict:
+        p = {"rotina": rid, "timeout_s": self.contrato_da_rotina(rid)["timeout_s"] + 60}
+        if args:
+            p["args"] = list(args)
+        return p
+
+    def grafo_planejador(self, so_ativas: bool = True) -> dict[str, list[dict]]:
+        """fonte do evento → dependentes, no formato de `planejador.propagar_eventos`. O `timeout_s` vai no payload
+        porque é dele que o supervisor tira o teto do subprocesso."""
+        g: dict[str, list[dict]] = {}
+        for rid, r in self.rotinas.items():
+            if not r.evento or (so_ativas and not r.ativa):
+                continue
+            dep = {"tipo": tipo_da_rotina(rid), "debounce_s": r.evento.debounce_s,
+                   "intervalo_min_s": r.evento.intervalo_min_s, "agrupar": r.evento.agrupar,
+                   "payload": self.payload(rid)}
+            for fonte in r.evento.depende:
+                g.setdefault(fonte, []).append(dep)
+        return g
+
+    def agenda_linhas(self, so_ativas: bool = True) -> list[dict]:
+        """Linhas de `fluxo.agenda` (id estável: `<rotina>` ou `<rotina>#<n>` quando há mais de um horário)."""
+        out = []
+        for rid, r in self.rotinas.items():
+            if so_ativas and not r.ativa:
+                continue
+            for i, item in enumerate(r.agenda):
+                out.append({"id": rid if len(r.agenda) == 1 else f"{rid}#{i + 1}", "cron_expr": item.cron,
+                            "tipo_job": tipo_da_rotina(rid), "payload": self.payload(rid, item.args)})
+        return out
+
+
+def tipo_da_rotina(rid: str) -> str:
+    return f"{PREFIXO_LEGADO}{rid}"
+
+
+def _checar_recursos(v: list[str]) -> list[str]:
+    fora = sorted(set(v) - RECURSOS)
+    if not v or fora:
+        raise ValueError(f"recurso inexistente no governador: {fora or 'lista vazia'} (válidos: {sorted(RECURSOS)})")
+    return v
+
+
+def _checar_nos(v: list[str]) -> list[str]:
+    fora = sorted(set(v) - NOS)
+    if fora:
+        raise ValueError(f"nó desconhecido: {fora}")
+    return v
+
+
+def achar_ciclo(arestas: dict[str, list[str]]) -> list[str] | None:
+    """DFS em três cores; devolve o caminho do primeiro ciclo achado (ex.: ['a', 'b', 'a']) ou None."""
+    cor: dict[str, int] = {}
+
+    def visita(n: str, trilha: list[str]) -> list[str] | None:
+        if cor.get(n) == 1:
+            return trilha[trilha.index(n):] + [n]
+        if cor.get(n) == 2:
+            return None
+        cor[n] = 1
+        for d in arestas.get(n, []):
+            achado = visita(d, trilha + [n])
+            if achado:
+                return achado
+        cor[n] = 2
+        return None
+
+    for n in sorted(arestas):
+        achado = visita(n, [])
+        if achado:
+            return achado
+    return None
+
+
+def validar_dict(dados: dict) -> Grafo:
+    return Grafo.model_validate(dados)
+
+
+def carregar(caminho: Path | str | None = None) -> Grafo:
+    """Lê e valida o yaml. Levanta ErroGrafo/ValidationError — nunca devolve grafo pela metade."""
+    dados = yaml.safe_load(Path(caminho or CAMINHO).read_text(encoding="utf-8")) or {}
+    return validar_dict(dados)
+
+
+@lru_cache(maxsize=4)
+def carregar_cache(caminho: str | None = None) -> Grafo:
+    return carregar(caminho)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """`python -m compliance_agent.fluxo.grafo [caminho]` — valida e resume (o portão do deploy)."""
+    import json
+    import sys
+    args = argv if argv is not None else sys.argv[1:]
+    g = carregar(args[0] if args else None)
+    fracos = sorted(rid for rid, r in g.rotinas.items() if not (r.efeito.arquivo or r.efeito.log_contem))
+    print(json.dumps({"ok": True, "estagios": len(g.estagios), "rotinas": len(g.rotinas),
+                      "ativas": sum(r.ativa for r in g.rotinas.values()),
+                      "agenda": len(g.agenda_linhas()), "fontes_com_dependentes": len(g.grafo_planejador()),
+                      "efeito_so_rc": len(fracos)}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

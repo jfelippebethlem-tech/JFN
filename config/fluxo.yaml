@@ -1,0 +1,2424 @@
+# fluxo.yaml — o GRAFO da Esteira Única (plano mestre v2 §3.2/§3.3, item O2.1). Validado por Pydantic no carregamento
+# (compliance_agent/fluxo/grafo.py; ciclo de dependência ⇒ erro). Conferir: `python -m compliance_agent.fluxo.grafo`.
+#
+# Gerado UMA vez (24/11/2026) de config/propagacao.yaml (fontes + 43 derivados) e do inventário O1.1 (config/jobs.yaml,
+# gitignored: só os jobs ativos/rede ANTES da parada) — daqui em diante este arquivo é a fonte, editado à mão.
+# SEM topologia sensível (ADR-011): nós só vm1/vm2/itcampo; comandos relativos à raiz do repo; nada de host, IP,
+# diretório de casa ou credencial (o validador recusa caminho de casa no argv; `.env` só entra por `carregar_env`).
+#
+#   estagios      E1–E18: recursos (= slots do governador), nós, volta (máquina alternativa), timeout_s, prioridade
+#                 (menor = antes), efeito (descrição verificável), concorrência por fonte/provedor, dependência.
+#                 E13 → E10 NÃO é aresta: o tier calibrado é configuração que o E10 lê (senão haveria ciclo).
+#   concorrencia  teto GLOBAL por fonte/provedor (todas as máquinas); aplicação na reserva = O2.2.
+#   fontes        nomes de evento (a sonda ainda mora no propagacao.yaml até a O3).
+#   rotinas       o que rodava, pelo estágio `legado` (comando atual, sem reescrever): agenda (cron 5 campos, hora de
+#                 Brasília; args por horário) e/ou evento (depende, debounce_s, intervalo_min_s, agrupar). `{py}` =
+#                 python do venv; `{hoje}`/`{ontem}` = datas de Brasília. efeito: rc 0 de todos os passos E `arquivo`
+#                 regravado / `log_contem` / `log_sem` (padrão: traceback); `so_rc` = dívida declarada.
+#   duplicacoes   escolhas feitas sobre as 29 duplicações do inventário (uma entrada só).
+#   fora          o que NÃO entra na esteira, com o motivo.
+versao: 1
+nos: [vm1, vm2, itcampo]
+concorrencia:
+  por_fonte: {max: 1, motivo: 'uma coleta por fonte externa ao mesmo tempo (circuit breaker por fonte, §3.4)'}
+  siafe_sessao: {max: 1, motivo: 'uma sessão SIAFE por vez; na VM-2, SEI ou SIAFE, nunca os dois (memória vm2-sweeps-e-siafe-sessao-unica)'}
+  sei_rj_ip: {max: 6, motivo: 'teto do SEI-RJ por IP, medido (§3.4 it-campo navegador 6)'}
+  doerj: {max: 1, motivo: uma leitura do Diário Oficial por vez}
+  pncp: {max: 1, motivo: 'API PNCP: uma coleta por vez (limite de taxa)'}
+  tcerj: {max: 1, motivo: 'portal aberto do TCE-RJ: uma coleta por vez'}
+  receita_cadastro: {max: 1, motivo: 'consulta cadastral (dump/sweep de empresas): uma por vez'}
+  assinatura_claude: {max: 4, motivo: 'CLI da assinatura (it-campo 4 + VM-2), com a trava de ritmo semanal (llm/ritmo_assinatura)'}
+  llm_batch: {max: 2, motivo: lotes Batch (Haiku) em voo ao mesmo tempo}
+  api_paga: {max: 1, motivo: 'API paga com teto de US$ 100/mês: um consumidor por vez (nunca assumir free tier)'}
+  painel: {max: 1, motivo: 'recálculo do cache do painel: um pedido por vez (o painel entrega o anterior e recalcula em 2º plano)'}
+  disco_vm1: {max: 1, motivo: 'uma rotina de disco pesada por vez na VM-1 (WAL, backup, compactação)'}
+estagios:
+  E1:
+    tipo: coletar
+    nome: Coletar fonte
+    recursos: [cpu_leve]
+    nos: [vm2, vm1]
+    volta:
+      nos: [vm1]
+      nota: navegador SIAFE só na VM-2; VM-1 só em emergência
+    timeout_s: 3600
+    prioridade: 40
+    efeito: linhas novas + registro em aquisicao com contagens aceito/rejeitado/quarentena, ou 'sem novidade' declarado
+    concorrencia: [por_fonte]
+    depende: []
+    sem_itcampo: igual
+  E2:
+    tipo: arvore
+    nome: Árvore do processo SEI
+    recursos: [navegador]
+    nos: [itcampo, vm2]
+    volta:
+      nos: [vm2, vm1]
+      nota: VM-2 ×1; VM-1 ×1 só em emergência
+    timeout_s: 3600
+    prioridade: 50
+    efeito: árvore + tree_hash gravados; hash igual ao anterior = 'sem mudança' declarado e fim
+    concorrencia: [sei_rj_ip]
+    depende: [E1]
+    sem_itcampo: VM-2 ×1
+  E3:
+    tipo: capturar
+    nome: Capturar documentos novos
+    recursos: [navegador]
+    nos: [itcampo, vm2]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 50
+    efeito: só os documentos novos (delta por id_documento) + versoes sha256; conferência por marcador com 0 omitido
+    concorrencia: [sei_rj_ip]
+    depende: [E2]
+    sem_itcampo: VM-2
+  E4:
+    tipo: texto
+    nome: Texto nativo
+    recursos: [cpu_leve]
+    nos: [vm2, vm1]
+    volta:
+      nos: [vm1]
+    timeout_s: 1800
+    prioridade: 60
+    efeito: texto nativo por página + perfil (nativa/escaneada/branca) + registro de transformacao
+    depende: [E3]
+    sem_itcampo: VM-2 e VM-1
+  E5:
+    tipo: ocr
+    nome: OCR de página escaneada
+    recursos: [gpu]
+    nos: [itcampo]
+    volta:
+      nos: [vm2]
+      nota: 'CPU (RapidOCR/Tesseract) na VM-2: mais lento, nunca parado (~19 PDFs/dia, §16.1)'
+    timeout_s: 7200
+    prioridade: 55
+    efeito: OCR gravado SÓ onde o texto estava vazio, com bbox e motor@versão
+    depende: [E4]
+    sem_itcampo: CPU na VM-2
+  E6:
+    tipo: confirmar_ocr
+    nome: Confirmar número do OCR
+    recursos: [cpu_leve]
+    nos: [vm2]
+    volta:
+      nos: [vm1]
+    timeout_s: 3600
+    prioridade: 60
+    efeito: 'número do OCR por IA confirmado (nível A: SIAFE, código de barras ou leitura independente) ou marcado a_conferir'
+    depende: [E5]
+    sem_itcampo: VM-2
+  E7:
+    tipo: arquivar
+    nome: Arquivar original
+    recursos: [disco]
+    nos: [vm2, itcampo]
+    volta:
+      nos: [vm2]
+      nota: fica quente na VM-2 (com quota) até o HD voltar
+    timeout_s: 3600
+    prioridade: 80
+    efeito: original no HD/frio com md5 conferido + índice atualizado; espaço liberado medido
+    depende: [E5]
+    sem_itcampo: quente na VM-2
+  E8:
+    tipo: fatos
+    nome: Fatos do processo
+    recursos: [llm]
+    nos: [vm2, itcampo]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    efeito: fatos com citação literal conferida (documento, versão, página, offset) + cobertura gravada
+    concorrencia: [assinatura_claude, llm_batch]
+    depende: [E4, E6]
+    sem_itcampo: VM-2
+  E9:
+    tipo: elegibilidade
+    nome: Elegibilidade da contratação
+    recursos: [cpu_leve]
+    nos: [vm2]
+    volta:
+      nos: [vm1]
+    timeout_s: 3600
+    prioridade: 40
+    efeito: regime, natureza do pagamento, origem do exercício, natureza do credor e elegibilidade por detector gravados
+    depende: [E1, E8]
+    sem_itcampo: igual
+  E10:
+    tipo: detectar
+    nome: Detectar
+    recursos: [cpu_pesado]
+    nos: [vm2, itcampo]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    efeito: execucao_regra registrada + achados no contrato único (ou 0 achado declarado)
+    depende: [E9]
+    sem_itcampo: VM-2
+  E11:
+    tipo: periciar
+    nome: Periciar processo
+    recursos: [llm]
+    nos: [vm2, itcampo]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    efeito: laudo v2 por eixo com release_ia, cobertura e abstenção gravados
+    concorrencia: [assinatura_claude, llm_batch]
+    depende: [E8, E10]
+    sem_itcampo: VM-2
+  E12:
+    tipo: conferir
+    nome: Conferir (Opus)
+    recursos: [llm]
+    nos: [vm2, itcampo]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 30
+    efeito: veredito do Opus gravado (confirma ou rebaixa) com a régua atualizada
+    concorrencia: [assinatura_claude]
+    depende: [E10, E11]
+    sem_itcampo: VM-2
+  E13:
+    tipo: calibrar
+    nome: Calibrar detector
+    recursos: [cpu_leve]
+    nos: [vm2]
+    volta:
+      nos: [vm1]
+    timeout_s: 3600
+    prioridade: 70
+    efeito: fp_medida + IC95 + tier gravados no registro do detector
+    depende: [E12]
+    sem_itcampo: VM-2
+  E14:
+    tipo: caso
+    nome: Montar caso
+    recursos: [cpu_leve]
+    nos: [vm2, vm1]
+    volta:
+      nos: [vm1]
+    timeout_s: 3600
+    prioridade: 60
+    efeito: caso gravado com hipóteses inocentes, lacunas e contestações
+    depende: [E10, E11, E12]
+    sem_itcampo: VM-2
+  E15:
+    tipo: materializar
+    nome: Materializar visão
+    recursos: [materializar]
+    nos: [vm1]
+    volta:
+      nos: [vm2]
+      nota: só se a VM-1 cair; o painel mora na VM-1
+    timeout_s: 1800
+    prioridade: 20
+    efeito: chave do cache do painel (ou lente) regravada depois do início
+    depende: [E1, E10, E14]
+    sem_itcampo: igual
+  E16:
+    tipo: entregar
+    nome: Entregar produto
+    recursos: [cpu_leve]
+    nos: [vm1, vm2]
+    volta:
+      nos: [vm2]
+    timeout_s: 3600
+    prioridade: 35
+    efeito: dossiê no padrão da casa com manifesto de hashes, validador de citações e message_id do envio
+    depende: [E14]
+    sem_itcampo: VM-1/VM-2
+  E17:
+    tipo: manter
+    nome: Manter
+    recursos: [disco]
+    nos: [vm1, vm2]
+    volta:
+      nos: [vm2, vm1]
+    timeout_s: 7200
+    prioridade: 60
+    efeito: backup com restauração testada / checkpoint do WAL / VACUUM condicional / zelador com espaço medido
+    depende: []
+    sem_itcampo: VM-2/VM-1
+  E18:
+    tipo: observar
+    nome: Observar
+    recursos: [cpu_leve]
+    nos: [vm1, vm2, itcampo]
+    volta:
+      nos: [vm1, vm2]
+    timeout_s: 900
+    prioridade: 25
+    efeito: métrica/SLO/estado honesto gravado em fluxo.metricas ou item de automelhoria aberto
+    depende: []
+    sem_itcampo: todos
+fontes: {siafe_ob: OB nova ou regravada no SIAFE, siafe_status: 'Status de envio de OB recoletado (devolvida pelo banco, paga)', siafe_gd: Guia de Devolução
+    ingerida, sei_lote: Lote SEI de outro nó (VM-2 / it-campo) aprovado na conferência, sei_arquivado: Processo SEI capturado ou recapturado na VM-1 (arquivado),
+  sei_ficha: Ficha de processo SEI nova, sei_lex: Parecer de execução (Lex) novo, sei_leitura_dupla: Leitura dupla nova, contratos_tcerj: Contrato novo
+    no TCE-RJ / PNCP / SIGA, tcerj_licitante: Licitantes novos do TCE-RJ (vencedor e perdedor por certame municipal), sancoes: Sanção nova (CEIS/CNEP/CEPIM),
+  doerj: 'Ato novo no DOERJ (contratação, TAC)', triagem: 'Veredito novo na triagem de alertas (leituras, Opus)', revisao_humana: Revisão humana de alerta
+    (confirmado / descartado), regra_pericia: Correção na régua da perícia contábil / Guia de Devolução / termo aditivo nos autos, regra_emendas: Correção
+    nos detectores de emendas (D1–D6), regra_pcrj: Correção nos detectores da Prefeitura (D7–D12), pcrj_base: 'Despesa, contrato ou licitação nova da Prefeitura
+    do Rio', emendas_base: Emenda nova na base, ocr_gpu: 'Texto novo do OCR por IA (GPU do it-campo, Surya 2.5) chegou ao cache SEI', ocr_reserva: Texto
+    novo do OCR de reserva (RapidOCR em CPU — VM-2 com a GPU parada; it-campo em paralelo) chegou ao cache SEI, regra_vinculo: Correção na regra do vínculo
+    OB↔contrato, regra_territorio: Correção no motor território (mapa por município), regra_governo_couto: Correção nas regras da gestão Couto, regra_orcamento: Correção
+    no orçamento por órgão, regra_detectores: Correção de detector ou de regra de qualidade, vault_casos_md: Caso do vault criado ou editado (afirmação
+    que o juiz de qualidade tem de julgar), produtos_casa: 'Produto da casa novo (relatório de fornecedor/órgão, parecer Lex, dossiê em reports/)', regra_iss_retido: Correção
+    no detector de ISS retido na NF × OB, pericia_agentes: Laudo novo ou refeito de perícia por agente (leitura integral do processo), autoaprimoramento_registro: 'Registro
+    da automelhoria da perícia mudou (versão nova, veredito do portão, promoção)', memoria_claude: Decisão do dono ou lição registrada na memória dos agentes,
+  conferencia_opus: Conferência do Opus corrigiu resultado produzido em contingência (Claude da assinatura no limite), decisao_dono: Decisão do dono que
+    muda requisito (manual), compras_diretas_tcerj: Compras diretas novas do TCE-RJ (dispensas e inexigibilidades), regra_fracionamento: Correção na régua
+    de fracionamento por objeto (art. 75 §1º)}
+rotinas:
+  manutencao_semanal:
+    estagio: E17
+    descricao: Manutenção semanal do compliance.db (VACUUM condicional, ANALYZE, WAL)
+    comando: ['{py}', -m, compliance_agent.manutencao, --tudo]
+    nos: [vm1]
+    timeout_s: 7200
+    concorrencia: [disco_vm1]
+    agenda:
+    - {cron: 0 3 * * 0}
+    origem: [vm1-cron-compliance-agent-manutencao]
+    efeito: {descricao: 'Manutenção semanal do compliance.db (VACUUM condicional, ANALYZE, WAL): rodou até o fim sem traceback', so_rc: 'efeito próprio
+        a declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  checkpoint_wal:
+    estagio: E17
+    descricao: Checkpoint do WAL do compliance.db
+    comando: ['{py}', -c, from compliance_agent.manutencao import checkpoint_wal as c; print(c())]
+    nos: [vm1]
+    timeout_s: 600
+    trava: data/locks/manut_wal.lock
+    concorrencia: [disco_vm1]
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    agenda:
+    - {cron: 25 */6 * * *}
+    origem: [vm1-cron-compliance-agent-manutencao-2]
+    efeito: {descricao: 'Checkpoint do WAL do compliance.db: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  siafe_runner_diario:
+    estagio: E1
+    descricao: 'SIAFE: coleta diária de OB/NE/NL'
+    comando: ['{py}', -m, compliance_agent.siafe_runner, diario]
+    concorrencia: [siafe_sessao]
+    timeout_s: 7200
+    agenda:
+    - {cron: 0 5 * * *}
+    origem: [vm1-cron-compliance-agent-siafe-runner-diario]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'SIAFE: coleta diária de OB/NE/NL: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  siafe_runner_retentar:
+    estagio: E1
+    descricao: 'SIAFE: retentar coletas capadas/falhas'
+    comando: ['{py}', -m, compliance_agent.siafe_runner, retentar, '10']
+    concorrencia: [siafe_sessao]
+    timeout_s: 3600
+    agenda:
+    - {cron: '55 9,13,17 * * *'}
+    origem: [vm1-cron-compliance-agent-siafe-runner-retentar]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'SIAFE: retentar coletas capadas/falhas: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  siafe_drenar_capados:
+    estagio: E1
+    descricao: 'SIAFE: dreno dos dias capados'
+    comando: [bash, tools/siafe_drenar_capados.sh, '5']
+    concorrencia: [siafe_sessao]
+    timeout_s: 3600
+    agenda:
+    - {cron: 50 */2 * * *}
+    origem: [vm1-cron-siafe-drenar-capados-sh]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'SIAFE: dreno dos dias capados: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  siafe_documento_sweep:
+    estagio: E1
+    descricao: 'SIAFE: varredura de documentos (NE/NL) por exercício'
+    comando: ['{py}', tools/siafe_documento_sweep.py]
+    carregar_env: true
+    concorrencia: [siafe_sessao]
+    timeout_s: 14400
+    agenda:
+    - cron: 10 3 * * *
+      args: [--exercicio, '2025', --ate, '04:40', --max-ugs, '2']
+    - cron: 20 23 * * *
+      args: [--exercicio, '2023', --tipos, NE, --ugs, '294200,390200,296100,044100,243200,137200,110100,045200,261100,180100,317200,404310,424100,203100,020100,317100,297100,263100,210700,140100,133100,403200,317300,313300,266500,197100,135300',
+        --max-ugs, '27', --ate, '02:55', --load-max, '4.5']
+    origem: [vm1-cron-siafe-documento-sweep-py, vm1-cron-siafe-documento-sweep-py-2]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'SIAFE: varredura de documentos (NE/NL) por exercício: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  folha_orquestrador:
+    estagio: E1
+    descricao: 'Folha de pagamento: orquestrador de coletas'
+    comando: ['{py}', -m, compliance_agent.collectors.folha_orquestrador]
+    concorrencia: [por_fonte]
+    agenda:
+    - {cron: 0 6 * * *}
+    origem: [vm1-cron-compliance-agent-collectors-folha-orquestrador]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Folha de pagamento: orquestrador de coletas: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_sei:
+    estagio: E2
+    descricao: Sweep SEI geral (sessão limitada, libera o navegador)
+    comando: [bash, tools/sweep_sei.sh]
+    concorrencia: [sei_rj_ip]
+    timeout_s: 1800
+    agenda:
+    - {cron: '*/30 * * * *'}
+    origem: [vm1-cron-sweep-sei-sh-2, vm1-cron-sweep-sei-sh]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Sweep SEI geral (sessão limitada, libera o navegador): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_dados:
+    estagio: E10
+    descricao: Sweep de dados (cruzamentos diários)
+    comando: [bash, tools/sweep_dados.sh]
+    timeout_s: 3600
+    agenda:
+    - {cron: '0 10,16 * * *'}
+    origem: [vm1-cron-sweep-dados-sh, vm1-cron-sweep-dados-sh-2]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Sweep de dados (cruzamentos diários): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  cruzador:
+    estagio: E10
+    descricao: Cruzador noturno
+    comando: [bash, tools/cruzador.sh]
+    agenda:
+    - {cron: 0 23 * * *}
+    origem: [vm1-cron-cruzador-sh]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Cruzador noturno: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  sweep_sede:
+    estagio: E10
+    descricao: Sweep de sede (endereço × fornecedor)
+    comando: [bash, tools/sweep_sede.sh]
+    agenda:
+    - {cron: '0 8,20 * * *'}
+    origem: [vm1-cron-sweep-sede-sh]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Sweep de sede (endereço × fornecedor): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  refresh_favorecido_resumo:
+    estagio: E15
+    descricao: Resumo por favorecido (tabela materializada)
+    comando: [bash, tools/refresh_favorecido_resumo.sh]
+    recursos: [materializar]
+    nos: [vm1]
+    agenda:
+    - {cron: 45 5 * * *}
+    origem: [vm1-cron-refresh-favorecido-resumo-sh]
+    timeout_s: 900
+    efeito: {descricao: 'Resumo por favorecido (tabela materializada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  socios_dump_refresh:
+    estagio: E1
+    descricao: Dump de sócios (Receita) mensal
+    comando: [bash, tools/socios_dump_refresh.sh]
+    concorrencia: [receita_cadastro]
+    timeout_s: 10800
+    agenda:
+    - {cron: 0 6 5 * *}
+    origem: [vm1-cron-socios-dump-refresh-sh]
+    nos: [vm1]
+    efeito: {descricao: 'Dump de sócios (Receita) mensal: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  backup_compliance:
+    estagio: E17
+    descricao: Backup semanal do compliance.db para a nuvem
+    comando: [bash, tools/backup_compliance.sh]
+    nos: [vm1]
+    timeout_s: 10800
+    concorrencia: [disco_vm1]
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    agenda:
+    - {cron: 50 3 * * 0}
+    origem: [vm1-cron-backup-compliance-sh]
+    efeito: {descricao: 'Backup semanal do compliance.db para a nuvem: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  backup_evidencias_pg:
+    estagio: E17
+    descricao: Backup diário do PG jfn_evidencias (pg_dump + nuvem)
+    comando: [bash, tools/backup_evidencias_pg.sh]
+    nos: [vm1]
+    timeout_s: 3600
+    trava: data/locks/backup_evidencias_pg.lock
+    efeito: {descricao: dump do dia gravado e copiado (linha 'dump ok' no log desta execução), log_contem: dump ok}
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    agenda:
+    - {cron: 40 2 * * *}
+    origem: [vm1-cron-backup-evidencias-pg-sh]
+  manutencao_diaria:
+    estagio: E17
+    descricao: Manutenção diária (logs, temporários)
+    comando: [bash, tools/manutencao_diaria.sh]
+    nos: [vm1]
+    agenda:
+    - {cron: 10 4 * * *}
+    origem: [vm1-cron-manutencao-diaria-sh]
+    timeout_s: 900
+    efeito: {descricao: 'Manutenção diária (logs, temporários): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  garantir_obs_iterj_mgs:
+    estagio: E1
+    descricao: Garantir observações ITERJ/MGS
+    comando: ['{py}', tools/garantir_obs_iterj_mgs.py]
+    agenda:
+    - {cron: 50 5 * * *}
+    origem: [vm1-cron-garantir-obs-iterj-mgs-py]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Garantir observações ITERJ/MGS: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pericia_sweep:
+    estagio: E11
+    descricao: Sweep da perícia (min 3 observações)
+    comando: ['{py}', -m, compliance_agent.pericia_sweep, --min-obs, '3']
+    agenda:
+    - {cron: 30 6 * * *}
+    origem: [vm1-cron-compliance-agent-pericia-sweep]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Sweep da perícia (min 3 observações): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  obra_fase_sei:
+    estagio: E8
+    descricao: Fase da obra lida do SEI
+    comando: ['{py}', -m, tools.obra_fase_sei, --limite, '200']
+    carregar_env: true
+    agenda:
+    - {cron: 40 6 * * *}
+    origem: [vm1-cron-tools-obra-fase-sei]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Fase da obra lida do SEI: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  sei_integra_fila:
+    estagio: E3
+    descricao: 'Íntegras SEI: fila geral'
+    comando: ['{py}', tools/sei_integra_fila.py, --geral, --segundos, '7200']
+    concorrencia: [sei_rj_ip]
+    timeout_s: 7800
+    agenda:
+    - {cron: 40 4 * * *}
+    origem: [vm1-cron-sei-integra-fila-py]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Íntegras SEI: fila geral: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  integra_fila_dinheiro:
+    estagio: E3
+    descricao: 'Íntegras SEI: fila por dinheiro (recalcula a fila e captura 2 lotes)'
+    passos:
+    - ['{py}', -m, tools.sei_fila_por_dinheiro, --gravar, --top, '800']
+    - ['{py}', tools/sei_integra_fila.py, --max, '4']
+    - ['{py}', tools/sei_integra_fila.py, --max, '4', --fila, data/sei_fila_dinheiro.json]
+    concorrencia: [sei_rj_ip]
+    timeout_s: 3600
+    agenda:
+    - {cron: 30 3 * * *}
+    origem: [vm1-timer-jfn-integra-fila]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Íntegras SEI: fila por dinheiro (recalcula a fila e captura 2 lotes): rodou até o fim sem traceback', so_rc: 'efeito próprio a
+        declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  triagem_amarelos:
+    estagio: E16
+    descricao: Triagem semanal dos amarelos (envio ao dono)
+    comando: ['{py}', -m, tools.triagem_amarelos, --top, '15', --enviar]
+    agenda:
+    - {cron: 0 9 * * 1}
+    origem: [vm1-cron-tools-triagem-amarelos]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Triagem semanal dos amarelos (envio ao dono): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pipelines_slo:
+    estagio: E18
+    descricao: SLO dos pipelines (alerta)
+    comando: ['{py}', -m, tools.pipelines_slo, --alerta]
+    carregar_env: true
+    agenda:
+    - {cron: 7 * * * *}
+    origem: [vm1-cron-tools-pipelines-slo]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'SLO dos pipelines (alerta): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_atas_julgamento:
+    estagio: E1
+    descricao: Atas de julgamento (400 por rodada)
+    comando: [bash, tools/sweep_atas_julgamento.sh, '400']
+    concorrencia: [por_fonte]
+    agenda:
+    - {cron: 40 1 * * *}
+    origem: [vm1-cron-sweep-atas-julgamento-sh]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Atas de julgamento (400 por rodada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  prewarm_painel:
+    estagio: E15
+    descricao: Pré-aquecimento do cache do painel
+    comando: [bash, tools/prewarm_painel.sh]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    agenda:
+    - {cron: '16,46 * * * *'}
+    origem: [vm1-cron-prewarm-painel-sh, vm1-cron-prewarm-painel-sh-2]
+    timeout_s: 900
+    efeito: {descricao: 'Pré-aquecimento do cache do painel: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  guardiao_db_malformed:
+    estagio: E18
+    descricao: Guardião de integridade do compliance.db (só leitura)
+    comando: [bash, tools/guardiao_db_malformed.sh]
+    nos: [vm1]
+    timeout_s: 300
+    nota: segue no cron durante a parada (só leitura); vira sensor E18 na O2.3
+    agenda:
+    - {cron: 1-59/5 * * * *}
+    origem: [vm1-cron-guardiao-db-malformed-sh]
+    efeito: {descricao: 'Guardião de integridade do compliance.db (só leitura): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_doweb:
+    estagio: E1
+    descricao: 'DOWEB Prefeitura: contratações'
+    comando: ['{py}', -m, compliance_agent.pcrj.doweb, --contratacao, --ano-min, '2024', --paginas, '10']
+    concorrencia: [por_fonte]
+    agenda:
+    - {cron: 10 2 * * *}
+    origem: [vm1-cron-compliance-agent-pcrj-doweb]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'DOWEB Prefeitura: contratações: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_sei_ingest:
+    estagio: E1
+    descricao: 'SEI Prefeitura: ingestão'
+    comando: ['{py}', -m, tools.pcrj_sei_ingest]
+    agenda:
+    - {cron: 35 2 * * *}
+    origem: [vm1-cron-tools-pcrj-sei-ingest]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'SEI Prefeitura: ingestão: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  gitnexus_refresh:
+    estagio: E17
+    descricao: Reindexação semanal do GitNexus
+    comando: [gitnexus, analyze]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    timeout_s: 3600
+    path_extra: [~/.npm-global/bin]
+    nota: 'pesado.sh sai: o governador PSI substitui o semáforo'
+    agenda:
+    - {cron: 0 4 * * 0}
+    origem: [vm1-cron-pesado-sh-gitnexus]
+    efeito: {descricao: 'Reindexação semanal do GitNexus: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_fiscalizacao_247:
+    estagio: E10
+    descricao: Fiscalização 24/7 (sweep)
+    comando: [bash, tools/sweep_fiscalizacao_247.sh]
+    agenda:
+    - {cron: 30 */2 * * *}
+    origem: [vm1-cron-sweep-fiscalizacao-247-sh]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Fiscalização 24/7 (sweep): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_360:
+    estagio: E14
+    descricao: Sweep 360 (processo completo)
+    comando: [bash, tools/sweep_360.sh]
+    agenda:
+    - {cron: 20 */4 * * *}
+    origem: [vm1-cron-sweep-360-sh]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Sweep 360 (processo completo): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_avaliacao_total:
+    estagio: E10
+    descricao: Avaliação total (inclui o motor antigo de fracionamento, analisar.py)
+    comando: [bash, tools/sweep_avaliacao_total.sh]
+    nota: 'O1.5: executor do motor antigo de fracionamento; alertas dele vão à limpeza (O5.5)'
+    agenda:
+    - {cron: '50 1,9,17 * * *'}
+    origem: [vm1-cron-sweep-avaliacao-total-sh]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Avaliação total (inclui o motor antigo de fracionamento, analisar.py): rodou até o fim sem traceback', so_rc: 'efeito próprio a
+        declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  tcerj_aberto:
+    estagio: E1
+    descricao: TCE-RJ dados abertos (ingestão semanal)
+    comando: ['{py}', -m, compliance_agent.collectors.tcerj_aberto, --ingerir]
+    timeout_s: 3000
+    concorrencia: [tcerj]
+    nota: a pausa data/_pausa_tcerj do cron antigo vira agenda.ativo=false
+    agenda:
+    - {cron: 30 3 * * 6}
+    origem: [vm1-cron-compliance-agent-collectors-tcerj-aberto]
+    nos: [vm1]
+    efeito: {descricao: 'TCE-RJ dados abertos (ingestão semanal): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  varredura_sei_lane:
+    estagio: E2
+    descricao: Varredura SEI (lane de 10 min)
+    comando: [bash, tools/varredura_sei_lane.sh]
+    concorrencia: [sei_rj_ip]
+    timeout_s: 900
+    agenda:
+    - {cron: 3-59/10 * * * *}
+    origem: [vm1-cron-varredura-sei-lane-sh]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Varredura SEI (lane de 10 min): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  arquivar_cache_lane:
+    estagio: E7
+    descricao: Arquivar cache SEI (lane de 20 min)
+    comando: [bash, tools/arquivar_cache_lane.sh]
+    timeout_s: 1200
+    efeito: {descricao: 'processos do cache arquivados (linha ''arquivados: N processos'', sonda sei_arquivado)', so_rc: a linha só sai quando há o que
+        arquivar; 'sem novidade' ainda não é declarado pelo script}
+    agenda:
+    - {cron: 8-59/20 * * * *}
+    origem: [vm1-cron-arquivar-cache-lane-sh]
+    nos: [vm1]
+  arquivar_integra_lane:
+    estagio: E7
+    descricao: Arquivar íntegras (lane de 3 h)
+    comando: [bash, tools/arquivar_integra_lane.sh]
+    agenda:
+    - {cron: 10 */3 * * *}
+    origem: [vm1-cron-arquivar-integra-lane-sh]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Arquivar íntegras (lane de 3 h): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_integra_contratos_pcrj:
+    estagio: E3
+    descricao: Íntegra de contratos da Prefeitura
+    comando: ['{py}', tools/sweep_integra_contratos_pcrj.py, --limite, '80', --segundos, '1500']
+    timeout_s: 1800
+    agenda:
+    - {cron: 50 2 * * *}
+    origem: [vm1-cron-sweep-integra-contratos-pcrj-py]
+    nos: [vm1]
+    efeito: {descricao: 'Íntegra de contratos da Prefeitura: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  ocr_contratos_imagem:
+    estagio: E5
+    descricao: OCR de contratos em imagem (40 por rodada)
+    comando: ['{py}', tools/ocr_contratos_imagem.py, --limite, '40', --segundos, '3000']
+    recursos: [cpu_pesado]
+    timeout_s: 3300
+    agenda:
+    - {cron: 30 3 * * *}
+    origem: [vm1-cron-ocr-contratos-imagem-py]
+    nos: [vm1]
+    efeito: {descricao: 'OCR de contratos em imagem (40 por rodada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  doerj:
+    estagio: E1
+    descricao: 'DOERJ: Diário Oficial do Estado (ontem de manhã, hoje ao meio-dia)'
+    comando: ['{py}', -m, compliance_agent.collectors.doerj]
+    timeout_s: 1500
+    concorrencia: [doerj]
+    agenda:
+    - cron: 50 6 * * 1-6
+      args: ['{ontem}']
+    - cron: 40 12 * * 1-5
+      args: ['{hoje}']
+    origem: [vm1-cron-compliance-agent-collectors-doerj, vm1-cron-compliance-agent-collectors-doerj-2]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'DOERJ: Diário Oficial do Estado (ontem de manhã, hoje ao meio-dia): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar
+        ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  lista_suja_mte:
+    estagio: E1
+    descricao: Lista suja do trabalho escravo (MTE)
+    comando: ['{py}', -m, tools.lista_suja_mte]
+    timeout_s: 600
+    agenda:
+    - {cron: 0 7 * * 1}
+    origem: [vm1-cron-tools-lista-suja-mte]
+    nos: [vm1]
+    efeito: {descricao: 'Lista suja do trabalho escravo (MTE): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  siga_contratos:
+    estagio: E1
+    descricao: 'SIGA: contratos (TAC, detalhar)'
+    comando: ['{py}', -m, tools.siga_contratos, --tac, --detalhar]
+    timeout_s: 7000
+    concorrencia: [por_fonte]
+    agenda:
+    - {cron: 20 7 * * 1}
+    origem: [vm1-cron-tools-siga-contratos]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'SIGA: contratos (TAC, detalhar): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  fserj_site_docs:
+    estagio: E1
+    descricao: 'FSERJ: documentos do site'
+    comando: ['{py}', -m, tools.fserj_site_docs]
+    timeout_s: 900
+    agenda:
+    - {cron: 40 7 * * 1}
+    origem: [vm1-cron-tools-fserj-site-docs]
+    nos: [vm1]
+    efeito: {descricao: 'FSERJ: documentos do site: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  siga_pca:
+    estagio: E1
+    descricao: 'SIGA: plano de contratações anual'
+    comando: ['{py}', -m, tools.siga_pca]
+    timeout_s: 900
+    agenda:
+    - {cron: 50 7 * * 1}
+    origem: [vm1-cron-tools-siga-pca]
+    nos: [vm1]
+    efeito: {descricao: 'SIGA: plano de contratações anual: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  siga_sancoes:
+    estagio: E1
+    descricao: 'SIGA: sanções'
+    comando: ['{py}', -m, tools.siga_sancoes]
+    timeout_s: 900
+    agenda:
+    - {cron: 10 8 * * 1}
+    origem: [vm1-cron-tools-siga-sancoes]
+    nos: [vm1]
+    efeito: {descricao: 'SIGA: sanções: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8); até
+        lá: rc 0 + log sem traceback'}
+  noticias_orgaos:
+    estagio: E1
+    descricao: Notícias dos órgãos (fonte EFÊMERA)
+    comando: ['{py}', -m, tools.noticias_orgaos]
+    timeout_s: 600
+    nota: 'fonte efêmera (§1.1 ressalva 2): lacuna da parada é INDISPONIVEL'
+    agenda:
+    - {cron: 15 6 * * *}
+    origem: [vm1-cron-tools-noticias-orgaos]
+    nos: [vm1]
+    efeito: {descricao: 'Notícias dos órgãos (fonte EFÊMERA): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_sei_crc_harvest:
+    estagio: E1
+    descricao: 'SEI Prefeitura: colheita de CRC'
+    comando: ['{py}', -m, tools.pcrj_sei_crc_harvest, --anos, '2026', '2025', --max-paginas, '80']
+    agenda:
+    - {cron: 30 8 * * 1}
+    origem: [vm1-cron-tools-pcrj-sei-crc-harvest]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'SEI Prefeitura: colheita de CRC: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  contasrio_ingest:
+    estagio: E1
+    descricao: 'Contas Rio: ingestão'
+    comando: ['{py}', -m, tools.contasrio_ingest]
+    agenda:
+    - {cron: 45 2 * * *}
+    origem: [vm1-cron-tools-contasrio-ingest]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Contas Rio: ingestão: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  pcrj_saude:
+    estagio: E10
+    descricao: 'Prefeitura: saúde (alertas)'
+    comando: ['{py}', -m, tools.pcrj_saude, --json, --alertar]
+    agenda:
+    - {cron: 30 7 * * *}
+    origem: [vm1-cron-tools-pcrj-saude]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Prefeitura: saúde (alertas): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_leitura_campos:
+    estagio: E8
+    descricao: 'Prefeitura: leitura de campos'
+    comando: ['{py}', -m, compliance_agent.pcrj.leitura_campos]
+    agenda:
+    - {cron: 55 2 * * *}
+    origem: [vm1-cron-compliance-agent-pcrj-leitura-campos]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Prefeitura: leitura de campos: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_sei_busca_termos:
+    estagio: E2
+    descricao: 'SEI Prefeitura: busca de termos'
+    comando: ['{py}', -m, tools.pcrj_sei_busca_termos]
+    agenda:
+    - {cron: 0 8 * * 1}
+    origem: [vm1-cron-tools-pcrj-sei-busca-termos]
+    recursos: [navegador]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'SEI Prefeitura: busca de termos: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_emergencia_incumbente:
+    estagio: E10
+    descricao: 'Prefeitura: emergência do incumbente'
+    comando: ['{py}', -m, tools.pcrj_emergencia_incumbente]
+    agenda:
+    - {cron: 5 3 * * *}
+    origem: [vm1-cron-tools-pcrj-emergencia-incumbente]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Prefeitura: emergência do incumbente: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_ocp_redflags:
+    estagio: E10
+    descricao: 'Prefeitura: red flags OCP'
+    comando: ['{py}', -m, tools.pcrj_ocp_redflags]
+    agenda:
+    - {cron: 10 3 * * *}
+    origem: [vm1-cron-tools-pcrj-ocp-redflags]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Prefeitura: red flags OCP: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sei_rj_catalogo:
+    estagio: E1
+    descricao: Catálogo da pesquisa pública do SEI-RJ
+    comando: ['{py}', -m, tools.sei_rj_catalogo]
+    trava: data/.sei_rj_catalogo.lock
+    agenda:
+    - {cron: 40 4 * * *}
+    origem: [vm1-cron-tools-sei-rj-catalogo]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Catálogo da pesquisa pública do SEI-RJ: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  acervo_regras_e_familia:
+    estagio: E10
+    descricao: 'Acervo: regras E e família'
+    comando: ['{py}', -m, tools.acervo_regras_e_familia]
+    agenda:
+    - {cron: 30 5 * * *}
+    origem: [vm1-cron-tools-acervo-regras-e-familia]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Acervo: regras E e família: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_beneficios:
+    estagio: E10
+    descricao: Sweep de benefícios (coleta + cruzamento)
+    comando: [bash, tools/sweep_beneficios.sh]
+    timeout_s: 14400
+    trava: data/.sweep_beneficios.lock
+    nota: estágio E1+E10 no inventário; vira lente benefícios (§3.6)
+    agenda:
+    - {cron: 15 2 * * *}
+    origem: [vm1-cron-sweep-beneficios-sh]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'Sweep de benefícios (coleta + cruzamento): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  yoda_autoauditoria:
+    estagio: E18
+    descricao: Autoauditoria do Yoda (sem aviso)
+    comando: ['{py}', tools/yoda_autoauditoria.py, --sem-aviso]
+    nos: [vm1]
+    agenda:
+    - {cron: 20 7 * * *}
+    origem: [vm1-cron-yoda-autoauditoria-py-2]
+    timeout_s: 900
+    efeito: {descricao: 'Autoauditoria do Yoda (sem aviso): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  automelhoria_geral:
+    estagio: E18
+    descricao: Automelhoria geral (sensores → fila)
+    comando: ['{py}', tools/automelhoria_geral.py]
+    agenda:
+    - {cron: 40 */3 * * *}
+    origem: [vm1-cron-automelhoria-geral-py]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Automelhoria geral (sensores → fila): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  resolver_duplicidade_nf:
+    estagio: E10
+    descricao: Resolver duplicidade de NF (sem LLM)
+    comando: ['{py}', tools/resolver_duplicidade_nf.py, --sem-llm]
+    recursos: [cpu_pesado]
+    timeout_s: 10000
+    agenda:
+    - {cron: 20 18 * * *}
+    origem: [vm1-cron-resolver-duplicidade-nf-py]
+    nos: [vm1]
+    efeito: {descricao: 'Resolver duplicidade de NF (sem LLM): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  dadosabertos_rj:
+    estagio: E1
+    descricao: Dados abertos RJ + painéis da CGE
+    passos:
+    - ['{py}', tools/coletar_dadosabertos_rj.py]
+    - ['{py}', tools/coletar_cge_paineis.py]
+    timeout_s: 1800
+    agenda:
+    - {cron: 40 5 * * 1}
+    origem: [vm1-cron-coletar-dadosabertos-rj-py]
+    nos: [vm1]
+    efeito: {descricao: 'Dados abertos RJ + painéis da CGE: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  sei_busca_credor:
+    estagio: E2
+    descricao: 'SEI: busca por credor (lote 2)'
+    comando: ['{py}', tools/sei_busca_credor.py, --lote, '2']
+    timeout_s: 3300
+    concorrencia: [sei_rj_ip]
+    agenda:
+    - {cron: 45 * * * *}
+    origem: [vm1-cron-sei-busca-credor-py]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'SEI: busca por credor (lote 2): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  siconfi_rj:
+    estagio: E1
+    descricao: SICONFI RJ + peças da comissão de orçamento
+    passos:
+    - ['{py}', tools/coletar_siconfi_rj.py, --desde, '2021']
+    - ['{py}', tools/gerar_pecas_comissao.py]
+    parar_no_erro: true
+    timeout_s: 5400
+    agenda:
+    - {cron: 40 5 * * 2}
+    origem: [vm1-cron-coletar-siconfi-rj-py]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'SICONFI RJ + peças da comissão de orçamento: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  detector_p7_direta_de_risco:
+    estagio: E10
+    descricao: Detector P7 (direta de risco)
+    comando: ['{py}', -m, compliance_agent.detectores.p7_direta_de_risco, --gravar]
+    timeout_s: 1800
+    agenda:
+    - {cron: 20 6 * * 0}
+    origem: [vm1-cron-compliance-agent-detectores-p7-direta-de-risco]
+    nos: [vm1]
+    efeito: {descricao: 'Detector P7 (direta de risco): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  detector_est_valor_contratual:
+    estagio: E10
+    descricao: Detector EST valor contratual
+    comando: ['{py}', -m, compliance_agent.detectores.est_valor_contratual, --gravar]
+    timeout_s: 1800
+    agenda:
+    - {cron: 50 6 * * 0}
+    origem: [vm1-cron-compliance-agent-detectores-est-valor-contratual]
+    nos: [vm1]
+    efeito: {descricao: 'Detector EST valor contratual: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  claude_motor_canario:
+    estagio: E18
+    descricao: Canário do motor Claude
+    comando: ['{py}', -m, compliance_agent.llm.claude_motor, --canario]
+    agenda:
+    - {cron: 5 7 * * *}
+    origem: [vm1-cron-compliance-agent-llm-claude-motor]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Canário do motor Claude: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  triagem_opus:
+    estagio: E12
+    descricao: 'Triagem de alertas: verificação do Opus (madrugada)'
+    comando: ['{py}', -m, compliance_agent.triagem_alertas, --opus, '25']
+    timeout_s: 1500
+    concorrencia: [assinatura_claude]
+    agenda:
+    - {cron: '40 0-6,23 * * *'}
+    origem: [vm1-cron-compliance-agent-triagem-alertas-2]
+    recursos: [llm]
+    nos: [vm1]
+    efeito: {descricao: 'Triagem de alertas: verificação do Opus (madrugada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  triagem_api_colher:
+    estagio: E12
+    descricao: 'Triagem de alertas: colher lotes da API'
+    comando: ['{py}', -m, compliance_agent.triagem_alertas, --api-colher]
+    timeout_s: 900
+    concorrencia: [api_paga]
+    agenda:
+    - {cron: 50 * * * *}
+    origem: [vm1-cron-compliance-agent-triagem-alertas-3]
+    recursos: [llm]
+    nos: [vm1]
+    efeito: {descricao: 'Triagem de alertas: colher lotes da API: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  verificar_precos_pncp:
+    estagio: E10
+    descricao: Verificar preços PNCP
+    comando: ['{py}', -m, tools.verificar_precos_pncp, --db, data/compliance.db]
+    timeout_s: 3000
+    agenda:
+    - {cron: 30 12 * * *}
+    origem: [vm1-cron-tools-verificar-precos-pncp]
+    nos: [vm1]
+    efeito: {descricao: 'Verificar preços PNCP: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  sei_integra_vm2_precalcular:
+    estagio: E3
+    descricao: 'Íntegras na VM-2: pré-cálculo da fila'
+    comando: ['{py}', -m, tools.sei_integra_vm2, precalcular]
+    recursos: [cpu_leve]
+    timeout_s: 1800
+    agenda:
+    - {cron: '20 0,12 * * *'}
+    origem: [vm1-cron-tools-sei-integra-vm2-precalcular]
+    nos: [vm1]
+    efeito: {descricao: 'Íntegras na VM-2: pré-cálculo da fila: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_conferencia_amostra:
+    estagio: E12
+    descricao: Conferência de amostra dos lotes de outros nós
+    comando: ['{py}', -m, tools.vm2_conferencia, amostra, --n, '2']
+    timeout_s: 1500
+    agenda:
+    - {cron: 45 */6 * * *}
+    origem: [vm1-cron-tools-vm2-conferencia-amostra]
+    nos: [vm1]
+    efeito: {descricao: 'Conferência de amostra dos lotes de outros nós: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_conferencia_pendentes:
+    estagio: E12
+    descricao: Conferência de lotes pendentes (sonda sei_lote)
+    comando: ['{py}', -m, tools.vm2_conferencia, pendentes]
+    timeout_s: 300
+    agenda:
+    - {cron: 4-59/15 * * * *}
+    origem: [vm1-cron-tools-vm2-conferencia-pendentes]
+    nos: [vm1]
+    efeito: {descricao: 'Conferência de lotes pendentes (sonda sei_lote): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a
+        rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  qualidade_juiz:
+    estagio: E12
+    descricao: Juiz de qualidade (assinatura) até esvaziar
+    comando: ['{py}', -m, compliance_agent.qualidade, juiz, --ate-esvaziar]
+    recursos: [llm]
+    timeout_s: 6600
+    env: {JFN_JUIZ_CRUZAR: '0', JFN_CLAUDE_MAX_JUIZ_QUALIDADE: '50', JFN_CLAUDE_ESPERA_S: '900'}
+    path_extra: [~/.local/bin, ~/.npm-global/bin]
+    concorrencia: [assinatura_claude]
+    nota: o 2º horário tinha timeout 4200; aqui vale o maior (6600) — o --minutos limita a rodada
+    agenda:
+    - cron: 5 0 * * *
+      args: [--minutos, '100']
+    - cron: 30 3 * * *
+      args: [--minutos, '60']
+    origem: [vm1-cron-compliance-agent-qualidade-juiz, vm1-cron-compliance-agent-qualidade-juiz-2]
+    nos: [vm1]
+    efeito: {descricao: 'Juiz de qualidade (assinatura) até esvaziar: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pulos_do_gato_semanal:
+    estagio: E16
+    descricao: Pulos do gato (semanal, comissão de orçamento)
+    comando: ['{py}', tools/pulos_do_gato_semanal.py]
+    timeout_s: 1800
+    agenda:
+    - {cron: 30 7 * * 2}
+    origem: [vm1-cron-pulos-do-gato-semanal-py]
+    nos: [vm1]
+    efeito: {descricao: 'Pulos do gato (semanal, comissão de orçamento): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vinculo_ob_modelo:
+    estagio: E9
+    descricao: 'Vínculo OB↔contrato: leitura pelo modelo'
+    comando: ['{py}', -m, compliance_agent.vinculo_ob_contrato, modelo, --cache, data/vinculo_ob_modelo_cache.json, --limite, '300', --gravar]
+    timeout_s: 4500
+    trava: data/locks/vinculo_ob_contrato.lock
+    nota: o cron esperava a trava (flock -w 1800); aqui trava ocupada = backoff do motor
+    agenda:
+    - {cron: 50 1 * * *}
+    origem: [vm1-cron-compliance-agent-vinculo-ob-contrato-modelo]
+    recursos: [llm, cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'Vínculo OB↔contrato: leitura pelo modelo: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  fila_analise_sigilo:
+    estagio: E8
+    descricao: 'Fila de análise SEI: sigilo'
+    comando: [bash, tools/fila_analise_sei.sh, sigilo]
+    agenda:
+    - {cron: 50 4 * * *}
+    origem: [vm1-cron-fila-analise-sei-sh-sigilo]
+    recursos: [llm]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Fila de análise SEI: sigilo: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm_guard_navegador:
+    estagio: E18
+    descricao: Guarda da VM (navegador)
+    comando: ['{py}', tools/vm_guard.py, --navegador]
+    nos: [vm1]
+    timeout_s: 300
+    agenda:
+    - {cron: 7-59/10 * * * *}
+    origem: [vm1-cron-vm-guard-py]
+    efeito: {descricao: 'Guarda da VM (navegador): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  fachada_validar_site:
+    estagio: E10
+    descricao: Validar site de fachada (400 por rodada)
+    comando: ['{py}', -m, tools.fachada_validar_site, --limite, '400', --max-min, '40']
+    timeout_s: 2700
+    trava: data/.fachada_site.lock
+    agenda:
+    - {cron: '20 1,6,13 * * *'}
+    origem: [vm1-cron-tools-fachada-validar-site]
+    nos: [vm1]
+    efeito: {descricao: 'Validar site de fachada (400 por rodada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  sei_arquivo_frio:
+    estagio: E7
+    descricao: Arquivo frio SEI (hora em hora)
+    comando: [bash, tools/sei_arquivo_frio.sh]
+    timeout_s: 3600
+    agenda:
+    - {cron: 20 * * * *}
+    origem: [vm1-cron-sei-arquivo-frio-sh]
+    nos: [vm1]
+    efeito: {descricao: 'Arquivo frio SEI (hora em hora): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pericia_integral:
+    estagio: E11
+    descricao: Perícia integral (5 por rodada)
+    comando: ['{py}', -m, compliance_agent.pericia_integral, rodar, --limite, '5']
+    timeout_s: 1150
+    trava: data/locks/pericia_integral.lock
+    concorrencia: [assinatura_claude]
+    agenda:
+    - {cron: '*/20 * * * *'}
+    origem: [vm1-cron-compliance-agent-pericia-integral-rodar]
+    recursos: [llm]
+    nos: [vm1]
+    efeito: {descricao: 'Perícia integral (5 por rodada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  ritmo_assinatura:
+    estagio: E18
+    descricao: Ritmo da assinatura (medir)
+    comando: ['{py}', -m, compliance_agent.llm.ritmo_assinatura, --medir]
+    recursos: [cpu_leve]
+    timeout_s: 60
+    nota: segue no cron durante a parada (--medir só lê)
+    agenda:
+    - {cron: '*/10 * * * *'}
+    origem: [vm1-cron-compliance-agent-llm-ritmo-assinatura]
+    nos: [vm1]
+    efeito: {descricao: 'Ritmo da assinatura (medir): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  verificacao_humana_manter:
+    estagio: E17
+    descricao: Manter sessões de verificação humana
+    comando: ['{py}', -m, tools.verificacao_humana, --manter]
+    timeout_s: 900
+    trava: data/.sessoes_manter.lock
+    nos: [vm1]
+    agenda:
+    - {cron: 17 */2 * * *}
+    origem: [vm1-cron-tools-verificacao-humana]
+    recursos: [navegador]
+    efeito: {descricao: 'Manter sessões de verificação humana: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  itcampo_ocr_cpu:
+    estagio: E5
+    descricao: OCR em CPU do it-campo (ao lado do Surya)
+    comando: [bash, tools/itcampo_ocr_cpu.sh]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 1800
+    nota: disparado da VM-1 contra o it-campo; vira E5 com volta CPU na O3
+    agenda:
+    - {cron: '15,45 * * * *'}
+    origem: [vm1-cron-itcampo-ocr-cpu-sh]
+    efeito: {descricao: 'OCR em CPU do it-campo (ao lado do Surya): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  autoaprimoramento_reexecutar:
+    estagio: E13
+    descricao: 'Autoaprimoramento: reexecutar próximo (assinatura)'
+    comando: ['{py}', -m, compliance_agent.autoaprimoramento, reexecutar, proximo, --max-casos, '40', --gerador, assinatura]
+    timeout_s: 10800
+    trava: data/locks/autoaprimoramento_reexec.lock
+    env: {JFN_AUTOAPRIMORAMENTO: '1', JFN_CLAUDE_MAX_AUTOAPRIMORAMENTO: '120'}
+    concorrencia: [assinatura_claude]
+    recursos: [llm]
+    agenda:
+    - {cron: 10 0 * * *}
+    origem: [vm1-cron-compliance-agent-autoaprimoramento-reexecutar]
+    nos: [vm1]
+    efeito: {descricao: 'Autoaprimoramento: reexecutar próximo (assinatura): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  cerebro_consolidacao_noite:
+    estagio: E13
+    descricao: Consolidação noturna do cérebro
+    comando: ['{py}', -m, compliance_agent.cerebro_consolidacao, noite]
+    timeout_s: 7200
+    trava: data/locks/autoaprimoramento_reexec.lock
+    env: {JFN_CLAUDE_MAX_CEREBRO_CONSOLIDACAO: '50'}
+    recursos: [llm]
+    concorrencia: [assinatura_claude]
+    nota: o cron ESPERAVA a trava do reexecutar (flock -w 10800); aqui trava ocupada = backoff até o reexecutar terminar
+    agenda:
+    - {cron: 15 0 * * *}
+    origem: [vm1-cron-compliance-agent-cerebro-consolidacao-noite]
+    nos: [vm1]
+    efeito: {descricao: 'Consolidação noturna do cérebro: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  automelhoria_executor:
+    estagio: E18
+    descricao: Executor da automelhoria (2 por noite)
+    comando: ['{py}', tools/automelhoria_executor.py, --max, '2']
+    timeout_s: 6000
+    path_extra: [~/.local/bin, ~/.npm-global/bin]
+    recursos: [llm]
+    concorrencia: [assinatura_claude]
+    agenda:
+    - {cron: 0 1 * * *}
+    origem: [vm1-cron-automelhoria-executor-py]
+    nos: [vm1]
+    efeito: {descricao: 'Executor da automelhoria (2 por noite): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  zelador_vm1:
+    estagio: E17
+    descricao: Zelador de armazenamento da VM-1 (aplicar no 1º domingo; vigiar diário)
+    comando: ['{py}', tools/zelador/zelador.py, --perfil, vm1]
+    env: {JFN_MAQUINA: vm1}
+    nos: [vm1]
+    timeout_s: 900
+    nota: o '--aplicar' do 1º domingo (30 4 1-7 * * com dia_semana 7) virou a rotina zelador_vm1_aplicar
+    agenda:
+    - cron: 50 5 * * *
+      args: [--vigiar]
+    origem: [vm1-cron-zelador-py, vm1-cron-zelador-py-2]
+    efeito: {descricao: 'Zelador de armazenamento da VM-1 (aplicar no 1º domingo; vigiar diário): rodou até o fim sem traceback', so_rc: 'efeito próprio
+        a declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  zelador_vm1_aplicar:
+    estagio: E17
+    descricao: 'Zelador da VM-1: aplicar (1º domingo do mês)'
+    comando: ['{py}', tools/zelador/zelador.py, --perfil, vm1, --aplicar]
+    condicao: {dia_semana_iso: 7}
+    env: {JFN_MAQUINA: vm1}
+    nos: [vm1]
+    timeout_s: 21600
+    trava: data/locks/zelador.lock
+    recursos: [disco]
+    agenda:
+    - {cron: 30 4 1-7 * *}
+    origem: [vm1-cron-zelador-py]
+    efeito: {descricao: 'Zelador da VM-1: aplicar (1º domingo do mês): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  zelador_vm2_aplicar:
+    estagio: E17
+    descricao: 'Zelador da VM-2: aplicar (1º domingo do mês)'
+    comando: ['{py}', tools/zelador/zelador.py, --perfil, vm2, --aplicar]
+    condicao: {dia_semana_iso: 7}
+    nos: [vm2]
+    timeout_s: 21600
+    recursos: [disco]
+    nota: '05:30 no relógio UTC da VM-2 = 02:30 em Brasília; o pré-passo do timer (cópia da fila OCR da VM-1) sai daqui: a fila vira dado do fluxo na O3;
+      segue no timer durante a parada (ressalva 3)'
+    agenda:
+    - {cron: 30 2 1-7 * *}
+    origem: [vm2-timer-zelador-armazenamento]
+    efeito: {descricao: 'Zelador da VM-2: aplicar (1º domingo do mês): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  mediafire_sessao:
+    estagio: E17
+    descricao: Renovar a sessão do MediaFire (conta grátis expira parada)
+    comando: ['{py}', tools/zelador/mediafire_sessao.py]
+    nos: [vm1]
+    timeout_s: 600
+    recursos: [navegador]
+    ativa: false
+    bloqueio: usa o interpretador do navegador furtivo, que fica fora do repo; segue no cron (ressalva 3) até o E17 portar
+    agenda:
+    - {cron: 20 4 * * *}
+    origem: [vm1-cron-mediafire-sessao-py]
+    efeito: {descricao: 'Renovar a sessão do MediaFire (conta grátis expira parada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao
+        portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  leitura_integral_assinatura:
+    estagio: E8
+    descricao: Leitura integral pela assinatura (200 fatias)
+    comando: ['{py}', -m, compliance_agent.leitura_integral, assinatura, --limite-fatias, '200']
+    timeout_s: 6600
+    trava: data/locks/leitura_integral_assinatura.lock
+    path_extra: [~/.local/bin, ~/.npm-global/bin]
+    recursos: [llm]
+    concorrencia: [assinatura_claude]
+    agenda:
+    - {cron: 35 */2 * * *}
+    origem: [vm1-cron-compliance-agent-leitura-integral-assinatura]
+    nos: [vm1]
+    efeito: {descricao: 'Leitura integral pela assinatura (200 fatias): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  handoff_watcher:
+    estagio: E18
+    descricao: Vigia de passagem de sessão
+    comando: ['{py}', tools/handoff_watcher.py]
+    nos: [vm1]
+    timeout_s: 60
+    nota: timer OnUnitActiveSec=60 → cron de minuto
+    agenda:
+    - {cron: '* * * * *'}
+    origem: [vm1-timer-handoff-watcher]
+    efeito: {descricao: 'Vigia de passagem de sessão: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  digest_diario:
+    estagio: E16
+    descricao: Digest diário ao dono
+    comando: ['{py}', tools/digest_diario.py]
+    nos: [vm1]
+    agenda:
+    - {cron: 40 7 * * *}
+    origem: [vm1-timer-jfn-digest-diario]
+    timeout_s: 900
+    efeito: {descricao: 'Digest diário ao dono: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  fisc_refresh:
+    estagio: E1
+    descricao: 'Fiscalização: coletar tudo (incremental, semanal)'
+    comando: ['{py}', tools/fisc_coletar_tudo.py, --incremental, --pausa, '1.0']
+    timeout_s: 21600
+    agenda:
+    - {cron: 30 0 * * 1}
+    origem: [vm1-timer-jfn-fisc-refresh]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'Fiscalização: coletar tudo (incremental, semanal): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
+        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  intel_cache:
+    estagio: E10
+    descricao: 'Inteligência diária: entes PNCP, fantasmas, preços, PNCP incremental/aditivos, cache, autoauditoria, retro, cadastro'
+    passos:
+    - ['{py}', -c, 'import sqlite3; from compliance_agent.collectors.pncp_resultados import coletar_entes; c=sqlite3.connect(''data/compliance.db'', timeout=60);
+        c.execute(''PRAGMA busy_timeout=60000''); print(coletar_entes(c)); c.close()']
+    - ['{py}', -m, compliance_agent.cruzamentos_intel, fantasmas]
+    - ['{py}', -m, compliance_agent.collectors.pncp_resultados, --backfill-precos, '800']
+    - ['{py}', -m, compliance_agent.collectors.pncp, --incremental]
+    - ['{py}', -m, compliance_agent.collectors.pncp, --aditivos, '1500']
+    - ['{py}', -m, compliance_agent.cruzamentos_intel, cache]
+    - ['{py}', -m, tools.autoauditoria, baseline]
+    - ['{py}', -m, compliance_agent.retro_auditoria, registrar]
+    - ['{py}', -m, tools.cadastro_enrich_sweep, '500']
+    - ['{py}', -m, tools.empresas_dump_sweep]
+    recursos: [cpu_pesado]
+    timeout_s: 14400
+    concorrencia: [pncp]
+    nota: E1+E10+E15 no inventário; partir por estágio na O3/O5 (cada passo vira o seu job)
+    agenda:
+    - {cron: 10 7 * * *}
+    origem: [vm1-timer-jfn-intel-cache]
+    nos: [vm1]
+    efeito: {descricao: 'Inteligência diária: entes PNCP, fantasmas, preços, PNCP incremental/aditivos, cache, autoauditoria, retro, cadastro: rodou até
+        o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  nucleo_ciclo:
+    estagio: E11
+    descricao: Núcleo da perícia (ciclo diário)
+    comando: ['{py}', -m, compliance_agent.nucleo.ciclo]
+    agenda:
+    - {cron: 30 6 * * *}
+    origem: [vm1-timer-jfn-nucleo-ciclo]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Núcleo da perícia (ciclo diário): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  pcrj_intel:
+    estagio: E10
+    descricao: 'Inteligência PCRJ: fantasma servidor, comissionados×candidatos, nominal, TSE, gestão'
+    passos:
+    - ['{py}', -m, compliance_agent.pcrj.fantasma_servidor]
+    - ['{py}', -c, from compliance_agent.pcrj.comissionados_candidatos import coletar_mensal; print(coletar_mensal(budget_s=6000))]
+    - ['{py}', tools/consulta_nominal_alta.py, --limite, '200']
+    - ['{py}', -c, 'from compliance_agent.pcrj.tse_candidatos import coletar; print(coletar(anos=[2026, 2024, 2022]))']
+    - ['{py}', -m, compliance_agent.pcrj.comissionados_gestao]
+    recursos: [cpu_pesado]
+    timeout_s: 14400
+    agenda:
+    - {cron: 40 6 * * *}
+    origem: [vm1-timer-jfn-pcrj-intel]
+    nos: [vm1]
+    efeito: {descricao: 'Inteligência PCRJ: fantasma servidor, comissionados×candidatos, nominal, TSE, gestão: rodou até o fim sem traceback', so_rc: 'efeito
+        próprio a declarar ao portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  pncp_resultados:
+    estagio: E1
+    descricao: 'PNCP: resultados incrementais + atas (semanal)'
+    passos:
+    - ['{py}', -m, compliance_agent.collectors.pncp_resultados, --incremental]
+    - ['{py}', -m, compliance_agent.collectors.pncp_resultados, --atas, '400']
+    timeout_s: 14400
+    concorrencia: [pncp]
+    nota: timer era 04:40 UTC = 01:40 em Brasília
+    agenda:
+    - {cron: 40 1 * * 0}
+    origem: [vm1-timer-jfn-pncp-resultados]
+    recursos: [cpu_pesado]
+    nos: [vm1]
+    efeito: {descricao: 'PNCP: resultados incrementais + atas (semanal): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
+        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  ronda:
+    estagio: E18
+    descricao: Ronda (10 em 10 min)
+    comando: ['{py}', tools/ronda.py]
+    nos: [vm1]
+    timeout_s: 600
+    nota: timer OnUnitActiveSec=10min → */10
+    agenda:
+    - {cron: '*/10 * * * *'}
+    origem: [vm1-timer-jfn-ronda]
+    efeito: {descricao: 'Ronda (10 em 10 min): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  sancoes_ceis_cnep:
+    estagio: E1
+    descricao: Sanções CEIS/CNEP (semanal)
+    comando: ['{py}', tools/ingerir_ceis_cnep.py]
+    agenda:
+    - {cron: 40 5 * * 0}
+    origem: [vm1-timer-jfn-sancoes]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'Sanções CEIS/CNEP (semanal): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  sweep_sei_noturno:
+    estagio: E2
+    descricao: Sweep SEI noturno
+    comando: [bash, tools/sweep_sei_noturno.sh]
+    timeout_s: 28800
+    concorrencia: [sei_rj_ip]
+    agenda:
+    - {cron: 0 22 * * *}
+    origem: [vm1-timer-jfn-sei-noturno]
+    recursos: [navegador]
+    nos: [vm1]
+    efeito: {descricao: 'Sweep SEI noturno: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  keepalive:
+    estagio: E18
+    descricao: Keepalive (7 em 7 min)
+    comando: [bash, tools/keepalive.sh]
+    nos: [vm1]
+    timeout_s: 120
+    nota: 'timer OnUnitActiveSec=7min (8,57/h) → */7 (9/h: 0,7,…,56)'
+    agenda:
+    - {cron: '*/7 * * * *'}
+    origem: [vm1-timer-keepalive]
+    efeito: {descricao: 'Keepalive (7 em 7 min): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
+        até lá: rc 0 + log sem traceback'}
+  vm2_amostra:
+    estagio: E12
+    descricao: Amostra estratificada na VM-2
+    comando: [bash, tools/vm2_amostra.sh, '4']
+    nos: [vm2]
+    timeout_s: 3600
+    nota: timer 01/2:20 no relógio da VM-2, que é UTC = horas pares em Brasília
+    agenda:
+    - {cron: 20 0-22/2 * * *}
+    origem: [vm2-timer-jfn-amostra-vm2]
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Amostra estratificada na VM-2: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_analise:
+    estagio: E10
+    descricao: Análise na VM-2 (6 em 6 h)
+    comando: [bash, tools/vm2_analise.sh]
+    nos: [vm2]
+    nota: timer OnUnitActiveSec=6h (relativo ao boot) → 35 */6
+    agenda:
+    - {cron: 35 */6 * * *}
+    origem: [vm2-timer-jfn-analise]
+    timeout_s: 900
+    efeito: {descricao: 'Análise na VM-2 (6 em 6 h): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_integras:
+    estagio: E3
+    descricao: Íntegras SEI na VM-2 (hora em hora)
+    comando: [bash, tools/vm2_integras.sh]
+    nos: [vm2]
+    timeout_s: 7200
+    concorrencia: [sei_rj_ip]
+    agenda:
+    - {cron: 0 * * * *}
+    origem: [vm2-timer-jfn-integras-vm2]
+    recursos: [navegador]
+    efeito: {descricao: 'Íntegras SEI na VM-2 (hora em hora): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_ocr_reserva:
+    estagio: E5
+    descricao: OCR de reserva em CPU na VM-2
+    comando: [bash, tools/vm2_ocr_reserva.sh]
+    nos: [vm2]
+    recursos: [cpu_pesado]
+    timeout_s: 1800
+    agenda:
+    - {cron: '7,37 * * * *'}
+    origem: [vm2-timer-jfn-ocr-reserva-vm2]
+    efeito: {descricao: 'OCR de reserva em CPU na VM-2: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_suite:
+    estagio: E18
+    descricao: Suíte de testes na VM-2 (3 em 3 h)
+    comando: [bash, tools/vm2_suite.sh]
+    nos: [vm2]
+    timeout_s: 3600
+    nota: timer OnUnitActiveSec=3h → 20 */3
+    agenda:
+    - {cron: 20 */3 * * *}
+    origem: [vm2-timer-jfn-suite]
+    efeito: {descricao: 'Suíte de testes na VM-2 (3 em 3 h): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
+        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_sweep_geral:
+    estagio: E2
+    descricao: Sweep SEI geral na VM-2 (8 por rodada)
+    comando: [bash, tools/vm2_sweep_geral.sh, '8']
+    nos: [vm2]
+    timeout_s: 1800
+    concorrencia: [sei_rj_ip]
+    agenda:
+    - {cron: '5,35 * * * *'}
+    origem: [vm2-timer-jfn-sweep-geral-vm2]
+    recursos: [navegador]
+    efeito: {descricao: 'Sweep SEI geral na VM-2 (8 por rodada): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  vm2_sweeps:
+    estagio: E10
+    descricao: Sweeps analíticos na VM-2 (3 em 3 h)
+    comando: [bash, tools/vm2_sweep.sh]
+    nos: [vm2]
+    agenda:
+    - {cron: 15 */3 * * *}
+    origem: [vm2-timer-jfn-sweeps]
+    recursos: [llm]
+    timeout_s: 960
+    efeito: {descricao: 'Sweeps analíticos na VM-2 (3 em 3 h): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
+        o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  sentinela_integridade:
+    estagio: E18
+    descricao: Sentinela de integridade (VM-2)
+    comando: ['{py}', -m, tools.sentinela_integridade, --alerta]
+    nos: [vm2]
+    carregar_env: true
+    timeout_s: 300
+    nota: segue no timer durante a parada (só leitura)
+    agenda:
+    - {cron: 47 * * * *}
+    origem: [vm2-timer-jfn-sentinela-integridade]
+    efeito: {descricao: 'Sentinela de integridade (VM-2): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
+        (O3–O8); até lá: rc 0 + log sem traceback'}
+  fracionamento_objeto:
+    estagio: E10
+    descricao: Fracionamento de despesa por OBJETO — unidade × exercício × natureza, soma das dispensas × teto (art. 75 §1º)
+    comando: ['{py}', -m, tools.sweep_fracionamento_tcerj, --top, '0']
+    timeout_s: 1200
+    efeito: {descricao: output/sweep_fracionamento_tcerj.json regravado depois do início, arquivo: output/sweep_fracionamento_tcerj.json}
+    prioridade: 65
+    evento:
+      depende: [compras_diretas_tcerj, siafe_ob, regra_fracionamento]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-fracionamento-objeto]
+    nos: [vm1]
+  vinculo_ob_contrato:
+    estagio: E9
+    descricao: Vínculo OB↔contrato (regra determinística)
+    comando: ['{py}', -m, compliance_agent.vinculo_ob_contrato, regra, --gravar, --cache, data/vinculo_ob_modelo_cache.json]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Vínculo OB↔contrato (regra determinística): rodou até o fim sem traceback', so_rc: o derivado não declara arquivo de efeito no
+        propagacao.yaml; declarar ao portar}
+    prioridade: 50
+    evento:
+      depende: [sei_lote, sei_arquivado, contratos_tcerj, regra_vinculo]
+      debounce_s: 1800
+      intervalo_min_s: 10800
+      agrupar: true
+    origem: [vm1-deriv-vinculo-ob-contrato]
+    nos: [vm1]
+  pericia_contabil:
+    estagio: E9
+    descricao: Perícia contábil de todos os contratos
+    comando: ['{py}', -m, compliance_agent.pericia_contabil_rotina]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/pericia_contabil_resumo.json regravado depois do início, arquivo: data/pericia_contabil_resumo.json}
+    prioridade: 55
+    evento:
+      depende: [siafe_ob, siafe_status, siafe_gd, contratos_tcerj, regra_pericia, vinculo_ob_contrato]
+      debounce_s: 600
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-pericia-contabil]
+    nos: [vm1]
+  pericia_emendas:
+    estagio: E11
+    descricao: Perícia das emendas (D1–D6) — regrava os alertas emendas_*
+    comando: ['{py}', -m, tools.emendas_pericia, --sem-pdf, --sem-colegiado]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Perícia das emendas (D1–D6) — regrava os alertas emendas_*: rodou até o fim sem traceback', so_rc: o derivado não declara arquivo
+        de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 65
+    evento:
+      depende: [sancoes, emendas_base, regra_emendas]
+      debounce_s: 1800
+      intervalo_min_s: 43200
+      agrupar: true
+    origem: [vm1-deriv-pericia-emendas]
+    nos: [vm1]
+  pericia_pcrj:
+    estagio: E11
+    descricao: Perícia de gastos da Prefeitura (D7–D12) — regrava os alertas pcrj_*
+    comando: ['{py}', -m, tools.pcrj_pericia_gastos, --sem-pdf, --sem-colegiado]
+    timeout_s: 5400
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Perícia de gastos da Prefeitura (D7–D12) — regrava os alertas pcrj_*: rodou até o fim sem traceback', so_rc: o derivado não declara
+        arquivo de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 70
+    evento:
+      depende: [pcrj_base, sancoes, regra_pcrj]
+      debounce_s: 1800
+      intervalo_min_s: 43200
+      agrupar: true
+    origem: [vm1-deriv-pericia-pcrj]
+    nos: [vm1]
+  sei_ocr_gpu:
+    estagio: E5
+    descricao: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
+    comando: ['{py}', -m, tools.sei_ocr_gpu_integrar]
+    timeout_s: 1800
+    efeito: {descricao: 'Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado): rodou até o fim sem traceback',
+      so_rc: o derivado não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 60
+    evento:
+      depende: [ocr_gpu, ocr_reserva]
+      debounce_s: 600
+      intervalo_min_s: 900
+      agrupar: true
+    origem: [vm1-deriv-sei-ocr-gpu]
+    nos: [vm1]
+  sei_ocr_gpu_fila:
+    estagio: E5
+    descricao: Fila do OCR por IA (o que o Tesseract leu ou ficou sem texto e ainda tem PDF no arquivo frio)
+    comando: ['{py}', -m, tools.sei_ocr_gpu_fila, --itcampo-local]
+    timeout_s: 900
+    efeito: {descricao: data/sei_ocr_gpu_fila.txt regravado depois do início, arquivo: data/sei_ocr_gpu_fila.txt}
+    prioridade: 75
+    evento:
+      depende: [sei_arquivado, ocr_gpu]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-sei-ocr-gpu-fila]
+    nos: [vm1]
+  sei_ocr_confirmacao:
+    estagio: E6
+    descricao: Confirmação do OCR por documento (qualquer motor) — porta da leitura integral
+    comando: ['{py}', -m, compliance_agent.sei.ocr_confirmacao, --limite, '40']
+    timeout_s: 3600
+    efeito: {descricao: 'Confirmação do OCR por documento (qualquer motor) — porta da leitura integral: rodou até o fim sem traceback', so_rc: o derivado
+        não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 75
+    evento:
+      depende: [sei_ocr_gpu]
+      debounce_s: 1800
+      intervalo_min_s: 10800
+      agrupar: true
+    origem: [vm1-deriv-sei-ocr-confirmacao]
+    nos: [vm1]
+  sei_ocr_ia_conferir:
+    estagio: E6
+    descricao: Confirmação dos números lidos pelo OCR por IA (2ª leitura independente — trava de prova)
+    comando: ['{py}', -m, tools.sei_ocr_ia_conferir, confirmar, --limite, '40', --ler-em, vm2, --orcamento-s, '3000']
+    timeout_s: 3600
+    efeito: {descricao: data/sei_ocr_ia_conferencia.jsonl regravado depois do início, arquivo: data/sei_ocr_ia_conferencia.jsonl}
+    prioridade: 75
+    evento:
+      depende: [sei_ocr_gpu]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-sei-ocr-ia-conferir]
+    nos: [vm1]
+  propostas_sei:
+    estagio: E8
+    descricao: Preços das propostas/cotações dos autos SEI → proposta_item (só linha em que q × unitário = total) + J9
+    comando: ['{py}', -m, tools.propostas_sei_extrair]
+    timeout_s: 1800
+    efeito: {descricao: data/propostas_sei_extrair.json regravado depois do início, arquivo: data/propostas_sei_extrair.json}
+    recursos: [llm]
+    prioridade: 75
+    evento:
+      depende: [sei_arquivado, ocr_gpu]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-propostas-sei]
+    nos: [vm1]
+  vinculo_fila:
+    estagio: E9
+    descricao: Fila de captura do vínculo OB↔contrato (fecha-contrato na frente, depois por valor)
+    comando: ['{py}', -m, compliance_agent.vinculo_ob_contrato, fila]
+    timeout_s: 2700
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/sei_fila_vinculo_ob.json regravado depois do início, arquivo: data/sei_fila_vinculo_ob.json}
+    prioridade: 60
+    evento:
+      depende: [pericia_contabil, regra_vinculo]
+      debounce_s: 900
+      intervalo_min_s: 14400
+      agrupar: true
+    origem: [vm1-deriv-vinculo-fila]
+    nos: [vm1]
+  indeterminados:
+    estagio: E11
+    descricao: Laudo de execução sem conclusão — causa medida, processo-mãe citado nos autos → fila SEI, fontes externas
+    comando: [bash, tools/indeterminados_no_itcampo.sh]
+    timeout_s: 7200
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/indeterminados/estado.json regravado depois do início, arquivo: data/indeterminados/estado.json}
+    prioridade: 70
+    evento:
+      depende: [sei_lex, sei_arquivado, sei_lote, siafe_ob, contratos_tcerj, doerj]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-indeterminados]
+    nos: [vm1]
+  padroes:
+    estagio: E10
+    descricao: Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio)
+    comando: [bash, tools/padroes_no_itcampo.sh]
+    timeout_s: 5400
+    efeito: {descricao: 'Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio): rodou até o fim sem traceback', so_rc: o
+        derivado não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 75
+    evento:
+      depende: [sei_arquivado, sei_lote, siafe_ob]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-padroes]
+    nos: [vm1]
+  autoaprimoramento_ciclo:
+    estagio: E13
+    descricao: Ciclo da automelhoria da perícia (lição → portão → sombra → campeão), 1×/dia
+    comando: ['{py}', -m, compliance_agent.autoaprimoramento, ciclo]
+    timeout_s: 900
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Ciclo da automelhoria da perícia (lição → portão → sombra → campeão), 1×/dia: rodou até o fim sem traceback', so_rc: o derivado
+        não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    env: {JFN_AUTOAPRIMORAMENTO: '1'}
+    prioridade: 80
+    evento:
+      depende: [pericia_agentes, sei_lex]
+      debounce_s: 1800
+      intervalo_min_s: 86400
+      agrupar: true
+    origem: [vm1-deriv-autoaprimoramento-ciclo]
+    nos: [vm1]
+  ob_reemitida:
+    estagio: E9
+    descricao: OB 'Enviado ao Banco' reemitida e paga (fora do pago — lida por cruzamentos_intel._ob_paga)
+    comando: ['{py}', -m, compliance_agent.ob_reemitida]
+    timeout_s: 1200
+    efeito: {descricao: data/ob_reemitida.json regravado depois do início, arquivo: data/ob_reemitida.json}
+    prioridade: 50
+    evento:
+      depende: [siafe_ob]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-ob-reemitida]
+    nos: [vm1]
+  siafe_status_releitura:
+    estagio: E1
+    descricao: Releitura do status das OB não finais (2024–2026) e consolidação dos últimos 60 dias no SIAFE
+    comando: ['{py}', -m, compliance_agent.siafe_agenda, status]
+    timeout_s: 300
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/siafe_agenda_status.json regravado depois do início, arquivo: data/siafe_agenda_status.json}
+    prioridade: 70
+    evento:
+      depende: [siafe_ob]
+      debounce_s: 600
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-siafe-status-releitura]
+    nos: [vm1]
+  siafe_documentos_varredura:
+    estagio: E1
+    descricao: NE e NL de todas as UGs (2024–2026), por valor pago, incremental no exercício corrente
+    comando: ['{py}', -m, compliance_agent.siafe_agenda, documentos]
+    timeout_s: 300
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/siafe_agenda_documentos.json regravado depois do início, arquivo: data/siafe_agenda_documentos.json}
+    prioridade: 75
+    evento:
+      depende: [siafe_ob]
+      debounce_s: 600
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-siafe-documentos-varredura]
+    nos: [vm1]
+  siafe_ingest_cobertura:
+    estagio: E18
+    descricao: Medição do ingest do SIAFE (NE/NL/GD por UG×ano, NL citadas pela OB, status congelado, processo vazio)
+    comando: ['{py}', -m, compliance_agent.siafe_ingest_cobertura, --json]
+    timeout_s: 600
+    efeito: {descricao: data/siafe_ingest_cobertura.json regravado depois do início, arquivo: data/siafe_ingest_cobertura.json}
+    prioridade: 80
+    evento:
+      depende: [siafe_ob, siafe_status]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-siafe-ingest-cobertura]
+    nos: [vm1]
+  governo_couto_regras:
+    estagio: E10
+    descricao: Gestão Couto — regras D01–D20 e hipóteses
+    comando: ['{py}', -m, compliance_agent.governo_couto_regras]
+    timeout_s: 5400
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/governo_couto_suspeitas.json regravado depois do início, arquivo: data/governo_couto_suspeitas.json}
+    path_extra: [~/.local/bin, ~/.npm-global/bin]
+    prioridade: 70
+    evento:
+      depende: [siafe_status, siafe_gd, regra_pericia, regra_governo_couto]
+      debounce_s: 1800
+      intervalo_min_s: 86400
+      agrupar: true
+    origem: [vm1-deriv-governo-couto-regras]
+    nos: [vm1]
+  dossie_couto:
+    estagio: E16
+    descricao: Dossiê-mestre da gestão Couto (PDF verificado — execução por OB paga, contratações, atos, achados nos portões)
+    comando: [bash, tools/dossie_couto.sh]
+    timeout_s: 7200
+    efeito: {descricao: data/dossie_couto/verificacao.json regravado depois do início, arquivo: data/dossie_couto/verificacao.json}
+    prioridade: 75
+    evento:
+      depende: [siafe_ob, siafe_status, contratos_tcerj, compras_diretas_tcerj, doerj, sancoes, governo_couto_regras, regra_governo_couto]
+      debounce_s: 3600
+      intervalo_min_s: 43200
+      agrupar: true
+    origem: [vm1-deriv-dossie-couto]
+    nos: [vm1]
+  territorio:
+    estagio: E15
+    descricao: Mapa por município / AP (territorio.db)
+    comando: ['{py}', -m, compliance_agent.territorio.cli, --incremental]
+    timeout_s: 1800
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Mapa por município / AP (territorio.db): rodou até o fim sem traceback', so_rc: o derivado não declara arquivo de efeito no propagacao.yaml;
+        declarar ao portar}
+    nota: trava_externa data/territorio.lock é segurada pela própria tarefa
+    prioridade: 65
+    evento:
+      depende: [contratos_tcerj, siafe_ob, regra_territorio]
+      debounce_s: 900
+      intervalo_min_s: 7200
+      agrupar: true
+    origem: [vm1-deriv-territorio]
+    nos: [vm1]
+  iss_nao_retido:
+    estagio: E10
+    descricao: ISS declarado retido na NFS-e × OB paga sem a retenção
+    comando: ['{py}', -m, compliance_agent.detector_iss_retido]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/iss_nao_retido.json regravado depois do início, arquivo: data/iss_nao_retido.json}
+    prioridade: 70
+    evento:
+      depende: [sei_lote, sei_arquivado, siafe_ob, siafe_status, regra_iss_retido]
+      debounce_s: 3600
+      intervalo_min_s: 86400
+      agrupar: true
+    origem: [vm1-deriv-iss-nao-retido]
+    nos: [vm1]
+  cge_confronto:
+    estagio: E10
+    descricao: Confronto CGE × JFN
+    comando: ['{py}', -m, compliance_agent.cge_confronto]
+    timeout_s: 1800
+    efeito: {descricao: data/cge_confronto.json regravado depois do início, arquivo: data/cge_confronto.json}
+    prioridade: 65
+    evento:
+      depende: [sei_lote, sei_arquivado, sei_ficha, sei_lex, siafe_ob, triagem, conferencia_opus]
+      debounce_s: 900
+      intervalo_min_s: 7200
+      agrupar: true
+    origem: [vm1-deriv-cge-confronto]
+    nos: [vm1]
+  lentes:
+    estagio: E15
+    descricao: Lentes de detecção materializadas
+    comando: ['{py}', tools/lentes_materializar.py]
+    timeout_s: 1800
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/lentes_estado.json regravado depois do início, arquivo: data/lentes_estado.json}
+    trava: data/.lentes.lock
+    prioridade: 75
+    evento:
+      depende: [siafe_ob, siafe_status]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-lentes]
+    nos: [vm1]
+  vault_casos:
+    estagio: E14
+    descricao: Casos e estado do sistema no vault (blocos cerebro:dados)
+    comando: ['{py}', tools/cerebro_sync.py]
+    timeout_s: 900
+    efeito: {descricao: 'Casos e estado do sistema no vault (blocos cerebro:dados): rodou até o fim sem traceback', so_rc: o derivado não declara arquivo
+        de efeito no propagacao.yaml; declarar ao portar}
+    prioridade: 80
+    evento:
+      depende: [siafe_ob, siafe_status, pericia_contabil]
+      debounce_s: 1800
+      intervalo_min_s: 21600
+      agrupar: true
+    origem: [vm1-deriv-vault-casos]
+    nos: [vm1]
+  cerebro_ponte:
+    estagio: E14
+    descricao: Ponte automelhoria e perícias por agente → segundo cérebro (fatos com chave, índice de entidade, notas e cor por órgão no vault)
+    comando: ['{py}', -m, compliance_agent.cerebro_ponte, sincronizar]
+    timeout_s: 1800
+    efeito: {descricao: data/cerebro_ponte_estado.json regravado depois do início, arquivo: data/cerebro_ponte_estado.json}
+    prioridade: 85
+    evento:
+      depende: [pericia_agentes, autoaprimoramento_registro]
+      debounce_s: 600
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-cerebro-ponte]
+    nos: [vm1]
+  cerebro_bateria:
+    estagio: E18
+    descricao: Bateria de recall do segundo cérebro (78 perguntas → a nota certa volta entre as 10 primeiras? o cruzamento por entidade vem inteiro?)
+    comando: ['{py}', tools/cerebro_bateria.py, medir, --sistemas, 'brain_mcp,brain_entity,fundido', --rotulo, despachante, --minimo, '53']
+    timeout_s: 900
+    efeito: {descricao: data/cerebro_bateria/ultimo.json regravado depois do início, arquivo: data/cerebro_bateria/ultimo.json}
+    prioridade: 85
+    evento:
+      depende: [cerebro_ponte, vault_retratos, vault_casos]
+      debounce_s: 1800
+      intervalo_min_s: 86400
+      agrupar: true
+    origem: [vm1-deriv-cerebro-bateria]
+    nos: [vm1]
+  vault_retratos:
+    estagio: E14
+    descricao: Retratos do JFN no vault (perícia, orçamento por exercício e mês, gestão Couto, CGE × JFN, municípios, sobrepreço, sinais críticos)
+    comando: ['{py}', -m, compliance_agent.vault_retratos]
+    timeout_s: 600
+    efeito: {descricao: data/vault_retratos_estado.json regravado depois do início, arquivo: data/vault_retratos_estado.json}
+    prioridade: 85
+    evento:
+      depende: [pericia_contabil, governo_couto_regras, cge_confronto, territorio, painel_ob, painel_contratos]
+      debounce_s: 900
+      intervalo_min_s: 10800
+      agrupar: true
+    origem: [vm1-deriv-vault-retratos]
+    nos: [vm1]
+  conformidade:
+    estagio: E18
+    descricao: Conformidade — sensores das regras de qualidade
+    comando: ['{py}', -m, compliance_agent.qualidade, sensores]
+    timeout_s: 1200
+    efeito: {descricao: data/qualidade_estado.json regravado depois do início, arquivo: data/qualidade_estado.json}
+    prioridade: 80
+    evento:
+      depende: [regra_detectores, pericia_contabil, governo_couto_regras, cge_confronto]
+      debounce_s: 300
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-conformidade]
+    nos: [vm1]
+  juiz_fila:
+    estagio: E12
+    descricao: Fila e cobertura do juiz de qualidade (afirmação sem veredito para o texto atual)
+    comando: ['{py}', -m, compliance_agent.qualidade, cobertura]
+    timeout_s: 600
+    efeito: {descricao: data/qualidade_juiz_fila.json regravado depois do início, arquivo: data/qualidade_juiz_fila.json}
+    nota: trava_externa data/qualidade_juiz.lock é segurada pela própria tarefa
+    recursos: [llm]
+    prioridade: 85
+    evento:
+      depende: [vault_casos_md, produtos_casa, governo_couto_regras, painel_ob, painel_contratos, regra_detectores]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-juiz-fila]
+    nos: [vm1]
+  painel_ob:
+    estagio: E15
+    descricao: Painel — caches que somam OB (por ano e mês, orçamento por órgão, Governo Couto, frescor)
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_ob]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 1080
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 60
+    evento:
+      depende: [siafe_ob, siafe_status, siafe_gd, regra_orcamento, regra_pericia, governo_couto_regras]
+      debounce_s: 600
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-painel-ob]
+  painel_contratos:
+    estagio: E15
+    descricao: Painel — caches de contratos, aditivos e TAC por período
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_contratos]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 1080
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 70
+    evento:
+      depende: [contratos_tcerj, doerj]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-painel-contratos]
+  painel_sancoes:
+    estagio: E15
+    descricao: Painel — caches de sanções
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_sancoes]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 840
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 70
+    evento:
+      depende: [sancoes]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-painel-sancoes]
+  painel_alertas:
+    estagio: E15
+    descricao: Painel — alertas por período
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_alertas]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 360
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 70
+    evento:
+      depende: [triagem, revisao_humana]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-painel-alertas]
+  lex_execucao_fila:
+    estagio: E11
+    descricao: Perícia de execução (Lex) — fila por evento, dentro do ritmo da assinatura
+    comando: [bash, tools/fila_analise_sei.sh, lex]
+    timeout_s: 1900
+    efeito: {descricao: 'Perícia de execução (Lex) — fila por evento, dentro do ritmo da assinatura: rodou até o fim sem traceback', so_rc: o derivado não
+        declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    concorrencia: [assinatura_claude]
+    nota: ritmo 'lex_execucao' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2 · trava_externa data/.fila_analise_lex.lock é segurada
+      pela própria tarefa
+    recursos: [llm]
+    prioridade: 70
+    evento:
+      depende: [sei_arquivado, sei_lote, sei_ficha, siafe_ob, ocr_gpu]
+      debounce_s: 300
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-lex-execucao-fila, vm1-cron-fila-analise-sei-sh-lex]
+    nos: [vm1]
+    agenda:
+    - {cron: '13,43 * * * *'}
+  sei_fichas_fila:
+    estagio: E8
+    descricao: Ficha do processo SEI — fila por evento, dentro do ritmo
+    comando: [bash, tools/fila_analise_sei.sh, ficha]
+    timeout_s: 1700
+    efeito: {descricao: 'Ficha do processo SEI — fila por evento, dentro do ritmo: rodou até o fim sem traceback', so_rc: o derivado não declara arquivo
+        de efeito no propagacao.yaml; declarar ao portar}
+    concorrencia: [assinatura_claude]
+    nota: ritmo 'sei_ficha' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2 · trava_externa data/.fila_analise_ficha.lock é segurada
+      pela própria tarefa
+    recursos: [llm]
+    prioridade: 70
+    evento:
+      depende: [sei_arquivado, sei_lote, ocr_gpu]
+      debounce_s: 300
+      intervalo_min_s: 1800
+      agrupar: true
+    origem: [vm1-deriv-sei-fichas-fila, vm1-cron-fila-analise-sei-sh-ficha]
+    nos: [vm1]
+    agenda:
+    - {cron: 7 * * * *}
+  triagem_lote:
+    estagio: E12
+    descricao: Triagem dos alertas (duas leituras) — por evento, dentro do ritmo
+    comando: ['{py}', -m, compliance_agent.triagem_alertas, --lote, '2']
+    timeout_s: 1500
+    efeito: {descricao: 'Triagem dos alertas (duas leituras) — por evento, dentro do ritmo: rodou até o fim sem traceback', so_rc: o derivado não declara
+        arquivo de efeito no propagacao.yaml; declarar ao portar}
+    trava: data/locks/triagem_lote.lock
+    concorrencia: [assinatura_claude]
+    nota: ritmo 'triagem' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2
+    recursos: [llm]
+    prioridade: 75
+    evento:
+      depende: [revisao_humana, sancoes]
+      debounce_s: 600
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-triagem-lote, vm1-cron-compliance-agent-triagem-alertas]
+    nos: [vm1]
+    agenda:
+    - {cron: 17 8-22 * * *}
+  conferencia_opus_fila:
+    estagio: E12
+    descricao: Conferência do Opus do que saiu em contingência — por evento, dentro do ritmo
+    comando: ['{py}', -m, compliance_agent.llm.conferencia_opus, --conferir, '30']
+    timeout_s: 1500
+    efeito: {descricao: 'Conferência do Opus do que saiu em contingência — por evento, dentro do ritmo: rodou até o fim sem traceback', so_rc: o derivado
+        não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    trava: data/locks/conferencia_opus.lock
+    concorrencia: [assinatura_claude]
+    nota: ritmo 'conferencia_opus' (governador semanal da assinatura) ainda não é aplicado pelo motor — O2.2
+    recursos: [llm]
+    prioridade: 75
+    evento:
+      depende: [sei_lex, triagem]
+      debounce_s: 600
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-conferencia-opus-fila, vm1-cron-compliance-agent-llm-conferencia-opus]
+    nos: [vm1]
+    agenda:
+    - {cron: 25 * * * *}
+  sei_compactar:
+    estagio: E7
+    descricao: Compactação das páginas escaneadas do arquivo SEI (WebP cinza local + original no it-campo)
+    comando: ['{py}', -m, tools.sei_compactar, --limite, '40']
+    timeout_s: 3300
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'Compactação das páginas escaneadas do arquivo SEI (WebP cinza local + original no it-campo): rodou até o fim sem traceback', so_rc: o
+        derivado não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
+    trava: data/locks/sei_compactar.lock
+    prioridade: 85
+    evento:
+      depende: [sei_arquivado]
+      debounce_s: 1800
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-sei-compactar, vm1-cron-tools-sei-compactar]
+    nos: [vm1]
+    agenda:
+    - {cron: 50 */3 * * *}
+  painel_prefeitura:
+    estagio: E15
+    descricao: Painel — caches da Prefeitura por período (contratos, aditivos, despesa ContasRio)
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_prefeitura]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 840
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 70
+    evento:
+      depende: [pcrj_base]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-painel-prefeitura]
+  painel_conluio:
+    estagio: E15
+    descricao: Painel — conluio pelos resultados do PNCP (captura e rodízio, por esfera)
+    comando: ['{py}', -c, 'import sys; from compliance_agent.propagacao import carregar, _rodar_cache; d = carregar()[''derivados''][sys.argv[1]]; ok, e
+        = _rodar_cache(sys.argv[1], d); print(e or ''cache regravado''); sys.exit(0 if ok else 1)', painel_conluio]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    efeito: {descricao: chaves do cache do painel regravadas depois do início (a ponte só sai 0 se `_rodar_cache` viu cada prefixo regravado), log_contem: cache
+        regravado}
+    timeout_s: 840
+    nota: ponte para propagacao._rodar_cache (prefixos/urls ficam no propagacao.yaml até o E15 portar, O7)
+    prioridade: 75
+    evento:
+      depende: [contratos_tcerj]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-painel-conluio]
+  conluio_participacao:
+    estagio: E10
+    descricao: Conluio por participação — perdedor de cobertura, par inseparável e rodízio contra o acaso do mercado
+    comando: ['{py}', -m, compliance_agent.editais.conluio_participacao, --gravar, --top, '0']
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: data/conluio/participacao.json regravado depois do início, arquivo: data/conluio/participacao.json}
+    prioridade: 75
+    evento:
+      depende: [tcerj_licitante]
+      debounce_s: 3600
+      intervalo_min_s: 86400
+      agrupar: true
+    origem: [vm1-deriv-conluio-participacao]
+    nos: [vm1]
+  certeza:
+    estagio: E18
+    descricao: Certeza — registro de fatos, portões de escrita, auditoria do grafo e verificador de citações
+    comando: ['{py}', -m, compliance_agent.certeza, ciclo]
+    timeout_s: 900
+    efeito: {descricao: data/certeza/estado.json regravado depois do início, arquivo: data/certeza/estado.json}
+    prioridade: 85
+    evento:
+      depende: [iss_nao_retido, pericia_contabil, conluio_participacao, cge_confronto, vault_casos, vault_retratos, siafe_status, sei_lex, triagem, memoria_claude]
+      debounce_s: 600
+      intervalo_min_s: 3600
+      agrupar: true
+    origem: [vm1-deriv-certeza]
+    nos: [vm1]
+duplicacoes:
+- mantida: triagem_lote
+  descartadas: []
+  motivo: 'cron-rede FUNDIDO no derivado (agenda + evento numa rotina só; a rede drenava a fila por horário e o evento sozinho a deixaria parada) — antes:
+    cron-rede (17 8-22) com o MESMO comando do derivado'
+- mantida: conferencia_opus_fila
+  descartadas: []
+  motivo: 'cron-rede FUNDIDO no derivado (agenda + evento numa rotina só; a rede drenava a fila por horário e o evento sozinho a deixaria parada) — antes:
+    cron-rede (:25) idêntico ao derivado'
+- mantida: sei_fichas_fila
+  descartadas: []
+  motivo: 'cron-rede FUNDIDO no derivado (agenda + evento numa rotina só; a rede drenava a fila por horário e o evento sozinho a deixaria parada) — antes:
+    cron-rede (:07) idêntico ao derivado'
+- mantida: lex_execucao_fila
+  descartadas: []
+  motivo: 'cron-rede FUNDIDO no derivado (agenda + evento numa rotina só; a rede drenava a fila por horário e o evento sozinho a deixaria parada) — antes:
+    cron-rede (13,43) idêntico ao derivado'
+- mantida: sei_compactar
+  descartadas: []
+  motivo: 'cron-rede FUNDIDO no derivado (agenda + evento numa rotina só; a rede drenava a fila por horário e o evento sozinho a deixaria parada) — antes:
+    cron-rede (50 */3) idêntico ao derivado'
+- mantida: sweep_dados
+  descartadas: [vm1-cron-sweep-dados-sh-2]
+  motivo: 'mesma linha em dois horários (10:00 e 16:00): uma rotina, cron ''0 10,16 * * *'''
+- mantida: sweep_sei
+  descartadas: [vm1-cron-sweep-sei-sh, vm2-timer-jfn-sei-sweep]
+  motivo: '@reboot e o timer parado da VM-2 repetiam o */30 da VM-1; reboot não é gatilho no fluxo (o supervisor sobe com o nó)'
+- mantida: prewarm_painel
+  descartadas: [vm1-cron-prewarm-painel-sh-2]
+  motivo: '@reboot repetia o 16,46; o E15 roda quando a fonte muda e no horário'
+- mantida: doerj
+  descartadas: [vm1-cron-compliance-agent-collectors-doerj-2]
+  motivo: 'mesmo coletor em dois horários com data diferente (ontem 06:50 seg–sáb; hoje 12:40 seg–sex): uma rotina, dois itens de agenda com args {ontem}/{hoje}'
+- mantida: qualidade_juiz
+  descartadas: [vm1-cron-compliance-agent-qualidade-juiz-2]
+  motivo: 'mesmo juiz em dois horários (00:05 100 min; 03:30 60 min): uma rotina, dois itens de agenda'
+- mantida: siafe_documento_sweep
+  descartadas: [vm1-cron-siafe-documento-sweep-py-2]
+  motivo: 'mesmo script, exercícios diferentes (2025 às 03:10; NE 2023 das UGs sem processo às 23:20): uma rotina, dois itens de agenda'
+- mantida: integra_fila_dinheiro
+  descartadas: [vm1-cron-sei-fila-por-dinheiro-py]
+  motivo: o cron semanal (seg 04:20, --top 500) é coberto pelo passo 1 do timer diário 03:30 (--top 800)
+- mantida: zelador_vm1
+  descartadas: []
+  motivo: 'inventário marcou zelador vm1/vm2 como mesmo script: NÃO são duplicatas (cada perfil limpa o disco da sua máquina); ficaram zelador_vm1 (vigiar),
+    zelador_vm1_aplicar e zelador_vm2_aplicar'
+- mantida: sei_integra_fila
+  descartadas: []
+  motivo: 'inventário juntou o cron 04:40 (--geral) com o timer 03:30 e o filho do it-campo: funções diferentes (fila geral × fila por dinheiro × laço do
+    it-campo, que vira slot de E3)'
+- mantida: intel_cache
+  descartadas: []
+  motivo: 'pncp_resultados semanal e intel_cache diário chamam o mesmo coletor com opções diferentes (incremental/atas × entes/backfill de preços): ficam
+    as duas'
+- mantida: triagem_lote
+  descartadas: []
+  motivo: 'triagem_alertas tem 3 funções distintas (--lote 2 = derivado; --opus 25 madrugada = triagem_opus; --api-colher = triagem_api_colher): não são
+    duplicatas'
+- mantida: vinculo_ob_contrato
+  descartadas: [vm1-cron-compliance-agent-vinculo-ob-contrato-regra]
+  motivo: cron já comentado antes da parada; o derivado é o gatilho
+fora:
+- origem: [vm1-cron-compliance-agent-propagacao-ciclo]
+  motivo: o despachante é substituído pelo planejador (O2.3 aposenta)
+- origem: [vm1-cron-tools-itcampo-vigia]
+  motivo: 'inventário: aposentar (o heartbeat do nó em fluxo.nos substitui)'
+- origem: [vm1-cron-sleep]
+  motivo: '@reboot de espera: sem sentido no fluxo'
+- origem: [vm1-cron-logrotate, vm2-timer-jfn-logrotate]
+  motivo: 'é do sistema operacional: fica no cron/timer (§3.3 ''fica só logrotate'')'
+- origem: [vm1-cron-vault, vm1-cron-rsync, vm1-cron-graphify-out]
+  motivo: backup git do vault e graphify→brain são de fora do JFN (§16.6)
+- origem: [vm1-cron-nuvens-manter-vivas-sh, vm1-cron-painel-vigia-sh]
+  motivo: script fora do repo (diretório pessoal de binários); nuvens segue ligado (ressalva 3); o vigia do painel vira sensor E18 na O2.3
+- origem: [vm2-timer-descobre-doe, vm2-timer-sei-pcrj-consulta, vm2-timer-sei-pcrj]
+  motivo: 'código fora do repo (projeto SEI-Prefeitura na VM-2): portar para o repo antes da O9.0 — sem isso a lente Prefeitura perde E1/E2/E3'
+- origem: [itcampo-task-jfn-sei-paralelo, itcampo-task-jfn-ocr-gpu, itcampo-task-jfn-nativo, itcampo-filho-tesseract, itcampo-filho-sei-arquivar, itcampo-filho-surya-ocr-2,
+    itcampo-filho-sei-integra-completa, itcampo-filho-tools-sei-integra-vm2, itcampo-filho-tools-itcampo-sei-paralelo, itcampo-filho-sei-integra-fila]
+  motivo: 'laços contínuos do it-campo e seus filhos: viram SLOTS do jfn-fluxo@itcampo (navegador ×6, gpu ×1) consumindo jobs E2/E3/E4/E5, não horário (O1.10)'
+- origem: [itcampo-task-jfnacordado, vm1-svc-chrome-jfn, vm1-svc-jfn-wal-keeper, vm1-svc-jfn, vm1-svc-painel-tunnel]
+  motivo: 'infra (serviço residente): fora da esteira (§16.6)'
+- origem: [vm1-svc-jfn-bombeiros-supervisor]
+  motivo: 'supervisor residente da lente Bombeiros: vira jobs E3/E11 da lente (§3.6); não é horário'

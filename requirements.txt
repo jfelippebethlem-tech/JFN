@@ -61,6 +61,7 @@ pillow>=10.0.0       # `import PIL` — imagem/foto de medição
 cryptography>=42.0.0 # assinatura/credencial
 jinja2>=3.1.0        # template de relatório (uso direto, não só via fastapi)
 starlette>=0.37.0    # uso direto em `obs_trace.py` (não só como dependência do fastapi)
+pydantic>=2.0        # uso direto em `fluxo/grafo.py` (valida config/fluxo.yaml; não só via fastapi)
 urllib3>=2.0.0       # uso direto (retry/pool) nos coletores
 # oci: NÃO entra aqui de propósito — SDK pesado usado só por `tools/criar_vm_oracle2.py`
 # (provisionamento de VM, fora do caminho de análise). Instale sob demanda: pip install oci

@@ -4,8 +4,8 @@ vira o planejador — qualquer nó pode ser, a eleição é automática e o lock
 
 O planejador:
   (a) materializa a agenda vencida em jobs (cron de 5 campos, hora de Brasília);
-  (b) transforma eventos do outbox em jobs dos dependentes, com debounce (o grafo é injetado; ligar ao
-      config/propagacao.yaml → config/fluxo.yaml é a O2.1);
+  (b) transforma eventos do outbox em jobs dos dependentes, com debounce, agrupamento e intervalo mínimo (o grafo
+      é injetado: `fluxo.grafo.carregar().grafo_planejador()`/`.contrato()` lê o config/fluxo.yaml — O2.1);
   (c) recupera leases vencidos;
   (e) calcula a saúde honesta: SAUDAVEL / DEGRADADO / ATRASADO / BLOQUEADO / INDISPONIVEL.
 A prioridade única (§3.7) e o backpressure por fonte (d) entram com o grafo, na O2.
@@ -115,7 +115,8 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
                 c = contrato.get(tipo, {})
                 novo = fila.enfileirar(con, tipo, f"{tipo}:agenda:{ag_id}:{proximo.isoformat()}", payload,
                                        prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
-                                       volta=c.get("volta"), correlation_id=f"agenda:{ag_id}")
+                                       volta=c.get("volta"), no_preferido=c.get("no_preferido"),
+                                       correlation_id=f"agenda:{ag_id}")
                 n += novo is not None
             con.execute("UPDATE agenda SET proximo = %s WHERE id = %s", (Cron(expr).proximo(agora), ag_id))
     return n
@@ -127,7 +128,12 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
     """Cada evento pendente suja os estágios que dependem da sua `fonte`: job `<dep>:<chave do evento>` com
     debounce. Vários eventos da mesma chave antes do job rodar viram UM job (a chave junta). Se o dependente estiver
     RODANDO, o evento fica pendente e volta no próximo ciclo — senão a mudança que chegou durante a execução se
-    perderia. Devolve quantos eventos foram processados."""
+    perderia. Devolve quantos eventos foram processados.
+
+    Campos do dependente (config/fluxo.yaml via grafo.grafo_planejador): `agrupar` — recálculo da base inteira, UM
+    job por tipo (chave = o tipo), qualquer que seja a fonte; `intervalo_min_s` — job já concluído há menos que isto
+    reabre com espera até completar o intervalo (o `intervalo_min_s` do despachante antigo); `payload` — base do
+    payload do job (rotina, teto de tempo), a que se soma o `evento`."""
     contrato = contrato or {}
     feitos = 0
     with con.transaction():
@@ -138,11 +144,19 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
             for dep in grafo.get(fonte, []):
                 dep = {"tipo": dep} if isinstance(dep, str) else dep
                 c = contrato.get(dep["tipo"], {})
-                chave_dep = f"{dep['tipo']}:{chave or fonte}"
+                chave_dep = dep["tipo"] if dep.get("agrupar") else f"{dep['tipo']}:{chave or fonte}"
+                atraso = float(dep.get("debounce_s", 0))
+                if dep.get("intervalo_min_s"):
+                    ha = con.execute("SELECT extract(epoch FROM now() - concluido_em) FROM jobs WHERE chave = %s "
+                                     "AND estado IN ('feito', 'falhou_efeito')", (chave_dep,)).fetchone()
+                    if ha and ha[0] is not None:
+                        atraso = max(atraso, float(dep["intervalo_min_s"]) - float(ha[0]))
                 novo = fila.enfileirar(con, dep["tipo"], chave_dep,
-                                       {"evento": {"id": ev_id, "fonte": fonte, "tipo": tipo_ev, "chave": chave}},
+                                       {**(dep.get("payload") or {}),
+                                        "evento": {"id": ev_id, "fonte": fonte, "tipo": tipo_ev, "chave": chave}},
                                        prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
-                                       volta=c.get("volta"), atraso_s=dep.get("debounce_s", 0), reabrir=True,
+                                       volta=c.get("volta"), no_preferido=c.get("no_preferido"), atraso_s=atraso,
+                                       reabrir=True,
                                        correlation_id=(detalhe or {}).get("correlation_id") or f"evento:{ev_id}")
                 if novo is None and fila.estado_de(con, chave_dep) == "reservado":
                     adiar = True

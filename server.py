@@ -1482,7 +1482,7 @@ def main():
     hostname = socket.gethostname()
     try:
         local_ip = socket.gethostbyname(hostname)
-    except Exception:
+    except OSError:  # socket.gaierror é OSError
         local_ip = "SEU-IP"
 
     print(f"""
