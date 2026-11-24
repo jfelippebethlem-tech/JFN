@@ -27,7 +27,7 @@ from compliance_agent import sei_recomendacoes
 from compliance_agent.cpf_cnpj import cnpj_valido as _cnpj_valido
 from compliance_agent.cadeia_processo import analisar_cadeia
 from compliance_agent.detectores import PESOS_DETECTOR
-from compliance_agent.detectores.base import ResultadoDetector, score_processo
+from compliance_agent.detectores.base import ResultadoDetector, ancora, score_processo
 from compliance_agent.editais.escalada import recomendar
 from compliance_agent.editais.flags import grau_flag
 from compliance_agent.execucao_fatos import contexto_x1, contexto_x3
@@ -273,6 +273,13 @@ def achados_de_fornecedor(resultados) -> list[dict]:
                          "neste processo."),
         })
     return saida
+
+
+def entra_no_score(r: ResultadoDetector) -> bool:
+    """P1 na âncora "fraco" (0,30 — pista de marca solta num edital longo, em que o homônimo cresce com o texto)
+    é sinal visível, não indício que pontua: fica fora do `score_processo` e da convergência (plano mestre v2 §5,
+    limpeza O5.5). O resto entra como sempre entrou."""
+    return not (r.detector == "P1" and r.status == "confirmado" and float(r.score or 0) <= ancora("fraco"))
 
 
 def achados_de_detector(resultados, *, origem: str, rotulo: str, ressalva: str) -> list[dict]:
@@ -734,7 +741,8 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                     r.motivo_refutacao = str(rd.get("motivo_refutacao") or "")
                     r.refutada = bool(rd.get("refutada"))
                     res_pej.append(r)
-                    resultados.append(r)
+                    if entra_no_score(r):
+                        resultados.append(r)
                     rodados.append(str(rd.get("detector")))
             achados += achados_de_detector(
                 res_pej, origem="edital", rotulo="planejamento/edital/julgamento",

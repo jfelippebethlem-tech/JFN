@@ -137,7 +137,7 @@ class _G:
 
 def _alertas(g: _G, con, nomes_ug: dict):
     try:
-        rows = _q(con, "SELECT id, tipo, severidade, titulo, evidencias FROM alertas WHERE status != 'descartado'")
+        rows = _q(con, "SELECT id, tipo, severidade, titulo, evidencias FROM alertas WHERE status NOT IN ('descartado', 'arquivado')")
         g.fontes["alertas"] = "ok"
     except sqlite3.Error:
         g.fontes["alertas"] = "INDISPONÍVEL"

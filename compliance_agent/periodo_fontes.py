@@ -361,9 +361,9 @@ _AL_A, _AL_M = P.sql_ano_mes("created_at", "iso")
 
 def _alertas_agregar(con, hoje):
     linhas = [(a, m, n, {}) for a, m, n in con.execute(
-        f"SELECT {_AL_A}, {_AL_M}, COUNT(*) FROM alertas WHERE status IS NOT 'descartado' GROUP BY 1, 2")]
+        f"SELECT {_AL_A}, {_AL_M}, COUNT(*) FROM alertas WHERE COALESCE(status, '') NOT IN ('descartado', 'arquivado') GROUP BY 1, 2")]
     inicio = min(((a, m) for a, m, *_ in linhas if a), default=_mes_corrente(hoje))
-    desc = con.execute("SELECT COUNT(*) FROM alertas WHERE status='descartado'").fetchone()[0]
+    desc = con.execute("SELECT COUNT(*) FROM alertas WHERE status IN ('descartado', 'arquivado')").fetchone()[0]
     cob = P.Cobertura(inicio=inicio, fim=_mes_corrente(hoje), mes_corrente=_mes_corrente(hoje),
                       nota=("Alertas em aberto ou confirmados (descartados pela triagem ficam fora). Data = quando o "
                             "SISTEMA gerou o alerta, não a data do ato: a tabela não guarda a data do fato."))
@@ -374,7 +374,7 @@ def _alertas_itens(con, ano, mes):
     pref = f"{ano:04d}-{mes:02d}" if mes else f"{ano:04d}"
     return [{"nome": t or "—", "n": n, "objeto": f"🔴 {a} · 🟡 {n - a}"}
             for t, n, a in con.execute(
-                "SELECT tipo, COUNT(*), SUM(severidade='alta') FROM alertas WHERE status IS NOT 'descartado' "
+                "SELECT tipo, COUNT(*), SUM(severidade='alta') FROM alertas WHERE COALESCE(status, '') NOT IN ('descartado', 'arquivado') "
                 f"AND substr(created_at,1,?)=? GROUP BY tipo ORDER BY 2 DESC LIMIT {TOP}", (len(pref), pref))]
 
 
