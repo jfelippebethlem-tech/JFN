@@ -34,7 +34,7 @@ itens:
   # O3 — Identidade e captura/texto
   - {id: O3.1, dep: [O1.7], maq: vm2, estado: feito, nota: "63e18bd2: 16.594 processos/595.092 docs/586.311 versões no PG; paridade 100%", titulo: "Carga dos 12,6 mil manifestos (identidade única)"}
   - {id: O3.2, dep: [O3.1], maq: vm2, estado: feito, nota: "63e18bd2: aquisicao(legado) + transformacao + hash_de", titulo: "aquisicao + transformacao"}
-  - {id: O3.3, dep: [O3.1], maq: itcampo+vm2, estado: pendente, titulo: "E2/E3 unificados; lente bombeiros substitui sweep/supervisor (paridade)"}
+  - {id: O3.3, dep: [O3.1], maq: itcampo+vm2, estado: em_curso, nota: "E2/E3 + prioridade única + lente bombeiros; prioridade alta pela medida da O6.3", titulo: "E2/E3 unificados; lente bombeiros substitui sweep/supervisor (paridade)"}
   - {id: O3.4, dep: [O3.3], maq: todas, estado: pendente, titulo: "E4-E7 + filas JSON migradas"}
   - {id: O3.5, dep: [O3.4], maq: vm2, estado: pendente, titulo: "Captura delta ligada (replay dos manifestos)"}
   - {id: O3.6, dep: [O3.4], maq: itcampo, estado: pendente, titulo: "OCR: bbox, ROI, código de barras, dedup, ouro, mistos, GPU x CPU"}
@@ -61,7 +61,7 @@ itens:
   # O6 — IA
   - {id: O6.1, dep: [O1.8], maq: vm2, estado: feito, nota: "d328a6e4 + c49556ed: trace, roteamento/teto, cache composto, schema estrito, máscara única; falta Batch e migrar chamadores", nota: "d328a6e4: (a) trace + (b) roteamento/teto feitos; faltam (c) cache composto, (d) schema estrito, Batch, máscara; 100 pontos de chamada mapeados", titulo: "Gateway LLM (trace, roteamento+teto, cache composto, schema estrito) + release_ia"}
   - {id: O6.2, dep: [O6.1], maq: vm2, estado: feito, nota: "c49556ed: datamarking + dual-LLM + 23 iscas, 0 obediência (literal); semântica fica na O6.6", titulo: "Prompt injection: spotlighting + dual-LLM + iscas"}
-  - {id: O6.3, dep: [O6.1], maq: vm2, estado: pendente, titulo: "E8 destravado (Batch Haiku, teto US$100/mês)"}
+  - {id: O6.3, dep: [O6.1], maq: vm2, estado: feito, nota: "fd858e01: E8 pronto, sem piloto pago (pior caso US$ 3,84 > 2,00; balde extracao_sei estourado); gargalo é CAPTURA (97,3% fora do acervo)", titulo: "E8 destravado (Batch Haiku, teto US$100/mês)"}
   - {id: O6.4, dep: [O6.3], maq: vm2+itcampo, estado: pendente, titulo: "E11 perícia única (29 perícias + 22 Lex viram eixos, paridade)"}
   - {id: O6.5, dep: [O6.1, O1.9], maq: vm2+itcampo, estado: sombra, nota: "e7a3b7db: regra de risco 3.394/3.513 em sombra; aplicador sem perda; piso 60%; vazão NÃO fecha (~60/dia) → conferente Sonnet na O6.6", titulo: "E12 conferência por risco, 2 executores"}
   - {id: O6.6, dep: [O6.5], maq: vm2, estado: pendente, titulo: "Régua de confiabilidade por par tarefa x modelo", tags: [juridico]}
