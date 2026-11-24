@@ -28,14 +28,19 @@ from __future__ import annotations
 import argparse
 import json
 import random
-import re
 import sqlite3
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
+if str(RAIZ) not in sys.path:              # `python tools/limpeza_o55.py` direto
+    sys.path.insert(0, str(RAIZ))
+
+from compliance_agent.dominio import identidade  # noqa: E402
+
 AUTOR = "limpeza-O5.5"
 LOTE = "o55-20261124"
 SEMENTE = 20261124
@@ -64,8 +69,8 @@ DDL = """CREATE TABLE IF NOT EXISTS limpeza_registro (
   autor TEXT NOT NULL, supersedes TEXT, em TEXT NOT NULL, desfeito_em TEXT,
   UNIQUE (lote, tabela, chave, campo))"""
 
-# CPF da folha vem mascarado: 'XX123456XXX', '***.123.456-**' etc. Inteiro = 11 dígitos sem máscara.
-_CPF_MASCARADO = re.compile(r"[X*x•]")
+# CPF da folha vem mascarado ('XX123456XXX'); a forma (e '***.123.456-**') é reconhecida por
+# `dominio.identidade.cpf_mascarado`. Inteiro = 11 dígitos sem máscara.
 
 
 @dataclass(frozen=True)
@@ -81,17 +86,22 @@ CHAVES = {"alertas": ("id",), "alertas_triagem": ("alerta_id",), "achado_certame
 
 
 def identidade_parcial(evidencias: str | None) -> bool:
-    """True se o alerta de folha só casa a pessoa por CPF mascarado + nome (sem matrícula, sem CPF inteiro)."""
+    """True se o alerta de folha só casa a pessoa por CPF mascarado + nome (sem matrícula, sem CPF inteiro).
+
+    O alerta agrupou os vínculos pelo par (CPF mascarado, nome) das evidências; o nível desse casamento é o de
+    `dominio.identidade.resolver` sobre o par contra si mesmo — e não sustentar grave é o critério do alvo 4."""
     try:
         ev = json.loads(evidencias or "{}")
     except (TypeError, ValueError):
         return False
     if not isinstance(ev, dict):
         return False
-    cpf = str(ev.get("cpf") or "")
-    if not cpf or not _CPF_MASCARADO.search(cpf):
+    if not identidade.cpf_mascarado(ev.get("cpf")):
         return False
-    return not any(ev.get(k) for k in ("matricula", "matriculas", "id_funcional", "cpf_completo"))
+    if any(ev.get(k) for k in ("matricula", "matriculas", "id_funcional", "cpf_completo")):
+        return False
+    par = {"cpf": ev.get("cpf"), "nome": ev.get("nome")}
+    return not identidade.sustenta_grave(identidade.resolver(par, par))
 
 
 # ── seleção (só leitura) ─────────────────────────────────────────────────────────────────────────────────

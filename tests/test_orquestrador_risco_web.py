@@ -45,7 +45,7 @@ def test_termo_web_sem_fonte_primaria_e_incerto(riscos):
 
 
 def test_fonte_primaria_sem_identidade_resolvida_e_incerto():
-    """Hoje não existe compliance_agent.dominio.identidade: com fonte primária e sem resolver identidade, INCERTO."""
+    """Com fonte primária e sem documento para resolver identidade (item e alvo sem CNPJ/CPF), INCERTO."""
     r = O._classificar_risco("", riscos_web=[{"termo": "sanção", "source_root_id": RAIZ_SEI}], gerar=None)
     assert r["web_estado"] == "INCERTO" and r["risco"] != "alto"
 
@@ -60,6 +60,25 @@ def test_fonte_primaria_e_identidade_resolvida_decide(monkeypatch):
     assert r["risco"] == "alto" and O.alerta_permitido(r)
     homonimo = O._classificar_risco("", riscos_web=[item], gerar=None, alvo={"cnpj": "99888777000166"})
     assert homonimo["web_estado"] == "INCERTO" and not O.alerta_permitido(homonimo)
+
+
+def test_identidade_real_forte_permite_alerta():
+    """O4.13, módulo real: CNPJ completo com DV válido igual (forte) + fonte primária → alertável."""
+    item = {"termo": "sanção CEIS", "source_root_id": RAIZ_SEI, "cnpj": "11.222.333/0001-81"}
+    r = O._classificar_risco("", riscos_web=[item], gerar=None, alvo={"nome": "ACME", "cnpj": "11222333000181"})
+    assert r["risco"] == "alto" and r["fonte"] == "web_primaria_identidade" and O.alerta_permitido(r)
+
+
+@pytest.mark.parametrize("item_id,alvo", [
+    ({"cnpj": "11222333", "nome": "ACME LTDA"}, {"cnpj": "11222333000181", "nome": "ACME LTDA"}),   # parcial (raiz)
+    ({"cpf": "XX123456XXX", "nome": "FULANA DE TAL"}, {"cpf": "***.234.567-**", "nome": "Fulana Tal"}),  # parcial
+    ({"nome": "ACME LTDA"}, {"nome": "ACME LTDA"}),                                                   # homônimo
+    ({"cnpj": "99888777000100"}, {"cnpj": "11222333000181"}),                                         # divergente
+])
+def test_identidade_real_nao_forte_fica_incerto(item_id, alvo):
+    item = {"termo": "sanção", "source_root_id": RAIZ_SEI, **item_id}
+    r = O._classificar_risco("", riscos_web=[item], gerar=None, alvo=alvo)
+    assert r["web_estado"] == "INCERTO" and r["risco"] != "alto" and not O.alerta_permitido(r)
 
 
 def test_rubrica_llm_alto_nunca_e_alertavel():

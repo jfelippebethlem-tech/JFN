@@ -241,13 +241,22 @@ def alerta_permitido(veredito: dict | None) -> bool:
 
 
 def _resolvedor_identidade():
-    """`compliance_agent.dominio.identidade.resolver(item, alvo) -> bool`, se o módulo existir. Hoje (24/11/2026)
-    não existe: sem resolvedor, nenhum achado web tem identidade resolvida (estado INCERTO)."""
+    """`(item, alvo) -> bool` sobre `compliance_agent.dominio.identidade` (O4.13): True só se
+    `sustenta_grave(resolver(item, alvo))` — identidade `forte` (CNPJ/CPF completo com DV válido igual, ou matrícula
+    + órgão). Parcial/probabilístico/homônimo ficam INCERTO. Sem o módulo (ou sem `resolver`), `None`: nenhum
+    achado web tem identidade resolvida. Módulo sem `sustenta_grave` (contrato antigo, `resolver -> bool`) vale
+    só `is True`."""
     try:
         from compliance_agent.dominio import identidade
     except ImportError:
         return None
-    return getattr(identidade, "resolver", None)
+    resolver = getattr(identidade, "resolver", None)
+    if resolver is None:
+        return None
+    sustenta = getattr(identidade, "sustenta_grave", None)
+    if sustenta is None:
+        return lambda item, alvo: resolver(item, alvo) is True
+    return lambda item, alvo: sustenta(resolver(item, alvo)) is True
 
 
 def _avaliar_riscos_web(riscos_web: list | None, alvo: dict | None = None) -> dict:
