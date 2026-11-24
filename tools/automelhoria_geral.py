@@ -477,6 +477,28 @@ def sensor_autoaprimoramento(pasta: Path | None = None, db: Path | None = None, 
     return out
 
 
+def sensor_propagacao(estado: dict | None = None) -> list[dict]:
+    """Grafo de propagação (24/11/2026): UM item por derivado sujo além do SLO (`propagacao.slo_s`) e um se o
+    despachante parou. Lê `propagacao.estado()` direto — o grafo da certeza só via o atraso quando o PRÓPRIO
+    derivado `certeza` rodava, e ele estava 27 h atrasado. Base ausente (`ok: False`) = nada a medir aqui."""
+    if estado is None:
+        sys.path.insert(0, str(_REPO))
+        from compliance_agent import propagacao
+        estado = propagacao.estado()
+    if not estado.get("ok"):
+        return []
+    out = []
+    if estado.get("estado") == "PARADO":
+        out.append(_p("propagacao", "parado", "despachante de propagação parado (último ciclo há mais de 20 min)",
+                      acao_humana="ver `crontab -l | grep propagacao` e data/propagacao_cron.log"))
+    for a in estado.get("atrasados") or []:
+        out.append(_p("propagacao", f"atrasado:{a['id']}", f"derivado {a['id']} atrasado: sujo há {a['sujo_ha_h']} h "
+                      f"(SLO {a['slo_h']} h)", f"{a['nome']} · peso {a['peso']} · adiado: {a.get('adiado') or '—'}",
+                      acao_humana="Sistema › Propagação: o motivo do adiamento diz quem segura (semáforo, carga, "
+                                  "dependência, recuo)"))
+    return out
+
+
 def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> list[dict]:
     """Certeza (docs/ARQUITETURA-DE-CERTEZA.md): número divergente entre registro de fatos, vault, documentos e
     cérebro; violação de contrato de dados; nível de prova que regrediu; escrita recusada pelo portão; defeito grave
@@ -919,7 +941,8 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "filas": (sensor_filas, "filas de feedback"), "pareceres": (sensor_pareceres, "oscilação dos pareceres"),
              "qualidade": (sensor_qualidade, "regras de qualidade"),
              "autoaprimoramento": (sensor_autoaprimoramento, "autoaprimoramento da perícia"),
-             "certeza": (sensor_certeza, "certeza dos números"), "maquinas": (sensor_maquinas, "uso das máquinas"),
+             "certeza": (sensor_certeza, "certeza dos números"),
+             "propagacao": (sensor_propagacao, "propagação (derivados além do SLO)"), "maquinas": (sensor_maquinas, "uso das máquinas"),
              "detectores": (sensor_detectores, "precisão dos detectores"),
              "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)"),
              "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)"),

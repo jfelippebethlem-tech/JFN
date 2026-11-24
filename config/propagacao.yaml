@@ -36,13 +36,17 @@
 #                    estado / nivel_prova / natureza / base (fixos ou `<nome>_por: {campo, mapa, padrao}`) · fonte ·
 #                    data_ref · apelidos/termos (para achar menção em texto) · superados (valor de medição anterior
 #                    a este registro) · reconcilia (o agregado tem de bater com as linhas de detalhe)
-#   frescor_max_s    (derivado) sujo há mais que isto = ATRASADO (padrão: o maior entre 6 h e 3× intervalo_min_s)
+#   frescor_max_s    (derivado) SLO: sujo há mais que isto = ATRASADO no estado (/api/sistema/propagacao) e no sensor
+#                    da automelhoria (padrão: slo_padrao_s + intervalo_min_s — propagacao.slo_s; 24/11/2026)
 #   manual: true     (fonte) evento só entra por `emitir`, de propósito
 #   externos:        recalculado FORA do despachante (LLM, cron próprio): depende · publica (a fonte que alimenta) ·
 #                    cron (trecho da linha do crontab) · atraso {funcao, teto} (conta o que está velho)
 #   contratos:       contrato de dados de tabela de achado: chave · colunas {min, max, monetaria, tipo, nulo, dominio}
 #                    · proveniencia [colunas obrigatórias] · nivel_prova {coluna+funcao | casos+padrao}
 #   certeza:         superfícies onde o verificador procura citação (`<!--fato:ID-->`) e menção a valor superado
+
+# SLO padrão do derivado (24/11/2026): 2 h além do intervalo mínimo próprio. Ver frescor_max_s acima.
+slo_padrao_s: 7200
 
 fontes:
   siafe_ob:

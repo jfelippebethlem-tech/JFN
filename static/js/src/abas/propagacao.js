@@ -108,8 +108,12 @@ export async function renderPropagacao(){
   if (!d || (d.ok === false && !d.estado)) return h + cardErro(d && (d.erro || d));
   if (d.ok === false) return h + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc(d.motivo || 'sem estado da propagação')}. Não quer dizer que está tudo em dia: a tela não tem como saber.</div>`);
   const r = d.resumo || {}, u = d.ultimo_ciclo;
+  const at = d.atrasados || [];
   h += card(d.estado === 'ok'
     ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>`
+    : d.estado === 'ATRASADO'
+    // 24/11/2026: o ciclo girar não é estar em dia — derivado sujo além do SLO (frescor_max_s; padrão 2 h + intervalo) é ATRASADO
+    ? `<div class="warn"><b>ATRASADA</b> — o despachante gira (último ciclo ${_hora(u.quando)}), mas ${fmtN(at.length)} derivado(s) estão desatualizados além do SLO:<ul style="margin:6px 0 0 18px">${at.map(a => `<li><b>${esc(a.nome)}</b> — sujo há ${fmtN(a.sujo_ha_h)} h (SLO ${fmtN(a.slo_h)} h)${a.adiado ? ` · ${esc(a.adiado)}` : ''}</li>`).join('')}</ul></div>`
     : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora(u.quando)}` : 'desde que foi instalado'}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
   h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? 'var(--amber)' : null, '🔁', {sobre: 'Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py.'})}

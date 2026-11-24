@@ -299,8 +299,57 @@ def test_estado_mostra_sujo_falha_e_despachante_parado(con, tmp_path):
     assert d["estado"] == "PARADO"                     # nenhum ciclo completo registrado
     a = next(x for x in d["derivados"] if x["id"] == "a")
     assert a["sujo"] and a["ultimo_estado"] == "falhou" and a["ultimo_erro"] == "quebrou" and a["motivos"] == ["f: OB nova"]
-    assert d["resumo"] == {"derivados": 2, "sujos": 1, "com_falha": 1, "fontes": 2, "fontes_com_erro": 0}
+    assert d["resumo"] == {"derivados": 2, "sujos": 1, "atrasados": 0, "com_falha": 1, "fontes": 2, "fontes_com_erro": 0}
     json.dumps(d)                                      # serializável para a rota
+
+
+# ───────────── SLO (24/11/2026: "ok" com 24 de 36 sujos, 17 há mais de 2 h) ─────────────
+def _ciclo_vivo(con):
+    con.execute("INSERT OR REPLACE INTO meta(k, v) VALUES ('ultimo_ciclo', ?)",
+                (json.dumps({"quando": time.time(), "segundos": 1, "eventos": 0, "feitos": []}),))
+    con.commit()
+
+
+def test_slo_padrao_e_duas_horas_alem_do_intervalo_e_frescor_declarado_vence():
+    assert P.slo_s({}) == 7200
+    assert P.slo_s({"intervalo_min_s": 86400}) == 86400 + 7200        # esperar o intervalo por desenho não é atraso
+    assert P.slo_s({"intervalo_min_s": 86400, "frescor_max_s": 90000}) == 90000
+    assert P.slo_s({}, {"slo_padrao_s": 600}) == 600
+    erros = P.validar(_cfg(a=_der(["f"], intervalo_min_s=7200, frescor_max_s=3600)))
+    assert erros == ["a: frescor_max_s menor que intervalo_min_s (ficaria ATRASADO por desenho)"]
+
+
+def test_estado_atrasado_lista_quem_passou_do_slo_mesmo_com_ciclo_vivo(con, tmp_path):
+    cfg = _cfg(velho=_der(["f"]), novo=_der(["g"]), espera=_der(["f"], intervalo_min_s=86400))
+    P.emitir(con, cfg, "f", "OB nova", quando=time.time() - 3 * 3600)     # 3 h: além do SLO de 2 h
+    P.emitir(con, cfg, "g", "contrato", quando=time.time() - 600)        # 10 min: dentro
+    con.execute("INSERT INTO derivado(id, adiado) VALUES ('velho', 'semáforo de pesado da VM-1 ocupado')")
+    _ciclo_vivo(con)
+    d = P.estado(cfg, db=tmp_path / "p.db")
+    assert d["estado"] == "ATRASADO" and d["ok"] is True
+    assert [a["id"] for a in d["atrasados"]] == ["velho"]                 # 'espera' tem SLO 26 h; 'novo' 10 min
+    assert d["atrasados"][0]["sujo_ha_h"] == 3.0 and d["atrasados"][0]["slo_h"] == 2.0
+    assert d["atrasados"][0]["adiado"].startswith("semáforo")
+    assert d["resumo"]["atrasados"] == 1 and d["resumo"]["sujos"] == 3
+    por = {x["id"]: x for x in d["derivados"]}
+    assert por["velho"]["atrasado"] and not por["novo"]["atrasado"] and not por["espera"]["atrasado"]
+    # controle negativo: tudo dentro do SLO e ciclo vivo = "ok"
+    con.execute("DELETE FROM pendencia WHERE derivado='velho'")
+    con.commit()
+    d = P.estado(cfg, db=tmp_path / "p.db")
+    assert d["estado"] == "ok" and d["atrasados"] == []
+
+
+def test_sensor_da_automelhoria_abre_um_item_por_derivado_atrasado():
+    from tools.automelhoria_geral import sensor_propagacao
+    est = {"ok": True, "estado": "ATRASADO", "atrasados": [
+        {"id": "lentes", "nome": "Lentes", "sujo_ha_h": 27.3, "slo_h": 8.0, "peso": "pesado", "adiado": "carga 22"}]}
+    itens = sensor_propagacao(est)
+    assert [i["assinatura"] for i in itens] == ["propagacao:atrasado:lentes"]
+    assert "27.3 h" in itens[0]["titulo"] and "carga 22" in itens[0]["detalhe"]
+    assert [i["assinatura"] for i in sensor_propagacao({"ok": True, "estado": "PARADO", "atrasados": []})] == ["propagacao:parado"]
+    assert sensor_propagacao({"ok": True, "estado": "ok", "atrasados": []}) == []
+    assert sensor_propagacao({"ok": False, "estado": "INDISPONIVEL"}) == []    # base ausente: nada a medir
 
 
 def test_marca_do_despachante_vence_o_cache_do_painel(tmp_path, monkeypatch):

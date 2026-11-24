@@ -70,6 +70,9 @@ CARGA_PACIENCIA_S = 7200
 CARGA_TETO_FINAL = {"leve": 18.0, "pesado": 12.0}
 RECUO_BASE_S, RECUO_MAX_S = 1800, 6 * 3600
 EVENTOS_GUARDADOS = 3000
+# SLO do derivado (24/11/2026, Etapa 2): o estado dizia "ok" com 24 de 36 derivados sujos, 17 há mais de 2 h — só o
+# ciclo parado contava como defeito. Agora sujo há mais que o SLO = ATRASADO, no estado e no sensor da automelhoria.
+SLO_PADRAO_S = 7200
 
 DDL = """
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
@@ -102,6 +105,8 @@ def validar(cfg: dict) -> list[str]:
             erros.append(f"{i}: cache sem prefixos/urls")
         if not d.get("depende"):
             erros.append(f"{i}: não depende de nada (nunca ficaria sujo)")
+        if d.get("frescor_max_s") and float(d["frescor_max_s"]) < float(d.get("intervalo_min_s") or 0):
+            erros.append(f"{i}: frescor_max_s menor que intervalo_min_s (ficaria ATRASADO por desenho)")
         for dep in d.get("depende", []):
             if dep not in fontes and dep not in ders:
                 erros.append(f"{i}: depende de '{dep}', que não existe")
@@ -122,6 +127,15 @@ def validar(cfg: dict) -> list[str]:
     for i in ders:
         visita(i, ())
     return erros
+
+
+def slo_s(d: dict, cfg: dict | None = None) -> float:
+    """Sujo há mais que isto = ATRASADO. `frescor_max_s` do derivado, se declarado; senão o padrão (`slo_padrao_s`
+    do yaml, 2 h) SOMADO ao `intervalo_min_s` — o derivado que por desenho espera N h entre execuções não está
+    atrasado por esperar; atrasado é passar 2 h além disso. Fonte única: o grafo da certeza lê daqui."""
+    if d.get("frescor_max_s"):
+        return float(d["frescor_max_s"])
+    return float((cfg or {}).get("slo_padrao_s") or SLO_PADRAO_S) + float(d.get("intervalo_min_s") or 0)
 
 
 def dependentes(cfg: dict, origem: str) -> list[str]:
@@ -733,9 +747,15 @@ def estado(cfg: dict | None = None, db: Path | None = None) -> dict:
                   con.execute("SELECT fonte, visto_em, mudou_em, erro FROM sonda")}
         linhas = {r[0]: r for r in con.execute(
             "SELECT id, ultimo_inicio, ultimo_fim, ultimo_estado, ultimo_erro, falhas, proxima_tentativa, adiado, execucoes FROM derivado")}
-        ders = []
+        ders, atrasados = [], []
         for did, d in cfg["derivados"].items():
             ln, s = linhas.get(did), sujos.get(did)
+            slo = slo_s(d, cfg)
+            sujo_ha = (agora - s["primeiro"]) if s else None
+            if sujo_ha is not None and sujo_ha > slo:
+                atrasados.append({"id": did, "nome": d["nome"], "sujo_ha_h": round(sujo_ha / 3600, 1),
+                                  "slo_h": round(slo / 3600, 1), "peso": d.get("peso", "leve"),
+                                  "adiado": ln[7] if ln else None})
             ders.append({
                 "id": did, "nome": d["nome"], "onde": d.get("onde"), "peso": d.get("peso", "leve"),
                 "tipo": d.get("tipo", "comando"), "depende": d.get("depende", []), "antes": d.get("antes"),
@@ -744,7 +764,9 @@ def estado(cfg: dict | None = None, db: Path | None = None) -> dict:
                 "ultimo_inicio": ln[1] if ln else None, "ultimo_fim": ln[2] if ln else None,
                 "ultimo_estado": ln[3] if ln else None, "ultimo_erro": ln[4] if ln else None,
                 "falhas": ln[5] if ln else 0, "proxima_tentativa": ln[6] if ln else None,
-                "adiado": ln[7] if ln else None, "execucoes": ln[8] if ln else 0})
+                "adiado": ln[7] if ln else None, "execucoes": ln[8] if ln else 0,
+                "slo_s": slo, "atrasado": bool(sujo_ha is not None and sujo_ha > slo)})
+        atrasados.sort(key=lambda x: -x["sujo_ha_h"])
         fontes = [{"id": fid, "nome": f["nome"], "manual": not any(t in (f.get("sonda") or {}) for t in _SONDAS),
                    "alimenta": dependentes(cfg, fid), **(sondas.get(fid) or {"visto_em": None, "mudou_em": None, "erro": None})}
                   for fid, f in cfg["fontes"].items()]
@@ -755,10 +777,11 @@ def estado(cfg: dict | None = None, db: Path | None = None) -> dict:
                      "SELECT derivado, inicio, fim, estado, motivos, erro FROM execucao ORDER BY id DESC LIMIT 30")]
         cer = cerebro.resumo(con)
         parado = ult is None or agora - ult["quando"] > 20 * 60
-        return {"ok": True, "estado": "PARADO" if parado else "ok", "gerado_em": agora,
-                "ultimo_ciclo": ult, "derivados": ders, "fontes": fontes, "eventos": eventos, "execucoes": execs,
-                "cerebro": cer,
-                "resumo": {"derivados": len(ders), "sujos": sum(1 for x in ders if x["sujo"]),
+        # "ok" só com o ciclo vivo E nenhum derivado além do SLO; ATRASADO traz a lista (não basta o despachante girar)
+        return {"ok": True, "estado": "PARADO" if parado else "ATRASADO" if atrasados else "ok", "gerado_em": agora,
+                "ultimo_ciclo": ult, "derivados": ders, "atrasados": atrasados, "fontes": fontes, "eventos": eventos,
+                "execucoes": execs, "cerebro": cer,
+                "resumo": {"derivados": len(ders), "sujos": sum(1 for x in ders if x["sujo"]), "atrasados": len(atrasados),
                            "com_falha": sum(1 for x in ders if x["ultimo_estado"] == "falhou"),
                            "fontes": len(fontes), "fontes_com_erro": sum(1 for x in fontes if x["erro"])}}
     finally:

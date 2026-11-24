@@ -8,7 +8,7 @@ TUDO, sem criar outro arquivo nem tocar no despachante:
                  e têm cron próprio). Declaram `depende` (fontes), `publica` (a fonte que eles alimentam) e `atraso`
                  (função só-leitura que conta o que está velho). É o que fecha a cadeia SEI → laudo → derivados.
   · `fatos:`     o que cada nó publica no registro de fatos.
-  · `frescor_max_s` por derivado (padrão: o maior entre 6 h e 3× o intervalo mínimo).
+  · `frescor_max_s` por derivado (padrão: `slo_padrao_s` 2 h + o intervalo mínimo — propagacao.slo_s).
 
 Achados da auditoria (cada um é uma LISTA — "quais", não só "quantos"):
   ciclo/erro de mapa · fonte sem sonda e sem emissor · fonte que ninguém consome · sonda cega ou com erro ·
@@ -77,7 +77,10 @@ def _emissores(raiz: Path, fontes: list[str]) -> dict[str, list[str]]:
 
 
 def frescor_max(d: dict) -> float:
-    return float(d.get("frescor_max_s") or max(6 * 3600, 3 * d.get("intervalo_min_s", 0)))
+    """O mesmo SLO do despachante (compliance_agent/propagacao.py::slo_s) — 24/11/2026: eram duas regras (6 h ou
+    3× o intervalo aqui, nada lá) e o estado dizia "ok" com 17 derivados sujos há mais de 2 h."""
+    from compliance_agent import propagacao
+    return propagacao.slo_s(d)
 
 
 def auditar(cfg: dict | None = None, estado_prop: dict | None = None, raiz: Path | None = None,
