@@ -28,6 +28,8 @@ import argparse
 import json
 import re
 
+import duckdb
+
 _NOTA = ("OB = vencedor/pagamento, não a lista de licitantes → indício de rodízio de vencedores a "
          "corroborar com as propostas (SEI/PNCP). Mercado restrito/especialização explica parte; "
          "indício a verificar, nunca acusação.")
@@ -150,7 +152,7 @@ def _anos_so_no_espelho(con, ug: str | None = None) -> dict[str, list[int]]:
             LEFT JOIN (SELECT DISTINCT ug_emitente ug, exercicio ex FROM db.ob_orcamentaria_siafe WHERE 1=1 {f2}) s
                    ON s.ug = t.ug AND s.ex = t.ex
             WHERE s.ug IS NULL""", p + p).fetchall()
-    except Exception:  # noqa: BLE001 — sem espelho não se afirma lacuna (nem completude)
+    except duckdb.Error:  # sem espelho não se afirma lacuna (nem completude)
         return {}
     out: dict[str, list[int]] = {}
     for u, ex in rows:

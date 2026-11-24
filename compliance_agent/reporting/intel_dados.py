@@ -140,6 +140,7 @@ def atualizar_favorecido_resumo(db_path=None) -> dict:
                 if ano:
                     anos_siafe.add(str(ano))
         tfe: dict = {}          # cpf -> [n_coberto, total_coberto, {grafias}, nome_exibicao]
+        # espelho-fora-do-produto: soma do TFE só como CONFRONTO (coluna tfe_* / divergência), nunca como pago
         for doc, nome, ano, n, tot in con.execute(
                 "SELECT favorecido_cpf, favorecido_nome, exercicio, COUNT(*), SUM(valor) "
                 "FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL GROUP BY 1, 2, 3"):
