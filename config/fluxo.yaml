@@ -291,7 +291,8 @@ fontes: {siafe_ob: OB nova ou regravada no SIAFE, siafe_status: 'Status de envio
     da automelhoria da perícia mudou (versão nova, veredito do portão, promoção)', memoria_claude: Decisão do dono ou lição registrada na memória dos agentes,
   conferencia_opus: Conferência do Opus corrigiu resultado produzido em contingência (Claude da assinatura no limite), decisao_dono: Decisão do dono que
     muda requisito (manual), compras_diretas_tcerj: Compras diretas novas do TCE-RJ (dispensas e inexigibilidades), regra_fracionamento: Correção na régua
-    de fracionamento por objeto (art. 75 §1º)}
+    de fracionamento por objeto (art. 75 §1º), codigo_commit: 'Commit novo no código do repositório canônico (VM-1) — sonda git da
+    propagação, entregue pela ponte (propagacao_ponte)'}
 rotinas:
   manutencao_semanal:
     estagio: E17
@@ -1647,6 +1648,22 @@ rotinas:
     timeout_s: 960
     efeito: {descricao: 'Sweeps analíticos na VM-2 (3 em 3 h): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
         o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  deploy_vm2:
+    estagio: E17
+    descricao: 'Deploy por evento na VM-2 (manter:deploy_vm2): git pull --ff-only na árvore do worker, HEAD = o que o origin anuncia, md5 da árvore = md5 do HEAD, recarga do supervisor só se o HEAD mudou'
+    comando: ['{py}', -m, tools.deploy_worker, --unit, jfn-fluxo@vm2.service]
+    recursos: [cpu_leve]
+    nos: [vm2]
+    timeout_s: 600
+    prioridade: 15
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0 junto com o jfn-fluxo@vm2 (primeira etapa, E17); o produtor do evento codigo_commit é a sonda git da propagação via propagacao_ponte (VM-1); a agenda de 6 h é a rede de segurança se o evento se perder'
+    nota: 'O2.4. Substitui o `git pull --ff-only` do início de vm2_integras/vm2_sweep_geral/vm2_ocr_reserva, que seguia calado com código velho quando falhava (25 commits atrás na parada). A recarga é um timer transitório de 60 s fora do cgroup do job: o supervisor, ao parar, devolveria este job à fila'
+    evento: {depende: [codigo_commit], debounce_s: 60, agrupar: true}
+    agenda:
+    - {cron: '17 */6 * * *'}
+    origem: [vm2-git-pull-no-inicio-dos-scripts]
+    efeito: {descricao: 'o HEAD do worker é o anunciado pelo origin e a árvore confere por md5 (a CLI só imprime depois de conferir)', log_contem: 'deploy_worker: HEAD [0-9a-f]{40} confere'}
   sentinela_integridade:
     estagio: E18
     descricao: Sentinela de integridade (VM-2)
@@ -2419,6 +2436,73 @@ rotinas:
     - {cron: '6-59/10 * * * *'}
     origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
     efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
+  elegibilidade_sombra:
+    estagio: E9
+    descricao: 'E9 elegibilidade (O4.7, SOMBRA ⚖️): regime, natureza do pagamento, origem do exercício, natureza do credor e veredito por exigência de cada detector de contratação, gravados em dominio.elegibilidade (PG) por chave natural'
+    passos:
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, ob_siafe]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, ob_tfe]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, contrato_tcerj]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, compra_direta_tcerj]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, contrato_siga]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, contrato_pcrj]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.elegibilidade, materializar, --unidade, contrato_rules]
+    parar_no_erro: true
+    recursos: [cpu_leve]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 40
+    ativa: false
+    bloqueio: 'sombra ⚖️ até o ✅ do dono no lote jurídico (O4.10) e parada de obras (24/11/2026): nenhum detector lê dominio.elegibilidade antes disso; na VM-2 a fonte (JFN_ELEGIBILIDADE_FONTE) é a exportação só-leitura do E15/O5 — o compliance.db da VM-1 nunca é aberto por worker remoto (ADR-001 D4)'
+    nota: 'O4.7. Cada passo é o estágio nativo `elegibilidade` pela CLI (handler + efeito no mesmo processo; a CLI só imprime a linha de prova depois de conferir: recontagem no PG = declaradas E amostra de 30 recalculada da fonte sem divergência). Idempotente: entrada igual altera 0 linha (entrada_hash). Quando o grafo agendar tipo nativo, cada passo vira um job `elegibilidade` com payload {unidade, exercicio}'
+    agenda:
+    - {cron: '41 4 * * 0'}
+    evento: {depende: [siafe_ob, contratos_tcerj, compras_diretas_tcerj, pcrj_base], debounce_s: 900, agrupar: true}
+    origem: [peneira_de_credor, tetos_de_dispensa, regime_pericia_contabil]
+    efeito: {descricao: 'linhas do escopo recontadas em dominio.elegibilidade com a versão corrente e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'elegibilidade: [1-9][0-9]* linha\(s\) conferida\(s\) em [a-z_]+\.elegibilidade'}
+  analitico_exportar:
+    estagio: E15
+    descricao: 'O4.12 analítico (vm2): snapshot conferido por md5 do compliance.db → Parquet zstd por exercício + manifesto (linhas, sha256, schema/alembic)'
+    comando: ['{py}', -m, tools.analitico_parquet, exportar, --fonte, data/analitico/snapshot/compliance.db, --destino, data/analitico/parquet/novo]
+    recursos: [cpu_pesado]
+    nos: [vm2, itcampo]
+    timeout_s: 3600
+    prioridade: 60
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0; antes, a cópia do snapshot VM-1 → VM-2 precisa de um passo próprio com md5 (porta única, sem rsync avulso) e o rótulo do destino passa a ser a data do snapshot'
+    nota: 'O4.12. DuckDB NUNCA na VM-1: a CLI recusa no jfn-core. Recusa também se o disco passar de 80% (conta do df). Exportação imutável: destino existente é recusado'
+    agenda:
+    - {cron: '40 23 * * *'}
+    origem: [vm1-cruzador-snapshot-analitico]
+    efeito: {descricao: 'manifesto.json gravado com linhas da fonte = linhas do Parquet em cada tabela (a CLI só imprime depois de conferir)', log_contem: 'analitico exportar: [0-9]+ tabela\(s\)'}
+  analitico_materializar:
+    estagio: E10
+    descricao: 'O4.12 analítico (vm2): visões pesadas do painel (captura de órgão, dependência de fornecedor, calibração, ranking de UG) do Parquet → envelopes JSON pequenos + .md5'
+    comando: ['{py}', -m, tools.analitico_parquet, materializar, --parquet, data/analitico/parquet/atual, --saida, data/analitico/resultados]
+    recursos: [cpu_pesado]
+    nos: [vm2, itcampo]
+    timeout_s: 1800
+    prioridade: 60
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0, depois do analitico_exportar; as rotas /api/cartel e /api/rodizio só passam a ler o envelope quando a O5.3 trocar duckdb_util.conectar pelo resultado materializado'
+    nota: 'O4.12. Régua OB paga montada pela função canônica contra as colunas do Parquet; CPF do credor sai mascarado no envelope (LGPD)'
+    evento: {depende: [analitico_exportar], debounce_s: 300, agrupar: true}
+    origem: [vm1-cruzador-concentracao-grupo]
+    efeito: {descricao: 'um envelope .json + .md5 por visão', log_contem: 'analitico materializar: \w+ md5 [0-9a-f]{32}'}
+  analitico_aplicar:
+    estagio: E15
+    descricao: 'O4.12 analítico (vm1): confere o md5 de cada envelope e instala em data/analitico/ para o painel (idempotente; md5 divergente é recusado)'
+    comando: ['{py}', -m, tools.analitico_parquet, aplicar, --origem, data/analitico/resultados, --destino, data/analitico/painel]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 300
+    prioridade: 20
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0; o envelope chega à VM-1 pela tabela resultados_analitico do PG (ADR-001 §2.2 regra 3: escrita entre máquinas passa pelo PG, nunca rsync de JSON) — tabela ainda não criada'
+    nota: 'O4.12. Sem DuckDB (a CLI só importa duckdb nos subcomandos da VM-2)'
+    evento: {depende: [analitico_materializar], debounce_s: 60, agrupar: true}
+    origem: [vm1-cruzador-snapshot-analitico]
+    efeito: {descricao: 'envelope instalado ou inalterado com md5 conferido', log_contem: 'analitico aplicar: (APLICADO|INALTERADO)'}
 duplicacoes:
 - mantida: triagem_lote
   descartadas: []

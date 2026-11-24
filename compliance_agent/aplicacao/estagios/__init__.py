@@ -117,5 +117,8 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "legado":
         from compliance_agent.aplicacao.estagios import legado     # import tardio: só o filho que roda legado paga
         return legado.ESTAGIO
+    if familia == "elegibilidade":                                  # E9 (O4.7, sombra ⚖️): import tardio, como o legado
+        from compliance_agent.aplicacao.estagios import elegibilidade
+        return elegibilidade.ESTAGIO
     return REGISTRO.get(familia)
 

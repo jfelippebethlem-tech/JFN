@@ -1,0 +1,42 @@
+# Baseline da catraca tests/test_catraca_tier1_elegibilidade.py (O4.7, 24/11/2026) — MODO AVISO até a O4.10.
+# "<detector> <tabela bruta>": detector Tier 1 (tier: 1 ou manchete: true) cujo módulo lê a tabela bruta sem a E9.
+# Lista que SÓ ENCOLHE: sai a linha quando o detector passar a ler dominio.v_elegibilidade_detector (O4.10/O5.1).
+couto.D01 compras_diretas_tcerj
+couto.D01 contratos_tcerj
+couto.D02 compras_diretas_tcerj
+couto.D02 contratos_tcerj
+couto.D03 ob_orcamentaria_siafe
+couto.D04 contratos_tcerj
+couto.D04 ob_orcamentaria_siafe
+couto.D05 despesa_execucao
+couto.D05 ob_orcamentaria_siafe
+couto.D06 contrato_aditivo
+couto.D06 pcrj_contratos
+couto.D08 contratos_tcerj
+couto.D08 ob_orcamentaria_siafe
+couto.D09 ob_orcamentaria_siafe
+couto.D10 despesa_execucao
+couto.D10 ob_orcamentaria_siafe
+couto.D13 despesa_execucao
+couto.D13 ob_orcamentaria_siafe
+couto.D14 despesa_execucao
+couto.D14 ob_orcamentaria_siafe
+couto.D15 ob_orcamentaria_siafe
+couto.D17 compras_diretas_tcerj
+couto.D18 ob_orcamentaria_siafe
+couto.D20 despesa_execucao
+couto.D20 ob_orcamentaria_siafe
+intel.comunidades ob_orcamentaria_siafe
+intel.empresa_fenix favorecido_resumo
+intel.empresa_fenix ob_orcamentaria_siafe
+lex.redflags ob_orcamentaria_siafe
+lex.redflags siga_contratos
+pericia_contabil contrato_aditivo
+pericia_contabil contratos_tcerj
+pericia_contabil ob_orcamentaria_siafe
+pericia_contabil ordens_bancarias
+pericia_contabil pcrj_contratos
+retro.lift ob_orcamentaria_siafe
+tools.contrato_acima_do_porte contratos_tcerj
+tools.porte_declarado_certame ob_orcamentaria_siafe
+tools.porte_incompativel ob_orcamentaria_siafe
