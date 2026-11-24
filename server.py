@@ -537,6 +537,22 @@ async def _auth_jfn(request: Request, call_next):
     return RedirectResponse("/login_jfn", status_code=303)
 
 
+def _ws_autorizado(ws) -> bool:
+    """A mesma régua do `_auth_jfn` para WebSocket — middleware HTTP NÃO roda em WebSocket.
+
+    24/11/2026 (Esteira Única): medido pelo Funnel público que `/ws` e `/tunnel` abriam SEM login —
+    `/tunnel` aceitava "OBs do SIAFE" de qualquer um (envenenamento de dado) e `/ws` acionava o agente
+    com API paga fora do teto. Em manutenção (parada de obras) os dois ficam fechados.
+    """
+    if _MANUTENCAO:
+        return False
+    cliente = ws.client.host if ws.client else None
+    via_proxy = any(h in ws.headers for h in _DASH_PROXY_HDRS)
+    if cliente in _DASH_LOCAL and not via_proxy:
+        return True
+    return _dash_token_ok(ws.cookies.get(_DASH_COOKIE))
+
+
 # ── A PORTA DE ENTRADA SERVE A SI MESMA (2026-11-09) ────────────────────────────────────────────
 # Para quem chega pela INTERNET (Funnel/Cloudflare = sem cookie e com cabeçalho de proxy), tudo fora
 # de `/login_jfn` e `/static/login*` é 303 para o próprio login. A página citava
@@ -1231,6 +1247,9 @@ async def websocket_tunnel(ws: WebSocket):
     """WebSocket reverso: Windows conecta aqui para transmitir OBs do SIAFE."""
     global _tunnel_ws, _tunnel_results
 
+    if not _ws_autorizado(ws):
+        await ws.close(code=1008)
+        return
     await ws.accept()
     async with _tunnel_lock:
         _tunnel_ws = ws
@@ -1311,6 +1330,9 @@ class StreamingCallbacks:
 
 @app.websocket("/ws")
 async def websocket_chat(ws: WebSocket):
+    if not _ws_autorizado(ws):
+        await ws.close(code=1008)
+        return
     await ws.accept()
 
     async def otp_callback():

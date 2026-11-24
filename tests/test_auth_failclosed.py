@@ -245,3 +245,39 @@ def test_manutencao_json_nao_ganha_faixa(manut):
 def test_sem_manutencao_post_nao_e_503(cli):
     assert cli.post("/api/qualquer-coisa", json={}).status_code != 503
     assert "jfn-manutencao" not in cli.get("/login_jfn").text
+
+
+# ── WebSocket: middleware HTTP não cobre — régua própria (24/11, medido aberto pelo Funnel) ──────
+
+from starlette.websockets import WebSocketDisconnect  # noqa: E402
+
+_PROXY = {"x-forwarded-for": "203.0.113.7"}
+
+
+@pytest.mark.parametrize("rota", ["/ws", "/tunnel"])
+def test_websocket_sem_login_via_proxy_recusa(cli, rota):
+    with pytest.raises(WebSocketDisconnect) as e:
+        with cli.websocket_connect(rota, headers=_PROXY) as ws:
+            ws.receive_text()
+    assert e.value.code == 1008
+
+
+@pytest.mark.parametrize("rota", ["/ws", "/tunnel"])
+def test_websocket_fechado_em_manutencao_mesmo_local(manut, rota):
+    with pytest.raises(WebSocketDisconnect) as e:
+        with manut.websocket_connect(rota) as ws:
+            ws.receive_text()
+    assert e.value.code == 1008
+
+
+def test_ws_autorizado_aceita_cookie_valido(monkeypatch):
+    monkeypatch.setattr(server, "_MANUTENCAO", False)
+
+    class _WS:
+        client = None
+        headers = _PROXY
+        cookies = {server._DASH_COOKIE: server._dash_token()}
+
+    assert server._ws_autorizado(_WS())
+    _WS.cookies = {}
+    assert not server._ws_autorizado(_WS())
