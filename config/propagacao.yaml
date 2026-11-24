@@ -784,9 +784,10 @@ derivados:
     onde: Transversal › Sancionadas · filtro Ano/Mês
     tipo: cache
     depende: [sancoes]
-    prefixos: ["periodo:sancoes_estado", "intel:socio_sancionada"]
+    prefixos: ["periodo:sancoes_estado", "periodo:sancoes_prefeitura", "intel:socio_sancionada"]
     urls:
       "periodo/sancoes_estado": "periodo:sancoes_estado"
+      "periodo/sancoes_prefeitura": "periodo:sancoes_prefeitura"      # 24/11/2026 — mesma tabela (sancoes_federais)
       "intel/socio_sancionada": "intel:socio_sancionada"
     peso: leve
     debounce_s: 900
@@ -804,6 +805,38 @@ derivados:
     debounce_s: 900
     intervalo_min_s: 3600
     prioridade: 6
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  # 24/11/2026 (Etapa 2, passo 4): rotas do pré-aquecimento cuja fonte está no grafo — antes só o TTL de 1 h e o
+  # cron :16/:46 (o valor velho durava até 1 h 30 depois da coleta).
+  painel_prefeitura:
+    nome: Painel — caches da Prefeitura por período (contratos, aditivos, despesa ContasRio)
+    onde: filtro Ano/Mês das abas da Prefeitura
+    tipo: cache
+    depende: [pcrj_base]
+    prefixos: ["periodo:contratos_prefeitura", "periodo:aditivos_prefeitura", "periodo:despesa_prefeitura"]
+    urls:
+      "periodo/contratos_prefeitura": "periodo:contratos_prefeitura"
+      "periodo/aditivos_prefeitura": "periodo:aditivos_prefeitura"
+      "periodo/despesa_prefeitura": "periodo:despesa_prefeitura"
+    peso: leve
+    debounce_s: 900
+    intervalo_min_s: 3600
+    prioridade: 6
+    antes: "validade de 1 h + pré-aquecimento a cada 30 min"
+  painel_conluio:
+    nome: Painel — conluio pelos resultados do PNCP (captura e rodízio, por esfera)
+    onde: Contratos › Conluio (Estado, Prefeitura, todos)
+    tipo: cache
+    depende: [contratos_tcerj]
+    prefixos: ["conluio:"]
+    urls:
+      "pncp/conluio?esfera=estado": "conluio:estado"
+      "pncp/conluio?esfera=prefeitura": "conluio:prefeitura"
+      "pncp/conluio": "conluio:todos"
+    peso: pesado
+    debounce_s: 900
+    intervalo_min_s: 3600
+    prioridade: 7
     antes: "validade de 1 h + pré-aquecimento a cada 30 min"
   conluio_participacao:
     nome: Conluio por participação — perdedor de cobertura, par inseparável e rodízio contra o acaso do mercado
