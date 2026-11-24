@@ -1,0 +1,92 @@
+# Política do gateway LLM (compliance_agent/adaptadores/llm/gateway.py) — plano mestre v2 §6 "Gateway LLM", O6.1 (b).
+#
+# Lida a cada chamada (sem cache): mudou aqui, vale na próxima. `JFN_LLM_POLITICA` desvia o arquivo (testes).
+# NADA aqui religa coisa alguma: só governa o que passar pelo gateway — e, em 24/11/2026, nenhum chamador passa
+# ainda (estrangulamento posterior; lista em ~/vault/refatoracao/gateway-llm-pontos-de-chamada.md).
+#
+# CAMADAS (a ordem da lista da tarefa é a ordem de tentativa; falhou ⇒ escala para a próxima, com o motivo gravado):
+#   0 — determinística: a tarefa NÃO chama LLM. Tarefa com `camadas: [0]` é recusada pelo gateway com erro explícito.
+#   1 — cadeia grátis (`llm/free_llm.best_free_chat`).
+#   2 — assinatura do Claude pelo CLI (`llm/claude_motor.pensar(backend="cli")`: orçamento diário de `llm/orcamento`,
+#       ritmo semanal de `llm/ritmo_assinatura`, contingência e kill-switch valem lá dentro, como hoje).
+#   3 — API paga da Anthropic (`llm/claude_api.pensar_api`: teto e baldes do livro-caixa valem lá dentro, como hoje)
+#       + o teto MENSAL do gateway abaixo (as duas travas valem; a mais apertada ganha).
+
+camadas:
+  0: {nome: deterministica, provedor: null}
+  1: {nome: gratis, provedor: free_llm}
+  2: {nome: assinatura, provedor: assinatura_claude}
+  3: {nome: api_paga, provedor: api_anthropic}
+
+# PROVEDORES e o que se sabe da política de dados de cada um.
+#   data_policy: conhecida | desconhecida   — "conhecida" = termos publicados e citados em `fonte` (a LEITURA dos termos
+#   para dado pessoal é parte do ✅ do dono, ainda pendente);
+#   aprovada_dono: true só com ✅ do dono registrado (data + onde). Sem ✅ ⇒ false.
+provedores:
+  free_llm:
+    pago: false
+    data_policy: desconhecida     # cadeia de ~10 terceiros com termos diferentes (free de vários usa dado p/ treino)
+    aprovada_dono: false
+    fonte: null
+  assinatura_claude:
+    pago: false                   # custo fixo da assinatura: por chamada o custo é None (não 0) — mede-se pelo ritmo
+    data_policy: conhecida
+    aprovada_dono: false          # PENDENTE ✅ do dono (§3.11: pessoal/restrito para provedor externo só com ✅)
+    fonte: https://www.anthropic.com/legal/consumer-terms
+  api_anthropic:
+    pago: true
+    data_policy: conhecida
+    aprovada_dono: false          # PENDENTE ✅ do dono
+    fonte: https://www.anthropic.com/legal/commercial-terms
+
+# CLASSES DE DADO (§3.11) → o que o provedor precisa ter para receber. O chamador DECLARA a classe; sem classe
+# válida o gateway recusa. Nenhum provedor atende ⇒ ClasseDadoRecusada (erro explícito, nunca silêncio).
+classes_dado:
+  publico:  {exige: nada}
+  interno:  {exige: data_policy_conhecida}
+  pessoal:  {exige: aprovada_dono}
+  restrito: {exige: aprovada_dono}
+  segredo:  {exige: nunca}
+
+# ORÇAMENTO MENSAL da API paga (decisão 8 do dono: US$ 100/mês, corte automático a 85%).
+#   gasto do mês = soma de custo_usd das chamadas pagas do gateway no mês (UTC) + reservas em curso;
+#   abaixo de 85%: passa; de 85% a 100%: só tarefa com `critica: true`; acima de 100%: nada pago.
+#   Custo que o gateway não consegue estimar (preço fora de config/llm_precos.yaml) ⇒ chamada paga recusada.
+#   O teto também precisa estar no console da Anthropic (decisão 8) — isto é a trava local, não substitui aquela.
+orcamento_mensal:
+  teto_usd: 100.0
+  corte_fracao: 0.85
+
+# CIRCUIT BREAKER por provedor: `falhas` falhas dentro de `janela_s` ⇒ aberto por `aberto_s` (pulado, com o motivo).
+circuito:
+  falhas: 5
+  janela_s: 300
+  aberto_s: 600
+
+# TAREFAS. `camadas` = ordem de tentativa; `critica` = passa entre 85% e 100% do teto mensal.
+# Nenhuma tarefa é crítica por padrão: quais merecem os últimos 15% é decisão do dono (pendente).
+# As camadas espelham o caminho de HOJE de cada tarefa (o gateway não muda comportamento):
+#   Opus de juízo/conferência → só assinatura (nunca API: decisão do dono de 13/11/2026);
+#   tarefas no backend "auto" do motor → assinatura e, sem ela, API paga.
+padrao: {camadas: [1], critica: false}     # tarefa não listada: só a cadeia grátis — nada pago sem estar aqui
+
+tarefas:
+  canario:            {camadas: [2], critica: false}
+  verificacao_opus:   {camadas: [2], critica: false}
+  conferencia_opus:   {camadas: [2], critica: false}
+  juiz_qualidade:     {camadas: [2], critica: false}
+  pericia_integral:   {camadas: [2], critica: false}
+  autoaprimoramento:  {camadas: [2], critica: false}
+  cerebro_consolidacao: {camadas: [2], critica: false}
+  pericia_execucao:   {camadas: [2, 3], critica: false}
+  pericia_fornecedor: {camadas: [2, 3], critica: false}
+  parecer_juridico:   {camadas: [2, 3], critica: false}
+  camada_subjetiva:   {camadas: [2, 3], critica: false}
+  investigacao_risco: {camadas: [2, 3], critica: false}
+  triagem_alertas:    {camadas: [2, 3], critica: false}
+  extracao_sei:       {camadas: [2, 3], critica: false}
+  leitura_integral:   {camadas: [2, 3], critica: false}
+  normalizacao_itens: {camadas: [3], critica: false}
+  classificacao:      {camadas: [1], critica: false}
+  resumo:             {camadas: [1], critica: false}
+  extracao_entidades: {camadas: [1], critica: false}

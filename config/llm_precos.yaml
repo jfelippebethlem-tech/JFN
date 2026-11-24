@@ -1,0 +1,50 @@
+# Tabela de preço do gateway LLM (compliance_agent/adaptadores/llm/gateway.py) — US$ por 1 milhão de tokens.
+#
+# REGRA DA CASA (§4.1): API paga cobra. Preço que não está aqui é DESCONHECIDO ⇒ o gateway grava custo_usd = None
+# (nunca 0) e RECUSA chamada paga cujo custo não consegue limitar. Provedor grátis não tem linha aqui: o custo dele
+# também fica None ("grátis" sem prova documentada não vira 0).
+#
+# Conferido em 2026-11-24 na página oficial (buscada nesta data, não de memória):
+#   https://platform.claude.com/docs/en/about-claude/pricing
+# Cache read de Opus 5.5 e Sonnet 5.5 é 0,05× a entrada (nota 2 da página); Haiku 5.5 usa 0,1×. Batch = 50% em
+# entrada e saída (tabela "Batch processing"); os multiplicadores de cache se somam ao desconto do lote.
+# Mudou o preço? Atualize os números, a data e confira de novo na fonte — no mesmo commit.
+
+fonte:
+  url: https://platform.claude.com/docs/en/about-claude/pricing
+  conferido_em: "2026-11-24"
+  moeda: USD
+  unidade: por_milhao_de_tokens
+
+desconto_lote: 0.50
+
+modelos:
+  claude-opus-5-5:
+    provedor: anthropic
+    entrada: 4.00
+    saida: 20.00
+    cache_leitura: 0.20
+    cache_escrita_5m: 5.00
+    cache_escrita_1h: 8.00
+  claude-sonnet-5-5:
+    provedor: anthropic
+    entrada: 2.00
+    saida: 10.00
+    cache_leitura: 0.10
+    cache_escrita_5m: 2.50
+    cache_escrita_1h: 4.00
+  claude-haiku-5-5:
+    provedor: anthropic
+    entrada: 0.10
+    saida: 0.50
+    cache_leitura: 0.01
+    cache_escrita_5m: 0.125
+    cache_escrita_1h: 0.20
+    # prompt (entrada + cache lido + cache escrito) acima de 100.000 tokens paga a faixa longa na requisição inteira
+    longo_acima_de_tokens: 100000
+    longo:
+      entrada: 0.50
+      saida: 2.50
+      cache_leitura: 0.05
+      cache_escrita_5m: 0.625
+      cache_escrita_1h: 1.00
