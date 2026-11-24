@@ -48,6 +48,14 @@ def db(tmp_path, monkeypatch):
         ("OB2", "2025-02-01", None, CNPJ_B, "BETA SA", 200.0, 2025, UG),
         ("OB3", "2025-03-01", None, CNPJ_C, "GAMA ME", 300.0, 2025, UG),
     ])
+    # 24/11/2026 (1008786e): o universo de fornecedores vem da OB PAGA do SIAFE (`_ob_paga`), não do espelho TFE
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT, status TEXT,"
+                " credor TEXT, nome_credor TEXT, valor REAL)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)", [
+        ("OB1", UG, "01/01/2025", "Contabilizado", CNPJ_A, "ALFA LTDA", 100.0),
+        ("OB2", UG, "01/02/2025", "Contabilizado", CNPJ_B, "BETA SA", 200.0),
+        ("OB3", UG, "01/03/2025", "Contabilizado", CNPJ_C, "GAMA ME", 300.0),
+    ])
     # OSM (deprecado): A=INDICIO, B=INDICIO
     con.execute("""CREATE TABLE endereco_verificacao (
         cnpj TEXT, status TEXT, nivel TEXT, evidencia TEXT)""")
@@ -111,6 +119,10 @@ def test_fallback_so_osm_quando_google_vazio(tmp_path, monkeypatch):
         favorecido_nome TEXT, valor REAL, exercicio INT, ug_codigo TEXT)""")
     con.execute("INSERT INTO ordens_bancarias VALUES (?,?,?,?,?,?,?,?)",
                 ("OB1", "2025-01-01", None, CNPJ_B, "BETA SA", 200.0, 2025, UG))
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT, status TEXT,"
+                " credor TEXT, nome_credor TEXT, valor REAL)")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?)",
+                ("OB1", UG, "01/01/2025", "Contabilizado", CNPJ_B, "BETA SA", 200.0))
     con.execute("CREATE TABLE endereco_verificacao (cnpj TEXT, status TEXT, nivel TEXT, evidencia TEXT)")
     con.execute("INSERT INTO endereco_verificacao (cnpj,status,nivel,evidencia) VALUES (?,?,?,?)",
                 (CNPJ_B, "AFASTADO", "ALTO", "OSM: sede edificada"))

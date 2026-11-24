@@ -110,7 +110,7 @@ ESTADOS = ("nao_confirmado", "corroborado", "refutado", "expirado")
 _RANK_ORIGEM = {"fonte_primaria": 4, "humano": 3, "regra": 2, "desconhecida": 1, "llm": 0}
 _RANK_ESTADO = {"corroborado": 0, "nao_confirmado": 1, "expirado": 2, "refutado": 3}
 CONF_INICIAL = 0.5
-TETO_NAO_CONFIRMADO = 0.5     # item sem fonte primária nunca é lido acima disto, seja qual for o histórico
+CONF_MAX_NAO_CONFIRMADO = 0.5     # item sem fonte primária nunca é lido acima disto, seja qual for o histórico
 MAX_VERSOES = 30
 # validade (dias) por categoria; ausente = não expira (estado operacional: missao, selector, empirico…)
 VALIDADE_DIAS = {
@@ -196,12 +196,12 @@ def estado_efetivo(item, agora: Optional[datetime] = None) -> str:
 
 
 def confianca_efetiva(item, agora: Optional[datetime] = None) -> float:
-    """Confiança que os leitores usam: refutado/expirado = 0; não corroborado ≤ TETO_NAO_CONFIRMADO."""
+    """Confiança que os leitores usam: refutado/expirado = 0; não corroborado ≤ CONF_MAX_NAO_CONFIRMADO."""
     estado = estado_efetivo(item, agora)
     if estado in ("refutado", "expirado"):
         return 0.0
     c = item.confianca if item.confianca is not None else CONF_INICIAL
-    return round(c if estado == "corroborado" else min(c, TETO_NAO_CONFIRMADO), 4)
+    return round(c if estado == "corroborado" else min(c, CONF_MAX_NAO_CONFIRMADO), 4)
 
 
 def _registrar_versao(item, registro: dict) -> None:
