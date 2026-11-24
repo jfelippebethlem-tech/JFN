@@ -6,7 +6,7 @@ versao: 2
 itens:
   # O0 — Contenção
   - {id: O0.0, dep: [], maq: vm1+itcampo, estado: feito, titulo: "Backup conferido + fotografia das 3 máquinas"}
-  - {id: O0.7, dep: [O0.0], maq: todas, estado: feito, nota: "parada 12:25; snapshot md5 0 divergência no it-campo D:/JFN-Frio/snapshot-20261124", titulo: "Parada de obras (crontab #PARADA-20261124, timers, tarefas, snapshot congelado)"}
+  - {id: O0.7, dep: [O0.0], maq: todas, estado: feito, nota: "parada completa nas 3 máquinas (it-campo laços+vLLM encerrados 24/11 ~17h30)", nota: "parada 12:25; snapshot md5 0 divergência no it-campo D:/JFN-Frio/snapshot-20261124", titulo: "Parada de obras (crontab #PARADA-20261124, timers, tarefas, snapshot congelado)"}
   - {id: O0.1, dep: [], maq: vm1, estado: feito, titulo: "Backlog + frente no quadro + notas às frentes vivas"}
   - {id: O0.2, dep: [O0.7], maq: vm2, estado: pendente, titulo: "Disco VM-2 < 75% + swap 4 GB"}
   - {id: O0.3, dep: [O0.7], maq: vm1, estado: em_curso, nota: "84d7d9e0 no ar: bind 127.0.0.1, Secure, epoch, rate limit SQLite, manutenção só leitura; FALTA JFN_ENV=producao (senha do dono tem 18 < 20) e /ws em manutenção", titulo: "Painel falha-fechado (bind local, Secure, epoch, rate limit) + modo só leitura"}
@@ -23,12 +23,12 @@ itens:
   - {id: O1.7, dep: [O0.2], maq: vm2, estado: feito, nota: "ecf795b0: schema fluxo pronto e testado em esquema temporário; aplicar no banco real é a O2", titulo: "Schema fluxo no PG (jobs evoluída, eventos, agenda, grafo, nos, metricas) + teste de concorrência"}
   - {id: O1.8, dep: [O1.7], maq: todas, estado: feito, nota: "ecf795b0: supervisor/planejador/governador + units (não instaladas); 65 passed PG", titulo: "compliance_agent/fluxo/ supervisor+planejador+governador PSI + units systemd"}
   - {id: O1.9, dep: [], maq: vm2, estado: bloqueado_dono, titulo: "CLI do Claude na VM-2 (login do dono) como 2º executor da conferência"}
-  - {id: O1.10, dep: [O1.8], maq: itcampo, estado: pendente, titulo: "it-campo capacidade total e boot sem logon"}
+  - {id: O1.10, dep: [O1.8], maq: itcampo, estado: em_curso, nota: "c8a117bc: JFN-Fluxo-Boot desabilitada pronta; .wslconfig proposto; WSL sem login do Claude", titulo: "it-campo capacidade total e boot sem logon"}
   # O2 — Zero cron
   - {id: O2.1, dep: [O1.8], maq: vm1, estado: feito, nota: "6c3fedd7: fluxo.yaml 151 rotinas; schema fluxo aplicado no PG real; sombra 2,7x → O2.2", titulo: "config/fluxo.yaml + planejador em replay dos logs"}
   - {id: O2.2, dep: [O2.1], maq: vm1, estado: feito, nota: "1004e9a1: sombra 0,91x (slots) / 1,95x (capacidade legado, explicado); agenda sincronizar pronta e inativa", titulo: "Planejador corrigido pela sombra (cadeia, tetos, sem sobreposição, nó)"}
   - {id: O2.3, dep: [O2.1], maq: vm1, estado: feito, nota: "religar_o90 (--ensaio), ritmo no PG, reserva p95 11 ms, ponte de eventos, fluxo_002 (aplicar no R0)", nota: "navegador transitório VM-1 só p/ 15 legadas até O3.3; ritmo também na agenda; religar_o90 --ensaio", titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
-  - {id: O2.4, dep: [O2.1], maq: vm2, estado: pendente, titulo: "Uma árvore só na VM-2 + deploy por evento"}
+  - {id: O2.4, dep: [O2.1], maq: vm2, estado: em_curso, nota: "c8a117bc: units reapontadas; falta mover dados vivos do ~/JFN da VM-2 antes do corte", titulo: "Uma árvore só na VM-2 + deploy por evento"}
   - {id: O2.5, dep: [O2.1], maq: todas, estado: pendente, titulo: "Portão de push e catracas como jobs da VM-2 (push_divida)"}
   - {id: O2.6, dep: [O1.6], maq: todas, estado: pendente, titulo: "48 h de governador: metas de capacidade"}
   # O3 — Identidade e captura/texto
@@ -45,15 +45,15 @@ itens:
   - {id: O4.4, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "regime por contrato", tags: [juridico]}
   - {id: O4.5, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "tetos por lei/ente/data", tags: [juridico]}
   - {id: O4.6, dep: [O4.1], maq: vm2, estado: sombra, nota: "7f13a88c: em sombra até o ok do dono no lote O4.10; impacto em juridico-sombra-o44-o46.md", titulo: "natureza do pagamento + origem do exercício", tags: [juridico]}
-  - {id: O4.7, dep: [O4.4, O4.5, O4.6], maq: vm2, estado: pendente, titulo: "E9 elegibilidade + teste arquitetural"}
+  - {id: O4.7, dep: [O4.4, O4.5, O4.6], maq: vm2, estado: sombra, nota: "6eb1c71a: E9 2,74 mi itens no PG; fracionamento por OB sem base até NE/NL; 8 decisões E9-x ao dono", titulo: "E9 elegibilidade + teste arquitetural"}
   - {id: O4.8, dep: [O4.7], maq: vm2, estado: pendente, titulo: "fracionamento correto + identidade + regra temporal + convergência", tags: [juridico]}
   - {id: O4.9, dep: [O4.7], maq: vm2, estado: pendente, titulo: "lote de correções jurídicas", tags: [juridico]}
   - {id: O4.10, dep: [O4.8, O4.9], maq: vm1, estado: pendente, titulo: "Relatório jurídico único ao dono (aprovação em lote)", tags: [juridico]}
   - {id: O4.11, dep: [], maq: vm2, estado: feito, nota: "1b97df55; 0003 aplicada no vivo; TCE-RJ consertado; sanções por vigência na data; 4 divergências explicadas; pendente amostra de 50 OB com credor SIAFE≠TFE e ok do dono p/ TFE INDISPONIVEL", titulo: "Contrato de ingestão + coletas paradas + divergências explicadas"}
-  - {id: O4.12, dep: [O4.1], maq: vm2+itcampo, estado: pendente, titulo: "Analítico Parquet+DuckDB; escritor único"}
+  - {id: O4.12, dep: [O4.1], maq: vm2+itcampo, estado: feito, nota: "edb6111f: Parquet/DuckDB na VM-2, paridade 10/10; + 9dd50731 painel nunca mais lê o vivo pelo DuckDB", titulo: "Analítico Parquet+DuckDB; escritor único"}
   # O5 — Detectores
-  - {id: O5.1, dep: [O4.7], maq: vm2, estado: pendente, titulo: "Registro completo + tiers (sem medida = Tier 3)"}
-  - {id: O5.2, dep: [O5.1], maq: vm2, estado: pendente, titulo: "Contrato Achado + adaptador das 3 gerações"}
+  - {id: O5.1, dep: [O4.7], maq: vm2, estado: feito, nota: "2180879d: 190 produtores, tiers (0 T1, 10 T2, 180 T3), 0 manchete efetiva", titulo: "Registro completo + tiers (sem medida = Tier 3)"}
+  - {id: O5.2, dep: [O5.1], maq: vm2, estado: feito, nota: "2180879d: contrato Achado + adaptador 3 gerações em sombra (75.688, 0 erro)", titulo: "Contrato Achado + adaptador das 3 gerações"}
   - {id: O5.3, dep: [O5.2], maq: vm2+itcampo, estado: pendente, titulo: "E10 único; sweeps viram detectores/lentes (paridade)"}
   - {id: O5.4, dep: [O5.2], maq: vm2, estado: pendente, titulo: "E13 calibração contínua + ouro sem vazamento"}
   - {id: O5.5, dep: [O5.2], maq: vm2, estado: pendente, titulo: "Limpeza de zumbis e lotes"}
