@@ -80,7 +80,11 @@ casados() {
 }
 
 L=$(awk '{print int($1)}' /proc/loadavg)
-if [ "$L" -ge 6 ]; then
+# 24/11/2026: SEMPRE assim (catracas aqui, testes casados na VM-2). Com load < 6 o portão rodava 149 arquivos de
+# teste NA VM-1 com teto de 600 s — estourava o tempo (log cortado em 56%, "teste falhando" sem nome) e é a mesma
+# suíte ampla que travou a VM-1 em 23/11. A VM-1 só coordena (plano aprovado, Etapa 2 item 6). O ramo local abaixo
+# fica só para VM-2 indisponível com JFN_GATE_LOCAL=1.
+if [ "${JFN_GATE_LOCAL:-0}" != "1" ]; then
   # 15/11/2026: com a VM-1 carregada os testes eram pulados ("dívida, não aprovação") em quase todo push.
   # Agora as catracas (leves; leem o índice do git, que só existe aqui) rodam aqui e os testes casados vão à VM-2.
   echo "[pre-push] load $L em 2 vCPU — catracas aqui, testes casados na VM-2…"
