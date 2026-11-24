@@ -32,7 +32,13 @@ LIMITES_8666: dict[int, dict] = {
     **{a: {"obras": 15000.00, "compras": 8000.00,
            "ato": "Lei 8.666/1993, art. 24, I e II (redação da Lei 9.648/1998)"} for a in range(1998, 2018)},
     **{a: {"obras": 33000.00, "compras": 17600.00,
-           "ato": "Lei 8.666/1993, art. 24, I e II, c/c Decreto 9.412, de 18/06/2018"} for a in range(2018, 2021)},
+           "ato": "Lei 8.666/1993, art. 24, I e II, c/c Decreto 9.412, de 18/06/2018"} for a in range(2018, 2020)},
+    # 2020: calamidade da covid — Lei 14.065/2020, art. 1º, I (conversão da MP 961, de 06/05/2020): dispensa dos incisos
+    # I e II do art. 24 da 8.666 até R$ 100.000,00 (obras/engenharia) e R$ 50.000,00 (compras/serviços), para os atos
+    # praticados na calamidade (até 31/12/2020). Antes de 06/05 valia R$ 33.000/17.600 — usa-se o MAIOR, que erra para
+    # menos achado (sem ele, dispensa de R$ 40 mil em 2020 virava "acima do teto").
+    2020: {"obras": 100000.00, "compras": 50000.00,
+           "ato": "Lei 14.065/2020, art. 1º, I (MP 961/2020 — calamidade covid; antes de 06/05/2020: Decreto 9.412/2018)"},
 }
 
 

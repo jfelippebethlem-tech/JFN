@@ -70,7 +70,9 @@ def test_nao_licitavel_nao_e_gulosa(nome):
 
 def test_teto_antes_de_2021_e_o_da_8666():
     from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
-    assert limite_dispensa(2019) == 17600.00 and limite_dispensa(2020, "obras") == 33000.00   # Decreto 9.412/2018
+    assert limite_dispensa(2019) == 17600.00 and limite_dispensa(2019, "obras") == 33000.00   # Decreto 9.412/2018
+    assert limite_dispensa(2020) == 50000.00 and limite_dispensa(2020, "obras") == 100000.00  # Lei 14.065/2020
+    assert "14.065" in ato_normativo(2020)
     assert limite_dispensa(2016) == 8000.00 and limite_dispensa(2016, "obras") == 15000.00    # Lei 9.648/1998
     assert "8.666" in ato_normativo(2019)
 
@@ -256,3 +258,101 @@ def test_memoria_convite_8666_e_seed_corrige_o_banco():
     v = s.query(MemoriaAprendizado).filter_by(chave="limite_convite_antigo").one().valor
     assert v == texto
     assert s.query(MemoriaAprendizado).filter_by(chave="limite_convite_antigo_x").one().valor == "aprendido"
+
+
+# ── decisões do dono 24/11/2026 ─────────────────────────────────────────────────────────────────────────
+
+def _base_triagem(natureza):
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (ug_emitente TEXT, credor TEXT, nome_credor TEXT, data_emissao TEXT,"
+                " valor REAL, processo TEXT, numero_ob TEXT, status TEXT, nl TEXT, exercicio INT)")
+    con.execute("CREATE TABLE nl_siafe (numero TEXT, ug_emitente TEXT, ne TEXT, exercicio INT)")
+    con.execute("CREATE TABLE ne_siafe (numero TEXT, ug_emitente TEXT, natureza TEXT)")
+    for i in range(6):
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('294200',?,?,?,?,?,?,?,?,2025)",
+                    (PRIVADO, "PLASMA LABORATORIO LTDA", f"{i + 1:02d}/03/2025", 40_000.0, f"SEI-{i}", f"OB{i}",
+                     "Contabilizado", f"2025NL{i}"))
+        con.execute("INSERT INTO nl_siafe VALUES (?, '294200', ?, 2025)", (f"2025NL{i}", f"2025NE{i}"))
+        con.execute("INSERT INTO ne_siafe VALUES (?, '294200', ?)", (f"2025NE{i}", natureza))
+    return con
+
+
+def test_triagem_tira_dea_e_indenizacao_pela_natureza_do_empenho():
+    from compliance_agent.fracionamento_siafe import triagem
+    r = triagem(_base_triagem("339092"), exercicio=2025, min_obs=5)
+    assert r["candidatos"] == [] and r["obs_descartadas_natureza"] == 6
+
+
+def test_triagem_mantem_material_de_consumo_e_se_declara_sinal():
+    from compliance_agent.fracionamento_siafe import triagem
+    r = triagem(_base_triagem("339030"), exercicio=2025, min_obs=5)
+    assert len(r["candidatos"]) == 1 and "sinal" in r["candidatos"][0]["natureza_sinal"]
+
+
+def test_d07_e_sinal_nao_manchete():
+    from compliance_agent.governo_couto_regras import GRAU_REGRA
+    assert GRAU_REGRA["D07"] == "⚪"
+
+
+@pytest.fixture()
+def sem_receita(monkeypatch):
+    from compliance_agent import credor_institucional as ci
+    from compliance_agent import governo_couto_regras as g
+    monkeypatch.setattr(ci, "_receita", lambda cnpj: None)
+    g._CACHE_REGIME_PROPRIO.clear()
+
+
+def test_d01_tira_estatal_13303_concessionaria_e_correios(sem_receita):
+    from compliance_agent.governo_couto_regras import _direta_de_regime_proprio as f
+    linha = lambda enq: [(2026, 1.0, "obj", "Dispensa", enq, "U", "F")]  # noqa: E731
+    assert f("", "PLENA LOCACAO", linha("Lei 13.303/2016, Art. 29, XV"))
+    assert f("", "LIGHT SERVICOS DE ELETRICIDADE SA", linha("Lei n 14.133/2021, Art. 74, Caput"))
+    assert f("", "EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS", linha("Lei n 14.133/2021, Art. 75, IX"))
+
+
+def test_d01_mantem_fornecedor_comum_e_licitado(sem_receita):
+    from compliance_agent.governo_couto_regras import _direta_de_regime_proprio as f
+    assert f("", "NFL DO BRASIL LTDA", [(2026, 1.0, "evento", "Inexigibilidade", "Art. 74, III", "U", "F")]) is None
+    assert f("", "LIGHT SERVICOS DE ELETRICIDADE SA", []) is None      # não é direta: não sai da conta
+
+
+def test_d01_concessionaria_pelo_cnae_da_receita(monkeypatch):
+    from compliance_agent import credor_institucional as ci
+    from compliance_agent import governo_couto_regras as g
+    monkeypatch.setattr(ci, "_receita", lambda cnpj: ("2054", "3600601"))     # Águas do Rio: só o CNAE diz
+    g._CACHE_REGIME_PROPRIO.clear()
+    assert g._direta_de_regime_proprio("42644220000106", "AGUAS DO RIO 4 SPE S.A",
+                                       [(2026, 1.0, "água", "Inexigibilidade", "Art. 74, Caput", "U", "F")])
+
+
+@pytest.mark.parametrize("natureza_ne, esperado", [("339034", "contrato de gestão"), ("335043", "parceria com OSC"),
+                                                    ("339039", "regime a confirmar")])
+def test_os_osc_fica_na_lista_com_o_regime(base, natureza_ne, esperado):
+    from compliance_agent.cruzamentos_intel import regime_do_credor
+    db, con = base
+    osc = "33333333000100"
+    con.execute("INSERT INTO empresas_cadastro VALUES (?, '3999')", (osc[:8],))
+    con.execute("CREATE TABLE ne_siafe (credor TEXT, natureza TEXT, valor REAL)")
+    con.execute("INSERT INTO ne_siafe VALUES (?,?,1e6)", (osc, natureza_ne))
+    con.commit()
+    r = regime_do_credor(con, osc)
+    assert esperado in r["regime"] and r["regime_regra"]
+    assert regime_do_credor(con, PRIVADO) == {}                     # fornecedor comercial: régua comum
+
+
+def test_emenda_paga_em_restos_a_pagar_nao_e_anuncio_sem_execucao():
+    from compliance_agent.emendas.pericia import d6_empenho_sem_pagamento
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE emendas (codigo TEXT, ano INT, autor_norm TEXT, localidade_gasto TEXT, empenhado REAL,"
+                " liquidado REAL, pago REAL, resto_cancelado REAL, resto_pago REAL)")
+    con.execute("INSERT INTO emendas VALUES ('E-RP', 2024, 'A', 'RJ', 100, 0, 0, 60, 40)")   # paga em RP
+    con.execute("INSERT INTO emendas VALUES ('E-NADA', 2024, 'A', 'RJ', 100, 0, 0, 60, 0)")  # nada pago
+    codigos = {a["codigo_emenda"] for a in d6_empenho_sem_pagamento(con)}
+    assert codigos == {"E-NADA"}
+
+
+def test_lex_nao_diz_50_por_cento_para_servicos():
+    from compliance_agent.lex_sancoes import RF_PARA_GRAVIDADE
+    nota = RF_PARA_GRAVIDADE["R9"][2]
+    assert "serviços)" not in nota and "reforma" in nota

@@ -180,7 +180,7 @@ RF_PARA_GRAVIDADE = {
     "R3": ("media", False, "pesquisa de preços deficiente"),
     "R5": ("grave", False, "dispensa/inexigibilidade sem enquadramento sólido"),
     "R7": ("grave", False, "cláusula/edital restritivo da competição"),
-    "R9": ("media", False, "aditivos acima do limite legal (>25% / >50% serviços)"),
+    "R9": ("media", False, "aditivos acima do limite legal (>25%; >50% só no acréscimo de reforma de edifício ou equipamento — 14.133 art. 125, 8.666 art. 65 §1º)"),
     "FRAUDE": ("gravissima", True, "fraude/conluio — conduta dolosa"),
     "CARTEL": ("gravissima", True, "indício de cartel/conluio entre licitantes"),
 }

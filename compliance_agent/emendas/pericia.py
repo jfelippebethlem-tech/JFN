@@ -381,8 +381,10 @@ def d6_empenho_sem_pagamento(con, fracao: float = D6_FRACAO_CANCELADA) -> list[d
         select codigo, ano, autor_norm, localidade_gasto,
                empenhado, liquidado, pago, resto_cancelado
         from emendas
-        where empenhado > 0 and pago = 0
+        where empenhado > 0 and pago = 0 and coalesce(resto_pago, 0) = 0
           and resto_cancelado / empenhado > ?""", (fracao,)).fetchall()
+    # 24/11/2026: pagamento em RESTOS A PAGAR no exercício seguinte é execução (Lei 4.320 art. 36) — `pago` é só o do
+    # exercício. Medido: 96 das 228 emendas que a régua chamava de "anúncio sem execução" tinham resto_pago > 0.
     for r in rows:
         pct = r["resto_cancelado"] / r["empenhado"]
         risco = min(7, 3 + round(pct * 4))
