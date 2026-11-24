@@ -111,11 +111,23 @@ def test_nao_acentuado_vira_nao():
     assert (exec_, nota) == ("nao", None), "75 não é 10: escala desconhecida, nota descartada"
 
 
-def test_veredito_da_regra_nao_consome_vaga_do_llm(monkeypatch):
+def test_veredito_da_regra_nao_consome_vaga_do_llm(monkeypatch, tmp_path):
     """--top 4 por passada (32/dia): se o "sem documento" comesse a vaga, a vazão de LLM cairia junto."""
     import sys
 
+    import yaml
+
     import compliance_agent.direcionamento_cerebro as DC
+    from compliance_agent.adaptadores.llm import gateway as G
+
+    # 24/11/2026: o co-motor passa pelo gateway; `pericia_execucao` é `interno` e a cascata grátis (o dublê do DC
+    # abaixo) só recebe `publico`. O que se mede aqui é a VAGA do LLM, não a política: tarefa relaxada num arquivo de
+    # teste. A recusa para `interno` tem teste próprio (tests/test_llm_comotor_gateway_paridade.py).
+    pol = yaml.safe_load(G._caminho_politica().read_text(encoding="utf-8"))
+    pol["tarefas"]["pericia_execucao"]["classe_dado"] = "publico"
+    (tmp_path / "pol.yaml").write_text(yaml.safe_dump(pol, allow_unicode=True), encoding="utf-8")
+    monkeypatch.setenv("JFN_LLM_POLITICA", str(tmp_path / "pol.yaml"))
+    monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))
 
     class _SemFechar:
         def __init__(self, c):

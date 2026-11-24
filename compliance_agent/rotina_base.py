@@ -21,7 +21,6 @@ import json
 import logging
 import os
 import sqlite3
-import subprocess
 import sys
 import tempfile
 import time
@@ -104,72 +103,93 @@ def agora_iso() -> str:
 
 
 # exceções ESPECÍFICAS (catraca de captura genérica): o que o motor e as rotinas levantam de verdade
-_FALHAS_DO_MOTOR = (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, TimeoutError,
-                    subprocess.SubprocessError)
 _FALHAS_DA_ROTINA = (sqlite3.Error, OSError, ValueError, TypeError, KeyError, RuntimeError, ImportError, AttributeError)
 
 ULTIMO_MODELO: str | None = None      # modelo que respondeu a última chamada (proveniência da camada subjetiva)
 ULTIMA_EM_CONTINGENCIA: bool = False  # a última resposta saiu SEM o Claude da assinatura (fila de conferência do Opus)
 
 
-def pensar(tarefa: str, prompt: str, *, schema: dict | None = None, **kw) -> tuple[Any, str | None]:
-    """Chama o motor Claude (`compliance_agent.llm.claude_motor.pensar`) e devolve `(resultado, motivo)`.
+PROMPT_VERSION = "rotina_base.pensar.v1-20261124"   # rastreabilidade no trace do gateway (o prompt é da rotina)
 
-    resultado None = sem juízo (motivo diz por quê: motor ausente, sem cota, erro). A interface do motor devolve
-    o texto/JSON ou None; algumas versões devolvem `(resultado, motivo)` — as duas formas são aceitas.
+
+def _sufixo_api(resp) -> str | None:
+    m = resp.modelo or resp.provedor
+    if resp.provedor == "api_anthropic":
+        from compliance_agent.llm.claude_api import SUFIXO_API
+        return f"{m}{SUFIXO_API}"
+    return m
+
+
+def pensar(tarefa: str, prompt: str, *, schema: dict | None = None, **kw) -> tuple[Any, str | None]:
+    """O motor Claude PELO GATEWAY (`adaptadores/llm/gateway.chamar`) e devolve `(resultado, motivo)`.
+
+    resultado None = sem juízo (motivo diz por quê: gateway ausente, recusa da política, sem cota, teto, erro, ou
+    `ABSTEVE` do modelo com o motivo dele). Antes de 24/11/2026 chamava `claude_motor.pensar(backend="auto")`, que caía
+    na API paga sem teto mensal (risco R3 do mapa ~/vault/refatoracao/gateway-llm-pontos-de-chamada.md). Agora:
+    camadas 2 (assinatura) → 3 (API, teto US$ 100/mês e corte a 85%), classe de dado declarada pela política da
+    tarefa (`gateway.classe_da_tarefa`), máscara de CPF/conta, circuit breaker e trace. Chaves aceitas em `kw`:
+    `modelo` (só o da assinatura; a API usa `claude_api.modelo_para`, como antes), `sistema`, `timeout`, `espera`,
+    `contingencia` e `backends` (dublês do gateway, só teste).
 
     Contingência (dono, 14/11/2026: "nunca ficar sem produzir"): sem o Claude, a cascata da casa responde no lugar
-    (`llm/contingencia.cascata`), `ULTIMO_MODELO` leva o modelo REAL, `ULTIMA_EM_CONTINGENCIA` fica True e o
-    resultado entra na fila de conferência do Opus. `contingencia=False` no chamador desliga (fica PENDENTE)."""
+    (`llm/contingencia.cascata`, pela camada 4 do gateway), `ULTIMO_MODELO` leva o modelo REAL,
+    `ULTIMA_EM_CONTINGENCIA` fica True e o resultado entra na fila de conferência do Opus. A camada 4 tem política de
+    dados desconhecida: só recebe classe `publico` — para `interno` a contingência é RECUSADA e o motivo volta.
+    `contingencia=False` no chamador desliga (fica PENDENTE)."""
     global ULTIMO_MODELO, ULTIMA_EM_CONTINGENCIA
     ULTIMA_EM_CONTINGENCIA = False
     usar_contingencia = kw.pop("contingencia", True)
+    backends = kw.pop("backends", None)
+    sistema = kw.get("sistema", "") or ""
     try:
-        from compliance_agent.llm import claude_motor  # import tardio: o motor é de outra frente
+        from compliance_agent.adaptadores.llm import gateway as G
     except ImportError as exc:
-        return None, f"motor Claude ausente nesta base ({exc})"
-    fn = getattr(claude_motor, "pensar", None)
-    if fn is None:
-        return None, "motor Claude sem a função pensar()"
+        return None, f"gateway LLM ausente nesta base ({exc})"
+    msgs = ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
+    comum = {"prompt_version": PROMPT_VERSION, "schema": schema, "timeout": kw.get("timeout", 180.0)}
     try:
-        r = fn(tarefa, prompt, schema=schema, **kw)
-    except _FALHAS_DO_MOTOR as exc:   # falha do motor vira "pendente", nunca derruba a rotina
-        return None, f"motor Claude falhou: {type(exc).__name__}: {exc}"
-    motivo = None
-    if isinstance(r, tuple) and len(r) == 2:
-        r, motivo = r
-    if r is None:
-        motivo = (motivo or getattr(claude_motor, "ultimo_motivo", None) or getattr(claude_motor, "ULTIMO_MOTIVO", None)
-                  or "motor Claude sem resposta (cota?)")
-        if usar_contingencia:
-            try:
-                from compliance_agent.llm import contingencia
-                alt = contingencia.cascata(tarefa, prompt, schema=schema, sistema=kw.get("sistema", ""), motivo=motivo)
-            except _FALHAS_DO_MOTOR + (ImportError, sqlite3.Error) as exc:
-                alt = None
-                motivo = f"{motivo} | contingência falhou: {type(exc).__name__}"
-            if alt is not None:
-                ULTIMO_MODELO, ULTIMA_EM_CONTINGENCIA = alt[1], True
-                return alt[0], None
-        return None, motivo
-    if hasattr(r, "texto"):           # `Pensamento` do motor: dados (JSON já validado) ou o texto cru
-        ULTIMO_MODELO = getattr(r, "modelo", None)
-        from compliance_agent.llm.claude_api import pela_api
-        if pela_api(ULTIMO_MODELO):                       # Claude barato pela API: também vai ao Opus
-            try:
-                from compliance_agent.llm import conferencia_opus
-                ULTIMA_EM_CONTINGENCIA = conferencia_opus.enfileirar(
-                    tarefa, None, prompt, sistema=kw.get("sistema", ""), motor=f"claude:{ULTIMO_MODELO}",
-                    resposta=r.texto, motivo="Claude barato pela API (assinatura indisponível)")
-            except (ImportError, sqlite3.Error, OSError, ValueError) as exc:
-                logging.getLogger(__name__).warning("rotina_base: sem fila de conferência (%s)", type(exc).__name__)
-        r = r.dados if (schema is not None and getattr(r, "dados", None) is not None) else r.texto
-    if schema is not None and isinstance(r, str):
+        classe = G.classe_da_tarefa(tarefa)
+        r = G.chamar(tarefa, msgs, classe_dado=classe, so_camadas=(2, 3), modelo_por_camada={2: kw.get("modelo"), 3: None},
+                     espera=kw.get("espera"), backends=backends, **comum)
+    except G.GatewayErro as exc:   # recusa/sem provedor: nunca derruba a rotina; o motivo explícito volta
+        motivo = f"motor Claude sem resposta pelo gateway: {exc}"
+        if not usar_contingencia:
+            return None, motivo
+        visto: dict = {}
+
+        def _contingencia(*, tarefa, sistema, prompt, schema, **_):
+            from compliance_agent.llm import contingencia
+            alt = contingencia.cascata(tarefa, prompt, schema=schema, sistema=sistema, motivo=motivo[:300])
+            if alt is None:
+                return None
+            visto["modelo"] = alt[1]
+            txt = alt[0] if isinstance(alt[0], str) else json.dumps(alt[0], ensure_ascii=False)
+            return G.Retorno(texto=txt, modelo=alt[1], dados=alt[0] if schema is not None else None)
         try:
-            r = json.loads(r)
-        except ValueError:
-            return None, "motor Claude devolveu JSON inválido"
-    return r, None
+            alt = G.chamar(tarefa, msgs, classe_dado=classe, so_camadas=(4,),
+                           backends={**(backends or {}), "cascata_dc": _contingencia}, **comum)
+        except G.ClasseDadoRecusada as e2:
+            return None, f"{motivo} | contingência RECUSADA pela política: {e2}"
+        except G.GatewayErro as e2:
+            return None, f"{motivo} | contingência falhou: {e2}"
+        if alt.estado != G.RESPONDIDO:
+            return None, f"{motivo} | contingência: {alt.estado}"
+        ULTIMO_MODELO, ULTIMA_EM_CONTINGENCIA = visto.get("modelo") or alt.modelo, True
+        return (alt.dados if schema is not None else alt.texto), None
+    if r.estado == G.ABSTEVE:
+        return None, f"motor Claude absteve-se: {getattr(r.saida, 'motivo', '') or 'sem motivo'}"
+    if r.estado != G.RESPONDIDO:
+        return None, f"motor Claude: {r.estado}"
+    ULTIMO_MODELO = _sufixo_api(r)
+    if r.provedor == "api_anthropic":                     # Claude barato pela API: também vai ao Opus
+        try:
+            from compliance_agent.llm import conferencia_opus
+            ULTIMA_EM_CONTINGENCIA = conferencia_opus.enfileirar(
+                tarefa, None, prompt, sistema=sistema, motor=f"claude:{ULTIMO_MODELO}",
+                resposta=r.texto, motivo="Claude barato pela API (assinatura indisponível)")
+        except (ImportError, sqlite3.Error, OSError, ValueError) as exc:
+            logging.getLogger(__name__).warning("rotina_base: sem fila de conferência (%s)", type(exc).__name__)
+    return (r.dados if schema is not None else r.texto), None
 
 
 def executar(nome: str, fn, *, trava_arquivo: Path | None = None) -> int:

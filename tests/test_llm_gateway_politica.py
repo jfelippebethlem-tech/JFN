@@ -165,7 +165,10 @@ def test_todas_falham_sem_provedor_com_motivos():
         G.chamar("pericia_execucao", MSG, prompt_version="v1", classe_dado="publico",
                  backends={"assinatura_claude": faz("assinatura_claude", falha=True),
                            "api_anthropic": faz("api_anthropic", falha=True)})
-    assert len(e.value.motivos) == 2 and "assinatura_claude caiu" in str(e.value)
+    # 24/11/2026: pericia_execucao ganhou a camada 4 (cascata_dc); sob pytest o backend real dela NÃO TENTA (pulada,
+    # sem contar falha no circuito) — o motivo aparece, explícito
+    assert len(e.value.motivos) == 3 and "assinatura_claude caiu" in str(e.value)
+    assert e.value.motivos[2] == "cascata_dc: não tentou — cascata: sob pytest sem dublê"
 
 
 def test_assinatura_desligada_e_pulada_sem_tentar(monkeypatch):

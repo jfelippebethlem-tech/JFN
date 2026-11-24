@@ -4,7 +4,6 @@ confronto CGE × JFN e a rota dos achados dos detectores. Dados 100% SINTÉTICOS
 import json
 import sqlite3
 import sys
-import types
 
 import pytest
 
@@ -48,59 +47,58 @@ def test_gravar_json_atomico(tmp_path):
     assert not [f for f in p.parent.iterdir() if f.name.startswith(".b.json")]
 
 
-def _motor_falso(monkeypatch, fn):
-    mod = types.ModuleType("compliance_agent.llm.claude_motor")
-    mod.pensar = fn
-    monkeypatch.setitem(sys.modules, "compliance_agent.llm.claude_motor", mod)
-    import compliance_agent.llm as llm
-    monkeypatch.setattr(llm, "claude_motor", mod, raising=False)
+# 24/11/2026: `pensar` passou a chamar o GATEWAY (adaptadores/llm/gateway.chamar), não mais o motor direto — as formas
+# que ele aceita são as do backend do gateway (`Retorno`). Paridade dos chamadores: tests/test_llm_comotor_gateway_paridade.py.
+@pytest.fixture
+def _gw(tmp_path, monkeypatch):
+    from compliance_agent.adaptadores.llm import gateway as G
+    monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "trace.db"))
+    monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))
+    monkeypatch.setattr(G, "_pre_assinatura", lambda t: None)
+    return G
 
 
-def test_pensar_sem_motor_devolve_pendente(monkeypatch):
-    monkeypatch.setitem(sys.modules, "compliance_agent.llm.claude_motor", None)   # import falha
-    # com o motor já importado por outro teste, `from compliance_agent.llm import claude_motor` acha o atributo
-    # no pacote e não falha — tira o atributo também
-    import compliance_agent.llm as _llm
-    monkeypatch.delattr(_llm, "claude_motor", raising=False)
-    r, motivo = RB.pensar("t", "p")
+def _assinatura(fn):
+    return {"assinatura_claude": lambda **kw: fn(**kw)}
+
+
+def test_pensar_sem_gateway_devolve_pendente(monkeypatch):
+    monkeypatch.setitem(sys.modules, "compliance_agent.adaptadores.llm.gateway", None)   # import falha
+    import compliance_agent.adaptadores.llm as _pac
+    monkeypatch.delattr(_pac, "gateway", raising=False)
+    r, motivo = RB.pensar("camada_subjetiva", "p")
     assert r is None and "ausente" in motivo
 
 
-@pytest.mark.parametrize("resposta,esperado,tem_motivo", [
-    ('{"a": 1}', {"a": 1}, False),
-    ({"a": 1}, {"a": 1}, False),
-    ((None, "sem cota"), None, True),
-    (None, None, True),
-    ("não é json", None, True),
+@pytest.mark.parametrize("texto,dados,esperado,tem_motivo", [
+    ('{"a": 1}', None, {"a": 1}, False),
+    ('{"a": 1}', {"a": 1}, {"a": 1}, False),
+    ("não é json", None, None, True),
 ])
-def test_pensar_aceita_as_formas_do_motor(monkeypatch, resposta, esperado, tem_motivo):
-    _motor_falso(monkeypatch, lambda tarefa, prompt, schema=None, **kw: resposta)
-    r, motivo = RB.pensar("t", "p", schema={"type": "object"})
+def test_pensar_aceita_as_formas_do_backend(_gw, texto, dados, esperado, tem_motivo):
+    r, motivo = RB.pensar("camada_subjetiva", "p", schema={"type": "object"}, contingencia=False,
+                          backends=_assinatura(lambda **kw: _gw.Retorno(texto=texto, modelo="m", dados=dados)))
     assert r == esperado and bool(motivo) == tem_motivo
 
 
-def test_pensar_aceita_pensamento_do_motor_e_guarda_o_modelo(monkeypatch):
-    class Pensamento:                                   # forma real de compliance_agent.llm.claude_motor
-        def __init__(self, texto, dados, modelo):
-            self.texto, self.dados, self.modelo = texto, dados, modelo
-    _motor_falso(monkeypatch, lambda tarefa, prompt, schema=None, **kw: Pensamento('{"a": 2}', {"a": 2}, "m-teste"))
-    r, motivo = RB.pensar("camada_subjetiva", "p", schema={"type": "object"})
+def test_pensar_guarda_o_modelo(_gw):
+    r, motivo = RB.pensar("camada_subjetiva", "p", schema={"type": "object"},
+                          backends=_assinatura(lambda **kw: _gw.Retorno(texto='{"a": 2}', modelo="m-teste",
+                                                                         dados={"a": 2})))
     assert r == {"a": 2} and motivo is None and RB.ULTIMO_MODELO == "m-teste"
 
 
-def test_pensar_none_usa_ultimo_motivo_do_motor(monkeypatch):
-    _motor_falso(monkeypatch, lambda *a, **k: None)
-    import compliance_agent.llm as llm
-    monkeypatch.setattr(llm.claude_motor, "ultimo_motivo", "teto diário da tarefa", raising=False)
-    r, motivo = RB.pensar("t", "p")
-    assert r is None and motivo == "teto diário da tarefa"
+def test_pensar_sem_resposta_traz_o_motivo(_gw):
+    def sem_cota(**kw):
+        raise RuntimeError("teto diário da tarefa")
+    r, motivo = RB.pensar("camada_subjetiva", "p", contingencia=False, backends=_assinatura(sem_cota))
+    assert r is None and "teto diário da tarefa" in motivo
 
 
-def test_pensar_motor_que_explode_nao_derruba(monkeypatch):
-    def explode(*a, **k):
-        raise RuntimeError("429")
-    _motor_falso(monkeypatch, explode)
-    r, motivo = RB.pensar("t", "p")
+def test_pensar_backend_que_explode_nao_derruba(_gw):
+    def explode(**kw):
+        raise ValueError("429")
+    r, motivo = RB.pensar("camada_subjetiva", "p", backends=_assinatura(explode))
     assert r is None and "429" in motivo
 
 

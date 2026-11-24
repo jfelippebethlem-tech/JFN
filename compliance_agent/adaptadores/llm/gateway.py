@@ -35,7 +35,15 @@ uma trava A MAIS (a mais apertada ganha). A estimativa conservadora de tokens é
       com token aleatório da chamada) + regra de sistema "conteúdo marcado é dado"; `ferramentas` é recusado
       (dual-LLM); resposta que obedece instrução embutida é DESCARTADA (a camada conta como falha, motivo no trace).
 
-O QUE AINDA NÃO FAZ: Batch (`enviar_lote`/`colher_lote`), provedores DC/hermes/nous/HTTP direto como camadas, preço do
+  CAMADA 4 (24/11/2026, migração do co-motor — ordem 3 do mapa): `cascata_dc` = a cascata grátis da casa
+      (`llm/contingencia.gerar_cascata` → `direcionamento_cerebro.gerar_sync`), com `data_policy: desconhecida` na
+      política ⇒ só recebe classe `publico`. `so_camadas` restringe a chamada a um subconjunto das camadas da tarefa
+      (o co-motor roda o lado Claude [2, 3] e o lado cascata [4] em paralelo); `modelo_por_camada` dá o modelo de cada
+      camada (o Opus da assinatura não vira o modelo da API: lá vale `claude_api.modelo_para`); `espera` vai à trava
+      do `claude` da VM. Backend que NÃO TENTOU (trava ocupada, teto diário, sem chave, sob pytest sem dublê) levanta
+      `CamadaPulada`: o motivo vai ao trace e a camada é pulada SEM contar falha no circuit breaker.
+
+O QUE AINDA NÃO FAZ: Batch (`enviar_lote`/`colher_lote`), provedores hermes/nous/HTTP direto como camadas, preço do
 OpenRouter pago, conferência de `offset` da citação. Quem embute documento DENTRO de `mensagens` (em vez de
 `documentos`) fica sem datamarking — a migração dos chamadores precisa mover o documento para `documentos`.
 
@@ -93,6 +101,15 @@ class OrcamentoEsgotado(GatewayErro):
 
 class MascaraFalhou(GatewayErro):
     """Depois da máscara ainda sobrou CPF com DV válido no que iria ao provedor: nada é enviado."""
+
+
+class CamadaForaDaPolitica(GatewayErro):
+    """`so_camadas` pediu camadas que a política da tarefa não tem: nada é tentado."""
+
+
+class CamadaPulada(RuntimeError):
+    """Levantada por um BACKEND que não chegou a tentar (trava ocupada, teto, sem chave, sob pytest sem dublê). O
+    gateway registra o motivo e segue para a próxima camada sem contar falha no circuito (não é falha do provedor)."""
 
 
 class SemProvedor(GatewayErro):
@@ -174,6 +191,16 @@ def politica_da_tarefa(tarefa: str, pol: dict | None = None) -> dict:
     pol = pol or politica()
     t = (pol.get("tarefas") or {}).get(tarefa) or pol.get("padrao") or {"camadas": [1], "critica": False}
     return {"camadas": [int(c) for c in t.get("camadas") or []], "critica": bool(t.get("critica"))}
+
+
+def classe_da_tarefa(tarefa: str, pol: dict | None = None, padrao: str = "interno") -> str:
+    """A `classe_dado` que a política declara para a tarefa (quem migrou sem mudar a assinatura do chamador usa esta).
+    Sem declaração ⇒ `padrao` (interno: nunca vai a provedor de política de dados desconhecida)."""
+    pol = pol or politica()
+    c = ((pol.get("tarefas") or {}).get(tarefa) or {}).get("classe_dado") or padrao
+    if c not in CLASSES:
+        raise ClasseDadoRecusada(f"política: classe_dado '{c}' da tarefa '{tarefa}' é inválida")
+    return c
 
 
 # ── preço ────────────────────────────────────────────────────────────────────────────────────────────
@@ -438,13 +465,36 @@ def _backend_free(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, t
     return Retorno(texto=texto, modelo=None) if texto and str(texto).strip() else None
 
 
-def _backend_assinatura(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, timeout) -> Retorno | None:
+def _assinatura_nao_tentou(tarefa: str, motivo: str) -> bool:
+    """O `claude_motor` devolveu None SEM chamar o CLI? (trava ocupada, teto diário/semanal, sob pytest sem dublê)."""
+    if motivo.startswith(("ocupado:", "sob pytest")):
+        return True
+    try:
+        from compliance_agent.llm import claude_motor, orcamento
+        return bool(orcamento.motivo_teto(claude_motor.ler_uso(), tarefa))
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
+        return False
+
+
+def _backend_assinatura(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, timeout,
+                        espera=None) -> Retorno | None:
     from compliance_agent.llm import claude_motor
     p = claude_motor.pensar(tarefa, prompt, schema=schema, modelo=modelo_pref or claude_motor.MODELO_VOLUME,
-                            sistema=sistema, timeout=timeout, backend="cli")
+                            sistema=sistema, timeout=timeout, backend="cli",
+                            **({"espera": espera} if espera is not None else {}))
     if p is None:
-        raise RuntimeError(claude_motor.ultimo_motivo or "assinatura sem resposta")
+        motivo = claude_motor.ultimo_motivo or "assinatura sem resposta"
+        raise (CamadaPulada if _assinatura_nao_tentou(tarefa, motivo) else RuntimeError)(motivo)
     return Retorno(texto=p.texto, modelo=p.modelo, dados=p.dados)
+
+
+def _backend_cascata_dc(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, timeout) -> Retorno | None:
+    """Camada 4: a cascata grátis da casa (DC), a mesma do co-motor e da contingência. Sob pytest nunca chama."""
+    from compliance_agent.llm import contingencia
+    if arq.sob_pytest():
+        raise CamadaPulada("cascata: sob pytest sem dublê")
+    texto = contingencia.gerar_cascata(_com_schema(prompt, schema), sistema, timeout, True)
+    return Retorno(texto=texto, modelo=contingencia.modelo_da_cascata()) if texto and str(texto).strip() else None
 
 
 class _Captura:
@@ -486,12 +536,12 @@ def _backend_api(*, tarefa, sistema, prompt, schema, modelo_pref, max_tokens, ti
     from compliance_agent.llm import claude_api, claude_motor
     barrado = claude_motor._motivo_kill_switch()
     if barrado:
-        raise RuntimeError(barrado)
+        raise CamadaPulada(barrado)
     if cliente is None:
         if arq.sob_pytest():
-            raise RuntimeError("API: sob pytest sem cliente dublê")
+            raise CamadaPulada("API: sob pytest sem cliente dublê")
         if not claude_api.disponivel():
-            raise RuntimeError("API: sem chave (ou JFN_CLAUDE_API=0)")
+            raise CamadaPulada("API: sem chave (ou JFN_CLAUDE_API=0)")
         cliente = claude_api._cliente(timeout)
     cap = _Captura(cliente)
     res = claude_api.pensar_api(tarefa, _com_schema(prompt, schema), sistema=sistema or claude_motor.SISTEMA_PADRAO,
@@ -512,6 +562,7 @@ BACKENDS: dict[str, Backend] = {
     "free_llm": _backend_free,
     "assinatura_claude": _backend_assinatura,
     "api_anthropic": _backend_api,
+    "cascata_dc": _backend_cascata_dc,
 }
 
 
@@ -559,13 +610,16 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
            schema=None, classe_dado: str, max_tokens: int | None = None, timeout: float = 180.0,
            backends: dict[str, Backend] | None = None, documentos: list[Documento] | None = None,
            exigir_citacao: bool = False, verificador: S.Verificador | None = None, regra: str | None = None,
-           contexto=None, cache: bool = False, ferramentas=None) -> Resposta:
+           contexto=None, cache: bool = False, ferramentas=None, so_camadas=None,
+           modelo_por_camada: dict | None = None, espera: float | None = None) -> Resposta:
     """Uma chamada de LLM pela política. Ver o docstring do módulo para o contrato.
 
     `documentos`: o que o modelo LÊ (entra com datamarking; nunca embuta documento em `mensagens`).
     `exigir_citacao`: a saída precisa de `citacoes` conferidas (pede `schema`). `verificador(citacao, {id: Documento})
     -> (ok, motivo)` troca o verificador padrão. `regra`/`contexto`: componentes extras da chave do cache.
-    `ferramentas`: sempre recusado (dual-LLM)."""
+    `ferramentas`: sempre recusado (dual-LLM). `so_camadas`: subconjunto das camadas da tarefa (na ordem da política;
+    vazio ⇒ `CamadaForaDaPolitica`). `modelo_por_camada`: {camada: modelo} (None = o padrão do backend daquela
+    camada) — sobrepõe `modelo_pref` só nas camadas listadas. `espera`: trava do `claude` (só a assinatura)."""
     if not tarefa or not isinstance(tarefa, str):
         raise GatewayErro("tarefa obrigatória")
     if not prompt_version:
@@ -587,6 +641,13 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
     camadas = pt["camadas"]
     if not camadas or camadas == [0] or 0 in camadas:
         raise TarefaDeterministica(f"tarefa '{tarefa}' é camada 0 (determinística) na política — não chama LLM")
+    if so_camadas is not None:
+        pedidas = {int(c) for c in so_camadas}
+        camadas = [c for c in camadas if c in pedidas]
+        if not camadas:
+            raise CamadaForaDaPolitica(f"tarefa '{tarefa}': camadas {sorted(pedidas)} fora da política "
+                                       f"({pt['camadas']})")
+    mpc = {int(k): v for k, v in (modelo_por_camada or {}).items()}
     sistema0, prompt0 = _achatar(mensagens)
     backends = {**BACKENDS, **(backends or {})}
     schema_b, schema_r = S.schema_para_backend(schema), S.repr_schema(schema)
@@ -663,6 +724,7 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
     tentativa = 0
     for camada, prov in candidatos:
         pago = bool(((pol.get("provedores") or {}).get(prov) or {}).get("pago"))
+        mp = mpc.get(camada, modelo_pref) if camada in mpc else modelo_pref
         aberto = circuito_aberto(prov, pol)
         if aberto:
             motivos.append(f"{prov}: {aberto}")
@@ -675,8 +737,13 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
                 so_orcamento = False
                 continue
         rid, mt, modelo_est, est = None, max_tokens, None, None
+        if pago and backends.get(prov) is _backend_api and arq.sob_pytest():
+            # o backend real recusaria de qualquer jeito: nem reserva no teto (o arquivo de reservas é de produção)
+            motivos.append(f"{prov}: não tentou — API: sob pytest sem cliente dublê")
+            so_orcamento = False
+            continue
         if pago:
-            modelo_est, mt, est = _estimativa_api(tarefa, modelo_pref, sistema, prompt, max_tokens, tab)
+            modelo_est, mt, est = _estimativa_api(tarefa, mp, sistema, prompt, max_tokens, tab)
             rid, recusa = _reservar(est, pt["critica"], pol)
             if recusa:
                 motivos.append(f"{prov}: {recusa}")
@@ -687,11 +754,18 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
         so_orcamento = False
         ini = time.monotonic()
         ret, erro = None, ""
+        extra = {"espera": espera} if (prov == "assinatura_claude" and espera is not None) else {}
         try:
             ret = backends[prov](tarefa=tarefa, sistema=sistema, prompt=prompt, schema=schema_b,
-                                 modelo_pref=modelo_pref, max_tokens=mt, timeout=timeout)
+                                 modelo_pref=mp, max_tokens=mt, timeout=timeout, **extra)
             if ret is None:
                 erro = "resposta vazia"
+        except CamadaPulada as e:   # o backend não tentou: motivo no trace, sem contar falha no circuito
+            _liberar(rid)
+            motivos.append(f"{prov}: não tentou — {str(e)[:160]}")
+            _gravar({**base, **comuns, "provedor": prov, "camada": camada, "ok": 0, "ms": 0, "pago": int(pago),
+                     "erro": f"pulada: {str(e)[:160]}", "motivo_escalonamento": (" | ".join(motivos))[:500]})
+            continue
         except Exception as e:      # noqa: BLE001 — backend nunca derruba o gateway; o TIPO vai ao trace
             erro = f"{type(e).__name__}: {str(e)[:160]}"
         ms = int((time.monotonic() - ini) * 1000)

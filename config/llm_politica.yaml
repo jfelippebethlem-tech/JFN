@@ -11,12 +11,15 @@
 #       ritmo semanal de `llm/ritmo_assinatura`, contingência e kill-switch valem lá dentro, como hoje).
 #   3 — API paga da Anthropic (`llm/claude_api.pensar_api`: teto e baldes do livro-caixa valem lá dentro, como hoje)
 #       + o teto MENSAL do gateway abaixo (as duas travas valem; a mais apertada ganha).
+#   4 — cascata grátis da casa (`llm/contingencia.gerar_cascata` → `direcionamento_cerebro.gerar_sync`, "DC"), a do
+#       co-motor e da contingência (24/11/2026, migração do co-motor). data_policy desconhecida ⇒ só classe `publico`.
 
 camadas:
   0: {nome: deterministica, provedor: null}
   1: {nome: gratis, provedor: free_llm}
   2: {nome: assinatura, provedor: assinatura_claude}
   3: {nome: api_paga, provedor: api_anthropic}
+  4: {nome: cascata_gratis, provedor: cascata_dc}
 
 # PROVEDORES e o que se sabe da política de dados de cada um.
 #   data_policy: conhecida | desconhecida   — "conhecida" = termos publicados e citados em `fonte` (a LEITURA dos termos
@@ -38,6 +41,11 @@ provedores:
     data_policy: conhecida
     aprovada_dono: false          # PENDENTE ✅ do dono
     fonte: https://www.anthropic.com/legal/commercial-terms
+  cascata_dc:
+    pago: false
+    data_policy: desconhecida     # gemini → groq → openrouter:free → nvidia → cohere → _EXTRA: sem termos conferidos
+    aprovada_dono: false
+    fonte: null
 
 # CLASSES DE DADO (§3.11) → o que o provedor precisa ter para receber. O chamador DECLARA a classe; sem classe
 # válida o gateway recusa. Nenhum provedor atende ⇒ ClasseDadoRecusada (erro explícito, nunca silêncio).
@@ -70,6 +78,14 @@ circuito:
 #   tarefas no backend "auto" do motor → assinatura e, sem ela, API paga.
 padrao: {camadas: [1], critica: false}     # tarefa não listada: só a cadeia grátis — nada pago sem estar aqui
 
+#
+# `classe_dado` na tarefa = a classe que o co-motor (`llm/comotor.juizo`) e `rotina_base.pensar` DECLARAM ao gateway
+# por essa tarefa (os chamadores não mudaram de assinatura). Declarada pelo CONTEÚDO que os chamadores de hoje mandam
+# (mapa ~/vault/refatoracao/gateway-llm-pontos-de-chamada.md §1.2, coluna "dado sensível"): onde o mapa diz "talvez"
+# ou "sim", NÃO há prova de que é público ⇒ `interno` (CPF e conta mascarados pelo gateway; nomes de pessoas, autos
+# SEI e hipóteses de investigação seguem no texto). `interno` exige data_policy conhecida: vai à assinatura e à API,
+# NUNCA à cascata grátis (camada 4). Relaxar uma tarefa para `publico` (religa a cascata nela) é decisão do dono.
+# Tarefa sem `classe_dado` aqui ⇒ o co-motor declara `interno`.
 tarefas:
   canario:            {camadas: [2], critica: false}
   verificacao_opus:   {camadas: [2], critica: false}
@@ -78,12 +94,12 @@ tarefas:
   pericia_integral:   {camadas: [2], critica: false}
   autoaprimoramento:  {camadas: [2], critica: false}
   cerebro_consolidacao: {camadas: [2], critica: false}
-  pericia_execucao:   {camadas: [2, 3], critica: false}
-  pericia_fornecedor: {camadas: [2, 3], critica: false}
-  parecer_juridico:   {camadas: [2, 3], critica: false}
-  camada_subjetiva:   {camadas: [2, 3], critica: false}
-  investigacao_risco: {camadas: [2, 3], critica: false}
-  triagem_alertas:    {camadas: [2, 3], critica: false}
+  pericia_execucao: {camadas: [2, 3, 4], critica: false, classe_dado: interno}      # autos SEI (#18, #19)
+  pericia_fornecedor: {camadas: [2, 3, 4], critica: false, classe_dado: interno}     # sócios, endereços, pacote do CNPJ (#14)
+  parecer_juridico: {camadas: [2, 3, 4], critica: false, classe_dado: interno}       # trechos de autos SEI (#13)
+  camada_subjetiva: {camadas: [2, 3, 4], critica: false, classe_dado: interno}       # hipóteses sobre a gestão; evidência dos detectores (#12, #15, #16)
+  investigacao_risco: {camadas: [2, 3, 4], critica: false, classe_dado: interno}     # conclusão do agente investigador (#17)
+  triagem_alertas: {camadas: [2, 3, 4], critica: false, classe_dado: interno}        # alertas: favorecidos, valores, evidências (#11)
   extracao_sei:       {camadas: [2, 3], critica: false}
   leitura_integral:   {camadas: [2, 3], critica: false}
   normalizacao_itens: {camadas: [3], critica: false}

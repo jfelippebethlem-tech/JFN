@@ -232,14 +232,23 @@ def test_triagem_em_contingencia_nunca_vira_verificado_sem_opus(monkeypatch):
     assert "prevalece o Opus" in motivo and "provavel_falso_positivo" in motivo
 
 
-def test_rotina_base_segue_com_a_cascata_e_marca(monkeypatch):
+def test_rotina_base_segue_com_a_cascata_e_marca(monkeypatch, tmp_path):
     from compliance_agent import rotina_base as R
+    from compliance_agent.adaptadores.llm import gateway as G
     esquema = {"type": "object", "required": ["hipoteses"]}
     monkeypatch.setattr(M, "pensar", lambda *a, **k: None)
     monkeypatch.setattr(M, "ultimo_motivo", "limite de uso da assinatura — pausa até 02:32")
-    # sob pytest, sem cascata injetada, ninguém chama provedor: segue PENDENTE como antes
-    assert R.pensar("camada_subjetiva", "p", schema=esquema) == (None, "limite de uso da assinatura — pausa até 02:32")
     monkeypatch.setattr(C, "cascata", lambda tarefa, prompt, **k: ({"hipoteses": [1]}, "gemini:gemini-3.6-flash"))
+    # 24/11/2026 (gateway): `camada_subjetiva` é classe `interno` na política ⇒ a cascata grátis (data_policy
+    # desconhecida) é RECUSADA, com o motivo do Claude e o da recusa — nunca em silêncio
+    r, motivo = R.pensar("camada_subjetiva", "p", schema=esquema)
+    assert r is None and "limite de uso da assinatura — pausa até 02:32" in motivo and "RECUSADA" in motivo
+    # a contingência segue valendo onde a política permite (aqui: a tarefa relaxada para `publico` num arquivo de teste)
+    import yaml
+    pol = yaml.safe_load(G._caminho_politica().read_text(encoding="utf-8"))
+    pol["tarefas"]["camada_subjetiva"]["classe_dado"] = "publico"
+    (tmp_path / "pol.yaml").write_text(yaml.safe_dump(pol, allow_unicode=True), encoding="utf-8")
+    monkeypatch.setenv("JFN_LLM_POLITICA", str(tmp_path / "pol.yaml"))
     assert R.pensar("camada_subjetiva", "p", schema=esquema) == ({"hipoteses": [1]}, None)
     assert R.ULTIMO_MODELO == "gemini:gemini-3.6-flash" and R.ULTIMA_EM_CONTINGENCIA is True
     assert R.pensar("camada_subjetiva", "p", schema=esquema, contingencia=False)[0] is None

@@ -24,6 +24,17 @@ depois se cruzam pra ir treinando os outros modelos e ajustando comparativamente
 
 Tarefa sem normalizador (texto livre, ex.: análise discursiva) não tem o que cruzar: aí a cascata só roda
 quando o Claude não responde — gastar duas IAs para comparar prosa sem régua seria custo sem medição.
+
+GATEWAY (24/11/2026, plano mestre v2 §6, ordem 3 do mapa ~/vault/refatoracao/gateway-llm-pontos-de-chamada.md):
+sem `pensar` injetado, o lado Claude NÃO chama mais `claude_motor.pensar(backend="auto")` — que caía na API paga sem
+teto mensal —, e sim `adaptadores.llm.gateway.chamar(tarefa, so_camadas=(2, 3))`: assinatura → API, com teto de
+US$ 100/mês, corte a 85%, circuit breaker, trace por chamada e máscara de CPF/conta. Sem `cascata` injetada, o lado
+cascata vai por `chamar(..., so_camadas=(4,))` (camada `cascata_dc`, a mesma cascata de antes, dentro do gateway). A
+`classe_dado` é a que `config/llm_politica.yaml` declara para a tarefa (`gateway.classe_da_tarefa`); a cascata grátis
+(data_policy desconhecida) só recebe `publico` — classe `interno` ⇒ a cascata é RECUSADA com o motivo em
+`ultima_chamada()["recusa"]` e no cruzamento (veredito "recusado: ..."), nunca em silêncio.
+`pensar`/`cascata` injetados (testes; juiz de qualidade e perícia integral, que já forçam a assinatura) seguem o
+caminho de antes: a migração deles é outra ordem do mapa (6 e R1).
 """
 from __future__ import annotations
 
@@ -41,6 +52,10 @@ from compliance_agent.llm.cruzamento import Lado
 from compliance_agent.llm.normalizadores import NORMALIZADORES
 
 logger = logging.getLogger(__name__)
+
+PROMPT_VERSION = "comotor.juizo.v1-20261124"   # rastreabilidade no trace do gateway (o prompt é do chamador)
+CAMADAS_CLAUDE = (2, 3)                          # assinatura → API paga (teto mensal do gateway)
+CAMADAS_CASCATA = (4,)                           # cascata grátis da casa (DC)
 
 try:
     import httpx
@@ -87,9 +102,22 @@ def _chamar_provedor(provedor: str, prompt: str, sistema: str) -> str | None:
     return None
 
 
+class _ClaudeGateway:
+    """O que o lado Claude devolve pelo gateway, na forma que o co-motor já lê (`texto`, `modelo`)."""
+    __slots__ = ("texto", "modelo")
+
+    def __init__(self, texto: str, modelo: str):
+        self.texto, self.modelo = texto, modelo
+
+
+def _mensagens(prompt: str, sistema: str) -> list[dict]:
+    return ([{"role": "system", "content": sistema}] if sistema else []) + [{"role": "user", "content": prompt}]
+
+
 def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Callable | None = None,
           normalizar: Callable | None = None, pensar: Callable | None = None, sorteio: Callable | None = None,
-          espera: float | None = None, timeout_claude: float = 180.0, conferencia: bool = True):
+          espera: float | None = None, timeout_claude: float = 180.0, conferencia: bool = True,
+          backends: dict | None = None):
     """Fábrica do `gerar` co-motor de uma tarefa. `cascata`/`pensar`/`sorteio` são injetáveis para teste.
 
     `espera` = quanto aguardar a trava do único `claude` da VM (produto interativo: curto, ex. 15 s — passou
@@ -99,13 +127,37 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
     claude opus"): resposta devolvida SEM o Claude da assinatura (cascata, ou Claude barato `@api`) entra na fila
     `llm/conferencia_opus`; entrada que o Opus já conferiu volta com a resposta DELE, sem nova chamada. Desligue
     só em quem tem fila própria de Opus (triagem) ou descarta o veredito sem Claude (juiz de qualidade).
-    """
-    normalizar = normalizar or NORMALIZADORES.get(tarefa)
-    _pensar = pensar or claude_motor.pensar
 
-    def pensar(t, p, **kw):
-        extra = {"timeout": timeout_claude} | ({"espera": espera} if espera is not None else {})
-        return _pensar(t, p, **kw, **extra)
+    `backends`: dublês dos backends do gateway (`{"assinatura_claude": fn, "api_anthropic": fn}`), só para teste.
+    """
+    from compliance_agent.adaptadores.llm import gateway as G
+    normalizar = normalizar or NORMALIZADORES.get(tarefa)
+    # `pensar` injetado ⇒ o caminho de antes INTEIRO (os dois lados); `cascata` injetada ⇒ dublê da cascata
+    claude_pelo_gateway = pensar is None
+    cascata_pelo_gateway = pensar is None and cascata is None
+    motivo = {"claude": "", "recusa": None}
+
+    def _motivo_claude() -> str:
+        return motivo["claude"] if claude_pelo_gateway else claude_motor.ultimo_motivo
+
+    if claude_pelo_gateway:
+        def pensar(t, p, *, modelo, sistema):
+            try:
+                r = G.chamar(t, _mensagens(p, sistema), prompt_version=PROMPT_VERSION,
+                             classe_dado=G.classe_da_tarefa(t), so_camadas=CAMADAS_CLAUDE,
+                             modelo_por_camada={2: modelo, 3: None}, timeout=timeout_claude, espera=espera,
+                             backends=backends)
+            except G.GatewayErro as e:           # recusa/sem provedor: o motivo explícito vai ao cruzamento
+                motivo["claude"] = str(e)[:300]
+                return None
+            m = r.modelo or r.provedor
+            return _ClaudeGateway(r.texto, f"{m}{claude_api.SUFIXO_API}" if r.provedor == "api_anthropic" else m)
+    else:
+        _pensar = pensar
+
+        def pensar(t, p, **kw):
+            extra = {"timeout": timeout_claude} | ({"espera": espera} if espera is not None else {})
+            return _pensar(t, p, **kw, **extra)
     sorteio = sorteio or random.random
 
     def _cascata(prompt, sistema, timeout, json_saida) -> tuple[str, str, bool]:
@@ -133,6 +185,24 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                     bool(fs))
         return contingencia.gerar_cascata(p, sistema, timeout, json_saida), contingencia.modelo_da_cascata(), bool(fs)
 
+    def _cascata_gw(prompt, sistema, timeout, json_saida) -> tuple[str, str, bool]:
+        visto: dict = {}
+
+        def backend(*, prompt, sistema, **_):
+            txt, mod, fs = _cascata(prompt, sistema, timeout, json_saida)
+            visto.update(modelo=mod, fs=fs)
+            return G.Retorno(texto=txt, modelo=mod) if txt and str(txt).strip() else None
+        try:
+            r = G.chamar(tarefa, _mensagens(prompt, sistema), prompt_version=PROMPT_VERSION,
+                         classe_dado=G.classe_da_tarefa(tarefa), so_camadas=CAMADAS_CASCATA, timeout=timeout,
+                         backends={**(backends or {}), "cascata_dc": backend})
+        except G.ClasseDadoRecusada as e:
+            motivo["recusa"] = str(e)[:300]
+            raise
+        return r.texto, visto.get("modelo") or r.modelo or "cascata", bool(visto.get("fs"))
+
+    _lado_cascata = _cascata_gw if cascata_pelo_gateway else _cascata
+
     def gerar(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True, *,
               item: str | None = None) -> str:
         sufixo = "\n\nResponda APENAS com o JSON pedido, sem texto fora dele." if json_saida else ""
@@ -154,6 +224,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                 except ImportError:
                     logger.debug("comotor: direcionamento_cerebro indisponível — proveniência só em ultima_chamada()")
                 return ja[0]
+        motivo.update(claude="", recusa=None)
         t0 = time.monotonic()
         r_claude = r_casc = None
         erro_casc: Exception | None = None
@@ -164,7 +235,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
             if r_claude is None:
                 t1 = time.monotonic()
                 try:
-                    r_casc = _cascata(prompt, sistema, timeout, json_saida)
+                    r_casc = _lado_cascata(prompt, sistema, timeout, json_saida)
                 except _FALHAS as e:  # cascata fora: devolve-se o erro só se o Claude também faltar
                     erro_casc = e
                 lat_o = int((time.monotonic() - t1) * 1000)
@@ -179,7 +250,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
 
             with ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"comotor-{tarefa}") as ex:
                 fc = ex.submit(_medido, "c", pensar, tarefa, prompt + sufixo, modelo=modelo, sistema=sistema)
-                fo = ex.submit(_medido, "o", _cascata, prompt, sistema, timeout, json_saida)
+                fo = ex.submit(_medido, "o", _lado_cascata, prompt, sistema, timeout, json_saida)
                 try:
                     r_casc = fo.result()
                 except _FALHAS as e:  # cascata fora: o Claude ainda pode responder
@@ -192,11 +263,13 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
             v, n, c = normalizar(r_claude.texto) if normalizar else (None, None, None)
             lado_c = Lado("claude", r_claude.modelo, v, n, c, lat_c)
         elif normalizar is not None:
-            lado_c = Lado("claude", "indisponivel", f"sem_claude: {claude_motor.ultimo_motivo[:50]}", None)
+            lado_c = Lado("claude", "indisponivel", f"sem_claude: {_motivo_claude()[:50]}", None)
         if r_casc is not None:
             txt, mod, fs = r_casc
             v, n, c = normalizar(txt) if normalizar else (None, None, None)
             lado_o = Lado("cascata", mod, v, n, c, lat_o, fs)
+        elif motivo["recusa"] and normalizar is not None:   # recusa da política fica registrada, nunca em silêncio
+            lado_o = Lado("cascata", "recusado:politica", f"recusado: {motivo['recusa'][:68]}", None)
         try:
             cz = cruzamento.cruzar(tarefa, item, lado_c, lado_o, entrada_resumo=prompt[:600])
         except _FALHAS as e:  # registrar o cruzamento nunca derruba o juízo
@@ -206,7 +279,8 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
         _ultima.clear()
         _ultima.update(par=cz["par"], divergencia=cz["divergencia"], grave=cz["grave"],
                        exibido=(f"claude:{r_claude.modelo}" if r_claude else (r_casc[1] if r_casc else None)),
-                       outro=(r_casc[1] if (r_claude and r_casc) else None), conferencia_pendente=False)
+                       outro=(r_casc[1] if (r_claude and r_casc) else None), conferencia_pendente=False,
+                       recusa=motivo["recusa"], motivo_claude=(_motivo_claude() if r_claude is None else None))
         # produzido sem o Claude da assinatura (cascata sozinha, ou Claude barato pela API) ⇒ o Opus confere depois
         sem_assinatura = (r_claude is None and r_casc is not None) or (
             r_claude is not None and claude_api.pela_api(r_claude.modelo))
@@ -219,7 +293,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                     resposta=(r_claude.texto if r_claude is not None else r_casc[0]),
                     veredito=lado.veredito, nivel=lado.nivel,
                     motivo=("Claude barato pela API (assinatura indisponível)" if r_claude is not None
-                            else claude_motor.ultimo_motivo))
+                            else _motivo_claude()))
             except _FALHAS + (ImportError,) as e:  # a fila nunca derruba o juízo; sem marca, o item fica sem VERIFICADO
                 logger.warning("comotor: resultado sem Claude não entrou na fila de conferência (%s)", type(e).__name__)
         try:
@@ -232,7 +306,10 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
             return r_claude.texto
         if r_casc is not None:
             return r_casc[0]
-        raise RuntimeError(f"co-motor {tarefa}: Claude indisponível ({claude_motor.ultimo_motivo[:60]}) e cascata "
+        if motivo["recusa"]:
+            raise RuntimeError(f"co-motor {tarefa}: Claude indisponível ({_motivo_claude()[:200]}) e cascata RECUSADA "
+                               f"pela política ({motivo['recusa'][:200]})")
+        raise RuntimeError(f"co-motor {tarefa}: Claude indisponível ({_motivo_claude()[:200]}) e cascata "
                            f"falhou ({type(erro_casc).__name__ if erro_casc else 'sem resposta'})")
 
     return gerar
