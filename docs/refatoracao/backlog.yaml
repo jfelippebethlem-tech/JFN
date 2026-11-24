@@ -26,7 +26,8 @@ itens:
   - {id: O1.10, dep: [O1.8], maq: itcampo, estado: pendente, titulo: "it-campo capacidade total e boot sem logon"}
   # O2 — Zero cron
   - {id: O2.1, dep: [O1.8], maq: vm1, estado: feito, nota: "6c3fedd7: fluxo.yaml 151 rotinas; schema fluxo aplicado no PG real; sombra 2,7x → O2.2", titulo: "config/fluxo.yaml + planejador em replay dos logs"}
-  - {id: O2.3, dep: [O2.1], maq: vm1, estado: pendente, titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
+  - {id: O2.2, dep: [O2.1], maq: vm1, estado: feito, nota: "1004e9a1: sombra 0,91x (slots) / 1,95x (capacidade legado, explicado); agenda sincronizar pronta e inativa", titulo: "Planejador corrigido pela sombra (cadeia, tetos, sem sobreposição, nó)"}
+  - {id: O2.3, dep: [O2.1], maq: vm1, estado: em_curso, nota: "navegador transitório VM-1 só p/ 15 legadas até O3.3; ritmo também na agenda; religar_o90 --ensaio", titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
   - {id: O2.4, dep: [O2.1], maq: vm2, estado: pendente, titulo: "Uma árvore só na VM-2 + deploy por evento"}
   - {id: O2.5, dep: [O2.1], maq: todas, estado: pendente, titulo: "Portão de push e catracas como jobs da VM-2 (push_divida)"}
   - {id: O2.6, dep: [O1.6], maq: todas, estado: pendente, titulo: "48 h de governador: metas de capacidade"}
@@ -48,7 +49,7 @@ itens:
   - {id: O4.8, dep: [O4.7], maq: vm2, estado: pendente, titulo: "fracionamento correto + identidade + regra temporal + convergência", tags: [juridico]}
   - {id: O4.9, dep: [O4.7], maq: vm2, estado: pendente, titulo: "lote de correções jurídicas", tags: [juridico]}
   - {id: O4.10, dep: [O4.8, O4.9], maq: vm1, estado: pendente, titulo: "Relatório jurídico único ao dono (aprovação em lote)", tags: [juridico]}
-  - {id: O4.11, dep: [], maq: vm2, estado: pendente, titulo: "Contrato de ingestão + coletas paradas + divergências explicadas"}
+  - {id: O4.11, dep: [], maq: vm2, estado: feito, nota: "1b97df55; 0003 aplicada no vivo; TCE-RJ consertado; sanções por vigência na data; 4 divergências explicadas; pendente amostra de 50 OB com credor SIAFE≠TFE e ok do dono p/ TFE INDISPONIVEL", titulo: "Contrato de ingestão + coletas paradas + divergências explicadas"}
   - {id: O4.12, dep: [O4.1], maq: vm2+itcampo, estado: pendente, titulo: "Analítico Parquet+DuckDB; escritor único"}
   # O5 — Detectores
   - {id: O5.1, dep: [O4.7], maq: vm2, estado: pendente, titulo: "Registro completo + tiers (sem medida = Tier 3)"}
