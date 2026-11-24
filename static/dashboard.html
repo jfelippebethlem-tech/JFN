@@ -44,6 +44,7 @@
 
   .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}
   @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .grid>*{min-width:0}  /* 24/11/2026: item de grid com conteúdo largo (tabela) esticava a coluna a 668 px e a página rolava na horizontal em 390 px */
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     margin-bottom:18px;overflow:hidden}
