@@ -11,11 +11,16 @@ import re
 
 # Leading \b evita falso-match no meio de palavra; sem \b final (prefixos como "previd" pegam "previdência").
 _NAO_FORNECEDOR = re.compile(
-    r"\b(estado do rio|munic[ií]pio d|prefeitura|uni[ãa]o\b|minist[ée]rio|secretaria de estado|"
+    r"\b(estado do rio|munic[ií]pio d|prefeitura|minist[ée]rio|secretaria de estado|"
     r"tesouro|receita federal|fazenda nacional|procuradoria|inss\b|instituto nacional do seguro|"
     r"seguro social|fgts|pasep|\bpis\b|caixa econ[oô]mica|banco central|tribunal de|"
     r"c[âa]mara municipal|assembleia legislativa|defensoria|encargos gerais|"
     r"fundo (municipal|estadual|nacional)|fundo (de|da|do) sa[úu]de|previd[êe]ncia|"
+    # UNIÃO só como ENTE: "da União", "União Federal", "UNIAO-ROYALTIES". `uni[ãa]o` solto (23/11/2026) varria
+    # fornecedor privado — Uniao Norte Fluminense Eng. (R$ 201 mi em OB), União Química, União de Tecnologia.
+    r"da\s+uni[ãa]o\b|uni[ãa]o\s+federal|^uni[ãa]o\s*[-–]|"
+    # grafias do dado real: "Funco Municipal De Saude De Itaguai" (erro da própria fonte) e a sigla "Fms De ..."
+    r"fun[cd]o\s+munic|^fms\s+d[eao]\b|"
     # FAMÍLIAS ACRESCENTADAS EM 2026-07-28, ao montar a fila de captura prioritária: os TRÊS
     # maiores pagamentos sem processo capturado não eram contratação nenhuma —
     #   R$ 1,42 bi  FUNDO DE EQUALIZACAO FEDERATIVA - FEF  (transferência constitucional)
@@ -35,6 +40,14 @@ _NAO_FORNECEDOR = re.compile(
     # Associação de Apoio à Escola recebe TRANSFERÊNCIA para custeio da unidade escolar; não é
     # fornecedor de compra. `\baae\b` com fronteira para não pegar palavra que a contenha.
     r"associa[cç][aã]o\s+de\s+apoio\s+[àa]?\s*escola|\baae\b)", re.I)
+
+
+def eh_administracao_publica(natureza_cod) -> bool:
+    """Natureza jurídica 1xxx da tabela da Receita (CONCLA) = ADMINISTRAÇÃO PÚBLICA (órgão, autarquia, fundação
+    pública, fundo público, consórcio público, ente federativo). Fonte primária, independe da grafia do nome:
+    medido 23/11/2026, 222 credores 1xxx (R$ 1,41 bi em OB) passavam pelo filtro por nome — Ipalerj, Defesa
+    Civil, Funasa, UENF, FMS, consórcios intermunicipais. Estatal (201-1, 203-8) NÃO entra: é 2xxx."""
+    return str(natureza_cod or "").strip().startswith("1")
 
 
 def eh_nao_fornecedor(nome: str) -> bool:

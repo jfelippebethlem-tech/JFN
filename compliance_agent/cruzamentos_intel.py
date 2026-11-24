@@ -50,9 +50,10 @@ RESSALVA = ("Indício para apuração interna, não acusação. Sanção impedit
 # Abaixo dele o gestor pode contratar SEM licitação — o incentivo a "fatiar" a despesa para
 # caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
 # Fonte única verificada nos decretos (Planalto): compliance_agent/limites_dispensa.py.
-from compliance_agent.limites_dispensa import LIMITES as _LIMITES_DISP
+from compliance_agent.limites_dispensa import LIMITES as _LIMITES_DISP, LIMITES_8666 as _LIMITES_8666
 
-_TETO_DISPENSA = {a: v["compras"] for a, v in _LIMITES_DISP.items()}
+# exercício anterior à 14.133 usa o teto da Lei 8.666 (art. 24, II) — sem isso o CASE caía no ELSE (teto de 2026)
+_TETO_DISPENSA = {a: v["compras"] for a, v in {**_LIMITES_8666, **_LIMITES_DISP}.items()}
 _TETO_DEFAULT = _TETO_DISPENSA[max(_TETO_DISPENSA)]
 
 
@@ -60,7 +61,33 @@ def _ro(db_path: str | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(f"file:{db_path or _DB}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA busy_timeout=30000")
+    registrar_peneira(con)
     return con
+
+
+def registrar_peneira(con: sqlite3.Connection) -> None:
+    """Registra na conexão a função SQL `jfn_eh_publico(nome, credor)` que `_SQL_NAO_PUBLICO` usa: 1 se o credor é
+    ENTE PÚBLICO — pela peneira canônica de nome (`entidades_gov.eh_nao_fornecedor`) OU pela natureza jurídica 1xxx
+    da Receita (`empresas_cadastro`, quando a base a tem). Conexão que use `_SQL_NAO_PUBLICO` sem passar por aqui
+    falha alto ("no such function"), em vez de filtrar em silêncio com uma cópia velha."""
+    from compliance_agent.entidades_gov import eh_administracao_publica, eh_nao_fornecedor
+    publicos: set = set()
+    try:
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas_cadastro'").fetchone():
+            publicos = {r[0] for r in con.execute("SELECT cnpj_basico, natureza_cod FROM empresas_cadastro "
+                                                  "WHERE natureza_cod LIKE '1%'") if eh_administracao_publica(r[1])}
+    except sqlite3.Error:
+        logging.getLogger(__name__).debug("empresas_cadastro ilegível — só a peneira de nome", exc_info=True)
+    cache: dict = {}
+
+    def _eh_publico(nome, credor) -> int:
+        if credor and str(credor)[:8] in publicos:
+            return 1
+        n = nome or ""
+        if n not in cache:
+            cache[n] = 1 if (eh_nao_fornecedor(n) or _RX_BANCO_OU_PUBLICO_LEGADO.search(n)) else 0
+        return cache[n]
+    con.create_function("jfn_eh_publico", 2, _eh_publico, deterministic=True)
 
 
 # ── 1. SANCIONADAS CONTRATADAS ───────────────────────────────────────────────
@@ -662,6 +689,11 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         # teto do ano via CASE (SQLite não tem dict); banda = 85% do teto
         casos_teto = " ".join(f"WHEN {a} THEN {t}" for a, t in _TETO_DISPENSA.items())
         teto_expr = f"(CASE {ano} {casos_teto} ELSE {_TETO_DEFAULT} END)"
+        # 23/11/2026 — medido nos 542 grupos: 250 sem processo na OB, 3 de processo único (parcelas de UM contrato),
+        # 27 ente público (natureza 1xxx), 9 OS/OSC, 17 DEA/indenização (NE 339092/93); nenhum verificável como
+        # fracionamento. Parcelas do MESMO processo não são contratações distintas: exige-se ≥ `min_colado`
+        # processos distintos entre as OBs coladas (mesma régua da triagem SIAFE). Ainda assim o processo da OB é,
+        # na SES, o processo de PAGAMENTO (um por fatura) — a lista é SINAL DE ONDE PUXAR, nunca achado.
         # favorecido que é ENTE PÚBLICO = repasse/transferência (fundo-a-fundo, parcelas iguais),
         # não compra fatiada — fora do detector (senão vira falso-positivo).
         # a cópia local divergente saiu: uma fonte só (_SQL_NAO_PUBLICO), definida abaixo.
@@ -670,14 +702,14 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         SELECT credor, MAX(nome_credor) nome, ug_emitente, {iso_mes} mes,
                COUNT(*) n, SUM(valor) soma, MAX(valor) maior,
                SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) n_colado,
-               MAX({teto_expr}) teto
+               MAX({teto_expr}) teto, COUNT(DISTINCT NULLIF(processo,'')) n_processos
         FROM ob_orcamentaria_siafe
         WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
         GROUP BY credor, ug_emitente, {iso_mes}
-        HAVING n >= ? AND n_colado >= ?
+        HAVING n >= ? AND n_colado >= ? AND n_processos >= ?
         ORDER BY (CAST(n_colado AS REAL)/n) DESC, soma DESC
         LIMIT ?"""
-        rows = [dict(r) for r in con.execute(q, (min_obs, min_colado, limite))]
+        rows = [dict(r) for r in con.execute(q, (min_obs, min_colado, min_colado, limite))]
         for r in rows:
             r["concentracao"] = round(r["n_colado"] / r["n"], 2) if r["n"] else 0
             r["cnpj_fmt"] = (f"{r['credor'][:2]}.{r['credor'][2:5]}.{r['credor'][5:8]}/"
@@ -688,14 +720,16 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
             WHERE {_ob_paga(con)} AND length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
             GROUP BY credor, ug_emitente, {iso_mes}
             HAVING COUNT(*) >= ? AND
-              SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) >= ?)""",
-            (min_obs, min_colado)).fetchone()[0]
+              SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) >= ? AND
+              COUNT(DISTINCT NULLIF(processo,'')) >= ?)""",
+            (min_obs, min_colado, min_colado)).fetchone()[0]
         return {"ok": True, "grupos": rows, "n": total, "mostrados": len(rows),
-                "explicacao": ("Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias OBs "
-                               "logo abaixo do teto de dispensa de licitação. É o padrão de FATIAR a "
-                               "compra para não licitar (Lei 14.133 art. 75 §1º veda). Quanto maior a "
-                               "'concentração' (% de OBs coladas no teto), mais deliberado o indício — "
-                               "fornecimento contínuo legítimo tem valores variados, concentração baixa."),
+                "natureza": "sinal de onde puxar — agrega PAGAMENTO por credor/mês, não lê contratação",
+                "explicacao": ("SINAL, não achado: mesmo favorecido, mesma unidade gestora e mesmo mês, com "
+                               "várias OBs logo abaixo do teto de dispensa, em processos distintos. Pode ser o "
+                               "padrão de fatiar a compra (Lei 14.133 art. 75 §1º), mas também parcela mensal de "
+                               "contrato contínuo, indenização (DEA) ou processo de pagamento por fatura — só a "
+                               "leitura das CONTRATAÇÕES (objeto, modalidade, data) separa."),
                 "ressalva": ("OB é PAGAMENTO, não empenho/contrato — o fracionamento se prova no "
                              "processo de contratação. Cruzar com os empenhos/processos do mês antes de "
                              "concluir; fornecimento contínuo (água, energia, combustível) pode explicar "
@@ -1193,16 +1227,15 @@ def _ob_paga(con, alias: str = "") -> str:
         logging.getLogger(__name__).debug("exceção tolerada em cruzamentos_intel", exc_info=True)
     return r + (f" AND COALESCE({a}numero_ob,'')<>''" if "numero_ob" in cols else "")
 
-_SQL_NAO_PUBLICO = (
-    "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
-    "AND nome_credor NOT LIKE '%MUNICÍPIO%' AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%BANCO%' "
-    "AND nome_credor NOT LIKE '%CAIXA ECON%' AND nome_credor NOT LIKE '%EQUALIZ%' AND nome_credor NOT LIKE '%TRIBUNAL%' "
-    "AND nome_credor NOT LIKE '%ESTADO DO RIO%' AND nome_credor NOT LIKE '%INSTITUTO DE PREV%' "
-    "AND nome_credor NOT LIKE '%DEFENSORIA%' AND nome_credor NOT LIKE '%ASSEMBLEIA%' "
-    "AND nome_credor NOT LIKE '%C_MARA%' "
-    # federais que vazavam e produziam o falso positivo medido:
-    "AND nome_credor NOT LIKE 'MINIST_RIO%' AND nome_credor NOT LIKE '%INSTITUTO NACIONAL D_ SEGURO%' "
-    "AND nome_credor NOT LIKE '%PROCURADORIA%' AND nome_credor NOT LIKE '%CONTROLADORIA%'")
+# 23/11/2026: o filtro era uma lista de LIKE que divergia da peneira canônica — deixava passar "Funco Municipal De
+# Saude De Itaguai" (grafia da fonte), Associação de Apoio à Escola (43 dos 70 da corrida de dezembro), e 222 credores
+# de natureza jurídica 1xxx (R$ 1,41 bi: Ipalerj, Defesa Civil, Funasa, UENF, consórcios públicos). Agora é a peneira
+# canônica + a natureza da Receita, numa função SQL registrada por `registrar_peneira` (ver `_ro`). Do conjunto
+# antigo fica só o que a canônica não cobre e o dado real exige (banco como credor: repasse/consignado; equalização;
+# controladoria; instituto de previdência; câmara).
+_RX_BANCO_OU_PUBLICO_LEGADO = re.compile(
+    r"\bbanco\b|caixa\s+econ|equaliz|controladoria|instituto\s+de\s+prev|\bc[âa]mara\b|assembleia|\btribunal\b", re.I)
+_SQL_NAO_PUBLICO = "jfn_eh_publico(nome_credor, credor) = 0"
 
 
 _NEP_CONECT = {"DA", "DE", "DO", "DAS", "DOS", "E"}

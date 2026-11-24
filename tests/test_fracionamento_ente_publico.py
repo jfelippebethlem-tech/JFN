@@ -17,7 +17,7 @@ import sqlite3
 
 import pytest
 
-from compliance_agent.cruzamentos_intel import _SQL_NAO_PUBLICO
+from compliance_agent.cruzamentos_intel import _SQL_NAO_PUBLICO, registrar_peneira
 
 # nomes REAIS colhidos do universo de credores do compliance.db
 PUBLICOS = [
@@ -26,6 +26,8 @@ PUBLICOS = [
     "PGE - PROCURADORIA GERAL DO ESTADO", "Controladoria Geral do Estado do Rio de Janeiro",
     "PREFEITURA MUNICIPAL DE NITEROI", "FUNDO MUNICIPAL DE SAUDE",
     "TRIBUNAL DE JUSTICA", "CÂMARA MUNICIPAL",
+    # 23/11/2026: grafia da fonte e Associação de Apoio à Escola (transferência) passavam pelo LIKE
+    "Funco Municipal De Saude De Itaguai", "Aae Ciep 262 Curvelina Dias Curvelo",
 ]
 # privados que NAO podem ser varridos junto — o motivo de o filtro ser por nome inteiro
 PRIVADOS = [
@@ -35,6 +37,7 @@ PRIVADOS = [
     "I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA",
     "PLASMA LABORATÓRIO DE ANALISES CLINICAS LTDA",
     "Comercial Milano Brasil Ltda",
+    "Uniao Norte Fluminense Eng. E Comercio Ltda",   # R$ 201 mi em OB — `uni[ãa]o` solto a varria
 ]
 
 
@@ -42,9 +45,10 @@ PRIVADOS = [
 def banco():
     """Aplica o SQL de verdade — testar a regex à mão não provaria o SQL que roda."""
     con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE ob_orcamentaria_siafe (nome_credor TEXT)")
-    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?)",
-                    [(n,) for n in PUBLICOS + PRIVADOS])
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (nome_credor TEXT, credor TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?, ?)",
+                    [(n, f"{i:08d}000100") for i, n in enumerate(PUBLICOS + PRIVADOS)])
+    registrar_peneira(con)
     return con
 
 
@@ -65,11 +69,12 @@ def test_fornecedor_privado_continua_dentro(nome, banco):
 
 
 def test_o_filtro_e_um_so_nao_ha_copia_divergente():
-    """A cópia local dentro de `fracionamento` foi removida; se voltar, este teste cai."""
+    """23/11/2026: a lista de LIKE saiu — o filtro é a peneira canônica (`entidades_gov`) numa função SQL. Se uma
+    lista de LIKE voltar ao arquivo, este teste cai."""
     fonte = (__import__("pathlib").Path(__file__).resolve().parents[1]
              / "compliance_agent" / "cruzamentos_intel.py").read_text(encoding="utf-8")
     copias = len(re.findall(r"nome_credor NOT LIKE '%FUNDO%'", fonte))
-    assert copias == 1, (
+    assert copias == 0, (
         f"{copias} cópias do filtro de ente público em cruzamentos_intel.py — "
         "elas divergem com o tempo e foi exatamente assim que MINISTÉRIO DA FAZENDA "
         "entrou numa lista de fracionamento")
