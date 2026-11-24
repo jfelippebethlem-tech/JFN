@@ -15,10 +15,8 @@ on:
         description: 'Qtde de processos correlacionados (sem cache) a ler quando "processos" estiver vazio'
         required: false
         default: '30'
-      sei_pass:
-        description: 'SEI_PASS — vazio = usa secret SEI_PASS'
-        required: false
-        default: ''
+# Desligado em 24/11/2026 (refatoração Esteira Única, O0.5): commita data/sei_cache num repo público.
+# Credencial só pelo cofre do repositório — nunca como input de workflow_dispatch.
 
 jobs:
   ler-sei:
@@ -47,10 +45,9 @@ jobs:
 
       - name: Configurar .env (credenciais SEI)
         env:
-          INPUT_PASS: ${{ github.event.inputs.sei_pass }}
           SECRET_PASS: ${{ secrets.SEI_PASS }}
         run: |
-          SEI_PASS="${INPUT_PASS:-$SECRET_PASS}"
+          SEI_PASS="$SECRET_PASS"
           echo "::add-mask::$SEI_PASS"
           mkdir -p data/sei_cache
           printf 'SEI_USER=itkava\nSEI_PASS=%s\nSEI_ORGAO=ERJ\nSEI_LOGIN_URL=%s\nCI=true\nHEADLESS=true\n' \

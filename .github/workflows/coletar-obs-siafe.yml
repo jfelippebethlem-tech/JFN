@@ -1,30 +1,16 @@
 name: Coleta OBs SIAFE (Todas as Empresas)
 
+# Desligado em 24/11/2026 (refatoração Esteira Única, O0.5): coleta que versiona data/ não roda em repo
+# público. Credencial só pelo cofre do repositório — nunca como input de workflow_dispatch.
 on:
   workflow_dispatch:
     inputs:
-      siafe_user:
-        description: 'SIAFE_USER (CPF sem pontos) — vazio = usa secret SIAFE_USER'
-        required: false
-        default: ''
-      siafe_pass:
-        description: 'SIAFE_PASS — vazio = usa secret SIAFE_PASS'
-        required: false
-        default: ''
       anos:
         description: 'Anos para coletar (ex: 2023,2024,2025,2026)'
         required: false
         default: '2023,2024,2025,2026'
       cnpjs:
         description: 'CNPJs alvo separados por vírgula (vazio = usa data/empresas_target.json)'
-        required: false
-        default: ''
-      telegram_token:
-        description: 'TELEGRAM_BOT_TOKEN (opcional)'
-        required: false
-        default: ''
-      telegram_chat:
-        description: 'TELEGRAM_CHAT_ID (opcional)'
         required: false
         default: ''
       modo:
@@ -63,20 +49,16 @@ jobs:
 
       - name: Configurar .env com credenciais
         env:
-          INPUT_USER: ${{ github.event.inputs.siafe_user }}
-          INPUT_PASS: ${{ github.event.inputs.siafe_pass }}
           SECRET_USER: ${{ secrets.SIAFE_USER }}
           SECRET_PASS: ${{ secrets.SIAFE_PASS }}
-          INPUT_TG_TOKEN: ${{ github.event.inputs.telegram_token }}
-          INPUT_TG_CHAT: ${{ github.event.inputs.telegram_chat }}
           SECRET_TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           SECRET_TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           mkdir -p data/sei_cache screenshots/obs_coleta
-          SIAFE_USER="${INPUT_USER:-$SECRET_USER}"
-          SIAFE_PASS="${INPUT_PASS:-$SECRET_PASS}"
-          TG_TOKEN="${INPUT_TG_TOKEN:-$SECRET_TG_TOKEN}"
-          TG_CHAT="${INPUT_TG_CHAT:-$SECRET_TG_CHAT}"
+          SIAFE_USER="$SECRET_USER"
+          SIAFE_PASS="$SECRET_PASS"
+          TG_TOKEN="$SECRET_TG_TOKEN"
+          TG_CHAT="$SECRET_TG_CHAT"
           echo "::add-mask::$SIAFE_PASS"
           printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nCI=true\nHEADLESS=true\n' \
             "$SIAFE_USER" "$SIAFE_PASS" "$TG_TOKEN" "$TG_CHAT" > .env

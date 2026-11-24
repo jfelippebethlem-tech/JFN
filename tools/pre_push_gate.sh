@@ -79,6 +79,16 @@ casados() {
   printf '%s\n' $t | sort -u | tr '\n' ' '
 }
 
+# O0.5 (Esteira Única, 24/11): repo PÚBLICO — nenhum CPF íntegro novo sobe. Barato (só o diff do
+# push) e independe da carga: este bloqueio nunca é pulado.
+_pii_base=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+if [ -n "$_pii_base" ]; then _pii_faixa="$_pii_base..HEAD"; else _pii_faixa="HEAD~1..HEAD"; fi
+_pii_py="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.venv/bin/python"   # worktree não tem .venv
+if ! "$_pii_py" -m tools.scan_pii --faixa "$_pii_faixa"; then
+  echo "[portão] ⛔ CPF com DV válido no que este push leva ($_pii_faixa) — mascare antes de subir"
+  exit 1
+fi
+
 L=$(awk '{print int($1)}' /proc/loadavg)
 # 24/11/2026: SEMPRE assim (catracas aqui, testes casados na VM-2). Com load < 6 o portão rodava 149 arquivos de
 # teste NA VM-1 com teto de 600 s — estourava o tempo (log cortado em 56%, "teste falhando" sem nome) e é a mesma
