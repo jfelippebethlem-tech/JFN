@@ -49,3 +49,4 @@ compliance_agent.fluxo.prioridade  # O2.1 Esteira Única (24/11): prioridade ún
 compliance_agent.database.migrations.001_extract_raw_json_data  # [morto] runner caseiro aposentado 24/11 (O4.2): absorvida na revisão Alembic 0001_base — apagar é do dono
 compliance_agent.database.migrations.002_categorize_ordens_bancarias  # [morto] idem 001 (O4.2)
 compliance_agent.database.migrations.003_missoes_auditoria  # [morto] idem 001 (O4.2)
+compliance_agent.dominio.regime  # O4.4 Esteira Única (24/11): regime por contrato em SOMBRA — chamador entra após o ok do dono no lote jurídico (O4.10)
