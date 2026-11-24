@@ -1,0 +1,13 @@
+[Unit]
+Description=JFN — leitura independente (amostra) de entregas do it-campo, na VM-2; resultado conferido pela VM-1
+Documentation=file:/home/ubuntu/JFN-worker/tools/vm2_amostra.sh
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN-worker
+ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_amostra.sh 4
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+TimeoutStartSec=70min

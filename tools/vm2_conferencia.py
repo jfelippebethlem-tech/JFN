@@ -596,7 +596,7 @@ def _importar(lote: str) -> dict:
                     _quarentena(lote, base / "cache" / f"integra_{tag}", motivos, met)
                 reprovados[proc] = motivos
             if ok and status == "ok" and str(met.get("referencia", "")).startswith("sem leitura"):
-                enfileirar_amostra([proc])
+                enfileirar_amostra([proc], str(man.get("origem") or "?"))
             _log(f"CONFERÊNCIA {proc}: {'APROVADO' if ok else 'QUARENTENA'} [{status}] "
                  + json.dumps(met, ensure_ascii=False) + ("" if ok else f" motivos={motivos}"))
         # linhas do log da fila: só "ok" de quem foi APROVADO
@@ -641,6 +641,8 @@ def _importar(lote: str) -> dict:
         man["progresso_pendente"] = {k: v for k, v in (man.get("progresso") or {}).items()
                                      if _cdp(k) not in reprovados}
         man["restritos_pendente"] = man.get("restritos") or {}
+    elif man.get("tipo") == "amostra":                  # leituras independentes feitas noutra máquina (23/11/2026)
+        aprovados, reprovados = _importar_amostra(man)
     man["conferencia"] = {"em": time.strftime("%F %T"), "aprovados": aprovados, "reprovados": reprovados}
     IMPORTADOS.mkdir(parents=True, exist_ok=True)
     (IMPORTADOS / f"{lote}.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -673,14 +675,98 @@ def aplicar_pendentes() -> int:
 
 AMOSTRA = DATA / "vm2_amostra_pendente.json"
 
+# ───────────────────────── AMOSTRA independente: sorteada e lida fora do produtor (23/11/2026) ─────────────────────────
+#
+# Medido em 16–23/11/2026 (log desta conferência): a leitura independente pelo navegador da VM-1 custava 1,5–2,8 h/dia de
+# Chromium (cada processo ~5–6 min com a VM-1 em load 5–10), lia 10–20 processos/dia, ADIAVA outros 1–9, e a fila — que
+# recebia TODO aprovado sem referência (150–1.700/dia) — chegou a 2.321 (2.011 do it-campo, 310 da VM-2). Em toda a
+# história, 2 divergências. Uma fila FIFO de tudo nunca alcança a cabeça: não é amostra, é atraso.
+#
+# Agora (com a chave ligada): (1) SORTEIO estratificado por nó produtor na entrada — taxa fixa (JFN_AMOSTRA_TAXA, 3%),
+# no mínimo 1 por nó por dia, teto JFN_AMOSTRA_MAX_DIA por nó; (2) a leitura é feita por uma máquina que NÃO produziu a
+# entrega: o que o it-campo entregou é lido na VM-2 (`amostra-exportar` → `amostra-ler` lá → lote `amostra` →
+# `importar` aqui, que só roda `comparar_leitura` contra o acervo); o que a VM-2 entregou (ou de origem desconhecida)
+# continua lido aqui. A VM-1 nunca é produtora de lote, então ler aqui é sempre independente.
+# Liga: `touch data/.vm2_amostra_estratificada` (ou JFN_VM2_AMOSTRA=estratificada|fifo, que manda sobre o arquivo).
+# Desligada, a entrada na fila é a de sempre (tudo, FIFO) — mas a fila aceita os dois formatos (texto ou dict).
 
-def enfileirar_amostra(procs: list[str]) -> None:
-    """Processos aprovados SEM leitura independente na VM-1: entram na fila da leitura independente."""
-    fila = _ler_json(AMOSTRA) or []
+FLAG_ESTRATIFICADA = DATA / ".vm2_amostra_estratificada"
+SORTEIO = DATA / "vm2_amostra_sorteio.json"
+AMOSTRA_TAXA = float(os.environ.get("JFN_AMOSTRA_TAXA") or 0.03)
+AMOSTRA_MAX_DIA = int(os.environ.get("JFN_AMOSTRA_MAX_DIA") or 30)
+DESPACHO_H = 24                     # despachada à VM-2 e sem resposta nesse prazo ⇒ volta a ser despachável
+LE_NA_VM1 = ("JFN-Agent-2", "VM-2", "?")   # produtores cuja entrega a VM-1 lê (VM-2 e origem desconhecida)
+LIDA_MAX_CHARS = 8000               # `semelhanca` usa os 4.000 primeiros; `legivel` não precisa de mais
+
+
+def estratificada_ligada() -> bool:
+    modo = os.environ.get("JFN_VM2_AMOSTRA", "").strip().lower()
+    if modo in ("estratificada", "fifo"):
+        return modo == "estratificada"
+    return FLAG_ESTRATIFICADA.exists()
+
+
+def _item(e) -> dict:
+    """Entrada da fila nos dois formatos: texto (até 23/11/2026, origem desconhecida) ou dict."""
+    return dict(e) if isinstance(e, dict) else {"proc": str(e), "origem": "?"}
+
+
+def _mexer_fila(fn):
+    """Ler-mudar-gravar da fila sob trava curta. Antes de 23/11/2026 o `amostra` lia a fila, passava ~10 min no navegador e
+    regravava a lista que tinha lido — o que o `importar` enfileirou nesse meio tempo se perdia."""
+    import fcntl
+    with AMOSTRA.with_name(AMOSTRA.name + ".lock").open("w") as trava:
+        fcntl.flock(trava, fcntl.LOCK_EX)
+        fila = [_item(e) for e in (_ler_json(AMOSTRA) or [])]
+        res = fn(fila)
+        # chave desligada ⇒ grava no formato de sempre (lista de números): voltar o código atrás não quebra a fila. A
+        # origem perdida aqui é recuperada pelo `reduzir_fila_amostra` (manifestos de `_importados`).
+        saida = fila if estratificada_ligada() else [e["proc"] for e in fila]
+        tmp = AMOSTRA.with_name(f"{AMOSTRA.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(saida, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(AMOSTRA)
+        return res
+
+
+def _sorteado(proc: str) -> bool:
+    """Sorteio REPRODUTÍVEL pelo número do processo (md5 → [0,1)): a mesma entrada dá o mesmo resultado em qualquer
+    máquina e no teste — e não há como o nó "escolher" o que será lido (ele não sabe a taxa nem o dia de corte)."""
+    return int(hashlib.md5(proc.encode()).hexdigest()[:8], 16) / 0x100000000 < AMOSTRA_TAXA
+
+
+def _sortear(procs: list[str], origem: str) -> list[str]:
+    """Quais de `procs` (aprovados sem referência, do nó `origem`) entram na amostra hoje."""
+    hoje = time.strftime("%F")
+    est = _ler_json(SORTEIO) or {}
+    if est.get("dia") != hoje:
+        est = {"dia": hoje, "sorteados": {}, "vistos": {}}
+    out = []
     for p in procs:
-        if p not in fila:
-            fila.append(p)
-    AMOSTRA.write_text(json.dumps(fila), encoding="utf-8")
+        n = _int(est["sorteados"].get(origem))
+        est["vistos"][origem] = _int(est["vistos"].get(origem)) + 1
+        if n < AMOSTRA_MAX_DIA and (n == 0 or _sorteado(p)):
+            out.append(p)
+            est["sorteados"][origem] = n + 1
+    SORTEIO.write_text(json.dumps(est, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
+def enfileirar_amostra(procs: list[str], origem: str = "?") -> None:
+    """Processos aprovados SEM leitura independente na VM-1: entram na fila da leitura independente (todos, com a chave
+    desligada; só os sorteados, com ela ligada)."""
+    if estratificada_ligada():
+        procs = _sortear(procs, origem)
+    if not procs:
+        return
+
+    def _add(fila):
+        ja = {e["proc"] for e in fila}
+        fila.extend({"proc": p, "origem": origem, "em": time.strftime("%F %T")} for p in procs if p not in ja)
+    _mexer_fila(_add)
+
+
+def _le_na_vm1(e: dict) -> bool:
+    return str(e.get("origem") or "?") in LE_NA_VM1
 
 
 def comparar_leitura(lida: dict, pasta: Path) -> tuple[bool | None, str]:
@@ -707,32 +793,151 @@ def comparar_leitura(lida: dict, pasta: Path) -> tuple[bool | None, str]:
     return True, nota
 
 
+def _desfecho_amostra(proc: str, lida: dict, leitor: str) -> bool | None:
+    """Compara uma leitura independente com o acervo e aplica: confere ⇒ sai da fila; diverge ⇒ quarentena e sai;
+    indisponível ⇒ fica (e perde o despacho, para voltar a ser despachável)."""
+    pasta = ARQUIVO / proc.replace("/", "_")
+    if not (pasta / "manifest.json").exists():
+        _mexer_fila(lambda f: f.__setitem__(slice(None), [e for e in f if e["proc"] != proc]))
+        return None
+    ok, nota = comparar_leitura(lida, pasta)
+    if ok is None:
+        def _solta(f):
+            for e in f:
+                if e["proc"] == proc:
+                    e.pop("despachado", None)
+        _mexer_fila(_solta)
+        _log(f"AMOSTRA INDEPENDENTE {proc}: ADIADA ({nota}) [leitura: {leitor}]")
+        return None
+    _mexer_fila(lambda f: f.__setitem__(slice(None), [e for e in f if e["proc"] != proc]))
+    if ok is False:
+        _quarentena("amostra-" + time.strftime("%Y%m%d"), pasta, [nota], {"leitor": leitor})
+    _log(f"AMOSTRA INDEPENDENTE {proc}: {'CONFERE' if ok else 'DIVERGE → QUARENTENA'} ({nota}) [leitura: {leitor}]")
+    return ok
+
+
 def amostra(n: int = 2) -> dict:
-    """Leitura independente pela VM-1 de até `n` processos entregues pela VM-2 sem referência local.
-    O `sei_reader.ler` cede sozinho com a VM-1 carregada (devolve INDISPONÍVEL) — aí fica para a próxima."""
+    """Leitura independente pela VM-1 de até `n` processos da fila que cabem a ela (produzidos pela VM-2 ou de origem
+    desconhecida; os do it-campo vão à VM-2 por `amostra-exportar`). O `sei_reader.ler` cede sozinho com a VM-1
+    carregada (devolve INDISPONÍVEL) — aí fica para a próxima."""
     import asyncio
     os.environ.setdefault("SEI_MAX_DOCS", "6")
     from tools import sei_reader as SR
-    fila = _ler_json(AMOSTRA) or []
+    # chave desligada = comportamento de sempre: a VM-1 lê a cabeça da fila, de qualquer produtor
+    meus = _mexer_fila(lambda f: [e["proc"] for e in f if _le_na_vm1(e) or not estratificada_ligada()])
     res = {}
-    for proc in list(fila)[:n]:
-        tag = proc.replace("/", "_")
-        pasta = ARQUIVO / tag
-        if not (pasta / "manifest.json").exists():
-            fila.remove(proc)
-            continue
+    for proc in meus[:n]:
         lida = asyncio.run(SR.ler(f"SEI-{proc}", usar_cache=False))
-        ok, nota = comparar_leitura(lida, pasta)
-        if ok is None:
-            _log(f"AMOSTRA INDEPENDENTE {proc}: ADIADA ({nota})")
-            res[proc] = None
+        res[proc] = _desfecho_amostra(proc, lida, "VM-1")
+        if res[proc] is None and (ARQUIVO / proc.replace("/", "_") / "manifest.json").exists():
             break                                   # VM-1 sem folga: não insistir nos próximos agora
-        fila.remove(proc)
-        if ok is False:
-            _quarentena("amostra-" + time.strftime("%Y%m%d"), pasta, [nota], {})
-        _log(f"AMOSTRA INDEPENDENTE {proc}: {'CONFERE' if ok else 'DIVERGE → QUARENTENA'} ({nota})")
-        res[proc] = ok
-    AMOSTRA.write_text(json.dumps(fila), encoding="utf-8")
+    return res
+
+
+def amostra_exportar(no: str, max_n: int = 4) -> list[dict]:
+    """(VM-1) Até `max_n` processos para o nó `no` (hostname) LER — nunca os que ele mesmo produziu, nem os que cabem à
+    VM-1. Marca o despacho (vale `DESPACHO_H`): dois disparos seguidos não leem o mesmo processo."""
+    corte = time.time() - DESPACHO_H * 3600
+
+    def _escolhe(fila):
+        out = []
+        for e in fila:
+            if len(out) >= max_n:
+                break
+            if _le_na_vm1(e) or e.get("origem") == no or float(e.get("despachado") or 0) > corte:
+                continue
+            e["despachado"] = time.time()
+            out.append({"proc": e["proc"], "origem": e.get("origem")})
+        return out
+    return _mexer_fila(_escolhe)
+
+
+def _reduzir_lida(lida: dict) -> dict:
+    """Só o que `comparar_leitura` usa: títulos da árvore e o teor (cortado) dos poucos documentos lidos."""
+    if lida.get("erro"):
+        return {"erro": str(lida["erro"])[:300]}
+    return {"documentos": [{"titulo": str(d.get("titulo") or "")[:300], "texto": str(d.get("texto") or "")[:300]}
+                           for d in lida.get("documentos") or [] if isinstance(d, dict)],
+            "conteudo_documentos": [{"doc": str(c.get("doc") or "")[:300], "titulo": str(c.get("titulo") or "")[:300],
+                                     "conteudo": str(c.get("conteudo") or "")[:LIDA_MAX_CHARS]}
+                                    for c in (lida.get("conteudo_documentos") or [])[:6] if isinstance(c, dict)]}
+
+
+def amostra_ler(itens: list[dict]) -> dict | None:
+    """(VM-2) Lê com o navegador DESTA máquina os processos exportados pela VM-1 e devolve as leituras num lote
+    `amostra` (o `importar` de lá compara com o acervo). A trava do navegador do worker (`data/.vm2_sei.lock`) é do
+    script `tools/vm2_amostra.sh`. Primeiro INDISPONÍVEL encerra (sessão/carga): o resto volta a ser despachável."""
+    import asyncio
+    os.environ.setdefault("SEI_MAX_DOCS", "6")
+    from tools import sei_reader as SR
+    from tools import vm2_lote as L
+    L.reenviar_pendentes()
+    host = os.uname().nodename
+    processos: dict[str, dict] = {}
+    for it in itens:
+        proc = str(it.get("proc") or "")
+        if not re.fullmatch(r"\d{6}/\d{6}/\d{4}", proc) or it.get("origem") == host:
+            continue                                     # nunca ler a própria entrega (a exportação já filtra)
+        t0 = time.time()
+        lida = _reduzir_lida(asyncio.run(SR.ler(f"SEI-{proc}", usar_cache=False)))
+        processos[proc] = {"origem_entrega": it.get("origem"), "lida": lida, "segundos": round(time.time() - t0, 1)}
+        if lida.get("erro"):
+            break
+    if not processos:
+        return None
+    return L.enviar(L.montar("amostra", {}, processos))
+
+
+def _importar_amostra(man: dict) -> tuple[dict, dict]:
+    """(VM-1) Lote `amostra`: leituras independentes feitas noutra máquina. Só `comparar_leitura` roda aqui."""
+    leitor = str(man.get("origem") or "?")
+    aprovados, reprovados = {}, {}
+    for proc, info in (man.get("processos") or {}).items():
+        if not isinstance(info, dict) or str(info.get("origem_entrega") or "") == leitor:
+            _log(f"AMOSTRA INDEPENDENTE {proc}: leitura RECUSADA — leitor {leitor} é o produtor da entrega")
+            reprovados[proc] = ["leitor = produtor"]
+            continue
+        ok = _desfecho_amostra(proc, info.get("lida") or {}, leitor)
+        (aprovados if ok is not False else reprovados)[proc] = {"confere": ok, "segundos": info.get("segundos")}
+    return aprovados, reprovados
+
+
+def reduzir_fila_amostra(taxa: float = AMOSTRA_TAXA, semente: int = 20261123, aplicar: bool = False) -> dict:
+    """Uma vez (23/11/2026): a fila FIFO acumulada vira AMOSTRA aleatória estratificada por produtor (≥1 por nó). A lista
+    original fica em `data/vm2_amostra_pendente.json.bak-20261123` (não sobrescreve um .bak que já exista). O produtor
+    de cada processo vem do manifesto do lote que o aprovou (`data/vm2_entrega/_importados/integras-*.json`)."""
+    import random
+    origem: dict[str, str] = {}
+    for f in sorted(IMPORTADOS.glob("integras-*.json")) if IMPORTADOS.is_dir() else []:
+        m = _ler_json(f)
+        if isinstance(m, dict):
+            for p in ((m.get("conferencia") or {}).get("aprovados") or {}):
+                origem[p] = str(m.get("origem") or "?")
+    def _reduz(fila: list[dict]) -> dict:
+        por_no: dict[str, list[dict]] = {}
+        for e in fila:
+            if e.get("origem") in (None, "", "?"):
+                e["origem"] = origem.get(e["proc"], "?")
+            por_no.setdefault(e["origem"], []).append(e)
+        rnd = random.Random(semente)
+        nova = []
+        for _no, itens in sorted(por_no.items()):
+            nova += rnd.sample(itens, min(len(itens), max(1, round(taxa * len(itens)))))
+        res = {"antes": len(fila), "depois": len(nova),
+               "por_no": {no: [len(v), sum(1 for e in nova if e["origem"] == no)] for no, v in sorted(por_no.items())}}
+        if aplicar:
+            fila[:] = nova
+        return res
+    if not aplicar:
+        return _reduz([_item(e) for e in (_ler_json(AMOSTRA) or [])])
+    if not estratificada_ligada():
+        # desligada, a fila é gravada só com números: a origem achada aqui se perderia e tudo voltaria a ser lido na VM-1
+        raise SystemExit("ligue a amostra estratificada antes (touch data/.vm2_amostra_estratificada)")
+    bak = AMOSTRA.with_name(AMOSTRA.name + ".bak-20261123")
+    if not bak.exists():
+        shutil.copy2(AMOSTRA, bak)
+    res = _mexer_fila(_reduz)
+    _log(f"AMOSTRA: fila FIFO reduzida a amostra estratificada {json.dumps(res, ensure_ascii=False)} (original em {bak.name})")
     return res
 
 
@@ -803,6 +1008,10 @@ def main() -> int:
     r = sub.add_parser("reconferir"); r.add_argument("tags", nargs="+")
     am = sub.add_parser("amostra"); am.add_argument("--n", type=int, default=2)
     rq = sub.add_parser("rever-quarentena"); rq.add_argument("lote")
+    ae = sub.add_parser("amostra-exportar"); ae.add_argument("--no", required=True); ae.add_argument("--max", type=int, default=4)
+    al = sub.add_parser("amostra-ler"); al.add_argument("--fila", required=True)
+    ar = sub.add_parser("amostra-reduzir"); ar.add_argument("--taxa", type=float, default=AMOSTRA_TAXA)
+    ar.add_argument("--aplicar", action="store_true")
     a = ap.parse_args()
     if a.cmd == "importar":
         print(json.dumps(importar(a.lote), ensure_ascii=False))
@@ -812,6 +1021,12 @@ def main() -> int:
         print(json.dumps(rever_quarentena(a.lote), ensure_ascii=False))
     elif a.cmd == "amostra":
         print(json.dumps(amostra(a.n), ensure_ascii=False))
+    elif a.cmd == "amostra-exportar":
+        print(json.dumps(amostra_exportar(a.no, a.max), ensure_ascii=False))
+    elif a.cmd == "amostra-ler":
+        print(json.dumps(amostra_ler(_ler_json(Path(a.fila)) or []), ensure_ascii=False))
+    elif a.cmd == "amostra-reduzir":
+        print(json.dumps(reduzir_fila_amostra(a.taxa, aplicar=a.aplicar), ensure_ascii=False))
     else:
         print(json.dumps(reconferir(a.tags), ensure_ascii=False, indent=1))
     return 0

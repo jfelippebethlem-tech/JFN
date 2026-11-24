@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — amostra independente na VM-2 a cada 2 h (cede ao navegador das íntegras/varredura pela trava compartilhada)
+
+[Timer]
+OnCalendar=*-*-* 01/2:20:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
