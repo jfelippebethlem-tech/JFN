@@ -37,8 +37,9 @@ CONTEXTO_INICIAL = [
      "(resolvido pelo sistema). Múltiplas compras ao mesmo fornecedor somando acima disso = "
      "fracionamento."),
     ("limite_convite_antigo",
-     "Lei 8.666/93 (ainda aplicável a contratos antigos): convite até R$ 176.000 "
-     "para obras, R$ 80.000 para compras."),
+     "Lei 8.666/93 art. 23 (ainda aplicável a contratos antigos), valores do Decreto 9.412/2018: convite "
+     "até R$ 330.000 para obras/serviços de engenharia e R$ 176.000 para compras e demais serviços "
+     "(antes de 19/07/2018: R$ 150.000 e R$ 80.000)."),
     ("vedacao_sancionada",
      "Empresa no CEIS/CNEP não pode receber pagamento público. "
      "Lei 8.666/93 art. 87 e Lei 14.133/21 art. 156."),
@@ -208,6 +209,10 @@ def garantir_contexto_inicial(session=None):
                 .filter_by(categoria="contexto_admin", chave=chave)
                 .first()
             )
+            if existe and existe.fonte == "humano" and existe.valor != valor:
+                # o conhecimento-base é do CÓDIGO: corrigido aqui, corrige no banco (23/11/2026 — o teto de
+                # convite da 8.666 estava errado e o seed idempotente nunca o reescrevia)
+                existe.valor = valor
             if not existe:
                 s.add(MemoriaAprendizado(
                     categoria="contexto_admin",

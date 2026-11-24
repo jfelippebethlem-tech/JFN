@@ -233,3 +233,26 @@ def test_sameday_com_ob_acima_do_teto_nao_acende():
 
 def test_sameday_com_obs_abaixo_do_teto_acende():
     assert _flags_sameday([40_000.0, 40_000.0]) == ["R_FRACIONAMENTO_SAMEDAY"]
+
+
+# ── conhecimento-base do LLM: teto de convite da 8.666 (Decreto 9.412/2018) e correção do seed ─────────
+
+def test_memoria_convite_8666_e_seed_corrige_o_banco():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from compliance_agent.database.models import Base, MemoriaAprendizado
+    from compliance_agent.llm import memoria
+    texto = dict(memoria.CONTEXTO_INICIAL)["limite_convite_antigo"]
+    assert "R$ 330.000 para obras" in texto and "R$ 176.000 para compras" in texto
+    eng = create_engine("sqlite://")
+    Base.metadata.create_all(eng)
+    s = sessionmaker(bind=eng)()
+    s.add(MemoriaAprendizado(categoria="contexto_admin", chave="limite_convite_antigo",
+                             valor="convite até R$ 176.000 para obras", confianca=0.9, fonte="humano"))
+    s.add(MemoriaAprendizado(categoria="contexto_admin", chave="limite_convite_antigo_x",
+                             valor="aprendido", confianca=0.5, fonte="llm"))
+    s.commit()
+    memoria.garantir_contexto_inicial(session=s)
+    v = s.query(MemoriaAprendizado).filter_by(chave="limite_convite_antigo").one().valor
+    assert v == texto
+    assert s.query(MemoriaAprendizado).filter_by(chave="limite_convite_antigo_x").one().valor == "aprendido"
