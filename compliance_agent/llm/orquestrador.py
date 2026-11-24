@@ -11,13 +11,14 @@ Fluxo de cada ciclo:
   2. Manda o ComplianceAgent (22 ferramentas, LLM grátis) investigar a fundo
   3. Cruza com pesquisa na internet (DuckDuckGo + notícias)
   4. Salva o que aprendeu na memória persistente
-  5. Se achar algo grave, alerta no Telegram na hora
+  5. Alerta no Telegram SÓ com fonte primária + identidade resolvida (texto de LLM ou termo web sozinho não alerta)
   6. Respeita o limite de taxa do LLM grátis (pausa entre ciclos)
 
 Roda dentro do loop contínuo do scheduler, em paralelo ao monitoramento.
 """
 
 import asyncio
+import json
 import logging
 from datetime import date, timedelta
 
@@ -184,28 +185,30 @@ async def investigar_alvo(alvo: dict, session) -> dict:
 
     # 3. Determina nível de risco
     riscos_web = (resultado.get("dossie_web") or {}).get("riscos", [])
-    veredito = _classificar_risco(resultado["conclusao_agente"], riscos_web)
+    veredito = _classificar_risco(resultado["conclusao_agente"], riscos_web, alvo=alvo)
     resultado["risco"] = veredito["risco"]
     resultado["risco_fonte"] = veredito["fonte"]
     resultado["risco_citacao"] = veredito.get("citacao", "")
+    resultado["risco_web_estado"] = veredito.get("web_estado", "")
 
-    # 4. Salva na memória (aprende)
+    # 4. Salva na memória. Fato de entidade = só o que o CÓDIGO sabe (foi investigado, quando). Risco, termos
+    #    da web e a conclusão do LLM são OBSERVAÇÃO `nao_confirmado` de origem 'llm' — nunca fato (O6.7).
     try:
         registrar_entidade(nome, {
             "investigado_orquestrador": True,
-            "risco": resultado["risco"],
-            "riscos_web": riscos_web,
             "investigado_em": [date.today().isoformat()],
         }, session=session)
-        aprender("entidade_investigada", nome,
-                 resultado["conclusao_agente"][:500] or "investigado",
-                 fonte="orquestrador", session=session)
+        aprender("observacao", f"investigacao:{nome}"[:300],
+                 json.dumps({"conclusao_agente": resultado["conclusao_agente"][:500] or "investigado",
+                             "risco": resultado["risco"], "risco_fonte": veredito["fonte"],
+                             "termos_web": [str(t)[:80] for t in riscos_web][:10]}, ensure_ascii=False),
+                 fonte="orquestrador", origem="llm", delta_confianca=0.0, session=session)
     except Exception as exc:
         logger.warning("falha ao salvar investigação de '%s' na memória: %s", nome, exc)
 
-    # 5. Alerta se grave
-    if resultado["risco"] == "alto":
-        await _alertar_investigacao(alvo, resultado, session)
+    # 5. Alerta só com fundamento PRIMÁRIO (nunca texto de LLM sozinho, nunca termo de busca web)
+    if resultado["risco"] == "alto" and alerta_permitido(veredito):
+        await _alertar_investigacao(alvo, resultado, session, veredito=veredito)
 
     return resultado
 
@@ -227,7 +230,52 @@ _SYS_RISCO = (
 _GERAR_PADRAO = object()  # sentinela: resolver a cascata de produção. `gerar=None` = sem LLM.
 
 
-def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_PADRAO) -> dict:
+# Fundamentos que podem gerar Alerta grave / Telegram. Texto de LLM (rubrica_llm) e termo de busca web NÃO estão
+# aqui por construção — tests/test_orquestrador_risco_web.py é a catraca.
+FUNDAMENTOS_ALERTAVEIS = frozenset({"web_primaria_identidade"})
+
+
+def alerta_permitido(veredito: dict | None) -> bool:
+    """Alerta grave/Telegram só com fonte primária E identidade resolvida."""
+    return bool(veredito) and veredito.get("fonte") in FUNDAMENTOS_ALERTAVEIS
+
+
+def _resolvedor_identidade():
+    """`compliance_agent.dominio.identidade.resolver(item, alvo) -> bool`, se o módulo existir. Hoje (24/11/2026)
+    não existe: sem resolvedor, nenhum achado web tem identidade resolvida (estado INCERTO)."""
+    try:
+        from compliance_agent.dominio import identidade
+    except ImportError:
+        return None
+    return getattr(identidade, "resolver", None)
+
+
+def _avaliar_riscos_web(riscos_web: list | None, alvo: dict | None = None) -> dict:
+    """Achado web vira sinal só com FONTE PRIMÁRIA (`source_root_id` válido — doc SEI, OB SIAFE, URL oficial) e
+    IDENTIDADE resolvida (o achado é DESTA entidade, não de homônimo). Termo solto do coletor (string) não tem
+    nem uma nem outra. Devolve {estado: AUSENTE|INCERTO|INDICIO, motivo, itens}."""
+    from compliance_agent.dominio.estados import EstadoSaida
+    from compliance_agent.llm.memoria import _raiz_valida
+
+    itens = list(riscos_web or [])
+    if not itens:
+        return {"estado": EstadoSaida.AUSENTE.value, "motivo": "sem termo de risco na web", "itens": []}
+    primarios = [i for i in itens if isinstance(i, dict) and _raiz_valida(str(i.get("source_root_id") or ""))]
+    if not primarios:
+        return {"estado": EstadoSaida.INCERTO.value, "motivo": "termo da web sem fonte primária", "itens": itens}
+    resolver = _resolvedor_identidade()
+    if resolver is None:
+        return {"estado": EstadoSaida.INCERTO.value, "motivo": "identidade não resolvida (sem dominio.identidade)",
+                "itens": itens}
+    resolvidos = [i for i in primarios if resolver(i, alvo or {}) is True]
+    if not resolvidos:
+        return {"estado": EstadoSaida.INCERTO.value, "motivo": "identidade não resolvida", "itens": itens}
+    return {"estado": EstadoSaida.INDICIO.value, "motivo": "fonte primária + identidade resolvida",
+            "itens": resolvidos}
+
+
+def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_PADRAO,
+                       alvo: dict | None = None) -> dict:
     """Classifica o risco de uma investigação autônoma. NUNCA por substring.
 
     A versão anterior fazia `"fraude" in texto` sobre a conclusão do agente concatenada ao dossiê
@@ -237,8 +285,9 @@ def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_
 
     Hierarquia nova:
 
-    1. **Sinal estruturado** (`riscos_web`, que o coletor já devolve como lista de achados) decide
-       sozinho — é dado, não prosa.
+    1. **Achado web** só decide (alto, alertável) com fonte primária + identidade resolvida
+       (`_avaliar_riscos_web`). Termo solto de busca — o que o coletor devolve hoje — fica INCERTO e
+       NÃO vira risco alto (O6.7, 24/11/2026: qualquer `riscos_web` não vazio virava alto + Telegram).
     2. **Texto livre** só é julgado por rubrica fechada, com escala nomeada e citação literal
        CONFERIDA contra o próprio texto (o trecho tem de existir na fonte, no molde de
        `editais/motivo_inabilitacao`). Sem citação ancorada, o juízo é descartado.
@@ -247,11 +296,22 @@ def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_
 
     `gerar` é injetável para teste; em produção usa a cascata free (Gemini primeiro).
     """
-    from compliance_agent.llm.json_resposta import parse_json_llm
+    web = _avaliar_riscos_web(riscos_web, alvo)
+    if web["estado"] == "INDICIO":
+        return {"risco": "alto", "fonte": "web_primaria_identidade", "riscos_web": web["itens"],
+                "web_estado": web["estado"], "citacao": "",
+                "justificativa": "achado web com fonte primária e identidade resolvida"}
+    r = _classificar_texto(conclusao, gerar)
+    r["web_estado"] = web["estado"]
+    if web["estado"] == "INCERTO":
+        r["riscos_web"] = list(riscos_web or [])
+        r["justificativa"] = (r.get("justificativa") or "") + f" | web INCERTO: {web['motivo']}"
+    return r
 
-    if riscos_web:
-        return {"risco": "alto", "fonte": "estruturado", "riscos_web": list(riscos_web),
-                "citacao": "", "justificativa": "achado estruturado da pesquisa web"}
+
+def _classificar_texto(conclusao: str, gerar) -> dict:
+    """Juízo do texto livre por rubrica fechada (o resultado nunca é alertável: fundamento é texto de LLM)."""
+    from compliance_agent.llm.json_resposta import parse_json_llm
 
     texto = (conclusao or "").strip()
     if not texto:
@@ -292,8 +352,13 @@ def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_
             "justificativa": str(j.get("justificativa") or "")}
 
 
-async def _alertar_investigacao(alvo: dict, resultado: dict, session):
-    """Cria alerta no banco e avisa no Telegram quando a investigação acha risco."""
+async def _alertar_investigacao(alvo: dict, resultado: dict, session, veredito: dict | None = None):
+    """Cria alerta no banco e avisa no Telegram — SÓ com fundamento primário (`alerta_permitido`).
+    A guarda fica também aqui, no ralo: chamada sem veredito alertável não grava nem envia nada."""
+    if not alerta_permitido(veredito):
+        logger.info("alerta da investigação de '%s' barrado: fundamento %r não é primário",
+                    alvo.get("nome"), (veredito or {}).get("fonte"))
+        return
     from compliance_agent.database.models import Alerta
     from compliance_agent.notifications.telegram import enviar_mensagem
 

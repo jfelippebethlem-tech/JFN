@@ -112,7 +112,8 @@ async def _sintetizar_regras(top_duvidas: list[tuple[str, int]], top_temas: list
         ch = re.sub(r"[^a-z0-9]+", "-", (r.get("chave") or "").lower()).strip("-")[:40] or "geral"
         rg = (r.get("regra") or "").strip()
         if rg:
-            aprender("metodo", f"pericia:{ch}", rg, fonte="pericia_aprendizado_llm", delta_confianca=0.15)
+            # O6.7: saída de LLM nunca reforça — entra como hipótese `nao_confirmado`, origem 'llm'
+            aprender("metodo", f"pericia:{ch}", rg, fonte="pericia_aprendizado_llm", origem="llm", delta_confianca=0.0)
             n += 1
     return n
 
@@ -148,7 +149,7 @@ def rodar(max_proc: int = 400, limiar: int = 3, top: int = 6, com_llm: bool = Tr
     except Exception as e:
         print("[pericia_aprendizado] lex_feedback indisponível:", str(e)[:80])
 
-    # (3) APRENDER — reforço por recorrência (sempre, determinístico)
+    # (3) APRENDER — registro por recorrência (determinístico; sem reforço de confiança — O6.7)
     regras = 0
     try:
         from compliance_agent.llm.memoria import aprender
@@ -157,7 +158,8 @@ def rodar(max_proc: int = 400, limiar: int = 3, top: int = 6, com_llm: bool = Tr
             regra = (f"PERÍCIA — lacuna recorrente em '{tema}' ({c} casos recentes): quando o trecho do SEI não "
                      "trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; "
                      "nunca conclua por ausência (presunção de regularidade).")
-            aprender("metodo", f"pericia:{slug}", regra, fonte="pericia_aprendizado", delta_confianca=0.1)
+            # a recorrência conta dúvidas ESCRITAS PELO LLM da perícia: repetição da mesma origem não reforça (O6.7)
+            aprender("metodo", f"pericia:{slug}", regra, fonte="pericia_aprendizado", origem="llm", delta_confianca=0.0)
             regras += 1
     except Exception as e:
         print("[pericia_aprendizado] memoria (reforço) indisponível:", str(e)[:80])

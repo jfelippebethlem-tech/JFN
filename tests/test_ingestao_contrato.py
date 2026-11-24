@@ -142,12 +142,12 @@ def test_ddl_da_migracao_igual_ao_do_modulo():
     assert _ddl_da_migracao() == qt.DDL
 
 
-def test_cabeca_unica_e_0003_no_topo():
+def test_cabeca_unica_no_topo():
     from alembic.script import ScriptDirectory
 
     from compliance_agent.database.migrar import _config
     heads = ScriptDirectory.from_config(_config()).get_heads()
-    assert heads == ["0003_ingestao_quarentena"], heads
+    assert heads == ["0004_memoria_proveniencia"], heads
 
 
 def test_upgrade_em_banco_vazio_cria_as_tabelas(tmp_path):
@@ -155,7 +155,7 @@ def test_upgrade_em_banco_vazio_cria_as_tabelas(tmp_path):
     db = tmp_path / "novo.db"
     sqlite3.connect(db).close()
     r = migrar.atualizar(db)
-    assert r["ok"] and r["atual"] == "0003_ingestao_quarentena"
+    assert r["ok"] and r["atual"] == "0004_memoria_proveniencia"
     con = sqlite3.connect(db)
     try:
         nomes = {x[0] for x in con.execute("SELECT name FROM sqlite_master WHERE name LIKE 'ingestao_%'")}

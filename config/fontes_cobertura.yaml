@@ -672,6 +672,14 @@ fontes:
     frequencia: evento
     propagacao: [sei_ficha, sei_lex, sei_leitura_dupla, ocr_gpu, ocr_reserva]
 
+  codigo_commit:
+    nome: Commit novo no repositório (aciona o deploy por evento do worker da VM-2 — O2.4)
+    natureza: interna
+    dono: frente infra (E17)
+    coletor: tools/deploy_worker.py
+    frequencia: evento
+    propagacao: [codigo_commit]
+
   triagem_e_revisao:
     nome: Veredito da triagem, revisão humana de alerta e conferência do Opus
     natureza: interna

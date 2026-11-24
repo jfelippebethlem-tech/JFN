@@ -688,7 +688,7 @@ async def rodar_analise_groq(session) -> list[dict]:
                         registrar_entidade(ent, {
                             "flags": [alerta.get("tipo", "")],
                             "n_alertas": 1,
-                        }, session=session)
+                        }, session=session, fonte="groq")   # saída de LLM → observacao, não perfil
                 except Exception as exc:
                     logger.warning("falha ao registrar aprendizado do alerta na memória: %s", exc)
     else:

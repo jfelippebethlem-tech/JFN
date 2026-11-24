@@ -394,7 +394,7 @@ async def sintetizar_semana(session) -> Optional[dict]:
                     "esquema": esquema.get("nome", ""),
                     "modus": esquema.get("modus_operandi", ""),
                     "suspeito": True,
-                }, session=session)
+                }, session=session, fonte="hermes_sintese")   # saída de LLM → observacao, não perfil
             aprender(
                 "esquema",
                 esquema.get("nome", "esquema")[:300],

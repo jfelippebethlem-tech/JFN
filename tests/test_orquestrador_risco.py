@@ -54,12 +54,13 @@ def test_substring_acidental_nao_vira_risco_alto(conclusao):
 # ─────────────────────────────── sinal estruturado ────────────────────────────────────────────
 
 
-def test_sinal_estruturado_decide_sozinho():
-    """`riscos_web` vem do coletor, já estruturado — este SIM é sinal, não texto."""
+def test_termo_web_sozinho_nao_decide():
+    """O6.7 (24/11/2026): `riscos_web` é termo de busca casado em snippet — sem fonte primária nem identidade
+    resolvida fica INCERTO e não vira alto (antes decidia sozinho e disparava Alerta + Telegram)."""
     r = _classificar_risco("", riscos_web=["condenação por improbidade"], gerar=None)
-    assert r["risco"] == "alto"
-    assert r["fonte"] == "estruturado"
-    assert "condenação por improbidade" in json.dumps(r, ensure_ascii=False)
+    assert r["risco"] != "alto"
+    assert r["web_estado"] == "INCERTO"
+    assert "condenação por improbidade" in json.dumps(r, ensure_ascii=False)   # o termo é preservado, não some
 
 
 # ─────────────────────────────── ausência de LLM ──────────────────────────────────────────────

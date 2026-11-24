@@ -373,6 +373,13 @@ class MemoriaAprendizado(Base):
     fonte         = Column(String(60))                 # groq | hermes | regra | humano
     primeira_vez  = Column(DateTime, default=datetime.utcnow)
     ultima_vez    = Column(DateTime, default=datetime.utcnow)
+    # O6.7 (Alembic 0004): proveniência. NULL = linha antiga ou de escritor SQL cru → lida como
+    # origem desconhecida / nao_confirmado. Regras em compliance_agent/llm/memoria.py.
+    origem        = Column(String(20))                 # fonte_primaria | humano | regra | desconhecida | llm
+    estado        = Column(String(20))                 # nao_confirmado | corroborado | refutado | expirado
+    fontes_raiz   = Column(Text)                       # JSON: source_root_id distintos que corroboraram
+    historico     = Column(Text)                       # JSON: versões do valor e eventos (nunca sobrescreve calado)
+    confirmado_em = Column(DateTime)                   # última corroboração por fonte primária independente
 
     __table_args__ = (
         Index("ix_memoria_cat_chave", "categoria", "chave"),
