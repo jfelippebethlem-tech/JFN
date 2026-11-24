@@ -166,6 +166,11 @@ DETECTORES: dict[str, dict] = {
     "a_portar.lex_fatos.c_pago_maior_que_nl": {"ob_siafe": "execucao"},
     "a_portar.p4_obra_e_lei_8666_tcerj": {"compra_direta_tcerj": "dispensa_valor"},
     "a_portar.p5_dedup_por_processo": {"compra_direta_tcerj": "fornecedor"},
+    # E10 (O5.3 fatia 1): as quatro regras a_portar acima, portadas como detectores genéricos (mesma exigência)
+    "e10.p4_fracionamento_objeto": {"compra_direta_tcerj": "dispensa_valor"},
+    "e10.p5_emergencia_recorrente": {"compra_direta_tcerj": "fornecedor"},
+    "e10.ob_paga_acima_liquidado": {"ob_siafe": "execucao"},
+    "e10.ob_antes_da_liquidacao": {"ob_siafe": "execucao"},
     # emendas: o objeto É a transferência (PIX, convênio) — a exigência é o universo, não o fornecedor
     "emendas.D1": {"ob_siafe": "universo"},
     "emendas.D2": {"ob_siafe": "universo"},

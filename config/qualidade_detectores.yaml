@@ -5424,7 +5424,7 @@ detectores:
     dominio: dispensas por valor do espelho TCE-RJ (compras_diretas_tcerj)
     fp_medida: null
     estado: a_portar
-    portar_para: det.P4Fracionamento
+    portar_para: e10.p4_fracionamento_objeto
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -5448,7 +5448,7 @@ detectores:
     dominio: contratações emergenciais do espelho TCE-RJ
     fp_medida: null
     estado: a_portar
-    portar_para: det.P5EmergenciaFabricada
+    portar_para: e10.p5_emergencia_recorrente
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -5472,7 +5472,7 @@ detectores:
     dominio: null
     fp_medida: null
     estado: a_portar
-    portar_para: E10 (detector contábil genérico)
+    portar_para: e10.ob_paga_acima_liquidado
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -5496,7 +5496,123 @@ detectores:
     dominio: null
     fp_medida: null
     estado: a_portar
-    portar_para: E10 (detector contábil genérico)
+    portar_para: e10.ob_antes_da_liquidacao
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  # O5.3 fatia 1 (24/11/2026): as quatro regras a_portar acima, portadas como detectores GENÉRICOS do E10
+  # (compliance_agent/aplicacao/estagios/detectar.py), SOMBRA ⚖️: gravam só no esquema `sombra` do PG; Tier 3 até medir.
+  e10.p4_fracionamento_objeto:
+    modulo: compliance_agent/aplicacao/detectores/fracionamento_objeto.py
+    simbolo: detectar
+    afirma: 'Fracionamento de despesa por objeto (art. 75 §1º): dispensas por valor de mesma natureza na mesma unidade e
+      exercício que, somadas, passam do teto ou se agrupam rente a ele — réguas do sweep (MAX por processo, reforma é
+      obra e mão de obra não é) + card P4'
+    fonte:
+    - compras_diretas_tcerj
+    - dominio.elegibilidade (E9, exigência dispensa_valor)
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_fracionamento_objeto.py::test_positivo_reforma_e_obra_e_soma_acima_do_teto
+    controle_negativo: tests/test_detector_e10_fracionamento_objeto.py::test_negativo_mao_de_obra_e_inelegivel_ficam_fora
+    hipoteses_inocentes:
+    - hipotese: "'mão de obra' não é obra; aquisição de material de construção é compra"
+      excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:tipo_objeto
+    - hipotese: inscrição, anuidade, juros e multas, credenciamento, DEA e consumo de concessionária não são
+        contratação de objeto
+      excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:dispensa_por_valor
+    - hipotese: itens e grafias do mesmo processo contados mais de uma vez
+      excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:_itens
+    - hipotese: demandas imprevisíveis distintas (manutenção corretiva) ou unidades gestoras autônomas
+      excluida_por: null
+    dominio: dispensas por valor do espelho TCE-RJ (compras_diretas_tcerj) elegíveis na E9 (dispensa_valor = E)
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.p5_emergencia_recorrente:
+    modulo: compliance_agent/aplicacao/detectores/emergencia_recorrente.py
+    simbolo: detectar
+    afirma: 'Emergência recorrente: 5 ou mais contratações emergenciais (art. 75, VIII; art. 24, IV da 8.666; art. 29,
+      XV da 13.303) na mesma unidade e exercício, contadas uma vez por PROCESSO'
+    fonte:
+    - compras_diretas_tcerj
+    - dominio.elegibilidade (E9, exigência fornecedor)
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_emergencia_recorrente.py::test_positivo_cinco_processos_emergenciais_viram_indicio
+    controle_negativo: tests/test_detector_e10_emergencia_recorrente.py::test_negativo_itens_do_mesmo_processo_nao_somam
+    hipoteses_inocentes:
+    - hipotese: emergência pontual (o uso legítimo do inciso)
+      excluida_por: compliance_agent/aplicacao/detectores/emergencia_recorrente.py:detectar
+    - hipotese: itens do mesmo processo somados como contratações distintas (inflava 2,3×)
+      excluida_por: compliance_agent/aplicacao/detectores/emergencia_recorrente.py:_itens
+    - hipotese: serviço realmente sob pressão, com emergências pulverizadas entre muitos fornecedores
+      excluida_por: null
+    dominio: contratações emergenciais do espelho TCE-RJ elegíveis na E9 (fornecedor = E)
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.ob_paga_acima_liquidado:
+    modulo: compliance_agent/aplicacao/detectores/contabil_siafe.py
+    simbolo: _PagoAcima
+    afirma: Soma das OB pagas que citam a mesma NL acima do valor liquidado nela (NL contabilizada, mesmo credor)
+    fonte:
+    - ob_orcamentaria_siafe (_ob_paga)
+    - nl_siafe
+    - dominio.elegibilidade (E9, exigência execucao)
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_contabil_siafe.py::test_positivo_pago_acima_do_liquidado
+    controle_negativo: tests/test_detector_e10_contabil_siafe.py::test_negativo_pago_dentro_do_liquidado_ou_nl_ausente
+    hipoteses_inocentes:
+    - hipotese: NL complementar/reforço lançada depois
+      excluida_por: null
+    - hipotese: OB e NL de credores distintos (identidade não resolvida)
+      excluida_por: compliance_agent/aplicacao/detectores/contabil_siafe.py:_ident
+    - hipotese: OB anulada, devolvida, complementar ou regularização de valor zero
+      excluida_por: compliance_agent/aplicacao/detectores/contabil_siafe.py:carregar
+    dominio: OB pagas do SIAFE com a NL citada na base, elegíveis na E9 (execucao = E)
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.ob_antes_da_liquidacao:
+    modulo: compliance_agent/aplicacao/detectores/contabil_siafe.py
+    simbolo: _ObAntes
+    afirma: OB paga emitida em data anterior à da NL que ela cita (mesmo credor)
+    fonte:
+    - ob_orcamentaria_siafe (_ob_paga)
+    - nl_siafe
+    - dominio.elegibilidade (E9, exigência execucao)
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_contabil_siafe.py::test_positivo_ob_antes_da_nl
+    controle_negativo: tests/test_detector_e10_contabil_siafe.py::test_negativo_ob_depois_da_nl_ou_inelegivel
+    hipoteses_inocentes:
+    - hipotese: NL complementar/reforço lançada depois
+      excluida_por: null
+    - hipotese: OB e NL de credores distintos (identidade não resolvida)
+      excluida_por: compliance_agent/aplicacao/detectores/contabil_siafe.py:_ident
+    dominio: OB pagas do SIAFE com a NL citada na base, elegíveis na E9 (execucao = E)
+    fp_medida: null
+    estado: ativo
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null

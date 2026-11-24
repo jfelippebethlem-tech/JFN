@@ -1426,6 +1426,22 @@ rotinas:
     nos: [vm1]
     efeito: {descricao: 'Leitura integral pela assinatura (200 fatias): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  fatos_e8:
+    estagio: E8
+    descricao: 'E8 fatos (O6.3): fatos com citação literal conferida (documento, sha256, página, offset; senão INDETERMINADO_FALHA_CITACAO) e cobertura com pecas_nao_lidas, gravados nas tabelas fatos/leituras do PG (ADR-001 D3), na ordem única OB paga desc + cota Couto 50%'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.fatos, lote, colher]
+    recursos: [llm]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    concorrencia: [llm_batch]
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026) e custo: o balde extracao_sei do claude_api (onde a leitura_integral cai) está acima do teto (US$ 39,20 de 35,00) e a assinatura está contida (51% da semana × ritmo 42%); religar só com o ✅ do dono no teto da leitura (relatório ~/vault/refatoracao/o63-e8.md) e com fatos_001.sql aplicado no esquema public. O acervo (data/sei_arquivo) mora na VM-1: worker da VM-2 só lê depois da cópia por porta única'
+    nota: 'O6.3. Por processo: job `fatos:<processo>` (handler + efeito do estágio nativo; idempotente pela chave processo|sha do texto|prompt_version|modelo). Volume: `fatos lote enviar --processos <ordem> --teto-usd N --enviar` imprime a estimativa ANTES e recusa acima do teto; esta rotina só COLHE os lotes prontos (a colheita não gasta). Substitui leitura_integral_assinatura quando religar'
+    agenda:
+    - {cron: '50 */2 * * *'}
+    origem: [leitura_integral_colher]
+    efeito: {descricao: 'lotes prontos colhidos: fatos ancorados (texto[inicio:fim] = citação) gravados por chave de fatia e leituras com cobertura', so_rc: 'a colheita imprime o resumo por lote (gravadas/descartadas/inválidas/processos concluídos); a prova por processo é o efeito do job fatos:<processo> (recontagem + amostra de 20 reaberta no acervo)'}
   handoff_watcher:
     estagio: E18
     descricao: Vigia de passagem de sessão
@@ -2477,6 +2493,25 @@ rotinas:
     evento: {depende: [siafe_ob, contratos_tcerj, compras_diretas_tcerj, pcrj_base], debounce_s: 900, agrupar: true}
     origem: [peneira_de_credor, tetos_de_dispensa, regime_pericia_contabil]
     efeito: {descricao: 'linhas do escopo recontadas em dominio.elegibilidade com a versão corrente e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'elegibilidade: [1-9][0-9]* linha\(s\) conferida\(s\) em [a-z_]+\.elegibilidade'}
+  detectar_sombra:
+    estagio: E10
+    descricao: 'E10 detectar (O5.3 fatia 1, SOMBRA ⚖️): detectores genéricos portados dos sweeps e do lex_fatos (P4 por objeto, P5 emergência recorrente, OB paga acima do liquidado, OB antes da liquidação) sobre o universo, só nos itens elegíveis da E9; execucao_regra + achado no contrato único, esquema sombra do PG'
+    passos:
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.p4_fracionamento_objeto]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.p5_emergencia_recorrente]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.ob_paga_acima_liquidado]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.ob_antes_da_liquidacao]
+    parar_no_erro: true
+    recursos: [cpu_pesado]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    ativa: false
+    bloqueio: 'sombra ⚖️ até o ✅ do dono no lote jurídico (O4.10) e parada de obras (24/11/2026): grava só no esquema sombra (nenhuma rota lê), Tier 3 no registro; na VM-2 a fonte (JFN_DETECTAR_FONTE ou JFN_ELEGIBILIDADE_FONTE) é a exportação só-leitura conferida por md5 — o compliance.db da VM-1 nunca é aberto por worker remoto (ADR-001 D4)'
+    nota: 'O5.3. Cada passo é o estágio nativo `detectar` pela CLI (handler + efeito no mesmo processo; a linha de prova só sai depois de conferir: recontagem dos achados da rodada no PG = declarados, resumo da rodada presente e amostra recalculada da fonte com o mesmo hash de entradas). Idempotente pela chave (detector, escopo): entrada igual grava 0 linha. Quando o grafo agendar tipo nativo, cada passo vira um job `detectar:<detector>` com payload {detector, exercicio}'
+    evento: {depende: [elegibilidade_sombra], debounce_s: 900, agrupar: true}
+    origem: [sweep_fracionamento_tcerj, sweep_emergencia_recorrente, lex_fatos_contabil]
+    efeito: {descricao: 'achados da rodada recontados no esquema sombra = declarados e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'detectar: [0-9]+ achado\(s\) conferido\(s\) em [a-z_]+\.achado'}
   analitico_exportar:
     estagio: E15
     descricao: 'O4.12 analítico (vm2): snapshot conferido por md5 do compliance.db → Parquet zstd por exercício + manifesto (linhas, sha256, schema/alembic)'

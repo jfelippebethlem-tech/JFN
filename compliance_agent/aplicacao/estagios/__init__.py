@@ -114,11 +114,17 @@ def estagio_de(tipo: str) -> Estagio | None:
     if tipo in REGISTRO:
         return REGISTRO[tipo]
     familia = tipo.split(":", 1)[0]
+    if familia == "fatos":                                          # E8 (O6.3): import tardio, como o legado
+        from compliance_agent.aplicacao.estagios import fatos
+        return fatos.ESTAGIO
     if familia == "legado":
         from compliance_agent.aplicacao.estagios import legado     # import tardio: só o filho que roda legado paga
         return legado.ESTAGIO
     if familia == "elegibilidade":                                  # E9 (O4.7, sombra ⚖️): import tardio, como o legado
         from compliance_agent.aplicacao.estagios import elegibilidade
         return elegibilidade.ESTAGIO
+    if familia == "detectar":                                       # E10 (O5.3, sombra ⚖️): import tardio, como a E9
+        from compliance_agent.aplicacao.estagios import detectar
+        return detectar.ESTAGIO
     return REGISTRO.get(familia)
 
