@@ -140,6 +140,7 @@ def medir(db: str | Path | None = None, *, ano_inicial: int = ANO_INICIAL, anos:
                    o.favorecido_cpf, o.favorecido_nome,
                    s.numero_ob IS NOT NULL, CASE WHEN s.numero_ob IS NULL THEN 0 WHEN {paga_s} THEN 1 ELSE 0 END,
                    s.valor, s.status, s.status_envio, s.tipo_regularizacao, {reem},
+                   -- ob-qualquer-status: confronto com o espelho; a régua de paga vem em {paga_s2}
                    CASE WHEN s.numero_ob IS NULL THEN EXISTS (SELECT 1 FROM ob_orcamentaria_siafe s2
                         WHERE s2.credor=o.favorecido_cpf AND s2.ug_emitente=o.ug_codigo
                         AND s2.data_emissao={_DMY_DE_ISO} AND abs(s2.valor-o.valor) < {TOL} AND {paga_s2})
@@ -182,11 +183,13 @@ def medir(db: str | Path | None = None, *, ano_inicial: int = ANO_INICIAL, anos:
                 _push(so_tfe, amostra, (v, num, ug, data, doc, nome, c, st, ste))
 
         # ── lado SIAFE: cada OB (qualquer situação, para a régua de cobertura) contra o espelho ─────────────────
+        # ob-qualquer-status: a classificação paga/não paga é feita por {paga_s} na própria linha
         sql_s = f"""
             SELECT substr(s.data_emissao,7,4), s.ug_emitente, s.numero_ob, {_ISO_S}, s.valor, s.credor,
                    s.nome_credor, {paga_s}, ({SQL_CREDOR_TERCEIRO_SIAFE.replace('credor', 's.credor')}),
                    CASE WHEN {paga_s} THEN EXISTS (SELECT 1 FROM ordens_bancarias o
                         WHERE o.numero_ob=s.numero_ob AND o.ug_codigo=s.ug_emitente) ELSE 0 END
+            -- ob-qualquer-status (classificação paga/não paga por {paga_s} acima)
             FROM ob_orcamentaria_siafe s WHERE {filtro_ano_s}"""
         sql_casa2 = ("SELECT 1 FROM ordens_bancarias o WHERE o.favorecido_cpf=? AND o.data_emissao=? "
                      "AND o.ug_codigo=? AND abs(o.valor-?) < ? LIMIT 1")

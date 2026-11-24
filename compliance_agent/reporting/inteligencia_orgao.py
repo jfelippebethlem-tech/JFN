@@ -788,6 +788,7 @@ def _endereco_real_orgao(ug: str) -> dict:
             # nomes dos fornecedores com indício (p/ a tabela ficar legível)
             if indic_cnpjs:
                 qs = ",".join("?" * len(indic_cnpjs))
+                # ob-qualquer-status: só o NOME do credor (metadado), não soma de pagamento
                 nomes = {r[0]: r[1] for r in con.execute(
                     f"SELECT credor, MAX(nome_credor) FROM ob_orcamentaria_siafe "
                     f"WHERE credor IN ({qs}) GROUP BY credor", indic_cnpjs).fetchall()}

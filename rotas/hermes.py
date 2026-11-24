@@ -41,6 +41,7 @@ async def api_hermes_estado():
             "chrome_9222": await chrome_disponivel(),
             "llm_ok": bool(openrouter_available() or groq_available()),
             # OB coletadas do SIAFE (a fonte de pagamento); até 24/11/2026 contava o espelho TFE (ordens_bancarias)
+            # ob-qualquer-status: contagem de cobertura da coleta, não soma de pagamento
             "n_obs": s.execute(_sa_text("SELECT COUNT(*) FROM ob_orcamentaria_siafe")).scalar(),
             "fonte_n_obs": "ob_orcamentaria_siafe (SIAFE, todas as situações)",
             "n_alertas": s.query(Alerta).filter((Alerta.status.is_(None)) | (Alerta.status != "descartado")).count(),
