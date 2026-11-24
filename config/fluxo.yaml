@@ -2495,12 +2495,21 @@ rotinas:
     efeito: {descricao: 'linhas do escopo recontadas em dominio.elegibilidade com a versão corrente e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'elegibilidade: [1-9][0-9]* linha\(s\) conferida\(s\) em [a-z_]+\.elegibilidade'}
   detectar_sombra:
     estagio: E10
-    descricao: 'E10 detectar (O5.3 fatia 1, SOMBRA ⚖️): detectores genéricos portados dos sweeps e do lex_fatos (P4 por objeto, P5 emergência recorrente, OB paga acima do liquidado, OB antes da liquidação) sobre o universo, só nos itens elegíveis da E9; execucao_regra + achado no contrato único, esquema sombra do PG'
+    descricao: 'E10 detectar (O5.3 fatias 1–2, SOMBRA ⚖️): detectores genéricos portados dos sweeps, do lex_fatos e do governo_couto_regras (P4 por objeto, P5 emergência recorrente, OB paga acima do liquidado, OB antes da liquidação; candidato ao P4 pelo SIAFE; troca de gestão com data de corte D01/D02/D05/D09/D10/D16/D20; sede de fachada por convergência) sobre o universo, só nos itens elegíveis da E9; execucao_regra + achado no contrato único, esquema sombra do PG'
     passos:
     - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.p4_fracionamento_objeto]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.p5_emergencia_recorrente]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.ob_paga_acima_liquidado]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.ob_antes_da_liquidacao]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.candidato_p4_siafe]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_direta_salto]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_emergencial_incumbente]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_concentracao]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_pico_vespera]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_credor_estreante]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_ob_anulada]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.tg_tac_aceleracao]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.detectar, rodar, --detector, e10.c_sede_fachada]
     parar_no_erro: true
     recursos: [cpu_pesado]
     nos: [vm2]
@@ -2510,7 +2519,7 @@ rotinas:
     bloqueio: 'sombra ⚖️ até o ✅ do dono no lote jurídico (O4.10) e parada de obras (24/11/2026): grava só no esquema sombra (nenhuma rota lê), Tier 3 no registro; na VM-2 a fonte (JFN_DETECTAR_FONTE ou JFN_ELEGIBILIDADE_FONTE) é a exportação só-leitura conferida por md5 — o compliance.db da VM-1 nunca é aberto por worker remoto (ADR-001 D4)'
     nota: 'O5.3. Cada passo é o estágio nativo `detectar` pela CLI (handler + efeito no mesmo processo; a linha de prova só sai depois de conferir: recontagem dos achados da rodada no PG = declarados, resumo da rodada presente e amostra recalculada da fonte com o mesmo hash de entradas). Idempotente pela chave (detector, escopo): entrada igual grava 0 linha. Quando o grafo agendar tipo nativo, cada passo vira um job `detectar:<detector>` com payload {detector, exercicio}'
     evento: {depende: [elegibilidade_sombra], debounce_s: 900, agrupar: true}
-    origem: [sweep_fracionamento_tcerj, sweep_emergencia_recorrente, lex_fatos_contabil]
+    origem: [sweep_fracionamento_tcerj, sweep_emergencia_recorrente, lex_fatos_contabil, fracionamento_siafe_sweep, governo_couto_regras, sweep_sede_real, endereco_sweep, fachada_streetview_sweep]
     efeito: {descricao: 'achados da rodada recontados no esquema sombra = declarados e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'detectar: [0-9]+ achado\(s\) conferido\(s\) em [a-z_]+\.achado'}
   analitico_exportar:
     estagio: E15

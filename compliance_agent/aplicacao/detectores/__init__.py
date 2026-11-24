@@ -21,6 +21,12 @@ Fatia 1 (regras únicas que só existiam em scripts, plano §16.3):
                                 2,3× — e o enquadramento legal como prova, não só o objeto)
   e10.ob_paga_acima_liquidado   C-PAGO>NL do lex_fatos (soma das OB pagas que citam a NL > valor liquidado)
   e10.ob_antes_da_liquidacao    C-OB<NL do lex_fatos (OB paga emitida antes da NL que cita)
+
+Fatia 2 (fracionamento_siafe_sweep, governo_couto_regras com data de corte, família fachada sem rede):
+  e10.candidato_p4_siafe        série de OB por credor × UG abaixo do teto — só `candidato_p4(processos[])`, INCERTO;
+                                nunca "fracionamento" (plano §4 item 5: só o P4, por objeto, emite)
+  e10.tg_*                      troca de gestão com `corte` parametrizado (D01, D02, D05, D09, D10, D16, D20)
+  e10.c_sede_fachada            sede real × endereço × Street View gravados: indício só com 2 sinais convergentes
 """
 from __future__ import annotations
 
@@ -37,6 +43,16 @@ MODULOS = {
     "e10.p5_emergencia_recorrente": "compliance_agent.aplicacao.detectores.emergencia_recorrente",
     "e10.ob_paga_acima_liquidado": "compliance_agent.aplicacao.detectores.contabil_siafe:PAGO_ACIMA",
     "e10.ob_antes_da_liquidacao": "compliance_agent.aplicacao.detectores.contabil_siafe:OB_ANTES",
+    # fatia 2
+    "e10.candidato_p4_siafe": "compliance_agent.aplicacao.detectores.candidato_p4_siafe",
+    "e10.tg_direta_salto": "compliance_agent.aplicacao.detectores.troca_gestao:DIRETA_SALTO",
+    "e10.tg_emergencial_incumbente": "compliance_agent.aplicacao.detectores.troca_gestao:EMERGENCIAL_INCUMBENTE",
+    "e10.tg_concentracao": "compliance_agent.aplicacao.detectores.troca_gestao:CONCENTRACAO",
+    "e10.tg_pico_vespera": "compliance_agent.aplicacao.detectores.troca_gestao:PICO_VESPERA",
+    "e10.tg_credor_estreante": "compliance_agent.aplicacao.detectores.troca_gestao:CREDOR_ESTREANTE",
+    "e10.tg_ob_anulada": "compliance_agent.aplicacao.detectores.troca_gestao:OB_ANULADA",
+    "e10.tg_tac_aceleracao": "compliance_agent.aplicacao.detectores.troca_gestao:TAC_ACELERACAO",
+    "e10.c_sede_fachada": "compliance_agent.aplicacao.detectores.sede_fachada",
 }
 
 

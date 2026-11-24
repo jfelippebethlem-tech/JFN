@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""E10 `detectar` (O5.3 fatia 1, SOMBRA ⚖️): registro e contrato do estágio, catracas (Tier ≠ 1 nunca manchete; teto de
+"""E10 `detectar` (O5.3 fatias 1–2, SOMBRA ⚖️): registro e contrato do estágio, catracas (Tier ≠ 1 nunca manchete; teto de
 dispensa só em limites_dispensa; todo detector tem exigência na E9), rotina inativa do config/fluxo.yaml e — com PG
 (VM-2) — handler idempotente pela chave (detector, escopo), leitura da E9 e efeito conferido, SEMPRE em esquemas
 temporários (nunca `dominio` nem `sombra` reais)."""
@@ -45,6 +45,46 @@ def test_regras_a_portar_apontam_para_o_detector_portado():
                          ("a_portar.lex_fatos.c_ob_antes_da_nl", "e10.ob_antes_da_liquidacao")):
         assert reg[antigo]["portar_para"] == novo
         assert E9.exiges_do_detector(antigo) == E9.exiges_do_detector(novo)
+
+
+# fatia 2: regras do governo_couto_regras portadas com data de corte (portar_para + a mesma exigência, sem a janela)
+PORTADOS_COUTO = {"couto.D01": "e10.tg_direta_salto", "couto.D02": "e10.tg_emergencial_incumbente",
+                  "couto.D05": "e10.tg_concentracao", "couto.D09": "e10.tg_pico_vespera",
+                  "couto.D10": "e10.tg_credor_estreante", "couto.D16": "e10.tg_tac_aceleracao",
+                  "couto.D20": "e10.tg_ob_anulada"}
+FATIA2 = sorted(set(PORTADOS_COUTO.values()) | {"e10.candidato_p4_siafe", "e10.c_sede_fachada"})
+
+
+def test_couto_portados_apontam_para_o_detector_generico():
+    reg = E9.carregar_registro()
+    for antigo, novo in PORTADOS_COUTO.items():
+        assert reg[antigo]["portar_para"] == novo and novo in DET.MODULOS
+        if antigo in E9.DETECTORES:                                  # couto.D16 nunca teve exigência na E9
+            assert E9.exiges_do_detector(antigo) == E9.exiges_do_detector(novo)
+    assert E9.exiges_do_detector("e10.candidato_p4_siafe") == {"ob_siafe": "soma_art75"}
+
+
+def test_fundir_em_aponta_para_detector_registrado():
+    reg = E9.carregar_registro()
+    for k, e in reg.items():
+        for alvo in e.get("fundir_em") or []:
+            assert alvo in reg, (k, alvo)
+
+
+@pytest.mark.parametrize("did", FATIA2)
+def test_fatia2_resumo_declara_cobertura(did):
+    """A regra única das varreduras por certame/órgão (aposentadas): zero achado só se lê com o denominador — todo
+    detector novo declara a cobertura da E9 no resumo, mesmo com universo vazio."""
+    r = DET.carregar_detector(did).resumo([], [])
+    assert "cobertura" in r and r["disparos"] == 0
+
+
+def test_catraca_candidato_p4_nunca_afirma_fracionamento():
+    """Plano §4 item 5: agregação por credor × teto fora do P4 não emite fracionamento — só candidato_p4, INCERTO."""
+    txt = (REPO / "compliance_agent" / "aplicacao" / "detectores" / "candidato_p4_siafe.py").read_text("utf-8")
+    corpo = txt.split('"""', 2)[-1]
+    assert 'estado="INCERTO"' in corpo and 'estado="INDICIO"' not in corpo
+    assert not re.search(r"observacao=.*fracionamento", corpo, re.I)
 
 
 def test_catraca_teto_literal_fora_de_limites_dispensa():

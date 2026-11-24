@@ -325,6 +325,7 @@ detectores:
       intervalo do ano anterior
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_direta_salto
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -356,6 +357,7 @@ detectores:
       caráter emergencial
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_emergencial_incumbente
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -428,6 +430,7 @@ detectores:
       sustentado: contratos 112 / R$ 270,5 mi após retirar empenhos, ARP, cancelados e duplicatas; mede porte atual, não
         o do ano do certame
     estado: ativo
+    fundir_em: [tools.porte_incompativel]   # O5.3 fatia 2: fusão confirmada por replay (o53-paridade-fatia2.md §5)
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -459,6 +462,7 @@ detectores:
       anterior
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_concentracao
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -518,6 +522,7 @@ detectores:
     dominio: séries de OB do exercício corrente (siafe_fracionamento) com 1a OB a partir de 23/03/2026
     fp_medida: null
     estado: ativo
+    fundir_em: [e10.candidato_p4_siafe]   # O5.3 fatia 2: fusão confirmada por replay (o53-paridade-fatia2.md §5)
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -574,6 +579,7 @@ detectores:
     dominio: OB contabilizada do SIAFE de 16/03/2026 a 22/03/2026 × média semanal desde 01/01/2026
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_pico_vespera
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -612,6 +618,7 @@ detectores:
       afirmado: 22 credores sem histórico, R$ 1,02 bi
       sustentado: 'sem histórico falso em >= 8 dos 22 (63,3% do valor): filial, sucessora, grupo, consórcio'
     estado: ativo
+    portar_para: e10.tg_credor_estreante
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -745,6 +752,7 @@ detectores:
       afirmado: 100 credores, R$ 333,3 mi sancionada paga na vigência
       sustentado: núcleo com alcance sobre o RJ ≈ R$ 146,7 mi / 16 credores; 56% era sanção de outro ente
     estado: ativo
+    fundir_em: [intel.sancionadas_contratadas]   # O5.3 fatia 2: fusão confirmada por replay (o53-paridade-fatia2.md §5)
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -799,6 +807,7 @@ detectores:
     dominio: extratos de TAC no DOERJ desde 01/01/2026 (pré-gestão × gestão iniciada em 23/03/2026)
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_tac_aceleracao
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -824,6 +833,7 @@ detectores:
       gestão)
     fp_medida: null
     estado: ativo
+    fundir_em: [e10.p5_emergencia_recorrente]   # O5.3 fatia 2: fusão confirmada por replay (o53-paridade-fatia2.md §5)
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -856,6 +866,7 @@ detectores:
       afirmado: 6 credores, R$ 103,4 mi fachada/fantasma
       sustentado: 0 com fachada documentada
     estado: ativo
+    fundir_em: [intel.ranking_fantasmas]   # O5.3 fatia 2: fusão confirmada por replay (o53-paridade-fatia2.md §5)
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -905,6 +916,7 @@ detectores:
     dominio: OB do SIAFE com status Anulado/Excluído de 23/03/2026 ao último mês completo × mesmo intervalo do ano anterior
     fp_medida: null
     estado: ativo
+    portar_para: e10.tg_ob_anulada
     tier: 3
     tier_motivo: sem_medida
     fp_ic95: null
@@ -5611,6 +5623,245 @@ detectores:
     - hipotese: OB e NL de credores distintos (identidade não resolvida)
       excluida_por: compliance_agent/aplicacao/detectores/contabil_siafe.py:_ident
     dominio: OB pagas do SIAFE com a NL citada na base, elegíveis na E9 (execucao = E)
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.candidato_p4_siafe:
+    modulo: compliance_agent/aplicacao/detectores/candidato_p4_siafe.py
+    simbolo: detectar
+    afirma: "Candidato ao P4 (não é fracionamento): 3 ou mais OB de 3 ou mais processos distintos ao mesmo credor na mesma UG e exercício, cada uma abaixo do teto de dispensa e somando acima dele"
+    fonte:
+    - "ob_orcamentaria_siafe"
+    - "nl_siafe"
+    - "ne_siafe"
+    - "dominio.elegibilidade (E9, exigência soma_art75)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_candidato_p4_siafe.py::test_positivo_serie_de_tres_processos_vira_candidato_p4
+    controle_negativo: tests/test_detector_e10_candidato_p4_siafe.py::test_negativo_parcelas_do_mesmo_processo_nao_viram_candidato
+    hipoteses_inocentes:
+    - hipotese: "parcelas do mesmo contrato (várias OB do mesmo processo)"
+      excluida_por: compliance_agent/aplicacao/detectores/candidato_p4_siafe.py:detectar
+    - hipotese: "execução de contrato licitado ou ata de registro de preços"
+      excluida_por: null
+    - hipotese: "repasse a ente público, tributo, folha ou concessionária"
+      excluida_por: compliance_agent/aplicacao/detectores/candidato_p4_siafe.py:_licitavel
+    dominio: "OB pagas a credor licitável abaixo do teto do exercício, elegíveis na E9 (soma_art75 = E); estado sempre INCERTO (candidato_p4)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_direta_salto:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _DiretaSalto
+    afirma: "Sinal (⚪): unidade com R$ 10 mi ou mais em contratação direta, 50% ou mais do valor contratado e +20 p.p. sobre o mesmo intervalo do ano anterior ao corte"
+    fonte:
+    - "contratos_tcerj"
+    - "compras_diretas_tcerj"
+    - "publicacoes_doerj (data do ato)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d01_positivo_salto_de_direta
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d01_negativo_regime_proprio_fora_da_conta
+    hipoteses_inocentes:
+    - hipotese: "concessionária, ente público contratado ou estatal pela 13.303 (regime próprio)"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_DiretaSalto._ler
+    - hipotese: "contratação direta legítima ou mudança de mix de objetos"
+      excluida_por: null
+    dominio: "contratos do espelho TCE-RJ elegíveis na E9 (fornecedor = E), janela depois do corte × ano anterior"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_emergencial_incumbente:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _EmergencialIncumbente
+    afirma: "Indício: contrato emergencial assinado depois do corte ao fornecedor que já tinha contrato na mesma unidade antes dele"
+    fonte:
+    - "contratos_tcerj"
+    - "compras_diretas_tcerj"
+    - "publicacoes_doerj (data do ato)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d02_positivo_incumbente
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d02_negativo_fornecedor_sem_contrato_anterior
+    hipoteses_inocentes:
+    - hipotese: "continuidade do serviço essencial enquanto a licitação corre"
+      excluida_por: null
+    - hipotese: "transição decidida antes do corte (assinatura anterior a ele)"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_EmergencialIncumbente._ler
+    dominio: "contratos emergenciais do espelho TCE-RJ elegíveis na E9 (fornecedor = E)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_concentracao:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _Concentracao
+    afirma: "Indício: credor PJ com 30% ou mais do pago a fornecedores pela UG do Executivo depois do corte (UG >= R$ 10 mi, credor >= R$ 5 mi), comparado ao ano anterior"
+    fonte:
+    - "ob_orcamentaria_siafe (_ob_paga)"
+    - "despesa_execucao (nome da UG)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d05_positivo_concentracao
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d05_negativo_ug_pequena
+    hipoteses_inocentes:
+    - hipotese: "contrato único grande, concessão ou programa"
+      excluida_por: null
+    - hipotese: "outro Poder (TJ, MP, ALERJ...)"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_executivo
+    dominio: "OB pagas a fornecedor PJ do Executivo elegíveis na E9 (fornecedor = E)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_pico_vespera:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _PicoVespera
+    afirma: "Indício: credor com R$ 3 mi ou mais pagos na última semana antes do corte e 5 vezes ou mais a média semanal desde 1º de janeiro"
+    fonte:
+    - "ob_orcamentaria_siafe (_ob_paga)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d09_positivo_pico
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d09_negativo_ritmo_constante
+    hipoteses_inocentes:
+    - hipotese: "pagamento de obrigações vencidas antes da troca de governo"
+      excluida_por: null
+    dominio: "OB pagas a fornecedor PJ elegíveis na E9 (fornecedor = E), 1º de janeiro → véspera do corte"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_credor_estreante:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _CredorEstreante
+    afirma: "Indício: raiz de CNPJ sem OB paga desde 2021 até a véspera do corte que recebeu R$ 5 mi ou mais depois dele (consórcio à parte)"
+    fonte:
+    - "ob_orcamentaria_siafe (_ob_paga)"
+    - "despesa_execucao (nome da UG)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d10_positivo_estreante
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d10_negativo_filial_de_fornecedor_antigo
+    hipoteses_inocentes:
+    - hipotese: "filial de fornecedor antigo (mesma raiz)"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_CredorEstreante._hist
+    - hipotese: "consórcio criado para o contrato"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_CredorEstreante.detectar
+    - hipotese: "empresa nova de grupo antigo (cisão, SPE) — exige a Receita"
+      excluida_por: null
+    dominio: "OB pagas a fornecedor PJ do Executivo elegíveis na E9 (fornecedor = E)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_ob_anulada:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _ObAnulada
+    afirma: "Contexto (⚪): OB anulada ou excluída por UG depois do corte comparada ao mesmo intervalo do ano anterior (não é pagamento)"
+    fonte:
+    - "ob_orcamentaria_siafe (status Anulado/Excluído)"
+    - "dominio.elegibilidade (E9, exigência universo)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d20_positivo_anuladas_por_ug
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d20_negativo_ob_paga_nao_conta
+    hipoteses_inocentes:
+    - hipotese: "reemissão (OB anulada e reemitida) ou correção de domicílio bancário"
+      excluida_por: null
+    dominio: "OB anuladas/excluídas do SIAFE elegíveis na E9 (universo = E)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.tg_tac_aceleracao:
+    modulo: compliance_agent/aplicacao/detectores/troca_gestao.py
+    simbolo: _TacAceleracao
+    afirma: "Indício: fornecedor sem TAC antes do corte no ano que recebe R$ 1 mi ou mais reconhecidos em Termo de Ajuste de Contas depois dele (valor do TAC, não é OB)"
+    fonte:
+    - "doerj_tac"
+    - "ob_orcamentaria_siafe (veredito do credor)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_troca_gestao.py::test_d16_positivo_fornecedor_novo_em_tac
+    controle_negativo: tests/test_detector_e10_troca_gestao.py::test_d16_negativo_tac_sem_cnpj_fica_indeterminado
+    hipoteses_inocentes:
+    - hipotese: "serviço contínuo essencial sem contrato vigente durante a licitação"
+      excluida_por: null
+    - hipotese: "TAC sem CNPJ: credor não identificável"
+      excluida_por: compliance_agent/aplicacao/detectores/troca_gestao.py:_TacAceleracao
+    dominio: "TAC do DOERJ cujo credor tem OB paga elegível na E9 (fornecedor = E)"
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
+  e10.c_sede_fachada:
+    modulo: compliance_agent/aplicacao/detectores/sede_fachada.py
+    simbolo: detectar
+    afirma: "Indício de sede de fachada por convergência: sede real suspeita (apurável) e 2º sinal registrado (endereço com indício ou foto adversa não confirmada pelo Places), sem contraprova de foto comercial"
+    fonte:
+    - "verificacao_sede_real"
+    - "endereco_verificacao"
+    - "verificacao_sede"
+    - "ob_orcamentaria_siafe (_ob_paga)"
+    - "dominio.elegibilidade (E9, exigência fornecedor)"
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - relatório de paridade O5.3 (vault)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_sede_fachada.py::test_positivo_sede_suspeita_e_endereco_com_indicio
+    controle_negativo: tests/test_detector_e10_sede_fachada.py::test_negativo_um_sinal_so_nao_dispara
+    hipoteses_inocentes:
+    - hipotese: "sede administrativa diversa do local de execução"
+      excluida_por: null
+    - hipotese: "sede inapurável (apuravel = 0) ou OSM sem cobertura"
+      excluida_por: compliance_agent/aplicacao/detectores/sede_fachada.py:sinais
+    - hipotese: "foto comercial/galpão (contraprova)"
+      excluida_por: compliance_agent/aplicacao/detectores/sede_fachada.py:detectar
+    dominio: "fornecedores pagos (OB paga) com verificação de sede gravada, elegíveis na E9 (fornecedor = E)"
     fp_medida: null
     estado: ativo
     tier: 3

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Paridade por REPLAY da O5.3 fatia 1: regra antiga × detector novo do E10 no MESMO universo (só leitura).
+"""Paridade por REPLAY da O5.3 (fatias 1 e 2): regra antiga × detector novo do E10 no MESMO universo (só leitura).
 
 Para cada regra portada roda três versões sobre a mesma fonte (o snapshot de 24/11 ou o extrato dele conferido por md5):
   A  o código ANTIGO, como ele roda (sweep_fracionamento_tcerj, sweep_emergencia_recorrente; o lex_fatos por ALVO,
@@ -10,7 +10,13 @@ A diferença A × C é classificada pela causa: `falta_de_elegibilidade` (está 
 (nem em B: a régua nova decide outra coisa — explicada caso a caso) e `elegibilidade_mudou_o_cluster` (P4: a E9 tirou
 processos do lote e o card formou outro cluster). Nada é gravado: a saída é um JSON para o relatório.
 
-    python -m tools.paridade_e10 --fonte <compliance.db só-leitura> --saida paridade.json
+    python -m tools.paridade_e10 --fonte <compliance.db só-leitura> --saida paridade.json [--so p4 --so cp4 ...]
+
+Fatia 2 (`cp4`, `couto`, `sede`, `fusoes`, `pericia`): candidato ao P4 pelo SIAFE × a triagem do fracionamento_siafe
+(e o D07 × a tabela gravada); D01/D02/D05/D09/D10/D16/D20 × governo_couto_regras com o corte da lente Couto — nas
+regras de OB há um B' com o pago ANTIGO (status + devolução abatida) para separar "régua portada" de "predicado do
+pago canônico"; D17 × P5 com o mínimo da lente (3); fusões D03/D04/D13/D14/D15/D18/D06 × o detector de fornecedor
+existente (sobreposição por raiz de CNPJ); peneira do pericia_sweep × veredito `fornecedor` da E9 por raiz.
 """
 from __future__ import annotations
 
@@ -237,16 +243,306 @@ def paridade_contabil(fonte: str, pg) -> dict:
     return out
 
 
+# ── fatia 2 ─────────────────────────────────────────────────────────────────────────────────────────────────────
+def _dig(x) -> str:
+    return re.sub(r"\D", "", str(x or ""))
+
+
+def _comparar(A: dict, B: dict, C: dict, valor, amostra_a=None) -> dict:
+    """A, B, C: chave → objeto; `valor(obj)` → R$ (ou None). Diferença A × C classificada por B (E9 × régua)."""
+    so_a, so_c = sorted(set(A) - set(C), key=str), sorted(set(C) - set(A), key=str)
+
+    def soma(d):
+        return round(sum(float(valor(x) or 0) for x in d.values()), 2)
+    fe = [k for k in so_a if k in B]
+    rd = [k for k in so_a if k not in B]
+    am = amostra_a or (lambda k: {"chave": str(k)})
+    return {"A_antigo": len(A), "B_novo_sem_e9": len(B), "C_novo_com_e9": len(C), "A_soma": soma(A),
+            "B_soma": soma(B), "C_soma": soma(C), "A_igual_B": set(A) == set(B),
+            "A_menos_B": len(set(A) - set(B)), "B_menos_A": len(set(B) - set(A)), "iguais_A_C": len(set(A) & set(C)),
+            "so_no_antigo": len(so_a), "so_no_novo": len(so_c),
+            "falta_de_elegibilidade": len(fe), "regra_diferente": len(rd),
+            "amostra_falta_de_elegibilidade": [am(k) for k in fe[:AMOSTRA]],
+            "amostra_A_menos_B": [am(k) for k in sorted(set(A) - set(B), key=str)[:AMOSTRA]],
+            "amostra_B_menos_A": [{"chave": str(k)} for k in sorted(set(B) - set(A), key=str)[:AMOSTRA]],
+            "amostra_so_no_novo": [{"chave": str(k)} for k in so_c[:AMOSTRA]]}
+
+
+def _tres(det, con, pg, ex=None, anotar_e9=True):
+    carga = det.carregar(con, ex)
+    b = det.detectar(_todos_e([dict(c) for c in carga.itens]), carga.contexto)
+    gated = _e9(pg, det.ID, [dict(c) for c in carga.itens]) if anotar_e9 else None
+    c = det.detectar(gated, carga.contexto) if gated is not None else []
+    return carga, b, c, gated
+
+
+def paridade_cp4(fonte: str, pg) -> dict:
+    from compliance_agent.aplicacao.detectores import candidato_p4_siafe as CP
+    from compliance_agent.fracionamento_siafe import triagem
+    t0 = time.monotonic()
+    con = _ro(fonte)
+    A = {}
+    for ex in CP._exercicios(con, None):
+        for x in triagem(con, exercicio=ex)["candidatos"]:
+            A[f"{ex}|{x['ug_emitente']}|{x['credor']}"] = x
+    con.row_factory = None
+    carga, b, c, gated = _tres(CP, con, pg)
+    B, C = {d.chave: d for d in b}, {d.chave: d for d in c}
+    ver = Counter(x.get("e9") or "?:SEM_LINHA_E9" for x in gated if x["grupo"] in set(A) - set(C))
+    out = _comparar(A, B, C, lambda x: x["soma"] if isinstance(x, dict) else x.valores["soma"],
+                    lambda k: {"grupo": k, "n_obs": A[k]["n_obs"], "n_processos": A[k]["n_processos"],
+                               "soma": A[k]["soma"]})
+    out["processos_iguais_A_B"] = all(set(map(str, A[k]["processos"])) <= set(B[k].valores["processos"])
+                                      for k in set(A) & set(B))
+    out["motivos_e9_das_ob_cortadas"] = dict(ver.most_common())
+    out["universo"] = {**carga.contexto, **CP.resumo(gated, c)}
+    out["estado_dos_disparos"] = dict(Counter(d.estado for d in c))
+    # D07 → P4: a tabela gravada do sweep (siafe_fracionamento) × candidato_p4 recalculado no mesmo exercício
+    from compliance_agent.governo_couto import INICIO
+    ano = int(con.execute("SELECT max(exercicio) FROM siafe_fracionamento").fetchone()[0])
+    d07 = {f"{ano}|{ug}|{cr}": (pr, soma) for ug, cr, pr, soma in con.execute(
+        "SELECT ug_emitente, credor, primeira_ob, soma FROM siafe_fracionamento WHERE exercicio = ?", (ano,))
+        if (pr or "") >= INICIO}
+    novo = {k: d for k, d in B.items() if k.startswith(f"{ano}|") and (d.valores["primeira_ob"] or "") >= INICIO}
+    novo_c = {k: d for k, d in C.items() if k in novo}
+    out["d07"] = {"exercicio": ano, **_comparar(d07, novo, novo_c, lambda x: x[1] if isinstance(x, tuple)
+                                                 else x.valores["soma"]),
+                  "gerado_em_da_tabela": con.execute("SELECT min(gerado_em), max(gerado_em) FROM siafe_fracionamento "
+                                                     "WHERE exercicio = ?", (ano,)).fetchone()}
+    con.close()
+    out["segundos"] = round(time.monotonic() - t0, 1)
+    return out
+
+
+def _ctx_antigo(fonte: str, tmp: str):
+    from compliance_agent import governo_couto_regras as GC
+    return GC.Ctx(Path(fonte), receita=None, tse=None, dir_tmp=Path(tmp))
+
+
+def paridade_couto(fonte: str, pg, tmp: str) -> dict:
+    from compliance_agent import governo_couto_regras as GC
+    from compliance_agent.aplicacao.detectores import troca_gestao as T
+    t0 = time.monotonic()
+    c = _ctx_antigo(fonte, tmp)
+    con = _ro(fonte)
+    out: dict = {"janelas_antigo": {"G0": GC.G0, "GFIM": c.GFIM, "G1": c.G1, "B0": c.B0, "B1": c.B1}}
+    out["janelas_novo"] = T.janelas(con)
+    try:
+        old = {"D05": GC.d05(c), "D10": GC.d10(c), "D20": GC.d20(c), "D16": GC.d16(c)}
+        old.update(GC.d01_02_17(c))
+        old.update(GC.d08_09(c))
+    finally:
+        c.fechar()
+    out["fora_da_conta_antigo_D01"] = old["D01"]["fora_da_conta"]
+
+    def regra(nome, det_cls, A, chave_nova, valor_a, valor_n, pago=True):
+        r = {}
+        dets = {"B": det_cls(pago="canonico")}
+        if pago:
+            dets["Bp"] = det_cls(pago="antigo")
+        carga, b, cc, gated = _tres(dets["B"], con, pg)
+        B, C = {chave_nova(d): d for d in b}, {chave_nova(d): d for d in cc}
+        r.update(_comparar(A, B, C, lambda x: valor_a(x) if isinstance(x, dict) else valor_n(x)))
+        if pago:
+            cp = dets["Bp"].carregar(con)
+            bp = dets["Bp"].detectar(_todos_e([dict(x) for x in cp.itens]), cp.contexto)
+            Bp = {chave_nova(d): d for d in bp}
+            r["Bp_pago_antigo"] = {"n": len(Bp), "soma": round(sum(float(valor_n(d) or 0) for d in Bp.values()), 2),
+                                   "A_igual_Bp": set(A) == set(Bp), "A_menos_Bp": sorted(map(str, set(A) - set(Bp)))[:AMOSTRA],
+                                   "Bp_menos_A": sorted(map(str, set(Bp) - set(A)))[:AMOSTRA],
+                                   "Bp_menos_B_predicado_canonico": len(set(Bp) - set(B)),
+                                   "B_menos_Bp": len(set(B) - set(Bp))}
+        r["universo"] = {**{k: v for k, v in carga.contexto.items() if not isinstance(v, (list, dict)) or k == "fora"},
+                         **dets["B"].resumo(gated, cc)}
+        r["motivos_e9_so_no_antigo"] = dict(Counter(
+            x.get("e9") or "?:SEM_LINHA_E9" for x in gated
+            if (x.get("grupo") in {str(k).split("|")[0] for k in set(A) - set(C)} or x.get("chave_e9") in set(A) - set(C))
+            and x.get("e9") != "E").most_common(8))
+        r["amostra_C"] = [{"chave": k, **{a: v for a, v in d.valores.items() if not isinstance(v, (list, dict))}}
+                          for k, d in sorted(C.items(), key=lambda kv: -float(valor_n(kv[1]) or 0))[:AMOSTRA]]
+        out[nome] = r
+
+    regra("D05", T._Concentracao, {f"{x['ug']}|{x['cnpj']}": x for x in old["D05"]["casos"]},
+          lambda d: d.chave, lambda x: x["pago_ob"], lambda d: d.valores["pago_ob"])
+    regra("D09", T._PicoVespera, {x["cnpj"]: x for x in old["D09"]["casos"]}, lambda d: d.chave,
+          lambda x: x["pago_semana"], lambda d: d.valores["pago_semana"])
+    regra("D10", T._CredorEstreante, {x["cnpj"]: x for x in old["D10"]["casos"] if x["rotulo"] == "estreia"},
+          lambda d: d.chave, lambda x: x["pago_ob"], lambda d: d.valores["pago_ob"])
+    regra("D20", T._ObAnulada, {str(x["ug"]): x for x in old["D20"]["top_ugs"]}, lambda d: d.chave,
+          lambda x: x["valor"], lambda d: d.valores["valor"])
+    out["D20"]["totais_antigo"] = {k: old["D20"][k] for k in ("n", "valor", "n_ano_anterior", "valor_ano_anterior")}
+    out["D20"]["nota"] = "A do D20 = as 10 maiores UG do antigo (top_ugs); os totais comparam o universo inteiro"
+    regra("D01", T._DiretaSalto, {str(x["unidade"]): x for x in old["D01"]["casos"]}, lambda d: d.chave,
+          lambda x: x["valor_direta"], lambda d: d.valores["valor_direta"], pago=False)
+    regra("D02", T._EmergencialIncumbente, {str(x["processo"]): x for x in old["D02"]["casos"]},
+          lambda d: d.processo, lambda x: x["valor_contrato"], lambda d: d.valores["valor_contrato"], pago=False)
+    regra("D16", T._TacAceleracao, {GC.norm_nome(x["fornecedor"]): x for x in old["D16"]["casos"]},
+          lambda d: d.chave, lambda x: x["valor"], lambda d: d.valores["valor_tac"], pago=False)
+    out["D16"]["taxa_antigo"] = {k: old["D16"].get(k) for k in ("valor_dia_pre", "valor_dia_gestao", "variacao_dia")}
+    # D17 → P5 com o mínimo da lente (3) no exercício do fim da coleta
+    ano = int(out["janelas_novo"]["gfim"][:4])
+    A17 = {f"{g['unidade']}|{g['exercicio']}": g for g in old["D17"]["casos"]}
+    minimo, P5.MINIMO = P5.MINIMO, 3
+    try:
+        itens = P5.carregar(con, ano).itens
+        B17 = {d.grupo: d for d in P5.detectar(_todos_e([dict(x) for x in itens]))}
+        g17 = _e9(pg, P5.ID, [dict(x) for x in itens])
+        C17 = {d.grupo: d for d in P5.detectar(g17)}
+    finally:
+        P5.MINIMO = minimo
+    r17 = _comparar(A17, B17, C17, lambda x: x["total"] if isinstance(x, dict) else x.valores["total"])
+    r17["grupos_iguais_com_n_diferente"] = [
+        {"grupo": k, "n_antigo_itens": A17[k]["n"], "n_p5_processos": B17[k].valores["n"],
+         "total_antigo": round(A17[k]["total"], 2), "total_p5": B17[k].valores["total"]}
+        for k in sorted(set(A17) & set(B17), key=lambda k: -A17[k]["total"]) if A17[k]["n"] != B17[k].valores["n"]
+    ][:AMOSTRA]
+    out["D17_P5"] = r17
+    con.close()
+    out["segundos"] = round(time.monotonic() - t0, 1)
+    return out
+
+
+def _raizes(obj, out=None) -> set:
+    """Raízes (8 dígitos) de todo CNPJ citado num resultado (recursivo): campo de 14 dígitos ou `cnpj_basico`."""
+    out = set() if out is None else out
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ("cnpj_basico", "raiz") and len(_dig(v)) == 8:
+                out.add(_dig(v))
+            else:
+                _raizes(v, out)
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            _raizes(v, out)
+    elif isinstance(obj, str) and len(_dig(obj)) == 14 and re.fullmatch(r"[\d./-]+", obj.strip()):
+        out.add(_dig(obj)[:8])
+    return out
+
+
+def paridade_fusoes(fonte: str, pg, tmp: str, tse: str | None) -> dict:
+    from compliance_agent import cruzamentos_intel as CI
+    from compliance_agent import governo_couto_regras as GC
+    from compliance_agent.aplicacao.detectores import sede_fachada as SF
+    from tools import porte_incompativel as PI
+    t0 = time.monotonic()
+    c = GC.Ctx(Path(fonte), receita=None, tse=Path(tse) if tse else None, dir_tmp=Path(tmp))
+    out = {}
+    try:
+        old = {k: f(c) for k, f in (("D03", GC.d03), ("D04", GC.d04), ("D13", GC.d13), ("D14", GC.d14),
+                                    ("D15", GC.d15), ("D18", GC.d18), ("D06", GC.d06))}
+    finally:
+        c.fechar()
+    con = _ro(fonte)
+    alvo = {}
+    for nome, f in (("intel.empresa_fenix", lambda: CI.empresa_fenix(fonte, limite=None)),
+                    ("intel.capital_incompativel", lambda: CI.capital_incompativel(fonte)
+                     if hasattr(CI, "capital_incompativel") else None),
+                    ("tools.porte_incompativel", lambda: PI.incompativeis(con)),
+                    ("intel.socio_servidor", lambda: CI.socio_servidor(fonte, limite=100000)),
+                    ("intel.sancionadas_contratadas", lambda: CI.sancionadas_contratadas(fonte)),
+                    ("intel.ranking_fantasmas", lambda: CI.ranking_fantasmas(fonte, limite=100000))):
+        t1 = time.monotonic()
+        try:
+            r = f()
+            alvo[nome] = {"raizes": _raizes(r) if r is not None else None, "segundos": round(time.monotonic() - t1, 1)}
+        except (sqlite3.Error, KeyError, TypeError, ValueError, AttributeError) as e:   # alvo que não roda no extrato
+            alvo[nome] = {"raizes": None, "erro": f"{type(e).__name__}: {str(e)[:200]}"}
+            print(f"fusões: {nome} não rodou no extrato — {e}", file=sys.stderr, flush=True)
+    sede = SF.carregar(con)
+    alvo["e10.c_sede_fachada"] = {"raizes": {d.chave[:8] for d in SF.detectar(_todos_e(sede.itens))}}
+    mapa = {"D03": ["intel.empresa_fenix", "intel.capital_incompativel"], "D04": ["tools.porte_incompativel"],
+            "D13": ["intel.socio_servidor"], "D14": ["intel.sancionadas_contratadas"], "D15": [],
+            "D18": ["intel.ranking_fantasmas", "e10.c_sede_fachada"]}
+    for d, alvos in mapa.items():
+        a = old[d]
+        ra = {_dig(x.get("cnpj") or x.get("cnpj_basico"))[:8] for x in a.get("casos") or []} - {""}
+        r = {"antigo_n": a.get("n"), "antigo_raizes": len(ra), "indisponivel": a.get("indisponivel")}
+        uniao = set()
+        for t in alvos:
+            rt = alvo[t]["raizes"]
+            if rt is None:
+                r[t] = {"erro": alvo[t].get("erro") or "indisponível"}
+                continue
+            uniao |= rt
+            r[t] = {"alvo_raizes": len(rt), "cobertas": len(ra & rt), "so_no_antigo": len(ra - rt),
+                    "amostra_so_no_antigo": sorted(ra - rt)[:AMOSTRA]}
+        r["cobertura_pela_uniao"] = round(len(ra & uniao) / len(ra), 4) if ra and alvos else None
+        out[d] = r
+    out["alvos"] = {k: {kk: (len(vv) if isinstance(vv, set) else vv) for kk, vv in v.items()} for k, v in alvo.items()}
+    # D06 → X1: o mesmo universo (aditivo PNCP na gestão, Executivo estadual) avaliado pelo X1 por contrato
+    from compliance_agent.detectores.x1_crescimento_aditivo import X1CrescimentoAditivo
+    adit: dict = {}
+    for cn, termo, obj, acr, dt, org, vi in con.execute(
+            "SELECT a.numero_controle_pncp, a.numero_termo, a.objeto, a.valor_acrescido, a.data_assinatura, "
+            "p.orgao_nome, p.valor_inicial FROM contrato_aditivo a JOIN pcrj_contratos p "
+            "ON p.numero_controle_pncp = a.numero_controle_pncp WHERE a.data_assinatura >= ?", (GC.G0,)):
+        if vi and GC._executivo_estadual_rj(cn, org):
+            adit.setdefault(cn, {"valor_inicial": vi, "aditivos": []})["aditivos"].append(
+                {"tipo": "valor" if (acr or 0) else "prazo", "valor": float(acr or 0), "descricao_objeto": obj or "",
+                 "justificativa": obj or "", "data": str(dt)[:10]})
+    x1 = X1CrescimentoAditivo()
+    estouro = {cn for cn, ctx in adit.items()
+               if (x1.avaliar({"processo": cn, **ctx}).valores or {}).get("estouro_teto")}
+    d06 = {x["contrato"] for x in old["D06"]["casos"]}
+    out["D06_X1"] = {"antigo_n": len(d06), "contratos_no_universo": len(adit), "x1_estouro": len(estouro),
+                     "cobertos": len(d06 & estouro), "so_no_d06": sorted(d06 - estouro)[:AMOSTRA],
+                     "so_no_x1": sorted(estouro - d06)[:AMOSTRA], "criterio_antigo": old["D06"]["criterio"][:300]}
+    con.close()
+    out["segundos"] = round(time.monotonic() - t0, 1)
+    return out
+
+
+def paridade_pericia(fonte: str, pg) -> dict:
+    """A peneira do pericia_sweep (credor não contratual / ente público, sem a natureza da Receita) × o veredito
+    `fornecedor` da E9 por raiz, no universo do sweep (pares credor × UG com ≥ 6 OB contabilizadas)."""
+    from compliance_agent.pericia_sweep import _fora_da_bateria
+    t0 = time.monotonic()
+    con = _ro(fonte)
+    # ob-qualquer-status: reproduz o universo do pericia_sweep como ele roda (status contabilizado por LIKE)
+    pares = con.execute("SELECT credor, ug_emitente, COUNT(*) n, MAX(nome_credor), SUM(valor) FROM ob_orcamentaria_siafe "
+                        "WHERE credor IS NOT NULL AND credor != '' AND lower(status) LIKE 'contabiliz%' "
+                        "GROUP BY credor, ug_emitente HAVING n >= 6").fetchall()
+    con.close()
+    raizes = sorted({_dig(p[0])[:8] if len(_dig(p[0])) == 14 else _dig(p[0]) for p in pares} - {""})
+    esq = D.esquema_e9({})
+    e9: dict = {}
+    for k, v, n in pg.execute(f'SELECT credor_raiz, split_part(exiges ->> \'fornecedor\', \':\', 1), count(*) FROM "{esq}".'
+                              "elegibilidade WHERE unidade = 'ob_siafe' AND versao = %s AND credor_raiz = ANY(%s) "
+                              "GROUP BY 1, 2", (D.E9.VERSAO, raizes)):
+        e9.setdefault(k, Counter())[v] += n
+    tab = Counter()
+    valor = Counter()
+    amostra: dict = {}
+    for cr, ug, n, nome, v in pares:
+        d = _dig(cr)
+        r = d[:8] if len(d) == 14 else d
+        fora = _fora_da_bateria(cr, nome or "")
+        maj = e9[r].most_common(1)[0][0] if r in e9 else "SEM_LINHA_E9"
+        chave = f"{'fora' if fora else 'dentro'}×{maj}"
+        tab[chave] += 1
+        valor[chave] += float(v or 0)
+        if len(amostra.setdefault(chave, [])) < AMOSTRA:
+            amostra[chave].append({"ug": ug, "nome": (nome or "")[:50], "valor": round(float(v or 0), 2)})
+    return {"pares": len(pares), "tabela": dict(tab.most_common()), "valor": {k: round(x, 2) for k, x in valor.items()},
+            "amostra_divergentes": {k: v for k, v in amostra.items() if k in ("dentro×I", "fora×E")},
+            "segundos": round(time.monotonic() - t0, 1)}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fonte", required=True)
     ap.add_argument("--saida", required=True)
-    ap.add_argument("--so", choices=("p4", "p5", "contabil"), action="append")
+    ap.add_argument("--so", choices=("p4", "p5", "contabil", "cp4", "couto", "fusoes", "pericia"), action="append")
+    ap.add_argument("--tmp", default="/tmp", help="diretório da base de trabalho do governo_couto_regras (fatia 2)")
+    ap.add_argument("--tse", help="doacao_tse.db só-leitura (D15); sem ele o D15 sai INDISPONÍVEL")
     a = ap.parse_args(argv)
     pg = D.conectar({})
     res = {}
     try:
-        for nome, f in (("p4", paridade_p4), ("p5", paridade_p5), ("contabil", paridade_contabil)):
+        for nome, f in (("p4", paridade_p4), ("p5", paridade_p5), ("contabil", paridade_contabil),
+                        ("cp4", paridade_cp4), ("couto", lambda fo, pg: paridade_couto(fo, pg, a.tmp)),
+                        ("fusoes", lambda fo, pg: paridade_fusoes(fo, pg, a.tmp, a.tse)),
+                        ("pericia", paridade_pericia)):
             if a.so and nome not in a.so:
                 continue
             res[nome] = f(a.fonte, pg)
