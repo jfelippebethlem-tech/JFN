@@ -55,7 +55,7 @@ itens:
   # O5 — Detectores
   - {id: O5.1, dep: [O4.7], maq: vm2, estado: feito, nota: "2180879d: 190 produtores, tiers (0 T1, 10 T2, 180 T3), 0 manchete efetiva", titulo: "Registro completo + tiers (sem medida = Tier 3)"}
   - {id: O5.2, dep: [O5.1], maq: vm2, estado: feito, nota: "2180879d: contrato Achado + adaptador 3 gerações em sombra (75.688, 0 erro)", titulo: "Contrato Achado + adaptador das 3 gerações"}
-  - {id: O5.3, dep: [O5.2], maq: vm2+itcampo, estado: em_curso, nota: "fc7e95da fatia 1: E10 + P4/P5 + 2 testes contábeis em sombra, paridade = regra igual, diferenças só da E9; decisão E9-9 (contábeis por universo) ao dono; próximas: 9 detectores, 3 lentes, 21 aposentar", titulo: "E10 único; sweeps viram detectores/lentes (paridade)"}
+  - {id: O5.3, dep: [O5.2], maq: vm2+itcampo, estado: em_curso, nota: "fc7e95da fatia 1 + 6c9b995e fatia 2: 13 detectores E10 em sombra, 6 aposentados, fusões D04/D14/D18/D07/D17 confirmadas; resta D13/D15/D03, cards por certame/UG, lente Couto (D08/D11/D12/D19); 5 decisões ⚖️ novas; contrato TCE duplicado por grafia", nota: "fc7e95da fatia 1: E10 + P4/P5 + 2 testes contábeis em sombra, paridade = regra igual, diferenças só da E9; decisão E9-9 (contábeis por universo) ao dono; próximas: 9 detectores, 3 lentes, 21 aposentar", titulo: "E10 único; sweeps viram detectores/lentes (paridade)"}
   - {id: O5.4, dep: [O5.2], maq: vm2, estado: pendente, titulo: "E13 calibração contínua + ouro sem vazamento"}
   - {id: O5.5, dep: [O5.2], maq: vm2, estado: feito, nota: "b0bde445: aplicada no vivo, reversível; novo 4.815→2.456", titulo: "Limpeza de zumbis e lotes"}
   # O6 — IA
