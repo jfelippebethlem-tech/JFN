@@ -100,6 +100,7 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
     vigencia_fim = row["vigencia_fim"] or None
 
     aditivos, prorrogacoes = [], []
+    vistos_pr: set = set()
     for ad in con.execute(
             "SELECT * FROM contrato_aditivo WHERE numero_controle_pncp = ? "
             "ORDER BY COALESCE(sequencial_termo, 0), id", (numero_controle_pncp,)):
@@ -149,6 +150,13 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
         })
         if tipo == "prazo":
             dias = ad["prazo_aditado_dias"] or 0
+            # O PNCP republica o MESMO termo (medido pela auditoria de regime, 24/11/2026: em 12 dos 19 X2 a contagem
+            # de prorrogações vinha de termos duplicados — ≤ 2 datas distintas). Uma prorrogação = um par (assinatura,
+            # nova vigência); repetição não conta de novo.
+            chave_pr = (_campo(ad, "data_assinatura"), ad["vigencia_fim"] or None)
+            if chave_pr != (None, None) and chave_pr in vistos_pr:
+                continue
+            vistos_pr.add(chave_pr)
             prorrogacoes.append({
                 "data": ad["vigencia_fim"] or None,
                 "anos": round(dias / 365.0, 2) if dias else None,

@@ -391,3 +391,15 @@ def test_fila_prioriza_por_valor(con):
     _aditivo(con, numero_controle_pncp="a", objeto="acréscimo")
     _aditivo(con, numero_controle_pncp="b", objeto="acréscimo")
     assert contratos_com_aditivo(con, so_rj=False)[0] == "b", "quem fiscaliza começa pelo que pesa"
+
+
+def test_termo_de_prazo_republicado_no_pncp_conta_uma_vez(con):
+    """24/11/2026: em 12 dos 19 X2 a 'prorrogação perpétua' vinha do MESMO termo republicado no PNCP."""
+    _contrato(con)
+    for seq in (1, 2, 3):        # o mesmo termo, três vezes
+        _aditivo(con, sequencial_termo=seq, objeto="prorrogação do prazo de vigência por 12 meses",
+                 prazo_aditado_dias=365, vigencia_fim="2026-01-14", data_assinatura="2024-12-20")
+    _aditivo(con, sequencial_termo=4, objeto="prorrogação do prazo de vigência por 12 meses",
+             prazo_aditado_dias=365, vigencia_fim="2027-01-14", data_assinatura="2025-12-20")
+    ctx = montar_contexto(con, _PNCP)
+    assert len(ctx["prorrogacoes"]) == 2 and ctx["vigencia_fim_atual"] == "2027-01-14"
