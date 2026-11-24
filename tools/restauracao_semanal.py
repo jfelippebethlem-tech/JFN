@@ -312,8 +312,8 @@ def main(argv: list[str] | None = None) -> int:
     sq_origem = ler_contagens(a.sqlite_origem.read_text(encoding="utf-8")) if a.sqlite_origem else None
     try:
         os.nice(10)
-    except OSError:
-        pass
+    except OSError as e:
+        print(f"restauracao_semanal: aviso — nice indisponível ({e}); seguindo com prioridade normal", file=sys.stderr)
     res = executar(pasta, Path(a.pg_bin).expanduser() if a.pg_bin else None, a.trabalho, pg_origem, sq_origem)
     texto = json.dumps(res, ensure_ascii=False, indent=1, default=str)
     if a.saida:
