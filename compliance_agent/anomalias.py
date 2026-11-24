@@ -2,7 +2,12 @@
 """
 ANOMALIAS — núcleo de detecção de risco da Onda 1 (JFN).
 
-Roda sobre as Ordens Bancárias já no `compliance.db` (sem depender de SIAFE/SEI):
+Roda sobre as OB PAGAS do SIAFE já no `compliance.db` (`ob_orcamentaria_siafe`, régua `_ob_paga`, credor CNPJ/CPF).
+24/11/2026: até aqui rodava sobre o espelho TFE (`ordens_bancarias`) — regra da casa é OB = SIAFE (decisão do dono:
+"OBs são o principal; TFE pode ter erro"). As tabelas do modelo passaram a `*_siafe`, chaveadas pela PK do SIAFE
+(numero_ob, ug, exercicio): o coletor grava com INSERT OR REPLACE e o rowid não é estável. As tabelas antigas
+(`ob_anomaly`/`ob_redflag`/`ob_quarentena`, ids do TFE) ficam paradas, sem leitor no produto.
+Etapas:
   1. QUALIDADE DE DADO + QUARENTENA (`ob_quarentena`): linhas inválidas saem do ML (valor nulo/≤0, sem
      favorecido, exercício nulo, CNPJ inválido, duplicata por hash). "Anomalia" não pode ser erro de ingestão.
   2. REGRAS DETERMINÍSTICAS (`ob_redflag`): red flags defensáveis sem ML, com peso e parecer de 1 linha —
@@ -38,7 +43,7 @@ _DB = os.path.abspath(_DB)
 
 from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano  # noqa: E402
 
-MODELO_VERSAO = "onda1-v1.0"
+MODELO_VERSAO = "onda1-v2.0-siafe"
 # Limite de dispensa (Lei 14.133/2021 art. 75-II, bens/serviços comuns). O teto é POR EXERCÍCIO e
 # vem da fonte única `limites_dispensa` — esta linha já carregou o valor de 2024 fixo, aplicado a
 # todos os anos: em 2025 e 2026 acusava fracionamento abaixo do teto legal (falso positivo) e em
@@ -65,20 +70,37 @@ CONCENTRACAO_LIMIAR = float(os.environ.get("JFN_CONCENTRACAO_LIMIAR", "0.30"))  
 # ── infra de tabelas ──────────────────────────────────────────────────────────
 
 _DDL = {
-    "ob_quarentena": """
-        CREATE TABLE IF NOT EXISTS ob_quarentena (
-            ob_id INTEGER, motivo TEXT, detalhe TEXT, gerado_em TEXT
+    "ob_quarentena_siafe": """
+        CREATE TABLE IF NOT EXISTS ob_quarentena_siafe (
+            numero_ob TEXT, ug TEXT, exercicio INTEGER, motivo TEXT, detalhe TEXT, gerado_em TEXT
         )""",
-    "ob_redflag": """
-        CREATE TABLE IF NOT EXISTS ob_redflag (
-            ob_id INTEGER, regra TEXT, peso REAL, parecer TEXT, fundamento TEXT, gerado_em TEXT
+    "ob_redflag_siafe": """
+        CREATE TABLE IF NOT EXISTS ob_redflag_siafe (
+            numero_ob TEXT, ug TEXT, exercicio INTEGER, regra TEXT, peso REAL, parecer TEXT, fundamento TEXT,
+            gerado_em TEXT
         )""",
-    "ob_anomaly": """
-        CREATE TABLE IF NOT EXISTS ob_anomaly (
-            ob_id INTEGER PRIMARY KEY, score REAL, top_features TEXT,
-            modelo_versao TEXT, dataset_hash TEXT, gerado_em TEXT
+    "ob_anomaly_siafe": """
+        CREATE TABLE IF NOT EXISTS ob_anomaly_siafe (
+            numero_ob TEXT, ug TEXT, exercicio INTEGER, score REAL, top_features TEXT,
+            modelo_versao TEXT, dataset_hash TEXT, gerado_em TEXT, PRIMARY KEY (numero_ob, ug, exercicio)
         )""",
 }
+
+# OB paga do SIAFE no formato que o modelo usa (data ISO; `id` = posição na leitura, só dentro de UMA execução —
+# o que se grava é a chave do SIAFE)
+def _sql_ob_siafe(con) -> str:
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.reporting.intel_base import SQL_CREDOR_TERCEIRO_SIAFE
+    from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE
+    return (f"SELECT numero_ob, {ISO_EMISSAO_SIAFE} AS data_emissao, ug_emitente AS ug_codigo, "
+            f"credor AS favorecido_cpf, nome_credor AS favorecido_nome, valor, exercicio "
+            f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND {SQL_CREDOR_TERCEIRO_SIAFE}")
+
+
+def _chaves(df: pd.DataFrame, ids) -> list[tuple]:
+    """id (posição na execução) → chave do SIAFE (numero_ob, ug, exercicio)."""
+    sub = df.set_index("id").loc[list(ids), ["numero_ob", "ug_codigo", "exercicio"]]
+    return [(str(a), str(b), int(c) if pd.notna(c) else None) for a, b, c in sub.itertuples(index=False)]
 
 
 def _con():
@@ -88,15 +110,16 @@ def _con():
 def _ddl(con):
     for sql in _DDL.values():
         con.execute(sql)
-    con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_ob ON ob_redflag(ob_id)")
-    con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_regra ON ob_redflag(regra)")
-    con.execute("CREATE INDEX IF NOT EXISTS ix_anomaly_score ON ob_anomaly(score)")
-    # (NÃO indexar ob_id: já é INTEGER PRIMARY KEY = rowid, indexado nativamente — índice extra seria redundante.)
+    con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_siafe_ob ON ob_redflag_siafe(numero_ob, ug, exercicio)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_siafe_regra ON ob_redflag_siafe(regra)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_anomaly_siafe_score ON ob_anomaly_siafe(score)")
     con.commit()
 
 
 def _dataset_hash(con) -> str:
-    r = con.execute("SELECT COUNT(*), COALESCE(MAX(id),0), COALESCE(ROUND(SUM(valor),2),0) FROM ordens_bancarias").fetchone()
+    # ob-qualquer-status: impressão digital do estado da tabela (reprodutibilidade), não soma de pagamento
+    r = con.execute("SELECT COUNT(*), COALESCE(MAX(coletado_em),''), COALESCE(ROUND(SUM(valor),2),0) "
+                    "FROM ob_orcamentaria_siafe").fetchone()
     return hashlib.sha1(f"{r[0]}|{r[1]}|{r[2]}".encode()).hexdigest()[:16]
 
 
@@ -109,7 +132,7 @@ def _cnpj_valido(c: str) -> bool:
 
 def quarentena(df: pd.DataFrame, con) -> pd.DataFrame:
     """Marca linhas inválidas em ob_quarentena e devolve o DF LIMPO (apto ao ML/regras)."""
-    con.execute("DELETE FROM ob_quarentena")
+    con.execute("DELETE FROM ob_quarentena_siafe")
     agora = datetime.now().isoformat(timespec="seconds")
     regs = []
     cpf = df["favorecido_cpf"].fillna("").astype(str)
@@ -132,11 +155,11 @@ def quarentena(df: pd.DataFrame, con) -> pd.DataFrame:
         (cnpj_invalido, "cnpj_modulo11_invalido"),
         (m_dup, "duplicata_chave_negocio"),
     ]:
-        for ob_id in df.loc[mask, "id"].tolist():
-            regs.append((int(ob_id), motivo, "", agora))
+        for k in _chaves(df, df.loc[mask, "id"].tolist()):
+            regs.append((*k, motivo, "", agora))
 
     if regs:
-        con.executemany("INSERT INTO ob_quarentena VALUES (?,?,?,?)", regs)
+        con.executemany("INSERT INTO ob_quarentena_siafe VALUES (?,?,?,?,?,?)", regs)
         con.commit()
     excluir = m_valor | m_semfav | m_exerc | cnpj_invalido | m_dup
     return df.loc[~excluir].copy()
@@ -146,7 +169,7 @@ def quarentena(df: pd.DataFrame, con) -> pd.DataFrame:
 
 def regras(df: pd.DataFrame, con) -> int:
     """Aplica as 4 regras e grava ob_redflag. Retorna nº de flags."""
-    con.execute("DELETE FROM ob_redflag")
+    con.execute("DELETE FROM ob_redflag_siafe")
     agora = datetime.now().isoformat(timespec="seconds")
     flags = []  # (ob_id, regra, peso, parecer, fundamento)
 
@@ -219,8 +242,9 @@ def regras(df: pd.DataFrame, con) -> int:
                           "Art. 75 §1º Lei 14.133; Súmula TCU 247"))
 
     if flags:
-        con.executemany("INSERT INTO ob_redflag VALUES (?,?,?,?,?,?)",
-                        [(a, b, c, d, e, agora) for (a, b, c, d, e) in flags])
+        chave = dict(zip([f[0] for f in flags], _chaves(df, [f[0] for f in flags])))
+        con.executemany("INSERT INTO ob_redflag_siafe VALUES (?,?,?,?,?,?,?,?)",
+                        [(*chave[a], b, c, d, e, agora) for (a, b, c, d, e) in flags])
         con.commit()
     return len(flags)
 
@@ -283,14 +307,13 @@ def score(df: pd.DataFrame, con, dataset_hash: str) -> int:
     top_idx = np.argsort(-z, axis=1)[:, :3]
 
     agora = datetime.now().isoformat(timespec="seconds")
-    con.execute("DELETE FROM ob_anomaly")
+    con.execute("DELETE FROM ob_anomaly_siafe")
     rows = []
-    ids = df["id"].tolist()
-    for i, ob_id in enumerate(ids):
+    for i, k in enumerate(_chaves(df, df["id"].tolist())):
         tf = [names[j] for j in top_idx[i]]
-        rows.append((int(ob_id), float(final[i]), json.dumps(tf, ensure_ascii=False),
+        rows.append((*k, float(final[i]), json.dumps(tf, ensure_ascii=False),
                      MODELO_VERSAO, dataset_hash, agora))
-    con.executemany("INSERT OR REPLACE INTO ob_anomaly VALUES (?,?,?,?,?,?)", rows)
+    con.executemany("INSERT OR REPLACE INTO ob_anomaly_siafe VALUES (?,?,?,?,?,?,?,?)", rows)
     con.commit()
     return len(rows)
 
@@ -301,10 +324,11 @@ def rodar(limite: int | None = None) -> dict:
     con = _con()
     _ddl(con)
     dh = _dataset_hash(con)
-    q = "SELECT id, numero_ob, data_emissao, ug_codigo, favorecido_cpf, favorecido_nome, valor, exercicio FROM ordens_bancarias"
+    q = _sql_ob_siafe(con)
     if limite:
         q += f" LIMIT {int(limite)}"
     df = pd.read_sql(q, con)
+    df.insert(0, "id", range(len(df)))
     total = len(df)
     limpo = quarentena(df, con)
     n_quar = total - len(limpo)
@@ -345,26 +369,29 @@ from compliance_agent.entidades_gov import eh_nao_fornecedor as _eh_nao_forneced
 
 def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | None = None,
                   incluir_gov: bool = False) -> list[dict]:
-    """Ranking de OBs por score, com red flags agregadas. Lê ob_anomaly JOIN ordens_bancarias/ob_redflag.
-    Por padrão EXCLUI transferências intra-governamentais/tributos (não são fornecedores de compra)."""
+    """Ranking de OBs por score, com red flags agregadas. Lê ob_anomaly_siafe ⋈ ob_orcamentaria_siafe/ob_redflag_siafe
+    (OB paga do SIAFE). Por padrão EXCLUI transferências intra-governamentais/tributos (não são fornecedores de compra).
+    Modelo ainda não rodado sobre o SIAFE → lista vazia; quem publica pergunta `estado_modelo()` (INDISPONÍVEL ≠ 0)."""
     con = _con()
     _ddl(con)
     where, params = [], []
     if orgao:
-        where.append("(o.ug_codigo = ? OR o.ug_nome LIKE ?)"); params += [orgao, f"%{orgao}%"]
+        where.append("o.ug_emitente = ?"); params += [orgao]
     if fornecedor:
-        where.append("(o.favorecido_cpf = ? OR o.favorecido_nome LIKE ?)"); params += [fornecedor, f"%{fornecedor}%"]
+        where.append("(o.credor = ? OR o.nome_credor LIKE ?)"); params += [fornecedor, f"%{fornecedor}%"]
     wsql = ("WHERE " + " AND ".join(where)) if where else ""
+    _rf = "WHERE rf.numero_ob=a.numero_ob AND rf.ug=a.ug AND rf.exercicio=a.exercicio"
     # sobre-busca p/ compensar o filtro de não-fornecedor (feito em Python, robusto a acento/caixa)
     fetch = int(limite) if incluir_gov else int(limite) * 4 + 20
     sql = f"""
-        SELECT o.id, o.numero_ob, o.data_emissao, o.ug_codigo, o.ug_nome,
-               o.favorecido_cpf, o.favorecido_nome, o.valor, a.score, a.top_features,
-               (SELECT GROUP_CONCAT(rf.regra, ', ') FROM ob_redflag rf WHERE rf.ob_id=o.id) AS regras,
-               (SELECT GROUP_CONCAT(rf.parecer, ' | ') FROM ob_redflag rf WHERE rf.ob_id=o.id) AS pareceres
-        FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id
+        SELECT o.numero_ob, o.data_emissao, o.ug_emitente AS ug_codigo, '' AS ug_nome,
+               o.credor AS favorecido_cpf, o.nome_credor AS favorecido_nome, o.valor, a.score, a.top_features,
+               (SELECT GROUP_CONCAT(rf.regra, ', ') FROM ob_redflag_siafe rf {_rf}) AS regras,
+               (SELECT GROUP_CONCAT(rf.parecer, ' | ') FROM ob_redflag_siafe rf {_rf}) AS pareceres
+        FROM ob_anomaly_siafe a JOIN ob_orcamentaria_siafe o
+             ON o.numero_ob=a.numero_ob AND o.ug_emitente=a.ug AND o.exercicio=a.exercicio
         {wsql}
-        ORDER BY (a.score + (SELECT COALESCE(SUM(rf.peso),0) FROM ob_redflag rf WHERE rf.ob_id=o.id)) DESC
+        ORDER BY (a.score + (SELECT COALESCE(SUM(rf.peso),0) FROM ob_redflag_siafe rf {_rf})) DESC
         LIMIT ?"""
     params.append(fetch)
     con.row_factory = sqlite3.Row
@@ -378,6 +405,23 @@ def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | 
     for r in rows:
         r["ug_nome"] = _ugs.nome_canonico(str(r.get("ug_codigo") or ""), fallback="") or r.get("ug_nome")
     return rows
+
+
+def estado_modelo() -> dict:
+    """Estado do modelo sobre o SIAFE: VERIFICADO (rodou: n, versão, quando) ou INDISPONÍVEL (nunca rodou sobre o
+    SIAFE) — para a rota não publicar "0 anomalias" quando o modelo simplesmente não existe."""
+    con = _con()
+    try:
+        _ddl(con)
+        n, versao, quando = con.execute(
+            "SELECT COUNT(*), MAX(modelo_versao), MAX(gerado_em) FROM ob_anomaly_siafe").fetchone()
+    finally:
+        con.close()
+    if not n:
+        return {"estado": "INDISPONÍVEL", "motivo": "modelo ainda não rodado sobre a OB paga do SIAFE "
+                "(python -m compliance_agent.anomalias --rodar)"}
+    return {"estado": "VERIFICADO", "n_obs_pontuadas": n, "modelo_versao": versao, "gerado_em": quando,
+            "fonte": "OB paga do SIAFE (ob_orcamentaria_siafe, régua _ob_paga), credor CNPJ/CPF"}
 
 
 if __name__ == "__main__":

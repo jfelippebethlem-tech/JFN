@@ -108,7 +108,7 @@ _FEAT_ANOM = {"log_valor": "valor atípico", "valor": "valor atípico", "forn_fr
 
 
 def _anomalias_fornecedor(cnpj: str, limiar: float = 0.70, limite: int = 10) -> dict:
-    """M2 — OBs do fornecedor com score alto no modelo de detecção de anomalias (`ob_anomaly` ⋈ OBs)."""
+    """M2 — OBs do fornecedor com score alto no modelo de detecção de anomalias (`ob_anomaly_siafe` ⋈ OB do SIAFE)."""
     cnpj = so_digitos(cnpj)
     out = {"ok": False, "n_obs": 0, "n_anomalas": 0, "itens": [], "modelo": ""}
     if len(cnpj) != 14:
@@ -116,16 +116,16 @@ def _anomalias_fornecedor(cnpj: str, limiar: float = 0.70, limite: int = 10) -> 
     try:
         con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
         try:
-            tot = con.execute("SELECT COUNT(*) FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
-                              "WHERE o.favorecido_cpf=?", (cnpj,)).fetchone()[0]
+            # OB paga do SIAFE (24/11/2026: o modelo passou a `ob_anomaly_siafe`, chave = PK do SIAFE)
+            j = ("FROM ob_anomaly_siafe a JOIN ob_orcamentaria_siafe o ON o.numero_ob=a.numero_ob "
+                 "AND o.ug_emitente=a.ug AND o.exercicio=a.exercicio WHERE o.credor=?")
+            tot = con.execute(f"SELECT COUNT(*) {j}", (cnpj,)).fetchone()[0]
             if not tot:
                 return out
-            nan = con.execute("SELECT COUNT(*) FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
-                              "WHERE o.favorecido_cpf=? AND a.score>=?", (cnpj, limiar)).fetchone()[0]
+            nan = con.execute(f"SELECT COUNT(*) {j} AND a.score>=?", (cnpj, limiar)).fetchone()[0]
             rows = con.execute(
-                "SELECT a.score, a.top_features, o.numero_ob, o.valor, o.data_pagamento, a.modelo_versao "
-                "FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
-                "WHERE o.favorecido_cpf=? AND a.score>=? ORDER BY a.score DESC LIMIT ?",
+                f"SELECT a.score, a.top_features, o.numero_ob, o.valor, o.data_emissao, a.modelo_versao {j} "
+                "AND a.score>=? ORDER BY a.score DESC LIMIT ?",
                 (cnpj, limiar, limite)).fetchall()
         finally:
             con.close()

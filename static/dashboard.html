@@ -132,7 +132,7 @@
     </div>
     <div>
       <div class="card">
-        <h2>Maiores favorecidos · OB paga SIAFE 2021+</h2>
+        <h2>Maiores fornecedores · OB paga SIAFE 2021+</h2>
         <div class="body" id="top"><div class="empty">Carregando…</div></div>
       </div>
       <div class="card">
@@ -192,13 +192,21 @@ async function carregar(){
         <div class="vl">${money(o.valor)}</div>
       </div>`).join('') : '<div class="empty">Sem OBs coletadas ainda. Abra o Chrome e rode a coleta.</div>';
 
-    // Top
-    const top = d.top_favorecidos||[];
-    document.getElementById('top').innerHTML = d.top_favorecidos==null ? '<div class="empty">INDISPONÍVEL — SIAFE não respondeu.</div>' : top.length ? top.map((t,i)=>`
+    // Top — FORNECEDORES e, rotulados à parte, OUTROS CREDORES (tributo, folha, encargo, repasse, ente público)
+    const top = d.top_favorecidos||[], outros = d.top_outros_credores||[], tc = d.totais_credores||{};
+    const totLinha = (t,rot) => t ? `<div class="sm" style="margin:2px 0 6px">${rot}: <b>${money(t.valor)}</b> · ${(t.n_ob||0).toLocaleString('pt-BR')} OB · ${(t.n_credores||0).toLocaleString('pt-BR')} credores</div>` : '';
+    const linha = (t,i,extra) => `
       <div class="row">
-        <div style="min-width:0;flex:1"><div class="nm">${i+1}. ${esc(t.nome)}</div><div class="sm">${t.n} OB(s)</div></div>
+        <div style="min-width:0;flex:1"><div class="nm">${i+1}. ${esc(t.nome)}</div><div class="sm">${t.n} OB(s)${extra||''}</div></div>
         <div class="vl">${money(t.total)}</div>
-      </div>`).join('') : '<div class="empty">Sem dados.</div>';
+      </div>`;
+    document.getElementById('top').innerHTML = d.top_favorecidos==null ? '<div class="empty">INDISPONÍVEL — SIAFE não respondeu.</div>' :
+      totLinha(tc.fornecedores,'Total a fornecedores') +
+      (top.length ? top.map((t,i)=>linha(t,i)).join('') : '<div class="empty">Sem dados.</div>') +
+      `<div class="nm" style="margin-top:12px">Outros credores (tributos, folha, encargos, repasses) — não são fornecedores</div>` +
+      totLinha(tc.outros_credores,'Total CNPJ/CPF não fornecedor') +
+      totLinha(tc.codigo_interno,'Total a credor-código do SIAFE (UG, folha, encargos)') +
+      (d.top_outros_credores==null ? '<div class="empty">INDISPONÍVEL.</div>' : outros.map((t,i)=>linha(t,i,' · '+esc(t.motivo))).join(''));
 
     // Lições
     const lic = d.licoes||[];

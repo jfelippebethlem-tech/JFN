@@ -78,9 +78,9 @@ def _percentil(con, tabela: str, coluna: str, p: float, where: str = "") -> floa
 # ── consultas de aprendizado (cada uma devolve fatos para memoria_aprendizado) ──
 
 def fatos_anomalia(con) -> list[tuple]:
-    p95 = _percentil(con, "ob_anomaly", "score", 0.95)
-    p99 = _percentil(con, "ob_anomaly", "score", 0.99)
-    n = con.execute("SELECT COUNT(*) FROM ob_anomaly").fetchone()[0]
+    p95 = _percentil(con, "ob_anomaly_siafe", "score", 0.95)   # OB paga do SIAFE (24/11/2026)
+    p99 = _percentil(con, "ob_anomaly_siafe", "score", 0.99)
+    n = con.execute("SELECT COUNT(*) FROM ob_anomaly_siafe").fetchone()[0]
     if p95 is None:
         return []
     return [("anomalia_threshold",

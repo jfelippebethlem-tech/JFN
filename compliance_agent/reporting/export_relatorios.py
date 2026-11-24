@@ -1,33 +1,44 @@
 """
 Exportador de relatórios do Hermes para .txt, .pdf e .docx.
-Usa dados do banco local (OrdemBancaria, Alerta) para gerar relatórios.
+Usa dados do banco local (OB PAGA do SIAFE, Alerta) para gerar relatórios.
+24/11/2026: as OBs vinham do espelho TFE (`OrdemBancaria` = `ordens_bancarias`); regra da casa é OB = SIAFE
+(`ob_orcamentaria_siafe`, régua `_ob_paga`). O SIAFE não separa nº SEI de nº de processo: `processo` vai nos dois.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import sqlite3
+from types import SimpleNamespace
 from typing import Iterable
 
-from compliance_agent.database.models import OrdemBancaria, Alerta, get_session, init_db
+from compliance_agent.database.models import Alerta, get_session, init_db
 from compliance_agent.reporting.intel_base import reais
 
 REPORT_DIR = Path(__file__).resolve().parent.parent / "reports"
 REPORT_DIR.mkdir(exist_ok=True)
 
 
+FONTE_OB = "OB paga do SIAFE (ob_orcamentaria_siafe, régua _ob_paga); espelho TFE fora"
+
+
 def _data_rows(limit: int | None = None):
-    init_db()
-    session = get_session()
+    """OBs PAGAS do SIAFE, mais recentes primeiro, com os atributos que os montadores leem (numero_ob,
+    favorecido_nome, valor, numero_sei, numero_processo)."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.database.models import _resolver_db
+    from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE
+    con = sqlite3.connect(f"file:{_resolver_db()}?mode=ro", uri=True)
     try:
-        q = session.query(OrdemBancaria).order_by(
-            OrdemBancaria.data_emissao.desc(), OrdemBancaria.id.desc()
-        )
+        sql = (f"SELECT numero_ob, nome_credor, valor, processo FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
+               f"ORDER BY {ISO_EMISSAO_SIAFE} DESC, numero_ob DESC")
         if limit:
-            q = q.limit(int(limit))
-        return list(q)
+            sql += f" LIMIT {int(limit)}"
+        return [SimpleNamespace(numero_ob=n, favorecido_nome=nm, valor=v, numero_sei=p, numero_processo=p)
+                for n, nm, v, p in con.execute(sql)]
     finally:
-        session.close()
+        con.close()
 
 
 def _alert_rows(limit: int = 50):
@@ -48,11 +59,11 @@ def _fmt_currency(value) -> str:
     return reais(value)
 
 
-def build_txt_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:
+def build_txt_report(path: Path, rows: Iterable, alerts: Iterable[Alerta]) -> Path:
     with path.open("w", encoding="utf-8") as f:
         f.write("Relatorio de Auditoria — Controle Externo\n")
         f.write(f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write(f"Total OBs: {sum(1 for _ in rows)}\n\n")
+        f.write(f"Total OBs: {sum(1 for _ in rows)} — fonte: {FONTE_OB}\n\n")
         f.write("== Alertas ==\n")
         for a in alerts:
             f.write(f"- [{a.severidade}] {a.titulo}\n")
@@ -67,7 +78,7 @@ def build_txt_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable
     return path
 
 
-def build_docx_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:
+def build_docx_report(path: Path, rows: Iterable, alerts: Iterable[Alerta]) -> Path:
     try:
         from docx import Document
     except Exception as e:
@@ -78,7 +89,7 @@ def build_docx_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterabl
     doc = Document()
     doc.add_heading("Relatório de Auditoria — Controle Externo", 0)
     doc.add_paragraph(f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    doc.add_paragraph(f"Total OBs: {sum(1 for _ in rows)}")
+    doc.add_paragraph(f"Total OBs: {sum(1 for _ in rows)} — fonte: {FONTE_OB}")
 
     doc.add_heading("Alertas", level=1)
     for a in alerts:
@@ -98,7 +109,7 @@ def build_docx_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterabl
     return path
 
 
-def build_pdf_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:
+def build_pdf_report(path: Path, rows: Iterable, alerts: Iterable[Alerta]) -> Path:
     try:
         from fpdf import FPDF
         from fpdf.enums import XPos, YPos
@@ -116,6 +127,7 @@ def build_pdf_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 8, f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 8, f"Fonte das OBs: {FONTE_OB}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(4)
 
     pdf.set_font("Arial", "B", 10)
@@ -159,5 +171,6 @@ def generate_report(limit: int | None = None, fmt: str = "txt") -> dict:
         "arquivo": str(out),
         "formato": fmt,
         "obs": sum(1 for _ in rows),
+        "fonte_obs": FONTE_OB,
         "alertas": sum(1 for _ in alerts),
     }

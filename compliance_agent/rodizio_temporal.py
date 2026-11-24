@@ -133,14 +133,39 @@ def rodizio_com_qsa(ug: str, **kw) -> dict:
 
 
 # --------------------------------------------------------------------------- camada de dados (DuckDB)
+# 24/11/2026: o rodízio somava o espelho TFE (`ordens_bancarias`); agora é a OB PAGA do SIAFE (régua `_ob_paga`, a
+# mesma do /api/cartel). Exercício que o espelho conhece e o SIAFE da casa não tem na UG = INDISPONÍVEL — fica
+# fora da sequência e é DITO (`anos_indisponiveis`), nunca contado como ano sem vencedor.
+_CNPJ = "length(credor) = 14 AND regexp_full_match(credor, '[0-9]+')"
+
+
+def _anos_so_no_espelho(con, ug: str | None = None) -> dict[str, list[int]]:
+    """{ug: [exercícios]} que o espelho TFE lista e o SIAFE da casa não tem (qualquer situação) — INDISPONÍVEL."""
+    f, p = ("AND ug_codigo = ?", [str(ug)]) if ug else ("", [])
+    f2 = "AND ug_emitente = ?" if ug else ""
+    try:
+        rows = con.execute(f"""
+            SELECT t.ug, t.ex FROM (SELECT DISTINCT ug_codigo ug, exercicio ex FROM db.ordens_bancarias
+                                    WHERE exercicio IS NOT NULL {f}) t
+            LEFT JOIN (SELECT DISTINCT ug_emitente ug, exercicio ex FROM db.ob_orcamentaria_siafe WHERE 1=1 {f2}) s
+                   ON s.ug = t.ug AND s.ex = t.ex
+            WHERE s.ug IS NULL""", p + p).fetchall()
+    except Exception:  # noqa: BLE001 — sem espelho não se afirma lacuna (nem completude)
+        return {}
+    out: dict[str, list[int]] = {}
+    for u, ex in rows:
+        out.setdefault(str(u), []).append(int(ex))
+    return {u: sorted(v) for u, v in out.items()}
+
+
 def _por_ano_da_ug(con, ug: str) -> dict[int, list[dict]]:
-    """Agrega gasto por (exercício, CNPJ) numa UG. Só PJ (CNPJ 14 díg); ignora PF/folha."""
-    rows = con.execute("""
-        SELECT exercicio, favorecido_cpf, ANY_VALUE(favorecido_nome) nome, SUM(valor) tot
-        FROM db.ordens_bancarias
-        WHERE ug_codigo = ? AND valor > 0 AND favorecido_cpf IS NOT NULL
-              AND length(regexp_replace(favorecido_cpf, '[^0-9]', '', 'g')) = 14
-        GROUP BY exercicio, favorecido_cpf
+    """Agrega OB PAGA do SIAFE por (exercício, CNPJ) numa UG. Só PJ (CNPJ 14 díg); ignora PF/folha."""
+    from compliance_agent.grafo_cartel import _ob_paga_duck
+    rows = con.execute(f"""
+        SELECT exercicio, credor, ANY_VALUE(nome_credor) nome, SUM(valor) tot
+        FROM db.ob_orcamentaria_siafe
+        WHERE {_ob_paga_duck()} AND ug_emitente = ? AND valor > 0 AND {_CNPJ}
+        GROUP BY exercicio, credor
     """, [str(ug)]).fetchall()
     por_ano: dict[int, list[dict]] = {}
     for ex, cnpj, nome, tot in rows:
@@ -160,11 +185,14 @@ def rodizio_orgao(ug: str, *, min_anos: int = 3, min_campeoes: int = 3,
     con = conectar()
     try:
         por_ano = _por_ano_da_ug(con, ug)
+        indisp = _anos_so_no_espelho(con, ug).get(str(ug), [])
     finally:
         con.close()
     res = _detectar_rodizio(por_ano, min_anos=min_anos, min_campeoes=min_campeoes,
                             min_alternancia=min_alternancia, min_share_ring=min_share_ring,
                             eh_excluido=eh_nao_fornecedor)
+    res["fonte"] = "OB paga do SIAFE (régua _ob_paga)"
+    res["anos_indisponiveis"] = indisp   # INDISPONÍVEL no SIAFE da casa — fora da sequência, não é zero
     res["ug"] = str(ug)
     res["ug_nome"] = _ugs.nome_canonico(str(ug), fallback="") or ""
     return res
@@ -175,15 +203,16 @@ def rodizio_varredura(min_total: float = 1_000_000, limite: int = 30, **kw) -> l
     from compliance_agent.duckdb_util import conectar
     from compliance_agent.entidades_gov import eh_nao_fornecedor
     from compliance_agent import ugs as _ugs
+    from compliance_agent.grafo_cartel import _ob_paga_duck
     con = conectar()
     try:
-        rows = con.execute("""
-            SELECT ug_codigo, exercicio, favorecido_cpf, ANY_VALUE(favorecido_nome) nome, SUM(valor) tot
-            FROM db.ordens_bancarias
-            WHERE valor > 0 AND favorecido_cpf IS NOT NULL
-                  AND length(regexp_replace(favorecido_cpf, '[^0-9]', '', 'g')) = 14
-            GROUP BY ug_codigo, exercicio, favorecido_cpf
+        rows = con.execute(f"""
+            SELECT ug_emitente, exercicio, credor, ANY_VALUE(nome_credor) nome, SUM(valor) tot
+            FROM db.ob_orcamentaria_siafe
+            WHERE {_ob_paga_duck()} AND valor > 0 AND {_CNPJ}
+            GROUP BY ug_emitente, exercicio, credor
         """).fetchall()
+        indisp = _anos_so_no_espelho(con)
     finally:
         con.close()
     por_ug: dict[str, dict[int, list[dict]]] = {}
@@ -204,6 +233,8 @@ def rodizio_varredura(min_total: float = 1_000_000, limite: int = 30, **kw) -> l
             r["ug"] = ug
             r["ug_nome"] = _ugs.nome_canonico(ug, fallback="") or ""
             r["total_ug"] = round(total_ug.get(ug, 0.0), 2)
+            r["fonte"] = "OB paga do SIAFE (régua _ob_paga)"
+            r["anos_indisponiveis"] = indisp.get(ug, [])   # INDISPONÍVEL no SIAFE da casa — não é zero
             achados.append(r)
     achados.sort(key=lambda r: -r["score"])
     return achados[:limite]

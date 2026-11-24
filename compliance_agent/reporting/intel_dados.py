@@ -94,58 +94,95 @@ def _norm_alnum(s: str) -> str:
 # Mas há só ~73.881 favorecidos DISTINTOS. `favorecido_resumo` é o GROUP BY pré-computado (74k linhas):
 # o MESMO LIKE roda ~15× mais rápido.
 def atualizar_favorecido_resumo(db_path=None) -> dict:
-    """(Re)constrói `favorecido_resumo` — o GROUP BY de ordens_bancarias por favorecido_cpf pré-computado.
+    """(Re)constrói `favorecido_resumo` — o agregado por credor (CNPJ/CPF) pré-computado.
     Idempotente: DROP+CREATE+INSERT numa ÚNICA transação (a tabela nunca fica vazia/parcial p/ o leitor).
     Respeita JFN_DB/_resolver_db e busy_timeout=30000 (espera o lock do sweep em vez de errar na hora).
-    Retorna {ok, linhas, db}.
+    Retorna {ok, linhas, db, ...medidas}.
 
-    PARIDADE com o scan de OB: o LIKE antigo casava se QUALQUER linha de OB do CPF batesse — mas o mesmo
-    CPF pode ter VÁRIAS grafias de nome (949/73881). Por isso guardamos:
-      - favorecido_nome: o nome de EXIBIÇÃO (MAX, como antes);
+    VALOR = OB PAGA DO SIAFE (24/11/2026, decisão do dono: "OBs são o principal; TFE pode ter erro"). Até aqui
+    `n_obs`/`total_pago` eram o GROUP BY do espelho TFE e alimentavam capital_incompativel, socio_oculto, fênix,
+    porta_giratoria, hub_compartilhado e /api/sugestoes. Agora:
+      - `n_obs`/`total_pago` = OB paga no SIAFE (régua `_ob_paga`), todos os exercícios que o SIAFE da casa tem;
+        credor que o SIAFE não tem → NULL (INDISPONÍVEL, nunca zero) e `fonte_valor='so_tfe'`;
+      - `n_obs_tfe`/`total_tfe` = espelho TFE NOS EXERCÍCIOS QUE O SIAFE COBRE — só confronto (divergência),
+        nunca somado ao valor;
+      - nome (exibição + haystack) = grafias do SIAFE e do espelho: o espelho segue servindo para CASAR NOME.
+
+    PARIDADE com o scan de OB: o mesmo CPF pode ter VÁRIAS grafias de nome. Por isso guardamos:
+      - favorecido_nome: o nome de EXIBIÇÃO (MAX do SIAFE; sem SIAFE, MAX do espelho);
       - nome_match: TODAS as grafias distintas (lower) concatenadas → haystack do LIKE primário;
-      - nome_ns: nome_match só-alfanumérico → haystack do fallback sem-espaço.
-    Assim `... LIKE '%termo%'` na tabela-resumo casa o MESMO conjunto que o scan linha-a-linha de OB."""
+      - nome_ns: nome_match só-alfanumérico → haystack do fallback sem-espaço."""
     alvo = _resolver_db_inteligencia(db_path)
     if not Path(alvo).exists():
         return {"ok": False, "erro": "db_inexistente", "db": str(alvo)}
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    from compliance_agent.reporting.intel_base import SQL_CREDOR_TERCEIRO_SIAFE
     con = sqlite3.connect(str(alvo))
-    con.create_function("_norm_alnum", 1, _norm_alnum)
     try:
         con.execute("PRAGMA journal_mode=WAL")
         con.execute("PRAGMA busy_timeout=30000")  # espera o lock do sweep (não erra na hora)
+        # 1) leitura (fora da transação de escrita — não segura o lock durante as duas varreduras)
+        tem_siafe = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                                "AND name='ob_orcamentaria_siafe'").fetchone() is not None
+        siafe: dict = {}        # credor -> [n, total, {grafias}, nome_exibicao]
+        anos_siafe: set = set()
+        if tem_siafe:
+            # `+credor`: varredura em ordem física (o índice de credor faz leitura aleatória: 154 s × 22 s medidos)
+            for doc, nome, ano, n, tot in con.execute(
+                    f"SELECT credor, nome_credor, exercicio, COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe "
+                    f"WHERE {_ob_paga(con)} AND {SQL_CREDOR_TERCEIRO_SIAFE} GROUP BY +credor, nome_credor, exercicio"):
+                e = siafe.setdefault(doc, [0, 0.0, set(), ""])
+                e[0] += n
+                e[1] += float(tot or 0.0)
+                if nome:
+                    e[2].add(nome.lower())
+                    e[3] = max(e[3], nome)
+                if ano:
+                    anos_siafe.add(str(ano))
+        tfe: dict = {}          # cpf -> [n_coberto, total_coberto, {grafias}, nome_exibicao]
+        for doc, nome, ano, n, tot in con.execute(
+                "SELECT favorecido_cpf, favorecido_nome, exercicio, COUNT(*), SUM(valor) "
+                "FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL GROUP BY 1, 2, 3"):
+            e = tfe.setdefault(doc, [0, 0.0, set(), ""])
+            if str(ano) in anos_siafe:   # confronto só no período que o SIAFE cobre
+                e[0] += n
+                e[1] += float(tot or 0.0)
+            if nome:
+                e[2].add(nome.lower())
+                e[3] = max(e[3], nome)
+        linhas = []
+        for doc in siafe.keys() | tfe.keys():
+            s_, t_ = siafe.get(doc), tfe.get(doc)
+            grafias = sorted((s_[2] if s_ else set()) | (t_[2] if t_ else set()))
+            nm = " | ".join(grafias)   # ' | ' p/ um termo não casar "atravessando" duas grafias
+            linhas.append((doc, (s_[3] if s_ and s_[3] else (t_[3] if t_ else "")) or None,
+                           s_[0] if s_ else None, round(s_[1], 2) if s_ else None, nm, _norm_alnum(nm),
+                           t_[0] if t_ else None, round(t_[1], 2) if t_ else None,
+                           "siafe" if s_ else "so_tfe"))
+        # 2) escrita numa transação só
         con.execute("BEGIN IMMEDIATE")
         con.execute("DROP TABLE IF EXISTS favorecido_resumo")
         con.execute(
             "CREATE TABLE favorecido_resumo ("
             " favorecido_cpf TEXT PRIMARY KEY,"
-            " favorecido_nome TEXT,"   # nome de exibição (MAX)
-            " n_obs INTEGER,"
-            " total_pago REAL,"
+            " favorecido_nome TEXT,"   # nome de exibição
+            " n_obs INTEGER,"          # OB PAGA do SIAFE (NULL = SIAFE não tem o credor: INDISPONÍVEL)
+            " total_pago REAL,"        # idem
             " nome_match TEXT,"        # todas as grafias distintas (lower) — haystack do LIKE primário
-            " nome_ns TEXT)"           # nome_match só-alfanumérico — haystack do fallback sem-espaço
+            " nome_ns TEXT,"           # nome_match só-alfanumérico — haystack do fallback sem-espaço
+            " n_obs_tfe INTEGER,"      # espelho TFE nos exercícios que o SIAFE cobre — só confronto
+            " total_tfe REAL,"
+            " fonte_valor TEXT)"       # 'siafe' | 'so_tfe'
         )
-        # 1) métricas + nome de exibição, por CPF (rápido — agregado direto). espelho-fora-do-produto: tabela
-        #    derivada do espelho para CASAR NOME; o /relatorio não publica `total_pago` dela (vem do SIAFE).
-        con.execute(
-            "INSERT INTO favorecido_resumo (favorecido_cpf, favorecido_nome, n_obs, total_pago, nome_match, nome_ns) "
-            "SELECT favorecido_cpf, MAX(favorecido_nome), COUNT(*), ROUND(SUM(valor),2), '', '' "
-            "FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL "
-            "GROUP BY favorecido_cpf"
-        )
-        # 2) haystack de grafias: GROUP_CONCAT das grafias DISTINTAS (lower) de cada CPF, com separador
-        #    ' | ' p/ um termo não casar "atravessando" duas grafias. nome_ns = versão só-alfanumérica.
-        for cpf, nm in con.execute(
-            "SELECT favorecido_cpf, GROUP_CONCAT(nome, ' | ') FROM "
-            "(SELECT DISTINCT favorecido_cpf, lower(favorecido_nome) nome FROM ordens_bancarias "
-            " WHERE favorecido_cpf IS NOT NULL AND favorecido_nome IS NOT NULL) "
-            "GROUP BY favorecido_cpf").fetchall():
-            con.execute(
-                "UPDATE favorecido_resumo SET nome_match=?, nome_ns=? WHERE favorecido_cpf=?",
-                (nm or "", _norm_alnum(nm or ""), cpf))
+        con.executemany("INSERT INTO favorecido_resumo VALUES (?,?,?,?,?,?,?,?,?)", linhas)
         con.execute("CREATE INDEX IF NOT EXISTS ix_favres_nome ON favorecido_resumo (favorecido_nome)")
         con.commit()
-        n = con.execute("SELECT COUNT(*) FROM favorecido_resumo").fetchone()[0]
-        return {"ok": True, "linhas": int(n or 0), "db": str(alvo)}
+        so_tfe = [x for x in linhas if x[8] == "so_tfe"]
+        return {"ok": True, "linhas": len(linhas), "db": str(alvo), "fonte_valor": "OB paga SIAFE (_ob_paga)",
+                "credores_siafe": len(siafe), "credores_so_tfe": len(so_tfe),
+                "so_tfe_no_periodo_coberto": sum(1 for x in so_tfe if x[6]),
+                "valor_so_tfe_no_periodo_coberto": round(sum(x[7] or 0 for x in so_tfe), 2),
+                "exercicios_siafe": sorted(anos_siafe)}
     except Exception as exc:  # noqa: BLE001
         try:
             con.rollback()

@@ -222,11 +222,11 @@ def _flags_sameday(valores):
     from compliance_agent import anomalias
     con = sqlite3.connect(":memory:")
     anomalias._ddl(con)
-    df = pd.DataFrame([{"id": i + 1, "favorecido_cpf": PRIVADO, "favorecido_nome": "GESPED GESTAO LTDA",
+    df = pd.DataFrame([{"id": i + 1, "numero_ob": f"2025OB{i:05d}", "favorecido_cpf": PRIVADO, "favorecido_nome": "GESPED GESTAO LTDA",
                         "ug_codigo": "294200", "data_emissao": "2025-03-10", "exercicio": 2025, "valor": v}
                        for i, v in enumerate(valores)])
     anomalias.regras(df, con)
-    return [r[0] for r in con.execute("SELECT regra FROM ob_redflag WHERE regra='R_FRACIONAMENTO_SAMEDAY'")]
+    return [r[0] for r in con.execute("SELECT regra FROM ob_redflag_siafe WHERE regra='R_FRACIONAMENTO_SAMEDAY'")]
 
 
 def test_sameday_com_ob_acima_do_teto_nao_acende():

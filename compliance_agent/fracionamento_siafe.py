@@ -38,19 +38,26 @@ MIN_OBS = 3          # o padrão do art. 75 §1º é a REPETIÇÃO; duas compras
 _STATUS_NAO_PAGO = ("exclu", "cancelad", "estornad", "anulad")
 # credores que não são fornecedor licitável: folha, tributos, encargos, sentenças, transferências.
 # Não se "fraciona" folha de pagamento — somá-los produziria uma fila cheia de ruído.
-_CREDOR_NAO_LICITAVEL = re.compile(
+# Duas famílias, um só filtro: `_CREDOR_ENCARGO_OU_ENTE` (folha, tributo, encargo, sentença, transferência, órgão
+# público) não é fornecedor nenhum; `_CREDOR_CONCESSIONARIA` É fornecedor, só não se contrata por dispensa. O painel
+# (rotas/investigacao._siafe_pago_total) separa "outros credores" só pela primeira (24/11/2026).
+_SRC_ENCARGO_OU_ENTE = (
     r"folha\s+de\s+pagamento|\bpessoal\b|sal[áa]rio|INSS|FGTS|PASEP|IRRF|DARF|\bGRU\b|tributo|imposto|"
     r"contribui[çc][ãa]o|senten[çc]a|precat[óo]rio|dep[óo]sito\s+judicial|di[áa]ria|suprimento\s+de\s+fundos|"
     r"restitui[çc][ãa]o|transfer[êe]ncia|repasse|fundo\s+especial|encargo|"
     # ÓRGÃO PÚBLICO como credor = tributo/repasse entre entes, não compra. (No dado real, "MINISTÉRIO DA
     # FAZENDA" liderava a fila de 2025 com 252 OBs — puro ruído.)
     r"minist[ée]rio|secretaria\s+de|prefeitura|munic[íi]pio\s+de|estado\s+do|da\s+uni[ãa]o\b|uni[ãa]o\s+federal|"
-    r"receita\s+federal|tesouro|banco\s+central|caixa\s+econ[ôo]mica|tribunal|assembleia|"
+    r"receita\s+federal|tesouro|banco\s+central|caixa\s+econ[ôo]mica|tribunal|assembleia")
+_SRC_CONCESSIONARIA = (
     # CONCESSIONÁRIA de utilidade pública: contratação por INEXIGIBILIDADE (art. 74) — hipótese própria,
     # não dispensa por valor. Somá-la produziria acusação contra conta de água e de luz.
     r"companhia\s+estadual|CEDAE|[áa]guas\s+de|distr\w*\.?\s*de\s+energia|ampla\s+energia|energisa|vibra\s+energia|"
     r"\blight\b|\benel\b|telef[ôo]nica|\bclaro\b|\bvivo\b|"
-    r"oi\s+s\.?a|correios|concession[áa]ria", re.I)
+    r"oi\s+s\.?a|correios|concession[áa]ria")
+_CREDOR_ENCARGO_OU_ENTE = re.compile(_SRC_ENCARGO_OU_ENTE, re.I)
+_CREDOR_CONCESSIONARIA = re.compile(_SRC_CONCESSIONARIA, re.I)
+_CREDOR_NAO_LICITAVEL = re.compile(f"{_SRC_ENCARGO_OU_ENTE}|{_SRC_CONCESSIONARIA}", re.I)
 # 23/11/2026 — a peneira era GULOSA e tirava fornecedor privado da fila (falso negativo), medido contra a natureza
 # jurídica da Receita: `GRU` pegava "Grupo Hospitalar do RJ" (R$ 92,67 mi) e todo "Grupo ..."; `pessoal` pegava
 # "UNIPESSOAL"; `vivo` pegava "PLASVIVO"; `energia` solto pegava instaladora solar e de nobreak (Inducta R$ 61,27 mi);

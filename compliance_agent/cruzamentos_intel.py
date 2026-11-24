@@ -90,6 +90,41 @@ def registrar_peneira(con: sqlite3.Connection) -> None:
     con.create_function("jfn_eh_publico", 2, _eh_publico, deterministic=True)
 
 
+def classificador_credor(con: sqlite3.Connection):
+    """FORNECEDOR × OUTRO CREDOR para ranking de PAGAMENTO (painel, 24/11/2026): devolve `f(nome, credor)` → motivo
+    (str) quando o credor NÃO é fornecedor — tributo, folha, encargo, repasse, ente público, banco de repasse — ou
+    None quando é. Mesmas peneiras canônicas de `registrar_peneira` (natureza 1xxx da Receita, `eh_nao_fornecedor`,
+    banco/previdência) + a família de encargo/ente de `fracionamento_siafe` (sem a de concessionária: Light e CEDAE
+    VENDEM ao Estado, só não por dispensa). A família de encargo casa por NOME e tem palavras de uso comum
+    ("pessoal", "diária", "contribuição"): quando a Receita diz que o CNPJ é empresa/entidade privada (natureza
+    2xxx/3xxx/4xxx), o nome sozinho não o tira dos fornecedores. Medido no painel em 24/11/2026: 1º e 2º do ranking
+    eram 'MINISTÉRIO DA FAZENDA' (R$ 7,46 bi, tributo retido) e 'Banco do Brasil' (R$ 5,93 bi, repasse/consignado)."""
+    from compliance_agent.entidades_gov import eh_administracao_publica, eh_nao_fornecedor
+    from compliance_agent.fracionamento_siafe import _CREDOR_ENCARGO_OU_ENTE
+    natureza: dict = {}
+    try:
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas_cadastro'").fetchone():
+            natureza = {r[0]: str(r[1] or "") for r in con.execute(
+                "SELECT cnpj_basico, natureza_cod FROM empresas_cadastro WHERE natureza_cod IS NOT NULL")}
+    except sqlite3.Error:
+        logging.getLogger(__name__).debug("empresas_cadastro ilegível — só a peneira de nome", exc_info=True)
+
+    def _motivo(nome, credor) -> str | None:
+        doc = str(credor or "")
+        nat = natureza.get(doc[:8], "") if len(doc) == 14 else ""
+        if nat and eh_administracao_publica(nat):
+            return "ente público (natureza jurídica 1xxx na Receita)"
+        n = nome or ""
+        if eh_nao_fornecedor(n):
+            return "transferência, tributo ou ente público"
+        if _RX_BANCO_OU_PUBLICO_LEGADO.search(n):
+            return "banco, previdência ou órgão (repasse, consignado, encargo)"
+        if _CREDOR_ENCARGO_OU_ENTE.search(n) and not (nat[:1] in ("2", "3", "4") if nat else False):
+            return "folha, tributo, encargo ou repasse"
+        return None
+    return _motivo
+
+
 # ── 1. SANCIONADAS CONTRATADAS ───────────────────────────────────────────────
 
 def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) -> dict:
@@ -1886,10 +1921,17 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
     consórcio/SPE (legitimamente criados para um projeto). Cadastro Receita ainda parcial."""
     con = _ro(db_path)
     try:
-        # valor recebido = favorecido_resumo (agrega TODAS as fontes de pagamento; a OB SIAFE sozinha
-        # perdia quem recebeu por TFE) + 1ª OB do SIAFE p/ a janela de recência quando houver.
+        # valor recebido = favorecido_resumo.total_pago = OB PAGA do SIAFE (24/11/2026, decisão do dono: OB é o
+        # principal, o TFE pode ter erro). Até aqui somava "todas as fontes" — o espelho TFE preenchia quem o SIAFE
+        # não tinha. Agora o credor que SÓ o espelho traz, nos exercícios que o SIAFE cobre, sai como DIVERGÊNCIA
+        # (`divergencias_tfe`), fora dos totais: ou o SIAFE da casa tem lacuna de coleta, ou o espelho errou.
         pago = {r["favorecido_cpf"]: (r["total_pago"] or 0.0, r["n_obs"] or 0) for r in con.execute(
             "SELECT favorecido_cpf, total_pago, n_obs FROM favorecido_resumo WHERE total_pago>0")}
+        cols_res = {r[1] for r in con.execute("PRAGMA table_info(favorecido_resumo)")}
+        so_tfe = ({r["favorecido_cpf"]: (r["total_tfe"], r["n_obs_tfe"]) for r in con.execute(
+            "SELECT favorecido_cpf, total_tfe, n_obs_tfe FROM favorecido_resumo "
+            "WHERE fonte_valor='so_tfe' AND total_tfe>0")} if "fonte_valor" in cols_res else {})
+        divergencias = []
         iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
         janela = {r["credor"]: (r["p"], r["u"]) for r in con.execute(
             f"SELECT credor, MIN({iso}) p, MAX({iso}) u FROM ob_orcamentaria_siafe "
@@ -1926,7 +1968,11 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
                              "WHERE situacao IS NOT NULL AND situacao<>''"):
             val = pago.get(e["cnpj"])
             if not val or val[0] <= 0:
-                continue                                # só quem RECEBEU entra
+                div = so_tfe.get(e["cnpj"])
+                if div and any(d in (e["situacao"] or "").upper() for d in _DEFUNTA):
+                    divergencias.append({"cnpj": e["cnpj"], "nome": e["razao_social"], "situacao": e["situacao"],
+                                         "total_tfe": div[0], "n_obs_tfe": div[1]})
+                continue                                # só quem RECEBEU (OB paga do SIAFE) entra
             tot, n_obs = val
             sit = (e["situacao"] or "").upper()         # normaliza caixa: 'Baixada'→'BAIXADA'
             defunta = any(d in sit for d in _DEFUNTA)
@@ -1975,6 +2021,14 @@ def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
                 "fora_da_manchete": fora,
                 "n_fora_da_manchete": sum(f["n"] for f in fora.values()),
                 "total_fora_da_manchete": round(sum(f["valor"] for f in fora.values()), 2),
+                # credor defunto que SÓ o espelho TFE traz nos exercícios que o SIAFE cobre — não somado
+                "fonte_valor": "OB paga do SIAFE (favorecido_resumo.total_pago, régua _ob_paga); TFE só confronto",
+                "divergencias_tfe": sorted(divergencias, key=lambda d: -(d["total_tfe"] or 0))[:limite],
+                "n_divergencias_tfe": len(divergencias),
+                "total_divergencias_tfe": round(sum(d["total_tfe"] or 0 for d in divergencias), 2),
+                "divergencias_tfe_nota": ("Empresa baixada/inapta que o espelho TFE dá como paga e o SIAFE da casa "
+                                          "não tem no mesmo exercício: lacuna de coleta do SIAFE ou erro do "
+                                          "espelho. DIVERGÊNCIA a conferir, fora de todo total."),
                 "explicacao": ("Empresa BAIXADA/INAPTA/SUSPENSA na Receita que mesmo assim recebeu do "
                                "Estado (OB paga) depois da baixa ou da inaptidão — é o que o número do card soma. "
                                "Empresa aberta ≤12 meses antes do 1º pagamento aparece só na lista, como sinal "

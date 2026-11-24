@@ -113,7 +113,10 @@ def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None,
         if orgao or fornecedor:
             from compliance_agent.analysis.benford import benford_ob
             benford = benford_ob(orgao, fornecedor)
-        return JSONResponse({"ok": True, "n": len(itens), "itens": itens, "benford": benford,
+        modelo = anomalias.estado_modelo()   # INDISPONÍVEL (modelo não rodado sobre o SIAFE) ≠ "0 anomalias"
+        return JSONResponse({"ok": True, "n": len(itens) if modelo["estado"] != "INDISPONÍVEL" else None,
+                             "itens": itens, "benford": benford, "modelo": modelo,
+                             "fonte": "OB paga do SIAFE (régua _ob_paga); TFE fora",
                              "aviso": "Indícios para apuração interna — não constituem acusação."})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -231,7 +234,7 @@ def api_painel():
     Cacheado 3600s (TTL analítico da casa; o prewarm de 30 min o mantém quente) — com 120s o prewarm
     expirava antes da visita e o panorama abria frio: 30,8 s medidos em 24/09/2026."""
     from compliance_agent.proveniencia_manchetes import anexar as _prov
-    if cache := _cache_get("painel:snapshot:v2", 3600):
+    if cache := _cache_get("painel:snapshot:v3", 3600):
         return JSONResponse(content=_prov("/api/compliance/painel", cache))
     try:
         from datetime import date
@@ -337,8 +340,10 @@ def api_painel():
 
             siafe = dict(_siafe_pago_total())   # cópia: o dict vem do cache em memória
             top = siafe.pop("top", None)
+            top_outros = siafe.pop("top_outros", None)
+            credores = siafe.pop("credores", None)
             siafe.pop("_top400", None)
-            return JSONResponse(content=_cache_put("painel:snapshot:v2", _prov("/api/compliance/painel", {
+            return JSONResponse(content=_cache_put("painel:snapshot:v3", _prov("/api/compliance/painel", {
                 "atualizado": str(hoje),
                 "obs": {**_prov("/api/compliance/painel#obs", {"atualizado": str(hoje)}), **siafe, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
                         "valor_ultimo_dia": v_ultimo_dia,
@@ -355,8 +360,12 @@ def api_painel():
                 "lista_alertas": alertas,
                 # None = INDISPONÍVEL (SIAFE não respondeu), nunca lista vazia fingindo "sem favorecido"
                 "top_favorecidos": top,
-                "top_favorecidos_recorte": ("OB paga no SIAFE (régua _ob_paga), 2021 em diante, credor CNPJ/CPF "
-                                            "(folha, previdência e repasse entre UGs fora do ranking)"),
+                "top_favorecidos_recorte": ("FORNECEDORES — OB paga no SIAFE (régua _ob_paga), 2021 em diante, credor "
+                                            "CNPJ/CPF; tributo, folha, encargo, repasse e ente público em "
+                                            "top_outros_credores (peneira canônica: natureza 1xxx da Receita + "
+                                            "entidades_gov + encargo/ente do fracionamento)"),
+                "top_outros_credores": top_outros,
+                "totais_credores": credores,
                 "obs_recentes": obs_recentes,
                 "obs_recentes_total": siafe.get("total"),   # COR-07: as 25 mais recentes DE quantas OB pagas (SIAFE 2021+)
                 "fonte_ob": "OB do SIAFE é a fonte; TFE é espelho e pode ter erro (tfe_* = só confronto)",
@@ -2732,7 +2741,7 @@ def _siafe_pago_total() -> dict:
     credores TERCEIROS (CNPJ/CPF — `SQL_CREDOR_TERCEIRO_SIAFE`, o universo que o espelho sempre listou; folha,
     previdência e repasse entre UGs ficam fora do ranking, mas dentro do total). Até aqui `top_favorecidos` do
     painel somava o espelho TFE inteiro — o 1º lugar era 'Banco do Brasil' com R$ 6,06 bi de linhas TFE."""
-    if d := _cache_get("obs:siafe_pago_total:v2", 1800):
+    if d := _cache_get("obs:siafe_pago_total:v3", 1800):
         return d
     out = {"total": None, "valor_total": None, "fonte_total": "SIAFE indisponível", "top": None}
     try:
@@ -2748,14 +2757,48 @@ def _siafe_pago_total() -> dict:
                 "AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021 GROUP BY +credor").fetchall()
         finally:
             con.close()
-        terceiros = sorted((r for r in linhas if r[4]), key=lambda r: r[3], reverse=True)[:400]
-        top = [{"nome": r[1] or r[0], "doc": r[0], "total": round(float(r[3]), 2), "n": r[2]} for r in terceiros]
+        # 24/11/2026: o ranking de credores TERCEIROS punha em 1º 'MINISTÉRIO DA FAZENDA' (R$ 7,46 bi — tributo
+        # retido) e em 2º 'Banco do Brasil' (R$ 5,93 bi — repasse/consignado). Não são fornecedores: a peneira
+        # canônica (`classificador_credor`: natureza 1xxx da Receita + entidades_gov + encargo/ente do
+        # fracionamento) separa FORNECEDORES de OUTROS CREDORES — rotulados, os dois totais na tela, nada escondido.
+        from compliance_agent.cruzamentos_intel import classificador_credor
+        con = _ro(timeout=30)
+        try:
+            motivo_de = classificador_credor(con)
+        finally:
+            con.close()
+        forn, outros = [], []
+        cod_interno = [0, 0.0, 0]   # credor que não é CNPJ/CPF: UG (repasse entre unidades), folha/encargo ('CG…')
+        for r in linhas:
+            if not r[4]:
+                cod_interno[0] += r[2]; cod_interno[1] += float(r[3]); cod_interno[2] += 1
+                continue
+            m = motivo_de(r[1], r[0])
+            (outros if m else forn).append((r, m))
+        forn.sort(key=lambda x: x[0][3], reverse=True)
+        outros.sort(key=lambda x: x[0][3], reverse=True)
+        top = [{"nome": r[1] or r[0], "doc": r[0], "total": round(float(r[3]), 2), "n": r[2]} for r, _ in forn[:400]]
+        top_outros = [{"nome": r[1] or r[0], "doc": r[0], "total": round(float(r[3]), 2), "n": r[2], "motivo": m}
+                      for r, m in outros[:12]]
+
+        def _tot(xs):
+            return {"valor": round(float(sum(r[3] for r, _ in xs)), 2), "n_ob": sum(r[2] for r, _ in xs),
+                    "n_credores": len(xs)}
         out = {"total": sum(r[2] for r in linhas), "valor_total": round(float(sum(r[3] for r in linhas)), 2),
                "fonte_total": "OB paga no SIAFE (Contabilizada, sem devolvida pelo banco), 2021 em diante",
-               "top": top[:12], "_top400": top}   # `_top400`: a rede de pagamentos (/api/compliance/graph)
+               "top": top[:12], "_top400": top,   # `_top400`: a rede de pagamentos (/api/compliance/graph), só fornecedor
+               "top_outros": top_outros,
+               "credores": {
+                   "fornecedores": _tot(forn),
+                   "outros_credores": {**_tot(outros), "rotulo": "tributos, folha, encargos, repasses e entes públicos "
+                                       "(CNPJ/CPF)"},
+                   "codigo_interno": {"valor": round(cod_interno[1], 2), "n_ob": cod_interno[0],
+                                      "n_credores": cod_interno[2],
+                                      "rotulo": "credor-código do SIAFE (UG, folha, encargos) — repasse/folha, "
+                                                "não fornecedor"}}}
     except sqlite3.Error as exc:
         out["fonte_total"] = f"SIAFE indisponível: {exc}"
-    return _cache_put("obs:siafe_pago_total:v2", out)
+    return _cache_put("obs:siafe_pago_total:v3", out)
 
 
 @router.get("/api/fontes/frescor")

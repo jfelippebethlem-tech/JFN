@@ -137,27 +137,30 @@ def benford(valores, min_n: int = 50) -> dict:
 
 
 def benford_ob(orgao: str | None = None, fornecedor: str | None = None, min_n: int = 50) -> dict:
-    """Benford sobre os valores de OB (ordens_bancarias), opcionalmente filtrado por UG/fornecedor."""
+    """Benford sobre os valores de OB PAGA do SIAFE (`_ob_paga`), opcionalmente filtrado por UG/fornecedor.
+    24/11/2026: lia o espelho TFE (`ordens_bancarias`); regra da casa é OB = SIAFE."""
     import sqlite3
     from pathlib import Path
+    from compliance_agent.cruzamentos_intel import _ob_paga
 
     db = Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db"
     if not db.exists():
         return {"ok": False, "erro": "compliance.db ausente"}
-    con = sqlite3.connect(str(db))
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
+        paga = _ob_paga(con)
         where, params = ["valor > 0"], []
         if orgao:
-            where.append("(ug_nome LIKE ? OR ug_codigo = ?)")
-            params += [f"%{orgao}%", orgao]
+            where.append("ug_emitente = ?")
+            params += [orgao]
         if fornecedor:
-            where.append("(favorecido_nome LIKE ? OR favorecido_cpf LIKE ?)")
+            where.append("(nome_credor LIKE ? OR credor LIKE ?)")
             params += [f"%{fornecedor}%", f"%{fornecedor}%"]
-        sql = f"SELECT valor FROM ordens_bancarias WHERE {' AND '.join(where)}"
+        sql = f"SELECT valor FROM ob_orcamentaria_siafe WHERE {paga} AND {' AND '.join(where)}"
         valores = [r[0] for r in con.execute(sql, params)]
     finally:
         con.close()
     res = benford(valores, min_n=min_n)
     res["filtro"] = {"orgao": orgao, "fornecedor": fornecedor}
-    res["_fonte"] = "ordens_bancarias (OB = pagamento; TFE/SIAFE)"
+    res["_fonte"] = "OB paga do SIAFE (ob_orcamentaria_siafe, régua _ob_paga)"
     return res
