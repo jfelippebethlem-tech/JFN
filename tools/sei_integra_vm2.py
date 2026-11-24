@@ -434,6 +434,15 @@ def devolver(desde: int, fila: Path | None = None) -> dict:
             titulo, texto = _amostra_texto(tag)
             juizo = L.julgar(proc, titulo, texto)
         processos[proc] = {"status": status[proc], "juizo": juizo}
+        if status[proc] == "ok":
+            # 23/11/2026 (dono: "leva a conferência e arquivamento pra VM-2"): o nó já tem os textos na mão — mede
+            # teor/legibilidade de TODO .txt aqui e manda no MANIFESTO; a VM-1 só confere a conta e relê uma amostra
+            # (`vm2_conferencia.conferir_barata`). Falha aqui não segura a entrega: a VM-1 cai na conferência completa.
+            try:
+                from tools import vm2_conferencia as C
+                processos[proc]["preconferencia"] = C.preconferir(F.ARQUIVO / tag, status[proc])
+            except (ImportError, OSError, ValueError) as e:
+                print(f"preconferência de {proc} falhou ({e}) — a VM-1 confere completo", file=sys.stderr)
     res = None
     if processos or linhas:
         base = L.montar("integras", itens, processos, {"linhas_log": linhas, "nao_entregues": nao_entregues})

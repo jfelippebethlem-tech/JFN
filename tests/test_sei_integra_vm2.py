@@ -93,6 +93,7 @@ def test_devolver_monta_lote_sem_falha_do_navegador(monkeypatch, tmp_path):
     V.devolver(0)
     man = json.loads((enviados[0] / "MANIFESTO.json").read_text())
     assert list(man["processos"]) == ["270003/004118/2024"]
+    assert man["processos"]["270003/004118/2024"]["preconferencia"]["versao"] == 1   # 23/11: o nó pré-confere
     assert "270032/000052/2023" in man["nao_entregues"]
     assert "arquivo/270003_004118_2024/manifest.json" in man["arquivos"]
     assert not (arq / "270003_004118_2024").exists()          # cópia local sai depois de ir para o lote

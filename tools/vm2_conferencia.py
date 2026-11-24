@@ -202,8 +202,10 @@ def comparar_com_referencia(novos: dict[str, str], ref: dict[str, str]) -> tuple
 # ───────────────────────── conferência de uma pasta de íntegra ─────────────────────────
 
 def conferir_integra(pasta_arq: Path, status: str, tag: str, juizo: dict | None,
-                     ref_do_arquivo: bool = True) -> tuple[bool, list[str], dict]:
-    """(aprovado, motivos de reprovação, métricas) de um arquivo de íntegra (`arquivo/<tag>/`)."""
+                     ref_do_arquivo: bool = True, com_referencia: bool = True) -> tuple[bool, list[str], dict]:
+    """(aprovado, motivos de reprovação, métricas) de um arquivo de íntegra (`arquivo/<tag>/`).
+    `com_referencia=False` (23/11/2026): o NÓ pré-confere antes de entregar e não tem leitura independente — a
+    comparação com a leitura da VM-1 só pode ser feita na VM-1 (`preconferir`/`conferir_barata`)."""
     motivos: list[str] = []
     m = _ler_json(pasta_arq / "manifest.json")
     if not isinstance(m, dict):
@@ -247,6 +249,8 @@ def conferir_integra(pasta_arq: Path, status: str, tag: str, juizo: dict | None,
     if not novos:
         for nome, t in textos.items():
             novos.setdefault(_norm_titulo(nome[:-4].split("_", 1)[-1].replace("_", " ")), t)
+    if not com_referencia:
+        return not motivos, motivos, met
     ok_ref, nota = comparar_com_referencia(novos, _referencia(tag, incluir_arquivo=ref_do_arquivo))
     met["referencia"] = nota
     if ok_ref is False:
@@ -256,6 +260,186 @@ def conferir_integra(pasta_arq: Path, status: str, tag: str, juizo: dict | None,
         if juizo.get("legivel") is False or juizo.get("corresponde") is False:
             motivos.append(f"juízo do Claude (VM-2): {str(juizo.get('motivo') or 'reprovado')[:120]}")
     return not motivos, motivos, met
+
+
+# ───────────────────────── conferência BARATA: o nó lê, a VM-1 confere a conta (23/11/2026) ─────────────────────────
+#
+# Pedido do dono (23/11/2026): "leva a conferência e arquivamento pra VM-2". O ARQUIVAMENTO (PDF → texto + OCR) já
+# acontece no nó desde 13/11 (`sei_integra_fila._baixar_e_arquivar` roda `sei_arquivar.py` lá; medido nos lotes de
+# 16–23/11: 100% das entregas de íntegra chegam com `arquivo/<tag>/texto/*.txt`, e o `arquivar_integra_lane` da VM-1
+# arquivou 0 pendentes em todas as rodadas da semana). O que ainda se repetia aqui era a LEITURA de todo .txt de todo
+# processo para medir teor/legibilidade — o nó já tem esses textos na mão. Agora o nó mede (`preconferir`) e manda o
+# resultado no MANIFESTO; a VM-1 continua com o que só ela pode fazer: md5 de cada arquivo (o que chegou é o que o nó
+# mediu), conta do manifesto, AMOSTRA pequena de textos relida aqui (o nó pode errar) e a leitura independente.
+# Desligado por padrão; liga com `touch data/.vm2_conferencia_barata` (ou JFN_VM2_CONFERENCIA=barata|completa, que
+# manda sobre o arquivo). Lote sem `preconferencia` (nó com código velho) cai sozinho na conferência completa.
+
+PRE_VERSAO = 1
+FLAG_BARATA = DATA / ".vm2_conferencia_barata"
+AMOSTRA_TEXTOS = 3            # textos relidos na VM-1 por processo — o bastante para pegar erro SISTEMÁTICO do nó
+MAX_ILEGIVEIS_LISTADOS = 500  # acima disso a lista não vai no manifesto e a amostra sorteia entre todos com teor
+TEXTOS_REFERENCIA = 6         # textos lidos para a comparação com a leitura da VM-1 (ela usa até 3 semelhanças)
+
+
+def barata_ligada() -> bool:
+    modo = os.environ.get("JFN_VM2_CONFERENCIA", "").strip().lower()
+    if modo in ("barata", "completa"):
+        return modo == "barata"
+    return FLAG_BARATA.exists()
+
+
+def preconferir(pasta_arq: Path, status: str) -> dict:
+    """Lado do NÓ (VM-2/it-campo), antes de montar o lote: as mesmas réguas de `conferir_integra` (teor, árvore,
+    legibilidade de TODO .txt), sem a leitura independente — essa só existe na VM-1. Vai no MANIFESTO como
+    `processos[proc]["preconferencia"]`; os .txt que o nó julgou ilegíveis vão listados para a VM-1 sortear a
+    amostra entre os que ele disse legíveis (um "legível" que não é ⇒ o nó errou ⇒ quarentena)."""
+    ok, motivos, met = conferir_integra(pasta_arq, status, pasta_arq.name, None, com_referencia=False)
+    ilegiveis: list[str] = []
+    pasta_txt = pasta_arq / "texto"
+    for f in sorted(pasta_txt.glob("*.txt")) if pasta_txt.is_dir() else []:
+        try:
+            if not legivel(f.read_bytes().decode("utf-8")):
+                ilegiveis.append(f.name)
+        except (OSError, UnicodeDecodeError):
+            ilegiveis.append(f.name)
+    pre = {"versao": PRE_VERSAO, "aprovado": ok, "motivos": motivos, "metricas": met,
+           "em": time.strftime("%F %T"), "no": os.uname().nodename}
+    if len(ilegiveis) <= MAX_ILEGIVEIS_LISTADOS:
+        pre["ilegiveis"] = ilegiveis
+    return pre
+
+
+def conferir_barata(pasta_arq: Path, status: str, tag: str, juizo: dict | None,
+                    pre: dict) -> tuple[bool, list[str], dict]:
+    """Lado da VM-1 com `preconferencia` do nó. Lê só o `manifest.json`, `AMOSTRA_TEXTOS` textos e, se houver leitura
+    independente, os textos de até `TEXTOS_REFERENCIA` documentos de mesmo título. O md5 de TODOS os arquivos contra o
+    MANIFESTO do lote continua antes disto (`_importar`) — é ele que garante que a pré-conferência fala destes bytes."""
+    m = _ler_json(pasta_arq / "manifest.json")
+    if not isinstance(m, dict):
+        return False, ["manifesto ilegível ou ausente"], {"conferencia": "barata"}
+    docs = [d for d in (m.get("docs") or []) if isinstance(d, dict)]
+    n = len(docs)
+    total = _int(m.get("total_arvore")) or _int(m.get("docs_na_arvore"))
+    declarados = _int(m.get("nao_capturados"))
+    met: dict = {"docs": n, "arvore": total or None, "nao_capturados": declarados, "conferencia": "barata"}
+    motivos: list[str] = []
+    pm = pre.get("metricas") if isinstance(pre.get("metricas"), dict) else {}
+    # 1. a pré-conferência tem de falar do MESMO manifesto (nó com bug ou lote remontado à mão não passam)
+    for k in ("docs", "arvore", "nao_capturados"):
+        if _int(pm.get(k)) != _int(met[k]):
+            motivos.append(f"pré-conferência do nó não bate com o manifesto ({k}: {pm.get(k)} × {met[k]})")
+    # 2. réguas que o manifesto sozinho responde — recalculadas aqui, não copiadas do nó
+    if n == 0:
+        return False, motivos + ["status ok com zero documento"], met
+    if total and n + declarados < total:
+        motivos.append(f"árvore tem {total} documento(s), manifesto cobre {n}+{declarados} declarados")
+    com_teor = [d for d in docs if _int(d.get("chars")) >= 40]
+    if len(com_teor) / n < MIN_TEOR:
+        motivos.append(f"só {len(com_teor)}/{n} documentos com teor (< {MIN_TEOR:.0%})")
+    # 3. o que só o nó leu inteiro: contagem de .txt (stat, sem ler) e a régua de legibilidade dele
+    pasta_txt = pasta_arq / "texto"
+    arquivos_txt = sorted(pasta_txt.glob("*.txt")) if pasta_txt.is_dir() else []
+    n_txt, leg_no = _int(pm.get("txt")), _int(pm.get("txt_legiveis"))
+    met.update({"com_teor": len(com_teor), "txt": len(arquivos_txt), "txt_legiveis_no": leg_no})
+    if not arquivos_txt:
+        motivos.append("pasta texto/ vazia")
+    elif len(arquivos_txt) != n_txt:
+        motivos.append(f"{len(arquivos_txt)} .txt na pasta, a pré-conferência leu {n_txt}")
+    elif leg_no / len(arquivos_txt) < MIN_TEOR:
+        motivos.append(f"só {leg_no}/{len(arquivos_txt)} textos legíveis (pré-conferência do nó)")
+    vazios = [d for d in com_teor if _arq_txt(d) and (pasta_txt / _arq_txt(d)).is_file()
+              and (pasta_txt / _arq_txt(d)).stat().st_size < 40]
+    if vazios:
+        motivos.append(f"{len(vazios)} documento(s) com teor no manifesto e .txt vazio (ex.: {_arq_txt(vazios[0])})")
+    if pre.get("aprovado") is False:
+        motivos += [f"nó: {x}" for x in (pre.get("motivos") or ["reprovado na pré-conferência"])][:5]
+    # 4. amostra relida AQUI, entre os que o nó disse legíveis, espalhada pela árvore (não só os maiores)
+    ilegiveis = set(pre.get("ilegiveis") or []) if isinstance(pre.get("ilegiveis"), list) else None
+    candidatos = [p for d in com_teor if (a := _arq_txt(d)) and (p := pasta_txt / a).is_file()
+                  and (ilegiveis is None or a not in ilegiveis)]
+    passo = max(1, len(candidatos) // AMOSTRA_TEXTOS)
+    amostra_txt = candidatos[::passo][:AMOSTRA_TEXTOS]
+    ruins = []
+    for p in amostra_txt:
+        try:
+            if not legivel(p.read_bytes().decode("utf-8")):
+                ruins.append(p.name)
+        except (OSError, UnicodeDecodeError):
+            ruins.append(p.name)
+    met["amostra_vm1"] = f"{len(amostra_txt) - len(ruins)}/{len(amostra_txt)} legíveis"
+    # com a lista do nó, um "legível" que não é = o nó errou; sem ela, só a maioria ilegível reprova
+    if ruins and (ilegiveis is not None or len(ruins) * 2 > len(amostra_txt)):
+        motivos.append(f"amostra relida na VM-1: {', '.join(ruins[:3])} ilegível(is), o nó disse legível")
+    # 5. leitura independente da VM-1: títulos do manifesto, texto só dos que casam (preguiçoso)
+    ref = _referencia_preguicosa(tag, docs)
+    novos: dict[str, str] = {}
+    caminhos: dict[str, Path] = {}
+    for d in docs:
+        t = _norm_titulo(d.get("titulo", ""))
+        if t not in novos:
+            novos[t] = ""
+            if _arq_txt(d):
+                caminhos[t] = pasta_txt / _arq_txt(d)
+    lidos = 0
+    for t in ref:
+        c = _titulo_correspondente(t, novos) if t else None
+        if c and lidos < TEXTOS_REFERENCIA and c in caminhos and caminhos[c].is_file() \
+                and legivel(_sem_cabecalho(ref[t])):
+            novos[c] = caminhos[c].read_text(encoding="utf-8", errors="replace")
+            lidos += 1
+    ok_ref, nota = comparar_com_referencia(novos, ref)
+    met["referencia"] = nota
+    if ok_ref is False:
+        motivos.append(nota)
+    if juizo:
+        met["juizo_claude"] = {k: juizo.get(k) for k in ("legivel", "corresponde", "motivo", "modelo")}
+        if juizo.get("legivel") is False or juizo.get("corresponde") is False:
+            motivos.append(f"juízo do Claude (VM-2): {str(juizo.get('motivo') or 'reprovado')[:120]}")
+    return not motivos, motivos, met
+
+
+def _referencia_preguicosa(tag: str, docs_novos: list[dict]) -> dict[str, str]:
+    """Como `_referencia`, mas do arquivo atual da VM-1 só lê o TEXTO dos documentos cujo título casa com a entrega
+    (até `TEXTOS_REFERENCIA` com corpo); os demais entram só pelo título (texto "" — `comparar_com_referencia` mede a
+    cobertura por título e a semelhança só de quem tem corpo legível). Medido em 23/11/2026 em 60 entregas reais: ler
+    TODA a referência custava ~0,22 s por processo, 4× o resto da conferência. Sem `docs` no manifesto antigo (ou sem
+    arquivo), vale o `_referencia` de sempre (pasta solta ou cache CDP)."""
+    pasta = ARQUIVO / tag
+    man = _ler_json(pasta / "manifest.json")
+    if not (isinstance(man, dict) and man.get("docs")):
+        return _referencia(tag)
+    novos = dict.fromkeys((_norm_titulo(d.get("titulo", "")) for d in docs_novos), "")
+    ref: dict[str, str] = {}
+    lidos = 0
+    for d in man["docs"]:
+        if not isinstance(d, dict) or not (arq := _arq_txt(d)):
+            continue
+        p = pasta / "texto" / arq
+        try:
+            if p.stat().st_size == 0:      # `_referencia` só conta título COM texto: o denominador tem de ser o mesmo
+                continue
+        except OSError:
+            continue
+        t = _norm_titulo(d.get("titulo", ""))
+        if ref.get(t):
+            continue
+        txt = ""
+        if lidos < TEXTOS_REFERENCIA and _titulo_correspondente(t, novos):
+            txt = p.read_text(encoding="utf-8", errors="replace")
+            lidos += legivel(_sem_cabecalho(txt))
+        ref[t] = txt
+    if not ref:
+        # nenhum texto no arquivo antigo: `_referencia` também não o usaria (só conta quem tem texto) — cai no cache CDP
+        return _referencia(tag)
+    return ref
+
+
+def _conferir_entrega_integra(pasta: Path, status: str, tag: str, info: dict) -> tuple[bool, list[str], dict]:
+    """Escolhe a conferência: barata quando ligada E o nó mandou pré-conferência desta versão; senão a completa."""
+    pre = info.get("preconferencia")
+    if barata_ligada() and status == "ok" and isinstance(pre, dict) and pre.get("versao") == PRE_VERSAO:
+        return conferir_barata(pasta, status, tag, info.get("juizo"), pre)
+    return conferir_integra(pasta, status, tag, info.get("juizo"))
 
 
 # ───────────────────────── conferência de um cache CDP (sweep geral) ─────────────────────────
@@ -399,7 +583,7 @@ def _importar(lote: str) -> dict:
             pref = (f"arquivo/{tag}/", f"cache/integra_{tag}/")
             erros = _md5_confere(base, arquivos, pref)
             pasta = base / "arquivo" / tag
-            ok, motivos, met = (False, erros, {}) if erros else conferir_integra(pasta, status, tag, info.get("juizo"))
+            ok, motivos, met = (False, erros, {}) if erros else _conferir_entrega_integra(pasta, status, tag, info)
             if ok:
                 _substituir(pasta, ARQUIVO / tag, lote)
                 if (base / "cache" / f"integra_{tag}").is_dir():
