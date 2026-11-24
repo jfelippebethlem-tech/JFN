@@ -11,8 +11,8 @@ Cada estágio é um tipo de job com contrato fixo:
 
 Quem roda handler e efeito é SEMPRE o processo-filho `compliance_agent.fluxo.executar`, nunca o supervisor
 (catraca em tests/test_fluxo_supervisor.py). E0 "eco" (teste) e, desde a O2.1, `legado:<rotina>` (estagios/legado.py:
-roda o comando que rodava antes da parada), E18 `observar` (O8.1: sensores → fluxo.metricas); os outros estágios
-reais chegam na O3+.
+roda o comando que rodava antes da parada), E18 `observar` (O8.1: sensores → fluxo.metricas), E2 `arvore` e E3 `capturar` (O3.3); os outros
+estágios reais chegam na O3+.
 """
 from __future__ import annotations
 
@@ -126,5 +126,11 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "detectar":                                       # E10 (O5.3, sombra ⚖️): import tardio, como a E9
         from compliance_agent.aplicacao.estagios import detectar
         return detectar.ESTAGIO
+    if familia == "arvore":                                         # E2 (O3.3): import tardio (playwright só no filho)
+        from compliance_agent.aplicacao.estagios import arvore
+        return arvore.ESTAGIO
+    if familia == "capturar":                                       # E3 (O3.3)
+        from compliance_agent.aplicacao.estagios import capturar
+        return capturar.ESTAGIO
     return REGISTRO.get(familia)
 

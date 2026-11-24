@@ -12,8 +12,13 @@ Ordem (lexicográfica, igual à do sei_sweep; cada degrau é um componente GRAVA
   4. lacuna provada pelo parecer;
   5. sinal OSINT no credor;
   6. folha/previdência por último DENTRO do estrato (rebaixada, nunca excluída);
-  7. valor de OB paga do SIAFE (régua `cruzamentos_intel._ob_paga`), maior antes.
-  Desempate (não existia no sei_sweep — só decide entre valores iguais): risco dos achados maior, depois mais antigo.
+  7. ESCALAR de valor = log10(1 + OB paga do SIAFE, régua `cruzamentos_intel._ob_paga`) ÷ 12 (R$ 1 tri ≈ 1,0) + o
+     bônus das LENTES do item (config/lentes.yaml, `compliance_agent/fluxo/lentes.py`: bombeiros +0,2), maior antes.
+     Sem lente o escalar é monótono no valor ⇒ a ordem é EXATAMENTE a do sei_sweep (catraca no teste). A lente só
+     mexe DENTRO do degrau 7: nunca pula estrato (manual, direta grande, lacuna, OSINT, folha) — +0,2 equivale a
+     ~250× o valor (10^2,4), gravado em `explicar` para a posição ser explicável.
+  Desempate (não existia no sei_sweep — só decide entre escalares iguais): valor bruto maior, risco dos achados maior,
+  depois mais antigo.
 A cota Couto de 50% é RESERVA DE SLOTS, não peso: `ordenar` intercala com `foco.intercalar` (⌈n·fração⌉ itens do
 período em todo prefixo). Nunca se ordena pela posição na árvore (lição "quais 40").
 
@@ -30,6 +35,7 @@ from typing import Callable, Iterable, Sequence, TypeVar
 
 PISO_DIRETA = 1_000_000.00          # = tools/sei_sweep.PISO_DIRETA (SEI_PISO_CONTRATACAO_DIRETA)
 _ESCALA_VALOR = 5000                # log10(1+R$) × 5000: R$ 1 tri ≈ 60.000 — cabe nos 5 dígitos do degrau 7
+_DIGITOS_TETO = 12.0                # escalar de valor = log10(1+R$) ÷ 12: R$ 1 tri ≈ 1,0 (a régua do bônus da lente)
 _TETO_VALOR = 99_999
 T = TypeVar("T")
 
@@ -48,15 +54,21 @@ class Sinais:
     risco: float = 0.0               # maior risco dos achados do item (0..1)
     idade_dias: float = 0.0
     couto: bool = False              # período Couto (foco.eh_couto)
-    lente: str | None = None
+    lente: str | None = None         # lente(s) que casaram com o item (nomes separados por vírgula), só p/ explicar
+    bonus_lente: float = 0.0         # soma das `prioridade` das lentes que casaram (lentes.bonus)
 
 
 def direta_grande(s: Sinais) -> bool:
     return s.contratacao_direta and (s.ob_paga or 0) >= PISO_DIRETA
 
 
+def escalar_valor(s: Sinais) -> float:
+    """Degrau 7: log10(1 + OB paga) ÷ 12 + bônus da lente. Monótono no valor; a lente soma (§3.6, `prioridade`)."""
+    return math.log10(1.0 + max(0.0, s.ob_paga or 0.0)) / _DIGITOS_TETO + (s.bonus_lente or 0.0)
+
+
 def chave(s: Sinais) -> tuple:
-    """A chave de ordenação (menor = antes). Degraus 1–7 = a lambda de `tools/sei_sweep._fila`."""
+    """A chave de ordenação (menor = antes). Degraus 1–7 = a lambda de `tools/sei_sweep._fila` (o 7 com a lente)."""
     dg = direta_grande(s)
     return (0 if s.urgente_dono else 1,
             0 if (s.legivel or s.manual or dg) else 1,
@@ -65,14 +77,15 @@ def chave(s: Sinais) -> tuple:
             0 if s.lacuna_provada else 1,
             0 if s.osint else 1,
             1 if s.folha else 0,
+            -escalar_valor(s),
             -(s.ob_paga or 0),
             -(s.risco or 0),
             -(s.idade_dias or 0))
 
 
-def _balde_valor(v: float) -> int:
-    """Maior valor ⇒ número menor. Monótono (não estrito: valores muito próximos podem empatar no balde)."""
-    return _TETO_VALOR - min(_TETO_VALOR, int(math.log10(1.0 + max(0.0, v or 0.0)) * _ESCALA_VALOR))
+def _balde_valor(s: Sinais) -> int:
+    """Maior escalar ⇒ número menor. Monótono (não estrito: valores muito próximos podem empatar no balde)."""
+    return _TETO_VALOR - min(_TETO_VALOR, max(0, int(escalar_valor(s) * _DIGITOS_TETO * _ESCALA_VALOR)))
 
 
 def inteiro(s: Sinais) -> int:
@@ -82,13 +95,13 @@ def inteiro(s: Sinais) -> int:
     bits = 0
     for b in k[:7]:
         bits = bits * 2 + b
-    return bits * 100_000 + _balde_valor(s.ob_paga)
+    return bits * 100_000 + _balde_valor(s)
 
 
 def explicar(s: Sinais) -> dict:
     """Componentes gravados com o job (`payload.prioridade`): o porquê de cada posição."""
     return {"inteiro": inteiro(s), "faixa": 0 if s.urgente_dono else 1, "direta_grande": direta_grande(s),
-            "sinais": asdict(s)}
+            "escalar_valor": round(escalar_valor(s), 6), "bonus_lente": s.bonus_lente or 0.0, "sinais": asdict(s)}
 
 
 def ordenar(itens: Iterable[T], sinais: Callable[[T], Sinais], fracao_couto: float | None = None) -> list[T]:

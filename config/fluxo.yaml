@@ -1442,6 +1442,37 @@ rotinas:
     - {cron: '50 */2 * * *'}
     origem: [leitura_integral_colher]
     efeito: {descricao: 'lotes prontos colhidos: fatos ancorados (texto[inicio:fim] = citação) gravados por chave de fatia e leituras com cobertura', so_rc: 'a colheita imprime o resumo por lote (gravadas/descartadas/inválidas/processos concluídos); a prova por processo é o efeito do job fatos:<processo> (recontagem + amostra de 20 reaberta no acervo)'}
+  arvore_e2:
+    estagio: E2
+    descricao: 'E2 árvore (O3.3): árvore viva do processo SEI pelo leitor canônico itkava, paginada até o fim, com tree_hash (evidencias.hash_arvore dos ids da função única do domínio) gravado em arvore_leitura/arvores/documentos do PG; guarda de convergência: hash igual e nenhum documento sem versão = sem mudança e fim; fila única (fluxo.prioridade com os sinais do sei_sweep) e lentes (config/lentes.yaml) como filtro + prioridade'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.arvore, fila, --limite, '20']
+    recursos: [navegador]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 50
+    concorrencia: [sei_rj_ip]
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): nenhum navegador SEI religado; religar na O9.0 com captura_001.sql aplicado no esquema public (`arvore schema aplicar`) e o planejador agendando o tipo nativo `arvore:<processo>` na ordem da `fila`. Esta rotina só imprime a fila (não abre navegador)'
+    nota: 'O3.3. Por processo: job `arvore:<processo>` (handler + efeito do estágio nativo; idempotente pela posse (chave, ficha); evento arvore/documento_novo suja o E3). Substitui sweep_sei, sweep_sei_noturno, varredura_sei_lane, vm2_sweep_geral e o sei_bombeiros_sweep (lente bombeiros: paridade por replay do bombeiros_sweep.out sobre o snapshot da parada, 3.859 capturados ⊆ 25.078 selecionados, 0 faltando; `arvore paridade --lente bombeiros`)'
+    agenda:
+    - {cron: '20 */2 * * *'}
+    origem: [sweep_sei, sweep_sei_noturno, varredura_sei_lane, vm2_sweep_geral, sei_bombeiros_sweep]
+    efeito: {descricao: 'a fila impressa na ordem única com os componentes de cada posição; a prova por processo é o efeito do job arvore:<processo> (hash recalculado dos ids gravados e faltas recontadas no PG)', so_rc: 'a CLI fila só lê (fonte só-leitura imutável); o efeito real é o do job nativo'}
+  capturar_e3:
+    estagio: E3
+    descricao: 'E3 capturar (O3.3): só os documentos novos (delta por id_documento sobre os guardados do PG) por tools/sei_integra_completa.py com JFN_CAPTURA_DELTA=1, Gerar PDF em lotes de 40 com conferência por marcador e laço até o fim; versões sha256 (hash_de binario) + aquisicao no PG; efeito só com 0 omitido recontado'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.capturar, pendentes]
+    recursos: [navegador]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 50
+    concorrencia: [sei_rj_ip]
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026); religar na O9.0 junto com o arvore_e2 (o E3 só nasce do evento arvore/documento_novo). Antes de religar: o arquivador (E4/E7) tem de ler as versões binárias do E3 em data/sei_cache/integra_<pasta>'
+    nota: 'O3.3. Por processo: job `capturar:<processo>`; esta rotina só LISTA os processos cuja leitura vigente do E2 tem documento sem versão (só leitura do PG); a CLI `um --processo` roda E2+E3 de um processo fora do motor (teste real). Substitui sei_integra_fila, integra_fila_dinheiro, vm2_integras, sei_integra_vm2_precalcular, run_integras_bombeiros e bombeiros_integra_supervisor'
+    evento: {depende: [arvore_e2], debounce_s: 60}
+    origem: [sei_integra_fila, integra_fila_dinheiro, vm2_integras, sei_integra_vm2_precalcular]
+    efeito: {descricao: 'aquisição da posse no PG, versões declaradas presentes, sha256 recalculado de cada arquivo e faltas (árvore − versões − restritos) recontadas = 0', so_rc: 'a CLI um imprime e2_efeito/e3_efeito; a prova por processo é o efeito do job nativo'}
   handoff_watcher:
     estagio: E18
     descricao: Vigia de passagem de sessão

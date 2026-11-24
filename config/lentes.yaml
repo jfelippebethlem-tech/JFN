@@ -1,0 +1,34 @@
+# lentes.yaml — LENTES da Esteira Única (plano mestre v2 §3.6): configuração, sem código próprio de captura,
+# perícia, Lex ou relatório. Lido só por compliance_agent/fluxo/lentes.py (validado no carregamento).
+#
+# Uma lente é FILTRO + PRIORIDADE sobre a fila única (compliance_agent/fluxo/prioridade.py):
+#   filtro.ug          UGs do SIAFE (código). CADA UMA é conferida contra o índice do SIAFE (`conferir_siafe`: o
+#                      dropdown selUg baixado por tools/siafe_ug_index.py em data/ug_index_siafe.json) — a sigla
+#                      tem de ser a escrita aqui, senão o carregamento recusa (UG não se escreve de memória).
+#   filtro.orgao_sei   prefixos do nº SEI-RJ (2 dígitos = órgão) DERIVADOS do SIAFE, não escritos aqui: um prefixo
+#                      entra quando ≥ `posse_minima` das OBs com processo daquele prefixo são das UGs da lente, com
+#                      pelo menos `minimo_obs` OBs (`lentes.derivar_orgao_sei`). Pega o processo que nenhuma OB cita
+#                      (licitação, processo-pai) — é por onde o sweep antigo o alcançava (citação/contrato).
+#   prioridade         soma ao ESCALAR de valor da fila única (degrau 7; nunca pula estrato).
+#   detectores_extra   só detectores registrados, com domínio declarado (nenhum por enquanto).
+#   produto            relatório genérico (E16) com o filtro.
+#   alerta             Yoda só fala quando o dono pedir.
+# A cota Couto (50% do esforço) NÃO mora aqui: é config/foco.yaml (ponto único; duplicar seria a constante copiada).
+versao: 1
+lentes:
+  bombeiros:
+    descricao: 'CBMERJ (SEDEC — Secretaria de Estado de Defesa Civil e Corpo de Bombeiros Militar) e FUNESBOM (Fundo Especial do Corpo de Bombeiros); substitui o tools/sei_bombeiros_sweep.py e o jfn-bombeiros-supervisor (O3.3)'
+    filtro:
+      ug: ['160100', '166100', '161601']
+      orgao_sei: {derivar: siafe, posse_minima: 0.95, minimo_obs: 100}
+    conferir_siafe:
+      # Lido em data/ug_index_siafe.json (selUg do SIAFE-Rio 2, atualizado_em 2026-07-11, 596 UGs) e medido no
+      # snapshot da parada (24/11/2026): 160100 tem 4.779 OBs (2.720 com processo), 166100 tem 58.269 (27.960);
+      # 161601 está no índice e tem 0 OB coletada — fica na lente para não sumir quando tiver.
+      '160100': SEDEC
+      '166100': FUNESBOM
+      '161601': Sedec
+    prioridade: 0.2
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
