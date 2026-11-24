@@ -2176,9 +2176,12 @@ export async function renderFornecedorDependente(){
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
   h+=`<div id="dep-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')} · aparece em ${x.n_ugs} órgão(s)</div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')} · aparece em ${x.n_ugs} órgão(s)</div>
+      ${x.regime?`<span class="tag" style="margin-top:5px;display:inline-block" title="${esc(x.regime_regra||'')}">Regime: ${esc(x.regime)}</span>`:''}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share>=0.99?'var(--rose)':'var(--amber)'}">${Math.round(x.share*100)}%</div><div class="dim">de ${fmtRc(x.total)}</div></div></div>
-      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
+      ${leitura(x.regime
+        ?`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')}. Regime próprio — <b>${esc(x.regime)}</b>: ${esc(x.regime_regra||'')}`
+        :`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
     x.share>=0.99?'hl':'')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
