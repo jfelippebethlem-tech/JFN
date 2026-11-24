@@ -1413,14 +1413,64 @@ def fornecedor_dependente(db_path: str | None = None, min_total: float = 2_000_0
             "total": r["t"], "valor_ug": r["v"], "share": round(r["v"] / r["t"], 2) if r["t"] else 0,
             "ug": r["ug_emitente"], "ug_nome": ugn.get(r["ug_emitente"], ""), "n_ugs": r["n_ugs"]}
             for r in rows]
+        for a in achados:
+            a.update(regime_do_credor(con, a["cnpj"]))
         return {"ok": True, "achados": achados, "n": len(achados),
                 "explicacao": ("Empresa que recebe quase tudo (≥90%) de uma única unidade gestora do "
                                "Estado. Dependência total de um comprador é o perfil de fornecedor "
                                "cativo/'empresa do órgão' — mercado fechado, risco de direcionamento."),
                 "ressalva": ("Monopólio pode ser legítimo (nicho, concessão exclusiva) — cruzar com o "
-                             "histórico de licitações do órgão e o QSA. Indício ≠ acusação.")}
+                             "histórico de licitações do órgão e o QSA. OS e OSC ficam na lista com o REGIME "
+                             "marcado (contrato de gestão, Lei 9.637/1998; parceria, Lei 13.019/2014): seguem "
+                             "regras próprias, não a licitação da 14.133. Indício ≠ acusação.")}
     finally:
         con.close()
+
+
+# Decisão do dono (24/11/2026): OS/OSC é fornecedor NORMAL que segue REGRAS DIFERENTES — não sai da lista; o item
+# carrega o regime e a régua que vale para ele. Fonte: ~/vault/notas/doutrina/MAPA-DE-REGIMES.md (linhas 2 e 3).
+REGIME_OS = ("contrato de gestão com Organização Social — Lei 9.637/1998",
+             "A seleção da OS não segue a licitação da Lei 14.133 (dispensa do art. 75, XV/8.666 art. 24, XXIV, após "
+             "qualificação e publicidade — Lei 9.637 arts. 5º–7º). Receber quase tudo de uma UG é do DESENHO do contrato "
+             "de gestão, não indício de empresa cativa. O que se mede: metas e indicadores pactuados, prestação de "
+             "contas e relatório da comissão de avaliação (arts. 8º–9º), subcontratação do objeto e vínculo dirigente × "
+             "órgão.")
+REGIME_MROSC = ("parceria com OSC (termo de colaboração/fomento) — Lei 13.019/2014",
+                "A escolha da OSC é por chamamento público (arts. 24 e 29–31), não por licitação da 14.133 (art. 84 afasta "
+                "a lei de licitações). Dependência de uma UG é da parceria. O que se mede: chamamento ou sua dispensa "
+                "motivada, plano de trabalho e metas (art. 22), liberação conforme cronograma (art. 48) e prestação de "
+                "contas (arts. 63–72).")
+REGIME_SFL = ("entidade sem fins lucrativos (natureza jurídica 3xxx) — regime a confirmar no instrumento",
+              "Pode ser contrato de gestão (Lei 9.637), parceria MROSC (Lei 13.019) ou contratação comum (Lei 14.133, ex.: "
+              "fundação de apoio, art. 75, XV). Ler o instrumento antes de aplicar a régua de fornecedor cativo.")
+
+
+def regime_do_credor(con, cnpj: str) -> dict:
+    """Regime do credor para o leitor do item: {regime, regime_regra} (vazio = fornecedor comercial, régua comum).
+
+    Natureza 3xxx da Receita = entidade sem fins lucrativos. O instrumento sai do ELEMENTO/MODALIDADE dos empenhos dele
+    (ne_siafe, 2024+): modalidade 50 (transferência a instituição privada sem fins lucrativos) → parceria MROSC;
+    elemento 34 (despesa de pessoal por terceirização — como o RJ empenha o contrato de gestão, LRF art. 18 §1º) →
+    contrato de gestão; sem empenho conhecido → 'a confirmar' (INDISPONÍVEL não vira regime)."""
+    try:
+        r = con.execute("SELECT natureza_cod FROM empresas_cadastro WHERE cnpj_basico=?", ((cnpj or "")[:8],)).fetchone()
+    except sqlite3.Error:
+        return {}
+    if not r or not str(r[0] or "").startswith("3"):
+        return {}
+    try:
+        nats = con.execute("SELECT natureza, SUM(valor) FROM ne_siafe WHERE credor=? GROUP BY natureza "
+                           "ORDER BY 2 DESC", (cnpj,)).fetchall()
+    except sqlite3.Error:
+        nats = []
+    regime = REGIME_SFL
+    if nats:
+        top = str(nats[0][0] or "")
+        if top[2:4] == "50":
+            regime = REGIME_MROSC
+        elif top[4:6] == "34":
+            regime = REGIME_OS
+    return {"regime": regime[0], "regime_regra": regime[1], "natureza_juridica": str(r[0])}
 
 
 def capital_incompativel(db_path: str | None = None, min_total: float = 1_000_000,
