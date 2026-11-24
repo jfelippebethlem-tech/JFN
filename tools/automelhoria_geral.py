@@ -499,6 +499,21 @@ def sensor_propagacao(estado: dict | None = None) -> list[dict]:
     return out
 
 
+def sensor_deploy(arq: Path | None = None) -> list[dict]:
+    """Deploy pós-commit (tools/deploy_pos_commit.sh, 24/11/2026): o último restart do jfn.service deixou o painel
+    sem 200? O script não reverte nem tenta de novo — avisa aqui. Arquivo ausente = nenhum deploy ainda."""
+    arq = arq or DATA / "deploy_estado.json"
+    if not arq.exists():
+        return []
+    d = json.loads(arq.read_text(encoding="utf-8"))
+    if d.get("ok"):
+        return []
+    return [_p("deploy", "falhou", f"deploy do commit {d.get('commit')} falhou: {d.get('motivo')}",
+               f"base {d.get('base')} · data/deploy_pos_commit.log",
+               acao_humana="journalctl --user -u jfn -n 80; corrigir e commitar (o gancho reinicia de novo) "
+                           "ou reverter o commit")]
+
+
 def sensor_certeza(pasta: Path | None = None, agora: float | None = None) -> list[dict]:
     """Certeza (docs/ARQUITETURA-DE-CERTEZA.md): número divergente entre registro de fatos, vault, documentos e
     cérebro; violação de contrato de dados; nível de prova que regrediu; escrita recusada pelo portão; defeito grave
@@ -942,7 +957,8 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "qualidade": (sensor_qualidade, "regras de qualidade"),
              "autoaprimoramento": (sensor_autoaprimoramento, "autoaprimoramento da perícia"),
              "certeza": (sensor_certeza, "certeza dos números"),
-             "propagacao": (sensor_propagacao, "propagação (derivados além do SLO)"), "maquinas": (sensor_maquinas, "uso das máquinas"),
+             "propagacao": (sensor_propagacao, "propagação (derivados além do SLO)"),
+             "deploy": (sensor_deploy, "deploy pós-commit do painel"), "maquinas": (sensor_maquinas, "uso das máquinas"),
              "detectores": (sensor_detectores, "precisão dos detectores"),
              "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)"),
              "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)"),
