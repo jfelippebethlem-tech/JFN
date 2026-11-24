@@ -101,8 +101,21 @@ function _certeza(c){
     <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/certeza</code> · <code>docs/ARQUITETURA-DE-CERTEZA.md</code> · estado de ${esc(c.gerado_em_iso || '—')}</div>`);
 }
 
+// SLOs da Esteira Única (24/11/2026, O8.1): GET /api/sistema/slos — estado honesto por sensor; INDISPONÍVEL ≠ zero.
+const _COR_SLO = {SAUDAVEL: 'var(--green)', DEGRADADO: 'var(--amber)', ATRASADO: 'var(--amber)', BLOQUEADO: 'var(--rose)', INDISPONIVEL: null};
+function _slos(s){
+  if (!s || s.ok === false) return sec('SLOs da esteira', '—') + card(`<div class="warn"><b>INDISPONÍVEL</b> — ${esc((s && (s.motivo || s.erro)) || 'sem leitura dos sensores')}.</div>`);
+  const c = s.contagem || {};
+  const ruins = (s.itens || []).filter(i => i.estado && i.estado !== 'SAUDAVEL' && i.estado !== 'INDISPONIVEL');
+  const linhas = ruins.map(i => `<tr><td><b style="color:${_COR_SLO[i.estado] || 'inherit'}">${esc(i.estado)}</b></td><td>${esc(i.descricao || i.slo)}</td><td>${esc(i.no || '')}</td><td class="right">${i.valor == null ? '—' : esc(String(i.valor))} ${esc(i.unidade || '')}</td><td style="font-size:12px">${esc(i.remediar || '')}</td></tr>`).join('');
+  return sec('SLOs da esteira — estado honesto', esc(s.estado || '—')) + card(`<div style="font-size:13px">Estado global <b style="color:${_COR_SLO[s.estado] || 'inherit'}">${esc(s.estado || '—')}</b> — ${esc(s.motivo || '')}. ${fmtN(c.SAUDAVEL || 0)} saudável(is) · ${fmtN(c.DEGRADADO || 0)} degradado(s) · ${fmtN(c.ATRASADO || 0)} atrasado(s) · ${fmtN(c.BLOQUEADO || 0)} bloqueado(s) · ${fmtN(c.INDISPONIVEL || 0)} sem medida (não é zero).</div>
+    ${linhas ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Estado</th><th>O que mede</th><th>Máquina</th><th class="right">Valor</th><th>Remédio</th></tr></thead><tbody>${linhas}</tbody></table></div>` : ''}
+    <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/slos</code> · <code>config/slos.yaml</code></div>`);
+}
+
 export async function renderPropagacao(){
-  const [d, cz] = await Promise.all([J('/api/sistema/propagacao'), J('/api/sistema/certeza').catch(e => ({ok: false, erro: String(e)}))]);
+  const [d, cz, sl] = await Promise.all([J('/api/sistema/propagacao'), J('/api/sistema/certeza').catch(e => ({ok: false, erro: String(e)})),
+    J('/api/sistema/slos').catch(e => ({ok: false, erro: String(e)}))]);
   let h = cover('sistema', 'Propagação — o que mudou puxa o que depende',
     'Quando uma fonte muda (OB nova, status recoletado, processo SEI capturado, contrato novo, regra corrigida), tudo o que depende dela é marcado como desatualizado e recalculado sozinho, um trabalho pesado por vez. Aqui se vê o que está desatualizado, o que foi recalculado e o que falhou.', '🔁');
   if (!d || (d.ok === false && !d.estado)) return h + cardErro(d && (d.erro || d));
@@ -127,6 +140,7 @@ export async function renderPropagacao(){
   h += sec('Últimos eventos', fmtN((d.eventos || []).length)) + _eventos(d);
   h += _cerebro(d.cerebro, d.gerado_em);
   h += _certeza(cz);
+  h += _slos(sl);
   h += card(`<div class="dim" style="font-size:12px">Mapa de dependências: <code>config/propagacao.yaml</code> · estado lido em ${_hora(d.gerado_em)} · INDISPONÍVEL ≠ zero</div>`);
   return `<div id="pg-raiz">${h}${_css}</div>`;
 }
