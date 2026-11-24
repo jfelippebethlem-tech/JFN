@@ -26,7 +26,8 @@ _agent_loop_queue: Optional[asyncio.Queue] = None  # SSE stream
 @router.get("/api/hermes/estado")
 async def api_hermes_estado():
     """Estado do Hermes: missão, Chrome 9222, contagens e aprendizados recentes."""
-    from compliance_agent.database.models import get_session, init_db, OrdemBancaria, Alerta
+    from sqlalchemy import text as _sa_text
+    from compliance_agent.database.models import get_session, init_db, Alerta
     from compliance_agent.hermes_goal import HermesGoalAgent, chrome_disponivel
     from compliance_agent.llm.free_llm import openrouter_available, groq_available
     from compliance_agent.llm.memoria import lembrar
@@ -39,7 +40,9 @@ async def api_hermes_estado():
             "missao": ag.missao_atual(),
             "chrome_9222": await chrome_disponivel(),
             "llm_ok": bool(openrouter_available() or groq_available()),
-            "n_obs": s.query(OrdemBancaria).count(),
+            # OB coletadas do SIAFE (a fonte de pagamento); até 24/11/2026 contava o espelho TFE (ordens_bancarias)
+            "n_obs": s.execute(_sa_text("SELECT COUNT(*) FROM ob_orcamentaria_siafe")).scalar(),
+            "fonte_n_obs": "ob_orcamentaria_siafe (SIAFE, todas as situações)",
             "n_alertas": s.query(Alerta).filter((Alerta.status.is_(None)) | (Alerta.status != "descartado")).count(),
             "aprendizados": aprendizados,
         })

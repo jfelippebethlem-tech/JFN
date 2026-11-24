@@ -32,8 +32,12 @@ def _ambiente(tmp_path, registro, com_ob=True):
     con.execute("CREATE TABLE ordens_bancarias (numero_sei TEXT, ug_nome TEXT, valor REAL)")
     con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, status TEXT)")
     if com_ob:
+        # o NOME vem do espelho; o VALOR PAGO, do SIAFE (24/11/2026) — o 9.999 do espelho não pode entrar
         con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?)",
-                        [("SEI-040014/000001/2024", "FUNDO UNICO DE PREVIDENCIA", 1_000.0)] * 3)
+                        [("SEI-040014/000001/2024", "FUNDO UNICO DE PREVIDENCIA", 9_999.0)] * 3)
+        con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?)",
+                        [("SEI-040014/000001/2024", 1_000.0, "Contabilizado")] * 3
+                        + [("SEI-040014/000002/2024", 5_000.0, "Cancelado")])
     con.commit(); con.close()
     return db, acervo
 
@@ -118,6 +122,8 @@ def test_ordena_pela_RELEVANCIA_do_ponto_cego_nao_pelo_percentual():
     con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, status TEXT)")
     con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-040014/1/2024','PREVIDENCIA',900000.0)")
     con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-080002/1/2024','FUNDACAO SAUDE',1781000000.0)")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('SEI-040014/1/2024',900000.0,'Contabilizado')")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('SEI-080002/1/2024',1781000000.0,'Contabilizado')")
     con.commit(); con.close()
     u = C.medir(db=db, acervo=acervo)["restricao"]["por_unidade"]
     assert u[0]["ug"] == "080002", f"topo veio {u[0]['ug']} (percentual, não relevância)"

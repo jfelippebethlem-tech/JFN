@@ -126,13 +126,13 @@
         <div class="body" id="alertas"><div class="empty">Carregando…</div></div>
       </div>
       <div class="card">
-        <h2>Ordens Bancárias recentes <span class="count" id="obCount"></span></h2>
+        <h2>OB pagas recentes · SIAFE <span class="count" id="obCount"></span></h2>
         <div class="body" id="obs"><div class="empty">Carregando…</div></div>
       </div>
     </div>
     <div>
       <div class="card">
-        <h2>Maiores favorecidos</h2>
+        <h2>Maiores favorecidos · OB paga SIAFE 2021+</h2>
         <div class="body" id="top"><div class="empty">Carregando…</div></div>
       </div>
       <div class="card">
@@ -162,8 +162,8 @@ async function carregar(){
     if(d.error){document.getElementById('kpis').innerHTML='<div class="kpi red"><div class="label">Erro</div><div class="foot">'+esc(d.error)+'</div></div>';return;}
 
     document.getElementById('kpis').innerHTML = `
-      <div class="kpi brand"><div class="label">OBs hoje</div><div class="value">${d.obs.hoje}</div><div class="foot">${d.obs.total} no total</div></div>
-      <div class="kpi"><div class="label">Valor hoje</div><div class="value" style="font-size:22px">${money(d.obs.valor_hoje)}</div><div class="foot">${money(d.obs.valor_total)} acumulado</div></div>
+      <div class="kpi brand"><div class="label">OBs pagas hoje (SIAFE)</div><div class="value">${d.obs.hoje==null?'INDISPONÍVEL':d.obs.hoje}</div><div class="foot">${d.obs.total==null?'INDISPONÍVEL':d.obs.total.toLocaleString('pt-BR')} pagas de 2021 em diante</div></div>
+      <div class="kpi"><div class="label">Valor pago hoje (SIAFE)</div><div class="value" style="font-size:22px">${d.obs.valor_hoje==null?'INDISPONÍVEL':money(d.obs.valor_hoje)}</div><div class="foot">${d.obs.valor_total==null?'INDISPONÍVEL':money(d.obs.valor_total)+' pagos 2021+'} · OB do SIAFE é a fonte; TFE é espelho</div></div>
       <div class="kpi red"><div class="label">Alertas altos</div><div class="value">${d.alertas.alta}</div><div class="foot">${d.alertas.total} alertas totais</div></div>
       <div class="kpi amber"><div class="label">Alertas médios</div><div class="value">${d.alertas.media}</div><div class="foot">última coleta: ${esc(d.ultima_coleta)}</div></div>`;
 
@@ -194,7 +194,7 @@ async function carregar(){
 
     // Top
     const top = d.top_favorecidos||[];
-    document.getElementById('top').innerHTML = top.length ? top.map((t,i)=>`
+    document.getElementById('top').innerHTML = d.top_favorecidos==null ? '<div class="empty">INDISPONÍVEL — SIAFE não respondeu.</div>' : top.length ? top.map((t,i)=>`
       <div class="row">
         <div style="min-width:0;flex:1"><div class="nm">${i+1}. ${esc(t.nome)}</div><div class="sm">${t.n} OB(s)</div></div>
         <div class="vl">${money(t.total)}</div>

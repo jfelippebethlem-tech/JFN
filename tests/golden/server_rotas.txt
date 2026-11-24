@@ -40,6 +40,7 @@ GET /api/compliance/painel -> api_painel
 GET /api/compliance/relatorio_30d -> api_relatorio_30d
 GET /api/compliance/reports -> api_compliance_reports
 GET /api/compliance/stats -> api_compliance_stats
+GET /api/conciliacao/ob_tfe -> api_conciliacao_ob_tfe
 GET /api/conflito -> api_conflito
 GET /api/conjunto/orgao -> api_conjunto_orgao
 GET /api/conjunto/portfolio -> api_conjunto_portfolio

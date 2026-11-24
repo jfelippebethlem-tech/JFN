@@ -286,21 +286,42 @@ def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
 
 def processos_risco_de_orgao(ug: str, limite: int = 30) -> list[dict]:
     """Processos SEI de RISCO (sei_ficha nivel_risco alto/médio) PAGOS por uma UG, com OB total. Insumo do /orgao:
-    prioriza a apuração por onde o dinheiro andou. Trata o split de acento em nivel_risco (medio/médio)."""
+    prioriza a apuração por onde o dinheiro andou. Trata o split de acento em nivel_risco (medio/médio).
+
+    24/11/2026: o pago vinha do espelho TFE (`ordens_bancarias.numero_sei` × `valor`) e a coluna da peça se chamava
+    "Pago (R$)". Agora é OB PAGA do SIAFE da UG (régua `_ob_paga`), processo casado pela chave canônica
+    (`ob_processo.chave_processo`/`_canonico`, a mesma de `pago_siafe_por_processo`). Sem SIAFE ⇒ [] (o /orgao
+    declara INDISPONÍVEL)."""
+    from compliance_agent.ob_processo import _canonico, chave_processo
     if not _DB.exists():
         return []
-    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=60); con.row_factory = sqlite3.Row
     try:
-        rows = con.execute(
-            "SELECT f.numero_sei, f.nivel_risco, f.objeto, f.red_flags, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total "
-            "FROM sei_ficha f JOIN ordens_bancarias o ON o.numero_sei=f.numero_sei "
-            "WHERE o.ug_codigo=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
-            "AND lower(f.nivel_risco) IN ('alto','medio','médio') "
-            "GROUP BY f.numero_sei ORDER BY total DESC LIMIT ?", (str(ug), limite)).fetchall()
-        return [dict(r) for r in rows]
+        pago: dict[str, list] = {}
+        for proc, v in con.execute(
+                f"SELECT processo, valor FROM ob_orcamentaria_siafe WHERE ug_emitente=? AND {_ob_paga(con)} "
+                "AND COALESCE(processo,'')<>''", (str(ug),)):
+            k = chave_processo(proc)
+            if k:
+                a = pago.setdefault(_canonico(k), [0, 0.0])
+                a[0] += 1
+                a[1] += float(v or 0)
+        if not pago:
+            return []
+        out = []
+        for r in con.execute("SELECT numero_sei, nivel_risco, objeto, red_flags FROM sei_ficha "
+                             "WHERE lower(nivel_risco) IN ('alto','medio','médio') AND COALESCE(numero_sei,'')<>''"):
+            k = chave_processo(r["numero_sei"])
+            if k and (a := pago.get(_canonico(k))):
+                out.append({**dict(r), "n_obs": a[0], "total": round(a[1], 2),
+                            "fonte_pago": "SIAFE (OB paga, régua _ob_paga)"})
+        # mesma chave em duas fichas (grafias do processo) conta uma vez
+        unicos = {_canonico(chave_processo(x["numero_sei"])): x for x in out}
+        return sorted(unicos.values(), key=lambda x: -x["total"])[:limite]
+    except sqlite3.OperationalError:
+        return []
     finally:
         con.close()
-
 
 if __name__ == "__main__":
     import json

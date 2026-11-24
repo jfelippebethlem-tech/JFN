@@ -202,6 +202,15 @@ def estado_do_par(ug: str, ano: str, *, db: str | Path | None = None) -> dict[st
         return {"estado": "indisponivel", "motivo": str(exc)}
     finally:
         con.close()
+    return estado_por_contagem(n_esp, ausentes, n_siafe)
+
+
+def estado_por_contagem(n_esp: int, ausentes: int, n_siafe: int) -> dict[str, Any]:
+    """A régua de `estado_do_par` aplicada a contagens já feitas: `n_esp` OB do espelho no par, `ausentes` delas sem o
+    mesmo número+UG no SIAFE (qualquer situação), `n_siafe` linhas do SIAFE no par. Quem já varreu os dois lados
+    (a conciliação SIAFE × TFE) usa esta função em vez de refazer uma consulta por par."""
+    if not n_esp:
+        return {"estado": "sem_referencia", "obs_siafe": n_siafe}
     pct = 100.0 * ausentes / n_esp
     return {
         "estado": ("nunca_coletado" if n_siafe == 0 else

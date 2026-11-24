@@ -42,30 +42,30 @@ def _norm_nome(s: str) -> str:
 
 
 def _empresas_com_ob(con) -> dict[str, dict]:
-    """CNPJ -> {n_ob, total} a partir de ordens_bancarias (TFE) + ob_orcamentaria_siafe (SIAFE)."""
+    """CNPJ -> {n_ob, total} pela OB PAGA do SIAFE (régua `_ob_paga`).
+
+    Até 24/11/2026 somava as DUAS fontes: `n_ob` = OB do espelho TFE + OB do SIAFE (a mesma OB contada duas vezes) e
+    `total` = só o TFE (o SIAFE entrava com 0). O espelho não é fonte de pagamento (CLAUDE.md, NÃO REINVENTAR 1)."""
     emp: dict[str, dict] = {}
-    for sql, campo in [("SELECT favorecido_cpf, COUNT(*), COALESCE(SUM(valor),0) FROM ordens_bancarias "
-                        "WHERE favorecido_cpf IS NOT NULL GROUP BY favorecido_cpf", "tfe"),
-                       ("SELECT credor, COUNT(*), 0 FROM ob_orcamentaria_siafe WHERE credor IS NOT NULL GROUP BY credor", "siafe")]:
-        try:
-            for c, n, tot in con.execute(sql):
-                d = _digits(c)
-                if len(d) != 14:
-                    continue
-                e = emp.setdefault(d, {"n_ob": 0, "total": 0.0})
-                e["n_ob"] += n or 0
-                e["total"] += float(tot or 0)
-        except sqlite3.Error as exc:
-            logger.warning("fonte %s do conflito falhou (vínculos podem sumir mudos): %s", campo, exc)
-            continue
+    try:
+        for c, n, tot in con.execute(
+                f"SELECT credor, COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
+                f"WHERE credor IS NOT NULL AND {_ob_paga(con)} GROUP BY +credor"):
+            d = _digits(c)
+            if len(d) != 14:
+                continue
+            e = emp.setdefault(d, {"n_ob": 0, "total": 0.0})
+            e["n_ob"] += n or 0
+            e["total"] += float(tot or 0)
+    except sqlite3.Error as exc:
+        logger.warning("fonte SIAFE do conflito falhou (vínculos podem sumir mudos): %s", exc)
     return emp
 
 
 def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 12) -> dict[str, dict]:
     """Para cada CNPJ contratado, devolve {ugs:[{ug, nome, total, n_ob}], seis:[numero_sei...]}.
 
-    Fonte: ordens_bancarias (TFE, tem ug_codigo/ug_nome/numero_sei) + ob_orcamentaria_siafe (SIAFE, tem
-    ug_pagadora/processo). UG resolvida pelo CÓDIGO via mapa canônico (a OB às vezes rotula com o órgão
+    Fonte: OB PAGA do SIAFE (`ob_orcamentaria_siafe`, régua `_ob_paga`: ug_pagadora/ug_emitente + processo). UG resolvida pelo CÓDIGO via mapa canônico (a OB às vezes rotula com o órgão
     superior — ver compliance_agent/ugs.py). Só leitura; seguro com o sweep rodando (WAL)."""
     if not cnpjs:
         return {}
@@ -80,24 +80,7 @@ def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 1
     place = ",".join("?" * len(cnpjs))
     alvos = list(cnpjs)
 
-    # (1) TFE — favorecido_cpf guarda o CNPJ (14 díg.); ug_codigo + ug_nome + numero_sei
-    try:
-        for cnpj_e, ugc, ugn, sei, n, tot in con.execute(
-                f"SELECT favorecido_cpf, ug_codigo, ug_nome, numero_sei, COUNT(*), COALESCE(SUM(valor),0) "
-                f"FROM ordens_bancarias WHERE favorecido_cpf IN ({place}) "
-                f"GROUP BY favorecido_cpf, ug_codigo, ug_nome, numero_sei", alvos):
-            d = _digits(cnpj_e)
-            if d not in out:
-                continue
-            cod = _digits(ugc) or (ugc or "")
-            rot = _rotulo(cod, ugn or "")
-            u = out[d]["_ug"].setdefault(rot, {"ug": cod, "nome": rot, "total": 0.0, "n_ob": 0})
-            u["total"] += float(tot or 0); u["n_ob"] += int(n or 0)
-            if sei and str(sei).strip():
-                out[d]["_sei"][str(sei).strip()] = out[d]["_sei"].get(str(sei).strip(), 0) + int(n or 0)
-    except sqlite3.Error as exc:
-        logger.warning("query TFE do conflito doador-contrato falhou (vínculo pode sumir mudo): %s", exc)
-
+    # (1) o espelho TFE saiu daqui em 24/11/2026: somado ao SIAFE, contava a mesma OB duas vezes por UG.
     # (2) SIAFE — credor guarda o CNPJ; ug_pagadora/ug_emitente + processo (=SEI de origem)
     try:
         for cnpj_e, ugp, uge, proc, n, tot in con.execute(

@@ -24,17 +24,29 @@ def test_total_da_propria_lista_ao_lado_conta_como_declarado():
 
 @pytest.fixture()
 def painel(tmp_path, monkeypatch):
-    db = tmp_path / "c.db"
+    # 24/11/2026: `obs_recentes` passou a ser a OB PAGA do SIAFE (antes, as 25 últimas linhas do espelho TFE)
+    (tmp_path / "data").mkdir()
+    db = tmp_path / "data" / "compliance.db"
     monkeypatch.setenv("JFN_DB", str(db))
-    from compliance_agent.database.models import OrdemBancaria, get_engine, get_session, init_db
+    from compliance_agent.database.models import get_engine, get_session, init_db
     init_db(str(db))
-    s = get_session(get_engine(str(db)))
+    get_session(get_engine(str(db))).close()
+    import sqlite3
+    con = sqlite3.connect(db)
+    con.execute("DROP TABLE IF EXISTS ob_orcamentaria_siafe")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT, status TEXT, "
+                "status_envio TEXT, credor TEXT, nome_credor TEXT, valor REAL, exercicio INTEGER, processo TEXT, "
+                "coletado_em TEXT)")
+    hoje = dt.date.today()
     for i in range(30):
-        s.add(OrdemBancaria(numero_ob=f"2026OB{i:05d}", data_emissao=dt.date(2026, 11, 1) + dt.timedelta(days=i % 10),
-                            favorecido_nome=f"Fornecedor {i}", valor=100.0 + i))
-    s.commit()
-    s.close()
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (f"{hoje.year}OB{i:05d}", "100100", (hoje - dt.timedelta(days=i % 2)).strftime("%d/%m/%Y"),
+                     "Contabilizado", "Processado e Pago", f"{i:014d}", f"Fornecedor {i}", 100.0 + i, hoje.year,
+                     None, None))
+    con.commit()
+    con.close()
     from rotas import investigacao as R
+    monkeypatch.setattr(R, "RAIZ", tmp_path)
     monkeypatch.setattr(R, "_cache_get", lambda *a, **k: None)
     monkeypatch.setattr(R, "_cache_put", lambda chave, val: val)
     return json.loads(R.api_painel().body)

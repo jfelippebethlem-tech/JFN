@@ -365,10 +365,11 @@ def api_patrimonio(cnpj: str = "", nome: str = ""):
                 r = con.execute(
                     "SELECT razao_social, capital_social FROM empresas_cadastro WHERE cnpj_basico=?",
                     (raiz,)).fetchone()
+                # OB PAGA do SIAFE (régua `_ob_paga`), matriz + filiais pela raiz — até 24/11/2026 somava o espelho TFE
+                from compliance_agent.cruzamentos_intel import _ob_paga
                 pago = con.execute(
-                    "SELECT COALESCE(SUM(valor),0) FROM ordens_bancarias "
-                    "WHERE substr(REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-',''),1,8)=?",
-                    (raiz,)).fetchone()[0]
+                    f"SELECT COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE credor GLOB ? AND {_ob_paga(con)}",
+                    (f"{raiz}*",)).fetchone()[0] if len(raiz) == 8 else 0
                 return JSONResponse({"ok": True, **avaliar_empresa(
                     razao_social=(r["razao_social"] if r else "") or raiz,
                     capital_social=(r["capital_social"] if r else None),

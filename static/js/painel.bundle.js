@@ -153,20 +153,20 @@
       ${doc ? `<div class="dim">${esc(String(doc))}</div>` : ""}</div>
       ${nums ? `<div class="right dim" style="font-size:12.5px">${nums}</div>` : ""}</div>`);
   }
-  function registrarDrill(nome, { titulo, itens, render, nota }) {
-    if (!nome) return;
-    _REG.set(nome, { titulo: titulo || nome, itens: itens || [], render, nota: nota || "" });
+  function registrarDrill(nome2, { titulo, itens, render, nota }) {
+    if (!nome2) return;
+    _REG.set(nome2, { titulo: titulo || nome2, itens: itens || [], render, nota: nota || "" });
   }
-  function drillSeCompleto(nome, total, itens, cfg) {
+  function drillSeCompleto(nome2, total, itens, cfg) {
     const lista = itens || [];
     if (total == null || Number(total) !== lista.length) return null;
     if (lista.length > TETO_LINHAS_GAVETA) return null;
-    registrarDrill(nome, { ...cfg || {}, itens: lista });
-    return { drill: nome };
+    registrarDrill(nome2, { ...cfg || {}, itens: lista });
+    return { drill: nome2 };
   }
   var TETO_LINHAS_GAVETA = 800;
-  function abrirDrill(nome) {
-    const d = _REG.get(nome);
+  function abrirDrill(nome2) {
+    const d = _REG.get(nome2);
     const alvo = $("drill-out") || $("view");
     if (!d || !alvo) return;
     const linhas = d.itens || [];
@@ -695,11 +695,11 @@
       return;
     }
     const linhas = [];
-    for (const [nome, s] of Object.entries(r.d)) {
+    for (const [nome2, s] of Object.entries(r.d)) {
       if (!s || typeof s !== "object") continue;
       const rodando = !!(s.rodando || s.supervisor);
       linhas.push(`<div class="cs-sweep${rodando ? " on" : ""}">
-      <span class="n">${esc(nome.toUpperCase())}</span>
+      <span class="n">${esc(nome2.toUpperCase())}</span>
       <span class="e">${rodando ? "coletando" : "parado"}</span>
       <span class="q">${s.feitos != null ? fmtN(s.feitos) + " lidos" : ""}</span></div>`);
     }
@@ -2607,8 +2607,8 @@
   }
   function _tabelas(v) {
     let tocadas = 0;
-    v.querySelectorAll("table tbody").forEach((tb) => {
-      const trs = _primeiros(tb.rows);
+    v.querySelectorAll("table tbody").forEach((tb2) => {
+      const trs = _primeiros(tb2.rows);
       if (trs.length < 3) return;
       trs.forEach((tr, i) => {
         tr.classList.add("rv-linha");
@@ -3060,8 +3060,8 @@
   var FILME = "/static/assets/v69/";
   var FILME_ESPERA = { completa: 600, curta: 300 };
   var FILME_RAIO = { q: 0.189, v: 0.307 };
-  function filmeEl(nome, w, h) {
-    const ret = h > w * 1.05, b = FILME + nome + (ret ? "_m" : "");
+  function filmeEl(nome2, w, h) {
+    const ret = h > w * 1.05, b = FILME + nome2 + (ret ? "_m" : "");
     const v = document.createElement("video");
     v.className = "ab-filme";
     v.muted = true;
@@ -3416,7 +3416,7 @@
       prefeitura: "nucleo-holo-prefeitura",
       geral: "nucleo-holo-transversal"
     };
-    const nome = mapa[esfera] || "nucleo-holo-rj";
+    const nome2 = mapa[esfera] || "nucleo-holo-rj";
     let v = box.querySelector("video.holo");
     if (_redMotion || _sobrio) {
       if (v) {
@@ -3425,15 +3425,15 @@
       }
       return;
     }
-    const url = "/static/assets/" + nome + ".mp4";
-    if (_nuVid[nome] === void 0) {
+    const url = "/static/assets/" + nome2 + ".mp4";
+    if (_nuVid[nome2] === void 0) {
       try {
-        _nuVid[nome] = (await fetch(url, { method: "HEAD" })).ok;
+        _nuVid[nome2] = (await fetch(url, { method: "HEAD" })).ok;
       } catch (e) {
-        _nuVid[nome] = false;
+        _nuVid[nome2] = false;
       }
     }
-    if (!_nuVid[nome]) {
+    if (!_nuVid[nome2]) {
       if (v) v.classList.remove("on");
       return;
     }
@@ -3462,10 +3462,10 @@
       v.addEventListener("playing", () => v.classList.add("on"));
       _nuEmbrulhar(box, v, "holo");
     }
-    if (v.dataset.nu !== nome) {
+    if (v.dataset.nu !== nome2) {
       v.classList.remove("on");
-      v.dataset.nu = nome;
-      if (NUCLEO_COM_POSTER.has(nome)) v.poster = "/static/assets/" + nome + ".jpg";
+      v.dataset.nu = nome2;
+      if (NUCLEO_COM_POSTER.has(nome2)) v.poster = "/static/assets/" + nome2 + ".jpg";
       else v.removeAttribute("poster");
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
@@ -3487,15 +3487,15 @@
       inicio: "portal-hero"
     };
     const _cel = matchMedia("(max-width:760px)").matches, _eco = !!(navigator.connection && navigator.connection.saveData);
-    const nome = mapa[esfera], host = $("esfnebula");
-    if (!nome && host) {
+    const nome2 = mapa[esfera], host = $("esfnebula");
+    if (!nome2 && host) {
       const v0 = host.querySelector("video");
       if (v0) {
         v0.classList.remove("on");
         v0.pause();
       }
     }
-    if (!nome || !host || _redMotion) return;
+    if (!nome2 || !host || _redMotion) return;
     if (_sobrio) {
       const v0 = host.querySelector("video");
       if (v0) {
@@ -3514,17 +3514,17 @@
       return;
     }
     const _m = _v61 && _cel ? "-m" : "";
-    const url = "/static/assets/" + nome + _m + ".mp4";
-    if (_nebVid[nome] === void 0) {
+    const url = "/static/assets/" + nome2 + _m + ".mp4";
+    if (_nebVid[nome2] === void 0) {
       try {
-        _nebVid[nome] = (await fetch(url, { method: "HEAD" })).ok;
+        _nebVid[nome2] = (await fetch(url, { method: "HEAD" })).ok;
       } catch (e) {
-        _nebVid[nome] = false;
+        _nebVid[nome2] = false;
       }
     }
-    if (mapa[esfera] !== nome) return;
+    if (mapa[esfera] !== nome2) return;
     let v = host.querySelector("video");
-    if (!_nebVid[nome]) {
+    if (!_nebVid[nome2]) {
       if (v) v.classList.remove("on");
       return;
     }
@@ -3539,10 +3539,10 @@
       v.addEventListener("playing", () => v.classList.add("on"));
       host.appendChild(v);
     }
-    if (v.dataset.neb !== nome) {
+    if (v.dataset.neb !== nome2) {
       v.classList.remove("on");
-      v.dataset.neb = nome;
-      v.poster = _v61 ? "/static/assets/" + nome + (_cel ? "-sm" : "") + ".webp" : "/static/assets/" + nome + ".jpg";
+      v.dataset.neb = nome2;
+      v.poster = _v61 ? "/static/assets/" + nome2 + (_cel ? "-sm" : "") + ".webp" : "/static/assets/" + nome2 + ".jpg";
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
     }
@@ -4011,13 +4011,13 @@
       }
     }).observe(ov, { attributes: true, attributeFilter: ["class"] });
   }
-  async function abrirDossie(cnpj, nome) {
+  async function abrirDossie(cnpj, nome2) {
     const dig = String(cnpj || "").replace(/\D/g, "");
     if (dig.length !== 14) return;
     const ov = $("ov"), sh = $("sheet");
     ov.classList.add("on");
     somTocar("dossie");
-    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin("Montando dossiê de " + esc(nome || dig) + "…")}`;
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin("Montando dossiê de " + esc(nome2 || dig) + "…")}`;
     a11yfy(sh);
     const d = await J("/api/perfil?cnpj=" + dig);
     if (!d.ok) {
@@ -4493,8 +4493,8 @@
     return p.length ? `<div class="dim" style="font-size:12px;margin-top:4px">Duplicidade por competência: ${p.join(" · ")}</div>` : "";
   }
   function _linhaProblema(p) {
-    const nome = esc(p.fornecedor || p.cnpj);
-    const link2 = String(p.cnpj || "").replace(/\D/g, "").length === 14 ? `<a href="#" onclick="abrirDossie('${esc(p.cnpj)}','${esc((p.fornecedor || "").replace(/'/g, ""))}');return false">${nome}</a>` : nome;
+    const nome2 = esc(p.fornecedor || p.cnpj);
+    const link2 = String(p.cnpj || "").replace(/\D/g, "").length === 14 ? `<a href="#" onclick="abrirDossie('${esc(p.cnpj)}','${esc((p.fornecedor || "").replace(/'/g, ""))}');return false">${nome2}</a>` : nome2;
     const ach = (p.achados || []).map((a) => `<div style="margin-top:4px"><b>${a.status === "CONFIRMADO" ? "🔴" : "🟡"} ${esc(_rotulo(a))}</b>${a.fonte === "detector" ? ` <span class="dim" style="font-size:11px">(detector ${esc(a.codigo)})</span>` : ""}
       <span class="dim" style="font-size:12px"> — ${esc(String(a.evidencia || "").slice(0, 260))}</span></div>`).join("");
     return `<tr>
@@ -4629,8 +4629,8 @@
       }
       return;
     }
-    const tb = det.querySelector("tbody");
-    if (tb) tb.innerHTML = o.problemas.map(_linhaProblema).join("");
+    const tb2 = det.querySelector("tbody");
+    if (tb2) tb2.innerHTML = o.problemas.map(_linhaProblema).join("");
     btn.parentNode.textContent = `Todos os ${fmtN(o.problemas.length)} fornecedores com problema deste órgão.`;
   }
   async function comissaoGerar(id, btn) {
@@ -4655,8 +4655,8 @@
       ev.preventDefault();
       if (b.dataset.comGerar) comissaoGerar(b.dataset.comGerar, b);
       else if (b.dataset.comPgMais) {
-        const f = _lazy.get(b.dataset.comPgMais), tb = b.closest("details").querySelector("tbody");
-        if (f && tb) tb.insertAdjacentHTML("beforeend", f());
+        const f = _lazy.get(b.dataset.comPgMais), tb2 = b.closest("details").querySelector("tbody");
+        if (f && tb2) tb2.insertAdjacentHTML("beforeend", f());
         b.remove();
       } else comissaoMais(b.dataset.comMais, b);
     });
@@ -4732,12 +4732,12 @@
   }
   function _tabela(id, cab, rows, alto) {
     _T[id] = { rows, mostr: _LOTE };
-    const tb = `<table class="tb gc-txt"><thead><tr>${cab}</tr></thead><tbody data-gc-tb="${id}">${_corpo(id)}</tbody></table>`;
-    return `<div style="overflow-x:auto${alto ? `;max-height:${alto}px;overflow-y:auto` : ""}">${tb}</div><div data-gc-pe="${id}">${_pe(id)}</div>`;
+    const tb2 = `<table class="tb gc-txt"><thead><tr>${cab}</tr></thead><tbody data-gc-tb="${id}">${_corpo(id)}</tbody></table>`;
+    return `<div style="overflow-x:auto${alto ? `;max-height:${alto}px;overflow-y:auto` : ""}">${tb2}</div><div data-gc-pe="${id}">${_pe(id)}</div>`;
   }
   function _repintar(id) {
-    const tb = document.querySelector(`#gc-raiz [data-gc-tb="${id}"]`), pe = document.querySelector(`#gc-raiz [data-gc-pe="${id}"]`);
-    if (tb) tb.innerHTML = _corpo(id);
+    const tb2 = document.querySelector(`#gc-raiz [data-gc-tb="${id}"]`), pe = document.querySelector(`#gc-raiz [data-gc-pe="${id}"]`);
+    if (tb2) tb2.innerHTML = _corpo(id);
     if (pe) pe.innerHTML = _pe(id);
   }
   var _verifTag = (x) => (x.verificacao === "VERIFICADO" ? '<span class="tag teal">VERIFICADO</span>' : `<span class="tag amber">PENDENTE</span>`) + `<div class="dim" style="font-size:11px;margin-top:2px">${esc(x.verificacao_motivo || "")}</div>`;
@@ -5277,14 +5277,14 @@
     if (!ks.includes(_S.crit)) _S.crit = ks[0];
     const r = d.rankings[_S.crit];
     const chips = ks.map((k) => `<button type="button" class="chip${k === _S.crit ? " on" : ""}" data-oo-crit="${k}">${esc(_CRIT[k])} (${fmtN(d.rankings[k].elegiveis)})</button>`).join("");
-    const tb = (itens, tit) => `<div><div style="font-weight:700;margin-bottom:4px">${tit}</div>
+    const tb2 = (itens, tit) => `<div><div style="font-weight:700;margin-bottom:4px">${tit}</div>
     <table class="tb oo-txt"><thead><tr><th>Órgão</th><th class="right">Taxa</th></tr></thead><tbody>${itens.map((x) => `<tr>
       <td><a href="#" data-oo-ir="${esc(x.orgao)}">${esc(x.nome)}</a> <span class="dim" style="font-size:11px">órgão ${esc(x.orgao)}</span>
         ${(x.notas || []).map((n) => `<div class="dim" style="font-size:11px">${esc(n)}</div>`).join("")}</td>
       <td class="right" style="white-space:nowrap"><b>${_p(x.taxa)}</b></td></tr>`).join("") || '<tr><td colspan="2" class="dim">Nenhum órgão comparável neste critério.</td></tr>'}</tbody></table></div>`;
     return sec("Ranking de execução") + card(`<div class="chips">${chips}</div>
     <div class="dim" style="font-size:12px;margin:6px 0 10px"><b>${fmtN(r.elegiveis)} de ${fmtN(r.total_orgaos)}</b> órgãos entram neste ranking: os que têm a taxa calculável (nenhuma parcela faltando, OB e dotação no mesmo universo) e dotação a partir de ${fmtR(d.piso_ranking)}. ${_S.crit === "taxa_empenho_inicial" ? "Sem dotação atualizada utilizável neste recorte, o ranking usa a dotação INICIAL — crédito adicional pode levar a taxa acima de 100%." : ""}</div>
-    <div class="grid two">${tb(r.mais, `Maiores taxas (${fmtN(r.mais.length)})`)}${tb(r.menos, `Menores taxas (${fmtN(r.menos.length)})`)}</div>
+    <div class="grid two">${tb2(r.mais, `Maiores taxas (${fmtN(r.mais.length)})`)}${tb2(r.menos, `Menores taxas (${fmtN(r.menos.length)})`)}</div>
     <div class="dim" style="font-size:12px;margin-top:8px">Taxa baixa é indício para perguntar, não conclusão: contingenciamento, receita vinculada que não entrou e reserva de contingência reduzem a taxa sem irregularidade.</div>`);
   }
   var _CAB = `<th>Órgão</th><th class="right">Dotação inicial</th><th class="right">Dotação atualizada</th><th class="right">Empenhado</th>
@@ -5510,18 +5510,18 @@
     <td class="right" style="white-space:nowrap">${x.pago == null ? "—" : fmtR(x.pago)}</td>
     <td class="right" style="white-space:nowrap"><b>${campoValor(x)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
   }
-  function _esfera(nome, e, defs) {
+  function _esfera(nome2, e, defs) {
     const p = e.placar || {};
     const kp = _CLASSES.map(([k, rotulo, cor, gl]) => kpi(fmtN(p[k] || 0), `${rotulo} (${_pct(p[k] || 0, e.n)})`, cor, gl, { sobre: "Contratos desta esfera nesta classe da perícia contábil: devido (valor + aditivos, pró-rata quando contínuo) × pago (só OB Contabilizada do SIAFE). Indeterminado = sem vínculo seguro OB↔contrato; nunca vira zero." })).join("");
     const mot = (e.motivos_indeterminado || []).map((m) => `<tr><td style="font-size:13px">${esc(m.texto)}</td><td class="right">${fmtN(m.n)}</td><td class="right">${_pct(m.n, p.INDETERMINADO)}</td></tr>`).join("");
     const dup = e.duplicidades || {};
     const cab = '<thead><tr><th>Fornecedor, objeto e órgão</th><th class="right">Valor atualizado</th><th class="right">Devido até o corte</th><th class="right">Pago</th><th class="right">%s</th></tr></thead>';
-    return `${sec(esc(nome), e.n)}<div class="grid g2" style="margin-top:8px">${kp}</div>
+    return `${sec(esc(nome2), e.n)}<div class="grid g2" style="margin-top:8px">${kp}</div>
   ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado("VERIFICADO")} placar e somas: ${esc(((e.verificacao || {}).placar || "").replace(/^VERIFICADO — /, ""))}<br>${_estado("PENDENTE")} listas abaixo: ${esc(((e.verificacao || {}).listas || "").replace(/^PENDENTE — /, ""))}</div>
     <div style="font-size:13px"><b>${fmtN(e.n)}</b> contratos · corte ${e.corte ? fmtData(e.corte) : `por contrato, de ${fmtData(e.corte_min)} a ${fmtData(e.corte_max)}`} · pago determinado ${fmtR(e.pago_determinado)} × devido ${fmtR(e.devido_determinado)}
       · pago acima do valor contratado ${fmtR(e.excesso_a_maior)} (indício a conferir nos termos aditivos, não dano apurado) · à frente do pró-rata ${e.adiantado == null ? "—" : fmtR(e.adiantado)} · abaixo do devido em encerrados ${fmtR(e.deficit_encerrado)}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.acima_do_valor || "")}. ${esc(defs.adiantado || "")}. ${esc(defs.abaixo_do_devido || "")}.</div>
-    <div class="dim" style="font-size:12px;margin-top:4px"><b>Pago:</b> ${esc(e.fonte_pago || "")}. ${esc(nome === "Estado do RJ" ? defs.pago_estado || "" : defs.pago_prefeitura || "")}.
+    <div class="dim" style="font-size:12px;margin-top:4px"><b>Pago:</b> ${esc(e.fonte_pago || "")}. ${esc(nome2 === "Estado do RJ" ? defs.pago_estado || "" : defs.pago_prefeitura || "")}.
       <b>Contratos:</b> ${esc((e.proveniencia || {}).fonte_contratos || "")}. <b>Cobertura:</b> ${esc((e.proveniencia || {}).cobertura || "")}.
       Acréscimo acima do teto legal aferível em ${fmtN((e.art125 || {}).aferivel)} contratos; estouro em ${fmtN((e.art125 || {}).estouro)}.</div>
     ${_proprias(e, p)}
@@ -5547,7 +5547,7 @@
     const defs = d.definicoes || {};
     h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || "")} · <b>Tolerância:</b> ${esc(d.tolerancia || "")}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.indeterminado || "")}. ${esc(d.ressalva || "")}</div>${_rodape(d)}`);
-    for (const [nome, e] of Object.entries(d.esferas || {})) h += _esfera(nome, e, defs);
+    for (const [nome2, e] of Object.entries(d.esferas || {})) h += _esfera(nome2, e, defs);
     return `<div id="rt-pericia">${h}${_txt2}</div>`;
   }
   var _sim = (v) => v == null ? '<span class="dim">indisp.</span>' : v ? "✔" : '<span class="dim">—</span>';
@@ -5764,6 +5764,85 @@
     return h;
   }
 
+  // static/js/src/abas/conciliacao_ob.js
+  var ROTA = "/api/conciliacao/ob_tfe";
+  var NOME = {
+    casada_numero: "casada pelo nº da OB",
+    casada_credor_valor_data: "casada por credor + valor + data",
+    complementar: "Pagamento Complementar (não vai ao banco)",
+    devolvida: "devolvida pelo banco",
+    reemitida: "reemitida e paga por outra",
+    nao_contabilizada: "não contabilizada no SIAFE",
+    cobertura_parcial_siafe: "lacuna da nossa coleta do SIAFE",
+    ausente_no_siafe: "ausente no SIAFE, sem explicação",
+    fora_do_universo_tfe: "fora do universo do espelho (folha, previdência, repasse)",
+    tfe_defasado: "espelho ainda não publicou",
+    ausente_no_tfe: "ausente no espelho, sem explicação"
+  };
+  var nome = (c) => NOME[c] || c;
+  var tb = (cab, linhas) => `<div style="overflow-x:auto"><table class="tb"><thead><tr>${cab}</tr></thead><tbody>${linhas}</tbody></table></div>`;
+  function _classes(cl) {
+    const ks = Object.keys(cl || {}).filter((k) => !k.startsWith("casada"));
+    if (!ks.length) return '<span class="dim">—</span>';
+    return ks.sort((a, b) => cl[b].valor - cl[a].valor).map((k) => `<div class="dim">${esc(nome(k))}: ${fmtN(cl[k].n)} · ${fmtR(cl[k].valor)}</div>`).join("");
+  }
+  function _render(d) {
+    if (!d || d.ok === false) {
+      const m = d && d.calculando ? "em cálculo — a varredura das duas tabelas leva alguns minutos; reabra a aba em seguida" : "a rota não respondeu";
+      return card(`<b>INDISPONÍVEL</b> — ${esc(m)} (<code>${ROTA}</code>). INDISPONÍVEL ≠ 0.`);
+    }
+    const anos = d.por_ano || [];
+    const tot = anos.reduce((s, a) => ({
+      si: s.si + a.siafe_pago_valor,
+      tf: s.tf + a.tfe_valor,
+      st: s.st + a.so_tfe_n,
+      ss: s.ss + a.so_siafe_n,
+      c: s.c + a.casadas_numero
+    }), { si: 0, tf: 0, st: 0, ss: 0, c: 0 });
+    let h = `<div class="note"><b>${esc(d.rotulo)}.</b> ${esc(d.recorte)}. Espelho publicado até ${esc(fmtData(d.tfe_ultimo_dia))}; calculado em ${esc(fmtData(d.gerado_em))}.</div>`;
+    h += `<div class="grid g4">
+    ${kpi(fmtR(tot.si), "Pago — OB do SIAFE", "var(--accent)", null, { sobre: "Soma das OB pagas no SIAFE (régua _ob_paga: Contabilizada, sem devolvida, sem complementar, sem reemitida, com número) no recorte. É o número que vale." })}
+    ${kpi(fmtR(tot.tf), "Listado no espelho TFE", null, null, { sobre: "Soma das linhas de ordens_bancarias (espelho TFE) no recorte — só confronto, nunca pagamento." })}
+    ${kpi(fmtN(tot.c), "OB casadas pelo número", null, null, { sobre: "Mesmo número de OB e mesma UG nos dois lados, paga no SIAFE." })}
+    ${kpi(`${fmtN(tot.ss)} · ${fmtN(tot.st)}`, "Só no SIAFE · só no TFE", "var(--amber)", null, { sobre: 'OB que só um dos lados tem. Cada uma sai classificada na tabela abaixo; a maior parte do "só no SIAFE" é folha, previdência e repasse, que o espelho não publica.' })}
+  </div>`;
+    h += card(tb(
+      '<th>Exercício</th><th class="right">SIAFE pago</th><th class="right">TFE</th><th class="right">diferença</th><th class="right">SIAFE ÷ TFE</th><th class="right">casadas</th><th>só no SIAFE — por quê</th><th>só no TFE — por quê</th><th class="right">pares UG parciais / indisp.</th>',
+      anos.map((a) => `<tr><td><b>${esc(a.ano)}</b></td><td class="right">${fmtR(a.siafe_pago_valor)}</td><td class="right">${fmtR(a.tfe_valor)}</td>
+      <td class="right">${fmtR(a.diferenca)}</td><td class="right">${a.razao_siafe_tfe == null ? "—" : String(a.razao_siafe_tfe).replace(".", ",") + "×"}</td>
+      <td class="right">${fmtN(a.casadas_numero)}</td><td>${_classes(a.classes_siafe)}</td><td>${_classes(a.classes_tfe)}</td>
+      <td class="right">${fmtN(a.pares_parciais)} / ${fmtN(a.pares_indisponiveis)}</td></tr>`).join("")
+    ));
+    const ugs = (d.por_ug || []).slice(0, 15);
+    if (ugs.length) {
+      h += `<div class="dim" style="margin:10px 2px 4px">${fmtN(ugs.length)} pares (UG, exercício) de maior divergência, de ${fmtN(d.por_ug_total)} — critério: ${esc(d.por_ug_criterio || "")}</div>`;
+      h += card(tb(
+        '<th>Exercício</th><th>UG</th><th class="right">SIAFE pago</th><th class="right">TFE</th><th class="right">diferença</th><th>cobertura SIAFE</th><th>explicação (só no TFE)</th>',
+        ugs.map((u) => `<tr><td>${esc(u.ano)}</td><td>${esc(u.ug)} <span class="dim">${esc(u.ug_nome || "")}</span></td>
+        <td class="right">${fmtR(u.siafe_pago_valor)}</td><td class="right">${fmtR(u.tfe_valor)}</td><td class="right">${fmtR(u.diferenca)}</td>
+        <td>${esc(u.cobertura_siafe)}${u.pct_ausente_siafe != null ? ` <span class="dim">(${String(u.pct_ausente_siafe).replace(".", ",")}% do espelho ausente)</span>` : ""}</td>
+        <td>${_classes(u.classes_tfe)}</td></tr>`).join("")
+      ));
+    }
+    const am = (titulo, lst) => !(lst || []).length ? "" : `<div class="dim" style="margin:10px 2px 4px">${esc(titulo)}</div>` + card(tb(
+      '<th>OB</th><th>UG</th><th>data</th><th>favorecido</th><th class="right">valor</th><th>explicação</th>',
+      lst.slice(0, 10).map((x) => `<tr><td>${esc(x.numero_ob)}</td><td>${esc(x.ug)}</td><td>${esc(fmtData(x.data))}</td>
+      <td>${esc(x.favorecido || "—")}</td><td class="right">${fmtR(x.valor)}</td><td>${esc(x.explicacao || nome(x.classe))}</td></tr>`).join("")
+    ));
+    h += am("Maiores OB que o espelho lista e o SIAFE não paga", d.maiores_so_tfe);
+    h += am("Maiores OB pagas no SIAFE que o espelho não lista (fornecedor, sem explicação)", d.maiores_so_siafe);
+    const la = d.linhas_alheias_tfe || {};
+    if (la.n) h += `<div class="note">${fmtN(la.n)} linha(s) alheia(s) dentro de <code>ordens_bancarias</code> (sem número AAAAOB* ou sem data) — fora de toda soma.</div>`;
+    return h;
+  }
+  function conciliacaoMontar(host) {
+    if (!host) return;
+    host.innerHTML = `${sec("Conciliação OB do SIAFE × espelho TFE")}<div class="dim">Lendo a conciliação…</div>`;
+    J(ROTA).then((d) => {
+      if (host.isConnected) host.innerHTML = sec("Conciliação OB do SIAFE × espelho TFE") + _render(d);
+    });
+  }
+
   // static/js/src/abas/sistema.js
   function _quandoExistir(id, fn, tentativas = 180) {
     const el = document.getElementById(id);
@@ -5823,12 +5902,13 @@
     _quandoExistir("s-conf", conferenciaMontar);
     _quandoExistir("s-cruz", cruzamentoMontar);
     _quandoExistir("s-fontes", frescorMontar);
+    _quandoExistir("s-conc", conciliacaoMontar);
     return cover(
       "sistema",
       "Motores — o que está rodando e se os modelos concordam",
       "Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.",
       "⚙️"
-    ) + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section><div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div><section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section><section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
+    ) + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section><div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div><section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section><section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section><section id="s-conc" aria-label="Conciliação OB do SIAFE × espelho TFE" style="margin-top:18px"></section>';
   }
   async function renderComandosSistema() {
     return cover(
@@ -6651,12 +6731,12 @@
     const verm = it.filter((x) => x.grau === "🔴"), amar = it.filter((x) => x.grau === "🟡");
     if (!verm.length && !amar.length) return "";
     const top = verm[0] || amar[0];
-    const nome = String(top.regra_ou_hipotese || "").replace(/^[A-Z]\d+\s*·\s*/, "");
+    const nome2 = String(top.regra_ou_hipotese || "").replace(/^[A-Z]\d+\s*·\s*/, "");
     return _item({
       grau: verm.length ? "🔴" : "🟡",
       valor: `${fmtN(verm.length)} grave${verm.length === 1 ? "" : "s"} · ${fmtN(amar.length)} em atenção`,
       titulo: "Pontos de atenção na gestão Couto (desde 23/03/2026)",
-      texto: `Mais grave: ${esc(nome.length > 170 ? nome.slice(0, 168) + "…" : nome)}${top.valor_ob ? ` — ${brl(top.valor_ob)} em OB contabilizada` : ""}. Explicação inocente possível: ${esc(top.explicacao_inocente || "ver a aba")}.`,
+      texto: `Mais grave: ${esc(nome2.length > 170 ? nome2.slice(0, 168) + "…" : nome2)}${top.valor_ob ? ` — ${brl(top.valor_ob)} em OB contabilizada` : ""}. Explicação inocente possível: ${esc(top.explicacao_inocente || "ver a aba")}.`,
       fonte: "SIAFE (OB Contabilizado), CEIS/CNEP, DOERJ, TCE-RJ — só os pontos com prova primária conferida",
       estado: "VERIFICADO",
       destino: "e_couto"
@@ -8627,8 +8707,8 @@
   var BASE = "/static/assets/v68/";
   var cineRetrato = () => matchMedia("(max-aspect-ratio: 4/5)").matches;
   var cineSoPoster = () => matchMedia("(prefers-reduced-motion: reduce)").matches || !!(navigator.connection && navigator.connection.saveData);
-  function cineVideo(nome, { loop = false } = {}) {
-    const b = BASE + nome + (cineRetrato() ? "_m" : "");
+  function cineVideo(nome2, { loop = false } = {}) {
+    const b = BASE + nome2 + (cineRetrato() ? "_m" : "");
     const v = document.createElement("video");
     v.muted = true;
     v.loop = loop;
@@ -8746,12 +8826,12 @@
     return a >= 1e9 ? f(v / 1e9, " bi") : a >= 1e6 ? f(v / 1e6, " mi") : a >= 1e3 ? f(v / 1e3, " mil") : f(v, "");
   };
   var _topo = {};
-  async function topo(nome) {
-    if (!_topo[nome]) _topo[nome] = fetch(GEO + nome + ".topo.json", { credentials: "same-origin" }).then((r) => {
-      if (!r.ok) throw new Error(nome);
+  async function topo(nome2) {
+    if (!_topo[nome2]) _topo[nome2] = fetch(GEO + nome2 + ".topo.json", { credentials: "same-origin" }).then((r) => {
+      if (!r.ok) throw new Error(nome2);
       return r.json();
     });
-    return _topo[nome];
+    return _topo[nome2];
   }
   async function api(caminho) {
     try {
@@ -8884,8 +8964,8 @@
         p.style.fill = tem ? RAMPA[classe(v)] : "url(#tm-hach)";
         p.classList.toggle("tm-sd", !tem);
         if (!tem) semDado++;
-        const nome = G.nomes.get(p.dataset.k) || p.dataset.k;
-        p.setAttribute("aria-label", tem ? `${nome}: ${curto(v, tipo)}` : `${nome}: sem dado`);
+        const nome2 = G.nomes.get(p.dataset.k) || p.dataset.k;
+        p.setAttribute("aria-label", tem ? `${nome2}: ${curto(v, tipo)}` : `${nome2}: sem dado`);
       });
       const faixas = !vals.length ? "" : RAMPA.map((c, i) => {
         const de = i ? cortes[i - 1] : vals[0], ate = i < cortes.length ? cortes[i] : vals[vals.length - 1];
@@ -8965,9 +9045,9 @@
     }
     function mostrarDica(p, ev) {
       const d = S.dados[chave()], G = S.escopo === "estado" ? geo.est : geo.rio;
-      const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome = G.nomes.get(p.dataset.k) || "";
+      const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome2 = G.nomes.get(p.dataset.k) || "";
       const tem = l && l.n_contratos > 0;
-      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.por_grau ? `<span>${GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b>${S.graus[g[0]] ? "" : " (fora)"}`).join(" · ")}</span>` : "") + (l.n_alertas ? `<span>indícios: <b class="num">${fmtN(l.n_alertas)}</b></span>` : "") + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : "")) + (d && S.escopo === "estado" && l ? `<span>repasses (OB paga): ${l.repasses == null ? "<b>INDISPONÍVEL</b>" : `<b class="num">${rs(l.repasses)}</b> · <span class="num">${fmtN(l.n_obs_repasses || 0)}</span> OBs`}</span>` : "");
+      dica.innerHTML = `<b>${esc(nome2)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.por_grau ? `<span>${GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b>${S.graus[g[0]] ? "" : " (fora)"}`).join(" · ")}</span>` : "") + (l.n_alertas ? `<span>indícios: <b class="num">${fmtN(l.n_alertas)}</b></span>` : "") + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : "")) + (d && S.escopo === "estado" && l ? `<span>repasses (OB paga): ${l.repasses == null ? "<b>INDISPONÍVEL</b>" : `<b class="num">${rs(l.repasses)}</b> · <span class="num">${fmtN(l.n_obs_repasses || 0)}</span> OBs`}</span>` : "");
       if (d && !tem && l && l.por_grau && GRAUS.some((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n))
         dica.innerHTML += `<span>há contratos só por <b>${GRAUS.filter((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n).map((g) => g[2]).join(", ")}</b> (grau desligado)</span>`;
       dica.hidden = false;
@@ -8988,17 +9068,17 @@
         p.classList.add("on");
         g.insertBefore(p, g.querySelector(".tm-div"));
       }
-      const G = S.escopo === "estado" ? geo.est : geo.rio, nome = G.nomes.get(k) || k;
+      const G = S.escopo === "estado" ? geo.est : geo.rio, nome2 = G.nomes.get(k) || k;
       ficha.hidden = false;
       ficha.classList.add("on");
       host.classList.add("tm-com-ficha");
       ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>
-      <h3 class="v61-disp">${esc(nome)}</h3><div class="dim">lendo…</div>`;
+      <h3 class="v61-disp">${esc(nome2)}</h3><div class="dim">lendo…</div>`;
       const f = await api(`${S.escopo}/${encodeURIComponent(k)}?periodo=${S.periodo}${qGraus()}`);
       if (S.sel !== k) return;
       S.filtro = "";
       S.ficha = f;
-      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>` + (S.escopo === "estado" && f && f.serie ? fichaEstadoHTML(nome, f) : fichaHTML(nome, f));
+      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>` + (S.escopo === "estado" && f && f.serie ? fichaEstadoHTML(nome2, f) : fichaHTML(nome2, f));
       ficha.scrollTop = 0;
     }
     const selo = (c) => `<span class="tf-selo g-${esc(c.grau || "")} c-${esc(c.confianca || "")}">${esc((GRAUS.find((g) => g[0] === c.grau) || [])[2] || METODO[c.metodo] || "—")}</span>`;
@@ -9022,7 +9102,7 @@
       const ls = !t ? todos : todos.filter((c) => [c.objeto, c.orgao, c.fornecedor_nome, c.fornecedor_doc, c.processo].some((x) => (x || "").toLowerCase().includes(t)));
       return ls.length ? `<ul class="tf-ctr tf-ctr2">${ls.map(contratoLi).join("")}</ul>` : `<div class="dim">${t ? "Nenhum contrato da lista casa com o filtro." : "Nenhum contrato atribuído nesta seleção."}</div>`;
     }
-    function fichaEstadoHTML(nome, f) {
+    function fichaEstadoHTML(nome2, f) {
       const k = f.kpis || {}, kp = (r, v, cls) => `<div class="tf-k${cls ? " " + cls : ""}"><span>${r}</span><b class="num">${v}</b></div>`;
       const per = (PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "", sr = f.serie || { anos: [] };
       const maxO = Math.max(1, ...(f.orgaos || []).map((o) => o.valor || 0)), nMulti = (f.contratos || []).filter((c) => c.multi).length;
@@ -9030,7 +9110,7 @@
       const pg = (v) => v > 0 ? rs(v) : "—";
       const ano = (a, i) => `<details class="tf-ano"${i ? "" : " open"}><summary><b class="num">${esc(a.ano)}</b><span><span class="num">${fmtN(a.n)}</span> assinados · <span class="num">${rs(a.valor)}</span></span><span>pago (OBs vinculadas) <span class="num">${pg(a.pago)}</span></span></summary>
         <table class="tf-tab"><thead><tr><th>Mês</th><th>Assin.</th><th>Contratado</th><th>Pago (SIAFE)</th></tr></thead><tbody>${a.meses.map((m) => `<tr><td>${esc(mesRot(m.mes))}</td><td class="num">${m.n ? fmtN(m.n) : "—"}</td><td class="num">${m.n ? rs(m.valor) : "—"}</td><td class="num">${pg(m.pago)}</td></tr>`).join("")}</tbody></table></details>`;
-      return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">Contratos do Estado executados neste município · ${esc(per)} · certeza: ${GRAUS.filter((g) => S.graus[g[0]]).map((g) => g[2]).join(" + ") || "—"}</p>
+      return `<h3 class="v61-disp">${esc(nome2)}</h3><p class="tf-sub">Contratos do Estado executados neste município · ${esc(per)} · certeza: ${GRAUS.filter((g) => S.graus[g[0]]).map((g) => g[2]).join(" + ") || "—"}</p>
       <div class="tf-kpis tf-kpis2">${kp("Contratos", fmtN(k.n_contratos))}${kp("Em execução", fmtN(k.n_em_execucao))}
         ${kp("Valor contratado", rs(k.valor_contratado), "larga")}${kp("Em execução (valor)", rs(k.valor_em_execucao), "larga")}
         ${kp("Pago (OB SIAFE)", rs(k.pago), "larga")}${kp("% pago", pct2(k.pct_executado))}${kp("Indícios", fmtN(k.n_alertas || 0))}</div>
@@ -9077,13 +9157,13 @@
       host.classList.remove("tm-com-ficha");
       host.querySelectorAll("path.tm-a.on").forEach((p) => p.classList.remove("on"));
     }
-    function fichaHTML(nome, f) {
+    function fichaHTML(nome2, f) {
       const sub = S.escopo === "estado" ? "Contratos do Estado executados neste município" : "Contratos da Prefeitura do Rio nesta área de planejamento";
-      if (!f) return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub}</p><div class="tf-indisp"><b>INDISPONÍVEL</b> — a API do território não respondeu.</div>`;
+      if (!f) return `<h3 class="v61-disp">${esc(nome2)}</h3><p class="tf-sub">${sub}</p><div class="tf-indisp"><b>INDISPONÍVEL</b> — a API do território não respondeu.</div>`;
       const k = f.kpis || {}, kp = (r, v) => `<div class="tf-k"><span>${r}</span><b class="num">${v}</b></div>`;
       const maxO = Math.max(1, ...(f.orgaos || []).map((o) => o.valor || 0));
       const selo2 = (c) => `<span class="tf-selo m-${esc(c.metodo || "")} c-${esc(c.confianca || "")}" title="${esc(c.evidencia || "")}">${esc(METODO[c.metodo] || c.metodo || "—")} · ${esc(c.confianca || "—")}</span>`;
-      return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "")}</p>
+      return `<h3 class="v61-disp">${esc(nome2)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "")}</p>
       <div class="tf-kpis">${kp("Em execução", fmtN(k.n_em_execucao))}${kp("Executados", fmtN(k.n_executados))}
         ${kp("Valor contratado", rs(k.valor_contratado))}${kp("Pago", rs(k.pago))}${kp("% executado", pct2(k.pct_executado))}</div>
       <p class="tf-nota">${k.n_com_pago ? `Pago e % executado consideram só os <b class="num">${fmtN(k.n_com_pago)}</b> de <b class="num">${fmtN(k.n_contratos)}</b> contratos com pagamento vinculado.` : "Nenhum contrato desta seleção tem pagamento vinculado: pago <b>INDISPONÍVEL</b> (≠ zero)."}${f.nota_pago ? " " + esc(f.nota_pago) + "." : ""}</p>
@@ -9291,9 +9371,9 @@
     const linha = (k) => dVivo && (dVivo.municipios || []).find((x) => String(x.cod_ibge) === k);
     const grauTxt = (l) => GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b> · ${curto(l.por_grau[g[0]].valor)}`).join("<br>");
     function mostrar(p, ev) {
-      const k = p.dataset.k, l = linha(k), nome = l && l.nome || p.dataset.nome || k, vr = +p.dataset.v, nr = +p.dataset.n;
+      const k = p.dataset.k, l = linha(k), nome2 = l && l.nome || p.dataset.nome || k, vr = +p.dataset.v, nr = +p.dataset.n;
       const tem = l && l.n_contratos > 0;
-      dica.innerHTML = `<b>${esc(nome)}</b>` + (!dVivo ? "<span>dados vivos: INDISPONÍVEL</span>" : !tem ? "<span>sem contrato vigente atribuído (não é zero)</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span>valor contratado vigente · <b class="num">${fmtN(l.n_contratos)}</b> contratos</span>` + (l.por_grau ? `<span>${grauTxt(l)}</span>` : "")) + `<span class="tm-cine-ret">no relevo (retrato de ${esc(dataRetrato)}): ${vr > 0 ? `<b class="num">${curto(vr)}</b> · ${fmtN(nr)} contratos` : "sem relevo"}</span><span class="tm-cine-acao">clique ou Enter: abrir a ficha</span>`;
+      dica.innerHTML = `<b>${esc(nome2)}</b>` + (!dVivo ? "<span>dados vivos: INDISPONÍVEL</span>" : !tem ? "<span>sem contrato vigente atribuído (não é zero)</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span>valor contratado vigente · <b class="num">${fmtN(l.n_contratos)}</b> contratos</span>` + (l.por_grau ? `<span>${grauTxt(l)}</span>` : "")) + `<span class="tm-cine-ret">no relevo (retrato de ${esc(dataRetrato)}): ${vr > 0 ? `<b class="num">${curto(vr)}</b> · ${fmtN(nr)} contratos` : "sem relevo"}</span><span class="tm-cine-acao">clique ou Enter: abrir a ficha</span>`;
       dica.hidden = false;
       const r = f.getBoundingClientRect(), b = p.getBoundingClientRect();
       const x = (ev && ev.pointerType === "mouse" ? ev.clientX : b.left + b.width / 2) - r.left;
@@ -10653,7 +10733,7 @@
     });
     if ((d.top_signatarios || []).length) {
       h += sec("Quem mais assina") + `<div class="grid g2">` + (d.top_signatarios || []).slice(0, 8).map(
-        ([nome, n]) => card(`<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0;font-weight:700">${esc(nome)}</div><div class="right"><b>${fmtN(n)}</b></div></div>`)
+        ([nome2, n]) => card(`<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0;font-weight:700">${esc(nome2)}</div><div class="right"><b>${fmtN(n)}</b></div></div>`)
       ).join("") + `</div>`;
     }
     h += `<div class="grid" style="margin-top:12px">` + it.slice(0, 60).map(_lin).join("") + `</div>`;
@@ -12557,12 +12637,12 @@
     h += `<div class="grid" style="margin-top:14px">` + o.map((x) => {
       const md = x.score_mediana != null ? x.score_mediana : 0, dv = x.desvio_vs_pares;
       const cor = md >= 50 ? "var(--rose)" : md >= 25 ? "var(--amber)" : "var(--tx2)";
-      const nome = x.orgao_nome || x.orgao_cnpj;
+      const nome2 = x.orgao_nome || x.orgao_cnpj;
       const audit = (x.auditoria_tematica || []).map((a) => `<span class="tag rose">${esc(a.subtipo)} × ${a.certames} certames</span>`).join(" ");
       const ancoras = (x.casos_ancora || []).slice(0, 3).map((c) => `<span class="tag ${c.faixa === "ALTO" || c.faixa === "EXTREMO" ? "rose" : "accent"}" style="cursor:pointer" title="${esc(c.certame)} — clique p/ ver as 7 famílias" onclick="abrirCertame('${jsq(c.certame)}')">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(" ");
       return card(
         `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><b>${esc(nome)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_avaliados ?? x.n_certames_indexados)} avaliados de ${fmtN(x.n_certames_indexados)} indexados</div></div>
+      <div style="min-width:0"><b>${esc(nome2)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_avaliados ?? x.n_certames_indexados)} avaliados de ${fmtN(x.n_certames_indexados)} indexados</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90 != null ? x.score_p90.toFixed(0) : "—"}</div></div></div>
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${dv != null ? `<span class="tag ${dv > 10 ? "rose" : dv > 0 ? "amber" : "teal"}">${dv > 0 ? "+" : ""}${dv.toFixed(0)} vs pares</span>` : ""}
         ${x.violacoes_saneamento ? `<span class="tag rose">${x.violacoes_saneamento} eliminação(ões) trivial(is) sem saneamento</span>` : ""}
@@ -13827,9 +13907,10 @@
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
     h += `<div id="dep-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")} · aparece em ${x.n_ugs} órgão(s)</div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")} · aparece em ${x.n_ugs} órgão(s)</div>
+      ${x.regime ? `<span class="tag" style="margin-top:5px;display:inline-block" title="${esc(x.regime_regra || "")}">Regime: ${esc(x.regime)}</span>` : ""}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share >= 0.99 ? "var(--rose)" : "var(--amber)"}">${Math.round(x.share * 100)}%</div><div class="dim">de ${fmtRc(x.total)}</div></div></div>
-      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
+      ${leitura(x.regime ? `<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")}. Regime próprio — <b>${esc(x.regime)}</b>: ${esc(x.regime_regra || "")}` : `<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
       x.share >= 0.99 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -14337,17 +14418,17 @@
     const porMes = blocoPeriodo(["alertas"], "Alertas por ano e mês de detecção");
     if (!lst.length) return sec("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>') + porMes;
     let h = cover("estado", "Alertas de auditoria", "Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.", "🚨");
-    h += card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>` + Object.values(SEV_LEGENDA).map(([ic, nome, desc]) => `<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase() === "alta" ? "alta" : nome.toLowerCase() === "média" ? "media" : "baixa"}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(""));
+    h += card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>` + Object.values(SEV_LEGENDA).map(([ic, nome2, desc]) => `<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome2.toLowerCase() === "alta" ? "alta" : nome2.toLowerCase() === "média" ? "media" : "baixa"}">${ic} ${nome2}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(""));
     const porTipo = {};
     lst.forEach((a) => {
       (porTipo[a.tipo] = porTipo[a.tipo] || []).push(a);
     });
     h += `<div style="height:14px"></div>` + sec("Alertas por tipo", lst.length);
     h += `<div class="grid">` + Object.entries(porTipo).map(([tipo, alertas]) => {
-      const [ic, nome, desc] = TIPO_ALERTA[tipo] || ["🚩", tipo, ""];
+      const [ic, nome2, desc] = TIPO_ALERTA[tipo] || ["🚩", tipo, ""];
       const nAlta = alertas.filter((a) => a.severidade === "alta").length, nMed = alertas.length - nAlta;
       return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${ic} ${esc(nome)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(desc)}</div></div>
+      <div style="min-width:0"><div style="font-weight:700">${ic} ${esc(nome2)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(desc)}</div></div>
       <div class="right">${nAlta ? `<span class="sev alta">${nAlta} 🔴</span> ` : ""}${nMed ? `<span class="sev media">${nMed} 🟡</span>` : ""}</div></div>
       <div class="exp" onclick="toggle(this)" style="margin-top:8px"><div class="dim"><span class="chev">▸</span> ver os ${alertas.length} casos</div>
       <div class="objs">${alertas.slice(0, 40).map((a) => `<div class="obj">${a.severidade === "alta" ? "🔴" : "🟡"} <b>${esc((a.titulo || "").replace(/^[^—]*—\\s*/, ""))}</b>${a.descricao ? ` — <span class="muted">${esc(a.descricao)}</span>` : ""}</div>`).join("")}</div></div>`);
@@ -15395,9 +15476,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       <div style="margin-top:8px">${d.url_docx ? `<a class="btn ghost" href="${esc(d.url_docx)}" target="_blank" rel="noopener">⬇ .docx</a> ` : ""}${d.url_md ? `<a class="btn ghost" href="${esc(d.url_md)}" target="_blank" rel="noopener">⬇ .md</a> ` : ""}
         <button type="button" class="btn ghost" data-lai="copiar">📋 copiar texto</button></div>
       <details style="margin-top:8px"><summary>texto do requerimento</summary><pre id="lai-texto" style="white-space:pre-wrap;font-size:12px">${esc(d.texto || "")}</pre></details>`);
-      const tb = document.querySelector("table.tb tbody");
-      if (tb) {
-        tb.insertAdjacentHTML("afterbegin", _linha2({ ...d, status: "rascunho", vencido: false }));
+      const tb2 = document.querySelector("table.tb tbody");
+      if (tb2) {
+        tb2.insertAdjacentHTML("afterbegin", _linha2({ ...d, status: "rascunho", vencido: false }));
       }
     } catch (e) {
       o.innerHTML = cardErro(String(e));

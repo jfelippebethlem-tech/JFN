@@ -141,7 +141,7 @@ async function carregarEstado(){
     if(d.missao){ mb.textContent = d.missao; mb.className='missao'; }
     else { mb.textContent = 'Nenhuma missão definida.'; mb.className='missao vazia'; }
     $('#estadoBox').innerHTML =
-      'OBs no banco: <b>'+d.n_obs+'</b><br>Alertas: <b>'+d.n_alertas+'</b>'+
+      'OBs SIAFE no banco: <b>'+d.n_obs+'</b><br>Alertas: <b>'+d.n_alertas+'</b>'+
       '<br>Chrome 9222: <b>'+(d.chrome_9222?'no ar':'desligado')+'</b>';
     const lb = $('#learnBox'); lb.innerHTML='';
     (d.aprendizados||[]).forEach(a=>{

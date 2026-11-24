@@ -773,3 +773,40 @@ def api_sistema_atividade():
 
     return JSONResponse({"ok": True, "pausado": pausado, "sweeps": sweeps,
                          "pipelines": pipelines, "sei": sei, "aprendizados": apr})
+
+
+_CONC_CHAVE = "conciliacao_ob_tfe:v1"
+
+
+@router.get("/api/conciliacao/ob_tfe")
+def api_conciliacao_ob_tfe(ano: Optional[int] = None):
+    """Conciliação OB do SIAFE × espelho TFE por exercício e UG — **OB do SIAFE é a fonte; TFE é espelho e pode ter
+    erro** (pedido do dono, 24/11/2026). Casamento por número da OB + UG e, sem número, por credor + valor + data;
+    cada divergência sai classificada (complementar, devolvida, reemitida, não contabilizada, cobertura parcial do
+    SIAFE, fora do universo do espelho, defasagem do espelho, sem explicação). Ver `compliance_agent.conciliacao_ob_tfe`.
+
+    A varredura das duas tabelas leva minutos com a VM em carga: 6 h de cache (stale-while-revalidate). Sem nenhum
+    resultado ainda, a rota DISPARA o cálculo em segundo plano e responde INDISPONÍVEL (calculando) — nunca zero."""
+    from compliance_agent import conciliacao_ob_tfe as C
+    from rotas import investigacao as I
+    if I._cache.get(_CONC_CHAVE) is None:
+        with I._cache_travas_mestra:
+            trava = I._cache_travas.setdefault(_CONC_CHAVE, threading.Lock())
+        if not trava.locked():
+            threading.Thread(target=lambda: I._cache_calc(_CONC_CHAVE, 6 * 3600, C.medir), daemon=True,
+                             name="cache:" + _CONC_CHAVE).start()
+        return JSONResponse({"ok": False, "calculando": True, "estado": "INDISPONÍVEL", "rotulo": C.ROTULO,
+                             "motivo": "conciliação em cálculo (varredura de ~2,5 mi OB) — volte em alguns minutos"},
+                            status_code=202)
+    try:
+        d = I._cache_calc(_CONC_CHAVE, 6 * 3600, C.medir)
+    except (sqlite3.Error, OSError, ValueError) as e:
+        return JSONResponse({"ok": False, "estado": "INDISPONÍVEL", "erro": str(e), "rotulo": C.ROTULO},
+                            status_code=500)
+    if ano and d.get("ok"):
+        a = str(ano)
+        d = {**d, "por_ano": [x for x in d["por_ano"] if x["ano"] == a],
+             "por_ug": [x for x in d["por_ug"] if x["ano"] == a],
+             "maiores_so_tfe": [x for x in d["maiores_so_tfe"] if str(x.get("data", ""))[:4] == a],
+             "maiores_so_siafe": [x for x in d["maiores_so_siafe"] if str(x.get("data", ""))[:4] == a]}
+    return JSONResponse(d)

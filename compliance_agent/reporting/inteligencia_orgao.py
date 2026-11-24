@@ -36,7 +36,7 @@ from compliance_agent.reporting.completude import campo, top_declarado, tudo
 # do código afirmando "sem limite, tudo no PDF". Diretriz do dono (2026-07-29): sem corte.
 TOP_OB_ANO: int | None = None
 from compliance_agent.reporting.intel_base import (
-    SQL_CREDOR_PJ_SIAFE, SQL_CREDOR_TERCEIRO_SIAFE, SQL_FAVORECIDO_PJ, _DB, _REPORTS, _slug, cabecalho_frescor, fmt_cnpj, inteiro, moeda, so_digitos,
+    SQL_CREDOR_PJ_SIAFE, SQL_CREDOR_TERCEIRO_SIAFE, _DB, _REPORTS, _slug, cabecalho_frescor, fmt_cnpj, inteiro, moeda, so_digitos,
 )
 from compliance_agent.reporting.intel_dados import _hhi
 from compliance_agent.reporting.intel_md import _foto_fachada_b2
@@ -715,6 +715,16 @@ def _dd_orgao_bounded(ug: str, anos: Optional[list[int]], top_n: int = 12) -> di
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
+def _fornecedores_pj_pagos(con, ug: str) -> list[str]:
+    """CNPJs (14 dígitos) que receberam OB PAGA da UG no SIAFE (régua `_ob_paga`). Universo das seções 1-E/1-F do
+    /orgao — até 24/11/2026 vinha do espelho TFE (`ordens_bancarias.favorecido_cpf`), o mesmo erro de fonte que o
+    total já não tinha: quem o TFE listava sem pagamento no SIAFE entrava no universo, e o contrário ficava fora."""
+    from compliance_agent.cruzamentos_intel import _ob_paga
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT credor FROM ob_orcamentaria_siafe WHERE ug_emitente=? "
+        f"AND {_ob_paga(con)} AND {SQL_CREDOR_PJ_SIAFE} AND valor>0", (str(ug),)).fetchall()]
+
+
 def _endereco_real_orgao(ug: str) -> dict:
     """Cruza os fornecedores (PJ) que a UG pagou com a verificação de SEDE para responder 'as empresas
     são reais?'. PREFERE a verificação AUTORITATIVA do Google (`verificacao_sede`: Geocoding+Address
@@ -729,9 +739,7 @@ def _endereco_real_orgao(ug: str) -> dict:
     try:
         con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
         try:
-            cnpjs = {r[0] for r in con.execute(
-                "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
-                f"AND {SQL_FAVORECIDO_PJ}", (str(ug),)).fetchall()}
+            cnpjs = set(_fornecedores_pj_pagos(con, ug))
             if not cnpjs:
                 return out
             out["n_forn"] = len(cnpjs)
@@ -781,8 +789,8 @@ def _endereco_real_orgao(ug: str) -> dict:
             if indic_cnpjs:
                 qs = ",".join("?" * len(indic_cnpjs))
                 nomes = {r[0]: r[1] for r in con.execute(
-                    f"SELECT favorecido_cpf, MAX(favorecido_nome) FROM ordens_bancarias "
-                    f"WHERE favorecido_cpf IN ({qs}) GROUP BY favorecido_cpf", indic_cnpjs).fetchall()}
+                    f"SELECT credor, MAX(nome_credor) FROM ob_orcamentaria_siafe "
+                    f"WHERE credor IN ({qs}) GROUP BY credor", indic_cnpjs).fetchall()}
                 for it in out["indicios"]:
                     it["nome"] = nomes.get(it["cnpj"], "")
         finally:
@@ -809,9 +817,7 @@ def _beneficios_orgao(ug: str) -> dict:
     try:
         con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
         try:
-            cnpjs = [r[0] for r in con.execute(
-                "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
-                f"AND {SQL_FAVORECIDO_PJ}", (str(ug),)).fetchall()]
+            cnpjs = _fornecedores_pj_pagos(con, ug)
         finally:
             con.close()
         if not cnpjs:
@@ -991,7 +997,7 @@ def _secao_sei_risco_md(add, ctx: dict) -> None:
     tot = sum(x.get("total") or 0 for x in itens)
     add(f"🟡 **{len(itens)}** processo(s) de risco com pagamento — **R$ {moeda(tot)}**:")
     add("")
-    add("| Processo SEI | Risco | Pago (R$) | OBs | Objeto | 1ª red flag |")
+    add("| Processo SEI | Risco | Pago (R$, OB SIAFE) | OBs | Objeto | 1ª red flag |")
     add("|---|:--:|---:|---:|---|---|")
     for x in tudo(itens):
         try:

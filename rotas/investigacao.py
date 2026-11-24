@@ -36,41 +36,54 @@ def _ro(banco: str = "compliance.db", *, linhas: bool = False, **kw) -> sqlite3.
 
 
 async def _grafo_rede_completa(limite: int = 120):
-    """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor pago ↔ órgãos (UGs),
-    a partir de ordens_bancarias. Fornecedor vira severidade='alta' se for INDICIO em verificacao_sede.
-    Formato D3 que o graph.html consome: {nodes:[{id,label,tipo,...}], links:[{source,target,...}]}."""
+    """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor PAGO ↔ órgãos (UGs).
+    Fornecedor vira severidade='alta' se for INDICIO em verificacao_sede.
+    Formato D3 que o graph.html consome: {nodes:[{id,label,tipo,...}], links:[{source,target,...}]}.
+
+    24/11/2026: a tela diz "REDE DE PAGAMENTOS · SIAFE", mas somava o espelho TFE (`ordens_bancarias`). Agora é OB
+    PAGA do SIAFE (régua `_ob_paga`, 2021 em diante, credor CNPJ/CPF): os fornecedores saem do ranking já calculado
+    por `_siafe_pago_total` (mesma varredura do painel, em cache) e as arestas, de uma consulta pelo índice de credor.
+    Roda numa thread — a varredura não pode travar o event loop."""
+    return await asyncio.to_thread(_grafo_rede_completa_sync, limite)
+
+
+def _grafo_rede_completa_sync(limite: int = 120):
     try:
-        con = _ro(linhas=True)
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.ugs import nome_canonico
         n_forn = max(10, min(int(limite), 400))
-        # 1 scan: top fornecedores por valor
-        forn = con.execute(
-            "SELECT favorecido_nome nome, MAX(favorecido_cpf) doc, SUM(valor) v, COUNT(*) n "
-            "FROM ordens_bancarias WHERE favorecido_nome IS NOT NULL AND favorecido_nome!='' "
-            "GROUP BY favorecido_nome ORDER BY v DESC LIMIT ?", (n_forn,)).fetchall()
-        top_nomes = [f["nome"] for f in forn]
-        susp = {r[0] for r in con.execute("SELECT cnpj FROM verificacao_sede WHERE status='INDICIO'")}
-        nodes, links, orgaos, fid_de = [], [], {}, {}
-        for f in forn:
-            fid = "empresa:" + ((f["doc"] or f["nome"]) or "?")[:24]
-            fid_de[f["nome"]] = fid
-            cnpj = re.sub(r"\D", "", f["doc"] or "")
-            nodes.append({"id": fid, "label": (f["nome"] or "")[:40], "tipo": "empresa",
-                          "valor": float(f["v"] or 0), "n_obs": f["n"],
-                          "severidade": "alta" if cnpj in susp else ""})
-        # 1 scan filtrado: arestas fornecedor→órgão (só dos top), agregadas
-        ph = ",".join("?" * len(top_nomes))
-        if top_nomes:
-            for u in con.execute(
-                f"SELECT favorecido_nome nome, ug_nome org, SUM(valor) v FROM ordens_bancarias "
-                f"WHERE favorecido_nome IN ({ph}) AND ug_nome IS NOT NULL AND ug_nome!='' "
-                f"GROUP BY favorecido_nome, ug_nome", top_nomes).fetchall():
-                oid = "orgao:" + (u["org"] or "?")[:34]
-                if oid not in orgaos:
-                    orgaos[oid] = {"id": oid, "label": (u["org"] or "?")[:36], "tipo": "orgao"}
-                links.append({"source": fid_de.get(u["nome"]), "target": oid, "tipo": "pagamento", "valor": float(u["v"] or 0)})
-        con.close()
+        tot = _siafe_pago_total()
+        if tot.get("_top400") is None:
+            return JSONResponse(content={"nodes": [], "links": [], "error": tot.get("fonte_total") or "SIAFE indisponível",
+                                         "estado": "INDISPONÍVEL"})
+        forn = tot["_top400"][:n_forn]
+        con = _ro(timeout=30)
+        try:
+            susp = {r[0] for r in con.execute("SELECT cnpj FROM verificacao_sede WHERE status='INDICIO'")}
+            nodes, links, orgaos = [], [], {}
+            fid_de = {}
+            for f in forn:
+                fid = "empresa:" + f["doc"][:24]
+                fid_de[f["doc"]] = fid
+                nodes.append({"id": fid, "label": (f["nome"] or "")[:40], "tipo": "empresa",
+                              "valor": f["total"], "n_obs": f["n"],
+                              "severidade": "alta" if f["doc"] in susp else ""})
+            docs = list(fid_de)
+            if docs:
+                ph = ",".join("?" * len(docs))
+                for cred, ug, v in con.execute(
+                        f"SELECT credor, ug_emitente, SUM(valor) FROM ob_orcamentaria_siafe WHERE credor IN ({ph}) "
+                        f"AND {_ob_paga(con)} AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021 "
+                        "AND ug_emitente IS NOT NULL GROUP BY credor, ug_emitente", docs).fetchall():
+                    oid = "orgao:" + str(ug)
+                    if oid not in orgaos:
+                        orgaos[oid] = {"id": oid, "label": nome_canonico(ug, f"UG {ug}")[:36], "tipo": "orgao"}
+                    links.append({"source": fid_de[cred], "target": oid, "tipo": "pagamento", "valor": float(v or 0)})
+        finally:
+            con.close()
         nodes.extend(orgaos.values())
-        return JSONResponse(content={"nodes": nodes, "links": links})
+        return JSONResponse(content={"nodes": nodes, "links": links,
+                                     "fonte": "OB paga no SIAFE (régua _ob_paga), 2021 em diante; TFE fora"})
     except Exception as e:
         return JSONResponse(content={"nodes": [], "links": [], "error": str(e)})
 
@@ -231,11 +244,8 @@ def api_painel():
         s = get_session()
         try:
             hoje = date.today()
+            # espelho TFE: só CONFRONTO (tfe_total/tfe_valor_total, rotulados) — nunca "pago" (24/11/2026)
             total_obs = s.query(sa.func.count(OrdemBancaria.id)).scalar() or 0
-            obs_hoje = s.query(sa.func.count(OrdemBancaria.id)).filter(
-                OrdemBancaria.data_emissao == hoje).scalar() or 0
-            valor_hoje = s.query(sa.func.sum(OrdemBancaria.valor)).filter(
-                OrdemBancaria.data_emissao == hoje).scalar() or 0
             valor_total = s.query(sa.func.sum(OrdemBancaria.valor)).scalar() or 0
             # "OBs hoje" era quase sempre 0 — o espelho chega com atraso, e 0 parecia "nenhum pagamento".
             # O número honesto é o do ÚLTIMO dia que tem OB coletada, com a data ao lado (24/09/2026).
@@ -253,6 +263,29 @@ def api_painel():
             except (sa.exc.SQLAlchemyError, ValueError, TypeError) as exc:  # sem SIAFE o KPI diz INDISPONÍVEL, não 0
                 logger.warning("último dia do SIAFE indisponível: %s", exc)
                 ultimo_dia, n_ultimo_dia, v_ultimo_dia = None, 0, 0.0
+            # "OBs hoje"/"valor hoje" saem do MESMO SIAFE (24/11/2026: vinham do espelho TFE, que publica com ~3
+            # semanas de atraso — era sempre 0). Sem SIAFE: None (INDISPONÍVEL), nunca 0.
+            if ultimo_dia is None:
+                obs_hoje, valor_hoje = None, None
+            elif ultimo_dia == str(hoje):
+                obs_hoje, valor_hoje = n_ultimo_dia, v_ultimo_dia
+            else:
+                obs_hoje, valor_hoje = 0, 0.0
+            # As 25 OB PAGAS mais recentes do SIAFE (mesma régua `_ob_paga`); o exercício do último dia usa o
+            # índice de exercício em vez de varrer as 1,3 mi linhas. Antes: as 25 últimas linhas do espelho TFE.
+            obs_recentes = []
+            if ultimo_dia:
+                try:
+                    obs_recentes = [
+                        {"numero": r[0], "data": r[1], "favorecido": r[2] or "—", "valor": float(r[3] or 0),
+                         "processo": r[4] or "—", "status": r[5] or "—", "ug": r[6]}
+                        for r in s.execute(_t(
+                            f"SELECT numero_ob, {_iso} d, nome_credor, valor, processo, "
+                            "COALESCE(status_envio, status), ug_emitente FROM ob_orcamentaria_siafe "
+                            f"WHERE exercicio=:a AND {paga} AND {_iso} <= :h ORDER BY d DESC, numero_ob DESC LIMIT 25"),
+                            {"a": int(ultimo_dia[:4]), "h": str(hoje)}).all()]
+                except (sa.exc.SQLAlchemyError, ValueError, TypeError) as exc:
+                    logger.warning("OB recentes do SIAFE indisponíveis: %s", exc)
 
             # Só alerta NÃO descartado (13/11/2026): os 58.253 de emprego múltiplo por CPF mascarado foram
             # descartados, mas o card seguia contando a tabela inteira ("59.024 de gravidade alta").
@@ -283,26 +316,6 @@ def api_painel():
                  "criado": str(a.created_at)[:16]}
                 for a in s.query(Alerta).filter(ativo).order_by(desc(Alerta.created_at)).limit(40).all()
             ]
-            top = [
-                {"nome": r[0], "total": float(r[1] or 0), "n": r[2]}
-                for r in s.query(
-                    OrdemBancaria.favorecido_nome,
-                    sa.func.sum(OrdemBancaria.valor),
-                    sa.func.count(OrdemBancaria.id),
-                ).filter(OrdemBancaria.favorecido_nome.isnot(None))
-                .group_by(OrdemBancaria.favorecido_nome)
-                .order_by(sa.desc(sa.func.sum(OrdemBancaria.valor)))
-                .limit(12).all()
-            ]
-            obs_recentes = [
-                {"numero": o.numero_ob, "data": str(o.data_emissao),
-                 "favorecido": o.favorecido_nome or "—",
-                 "valor": float(o.valor) if o.valor else 0,
-                 "processo": o.numero_processo or "—", "status": o.status or "—"}
-                for o in s.query(OrdemBancaria)
-                .order_by(desc(OrdemBancaria.data_emissao), desc(OrdemBancaria.id))
-                .limit(25).all()
-            ]
             # verdade = a própria tabela de OBs (SessaoAuditoria parou de ser escrita pelo runner
             # atual e congelava um erro de jun/2026 no painel — desinformação)
             try:
@@ -322,12 +335,15 @@ def api_painel():
             except Exception as exc:
                 logger.warning("lições da memória indisponíveis p/ a investigação: %s", exc)
 
+            siafe = dict(_siafe_pago_total())   # cópia: o dict vem do cache em memória
+            top = siafe.pop("top", None)
+            siafe.pop("_top400", None)
             return JSONResponse(content=_cache_put("painel:snapshot", _prov("/api/compliance/painel", {
                 "atualizado": str(hoje),
-                "obs": {**_prov("/api/compliance/painel#obs", {"atualizado": str(hoje)}), **_siafe_pago_total(), "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
+                "obs": {**_prov("/api/compliance/painel#obs", {"atualizado": str(hoje)}), **siafe, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia,
                         "valor_ultimo_dia": v_ultimo_dia,
                         "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
-                        "valor_hoje": float(valor_hoje),
+                        "valor_hoje": valor_hoje,
                         # espelho TFE (cobertura parcial) — rotulado, nunca o número principal (regra OB = SIAFE)
                         "tfe_total": total_obs, "tfe_valor_total": float(valor_total)},
                 "alertas": {"alta": alta, "media": media, "baixa": total_ativos - alta - media,
@@ -337,9 +353,13 @@ def api_painel():
                             "por_esfera": por_esfera, "por_tipo": por_tipo},
                 "ultima_coleta": ultima_coleta,
                 "lista_alertas": alertas,
+                # None = INDISPONÍVEL (SIAFE não respondeu), nunca lista vazia fingindo "sem favorecido"
                 "top_favorecidos": top,
+                "top_favorecidos_recorte": ("OB paga no SIAFE (régua _ob_paga), 2021 em diante, credor CNPJ/CPF "
+                                            "(folha, previdência e repasse entre UGs fora do ranking)"),
                 "obs_recentes": obs_recentes,
-                "obs_recentes_total": total_obs,   # COR-07: as 25 mais recentes DE quantas (espelho TFE)
+                "obs_recentes_total": siafe.get("total"),   # COR-07: as 25 mais recentes DE quantas OB pagas (SIAFE 2021+)
+                "fonte_ob": "OB do SIAFE é a fonte; TFE é espelho e pode ter erro (tfe_* = só confronto)",
                 "licoes": licoes,
             })))
         finally:
@@ -365,144 +385,133 @@ async def api_investigar(nome: str = "", cnpj: str = ""):
 def api_relatorio_30d():
     """Gera relatório estruturado das OBs dos últimos 30 dias em Markdown."""
     try:
-        import sqlalchemy as sa
         from datetime import date, timedelta
         from pathlib import Path
-        from compliance_agent.database.models import (
-            get_session, init_db, OrdemBancaria,
-        )
 
-        init_db()
-        session = get_session()
+        hoje = date.today()
+        inicio = hoje - timedelta(days=30)
+
+        # OB PAGA do SIAFE (régua `_ob_paga`) — até 24/11/2026 este relatório lia o espelho TFE, que publica com
+        # ~3 semanas de atraso (a janela de 30 dias saía quase vazia) e não tem o status real da OB.
+        from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE as _iso
+        con = _ro(timeout=30)
         try:
-            hoje = date.today()
-            inicio = hoje - timedelta(days=30)
-
-            rows = (
-                session.query(OrdemBancaria)
-                .filter(OrdemBancaria.data_emissao >= inicio)
-                .order_by(
-                    sa.desc(OrdemBancaria.data_emissao),
-                    sa.desc(OrdemBancaria.id),
-                )
-                .all()
-            )
-
-            obs_list = []
-            erros = []
-            for o in rows:
-                credor = (o.favorecido_cpf or "").strip() or (o.favorecido_banco or "").strip()
-                ob_info = {
-                    "id": o.id,
-                    "numero_ob": o.numero_ob,
-                    "numero_sei": o.numero_sei or "—",
-                    "numero_processo": o.numero_processo or "—",
-                    "credor": credor,
-                    "favorecido": o.favorecido_nome or "—",
-                    "ug": o.ug_codigo or "—",
-                    "tipo": o.tipo_ob or "—",
-                    "status": o.status or "—",
-                    "categoria": o.categoria or "outros",
-                    "data_emissao": str(o.data_emissao) if getattr(o, "data_emissao", None) else "—",
-                    "data_pagamento": str(o.data_pagamento) if getattr(o, "data_pagamento", None) else "—",
-                    "valor": float(o.valor) if o.valor is not None else 0.0,
-                }
-                obs_list.append(ob_info)
-
-                if not o.numero_sei:
-                    erros.append({
-                        "tipo": "SEI ausente",
-                        "OB": o.numero_ob or str(o.id),
-                        "favorecido": ob_info["favorecido"],
-                        "valor": ob_info["valor"],
-                    })
-                if o.status and o.status.lower() in {"anulada", "cancelada"}:
-                    erros.append({
-                        "tipo": f"OB {o.status.lower()}",
-                        "OB": o.numero_ob or str(o.id),
-                        "favorecido": ob_info["favorecido"],
-                        "valor": ob_info["valor"],
-                    })
-                if o.numero_sei and "SEI-" not in (o.numero_sei or ""):
-                    erros.append({
-                        "tipo": "SEI em formato suspeito",
-                        "OB": o.numero_ob or str(o.id),
-                        "favorecido": ob_info["favorecido"],
-                        "valor": ob_info["valor"],
-                        "detalhe": o.numero_sei,
-                    })
-
-            resumo = {}
-            for ob in obs_list:
-                cat = ob["categoria"]
-                resumo[cat] = {
-                    "qtd": resumo.get(cat, {}).get("qtd", 0) + 1,
-                    "total": resumo.get(cat, {}).get("total", 0.0) + ob["valor"],
-                }
-
-            fav_map = {}
-            for ob in obs_list:
-                key = ob["favorecido"] or "—"
-                fav_map[key] = {
-                    "qtd": fav_map.get(key, {}).get("qtd", 0) + 1,
-                    "total": fav_map.get(key, {}).get("total", 0.0) + ob["valor"],
-                    "documento": ob["credor"],
-                }
-            top_fav = sorted(
-                [{"nome": k, **v} for k, v in fav_map.items()],
-                key=lambda x: x["total"],
-                reverse=True,
-            )[:20]
-
-            linhas = []
-            linhas.append("# Relatório de Auditoria — Últimos 30 dias")
-            linhas.append(f"Gerado em {hoje} | Janela {inicio} a {hoje}")
-            linhas.append("")
-            linhas.append(f"- OBs analisadas: {len(obs_list)}")
-            linhas.append(f"- Erros coletados: {len(erros)}")
-            linhas.append("")
-
-            linhas.append("## Resumo por categoria")
-            for cat, vals in sorted(resumo.items(), key=lambda x: x[1]["total"], reverse=True):
-                linhas.append(f"- **{cat}**: {vals['qtd']} OBs | R$ {vals['total']:,.2f}")
-            linhas.append("")
-
-            linhas.append("## Top favorecidos")
-            linhas.append("| Favorecido | Documento | QTD | Total |")
-            linhas.append(" | -- | -- | --: | --: |")
-            for f in top_fav:
-                linhas.append(
-                    f"| {f['nome']} | {f['documento']} | {f['qtd']} | R$ {f['total']:,.2f} |"
-                )
-            linhas.append("")
-
-            if obs_list:
-                linhas.append("## OBs")
-                linhas.append("| OB | SEI | Processo | Documento | Favorecido | UG | Categoria | Data | Valor |")
-                linhas.append(" | -- | -- | -- | -- | -- | -- | -- | -- | --: |")
-                for ob in obs_list[:200]:
-                    linhas.append(
-                        f"| {ob['numero_ob'] or ob['id']} | {ob['numero_sei']} | {ob['numero_processo']} | {ob['credor']} | {ob['favorecido']} | {ob['ug']} | {ob['categoria']} | {ob['data_emissao']} | R$ {ob['valor']:,.2f} |"
-                    )
-                linhas.append("")
-
-            if erros:
-                linhas.append("## Erros / Pendências (para enviar ao Claude Code)")
-                linhas.append("```")
-                for er in erros[:200]:
-                    linhas.append(
-                        f"- [{er['tipo']}] OB {er['OB']} | {er['favorecido']} | R$ {er.get('valor', 0):,.2f}"
-                        + (f" | {er.get('detalhe', '')}" if er.get('detalhe') else "")
-                    )
-                linhas.append("```")
-
-            relatorio = "\n".join(linhas)
-            Path("reports").mkdir(exist_ok=True)
-            out = Path(f"reports/relatorio_30d_{hoje}.md")
-            out.write_text(relatorio, encoding="utf-8")
-            return JSONResponse(content={"ok": True, "path": str(out), "erros_coletados": len(erros)})
+            rows = con.execute(
+                f"SELECT numero_ob, processo, credor, nome_credor, ug_emitente, tipo_ob, "
+                f"COALESCE(status_envio, status), tipo, {_iso} d, valor FROM ob_orcamentaria_siafe "
+                f"WHERE exercicio IN (?, ?) AND {_ob_paga(con)} AND {_iso} BETWEEN ? AND ? "
+                "ORDER BY d DESC, numero_ob DESC",
+                (inicio.year, hoje.year, str(inicio), str(hoje))).fetchall()
         finally:
-            session.close()
+            con.close()
+
+        obs_list = []
+        erros = []
+        for numero, proc, credor, nome, ug, tipo_ob, status, tipo, d, valor in rows:
+            ob_info = {
+                "id": numero,
+                "numero_ob": numero,
+                "numero_sei": proc or "—",
+                "numero_processo": proc or "—",
+                "credor": credor or "",
+                "favorecido": nome or "—",
+                "ug": ug or "—",
+                "tipo": tipo_ob or "—",
+                "status": status or "—",
+                "categoria": tipo or "outros",
+                "data_emissao": d or "—",
+                "data_pagamento": "—",
+                "valor": float(valor) if valor is not None else 0.0,
+            }
+            obs_list.append(ob_info)
+
+            if not proc:
+                erros.append({
+                    "tipo": "processo ausente",
+                    "OB": numero,
+                    "favorecido": ob_info["favorecido"],
+                    "valor": ob_info["valor"],
+                })
+            elif "SEI" not in proc.upper():
+                erros.append({
+                    "tipo": "processo fora do formato SEI",
+                    "OB": numero,
+                    "favorecido": ob_info["favorecido"],
+                    "valor": ob_info["valor"],
+                    "detalhe": proc,
+                })
+
+        resumo = {}
+        for ob in obs_list:
+            cat = ob["categoria"]
+            resumo[cat] = {
+                "qtd": resumo.get(cat, {}).get("qtd", 0) + 1,
+                "total": resumo.get(cat, {}).get("total", 0.0) + ob["valor"],
+            }
+
+        fav_map = {}
+        for ob in obs_list:
+            key = ob["favorecido"] or "—"
+            fav_map[key] = {
+                "qtd": fav_map.get(key, {}).get("qtd", 0) + 1,
+                "total": fav_map.get(key, {}).get("total", 0.0) + ob["valor"],
+                "documento": ob["credor"],
+            }
+        top_fav = sorted(
+            [{"nome": k, **v} for k, v in fav_map.items()],
+            key=lambda x: x["total"],
+            reverse=True,
+        )[:20]
+
+        linhas = []
+        linhas.append("# Relatório de Auditoria — Últimos 30 dias")
+        linhas.append(f"Gerado em {hoje} | Janela {inicio} a {hoje} | Fonte: OB PAGA do SIAFE (régua _ob_paga); "
+                      "o espelho TFE não entra")
+        linhas.append("")
+        linhas.append(f"- OBs analisadas: {len(obs_list)}")
+        linhas.append(f"- Erros coletados: {len(erros)}")
+        linhas.append("")
+
+        linhas.append("## Resumo por tipo de OB (SIAFE)")
+        for cat, vals in sorted(resumo.items(), key=lambda x: x[1]["total"], reverse=True):
+            linhas.append(f"- **{cat}**: {vals['qtd']} OBs | R$ {vals['total']:,.2f}")
+        linhas.append("")
+
+        linhas.append("## Top favorecidos")
+        linhas.append("| Favorecido | Documento | QTD | Total |")
+        linhas.append(" | -- | -- | --: | --: |")
+        for f in top_fav:
+            linhas.append(
+                f"| {f['nome']} | {f['documento']} | {f['qtd']} | R$ {f['total']:,.2f} |"
+            )
+        linhas.append("")
+
+        if obs_list:
+            linhas.append("## OBs")
+            linhas.append("| OB | SEI | Processo | Documento | Favorecido | UG | Categoria | Data | Valor |")
+            linhas.append(" | -- | -- | -- | -- | -- | -- | -- | -- | --: |")
+            for ob in obs_list[:200]:
+                linhas.append(
+                    f"| {ob['numero_ob'] or ob['id']} | {ob['numero_sei']} | {ob['numero_processo']} | {ob['credor']} | {ob['favorecido']} | {ob['ug']} | {ob['categoria']} | {ob['data_emissao']} | R$ {ob['valor']:,.2f} |"
+                )
+            linhas.append("")
+
+        if erros:
+            linhas.append("## Erros / Pendências (para enviar ao Claude Code)")
+            linhas.append("```")
+            for er in erros[:200]:
+                linhas.append(
+                    f"- [{er['tipo']}] OB {er['OB']} | {er['favorecido']} | R$ {er.get('valor', 0):,.2f}"
+                    + (f" | {er.get('detalhe', '')}" if er.get('detalhe') else "")
+                )
+            linhas.append("```")
+
+        relatorio = "\n".join(linhas)
+        Path("reports").mkdir(exist_ok=True)
+        out = Path(f"reports/relatorio_30d_{hoje}.md")
+        out.write_text(relatorio, encoding="utf-8")
+        return JSONResponse(content={"ok": True, "path": str(out), "erros_coletados": len(erros)})
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
@@ -2717,23 +2726,36 @@ def _siafe_pago_total() -> dict:
     """KPI de cabeçalho do painel: OB PAGA pelo SIAFE (Contabilizada, sem a devolvida pelo banco) de 2021 em diante,
     o período com coleta completa. Até 18/11/2026 o painel somava o espelho TFE inteiro como "valor fiscalizado"
     (R$ 141,5 bi em 1,2 mi OB) — regra da casa é OB = SIAFE; o pago de 2021–2026 no SIAFE é ~3,5× o do espelho.
-    Cache de 30 min (soma de 1,3 mi linhas). INDISPONÍVEL ≠ 0: sem a tabela, total None e o motivo."""
-    if d := _cache_get("obs:siafe_pago_total", 1800):
+    Cache de 30 min (soma de 1,3 mi linhas). INDISPONÍVEL ≠ 0: sem a tabela, total None e o motivo.
+
+    24/11/2026: a MESMA varredura (GROUP BY credor, ~22 s medidos com a VM em carga 14) dá também o `top` de
+    credores TERCEIROS (CNPJ/CPF — `SQL_CREDOR_TERCEIRO_SIAFE`, o universo que o espelho sempre listou; folha,
+    previdência e repasse entre UGs ficam fora do ranking, mas dentro do total). Até aqui `top_favorecidos` do
+    painel somava o espelho TFE inteiro — o 1º lugar era 'Banco do Brasil' com R$ 6,06 bi de linhas TFE."""
+    if d := _cache_get("obs:siafe_pago_total:v2", 1800):
         return d
-    out = {"total": None, "valor_total": None, "fonte_total": "SIAFE indisponível"}
+    out = {"total": None, "valor_total": None, "fonte_total": "SIAFE indisponível", "top": None}
     try:
         from compliance_agent.cruzamentos_intel import _ob_paga
+        from compliance_agent.reporting.intel_base import SQL_CREDOR_TERCEIRO_SIAFE
         con = _ro(timeout=30)
         try:
-            n, v = con.execute(f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
-                               "AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021").fetchone()
+            # `+credor`: varre a tabela em ordem física (o índice de credor faria uma leitura aleatória por linha —
+            # 154 s medidos contra 22 s, 24/11/2026)
+            linhas = con.execute(
+                f"SELECT credor, MAX(nome_credor), COUNT(*), COALESCE(SUM(valor),0), ({SQL_CREDOR_TERCEIRO_SIAFE}) "
+                f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} "
+                "AND CAST(substr(data_emissao,7,4) AS INTEGER) >= 2021 GROUP BY +credor").fetchall()
         finally:
             con.close()
-        out = {"total": n, "valor_total": round(float(v), 2),
-               "fonte_total": "OB paga no SIAFE (Contabilizada, sem devolvida pelo banco), 2021 em diante"}
+        terceiros = sorted((r for r in linhas if r[4]), key=lambda r: r[3], reverse=True)[:400]
+        top = [{"nome": r[1] or r[0], "doc": r[0], "total": round(float(r[3]), 2), "n": r[2]} for r in terceiros]
+        out = {"total": sum(r[2] for r in linhas), "valor_total": round(float(sum(r[3] for r in linhas)), 2),
+               "fonte_total": "OB paga no SIAFE (Contabilizada, sem devolvida pelo banco), 2021 em diante",
+               "top": top[:12], "_top400": top}   # `_top400`: a rede de pagamentos (/api/compliance/graph)
     except sqlite3.Error as exc:
         out["fonte_total"] = f"SIAFE indisponível: {exc}"
-    return _cache_put("obs:siafe_pago_total", out)
+    return _cache_put("obs:siafe_pago_total:v2", out)
 
 
 @router.get("/api/fontes/frescor")

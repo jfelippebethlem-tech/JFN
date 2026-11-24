@@ -13,6 +13,7 @@ import {a11yfy} from '../ui/index.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {motoresMontar} from '../ui/aovivo.js';
 import {cruzamentoMontar, conferenciaMontar} from './motores_cruzamento.js';
+import {conciliacaoMontar} from './conciliacao_ob.js';
 
 /* O `ir()` pinta o HTML depois que o render resolve (às vezes dentro de uma View Transition), e só
    o cockpit tem gancho pós-pintura. Aqui se espera o nó existir, quadro a quadro, por até ~3 s. */
@@ -86,12 +87,14 @@ export async function renderMotoresSistema() {
   _quandoExistir('s-conf', conferenciaMontar);
   _quandoExistir('s-cruz', cruzamentoMontar);
   _quandoExistir('s-fontes', frescorMontar);
+  _quandoExistir('s-conc', conciliacaoMontar);
   return cover('sistema', 'Motores — o que está rodando e se os modelos concordam',
     'Estado de cada motor do JFN (rodando, com falha, agendado, sem efeito) e o cruzamento entre o Claude e os outros modelos. Clique num motor para ver os eventos da última hora. Rota que não responde é INDISPONÍVEL, nunca zero.', '⚙️')
     + '<section class="c61-motores" id="s-motores" aria-labelledby="c61-motores-t"></section>'
     + '<div class="ck-fontes" id="s-fontes" style="margin-top:18px"></div>'
     + '<section class="c61-cruz" id="s-conf" aria-label="Conferência do Opus" style="margin-top:18px"></section>'
-    + '<section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>';
+    + '<section class="c61-cruz" id="s-cruz" aria-label="Cruzamento de motores" style="margin-top:18px"></section>'
+    + '<section id="s-conc" aria-label="Conciliação OB do SIAFE × espelho TFE" style="margin-top:18px"></section>';
 }
 
 /* "Funções mestras" — os comandos de capabilities.yaml, que ficavam no rodapé do Início. */

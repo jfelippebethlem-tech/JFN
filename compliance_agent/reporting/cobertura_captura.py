@@ -127,17 +127,20 @@ def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
         con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
         try:
             melhor: dict[str, tuple[int, str]] = {}
-            for pre, nome, n, v in con.execute(
-                    "SELECT substr(numero_sei, 5, 6), ug_nome, COUNT(*), "
-                    "       COALESCE(SUM(valor), 0) FROM ordens_bancarias "
+            # Só o NOME da unidade vem do espelho TFE (metadado: o rótulo mais frequente por prefixo SEI).
+            for pre, nome, n in con.execute(
+                    "SELECT substr(numero_sei, 5, 6), ug_nome, COUNT(*) FROM ordens_bancarias "
                     "WHERE numero_sei LIKE 'SEI-%' GROUP BY 1, 2"):
-                if not pre:
-                    continue
-                # o VALOR é por prefixo, somando todos os rótulos de UG que apareçam nele
-                valores[str(pre)] = valores.get(str(pre), 0.0) + float(v or 0)
-                if nome and int(n or 0) > melhor.get(str(pre), (0, ""))[0]:
+                if pre and nome and int(n or 0) > melhor.get(str(pre), (0, ""))[0]:
                     melhor[str(pre)] = (int(n), str(nome))
             nomes = {k: v[1] for k, v in melhor.items()}
+            # O VALOR PAGO por prefixo é OB PAGA do SIAFE (régua `_ob_paga`) — até 24/11/2026 somava o espelho TFE.
+            from compliance_agent.cruzamentos_intel import _ob_paga
+            for pre, v in con.execute(
+                    f"SELECT substr(processo, 5, 6), COALESCE(SUM(valor), 0) FROM ob_orcamentaria_siafe "
+                    f"WHERE {_ob_paga(con)} AND processo LIKE 'SEI-%' GROUP BY 1"):
+                if pre:
+                    valores[str(pre)] = float(v or 0)
         finally:
             con.close()
     except sqlite3.Error:
