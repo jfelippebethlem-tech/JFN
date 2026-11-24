@@ -551,3 +551,84 @@ def test_todo_avisar_do_repositorio_aponta_fonte_do_mapa():
             achados.setdefault(f, []).append(arq.name)
     assert {"siafe_ob", "contratos_tcerj", "sancoes"} <= set(achados)
     assert set(achados) <= fontes, {f: a for f, a in achados.items() if f not in fontes}
+
+
+# ───────────── pesado DESTACADO (24/11/2026: um pesado de 1 h segurava o ciclo inteiro) ─────────────
+def _esperar_fim(con, did, teto=40):
+    fim = time.time() + teto
+    while time.time() < fim:
+        if con.execute("SELECT ultimo_estado FROM derivado WHERE id=?", (did,)).fetchone()[0] != "rodando":
+            return
+        time.sleep(0.3)
+    raise AssertionError(f"{did} não terminou em {teto} s")
+
+
+def test_pesado_roda_destacado_e_o_leve_anda_enquanto_isso(tmp_path, monkeypatch):
+    import fcntl
+    import yaml
+    cfg = {"fontes": {"f": {"nome": "Fonte", "sonda": {}}},
+           "derivados": {"pes": _der(["f"], peso="pesado", prioridade=1, comando=["sleep", "3"]),
+                         "dep": _der(["f", "pes"], prioridade=2),            # depende do pesado: espera
+                         "lev": _der(["f"], prioridade=3)},                  # não depende: anda já
+           "cerebro": []}
+    cfgp = tmp_path / "p.yaml"
+    cfgp.write_text(yaml.safe_dump(cfg))
+    monkeypatch.setattr(P, "CONFIG", cfgp)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    con = P.conectar(tmp_path / "p.db")
+    P.emitir(con, cfg, "f", "mudou")
+    t0 = time.time()
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999)
+    assert time.time() - t0 < 2.5                                          # o ciclo não esperou o pesado
+    assert feitos[0]["id"] == "pes" and feitos[0]["destacado"] and feitos[0]["pid"]
+    assert [x["id"] for x in feitos[1:]] == ["lev"]                        # controle: o leve andou
+    assert con.execute("SELECT ultimo_estado FROM derivado WHERE id='pes'").fetchone()[0] == "rodando"
+    with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:          # o filho segura o semáforo
+        with pytest.raises(BlockingIOError):
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    # 2º ciclo com o filho vivo: não relança; o dependente espera
+    assert P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999) == []
+    assert "rodando destacado" in con.execute("SELECT adiado FROM derivado WHERE id='pes'").fetchone()[0]
+    assert con.execute("SELECT adiado FROM derivado WHERE id='dep'").fetchone()[0] == "aguardando derivado de que depende"
+    _esperar_fim(con, "pes")
+    assert con.execute("SELECT ultimo_estado, pid FROM derivado WHERE id='pes'").fetchone() == ("ok", None)
+    assert "pes" not in P._sujos(con) and P._motivos(con, "dep")[0].startswith("pes: recalculado")   # o filho emitiu
+    with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:          # e soltou o semáforo ao sair
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999)
+    assert [x["id"] for x in feitos] == ["dep"]
+    con.close()
+
+
+def test_filho_destacado_morto_vira_falha_sem_relancar_no_laco(con):
+    cfg = _cfg(a=_der(["f"], peso="pesado"))
+    P.emitir(con, cfg, "f", "mudou")
+    con.execute("INSERT INTO derivado(id, ultimo_estado, ultimo_inicio, pid) VALUES ('a', 'rodando', ?, 999999)",
+                (time.time() - 60,))
+    con.commit()
+    lancados = []
+    feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999,
+                         destacar=lambda *a: lancados.append(a[1]) or 1)
+    assert feitos == [] and lancados == []                                 # recuo: não relança no mesmo ciclo
+    est, erro, falhas, prox = con.execute(
+        "SELECT ultimo_estado, ultimo_erro, falhas, proxima_tentativa FROM derivado WHERE id='a'").fetchone()
+    assert est == "falhou" and "morreu" in erro and falhas == 1 and prox > time.time()
+    assert "a" in P._sujos(con)                                            # a pendência fica
+
+
+def test_pesado_que_termina_com_erro_registra_falha_no_filho(tmp_path, monkeypatch):
+    import yaml
+    cfg = {"fontes": {"f": {"nome": "Fonte", "sonda": {}}},
+           "derivados": {"pes": _der(["f"], peso="pesado", comando=["false"])}, "cerebro": []}
+    cfgp = tmp_path / "p.yaml"
+    cfgp.write_text(yaml.safe_dump(cfg))
+    monkeypatch.setattr(P, "CONFIG", cfgp)
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    con = P.conectar(tmp_path / "p.db")
+    P.emitir(con, cfg, "f", "mudou")
+    P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999)
+    _esperar_fim(con, "pes")
+    est, erro = con.execute("SELECT ultimo_estado, ultimo_erro FROM derivado WHERE id='pes'").fetchone()
+    assert est == "falhou" and "código 1" in erro
+    assert con.execute("SELECT estado FROM execucao WHERE derivado='pes'").fetchone()[0] == "falhou"
+    con.close()

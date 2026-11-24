@@ -158,6 +158,9 @@ def conectar(db: Path | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(alvo, timeout=30)
     con.execute("PRAGMA journal_mode=WAL")
     con.executescript(DDL)
+    # 24/11/2026: pesado roda DESTACADO do ciclo — o PID do processo filho fica na linha do derivado
+    with contextlib.suppress(sqlite3.OperationalError):
+        con.execute("ALTER TABLE derivado ADD COLUMN pid INTEGER")
     cerebro.preparar(con)
     return con
 
@@ -521,13 +524,13 @@ def _rodar_comando(did: str, d: dict) -> tuple[bool, str | None]:
         trava.close()
 
 
-def _rodar_comando_travado(did, d, argv, env, inicio, trava) -> tuple[bool, str | None]:
+def _rodar_comando_travado(did, d, argv, env, inicio, trava, fds_extra=()) -> tuple[bool, str | None]:
     with _log_do(did).open("ab") as log:
         log.write(f"\n== {time.strftime('%F %T')} {' '.join(argv)}\n".encode())
         log.flush()
         # o filho HERDA o descritor da trava (pass_fds): se este ciclo morrer, a trava segue com a tarefa viva
         p = subprocess.Popen(["nice", "-n", "15", *argv], cwd=RAIZ, env=env, stdout=log, stderr=subprocess.STDOUT,
-                             start_new_session=True, pass_fds=(trava.fileno(),))
+                             start_new_session=True, pass_fds=(trava.fileno(), *fds_extra))
         try:
             rc = p.wait(timeout=int(d.get("timeout_s", 1800)))
         except subprocess.TimeoutExpired:
@@ -658,6 +661,104 @@ def _semaforo_pesado():
     return fh
 
 
+def _concluir(con: sqlite3.Connection, cfg: dict, did: str, d: dict, max_id: int, inicio: float,
+              motivos: list[str], ok: bool, erro: str | None) -> None:
+    """Registro do fim de uma execução (no ciclo ou no processo destacado): limpa só as pendências que existiam no
+    início, marca o estado, recua em falha e emite o evento para os dependentes."""
+    fim = time.time()
+    if ok:
+        con.execute("DELETE FROM pendencia WHERE derivado=? AND evento_id<=?", (did, max_id))
+        con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='ok', ultimo_erro=NULL, falhas=0, pid=NULL, "
+                    "proxima_tentativa=NULL, execucoes=execucoes+1 WHERE id=?", (fim, did))
+        con.commit()
+        emitir(con, cfg, did, f"recalculado em {fim - inicio:.0f} s")
+        _descoberta_do_derivado(con, did, d)
+    else:
+        falhas = _linha(con, did)["falhas"] + 1
+        con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='falhou', ultimo_erro=?, falhas=?, pid=NULL, "
+                    "proxima_tentativa=?, execucoes=execucoes+1 WHERE id=?",
+                    (fim, erro, falhas, fim + min(RECUO_BASE_S * 2 ** (falhas - 1), RECUO_MAX_S), did))
+    con.execute("INSERT INTO execucao(derivado, inicio, fim, estado, motivos, erro) VALUES (?,?,?,?,?,?)",
+                (did, inicio, fim, "ok" if ok else "falhou", json.dumps(motivos, ensure_ascii=False), erro))
+    con.commit()
+
+
+def _pid_vivo(pid: int | None, did: str) -> bool:
+    """O PID ainda é o NOSSO filho (`propagacao executar <did>`)? PID reaproveitado por outro processo = morto."""
+    if not pid:
+        return False
+    try:
+        cmd = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return False
+    return b"executar" in cmd and did.encode() in cmd
+
+
+def _rodando_destacado(con: sqlite3.Connection, cfg: dict) -> set[str]:
+    """Derivados com filho destacado VIVO. Filho morto sem registrar o fim = falha registrada (com recuo, sem
+    relançar no mesmo ciclo) — 24/11/2026."""
+    vivos = set()
+    for did, pid, ini in con.execute("SELECT id, pid, ultimo_inicio FROM derivado WHERE ultimo_estado='rodando' "
+                                     "AND pid IS NOT NULL").fetchall():
+        if _pid_vivo(pid, did):
+            vivos.add(did)
+        elif did in cfg["derivados"]:
+            _concluir(con, cfg, did, cfg["derivados"][did], -1, ini or time.time(), [], False,
+                      f"processo destacado (pid {pid}) morreu sem registrar o fim")
+    return vivos
+
+
+def _lancar_destacado(con: sqlite3.Connection, did: str, d: dict, max_id: int, inicio: float, semaforo) -> int:
+    """Pesado DESTACADO (24/11/2026): um pesado de até 1 h segurava o ciclo inteiro — nenhum leve andava e o estado
+    aparecia PARADO. O filho (sessão própria) herda o semáforo de pesado e a trava da tarefa, roda, registra o fim
+    e emite o evento; o ciclo segue com os leves. Devolve o PID."""
+    trava_arq = trava_da_tarefa(did, d)
+    trava_arq.parent.mkdir(parents=True, exist_ok=True)
+    trava = trava_arq.open("a")
+    try:
+        fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        trava.close()
+        raise OSError(f"trava {trava_arq.name} ocupada") from None
+    db = con.execute("PRAGMA database_list").fetchone()[2]
+    fds = (semaforo.fileno(), trava.fileno())
+    env = dict(os.environ, PYTHONPATH=str(RAIZ), JFN_DATA_DIR=str(DATA), JFN_PROPAGACAO_YAML=str(CONFIG))
+    try:
+        with _log_do(did).open("ab") as log:
+            p = subprocess.Popen([sys.executable, "-m", "compliance_agent.propagacao", "executar", did,
+                                  "--max-id", str(max_id), "--inicio", repr(inicio), "--db", db,
+                                  "--fds", ",".join(map(str, fds))],
+                                 cwd=RAIZ, env=env, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                 start_new_session=True, pass_fds=fds)
+    finally:
+        trava.close()                                    # o filho segura a sua cópia
+    return p.pid
+
+
+def executar_destacado(did: str, max_id: int, inicio: float, db: Path, fds: tuple[int, ...]) -> int:
+    """Corpo do processo destacado (`python -m compliance_agent.propagacao executar …`)."""
+    cfg = carregar()
+    d = cfg["derivados"][did]
+    con = conectar(db)
+    try:
+        motivos = _motivos(con, did)
+        try:
+            if d.get("tipo") == "cache":
+                ok, erro = _rodar_cache(did, d)
+            else:
+                argv = [a.replace("{py}", str(RAIZ / ".venv" / "bin" / "python")) for a in d["comando"]]
+                env = dict(os.environ, PYTHONPATH=str(RAIZ), HOME=os.path.expanduser("~"))
+                env.update({k: str(v) for k, v in (d.get("env") or {}).items()})
+                ok, erro = _rodar_comando_travado(did, d, argv, env, inicio, type("T", (), {"fileno": lambda _s: fds[-1]})(),
+                                                  fds_extra=fds[:-1])
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError) as exc:
+            ok, erro = False, f"{type(exc).__name__}: {exc}"[:300]
+        _concluir(con, cfg, did, d, max_id, inicio, motivos, ok, erro)
+        return 0 if ok else 1
+    finally:
+        con.close()
+
+
 def _teto_carga(peso: str, sujo_ha: float, slo: float, memoria) -> float:
     if sujo_ha >= slo and memoria() >= MEMORIA_MIN_ATRASADO_MB:
         return CARGA_TETO_ATRASADO
@@ -665,12 +766,15 @@ def _teto_carga(peso: str, sujo_ha: float, slo: float, memoria) -> float:
 
 
 def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=None,
-              memoria=_memoria_disponivel_mb) -> list[dict]:
-    """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo."""
+              memoria=_memoria_disponivel_mb, destacar=None) -> list[dict]:
+    """Recalcula o que está sujo e elegível. Devolve o que fez neste ciclo. Pesado sem `executar` injetado roda
+    DESTACADO (`destacar`, padrão `_lancar_destacado`): o ciclo segue com os leves."""
     t0, feitos, pesado_feito = time.time(), [], False
     ders = cfg["derivados"]
+    destacar = destacar or (None if executar else _lancar_destacado)
     while time.time() - t0 < ORCAMENTO_CICLO_S:
         sujos, agora, escolhido, semaforo = _sujos(con, ders), time.time(), None, None
+        rodando = _rodando_destacado(con, cfg)
         # motivo de quem já foi avaliado NESTA passada: o dependente só espera um derivado que pode rodar agora.
         # 24/11/2026: perícia, certeza, juiz e retratos ficavam 10–40 h "aguardando derivado de que depende" atrás
         # de um pesado que o semáforo ou a carga seguravam — o relógio dele estava livre, ele não.
@@ -701,12 +805,15 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             if any(x["id"] == did for x in feitos):
                 continue                                # um derivado roda no máximo uma vez por ciclo
             motivo = relogio(did)
-            if motivo:
+            if did in rodando:
+                motivo = "rodando destacado (processo próprio)"
+            elif motivo:
                 pass
             # só espera o derivado de que depende se ESSE está pronto para rodar; se ele ainda junta eventos ou
             # está no intervalo mínimo, este roda já e será sujo de novo quando o outro terminar
-            elif any(dep in sujos and dep in ders and relogio(dep) is None and dep not in barrado
-                     and not any(x["id"] == dep for x in feitos) for dep in d.get("depende", [])):
+            elif any(dep in rodando for dep in d.get("depende", [])) or any(
+                    dep in sujos and dep in ders and relogio(dep) is None and dep not in barrado
+                    and not any(x["id"] == dep for x in feitos) for dep in d.get("depende", [])):
                 motivo = "aguardando derivado de que depende"
             elif _trava_ocupada(did, d):
                 motivo = "já rodando fora do despachante (cron ou à mão)"
@@ -717,11 +824,11 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
                 motivo = f"carga {c:.1f} acima do teto {teto:.0f}"
             elif peso == "pesado" and (semaforo := _semaforo_pesado()) is None:
                 motivo = "semáforo de pesado da VM-1 ocupado (cron pesado rodando)"
-                if agora - s["primeiro"] >= CARGA_PACIENCIA_S:
+                if agora - s["primeiro"] >= CARGA_PACIENCIA_S and not rodando:   # o próprio filho não pede a vez
                     _pedir_vez_pesado(did)
                     motivo += " — vez pedida ao pesado.sh"
-            if motivo and motivo != "um pesado por ciclo" and motivo != "aguardando derivado de que depende" \
-                    and relogio(did) is None:
+            if motivo and motivo not in ("um pesado por ciclo", "aguardando derivado de que depende",
+                                         "rodando destacado (processo próprio)") and relogio(did) is None:
                 barrado[did] = motivo               # barrado por fora (carga, semáforo, trava) — não pelo relógio
             con.execute("UPDATE derivado SET adiado=? WHERE id=?", (motivo, did))
             if motivo is None:
@@ -736,6 +843,20 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
         motivos, inicio = _motivos(con, did), time.time()
         con.execute("UPDATE derivado SET ultimo_inicio=?, ultimo_estado='rodando', adiado=NULL WHERE id=?", (inicio, did))
         con.commit()
+        if destacar and d.get("peso") == "pesado" and semaforo is not None:
+            try:
+                pid = destacar(con, did, d, s["max_id"], inicio, semaforo)
+            except (OSError, subprocess.SubprocessError) as exc:
+                _concluir(con, cfg, did, d, s["max_id"], inicio, motivos, False, f"não lançou: {exc}"[:300])
+                feitos.append({"id": did, "ok": False, "erro": str(exc)[:200], "segundos": 0.0})
+            else:
+                con.execute("UPDATE derivado SET pid=? WHERE id=?", (pid, did))
+                con.commit()
+                feitos.append({"id": did, "destacado": True, "pid": pid})
+            finally:
+                semaforo.close()                 # SEM unlock: o filho herdou a trava; só esta cópia fecha
+            pesado_feito = True
+            continue
         rodar = executar or (_rodar_cache if d.get("tipo") == "cache" else _rodar_comando)
         try:
             ok, erro = rodar(did, d)
@@ -745,24 +866,10 @@ def despachar(con: sqlite3.Connection, cfg: dict, carga=os.getloadavg, executar=
             if semaforo is not None:
                 fcntl.flock(semaforo, fcntl.LOCK_UN)
                 semaforo.close()
-        fim = time.time()
         pesado_feito = pesado_feito or d.get("peso") == "pesado"
-        if ok:
-            # só saem as pendências que existiam quando começou: evento que chegou durante o cálculo fica
-            con.execute("DELETE FROM pendencia WHERE derivado=? AND evento_id<=?", (did, s["max_id"]))
-            con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='ok', ultimo_erro=NULL, falhas=0, "
-                        "proxima_tentativa=NULL, execucoes=execucoes+1 WHERE id=?", (fim, did))
-            con.commit()
-            emitir(con, cfg, did, f"recalculado em {fim - inicio:.0f} s")
-            _descoberta_do_derivado(con, did, d)
-        else:
-            falhas = _linha(con, did)["falhas"] + 1
-            con.execute("UPDATE derivado SET ultimo_fim=?, ultimo_estado='falhou', ultimo_erro=?, falhas=?, "
-                        "proxima_tentativa=?, execucoes=execucoes+1 WHERE id=?",
-                        (fim, erro, falhas, fim + min(RECUO_BASE_S * 2 ** (falhas - 1), RECUO_MAX_S), did))
-        con.execute("INSERT INTO execucao(derivado, inicio, fim, estado, motivos, erro) VALUES (?,?,?,?,?,?)",
-                    (did, inicio, fim, "ok" if ok else "falhou", json.dumps(motivos, ensure_ascii=False), erro))
-        con.commit()
+        # só saem as pendências que existiam quando começou: evento que chegou durante o cálculo fica
+        _concluir(con, cfg, did, d, s["max_id"], inicio, motivos, ok, erro)
+        fim = time.time()
         feitos.append({"id": did, "ok": ok, "erro": erro, "segundos": round(fim - inicio, 1)})
     return feitos
 
@@ -878,11 +985,19 @@ def main(argv=None) -> int:
     sub.add_parser("ciclo")
     sub.add_parser("estado")
     sub.add_parser("mapa")
+    ex = sub.add_parser("executar")          # corpo do pesado destacado (lançado pelo despachante, não à mão)
+    ex.add_argument("alvo")
+    ex.add_argument("--max-id", type=int, required=True)
+    ex.add_argument("--inicio", type=float, required=True)
+    ex.add_argument("--db", required=True)
+    ex.add_argument("--fds", required=True)
     for nome in ("emitir", "sujar"):
         p = sub.add_parser(nome)
         p.add_argument("alvo")
         p.add_argument("detalhe")
     a = ap.parse_args(argv)
+    if a.cmd == "executar":
+        return executar_destacado(a.alvo, a.max_id, a.inicio, Path(a.db), tuple(int(x) for x in a.fds.split(",")))
     cfg = carregar()
     if a.cmd == "ciclo":
         r = ciclo(cfg)
