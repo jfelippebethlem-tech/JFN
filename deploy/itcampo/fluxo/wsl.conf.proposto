@@ -1,0 +1,13 @@
+# /etc/wsl.conf PROPOSTO (O1.10) — NÃO aplicado (vale só no próximo start do WSL). Hoje: [boot] systemd=true, [user] default=iterj.
+# O automount ganha `metadata` (permissões Linux nos arquivos do Windows, como no D: montado à mão hoje).
+# O D: USB fica garantido pelo montar_d.sh do boot (o automount só vê o que está plugado quando o WSL sobe).
+[boot]
+systemd=true
+
+[user]
+default=iterj
+
+[automount]
+enabled=true
+options="metadata,uid=1000,gid=1000"
+mountFsTab=false

@@ -15,7 +15,7 @@
 # captura SEI da fatia 1/2 e o sweep SEI-PCRJ têm prioridade, porque produzem dado novo e a suíte
 # só confere o que já existe.
 set -u
-cd /home/ubuntu/JFN || exit 1
+cd "$(dirname "$0")/.." || exit 1   # O2.4: a raiz é a do próprio script (~/JFN na VM-1, ~/JFN-worker na VM-2)
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/vm2_suite.log

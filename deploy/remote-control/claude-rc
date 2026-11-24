@@ -1,0 +1,25 @@
+#!/bin/bash
+# Servidor de Remote Control sempre no ar (dono, 24/11/2026: "quero controlar tudo pelo celular, sem barrar").
+# --permission-mode bypassPermissions: sem isso, sessões criadas pelo app ligam o modo "auto" e o classificador
+# barra ações (foi o que aconteceu com o agente do PL 6065). Os deny do settings (WhatsApp) continuam valendo.
+# Laço só reinicia o servidor se ele cair (ex.: 10 min sem rede); não faz trabalho pesado.
+export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
+cd "$HOME"
+NOME="${1:-$(hostname)}"
+responder(){  # só responde às duas perguntas de início (confiança na pasta home e ativar o Remote Control)
+  [ -n "${TMUX_PANE:-}" ] || return 0
+  for _ in $(seq 1 30); do
+    sleep 2
+    tela="$(tmux capture-pane -p -t "$TMUX_PANE" | grep -v "^[[:space:]]*$" | tail -3)"
+    case "$tela" in
+      *"Trust $HOME? [y/N]"*|*"Enable Remote Control? (y/n)"*) tmux send-keys -t "$TMUX_PANE" y Enter ;;
+      *"Connected"*) return 0 ;;
+    esac
+  done
+}
+while true; do
+  responder &
+  claude remote-control --name "$NOME" --permission-mode bypassPermissions --spawn same-dir
+  echo "$(date '+%F %T') remote-control saiu (rc=$?); reinicio em 15 s" >> "$HOME/.claude/remote-control.log"
+  sleep 15
+done

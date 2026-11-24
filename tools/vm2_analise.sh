@@ -16,7 +16,7 @@
 #
 # Cede a vez se a carga passar de 3: a CAPTURA tem prioridade, porque produz dado novo.
 set -u
-cd /home/ubuntu/JFN || exit 1
+cd "$(dirname "$0")/.." || exit 1   # O2.4: a raiz é a do próprio script (~/JFN na VM-1, ~/JFN-worker na VM-2)
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/vm2_analise.log

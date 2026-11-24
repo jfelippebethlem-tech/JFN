@@ -208,6 +208,10 @@ fontes:
     sonda: {git: [tools/sweep_fracionamento_tcerj.py, compliance_agent/detectores/p4_fracionamento.py,
                   compliance_agent/objeto_similaridade.py, compliance_agent/limites_dispensa.py]}
 
+  codigo_commit:
+    nome: Commit novo no código do repositório canônico (VM-1) — o worker da VM-2 faz pull conferido e recarrega (O2.4)
+    # consumidor: rotina deploy_vm2 do config/fluxo.yaml (E17), inativa até a O9.0; o evento chega ao fluxo pela ponte
+    sonda: {git: [compliance_agent, tools, config, rotas, server.py, requirements.txt]}
 derivados:
   fracionamento_objeto:
     nome: Fracionamento de despesa por OBJETO — unidade × exercício × natureza, soma das dispensas × teto (art. 75 §1º)

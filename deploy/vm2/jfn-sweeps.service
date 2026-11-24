@@ -1,11 +1,11 @@
 [Unit]
 Description=JFN — varreduras determinísticas (alívio de carga da VM-1)
-Documentation=file:/home/ubuntu/JFN/tools/vm2_sweep.sh
+Documentation=file:/home/ubuntu/JFN-worker/tools/vm2_sweep.sh
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/ubuntu/JFN
-ExecStart=/bin/bash /home/ubuntu/JFN/tools/vm2_sweep.sh
+WorkingDirectory=/home/ubuntu/JFN-worker
+ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_sweep.sh
 # Prioridade baixa: os timers do dono (Massare, descobre-doe, sei-pcrj) vêm primeiro.
 Nice=15
 IOSchedulingClass=idle

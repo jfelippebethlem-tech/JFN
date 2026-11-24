@@ -1,0 +1,12 @@
+# %USERPROFILE%\.wslconfig PROPOSTO (O1.10) — NÃO aplicado: exige `wsl --shutdown`, que derruba as sessões do WSL.
+# Máquina: 31,4 GB de RAM física, 24 fios (Core Ultra 9 275HX). Reserva ~6 GB ao Windows ⇒ 25 GB ao WSL.
+# Hoje: memory=20GB, swap=8GB, processors (padrão = todos), autoMemoryReclaim=gradual.
+[wsl2]
+memory=25GB
+processors=24
+swap=12GB
+# swapFile padrão (%TEMP%\swap.vhdx) — C: tem espaço; não pôr no D: (USB, some)
+vmIdleTimeout=-1
+
+[experimental]
+autoMemoryReclaim=gradual

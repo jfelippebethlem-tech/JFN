@@ -12,7 +12,7 @@
 # Convive com o Massare: `nice`/`ionice` baixos e recuo quando a máquina está carregada. Os
 # timers do dono (massare-market, descobre-doe, sei-pcrj) têm prioridade.
 set -u
-cd /home/ubuntu/JFN || exit 1
+cd "$(dirname "$0")/.." || exit 1   # O2.4: a raiz é a do próprio script (~/JFN na VM-1, ~/JFN-worker na VM-2)
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/vm2_sweeps.log

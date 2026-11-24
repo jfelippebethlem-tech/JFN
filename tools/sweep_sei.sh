@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # manual entre execuções). LEVE: nice/ionice idle (só CPU/IO ocioso), bounded por timeout, SINGLE-PASS
 # (o cron repete; NÃO é loop contínuo — esse era o lane ruim que segurava Chromium na memória 24h).
 set -u
-cd /home/ubuntu/JFN || exit 1
+cd "$(dirname "$0")/.." || exit 1   # O2.4: a raiz é a do próprio script (~/JFN na VM-1, ~/JFN-worker na VM-2)
 # O cron não herda o .env: sem isto só o Gemini sobrevive na cadeia (ele lê as chaves
 # do disco), e Groq/Cerebras/extras ficam "indisponíveis" — foi por isso que os 1.696
 # pareceres do Lex saíram 100% do Gemini. Ver tools/obra_fase_sei no crontab (mesmo padrão).
@@ -17,7 +17,7 @@ PY=.venv/bin/python
 # 21:58), e todo passo depois da linha do colher (cpf, refichar, depurar, árvore, direc, lex)
 # ficou um dia e meio sem rodar, calado. `set -u` protege — mas só grita no stderr do cron, que
 # ninguém lê; o sentinela de "fim" é o que se pode auditar.
-REPO=/home/ubuntu/JFN
+REPO="$(pwd)"
 LOG=data/sweep_sei.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
