@@ -9,7 +9,8 @@ sem FastAPI, ORM, requests/httpx, LLM, navegador nem `compliance_agent.rotas`. A
   processo_id   chave do processo: `NNNNNN/NNNNNN/AAAA` (SEI-RJ) ou `PCRJ:<nº>` (SEI.RIO)
   documento_id  `sei:<nº>` / `pos:<i>` + `#2` para número repetido no mesmo processo
   contrato_id   `(orgao, numero_normalizado, exercicio)`
-  pagamento     invariante "pago = OB paga do SIAFE" (`ob_paga_sql`)
+  pagamento     invariante "pago = OB paga do SIAFE" (`ob_paga_sql`) + natureza_pagamento/origem_exercicio (O4.6, sombra)
+  regime        regime jurídico POR CONTRATO (O4.4, sombra ⚖️): 8.666 / 14.133 / 13.303 / 14.065 / 13.979 / outro
   estados       estados de saída (AUSENTE … ABSTEVE) e saúde operacional
 
 Estado (24/11/2026, O4.1): criado com testes de paridade contra as cópias antigas; os chamadores antigos ainda NÃO
