@@ -8,8 +8,17 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 import tools.itcampo_sei_paralelo as P
 import tools.sei_integra_fila as F
+
+
+@pytest.fixture(autouse=True)
+def _sem_flag_real(tmp_path, monkeypatch):
+    """25/11/2026: o acelerador lê data/.sem_acelerar da MÁQUINA — no it-campo ela existe (parada de obras) e 2 testes
+    falhavam só lá. Cada teste parte sem a flag; quem a quer, cria a sua (test com `flag`)."""
+    monkeypatch.setattr(P, "SEM_ACELERAR", tmp_path / "sem_acelerar_ausente")
 
 
 def test_relatorio_por_degrau_soma_voltas_simultaneas():
