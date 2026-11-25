@@ -55,7 +55,9 @@ def gravar(numero: str, r: dict) -> None:
     RESP.mkdir(parents=True, exist_ok=True)
     arv = r.get("arvore") or {}
     doc = {"numero": numero, "consultado_em": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-           "encontrado": bool(r.get("disponivel")), "erro": r.get("erro"),
+           # True só com PROVA (linha de resultado); senão None = INDETERMINADO, nunca False: captcha
+           # errado devolve a mesma página que "aceito e sem resultado" (sei_pcrj_criterio).
+           "encontrado": True if r.get("disponivel") == 1 else None, "erro": r.get("erro"),
            "tipo_processo": arv.get("tipo_processo"), "n_registros": arv.get("n_registros"),
            "documentos": arv.get("docs") or [], "andamentos": arv.get("andamentos") or [],
            "assinaturas": arv.get("assinaturas") or [], "fonte": "pesquisa pública SEI.RIO (prefeitura.sei.rio)"}
@@ -78,9 +80,9 @@ async def rodar(nums: list[str]) -> None:
             try:
                 r = await S.capturar(pg, n, max_captchas=40)
             except (PlaywrightError, OSError, asyncio.TimeoutError, ValueError, RuntimeError) as e:  # um pedido ruim não derruba os outros
-                r = {"disponivel": 0, "erro": f"{type(e).__name__}: {str(e)[:120]}"}
+                r = {"disponivel": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"}
             gravar(n, r)
-            print(f"{datetime.now():%H:%M:%S} {n}: {'ok' if r.get('disponivel') else 'sem resultado'} "
+            print(f"{datetime.now():%H:%M:%S} {n}: {'ok' if r.get('disponivel') == 1 else 'indeterminado'} "
                   f"({len((r.get('arvore') or {}).get('docs') or [])} docs)")
     await S._com_browser(fn)
 

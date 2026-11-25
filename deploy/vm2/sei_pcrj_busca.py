@@ -26,6 +26,7 @@ from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
 
+import sei_pcrj_criterio as C
 import sei_pcrj_sweep as S
 
 TERMOS = Path.home() / "shared-brain" / "sei_pcrj_busca_termos.txt"
@@ -104,9 +105,14 @@ async def _abrir_busca(page, termo: str) -> bool:
     return True
 
 
-async def buscar_termo(page, termo: str, *, max_captchas: int = 20, diag=None) -> dict:
+async def buscar_termo(page, termo: str, *, max_captchas: int = 20,
+                       max_sem_prova: int = C.MAX_SEM_PROVA, diag=None) -> dict:
+    """Critério POSITIVO (sei_pcrj_criterio): só linha de resultado prova que o captcha passou.
+    Sem linha e sem a frase de erro = INDETERMINADO (captcha errado devolve a mesma página que
+    "aceito e vazio"): retenta com captcha novo e, esgotado, devolve erro — o termo NÃO fica feito."""
     if not await _abrir_busca(page, termo):
         return {"erro": "form não abriu"}
+    sem_prova = 0
     for lido in range(1, max_captchas + 1):
         img = await page.query_selector(S._SEL_CAP_IMG)
         if not img:
@@ -121,12 +127,18 @@ async def buscar_termo(page, termo: str, *, max_captchas: int = 20, diag=None) -
         except PlaywrightError:
             pass
         await asyncio.sleep(1.5)
-        low = S._norm_txt(await page.inner_text("body"))
-        if S._ERRO_CAPTCHA in low:
+        txt = await page.inner_text("body")
+        linhas = await page.evaluate(_JS_LINHAS)
+        leitura = C.classificar(len(linhas), 0, txt)
+        if leitura != C.PUBLICO:
+            if leitura == C.INDETERMINADO:
+                sem_prova += 1
+                if sem_prova >= max_sem_prova:
+                    return {"erro": f"indeterminado: {sem_prova} submissões sem linha de resultado",
+                            "captchas": lido}
             if not await _abrir_busca(page, termo):
                 break
             continue
-        linhas = await page.evaluate(_JS_LINHAS)
         itens = None
         ini = ROWS
         while True:
@@ -166,13 +178,18 @@ def gravar(con: sqlite3.Connection, termo: str, r: dict) -> int:
 
 
 def _termos_pendentes(con: sqlite3.Connection) -> list[str]:
-    feitos = {r[0] for r in con.execute("SELECT termo FROM sei_pcrj_busca_termo WHERE erro IS NULL")}
-    saida = []
+    """Feito = termo com PROVA (linhas lidas, sem erro). Termo gravado sem erro e com 0 linhas veio do
+    critério antigo (ausência da frase = aceito) e volta. Nunca tentados primeiro; retentativas depois,
+    para um termo de 0 resultado real não tomar o lote dos novos."""
+    feitos, tentados = set(), set()
+    for termo, lidos, erro in con.execute("SELECT termo, lidos, erro FROM sei_pcrj_busca_termo"):
+        (feitos if erro is None and (lidos or 0) > 0 else tentados).add(termo)
+    novos, retentar = [], []
     for ln in TERMOS.read_text(encoding="utf-8").splitlines():
         t = ln.split("\t")[0].strip()
         if t and t not in feitos:
-            saida.append(t)
-    return saida
+            (retentar if t in tentados else novos).append(t)
+    return novos + retentar
 
 
 async def lote(max_termos: int, segundos: int, so: str | None = None) -> dict:

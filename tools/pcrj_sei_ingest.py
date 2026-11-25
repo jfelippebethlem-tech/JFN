@@ -47,7 +47,10 @@ def ingerir(origem: Path | None = None, db_path=None) -> dict:
             con.execute(
                 "INSERT INTO pcrj_processo (numero_processo, sistema, interessado, assunto, "
                 "orgao, andamento_json, disponivel, coletado_em) VALUES (?,?,?,?,?,?,?,?) "
-                "ON CONFLICT(numero_processo) DO UPDATE SET disponivel=excluded.disponivel, "
+                # NULL (INDETERMINADO na VM-2) não apaga prova anterior: um 1 visto com linha de resultado
+                # fica 1 até outra prova. Captcha errado = mesma página que "aceito e vazio" (24/11/2026).
+                "ON CONFLICT(numero_processo) DO UPDATE SET disponivel=CASE WHEN excluded.disponivel IS NULL "
+                "AND pcrj_processo.disponivel = 1 THEN 1 ELSE excluded.disponivel END, "
                 "orgao=COALESCE(excluded.orgao, pcrj_processo.orgao), "
                 "assunto=COALESCE(excluded.assunto, pcrj_processo.assunto), "
                 "coletado_em=excluded.coletado_em",

@@ -24,6 +24,7 @@ from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
 
+import sei_pcrj_criterio as C
 import sei_pcrj_sweep as S
 
 PARES = Path.home() / "shared-brain" / "sei_pcrj_crc_pares.txt"
@@ -89,11 +90,24 @@ def _assinantes(texto_pagina: str) -> list[str]:
     return [ln for ln in linhas[1:] if ln and not ln.startswith("Assinante")][: int(m.group(1)) + 2]
 
 
-async def conferir(page, verificador: str, crc: str, *, max_captchas: int = 8, diag=None) -> dict:
+async def _abrir_conferir(page, verificador: str, crc: str) -> None:
     await page.goto(CONFERIR, wait_until="domcontentloaded", timeout=45000)
     await asyncio.sleep(3)
     await page.fill("#txtCodigoVerificador", verificador)
     await page.fill("#txtCrc", crc)
+
+
+# Prova NEGATIVA observável nesta página: a mensagem do próprio SEI de que o par não confere.
+_PAR_NAO_CONFERE = ("nao confere", "nao encontrado", "invalid")
+
+
+async def conferir(page, verificador: str, crc: str, *, max_captchas: int = 8,
+                   max_sem_prova: int = C.MAX_SEM_PROVA, diag=None) -> dict:
+    """Critério POSITIVO (sei_pcrj_criterio): 'download do documento' prova o par; a mensagem de par
+    que não confere prova o contrário. Sem nenhum dos dois e sem a frase de captcha errado =
+    INDETERMINADO: retenta com captcha novo e, esgotado, devolve 'indeterminado: …' (o par volta)."""
+    await _abrir_conferir(page, verificador, crc)
+    sem_prova = 0
     for lido in range(1, max_captchas + 1):
         cap = await page.query_selector(S._SEL_CAP_IMG)
         if cap:
@@ -111,9 +125,14 @@ async def conferir(page, verificador: str, crc: str, *, max_captchas: int = 8, d
         if S._ERRO_CAPTCHA in low:
             continue
         if "download do documento" not in low:
-            motivo = "par não confere" if ("nao confere" in low or "nao encontrado" in low
-                                           or "invalid" in low) else "sem link de download"
-            return {"erro": motivo, "captcha_tentativas": lido}
+            if any(k in low for k in _PAR_NAO_CONFERE):
+                return {"erro": "par não confere", "captcha_tentativas": lido}
+            sem_prova += 1                      # nem documento, nem recusa do par: não se sabe
+            if sem_prova >= max_sem_prova:
+                return {"erro": f"indeterminado: {sem_prova} submissões sem documento nem recusa do par",
+                        "captcha_tentativas": lido}
+            await _abrir_conferir(page, verificador, crc)
+            continue
         links = await page.evaluate(
             "()=>[...document.querySelectorAll('a[href]')].map(a=>a.href).filter(h=>/hash_download/.test(h))")
         resp = await page.context.request.get(links[0], timeout=120000)
@@ -131,16 +150,22 @@ async def conferir(page, verificador: str, crc: str, *, max_captchas: int = 8, d
 
 
 def _pares_pendentes(con: sqlite3.Connection, arq: Path) -> list[tuple[str, str, str]]:
-    feitos = {tuple(r) for r in con.execute("SELECT verificador, crc FROM sei_pcrj_documento")}
-    saida = []
+    """Feito = par com PROVA: documento baixado (erro NULL) ou recusa do SEI ('par não confere').
+    O resto ('sem link de download' do critério antigo, indeterminado, captcha não resolvido) volta,
+    depois dos nunca tentados — para não tomar o lote dos novos."""
+    feitos, tentados = set(), set()
+    for v, c, erro in con.execute("SELECT verificador, crc, erro FROM sei_pcrj_documento"):
+        (feitos if erro is None or erro == "par não confere" else tentados).add((v, c))
+    saida, retentar = [], []
     for ln in arq.read_text(encoding="utf-8").splitlines():
         partes = ln.split("\t")
         if len(partes) < 2:
             continue
         v, c = partes[0].strip(), partes[1].strip().upper()
         if (v, c) not in feitos:
-            saida.append((v, c, partes[2].strip() if len(partes) > 2 else ""))
-    return saida
+            ((retentar if (v, c) in tentados else saida)
+             .append((v, c, partes[2].strip() if len(partes) > 2 else "")))
+    return saida + retentar
 
 
 def gravar(con: sqlite3.Connection, v: str, c: str, proc: str, r: dict) -> None:

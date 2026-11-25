@@ -24,6 +24,7 @@ from datetime import date, datetime, timedelta
 from playwright.async_api import Error as PlaywrightError
 
 import sei_pcrj_busca as B
+import sei_pcrj_criterio as C
 import sei_pcrj_sweep as S
 
 INICIO_SEI = date(2020, 1, 1)      # o Solr do SEI também indexa os processos migrados do Processo.rio (SME-PRO-2024/…): medido 2022 e 2024
@@ -52,9 +53,13 @@ async def _abrir_dia(page, dia: str) -> bool:
     return True
 
 
-async def enumerar_dia(page, dia: str, *, max_captchas: int = 20, diag=None) -> dict:
+async def enumerar_dia(page, dia: str, *, max_captchas: int = 20,
+                       max_sem_prova: int = C.MAX_SEM_PROVA, diag=None) -> dict:
+    """Critério POSITIVO (sei_pcrj_criterio): sem linha de resultado e sem a frase de erro o dia é
+    INDETERMINADO — retenta com captcha novo e, esgotado, devolve erro (o dia NÃO fica feito)."""
     if not await _abrir_dia(page, dia):
         return {"erro": "form não abriu"}
+    sem_prova = 0
     for lido in range(1, max_captchas + 1):
         img = await page.query_selector(S._SEL_CAP_IMG)
         if not img:
@@ -69,12 +74,18 @@ async def enumerar_dia(page, dia: str, *, max_captchas: int = 20, diag=None) -> 
         except PlaywrightError:
             pass
         await asyncio.sleep(1.5)
-        low = S._norm_txt(await page.inner_text("body"))
-        if S._ERRO_CAPTCHA in low:
+        txt = await page.inner_text("body")
+        linhas = await page.evaluate(B._JS_LINHAS)
+        leitura = C.classificar(len(linhas), 0, txt)
+        if leitura != C.PUBLICO:
+            if leitura == C.INDETERMINADO:
+                sem_prova += 1
+                if sem_prova >= max_sem_prova:
+                    return {"erro": f"indeterminado: {sem_prova} submissões sem linha de resultado",
+                            "captchas": lido}
             if not await _abrir_dia(page, dia):
                 break
             continue
-        linhas = await page.evaluate(B._JS_LINHAS)
         itens, ini = None, ROWS
         while True:
             r = await page.evaluate(B._JS_AJAX, ini)
@@ -113,9 +124,10 @@ def gravar(con: sqlite3.Connection, dia: str, r: dict) -> int:
 
 def _dias_pendentes(con: sqlite3.Connection) -> list[str]:
     """Do dia mais recente para trás até 05/12/2025; um dia conta como feito quando lidos ≥ itens."""
-    # o Solr conta linhas de documento/legado junto; "lidos" são só processos válidos → 80% já é dia completo
+    # o Solr conta linhas de documento/legado junto; "lidos" são só processos válidos → 80% já é dia completo.
+    # Dia com 0 lido NÃO conta como feito: "0 itens" pode ser captcha errado lido como aceito (critério antigo).
     feitos = {d for d, it, li in con.execute("SELECT dia, itens, lidos FROM sei_pcrj_enum_dia WHERE erro IS NULL")
-              if it is not None and (it == 0 or li >= 0.8 * it)}
+              if it is not None and (li or 0) > 0 and li >= 0.8 * it}
     hoje = date.today()
     saida = []
     d = hoje - timedelta(days=1)
