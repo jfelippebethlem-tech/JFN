@@ -180,8 +180,8 @@ def main() -> int:
             elif r["status"] == "ok" and antes in ("stale", "ausente"):
                 eventos.append(f"🟢 <b>{r['nome']}</b> voltou a produzir (idade {r['idade_h']}h).")
         if eventos:
-            from tools.ronda import notificar
-            notificar("🩺 <b>SLO de pipelines</b>\n" + "\n".join(eventos))
+            # sem Telegram (O8.4, config/avisos_calados.yaml `slo-pipelines`): a transição vive na fila da automelhoria
+            # (sensor slo, com a cura medida), no E18 pipelines_frescor e no incidente do vault
             _incidente_vault(eventos)
         ESTADO.write_text(json.dumps({r["nome"]: r["status"] for r in res}, ensure_ascii=False))
 

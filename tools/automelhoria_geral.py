@@ -57,10 +57,12 @@ _SYSTEMD_RUIDO = {"xfce4-notifyd.service"}
 logger = logging.getLogger(__name__)
 
 
-def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = "", acao_humana: str = "") -> dict:
-    """`remediar` = comando SEGURO que o loop executa sozinho; `acao_humana` = o que só gente resolve."""
+def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = "", acao_humana: str = "",
+       ao_dono: str = "") -> dict:
+    """`remediar` = comando SEGURO que o loop executa sozinho; `acao_humana` = o que só gente resolve;
+    `ao_dono` = ⚖️/🔒 (jurídico-contábil / irreversível-voltado-para-fora): só com ✅ do dono, nunca automático."""
     return {"assinatura": f"{area}:{chave}", "area": area, "titulo": titulo, "detalhe": detalhe[:300],
-            "remediar": remediar, "acao_humana": acao_humana}
+            "remediar": "" if ao_dono else remediar, "acao_humana": acao_humana, "ao_dono": ao_dono}
 
 
 # Diagnóstico medido (sonda de 24/10/2026), para a ação humana não ser genérica.
@@ -946,6 +948,145 @@ def sensor_plataforma() -> list[dict]:
     return out
 
 
+# ─────────────────────────── E18 (O8.4): a automelhoria consome os SLOs do estágio observar ───────────────────────────
+_FORA_DO_SLO = ("DEGRADADO", "ATRASADO", "BLOQUEADO")
+_REMEDIO_DECLARADO = re.compile(r"^remediar:([a-z_]+)\b")
+
+
+def problemas_e18(estado: dict, remedios: frozenset[str] | set[str] | None = None) -> list[dict]:
+    """Estado do E18 (`sensores.estado_slos`) → problemas da fila única. Puro.
+
+    Cada SLO DEGRADADO/ATRASADO/BLOQUEADO (por nó) vira um item com o `remediar:` declarado no slos.yaml. CRITÉRIO
+    FORTE: só vira comando automático o remédio que começa por `remediar:<nome>` com <nome> em fluxo/remedios.REMEDIOS
+    (salvaguarda própria, resfriamento, efeito relido pelo próprio sensor) e sem marca ⚖️/🔒; o resto é ação humana.
+    SLO sem medida NÃO é saudável (INDISPONÍVEL ≠ 0): vira UM item agregado `e18:sem-medida` com a lista."""
+    if remedios is None:
+        from compliance_agent.fluxo.remedios import REMEDIOS
+        remedios = set(REMEDIOS)
+    out = []
+    for it in estado.get("itens", []):
+        if it["estado"] not in _FORA_DO_SLO:
+            continue
+        chave = f"{it['slo']}@{it['no']}" if it.get("escopo") == "maquina" and it.get("no") else it["slo"]
+        marca = it.get("decisao") or ""
+        m = _REMEDIO_DECLARADO.match(it.get("remediar") or "")
+        cmd = (f"PYTHONPATH=. .venv/bin/python -m compliance_agent.fluxo.remedios {m[1]}"
+               if m and m[1] in remedios and not marca else "")
+        humano = "" if cmd else it.get("remediar") or ""
+        out.append(_p("e18", chave, f"SLO {it['slo']} {it['estado']}" + (f" em {it['no']}" if it.get("no") else ""),
+                      f"{it.get('motivo') or ''} · severidade {it.get('severidade')} · dono {it.get('dono')}",
+                      remediar=cmd, acao_humana=humano, ao_dono=marca))
+    sem = estado.get("nao_medidos") or []
+    if sem:
+        out.append(_p("e18", "sem-medida", f"{len(sem)} SLO(s) do E18 sem medida na janela",
+                      ", ".join(sem[:25]) + (" …" if len(sem) > 25 else ""),
+                      acao_humana="visão além do SLO não está ok: conferir se as rotinas observar_* do fluxo rodam "
+                                  "(na parada de obras é esperado e declarado — religação na O9.0)"))
+    return out
+
+
+def sensor_e18() -> list[dict]:
+    sys.path.insert(0, str(_REPO))
+    from compliance_agent.fluxo import sensores as S
+    slos = S.carregar_slos()
+    try:
+        import psycopg
+    except ImportError as exc:
+        raise RuntimeError(f"psycopg ausente: {exc}") from exc
+    try:
+        con = S.conectar_leitura()
+        try:
+            linhas = S.ler_ultimos(con, slos)
+        finally:
+            con.close()
+    except psycopg.Error as exc:                 # PG da VM-2 fora: o sensor está cego, não "tudo ok"
+        raise RuntimeError(f"fluxo.metricas ilegível: {type(exc).__name__}: {str(exc)[:120]}") from exc
+    return problemas_e18(S.estado_slos(linhas, slos))
+
+
+# ─────────────────────────── avisos calados (O8.4): o que o silêncio de 17/11 engolia ───────────────────────────
+SILENCIADOS = DATA / "telegram_silenciado.jsonl"
+FALHAS_SYSTEMD = DATA / "falhas_systemd.jsonl"
+JANELA_AVISOS_S = 7 * 86400
+
+
+def _ler_jsonl(arq: Path) -> list[dict]:
+    if not arq.exists():
+        return []
+    out = []
+    for ln in arq.read_text(encoding="utf-8").splitlines():
+        try:
+            out.append(json.loads(ln))
+        except ValueError:
+            logger.warning("linha ilegível em %s: %s", arq.name, ln[:80])
+    return out
+
+
+def classe_do_aviso(linha: dict, classes: dict) -> str | None:
+    for cid, c in classes.items():
+        if c["origem"] == linha.get("origem") and re.search(c["padrao"], linha.get("inicio") or ""):
+            return cid
+    return None
+
+
+def avaliar_avisos(linhas: list[dict], classes: dict, agora: float) -> list[dict]:
+    """Avisos calados (data/telegram_silenciado.jsonl) × config/avisos_calados.yaml. Puro.
+    · classe `fechado` com linha DEPOIS de `fechado_em` ⇒ o fechamento na origem não pegou (efeito, não ação);
+    · classe `registrado` com linha nos últimos 7 dias ⇒ item com a ação humana declarada;
+    · linha sem classe (7 dias) ⇒ `aviso:sem-classe` — aviso calado sem dono não some."""
+    def ts(t: str) -> float:
+        return datetime.strptime(t[:16], "%Y-%m-%d %H:%M").timestamp()
+
+    por: dict[str, list[dict]] = {}
+    for ln in linhas:
+        por.setdefault(classe_do_aviso(ln, classes) or "", []).append(ln)
+    out = []
+    for cid, lns in por.items():
+        c = classes.get(cid)
+        if c and c["estado"] == "fechado":
+            depois = [x for x in lns if ts(x["t"]) > ts(c["fechado_em"])]
+            if depois:
+                out.append(_p("aviso", cid, f"aviso '{cid}' fechado na origem VOLTOU a ser calado ({len(depois)}×)",
+                              f"último {depois[-1]['t']} · {depois[-1].get('inicio', '')[:120]}",
+                              acao_humana=f"o produtor {c.get('produtor')} voltou a montar o aviso: o fechamento não "
+                                          "pegou (config/avisos_calados.yaml)"))
+            continue
+        recentes = [x for x in lns if agora - ts(x["t"]) <= JANELA_AVISOS_S]
+        if not recentes:
+            continue
+        if c:
+            out.append(_p("aviso", cid, f"aviso calado sem destino: {cid} ({len(recentes)}× em 7 dias)",
+                          f"{c['causa'][:150]} · último {recentes[-1]['t']}", acao_humana=c.get("acao_humana", "")))
+        else:
+            origens = sorted({x.get("origem") or "?" for x in recentes})
+            out.append(_p("aviso", "sem-classe", f"{len(recentes)} aviso(s) calado(s) sem classe em 7 dias",
+                          f"origens: {', '.join(origens)} · último: {recentes[-1].get('inicio', '')[:120]}",
+                          acao_humana="classificar em config/avisos_calados.yaml: fechar na origem ou registrar"))
+    return out
+
+
+def avaliar_quedas_systemd(linhas: list[dict], agora: float, minimo: int = 2) -> list[dict]:
+    """Quedas registradas pelo OnFailure (tools/notificar_falha.sh): a unidade que caiu ≥ `minimo` vezes em 7 dias
+    vira item — inclusive a que JÁ VOLTOU sozinha (o sensor systemd só vê a que ficou failed). Puro."""
+    por: dict[str, list[dict]] = {}
+    for ln in linhas:
+        if agora - datetime.strptime(ln["t"][:19], "%Y-%m-%d %H:%M:%S").timestamp() <= JANELA_AVISOS_S:
+            por.setdefault(ln.get("unidade") or "?", []).append(ln)
+    return [_p("systemd-queda", u, f"{u} caiu {len(lns)}× em 7 dias",
+               f"último {lns[-1]['t']} · estado {lns[-1].get('estado')} · reinícios {lns[-1].get('nrestarts')} · "
+               f"{(lns[-1].get('motivo') or '')[:150]}",
+               acao_humana=f"reinício repetido tem causa: journalctl --user -u {u} -n 50")
+            for u, lns in sorted(por.items()) if len(lns) >= minimo]
+
+
+def sensor_avisos() -> list[dict]:
+    import yaml
+    classes = yaml.safe_load((_REPO / "config" / "avisos_calados.yaml").read_text(encoding="utf-8"))["classes"]
+    agora = time.time()
+    return avaliar_avisos(_ler_jsonl(SILENCIADOS), classes, agora) + avaliar_quedas_systemd(_ler_jsonl(FALHAS_SYSTEMD),
+                                                                                            agora)
+
+
 # nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
 _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
@@ -963,7 +1104,9 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "integracao": (sensor_integracao, "integração de agentes (worktrees e remoções)"),
              "modelos": (sensor_modelos, "modelos grátis e fracos (divergência do Opus, disponibilidade)"),
              "plataforma": (sensor_plataforma, "plano de reescrita (cobertura de leitura, disco VM-2, fila do Opus, "
-                                               "recaptura, cache)")}
+                                               "recaptura, cache)"),
+             "e18": (sensor_e18, "SLOs do E18 (fluxo.metricas)"),
+             "avisos": (sensor_avisos, "avisos calados e quedas de serviço")}
 SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
 _AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
 
@@ -1029,7 +1172,8 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
             it.update(status="REINCIDIU", reincidiu_em=quando, acoes=[], escalado=False)
             reinc.append(p["assinatura"])
         it.update(titulo=p["titulo"], detalhe=p["detalhe"], remediar=p.get("remediar", ""),
-                  acao_humana=p.get("acao_humana", ""), ultimo=quando, rodadas=it.get("rodadas", 0) + 1)
+                  acao_humana=p.get("acao_humana", ""), ao_dono=p.get("ao_dono", ""), ultimo=quando,
+                  rodadas=it.get("rodadas", 0) + 1)
     for sig in dispensados:
         if sig in fila and fila[sig]["status"] != "dispensado":
             fila[sig].update(status="dispensado", dispensado_em=quando)
@@ -1137,7 +1281,8 @@ def resumo(fila: dict, max_itens: int = 15) -> str:
             L.append(f"    🤖 remédio automático tentado {len(it['acoes'])}× (último {it['acoes'][-1]['quando']})"
                      + (" — NÃO PEGOU, precisa de você" if it.get("escalado") else ""))
         if it.get("acao_humana"):
-            L.append(f"    👤 {it['acao_humana'][:140]}")
+            L.append(f"    {'👤 ' + it['ao_dono'] + ' precisa do seu ✅' if it.get('ao_dono') else '👤'} "
+                     f"{it['acao_humana'][:140]}")
     if len(abertos) > max_itens:
         L.append(f"… e mais {len(abertos) - max_itens}")
     disp = [it["titulo"] for it in fila.values() if it["status"] == "dispensado"]
@@ -1174,22 +1319,9 @@ def main() -> int:
     RELATORIOS.mkdir(parents=True, exist_ok=True)
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")
     print(md)
-    # o escalado já foi pelo canal próprio (avisar_escalados); este resumo de novidades segue sob o silêncio
-    # a área `modelos` não entra no aviso de novidades (dono 22/11/2026: o Yoda só fala quando pedido) — fica na fila
-    r["novos"] = [s for s in r["novos"] if r["fila"][s]["area"] != "modelos"]
-    r["reincidiu"] = [s for s in r["reincidiu"] if r["fila"][s]["area"] != "modelos"]
-    if (r["novos"] or r["reincidiu"]) and not a.sem_aviso:
-        from compliance_agent.siafe_coord import notificar
-        L = [f"🔁 Automelhoria: {len(r['novos'])} problema(s) novo(s), {len(r['reincidiu'])} reincidência(s)"
-             + (f", {len(r['curados'])} curado(s)" if r["curados"] else "") + "."]
-        for s in (r["reincidiu"] + r["novos"])[:8]:
-            it = r["fila"][s]
-            L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}"
-                     + (" — 🤖 já tentando consertar" if s in rem["feitos"] else ""))
-        L.append("Detalhe: /melhorias")
-        from compliance_agent.notifications.silencio import silenciar
-        if not silenciar("\n".join(L), origem="automelhoria"):   # dono 17/11/2026: sem avisos de sistema
-            notificar("\n".join(L))
+    # O resumo de novidades no Telegram FECHOU NA ORIGEM (O8.4; config/avisos_calados.yaml `automelhoria-novidades`):
+    # 44 deles morreram no silêncio de 17/11 sem ninguém ler. A novidade vive na fila, no /melhorias e no relatório do
+    # vault; ao Telegram só vai o ESCALADO (avisar_escalados, decisão 7 do dono).
     return 0
 
 

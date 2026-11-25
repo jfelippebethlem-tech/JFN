@@ -86,6 +86,15 @@ class AplicaSe(_Base):
     maior_que: float
 
 
+class AtenuaSe(_Base):
+    """Teto do estado quando OUTRO sensor prova que o sintoma não está doendo (pedido do dono na O8.1, feito na
+    O8.4): swap cheio com PSI de memória ~0 é página fria estacionada — DEGRADADO, não BLOQUEADO. Condição não
+    medida ou velha ⇒ NÃO atenua (falha fechada: sem prova de alívio fica o estado do limite)."""
+    sensor: str
+    menor_que: float
+    ate: Literal["DEGRADADO", "ATRASADO"]
+
+
 class Slo(_Base):
     sensor: str = Field(min_length=3)
     descricao: str = Field(min_length=5)
@@ -98,11 +107,15 @@ class Slo(_Base):
     escopo: Literal["maquina", "global"] = "maquina"
     nos: list[str] = Field(min_length=1)
     aplica_se: AplicaSe | None = None
+    atenua_se: AtenuaSe | None = None
     dono: str
     severidade: Literal["baixa", "media", "alta", "critica"]
     fonte: str = Field(min_length=3)
     runbook: str = Field(min_length=3)
     remediar: str = Field(min_length=5)
+    # ⚖️ = regra jurídica/contábil · 🔒 = irreversível ou voltado para fora (plano v2, legenda): o remédio só com ✅ do
+    # dono — a automelhoria escala, nunca executa (O8.4).
+    decisao: Literal["⚖️", "🔒"] | None = None
     origem: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -131,6 +144,8 @@ class Slos(_Base):
         for sid, s in self.slos.items():
             if s.aplica_se and s.aplica_se.sensor not in vistos:
                 raise ValueError(f"{sid}: aplica_se cita sensor sem SLO ({s.aplica_se.sensor})")
+            if s.atenua_se and s.atenua_se.sensor not in vistos:
+                raise ValueError(f"{sid}: atenua_se cita sensor sem SLO ({s.atenua_se.sensor})")
         return self
 
     def por_sensor(self) -> dict[str, tuple[str, Slo]]:
@@ -291,7 +306,7 @@ def estado_slos(linhas: Iterable[Mapping], slos: Slos, agora: float | None = Non
                 "escopo": slo.escopo, "unidade": slo.unidade, "descricao": slo.descricao, "dono": slo.dono,
                 "severidade": slo.severidade, "limite": {"sentido": slo.sentido, "saudavel": slo.saudavel,
                                                          "degradado": slo.degradado, "pior": slo.pior},
-                "remediar": slo.remediar, "valor": None, "medido_em": None}
+                "remediar": slo.remediar, "decisao": slo.decisao, "valor": None, "medido_em": None}
         if ln is None:
             return {**base, "estado": INDISPONIVEL, "motivo": "nunca medido neste nó" if no else "nunca medido"}
         rot = ln.get("rotulos") or {}
@@ -311,6 +326,9 @@ def estado_slos(linhas: Iterable[Mapping], slos: Slos, agora: float | None = Non
                 return {**base, "estado": SAUDAVEL,
                         "motivo": f"não se aplica: {slo.aplica_se.sensor} = {cv:g} (≤ {slo.aplica_se.maior_que:g})"}
         estado, motivo = avaliar(slo, base["valor"], rot.get("forcado"))
+        if slo.atenua_se and not rot.get("forcado") and ORDEM.index(estado) > ORDEM.index(slo.atenua_se.ate):
+            cond_slo = slos.slos[slos.por_sensor()[slo.atenua_se.sensor][0]]
+            estado, motivo = _atenuar(slo, estado, motivo, _linha(cond_slo, no), cond_slo.janela_s, agora)
         if rot.get("motivo"):
             motivo = f"{motivo} — {rot['motivo']}"
         return {**base, "estado": estado, "motivo": motivo}
@@ -334,6 +352,18 @@ def estado_slos(linhas: Iterable[Mapping], slos: Slos, agora: float | None = Non
     contagem = {e: sum(i["estado"] == e for i in itens) for e in ORDEM}
     return {"estado": geral, "motivo": motivo, "total": len(itens), "contagem": contagem,
             "nao_medidos": nao_medidos, "itens": itens}
+
+
+def _atenuar(slo: Slo, estado: str, motivo: str, cond: Mapping | None, janela_cond: int,
+             agora: float) -> tuple[str, str]:
+    """Aplica `atenua_se`: só com a condição MEDIDA, dentro da janela dela e abaixo do limiar. Puro."""
+    a = slo.atenua_se
+    cv = _num((cond or {}).get("valor"))
+    if cv is None or agora - float(cond["quando"]) > janela_cond:
+        return estado, f"{motivo}; sem atenuação: {a.sensor} não medido na janela"
+    if cv >= a.menor_que:
+        return estado, f"{motivo}; {a.sensor} = {cv:g} (≥ {a.menor_que:g}): a pressão é real"
+    return a.ate, f"{motivo}; atenuado para {a.ate}: {a.sensor} = {cv:g} < {a.menor_que:g} (sintoma sem pressão)"
 
 
 def _iso(ts: float) -> str:

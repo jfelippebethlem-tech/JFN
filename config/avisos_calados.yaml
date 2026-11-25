@@ -1,0 +1,148 @@
+# avisos_calados.yaml — os avisos de sistema que o silêncio de 17/11/2026 engolia (data/telegram_silenciado.jsonl),
+# classe por classe, com a causa, o DESTINO que os vê hoje e o estado (plano mestre v2 §9 O8.4: "101 avisos calados
+# fechados na origem"). Medido em 24/11/2026: 101 linhas até a redação do plano (23/11 21h48), 107 até 24/11 12h29.
+#
+#   estado  fechado    — o PRODUTOR deixou de montar o aviso; a informação vive no destino (fila única, E18, vault).
+#                        Prova executável: `produtor` não contém mais `marcador` (ou contém `marcador_presente`) —
+#                        tests/test_avisos_calados.py. Efeito: linha desta classe DEPOIS de `fechado_em` reabre o item
+#                        `aviso:<id>` na automelhoria (o fechamento não pegou).
+#           registrado — causa fora do alcance desta onda (outra frente, fora do repo ou decisão do dono): cada linha
+#                        nova (7 dias) vira o item `aviso:<id>` da fila com a `acao_humana`.
+#   Linha que não casa com nenhuma classe vira `aviso:sem-classe` — aviso calado sem dono não some.
+# Casamento: `origem` igual à do log E `padrao` (regex) no começo do texto (`inicio`).
+versao: 1
+classes:
+  automelhoria-novidades:
+    origem: automelhoria
+    padrao: '^🔁 Automelhoria:'
+    n_ate_20261124: 44
+    causa: resumo de novidades da própria automelhoria; o dono vetou aviso de sistema (17/11) e "Yoda só fala quando pedido" (22/11)
+    destino: fila única (data/automelhoria_fila.json) + /melhorias + relatório diário no vault; ESCALADO segue pelo canal próprio (decisão 7)
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/automelhoria_geral.py
+    marcador: 'origem="automelhoria"'
+  systemd-onfailure:
+    origem: ronda
+    padrao: '<b>systemd</b>:'
+    n_ate_20261124: 15
+    causa: OnFailure= genérico (notificar-falha@.service) avisando cada queda; jfn-ronda 8×, jfn.service 4×, keepalive 2×, jfn-intel-cache 1×
+    destino: data/falhas_systemd.jsonl → automelhoria `systemd-queda:<unidade>` (≥ 2 quedas em 7 dias) + sensor systemd (unidade failed)
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/notificar_falha.sh
+    marcador: 'from tools.ronda import notificar'
+  ronda-eventos:
+    origem: ronda
+    padrao: 'JFN — ronda'
+    n_ate_20261124: 12
+    causa: ronda de 15 min avisando API fora (2 rondas) e "novos alertas de compliance" (contagem do painel)
+    destino: E18 painel_resposta/painel_malformed + sensores painel/ronda da automelhoria; alertas de compliance ficam no painel
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/ronda.py
+    marcador: 'notificar("🛡️'
+  slo-pipelines:
+    origem: ronda
+    padrao: 'SLO de pipelines'
+    n_ate_20261124: 3
+    causa: transição stale↔ok das rotinas de config/pipelines.yaml
+    destino: automelhoria sensor slo (+ cura medida) + E18 pipelines_frescor + incidente no vault (_incidente_vault, mantido)
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/pipelines_slo.py
+    marcador: 'notificar("🩺'
+  executor-noturno:
+    origem: '?'
+    padrao: 'Executor noturno da automelhoria'
+    n_ate_20261124: 3
+    causa: resumo PEDIDO pelo dono saía sem chat_id e o silêncio o engolia (20/11 01h, 3 resumos)
+    destino: Telegram com chat_id explícito (pedido do dono) — commit 0ff419b4 de 20/11 02h20
+    estado: fechado
+    fechado_em: '2026-11-20 02:21'
+    produtor: tools/automelhoria_executor.py
+    marcador_presente: 'chat_id=_get_chat_id()'
+  hermes-metacognicao:
+    origem: __main__
+    padrao: 'Hermes — meta-cognição'
+    n_ate_20261124: 3
+    causa: resumo diário do sono REM (regras novas/passos degradados) mandado sem pedido
+    destino: data/hermes_metacognicao_ultimo.json (lido pelo sensor rem da automelhoria e pelo SLO hermes-sono-rem) + log
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/hermes_metacognicao.py
+    marcador: 'Hermes — meta-cognição diária:'
+  yoda-autoauditoria:
+    origem: yoda_autoauditoria
+    padrao: 'Yoda — autoauditoria'
+    n_ate_20261124: 1
+    causa: novidades da autoauditoria das conversas mandadas sem pedido
+    destino: automelhoria sensor yoda (fila única) + E18 yoda_falhas
+    estado: fechado
+    fechado_em: '2026-11-24 23:30'
+    produtor: tools/yoda_autoauditoria.py
+    marcador: 'origem="yoda_autoauditoria"'
+  pcrj-saude:
+    origem: '?'
+    padrao: 'Pipelines PCRJ com falha'
+    n_ate_20261124: 4
+    causa: pipelines PCRJ parados (íntegras CCON, busca livre pcrj_sei_busca) — sem sensor na fila nem SLO no E18
+    destino: nenhum hoje
+    estado: registrado
+    acao_humana: 'O9.0: pcrj_saude vira sensor do E18 (SLO por pipeline PCRJ) e só então sai o envio de tools/pcrj_saude.py'
+  contingencia-claude:
+    origem: '?'
+    padrao: 'Claude da assinatura no limite'
+    n_ate_20261124: 1
+    causa: aviso de contingência do Claude (llm/contingencia.py) — frente IA (gateway/conferência) em curso
+    destino: painel Sistema › contingência (data/claude_contingencia.json)
+    estado: registrado
+    acao_humana: 'frente IA (c5d7): tirar o envio de compliance_agent/llm/contingencia.py — o estado já está no painel'
+  triagem-semanal:
+    origem: '?'
+    padrao: 'Triagem semanal'
+    n_ate_20261124: 1
+    causa: ranking semanal da zona cinzenta que PEDE /veredito ao dono (tools/triagem_amarelos.py) — é produto, não sistema
+    destino: nenhum além do Telegram calado
+    estado: registrado
+    acao_humana: 'dono decide: a triagem volta como pedido (JFN_TELEGRAM_PEDIDO=1) ou vai só para o painel'
+  whatsapp-vigia:
+    origem: '?'
+    padrao: 'WhatsApp do JFN/ATENA desconectado'
+    n_ate_20261124: 1
+    causa: vigia de conexão do WhatsApp (fora do repo, ~/whatsapp-mcp/jfn/vigia_conexao.py) — Atena, fora da parada
+    destino: nenhum no JFN
+    estado: registrado
+    acao_humana: 'frente Atena: o vigia escreve estado próprio em vez de Telegram; o dono repareia quando a Atena pedir'
+  digest-diario:
+    origem: digest_diario
+    padrao: 'Digest de fiscalização'
+    n_ate_20261124: 8
+    causa: digest diário de fiscalização (tools/digest_diario.py) — produto, calado pela regra de sistema
+    destino: nenhum além do Telegram calado
+    estado: registrado
+    acao_humana: 'dono decide: digest como pedido (JFN_TELEGRAM_PEDIDO=1) ou aposentado em favor do painel'
+  hermes-update-conflito:
+    origem: update-hermes-safe
+    padrao: 'Hermes update'
+    n_ate_20261124: 5
+    causa: update do Hermes com CONFLITO no merge com o upstream (patches locais × upstream; memória hermes-update-git-merge-seguro)
+    destino: nenhum no JFN (script fora do repo, ~/hermes-agent/update-hermes-safe.sh)
+    estado: registrado
+    acao_humana: 'resolver o conflito do merge do Hermes (patches locais) e o script escreve estado em vez de Telegram'
+  zelador-vm2:
+    origem: zelador
+    padrao: 'Zelador '
+    n_ate_20261124: 1
+    causa: resumo do zelador da VM-2 com "disco ?%" (disco não medido no aviso) — frente infra/armazenamento
+    destino: E18 disco_livre@vm2 e disco_tendencia@vm2
+    estado: registrado
+    acao_humana: 'frente infra: zelador sem envio próprio; o "disco ?%" é medida ausente, conferir no E18'
+  socios-cpf-captcha:
+    origem: __main__
+    padrao: 'CPF|captcha|^\d+\. '
+    n_ate_20261124: 5
+    causa: fila de captcha de CPF de sócios (19/11 21h–20/11 02h, script avulso de sessão, sem arquivo no repo) — se foi PEDIDO do dono, a entrega se perdeu no silêncio
+    destino: nenhum
+    estado: registrado
+    acao_humana: 'perguntar ao dono se pediu a fila de captcha de 19–20/11; se sim, reenviar com JFN_TELEGRAM_PEDIDO=1 (CPF mascarado)'

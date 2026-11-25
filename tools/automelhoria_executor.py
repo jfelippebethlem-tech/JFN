@@ -61,14 +61,25 @@ def escolher(fila: dict, ledger: dict, n: int, agora: float | None = None) -> li
     agora = agora or time.time()
     cands = []
     for it in fila.values():
-        if it.get("status") not in ("aberto", "REINCIDIU") or it.get("area") not in AREAS:
-            continue
+        if it.get("status") not in ("aberto", "REINCIDIU") or it.get("area") not in AREAS or it.get("ao_dono"):
+            continue                                   # ⚖️/🔒 é do dono: o executor nunca prepara (O8.4)
         ult = (ledger.get(it["assinatura"]) or {}).get("ts", 0)
         if agora - ult < REPETIR_DIAS * 86400:
             continue
         cands.append(it)
     cands.sort(key=lambda x: (x["status"] != "REINCIDIU", AREAS[x["area"]], x.get("primeiro") or ""))
     return cands[:n]
+
+
+def criterio_forte(arquivos: list[str]) -> tuple[bool, str]:
+    """CRITÉRIO FORTE do executor (O8.4): conserto só vale com teste no diff (reproduz → passa). Conserto sem teste
+    fica na branch, mas marcado FRACO — o aviso diz para não aplicar sem revisão. Puro."""
+    testes = [a for a in arquivos if a.startswith("tests/") and a.rsplit("/", 1)[-1].startswith("test_")]
+    if not arquivos:
+        return False, "sem diff"
+    if not testes:
+        return False, "FRACO: nenhum teste no diff — não aplicar sem revisão"
+    return True, f"forte: {len(testes)} teste(s) no diff ({', '.join(testes[:3])})"
 
 
 def prompt(it: dict) -> str:
@@ -141,12 +152,14 @@ def executar(it: dict) -> dict:
              f"fix(automelhoria): {msg}\n\nItem: {it['assinatura']}\n\n{resumo[:1500]}", cwd=wt, check=False)
     commits = _git("log", "--oneline", f"origin/{br_viva}..{branch}", check=False)
     stat = _git("diff", "--stat", f"origin/{br_viva}..{branch}", check=False) if commits else ""
+    nomes = _git("diff", "--name-only", f"origin/{br_viva}..{branch}", check=False).splitlines() if commits else []
+    forte, criterio = criterio_forte(nomes)
     if not commits:                                   # sem conserto: não deixa branch nem worktree órfãos
         _git("worktree", "remove", "--force", str(wt), check=False)
         _git("branch", "-D", branch, check=False)
     return {"assinatura": it["assinatura"], "titulo": it["titulo"], "branch": branch if commits else None,
             "commits": commits, "stat": stat.splitlines()[-1] if stat else "", "segundos": round(time.time() - t0),
-            "resumo": resumo, "ts": time.time()}
+            "resumo": resumo, "ts": time.time(), "criterio_forte": forte, "criterio": criterio}
 
 
 def avisar(res: list[dict]) -> None:
@@ -156,9 +169,13 @@ def avisar(res: list[dict]) -> None:
     from compliance_agent.notifications.telegram import enviar_mensagem
     partes = ["🔧 Executor noturno da automelhoria"]
     for r in res:
-        if r["branch"]:
+        if r["branch"] and r.get("criterio_forte"):
             partes.append(f"\n✅ {r['titulo'][:120]}\n{r['resumo'][:700]}\nbranch {r['branch']} · {r['stat']}\n"
+                          f"{r['criterio']}\n"
                           f"Para aplicar: /cc aplique a branch {r['branch']} na branch viva, rode os testes e dê push")
+        elif r["branch"]:
+            partes.append(f"\n🟡 {r['titulo'][:120]}\n{r['resumo'][:500]}\nbranch {r['branch']} · {r['stat']}\n"
+                          f"{r['criterio']}")
         else:
             partes.append(f"\n⚪ {r['titulo'][:120]} — sem conserto commitado\n{r['resumo'][:500]}")
     # Pedido do dono ("pode ligar o executor"), não aviso de sistema: sem o chat explícito o filtro de silêncio de
@@ -192,7 +209,7 @@ def main() -> int:
         print(f"[{datetime.now():%F %T}] item: {it['assinatura']}", flush=True)
         r = executar(it)
         res.append(r)
-        ledger[it["assinatura"]] = {k: r[k] for k in ("ts", "branch", "segundos")}
+        ledger[it["assinatura"]] = {k: r[k] for k in ("ts", "branch", "segundos", "criterio")}
         LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=1), encoding="utf-8")
         print(json.dumps(r, ensure_ascii=False), flush=True)      # o resumo no log: sem ele não se audita a rodada
     if res and not a.sem_aviso:

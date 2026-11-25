@@ -26,26 +26,16 @@ MOTIVO="$(journalctl --user -u "$UNIT" -n 40 --no-pager 2>/dev/null \
 
 UNIT="$UNIT" ESTADO="$ESTADO" DESDE="$DESDE" NREST="$NREST" MOTIVO="$MOTIVO" \
 PYTHONPATH=. exec .venv/bin/python - <<'PY'
+# Sem Telegram (O8.4, config/avisos_calados.yaml `systemd-onfailure`): 15 destes avisos morreram no silêncio de
+# 17/11. A queda vira LINHA em data/falhas_systemd.jsonl; a automelhoria abre `systemd-queda:<unidade>` com 2+ quedas
+# em 7 dias (a que JÁ VOLTOU também — o sensor systemd só vê a que ficou failed).
+import json
 import os
-from tools.ronda import notificar
+import time
 
-u = os.environ.get("UNIT", "desconhecida")
-estado = (os.environ.get("ESTADO") or "?").strip()
-desde = (os.environ.get("DESDE") or "").strip()
-nrest = (os.environ.get("NREST") or "?").strip()
-motivo = (os.environ.get("MOTIVO") or "").strip()
-
-if estado == "active":
-    cab = (f"🟡 <b>systemd</b>: <b>{u}</b> caiu e <b>JÁ VOLTOU</b> sozinha"
-           f"{f' (de pé desde {desde})' if desde else ''}.")
-    acao = "Nada a fazer agora — mas reinício repetido merece olhar a causa."
-else:
-    cab = f"🔴 <b>systemd</b>: <b>{u}</b> FALHOU e está <b>{estado or 'inativa'}</b>."
-    acao = f"Precisa de ação: <code>journalctl --user -u {u} -n 30</code>"
-
-partes = [cab, f"reinícios acumulados: <b>{nrest}</b>"]
-if motivo:
-    partes.append("último erro no journal:\n<code>" + motivo.replace("<", "&lt;")[:400] + "</code>")
-partes.append(acao)
-notificar("\n\n".join(partes))
+reg = {"t": time.strftime("%Y-%m-%d %H:%M:%S"), "unidade": os.environ.get("UNIT", "desconhecida"),
+       "estado": (os.environ.get("ESTADO") or "?").strip(), "desde": (os.environ.get("DESDE") or "").strip(),
+       "nrestarts": (os.environ.get("NREST") or "?").strip(), "motivo": (os.environ.get("MOTIVO") or "").strip()[:400]}
+with open("data/falhas_systemd.jsonl", "a", encoding="utf-8") as f:
+    f.write(json.dumps(reg, ensure_ascii=False) + "\n")
 PY

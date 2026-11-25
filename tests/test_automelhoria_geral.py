@@ -587,7 +587,7 @@ def test_main_avisa_escalado_e_mantem_o_resto_em_silencio(tmp_path, monkeypatch)
     monkeypatch.setattr(sys, "argv", ["automelhoria_geral"])
     assert A.main() == 0
     assert len(tg.enviados) == 1 and "titulo x" in tg.enviados[0]               # o escalado passou
-    assert gerais == [] and len(silenciados) == 1 and "problema novo" in silenciados[0]   # a novidade, calada
+    assert gerais == [] and silenciados == []            # a novidade nem é montada: fechada na origem (O8.4)
     assert json.loads(fila_p.read_text())["slo:x"]["escalado_msg_id"] == 101
 
 

@@ -257,22 +257,8 @@ async def run() -> dict:
         _ULTIMO_REM.write_text(json.dumps(res, ensure_ascii=False, default=str), encoding="utf-8")
     except OSError as exc:
         logger.warning("resultado do sono REM não gravado: %s", exc)
-    # aviso no Telegram: se aprendeu regra nova OU se algum passo degradou (antes o no-op era mudo
-    # e dias de pool saturado passavam despercebidos — lição 2026-07-11)
-    erros = sorted(k for k in res if k.endswith("_erro"))
-    if res.get("auto_melhoria") or erros:
-        try:
-            from compliance_agent.envfile import carregar_env
-            carregar_env()
-            from compliance_agent.notifications.telegram import enviar_mensagem
-            partes = []
-            if res.get("auto_melhoria"):
-                partes.append("novas regras de método: " + ", ".join(res["auto_melhoria"][:5]))
-            if erros:
-                partes.append("⚠️ passos degradados: " + "; ".join(f"{k}={res[k]}" for k in erros)[:400])
-            await enviar_mensagem("🧠 *Hermes — meta-cognição diária:* " + " · ".join(partes))
-        except Exception as exc:
-            logger.warning("resumo da meta-cognição não entregue no Telegram: %s", exc)
+    # sem Telegram (O8.4, config/avisos_calados.yaml `hermes-metacognicao`): regra nova e passo degradado ficam no
+    # resultado gravado acima, que o sensor rem da automelhoria e o SLO hermes-sono-rem leem.
     return res
 
 

@@ -176,9 +176,10 @@ def main():
               f"alertas={max(n_alertas, n_alertas_lista)} eventos={len(eventos)}")
     log(status)
 
-    if eventos:
-        notificar("🛡️ <b>JFN — ronda</b>\n" + "\n".join(eventos)
-                  + f"\n<code>{agora()}</code>")
+    # sem Telegram (O8.4, config/avisos_calados.yaml `ronda-eventos`): API fora é o E18 painel_resposta e o sensor
+    # painel da automelhoria; alerta novo de compliance é o painel. Os eventos ficam no log da ronda.
+    for ev in eventos:
+        log(f"evento: {ev}")
 
     # 5) galáxia dos casos pré-calculada (data/cache/galaxia.json): a rota só lê. Processo à parte, com
     #    prioridade baixa e teto de tempo; falha não derruba a ronda (a rota segue servindo o JSON anterior).

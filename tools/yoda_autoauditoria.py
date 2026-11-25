@@ -275,17 +275,8 @@ def main() -> int:
     RELATORIOS.mkdir(parents=True, exist_ok=True)
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")
     print(md)
-    if (r["novas"] or r["reincidiu"]) and not a.sem_aviso:
-        from compliance_agent.siafe_coord import notificar
-        linhas = [f"🪞 Yoda — autoauditoria: {len(r['novas'])} falha(s) nova(s), "
-                  f"{len(r['reincidiu'])} reincidência(s) de conserto."]
-        for s in (r["reincidiu"] + r["novas"])[:6]:
-            it = r["fila"][s]
-            linhas.append(f"• {'🔁 ' if s in r['reincidiu'] else ''}{it['tipo']}: “{it['exemplo']['pedido'][:70]}”")
-        linhas.append("Fila: data/yoda_melhorias_fila.json · relatório no vault (yoda-autoauditoria).")
-        from compliance_agent.notifications.silencio import silenciar
-        if not silenciar("\n".join(linhas), origem="yoda_autoauditoria"):   # dono 17/11/2026: sem avisos de sistema
-            notificar("\n".join(linhas))
+    # sem Telegram (O8.4, config/avisos_calados.yaml `yoda-autoauditoria`): a novidade vive na fila
+    # (data/yoda_melhorias_fila.json), no relatório do vault e no sensor yoda da automelhoria.
     return 0
 
 
