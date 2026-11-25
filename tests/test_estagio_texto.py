@@ -20,14 +20,14 @@ def pdf_de(caminho, paginas):
     """`paginas`: lista de 'nativa' | 'escaneada' | 'branca' | ('escaneada', 'carimbo')."""
     import fitz
     doc = fitz.open()
-    for p in paginas:
+    for k, p in enumerate(paginas):
         tipo, carimbo = (p, "") if isinstance(p, str) else p
         pg = doc.new_page()
         if tipo == "nativa":
             pg.insert_text((72, 72), NATIVO, fontsize=9)
         elif tipo == "escaneada":
             pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 60, 80), 0)
-            pix.set_rect(pix.irect, (200, 200, 200))
+            pix.set_rect(pix.irect, (200, 200, 200 - k))       # uma imagem por página (dedup por hash é O3.6)
             pg.insert_image(fitz.Rect(20, 20, 580, 800), pixmap=pix)
             if carimbo:
                 pg.insert_text((30, 30), carimbo, fontsize=6)

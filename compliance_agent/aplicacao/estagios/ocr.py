@@ -17,8 +17,19 @@ REGRAS (lições ocr-novo-nunca-substitui-texto e ocr-gpu-vazio-marcado-feito):
      motores). Sem segundo motor ⇒ `vazia_pendente` ⇒ NADA é gravado no PG e o efeito falha: o job volta (backoff) e,
      esgotado, vai à quarentena — backlog visível, nunca "feito". Erro de inferência (bloco com error e sem texto,
      o modo de falha do Surya de 22/11) é ERRO, não vazio: o job tenta de novo.
-  3. bbox de cada linha (coordenadas em pixels na resolução `dpi`, com a dimensão da página) e motor@versão por
-     página no arquivo lateral `…/<doc>.<sha16>.e5.json`; o sha256 dele vai em `transformacao.parametros`.
+     2b. INCOMPLETA TAMBÉM NÃO (O3.6). O Surya devolve bloco de TEXTO com o html vazio e SEM a flag de erro: no
+     controle nativo da O3.6 (200 páginas com camada de texto, renderizadas), 27 páginas saíram com < 60% dos
+     caracteres e o acerto de número caiu a 69,4% (RapidOCR 94,7%). Página com bloco de texto vazio (rótulo fora
+     de `ROTULOS_SEM_TEXTO`) vai ao 2º motor como a vazia; o texto dele entra (`primeiro_incompleto`); sem 2º
+     motor, ou com ele também sem texto, a página fica `vazia_pendente` (nada vira feito com pedaço faltando).
+  3. bbox de cada linha (coordenadas em pixels na resolução `dpi`, com a dimensão da página), o perfil do E4 e
+     motor@versão por página no arquivo lateral `…/<doc>.<sha16>.e5.json`; o sha256 dele vai em
+     `transformacao.parametros`. A bbox é o que o E6 recorta para a conferência por recorte (O3.6).
+  4. DEDUP POR HASH DE IMAGEM (O3.6, plano §7): cada página escaneada leva `img_sha` = sha256 dos PIXELS renderizados
+     a `dpi` (a entrada exata do motor). Página idêntica a outra do mesmo documento, ou a uma já lida pelo MESMO
+     motor@versão (cache `CacheImagem`, em `<raiz>/_dedup_imagem/`), reusa a leitura — `dedup_de` diz de onde. Hash
+     EXATO de propósito: um hash perceptual juntaria a nota que difere só num dígito do valor. Só leitura ÚTIL entra
+     no cache (o vazio segue a regra 2, sempre relido pelo 2º motor).
 
 EXECUTOR (roteamento por capacidade com VOLTA DECLARADA, §3.5): no it-campo com o Surya importável ⇒ GPU; em qualquer
 outro nó (ou `JFN_OCR_EXECUTOR=cpu`) ⇒ RapidOCR na CPU (VM-2: mais lento, nunca parado). O job pede `cpu_pesado`
@@ -58,7 +69,7 @@ from compliance_agent.aplicacao.estagios import arvore as A
 from compliance_agent.aplicacao.estagios import texto as T
 from compliance_agent.fluxo.fila import Resultado
 
-VERSAO = "e5-1"
+VERSAO = "e5-2"                              # e5-2 (O3.6): img_sha por página + dedup por hash de imagem
 ORIGEM = "sei:e5"
 TIPO_TRANSFORMACAO = "ocr"
 DPI = 200                                    # = tools/sei_ocr_reserva.DPI e o worker da GPU (200 dpi)
@@ -68,6 +79,9 @@ ENV_EXECUTOR = "JFN_OCR_EXECUTOR"            # gpu | cpu | tesseract (força; pa
 ENV_TRAVA_GPU = "JFN_OCR_GPU_TRAVA"
 ENV_WORKER_GPU = "JFN_OCR_GPU_DIR"           # onde mora o ocr_gpu_worker.py no it-campo
 ENV_RAIZES = "JFN_OCR_RAIZES"                # raízes extras onde procurar o PDF legado (":"-separadas)
+PASTA_DEDUP = "_dedup_imagem"
+# rótulos de bloco do Surya que podem vir sem texto sem perda (figura, foto, logotipo, assinatura desenhada)
+ROTULOS_SEM_TEXTO = frozenset({"Picture", "Figure", "Image", "Logo", "Signature"})                # cache das leituras por hash de imagem, dentro da raiz do texto
 _RX_UTIL = re.compile(r"\w", re.UNICODE)
 
 
@@ -81,6 +95,7 @@ class Leitura:
     linhas: list[dict] = field(default_factory=list)       # [{texto, bbox: [x0, y0, x1, y1], conf}]
     largura: int = 0
     altura: int = 0
+    blocos_vazios: int = 0          # O3.6: blocos de TEXTO que o motor achou e devolveu sem texto (leitura incompleta)
 
 
 class Executor(Protocol):
@@ -109,6 +124,79 @@ def _imagens(pdf: Path, paginas: list[int]):
             yield n, np.ascontiguousarray(img), pix.width, pix.height
 
 
+def sha_imagem(img) -> str:
+    """sha256 da forma + bytes dos pixels (a imagem que o motor recebe)."""
+    import hashlib
+    h = hashlib.sha256(str(tuple(img.shape)).encode("ascii"))
+    h.update(img.tobytes())
+    return h.hexdigest()
+
+
+def hashes_imagem(pdf: Path, paginas: list[int]) -> dict[int, str]:
+    """{página: img_sha} das páginas pedidas, na mesma renderização dos executores (`_imagens`)."""
+    return {n: sha_imagem(img) for n, img, _, _ in _imagens(pdf, paginas)}
+
+
+class CacheImagem:
+    """Leituras ÚTEIS já feitas, por (img_sha, motor@versão). Arquivo por chave, gravado atômico; a leitura confere
+    que o registro é da mesma imagem e do mesmo motor (senão é como se não houvesse)."""
+
+    def __init__(self, raiz: Path):
+        self.raiz = Path(raiz)
+
+    def _arq(self, img_sha: str, motor: str) -> Path:
+        import hashlib
+        return self.raiz / img_sha[:2] / f"{img_sha}.{hashlib.sha1(motor.encode('utf-8')).hexdigest()[:12]}.json"
+
+    def obter(self, img_sha: str, motor: str) -> tuple[Leitura, str] | None:
+        lat = T.ler_lateral(self._arq(img_sha, motor))
+        if lat is None:
+            return None
+        d = lat[0]
+        if d.get("img_sha") != img_sha or d.get("motor") != motor or not util(d.get("texto") or ""):
+            return None
+        return Leitura(d["texto"], d.get("linhas") or [], d.get("largura") or 0, d.get("altura") or 0), d.get("origem")
+
+    def guardar(self, img_sha: str, motor: str, le: Leitura, origem: str) -> None:
+        if util(le.texto) and not le.blocos_vazios:           # incompleta nunca é reusada
+            T.gravar_lateral(self._arq(img_sha, motor), {"img_sha": img_sha, "motor": motor, "texto": le.texto,
+                                                         "linhas": le.linhas, "largura": le.largura,
+                                                         "altura": le.altura, "origem": origem})
+
+
+def _ler_dedup(executor: "Executor", motor: str, pdf: Path, paginas: list[int], hashes: dict[int, str],
+               cache: CacheImagem | None, origem: str) -> tuple[dict[int, Leitura], dict[int, dict]]:
+    """Lê só UMA página por imagem distinta e só o que o cache não tem; devolve (leituras de todas, dedup_de)."""
+    rep: dict[str, int] = {}
+    dedup: dict[int, dict] = {}
+    for n in paginas:
+        h = hashes[n]
+        if h in rep:
+            dedup[n] = {"pagina": rep[h]}
+        else:
+            rep[h] = n
+    lidas: dict[int, Leitura] = {}
+    a_ler = []
+    for h, n in rep.items():
+        achado = cache.obter(h, motor) if cache is not None else None
+        if achado is not None:
+            lidas[n] = achado[0]
+            dedup[n] = {"cache": achado[1]}
+        else:
+            a_ler.append(n)
+    if a_ler:
+        novas = executor.ler(pdf, a_ler)
+        lidas.update(novas)
+        if cache is not None:
+            for n in a_ler:
+                if n in novas:
+                    cache.guardar(hashes[n], motor, novas[n], f"{origem}#p{n}")
+    for n, d in dedup.items():
+        if "pagina" in d and d["pagina"] in lidas:
+            lidas[n] = lidas[d["pagina"]]
+    return lidas, dedup
+
+
 # ── executores (motores da casa, chamados como estão) ──────────────────────────────────────────────────────────
 class ExecutorCPU:
     """RapidOCR (PP-OCRv5 mobile, ONNX) com a configuração e a correção decimal de `tools/sei_ocr_reserva`."""
@@ -122,23 +210,24 @@ class ExecutorCPU:
         return f"rapidocr@{version('rapidocr')} PP-OCRv5 mobile+latin (CPU) dpi{DPI}"
 
     def ler(self, pdf: Path, paginas: list[int]) -> dict[int, Leitura]:
+        return {n: self.ler_img(img) for n, img, _, _ in _imagens(pdf, paginas)}
+
+    def ler_img(self, img) -> Leitura:
+        """Uma página já renderizada (RGB a `DPI`) — o mesmo caminho do `ler` (a bancada da O3.6 usa este)."""
         import numpy as np
 
         from tools import sei_ocr_reserva as R
         self._eng = self._eng or R.motor_ocr()
-        out = {}
-        for n, img, w, h in _imagens(pdf, paginas):
-            r = self._eng(img)
-            itens, linhas = [], []
-            scores = list(r.scores) if getattr(r, "scores", None) is not None else []
-            for k, (b, t) in enumerate(zip(r.boxes if r.boxes is not None else [], r.txts or [])):
-                b = np.asarray(b)
-                itens.append(((b[:, 1].min() + b[:, 1].max()) / 2, b[:, 0].min(), b[:, 1].max() - b[:, 1].min(), t))
-                linhas.append({"texto": t, "bbox": [round(float(b[:, 0].min()), 1), round(float(b[:, 1].min()), 1),
-                                                    round(float(b[:, 0].max()), 1), round(float(b[:, 1].max()), 1)],
-                               "conf": round(float(scores[k]), 4) if k < len(scores) else None})
-            out[n] = Leitura(R.corrigir(R._linhas(itens)), linhas, w, h)
-        return out
+        r = self._eng(img)
+        itens, linhas = [], []
+        scores = list(r.scores) if getattr(r, "scores", None) is not None else []
+        for k, (b, t) in enumerate(zip(r.boxes if r.boxes is not None else [], r.txts or [])):
+            b = np.asarray(b)
+            itens.append(((b[:, 1].min() + b[:, 1].max()) / 2, b[:, 0].min(), b[:, 1].max() - b[:, 1].min(), t))
+            linhas.append({"texto": t, "bbox": [round(float(b[:, 0].min()), 1), round(float(b[:, 1].min()), 1),
+                                                round(float(b[:, 0].max()), 1), round(float(b[:, 1].max()), 1)],
+                           "conf": round(float(scores[k]), 4) if k < len(scores) else None})
+        return Leitura(R.corrigir(R._linhas(itens)), linhas, img.shape[1], img.shape[0])
 
 
 class ExecutorTesseract:
@@ -150,20 +239,21 @@ class ExecutorTesseract:
         return f"tesseract@{pytesseract.get_tesseract_version()} por dpi{DPI}"
 
     def ler(self, pdf: Path, paginas: list[int]) -> dict[int, Leitura]:
-        import pytesseract
-
         from compliance_agent.sei import ocr_docs
         if not ocr_docs._tesseract_ok():
             raise ErroInferencia("tesseract indisponível neste nó")
-        out = {}
-        for n, img, w, h in _imagens(pdf, paginas):
-            texto = ocr_docs._ocr_tesseract(img, "por")
-            d = pytesseract.image_to_data(img, lang="por", output_type=pytesseract.Output.DICT)
-            linhas = [{"texto": t, "bbox": [d["left"][i], d["top"][i], d["left"][i] + d["width"][i],
-                                            d["top"][i] + d["height"][i]], "conf": float(d["conf"][i])}
-                      for i, t in enumerate(d["text"]) if str(t).strip()]
-            out[n] = Leitura(texto, linhas, w, h)
-        return out
+        return {n: self.ler_img(img) for n, img, _, _ in _imagens(pdf, paginas)}
+
+    def ler_img(self, img) -> Leitura:
+        import pytesseract
+
+        from compliance_agent.sei import ocr_docs
+        texto = ocr_docs._ocr_tesseract(img, "por")
+        d = pytesseract.image_to_data(img, lang="por", output_type=pytesseract.Output.DICT)
+        linhas = [{"texto": t, "bbox": [d["left"][i], d["top"][i], d["left"][i] + d["width"][i],
+                                        d["top"][i] + d["height"][i]], "conf": float(d["conf"][i])}
+                  for i, t in enumerate(d["text"]) if str(t).strip()]
+        return Leitura(texto, linhas, img.shape[1], img.shape[0])
 
 
 class ExecutorGPU:
@@ -190,21 +280,39 @@ class ExecutorGPU:
         return f"surya@{version('surya-ocr')} (vLLM, GPU it-campo) dpi{DPI}"
 
     def ler(self, pdf: Path, paginas: list[int]) -> dict[int, Leitura]:
+        out = {}
+        with _trava_gpu():
+            for n, img, _, _ in _imagens(pdf, paginas):
+                try:
+                    out[n] = self.ler_img(img)
+                except ErroInferencia as e:
+                    raise ErroInferencia(f"{pdf.name} p{n}: {e}") from e
+        return out
+
+    def ler_img(self, img) -> Leitura:
+        return self.ler_imgs([img])[0]
+
+    def ler_imgs(self, imgs: list) -> list[Leitura]:
+        """Lote de páginas numa chamada (o vLLM serve várias ao mesmo tempo; a bancada mede 1 × lote). Quem chama
+        segura a trava da GPU (o `ler` segura)."""
         from PIL import Image
         W = self._worker()
         if self._rec is None:
             from surya import RecognitionPredictor, SuryaInferenceManager
             self._rec = RecognitionPredictor(SuryaInferenceManager())
-        out = {}
-        with _trava_gpu():
-            for n, img, w, h in _imagens(pdf, paginas):
-                res = self._rec([Image.fromarray(img)])[0]
-                if any(getattr(b, "error", False) and not getattr(b, "html", "") for b in res.blocks):
-                    raise ErroInferencia(f"{pdf.name} p{n}: bloco com erro de inferência (Surya devolveu vazio)")
-                linhas = [{"texto": W._txt(b.html), "bbox": [round(float(x), 1) for x in (b.bbox or [])],
-                           "conf": getattr(b, "confidence", None)}
-                          for b in sorted(res.blocks, key=lambda b: b.reading_order or 0)]
-                out[n] = Leitura(W._texto(res), linhas, w, h)
+        out = []
+        for img, res in zip(imgs, self._rec([Image.fromarray(i) for i in imgs])):
+            if any(getattr(b, "error", False) and not getattr(b, "html", "") for b in res.blocks):
+                raise ErroInferencia("bloco com erro de inferência (Surya devolveu vazio)")
+            linhas = [{"texto": W._txt(b.html), "bbox": [round(float(x), 1) for x in (b.bbox or [])],
+                       "conf": getattr(b, "confidence", None), "rotulo": getattr(b, "label", None),
+                       "pulado": bool(getattr(b, "skipped", False))}
+                      for b in sorted(res.blocks, key=lambda b: b.reading_order or 0)]
+            # `skipped` = o Surya pulou de propósito (rótulo de figura); vazio SEM skipped = a geração da página inteira
+            # foi cortada (max_tokens) e os blocos do fim voltaram sem texto e sem `error` (surya/recognition)
+            vazios = sum(1 for ln in linhas if not util(ln["texto"]) and not ln["pulado"]
+                         and ln["rotulo"] not in ROTULOS_SEM_TEXTO)
+            out.append(Leitura(W._texto(res), linhas, img.shape[1], img.shape[0], vazios))
         return out
 
 
@@ -243,39 +351,74 @@ def escolher(no: str | None = None) -> tuple[Executor, Executor | None]:
 
 
 # ── OCR de um documento (puro sobre os executores) ─────────────────────────────────────────────────────────────
-def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | None) -> dict:
-    """Lê SÓ as páginas escaneadas do E4 e compõe o texto sem tocar no nativo. Devolve o conteúdo do lateral."""
+def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | None,
+                  cache: CacheImagem | None = None) -> dict:
+    """Lê SÓ as páginas escaneadas do E4 e compõe o texto sem tocar no nativo. Devolve o conteúdo do lateral.
+    Página com imagem idêntica (no documento ou no `cache`, mesmo motor@versão) não é relida (regra 4)."""
     nativas = {p["pagina"]: p for p in e4["paginas"]}
-    alvo = [p["pagina"] for p in e4["paginas"] if p["perfil"] == T.ESCANEADA]
-    if not alvo:
+    todas = [p["pagina"] for p in e4["paginas"] if p["perfil"] == T.ESCANEADA]
+    if not todas:
         raise ErroPermanente("documento sem página escaneada: nada a fazer no E5 (o E4 manda direto ao E7)")
+    # O3.6: página escaneada ACIMA do teto não é lida e fica PENDENTE (declarada). Antes, o `_imagens` levantava
+    # ErroPermanente e o documento inteiro ia à quarentena sem OCR nenhum — medido: 3 de 8 processos da bancada
+    # morreram em PDFs de 121–154 páginas
+    acima = [n for n in todas if n > MAX_PAGINAS]
+    alvo = [n for n in todas if n <= MAX_PAGINAS]
+    hashes = hashes_imagem(pdf, alvo) if alvo else {}
     m1 = principal.motor()
-    lidas = principal.ler(pdf, alvo)
+    lidas, dedup = _ler_dedup(principal, m1, pdf, alvo, hashes, cache, pdf.name) if alvo else ({}, {})
     pags: dict[int, dict] = {}
-    vazias = []
+    vazias: list[int] = []
+    incompletas: dict[int, Leitura] = {}
     for n in alvo:
         le = lidas.get(n)
         if le is None:
             raise ErroInferencia(f"{pdf.name}: o motor não devolveu a página {n}")
-        if util(le.texto):
+        if util(le.texto) and not le.blocos_vazios:
             pags[n] = {"estado": TEXTO, "motor": m1, "texto": le.texto, "linhas": le.linhas, "largura": le.largura,
                        "altura": le.altura}
         else:
-            vazias.append(n)
+            vazias.append(n)                          # vazia OU incompleta (bloco de texto sem texto): 2º motor
+            if util(le.texto):
+                incompletas[n] = le
     if vazias and segundo is not None and segundo.familia != principal.familia:
         m2 = segundo.motor()
-        relidas = segundo.ler(pdf, vazias)
+        relidas, dedup2 = _ler_dedup(segundo, m2, pdf, vazias, hashes, cache, pdf.name)
         for n in vazias:
             le = relidas.get(n)
-            if le is not None and util(le.texto):
+            if le is not None and util(le.texto) and not le.blocos_vazios:
                 pags[n] = {"estado": TEXTO, "motor": m2, "texto": le.texto, "linhas": le.linhas,
-                           "largura": le.largura, "altura": le.altura, "primeiro_vazio": m1}
+                           "largura": le.largura, "altura": le.altura,
+                           "primeiro_incompleto" if n in incompletas else "primeiro_vazio": m1}
+                if n in incompletas:
+                    pags[n]["blocos_vazios_do_primeiro"] = incompletas[n].blocos_vazios
+                if n in dedup2:
+                    dedup[n] = dedup2[n]
+            elif n in incompletas:
+                # os dois incompletos/vazios: o que o 1º leu não vira "feito" — fica pendente, visível
+                pags[n] = {"estado": VAZIA_PENDENTE, "motor": m1, "texto": "", "linhas": [],
+                           "motivo": f"leitura incompleta ({incompletas[n].blocos_vazios} bloco(s) de texto vazios) "
+                                     f"e o 2º motor não leu a página"}
+                dedup.pop(n, None)
             else:
                 pags[n] = {"estado": VAZIA_CONFERIDA, "motor": m1, "conferido_por": m2, "texto": "", "linhas": []}
+                dedup.pop(n, None)
     else:
         for n in vazias:
             pags[n] = {"estado": VAZIA_PENDENTE, "motor": m1, "texto": "", "linhas": [],
-                       "motivo": "vazia no único motor disponível: precisa de leitura de outra família"}
+                       "motivo": "incompleta (bloco de texto vazio) no único motor disponível" if n in incompletas
+                       else "vazia no único motor disponível: precisa de leitura de outra família"}
+            dedup.pop(n, None)
+    for n in acima:
+        pags[n] = {"estado": VAZIA_PENDENTE, "motor": m1, "texto": "", "linhas": [],
+                   "motivo": f"acima do teto de {MAX_PAGINAS} páginas do E5: não lida"}
+    for n, v in pags.items():
+        if n in hashes:
+            v["img_sha"] = hashes[n]
+        v["perfil"] = T.ESCANEADA
+        if "pagina" in dedup.get(n, {}) and v["estado"] == TEXTO:
+            v["dedup_de"] = dedup[n]                  # só o reuso DENTRO do documento vai ao lateral (determinístico)
+    cache_reusadas = sorted(n for n, d in dedup.items() if "cache" in d and pags[n]["estado"] == TEXTO)
     compostas = []
     for n in sorted(nativas):
         nat = nativas[n].get("texto") or ""
@@ -285,11 +428,19 @@ def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | 
         else:
             compostas.append(nat)
     composto = T.QUEBRA.join(compostas)
-    return {"paginas": {str(n): v for n, v in sorted(pags.items())}, "alvo": alvo, "dpi": DPI,
+    return {"paginas": {str(n): v for n, v in sorted(pags.items())}, "alvo": todas, "dpi": DPI,
             "texto_composto": composto, "texto_sha": T.sha256_texto(composto), "chars": len(composto.strip()),
+            # O3.6: as páginas compostas, uma a uma — o texto NATIVO pode trazer `\f` (o PyMuPDF emite em 5,5% dos
+            # mistos medidos), e partir o composto pelo separador desalinhava as páginas e reprovava o efeito
+            "compostas": compostas,
             "motores": sorted({v["motor"] for v in pags.values()} | {v["conferido_por"] for v in pags.values()
                                                                       if v.get("conferido_por")}),
-            "pendentes": [n for n, v in pags.items() if v["estado"] == VAZIA_PENDENTE]}
+            "pendentes": [n for n, v in pags.items() if v["estado"] == VAZIA_PENDENTE],
+            "dedup": {"paginas": len(alvo), "imagens_distintas": len(set(hashes.values())),
+                      "reusadas": sorted(n for n, v in pags.items() if v.get("dedup_de"))},
+            # FORA do lateral (o `_handler` tira): de onde veio a leitura reusada do cache depende do estado do cache,
+            # e o lateral da mesma versão tem de sair igual na reexecução (o sha dele está no PG)
+            "cache_reusadas": cache_reusadas}
 
 
 # ── onde está o PDF ────────────────────────────────────────────────────────────────────────────────────────────
@@ -359,7 +510,9 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         sha = sha or T.sha256_arquivo(pdf)                    # item legado: a versão é o arquivo achado
         e4 = e4_do(con, processo, doc_id, sha, pdf, raiz)
         principal, segundo = obter_executores(ctx.no)
-        ocr = ocr_documento(pdf, e4, principal, segundo)
+        cache = CacheImagem((raiz or T.raiz_texto()) / PASTA_DEDUP)
+        ocr = ocr_documento(pdf, e4, principal, segundo, cache)
+        cache_reusadas = ocr.pop("cache_reusadas")
         lat = T.caminho_lateral(processo, doc_id, sha, "e5", raiz)
         nat = {str(p["pagina"]): p.get("texto") or "" for p in e4["paginas"]}
         lat_sha = T.gravar_lateral(lat, {"versao": VERSAO, "processo": processo, "doc_id": doc_id, "entrada_sha": sha,
@@ -375,6 +528,7 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     finally:
         con.close()
     ef["pendentes"] = []
+    ef["cache_reusadas"] = cache_reusadas
     k = f"{processo}|{doc_id}"
     det = {"sha256": sha, "texto_sha": ocr["texto_sha"]}
     eventos = [{"fonte": "ocr", "tipo": "texto_novo", "chave": k, "detalhe": det}]
@@ -404,7 +558,9 @@ def conferir(con, ef: dict) -> dict:
     perfis = d.get("perfis") or {}
     nativo = d.get("nativo") or {}
     alvo = [str(n) for n in d.get("alvo") or []]
-    compostas = (d.get("texto_composto") or "").split(T.QUEBRA)
+    compostas = d.get("compostas")
+    if compostas is None:                                    # lateral e5-1 (antes da O3.6)
+        compostas = (d.get("texto_composto") or "").split(T.QUEBRA)
     c = {"lateral_sha": lat_sha == (t["parametros"] or {}).get("lateral_sha"),
          "saida_sha": t["saida_sha"] == ef["texto_sha"] == T.sha256_texto(d.get("texto_composto") or ""),
          "todas_resolvidas": bool(alvo) and all((pags.get(n) or {}).get("estado") in (TEXTO, VAZIA_CONFERIDA)
@@ -414,13 +570,23 @@ def conferir(con, ef: dict) -> dict:
          "vazia_com_dois_motores": all(v.get("conferido_por") and v["conferido_por"] != v["motor"]
                                        for v in pags.values() if v["estado"] == VAZIA_CONFERIDA),
          "nativa_nao_lida": all(perfis.get(n) == T.ESCANEADA for n in pags),
+         "img_sha_por_pagina": all(len(v.get("img_sha") or "") == 64 for v in pags.values()),
+         "dedup_coerente": all(_dedup_ok(pags, v) for v in pags.values() if v.get("dedup_de")),
          "nativo_preservado": len(compostas) == len(nativo) and all(
-             compostas[int(n) - 1].startswith((nativo[n] or "").rstrip()) for n in nativo)}
+             compostas[int(n) - 1].startswith((nativo[n] or "").rstrip()) for n in nativo),
+         "compostas_formam_o_texto": T.QUEBRA.join(compostas) == (d.get("texto_composto") or "")}
     c["versao_texto"] = con.execute("SELECT 1 FROM versoes WHERE processo = %s AND doc_id = %s AND sha256 = %s AND "
                                     "hash_de = 'texto' AND origem = %s", (ef["processo"], ef["doc_id"],
                                                                          ef["texto_sha"], ORIGEM)).fetchone() is not None
     c["ok"] = all(c.values())
     return c
+
+
+def _dedup_ok(pags: dict, v: dict) -> bool:
+    """Reuso de página do mesmo documento: a origem tem a MESMA imagem e o mesmo texto (o reuso do cache não vai ao
+    lateral; o registro do cache é conferido na leitura: imagem e motor iguais aos pedidos)."""
+    o = pags.get(str(v["dedup_de"].get("pagina"))) or {}
+    return o.get("img_sha") == v.get("img_sha") and o.get("texto") == v.get("texto")
 
 
 def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:

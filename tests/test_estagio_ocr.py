@@ -58,8 +58,10 @@ def test_vazio_conferido_por_outra_familia_e_resgate_do_segundo(tmp_path):
     segundo = Falso("tesseract", {2: "NOTA FISCAL 123"})
     r = O.ocr_documento(pdf, e4, Falso("rapidocr"), segundo)
     assert segundo.pedidas == [[1, 2]] and r["pendentes"] == []
-    assert r["paginas"]["1"] == {"estado": O.VAZIA_CONFERIDA, "motor": "rapidocr@teste",
-                                 "conferido_por": "tesseract@teste", "texto": "", "linhas": []}
+    p1 = dict(r["paginas"]["1"])
+    assert len(p1.pop("img_sha")) == 64 and p1.pop("perfil") == T.ESCANEADA           # O3.6: hash + perfil por página
+    assert p1 == {"estado": O.VAZIA_CONFERIDA, "motor": "rapidocr@teste", "conferido_por": "tesseract@teste",
+                  "texto": "", "linhas": []}
     assert r["paginas"]["2"]["motor"] == "tesseract@teste" and r["paginas"]["2"]["primeiro_vazio"] == "rapidocr@teste"
     # mesma família não confere a si mesma
     assert O.ocr_documento(pdf, e4, Falso("rapidocr"), Falso("rapidocr"))["pendentes"] == [1, 2]
@@ -143,7 +145,7 @@ def test_e5_grava_so_com_todas_resolvidas_e_vazio_nao_vira_feito(pg, tmp_path, m
     assert ok, r.efeito["conferencia"]
     assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia", "terminado"]
     r, ok = _e5(nome, tmp_path, pdf, sha, (Falso("rapidocr", texto), None), monkeypatch, ficha=3)
-    assert ok
+    assert ok, r.efeito.get("conferencia")
     assert con.execute("SELECT count(*) FROM transformacao WHERE tipo = 'ocr'").fetchone()[0] == 1
     assert con.execute("SELECT ocr FROM versoes WHERE origem = 'sei:e5'").fetchall() == [("rapidocr@teste",)]
 
@@ -163,3 +165,120 @@ def test_e5_efeito_pega_nativo_trocado_no_lateral(pg, tmp_path, monkeypatch):  #
     arq.write_text(json.dumps(d), encoding="utf-8")
     c = ctx("ocr", "sei:111", sha)
     assert not O._efeito({"dsn": DSN, "esquema": nome}, c, r)
+
+
+# ── O3.6: img_sha por página e dedup por hash de imagem ─────────────────────────────────────────────────────────
+def _pdf_repetido(caminho, cores):
+    """Páginas escaneadas com a imagem de cada cor: cores iguais ⇒ pixels idênticos (página repetida)."""
+    import fitz
+    doc = fitz.open()
+    for cor in cores:
+        pg = doc.new_page()
+        pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 60, 80), 0)
+        pix.set_rect(pix.irect, (cor, cor, cor))
+        pg.insert_image(fitz.Rect(20, 20, 580, 800), pixmap=pix)
+    doc.save(caminho)
+    doc.close()
+    return caminho
+
+
+def test_pagina_repetida_le_uma_vez_e_cache_por_motor(tmp_path):
+    pdf = _pdf_repetido(tmp_path / "r.pdf", [200, 150, 200])
+    e4 = T.extrair(pdf)
+    g = Falso("gpu", {1: "NF 1 total R$ 10,00", 2: "outra página", 3: "NÃO PODE SER LIDA"})
+    cache = O.CacheImagem(tmp_path / "dedup")
+    r = O.ocr_documento(pdf, e4, g, None, cache)
+    assert g.pedidas == [[1, 2]]                                         # a 3 é a mesma imagem da 1
+    p = r["paginas"]
+    assert p["3"]["texto"] == p["1"]["texto"] and p["3"]["dedup_de"] == {"pagina": 1}
+    assert p["1"]["img_sha"] == p["3"]["img_sha"] != p["2"]["img_sha"] and len(p["1"]["img_sha"]) == 64
+    assert r["dedup"] == {"paginas": 3, "imagens_distintas": 2, "reusadas": [3]} and r["cache_reusadas"] == []
+    # outro documento com a mesma imagem: o MESMO motor não relê; outro motor (ou outra versão) relê
+    pdf2 = _pdf_repetido(tmp_path / "s.pdf", [150])
+    g2 = Falso("gpu", {1: "não pode ser lida de novo"})
+    r2 = O.ocr_documento(pdf2, T.extrair(pdf2), g2, None, cache)
+    assert g2.pedidas == [] and r2["paginas"]["1"]["texto"] == "outra página"
+    assert r2["cache_reusadas"] == [1] and "dedup_de" not in r2["paginas"]["1"]      # lateral igual com e sem cache
+    g3 = Falso("rapidocr", {1: "lida pelo outro motor"})
+    assert O.ocr_documento(pdf2, T.extrair(pdf2), g3, None, cache)["paginas"]["1"]["texto"] == "lida pelo outro motor"
+
+
+def test_vazio_nao_entra_no_cache_e_registro_de_outra_imagem_nao_vale(tmp_path):
+    pdf = _pdf_repetido(tmp_path / "v.pdf", [90])
+    e4 = T.extrair(pdf)
+    cache = O.CacheImagem(tmp_path / "dedup")
+    assert O.ocr_documento(pdf, e4, Falso("gpu"), None, cache)["pendentes"] == [1]
+    assert not list((tmp_path / "dedup").rglob("*.json"))                # vazio nunca é cacheado
+    r = O.ocr_documento(pdf, e4, Falso("gpu", {1: "lido"}), None, cache)
+    sha = r["paginas"]["1"]["img_sha"]
+    arq = cache._arq(sha, "gpu@teste")
+    d = T.ler_lateral(arq)[0]
+    T.gravar_lateral(arq, d | {"img_sha": "0" * 64})                    # registro de outra imagem no lugar
+    g = Falso("gpu", {1: "relido"})
+    assert O.ocr_documento(pdf, e4, g, None, cache)["paginas"]["1"]["texto"] == "relido" and g.pedidas == [[1]]
+
+
+@precisa_pg
+def test_e5_efeito_confere_img_sha_e_dedup(pg, tmp_path, monkeypatch):  # noqa: F811
+    import json
+    _, nome = pg
+    pdf = _pdf_repetido(tmp_path / "001.pdf", [120, 120])
+    rodar_e4(nome, tmp_path, pdf)
+    sha = T.sha256_arquivo(pdf)
+    r, ok = _e5(nome, tmp_path, pdf, sha, (Falso("gpu", {1: "lido 1", 2: "lido 2"}), None), monkeypatch)
+    assert ok, r.efeito["conferencia"]
+    assert r.efeito["conferencia"]["dedup_coerente"] and r.efeito["conferencia"]["img_sha_por_pagina"]
+    arq = T.caminho_lateral(PROC, "sei:111", sha, "e5", tmp_path / "texto")
+    d = json.loads(arq.read_text(encoding="utf-8"))
+    assert d["paginas"]["2"]["dedup_de"] == {"pagina": 1} and d["paginas"]["2"]["texto"] == "lido 1"
+    d["paginas"]["2"]["img_sha"] = "f" * 64                              # reuso de página que NÃO é a mesma imagem
+    arq.write_text(json.dumps(d), encoding="utf-8")
+    c = O.conferir(T.conectar(DSN, nome), r.efeito)
+    assert not c["ok"] and not c["dedup_coerente"]
+
+
+class FalsoIncompleto(Falso):
+    """Motor que devolve texto MAS com bloco de texto vazio (o modo de falha do Surya medido na O3.6)."""
+
+    def ler(self, pdf, paginas):
+        out = super().ler(pdf, paginas)
+        return {n: O.Leitura(le.texto, le.linhas, le.largura, le.altura, blocos_vazios=2) for n, le in out.items()}
+
+
+def test_incompleta_nao_vira_texto_vai_ao_segundo_e_nao_entra_no_cache(tmp_path):
+    pdf = _pdf_repetido(tmp_path / "i.pdf", [77])
+    e4 = T.extrair(pdf)
+    cache = O.CacheImagem(tmp_path / "dedup")
+    g = FalsoIncompleto("gpu", {1: "cabeçalho lido, tabela de valores perdida"})
+    r = O.ocr_documento(pdf, e4, g, Falso("rapidocr", {1: "cabeçalho e tabela R$ 1.234,56"}), cache)
+    p = r["paginas"]["1"]
+    assert p["motor"] == "rapidocr@teste" and p["primeiro_incompleto"] == "gpu@teste" and p["estado"] == O.TEXTO
+    assert p["blocos_vazios_do_primeiro"] == 2 and "R$ 1.234,56" in r["texto_composto"]
+    assert cache.obter(p["img_sha"], "gpu@teste") is None                # a incompleta nunca é reusada
+    # sem 2º motor: pendente (nada vira feito com pedaço faltando)
+    r = O.ocr_documento(pdf, e4, FalsoIncompleto("gpu", {1: "parcial"}), None)
+    assert r["pendentes"] == [1] and "incompleta" in r["paginas"]["1"]["motivo"]
+    # 2º motor sem texto: também pendente, o parcial do 1º não entra
+    r = O.ocr_documento(pdf, e4, FalsoIncompleto("gpu", {1: "parcial"}), Falso("rapidocr"))
+    assert r["pendentes"] == [1] and r["texto_composto"] == ""
+
+
+def test_pagina_acima_do_teto_fica_pendente_e_o_resto_e_lido(tmp_path, monkeypatch):
+    """O3.6: PDF com página escaneada acima do teto não derruba o documento inteiro (era ErroPermanente sem OCR
+    nenhum): as de baixo são lidas, as de cima ficam `vazia_pendente` declaradas — nada vira feito."""
+    monkeypatch.setattr(O, "MAX_PAGINAS", 2)
+    pdf = _pdf_repetido(tmp_path / "longo.pdf", [10, 20, 30])
+    g = Falso("gpu", {1: "um", 2: "dois", 3: "NÃO PODE SER LIDA"})
+    r = O.ocr_documento(pdf, T.extrair(pdf), g, Falso("rapidocr"))
+    assert g.pedidas == [[1, 2]] and r["pendentes"] == [3] and r["alvo"] == [1, 2, 3]
+    assert "acima do teto" in r["paginas"]["3"]["motivo"] and r["paginas"]["1"]["texto"] == "um"
+
+
+def test_nativo_com_form_feed_nao_desalinha_as_paginas(tmp_path):
+    """O3.6: o texto nativo pode trazer `\\f` (o separador de páginas do composto). O efeito conferia o nativo partindo
+    o composto pelo separador e reprovava 5,5% dos mistos reais; agora usa as páginas compostas guardadas."""
+    pdf, e4 = _e4(tmp_path, ["nativa", "escaneada"])
+    e4["paginas"][0]["texto"] = "cabeçalho\fcorpo nativo"
+    r = O.ocr_documento(pdf, e4, Falso("gpu", {2: "lido"}), None)
+    assert len(r["compostas"]) == 2 and r["compostas"][0] == "cabeçalho\fcorpo nativo"
+    assert T.QUEBRA.join(r["compostas"]) == r["texto_composto"] and len(r["texto_composto"].split(T.QUEBRA)) == 3
