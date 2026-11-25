@@ -292,18 +292,21 @@ def extrair_fonte(src: sqlite3.Connection, destino: Path, processos: set[str]) -
     dst = sqlite3.connect(destino)
     rel: dict = {}
     obs_rowids: list[int] = []
+    # ob-qualquer-status: replay do E1 copia a coleta BRUTA; o filtro de OB paga vem depois, nos estágios
     for rowid, proc in src.execute("SELECT rowid, processo FROM ob_orcamentaria_siafe"):
         if PI.chave_processo(proc or "") in processos:
             obs_rowids.append(rowid)
     credores: set[str] = set()
+    # ob-qualquer-status: só seleciona os credores da amostra (nenhuma soma de valor)
     for (cr,) in src.execute(f"SELECT DISTINCT credor FROM ob_orcamentaria_siafe WHERE rowid IN "
                              f"({','.join(map(str, obs_rowids)) or 'NULL'})"):
         if _dig(cr):
             credores.add(_dig(cr))
     por_credor: list[int] = []
     for cr in sorted(credores):
+        # ob-qualquer-status: cópia bruta para o replay; ORDER BY rowid = a mesma amostra em toda execução
         por_credor += [r for (r,) in src.execute("SELECT rowid FROM ob_orcamentaria_siafe WHERE credor = ? AND "
-                                                 "exercicio >= 2025 LIMIT ?", (cr, TETO_POR_CREDOR))]
+                                                 "exercicio >= 2025 ORDER BY rowid LIMIT ?", (cr, TETO_POR_CREDOR))]
     ob_ids = sorted(set(obs_rowids) | set(por_credor))
     ctx: dict = {"credores": credores, "basicos": {c[:8] for c in credores if len(c) == 14}}
 
@@ -525,8 +528,8 @@ def bloquear_llm() -> None:
         try:
             m = __import__(mod, fromlist=[nome])
             setattr(m, nome, sentinela)
-        except Exception:                                        # módulo que não importa aqui não é chamado aqui
-            pass
+        except (ImportError, AttributeError) as e:               # módulo que não importa aqui não é chamado aqui
+            print(f"ensaio: sentinela de LLM não instalada em {mod} — {type(e).__name__}", file=sys.stderr)
 
 
 def cmd_filho(a) -> int:
@@ -836,6 +839,7 @@ def credores_da_amostra(ens) -> set[str]:
     am = {x["processo"] for x in ens.amostra}
     con = sqlite3.connect(f"file:{ens.coleta}?mode=ro", uri=True)
     try:
+        # ob-qualquer-status: mapa credor → processo da amostra (identidade, não soma)
         return {_dig(c) for c, p in con.execute("SELECT credor, processo FROM ob_orcamentaria_siafe")
                 if PI.chave_processo(p or "") in am and len(_dig(c)) == 14}
     finally:
@@ -1064,7 +1068,7 @@ def detectores_da_unidade(unidade: str) -> list[str]:
         try:
             if D.exigencia(did)[0] == unidade:
                 out.append(did)
-        except Exception:                                         # detector sem exigência na E9 fica fora (declarado)
+        except D.ErroPermanente:                                  # detector sem exigência na E9 fica fora (declarado)
             continue
     return out
 

@@ -107,7 +107,7 @@ def anotar(tipo: str, sha: str, versao: str | None = None, **detalhe) -> None:
     if _ATUAL is not None:
         try:
             _ATUAL.anotar(tipo, sha, versao, **detalhe)
-        except Exception as e:                                   # o registro nunca derruba o job
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:   # o registro nunca derruba o job
             print(f"leituras: anotação falhou — {type(e).__name__}: {e}", file=sys.stderr)
 
 
@@ -157,12 +157,12 @@ def _gancho_ocr() -> None:
         def ler_img(self, img, _orig=original):
             try:
                 motor = self.motor()
-            except Exception:                                    # versão do motor ilegível não impede a anotação
+            except (AttributeError, TypeError, ValueError, OSError):   # versão do motor ilegível não impede a anotação
                 motor = getattr(self, "familia", "?")
             try:
                 anotar("ocr_pagina", sha_bytes(img.tobytes()), versao=motor)
-            except AttributeError:
-                pass
+            except AttributeError as e:                          # imagem sem bytes: leitura NÃO contada — declarar
+                print(f"leituras: página de OCR sem bytes, não anotada — {e}", file=sys.stderr)
             return _orig(self, img)
         _trocar(cls, "ler_img", ler_img)
 
@@ -195,7 +195,7 @@ def instrumentar(registro: Registro) -> Registro:
     for g in (_gancho_fitz, _gancho_texto, _gancho_ocr, _gancho_llm):
         try:
             g()
-        except Exception as e:                                   # gancho que não instala é declarado, não derruba
+        except (ImportError, AttributeError) as e:               # gancho que não instala é declarado, não derruba
             print(f"leituras: gancho {g.__name__} não instalou — {type(e).__name__}: {e}", file=sys.stderr)
     return registro
 
@@ -220,6 +220,19 @@ def iniciar(ctx, modo: str, estagio_obj) -> Registro:
                                  no=ctx.no, rotulo=os.environ.get(ENV_ROTULO)))
 
 
+def _erro_pg() -> type[BaseException]:
+    """psycopg.Error se o psycopg existir; senão uma classe que nunca casa (o except fica específico)."""
+    try:
+        import psycopg
+        return psycopg.Error
+    except ImportError:
+        return _NuncaCasa
+
+
+class _NuncaCasa(Exception):
+    pass
+
+
 def encerrar(registro: Registro, con=None) -> int:
     """Grava o registro no PG (esquema do fluxo) e desliga os ganchos. Falha ao gravar só vai ao stderr."""
     desinstrumentar()
@@ -232,7 +245,13 @@ def encerrar(registro: Registro, con=None) -> int:
             finally:
                 con.close()
         return registro.gravar(con)
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:           # psycopg.Error herda de Exception: tratada abaixo
+        print(f"leituras: registro não gravado — {type(e).__name__}: {str(e)[:200]}", file=sys.stderr)
+        return 0
+    except ImportError as e:
+        print(f"leituras: registro não gravado (sem psycopg) — {e}", file=sys.stderr)
+        return 0
+    except _erro_pg() as e:
         print(f"leituras: registro não gravado — {type(e).__name__}: {str(e)[:200]}", file=sys.stderr)
         return 0
 
