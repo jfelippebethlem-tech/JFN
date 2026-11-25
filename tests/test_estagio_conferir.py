@@ -59,8 +59,11 @@ def aut(tmp_path):
     return a
 
 
-def test_porta_com_autorizacao_do_dono_libera_antes_e_confere_o_teto(aut):
+def test_porta_com_autorizacao_do_dono_libera_antes_e_confere_o_teto(aut, monkeypatch):
     abaixo = lambda: {"medido": True, "semana_pct": 70.0}                         # noqa: E731
+    m, ex = C.porta_opus(ANTES, nivel=abaixo, ritmo=_explode, escolher=_explode, caminho=aut)
+    assert ex is None and m.startswith("sem_llm:")           # sem o escopo do ensaio: a autorização não vale
+    monkeypatch.setenv("JFN_ASSINATURA_ESCOPO", "ensaio_o85")
     assert C.porta_opus(ANTES, nivel=abaixo, ritmo=_explode, escolher=lambda: ("itcampo", "hb"),
                         caminho=aut) == (None, "itcampo")
     m, ex = C.porta_opus(ANTES, nivel=lambda: {"medido": True, "semana_pct": 80.0}, escolher=_explode, caminho=aut)
@@ -246,6 +249,7 @@ def test_resposta_fora_do_formato_nunca_vira_feito(esq, monkeypatch):
 def test_teto_atingido_abstem_sem_chamar_o_opus(esq, monkeypatch, aut):
     con, nome = esq
     monkeypatch.setattr(C, "AUTORIZACAO_DONO", aut)
+    monkeypatch.setenv("JFN_ASSINATURA_ESCOPO", "ensaio_o85")          # a autorização só vale no escopo do ensaio
     from compliance_agent.llm import ritmo_assinatura
     monkeypatch.setattr(ritmo_assinatura, "nivel", lambda: {"medido": True, "semana_pct": 85.0})
     monkeypatch.setattr(C, "chamar_opus", lambda *a: pytest.fail("acima do teto o Opus não podia ser chamado"))

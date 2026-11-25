@@ -179,7 +179,7 @@ def porta_opus(agora: datetime | None = None, *, ritmo=None, escolher=None, nive
     """(motivo da recusa — `sem_llm: …` ou `teto_assinatura: …` —, executor). Motivo None ⇒ o executor confere.
     Antes da virada sem autorização: recusa sem tocar em nada. Com a autorização: o teto da semana a cada chamada
     (`ritmo_assinatura.nivel()`), no lugar da trava de ritmo; depois da virada sem autorização, a trava de ritmo."""
-    aut = autorizacao_dono(caminho)
+    aut = autorizacao_dono(caminho) if os.environ.get("JFN_ASSINATURA_ESCOPO") == "ensaio_o85" else None  # só o ensaio
     if (agora or datetime.now(BRT)) < LIBERADO_EM and aut is None:
         return f"sem_llm: assinatura contida até {LIBERADO_EM:%d/%m/%Y %Hh} (BRT), sem autorização do dono", None
     from compliance_agent.llm import conferencia_executor as CE

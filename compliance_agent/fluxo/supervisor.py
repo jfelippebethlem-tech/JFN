@@ -107,8 +107,12 @@ def motivo_ritmo(tarefa: str) -> str | None:
     que lê `llm/ritmo_assinatura` e o teto diário do motor. None = pode; leitura que falha = espera (nunca fura o
     teto). Atenção: o arquivo de medição mora na máquina que roda `ritmo_assinatura --medir` (VM-1)."""
     try:
-        from compliance_agent.llm import contingencia
-        return contingencia.motivo_bloqueio(tarefa)
+        from compliance_agent.llm import claude_motor, contingencia
+        m = contingencia.motivo_bloqueio(tarefa)
+        # a MESMA regra do claude_motor.motivo_desligado: só a trava de ritmo cede, só no escopo do ensaio O8.5
+        if m and contingencia.estado().get("origem") == "ritmo_semanal" and claude_motor.ritmo_liberado_pelo_dono():
+            return None
+        return m
     except (ImportError, OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         return f"guarda de ritmo ilegível ({type(exc).__name__}: {exc})"[:300]
 

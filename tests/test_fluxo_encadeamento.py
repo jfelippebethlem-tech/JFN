@@ -436,3 +436,41 @@ def test_teto_de_memoria_do_filho_nao_mata_o_chromium():
     assert S.RLIMIT_FILHO == resource.RLIMIT_DATA
     src = Path(S.__file__).read_text(encoding="utf-8")
     assert "setrlimit(resource.RLIMIT_AS" not in src
+
+
+# ── r3 com LLM: a autorização do dono abre o ritmo do MOTOR só no escopo do ensaio O8.5 ──
+def _medicao(con, pct: float):
+    import time as _t
+    from compliance_agent.fluxo import ritmo as R
+    volta = datetime.now(timezone.utc).astimezone() + timedelta(days=3)
+    R.publicar(con, {"em": "agora", "medido_ts": _t.time(), "sessao_pct": 10.0, "sessao_volta": None,
+                     "semana_pct": pct, "semana_volta": volta.strftime("%Y-%m-%dT%H:%M:%S")}, "vm2")
+
+
+@precisa_pg
+def test_ritmo_do_motor_cede_a_autorizacao_so_no_escopo_e_abaixo_do_teto(con, tmp_path, monkeypatch):
+    from compliance_agent.fluxo import ritmo as R
+    monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path))
+    (tmp_path / ".assinatura_liberada_dono.json").write_text(json.dumps(
+        {"escopo": "passada --com-llm do ensaio O8.5 pela ASSINATURA (claude -p, backend cli); nunca API paga",
+         "teto_semana_pct": 90.0}), encoding="utf-8")
+    _medicao(con, 89.0)
+    monkeypatch.delenv("JFN_ASSINATURA_ESCOPO", raising=False)
+    assert "ritmo semanal" in R.motivo(con, "leitura_integral")          # sem o escopo: segura (produção)
+    monkeypatch.setenv("JFN_ASSINATURA_ESCOPO", "ensaio_o85")
+    assert R.motivo(con, "leitura_integral") is None                      # escopo + arquivo + abaixo do teto
+    _medicao(con, 90.0)
+    assert "ritmo semanal" in R.motivo(con, "leitura_integral")          # no teto: segura
+    _medicao(con, 70.0)
+    (tmp_path / ".assinatura_liberada_dono.json").write_text(json.dumps(
+        {"escopo": "API paga", "teto_semana_pct": 90.0}), encoding="utf-8")
+    assert "ritmo semanal" in R.motivo(con, "leitura_integral")          # arquivo de outro escopo: segura
+    con.execute("TRUNCATE metricas")
+    assert R.motivo(con, "leitura_integral").startswith("porta fechada")  # sem medição: nunca cede
+
+
+def test_e11_e12_esperam_o_montante(real):
+    gp = real.grafo_planejador()
+    assert gp["fatos/mudou"][0]["payload"]["montante"] == ["detectar", "fatos"]
+    assert gp["periciar/laudo"][0]["payload"]["montante"] == ["detectar", "periciar"]
+    assert "montante" not in gp["texto/texto_novo"][0]["payload"]

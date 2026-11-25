@@ -84,6 +84,9 @@ class Estagio(_Base):
     depende: list[str] = Field(default_factory=list)
     sem_itcampo: str | None = None
     ritmo: str | None = None                      # tarefa do guarda de ritmo da assinatura (estágio com LLM)
+    # o job espera o estágio a montante (`depende`) que está rodando ou pronto: sem isto o E11 julgaria antes do E8
+    # gravar os fatos e o `fatos/mudou` reabriria o laudo — duas chamadas do Opus para o mesmo processo
+    espera_montante: bool = False
 
     @field_validator("recursos")
     @classmethod
@@ -436,6 +439,8 @@ class Grafo(_Base):
             p["concorrencia"] = conc
         if e.ritmo and not expansao:              # a reserva segura o job com a porta da assinatura fechada
             p["ritmo"] = e.ritmo
+        if e.espera_montante and not expansao:
+            p["montante"] = sorted({self.estagios[d].tipo for d in e.depende})
         return p
 
     def terminais(self, so_ativas: bool = True) -> dict[str, str]:

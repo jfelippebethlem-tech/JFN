@@ -55,11 +55,34 @@ def motivo(con, tarefa: str) -> str | None:
     c = ritmo_assinatura.classificar(m, agora)
     if not c["medido"]:
         return f"porta fechada: {c['motivo']}"
+    trava = None
     if c["nivel"] == "contido" and tarefa != "canario":
-        return f"ritmo semanal da assinatura — {c['motivo']}"
-    if c["nivel"] == "economia" and tarefa not in contingencia.RESERVA_OPUS:
-        return f"ritmo semanal da assinatura — {c['motivo']}"
-    return None
+        trava = f"ritmo semanal da assinatura — {c['motivo']}"
+    elif c["nivel"] == "economia" and tarefa not in contingencia.RESERVA_OPUS:
+        trava = f"ritmo semanal da assinatura — {c['motivo']}"
+    if trava and liberado_pelo_dono(c.get("semana_pct")):
+        return None                                        # só a trava de ritmo, só no escopo do ensaio O8.5
+    return trava
+
+
+def liberado_pelo_dono(semana_pct) -> bool:
+    """A MESMA regra de `claude_motor.ritmo_liberado_pelo_dono`, com a semana medida no PG: a trava de ritmo do MOTOR
+    cede à autorização do dono (`data/.assinatura_liberada_dono.json`, escopo O8.5 pela ASSINATURA) SÓ quando o
+    supervisor declara `JFN_ASSINATURA_ESCOPO=ensaio_o85` e a semana está ABAIXO do `teto_semana_pct`. Fora desse
+    escopo (a produção) nada muda; sem medição, a porta segue fechada (motivo acima, antes desta regra)."""
+    import os
+
+    from compliance_agent.llm import arquivo_estado as arq
+    from compliance_agent.llm import claude_motor as CM
+    if os.environ.get(CM.ENV_ESCOPO) != CM.ESCOPO_ENSAIO or semana_pct is None:
+        return False
+    try:
+        d = json.loads((arq.dados() / CM.LIBERACAO_DONO).read_text(encoding="utf-8"))
+        teto = float(d["teto_semana_pct"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    esc = str(d.get("escopo") or "")
+    return "O8.5" in esc and "ASSINATURA" in esc and float(semana_pct) < teto
 
 
 def medir_e_publicar(con, no: str = "vm1", medir=None) -> dict:

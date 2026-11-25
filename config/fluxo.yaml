@@ -191,6 +191,7 @@ estagios:
     concorrencia: [assinatura_claude, llm_batch]
     depende: [E8, E10]
     ritmo: pericia_integral               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
+    espera_montante: true          # espera o E8/E10 (E12: E10/E11) rodando ou pronto: um juízo por processo
     sem_itcampo: VM-2
   E12:
     tipo: conferir
@@ -205,6 +206,7 @@ estagios:
     concorrencia: [assinatura_claude]
     depende: [E10, E11]
     ritmo: conferencia_e12               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
+    espera_montante: true          # espera o E8/E10 (E12: E10/E11) rodando ou pronto: um juízo por processo
     sem_itcampo: VM-2
   E13:
     tipo: calibrar
