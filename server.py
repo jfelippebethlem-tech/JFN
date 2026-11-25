@@ -1469,9 +1469,12 @@ def parse_args():
 # ── Split 2026-07-06: rotas por domínio (ver rotas/*.py; rede de segurança em tests/test_server_snapshot.py) ──
 # `vinculos` entrou em módulo próprio (2026-07-29): investigacao.py já tinha 2.291 linhas e 98
 # rotas, e o eixo de vínculos é um domínio inteiro — somar ali só pioraria o problema.
-from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, vinculos as _r_vinculos, lai as _r_lai, acervo as _r_acervo, comissao as _r_comissao, governo_couto as _r_governo_couto, pericias_rotinas as _r_pericias_rotinas, qualidade as _r_qualidade, periodo as _r_periodo, orcamento_orgao as _r_orcamento_orgao, propagacao as _r_propagacao, esteira as _r_esteira  # noqa: E402
+# O7.6 (2026-11-25): o resto do investigacao.py (3.177 linhas, 106 rotas) virou 7 módulos temáticos — o
+# investigacao segue primeiro (casa do cache que os outros importam); paridade em tests/test_rotas_investigacao_paridade.py.
+from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, intel_contratacao as _r_intel_contratacao, intel_pessoas as _r_intel_pessoas, comparador as _r_comparador, pcrj as _r_pcrj, consultas as _r_consultas, radar as _r_radar, vinculos as _r_vinculos, lai as _r_lai, acervo as _r_acervo, comissao as _r_comissao, governo_couto as _r_governo_couto, pericias_rotinas as _r_pericias_rotinas, qualidade as _r_qualidade, periodo as _r_periodo, orcamento_orgao as _r_orcamento_orgao, propagacao as _r_propagacao, esteira as _r_esteira  # noqa: E402
 
-for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos, _r_lai, _r_acervo, _r_comissao,
+for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_intel_contratacao, _r_intel_pessoas, _r_comparador,
+           _r_pcrj, _r_consultas, _r_radar, _r_vinculos, _r_lai, _r_acervo, _r_comissao,
            _r_governo_couto, _r_pericias_rotinas, _r_qualidade, _r_periodo, _r_orcamento_orgao, _r_propagacao,
            _r_esteira):
     app.include_router(_r.router)

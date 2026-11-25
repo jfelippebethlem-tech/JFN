@@ -56,7 +56,9 @@ def test_toda_classe_detector_tem_entrada(registro):
 def _intel_servidas() -> set[str]:
     publicas = set(re.findall(r"^def ([a-z]\w*)\(", (REPO / "compliance_agent" / "cruzamentos_intel.py")
                               .read_text(encoding="utf-8"), re.M)) - {"ler_cache_intel", "gerar_cache_intel"}
-    rotas = (REPO / "rotas" / "investigacao.py").read_text(encoding="utf-8")
+    # O7.6: as rotas /api/intel/* saíram de rotas/investigacao.py para os dois módulos de intel
+    rotas = "".join((REPO / "rotas" / f).read_text(encoding="utf-8")
+                    for f in ("investigacao.py", "intel_contratacao.py", "intel_pessoas.py"))
     nomes = set()
     for bloco in re.split(r"@router\.get\(", rotas)[1:]:
         if not bloco.startswith(('"/api/intel/', "'/api/intel/")):

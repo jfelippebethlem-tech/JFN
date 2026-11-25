@@ -9,7 +9,8 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 JS = (RAIZ / "static/js/src/abas/index.js").read_text(encoding="utf-8")
-ROTA = (RAIZ / "rotas/investigacao.py").read_text(encoding="utf-8")
+# O7.6: /api/intel/hub_compartilhado saiu de rotas/investigacao.py para rotas/intel_pessoas.py
+ROTA = "".join((RAIZ / f"rotas/{f}.py").read_text(encoding="utf-8") for f in ("investigacao", "intel_pessoas"))
 
 
 def _fn(nome: str) -> str:

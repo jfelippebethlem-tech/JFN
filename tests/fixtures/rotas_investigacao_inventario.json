@@ -1,0 +1,960 @@
+{
+ "_doc": "O7.6 (2026-11-25): inventário das 106 rotas de rotas/investigacao.py ANTES da divisão, na ordem de registro do app (gerado de server.app.routes). 'modulo' = onde cada rota mora depois da divisão. Ver tests/test_rotas_investigacao_paridade.py.",
+ "rotas": [
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/anomalias",
+   "nome": "api_anomalias",
+   "assinatura": "(orgao: 'Optional[str]' = None, fornecedor: 'Optional[str]' = None, top: 'int' = 20, incluir_gov: 'bool' = False)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/cartel",
+   "nome": "api_cartel",
+   "assinatura": "(modo: 'str' = 'captura', cnpj: 'Optional[str]' = None, top: 'int' = 20)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/cartel",
+   "nome": "api_cartel",
+   "assinatura": "(modo: 'str' = 'captura', cnpj: 'Optional[str]' = None, top: 'int' = 20)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/rodizio",
+   "nome": "api_rodizio",
+   "assinatura": "(ug: 'Optional[str]' = None, top: 'int' = 20, qsa: 'int' = 0)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/rodizio",
+   "nome": "api_rodizio",
+   "assinatura": "(ug: 'Optional[str]' = None, top: 'int' = 20, qsa: 'int' = 0)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/cruzamento",
+   "nome": "api_cruzamento",
+   "assinatura": "(cnpj: 'str')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/coendereco/clusters",
+   "nome": "api_coendereco_clusters",
+   "assinatura": "(min_forn: 'int' = 2, top: 'int' = 50)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/orgao/cidades",
+   "nome": "api_orgao_cidades",
+   "assinatura": "(ug: 'Optional[str]' = None, top: 'int' = 20)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/painel",
+   "nome": "api_painel",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/investigar",
+   "nome": "api_investigar",
+   "assinatura": "(nome: 'str' = '', cnpj: 'str' = '')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/relatorio_30d",
+   "nome": "api_relatorio_30d",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/graph",
+   "nome": "api_compliance_graph",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/alerts",
+   "nome": "api_compliance_alerts",
+   "assinatura": "(tipo: 'Optional[str]' = None, severidade: 'Optional[str]' = None, limite: 'int' = 50)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/stats",
+   "nome": "api_compliance_stats",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/reports",
+   "nome": "api_compliance_reports",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/compliance/reports/limpar",
+   "nome": "api_compliance_reports_limpar",
+   "assinatura": "(payload: 'Optional[dict]' = None)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/fachada/revisar",
+   "nome": "api_fachada_revisar",
+   "assinatura": "(limite: 'int' = 50)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/fachada/veredito",
+   "nome": "api_fachada_veredito",
+   "assinatura": "(payload: 'Optional[dict]' = None)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/compliance/tse/{ano}",
+   "nome": "api_tse_download",
+   "assinatura": "(ano: 'int')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/compliance/buscar",
+   "nome": "api_compliance_buscar",
+   "assinatura": "(q: 'str' = '', tabela: 'str' = 'todos')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/sugestoes",
+   "nome": "api_sugestoes",
+   "assinatura": "(q: 'str' = '', limite: 'int' = 8)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/conflito",
+   "nome": "api_conflito",
+   "assinatura": "(cnpj: 'str' = '', candidato: 'str' = '', limite: 'int' = 200)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pncp",
+   "nome": "api_pncp",
+   "assinatura": "(uf: 'str' = 'RJ', orgao: 'str' = '', cnpj: 'str' = '', id: 'str' = '', abertos: 'bool' = False, modalidade: 'int' = 0, dias: 'int' = 30, esfera: 'str' = '')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/sobrepreco",
+   "nome": "api_sobrepreco",
+   "assinatura": "(codigo: 'int', valor: 'float' = 0, servico: 'bool' = False)",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/empresa",
+   "nome": "api_empresa",
+   "assinatura": "(cnpj: 'str')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/idoneidade",
+   "nome": "api_idoneidade",
+   "assinatura": "(cnpj: 'str' = '', nome: 'str' = '')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/ownership",
+   "nome": "api_ownership",
+   "assinatura": "(nome: 'str' = '', lei: 'str' = '')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/leaks",
+   "nome": "api_leaks",
+   "assinatura": "(termo: 'str')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/links",
+   "nome": "api_links",
+   "assinatura": "(nome: 'str' = '', cnpj: 'str' = '')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/diario",
+   "nome": "api_diario",
+   "assinatura": "(querystring: 'str', territory_ids: 'str' = '', desde: 'str' = '', ate: 'str' = '', size: 'int' = 20)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/doador_contrato",
+   "nome": "api_doador_contrato",
+   "assinatura": "(cnpj: 'str')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/grafo",
+   "nome": "api_grafo",
+   "assinatura": "(alvo: 'str', saltos: 'int' = 2, so_contrato: 'bool' = False)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/grafo/ftm",
+   "nome": "api_grafo_ftm",
+   "assinatura": "(alvo: 'str', saltos: 'int' = 2)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/sei/acatamento",
+   "nome": "api_sei_acatamento",
+   "assinatura": "(processo: 'str' = '')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/sei/direcionamento",
+   "nome": "api_sei_direcionamento",
+   "assinatura": "(ug: 'str' = '', objeto: 'str' = '', uf: 'str' = 'RJ', max_itens: 'int' = 8)",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/radar/vigiar",
+   "nome": "api_radar_vigiar",
+   "assinatura": "(payload: 'Optional[dict]' = None)",
+   "modulo": "rotas.radar"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/radar/status",
+   "nome": "api_radar_status",
+   "assinatura": "()",
+   "modulo": "rotas.radar"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/radar/ciclo",
+   "nome": "api_radar_ciclo",
+   "assinatura": "()",
+   "modulo": "rotas.radar"
+  },
+  {
+   "metodos": [
+    "POST"
+   ],
+   "path": "/api/nucleo/comando",
+   "nome": "api_nucleo_comando",
+   "assinatura": "(payload: 'dict' = None)",
+   "modulo": "rotas.radar"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/restritos",
+   "nome": "api_restritos",
+   "assinatura": "(todos: 'int' = 0)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/flags",
+   "nome": "api_flags",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/controle",
+   "nome": "pagina_controle",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/certames/lista",
+   "nome": "api_certames_lista",
+   "assinatura": "(esfera: 'str' = 'prefeitura', limite: 'int' = 600, q: 'str' = '')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pncp/conluio",
+   "nome": "api_pncp_conluio",
+   "assinatura": "(min_certames: 'int' = 4, esfera: 'str' = '')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/poder/nomeados_candidatos",
+   "nome": "api_nomeados_candidatos",
+   "assinatura": "(request: 'Request', esfera: 'str' = 'estado', limite: 'int' = 50000)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/laranjas",
+   "nome": "api_laranjas",
+   "assinatura": "(limite: 'int' = 100)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pericias",
+   "nome": "api_pericias",
+   "assinatura": "(q: 'str' = '', grau: 'str' = '', limite: 'int' = 60, ordem: 'str' = 'score')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/perfil",
+   "nome": "api_perfil",
+   "assinatura": "(cnpj: 'str')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/sancionadas",
+   "nome": "api_intel_sancionadas",
+   "assinatura": "(limite: 'int' = 60)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/doerj/tac_recorrente",
+   "nome": "api_doerj_tac_recorrente",
+   "assinatura": "(top: 'int' = 20)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/imprensa/orgaos",
+   "nome": "api_imprensa_orgaos",
+   "assinatura": "(dias: 'int' = 30, so_adversas: 'int' = 1, limite: 'int' = 120)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/sancionadas_municipio",
+   "nome": "api_intel_sancionadas_municipio",
+   "assinatura": "(limite: 'int' = 60)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/concentracao_municipio",
+   "nome": "api_intel_concentracao_municipio",
+   "assinatura": "(limite: 'int' = 60)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/perdedoras",
+   "nome": "api_intel_perdedoras",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/conluio_qsa",
+   "nome": "api_intel_conluio_qsa",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/comunidades",
+   "nome": "api_intel_comunidades",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/radar",
+   "nome": "api_intel_radar",
+   "assinatura": "(limite: 'int' = 100)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/retro",
+   "nome": "api_intel_retro",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/buscar",
+   "nome": "api_comparador_buscar",
+   "assinatura": "(termo: 'str' = '', esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/catalogo",
+   "nome": "api_comparador_catalogo",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/item",
+   "nome": "api_comparador_item",
+   "assinatura": "(grupo: 'str' = '', unidade: 'str' = '', esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/economia",
+   "nome": "api_comparador_economia",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/vedada",
+   "nome": "api_comparador_vedada",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/sancoes/detalhar",
+   "nome": "api_sancoes_detalhar",
+   "assinatura": "(cnpj: 'str' = '', esfera: 'str' = 'estadual', uf: 'str' = 'RJ')",
+   "modulo": "rotas.consultas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/dossie",
+   "nome": "api_comparador_dossie",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/orgaos",
+   "nome": "api_comparador_orgaos",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/comparador/fornecedores",
+   "nome": "api_comparador_fornecedores",
+   "assinatura": "(esfera: 'str' = '')",
+   "modulo": "rotas.comparador"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/lift",
+   "nome": "api_intel_lift",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/fracionamento",
+   "nome": "api_intel_fracionamento",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/pdf",
+   "nome": "api_intel_pdf",
+   "assinatura": "(tipo: 'str')",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/capital_incompativel",
+   "nome": "api_intel_capital",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/prioridade_valor",
+   "nome": "api_intel_prioridade_valor",
+   "assinatura": "(limite: 'int' = 60, min_score: 'int' = 10)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/fornecedor_dependente",
+   "nome": "api_intel_fornecedor_dependente",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/corrida_dezembro",
+   "nome": "api_intel_corrida_dezembro",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/grafo_familias",
+   "nome": "api_intel_grafo_familias",
+   "assinatura": "()",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/comunidades_grafo",
+   "nome": "api_intel_comunidades_grafo",
+   "assinatura": "()",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/fenix",
+   "nome": "api_intel_fenix",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/socio_sancionada",
+   "nome": "api_intel_socio_sancionada",
+   "assinatura": "()",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/competencia_futura",
+   "nome": "api_intel_competencia_futura",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/dea_recorrente",
+   "nome": "api_intel_dea_recorrente",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/ordem_cronologica",
+   "nome": "api_intel_ordem_cronologica",
+   "assinatura": "()",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/porta_giratoria",
+   "nome": "api_intel_porta_giratoria",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/nepotismo_cruzado",
+   "nome": "api_intel_nepotismo_cruzado",
+   "assinatura": "(limite: 'int' = 60)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/nepotismo",
+   "nome": "api_intel_nepotismo",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/socio_oculto",
+   "nome": "api_intel_socio_oculto",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/aditivos",
+   "nome": "api_intel_aditivos",
+   "assinatura": "(limite: 'int' = 120, esfera: 'str' = '')",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/socio_servidor",
+   "nome": "api_intel_socio_servidor",
+   "assinatura": "(limite: 'int' = 1000)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/escalada",
+   "nome": "api_intel_escalada",
+   "assinatura": "(limite: 'int' = 120, esfera: 'str' = '')",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/sobrepreco",
+   "nome": "api_intel_sobrepreco",
+   "assinatura": "(limite: 'int' = 120, esfera: 'str' = '')",
+   "modulo": "rotas.intel_contratacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/fantasmas",
+   "nome": "api_intel_fantasmas",
+   "assinatura": "(limite: 'int' = 50)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/ninho_sala",
+   "nome": "api_intel_ninho_sala",
+   "assinatura": "(limite: 'int' = 120)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/intel/hub_compartilhado",
+   "nome": "api_intel_hub_compartilhado",
+   "assinatura": "(chave: 'str' = 'endereco', min: 'int' = 5)",
+   "modulo": "rotas.intel_pessoas"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/comissionados_candidatos",
+   "nome": "api_pcrj_comissionados_candidatos",
+   "assinatura": "(limite: 'int' = 300)",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/fantasmas",
+   "nome": "api_pcrj_fantasmas",
+   "assinatura": "(faixa: 'str' = '', limite: 'int' = 200)",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/gastos_achados",
+   "nome": "api_pcrj_gastos_achados",
+   "assinatura": "(limite_por_detector: 'int' = 40)",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/aditivos",
+   "nome": "api_pcrj_aditivos",
+   "assinatura": "()",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/beneficios_vinculo",
+   "nome": "api_pcrj_beneficios_vinculo",
+   "assinatura": "()",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/doe_concentracao",
+   "nome": "api_pcrj_doe_concentracao",
+   "assinatura": "(min_atas: 'int' = 2, min_valor: 'float' = 100000.0)",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/doe_canal_informal",
+   "nome": "api_pcrj_doe_canal_informal",
+   "assinatura": "()",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/fontes/limites",
+   "nome": "api_fontes_limites",
+   "assinatura": "(fonte: 'str' = '')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/fontes/frescor",
+   "nome": "api_fontes_frescor",
+   "assinatura": "()",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pericia/bateria",
+   "nome": "api_pericia_bateria",
+   "assinatura": "(so_mortos: 'bool' = False)",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/lentes",
+   "nome": "api_lentes",
+   "assinatura": "(lente: 'Optional[str]' = None, top: 'int' = 20, esfera: 'str' = 'estadual')",
+   "modulo": "rotas.investigacao"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/integras",
+   "nome": "api_pcrj_integras",
+   "assinatura": "(q: 'str' = '', modalidade: 'str' = '', fonte: 'str' = '', ordem: 'str' = 'valor', limite: 'int' = 200)",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/integra/{numero:path}",
+   "nome": "api_pcrj_integra",
+   "assinatura": "(numero: 'str')",
+   "modulo": "rotas.pcrj"
+  },
+  {
+   "metodos": [
+    "GET"
+   ],
+   "path": "/api/pcrj/download",
+   "nome": "api_pcrj_integra_download",
+   "assinatura": "(numero: 'str', formato: 'str' = 'txt')",
+   "modulo": "rotas.pcrj"
+  }
+ ],
+ "pares_que_colidem": []
+}

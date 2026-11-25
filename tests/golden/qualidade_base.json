@@ -17,7 +17,7 @@
   "compliance_agent/reporting/inteligencia.py": 1,
   "compliance_agent/skilltree.py": 2,
   "compliance_agent/territorio/atribui_estado.py": 1,
-  "rotas/investigacao.py": 1
+  "rotas/pcrj.py": 1
  },
  "cpf_versionado": {
   "SIAFE_AGENT_LOG.md": 1,
@@ -503,6 +503,7 @@
   "compliance_agent/grafo_comunidades.py": 1,
   "compliance_agent/nucleo/ciclo.py": 2,
   "compliance_agent/retro_auditoria.py": 2,
+  "rotas/investigacao.py": 1,
   "tools/calibrar_indice.py": 1,
   "tools/cerebro_sync.py": 2,
   "tools/editais_direcionamento.py": 1,

@@ -49,6 +49,7 @@ _DECOR = re.compile(r'^@router\.\w+\("([^"]+)"', re.M)
 _IMPORT_INTEL = re.compile(r"from compliance_agent\.cruzamentos_intel import ([\w, ]+)")
 _CACHE_INTEL = re.compile(r'ler_cache_intel\("(\w+)"\)')
 _INFRA_INTEL = {"ler_cache_intel", "gerar_cache_intel"}
+ROTAS_INTEL = ("rotas/investigacao.py", "rotas/intel_contratacao.py", "rotas/intel_pessoas.py")
 
 _GATES = {"neutro": re.compile(r"\bgarantir_neutro(?:_exceto_dados)?\b"),
           "citacoes": re.compile(r"\b(?:gate_citacoes|sanear_parecer)\b"),
@@ -145,16 +146,17 @@ def detectores_registro(repo: Path = REPO) -> list[str]:
 def funcoes_intel(repo: Path = REPO) -> list[str]:
     """Funções públicas de `cruzamentos_intel` servidas por rota `/api/intel/*` (import direto ou cache lido)."""
     publicas = set(_DEF_PUB.findall(_ler(repo, "compliance_agent/cruzamentos_intel.py"))) - _INFRA_INTEL
-    texto = _ler(repo, "rotas/investigacao.py")
-    marcas = list(_DECOR.finditer(texto))
     servidas = set()
-    for i, mk in enumerate(marcas):
-        if not mk.group(1).startswith("/api/intel/"):
-            continue
-        bloco = texto[mk.end(): marcas[i + 1].start() if i + 1 < len(marcas) else len(texto)]
-        for nomes in _IMPORT_INTEL.findall(bloco):
-            servidas |= {n.strip() for n in nomes.split(",")}
-        servidas |= set(_CACHE_INTEL.findall(bloco))
+    for rel in ROTAS_INTEL:                      # O7.6: as rotas /api/intel/* saíram de rotas/investigacao.py
+        texto = _ler(repo, rel)
+        marcas = list(_DECOR.finditer(texto))
+        for i, mk in enumerate(marcas):
+            if not mk.group(1).startswith("/api/intel/"):
+                continue
+            bloco = texto[mk.end(): marcas[i + 1].start() if i + 1 < len(marcas) else len(texto)]
+            for nomes in _IMPORT_INTEL.findall(bloco):
+                servidas |= {n.strip() for n in nomes.split(",")}
+            servidas |= set(_CACHE_INTEL.findall(bloco))
     return sorted(servidas & publicas)
 
 
