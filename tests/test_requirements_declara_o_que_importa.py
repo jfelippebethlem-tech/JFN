@@ -58,6 +58,9 @@ EXCECOES |= {("patchright", "tools/zelador/mediafire_sessao.py")}
 # 24/11/2026 — E5 (O3.4): o Surya roda na venv da GPU do it-campo (deploy/itcampo/ocr_gpu/setup_gpu.sh), importado só
 # dentro do executor GPU; a volta CPU usa RapidOCR/Tesseract. Preso ao arquivo do estágio.
 EXCECOES |= {("surya", "compliance_agent/aplicacao/estagios/ocr.py")}
+# 25/11/2026 — sombra dos mistos (O3.6 retomada): roda no it-campo com a venv de OCR de lá (~/jfn-gpu/ocr-cpu/.venv,
+# a mesma do OCR de reserva), import dentro do motor; a venv do JFN nunca lê OCR. Preso ao arquivo.
+EXCECOES |= {("rapidocr", "tools/ocr_mistos_sombra.py")}
 
 
 def _modulos_locais() -> set[str]:
