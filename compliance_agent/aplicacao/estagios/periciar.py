@@ -628,10 +628,13 @@ def grau_global(eixos: dict) -> int | None:
 def release_ia(modelo: str, eixos: tuple[str, ...]) -> dict:
     sis = sistema(eixos)
     rid = _sha("|".join([VERSAO, PROMPT_VERSION, modelo, _sha(sis)]))[:16]
+    from compliance_agent.qualidade import regua      # O6.6: o rótulo vem da régua por par (config/regras_novas.yaml)
+    r = regua.checar(TAREFA, modelo, PROMPT_VERSION, rid)
     return {"id": rid, "estagio_versao": VERSAO, "prompt_version": PROMPT_VERSION, "modelo": modelo,
-            "sistema_sha": _sha(sis), "regua": "nao_cumprida",
-            "rotulo": f"NÃO JULGADO — proposta de {modelo}",
-            "motivo": "sem ouro congelado (n ≥ 125, 0 grave, IC95 ≤ 3%) nem sombra de 14 dias para este release (§3.10)"}
+            "sistema_sha": _sha(sis), "regua": "cumprida" if r["julgado"] else "nao_cumprida",
+            "regua_estado": r["estado"], "regua_par": r["par"], "rotulo": r["rotulo"],
+            "motivo": r["motivo"] if r["julgado"] else
+                      "sem ouro congelado (n ≥ 125, 0 grave, IC95 ≤ 3%) nem sombra de 14 dias para este release (§3.10)"}
 
 
 def motivos_e12(laudo: dict) -> dict:

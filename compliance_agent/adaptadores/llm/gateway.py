@@ -74,6 +74,7 @@ from compliance_agent.adaptadores.llm.prompt_seguro import Documento
 from compliance_agent.adaptadores.llm.saida import ABSTEVE, INDETERMINADO_FALHA_CITACAO, RESPONDIDO  # noqa: F401
 from compliance_agent.dominio import mascara as M
 from compliance_agent.llm import arquivo_estado as arq
+from compliance_agent.qualidade import regua as RG
 
 logger = logging.getLogger(__name__)
 
@@ -718,7 +719,8 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
                                 motivo_escalonamento=None, release_ia=hit["release_ia"], input_hash=input_hash,
                                 output_hash=_sha(hit["texto"]), trace_id=tid, estado=proc.estado, saida=proc.saida,
                                 extras={"custo_fonte": "cache", "memo": False, "cache": "hit",
-                                        "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas})
+                                        "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas,
+                                        "regua": RG.checar(tarefa, hit["modelo"], prompt_version, hit["release_ia"])})
             logger.warning("gateway: acerto de cache reprovado na validação de hoje (%s) — trata como miss",
                            proc.erro or proc.estado)
     comuns["cache"] = "miss" if cache else None
@@ -821,7 +823,9 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
                             input_hash=input_hash, output_hash=_sha(ret.texto), trace_id=tid, estado=proc.estado,
                             saida=proc.saida,
                             extras={"custo_fonte": fonte, "memo": ret.memo, "cache": comuns["cache"],
-                                    "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas})
+                                    "injecao_suspeita": n_susp, "citacoes_descartadas": proc.descartadas,
+                                    # O6.6: CHECAGEM da régua (§3.10) — só o rótulo exibido; não muda o roteamento
+                                    "regua": RG.checar(tarefa, modelo, prompt_version, release)})
         registrar_falha(prov, pol)
         motivos.append(f"{prov}: {erro}")
         tentativa += 1

@@ -1,0 +1,226 @@
+# Régua de confiabilidade por PAR tarefa × modelo × prompt_version × release_ia — plano mestre v2 §3.10 (O6.6).
+#
+# Quem lê: compliance_agent/qualidade/regua.py (carregador + validador). Quem decide: o DONO, em LOTE (§3.10 item 4).
+# O validador RECALCULA (a)–(d) a partir da `evidencia` (o Wilson é refeito, não lido daqui): um APROVADO_DONO cuja
+# evidência não fecha derruba a carga inteira (falha-fechado: nada aparece como julgado).
+#
+# Estados: NAO_JULGADO (padrão) → EM_SOMBRA ((a), (b), (d) cumpridos; sombra (c) correndo) → APROVADO_DONO
+# ((a)–(d) + dono; prompt_version e release_ia EXATOS) → REBAIXADO (1º erro grave na amostra contínua do Opus, 1/8).
+# `"*"` = qualquer versão: serve para registrar o estado de um par em uso, NUNCA para aprovar.
+# Evidência: `ouro` (congelado por qualidade/ouro.congelar: n, graves, sha256, estratificado, estratos), `sombra`
+# (dias, n, graves), `portoes` (citacao, numero_fonte, schema_estrito, abstencao: true só com teste/medição citada) e
+# `medido` (o que JÁ existe, sem ouro: pares contra o Opus — informativo, não conta para (a)).
+# Grave = 🔴×⚪ (|nível − referência| ≥ 2), número inventado, citação inexistente ou identidade trocada (§3.10).
+# Unidade = ITEM (eixos do mesmo processo não são independentes). Avaliação: `python -m compliance_agent.qualidade.regua
+# avaliar --bancada ~/.local/state/jfn-bancada-regua-sonnet-20261123/res` (só leitura, sem LLM) — 24/11/2026.
+
+versao: 1
+atualizado_em: "2026-11-24"
+
+criterios:            # os números do §3.10 — o validador recusa divergência (mudar aqui = mudar o plano)
+  ouro_n_min: 125     # com 0 grave, 125 é o 1º n cujo IC95 sup. de Wilson fica ≤ 3% (2,98%; com 124 dá 3,005%)
+  ic95_grave_max: 0.03
+  sombra_dias_min: 14
+  sombra_n_min: 30
+
+pares:
+  # ── juízo da casa (gabarito de todos os outros) ────────────────────────────────────────────────────────────────
+  - id: R-E11-OPUS
+    tarefa: pericia_integral
+    modelo: claude-opus-5-5
+    prompt_version: pv2-1
+    release_ia: "*"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: >-
+      E11 (laudo v2) pela assinatura. O Opus é o gabarito dos demais: não há referência independente — o ouro dele é
+      HUMANO (2º revisor, ouro.estado_revisao_tier1). Laudos antigos do Claude tinham 14,7% de citações inexistentes
+      (O6.4): o portão de citação do E11 é obrigatório e está implementado, mas a paridade de juízo não rodou.
+    evidencia:
+      ouro: null
+      sombra: null
+      portoes: {citacao: true, numero_fonte: null, schema_estrito: true, abstencao: true}
+      fonte: "~/vault/refatoracao/o64-pericia-unica.md §1.1; tests/test_estagio_periciar.py"
+
+  - id: R-E8-HAIKU
+    tarefa: leitura_integral
+    modelo: claude-haiku-5-5
+    prompt_version: li-2
+    release_ia: "*"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: "E8 (fatos) sem piloto pago (O6.3): não há par medido contra o Opus com o prompt li-2."
+    evidencia:
+      ouro: null
+      sombra: null
+      portoes: {citacao: true, numero_fonte: null, schema_estrito: true, abstencao: null}
+      fonte: "~/vault/refatoracao/o63-e8.md"
+
+  # ── Sonnet (bancada 23/11, pela assinatura; gabarito = Opus) ──────────────────────────────────────────────────
+  - id: R-TRI-SONNET
+    tarefa: triagem_alertas
+    modelo: claude-sonnet-5-5
+    prompt_version: "*"
+    release_ia: "*"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: "0 grave em 54 itens; faltam 71 para n = 125, estratos de órgão/período INDISPONÍVEIS (item = alerta) e ouro congelado."
+    evidencia:
+      ouro: null
+      medido: {n_itens: 54, graves: 0, ic95_sup: 0.0664, origem: "leituras do Opus já gravadas (não sorteio)"}
+      fonte: "~/.local/state/jfn-bancada-regua-sonnet-20261123/res/triagem_alertas.jsonl"
+
+  - id: R-EXE-SONNET
+    tarefa: pericia_execucao
+    modelo: claude-sonnet-5-5
+    prompt_version: "*"
+    release_ia: "*"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: "0 grave em 50 itens sorteados (50 processos, 22 órgãos, 5 anos); faltam 75 para n = 125 e o ouro congelado."
+    evidencia:
+      ouro: null
+      medido: {n_itens: 50, graves: 0, ic95_sup: 0.0713, processos: 50, orgaos: 22, periodos: 5, origem: "sorteio, semente 20261123"}
+      fonte: "~/.local/state/jfn-bancada-regua-sonnet-20261123/res/pericia_execucao.jsonl"
+
+  - id: R-INT-SONNET
+    tarefa: pericia_integral
+    modelo: claude-sonnet-5-5
+    prompt_version: "*"
+    release_ia: "*"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: >-
+      0 grave em 32 processos (222 pares grau global + eixos; a bancada seguiu até 24/11 12:09 — o resultado.json de
+      23/11 tinha 12 processos/82 pares); faltam 93 processos para n = 125.
+    evidencia:
+      ouro: null
+      medido: {n_itens: 32, pares: 222, graves: 0, ic95_sup_itens: 0.1072, processos: 32, orgaos: 19, periodos: 4, origem: "fila do Opus (backup 18/11)"}
+      fonte: "~/.local/state/jfn-bancada-regua-sonnet-20261123/res/pericia_integral.jsonl"
+
+  - id: R-CONF-SONNET
+    tarefa: conferencia_sonnet
+    modelo: claude-sonnet-5-5
+    prompt_version: cs-1
+    release_ia: "cs-1+claude-sonnet-5-5"
+    estado: NAO_JULGADO
+    dono: null
+    data: "2026-11-24"
+    motivo: >-
+      Conferente intermediário do E12 (proposta O66-P2, flag JFN_CONFERENTE_SONNET desligada). Enquanto este par não
+      for APROVADO_DONO, o item fechado pelo Sonnet continua PENDENTE para o consumidor (nunca VERIFICADO).
+    evidencia:
+      ouro: null
+      medido: {referencia: "R-EXE-SONNET (mesma entrada e sistema)"}
+      fonte: "compliance_agent/llm/conferente_sonnet.py"
+
+  # ── cascata (pares contra o Opus no cruzamento, 13–24/11; origem = fila por prioridade, não sorteio) ───────────
+  - {id: R-TRI-HAIKU-LOTE, tarefa: triagem_alertas, modelo: claude-haiku-5-5@api-lote, prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "32 graves em 520 itens (6,2%): este release não passa (a) — só versão nova de prompt/modelo.",
+     evidencia: {medido: {n_itens: 520, graves: 32, ic95_sup: 0.0856}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-HAIKU, tarefa: pericia_execucao, modelo: "claude:claude-haiku-5-5@api", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "0 grave em 50 itens (concordância exata 26/50); faltam 75 e ouro.",
+     evidencia: {medido: {n_itens: 50, graves: 0, ic95_sup: 0.0713}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-G36, tarefa: pericia_execucao, modelo: "gemini:gemini-3.6-flash", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "0 grave em 52 itens; faltam 73 e ouro.",
+     evidencia: {medido: {n_itens: 52, graves: 0, ic95_sup: 0.0688}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-OR, tarefa: pericia_execucao, modelo: openrouter, prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "1 grave em 69 itens: release reprovado em (a).",
+     evidencia: {medido: {n_itens: 69, graves: 1, ic95_sup: 0.0776}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-G3P, tarefa: pericia_execucao, modelo: "gemini:gemini-3-flash-preview", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "4 graves em 71 itens: reprovado; já rebaixado na cadeia (cascata_ajuste, 23/11).",
+     evidencia: {medido: {n_itens: 71, graves: 4, ic95_sup: 0.1361}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-G25, tarefa: pericia_execucao, modelo: "gemini:gemini-2.5-flash", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "5 graves em 49 itens: reprovado; fora da cascata (404) desde 22/11.",
+     evidencia: {medido: {n_itens: 49, graves: 5, ic95_sup: 0.2176}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-EXE-G35, tarefa: pericia_execucao, modelo: "gemini:gemini-3.5-flash", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "2 graves em 10 itens: reprovado.",
+     evidencia: {medido: {n_itens: 10, graves: 2, ic95_sup: 0.5098}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-INT-G25, tarefa: pericia_integral, modelo: "gemini:gemini-2.5-flash", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "7 processos com grave em 104: reprovado.",
+     evidencia: {medido: {n_itens: 104, graves: 7, ic95_sup: 0.1325}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-INT-NEMOTRON, tarefa: pericia_integral, modelo: "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free", prompt_version: "*",
+     release_ia: "*", estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "11 processos com grave em 69: reprovado; rebaixado na cadeia (23/11).",
+     evidencia: {medido: {n_itens: 69, graves: 11, ic95_sup: 0.2633}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-INT-G3P, tarefa: pericia_integral, modelo: "gemini:gemini-3-flash-preview", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "5 processos com grave em 48: reprovado.",
+     evidencia: {medido: {n_itens: 48, graves: 5, ic95_sup: 0.2217}, fonte: "data/cruzamento_motores.db"}}
+  - {id: R-INT-G36, tarefa: pericia_integral, modelo: "gemini:gemini-3.6-flash", prompt_version: "*", release_ia: "*",
+     estado: NAO_JULGADO, dono: null, data: "2026-11-24",
+     motivo: "3 processos com grave em 27: reprovado.",
+     evidencia: {medido: {n_itens: 27, graves: 3, ic95_sup: 0.2806}, fonte: "data/cruzamento_motores.db"}}
+
+# Regras novas para o LOTE do dono (§3.10 item 4). `decisao`: pendente | aprovada | recusada (as duas últimas exigem dono).
+propostas:
+  - id: O66-P1
+    titulo: "Adotar a régua por par (este arquivo) como CHECAGEM do rótulo — sem mudar roteamento"
+    dono: null
+    data: "2026-11-24"
+    decisao: pendente
+    motivo: >-
+      Nenhum par em uso cumpre (a): não existe ouro congelado de juízo de LLM, e toda origem de par é a fila por
+      prioridade (não sorteio). Com a régua ligada, TODO juízo de IA sai "NÃO JULGADO — proposta de <modelo>" — que é
+      o estado honesto de hoje. Gateway (extras.regua), E11 (release_ia) e E12 já leem; nada muda de camada.
+    evidencia: {relatorio: "~/vault/refatoracao/o66-regua.md §2", testes: tests/test_regua_confiabilidade.py}
+
+  - id: O66-P2
+    titulo: "Conferente intermediário Sonnet no E12 (JFN_CONFERENTE_SONNET=1), só na perícia de execução"
+    dono: null
+    data: "2026-11-24"
+    decisao: pendente
+    motivo: >-
+      Simulado com a O6.5 (779/dia, 49,1% retidos, 47–71 Opus/dia): o Sonnet SOZINHO não fecha a vazão (9–24%
+      contra 12–19% só com o Opus) — a perícia integral é 85% da demanda (158 retidos/dia × 210 s) e o Sonnet nela
+      leva 225 s. Com a integral cortada na origem (E11 só pela assinatura não entra na fila), o Opus sozinho fecha
+      81–100% e Sonnet (modo grave, peso ≤ 0,5) + Opus fecham 100% já com 47/dia. Exige medir o peso do Sonnet na
+      cota (O66-P5) e o par R-CONF-SONNET aprovado para o fechado-pelo-Sonnet sair da pendência.
+    evidencia: {relatorio: "~/vault/refatoracao/o66-regua.md §3", simulacao: "python -m compliance_agent.llm.conferente_sonnet simular --proposta data/conferencia_risco_proposta.json"}
+
+  - id: O66-P3
+    titulo: "FP medida > 50% vai ao Tier 3 (hoje vai ao Tier 2 como 'medido e reprovado')"
+    dono: null
+    data: "2026-11-24"
+    decisao: pendente
+    motivo: >-
+      Muda 4 detectores do registro gravado (intel.aditivos_estouro 169/169, pcrj.d11_aditivo_estourado 28/28,
+      intel.radar_risco 24/26, ninho_sala 5/5 — nenhum de manchete) e, quando a sombra da O5.4 for gravada, mais 2 de
+      manchete (rules.ob_fracionamento 43/43, rules.ob_favorecido_doerj_cruzado 4/5): 6 no total. Variante pelo IC95
+      inferior > 50% (só o que é FP com certeza estatística): 5 — sai o doerj_cruzado (IC 37,6%–96,4%).
+    evidencia: {relatorio: "~/vault/refatoracao/o66-regua.md §4", fonte: "config/qualidade_detectores.yaml; ~/vault/refatoracao/o54-calibracao.md §2"}
+
+  - id: O66-P4
+    titulo: "Ouro de juízo por tarefa: 125 itens SORTEADOS e estratificados (processo × órgão × ano), congelados"
+    dono: null
+    data: "2026-11-24"
+    decisao: pendente
+    motivo: >-
+      Sem isso (a) é inalcançável para qualquer par. Fonte: a amostra 1/8 + cota do E12 (motivo gravado em `risco`),
+      rótulo = Opus para os modelos de baixo e 2º revisor humano para o próprio Opus; congelar com ouro.congelar.
+      Custo: ~125 conferências do Opus por tarefa (≈ 2–3 dias da cota de conferência), só fora do ritmo contido.
+    evidencia: {fonte: "compliance_agent/qualidade/ouro.py; plano §3.10"}
+
+  - id: O66-P5
+    titulo: "Medir o peso do Sonnet na cota semanal antes de ligar o conferente"
+    dono: null
+    data: "2026-11-24"
+    decisao: pendente
+    motivo: >-
+      INDISPONÍVEL hoje: a bancada de 23/11 (00:20–02:35) moveu a semana de 20% para 23% com Sonnet, Opus e a própria
+      sessão juntos — resolução de 1 ponto e uso misturado. Proposta: no sábado 28/11 após 19h (janela nova), 30
+      chamadas Sonnet isoladas da execução, leitura do % antes/depois. A simulação usa peso 1,0 / 0,5 / 0,2.
+    evidencia: {fonte: "data/claude_assinatura_uso.jsonl (23/11 00:20–03:00)"}

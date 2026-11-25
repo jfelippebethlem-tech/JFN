@@ -45,6 +45,7 @@ from pathlib import Path
 
 from compliance_agent.llm import arquivo_estado as arq
 from compliance_agent.llm import conferencia_risco as risco
+from compliance_agent.llm import conferente_sonnet as sonnet
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,9 @@ _RE_TRANSITORIO = re.compile(r"locked|busy", re.I)
 # piso de concordância da cascata com o Opus (plano mestre v2, E12): abaixo dele, com amostra mínima, rebaixa
 PISO_CONCORDANCIA = 0.60
 PISO_AMOSTRA_MIN = 20
-_STATUS_ABERTOS = ("pendente", "erro", risco.NAO_JULGADO)
+# `sonnet` / `conferido_sonnet` só existem com JFN_CONFERENTE_SONNET=1 (O6.6): aguardando o Sonnet, ou fechado por ele
+# SEM régua cumprida (§3.10) — os dois continuam abertos para o consumidor, nunca VERIFICADO
+_STATUS_ABERTOS = ("pendente", "erro", risco.NAO_JULGADO, sonnet.STATUS_SONNET)
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS fila(
@@ -171,12 +174,13 @@ def enfileirar(tarefa: str, item: str | None, entrada: str, *, sistema: str = ""
                 status, ms = risco.decidir_entrada(con, tarefa=tarefa, item=item, chave=ch, motor=motor, nivel=nivel,
                                                    veredito=veredito, resposta=resposta or "", valor=valor)
                 motivos = ",".join(ms) or None
+                status = sonnet.status_de_entrada(status, ms, tarefa=tarefa, item=item, valor=valor)  # O6.6, flag
             con.execute(
                 "INSERT INTO fila(chave,tarefa,item,entrada,sistema,motor,resposta,veredito,nivel,valor,motivo,criado_em,"
                 "status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(chave) DO UPDATE SET item=excluded.item, "
                 "entrada=excluded.entrada, motor=excluded.motor, resposta=excluded.resposta, veredito=excluded.veredito, "
                 "nivel=excluded.nivel, valor=excluded.valor, motivo=excluded.motivo, criado_em=excluded.criado_em, "
-                "status=excluded.status, tentativas=0 WHERE fila.status IN ('pendente','erro','nao_julgado')",
+                "status=excluded.status, tentativas=0 WHERE fila.status IN ('pendente','erro','nao_julgado','sonnet')",
                 (ch, tarefa, item, zlib.compress(entrada.encode("utf-8", "replace")), sistema, motor or "desconhecido",
                  (resposta or "")[:60000], (veredito or None) and str(veredito)[:80], nivel, valor,
                  (motivo or "")[:200], _agora(), status))
@@ -199,9 +203,10 @@ def pendente(tarefa: str, item: str, con: sqlite3.Connection | None = None) -> b
         return False
     proprio = con is None
     con = con or conectar()
+    abertos = _STATUS_ABERTOS if sonnet.regua_cumprida() else (*_STATUS_ABERTOS, sonnet.STATUS_FECHADO)
     try:
-        return con.execute("SELECT 1 FROM fila WHERE tarefa=? AND item=? AND status IN (?,?,?) LIMIT 1",
-                           (tarefa, item, *_STATUS_ABERTOS)).fetchone() is not None
+        return con.execute(f"SELECT 1 FROM fila WHERE tarefa=? AND item=? AND status IN ({','.join('?' * len(abertos))})"
+                           " LIMIT 1", (tarefa, item, *abertos)).fetchone() is not None
     finally:
         if proprio:
             con.close()
