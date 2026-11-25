@@ -66,6 +66,7 @@ SQL_CAPTURA_002 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_002.sql"   # v
 FONTE_PARADA = Path.home() / "snapshot-20261124" / "compliance.db"
 ENV_FONTE = "JFN_CAPTURA_FONTE"
 MAX_PAGINAS = 500
+CONTROLE_POSITIVO = "080002/002886/2024"   # legível (68 docs, 01/08/2026); troca por SEI_CONTROLE_POSITIVO
 PAGINAS_SEM_NOVO = 3
 SEM_MUDANCA, SEM_DOC_NOVO, DOC_NOVO = "sem_mudanca", "sem_documento_novo", "documento_novo"
 _RX_ID_DOC = re.compile(r"id_documento=(\d+)")
@@ -101,9 +102,24 @@ def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
             c.execute(renderizar(arq.read_text(encoding="utf-8"), esq))
 
 
+# binário do E3 cuja extração MAIS RECENTE do E4 (`texto_nativo`) deu perfil `invalida` (página de WAF/menu no lugar
+# do documento): não é captura (revisão de falhas caladas 1.8) — o documento volta a faltar
+_INVALIDA = ("COALESCE(v.hash_de, '') = 'binario' AND (SELECT t.parametros->>'perfil' FROM transformacao t WHERE "
+             "t.processo = v.processo AND t.doc_id = v.doc_id AND t.tipo = 'texto_nativo' AND t.entrada_sha = v.sha256 "
+             "ORDER BY t.criada_em DESC, t.id DESC LIMIT 1) = 'invalida'")
+
+
 def capturados(con, processo: str) -> set[str]:
-    """doc_id que já têm alguma versão (texto do legado ou binário do E3)."""
-    return {r[0] for r in con.execute("SELECT DISTINCT doc_id FROM versoes WHERE processo = %s", (processo,))}
+    """doc_id que já têm alguma versão VÁLIDA (texto do legado ou binário do E3 que o E4 não declarou inválido)."""
+    return {r[0] for r in con.execute(f"SELECT DISTINCT v.doc_id FROM versoes v WHERE v.processo = %s AND NOT "
+                                      f"COALESCE(({_INVALIDA}), false)", (processo,))}
+
+
+def versoes_invalidas(con, processo: str) -> list[tuple[str, str, str]]:
+    """(doc_id, sha256, id_documento capturado) dos binários que o E4 declarou inválidos."""
+    return [(k, sh, str(i or "")) for k, sh, i in con.execute(
+        f"SELECT v.doc_id, v.sha256, v.id_documento FROM versoes v WHERE v.processo = %s AND ({_INVALIDA})",
+        (processo,))]
 
 
 def identidade_capturada(con, processo: str) -> dict[str, set[tuple[str, str]]]:
@@ -111,8 +127,9 @@ def identidade_capturada(con, processo: str) -> dict[str, set[tuple[str, str]]]:
     tem (nulo) e fica fora: sem identidade capturada não há o que comparar. Conjunto (e não "a mais recente"):
     `vista_em` tem resolução de segundo e duas capturas no mesmo segundo empatariam."""
     out: dict[str, set[tuple[str, str]]] = {}
-    for k, i, t in con.execute("SELECT doc_id, id_documento, titulo FROM versoes WHERE processo = %s AND "
-                               "(id_documento IS NOT NULL OR titulo IS NOT NULL)", (processo,)):
+    for k, i, t in con.execute("SELECT v.doc_id, v.id_documento, v.titulo FROM versoes v WHERE v.processo = %s AND "
+                               "(v.id_documento IS NOT NULL OR v.titulo IS NOT NULL) AND NOT "
+                               f"COALESCE(({_INVALIDA}), false)", (processo,)):     # inválido não é captura
         out.setdefault(k, set()).add((str(i or ""), str(t or "")))
     return out
 
@@ -155,6 +172,8 @@ class PaginaArvore:
     relacionados: list[str] = field(default_factory=list)
     sem_resultado: bool = False                    # "Nenhum resultado" do SEI (resposta definitiva da pesquisa)
     restrito: str | None = None                    # aviso do SEI de processo restrito à unidade
+    controle_positivo: bool | None = None          # "Nenhum resultado": o controle na MESMA sessão abriu? None = não
+    #                                                rodou
 
 
 class Navegador(Protocol):
@@ -198,23 +217,42 @@ class NavegadorSEI:
                 except (PWError, asyncio.TimeoutError) as e:
                     dump = {"erro_cracked": f"{type(e).__name__}: {str(e)[:80]}"}
                 arv, via = dump.get("documentos") or [], "cracked"
-                if not arv and not dump.get("sem_resultado") and await SR.abrir_processo(pg, processo):
+                # "Nenhum resultado" do cracked NÃO dispensa o caminho normal (revisão de falhas caladas 1.7): o
+                # abrir_processo já encurta a pesquisa repetida e cai na pesquisa rápida
+                if not arv and await SR.abrir_processo(pg, processo):
                     arv, via = await SR.arvore_do_fonte(pg), "fallback/arvore_do_fonte"
-                aviso = None
+                aviso, controle = None, None
                 if not arv:
                     try:
                         aviso = SR.aviso_restrito(await pg.evaluate("()=>document.body?document.body.innerText:''"))
                     except PWError:
                         aviso = None
+                if not arv and dump.get("sem_resultado") and not aviso:
+                    controle = await self._controle_positivo(SR, pg)
                 rel = sorted({k for r in dump.get("relacionados") or []
                               for k in [PI.chave_processo(r.get("texto") or r.get("titulo") or "")] if k})
                 docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "",
                          "restrito": bool(d.get("restrito"))} for d in arv if d.get("url")]
                 return PaginaArvore(docs=docs, via=via if docs else (dump.get("erro_cracked") or via),
                                     relacionados=[k for k in rel if k != processo],
-                                    sem_resultado=bool(dump.get("sem_resultado")), restrito=aviso)
+                                    sem_resultado=bool(dump.get("sem_resultado")), restrito=aviso,
+                                    controle_positivo=controle)
             finally:
                 await SR.fechar_sei(b, pg, fixo=fixo)
+
+    @staticmethod
+    async def _controle_positivo(SR, pg) -> bool:
+        """CONTROLE POSITIVO na MESMA sessão (lição sei-invisivel-pesquisa-controle-positivo): o MESMO método num
+        processo sabidamente legível (`SEI_CONTROLE_POSITIVO`). Só com ele "Nenhum resultado" é resposta do SEI;
+        sem ele, 0 é ambíguo (sessão morta, método quebrado). Falha do controle = False (não houve prova)."""
+        from playwright.async_api import Error as PWError
+        alvo = PI.chave_processo(os.environ.get("SEI_CONTROLE_POSITIVO", CONTROLE_POSITIVO)) or CONTROLE_POSITIVO
+        try:
+            return bool((await SR._ler_cracked(pg, alvo)).get("documentos"))
+        except (PWError, asyncio.TimeoutError) as e:
+            print(f"controle positivo {alvo} falhou ({type(e).__name__}) — 'Nenhum resultado' fica sem prova",
+                  file=sys.stderr, flush=True)
+            return False
 
     def capturar(self, processo: str, guardados: dict, raiz: Path) -> Path:
         """tools/sei_integra_completa.py, sem PDF único nem Telegram, com o delta da chave `JFN_E3_DELTA`
@@ -280,7 +318,8 @@ def ler_arvore(nav: Navegador, processo: str, max_paginas: int = MAX_PAGINAS) ->
         pagina = pg.proxima
     return {"docs": docs, "paginas": paginas, "via": via, "relacionados": sorted(rel - {processo}),
             "sem_resultado": bool(primeira and primeira.sem_resultado and not docs),
-            "restrito": primeira.restrito if primeira and not docs else None}
+            "restrito": primeira.restrito if primeira and not docs else None,
+            "controle_positivo": primeira.controle_positivo if primeira and not docs else None}
 
 
 def hash_ids(ids: list[str]) -> str:
@@ -385,9 +424,14 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     processo = processo_do(payload, ctx)
     lido = ler_arvore(obter_navegador(), processo)
     if not lido["docs"]:
-        if lido["sem_resultado"] or lido["restrito"]:
-            raise ErroPermanente(f"{processo}: SEI respondeu " + (f"RESTRITO ({lido['restrito']})" if lido["restrito"]
-                                                                  else "'Nenhum resultado' na pesquisa"))
+        if lido["restrito"]:
+            raise ErroPermanente(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']})")
+        if lido["sem_resultado"] and lido.get("controle_positivo") is True:
+            raise ErroPermanente(f"{processo}: 'Nenhum resultado' com controle positivo na mesma sessão — invisível à "
+                                 "pesquisa (sigilo integral); rota: requisição formal")
+        if lido["sem_resultado"]:
+            raise RuntimeError(f"{processo}: INDISPONIVEL — 'Nenhum resultado' SEM controle positivo na sessão "
+                               f"(controle={lido.get('controle_positivo')!r}): 0 ambíguo, transitório")
         raise RuntimeError(f"{processo}: árvore vazia (via {lido['via']!r}) — falha de leitura, tento de novo")
     lente = _lente(payload)
     con = conectar(payload.get("dsn"), payload.get("esquema"))

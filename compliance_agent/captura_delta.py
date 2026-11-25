@@ -84,7 +84,7 @@ def plano_de_captura(arvore_viva: list[dict], guardados: dict[str, dict]) -> dic
     "removidos": [{doc_id, titulo, i}], "arvore_igual": bool, "hash": hash da árvore viva}`.
     `motivo` ∈ novo | sem_texto | retificado | pos_sem_id. Nada em `guardados` é alterado."""
     ids = _ids_estaveis([(x.get("t", ""), i) for i, x in enumerate(arvore_viva)])
-    baixar, manter = [], []
+    baixar, manter, sem_id = [], [], 0
     for i, (doc_id, x) in enumerate(zip(ids, arvore_viva)):
         g = guardados.get(doc_id)
         ident = _id_documento(x)
@@ -100,11 +100,12 @@ def plano_de_captura(arvore_viva: list[dict], guardados: dict[str, dict]) -> dic
             baixar.append({"i": i, "doc_id": doc_id, "motivo": "sem_texto"})
         else:
             manter.append({"i": i, "doc_id": doc_id})
+            sem_id += not g.get("id_documento")     # guardado sem id (legado): retificação de id não é verificável
     vivos = set(ids)
     removidos = [{"doc_id": k, "titulo": g.get("titulo", ""), "i": g.get("i")}
                  for k, g in guardados.items() if k not in vivos]
     h = _hash(ids)
-    return {"baixar": baixar, "manter": manter, "removidos": removidos,
+    return {"baixar": baixar, "manter": manter, "removidos": removidos, "mantidos_sem_id_documento": sem_id,
             "arvore_igual": bool(guardados) and h == _hash(list(guardados)), "hash": h}
 
 
@@ -153,13 +154,16 @@ def modo_e3(env=None) -> str:
 
 def guardados_do_processo(tag: str, pasta_exportados: Path | str = GUARDADOS_DIR,
                           arquivo: Path | str = ARQUIVO) -> dict[str, dict] | None:
-    """Guardados do processo: o exportado (`<pasta>/<tag>.json`, no nó) ou, onde houver, o manifesto do arquivo.
-    None se não há nenhum dos dois (a captura segue como hoje)."""
+    """Guardados do processo: o exportado (`<pasta>/<tag>.json`, no nó) ou, SÓ SE ELE NÃO EXISTE, o manifesto do
+    arquivo. None se não há nenhum dos dois (a captura segue como hoje). Exportado que existe e não se lê é ERRO
+    (ValueError) — cair calado no manifesto do arquivo trocaria a fonte do delta (revisão de falhas caladas S6); o
+    encaixe do `sei_integra_completa` registra o erro e baixa tudo."""
     exp = Path(pasta_exportados) / f"{tag}.json"
-    try:
-        return carregar_guardados(exp.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError, IndexError):
-        pass
+    if exp.exists():
+        try:
+            return carregar_guardados(exp.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError, IndexError, AttributeError) as e:
+            raise ValueError(f"guardados exportados ilegíveis em {exp}: {type(e).__name__}: {e}") from e
     try:
         man = json.loads((Path(arquivo) / tag / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -179,6 +183,7 @@ def encaixe(tag: str, arvore_viva: list[dict], env=None, **onde) -> tuple[set[in
     p = plano_de_captura(arvore_viva, g)
     reg = {"modo": m, "baixados": len(p["baixar"]), "mantidos": len(p["manter"]),
            "removidos": len(p["removidos"]), "arvore_igual": p["arvore_igual"], "hash": p["hash"],
+           "mantidos_sem_id_documento": p["mantidos_sem_id_documento"],
            "retificados": [b["doc_id"] for b in p["baixar"] if b.get("preservar_anterior")],
            "manter": [{"i": e["i"], "doc_id": e["doc_id"]} for e in p["manter"]]}   # o sei_arquivar junta estes
     return ({e["i"] for e in p["manter"]} if m == "filtrar" else set()), reg

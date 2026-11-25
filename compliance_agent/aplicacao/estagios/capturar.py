@@ -66,8 +66,8 @@ def guardados_do_pg(con, processo: str) -> dict:
     linhas = con.execute(
         "SELECT d.doc_id, COALESCE(d.titulo, ''), COALESCE(max(v.chars), 0), count(v.sha256), "
         "COALESCE(d.id_documento, '') FROM documentos d JOIN versoes v ON v.processo = d.processo AND "
-        "v.doc_id = d.doc_id WHERE d.processo = %s GROUP BY d.doc_id, d.titulo, d.id_documento ORDER BY d.doc_id",
-        (processo,)).fetchall()
+        f"v.doc_id = d.doc_id AND NOT COALESCE(({A._INVALIDA}), false) WHERE d.processo = %s "
+        "GROUP BY d.doc_id, d.titulo, d.id_documento ORDER BY d.doc_id", (processo,)).fetchall()
     cap = A.identidade_capturada(con, processo)
     docs = []
     for k, t, c, n, idd in linhas:
@@ -203,10 +203,46 @@ def conferir(con, efeito: dict) -> dict:
     ret = set(A.retificados(ids, entradas, A.identidade_capturada(con, proc)))   # versão de outra identidade
     falta = [k for k, e in zip(ids, entradas) if (k not in tem or k in ret)
              and str(e.get("id_documento") or "") not in restr]
+    # a árvore VIGENTE do E2 também conta (revisão de falhas caladas S2): um manifesto que lista menos que a árvore
+    # (captura parcial, só o baixado) não esconde o que nunca veio
+    vig = con.execute("SELECT docs FROM arvore_leitura WHERE processo = %s ORDER BY id DESC LIMIT 1",
+                      (proc,)).fetchone()
+    if vig:
+        no_man = set(ids)
+        vd = [d for d in vig[0] if d["doc_id"] not in no_man and not d.get("restrito")]
+        rv = set(A.retificados([d["doc_id"] for d in vd], vd, A.identidade_capturada(con, proc)))
+        falta += [d["doc_id"] for d in vd if d["doc_id"] not in tem or d["doc_id"] in rv]
     c = {"versoes_no_pg": declaradas <= no_pg, "sha256_recalculado": not divergentes, "faltas_recontadas": len(falta),
          "arvore_nao_vazia": bool(ids), "divergentes": divergentes[:20]}
     c["ok"] = c["versoes_no_pg"] and c["sha256_recalculado"] and not falta and c["arvore_nao_vazia"]
     return c
+
+
+def afastar_invalidos(con, processo: str, outdir: Path) -> list[str]:
+    """O binário que o E4 declarou inválido (WAF/menu) sai do caminho da RETOMADA PELO ID (`NNN.pdf` do mesmo dono ou
+    `_retomada/<id>.pdf`) para `_invalidos/` — preservado, nunca apagado; senão a captura seguinte o "retomaria" e o
+    documento nunca seria baixado de novo (revisão 1.8). Só move arquivo cujo sha256 RECALCULADO = o inválido."""
+    inval = A.versoes_invalidas(con, processo)
+    if not inval or not outdir.is_dir():
+        return []
+    shas = {sh for _, sh, _ in inval}
+    donos = _ler_json(outdir / "donos.json")
+    alvo_ids = {i for _, _, i in inval if i}
+    cands = [outdir / n for n, idd in donos.items() if idd in alvo_ids]
+    cands += [outdir / "_retomada" / f"{i}.pdf" for i in alvo_ids]
+    movidos = []
+    for fp in cands:
+        if fp.is_file() and sha256_arquivo(fp) in shas:
+            dest = outdir / "_invalidos" / f"{fp.stem}.{sha256_arquivo(fp)[:12]}{fp.suffix}"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            fp.replace(dest)
+            movidos.append(fp.name)
+            donos.pop(fp.name, None)            # o dono era do arquivo que saiu: a retomada não o procura mais
+    if movidos:
+        tmp = outdir / "donos.json.tmp"
+        tmp.write_text(json.dumps(donos, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(outdir / "donos.json")
+    return movidos
 
 
 def capturar(con, nav, processo: str, ctx: Contexto, raiz: Path, lente: list[str]) -> dict:
@@ -216,6 +252,7 @@ def capturar(con, nav, processo: str, ctx: Contexto, raiz: Path, lente: list[str
                       (processo,)).fetchone()
     if vig:                                     # retificado não "já tinha": se não vier agora, é omitido
         ja -= set(A.retificados([d["doc_id"] for d in vig[0]], vig[0], A.identidade_capturada(con, processo)))
+    afastar_invalidos(con, processo, Path(raiz) / f"integra_{PI.pasta(processo)}")
     outdir = nav.capturar(processo, guardados_do_pg(con, processo), raiz)
     ap = apurar(outdir, ja, restritos_da_arvore(con, processo))
     return gravar(con, processo, ap, ctx, outdir, inicio, lente)
