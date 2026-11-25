@@ -32,6 +32,7 @@ APELIDOS = {
     "bs4": "beautifulsoup4", "dotenv": "python-dotenv", "sklearn": "scikit-learn",
     "dateutil": "python-dateutil", "docx": "python-docx", "fpdf": "fpdf2",
     "pdfminer": "pdfminer.six", "websocket": "websocket-client", "attr": "attrs",
+    "zxingcpp": "zxing-cpp",
 }
 
 # Exceção NOMEADA e presa ao arquivo, nunca um baseline numérico: um número cego deixaria o
@@ -54,6 +55,9 @@ EXCECOES |= {("psutil", "tools/sei_ocr_reserva.py")}
 # 23/11/2026 — renovação da sessão do MediaFire: o cron roda com /opt/stealth/venv (patchright + Chromium em xvfb),
 # nunca com a venv do JFN.
 EXCECOES |= {("patchright", "tools/zelador/mediafire_sessao.py")}
+# 24/11/2026 — E5 (O3.4): o Surya roda na venv da GPU do it-campo (deploy/itcampo/ocr_gpu/setup_gpu.sh), importado só
+# dentro do executor GPU; a volta CPU usa RapidOCR/Tesseract. Preso ao arquivo do estágio.
+EXCECOES |= {("surya", "compliance_agent/aplicacao/estagios/ocr.py")}
 
 
 def _modulos_locais() -> set[str]:
@@ -156,6 +160,7 @@ def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
               | {(m, "tools/v68_abertura_ltx.py") for m in ("torch", "diffusers", "transformers")})
     ocr_reserva = {("rapidocr", "tools/sei_ocr_reserva.py"), ("psutil", "tools/sei_ocr_reserva.py")}
     outras_venvs = {("patchright", "tools/zelador/mediafire_sessao.py")}          # /opt/stealth/venv (23/11)
+    outras_venvs |= {("surya", "compliance_agent/aplicacao/estagios/ocr.py")}   # venv da GPU do it-campo (E5, 24/11)
     assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render | ocr_reserva | outras_venvs, \
         "exceção nova em EXCECOES: justifique no comentário por que o pacote não é declarado"
 

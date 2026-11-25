@@ -22,3 +22,8 @@ easyocr>=1.7.0
 # captcha_solver.py — OCR neural local (ONNX) do captcha do SEI; sem ele cai no tesseract (2026-09-09, catraca requirements)
 ddddocr>=1.4
 onnxruntime>=1.16
+
+# E6 confirmar_ocr (O3.4, 24/11/2026) — leitura de código de barras/QR como prova nível A; sem eles a fonte "código de
+# barras" fica INDISPONIVEL (nunca "não tem"). Sistema: libzbar0 para o pyzbar.
+pyzbar>=0.1.9
+zxing-cpp>=2.2
