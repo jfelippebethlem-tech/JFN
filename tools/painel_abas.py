@@ -31,6 +31,9 @@ _FONTES = (_RAIZ / "static" / "js" / "src" / "app" / "tabs.js",
 _BLOCO = re.compile(r"const TABS=\{(.*?)\n\};", re.S)
 _ESFERA = re.compile(r"^\s{2}(\w+):\[", re.M)
 _ID = re.compile(r"id:'([a-z_]+)'")
+# O7.6 (25/11/2026): aba ARQUIVADA = entrada com `arq:'<motivo>'` no TABS. O `entrada.js` a tira do menu e do boot
+# logo depois do bloco; o código do render fica. Reverter = apagar o `arq:` da linha.
+_ARQ = re.compile(r"\{id:'([a-z_]+)'[^\n]*?\barq:'([^']*)'")
 
 
 def _corpo() -> str:
@@ -45,22 +48,30 @@ def _corpo() -> str:
     raise RuntimeError("nao achei `const TABS={...}` em nenhuma fonte: " + ", ".join(tentadas))
 
 
-def abas_por_esfera() -> dict[str, list[str]]:
-    """{esfera: [id, ...]} na ordem do painel."""
+def arquivadas() -> dict[str, str]:
+    """{id: motivo} das abas arquivadas (fora do menu e do boot)."""
+    return dict(_ARQ.findall(_corpo()))
+
+
+def abas_por_esfera(*, com_arquivadas: bool = False) -> dict[str, list[str]]:
+    """{esfera: [id, ...]} na ordem do painel — só as do menu, salvo `com_arquivadas`."""
     corpo = _corpo()
+    fora_do_menu = set() if com_arquivadas else set(arquivadas())
     marcas = list(_ESFERA.finditer(corpo))
     fora: dict[str, list[str]] = {}
     for i, mk in enumerate(marcas):
         fim = marcas[i + 1].start() if i + 1 < len(marcas) else len(corpo)
-        fora[mk.group(1)] = _ID.findall(corpo[mk.end(): fim])
+        fora[mk.group(1)] = [a for a in _ID.findall(corpo[mk.end(): fim]) if a not in fora_do_menu]
     return fora
 
 
-def abas() -> list[str]:
-    """Todos os ids, na ordem do painel."""
-    return [a for lista in abas_por_esfera().values() for a in lista]
+def abas(*, com_arquivadas: bool = False) -> list[str]:
+    """Os ids do menu (sem as arquivadas, salvo `com_arquivadas`), na ordem do painel."""
+    return [a for lista in abas_por_esfera(com_arquivadas=com_arquivadas).values() for a in lista]
 
 
 if __name__ == "__main__":
     for esf, lista in abas_por_esfera().items():
         print(f"{esf:12s} {len(lista):2d}  {' '.join(lista)}")
+    for aid, motivo in arquivadas().items():
+        print(f"arquivada    {aid}: {motivo}")

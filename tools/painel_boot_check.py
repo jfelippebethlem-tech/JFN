@@ -14,7 +14,7 @@ percorre as abas pedidas, e falha se houver `pageerror` ou erro de console.
 
 Uso:
   PYTHONPATH=. .venv/bin/python -m tools.painel_boot_check                  # abas novas
-  PYTHONPATH=. .venv/bin/python -m tools.painel_boot_check --todas          # as 57
+  PYTHONPATH=. .venv/bin/python -m tools.painel_boot_check --todas          # todas as do menu (sem as arquivadas)
   PYTHONPATH=. .venv/bin/python -m tools.painel_boot_check --aba g_vinculos
 """
 from __future__ import annotations
@@ -61,6 +61,40 @@ def _nomes_da_ponte() -> dict | None:
         return None
     d = coletar()
     return {"todos": sorted(d["exigidos"]), "escritos": d["escritos"]}
+
+
+# Abas que o check percorre sem `--aba`/`--todas` (as que nasceram sem tela em 29/07). Têm de existir no menu:
+# `reconciliar` acusa a que tiver sido arquivada ou renomeada, em vez de a percorrer calada contra o cockpit.
+NOVAS = ["g_vinculos", "g_pecas", "g_fontes", "g_hub", "g_acuracia"]
+
+
+def reconciliar(vivo: list[str] | None, arquivadas_vivo: list[str] | None, percorrer: list[str]) -> list[str]:
+    """O7.6 — o catálogo que a página montou bate com o inventário do fonte (`tools/painel_abas`)?
+
+    Nenhuma aba esperada que não existe, nenhuma existente fora do inventário, nenhuma arquivada de volta no menu,
+    e nada a percorrer que não esteja no menu. `vivo`/`arquivadas_vivo` = None quando a página não os expôs."""
+    from tools.painel_abas import abas, arquivadas
+    esperado, arq = abas(), set(arquivadas())
+    probs = []
+    if vivo is None:
+        probs.append("CATÁLOGO: a página não expôs `TABS` — não dá para reconciliar com o inventário")
+    else:
+        faltam = [a for a in esperado if a not in vivo]
+        sobram = [a for a in vivo if a not in esperado]
+        if faltam:
+            probs.append(f"CATÁLOGO: {len(faltam)} aba(s) do inventário fora do menu montado — {faltam[:8]} "
+                         "(bundle defasado? rode `npm run build:painel`)")
+        if sobram:
+            probs.append(f"CATÁLOGO: {len(sobram)} aba(s) no menu fora do inventário — {sobram[:8]}"
+                         + (" (estão marcadas `arq:` no fonte)" if set(sobram) & arq else ""))
+        if len(set(vivo)) != len(vivo):
+            probs.append("CATÁLOGO: id de aba repetido no menu montado")
+    if arquivadas_vivo is not None and set(arquivadas_vivo) != arq:
+        probs.append(f"CATÁLOGO: arquivadas na página {sorted(arquivadas_vivo)} ≠ no fonte {sorted(arq)}")
+    fora = [a for a in percorrer if a not in esperado]
+    if fora:
+        probs.append(f"CATÁLOGO: pedido para percorrer aba que não está no menu — {fora}")
+    return probs
 
 
 def checar(abas: list[str], *, todas: bool = False) -> dict:
@@ -128,6 +162,10 @@ def checar(abas: list[str], *, todas: bool = False) -> dict:
             if todas:
                 abas = pg.evaluate("Object.values(TABS).flat().map(t=>t.id)")
             laudo["boot"]["n_abas"] = pg.evaluate("Object.values(TABS).flat().length")
+            laudo["boot"]["catalogo"] = pg.evaluate(
+                "typeof TABS==='object' ? Object.values(TABS).flat().map(t=>t.id) : null")
+            laudo["boot"]["arquivadas"] = pg.evaluate(
+                "Array.isArray(window.TABS_ARQUIVADAS) ? TABS_ARQUIVADAS.map(t=>t.id) : null")
 
             for aba in abas:
                 del erros[:]
@@ -156,8 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--aba", action="append", default=[], help="aba a percorrer (repetível)")
     ap.add_argument("--todas", action="store_true", help="percorre todas as abas do painel")
     a = ap.parse_args(argv)
-    novas = ["g_vinculos", "g_pecas", "g_fontes", "g_hub", "g_acuracia"]
-    laudo = checar(a.aba or novas, todas=a.todas)
+    laudo = checar(a.aba or NOVAS, todas=a.todas)
 
     boot = laudo["boot"]
     print(json.dumps(laudo, ensure_ascii=False, indent=1)[:4000])
@@ -174,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         problemas.append(f"TIMING MUDOU: readyState no boot = {rs!r}, esperado 'loading'. "
                          "Alguém pôs `defer`/`async`/`type=module` na tag do painel — é o vetor "
                          "que já matou este boot três vezes.")
+    problemas += reconciliar(boot.get("catalogo"), boot.get("arquivadas"), list(laudo["abas"]))
     if boot.get("ponte_ausentes"):
         problemas.append(f"PONTE INCOMPLETA: {len(boot['ponte_ausentes'])} nome(s) que handler "
                          f"inline usa não existem no window — {boot['ponte_ausentes'][:6]}. "

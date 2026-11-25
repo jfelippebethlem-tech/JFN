@@ -53,6 +53,8 @@ from tools.painel_abas import abas, abas_por_esfera
 # 2026-11-14: 76 → 77 e sistema 7 → 8. Entrou "Propagação" (`s_propag`): o que ficou desatualizado quando uma fonte
 # mudou, o que o despachante recalculou, o que falhou e o que seguiu para o segundo cérebro
 # (`/api/sistema/propagacao`) — pedido do dono ("uma alteração ou leitura tem que puxar outras").
+# 2026-11-25 (O7.6): auditoria das 77 abas — 0 MORTA, 0 arquivada (ver test_painel_boot_reconciliado.ARQUIVADAS).
+# Estes números contam só as abas do MENU: aba marcada `arq:` sai daqui e tem de baixar TOTAL/POR_ESFERA de propósito.
 TOTAL = 77
 POR_ESFERA = {"inicio": 1, "estado": 23, "prefeitura": 16, "geral": 29, "sistema": 8}
 

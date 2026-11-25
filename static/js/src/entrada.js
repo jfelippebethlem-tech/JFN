@@ -206,6 +206,10 @@ const TABS={
     {id:'s_comandos', ic:'🧭',tl:'Comandos', render:renderComandosSistema},
   ],
 };
+/* O7.6 (25/11/2026, plano mestre v2 §8 "Estrutura"): aba sem fonte viva ou por órgão é ARQUIVADA — `arq:'<motivo>'`
+   na entrada acima. Sai do menu, do boot e da navegação por hash; o render e a rota ficam. Reverter = apagar o `arq:`.
+   Lista e motivo: ~/vault/refatoracao/o76-auditoria-abas.md; `tools/painel_abas.arquivadas()` lê a mesma marca. */
+const TABS_ARQUIVADAS=Object.keys(TABS).flatMap(e=>{const a=TABS[e].filter(t=>t.arq);TABS[e]=TABS[e].filter(t=>!t.arq);return a;});
 /* `esfera` e `aba` vivem em `app/estado.js` — folha que a cena tambem importa. Enquanto
    moravam aqui, o IIFE do bundle as fechava e a cena quebrava com `esfera is not defined`. */
 import {esfera, aba, setEsfera, setAba} from './app/estado.js';
@@ -697,6 +701,7 @@ function marcarValores(raiz){
    defined` — e foi exatamente o que aconteceu na primeira tentativa desta migração.
    Documentado aqui porque a razão de existir não está no arquivo que o usa. */
 window.TABS=TABS;
+window.TABS_ARQUIVADAS=TABS_ARQUIVADAS;   // O7.6: contrato de FERRAMENTA, como o TABS — o boot check confere as duas listas
 /* Mesma segunda categoria: contrato de FERRAMENTA. `revelacaoCenso()` devolve o que as gramáticas
    de revelação (v59) marcaram no último render — quantas linhas de tabela, quantos rankings,
    quantas seções. Nenhum handler o cita; quem lê é a sonda e `test_painel_revelacao`.

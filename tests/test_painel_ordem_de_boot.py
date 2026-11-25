@@ -86,6 +86,7 @@ SEQUENCIA = [
     "iife:_ligarTato",                # onda de toque, delegada no documento
     "iife:_ligarObservadorDeValor",   # o numero que muda acende
     "ponte:window.TABS",              # ── daqui para baixo e a PONTE, sempre por ultimo:
+    "ponte:window.TABS_ARQUIVADAS",   #    O7.6 (25/11/2026): abas com `arq:` — o boot check confere menu × inventario
     "ponte:window.revelacaoCenso",    #    contrato de FERRAMENTA (v59), como o TABS: nenhum
                                       #    handler o cita; quem le e a sonda e o teste da revelacao
     "ponte:window.energiaCenso",      #    idem, para a orbita do cockpit (v59)

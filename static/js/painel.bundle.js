@@ -16282,6 +16282,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "s_comandos", ic: "🧭", tl: "Comandos", render: renderComandosSistema }
     ]
   };
+  var TABS_ARQUIVADAS = Object.keys(TABS).flatMap((e) => {
+    const a = TABS[e].filter((t) => t.arq);
+    TABS[e] = TABS[e].filter((t) => !t.arq);
+    return a;
+  });
   function montarSpheres() {
     $("spheres").innerHTML = SPHERES.map((s) => `<button type="button" class="sph ${s.id} ${s.id === esfera ? "on" : ""}" title="${s.c}" aria-pressed="${s.id === esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join("");
   }
@@ -16671,6 +16676,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     });
   }
   window.TABS = TABS;
+  window.TABS_ARQUIVADAS = TABS_ARQUIVADAS;
   window.revelacaoCenso = revelacaoCenso;
   window.energiaCenso = energiaCenso;
   Object.assign(window, {

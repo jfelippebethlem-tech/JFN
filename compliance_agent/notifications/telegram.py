@@ -65,11 +65,24 @@ def _destino(chat_id: str, resumo: str) -> tuple[str, str, dict | None]:
     if not chat_id:
         from compliance_agent.notifications.silencio import silenciar
         if silenciar(resumo):
-            return "", "", {"ok": True, "silenciado": True}
+            # O7.6 (plano v2 §8 "Entrega honesta"): silenciado NÃO é entrega — devolvia ok=True e quem chamava
+            # declarava "enviado" (memória telegram-silencio-devolve-ok).
+            return "", "", {"ok": False, "silenciado": True, "error": "silenciado (silêncio de 17/11) — não enviado"}
     target, base = _get_chat_id(chat_id), _base_url()
     if not base or not target:
         return "", "", {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
     return base, target, None
+
+
+def _conferir_entrega(data) -> dict:
+    """Sucesso SÓ com `result.message_id` inteiro (o `ok` do Telegram sozinho já mentiu nesta casa)."""
+    if not isinstance(data, dict):
+        return {"ok": False, "error": f"resposta não-dict do Telegram: {str(data)[:120]}"}
+    mid = (data.get("result") or {}).get("message_id") if isinstance(data.get("result"), dict) else None
+    if data.get("ok") is True and isinstance(mid, int) and not isinstance(mid, bool):
+        return data
+    return {**data, "ok": False,
+            "error": data.get("error") or data.get("description") or "resposta sem result.message_id — não conferida"}
 
 
 async def enviar_mensagem(
@@ -116,7 +129,7 @@ async def enviar_mensagem(
                     json={"chat_id": target, "text": texto},
                 )
                 data = resp.json()
-            return data
+            return _conferir_entrega(data)
     except httpx.TimeoutException:
         return {"ok": False, "error": "timeout"}
     except Exception as exc:
@@ -155,7 +168,7 @@ async def enviar_arquivo(
                     data={"chat_id": target, "caption": caption[:1024] if caption else ""},
                     files={"document": (file_path.name, f, "application/octet-stream")},
                 )
-            return resp.json()
+            return _conferir_entrega(resp.json())
     except httpx.TimeoutException:
         return {"ok": False, "error": "timeout ao enviar arquivo"}
     except Exception as exc:

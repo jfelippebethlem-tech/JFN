@@ -10,7 +10,7 @@ def test_aviso_automatico_silenciado_e_resposta_a_comando_passa(tmp_path, monkey
     (tmp_path / "telegram_silencio.json").write_text(json.dumps({"ativo": True}))
     monkeypatch.delenv("JFN_TELEGRAM_PEDIDO", raising=False)
     r = asyncio.run(telegram.enviar_mensagem("🔴 serviço caiu"))
-    assert r == {"ok": True, "silenciado": True}
+    assert r["ok"] is False and r["silenciado"] is True   # O7.6: silenciado não é entrega
     linha = json.loads((tmp_path / "telegram_silenciado.jsonl").read_text().splitlines()[-1])
     assert linha["inicio"] == "🔴 serviço caiu" and linha["origem"]
     # resposta a comando (chat_id explícito) nunca é silenciada; relatório pedido passa com a variável
