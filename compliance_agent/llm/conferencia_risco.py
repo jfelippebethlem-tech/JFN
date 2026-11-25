@@ -13,6 +13,9 @@ ENTRA (fica `pendente`) quem tem pelo menos um motivo, nesta ordem:
   baixa_confianca — sem nível (indeterminado), veredito "indeterminado", metade ou mais dos eixos sem grau, ou a
                     confiança declarada pelo normalizador < 0,5;
   valor_indeterminavel — item de processo cuja OB não pôde ser consultada (INDISPONÍVEL ≠ 0: na dúvida, entra);
+  cota            — (O5.4, opcional) vaga reservada aos detectores de MANCHETE até n ≥ 30 conferidos estratificados:
+                    item SEM motivo determinístico cujo `detector` tem vaga leva `cota` (sorteio pelo hash, até o
+                    número de vagas; proposta em `calibrar cota`). Item sem `detector` (laudo de perícia) não usa;
   amostra         — 1 a cada 8 do que SOBRAR, estratificada por tarefa × motor × nível (sorteio determinístico pelo
                     hash da chave; estrato sem sorteado leva o de menor hash). É o que mede o falso negativo.
 O resto vira `nao_julgado`: `pendente()` continua True (o consumidor nunca dá VERIFICADO), o painel mostra a
@@ -43,7 +46,7 @@ NAO_JULGADO = "nao_julgado"
 ROTULO_NAO_JULGADO = "NÃO JULGADO — fila"
 AMOSTRA_A_CADA = 8
 LIMIAR_VALOR_PADRAO = 1_000_000.00
-MOTIVOS = ("divergencia", "valor", "grave", "baixa_confianca", "valor_indeterminavel", "amostra")
+MOTIVOS = ("divergencia", "valor", "grave", "baixa_confianca", "valor_indeterminavel", "cota", "amostra")
 _REPO = Path(__file__).resolve().parents[2]
 
 
@@ -119,15 +122,23 @@ def divergentes(linhas) -> set[tuple[str, str]]:
     return {k for k, pares in por.items() if len({m for m, _ in pares}) > 1 and len({n for _, n in pares}) > 1}
 
 
-def classificar_lote(itens: list[dict], limiar: float | None = None) -> list[dict]:
-    """`itens`: dicts com id, chave, tarefa, item, motor, nivel, baixa, valor, valor_aplica, divergente.
-    Devolve os mesmos dicts com `motivos` e `decisao` ('fila' | NAO_JULGADO)."""
+def classificar_lote(itens: list[dict], limiar: float | None = None,
+                     cota: dict[str, int] | None = None) -> list[dict]:
+    """`itens`: dicts com id, chave, tarefa, item, motor, nivel, baixa, valor, valor_aplica, divergente (e, para a
+    cota, `detector`). `cota`: {detector: vagas} (O5.4). Devolve os mesmos dicts com `motivos` e `decisao`."""
     limiar = limiar_valor() if limiar is None else limiar
+    vagas = dict(cota or {})
     sobra: dict[str, list[dict]] = defaultdict(list)
     for it in itens:
         it["motivos"] = motivos_do_item(nivel=it.get("nivel"), baixa=bool(it.get("baixa")), valor=it.get("valor"),
                                         valor_aplica=bool(it.get("valor_aplica")),
                                         divergente=bool(it.get("divergente")), limiar=limiar)
+    for it in sorted((i for i in itens if not i["motivos"] and vagas.get(i.get("detector"), 0) > 0),
+                     key=lambda x: _hash(x["chave"])):
+        if vagas.get(it["detector"], 0) > 0:
+            it["motivos"] = ["cota"]
+            vagas[it["detector"]] -= 1
+    for it in itens:
         if not it["motivos"]:
             sobra[estrato(it["tarefa"], it.get("motor"), it.get("nivel"))].append(it)
     for grupo in sobra.values():
@@ -213,9 +224,10 @@ def resumo(itens: list[dict], limiar: float) -> dict:
             "valor_indisponivel": sum(1 for i in itens if i.get("valor_aplica") and i.get("valor") is None)}
 
 
-def sombra(con: sqlite3.Connection, valores: dict | None, limiar: float | None = None) -> tuple[dict, list[dict]]:
+def sombra(con: sqlite3.Connection, valores: dict | None, limiar: float | None = None,
+           cota: dict[str, int] | None = None) -> tuple[dict, list[dict]]:
     limiar = limiar_valor() if limiar is None else limiar
-    itens = classificar_lote(com_valores(ler_pendentes(con), valores), limiar)
+    itens = classificar_lote(com_valores(ler_pendentes(con), valores), limiar, cota)
     return resumo(itens, limiar), itens
 
 
@@ -295,6 +307,7 @@ def _main(argv=None) -> int:
     s = sub.add_parser("sombra", help="relatório + proposta; NÃO altera a fila")
     s.add_argument("--ob-json", help="saída do subcomando `ob` (senão consulta o compliance.db local)")
     s.add_argument("--limiar", type=float)
+    s.add_argument("--cota", help="proposta de `calibrar cota` ({cota: {detector: vagas}}) — O5.4")
     s.add_argument("--saida", default=str(_REPO / "data" / "conferencia_risco_proposta.json"))
     a_ = sub.add_parser("aplicar", help="aplica a proposta à fila real")
     a_.add_argument("--proposta", required=True)
@@ -328,7 +341,8 @@ def _main(argv=None) -> int:
                     valores = ob_paga_por_processo(cc, procs)
                 finally:
                     cc.close()
-            rel, itens = sombra(con, valores, a.limiar)
+            cota = json.loads(Path(a.cota).read_text(encoding="utf-8"))["cota"] if a.cota else None
+            rel, itens = sombra(con, valores, a.limiar, cota)
         finally:
             con.close()
         destino = gravar_proposta(Path(a.saida), rel, itens)

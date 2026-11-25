@@ -2552,6 +2552,19 @@ rotinas:
     evento: {depende: [elegibilidade_sombra], debounce_s: 900, agrupar: true}
     origem: [sweep_fracionamento_tcerj, sweep_emergencia_recorrente, lex_fatos_contabil, fracionamento_siafe_sweep, governo_couto_regras, sweep_sede_real, endereco_sweep, fachada_streetview_sweep]
     efeito: {descricao: 'achados da rodada recontados no esquema sombra = declarados e amostra recalculada da fonte sem divergência (a CLI só imprime depois de conferir)', log_contem: 'detectar: [0-9]+ achado\(s\) conferido\(s\) em [a-z_]+\.achado'}
+  calibrar_sombra:
+    estagio: E13
+    descricao: 'E13 calibrar (O5.4, SOMBRA): a cada 5 conferidos novos (Opus da assinatura / dono) por detector, fp_medida + n + IC95 de Wilson e tier pela régua única do §5 (qualidade.detectores.avaliar_tier); item de bloco reservado ao ouro (qualidade/ouro.py) fora da conta; 1º erro grave conferido abre erro_grave_aberto e tira o Tier 1; resultado em data/calibracao_sombra.json, registro intocado'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.calibrar, rodar, --fonte, data/analitico/snapshot/compliance.db, --saida, data/calibracao_sombra.json]
+    recursos: [cpu_leve]
+    nos: [vm2]
+    timeout_s: 1800
+    prioridade: 70
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): só sombra — grava o JSON, nunca o config/qualidade_detectores.yaml (o --gravar só com o ✅ do dono); a fonte é a exportação só-leitura conferida por md5, nunca o compliance.db vivo da VM-1 (ADR-001 D4); estratificação exige o E12 gravar a origem (amostra/cota) do conferido'
+    nota: 'O5.4. Comando = o estágio nativo `calibrar` pela CLI (handler + efeito: a medida é recalculada da fonte do zero e tem de bater com o gravado, IC95 incluído). Idempotente: sem 5 conferidos novos nem erro grave novo o job é sem_novidade e não grava. A cota dos 47 de manchete sai de `calibrar cota --fonte F --saida cota.json` e entra em `conferencia_risco sombra --cota cota.json`'
+    evento: {depende: [triagem_opus], debounce_s: 3600, agrupar: true}
+    efeito: {descricao: 'medida por detector recalculada da fonte = gravada no JSON da sombra, com o IC95 de Wilson conferido (a CLI só imprime depois de conferir)', log_contem: 'calibrar: [0-9]+ detector\(es\) conferido\(s\)'}
   analitico_exportar:
     estagio: E15
     descricao: 'O4.12 analítico (vm2): snapshot conferido por md5 do compliance.db → Parquet zstd por exercício + manifesto (linhas, sha256, schema/alembic)'

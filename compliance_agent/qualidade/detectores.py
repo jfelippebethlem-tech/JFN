@@ -209,6 +209,8 @@ def avaliar_tier(e: dict, hoje: date | None = None) -> dict:
     cob = fp.get("cobertura")
     if not isinstance(cob, (int, float)) or cob < TIER1_COBERTURA_MIN:
         falta.append("cobertura_desconhecida" if cob is None else f"cobertura={cob:.0%}<{TIER1_COBERTURA_MIN:.0%}")
+    if (e.get("calibracao") or {}).get("erro_grave_aberto"):   # O5.4/E13: rebaixa no 1º erro grave conferido
+        falta.append("erro_grave_conferido")
     if falta:
         return {"tier": 2, "tier_motivo": "; ".join(falta), "fp_ic95": list(ic)}
     return {"tier": 1, "tier_motivo": "cumpre_tier1", "fp_ic95": list(ic)}
