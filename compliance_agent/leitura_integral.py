@@ -189,8 +189,12 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
         atual, tam = [], 0
 
     for d in (docs if docs is not None else _docs(pasta)):
-        n = len(d["texto"])
+        # sem `texto`: o E8 não reabriu o documento porque o MESMO texto já foi lido (fatos.acervo_do_estagio) —
+        # entra pelo tamanho gravado e TEM de estar entre os lidos
+        n = len(d["texto"]) if "texto" in d else int(d["chars"])
         existentes += n
+        if "texto" not in d and d["sha"] not in vistos:
+            raise ValueError(f"{d.get('doc_id')}: documento sem texto e fora dos já lidos")
         if d["sha"] in vistos:
             soma["duplicado"] += n
             listas["duplicados"].append(d["doc_id"])

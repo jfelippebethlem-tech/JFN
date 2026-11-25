@@ -229,6 +229,8 @@ class Preparo:
     cobertura: dict = field(default_factory=dict)
     pecas_nao_lidas: list[dict] = field(default_factory=list)
     fonte_texto: str = ""
+    reusos: list[dict] = field(default_factory=list)      # documentos cujo texto não foi lido aqui (fatos copiados)
+    meta: dict = field(default_factory=dict)              # sha → (texto_sha, cabeça, corte, chars) do que foi lido
 
 
 def pasta_do(processo: str) -> Path:
@@ -287,9 +289,39 @@ def _texto_gravado(tr: dict, etapa: str) -> tuple[str | None, str]:
     return texto, ""
 
 
-def acervo_do_estagio(con_cap, processo: str) -> Acervo | None:
+CABECA = 2048                                    # início do texto guardado em docs_lidos (decide o rótulo sem reler)
+
+
+def normalizar_texto(bruto: str, titulo: str) -> tuple[str, str, int]:
+    """O texto como o leitor do piloto o lê (`acervo_texto.ler`): fim de linha universal (o `read_text` do legado
+    troca \r e \r\n por \n) e `sem_etiqueta` (o PDF do SEI abre com o rótulo "[<título>]"). Medido no O8.5 (rb1):
+    sem isso 121 de 338 textos do E4 diferiam do que o leitor antigo leria (105 pelo rótulo, 16 pelo \r).
+    Devolve (texto, cabeça, corte): `cabeça` = o início do texto de fim de linha universal e `corte` = quantos
+    caracteres do início a normalização tirou — o rótulo depende do TÍTULO, e é por eles que outro documento com o
+    MESMO texto de saída prova ter o mesmo texto normalizado sem abrir o arquivo (`corte_de`)."""
+    from compliance_agent.sei.acervo_texto import sem_etiqueta
+    u = bruto.replace("\r\n", "\n").replace("\r", "\n")
+    sem = sem_etiqueta(u, str(titulo or ""))
+    return sem.strip(), u[:CABECA], len(u) - len(sem.lstrip())
+
+
+def corte_de(cabeca: str, titulo: str) -> int | None:
+    """O `corte` que `normalizar_texto` daria ao texto que começa com `cabeca`, sob este título — ou None quando a
+    cabeça não basta para decidir (texto maior que ela sem 3 linhas completas não vazias: o rótulo ocupa no máximo
+    as 2 primeiras linhas e a 3ª prova onde o conteúdo começa)."""
+    from compliance_agent.sei.acervo_texto import sem_etiqueta
+    if len(cabeca) >= CABECA and sum(1 for ln in cabeca.split("\n")[:-1] if ln.strip()) < 3:
+        return None
+    return len(cabeca) - len(sem_etiqueta(cabeca, str(titulo or "")).lstrip())
+
+
+def acervo_do_estagio(con_cap, processo: str, textos_lidos: dict | None = None) -> Acervo | None:
     """O processo pela saída do E3/E4/E5/E6 no PG da captura. None = o estágio não tem o processo (volta ao legado).
-    A decisão da porta usa SÓ o PG; os laterais (o texto) só são lidos quando a porta abre."""
+    A decisão da porta usa SÓ o PG; os laterais (o texto) só são lidos quando a porta abre.
+    LEITURA ÚNICA por texto (regra do dono: cada sha256 lido no máximo 1× por estágio × prompt_version): o mesmo
+    texto de saída do E4/E5 (`saida_sha`) em dois documentos do processo é aberto UMA vez; e, com `textos_lidos`
+    (`textos_ja_lidos`: saida_sha → linha de `docs_lidos`), o texto que o modelo JÁ leu nesta versão do prompt nem é
+    aberto — o documento entra sem `texto`, com o sha e o tamanho gravados e `reuso` = de onde vêm os fatos."""
     from compliance_agent.aplicacao.estagios import texto as T
     docs = con_cap.execute("SELECT doc_id, posicao, titulo FROM documentos WHERE processo = %s ORDER BY posicao, "
                            "doc_id", (processo,)).fetchall()
@@ -334,23 +366,31 @@ def acervo_do_estagio(con_cap, processo: str) -> Acervo | None:
         return Acervo(FONTE_ESTAGIO, "documento de OCR ainda não confirmado", pendencias=pend)
     if pend:
         return Acervo(FONTE_ESTAGIO, "documento sem texto", pendencias=pend)
-    out, quebra = [], []
+    out, quebra, memoria = [], [], {}
     for doc_id, pos, titulo, e4, e5, ocr, conf in alvos:
-        texto, motivo = _texto_gravado(e5, "E5") if e5 is not None else _texto_gravado(e4, "E4")
+        tr = e5 if e5 is not None else e4
+        base = {"doc_id": doc_id, "titulo": str(titulo or "").strip(), "ocr": ocr, "ocr_confirmado": conf,
+                "i": str(pos), "texto_sha": tr["saida_sha"]}
+        lin = (textos_lidos or {}).get(tr["saida_sha"])
+        if lin is not None and lin["cabeca"] is not None and corte_de(lin["cabeca"], titulo) == lin["corte"]:
+            out.append({**base, "sha": lin["sha"], "chars": lin["chars"],
+                        "reuso": {"processo": lin["processo"], "doc_id": lin["doc_id"]}})
+            continue
+        if tr["saida_sha"] in memoria:
+            texto, motivo = memoria[tr["saida_sha"]], ""
+        else:
+            texto, motivo = _texto_gravado(e5, "E5") if e5 is not None else _texto_gravado(e4, "E4")
+            if texto is not None:
+                memoria[tr["saida_sha"]] = texto
         if texto is None:
             quebra.append({"doc_id": doc_id, "motivo": motivo})
             continue
-        # o MESMO leitor do piloto (`acervo_texto.ler`): fim de linha universal (o `read_text` do legado troca \r e
-        # \r\n por \n) e `sem_etiqueta` (o PDF do SEI abre com o rótulo "[<título>]"). Medido no O8.5 (rb1): sem
-        # isso 121 de 338 textos do E4 diferiam do que o leitor antigo leria (105 pelo rótulo, 16 pelo \r)
-        from compliance_agent.sei.acervo_texto import sem_etiqueta
-        texto = sem_etiqueta(texto.replace("\r\n", "\n").replace("\r", "\n"), str(titulo or "")).strip()
+        texto, cabeca, corte = normalizar_texto(texto, titulo)
         if not texto:
             pend.append({"doc_id": doc_id, "motivo": "documento sem texto (E4: " + str(
                 ((e4 or {}).get("parametros") or {}).get("perfil") or "?") + ")"})
             continue
-        out.append({"doc_id": doc_id, "titulo": str(titulo or "").strip(), "texto": texto, "ocr": ocr,
-                    "ocr_confirmado": conf, "i": str(pos), "sha": _sha(texto)})
+        out.append({**base, "texto": texto, "sha": _sha(texto), "cabeca": cabeca, "corte": corte})
     if quebra:
         return Acervo(FONTE_ESTAGIO, "texto do estágio não confere com o PG", out, quebra)
     if pend:
@@ -358,11 +398,11 @@ def acervo_do_estagio(con_cap, processo: str) -> Acervo | None:
     return Acervo(FONTE_ESTAGIO, None, out)
 
 
-def acervo(processo: str, con_cap=None) -> Acervo:
+def acervo(processo: str, con_cap=None, textos_lidos: dict | None = None) -> Acervo:
     """A fonte única do texto do E8: o estágio (E4/E5 + E6) quando o PG da captura tem o processo; senão o legado
     (`data/sei_arquivo` + `LI.portao`), DECLARADO em `fonte`."""
     if con_cap is not None:
-        a = acervo_do_estagio(con_cap, processo)
+        a = acervo_do_estagio(con_cap, processo, textos_lidos)
         if a is not None:
             return a
         por_que = "sem saída do E2–E5 no PG para o processo"
@@ -377,12 +417,13 @@ def acervo(processo: str, con_cap=None) -> Acervo:
 
 
 def preparar(processo: str, ja_lidos: set[str], tabelas_lidas: set[str], *, alvo: int = ALVO_CHARS,
-             prompt_version: str = PROMPT_VERSION, modelo: str = MODELO, con_cap=None) -> Preparo:
+             prompt_version: str = PROMPT_VERSION, modelo: str = MODELO, con_cap=None,
+             textos_lidos: dict | None = None) -> Preparo:
     """Tudo o que se sabe ANTES de chamar o modelo. Determinístico: mesmo acervo ⇒ mesmas fatias e mesmas chaves.
     `con_cap`: o PG da captura (texto do E4/E5 e porta pelo E6); sem ele, o legado (declarado em `fonte_texto`)."""
     pasta = pasta_do(processo)
     p = Preparo(processo=processo, pasta=pasta)
-    ac = acervo(processo, con_cap)
+    ac = acervo(processo, con_cap, textos_lidos)
     p.fora_da_porta, p.fonte_texto = ac.fora_da_porta, ac.fonte
     if p.fora_da_porta:
         p.texto_sha = _sha(f"{FORA_DA_PORTA}:{p.fora_da_porta}")
@@ -409,6 +450,17 @@ def preparar(processo: str, ja_lidos: set[str], tabelas_lidas: set[str], *, alvo
                               docs=docs, shas=[(d["sha"], d["doc_id"]) for d in docs.values()]))
     p.pecas_nao_lidas = espera
     p.cobertura = {k: cob[k] for k in ("chars_existentes", "chars_enviados", "fracao", "leitura")}
+    # leitura única por texto: o documento que não foi às fatias por ter o MESMO texto já lido (neste processo ou
+    # antes, nesta versão do prompt) recebe os fatos ancorados daquela leitura — citação, página e offset valem
+    # porque o texto normalizado é o mesmo (mesmo sha); só muda o documento/processo
+    enviados = {d["sha"]: d["doc_id"] for f in p.fatias for d in f.docs.values()}
+    for doc_id in cob["docs_duplicados"]:
+        d = originais[doc_id]
+        src = d.get("reuso") or ({"processo": processo, "doc_id": enviados[d["sha"]]} if d["sha"] in enviados
+                                 else None)
+        p.reusos.append({"doc_id": doc_id, "sha": d["sha"], "src": src,
+                         "chave": _sha(f"reuso|{processo}|{doc_id}|{d['sha']}|{prompt_version}|{modelo}")})
+    p.meta = {d["sha"]: (d["texto_sha"], d["cabeca"], d["corte"], len(d["texto"])) for d in lidos if "cabeca" in d}
     return p
 
 
@@ -439,6 +491,18 @@ def aplicar_schema(con, esquema: str | None = None) -> None:
         raise ValueError(f"nome de esquema inválido: {esquema!r}")
     con.execute(SQL_SCHEMA.read_text(encoding="utf-8").replace(':"esquema"', f'"{esquema}"'))
     con.execute(f'SET search_path TO "{esquema}"')
+    con.execute(DDL_TEXTO_LIDO)
+
+
+# O8.5 B1 (leitura única por TEXTO): `docs_lidos` ganha o sha256 do texto de SAÍDA do E4/E5 (`texto_sha`), a cabeça e o
+# corte da normalização e o tamanho — o que deixa o E8 saber, sem abrir o arquivo, que outro documento com o mesmo
+# texto já foi lido nesta versão do prompt. Só acrescenta (PK (sha, versao) intocada); linhas do piloto ficam NULL até
+# o E8 abrir aquele texto uma vez (`registrar_textos`).
+DDL_TEXTO_LIDO = ("ALTER TABLE docs_lidos ADD COLUMN IF NOT EXISTS texto_sha TEXT; "
+                  "ALTER TABLE docs_lidos ADD COLUMN IF NOT EXISTS cabeca TEXT; "
+                  "ALTER TABLE docs_lidos ADD COLUMN IF NOT EXISTS corte INTEGER; "
+                  "ALTER TABLE docs_lidos ADD COLUMN IF NOT EXISTS chars INTEGER; "
+                  "CREATE INDEX IF NOT EXISTS docs_lidos_texto_sha_ix ON docs_lidos (texto_sha, versao)")
 
 
 _COLUNAS_E8 = {"fatos": ("doc_sha", "pagina", "inicio", "fim", "contexto", "chave", "estagio_versao"),
@@ -457,6 +521,57 @@ def verificar_schema(con) -> list[str]:
 def ja_lidos(con, prompt_version: str = PROMPT_VERSION, modelo: str = MODELO) -> set[str]:
     return {r[0] for r in con.execute("SELECT sha FROM docs_lidos WHERE versao = ANY(%s)",
                                       (versoes_lidas(prompt_version, modelo),))}
+
+
+def textos_ja_lidos(con, prompt_version: str = PROMPT_VERSION, modelo: str = MODELO) -> dict[str, dict]:
+    """texto_sha (saída do E4/E5) → a 1ª leitura dele nesta versão do prompt (sha normalizado, cabeça, corte,
+    tamanho e de que processo/documento vieram os fatos)."""
+    out: dict[str, dict] = {}
+    for ts, sha, cab, corte, chars, proc, doc in con.execute(
+            "SELECT texto_sha, sha, cabeca, corte, chars, processo, doc_id FROM docs_lidos WHERE versao = ANY(%s) AND "
+            "texto_sha IS NOT NULL ORDER BY em, processo, doc_id", (versoes_lidas(prompt_version, modelo),)):
+        out.setdefault(ts, {"sha": sha, "cabeca": cab, "corte": corte, "chars": chars, "processo": proc,
+                            "doc_id": doc})
+    return out
+
+
+def registrar_textos(con, p: "Preparo", lidos: set[str], prompt_version: str = PROMPT_VERSION,
+                     modelo: str = MODELO) -> int:
+    """O texto aberto agora cujo sha JÁ estava lido (piloto, ou outra saída do E4/E5 com o mesmo texto) ganha o
+    texto_sha na linha de `docs_lidos` — sem esperar o modelo: o próximo documento com o mesmo texto não o reabre."""
+    n = 0
+    for sha, (ts, cab, corte, chars) in p.meta.items():
+        if sha in lidos:
+            n += con.execute("UPDATE docs_lidos SET texto_sha = %s, cabeca = %s, corte = %s, chars = %s WHERE sha = %s "
+                             "AND versao = ANY(%s) AND texto_sha IS NULL",
+                             (ts, cab, corte, chars, sha, versoes_lidas(prompt_version, modelo))).rowcount
+    return n
+
+
+def copiar_fatos(con, p: "Preparo", prompt_version: str = PROMPT_VERSION, modelo: str = MODELO) -> dict:
+    """Os fatos ANCORADOS da leitura de origem, regravados para cada documento que reaproveitou o texto: mesmo
+    doc_sha, página, offset e citação (o texto é o mesmo), outro processo/documento. Idempotente pela chave."""
+    out = {"docs": len(p.reusos), "fatos_copiados": 0, "sem_fatos_ancorados": 0}
+    for r in p.reusos:
+        src = r["src"]
+        if src is None:
+            lin = con.execute("SELECT processo, doc_id FROM docs_lidos WHERE sha = %s AND versao = ANY(%s) ORDER BY em "
+                              "LIMIT 1", (r["sha"], versoes_lidas(prompt_version, modelo))).fetchone()
+            src = {"processo": lin[0], "doc_id": lin[1]} if lin else None
+        linhas = con.execute(
+            "SELECT tipo, valor, descricao, citacao, estado, motivo, motor, payload_sha, pagina, inicio, fim, contexto "
+            "FROM fatos WHERE processo = %s AND doc_id = %s AND doc_sha = %s AND versao = %s AND estado = %s "
+            "ORDER BY id", (src["processo"], src["doc_id"], r["sha"], prompt_version, VERIFICADO)).fetchall() \
+            if src else []
+        agora = EV._agora()
+        with con.transaction():
+            con.execute("DELETE FROM fatos WHERE chave = %s", (r["chave"],))
+            con.cursor().executemany(_INS_FATO, [
+                (p.processo, r["doc_id"], t, v, de, c, e, mo, mt, prompt_version, ps, agora, r["sha"], pg, ini, fim, ctx,
+                 r["chave"], VERSAO) for t, v, de, c, e, mo, mt, ps, pg, ini, fim, ctx in linhas])
+        out["fatos_copiados"] += len(linhas)
+        out["sem_fatos_ancorados"] += not linhas
+    return out
 
 
 def tabelas_lidas(con) -> set[str]:
@@ -516,11 +631,12 @@ def concluir(con, p: Preparo, via: str, invalidas: list[Fatia] = ()) -> dict:
             (p.processo, ESTAGIO_NOME, versao_chave(), p.cobertura.get("chars_existentes"),
              p.cobertura.get("chars_enviados"), p.cobertura.get("fracao"), leitura, len(p.fatias), via, agora,
              p.texto_sha, MODELO, p.chave, json.dumps(pecas, ensure_ascii=False), ver, fal))
-        linhas = [(sha, versao_chave(), p.processo, doc, via, agora)
+        linhas = [(sha, versao_chave(), p.processo, doc, via, agora, *(p.meta.get(sha) or (None,) * 4))
                   for f in p.fatias if f.chave not in ok_inv for sha, doc in f.shas]
         if linhas:
-            con.cursor().executemany("INSERT INTO docs_lidos(sha, versao, processo, doc_id, lote, em) "
-                                     "VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", linhas)
+            con.cursor().executemany("INSERT INTO docs_lidos(sha, versao, processo, doc_id, lote, em, texto_sha, "
+                                     "cabeca, corte, chars) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO "
+                                     "NOTHING", linhas)
     return {"fatos_verificados": ver, "fatos_falha": fal, "pecas_nao_lidas": len(pecas)}
 
 
@@ -566,10 +682,12 @@ def leitor_assinatura(con_fluxo=None) -> Leitor:
 
 # ══ 5. o processo inteiro (handler) e a conferência (efeito) ═══════════════════════════════════════════════════
 def ler_processo(con, processo: str, leitor: Leitor, via: str = "assinatura", con_cap=None) -> dict:
-    p = preparar(processo, ja_lidos(con), tabelas_lidas(con), con_cap=con_cap)
+    lidos = ja_lidos(con)
+    p = preparar(processo, lidos, tabelas_lidas(con), con_cap=con_cap, textos_lidos=textos_ja_lidos(con))
+    registrar_textos(con, p, lidos)
     base = {"processo": processo, "chave": p.chave, "versao": versao_chave(), "estagio_versao": VERSAO,
-            "fatias": [f.chave for f in p.fatias], "fatias_lidas_agora": 0, "fatos_gravados": 0,
-            "fonte_texto": p.fonte_texto}
+            "fatias": [f.chave for f in p.fatias] + [r["chave"] for r in p.reusos], "fatias_lidas_agora": 0,
+            "fatos_gravados": 0, "fonte_texto": p.fonte_texto}
     if p.fora_da_porta:
         return {**base, **concluir(con, p, via), "fora_da_porta": p.fora_da_porta, "ja_lido": False}
     if leitura_concluida(con, processo, p.chave):
@@ -590,6 +708,7 @@ def ler_processo(con, processo: str, leitor: Leitor, via: str = "assinatura", co
             invalidas.append(f)
             continue
         gravar_fatia(con, processo, f, fatos, r.motor)
+    base["reuso"] = copiar_fatos(con, p)
     base["fatos_gravados"] = int(con.execute("SELECT count(*) FROM fatos WHERE chave = ANY(%s)",
                                              (base["fatias"],)).fetchone()[0]) if p.fatias else 0
     return {**base, **concluir(con, p, via, invalidas), "ja_lido": False, "fracao": p.cobertura.get("fracao"),
