@@ -1,11 +1,12 @@
 [Unit]
 # Supervisor do motor de fluxo, um por máquina: jfn-fluxo@vm1, jfn-fluxo@vm2, jfn-fluxo@itcampo
 # (plano mestre v2 §3.3; ADR-012). O laço SÓ ESCOLHE: cada job roda num escopo transitório dentro de
-# jfn-jobs.slice, com MemoryMax/CPUWeight/timeout próprios — nunca dentro deste processo.
+# jfn-coletor.slice, com MemoryMax/CPUWeight/timeout próprios — nunca dentro deste processo. A fatia é a do egress
+# (O0.4): jfn-egress.service carrega o nftables que tira dos jobs a rede interna/metadata; o supervisor sobe DEPOIS dele.
 # O1.8 (24/11/2026): só o arquivo. Instalar e habilitar é a O2 (parada de obras).
 Description=JFN — supervisor do motor de fluxo (%i)
-After=network-online.target
-Wants=network-online.target
+After=network-online.target jfn-egress.service
+Wants=network-online.target jfn-egress.service
 
 [Service]
 Type=simple

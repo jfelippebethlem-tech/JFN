@@ -8,7 +8,8 @@ O laço SÓ ESCOLHE. Cada volta:
      eventos na mesma transação) · erro → falhar (backoff/quarentena) · tempo estourado → mata e falha;
   4. renova o lease dos filhos vivos — lease perdido (outro nó assumiu) ⇒ mata o filho, o trabalho dele não vale;
   5. reserva jobs enquanto houver slot livre e lança cada um em SUBPROCESSO ISOLADO:
-     `systemd-run --user --scope --slice=jfn-jobs.slice -p MemoryMax=… -p CPUWeight=…` + `timeout`, quando o
+     `systemd-run --user --scope --slice=jfn-coletor.slice -p MemoryMax=… -p CPUWeight=…` + `timeout` (a fatia do
+     egress da O0.4: deploy/seguranca/nftables-egress.nft casa por cgroup v2 — job sem rede interna), quando o
      systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_AS), nice e `timeout`. Na reserva: só
      estágio LIBERADO (O9.0), slot transitório do yaml só para as rotinas dele (D1) e o ritmo da assinatura lido
      do PG (fluxo/ritmo.py; sem medição = porta fechada) somado ao guarda local.
@@ -76,7 +77,11 @@ def montar_comando(fase: str, entrada: Path, saida: Path, limites: tuple[str, in
     if shutil.which("timeout"):
         base = ["timeout", "-k", "10", str(tempo)] + base
     if isolamento == "systemd":
-        return ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-jobs.slice",
+        # Wants+After do jfn-egress: fatia que (re)nasce com este escopo só o executa depois de a regra nftables ser
+        # recarregada para o ID novo do cgroup (medido 24/11: sem isso, ms de janela com egress aberto). Onde a unit
+        # não existe (it-campo), Wants/After de unit ausente não bloqueiam.
+        return ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-coletor.slice",
+                "-p", "Wants=jfn-egress.service", "-p", "After=jfn-egress.service",
                 "-p", f"MemoryMax={mem}", "-p", f"CPUWeight={peso}", "--"] + base
     return base
 

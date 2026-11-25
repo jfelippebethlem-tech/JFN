@@ -5,7 +5,7 @@
 | **Estado** | Aceito (O1.7/O1.8 do plano mestre v2, 24/11/2026) |
 | **Plano** | `~/vault/refatoracao/PLANO-MESTRE-v2-esteira-unica.md` §3.2–§3.5 |
 | **Código** | `deploy/vm2/postgres/fluxo_001.sql` · `compliance_agent/fluxo/` · `compliance_agent/aplicacao/estagios/` |
-| **Units** | `deploy/systemd/jfn-fluxo@.service` · `deploy/systemd/jfn-jobs.slice` (instalação na O2) |
+| **Units** | `deploy/systemd/jfn-fluxo@.service` · `deploy/systemd/jfn-coletor.slice` (ex-jfn-jobs.slice; egress da O0.4 casa nela) · `deploy/systemd/jfn-egress.service` (instalação na O2) |
 
 ## 1. Contexto
 
@@ -38,7 +38,7 @@ Já existia uma fila correta em `compliance_agent/evidencias.py` (`public.jobs`:
    - NOTIFY `jfn_jobs` no INSERT em fila; autovacuum agressivo e `fillfactor=80` em `jobs`; `arquivar_jobs(dias)`
      move os `feito` antigos para `jobs_arquivo`.
 2. **Um supervisor por máquina (`jfn-fluxo@<no>`) que só escolhe.** Cada job roda em subprocesso isolado
-   (`systemd-run --user --scope --slice=jfn-jobs.slice -p MemoryMax -p CPUWeight` + `timeout`; sem systemd,
+   (`systemd-run --user --scope --slice=jfn-coletor.slice -p MemoryMax -p CPUWeight` + `timeout`; sem systemd,
    `prlimit` + nice + `timeout`). Catraca: o supervisor não importa `compliance_agent.aplicacao`.
 3. **Planejador eleito por `pg_try_advisory_lock(42)`** (lock de sessão: cai sozinho se o nó morrer).
 4. **Governador por PSI** (`/proc/pressure`), disco e swap — nunca por load average.

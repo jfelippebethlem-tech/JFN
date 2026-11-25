@@ -1,0 +1,27 @@
+[Unit]
+# Egress dos jobs do motor de fluxo (O0.4; ADR-008): carrega deploy/seguranca/nftables-egress.nft para a fatia
+# jfn-coletor.slice. Unit de USUÁRIO (nada em /etc): sobe no boot pelo linger (default.target) e toda vez que a
+# fatia sobe (a fatia tem Wants= deste serviço). PartOf= a fatia: fatia parada/religada ⇒ este serviço para e
+# volta junto — o nft guarda o ID (inode) do cgroup da carga, e ID velho = regra que não casa (falha ABERTA,
+# medido no ensaio_netns.sh --religar).
+# Precisa de `sudo -n` sem senha (o dono já tem NOPASSWD nas VMs da OCI — nada novo é concedido: quem escreve
+# no script já é root por sudo). Sem sudo (it-campo), falha e diz; não é instalada lá.
+# Instalar (depois do `egress.sh aplicar` + `confirmar` com o dono olhando):
+#   systemctl --user link ~/JFN/deploy/systemd/jfn-coletor.slice ~/JFN/deploy/systemd/jfn-egress.service
+#   systemctl --user daemon-reload && systemctl --user enable --now jfn-egress.service
+# VM-2: drop-in Environment=EGRESS_DIR=… apontando para a árvore de lá (ver ADR-008).
+# Desfazer: systemctl --user disable --now jfn-egress.service (o ExecStop remove a tabela).
+Description=JFN — egress restrito da fatia jfn-coletor (nftables por cgroup v2)
+PartOf=jfn-coletor.slice
+Requires=jfn-coletor.slice
+After=jfn-coletor.slice
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=EGRESS_DIR=%h/JFN/deploy/seguranca
+ExecStart=/usr/bin/sudo -n ${EGRESS_DIR}/egress.sh carregar
+ExecStop=/usr/bin/sudo -n ${EGRESS_DIR}/egress.sh desfazer
+
+[Install]
+WantedBy=default.target

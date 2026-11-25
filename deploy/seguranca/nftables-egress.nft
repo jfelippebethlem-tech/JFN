@@ -1,16 +1,23 @@
 #!/usr/sbin/nft -f
 # Egress dos COLETORES do JFN — plano mestre O0.4 (§3.11 "SSRF e saída de rede").
 #
-# NÃO carregar à mão: use deploy/seguranca/egress.sh (renderiza @UID_COLETOR@, confere com
+# NÃO carregar à mão: use deploy/seguranca/egress.sh (renderiza @CGROUP@/@NIVEL@, confere com
 # `nft -c`, aplica com AUTO-REVERSÃO em 120 s e só fica se alguém confirmar).
 #
-# Escopo: SÓ pacotes cujo socket pertence a um uid do conjunto `uids_coletor`. Tudo o mais
-# (sessão do dono, PG client, tailscaled, systemd-resolved, chrony, iSCSI do boot volume da OCI
-# em 169.254.0.2) passa intacto pela política `accept`.
+# Escopo (24/11, sem usuário novo): SÓ pacotes cujo socket foi criado por processo DENTRO da fatia
+# systemd de usuário jfn-coletor.slice (onde o motor de fluxo lança cada job com
+# `systemd-run --user --scope --slice=jfn-coletor.slice`). `socket cgroupv2 level N "<caminho>"`
+# compara o ancestral de nível N do cgroup do socket com o ID do cgroup da fatia — escopos filhos
+# (run-*.scope) casam; o mesmo uid ubuntu FORA da fatia (sessão do dono, painel, PG client,
+# tailscaled, systemd-resolved, chrony, iSCSI do boot volume da OCI em 169.254.0.2) passa intacto.
 #
-# ARMADILHA EVITADA: a regra é `meta skuid @uids_coletor jump coletor` (casa POSITIVO). A forma
-# `meta skuid != @set accept` seria fatal: pacote SEM socket (RST/ICMP do kernel, iSCSI do boot
-# volume) não casa nada, cairia no `jump` e teria 169.254.0.0/16 recusado — a VM perde o disco.
+# ARMADILHA 1 (evitada): a regra casa POSITIVO (`socket cgroupv2 ... jump coletor`). Uma forma
+# "!= ... accept" seria fatal: pacote SEM socket (RST/ICMP do kernel, iSCSI do boot volume) não casa
+# nada, cairia no `jump` e teria 169.254.0.0/16 recusado — a VM perde o disco.
+# ARMADILHA 2 (medida): o nft resolve o caminho para o ID (inode) do cgroup NA CARGA — cgroup
+# inexistente = "cgroupv2 path fails: No such file or directory"; fatia parada e religada = ID novo e
+# a regra deixa de casar (falha ABERTA). Por isso jfn-egress.service (unit de usuário, PartOf= da
+# fatia) recarrega a regra toda vez que a fatia sobe, e `egress.sh estado` confere o ID.
 #
 # DNS: os coletores perguntam ao stub 127.0.0.53/54 (systemd-resolved), que fala com 169.254.169.254
 # e 100.100.100.100 como uid systemd-resolve — por isso barrar 169.254/16 PARA O COLETOR não quebra DNS.
@@ -21,11 +28,6 @@ table inet jfn_egress
 delete table inet jfn_egress
 
 table inet jfn_egress {
-	set uids_coletor {
-		type uid
-		elements = { @UID_COLETOR@ }
-	}
-
 	# Alvos da Tailnet LIBERADOS ao coletor (IP . porta). Todo o resto de 100.64.0.0/10 é recusado.
 	#   100.74.228.51:5432  PG da VM-2 (dominio/brain) — o coletor da VM-1 grava lá
 	#   100.74.228.51:2222  túnel vm1↔vm2 (rsync/ssh das entregas)
@@ -48,7 +50,7 @@ table inet jfn_egress {
 
 	chain saida {
 		type filter hook output priority filter; policy accept;
-		meta skuid @uids_coletor jump coletor
+		socket cgroupv2 level @NIVEL@ "@CGROUP@" jump coletor
 	}
 
 	chain coletor {

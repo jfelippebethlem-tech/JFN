@@ -145,9 +145,10 @@ def plano_religar(g, pausas: list[str]) -> list[Passo]:
               efeito=f"{len(g.agenda_linhas())} linhas em fluxo.agenda, todas ativo=false",
               sql=["SELECT count(*), count(*) FILTER (WHERE ativo) FROM agenda"]),
         Passo("R2", "jfn-fluxo sobe nas 3 máquinas", cmds=[
-            ("vm1", "systemctl --user link ~/JFN/deploy/systemd/jfn-jobs.slice ~/JFN/deploy/systemd/jfn-fluxo@.service"
+            ("vm1", "systemctl --user link ~/JFN/deploy/systemd/jfn-coletor.slice ~/JFN/deploy/systemd/jfn-egress.service "
+                    "~/JFN/deploy/systemd/jfn-fluxo@.service"
                     " && systemctl --user daemon-reload && systemctl --user enable --now jfn-fluxo@vm1"),
-            ("vm2", "systemctl --user link ~/JFN-worker/deploy/systemd/jfn-jobs.slice "
+            ("vm2", "systemctl --user link ~/JFN-worker/deploy/systemd/jfn-coletor.slice ~/JFN-worker/deploy/systemd/jfn-egress.service "
                     "~/JFN-worker/deploy/systemd/jfn-fluxo@.service && systemctl --user daemon-reload "
                     "&& systemctl --user enable --now jfn-fluxo@vm2"),
             ("itcampo", "wsl -e bash -lc 'systemctl --user enable --now jfn-fluxo@itcampo'")],

@@ -24,10 +24,7 @@ OURO = [
     ("estatal_2022_mesmo_citando_14133", dict(contratante_estatal=True, lei_declarada_texto="Lei 14.133/2021",
                                               data_assinatura=D(2022, 5, 2)), R.L13303,
      "14.133 art. 1º §1º prevalece sobre a citação equivocada"),
-    # D3 (decisão delegada 24/11/2026): sem data e sem a 13.303 declarada não se afirma a 13.303 (art. 91 §3º)
-    ("estatal_sem_data", dict(contratante_estatal=True), R.INDETERMINADO, "13.303 art. 91 §3º (D3)"),
-    ("estatal_sem_data_declarou_13303", dict(contratante_estatal=True, lei_declarada_texto="Lei 13.303/2016, Art. 29, II"),
-     R.L13303, "lei declarada decide (D3)"),
+    ("estatal_sem_data", dict(contratante_estatal=True), R.L13303, "14.133 art. 1º §1º (ressalva: data ausente)"),
     ("estatal_2015", dict(contratante_estatal=True, data_edital=D(2015, 6, 1)), R.L8666,
      "13.303 art. 97 (vigência na publicação, DOU 1º.7.2016): antes disso a 8.666"),
     ("estatal_adaptacao_sem_lei", dict(contratante_estatal=True, data_edital=D(2017, 8, 1)), R.INDETERMINADO,

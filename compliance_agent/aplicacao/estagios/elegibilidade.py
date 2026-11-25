@@ -54,24 +54,18 @@ from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagi
 from compliance_agent.dominio.contrato_id import contrato_id
 from compliance_agent.dominio.pagamento import (NaturezaPagamento, OrigemExercicio, natureza_pagamento, ob_paga_sql,
                                                 origem_exercicio)
-from compliance_agent.dominio.regime import Regime, lei_declarada, regime_contrato
+from compliance_agent.dominio.regime import Regime, regime_contrato
 from compliance_agent.entidades_gov import eh_administracao_publica
 from compliance_agent.fluxo.fila import Resultado
 from compliance_agent.limites_dispensa import teto_dispensa
 from compliance_agent.pericia_contabil import situacao_devolucao
 from compliance_agent.siafe_gd import devolvido_por_ob
 
-VERSAO = "e9-sombra-4"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
+VERSAO = "e9-sombra-3"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
 # 3 (decisões do dono, 24/11/2026 noite — o53-paridade-fatia2.md): OB com GD sem valor apurado =
 #   `?:DEVOLUCAO_NAO_APURADA` nas exigências que dependem do valor LÍQUIDO (`valor_liquido`, nova, e `soma_art75`);
 #   OS/OSC (natureza 3xxx) = fornecedor com regime próprio, `I:REGIME_PROPRIO_MROSC` em `soma_art75` e
 #   `dispensa_valor`; RJPREV = `I:ENTE_PUBLICO` pela RAIZ do CNPJ (`ENTE_PUBLICO_POR_RAIZ`), nunca pelo nome
-# 4 (decisões delegadas, 24/11/2026 — ~/vault/refatoracao/decisoes-delegadas-20261124.md): E9-9 — os testes
-#   contábeis OB × NL exigem `universo`/`registro_liquido` (integridade do registro, Lei 4.320 art. 62, todo
-#   credor); E9-1/E9-2 — ente público e UG própria em `execucao` só são `I` com a natureza provada (folha,
-#   tributo, transferência, indenização), senão `?` (art. 141 da 14.133 não exclui contratado público); E9-5 —
-#   ordem cronológica (14.133 art. 141) exige `execucao_14133` (OS/OSC fora: Lei 13.019 art. 84 / Lei 9.637);
-#   D11 — a declaração da 13.303 por ≥ 50% das diretas da unidade é só indício: não decide regime nem teto
 RAIZ = Path(__file__).resolve().parents[3]
 SQL_SCHEMA = RAIZ / "deploy" / "vm2" / "postgres" / "dominio_001.sql"
 REGISTRO_DETECTORES = RAIZ / "config" / "qualidade_detectores.yaml"
@@ -87,7 +81,7 @@ UNIDADES_CONTRATO = ("contrato_tcerj", "compra_direta_tcerj", "contrato_siga", "
 UNIDADES = UNIDADES_OB + UNIDADES_CONTRATO
 NAO_MATERIALIZADAS = {"ne_siafe": "nota de empenho (ne_siafe/cge_ne_credor): a unidade NE entra com a coleta de NE "
                                   "por UG (O4.11); até lá o detector fica INDISPONÍVEL na E9"}
-EXIGES_OB = ("universo", "fornecedor", "execucao", "soma_art75", "valor_liquido", "registro_liquido", "execucao_14133")
+EXIGES_OB = ("universo", "fornecedor", "execucao", "soma_art75", "valor_liquido")
 EXIGES_CONTRATO = ("universo", "fornecedor", "regime", "dispensa_valor")
 
 # Tabelas BRUTAS de OB/contrato: o que define "domínio de contratação" no registro e o que a catraca Tier 1 procura.
@@ -155,7 +149,7 @@ DETECTORES: dict[str, dict] = {
     "intel.socio_servidor": {"ob_siafe": "fornecedor"},
     "conluio_participacao": {"ob_siafe": "fornecedor"},
     "ninho_sala": {"ob_siafe": "fornecedor"},
-    "ordem_cronologica": {"ob_siafe": "execucao_14133"},     # art. 141: contrato da 14.133 (E9-5)
+    "ordem_cronologica": {"ob_siafe": "execucao"},
     "pericia_contabil": {"ob_siafe": "execucao", "contrato_tcerj": "regime"},
     "vinculo_ob_contrato": {"ob_siafe": "execucao", "contrato_tcerj": "universo"},
     "rules.cnpj_abertura_recente_contrato": {"contrato_rules": "fornecedor"},
@@ -173,17 +167,16 @@ DETECTORES: dict[str, dict] = {
     "tools.porte_incompativel": {"ob_siafe": "fornecedor"},
     "orcamento.pg03_dea_recorrente": {"ob_siafe": "universo", "ne_siafe": "universo"},
     "orcamento.pg09_empenho_dezembro": {"ne_siafe": "universo"},
-    "orcamento.pg10_ordem_cronologica": {"ob_siafe": "execucao_14133"},
-    # E9-9: integridade do registro contábil (Lei 4.320 art. 62; RJ Lei 287/1979 arts. 83 e 93) vale para TODO credor
-    "a_portar.lex_fatos.c_ob_antes_da_nl": {"ob_siafe": "universo"},
-    "a_portar.lex_fatos.c_pago_maior_que_nl": {"ob_siafe": "registro_liquido"},
+    "orcamento.pg10_ordem_cronologica": {"ob_siafe": "execucao"},
+    "a_portar.lex_fatos.c_ob_antes_da_nl": {"ob_siafe": "execucao"},
+    "a_portar.lex_fatos.c_pago_maior_que_nl": {"ob_siafe": "valor_liquido"},
     "a_portar.p4_obra_e_lei_8666_tcerj": {"compra_direta_tcerj": "dispensa_valor"},
     "a_portar.p5_dedup_por_processo": {"compra_direta_tcerj": "fornecedor"},
     # E10 (O5.3 fatia 1): as quatro regras a_portar acima, portadas como detectores genéricos (mesma exigência)
     "e10.p4_fracionamento_objeto": {"compra_direta_tcerj": "dispensa_valor"},
     "e10.p5_emergencia_recorrente": {"compra_direta_tcerj": "fornecedor"},
-    "e10.ob_paga_acima_liquidado": {"ob_siafe": "registro_liquido"},   # E9-9: todo credor, pelo valor líquido
-    "e10.ob_antes_da_liquidacao": {"ob_siafe": "universo"},            # E9-9: todo credor
+    "e10.ob_paga_acima_liquidado": {"ob_siafe": "valor_liquido"},   # soma de OB × NL: depende do valor líquido
+    "e10.ob_antes_da_liquidacao": {"ob_siafe": "execucao"},
     # E10 (O5.3 fatia 2): mesma exigência da regra de origem (couto.D*, fracionamento_siafe), sem a janela — a
     # data de corte é parâmetro do detector (lente Couto = governo_couto.INICIO)
     "e10.candidato_p4_siafe": {"ob_siafe": "soma_art75"},
@@ -303,8 +296,7 @@ def classe_credor(doc, natureza_por_raiz: dict) -> tuple[str, str | None, str | 
     bruto = str(doc or "").strip()
     d = re.sub(r"\D", "", bruto)
     if len(d) == 6 and bruto == d:
-        return "UG_PROPRIA", None, None        # credor = código de UG do SIAFE: unidade do próprio Estado (repasse,
-        #   contribuição previdenciária ou serviço intraorçamentário, modalidade 91 — PRODERJ, Santa Cabrini: E9-2)
+        return "UG_PROPRIA", None, None        # credor = código de UG do SIAFE: repasse entre unidades do Estado
     if re.fullmatch(r"[A-Z]{2}\d{7}", bruto):
         return "INSCRICAO_GENERICA", None, None  # CG/RP/PP…: inscrição genérica do SIAFE (folha, lista de credores)
     if len(d) == 14:
@@ -366,25 +358,14 @@ def _ob_fornecedor(f: Fatos) -> str:
 
 
 def _ob_execucao(f: Fatos) -> str:
-    """Pagamento de EXECUÇÃO de contrato (duplicidade de competência, ordem cronológica, ISS, devido × pago).
-    Ente público / UG própria (E9-1/E9-2, decisão delegada 24/11/2026): o art. 141 da 14.133 não exclui o contratado
-    público (art. 75 IX) — só sai com a natureza PROVADA de não contrato (folha, tributo, transferência, indenização);
-    sem ela, INDETERMINADO, nunca inelegível."""
+    """Pagamento de EXECUÇÃO de contrato (duplicidade de competência, ordem cronológica, ISS, devido × pago)."""
     if f.unidade == "ob_tfe" and not f.tem_par_siafe:
         return "?:TFE_SEM_PAR_SIAFE"
     if f.paga is False:
         return "I:NAO_PAGA"
-    nat = f.natureza_pagamento
     if f.credor_classe in ("ENTE_PUBLICO", "UG_PROPRIA"):
-        if nat == NaturezaPagamento.FOLHA_BENEFICIO.value:
-            return "I:FOLHA_BENEFICIO"
-        if _tributo_ou_divida(f):
-            return "I:TRIBUTO_DIVIDA"
-        if nat in (NaturezaPagamento.TRANSFERENCIA.value, NaturezaPagamento.INDENIZACAO.value):
-            return "I:" + nat
-        if nat == NaturezaPagamento.CONTRATACAO_NOVA.value:
-            return "I:SEM_CONTRATO"
-        return "?:" + f.credor_classe
+        return "I:" + f.credor_classe
+    nat = f.natureza_pagamento
     if nat == NaturezaPagamento.FOLHA_BENEFICIO.value:
         return "I:FOLHA_BENEFICIO"
     if _tributo_ou_divida(f):
@@ -439,24 +420,6 @@ def _ob_valor_liquido(f: Fatos) -> str:
     return v
 
 
-def _ob_registro_liquido(f: Fatos) -> str:
-    """Integridade do REGISTRO contábil OB × NL pelo valor líquido (E9-9, decisão delegada 24/11/2026): a regra
-    "pagamento só após a regular liquidação" (Lei 4.320 art. 62; Lei RJ 287/1979 arts. 83 e 93) vale para TODA
-    despesa orçamentária, qualquer que seja o credor — ente público, UG, folha e transferência incluídos. Só a OB
-    com Guia de Devolução sem valor apurado fica INDETERMINADA (decisão do dono 1: o líquido não se infla nem se
-    zera). O peso do achado (fornecedor × repasse) é do consumidor, não da elegibilidade."""
-    return "?:DEVOLUCAO_NAO_APURADA" if f.devolucao == "nao_apurada" else "E"
-
-
-def _ob_execucao_14133(f: Fatos) -> str:
-    """Execução de contrato da 14.133 (ordem cronológica, art. 141): a de execução, e OS/OSC fora — contrato de
-    gestão (Lei 9.637) e parceria MROSC (Lei 13.019 art. 84) não são contrato de fornecimento/serviço/obra (E9-5)."""
-    v = _ob_execucao(f)
-    if v == "E" and f.credor_classe == "OS_OSC":
-        return "I:REGIME_PROPRIO_MROSC"
-    return v
-
-
 def _ct_universo(f: Fatos) -> str:
     return "E"
 
@@ -500,8 +463,7 @@ def _ct_dispensa_valor(f: Fatos) -> str:
 
 
 _AVALIA_OB = {"universo": _ob_universo, "fornecedor": _ob_fornecedor, "execucao": _ob_execucao,
-              "soma_art75": _ob_soma_art75, "valor_liquido": _ob_valor_liquido,
-              "registro_liquido": _ob_registro_liquido, "execucao_14133": _ob_execucao_14133}
+              "soma_art75": _ob_soma_art75, "valor_liquido": _ob_valor_liquido}
 _AVALIA_CT = {"universo": _ct_universo, "fornecedor": _ct_fornecedor, "regime": _ct_regime,
               "dispensa_valor": _ct_dispensa_valor}
 
@@ -683,17 +645,11 @@ def _fatos_ob_tfe(r, q: Consultas) -> Fatos:
 
 
 def _regime(q: Consultas, unidade_txt, lei_txt, d_ass, dispensa) -> tuple[str, str, bool]:
-    """D11 (decisão delegada 24/11/2026): estatal é NATUREZA JURÍDICA (13.303 arts. 3º e 4º), não declaração. A
-    unidade que cita a 13.303 em ≥ 50% das diretas é só INDÍCIO: no contrato que não declara a 13.303 o regime fica
-    INDETERMINADO (a autarquia que cita a 13.303 por engano mudaria o teto); no que a declara, decide a lei declarada.
-    O indício nunca liga `contratante_estatal` nem o teto de estatal."""
     est = (unidade_txt or "").strip() in q.estatais
-    if est and "13303" not in lei_declarada(lei_txt):
-        return (Regime.INDETERMINADO.value, "unidade com indício de estatal (≥ 50% das diretas citam a 13.303) sem a "
-                "natureza jurídica da UG na base e sem a 13.303 declarada neste ato — D11", False)
-    dec = regime_contrato(lei_declarada_texto=lei_txt, data_assinatura=d_ass, dispensa_por_valor=dispensa)
-    fonte = ("[indício de estatal: a unidade declara a 13.303 — D11] " if est else "") + dec.fonte_da_decisao
-    return dec.regime.value, fonte, False
+    dec = regime_contrato(contratante_estatal=True if est else None, lei_declarada_texto=lei_txt,
+                          data_assinatura=d_ass, dispensa_por_valor=dispensa)
+    fonte = ("[estatal inferida pela declaração da 13.303 — D11 pendente] " if est else "") + dec.fonte_da_decisao
+    return dec.regime.value, fonte, est
 
 
 def _teto(regime: str, inciso: str | None, ano, d_fato, estatal: bool) -> tuple[float | None, str]:

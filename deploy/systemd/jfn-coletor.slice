@@ -1,0 +1,18 @@
+[Unit]
+# Fatia onde rodam TODOS os jobs do motor de fluxo (escopos `systemd-run --user --scope --slice=jfn-coletor.slice`)
+# e onde o egress da O0.4 casa: deploy/seguranca/nftables-egress.nft filtra por `socket cgroupv2` o caminho
+# user.slice/user-<uid>.slice/user@<uid>.service/jfn.slice/jfn-coletor.slice (o traço do nome = filha de jfn.slice).
+# Ex-jfn-jobs.slice (renomeada em 24/11 para o egress casar por cgroup em vez de um usuário novo).
+# Peso baixo diante do painel (jfn.service CPUWeight=1000) e do PostgreSQL na VM-2 (§3.4).
+# MemoryMax = RAM − 3 GB por máquina: 11,9 GB nas VMs ⇒ 8.9G; it-campo (WSL, ~24 GB) ⇒ ajustar por drop-in
+# (`systemctl --user edit jfn-coletor.slice`) na O1.10.
+# ATENÇÃO: o nftables resolve o caminho para o ID do cgroup NA CARGA da regra. Fatia parada e religada = ID novo e a
+# regra deixa de casar (falha ABERTA). Por isso esta fatia puxa jfn-egress.service (recarrega a regra depois que o
+# cgroup existe) e esse serviço é PartOf= dela (para/reinicia junto).
+Description=JFN — fatia dos jobs do motor de fluxo (egress restrito)
+Wants=jfn-egress.service
+
+[Slice]
+CPUWeight=50
+IOWeight=50
+MemoryMax=8.9G

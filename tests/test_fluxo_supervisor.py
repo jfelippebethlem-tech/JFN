@@ -37,8 +37,9 @@ def test_comando_isolado_com_systemd_e_sem():
     lim = S.limites_do_job(["cpu_leve", "cpu_pesado"])
     assert lim == ("3G", 30, 3600)                                         # o mais folgado de memória e tempo
     c = S.montar_comando("rodar", Path("/t/e.json"), Path("/t/s.json"), lim, "systemd", python="/py")
-    assert c[:5] == ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-jobs.slice"]
+    assert c[:5] == ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-coletor.slice"]
     assert "MemoryMax=3G" in c and "CPUWeight=30" in c
+    assert "Wants=jfn-egress.service" in c and "After=jfn-egress.service" in c     # O0.4: regra antes do job
     assert c[-6:] == ["/py", "-m", "compliance_agent.fluxo.executar", "rodar", "/t/e.json", "/t/s.json"]
     s = S.montar_comando("rodar", Path("/t/e.json"), Path("/t/s.json"), lim, "subprocesso", python="/py")
     assert "systemd-run" not in s and s[-6] == "/py"
