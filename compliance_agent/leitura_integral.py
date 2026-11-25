@@ -96,6 +96,14 @@ def _ocr_confirmados() -> set:
     return _CONF
 
 
+def _ocr_ok(pasta: Path, d: dict) -> bool:
+    """O documento de OCR está confirmado? O texto do estágio traz a decisão do E6 (`ocr_confirmado`, de
+    `ocr_conferencia` para o mesmo texto — fatos.acervo_do_estagio); o do legado, o registro `sei/ocr_confirmacao`."""
+    if "ocr_confirmado" in d:
+        return d["ocr_confirmado"] is True
+    return (pasta.name, d["i"]) in _ocr_confirmados()
+
+
 def _eh_ocr(d: dict) -> bool:
     return bool(d.get("ocr") or d.get("ocr_motor"))
 
@@ -187,7 +195,7 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
             soma["duplicado"] += n
             listas["duplicados"].append(d["doc_id"])
             continue
-        if d["ocr"] and (pasta.name, d["i"]) not in _ocr_confirmados():
+        if d["ocr"] and not _ocr_ok(pasta, d):
             soma["ocr_pendente"] += n
             listas["ocr_pendente"].append(d["doc_id"])
             continue

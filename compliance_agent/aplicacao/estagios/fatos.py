@@ -228,29 +228,169 @@ class Preparo:
     fatias: list[Fatia] = field(default_factory=list)
     cobertura: dict = field(default_factory=dict)
     pecas_nao_lidas: list[dict] = field(default_factory=list)
+    fonte_texto: str = ""
 
 
 def pasta_do(processo: str) -> Path:
     return EV.ARQUIVO / processo.replace("SEI-", "").replace("/", "_")
 
 
+# ── 2a. a FONTE do texto e a PORTA: a saída do E4/E5 e a confirmação do E6 (O8.5, frente B1) ─────────────────────
+# O ensaio O8.5 (25/11/2026) mediu duas quebras: a porta lia a confirmação de OCR do LEGADO (`sei/ocr_confirmacao`,
+# `data/sei_ocr_confirmacao.jsonl`) e barrou 7 dos 9 processos que o E6 tinha conferido; e o texto vinha de
+# `data/sei_arquivo` (legado), não do E4/E5. Agora, quando o PG da captura tem o processo (documentos do E2/E3), o
+# texto é o que o E4 (nativo) e o E5 (OCR) GRAVARAM — `transformacao` + lateral conferido pelo sha256 — e o OCR só
+# entra com `ocr_conferencia.estado = 'confirmado'` do E6 para o MESMO texto (processo, doc_id, sha256 da saída do
+# E5). `a_conferir`, sem conferência, conferência de outra versão do texto ou página escaneada sem saída do E5: a
+# porta barra o processo e declara cada documento. O legado só entra quando o estágio não tem saída para o processo
+# (declarado em `fonte_texto`, e contado no efeito).
+FONTE_ESTAGIO = "estagio"
+FONTE_LEGADO = "legado"
+
+
+@dataclass
+class Acervo:
+    fonte: str                                   # FONTE_ESTAGIO | "legado: <por quê>"
+    fora_da_porta: str | None
+    docs: list[dict] = field(default_factory=list)          # formato de `LI._docs` (+ `ocr_confirmado` no estágio)
+    pendencias: list[dict] = field(default_factory=list)    # [{doc_id, motivo}] do que barrou a porta
+
+
+def _caminho_gravado(rel: str | None) -> Path | None:
+    if not rel:
+        return None
+    p = Path(rel)
+    return p if p.is_absolute() else RAIZ / p
+
+
+def _texto_gravado(tr: dict, etapa: str) -> tuple[str | None, str]:
+    """(texto, '') do lateral que o estágio GRAVOU na `transformacao`, conferido: sha256 do arquivo = o gravado e
+    sha256 do texto composto = `saida_sha`. Senão (None, motivo) — nunca outro texto no lugar."""
+    from compliance_agent.aplicacao.estagios import texto as T
+    par = tr.get("parametros") or {}
+    p = _caminho_gravado(par.get("lateral"))
+    lat = T.ler_lateral(p) if p else None
+    if lat is None:
+        return None, f"lateral do {etapa} ausente ou ilegível"
+    if lat[1] != par.get("lateral_sha"):
+        return None, f"lateral do {etapa} não confere com o sha256 gravado no PG"
+    if etapa == "E5":
+        if lat[0].get("compostas") is None:
+            return None, "lateral do E5 sem as páginas compostas"
+        texto = T.QUEBRA.join(lat[0]["compostas"])
+    else:
+        texto = T.texto_composto(lat[0])
+    if T.sha256_texto(texto) != tr.get("saida_sha"):
+        return None, f"texto do {etapa} não confere com a saída gravada no PG"
+    from compliance_agent.fluxo import leituras
+    leituras.anotar("texto", _sha(texto.strip()), documento=str(p.name))
+    return texto, ""
+
+
+def acervo_do_estagio(con_cap, processo: str) -> Acervo | None:
+    """O processo pela saída do E3/E4/E5/E6 no PG da captura. None = o estágio não tem o processo (volta ao legado).
+    A decisão da porta usa SÓ o PG; os laterais (o texto) só são lidos quando a porta abre."""
+    from compliance_agent.aplicacao.estagios import texto as T
+    docs = con_cap.execute("SELECT doc_id, posicao, titulo FROM documentos WHERE processo = %s ORDER BY posicao, "
+                           "doc_id", (processo,)).fetchall()
+    if not docs:
+        return None
+    e3 = con_cap.execute("SELECT detalhe->'omitidos' FROM aquisicao WHERE fonte = 'sei:e3' AND detalhe->>'processo' "
+                         "= %s ORDER BY concluida_em DESC NULLS LAST, criada_em DESC LIMIT 1", (processo,)).fetchone()
+    if e3 is None:
+        return Acervo(FONTE_ESTAGIO, "captura não declarada completa", pendencias=[
+            {"doc_id": "*", "motivo": "sem aquisição do E3 para o processo"}])
+    pend: list[dict] = [{"doc_id": str(o.get("doc_id") or o.get("i")), "motivo": "omitido na captura do E3"}
+                        for o in (e3[0] or []) if isinstance(o, dict)]
+    alvos = []                                   # (doc_id, posicao, titulo, e4, e5, ocr, confirmado)
+    for doc_id, pos, titulo in docs:
+        b = con_cap.execute("SELECT sha256 FROM versoes WHERE processo = %s AND doc_id = %s AND hash_de = 'binario' "
+                            "ORDER BY vista_em DESC, sha256 LIMIT 1", (processo, doc_id)).fetchone()
+        if b is None:
+            pend.append({"doc_id": doc_id, "motivo": "sem versão binária do E3"})
+            continue
+        e4 = T.transformacao_de(con_cap, processo, doc_id, T.TIPO_TRANSFORMACAO, b[0])
+        e5 = T.transformacao_de(con_cap, processo, doc_id, "ocr", b[0])
+        par4 = (e4 or {}).get("parametros") or {}
+        escaneada = any(len(x) > 1 and x[1] == T.ESCANEADA for x in par4.get("paginas") or [])
+        ocr, conf = e5 is not None or escaneada, False
+        if e5 is not None:
+            r = con_cap.execute("SELECT estado FROM ocr_conferencia WHERE processo = %s AND doc_id = %s AND "
+                                "texto_sha = %s", (processo, doc_id, e5["saida_sha"])).fetchone()
+            conf = r is not None and r[0] == "confirmado"
+            if not conf:
+                pend.append({"doc_id": doc_id, "motivo": "OCR ainda não confirmado pelo E6: " + (
+                    f"conferência '{r[0]}'" if r else "sem conferência do E6 para este texto")})
+        elif escaneada:
+            pend.append({"doc_id": doc_id, "motivo": "OCR ainda não confirmado: página escaneada sem saída do E5"})
+        elif e4 is None:
+            pend.append({"doc_id": doc_id, "motivo": "sem texto do E4"})
+        elif par4.get("perfil") == T.INVALIDA:
+            pend.append({"doc_id": doc_id, "motivo": "texto inválido no E4 (pede recaptura)"})
+        alvos.append((doc_id, pos, titulo, e4, e5, ocr, conf))
+    if any(m["motivo"].startswith(("omitido", "sem versão binária")) for m in pend):
+        return Acervo(FONTE_ESTAGIO, "documentos faltando na captura", pendencias=pend)
+    if any(m["motivo"].startswith("OCR") for m in pend):
+        return Acervo(FONTE_ESTAGIO, "documento de OCR ainda não confirmado", pendencias=pend)
+    if pend:
+        return Acervo(FONTE_ESTAGIO, "documento sem texto", pendencias=pend)
+    out, quebra = [], []
+    for doc_id, pos, titulo, e4, e5, ocr, conf in alvos:
+        texto, motivo = _texto_gravado(e5, "E5") if e5 is not None else _texto_gravado(e4, "E4")
+        if texto is None:
+            quebra.append({"doc_id": doc_id, "motivo": motivo})
+            continue
+        # o MESMO leitor do piloto (`acervo_texto.ler`): fim de linha universal (o `read_text` do legado troca \r e
+        # \r\n por \n) e `sem_etiqueta` (o PDF do SEI abre com o rótulo "[<título>]"). Medido no O8.5 (rb1): sem
+        # isso 121 de 338 textos do E4 diferiam do que o leitor antigo leria (105 pelo rótulo, 16 pelo \r)
+        from compliance_agent.sei.acervo_texto import sem_etiqueta
+        texto = sem_etiqueta(texto.replace("\r\n", "\n").replace("\r", "\n"), str(titulo or "")).strip()
+        if not texto:
+            pend.append({"doc_id": doc_id, "motivo": "documento sem texto (E4: " + str(
+                ((e4 or {}).get("parametros") or {}).get("perfil") or "?") + ")"})
+            continue
+        out.append({"doc_id": doc_id, "titulo": str(titulo or "").strip(), "texto": texto, "ocr": ocr,
+                    "ocr_confirmado": conf, "i": str(pos), "sha": _sha(texto)})
+    if quebra:
+        return Acervo(FONTE_ESTAGIO, "texto do estágio não confere com o PG", out, quebra)
+    if pend:
+        return Acervo(FONTE_ESTAGIO, "documento sem texto", out, pend)
+    return Acervo(FONTE_ESTAGIO, None, out)
+
+
+def acervo(processo: str, con_cap=None) -> Acervo:
+    """A fonte única do texto do E8: o estágio (E4/E5 + E6) quando o PG da captura tem o processo; senão o legado
+    (`data/sei_arquivo` + `LI.portao`), DECLARADO em `fonte`."""
+    if con_cap is not None:
+        a = acervo_do_estagio(con_cap, processo)
+        if a is not None:
+            return a
+        por_que = "sem saída do E2–E5 no PG para o processo"
+    else:
+        por_que = "sem conexão com o PG da captura"
+    fonte = f"{FONTE_LEGADO}: {por_que}"
+    pasta = pasta_do(processo)
+    if not (pasta / "manifest.json").exists():
+        return Acervo(fonte, "sem acervo capturado")
+    ok, motivo = LI.portao(pasta)
+    return Acervo(fonte, None, LI._docs(pasta)) if ok else Acervo(fonte, motivo)
+
+
 def preparar(processo: str, ja_lidos: set[str], tabelas_lidas: set[str], *, alvo: int = ALVO_CHARS,
-             prompt_version: str = PROMPT_VERSION, modelo: str = MODELO) -> Preparo:
-    """Tudo o que se sabe ANTES de chamar o modelo. Determinístico: mesmo acervo ⇒ mesmas fatias e mesmas chaves."""
+             prompt_version: str = PROMPT_VERSION, modelo: str = MODELO, con_cap=None) -> Preparo:
+    """Tudo o que se sabe ANTES de chamar o modelo. Determinístico: mesmo acervo ⇒ mesmas fatias e mesmas chaves.
+    `con_cap`: o PG da captura (texto do E4/E5 e porta pelo E6); sem ele, o legado (declarado em `fonte_texto`)."""
     pasta = pasta_do(processo)
     p = Preparo(processo=processo, pasta=pasta)
-    if not (pasta / "manifest.json").exists():
-        p.fora_da_porta = "sem acervo capturado"
-    else:
-        ok, motivo = LI.portao(pasta)
-        p.fora_da_porta = None if ok else motivo
+    ac = acervo(processo, con_cap)
+    p.fora_da_porta, p.fonte_texto = ac.fora_da_porta, ac.fonte
     if p.fora_da_porta:
         p.texto_sha = _sha(f"{FORA_DA_PORTA}:{p.fora_da_porta}")
         p.chave = chave_processo(processo, p.texto_sha, prompt_version, modelo)
-        p.pecas_nao_lidas = [{"doc_id": "*", "motivo": p.fora_da_porta}]
+        p.pecas_nao_lidas = ac.pendencias or [{"doc_id": "*", "motivo": p.fora_da_porta}]
         p.cobertura = {"chars_existentes": None, "chars_enviados": 0, "fracao": 0.0, "leitura": FORA_DA_PORTA}
         return p
-    lidos = LI._docs(pasta)                      # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
+    lidos = ac.docs                              # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
     originais = {d["doc_id"]: d for d in lidos}
     brutas, cob = LI.fatiar(pasta, alvo=alvo, sobreposicao=SOBREPOSICAO, ja_lidos=ja_lidos,
                             tabelas_lidas=tabelas_lidas, docs=lidos)
@@ -425,10 +565,11 @@ def leitor_assinatura(con_fluxo=None) -> Leitor:
 
 
 # ══ 5. o processo inteiro (handler) e a conferência (efeito) ═══════════════════════════════════════════════════
-def ler_processo(con, processo: str, leitor: Leitor, via: str = "assinatura") -> dict:
-    p = preparar(processo, ja_lidos(con), tabelas_lidas(con))
+def ler_processo(con, processo: str, leitor: Leitor, via: str = "assinatura", con_cap=None) -> dict:
+    p = preparar(processo, ja_lidos(con), tabelas_lidas(con), con_cap=con_cap)
     base = {"processo": processo, "chave": p.chave, "versao": versao_chave(), "estagio_versao": VERSAO,
-            "fatias": [f.chave for f in p.fatias], "fatias_lidas_agora": 0, "fatos_gravados": 0}
+            "fatias": [f.chave for f in p.fatias], "fatias_lidas_agora": 0, "fatos_gravados": 0,
+            "fonte_texto": p.fonte_texto}
     if p.fora_da_porta:
         return {**base, **concluir(con, p, via), "fora_da_porta": p.fora_da_porta, "ja_lido": False}
     if leitura_concluida(con, processo, p.chave):
@@ -455,8 +596,9 @@ def ler_processo(con, processo: str, leitor: Leitor, via: str = "assinatura") ->
             "fatias_invalidas": [f.chave for f in invalidas]}
 
 
-def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO) -> dict:
-    """Conferência INDEPENDENTE do que `ler_processo` declarou (lê o PG e o acervo, não a palavra do handler)."""
+def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO, con_cap=None) -> dict:
+    """Conferência INDEPENDENTE do que `ler_processo` declarou (lê o PG e o acervo, não a palavra do handler). O
+    texto é relido da MESMA fonte declarada (`fonte_texto`): saída do E4/E5 (`con_cap`) ou o legado."""
     proc, chave = efeito.get("processo"), efeito.get("chave")
     r = con.execute("SELECT leitura FROM leituras WHERE processo = %s AND estagio = %s AND versao = %s AND chave = %s",
                     (proc, ESTAGIO_NOME, versao_chave(), chave)).fetchone()
@@ -469,7 +611,16 @@ def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO) -> dict:
     linhas = con.execute("SELECT id, doc_id, doc_sha, inicio, fim, citacao FROM fatos WHERE chave = ANY(%s) "
                          "AND estado = %s", (fatias, VERIFICADO)).fetchall() if fatias else []
     sorteio = random.Random(chave).sample(linhas, min(amostra, len(linhas)))
-    docs = {d["doc_id"]: d for d in LI._docs(pasta_do(proc))} if sorteio else {}
+    docs = {}
+    if sorteio:
+        if efeito.get("fonte_texto") == FONTE_ESTAGIO:
+            if con_cap is None:
+                raise ErroPermanente(f"{proc}: efeito declara o texto do estágio e a conferência não tem o PG da "
+                                     "captura")
+            ac = acervo_do_estagio(con_cap, proc)
+            docs = {d["doc_id"]: d for d in (ac.docs if ac is not None else [])}
+        else:
+            docs = {d["doc_id"]: d for d in LI._docs(pasta_do(proc))}
     for fid, doc, sha, ini, fim, cit in sorteio:
         d = docs.get(doc)
         if d is None or d["sha"] != sha or d["texto"][ini:fim] != cit:
@@ -493,16 +644,27 @@ def _payload(payload: dict) -> str:
     return proc
 
 
+def _conectar_captura(payload: dict):
+    """O PG da captura (E2–E7: `documentos`, `versoes`, `transformacao`, `ocr_conferencia`) — o esquema vem de
+    `JFN_CAPTURA_ESQUEMA` (ou `payload.esquema_captura`), o mesmo DSN dos fatos."""
+    from compliance_agent.aplicacao.estagios import texto as T
+    return T.conectar(payload.get("dsn"), payload.get("esquema_captura"))
+
+
 def _handler(payload: dict, ctx: Contexto) -> Resultado:
     processo = _payload(payload)
     pg = conectar(payload.get("dsn"), payload.get("esquema"))
     try:
         from compliance_agent.fluxo import fila
-        cf = fila.conectar()
+        cap = _conectar_captura(payload)
         try:
-            r = ler_processo(pg, processo, leitor_assinatura(cf), via="assinatura")
+            cf = fila.conectar()
+            try:
+                r = ler_processo(pg, processo, leitor_assinatura(cf), via="assinatura", con_cap=cap)
+            finally:
+                cf.close()
         finally:
-            cf.close()
+            cap.close()
     finally:
         pg.close()
     novos = r.get("fatos_gravados") and r.get("fatias_lidas_agora")
@@ -512,7 +674,11 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
 def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     pg = conectar(payload.get("dsn"), payload.get("esquema"))
     try:
-        c = conferir(pg, resultado.efeito)
+        cap = _conectar_captura(payload)
+        try:
+            c = conferir(pg, resultado.efeito, con_cap=cap)
+        finally:
+            cap.close()
     finally:
         pg.close()
     resultado.efeito["conferencia"] = c
