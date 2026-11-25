@@ -96,7 +96,7 @@ def _executor_gpu():
                 from rapidocr import RapidOCR
                 from rapidocr.utils.typings import LangDet, LangRec, ModelType, OCRVersion
                 onnxruntime.preload_dlls()
-                mem = int(float(os.environ.get("JFN_GPU_MEM_GB", "2")) * (1 << 30))
+                mem = int(float(os.environ.get("JFN_GPU_MEM_GB", "3")) * (1 << 30))
                 self._eng = RapidOCR(params={
                     "Det.ocr_version": OCRVersion("PP-OCRv5"), "Det.model_type": ModelType("mobile"),
                     "Det.lang_type": LangDet("ch"), "Rec.ocr_version": OCRVersion("PP-OCRv5"),
@@ -108,7 +108,12 @@ def _executor_gpu():
                     "EngineConfig.onnxruntime.cuda_ep_cfg.cudnn_conv_algo_search": "HEURISTIC",
                     "EngineConfig.onnxruntime.intra_op_num_threads": 2,
                     "EngineConfig.onnxruntime.inter_op_num_threads": 1})
-            return super().ler_img(img)
+            try:
+                return super().ler_img(img)
+            except Exception as e:                       # noqa: BLE001 — o onnxruntime só tem a classe genérica `Fail`
+                if "BFCArena" in str(e) or "memory" in str(e).lower():
+                    raise O.ErroInferencia(f"GPU sem memória na página ({img.shape[1]}x{img.shape[0]})") from e
+                raise
     return ExecutorRapidGPU()
 
 
@@ -133,11 +138,12 @@ class _PorPagina:
 
 
 class _GuardaVRAM:
-    """A GPU do it-campo é dividida com o Voicebox (outro agente): fica sempre `LIVRE_GB` livre. Antes de carregar o
-    modelo, espera ter `LIVRE_GB` + o que este processo vai ocupar; depois, se OUTRO processo subiu na GPU e a folga
-    caiu abaixo de `LIVRE_GB`, este processo SAI (devolve a VRAM) — recua, nunca disputa."""
+    """A GPU do it-campo é dividida com o Voicebox (outro agente), que precisa de `LIVRE_GB` livres quando carregado.
+    Carrega o modelo só com a GPU ociosa ou, com alguém nela, se sobrarem `LIVRE_GB` depois; carregado, se OUTRO
+    processo subiu na GPU e a folga caiu abaixo de `LIVRE_GB`, este processo SAI (devolve a VRAM) — recua, nunca
+    disputa."""
     LIVRE_GB = float(os.environ.get("JFN_GPU_LIVRE_GB", "4"))
-    PROPRIO_GB = 3.2                                             # medido: arena de 2 GB + contexto CUDA ≈ 3,0 GB
+    PROPRIO_GB = float(os.environ.get("JFN_GPU_MEM_GB", "3")) + 1.2   # arena + contexto CUDA (medido: 2 GB ⇒ 3,0 GB)
 
     def __init__(self):
         self.base = None                                         # VRAM usada antes de este processo carregar
@@ -152,7 +158,8 @@ class _GuardaVRAM:
     def antes_do_documento(self) -> None:
         usado, total = self._uso()
         if self.base is None:
-            while total - usado < self.LIVRE_GB + self.PROPRIO_GB:
+            # carrega com a GPU ociosa (ninguém nela) ou, com alguém nela, se ainda sobrar LIVRE_GB depois de carregar
+            while usado > 0.5 and total - usado < self.LIVRE_GB + self.PROPRIO_GB:
                 time.sleep(60)
                 usado, total = self._uso()
             self.base = usado
@@ -184,6 +191,8 @@ def _feitos(d: Path) -> tuple[set, set]:
     hds, shas = set(), set()
     for arq in (d / "resultados").glob("*.jsonl"):
         for r in B._jl(arq):
+            if str(r.get("erro") or "").startswith("ErroInferencia"):
+                continue                                 # falha do motor (não do PDF): a próxima subida tenta de novo
             hds.add(r["hd"])
             if r.get("entrada_sha") and not r.get("erro"):
                 shas.add(r["entrada_sha"])

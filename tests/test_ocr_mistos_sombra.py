@@ -89,7 +89,7 @@ def test_governador_le_o_limite_e_sem_arquivo_libera_todos(tmp_path):
 
 def test_gpu_espera_folga_para_carregar_e_recua_quando_outro_sobe(monkeypatch):
     g = S._GuardaVRAM()
-    leituras = iter([(4.1, 8.0), (0.1, 8.0), (3.1, 8.0), (7.2, 8.0)])     # Voicebox; descarregou; eu; Voicebox de volta
+    leituras = iter([(4.1, 8.0), (0.1, 8.0), (4.0, 8.0), (8.0, 8.0)])     # Voicebox; descarregou; eu; Voicebox de volta
     monkeypatch.setattr(S._GuardaVRAM, "_uso", staticmethod(lambda: next(leituras)))
     monkeypatch.setattr(S.time, "sleep", lambda s: None)
     g.antes_do_documento()                       # esperou a folga (4,1 GB ocupados ⇒ não carrega)
