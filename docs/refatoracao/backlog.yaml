@@ -35,7 +35,7 @@ itens:
   - {id: O3.1, dep: [O1.7], maq: vm2, estado: feito, nota: "63e18bd2: 16.594 processos/595.092 docs/586.311 versões no PG; paridade 100%", titulo: "Carga dos 12,6 mil manifestos (identidade única)"}
   - {id: O3.2, dep: [O3.1], maq: vm2, estado: feito, nota: "63e18bd2: aquisicao(legado) + transformacao + hash_de", titulo: "aquisicao + transformacao"}
   - {id: O3.3, dep: [O3.1], maq: itcampo+vm2, estado: feito, nota: "9d40ae78: E2/E3 + prioridade única + lente bombeiros (paridade 3.859 ⊆ fila nova, 0 faltando); teste real 3 processos na VM-2, 0 omitido; 9 scripts aposentáveis na O9", nota: "E2/E3 + prioridade única + lente bombeiros; prioridade alta pela medida da O6.3", titulo: "E2/E3 unificados; lente bombeiros substitui sweep/supervisor (paridade)"}
-  - {id: O3.4, dep: [O3.3], maq: todas, estado: pendente, titulo: "E4-E7 + filas JSON migradas"}
+  - {id: O3.4, dep: [O3.3], maq: todas, estado: feito, nota: "13c3935e: E4–E7 + filas JSON migradas (replay 30 d: 219.032 itens, 0 perdidos); OCR CPU na VM-2 1,64 pág/min vs GPU 42,5 (26× mais lento); vazio só é feito com 2º motor; E7 apaga só com md5 duplo. FALTA: leitor de código de barras, E8 ler texto do E4/E5", titulo: "E4-E7 + filas JSON migradas"}
   - {id: O3.5, dep: [O3.4], maq: vm2, estado: pendente, titulo: "Captura delta ligada (replay dos manifestos)"}
   - {id: O3.6, dep: [O3.4], maq: itcampo, estado: pendente, titulo: "OCR: bbox, ROI, código de barras, dedup, ouro, mistos, GPU x CPU"}
   # O4 — Domínio
