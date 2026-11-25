@@ -902,13 +902,13 @@ def test_podar_guarda_as_n_mais_novas_por_destino_e_journal_antes(amb):
     con, pref = _serie(tmp, nuvem, [20, 21, 22, 23, 24])
     segunda = A.POLITICA["insubstituivel"][1][0]
     plano = A.podar(con, nuvem, pref, manter_principal=3, manter_outros=2, aplicar=False)
-    assert sorted((x["destino"], x["chave"][-22:-14]) for x in plano) == [
+    assert {(x["destino"], x["chave"][-21:-13]) for x in plano} == {
         ("gdrive", "20261120"), ("gdrive", "20261121"),
-        (segunda, "20261120"), (segunda, "20261121"), (segunda, "20261122")]
+        (segunda, "20261120"), (segunda, "20261121"), (segunda, "20261122")} and len(plano) == 5
     assert all(nuvem._p(x["url"]).exists() for x in plano)                       # o plano não apaga nada
     feito = A.podar(con, nuvem, pref, manter_principal=3, manter_outros=2, aplicar=True)
     assert all(x["acao"] == "saiu" for x in feito) and not any(nuvem._p(x["url"]).exists() for x in feito)
-    ficam = {(r["destino"], r["chave"][-22:-14]) for r in con.execute(
+    ficam = {(r["destino"], r["chave"][-21:-13]) for r in con.execute(
         "SELECT destino, chave FROM copias WHERE chave LIKE ?", (pref + "%",))}
     assert ficam == {("gdrive", "20261122"), ("gdrive", "20261123"), ("gdrive", "20261124"),
                      (segunda, "20261123"), (segunda, "20261124")}
