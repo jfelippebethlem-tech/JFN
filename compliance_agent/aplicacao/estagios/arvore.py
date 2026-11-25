@@ -187,17 +187,19 @@ class NavegadorSEI:
                 await SR.fechar_sei(b, pg, fixo=fixo)
 
     def capturar(self, processo: str, guardados: dict, raiz: Path) -> Path:
-        """tools/sei_integra_completa.py com o delta LIGADO (`JFN_CAPTURA_DELTA=1`: só baixa o que não está guardado),
-        sem PDF único nem Telegram. Os guardados vão no arquivo que o encaixe do delta lê (`captura_delta.GUARDADOS_DIR`)."""
+        """tools/sei_integra_completa.py, sem PDF único nem Telegram, com o delta da chave `JFN_E3_DELTA`
+        (`captura_delta.modo_e3`: padrão "sombra" = baixa tudo e registra o plano; `=1` só baixa o que não está
+        guardado — ligado na religação O9.0). Os guardados vão no arquivo que o encaixe do delta lê
+        (`captura_delta.GUARDADOS_DIR`)."""
         import subprocess
 
-        from compliance_agent.captura_delta import GUARDADOS_DIR
+        from compliance_agent.captura_delta import GUARDADOS_DIR, modo_e3
         pasta = PI.pasta(processo)
         GUARDADOS_DIR.mkdir(parents=True, exist_ok=True)
         tmp = GUARDADOS_DIR / f"{pasta}.json.tmp"
         tmp.write_text(json.dumps(guardados, ensure_ascii=False), encoding="utf-8")
         tmp.replace(GUARDADOS_DIR / f"{pasta}.json")
-        env = {**os.environ, "JFN_CAPTURA_DELTA": "1", "SEI_SEM_PDF_UNICO": "1", "SEI_SEM_TG": "1",
+        env = {**os.environ, "JFN_CAPTURA_DELTA": modo_e3(), "SEI_SEM_PDF_UNICO": "1", "SEI_SEM_TG": "1",
                "SEI_INTEGRA_RAIZ": str(raiz), "PYTHONPATH": str(RAIZ)}
         t = int(os.environ.get("JFN_CAPTURA_TIMEOUT_S", "3300"))
         p = subprocess.run([sys.executable, str(RAIZ / "tools" / "sei_integra_completa.py"), processo], cwd=RAIZ,

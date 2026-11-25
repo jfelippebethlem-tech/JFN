@@ -140,6 +140,17 @@ def modo(env=None) -> str:
     return "filtrar" if v in ("1", "filtrar") else "" if v in ("0", "off", "desligado", "") else "sombra"
 
 
+ENV_E3 = "JFN_E3_DELTA"
+
+
+def modo_e3(env=None) -> str:
+    """Valor de `JFN_CAPTURA_DELTA` que o E3 (`arvore.NavegadorSEI.capturar`) passa à captura. DESLIGADO por padrão
+    (O3.5, 25/11/2026): "sombra" = baixa tudo e só registra o plano no manifesto. `JFN_E3_DELTA=1` liga o incremental
+    por id_documento ("1": só o novo/mudado; o "Gerar PDF" em lotes só com eles) — quem liga é a religação (O9.0)."""
+    v = str((os.environ if env is None else env).get(ENV_E3, "")).strip().lower()
+    return "1" if v in ("1", "filtrar", "ligado") else "sombra"
+
+
 def guardados_do_processo(tag: str, pasta_exportados: Path | str = GUARDADOS_DIR,
                           arquivo: Path | str = ARQUIVO) -> dict[str, dict] | None:
     """Guardados do processo: o exportado (`<pasta>/<tag>.json`, no nó) ou, onde houver, o manifesto do arquivo.

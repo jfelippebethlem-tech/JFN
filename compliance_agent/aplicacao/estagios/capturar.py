@@ -6,10 +6,11 @@
 Entrada: `capturar:<processo>` (o evento `arvore/documento_novo` do E2). O que o estágio faz é um INVÓLUCRO com contrato:
   1. GUARDADOS do PG (documentos com alguma versão: texto do legado O3.1 ou binário de um E3 anterior) no formato de
      `captura_delta.exportar_guardados` — o delta por id_documento já existente (`captura_delta.plano_de_captura`);
-  2. captura pelo navegador injetável: o real roda tools/sei_integra_completa.py com `JFN_CAPTURA_DELTA=1` (só baixa o
-     que não está guardado), "Gerar PDF" em lotes de 40 com CONFERÊNCIA POR MARCADOR (`cortar_lote`: pedido × marcador
-     presente; o omitido calado vai ao laço doc a doc) e o laço até o fim da árvore (processo completo, nunca "os 40
-     primeiros"); a retomada é pelo id (`donos.json`), então a tentativa seguinte só busca o que faltou;
+  2. captura pelo navegador injetável: o real roda tools/sei_integra_completa.py com o delta da chave `JFN_E3_DELTA`
+     (padrão desligado = sombra; `=1` só baixa o que não está guardado — O3.5, ligado na O9.0), "Gerar PDF" em
+     lotes de 40 com CONFERÊNCIA POR MARCADOR (`cortar_lote`: pedido × marcador presente; o omitido calado vai ao
+     laço doc a doc) e o laço até o fim da árvore (processo completo, nunca "os 40 primeiros"); a retomada é pelo id
+     (`donos.json`), então a tentativa seguinte só busca o que faltou;
   3. APURAÇÃO (`apurar`, pura): do `manifest.json` da captura, cada documento com arquivo e dono conferido
      (`donos.json`: o id_documento do arquivo = o do nó) vira uma VERSÃO `hash_de='binario'` (sha256 do arquivo);
      o texto é do E4. OMITIDO = documento da árvore viva sem versão depois da captura e que não é restrito.
