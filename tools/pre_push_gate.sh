@@ -44,6 +44,13 @@ cd "$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ubuntu/JFN)" || ex
 PY=/home/ubuntu/JFN/.venv/bin/python
 [ -x "$PY" ] || { echo "[pre-push] venv ausente — não medi"; exit 0; }
 
+# O2.5 (Esteira Única, 24/11): portão v2 — testes pelo grafo de import, rodados na VM-2/it-campo sobre o COMMIT que sobe
+# (não a árvore de trabalho); nó nenhum respondendo → BLOQUEIA e registra em data/push_divida.json. Desligado até o
+# dono ligar: `export JFN_PORTAO_V2=1` (sessão) ou `git config jfn.portaov2 1` (repo inteiro). Ver tools/portao.py.
+if [ "${JFN_PORTAO_V2:-$(git config --get jfn.portaov2 2>/dev/null)}" = "1" ]; then
+  PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)" exec nice -n 10 "$PY" -P -m tools.portao pre-push "$@"   # -P: o tools/ do worktree não sombreia este
+fi
+
 # O inventário de rotas ENTROU em 2026-08-11, e estava prometido no cabeçalho desde o primeiro dia
 # sem estar na lista. O preço: liguei `/api/fiscal/emergencia_recorrente`, o portão aprovou o push
 # e o CI ficou vermelho em `test_inventario_de_rotas_identico_ao_golden` — o e-mail ao dono que
