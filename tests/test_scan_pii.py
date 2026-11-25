@@ -32,3 +32,13 @@ def test_nao_acusa_processo_sei_nem_chave_longa_nem_mascarado():
     assert achar_cpfs("chave NF 3" + c + "0000000000000000000000000000000000") == []  # dentro de número longo
     assert achar_cpfs(f"***.{c[3:6]}.{c[6:9]}-**") == []  # mascarado
     assert achar_cpfs("12345678901") == [] or not cpf_valido("12345678901")
+
+
+def test_nao_acusa_digitos_dentro_de_hash_hex():
+    # 25/11/2026 (O9.3): os `--hash=sha256:` dos requirements*.lock têm corridas de 11 dígitos entre letras a-f — o
+    # lookbehind só olhava dígito e o pre-commit barrou 9 "CPFs" que eram pedaço de hash.
+    c = _cpf("135792468")
+    h = ("ab" + c + "cd").ljust(64, "e")
+    assert achar_cpfs(f"    --hash=sha256:{h} \\") == []
+    assert achar_cpfs(f"commit {h[:40]}") == []
+    assert achar_cpfs(f"cpf {c} junto de hash {h}") == [c]  # CPF de verdade ao lado de um hash continua acusado

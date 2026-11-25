@@ -32,9 +32,16 @@ def cpf_valido(c: str) -> bool:
     return True
 
 
+# Corrida hexadecimal longa (sha256 de lock, SHA de commit): os 11 dígitos são pedaço do hash, não CPF.
+_HEX = re.compile(r"[0-9a-fA-F]{32,}")
+
+
 def achar_cpfs(texto: str) -> list[str]:
     out = []
+    hashes = [(h.start(), h.end()) for h in _HEX.finditer(texto) if not h.group().isdigit()]
     for m in _RE.finditer(texto):
+        if any(a <= m.start() and m.end() <= b for a, b in hashes):
+            continue
         c = re.sub(r"\D", "", m.group(1))
         if cpf_valido(c):
             out.append(c)
