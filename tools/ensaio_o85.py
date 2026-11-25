@@ -83,7 +83,7 @@ LIBERADO_LLM_EM = datetime(2026, 11, 28, 19, 0, tzinfo=BRT)  # virada do ritmo s
 OCR_SITE = Path.home() / "ocr-reserva" / ".venv" / "lib" / "python3.12" / "site-packages"   # RapidOCR da VM-2
 LIVRES = {r: 99 for r in ("cpu_leve", "cpu_pesado", "navegador", "disco", "llm", "materializar", "gpu")}
 TIMEOUT_FILHO_S = 4 * 3600
-ESTAGIOS_LLM = ("fatos", "periciar")
+ESTAGIOS_LLM = ("fatos", "periciar", "conferir")
 
 # ══ 0. universo: amostra estratificada e extrato do snapshot (só leitura) ══════════════════════════════════════════
 MAX_DOCS = 85
@@ -456,17 +456,25 @@ class NavegadorReplay:
         ent = [e for e in man.get("docs") or [] if isinstance(e, dict)]
         ids = DI.ids_documentos([{"titulo": e.get("titulo", ""), "i": e.get("i")} for e in ent])
         tem = {k for k, _t, chars, *_ in guardados.get("docs") or [] if int(chars or 0) > 0}
-        baixados = mantidos = 0
+        baixados = mantidos = ligados = 0
+        ja: dict[str, Path] = {}                 # sha256 → 1º destino NESTE job (anexo repetido em 2 documentos)
         for k, e in zip(ids, ent):
             alvo = out / str(e.get("arquivo") or "")
             if k in tem:
                 mantidos += 1
                 continue
             if e.get("ok") and (src / str(e.get("arquivo") or "_")).is_file():
+                sha = leituras.sha_arquivo(src / e["arquivo"])
+                if sha in ja:                    # mesmos bytes: link do 1º (cada documento tem o seu arquivo), sem
+                    alvo.unlink(missing_ok=True)  # 2º download — o E7 pode apagar um sem afetar o outro
+                    os.link(ja[sha], alvo)
+                    ligados += 1
+                    continue
                 shutil.copy2(src / e["arquivo"], alvo)
-                leituras.anotar("download", leituras.sha_arquivo(alvo), arquivo=alvo.name)
+                leituras.anotar("download", sha, arquivo=alvo.name)
+                ja[sha] = alvo
                 baixados += 1
-        man = dict(man, delta={"modo": "replay", "baixados": baixados, "mantidos": mantidos})
+        man = dict(man, delta={"modo": "replay", "baixados": baixados, "mantidos": mantidos, "ligados": ligados})
         (out / "manifest.json").write_text(json.dumps(man, ensure_ascii=False), encoding="utf-8")
         return out
 
@@ -548,6 +556,12 @@ def cmd_filho(a) -> int:
         importlib.import_module(cfg["estagios_extra"])
     if not cfg.get("com_llm"):
         bloquear_llm()
+    else:                                                        # com LLM: só a ASSINATURA, nunca a API paga
+        from compliance_agent.llm import claude_api
+
+        def sem_api_paga(*a, **kw):
+            raise RuntimeError("ensaio O8.5: API paga recusada — a passada com LLM é só pela assinatura")
+        claude_api.pensar_api = sem_api_paga
     return executar.main([a.modo, a.entrada, a.saida])
 
 
@@ -561,8 +575,33 @@ def esquemas(run: str) -> dict[str, str]:
     return e
 
 
-def liberado_llm(agora: datetime | None = None) -> bool:
-    return (agora or datetime.now(BRT)) >= LIBERADO_LLM_EM
+AUTORIZACAO_DONO = RAIZ / "data" / ".assinatura_liberada_dono.json"
+TETO_SEMANA_PADRAO = 80.0
+
+
+def autorizacao_dono(caminho: Path | None = None) -> dict | None:
+    """A liberação ANTES da virada registrada pelo dono (25/11/2026 ~09h45: "pode fazer a passada ou o que precisar
+    antes de sabado tambem"): vale só se o escopo é a ASSINATURA e o teto da semana é um número. Sem arquivo (ou
+    ilegível/fora do escopo) ⇒ None ⇒ a trava antiga (recusa antes de 28/11 19h)."""
+    try:
+        d = json.loads(Path(caminho or AUTORIZACAO_DONO).read_text(encoding="utf-8"))
+        teto = float(d["teto_semana_pct"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return d if "ASSINATURA" in str(d.get("escopo") or "") and 0 < teto <= 100 else None
+
+
+def liberado_llm(agora: datetime | None = None, caminho: Path | None = None) -> bool:
+    return (agora or datetime.now(BRT)) >= LIBERADO_LLM_EM or autorizacao_dono(caminho) is not None
+
+
+def motivo_teto(nivel: dict, teto: float) -> str | None:
+    """Por que PARAR antes do próximo job com LLM (None = segue): semana da assinatura ≥ teto, ou sem medição
+    (INDISPONÍVEL ≠ 0: na dúvida, para). Puro."""
+    pct = nivel.get("semana_pct")
+    if not nivel.get("medido") or pct is None:
+        return f"uso da assinatura sem medição ({nivel.get('motivo') or 'ausente'})"
+    return f"assinatura em {float(pct):.1f}% da semana ≥ teto {teto:.0f}%" if float(pct) >= teto else None
 
 
 @dataclass
@@ -632,6 +671,10 @@ class Ensaio:
             F.aplicar_schema(c, self.esq["fatos"])
         finally:
             c.close()
+        from compliance_agent.aplicacao.estagios import periciar as P
+        with psycopg.connect(self.dsn, autocommit=True) as c:      # laudos_v2 do E11 (no r2 o E11 não tinha entrada)
+            c.execute(f'CREATE SCHEMA IF NOT EXISTS "{self.esq["sombra"]}"')
+            P.aplicar_schema(c, self.esq["sombra"])
         return {"fluxo_ok": ok["ok"], "esquemas": self.esq}
 
     # ── motor: um job pelo caminho real ──
@@ -646,6 +689,13 @@ class Ensaio:
                 if job is None:
                     break
                 t0 = time.monotonic()
+                teto = self.teto_llm(job.tipo)
+                if teto:                                         # para limpo: o job não roda, nunca "feito"
+                    erro = f"ABSTEVE(teto_assinatura): {teto}"
+                    out.append({"chave": job.chave, "ficha": job.ficha, "conferido": None, "erro": erro,
+                                "estado": fila.falhar(con, job.ficha, erro, True, "teto_assinatura"),
+                                "classe": "ABSTEVE(teto_assinatura)", "efeito": None, "eventos": 0, "segundos": 0.0})
+                    continue
                 pasta = self.dir / "jobs" / re.sub(r"[^A-Za-z0-9_.-]", "_", job.chave)[:150] / str(job.ficha)
                 pasta.mkdir(parents=True, exist_ok=True)
                 base = {"tipo": job.tipo, "chave": job.chave, "ficha": job.ficha, "no": NO,
@@ -676,6 +726,15 @@ class Ensaio:
         finally:
             con.close()
         return out
+
+    def teto_llm(self, tipo: str, nivel=None) -> str | None:
+        """Só na passada com LLM e só para estágio de LLM: o ritmo da assinatura (`ritmo_assinatura.nivel()`) lido
+        ANTES de cada job contra o teto da autorização do dono (padrão 80% da semana)."""
+        if not self.com_llm or tipo.split(":", 1)[0] not in ESTAGIOS_LLM:
+            return None
+        from compliance_agent.llm import ritmo_assinatura
+        teto = float((autorizacao_dono() or {}).get("teto_semana_pct") or TETO_SEMANA_PADRAO)
+        return motivo_teto((nivel or ritmo_assinatura.nivel)(), teto)
 
     def _filho(self, modo: str, pasta: Path, entrada: dict) -> tuple[int, dict, str]:
         e, s = pasta / f"{modo}.entrada.json", pasta / f"{modo}.saida.json"
@@ -954,65 +1013,22 @@ def _contar_ev(eventos) -> dict:
     return out
 
 
-# ── ponte E4/E5 → acervo que o E8/E11 leem (a produção ainda não tem: FALTA da O3.4) ─────────────────────────────
-def ponte_e8(ens: Ensaio, processos: set[str]) -> dict:
-    """Monta `<run>/acervo_e8/<pasta>` no formato que `leitura_integral._docs` lê, SÓ com a saída real do E4 (texto
-    nativo por página) e do E5 (texto composto do OCR). Sem texto (branca, inválida, OCR pendente) ⇒ documento sem
-    `texto` (a porta do E8 barra e declara). `captura_completa` só com 0 omitido no E3. Documento lido por OCR vai
-    marcado `ocr` (a confirmação que a porta do E8 aceita é a do legado, não o E6: quebra declarada)."""
-    from compliance_agent.aplicacao.estagios import texto as T
-    from compliance_agent.dominio import processo_id as PI
-    raiz = ens.dir / "sei_texto"
-    out = {"processos": 0, "docs": 0, "com_texto": 0, "ocr": 0, "sem_texto": 0}
+# ── cache do E8: o que o piloto já leu, pelos shas do texto do estágio ─────────────────────────────────────────────
+def semear_docs_lidos(ens: Ensaio, processos: set[str]) -> dict:
+    """Cache do E8 por (sha do texto, prompt, modelo): o que o PILOTO já leu (`public.docs_lidos`, só leitura) entra
+    no esquema de fatos do ensaio PARA OS SHAS QUE A AMOSTRA TEM. Os shas são os do TEXTO DO ESTÁGIO como o E8 o lê
+    (`fatos.acervo_do_estagio`: E4/E5 conferidos no PG, porta pelo E6, fim de linha universal + `sem_etiqueta`) —
+    processo barrado na porta não abre lateral e não entra. Mede quanto da leitura antiga sobrevive."""
+    from compliance_agent.aplicacao.estagios import fatos as F
+    shas: set[str] = set()
     con = ens.con("cap")
     try:
         for proc in sorted(processos):
-            omit = con.execute("SELECT detalhe->'omitidos' FROM aquisicao WHERE fonte = 'sei:e3' AND "
-                               "detalhe->>'processo' = %s ORDER BY concluida_em DESC LIMIT 1", (proc,)).fetchone()
-            linhas = con.execute(
-                "SELECT d.doc_id, d.posicao, d.titulo, v.sha256 FROM documentos d JOIN versoes v ON v.processo = "
-                "d.processo AND v.doc_id = d.doc_id AND v.hash_de = 'binario' WHERE d.processo = %s ORDER BY "
-                "d.posicao", (proc,)).fetchall()
-            pasta = ens.dir / "acervo_e8" / (PI.pasta(proc) or proc)
-            (pasta / "texto").mkdir(parents=True, exist_ok=True)
-            man = {"processo": proc, "captura_completa": bool(omit is not None and not omit[0]),
-                   "docs_faltantes": [], "docs": [], "origem": "ponte_e8 do ensaio O8.5 (E4/E5 do PG)"}
-            for doc_id, pos, titulo, sha in linhas:
-                ent = {"i": pos, "titulo": titulo or ""}
-                e5 = T.ler_lateral(T.caminho_lateral(proc, doc_id, sha, "e5", raiz))
-                e4 = T.ler_lateral(T.caminho_lateral(proc, doc_id, sha, "e4", raiz))
-                txt = ""
-                if e5 is not None and e5[0].get("compostas") is not None:
-                    txt, ent["ocr"] = T.QUEBRA.join(e5[0]["compostas"]), True
-                elif e4 is not None and e4[0].get("perfil") != T.INVALIDA:
-                    txt = T.texto_composto(e4[0])
-                if txt.strip():
-                    rel = f"texto/{int(pos):03d}.txt"
-                    (pasta / rel).write_text(txt, encoding="utf-8")
-                    ent["texto"] = rel
-                    out["com_texto"] += 1
-                    out["ocr"] += bool(ent.get("ocr"))
-                else:
-                    out["sem_texto"] += 1
-                man["docs"].append(ent)
-                out["docs"] += 1
-            (pasta / "manifest.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
-            out["processos"] += 1
+            a = F.acervo_do_estagio(con, proc)
+            if a is not None and a.fora_da_porta is None:
+                shas |= {d["sha"] for d in a.docs}
     finally:
         con.close()
-    return out
-
-
-def semear_docs_lidos(ens: Ensaio) -> dict:
-    """Cache do E8 por (sha do texto, prompt, modelo): o que o PILOTO já leu (`public.docs_lidos`, só leitura) entra
-    no esquema de fatos do ensaio PARA OS SHAS QUE A AMOSTRA TEM. Mede quanto da leitura antiga sobrevive à troca do
-    texto legado pelo texto do E4."""
-    from compliance_agent import leitura_integral as LI
-    from compliance_agent.aplicacao.estagios import fatos as F
-    shas: set[str] = set()
-    for pasta in sorted((ens.dir / "acervo_e8").glob("*")):
-        if (pasta / "manifest.json").exists():
-            shas |= {d["sha"] for d in LI._docs(pasta)}
     versoes = F.versoes_lidas()
     import psycopg
     with psycopg.connect(ens.dsn, autocommit=True) as c:
@@ -1103,8 +1119,7 @@ def roteiro(ens: Ensaio) -> list[tuple]:
 
     def g_e8(evs):
         procs = {e["chave"].split("|", 1)[0] for e in evs}
-        ens._ponte = ponte_e8(ens, procs)
-        ens._cache_e8 = semear_docs_lidos(ens)
+        ens._cache_e8 = semear_docs_lidos(ens, procs)      # sem ponte: o E8 lê o E4/E5 + E6 do PG (frente B1)
         return [_job("fatos", f"fatos:{p}", {"processo": p}) for p in sorted(procs)]
 
     def g_e9(evs):
@@ -1123,13 +1138,32 @@ def roteiro(ens: Ensaio) -> list[tuple]:
     def procs_achados(evs):
         con = ens.con("sombra")
         try:
-            return processos_citados(con, amostra, [e for e in evs if e["fonte"] == "detectar"])
+            achados = [e for e in evs if (e["fonte"], e["tipo"]) == ("detectar", "achados")]
+            return processos_citados(con, amostra, achados)
         finally:
             con.close()
 
     def g_e11(evs):
         procs = procs_achados(evs) | {e["chave"] for e in evs if e["fonte"] == "fatos"}
+        procs |= {e["chave"] for e in evs if e["tipo"] == "achado_processo" and e["chave"] in amostra}
         return [_job("periciar", f"periciar:{p}", {"processo": p, "fonte": f}) for p in sorted(procs)]
+
+    def g_e12(evs):
+        con = ens.con("sombra")
+        try:
+            ids = sorted({i for e in evs if e["fonte"] == "detectar" and e["chave"] for (i,) in con.execute(
+                "SELECT a.id FROM achado a JOIN execucao_regra e ON e.id = a.execucao_regra_id WHERE e.origem LIKE %s",
+                (f"e10:{e['chave']}:%",))})
+        finally:
+            con.close()
+        return ([_job("conferir", f"conferir:achado:{i}", {"alvo": "achado", "ref": str(i)}) for i in ids]
+                + [_job("conferir", f"conferir:laudo:{e['chave']}", {"alvo": "laudo", "ref": e["chave"]})
+                   for e in evs if e["fonte"] == "periciar"])
+
+    def g_e17(evs):
+        return [_job("manter", f"manter:{r}:{ens.run}-p{ens.passada}", {"rotina": r, "simular": True,
+                                                                       "db": f, "perfil": NO})
+                for r in ("backup_compliance", "backup_evidencias_pg", "wal_checkpoint", "vacuum", "zelador")]
 
     def g_e13(evs):
         return [_job("calibrar", "calibrar:todos", {"detector": "todos", "fonte": f, "sombra": True,
@@ -1171,14 +1205,14 @@ def roteiro(ens: Ensaio) -> list[tuple]:
         ("E7", [("texto", "sem_ocr"), ("ocr", "terminado")], lambda evs: [k_doc(e, "arquivar") for e in evs],
          "arquivar", "destino local do ensaio (md5 duplo antes de apagar a CÓPIA do ensaio)", None),
         ("E8", [("texto", "texto_novo"), ("ocr", "texto_novo"), ("confirmar_ocr", None)], g_e8, "fatos",
-         "ponte E4/E5 → acervo do E8 (FALTA O3.4 na produção) + cache docs_lidos do piloto pelo sha", None),
+         "texto do E4/E5 e porta pelo E6 no PG (frente B1, sem ponte) + cache docs_lidos do piloto pelo sha", None),
         ("E9", [("coleta", "fonte_mudou"), ("fatos", "mudou")], g_e9, "elegibilidade", "sobre a coleta do ensaio",
          None),
         ("E10", [("elegibilidade", "mudou")], g_e10, "detectar", "detectores cuja exigência é da unidade da E9", None),
-        ("E11", [("detectar", "achados"), ("fatos", "mudou")], g_e11, "periciar",
+        ("E11", [("detectar", "achados"), ("detectar", "achado_processo"), ("fatos", "mudou")], g_e11, "periciar",
          "processos da amostra citados pelos achados ou com fatos novos", None),
-        ("E12", [("periciar", "laudo")], None, "conferir", "",
-         "sem estágio `conferir` no registro (O6.5 em sombra: regra de risco fora do motor) e sem LLM até 28/11 19h"),
+        ("E12", [("periciar", "laudo"), ("detectar", "achados")], g_e12, "conferir",
+         "por risco (regra da O6.5); sem LLM até 28/11 19h: ABSTEVE(sem_llm) ou NÃO JULGADO, nunca veredito", None),
         ("E13", [("coleta", "conferidos")], g_e13, "calibrar", "sombra: JSON no run, registro intocado", None),
         ("E14", [("detectar", "achados")], g_e14, "caso",
          "caso por processo da amostra citado nos achados, ou por CNPJ de credor da amostra (os achados do E10 não "
@@ -1187,8 +1221,7 @@ def roteiro(ens: Ensaio) -> list[tuple]:
          None),
         ("E16", [("caso", "versao"), ("coleta", "ob_nova")], g_e16, "entregar",
          "dossiê da lente couto sobre a coleta do ensaio, sem PDF e sem envio", None),
-        ("E17", [], None, "manter", "", "sem estágio `manter` no registro; backup/WAL/VACUUM são de produção "
-         "(parada de obras: ficaram ligados fora do motor)"),
+        ("E17", [], g_e17, "manter", "--simular: lista o que faria e confere as pré-condições; nada executa", None),
         ("E18", [], g_e18, "observar", "sensores fila/captura/prova/leitura no esquema do ensaio", None),
     ]
 
@@ -1228,8 +1261,9 @@ def sensor_e18(ens: Ensaio) -> dict | None:
 def cmd_rodar(a) -> int:
     from compliance_agent.evidencias import dsn_vigente
     if a.com_llm and not liberado_llm():
-        print(f"recusado: o ensaio com LLM só roda depois de {LIBERADO_LLM_EM:%d/%m/%Y %Hh} (BRT) — assinatura "
-              "contida até a virada do ritmo semanal; API paga exige autorização do dono", file=sys.stderr)
+        print(f"recusado: o ensaio com LLM só roda depois de {LIBERADO_LLM_EM:%d/%m/%Y %Hh} (BRT) ou com a "
+              f"autorização do dono em {AUTORIZACAO_DONO} — assinatura contida; API paga exige autorização do dono",
+              file=sys.stderr)
         return 2
     dsn = dsn_vigente()
     if not dsn:
@@ -1274,7 +1308,6 @@ def cmd_rodar(a) -> int:
     for ek, consome, gerar, tipo, nota, bloq in roteiro(ens):
         p = passagem(ens, ek, consome, gerar, tipo, nota, bloq)
         if ek == "E8":
-            p["ponte_e8"] = getattr(ens, "_ponte", None)
             p["cache_docs_lidos"] = getattr(ens, "_cache_e8", None)
         grava(ek, p)
     con = ens.con()

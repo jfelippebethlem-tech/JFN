@@ -12,7 +12,7 @@ Cada estágio é um tipo de job com contrato fixo:
 Quem roda handler e efeito é SEMPRE o processo-filho `compliance_agent.fluxo.executar`, nunca o supervisor
 (catraca em tests/test_fluxo_supervisor.py). E0 "eco" (teste) e, desde a O2.1, `legado:<rotina>` (estagios/legado.py:
 roda o comando que rodava antes da parada), E18 `observar` (O8.1: estagios/observar.py, sensores → fluxo.metricas), E2 `arvore` e E3 `capturar` (O3.3), E4 `texto`, E5 `ocr`, E6 `confirmar_ocr` e E7
-`arquivar` (O3.4); os outros
+`arquivar` (O3.4), E12 `conferir` e E17 `manter` (O8.5); os outros
 estágios reais chegam na O3+.
 """
 from __future__ import annotations
@@ -126,5 +126,11 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "entregar":                                       # E16 (O7.5): dossiê com manifesto e validador
         from compliance_agent.aplicacao.estagios import entregar
         return entregar.ESTAGIO
+    if familia == "conferir":                                       # E12 (O8.5): por risco; sem LLM ⇒ ABSTEVE
+        from compliance_agent.aplicacao.estagios import conferir
+        return conferir.ESTAGIO
+    if familia == "manter":                                         # E17 (O8.5): backup/WAL/VACUUM/zelador
+        from compliance_agent.aplicacao.estagios import manter
+        return manter.ESTAGIO
     return REGISTRO.get(familia)
 

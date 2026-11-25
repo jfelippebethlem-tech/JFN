@@ -193,3 +193,135 @@ def test_sem_elegivel_zero_achado_declarado_e_conferido(pg, fonte):
     n = con.execute(f"SELECT (resultado->>'ob_com_nl_na_base')::int FROM \"{e10}\".execucao_regra "
                     "WHERE origem LIKE '%:resumo'").fetchone()[0]
     assert n == 2                                                        # o denominador fica gravado
+
+
+# ── O8.5: vínculo achado → processo SEI (os 58 achados do ensaio r2 saíam com processo NULL e o E11 ficava sem nada) ─
+from decimal import Decimal  # noqa: E402
+
+from compliance_agent.aplicacao.detectores import Disparo  # noqa: E402
+from compliance_agent.dominio.achado import Fato, Papel  # noqa: E402
+
+
+def _ob(num, ug="010100", ex=2025, papel=Papel.SUPORTE, tipo="ob"):
+    return Fato(papel=papel, tipo=tipo, fonte="ob_orcamentaria_siafe", referencia=num, valor=Decimal("10"),
+                dados={"ug": ug, "exercicio": ex})
+
+
+def _disp(*fatos, processo=None, identidade=None):
+    return Disparo(chave="k", grupo="g", estado="INDICIO", observacao="o", entradas={}, processo=processo,
+                   evidencias=list(fatos), identidade=identidade)
+
+
+def test_vinculo_ob_pelo_campo_processo_do_siafe_na_chave_canonica():
+    v = D.vinculo_processo(_disp(_ob("2025OB1"), _ob("2025OB2")),
+                           {("010100", "2025OB1", "2025"): "SEI-010100/123/2025",
+                            ("010100", "2025OB2", "2025"): "SEI 010100/000123/25"})
+    assert v["estado"] == "VINCULADO" and v["processos"] == [{"processo": "010100/000123/2025", "via": ["ob_siafe"]}]
+
+
+def test_contabil_antes_do_conserto_nao_tinha_processo():
+    """Reproduz o defeito: o detector C-PAGO>NL declara processo=None; sem o vínculo, o achado ia sem processo."""
+    d = _disp(Fato(papel=Papel.SUPORTE, tipo="nl", fonte="nl_siafe", referencia="2025NL1"), _ob("2025OB1"))
+    assert d.processo is None and D._processo_unico(d, None) is None
+    v = D.vinculo_processo(d, {("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"})
+    assert D._processo_unico(d, v) == "010100/000007/2025"
+
+
+@pytest.mark.parametrize("ob_proc, causa", [
+    (None, "ob_siafe: a fonte não tem o campo processo"),
+    ({}, "ob_siafe: OB não encontrada na fonte"),
+    ({("010100", "2025OB1", "2025"): "E-12/001/123/2020"}, "ob_siafe: grafia sem processo SEI canônico"),
+    ({("010100", "2025OB1", "2025"): ""}, "ob_siafe: sem processo na fonte"),
+])
+def test_sem_processo_provavel_indisponivel_com_motivo(ob_proc, causa):
+    v = D.vinculo_processo(_disp(_ob("2025OB1")), ob_proc)
+    assert v["estado"] == "INDISPONIVEL" and v["processos"] == [] and v["causas"] == [causa] and v["motivo"]
+
+
+def test_fato_de_contexto_nao_liga_processo():
+    v = D.vinculo_processo(_disp(_ob("2025OB1", papel=Papel.CONTEXTO, tipo="ob_anulada")),
+                           {("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"})
+    assert v["estado"] == "INDISPONIVEL" and "nenhum fato de suporte" in v["motivo"]
+
+
+def test_identidade_parcial_nao_sustenta_vinculo_e_nao_vaza_chave_processo():
+    import json
+    v = D.vinculo_processo(_disp(_ob("2025OB1"), identidade="indeterminado"),
+                           {("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"})
+    assert v["estado"] == "INDISPONIVEL" and v["candidatos"][0]["candidato"] == "010100/000007/2025"
+    assert '"processo"' not in json.dumps(v)        # E11/E14 casam pela chave `processo`: candidato não liga
+    assert D.vinculo_processo(_disp(_ob("2025OB1"), identidade="forte"),
+                              {("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"})["estado"] == "VINCULADO"
+
+
+def test_contrato_liga_ao_processo_mae_e_varios_processos_nao_escolhe_um():
+    ct = Fato(papel=Papel.SUPORTE, tipo="contrato", fonte="contratos_tcerj", referencia="SEI-330002/000010/2024")
+    d = _disp(ct, _ob("2025OB1"), processo="SEI-330002/10/2024")
+    v = D.vinculo_processo(d, {("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"})
+    assert [p["processo"] for p in v["processos"]] == ["010100/000007/2025", "330002/000010/2024"]
+    assert v["processos"][1]["via"] == ["contratos_tcerj", "detector"]
+    assert D._processo_unico(d, v) is None          # vários: todos no resultado, nenhum escolhido
+
+
+def test_processos_das_obs_casa_ug_numero_e_exercicio():
+    c = sqlite3.connect(":memory:")
+    c.executescript("CREATE TABLE ob_orcamentaria_siafe(numero_ob, ug_emitente, exercicio INTEGER, processo);"
+                    "INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB1','010100',2025,'SEI-010100/000007/2025'),"
+                    "('2025OB1','020200',2025,'SEI-020200/000009/2025');")
+    assert D.processos_das_obs(c, {("010100", "2025OB1", "2025")}) == {
+        ("010100", "2025OB1", "2025"): "SEI-010100/000007/2025"}
+    c2 = sqlite3.connect(":memory:")
+    c2.execute("CREATE TABLE ob_orcamentaria_siafe(numero_ob, ug_emitente, exercicio)")
+    assert D.processos_das_obs(c2, {("010100", "2025OB1", "2025")}) is None
+
+
+def _cnpj_valido(raiz12: str) -> str:
+    """CNPJ com DV calculado (credor sintético com identidade `forte`, sem literal no código)."""
+    d = [int(x) for x in raiz12]
+    for pesos in ([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]):
+        r = sum(a * b for a, b in zip(d, pesos)) % 11
+        d.append(0 if r < 2 else 11 - r)
+    return "".join(map(str, d))
+
+
+@pytest.fixture()
+def fonte_com_processo(tmp_path):
+    p = tmp_path / "compliance.db"
+    c = sqlite3.connect(p)
+    c.executescript(_DDL.replace("tipo_regularizacao);", "tipo_regularizacao, processo);")
+                    .replace("'Contabilizado','','')", "'Contabilizado','','','SEI-010100/000007/2025')")
+                    .replace("22222222000100", _cnpj_valido("222222220001")))
+    c.commit()
+    c.close()
+    return p
+
+
+@precisa_pg
+def test_handler_liga_achado_ao_processo_e_suja_o_e11(pg, fonte_com_processo):
+    con, e9, e10, veredito = pg
+    did = "e10.ob_antes_da_liquidacao"
+    payload = {"detector": did, "fonte": str(fonte_com_processo), "dsn": DSN, "esquema": e10, "esquema_e9": e9}
+    res = D.ESTAGIO.handler(payload, _ctx(did))
+    assert res.efeito["achados"] == 1 and res.efeito["com_processo"] == 1 and res.efeito["processo_indisponivel"] == 0
+    assert {"fonte": "detectar", "tipo": "achado_processo", "chave": "010100/000007/2025",
+            "detalhe": {"detector": did, "escopo": "todos", "rodada": res.efeito["rodada"]}} in res.eventos
+    assert con.execute(f'SELECT processo FROM "{e10}".execucao_regra WHERE origem NOT LIKE %s',
+                       ("%:resumo",)).fetchone()[0] == "010100/000007/2025"
+    assert D.ESTAGIO.efeito(payload, _ctx(did), res) is True
+    # o vínculo gravado é conferido de novo da fonte: adulterado, o efeito recusa
+    con.execute(f"UPDATE \"{e10}\".execucao_regra SET resultado = jsonb_set(resultado, '{{vinculo_processo,estado}}',"
+                " '\"INDISPONIVEL\"') WHERE origem NOT LIKE '%:resumo'")
+    assert D.ESTAGIO.efeito(payload, _ctx(did), res) is False
+
+
+@precisa_pg
+def test_fonte_sem_campo_processo_declara_indisponivel(pg, fonte):
+    con, e9, e10, veredito = pg
+    did = "e10.ob_antes_da_liquidacao"
+    payload = {"detector": did, "fonte": str(fonte), "dsn": DSN, "esquema": e10, "esquema_e9": e9}
+    res = D.ESTAGIO.handler(payload, _ctx(did))
+    assert res.efeito["com_processo"] == 0 and res.efeito["processo_indisponivel"] == 1
+    assert res.efeito["resumo"]["vinculo_processo"]["causas_indisponivel"] == {
+        "ob_siafe: a fonte não tem o campo processo": 1}
+    assert not [e for e in res.eventos if e["tipo"] == "achado_processo"]
+    assert D.ESTAGIO.efeito(payload, _ctx(did), res) is True

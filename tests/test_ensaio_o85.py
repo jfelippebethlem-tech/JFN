@@ -17,13 +17,37 @@ from tools import ensaio_o85 as E
 
 
 # ── puros ─────────────────────────────────────────────────────────────────────────────────────────────────────
-def test_com_llm_recusa_antes_da_virada_e_libera_depois():
-    assert not E.liberado_llm(datetime(2026, 11, 28, 18, 59, tzinfo=E.BRT))
-    assert E.liberado_llm(datetime(2026, 11, 28, 19, 0, tzinfo=E.BRT))
+def test_com_llm_recusa_antes_da_virada_e_libera_depois(tmp_path):
+    sem = tmp_path / "nao_existe.json"
+    assert not E.liberado_llm(datetime(2026, 11, 28, 18, 59, tzinfo=E.BRT), caminho=sem)
+    assert E.liberado_llm(datetime(2026, 11, 28, 19, 0, tzinfo=E.BRT), caminho=sem)
+
+
+def test_autorizacao_do_dono_libera_antes_da_virada_so_pela_assinatura(tmp_path):
+    import json
+    arq = tmp_path / "aut.json"
+    antes = datetime(2026, 11, 26, 10, 0, tzinfo=E.BRT)
+    arq.write_text(json.dumps({"escopo": "passada --com-llm pela ASSINATURA; nunca API paga", "teto_semana_pct": 80.0}))
+    assert E.liberado_llm(antes, caminho=arq) and E.autorizacao_dono(arq)["teto_semana_pct"] == 80.0
+    arq.write_text(json.dumps({"escopo": "API paga", "teto_semana_pct": 80.0}))           # fora do escopo
+    assert not E.liberado_llm(antes, caminho=arq)
+    arq.write_text("{quebrado")
+    assert not E.liberado_llm(antes, caminho=arq)
+
+
+def test_teto_da_assinatura_para_acima_de_80_e_sem_medicao():
+    assert E.motivo_teto({"medido": True, "semana_pct": 79.9}, 80.0) is None
+    assert "≥ teto 80%" in E.motivo_teto({"medido": True, "semana_pct": 80.0}, 80.0)
+    assert "sem medição" in E.motivo_teto({"medido": False, "semana_pct": None, "motivo": "velha"}, 80.0)
+    ens = E.Ensaio(run="t1", passada=1, com_llm=True, esq={"fluxo": "x"})
+    acima = lambda: {"medido": True, "semana_pct": 91.0}                                    # noqa: E731
+    assert ens.teto_llm("fatos", nivel=acima) and ens.teto_llm("conferir:achado:1", nivel=acima)
+    assert ens.teto_llm("detectar:x", nivel=acima) is None                                  # sem LLM: não para
+    assert E.Ensaio(run="t1", passada=1, com_llm=False, esq={"fluxo": "x"}).teto_llm("fatos", nivel=acima) is None
 
 
 def test_cmd_rodar_com_llm_recusa_antes_da_virada(monkeypatch, capsys):
-    monkeypatch.setattr(E, "liberado_llm", lambda agora=None: False)
+    monkeypatch.setattr(E, "liberado_llm", lambda agora=None, caminho=None: False)
     assert E.main(["rodar", "--run", "x1", "--com-llm"]) == 2
     assert "28/11/2026 19h" in capsys.readouterr().err
 
@@ -71,7 +95,32 @@ def test_navegador_replay_so_baixa_o_que_falta(tmp_path):
     out = nav.capturar("270006/000001/2025", {"docs": [[ids[0], "Doc", 10, ""]]}, tmp_path / "cache")
     assert sorted(p.name for p in out.glob("*.pdf")) == ["001.pdf", "002.pdf"]       # o guardado não é "baixado"
     assert json.loads((out / "manifest.json").read_text())["delta"] == {"modo": "replay", "baixados": 2,
-                                                                          "mantidos": 1}
+                                                                          "mantidos": 1, "ligados": 0}
+
+
+def test_navegador_replay_anexo_repetido_e_um_download_so(tmp_path, monkeypatch):
+    """Frente A (O8.5): o mesmo anexo em 2 documentos (bytes idênticos) era copiado 2× no MESMO job do E3
+    (releitura no job = 1). Agora: 1 download anotado, o 2º documento ganha o seu arquivo por link do 1º."""
+    import json
+
+    from compliance_agent.fluxo import leituras as L
+    src = tmp_path / "acervo" / "integra_330002_028372_2026"
+    src.mkdir(parents=True)
+    for i, corpo in enumerate((b"%PDF-1.4 anexo", b"%PDF-1.4 anexo", b"%PDF-1.4 outro")):
+        (src / f"{i:03d}.pdf").write_bytes(corpo)
+    man = {"completo": True, "docs": [{"i": i, "arquivo": f"{i:03d}.pdf", "titulo": f"Doc ({200 + i})", "ok": True,
+                                       "url": f"https://sei/x?id_documento={200 + i}"} for i in range(3)]}
+    (src / "manifest.json").write_text(json.dumps(man))
+    reg = L.Registro(estagio="capturar", versao="t", modo="rodar")
+    monkeypatch.setattr(L, "_ATUAL", reg)
+    out = E.NavegadorReplay(tmp_path / "acervo").capturar("330002/028372/2026", {"docs": []}, tmp_path / "cache")
+    downloads = [it["n"] for (t, _s, _v), it in reg.itens.items() if t == "download"]
+    assert sorted(downloads) == [1, 1]                                  # 2 shas distintos, cada um 1× (era [1, 2])
+    assert (out / "000.pdf").read_bytes() == (out / "001.pdf").read_bytes()
+    assert (out / "000.pdf").stat().st_ino == (out / "001.pdf").stat().st_ino
+    (out / "000.pdf").unlink()                                          # o E7 apaga um: o outro fica
+    assert (out / "001.pdf").read_bytes() == b"%PDF-1.4 anexo"
+    assert json.loads((out / "manifest.json").read_text())["delta"]["ligados"] == 1
 
 
 def test_destino_do_ensaio_confere_md5_e_e_local(tmp_path):
@@ -192,3 +241,20 @@ def test_sensor_sem_registro_e_indisponivel(ens):
     finally:
         con.close()
     assert r.valor is None and "ausente" in r.motivo
+
+
+@precisa_pg
+def test_acima_do_teto_o_job_de_llm_nao_roda_e_vira_abstencao(ens, monkeypatch):
+    """Passada com LLM: acima do teto da semana, o job de LLM para LIMPO (nenhum filho), nunca 'feito'."""
+    from compliance_agent.fluxo import fila
+    ens.com_llm = True
+    monkeypatch.setattr(ens, "_filho", lambda *a, **k: pytest.fail("filho não podia rodar acima do teto"))
+    monkeypatch.setattr(ens, "teto_llm", lambda tipo, nivel=None: "assinatura em 85.0% da semana ≥ teto 80%")
+    con = ens.con()
+    try:
+        fila.enfileirar(con, "fatos", "fatos:330002/000010/2024", {"processo": "330002/000010/2024"}, max_tentativas=1)
+    finally:
+        con.close()
+    r = ens.rodar_jobs("fatos")
+    assert len(r) == 1 and r[0]["classe"] == "ABSTEVE(teto_assinatura)" and r[0]["estado"] != "feito"
+    assert r[0]["erro"].startswith("ABSTEVE(teto_assinatura)")

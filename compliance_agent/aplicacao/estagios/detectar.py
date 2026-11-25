@@ -43,8 +43,11 @@ from compliance_agent.aplicacao.detectores import MODULOS, carregar_detector, ve
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
 from compliance_agent.aplicacao.estagios import elegibilidade as E9
 from compliance_agent.dominio import identidade as ID
+from compliance_agent.dominio import processo_id as PI
 from compliance_agent.dominio import regra_versao as RV
-from compliance_agent.dominio.achado import Achado, ExecucaoRegra, StatusAchado, hash_entradas
+from collections import Counter
+
+from compliance_agent.dominio.achado import Achado, ExecucaoRegra, Papel, StatusAchado, hash_entradas
 from compliance_agent.dominio.estados import EstadoSaida
 from compliance_agent.fluxo.fila import Resultado
 
@@ -186,7 +189,85 @@ def vigencia(did: str, d) -> dict:
     return {**v, "precisao_data_fato": precisao, "lei_do_contrato": lei}
 
 
-def para_achado(did: str, versao: str, escopo: str, rodada: str, d) -> Achado:
+# ── vínculo achado → processo SEI (O8.5: o E11 é por processo; sem vínculo ele não recebia nada) ────────────────
+TIPOS_COM_PROCESSO = ("contrato", "contratacao")     # `referencia` = processo do ajuste (contrato → processo-mãe)
+
+
+def obs_das_evidencias(disparos) -> set[tuple[str, str, str]]:
+    """(ug, numero_ob, exercicio) das OB que SUSTENTAM os disparos (Fato tipo 'ob', papel suporte)."""
+    return {(str(f.dados.get("ug")), str(f.referencia), str(f.dados.get("exercicio")))
+            for d in disparos for f in d.evidencias
+            if f.papel is Papel.SUPORTE and f.tipo == "ob" and f.referencia}
+
+
+def processos_das_obs(src, obs: set[tuple[str, str, str]]) -> dict[tuple[str, str, str], str | None] | None:
+    """OB → processo pelo campo `processo` da PRÓPRIA OB no SIAFE (bruto; a chave canônica vem depois).
+    None = a fonte não tem o campo (vínculo INDISPONÍVEL, nunca "sem processo")."""
+    if "processo" not in {r[1] for r in src.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}:
+        return None
+    nums = sorted({n for _, n, _ in obs})
+    out: dict = {}
+    for i in range(0, len(nums), 900):
+        lote = nums[i:i + 900]
+        sql = ("SELECT ug_emitente, numero_ob, exercicio, processo "
+               # ob-qualquer-status: mapa OB→processo das OB que o detector já escolheu (não soma pagamento)
+               f"FROM ob_orcamentaria_siafe WHERE numero_ob IN ({','.join('?' * len(lote))})")
+        for ug, num, ex, proc in src.execute(sql, lote):
+            k = (str(ug), str(num), str(ex))
+            if k in obs:
+                out[k] = proc
+    return out
+
+
+def vinculo_processo(d, ob_proc: dict | None) -> dict:
+    """Processo(s) do disparo pela identidade canônica (`dominio.processo_id`), só a partir do que o SUSTENTA: o
+    processo que o detector declarou, o campo `processo` de cada OB de suporte no SIAFE e o processo do contrato /
+    contratação de suporte. Fato de contexto (ex.: OB anulada) não liga. Grafia que a chave canônica não reconhece
+    não vira vínculo (é contada no motivo). Identidade de credor não `forte` (`dominio.identidade`) não sustenta o
+    vínculo: os processos ficam como CANDIDATOS e o estado é INDISPONIVEL. Nunca inventa: sem processo → INDISPONIVEL
+    com motivo. Puro."""
+    achados: dict[str, set] = {}
+    sem: Counter = Counter()
+
+    def ligar(bruto, via: str) -> None:
+        k = PI.chave_processo(bruto)
+        if k:
+            achados.setdefault(k, set()).add(via)
+        else:
+            sem[f"{via}: grafia sem processo SEI canônico" if str(bruto or "").strip() else
+                f"{via}: sem processo na fonte"] += 1
+
+    if d.processo:
+        ligar(d.processo, "detector")
+    for f in d.evidencias:
+        if f.papel is not Papel.SUPORTE:
+            continue
+        if f.tipo == "ob":
+            k = (str(f.dados.get("ug")), str(f.referencia), str(f.dados.get("exercicio")))
+            if ob_proc is None:
+                sem["ob_siafe: a fonte não tem o campo processo"] += 1
+            elif k not in ob_proc:
+                sem["ob_siafe: OB não encontrada na fonte"] += 1
+            else:
+                ligar(ob_proc[k], "ob_siafe")
+        elif f.tipo in TIPOS_COM_PROCESSO:
+            ligar(f.referencia, f.fonte)
+    sem_txt = "; ".join(f"{n} × {m}" for m, n in sorted(sem.items()))
+    if not achados:
+        tipos = sorted({f.tipo for f in d.evidencias if f.papel is Papel.SUPORTE})
+        nenhum = f"nenhum fato de suporte identifica processo (suporte: {', '.join(tipos) or 'nenhum'})"
+        return {"estado": "INDISPONIVEL", "processos": [], "candidatos": [], "motivo": sem_txt or nenhum,
+                "causas": sorted(sem) or [nenhum], "sem_processo": dict(sem)}
+    if d.identidade and not ID.sustenta_grave(ID.Resolucao(d.identidade, "")):
+        return {"estado": "INDISPONIVEL", "processos": [],
+                "candidatos": [{"candidato": k, "via": sorted(v)} for k, v in sorted(achados.items())],
+                "motivo": f"identidade '{d.identidade}' do credor não sustenta vínculo ao processo (só 'forte')",
+                "causas": [f"identidade '{d.identidade}' não sustenta vínculo"], "sem_processo": dict(sem)}
+    return {"estado": "VINCULADO", "motivo": sem_txt, "sem_processo": dict(sem),
+            "processos": [{"processo": k, "via": sorted(v)} for k, v in sorted(achados.items())]}
+
+
+def para_achado(did: str, versao: str, escopo: str, rodada: str, d, vinculo: dict | None = None) -> Achado:
     reg = _registro(did)
     afirma = str(reg.get("afirma") or did)
     hip = [h["hipotese"] for h in reg.get("hipoteses_inocentes") or [] if h.get("hipotese")]
@@ -200,11 +281,25 @@ def para_achado(did: str, versao: str, escopo: str, rodada: str, d) -> Achado:
                                    "grupo": d.grupo, "valores": d.valores, "entradas": d.entradas,
                                    "e9_versao": E9.VERSAO, "tier": reg.get("tier"),
                                    "regra_versao": vigencia(did, d), "esfera": RV.ESFERA_RESPONSABILIZACAO,
-                                   **ident},
-                        processo=d.processo, origem=origem(did, escopo, d.chave))
+                                   **ident, **({"vinculo_processo": vinculo} if vinculo else {})},
+                        processo=_processo_unico(d, vinculo), origem=origem(did, escopo, d.chave))
     return Achado.de_regra(execucao=exe, status=StatusAchado.TRIAGEM, estado=EstadoSaida(d.estado),
                            motivo_estado=d.motivo_estado, observacao=d.observacao, inferencia=afirma,
                            qualificacao=None, hipotese=afirma, hipoteses_alternativas=hip, evidencias=d.evidencias)
+
+
+def _processo_unico(d, vinculo: dict | None) -> str | None:
+    """`execucao_regra.processo`: a chave canônica quando o vínculo dá UM processo; vários ficam no resultado
+    (`vinculo_processo.processos`), nunca um escolhido ao acaso. Sem vínculo calculado, o que o detector disse."""
+    if vinculo is None:
+        return d.processo
+    ps = vinculo["processos"]
+    return ps[0]["processo"] if len(ps) == 1 else None
+
+
+def processos_vinculados(achados: list[Achado]) -> list[str]:
+    return sorted({p["processo"] for a in achados
+                   for p in (a.execucao.resultado.get("vinculo_processo") or {}).get("processos") or []})
 
 
 def rodada_de(did: str, versao: str, escopo: str, hashes: list[str]) -> str:
@@ -239,27 +334,47 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     src = abrir_fonte(payload)
     try:
         carga = det.carregar(src, ex)
+        esq, esq9 = esquema_vigente(payload), esquema_e9(payload)
+        pg = conectar(payload)
+        try:
+            anotar(carga.itens, vereditos(pg, esq9, unidade, exige, (c["chave_e9"] for c in carga.itens)))
+            disparos = det.detectar(carga.itens, carga.contexto)
+            ob_proc = processos_das_obs(src, obs_das_evidencias(disparos))
+            vinc = [vinculo_processo(d, ob_proc) for d in disparos]
+            resumo = {**carga.contexto, **det.resumo(carga.itens, disparos), "unidade_e9": unidade,
+                      "exigencia": exige}
+            resumo["itens_sem_linha_e9"] = sum(1 for c in carga.itens if c.get("e9") is None)
+            resumo["vinculo_processo"] = resumo_vinculo(vinc)
+            rodada = rodada_de(did, versao, escopo, [hash_entradas(d.entradas) for d in disparos])
+            achados = [para_achado(did, versao, escopo, rodada, d, v) for d, v in zip(disparos, vinc)]
+            aplicar_schema(pg, esq)
+            g = gravar(pg, esq, did, versao, escopo, rodada, achados, resumo)
+        finally:
+            pg.close()
     finally:
         src.close()
-    esq, esq9 = esquema_vigente(payload), esquema_e9(payload)
-    pg = conectar(payload)
-    try:
-        anotar(carga.itens, vereditos(pg, esq9, unidade, exige, (c["chave_e9"] for c in carga.itens)))
-        disparos = det.detectar(carga.itens, carga.contexto)
-        resumo = {**carga.contexto, **det.resumo(carga.itens, disparos), "unidade_e9": unidade, "exigencia": exige}
-        resumo["itens_sem_linha_e9"] = sum(1 for c in carga.itens if c.get("e9") is None)
-        rodada = rodada_de(did, versao, escopo, [hash_entradas(d.entradas) for d in disparos])
-        achados = [para_achado(did, versao, escopo, rodada, d) for d in disparos]
-        aplicar_schema(pg, esq)
-        g = gravar(pg, esq, did, versao, escopo, rodada, achados, resumo)
-    finally:
-        pg.close()
     novos = g["achados_novos"]
+    procs = processos_vinculados(achados)
+    # o evento suja o E11 de CADA processo ligado (chave = processo canônico) — além do `achados` do detector
+    eventos = ([{"fonte": "detectar", "tipo": "achados", "chave": f"{did}:{escopo}"}]
+               + [{"fonte": "detectar", "tipo": "achado_processo", "chave": p,
+                   "detalhe": {"detector": did, "escopo": escopo, "rodada": rodada}} for p in procs]) if novos else []
     return Resultado(efeito={"detector": did, "escopo": escopo, "exercicio": ex, "versao": versao, "rodada": rodada,
                              "esquema": esq, "achados": len(achados), "achados_novos": novos,
                              "resumo_novo": g["resumo_novo"], "segundos": round(time.monotonic() - t0, 1),
+                             "com_processo": resumo["vinculo_processo"]["VINCULADO"],
+                             "processo_indisponivel": resumo["vinculo_processo"]["INDISPONIVEL"],
+                             "processos_ligados": len(procs),
                              "resumo": json.loads(json.dumps(resumo, default=str))},
-                     eventos=[{"fonte": "detectar", "tipo": "achados", "chave": f"{did}:{escopo}"}] if novos else [])
+                     eventos=eventos)
+
+
+def resumo_vinculo(vinc: list[dict]) -> dict:
+    """Contagem do vínculo achado → processo da rodada, com os motivos do INDISPONIVEL (nunca só o número)."""
+    return {"VINCULADO": sum(v["estado"] == "VINCULADO" for v in vinc),
+            "INDISPONIVEL": sum(v["estado"] == "INDISPONIVEL" for v in vinc),
+            "causas_indisponivel": dict(sorted(Counter(c for v in vinc if v["estado"] == "INDISPONIVEL"
+                                                       for c in v["causas"]).items()))}
 
 
 def contar(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -> tuple[int, int | None]:
@@ -274,24 +389,36 @@ def contar(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -
     return n, (r[0] if r else None)
 
 
+def contar_vinculados(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -> int:
+    """Achados da rodada com vínculo VINCULADO gravado (recontagem no PG, não a palavra do handler)."""
+    return con.execute(f'SELECT count(*) FROM "{esquema}".execucao_regra e JOIN "{esquema}".achado a '
+                       "ON a.execucao_regra_id = e.id WHERE e.regra_id = %s AND e.regra_versao = %s "
+                       "AND e.origem LIKE %s AND e.resultado ->> 'rodada' = %s "
+                       "AND e.resultado -> 'vinculo_processo' ->> 'estado' = 'VINCULADO'",
+                       (did, versao, f"e10:{did}:{escopo}:%", rodada)).fetchone()[0]
+
+
 def conferir_amostra(pg, src, payload: dict, did: str, versao: str, escopo: str, ex: int | None, rodada: str,
                      n: int) -> dict:
     """Sorteia `n` achados da rodada e recalcula cada um DO ZERO pela fonte (só o grupo dele) + E9."""
     det = carregar_detector(did)
     unidade, exige = exigencia(did)
     esq, esq9 = esquema_vigente(payload), esquema_e9(payload)
-    linhas = pg.execute(f'SELECT resultado ->> \'grupo\', resultado ->> \'chave\', entradas_hash FROM "{esq}".'
+    linhas = pg.execute(f'SELECT resultado ->> \'grupo\', resultado ->> \'chave\', entradas_hash, '
+                        f'resultado -> \'vinculo_processo\' FROM "{esq}".'
                         "execucao_regra e JOIN " f'"{esq}".achado a ON a.execucao_regra_id = e.id WHERE e.regra_id '
                         "= %s AND e.regra_versao = %s AND e.origem LIKE %s AND e.resultado ->> 'rodada' = %s",
                         (did, versao, f"e10:{did}:{escopo}:%", rodada)).fetchall()
     amostra = random.sample(linhas, min(n, len(linhas)))
     divergentes = []
-    for grupo, chave, h in amostra:
+    for grupo, chave, h, vinc in amostra:
         carga = det.carregar_grupo(src, grupo, ex)
         anotar(carga.itens, vereditos(pg, esq9, unidade, exige, (c["chave_e9"] for c in carga.itens)))
         achou = [d for d in det.detectar(carga.itens, carga.contexto) if d.chave == chave]
         if len(achou) != 1 or hash_entradas(achou[0].entradas) != h.strip():
             divergentes.append(chave)
+        elif vinculo_processo(achou[0], processos_das_obs(src, obs_das_evidencias(achou))) != vinc:
+            divergentes.append(chave)          # o vínculo ao processo, recalculado da fonte, também tem de bater
     return {"amostra": len(amostra), "divergentes": divergentes}
 
 
@@ -308,11 +435,13 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
         n, n_resumo = contar(pg, esq, did, ef["versao"], escopo, ef["rodada"])
         am = conferir_amostra(pg, src, payload, did, ef["versao"], escopo, ex, ef["rodada"],
                               int(payload.get("amostra") or 10))
+        vinc = contar_vinculados(pg, esq, did, ef["versao"], escopo, ef["rodada"])
     finally:
         pg.close()
         src.close()
-    ef["conferencia"] = {"contados": n, "resumo_declara": n_resumo, **am}
+    ef["conferencia"] = {"contados": n, "resumo_declara": n_resumo, "com_processo_contados": vinc, **am}
     return (n == declarados and n_resumo == declarados and not am["divergentes"]
+            and vinc == int(ef.get("com_processo") or 0)
             and (am["amostra"] > 0 or declarados == 0))
 
 

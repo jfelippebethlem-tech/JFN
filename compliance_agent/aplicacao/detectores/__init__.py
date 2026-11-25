@@ -103,8 +103,8 @@ def sha_modulo(modulo: str) -> str:
 
 # Versão do CONTRATO do achado do E10 (campos que `detectar.para_achado` grava no resultado). Entra na versão da
 # execução: mudar o contrato regrava a rodada (a idempotência é por versão + entradas). o48 = regra_versao na data do
-# fato + esfera + identidade (O4.8).
-CONTRATO_ACHADO = "o48"
+# fato + esfera + identidade (O4.8); o85 = + vínculo ao processo SEI (`vinculo_processo`, O8.5).
+CONTRATO_ACHADO = "o85"
 
 
 def versao_execucao(did: str) -> str:
