@@ -20,6 +20,7 @@ import {fmtN, fmtR} from '../nucleo/formato.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {fundoSeguirSecoes} from './fundo.js';
 import {revelarEm, contarEm} from './revelar.js';
+import {mancheteEstado, mancheteLiberada, mancheteMotivo, mancheteAvisoHtml} from '../ui/manchete.js';   // O7.3
 
 const FONTES = [
   {s: 'SEI', n: 'SEI-RJ', ir: 'p_integras'}, {s: 'SF', n: 'SIAFE-Rio', ir: 'e_siafe'},
@@ -110,6 +111,7 @@ export function v63InicioHtml() {
       <h3 class="v63-h2 v63-rv" style="--i:1">Todo real <em class="v63-it">conta.</em></h3>
       <p class="v63-rv" style="--i:2">Pagamento só é pagamento quando há Ordem Bancária. Alerta é indício a conferir. Cada número diz de onde veio e em que estado está.</p>
     </div>
+    <div class="mch-slot" id="mch-slot">${mancheteAvisoHtml()}</div>
     <div class="v63-nums" id="v63-nums">
       ${_tile('ob', 0, 'data-manchete="v63-ob"')}${_tile('alertas', 1, 'data-manchete="v63-alertas"')}
       ${_tile('acervo', 2, 'data-manchete="v63-acervo"')}${_tile('econ', 3, 'data-manchete="v63-econ"')}
@@ -128,7 +130,7 @@ export function v63InicioHtml() {
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>04 · onde você entra</span>
       <h3 class="v63-h2 v63-rv" style="--i:1">Alerta que <em class="v63-it">chama você.</em></h3>
-      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026: o exibido era um fracionamento de inexigibilidade (a regra não se aplica) e, em 34 alertas conferidos na fonte, 13 não se sustentaram. Volta quando os produtores forem corrigidos; a fila completa segue na aba Alertas.</p>
+      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026 (o exibido era um fracionamento de inexigibilidade — a regra não se aplica). Alerta só volta à capa quando o detector que o produz estiver calibrado (Tier 1); a fila completa segue na aba Alertas.</p>
     </div>
   </section>
 
@@ -148,11 +150,14 @@ export function v63InicioMontar() {
   revelarEm(raiz);
   fundoSeguirSecoes(raiz);
   _pausarGrafoForaDaTela(raiz);
-  const [pEst, pPai] = [J('/api/ao-vivo/estado'), J('/api/compliance/painel')];
+  const [pEst, pPai, pMch] = [J('/api/ao-vivo/estado'), J('/api/compliance/painel'), mancheteEstado()];
   pEst.then(d => { _selo(d); _run(d); });
-  Promise.all([pEst, pPai]).then(([e, p]) => _nos(e, p));
-  pPai.then(d => { _numOB(d); _numAlertas(d); _numAcervo(d); });
-  J('/api/comparador/economia').then(_numEcon);
+  /* O7.3: o que é número de detector espera o estado de calibração (falha fechada) */
+  pMch.then(() => { const sl = document.getElementById('mch-slot'); if (sl) sl.innerHTML = mancheteAvisoHtml(); });
+  Promise.all([pEst, pPai, pMch]).then(([e, p]) => _nos(e, p));
+  pPai.then(d => { _numOB(d); _numAcervo(d); });
+  Promise.all([pPai, pMch]).then(([d]) => _numAlertas(d));
+  Promise.all([J('/api/comparador/economia'), pMch]).then(([d]) => _numEcon(d));
   J('/api/fontes/frescor').then(_frescor);
 }
 
@@ -175,7 +180,8 @@ function _nos(e, p) {
   const est = m => !m ? 'indisponível' : m.estado === 'rodando' ? 'rodando agora' : m.estado === 'agendado' && m.proxima ? `agendado · ${_hora(m.proxima)}` : m.estado;
   set('sei', est(mot('sei-noturno')));
   if (_ok(p) && p.obs && p.obs.ultimo_dia) set('siafe', `${_dataCurta(p.obs.ultimo_dia)} · ${fmtN(p.obs.n_ultimo_dia)} OB`); else set('siafe', 'indisponível');
-  if (_ok(p) && p.alertas && p.alertas.total != null) set('det', `${fmtN(p.alertas.total)} alertas abertos`); else set('det', 'indisponível');
+  if (!mancheteLiberada('v63-alertas')) set('det', 'fila de triagem');   // O7.3: contagem de detector não é manchete
+  else if (_ok(p) && p.alertas && p.alertas.total != null) set('det', `${fmtN(p.alertas.total)} alertas abertos`); else set('det', 'indisponível');
   set('ver', 'regras · ' + est(mot('qualidade')));
   set('dos', 'md · pdf · xlsx');
   const ativo = {sei: mot('sei-noturno'), siafe: mot('siafe-ob'), det: mot('ronda'), ver: mot('qualidade'), dos: null};
@@ -220,7 +226,7 @@ function _num(k, {l, v, fmt, s, f, estado, barras, alvo}) {
   c.querySelector('.v63-num-s').innerHTML = s || '';
   c.querySelector('.v63-num-b').innerHTML = (barras || []).map(b =>
     `<div class="v63-barra"><span>${esc(b.l)}</span><i><b style="--w:${b.w.toFixed(4)}"${b.c ? ` class="${b.c}"` : ''}></b></i><em class="v63-mono">${esc(b.v)}</em></div>`).join('');
-  c.querySelector('.v63-num-f').innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${f}`;   // f: rótulo fixo daqui ou o HTML do erroHumano
+  c.querySelector('.v63-num-f').innerHTML = `<i class="v63-estado ${estado.toLowerCase().replace(/\s+/g, '-')}">${estado}</i> ${f}`;   // f: rótulo fixo daqui ou o HTML do erroHumano
 }
 
 function _numOB(d) {
@@ -229,11 +235,17 @@ function _numOB(d) {
     s: `<b>${fmtN(d.obs.n_ultimo_dia)}</b> ordens bancárias contabilizadas no último dia com OB no SIAFE`,
     f: 'SIAFE · ob_orcamentaria_siafe', estado: 'VERIFICADO'});
 }
+/* O7.3: número de detector bloqueado — sem o valor, com o porquê; o dado segue na aba */
+function _bloq(k, l, onde) {
+  _num(k, {l, v: null, s: `<b>não é manchete</b> — ${esc(mancheteMotivo('v63-' + k))}`, f: esc(onde), estado: 'NÃO CALIBRADO'});
+  const c = document.getElementById('v63-n-' + k); if (c) c.classList.add('mch-off');
+}
 function _numAlertas(d) {
+  if (!mancheteLiberada('v63-alertas')) return _bloq('alertas', 'alertas abertos', 'a fila segue na aba Alertas');
   const a = _ok(d) && d.alertas;
   if (!a || a.total == null) return _num('alertas', {l: 'alertas abertos', v: null, f: _indisp(d), estado: 'INDISPONÍVEL'});
   const t = Math.max(1, a.total), baixa = a.baixa != null ? a.baixa : Math.max(0, a.total - (a.alta || 0) - (a.media || 0));
-  _num('alertas', {l: 'alertas abertos', v: a.total, fmt: 'n', s: 'fila de triagem (motor de regras e perícias), descartados fora — em 34 conferidos na fonte em 19/11/2026, 13 não se sustentaram',
+  _num('alertas', {l: 'alertas abertos', v: a.total, fmt: 'n', s: 'fila de triagem (motor de regras e perícias), descartados fora',
     barras: [{l: 'alta', w: (a.alta || 0) / t, v: fmtN(a.alta || 0), c: 'alta'}, {l: 'média', w: (a.media || 0) / t, v: fmtN(a.media || 0)},
              {l: 'baixa', w: baixa / t, v: fmtN(baixa), c: 'baixa'}],
     f: 'motor de regras · alertas', estado: 'PENDENTE'});
@@ -249,6 +261,7 @@ function _numAcervo(d) {
     f: 'SIAFE · ob_orcamentaria_siafe', estado: 'VERIFICADO'});
 }
 function _numEcon(d) {
+  if (!mancheteLiberada('v63-econ')) return _bloq('econ', 'economia potencial', 'as compras seguem em Comparador › Economia possível');
   if (!_ok(d) || d.economia_total == null) return _num('econ', {l: 'economia potencial', v: null, f: _indisp(d), estado: 'INDISPONÍVEL'});
   /* 21/11/2026: o total era 100% da Prefeitura do Rio sem dizer a esfera (esferas estanques); agora diz de onde vem. */
   const pe = d.por_esfera || {}, esf = k => pe[k] && pe[k].n ? `${fmtR(pe[k].economia)} em ${fmtN(pe[k].n)}` : 'nenhuma conferida';

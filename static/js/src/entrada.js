@@ -46,6 +46,7 @@ import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 import {rjbgStart, netbgStart, _rjbgTinge} from './cena/fundo.js';
 import {portalStart} from './cena/portal.js';
 import {cenaPonteiro} from './cena/ponteiro.js';
+import {lenteBoot, lenteTrocaDeAba} from './ui/lente.js';   // O7.2: seletor global de lente (todas as abas)
 import {nucleoPulse, nucleoViva, nebulaViva, _nuHover,
         _setNuHover} from './cena/index.js';
 import {energiaPacote, energiaRever, energiaParar, energiaCenso} from './cena/energia.js';
@@ -329,7 +330,7 @@ async function ir(id){
   if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){setEsfera(e);t=cand;montarSpheres();break;}}}
   if(!t)return;
   if(_abaAntes&&_abaAntes!==id)somTocar('area');   // som de troca de área (só se o som estiver ligado)
-  setAba(id);montarTabs();
+  setAba(id);montarTabs();lenteTrocaDeAba();   // O7.2: a contagem "recortado × universo inteiro" é por aba
   if(location.hash.slice(1)!==id){_hashMeu=true;location.hash=id;}
   /* v36: sentido da navegacao — a faceta do cristal gira PARA o lado do
      destino (aba a direita gira num sentido, a esquerda no outro). Sem
@@ -401,6 +402,7 @@ addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/i
   await ir(_abaValida(_h)?_h:'i_cockpit');
   if(_h&&!_abaValida(_h))_hashInvalido(_h);
   marcarValores(document.getElementById('view'));
+  lenteBoot(()=>ir(aba));   // O7.2: depois da 1ª aba; lente lembrada repinta a aba já recortada
   const st=await J('/status');
   if(st.exercicio){
     /* v27: estado do SIAFE era um dingbat. Medido: nenhuma das tres fontes

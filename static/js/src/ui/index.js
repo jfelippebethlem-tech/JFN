@@ -248,7 +248,7 @@ export async function abrirDossie(cnpj,nome){
   let h=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>`;
   h+=`<div style="display:flex;gap:12px;align-items:center"><span class="badge-grau">${per.grau||'⚪'}</span>
       <div style="min-width:0"><div style="font-weight:800;font-size:17px;line-height:1.2">${esc(d.nome)}</div>
-      <div class="dim">${esc(d.cnpj_fmt)}${per.score!=null?` · score perícia ${per.score}`:''}</div></div></div>`;
+      <div class="dim">${esc(d.cnpj_fmt)}${per.score!=null?` · score perícia ${per.score} <span title="escala interna da casa: mede quanto material há para examinar e muda quando os detectores mudam — não é probabilidade de irregularidade; os componentes são os achados listados abaixo, cada um com o seu status">(escala interna, não probabilidade — componentes nos achados abaixo)</span>`:''}</div></div></div>`;
   h+=`<div class="mini">
       <div class="b"><div class="v"${d.ob_indisponivel?` title="${esc(d.ob_indisponivel)}"`:''}>${d.ob_indisponivel?'INDISPONÍVEL':fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB · SIAFE)</div></div>
       <div class="b"><div class="v">${d.ob_indisponivel?'—':fmtN(ob.orgaos||0)}</div><div class="l">Órgãos pagadores</div></div>

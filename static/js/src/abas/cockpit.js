@@ -35,6 +35,7 @@ import {aba, esfera} from '../app/estado.js';
 import {nuSet, NU_NODES} from '../cena/index.js';
 import {a11yfy} from '../ui/index.js';
 import {galaxiaPreviewHtml, galaxiaPreviewMontar} from './galaxia_inicio.js';   // 16/11: preview leve da galáxia (fim do Início)
+import {mancheteEstado, mancheteLiberada, mancheteBloqueioHtml} from '../ui/manchete.js';   // O7.3: só Tier 1 na capa
 
 // ═══ COCKPIT (aba Início) — command deck ao vivo ═══
 let _ckTimer=null;
@@ -118,7 +119,13 @@ export function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst"
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
   <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
   </div>`;}
-function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
+/* O7.3: o cartão só mostra o número se a superfície `cki-<id>` do inventário estiver liberada (Tier 1, ou medição do
+   sistema). Bloqueado: valor em traço, o motivo no lugar do texto, chip da mesa em traço — o dado segue na aba. */
+function ckBloquear(id){const el=$('cki-'+id);nuSet(id,null);if(!el)return;
+  el.classList.add('mch-off');el.querySelector('.val').textContent='—';delete el.dataset.v61Val;
+  const m=el.querySelector('.meta');m.innerHTML=mancheteBloqueioHtml('cki-'+id,'o dado segue na aba, como fila de triagem');m.classList.remove('esperando');}
+function ckFill(id,{num,txt,meta}={}){if(!mancheteLiberada('cki-'+id)){ckBloquear(id);return;}
+  const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   /* v61: a 1ª leitura conta de 0 ao valor; quando o número MUDA numa leitura seguinte (a cada 30 s),
      ele troca com flip + lâmina de luz em vez de recontar do zero. */
   const _novo=num!=null&&isFinite(num)?fmtN(Math.round(num)):(txt!=null?String(txt):null);
@@ -150,7 +157,7 @@ export function ckBoot(){
   aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));preocupacoesMontar($('c61-preoc'));   // v61: o reator vivo no lugar da mesa
   v63InicioMontar();          // v63: depois do paint, como o resto do cockpit
   galaxiaPreviewMontar($('gx-prev'));   // 16/11: canvas 2D pintado uma vez; a galáxia 3D abre em /galaxia
-  ckPull(true);
+  mancheteEstado().then(()=>{if(aba==='i_cockpit')ckPull(true);});   // O7.3: o gate chega antes do primeiro número
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
 function ckPull(first){
@@ -168,9 +175,10 @@ function ckPull(first){
       const m=$('cki-alertas')&&$('cki-alertas').querySelector('.meta');
       if(m){m.textContent='indisponível — '+erroHumano(d&&d.erro);m.classList.remove('esperando');}
       return;}
+    if(!mancheteLiberada('cki-alertas')){ckBloquear('alertas');if(el)el.title='alertas: '+mancheteBloqueioHtml('cki-alertas').replace(/<[^>]+>/g,'');return;}
     nuSet('alertas',a.total);
     // só alerta NÃO descartado (o servidor filtra desde 13/11/2026); as três gravidades somam o total
-    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>: conferidos 34 na fonte primária em 19/11/2026, 13 não se sustentaram`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
+    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`+(a.baixa!=null?` · ${fmtN(a.baixa)} baixa`:'')+` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
     if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média${a.baixa!=null?' · '+fmtN(a.baixa)+' baixa':''} (descartados fora)`
       +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
   // card 'mesma sala' retirado em 19/11/2026 (FP medida 100% nos 6 grupos altos — COR-04); a aba Riscos segue
@@ -185,6 +193,9 @@ function ckPull(first){
     // acima da mediana, inclusive orgânico de agricultura familiar e óleo de marca exigida.
     // Agora o herói só soma indício de sobrepreço (≥2× a mediana do MESMO item na MESMA unidade)
     // CONFERIDO no PNCP e fora de ata; Estado e Prefeitura aparecem separados; o resto é dito.
+    if(!mancheteLiberada('ck-econ')){const big=$('ck-econ');if(big)big.textContent='—';
+      if($('ck-sub'))$('ck-sub').innerHTML=mancheteBloqueioHtml('ck-econ','as compras seguem em Comparador › Economia possível');
+      ckFill('compras',{});return;}
     const pe=d.por_esfera||{},est=pe.estado||{},pre=pe.prefeitura||{};
     _ckCount($('ck-econ'),d.economia_total||0,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=
@@ -234,7 +245,7 @@ function ckPull(first){
     ckFill('fenix',{txt:fmtRc(d.total_apos_baixa||0),
       meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo`
            +(d.n_fora_da_manchete?` · fora da conta: ${_fmN('natureza_publica')} órgãos públicos, ${_fmN('cartorio')} cartórios, ${_fmN('filial_de_matriz_ativa')} filiais de matriz ativa, ${_fmN('pagamento_judicial')} pagamentos judiciais`:'')});
-    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir`}]);});
+    if(d.n_defunta_confirmada&&mancheteLiberada('cki-fenix'))ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir`}]);});
 }
 
 

@@ -10,10 +10,35 @@ import {esc, card} from './dom.js';
 // informação — o dado expira sozinho e re-busca. Fora do cache: SSE e os status de polling.
 export const _jCache = new Map();
 
-export async function J(ep, opt) {
+/* O7.2 · LENTE GLOBAL (config/lentes.yaml). Escolhida no seletor do cabeçalho (`ui/lente.js`), ela vai como
+   `lente=<nome>` em toda consulta de DADO do painel. A rota que recortou responde com o cabeçalho
+   `X-JFN-Lente: <nome>`; a que não recortou (ainda sem recorte por lente) responde sem ele — e o painel CONTA as
+   duas por aba e diz na faixa da lente, nunca um "filtrado" que não foi. Rotas de sistema (motores, frescor,
+   estado de calibração, catálogo de lentes) não recebem a lente: não são dado de órgão. Quem já pede `lente=`
+   (a aba Lentes de detecção, `/api/lentes?lente=…`) mantém o seu — o parâmetro explícito nunca é sobrescrito. */
+let _lente = null;
+/* `/api/lentes` é a aba Lentes de DETECÇÃO (08/2026): lá `lente=` é outra coisa (convergencia, hhi…) e o nome de
+   uma lente de órgão viraria "lente desconhecida" — ela fica fora, como as rotas de sistema. */
+const _LENTE_FORA = /^\/(status|api\/(ao-vivo|sistema|eventos|fontes|manchetes|esteira\/lentes|qualidade|territorio|lentes(?=[?\/]|$)))/;
+export const lenteUso = {aplicada: [], nao_aplicada: []};
+export function lenteAtual() { return _lente; }
+export function lenteDefinir(nome) { _lente = nome || null; lenteUso.aplicada = []; lenteUso.nao_aplicada = []; }
+export function lenteNovaAba() { lenteUso.aplicada = []; lenteUso.nao_aplicada = []; }
+function _comLente(ep) {
+  if (!_lente || !/^\/(api\/|status)/.test(ep) || _LENTE_FORA.test(ep) || /[?&]lente=/.test(ep)) return null;
+  return ep + (ep.includes('?') ? '&' : '?') + 'lente=' + encodeURIComponent(_lente);
+}
+function _registrarLente(ep, aplicou) {
+  const rota = ep.split('?')[0], lista = aplicou ? lenteUso.aplicada : lenteUso.nao_aplicada;
+  if (!lista.includes(rota)) lista.push(rota);
+  document.dispatchEvent(new CustomEvent('jfn-lente-uso'));
+}
+
+export async function J(ep0, opt) {
   const isGet = !opt || !opt.method || opt.method === 'GET';
+  const _ep = isGet ? _comLente(ep0) : null, ep = _ep || ep0;
   const cacheavel = isGet && !/\/stream|\/status|\/api\/eventos/.test(ep);
-  if (cacheavel) { const c = _jCache.get(ep); if (c && Date.now() - c.t < 90000) return c.d; }
+  if (cacheavel) { const c = _jCache.get(ep); if (c && Date.now() - c.t < 90000) { if (_ep) _registrarLente(ep0, c.l); return c.d; } }
   /* TETO DE ESPERA: `fetch` sem AbortController espera para SEMPRE. Uma rota lenta não
      virava erro — virava um card parado em "—" sem explicação nenhuma, indistinguível de
      "não há dado". Foi assim que o "ninhos de fachada" ficou mudo. Agora estoura em 30 s
@@ -24,8 +49,10 @@ export async function J(ep, opt) {
     const relogio = ac ? setTimeout(() => ac.abort(), TETO) : 0;
     try {
       const r = await fetch(ep, ac ? Object.assign({}, opt, {signal: ac.signal}) : opt);
+      const aplicou = !!_ep && r.headers.get('X-JFN-Lente') === _lente;
+      if (_ep) _registrarLente(ep0, aplicou);
       const d = await r.json();
-      if (cacheavel && d && d.ok !== false) _jCache.set(ep, {t: Date.now(), d});
+      if (cacheavel && d && d.ok !== false) _jCache.set(ep, {t: Date.now(), d, l: aplicou});
       return d;
     } catch (e) {
       const estourou = e && e.name === 'AbortError';

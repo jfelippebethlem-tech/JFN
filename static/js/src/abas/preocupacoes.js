@@ -11,6 +11,21 @@
 import {esc} from '../nucleo/dom.js';
 import {fmtN} from '../nucleo/formato.js';
 import {J} from '../nucleo/http.js';
+import {mancheteEstado, detectorLiberado, detectorMotivo} from '../ui/manchete.js';
+
+/* O7.3 (manchete só Tier 1): cada sinal crítico é número de DETECTOR — `couto.Dnn` (regras D01–D20; hipótese H* não
+   está no registro) e `pericia_contabil`. Só vai à capa com `manchete_efetiva`; o que não está calibrado aparece
+   como bloco "não é manchete", dizendo quantos pontos verificados existem e onde estão — nunca some calado. */
+function _detCouto(x) { const m = String(x.regra_ou_hipotese || '').match(/^(D\d{2})\b/); return m ? 'couto.' + m[1] : null; }
+function _bloqueado(titulo, n, dets, destino) {
+  const motivos = [...new Set(dets.map(d => d ? detectorMotivo(d) : 'hipótese fora do registro de detectores — não é manchete'))];
+  return `<button type="button" class="pq-item mch-off" onclick="ir('${destino}')">
+    <div class="pq-topo"><span class="pq-grau" aria-hidden="true">⚪</span><span class="pq-valor num">não é manchete</span></div>
+    <div class="pq-tit">${titulo}</div>
+    <div class="pq-txt">${fmtN(n)} ponto(s) com prova primária conferida ficam fora da capa até o detector ser calibrado (Tier 1): ${esc(motivos.slice(0, 3).join(' · '))}${motivos.length > 3 ? ' …' : ''}. O conteúdo segue na aba.</div>
+    <div class="pq-fonte"><b>NÃO CALIBRADO</b> · registro de detectores (tier calculado hoje)</div>
+  </button>`;
+}
 
 const brl = v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
@@ -26,7 +41,11 @@ function _item({grau, valor, titulo, texto, fonte, estado, destino}) {
 function _couto(d) {
   if (!d || d.ok === false || !d.pontos_atencao) return '<div class="pq-indisp"><b>Governo Couto: INDISPONÍVEL</b> — a rota não respondeu.</div>';
   const it = (d.pontos_atencao.itens || []).filter(x => x.verificacao === 'VERIFICADO' || (x.verificacao && x.verificacao.estado === 'VERIFICADO'));
-  const verm = it.filter(x => x.grau === '🔴'), amar = it.filter(x => x.grau === '🟡');
+  const graves = it.filter(x => x.grau === '🔴' || x.grau === '🟡');
+  const libera = graves.filter(x => detectorLiberado(_detCouto(x)));
+  if (graves.length && !libera.length)
+    return _bloqueado('Pontos de atenção na gestão Couto (desde 23/03/2026)', graves.length, graves.map(_detCouto), 'e_couto');
+  const verm = libera.filter(x => x.grau === '🔴'), amar = libera.filter(x => x.grau === '🟡');
   if (!verm.length && !amar.length) return '';
   const top = verm[0] || amar[0];
   const nome = String(top.regra_ou_hipotese || '').replace(/^[A-Z]\d+\s*·\s*/, '');
@@ -68,6 +87,8 @@ function _pericia(d) {
   if (!e || !e.placar || !e.placar.A_MAIOR) return '';
   const verif = String((e.verificacao || {}).placar || '');
   if (!/^VERIFICADO/.test(verif)) return '';
+  if (!detectorLiberado('pericia_contabil'))
+    return _bloqueado(`Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`, e.placar.A_MAIOR, ['pericia_contabil'], 'e_pcont');
   return _item({
     grau: '🟡',
     valor: brl(e.excesso_a_maior),
@@ -82,7 +103,7 @@ export async function preocupacoesMontar(host) {
   if (!host) return;
   const CAB = '<div class="pq-cab"><span class="pq-pulso" aria-hidden="true"></span><h2 class="sec">Sinais críticos</h2><span class="pq-sub">varredura cruzada · prova primária conferida</span></div>';
   host.innerHTML = CAB + '<div class="dim">Varrendo…</div>';
-  const [c, p] = await Promise.all([J('/api/governo_couto', {tetoMs: 60000}), J('/api/pericia_contabil', {tetoMs: 60000})]);
+  const [c, p] = await Promise.all([J('/api/governo_couto', {tetoMs: 60000}), J('/api/pericia_contabil', {tetoMs: 60000}), mancheteEstado()]);
   if (!host.isConnected) return;
   const corpo = _couto(c) + _pericia(p);
   host.innerHTML = CAB

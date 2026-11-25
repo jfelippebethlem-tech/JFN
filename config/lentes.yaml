@@ -1,7 +1,9 @@
 # lentes.yaml — LENTES da Esteira Única (plano mestre v2 §3.6): configuração, sem código próprio de captura,
 # perícia, Lex ou relatório. Lido só por compliance_agent/fluxo/lentes.py (validado no carregamento).
 #
-# Uma lente é FILTRO + PRIORIDADE sobre a fila única (compliance_agent/fluxo/prioridade.py):
+# Uma lente é FILTRO + PRIORIDADE sobre a fila única (compliance_agent/fluxo/prioridade.py) e um RECORTE das visões do
+# painel (E15, visão `lente_<nome>`, compliance_agent/aplicacao/lentes_resumo.py; seletor global do painel, O7.2).
+#   esfera             estado (padrão) | prefeitura | emendas. Lente fora do Estado nunca casa com processo SEI-RJ.
 #   filtro.ug          UGs do SIAFE (código). CADA UMA é conferida contra o índice do SIAFE (`conferir_siafe`: o
 #                      dropdown selUg baixado por tools/siafe_ug_index.py em data/ug_index_siafe.json) — a sigla
 #                      tem de ser a escrita aqui, senão o carregamento recusa (UG não se escreve de memória).
@@ -9,11 +11,23 @@
 #                      entra quando ≥ `posse_minima` das OBs com processo daquele prefixo são das UGs da lente, com
 #                      pelo menos `minimo_obs` OBs (`lentes.derivar_orgao_sei`). Pega o processo que nenhuma OB cita
 #                      (licitação, processo-pai) — é por onde o sweep antigo o alcançava (citação/contrato).
-#   prioridade         soma ao ESCALAR de valor da fila única (degrau 7; nunca pula estrato).
+#   filtro.processo    {derivar: contratos_obra} — processos dos contratos do TCE-RJ que são obra (`lentes.e_obra`).
+#   filtro.credor      {derivar: socios_com_beneficio} — CNPJs com sócio casado a beneficiário (BF/BPC), pela mesma
+#                      `analisar()` do relatório antigo. Lê o pcrj_benef.db: só deriva no materializador/CLI.
+#   filtro.data_fato_desde  SÓ a referência `governo_couto.INICIO` (constante única); data escrita é recusada.
+#   filtro.orgao_pcrj  códigos de órgão da Prefeitura, conferidos contra o ContasRio (`conferir_pcrj`).
+#   filtro.emendas     {recorte: [...]} — valores da coluna `emendas.recorte`, conferidos contra a tabela.
+#   ug/orgao_sei/processo/credor combinam por OU; data_fato_desde é restrição (E).
+#   prioridade         soma ao ESCALAR de valor da fila única (degrau 7; nunca pula estrato). Só bombeiros tem bônus
+#                      (O3.3); as lentes da O7.2 entram com 0,0 — filtram e recortam, não reordenam, até o dono decidir.
+#   cota_esforco       SÓ a referência `foco.periodo_couto.fracao` (o ponto único é config/foco.yaml).
+#   eixos_extra        eixos do laudo genérico (E11, compliance_agent/aplicacao/estagios/periciar.py EIXOS) que a
+#                      perícia acrescenta quando o item cai na lente.
 #   detectores_extra   só detectores registrados, com domínio declarado (nenhum por enquanto).
 #   produto            relatório genérico (E16) com o filtro.
 #   alerta             Yoda só fala quando o dono pedir.
-# A cota Couto (50% do esforço) NÃO mora aqui: é config/foco.yaml (ponto único; duplicar seria a constante copiada).
+#   paridade           contra QUAL script/relatório antigo a lente foi medida e cada diferença explicada
+#                      (tests/test_lentes_completas.py reproduz a régua; números do snapshot da parada, 24/11/2026).
 versao: 1
 lentes:
   bombeiros:
@@ -32,3 +46,125 @@ lentes:
     detectores_extra: []
     produto: dossie_orgao
     alerta: nenhum
+    paridade: >-
+      tools/sei_bombeiros_sweep.py: (a) replay do log do sweep antigo (`arvore paridade --lente bombeiros`, O3.3);
+      (b) a fila antiga (data/bombeiros_sei_fila.json): 10.112 itens, 2.951 sem a cascata de licitação de licitação
+      que o dono tirou em 13/11; 2.950 caem na lente (1.687 pela UG da sigla do TCE-RJ, 1.263 pelo prefixo 27
+      derivado do SIAFE). 1 fora, explicado: SEI-120228/000263/2023 (Instituto Rio Metrópole, consultoria FDRM/IRM,
+      flag FDRM_IRM_INDUCTA) — enfileirado à mão na fila dos bombeiros sem ser dos bombeiros; na fila única ele vai
+      pela faixa manual, não pela lente.
+  couto:
+    descricao: 'Período do governo Couto (gestão interina desde 23/03/2026): todo fato com data a partir de governo_couto.INICIO; substitui o recorte de compliance_agent/governo_couto.py e do dossie_couto'
+    filtro:
+      data_fato_desde: governo_couto.INICIO
+    cota_esforco: foco.periodo_couto.fracao
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      compliance_agent/governo_couto._execucao (OB Contabilizada do exercício 2026 com data ≥ INICIO, menos devolvida
+      pelo banco e linha sem número): snapshot 180.966 OB / R$ 62.914.024.950,77; a lente (régua canônica _ob_paga)
+      177.888 / R$ 62.807.464.530,87. Diferença 3.078 OB / R$ 106.560.419,90 = 3.051 'Pagamento Complementar'
+      (R$ 105.622.829,04 — não vai ao banco, a OB principal já paga: contava em dobro) + 27 OB reemitidas
+      (R$ 937.590,86 — a 1ª não é pagamento). Falso positivo corrigido, não perda. A cota de 50% continua só em
+      config/foco.yaml (a lente lê a referência; bônus 0 para não contar o período duas vezes).
+  mgs_iterj:
+    descricao: 'ITERJ (Instituto de Terras e Cartografia do Estado do RJ, UG 133100): o órgão das esteiras ITERJ×MGS Clean, ITERJ×Mobiliza e da auditoria especial do Decreto 50.254/2026'
+    filtro:
+      ug: ['133100']
+      orgao_sei: {derivar: siafe, posse_minima: 0.95, minimo_obs: 100}
+    conferir_siafe:
+      '133100': ITERJ
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      tools/_arquivo/mgs_iterj_2021/relatorio_iterj_mgs_padrao.py (OB do SIAFE com ug_emitente 133100 e credor MGS
+      19.088.605/0001-04): as 65 OB do recorte antigo estão todas na lente (63 pagas, R$ 5.828.352,68; as 2 restantes
+      não são pagamento pela régua _ob_paga). A lente é o ÓRGÃO, não o par: também cobre Mobiliza e Engeprat/Omega,
+      que tinham relatório próprio. Pagamentos da MGS por OUTRAS UGs ficam fora (seriam lente de fornecedor).
+  beneficios:
+    descricao: 'Fornecedores com sócio casado a beneficiário de Bolsa Família/BPC no Rio (nome + fragmento do CPF); a perícia acrescenta o eixo beneficios (E11, O6.4)'
+    filtro:
+      credor: {derivar: socios_com_beneficio}
+    eixos_extra: [beneficios]
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      compliance_agent/pcrj/pericia_socios_beneficio.analisar(): a lente usa a MESMA função (paridade por construção) e
+      toma os CNPJs dos registros que ela devolve (ALTA e SEM_FRAGMENTO, como o relatório): medido em 24/11/2026,
+      1.917 registros, 1.653 CNPJs — os mesmos 1.653 nos dois lados (5 min de leitura do pcrj_benef.db: só no
+      materializador). Fora da lente, por
+      desenho: os nomeados da Câmara/Prefeitura × benefício (pcrj/pericia_beneficios) — é pessoal, não fornecedor;
+      vira o ponto B2 do eixo beneficios, não recorte de OB.
+  fserj:
+    descricao: 'Fundação Saúde do Estado do RJ: UG 294200 (sigla FS no SIAFE, onde estão as OB) e UG 226300 (sigla FSERJ — a do TCE-RJ casa por ela)'
+    filtro:
+      ug: ['294200', '226300']
+    conferir_siafe:
+      # Medido no snapshot da parada: 294200 (FS) tem 87.859 OB pagas, R$ 13.354.978.086,53 (2021–2026); 226300
+      # (FSERJ) tem 0 OB paga como emitente, mas é a UG que a sigla do TCE-RJ ('FSERJ - FUNDAÇÃO SAÚDE…') resolve no
+      # índice — sem ela, os contratos do TCE-RJ não casariam com a lente.
+      '294200': FS
+      '226300': FSERJ
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      tools/fserj_socio_agente.py: os contratos do TCE-RJ com unidade 'FSERJ%' (9.072 linhas, 1.431 processos
+      legíveis) estão todos no recorte (UG pela sigla). Explicado: 4.043 linhas do TCE-RJ não trazem nº de processo
+      legível — o script antigo as alcançava pelo CNPJ; na lente elas chegam pelas OB da UG 294200 quando pagas
+      (INDISPONÍVEL para ligar ao SEI, contado no recorte). Os TAC do DOERJ (doerj_tac_sinal) ficam fora: o script
+      antigo os somava SEM filtro de órgão; não são da FSERJ por construção.
+  pcrj_saude:
+    descricao: 'Saúde da Prefeitura do Rio: Secretaria Municipal de Saúde, Fundo Municipal de Saúde e RioSaúde (ContasRio)'
+    esfera: prefeitura
+    filtro:
+      orgao_pcrj: ['1801', '1803', '1851']
+    conferir_pcrj:
+      # Lido em data/pcrj.db (contasrio_contrato.orgao = 'código - NOME'), 24/11/2026. Fica de fora, por decisão
+      # registrada: 1433 FUNDO DE ASSISTÊNCIA A SAÚDE DO SERVIDOR — plano de saúde do servidor, não SUS.
+      '1801': SECRETARIA MUNICIPAL DE SAÚDE
+      '1803': FUNDO MUNICIPAL DE SAÚDE
+      '1851': EMPRESA PÚBLICA DE SAÚDE DO RIO DE JANEIRO
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      tools/pericia_ppp_souza_aguiar.py (caso único): os contratos do Hospital Municipal Souza Aguiar (UG 180061, sob o
+      1803) estão no recorte. A PPP em si (pcrj_ppp, órgão gestor CCPAR) NÃO é da saúde pelo cadastro — entra pelo
+      dossiê do caso (E16), não pela lente. tools/pcrj_saude.py é homônimo: mede a SAÚDE DOS PIPELINES da Prefeitura,
+      não é esteira de saúde (fica no E18).
+  emendas:
+    descricao: 'Emendas parlamentares com destino no RJ (Portal da Transparência): empenhado, liquidado e pago em separado'
+    esfera: emendas
+    filtro:
+      emendas: {recorte: [DESTINO_RJ, AMBOS]}
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      compliance_agent/emendas/pericia.py (D1–D6) lê a tabela emendas INTEIRA. A lente fica com destino no RJ
+      (DESTINO_RJ, AMBOS: 3.910 de 5.286); fora, explicado: recorte AUTOR_RJ sem destino no RJ (1.376 — 1.329 sem UF
+      de destino, 47 em outra UF), dinheiro federal fora do Estado (decisão do dono de 19/11: só RJ). Os planos PIX
+      (emendas_pix_planos, D1) seguem fora da lente até haver vínculo plano→emenda conferido.
+  obras:
+    descricao: 'Contratos de obra do TCE-RJ (construção, reforma, pavimentação, edificação, drenagem, obra) e as OB dos seus processos'
+    filtro:
+      processo: {derivar: contratos_obra}
+    prioridade: 0.0
+    detectores_extra: []
+    produto: dossie_orgao
+    alerta: nenhum
+    paridade: >-
+      tools/pericia_obras.py (substring SQL '%obra%' e afins): 1.167 contratos no snapshot. A lente reconhece 793 e
+      tira 374 falsos positivos medidos — 334 'mão de obra' (locação de mão de obra, limpeza, vigilância) e 40 em que
+      "obra" é pedaço de outra palavra (petrobras, cobrança, dobra, manobra, sobra, desdobramento). O que fica é
+      subconjunto exato do antigo (nenhum contrato novo entra).

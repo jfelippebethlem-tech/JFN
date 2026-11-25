@@ -164,11 +164,14 @@ def _rotas():
     }
 
 
+_VISOES_DE_ROTA = sorted(n for n in M.VISOES if not n.startswith("lente_"))   # lente_*: tests/test_lentes_completas.py
+
+
 def test_toda_visao_tem_rota_de_paridade():
-    assert set(_rotas()) == set(M.VISOES)
+    assert set(_rotas()) == set(_VISOES_DE_ROTA)
 
 
-@pytest.mark.parametrize("nome", sorted(M.VISOES))
+@pytest.mark.parametrize("nome", _VISOES_DE_ROTA)
 def test_paridade_rota_antes_igual_depois(monkeypatch, caches_isolados, nome):
     corpo = {"ok": True, "n": 7, "n_orgaos": 3, "total": 1234567.89, "rede": [{"valor": 10.5}], "nodes": [1, 2],
              "fontes": [{"fonte": "x"}], "resumo": {"total": 2, "analisados": 1}, "dados": {"n_clusters": 4},

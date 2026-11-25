@@ -2772,7 +2772,7 @@ rotinas:
     efeito: {descricao: 'envelope instalado ou inalterado com md5 conferido', log_contem: 'analitico aplicar: (APLICADO|INALTERADO)'}
   materializar_painel:
     estagio: E15
-    descricao: 'E15 materializar (O7.1): as 10 visões mais caras do painel (p95 medido nas 52 URLs do prewarm) viram arquivo pronto em data/visoes/<visao>.json + .meta.json (gerado_em, fonte, universo, cobertura, slo_s, sha256); a rota só lê, sem TTL e sem prewarm'
+    descricao: 'E15 materializar (O7.1): as 10 visões mais caras do painel (p95 medido nas 52 URLs do prewarm) viram arquivo pronto em data/visoes/<visao>.json + .meta.json (gerado_em, fonte, universo, cobertura, slo_s, sha256); a rota só lê, sem TTL e sem prewarm; O7.2: + uma visão por lente de config/lentes.yaml (lente_<nome>, /api/esteira/lente)'
     passos:
     - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, acervo_estatisticas]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, certames_estado]
@@ -2784,6 +2784,14 @@ rotinas:
     - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, fontes_frescor]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, pncp_conluio_estado]
     - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, siafe_stats]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_beneficios]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_bombeiros]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_couto]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_emendas]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_fserj]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_mgs_iterj]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_obras]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, lente_pcrj_saude]
     recursos: [materializar]
     nos: [vm1]
     concorrencia: [painel]

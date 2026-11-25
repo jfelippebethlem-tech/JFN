@@ -122,6 +122,22 @@ VISOES: dict[str, Visao] = {v.nome: v for v in (
 )}
 
 
+def _visoes_de_lente() -> dict[str, Visao]:
+    """O7.2: uma visão por lente de config/lentes.yaml (`lente_<nome>`, rota `/api/esteira/lente?lente=<nome>`). Só os
+    NOMES saem do YAML aqui (a validação completa é do cálculo, `lentes.carregar`): lente nova = visão nova."""
+    import yaml
+    nomes = (yaml.safe_load((RAIZ / "config" / "lentes.yaml").read_text(encoding="utf-8")) or {}).get("lentes") or {}
+    return {f"lente_{n}": Visao(f"lente_{n}", f"/api/esteira/lente?lente={n}",
+                                "compliance_agent.aplicacao.lentes_resumo:resposta", {"lente": n}, caches=(),
+                                fontes=("siafe_ob", "siafe_status", "contratos_tcerj", "pcrj_base") + _TODAS,
+                                dados="ob_orcamentaria_siafe (_ob_paga) | contasrio_contrato | emendas, recortados "
+                                      "pela lente (config/lentes.yaml) + achados.db",
+                                universo="universo.n", slo_s=21600) for n in nomes}
+
+
+VISOES.update(_visoes_de_lente())
+
+
 # ── armazenamento (o que a rota lê) ─────────────────────────────────────────────────────────────────────────────────
 def diretorio(raiz: Path | str | None = None) -> Path:
     """`JFN_VISOES_DIR` ou `<raiz>/data/visoes`. A rota passa o SEU `RAIZ` (lido na chamada): teste que redireciona a

@@ -48,7 +48,7 @@ manchetes:
   - id: cki-alertas
     chip: nu-alertas
     superficie: "cockpit — card 'Alertas' + chip da mesa"
-    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras), com alta/média/baixa (somam o total); os da Prefeitura (perícia PCRJ D7–D12) e os de emendas federais vêm à parte em por_esfera, sem somar — não são irregularidades; FP medida 13/30 em 19/11/2026, dita no card."
+    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras), com alta/média/baixa (somam o total); os da Prefeitura (perícia PCRJ D7–D12) e os de emendas federais vêm à parte em por_esfera, sem somar — não são irregularidades. O7.3: só vai à capa com rules.engine no Tier 1 (manchete_efetiva); fora dele o card mostra o porquê, sem o número."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas, ob_orcamentaria_siafe (compliance.db)"
@@ -151,7 +151,7 @@ manchetes:
     campos: {valor: obs.valor_ultimo_dia, contagem: obs.n_ultimo_dia, data: obs.ultimo_dia}
   - id: v63-alertas
     superficie: "Início v63 — seção 02, número 'alertas abertos' com barras alta/média/baixa"
-    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras) e a divisão por gravidade (somam o total); Prefeitura e emendas federais à parte, em por_esfera — FP medida 13/30 em 19/11/2026, dita no número."
+    afirma: "Fila de triagem: total de alertas NÃO descartados do Estado do RJ (motor de regras) e a divisão por gravidade (somam o total); Prefeitura e emendas federais à parte, em por_esfera. O7.3: só com rules.engine no Tier 1; senão o número sai e o porquê fica."
     rota: /api/compliance/painel
     origem: rotas.investigacao.api_painel
     fonte: "alertas (compliance.db)"
@@ -495,6 +495,8 @@ rotas:
   "/api/empresa": {classe: afirma, afirma: "cadastro + sócios (QSA) por CNPJ, fonte hospedada (BrasilAPI→cnpj.pw).", fonte: "compliance_agent.providers.lookup"}
   "/api/eval/hermeneutica": {classe: afirma, afirma: "acurácia MEDIDA do juízo jurídico, visível junto do produto.", fonte: "compliance_agent.reporting.painel_acuracia"}
   "/api/eval/lift": {classe: afirma, afirma: "poder preditivo MEDIDO de cada detector, contra sanção POSTERIOR ao sinal.", fonte: "compliance_agent.reporting.painel_lift"}
+  "/api/esteira/lente": {classe: afirma, afirma: "O7.2: recorte de uma lente (config/lentes.yaml) — pago só OB, fora da soma, determinável × indeterminado, achados por status (nao_avaliavel), topo da fila com componentes.", fonte: "data/visoes/lente_<nome>.json (E15 ← compliance_agent/aplicacao/lentes_resumo.py: ob_orcamentaria_siafe, contasrio_contrato, emendas, achados.db)"}
+  "/api/esteira/lentes": {classe: operacional, afirma: "O7.2: catálogo das lentes (config/lentes.yaml) e o frescor da visão de cada uma — alimenta o seletor global.", fonte: "config/lentes.yaml + data/visoes/lente_*.meta.json"}
   "/api/eventos/stream": {classe: operacional, afirma: "SSE com a vida real do sistema: deltas de OB/alertas/cláusulas, avanço de sweep e pulso de carga.", fonte: "A DECLARAR"}
   "/api/fachada/revisar": {classe: afirma, afirma: "Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).", fonte: "tabelas fachada_veredito, verificacao_sede"}
   "/api/fachada/veredito": {classe: operacional, afirma: "Salva o veredito HUMANO do validador.", fonte: "tabelas verificacao_sede"}
@@ -626,6 +628,7 @@ rotas:
   "/api/ppp/triagem": {classe: afirma, afirma: "Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo Nacional de Saúde, aporte, PMI-captura, 5% RCL, verificador) — lista…", fonte: "compliance_agent.pcrj.triagem_ppp; data/pcrj.db"}
   "/api/processo": {classe: afirma, afirma: "Avaliação 360 persistida de um processo SEI (processo_avaliacao).", fonte: "processo_avaliacao (compliance.db), gravada por tools/processo_360.py"}
   "/api/processo/avaliar": {classe: operacional, afirma: "Dispara a avaliação 360 de um processo SEI em background (subprocess; 1 pesado por vez — a VM tem 2 vCPU).", fonte: "A DECLARAR"}
+  "/api/manchetes/estado": {classe: afirma, afirma: "O7.3: por superfície do Início, se o número pode ser manchete (só Tier 1 ou medição do sistema) e por quê; tiers calculados hoje.", fonte: "config/qualidade_detectores.yaml × config/qualidade_inventario.yaml (compliance_agent/qualidade/manchete_painel.py)"}
   "/api/qualidade/conformidade": {classe: afirma, afirma: "Estado das regras de qualidade por sistema: regras, violações abertas, tendência.", fonte: "data/qualidade_estado.json, data/qualidade_historico.jsonl, data/qualidade_juiz.json (compliance_agent/qualidade/estado.py)"}
   "/api/radar/ciclo": {classe: operacional, afirma: "Radar: roda um ciclo de vigilância agora (o timer systemd chama isto).", fonte: "compliance_agent.radar"}
   "/api/radar/status": {classe: operacional, afirma: "Radar: o que está sendo vigiado + últimos alertas.", fonte: "compliance_agent.radar"}

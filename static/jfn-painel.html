@@ -13,7 +13,7 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
-<link rel="stylesheet" href="/static/css/painel.css?v=d631df22">
+<link rel="stylesheet" href="/static/css/painel.css?v=a858b965">
 </head>
 <body>
 <!-- v64: véu da abertura nasce aqui (claro, vazio) — sem flash do esqueleto enquanto o bundle desce;
@@ -48,11 +48,14 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'
         <!-- 2026-11-09: som de interface, DESLIGADO por padrão. Delegado por `data-som` (ui/midia.js) —
              sem onclick, sem nome novo no window. Reaproveita o visual de `.help`. -->
         <a class="help som" data-som role="button" tabindex="0" aria-pressed="false" title="Som de interface desligado — clique para ligar"><i class="som-d" aria-hidden="true"></i><span class="som-t">Mudo</span></a>
+        <span class="lente-seletor" id="lente-seletor"></span>
         <a class="help" onclick="glossario()">Termos</a><a class="ctrl" href="/controle">Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
     <div id="conduit" aria-hidden="true"><span class="cblade"></span></div>
     <div class="spheres" id="spheres"></div>
   </header>
+  <!-- O7.2: faixa da lente global — só aparece com lente escolhida; diz o que foi recortado e o que não foi -->
+  <section class="lente-faixa" id="lente-faixa" aria-label="Lente aplicada" hidden></section>
   <main id="view"><div class="skel"><span class="sp"></span>Carregando inteligência…</div></main>
   <nav class="tabs" id="tabs"></nav>
 </div>
@@ -74,6 +77,6 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/'+f+'
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=a812dafb"></script>
+<script src="/static/js/painel.bundle.js?v=ec7ca68c"></script>
 </body>
 </html>

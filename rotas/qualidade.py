@@ -25,3 +25,14 @@ def api_qualidade_conformidade():
     except (OSError, ValueError, KeyError, TypeError, YAMLError) as exc:   # registro ilegível ≠ zero violações
         return JSONResponse({"ok": False, "estado": "INDISPONIVEL",
                              "motivo": f"falha ao ler o estado de qualidade — {type(exc).__name__}: {exc}"})
+
+
+@router.get("/api/manchetes/estado")
+def api_manchetes_estado():
+    """O7.3: o que o painel pode pôr em manchete agora (só Tier 1), por superfície, com o porquê de cada uma."""
+    from compliance_agent.qualidade import manchete_painel
+    try:
+        return JSONResponse(manchete_painel.estado())
+    except (OSError, ValueError, KeyError, TypeError, YAMLError) as exc:   # sem estado ⇒ o JS fecha toda manchete
+        return JSONResponse({"ok": False, "estado": "INDISPONIVEL",
+                             "erro": f"estado de calibração ilegível — {type(exc).__name__}: {exc}"})

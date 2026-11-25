@@ -17,6 +17,7 @@ import {mdSimples} from '../nucleo/markdown.js';
 import {esfera, aba} from '../app/estado.js';
 import {abrirDossie, abrirCertame, jsq, jfnToast, jfnConfirm} from '../ui/index.js';
 import {blocoPeriodo} from './periodo.js';
+import {mancheteEstado, detectorLiberado, detectorMotivo} from '../ui/manchete.js';
 
 // ═══ RESPONSÁVEIS pelo processo (ordenador · gestor · fiscal) ═══
 export let _respProc='';
@@ -2534,11 +2535,14 @@ const SEV_LEGENDA={
   baixa:['⚪','Baixa','Sinal fraco / informativo.'],
 };
 export async function renderAlertas(){
-  const p=await J('/api/compliance/painel');const lst=p.lista_alertas||[];
+  const [p]=await Promise.all([J('/api/compliance/painel'),mancheteEstado()]);const lst=p.lista_alertas||[];
+  /* O7.3: a capa da aba diz o que a lista É — fila de triagem do motor de regras —, com o tier calculado hoje. Só
+     com o detector no Tier 1 a contagem poderia ser manchete; até lá, nenhum número daqui vai à capa do Início. */
+  const _tri=detectorLiberado('rules.engine')?'':card(`<div class="mch-bloq"><b>Fila de triagem — não é manchete.</b> ${esc(detectorMotivo('rules.engine'))}. Cada alerta é indício a conferir na fonte primária; a cor mede a força do sinal, não a probabilidade de irregularidade.</div>`);
   const porMes=blocoPeriodo(['alertas'],'Alertas por ano e mês de detecção');
   if(!lst.length)return sec('Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>')+porMes;
   // legenda da escala (o que 🔴/🟡 significam) — resolve "não entendo o amarelo"
-  let h=cover('estado','Alertas de auditoria','Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.','🚨');
+  let h=cover('estado','Alertas de auditoria','Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.','🚨')+_tri;
   h+=card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>`+
     Object.values(SEV_LEGENDA).map(([ic,nome,desc])=>`<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase()==='alta'?'alta':nome.toLowerCase()==='média'?'media':'baixa'}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(''));
   // agrupa por TIPO, com contagem e explicação em português

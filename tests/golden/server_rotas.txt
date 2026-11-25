@@ -51,6 +51,8 @@ GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
 GET /api/doerj/tac_recorrente -> api_doerj_tac_recorrente
 GET /api/empresa -> api_empresa
+GET /api/esteira/lente -> api_esteira_lente
+GET /api/esteira/lentes -> api_esteira_lentes
 GET /api/eval/hermeneutica -> api_eval_hermeneutica
 GET /api/eval/lift -> api_eval_lift
 GET /api/eventos/stream -> api_eventos_stream
@@ -123,6 +125,7 @@ GET /api/leaks -> api_leaks
 GET /api/lentes -> api_lentes
 GET /api/links -> api_links
 GET /api/lista -> api_lista
+GET /api/manchetes/estado -> api_manchetes_estado
 GET /api/memoria -> api_memoria
 GET /api/motor/fotografia -> api_motor_fotografia
 GET /api/ob/retiradas -> api_ob_retiradas

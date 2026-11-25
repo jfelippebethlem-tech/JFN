@@ -231,12 +231,40 @@
 
   // static/js/src/nucleo/http.js
   var _jCache = /* @__PURE__ */ new Map();
-  async function J(ep, opt) {
+  var _lente = null;
+  var _LENTE_FORA = /^\/(status|api\/(ao-vivo|sistema|eventos|fontes|manchetes|esteira\/lentes|qualidade|territorio|lentes(?=[?\/]|$)))/;
+  var lenteUso = { aplicada: [], nao_aplicada: [] };
+  function lenteAtual() {
+    return _lente;
+  }
+  function lenteDefinir(nome2) {
+    _lente = nome2 || null;
+    lenteUso.aplicada = [];
+    lenteUso.nao_aplicada = [];
+  }
+  function lenteNovaAba() {
+    lenteUso.aplicada = [];
+    lenteUso.nao_aplicada = [];
+  }
+  function _comLente(ep) {
+    if (!_lente || !/^\/(api\/|status)/.test(ep) || _LENTE_FORA.test(ep) || /[?&]lente=/.test(ep)) return null;
+    return ep + (ep.includes("?") ? "&" : "?") + "lente=" + encodeURIComponent(_lente);
+  }
+  function _registrarLente(ep, aplicou) {
+    const rota = ep.split("?")[0], lista = aplicou ? lenteUso.aplicada : lenteUso.nao_aplicada;
+    if (!lista.includes(rota)) lista.push(rota);
+    document.dispatchEvent(new CustomEvent("jfn-lente-uso"));
+  }
+  async function J(ep0, opt) {
     const isGet = !opt || !opt.method || opt.method === "GET";
+    const _ep = isGet ? _comLente(ep0) : null, ep = _ep || ep0;
     const cacheavel = isGet && !/\/stream|\/status|\/api\/eventos/.test(ep);
     if (cacheavel) {
       const c = _jCache.get(ep);
-      if (c && Date.now() - c.t < 9e4) return c.d;
+      if (c && Date.now() - c.t < 9e4) {
+        if (_ep) _registrarLente(ep0, c.l);
+        return c.d;
+      }
     }
     const TETO4 = opt && opt.tetoMs || 3e4;
     for (let t = 0; ; t++) {
@@ -244,8 +272,10 @@
       const relogio = ac ? setTimeout(() => ac.abort(), TETO4) : 0;
       try {
         const r = await fetch(ep, ac ? Object.assign({}, opt, { signal: ac.signal }) : opt);
+        const aplicou = !!_ep && r.headers.get("X-JFN-Lente") === _lente;
+        if (_ep) _registrarLente(ep0, aplicou);
         const d = await r.json();
-        if (cacheavel && d && d.ok !== false) _jCache.set(ep, { t: Date.now(), d });
+        if (cacheavel && d && d.ok !== false) _jCache.set(ep, { t: Date.now(), d, l: aplicou });
         return d;
       } catch (e) {
         const estourou = e && e.name === "AbortError";
@@ -3341,6 +3371,148 @@
     aberturaStart(null);
   }
 
+  // static/js/src/ui/lente.js
+  var CHAVE2 = "jfn_lente";
+  var _cat = null;
+  var _resumo = {};
+  var _recarregar = null;
+  var _rs = (v) => v == null ? "INDISPONÍVEL" : fmtR(v);
+  var _n2 = (v) => v == null ? "INDISPONÍVEL" : fmtN(v);
+  function _guardar(nome2) {
+    try {
+      if (nome2) localStorage.setItem(CHAVE2, nome2);
+      else localStorage.removeItem(CHAVE2);
+    } catch (e) {
+    }
+  }
+  function _lembrada() {
+    try {
+      return localStorage.getItem(CHAVE2);
+    } catch (e) {
+      return null;
+    }
+  }
+  async function lenteBoot(recarregar) {
+    _recarregar = recarregar;
+    const host = document.getElementById("lente-seletor");
+    if (!host) return;
+    const d = await J("/api/esteira/lentes", { tetoMs: 15e3 });
+    if (!d || !d.ok) {
+      host.innerHTML = `<span class="lente-off" title="${esc(String(d && d.erro || "sem resposta"))}">lentes indisponíveis</span>`;
+      lenteDefinir(null);
+      _faixa();
+      return;
+    }
+    _cat = d.lentes || [];
+    const lembrada = _lembrada(), valida = _cat.some((l) => l.lente === lembrada) ? lembrada : null;
+    host.innerHTML = `<label class="lente-rot" for="lente-sel">Lente</label><select id="lente-sel" class="lente-sel" title="Recorta todas as abas pela lente (config/lentes.yaml). Nenhuma aba por órgão.">
+    <option value="">universo inteiro</option>${_cat.map((l) => `<option value="${esc(l.lente)}" title="${esc(l.descricao)}">${esc(l.lente.replace(/_/g, " "))}</option>`).join("")}</select>`;
+    const sel = host.querySelector("select");
+    sel.value = valida || "";
+    lenteDefinir(valida);
+    if (!valida) _guardar(null);
+    sel.addEventListener("change", () => {
+      lenteDefinir(sel.value || null);
+      _guardar(sel.value || null);
+      _jCache.clear();
+      if (_recarregar) _recarregar();
+      else _faixa();
+    });
+    document.addEventListener("jfn-lente-uso", _contagem);
+    if (valida && _recarregar) _recarregar();
+    else _faixa();
+  }
+  function lenteTrocaDeAba() {
+    lenteNovaAba();
+    _faixa();
+  }
+  function _contagem() {
+    const c = document.getElementById("lente-uso");
+    if (!c) return;
+    const a = lenteUso.aplicada.length, n = lenteUso.nao_aplicada.length, t = a + n;
+    c.innerHTML = !t ? "nesta aba: nenhuma consulta de dado ainda" : `nesta aba: <b>recorte aplicado em ${fmtN(a)} de ${fmtN(t)}</b> consulta(s)${n ? ` — <b class="lente-alerta">${fmtN(n)} mostra(m) o UNIVERSO INTEIRO</b> (rota ainda sem recorte por lente: ${lenteUso.nao_aplicada.map((r) => `<code>${esc(r)}</code>`).join(", ")})` : ""}`;
+  }
+  async function _faixa() {
+    const f = document.getElementById("lente-faixa");
+    if (!f) return;
+    const nome2 = lenteAtual();
+    if (!nome2) {
+      f.hidden = true;
+      f.innerHTML = "";
+      return;
+    }
+    const l = (_cat || []).find((x) => x.lente === nome2) || { lente: nome2, descricao: "" };
+    f.hidden = false;
+    f.innerHTML = `<div class="lente-linha"><span class="lente-nome">Lente <b>${esc(nome2.replace(/_/g, " "))}</b></span>
+    <span class="lente-desc">${esc(l.descricao)}</span>
+    <button type="button" class="chip lente-tirar" id="lente-tirar">tirar a lente</button></div>
+    <div class="lente-uso" id="lente-uso" aria-live="polite"></div>
+    <details class="lente-rec" id="lente-rec"><summary>o recorte da lente — universo, pago, indeterminados, achados, fila</summary><div id="lente-corpo">lendo a visão da lente…</div></details>`;
+    f.querySelector("#lente-tirar").addEventListener("click", () => {
+      const s = document.getElementById("lente-sel");
+      if (s) s.value = "";
+      lenteDefinir(null);
+      _guardar(null);
+      _jCache.clear();
+      if (_recarregar) _recarregar();
+      else _faixa();
+    });
+    _contagem();
+    const d = _resumo[nome2] || await J("/api/esteira/lente?lente=" + encodeURIComponent(nome2), { tetoMs: 2e4 });
+    if (d && d.ok) _resumo[nome2] = d;
+    const corpo = document.getElementById("lente-corpo");
+    if (!corpo || lenteAtual() !== nome2) return;
+    corpo.innerHTML = d && d.ok ? _resumoHtml(d) : `<div class="warn">Recorte da lente <b>INDISPONÍVEL</b> — ${erroHumano(d && d.erro)}</div>`;
+  }
+  function _tab(cab, linhas) {
+    return `<table class="lente-tab"><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.join("") || `<tr><td colspan="${cab.length}" class="dim">nenhum item</td></tr>`}</tbody></table>`;
+  }
+  function _resumoHtml(d) {
+    const u = d.universo || {};
+    let h = `<p class="dim">${esc(d.fonte || "")} · filtro: ${esc((d.filtro || []).join(" · "))}${d.paridade ? ` · <span title="${esc(d.paridade)}">paridade com o script antigo (passe o mouse)</span>` : ""}</p>`;
+    if (d.esfera === "estado") {
+      const ind = d.indeterminado || {}, sp = ind.sem_processo || {}, ns = ind.processo_nao_sei || {}, fs = u.fora_da_soma || {};
+      h += `<div class="lente-kv">
+      <div><b>${_rs(u.valor_pago)}</b><span>pago (OB SIAFE, ${_n2(u.obs_pagas)} OB) · <i class="v63-estado verificado">${esc(d.estado || "")}</i></span></div>
+      <div><b>${_rs((d.determinavel || {}).valor)}</b><span>determinável: OB paga com nº de processo SEI-RJ (${_n2((d.determinavel || {}).obs)} OB)</span></div>
+      <div><b>${_rs((sp.valor || 0) + (ns.valor || 0))}</b><span>INDETERMINADO ao lado do valor: ${_n2(sp.obs)} OB sem nº de processo · ${_n2(ns.obs)} com nº que não é SEI-RJ — pagamento real, vínculo com o SEI INDISPONÍVEL</span></div>
+      <div><b>${_rs(fs.valor)}</b><span>fora da soma (${_n2(fs.obs)} OB: anulada, excluída, devolvida, complementar, reemitida)</span></div>
+      <div><b>${(d.cobertura || {}).fracao_do_pago_ligavel_ao_sei == null ? "INDISPONÍVEL" : fmtN(Math.round(1e3 * d.cobertura.fracao_do_pago_ligavel_ao_sei) / 10) + "%"}</b><span>do pago liga ao SEI (cobertura)</span></div>
+      <div><b>${_n2(u.credores)}</b><span>credores · ${_n2(u.processos_legiveis)} processos · última OB paga ${esc(u.ultima_ob_paga || "—")}</span></div></div>`;
+      h += _tab(["UG", "OB pagas", "pago"], (d.ugs || []).map((x) => `<tr><td>${esc(x.ug)} ${esc(x.sigla || "")}</td><td>${fmtN(x.n_obs)}</td><td>${fmtR(x.pago)}</td></tr>`));
+      h += _tab(["credor", "doc", "OB", "pago"], (d.credores_topo || []).map((x) => `<tr><td>${esc(x.nome)}</td><td>${esc(x.tipo)} ${esc(x.doc)}</td><td>${fmtN(x.n_obs)}</td><td>${fmtR(x.pago)}</td></tr>`));
+      const a = d.achados || {};
+      if (a.estado === "VERIFICADO") {
+        const t = a.totais || {};
+        h += `<p><b>Achados no recorte</b> (${esc(a.fonte || "")}): ${fmtN(t.confirmado)} a regra disparou · ${fmtN(t.descartado)} descartados · <b>${fmtN(t.nao_avaliavel)} não avaliáveis</b> — ${esc(a.leitura || "")}</p>`;
+        h += _tab(["detector", "registro", "tier", "disparou", "descartado", "não avaliável"], (a.detectores || []).map((x) => `<tr><td>${esc(x.detector)}</td><td>${esc(x.registro)}</td><td title="${esc(x.tier_motivo || "")}">${x.tier == null ? "—" : "Tier " + x.tier}</td><td>${fmtN(x.confirmado)}</td><td>${fmtN(x.descartado)}</td><td><b>${fmtN(x.nao_avaliavel)}</b></td></tr>`));
+        const b = a.base_ug_em_texto_nao_conferivel || {};
+        if (b.achados) h += `<p class="dim">${fmtN(b.achados)} ${esc(b.o_que_e || "")}</p>`;
+      } else h += `<p><b>Achados no recorte: ${esc(a.estado || "INDISPONÍVEL")}</b> — ${esc(a.motivo || "")}</p>`;
+      const fl = d.fila || {};
+      if (fl.itens) {
+        h += `<p><b>Topo da fila única nesta lente</b> — ${esc(fl.rotulo || "")}</p>`;
+        h += _tab(["processo", "OB paga", "escalar de valor", "bônus da lente", "Couto", "outros sinais", "por que está na lente"], fl.itens.map((x) => {
+          const c = x.componentes || {}, s = ["manual", "legivel", "contratacao_direta", "direta_grande", "lacuna_provada", "osint", "folha"].filter((k) => c[k]);
+          return `<tr><td>${esc(x.processo)}</td><td>${fmtR(x.ob_paga)}</td><td>${esc(String(c.escalar_valor))}</td><td>${esc(String(c.bonus_lente))}</td><td>${c.couto ? "sim" : "não"}</td><td>${esc(s.join(", ") || "—")}</td><td>${esc(x.lente_motivo || "")}</td></tr>`;
+        }));
+      } else if (fl.estado) h += `<p><b>Fila:</b> ${esc(fl.motivo || fl.estado)}</p>`;
+    } else if (d.esfera === "prefeitura") {
+      h += `<div class="lente-kv"><div><b>${_rs(u.pago)}</b><span>pago (ContasRio) em ${_n2(u.contratos)} contratos</span></div>
+      <div><b>${_rs(u.liquidado)}</b><span>liquidado — reconhece a dívida, não é pagamento</span></div>
+      <div><b>${_rs(u.empenhado)}</b><span>empenhado — reserva, pode ser cancelado; não é pagamento</span></div>
+      <div><b>${_n2((d.indeterminado || {}).contratos_sem_pago_informado)}</b><span>contratos sem pago informado (INDISPONÍVEL, não R$ 0,00)</span></div></div>`;
+      h += _tab(["órgão", "contratos", "pago"], (d.orgaos || []).map((x) => `<tr><td>${esc(x.orgao)}</td><td>${fmtN(x.contratos)}</td><td>${fmtR(x.pago)}</td></tr>`));
+      h += _tab(["favorecido", "doc", "contratos", "pago"], (d.favorecidos_topo || []).map((x) => `<tr><td>${esc(x.nome)}</td><td>${esc(x.tipo)} ${esc(x.doc)}</td><td>${fmtN(x.contratos)}</td><td>${fmtR(x.pago)}</td></tr>`));
+    } else {
+      h += `<div class="lente-kv"><div><b>${_rs(u.pago)}</b><span>pago — OB FEDERAL (SIAFI), não SIAFE · ${_n2(u.emendas)} emendas</span></div>
+      <div><b>${_rs(u.liquidado)}</b><span>liquidado</span></div><div><b>${_rs(u.empenhado)}</b><span>empenhado — não é pagamento</span></div>
+      <div><b>${_n2((d.fora_da_lente || {}).emendas)}</b><span>${esc((d.fora_da_lente || {}).o_que_e || "")}</span></div></div>`;
+      h += _tab(["ano", "emendas", "empenhado", "liquidado", "pago"], (d.por_ano || []).map((x) => `<tr><td>${esc(String(x.ano))}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.empenhado)}</td><td>${fmtR(x.liquidado)}</td><td>${fmtR(x.pago)}</td></tr>`));
+    }
+    return h;
+  }
+
   // static/js/src/app/estado.js
   var esfera = "inicio";
   var aba = "i_cockpit";
@@ -3699,7 +3871,7 @@
     alerta: { src: "/static/assets/sfx/alerta.mp3", vol: 0.16, intervalo: 8e3 },
     dossie: { src: "/static/assets/sfx/dossie.mp3", vol: 0.12, intervalo: 600 }
   };
-  var CHAVE2 = "jfn.som";
+  var CHAVE3 = "jfn.som";
   var ILUS = { doc: "/static/assets/gen/vazio-doc-claro.webp", rede: "/static/assets/gen/vazio-rede-claro.webp" };
   var _ligado2 = false;
   var _audio = {};
@@ -3707,14 +3879,14 @@
   var _quebrado = {};
   function _lerPref() {
     try {
-      return localStorage.getItem(CHAVE2) === "1";
+      return localStorage.getItem(CHAVE3) === "1";
     } catch (_) {
       return false;
     }
   }
   function _gravarPref(v) {
     try {
-      localStorage.setItem(CHAVE2, v ? "1" : "0");
+      localStorage.setItem(CHAVE3, v ? "1" : "0");
     } catch (_) {
     }
   }
@@ -4030,7 +4202,7 @@
     let h = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>`;
     h += `<div style="display:flex;gap:12px;align-items:center"><span class="badge-grau">${per.grau || "⚪"}</span>
       <div style="min-width:0"><div style="font-weight:800;font-size:17px;line-height:1.2">${esc(d.nome)}</div>
-      <div class="dim">${esc(d.cnpj_fmt)}${per.score != null ? ` · score perícia ${per.score}` : ""}</div></div></div>`;
+      <div class="dim">${esc(d.cnpj_fmt)}${per.score != null ? ` · score perícia ${per.score} <span title="escala interna da casa: mede quanto material há para examinar e muda quando os detectores mudam — não é probabilidade de irregularidade; os componentes são os achados listados abaixo, cada um com o seu status">(escala interna, não probabilidade — componentes nos achados abaixo)</span>` : ""}</div></div></div>`;
     h += `<div class="mini">
       <div class="b"><div class="v"${d.ob_indisponivel ? ` title="${esc(d.ob_indisponivel)}"` : ""}>${d.ob_indisponivel ? "INDISPONÍVEL" : fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB · SIAFE)</div></div>
       <div class="b"><div class="v">${d.ob_indisponivel ? "—" : fmtN(ob.orgaos || 0)}</div><div class="l">Órgãos pagadores</div></div>
@@ -4515,7 +4687,7 @@
        ${d.n_problemas > d.problemas.length ? `<div class="dim" style="font-size:12px;margin-top:6px">Mostrando ${fmtN(d.problemas.length)} de ${fmtN(d.n_problemas)} (maior valor pago primeiro).
           <button class="btn ghost" style="margin-left:8px" data-com-mais="${esc(d.orgao)}">Ver todos os ${fmtN(d.n_problemas)}</button></div>` : ""}` : `<div class="dim" style="margin-top:8px">Nenhum fornecedor com indício neste órgão.</div>`;
     const aberto = !!d.instituicao_da_comissao;
-    const lazy = aberto ? "" : ` data-com-lazy="${_guardar(() => corpo)}"`;
+    const lazy = aberto ? "" : ` data-com-lazy="${_guardar2(() => corpo)}"`;
     return `<details class="card com-org" data-inst="${d.instituicao_da_comissao ? 1 : 0}" ${aberto ? "open" : ""}${lazy}
      style="margin:12px 0">${cab}${aberto ? corpo : ""}</details>`;
   }
@@ -4539,7 +4711,7 @@
   }
   var _lazy = /* @__PURE__ */ new Map();
   var _lazySeq = 0;
-  function _guardar(fn) {
+  function _guardar2(fn) {
     const k = String(++_lazySeq);
     _lazy.set(k, fn);
     return k;
@@ -4582,8 +4754,8 @@
     const est = Object.keys(e).map((k) => `${fmtN(e[k])} ${k.toLowerCase()}`).join(" · ");
     const corpo = n ? `<table class="tb com-txt"><thead><tr><th>Quando</th><th>Achado</th><th class="right">Valor · o que é</th><th>Estado do número</th></tr></thead>
       <tbody>${d.achados.slice(0, 25).map(_pgAchado).join("")}</tbody></table>
-      ${n > 25 ? `<button class="btn ghost" style="margin-top:6px" data-com-pg-mais="${_guardar(() => d.achados.slice(25).map((a, i) => _pgAchado(a, i + 25)).join(""))}">Ver os ${fmtN(n)}</button>` : ""}` : `<div class="dim">Nenhum achado neste recorte${d.n_total ? ` (${fmtN(d.n_total)} no total, em outros períodos)` : ""}.</div>`;
-    const lazy = _guardar(() => `<div class="com-pg-grid" style="margin-top:10px">${_pgManual(d)}<div style="min-width:0;overflow-x:auto">${corpo}</div></div>`);
+      ${n > 25 ? `<button class="btn ghost" style="margin-top:6px" data-com-pg-mais="${_guardar2(() => d.achados.slice(25).map((a, i) => _pgAchado(a, i + 25)).join(""))}">Ver os ${fmtN(n)}</button>` : ""}` : `<div class="dim">Nenhum achado neste recorte${d.n_total ? ` (${fmtN(d.n_total)} no total, em outros períodos)` : ""}.</div>`;
+    const lazy = _guardar2(() => `<div class="com-pg-grid" style="margin-top:10px">${_pgManual(d)}<div style="min-width:0;overflow-x:auto">${corpo}</div></div>`);
     return `<details class="card com-pg" data-com-lazy="${lazy}" style="margin:12px 0"><summary style="cursor:pointer;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
       <span class="dim" style="font-size:12px">${esc(d.id)}</span><b style="font-size:15px">${esc(d.titulo)}</b>
       <span style="margin-left:auto;font-size:13px"><b>${fmtN(n)}</b> achado(s)${d.n_total != null && d.n_total !== n ? ` de ${fmtN(d.n_total)}` : ""} <span class="dim">· ${esc(est || "—")}</span></span></summary></details>`;
@@ -5716,35 +5888,35 @@
   }
   var _ORIGEM = { limite_assinatura: "a conta do Claude chegou ao limite de uso", teto_proprio: "o orçamento diário do motor passou de 90%", forcada: "contingência ligada à mão" };
   var _hora = (iso) => iso ? String(iso).slice(11, 16) + " de " + String(iso).slice(8, 10) + "/" + String(iso).slice(5, 7) : "—";
-  var _n2 = (v) => v == null ? "INDISPONÍVEL" : fmtN(v);
+  var _n3 = (v) => v == null ? "INDISPONÍVEL" : fmtN(v);
   function _conf(c) {
     if (!c || c.erro) return indisp("/api/ao-vivo/conferencia-opus");
     const k = c.contingencia || {};
     const estado = k.ativa ? card(`<b>🟡 Em contingência</b> — ${esc(_ORIGEM[k.origem] || k.origem || "motivo não informado")}${k.ate_iso ? `; o Claude da assinatura volta às <b>${esc(_hora(k.ate_iso))}</b>` : ""}. O JFN segue produzindo com os outros modelos; o que eles fizerem entra na fila abaixo e não vira VERIFICADO antes de o Opus conferir.`) : card(`<b>🟢 Claude da assinatura respondendo</b> — sem contingência agora.${c.ultima_contingencia ? ` Última: ${esc(String(c.ultima_contingencia.desde || "").replace("T", " ").slice(0, 16))} até ${esc(_hora(c.ultima_contingencia.ate))}.` : ""}${(k.tarefas_perto_do_teto || []).length ? ` Tarefas a mais de 90% do teto do dia: ${esc(k.tarefas_perto_do_teto.join(", ").replace(/_/g, " "))}.` : ""}`);
     let h = estado + `<div class="grid g4">
     ${kpi(
-      c.disponivel ? _n2(c.pendentes) : "INDISPONÍVEL",
+      c.disponivel ? _n3(c.pendentes) : "INDISPONÍVEL",
       "Aguardando o Opus",
       c.pendentes ? "var(--amber, var(--accent))" : "var(--green)",
       null,
       { sobre: "Resultados entregues por outro modelo (cascata gratuita ou Claude barato) enquanto o Claude da assinatura não podia responder. Cada um fica PENDENTE até o Opus reler a mesma entrada. Fonte: data/conferencia_opus.db." }
     )}
     ${kpi(
-      _n2(c.triagem_pendente),
+      _n3(c.triagem_pendente),
       "Alertas da triagem aguardando o Opus",
       "var(--accent)",
       null,
       { sobre: "Fila irmã, mais antiga: alertas da triagem com leitura 🔴/🟡, descartada ou feita sem o Claude da assinatura (alertas_triagem.opus_pendente). O Opus relê em lotes a cada hora." }
     )}
     ${kpi(
-      c.disponivel ? _n2(c.conferidos) : "INDISPONÍVEL",
+      c.disponivel ? _n3(c.conferidos) : "INDISPONÍVEL",
       "Já conferidos pelo Opus",
       "var(--accent)",
       null,
       { sobre: "Itens da fila que o Opus releu. Cada par Opus × outro modelo entra no cruzamento de motores abaixo." }
     )}
     ${kpi(
-      c.disponivel ? _n2(c.divergencias) : "INDISPONÍVEL",
+      c.disponivel ? _n3(c.divergencias) : "INDISPONÍVEL",
       "Opus divergiu",
       c.divergencias ? "var(--rose)" : "var(--green)",
       null,
@@ -6154,7 +6326,7 @@
     { k: "indefinido", rot: "Nota a corrigir", cor: "var(--mut)" }
   ];
   var _cor2 = (s) => (GRUPOS.find((g) => g.k === s) || GRUPOS[4]).cor;
-  var _n3 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
+  var _n4 = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
   var _dados2 = null;
   function _cardReq(r) {
     return `<article class="card cs-caso" style="--cs:${_cor2(r.status)}">
@@ -6165,8 +6337,8 @@
     </div>
     <h3 class="cs-tit">${esc(r.titulo)}</h3>
     ${r.destinatario ? `<div class="dim cs-ent">Para: ${esc(r.destinatario)}</div>` : ""}
-    <div class="cs-tags"><span class="tag teal">${_n3(r.pedidos.length, "pedido", "pedidos")}</span>
-      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n3(r.pendencias.length, "pendência", "pendências")}</span>
+    <div class="cs-tags"><span class="tag teal">${_n4(r.pedidos.length, "pedido", "pedidos")}</span>
+      <span class="tag ${r.pendencias.length ? "amber" : "green"}">${_n4(r.pendencias.length, "pendência", "pendências")}</span>
       ${r.minuta ? '<span class="tag accent">minuta</span>' : ""}</div>
     ${r.problemas.length ? `<div class="cs-piso">⚠️ ${esc(r.problemas.join("; "))}</div>` : ""}
     <div class="btns"><button type="button" class="btn" data-rq-abrir="${esc(r.slug)}">Abrir</button>
@@ -6234,6 +6406,60 @@
         _abrir(a.dataset.rqAbrir);
       }
     });
+  }
+
+  // static/js/src/ui/manchete.js
+  var _estado2 = null;
+  var _prom = null;
+  function mancheteEstado() {
+    if (!_prom) _prom = J("/api/manchetes/estado", { tetoMs: 2e4 }).then((d) => {
+      _estado2 = d && d.ok ? d : { ok: false, erro: d && d.erro || "sem resposta" };
+      return _estado2;
+    });
+    return _prom;
+  }
+  function _sup(id) {
+    return _estado2 && _estado2.ok ? (_estado2.superficies || []).find((s) => s.id === id) : null;
+  }
+  function mancheteLiberada(id) {
+    const s = _sup(id);
+    return !!(s && s.liberada);
+  }
+  function detectorLiberado(det) {
+    const d = _estado2 && _estado2.ok && _estado2.detectores ? _estado2.detectores[det] : null;
+    return !!(d && d.manchete_efetiva);
+  }
+  function mancheteMotivo(id) {
+    if (!_estado2) return "lendo o estado de calibração…";
+    if (!_estado2.ok) return "estado de calibração INDISPONÍVEL — nenhuma manchete de detector é exibida";
+    const s = _sup(id);
+    if (!s) return "superfície fora do inventário de manchetes — não é exibida como manchete";
+    return s.motivo || "";
+  }
+  function detectorMotivo(det) {
+    if (!_estado2 || !_estado2.ok) return "estado de calibração INDISPONÍVEL";
+    const d = (_estado2.detectores || {})[det];
+    if (!d) return `${det}: fora do registro de detectores — não é manchete`;
+    return `${det}: Tier ${d.tier ?? "—"} (${d.tier_motivo || ""}) — não é manchete`;
+  }
+  function mancheteBloqueioHtml(id, ondeEsta) {
+    return `<span class="mch-bloq"><b>não é manchete</b> — ${esc(mancheteMotivo(id))}${ondeEsta ? ` · ${esc(ondeEsta)}` : ""}</span>`;
+  }
+  function mancheteAvisoHtml() {
+    if (!_estado2) return `<div class="mch-aviso" id="mch-aviso" role="status"><b>Manchetes</b> · lendo o estado de calibração…</div>`;
+    if (!_estado2.ok) return `<div class="mch-aviso mch-indisp" id="mch-aviso" role="status"><b>Manchetes: estado de calibração INDISPONÍVEL.</b>
+    Sem ele, nenhum número de detector vai para a capa (falha fechada). ${erroHumano(_estado2.erro)}</div>`;
+    const e = _estado2, pt = e.por_tier || {};
+    const efet = e.manchetes_efetivas || [];
+    const bloq = (e.superficies || []).filter((s) => s.detector && !s.liberada);
+    const titulo = efet.length ? `${fmtN(efet.length)} manchete(s) calibrada(s) (Tier 1)` : "Nenhuma manchete calibrada";
+    return `<div class="mch-aviso${efet.length ? "" : " mch-zero"}" id="mch-aviso" role="status">
+    <div class="mch-t"><b>${titulo}</b> <span class="mch-tiers">Tier 1: ${fmtN(pt["1"] || 0)} · Tier 2: ${fmtN(pt["2"] || 0)} · Tier 3: ${fmtN(pt["3"] || 0)} de ${fmtN(e.n_detectores)} detectores</span></div>
+    <p>${esc(e.explicacao)}</p>
+    <details><summary>Por que cada número saiu da capa (${fmtN(bloq.length)})</summary>
+      <ul>${bloq.map((s) => `<li><b>${esc(s.superficie || s.id)}</b>: ${esc(s.motivo)}</li>`).join("")}</ul>
+      <p class="mch-regra">${esc(e.explica_tier1)}</p></details>
+  </div>`;
   }
 
   // static/js/src/v63/inicio.js
@@ -6337,6 +6563,7 @@
       <h3 class="v63-h2 v63-rv" style="--i:1">Todo real <em class="v63-it">conta.</em></h3>
       <p class="v63-rv" style="--i:2">Pagamento só é pagamento quando há Ordem Bancária. Alerta é indício a conferir. Cada número diz de onde veio e em que estado está.</p>
     </div>
+    <div class="mch-slot" id="mch-slot">${mancheteAvisoHtml()}</div>
     <div class="v63-nums" id="v63-nums">
       ${_tile("ob", 0, 'data-manchete="v63-ob"')}${_tile("alertas", 1, 'data-manchete="v63-alertas"')}
       ${_tile("acervo", 2, 'data-manchete="v63-acervo"')}${_tile("econ", 3, 'data-manchete="v63-econ"')}
@@ -6355,7 +6582,7 @@
     <div class="v63-sec-tx">
       <span class="v63-mono v63-eti v63-rv"><i></i>04 · onde você entra</span>
       <h3 class="v63-h2 v63-rv" style="--i:1">Alerta que <em class="v63-it">chama você.</em></h3>
-      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026: o exibido era um fracionamento de inexigibilidade (a regra não se aplica) e, em 34 alertas conferidos na fonte, 13 não se sustentaram. Volta quando os produtores forem corrigidos; a fila completa segue na aba Alertas.</p>
+      <p class="v63-rv" style="--i:2">O JFN não decide sozinho: ele aponta, mostra a prova e espera. O cartão do último alerta saiu da capa em 19/11/2026 (o exibido era um fracionamento de inexigibilidade — a regra não se aplica). Alerta só volta à capa quando o detector que o produz estiver calibrado (Tier 1); a fila completa segue na aba Alertas.</p>
     </div>
   </section>
 
@@ -6372,18 +6599,22 @@
     revelarEm(raiz);
     fundoSeguirSecoes(raiz);
     _pausarGrafoForaDaTela(raiz);
-    const [pEst, pPai] = [J("/api/ao-vivo/estado"), J("/api/compliance/painel")];
+    const [pEst, pPai, pMch] = [J("/api/ao-vivo/estado"), J("/api/compliance/painel"), mancheteEstado()];
     pEst.then((d) => {
       _selo2(d);
       _run(d);
     });
-    Promise.all([pEst, pPai]).then(([e, p]) => _nos(e, p));
+    pMch.then(() => {
+      const sl = document.getElementById("mch-slot");
+      if (sl) sl.innerHTML = mancheteAvisoHtml();
+    });
+    Promise.all([pEst, pPai, pMch]).then(([e, p]) => _nos(e, p));
     pPai.then((d) => {
       _numOB(d);
-      _numAlertas(d);
       _numAcervo(d);
     });
-    J("/api/comparador/economia").then(_numEcon);
+    Promise.all([pPai, pMch]).then(([d]) => _numAlertas(d));
+    Promise.all([J("/api/comparador/economia"), pMch]).then(([d]) => _numEcon(d));
     J("/api/fontes/frescor").then(_frescor);
   }
   var _ok = (d) => d && !d.erro;
@@ -6414,7 +6645,8 @@
     set("sei", est(mot("sei-noturno")));
     if (_ok(p) && p.obs && p.obs.ultimo_dia) set("siafe", `${_dataCurta(p.obs.ultimo_dia)} · ${fmtN(p.obs.n_ultimo_dia)} OB`);
     else set("siafe", "indisponível");
-    if (_ok(p) && p.alertas && p.alertas.total != null) set("det", `${fmtN(p.alertas.total)} alertas abertos`);
+    if (!mancheteLiberada("v63-alertas")) set("det", "fila de triagem");
+    else if (_ok(p) && p.alertas && p.alertas.total != null) set("det", `${fmtN(p.alertas.total)} alertas abertos`);
     else set("det", "indisponível");
     set("ver", "regras · " + est(mot("qualidade")));
     set("dos", "md · pdf · xlsx");
@@ -6466,7 +6698,7 @@
     }
     c.querySelector(".v63-num-s").innerHTML = s || "";
     c.querySelector(".v63-num-b").innerHTML = (barras || []).map((b) => `<div class="v63-barra"><span>${esc(b.l)}</span><i><b style="--w:${b.w.toFixed(4)}"${b.c ? ` class="${b.c}"` : ""}></b></i><em class="v63-mono">${esc(b.v)}</em></div>`).join("");
-    c.querySelector(".v63-num-f").innerHTML = `<i class="v63-estado ${estado.toLowerCase()}">${estado}</i> ${f}`;
+    c.querySelector(".v63-num-f").innerHTML = `<i class="v63-estado ${estado.toLowerCase().replace(/\s+/g, "-")}">${estado}</i> ${f}`;
   }
   function _numOB(d) {
     if (!_ok(d) || !d.obs || !d.obs.ultimo_dia) return _num2("ob", { l: "pago em OB · último dia no SIAFE", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
@@ -6479,7 +6711,13 @@
       estado: "VERIFICADO"
     });
   }
+  function _bloq(k, l, onde) {
+    _num2(k, { l, v: null, s: `<b>não é manchete</b> — ${esc(mancheteMotivo("v63-" + k))}`, f: esc(onde), estado: "NÃO CALIBRADO" });
+    const c = document.getElementById("v63-n-" + k);
+    if (c) c.classList.add("mch-off");
+  }
   function _numAlertas(d) {
+    if (!mancheteLiberada("v63-alertas")) return _bloq("alertas", "alertas abertos", "a fila segue na aba Alertas");
     const a = _ok(d) && d.alertas;
     if (!a || a.total == null) return _num2("alertas", { l: "alertas abertos", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
     const t = Math.max(1, a.total), baixa = a.baixa != null ? a.baixa : Math.max(0, a.total - (a.alta || 0) - (a.media || 0));
@@ -6487,7 +6725,7 @@
       l: "alertas abertos",
       v: a.total,
       fmt: "n",
-      s: "fila de triagem (motor de regras e perícias), descartados fora — em 34 conferidos na fonte em 19/11/2026, 13 não se sustentaram",
+      s: "fila de triagem (motor de regras e perícias), descartados fora",
       barras: [
         { l: "alta", w: (a.alta || 0) / t, v: fmtN(a.alta || 0), c: "alta" },
         { l: "média", w: (a.media || 0) / t, v: fmtN(a.media || 0) },
@@ -6509,6 +6747,7 @@
     });
   }
   function _numEcon(d) {
+    if (!mancheteLiberada("v63-econ")) return _bloq("econ", "economia potencial", "as compras seguem em Comparador › Economia possível");
     if (!_ok(d) || d.economia_total == null) return _num2("econ", { l: "economia potencial", v: null, f: _indisp2(d), estado: "INDISPONÍVEL" });
     const pe = d.por_esfera || {}, esf = (k) => pe[k] && pe[k].n ? `${fmtR(pe[k].economia)} em ${fmtN(pe[k].n)}` : "nenhuma conferida";
     _num2("econ", {
@@ -6735,6 +6974,19 @@
   }
 
   // static/js/src/abas/preocupacoes.js
+  function _detCouto(x) {
+    const m = String(x.regra_ou_hipotese || "").match(/^(D\d{2})\b/);
+    return m ? "couto." + m[1] : null;
+  }
+  function _bloqueado(titulo, n, dets, destino) {
+    const motivos = [...new Set(dets.map((d) => d ? detectorMotivo(d) : "hipótese fora do registro de detectores — não é manchete"))];
+    return `<button type="button" class="pq-item mch-off" onclick="ir('${destino}')">
+    <div class="pq-topo"><span class="pq-grau" aria-hidden="true">⚪</span><span class="pq-valor num">não é manchete</span></div>
+    <div class="pq-tit">${titulo}</div>
+    <div class="pq-txt">${fmtN(n)} ponto(s) com prova primária conferida ficam fora da capa até o detector ser calibrado (Tier 1): ${esc(motivos.slice(0, 3).join(" · "))}${motivos.length > 3 ? " …" : ""}. O conteúdo segue na aba.</div>
+    <div class="pq-fonte"><b>NÃO CALIBRADO</b> · registro de detectores (tier calculado hoje)</div>
+  </button>`;
+  }
   var brl = (v) => "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   function _item({ grau, valor, titulo, texto, fonte, estado, destino }) {
     return `<button type="button" class="pq-item" onclick="ir('${destino}')">
@@ -6747,7 +6999,11 @@
   function _couto(d) {
     if (!d || d.ok === false || !d.pontos_atencao) return '<div class="pq-indisp"><b>Governo Couto: INDISPONÍVEL</b> — a rota não respondeu.</div>';
     const it = (d.pontos_atencao.itens || []).filter((x) => x.verificacao === "VERIFICADO" || x.verificacao && x.verificacao.estado === "VERIFICADO");
-    const verm = it.filter((x) => x.grau === "🔴"), amar = it.filter((x) => x.grau === "🟡");
+    const graves = it.filter((x) => x.grau === "🔴" || x.grau === "🟡");
+    const libera = graves.filter((x) => detectorLiberado(_detCouto(x)));
+    if (graves.length && !libera.length)
+      return _bloqueado("Pontos de atenção na gestão Couto (desde 23/03/2026)", graves.length, graves.map(_detCouto), "e_couto");
+    const verm = libera.filter((x) => x.grau === "🔴"), amar = libera.filter((x) => x.grau === "🟡");
     if (!verm.length && !amar.length) return "";
     const top = verm[0] || amar[0];
     const nome2 = String(top.regra_ou_hipotese || "").replace(/^[A-Z]\d+\s*·\s*/, "");
@@ -6783,6 +7039,8 @@
     if (!e || !e.placar || !e.placar.A_MAIOR) return "";
     const verif = String((e.verificacao || {}).placar || "");
     if (!/^VERIFICADO/.test(verif)) return "";
+    if (!detectorLiberado("pericia_contabil"))
+      return _bloqueado(`Pago acima do valor contratado — ${fmtN(e.placar.A_MAIOR)} contratos do Estado`, e.placar.A_MAIOR, ["pericia_contabil"], "e_pcont");
     return _item({
       grau: "🟡",
       valor: brl(e.excesso_a_maior),
@@ -6797,7 +7055,7 @@
     if (!host) return;
     const CAB = '<div class="pq-cab"><span class="pq-pulso" aria-hidden="true"></span><h2 class="sec">Sinais críticos</h2><span class="pq-sub">varredura cruzada · prova primária conferida</span></div>';
     host.innerHTML = CAB + '<div class="dim">Varrendo…</div>';
-    const [c, p] = await Promise.all([J("/api/governo_couto", { tetoMs: 6e4 }), J("/api/pericia_contabil", { tetoMs: 6e4 })]);
+    const [c, p] = await Promise.all([J("/api/governo_couto", { tetoMs: 6e4 }), J("/api/pericia_contabil", { tetoMs: 6e4 }), mancheteEstado()]);
     if (!host.isConnected) return;
     const corpo = _couto(c) + _pericia(p);
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
@@ -10091,7 +10349,22 @@
   <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
   </div>`;
   }
+  function ckBloquear(id) {
+    const el = $("cki-" + id);
+    nuSet(id, null);
+    if (!el) return;
+    el.classList.add("mch-off");
+    el.querySelector(".val").textContent = "—";
+    delete el.dataset.v61Val;
+    const m = el.querySelector(".meta");
+    m.innerHTML = mancheteBloqueioHtml("cki-" + id, "o dado segue na aba, como fila de triagem");
+    m.classList.remove("esperando");
+  }
   function ckFill(id, { num, txt, meta } = {}) {
+    if (!mancheteLiberada("cki-" + id)) {
+      ckBloquear(id);
+      return;
+    }
     const el = $("cki-" + id);
     if (!el) return;
     const v = el.querySelector(".val"), m = el.querySelector(".meta");
@@ -10133,7 +10406,9 @@
     preocupacoesMontar($("c61-preoc"));
     v63InicioMontar();
     galaxiaPreviewMontar($("gx-prev"));
-    ckPull(true);
+    mancheteEstado().then(() => {
+      if (aba === "i_cockpit") ckPull(true);
+    });
     clearInterval(_ckTimer);
     _ckTimer = setInterval(() => {
       if (!document.hidden && aba === "i_cockpit") ckPull(false);
@@ -10153,8 +10428,13 @@
         }
         return;
       }
+      if (!mancheteLiberada("cki-alertas")) {
+        ckBloquear("alertas");
+        if (el) el.title = "alertas: " + mancheteBloqueioHtml("cki-alertas").replace(/<[^>]+>/g, "");
+        return;
+      }
       nuSet("alertas", a.total);
-      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` + (a.baixa != null ? ` · ${fmtN(a.baixa)} baixa` : "") + ` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>: conferidos 34 na fonte primária em 19/11/2026, 13 não se sustentaram` });
+      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` + (a.baixa != null ? ` · ${fmtN(a.baixa)} baixa` : "") + ` — descartados fora da conta · <b>fila de triagem, não irregularidade</b>` });
       if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média${a.baixa != null ? " · " + fmtN(a.baixa) + " baixa" : ""} (descartados fora) — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
     });
     J("/api/comparador/economia").then((d) => {
@@ -10164,6 +10444,13 @@
           big.textContent = "—";
           if ($("ck-sub")) $("ck-sub").innerHTML = erroHumano(d && d.erro);
         }
+        return;
+      }
+      if (!mancheteLiberada("ck-econ")) {
+        const big = $("ck-econ");
+        if (big) big.textContent = "—";
+        if ($("ck-sub")) $("ck-sub").innerHTML = mancheteBloqueioHtml("ck-econ", "as compras seguem em Comparador › Economia possível");
+        ckFill("compras", {});
         return;
       }
       const pe = d.por_esfera || {}, est = pe.estado || {}, pre = pe.prefeitura || {};
@@ -10201,7 +10488,7 @@
         txt: fmtRc(d.total_apos_baixa || 0),
         meta: `<b>${fmtN(d.n_defunta_confirmada || 0)}</b> CNPJs receberam <b>depois</b> da baixa ou inaptidão na Receita — <b>indício a conferir</b> no processo` + (d.n_fora_da_manchete ? ` · fora da conta: ${_fmN("natureza_publica")} órgãos públicos, ${_fmN("cartorio")} cartórios, ${_fmN("filial_de_matriz_ativa")} filiais de matriz ativa, ${_fmN("pagamento_judicial")} pagamentos judiciais` : "")
       });
-      if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir` }]);
+      if (d.n_defunta_confirmada && mancheteLiberada("cki-fenix")) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} CNPJs DEPOIS da baixa/inaptidão na Receita — indício a conferir` }]);
     });
   }
 
@@ -14432,11 +14719,12 @@
     baixa: ["⚪", "Baixa", "Sinal fraco / informativo."]
   };
   async function renderAlertas() {
-    const p = await J("/api/compliance/painel");
+    const [p] = await Promise.all([J("/api/compliance/painel"), mancheteEstado()]);
     const lst = p.lista_alertas || [];
+    const _tri = detectorLiberado("rules.engine") ? "" : card(`<div class="mch-bloq"><b>Fila de triagem — não é manchete.</b> ${esc(detectorMotivo("rules.engine"))}. Cada alerta é indício a conferir na fonte primária; a cor mede a força do sinal, não a probabilidade de irregularidade.</div>`);
     const porMes = blocoPeriodo(["alertas"], "Alertas por ano e mês de detecção");
     if (!lst.length) return sec("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>') + porMes;
-    let h = cover("estado", "Alertas de auditoria", "Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.", "🚨");
+    let h = cover("estado", "Alertas de auditoria", "Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.", "🚨") + _tri;
     h += card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>` + Object.values(SEV_LEGENDA).map(([ic, nome2, desc]) => `<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome2.toLowerCase() === "alta" ? "alta" : nome2.toLowerCase() === "média" ? "media" : "baixa"}">${ic} ${nome2}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(""));
     const porTipo = {};
     lst.forEach((a) => {
@@ -16111,6 +16399,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (_abaAntes && _abaAntes !== id) somTocar("area");
     setAba(id);
     montarTabs();
+    lenteTrocaDeAba();
     if (location.hash.slice(1) !== id) {
       _hashMeu = true;
       location.hash = id;
@@ -16186,6 +16475,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     await ir2(_abaValida(_h) ? _h : "i_cockpit");
     if (_h && !_abaValida(_h)) _hashInvalido(_h);
     marcarValores(document.getElementById("view"));
+    lenteBoot(() => ir2(aba));
     const st = await J("/status");
     if (st.exercicio) {
       const hs = $("hsub");

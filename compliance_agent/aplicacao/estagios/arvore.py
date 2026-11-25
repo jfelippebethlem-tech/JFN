@@ -380,6 +380,8 @@ class Item:
     fontes: set[str] = field(default_factory=set)
     ob_paga: float = 0.0
     couto: bool = False
+    credores: set[str] = field(default_factory=set)   # CNPJ/CPF das OB pagas do processo (lente por credor)
+    data_fato: str | None = None                      # última OB PAGA (AAAA-MM-DD) — lente por data (couto)
 
 
 def abrir_fonte(caminho: str | Path | None = None) -> sqlite3.Connection:
@@ -422,14 +424,21 @@ def universo(fonte: sqlite3.Connection, extras: dict[str, set[str]] | None = Non
 
     iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
     pago = ob_paga_sql(fonte)
-    for proc, ug, v, ult in fonte.execute(
+    # credor só quando a coleta tem a coluna (fixture antiga não tem): o agrupamento ganha o credor, o resto é igual
+    tem_credor = "credor" in {r[1] for r in fonte.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+    cred = f"CASE WHEN {pago} THEN credor END" if tem_credor else "NULL"
+    for proc, ug, v, ult, credor in fonte.execute(
             f"SELECT processo, ug_emitente, SUM(CASE WHEN {pago} THEN valor ELSE 0 END), "
-            f"MAX(CASE WHEN {pago} THEN {iso} END) FROM ob_orcamentaria_siafe "
-            "WHERE COALESCE(processo,'') <> '' GROUP BY 1, 2"):
+            f"MAX(CASE WHEN {pago} THEN {iso} END), {cred} FROM ob_orcamentaria_siafe "
+            f"WHERE COALESCE(processo,'') <> '' GROUP BY 1, 2{', 5' if tem_credor else ''}"):
         it = add(proc, "ob_siafe", [str(ug or "")])
         if it:
             it.ob_paga += float(v or 0.0)
             it.couto = it.couto or bool(ult and ult >= INICIO)
+            if ult and (it.data_fato is None or ult > it.data_fato):
+                it.data_fato = ult
+            if credor:
+                it.credores.add(str(credor))
     if _tabela(fonte, "ordens_bancarias"):                     # espelho TFE: só como fonte do nº (valor nunca)
         for proc, ug in fonte.execute("SELECT DISTINCT numero_sei, ug_codigo FROM ordens_bancarias "
                                       "WHERE COALESCE(numero_sei,'') <> ''"):
@@ -508,10 +517,10 @@ def fila(fonte: sqlite3.Connection, lentes_res: dict, lente: str | None = None, 
         if lente not in lentes_res:
             raise ErroPermanente(f"lente desconhecida: {lente}")
         alvo = lentes_res[lente]
-        itens = {k: it for k, it in itens.items() if L.casa(alvo, it.ugs, k)}
+        itens = {k: it for k, it in itens.items() if L.casa(alvo, it.ugs, k, it.credores, it.data_fato)}
     sin: dict[str, Sinais] = {}
     for k, it in itens.items():
-        b, nomes = L.bonus(lentes_res, it.ugs, k)
+        b, nomes = L.bonus(lentes_res, it.ugs, k, it.credores, it.data_fato)
         sin[k] = Sinais(ob_paga=round(it.ob_paga, 2), couto=it.couto, bonus_lente=b, lente=",".join(nomes) or None,
                         **{n: bool(f(it)) for n, f in sinais.items()})
     ordem = ordenar(list(itens.values()), lambda it: sin[it.processo], fracao_couto=fracao_couto)
@@ -519,8 +528,8 @@ def fila(fonte: sqlite3.Connection, lentes_res: dict, lente: str | None = None, 
     for it in ordem:
         e = explicar(sin[it.processo])
         e["fontes"] = sorted(it.fontes)
-        e["lente_motivo"] = {n: L.casa(lentes_res[n], it.ugs, it.processo) for n in (e["sinais"]["lente"] or "").split(",")
-                             if n}
+        e["lente_motivo"] = {n: L.casa(lentes_res[n], it.ugs, it.processo, it.credores, it.data_fato)
+                             for n in (e["sinais"]["lente"] or "").split(",") if n}
         out.append((it, e))
     return out
 
@@ -553,7 +562,7 @@ def paridade(fonte: sqlite3.Connection, lentes_res: dict, lente: str, log: Path,
         so_legado += fs <= {"legado_sei_sweep"}
     motivo: dict[str, int] = {}
     for k in set(A) & set(B):
-        m = (casa(lentes_res[lente], B[k].ugs, k) or "?").split(":")[0]
+        m = (casa(lentes_res[lente], B[k].ugs, k, B[k].credores, B[k].data_fato) or "?").split(":")[0]
         motivo[m] = motivo.get(m, 0) + 1
     return {"lente": lente, "capturados_sweep_antigo": len(A), "selecionados_fila_nova": len(B),
             "contido": not falta, "faltando": len(falta), "faltando_lista": falta[:200],
@@ -593,7 +602,7 @@ def main(argv: list[str] | None = None) -> int:
                           "relacionados": lido["relacionados"][:20]}, ensure_ascii=False))
         return 0
     fonte = abrir_fonte(a.fonte)
-    lentes_res, medidas = L.resolver(L.carregar(), fonte)
+    lentes_res, medidas = L.resolver(L.carregar(), fonte, externas=a.lente == "beneficios")
     pg = conectar() if EV.dsn_vigente() else None
     try:
         extras = extras_locais(pg)
