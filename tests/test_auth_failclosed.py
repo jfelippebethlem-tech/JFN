@@ -229,6 +229,19 @@ def test_manutencao_login_e_logout_continuam(manut):
     assert manut.get("/logout_jfn", follow_redirects=False).status_code == 303
 
 
+@pytest.mark.parametrize("rota", ["/ws", "/tunnel"])
+def test_manutencao_fecha_websocket_ate_para_o_local_logado(manut, rota):
+    """25/11/2026 (O0.3): /ws aciona o agente e /tunnel grava OB — em manutenção nenhum dos dois abre, nem com
+    sessão válida (o middleware HTTP não roda em WebSocket; a régua é `_ws_autorizado`)."""
+    from starlette.websockets import WebSocketDisconnect
+    manut.post("/login_jfn", data={"senha": "senha-de-teste"}, follow_redirects=False)
+    with pytest.raises(WebSocketDisconnect) as e:
+        with manut.websocket_connect(rota) as w:
+            w.send_text('{"type": "chat", "content": "x"}')
+            w.receive_text()
+    assert e.value.code == 1008
+
+
 def test_manutencao_html_leva_faixa(manut):
     r = manut.get("/login_jfn")
     assert r.status_code == 200
