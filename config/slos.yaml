@@ -206,7 +206,7 @@ slos:
     severidade: critica
     fonte: GET /painel (200/302/303/401 = processo vivo respondendo)
     runbook: 'painel sempre no ar (dono 13/11): sem resposta 2× seguidas = processo travado'
-    remediar: 'systemctl --user restart jfn.service — DECLARADO para a sessão/dono; o sensor não reinicia (era o painel_vigia)'
+    remediar: 'remediar:painel_travado (python -m compliance_agent.fluxo.remedios painel_travado): restart só com 2 falhas seguidas e fora do resfriamento; o sensor não reinicia (era o painel_vigia)'
     origem: [painel_vigia, ronda, keepalive]
   painel_malformed:
     sensor: painel.rotas_malformed
@@ -222,7 +222,7 @@ slos:
     severidade: critica
     fonte: GET em 4 rotas que leem o compliance.db (as mesmas do guardião)
     runbook: 'guardião: arquivo íntegro (quick_check ok) ⇒ restart cura; arquivo corrompido ⇒ NÃO reiniciar, perícia'
-    remediar: 'se integridade_compliance = SAUDAVEL: restart do jfn.service (declarado); senão python -m tools.reconstruir_db (dono)'
+    remediar: 'remediar:painel_shm (python -m compliance_agent.fluxo.remedios painel_shm): restart SÓ se quick_check=ok, uma vez por resfriamento; corrompido ⇒ NÃO reinicia, python -m tools.reconstruir_db (dono)'
     origem: [guardiao_db_malformed]
   # ── motor de fluxo (PG, global) ───────────────────────────────────────────────────────────────────────────────
   fila_espera:
@@ -326,6 +326,23 @@ slos:
     runbook: '§3.5 modo sem it-campo: 1 nó fora = DEGRADADO (anda com vazão menor); todos fora = BLOQUEADO'
     remediar: 'systemctl --user status jfn-fluxo@<no> no nó; it-campo só reinicia com PIN presencial'
     origem: [itcampo_vigia, keepalive]
+  fila_espera_p95:
+    sensor: fila.espera_p95_s
+    descricao: espera p95 dos jobs elegíveis na fila (now − disponivel_em); p50 e p50/p95 por tipo vão como detalhe
+    unidade: s
+    sentido: max
+    saudavel: 600
+    degradado: 3600
+    pior: ATRASADO
+    janela_s: 1800
+    escopo: global
+    nos: [vm1, vm2, itcampo]
+    dono: fluxo
+    severidade: media
+    fonte: fluxo.jobs (percentile_cont sobre estado='fila' e disponivel_em <= now()) — inicial
+    runbook: 'detalhe fila.espera_p95_s.por_tipo diz QUAL tipo espera; o máximo segue em fila_espera'
+    remediar: 'conferir slots/recursos do tipo que espera (governador) e nós vivos; tipo sem nó que o rode = BLOQUEADO na fila'
+    origem: [pipelines_slo, automelhoria_geral.propagacao]
   wal_pg:
     sensor: wal.pg_arquivo_atraso_s
     descricao: atraso do arquivamento contínuo de WAL do PostgreSQL (now − last_archived_time)
@@ -476,9 +493,9 @@ slos:
     nos: [vm1]
     dono: backup
     severidade: critica
-    fonte: data/plataforma/restauracao_pg.json (deploy/vm2/postgres/restaurar_teste.sh)
-    runbook: '§11.11 restauração semanal automática como sensor; O8.2 move para o it-campo'
-    remediar: 'bash deploy/vm2/postgres/restaurar_teste.sh (exige WAL-G — O8.2); falhou ⇒ ler detalhe no json'
+    fonte: 'fluxo.metricas backup.restauracao_ok + backup.restauracao_quando da mesma execução (tools/restauracao_semanal.py gravar, O8.2 no it-campo); sem elas, data/plataforma/restauracao_pg.json (restaurar_teste.sh)'
+    runbook: '§11.11 restauração semanal automática como sensor; O8.2 roda no it-campo'
+    remediar: 'python -m tools.restauracao_semanal semanal --raiz <frio> --no itcampo (O8.2); falhou ⇒ ler rotulos.falhas da linha backup.restauracao_ok'
     origem: [backup.md §3]
   wal_compliance:
     sensor: sqlite.wal_mb
@@ -498,8 +515,8 @@ slos:
     remediar: "python -c 'from compliance_agent.manutencao import checkpoint_wal as c; print(c())' fora da janela do painel"
     origem: [checkpoint_wal, persist-wal-sentinela-por-processo]
   integridade_compliance:
-    sensor: sqlite.quick_check
-    descricao: PRAGMA quick_check(1) do compliance.db (1 = ok); espaçado de 1 h como o guardião
+    sensor: db.integridade
+    descricao: PRAGMA quick_check(1) do compliance.db (1 = ok); espaçado de 1 h como o guardião, trava própria; alerta por incidente (rotulos.incidente = novo só na 1ª medida ruim)
     unidade: ok
     sentido: min
     saudavel: 1
@@ -509,7 +526,7 @@ slos:
     nos: [vm1]
     dono: dados
     severidade: critica
-    fonte: sqlite3 mode=ro, ionice -c3 nice 19
+    fonte: 'sqlite3 mode=ro, ionice -c3 nice 19, trava data/locks/db_integridade.lock (a mesma do remédio painel_shm)'
     runbook: 'guardião 12/08/2026: corrupção real viveu 13 h invisível e apagou 19 achados'
     remediar: 'NÃO reiniciar; perícia de dado: python -m tools.reconstruir_db --saida /tmp/novo.db --laudo /tmp/laudo.json (dono)'
     origem: [guardiao_db_malformed]
@@ -633,3 +650,140 @@ slos:
     runbook: O8.4 (automelhoria consome o E18)
     remediar: 'automelhoria_executor (O8.4) com critério forte; reincidência é o achado mais importante da fila'
     origem: [automelhoria_geral, automelhoria_executor]
+  # ── esteira no PG: captura, cobertura e prova (global; mede onde o PG mora) ─────────────────────────────────
+  captura_util:
+    sensor: captura.util_pct
+    descricao: captura útil — versões NOVAS ÷ documentos baixados pelo E3 nas últimas 24 h
+    unidade: '%'
+    sentido: min
+    saudavel: 50
+    degradado: 20
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: global
+    nos: [vm2]
+    dono: captura
+    severidade: media
+    fonte: 'PG aquisicao (fonte=sei:e3, detalhe.capturados) × versoes.aquisicao_id — inicial; sem captura do E3 na janela = INDISPONIVEL'
+    runbook: 'plano §7 delta: baixar só o que não está guardado (JFN_CAPTURA_DELTA=1)'
+    remediar: 'conferir o delta do E3 (captura_delta.plano_de_captura) e os guardados do PG antes de recapturar'
+    origem: [sei_integra_fila, sweep-360-e-fila-do-fiscal]
+  captura_duplicidade:
+    sensor: captura.duplicidade_pct
+    descricao: recaptura sem novidade — aquisições do E3 sem nenhuma versão nova ÷ aquisições (24 h)
+    unidade: '%'
+    sentido: max
+    saudavel: 20
+    degradado: 50
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: global
+    nos: [vm2]
+    dono: captura
+    severidade: media
+    fonte: 'PG aquisicao (fonte=sei:e3) sem linha em versoes.aquisicao_id — inicial'
+    runbook: 'E2 árvore decide SEM_MUDANCA antes do E3; recaptura sem novidade = E2 deixando passar processo igual'
+    remediar: 'conferir a guarda de convergência do E2 (arvore.registrar: tree_hash igual ⇒ sem job de captura)'
+    origem: [sei-captura-velocidade-22-11]
+  cobertura_acervo:
+    sensor: cobertura.docs_com_versao_pct
+    descricao: documentos da árvore (não restritos, quando a coluna existe) com ao menos uma versão guardada
+    unidade: '%'
+    sentido: min
+    saudavel: 98
+    degradado: 90
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: global
+    nos: [vm2]
+    dono: captura
+    severidade: alta
+    fonte: 'PG documentos × versoes (+ detalhe: arvores por processo, arvore_leitura pendentes do E3)'
+    runbook: 'processo completo, nunca "os 40 primeiros"; OMITIDO > 0 é falha do E3'
+    remediar: 'capturar.pendentes(con) lista os processos com documento sem versão; enfileirar capturar:<processo>'
+    origem: [sei-arquivo-captura-parcial, leitura-sei-quais-40-nao-quantos]
+  prova_numerica:
+    sensor: prova.fatos_verificados_pct
+    descricao: prova numérica — fatos do E8 com citação literal conferida (VERIFICADO) ÷ todos os fatos gravados
+    unidade: '%'
+    sentido: min
+    saudavel: 80
+    degradado: 60
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: global
+    nos: [vm2]
+    dono: pericia
+    severidade: alta
+    fonte: 'PG fatos (estado; esquema do E8) — inicial; detalhe por estado nos rotulos'
+    runbook: 'invariante: número sem citação conferida nunca vira VERIFICADO (E8 âncora); INDISPONIVEL/A_CONFIRMAR_OCR ficam fora do painel'
+    remediar: 'reler pelo E8 os processos com FALHA_CITACAO/A_CONFIRMAR_OCR depois do OCR confirmado'
+    origem: [certeza, zero-margem-de-erro-projeto-de-governo]
+  # ── custo e régua dos detectores (VM-1: llm_trace.db e o registro moram lá) ────────────────────────────────────
+  custo_por_processo:
+    sensor: llm.custo_por_processo_usd
+    descricao: custo pago de LLM por processo lido no mês (média; o trace do gateway ainda não leva o processo)
+    unidade: USD
+    sentido: max
+    saudavel: 0.5
+    degradado: 2
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: llm
+    severidade: media
+    fonte: 'data/llm_trace.db (origem=gateway, pago=1, mês UTC) ÷ PG leituras (processos distintos no mês) — inicial'
+    runbook: '§11.9 custo ≤ US$ 100/mês; assinatura primeiro, API só no lote com teto'
+    remediar: 'achar a tarefa mais cara no llm_trace; pendência O8.4: trace com o processo para custo por processo real'
+    origem: [automelhoria_geral.modelos]
+  detectores_fp_medida:
+    sensor: detectores.fp_medida_pct
+    descricao: detectores ATIVOS do registro com fp_medida válida (≤ 180 dias, com decididos) — taxa por detector no detalhe
+    unidade: '%'
+    sentido: min
+    saudavel: 50
+    degradado: 20
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: deteccao
+    severidade: media
+    fonte: 'config/qualidade_detectores.yaml (fp_medida; compliance_agent.qualidade.detectores._calibrado) — inicial'
+    runbook: 'COR-04: FP medida em fonte primária antes de manchete; régua de tiers da O5.1'
+    remediar: 'medir FP (amostra estratificada em fonte primária) dos detectores ativos sem medida; registrar em fp_medida'
+    origem: [vereditos-da-triagem-medem-o-detector, automelhoria_geral.detectores]
+  detectores_fp_alta:
+    sensor: detectores.fp_acima_teto
+    descricao: detectores ativos com FP medida acima do teto do Tier 1 (15 % no ponto)
+    unidade: detectores
+    sentido: max
+    saudavel: 0
+    degradado: 3
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: maquina
+    nos: [vm1]
+    dono: deteccao
+    severidade: alta
+    fonte: 'config/qualidade_detectores.yaml (fp_medida.falsos ÷ n) × detectores.TIER1_PONTO_MAX'
+    runbook: 'O5.1/O7.3: manchete só Tier 1; FP alta tira o detector da manchete'
+    remediar: 'recalibrar a lógica (não a taxa) do detector e remedir; sem conserto, estado sem_varredura'
+    origem: [calibrar-a-taxa-nao-calibra-a-logica, falso-positivo-tres-classes-e-segundo-sinal]
+  itcampo_alcancavel:
+    sensor: itcampo.alcancavel
+    descricao: o it-campo responde pela rede (ssh com teto de 8 s, medido da VM-1; 1 = sim, 0 = não)
+    unidade: sim/não
+    sentido: min
+    saudavel: 1
+    pior: DEGRADADO
+    janela_s: 1800
+    escopo: maquina
+    nos: [vm1]
+    dono: infra
+    severidade: alta
+    fonte: 'ssh BatchMode ao alias do it-campo no ~/.ssh/config da VM-1 (independe do heartbeat do jfn-fluxo)'
+    runbook: 'O8.3 it-campo fora; §3.5 modo sem it-campo = DEGRADADO. Modern Standby: tela apagada derruba a rede (monitor/sono nunca)'
+    remediar: 'conferir energia/tela do it-campo (monitor nunca, sono nunca); reinício só com PIN presencial do dono'
+    origem: [itcampo_vigia, keepalive]

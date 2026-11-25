@@ -108,8 +108,13 @@ function _slos(s){
   const c = s.contagem || {};
   const ruins = (s.itens || []).filter(i => i.estado && i.estado !== 'SAUDAVEL' && i.estado !== 'INDISPONIVEL');
   const linhas = ruins.map(i => `<tr><td><b style="color:${_COR_SLO[i.estado] || 'inherit'}">${esc(i.estado)}</b></td><td>${esc(i.descricao || i.slo)}</td><td>${esc(i.no || '')}</td><td class="right">${i.valor == null ? '—' : esc(String(i.valor))} ${esc(i.unidade || '')}</td><td style="font-size:12px">${esc(i.remediar || '')}</td></tr>`).join('');
-  return sec('SLOs da esteira — estado honesto', esc(s.estado || '—')) + card(`<div style="font-size:13px">Estado global <b style="color:${_COR_SLO[s.estado] || 'inherit'}">${esc(s.estado || '—')}</b> — ${esc(s.motivo || '')}. ${fmtN(c.SAUDAVEL || 0)} saudável(is) · ${fmtN(c.DEGRADADO || 0)} degradado(s) · ${fmtN(c.ATRASADO || 0)} atrasado(s) · ${fmtN(c.BLOQUEADO || 0)} bloqueado(s) · ${fmtN(c.INDISPONIVEL || 0)} sem medida (não é zero).</div>
-    ${linhas ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Estado</th><th>O que mede</th><th>Máquina</th><th class="right">Valor</th><th>Remédio</th></tr></thead><tbody>${linhas}</tbody></table></div>` : ''}
+  // O8.1: alerta por SLO — BLOQUEADO, ou fora do SLO com severidade alta/crítica, sobe ao topo com o remédio declarado
+  const alertas = ruins.filter(i => i.estado === 'BLOQUEADO' || ['alta', 'critica'].includes(i.severidade));
+  const alerta = alertas.length ? `<div class="warn" style="margin-bottom:8px"><b>${fmtN(alertas.length)} alerta(s) de SLO</b><ul style="margin:6px 0 0 18px">${alertas.map(i => `<li><b>${esc(i.estado)}</b> · ${esc(i.slo)}${i.no ? ` @ ${esc(i.no)}` : ''} — ${esc(i.motivo || '')}</li>`).join('')}</ul></div>` : '';
+  const cegos = (s.itens || []).filter(i => i.estado === 'INDISPONIVEL');
+  const semMedida = cegos.length ? `<details style="margin-top:8px"><summary class="dim" style="font-size:12px">${fmtN(cegos.length)} SLO(s) sem medida — INDISPONÍVEL, não zero</summary><ul style="margin:6px 0 0 18px;font-size:12px">${cegos.map(i => `<li>${esc(i.slo)}${i.no ? ` @ ${esc(i.no)}` : ''} — ${esc(i.motivo || '')}</li>`).join('')}</ul></details>` : '';
+  return sec('SLOs da esteira — estado honesto', esc(s.estado || '—')) + card(`${alerta}<div style="font-size:13px">Estado global <b style="color:${_COR_SLO[s.estado] || 'inherit'}">${esc(s.estado || '—')}</b> — ${esc(s.motivo || '')}. ${fmtN(c.SAUDAVEL || 0)} saudável(is) · ${fmtN(c.DEGRADADO || 0)} degradado(s) · ${fmtN(c.ATRASADO || 0)} atrasado(s) · ${fmtN(c.BLOQUEADO || 0)} bloqueado(s) · ${fmtN(c.INDISPONIVEL || 0)} sem medida (não é zero).</div>
+    ${linhas ? `<div style="max-height:320px;overflow:auto;margin-top:8px"><table class="tb pg-txt"><thead><tr><th>Estado</th><th>O que mede</th><th>Máquina</th><th class="right">Valor</th><th>Remédio</th></tr></thead><tbody>${linhas}</tbody></table></div>` : ''}${semMedida}
     <div class="dim" style="font-size:12px;margin-top:6px">Fonte: <code>/api/sistema/slos</code> · <code>config/slos.yaml</code></div>`);
 }
 

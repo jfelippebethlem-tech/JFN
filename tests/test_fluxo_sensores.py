@@ -134,7 +134,7 @@ def test_slos_reais_cobrem_todo_sensor_e_todo_sensor_tem_slo():
                  "swap.uso_pct", "fila.idade_max_s", "fila.quarentena", "fila.orfaos", "fila.conclusoes_h",
                  "frescor.fontes_atrasadas", "llm.custo_mes_usd", "pericia.cobertura_chars",
                  "opus.saida_por_entrada_7d", "wal.pg_arquivo_atraso_s", "restauracao.pg_idade_h",
-                 "sqlite.quick_check"):
+                 "db.integridade"):
         assert nome in julgados, nome
 
 

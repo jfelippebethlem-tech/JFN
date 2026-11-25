@@ -314,12 +314,12 @@ rotinas:
     timeout_s: 600
     trava: data/locks/manut_wal.lock
     concorrencia: [disco_vm1]
-    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron)
     agenda:
     - {cron: 25 */6 * * *}
     origem: [vm1-cron-compliance-agent-manutencao-2]
-    efeito: {descricao: 'Checkpoint do WAL do compliance.db: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
-        estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+    efeito: {descricao: 'o checkpoint devolveu o tamanho do -wal antes e depois', log_contem: "'wal_depois': [0-9]+"}
   siafe_runner_diario:
     estagio: E1
     descricao: 'SIAFE: coleta diária de OB/NE/NL'
@@ -468,12 +468,13 @@ rotinas:
     nos: [vm1]
     timeout_s: 10800
     concorrencia: [disco_vm1]
-    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    trava: data/locks/backup_compliance.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron)
     agenda:
     - {cron: 50 3 * * 0}
     origem: [vm1-cron-backup-compliance-sh]
-    efeito: {descricao: 'Backup semanal do compliance.db para a nuvem: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
-        para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+    efeito: {descricao: 'a cópia gzip do compliance.db chegou ao remoto (linha off-box desta execução)', log_contem: '✓ off-box: '}
   backup_evidencias_pg:
     estagio: E17
     descricao: Backup diário do PG jfn_evidencias (pg_dump + nuvem)
@@ -481,8 +482,9 @@ rotinas:
     nos: [vm1]
     timeout_s: 3600
     trava: data/locks/backup_evidencias_pg.lock
+    volta: {nos: [], nota: 'sem volta: o dump roda da VM-1 contra o PG da VM-2 e guarda pela porta única'}
     efeito: {descricao: dump do dia gravado e copiado (linha 'dump ok' no log desta execução), log_contem: dump ok}
-    nota: segue no cron durante a parada (ressalva 3); migra na O9.0
+    nota: segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron)
     agenda:
     - {cron: 40 2 * * *}
     origem: [vm1-cron-backup-evidencias-pg-sh]
@@ -627,18 +629,20 @@ rotinas:
     timeout_s: 900
     efeito: {descricao: 'Pré-aquecimento do cache do painel: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o
         estágio (O3–O8); até lá: rc 0 + log sem traceback'}
-  guardiao_db_malformed:
+  remediar_painel_shm:
     estagio: E18
-    descricao: Guardião de integridade do compliance.db (só leitura)
-    comando: [bash, tools/guardiao_db_malformed.sh]
+    descricao: 'remédio painel_shm (absorve tools/guardiao_db_malformed.sh): 4 rotas com "malformed" e compliance.db ÍNTEGRO ⇒ restart do jfn.service UMA vez; corrompido ⇒ NUNCA reinicia'
+    comando: ['{py}', -m, compliance_agent.fluxo.remedios, painel_shm]
+    recursos: [cpu_leve]
     nos: [vm1]
-    timeout_s: 300
-    nota: segue no cron durante a parada (só leitura); vira sensor E18 na O2.3
+    timeout_s: 1200
+    trava: data/locks/remediar_painel_shm.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron). A sonda PROATIVA do guardião (quick_check de hora em hora, alerta uma vez por incidente) é o sensor db.integridade do observar_vm1; o quick_check do remédio usa a MESMA trava (data/locks/db_integridade.lock). Resfriamento de 30 min entre restarts: nunca laço'
     agenda:
     - {cron: 1-59/5 * * * *}
     origem: [vm1-cron-guardiao-db-malformed-sh]
-    efeito: {descricao: 'Guardião de integridade do compliance.db (só leitura): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar
-        a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+    efeito: {descricao: 'a linha final do remédio diz nada a fazer ou curado (corrompido, escalar e falha saem com rc 1)', log_contem: 'remedio painel_shm: (nada|curado) — '}
   pcrj_doweb:
     estagio: E1
     descricao: 'DOWEB Prefeitura: contratações'
@@ -2455,47 +2459,131 @@ rotinas:
     origem: [vm1-cron-compliance-agent-propagacao-ciclo]
     nos: [vm1]
     efeito: {descricao: 'a ponte imprimiu o resumo da rodada (eventos entregues ao fluxo)', log_contem: '"ponte_fluxo":'}
+  remediar_painel_travado:
+    estagio: E18
+    descricao: 'remédio painel_travado (absorve ~/bin/painel_vigia.sh): /painel sem resposta em 25 s DUAS checagens seguidas ⇒ restart do jfn.service UMA vez (resfriamento de 30 min)'
+    comando: ['{py}', -m, compliance_agent.fluxo.remedios, painel_travado]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 300
+    trava: data/locks/remediar_painel_travado.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron). O sensor é painel.latencia_ms (painel_resposta, regra das 2 falhas seguidas); a marca data/.painel_vigia_falha é a mesma do script'
+    agenda:
+    - {cron: '*/2 * * * *'}
+    origem: [vm1-cron-painel-vigia-sh]
+    efeito: {descricao: 'a linha final do remédio diz nada, confirmar ou curado (escalar/falha saem com rc 1)', log_contem: 'remedio painel_travado: (nada|confirmar|curado) — '}
+  graphify_retencao:
+    estagio: E17
+    descricao: 'retenção do graphify-out: só os 3 snapshots datados mais novos'
+    comando: ['{py}', -m, tools.rotinas_infra, graphify_retencao]
+    recursos: [disco]
+    nos: [vm1]
+    timeout_s: 600
+    trava: data/locks/graphify_retencao.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron)'
+    agenda:
+    - {cron: 10 3 * * 0}
+    origem: [vm1-cron-graphify-out]
+    efeito: {descricao: 'a retenção imprimiu quantos apagou e quantos ficam (≤ 3)', log_contem: 'rotinas_infra graphify_retencao: ok — [0-9]+ apagado\(s\), [0-3] snapshot'}
+  graph_report_brain:
+    estagio: E18
+    descricao: 'GRAPH_REPORT.md do graphify entregue às entradas do brain (VM-2)'
+    comando: ['{py}', -m, tools.rotinas_infra, graph_report_brain]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 300
+    trava: data/locks/graph_report_brain.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron). O destino (alias ssh) fica no tools/rotinas_infra.py, não aqui (ADR-011)'
+    agenda:
+    - {cron: 11 */3 * * *}
+    origem: [vm1-cron-rsync]
+    efeito: {descricao: 'o rsync devolveu 0 e a linha de entrega saiu', log_contem: 'rotinas_infra graph_report_brain: ok — '}
+  logrotate_vm1:
+    estagio: E17
+    descricao: 'logrotate dos logs do JFN na VM-1 (estado próprio do usuário)'
+    comando: ['{py}', -m, tools.rotinas_infra, logrotate, --perfil, vm1]
+    recursos: [disco]
+    nos: [vm1]
+    timeout_s: 900
+    trava: data/locks/logrotate.lock
+    volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron). A configuração fica em ~/.config/logrotate (fora do repo), resolvida pelo tools/rotinas_infra.py'
+    agenda:
+    - {cron: 15 5 * * *}
+    origem: [vm1-cron-logrotate]
+    efeito: {descricao: 'logrotate rc 0 e a linha do perfil saiu', log_contem: 'rotinas_infra logrotate: ok — perfil vm1'}
+  logrotate_vm2:
+    estagio: E17
+    descricao: 'logrotate dos logs do JFN na VM-2 (era o timer jfn-logrotate)'
+    comando: ['{py}', -m, tools.rotinas_infra, logrotate, --perfil, vm2]
+    recursos: [disco]
+    nos: [vm2]
+    timeout_s: 900
+    trava: data/locks/logrotate.lock
+    volta: {nos: [], nota: 'sem volta: os logs são da própria VM-2'}
+    nota: 'segue no timer durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --timers --aplicar desliga o timer). 08:15 UTC = 05:15 em Brasília'
+    agenda:
+    - {cron: 15 5 * * *}
+    origem: [vm2-timer-jfn-logrotate]
+    efeito: {descricao: 'logrotate rc 0 e a linha do perfil saiu', log_contem: 'rotinas_infra logrotate: ok — perfil vm2'}
+  nuvens_manter_vivas:
+    estagio: E17
+    descricao: 'mantém vivas as sessões das nuvens grátis (uma listagem leve por remoto)'
+    comando: ['{py}', -m, tools.rotinas_infra, nuvens]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 1800
+    trava: data/locks/nuvens_manter_vivas.lock
+    volta: {nos: [], nota: 'sem volta: os remotos e o rclone.conf moram na VM-1'}
+    nota: 'segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron). O script segue em ~/bin (fora do repo), chamado pelo tools/rotinas_infra.py; o aviso ao dono continua opt-in no próprio script'
+    agenda:
+    - {cron: 17 6 * * *}
+    origem: [vm1-cron-nuvens-manter-vivas-sh]
+    efeito: {descricao: 'o script devolveu 0 (falha de remoto fica no log próprio e no aviso opt-in)', log_contem: 'rotinas_infra nuvens: ok — '}
   observar_vm1:
     estagio: E18
-    descricao: 'E18 observar (vm1): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
-    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, vm1]
+    descricao: 'E18 observar (vm1): sensores do nó (PSI, disco e tendência, swap, memória, fila p50/p95, WAL, backup e restauração, integridade do compliance.db, painel, custo e custo por processo, frescor; no PG: captura útil, duplicidade, cobertura, prova numérica; fp_medida dos detectores; it-campo alcançável) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.observar, coletar, --no, vm1]
     recursos: [cpu_leve]
     nos: [vm1]
     timeout_s: 1200
     prioridade: 25
     ativa: false
     bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@vm1 estiver no ar; até lá a coleta só roda à mão'
-    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios/observar.py) pela CLI, que roda handler + efeito do contrato: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check, frescor, captura, prova, custo por processo, detectores 1 h; cobertura da perícia 6 h)'
     agenda:
     - {cron: '*/10 * * * *'}
     origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
     efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
   observar_vm2:
     estagio: E18
-    descricao: 'E18 observar (vm2): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
-    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, vm2]
+    descricao: 'E18 observar (vm2): sensores do nó (PSI, disco e tendência, swap, memória, fila p50/p95, WAL, backup e restauração, integridade do compliance.db, painel, custo e custo por processo, frescor; no PG: captura útil, duplicidade, cobertura, prova numérica; fp_medida dos detectores; it-campo alcançável) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.observar, coletar, --no, vm2]
     recursos: [cpu_leve]
     nos: [vm2]
     timeout_s: 1200
     prioridade: 25
     ativa: false
     bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@vm2 estiver no ar; até lá a coleta só roda à mão'
-    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios/observar.py) pela CLI, que roda handler + efeito do contrato: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check, frescor, captura, prova, custo por processo, detectores 1 h; cobertura da perícia 6 h)'
     agenda:
     - {cron: '3-59/10 * * * *'}
     origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
     efeito: {descricao: 'linhas da coleta recontadas em fluxo.metricas pela etiqueta `coleta` (a CLI só imprime depois de conferir)', log_contem: 'observar: [1-9][0-9]* linha\(s\) conferida\(s\) em fluxo\.metricas'}
   observar_itcampo:
     estagio: E18
-    descricao: 'E18 observar (itcampo): sensores do nó (PSI, disco e tendência, swap, memória, fila, WAL, backup, custo, frescor…) gravados em fluxo.metricas, julgados por config/slos.yaml'
-    comando: ['{py}', -m, compliance_agent.fluxo.sensores, coletar, --no, itcampo]
+    descricao: 'E18 observar (itcampo): sensores do nó (PSI, disco e tendência, swap, memória, fila p50/p95, WAL, backup e restauração, integridade do compliance.db, painel, custo e custo por processo, frescor; no PG: captura útil, duplicidade, cobertura, prova numérica; fp_medida dos detectores; it-campo alcançável) gravados em fluxo.metricas, julgados por config/slos.yaml'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.observar, coletar, --no, itcampo]
     recursos: [cpu_leve]
     nos: [itcampo]
     timeout_s: 1200
     prioridade: 25
     ativa: false
     bloqueio: 'parada de obras (24/11/2026): religa na O9.0, quando o jfn-fluxo@itcampo estiver no ar; até lá a coleta só roda à mão'
-    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios) pela CLI: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check 1 h, frescor 1 h, cobertura da perícia 6 h)'
+    nota: 'O8.1. Comando = o estágio nativo `observar` (aplicacao/estagios/observar.py) pela CLI, que roda handler + efeito do contrato: o grafo só agenda `legado:<rotina>`; quando agendar tipo nativo, a rotina passa a enfileirar `observar` com payload {}. Sensores caros são espaçados pela própria série (quick_check, frescor, captura, prova, custo por processo, detectores 1 h; cobertura da perícia 6 h)'
     agenda:
     - {cron: '6-59/10 * * * *'}
     origem: [ronda, painel_vigia, guardiao_db_malformed, keepalive, handoff_watcher, vm_guard_navegador, pipelines_slo, sentinela_integridade, automelhoria_geral]
@@ -2678,12 +2766,8 @@ fora:
   motivo: 'inventário: aposentar (o heartbeat do nó em fluxo.nos substitui)'
 - origem: [vm1-cron-sleep]
   motivo: '@reboot de espera: sem sentido no fluxo'
-- origem: [vm1-cron-logrotate, vm2-timer-jfn-logrotate]
-  motivo: 'é do sistema operacional: fica no cron/timer (§3.3 ''fica só logrotate'')'
-- origem: [vm1-cron-vault, vm1-cron-rsync, vm1-cron-graphify-out]
-  motivo: backup git do vault e graphify→brain são de fora do JFN (§16.6)
-- origem: [vm1-cron-nuvens-manter-vivas-sh, vm1-cron-painel-vigia-sh]
-  motivo: script fora do repo (diretório pessoal de binários); nuvens segue ligado (ressalva 3); o vigia do painel vira sensor E18 na O2.3
+- origem: [vm1-cron-vault]
+  motivo: 'backup git do vault é de fora do JFN (§16.6); fica no cron (dono, 24/11: logrotate, graphify→brain, nuvens e painel_vigia viraram rotinas)'
 - origem: [vm2-timer-descobre-doe, vm2-timer-sei-pcrj-consulta, vm2-timer-sei-pcrj]
   motivo: 'código fora do repo (projeto SEI-Prefeitura na VM-2): portar para o repo antes da O9.0 — sem isso a lente Prefeitura perde E1/E2/E3'
 - origem: [itcampo-task-jfn-sei-paralelo, itcampo-task-jfn-ocr-gpu, itcampo-task-jfn-nativo, itcampo-filho-tesseract, itcampo-filho-sei-arquivar, itcampo-filho-surya-ocr-2,

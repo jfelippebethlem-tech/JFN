@@ -19,7 +19,7 @@ com o motivo. Medida velha (além de `janela_s`) também é INDISPONIVEL na leit
 Sensores caros (quick_check, frescor, cobertura da perícia, rotas do painel) são ESPAÇADOS pela própria série: se o nó
 já gravou o grupo há menos de `intervalo_s`, a coleta pula (sem carimbo em arquivo — a prova é a linha no PG).
 
-CLI (o comando que a rotina `observar_*` do config/fluxo.yaml roda; inativa até a O9.0):
+CLI de diagnóstico (a rotina `observar_*` do config/fluxo.yaml roda o ESTÁGIO, aplicacao/estagios/observar.py):
     python -m compliance_agent.fluxo.sensores coletar --no vm1 [--grupo psi ...] [--forcar]
     python -m compliance_agent.fluxo.sensores estado                       # só leitura: estado por SLO, JSON
 """
@@ -39,7 +39,7 @@ import urllib.error
 import urllib.request
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Literal, Mapping
 
@@ -401,15 +401,22 @@ def g_disco(ctx: Ctx) -> list[Leitura]:
     out = [Leitura("disco.livre_pct", livre, rotulos={"livre_gb": round(u.free / 2**30, 1),
                                                        "total_gb": round(u.total / 2**30, 1)})]
     if ctx.con is None:
-        return out + [nao_mediu("disco.tendencia_pp_dia", "sem PG: a série do disco mora em fluxo.metricas")]
-    serie = ctx.con.execute(
+        return out + [nao_mediu("disco.tendencia_pp_dia", "sem PG: a série do disco mora em fluxo.metricas",
+                                recalcular_com_pg=True)]
+    return out + [tendencia_disco(ctx.con, ctx.no, livre, ctx.agora.timestamp())]
+
+
+def tendencia_disco(con, no: str, livre_pct: float, agora_epoch: float) -> Leitura:
+    """Tendência do uso do disco do nó (pp/dia) pela série de `disco.livre_pct` das últimas 72 h em fluxo.metricas
+    mais o ponto de agora. Série curta (< 1 h ou 1 ponto) = INDISPONIVEL, nunca 0."""
+    serie = con.execute(
         "SELECT extract(epoch FROM quando), valor FROM metricas WHERE no = %s AND nome = 'disco.livre_pct' "
-        "AND quando > now() - interval '72 hours' AND valor = valor ORDER BY quando", (ctx.no,)).fetchall()
-    pontos = [(float(t), 100.0 - float(v)) for t, v in serie] + [(ctx.agora.timestamp(), 100.0 - livre)]
+        "AND quando > now() - interval '72 hours' AND valor = valor ORDER BY quando", (no,)).fetchall()
+    pontos = [(float(t), 100.0 - float(v)) for t, v in serie] + [(agora_epoch, 100.0 - livre_pct)]
     t = tendencia_pp_dia(pontos)
-    out.append(Leitura("disco.tendencia_pp_dia", t, rotulos={"pontos": len(pontos)}) if t is not None else
-               nao_mediu("disco.tendencia_pp_dia", f"série curta ({len(pontos)} ponto(s), < 1 h): sem tendência ainda"))
-    return out
+    return (Leitura("disco.tendencia_pp_dia", t, rotulos={"pontos": len(pontos)}) if t is not None else
+            nao_mediu("disco.tendencia_pp_dia", f"série curta ({len(pontos)} ponto(s), < 1 h): sem tendência ainda",
+                      pontos=len(pontos)))
 
 
 def g_navegador(ctx: Ctx) -> list[Leitura]:
@@ -436,12 +443,34 @@ def _http(url: str, timeout: float) -> tuple[int | None, float, bytes]:
     return cod, round((time.monotonic() - t0) * 1000.0, 1), corpo
 
 
+def painel_estado(vivo: bool, falhas_antes: int) -> tuple[int, str | None]:
+    """Regra do painel_vigia (2 checagens seguidas): (falhas seguidas, estado forçado). Puro. 1ª falha = DEGRADADO
+    ('confirmo na próxima'); 2ª em diante = BLOQUEADO (processo vivo porém travado)."""
+    if vivo:
+        return 0, None
+    n = falhas_antes + 1
+    return n, (BLOQUEADO if n >= 2 else DEGRADADO)
+
+
+def _falhas_painel_antes(ctx: Ctx) -> int:
+    if ctx.con is None:
+        return 0
+    r = ctx.con.execute("SELECT rotulos->>'falhas_seguidas' FROM metricas WHERE no = %s AND nome = "
+                        "'painel.latencia_ms' ORDER BY quando DESC LIMIT 1", (ctx.no,)).fetchone()
+    return int(r[0]) if r and r[0] and str(r[0]).isdigit() else 0
+
+
 def g_painel(ctx: Ctx) -> list[Leitura]:
+    """Absorve ~/bin/painel_vigia.sh como SENSOR: /painel em 25 s; sem resposta 2× seguidas = BLOQUEADO. O restart
+    é o remédio `painel_travado` (compliance_agent/fluxo/remedios.py), nunca o sensor."""
     cod, ms, _ = _http(f"{PAINEL_URL}/painel", 25.0)
-    if cod in VIVO_HTTP:
-        return [Leitura("painel.latencia_ms", ms, rotulos={"http": cod})]
-    return [Leitura("painel.latencia_ms", ms, forcado=BLOQUEADO, rotulos={"http": cod},
-                    motivo=f"painel sem resposta válida (http={cod})")]
+    vivo = cod in VIVO_HTTP
+    n, forcado = painel_estado(vivo, 0 if vivo else _falhas_painel_antes(ctx))
+    if vivo:
+        return [Leitura("painel.latencia_ms", ms, rotulos={"http": cod, "falhas_seguidas": 0})]
+    return [Leitura("painel.latencia_ms", ms, forcado=forcado, rotulos={"http": cod, "falhas_seguidas": n},
+                    motivo=f"painel sem resposta válida (http={cod}), {n}ª checagem seguida"
+                           + (" — confirmo na próxima" if n < 2 else ""))]
 
 
 def g_painel_malformed(ctx: Ctx) -> list[Leitura]:
@@ -476,10 +505,32 @@ def g_fila(ctx: Ctx) -> list[Leitura]:
     out += [Leitura("fila.idade_s.por_tipo", round(float(i or 0), 1),
                     rotulos={"detalhe_de": "fila.idade_max_s", "tipo": t, "estado_job": e, "jobs": n})
             for t, e, n, i in por]
+    out += _percentis_espera(c)
     vivos = {x[0] for x in c.execute("SELECT no FROM nos WHERE heartbeat_em > now() - make_interval(secs => %s)",
                                      (NO_SEM_HEARTBEAT_S,))}
     fora = [n for n in NOS_FLUXO if n not in vivos]
     out.append(Leitura("fluxo.nos_sem_heartbeat", float(len(fora)), rotulos={"fora": fora, "vivos": sorted(vivos)}))
+    return out
+
+
+_SQL_PERCENTIS = ("SELECT {grupo} count(*), percentile_cont(0.5) WITHIN GROUP (ORDER BY e), "
+                  "percentile_cont(0.95) WITHIN GROUP (ORDER BY e) FROM (SELECT tipo, extract(epoch FROM now() - "
+                  "disponivel_em) AS e FROM jobs WHERE estado = 'fila' AND disponivel_em <= now()) x {por}")
+
+
+def _percentis_espera(c) -> list[Leitura]:
+    """Espera dos jobs ELEGÍVEIS (now − disponivel_em): p50/p95 global (o p95 tem SLO) e por tipo (detalhe). Fila
+    vazia = espera 0 MEDIDA (ninguém esperando), com `fila_vazia` — não é ausência de medida."""
+    n, p50, p95 = c.execute(_SQL_PERCENTIS.format(grupo="", por="")).fetchone()
+    vazia = {"fila_vazia": True} if not n else {}
+    out = [Leitura("fila.espera_p95_s", round(float(p95 or 0), 1), rotulos={"jobs": int(n or 0), **vazia}),
+           Leitura("fila.espera_p50_s", round(float(p50 or 0), 1),
+                   rotulos={"detalhe_de": "fila.espera_p95_s", "jobs": int(n or 0), **vazia})]
+    for tipo, k, q50, q95 in c.execute(_SQL_PERCENTIS.format(grupo="tipo,", por="GROUP BY tipo ORDER BY 4 DESC "
+                                                                                  "LIMIT 50")):
+        rot = {"detalhe_de": "fila.espera_p95_s", "tipo": tipo, "jobs": k}
+        out += [Leitura("fila.espera_p50_s.por_tipo", round(float(q50), 1), rotulos=rot),
+                Leitura("fila.espera_p95_s.por_tipo", round(float(q95), 1), rotulos=rot)]
     return out
 
 
@@ -624,7 +675,8 @@ def g_backup(ctx: Ctx) -> list[Leitura]:
         h = idade_h(fn(_ler(p)), agora)
         out.append(Leitura(nome, h, rotulos={"log": arq}) if h is not None else
                    nao_mediu(nome, f"{arq} sem backup concluído reconhecível"))
-    out.append(_restauracao(ctx.data / "plataforma" / "restauracao_pg.json", agora))
+    rm = _restauracao_metricas(ctx.con, ctx.agora.timestamp()) if ctx.con is not None else None
+    out.append(rm or _restauracao(ctx.data / "plataforma" / "restauracao_pg.json", agora))
     db = ctx.data / "compliance.db"
     if not db.exists():
         out.append(nao_mediu("sqlite.wal_mb", "compliance.db ausente neste nó"))
@@ -635,10 +687,43 @@ def g_backup(ctx: Ctx) -> list[Leitura]:
     return out
 
 
+def restauracao_de_linhas(ok: float | None, quando_epoch: float | None, rotulos: Mapping | None, no: str | None,
+                          agora_epoch: float) -> Leitura | None:
+    """A última execução de `tools/restauracao_semanal.py gravar` (E17, O8.2): o par `backup.restauracao_ok` (1/0) e
+    `backup.restauracao_quando` (epoch do fim) da MESMA execução, em fluxo.metricas. Puro. Sem par = None (o chamador
+    cai no JSON antigo do restaurar_teste.sh)."""
+    q = _num(quando_epoch)
+    if q is None:
+        return None
+    rot = dict(rotulos or {})
+    if _num(ok) is None:
+        return nao_mediu("restauracao.pg_idade_h", "backup.restauracao_quando sem o backup.restauracao_ok da mesma "
+                         "execução: resultado não se sabe", execucao=rot.get("execucao"))
+    base = {"resultado": "ok" if _num(ok) == 1.0 else "falhou", "execucao": rot.get("execucao"), "no_restauracao": no,
+            "fonte_sensor": "fluxo.metricas backup.restauracao_*"}
+    h = round((agora_epoch - q) / 3600.0, 2)
+    if _num(ok) == 1.0:
+        return Leitura("restauracao.pg_idade_h", h, rotulos=base)
+    return Leitura("restauracao.pg_idade_h", h, forcado=BLOQUEADO, rotulos=base,
+                   motivo=f"a última restauração FALHOU: {', '.join(rot.get('falhas') or []) or 'ver rotulos'}"[:240])
+
+
+def _restauracao_metricas(con, agora_epoch: float) -> Leitura | None:
+    r = con.execute(
+        "SELECT q.no, q.valor, q.rotulos, (SELECT o.valor FROM metricas o WHERE o.nome = 'backup.restauracao_ok' AND "
+        "o.rotulos->>'execucao' = q.rotulos->>'execucao' ORDER BY o.quando DESC LIMIT 1) FROM metricas q "
+        "WHERE q.nome = 'backup.restauracao_quando' AND q.valor = q.valor ORDER BY q.quando DESC LIMIT 1").fetchone()
+    if r is None:
+        return None
+    no, quando, rot, ok = r
+    return restauracao_de_linhas(ok, quando, rot, no, agora_epoch)
+
+
 def _restauracao(p: Path, agora: datetime) -> Leitura:
     nome = "restauracao.pg_idade_h"
     if not p.exists():
-        return nao_mediu(nome, "teste de restauração nunca rodou (restaurar_teste.sh exige WAL-G — O8.2)")
+        return nao_mediu(nome, "nenhuma restauração registrada: nem backup.restauracao_* em fluxo.metricas "
+                         "(tools/restauracao_semanal.py, O8.2) nem data/plataforma/restauracao_pg.json")
     d = json.loads(_ler(p))
     em = datetime.strptime(str(d.get("em")), "%Y-%m-%d %H:%M:%S")
     h = idade_h(em, agora)
@@ -653,22 +738,62 @@ _QUICK_CHECK = ("import sqlite3, sys\n"
                 "print(c.execute('PRAGMA quick_check(1)').fetchone()[0])\n")
 
 
+TRAVA_QUICK_CHECK = "data/locks/db_integridade.lock"   # a MESMA do remédio painel_shm: nunca 2 quick_check juntos
+MARCA_INCIDENTE_DB = "data/.observar_db_corrompido.alertado"
+
+
+def quick_check_ro(db: Path, trava: Path, timeout_s: int = 900) -> tuple[str | None, float, str]:
+    """PRAGMA quick_check(1) do banco em modo SÓ LEITURA, num processo-filho com ionice -c3/nice 19, sob trava
+    própria não bloqueante. (saída | None, segundos, motivo de não ter medido). Trava ocupada ⇒ None (não mediu)."""
+    import fcntl
+    trava.parent.mkdir(parents=True, exist_ok=True)
+    with trava.open("a") as fd:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return None, 0.0, "outra quick_check em curso (trava ocupada)"
+        prio = ((["ionice", "-c3"] if shutil.which("ionice") else []) +
+                (["nice", "-n19"] if shutil.which("nice") else []))
+        t0 = time.monotonic()
+        r = subprocess.run(prio + [sys.executable, "-c", _QUICK_CHECK, str(db)], capture_output=True, text=True,
+                           timeout=timeout_s)
+        seg = round(time.monotonic() - t0, 1)
+    if r.returncode != 0:
+        return None, seg, f"quick_check não rodou (rc={r.returncode}): {(r.stderr or '').strip()[-200:]}"
+    return (r.stdout or "").strip(), seg, ""
+
+
+def incidente(marca: Path, ok: bool) -> str:
+    """Regra de marca do guardião: o incidente abre UMA vez (marca criada no primeiro resultado ruim) e fecha quando
+    volta ao normal (marca removida, para o próximo incidente voltar a avisar). 'novo' | 'aberto' | 'encerrado' | ''."""
+    if ok:
+        if marca.exists():
+            marca.unlink()
+            return "encerrado"
+        return ""
+    if marca.exists():
+        return "aberto"
+    marca.parent.mkdir(parents=True, exist_ok=True)
+    marca.write_text(datetime.now().isoformat(timespec="seconds"), encoding="utf-8")
+    return "novo"
+
+
 def g_integridade(ctx: Ctx) -> list[Leitura]:
+    """`db.integridade` (absorve a sonda proativa do tools/guardiao_db_malformed.sh): 1 = quick_check ok; resultado
+    não-ok = BLOQUEADO, e o ALERTA é por incidente (rotulo `incidente`: 'novo' só na primeira medida ruim). Nada
+    reinicia aqui — o remédio painel_shm (compliance_agent/fluxo/remedios.py) é que decide, e só com o arquivo ok."""
+    nome = "db.integridade"
     db = ctx.data / "compliance.db"
     if not db.exists():
-        return [nao_mediu("sqlite.quick_check", "compliance.db ausente neste nó")]
-    prio = (["ionice", "-c3"] if shutil.which("ionice") else []) + (["nice", "-n19"] if shutil.which("nice") else [])
-    t0 = time.monotonic()
-    r = subprocess.run(prio + [sys.executable, "-c", _QUICK_CHECK, str(db)], capture_output=True, text=True,
-                       timeout=900)
-    seg = round(time.monotonic() - t0, 1)
-    saida = (r.stdout or "").strip()
-    if r.returncode != 0:
-        return [nao_mediu("sqlite.quick_check", f"quick_check não rodou (rc={r.returncode}): "
-                          f"{(r.stderr or '').strip()[-200:]}", segundos=seg)]
+        return [nao_mediu(nome, "compliance.db ausente neste nó")]
+    saida, seg, erro = quick_check_ro(db, ctx.raiz / TRAVA_QUICK_CHECK)
+    if saida is None:
+        return [nao_mediu(nome, erro, segundos=seg)]
+    inc = incidente(ctx.raiz / MARCA_INCIDENTE_DB, saida == "ok")
+    rot = {"segundos": seg, **({"incidente": inc} if inc else {})}
     if saida == "ok":
-        return [Leitura("sqlite.quick_check", 1.0, rotulos={"segundos": seg})]
-    return [Leitura("sqlite.quick_check", 0.0, forcado=BLOQUEADO, rotulos={"segundos": seg},
+        return [Leitura(nome, 1.0, rotulos=rot)]
+    return [Leitura(nome, 0.0, forcado=BLOQUEADO, rotulos=rot,
                     motivo=f"quick_check={saida[:200]} — corrupção REAL: não reiniciar, perícia de dado")]
 
 
@@ -735,6 +860,216 @@ def g_assistentes(ctx: Ctx) -> list[Leitura]:
     return out
 
 
+# ── domínio da esteira no PG (captura, cobertura, prova) e custo/FP (O8.1) ─────────────────────────────────────────
+ENV_ESQUEMA_CAPTURA = "JFN_CAPTURA_ESQUEMA"       # o mesmo do E2/E3 (aplicacao/estagios/arvore.py), padrão `public`
+ENV_ESQUEMA_FATOS = "JFN_FATOS_ESQUEMA"           # o mesmo do E8 (aplicacao/estagios/fatos.py), padrão `public`
+FONTE_E3 = "sei:e3"                               # aquisicao.fonte do E3 capturar
+
+
+def _esq(env: str) -> str:
+    from compliance_agent.fluxo.schema import validar_esquema
+    return validar_esquema(os.environ.get(env) or "public")
+
+
+def _tem_tabela(con, esquema: str, tabela: str) -> bool:
+    return con.execute("SELECT to_regclass(%s)", (f'"{esquema}"."{tabela}"',)).fetchone()[0] is not None
+
+
+def _tem_coluna(con, esquema: str, tabela: str, coluna: str) -> bool:
+    return con.execute("SELECT 1 FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND "
+                       "column_name = %s", (esquema, tabela, coluna)).fetchone() is not None
+
+
+def pct(parte: float, todo: float) -> float | None:
+    """parte ÷ todo × 100 com 2 casas; todo ≤ 0 = None (não há o que medir — nunca 0 % nem 100 %)."""
+    return None if not todo or todo <= 0 else round(100.0 * float(parte) / float(todo), 2)
+
+
+def captura_util(capturados: int, novas: int, aquisicoes: int, sem_novidade: int) -> tuple[float | None, float | None]:
+    """(útil %, duplicidade %) das aquisições do E3 na janela. Puro. Útil = versões NOVAS ÷ documentos baixados;
+    duplicidade = aquisições que não trouxeram nenhuma versão nova (recaptura sem novidade) ÷ aquisições."""
+    return pct(novas, capturados), pct(sem_novidade, aquisicoes)
+
+
+def g_captura(ctx: Ctx) -> list[Leitura]:
+    """Captura útil, duplicidade e cobertura do acervo — do PG (ADR-001), esquema do E2/E3. Global: mede onde o PG
+    mora. Só as aquisições do E3 (`aquisicao.fonte='sei:e3'`) dizem quantos documentos foram BAIXADOS; o legado
+    (`sei_arquivo`) só diz o que entrou, então útil/duplicidade sem E3 na janela = INDISPONIVEL."""
+    c = ctx.con
+    if c is None:
+        raise RuntimeError("sem PG: captura e cobertura moram no PG")
+    e = _esq(ENV_ESQUEMA_CAPTURA)
+    out: list[Leitura] = []
+    if _tem_tabela(c, e, "aquisicao") and _tem_tabela(c, e, "versoes"):
+        aq, capt, sem_nov, novas = c.execute(
+            f'SELECT count(*), coalesce(sum((a.detalhe->>\'capturados\')::int), 0), count(*) FILTER (WHERE NOT EXISTS '
+            f'(SELECT 1 FROM "{e}".versoes v WHERE v.aquisicao_id = a.id)), (SELECT count(*) FROM "{e}".versoes v '
+            f'JOIN "{e}".aquisicao b ON b.id = v.aquisicao_id WHERE b.fonte = %s AND b.concluida_em > now() - '
+            f'interval \'24 hours\') FROM "{e}".aquisicao a WHERE a.fonte = %s AND a.concluida_em > now() - '
+            f'interval \'24 hours\'', (FONTE_E3, FONTE_E3)).fetchone()
+        util, dup = captura_util(int(capt), int(novas), int(aq), int(sem_nov))
+        rot = {"aquisicoes_24h": aq, "baixados_24h": capt, "versoes_novas_24h": novas, "sem_novidade_24h": sem_nov,
+               "esquema": e}
+        sem = "nenhuma captura do E3 nas últimas 24 h: não há o que julgar (útil/duplicidade sem tentativa)"
+        out.append(Leitura("captura.util_pct", util, rotulos=rot) if util is not None else
+                   nao_mediu("captura.util_pct", sem, **rot))
+        out.append(Leitura("captura.duplicidade_pct", dup, rotulos=rot) if dup is not None else
+                   nao_mediu("captura.duplicidade_pct", sem, **rot))
+        corte = (ctx.agora_local - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")   # vista_em: texto, hora local
+        n, = c.execute(f'SELECT count(*) FROM "{e}".versoes WHERE vista_em >= %s', (corte,)).fetchone()
+        out.append(Leitura("captura.versoes_novas_24h", float(n),
+                           rotulos={"detalhe_de": "captura.util_pct", "todas_as_origens": True}))
+    else:
+        out += [nao_mediu(n, f"tabelas aquisicao/versoes ausentes no esquema {e}") for n in
+                ("captura.util_pct", "captura.duplicidade_pct")]
+    if _tem_tabela(c, e, "documentos") and _tem_tabela(c, e, "versoes"):
+        restr = "WHERE NOT coalesce(d.restrito, false)" if _tem_coluna(c, e, "documentos", "restrito") else ""
+        tot, com = c.execute(f'SELECT count(*), count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "{e}".versoes v WHERE '
+                             f'v.processo = d.processo AND v.doc_id = d.doc_id)) FROM "{e}".documentos d {restr}'
+                             ).fetchone()
+        p = pct(com, tot)
+        rot = {"documentos": tot, "com_versao": com, "sem_versao": tot - com, "exclui_restritos": bool(restr),
+               "esquema": e}
+        out.append(Leitura("cobertura.docs_com_versao_pct", p, rotulos=rot) if p is not None else
+                   nao_mediu("cobertura.docs_com_versao_pct", f"nenhum documento em {e}.documentos", **rot))
+        if _tem_tabela(c, e, "arvores"):
+            procs, = c.execute(f'SELECT count(DISTINCT processo) FROM "{e}".arvores').fetchone()
+            out.append(Leitura("cobertura.processos_com_arvore", float(procs),
+                               rotulos={"detalhe_de": "cobertura.docs_com_versao_pct"}))
+    else:
+        out.append(nao_mediu("cobertura.docs_com_versao_pct", f"tabelas documentos/versoes ausentes no esquema {e}"))
+    if _tem_tabela(c, e, "arvore_leitura"):
+        pend = c.execute(
+            f'WITH vig AS (SELECT DISTINCT ON (processo) processo, docs FROM "{e}".arvore_leitura ORDER BY processo, '
+            f'id DESC) SELECT count(DISTINCT vig.processo), count(*) FROM vig, jsonb_array_elements(vig.docs) d WHERE '
+            f'NOT coalesce((d->>\'restrito\')::boolean, false) AND NOT EXISTS (SELECT 1 FROM "{e}".versoes v WHERE '
+            f'v.processo = vig.processo AND v.doc_id = d->>\'doc_id\')').fetchone()
+        out.append(Leitura("cobertura.e3_pendentes_docs", float(pend[1]),
+                           rotulos={"detalhe_de": "cobertura.docs_com_versao_pct", "processos": pend[0]}))
+    else:
+        out.append(nao_mediu("cobertura.e3_pendentes_docs", f"{e}.arvore_leitura ausente: o E2 ainda não gravou "
+                             "leitura de árvore neste esquema (captura_001)", detalhe_de="cobertura.docs_com_versao_pct"))
+    return out
+
+
+def g_prova(ctx: Ctx) -> list[Leitura]:
+    """Prova numérica: fatos com citação literal CONFERIDA (estado VERIFICADO do E8) ÷ todos os fatos gravados."""
+    c = ctx.con
+    if c is None:
+        raise RuntimeError("sem PG: os fatos do E8 moram no PG")
+    e = _esq(ENV_ESQUEMA_FATOS)
+    if not _tem_tabela(c, e, "fatos"):
+        return [nao_mediu("prova.fatos_verificados_pct", f"{e}.fatos ausente")]
+    por = {str(k): int(n) for k, n in c.execute(f'SELECT estado, count(*) FROM "{e}".fatos GROUP BY 1')}
+    tot = sum(por.values())
+    p = pct(por.get("VERIFICADO", 0), tot)
+    rot = {"total": tot, "por_estado": por, "esquema": e}
+    return [Leitura("prova.fatos_verificados_pct", p, rotulos=rot) if p is not None else
+            nao_mediu("prova.fatos_verificados_pct", "nenhum fato gravado pelo E8", **rot)]
+
+
+def custo_por_processo(gasto_usd: float | None, chamadas: int, processos: int) -> tuple[float | None, str]:
+    """US$ pagos no mês pelo gateway ÷ processos lidos no mês. Puro. Sem chamada do gateway no mês ⇒ None (o trace
+    não viu nada: 0 seria mentira); sem processo lido ⇒ None."""
+    if gasto_usd is None or chamadas <= 0:
+        return None, "gateway sem chamada registrada no mês: custo não atribuível"
+    if processos <= 0:
+        return None, f"{chamadas} chamada(s) do gateway no mês e nenhum processo lido: custo sem denominador"
+    return round(gasto_usd / processos, 4), f"US$ {gasto_usd:.4f} pagos ÷ {processos} processo(s) lido(s) no mês"
+
+
+def g_custo_processo(ctx: Ctx) -> list[Leitura]:
+    """Custo por processo: o trace do gateway (data/llm_trace.db, origem='gateway') ainda não leva o processo, então
+    o sensor dá a MÉDIA do mês (pago ÷ processos lidos pelo E8 no mês, tabela `leituras` do PG) e declara isso."""
+    if ctx.con is None:
+        raise RuntimeError("sem PG: processos lidos (leituras) moram no PG")
+    t = _sqlite_ro(ctx.data / "llm_trace.db", timeout=10)
+    mes = datetime.now(timezone.utc).strftime("%Y-%m")
+    try:
+        cols = {r[1] for r in t.execute("PRAGMA table_info(llm_trace)")}
+        if not {"origem", "pago", "custo_usd", "ts"} <= cols:
+            return [nao_mediu("llm.custo_por_processo_usd", "llm_trace sem as colunas do gateway (O6.1)")]
+        n, pago = t.execute("SELECT count(*), coalesce(sum(CASE WHEN pago = 1 THEN custo_usd END), 0) FROM llm_trace "
+                            "WHERE origem = 'gateway' AND strftime('%Y-%m', ts) = ?", (mes,)).fetchone()
+    finally:
+        t.close()
+    e = _esq(ENV_ESQUEMA_FATOS)
+    procs = 0
+    if _tem_tabela(ctx.con, e, "leituras"):
+        procs, = ctx.con.execute(f'SELECT count(DISTINCT processo) FROM "{e}".leituras WHERE substr(em, 1, 7) = %s',
+                                 (mes,)).fetchone()
+    v, como = custo_por_processo(float(pago), int(n), int(procs))
+    rot = {"mes": mes, "chamadas_gateway": n, "pago_usd": round(float(pago), 4), "processos_lidos": procs,
+           "como": como, "atribuicao": "média do mês (trace do gateway sem processo — pendência O8.4)"}
+    return [Leitura("llm.custo_por_processo_usd", v, rotulos=rot) if v is not None else
+            nao_mediu("llm.custo_por_processo_usd", como, **rot)]
+
+
+def fp_de_detector(e: Mapping, hoje=None) -> tuple[float | None, str]:
+    """(taxa de FP em %, motivo) de UMA entrada do registro (config/qualidade_detectores.yaml). Puro. Só conta medida
+    VÁLIDA (COR-04: completa e com ≤ 180 dias) e com decididos (n > 0); o resto é 'não medido', nunca 0 %."""
+    from compliance_agent.qualidade import detectores as D
+    fp = e.get("fp_medida")
+    if not isinstance(fp, dict):
+        return None, "sem fp_medida no registro"
+    if not D._calibrado(dict(e), hoje):
+        return None, "fp_medida incompleta ou vencida (> 180 dias)"
+    n, k = fp.get("n"), fp.get("falsos")
+    if not isinstance(n, int) or not isinstance(k, int) or n <= 0:
+        return None, f"fp_medida sem decididos (n={n})"
+    return round(100.0 * k / n, 2), f"{k} falso(s) em {n} decidido(s) ({fp.get('data')})"
+
+
+def g_detectores(ctx: Ctx) -> list[Leitura]:
+    """fp_medida por detector ATIVO do registro: uma linha por detector (detalhe) + a fração com medida válida e o
+    número de detectores medidos acima do teto de FP do Tier 1 (os dois com SLO)."""
+    from compliance_agent.qualidade import detectores as D
+    reg = D.carregar()
+    ativos = {k: v for k, v in reg.items() if (v.get("estado") or "ativo") == "ativo"}
+    out, medidos, acima = [], [], []
+    for did, e in sorted(ativos.items()):
+        taxa, motivo = fp_de_detector(e)
+        rot = {"detalhe_de": "detectores.fp_medida_pct", "detector": did, "tier": e.get("tier"),
+               "manchete": bool(e.get("manchete"))}
+        if taxa is None:
+            out.append(nao_mediu("detector.fp_taxa_pct", motivo, **rot))
+            continue
+        medidos.append(did)
+        if taxa > 100.0 * D.TIER1_PONTO_MAX:
+            acima.append(did)
+        out.append(Leitura("detector.fp_taxa_pct", taxa, motivo=motivo, rotulos=rot))
+    p = pct(len(medidos), len(ativos))
+    out.insert(0, Leitura("detectores.fp_medida_pct", p, rotulos={"ativos": len(ativos), "medidos": medidos})
+               if p is not None else nao_mediu("detectores.fp_medida_pct", "nenhum detector ativo no registro"))
+    rot = {"teto_pct": 100.0 * D.TIER1_PONTO_MAX, "acima": acima, "medidos": len(medidos)}
+    out.insert(1, Leitura("detectores.fp_acima_teto", float(len(acima)), rotulos=rot) if medidos else
+               nao_mediu("detectores.fp_acima_teto", "nenhum detector ativo com fp_medida válida", **rot))
+    return out
+
+
+ALIAS_ITCAMPO = "it-campo"      # alias do ~/.ssh/config da VM-1 (a topologia fica fora do repo — ADR-011)
+
+
+def g_alcance(ctx: Ctx) -> list[Leitura]:
+    """O it-campo responde pela rede? (Modern Standby: tela apagada derruba a rede.) Um `ssh … exit` com teto curto,
+    medido da VM-1 — independe do heartbeat do jfn-fluxo, que só existe depois da O9.0. 1 = respondeu; 0 = não (MEDIDO:
+    a máquina sumiu da rede); ssh ausente = INDISPONIVEL."""
+    if not shutil.which("ssh"):
+        return [nao_mediu("itcampo.alcancavel", "ssh ausente neste nó")]
+    t0 = time.monotonic()
+    try:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", ALIAS_ITCAMPO, "exit"],
+                           capture_output=True, text=True, timeout=20)
+        rc, erro = r.returncode, (r.stderr or "").strip()[-160:]
+    except subprocess.TimeoutExpired:
+        rc, erro = None, "ssh passou de 20 s"
+    ms = round((time.monotonic() - t0) * 1000.0, 1)
+    if rc == 0:
+        return [Leitura("itcampo.alcancavel", 1.0, rotulos={"ms": ms})]
+    return [Leitura("itcampo.alcancavel", 0.0, rotulos={"ms": ms, "rc": rc},
+                    motivo=f"it-campo não respondeu ao ssh (rc={rc}): {erro}")]
+
+
 @dataclass(frozen=True)
 class Grupo:
     fn: Callable[[Ctx], list[Leitura]]
@@ -750,7 +1085,7 @@ GRUPOS: dict[str, Grupo] = {
     "painel": Grupo(g_painel, ("painel.latencia_ms",)),
     "painel_malformed": Grupo(g_painel_malformed, ("painel.rotas_malformed",), intervalo_s=1800),
     "fila": Grupo(g_fila, ("fila.idade_max_s", "fila.elegiveis", "fila.quarentena", "fila.orfaos",
-                           "fila.conclusoes_h", "fluxo.nos_sem_heartbeat")),
+                           "fila.conclusoes_h", "fluxo.nos_sem_heartbeat", "fila.espera_p95_s")),
     "wal_pg": Grupo(g_wal_pg, ("wal.pg_arquivo_atraso_s",)),
     "frescor": Grupo(g_frescor, ("frescor.fontes_atrasadas",), intervalo_s=3600),
     "llm": Grupo(g_llm, ("llm.custo_mes_usd",)),
@@ -758,11 +1093,17 @@ GRUPOS: dict[str, Grupo] = {
     "opus": Grupo(g_opus, ("opus.saida_por_entrada_7d", "opus.pendentes")),
     "backup": Grupo(g_backup, ("backup.compliance_idade_h", "backup.evidencias_pg_idade_h", "restauracao.pg_idade_h",
                                "sqlite.wal_mb")),
-    "integridade": Grupo(g_integridade, ("sqlite.quick_check",), intervalo_s=3600),
+    "integridade": Grupo(g_integridade, ("db.integridade",), intervalo_s=3600),
     "rotinas": Grupo(g_rotinas, ("pipelines.atrasadas", "integridade.violacoes"), intervalo_s=3600),
     "qualidade": Grupo(g_qualidade, ("qualidade.bloqueantes",)),
     "assistentes": Grupo(g_assistentes, ("assinatura.ritmo_pp", "handoff.nao_lidos", "yoda.falhas_abertas",
                                          "automelhoria.reincidiu")),
+    "captura": Grupo(g_captura, ("captura.util_pct", "captura.duplicidade_pct", "cobertura.docs_com_versao_pct"),
+                     intervalo_s=3600),
+    "prova": Grupo(g_prova, ("prova.fatos_verificados_pct",), intervalo_s=3600),
+    "custo_processo": Grupo(g_custo_processo, ("llm.custo_por_processo_usd",), intervalo_s=3600),
+    "alcance": Grupo(g_alcance, ("itcampo.alcancavel",)),
+    "detectores": Grupo(g_detectores, ("detectores.fp_medida_pct", "detectores.fp_acima_teto"), intervalo_s=3600),
 }
 
 
@@ -810,6 +1151,15 @@ def coletar(con, no: str, slos: Slos | None = None, *, grupos: Iterable[str] | N
     """Mede os grupos do nó e grava em `metricas` numa transação. Devolve {coleta, gravadas, conferidas, grupos,
     pulados}. `conferidas` = recontagem no PG pela etiqueta `coleta` (o efeito do estágio)."""
     slos = slos or carregar_slos()
+    coleta = coleta or uuid.uuid4().hex
+    m = medir(con, no, slos, grupos=grupos, forcar=forcar, agora=agora, coleta=coleta)
+    return gravar_medidas(con, m, slos)
+
+
+def medir(con, no: str, slos: Slos, *, grupos: Iterable[str] | None = None, forcar: bool = False,
+          agora: datetime | None = None, coleta: str | None = None) -> dict:
+    """Só MEDE (não grava): {coleta, no, linhas, grupos, pulados}. Com `con=None` mede o que não depende do PG — é
+    como o nó sem psycopg (it-campo antes da O9.0) mede; outro nó grava com `gravar_medidas`."""
     ps = slos.por_sensor()
     coleta = coleta or uuid.uuid4().hex
     ctx = Ctx(no=no, con=con, agora=agora or datetime.now(timezone.utc))
@@ -825,12 +1175,34 @@ def coletar(con, no: str, slos: Slos | None = None, *, grupos: Iterable[str] | N
         ls = _medir_grupo(g, gr, ctx)
         por_grupo[g] = len(ls)
         linhas += [linha_de(x, no, coleta, ps) for x in ls]
+    return {"coleta": coleta, "no": no, "linhas": linhas, "grupos": por_grupo, "pulados": pulados,
+            "agora": ctx.agora.timestamp()}
+
+
+def _completar_sem_pg(con, linhas: list[tuple], slos: Slos, agora_epoch: float) -> list[tuple]:
+    """Linhas medidas sem PG que o PG completa ao gravar: a tendência do disco (a série mora em fluxo.metricas)."""
+    ps = slos.por_sensor()
+    livre = {no: v for no, nome, v, _r in linhas if nome == "disco.livre_pct" and _num(v) is not None}
+    out = []
+    for no, nome, v, rj in linhas:
+        rot = json.loads(rj)
+        if nome == "disco.tendencia_pp_dia" and rot.get("recalcular_com_pg") and no in livre:
+            t = tendencia_disco(con, no, float(livre[no]), agora_epoch)
+            t.rotulos["medido_sem_pg"] = True
+            no, nome, v, rj = linha_de(t, no, rot["coleta"], ps)
+        out.append((no, nome, v, rj))
+    return out
+
+
+def gravar_medidas(con, m: Mapping, slos: Slos) -> dict:
+    """Grava as linhas de `medir` numa transação e reconta pela etiqueta `coleta` (o efeito)."""
+    linhas = _completar_sem_pg(con, [tuple(x) for x in m["linhas"]], slos, float(m.get("agora") or time.time()))
     with con.transaction():
         with con.cursor() as cur:
             cur.executemany("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (%s, %s, %s, %s::jsonb)", linhas)
-    conferidas = contar_coleta(con, coleta)
-    return {"coleta": coleta, "no": no, "gravadas": len(linhas), "conferidas": conferidas, "grupos": por_grupo,
-            "pulados": pulados}
+    conferidas = contar_coleta(con, m["coleta"])
+    return {"coleta": m["coleta"], "no": m["no"], "gravadas": len(linhas), "conferidas": conferidas,
+            "grupos": m["grupos"], "pulados": m["pulados"]}
 
 
 def contar_coleta(con, coleta: str) -> int:
