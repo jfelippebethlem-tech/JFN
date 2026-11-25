@@ -67,7 +67,7 @@ itens:
   - {id: O6.6, dep: [O6.5], maq: vm2, estado: pendente, titulo: "Régua de confiabilidade por par tarefa x modelo", tags: [juridico]}
   - {id: O6.7, dep: [O6.4], maq: vm2, estado: feito, nota: "00b63d5b+0004 no vivo: confiança só por fonte primária independente; LLM nunca reforça; web sozinha não alerta; helper do brain (ligar na O6.4)", titulo: "Memória por fonte independente + quem julga lê o brain"}
   # O7 — Casos, painel (conteúdo), lentes, entrega
-  - {id: O7.1, dep: [O5.2], maq: vm1, estado: pendente, titulo: "E15 visões materializadas"}
+  - {id: O7.1, dep: [O5.2], maq: vm1, estado: feito, nota: "7dabbcc1: E15 + 10 rotas lendo visão (conflito p95 201,77 s → 2,51 ms), paridade 10/10 com o vivo; frescor 10/10. ATIVA no próximo restart do jfn.service com árvore limpa (conferir /status, /api/compliance/painel e X-JFN-Visao)", titulo: "E15 visões materializadas"}
   - {id: O7.2, dep: [O7.1], maq: vm1, estado: pendente, titulo: "config/lentes.yaml + seletor"}
   - {id: O7.3, dep: [O7.1], maq: vm1, estado: pendente, titulo: "Manchete só Tier 1, score explicável"}
   - {id: O7.4, dep: [O5.2], maq: vm2, estado: pendente, titulo: "E14 casos + contestação + RBAC + acesso_log"}
