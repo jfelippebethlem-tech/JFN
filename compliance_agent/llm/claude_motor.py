@@ -145,9 +145,39 @@ def _motivo_kill_switch() -> str | None:
     return None
 
 
+ENV_ESCOPO = "JFN_ASSINATURA_ESCOPO"
+ESCOPO_ENSAIO = "ensaio_o85"
+LIBERACAO_DONO = ".assinatura_liberada_dono.json"
+
+
+def ritmo_liberado_pelo_dono() -> bool:
+    """A trava de RITMO SEMANAL (só ela) cede à autorização do dono (`data/.assinatura_liberada_dono.json`, 25/11/2026:
+    "pode fazer a passada ou o que precisar antes de sabado tambem") SOMENTE quando o processo declara o escopo do
+    ensaio O8.5 (`JFN_ASSINATURA_ESCOPO=ensaio_o85`, exportado pelo filho de `tools/ensaio_o85.py`), o arquivo cobre
+    esse escopo pela ASSINATURA e a semana medida está ABAIXO do `teto_semana_pct`. Sem medição, fora do escopo ou
+    no teto: False (a trava de sempre). Kill switch, limite da conta, contingência forçada e tetos diários não cedem."""
+    if os.environ.get(ENV_ESCOPO) != ESCOPO_ENSAIO:
+        return False
+    try:
+        d = json.loads((arq.dados() / LIBERACAO_DONO).read_text(encoding="utf-8"))
+        teto = float(d["teto_semana_pct"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    esc = str(d.get("escopo") or "")
+    if "O8.5" not in esc or "ASSINATURA" not in esc:
+        return False
+    from compliance_agent.llm import ritmo_assinatura
+    n = ritmo_assinatura.nivel()
+    return bool(n.get("medido")) and n.get("semana_pct") is not None and float(n["semana_pct"]) < teto
+
+
 def motivo_desligado(*, canario: bool = False, tarefa: str = "") -> str | None:
     """Por que o motor NÃO pode rodar agora (None = pode). O limite da conta mora SÓ na contingência."""
-    m = _motivo_kill_switch() or contingencia.motivo_bloqueio(tarefa)
+    m = _motivo_kill_switch()
+    if not m:
+        m = contingencia.motivo_bloqueio(tarefa)
+        if m and contingencia.estado().get("origem") == "ritmo_semanal" and ritmo_liberado_pelo_dono():
+            m = None                                   # só a trava de ritmo, só no escopo do ensaio (ver acima)
     if m:
         return m
     est = ler_estado()

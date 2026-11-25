@@ -620,7 +620,7 @@ class Ensaio:
             "JFN_TEXTO_RAIZ": str(self.dir / "sei_texto"), "JFN_VISOES_DIR": str(self.dir / "visoes"),
             "JFN_DATA_DIR": str(self.dir), "JFN_NO": NO, "JFN_LLM_TRACE_DB": str(self.dir / "llm_trace.db"),
             "JFN_LLM_CACHE_DB": str(self.dir / "llm_cache.db"), "JFN_LEITURAS_REGISTRAR": "1",
-            "JFN_LEITURAS_ROTULO": self.rotulo,
+            "JFN_LEITURAS_ROTULO": self.rotulo, "JFN_ASSINATURA_ESCOPO": "ensaio_o85",   # ritmo cede só aqui
             ENV_CFG: json.dumps({"acervo_replay": str(self.entrada / "acervo"), "frio": str(self.dir / "frio"),
                                  "acervo_e8": str(self.dir / "acervo_e8"), "com_llm": self.com_llm,
                                  "estagios_extra": self.estagios_extra}),
