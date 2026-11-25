@@ -3759,8 +3759,8 @@ detectores:
     - tabela alertas
     - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
     - triagem_alertas
-    manchete: true
-    controle_positivo: tests/test_auditoria_conceitual_detectores.py::test_obs_pequenas_em_processos_distintos_acendem
+    manchete: false   # O4.8 (24/11): fundido no P4, o motor antigo não emite mais
+    controle_positivo: tests/test_auditoria_conceitual_detectores.py::test_obs_pequenas_em_processos_distintos_nao_emitem_mais
     controle_negativo: tests/test_auditoria_conceitual_detectores.py::test_ob_acima_do_teto_nao_e_fracionamento
     hipoteses_inocentes:
     - hipotese: ente público credor
