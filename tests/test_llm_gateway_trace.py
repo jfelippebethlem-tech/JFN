@@ -81,6 +81,28 @@ def test_migracao_idempotente_sem_perder_linha(_isolado):
     assert con.execute("SELECT provedor FROM llm_trace").fetchall() == [("groq",)]
 
 
+def test_migracao_concorrente_em_base_nova_nao_perde_linha(_isolado, monkeypatch):
+    """O co-motor grava o trace dos dois lados em threads simultâneas. Sem trava na migração, as duas liam o PRAGMA
+    antes de qualquer ALTER e a segunda caía em "duplicate column name" (medido 24/11: 91 de 600 linhas perdidas)."""
+    import threading
+    for i in range(40):
+        db = _isolado / f"t{i}.db"
+        monkeypatch.setenv("JFN_LLM_TRACE_DB", str(db))
+        b = threading.Barrier(2)
+
+        def grava(k):
+            b.wait()
+            G._gravar({"origem": "gateway", "provedor": f"p{k}", "ok": 1, "ms": 0})
+        ts = [threading.Thread(target=grava, args=(k,)) for k in range(2)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        con = sqlite3.connect(db)
+        assert con.execute("SELECT COUNT(*) FROM llm_trace").fetchone()[0] == 2, f"rodada {i}"
+        con.close()
+
+
 def test_free_llm_trace_continua_gravando_na_tabela_ampliada(_isolado):
     from compliance_agent.llm import free_llm
     G.migrar(sqlite3.connect(_isolado / "trace.db"))

@@ -269,7 +269,11 @@ def _conectar() -> sqlite3.Connection:
 
 
 def migrar(con: sqlite3.Connection) -> None:
-    """Migração IDEMPOTENTE: cria a tabela se faltar e acrescenta só as colunas ausentes (nenhuma linha se perde)."""
+    """Migração IDEMPOTENTE: cria a tabela se faltar e acrescenta só as colunas ausentes (nenhuma linha se perde).
+    Sob BEGIN IMMEDIATE: o co-motor grava o trace dos dois lados (Claude e cascata) em threads simultâneas; sem a
+    trava, as duas liam o PRAGMA antes de qualquer ALTER e a segunda caía em "duplicate column name" — a linha
+    daquela chamada sumia do trace (medido 24/11: 91 de 600 linhas perdidas em base nova sob carga)."""
+    con.execute("BEGIN IMMEDIATE")      # check-and-alter atômico entre conexões (espera o `timeout` da conexão)
     con.execute("CREATE TABLE IF NOT EXISTS llm_trace("
                 "ts TEXT DEFAULT (datetime('now')), provedor TEXT, ok INT, ms INT, erro TEXT)")
     tem = {r[1] for r in con.execute("PRAGMA table_info(llm_trace)")}
