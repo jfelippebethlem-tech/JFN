@@ -195,8 +195,10 @@ _NODEID = re.compile(r"^(?:FAILED|ERROR) (\S+?\.py)\b")
 
 def _confirmar_na_referencia(finais: list[Resultado], vivos: list[No], sha: str, run: str, ref: str) -> list[Resultado]:
     """Falha vista num nó ACELERADOR (it-campo) é refeita no nó de REFERÊNCIA (VM-2, o ambiente do CI) antes de
-    reprovar. Medido em 24/11: o WSL do it-campo não tem `unzip` (nem zstd, node, ffmpeg, xvfb-run; sem sudo), e
-    tests/test_socio_pj_raiz.py falhava lá com FileNotFoundError e passava na VM-2. Vale o veredito da referência —
+    reprovar. Medido em 24/11: o WSL do it-campo não tinha `unzip` (nem zstd, node, ffmpeg, xvfb-run), e
+    tests/test_socio_pj_raiz.py falhava lá com FileNotFoundError e passava na VM-2. Instalados no mesmo dia por apt
+    (root do WSL pelo lado Windows; /usr/bin, já no PATH do `bash -s`): os 7 arquivos que só falhavam lá passam
+    (51 testes). A confirmação fica para a próxima diferença de ambiente. Vale o veredito da referência —
     se ela também falha, reprova; se ela está fora, a falha fica (bloquear é o lado seguro) e o motivo é dito."""
     ref_no = next((n for n in vivos if n.referencia), None)
     saida: list[Resultado] = []
