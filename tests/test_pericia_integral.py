@@ -249,7 +249,10 @@ def test_so_cascata_forca_contingencia_e_enfileira_para_o_opus(monkeypatch):
     assert db.execute("SELECT DISTINCT conferido_opus FROM pericia_integral").fetchall() == [(0,)]
 
 
-def test_aplicador_registrado_e_opus_divergente_vira_nova_rodada():
+def test_aplicador_registrado_e_opus_divergente_vira_nova_rodada(monkeypatch):
+    # 24/11/2026 (D3): a integral da cascata sai da fila do Opus por padrão; o aplicador segue valendo quando o corte
+    # é desfeito (`JFN_INTEGRAL_NA_FILA=1`) — é o que este teste exercita
+    monkeypatch.setenv("JFN_INTEGRAL_NA_FILA", "1")
     assert CO.APLICADORES["pericia_integral"] == "compliance_agent.pericia_integral:aplicar_conferencia"
     p = _pasta(PI.ACERVO, "100001_000001_2025", [("Parecer Jurídico", TXT_PARECER)])
     casc_txt = _resposta({"economicidade": 0})

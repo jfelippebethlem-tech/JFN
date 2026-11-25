@@ -119,6 +119,7 @@ def test_sonnet_concorda_fecha_mas_continua_nao_julgado(monkeypatch):
 
 
 def test_sonnet_divergente_sobe_ao_opus_e_o_opus_o_ve(monkeypatch):
+    monkeypatch.setenv("JFN_CONFERENTE_DIVERGENCIA", "qualquer")   # 24/11/2026 (D4): o padrão passou a `grave`
     ch = next(e for e in (f"y{i}" for i in range(200)) if not CS._sorteado(Q.chave_de("pericia_execucao", e)))
     con = _fila_sonnet(monkeypatch, (ch,))
     f = CS.conferir(5, pensar=_sonnet(_exec("sim", 1)), con=con)

@@ -23,6 +23,13 @@ comporta ~47–71 conferências do Opus por dia. A fila não fecha só com o Opu
   VERIFICADO) e o rótulo é "NÃO JULGADO — proposta de claude-sonnet-5-5" até o dono aprovar o par em
   `config/regras_novas.yaml` (`qualidade/regua.checar`).
 
+PADRÕES PARA A RELIGAÇÃO (decisão delegada D4, 24/11/2026): ligada a flag, o Sonnet entra SÓ nas tarefas em que a
+simulação mostra ganho com qualquer peso do Sonnet na cota em `PESOS_AVALIADOS` (`tarefas_com_ganho`: hoje só a
+perícia de execução — tempos e escala medidos; "outros" usa o tempo da execução como proxy, não medido; a integral sai
+da fila na origem, D3) e no modo `grave` (no `qualquer` ~75% do que o Sonnet lê volta ao Opus e o ganho some com
+peso ≥ 0,5). `JFN_CONFERENTE_TAREFAS` / `JFN_CONFERENTE_DIVERGENCIA=qualquer` sobrepõem. O peso real se mede com
+`tools/medir_peso_sonnet.py` (protocolo D4, depois de 28/11/2026 19h).
+
 DESLIGADO por padrão. Sem a variável, `conferencia_opus` se comporta exatamente como antes. Não roda com o ritmo
 contido nem em economia (`conferencia_sonnet` não é reserva do Opus).
 
@@ -50,7 +57,9 @@ STATUS_SONNET = "sonnet"            # aguardando o Sonnet
 STATUS_FECHADO = "conferido_sonnet"
 LIMIAR_ALTO_PADRAO = 10_000_000.00
 MOTIVOS_OPUS = ("divergencia", "grave")
-TAREFAS_PADRAO = ("pericia_execucao", "camada_subjetiva", "investigacao_risco")
+TAREFAS_PADRAO = ("pericia_execucao",)    # = tarefas_com_ganho() (conferido no teste); era + subjetiva + investigação
+PESOS_AVALIADOS = (1.0, 0.5, 0.2)          # peso do Sonnet na cota (segundo-Opus por segundo): NÃO medido (D4)
+TAREFAS_MEDIDAS = ("pericia_execucao", "pericia_integral")   # tempo e escala medidos; "outros" é proxy
 AMOSTRA_A_CADA = 8
 MAX_TENTATIVAS = 3
 TIMEOUT_S = 600.0
@@ -77,7 +86,7 @@ def tarefas() -> tuple[str, ...]:
 
 def modo_divergencia() -> str:
     m = os.environ.get("JFN_CONFERENTE_DIVERGENCIA", "").strip().lower()
-    return "grave" if m == "grave" else "qualquer"
+    return "qualquer" if m == "qualquer" else "grave"     # D4: o padrão é `grave` (o único modo com ganho medido)
 
 
 def _sorteado(chave: str) -> bool:
@@ -229,6 +238,22 @@ TEMPOS_S = {"pericia_execucao": {"opus": 26.6, "sonnet": 18.4},
 ESCALA = {"qualquer": {"pericia_execucao": 214 / 302, "pericia_integral": 117 / 150, "outros": 214 / 302},
           "grave": {"pericia_execucao": 39 / 302, "pericia_integral": 33 / 150, "outros": 39 / 302}}
 ESCALA_OTIMISTA = {"qualquer": {"pericia_execucao": 20 / 49}, "grave": {"pericia_execucao": 2 / 49}}
+
+
+def custo_relativo(tarefa: str, modo: str, peso: float) -> float:
+    """Segundos-Opus por item COM o Sonnet ÷ segundos-Opus por item só com o Opus (< 1 ⇒ ganho), item que vai ao
+    Sonnet: sobe ao Opus a fração `ESCALA` + 1/8 do resto (amostra), e o Sonnet custa `peso` × o tempo dele."""
+    t = TEMPOS_S[tarefa]
+    esc = ESCALA[modo][tarefa]
+    sobe = esc + (1 - esc) / AMOSTRA_A_CADA
+    return round((sobe * t["opus"] + peso * t["sonnet"]) / t["opus"], 4)
+
+
+def tarefas_com_ganho(modo: str = "grave", pesos: tuple[float, ...] = PESOS_AVALIADOS) -> tuple[str, ...]:
+    """Tarefas MEDIDAS, ainda na fila do Opus, em que o Sonnet reduz a demanda com TODO peso avaliado."""
+    from compliance_agent.llm import conferencia_opus as CO
+    return tuple(t for t in TAREFAS_MEDIDAS
+                 if not CO.fora_da_fila(t) and all(custo_relativo(t, modo, w) < 1 for w in pesos))
 
 
 def mix_da_proposta(itens: list[dict], alto: float = LIMIAR_ALTO_PADRAO,

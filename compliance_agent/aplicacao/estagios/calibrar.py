@@ -56,6 +56,9 @@ from compliance_agent.qualidade import ouro
 PASSO_NOVOS = 5
 HIST_MAX = 20
 ORIGENS_ESTRATIFICADAS = ("amostra", "cota")
+# D5 (24/11/2026): o E12 grava a origem; `risco` (fila por prioridade), `amostra_zero` (sorteio só entre ⚪) e
+# `prioridade` NUNCA contam como estratificados — só `amostra`/`cota` levam ao Tier 1
+ORIGENS_CONHECIDAS = ("amostra", "cota", "risco", "amostra_zero", "prioridade")
 SEVERIDADE_GRAVE = ("alta", "critica", "crítica")
 DECIDIDO = {"provavel_falso_positivo": True, "monitorar": False, "aprofundar": False}
 FACHADA = {"real": True, "fachada": False, "indicio": False}
@@ -72,12 +75,20 @@ def _json(txt):
         return {}
 
 
+def origem_de(valor) -> str:
+    """A origem que o E12 gravou (`triagem_alertas.origem_conferencia`, D5). Desconhecida/ausente ⇒ `legado`."""
+    v = str(valor or "").strip().lower()
+    return v if v in ORIGENS_CONHECIDAS else "legado"
+
+
 def conferidos_triagem(con: sqlite3.Connection) -> list[dict]:
     from compliance_agent.adaptadores.achados import regra_do_alerta
     out = []
-    for aid, leitura, rev, conf_em, tipo, sev, titulo, ev, dref, criado in con.execute(
+    tem_origem = "origem_conferencia" in {r[1] for r in con.execute("PRAGMA table_info(alertas_triagem)")}
+    col_origem = "t.origem_conferencia" if tem_origem else "NULL"
+    for aid, leitura, rev, conf_em, tipo, sev, titulo, ev, dref, criado, org in con.execute(
             "SELECT t.alerta_id, t.leitura_opus, t.verificado_por, t.em, a.tipo, a.severidade, a.titulo, a.evidencias, "
-            "a.data_referencia, a.created_at FROM alertas_triagem t JOIN alertas a ON a.id = t.alerta_id "
+            f"a.data_referencia, a.created_at, {col_origem} FROM alertas_triagem t JOIN alertas a ON a.id = t.alerta_id "
             "WHERE t.verificado_por IS NOT NULL AND t.leitura_opus IS NOT NULL "
             "AND COALESCE(a.descricao, '') NOT LIKE 'NÃO é acusação%'"):
         did, _ = regra_do_alerta(tipo, titulo)
@@ -85,7 +96,7 @@ def conferidos_triagem(con: sqlite3.Connection) -> list[dict]:
         sep = ouro.campos_de_separacao(_json(ev))
         sep["periodo"] = sep["periodo"] or ouro.periodo_de(dref) or ouro.periodo_de(criado)
         out.append({"detector": did, "item": f"alerta:{aid}", "falso": falso,
-                    "grave": bool(falso) and str(sev or "").lower() in SEVERIDADE_GRAVE, "origem": "legado",
+                    "grave": bool(falso) and str(sev or "").lower() in SEVERIDADE_GRAVE, "origem": origem_de(org),
                     "revisor": rev, "conferido_em": conf_em, "fonte": "alertas_triagem", **sep})
     return out
 

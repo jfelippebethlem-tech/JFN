@@ -25,6 +25,16 @@ DOIS EXECUTORES (O1.9): a rodada escolhe it-campo ou VM-2 (`llm/conferencia_exec
 PISO DE CONCORDÂNCIA: motor da cascata que concorda < 60% com o Opus numa tarefa de juízo (n ≥ 20) é rebaixado
 naquela tarefa (`llm/cascata_ajuste`), ao fim de cada rodada.
 
+PERÍCIA INTEGRAL FORA DA FILA NA ORIGEM (decisão delegada D3, 24/11/2026 — O66-P2/§17 (a)): o E11 roda só pela
+assinatura e não gera item de contingência; o que a cascata grátis produzir de perícia integral entra como
+`nao_julgado_proposta` ("NÃO JULGADO — proposta"): fica visível e `pendente()` continua True (nunca VERIFICADO), mas o
+Opus NÃO o relê (`conferir` só lê `pendente`). `JFN_INTEGRAL_NA_FILA=1` desfaz (volta a regra de antes). Os
+pendentes já na fila mudam só por `llm/integral_fora_da_fila aplicar` (sombra por padrão).
+ORIGEM DO CONFERIDO (D5, 24/11/2026): cada conferido grava `origem` — `amostra` (sorteio 1/8 estratificado da
+entrada por risco), `cota` (vaga de detector de manchete), `risco` (motivo determinístico), `amostra_zero` (sorteio
+entre os ⚪ da rodada: mede recall, NÃO é estratificado) ou `prioridade` (fila antiga, sem motivo de risco). Só
+`amostra`/`cota` contam como estratificados no E13 (`ORIGENS_ESTRATIFICADAS`).
+
 A triagem de alertas tem fila própria e mais antiga (`alertas_triagem.opus_pendente`, consumida por
 `triagem_alertas --opus`); `painel()` soma as duas para o dono ver uma fila só.
 """
@@ -72,7 +82,40 @@ PISO_CONCORDANCIA = 0.60
 PISO_AMOSTRA_MIN = 20
 # `sonnet` / `conferido_sonnet` só existem com JFN_CONFERENTE_SONNET=1 (O6.6): aguardando o Sonnet, ou fechado por ele
 # SEM régua cumprida (§3.10) — os dois continuam abertos para o consumidor, nunca VERIFICADO
-_STATUS_ABERTOS = ("pendente", "erro", risco.NAO_JULGADO, sonnet.STATUS_SONNET)
+PROPOSTA = "nao_julgado_proposta"
+ROTULO_PROPOSTA = "NÃO JULGADO — proposta"
+TAREFAS_FORA_DA_FILA = ("pericia_integral",)
+ORIGENS = ("amostra", "cota", "risco", "amostra_zero", "prioridade")
+ORIGENS_ESTRATIFICADAS = ("amostra", "cota")
+_STATUS_ABERTOS = ("pendente", "erro", risco.NAO_JULGADO, sonnet.STATUS_SONNET, PROPOSTA)
+
+
+def fora_da_fila(tarefa: str) -> bool:
+    """A tarefa NÃO entra na fila do Opus (vira proposta não julgada)? `JFN_INTEGRAL_NA_FILA=1` desfaz o corte."""
+    if os.environ.get("JFN_INTEGRAL_NA_FILA", "").strip().lower() in ("1", "true", "on", "sim"):
+        return False
+    return tarefa in TAREFAS_FORA_DA_FILA
+
+
+def origem_do_conferido(risco_txt: str | None, *, sorteio_zero: bool) -> str:
+    """De onde veio o item que o Opus conferiu (D5). A coluna `risco` guarda os motivos da entrada por risco."""
+    if sorteio_zero:
+        return "amostra_zero"
+    motivos = [m for m in str(risco_txt or "").split(",") if m]
+    if "cota" in motivos:
+        return "cota"
+    if motivos and set(motivos) <= {"amostra"}:
+        return "amostra"
+    return "risco" if motivos else "prioridade"
+
+
+def garantir_origem(con: sqlite3.Connection) -> None:
+    tem = {r[1] for r in con.execute("PRAGMA table_info(fila)")}
+    if "origem" not in tem:
+        con.execute("ALTER TABLE fila ADD COLUMN origem TEXT")
+    if "risco" not in tem:
+        con.execute("ALTER TABLE fila ADD COLUMN risco TEXT")
+    con.commit()
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS fila(
@@ -169,7 +212,10 @@ def enfileirar(tarefa: str, item: str | None, entrada: str, *, sistema: str = ""
         try:
             ch = chave_de(tarefa, entrada, sistema)
             status, motivos = "pendente", None
-            if risco.ativo():                    # entrada por risco (E12): o sem-risco entra NÃO JULGADO, visível
+            if fora_da_fila(tarefa):             # D3: perícia integral da cascata = proposta, fora da fila do Opus
+                risco.garantir_coluna(con)
+                status, motivos = PROPOSTA, "integral_fora_da_fila"
+            elif risco.ativo():                    # entrada por risco (E12): o sem-risco entra NÃO JULGADO, visível
                 risco.garantir_coluna(con)
                 status, ms = risco.decidir_entrada(con, tarefa=tarefa, item=item, chave=ch, motor=motor, nivel=nivel,
                                                    veredito=veredito, resposta=resposta or "", valor=valor)
@@ -180,7 +226,8 @@ def enfileirar(tarefa: str, item: str | None, entrada: str, *, sistema: str = ""
                 "status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(chave) DO UPDATE SET item=excluded.item, "
                 "entrada=excluded.entrada, motor=excluded.motor, resposta=excluded.resposta, veredito=excluded.veredito, "
                 "nivel=excluded.nivel, valor=excluded.valor, motivo=excluded.motivo, criado_em=excluded.criado_em, "
-                "status=excluded.status, tentativas=0 WHERE fila.status IN ('pendente','erro','nao_julgado','sonnet')",
+                "status=excluded.status, tentativas=0 WHERE fila.status IN ('pendente','erro','nao_julgado','sonnet',"
+                "'nao_julgado_proposta')",
                 (ch, tarefa, item, zlib.compress(entrada.encode("utf-8", "replace")), sistema, motor or "desconhecido",
                  (resposta or "")[:60000], (veredito or None) and str(veredito)[:80], nivel, valor,
                  (motivo or "")[:200], _agora(), status))
@@ -310,12 +357,15 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None, 
     try:
         # FOCO (22/11/2026): metade do lote do período Couto; dentro de cada metade, `_ORDEM` (compliance_agent/foco).
         # A entrada (blob) só é lida para os escolhidos.
-        ids = intercalar(con.execute(f"SELECT id, item FROM fila WHERE status='pendente' {_ORDEM}"),
-                         lambda r: _data_do_item(r[1]), limite=max(1, n))
-        ids = _com_amostra(con, list(ids), max(1, n))
-        rows = [con.execute("SELECT id,tarefa,item,entrada,sistema,motor,veredito,nivel FROM fila WHERE id=?",
+        garantir_origem(con)
+        ids = list(intercalar(con.execute(f"SELECT id, item FROM fila WHERE status='pendente' {_ORDEM}"),
+                              lambda r: _data_do_item(r[1]), limite=max(1, n)))
+        antes = {fid for fid, _ in ids}
+        ids = _com_amostra(con, ids, max(1, n))
+        rows = [con.execute("SELECT id,tarefa,item,entrada,sistema,motor,veredito,nivel,risco FROM fila WHERE id=?",
                             (fid,)).fetchone() for fid, _ in ids]
-        for fid, tarefa, item, blob, sistema, motor, ver, niv in rows:
+        for fid, tarefa, item, blob, sistema, motor, ver, niv, rsc in rows:
+            origem = origem_do_conferido(rsc, sorteio_zero=fid not in antes)
             entrada = zlib.decompress(blob).decode("utf-8", "replace") if blob else ""
             p = pensar(TAREFA, entrada, modelo=claude_motor.MODELO_JUIZO, sistema=sistema or "", backend="cli",
                        timeout=TIMEOUT_S, espera=ESPERA_TRAVA_S, **extra)
@@ -346,15 +396,15 @@ def conferir(n: int = 8, *, pensar=None, con: sqlite3.Connection | None = None, 
             # aplicador que falhou: a ENTRADA fica (o aplicador da perícia integral relê dela) para `reaplicar`;
             # antes ela era apagada e o veredito do Opus nunca chegava ao registro (22/11/2026)
             con.execute("UPDATE fila SET status='conferido', conferido_em=?, modelo_opus=?, veredito_opus=?, "
-                        "nivel_opus=?, resposta_opus=?, concorda=?, aplicado=?, "
+                        "nivel_opus=?, resposta_opus=?, concorda=?, aplicado=?, origem=?, "
                         "entrada=CASE WHEN ? THEN entrada ELSE NULL END WHERE id=?",
                         (_agora(), p.modelo, (v_op or None) and str(v_op)[:80], n_op, p.texto[:60000], concorda,
-                         aplicado, int(aplicado == 0), fid))
+                         aplicado, origem, int(aplicado == 0), fid))
             con.commit()
             if concorda == 0:                          # prosa sem régua (None) não tem o que comparar
                 _registrar_divergencia(tarefa, item, motor, ver, v_op, p.modelo)
             feitos.append({"id": fid, "tarefa": tarefa, "item": item, "motor": motor, "antes": ver, "opus": v_op,
-                           "concorda": concorda, "aplicado": aplicado, "executor": executor})
+                           "concorda": concorda, "aplicado": aplicado, "executor": executor, "origem": origem})
         if piso and feitos:
             aplicar_piso(con)
         return feitos
@@ -455,12 +505,13 @@ def painel() -> dict:
         try:
             out["por_tarefa"] = [
                 {"tarefa": t, "motor": m, "pendentes": p, "graves": g, "conferidos": c, "concordou": a, "divergiu": d,
-                 "erro": er, "nao_julgados": nj}
-                for t, m, p, g, c, a, d, er, nj in con.execute(
+                 "erro": er, "nao_julgados": nj, "propostas": pr}
+                for t, m, p, g, c, a, d, er, nj, pr in con.execute(
                     "SELECT tarefa, motor, SUM(status='pendente'), SUM(status='pendente' AND nivel=2), "
                     "SUM(status='conferido'), SUM(status='conferido' AND concorda=1), "
                     "SUM(status='conferido' AND COALESCE(concorda,0)=0), SUM(status='erro'), "
-                    "SUM(status='nao_julgado') FROM fila GROUP BY tarefa, motor ORDER BY 3 DESC, 1")]
+                    "SUM(status='nao_julgado'), SUM(status='nao_julgado_proposta') FROM fila "
+                    "GROUP BY tarefa, motor ORDER BY 3 DESC, 1")]
             out["itens"] = [
                 {"tarefa": t, "item": i, "motor": m, "veredito": v, "nivel": n, "desde": em, "motivo": mo}
                 for t, i, m, v, n, em, mo in con.execute(
@@ -474,6 +525,7 @@ def painel() -> dict:
     return dict(out, disponivel=True, pendentes=sum(x["pendentes"] or 0 for x in pt),
                 conferidos=sum(x["conferidos"] or 0 for x in pt), divergencias=sum(x["divergiu"] or 0 for x in pt),
                 erros=sum(x["erro"] or 0 for x in pt), nao_julgados=sum(x["nao_julgados"] or 0 for x in pt),
+                propostas=sum(x["propostas"] or 0 for x in pt), rotulo_proposta=ROTULO_PROPOSTA,
                 rotulo_nao_julgado=risco.ROTULO_NAO_JULGADO)
 
 

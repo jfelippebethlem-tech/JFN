@@ -637,8 +637,14 @@ def release_ia(modelo: str, eixos: tuple[str, ...]) -> dict:
                       "sem ouro congelado (n ≥ 125, 0 grave, IC95 ≤ 3%) nem sombra de 14 dias para este release (§3.10)"}
 
 
+FORA_DA_FILA_E12 = ("E11 roda só pela assinatura (Opus): não é contingência e não entra na fila do Opus — "
+                    "decisão delegada D3 de 24/11/2026 (O66-P2, §17 (a))")
+
+
 def motivos_e12(laudo: dict) -> dict:
-    """Entrada no E12 por risco (`llm/conferencia_risco`): só os motivos — nada é enfileirado aqui."""
+    """Motivos de risco do laudo (`llm/conferencia_risco`), para quem lê o caso (E14) — nada é enfileirado aqui e
+    `entra` é SEMPRE False: o laudo do E11 já é do Opus da assinatura; reconferir com o mesmo Opus só gastaria a cota
+    (o 2º revisor do Opus é o ouro, `qualidade/ouro`)."""
     from compliance_agent.llm import conferencia_risco as CR
     estados = [e["estado"] for e in laudo["eixos"].values()]
     baixa = (float(laudo["cobertura"].get("fracao") or 0) < 0.9) or estados.count(INCERTO) > len(estados) / 2
@@ -646,7 +652,7 @@ def motivos_e12(laudo: dict) -> dict:
                            divergente=False, limiar=CR.limiar_valor())
     if CR.sorteado(laudo["chave"]):
         m.append("amostra")
-    return {"motivos": m, "entra": bool(m)}
+    return {"motivos": m, "entra": False, "fora_da_fila": FORA_DA_FILA_E12}
 
 
 # ══ 5. PostgreSQL (laudos versionados) ══════════════════════════════════════════════════════════════════════════

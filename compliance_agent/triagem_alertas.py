@@ -23,6 +23,12 @@ Três caminhos:
   · `verificar_com_opus` — TODO 🔴/🟡 passa pelo Opus da assinatura; a concordância Opus×Haiku é medida no
                           cruzamento e, se cair abaixo do piso, a tarefa é PAUSADA na API e o dono avisado.
 CPF vai MASCARADO no prompt (LGPD).
+
+ORIGEM DO CONFERIDO (decisão delegada D5, 24/11/2026 — o E13 só dá Tier 1 com amostra estratificada): cada leitura do
+Opus grava `origem_conferencia` — `amostra` (1 vaga a cada `AMOSTRA_A_CADA` do lote, sorteada pelo hash DENTRO de cada
+detector entre os triados ainda sem Opus, qualquer prioridade: mede a FP sem o viés da fila), `cota` (alerta da
+proposta `calibrar cota` em `JFN_TRIAGEM_COTA`, até `COTA_FRACAO` do lote) ou `risco` (a fila por prioridade 🔴/🟡 de
+sempre). Linhas antigas ficam sem origem (o E13 lê como `legado`).
 """
 from __future__ import annotations
 
@@ -92,7 +98,10 @@ _DDL = """CREATE TABLE IF NOT EXISTS alertas_triagem(
   alerta_id INTEGER PRIMARY KEY, prioridade TEXT, nota INTEGER, justificativa TEXT, proximo_passo TEXT,
   valor REAL, motor TEXT, em TEXT)"""
 _COLUNAS = {"estado": "TEXT", "citacao": "TEXT", "leitura_b": "TEXT", "motor_b": "TEXT",
-            "opus_pendente": "INTEGER DEFAULT 0", "leitura_opus": "TEXT", "verificado_por": "TEXT", "motivo": "TEXT"}
+            "opus_pendente": "INTEGER DEFAULT 0", "leitura_opus": "TEXT", "verificado_por": "TEXT", "motivo": "TEXT",
+            "origem_conferencia": "TEXT"}
+AMOSTRA_A_CADA = 8      # 1 vaga do lote do Opus a cada 8 vai à amostra estratificada (D5)
+COTA_FRACAO = 0.25      # no máximo 1/4 do lote para a cota dos detectores de manchete (D5)
 _DDL_LOTE = "CREATE TABLE IF NOT EXISTS alertas_triagem_lote(lote_id TEXT PRIMARY KEY, grupos TEXT, em TEXT)"
 
 
@@ -402,6 +411,45 @@ def _por_ids(con, ids: list[int]) -> list[dict]:
     return [dict(zip(cols, r)) for r in rows]
 
 
+# ── origem do conferido (D5): amostra estratificada por detector e cota de manchete ──────────────────
+def _hash_amostra(aid) -> int:
+    return int(hashlib.sha1(f"amostra-triagem\x00{aid}".encode()).hexdigest()[:12], 16)
+
+
+def amostra_estratificada(con: sqlite3.Connection, k: int, fora: str = "", params: list | None = None) -> list[int]:
+    """Até `k` alerta_id triados e ainda sem leitura do Opus, de QUALQUER prioridade, um por detector (`tipo`) por
+    vez: dentro de cada detector, a ordem é o hash (sorteio determinístico); os detectores se revezam pela ordem do
+    hash do 1º de cada um. Alerta "NÃO é acusação" fica fora (o E13 também o tira)."""
+    if k <= 0:
+        return []
+    por: dict[str, list[int]] = {}
+    for aid, tipo in con.execute("SELECT t.alerta_id, a.tipo FROM alertas_triagem t JOIN alertas a ON a.id=t.alerta_id "
+                                 f"WHERE t.verificado_por IS NULL AND {_SEM_ACUSACAO}{fora}", params or []):
+        por.setdefault(str(tipo or ""), []).append(int(aid))
+    filas = sorted((sorted(v, key=_hash_amostra) for v in por.values()), key=lambda v: _hash_amostra(v[0]))
+    out: list[int] = []
+    while len(out) < k and any(filas):
+        for v in filas:
+            if v and len(out) < k:
+                out.append(v.pop(0))
+    return out
+
+
+def cota_ids(caminho: str | None = None) -> list[int]:
+    """alerta_id da proposta `calibrar cota` (`{"candidatos": {detector: ["alerta:<id>", ...]}}`) em `JFN_TRIAGEM_COTA`.
+    Sem arquivo ⇒ []. Arquivo ilegível ⇒ [] com aviso (a cota é opcional; nunca derruba a rodada)."""
+    import os
+    p = caminho or os.environ.get("JFN_TRIAGEM_COTA")
+    if not p:
+        return []
+    try:
+        cand = json.loads(Path(p).read_text(encoding="utf-8")).get("candidatos") or {}
+        return [int(str(x).split(":", 1)[1]) for v in cand.values() for x in v if str(x).startswith("alerta:")]
+    except (OSError, ValueError, AttributeError, IndexError) as e:
+        logger.warning("triagem: cota ilegível (%s) — rodada sem cota", type(e).__name__)
+        return []
+
+
 # ── Opus da assinatura: todo 🔴/🟡 e o que ficou pendente por citação ───────────────────────────────
 def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avisar=None) -> list[dict]:
     """Opus (assinatura) relê os itens com `opus_pendente`. Concordou ⇒ VERIFICADO; divergiu ⇒ PENDENTE (vai
@@ -419,8 +467,19 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
                                   " ORDER BY CASE t.prioridade WHEN 'aprofundar' THEN 0 WHEN 'monitorar' THEN 1 "
                                   "ELSE 2 END, t.valor DESC", params),   # 🔴 primeiro: 273 de 5.145 na fila (14/11)
                       lambda r: data_do_alerta({"tipo": r[3], "evidencias": r[4]}), limite=n)
+    # D5: vagas da amostra estratificada e da cota entram no lugar das últimas da fila por prioridade
+    am = amostra_estratificada(con, n // AMOSTRA_A_CADA, fora, params)
+    cids = cota_ids()
+    pend_cota = {r[0] for r in con.execute("SELECT alerta_id FROM alertas_triagem WHERE opus_pendente=1 AND "
+                                           "verificado_por IS NULL")} if cids else set()
+    ct = [a for a in cids if a in pend_cota and a not in am][:int(n * COTA_FRACAO)]
+    especiais = [(a, "amostra") for a in am] + [(a, "cota") for a in ct]
+    base = [r for r in rows if r[0] not in {a for a, _ in especiais}][: max(0, n - len(especiais))]
+    meta = {a: con.execute("SELECT prioridade, motor FROM alertas_triagem WHERE alerta_id=?", (a,)).fetchone()
+            for a, _ in especiais}
+    lote = [(r[0], r[1], r[2], "risco") for r in base] + [(a, *(meta[a] or (None, None)), o) for a, o in especiais]
     feitos = []
-    for aid, prio, motor, _tipo, _ev in rows:
+    for aid, prio, motor, origem in lote:
         a = (_por_ids(con, [aid]) or [None])[0]
         if a is None:
             continue
@@ -436,9 +495,9 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
                           entrada_resumo=texto_do_alerta(a)[:600])
         estado = VERIFICADO if (r["prioridade"] is not None and r["prioridade"] == prio) else PENDENTE
         con.execute("UPDATE alertas_triagem SET opus_pendente=0, leitura_opus=?, verificado_por=?, estado=?, "
-                    "motivo=? WHERE alerta_id=?",
+                    "motivo=?, origem_conferencia=? WHERE alerta_id=?",
                     (r["prioridade"], p.modelo, estado, None if estado == VERIFICADO else "Opus divergiu — revisão humana",
-                     aid))
+                     origem, aid))
         if estado == PENDENTE and r["prioridade"] is not None:
             # divergência com leitura válida do Opus: o resultado do Opus PREVALECE (dono, 14/11/2026); o item
             # segue PENDENTE de revisão humana e a leitura anterior fica registrada no motivo e no cruzamento
@@ -448,7 +507,7 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
                          f"Opus divergiu de {motor or '?'} (dizia {prio or 'indeterminado'}) — prevalece o Opus; "
                          "revisão humana", aid))
         con.commit()
-        feitos.append({"id": aid, "anterior": prio, "opus": r["prioridade"], "estado": estado})
+        feitos.append({"id": aid, "anterior": prio, "opus": r["prioridade"], "estado": estado, "origem": origem})
     vigiar_qualidade(avisar=avisar)
     return feitos
 

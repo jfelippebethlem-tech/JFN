@@ -284,3 +284,7 @@ data/leitura_integral/
 
 # Inventário operacional (O1.1 Esteira Única) — topologia, não vai ao repo público; cópia no vault
 config/jobs.yaml
+# 24/11/2026 (decisões delegadas IA): saídas com texto de alerta/entrada de perícia ou medição da conta — nunca no git
+data/ouro_revisao_ia/
+data/integral_fora_da_fila_proposta.json
+data/peso_sonnet_medicao.json
