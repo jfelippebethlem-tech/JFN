@@ -32,11 +32,12 @@ from decimal import Decimal
 
 from compliance_agent.aplicacao.detectores import Carga, Disparo, elegivel
 from compliance_agent.dominio.achado import Fato, Papel
+from compliance_agent.dominio.contrato_id import chave_espelho_tcerj
 from compliance_agent.reporting.intel_base import reais
 
 ID = "e10.p4_fracionamento_objeto"
 UNIDADE = "compra_direta_tcerj"
-VERSAO = "e10-p4-1"
+VERSAO = "e10-p4-2"   # 2: grafia do processo pela chave canônica do espelho (dominio.contrato_id)
 MAX_CLUSTERS_POR_GRUPO = 10      # o card devolve o MELHOR cluster: remove-o e re-roda até descartar (teto de segurança)
 TIPOS = ("compras", "obras")
 
@@ -135,7 +136,8 @@ def _itens(linhas) -> list[dict]:
     # MAIOR valor primeiro: entre grafias do mesmo processo fica a linha de valor total
     for r in sorted(linhas, key=lambda r: -float(r["valor"] or 0)):
         grupo = (r["unidade"], int(r["ano_processo"]))
-        k_proc = (grupo, _norm_processo(r["processo"]))
+        # a chave canônica do espelho (processo + sufixo); processo que ela não reconhece fica na grafia local
+        k_proc = (grupo, chave_espelho_tcerj(r["unidade"], r["processo"]) or _norm_processo(r["processo"]))
         k_irmao = (grupo, re.sub(r"\D", "", r["processo"] or ""), round(float(r["valor"] or 0), 2))
         if k_proc in vistos or k_irmao in vistos:
             continue

@@ -38,6 +38,7 @@ from compliance_agent import governo_couto_regras as GC
 from compliance_agent.aplicacao.detectores import Carga, Disparo, elegivel
 from compliance_agent.cpf_cnpj import digitos as dig
 from compliance_agent.dominio.achado import Fato, Papel
+from compliance_agent.dominio.contrato_id import chave_espelho_tcerj, deduplicar
 from compliance_agent.dominio.pagamento import ob_paga_sql
 from compliance_agent.governo_couto import INICIO as CORTE
 from compliance_agent.pericia_contabil import situacao_devolucao, valor_efetivo_ob
@@ -174,6 +175,16 @@ _SQL_CT = ("SELECT processo, num_contratacao, sei_norm, valor_contrato, unidade,
            "fornecedor FROM contratos_tcerj")
 
 
+def contratos_espelho(con) -> tuple[list[tuple], dict]:
+    """Linhas de `contratos_tcerj` (colunas de `_SQL_CT`) com o MESMO ajuste publicado mais de uma vez reduzido a uma
+    linha pela chave canônica do espelho (`dominio.contrato_id.chave_espelho_tcerj`: órgão, processo canônico, CNPJ,
+    valor). Fica o registro mais antigo que não está cancelado. Devolve (linhas, medida da deduplicação)."""
+    linhas = con.execute(_SQL_CT).fetchall()
+    return deduplicar(linhas, chave=lambda r: chave_espelho_tcerj(r[4], r[0], cnpj=r[8], valor=r[3]),
+                      ordem=lambda r: (str(r[7] or "").strip() == "Cancelado", str(r[5] or ""), str(r[0]), str(r[1])),
+                      valor=lambda r: r[3])
+
+
 def _contrato(r, ato: dict) -> dict:
     proc, num, sei, val, uni, dc, obj, st, cnpj, forn = r
     return {"chave_e9": f"{proc}|{num}", "processo": proc, "sei": sei, "valor": float(val or 0), "unidade": uni,
@@ -189,7 +200,7 @@ def _fato_ct(c: dict) -> Fato:
 
 
 class _DiretaSalto(_Regra):
-    ID, UNIDADE, VERSAO = "e10.tg_direta_salto", "contrato_tcerj", "e10-tg-d01-1"
+    ID, UNIDADE, VERSAO = "e10.tg_direta_salto", "contrato_tcerj", "e10-tg-d01-2"   # 2: espelho deduplicado
     MIN_DIRETA, MIN_SHARE, MIN_SALTO = 10e6, 0.5, 0.2
 
     def _ler(self, con, exercicio):
@@ -201,8 +212,9 @@ class _DiretaSalto(_Regra):
             fim_b = GC.menos_um_ano(fim)
             itens, fora, desc = [], Counter(), Counter()
             fora_valor = 0.0
+            linhas, dedup = contratos_espelho(con)
             for jan, d0, d1 in (("G", self.corte, fim), ("B", jn["b0"], fim_b)):
-                for r in con.execute(_SQL_CT + " WHERE substr(data_contratacao,1,10) BETWEEN ? AND ?", (d0, d1)):
+                for r in (r for r in linhas if d0 <= str(r[5] or "")[:10] <= d1):
                     proc, _, sei, val, _, dc, obj, st, cnpj, forn = r
                     ato = GC.ato_do_contrato(f, sei, proc, dc, obj, st)
                     if ato["cancelado"] or ato["nao_contrato"] or not (d0 <= ato["data"] <= d1):
@@ -221,7 +233,7 @@ class _DiretaSalto(_Regra):
         return Carga(itens=itens, contexto={**jn, "fim": fim, "fim_b": fim_b, "ingestao_diretas": ult,
                                             "fora_da_conta": {"n": sum(fora.values()), "valor": round(fora_valor, 2),
                                                               "motivos": dict(fora)},
-                                            "descartados_ato": dict(desc)})
+                                            "descartados_ato": dict(desc), "dedup_espelho": dedup})
 
     def detectar(self, itens, contexto=None):
         t: dict = defaultdict(lambda: {"G": [0, 0.0, 0, 0.0], "B": [0, 0.0, 0, 0.0]})
@@ -267,7 +279,7 @@ class _DiretaSalto(_Regra):
 
 
 class _EmergencialIncumbente(_Regra):
-    ID, UNIDADE, VERSAO = "e10.tg_emergencial_incumbente", "contrato_tcerj", "e10-tg-d02-1"
+    ID, UNIDADE, VERSAO = "e10.tg_emergencial_incumbente", "contrato_tcerj", "e10-tg-d02-2"   # 2: espelho deduplicado
 
     def _ler(self, con, exercicio):
         from compliance_agent.fracionamento_emergencia import eh_emergencial
@@ -278,7 +290,8 @@ class _EmergencialIncumbente(_Regra):
                                                "WHERE substr(data_contratacao,1,10) < ?", (self.corte,)):
                 antes[uni].add(dig(cnpj) or GC.norm_nome(forn))
             itens, n_emerg_fora = [], 0
-            for r in con.execute(_SQL_CT + " WHERE substr(data_contratacao,1,10) >= ?", (self.corte,)):
+            linhas, dedup = contratos_espelho(con)
+            for r in (r for r in linhas if str(r[5] or "")[:10] >= self.corte):
                 proc, _, sei, _, uni, dc, obj, st, cnpj, forn = r
                 if sei not in diretas or not any(eh_emergencial(o, e) for (_, _, o, _, e, _, _) in diretas[sei]):
                     continue
@@ -291,7 +304,8 @@ class _EmergencialIncumbente(_Regra):
                               "incumbente": (dig(cnpj) or GC.norm_nome(forn)) in antes[uni]})
         finally:
             f.fechar()
-        return Carga(itens=itens, contexto={"emergenciais_assinadas_antes_do_corte": n_emerg_fora})
+        return Carga(itens=itens, contexto={"emergenciais_assinadas_antes_do_corte": n_emerg_fora,
+                                            "dedup_espelho": dedup})
 
     def detectar(self, itens, contexto=None):
         out = []

@@ -19,7 +19,8 @@ Honestidade (INDISPONÍVEL ≠ AUSENTE ≠ 0): a coleta de NL do SIAFE é PARCIA
 diferentes é identidade não resolvida (INCERTO, contado), não indício — no Lex o par nem se formava, porque ele lia
 OB e NL filtradas pelo mesmo credor.
 
-Elegibilidade (invariante 3): exigência `execucao` da E9 sobre `ob_siafe`. A NL só é avaliada se TODAS as OB pagas
+Elegibilidade (invariante 3): exigência `valor_liquido` (C-PAGO>NL — a OB com GD sem valor apurado é
+`?:DEVOLUCAO_NAO_APURADA`; a apurada entra pelo líquido) e `execucao` (C-OB<NL) da E9 sobre `ob_siafe`. A NL só é avaliada se TODAS as OB pagas
 que a citam são 'E' (uma 'I' torna a NL inelegível; uma '?' a deixa indeterminada); o C-OB<NL olha a OB elegível.
 """
 from __future__ import annotations
@@ -35,6 +36,7 @@ from compliance_agent.aplicacao.detectores import Carga, Disparo, elegivel
 from compliance_agent.dominio.achado import Fato, Papel
 from compliance_agent.dominio.pagamento import ob_paga_sql
 from compliance_agent.reporting.intel_base import reais
+from compliance_agent.siafe_gd import devolvido_por_ob
 
 UNIDADE = "ob_siafe"
 FOLGA = 0.02                       # arredondamento de centavos entre OB e NL (a mesma do lex_fatos)
@@ -75,10 +77,12 @@ def _nl_idx(con, where: str = "", par: tuple = ()) -> tuple[dict, int]:
     return idx, dup
 
 
-def _item(numero, ug, ex, dt, nl, credor, valor, n) -> dict:
+def _item(numero, ug, ex, dt, nl, credor, valor, n, dev: dict | None = None) -> dict:
     doc = _doc(credor)
     return {"chave_e9": f"{ug}|{numero}|{ex}", "grupo": f"{nl}|{ug}", "numero_ob": numero, "ug": str(ug),
             "exercicio": ex, "data": _data(dt), "nl": nl, "valor": round(float(valor or 0), 2),
+            # devolução APURADA (guia na gd_siafe): o líquido abate; a não apurada a E9 já deixou '?' (decisão 1)
+            "devolvido": (dev or {}).get((str(numero or "").strip(), str(ug).strip())),
             "mesmo_credor": _ident(credor) is not None and _ident(credor) == n["credor"],
             "credor_raiz": doc[:8] if len(doc) == 14 else None,
             "nl_status": n["status"], "nl_valor": n["valor"], "nl_data": n["data"]}
@@ -89,6 +93,7 @@ _COLS_OB = "numero_ob, ug_emitente, exercicio, data_emissao, nl, credor, valor"
 
 def carregar(con: sqlite3.Connection, exercicio: int | None = None) -> Carga:
     nls, dup = _nl_idx(con)
+    dev = devolvido_por_ob(con)
     filtro, par = ("AND exercicio = ?", (exercicio,)) if exercicio else ("", ())
     itens, sem_nl, fora = [], [0, 0.0], [0, 0.0]
     n_pagas, v_pagas = 0, 0.0
@@ -100,7 +105,7 @@ def carregar(con: sqlite3.Connection, exercicio: int | None = None) -> Carga:
             alvo = fora if nl else sem_nl
             alvo[0], alvo[1] = alvo[0] + 1, alvo[1] + float(valor or 0)
             continue
-        itens.append(_item(numero, ug, ex, dt, nl, credor, valor, n))
+        itens.append(_item(numero, ug, ex, dt, nl, credor, valor, n, dev))
     return Carga(itens=itens, contexto={
         "ob_pagas": n_pagas, "ob_pagas_valor": round(v_pagas, 2), "nl_na_base": len(nls), "nl_chave_repetida": dup,
         "ob_sem_nl_citada": sem_nl[0], "ob_sem_nl_citada_valor": round(sem_nl[1], 2),
@@ -120,7 +125,8 @@ def carregar_grupo(con: sqlite3.Connection, grupo: str, exercicio: int | None = 
     filtro, par = ("AND exercicio = ?", (exercicio,)) if exercicio else ("", ())
     rows = con.execute(f"SELECT {_COLS_OB} FROM ob_orcamentaria_siafe WHERE {ob_paga_sql(con)} AND valor > 0 "
                        f"AND nl = ? AND ug_emitente = ? {filtro}", (nl, ug, *par)).fetchall()
-    return Carga(itens=[_item(*r, n) for r in rows])
+    dev = devolvido_por_ob(con)
+    return Carga(itens=[_item(*r, n, dev) for r in rows])
 
 
 def _fato_ob(c: dict, papel: Papel = Papel.SUPORTE) -> Fato:
@@ -138,7 +144,13 @@ def _fato_nl(c: dict) -> Fato:
 
 def _entrada_ob(c: dict) -> dict:
     return {"ob": c["numero_ob"], "ug": c["ug"], "exercicio": c["exercicio"], "data": str(c["data"] or ""),
-            "valor": c["valor"], "credor_raiz": c["credor_raiz"], "mesmo_credor": c["mesmo_credor"], "e9": c.get("e9")}
+            "valor": c["valor"], "credor_raiz": c["credor_raiz"], "mesmo_credor": c["mesmo_credor"], "e9": c.get("e9")} \
+        | ({"devolvido": c["devolvido"]} if c.get("devolvido") is not None else {})
+
+
+def liquido(c: dict) -> float:
+    """Valor líquido da OB: o valor menos a devolução APURADA (`gd_siafe`); sem guia, o valor cheio."""
+    return round(c["valor"] - float(c.get("devolvido") or 0), 2)
 
 
 def _por_nl(itens: list[dict]) -> dict[str, list[dict]]:
@@ -160,7 +172,7 @@ def situacao_nl(obs: list[dict]) -> str:
 class _PagoAcima:
     ID: str = "e10.ob_paga_acima_liquidado"
     UNIDADE: str = UNIDADE
-    VERSAO: str = "e10-cpago-1"
+    VERSAO: str = "e10-cpago-2"     # 2: exigência `valor_liquido` + devolução apurada abatida (decisão do dono 1)
 
     carregar = staticmethod(carregar)
     carregar_grupo = staticmethod(carregar_grupo)
@@ -175,7 +187,7 @@ class _PagoAcima:
                 continue
             if not all(c["mesmo_credor"] for c in obs):
                 continue                                   # identidade não resolvida: INCERTO no resumo
-            pago = round(sum(c["valor"] for c in obs), 2)
+            pago = round(sum(liquido(c) for c in obs), 2)
             if pago <= n0["nl_valor"] + FOLGA:
                 continue
             obs = sorted(obs, key=lambda c: (str(c["data"] or ""), c["numero_ob"]))

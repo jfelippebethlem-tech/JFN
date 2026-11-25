@@ -5578,11 +5578,11 @@ detectores:
   e10.ob_paga_acima_liquidado:
     modulo: compliance_agent/aplicacao/detectores/contabil_siafe.py
     simbolo: _PagoAcima
-    afirma: Soma das OB pagas que citam a mesma NL acima do valor liquidado nela (NL contabilizada, mesmo credor)
+    afirma: Soma das OB pagas que citam a mesma NL acima do valor liquidado nela (NL contabilizada, mesmo credor; valor líquido da devolução apurada)
     fonte:
     - ob_orcamentaria_siafe (_ob_paga)
     - nl_siafe
-    - dominio.elegibilidade (E9, exigência execucao)
+    - dominio.elegibilidade (E9, exigência valor_liquido)
     grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
     consome:
     - relatório de paridade O5.3 (vault)
@@ -5841,7 +5841,7 @@ detectores:
   e10.c_sede_fachada:
     modulo: compliance_agent/aplicacao/detectores/sede_fachada.py
     simbolo: detectar
-    afirma: "Indício de sede de fachada por convergência: sede real suspeita (apurável) e 2º sinal registrado (endereço com indício ou foto adversa não confirmada pelo Places), sem contraprova de foto comercial"
+    afirma: "Indício de sede de fachada por convergência: sede real suspeita (apurável) e 2º sinal registrado (endereço com indício ou foto adversa não confirmada pelo Places), sem contraprova de foto comercial; dois sinais NÃO residenciais (imóvel residencial só → INCERTO)"
     fonte:
     - "verificacao_sede_real"
     - "endereco_verificacao"

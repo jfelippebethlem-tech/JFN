@@ -42,7 +42,7 @@ from compliance_agent.detectores.base import (
     para_data,
     perguntar_rubrica,
 )
-from compliance_agent.limites_aditivo import teto_acrescimo
+from compliance_agent.limites_aditivo import NATUREZAS, classificar_natureza, teto_acrescimo
 from compliance_agent.reporting.intel_base import moeda
 
 # Teto do art. 125 (Lei 14.133/2021): o número mora em `limites_aditivo` — fonte única, como `limites_dispensa`
@@ -86,23 +86,33 @@ def _valor_aditivo(a: dict) -> float:
         return 0.0
 
 
-# Reajuste/repactuação/correção monetária = RECOMPOSIÇÃO de preço, não acréscimo — fora do teto do art.125.
-_KW_REAJUSTE = ("reajust", "repactua", "ipca", "incc", "igp-m", "igp m",
-                "correção monetária", "correcao monetaria")
+# Natureza do aditivo: o classificador ÚNICO de `limites_aditivo` (decisão do dono 3, 24/11/2026, antes da fusão
+# D06 → X1). Renovação e prorrogação (`prazo`), reajuste, repactuação, revisão e reequilíbrio (`reajuste`),
+# sub-rogação/retificação (`outro`) e o termo `misto` (revisão + acréscimo num valor só) ficam FORA do teto do
+# art. 125 — só o acréscimo de objeto/quantitativo (`valor`) conta. A cópia local de palavras-chave de reajuste que
+# morava aqui saiu: era a sexta régua da natureza do aditivo.
+_FORA_DO_TETO = tuple(n for n in NATUREZAS if n != "valor")      # prazo, reajuste, outro, misto
 
 
-def _e_reajuste(a: dict) -> bool:
-    """Aditivo de reajuste/repactuação/correção monetária — identificado pelo `tipo` ou por keywords
-    na justificativa. NÃO consome o teto de acréscimos do art.125."""
-    txt = f"{a.get('tipo') or ''} {a.get('justificativa') or ''}".lower()
-    return any(k in txt for k in _KW_REAJUSTE)
+def _natureza(a: dict) -> str:
+    """Natureza do termo: o tipo já classificado (prazo/reajuste/outro/misto) vale; senão o texto do termo (objeto,
+    descrição, justificativa) + fundamento legal + qualificadores do PNCP pelo `classificar_natureza`; texto que não
+    decide devolve o tipo declarado pelo chamador ('valor', 'objeto', 'prazo' ou '')."""
+    t = str(a.get("tipo") or "").strip().lower()
+    if t in _FORA_DO_TETO:
+        return t
+    texto = " ".join(str(a.get(k) or "") for k in ("objeto", "descricao_objeto", "justificativa")).strip()
+    nat, _ = classificar_natureza(texto, fundamento_legal=a.get("fundamento_legal"),
+                                  qualif_acrescimo=a.get("qualif_acrescimo"), qualif_vigencia=a.get("qualif_vigencia"),
+                                  qualif_reajuste=a.get("qualif_reajuste"),
+                                  prazo_aditado_dias=a.get("prazo_aditado_dias"))
+    return nat or _tipo_aditivo(a)
 
 
 def _conta_no_teto(a: dict) -> bool:
-    """Um aditivo entra no cálculo do teto do art.125? SÓ se mexe em VALOR. Aditivo de só-prazo NÃO conta
-    (tem outra análise — X2). Aditivo de objeto com valor conta pelo valor. Reajuste NÃO conta."""
-    return (not _e_reajuste(a)
-            and _tipo_aditivo(a) in ("valor", "objeto") and _valor_aditivo(a) != 0.0)
+    """Um aditivo entra no cálculo do teto do art.125? SÓ o acréscimo/supressão de objeto (`valor`/'objeto') com
+    valor. Renovação, prorrogação (X2), reajuste, repactuação, reequilíbrio, `outro` e `misto` NÃO contam."""
+    return _natureza(a) in ("valor", "objeto") and _valor_aditivo(a) != 0.0
 
 
 class X1CrescimentoAditivo(Detector):
@@ -175,7 +185,10 @@ class X1CrescimentoAditivo(Detector):
             "teto_art125": teto,
             "n_aditivos": len(aditivos),
             "n_aditivos_de_valor": len(aditivos_valor),
-            "n_aditivos_reajuste": sum(1 for a in aditivos if _e_reajuste(a)),
+            "n_aditivos_reajuste": sum(1 for a in aditivos if _natureza(a) == "reajuste"),
+            "fora_do_teto_por_natureza": {n: k for n in _FORA_DO_TETO
+                                          if (k := sum(1 for a in aditivos if _natureza(a) == n
+                                                       and _valor_aditivo(a) != 0.0))},
             "acrescimos_total": round(acrescimos, 2),
             "supressoes_total": round(supressoes, 2),
             "pct_acrescimo": round(pct_acrescimo, 4),

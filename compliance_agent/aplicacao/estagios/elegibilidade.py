@@ -14,7 +14,7 @@ calcula UMA vez os fatos jurídico-contábeis com as funções puras do domínio
   · natureza do credor ............. natureza jurídica da Receita (`entidades_gov.eh_administracao_publica`), nunca
                                      pelo nome; a peneira por nome de hoje (`classificador_credor`) fica gravada em
                                      `motivo_legado` só para a comparação
-e, a partir deles, o veredito de cada EXIGÊNCIA (`universo`, `fornecedor`, `execucao`, `soma_art75`, `regime`,
+e, a partir deles, o veredito de cada EXIGÊNCIA (`universo`, `fornecedor`, `execucao`, `soma_art75`, `valor_liquido`, `regime`,
 `dispensa_valor`): 'E' (elegível), 'I:<MOTIVO>' (inelegível) ou '?:<MOTIVO>' (indeterminado — nunca lido como
 elegível; INDISPONÍVEL ≠ 0). Cada detector de domínio de contratação do `config/qualidade_detectores.yaml` declara
 em `DETECTORES` que exigência faz em cada unidade; a visão `dominio.v_elegibilidade_detector` devolve
@@ -58,8 +58,14 @@ from compliance_agent.dominio.regime import Regime, regime_contrato
 from compliance_agent.entidades_gov import eh_administracao_publica
 from compliance_agent.fluxo.fila import Resultado
 from compliance_agent.limites_dispensa import teto_dispensa
+from compliance_agent.pericia_contabil import situacao_devolucao
+from compliance_agent.siafe_gd import devolvido_por_ob
 
-VERSAO = "e9-sombra-2"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
+VERSAO = "e9-sombra-3"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
+# 3 (decisões do dono, 24/11/2026 noite — o53-paridade-fatia2.md): OB com GD sem valor apurado =
+#   `?:DEVOLUCAO_NAO_APURADA` nas exigências que dependem do valor LÍQUIDO (`valor_liquido`, nova, e `soma_art75`);
+#   OS/OSC (natureza 3xxx) = fornecedor com regime próprio, `I:REGIME_PROPRIO_MROSC` em `soma_art75` e
+#   `dispensa_valor`; RJPREV = `I:ENTE_PUBLICO` pela RAIZ do CNPJ (`ENTE_PUBLICO_POR_RAIZ`), nunca pelo nome
 RAIZ = Path(__file__).resolve().parents[3]
 SQL_SCHEMA = RAIZ / "deploy" / "vm2" / "postgres" / "dominio_001.sql"
 REGISTRO_DETECTORES = RAIZ / "config" / "qualidade_detectores.yaml"
@@ -75,7 +81,7 @@ UNIDADES_CONTRATO = ("contrato_tcerj", "compra_direta_tcerj", "contrato_siga", "
 UNIDADES = UNIDADES_OB + UNIDADES_CONTRATO
 NAO_MATERIALIZADAS = {"ne_siafe": "nota de empenho (ne_siafe/cge_ne_credor): a unidade NE entra com a coleta de NE "
                                   "por UG (O4.11); até lá o detector fica INDISPONÍVEL na E9"}
-EXIGES_OB = ("universo", "fornecedor", "execucao", "soma_art75")
+EXIGES_OB = ("universo", "fornecedor", "execucao", "soma_art75", "valor_liquido")
 EXIGES_CONTRATO = ("universo", "fornecedor", "regime", "dispensa_valor")
 
 # Tabelas BRUTAS de OB/contrato: o que define "domínio de contratação" no registro e o que a catraca Tier 1 procura.
@@ -163,13 +169,13 @@ DETECTORES: dict[str, dict] = {
     "orcamento.pg09_empenho_dezembro": {"ne_siafe": "universo"},
     "orcamento.pg10_ordem_cronologica": {"ob_siafe": "execucao"},
     "a_portar.lex_fatos.c_ob_antes_da_nl": {"ob_siafe": "execucao"},
-    "a_portar.lex_fatos.c_pago_maior_que_nl": {"ob_siafe": "execucao"},
+    "a_portar.lex_fatos.c_pago_maior_que_nl": {"ob_siafe": "valor_liquido"},
     "a_portar.p4_obra_e_lei_8666_tcerj": {"compra_direta_tcerj": "dispensa_valor"},
     "a_portar.p5_dedup_por_processo": {"compra_direta_tcerj": "fornecedor"},
     # E10 (O5.3 fatia 1): as quatro regras a_portar acima, portadas como detectores genéricos (mesma exigência)
     "e10.p4_fracionamento_objeto": {"compra_direta_tcerj": "dispensa_valor"},
     "e10.p5_emergencia_recorrente": {"compra_direta_tcerj": "fornecedor"},
-    "e10.ob_paga_acima_liquidado": {"ob_siafe": "execucao"},
+    "e10.ob_paga_acima_liquidado": {"ob_siafe": "valor_liquido"},   # soma de OB × NL: depende do valor líquido
     "e10.ob_antes_da_liquidacao": {"ob_siafe": "execucao"},
     # E10 (O5.3 fatia 2): mesma exigência da regra de origem (couto.D*, fracionamento_siafe), sem a janela — a
     # data de corte é parâmetro do detector (lente Couto = governo_couto.INICIO)
@@ -263,6 +269,9 @@ class Fatos:
     motivo_legado: str = ""
     tem_par_siafe: bool | None = None       # só ob_tfe
     elemento: str | None = None
+    # '' (sem devolução) · 'apurada' (GD com valor na `gd_siafe`) · 'nao_apurada' (GD na OB sem a guia coletada).
+    # Não é coluna do PG: o fato vai no veredito (`?:DEVOLUCAO_NAO_APURADA`) e, por ele, no `entrada_hash`.
+    devolucao: str = ""
 
     def exiges(self) -> dict[str, str]:
         if self.unidade in UNIDADES_OB:
@@ -270,9 +279,20 @@ class Fatos:
         return {x: _AVALIA_CT[x](self) for x in EXIGES_CONTRATO}
 
 
+# Ente público do ESTADO cuja natureza jurídica na Receita é de direito privado — decidido pela RAIZ do CNPJ (o nome
+# nunca decide). Decisão do dono 24/11/2026 (o53-paridade-fatia2.md, decisão 2): "RJPREV é autarquia previdenciária
+# do Estado: I:ENTE_PUBLICO". Medido no snapshot de 24/11: 17713878 (Fundação de Previdência Complementar do ERJ —
+# RJPREV, Lei estadual 6.243/2012) está na Receita como 3069 (fundação privada) e caía em OS_OSC; 48307566 (Plano
+# de Benefícios RJPREV CD, o plano que ela administra) como 3328. Só entra raiz conferida na fonte, uma a uma.
+ENTE_PUBLICO_POR_RAIZ = {
+    "17713878": "RJPREV — Fundação de Previdência Complementar do ERJ (Receita: 3069); decisão do dono 24/11/2026",
+    "48307566": "Plano de Benefícios RJPREV CD, administrado pela RJPREV (Receita: 3328); decisão do dono 24/11/2026",
+}
+
+
 def classe_credor(doc, natureza_por_raiz: dict) -> tuple[str, str | None, str | None]:
-    """(classe, raiz do CNPJ, natureza jurídica). Pela Receita (ou pelo formato do código do SIAFE), nunca pelo nome.
-    PF não guarda documento."""
+    """(classe, raiz do CNPJ, natureza jurídica). Pela Receita (ou pelo formato do código do SIAFE), nunca pelo nome;
+    a raiz de `ENTE_PUBLICO_POR_RAIZ` vence a natureza da Receita. PF não guarda documento."""
     bruto = str(doc or "").strip()
     d = re.sub(r"\D", "", bruto)
     if len(d) == 6 and bruto == d:
@@ -281,6 +301,8 @@ def classe_credor(doc, natureza_por_raiz: dict) -> tuple[str, str | None, str | 
         return "INSCRICAO_GENERICA", None, None  # CG/RP/PP…: inscrição genérica do SIAFE (folha, lista de credores)
     if len(d) == 14:
         nj = natureza_por_raiz.get(d[:8]) or None
+        if d[:8] in ENTE_PUBLICO_POR_RAIZ:
+            return "ENTE_PUBLICO", d[:8], nj
         if not nj:
             return "PJ_SEM_CADASTRO", d[:8], None
         if eh_administracao_publica(nj):
@@ -368,6 +390,8 @@ def _ob_soma_art75(f: Fatos) -> str:
         return "I:NAO_PAGA"
     if f.credor_classe in ("ENTE_PUBLICO", "UG_PROPRIA"):
         return "I:" + f.credor_classe
+    if f.credor_classe == "OS_OSC":
+        return "I:REGIME_PROPRIO_MROSC"        # Lei 13.019 / contrato de gestão: fora do art. 75 da 14.133
     if f.origem_exercicio == OrigemExercicio.DEA.value:
         return "I:DEA"
     nat = f.natureza_pagamento
@@ -382,8 +406,18 @@ def _ob_soma_art75(f: Fatos) -> str:
     if nat == NaturezaPagamento.PARCELA_CONTRATO.value:
         return "I:SERVICO_CONTINUO" if f.elemento == "37" else "I:PARCELA_CONTRATO"
     if nat == NaturezaPagamento.CONTRATACAO_NOVA.value:
-        return "E"
+        return "?:DEVOLUCAO_NAO_APURADA" if f.devolucao == "nao_apurada" else "E"
     return _sem_natureza(f)
+
+
+def _ob_valor_liquido(f: Fatos) -> str:
+    """Régua que depende do valor LÍQUIDO da OB (pago × liquidado): a de execução, e a OB com Guia de Devolução sem
+    valor apurado fica INDETERMINADA — o pago é a OB pelo valor cheio; a devolução é outra entrada, e sem o valor
+    dela a régua não se infla nem se zera (decisão do dono 1, 24/11/2026)."""
+    v = _ob_execucao(f)
+    if v == "E" and f.devolucao == "nao_apurada":
+        return "?:DEVOLUCAO_NAO_APURADA"
+    return v
 
 
 def _ct_universo(f: Fatos) -> str:
@@ -409,6 +443,8 @@ def _ct_regime(f: Fatos) -> str:
 
 
 def _ct_dispensa_valor(f: Fatos) -> str:
+    if f.credor_classe == "OS_OSC":
+        return "I:REGIME_PROPRIO_MROSC"        # OS/OSC: regime próprio (Lei 13.019), fora da dispensa da 14.133
     if f.dispensa_valor is None:
         return "?:MODALIDADE_DESCONHECIDA"
     if not f.dispensa_valor:
@@ -427,7 +463,7 @@ def _ct_dispensa_valor(f: Fatos) -> str:
 
 
 _AVALIA_OB = {"universo": _ob_universo, "fornecedor": _ob_fornecedor, "execucao": _ob_execucao,
-              "soma_art75": _ob_soma_art75}
+              "soma_art75": _ob_soma_art75, "valor_liquido": _ob_valor_liquido}
 _AVALIA_CT = {"universo": _ct_universo, "fornecedor": _ct_fornecedor, "regime": _ct_regime,
               "dispensa_valor": _ct_dispensa_valor}
 
@@ -480,6 +516,11 @@ class Consultas:
         self._cache_legado: dict = {}
         self.estatais = self._estatais()
         self.paga_sql = ob_paga_sql(con)
+        # a GD da OB (coluna `gd`/`status_envio`, quando a coleta as tem) e as guias coletadas (`gd_siafe`, 6.780
+        # linhas no snapshot: carregadas inteiras nos dois modos — a régua das guias válidas é a de `siafe_gd`)
+        cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+        self.cols_gd = ", ".join(c if c in cols else "''" for c in ("gd", "status_envio"))
+        self.devolvido = devolvido_por_ob(con)
         if em_lote:
             self.nl = {(r[0], r[1]): r[2] for r in con.execute("SELECT numero, ug_emitente, ne FROM nl_siafe")}
             self.ne = {(r[0], r[1]): (r[2], r[3]) for r in con.execute(
@@ -533,6 +574,10 @@ class Consultas:
             "SELECT cnpj FROM contratos_tcerj WHERE processo=? AND COALESCE(cnpj,'')<>''", (proc,))}
         return next(iter(cs)) if len(cs) == 1 else None
 
+    def devolvido_da_ob(self, ob, ug) -> float | None:
+        """Soma das guias válidas da OB na `gd_siafe` (régua de `siafe_gd.devolvido_por_ob`); None = não se sabe."""
+        return self.devolvido.get((str(ob or "").strip(), str(ug or "").strip()))
+
     def legado(self, nome, doc) -> str:
         k = (nome, doc)
         if k not in self._cache_legado:
@@ -543,8 +588,16 @@ class Consultas:
 _COLS_OB = ("numero_ob, ug_emitente, ug_liquidante, nl, credor, nome_credor, tipo_ob, valor, exercicio, data_emissao")
 
 
+def devolucao_ob(gd, status_envio, devolvido: float | None) -> str:
+    """'' · 'apurada' · 'nao_apurada' — a GD na OB (`pericia_contabil.situacao_devolucao`, régua única) × a guia
+    coletada (`gd_siafe`). Devolução posterior à coleta da OB deixa só a guia: é apurada também."""
+    if devolvido is not None:
+        return "apurada"
+    return "nao_apurada" if situacao_devolucao(gd, status_envio) == "gd" else ""
+
+
 def _fatos_ob_siafe(r, q: Consultas) -> Fatos:
-    numero, ug, ugl, nl_n, credor, nome, tipo_ob, valor, ex, emissao, paga = r
+    numero, ug, ugl, nl_n, credor, nome, tipo_ob, valor, ex, emissao, gd, envio, paga = r
     ne_n = q.ne_da_nl(nl_n, ug) or q.ne_da_nl(nl_n, ugl)
     nat_cod, ano_ne = q.dados_ne(ne_n, ug) or q.dados_ne(ne_n, ugl) or (None, None)
     classe, raiz, nj = classe_credor(credor, q.natureza)
@@ -559,13 +612,15 @@ def _fatos_ob_siafe(r, q: Consultas) -> Fatos:
                  natureza_pagamento=d.natureza.value, nao_e_contratacao_nova=d.nao_e_contratacao_nova,
                  credor_e_fornecedor=d.credor_e_fornecedor, natureza_fonte=d.fonte,
                  origem_exercicio=o.origem.value, exercicio_origem=o.exercicio_de_origem, origem_fonte=o.fonte,
-                 motivo_legado=q.legado(nome, credor), elemento=elemento)
+                 motivo_legado=q.legado(nome, credor), elemento=elemento,
+                 devolucao=devolucao_ob(gd, envio, q.devolvido_da_ob(numero, ug)))
 
 
 def _sql_ob_siafe(q: Consultas, where: str = "") -> str:
     # ob-qualquer-status: a E9 classifica TODA OB e grava `paga` pelo predicado canônico (a anulada é inelegível
     # por NAO_PAGA, não some — couto.D20 lê justamente as anuladas)
-    return f"SELECT {_COLS_OB}, CASE WHEN {q.paga_sql} THEN 1 ELSE 0 END FROM ob_orcamentaria_siafe {where}"
+    return (f"SELECT {_COLS_OB}, {q.cols_gd}, CASE WHEN {q.paga_sql} THEN 1 ELSE 0 END "
+            f"FROM ob_orcamentaria_siafe {where}")
 
 
 def _fatos_ob_tfe(r, q: Consultas) -> Fatos:

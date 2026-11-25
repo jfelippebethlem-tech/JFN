@@ -35,9 +35,10 @@ def _ct(**kw) -> E.Fatos:
     # transferência a município / sem contraprestação (MAPA-DE-REGIMES §1)
     (dict(natureza_pagamento="TRANSFERENCIA", nao_e_contratacao_nova=True, credor_e_fornecedor=False,
           credor_classe="PJ_SEM_CADASTRO"), "I:TRANSFERENCIA", "I:TRANSFERENCIA", "I:TRANSFERENCIA"),
-    # OS/OSC (contrato de gestão, el. 85): fora da soma, MAS fornecedor e execução de contrato (plano §4.3)
+    # OS/OSC (contrato de gestão, el. 85): fora da soma pelo REGIME PRÓPRIO (Lei 13.019 — decisão do dono 2,
+    # e9-sombra-3), MAS fornecedor e execução de contrato (plano §4.3)
     (dict(natureza_pagamento="TRANSFERENCIA", nao_e_contratacao_nova=True, credor_e_fornecedor=True,
-          credor_classe="OS_OSC"), "I:TRANSFERENCIA", "E", "E"),
+          credor_classe="OS_OSC"), "I:REGIME_PROPRIO_MROSC", "E", "E"),
     # serviço contínuo (el. 37, locação de mão de obra) e parcela de contrato
     (dict(natureza_pagamento="PARCELA_CONTRATO", nao_e_contratacao_nova=True, credor_e_fornecedor=True,
           elemento="37"), "I:SERVICO_CONTINUO", "E", "E"),
@@ -67,13 +68,15 @@ def _ct(**kw) -> E.Fatos:
 ])
 def test_vereditos_ob(kw, soma, fornecedor, execucao):
     ex = _ob(**kw).exiges()
-    assert ex == {"universo": "E", "soma_art75": soma, "fornecedor": fornecedor, "execucao": execucao}
+    # sem Guia de Devolução, o valor líquido segue a execução (decisão do dono 1 só muda a OB com GD)
+    assert ex == {"universo": "E", "soma_art75": soma, "fornecedor": fornecedor, "execucao": execucao,
+                  "valor_liquido": execucao}
 
 
 def test_tfe_sem_par_siafe_nao_vira_elegivel():
     f = _ob(unidade="ob_tfe", tem_par_siafe=False, natureza_pagamento=None)
     assert f.exiges() == {"universo": "E", "soma_art75": "?:TFE_SEM_PAR_SIAFE", "fornecedor": "?:TFE_SEM_PAR_SIAFE",
-                          "execucao": "?:TFE_SEM_PAR_SIAFE"}
+                          "execucao": "?:TFE_SEM_PAR_SIAFE", "valor_liquido": "?:TFE_SEM_PAR_SIAFE"}
     # ente público pelo cadastro decide mesmo sem o par (fonte primária do credor)
     assert _ob(unidade="ob_tfe", tem_par_siafe=False, credor_classe="ENTE_PUBLICO").exiges()["fornecedor"] == \
         "I:ENTE_PUBLICO"
@@ -107,7 +110,8 @@ def test_classe_do_credor_pela_receita_nunca_pelo_nome():
     assert E.classe_credor("296100", nat) == ("UG_PROPRIA", None, None)
     assert E.classe_credor("CG0004700", nat) == ("INSCRICAO_GENERICA", None, None)
     assert _ob(credor_classe="UG_PROPRIA", natureza_pagamento="CONTRATACAO_NOVA").exiges() == {
-        "universo": "E", "fornecedor": "I:UG_PROPRIA", "execucao": "I:UG_PROPRIA", "soma_art75": "I:UG_PROPRIA"}
+        "universo": "E", "fornecedor": "I:UG_PROPRIA", "execucao": "I:UG_PROPRIA", "soma_art75": "I:UG_PROPRIA",
+        "valor_liquido": "I:UG_PROPRIA"}
     assert _ob(credor_classe="INSCRICAO_GENERICA", natureza_pagamento="INDETERMINADO").exiges()["fornecedor"] == \
         "?:INSCRICAO_GENERICA"
 
@@ -208,8 +212,8 @@ def test_adaptador_ob_siafe_pela_cadeia_ob_nl_ne(fonte):
     por = {f.numero_ob: f for f in E.iterar("ob_siafe", q)}
     assert por["2025OB1"].natureza_pagamento == "PARCELA_CONTRATO" and por["2025OB1"].vinculo_contrato is True
     assert por["2025OB1"].exiges()["soma_art75"] == "I:PARCELA_CONTRATO"
-    assert por["2025OB2"].exiges() == {"universo": "E", "soma_art75": "I:TRANSFERENCIA", "fornecedor": "E",
-                                       "execucao": "E"}                                   # OS/OSC
+    assert por["2025OB2"].exiges() == {"universo": "E", "soma_art75": "I:REGIME_PROPRIO_MROSC", "fornecedor": "E",
+                                       "execucao": "E", "valor_liquido": "E"}             # OS/OSC
     assert por["2025OB3"].origem_exercicio == "DEA" and por["2025OB3"].exiges()["soma_art75"] == "I:DEA"
     assert por["2025OB4"].exiges()["fornecedor"] == "I:ENTE_PUBLICO"
     assert por["2025OB5"].paga is False and por["2025OB5"].exiges()["fornecedor"] == "I:NAO_PAGA"
@@ -305,7 +309,7 @@ def test_gravar_idempotente_e_visao_por_detector(pg, fonte):
                               "v_elegibilidade_detector WHERE detector = 'fracionamento_siafe' "
                               "AND unidade = 'ob_siafe'").fetchall())
     assert linhas["010100|2025OB3|2025"] == "false:DEA"
-    assert linhas["010100|2025OB2|2025"] == "false:TRANSFERENCIA"
+    assert linhas["010100|2025OB2|2025"] == "false:REGIME_PROPRIO_MROSC"    # OS/OSC (decisão do dono 2)
     assert con.execute("SELECT count(*) FROM elegibilidade_fonte").fetchone()[0] > 0
 
 

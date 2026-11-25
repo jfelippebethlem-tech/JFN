@@ -14,12 +14,17 @@ View ou Places — o que a captura gravou é o insumo; insumo ausente = INDISPON
       (`coerencia_google = 'confirma'` afasta). A imagem > 60% branca já foi rejeitada na captura (não vira classe);
       a herança por prédio (`predio_key`) já está gravada. Foto comercial/galpão é CONTRAPROVA: afasta o disparo.
 
-Regra: INDICIO = sinal-base ∧ (endereço ∨ foto adversa) ∧ ¬ contraprova. Um só sinal fica no resumo (não vira
-achado). Elegibilidade (invariante 3): o veredito `fornecedor` da E9 é do CREDOR, lido na maior OB paga do mesmo CNPJ
+Regra (decisão do dono 4, 24/11/2026 — versão 2): INDICIO = sinal-base ∧ (endereço ∨ foto adversa) ∧ ¬ contraprova,
+com **dois sinais independentes e NÃO residenciais**. Imóvel residencial não é sinal (sede no domicílio do sócio é
+lícita para empresa pequena): a foto `casa_residencial`/`predio_residencial`, o endereço cujo indício é ser
+residencial e a sede real que só se apoia em `complemento_residencial` contam como RESIDENCIAIS. Sinal-base + 2º sinal
+em que a convergência só fecha com o residencial → `INCERTO` (achado de contexto, não indício). Um só sinal fica no
+resumo (não vira achado). Elegibilidade (invariante 3): o veredito `fornecedor` da E9 é do CREDOR, lido na maior OB paga do mesmo CNPJ
 (`chave_e9`); CNPJ sem OB paga fica fora do universo (não é fornecedor pago), contado.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections import Counter
 
@@ -31,11 +36,13 @@ from compliance_agent.reporting.intel_base import reais
 
 ID = "e10.c_sede_fachada"
 UNIDADE = "ob_siafe"
-VERSAO = "e10-csede-1"
+VERSAO = "e10-csede-2"
 SEDE_SINAL = ("suspeita", "forte_suspeita")
 FOTO_ADVERSA = ("terreno_baldio", "casa_residencial", "predio_residencial", "construcao_precaria_barraco",
                 "via_sem_lote_visivel", "area_aberta_rural", "estabelecimento_fechado_abandonado")
 FOTO_CONTRA = ("comercial_industrial", "galpao_logistico")
+FOTO_RESIDENCIAL = ("casa_residencial", "predio_residencial")
+SEDE_RESIDENCIAL = "complemento_residencial"       # id do sinal de `verificacao_sede_real.sinais`
 
 
 def _tabela(con, sql: str, par: tuple = ()) -> dict | None:
@@ -98,6 +105,27 @@ def sinais(c: dict) -> dict:
     return {"sede": base, "endereco": ende, "foto": foto}
 
 
+def _ids_suspeita(sinais_json) -> list[str] | None:
+    """ids dos sinais da sede real na direção `suspeita`; None quando o campo não é lido (não se presume nada)."""
+    try:
+        lst = json.loads(sinais_json) if isinstance(sinais_json, str) else sinais_json
+    except ValueError:
+        return None
+    if not isinstance(lst, list):
+        return None
+    return [str(x.get("id")) for x in lst if isinstance(x, dict) and x.get("direcao") == "suspeita"]
+
+
+def residenciais(c: dict) -> dict:
+    """Qual sinal é RESIDENCIAL (não serve para a convergência — decisão do dono 4): foto de casa/prédio residencial,
+    endereço cujo indício cita residência, sede real cujos sinais de suspeita são só `complemento_residencial`."""
+    s, e, v = c["sede"], c["endereco"], c["foto"]
+    ids = _ids_suspeita((s or {}).get("sinais"))
+    return {"sede": bool(ids) and all(i == SEDE_RESIDENCIAL for i in ids),
+            "endereco": "residen" in str((e or {}).get("evidencia") or "").lower(),
+            "foto": ((v or {}).get("classe") or "") in FOTO_RESIDENCIAL}
+
+
 def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:
     out = []
     for c in sorted(itens, key=lambda c: c["cnpj"]):
@@ -107,6 +135,9 @@ def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:
         segundo = [k for k in ("endereco", "foto") if sg[k]]
         if not (sg["sede"] and segundo) or sg["foto"] is False:
             continue
+        res = residenciais(c)
+        nao_res = [k for k in ("sede", "endereco", "foto") if sg[k] and not res[k]]
+        estado = "INDICIO" if len(nao_res) >= 2 else "INCERTO"
         fatos = [Fato(papel=Papel.SUPORTE, tipo="sede_real", fonte="verificacao_sede_real", referencia=c["cnpj"],
                       descricao=f"sede real: {c['sede']['veredito']} (score {c['sede']['score']})",
                       dados={"sinais": c["sede"]["sinais"]})]
@@ -118,15 +149,20 @@ def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:
             fatos.append(Fato(papel=Papel.SUPORTE, tipo="foto_fachada", fonte="verificacao_sede", referencia=c["cnpj"],
                               descricao=f"classe visual {c['foto']['classe']} (Places: {c['foto']['coerencia'] or '—'})",
                               dados={"predio_key": c["foto"]["predio"], "fonte": c["foto"]["fonte"]}))
+        so_res = ("" if estado == "INDICIO" else
+                  " A convergência só fecha com sinal RESIDENCIAL (imóvel residencial não é sinal de fachada: sede no "
+                  "domicílio do sócio é lícita) — fica como contexto, sem indício.")
         out.append(Disparo(
-            chave=c["cnpj"], grupo=c["cnpj"], estado="INDICIO",
+            chave=c["cnpj"], grupo=c["cnpj"], estado=estado,
+            motivo_estado="" if estado == "INDICIO" else "2º sinal só residencial (decisão do dono 4, 24/11/2026)",
             observacao=(f"O fornecedor {c['cnpj']} (pago em {c['n_ob']} OB, {reais(c['pago'])}) tem sede real "
-                        f"{c['sede']['veredito']} e {' e '.join(segundo)} como 2º sinal registrado. Sede "
+                        f"{c['sede']['veredito']} e {' e '.join(segundo)} como 2º sinal registrado.{so_res} Sede "
                         "administrativa diversa do local de execução é a hipótese inocente; vistoria e leitura do "
                         "processo decidem. Fonte: verificacao_sede_real × endereco_verificacao × verificacao_sede."),
-            entradas={"cnpj": c["cnpj"], "sinais": sg, "sede": c["sede"], "endereco": c["endereco"], "foto": c["foto"],
-                      "e9": c.get("e9")},
-            valores={"segundo_sinal": segundo, "pago": c["pago"], "n_ob": c["n_ob"]}, evidencias=fatos))
+            entradas={"cnpj": c["cnpj"], "sinais": sg, "residenciais": res, "sede": c["sede"],
+                      "endereco": c["endereco"], "foto": c["foto"], "e9": c.get("e9")},
+            valores={"segundo_sinal": segundo, "nao_residenciais": nao_res, "pago": c["pago"], "n_ob": c["n_ob"]},
+            evidencias=fatos))
     return out
 
 
@@ -141,4 +177,6 @@ def resumo(itens: list[dict], disparos: list[Disparo]) -> dict:
     return {"fornecedores_pagos_verificados": len(itens), "por_veredito": dict(sorted(por.items())),
             "leitura_por_insumo": {k: dict(v) for k, v in lido.items()}, "um_sinal_so": so_um,
             "cobertura": round(1 - indet / len(itens), 4) if itens else None, "disparos": len(disparos),
-            "soma_disparos": round(sum(d.valores["pago"] for d in disparos), 2)}
+            "por_estado": dict(sorted(Counter(d.estado for d in disparos).items())),
+            "soma_disparos": round(sum(d.valores["pago"] for d in disparos), 2),
+            "soma_indicio": round(sum(d.valores["pago"] for d in disparos if d.estado == "INDICIO"), 2)}

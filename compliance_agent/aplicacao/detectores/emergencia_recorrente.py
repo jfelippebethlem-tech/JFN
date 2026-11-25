@@ -20,12 +20,13 @@ from decimal import Decimal
 
 from compliance_agent.aplicacao.detectores import Carga, Disparo, elegivel
 from compliance_agent.dominio.achado import Fato, Papel
+from compliance_agent.dominio.contrato_id import chave_espelho_tcerj, deduplicar
 from compliance_agent.fracionamento_emergencia import RESSALVA, agrupar_emergencias, eh_emergencial
 from compliance_agent.reporting.intel_base import reais
 
 ID = "e10.p5_emergencia_recorrente"
 UNIDADE = "compra_direta_tcerj"
-VERSAO = "e10-p5-1"
+VERSAO = "e10-p5-2"   # 2: grafias do mesmo processo no espelho reduzidas pela chave canônica (dominio.contrato_id)
 MINIMO = 5           # emergências no mesmo exercício para virar indício (o padrão do sweep)
 
 # uma linha por PROCESSO (× fornecedor: processo com dois contratados conta para cada um, como no sweep)
@@ -37,6 +38,15 @@ def _grupo(unidade, exercicio) -> str:
     return f"{unidade or '?'}|{exercicio}"
 
 
+def _dedup(linhas) -> tuple[list, dict]:
+    """Uma linha por (processo canônico, fornecedor) na unidade: a grafia `SEI-…`/`SEI…`/sem prefixo do mesmo processo
+    contava como outra emergência. Fica a de maior valor (o total do processo)."""
+    def chave(r):
+        k = chave_espelho_tcerj(r[1], r[0])
+        return None if k is None else f"{k}|{str(r[3] or '').strip().upper()}"
+    return deduplicar(linhas, chave=chave, ordem=lambda r: (-float(r[4] or 0), str(r[0])), valor=lambda r: r[4])
+
+
 def _itens(linhas) -> list[dict]:
     return [{"chave_e9": proc, "grupo": _grupo(uni, ano), "processo": proc, "unidade": uni, "exercicio": ano,
              "fornecedor": forn, "valor": float(valor or 0), "objeto": obj, "enquadramento": enq,
@@ -46,8 +56,8 @@ def _itens(linhas) -> list[dict]:
 
 def carregar(con: sqlite3.Connection, exercicio: int | None = None) -> Carga:
     filtro, par = ("WHERE ano_processo = ?", (exercicio,)) if exercicio else ("", ())
-    linhas = con.execute(_SQL.format(filtro=filtro), par).fetchall()
-    return Carga(itens=_itens(linhas))
+    linhas, dedup = _dedup(con.execute(_SQL.format(filtro=filtro), par).fetchall())
+    return Carga(itens=_itens(linhas), contexto={"dedup_espelho": dedup})
 
 
 def grupo_de(d: Disparo) -> str:
@@ -55,7 +65,8 @@ def grupo_de(d: Disparo) -> str:
 
 
 def carregar_grupo(con: sqlite3.Connection, grupo: str, exercicio: int | None = None) -> Carga:
-    return Carga(itens=[c for c in _itens(con.execute(_SQL.format(filtro=""), ()).fetchall()) if c["grupo"] == grupo])
+    linhas, _ = _dedup(con.execute(_SQL.format(filtro=""), ()).fetchall())
+    return Carga(itens=[c for c in _itens(linhas) if c["grupo"] == grupo])
 
 
 def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:

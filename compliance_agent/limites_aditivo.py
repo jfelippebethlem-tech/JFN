@@ -111,7 +111,12 @@ _RE_ACRESCIMO = re.compile(
     r"acr[ée]scim|acrescer|supress[ãa]o|suprimir|aditamento\s+de\s+valor|majora|\baporte\b|"
     r"altera[çc][ãa]o\s+quantitativ|alterac?[ãa]o\s*\(quantitativa\)|quantitativ", re.I)
 _RE_PRAZO = re.compile(
-    r"prorroga|prazo\s+de\s+vig[êe]ncia|prazo\s+contratual|dilata[çc][ãa]o\s+de\s+prazo", re.I)
+    r"prorroga|prazo\s+de\s+vig[êe]ncia|prazo\s+contratual|dilata[çc][ãa]o\s+de\s+prazo|"
+    # RENOVAÇÃO do contrato/da apólice é prorrogação da vigência (decisão do dono 3, 24/11/2026: "Renovação de Apólice
+    # de Seguros [...] por mais 12 (doze) meses", R$ 14.134,88 sobre R$ 9.550,00, era o falso estouro do X1). Só a
+    # renovação DO AJUSTE: "renovação dos serviços de suporte" e "renovação de ar" são objeto, não prazo.
+    r"renova[çc][ãa]o\s+(?:contratual|d[aoe]\s+(?:contrata[çc][ãa]o|contrato|ap[óo]lice|seguros?|vig[êe]ncia|prazo))|"
+    r"renova[çc][ãa]o\b[^.;]{0,120}?\bpor\s+mais\s+\d", re.I)
 _RE_OUTRO = re.compile(
     r"sub-?roga|retifica|rerratifica|erro\s+material|adequa[çc][ãa]o|altera[çc][ãa]o\s+da\s+"
     r"vers[ãa]o|altera[çc][ãa]o\s+de\s+cl[áa]usula|transfer[êe]ncia\s+d[ao]\s+contratante|"
