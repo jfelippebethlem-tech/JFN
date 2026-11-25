@@ -3731,14 +3731,27 @@ detectores:
       estratificada: false
       cobertura: null
     calibracao:
-      erro_grave_aberto:
-      - alerta:96896
-      - alerta:96904
-      - alerta:155748
-      - alerta:158978
+      erro_grave_aberto: null
+      erro_grave_fechado:
+      - id: alerta:96896
+        motivo: corrigido_na_origem
+        decisao: 'O4.10 (delegada, 24/11/2026): emitido antes de cb93d972 (termo em ato de outra pessoa no mesmo bloco); a versão atual (cb93d972 + eh_dever_ser de 45bdb748) não o reemite — replay só-leitura VM-2, extrato md5 d330d56576b1d68d750bb77bdf1f81a9, resultado md5 fd55c160a8c2cf4ba9ed8c0995da65a5 (0 ocorrências na evidência, na seleção do motor e em todas as publicações do CNPJ)'
+        onde: ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md §4.5
+      - id: alerta:96904
+        motivo: corrigido_na_origem
+        decisao: 'O4.10 (delegada, 24/11/2026): emitido antes de cb93d972 (multa como cláusula de extrato); a versão atual (cb93d972 + eh_dever_ser de 45bdb748) não o reemite — replay só-leitura VM-2, extrato md5 d330d56576b1d68d750bb77bdf1f81a9, resultado md5 fd55c160a8c2cf4ba9ed8c0995da65a5 (0 ocorrências na evidência, na seleção do motor e em todas as publicações do CNPJ)'
+        onde: ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md §4.5
+      - id: alerta:155748
+        motivo: corrigido_na_origem
+        decisao: 'O4.10 (delegada, 24/11/2026): emitido antes de cb93d972 (termo em resolução sem relação com a entidade); a versão atual (cb93d972 + eh_dever_ser de 45bdb748) não o reemite — replay só-leitura VM-2, extrato md5 d330d56576b1d68d750bb77bdf1f81a9, resultado md5 fd55c160a8c2cf4ba9ed8c0995da65a5 (0 ocorrências na evidência, na seleção do motor e em todas as publicações do CNPJ)'
+        onde: ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md §4.5
+      - id: alerta:158978
+        motivo: corrigido_na_origem
+        decisao: 'O4.10 (delegada, 24/11/2026): emitido antes de cb93d972 (cláusula de multa + rescisão em despacho alheio); a versão atual (cb93d972 + eh_dever_ser de 45bdb748) não o reemite — replay só-leitura VM-2, extrato md5 d330d56576b1d68d750bb77bdf1f81a9, resultado md5 fd55c160a8c2cf4ba9ed8c0995da65a5 (0 ocorrências na evidência, na seleção do motor e em todas as publicações do CNPJ)'
+        onde: ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md §4.5
     estado: ativo
     tier: 2
-    tier_motivo: n=5<30; amostra_nao_estratificada; ponto=80.0%>15%; ic95_sup=96.4%>25%; cobertura_desconhecida; erro_grave_conferido
+    tier_motivo: n=5<30; amostra_nao_estratificada; ponto=80.0%>15%; ic95_sup=96.4%>25%; cobertura_desconhecida
     fp_ic95: [0.3755, 0.9638]
     manchete_efetiva: false
   rules.ob_favorecido_multiplas_ugs:

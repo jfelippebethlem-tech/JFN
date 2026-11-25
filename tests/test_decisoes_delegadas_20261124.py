@@ -81,9 +81,11 @@ def test_doerj_dever_ser_so_na_mesma_frase():
 
 def test_doerj_registro_fora_de_manchete_com_erro_grave():
     e = Q.carregar()["rules.ob_favorecido_doerj_cruzado"]
-    assert e["manchete"] is False and len(e["calibracao"]["erro_grave_aberto"]) == 4
+    # O4.10: os 4 fechados como "corrigido na origem" (replay da versão atual); o detector fica Tier 2 até medir de novo
+    assert e["manchete"] is False and not e["calibracao"]["erro_grave_aberto"]
+    assert len(e["calibracao"]["erro_grave_fechado"]) == 4
     t = Q.avaliar_tier(e, date(2026, 11, 25))
-    assert t["tier"] == 2 and "erro_grave_conferido" in t["tier_motivo"]
+    assert t["tier"] == 2 and "erro_grave_conferido" not in t["tier_motivo"]
 
 
 # ── §3 O66-P3 ───────────────────────────────────────────────────────────────────────────────────────────────────

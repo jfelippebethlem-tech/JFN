@@ -15,7 +15,9 @@ Regras desta camada (as da régua ficam na régua):
     (🔴 primeiro, valor), não por sorteio: é `legado`.
   · ERRO GRAVE. Falso positivo conferido em item que o detector emitiu como 🔴 (severidade alta/crítica, ou `grave`
     explícito no veredito) abre `calibracao.erro_grave_aberto`: a régua tira o Tier 1 (`erro_grave_conferido`) até
-    decisão do dono. É o "rebaixa no 1º erro grave conferido".
+    decisão do dono. É o "rebaixa no 1º erro grave conferido". O grave FECHADO por decisão (O4.10: "corrigido na
+    origem", conferido por replay da versão atual) vai para `calibracao.erro_grave_fechado` e o mesmo conferido
+    antigo não o reabre; só um grave NOVO reabre.
   · MEDIDA MANUAL. Medida curada à mão (sem `origem: e13`) com n MAIOR que a do fluxo não é sobrescrita — fica, e
     o histórico registra a conta do fluxo ao lado.
   · CATRACA. Tier nunca é promovido sem n mínimo: além da régua, `calibrar_entrada` recusa Tier 1 com n < 30.
@@ -181,7 +183,9 @@ def calibrar_entrada(did: str, entrada: dict, conferidos: list[dict], *, hoje: d
              "falsos": (entrada.get("fp_medida") or {}).get("falsos")
              if isinstance(entrada.get("fp_medida"), dict) else None}
     graves_antes = set((entrada.get("calibracao") or {}).get("erro_grave_aberto") or [])
-    graves_novos = sorted(set(m["graves"]) - graves_antes)
+    fechados = {str(g.get("id")) for g in (entrada.get("calibracao") or {}).get("erro_grave_fechado") or []
+                if isinstance(g, dict)}
+    graves_novos = sorted(set(m["graves"]) - graves_antes - fechados)
     novos = len(cal) - _n_anterior(entrada)
     res = {"detector": did, "antes": antes, "conferidos": len(conferidos), "reservados_ouro": len(reservados),
            "calibracao": len(cal), "novos": novos, "medida": m, "graves_novos": graves_novos}
@@ -206,13 +210,15 @@ def calibrar_entrada(did: str, entrada: dict, conferidos: list[dict], *, hoje: d
                    "n": m["n"], "falsos": m["falsos"], "estratificada": m["estratificada"],
                    "cobertura": (fp_atual or {}).get("cobertura"),     # o E13 não mede cobertura: preserva
                    "origem": "e13"}
-    graves = sorted(graves_antes | set(m["graves"]))
+    graves = sorted((graves_antes | set(m["graves"])) - fechados)
     ultima = {"em": datetime.now().isoformat(timespec="seconds"), "quem": quem, "n_conferidos": len(cal),
               "n": m["n"], "falsos": m["falsos"], "ic95": list(m["ic95"]) if m["ic95"] else None,
               "estratificada": m["estratificada"], "revisores": m["revisores"],
               "medida_mantida": "manual" if manual else "e13"}
     hist = list((entrada.get("calibracao") or {}).get("historico") or [])
     calib = {"ultima": ultima, "erro_grave_aberto": graves or None}
+    if fechados:
+        calib["erro_grave_fechado"] = (entrada.get("calibracao") or {})["erro_grave_fechado"]
     nova = {**entrada, "fp_medida": fp_nova, "calibracao": calib}
     t = D.avaliar_tier(nova, hoje)
     if t["tier"] == 1 and (m["n"] < D.TIER1_N_MIN or not m["estratificada"]):   # catraca própria, além da régua

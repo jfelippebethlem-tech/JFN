@@ -44,6 +44,13 @@ def _ct(**kw) -> E.Fatos:
           elemento="37"), "I:SERVICO_CONTINUO", "E", "E"),
     (dict(natureza_pagamento="PARCELA_CONTRATO", nao_e_contratacao_nova=True, credor_e_fornecedor=True,
           elemento="39"), "I:PARCELA_CONTRATO", "E", "E"),
+    # D7 (O4.10): el. 37 sem vínculo conferido — INDETERMINADO; fora da soma (serviço contínuo), `?` na execução
+    (dict(natureza_pagamento="INDETERMINADO", nao_e_contratacao_nova=True, credor_e_fornecedor=True,
+          natureza_despesa="339037", elemento="37"), "I:SERVICO_CONTINUO", "E", "?:SEM_VINCULO"),
+    # D5 (O4.10): mod. 50 + el. 41/43 sem instrumento — nem fornecedor nem excluído
+    (dict(natureza_pagamento="TRANSFERENCIA", nao_e_contratacao_nova=True, credor_e_fornecedor=None,
+          credor_classe="PJ_SEM_CADASTRO", natureza_despesa="335043"), "I:TRANSFERENCIA",
+     "?:TRANSFERENCIA_INSTRUMENTO", "?:TRANSFERENCIA_INSTRUMENTO"),
     # DEA (Lei 4.320 art. 37): fora da soma do exercício
     (dict(natureza_pagamento="CONTRATACAO_NOVA", credor_e_fornecedor=True, origem_exercicio="DEA"), "I:DEA", "E",
      "I:SEM_CONTRATO"),
@@ -222,9 +229,12 @@ def test_adaptador_ob_siafe_pela_cadeia_ob_nl_ne(fonte):
     por = {f.numero_ob: f for f in E.iterar("ob_siafe", q)}
     assert por["2025OB1"].natureza_pagamento == "PARCELA_CONTRATO" and por["2025OB1"].vinculo_contrato is True
     assert por["2025OB1"].exiges()["soma_art75"] == "I:PARCELA_CONTRATO"
-    assert por["2025OB2"].exiges() == {"universo": "E", "soma_art75": "I:REGIME_PROPRIO_MROSC", "fornecedor": "E",
-                                       "execucao": "E", "valor_liquido": "E", "registro_liquido": "E",
-                                       "execucao_14133": "I:REGIME_PROPRIO_MROSC"}         # OS/OSC
+    # OSC com NE 3.3.50.41 (contribuição, sem contraprestação): D5 (O4.10) — parceria MROSC ou descentralização
+    # escolar (AAE); sem o instrumento, nem fornecedor nem excluída
+    ind = "?:TRANSFERENCIA_INSTRUMENTO"
+    assert por["2025OB2"].exiges() == {"universo": "E", "soma_art75": "I:REGIME_PROPRIO_MROSC", "fornecedor": ind,
+                                       "execucao": ind, "valor_liquido": ind, "registro_liquido": "E",
+                                       "execucao_14133": ind}
     assert por["2025OB3"].origem_exercicio == "DEA" and por["2025OB3"].exiges()["soma_art75"] == "I:DEA"
     assert por["2025OB4"].exiges()["fornecedor"] == "I:ENTE_PUBLICO"
     assert por["2025OB5"].paga is False and por["2025OB5"].exiges()["fornecedor"] == "I:NAO_PAGA"

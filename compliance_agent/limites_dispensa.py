@@ -113,6 +113,17 @@ def ato_normativo(ano: int) -> str:
 #     serviços de engenharia"; b) "R$ 50.000,00 (cinquenta mil reais), para outros serviços e compras"; art. 2º atos
 #     "durante o estado de calamidade pública reconhecido pelo Decreto Legislativo nº 6, de 20 de março de 2020".
 #   L13979.htm (md5 292ba884095f5df98bd626be465c679b), art. 4º "É dispensável a licitação [...]" sem valor → sem teto.
+#
+# O4.10 (decisões delegadas D9/D10, 24/11/2026 — ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md §D9/§D10):
+#   D9  exercício PARTIDO sem data do fato (2018: D9412 em 19/07; 2020: calamidade do DL 6 em 20/03 e MP 961 publicada
+#       em 07/05 — MPV961.htm, art. 3º "Esta Medida Provisória entra em vigor na data de sua publicação"), e ato entre
+#       20/03 e 06/05/2020 (a MP manda aplicar-se aos atos da calamidade, mas só existiu a partir de 07/05: retroação
+#       sem doutrina nem acórdão que a decida) → teto em FAIXA [menor, maior] dos tetos possíveis. O valor decide: até o
+#       menor ("até", inclusivo nas duas leis) está DENTRO sob qualquer data; acima do maior está ACIMA sob qualquer data;
+#       entre os dois é INDETERMINADO — nunca o maior por conveniência nem o menor por acusação.
+#   D10 a 14.065 (art. 1º I) fixa VALORES absolutos e não repete o "20% (vinte por cento)" do art. 24 §1º da 8.666: para
+#       consórcio público e agência executiva na calamidade o teto fica na faixa [valor da 14.065, dobro] — o dobro não
+#       é afirmado nem negado.
 
 LIMITES_PAR7: dict[int, dict] = {
     2021: {"valor": 8000.00, "ato": "Lei 14.133/2021, art. 75, §7º (texto original)"},
@@ -129,6 +140,7 @@ VIGENCIA_D9412 = date(2018, 7, 19)
 VIGENCIA_14133 = date(2021, 4, 1)
 REVOGACAO_8666 = date(2023, 12, 30)
 INICIO_CALAMIDADE_2020 = date(2020, 3, 20)
+PUBLICACAO_MP961 = date(2020, 5, 7)       # MP 961, de 06/05/2020, DOU de 07/05/2020 (edição extra); art. 3º vigência
 
 _ENTES_DOBRO_14133 = {"consorcio_publico", "agencia_executiva"}                         # art. 75 §2º
 _ENTES_20PCT_8666 = {"consorcio_publico", "agencia_executiva", "empresa_publica",
@@ -162,6 +174,42 @@ class Teto:
     motivo: str = ""
     valor_legal_padrao: float | None = None        # 13.303: o valor do art. 29 quando o conselho não alterou
     ressalvas: tuple[str, ...] = field(default_factory=tuple)
+    faixa: tuple[float, float] | None = None       # D9/D10: INDETERMINADO com os tetos possíveis (menor, maior)
+
+
+def situacao_no_teto(valor: float | None, teto: Teto) -> str:
+    """'DENTRO' · 'ACIMA' · 'INDETERMINADO' do valor diante do teto. DETERMINADO compara pela inclusividade da lei;
+    FAIXA (D9/D10) só decide quando a resposta é a mesma sob todos os tetos possíveis; o resto é INDETERMINADO."""
+    if valor is None:
+        return "INDETERMINADO"
+    v = round(float(valor), 2)
+    if teto.estado == "DETERMINADO" and teto.valor is not None:
+        dentro = v <= teto.valor if teto.inclusivo else v < teto.valor
+        return "DENTRO" if dentro else "ACIMA"
+    if teto.faixa:
+        menor, maior = teto.faixa
+        if v <= menor:          # D9/D10: todas as leis candidatas dizem "até" (8.666 art. 24, 14.065 art. 1º I)
+            return "DENTRO"
+        if v > maior:
+            return "ACIMA"
+    return "INDETERMINADO"
+
+
+def teto_para_valor(valor: float | None, teto: Teto) -> float | None:
+    """O teto que vale PARA ESTE VALOR: o DETERMINADO; na FAIXA, o menor quando o valor está dentro de todos e o
+    maior quando está acima de todos (o detector que compara `valor > teto` acerta sob qualquer data); senão None."""
+    if teto.estado == "DETERMINADO":
+        return teto.valor
+    if not teto.faixa:
+        return None
+    sit = situacao_no_teto(valor, teto)
+    return teto.faixa[0] if sit == "DENTRO" else teto.faixa[1] if sit == "ACIMA" else None
+
+
+def _faixa(lei, tipo, motivo, candidatos, ato, ressalvas=()) -> Teto:
+    vs = sorted({round(float(x), 2) for x in candidatos})
+    return Teto(None, "INDETERMINADO", lei, tipo, True, ato, motivo, ressalvas=tuple(ressalvas),
+                faixa=(vs[0], vs[-1]))
 
 
 def _indet(lei, tipo, motivo, **kw) -> Teto:
@@ -237,15 +285,35 @@ def teto_dispensa(*, lei: str | None, tipo: str = "compras", ano: int | None = N
     na_calamidade = bool(data_fato and INICIO_CALAMIDADE_2020 <= data_fato <= date(2020, 12, 31))
     if lei_n == "14065" and not (na_calamidade or (data_fato is None and a == 2020)):
         return _indet(lei_n, tipo, "14.065 declarada para ato fora da calamidade de 2020 (art. 2º)", inclusivo=True)
-    if lei_n == "14065" or na_calamidade:
+    dobra_8666 = ente in _ENTES_20PCT_8666 and not (ente == "consorcio_publico" and a < 2005)
+    pre_mp = bool(data_fato and data_fato < PUBLICACAO_MP961)
+    if (lei_n == "14065" or na_calamidade) and not pre_mp:
+        ato14065 = "Lei 14.065/2020, art. 1º, I, " + ("a" if t == "obras" else "b")
         ress = ["fim da calamidade do DL 6/2020 fora da base: aplicado até 31/12/2020"]
+        if ente in _ENTES_DOBRO_14133:          # D10: o dobro do art. 24 §1º nem afirmado nem negado
+            return _faixa("14065", tipo, "D10: a 14.065 fixa valor absoluto e não repete os 20% do art. 24 §1º da "
+                          "8.666 — consórcio/agência executiva na faixa [14.065, dobro]",
+                          (LIMITES_14065[t], LIMITES_14065[t] * 2), ato14065 + " × Lei 8.666/1993, art. 24 §1º", ress)
         if ente in _ENTES_20PCT_8666:
-            ress.append("a 14.065 não traz o dobro do art. 24 §1º — ente especial sem regra própria aqui")
-        return Teto(LIMITES_14065[t], "DETERMINADO", "14065", tipo, True,
-                    "Lei 14.065/2020, art. 1º, I, " + ("a" if t == "obras" else "b"), "", ressalvas=tuple(ress))
-    if data_fato is None and a in (2018, 2020):
-        return _indet(lei_n, tipo, f"exercício {a} partido (Decreto 9.412 em 19/07/2018; calamidade/14.065 desde "
-                      "20/03/2020): sem a data do fato o teto é INDETERMINADO", inclusivo=True)
+            ress.append("a 14.065 não traz o dobro do art. 24 §1º; estatal é regida pela 13.303 desde 01/07/2018")
+        return Teto(LIMITES_14065[t], "DETERMINADO", "14065", tipo, True, ato14065, "", ressalvas=tuple(ress))
+    base_pre = LIMITES_8666[2019][t] * (2 if dobra_8666 else 1)
+    if pre_mp and data_fato >= INICIO_CALAMIDADE_2020:      # D9: calamidade antes da MP 961 existir
+        alto = LIMITES_14065[t] * (2 if ente in _ENTES_DOBRO_14133 else 1)
+        return _faixa(lei_n, tipo, "D9: ato entre 20/03 e 06/05/2020 — calamidade do DL 6 já reconhecida, MP 961 "
+                      "só publicada em 07/05/2020 (art. 3º) e o art. 2º manda aplicá-la aos atos da calamidade: "
+                      "retroação sem fonte que a decida → faixa", (base_pre, LIMITES_14065[t], alto),
+                      "Lei 8.666/1993, art. 24 × MP 961/2020 (Lei 14.065/2020), art. 1º I e art. 2º")
+    if data_fato is None and a == 2018:                      # D9: D9412 em 19/07/2018
+        f = 2 if dobra_8666 else 1
+        return _faixa(lei_n, tipo, "D9: exercício 2018 partido (Decreto 9.412 em 19/07/2018) sem a data do fato → "
+                      "faixa dos dois tetos", (LIMITES_8666[2017][t] * f, LIMITES_8666[2019][t] * f),
+                      "Lei 8.666/1993, art. 24 (red. 9.648/1998 × Decreto 9.412/2018)")
+    if data_fato is None and a == 2020:                      # D9: calamidade desde 20/03, MP 961 desde 07/05
+        alto = LIMITES_14065[t] * (2 if ente in _ENTES_DOBRO_14133 else 1)
+        return _faixa(lei_n, tipo, "D9: exercício 2020 partido (calamidade/MP 961 — Lei 14.065) sem a data do fato → "
+                      "faixa dos tetos possíveis", (base_pre, LIMITES_14065[t], alto),
+                      "Lei 8.666/1993, art. 24 (Decreto 9.412/2018) × Lei 14.065/2020, art. 1º I")
     pos9412 = (data_fato >= VIGENCIA_D9412) if data_fato else (a >= 2019)
     base = LIMITES_8666[2019 if pos9412 else 2017][t]
     ato = ("Lei 8.666/1993, art. 24, " + ("I" if t == "obras" else "II") + " (10% do convite, "
@@ -253,7 +321,6 @@ def teto_dispensa(*, lei: str | None, tipo: str = "compras", ano: int | None = N
     if ente == "consorcio_publico" and a == 2005:
         return _indet(lei_n, tipo, "consórcio público em 2005: o §1º do art. 24 passou a incluí-lo pela Lei 11.107/2005 "
                       "(data exata da vigência não conferida)", inclusivo=True)
-    dobra = ente in _ENTES_20PCT_8666 and not (ente == "consorcio_publico" and a < 2005)
-    if dobra:
+    if dobra_8666:
         return Teto(round(base * 2, 2), "DETERMINADO", "8666", tipo, True, ato + " · art. 24 §1º (20%)")
     return Teto(base, "DETERMINADO", "8666", tipo, True, ato)

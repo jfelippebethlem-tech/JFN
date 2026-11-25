@@ -49,7 +49,9 @@ from compliance_agent.dominio.pagamento import (NaturezaPagamento as NP, OrigemE
 OURO_NATUREZA = [
     # (natureza_despesa, vinculo, nat. jurídica credor, esperado, nao_e_contratacao_nova, credor_e_fornecedor, fonte)
     ("334041", None, None, NP.TRANSFERENCIA, True, False, "MCASP: '41 Transferências a Municípios - Fundo a Fundo'"),
-    ("335043", None, "3999", NP.TRANSFERENCIA, True, True, "MCASP: '50 [...] sem Fins Lucrativos'; OS/OSC fornecedor"),
+    ("335043", None, "3999", NP.TRANSFERENCIA, True, None, "MCASP: '50 [...] sem Fins Lucrativos' + '43 Subvenções "
+                                                           "Sociais': parceria MROSC ou AAE — instrumento a confirmar (D5)"),
+    ("335039", None, "3999", NP.TRANSFERENCIA, True, True, "mod. 50 com elemento de serviço: OSC fornecedor (dono)"),
     ("339085", None, "3999", NP.TRANSFERENCIA, True, True, "MCASP: '85 - Contrato de Gestão [...] organizações sociais'"),
     ("447142", None, None, NP.TRANSFERENCIA, True, False, "MCASP: '71 Transferências a Consórcios Públicos [...] rateio'"),
     ("333081", None, None, NP.TRANSFERENCIA, True, False, "MCASP: '81 - Distribuição Constitucional ou Legal'"),
@@ -57,7 +59,9 @@ OURO_NATUREZA = [
     ("339039", True, None, NP.PARCELA_CONTRATO, True, True, "aplicação direta + vínculo (4.320 arts. 62–63)"),
     ("339039", False, None, NP.CONTRATACAO_NOVA, False, True, "aplicação direta sem contrato (MAPA §1 passo 6)"),
     ("339039", None, None, NP.INDETERMINADO, False, True, "vínculo desconhecido não vira contratação nova"),
-    ("339037", None, None, NP.PARCELA_CONTRATO, True, True, "MCASP: '37 – Locação de Mão-de-Obra [...] contrato'"),
+    ("339037", None, None, NP.INDETERMINADO, True, True, "MCASP: '37 – Locação de Mão-de-Obra [...] contrato' — o "
+                                                         "elemento não prova o contrato (D7, TCU 1181/2012-P)"),
+    ("339037", True, None, NP.PARCELA_CONTRATO, True, True, "el. 37 com vínculo conferido: parcela de contrato"),
     ("339093", None, None, NP.INDENIZACAO, True, False, "MCASP: '93 – Indenizações e Restituições'"),
     ("339091", None, None, NP.INDENIZACAO, True, False, "MCASP: '91 – Sentenças Judiciais'"),
     ("339092", None, None, NP.INDETERMINADO, True, None, "MCASP: '92 – DEA' (4.320 art. 37): nunca contratação nova"),
@@ -87,8 +91,8 @@ def test_os_osc_nao_e_excluida():
     """Plano §4.3: OS/OSC é fornecedor com regime próprio — transferência para o art. 75, mas segue fiscalizada."""
     d = natureza_pagamento(natureza_despesa="339085", natureza_juridica_credor="3999")
     assert d.natureza is NP.TRANSFERENCIA and d.credor_e_fornecedor is True and "9.637" in d.regime_proprio
-    d = natureza_pagamento(natureza_despesa="335041")
-    assert "13.019" in d.regime_proprio and d.credor_e_fornecedor is True
+    d = natureza_pagamento(natureza_despesa="335041")      # D5 (O4.10): sem o instrumento, não se sabe
+    assert "13.019" in d.regime_proprio and d.credor_e_fornecedor is None
 
 
 def test_classifica_pela_natureza_nunca_pelo_nome():

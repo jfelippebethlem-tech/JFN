@@ -63,6 +63,18 @@ def ob_paga_sql(con, alias: str = "") -> str:
 #
 # OS/OSC é FORNECEDOR com regime próprio (plano §4.3): a natureza continua TRANSFERENCIA (fora do art. 75), mas
 # `credor_e_fornecedor=True` — o credor NÃO sai dos rankings de fornecedor nem da fiscalização (meta, subcontratação).
+#
+# O4.10 (decisões delegadas de 24/11/2026; fontes e efeito em ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md):
+#   D5  modalidade 50 com elemento 41 (contribuição) ou 43 (subvenção social) — MCASP: "não representem contraprestação
+#       direta em bens ou serviços"; Lei 4.320 art. 12 §3º I — pode ser parceria MROSC (fornecedor de regime próprio,
+#       decisão do dono) OU descentralização a unidade executora escolar (Associação de Apoio à Escola: a Lei 13.019
+#       art. 3º VII tira do MROSC as transferências do PDDE/PNAE às escolas; TCU 3061/2019-P: transferência). Sem o
+#       instrumento, `credor_e_fornecedor=None` (não se sabe) — nem fornecedor, nem excluído. Contrato de gestão
+#       (elemento 85) segue fornecedor (dono).
+#   D7  elemento 37 SEM vínculo conferido → INDETERMINADO (não PARCELA_CONTRATO inferida): o elemento diz como a NE
+#       foi classificada, não que o contrato exista (TCU 1181/2012-P: despesa sem cobertura contratual). Continua fora
+#       da soma do art. 75 §1º (`nao_e_contratacao_nova=True`: locação de mão de obra é serviço contínuo — regra do dono
+#       de 23/11), e o credor continua fornecedor.
 
 
 class NaturezaPagamento(str, Enum):
@@ -103,6 +115,7 @@ _MOD_TRANSFERENCIA = {"20", "22", "30", "31", "32", "35", "36", "40", "41", "42"
 _MOD_APLICACAO_DIRETA = {"90", "91", "92", "93", "94", "95", "96"}
 _EL_TRANSFERENCIA = {"41", "42", "43", "45", "81", "85"}
 _EL_INDENIZACAO = {"91", "93", "94"}
+_EL_SEM_CONTRAPRESTACAO_OSC = {"41", "43"}     # D5: contribuição / subvenção social a entidade sem fins lucrativos
 _EL_FOLHA_BENEFICIO = {"01", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16",
                        "17", "18", "19", "46", "48", "49"}
 _FONTE_MCASP = "MCASP 11ª ed., Parte I (modalidades de aplicação e elementos de despesa)"
@@ -143,6 +156,13 @@ def natureza_pagamento(*, natureza_despesa: str | None, vinculo_contrato: bool |
     if g == "1" or (e in _EL_FOLHA_BENEFICIO and m in _MOD_APLICACAO_DIRETA):
         return DecisaoPagamento(NaturezaPagamento.FOLHA_BENEFICIO, f"{_FONTE_MCASP}: grupo {g} / elemento {e} "
                                 "(pessoal, encargos, benefício a pessoa física)", True, False)
+    if m == "50" and e in _EL_SEM_CONTRAPRESTACAO_OSC:     # D5 (O4.10)
+        return DecisaoPagamento(NaturezaPagamento.TRANSFERENCIA, f"{_FONTE_MCASP}: modalidade 50 / elemento {e} — "
+                                "contribuição/subvenção a entidade sem fins lucrativos, sem contraprestação direta "
+                                "(Lei 4.320 art. 12 §3º I); fora do art. 75", True, None,
+                                reg or "entidade sem fins lucrativos — instrumento a confirmar",
+                                ("D5: parceria MROSC (fornecedor de regime próprio) ou descentralização a unidade "
+                                 "executora escolar (AAE; Lei 13.019 art. 3º VII) — sem o instrumento, não se sabe",))
     if m in _MOD_TRANSFERENCIA or e in _EL_TRANSFERENCIA:
         return DecisaoPagamento(NaturezaPagamento.TRANSFERENCIA, f"{_FONTE_MCASP}: modalidade {m} / elemento {e} — "
                                 "transferência sem contraprestação direta; fora do art. 75 (MAPA-DE-REGIMES §1, "
@@ -172,11 +192,12 @@ def natureza_pagamento(*, natureza_despesa: str | None, vinculo_contrato: bool |
             return DecisaoPagamento(NaturezaPagamento.PARCELA_CONTRATO, f"{_FONTE_MCASP}: aplicação direta "
                                     f"(modalidade {m}) com vínculo a contrato/ata (Lei 4.320 arts. 62–63)", True,
                                     True, reg)
-        if e == "37" and vinculo_contrato is None:
-            return DecisaoPagamento(NaturezaPagamento.PARCELA_CONTRATO, f"{_FONTE_MCASP}: elemento 37 (locação de "
-                                    "mão-de-obra: 'o contrato especifique o quantitativo físico do pessoal') — "
-                                    "pagamento de serviço contínuo", True, True, reg,
-                                    ("vínculo ao contrato inferido do elemento, não conferido",))
+        if e == "37" and vinculo_contrato is None:             # D7 (O4.10)
+            return DecisaoPagamento(NaturezaPagamento.INDETERMINADO, f"{_FONTE_MCASP}: elemento 37 (locação de "
+                                    "mão-de-obra: 'o contrato especifique o quantitativo físico do pessoal') sem "
+                                    "vínculo conferido — o elemento não prova o contrato (D7)", True, True, reg,
+                                    ("serviço contínuo pelo elemento: fora da soma do art. 75 §1º",
+                                     "vínculo ao contrato não conferido: parcela ou execução sem contrato"))
         if vinculo_contrato is False:
             return DecisaoPagamento(NaturezaPagamento.CONTRATACAO_NOVA, f"{_FONTE_MCASP}: aplicação direta "
                                     f"(modalidade {m}) sem contrato vigente que a lastreie (MAPA-DE-REGIMES §1, "

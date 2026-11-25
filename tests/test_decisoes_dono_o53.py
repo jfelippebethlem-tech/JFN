@@ -34,7 +34,7 @@ def _ob(**kw) -> E.Fatos:
 
 
 def test_versao_da_e9_subiu_com_a_regra():
-    assert E.VERSAO == "e9-sombra-4" and "valor_liquido" in E.EXIGES_OB    # 4: decisões delegadas de 24/11
+    assert E.VERSAO == "e9-sombra-5" and "valor_liquido" in E.EXIGES_OB    # 5: O4.10 (D5, D7, D9)
 
 
 # ── 1. devolução sem valor apurado ──────────────────────────────────────────────────────────────────────────────

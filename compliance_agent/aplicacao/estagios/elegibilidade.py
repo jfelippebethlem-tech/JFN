@@ -57,11 +57,11 @@ from compliance_agent.dominio.pagamento import (NaturezaPagamento, OrigemExercic
 from compliance_agent.dominio.regime import Regime, lei_declarada, regime_contrato
 from compliance_agent.entidades_gov import eh_administracao_publica
 from compliance_agent.fluxo.fila import Resultado
-from compliance_agent.limites_dispensa import teto_dispensa
+from compliance_agent.limites_dispensa import situacao_no_teto, teto_dispensa, teto_para_valor
 from compliance_agent.pericia_contabil import situacao_devolucao
 from compliance_agent.siafe_gd import devolvido_por_ob
 
-VERSAO = "e9-sombra-4"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
+VERSAO = "e9-sombra-5"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
 # 3 (decisões do dono, 24/11/2026 noite — o53-paridade-fatia2.md): OB com GD sem valor apurado =
 #   `?:DEVOLUCAO_NAO_APURADA` nas exigências que dependem do valor LÍQUIDO (`valor_liquido`, nova, e `soma_art75`);
 #   OS/OSC (natureza 3xxx) = fornecedor com regime próprio, `I:REGIME_PROPRIO_MROSC` em `soma_art75` e
@@ -72,6 +72,11 @@ VERSAO = "e9-sombra-4"   # 2: credor = código de UG (UG_PROPRIA) e inscrição 
 #   tributo, transferência, indenização), senão `?` (art. 141 da 14.133 não exclui contratado público); E9-5 —
 #   ordem cronológica (14.133 art. 141) exige `execucao_14133` (OS/OSC fora: Lei 13.019 art. 84 / Lei 9.637);
 #   D11 — a declaração da 13.303 por ≥ 50% das diretas da unidade é só indício: não decide regime nem teto
+# 5 (O4.10, decisões delegadas — ~/vault/refatoracao/RELATORIO-JURIDICO-UNICO-20261124.md): D5 — transferência
+#   a entidade sem fins lucrativos sem instrumento conhecido (mod. 50 + el. 41/43) é `?:TRANSFERENCIA_INSTRUMENTO`
+#   em `fornecedor`/`execucao`; D7 — el. 37 sem vínculo é INDETERMINADO (`?` em `execucao`), mas segue
+#   `I:SERVICO_CONTINUO` na `soma_art75`; D9/D10 — teto em faixa: o valor decide quando a resposta é a mesma
+#   sob todos os tetos possíveis
 RAIZ = Path(__file__).resolve().parents[3]
 SQL_SCHEMA = RAIZ / "deploy" / "vm2" / "postgres" / "dominio_001.sql"
 REGISTRO_DETECTORES = RAIZ / "config" / "qualidade_detectores.yaml"
@@ -356,6 +361,8 @@ def _ob_fornecedor(f: Fatos) -> str:
         return "I:TRIBUTO_DIVIDA"
     if nat == NaturezaPagamento.TRANSFERENCIA.value and f.credor_e_fornecedor is False:
         return "I:TRANSFERENCIA"
+    if nat == NaturezaPagamento.TRANSFERENCIA.value and f.credor_e_fornecedor is None:
+        return "?:TRANSFERENCIA_INSTRUMENTO"     # D5 (O4.10): parceria MROSC ou descentralização escolar (AAE)
     if f.credor_e_fornecedor or _privado(f):
         return "E"
     if f.credor_classe == "PF":
@@ -392,6 +399,8 @@ def _ob_execucao(f: Fatos) -> str:
     if nat == NaturezaPagamento.INDENIZACAO.value:
         return "I:INDENIZACAO"
     if nat == NaturezaPagamento.TRANSFERENCIA.value:
+        if f.credor_e_fornecedor is None:
+            return "?:TRANSFERENCIA_INSTRUMENTO"                          # D5 (O4.10)
         return "E" if f.credor_e_fornecedor else "I:TRANSFERENCIA"      # contrato de gestão (OS/OSC) é contrato
     if nat == NaturezaPagamento.PARCELA_CONTRATO.value:
         return "E"
@@ -424,6 +433,8 @@ def _ob_soma_art75(f: Fatos) -> str:
         return "I:INDENIZACAO"
     if nat == NaturezaPagamento.PARCELA_CONTRATO.value:
         return "I:SERVICO_CONTINUO" if f.elemento == "37" else "I:PARCELA_CONTRATO"
+    if f.elemento == "37" and nat == NaturezaPagamento.INDETERMINADO.value and f.nao_e_contratacao_nova:
+        return "I:SERVICO_CONTINUO"      # D7 (O4.10): sem vínculo conferido, mas locação de mão de obra é contínua
     if nat == NaturezaPagamento.CONTRATACAO_NOVA.value:
         return "?:DEVOLUCAO_NAO_APURADA" if f.devolucao == "nao_apurada" else "E"
     return _sem_natureza(f)
@@ -696,12 +707,20 @@ def _regime(q: Consultas, unidade_txt, lei_txt, d_ass, dispensa) -> tuple[str, s
     return dec.regime.value, fonte, False
 
 
-def _teto(regime: str, inciso: str | None, ano, d_fato, estatal: bool) -> tuple[float | None, str]:
+def _teto(regime: str, inciso: str | None, ano, d_fato, estatal: bool,
+          valor: float | None = None) -> tuple[float | None, str]:
+    """Teto do ato. Na FAIXA (D9/D10, O4.10: exercício partido sem data do fato; 14.065 × dobro) o VALOR decide:
+    dentro de todos os tetos possíveis → o menor; acima de todos → o maior; entre eles → None (INDETERMINADO)."""
     if not inciso or regime in (Regime.INDETERMINADO.value, Regime.OUTRO.value):
         return None, ""
     t = teto_dispensa(lei=regime, tipo="obras" if inciso == "I" else "compras", ano=int(ano) if ano else None,
                       data_fato=d_fato, ente="estatal" if estatal else None)
-    return t.valor, (t.ato + (" — " + t.motivo if t.motivo else "")).strip(" —")
+    fonte = (t.ato + (" — " + t.motivo if t.motivo else "")).strip(" —")
+    if t.faixa:
+        sit = situacao_no_teto(valor, t)
+        fonte += (f" [faixa {t.faixa[0]:.2f}–{t.faixa[1]:.2f}: {sit}]")
+        return teto_para_valor(valor, t), fonte
+    return t.valor, fonte
 
 
 def _fatos_contrato(unidade, chave, *, q, orgao, lei_txt, ano, d_ass, valor, doc, numero=None) -> Fatos:
@@ -709,7 +728,8 @@ def _fatos_contrato(unidade, chave, *, q, orgao, lei_txt, ano, d_ass, valor, doc
     inc = None if sem_lei else inciso_dispensa_valor(lei_txt)
     dispensa = None if sem_lei else inc is not None
     regime, rfonte, est = _regime(q, orgao, lei_txt, d_ass, True if dispensa else None)
-    teto, tfonte = _teto(regime, inc, ano or (d_ass.year if d_ass else None), d_ass, est)
+    teto, tfonte = _teto(regime, inc, ano or (d_ass.year if d_ass else None), d_ass, est,
+                         round(float(valor), 2) if valor not in (None, "") else None)
     classe, raiz, nj = classe_credor(doc, q.natureza)
     cid = contrato_id(orgao, numero, int(ano) if ano else None) if numero else None
     return Fatos(unidade=unidade, chave=chave, exercicio=int(ano) if ano else (d_ass.year if d_ass else None),
