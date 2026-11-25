@@ -145,7 +145,8 @@ def pg():
         def veredito(chave, v):
             con.execute(f'INSERT INTO "{e9}".elegibilidade (unidade, chave, exiges, versao, entrada_hash) '
                         "VALUES ('ob_siafe', %s, %s::jsonb, %s, 'h') ON CONFLICT (unidade, chave) DO UPDATE "
-                        "SET exiges = EXCLUDED.exiges", (chave, '{"execucao": "%s"}' % v, E9.VERSAO))
+                        "SET exiges = EXCLUDED.exiges", (chave, '{"execucao": "%s", "universo": "%s"}' % (v, v), E9.VERSAO))
+        # (E9-9, 24/11: o C-OB<NL lê `universo`; o veredito sintético vai nas duas para o teste de mecânica)
         veredito("010100|2025OB1|2025", "E")
         veredito("010100|2025OB2|2025", "?:SEM_NE")      # anterior à NL também, mas indeterminada na E9
         yield con, e9, e10, veredito

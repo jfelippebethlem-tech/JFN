@@ -34,6 +34,11 @@ import unicodedata
 
 LIMIAR = 0.35      # cosseno TF-IDF a partir do qual dois objetos são "o mesmo" (calibrado
                    # em dado real: mesmo objeto fica bem acima; objeto distinto cai para ~0)
+# Decisão delegada 24/11/2026 (~/vault/refatoracao/decisoes-delegadas-20261124.md §4): 0,35 MANTIDO. Nos 80 pares do
+# ouro O4.8 rotulados um a um (mesmo ramo, art. 75 §1º II): 0,35 → precisão 13/13, recall 32,5%; 0,25 → 21/21, 52,5%.
+# Mas no CLUSTER (union-find, transitivo) o 0,25 criou 10 agrupamentos novos no espelho TCE-RJ e ~8 eram pontes
+# espúrias (seguro + congresso + letreiro + autoclave na UERJ 2023; ultrassom + exposição; filtro × teste de vapor).
+# A lei soma o RAMO, não o texto: o caminho é ramo como chave + texto sem ligação transitiva (O4.11), não baixar.
 _MIN_TOKEN = 3
 
 # Ruído do vocabulário licitatório: aparece em quase toda contratação e não discrimina objeto.

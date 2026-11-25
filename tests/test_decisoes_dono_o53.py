@@ -34,7 +34,7 @@ def _ob(**kw) -> E.Fatos:
 
 
 def test_versao_da_e9_subiu_com_a_regra():
-    assert E.VERSAO == "e9-sombra-3" and "valor_liquido" in E.EXIGES_OB
+    assert E.VERSAO == "e9-sombra-4" and "valor_liquido" in E.EXIGES_OB    # 4: decisões delegadas de 24/11
 
 
 # ── 1. devolução sem valor apurado ──────────────────────────────────────────────────────────────────────────────
@@ -55,8 +55,9 @@ def test_d1_negativo_sem_gd_ou_apurada_segue_elegivel():
 
 
 def test_d1_ob_paga_acima_le_valor_liquido_e_abate_a_guia_apurada():
-    assert E.exiges_do_detector("e10.ob_paga_acima_liquidado") == {"ob_siafe": "valor_liquido"}
-    assert E.exiges_do_detector("e10.ob_antes_da_liquidacao") == {"ob_siafe": "execucao"}
+    # E9-9 (decisão delegada 24/11): todo credor, pelo valor líquido — a GD não apurada continua '?' (decisão 1)
+    assert E.exiges_do_detector("e10.ob_paga_acima_liquidado") == {"ob_siafe": "registro_liquido"}
+    assert E.exiges_do_detector("e10.ob_antes_da_liquidacao") == {"ob_siafe": "universo"}
 
     def it(ob, valor, dev):
         return {"chave_e9": ob, "grupo": "NL1|010100", "numero_ob": ob, "ug": "010100", "exercicio": 2025,
