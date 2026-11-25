@@ -96,11 +96,12 @@ def test_paridade_pesado_sh_vira_slot_cpu_pesado():
 # os 14 vigias do plano (§3.2 E18: ronda, painel_vigia, guardiao, keepalive, handoff-watcher, vm_guard,
 # automelhoria_geral, pipelines_slo + os do inventário O1.1) → rotina E18 do yaml, ou `fora` com o motivo
 VIGIAS = {"ronda": "ronda", "keepalive": "keepalive", "handoff_watcher": "handoff_watcher",
-          "vm_guard": "vm_guard_navegador", "guardiao_db_malformed": "guardiao_db_malformed",
+          "vm_guard": "vm_guard_navegador", "guardiao_db_malformed": "remediar_painel_shm",   # O8.1: sensor + remédio
           "automelhoria_geral": "automelhoria_geral", "pipelines_slo": "pipelines_slo",
           "sentinela_integridade": "sentinela_integridade", "yoda_autoauditoria": "yoda_autoauditoria",
-          "claude_motor_canario": "claude_motor_canario", "ritmo_assinatura": "ritmo_assinatura"}
-VIGIAS_FORA = {"painel_vigia": "vm1-cron-painel-vigia-sh", "itcampo_vigia": "vm1-cron-tools-itcampo-vigia"}
+          "claude_motor_canario": "claude_motor_canario", "ritmo_assinatura": "ritmo_assinatura",
+          "painel_vigia": "remediar_painel_travado"}                     # O8.1 (dono 24/11): saiu do `fora`
+VIGIAS_FORA = {"itcampo_vigia": "vm1-cron-tools-itcampo-vigia"}
 VIGIAS_JA_DESLIGADOS = {"guardiao_failover"}        # comentado no crontab antes da parada (inventário O1.1)
 
 
