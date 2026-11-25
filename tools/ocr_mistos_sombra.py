@@ -285,6 +285,7 @@ def rodar(d: Path, modo: str, fatia: str, limite: int | None, dinamico: bool = F
 
 # ── governador ─────────────────────────────────────────────────────────────────────────────────────────────────
 _PS = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+_WSL = "/mnt/c/Windows/System32/wsl.exe"
 
 
 def _host() -> tuple[float, float]:
@@ -303,7 +304,7 @@ def governar(d: Path, maximo: int, teto_cpu: float, piso_gb: float, janela: int,
     (o documento em curso termina); folga (CPU < teto − 10 e RAM ≥ piso) durante `janela` s ⇒ um a mais, até `maximo`.
     Começa com `maximo`."""
     perm = maximo
-    ruim = bom = 0.0
+    ruim = bom = limpou = 0.0
     log = d / "governo.log"
     while True:
         t = time.monotonic()
@@ -312,6 +313,11 @@ def governar(d: Path, maximo: int, teto_cpu: float, piso_gb: float, janela: int,
         except (subprocess.SubprocessError, ValueError, OSError) as e:
             cpu, gb = 100.0, 0.0                                  # sem medida = conta como sem folga
             print(f"medida falhou: {e}", flush=True)
+        if gb < piso_gb and time.monotonic() - limpou > janela:
+            # o cache de página do WSL (PDFs lidos) fica preso no vmmem do Windows: devolvê-lo antes de cortar processo
+            subprocess.run([_WSL, "-d", "Ubuntu", "-u", "root", "--", "sh", "-c", "echo 1 > /proc/sys/vm/drop_caches"],
+                           capture_output=True, timeout=60, check=False)
+            limpou = time.monotonic()
         excesso = cpu > teto_cpu or gb < piso_gb
         folga = cpu < teto_cpu - 10 and gb >= piso_gb
         dt = max(float(passo), time.monotonic() - t)              # tempo REAL da volta (a medida demora)
