@@ -25,7 +25,10 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 MIG = RAIZ / "data" / "hd_migracao"
 HD = "D:/JFN-Frio"
-PARES = {"sei_pdfs": "sei/pdfs_escaneados", "sei_cache": "sei/integras_cache"}
+PARES = {"sei_pdfs": "sei/pdfs_escaneados", "sei_cache": "sei/integras_cache",
+         # O0.2 (24/11/2026): o resto do arquivo frio da VM-2 (re-obtível; quarentena/substituídos de tools/vm2_conferencia)
+         "sei_fotos": "sei/fotos", "sei_arquivo_substituido": "sei/arquivo_substituido",
+         "vm2_quarentena": "vm2/quarentena", "vm2_substituidos": "vm2/substituidos"}
 RCLONE = str(Path.home() / ".local" / "bin" / "rclone")
 DESTINO = (":sftp,host=100.75.118.110,user=iterj,key_file=/home/ubuntu/.ssh/id_itcampo,shell_type=powershell,"
            "known_hosts_file=/home/ubuntu/.ssh/known_hosts:")
@@ -51,7 +54,8 @@ def _gb(n: int) -> str:
 def leiame(linhas: list[dict], em: str) -> str:
     por: dict[str, list[int]] = {}
     for ln in linhas:
-        pasta = ln["caminho_hd"][len(HD) + 1:].split("/integra_")[0]
+        rel_hd = ln["caminho_hd"][len(HD) + 1:]
+        pasta = next((d for d in PARES.values() if rel_hd.startswith(d + "/")), rel_hd.split("/integra_")[0])
         q = por.setdefault(pasta, [0, 0, 0])
         q[0] += 1
         q[1] += ln["bytes"]
@@ -104,6 +108,19 @@ def _fila_ocr(rels: list[str] | None = None) -> set[str]:
         d = mans[tag].get(str(int(arq[:3])))
         if d is not None and int(d.get("chars") or 0) < 40:
             out.add(rel)
+    # O0.2 (24/11/2026): também o Tesseract ainda não relido pelo Surya (mesma regra da fila da GPU, sem a exclusão
+    # da reserva) e o que a reserva da VM-2 tem reservado/entregue — PDF que o OCR ainda vai ler não sai da VM-2.
+    if rels:
+        from tools import sei_ocr_gpu_fila as fila_gpu
+        from tools.sei_ocr_reserva import reservados_pela_reserva
+        aplicados = set()
+        if fila_gpu.LEDGER.exists():
+            for ln in fila_gpu.LEDGER.read_text(encoding="utf-8").splitlines():
+                if ln.strip():
+                    e = json.loads(ln)
+                    if e.get("motor", "surya") != "reserva":
+                        aplicados.add((e["tag"], int(e["i"])))
+        out |= set(fila_gpu.montar(set(rels), aplicados, set(), set())) | reservados_pela_reserva()
     return out
 
 
@@ -118,11 +135,23 @@ def main(argv: list[str] | None = None) -> int:
         if not (lista_f.is_file() and check_f.is_file()):
             print(f"{src}: migração ainda sem lista/conferência — nada a indexar", file=sys.stderr)
             continue
+        idx_f = MIG / f"indice_{src}.jsonl"
+        if idx_f.is_file() and idx_f.stat().st_mtime >= max(lista_f.stat().st_mtime, check_f.stat().st_mtime):
+            # rodada sem lista/conferência nova: o índice dela é histórico (o que saiu, saiu) — não se recalcula
+            todas += [json.loads(t) for t in idx_f.read_text().splitlines() if t.strip()]
+            print(f"{src}: sem rodada nova — índice mantido")
+            continue
         lista = json.loads(lista_f.read_text())
-        fila = _fila_ocr([x["Path"] for x in lista])
+        fila = _fila_ocr([x["Path"] for x in lista]) if src in ("sei_pdfs", "sei_cache") else set()
         linhas = montar(src, dst, lista, check_f.read_text(), fila, em)
+        # Merge (O0.2, 24/11/2026): a lista nova só vê o que AINDA está na VM-2; o que rodadas anteriores já tiraram
+        # de lá continua no HD e no índice (sem isto, cada rodada apagaria do índice as anteriores).
+        novos = {x["origem_rel"] for x in linhas}
+        if idx_f.is_file():
+            linhas = [x for x in (json.loads(t) for t in idx_f.read_text().splitlines() if t.strip())
+                      if x["origem_rel"] not in novos] + linhas
         (MIG / f"indice_{src}.jsonl").write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in linhas))
-        sai = [x["origem_rel"] for x in linhas if x["sai_da_vm2"]]
+        sai = [x["origem_rel"] for x in linhas if x["sai_da_vm2"] and x["origem_rel"] in novos]
         (MIG / f"sai_da_vm2_{src}.txt").write_text("".join(f"{r}\n" for r in sai))
         print(f"{src}: {len(linhas)} arquivos, {sum(x['conferido'] for x in linhas)} conferidos, "
               f"{sum(x['pendente_ocr'] for x in linhas)} pendentes de OCR, {len(sai)} podem sair da VM-2")

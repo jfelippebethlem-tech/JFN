@@ -50,6 +50,13 @@ trap limpar EXIT
 # ── 1. o commit, pelo espelho (um fetch por vez no nó) ─────────────────────────────────────────────────────────────
 (
   flock -w 900 8 || { echo "PORTAO_INFRA espelho ocupado por 900 s"; exit 90; }
+  # 25/11/2026: cada fetch --depth=1 traz um retrato inteiro (~200 MB) que nunca saía — 49 packs = 9,2 GB na VM-2.
+  # Dentro da trava, antes do fetch: apaga packs com mais de 6 h (nenhuma rodada passa de 40 min; os worktrees de
+  # rodadas em curso usam packs recentes). O worktree que restar de rodada velha é podado junto.
+  find "$M/objects/pack" -maxdepth 1 -name 'pack-*.pack' -mmin +360 2>/dev/null | while read -r pk; do
+    rm -f "${pk%.pack}".{pack,idx,rev,keep,bitmap,promisor} 2>/dev/null
+  done
+  git --git-dir="$M" worktree prune 2>/dev/null
   if ! git --git-dir="$M" cat-file -e "$SHA^{commit}" 2>/dev/null; then
     timeout 900 git --git-dir="$M" fetch -q --depth=1 "$ORIGEM" "$REF" >/tmp/portao-fetch-$RUN.log 2>&1 \
       || { echo "PORTAO_INFRA fetch de $SHA falhou: $(tail -2 /tmp/portao-fetch-$RUN.log | tr '\n' ' ')"; exit 90; }
