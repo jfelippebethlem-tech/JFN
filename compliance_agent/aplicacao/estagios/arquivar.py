@@ -16,7 +16,9 @@ TRAVAS, na ordem (cada uma testada):
   3. GUARDAR pela porta única (`Destino.guardar`, classe `sei_pdf` = re-obtível, 1 cópia no Drive);
   4. APAGAR SÓ DEPOIS DO HASH: a cópia conferida no índice (`Destino.conferir`: unidade com o md5 local e todas as
      vagas da política com cópia `ok`) E o md5 do arquivo RELIDO imediatamente antes de apagar = o mesmo. Qualquer
-     um falhando ⇒ o arquivo fica e o efeito falha. `apagar=False` ⇒ só guarda.
+     um falhando ⇒ o arquivo fica e o efeito falha. `apagar=False` ⇒ só guarda. ORDEM: `arquivamento` apagado=false
+     → unlink → `registrar_apagado` → UPDATE apagado=true; a retomada termina o apagado=false cujo arquivo já sumiu
+     (só com a cópia conferida pela porta única).
 Sem destino (rede, cota do grátis): erro transitório ⇒ fica quente na VM-2 até a nuvem voltar (§3.2 "sem o it-campo").
 O ÍNDICE do HD externo (`tools/hd_indice --publicar`, com o 00-LEIAME, regra do dono de 23/11) é o passo `indice`
 da rotina, depois do lote: a porta única já indexa cada arquivo no `data/armazenamento_indice.db`.
@@ -162,6 +164,11 @@ def registro(con, processo: str, doc_id: str, sha: str, destino: str) -> dict | 
     return None if r is None else dict(zip(("md5", "bytes", "chave", "copias", "origem", "apagado"), r))
 
 
+def _marcar_apagado(con, processo: str, doc_id: str, sha: str, destino: str) -> None:
+    con.execute("UPDATE arquivamento SET apagado = true, em = now() WHERE processo = %s AND doc_id = %s AND "
+                "sha256 = %s AND destino = %s", (processo, doc_id, sha, destino))
+
+
 def _handler(payload: dict, ctx: Contexto) -> Resultado:
     processo, doc_id, sha = T.alvo_do(payload, ctx)
     raiz = Path(payload["raiz_texto"]) if payload.get("raiz_texto") else None
@@ -173,6 +180,13 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         sha = sha or (T.sha256_arquivo(pdf) if pdf is not None else "")     # item legado: o arquivo achado
         ja = registro(con, processo, doc_id, sha, destino.nome) if sha else None
         if pdf is None:
+            if ja and not ja["apagado"]:                     # retomada: caiu entre o unlink e o UPDATE (1.4)
+                if not destino.conferir(ja["chave"], ja["md5"]):
+                    raise RuntimeError(f"{processo} {doc_id}: original {sha[:12]} sumiu do disco e a cópia "
+                                       f"{ja['chave']} não confere na porta única — arquivamento fica apagado=false")
+                destino.registrar_apagado(ja["chave"], Path(ja["origem"]))
+                _marcar_apagado(con, processo, doc_id, sha, destino.nome)
+                ja["apagado"] = True
             if ja and ja["apagado"]:                         # idempotente: já saiu com cópia conferida
                 ef = {"processo": processo, "doc_id": doc_id, "sha256": sha, "destino": destino.nome, **ja,
                       "ja_arquivado": True, "liberado_bytes": 0, "versao": VERSAO}
@@ -187,11 +201,7 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         g = destino.guardar(pdf)
         conferido = g.get("md5") == md5 and destino.conferir(g["chave"], md5)
         apagado = False
-        if apagar and conferido and md5_arquivo(pdf) == md5:             # relido IMEDIATAMENTE antes de apagar
-            pdf.unlink()
-            destino.registrar_apagado(g["chave"], pdf)
-            apagado = True
-        if conferido:
+        if conferido:                       # o registro (apagado=false) vem ANTES do unlink: INSERT que falha ⇒ fica
             with con.transaction():
                 con.execute("INSERT INTO arquivamento(processo, doc_id, sha256, md5, bytes, destino, chave, copias, "
                             "origem, apagado, job_chave, ficha) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
@@ -199,7 +209,12 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
                             "excluded.copias, apagado = arquivamento.apagado OR excluded.apagado, job_chave = "
                             "excluded.job_chave, ficha = excluded.ficha, em = now()",
                             (processo, doc_id, sha, md5, nbytes, destino.nome, g["chave"],
-                             json.dumps(g.get("copias") or {}), str(pdf), apagado, ctx.chave, ctx.ficha))
+                             json.dumps(g.get("copias") or {}), str(pdf), False, ctx.chave, ctx.ficha))
+            if apagar and md5_arquivo(pdf) == md5:                       # relido IMEDIATAMENTE antes de apagar
+                pdf.unlink()
+                destino.registrar_apagado(g["chave"], pdf)
+                _marcar_apagado(con, processo, doc_id, sha, destino.nome)
+                apagado = True
     finally:
         con.close()
     ef = {"processo": processo, "doc_id": doc_id, "sha256": sha, "destino": destino.nome, "md5": md5, "bytes": nbytes,

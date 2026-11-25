@@ -325,3 +325,34 @@ def test_fonte_sem_campo_processo_declara_indisponivel(pg, fonte):
         "ob_siafe: a fonte não tem o campo processo": 1}
     assert not [e for e in res.eventos if e["tipo"] == "achado_processo"]
     assert D.ESTAGIO.efeito(payload, _ctx(did), res) is True
+
+
+# ── revisão de falhas caladas 1.11: 0 achado SEM ENTRADA não é "feito" (0 execuções não é 0 erros) ──────────────
+@precisa_pg
+def test_fonte_vazia_reprova_o_efeito_com_motivo(pg, tmp_path):
+    con, e9, e10, veredito = pg
+    p = tmp_path / "vazia.db"
+    c = sqlite3.connect(p)
+    c.executescript(_DDL.split("INSERT")[0])                            # só as tabelas, nenhuma linha
+    c.commit()
+    c.close()
+    did = "e10.ob_antes_da_liquidacao"
+    payload = {"detector": did, "fonte": str(p), "dsn": DSN, "esquema": e10, "esquema_e9": e9}
+    res = D.ESTAGIO.handler(payload, _ctx(did))
+    assert res.efeito["achados"] == 0 and res.efeito["resumo"]["itens"] == 0
+    assert res.efeito["resumo"]["entrada"]["estado"] == "INDISPONIVEL"
+    assert D.ESTAGIO.efeito(payload, _ctx(did), res) is False
+    assert res.efeito["conferencia"]["entrada"]["estado"] == "INDISPONIVEL"
+    assert "nenhum item" in res.efeito["conferencia"]["entrada"]["motivo"]
+
+
+@precisa_pg
+def test_e9_sem_linha_para_nenhum_item_reprova_o_efeito(pg, fonte):
+    con, e9, e10, veredito = pg
+    con.execute(f'DELETE FROM "{e9}".elegibilidade')
+    did = "e10.ob_antes_da_liquidacao"
+    payload = {"detector": did, "fonte": str(fonte), "dsn": DSN, "esquema": e10, "esquema_e9": e9}
+    res = D.ESTAGIO.handler(payload, _ctx(did))
+    assert res.efeito["achados"] == 0 and res.efeito["resumo"]["itens"] == res.efeito["resumo"]["itens_sem_linha_e9"]
+    assert D.ESTAGIO.efeito(payload, _ctx(did), res) is False
+    assert "E9" in res.efeito["conferencia"]["entrada"]["motivo"]

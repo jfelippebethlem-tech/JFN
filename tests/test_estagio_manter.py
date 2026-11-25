@@ -72,3 +72,19 @@ def test_real_wal_checkpoint_em_banco_temporario(db, monkeypatch):
     payload = {"rotina": "wal_checkpoint", "db": str(db), "simular": False}
     res = M.ESTAGIO.handler(payload, _ctx("wal_checkpoint"))
     assert res.efeito["executado"] and M.ESTAGIO.efeito(payload, _ctx("wal_checkpoint"), res) is True
+
+
+@pytest.mark.parametrize("retorno", [{}, None, {"db_antes": 0, "db_depois": 0}])
+def test_vacuum_real_sem_medida_nao_e_conferido(db, retorno):
+    """Revisão de falhas caladas S5: retorno vazio (0 ≤ 0) não é VACUUM conferido."""
+    from compliance_agent.fluxo.fila import Resultado
+    payload = {"rotina": "vacuum", "db": str(db), "simular": False}
+    res = Resultado(efeito={"rotina": "vacuum", "simulado": False, "executado": True, "retorno": retorno})
+    assert M.ESTAGIO.efeito(payload, _ctx("vacuum"), res) is False
+
+
+def test_vacuum_real_em_banco_temporario_e_conferido(db, monkeypatch):
+    monkeypatch.setenv(M.ENV_REAL, "1")
+    payload = {"rotina": "vacuum", "db": str(db), "simular": False}
+    res = M.ESTAGIO.handler(payload, _ctx("vacuum"))
+    assert res.efeito["executado"] and M.ESTAGIO.efeito(payload, _ctx("vacuum"), res) is True

@@ -343,7 +343,9 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
             vinc = [vinculo_processo(d, ob_proc) for d in disparos]
             resumo = {**carga.contexto, **det.resumo(carga.itens, disparos), "unidade_e9": unidade,
                       "exigencia": exige}
+            resumo["itens"] = len(carga.itens)
             resumo["itens_sem_linha_e9"] = sum(1 for c in carga.itens if c.get("e9") is None)
+            resumo["entrada"] = estado_entrada(resumo["itens"], resumo["itens_sem_linha_e9"])
             resumo["vinculo_processo"] = resumo_vinculo(vinc)
             rodada = rodada_de(did, versao, escopo, [hash_entradas(d.entradas) for d in disparos])
             achados = [para_achado(did, versao, escopo, rodada, d, v) for d, v in zip(disparos, vinc)]
@@ -387,6 +389,27 @@ def contar(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -
                     "AND regra_versao = %s AND origem = %s AND resultado ->> 'rodada' = %s",
                     (did, versao, origem(did, escopo, "resumo"), rodada)).fetchone()
     return n, (r[0] if r else None)
+
+
+def estado_entrada(itens, sem_e9) -> dict:
+    """0 achado só é medida com entrada: fonte vazia ou NENHUM item com linha na E9 (versão corrente) é INDISPONÍVEL,
+    nunca "limpo" (revisão de falhas caladas 1.11 — 0 execuções não é 0 erros)."""
+    if itens is None or sem_e9 is None:
+        return {"estado": "INDISPONIVEL", "motivo": "resumo da rodada sem a contagem de itens (versão antiga)"}
+    if int(itens) == 0:
+        return {"estado": "INDISPONIVEL", "motivo": "nenhum item carregado da fonte (fonte vazia ou fora do escopo)"}
+    if int(sem_e9) >= int(itens):
+        return {"estado": "INDISPONIVEL", "motivo": f"nenhum dos {itens} item(ns) tem linha na E9 (versão {E9.VERSAO})"}
+    return {"estado": "OK", "motivo": None}
+
+
+def entrada_da_rodada(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -> dict:
+    """Relê do PG (não da palavra do handler) itens e itens_sem_linha_e9 gravados no resumo da rodada."""
+    r = con.execute(f"SELECT resultado ->> 'itens', resultado ->> 'itens_sem_linha_e9' FROM \"{esquema}\".execucao_regra "
+                    "WHERE regra_id = %s AND regra_versao = %s AND origem = %s AND resultado ->> 'rodada' = %s "
+                    "AND resultado ? 'itens' ORDER BY id DESC LIMIT 1",
+                    (did, versao, origem(did, escopo, "resumo"), rodada)).fetchone()
+    return estado_entrada(*(r if r else (None, None)))
 
 
 def contar_vinculados(con, esquema: str, did: str, versao: str, escopo: str, rodada: str) -> int:
@@ -436,11 +459,13 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
         am = conferir_amostra(pg, src, payload, did, ef["versao"], escopo, ex, ef["rodada"],
                               int(payload.get("amostra") or 10))
         vinc = contar_vinculados(pg, esq, did, ef["versao"], escopo, ef["rodada"])
+        entrada = entrada_da_rodada(pg, esq, did, ef["versao"], escopo, ef["rodada"])
     finally:
         pg.close()
         src.close()
-    ef["conferencia"] = {"contados": n, "resumo_declara": n_resumo, "com_processo_contados": vinc, **am}
-    return (n == declarados and n_resumo == declarados and not am["divergentes"]
+    ef["conferencia"] = {"contados": n, "resumo_declara": n_resumo, "com_processo_contados": vinc, **am,
+                         "entrada": entrada}
+    return (entrada["estado"] == "OK" and n == declarados and n_resumo == declarados and not am["divergentes"]
             and vinc == int(ef.get("com_processo") or 0)
             and (am["amostra"] > 0 or declarados == 0))
 

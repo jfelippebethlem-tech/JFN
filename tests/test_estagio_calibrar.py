@@ -273,3 +273,18 @@ def test_handler_e_efeito_em_sombra(tmp_path):
     corpo["resultados"][0]["medida"]["n"] += 1
     saida.write_text(json.dumps(corpo), encoding="utf-8")
     assert not C._efeito(p, ctx, res)
+
+
+def test_modo_real_com_fonte_indisponivel_nao_grava_registro(tmp_path):
+    """Revisão de falhas caladas S3: tabela ausente era INDISPONÍVEL só no JSON da sombra; no modo real o registro
+    era recalibrado com n menor sem rótulo. Agora recusa e o registro fica como estava."""
+    import shutil
+    db = _fonte(tmp_path)                                               # sem fachada_veredito
+    arq = tmp_path / "registro.yaml"
+    shutil.copy(D.ARQ, arq)
+    antes = arq.read_bytes()
+    ctx = Contexto(no="t", tipo="calibrar:emendas.D6", chave="calibrar:emendas.D6", ficha=1, tentativa=1)
+    p = {"fonte": str(db), "registro": str(arq), "hoje": "2026-11-24", "sombra": False, "forcar": True}
+    with pytest.raises(C.ErroPermanente, match="fachada_veredito"):
+        C._handler(p, ctx)
+    assert arq.read_bytes() == antes

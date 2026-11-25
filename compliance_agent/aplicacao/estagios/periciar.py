@@ -325,8 +325,11 @@ def ob_paga_siafe(processo: str, fonte: sqlite3.Connection) -> float | None:
     """R$ de OB PAGA no SIAFE ligada ao processo (`ob_processo`, régua `_ob_paga`); None = não consultável."""
     from compliance_agent.ob_processo import chave_processo as cp
     from compliance_agent.ob_processo import obs_por_processo
-    d = obs_por_processo(fonte, [processo], autos=True, so_pagos=True).get(cp(processo) or "")
-    return round(float((d or {}).get("total") or 0.0), 2)
+    k = cp(processo)
+    d = obs_por_processo(fonte, [processo], autos=True, so_pagos=True).get(k) if k else None
+    if d is None or d.get("total") is None:      # chave não resolvida, sem OB paga pelo nº ou base sem SIAFE:
+        return None                              # INDISPONÍVEL — nunca R$ 0,00 "pago" (1.5)
+    return round(float(d["total"]), 2)
 
 
 def contexto_cerebro(chave: str) -> dict:
@@ -843,13 +846,19 @@ def montar_laudo(p: Preparo, contribs: list[dict], invalidas: list[Fatia], *, mo
     cob = {**p.cobertura, "fatias_validas": len(contribs), "fatias_invalidas": len(invalidas),
            "docs_julgados": len(lidas), "docs_com_texto": len(p.originais),
            "fatos_fora_da_fatia": sum(f.fatos_fora for f in p.fatias)}
+    # eixo pedido sem juízo (ABSTEVE/INDISPONÍVEL/INCERTO) + global 0 não sai "limpo" (1.6)
+    nao_julgados = [n for n, e in eixos.items() if e["estado"] != PROPOSTA]
+    estado = PROPOSTA if g is not None and not (g == 0 and nao_julgados) else INCERTO
     laudo = {"processo": p.processo, "chave": p.chave, "estagio_versao": VERSAO, "prompt_version": PROMPT_VERSION,
              "modelo": modelo, "release_ia": release_ia(modelo, p.eixos), "eixos": eixos, "grau_global": g,
-             "estado_global": PROPOSTA if g is not None else INCERTO, "cobertura": cob, "pecas_nao_lidas": pecas,
-             "ob_paga": ob_paga, "fatos_sha": p.fatos_sha,
+             "estado_global": estado, "cobertura": cob, "pecas_nao_lidas": pecas,
+             "ob_paga": ob_paga, "ob_paga_estado": INDISPONIVEL if ob_paga is None else "VERIFICADO",
+             "fatos_sha": p.fatos_sha,
              "cerebro": {"estado": (cerebro or {}).get("estado") or INDISPONIVEL,
                          "fontes": [i.get("fonte") for i in (cerebro or {}).get("itens") or []],
                          "motivo": (cerebro or {}).get("motivo")}}
+    if g == 0 and nao_julgados:
+        laudo["eixos_nao_julgados"] = nao_julgados
     laudo["e12"] = motivos_e12(laudo)
     return laudo
 

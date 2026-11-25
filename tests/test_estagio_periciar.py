@@ -366,3 +366,48 @@ def test_sinais_do_e10_entram_como_contexto_nao_citavel(tmp_path, monkeypatch):
     a = P.ancorar_achado({"doc_id": "sei:1000001", "citacao": "Achados a destacar: T07-DUPLICIDADE-COMP",
                           "descricao": "x", "grau": 1, "fundamento": "L14"}, p.originais, p.fatias[0].mapa)
     assert a["estado"] == P.FALHA_CITACAO
+
+
+# ── revisão de falhas caladas 1.5: OB ausente/não consultável é INDISPONÍVEL, nunca R$ 0,00 ──────────────────
+def _fonte_ob(linhas=()):
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe(processo TEXT, credor TEXT, valor REAL, status TEXT, "
+                "data_emissao TEXT, tipo_ob TEXT, gd TEXT, numero_ob TEXT, ug_emitente TEXT, exercicio INT)")
+    for proc, valor in linhas:
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (proc, "11.222.333/0001-81", valor, "Contabilizado", "01/02/2025", "OB", None, "2025OB00001",
+                     "120100", 2025))
+    return con
+
+
+def test_ob_ausente_ou_nao_consultavel_e_none_nao_zero():
+    assert P.ob_paga_siafe("120001/000001/2025", _fonte_ob()) is None                  # sem OB pelo nº
+    assert P.ob_paga_siafe("120001/000001/2025", sqlite3.connect(":memory:")) is None  # base sem SIAFE
+    assert P.ob_paga_siafe("texto sem número", _fonte_ob()) is None                    # chave não resolvida
+    assert P.ob_paga_siafe("120001/000001/2025", _fonte_ob([("SEI-120001/000001/2025", 1234.5)])) == 1234.5
+
+
+def test_laudo_rotula_ob_indisponivel(tmp_path, monkeypatch):
+    p = _prep(tmp_path, monkeypatch)
+    c = P.interpretar(_resposta({n: _eixo(grau=0) for n in p.eixos}), p, p.fatias[0], ob_paga=None)
+    sis, instr = P.montar_prompt(p, p.fatias[0], ob_paga=None, cerebro=CEREBRO)
+    assert "INDISPONÍVEL" in sis + instr and "R$ 0,00" not in sis + instr
+    laudo = P.montar_laudo(p, [c], [], modelo="m", ob_paga=None, cnpj_resolvido=True, cerebro=CEREBRO)
+    assert laudo["ob_paga"] is None and laudo["ob_paga_estado"] == P.INDISPONIVEL
+    laudo = P.montar_laudo(p, [c], [], modelo="m", ob_paga=10.0, cnpj_resolvido=True, cerebro=CEREBRO)
+    assert laudo["ob_paga_estado"] == "VERIFICADO"
+
+
+# ── 1.6: eixo pedido sem juízo (ABSTEVE/INDISPONÍVEL) + outro grau 0 não sai "limpo" ────────────────────────
+def test_eixo_nao_julgado_com_global_zero_e_incerto(tmp_path, monkeypatch):
+    p = _prep(tmp_path, monkeypatch)
+    resp = {n: _eixo(grau=0) for n in p.eixos}
+    resp["preco"] = _eixo(grau=7)                                    # rejeitado ⇒ INDISPONÍVEL
+    c = P.interpretar(_resposta(resp), p, p.fatias[0], ob_paga=None)
+    laudo = P.montar_laudo(p, [c], [], modelo="m", ob_paga=None, cnpj_resolvido=True, cerebro=CEREBRO)
+    assert laudo["eixos"]["preco"]["estado"] == P.INDISPONIVEL and laudo["grau_global"] == 0
+    assert laudo["estado_global"] == P.INCERTO and laudo["eixos_nao_julgados"] == ["preco"]
+    # todos julgados grau 0 ⇒ PROPOSTA (sem a chave)
+    c = P.interpretar(_resposta({n: _eixo(grau=0) for n in p.eixos}), p, p.fatias[0], ob_paga=None)
+    laudo = P.montar_laudo(p, [c], [], modelo="m", ob_paga=None, cnpj_resolvido=True, cerebro=CEREBRO)
+    assert laudo["estado_global"] == P.PROPOSTA and "eixos_nao_julgados" not in laudo

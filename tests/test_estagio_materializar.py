@@ -57,6 +57,14 @@ def test_corpo_adulterado_nao_e_servido_e_falha_a_conferencia():
     assert not c["ok"] and any("sha256" in m for m in c["motivos"])
 
 
+@pytest.mark.parametrize("corpo", [b'{"erro": "fonte fora", "total": 3}', b'{"error": "boom", "total": 3}'])
+def test_corpo_que_declara_erro_falha_a_conferencia(corpo):
+    """Revisão de falhas caladas 1.14: "erro" e "error" no corpo, nos dois lugares (cálculo e conferência)."""
+    meta = M.gravar(M.VISOES["siafe_stats"], corpo, json.loads(corpo), 0.1)
+    c = M.conferir("siafe_stats", {"sha256": meta["sha256"], "gerado_em": meta["gerado_em"]})
+    assert not c["ok"] and "corpo declara erro" in c["motivos"]
+
+
 def test_universo_ausente_e_indisponivel_nunca_zero():
     assert M._campo({"n": 0}, "n") == 0
     assert M._campo({"x": 1}, "n") is None and M._campo({"rede": [1, 2]}, "len:rede") == 2
@@ -84,7 +92,8 @@ def _falsa(monkeypatch, nome: str, resp_ou_fn):
 
 @pytest.mark.parametrize("resp", [JSONResponse({"ok": False, "erro": "x"}, status_code=500),
                                   JSONResponse({"ok": False, "erro": "fonte fora"}),
-                                  JSONResponse({"error": "boom"})])
+                                  JSONResponse({"error": "boom"}),
+                                  JSONResponse({"erro": "rota legada com 200"})])   # 1.14: "erro" sem ok:False
 def test_erro_da_rota_nao_vira_visao_e_a_anterior_fica(monkeypatch, caches_isolados, resp):
     boa = M.gravar(M.VISOES["siafe_stats"], b'{"ok": true, "total": 9}', {"ok": True, "total": 9}, 0.1)
     _falsa(monkeypatch, "siafe_stats", resp)

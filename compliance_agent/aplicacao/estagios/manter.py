@@ -176,7 +176,9 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
         return M._sz(str(_db(payload)) + "-wal") <= M._WAL_TETO
     if rotina == "vacuum":
         r = ef.get("retorno") or {}
-        return bool(r.get("pulado")) or int(r.get("db_depois") or 0) <= int(r.get("db_antes") or 0)
+        if not isinstance(r.get("db_antes"), int) or not isinstance(r.get("db_depois"), int) or r["db_antes"] <= 0:
+            return False                     # S5: retorno vazio/sem medida não é VACUUM conferido (0 ≤ 0 passava)
+        return bool(r.get("pulado")) or r["db_depois"] <= r["db_antes"]
     if ef.get("rc") != 0:
         return False
     marca = ROTINAS[rotina].get("marca")

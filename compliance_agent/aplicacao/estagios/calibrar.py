@@ -380,7 +380,7 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     res = calibrar_tudo(reg, conferidos, hoje=hoje, quem=quem, detector=did, forcar=bool(payload.get("forcar")))
     sombra = payload.get("sombra", True)
     efeito = {"sombra": sombra, "detectores": len(res), "mudaram": sorted(r["detector"] for r in res if r.get("campos")),
-              "hoje": hoje.isoformat()}
+              "hoje": hoje.isoformat(), "fora": fora}
     if sombra:
         saida = Path(payload.get("saida") or SAIDA_PADRAO)
         corpo = {"em": datetime.now().isoformat(timespec="seconds"), "quem": quem, "hoje": hoje.isoformat(),
@@ -391,6 +391,11 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         os.replace(tmp, saida)
         efeito.update(saida=str(saida), sha256=_sha(res))
     else:
+        # S3: fonte INDISPONÍVEL não recalibra o registro com n menor sem rótulo (no JSON da sombra ela é dita em `fora`)
+        faltam = sorted(k for k, v in fora.items() if v == "INDISPONIVEL")
+        if faltam:
+            raise ErroPermanente(f"calibrar: fonte(s) INDISPONÍVEL(is) em {fonte}: {', '.join(faltam)} — o registro "
+                                 "não é recalibrado com o denominador parcial")
         efeito["gravados"] = gravar_registro(res, arq, hoje)
         efeito["registro"] = str(arq)
     return Resultado(efeito=efeito, eventos=[{"fonte": "calibrar", "tipo": "tier", "chave": d}

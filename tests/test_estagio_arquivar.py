@@ -110,3 +110,40 @@ def test_arquivo_que_nao_e_a_versao_e_permanente(pg, tmp_path, monkeypatch):  # 
     with pytest.raises(ErroPermanente):
         _e7(nome, tmp_path, pdf, sha, NuvemFalsa(), monkeypatch)
     assert pdf.is_file()
+
+
+@precisa_pg
+def test_insert_que_falha_nao_apaga_o_original(pg, tmp_path, monkeypatch):  # noqa: F811
+    """Revisão de falhas caladas 1.4: o registro no PG vem ANTES do unlink — INSERT que falha deixa o original."""
+    con, nome = pg
+    pdf = pdf_de(tmp_path / "001.pdf", ["nativa"])
+    rodar_e4(nome, tmp_path, pdf)
+    sha = T.sha256_arquivo(pdf)
+    con.execute("ALTER TABLE arquivamento ADD CONSTRAINT t_falha CHECK (false) NOT VALID")    # todo INSERT falha
+    nuvem = NuvemFalsa()
+    with pytest.raises(Exception, match="t_falha"):
+        _e7(nome, tmp_path, pdf, sha, nuvem, monkeypatch)
+    assert pdf.is_file() and nuvem.apagados == []
+
+
+@precisa_pg
+def test_retomada_termina_registro_apagado_false_cujo_arquivo_sumiu(pg, tmp_path, monkeypatch):  # noqa: F811
+    """1.4: queda entre o unlink e o UPDATE deixa apagado=false sem arquivo; a retomada confere a cópia e termina."""
+    con, nome = pg
+    pdf = pdf_de(tmp_path / "001.pdf", ["nativa"])
+    rodar_e4(nome, tmp_path, pdf)
+    sha = T.sha256_arquivo(pdf)
+    con.execute("ALTER TABLE arquivamento ADD CONSTRAINT t_falha CHECK (NOT apagado) NOT VALID")  # UPDATE falha
+    nuvem = NuvemFalsa()
+    with pytest.raises(Exception, match="t_falha"):
+        _e7(nome, tmp_path, pdf, sha, nuvem, monkeypatch)
+    assert not pdf.exists()
+    assert con.execute("SELECT count(*), bool_or(apagado) FROM arquivamento").fetchone() == (1, False)
+    con.execute("ALTER TABLE arquivamento DROP CONSTRAINT t_falha")
+    # cópia que não confere: não marca
+    with pytest.raises(RuntimeError, match="não confere"):
+        _e7(nome, tmp_path, pdf, sha, NuvemFalsa(), monkeypatch, ficha=2)
+    assert con.execute("SELECT bool_or(apagado) FROM arquivamento").fetchone() == (False,)
+    r, ok = _e7(nome, tmp_path, pdf, sha, nuvem, monkeypatch, ficha=3)
+    assert ok and r.efeito["ja_arquivado"] and r.efeito["apagado"]
+    assert con.execute("SELECT count(*), bool_and(apagado) FROM arquivamento").fetchone() == (1, True)

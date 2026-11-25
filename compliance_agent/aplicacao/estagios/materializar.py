@@ -248,6 +248,12 @@ def _isolar_caches() -> None:
     inv._CACHE_DIR = diretorio() / "_cache_materializador"
 
 
+def declara_erro(payload) -> bool:
+    """O corpo declara erro: `ok: false`, `"erro"` (rotas da casa) ou `"error"` — os dois nomes nos dois lugares
+    (cálculo e conferência), revisão de falhas caladas 1.14."""
+    return isinstance(payload, dict) and (payload.get("ok") is False or "erro" in payload or "error" in payload)
+
+
 def calcular(v: Visao) -> tuple[bytes, object, float]:
     """(corpo, payload, segundos) da função legada, com os caches em memória zerados (cálculo fresco). Resposta que
     não é 200 ou que declara erro NÃO vira visão: levanta e o fluxo tenta de novo — a visão anterior fica."""
@@ -265,7 +271,7 @@ def calcular(v: Visao) -> tuple[bytes, object, float]:
         raise RuntimeError(f"{v.nome}: a rota legada devolveu HTTP {status} — visão anterior mantida")
     corpo = bytes(resp.body)
     payload = json.loads(corpo)
-    if isinstance(payload, dict) and (payload.get("ok") is False or "error" in payload):
+    if declara_erro(payload):
         raise RuntimeError(f"{v.nome}: a rota legada declarou erro ({str(payload.get('erro') or payload.get('error'))[:200]})")
     return corpo, payload, seg
 
@@ -304,7 +310,7 @@ def conferir(nome: str, declarado: dict, raiz=None) -> dict:
         conteudo = json.loads(corpo)
     except ValueError:
         return {"ok": False, "motivos": motivos + ["corpo não é JSON"]}
-    if isinstance(conteudo, dict) and (conteudo.get("ok") is False or "error" in conteudo):
+    if declara_erro(conteudo):
         motivos.append("corpo declara erro")
     v = VISOES.get(nome)
     if v is not None and _campo(conteudo, v.universo) != meta.get("universo"):
