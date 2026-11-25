@@ -83,7 +83,7 @@ itens:
   - {id: O9.0, dep: [O8.5, O8.1, O6.4, O5.3, O3.4], maq: todas, estado: pendente, titulo: "Religação em sequência verificada + recuperação da lacuna + 48 h"}
   - {id: O9.1, dep: [O9.0], maq: vm1, estado: pendente, titulo: "Remover esteiras por órgão e variantes (após 14 dias estáveis)"}
   - {id: O9.2, dep: [], maq: vm1, estado: bloqueado_dono, titulo: "Raiz/_SANDBOX/eleição fora", tags: [irreversivel]}
-  - {id: O9.3, dep: [O4.1], maq: vm1, estado: pendente, titulo: "Estrangulamento dos módulos da raiz + extras de dependências + lock com hashes"}
+  - {id: O9.3, dep: [O4.1], maq: vm1, estado: em_curso, nota: "17c0789a: 3 locks com hashes por camada (uv pip compile --universal; torch 2.15.0+cpu; venv novo na VM-2 com --require-hashes ok), SBOM CycloneDX 182 componentes, pip-audit 0 vulnerabilidade, catraca do lock; licenças para decisão: pymupdf/pymupdf4llm AGPL, igraph/leidenalg GPL, nccl proprietária (docs/sbom/LICENCAS.md); FALTA: CI e testar_na_vm2 instalarem dos locks, estrangulamento dos módulos da raiz + import-linter", titulo: "Estrangulamento dos módulos da raiz + extras de dependências + lock com hashes"}
   - {id: O9.4, dep: [O9.0], maq: itcampo+vm2, estado: bloqueado_dono, titulo: "Limpeza do repositório (só com ok do dono)", tags: [irreversivel]}
   # O10 — Visual (Higgsfield só site/Unlimited, it-campo) + toggles
   - {id: O10.1, dep: [O7.6], maq: vm1, estado: pendente, titulo: "Auditoria visual completa"}
