@@ -271,3 +271,110 @@ def test_e1_grava_eventos_e_so_depois_a_marca(tmp_path, con):
     assert r["eventos"]["coleta/ob_nova"] == 1 and marca.exists()
     assert con.execute("SELECT count(*) FROM eventos WHERE fonte = 'coleta' AND tipo = 'ob_nova'").fetchone()[0] == 1
     assert E1.rodar(db, marca, con_fluxo=con)["eventos"] == {}                     # 2ª rodada: sem novidade
+
+
+# ── ajustes do coordenador (25/11): credencial achada, semeador do E2, duas janelas ────────────────────────────
+def test_r2_nao_copia_credencial_e_prova_que_nada_foi_gravado():
+    p = {x.id: x for x in R.plano_religar(REAL, [], "f" * 40, 1)}
+    txt = json.dumps([c for _n, c in p["R2"].cmds])
+    assert "scp" not in txt and "install -D" not in txt and "pg.tmp" not in txt
+    vm2 = [c for n, c in p["R2"].cmds if n == "vm2"][0]
+    assert "credenciais onde JFN_EVIDENCIAS_DSN" in vm2 and "credenciais com JFN_EVIDENCIAS_DSN" in vm2
+    assert "grep -rls '^JFN_EVIDENCIAS_DSN='" in vm2 and '= 0' in vm2
+    ps = (R.RAIZ / R.PS1_ITCAMPO).read_text(encoding="utf-8")
+    assert "pg_evidencias.env" not in ps.split("while ($true)")[1]       # o boot do it-campo não lê arquivo de DSN
+
+
+def test_supervisor_acha_o_dsn_pelo_resolvedor_so_na_memoria(monkeypatch):
+    from compliance_agent import credenciais, evidencias
+    from compliance_agent.fluxo import __main__ as M
+    monkeypatch.delenv(evidencias.ENV_DSN, raising=False)
+    monkeypatch.setattr(evidencias, "dsn_vigente", lambda: __import__("os").environ.get(evidencias.ENV_DSN, ""))
+    monkeypatch.setattr(credenciais, "obter", lambda n, **k: "postgresql://x@h/db")
+    monkeypatch.setattr(credenciais, "onde", lambda n, **k: "vm1(vm1-ts):pg_evidencias.env")
+    assert M.resolver_dsn() == "vm1(vm1-ts):pg_evidencias.env"
+    assert __import__("os").environ[evidencias.ENV_DSN] == "postgresql://x@h/db"
+    monkeypatch.delenv(evidencias.ENV_DSN)
+    monkeypatch.setattr(credenciais, "obter", lambda n, **k: None)
+    assert M.resolver_dsn() is None
+    assert M.main(["supervisor", "--no", "vm2"]) == 2                          # sem DSN o supervisor não sobe
+
+
+def test_duas_etapas_e8_nunca_na_primeira():
+    e1 = [x.estagio for x in R.plano_religar(REAL, [], None, 1) if x.estagio]
+    e2 = [x.estagio for x in R.plano_religar(REAL, [], None, 2) if x.estagio]
+    assert e1 == ["E17", "E18", "E1", "E2", "E3", "E4", "E5", "E6", "E7"]
+    assert e2 == ["E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16"]
+    assert R.plano_religar(REAL, [], None, 2)[0].id == "R6"
+    assert {x.id for x in R.plano_religar(REAL, [], None, 1)} >= {"R0", "R1", "R2", "R3", "R4", "R5"}
+    llm = {e for e, x in REAL.estagios.items() if "llm" in x.recursos}
+    assert not llm & set(e1)                                                   # nada de LLM na 1ª janela
+
+
+def test_wslconfig_na_primeira_janela_com_os_mistos_parados_antes_e_retomados_depois():
+    cmds = [c for n, c in {x.id: x for x in R.plano_religar(REAL, [], None, 1)}["R4"].cmds if n == "itcampo"]
+    dec = [base64.b64decode(m[1]).decode() if (m := re.search(r"echo (\S+) \| base64", c)) else c for c in cmds]
+    i_parar = next(i for i, c in enumerate(dec) if "sombra_parar.sh" in c)
+    i_cfg = next(i for i, c in enumerate(dec) if "wslconfig.proposto" in c)
+    i_shut = next(i for i, c in enumerate(dec) if "wsl --shutdown" in c)
+    i_volta = next(i for i, c in enumerate(dec) if "Start-ScheduledTask -TaskName JFN-O36-Mistos" in c)
+    assert i_parar < i_cfg < i_shut < i_volta and ".wslconfig.antes-o90" in dec[i_cfg]
+
+
+def test_executar_etapa_2_recusa_antes_da_virada_e_sem_etapa(monkeypatch, capsys):
+    from datetime import datetime, timezone
+    assert not R.virou_assinatura(datetime(2026, 11, 28, 21, 59, tzinfo=timezone.utc))
+    assert R.virou_assinatura(datetime(2026, 11, 28, 22, 0, tzinfo=timezone.utc))
+    monkeypatch.setattr(R, "virou_assinatura", lambda agora=None: False)
+    monkeypatch.setattr(R, "estado_nos", lambda sha, rodar=None: {})
+    assert R.main(["--executar", "--confirmo-dono-avisado", "--etapa", "2"]) == 2
+    assert R.main(["--executar", "--confirmo-dono-avisado"]) == 2
+    assert "etapa" in capsys.readouterr().err
+
+
+@precisa_pg
+def test_etapa_2_herda_o_bloqueio_da_etapa_1(con):
+    con.execute("INSERT INTO liberacao(estagio, por) SELECT unnest(%s::text[]), 't'", (R.ETAPAS[1],))
+    for e in R.ETAPAS[1]:
+        R.registrar(con, {"estagio": e, "ok": e != "E3"})
+    assert R.bloqueados_da_etapa1(con) == {"E3"}
+    r = R.religar_estagios(con, REAL, espera_max_s=0, so=["E8"], dormir=lambda s: None, log=lambda *a: 0,
+                           bloqueados_iniciais={"E3"})
+    assert "pulado" in r["E8"]                                                 # E8 depende de E4 → E3
+
+
+# ── semeador do backlog do E2 ─────────────────────────────────────────────────────────────────────────────────
+def _item(p, ob):
+    from compliance_agent.aplicacao.estagios.arvore import Item
+    return Item(p, ob_paga=ob)
+
+
+def test_semeador_segue_a_ordem_unica_pula_quem_tem_arvore_e_respeita_o_teto():
+    from tools import e2_semear as S
+    ordem = [(_item("010001/000001/2025", 10.0), {"inteiro": 1}), (_item("010001/000002/2025", 0.0), {"inteiro": 2}),
+             (_item("010001/000003/2025", 5.0), {"inteiro": 3}), (_item("010001/000004/2025", 0.0), {"inteiro": 4}),
+             (_item("010001/000005/2025", 7.0), {"inteiro": 5})]
+    extras = {"fila_antiga:x.json": {"SEI-010001/000004/2025"}}
+    sel = S.selecionar(None, {"010001/000003/2025"}, 2, extras, lentes_res={}, fila=lambda *a, **k: ordem)
+    assert [(it.processo, pos) for it, _e, pos in sel] == [("010001/000001/2025", 1), ("010001/000004/2025", 4)]
+
+
+def test_semeador_usa_a_prioridade_unica_canonica():
+    """Nada de reinventar: a ordem é arvore.fila → prioridade.ordenar (§3.7; Couto como reserva intercalada)."""
+    import inspect
+    from compliance_agent.aplicacao.estagios import arvore as A
+    from tools import e2_semear as S
+    assert "A.fila" in inspect.getsource(S.selecionar) and "ordenar(" in inspect.getsource(A.fila)
+    assert REAL.rotinas["e2_semear"].ativa and REAL.rotinas["e2_semear"].estagio == "E2"
+    assert "--teto" in REAL.rotinas["e2_semear"].comando
+
+
+@precisa_pg
+def test_semeador_enfileira_job_nativo_idempotente(con):
+    from tools import e2_semear as S
+    esc = [(_item("010001/000001/2025", 10.0), {"inteiro": 1, "sinais": {}}, 1)]
+    assert S.semear(con, REAL, esc) == {"escolhidos": 1, "novos": 1}
+    assert S.semear(con, REAL, esc) == {"escolhidos": 1, "novos": 0}
+    tipo, p = con.execute("SELECT tipo, payload FROM jobs WHERE chave = 'arvore:010001/000001/2025'").fetchone()
+    assert tipo == "arvore" and p["estagio"] == "E2" and p["processo"] == "010001/000001/2025"
+    assert p["prioridade"]["posicao"] == 1 and p["origem"] == "e2_semear"

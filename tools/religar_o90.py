@@ -81,6 +81,14 @@ SCHEMAS_NATIVOS = (("arvore", "public.arvore_leitura"), ("texto", "public.ocr_nu
 # ordem da §1.1; cada sublista é um passo, os estágios dentro dele vão um a um (efeito conferido antes do seguinte)
 ORDEM = [["E17", "E18"], ["E1"], ["E2", "E3", "E4", "E5", "E6", "E7"], ["E8"], ["E9"], ["E10"], ["E11"], ["E12"],
          ["E13"], ["E14"], ["E15"], ["E16"]]
+# duas janelas (decisão do coordenador, delegada pelo dono, 25/11): a 1ª religa o que não depende de LLM e vem antes
+# do E8 na sequência; a 2ª, do E8 em diante, só depois da virada da assinatura. O E8 NÃO é liberado na 1ª etapa (o
+# ritmo fechado não vira BLOQUEADO: ele simplesmente fica de fora).
+ETAPAS = {1: ["E17", "E18", "E1", "E2", "E3", "E4", "E5", "E6", "E7"],
+          2: ["E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16"]}
+VIRADA_ASSINATURA = "2026-11-28T19:00:00-03:00"
+MISTOS_PARAR = "bash ~/o36/sombra_parar.sh"          # OCR dos mistos (frente O3.6) — para antes do wsl --shutdown
+MISTOS_TAREFA = "JFN-O36-Mistos"
 ESPERA_MAX_S = 7200
 POLL_S = 30
 POR = "tools/religar_o90"
@@ -130,6 +138,8 @@ MOTIVO_ROTINA = {
     "materializar_painel": "é o próprio estágio nativo E15 pela CLI (18 visões); religado na O9.0",
     "e1_eventos": "ponte E1 → nativos (O9.0): emite coleta/ob_nova, coleta/fonte_mudou e coleta/conferidos",
     "deploy_vm2": "deploy por evento do worker da VM-2 (O2.4); religado na O9.0",
+    "e2_semear": "semeador do backlog do E2 (O9.0): enfileira jobs NATIVOS arvore:<processo> na prioridade única; não "
+                 "abre navegador (a porta continua sendo o E2 nativo)",
 }
 
 
@@ -290,9 +300,9 @@ def ressalvas(g) -> list[str]:
     quietas = sorted(rid for rid, r in g.rotinas.items()
                      if r.ativa and r.evento and set(r.evento.depende) & capt)
     return [
-        "backlog do E2: o sweep_sei antigo varria a fila da lente bombeiros (processos SEM árvore); o E2 nativo anda "
-        "por OB nova (e1_eventos), citados (1 salto) e reabertura — não há semeador do backlog por `arvore fila`. "
-        "Medir nas 48 h: processos com OB paga sem árvore (deve cair, não subir)",
+        "backlog do E2: o semeador (e2_semear, 40 por ciclo de 2 h na prioridade única) substitui a varredura do "
+        "sweep_sei; medir nas 48 h: processos com OB paga sem árvore (deve cair, não subir) e a vazão do E2 nativo "
+        "(1 navegador na VM-2 sem o it-campo)",
         "fontes legadas de captura/OCR (sei_arquivado, sei_lote, ocr_gpu, ocr_reserva) eram emitidas pelas portas que "
         f"saíram; derivados legados que as escutam podem silenciar (têm agenda de rede, conferir): {', '.join(quietas)}",
         "E6: ocr_ia_prova.vale_como_prova ainda lê data/sei_ocr_ia_conferencia.jsonl — número novo do E5 nativo fica "
@@ -317,6 +327,28 @@ def _script_env(unit: str, arvore: str) -> str:
             f"&& test \"$(readlink /proc/$P/cwd)\" = \"$HOME/{arvore[2:]}\"")
 
 
+def resolver_dsn_cmd() -> str:
+    """bash no worker: o DSN é ACHADO (resolvedor; nunca copiado), conecta, e nenhum arquivo do worker o guarda."""
+    md = "PYTHONPATH=. .venv/bin/python"
+    return (f"cd ~/JFN-worker && {md} -m compliance_agent.credenciais onde JFN_EVIDENCIAS_DSN | grep -v NAO && "
+            f"{md} -m compliance_agent.credenciais com JFN_EVIDENCIAS_DSN -- .venv/bin/python -c 'from "
+            "compliance_agent.fluxo import fila; fila.conectar().close(); print(\"pg-ok\")' && test \"$(grep -rls "
+            "'^JFN_EVIDENCIAS_DSN=' ~/.config/jfn ~/JFN-worker/.env 2>/dev/null | wc -l)\" = 0")
+
+
+# it-campo (O1.10): o .wslconfig proposto entra na 1ª janela, com cópia do atual; conferência = o que o WSL vê
+WSLCONFIG_APLICAR = ("set -e; W=/mnt/c/Users/iterj; cp -n $W/.wslconfig $W/.wslconfig.antes-o90; "
+                     "cp ~/JFN-worker/deploy/itcampo/fluxo/wslconfig.proposto $W/.wslconfig; "
+                     "cmp ~/JFN-worker/deploy/itcampo/fluxo/wslconfig.proposto $W/.wslconfig")
+WSLCONFIG_CONFERIR = ("test \"$(nproc)\" -ge 24 && test \"$(awk '/MemTotal/{print int($2/1048576)}' /proc/meminfo)\" "
+                      "-ge 23")
+
+
+def ordem_da_etapa(etapa: int | None) -> list[str]:
+    todos = [x for grupo in ORDEM for x in grupo]
+    return todos if etapa is None else [x for x in todos if x in ETAPAS[etapa]]
+
+
 def _script_env_itcampo() -> str:
     exige = " && ".join(f"echo \"$E\" | grep -qx {k}={v}" for k, v in ENV_PRODUCAO.items())
     return ("sleep 20; P=$(pgrep -f '[c]ompliance_agent.fluxo supervisor --no itcampo' | head -1); test -n \"$P\"; "
@@ -324,17 +356,14 @@ def _script_env_itcampo() -> str:
             "&& test \"$(readlink /proc/$P/cwd)\" = \"$HOME/JFN-worker\"")
 
 
-def plano_religar(g, pausas: list[str], sha: str | None = None) -> list[Passo]:
+def plano_religar(g, pausas: list[str], sha: str | None = None, etapa: int | None = None) -> list[Passo]:
+    """etapa None = a sequência inteira; 1 = R0–R5 + E17, E18, E1–E7; 2 = conferência da etapa 1 + E8–E16."""
     py = ".venv/bin/python"
     sha = sha or "<SHA-DO-MAIN>"
     md = "PYTHONPATH=. " + py
     n_agenda = len(g.agenda_linhas()) + len(g.agenda_nativa())
     ps1 = ("set -e; install -m 644 ~/JFN-worker/" + PS1_ITCAMPO + " /mnt/c/JFN-Fluxo/jfn_fluxo_boot.ps1; "
            "test \"$(md5sum < ~/JFN-worker/" + PS1_ITCAMPO + ")\" = \"$(md5sum < /mnt/c/JFN-Fluxo/jfn_fluxo_boot.ps1)\"")
-    dsn_wsl = ("set -e; install -D -m 600 /mnt/c/JFN-Fluxo/pg.tmp ~/.config/jfn/pg_evidencias.env; "
-               "shred -u /mnt/c/JFN-Fluxo/pg.tmp")
-    conecta = (f"set -a; . {DSN_ARQ}; set +a; cd ~/JFN-worker && {md} -c "
-               "'from compliance_agent.fluxo import fila; fila.conectar().close(); print(\"pg-ok\")'")
     passos = [
         Passo("R0", "pré-condições (VM-1)", cmds=[
             ("vm1", f"cd ~/JFN && {md} -m compliance_agent.fluxo.grafo"),
@@ -359,17 +388,14 @@ def plano_religar(g, pausas: list[str], sha: str | None = None) -> list[Passo]:
             nota="o SHA é fixado no começo da janela (commit novo na VM-1 durante a janela NÃO entra); depois da "
                  "religação o deploy_vm2 (E17, evento codigo_commit) segue o main. it-campo: script em base64 "
                  "(PowerShell 5.1)"),
-        Passo("R2", "DSN do PG nos workers (arquivo 600, nunca impresso)", cmds=[
-            ("vm1", f"ssh -o BatchMode=yes vm2-ts 'test -s {DSN_ARQ}' || (scp -q {DSN_ARQ} vm2-ts:.config/jfn/"
-                    "pg_evidencias.env && ssh -o BatchMode=yes vm2-ts 'chmod 600 ~/.config/jfn/pg_evidencias.env')"),
-            ("vm1", f"ssh -o BatchMode=yes it-campo \"wsl -d Ubuntu -e test -s /home/iterj/.config/jfn/"
-                    f"pg_evidencias.env\" || (scp -q {DSN_ARQ} it-campo:C:/JFN-Fluxo/pg.tmp && ssh -o BatchMode=yes "
-                    f"it-campo \"{wsl(dsn_wsl)}\")"),
-            ("vm2", conecta),
-            ("itcampo", wsl(conecta))],
-            efeito="`pg-ok` nos 2 workers (conexão ao PG da VM-2 com o DSN do próprio nó)",
-            nota="medido 25/11: ~/.config/jfn/ VAZIO na VM-2 e no WSL do it-campo — sem o arquivo o supervisor sobe "
-                 "sem DSN e cai; o PG (porta 5432 do Tailscale da VM-2) é alcançável dos dois"),
+        Passo("R2", "DSN do PG nos workers pelo resolvedor de credenciais (nada copiado, nada gravado)", cmds=[
+            ("vm2", resolver_dsn_cmd()),
+            ("itcampo", wsl(resolver_dsn_cmd()))],
+            efeito="`pg-ok` nos 2 workers com o DSN ACHADO pelo resolvedor (compliance_agent.credenciais: VM-1 por "
+                   "ssh) e 0 arquivo com JFN_EVIDENCIAS_DSN em ~/.config/jfn e ~/JFN-worker/.env",
+            nota="regra do dono: credencial é achada, nunca copiada. O supervisor faz o mesmo no boot "
+                 "(compliance_agent.fluxo.__main__.resolver_dsn): o valor fica só na memória do processo e dos "
+                 "filhos. Medido 25/11: resolve nos 2 workers (vm1(vm1)/vm1(vm1-ts):pg_evidencias.env), 0 arquivo"),
         Passo("R3", "cron → fluxo e agenda do yaml no PG (tudo ativo=false)", cmds=[
             ("vm1", f"cd ~/JFN && {md} -m tools.cron_para_fluxo --aplicar"),
             ("vm2", f"cd ~/JFN-worker && {md} -m tools.cron_para_fluxo --timers --aplicar"),
@@ -394,9 +420,14 @@ def plano_religar(g, pausas: list[str], sha: str | None = None) -> list[Passo]:
                     "jfn-egress.service && systemctl --user daemon-reload && systemctl --user enable --now "
                     "jfn-fluxo@vm2"),
             ("vm2", _script_env("jfn-fluxo@vm2", ARVORE["vm2"])),
+            ("itcampo", wsl(MISTOS_PARAR)),
+            ("itcampo", wsl(WSLCONFIG_APLICAR)),
+            ("itcampo", "wsl --shutdown; Start-Sleep -Seconds 10"),
             ("itcampo", f"schtasks /Change /TN \\{TAREFA_FLUXO_ITCAMPO} /ENABLE; schtasks /Run /TN "
                         f"\\{TAREFA_FLUXO_ITCAMPO}"),
-            ("itcampo", wsl(_script_env_itcampo()))],
+            ("itcampo", wsl(_script_env_itcampo())),
+            ("itcampo", wsl(WSLCONFIG_CONFERIR)),
+            ("itcampo", f"Start-ScheduledTask -TaskName {MISTOS_TAREFA}")],
             sql=["SELECT no, now() - heartbeat_em, capacidades->>'isolamento' FROM nos ORDER BY no"],
             efeito="cada supervisor com cwd = a árvore do nó (vm1 ~/JFN, vm2 e it-campo ~/JFN-worker) e ambiente "
                    f"{', '.join(f'{k}={v}' for k, v in ENV_PRODUCAO.items())} sem {ENV_PROIBIDA} (lido de "
@@ -405,14 +436,25 @@ def plano_religar(g, pausas: list[str], sha: str | None = None) -> list[Passo]:
             nota="árvore por nó declarada: drop-in arvore.conf da VM-1 e da VM-2 (WorkingDirectory/PYTHONPATH/"
                  f"ExecStart + EnvironmentFile={AMBIENTE} + UnsetEnvironment={ENV_PROIBIDA}); it-campo = tarefa "
                  f"{TAREFA_FLUXO_ITCAMPO} (boot sem logon, O1.10) que lê o mesmo {AMBIENTE}. Sem o it-campo: seguir "
-                 "com vm1/vm2 (§3.5, volta declarada por estágio). .wslconfig proposto (24 GB/24 CPU) exige "
-                 "`wsl --shutdown` — com o dono"),
+                 "com vm1/vm2 (§3.5, volta declarada por estágio). it-campo: o OCR dos mistos (O3.6) PARA antes, o "
+                 ".wslconfig proposto (25 GB / 24 CPU / swap 12 GB) entra com `wsl --shutdown` (cópia do antigo em "
+                 "%USERPROFILE%\\.wslconfig.antes-o90; volta = copiar de volta + wsl --shutdown) e o "
+                 f"{MISTOS_TAREFA} é retomado depois"),
         Passo("R5", "pausas da parada removidas (os comandos legados obedecem data/.pause_*)",
               cmds=[("vm1", "cd ~/JFN && rm -f " + " ".join(f"data/{p}" for p in pausas))] if pausas else [],
               efeito="nenhuma das pausas listadas em vm1/pausas_criadas.txt existe"),
     ]
+    if etapa == 2:
+        passos = [Passo("R6", "conferir a etapa 1 antes de seguir (2ª janela, depois da virada da assinatura)", cmds=[
+            ("vm1", f"cd ~/JFN && {md} -m compliance_agent.fluxo saude")],
+            sql=["SELECT estagio FROM liberacao ORDER BY 1",
+                 "SELECT DISTINCT ON (rotulos->>'estagio') rotulos->>'estagio', valor FROM metricas "
+                 "WHERE nome = 'religacao_estagio' ORDER BY rotulos->>'estagio', quando DESC"],
+            efeito=f"{', '.join(ETAPAS[1])} liberados e com religacao_estagio=1 (o que não estiver vira BLOQUEADO "
+                   "aqui e quem depende dele não sobe); os 3 nós com heartbeat; agora ≥ " + VIRADA_ASSINATURA,
+            nota="o script recusa a etapa 2 antes da virada da assinatura")]
     mapa = {m["rotina"]: m for m in mapa_legado(g)}
-    for grupo in ORDEM:
+    for grupo in [ordem_da_etapa(etapa)]:
         for e in grupo:
             ag, ev = rotinas_do_estagio(g, e)
             pv = primeira_volta(g, e)
@@ -608,11 +650,12 @@ def registrar(con, r: dict) -> None:
 
 def religar_estagios(con, g, espera_max_s: float = ESPERA_MAX_S, so: list[str] | None = None,
                      dormir: Callable[[float], None] = time.sleep, log=print,
-                     apos: Callable[[str, dict], dict | None] | None = None) -> dict:
+                     apos: Callable[[str, dict], dict | None] | None = None,
+                     bloqueados_iniciais: set[str] | None = None) -> dict:
     """Passo 4 inteiro: estágio a estágio, com BLOQUEADO propagado só a quem depende. `apos(e, r)` roda logo
     depois do estágio conferido e ANTES do seguinte (E15: a faixa de manutenção sai aqui, não no fim); se devolver
     {"ok": False, …} o estágio vira BLOQUEADO (a faixa não saiu = o efeito do E15 não está completo)."""
-    bloqueados: set[str] = set()
+    bloqueados: set[str] = set(bloqueados_iniciais or ())
     out = {}
     for e in [x for grupo in ORDEM for x in grupo if so is None or x in so]:
         trava = depende_de(g, e) & bloqueados
@@ -653,9 +696,12 @@ def _ler(rodar, argv: list[str], timeout: int = 40) -> tuple[int, str]:
 def estado_nos(sha: str, rodar=subprocess.run) -> dict:
     """Só leitura, por ssh: HEAD da árvore do worker, código mexido, DSN presente (nunca o conteúdo), tarefa do
     it-campo. Chaves ausentes = não medido (o ensaio DIZ)."""
+    mod = base64.b64encode((RAIZ / "compliance_agent" / "credenciais.py").read_bytes()).decode("ascii")
     sonda = ("cd ~/JFN-worker 2>/dev/null && echo head=$(git rev-parse HEAD) && echo sujo=$(git status --porcelain "
              "--untracked-files=no -- . ':(exclude)data' | wc -l); "
-             "test -s ~/.config/jfn/pg_evidencias.env && echo dsn=1 || echo dsn=0")
+             f"python3 -c 'import base64;exec(base64.b64decode(\"{mod}\"))' onde JFN_EVIDENCIAS_DSN "
+             "| sed 's/^JFN_EVIDENCIAS_DSN: /dsn=/'; "
+             "echo disco=$(grep -rls '^JFN_EVIDENCIAS_DSN=' ~/.config/jfn ~/JFN-worker/.env 2>/dev/null | wc -l)")
     out = {}
     for no, cmd in (("vm2", sonda), ("itcampo", wsl(sonda))):
         rc, txt = _ler(rodar, no_cmd(no, cmd))
@@ -664,7 +710,8 @@ def estado_nos(sha: str, rodar=subprocess.run) -> dict:
         # ff conferido AQUI (o worker ainda não buscou o SHA novo): o HEAD dele é ancestral do SHA no canônico?
         ff = bool(head) and _ler(rodar, ["git", "-C", str(RAIZ), "merge-base", "--is-ancestor", head, sha])[0] == 0
         out[no] = {"medido": bool(head), "head": head, "sujo": int(d.get("sujo") or 0), "ff": ff,
-                   "dsn": d.get("dsn") == "1"}
+                   "dsn": d.get("dsn", "NAO") if not d.get("dsn", "NAO").startswith("NAO") else None,
+                   "disco": int(d.get("disco") or 0)}
     rc, txt = _ler(rodar, no_cmd("itcampo", f"schtasks /Query /TN \\{TAREFA_FLUXO_ITCAMPO} /FO CSV /NH"))
     out["itcampo"]["tarefa"] = txt.split(",")[-1].strip('" ') if rc == 0 and txt else None
     return out
@@ -711,6 +758,11 @@ def pendencias(g, nos: dict | None, sha: str, schema_ok: bool | None) -> list[tu
             out.append((f"{no}: estado da árvore não medido (ssh) — repetir o ensaio", False))
         elif d["sujo"]:
             out.append((f"{no}: ~/JFN-worker com {d['sujo']} arquivo(s) de código mexido(s) — o ff-only recusa", False))
+        elif not d.get("dsn"):
+            out.append((f"{no}: DSN do PG não resolvível pelo resolvedor de credenciais", False))
+        elif d.get("disco"):
+            out.append((f"{no}: {d['disco']} arquivo(s) do worker guardam JFN_EVIDENCIAS_DSN (credencial só se acha)",
+                        False))
         elif not d["ff"] and d["head"] != sha:
             out.append((f"{no}: ~/JFN-worker em {d['head'][:10]} não é ancestral de {sha[:10]} (ff impossível)", False))
     if nos and nos.get("itcampo", {}).get("tarefa") is None:
@@ -721,11 +773,10 @@ def pendencias(g, nos: dict | None, sha: str, schema_ok: bool | None) -> list[tu
         ("janela marcada com o dono avisado (--confirmo-dono-avisado)", True),
         ("§3.5 ensaio de 24 h sem it-campo (O8.3, dono em casa) — critério da §1.1; sem ele, religar sabendo que a "
          "volta sem it-campo não foi ensaiada", True),
-        ("assinatura contida até sáb 28/11 19h: E8/E11/E12 ficam SEGURADOS pela trava de ritmo (liberados, sem "
-         "rodar LLM) — religar antes disso = esses estágios conferem 0 job feito e ficam BLOQUEADOS por prazo", True),
+        ("duas janelas: etapa 1 (E17, E18, E1–E7) agora; etapa 2 (E8–E16) só depois da virada da assinatura "
+         f"({VIRADA_ASSINATURA}) — o script recusa a etapa 2 antes", True),
         ("✅ do lote jurídico (O4.10) e da paridade de juízo (O6.4): enquanto não vier, E9/E10/E11 nativos ficam em "
          "sombra e o legado é a produção", True),
-        (".wslconfig proposto (24 GB / 24 CPU) exige `wsl --shutdown` no it-campo", True),
         ("jfn-amostra-vm2: religar ou não no desfazer (estava desligado antes da parada)", True),
     ]
     return out
@@ -779,7 +830,8 @@ def preliminares(g, rodar=subprocess.run) -> list[str]:
         if d["medido"]:
             out.append(f"{no}: ~/JFN-worker em {d['head'][:10]} ({'= SHA' if d['head'] == sha else 'ff até o SHA ok' if d['ff'] else 'SEM ff'}; "
                        f"{d['sujo']} código mexido{'; R1 atualiza' if d['head'] != sha else ''}); "
-                       f"DSN {'presente' if d['dsn'] else 'AUSENTE → R2 copia'}"
+                       f"DSN pelo resolvedor: {d['dsn'] or 'NÃO ENCONTRADO'}; {d.get('disco', 0)} arquivo(s) com o "
+                       "DSN no worker"
                        + (f"; tarefa {TAREFA_FLUXO_ITCAMPO}: {d.get('tarefa')} → R4 habilita" if no == "itcampo" else ""))
         else:
             out.append(f"{no}: não medido (ssh)")
@@ -834,6 +886,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--espera-max-s", type=float, default=ESPERA_MAX_S)
     ap.add_argument("--backups", default=str(BACKUPS))
     ap.add_argument("--sha", help="SHA do main para a janela (padrão: HEAD da VM-1 agora)")
+    ap.add_argument("--etapa", type=int, choices=(1, 2), help="1 = E17, E18, E1–E7 (1ª janela); 2 = E8–E16 (depois "
+                                                              "da virada da assinatura). Obrigatória no --executar")
     ap.add_argument("--avisar", metavar="TEXTO", help="manda TEXTO ao Telegram (env TELEGRAM_BOT_TOKEN/CHAT_ID); "
                                                      "rc 0 só com message_id")
     a = ap.parse_args(argv)
@@ -862,16 +916,29 @@ def main(argv: list[str] | None = None) -> int:
         passos = plano_desfazer(backups, ler_lista_vm2())
         titulo = "DESFAZER da religação O9.0"
     else:
-        passos = plano_religar(g, ler_lista(backups / "vm1" / "pausas_criadas.txt"), a.sha or sha_main())
-        titulo = "RELIGAÇÃO O9.0"
+        pausas = ler_lista(backups / "vm1" / "pausas_criadas.txt")
+        passos = plano_religar(g, pausas, a.sha or sha_main(), a.etapa)
+        titulo = "RELIGAÇÃO O9.0" + (f" — ETAPA {a.etapa}" if a.etapa else "")
     if not a.executar:
-        imprimir(passos, titulo, (preliminares(g) if not a.desfazer else [])
-                 + [f"aviso Telegram (DESLIGADO no ensaio; no --executar, ao começar e ao terminar): "
-                    f"{AVISO_CMD.format(texto=chr(39) + '<texto>' + chr(39))}"])
+        aviso = [f"aviso Telegram (DESLIGADO no ensaio; no --executar, ao começar e ao terminar): "
+                 f"{AVISO_CMD.format(texto=chr(39) + '<texto>' + chr(39))}"]
+        if a.desfazer or a.etapa:
+            imprimir(passos, titulo, (preliminares(g) if not a.desfazer else []) + aviso)
+        else:                                          # sem --etapa: as duas janelas, uma depois da outra
+            imprimir(plano_religar(g, pausas, a.sha or sha_main(), 1), "RELIGAÇÃO O9.0 — ETAPA 1 (1ª janela)",
+                     preliminares(g) + aviso)
+            imprimir(plano_religar(g, pausas, a.sha or sha_main(), 2),
+                     f"RELIGAÇÃO O9.0 — ETAPA 2 (2ª janela, depois de {VIRADA_ASSINATURA})", [])
         return 0
     if not a.confirmo_dono_avisado:
         print("recusado: --executar exige --confirmo-dono-avisado (a religação é numa janela com o dono)",
               file=sys.stderr)
+        return 2
+    if not a.desfazer and a.etapa is None:
+        print("recusado: --executar exige --etapa 1 ou 2 (religação em duas janelas)", file=sys.stderr)
+        return 2
+    if a.etapa == 2 and not virou_assinatura():
+        print(f"recusado: etapa 2 só depois da virada da assinatura ({VIRADA_ASSINATURA})", file=sys.stderr)
         return 2
     if not a.desfazer:
         abertas = [t for t, dono in pendencias(g, estado_nos(a.sha or sha_main()), a.sha or sha_main(), None)
@@ -879,7 +946,21 @@ def main(argv: list[str] | None = None) -> int:
         if abertas:
             print("recusado: pré-condição aberta — " + "; ".join(abertas), file=sys.stderr)
             return 2
-    return executar(passos, g, a.espera_max_s, titulo=titulo)
+    return executar(passos, g, a.espera_max_s, titulo=titulo, etapa=a.etapa)
+
+
+def virou_assinatura(agora=None) -> bool:
+    from datetime import datetime, timezone
+    agora = agora or datetime.now(timezone.utc)
+    return agora >= datetime.fromisoformat(VIRADA_ASSINATURA)
+
+
+def bloqueados_da_etapa1(con) -> set[str]:
+    """Estágio da etapa 1 sem liberação ou cuja última `religacao_estagio` não é 1: BLOQUEADO para a etapa 2."""
+    lib = {r[0] for r in con.execute("SELECT estagio FROM liberacao")}
+    ult = dict(con.execute("SELECT DISTINCT ON (rotulos->>'estagio') rotulos->>'estagio', valor FROM metricas "
+                           "WHERE nome = 'religacao_estagio' ORDER BY rotulos->>'estagio', quando DESC").fetchall())
+    return {e for e in ETAPAS[1] if e not in lib or ult.get(e) != 1.0}
 
 
 def avisar_telegram(texto: str, enviar=None) -> int | None:
@@ -912,7 +993,7 @@ def avisar(texto: str, rodar=subprocess.run, log=print) -> bool:
 
 
 def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, con=None, log=print,
-             titulo: str = "RELIGAÇÃO O9.0") -> int:
+             titulo: str = "RELIGAÇÃO O9.0", etapa: int | None = None) -> int:
     """Roda os passos em ordem; passo de máquina que falha PARA tudo (rc 1); estágio que falha fica BLOQUEADO.
     Os comandos de um estágio (E15: a faixa de manutenção) rodam LOGO depois de ele conferir, antes do seguinte."""
     from compliance_agent.fluxo import fila
@@ -946,7 +1027,11 @@ def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, 
                 return {"ok": False, "falhou_cmd": c[:200], "rc": rc}
         return None
 
-    r = religar_estagios(con, g, espera_max_s, so=estagios, log=log, apos=apos) if estagios else {}
+    ini = bloqueados_da_etapa1(con) if etapa == 2 else set()
+    if ini:
+        log(f"[etapa 2] da etapa 1 sem efeito conferido (BLOQUEADOS): {sorted(ini)}")
+    r = religar_estagios(con, g, espera_max_s, so=estagios, log=log, apos=apos,
+                         bloqueados_iniciais=ini) if estagios else {}
     bloq = sorted((e for e, x in r.items() if not x.get("ok")), key=lambda x: int(x[1:]))
     log(json.dumps({"bloqueados": bloq}, ensure_ascii=False))
     fim = avisar(f"JFN {titulo}: terminou. " + (f"BLOQUEADOS: {', '.join(bloq)}" if bloq else

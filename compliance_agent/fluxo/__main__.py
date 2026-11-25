@@ -19,6 +19,26 @@ from compliance_agent.fluxo import fila, planejador
 from compliance_agent.fluxo.supervisor import Supervisor
 
 
+def resolver_dsn(log=logging.getLogger("fluxo.boot")) -> str | None:
+    """O9.0: o supervisor ACHA o DSN do PG pelo resolvedor de credenciais (ambiente → arquivos locais → VM-1 por
+    ssh), nunca por cópia entre máquinas (regra do dono). O valor fica SÓ na memória: no `os.environ` deste processo,
+    herdado pelos filhos (dsn_vigente lê o ambiente primeiro). Devolve ONDE achou (nunca o valor) ou None."""
+    import os
+
+    from compliance_agent import credenciais
+    from compliance_agent.evidencias import ENV_DSN, dsn_vigente
+    if dsn_vigente():
+        return "ambiente/arquivo local"
+    v = credenciais.obter(ENV_DSN)
+    if not v:
+        log.error("DSN do PG não encontrado em nenhuma máquina (%s)", ENV_DSN)
+        return None
+    os.environ[ENV_DSN] = v
+    onde = credenciais.onde(ENV_DSN)
+    log.info("DSN do PG pelo resolvedor de credenciais: %s (nada gravado em disco)", onde)
+    return onde
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m compliance_agent.fluxo")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -40,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     if a.cmd == "supervisor":
+        if resolver_dsn() is None:
+            return 2
         sup = Supervisor(no=a.no, isolamento=a.isolamento)
         if a.uma_volta:
             r = sup.uma_volta()

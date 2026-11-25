@@ -301,6 +301,19 @@ fontes: {siafe_ob: OB nova ou regravada no SIAFE, siafe_status: 'Status de envio
     de fracionamento por objeto (art. 75 §1º), codigo_commit: 'Commit novo no código do repositório canônico (VM-1) — sonda git da
     propagação, entregue pela ponte (propagacao_ponte)'}
 rotinas:
+  e2_semear:
+    estagio: E2
+    descricao: 'Semeador do backlog do E2 (O9.0): processos SEI-RJ com OB paga e sem árvore viram jobs nativos arvore:<processo> na prioridade única (arvore.fila / prioridade.ordenar, cota Couto como reserva), teto por ciclo, idempotente pela chave'
+    comando: ['{py}', -m, tools.e2_semear, --teto, '40']
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 1800
+    volta: {nos: [], nota: 'sem volta: o compliance.db só existe na VM-1'}
+    nota: 'O9.0 (25/11/2026). No lugar da varredura do backlog que o sweep_sei (substituida_por E2) fazia. Medido na VM-1 em 25/11: 1 min 54 s por ciclo (fila inteira ordenada). Não abre navegador: só enfileira; quem lê o SEI é o job nativo arvore (1 porta)'
+    agenda:
+    - {cron: '25 */2 * * *'}
+    origem: [o90-religacao]
+    efeito: {descricao: 'os escolhidos estão na fila como arvore:<processo> (idempotente pela chave)', log_contem: 'e2_semear: semeados [0-9]+ de [0-9]+'}
   e1_eventos:
     estagio: E1
     descricao: 'E1 → estágios nativos (O9.0): emite coleta/ob_nova (OB emitida nova, por processo SEI-RJ), coleta/fonte_mudou (unidade do E9 cuja tabela mudou) e coleta/conferidos (veredito novo da triagem) a partir da coleta legada'
