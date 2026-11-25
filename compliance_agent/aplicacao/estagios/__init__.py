@@ -102,7 +102,7 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "periciar":                                       # E11 (O6.4): perícia única, laudo v2 versionado
         from compliance_agent.aplicacao.estagios import periciar
         return periciar.ESTAGIO
-    if familia == "arvore":                                         # E2 (O3.3): import tardio (playwright só no filho)
+    if familia == "arvore":                                       # E2 (O3.3): import tardio (playwright só no filho)
         from compliance_agent.aplicacao.estagios import arvore
         return arvore.ESTAGIO
     if familia == "capturar":                                       # E3 (O3.3)
@@ -117,6 +117,9 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "materializar":                                   # E15 (O7.1): visões do painel
         from compliance_agent.aplicacao.estagios import materializar
         return materializar.ESTAGIO
+    if familia == "calibrar":                                       # E13 (O5.4): o motor não o alcançava (O8.5)
+        from compliance_agent.aplicacao.estagios import calibrar
+        return calibrar.ESTAGIO
     if familia == "caso":                                           # E14 (O7.4): caso + contestação + RBAC
         from compliance_agent.aplicacao.estagios import caso
         return caso.ESTAGIO

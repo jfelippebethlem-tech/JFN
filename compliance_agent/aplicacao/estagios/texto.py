@@ -238,6 +238,27 @@ def transformacao_de(con, processo: str, doc_id: str, tipo: str, entrada_sha: st
     return None if r is None else {"saida_sha": r[0], "motor": r[1], "versao_motor": r[2], "parametros": r[3]}
 
 
+_CHAVES_EX = ("paginas", "perfil", "invalido", "texto_sha", "chars", "escaneadas")
+
+
+def extracao_feita(con, sha: str) -> dict | None:
+    """A extração JÁ FEITA destes bytes (mesmo sha256 binário) pelo MESMO motor@versão e lógica do E4, em qualquer
+    documento — o lateral dela conferido pelo sha gravado. O8.5 (leitura única): o ensaio de 25/11 mediu o MESMO PDF
+    anexado duas vezes no processo 330002/028372/2026 (sei:142288890 e sei:142290226) aberto e extraído por dois jobs.
+    Extrair é determinístico sobre os bytes: a 2ª vez reusa o resultado. Sem extração anterior conferível, None."""
+    for rel, lat_sha in con.execute(
+            "SELECT parametros->>'lateral', parametros->>'lateral_sha' FROM transformacao WHERE tipo = %s AND "
+            "entrada_sha = %s AND motor = %s AND versao_motor = %s AND parametros->>'versao' = %s ORDER BY id",
+            (TIPO_TRANSFORMACAO, sha, MOTOR, versao_motor(), VERSAO)):
+        if not rel:
+            continue
+        lat = ler_lateral(Path(rel) if Path(rel).is_absolute() else A.RAIZ / rel)
+        if lat is not None and lat[1] == lat_sha and lat[0].get("entrada_sha") == sha \
+                and all(k in lat[0] for k in _CHAVES_EX):
+            return {k: lat[0][k] for k in _CHAVES_EX}
+    return None
+
+
 def registrar(con, processo: str, doc_id: str, sha: str, ex: dict, lateral: Path, lateral_sha: str,
               ctx: Contexto) -> dict:
     vm = versao_motor()
@@ -304,7 +325,7 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     con = conectar(payload.get("dsn"), payload.get("esquema"))
     try:
         pdf = localizar_binario(con, processo, doc_id, sha, payload.get("arquivo"))
-        ex = extrair(pdf)
+        ex = extracao_feita(con, sha) or extrair(pdf)        # O8.5: os mesmos bytes não são lidos duas vezes
         lat = caminho_lateral(processo, doc_id, sha, "e4", Path(payload["raiz_texto"]) if payload.get("raiz_texto")
                               else None)
         lat_sha = gravar_lateral(lat, {"versao": VERSAO, "processo": processo, "doc_id": doc_id, "entrada_sha": sha,

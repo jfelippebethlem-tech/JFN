@@ -288,3 +288,6 @@ config/jobs.yaml
 data/ouro_revisao_ia/
 data/integral_fora_da_fila_proposta.json
 data/peso_sonnet_medicao.json
+
+# O8.5 — dados do ensaio ponta a ponta (amostra, extrato do snapshot, passagens): nunca no repo público
+data/ensaio_o85/

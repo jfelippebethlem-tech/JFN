@@ -1113,6 +1113,30 @@ class Grupo:
     intervalo_s: int = 0                   # espaçamento (0 = toda coleta)
 
 
+JANELA_LEITURA_S = 86400
+
+
+def g_leitura(ctx: Ctx) -> list[Leitura]:
+    """Leitura única (O8.5, plano §19): % de leituras de documento que REPETEM uma (estágio, tipo, sha, versão) já lida
+    por outro job nas últimas 24 h (modo `rodar`; a conferência de efeito fica fora). Registro em `leitura_registro` no
+    esquema do fluxo (`fluxo/leituras`, ligado por JFN_LEITURAS_REGISTRAR=1). Sem a tabela ou sem leitura na janela =
+    INDISPONIVEL (não há o que julgar — nunca 0 %)."""
+    from compliance_agent.fluxo import leituras as LR
+    if ctx.con is None:
+        raise RuntimeError("sem PG: o registro de leituras mora no esquema do fluxo")
+    linhas = LR.ler_linhas(ctx.con, desde_s=JANELA_LEITURA_S)
+    if linhas is None:
+        return [nao_mediu("leitura.repetida_pct", f"{LR.TABELA} ausente: o registro de leituras não está ligado "
+                          f"({LR.ENV_LIGADO}=1 no filho do fluxo)")]
+    r = LR.resumir(linhas)
+    rot = {k: r[k] for k in ("leituras", "distintas", "repetidas", "downloads", "llm", "releituras_no_job",
+                             "conferencia")}
+    rot["repetidas_amostra"] = r["repetidas_lista"][:10]
+    if r["repetida_pct"] is None:
+        return [nao_mediu("leitura.repetida_pct", "nenhuma leitura de documento nas últimas 24 h", **rot)]
+    return [Leitura("leitura.repetida_pct", r["repetida_pct"], rotulos=rot)]
+
+
 GRUPOS: dict[str, Grupo] = {
     "psi": Grupo(g_psi, ("psi.cpu_some", "psi.mem_some", "psi.mem_full", "psi.io_some", "psi.io_full")),
     "memoria": Grupo(g_memoria, ("swap.uso_pct", "mem.disponivel_gb")),
@@ -1141,6 +1165,7 @@ GRUPOS: dict[str, Grupo] = {
     "custo_processo": Grupo(g_custo_processo, ("llm.custo_por_processo_usd",), intervalo_s=3600),
     "alcance": Grupo(g_alcance, ("itcampo.alcancavel",)),
     "detectores": Grupo(g_detectores, ("detectores.fp_medida_pct", "detectores.fp_acima_teto"), intervalo_s=3600),
+    "leitura": Grupo(g_leitura, ("leitura.repetida_pct",)),
 }
 
 

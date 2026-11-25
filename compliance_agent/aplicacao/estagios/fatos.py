@@ -250,9 +250,10 @@ def preparar(processo: str, ja_lidos: set[str], tabelas_lidas: set[str], *, alvo
         p.pecas_nao_lidas = [{"doc_id": "*", "motivo": p.fora_da_porta}]
         p.cobertura = {"chars_existentes": None, "chars_enviados": 0, "fracao": 0.0, "leitura": FORA_DA_PORTA}
         return p
-    originais = {d["doc_id"]: d for d in LI._docs(pasta)}
+    lidos = LI._docs(pasta)                      # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
+    originais = {d["doc_id"]: d for d in lidos}
     brutas, cob = LI.fatiar(pasta, alvo=alvo, sobreposicao=SOBREPOSICAO, ja_lidos=ja_lidos,
-                            tabelas_lidas=tabelas_lidas)
+                            tabelas_lidas=tabelas_lidas, docs=lidos)
     espera = ([{"doc_id": x, "motivo": "OCR ainda não confirmado"} for x in cob["docs_ocr_pendente"]]
               + [{"doc_id": x, "motivo": "tabela aguardando o leitor por código"} for x in cob["docs_tabela"]])
     fora = {x["doc_id"] for x in espera}

@@ -396,9 +396,10 @@ def preparar(processo: str, fatos: list[dict], *, eixos: tuple[str, ...] | None 
         p.cobertura = {"chars_existentes": None, "chars_enviados": 0, "fracao": 0.0, "leitura": "fora_da_porta",
                        "fatias": 0}
         return p
-    p.originais = {d["doc_id"]: {"texto": d["texto"], "sha": d["sha"], "titulo": d["titulo"]} for d in LI._docs(pasta)}
+    lidos = LI._docs(pasta)                      # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
+    p.originais = {d["doc_id"]: {"texto": d["texto"], "sha": d["sha"], "titulo": d["titulo"]} for d in lidos}
     brutas, cob = LI.fatiar(pasta, alvo=alvo, sobreposicao=LI.SOBREPOSICAO, ja_lidos=set(),
-                            tabelas_lidas=tabelas_lidas or set())
+                            tabelas_lidas=tabelas_lidas or set(), docs=lidos)
     p.pecas_nao_lidas = ([{"doc_id": x, "motivo": "OCR ainda não confirmado"} for x in cob["docs_ocr_pendente"]]
                          + [{"doc_id": x, "motivo": "tabela aguardando o leitor por código"} for x in cob["docs_tabela"]])
     for f in brutas:

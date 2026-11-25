@@ -156,11 +156,14 @@ def eh_tabela(texto: str) -> bool:
 
 
 def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO,
-           ja_lidos: set[str] | None = None, tabelas_lidas: set[str] | None = None) -> tuple[list[dict], dict]:
+           ja_lidos: set[str] | None = None, tabelas_lidas: set[str] | None = None,
+           docs: list[dict] | None = None) -> tuple[list[dict], dict]:
     """Só vai à IA o texto que sabemos certo e ainda não lido: texto NATIVO do PDF (OCR — por IA ou Tesseract, que
     errou 8% na bancada de 23/11 — espera a confirmação por página), fora de tabela, e cujo sha256 não foi lido
     antes (`ja_lidos`, mesma versão do prompt) nem aparece de novo no próprio processo. Tudo o que não vai fica
-    DECLARADO na cobertura com o motivo; `fracao` conta só o que foi de fato lido (IA ou reaproveitado)."""
+    DECLARADO na cobertura com o motivo; `fracao` conta só o que foi de fato lido (IA ou reaproveitado).
+    `docs`: a lista que o chamador JÁ leu com `_docs(pasta)` (O8.5, leitura única: o E8 e o E11 liam cada documento
+    duas vezes no mesmo job — uma para os originais, outra aqui). Sem ela, lê como antes."""
     fatias: list[dict] = []
     atual: list[dict] = []
     tam = 0
@@ -177,7 +180,7 @@ def fatiar(pasta: Path, alvo: int = ALVO_CHARS, sobreposicao: int = SOBREPOSICAO
                            "texto": "\n\n".join(f"=== DOC {d['doc_id']} | {d['titulo']} ===\n{d['texto']}" for d in atual)})
         atual, tam = [], 0
 
-    for d in _docs(pasta):
+    for d in (docs if docs is not None else _docs(pasta)):
         n = len(d["texto"])
         existentes += n
         if d["sha"] in vistos:

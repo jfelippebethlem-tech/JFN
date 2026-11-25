@@ -824,3 +824,19 @@ slos:
     runbook: 'O8.3 it-campo fora; §3.5 modo sem it-campo = DEGRADADO. Modern Standby: tela apagada derruba a rede (monitor/sono nunca)'
     remediar: 'conferir energia/tela do it-campo (monitor nunca, sono nunca); reinício só com PIN presencial do dono'
     origem: [itcampo_vigia, keepalive]
+  leitura_repetida:
+    sensor: leitura.repetida_pct
+    descricao: leitura única — % das leituras de documento (download, PDF, texto, página de OCR, LLM) que repetem uma (estágio, sha, versão) já lida por outro job nas últimas 24 h
+    unidade: '%'
+    sentido: max
+    saudavel: 0
+    pior: DEGRADADO
+    janela_s: 10800
+    escopo: global
+    nos: [vm2]
+    dono: fluxo
+    severidade: media
+    fonte: 'PG leitura_registro (esquema do fluxo; fluxo/leituras, filho com JFN_LEITURAS_REGISTRAR=1), modo rodar; a conferência de efeito fica fora — sem registro ou sem leitura na janela = INDISPONIVEL'
+    runbook: 'plano §19 (aceite de leitura única do O8.5): cada documento lido no máximo 1× por estágio × prompt_version; 2ª passada = 0 leitura, 0 download, 0 LLM'
+    remediar: 'abrir item de automelhoria com o (estágio, sha, versão) relido e os jobs (rotulos.repetidas_amostra): corrigir a idempotência na origem (chave/cache), nunca o sensor'
+    origem: [o85-ensaio, leitura-processo-a-processo-duas-camadas]

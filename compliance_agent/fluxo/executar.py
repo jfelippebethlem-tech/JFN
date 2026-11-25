@@ -30,6 +30,18 @@ def main(argv: list[str] | None = None) -> int:
         return SAIDA_PERMANENTE
     ctx = Contexto(no=e["no"], tipo=e["tipo"], chave=e["chave"], ficha=e["ficha"], tentativa=e["tentativa"],
                    correlation_id=e.get("correlation_id"))
+    # O8.5 (leitura única): com JFN_LEITURAS_REGISTRAR=1 o filho anota o que leu (fluxo/leituras) e grava no esquema
+    # do fluxo ao sair; desligado (padrão até a O9.0), nada muda.
+    from compliance_agent.fluxo import leituras
+    reg = leituras.iniciar(ctx, modo, estagio) if leituras.ligado() else None
+    try:
+        return _rodar(modo, e, estagio, ctx, saida)
+    finally:
+        if reg is not None:
+            leituras.encerrar(reg)
+
+
+def _rodar(modo: str, e: dict, estagio, ctx: Contexto, saida: str) -> int:
     try:
         if modo == "rodar":
             r = estagio.handler(e.get("payload") or {}, ctx)
