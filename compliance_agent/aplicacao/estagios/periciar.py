@@ -357,6 +357,9 @@ class Preparo:
     chave: str = ""
     cobertura: dict = field(default_factory=dict)
     pecas_nao_lidas: list[dict] = field(default_factory=list)
+    fonte_texto: str = ""
+    reusos: list[dict] = field(default_factory=list)      # [{doc_id, sha, src}] texto já julgado nesta versão
+    meta: dict = field(default_factory=dict)              # sha → (texto_sha, cabeça, corte, chars) do que foi lido
 
 
 def _sha(t: str) -> str:
@@ -375,31 +378,40 @@ def chave_fatia(processo: str, documentos: list, fatos_txt: str, eixos: tuple[st
 
 
 def preparar(processo: str, fatos: list[dict], *, eixos: tuple[str, ...] | None = None, alvo: int = ALVO_CHARS,
-             tabelas_lidas: set[str] | None = None) -> Preparo:
+             tabelas_lidas: set[str] | None = None, con_cap=None, textos_lidos: dict | None = None) -> Preparo:
     """Tudo o que se sabe antes do modelo. SEM TETO por processo: todo documento com texto certo entra em alguma
-    fatia (o fatiador do E8 com `ja_lidos` vazio — a perícia relê o que o E8 já extraiu, para JULGAR). O que não
-    entra é declarado em `pecas_nao_lidas` com o motivo."""
+    fatia (o fatiador do E8 — a perícia relê o que o E8 já extraiu, para JULGAR). O que não entra é declarado em
+    `pecas_nao_lidas` com o motivo.
+    FONTE e PORTA (O8.5 B1): as MESMAS do E8 (`fatos.acervo`): com `con_cap`, o texto que o E4/E5 gravou e o OCR só
+    com `confirmado` do E6; sem saída do estágio, o legado — declarado em `fonte_texto`. LEITURA ÚNICA por texto:
+    `textos_lidos` (`textos_ja_julgados`: saida_sha → 1ª perícia daquele texto nesta versão) — o documento cujo texto
+    já foi julgado não é reaberto nem reenviado; os fatos dele entram no bloco de fatos e os achados ancorados dele
+    vêm da perícia de origem (`achados_reaproveitados`, citação no documento DESTE processo)."""
     eixos = eixos or eixos_pedidos()
-    pasta = E8.pasta_do(processo)
     p = Preparo(processo=processo, eixos=eixos, identidade=PID.chave_processo(processo))
+    pasta = E8.pasta_do(processo)
     fatos = [f for f in fatos if f.get("citacao")]
     p.fatos_sha = _sha(json.dumps(sorted((str(f.get("doc_id")), str(f.get("tipo")), str(f.get("valor")),
                                           str(f.get("citacao"))) for f in fatos), ensure_ascii=False))
-    if not (pasta / "manifest.json").exists():
-        p.fora_da_porta = "sem acervo capturado"
-    else:
-        ok, motivo = LI.portao(pasta)
-        p.fora_da_porta = None if ok else motivo
+    ac = E8.acervo(processo, con_cap, textos_lidos)
+    p.fora_da_porta, p.fonte_texto = ac.fora_da_porta, ac.fonte
     if p.fora_da_porta:
         p.chave = chave_laudo(processo, [_sha(f"fora_da_porta:{p.fora_da_porta}")], p.fatos_sha, eixos)
-        p.pecas_nao_lidas = [{"doc_id": "*", "motivo": p.fora_da_porta}]
+        p.pecas_nao_lidas = ac.pendencias or [{"doc_id": "*", "motivo": p.fora_da_porta}]
         p.cobertura = {"chars_existentes": None, "chars_enviados": 0, "fracao": 0.0, "leitura": "fora_da_porta",
                        "fatias": 0}
         return p
-    lidos = LI._docs(pasta)                      # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
-    p.originais = {d["doc_id"]: {"texto": d["texto"], "sha": d["sha"], "titulo": d["titulo"]} for d in lidos}
-    brutas, cob = LI.fatiar(pasta, alvo=alvo, sobreposicao=LI.SOBREPOSICAO, ja_lidos=set(),
+    lidos = ac.docs                              # O8.5: lidos UMA vez; o fatiador recebe a mesma lista
+    p.originais = {d["doc_id"]: {"texto": d["texto"], "sha": d["sha"], "titulo": d["titulo"]} for d in lidos
+                   if "texto" in d}
+    julgados = {d["sha"] for d in lidos if "reuso" in d}
+    brutas, cob = LI.fatiar(pasta, alvo=alvo, sobreposicao=LI.SOBREPOSICAO, ja_lidos=julgados,
                             tabelas_lidas=tabelas_lidas or set(), docs=lidos)
+    por_id = {d["doc_id"]: d for d in lidos}
+    p.reusos = [{"doc_id": x, "sha": por_id[x]["sha"], "src": por_id[x]["reuso"]} for x in cob["docs_duplicados"]
+                if "reuso" in por_id[x]]
+    p.meta = {d["sha"]: (d["texto_sha"], d["cabeca"], d["corte"], len(d["texto"])) for d in lidos if "cabeca" in d}
+    reusados = {r["doc_id"] for r in p.reusos}
     p.pecas_nao_lidas = ([{"doc_id": x, "motivo": "OCR ainda não confirmado"} for x in cob["docs_ocr_pendente"]]
                          + [{"doc_id": x, "motivo": "tabela aguardando o leitor por código"} for x in cob["docs_tabela"]])
     for f in brutas:
@@ -413,7 +425,8 @@ def preparar(processo: str, fatos: list[dict], *, eixos: tuple[str, ...] | None 
             docs.append(PS.Documento(documento_id=d["doc_id"], texto=texto, versao_sha256=d["sha"],
                                      metadados={"titulo": M.mascarar(d["titulo"], mapa, estrito=True)[0]}))
             ids.append(d["doc_id"])
-        ftxt, fora = bloco_fatos(fatos, set(ids))
+        # os fatos do documento cujo texto já foi julgado (não reenviado) vão no bloco da 1ª fatia
+        ftxt, fora = bloco_fatos(fatos, set(ids) | (reusados if not p.fatias else set()))
         ftxt, mapa = M.mascarar(ftxt, mapa, estrito=True)
         if M.cpfs_expostos(ftxt):
             raise ErroPermanente(f"{processo}: CPF com DV válido no bloco de fatos depois da máscara")
@@ -421,9 +434,11 @@ def preparar(processo: str, fatos: list[dict], *, eixos: tuple[str, ...] | None 
             docs.append(PS.Documento(documento_id=DOC_FATOS, texto=ftxt, origem="metadados"))
         p.fatias.append(Fatia(idx=f["id"], chave=chave_fatia(processo, docs, ftxt, eixos), mapa=mapa, documentos=docs,
                               doc_ids=ids, fatos_fora=fora))
-    p.chave = chave_laudo(processo, [f.chave for f in p.fatias], p.fatos_sha, eixos)
+    p.chave = chave_laudo(processo, [f.chave for f in p.fatias] + [
+        f"reuso:{r['doc_id']}:{r['sha']}:{r['src']['processo']}" for r in p.reusos], p.fatos_sha, eixos)
     p.cobertura = {k: cob[k] for k in ("chars_existentes", "chars_enviados", "fracao", "leitura")}
     p.cobertura["fatias"] = len(p.fatias)
+    p.cobertura["docs_reaproveitados"] = [{"doc_id": r["doc_id"], "de": r["src"]} for r in p.reusos]
     return p
 
 
@@ -679,6 +694,57 @@ def aplicar_schema(con, esquema: str | None = None) -> None:
     esq = esquema_vigente(esquema)
     con.execute(SQL_SCHEMA.read_text(encoding="utf-8").replace(':"esquema"', f'"{esq}"'))
     con.execute(f'SET search_path TO "{esq}"')
+    con.execute(DDL_TEXTOS_JULGADOS)
+
+
+# O8.5 B1 (leitura única por TEXTO no E11): o texto (sha256 normalizado) que a perícia JÁ julgou nesta versão — com o
+# sha256 da saída do E4/E5, a cabeça/corte da normalização e o tamanho (as mesmas colunas do `docs_lidos` do E8) e o
+# processo/documento de origem dos achados. Só acrescenta.
+DDL_TEXTOS_JULGADOS = (
+    "CREATE TABLE IF NOT EXISTS pericia_textos_lidos(sha TEXT NOT NULL, versao TEXT NOT NULL, processo TEXT NOT NULL, "
+    "doc_id TEXT NOT NULL, laudo_chave TEXT NOT NULL, texto_sha TEXT, cabeca TEXT, corte INTEGER, chars INTEGER, "
+    "em TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(sha, versao)); "
+    "CREATE INDEX IF NOT EXISTS ix_pericia_textos_lidos_texto ON pericia_textos_lidos (texto_sha, versao)")
+
+
+def versao_julgamento() -> str:
+    return f"{PROMPT_VERSION}|{MODELO}|{VERSAO}"
+
+
+def textos_ja_julgados(con) -> dict[str, dict]:
+    """texto_sha (saída do E4/E5) → a 1ª perícia daquele texto nesta versão (forma de `fatos.textos_ja_lidos`)."""
+    out: dict[str, dict] = {}
+    for ts, sha, cab, corte, chars, proc, doc in con.execute(
+            "SELECT texto_sha, sha, cabeca, corte, chars, processo, doc_id FROM pericia_textos_lidos WHERE versao = %s "
+            "AND texto_sha IS NOT NULL ORDER BY em, processo, doc_id", (versao_julgamento(),)):
+        out.setdefault(ts, {"sha": sha, "cabeca": cab, "corte": corte, "chars": chars, "processo": proc,
+                            "doc_id": doc})
+    return out
+
+
+def registrar_julgados(con, p: Preparo, lidas: set[str]) -> int:
+    """Os documentos julgados agora (fatias válidas) entram em `pericia_textos_lidos` (1ª perícia do texto vale)."""
+    linhas = [(d["sha"], versao_julgamento(), p.processo, doc_id, p.chave, *(p.meta.get(d["sha"]) or (None,) * 4))
+              for doc_id, d in p.originais.items() if doc_id in lidas]
+    if linhas:
+        con.cursor().executemany(
+            "INSERT INTO pericia_textos_lidos(sha, versao, processo, doc_id, laudo_chave, texto_sha, cabeca, corte, "
+            "chars) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", linhas)
+    return len(linhas)
+
+
+def achados_reaproveitados(con, p: Preparo) -> dict[str, list[dict]]:
+    """eixo → achados ANCORADOS no texto reaproveitado, vindos do laudo vigente do processo de origem, com o documento
+    deste processo (mesmo doc_sha/página/offset/citação: o texto normalizado é o mesmo). Não mexem no grau: o grau
+    é do conjunto dos autos de cada processo; o achado entra como prova citável."""
+    out: dict[str, list[dict]] = {}
+    for r in p.reusos:
+        v = laudo_vigente(con, r["src"]["processo"])
+        for nome, e in ((v or {}).get("laudo") or {}).get("eixos", {}).items():
+            for a in list(e.get("achados") or []) + list(e.get("achados_reaproveitados") or []):
+                if a.get("doc_id") == r["src"]["doc_id"] and a.get("doc_sha") == r["sha"]:
+                    out.setdefault(nome, []).append({**a, "doc_id": r["doc_id"], "reaproveitado_de": r["src"]})
+    return out
 
 
 def laudo_vigente(con, processo: str) -> dict | None:
@@ -790,9 +856,10 @@ def montar_laudo(p: Preparo, contribs: list[dict], invalidas: list[Fatia], *, mo
 
 def periciar(con, processo: str, juiz: Juiz, *, fatos: list[dict], ob_paga: float | None, cnpj: str | None = None,
              cerebro: dict | None = None, eixos: tuple[str, ...] | None = None, modelo: str = MODELO,
-             sinais: list[dict] | None = None) -> dict:
-    p = preparar(processo, fatos, eixos=eixos)
-    base = {"processo": processo, "chave": p.chave, "fatias": [f.chave for f in p.fatias], "fatias_julgadas_agora": 0}
+             sinais: list[dict] | None = None, con_cap=None) -> dict:
+    p = preparar(processo, fatos, eixos=eixos, con_cap=con_cap, textos_lidos=textos_ja_julgados(con))
+    base = {"processo": processo, "chave": p.chave, "fatias": [f.chave for f in p.fatias], "fatias_julgadas_agora": 0,
+            "fonte_texto": p.fonte_texto, "docs_reaproveitados": len(p.reusos)}
     v = laudo_vigente(con, processo)
     if v and v["chave"] == p.chave:
         return {**base, "ja_periciado": True, "versao": v["versao"], "laudo_id": v["id"]}
@@ -808,8 +875,9 @@ def periciar(con, processo: str, juiz: Juiz, *, fatos: list[dict], ob_paga: floa
         sis, instr = montar_prompt(p, f, ob_paga=ob_paga, cerebro=cerebro, sinais=sinais)
         r = juiz(sis, instr, f.documentos)
         if r is None:
-            raise SemCota(f"{processo}: juiz sem cota na fatia {f.idx} — {base['fatias_julgadas_agora']} fatia(s) "
-                          "salva(s); o processo NÃO foi periciado")
+            raise SemCota(f"{processo}: juiz sem cota na fatia {f.idx} de {len(p.fatias)} ({len(p.originais)} peça(s) "
+                          f"com texto a julgar, {len(p.reusos)} reaproveitada(s), fonte {p.fonte_texto}) — "
+                          f"{base['fatias_julgadas_agora']} fatia(s) salva(s); o processo NÃO foi periciado")
         base["fatias_julgadas_agora"] += 1
         motor = r.motor
         c = interpretar(r.texto, p, f, ob_paga=ob_paga)
@@ -822,14 +890,21 @@ def periciar(con, processo: str, juiz: Juiz, *, fatos: list[dict], ob_paga: floa
                          cerebro=cerebro)
     if p.fora_da_porta:
         laudo["fora_da_porta"] = p.fora_da_porta
+    laudo["fonte_texto"] = p.fonte_texto
+    for nome, xs in achados_reaproveitados(con, p).items():
+        if nome in laudo["eixos"]:
+            laudo["eixos"][nome]["achados_reaproveitados"] = xs
     g = gravar_laudo(con, laudo)
+    if not p.fora_da_porta:
+        registrar_julgados(con, p, {d for f in p.fatias if f not in invalidas for d in f.doc_ids})
     return {**base, "ja_periciado": False, "versao": g["versao"], "laudo_id": g["id"], "nova_versao": g["nova"],
             "grau_global": laudo["grau_global"], "estado_global": laudo["estado_global"],
             "achados": sum(len(e["achados"]) for e in laudo["eixos"].values())}
 
 
-def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO) -> dict:
-    """Conferência INDEPENDENTE (relê o PG e o acervo, não a palavra do handler)."""
+def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO, con_cap=None) -> dict:
+    """Conferência INDEPENDENTE (relê o PG e o acervo, não a palavra do handler). O texto é relido da MESMA fonte
+    declarada (`fonte_texto`): saída do E4/E5 (`con_cap`, sem reaproveitamento — lê tudo) ou o legado."""
     out = {"vigente": False, "cadeia": False, "global_ok": False, "amostra": 0, "divergentes": []}
     v = laudo_vigente(con, efeito.get("processo"))
     if v is None or v["chave"] != efeito.get("chave"):
@@ -841,9 +916,19 @@ def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO) -> dict:
     laudo = v["laudo"]
     out["global_ok"] = grau_global(laudo["eixos"]) == laudo["grau_global"] and all(
         e["grau"] in (None, *GRAUS) for e in laudo["eixos"].values())
-    achados = [a for e in laudo["eixos"].values() for a in e["achados"]]
+    achados = [a for e in laudo["eixos"].values() for a in list(e["achados"]) + list(e.get("achados_reaproveitados")
+                                                                                       or [])]
     sorteio = random.Random(v["chave"]).sample(achados, min(amostra, len(achados)))
-    docs = {d["doc_id"]: d for d in LI._docs(E8.pasta_do(efeito["processo"]))} if sorteio else {}
+    docs = {}
+    if sorteio:
+        if efeito.get("fonte_texto") == E8.FONTE_ESTAGIO:
+            if con_cap is None:
+                raise ErroPermanente(f"{efeito['processo']}: efeito declara o texto do estágio e a conferência não tem "
+                                     "o PG da captura")
+            ac = E8.acervo_do_estagio(con_cap, efeito["processo"])
+            docs = {d["doc_id"]: d for d in (ac.docs if ac is not None else [])}
+        else:
+            docs = {d["doc_id"]: d for d in LI._docs(E8.pasta_do(efeito["processo"]))}
     for a in sorteio:
         d = docs.get(a["doc_id"])
         if d is None or d["sha"] != a["doc_sha"] or d["texto"][a["inicio"]:a["fim"]] != a["citacao"]:
@@ -876,12 +961,17 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     pg = conectar(payload.get("dsn"), payload.get("esquema"))
     try:
         from compliance_agent.fluxo import fila
-        cf = fila.conectar()
+        cap = E8._conectar_captura(payload)
         try:
-            r = periciar(pg, processo, juiz_assinatura(cf), fatos=fatos_pg(processo, payload.get("dsn")), ob_paga=ob,
-                         cnpj=payload.get("cnpj"), cerebro=contexto_cerebro(processo), eixos=eixos)
+            cf = fila.conectar()
+            try:
+                r = periciar(pg, processo, juiz_assinatura(cf), fatos=fatos_pg(processo, payload.get("dsn")),
+                             ob_paga=ob, cnpj=payload.get("cnpj"), cerebro=contexto_cerebro(processo), eixos=eixos,
+                             con_cap=cap)
+            finally:
+                cf.close()
         finally:
-            cf.close()
+            cap.close()
     finally:
         pg.close()
     novo = not r.get("ja_periciado") and r.get("nova_versao")
@@ -891,7 +981,11 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
 def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     pg = conectar(payload.get("dsn"), payload.get("esquema"))
     try:
-        c = conferir(pg, resultado.efeito)
+        cap = E8._conectar_captura(payload)
+        try:
+            c = conferir(pg, resultado.efeito, con_cap=cap)
+        finally:
+            cap.close()
     finally:
         pg.close()
     resultado.efeito["conferencia"] = c
@@ -1020,7 +1114,7 @@ def main(argv: list[str] | None = None) -> int:
         return _fila(a.limite, a.fonte)
     r = _handler({"processo": a.processo, "eixos_extra": a.eixos_extra},
                  Contexto(no="cli", tipo=f"periciar:{a.processo}", chave=a.processo, ficha=0, tentativa=1))
-    c = conferir(conectar(), r.efeito)
+    c = conferir(conectar(), r.efeito, con_cap=E8._conectar_captura({}))
     print(json.dumps({**r.efeito, "conferencia": c}, ensure_ascii=False, indent=1, default=str))
     return 0 if efeito_ok(c) else 1
 
