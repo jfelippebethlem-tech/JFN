@@ -75,7 +75,8 @@ VERSAO = "e5-3"                              # e5-2 (O3.6): img_sha por página 
 ORIGEM = "sei:e5"
 TIPO_TRANSFORMACAO = "ocr"
 DPI = 200                                    # = tools/sei_ocr_reserva.DPI e o worker da GPU (200 dpi)
-MAX_PAGINAS = 120                            # = MAX_PAG do worker da GPU e da reserva
+MAX_PAGINAS = 120                            # páginas por LOTE do E5 (= MAX_PAG do worker da GPU e da reserva); o
+#                                              documento maior é lido inteiro, um lote por vez (achado 1.10)
 TEXTO, VAZIA_CONFERIDA, VAZIA_PENDENTE = "texto", "vazia_conferida", "vazia_pendente"
 ENV_EXECUTOR = "JFN_OCR_EXECUTOR"            # gpu | cpu | tesseract (força; padrão = pelo nó)
 ENV_TRAVA_GPU = "JFN_OCR_GPU_TRAVA"
@@ -174,6 +175,12 @@ class Rasterizacao:
         return {"rasterizacoes": n, "rasterizacoes_distintas": len(self.contagem),
                 "rasterizacoes_repetidas": n - len(self.contagem), "pdf_aberturas": self.aberturas}
 
+    def soltar_imagens(self) -> None:
+        """Solta as imagens guardadas (o PDF segue aberto e a contagem segue): o E5 chama entre lotes, quando as
+        páginas do lote anterior não serão mais pedidas no job."""
+        self._imgs.clear()
+        self._bytes = 0
+
     def fechar(self) -> None:
         for doc, _ in self._docs.values():
             doc.close()
@@ -208,8 +215,8 @@ def _imagens(pdf: Path, paginas: list[int]):
     if r is not None:
         total = r.paginas(pdf)
         for n in paginas:
-            if not 1 <= n <= min(total, MAX_PAGINAS):
-                raise ErroPermanente(f"{pdf.name}: página {n} fora do documento (ou acima do teto {MAX_PAGINAS})")
+            if not 1 <= n <= total:
+                raise ErroPermanente(f"{pdf.name}: página {n} fora do documento")
             img = r.imagem(pdf, n)
             yield n, img, img.shape[1], img.shape[0]
         return
@@ -217,8 +224,8 @@ def _imagens(pdf: Path, paginas: list[int]):
     import numpy as np
     with fitz.open(pdf) as doc:
         for n in paginas:
-            if not 1 <= n <= min(doc.page_count, MAX_PAGINAS):
-                raise ErroPermanente(f"{pdf.name}: página {n} fora do documento (ou acima do teto {MAX_PAGINAS})")
+            if not 1 <= n <= doc.page_count:
+                raise ErroPermanente(f"{pdf.name}: página {n} fora do documento")
             pix = doc.load_page(n - 1).get_pixmap(dpi=DPI)
             img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)[:, :, :3]
             yield n, np.ascontiguousarray(img), pix.width, pix.height
@@ -454,22 +461,11 @@ def escolher(no: str | None = None) -> tuple[Executor, Executor | None]:
 
 
 # ── OCR de um documento (puro sobre os executores) ─────────────────────────────────────────────────────────────
-def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | None,
-                  cache: CacheImagem | None = None) -> dict:
-    """Lê SÓ as páginas escaneadas do E4 e compõe o texto sem tocar no nativo. Devolve o conteúdo do lateral.
-    Página com imagem idêntica (no documento ou no `cache`, mesmo motor@versão) não é relida (regra 4)."""
-    nativas = {p["pagina"]: p for p in e4["paginas"]}
-    todas = [p["pagina"] for p in e4["paginas"] if p["perfil"] == T.ESCANEADA]
-    if not todas:
-        raise ErroPermanente("documento sem página escaneada: nada a fazer no E5 (o E4 manda direto ao E7)")
-    # O3.6: página escaneada ACIMA do teto não é lida e fica PENDENTE (declarada). Antes, o `_imagens` levantava
-    # ErroPermanente e o documento inteiro ia à quarentena sem OCR nenhum — medido: 3 de 8 processos da bancada
-    # morreram em PDFs de 121–154 páginas
-    acima = [n for n in todas if n > MAX_PAGINAS]
-    alvo = [n for n in todas if n <= MAX_PAGINAS]
-    hashes = hashes_imagem(pdf, alvo) if alvo else {}
-    m1 = principal.motor()
-    lidas, dedup = _ler_dedup(principal, m1, pdf, alvo, hashes, cache, pdf.name) if alvo else ({}, {})
+def _ocr_lote(pdf: Path, alvo: list[int], principal: Executor, m1: str, segundo: Executor | None,
+              cache: CacheImagem | None) -> tuple[dict[int, dict], dict[int, str], dict[int, dict]]:
+    """Um lote de páginas escaneadas (até `MAX_PAGINAS`): (estado por página, img_sha, dedup_de)."""
+    hashes = hashes_imagem(pdf, alvo)
+    lidas, dedup = _ler_dedup(principal, m1, pdf, alvo, hashes, cache, pdf.name)
     pags: dict[int, dict] = {}
     vazias: list[int] = []
     incompletas: dict[int, Leitura] = {}
@@ -489,7 +485,9 @@ def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | 
         relidas, dedup2 = _ler_dedup(segundo, m2, pdf, vazias, hashes, cache, pdf.name)
         for n in vazias:
             le = relidas.get(n)
-            if le is not None and util(le.texto) and not le.blocos_vazios:
+            if le is None:                            # achado 1.9: o 2º não leu ⇒ não é "conferida por dois"
+                raise ErroInferencia(f"{pdf.name}: o 2º motor ({m2}) não devolveu a página {n}")
+            if util(le.texto) and not le.blocos_vazios:
                 pags[n] = {"estado": TEXTO, "motor": m2, "texto": le.texto, "linhas": le.linhas,
                            "largura": le.largura, "altura": le.altura,
                            "primeiro_incompleto" if n in incompletas else "primeiro_vazio": m1}
@@ -512,9 +510,31 @@ def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | 
                        "motivo": "incompleta (bloco de texto vazio) no único motor disponível" if n in incompletas
                        else "vazia no único motor disponível: precisa de leitura de outra família"}
             dedup.pop(n, None)
-    for n in acima:
-        pags[n] = {"estado": VAZIA_PENDENTE, "motor": m1, "texto": "", "linhas": [],
-                   "motivo": f"acima do teto de {MAX_PAGINAS} páginas do E5: não lida"}
+    return pags, hashes, dedup
+
+
+def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | None,
+                  cache: CacheImagem | None = None) -> dict:
+    """Lê SÓ as páginas escaneadas do E4 e compõe o texto sem tocar no nativo. Devolve o conteúdo do lateral.
+    Página com imagem idêntica (no documento ou no `cache`, mesmo motor@versão) não é relida (regra 4)."""
+    nativas = {p["pagina"]: p for p in e4["paginas"]}
+    todas = [p["pagina"] for p in e4["paginas"] if p["perfil"] == T.ESCANEADA]
+    if not todas:
+        raise ErroPermanente("documento sem página escaneada: nada a fazer no E5 (o E4 manda direto ao E7)")
+    # achado 1.10: o teto é o tamanho do LOTE, não um corte. Antes, a página acima dele ficava `vazia_pendente` ⇒ nada
+    # no PG, `falhou_efeito` terminal sem evento e o E7 preso em `ocr_pendente`. Lote a lote, as imagens do anterior
+    # são soltas (memória limitada) e cada página segue rasterizada uma vez (hash, 1º e 2º motor na mesma imagem)
+    m1 = principal.motor()
+    pags: dict[int, dict] = {}
+    hashes: dict[int, str] = {}
+    dedup: dict[int, dict] = {}
+    for i in range(0, len(todas), MAX_PAGINAS):
+        if i and _RASTER is not None:
+            _RASTER.soltar_imagens()
+        p, h, d = _ocr_lote(pdf, todas[i:i + MAX_PAGINAS], principal, m1, segundo, cache)
+        pags.update(p)
+        hashes.update(h)
+        dedup.update(d)
     for n, v in pags.items():
         if n in hashes:
             v["img_sha"] = hashes[n]
@@ -539,7 +559,7 @@ def ocr_documento(pdf: Path, e4: dict, principal: Executor, segundo: Executor | 
             "motores": sorted({v["motor"] for v in pags.values()} | {v["conferido_por"] for v in pags.values()
                                                                       if v.get("conferido_por")}),
             "pendentes": [n for n, v in pags.items() if v["estado"] == VAZIA_PENDENTE],
-            "dedup": {"paginas": len(alvo), "imagens_distintas": len(set(hashes.values())),
+            "dedup": {"paginas": len(todas), "imagens_distintas": len(set(hashes.values())),
                       "reusadas": sorted(n for n, v in pags.items() if v.get("dedup_de"))},
             # FORA do lateral (o `_handler` tira): de onde veio a leitura reusada do cache depende do estado do cache,
             # e o lateral da mesma versão tem de sair igual na reexecução (o sha dele está no PG)

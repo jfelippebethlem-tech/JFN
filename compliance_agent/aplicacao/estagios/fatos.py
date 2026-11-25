@@ -76,7 +76,7 @@ from compliance_agent import evidencias as EV
 from compliance_agent import leitura_integral as LI
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
 from compliance_agent.dominio import mascara as M
-from compliance_agent.fluxo.fila import Adiado, Resultado
+from compliance_agent.fluxo.fila import Resultado
 from compliance_agent.llm.verificacao import _normal
 
 VERSAO = "e8-1"                                  # lógica do estágio (âncora, régua da citação, chaves)
@@ -94,6 +94,7 @@ AMOSTRA_EFEITO = 20
 VERIFICADO = "VERIFICADO"
 FALHA_CITACAO = "INDETERMINADO_FALHA_CITACAO"
 FORA_DA_PORTA = "fora_da_porta"
+MOTIVO_JSON_INVALIDO = "resposta do modelo inválida (JSON)"   # peça não lida: a fatia dela é relida na reexecução
 ESQUEMA_PADRAO = "public"                        # onde as tabelas do piloto moram (medido 24/11/2026)
 ENV_ESQUEMA = "JFN_FATOS_ESQUEMA"
 RAIZ = Path(__file__).resolve().parents[3]
@@ -134,7 +135,7 @@ def chave_processo(processo: str, texto_sha: str, prompt_version: str = PROMPT_V
     return _sha(f"{processo}|{texto_sha}|{prompt_version}|{modelo}")
 
 
-class SemCota(Adiado):         # espera conhecida: volta sem gastar tentativa (fila.adiar)
+class SemCota(RuntimeError):
     """O leitor não pôde ler agora (ritmo/teto/assinatura): o job tenta de novo com backoff; nada foi marcado como lido."""
 
 
@@ -579,9 +580,15 @@ def tabelas_lidas(con) -> set[str]:
 
 
 def leitura_concluida(con, processo: str, chave: str) -> bool:
-    r = con.execute("SELECT leitura FROM leituras WHERE processo = %s AND estagio = %s AND versao = %s AND chave = %s",
-                    (processo, ESTAGIO_NOME, versao_chave(), chave)).fetchone()
-    return r is not None and not str(r[0] or "").startswith(FORA_DA_PORTA)
+    """Lida = registrada nesta chave, não fora da porta e sem fatia de JSON inválido (achado 1.13: a "parcial" por
+    JSON inválido voltava `ja_lido` e a fatia nunca era relida). A "parcial" do fatiador (tabela/OCR à espera) segue
+    concluída: o que falta não entra na chave e muda a chave quando chegar."""
+    r = con.execute("SELECT leitura, pecas_nao_lidas FROM leituras WHERE processo = %s AND estagio = %s AND "
+                    "versao = %s AND chave = %s", (processo, ESTAGIO_NOME, versao_chave(), chave)).fetchone()
+    if r is None or str(r[0] or "").startswith(FORA_DA_PORTA):
+        return False
+    pecas = r[1] if isinstance(r[1], list) else json.loads(r[1] or "[]")
+    return not any(isinstance(x, dict) and x.get("motivo") == MOTIVO_JSON_INVALIDO for x in pecas)
 
 
 def fatia_gravada(con, chave: str) -> bool:
@@ -608,7 +615,7 @@ def gravar_fatia(con, processo: str, fatia: Fatia, fatos: list[dict], motor: str
 def concluir(con, p: Preparo, via: str, invalidas: list[Fatia] = ()) -> dict:
     """Registra a leitura do processo (cobertura + peças não lidas) e os documentos lidos. Fatia com resposta
     inválida: os documentos dela entram em `pecas_nao_lidas` e NÃO em `docs_lidos`."""
-    pecas = list(p.pecas_nao_lidas) + [{"doc_id": d, "motivo": "resposta do modelo inválida (JSON)"}
+    pecas = list(p.pecas_nao_lidas) + [{"doc_id": d, "motivo": MOTIVO_JSON_INVALIDO}
                                        for f in invalidas for d in f.docs]
     chaves = [f.chave for f in p.fatias]
     cont = dict(con.execute("SELECT estado, count(*) FROM fatos WHERE chave = ANY(%s) GROUP BY estado",
@@ -722,6 +729,9 @@ def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO, con_cap=None) -> 
     r = con.execute("SELECT leitura FROM leituras WHERE processo = %s AND estagio = %s AND versao = %s AND chave = %s",
                     (proc, ESTAGIO_NOME, versao_chave(), chave)).fetchone()
     out = {"leitura_no_pg": r is not None, "recontados": None, "amostra": 0, "divergentes": []}
+    if efeito.get("fora_da_porta"):
+        out["motivo"] = (f"fora da porta do E8: {efeito['fora_da_porta']} — nada lido; não é feito (volta quando a "
+                         "fonte mudar)")
     if r is None or efeito.get("ja_lido") or efeito.get("fora_da_porta"):
         return out
     fatias = list(efeito.get("fatias") or [])
@@ -751,7 +761,9 @@ def conferir(con, efeito: dict, amostra: int = AMOSTRA_EFEITO, con_cap=None) -> 
 def _efeito_ok(efeito: dict, c: dict) -> bool:
     if not c["leitura_no_pg"]:
         return False
-    if efeito.get("ja_lido") or efeito.get("fora_da_porta"):
+    if efeito.get("fora_da_porta"):              # achado 1.13: sem leitura não é "feito" (falhou_efeito com motivo)
+        return False
+    if efeito.get("ja_lido"):
         return True
     return c["recontados"] == efeito.get("fatos_gravados") and not c["divergentes"]
 

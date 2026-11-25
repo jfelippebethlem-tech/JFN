@@ -267,6 +267,52 @@ def test_sem_cota_no_meio_nao_marca_lido_e_retoma_sem_duplicar(pg, tmp_path, mon
 
 
 @precisa_pg
+def test_fora_da_porta_nao_e_feito_e_declara_o_motivo(pg, tmp_path, monkeypatch):
+    """Achado 1.13: `fora_da_porta` fazia `_efeito_ok` True ⇒ o job virava "feito" sem leitura nenhuma. Agora o
+    efeito reprova (falhou_efeito) com o motivo na conferência; a propagação reabre o job quando a porta abrir."""
+    con, _ = pg
+    pasta = _acervo(tmp_path, monkeypatch, [("Atesto (123456789)", _TEXTO_CPF)])
+    man = json.loads((pasta / "manifest.json").read_text())
+    man["captura_completa"] = False
+    (pasta / "manifest.json").write_text(json.dumps(man))
+    falso = _Falso()
+    r = F.ler_processo(con, PROC, falso)
+    c = F.conferir(con, r)
+    assert r["fora_da_porta"] and not falso.chamadas and c["leitura_no_pg"]
+    assert not F._efeito_ok(r, c) and "captura não declarada completa" in c["motivo"]
+
+
+class _FalsoInvalido(_Falso):
+    """LLM falso que devolve JSON inválido nas primeiras `n` chamadas."""
+
+    def __init__(self, n: int):
+        super().__init__()
+        self.n = n
+
+    def __call__(self, sistema: str, texto: str):
+        if len(self.chamadas) < self.n:
+            self.chamadas.append(texto)
+            return F.Leitura(texto="isto não é JSON", motor="claude-haiku-5-5@falso")
+        return super().__call__(sistema, texto)
+
+
+@precisa_pg
+def test_fatia_com_json_invalido_e_relida_na_reexecucao(pg, tmp_path, monkeypatch):
+    """Achado 1.13: a fatia com JSON inválido deixava a leitura "parcial", mas `leitura_concluida` só excluía
+    FORA_DA_PORTA ⇒ a reexecução devolvia `ja_lido` e a fatia nunca era relida."""
+    con, _ = pg
+    _acervo(tmp_path, monkeypatch, [("Atesto (123456789)", _TEXTO_CPF)])
+    r1 = F.ler_processo(con, PROC, _FalsoInvalido(1))
+    assert r1["fatias_invalidas"] and r1["fatos_gravados"] == 0
+    falso = _Falso()
+    r2 = F.ler_processo(con, PROC, falso)
+    assert not r2["ja_lido"] and len(falso.chamadas) == 1 and r2["fatos_gravados"] == 3
+    assert con.execute("SELECT leitura FROM leituras WHERE processo = %s", (PROC,)).fetchone()[0] != "parcial"
+    r3 = F.ler_processo(con, PROC, falso)                                # agora sim: lida, 0 LLM
+    assert r3["ja_lido"] and len(falso.chamadas) == 1
+
+
+@precisa_pg
 def test_schema_evolui_tabela_antiga_sem_renomear(pg):
     con, nome = pg
     assert F.verificar_schema(con) == []

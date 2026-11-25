@@ -263,15 +263,30 @@ def test_incompleta_nao_vira_texto_vai_ao_segundo_e_nao_entra_no_cache(tmp_path)
     assert r["pendentes"] == [1] and r["texto_composto"] == ""
 
 
-def test_pagina_acima_do_teto_fica_pendente_e_o_resto_e_lido(tmp_path, monkeypatch):
-    """O3.6: PDF com página escaneada acima do teto não derruba o documento inteiro (era ErroPermanente sem OCR
-    nenhum): as de baixo são lidas, as de cima ficam `vazia_pendente` declaradas — nada vira feito."""
+def test_documento_acima_do_teto_e_lido_inteiro_em_lotes(tmp_path, monkeypatch):
+    """Achado 1.10: a página acima do teto ficava `vazia_pendente` ⇒ nada no PG, `falhou_efeito` terminal sem evento
+    e o E7 preso em `ocr_pendente` para sempre. Agora o teto é o tamanho do LOTE: o documento é lido inteiro, um lote
+    por vez (memória limitada), e cada página continua lida uma vez."""
     monkeypatch.setattr(O, "MAX_PAGINAS", 2)
     pdf = _pdf_repetido(tmp_path / "longo.pdf", [10, 20, 30])
-    g = Falso("gpu", {1: "um", 2: "dois", 3: "NÃO PODE SER LIDA"})
+    g = Falso("gpu", {1: "um", 2: "dois", 3: "tres"})
     r = O.ocr_documento(pdf, T.extrair(pdf), g, Falso("rapidocr"))
-    assert g.pedidas == [[1, 2]] and r["pendentes"] == [3] and r["alvo"] == [1, 2, 3]
-    assert "acima do teto" in r["paginas"]["3"]["motivo"] and r["paginas"]["1"]["texto"] == "um"
+    assert g.pedidas == [[1, 2], [3]] and r["pendentes"] == [] and r["alvo"] == [1, 2, 3]
+    assert [r["paginas"][k]["texto"] for k in ("1", "2", "3")] == ["um", "dois", "tres"]
+    assert all(len(v["img_sha"]) == 64 for v in r["paginas"].values())
+
+
+def test_segundo_motor_que_nao_devolve_a_pagina_e_erro_nao_vazia_conferida(tmp_path):
+    """Achado 1.9: o 2º motor que omitia a página fazia dela `vazia_conferida` "por dois motores" — o 2º nunca a leu.
+    Omissão é erro de inferência (o job tenta de novo), como já era no 1º motor."""
+    class Omite(Falso):
+        def ler(self, pdf, paginas):
+            out = super().ler(pdf, paginas)
+            out.pop(2, None)
+            return out
+    pdf, e4 = _e4(tmp_path, ["escaneada", "escaneada"])
+    with pytest.raises(O.ErroInferencia, match="2º motor"):
+        O.ocr_documento(pdf, e4, Falso("rapidocr"), Omite("tesseract"))
 
 
 def test_nativo_com_form_feed_nao_desalinha_as_paginas(tmp_path):
@@ -282,3 +297,19 @@ def test_nativo_com_form_feed_nao_desalinha_as_paginas(tmp_path):
     r = O.ocr_documento(pdf, e4, Falso("gpu", {2: "lido"}), None)
     assert len(r["compostas"]) == 2 and r["compostas"][0] == "cabeçalho\fcorpo nativo"
     assert T.QUEBRA.join(r["compostas"]) == r["texto_composto"] and len(r["texto_composto"].split(T.QUEBRA)) == 3
+
+
+@precisa_pg
+def test_e5_documento_acima_do_teto_grava_e_emite_os_eventos(pg, tmp_path, monkeypatch):  # noqa: F811
+    """Achado 1.10 ponta a ponta: antes, `gravado: False`, efeito reprovado e NENHUM evento (o E7 nunca soltava o
+    original e o E8 nunca via o texto). Lido em lotes, grava a transformação e emite os três eventos."""
+    con, nome = pg
+    monkeypatch.setattr(O, "MAX_PAGINAS", 1)
+    pdf = pdf_de(tmp_path / "001.pdf", ["nativa", "escaneada", "escaneada"])
+    rodar_e4(nome, tmp_path, pdf)
+    sha = T.sha256_arquivo(pdf)
+    g = Falso("rapidocr", {2: "NOTA 1", 3: "NOTA 2"})
+    r, ok = _e5(nome, tmp_path, pdf, sha, (g, None), monkeypatch)
+    assert ok, r.efeito.get("conferencia")
+    assert g.pedidas == [[2], [3]] and r.efeito["paginas"] == {O.TEXTO: [2, 3]}
+    assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia", "terminado"]

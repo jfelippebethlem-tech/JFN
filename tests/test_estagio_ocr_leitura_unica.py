@@ -119,6 +119,21 @@ def test_e5_rasteriza_cada_pagina_uma_vez_e_o_resultado_nao_muda(tmp_path, conta
                             "pdf_aberturas": 1}
 
 
+def test_e5_em_lotes_cada_pagina_rasterizada_uma_vez_com_o_orcamento_de_um_lote(tmp_path, conta, monkeypatch):
+    """Achado 1.10: documento acima do teto é lido em lotes; o lote solta as imagens dele antes do próximo, então o
+    orçamento de UM lote basta e nenhuma página é renderizada 2× (hash, 1º e 2º motor na mesma imagem)."""
+    monkeypatch.setattr(O, "MAX_PAGINAS", 2)
+    pdf = _pdf_repetido(tmp_path / "lotes.pdf", [200, 150, 100])
+    with O.rasterizacao_unica(orcamento=0) as medida:
+        uma = medida.imagem(pdf, 1)
+    conta["pix"].clear()
+    with O.rasterizacao_unica(orcamento=2 * uma.nbytes) as ras:
+        r = O.ocr_documento(pdf, T.extrair(pdf), Motor("rapidocr", {200: "um", 100: "tres"}),
+                            Motor("tesseract", {150: "dois"}), None)
+    assert r["pendentes"] == [] and r["paginas"]["2"]["motor"] == "tesseract@teste"
+    assert ras.resumo()["rasterizacoes_repetidas"] == 0 and len(conta["pix"]) == 3
+
+
 def test_e6_barras_leitura_e_recorte_uma_renderizacao_por_pagina_e_dpi(tmp_path, conta, monkeypatch):
     import numpy as np
 
