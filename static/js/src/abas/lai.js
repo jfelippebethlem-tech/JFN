@@ -2,7 +2,7 @@
 // Alvo (processo SEI/Processo.rio, contrato CCON, CNPJ ou nome) → POST /api/lai/gerar → .docx/.md em
 // reports/ + registro com prazo em data/lai.db. O protocolo no e-SIC é humano (gov.br do requerente):
 // o painel entrega o texto pronto para colar e acompanha o prazo de 20 dias.
-import {$, esc, card, kpi, sec, cover} from '../nucleo/dom.js';
+import {$, esc, card, kpi, sec, cover, tecnico} from '../nucleo/dom.js';
 import {J, erroHumano, cardErro} from '../nucleo/http.js';
 import {fmtN} from '../nucleo/formato.js';
 
@@ -28,12 +28,12 @@ export async function renderLai(){
   h += `<div class="grid">
     ${kpi(fmtN(itens.length),'Requerimentos gerados',null,null,{sobre:'Registros em data/lai.db (rascunho → protocolado → respondido/negado/recurso).'})}
     ${kpi(fmtN(prot.length),'Protocolados (aguardando)',null,null,{sobre:'Prazo legal: 20 dias, prorrogável por 10 (art. 11, LAI).'})}
-    ${kpi(fmtN(venc.length),'Prazo vencido','var(--rose)',null,{sobre:'Cabe recurso (art. 15) ou reclamação à CGM/CGE.'})}
+    ${kpi(fmtN(venc.length),'Prazo vencido','var(--crit-text)',null,{sobre:'Cabe recurso (art. 15) ou reclamação à CGM/CGE.'})}
   </div>`;
   if(sd && sd.ok){
     h += sec('Saúde dos pipelines da Prefeitura', sd.grau_geral);
     h += `<div style="overflow-x:auto"><table class="tb" style="min-width:640px"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>`
-      + (sd.etapas||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo||'—').slice(0,16))}</td><td>${esc(e.grau)} ${esc(e.leitura||'')}</td><td class="dim">${esc(e.acao||'')}</td></tr>`).join('')
+      + (sd.etapas||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo||'INDISPONÍVEL').slice(0,16))}</td><td>${esc(e.grau)} ${esc(e.leitura||'')}</td><td class="dim">${tecnico(esc(e.acao||''))}</td></tr>`).join('')
       + `</tbody></table></div>`;
   }
   h += sec('Gerar requerimento');

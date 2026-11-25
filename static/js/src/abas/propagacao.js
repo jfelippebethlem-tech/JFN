@@ -135,8 +135,8 @@ export async function renderPropagacao(){
     : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora(u.quando)}` : 'desde que foi instalado'}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
   h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? 'var(--amber)' : null, '🔁', {sobre: 'Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py.'})}
-    ${kpi(fmtN(r.com_falha), 'Com falha no último recálculo', r.com_falha ? 'var(--rose)' : null, '⚠️', {sobre: 'Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel.'})}
-    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? 'var(--rose)' : null, '📡', {sobre: 'Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou.'})}
+    ${kpi(fmtN(r.com_falha), 'Com falha no último recálculo', r.com_falha ? 'var(--crit-text)' : null, '⚠️', {sobre: 'Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel.'})}
+    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? 'var(--crit-text)' : null, '📡', {sobre: 'Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou.'})}
     ${kpi(fmtN((d.cerebro || {}).gravadas), 'Descobertas no segundo cérebro', null, '🧠', {sobre: 'Memórias gravadas no cérebro compartilhado dos agentes a partir desta máquina, com resposta do cérebro confirmando a gravação (tabela cerebro de data/propagacao.db).'})}
   </div>`;
   h += sec('Derivados', fmtN(r.derivados)) + _derivados(d);

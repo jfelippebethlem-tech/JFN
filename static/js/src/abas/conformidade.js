@@ -90,7 +90,7 @@ export async function renderConformidade(){
   h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, '✅', {sobre: 'Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana.'})}
     ${kpi(medido ? fmtN(d.total_violacoes) : _IND, 'Violações abertas', null, '⚠️', {sobre: 'Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação.'})}
-    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, 'Bloqueantes', medido && d.total_bloqueantes ? 'var(--rose)' : null, '🚨', {sobre: 'Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está.'})}
+    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, 'Bloqueantes', medido && d.total_bloqueantes ? 'var(--crit-text)' : null, '🚨', {sobre: 'Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está.'})}
     ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', 'Nota média do juiz (0–4)', null, '🎯', {sobre: 'Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa.'})}
   </div>`;
   // falha de leitura: não há sistemas, juiz nem dívida para mostrar — listas vazias aqui seriam "zero" inventado

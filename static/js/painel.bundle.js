@@ -1,92 +1,17 @@
 (() => {
-  // static/js/src/nucleo/dom.js
-  var $ = (id) => document.getElementById(id);
-  var esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  var _ICO_V60 = { "🔬": "🔍", "📁": "📑", "📝": "📜", "🗂️": "🧾", "📨": "📧" };
-  var _ICO_V61 = {
-    "🔬": '<circle cx="9" cy="10" r="5.5"/><circle cx="15.5" cy="13.5" r="4"/><path d="M18.4 16.4 21 19"/>',
-    // Lentes
-    "📁": '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h9A1.5 1.5 0 0 1 21 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M8 13.5h8"/>',
-    // Casos
-    "📝": '<path d="M12.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h4.5"/><path d="M12.5 3.5 17 8h-4.5z"/><path d="m14.5 20 .9-3.4 4.7-4.7a1.4 1.4 0 0 1 2 2l-4.7 4.7z"/><path d="M8.5 12h3.5M8.5 15.5h2"/>',
-    // Requerimentos
-    "🗂️": '<rect x="3" y="4.5" width="18" height="4.5" rx="1"/><path d="M4.5 9v9A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
-    // Acervo
-    "📨": '<rect x="3" y="6" width="18" height="12.5" rx="1.5"/><path d="m3.6 7.2 8.4 6.3 8.4-6.3"/><path d="M12 16.2v.01"/>',
-    // LAI
-    "§v61-termos": '<path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2z"/><path d="M12 6.5v13"/>',
-    "§v61-controle": '<path d="M5 6.5h8M17 6.5h2M5 12h2M11 12h8M5 17.5h9M18 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="17.5" r="2"/>',
-    "§v61-sair": '<path d="M10 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M14.5 8 19 12l-4.5 4"/><path d="M19 12H9.5"/>',
-    "§v61-som": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
-    "§v61-mudo": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
-    "§v61-atividade": '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>',
-    /* 14/11/2026 — três capas novas (Orçamento por órgão, Sistema › Motores e › Comandos) caíam no emoji */
-    "🏦": '<path d="M4 9.5 12 5l8 4.5"/><path d="M6 10.5v6.5M10 10.5v6.5M14 10.5v6.5M18 10.5v6.5"/><path d="M4 19.5h16"/>',
-    "⚙️": '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
-    "🧭": '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>'
-  };
-  var svgIco = (e) => {
-    const _h = document.documentElement.classList;
-    if (_ICO_V61[e] && (_h.contains("v61") || e.startsWith("§v61-")))
-      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${_ICO_V61[e]}</svg>`;
-    if (_ICO_V60[e] && _h.contains("v60")) e = _ICO_V60[e];
-    const g = window.JFN_ICO && window.JFN_ICO[e];
-    return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
-  };
-  var card = (h, cls) => `<div class="card ${cls || ""}">${h}</div>`;
-  var _kpiIco = (cor) => {
-    const c = String(cor || "");
-    if (/rose/.test(c)) return "§alert";
-    if (/gold|amber/.test(c)) return "§money";
-    if (/green/.test(c)) return "§ok";
-    if (/accent|teal|blue|violet|purple/.test(c)) return "§info";
-    return "";
-  };
-  var kpi = (v, l, cor, gl, dest) => {
-    const ik = _kpiIco(cor);
-    const drill = dest && typeof dest === "object" && dest.drill;
-    const sobre = dest && typeof dest === "object" && dest.sobre;
-    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : sobre ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
-    const n = String(v ?? "").replace(/<[^>]*>/g, "").replace(/&[a-z#0-9]+;/gi, "x").length || 1;
-    return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ""}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
-  };
-  var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${typeof cnt === "number" ? cnt.toLocaleString("pt-BR") : cnt}</span>` : ""}</h2>`;
-  var spin = (t) => `<div class="skel"><span class="sp"></span>${t || "Carregando…"}</div>`;
-  var avisoDemora = (id, ms, txt) => setTimeout(() => {
-    const sk = document.querySelector("#view > .skel");
-    if (sk && location.hash === "#" + id && !sk.querySelector(".skel-aviso"))
-      sk.insertAdjacentHTML("beforeend", `<div class="dim skel-aviso" style="font-size:12px;margin-top:8px">${txt}</div>`);
-  }, ms);
-  var cover = (sph, t, s, ic) => `<div class="cover ${sph}"><div class="cover-row">${ic ? `<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>` : ""}<div class="cover-tx"><h2 class="t">${t}</h2><div class="s">${s}</div></div></div></div>`;
-  var leitura = (t) => `<div class="leitura">${t}</div>`;
-  var semMedicao = (d, t) => card(`<div style="font-weight:700">${esc(t)}</div>
-  <div class="dim" style="margin-top:6px">${esc(d && d.mensagem || "sem medição neste ambiente").replace(/`([^`]+)`/g, "<code>$1</code>")}</div>`);
-  var btnPdf = (tipo) => `<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
-  var acoesAba = (tipo, extra) => `<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra || ""}</div>`;
-  function toggle(el) {
-    el.classList.toggle("open");
-  }
-  var corta = (s, n) => {
-    const t = String(s || "");
-    if (t.length <= n) return t;
-    const c = t.slice(0, n), i = c.lastIndexOf(" ");
-    return (i > n * 0.6 ? c.slice(0, i) : c).replace(/[\s,;:.·\-–—]+$/, "") + "…";
-  };
-  var clk = (cnpj, txt) => {
-    const d = String(cnpj || "").replace(/\D/g, "");
-    return d.length === 14 ? `<button type="button" class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g, "")}')">${esc(txt)}</button>` : `<b>${esc(txt)}</b>`;
-  };
-
   // static/js/src/nucleo/formato.js
-  var fmtN = (n) => n == null ? "—" : Number(n).toLocaleString("pt-BR");
-  var fmtD = (v, d) => v == null || v === "" ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  var IND = "INDISPONÍVEL";
+  var AUS = "AUSENTE";
+  var semValor = (v) => v == null || v === "" || typeof v === "boolean" || !Number.isFinite(Number(v));
+  var fmtN = (n) => semValor(n) ? IND : Number(n).toLocaleString("pt-BR");
+  var fmtD = (v, d) => semValor(v) ? IND : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
   var fmtData = (v) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(v ?? ""));
-    return !m ? v == null || v === "" ? "—" : String(v) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ""}`;
+    return !m ? v == null || v === "" ? IND : String(v) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ""}`;
   };
-  var fmtPct = (p) => p == null ? "—" : (p > 0 ? "+" : "") + fmtN(p) + "%";
-  var fmtR = (v) => "R$ " + (v == null ? "0,00" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  var fmtRc = (v) => fmtR(Number(v || 0));
+  var fmtPct = (p) => semValor(p) ? IND : (p > 0 ? "+" : "") + fmtN(p) + "%";
+  var fmtR = (v) => semValor(v) ? IND : "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var fmtRc = (v) => fmtR(v);
   var ROTULOS = {
     conluio_forte: "conluio societário",
     conluio_qsa: "conluio societário",
@@ -126,6 +51,99 @@
   };
   var rot = (id) => ROTULOS[id] || String(id || "").replace(/_/g, " ");
   var normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  var _txt = (v) => String(v ?? "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  var kpiValor = (v) => {
+    const t = _txt(v);
+    return t === "" || t === "—" || t === "-" || /^NaN/.test(t) ? IND : v;
+  };
+  var _ZERO = /^(R\$\s*)?[+-]?0+([.,]0+)?\s*(%|×)?$/;
+  var corKpi = (v, cor) => {
+    if (!cor) return cor;
+    const t = _txt(kpiValor(v));
+    if (t === IND || t === AUS || _ZERO.test(t)) return null;
+    if (/--(rose|red)\b/.test(cor)) return null;
+    return cor;
+  };
+
+  // static/js/src/nucleo/dom.js
+  var $ = (id) => document.getElementById(id);
+  var esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  var _ICO_V60 = { "🔬": "🔍", "📁": "📑", "📝": "📜", "🗂️": "🧾", "📨": "📧" };
+  var _ICO_V61 = {
+    "🔬": '<circle cx="9" cy="10" r="5.5"/><circle cx="15.5" cy="13.5" r="4"/><path d="M18.4 16.4 21 19"/>',
+    // Lentes
+    "📁": '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h9A1.5 1.5 0 0 1 21 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M8 13.5h8"/>',
+    // Casos
+    "📝": '<path d="M12.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h4.5"/><path d="M12.5 3.5 17 8h-4.5z"/><path d="m14.5 20 .9-3.4 4.7-4.7a1.4 1.4 0 0 1 2 2l-4.7 4.7z"/><path d="M8.5 12h3.5M8.5 15.5h2"/>',
+    // Requerimentos
+    "🗂️": '<rect x="3" y="4.5" width="18" height="4.5" rx="1"/><path d="M4.5 9v9A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
+    // Acervo
+    "📨": '<rect x="3" y="6" width="18" height="12.5" rx="1.5"/><path d="m3.6 7.2 8.4 6.3 8.4-6.3"/><path d="M12 16.2v.01"/>',
+    // LAI
+    "§v61-termos": '<path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2z"/><path d="M12 6.5v13"/>',
+    "§v61-controle": '<path d="M5 6.5h8M17 6.5h2M5 12h2M11 12h8M5 17.5h9M18 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="17.5" r="2"/>',
+    "§v61-sair": '<path d="M10 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M14.5 8 19 12l-4.5 4"/><path d="M19 12H9.5"/>',
+    "§v61-som": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+    "§v61-mudo": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
+    "§v61-atividade": '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>',
+    /* 14/11/2026 — três capas novas (Orçamento por órgão, Sistema › Motores e › Comandos) caíam no emoji */
+    "🏦": '<path d="M4 9.5 12 5l8 4.5"/><path d="M6 10.5v6.5M10 10.5v6.5M14 10.5v6.5M18 10.5v6.5"/><path d="M4 19.5h16"/>',
+    "⚙️": '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
+    "🧭": '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>'
+  };
+  var svgIco = (e) => {
+    const _h = document.documentElement.classList;
+    if (_ICO_V61[e] && (_h.contains("v61") || e.startsWith("§v61-")))
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${_ICO_V61[e]}</svg>`;
+    if (_ICO_V60[e] && _h.contains("v60")) e = _ICO_V60[e];
+    const g = window.JFN_ICO && window.JFN_ICO[e];
+    return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
+  };
+  var card = (h, cls) => `<div class="card ${cls || ""}">${h}</div>`;
+  var _kpiIco = (cor) => {
+    const c = String(cor || "");
+    if (/rose|crit/.test(c)) return "§alert";
+    if (/gold|amber/.test(c)) return "§money";
+    if (/green/.test(c)) return "§ok";
+    if (/accent|teal|blue|violet|purple/.test(c)) return "§info";
+    return "";
+  };
+  var kpi = (v0, l, cor0, gl, dest) => {
+    const v = kpiValor(v0), cor = corKpi(v, cor0);
+    const ik = _kpiIco(cor);
+    const drill = dest && typeof dest === "object" && dest.drill;
+    const sobre = dest && typeof dest === "object" && dest.sobre;
+    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : sobre ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
+    const n = String(v ?? "").replace(/<[^>]*>/g, "").replace(/&[a-z#0-9]+;/gi, "x").length || 1;
+    return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ""}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
+  };
+  var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${typeof cnt === "number" ? cnt.toLocaleString("pt-BR") : cnt}</span>` : ""}</h2>`;
+  var spin = (t) => `<div class="skel"><span class="sp"></span>${t || "Carregando…"}</div>`;
+  var avisoDemora = (id, ms, txt) => setTimeout(() => {
+    const sk = document.querySelector("#view > .skel");
+    if (sk && location.hash === "#" + id && !sk.querySelector(".skel-aviso"))
+      sk.insertAdjacentHTML("beforeend", `<div class="dim skel-aviso" style="font-size:12px;margin-top:8px">${txt}</div>`);
+  }, ms);
+  var cover = (sph, t, s, ic) => `<div class="cover ${sph}"><div class="cover-row">${ic ? `<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>` : ""}<div class="cover-tx"><h2 class="t">${t}</h2><div class="s">${s}</div></div></div></div>`;
+  var tecnico = (h) => h ? `<details class="tec"><summary class="dim">detalhe técnico</summary>${h}</details>` : "";
+  var leitura = (t) => `<div class="leitura">${t}</div>`;
+  var semMedicao = (d, t) => card(`<div style="font-weight:700">${esc(t)}</div>
+  <div class="dim" style="margin-top:6px">${esc(d && d.mensagem || "sem medição neste ambiente").replace(/`([^`]+)`/g, "<code>$1</code>")}</div>`);
+  var btnPdf = (tipo) => `<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
+  var acoesAba = (tipo, extra) => `<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra || ""}</div>`;
+  function toggle(el) {
+    el.classList.toggle("open");
+  }
+  var corta = (s, n) => {
+    const t = String(s || "");
+    if (t.length <= n) return t;
+    const c = t.slice(0, n), i = c.lastIndexOf(" ");
+    return (i > n * 0.6 ? c.slice(0, i) : c).replace(/[\s,;:.·\-–—]+$/, "") + "…";
+  };
+  var clk = (cnpj, txt) => {
+    const d = String(cnpj || "").replace(/\D/g, "");
+    return d.length === 14 ? `<button type="button" class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g, "")}')">${esc(txt)}</button>` : `<b>${esc(txt)}</b>`;
+  };
 
   // static/js/src/nucleo/drill.js
   var _REG = /* @__PURE__ */ new Map();
@@ -229,6 +247,86 @@
     });
   }
 
+  // static/js/src/nucleo/manutencao.js
+  var _estado;
+  function manutencao() {
+    if (_estado !== void 0) return _estado;
+    const f = typeof document !== "undefined" && document.getElementById("jfn-manutencao");
+    if (!f) {
+      _estado = null;
+      return _estado;
+    }
+    const desde = ((f.textContent || "").match(/congelados em\s+(.+?)\s*$/) || [])[1] || "data não informada";
+    _estado = { desde, motivo: `em manutenção — dados congelados em ${desde}` };
+    return _estado;
+  }
+  var ESCRITA = [
+    '[onclick*="pecaGerar("]',
+    // g_pecas      → pecaGerar        POST <rota da peça>
+    '[onclick*="instAcionar("][onclick*="POST"]',
+    // g_instr      → instAcionar      POST /api/siafe/…, /api/radar/…
+    '[onclick*="missaoCriar("]',
+    // g_missoes    → missaoCriar      POST /api/hermes/missoes
+    '[onclick^="sweep("]',
+    // g_sweeps     → sweep            POST /api/sweeps/<a>
+    '[onclick^="validar("]',
+    // g_validar    → validar          POST /api/fachada/veredito
+    '[onclick^="acao("]',
+    // g_acoes      → acao             POST /api/relatorio/…, /api/dossie
+    '[onclick*="seiArvore("]',
+    // dossiê       → seiArvore        POST /api/sei/empresa/iniciar
+    '[data-lai="gerar"]',
+    '[data-lai="alvo"]',
+    // LAI          → laiGerar         POST /api/lai/gerar
+    '[data-lai="status"]',
+    // LAI          → laiStatus        POST /api/lai/status
+    '[data-acervo="acao"]'
+    // g_acervo     → acervoAcao       POST <rota da ação>
+  ].join(",");
+  var _NOTA = "manut-motivo";
+  function travarEscritas(raiz) {
+    const m = manutencao();
+    if (!m || !raiz || !raiz.querySelectorAll) return 0;
+    let n = 0;
+    for (const el of raiz.querySelectorAll(ESCRITA)) {
+      if (el.dataset.manut) continue;
+      el.dataset.manut = "1";
+      n++;
+      if ("disabled" in el) el.disabled = true;
+      el.setAttribute("aria-disabled", "true");
+      el.title = m.motivo;
+      const grupo = el.closest(".btns") || el.closest("table") || el.parentElement;
+      if (grupo && !grupo.dataset.manutNota) {
+        grupo.dataset.manutNota = "1";
+        const nota = `<span class="dim ${_NOTA}" role="note" style="display:block;margin-top:6px">${m.motivo.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</span>`;
+        grupo.insertAdjacentHTML(grupo.tagName === "TABLE" ? "beforebegin" : "beforeend", nota);
+      }
+    }
+    return n;
+  }
+  var _ligado = false;
+  function ligarManutencao() {
+    if (_ligado || !manutencao()) return;
+    _ligado = true;
+    travarEscritas(document);
+    let pend = false;
+    new MutationObserver(() => {
+      if (pend) return;
+      pend = true;
+      requestAnimationFrame(() => {
+        pend = false;
+        travarEscritas(document);
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("click", (ev) => {
+      const el = ev.target && ev.target.closest && ev.target.closest("[data-manut]");
+      if (el) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+      }
+    }, true);
+  }
+
   // static/js/src/nucleo/http.js
   var _jCache = /* @__PURE__ */ new Map();
   var _lente = null;
@@ -257,6 +355,8 @@
   }
   async function J(ep0, opt) {
     const isGet = !opt || !opt.method || opt.method === "GET";
+    const _m = !isGet && opt.method !== "HEAD" ? manutencao() : null;
+    if (_m) return { ok: false, manutencao: true, erro: _m.motivo };
     const _ep = isGet ? _comLente(ep0) : null, ep = _ep || ep0;
     const cacheavel = isGet && !/\/stream|\/status|\/api\/eventos/.test(ep);
     if (cacheavel) {
@@ -1065,7 +1165,7 @@
   var _ouv = /* @__PURE__ */ new Set();
   var JANELA = 5 * 60 * 1e3;
   var TETO = 120;
-  var _ligado = false;
+  var _ligado2 = false;
   var _es = null;
   var _poll = 0;
   function aoVivoOuvir(fn) {
@@ -1115,8 +1215,8 @@
     }
   }
   function aoVivoLigar() {
-    if (_ligado) return;
-    _ligado = true;
+    if (_ligado2) return;
+    _ligado2 = true;
     lerEstado().then(_snapshot);
     const abrir = () => {
       if (!window.EventSource || _es) return;
@@ -1633,7 +1733,7 @@
   var ALVO2 = "a[href],button,[role=button],summary,input:not([type=hidden]),select,[onclick]";
   var COARSE = typeof matchMedia === "function" ? matchMedia("(pointer:coarse)") : null;
   var MQ = typeof matchMedia === "function" ? matchMedia("(max-width:640px)") : null;
-  var _txt = (el) => (el.textContent || "").replace(/\s+/g, " ").trim();
+  var _txt2 = (el) => (el.textContent || "").replace(/\s+/g, " ").trim();
   function _rotulos(t) {
     let linha = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : null;
     if (!linha) {
@@ -1642,7 +1742,7 @@
     }
     if (!linha) return null;
     const out = [];
-    for (const c of linha.cells) for (let k = 0; k < (c.colSpan || 1); k++) out.push(_txt(c).slice(0, 40));
+    for (const c of linha.cells) for (let k = 0; k < (c.colSpan || 1); k++) out.push(_txt2(c).slice(0, 40));
     return out;
   }
   function _principal(tr) {
@@ -1665,7 +1765,7 @@
           const r = cab && cab[col];
           if (r && td.tagName === "TD") td.dataset.rotulo = r;
           else delete td.dataset.rotulo;
-          const tx = _txt(td), palavra = tx.split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
+          const tx = _txt2(td), palavra = tx.split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
           td.classList.toggle("tt-num", tx.length > 0 && tx.length <= 24 && /^[R$\s\d.,%+\-−–—]+$/.test(tx) && /\d/.test(tx));
           if (tx.length > 34 || palavra.length > 14 || td.querySelector("table,ul,ol,details")) td.classList.add("tt-larga");
           col += td.colSpan || 1;
@@ -1704,7 +1804,7 @@
       for (const td of tr.cells) {
         const w = td.clientWidth;
         if (!w) continue;
-        const p = _txt(td).split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
+        const p = _txt2(td).split(" ").reduce((a, b) => b.length > a.length ? b : a, "");
         if (p.length >= 7 && w < p.length * 5.2) {
           esmagada = true;
           break;
@@ -3873,7 +3973,7 @@
   };
   var CHAVE3 = "jfn.som";
   var ILUS = { doc: "/static/assets/gen/vazio-doc-claro.webp", rede: "/static/assets/gen/vazio-rede-claro.webp" };
-  var _ligado2 = false;
+  var _ligado3 = false;
   var _audio = {};
   var _ultimo = {};
   var _quebrado = {};
@@ -3912,7 +4012,7 @@
     return a;
   }
   function somTocar(tipo) {
-    if (!_ligado2) return;
+    if (!_ligado3) return;
     const s = SFX[tipo];
     if (!s) return;
     const quieto = _quieto();
@@ -3933,18 +4033,18 @@
   }
   function _pintarBotao() {
     document.querySelectorAll("[data-som]").forEach((b) => {
-      b.setAttribute("aria-pressed", _ligado2 ? "true" : "false");
-      b.classList.toggle("on", _ligado2);
-      b.title = _ligado2 ? "Som de interface LIGADO — clique para silenciar" : "Som de interface desligado — clique para ligar";
+      b.setAttribute("aria-pressed", _ligado3 ? "true" : "false");
+      b.classList.toggle("on", _ligado3);
+      b.title = _ligado3 ? "Som de interface LIGADO — clique para silenciar" : "Som de interface desligado — clique para ligar";
       const t = b.querySelector(".som-t");
-      if (t) t.textContent = _ligado2 ? "Som" : "Mudo";
+      if (t) t.textContent = _ligado3 ? "Som" : "Mudo";
     });
   }
   function _alternar() {
-    _ligado2 = !_ligado2;
-    _gravarPref(_ligado2);
+    _ligado3 = !_ligado3;
+    _gravarPref(_ligado3);
     _pintarBotao();
-    if (_ligado2) {
+    if (_ligado3) {
       Object.keys(SFX).forEach(_pegar);
       somTocar("area");
     }
@@ -3958,7 +4058,7 @@
     });
   }
   function ligarMidia() {
-    _ligado2 = _lerPref();
+    _ligado3 = _lerPref();
     _pintarBotao();
     document.addEventListener("click", (e) => {
       const b = e.target && e.target.closest && e.target.closest("[data-som]");
@@ -4817,10 +4917,10 @@
     }
     if (r && r.ok && r.url) window.open(r.url, "_blank", "noopener");
   }
-  var _ligado3 = false;
+  var _ligado4 = false;
   function ligarComissao() {
-    if (_ligado3) return;
-    _ligado3 = true;
+    if (_ligado4) return;
+    _ligado4 = true;
     document.addEventListener("click", (ev) => {
       const b = ev.target && ev.target.closest && ev.target.closest("[data-com-gerar],[data-com-mais],[data-com-pg-mais]");
       if (!b) return;
@@ -5111,10 +5211,10 @@
       _repintar(id);
     }
   }
-  var _ligado4 = false;
+  var _ligado5 = false;
   function ligarGovernoCouto() {
-    if (_ligado4) return;
-    _ligado4 = true;
+    if (_ligado5) return;
+    _ligado5 = true;
     document.addEventListener("click", (ev) => {
       const b = ev.target && ev.target.closest && ev.target.closest("[data-gc-pt],[data-gc-cat-f],[data-gc-dossie],[data-gc-mais]");
       if (!b) return;
@@ -5332,10 +5432,10 @@
     _salvar();
     _repintarTodos();
   }
-  var _ligado5 = false;
+  var _ligado6 = false;
   function ligarPeriodo() {
-    if (_ligado5) return;
-    _ligado5 = true;
+    if (_ligado6) return;
+    _ligado6 = true;
     _ler3();
     document.addEventListener("change", (ev) => {
       const t = ev.target;
@@ -5545,10 +5645,10 @@
     const el = document.querySelector("#oo-raiz [data-oo-tabela]");
     if (el && _D) el.innerHTML = _tabela2(_D);
   }
-  var _ligado6 = false;
+  var _ligado7 = false;
   function ligarOrcamentoOrgao() {
-    if (_ligado6) return;
-    _ligado6 = true;
+    if (_ligado7) return;
+    _ligado7 = true;
     document.addEventListener("change", (ev) => {
       const t = ev.target;
       if (!t || !t.matches) return;
@@ -5623,11 +5723,11 @@
   }
 
   // static/js/src/abas/rotinas.js
-  var _txt2 = "<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>";
-  var _rodape = (d) => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina <code>${esc(d.rotina || "")}</code> · ${esc(d.horario || "")} · arquivo gravado em ${esc(d.arquivo_mtime || "—")}</div>`;
+  var _txt3 = "<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>";
+  var _rodape = (d) => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina ${esc(d.horario || "")} · arquivo gravado em ${esc(d.arquivo_mtime || "INDISPONÍVEL")}${tecnico(d.rotina ? `<code>${esc(d.rotina)}</code>` : "")}</div>`;
   var _semExec = (d) => card(`<div class="warn">${esc(d.mensagem || "Rotina ainda sem execução.")}</div>
-  <div class="dim" style="font-size:12px;margin-top:6px">Comando: <code>${esc(d.rotina || "")}</code> (${esc(d.horario || "")}).</div>`);
-  var _estado = (v) => `<b style="color:${v === "VERIFICADO" ? "var(--green)" : "var(--amber)"}">${esc(v)}</b>`;
+  <div class="dim" style="font-size:12px;margin-top:6px">Rotina ${esc(d.horario || "")}.${tecnico(d.rotina ? `<code>${esc(d.rotina)}</code>` : "")}</div>`);
+  var _estado2 = (v) => `<b style="color:${v === "VERIFICADO" ? "var(--green)" : "var(--amber)"}">${esc(v)}</b>`;
   var _pct = (a, b) => b ? (100 * a / b).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%" : "—";
   var _CLASSES = [
     ["CONFORME", "Conforme", "var(--green)", "✅"],
@@ -5648,7 +5748,7 @@
       <div>${esc(x.objeto || "")}</div><div class="dim" style="font-size:11px">${esc(x.orgao || "")} · processo de origem ${esc(x.grupo_ata || "")} · ${fmtN(x.grupo_n)} registro(s): ${(x.registros || []).map((g) => esc(g.processo || g.contrato || "")).join("; ")}</div></td>
     <td class="right" style="white-space:nowrap">${x.grupo_regua == null ? "—" : fmtR(x.grupo_regua)}${x.grupo_regua_conservadora != null && x.grupo_regua_conservadora !== x.grupo_regua ? `<div class="dim" style="font-size:11px">conservadora ${fmtR(x.grupo_regua_conservadora)}</div>` : ""}</td>
     <td class="right" style="white-space:nowrap">${x.grupo_pago == null ? "—" : fmtR(x.grupo_pago)}<div class="dim" style="font-size:11px">${fmtN(x.grupo_n_obs)} OB</div></td>
-    <td class="right" style="white-space:nowrap"><b>${x.grupo_diferenca == null ? "—" : fmtR(x.grupo_diferenca)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
+    <td class="right" style="white-space:nowrap"><b>${x.grupo_diferenca == null ? "—" : fmtR(x.grupo_diferenca)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado2(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
   }
   function _proprias(e, p) {
     const cc = e.consumo_continuo, g = e.grupos_ata;
@@ -5680,7 +5780,7 @@
     <td class="right" style="white-space:nowrap">${x.valor_atualizado == null ? "—" : fmtR(x.valor_atualizado)}</td>
     <td class="right" style="white-space:nowrap">${x.devido == null ? "—" : fmtR(x.devido)}</td>
     <td class="right" style="white-space:nowrap">${x.pago == null ? "—" : fmtR(x.pago)}</td>
-    <td class="right" style="white-space:nowrap"><b>${campoValor(x)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
+    <td class="right" style="white-space:nowrap"><b>${campoValor(x)}</b>${x.prova_primaria ? `<div class="dim" style="font-size:11px;white-space:normal;max-width:220px">${_estado2(x.verificacao || "PENDENTE")} ${esc(x.prova_primaria)}</div>` : ""}</td></tr>`).join("");
   }
   function _esfera(nome2, e, defs) {
     const p = e.placar || {};
@@ -5689,7 +5789,7 @@
     const dup = e.duplicidades || {};
     const cab = '<thead><tr><th>Fornecedor, objeto e órgão</th><th class="right">Valor atualizado</th><th class="right">Devido até o corte</th><th class="right">Pago</th><th class="right">%s</th></tr></thead>';
     return `${sec(esc(nome2), e.n)}<div class="grid g2" style="margin-top:8px">${kp}</div>
-  ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado("VERIFICADO")} placar e somas: ${esc(((e.verificacao || {}).placar || "").replace(/^VERIFICADO — /, ""))}<br>${_estado("PENDENTE")} listas abaixo: ${esc(((e.verificacao || {}).listas || "").replace(/^PENDENTE — /, ""))}</div>
+  ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado2("VERIFICADO")} placar e somas: ${esc(((e.verificacao || {}).placar || "").replace(/^VERIFICADO — /, ""))}<br>${_estado2("PENDENTE")} listas abaixo: ${esc(((e.verificacao || {}).listas || "").replace(/^PENDENTE — /, ""))}</div>
     <div style="font-size:13px"><b>${fmtN(e.n)}</b> contratos · corte ${e.corte ? fmtData(e.corte) : `por contrato, de ${fmtData(e.corte_min)} a ${fmtData(e.corte_max)}`} · pago determinado ${fmtR(e.pago_determinado)} × devido ${fmtR(e.devido_determinado)}
       · pago acima do valor contratado ${fmtR(e.excesso_a_maior)} (indício a conferir nos termos aditivos, não dano apurado) · à frente do pró-rata ${e.adiantado == null ? "—" : fmtR(e.adiantado)} · abaixo do devido em encerrados ${fmtR(e.deficit_encerrado)}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.acima_do_valor || "")}. ${esc(defs.adiantado || "")}. ${esc(defs.abaixo_do_devido || "")}.</div>
@@ -5717,10 +5817,10 @@
     if (!d || d.ok === false) return h + cardErro(d);
     if (d.estado === "sem_execucao") return h + _semExec(d);
     const defs = d.definicoes || {};
-    h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || "")} · <b>Tolerância:</b> ${esc(d.tolerancia || "")}</div>
+    h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(String(d.regua || "").replace(/^[\w.]+\s*\((.*)\)$/, "$1"))} · <b>Tolerância:</b> ${esc(d.tolerancia || "")}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.indeterminado || "")}. ${esc(d.ressalva || "")}</div>${_rodape(d)}`);
     for (const [nome2, e] of Object.entries(d.esferas || {})) h += _esfera(nome2, e, defs);
-    return `<div id="rt-pericia">${h}${_txt2}</div>`;
+    return `<div id="rt-pericia">${h}${_txt3}</div>`;
   }
   var _sim = (v) => v == null ? '<span class="dim">indisp.</span>' : v ? "✔" : '<span class="dim">—</span>';
   function _cge(d) {
@@ -5751,7 +5851,7 @@
       ${kpi(`${fmtN(g12.com_sinal)} / ${fmtN(g12.n)}`, `JFN com sinal nas irregulares G1+G2 (${_pct(g12.com_sinal, g12.n)})`, "var(--rose)", "🎯", { sobre: "Entre as que a CGE classificou com dano ou irregularidade material, quantas o JFN já sinalizava. É o recall do sistema frente à CGE." })}
       ${kpi(`${fmtN(t.autos_lidos)} / ${fmtN(t.n)}`, "Autos lidos pelo JFN", null, "📄", { sobre: "Processos dessas contratações com autos capturados do SEI no acervo do JFN." })}
     </div>
-    ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado("VERIFICADO")} métricas medidas nas bases do JFN nesta rodada (${esc((d.gerado_em || "").slice(0, 16))}) · ${_estado("PENDENTE")} a lista de contratações e o grau G0–G3 são transcrição MANUAL dos relatórios da CGE (curadoria de ${esc(d.curado_em || "—")}) — conferir no relatório citado.</div>
+    ${card(`<div style="font-size:12px;margin-bottom:6px">${_estado2("VERIFICADO")} métricas medidas nas bases do JFN nesta rodada (${esc((d.gerado_em || "").slice(0, 16))}) · ${_estado2("PENDENTE")} a lista de contratações e o grau G0–G3 são transcrição MANUAL dos relatórios da CGE (curadoria de ${esc(d.curado_em || "—")}) — conferir no relatório citado.</div>
       <div class="dim" style="font-size:12px"><b>Fonte:</b> ${esc(d.fonte || "")}<br><b>Cobertura:</b> ${esc(d.cobertura || "")}</div>${novos}${ind}
       <table class="tb rt-txt" style="margin-top:8px"><thead><tr><th>Grau (CGE)</th><th class="right">Contratações</th><th class="right">Contratado</th><th class="right">Autos lidos</th><th class="right">Com artefato</th><th class="right">Com sinal</th><th class="right">Com OB</th></tr></thead><tbody>${porGrau}</tbody></table>
       <details style="margin-top:10px"><summary style="cursor:pointer"><b>Processo a processo</b> (${fmtN((d.linhas || []).length)})</summary>
@@ -5769,7 +5869,7 @@
         <td class="right">${i.score == null ? "—" : fmtN(i.score)}</td>
         <td style="font-size:13px">${esc(i.motivo)}${i.explicacao_inocente ? `<div class="dim" style="font-size:12px">Explicação inocente: ${esc(i.explicacao_inocente)}</div>` : ""}</td></tr>`).join("");
       return `<details style="margin-top:6px"${x.detector in { P7: 1, "EST-VALOR-EXCEDIDO": 1, "EST-ADITIVO-TETO": 1 } ? " open" : ""}><summary style="cursor:pointer">${cab}</summary>
-      ${it ? `<div class="dim" style="font-size:12px">${_estado("PENDENTE")} indício do detector — exige leitura humana do processo. Listados ${fmtN((x.itens || []).length)} de ${fmtN(x.n_confirmado)} confirmados (maior score primeiro).</div><div style="max-height:420px;overflow:auto"><table class="tb rt-txt"><thead><tr><th>UG / processo</th><th class="right">Score</th><th>Motivo</th></tr></thead><tbody>${it}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Sem achado confirmado.</div>'}</details>`;
+      ${it ? `<div class="dim" style="font-size:12px">${_estado2("PENDENTE")} indício do detector — exige leitura humana do processo. Listados ${fmtN((x.itens || []).length)} de ${fmtN(x.n_confirmado)} confirmados (maior score primeiro).</div><div style="max-height:420px;overflow:auto"><table class="tb rt-txt"><thead><tr><th>UG / processo</th><th class="right">Score</th><th>Motivo</th></tr></thead><tbody>${it}</tbody></table></div>` : '<div class="dim" style="font-size:12px">Sem achado confirmado.</div>'}</details>`;
     }).join("");
     return card(`<div style="font-size:13px"><b>${fmtN(d.n_confirmados)}</b> achados confirmados em ${fmtN((d.detectores || []).length)} detectores.</div>
     <div class="dim" style="font-size:12px;margin-top:4px"><b>Fonte:</b> ${esc(d.fonte || "")}. ${esc(d.ressalva || "")}</div>${blocos}`);
@@ -5785,7 +5885,7 @@
     h += sec("1. Confronto CGE × JFN (recall por processo)");
     h += !c || c.ok === false ? cardErro(c) : _cge(c);
     h += sec("2. Achados dos detectores (achados.db)") + _detectores(dt);
-    return `<div id="rt-cge">${h}${_txt2}</div>`;
+    return `<div id="rt-cge">${h}${_txt3}</div>`;
   }
 
   // static/js/src/abas/motores_cruzamento.js
@@ -5833,14 +5933,14 @@
     ${kpi(
       fmtN(graves),
       "Divergências graves",
-      graves ? "var(--rose)" : "var(--green)",
+      graves ? "var(--crit-text)" : "var(--green)",
       null,
       { sobre: "Pares em que um motor disse 🔴 e o outro ⚪ (distância de dois níveis). Cada uma vira revisão humana; nenhuma é resolvida a favor de um lado sem gente olhar." }
     )}
     ${kpi(
       fmtN(c.revisao_pendente),
       "Revisões pendentes",
-      c.revisao_pendente ? "var(--rose)" : "var(--green)",
+      c.revisao_pendente ? "var(--crit-text)" : "var(--green)",
       null,
       { sobre: `Divergências graves ainda sem decisão humana (tabela revisao, status pendente). A lista abaixo mostra as ${fmtN((c.revisoes || []).length)} mais recentes. Exemplos guardados para o few-shot da cascata: ${fmtN(c.exemplos_few_shot)}.` }
     )}
@@ -5918,7 +6018,7 @@
     ${kpi(
       c.disponivel ? _n3(c.divergencias) : "INDISPONÍVEL",
       "Opus divergiu",
-      c.divergencias ? "var(--rose)" : "var(--green)",
+      c.divergencias ? "var(--crit-text)" : "var(--green)",
       null,
       { sobre: "Conferências em que o Opus NÃO deu o mesmo nível que o modelo de contingência (ou a tarefa é texto, sem régua). Nesses casos vale o resultado do Opus; a leitura anterior fica registrada. Divergência de dois níveis (🔴×⚪) vira também revisão humana." }
     )}
@@ -6093,7 +6193,7 @@
 
   // static/js/src/abas/conformidade.js
   var _IND = '<span class="dim">indisponível</span>';
-  var _txt3 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
+  var _txt4 = "<style>.cf-txt th,.cf-txt td{text-align:left;vertical-align:top}.cf-txt th.right,.cf-txt td.right{text-align:right}.cf-lin{cursor:pointer}</style>";
   var _SEV = { bloqueante: "var(--rose)", alta: "var(--amber)" };
   var _sev = (s) => `<b style="color:${_SEV[s] || "inherit"}">${esc(s || "—")}</b>`;
   var _hora2 = (s) => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
@@ -6171,7 +6271,7 @@
     h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(r.total == null ? _IND : fmtN(r.total), `Regras (${fmtN(r.automaticas)} com verificação automática)`, null, "✅", { sobre: "Regras de qualidade registradas em config/qualidade_regras.yaml (famílias PAD, CNF, COR, CST, SUB). Automática = tem catraca, sensor ou juiz que a cobra sem leitura humana." })}
     ${kpi(medido ? fmtN(d.total_violacoes) : _IND, "Violações abertas", null, "⚠️", { sobre: "Violações abertas na última fotografia dos sensores (data/qualidade_estado.json). Sem fotografia = indisponível, nunca zero. Indício de defeito de qualidade, não acusação." })}
-    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--rose)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
+    ${kpi(medido ? fmtN(d.total_bloqueantes) : _IND, "Bloqueantes", medido && d.total_bloqueantes ? "var(--crit-text)" : null, "🚨", { sobre: "Violações de severidade bloqueante na mesma fotografia — as que impedem uma afirmação de sair do JFN como está." })}
     ${kpi(j && j.media != null ? _nota(j.media) : '<span class="dim">sem rodada</span>', "Nota média do juiz (0–4)", null, "🎯", { sobre: "Média das notas do juiz subjetivo (data/qualidade_juiz.json) nas avaliações vigentes, escala 0 a 4. Sem rodada = não avaliado, não é nota boa." })}
   </div>`;
     if (d.ok === false) return `<div id="cf-raiz">${h}</div>`;
@@ -6180,7 +6280,7 @@
     h += _juiz(j);
     h += _divida(d);
     h += card(`<div class="dim" style="font-size:12px">Regras: <code>${esc(d.documento || "docs/REGRAS-DE-QUALIDADE.md")}</code> · Indício ≠ acusação · INDISPONÍVEL ≠ zero${d.gerado_em ? ` · lido em ${_hora2(d.gerado_em)}` : ""}</div>`);
-    return `<div id="cf-raiz">${h}${_txt3}</div>`;
+    return `<div id="cf-raiz">${h}${_txt4}</div>`;
   }
 
   // static/js/src/abas/propagacao.js
@@ -6302,8 +6402,8 @@
     h += card(d.estado === "ok" ? `<div style="font-size:14px"><b style="color:var(--green)">LIGADA</b> — último ciclo ${_hora3(u.quando)} (${fmtN(u.segundos)} s, ${fmtN(u.eventos)} evento(s) novo(s), ${fmtN((u.feitos || []).length)} recálculo(s))</div>` : d.estado === "ATRASADO" ? `<div class="warn"><b>ATRASADA</b> — o despachante gira (último ciclo ${_hora3(u.quando)}), mas ${fmtN(at.length)} derivado(s) estão desatualizados além do SLO:<ul style="margin:6px 0 0 18px">${at.map((a) => `<li><b>${esc(a.nome)}</b> — sujo há ${fmtN(a.sujo_ha_h)} h (SLO ${fmtN(a.slo_h)} h)${a.adiado ? ` · ${esc(a.adiado)}` : ""}</li>`).join("")}</ul></div>` : `<div class="warn"><b>PARADA</b> — o despachante não completa um ciclo ${u ? `desde ${_hora3(u.quando)}` : "desde que foi instalado"}. O que aparece abaixo é a última fotografia, não o estado de agora.</div>`);
     h += `<div class="grid g2" style="margin-top:8px">
     ${kpi(fmtN(r.sujos), `Desatualizados agora (de ${fmtN(r.derivados)} derivados)`, r.sujos ? "var(--amber)" : null, "🔁", { sobre: "Derivados com evento pendente em data/propagacao.db: a fonte mudou e o recálculo ainda não terminou (juntando eventos, intervalo mínimo, carga da máquina ou a vez na fila). Fonte: compliance_agent/propagacao.py." })}
-    ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--rose)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
-    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? "var(--rose)" : null, "📡", { sobre: "Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou." })}
+    ${kpi(fmtN(r.com_falha), "Com falha no último recálculo", r.com_falha ? "var(--crit-text)" : null, "⚠️", { sobre: "Derivados cujo último recálculo falhou (saída com erro, teto de tempo, ou rodou sem regravar o arquivo que o painel lê). O despachante tenta de novo com intervalo crescente; o valor anterior segue no painel." })}
+    ${kpi(fmtN(r.fontes_com_erro), `Fontes sem leitura (de ${fmtN(r.fontes)})`, r.fontes_com_erro ? "var(--crit-text)" : null, "📡", { sobre: "Fontes cuja sonda não conseguiu medir no último ciclo. INDISPONÍVEL: não se sabe se a fonte mudou." })}
     ${kpi(fmtN((d.cerebro || {}).gravadas), "Descobertas no segundo cérebro", null, "🧠", { sobre: "Memórias gravadas no cérebro compartilhado dos agentes a partir desta máquina, com resposta do cérebro confirmando a gravação (tabela cerebro de data/propagacao.db)." })}
   </div>`;
     h += sec("Derivados", fmtN(r.derivados)) + _derivados(d);
@@ -6409,47 +6509,69 @@
   }
 
   // static/js/src/ui/manchete.js
-  var _estado2 = null;
+  var _estado3 = null;
   var _prom = null;
   function mancheteEstado() {
     if (!_prom) _prom = J("/api/manchetes/estado", { tetoMs: 2e4 }).then((d) => {
-      _estado2 = d && d.ok ? d : { ok: false, erro: d && d.erro || "sem resposta" };
-      return _estado2;
+      _estado3 = d && d.ok ? d : { ok: false, erro: d && d.erro || "sem resposta" };
+      return _estado3;
     });
     return _prom;
   }
   function _sup(id) {
-    return _estado2 && _estado2.ok ? (_estado2.superficies || []).find((s) => s.id === id) : null;
+    return _estado3 && _estado3.ok ? (_estado3.superficies || []).find((s) => s.id === id) : null;
   }
   function mancheteLiberada(id) {
     const s = _sup(id);
     return !!(s && s.liberada);
   }
   function detectorLiberado(det) {
-    const d = _estado2 && _estado2.ok && _estado2.detectores ? _estado2.detectores[det] : null;
+    const d = _estado3 && _estado3.ok && _estado3.detectores ? _estado3.detectores[det] : null;
     return !!(d && d.manchete_efetiva);
   }
+  var _pctBR = (t) => String(t).replace(".", ",");
+  var _TOKENS = [
+    [/\bponto=([\d.]+%)>([\d.]+%)/g, (m, a, b) => `falso positivo medido de ${_pctBR(a)} (teto ${_pctBR(b)})`],
+    [/\bic95_sup=([\d.]+%)>([\d.]+%)/g, (m, a, b) => `limite superior do intervalo de 95% em ${_pctBR(a)} (teto ${_pctBR(b)})`],
+    [/\bn=(\d+)<(\d+)/g, (m, a, b) => `amostra de ${a} casos decididos (mínimo ${b})`],
+    [/\bcobertura=([\d.]+%)<([\d.]+%)/g, (m, a, b) => `cobertura de ${_pctBR(a)} (mínimo ${_pctBR(b)})`],
+    [/\bsem_n_minimo_estratificado \(n=(\d+)\)/g, (m, a) => `amostra estratificada abaixo do mínimo (n = ${a})`],
+    [/\bfp_acima_de_50pct_comprovada \(Clopper-Pearson inf\. ([\d.]+%)\)/g, (m, a) => `falso positivo comprovadamente acima de 50% (limite inferior ${_pctBR(a)})`],
+    [/\bamostra_nao_estratificada\b/g, () => "amostra não estratificada"],
+    [/\bsem_elegibilidade\b/g, () => "sem regra de elegibilidade"],
+    [/\bcobertura_desconhecida\b/g, () => "cobertura desconhecida"],
+    [/\berro_grave_conferido\b/g, () => "erro grave conferido em aberto"],
+    [/\bmedida_incompleta_ou_vencida\b/g, () => "medida de falso positivo incompleta ou vencida"],
+    [/\bmedida_sem_contagem_de_decididos\b/g, () => "medida sem contagem de casos decididos"],
+    [/\bsem_medida\b/g, () => "sem medida de falso positivo"],
+    [/\brules\.engine\b/g, () => "motor de regras"]
+  ];
+  function motivoHumano(txt) {
+    let t = String(txt || "");
+    for (const [rx, f] of _TOKENS) t = t.replace(rx, f);
+    return t.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, (m) => m.replace(/_/g, " ")).replace(/;\s*/g, "; ");
+  }
   function mancheteMotivo(id) {
-    if (!_estado2) return "lendo o estado de calibração…";
-    if (!_estado2.ok) return "estado de calibração INDISPONÍVEL — nenhuma manchete de detector é exibida";
+    if (!_estado3) return "lendo o estado de calibração…";
+    if (!_estado3.ok) return "estado de calibração INDISPONÍVEL — nenhuma manchete de detector é exibida";
     const s = _sup(id);
     if (!s) return "superfície fora do inventário de manchetes — não é exibida como manchete";
-    return s.motivo || "";
+    return motivoHumano(s.motivo || "");
   }
   function detectorMotivo(det) {
-    if (!_estado2 || !_estado2.ok) return "estado de calibração INDISPONÍVEL";
-    const d = (_estado2.detectores || {})[det];
+    if (!_estado3 || !_estado3.ok) return "estado de calibração INDISPONÍVEL";
+    const d = (_estado3.detectores || {})[det];
     if (!d) return `${det}: fora do registro de detectores — não é manchete`;
-    return `${det}: Tier ${d.tier ?? "—"} (${d.tier_motivo || ""}) — não é manchete`;
+    return `${motivoHumano(det)}: Tier ${d.tier ?? "INDISPONÍVEL"} (${motivoHumano(d.tier_motivo || "")}) — não é manchete`;
   }
   function mancheteBloqueioHtml(id, ondeEsta) {
     return `<span class="mch-bloq"><b>não é manchete</b> — ${esc(mancheteMotivo(id))}${ondeEsta ? ` · ${esc(ondeEsta)}` : ""}</span>`;
   }
   function mancheteAvisoHtml() {
-    if (!_estado2) return `<div class="mch-aviso" id="mch-aviso" role="status"><b>Manchetes</b> · lendo o estado de calibração…</div>`;
-    if (!_estado2.ok) return `<div class="mch-aviso mch-indisp" id="mch-aviso" role="status"><b>Manchetes: estado de calibração INDISPONÍVEL.</b>
-    Sem ele, nenhum número de detector vai para a capa (falha fechada). ${erroHumano(_estado2.erro)}</div>`;
-    const e = _estado2, pt = e.por_tier || {};
+    if (!_estado3) return `<div class="mch-aviso" id="mch-aviso" role="status"><b>Manchetes</b> · lendo o estado de calibração…</div>`;
+    if (!_estado3.ok) return `<div class="mch-aviso mch-indisp" id="mch-aviso" role="status"><b>Manchetes: estado de calibração INDISPONÍVEL.</b>
+    Sem ele, nenhum número de detector vai para a capa (falha fechada). ${erroHumano(_estado3.erro)}</div>`;
+    const e = _estado3, pt = e.por_tier || {};
     const efet = e.manchetes_efetivas || [];
     const bloq = (e.superficies || []).filter((s) => s.detector && !s.liberada);
     const titulo = efet.length ? `${fmtN(efet.length)} manchete(s) calibrada(s) (Tier 1)` : "Nenhuma manchete calibrada";
@@ -6457,7 +6579,7 @@
     <div class="mch-t"><b>${titulo}</b> <span class="mch-tiers">Tier 1: ${fmtN(pt["1"] || 0)} · Tier 2: ${fmtN(pt["2"] || 0)} · Tier 3: ${fmtN(pt["3"] || 0)} de ${fmtN(e.n_detectores)} detectores</span></div>
     <p>${esc(e.explicacao)}</p>
     <details><summary>Por que cada número saiu da capa (${fmtN(bloq.length)})</summary>
-      <ul>${bloq.map((s) => `<li><b>${esc(s.superficie || s.id)}</b>: ${esc(s.motivo)}</li>`).join("")}</ul>
+      <ul>${bloq.map((s) => `<li><b>${esc(s.superficie || s.id)}</b>: ${esc(motivoHumano(s.motivo))}</li>`).join("")}</ul>
       <p class="mch-regra">${esc(e.explica_tier1)}</p></details>
   </div>`;
   }
@@ -10751,7 +10873,7 @@
       h += `<div class="grid g2">${kpi(
         fmtN(n),
         "Snapshots mensais na série",
-        n >= 2 ? "var(--emerald)" : "var(--rose)",
+        n >= 2 ? "var(--emerald)" : "var(--crit-text)",
         "📅",
         { sobre: "Quantos meses da base de sócios da Receita foram efetivamente ingeridos. É o DENOMINADOR de tudo nesta aba: a Receita publica data de entrada e <b>nenhuma data de saída</b>, então saída de sócio só existe como diferença entre dois snapshots. Com menos de dois, ela é inobservável — e a resposta correta é INDISPONÍVEL, nunca NÃO." }
       )}
@@ -12161,7 +12283,7 @@
           <td><b>${mdSimples(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo === "bloqueio" ? "medio" : "alto"}">${x.tipo === "bloqueio" ? "bloqueio" : "limite da fonte"}</span></td>
           <td>${mdSimples(x.o_que_acontece)}</td>
-          <td class="dim">${mdSimples(x.caminho_alternativo)}</td>
+          <td class="dim">${tecnico(mdSimples(x.caminho_alternativo))}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join("") + `</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
         a base simplesmente não tem aquele campo, e insistir é queimar sessão. Este quadro existe para
@@ -12748,11 +12870,15 @@
   async function missaoCriar() {
     const t = ($("ms-txt")?.value || "").trim();
     if (!t) return;
-    await J("/api/hermes/missoes", {
+    const d = await J("/api/hermes/missoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ objetivo: t, titulo: t })
     });
+    if (d && d.erro) {
+      jfnToast("Missão NÃO enfileirada — " + d.erro, "rose");
+      return;
+    }
     jfnToast("Missão enfileirada.", "green");
     $("ms-txt").value = "";
     setTimeout(missaoListar, 400);
@@ -12999,10 +13125,10 @@
       const top3 = (o.top3 || []).map((f) => `${esc((f.nome || f.cnpj).slice(0, 34))} <b>${f.share}%</b>`).join(' <span class="dim">·</span> ');
       return card(
         `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(o.orgao)}${selo} ${forte ? `<span class="tag ${o.grav >= 4 ? "rose" : "amber"}">top ${o.top_share}%</span>` : ""}</div>
+      <div style="min-width:0"><div style="font-weight:700">${esc(o.orgao)}${selo} ${forte ? `<span class="tag">top ${o.top_share}%</span>` : ""}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">líder: ${clk(o.top_fornecedor.cnpj, o.top_fornecedor.nome || o.top_fornecedor.cnpj)} — ${fmtRc(o.top_fornecedor.valor)} em ${o.top_fornecedor.n} contrato(s)</div>
       <div class="dim" style="margin-top:2px">top 3: ${top3}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte ? "var(--rose)" : "var(--tx2)"}">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--tx2)">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${fmtN(o.n_contratos)} contratos · ${fmtN(o.n_fornecedores)} fornecedores · ${fmtRc(o.total)} contratados</span></div>
       ${forte ? leitura(`No mercado municipal de <b>${esc(o.orgao)}</b>, <b>${esc(o.top_fornecedor.nome || "—")}</b> detém <b>${o.top_share}%</b> do valor contratado (HHI ${fmtN(o.hhi)}). Concentração nesse nível é screen de captura/R8 — verificar se decorre de ata de RP legítima, estatal prestadora ou de barreiras de entrada nos editais do ramo.`) : ""}`,
         forte ? "hl" : ""
@@ -13094,7 +13220,7 @@
       { sobre: "Contratos com três ou mais termos aditivos. Aditar é lícito e às vezes necessário; a sequência longa é que levanta a pergunta sobre o planejamento original do objeto." }
     )}
       ${kpi(fmtN(d.contratos_analisados), "Contratos analisados", null, "📄", { sobre: "Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado." })}${kpi(
-      (a.find((x) => x.estoura_teto) || {}).pct != null ? fmtPct(a.find((x) => x.estoura_teto).pct) : "—",
+      (a.find((x) => x.estoura_teto) || {}).pct != null ? fmtPct(a.find((x) => x.estoura_teto).pct) : d.n_estoura_teto === 0 ? "AUSENTE" : "INDISPONÍVEL",
       "Pior acréscimo verificado",
       "var(--rose)",
       null,
@@ -14535,7 +14661,7 @@
       { sobre: "Grupos ligados <b>só pelo sobrenome</b>. Sobrenome não é parentesco e no Brasil não há base aberta de parentesco: sem outro dado que ligue as pessoas (por exemplo, serem sócias da mesma empresa com o CPF conferido), o grupo é hipótese para diligência, <b>não achado</b>." }
     )}
       ${kpi(a.filter((x) => x.concentracao >= 1).length, "100% do sobrenome", "var(--amber)", "🎯", { drill: "sobrenome100" })}${kpi(
-      a.length ? a[0].n_membros : "—",
+      a.length ? a[0].n_membros : d.n === 0 ? "AUSENTE" : "INDISPONÍVEL",
       "Maior cluster",
       null,
       null,
@@ -14544,10 +14670,10 @@
     h += `<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas || []).join(", ")) || "—"}. Cobertura cresce com novas folhas.</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
     const _nepCard = (x, ehHip) => card(
-      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade ? '<span class="tag rose">autoridade no cluster</span>' : ""}</div>
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade ? '<span class="tag">autoridade no cluster</span>' : ""}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao || "").slice(0, 44))}</div>
       <div class="dim" style="margin-top:2px">${Math.round(x.concentracao * 100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
       <table style="margin-top:10px"><tbody>${(x.membros || []).map((m) => `<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo || "")}${m.cpf_frag ? " · CPF …" + esc(m.cpf_frag) : ""}</td></tr>`).join("")}</tbody></table>
       ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao * 100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. ${x.membros.some((m) => m.cpf_frag) ? "Fragmentos de CPF distintos confirmam pessoas diferentes. " : ""}${ehHip ? "<b>Só o sobrenome as liga</b> — hipótese, não achado. Falta: " + esc(x.falta || "") + "." : esc(x.motivo || "") + " Confirmar o parentesco e a cadeia de nomeação."}`)}`,
       ehHip ? "" : "hl"
@@ -14687,7 +14813,7 @@
     const it = d.itens || [];
     let h = cover("geral", "Laranjas — sócio que recebe benefício", "Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).", "🎭");
     if (!it.length) return h + card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>') + `<div class="note">${esc(d.aviso || "")}</div>`;
-    h += `<div class="grid">` + it.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-weight:700">${esc(x.socio || "—")}</div><div class="dim">${esc(x.cpf || "")}</div></div><span class="tag rose">laranja?</span></div><div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios || []).map(esc).join(", ") || "—"}</b></div>${x.motivo ? `<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>` : ""}`, "hl")).join("") + `</div>`;
+    h += `<div class="grid">` + it.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-weight:700">${esc(x.socio || "—")}</div><div class="dim">${esc(x.cpf || "")}</div></div><span class="tag" title="Sócio que recebe benefício social: perfil a conferir (indício, não acusação — PAD-08)">indício a verificar</span></div><div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios || []).map(esc).join(", ") || "—"}</b></div>${x.motivo ? `<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>` : ""}`, "hl")).join("") + `</div>`;
     h += `<div class="note">${esc(d.aviso || "")}</div>`;
     return h;
   }
@@ -14765,7 +14891,7 @@
       h += leitura(`Este total é <b>o que a casa já coletou</b>, não o gasto do Estado: a fonte canônica
       tem <b>${cb0.pct_do_espelho}%</b> das OBs que o espelho conhece
       (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total || 0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
-      a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
+      a cada 2 h e a cobertura por par é medida de novo a cada drenagem.`);
     }
     h += blocoPeriodo(["ob_siafe", "execucao_estado"], "Pagamentos e execução por ano e mês");
     h += `<div style="height:16px"></div>` + await frescorHtml();
@@ -14863,7 +14989,11 @@
   }
   async function sweep(a) {
     if (a === "pausar" && !await jfnConfirm("Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.", "⏸ Pausar tudo")) return;
-    await J("/api/sweeps/" + a, { method: "POST" });
+    const r = await J("/api/sweeps/" + a, { method: "POST" });
+    if (r && r.erro) {
+      jfnToast("Nada mudou — " + r.erro, "rose");
+      return;
+    }
     jfnToast(a === "pausar" ? "Sweeps pausados." : "Sweeps retomados.", "green");
     setTimeout(() => ir(aba), 500);
   }
@@ -14892,7 +15022,11 @@
     const f = _valLista[_valIdx];
     if (!f) return;
     const nota = ($("val-nota") || {}).value || "";
-    await J("/api/fachada/veredito", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cnpj: f.cnpj, veredito: v, nota }) });
+    const r = await J("/api/fachada/veredito", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cnpj: f.cnpj, veredito: v, nota }) });
+    if (r && r.erro) {
+      jfnToast("Veredito NÃO gravado — " + r.erro, "rose");
+      return;
+    }
     _valIdx++;
     const el = $("val-card");
     if (el) el.innerHTML = _valCard();
@@ -15732,11 +15866,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div class="grid">
     ${kpi(fmtN(itens.length), "Requerimentos gerados", null, null, { sobre: "Registros em data/lai.db (rascunho → protocolado → respondido/negado/recurso)." })}
     ${kpi(fmtN(prot.length), "Protocolados (aguardando)", null, null, { sobre: "Prazo legal: 20 dias, prorrogável por 10 (art. 11, LAI)." })}
-    ${kpi(fmtN(venc.length), "Prazo vencido", "var(--rose)", null, { sobre: "Cabe recurso (art. 15) ou reclamação à CGM/CGE." })}
+    ${kpi(fmtN(venc.length), "Prazo vencido", "var(--crit-text)", null, { sobre: "Cabe recurso (art. 15) ou reclamação à CGM/CGE." })}
   </div>`;
     if (sd && sd.ok) {
       h += sec("Saúde dos pipelines da Prefeitura", sd.grau_geral);
-      h += `<div style="overflow-x:auto"><table class="tb" style="min-width:640px"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>` + (sd.etapas || []).map((e) => `<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo || "—").slice(0, 16))}</td><td>${esc(e.grau)} ${esc(e.leitura || "")}</td><td class="dim">${esc(e.acao || "")}</td></tr>`).join("") + `</tbody></table></div>`;
+      h += `<div style="overflow-x:auto"><table class="tb" style="min-width:640px"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>` + (sd.etapas || []).map((e) => `<tr><td>${esc(e.etapa)}</td><td class="right" style="white-space:nowrap">${fmtN(e.n)}</td><td>${esc((e.ultimo || "INDISPONÍVEL").slice(0, 16))}</td><td>${esc(e.grau)} ${esc(e.leitura || "")}</td><td class="dim">${tecnico(esc(e.acao || ""))}</td></tr>`).join("") + `</tbody></table></div>`;
     }
     h += sec("Gerar requerimento");
     h += card(`<div class="grid" style="grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end">
@@ -16507,6 +16641,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   ligarPeriodo();
   ligarLai();
   ligarAcervo();
+  ligarManutencao();
   ligarDrill();
   ligarMidia();
   vidroBoot();

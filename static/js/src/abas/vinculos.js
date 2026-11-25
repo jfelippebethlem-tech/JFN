@@ -31,7 +31,7 @@ export async function renderVinculos(){
   // Estado da série: é o denominador. Sem ele, o leitor supõe que o vínculo é atual.
   if(s.ok){
     const n=s.n_snapshots||0, st=s.vinculos_por_status||{};
-    h+=`<div class="grid g2">${kpi(fmtN(n),'Snapshots mensais na série',n>=2?'var(--emerald)':'var(--rose)','📅',
+    h+=`<div class="grid g2">${kpi(fmtN(n),'Snapshots mensais na série',n>=2?'var(--emerald)':'var(--crit-text)','📅',
           {sobre:'Quantos meses da base de sócios da Receita foram efetivamente ingeridos. É o DENOMINADOR de tudo nesta aba: a Receita publica data de entrada e <b>nenhuma data de saída</b>, então saída de sócio só existe como diferença entre dois snapshots. Com menos de dois, ela é inobservável — e a resposta correta é INDISPONÍVEL, nunca NÃO.'})}
         ${kpi(esc(s.cobertura||'—'),'Janela observada',null,'🗓️',
           {sobre:'O primeiro e o último mês ingeridos. Fora desta janela nada foi observado: um sócio ausente num mês que não entrou na série <b>não saiu</b> — o mês é que não existe aqui.'})}

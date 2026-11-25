@@ -37,20 +37,46 @@ export function detectorLiberado(det) {
   return !!(d && d.manchete_efetiva);
 }
 
+/* O10.1 (25/11/2026) — NENHUMA LINHA BRUTA DE MOTOR NA TELA (regra v61). O `tier_motivo` do registro vem em código
+   (`ponto=43.3%>15%; ic95_sup=60.8%>25%; cobertura_desconhecida`) e aparecia assim na capa da aba Alertas. Aqui ele
+   vira frase; o número é o mesmo, só com vírgula decimal. Token desconhecido passa com `_` trocado por espaço. */
+const _pctBR = t => String(t).replace('.', ',');
+const _TOKENS = [
+  [/\bponto=([\d.]+%)>([\d.]+%)/g, (m, a, b) => `falso positivo medido de ${_pctBR(a)} (teto ${_pctBR(b)})`],
+  [/\bic95_sup=([\d.]+%)>([\d.]+%)/g, (m, a, b) => `limite superior do intervalo de 95% em ${_pctBR(a)} (teto ${_pctBR(b)})`],
+  [/\bn=(\d+)<(\d+)/g, (m, a, b) => `amostra de ${a} casos decididos (mínimo ${b})`],
+  [/\bcobertura=([\d.]+%)<([\d.]+%)/g, (m, a, b) => `cobertura de ${_pctBR(a)} (mínimo ${_pctBR(b)})`],
+  [/\bsem_n_minimo_estratificado \(n=(\d+)\)/g, (m, a) => `amostra estratificada abaixo do mínimo (n = ${a})`],
+  [/\bfp_acima_de_50pct_comprovada \(Clopper-Pearson inf\. ([\d.]+%)\)/g, (m, a) => `falso positivo comprovadamente acima de 50% (limite inferior ${_pctBR(a)})`],
+  [/\bamostra_nao_estratificada\b/g, () => 'amostra não estratificada'],
+  [/\bsem_elegibilidade\b/g, () => 'sem regra de elegibilidade'],
+  [/\bcobertura_desconhecida\b/g, () => 'cobertura desconhecida'],
+  [/\berro_grave_conferido\b/g, () => 'erro grave conferido em aberto'],
+  [/\bmedida_incompleta_ou_vencida\b/g, () => 'medida de falso positivo incompleta ou vencida'],
+  [/\bmedida_sem_contagem_de_decididos\b/g, () => 'medida sem contagem de casos decididos'],
+  [/\bsem_medida\b/g, () => 'sem medida de falso positivo'],
+  [/\brules\.engine\b/g, () => 'motor de regras'],
+];
+export function motivoHumano(txt) {
+  let t = String(txt || '');
+  for (const [rx, f] of _TOKENS) t = t.replace(rx, f);
+  return t.replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/g, m => m.replace(/_/g, ' ')).replace(/;\s*/g, '; ');
+}
+
 /** Frase curta do porquê (para o cartão bloqueado). */
 export function mancheteMotivo(id) {
   if (!_estado) return 'lendo o estado de calibração…';
   if (!_estado.ok) return 'estado de calibração INDISPONÍVEL — nenhuma manchete de detector é exibida';
   const s = _sup(id);
   if (!s) return 'superfície fora do inventário de manchetes — não é exibida como manchete';
-  return s.motivo || '';
+  return motivoHumano(s.motivo || '');
 }
 
 export function detectorMotivo(det) {
   if (!_estado || !_estado.ok) return 'estado de calibração INDISPONÍVEL';
   const d = (_estado.detectores || {})[det];
   if (!d) return `${det}: fora do registro de detectores — não é manchete`;
-  return `${det}: Tier ${d.tier ?? '—'} (${d.tier_motivo || ''}) — não é manchete`;
+  return `${motivoHumano(det)}: Tier ${d.tier ?? 'INDISPONÍVEL'} (${motivoHumano(d.tier_motivo || '')}) — não é manchete`;
 }
 
 /** Conteúdo do cartão bloqueado: sem o número; o motivo e para onde o dado foi. */
@@ -71,7 +97,7 @@ export function mancheteAvisoHtml() {
     <div class="mch-t"><b>${titulo}</b> <span class="mch-tiers">Tier 1: ${fmtN(pt['1'] || 0)} · Tier 2: ${fmtN(pt['2'] || 0)} · Tier 3: ${fmtN(pt['3'] || 0)} de ${fmtN(e.n_detectores)} detectores</span></div>
     <p>${esc(e.explicacao)}</p>
     <details><summary>Por que cada número saiu da capa (${fmtN(bloq.length)})</summary>
-      <ul>${bloq.map(s => `<li><b>${esc(s.superficie || s.id)}</b>: ${esc(s.motivo)}</li>`).join('')}</ul>
+      <ul>${bloq.map(s => `<li><b>${esc(s.superficie || s.id)}</b>: ${esc(motivoHumano(s.motivo))}</li>`).join('')}</ul>
       <p class="mch-regra">${esc(e.explica_tier1)}</p></details>
   </div>`;
 }

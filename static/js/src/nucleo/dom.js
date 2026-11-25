@@ -7,6 +7,8 @@
  *
  * Não importa nada além de `formato.js` (folha). Não guarda estado. Recebe dado, devolve string.
  */
+import {kpiValor, corKpi} from './formato.js';
+
 export const $ = id => document.getElementById(id);
 
 export const esc = s => String(s == null ? '' : s)
@@ -52,7 +54,7 @@ export const card = (h, cls) => `<div class="card ${cls || ''}">${h}</div>`;
 // ícone semântico do KPI, deduzido da cor: crítico/dinheiro/ok/info
 const _kpiIco = cor => {
   const c = String(cor || '');
-  if (/rose/.test(c)) return '§alert'; if (/gold|amber/.test(c)) return '§money';
+  if (/rose|crit/.test(c)) return '§alert'; if (/gold|amber/.test(c)) return '§money';
   if (/green/.test(c)) return '§ok'; if (/accent|teal|blue|violet|purple/.test(c)) return '§info';
   return '';
 };
@@ -69,7 +71,9 @@ const _kpiIco = cor => {
        que produziram o número, na mesma tela.
    A ação vai em `data-drill`, nunca em `onclick` com nome de função global — é a mesma delegação
    de `data-vinc`, um ouvinte no `document`, que sobrevive à troca de `innerHTML` do `#view`. */
-export const kpi = (v, l, cor, gl, dest) => {
+export const kpi = (v0, l, cor0, gl, dest) => {
+  /* O10.1: "—" vira INDISPONÍVEL e o vermelho só fica onde a chamada o assume (`corKpi`, em formato.js) */
+  const v = kpiValor(v0), cor = corKpi(v, cor0);
   const ik = _kpiIco(cor);
   const drill = dest && typeof dest === 'object' && dest.drill;
   /* TERCEIRA FORMA: `{sobre:'texto'}`. Nem toda métrica tem linhas — mediana, F1, percentual de
@@ -100,6 +104,9 @@ export const avisoDemora = (id, ms, txt) => setTimeout(() => {
     sk.insertAdjacentHTML('beforeend', `<div class="dim skel-aviso" style="font-size:12px;margin-top:8px">${txt}</div>`);
 }, ms);
 export const cover = (sph, t, s, ic) => `<div class="cover ${sph}"><div class="cover-row">${ic ? `<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>` : ''}<div class="cover-tx"><h2 class="t">${t}</h2><div class="s">${s}</div></div></div></div>`;
+/* O10.1: comando, caminho de script ou nome de função NÃO vão para a tela como texto corrido (regra v61 "nenhuma
+   linha bruta de log na tela") — ficam recolhidos, para quem precisa operar, atrás de "detalhe técnico". */
+export const tecnico = h => (h ? `<details class="tec"><summary class="dim">detalhe técnico</summary>${h}</details>` : '');
 export const leitura = t => `<div class="leitura">${t}</div>`;
 
 // Rota sem número que DIZ por quê (estado='sem_medicao' + mensagem com o comando): renderizar

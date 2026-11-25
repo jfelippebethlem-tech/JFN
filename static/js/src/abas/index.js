@@ -8,7 +8,7 @@
  * proprio.
  */
 import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, acoesAba, toggle, corta,
-        clk, avisoDemora} from '../nucleo/dom.js';
+        clk, avisoDemora, tecnico} from '../nucleo/dom.js';
 import {drillSeCompleto, registrarDrill} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtData, fmtPct, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano, cardErro} from '../nucleo/http.js';
@@ -520,7 +520,7 @@ export async function renderFontesExternas(){
           <td><b>${mdSimples(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo==='bloqueio'?'medio':'alto'}">${x.tipo==='bloqueio'?'bloqueio':'limite da fonte'}</span></td>
           <td>${mdSimples(x.o_que_acontece)}</td>
-          <td class="dim">${mdSimples(x.caminho_alternativo)}</td>
+          <td class="dim">${tecnico(mdSimples(x.caminho_alternativo))}</td>
           <td class="dim">${esc(x.medido_em)}</td></tr>`).join('')
       +`</tbody></table>
         <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
@@ -1065,8 +1065,9 @@ export async function missaoListar(){
 
 export async function missaoCriar(){
   const t=($('ms-txt')?.value||'').trim(); if(!t)return;
-  await J('/api/hermes/missoes',{method:'POST',headers:{'Content-Type':'application/json'},
+  const d=await J('/api/hermes/missoes',{method:'POST',headers:{'Content-Type':'application/json'},
                                 body:JSON.stringify({objetivo:t,titulo:t})});
+  if(d&&d.erro){jfnToast('Missão NÃO enfileirada — '+d.erro,'rose');return;}   // O10.1: dizia "enfileirada" até no 503
   jfnToast('Missão enfileirada.','green'); $('ms-txt').value=''; setTimeout(missaoListar,400);
 }
 
@@ -1284,10 +1285,10 @@ export async function renderCartelMun(){
     const selo=o.ramo_canonico?'':' <span class="tag" title="agrupamento heurístico de 2 palavras — conferir o objeto real">heurístico</span>';
     const top3=(o.top3||[]).map(f=>`${esc((f.nome||f.cnpj).slice(0,34))} <b>${f.share}%</b>`).join(' <span class="dim">·</span> ');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(o.orgao)}${selo} ${forte?`<span class="tag ${o.grav>=4?'rose':'amber'}">top ${o.top_share}%</span>`:''}</div>
+      <div style="min-width:0"><div style="font-weight:700">${esc(o.orgao)}${selo} ${forte?`<span class="tag">top ${o.top_share}%</span>`:''}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">líder: ${clk(o.top_fornecedor.cnpj,o.top_fornecedor.nome||o.top_fornecedor.cnpj)} — ${fmtRc(o.top_fornecedor.valor)} em ${o.top_fornecedor.n} contrato(s)</div>
       <div class="dim" style="margin-top:2px">top 3: ${top3}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte?'var(--rose)':'var(--tx2)'}">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--tx2)">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${fmtN(o.n_contratos)} contratos · ${fmtN(o.n_fornecedores)} fornecedores · ${fmtRc(o.total)} contratados</span></div>
       ${forte?leitura(`No mercado municipal de <b>${esc(o.orgao)}</b>, <b>${esc(o.top_fornecedor.nome||'—')}</b> detém <b>${o.top_share}%</b> do valor contratado (HHI ${fmtN(o.hhi)}). Concentração nesse nível é screen de captura/R8 — verificar se decorre de ata de RP legítima, estatal prestadora ou de barreiras de entrada nos editais do ramo.`):''}`,
     forte?'hl':'');}).join('')+`</div>`;
@@ -1342,7 +1343,7 @@ export async function renderAditivos(esf='estado'){
         ||{sobre:'Aditivos que ultrapassam o limite do art. 125 da Lei 14.133 (25%, ou 50% em reforma de edifício). Estourar o teto não é automaticamente ilícito: a lei admite hipóteses excepcionais que o próprio processo tem de justificar. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(d.n_pendente),'Pendentes de prova','var(--amber)','⏳',
         {sobre:'Há sinal mas a prova não fecha: termo não coletado, valor global maior que o inicial sem termo (o global do PNCP cobre o período, não é acréscimo), percentual declarado no próprio termo dentro do teto, base incompatível. Não é estouro e não entra em soma.'})}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑',
         {sobre:'Contratos com três ou mais termos aditivos. Aditar é lícito e às vezes necessário; a sequência longa é que levanta a pergunta sobre o planejamento original do objeto.'})}
-      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi((a.find(x=>x.estoura_teto)||{}).pct!=null?fmtPct(a.find(x=>x.estoura_teto).pct):'—','Pior acréscimo verificado','var(--rose)',null,
+      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi((a.find(x=>x.estoura_teto)||{}).pct!=null?fmtPct(a.find(x=>x.estoura_teto).pct):(d.n_estoura_teto===0?'AUSENTE':'INDISPONÍVEL'),'Pior acréscimo verificado','var(--rose)',null,
         {sobre:'O maior percentual de acréscimo da lista. O teto do art. 125 da Lei 14.133 é de 25% (50% em reforma de edifício) — acima disso, o aditivo exige justificativa que o próprio processo tem de trazer.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
   /* estouro e pendente saem no cartão por contrato (mesmo do D11 da Prefeitura); série segue compacta */
@@ -2386,15 +2387,15 @@ export async function renderNepotismo(){
         {sobre:'Clusters em que um dos membros ocupa cargo com <b>poder de nomear</b>. É o que separa coincidência de cadeia: a Súmula Vinculante 13 alcança a nomeação feita por quem tem a competência, não a simples presença de parentes na mesma repartição.'})}
       ${kpi(fmtN(d.n_hipoteses||0),'Hipóteses (só sobrenome)',null,'❔',
         {sobre:'Grupos ligados <b>só pelo sobrenome</b>. Sobrenome não é parentesco e no Brasil não há base aberta de parentesco: sem outro dado que ligue as pessoas (por exemplo, serem sócias da mesma empresa com o CPF conferido), o grupo é hipótese para diligência, <b>não achado</b>.'})}
-      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯',{drill:'sobrenome100'})}${kpi(a.length?a[0].n_membros:'—','Maior cluster',null,null,
+      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯',{drill:'sobrenome100'})}${kpi(a.length?a[0].n_membros:(d.n===0?'AUSENTE':'INDISPONÍVEL'),'Maior cluster',null,null,
         {sobre:'Quantas pessoas tem o maior grupo da lista. Número alto com sobrenome comum é ruído de base; com sobrenome raro, é o caso a abrir primeiro — por isso a concentração aparece em cada linha, e não só o tamanho.'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce com novas folhas.</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
   const _nepCard=(x,ehHip)=>card(
-    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade?'<span class="tag rose">autoridade no cluster</span>':''}</div>
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade?'<span class="tag">autoridade no cluster</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'').slice(0,44))}</div>
       <div class="dim" style="margin-top:2px">${Math.round(x.concentracao*100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
       <table style="margin-top:10px"><tbody>${(x.membros||[]).map(m=>`<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo||'')}${m.cpf_frag?' · CPF …'+esc(m.cpf_frag):''}</td></tr>`).join('')}</tbody></table>
       ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao*100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. ${x.membros.some(m=>m.cpf_frag)?'Fragmentos de CPF distintos confirmam pessoas diferentes. ':''}${ehHip?'<b>Só o sobrenome as liga</b> — hipótese, não achado. Falta: '+esc(x.falta||'')+'.':esc(x.motivo||'')+' Confirmar o parentesco e a cadeia de nomeação.'}`)}`,
     ehHip?'':'hl');
@@ -2505,7 +2506,7 @@ export async function renderLaranjas(){
   const it=d.itens||[];
   let h=cover('geral','Laranjas — sócio que recebe benefício','Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).','🎭');
   if(!it.length)return h+card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>')+`<div class="note">${esc(d.aviso||'')}</div>`;
-  h+=`<div class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-weight:700">${esc(x.socio||'—')}</div><div class="dim">${esc(x.cpf||'')}</div></div><span class="tag rose">laranja?</span></div><div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios||[]).map(esc).join(', ')||'—'}</b></div>${x.motivo?`<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>`:''}`,'hl')).join('')+`</div>`;
+  h+=`<div class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-weight:700">${esc(x.socio||'—')}</div><div class="dim">${esc(x.cpf||'')}</div></div><span class="tag" title="Sócio que recebe benefício social: perfil a conferir (indício, não acusação — PAD-08)">indício a verificar</span></div><div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios||[]).map(esc).join(', ')||'—'}</b></div>${x.motivo?`<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>`:''}`,'hl')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
 }
 export async function renderCartel(){
@@ -2578,7 +2579,7 @@ export async function renderSiafe(){
     h+=leitura(`Este total é <b>o que a casa já coletou</b>, não o gasto do Estado: a fonte canônica
       tem <b>${cb0.pct_do_espelho}%</b> das OBs que o espelho conhece
       (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total||0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
-      a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
+      a cada 2 h e a cobertura por par é medida de novo a cada drenagem.`);
   }
   h+=blocoPeriodo(['ob_siafe','execucao_estado'],'Pagamentos e execução por ano e mês');
   h+=`<div style="height:16px"></div>`+await frescorHtml();
@@ -2646,7 +2647,7 @@ export async function renderSweeps(){
   },30000);
   return h;
 }
-export async function sweep(a){if(a==='pausar'&&!await jfnConfirm('Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.','⏸ Pausar tudo'))return;await J('/api/sweeps/'+a,{method:'POST'});jfnToast(a==='pausar'?'Sweeps pausados.':'Sweeps retomados.','green');setTimeout(()=>ir(aba),500);}
+export async function sweep(a){if(a==='pausar'&&!await jfnConfirm('Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.','⏸ Pausar tudo'))return;const r=await J('/api/sweeps/'+a,{method:'POST'});if(r&&r.erro){jfnToast('Nada mudou — '+r.erro,'rose');return;}jfnToast(a==='pausar'?'Sweeps pausados.':'Sweeps retomados.','green');setTimeout(()=>ir(aba),500);}
 let _valLista=[],_valIdx=0;
 export async function renderValidar(){
   const d=await J('/api/fachada/revisar?limite=200');_valLista=(d&&d.fachadas)||[];_valIdx=0;
@@ -2666,7 +2667,8 @@ function _valCard(){
      <div class="btns" style="margin-top:8px"><button class="btn red" onclick="validar('suspeito')">Suspeito</button><button class="btn green" onclick="validar('ok')">Legítima</button><button class="btn ghost" onclick="validar('mais_info')">Mais info</button></div>`);
 }
 export async function validar(v){const f=_valLista[_valIdx];if(!f)return;const nota=($('val-nota')||{}).value||'';
-  await J('/api/fachada/veredito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj:f.cnpj,veredito:v,nota})});
+  const r=await J('/api/fachada/veredito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj:f.cnpj,veredito:v,nota})});
+  if(r&&r.erro){jfnToast('Veredito NÃO gravado — '+r.erro,'rose');return;}
   _valIdx++;const el=$('val-card');if(el)el.innerHTML=_valCard();}
 export async function renderAcoes(){
   const reps=await J('/api/compliance/reports');const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);

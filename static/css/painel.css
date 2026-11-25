@@ -6609,3 +6609,35 @@ html.v63 .v63-estado.não-calibrado{background:rgba(11,27,58,.07);color:var(--mu
   .lente-faixa{margin:8px 16px 0;padding:10px 12px}
   .lente-tab{display:block;overflow-x:auto}
 }
+
+/* ══ O10.1 item 1/2 (25/11/2026) — o cabeçalho cabe na janela ═══════════════════════════════════════════════════
+   MEDIDO (auditoria O10.1): a soma das quatro colunas da grade (marca 271 + pílula 148 + esferas 578 + ações 556 +
+   vãos) dava 1.577 px numa coluna de 1.265 — o grupo de ações terminava em x = 1.657 (janela 1.440) e 1.577 (1.280),
+   e a Lente (O7.2) e "Termos" ficavam fora da tela em TODAS as abas. A coluna é fixa (--col alinha o cabeçalho ao
+   `main` de 1.280), então janela maior não resolve: o conteúdo é que tem de caber.
+   Mudança mínima, mesmos tokens: (a) o CTA "Buscar" sai do cabeçalho (é a aba Transversal › Buscar, e já saía
+   abaixo de 1.180 px); (b) a pílula de motores mostra só "em espera"/"2 rodando", como no celular (a frase inteira
+   continua no `title` e na faixa AO VIVO logo abaixo); (c) o subtítulo da marca quebra em duas linhas em vez de
+   empurrar a grade; (d) o seletor de Lente usa o tamanho compacto que a O7.2 desenhou (a regra global de `select`
+   da v60 o inflava para 44 px e 15 px de fonte); (e) rede de segurança: a coluna das esferas pode encolher
+   (`minmax(0,1fr)`) e rola dentro de si — as ações nunca mais saem da janela.
+   Celular (≤ 760 px): a marca fica só no monograma "CE" (o nome vazava por cima do selo "em espera" e da Lente) e o
+   rótulo "Lente" sai da vista (continua no <label for>, lido pelo leitor de tela) para o seletor não cortar. */
+@media (min-width:761px){
+  html.v60 header{grid-template-columns:auto auto minmax(0,1fr) auto}
+  html.v60 #spheres{min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none}
+  html.v60 #spheres::-webkit-scrollbar{display:none}
+  html.v60 .sph{flex:0 0 auto;padding:0 8px;gap:6px}
+  html.v60 .htop .actions{gap:2px}
+  html.v63 header .htop .actions > a.v63-btn.v63-cta{display:none}
+  html.v63 .v63-status .v63-st .w{display:none}
+  html.v63 .brand{min-width:0}
+  html.v63 .brand small{white-space:normal;max-width:120px;overflow:visible}
+  html.v60 .lente-sel{min-height:34px;padding:4px 8px;font-size:12.5px;border-radius:8px}
+}
+@media (max-width:760px){
+  html.v60 .brand h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  html.v60 .lente-rot{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  html.v60 .lente-seletor{margin-right:2px}
+  html.v60 .lente-sel{max-width:150px;padding:6px 8px;font-size:13px}
+}

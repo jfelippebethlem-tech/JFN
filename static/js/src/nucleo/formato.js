@@ -10,10 +10,19 @@
  *   • id técnico (snake_case) NUNCA chega ao usuário: passa por `rot()`.
  */
 
-export const fmtN = n => (n == null ? '—' : Number(n).toLocaleString('pt-BR'));
+/* O10.1 (25/11/2026) — VALOR AUSENTE É "INDISPONÍVEL", NUNCA "—" NEM 0 (plano mestre v2 §3.10, invariante 2).
+   O traço aparecia em 5 abas como valor de KPI (e_adit, p_adit, p_fant, g_nep, g_acuracia) e `fmtR(null)` escrevia
+   "R$ 0,00" — o zero inventado que a regra INDISPONÍVEL ≠ 0 proíbe. Consertado aqui, uma vez, para as ~300 chamadas.
+   `fmtN(x ?? '—')` (padrão antigo) dava "NaN": texto não numérico também é INDISPONÍVEL. AUSENTE (consultado, não
+   consta) é afirmação sobre a fonte — quem sabe disso escreve AUSENTE no próprio render; o formatador não adivinha. */
+export const IND = 'INDISPONÍVEL';
+export const AUS = 'AUSENTE';
+export const semValor = v => v == null || v === '' || typeof v === 'boolean' || !Number.isFinite(Number(v));
+
+export const fmtN = n => (semValor(n) ? IND : Number(n).toLocaleString('pt-BR'));
 
 /* decimal pt-BR: toFixed() devolve ponto ('3.4') — a casa escreve virgula ('3,4') */
-export const fmtD = (v, d) => (v == null || v === '' ? '—'
+export const fmtD = (v, d) => (semValor(v) ? IND
   : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}));
 
 /* data pt-BR: '2026-09-24' → '24/09/2026' e '2026-09-24 13:05:09' → '24/09/2026 13:05'. Texto que não é ISO passa
@@ -21,19 +30,19 @@ export const fmtD = (v, d) => (v == null || v === '' ? '—'
    (auditoria 24/09/2026). */
 export const fmtData = v => {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(v ?? ''));
-  return !m ? (v == null || v === '' ? '—' : String(v)) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ''}`;
+  return !m ? (v == null || v === '' ? IND : String(v)) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ''}`;
 };
 
 /* pct assinado: o + so aparece quando e positivo — '+-8%' era bug em e_adit */
-export const fmtPct = p => (p == null ? '—' : (p > 0 ? '+' : '') + fmtN(p) + '%');
+export const fmtPct = p => (semValor(p) ? IND : (p > 0 ? '+' : '') + fmtN(p) + '%');
 
-export const fmtR = v => 'R$ ' + (v == null ? '0,00'
-  : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+export const fmtR = v => (semValor(v) ? IND
+  : 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
 /* fmtRc era a forma CURTA ('R$ 1,3 bi'). A regra da casa é número financeiro sempre com separador de milhar e duas
    casas (auditoria quadro a quadro de 24/09/2026: 119 lugares mostravam valor arredondado a 1 casa de bilhão — um erro
    de até R$ 50 mi na leitura). Fica o nome para não mexer em 119 chamadas; o valor agora é o exato. */
-export const fmtRc = v => fmtR(Number(v || 0));
+export const fmtRc = v => fmtR(v);   // O10.1: era fmtR(Number(v || 0)) — ausente virava R$ 0,00
 
 // rótulos humanos p/ ids técnicos de sinal/detector — snake_case NUNCA chega ao usuário
 export const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societário',sancao_a_epoca:'sanção vigente à época',
@@ -52,3 +61,23 @@ export const rot = id => ROTULOS[id] || String(id || '').replace(/_/g, ' ');
 
 /* Chave de busca sem acento e em caixa alta ("Secretaria de Saúde" casa "SECRETARIA DE SAUDE"). */
 export const normalizar = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+
+/* O10.1 (25/11/2026) — A COR DO KPI NÃO ACUSA SEM PROVA (regra da casa: 🔴 só com prova primária conferida; manchete
+   só Tier 1 — plano mestre v2 §8). Medido na auditoria: "0" e "R$ 0,00" em vermelho (e_sobre, g_nep, g_nepx, g_porta,
+   p_sanc), "Soma publicada" (valor publicado ≠ pago) em vermelho, contagens de sinal pintadas como gravidade.
+   Regra, aplicada por `kpi()` a TODAS as chamadas:
+     · valor ausente, INDISPONÍVEL/AUSENTE ou zero → sem cor (tinta neutra do tema), seja qual for a cor pedida;
+     · vermelho genérico (`--rose`, `--red`) → neutro: é contagem ou valor, não achado com prova;
+     · vermelho EXPLÍCITO `--crit`/`--crit-text` fica — reservado a falha operacional do próprio sistema (Sistema,
+       prazos da LAI) e a achado Tier 1 com prova; quem usa assume isso na chamada.
+   Âmbar, verde, azul e dinheiro passam como estão. A lógica de risco não muda — só a apresentação. */
+const _txt = v => String(v ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+export const kpiValor = v => { const t = _txt(v); return (t === '' || t === '—' || t === '-' || /^NaN/.test(t)) ? IND : v; };
+const _ZERO = /^(R\$\s*)?[+-]?0+([.,]0+)?\s*(%|×)?$/;
+export const corKpi = (v, cor) => {
+  if (!cor) return cor;
+  const t = _txt(kpiValor(v));
+  if (t === IND || t === AUS || _ZERO.test(t)) return null;
+  if (/--(rose|red)\b/.test(cor)) return null;
+  return cor;
+};

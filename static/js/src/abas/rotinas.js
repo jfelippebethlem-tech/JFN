@@ -3,14 +3,14 @@
 // Dados: GET /api/pericia_contabil (rotina diária), /api/cge_confronto (semanal), /api/detectores_achados
 // (rotas/pericias_rotinas.py). Rotina que ainda não rodou diz "sem execução" — não é zero. Sem delegação de
 // eventos (só <details>): nada novo no `window` nem na ordem de boot.
-import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
+import {esc, card, kpi, sec, cover, tecnico} from '../nucleo/dom.js';
 import {J, erroHumano, cardErro} from '../nucleo/http.js';
 import {fmtN, fmtR, fmtData} from '../nucleo/formato.js';
 
 const _txt = '<style>.rt-txt th,.rt-txt td{text-align:left;vertical-align:top}.rt-txt th.right,.rt-txt td.right{text-align:right}</style>';
-const _rodape = d => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina <code>${esc(d.rotina || '')}</code> · ${esc(d.horario || '')} · arquivo gravado em ${esc(d.arquivo_mtime || '—')}</div>`;
+const _rodape = d => `<div class="dim" style="font-size:12px;margin-top:6px">Rotina ${esc(d.horario || '')} · arquivo gravado em ${esc(d.arquivo_mtime || 'INDISPONÍVEL')}${tecnico(d.rotina ? `<code>${esc(d.rotina)}</code>` : '')}</div>`;
 const _semExec = d => card(`<div class="warn">${esc(d.mensagem || 'Rotina ainda sem execução.')}</div>
-  <div class="dim" style="font-size:12px;margin-top:6px">Comando: <code>${esc(d.rotina || '')}</code> (${esc(d.horario || '')}).</div>`);
+  <div class="dim" style="font-size:12px;margin-top:6px">Rotina ${esc(d.horario || '')}.${tecnico(d.rotina ? `<code>${esc(d.rotina)}</code>` : '')}</div>`);
 // Diretriz do dono (13/11/2026): estado VERIFICADO/PENDENTE visível ao lado de todo número.
 const _estado = v => `<b style="color:${v === 'VERIFICADO' ? 'var(--green)' : 'var(--amber)'}">${esc(v)}</b>`;
 const _pct = (a, b) => (b ? (100 * a / b).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%' : '—');
@@ -105,7 +105,7 @@ export async function renderPericiaContabil(){
   if (!d || d.ok === false) return h + cardErro(d);
   if (d.estado === 'sem_execucao') return h + _semExec(d);
   const defs = d.definicoes || {};
-  h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(d.regua || '')} · <b>Tolerância:</b> ${esc(d.tolerancia || '')}</div>
+  h += card(`<div style="font-size:13px"><b>Régua:</b> ${esc(String(d.regua || '').replace(/^[\w.]+\s*\((.*)\)$/, '$1'))} · <b>Tolerância:</b> ${esc(d.tolerancia || '')}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${esc(defs.indeterminado || '')}. ${esc(d.ressalva || '')}</div>${_rodape(d)}`);
   for (const [nome, e] of Object.entries(d.esferas || {})) h += _esfera(nome, e, defs);
   return `<div id="rt-pericia">${h}${_txt}</div>`;

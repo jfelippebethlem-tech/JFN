@@ -59,6 +59,7 @@ SEQUENCIA = [
     "chamada:ligarPeriodo()",          # 2026-11-13: delegacao `data-per-*` (seletor Ano/Mes + quebra por ano e mes)
     "chamada:ligarLai()",              # 2026-09-15: delegacao `data-lai` (LAI automatizada), colada na ligarFila
     "chamada:ligarAcervo()",           # 2026-09-20: delegacao `data-acervo` (busca unica + ficha do processo)
+    "chamada:ligarManutencao()",       # 2026-11-25 O10.1: em manutencao, controle de escrita nasce desabilitado
     # 2026-08-06: delegacao das METRICAS CLICAVEIS. Colada no `ligarVinculos` de proposito — as
     # duas prendem UM ouvinte no `document`, que sobrevive a troca de `innerHTML` do `#view`, e
     # nenhuma delas toca a tela. Verificado com `pageerror` limpo na pagina viva.

@@ -4,6 +4,7 @@
  * devolve quando dá errado. Separá-las deixaria a tradução órfã do contrato que ela traduz.
  */
 import {esc, card} from './dom.js';
+import {manutencao} from './manutencao.js';
 
 // 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário.
 // + cache de navegação (TTL 90s, só GET): voltar numa aba já vista abre INSTANTÂNEO sem perder
@@ -36,6 +37,9 @@ function _registrarLente(ep, aplicou) {
 
 export async function J(ep0, opt) {
   const isGet = !opt || !opt.method || opt.method === 'GET';
+  /* O10.1: em manutenção o servidor responde 503 a toda escrita — recusa aqui, com o motivo, sem ir à rede */
+  const _m = !isGet && opt.method !== 'HEAD' ? manutencao() : null;
+  if (_m) return {ok: false, manutencao: true, erro: _m.motivo};
   const _ep = isGet ? _comLente(ep0) : null, ep = _ep || ep0;
   const cacheavel = isGet && !/\/stream|\/status|\/api\/eventos/.test(ep);
   if (cacheavel) { const c = _jCache.get(ep); if (c && Date.now() - c.t < 90000) { if (_ep) _registrarLente(ep0, c.l); return c.d; } }

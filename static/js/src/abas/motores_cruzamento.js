@@ -49,9 +49,9 @@ function _cruz(c) {
       {sobre: `Vereditos em que o Claude e outro motor julgaram o MESMO item, na mesma tarefa, nos últimos ${fmtN(c.dias || 30)} dias. Par com um lado indeterminado fica fora da taxa (INDISPONÍVEL ≠ discordância). Fonte: data/cruzamento_motores.db.`})}
     ${kpi(nPares ? pct(acordos / nPares) : '—', 'Concordância geral com o Claude', 'var(--accent)', null,
       {sobre: `Pares em que o outro motor deu o MESMO nível (⚪🟡🔴) que o Claude, sobre todos os pares medidos. Concordar com o Claude é REFERÊNCIA, não acerto: o Claude não é gabarito. Só ${fmtN(suf.length)} de ${fmtN(ls.length)} combinações tarefa × modelo têm a amostra mínima de ${AMOSTRA_MINIMA} pares.`})}
-    ${kpi(fmtN(graves), 'Divergências graves', graves ? 'var(--rose)' : 'var(--green)', null,
+    ${kpi(fmtN(graves), 'Divergências graves', graves ? 'var(--crit-text)' : 'var(--green)', null,
       {sobre: 'Pares em que um motor disse 🔴 e o outro ⚪ (distância de dois níveis). Cada uma vira revisão humana; nenhuma é resolvida a favor de um lado sem gente olhar.'})}
-    ${kpi(fmtN(c.revisao_pendente), 'Revisões pendentes', c.revisao_pendente ? 'var(--rose)' : 'var(--green)', null,
+    ${kpi(fmtN(c.revisao_pendente), 'Revisões pendentes', c.revisao_pendente ? 'var(--crit-text)' : 'var(--green)', null,
       {sobre: `Divergências graves ainda sem decisão humana (tabela revisao, status pendente). A lista abaixo mostra as ${fmtN((c.revisoes || []).length)} mais recentes. Exemplos guardados para o few-shot da cascata: ${fmtN(c.exemplos_few_shot)}.`})}
   </div>`;
   if (!c.medido) return h + card(`<div class="dim">${esc(c.motivo || 'Sem cruzamentos ainda')} — nada a medir.</div>`);
@@ -121,7 +121,7 @@ function _conf(c) {
       {sobre: 'Fila irmã, mais antiga: alertas da triagem com leitura 🔴/🟡, descartada ou feita sem o Claude da assinatura (alertas_triagem.opus_pendente). O Opus relê em lotes a cada hora.'})}
     ${kpi(c.disponivel ? _n(c.conferidos) : 'INDISPONÍVEL', 'Já conferidos pelo Opus', 'var(--accent)', null,
       {sobre: 'Itens da fila que o Opus releu. Cada par Opus × outro modelo entra no cruzamento de motores abaixo.'})}
-    ${kpi(c.disponivel ? _n(c.divergencias) : 'INDISPONÍVEL', 'Opus divergiu', c.divergencias ? 'var(--rose)' : 'var(--green)', null,
+    ${kpi(c.disponivel ? _n(c.divergencias) : 'INDISPONÍVEL', 'Opus divergiu', c.divergencias ? 'var(--crit-text)' : 'var(--green)', null,
       {sobre: 'Conferências em que o Opus NÃO deu o mesmo nível que o modelo de contingência (ou a tarefa é texto, sem régua). Nesses casos vale o resultado do Opus; a leitura anterior fica registrada. Divergência de dois níveis (🔴×⚪) vira também revisão humana.'})}
   </div>`;
   if (!c.disponivel) return h + card('<b>INDISPONÍVEL</b> — a fila de conferência não pôde ser lida. Sem leitura não há número: INDISPONÍVEL ≠ 0.');

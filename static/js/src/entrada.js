@@ -92,6 +92,8 @@ import {renderLai, ligarLai} from './abas/lai.js';
    Sem efeito de topo — liga pela chamada `ligarMidia()` na sequência de boot. */
 import {ligarMidia, somTocar} from './ui/midia.js';
 import {renderAcervo, ligarAcervo} from './abas/acervo.js';
+/* O10.1: em manutenção, controle de escrita nasce desabilitado com o motivo (nucleo/manutencao.js) */
+import {ligarManutencao} from './nucleo/manutencao.js';
 
 async function gerarPdfIntel(tipo,el){
   const txt=el.innerHTML;el.innerHTML='<span class="sp" style="width:12px;height:12px"></span> gerando…';el.disabled=true;
@@ -438,6 +440,7 @@ ligarOrcamentoOrgao();
 ligarPeriodo();
 ligarLai();
 ligarAcervo();
+ligarManutencao();
 /* Um ouvinte para TODAS as métricas clicáveis do painel — ver nucleo/drill.js. */
 ligarDrill();
 /* Botão "Som" do cabeçalho (delegado por `data-som`) + sonda das ilustrações de vazio. Mesma
