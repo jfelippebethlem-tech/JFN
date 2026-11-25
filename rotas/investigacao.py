@@ -35,6 +35,17 @@ def _ro(banco: str = "compliance.db", *, linhas: bool = False, **kw) -> sqlite3.
     return con
 
 
+def _visao(nome: str):
+    """Visão materializada pelo E15 (O7.1) ou None. `RAIZ` lido na chamada: teste que o redireciona cai no legado."""
+    from compliance_agent.aplicacao.estagios import materializar as M
+    return M.resposta(nome, RAIZ)
+
+
+def _legado(nome: str, resp):
+    from compliance_agent.aplicacao.estagios import materializar as M
+    return M.marcar_ausente(resp, nome)
+
+
 async def _grafo_rede_completa(limite: int = 120):
     """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor PAGO ↔ órgãos (UGs).
     Fornecedor vira severidade='alta' se for INDICIO em verificacao_sede.
@@ -203,6 +214,13 @@ async def api_cruzamento(cnpj: str):
 
 @router.get("/api/coendereco/clusters")
 def api_coendereco_clusters(min_forn: int = 2, top: int = 50):
+    """Padrão do painel (2, 50): visão materializada `coendereco_clusters` (E15). Outro recorte → cálculo legado."""
+    if min_forn == 2 and top == 50:
+        return _visao("coendereco_clusters") or _legado("coendereco_clusters", _api_coendereco_clusters_legado())
+    return _api_coendereco_clusters_legado(min_forn, top)
+
+
+def _api_coendereco_clusters_legado(min_forn: int = 2, top: int = 50):
     """Descoberta proativa: grupos de fornecedores que dividem a MESMA sede e recebem do Estado.
     Red flag de fachada/laranja (art. 337-F CP). Varre a base de endereços ingeridos."""
     try:
@@ -230,6 +248,11 @@ def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
 
 @router.get("/api/compliance/painel")
 def api_painel():
+    """Visão materializada `compliance_painel` (E15, sem TTL); ausente → cálculo legado."""
+    return _visao("compliance_painel") or _legado("compliance_painel", _api_painel_legado())
+
+
+def _api_painel_legado():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
     Cacheado 3600s (TTL analítico da casa; o prewarm de 30 min o mantém quente) — com 120s o prewarm
     expirava antes da visita e o panorama abria frio: 30,8 s medidos em 24/09/2026."""
@@ -527,6 +550,11 @@ def api_relatorio_30d():
 
 @router.get("/api/compliance/graph")
 async def api_compliance_graph():
+    """Visão materializada `compliance_graph` (E15); ausente → cálculo legado."""
+    return _visao("compliance_graph") or _legado("compliance_graph", await _api_compliance_graph_legado())
+
+
+async def _api_compliance_graph_legado():
     return await _grafo_rede_completa()
 
 
@@ -856,6 +884,13 @@ def api_sugestoes(q: str = "", limite: int = 8):
 
 @router.get("/api/conflito")
 def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
+    """Varredura geral (sem filtro): visão materializada `conflito` (E15, sem TTL). Filtro → cálculo legado."""
+    if not cnpj and not candidato and limite == 200:
+        return _visao("conflito") or _legado("conflito", _api_conflito_legado(cnpj, candidato, limite))
+    return _api_conflito_legado(cnpj, candidato, limite)
+
+
+def _api_conflito_legado(cnpj: str = "", candidato: str = "", limite: int = 200):
     """Onda 2 — Conflito de interesse: doador TSE ↔ (empresa | SÓCIO da empresa) ↔ OB.
 
     Cruza `doacoes_eleitorais` (TSE) com OBs (TFE/SIAFE) e QSA (`socios_fornecedor`).
@@ -1364,6 +1399,14 @@ def _cache_calc(chave: str, ttl: int, calcular):
 
 @router.get("/api/certames/lista")
 def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = ""):
+    """Recorte do painel (esfera estado|prefeitura, 600, sem busca): visão `certames_<esfera>` (E15, sem TTL)."""
+    if esfera in ("estado", "prefeitura") and limite == 600 and not q:
+        return (_visao(f"certames_{esfera}")
+                or _legado(f"certames_{esfera}", _api_certames_lista_legado(esfera, limite, q)))
+    return _api_certames_lista_legado(esfera, limite, q)
+
+
+def _api_certames_lista_legado(esfera: str = "prefeitura", limite: int = 600, q: str = ""):
     """Certames da base LOCAL, cada um com a SUA análise (Índice de Direcionamento + temas).
 
     A aba Contratos do painel deixa de depender do PNCP ao vivo (lento/instável) — lê
@@ -1436,6 +1479,14 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
 
 @router.get("/api/pncp/conluio")
 def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
+    """Esfera estado com o padrão do painel: visão materializada `pncp_conluio_estado` (E15, sem TTL)."""
+    if esfera == "estado" and min_certames == 4:
+        return _visao("pncp_conluio_estado") or _legado("pncp_conluio_estado",
+                                                        _api_pncp_conluio_legado(min_certames, esfera))
+    return _api_pncp_conluio_legado(min_certames, esfera)
+
+
+def _api_pncp_conluio_legado(min_certames: int = 4, esfera: str = ""):
     """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
     CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
     nome de fornecedor, nome de órgão e amostra de OBJETOS. ?esfera=estado|prefeitura|municipios|
@@ -2803,6 +2854,11 @@ def _siafe_pago_total() -> dict:
 
 @router.get("/api/fontes/frescor")
 def api_fontes_frescor():
+    """Visão materializada `fontes_frescor` (E15, SLO 1 h); ausente → cálculo legado."""
+    return _visao("fontes_frescor") or _legado("fontes_frescor", _api_fontes_frescor_legado())
+
+
+def _api_fontes_frescor_legado():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
     vermelho — defasagem nunca mais passa despercebida (lição SIAFE 16-17/07: MFA quebrou a coleta
     e nada avisava)."""

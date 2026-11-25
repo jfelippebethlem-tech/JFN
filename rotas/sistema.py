@@ -67,7 +67,15 @@ _stats_trava = threading.Lock()
 
 @router.get("/api/siafe/stats")
 def api_siafe_stats():
-    """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante)."""
+    """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante).
+    Visão materializada `siafe_stats` (E15, O7.1: sem TTL); ausente → cálculo legado abaixo."""
+    from compliance_agent.aplicacao.estagios import materializar as M
+    if (pronta := M.resposta("siafe_stats", RAIZ)) is not None:
+        return pronta
+    return M.marcar_ausente(_api_siafe_stats_legado(), "siafe_stats")
+
+
+def _api_siafe_stats_legado():
     v = _stats_cache.get("v")
     if v and time.time() - v[0] < _STATS_TTL:
         return JSONResponse(v[1])

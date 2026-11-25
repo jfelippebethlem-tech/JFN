@@ -114,5 +114,8 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "observar":                                       # E18 (O8.1): sensores → fluxo.metricas
         from compliance_agent.aplicacao.estagios import observar
         return observar.ESTAGIO
+    if familia == "materializar":                                   # E15 (O7.1): visões do painel
+        from compliance_agent.aplicacao.estagios import materializar
+        return materializar.ESTAGIO
     return REGISTRO.get(familia)
 

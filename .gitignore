@@ -214,6 +214,8 @@ data/siafe_dias_verificados.json
 data/siafe_dias_inconclusivos.json
 # cache persistido do painel (rotas/investigacao.py) — derivado, regenerável
 data/cache_painel/
+# visões materializadas do painel (E15, O7.1) — derivado, regenerável
+data/visoes/
 static/assets/v61/src/
 
 # ruflo (ruvnet/ruflo) — estado local de agentes/memória; nunca versionar (repo público)

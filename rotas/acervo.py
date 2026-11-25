@@ -100,6 +100,14 @@ _EST: dict = {}
 
 @router.get("/api/acervo/estatisticas")
 async def api_acervo_estatisticas():
+    """Visão materializada `acervo_estatisticas` (E15, O7.1: sem TTL); ausente → cálculo legado abaixo."""
+    from compliance_agent.aplicacao.estagios import materializar as M
+    if (pronta := M.resposta("acervo_estatisticas")) is not None:
+        return pronta
+    return M.marcar_ausente(await _api_acervo_estatisticas_legado(), "acervo_estatisticas")
+
+
+async def _api_acervo_estatisticas_legado():
     """Cache de 1 h (o prewarm de 30 min o mantém quente): count(DISTINCT) no SIAFE custava 15–25 s a frio."""
     import time
     from compliance_agent.acervo import estatisticas

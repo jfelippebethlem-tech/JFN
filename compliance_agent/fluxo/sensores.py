@@ -589,6 +589,12 @@ def g_frescor(ctx: Ctx) -> list[Leitura]:
     return out
 
 
+def g_frescor_visoes(ctx: Ctx) -> list[Leitura]:
+    """Frescor das visões materializadas do E15 (O7.1; dono: estagios/materializar.py)."""
+    from compliance_agent.aplicacao.estagios.materializar import g_visoes
+    return g_visoes(ctx)
+
+
 def custo_mes(gateway_usd: float | None, gateway_n: int, legado_usd: float, livro: Mapping | None,
               mes: str) -> tuple[float | None, dict, str]:
     """Gasto pago do mês (US$) somando as fontes sem contar duas vezes. Puro.
@@ -1088,6 +1094,7 @@ GRUPOS: dict[str, Grupo] = {
                            "fila.conclusoes_h", "fluxo.nos_sem_heartbeat", "fila.espera_p95_s")),
     "wal_pg": Grupo(g_wal_pg, ("wal.pg_arquivo_atraso_s",)),
     "frescor": Grupo(g_frescor, ("frescor.fontes_atrasadas",), intervalo_s=3600),
+    "frescor_visoes": Grupo(g_frescor_visoes, ("visoes.atrasadas",)),
     "llm": Grupo(g_llm, ("llm.custo_mes_usd",)),
     "pericia": Grupo(g_pericia, ("pericia.cobertura_chars",), intervalo_s=21600),
     "opus": Grupo(g_opus, ("opus.saida_por_entrada_7d", "opus.pendentes")),

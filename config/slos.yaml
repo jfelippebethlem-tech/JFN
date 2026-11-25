@@ -378,6 +378,23 @@ slos:
     runbook: '§11.12 frescor 36/36; detalhe por fonte em frescor.atraso_h'
     remediar: 'comando `recuperacao` da fonte no contrato (O9.0); durante a parada de obras o atraso é esperado e declarado'
     origem: [pipelines_slo, automelhoria_geral.dados]
+  visoes_frescor:
+    sensor: visoes.atrasadas
+    descricao: visões materializadas do painel (E15) além do SLO de frescor de cada uma, ou nunca materializadas
+    unidade: visões
+    sentido: max
+    saudavel: 0
+    degradado: 2
+    pior: ATRASADO
+    janela_s: 3600
+    escopo: maquina
+    nos: [vm1]
+    dono: painel
+    severidade: alta
+    fonte: 'data/visoes/<visao>.meta.json (gerado_em × slo_s) — compliance_agent.aplicacao.estagios.materializar.frescor; detalhe por visão em visoes.idade_s'
+    runbook: '§8 Dados e visões (O7.1): o painel só lê visões materializadas; idade de cada uma em `materializar estado`'
+    remediar: '`python -m compliance_agent.aplicacao.estagios.materializar rodar --visao <visao>` (rotina materializar_painel do fluxo; inativa na parada de obras: o atraso é esperado e declarado)'
+    origem: [prewarm_painel]
   llm_custo_mes:
     sensor: llm.custo_mes_usd
     descricao: gasto pago do mês (UTC) com LLM — gateway quando já grava; até lá livro-caixa da API + trace antigo

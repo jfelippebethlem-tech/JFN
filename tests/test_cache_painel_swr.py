@@ -67,7 +67,12 @@ def test_prewarm_cobre_toda_rota_da_home():
     home = set(re.findall(r"J\('/api/([^']+)'", js))
     sh = (RAIZ / "tools/prewarm_painel.sh").read_text(encoding="utf-8")
     aquecidas = set(re.findall(r'^\s*"([^"]+)"', sh, re.M))
-    assert home and not (home - aquecidas), f"rotas da home fora do prewarm: {sorted(home - aquecidas)}"
+    # O7.1: rota migrada para visão materializada (E15) saiu do prewarm — conta como pronta, não fria
+    from compliance_agent.aplicacao.estagios.materializar import VISOES
+    materializadas = {v.rota.removeprefix("/api/") for v in VISOES.values()}
+    assert not (aquecidas & materializadas), f"visão materializada ainda no prewarm: {sorted(aquecidas & materializadas)}"
+    prontas = aquecidas | materializadas
+    assert home and not (home - prontas), f"rotas da home fora do prewarm e das visões: {sorted(home - prontas)}"
 
 
 def test_cache_sobrevive_ao_restart(monkeypatch, tmp_path):

@@ -8,28 +8,21 @@ LOG=/home/ubuntu/JFN/data/prewarm_painel.log
 exec 9>/tmp/prewarm_painel.lock
 flock -n 9 || exit 0
 BASE="http://127.0.0.1:8000/api"
+# 24/11/2026 (O7.1): as 10 rotas de maior p95 (conflito, acervo/estatisticas, certames/lista ×2, fontes/frescor,
+# coendereco/clusters, siafe/stats, pncp/conluio?esfera=estado, compliance/painel, compliance/graph) SAÍRAM daqui:
+# viraram visões materializadas pelo E15 (compliance_agent/aplicacao/estagios/materializar.py) — a rota só lê o
+# arquivo pronto, sem TTL. As de baixo seguem no TTL + prewarm até migrarem.
 URLS=(
   "intel/fornecedor_dependente?limite=150"
-  "siafe/stats"
-  "fontes/frescor"
   "pericias?limite=80&ordem=score"
   "intel/socio_servidor?limite=150"
   "intel/nepotismo_cruzado?limite=80"
   "intel/nepotismo?limite=150"
   "intel/retro"
   "intel/porta_giratoria?limite=150"
-  "pncp/conluio?esfera=estado"
   "pncp/conluio?esfera=prefeitura"
   "pncp/conluio"
   "cartel"
-  "compliance/painel"
-  "certames/lista?esfera=prefeitura&limite=600"
-  "certames/lista?esfera=estado&limite=600"
-  # 2026-07-24: /api/conflito era a rota MAIS LENTA do painel (13 s, e também na 2ª chamada — não tinha
-  # cache). Com o cache aplicado ela cai para 40 ms; entra aqui para que nem a primeira visita espere.
-  "conflito"
-  "coendereco/clusters"
-  "compliance/graph"
   # 2026-09-24 (auditoria quadro a quadro): abas que passavam de 60 s a frio — mesmas URLs que o painel pede.
   "intel/fracionamento?limite=120"
   "intel/sobrepreco?limite=120&esfera=estado"
@@ -37,7 +30,6 @@ URLS=(
   "intel/escalada?limite=120&esfera=estado"
   "intel/escalada?limite=120&esfera=prefeitura"
   "intel/fantasmas?limite=60"
-  "acervo/estatisticas"
   # 2026-11-03: a HOME (cockpit) pedia 8 rotas que nunca estiveram aqui — a fênix levava 72,6 s e o
   # lift 25 s a frio, justo na primeira tela. Mesmas URLs que cockpit.js pede (test_prewarm_cobre_home).
   "intel/ninho_sala?limite=60"

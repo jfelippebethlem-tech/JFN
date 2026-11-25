@@ -83,6 +83,9 @@ def _isola_db(request, tmp_path, monkeypatch):
     # de chave ela fica desligada; quem testa a porta aponta para um arquivo falso. Livro de gasto também desviado.
     monkeypatch.setenv("JFN_OR_PAGO_ENV", str(tmp_path / "sem_chave_paga.env"))
     monkeypatch.setenv("JFN_OR_PAGO_GASTO", str(tmp_path / "openrouter_pago_gasto_teste.json"))
+    # 24/11/2026 (O7.1): as rotas migradas leem a visão materializada (E15) — teste nunca lê a de produção
+    # (data/visoes): pasta vazia por teste, a rota cai no cálculo legado sobre a base do próprio teste.
+    monkeypatch.setenv("JFN_VISOES_DIR", str(tmp_path / "visoes_teste"))
     yield
 
 

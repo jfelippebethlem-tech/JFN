@@ -2770,6 +2770,33 @@ rotinas:
     evento: {depende: [analitico_materializar], debounce_s: 60, agrupar: true}
     origem: [vm1-cruzador-snapshot-analitico]
     efeito: {descricao: 'envelope instalado ou inalterado com md5 conferido', log_contem: 'analitico aplicar: (APLICADO|INALTERADO)'}
+  materializar_painel:
+    estagio: E15
+    descricao: 'E15 materializar (O7.1): as 10 visões mais caras do painel (p95 medido nas 52 URLs do prewarm) viram arquivo pronto em data/visoes/<visao>.json + .meta.json (gerado_em, fonte, universo, cobertura, slo_s, sha256); a rota só lê, sem TTL e sem prewarm'
+    passos:
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, acervo_estatisticas]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, certames_estado]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, certames_prefeitura]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, coendereco_clusters]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, compliance_graph]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, compliance_painel]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, conflito]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, fontes_frescor]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, pncp_conluio_estado]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.materializar, rodar, --visao, siafe_stats]
+    recursos: [materializar]
+    nos: [vm1]
+    concorrencia: [painel]
+    timeout_s: 1800
+    prioridade: 20
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026): religa na O9.0. Até lá as visões só são regravadas à mão (`materializar rodar --todas`) e o sensor visoes.atrasadas declara o atraso; as rotas migradas servem a última visão (cabeçalho X-JFN-Visao-Gerado-Em) e, sem visão, caem no cálculo legado (X-JFN-Visao: ausente)'
+    nota: 'O7.1. Cada passo é o estágio nativo `materializar` pela CLI (handler + efeito no mesmo processo; a linha de prova só sai depois de conferir sha256 do corpo no disco = meta = declarado e o universo recontado). Quando o grafo agendar tipo nativo, cada passo vira um job `materializar:<visao>` sujo pelas fontes da visão (VISOES[...].fontes). O cálculo é pesado (conflito ~24–200 s): na VM-1 porque o compliance.db mora lá; volta VM-2 só com o snapshot conferido'
+    agenda:
+    - {cron: '20 * * * *'}
+    evento: {depende: [siafe_ob, siafe_status, siafe_gd, contratos_tcerj, tcerj_licitante, pcrj_base, sancoes, sei_arquivado, sei_lote, sei_ficha, triagem, revisao_humana, memoria_claude, regra_detectores, codigo_commit], debounce_s: 600, intervalo_min_s: 1800, agrupar: true}
+    origem: [prewarm_painel]
+    efeito: {descricao: 'cada visão regravada com sha256 conferido no disco (a CLI só imprime depois de conferir)', log_contem: 'materializar: [a-z_]+ sha256 [0-9a-f]{16} conferido'}
 duplicacoes:
 - mantida: triagem_lote
   descartadas: []
