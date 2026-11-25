@@ -3,9 +3,11 @@
 assinatura fechada antes de 28/11/2026 19h sem sondar ninguém, regra do dono (o Opus não reconfere o próprio laudo)
 e — com PG (VM-2) — gravação idempotente, ABSTEVE(sem_llm) que nunca vira "feito" e efeito conferido, sempre em
 esquema temporário."""
+import json
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -31,33 +33,72 @@ def _explode(*a, **k):
     raise AssertionError("não podia sondar a assinatura antes da liberação")
 
 
-def test_porta_recusa_antes_de_sabado_19h_sem_sondar():
-    m = C.porta_opus(datetime(2026, 11, 28, 18, 59, tzinfo=C.BRT), ritmo=_explode, escolher=_explode)
-    assert m and "28/11/2026 19h" in m
+SEM_AUT = Path("/nao/existe/autorizacao.json")
+ANTES = datetime(2026, 11, 26, 10, 0, tzinfo=C.BRT)
+DEPOIS = datetime(2026, 11, 28, 19, 0, tzinfo=C.BRT)
 
 
-def test_porta_depois_usa_ritmo_e_executor():
-    depois = datetime(2026, 11, 28, 19, 0, tzinfo=C.BRT)
-    assert "contido" in C.porta_opus(depois, ritmo=lambda t: "ritmo contido", escolher=_explode)
-    assert "nenhum executor" in C.porta_opus(depois, ritmo=lambda t: None, escolher=lambda: (None, "x"))
-    assert C.porta_opus(depois, ritmo=lambda t: None, escolher=lambda: ("vm2", "ok")) is None
+def test_porta_sem_autorizacao_recusa_antes_de_sabado_19h_sem_sondar():
+    m, ex = C.porta_opus(datetime(2026, 11, 28, 18, 59, tzinfo=C.BRT), ritmo=_explode, escolher=_explode,
+                         nivel=_explode, caminho=SEM_AUT)
+    assert ex is None and m.startswith("sem_llm:") and "28/11/2026 19h" in m
+
+
+def test_porta_depois_da_virada_usa_ritmo_e_executor():
+    assert "contido" in C.porta_opus(DEPOIS, ritmo=lambda t: "ritmo contido", escolher=_explode, caminho=SEM_AUT)[0]
+    assert "nenhum executor" in C.porta_opus(DEPOIS, ritmo=lambda t: None, escolher=lambda: (None, "x"),
+                                             caminho=SEM_AUT)[0]
+    assert C.porta_opus(DEPOIS, ritmo=lambda t: None, escolher=lambda: ("vm2", "ok"), caminho=SEM_AUT) == (None, "vm2")
+
+
+@pytest.fixture()
+def aut(tmp_path):
+    a = tmp_path / "aut.json"
+    a.write_text(json.dumps({"escopo": "passada --com-llm pela ASSINATURA (backend cli); nunca API paga",
+                             "teto_semana_pct": 80.0}))
+    return a
+
+
+def test_porta_com_autorizacao_do_dono_libera_antes_e_confere_o_teto(aut):
+    abaixo = lambda: {"medido": True, "semana_pct": 70.0}                         # noqa: E731
+    assert C.porta_opus(ANTES, nivel=abaixo, ritmo=_explode, escolher=lambda: ("itcampo", "hb"),
+                        caminho=aut) == (None, "itcampo")
+    m, ex = C.porta_opus(ANTES, nivel=lambda: {"medido": True, "semana_pct": 80.0}, escolher=_explode, caminho=aut)
+    assert ex is None and m.startswith("teto_assinatura:")
+    m, _ = C.porta_opus(ANTES, nivel=lambda: {"medido": False, "semana_pct": None}, escolher=_explode, caminho=aut)
+    assert m.startswith("teto_assinatura:") and "sem medição" in m
+
+
+def test_autorizacao_fora_do_escopo_nao_vale(tmp_path):
+    a = tmp_path / "aut.json"
+    a.write_text(json.dumps({"escopo": "API paga", "teto_semana_pct": 80.0}))
+    assert C.autorizacao_dono(a) is None and C.autorizacao_dono(SEM_AUT) is None
 
 
 def test_decidir_sem_motivo_e_nao_julgado_nunca_limpo():
-    assert C.decidir({"autor": "regra:x"}, [], porta=_explode) == (CR.NAO_JULGADO, C.NAO_JULGADO,
-                                                                    CR.ROTULO_NAO_JULGADO)
+    assert C.decidir({"autor": "regra:x"}, []) == (CR.NAO_JULGADO, C.NAO_JULGADO, CR.ROTULO_NAO_JULGADO)
 
 
 def test_opus_nao_reconfere_o_proprio_laudo():
-    d, e, m = C.decidir({"autor": "claude-opus-5-5"}, ["valor"], porta=_explode)
+    d, e, m = C.decidir({"autor": "claude-opus-5-5"}, ["valor"])
     assert (d, e) == ("fila", C.ABSTEVE) and m.startswith("autor_e_conferente")
 
 
-def test_com_motivo_sem_llm_abstem():
-    d, e, m = C.decidir({"autor": "regra:x"}, ["valor"], porta=lambda: "assinatura contida")
-    assert (d, e) == ("fila", C.ABSTEVE) and m == "sem_llm: assinatura contida"
-    # porta aberta: o conferente do motor ainda não está ligado — continua abstenção, nunca veredito
-    assert C.decidir({"autor": "regra:x"}, ["valor"], porta=lambda: None)[2].startswith("sem_llm")
+def test_com_motivo_vai_ao_julgamento():
+    assert C.decidir({"autor": "regra:x"}, ["valor"]) == ("fila", None, "")
+
+
+@pytest.mark.parametrize("texto, veredito", [
+    ('{"veredito": "confirma", "justificativa": "OB 1 e NL 1 batem"}', "confirma"),
+    ('Segue: {"veredito": "REBAIXA", "justificativa": "só contexto", "hipotese_inocente": "rateio"}', "rebaixa"),
+    ('{"veredito": "diverge", "justificativa": "NL anulada depois"}', "diverge"),
+    ('{"veredito": "talvez", "justificativa": "x"}', None),
+    ('{"veredito": "confirma", "justificativa": ""}', None),
+    ("sem json", None),
+])
+def test_analisar_resposta_so_aceita_veredito_com_justificativa(texto, veredito):
+    r = C.analisar_resposta(texto)
+    assert (r or {}).get("veredito") == veredito
 
 
 def _achado(estado="INDICIO", valores=("10.00",), origem="e10:x:todos:k"):
@@ -127,7 +168,7 @@ def _ctx(aid):
 @precisa_pg
 def test_achado_de_risco_grava_abstencao_e_nunca_vira_feito(esq, monkeypatch):
     con, nome = esq
-    monkeypatch.setattr(C, "porta_opus", lambda: "assinatura contida (teste)")
+    monkeypatch.setattr(C, "porta_opus", lambda: ("sem_llm: assinatura contida (teste)", None))
     aid = _gravar(con, nome, "5000000.00", _origem(False))
     payload = {"alvo": "achado", "ref": str(aid), "dsn": DSN, "esquema": nome}
     with pytest.raises(C.SemCota, match=r"ABSTEVE\(sem_llm"):
@@ -156,3 +197,86 @@ def test_item_inexistente_e_permanente(esq):
     con, nome = esq
     with pytest.raises(ErroPermanente):
         C.ESTAGIO.handler({"alvo": "achado", "ref": "999999", "dsn": DSN, "esquema": nome}, _ctx(999999))
+
+
+# ── julgamento com executor FALSO (nada chama a assinatura) ──────────────────────────────────────────────────
+def _falso(monkeypatch, resposta, modelo="claude-opus-5-5"):
+    chamadas = []
+
+    def chamar(prompt, executor):
+        chamadas.append((prompt, executor))
+        return resposta, modelo, ""
+    monkeypatch.setattr(C, "porta_opus", lambda: (None, "falso"))
+    monkeypatch.setattr(C, "chamar_opus", chamar)
+    return chamadas
+
+
+@precisa_pg
+@pytest.mark.parametrize("veredito, concorda", [("confirma", 1), ("rebaixa", 0), ("diverge", 0)])
+def test_veredito_do_opus_gravado_e_conferido(esq, monkeypatch, veredito, concorda):
+    con, nome = esq
+    chamadas = _falso(monkeypatch, json.dumps({"veredito": veredito, "justificativa": "pelos fatos 1 e 2"}))
+    aid = _gravar(con, nome, "5000000.00", _origem(False))
+    payload = {"alvo": "achado", "ref": str(aid), "dsn": DSN, "esquema": nome}
+    res = C.ESTAGIO.handler(payload, _ctx(aid))
+    assert res.efeito["estado"] == C.CONFERIDO and res.efeito["veredito"] == veredito and len(chamadas) == 1
+    assert "<ITEM>" in chamadas[0][0] and chamadas[0][1] == "falso"
+    assert res.eventos == [{"fonte": "conferir", "tipo": "veredito", "chave": "e10.x",
+                            "detalhe": {"alvo": "achado", "ref": str(aid), "veredito": veredito}}]
+    row = con.execute(f'SELECT estado, veredito, concorda, modelo, rotulo FROM "{nome}".conferencia_e12').fetchone()
+    assert row[:4] == (C.CONFERIDO, veredito, concorda, "claude-opus-5-5") and row[4].startswith("NÃO JULGADO")
+    assert C.ESTAGIO.efeito(payload, _ctx(aid), res) is True
+    again = C.ESTAGIO.handler(payload, _ctx(aid))                    # mesma entrada: o Opus NÃO é chamado de novo
+    assert len(chamadas) == 1 and again.efeito["veredito"] == veredito
+    con.execute(f"UPDATE \"{nome}\".conferencia_e12 SET resposta = 'adulterada'")           # veredito sem resposta
+    assert C.ESTAGIO.efeito(payload, _ctx(aid), res) is False
+
+
+@precisa_pg
+def test_resposta_fora_do_formato_nunca_vira_feito(esq, monkeypatch):
+    con, nome = esq
+    _falso(monkeypatch, "acho que está certo")
+    aid = _gravar(con, nome, "5000000.00", _origem(False))
+    with pytest.raises(RuntimeError, match="resposta_fora_do_formato"):
+        C.ESTAGIO.handler({"alvo": "achado", "ref": str(aid), "dsn": DSN, "esquema": nome}, _ctx(aid))
+    assert con.execute(f'SELECT estado, veredito FROM "{nome}".conferencia_e12').fetchone() == (C.ABSTEVE, None)
+
+
+@precisa_pg
+def test_teto_atingido_abstem_sem_chamar_o_opus(esq, monkeypatch, aut):
+    con, nome = esq
+    monkeypatch.setattr(C, "AUTORIZACAO_DONO", aut)
+    from compliance_agent.llm import ritmo_assinatura
+    monkeypatch.setattr(ritmo_assinatura, "nivel", lambda: {"medido": True, "semana_pct": 85.0})
+    monkeypatch.setattr(C, "chamar_opus", lambda *a: pytest.fail("acima do teto o Opus não podia ser chamado"))
+    aid = _gravar(con, nome, "5000000.00", _origem(False))
+    with pytest.raises(C.SemCota, match=r"ABSTEVE\(teto_assinatura"):
+        C.ESTAGIO.handler({"alvo": "achado", "ref": str(aid), "dsn": DSN, "esquema": nome}, _ctx(aid))
+    estado, motivo = con.execute(f'SELECT estado, motivo FROM "{nome}".conferencia_e12').fetchone()
+    assert estado == C.ABSTEVE and motivo.startswith("teto_assinatura")
+
+
+@precisa_pg
+def test_assinatura_recusa_abstem(esq, monkeypatch):
+    con, nome = esq
+    monkeypatch.setattr(C, "porta_opus", lambda: (None, "falso"))
+    monkeypatch.setattr(C, "chamar_opus", lambda p, e: (None, "", "limite de uso"))
+    aid = _gravar(con, nome, "5000000.00", _origem(False))
+    with pytest.raises(C.SemCota, match=r"ABSTEVE\(sem_llm: limite de uso"):
+        C.ESTAGIO.handler({"alvo": "achado", "ref": str(aid), "dsn": DSN, "esquema": nome}, _ctx(aid))
+
+
+def test_chamar_opus_so_pela_assinatura(monkeypatch):
+    from compliance_agent.llm import claude_motor
+    from compliance_agent.llm import conferencia_executor as CE
+    visto = {}
+
+    def pensar(tarefa, prompt, **kw):
+        visto.update(kw)
+        return None
+    monkeypatch.setattr(claude_motor, "pensar", pensar)
+    monkeypatch.setattr(CE, "executar_em", lambda nome: f"exec:{nome}")
+    monkeypatch.setattr(claude_motor, "ultimo_motivo", "trava ocupada")
+    assert C.chamar_opus("p", "vm2") == (None, "", "trava ocupada")
+    assert visto["backend"] == "cli" and visto["executar"] == "exec:vm2"
+    assert visto["modelo"] == claude_motor.MODELO_JUIZO

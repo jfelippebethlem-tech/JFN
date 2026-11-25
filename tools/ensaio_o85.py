@@ -575,33 +575,14 @@ def esquemas(run: str) -> dict[str, str]:
     return e
 
 
-AUTORIZACAO_DONO = RAIZ / "data" / ".assinatura_liberada_dono.json"
+from compliance_agent.aplicacao.estagios.conferir import (  # noqa: E402 — uma só regra com o E12
+    AUTORIZACAO_DONO, autorizacao_dono, motivo_teto)
+
 TETO_SEMANA_PADRAO = 80.0
-
-
-def autorizacao_dono(caminho: Path | None = None) -> dict | None:
-    """A liberação ANTES da virada registrada pelo dono (25/11/2026 ~09h45: "pode fazer a passada ou o que precisar
-    antes de sabado tambem"): vale só se o escopo é a ASSINATURA e o teto da semana é um número. Sem arquivo (ou
-    ilegível/fora do escopo) ⇒ None ⇒ a trava antiga (recusa antes de 28/11 19h)."""
-    try:
-        d = json.loads(Path(caminho or AUTORIZACAO_DONO).read_text(encoding="utf-8"))
-        teto = float(d["teto_semana_pct"])
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
-    return d if "ASSINATURA" in str(d.get("escopo") or "") and 0 < teto <= 100 else None
 
 
 def liberado_llm(agora: datetime | None = None, caminho: Path | None = None) -> bool:
     return (agora or datetime.now(BRT)) >= LIBERADO_LLM_EM or autorizacao_dono(caminho) is not None
-
-
-def motivo_teto(nivel: dict, teto: float) -> str | None:
-    """Por que PARAR antes do próximo job com LLM (None = segue): semana da assinatura ≥ teto, ou sem medição
-    (INDISPONÍVEL ≠ 0: na dúvida, para). Puro."""
-    pct = nivel.get("semana_pct")
-    if not nivel.get("medido") or pct is None:
-        return f"uso da assinatura sem medição ({nivel.get('motivo') or 'ausente'})"
-    return f"assinatura em {float(pct):.1f}% da semana ≥ teto {teto:.0f}%" if float(pct) >= teto else None
 
 
 @dataclass
@@ -765,7 +746,8 @@ def classificar(tipo: str, estado: str | None, erro: str | None, com_llm: bool) 
     if tipo.split(":", 1)[0] in ESTAGIOS_LLM and not com_llm and ("SemCota" in e or "sem cota" in e
                                                                   or "sem_llm_no_ensaio" in e):
         return "ABSTEVE(sem_llm_no_ensaio)"
-    return "falhou"
+    m = re.search(r"ABSTEVE\(([a-z_]+)", e) if tipo.split(":", 1)[0] in ESTAGIOS_LLM else None
+    return f"ABSTEVE({m[1]})" if m else "falhou"      # com LLM: a abstenção declarada (teto, recusa), não falha
 
 
 def _resumo_efeito(ef: dict | None) -> dict | None:
@@ -1213,7 +1195,7 @@ def roteiro(ens: Ensaio) -> list[tuple]:
          "processos da amostra citados pelos achados ou com fatos novos", None),
         ("E12", [("periciar", "laudo"), ("detectar", "achados")], g_e12, "conferir",
          "por risco (regra da O6.5); sem LLM até 28/11 19h: ABSTEVE(sem_llm) ou NÃO JULGADO, nunca veredito", None),
-        ("E13", [("coleta", "conferidos")], g_e13, "calibrar", "sombra: JSON no run, registro intocado", None),
+        ("E13", [("coleta", "conferidos"), ("conferir", "veredito")], g_e13, "calibrar", "sombra: JSON no run, registro intocado", None),
         ("E14", [("detectar", "achados")], g_e14, "caso",
          "caso por processo da amostra citado nos achados, ou por CNPJ de credor da amostra (os achados do E10 não "
          "trazem processo SEI: execucao_regra.processo é NULL)", None),
