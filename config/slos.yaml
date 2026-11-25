@@ -482,11 +482,11 @@ slos:
   # ── backup, WAL e integridade (VM-1) ──────────────────────────────────────────────────────────────────────────
   backup_compliance:
     sensor: backup.compliance_idade_h
-    descricao: idade do último backup off-box do compliance.db (semanal)
+    descricao: idade do último backup off-box do compliance.db (diário desde 24/11/2026)
     unidade: h
     sentido: max
-    saudavel: 192
-    degradado: 360
+    saudavel: 26
+    degradado: 50
     pior: ATRASADO
     janela_s: 10800
     escopo: maquina
@@ -494,8 +494,8 @@ slos:
     dono: backup
     severidade: critica
     fonte: data/backup_compliance_cron.log (linhas '✓ off-box', data do nome do arquivo)
-    runbook: O8.2 3-2-1-1-0 (RPO metadados 24 h é a meta; hoje é semanal)
-    remediar: 'bash tools/backup_compliance.sh (dono/sessão); conferir a rotação no remoto'
+    runbook: O8.2 3-2-1-1-0 (RPO metadados 24 h, diário desde 24/11/2026)
+    remediar: 'bash tools/backup_compliance.sh (dono/sessão); conferir `armazenamento onde data/backups/compliance-` e a poda no log'
     origem: [backup_compliance]
   backup_evidencias_pg:
     sensor: backup.evidencias_pg_idade_h

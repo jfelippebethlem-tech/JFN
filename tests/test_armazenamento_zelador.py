@@ -881,3 +881,47 @@ def test_mediafire_sessao_que_nao_renova_suspende_e_a_que_volta_libera(tmp_path,
     assert M.main([]) == 2 and "mediafire" in A.suspensas()                 # negativo: suspenso
     monkeypatch.setattr(M, "lista", lambda: True)
     assert M.main([]) == 0 and "mediafire" not in A.suspensas()             # positivo: voltou sozinho
+
+
+# ── podar: retenção da série de backups diários (tools/backup_compliance.sh, 24/11) ──────────────────────────
+def _serie(tmp, nuvem, dias, fora=()):
+    con = A.conectar()
+    pasta = tmp / "dados" / "backups"
+    pasta.mkdir(parents=True, exist_ok=True)
+    for d in dias:
+        f = pasta / f"compliance-202611{d:02d}-035001.db.gz"
+        f.write_bytes(os.urandom(1500))
+        nuvem.fora = set(fora) if d == dias[-1] else set()
+        A.guardar(f, "backup_db", apagar_local=True, rc=nuvem, con=con)
+    return con, A.chave_de(pasta / "compliance-", A.maquina())
+
+
+def test_podar_guarda_as_n_mais_novas_por_destino_e_journal_antes(amb):
+    tmp, _ = amb
+    nuvem = NuvemListavel(tmp / "nuvem")
+    con, pref = _serie(tmp, nuvem, [20, 21, 22, 23, 24])
+    segunda = A.POLITICA["insubstituivel"][1][0]
+    plano = A.podar(con, nuvem, pref, manter_principal=3, manter_outros=2, aplicar=False)
+    assert sorted((x["destino"], x["chave"][-22:-14]) for x in plano) == [
+        ("gdrive", "20261120"), ("gdrive", "20261121"),
+        (segunda, "20261120"), (segunda, "20261121"), (segunda, "20261122")]
+    assert all(nuvem._p(x["url"]).exists() for x in plano)                       # o plano não apaga nada
+    feito = A.podar(con, nuvem, pref, manter_principal=3, manter_outros=2, aplicar=True)
+    assert all(x["acao"] == "saiu" for x in feito) and not any(nuvem._p(x["url"]).exists() for x in feito)
+    ficam = {(r["destino"], r["chave"][-22:-14]) for r in con.execute(
+        "SELECT destino, chave FROM copias WHERE chave LIKE ?", (pref + "%",))}
+    assert ficam == {("gdrive", "20261122"), ("gdrive", "20261123"), ("gdrive", "20261124"),
+                     (segunda, "20261123"), (segunda, "20261124")}
+    assert con.execute("SELECT count(*) FROM unidades WHERE chave LIKE ?", (pref + "%",)).fetchone()[0] == 3
+    assert con.execute("SELECT count(*) FROM journal WHERE acao='apagar_nuvem'").fetchone()[0] == 5
+
+
+def test_podar_nada_sai_se_o_backup_mais_novo_nao_cumpre_a_politica(amb):
+    tmp, _ = amb
+    nuvem = NuvemListavel(tmp / "nuvem")
+    con, pref = _serie(tmp, nuvem, [20, 21, 22, 23], fora=A.POLITICA["insubstituivel"][1])   # hoje: só o Drive
+    r = A.podar(con, nuvem, pref, manter_principal=1, manter_outros=1, aplicar=True)
+    assert len(r) == 1 and r[0]["acao"] == "nada sai"
+    assert con.execute("SELECT count(*) FROM journal WHERE acao='apagar_nuvem'").fetchone()[0] == 0
+    with pytest.raises(ValueError):
+        A.podar(con, nuvem, pref, manter_principal=0, manter_outros=1)

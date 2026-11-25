@@ -47,9 +47,9 @@ pipelines:
 
   - nome: backup-compliance
     arquivo: data/backup_compliance_cron.log
-    max_stale_h: 192
+    max_stale_h: 26
     grupo: base
-    nota: backup semanal dom 03:50 (cron)
+    nota: backup DIÁRIO 03:50 (cron; porta única desde 24/11/2026)
 
   # ---- PIPELINE SEI (downstream do cron */30 sweep_sei.sh — vítimas da starvation de 07-07) ----
   - nome: sei-ocr-reserva

@@ -130,7 +130,8 @@ def test_plano_de_religacao_segue_a_ordem_da_secao_1_1():
 
 def test_primeira_volta_nunca_roda_semanal_ou_mensal_fora_do_horario():
     pv = R.primeira_volta(REAL, "E17")
-    assert "zelador_vm1_aplicar" not in pv and "backup_compliance" not in pv and "checkpoint_wal" in pv
+    assert "zelador_vm1_aplicar" not in pv and "checkpoint_wal" in pv
+    assert "backup_compliance" in pv                          # diário desde 24/11/2026: entra na primeira volta
 
 
 def test_desfazer_cobre_crontab_timers_tarefas_e_pausas(tmp_path):

@@ -79,3 +79,38 @@ o resultado em `data/plataforma/restauracao_pg.json` (sensor "resultado do últi
 - O R2 é dividido com `frio/` e `indice/`: confirmar a reserva de 3 GB para o banco.
 - A VM-1 precisa de `postgresql-16` (só os binários, sem serviço ativo) e do `wal-g` para o teste de restauração —
   instalar só com ok do dono e com a VM-1 aliviada.
+
+## 5. Estado em 24/11/2026 (decisão delegada; `~/vault/refatoracao/decisoes-delegadas-infra-20261124.md`)
+
+**Feito (sem tocar no PostgreSQL):**
+
+- **R2 liberado:** `armazenamento consolidar-legado --aplicar` tirou do R2 os dois re-obtíveis que o `encher` pusera lá
+  (`compliance_analitico.db.gz` 1,67 GB e `receita_estab.db.gz` 1,47 GB; md5 da listagem do Drive igual ao do R2
+  antes de apagar). Bucket: 8,09 GiB → 5,17 GiB. `config/armazenamento_nuvens.json` ganhou `r2.reserva_gb = 3.5`
+  para o `pg-evidencias/` — o pré-voo da porta única não deixa a 2ª cópia nem o `encher` ocupar esse espaço.
+- **WAL-G v3.0.9** instalado em `/usr/local/bin/wal-g` da VM-2 por `deploy/vm2/postgres/walg_preparar.sh instalar`
+  (sha256 da release conferido: `1edd72c3…5d64`). A v3.0.10 (17/11) foi preterida por ser nova demais.
+- **`/etc/wal-g/walg.yaml`** (postgres 600) por `walg_preparar.sh config`, com a chave do R2 **que já existia** no
+  `rclone.conf` — a regra do dono de 24/11 proíbe criar chave nova, então o passo 2 da §2 ("chave restrita ao
+  bucket") fica **substituído** por esta reutilização. Risco aceito e registrado: o escopo da chave é o do
+  `rclone.conf` (o mesmo que a porta única já usa); restringir exige chave nova = decisão do dono.
+- **Prova:** `walg_preparar.sh provar` — `st put` → `st ls` → `st get` (cmp de 4 096 bytes) → `st rm`, OK.
+
+**Falta (janela do dono — restart do PG derruba o brain por alguns segundos):**
+
+1. `sudo -u postgres psql -c "SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database"` — conferir
+   que o cluster comprimido cabe em 3,5 GB × 2 backups (3,0 GB cru em 24/11; zstd deve ficar ≈ 1 GB).
+2. Em `/etc/postgresql/16/main/conf.d/jfn.conf` (ou por `instalar.sh`): `archive_mode = on`,
+   `archive_command = '/usr/local/bin/wal-g --config /etc/wal-g/walg.yaml wal-push %p'`, `archive_timeout = 600`.
+   `archive_mode` só vale no start do servidor (doc do PG 16, runtime-config-wal) → `sudo systemctl restart
+   postgresql@16-main` NA JANELA. `archive_command` e `archive_timeout` mudam depois só com reload.
+3. Logo após: `SELECT archived_count, failed_count FROM pg_stat_archiver;` (failed_count = 0) e
+   `sudo -u postgres wal-g --config /etc/wal-g/walg.yaml backup-push /var/lib/postgresql/16/main`.
+4. Retenção `delete retain FULL 2 --confirm` e o teste de restauração da §3 (`restaurar_teste.sh`).
+5. **Desfazer:** `archive_mode = off` + restart; `sudo rm -rf /etc/wal-g /usr/local/bin/wal-g`;
+   `rclone purge r2:jorgefelippe/pg-evidencias` (DeleteObject é grátis no R2); tirar `reserva_gb` do r2.
+
+**Criptografia do WAL-G: BLOQUEADA pela regra do dono.** O WAL-G só cifra com chave libsodium de 32 bytes
+(`WALG_LIBSODIUM_KEY`) ou chave OpenPGP (`WALG_PGP_KEY`) — as duas seriam chave NOVA (doc oficial
+wal-g.readthedocs.io, seção Encryption; nenhuma opção aceita chave SSH ou `age`). Fica a cifra em repouso do próprio
+R2 (AES-256-GCM, chaves da Cloudflare — developers.cloudflare.com/r2/reference/data-security/) e o TLS em trânsito.

@@ -36,7 +36,7 @@
       "armazenamento_gb": 10,
       "margem_gb": 0.5,
       "reserva_gb": 1.7,
-      "_reserva": "tools/backup_compliance.sh (domingo 03:50) sobe a 4ª cópia (~1,5 GB) ANTES de girar para 3",
+      "_reserva": "folga de uma cópia do compliance.db (~1,7 GB): até 24/11/2026 tools/backup_compliance.sh subia a 4ª ANTES de girar para 3; desde então o backup é diário pela porta única (podar: 2 mais novas por remoto)",
       "amostra_download_mb_dia": 50,
       "preferencia_download": 9,
       "limites": {"download_bytes_dia": 1000000000, "classe_b_dia": 2500, "classe_c_dia": 2500},
@@ -55,6 +55,8 @@
       "medir": "size",
       "armazenamento_gb": 10,
       "margem_gb": 0.5,
+      "reserva_gb": 3.5,
+      "_reserva": "24/11/2026: espaço do WAL-G (r2:jorgefelippe/pg-evidencias, base + WAL do PG da VM-2; deploy/vm2/postgres/backup.md) — liberado tirando do R2 o re-obtível do `encher` (consolidar-legado: compliance_analitico.db.gz e receita_estab.db.gz, 3,14 GB, md5 do Drive conferido). O pré-voo não deixa a 2ª cópia nem o encher ocupar isto.",
       "preferencia_download": 1,
       "limites": {"classe_a_mes": 1000000, "classe_b_mes": 10000000},
       "fontes": [

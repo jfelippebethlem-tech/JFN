@@ -27,6 +27,8 @@ Uso (todos — sessões, ferramentas, Yoda):
     python -m compliance_agent.armazenamento resumo
     python -m compliance_agent.armazenamento conferir --amostra 20
     python -m compliance_agent.armazenamento sincronizar      # baixa os índices das outras máquinas
+    python -m compliance_agent.armazenamento podar --prefixo vm1/JFN/data/backups/compliance- \
+        --manter-principal 7 --manter-outros 2 [--aplicar]       # retenção de uma série de backups
 
     from compliance_agent.armazenamento import obter, guardar
     p = obter("/home/ubuntu/JFN/data/sei_cache/integra_X/001.pdf")   # local, ou baixa do frio e confere
@@ -1395,6 +1397,58 @@ def consolidar_legado(con: sqlite3.Connection, rc: Rclone, aplicar: bool = False
     return out
 
 
+# ── retenção de uma série de backups (tools/backup_compliance.sh diário, 24/11) ──────────────────────────────
+def podar(con: sqlite3.Connection, rc: Rclone, prefixo: str, manter_principal: int, manter_outros: int,
+          aplicar: bool = False) -> list[dict]:
+    """Retenção de uma SÉRIE (uma unidade por execução, chaves com o mesmo `prefixo` e carimbo no nome, então a
+    ordem da chave é a do tempo): no principal ficam as `manter_principal` mais novas; em cada outro remoto, as
+    `manter_outros` mais novas DAQUELE remoto. TRAVA: se a unidade mais nova da série não tem a política cumprida
+    (cópias `ok` que satisfazem a natureza dela), nada sai — backup de hoje que falhou não apaga os de ontem.
+    Journal antes de cada apagar; a cópia sai do índice só depois que o remoto confirmou; unidade sem cópia
+    nenhuma sai do índice. Sem `aplicar`: só o plano."""
+    if manter_principal < 1 or manter_outros < 1:
+        raise ValueError("manter_principal e manter_outros têm de ser ≥ 1")
+    like = prefixo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    serie = con.execute("SELECT chave, natureza FROM unidades WHERE chave LIKE ? ESCAPE '\\' ORDER BY chave DESC",
+                        (like,)).fetchall()
+    if not serie:
+        return []
+    ok_de = {r["chave"]: {c["destino"] for c in con.execute(
+        "SELECT destino FROM copias WHERE chave=? AND status='ok'", (r["chave"],))} for r in serie}
+    nova = serie[0]
+    if nova["natureza"] not in POLITICA or not vagas_satisfeitas(nova["natureza"], ok_de[nova["chave"]]):
+        return [{"chave": nova["chave"], "acao": "nada sai",
+                 "motivo": f"a mais nova não cumpre a política (cópias ok: {sorted(ok_de[nova['chave']])})"}]
+    principal = NUVENS["principal"]
+    ciclo = "podar-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    out = []
+    for d in sorted({c["destino"] for c in con.execute(
+            "SELECT DISTINCT destino FROM copias WHERE chave LIKE ? ESCAPE '\\'", (like,))}):
+        n = manter_principal if d == principal else manter_outros
+        com = [r for r in serie if con.execute("SELECT 1 FROM copias WHERE chave=? AND destino=?",
+                                               (r["chave"], d)).fetchone()]
+        for r in com[n:]:
+            c = con.execute("SELECT url, bytes FROM copias WHERE chave=? AND destino=?", (r["chave"], d)).fetchone()
+            reg = {"chave": r["chave"], "destino": d, "url": c["url"], "acao": "sai"}
+            out.append(reg)
+            if not aplicar:
+                continue
+            journal(con, "apagar_nuvem", c["url"], f"retenção: {d} guarda as {n} mais novas de {prefixo}", ciclo)
+            ok, err = rc.apagar(c["url"])
+            if not ok:
+                reg.update(acao="erro", erro=err[-200:])
+                continue
+            con.execute("DELETE FROM copias WHERE chave=? AND destino=?", (r["chave"], d))
+            if rc.orcamento is not None:
+                rc.orcamento.somar_uso(d, -int(c["bytes"] or 0))
+            if not con.execute("SELECT 1 FROM copias WHERE chave=?", (r["chave"],)).fetchone():
+                con.execute("DELETE FROM membros WHERE chave=?", (r["chave"],))
+                con.execute("DELETE FROM unidades WHERE chave=?", (r["chave"],))
+            con.commit()
+            reg["acao"] = "saiu"
+    return out
+
+
 # ── o grátis que sobra: encher os remotos de `segunda_copia` até o alvo, por prioridade (dono 21/11) ──────────
 def estado_nuvens(rc: Rclone) -> dict:
     """Uso real + alvo + consumo do dia/mês de cada remoto da config (o pré-voo, visível)."""
@@ -1507,6 +1561,9 @@ def main(argv=None) -> int:
     p = sub.add_parser("consolidar-legado"); p.add_argument("--aplicar", action="store_true")
     p.add_argument("--ignorar", nargs="*", default=[])
     sub.add_parser("nuvens")
+    p = sub.add_parser("podar", help="retenção de uma série de backups (chaves com o mesmo prefixo)")
+    p.add_argument("--prefixo", required=True); p.add_argument("--manter-principal", type=int, required=True)
+    p.add_argument("--manter-outros", type=int, required=True); p.add_argument("--aplicar", action="store_true")
     p = sub.add_parser("encher"); p.add_argument("--aplicar", action="store_true")
     p.add_argument("--item", nargs="*", default=None, help="só estes itens da config (nome)")
     a = ap.parse_args(argv)
@@ -1539,6 +1596,12 @@ def main(argv=None) -> int:
     if a.cmd == "nuvens":
         print(json.dumps(estado_nuvens(Rclone()), ensure_ascii=False, indent=1))
         return 0
+    if a.cmd == "podar":
+        rc = Rclone()
+        r = podar(con, rc, a.prefixo, a.manter_principal, a.manter_outros, aplicar=a.aplicar)
+        for x in r:
+            print(json.dumps(x, ensure_ascii=False))
+        return 2 if any(x["acao"] == "erro" for x in r) else 0
     if a.cmd in ("consolidar-legado", "encher"):
         rc = Rclone()
         if a.cmd == "encher":

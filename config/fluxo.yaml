@@ -463,7 +463,7 @@ rotinas:
         (O3–O8); até lá: rc 0 + log sem traceback'}
   backup_compliance:
     estagio: E17
-    descricao: Backup semanal do compliance.db para a nuvem
+    descricao: 'Backup DIÁRIO do compliance.db pela porta única (Drive + 2ª cópia grátis, hash conferido; retenção 7 no Drive / 2 em cada outro remoto — armazenamento podar)'
     comando: [bash, tools/backup_compliance.sh]
     nos: [vm1]
     timeout_s: 10800
@@ -472,7 +472,7 @@ rotinas:
     volta: {nos: [], nota: 'sem volta: o dado/serviço só existe na VM-1'}
     nota: segue no cron durante a parada (ressalva 3); migra na O9.0 (tools/cron_para_fluxo.py --aplicar comenta a linha do cron)
     agenda:
-    - {cron: 50 3 * * 0}
+    - {cron: 50 3 * * *}
     origem: [vm1-cron-backup-compliance-sh]
     efeito: {descricao: 'a cópia gzip do compliance.db chegou ao remoto (linha off-box desta execução)', log_contem: '✓ off-box: '}
   backup_evidencias_pg:
