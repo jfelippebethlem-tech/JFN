@@ -60,6 +60,7 @@ NATIVA, ESCANEADA, BRANCA, MISTA, INVALIDA = "nativa", "escaneada", "branca", "m
 RAIZ_TEXTO_PADRAO = A.RAIZ / "data" / "sei_texto"
 ENV_RAIZ_TEXTO = "JFN_TEXTO_RAIZ"
 SQL_TEXTO_OCR = A.RAIZ / "deploy" / "vm2" / "postgres" / "texto_ocr_001.sql"
+SQL_TEXTO_OCR_002 = A.RAIZ / "deploy" / "vm2" / "postgres" / "texto_ocr_002.sql"   # versão do estágio na chave
 QUEBRA = "\f"
 _RX_SEGURO = re.compile(r"[^0-9A-Za-z_.#-]+")
 
@@ -70,13 +71,14 @@ def conectar(dsn: str | None = None, esquema: str | None = None):
 
 
 def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
-    """E2/E3 (evidências + aquisição + captura) e depois texto_ocr_001 — idempotente, só acrescenta."""
+    """E2/E3 (evidências + aquisição + captura) e depois texto_ocr_001/002 — idempotente, só acrescenta."""
     import psycopg
 
     from compliance_agent.fluxo.schema import renderizar
     A.aplicar_schema(dsn, esquema)
     with psycopg.connect(dsn, autocommit=True) as c:
-        c.execute(renderizar(SQL_TEXTO_OCR.read_text(encoding="utf-8"), A.esquema_vigente(esquema)))
+        for arq in (SQL_TEXTO_OCR, SQL_TEXTO_OCR_002):
+            c.execute(renderizar(arq.read_text(encoding="utf-8"), A.esquema_vigente(esquema)))
 
 
 def verificar_schema(con) -> list[str]:

@@ -178,3 +178,38 @@ def test_ocr_sem_numero_vai_ao_e6_e_e6_confirma_com_zero(pg, tmp_path, monkeypat
     assert ok, r6.efeito.get("conferencia")
     assert r6.efeito["estado"] == C.CONFIRMADO and r6.efeito["numeros"] == 0
     assert con.execute("SELECT estado, numeros FROM ocr_conferencia").fetchall() == [("confirmado", 0)]
+
+
+# ── (4) reprocessar com versão nova do estágio grava linha nova (a transformação é histórico) ─────────────────────
+@precisa_pg
+def test_reprocessar_com_versao_nova_grava_linha_nova_e_efeito_ok(pg, tmp_path, monkeypatch):  # noqa: F811
+    """e5-2 → e5-3 com o MESMO motor@versão e o MESMO texto (só a bbox mudou): antes, conflito ⇒ DO NOTHING ⇒ linha
+    velha com o lateral_sha velho ⇒ efeito falhava para sempre."""
+    from tests.fluxo_pg import DSN
+    from tests.test_estagio_ocr import Falso, _e5
+    from tests.test_estagio_texto import pdf_de, rodar_e4
+    con, nome = pg
+    pdf = pdf_de(tmp_path / "001.pdf", ["nativa", "escaneada"])
+    rodar_e4(nome, tmp_path, pdf)
+    sha = T.sha256_arquivo(pdf)
+
+    class OutraBbox(Falso):
+        def ler(self, pdf, paginas):
+            return {n: O.Leitura(le.texto, [dict(x, bbox=[5, 6, 7, 8]) for x in le.linhas], le.largura, le.altura)
+                    for n, le in super().ler(pdf, paginas).items()}
+    texto = {2: "Ofício 12/2026 ao setor competente"}
+    monkeypatch.setattr(O, "VERSAO", "e5-2")
+    r, ok = _e5(nome, tmp_path, pdf, sha, (Falso("rapidocr", texto), None), monkeypatch)
+    assert ok, r.efeito["conferencia"]
+    monkeypatch.setattr(O, "VERSAO", "e5-3")
+    r, ok = _e5(nome, tmp_path, pdf, sha, (OutraBbox("rapidocr", texto), None), monkeypatch, ficha=2)
+    assert ok, r.efeito["conferencia"]
+    linhas = con.execute("SELECT versao_estagio, parametros->>'lateral_sha' FROM transformacao WHERE tipo = 'ocr' "
+                         "ORDER BY id").fetchall()
+    assert [v for v, _ in linhas] == ["e5-2", "e5-3"] and linhas[0][1] != linhas[1][1]
+    # mesma versão de novo: idempotente (nenhuma linha a mais) e o efeito continua conferindo
+    r, ok = _e5(nome, tmp_path, pdf, sha, (OutraBbox("rapidocr", texto), None), monkeypatch, ficha=3)
+    assert ok and con.execute("SELECT count(*) FROM transformacao WHERE tipo = 'ocr'").fetchone()[0] == 2
+    # a migração reaplicada não apaga nem muda linha
+    T.aplicar_schema(DSN, nome)
+    assert con.execute("SELECT count(*) FROM transformacao WHERE tipo = 'ocr'").fetchone()[0] == 2

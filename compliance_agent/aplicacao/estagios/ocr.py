@@ -585,6 +585,21 @@ def e4_do(con, processo: str, doc_id: str, sha: str, pdf: Path, raiz: Path | Non
 
 
 # ── PG ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+# a versão do ESTÁGIO entra na chave (texto_ocr_002): reprocessar com lógica nova grava linha nova (histórico), nunca
+# DO NOTHING sobre a linha da versão velha
+_INS_TR = ("INSERT INTO transformacao(processo, doc_id, tipo, entrada_sha, saida_sha, motor, versao_motor, parametros, "
+           "versao_estagio) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+           "ON CONFLICT ON CONSTRAINT transformacao_unica DO NOTHING")
+
+
+def transformacao_da_versao(con, processo: str, doc_id: str, entrada_sha: str, versao: str) -> dict | None:
+    """A transformação `ocr` desta entrada gravada pela MESMA versão do estágio (a conferência do efeito)."""
+    r = con.execute("SELECT saida_sha, motor, versao_motor, parametros FROM transformacao WHERE processo = %s AND "
+                    "doc_id = %s AND tipo = %s AND entrada_sha = %s AND versao_estagio = %s ORDER BY id DESC LIMIT 1",
+                    (processo, doc_id, TIPO_TRANSFORMACAO, entrada_sha, versao)).fetchone()
+    return None if r is None else {"saida_sha": r[0], "motor": r[1], "versao_motor": r[2], "parametros": r[3]}
+
+
 def registrar(con, processo: str, doc_id: str, sha: str, ocr: dict, lateral: Path, lateral_sha: str,
               ctx: Contexto) -> dict:
     por_estado: dict[str, list[int]] = {}
@@ -595,8 +610,8 @@ def registrar(con, processo: str, doc_id: str, sha: str, ocr: dict, lateral: Pat
     params = {"paginas": por_estado, "motores": ocr["motores"], "lateral": str(lateral), "lateral_sha": lateral_sha,
               "dpi": DPI, "versao": VERSAO, "job": ctx.chave, "ficha": ctx.ficha}
     with con.transaction():
-        con.execute(T._INS_TR, (processo, doc_id, TIPO_TRANSFORMACAO, sha, ocr["texto_sha"], motor, versao,
-                                json.dumps(params, ensure_ascii=False)))
+        con.execute(_INS_TR, (processo, doc_id, TIPO_TRANSFORMACAO, sha, ocr["texto_sha"], motor, versao,
+                              json.dumps(params, ensure_ascii=False), VERSAO))
         con.execute(T._INS_VER, (processo, doc_id, ocr["texto_sha"], ocr["chars"], ORIGEM, principal,
                                  time.strftime("%Y-%m-%d %H:%M:%S")))
     return {"processo": processo, "doc_id": doc_id, "entrada_sha": sha, "texto_sha": ocr["texto_sha"],
@@ -657,9 +672,9 @@ def obter_executores(no: str) -> tuple[Executor, Executor | None]:
 def conferir(con, ef: dict) -> dict:
     if not ef.get("gravado"):
         return {"ok": False, "motivo": f"páginas vazias sem 2ª leitura: {ef.get('pendentes')} (vazio não é feito)"}
-    t = T.transformacao_de(con, ef["processo"], ef["doc_id"], TIPO_TRANSFORMACAO, ef["entrada_sha"])
+    t = transformacao_da_versao(con, ef["processo"], ef["doc_id"], ef["entrada_sha"], ef.get("versao") or VERSAO)
     if t is None:
-        return {"ok": False, "motivo": "transformacao ocr não está no PG"}
+        return {"ok": False, "motivo": "transformacao ocr desta versão do estágio não está no PG"}
     lat = T.ler_lateral(Path(ef["lateral"]))
     if lat is None:
         return {"ok": False, "motivo": "lateral do E5 ausente"}
