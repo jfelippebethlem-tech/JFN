@@ -46,12 +46,41 @@ from typing import Any
 TETOS: dict[str, dict[str, float]] = {
     "14133": {"padrao": 0.25, "reforma": 0.50},
     "8666": {"padrao": 0.25, "reforma": 0.50},
+    # Lei 13.303/2016 (estatais), art. 81 §1º — conferido VERBATIM em L13303.htm (md5 326f5390c34ff235a3aeafa9529d98de),
+    # 24/11/2026: "até 25% (vinte e cinco por cento) do valor inicial atualizado do contrato, e, no caso particular de
+    # reforma de edifício ou de equipamento, até o limite de 50% (cinquenta por cento) para os seus acréscimos".
+    "13303": {"padrao": 0.25, "reforma": 0.50},
 }
 ATO_NORMATIVO: dict[str, str] = {
     "14133": "Lei 14.133/2021, art. 125",
     "8666": "Lei 8.666/1993, art. 65, §1º",
+    "13303": "Lei 13.303/2016, art. 81, §1º",
 }
 REGIME_VIGENTE = "14133"
+
+# SUPRESSÃO ACIMA DO TETO POR ACORDO (O4.9). As leis antigas e a das estatais ressalvam expressamente — VERBATIM:
+#   L8666cons.htm (md5 26a008466a58e90b5a2f6cc36e17b050) art. 65 §2º (red. Lei 9.648/1998): "Nenhum acréscimo ou
+#     supressão poderá exceder os limites estabelecidos no parágrafo anterior, salvo: [...] II - as supressões
+#     resultantes de acordo celebrado entre os contratantes."
+#   L13303.htm art. 81 §2º: "Nenhum acréscimo ou supressão poderá exceder os limites estabelecidos no § 1º, salvo as
+#     supressões resultantes de acordo celebrado entre os contratantes."
+# A 14.133 não repete a ressalva: o art. 125 obriga o contratado a aceitar até 25% e o art. 137 §2º I lhe dá "direito
+# à extinção do contrato" na "supressão [...] além do limite permitido no art. 125" — se o acordo acima do teto é lícito
+# na 14.133 é questão de doutrina (decisão ⚖️ do dono, O4.9), não de texto: o código não a decide.
+SUPRESSAO_ACIMA_POR_ACORDO: dict[str, str] = {
+    "8666": "Lei 8.666/1993, art. 65, §2º, II",
+    "13303": "Lei 13.303/2016, art. 81, §2º",
+}
+
+# Regime do CONTRATO (`dominio.regime.Regime`, O4.4) → chave desta tabela. A dispensa da 14.065/2020 é dispensa da 8.666
+# com outro teto (contrato regido pela 8.666). Sem regime determinado → None: o teto é o mesmo nas três leis, mas o
+# dispositivo a citar e a ressalva de supressão dependem da lei, e nenhuma é escolhida em silêncio.
+_REGIME_DO_CONTRATO = {"L8666": "8666", "L14065_PANDEMIA": "8666", "L14133": "14133", "L13303": "13303"}
+
+
+def regime_aditivo(regime_contrato: str | None) -> str | None:
+    """'L8666' → '8666' · 'L14133' → '14133' · 'L13303' → '13303' · INDETERMINADO/OUTRO/None → None."""
+    return _REGIME_DO_CONTRATO.get(str(regime_contrato or "").strip().upper())
 
 
 def teto_acrescimo(tipo_objeto: str | None = None, *, regime: str = REGIME_VIGENTE) -> float:
@@ -80,8 +109,11 @@ def teto_supressao(tipo_objeto: str | None = None, *, regime: str = REGIME_VIGEN
     return TETOS.get(str(regime), TETOS[REGIME_VIGENTE])["padrao"]
 
 
-def ato_normativo(regime: str = REGIME_VIGENTE) -> str:
-    """Dispositivo a citar na peça. Sem isso o percentual é inverificável."""
+def ato_normativo(regime: str | None = REGIME_VIGENTE) -> str:
+    """Dispositivo a citar na peça. Sem isso o percentual é inverificável. `regime=None` (contrato de regime não
+    determinado) cita as duas leis gerais, com o mesmo percentual, em vez de escolher uma."""
+    if regime is None:
+        return f"{ATO_NORMATIVO['14133']} (ou {ATO_NORMATIVO['8666']}, se o contrato for regido pela lei antiga)"
     return ATO_NORMATIVO.get(str(regime), ATO_NORMATIVO[REGIME_VIGENTE])
 
 

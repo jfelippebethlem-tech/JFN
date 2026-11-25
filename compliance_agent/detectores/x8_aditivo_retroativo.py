@@ -21,9 +21,18 @@ O QUE O CARD MEDE (tudo no CÓDIGO; nenhum limiar vai ao prompt):
   T1 RETROATIVO — data de assinatura do termo posterior ao fim da vigência vigente à época ...
      ≤ 30 dias de atraso .......................................................... medio
      31 a 180 dias ................................................................ forte
-     > 180 dias, ou termo assinado após o fim de vigência já prorrogado ........... critico
+     > 180 dias, ou termo assinado após o fim de vigência já prorrogado ........... forte (O4.9: teto sem dano)
   T2 REITERAÇÃO — dois ou mais termos retroativos no mesmo contrato .............. agrava +1 nível
-  T3 VÁCUO PAGO — houve pagamento com data dentro do período descoberto ........... critico
+  T3 VÁCUO PAGO — houve pagamento com data dentro do período descoberto ........... SINAL (não muda o nível)
+     O4.9: pago depois do fim da vigência NÃO é achado, no máximo sinal — a OB paga a liquidação de serviço prestado
+     DENTRO da vigência no mês seguinte (Lei 4.320 arts. 62–63), e a data da OB não diz o período da prestação.
+
+ESCOPO (O4.9). Lei 14.133/2021, art. 111 — VERBATIM em L14133.htm (md5 5107e213168afb4c15a36665e6695c58): "Na
+contratação que previr a conclusão de escopo predefinido, o prazo de vigência será automaticamente prorrogado quando
+seu objeto não for concluído no período firmado no contrato." Contrato de escopo da 14.133 não morre no termo final:
+o termo assinado depois dele não adita contrato extinto → nao_avaliavel (o objeto de obra/engenharia é o sinal de
+escopo; quem confirma é o instrumento). Nos demais regimes, objeto de escopo → no máximo 'medio' (TCU Ac.
+1.674/2014-Plenário: no contrato por escopo "a extinção do ajuste somente se opera com a conclusão do objeto").
 
 HONESTIDADE JFN: sem data de assinatura do termo OU sem vigência do contrato → nao_avaliavel
 (ausência ≠ zero). Atraso de publicação NÃO é atraso de assinatura: quando só a data de
@@ -48,6 +57,10 @@ _DIAS_MEDIO = 30
 _DIAS_FORTE = 180
 
 _ORDEM = ("ausente", "fraco", "medio", "forte", "critico")
+
+# Objeto típico de contratação por ESCOPO (obra, engenharia, projeto): sinal para o art. 111 da 14.133.
+_RE_ESCOPO = _re.compile(r"\bobras?\b|constru[çc]|\breforma|pavimenta|engenharia|projetos?\s+(?:b[áa]sico|executivo)",
+                         _re.I)
 
 
 def _sobe(nivel: str, passos: int = 1) -> str:
@@ -166,12 +179,46 @@ class X8AditivoRetroativo(Detector):
                     pagos_no_vacuo.append({"data": dp.isoformat(), "valor": p.get("valor")})
                     break
         if pagos_no_vacuo:
-            nivel = "critico"
+            # SINAL, não achado (O4.9): a OB paga no mês seguinte o serviço prestado dentro da vigência.
             total = sum(float(p["valor"] or 0) for p in pagos_no_vacuo)
             evidencias.append(
-                f"VÁCUO PAGO: {len(pagos_no_vacuo)} pagamento(s) com data dentro do período SEM "
-                f"cobertura contratual (total apurado R$ {moeda(total)})")
+                f"SINAL (não achado): {len(pagos_no_vacuo)} pagamento(s) com data dentro do período entre o fim "
+                f"da vigência e a assinatura do termo (total R$ {moeda(total)}) — a data da OB não diz o período da "
+                "prestação; conferir a competência liquidada antes de falar em execução sem cobertura")
             valores["pagamentos_no_vacuo"] = pagos_no_vacuo
+            valores["pagamento_no_vacuo_e_sinal"] = True
+
+        # ESCOPO — Lei 14.133 art. 111: a vigência se prorroga sozinha enquanto o objeto não é concluído.
+        regime = str(contexto.get("regime") or "").upper()
+        escopo = contexto.get("escopo_predefinido")
+        if escopo is None:
+            escopo = bool(_RE_ESCOPO.search(str(contexto.get("objeto") or "")))
+        valores["regime"] = regime or "INDETERMINADO"
+        valores["objeto_de_escopo"] = bool(escopo)
+        if escopo and regime == "L14133":
+            res.status = "nao_avaliavel"
+            res.score = 0.0
+            res.valores = valores
+            res.motivo_refutacao = (
+                "nao_avaliavel: contrato da Lei 14.133 com objeto de ESCOPO (obra/engenharia) — o art. 111 prorroga "
+                "automaticamente a vigência quando o objeto não é concluído no prazo; o termo assinado depois do "
+                "termo final não adita contrato extinto. Conferir no instrumento se o escopo é predefinido.")
+            return res
+        if escopo:
+            # 8.666/13.303/sem regime com objeto de escopo: o TCU (Ac. 1.674/2014-Plenário; Ac. 127/2016-Plenário)
+            # entende que o contrato de escopo só se extingue com a conclusão do objeto — o termo tardio é falha de
+            # formalização, não aditamento de contrato morto → no máximo 'medio'
+            if _ORDEM.index(nivel) > _ORDEM.index("medio"):
+                nivel = "medio"
+            evidencias.append(
+                "objeto de ESCOPO: o contrato de escopo só se extingue com a conclusão do objeto (14.133 art. 111; TCU "
+                "Ac. 1.674/2014 e 127/2016-Plenário) — o termo tardio é falha de formalização, no máximo indício")
+        # TETO 'forte' (O4.9, decisão conservadora delegada): o TCU diverge — Ac. 2.032/2009-Plenário trata o contrato
+        # como extinto após o termo final; Ac. 128/2011-Plenário diz que, sem dano nem favorecimento, o aditivo após a
+        # vigência não tem gravidade para julgar as contas irregulares. Sem prova de dano, não se chega a 'critico'.
+        if _ORDEM.index(nivel) > _ORDEM.index("forte"):
+            nivel = "forte"
+            valores["teto_forte_sem_dano"] = True
 
         res.status = "confirmado"
         res.score = ancora(nivel)

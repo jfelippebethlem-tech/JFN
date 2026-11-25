@@ -189,6 +189,7 @@ def natureza_pagamento(*, natureza_despesa: str | None, vinculo_contrato: bool |
 
 
 _TIPO_OB_RP = {"RPP", "RPNP Liquidados no Exercício", "RPNP Liquidados em Exercícios Anteriores"}
+TIPO_OB_RP = frozenset(_TIPO_OB_RP)   # vocabulário público do SIAFE para OB de restos a pagar (Lei 4.320 art. 36)
 
 
 def origem_exercicio(*, tipo_ob: str | None = None, elemento: str | None = None, exercicio_ob: int | None = None,

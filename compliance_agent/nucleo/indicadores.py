@@ -103,8 +103,12 @@ def _fracionamento(d: Dossie) -> Achado | None:
         if h.data and abs((h.data - c.data).days) <= janela:
             proximas.append(h)
     soma = sum(x.valor or 0 for x in proximas)
+    # INEXIGIBILIDADE ≠ DISPENSA (O4.9). O somatório do art. 75 §1º é para "aferição dos valores que atendam aos limites
+    # referidos nos incisos I e II do caput" (dispensa POR VALOR) — L14133.htm (md5 5107e213168afb4c15a36665e6695c58).
+    # A inexigibilidade (art. 74, "inviável a competição") não tem teto de valor: somá-la ao teto da dispensa é
+    # comparar coisas de natureza distinta. Ela fica fora da soma e não habilita o indicador.
     todas_dispensa = all(
-        (x.modalidade or "").lower().startswith(("dispensa", "inexig"))
+        (x.modalidade or "").lower().startswith("dispensa")
         for x in proximas
     )
     if len(proximas) >= min_ct and soma > limite_disp and todas_dispensa:
@@ -112,7 +116,7 @@ def _fracionamento(d: Dossie) -> Achado | None:
             confianca=0.9,
             observado=(f"{len(proximas)} contratações do mesmo fornecedor no mesmo "
                        f"órgão em ≤{int(janela)} dias somam {_r(soma)}, todas por "
-                       f"dispensa/inexigibilidade."),
+                       f"dispensa."),
             limite=(f"Soma > teto de dispensa ({_r(limite_disp)}) exigiria licitação."),
             params=["fracionamento_janela_dias", "fracionamento_min_contratos",
                     "limite_dispensa_compras", "limite_dispensa_obras"],

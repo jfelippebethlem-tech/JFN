@@ -144,8 +144,11 @@ def base_contraditada(texto: str, base: float | None, acrescimos: float) -> floa
     if acrescimos / base <= 1.0:           # dentro do plausível: nada a contraditar
         return None
     candidatos = sorted({_num(m) for m in _RE_QUALQUER_VALOR.findall(texto or "")})
+    # o teto vem da fonte única (`limites_aditivo`, O4.9) — o padrão de 25%, que é o conservador para refutar: sem
+    # saber se o objeto é reforma, só se desmente a base quando o acréscimo cabe no teto MENOR
+    from compliance_agent.limites_aditivo import teto_acrescimo
     for v in candidatos:
-        if v > base and acrescimos / v <= 0.25:
+        if v > base and acrescimos / v <= teto_acrescimo():
             return v
     # Segunda forma da contradição, medida em 070002/004135/2025: o "acréscimo" (R$ 103,9 mi)
     # é MAIOR que o maior valor declarado em todo o processo (R$ 87,1 mi). Nada nos autos é

@@ -54,9 +54,12 @@ def test_supressao_dentro_do_teto_e_DIREITO_da_administracao():
 # ───────────────────────── T1 · teto e a assimetria da reforma ────────────────────────────────
 
 def test_supressao_acima_de_25_por_cento_e_critica():
-    r = X9.avaliar(_ctx(aditivos=[_sup(300_000.0)]))     # 30%
+    # O4.9: 'critico' quando a anuência foi NEGADA; sem a anuência na base, 'forte' (decisão conservadora)
+    r = X9.avaliar(_ctx(aditivos=[_sup(300_000.0)], houve_anuencia=False))     # 30%
     assert r.status == "confirmado" and r.score == pytest.approx(1.0)
     assert any("ACIMA DO TETO" in e["trecho"] for e in r.evidencia)
+    sem = X9.avaliar(_ctx(aditivos=[_sup(300_000.0)]))
+    assert sem.score == pytest.approx(0.85) and "anuencia_nao_consta_14133" in sem.valores["lacunas"]
 
 
 def test_supressao_rente_ao_teto_e_forte():

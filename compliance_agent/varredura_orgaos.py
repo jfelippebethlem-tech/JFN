@@ -212,8 +212,10 @@ def _sancoes_do_cnpj(con: sqlite3.Connection,
         for categoria, inicio, orgao, status in con.execute(
                 "SELECT enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes "
                 "WHERE doc = ?", (cnpj,)):
-            item = {"cadastro": "SIGA-RJ", "categoria": categoria, "data_inicio": _iso_br(inicio),
-                    "data_fim": None, "orgao": orgao, "uf": "RJ"}
+            # o enquadramento do SIGA É a base legal ("Lei Federal Nº 10.520/02, art. 7º. (Impedimento)"): vai também
+            # como `fundamentacao`, que a régua de alcance do C7 (`sancao_abrangencia.veda_ente`) lê (O4.9)
+            item = {"cadastro": "SIGA-RJ", "categoria": categoria, "fundamentacao": categoria,
+                    "data_inicio": _iso_br(inicio), "data_fim": None, "orgao": orgao, "uf": "RJ"}
             st = (status or "").strip().lower()
             if st == "vigente":
                 sancoes.append(item)

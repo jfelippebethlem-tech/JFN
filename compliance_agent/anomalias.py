@@ -41,6 +41,7 @@ from compliance_agent.cpf_cnpj import cnpj_valido as _cnpj_dv, digitos as _digit
 _DB = os.environ.get("JFN_DB", os.path.join(os.path.dirname(__file__), "..", "data", "compliance.db"))
 _DB = os.path.abspath(_DB)
 
+from compliance_agent.dominio.pagamento import TIPO_OB_RP  # noqa: E402
 from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano  # noqa: E402
 
 MODELO_VERSAO = "onda1-v2.0-siafe"
@@ -48,20 +49,20 @@ MODELO_VERSAO = "onda1-v2.0-siafe"
 # vem da fonte única `limites_dispensa` — esta linha já carregou o valor de 2024 fixo, aplicado a
 # todos os anos: em 2025 e 2026 acusava fracionamento abaixo do teto legal (falso positivo) e em
 # 2021-2023 deixava passar (falso negativo). Era a 4ª cópia divergente encontrada no projeto.
-# O env continua valendo como override manual de teste; sem ele, o default é o teto do ano
-# corrente vindo da fonte única — nunca um número escrito aqui.
-LIMITE_DISPENSA = float(os.environ.get("JFN_LIMITE_DISPENSA")
-                        or _limite_do_ano(datetime.now().year, "compras"))
+# O env continua valendo como override manual de teste. Sem ele NÃO há default: o teto é sempre o do EXERCÍCIO da OB
+# (`_teto`), nunca o do ano corrente (O4.9 — a constante `LIMITE_DISPENSA`, teto do ano corrente, saiu: era o fallback
+# que media exercício ilegível com o teto de hoje).
 
 
 def _teto(exercicio) -> float:
-    """Teto de dispensa do exercício (art. 75-II). Override por env vence, para teste."""
+    """Teto de dispensa do exercício (art. 75-II). Override por env vence, para teste. Exercício ilegível → NaN: a
+    comparação com NaN é sempre falsa, então o grupo não vira sinal (INDISPONÍVEL ≠ teto de hoje)."""
     if os.environ.get("JFN_LIMITE_DISPENSA"):
-        return LIMITE_DISPENSA
+        return float(os.environ["JFN_LIMITE_DISPENSA"])
     try:
         return _limite_do_ano(int(exercicio), "compras")
     except (TypeError, ValueError):
-        return LIMITE_DISPENSA
+        return float("nan")
 
 
 CONCENTRACAO_LIMIAR = float(os.environ.get("JFN_CONCENTRACAO_LIMIAR", "0.30"))  # 30% do gasto da UG
@@ -92,8 +93,11 @@ def _sql_ob_siafe(con) -> str:
     from compliance_agent.cruzamentos_intel import _ob_paga
     from compliance_agent.reporting.intel_base import SQL_CREDOR_TERCEIRO_SIAFE
     from compliance_agent.reporting.cobertura_siafe import ISO_EMISSAO_SIAFE
+    # tipo_ob separa as OB de restos a pagar das somas por exercício (O4.9); base sem a coluna → NULL (nada sai)
+    tipo_ob = "tipo_ob" if "tipo_ob" in {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")} \
+        else "NULL AS tipo_ob"
     return (f"SELECT numero_ob, {ISO_EMISSAO_SIAFE} AS data_emissao, ug_emitente AS ug_codigo, "
-            f"credor AS favorecido_cpf, nome_credor AS favorecido_nome, valor, exercicio "
+            f"credor AS favorecido_cpf, nome_credor AS favorecido_nome, valor, exercicio, {tipo_ob} "
             f"FROM ob_orcamentaria_siafe WHERE {_ob_paga(con)} AND {SQL_CREDOR_TERCEIRO_SIAFE}")
 
 
@@ -209,9 +213,16 @@ def regras(df: pd.DataFrame, con) -> int:
                           f"Fornecedor concentra {sh*100:.0f}% do pago pela UG {r['ug_codigo']} em {r['exercicio']}.",
                           "Art. 37 CF/88; risco de captura (bid rigging) — Art. 36 §3º I 'd' Lei 12.529"))
 
+    # RESTOS A PAGAR fora das somas por exercício (O4.9): "Pertencem ao exercício financeiro [...] as despesas nêle
+    # legalmente empenhadas" (Lei 4.320 art. 35, II — L4320.htm md5 c8dc41dbb1f96350603e90f21e733111) e RP são "as
+    # despesas empenhadas mas não pagas até o dia 31 de dezembro" (art. 36). A OB de RP paga despesa de OUTRO exercício:
+    # somá-la ao do pagamento, contra o teto do ano da OB, mistura dois exercícios. Sem o ano do empenho na OB, sai da
+    # soma (declarado), em vez de ir para o exercício errado.
+    df_f = df_c[~df_c["tipo_ob"].isin(TIPO_OB_RP)] if "tipo_ob" in df_c else df_c
+
     # R_FRACIONAMENTO_SAMEDAY: mesmo fornecedor+UG+dia, várias OBs somando > limite de dispensa
-    if "data_emissao" in df_c:
-        sd = (df_c.groupby(["favorecido_cpf", "ug_codigo", "data_emissao", "exercicio"])
+    if "data_emissao" in df_f:
+        sd = (df_f.groupby(["favorecido_cpf", "ug_codigo", "data_emissao", "exercicio"])
                 .agg(n=("id", "size"), soma=("valor", "sum"), maxv=("valor", "max"), maxid=("id", "max")).reset_index())
         sd["teto"] = sd["exercicio"].map(_teto)
         # 23/11/2026: sem `maxv < teto` a regra acusava grupo com OB individual ACIMA do teto — parcela de contrato,
@@ -228,8 +239,8 @@ def regras(df: pd.DataFrame, con) -> int:
                           "Art. 75 §1º Lei 14.133 (anti-fracionamento); Art. 23 §§1º-5º Lei 8.666"))
 
     # R_FRACIONAMENTO_MES: mesmo fornecedor+UG no mês com várias OBs abaixo do teto somando acima
-    if "data_emissao" in df_c:
-        d = df_c.dropna(subset=["data_emissao"]).copy()
+    if "data_emissao" in df_f:
+        d = df_f.dropna(subset=["data_emissao"]).copy()
         d["mes"] = d["data_emissao"].astype(str).str.slice(0, 7)
         mm = (d.groupby(["favorecido_cpf", "ug_codigo", "mes", "exercicio"])
                 .agg(n=("id", "size"), soma=("valor", "sum"), maxv=("valor", "max"), maxid=("id", "max")).reset_index())

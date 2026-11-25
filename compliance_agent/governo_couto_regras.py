@@ -1376,27 +1376,35 @@ def _executivo_estadual_rj(controle_pncp: str, orgao_nome: str) -> bool:
 def d06(c: Ctx) -> dict:
     rows = c.W.execute(
         "SELECT a.numero_controle_pncp, a.numero_termo, a.objeto, a.valor_acrescido, a.data_assinatura, p.orgao_nome, "
-        "p.fornecedor_nome, p.fornecedor_documento, p.valor_inicial FROM m.contrato_aditivo a "
+        "p.fornecedor_nome, p.fornecedor_documento, p.valor_inicial, a.fundamento_legal, a.qualif_acrescimo, "
+        "a.qualif_vigencia, a.qualif_reajuste, a.prazo_aditado_dias FROM m.contrato_aditivo a "
         "JOIN m.pcrj_contratos p ON p.numero_controle_pncp=a.numero_controle_pncp "
         "WHERE a.data_assinatura>=? AND a.valor_acrescido>0", (G0,)).fetchall()
     sem_valor = c.W.execute("SELECT count(*), sum(valor_acrescido IS NULL) FROM m.contrato_aditivo WHERE data_assinatura>=?",
                             (G0,)).fetchone()
     casos = []
-    for cn, termo, obj, acr, dt, org, forn, doc, vi in rows:
+    # O4.9: a natureza do termo e o teto vêm da fonte ÚNICA `limites_aditivo` (régua do X1): só o acréscimo de objeto
+    # ou quantitativo (`valor`) consome o teto; prorrogação/renovação (`prazo`), reajuste/repactuação/revisão/
+    # reequilíbrio (`reajuste`), `outro` e `misto` ficam fora — e a REFORMA de edifício/equipamento tem teto de 50%
+    # (14.133 art. 125), que o `p > 25` cravado aqui ignorava. A regex local (prorroga|renova|reajust|repactua) era a
+    # sétima régua da natureza do aditivo.
+    from compliance_agent.limites_aditivo import classificar_natureza, teto_acrescimo, tipo_objeto
+    for cn, termo, obj, acr, dt, org, forn, doc, vi, fund, q_acr, q_vig, q_rea, dias in rows:
         if not vi or not _executivo_estadual_rj(cn, org):
             continue
-        # prorrogação/renovação soma o valor de um NOVO período — não é acréscimo do art. 125 (medido: 14 de 15
-        # "estouros" da 1ª rodada eram prorrogação ou reajuste, quase todos de outro Poder)
-        if re.search(r"prorroga|renova|reajust|repactua", obj or "", re.I) and \
-                not re.search(r"acr[ée]scimo\s+quantitativ", obj or "", re.I):
+        natureza, _orig = classificar_natureza(obj, fundamento_legal=fund, qualif_acrescimo=q_acr,
+                                               qualif_vigencia=q_vig, qualif_reajuste=q_rea, prazo_aditado_dias=dias)
+        if natureza != "valor":
             continue
         p = acr / vi * 100
-        if p > 25:
+        if p > teto_acrescimo(tipo_objeto(obj)) * 100:
             casos.append(dict(contrato=cn, termo=termo, objeto=(obj or "")[:160], acrescimo=acr, data_termo=str(dt)[:10],
                               orgao=org, fornecedor=forn, cnpj=dig(doc), valor_inicial=vi, pct=round(p, 2)))
     casos.sort(key=lambda x: -x["pct"])
     parcial = f"{sem_valor[1] or 0} de {sem_valor[0] or 0} termos da gestão sem valor no PNCP"
-    return dict(criterio="termo aditivo (PNCP) assinado na gestão, contrato de órgão estadual, acréscimo > 25% do valor inicial. "
+    return dict(criterio="termo aditivo (PNCP) assinado na gestão, contrato de órgão estadual, acréscimo de objeto/quantitativo "
+                         "(natureza pela régua única de limites_aditivo) > 25% do valor inicial (50% em reforma de edifício "
+                         "ou equipamento, art. 125). "
                          "FONTE PARCIAL: " + parcial,
                 n=len(casos), casos=casos,
                 resumo=f"Aditivo >25%: {len(casos)} no Executivo estadual — fonte parcial ({parcial})")

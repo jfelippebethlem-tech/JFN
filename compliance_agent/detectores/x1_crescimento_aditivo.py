@@ -42,7 +42,13 @@ from compliance_agent.detectores.base import (
     para_data,
     perguntar_rubrica,
 )
-from compliance_agent.limites_aditivo import NATUREZAS, classificar_natureza, teto_acrescimo
+from compliance_agent.limites_aditivo import (
+    NATUREZAS,
+    ato_normativo,
+    classificar_natureza,
+    regime_aditivo,
+    teto_acrescimo,
+)
 from compliance_agent.reporting.intel_base import moeda
 
 # Teto do art. 125 (Lei 14.133/2021): o número mora em `limites_aditivo` — fonte única, como `limites_dispensa`
@@ -161,7 +167,12 @@ class X1CrescimentoAditivo(Detector):
         aditivos = [a for a in aditivos if isinstance(a, dict)]
 
         tipo_objeto = contexto.get("tipo_objeto")
-        teto = teto_acrescimo(tipo_objeto)
+        # O4.9: o teto é o mesmo nas três leis (14.133 art. 125; 8.666 art. 65 §1º; 13.303 art. 81 §1º), mas o
+        # DISPOSITIVO a citar é o do regime do contrato (`contexto["regime"]`, `dominio.regime`) — sem regime
+        # determinado, a peça cita as duas leis gerais em vez de escolher uma.
+        reg = regime_aditivo(contexto.get("regime"))
+        teto = teto_acrescimo(tipo_objeto, regime=reg or "14133")
+        ato = ato_normativo(reg)
         try:
             indice = float(contexto.get("indice_atualizacao") or 1.0)
         except (TypeError, ValueError):
@@ -183,6 +194,8 @@ class X1CrescimentoAditivo(Detector):
             "valor_inicial_atualizado": round(valor_atualizado, 2),
             "tipo_objeto": tipo_objeto,
             "teto_art125": teto,
+            "ato": ato,
+            "regime": contexto.get("regime") or "INDETERMINADO",
             "n_aditivos": len(aditivos),
             "n_aditivos_de_valor": len(aditivos_valor),
             "n_aditivos_reajuste": sum(1 for a in aditivos if _natureza(a) == "reajuste"),
@@ -223,10 +236,10 @@ class X1CrescimentoAditivo(Detector):
         if estourou:
             score = ancora("critico")
             razoes.append(
-                f"ESTOURO do teto do art.125: acréscimos somam R$ {moeda(acrescimos)} = {pct_acrescimo*100:.1f}% do "
+                f"ESTOURO do teto ({ato}): acréscimos somam R$ {moeda(acrescimos)} = {pct_acrescimo*100:.1f}% do "
                 f"valor inicial atualizado (R$ {moeda(valor_atualizado)}), acima do teto de {teto*100:.0f}%")
             res.add_evidencia(
-                fonte="cálculo do teto art.125 (Lei 14.133/2021)",
+                fonte=f"cálculo do teto ({ato})",
                 trecho=(f"acréscimos=R$ {moeda(acrescimos)} ({pct_acrescimo*100:.1f}%) > teto {teto*100:.0f}% sobre "
                         f"valor inicial atualizado R$ {moeda(valor_atualizado)} (índice {indice})"))
         elif pct_acrescimo >= teto * _FRACAO_FORTE:

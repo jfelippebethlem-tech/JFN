@@ -19,8 +19,17 @@ verificação de alcance da sanção, não acusação).
   contexto["sancoes"]: list[dict] {cadastro, categoria, data_inicio, data_fim, orgao?, uf?}
       — as sanções do CNPJ (o chamador consulta; use `montar_ctx_sancoes` p/ preencher da base).
 
+ABRANGÊNCIA POR ENTE (O4.9). A sanção só VEDA o contrato se alcança o COMPRADOR. Lei 14.133/2021 — VERBATIM em
+L14133.htm (md5 5107e213168afb4c15a36665e6695c58): art. 156 §4º, o impedimento "impedirá o responsável de licitar ou
+contratar no âmbito da Administração Pública direta e indireta do ente federativo que tiver aplicado a sanção"; §5º,
+a inidoneidade, "no âmbito da Administração Pública direta e indireta de todos os entes federativos". A régua de
+alcance é a única da casa (`sancao_abrangencia.veda_comprador_rj`; `contexto["casa_compradora"]`, padrão "estado" —
+a varredura por UG é do Estado do RJ). Impeditiva vigente que NÃO alcança o comprador (impedimento de outro ente,
+suspensão de outro órgão) é risco reputacional: 'medio', teste_objetivo='fora_da_abrangencia', nunca 'violado'.
+
 Régua (âncoras no CÓDIGO):
-  • sanção IMPEDITIVA vigente na data ............ 'critico' (1.0), teste_objetivo='violado'
+  • sanção IMPEDITIVA vigente na data e que ALCANÇA o comprador ... 'critico' (1.0), teste_objetivo='violado'
+  • sanção IMPEDITIVA vigente que NÃO alcança o comprador ......... 'medio' (0.6), teste_objetivo='fora_da_abrangencia'
   • sanção NÃO-impeditiva (multa etc.) vigente ... 'medio' (0.6)
   • sanções existem mas nenhuma vigente na data .. descartado (histórico ≠ vedação atual)
   • sem data de referência ou lista ausente ...... nao_avaliavel (INDISPONÍVEL ≠ 0)
@@ -30,7 +39,7 @@ from __future__ import annotations
 import sqlite3
 
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
-from compliance_agent.sancao_abrangencia import vigente_em
+from compliance_agent.sancao_abrangencia import veda_comprador_rj, vigente_em
 
 # categorias CEIS/CNEP que VEDAM contratar (art. 156 §§4º-5º; art. 87 III-IV da 8.666)
 _IMPEDITIVAS = ("impedimento", "proibicao de contratar", "proibição de contratar",
@@ -54,12 +63,18 @@ def _eh_impeditiva(categoria: str) -> bool:
 
 def montar_ctx_sancoes(con: sqlite3.Connection, cnpj: str) -> list[dict]:
     """Sanções federais do CNPJ (CEIS+CNEP) no formato que o C7 consome."""
+    # fundamentação, abrangência declarada e esfera do sancionador alimentam a régua de alcance (O4.9); base antiga sem
+    # essas colunas devolve NULL com o mesmo nome (`sql_campos_ceis`)
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis
+    cols = {r[1] for r in con.execute("PRAGMA table_info(sancoes_federais)")}
+    fund = "fundamentacao" if "fundamentacao" in cols else "NULL AS fundamentacao"
     rows = con.execute(
-        "SELECT cadastro, categoria, data_inicio, data_fim, orgao, uf FROM sancoes_federais "
-        "WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=?",
+        f"SELECT cadastro, categoria, data_inicio, data_fim, orgao, uf, {fund}, {sql_campos_ceis(con)} "
+        "FROM sancoes_federais WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'/',''),'-','')=?",
         (_limpa(cnpj),)).fetchall()
     return [{"cadastro": r[0], "categoria": r[1], "data_inicio": r[2], "data_fim": r[3],
-             "orgao": r[4], "uf": r[5]} for r in rows]
+             "orgao": r[4], "uf": r[5], "fundamentacao": r[6], "abrangencia": r[7],
+             "esfera_sancionador": r[8], "data_publicacao": r[9]} for r in rows]
 
 
 class C7SancionadaContratada(Detector):
@@ -122,7 +137,35 @@ class C7SancionadaContratada(Detector):
                                     if sancoes else "CNPJ sem registro no CEIS/CNEP")
             return res
 
-        if impeditivas:
+        # ABRANGÊNCIA (art. 156 §§4º–5º): só a impeditiva que ALCANÇA o comprador veda o contrato
+        casa = str(contexto.get("casa_compradora") or "estado")
+        alcance = [(x, veda_comprador_rj(x, casa)) for x in impeditivas]
+        alcancam = [x for x, v in alcance if v.get("veda")]
+        res.valores["n_impeditivas_que_alcancam"] = len(alcancam)
+        res.valores["casa_compradora"] = casa
+        if impeditivas and not alcancam:
+            # alcance NÃO DETERMINADO (esfera do sancionador ilegível; suspensão de órgão que não se casa com o
+            # comprador) ≠ alcance que comprovadamente NÃO chega ao comprador (outro ente)
+            incerto = [(x, v) for x, v in alcance
+                       if v.get("esfera_sancionador") == "?" or v.get("abrangencia") == "orgao"]
+            s, v = (incerto or alcance)[0]
+            res.status = "confirmado"
+            if incerto:
+                res.score = ancora("forte" if not origem else "medio")
+                res.valores["teste_objetivo"] = "nao_aferivel"
+                trecho_alcance = "alcance sobre o comprador NÃO determinado — conferir o órgão sancionador"
+            else:
+                res.score = ancora("medio")
+                res.valores["teste_objetivo"] = "fora_da_abrangencia"
+                trecho_alcance = ("Lei 14.133/2021 art. 156 §4º: o impedimento alcança só o ente que o aplicou; "
+                                  "risco reputacional, não vedação")
+            res.evidencia = [(
+                f"{s.get('cadastro')}: '{s.get('categoria')}' vigente em {data} "
+                f"(órgão sancionador: {s.get('orgao') or '?'}) — {v.get('motivo')}. {trecho_alcance}" + nota_origem
+            )]
+            return res
+        if alcancam:
+            impeditivas = alcancam
             s = impeditivas[0]
             res.score = ancora("forte" if origem else "critico")
             res.status = "confirmado"

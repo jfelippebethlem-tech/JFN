@@ -31,13 +31,14 @@ def test_contrato_novo_nao_e_indicio():
     assert res.status == "descartado"
 
 
-@pytest.mark.parametrize("anos,esperado", [
-    (4.9, 0.0),
-    (6.0, ANCORAS["forte"]),
-    (11.0, ANCORAS["critico"]),
+@pytest.mark.parametrize("anos,regime,esperado", [
+    (4.9, None, 0.0),
+    (6.0, None, ANCORAS["medio"]),       # O4.9: sem regime, 5–10 anos é ilegal na 8.666 e lícito na 14.133
+    (5.5, "L8666", ANCORAS["forte"]),    # 8.666 art. 57 II: 60 meses
+    (11.0, None, ANCORAS["critico"]),
 ])
-def test_regua_de_tempo_no_mesmo_objeto(anos, esperado):
-    res = X2ProrrogacaoPerpetua().avaliar({**_P, "tempo_total_anos": anos})
+def test_regua_de_tempo_no_mesmo_objeto(anos, regime, esperado):
+    res = X2ProrrogacaoPerpetua().avaliar({**_P, "tempo_total_anos": anos, "regime": regime})
     assert res.score == pytest.approx(esperado)
 
 
@@ -51,8 +52,10 @@ def test_tempo_calculado_pela_vigencia_quando_nao_vem_pronto():
 
 @pytest.mark.parametrize("n,pontua", [(1, False), (2, False), (3, True), (7, True)])
 def test_volume_de_prorrogacoes_sem_nova_licitacao(n, pontua):
+    """O4.9: a contagem sozinha é SINAL ('medio') — prorrogar sucessivamente é lícito dentro do prazo do regime."""
     res = X2ProrrogacaoPerpetua().avaliar({**_P, "prorrogacoes": [{"n": i} for i in range(n)]})
-    assert (res.score >= ANCORAS["forte"]) is pontua
+    assert (res.score >= ANCORAS["medio"]) is pontua
+    assert res.score < ANCORAS["forte"]
     assert res.valores["n_prorrogacoes"] == n
 
 

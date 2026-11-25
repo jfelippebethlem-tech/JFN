@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from datetime import date
 from typing import Any
 
+from compliance_agent.dominio.regime import regime_contrato
 from compliance_agent.limites_aditivo import classificar_natureza as _classificar
 
 # Reforma de edifício/equipamento tem teto de 50% no art. 125 (os demais, 25%). Quem aplica é o
@@ -50,6 +52,15 @@ def _tipo_do_aditivo(ad: sqlite3.Row) -> tuple[str, str]:
         ad["objeto"], fundamento_legal=ad["fundamento_legal"],
         qualif_acrescimo=ad["qualif_acrescimo"], qualif_vigencia=ad["qualif_vigencia"],
         qualif_reajuste=ad["qualif_reajuste"], prazo_aditado_dias=ad["prazo_aditado_dias"])
+
+
+def _data_iso(v) -> date | None:
+    """AAAA-MM-DD do PNCP → date; formato diferente → None (não se converte no escuro)."""
+    t = str(v or "")[:10]
+    try:
+        return date.fromisoformat(t) if len(t) == 10 and t[4] == "-" else None
+    except ValueError:
+        return None
 
 
 def _campo(linha, nome: str):
@@ -96,6 +107,11 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
         lacunas.append("valor_inicial")
 
     ctx["vigencia_inicio"] = row["vigencia_ini"] or None
+    # REGIME POR CONTRATO (O4.9): a mesma decisão da E9 para `contrato_pcrj` (`dominio.regime.regime_contrato` só com a
+    # data de assinatura, que é o que o PNCP traz) — o X2 mede o tempo contra o prazo máximo DESTE regime, nunca pelo
+    # ano corrente. Sem lei declarada nem edital, contrato de 2021+ fica INDETERMINADO e o X2 diz isso.
+    dec = regime_contrato(data_assinatura=_data_iso(_campo(row, "data_assinatura")))
+    ctx["regime"], ctx["regime_fonte"] = dec.regime.value, dec.fonte_da_decisao
     ctx["data_inicio_execucao"] = row["vigencia_ini"] or row["data_assinatura"] or None
     vigencia_fim = row["vigencia_fim"] or None
 

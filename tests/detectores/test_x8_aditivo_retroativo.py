@@ -58,7 +58,7 @@ def test_termo_dentro_da_vigencia_e_descartado():
 @pytest.mark.parametrize("assinatura,esperado", [
     ("2025-01-20", 0.6),    # 20 dias  → medio
     ("2025-03-01", 0.85),   # 60 dias  → forte
-    ("2025-09-01", 1.0),    # 244 dias → critico
+    ("2025-09-01", 0.85),   # 244 dias → forte (O4.9: sem prova de dano o teto é 'forte'; TCU Ac. 128/2011-P)
 ])
 def test_gravidade_cresce_com_o_atraso(assinatura, esperado):
     r = X8.avaliar(_ctx(aditivos=[{"data_assinatura": assinatura}]))
@@ -74,13 +74,14 @@ def test_a_vigencia_AVANCA_a_cada_prorrogacao():
     assert r.status == "descartado", f"prorrogações regulares acusadas: {r.valores}"
 
 
-def test_termo_apos_vigencia_JA_prorrogada_e_critico():
-    """Deixar expirar um prazo que já havia sido estendido é o caso mais grave da faixa."""
+def test_termo_apos_vigencia_JA_prorrogada_e_o_teto_da_faixa():
+    """Deixar expirar um prazo que já havia sido estendido é o caso mais grave da faixa — 'forte' sem prova de dano
+    (O4.9: TCU Ac. 2.032/2009-P × 128/2011-P divergem; decisão conservadora)."""
     r = X8.avaliar(_ctx(aditivos=[
         {"numero_termo": "1", "data_assinatura": "2024-12-01", "vigencia_fim": "2025-06-30"},
         {"numero_termo": "2", "data_assinatura": "2025-07-10"},
     ]))
-    assert r.score == pytest.approx(1.0)
+    assert r.score == pytest.approx(0.85) and r.valores["teto_forte_sem_dano"] is True
     assert r.valores["retroativos"][0]["ja_prorrogado"] is True
 
 
@@ -103,13 +104,15 @@ def test_dois_termos_retroativos_agravam():
 
 # ───────────────────────── T3 · vácuo pago ────────────────────────────────────────────────────
 
-def test_pagamento_no_periodo_descoberto_e_critico():
+def test_pagamento_no_periodo_descoberto_e_sinal_nao_achado():
+    """O4.9: pago após a vigência NÃO é achado, no máximo sinal — não muda o nível do termo retroativo."""
+    sem = X8.avaliar(_ctx(aditivos=[{"numero_termo": "1", "data_assinatura": "2025-03-01"}]))
     r = X8.avaliar(_ctx(
         aditivos=[{"numero_termo": "1", "data_assinatura": "2025-03-01"}],
         pagamentos=[{"data": "2025-01-15", "valor": 250_000.0}]))
-    assert r.score == pytest.approx(1.0)
+    assert r.score == pytest.approx(sem.score)
     assert r.valores["pagamentos_no_vacuo"]
-    assert any("VÁCUO PAGO" in e["trecho"] for e in r.evidencia)
+    assert any("SINAL (não achado)" in e["trecho"] for e in r.evidencia)
 
 
 def test_valor_do_vacuo_sai_no_padrao_brasileiro():

@@ -70,9 +70,11 @@ def test_cnpj_sem_registro_e_descartado():
 # ───────────────────────────── vigência à época ───────────────────────────────────────────────
 
 def test_sancao_impeditiva_vigente_na_data_e_critica():
+    # O4.9: o impedimento alcança só o ente que o aplicou (14.133 art. 156 §4º) — aplicado pelo próprio Estado do RJ
     res = C7SancionadaContratada().avaliar({
         **_P, "data_referencia": "2026-01-15",
-        "sancoes": [_s("Impedimento de licitar e contratar", "2025-01-01", "2027-01-01")]})
+        "sancoes": [{**_s("Impedimento de licitar e contratar", "2025-01-01", "2027-01-01"),
+                     "orgao": "SECRETARIA DE ESTADO DE SAUDE", "uf": "RJ"}]})
     assert res.score >= ANCORAS["critico"] or res.score == pytest.approx(1.0)
     assert res.valores["teste_objetivo"] == "violado"
     assert "156" in res.evidencia[0]

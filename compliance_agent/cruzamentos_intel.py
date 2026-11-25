@@ -733,6 +733,13 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         # não compra fatiada — fora do detector (senão vira falso-positivo).
         # a cópia local divergente saiu: uma fonte só (_SQL_NAO_PUBLICO), definida abaixo.
         publico = _SQL_NAO_PUBLICO
+        # O4.9 — RESTOS A PAGAR fora: a OB de RP paga despesa empenhada em exercício anterior (Lei 4.320 arts. 35, II, e
+        # 36); somá-la ao mês do pagamento contra o teto do ano da OB mistura exercícios. Sem o ano do empenho na OB, sai.
+        from compliance_agent.dominio.pagamento import TIPO_OB_RP
+        if "tipo_ob" in {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}:
+            nao_rp = "COALESCE(tipo_ob,'') NOT IN (" + ",".join("'" + t.replace("'", "''") + "'"
+                                                              for t in sorted(TIPO_OB_RP)) + ")"
+            publico = f"{publico} AND {nao_rp}"
         q = f"""
         SELECT credor, MAX(nome_credor) nome, ug_emitente, {iso_mes} mes,
                COUNT(*) n, SUM(valor) soma, MAX(valor) maior,

@@ -26,6 +26,7 @@ from pathlib import Path
 from compliance_agent import sei_recomendacoes
 from compliance_agent.cpf_cnpj import cnpj_valido as _cnpj_valido
 from compliance_agent.cadeia_processo import analisar_cadeia
+from compliance_agent.entidades_gov import eh_administracao_publica
 from compliance_agent.detectores import PESOS_DETECTOR
 from compliance_agent.detectores.base import ResultadoDetector, ancora, score_processo
 from compliance_agent.editais.escalada import recomendar
@@ -178,7 +179,7 @@ def _contrato_registrado(numero_sei: str) -> dict:
         con = _sq.connect(f"file:{db}?mode=ro", uri=True)
         try:
             row = con.execute(
-                "SELECT vig_inicio, vig_fim, valor_contrato FROM contratos_tcerj "
+                "SELECT vig_inicio, vig_fim, valor_contrato, data_contratacao, criterio_julgamento FROM contratos_tcerj "
                 "WHERE sei_norm = ? LIMIT 1", (chave,)).fetchone()
         finally:
             con.close()
@@ -193,6 +194,18 @@ def _contrato_registrado(numero_sei: str) -> dict:
         fora["vigencia_fim_atual"] = str(row[1])
     if row[2]:
         fora["valor_contrato_registrado"] = float(row[2])
+    # REGIME POR CONTRATO (O4.9) — a mesma decisão da E9 para `contrato_tcerj`: o critério de julgamento às vezes
+    # declara a lei ("… (Lei nº 8.666/93)"), e a data da contratação decide o art. 190. O X2 mede o tempo contra o
+    # prazo máximo deste regime; sem dado, INDETERMINADO (nunca o ano corrente).
+    from datetime import date
+
+    from compliance_agent.dominio.regime import regime_contrato
+    try:
+        d_ass = date.fromisoformat(str(row[3])[:10]) if row[3] else None
+    except ValueError:
+        d_ass = None
+    dec = regime_contrato(lei_declarada_texto=row[4], data_assinatura=d_ass)
+    fora["regime"], fora["regime_fonte"] = dec.regime.value, dec.fonte_da_decisao
     if fora:
         fora["fonte_contrato_registrado"] = "contratos_tcerj (ligado por sei_norm)"
     return fora
@@ -353,10 +366,9 @@ def _cnpj_vencedor(numero: str) -> str | None:
 
 
 _RX_CNPJ = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
-# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio).
-# Lista curta de propósito: o teste que vale é a NATUREZA JURÍDICA, logo abaixo — uma lista de
-# raízes nunca acompanha a realidade (o ITERJ, 40173726, não estava aqui e por isso passou).
-_RAIZES_PUBLICAS = {"42498600", "42498733"}
+# O ente público que nunca é "o contratado" sai pela NATUREZA JURÍDICA (O4.9: a lista `_RAIZES_PUBLICAS` com o Estado
+# do RJ e o Município do Rio saiu — os dois estão no cadastro com natureza 1236 e 1244, e uma lista de raízes nunca
+# acompanha a realidade: o ITERJ, 40173726, não estava nela e por isso passou).
 
 
 @lru_cache(maxsize=4096)
@@ -382,7 +394,7 @@ def _e_ente_publico(cnpj: str) -> bool:
             con.close()
     except sqlite3.Error:
         return False
-    return bool(row) and str(row[0] or "").startswith("1")
+    return bool(row) and eh_administracao_publica(row[0])
 
 
 # "doravante denominado CONTRATANTE" identifica o ÓRGÃO; a exigência de que CONTRATADA não
@@ -422,8 +434,7 @@ def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
         for m in _RX_CNPJ.finditer(texto):
             c = "".join(m.groups())
             # 00394… = base da União (ministérios); nunca é o contratado
-            if not (_cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS
-                    and not c.startswith("00394") and not _e_ente_publico(c)):
+            if not (_cnpj_valido(c) and not c.startswith("00394") and not _e_ente_publico(c)):
                 continue
             cont[c] += 1
             janela = texto[m.end():m.end() + 130]

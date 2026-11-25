@@ -2076,7 +2076,7 @@ detectores:
     - rotas/vinculos.py
     - rotas/produtos.py
     manchete: false
-    controle_positivo: tests/detectores/test_x8_aditivo_retroativo.py::test_termo_apos_vigencia_JA_prorrogada_e_critico
+    controle_positivo: tests/detectores/test_x8_aditivo_retroativo.py::test_termo_apos_vigencia_JA_prorrogada_e_o_teto_da_faixa
     controle_negativo: tests/detectores/test_x8_aditivo_retroativo.py::test_termo_dentro_da_vigencia_e_descartado
     hipoteses_inocentes:
     - hipotese: vigência avançada por prorrogação anterior
@@ -2359,8 +2359,8 @@ detectores:
       cobertura: null
     estado: fundido
     fundido_em: det.X1CrescimentoAditivo
-    tier: 2
-    tier_motivo: amostra_nao_estratificada; ponto=100.0%>15%; ic95_sup=100.0%>25%; cobertura_desconhecida
+    tier: 3
+    tier_motivo: fp_acima_de_50pct_comprovada (Clopper-Pearson inf. 97.8%)
     fp_ic95: [0.9778, 1.0]
     manchete_efetiva: false
   pcrj.d11_aditivo_estourado:
@@ -2403,8 +2403,8 @@ detectores:
       cobertura: null
     estado: fundido
     fundido_em: det.X1CrescimentoAditivo
-    tier: 2
-    tier_motivo: n=28<30; amostra_nao_estratificada; ponto=100.0%>15%; ic95_sup=100.0%>25%; cobertura_desconhecida
+    tier: 3
+    tier_motivo: fp_acima_de_50pct_comprovada (Clopper-Pearson inf. 87.7%)
     fp_ic95: [0.8794, 1.0]
     manchete_efetiva: false
   intel.capital_incompativel:
@@ -2870,8 +2870,8 @@ detectores:
       afirmado: top 10 com 9 sinais de sanção à época; 3 críticos
       sustentado: 2 sinais alcançam o Estado; críticos 3 → 1 (sem sanção)
     estado: ativo
-    tier: 2
-    tier_motivo: n=26<30; amostra_nao_estratificada; ponto=92.3%>15%; ic95_sup=97.9%>25%; cobertura_desconhecida
+    tier: 3
+    tier_motivo: fp_acima_de_50pct_comprovada (Clopper-Pearson inf. 74.9%)
     fp_ic95: [0.7586, 0.9786]
     manchete_efetiva: false
   intel.ranking_fantasmas:
@@ -3711,18 +3711,35 @@ detectores:
     - tabela alertas
     - static/js/src/abas/cockpit.js (contagem de alertas via /api/compliance/painel)
     - triagem_alertas
-    manchete: true
+    manchete: false   # 24/11/2026 (decisão delegada §2): 4 erros graves conferidos pelo Opus — rebaixa no 1º grave
     controle_positivo: tests/test_rules_engine_ob_janela.py::test_regras_de_ob_respeitam_a_janela_e_o_sql
-    controle_negativo: null
+    controle_negativo: tests/test_decisoes_delegadas_20261124.py::test_doerj_clausula_de_multa_no_extrato_nao_e_sancao
     hipoteses_inocentes:
-    - hipotese: menção não é o ato (citação neutra)
-      excluida_por: null
+    - hipotese: menção não é o ato (termo em outro ato do mesmo bloco do diário)
+      excluida_por: compliance_agent/rules/doerj_casamento.py:ocorrencias
+    - hipotese: cláusula não é ato praticado ("sujeitará a contratada à multa" no extrato de contrato)
+      excluida_por: compliance_agent/rules/doerj_casamento.py:eh_dever_ser
     dominio: OB recente (janela de 90 dias)
-    fp_medida: null
+    fp_medida:
+      data: '2026-11-24'
+      amostra: '6 alertas conferidos pelo Opus na triagem (fila por prioridade, não sorteio); 1 reservado ao ouro'
+      taxa: '4/5 provavel_falso_positivo, todos de severidade alta (erro grave) e todos emitidos pela versão ANTERIOR a cb93d972 (termo e favorecido em atos diferentes: 2; multa como cláusula de extrato de contrato: 2); a versão atual não emite nenhum dos 4'
+      fonte_primaria: 'alertas_triagem.leitura_opus × alertas (snapshot 24/11) e publicacoes_doerj (texto do ato)'
+      onde: '~/vault/refatoracao/decisoes-delegadas-20261124.md §2; ~/vault/refatoracao/o54-calibracao.md §2'
+      n: 5
+      falsos: 4
+      estratificada: false
+      cobertura: null
+    calibracao:
+      erro_grave_aberto:
+      - alerta:96896
+      - alerta:96904
+      - alerta:155748
+      - alerta:158978
     estado: ativo
-    tier: 3
-    tier_motivo: sem_medida
-    fp_ic95: null
+    tier: 2
+    tier_motivo: n=5<30; amostra_nao_estratificada; ponto=80.0%>15%; ic95_sup=96.4%>25%; cobertura_desconhecida; erro_grave_conferido
+    fp_ic95: [0.3755, 0.9638]
     manchete_efetiva: false
   rules.ob_favorecido_multiplas_ugs:
     modulo: compliance_agent/rules/engine.py

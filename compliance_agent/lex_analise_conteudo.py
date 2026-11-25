@@ -324,20 +324,27 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
 
     _TETO_OVERRIDE = os.environ.get("LEX_TETO_DISPENSA")
 
-    def _teto_do_ano(ano) -> float:
+    def _teto_do_ano(ano) -> float | None:
         if _TETO_OVERRIDE:
             return float(_TETO_OVERRIDE)
         try:
             return _limite_do_ano(int(ano), "compras")
         except (TypeError, ValueError):
-            from datetime import date as _date
-            return _limite_do_ano(_date.today().year, "compras")
+            return None      # O4.9: exercício ilegível NÃO usa o teto do ano corrente — o grupo não é medido
+    # O4.9 — INEXIGIBILIDADE ≠ DISPENSA: o somatório do art. 75 §1º afere os limites "referidos nos incisos I e II do
+    # caput" (dispensa POR VALOR). Inexigibilidade (art. 74), emergência (art. 75 VIII) e as demais hipóteses não têm
+    # teto de valor e ficam fora da soma — a régua do inciso é a mesma da E9 (`inciso_dispensa_valor`).
+    from compliance_agent.aplicacao.estagios.elegibilidade import inciso_dispensa_valor
+    por_valor = [c for c in diretas if inciso_dispensa_valor(
+        f"{c.get('enquadramento_legal') or ''} {c.get('afastamento') or ''}")]
     grupos = defaultdict(list)
-    for c in diretas:
+    for c in por_valor:
         grupos[(c.get("ano_processo"), (c.get("unidade") or "")[:40], _ramo_objeto(c.get("objeto")))].append(c)
     candidatos = []
     for (ano, unid, ramo), itens in grupos.items():
         teto = _teto_do_ano(ano)
+        if teto is None:
+            continue
         sob_teto = [i for i in itens if 0 < (i.get("valor") or 0) <= teto]
         soma = sum(i.get("valor") or 0 for i in itens)
         if len(sob_teto) >= 2 and soma > teto:   # ≥2 dispensas da mesma natureza que, somadas, furam o teto
@@ -350,8 +357,8 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
                                f"R$ {moeda(soma)} — indício de **FRACIONAMENTO** (substituição da licitação obrigatória "
                                "por múltiplas dispensas do mesmo objeto; art. 75 §1º Lei 14.133; Ac. 1.620/2010-TCU-"
                                "Pleno). Diligência: confirmar identidade de objeto/natureza e somatório no exercício."})
-    elif diretas:
-        # há dispensas, mas SEM o padrão de fracionamento — registrar a leitura correta (evita falso achado)
+    elif por_valor:
+        # há dispensas por valor, mas SEM o padrão de fracionamento — registrar a leitura correta (evita falso achado)
         achados.append({"rf": "R2", "grav": 1,
                         "obs": "As contratações diretas registradas **não** apresentam o padrão de fracionamento "
                                "(múltiplas dispensas do MESMO objeto/natureza, na mesma unidade e exercício, somando "
@@ -359,15 +366,20 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
                                "em vários órgãos **não** caracterizam fracionamento — verificar apenas o enquadramento "
                                "de cada dispensa (art. 75 Lei 14.133)."})
 
-    # R9 — execução acima do contratado (valor pago > contrato + 25%, limite de aditivo)
+    # R9 — execução acima do contratado. O4.9: "pago > contratado" NÃO é achado sem a LENTE DE COMPETÊNCIA e o join por
+    # EXERCÍCIO (`duplicidade_competencia`): o pago do TCE-RJ soma todos os exercícios do contrato, e o valor
+    # registrado pode ser o de 12 meses de um contínuo prorrogado, reajustado ou repactuado. Aqui sai só como SINAL
+    # (grav 1), nunca como indício de aditivo acima do teto.
     for c in contratos:
         vc, vp = c.get("valor_contrato") or 0, c.get("valor_pago") or 0
         if vc > 0 and vp > vc * 1.25:
-            achados.append({"rf": "R9", "grav": 2,
-                            "obs": f"Contrato {c.get('processo')}: pago R$ {moeda(vp)} sobre valor contratado "
-                                   f"R$ {moeda(vc)} (+{((vp-vc)/vc*100):.0f}%) — verificar aditivos e o limite de "
-                                   "25%/50% (arts. 125-126 Lei 14.133)."})
-            break  # um exemplo basta para o indício
+            achados.append({"rf": "R9", "grav": 1,
+                            "obs": f"SINAL, não achado: contrato {c.get('processo')} com pago de R$ {moeda(vp)} "
+                                   f"sobre valor registrado de R$ {moeda(vc)} (+{((vp-vc)/vc*100):.0f}%). O pago soma "
+                                   "exercícios e o registrado pode ser o de um período só (prorrogação, reajuste, "
+                                   "repactuação) — só a competência paga mês a mês, no mesmo exercício do valor "
+                                   "contratado, diz se houve execução acima do contrato."})
+            break  # um exemplo basta para o sinal
 
     resumo = {
         "n_contratos": len(contratos), "soma_contratos": soma_contr,

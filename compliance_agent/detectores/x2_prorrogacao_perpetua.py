@@ -7,10 +7,28 @@ continuado), NÃO o número do contrato: um contrato relicitado, ou uma cadeia e
 recontratação, mantém o mesmo fornecedor no mesmo objeto.
 
 PARÂMETROS OBJETIVOS (no CÓDIGO — limiar nunca vai ao prompt do LLM, spec §1.3):
-  • TEMPO TOTAL do fornecedor no objeto (anos): muito longo sem relicitar → forte; muito mais longo → crítico.
-      > 5 anos no mesmo objeto sem nova licitação ............................................. forte (0.85)
-      > 10 anos no mesmo objeto sem nova licitação ............................................ crítico (1.0)
-  • Nº de prorrogações sem nova licitação (≥ limiar) ......................................... agrava / forte
+  • TEMPO TOTAL do fornecedor no objeto (anos), medido contra o prazo máximo DO REGIME DO CONTRATO (O4.9, 24/11/2026 —
+    `contexto["regime"]`, de `dominio.regime.regime_contrato`; nunca pelo ano corrente):
+      L8666   > 5 anos (60 meses, art. 57 II) ........ forte (0.85) · > 6 anos (60 + 12 do §4º) ... crítico (1.0)
+      L14133  > 10 anos (vigência máxima decenal, art. 107) ......................................... crítico (1.0)
+              5–10 anos é prazo LÍCITO (arts. 106–107): o tempo sozinho não pontua.
+      L13303  > 5 anos (art. 71) ... médio (0.6): o art. 71 I/II admite prazo maior; nada de crítico pelo tempo.
+      sem regime (INDETERMINADO/OUTRO/ausente) > 10 anos ... crítico (ilegal nos dois regimes) ·
+              > 5 anos ... médio (ilegal na 8.666, lícito na 14.133 — o regime decide; declarado na saída).
+    Texto conferido VERBATIM (~/vault/fontes/juridicas, 24/11/2026):
+      L8666cons.htm (md5 26a008466a58e90b5a2f6cc36e17b050) art. 57 II (red. Lei 9.648/1998): "que poderão ter a sua
+        duração prorrogada por iguais e sucessivos períodos com vistas à obtenção de preços e condições mais vantajosas
+        para a administração, limitada a sessenta meses"; §4º "Em caráter excepcional, devidamente justificado e
+        mediante autorização da autoridade superior, o prazo de que trata o inciso II do caput deste artigo poderá ser
+        prorrogado por até doze meses."
+      L14133.htm (md5 5107e213168afb4c15a36665e6695c58) art. 106 "contratos com prazo de até 5 (cinco) anos nas
+        hipóteses de serviços e fornecimentos contínuos"; art. 107 "poderão ser prorrogados sucessivamente, respeitada
+        a vigência máxima decenal, desde que haja previsão em edital e que a autoridade competente ateste que as
+        condições e os preços permanecem vantajosos para a Administração".
+      L13303.htm (md5 326f5390c34ff235a3aeafa9529d98de) art. 71 "não excederá a 5 (cinco) anos, contados a partir de
+        sua celebração, exceto: I - [...] plano de negócios e investimentos [...]; II - [...] prática rotineira de
+        mercado".
+  • Nº de prorrogações sem nova licitação (≥ limiar) ......................................... sinal / medio (O4.9)
   • Cadeia emergência → prorrogação/recontratação (detectar) ................................. agrava (+0.10)
 
 PARTE SUBJETIVA (rubrica fechada LLM-OPCIONAL, degrada honesto): "Qualidade da pesquisa de vantajosidade" POR
@@ -40,8 +58,9 @@ from compliance_agent.detectores.base import (
 )
 
 # ───────────────────────────── Limiares objetivos (CÓDIGO, nunca prompt) ─────────────────────────────
-_ANOS_FORTE = 5.0      # > 5 anos no mesmo objeto sem relicitar → forte
-_ANOS_CRITICO = 10.0   # > 10 anos → crítico
+_ANOS_FORTE = 5.0      # 8.666 art. 57 II: sessenta meses
+_ANOS_CRITICO = 10.0   # 14.133 art. 107: vigência máxima decenal (teto também quando o regime é desconhecido)
+_ANOS_CRITICO_8666 = 6.0   # 8.666 art. 57 §4º: 60 meses + até 12 em caráter excepcional
 _ANOS_IMPLAUSIVEL = 15.0
 """Acima disto não há hipótese legal que sustente: é erro de data na fonte, não contrato eterno.
 Número impossível é leitura quebrada, não achado (família 13 do catálogo de falhas)."""
@@ -93,6 +112,35 @@ def _tempo_total_anos(contexto: dict) -> tuple[float | None, str]:
             base = float(contexto.get("vigencia_original_anos") or 1.0)
             return round(base + soma_anos, 2), "vigência original + anos das prorrogações"
     return None, ""
+
+
+def _regua_tempo(anos: float, regime: str | None) -> tuple[str, str]:
+    """(nível, razão) do TEMPO contra o prazo máximo do regime do contrato. 'ausente' = o tempo não pontua."""
+    r = str(regime or "").strip().upper()
+    if r == "L8666":
+        if anos > _ANOS_CRITICO_8666:
+            return "critico", (f"{anos} anos no mesmo objeto: acima dos 60 meses do art. 57 II mais os 12 excepcionais "
+                               "do §4º (Lei 8.666/1993)")
+        if anos > _ANOS_FORTE:
+            return "forte", (f"{anos} anos no mesmo objeto: acima dos 60 meses do art. 57 II (Lei 8.666/1993) — só "
+                             "cabe pelo §4º (excepcional, justificado e autorizado pela autoridade superior)")
+        return "ausente", ""
+    if r == "L14133":
+        if anos > _ANOS_CRITICO:
+            return "critico", f"{anos} anos no mesmo objeto: acima da vigência máxima decenal (Lei 14.133/2021, art. 107)"
+        return "ausente", ""
+    if r == "L13303":
+        if anos > _ANOS_FORTE:
+            return "medio", (f"{anos} anos no mesmo objeto: acima dos 5 anos do art. 71 da Lei 13.303/2016 — o próprio "
+                             "art. 71 (I e II) admite prazo maior; conferir a exceção invocada")
+        return "ausente", ""
+    if anos > _ANOS_CRITICO:
+        return "critico", (f"{anos} anos no mesmo objeto: acima do prazo máximo nos dois regimes (Lei 8.666 art. 57 II "
+                           "e §4º; Lei 14.133 art. 107)")
+    if anos > _ANOS_FORTE:
+        return "medio", (f"{anos} anos no mesmo objeto com regime do contrato NÃO determinado: ilegal se Lei 8.666 "
+                         "(art. 57 II: 60 meses), lícito se Lei 14.133 (art. 107: até 10 anos) — ler o instrumento")
+    return "ausente", ""
 
 
 def _tem_cadeia_emergencia(contexto: dict) -> bool:
@@ -184,21 +232,26 @@ class X2ProrrogacaoPerpetua(Detector):
                 "Conferir `vig_inicio` na fonte antes de afirmar prorrogação perpétua.")
             return res
 
+        regime = contexto.get("regime")
+        valores["regime"] = regime or "INDETERMINADO"
         if anos is not None:
-            if anos > _ANOS_CRITICO:
-                score = max(score, ancora("critico"))
-                razoes.append(f"fornecedor há {anos} anos no mesmo objeto sem relicitar (> {_ANOS_CRITICO:g} anos)")
-            elif anos > _ANOS_FORTE:
-                score = max(score, ancora("forte"))
-                razoes.append(f"fornecedor há {anos} anos no mesmo objeto sem relicitar (> {_ANOS_FORTE:g} anos)")
+            nivel_tempo, razao_tempo = _regua_tempo(anos, regime)
+            valores["nivel_tempo"] = nivel_tempo
+            if nivel_tempo != "ausente":
+                score = max(score, ancora(nivel_tempo))
+                razoes.append(razao_tempo)
             res.add_evidencia(
                 fonte="vigência do contrato/serviço",
                 trecho=f"tempo total no objeto = {anos} anos ({fonte_tempo}); {n_prorrogacoes} prorrogação(ões)")
 
-        # nº de prorrogações sem nova licitação
+        # nº de prorrogações sem nova licitação — O4.9 (decisão conservadora delegada pelo dono): prorrogar "por iguais
+        # e sucessivos períodos" é o que a lei prevê (8.666 art. 57 II; 14.133 art. 107 "sucessivamente"; TCU Ac.
+        # 5.820/2011-2ª Câmara recomenda prever a prorrogação até 60 meses). A CONTAGEM sozinha é sinal ('medio');
+        # o vício é o TEMPO acima do prazo do regime ou a vantajosidade ausente.
         if n_prorrogacoes >= _PRORROGACOES_FORTE:
-            score = max(score, ancora("forte"))
-            razoes.append(f"{n_prorrogacoes} prorrogações sem nova licitação (≥ {_PRORROGACOES_FORTE})")
+            score = max(score, ancora("medio"))
+            razoes.append(f"{n_prorrogacoes} prorrogações sem nova licitação (≥ {_PRORROGACOES_FORTE}) — sinal: prorrogar "
+                          "sucessivamente é lícito dentro do prazo do regime")
 
         # cadeia emergência → prorrogação/recontratação → agrava
         if tem_cadeia and score > 0:

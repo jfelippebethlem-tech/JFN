@@ -570,11 +570,13 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     flags = []
     if p.get("hhi", {}).get("top_share", 0) >= 60:
         flags.append("🔴 Concentração ≥60% num único órgão (isonomia/impessoalidade — Art. 37 CF/88; ACFE).")
-    if contratado and pago > contratado * 1.5:
-        flags.append(f"🔴 Pago (R$ {moeda(pago)}) ≫ contratado registrado no TCE-RJ (R$ {moeda(contratado)}) — "
-                     f"{pago/contratado:.1f}×: aditivos sucessivos (>25%/50% — arts. 125-126 Lei 14.133) ou contratos não publicados, a verificar.")
-    elif contratado and pago > contratado * 1.2:
-        flags.append(f"🟡 Pago acima do contratado registrado ({pago/contratado:.1f}×) — verificar aditivos/atas de adesão.")
+    # O4.9: "pago > contratado" é SINAL, nunca 🔴 — o pago soma todos os exercícios e o registrado pode ser de um
+    # período só (contínuo prorrogado, reajuste, repactuação); só a lente de competência com join por exercício
+    # (`duplicidade_competencia`) diz se houve execução acima do contrato.
+    if contratado and pago > contratado * 1.2:
+        flags.append(f"🟡 SINAL (não achado): pago (R$ {moeda(pago)}) acima do contratado registrado no TCE-RJ "
+                     f"(R$ {moeda(contratado)}) — {pago/contratado:.1f}×. O pago soma exercícios; conferir prorrogações, "
+                     "reajustes, atas de adesão e contratos não publicados antes de falar em aditivo acima do teto.")
     if rede:
         flags.append("🟡 Doador eleitoral (empresa/sócio) que é fornecedor — conflito de interesse a verificar (TSE×contratos).")
     if _crescimento(p) >= 4:

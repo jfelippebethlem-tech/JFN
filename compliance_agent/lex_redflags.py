@@ -39,6 +39,11 @@ _RF = {
     "DD/SOCIO-AGENTE": ("Sócio da contratada é agente público (folha pública × QSA)",
                         "Lei 14.133/2021 art. 14, IV e art. 9º, §1º; Lei 8.429/92 arts. 9º e 11 (dolo específico, pós-14.230)"),
     "R2": ("Fracionamento de despesa", "Art. 75, §1º, I e II, e §2º Lei 14.133/2021; Art. 23 §§1º-5º Lei 8.666/93 (revogada — fatos até 2023)"),
+    # O4.9: pagamento recorrente de valor idêntico é SINAL de série de contrato contínuo, não fracionamento (R2) — o
+    # art. 75 §1º soma CONTRATAÇÕES distintas por objeto, UG e exercício, não pagamentos ao mesmo credor
+    "S/VALORES-IDENTICOS": ("Pagamentos recorrentes de valor idêntico (sinal, não achado)",
+                            "Lei 4.320/64 arts. 62-63 (liquidação por competência); não é o art. 75 §1º da Lei "
+                            "14.133/2021 (fracionamento soma contratações, não pagamentos)"),
     "R3": ("Pesquisa de preços frágil / possível sobrepreço", "Art. 23 Lei 14.133; Acórdão 1875/2021-TCU (cesta de preços)"),
     "R4": ("Sobrepreço / superfaturamento (valores fora de referência)", "Art. 11 III Lei 14.133; Acórdão 2622/2013-TCU (BDI)"),
     "R5": ("Inexigibilidade/dispensa possivelmente indevida", "Art. 74 Lei 14.133 / Art. 25 Lei 8.666 (revogada — fatos até 2023); art. 337-E CP (contratação direta ilegal)"),

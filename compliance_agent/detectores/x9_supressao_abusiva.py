@@ -32,6 +32,13 @@ TESTES OBJETIVOS (CÓDIGO, nunca no prompt):
      (é a perna espelhada do jogo de planilha; sem preços unitários, não se afere)
   T4 ESVAZIAMENTO — supressão que consome mais da metade do objeto contratado .......... critico
 
+REGIME DO CONTRATO (O4.9, `contexto["regime"]`): a 8.666 (art. 65 §2º, II) e a 13.303 (art. 81 §2º) RESSALVAM "as
+supressões resultantes de acordo celebrado entre os contratantes" — nelas, supressão acima de 25% COM anuência é
+lícita e o T1 não dispara; sem a anuência na base, o T1 desce a 'medio' (a anuência decide a licitude). Na 14.133 a
+ressalva não existe, mas o art. 137 §2º I dá ao contratado o "direito à extinção" na supressão além do art. 125 — o que
+pressupõe que ela possa ocorrer. Decisão conservadora (O4.9, delegada pelo dono): na 14.133 ou sem regime, anuência
+registrada → 'medio'; anuência que não consta → 'forte'; anuência NEGADA → 'critico'.
+
 HONESTIDADE JFN: sem `valor_inicial` ou sem supressões → nao_avaliavel. Supressão dentro do teto
 é DIREITO da Administração e não vira achado. A anuência pode existir nos autos e não estar na
 base — ausência do campo é lacuna declarada, nunca "sem acordo".
@@ -39,7 +46,13 @@ base — ausência do campo é lacuna declarada, nunca "sem acordo".
 from __future__ import annotations
 
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora, evidencia
-from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo, teto_supressao
+from compliance_agent.limites_aditivo import (
+    SUPRESSAO_ACIMA_POR_ACORDO,
+    acrescimo_computavel,
+    ato_normativo,
+    regime_aditivo,
+    teto_supressao,
+)
 from compliance_agent.reporting.intel_base import moeda
 
 _FRACAO_RENTE = 0.80        # ≥80% do teto sem estourar → forte
@@ -98,7 +111,9 @@ class X9SupressaoAbusiva(Detector):
             return res
 
         # O 50% da reforma é SÓ do acréscimo; a supressão fica nos 25% em qualquer objeto.
-        teto = teto_supressao(contexto.get("tipo_objeto"))
+        reg = regime_aditivo(contexto.get("regime"))
+        teto = teto_supressao(contexto.get("tipo_objeto"), regime=reg or "14133")
+        ato = ato_normativo(reg)
         pct = supressao / valor_inicial
         # INVARIANTE FÍSICO: não se suprime mais do que existe. Passar de 100% não é contrato
         # esvaziado — é LEITURA quebrada, quase sempre um `valor_inicial` colhido do documento
@@ -124,28 +139,43 @@ class X9SupressaoAbusiva(Detector):
             "tem_valor_inicial": True, "valor_inicial": round(valor_inicial, 2),
             "supressao": round(supressao, 2), "pct_supressao": round(pct, 4),
             "teto_supressao": teto, "acrescimo": round(comp["acrescimo"], 2),
-            "tipo_objeto": contexto.get("tipo_objeto"), "ato": ato_normativo(),
+            "tipo_objeto": contexto.get("tipo_objeto"), "ato": ato,
+            "regime": contexto.get("regime") or "INDETERMINADO",
             "n_aditivos": comp["n"], "lacunas": list(comp["lacunas"]),
         }
         achados: list[str] = []
         nivel = "ausente"
 
         # T1 · teto
-        if pct > teto:
+        anuencia = contexto.get("houve_anuencia")
+        ressalva_acordo = SUPRESSAO_ACIMA_POR_ACORDO.get(reg or "")
+        if pct > teto and ressalva_acordo and anuencia is True:
+            # 8.666 art. 65 §2º II / 13.303 art. 81 §2º: supressão por acordo pode passar do teto — não é indício
+            valores["supressao_por_acordo"] = ressalva_acordo
+        elif pct > teto:
             nivel = "critico"
+            if ressalva_acordo and anuencia is None:
+                nivel = "medio"          # a lei ressalva o acordo e a anuência não está na base: ela decide
+                valores["lacunas"].append("anuencia_decide_a_licitude")
+            elif anuencia is True:
+                nivel = "medio"          # 14.133 ou regime indeterminado com acordo: a lei não ressalva nem veda (⚖️)
+            elif reg != "8666" and reg != "13303" and anuencia is None:
+                nivel = "forte"          # decisão conservadora: sem saber se houve acordo, não se afirma 'critico'
+                valores["lacunas"].append("anuencia_nao_consta_14133")
             achados.append(
                 f"SUPRESSÃO ACIMA DO TETO: {pct:.1%} do valor inicial (R$ {moeda(supressao)} "
-                f"sobre R$ {moeda(valor_inicial)}), acima dos {teto:.0%} do {ato_normativo()}"
+                f"sobre R$ {moeda(valor_inicial)}), acima dos {teto:.0%} do {ato}"
+                + (f" — {ressalva_acordo} ressalva as supressões por acordo entre os contratantes: sem a anuência "
+                   "nos autos, a licitude não se afere" if ressalva_acordo and anuencia is None else "")
                 + (" — o limite de 50% da reforma vale só para ACRÉSCIMOS"
                    if str(contexto.get("tipo_objeto") or "").lower().startswith("reforma") else ""))
         elif pct >= teto * _FRACAO_RENTE:
             nivel = "forte"
             achados.append(
                 f"supressão de {pct:.1%} do valor inicial — rente ao teto de {teto:.0%} do "
-                f"{ato_normativo()}")
+                f"{ato}")
 
         # T2 · sem acordo
-        anuencia = contexto.get("houve_anuencia")
         if nivel != "ausente":
             if anuencia is False:
                 nivel = _sobe(nivel)

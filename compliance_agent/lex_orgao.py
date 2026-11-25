@@ -73,9 +73,12 @@ def _achados_orgao(ctx: dict) -> list[dict]:
         grupos = []
     if grupos:
         g0 = grupos[0]
-        ach.append({"rf": "R2", "grav": 2, "obs": f"Padrão de **valores idênticos**: **{g0['favorecido']}** recebeu "
-                    f"**{g0['n']}×** o valor exato de R$ {moeda(g0['valor'])} (R$ {moeda(g0['total'])} no total). Típico de "
-                    "serviço continuado, mas a reiteração integra os *red flags* da ACFE — caracterizar objeto/vigência/medição."})
+        # O4.9: era "R2" (fracionamento) com grav 2 — e o R2 leva à família de improbidade no parecer. Valor idêntico
+        # recorrente é a ASSINATURA de contrato contínuo (parcela mensal), não de contratações distintas: sinal.
+        ach.append({"rf": "S/VALORES-IDENTICOS", "grav": 1, "obs": f"SINAL, não achado — padrão de **valores "
+                    f"idênticos**: **{g0['favorecido']}** recebeu **{g0['n']}×** o valor exato de R$ {moeda(g0['valor'])} "
+                    f"(R$ {moeda(g0['total'])} no total). Típico de serviço continuado (parcela mensal de um contrato); "
+                    "não é fracionamento (art. 75 §1º soma contratações distintas) — caracterizar objeto/vigência/medição."})
     # contagem de regularizações da MESMA base do pago (SIAFE, lex_fatos) quando o contexto já vem dela; o espelho
     # TFE só como fallback de contexto antigo — e a fonte vai escrita no achado (um fato, uma fonte declarada).
     if "n_regularizacoes" in p:
