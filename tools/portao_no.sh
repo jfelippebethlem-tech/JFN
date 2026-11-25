@@ -8,7 +8,9 @@
 #   RUN      id da rodada (diretórios próprios: duas rodadas no mesmo nó não se pisam)
 #   PAR      quantos pytest em paralelo neste nó (cada um no SEU worktree: teste que grava em data/ não colide)
 #   TESTES   arquivos de teste, separados por espaço
-#   TETO     segundos até o nó desistir sozinho (o ssh caído não deixa pytest órfão rodando)
+#   TETO     segundos até o nó desistir sozinho (o ssh caído não deixa pytest órfão rodando); proporcional ao lote
+#   PARADO   segundos sem o log do pytest de um lote crescer → o nó aborta esse lote (rc=124: não medido, refeito
+#            no outro nó). 25/11: o it-campo saturado de OCR segurava o portão 40 min até o TETO fixo de 2.400 s
 #
 # Por que um ESPELHO GIT e não um tar. As catracas medem por `git ls-files`/`git grep --cached`: precisam de
 # repositório. O espelho (~/JFN-portao.git, raso) busca SÓ os objetos novos de cada commit — o primeiro fetch traz a
@@ -19,6 +21,12 @@
 #   PORTAO_LOTE <k> rc=<n> <resumo>      — um por lote
 #   PORTAO_COLETA <k> <coletados> <arq…> — arquivos do lote e quantos deles o pytest REALMENTE executou (junit): o
 #                                          portao.py só dá o lote por medido com resumo do pytest e coletados = enviados
+#   PORTAO_VISTOS <k> <arq…>             — os arquivos do lote que TÊM caso no junit (caminho normalizado: `./x`,
+#                                          absoluto e relativo casam): o portao.py dá por medido CADA um destes,
+#                                          desde que o lote tenha terminado com resumo dentro do TETO
+#   PORTAO_ZERO <k> <arq>                — arquivo de lote limpo (rc 0/5 + resumo) sem caso no junit cujo
+#                                          `pytest --co -q <arq>` também coletou 0 itens: 2ª rodada que o confirma
+#                                          "sem casos" (25/11: tests/test_goal_modes_smoke.py é script, sem test_*)
 #   PORTAO_FALHA <nodeid>                — linhas FAILED/ERROR do pytest
 #   PORTAO_LOG <k>| <linha>              — cauda do log de lote que falhou (diagnóstico)
 #   PORTAO_FIM rc=<n>                    — último; sem ele a rodada não conta
@@ -89,11 +97,46 @@ for k in $(seq 1 "$PAR"); do
   for i in "${!LISTA[@]}"; do [ $(( i % PAR )) -eq $(( k - 1 )) ] && lote+=("${LISTA[$i]}"); done
   [ "${#lote[@]}" -eq 0 ] && { echo 0 > "$BASE_RUN/rc$k"; : > "$BASE_RUN/log$k"; continue; }
   rm -f "$BASE_RUN/junit$k.xml"
-  ( cd "$BASE_RUN/w$k" && PYTHONPATH=. timeout "$TETO" nice -n 15 ionice -c3 "$VENV/bin/python" -m pytest \
+  ( cd "$BASE_RUN/w$k" || { echo 99 > "$BASE_RUN/rc$k"; exit 99; }
+    PYTHONPATH=. PYTHONUNBUFFERED=1 timeout -k 30 "$TETO" nice -n 15 ionice -c3 "$VENV/bin/python" -m pytest \
       -q -rfE -p no:cacheprovider -p no:randomly --timeout=900 --junitxml="$BASE_RUN/junit$k.xml" \
-      -o junit_family=xunit1 "${lote[@]}" >"$BASE_RUN/log$k" 2>&1
+      -o junit_family=xunit1 "${lote[@]}" >"$BASE_RUN/log$k" 2>&1 &
+    echo $! > "$BASE_RUN/pid$k"
+    wait $!
     echo $? > "$BASE_RUN/rc$k" ) &
 done
+
+# vigia de progresso: lote cujo log não cresce por PARADO s parou de andar (nó saturado, teste pendurado) — aborta
+# cedo em vez de esperar o TETO. O pytest -q escreve um ponto por teste (PYTHONUNBUFFERED: vai direto ao arquivo).
+# (função entre marcadores: tests/test_portao_lote.py a extrai e roda com processos falsos)
+# >>> vigiar
+vigiar() {
+  local -A TAM ULT
+  local andando agora k t pid c passo=${VIGIA_PASSO:-15}
+  while [ "${PARADO:-0}" -gt 0 ]; do
+    andando=0
+    agora=$(date +%s)
+    for k in $(seq 1 "$PAR"); do
+      [ -f "$BASE_RUN/rc$k" ] && continue
+      andando=1
+      [ -f "$BASE_RUN/pid$k" ] || continue
+      t=$(stat -c%s "$BASE_RUN/log$k" 2>/dev/null || echo 0)
+      if [ "${TAM[$k]:-x}" != "$t" ]; then
+        TAM[$k]=$t; ULT[$k]=$agora
+      elif [ $(( agora - ULT[$k] )) -ge "$PARADO" ] && [ ! -f "$BASE_RUN/parado$k" ]; then
+        echo "$(( agora - ULT[$k] ))" > "$BASE_RUN/parado$k"
+        pid=$(cat "$BASE_RUN/pid$k")
+        kill -TERM "$pid" 2>/dev/null
+        ( sleep 30; for c in $(pgrep -P "$pid"); do kill -KILL "$c" 2>/dev/null; done
+          kill -KILL "$pid" 2>/dev/null ) &
+      fi
+    done
+    [ "$andando" -eq 0 ] && break
+    sleep "$passo"
+  done
+}
+# <<< vigiar
+vigiar
 wait
 
 # quantos arquivos do lote têm ao menos um caso no junit (passou, falhou, pulou ou deu erro de coleta): lote morto
@@ -105,20 +148,47 @@ except (OSError, ET.ParseError):
     vistos = set()
 print(len(vistos & set(sys.argv[2:])))'
 
+# os arquivos do lote que têm caso no junit, nos nomes como foram enviados; roda no worktree (relpath contra ele)
+_VISTOS='import os, sys, xml.etree.ElementTree as ET
+def norm(p):
+    p = os.path.normpath(p)
+    return os.path.relpath(p) if os.path.isabs(p) else p
+try:
+    vistos = {norm(f) for c in ET.parse(sys.argv[1]).iter("testcase") if (f := c.get("file"))}
+except (OSError, ET.ParseError):
+    vistos = set()
+print(" ".join(a for a in sys.argv[2:] if norm(a) in vistos))'
+
 final=0
 for k in $(seq 1 "$PAR"); do
   r=$(cat "$BASE_RUN/rc$k" 2>/dev/null || echo 99)
+  [ -f "$BASE_RUN/parado$k" ] && r=124
   resumo=$(grep -E "[0-9]+ (passed|failed|error)|no tests ran" "$BASE_RUN/log$k" | tail -1)
   echo "PORTAO_LOTE $k rc=$r $resumo"
   lote=()
   for i in "${!LISTA[@]}"; do [ $(( i % PAR )) -eq $(( k - 1 )) ] && lote+=("${LISTA[$i]}"); done
   if [ "${#lote[@]}" -gt 0 ]; then
     echo "PORTAO_COLETA $k $("$VENV/bin/python" -c "$_COLETA" "$BASE_RUN/junit$k.xml" "${lote[@]}") ${lote[*]}"
+    vistos=$(cd "$BASE_RUN/w$k" && "$VENV/bin/python" -c "$_VISTOS" "$BASE_RUN/junit$k.xml" "${lote[@]}")
+    echo "PORTAO_VISTOS $k $vistos"
+    if { [ "$r" = 0 ] || [ "$r" = 5 ]; } && [ -n "$resumo" ]; then
+      for a in "${lote[@]}"; do
+        case " $vistos " in *" $a "*) continue;; esac
+        ( cd "$BASE_RUN/w$k" && PYTHONPATH=. timeout 300 "$VENV/bin/python" -m pytest --co -q -p no:cacheprovider \
+            -p no:randomly "$a" >"$BASE_RUN/co$k.log" 2>&1 )
+        [ $? -eq 5 ] && grep -q "no tests collected" "$BASE_RUN/co$k.log" && echo "PORTAO_ZERO $k $a"
+      done
+    fi
   fi
   grep -E "^(FAILED|ERROR) " "$BASE_RUN/log$k" | sed 's/^/PORTAO_FALHA /'
   case "$r" in
     0|5) ;;
-    124) final=1; echo "PORTAO_FALHA lote $k: TETO de $TETO s estourado (não terminou)";;
+    124) final=1
+         if [ -f "$BASE_RUN/parado$k" ]; then
+           echo "PORTAO_FALHA lote $k: parado — log sem crescer por $(cat "$BASE_RUN/parado$k") s (abortado, não terminou)"
+         else
+           echo "PORTAO_FALHA lote $k: TETO de $TETO s estourado (não terminou)"
+         fi;;
     *) final=1; tail -40 "$BASE_RUN/log$k" | sed "s/^/PORTAO_LOG $k| /";;
   esac
 done

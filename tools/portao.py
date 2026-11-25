@@ -44,7 +44,17 @@ CORPO_NO = RAIZ / "tools" / "portao_no.sh"
 ORIGEM = os.environ.get("JFN_PORTAO_ORIGEM", "ssh://vm1-ts/home/ubuntu/JFN")
 ZERO = "0" * 40
 LIMIAR_PARALELO = int(os.environ.get("JFN_PORTAO_LIMIAR_PARALELO", "40"))   # arquivos; abaixo disso, um nó só
-TETO_NO = int(os.environ.get("JFN_PORTAO_TETO", "2400"))                    # s por nó (o nó desiste sozinho antes)
+TETO_NO = int(os.environ.get("JFN_PORTAO_TETO", "2400"))                    # s: TETO máximo de um lote
+# 25/11: o teto fixo de 2.400 s fez o portão esperar 40 min, duas rodadas seguidas, pelo it-campo saturado de OCR
+# antes de refazer na VM-2. Agora o teto do lote é proporcional ao tamanho dele (base + s por arquivo, limitado ao
+# TETO_NO) e o nó aborta sozinho o lote cujo log do pytest parou de crescer por PARADO s (tools/portao_no.sh).
+TETO_BASE = int(os.environ.get("JFN_PORTAO_TETO_BASE", "300"))
+TETO_POR_ARQ = float(os.environ.get("JFN_PORTAO_TETO_POR_ARQ", "4"))      # medido: VM-2 0,57 s/arquivo (1040 em 590 s)
+PARADO = int(os.environ.get("JFN_PORTAO_PARADO", "600"))                  # s sem crescer o log do lote → aborta
+MARGEM_SSH = int(os.environ.get("JFN_PORTAO_MARGEM_SSH", "600"))          # fetch + worktrees + venv antes dos lotes
+# nó ACELERADOR acima disto não recebe lote (a referência nunca é pulada por carga: ela é lenta, mas termina)
+LIMIAR_PSI = float(os.environ.get("JFN_PORTAO_LIMIAR_PSI", "60"))         # % de /proc/pressure/cpu "some avg10"
+LIMIAR_LOAD = float(os.environ.get("JFN_PORTAO_LIMIAR_LOAD", "1.0"))      # load1 / nproc
 LOG = Path(os.environ.get("JFN_PORTAO_LOG", "/tmp/pre_push_v2.log"))
 
 _SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=30",
@@ -80,16 +90,61 @@ def _rodar(argv: tuple[str, ...], script: str, timeout: int) -> tuple[int, str]:
     return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
-def sondar(no: No, timeout: int = 40) -> bool:
-    rc, out = _rodar(no.argv, "echo PORTAO_VIVO $(nproc)\n", timeout)
-    return "PORTAO_VIVO" in out
+SONDA = ("echo PORTAO_VIVO $(nproc) $(cut -d' ' -f1 /proc/loadavg)"
+         " $(sed -n 's/^some avg10=\\([0-9.]*\\).*/\\1/p' /proc/pressure/cpu 2>/dev/null)\n")
 
 
-def nos_vivos(nos: tuple[No, ...] | None = None) -> list[No]:
+@dataclass(frozen=True)
+class Sonda:
+    vivo: bool
+    nproc: int | None = None
+    load: float | None = None
+    psi: float | None = None       # /proc/pressure/cpu some avg10 (%); None = o kernel não expõe (ex.: WSL antigo)
+
+    def sobrecarga(self) -> str:
+        """'' se cabe lote; senão a medida que passou do limiar. Carga não medida não é carga zero: é dita."""
+        if self.psi is not None and self.psi > LIMIAR_PSI:
+            return f"PSI cpu some avg10 {self.psi:.0f}% > {LIMIAR_PSI:.0f}%"
+        if self.load is not None and self.nproc and self.load / self.nproc > LIMIAR_LOAD:
+            return f"load {self.load:.1f}/{self.nproc} = {self.load / self.nproc:.2f} > {LIMIAR_LOAD:.2f}"
+        return ""
+
+    def carga(self) -> str:
+        if self.load is None or not self.nproc:
+            return "carga não medida"
+        return f"load {self.load:.1f}/{self.nproc}" + (f", PSI {self.psi:.0f}%" if self.psi is not None else "")
+
+
+def _num(x: str, tipo):
+    return tipo(x) if re.fullmatch(r"\d+(?:\.\d+)?", x) else None
+
+
+def sondar(no: No, timeout: int = 40) -> Sonda:
+    rc, out = _rodar(no.argv, SONDA, timeout)
+    ln = next((x for x in out.splitlines() if x.startswith("PORTAO_VIVO")), None)
+    if ln is None:
+        return Sonda(False)
+    p = ln.split()[1:] + ["", "", ""]
+    return Sonda(True, _num(p[0], int), _num(p[1], float), _num(p[2], float))
+
+
+def nos_vivos(nos: tuple[No, ...] | None = None, pulados: list[str] | None = None) -> list[No]:
+    """Os nós que respondem e cabem lote. Nó acelerador sobrecarregado é PULADO (dito em `pulados` e no stderr) —
+    a não ser que seja o único vivo: aí vai assim mesmo (o teto proporcional e o PARADO o abortam cedo)."""
     nos = nos or NOS
     with ThreadPoolExecutor(len(nos)) as ex:
-        vivos = list(ex.map(sondar, nos))
-    return [n for n, v in zip(nos, vivos) if v]
+        sondas = list(ex.map(sondar, nos))
+    vivos = [(n, sd) for n, sd in zip(nos, sondas) if sd.vivo]
+    leves = [(n, sd) for n, sd in vivos if n.referencia or not sd.sobrecarga()]
+    if not leves:
+        return [n for n, _ in vivos]
+    for n, sd in vivos:
+        if (n, sd) not in leves:
+            msg = f"{n.nome} pulado: carga {sd.sobrecarga()}"
+            print(f"[portão] {msg}", file=sys.stderr)
+            if pulados is not None:
+                pulados.append(msg)
+    return [n for n, _ in leves]
 
 
 @dataclass
@@ -103,6 +158,8 @@ class Resultado:
     saida: str = ""
     segundos: float = 0.0
     nao_medidos: list[str] = field(default_factory=list)   # enviados que nenhum lote terminado executou
+    vazios: list[str] = field(default_factory=list)        # de lote limpo, sem caso no junit (1ª rodada "sem casos")
+    sem_casos: list[str] = field(default_factory=list)     # sem caso em 2 rodadas limpas: aceito, mas sempre listado
 
 
 # resumo final do pytest ("3 passed, 1 failed in 2.0s"); "no tests ran" NÃO é resumo de lote medido
@@ -110,13 +167,43 @@ _RESUMO_PYTEST = re.compile(r"\b\d+ (?:passed|failed|errors?|skipped|xfailed|xpa
 _LOTE = re.compile(r"^PORTAO_LOTE (\d+) rc=(\S*)\s*(.*)$")
 
 
-def _lotes_medidos(testes: list[str], linhas: list[str]) -> tuple[list[str], bool]:
+def _norm(caminho: str) -> str:
+    """`./tests/x.py`, `tests//x.py` e `/…/w1/tests/x.py` casam com `tests/x.py` (o absoluto, por sufixo em _casa)."""
+    c = os.path.normpath(caminho)
+    return c[2:] if c.startswith("./") else c
+
+
+def _casa(arq: str, vistos: set[str]) -> bool:
+    a = _norm(arq)
+    return a in vistos or any(v.startswith("/") and v.endswith("/" + a) for v in vistos)
+
+
+@dataclass
+class _Medicao:
+    nao_medidos: list[str]
+    rc_ruim: bool          # algum lote medido saiu com rc de erro
+    vazios: list[str]      # de lote limpo (rc 0/5, resumo, dentro do TETO) e sem caso no junit
+    zero: set[str]         # destes, os que o `pytest --co` do nó também achou com 0 itens (PORTAO_ZERO)
+
+
+def _lotes_medidos(testes: list[str], linhas: list[str]) -> _Medicao:
     """0 execuções não é 0 erros (25/11/2026: o lote 5 do it-campo estourou o TETO com 173 arquivos, a falha dele não
     tinha nodeid, a confirmação na VM-2 trocou as falhas pelas dela e o portão APROVOU sem rodar os 173). Um lote só
-    conta como medido com: rc ≠ 124 (TETO), linha de resumo do pytest e PORTAO_COLETA dizendo que TODO arquivo enviado
-    teve ao menos um caso executado. Devolve (enviados não medidos, algum lote medido saiu com rc de erro)."""
+    MEDE algo com rc ≠ 124 (TETO) e linha de resumo do pytest; aí conta POR ARQUIVO: medido é o enviado que aparece em
+    PORTAO_VISTOS (tem caso no junit). Era tudo-ou-nada por lote (coletados == enviados) até 25/11, quando UM arquivo
+    sem caso nenhum (tests/test_goal_modes_smoke.py, script sem test_*) derrubou os 71 do lote da VM-2 que rodou
+    683 testes. Nó sem PORTAO_VISTOS (versão antiga do portao_no.sh) cai na regra tudo-ou-nada do PORTAO_COLETA."""
     lotes = {m.group(1): (m.group(2), m.group(3)) for ln in linhas if (m := _LOTE.match(ln))}
+    vistos_por_lote: dict[str, set[str]] = {}
+    zero: set[str] = set()
+    for ln in linhas:
+        partes = ln.split()
+        if ln.startswith("PORTAO_VISTOS ") and len(partes) >= 2:
+            vistos_por_lote[partes[1]] = {_norm(v) for v in partes[2:]}
+        elif ln.startswith("PORTAO_ZERO ") and len(partes) == 3:
+            zero.add(_norm(partes[2]))
     medidos: set[str] = set()
+    vazios: list[str] = []
     rc_ruim = False
     for ln in linhas:
         if not ln.startswith("PORTAO_COLETA "):
@@ -126,10 +213,22 @@ def _lotes_medidos(testes: list[str], linhas: list[str]) -> tuple[list[str], boo
             continue
         k, n, arqs = partes[1], partes[2], partes[3:]
         rc, resumo = lotes.get(k, ("", ""))
-        if rc != "124" and _RESUMO_PYTEST.search(resumo) and n.isdigit() and int(n) == len(set(arqs)):
-            medidos.update(arqs)
+        if rc == "124" or not _RESUMO_PYTEST.search(resumo):
+            continue
+        if k in vistos_por_lote:
+            vistos = vistos_por_lote[k]
+            achados = [a for a in arqs if _casa(a, vistos)]
+            if rc in ("0", "5"):
+                vazios += [a for a in arqs if a not in achados]
+        elif n.isdigit() and int(n) == len(set(arqs)):
+            achados = arqs
+        else:
+            continue
+        if achados:
+            medidos.update(achados)
             rc_ruim = rc_ruim or rc not in ("0", "5")
-    return [t for t in testes if t not in medidos], rc_ruim
+    return _Medicao([t for t in testes if t not in medidos], rc_ruim, [t for t in testes if t in set(vazios)],
+                    {t for t in testes if _norm(t) in zero})
 
 
 def interpretar(no: str, testes: list[str], rc: int, saida: str) -> Resultado:
@@ -143,7 +242,10 @@ def interpretar(no: str, testes: list[str], rc: int, saida: str) -> Resultado:
     if infra or not fim:
         motivo = infra[-1] if infra else f"saída sem PORTAO_FIM (rc do ssh {rc})"
         return Resultado("infra", no, testes, falhas, resumo, motivo, saida)
-    nao_medidos, rc_ruim = _lotes_medidos(testes, linhas)
+    med = _lotes_medidos(testes, linhas)
+    # vazio de lote limpo cujo `--co` também deu 0 itens: duas rodadas limpas sem caso → "sem casos" (listado)
+    sem_casos = [t for t in med.vazios if t in med.zero]
+    nao_medidos, rc_ruim = [t for t in med.nao_medidos if t not in sem_casos], med.rc_ruim
     com_nodeid = [f for f in falhas if _NODEID.match(f)]
     estado = "ok"
     if com_nodeid:
@@ -153,19 +255,27 @@ def interpretar(no: str, testes: list[str], rc: int, saida: str) -> Resultado:
         estado = "falhou"
         falhas = falhas or ["(lote falhou sem linha FAILED — ver o log)"]
     motivo = f"{len(nao_medidos)} arquivo(s) não medido(s) neste nó" if nao_medidos else ""
-    return Resultado(estado, no, testes, falhas, resumo, motivo, saida, nao_medidos=nao_medidos)
+    return Resultado(estado, no, testes, falhas, resumo, motivo, saida, nao_medidos=nao_medidos,
+                     vazios=[t for t in med.vazios if t not in sem_casos], sem_casos=sem_casos)
+
+
+def teto_lote(n_testes: int, paralelo: int) -> int:
+    """s que o MAIOR lote do nó pode levar: base + TETO_POR_ARQ × arquivos dele, nunca acima do TETO_NO."""
+    por_lote = -(-n_testes // max(1, min(paralelo, n_testes or 1)))
+    return int(min(TETO_NO, TETO_BASE + TETO_POR_ARQ * por_lote))
 
 
 def montar_script(sha: str, testes: list[str], paralelo: int, run: str, teto: int, ref: str) -> str:
     cab = {"SHA": sha, "REF": ref, "ORIGEM": ORIGEM, "RUN": run, "PAR": str(max(1, min(paralelo, len(testes)))),
-           "TESTES": " ".join(testes), "TETO": str(teto)}
+           "TESTES": " ".join(testes), "TETO": str(teto), "PARADO": str(PARADO)}
     return "".join(f"{k}={shlex.quote(v)}\n" for k, v in cab.items()) + CORPO_NO.read_text(encoding="utf-8")
 
 
 def rodar_no(no: No, sha: str, testes: list[str], run: str, ref: str) -> Resultado:
-    script = montar_script(sha, testes, no.paralelo, f"{run}-{no.nome}", TETO_NO - 60, ref)
+    teto = teto_lote(len(testes), no.paralelo)
+    script = montar_script(sha, testes, no.paralelo, f"{run}-{no.nome}", teto, ref)
     t0 = time.time()
-    rc, out = _rodar(no.argv, script, TETO_NO)
+    rc, out = _rodar(no.argv, script, teto + MARGEM_SSH)
     r = interpretar(no.nome, testes, rc, out)
     r.segundos = time.time() - t0
     return r
@@ -188,6 +298,8 @@ class Veredito:
     estado: str                       # "aprovado" | "reprovado" | "nao_medido"
     resultados: list[Resultado]
     motivo: str = ""
+    sem_casos: list[str] = field(default_factory=list)
+    pulados: list[str] = field(default_factory=list)      # "itcampo pulado: carga …" (vai para o log)
 
 
 def executar(sha: str, testes: list[str], custo: dict[str, int] | None = None,
@@ -195,9 +307,17 @@ def executar(sha: str, testes: list[str], custo: dict[str, int] | None = None,
     run = f"{time.strftime('%Y%m%d%H%M%S')}-{os.getpid()}"
     ref = ref or sha
     nos = nos or NOS
-    vivos = nos_vivos(nos)
+    pulados: list[str] = []
+    vivos = nos_vivos(nos, pulados)
     if not vivos:
         return Veredito("nao_medido", [], "nenhum nó de teste respondeu (" + ", ".join(n.nome for n in nos) + ")")
+    v = _executar_nos(sha, testes, custo, vivos, run, ref)
+    v.pulados = pulados
+    return v
+
+
+def _executar_nos(sha: str, testes: list[str], custo: dict[str, int] | None, vivos: list[No], run: str,
+                  ref: str) -> Veredito:
     if len(testes) >= LIMIAR_PARALELO and len(vivos) > 1:
         partes = dividir(testes, vivos, custo or {})
     else:
@@ -222,12 +342,14 @@ def executar(sha: str, testes: list[str], custo: dict[str, int] | None = None,
         finais.append(r2)
     finais = _confirmar_na_referencia(finais, vivos, sha, run, ref)
     finais = _refazer_nao_medidos(finais, [n for n in vivos if n.nome not in caidos], sha, run, ref)
-    pendentes = sorted({t for r in finais for t in r.nao_medidos})
+    sem_casos = sorted({t for r in finais for t in r.sem_casos})
+    pendentes = sorted({t for r in finais for t in r.nao_medidos} - set(sem_casos))
     if pendentes:
         return Veredito("reprovado", finais, f"não medido: {len(pendentes)} arquivo(s) — nenhum nó terminou "
-                                             + ", ".join(pendentes[:10]) + (" …" if len(pendentes) > 10 else ""))
+                                             + ", ".join(pendentes[:10]) + (" …" if len(pendentes) > 10 else ""),
+                        sem_casos=sem_casos)
     estado = "aprovado" if all(r.estado == "ok" for r in finais) else "reprovado"
-    return Veredito(estado, finais)
+    return Veredito(estado, finais, sem_casos=sem_casos)
 
 
 def _refazer_nao_medidos(finais: list[Resultado], vivos: list[No], sha: str, run: str, ref: str) -> list[Resultado]:
@@ -247,6 +369,10 @@ def _refazer_nao_medidos(finais: list[Resultado], vivos: list[No], sha: str, run
             if r2.estado == "infra":
                 continue
             r2 = _confirmar_na_referencia([r2], vivos, sha, run, ref)[0]
+            # vazio em lote limpo aqui E no nó anterior: duas rodadas limpas, nós diferentes → "sem casos"
+            dois = [t for t in r2.vazios if t in r.vazios]
+            r2.sem_casos += dois
+            r2.nao_medidos = [t for t in r2.nao_medidos if t not in dois]
             r.nao_medidos, pend = [], r2.nao_medidos
             r.motivo = (r.motivo + " · " if r.motivo else "") + f"refeitos no {outro.nome}"
             saida.append(r2)
@@ -336,6 +462,9 @@ def _imprimir(v: Veredito) -> None:
             print(f"[portão]     {f}")
         if r.nao_medidos:
             print(f"[portão]     NÃO MEDIDOS ({len(r.nao_medidos)}): " + ", ".join(r.nao_medidos[:10]))
+    if v.sem_casos:
+        print(f"[portão] sem casos: {len(v.sem_casos)} arquivo(s): " + ", ".join(v.sem_casos)
+              + " (0 casos no junit em 2 rodadas limpas — aceito, não é teste)")
 
 
 def medir(repo: Path, base: str, sha: str) -> Veredito:
@@ -352,6 +481,10 @@ def medir(repo: Path, base: str, sha: str) -> Veredito:
         _git("update-ref", "-d", ref, repo=repo)
     with LOG.open("a", encoding="utf-8") as fh:
         fh.write(f"\n=== {time.strftime('%F %T')} {sha} base {base} → {v.estado} em {time.time() - t0:.0f} s\n")
+        for msg in v.pulados:
+            fh.write(f"{msg}\n")
+        if v.sem_casos:
+            fh.write(f"sem casos: {len(v.sem_casos)} arquivo(s): {' '.join(v.sem_casos)}\n")
         for r in v.resultados:
             fh.write(f"--- {r.no} ({r.estado}, {r.segundos:.0f} s) {r.motivo}\n{r.saida}\n")
     _imprimir(v)
@@ -412,10 +545,15 @@ def main(argv: list[str]) -> int:
         v = medir(repo, _git("rev-parse", argv[1], repo=repo), _git("rev-parse", argv[2], repo=repo))
         return {"aprovado": 0, "reprovado": 1}.get(v.estado, 3)
     if argv[:1] == ["nos"]:
-        vivos = {n.nome for n in nos_vivos()}
-        for n in NOS:
-            print(f"{n.nome}: {'responde' if n.nome in vivos else 'NÃO responde'}")
-        return 0 if vivos else 3
+        with ThreadPoolExecutor(len(NOS)) as ex:
+            sondas = list(ex.map(sondar, NOS))
+        for n, sd in zip(NOS, sondas):
+            alem = sd.sobrecarga()
+            estado = "NÃO responde" if not sd.vivo else (
+                f"responde · {sd.carga()}" + (f" · SOBRECARGA ({alem})" + ("" if n.referencia else " — pulado")
+                                              if alem else ""))
+            print(f"{n.nome}: {estado}")
+        return 0 if any(sd.vivo for sd in sondas) else 3
     print(__doc__, file=sys.stderr)
     return 2
 
