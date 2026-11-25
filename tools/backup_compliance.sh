@@ -17,7 +17,7 @@ DB=data/compliance.db
 PY=.venv/bin/python
 export PYTHONPATH=.
 TS=$(date +%Y%m%d-%H%M%S)
-ARQ="data/backups/compliance-$TS.db.gz"
+ARQ="$PWD/data/backups/compliance-$TS.db.gz"   # absoluto: o índice guarda o caminho como recebido (onde/obter)
 PREFIXO="vm1/JFN/data/backups/compliance-"
 MANTER_PRINCIPAL="${BACKUP_MANTER_PRINCIPAL:-7}"
 MANTER_OUTROS="${BACKUP_MANTER_OUTROS:-2}"
@@ -33,8 +33,9 @@ from compliance_agent.armazenamento import snapshot_sqlite_gz
 snapshot_sqlite_gz(Path(sys.argv[1]), Path(sys.argv[2]))" "$DB" "$ARQ"; then
   echo "[backup] ⛔ snapshot falhou"; rm -f "${ARQ%.gz}" "$ARQ"; exit 1
 fi
+rm -f "${ARQ%.gz}-shm" "${ARQ%.gz}-wal"    # sobras do quick_check do snapshot (o .db já virou .gz)
 # snapshots locais de dias que não subiram: o de hoje os substitui (cada um tem ~1,7 GB de disco)
-find data/backups -maxdepth 1 -name 'compliance-*.db.gz' ! -name "$(basename "$ARQ")" -print -delete \
+find "$PWD/data/backups" -maxdepth 1 -name 'compliance-*.db.gz' ! -name "$(basename "$ARQ")" -print -delete \
   | sed 's/^/[backup] snapshot local antigo removido: /'
 
 # 3) guardar pela porta única (2 provedores, hash conferido, só então apaga o local)
