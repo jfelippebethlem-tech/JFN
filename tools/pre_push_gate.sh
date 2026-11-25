@@ -95,6 +95,17 @@ if ! "$_pii_py" -m tools.scan_pii --faixa "$_pii_faixa"; then
   echo "[portão] ⛔ CPF com DV válido no que este push leva ($_pii_faixa) — mascare antes de subir"
   exit 1
 fi
+# O0.5 (25/11): gitleaks no mesmo recorte — token/chave/senha novo nunca sobe. Ausente = não medido = bloqueia
+# (gate que declara não ter medido guarda defeito). Instalação: release oficial em ~/.local/bin, sha256 conferido.
+_gl=$(command -v gitleaks 2>/dev/null || echo "$HOME/.local/bin/gitleaks")
+if [ ! -x "$_gl" ]; then
+  echo "[portão] ⛔ gitleaks ausente — segredo NÃO medido neste push; instale-o antes de subir"
+  exit 1
+fi
+if ! "$_gl" git --log-opts="$_pii_faixa" --redact --no-banner --log-level warn "$(git rev-parse --show-toplevel)"; then
+  echo "[portão] ⛔ gitleaks achou segredo no que este push leva ($_pii_faixa) — tire do commit antes de subir"
+  exit 1
+fi
 
 L=$(awk '{print int($1)}' /proc/loadavg)
 # 24/11/2026: SEMPRE assim (catracas aqui, testes casados na VM-2). Com load < 6 o portão rodava 149 arquivos de
