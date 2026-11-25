@@ -128,7 +128,9 @@ def reservar(con, no: str, recursos_livres: Mapping[str, int] | Iterable[str], p
     """Reserva, numa operação atômica, o job em fila de maior prioridade cujos recursos estão TODOS livres neste nó
     e que passa nas restrições da reserva (O2.2 — o que a sombra de 24/11 mediu que faltava):
       · NÓ (`payload.nos`): restrição dura — só um nó da lista reserva; os de `volta.nos` só quando NENHUM nó da
-        lista tem heartbeat nos últimos 5 min (§3.5). Sem `payload.nos`, qualquer nó;
+        lista tem heartbeat nos últimos 5 min (§3.5), pedindo `volta.recursos` quando declarados (GPU → CPU: o E5
+        roda devagar na VM-2, nunca parado) — o `Job.recursos` devolvido é o que o nó gasta. Sem `payload.nos`,
+        qualquer nó;
       · TETO por fonte/provedor (`payload.concorrencia` × `tetos`): a etiqueta já com N jobs RESERVADOS no mundo
         todo não reserva mais; `por_fonte:<rotina>` lê o teto de `por_fonte`;
       · RITMO da assinatura: job com `payload.ritmo` na lista `ritmo_bloqueado` fica na fila;
@@ -185,10 +187,13 @@ UPDATE jobs SET estado = 'reservado', dono = %(no)s, ficha = nextval('fichas'), 
        prazo = now() + make_interval(secs => %(prazo)s), heartbeat_em = now(), iniciado_em = now()
 WHERE id = (
   SELECT j.id FROM jobs j, cheias, seguram, vivos, liberados
-  WHERE j.estado = 'fila' AND j.disponivel_em <= now() AND j.recursos <@ %(livres)s::text[]
+  WHERE j.estado = 'fila' AND j.disponivel_em <= now()
     AND (%(tipos)s::text[] IS NULL OR j.tipo = ANY(%(tipos)s::text[]))
-    AND (NOT (j.payload ? 'nos') OR j.payload->'nos' ? %(no)s
-         OR (coalesce(j.volta->'nos' ? %(no)s, false) AND NOT (j.payload->'nos' ?| vivos.nos)))
+    AND (((NOT (j.payload ? 'nos') OR j.payload->'nos' ? %(no)s) AND j.recursos <@ %(livres)s::text[])
+         OR (coalesce(j.volta->'nos' ? %(no)s, false) AND NOT (j.payload->'nos' ?| vivos.nos)
+             AND (CASE WHEN jsonb_typeof(j.volta->'recursos') = 'array'
+                       THEN ARRAY(SELECT jsonb_array_elements_text(j.volta->'recursos')) ELSE j.recursos END)
+                 <@ %(livres)s::text[]))
     AND NOT (j.payload ? 'ritmo' AND j.payload->>'ritmo' = ANY(%(ritmo)s::text[]))
     AND NOT (coalesce(j.payload->'concorrencia', '[]'::jsonb) ?| cheias.tags)
     AND NOT (coalesce(j.payload->'montante', '[]'::jsonb) ?| seguram.tipos)
@@ -196,7 +201,10 @@ WHERE id = (
     AND (NOT (j.recursos && %(rec_restrito)s::text[]) OR j.tipo = ANY(%(tipos_permitidos)s::text[]))
   ORDER BY j.prioridade, (j.no_preferido IS DISTINCT FROM %(no)s), j.disponivel_em, j.id
   LIMIT 1 FOR UPDATE OF j SKIP LOCKED)
-RETURNING id, tipo, chave, ficha, payload, recursos, tentativas, max_tentativas, correlation_id, volta"""
+RETURNING id, tipo, chave, ficha, payload,
+  CASE WHEN payload ? 'nos' AND NOT (payload->'nos' ? %(no)s) AND jsonb_typeof(volta->'recursos') = 'array'
+       THEN ARRAY(SELECT jsonb_array_elements_text(volta->'recursos')) ELSE recursos END,
+  tentativas, max_tentativas, correlation_id, volta"""
 
 
 def heartbeat(con, ficha: int, prazo_s: float = 300.0) -> bool:

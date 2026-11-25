@@ -86,7 +86,7 @@ def test_grafo_real_encadeia_os_nativos(real):
               "detectar/achado_processo": "periciar", "fatos/mudou": "periciar", "periciar/laudo": "conferir",
               "conferir/veredito": "calibrar"}
     for ev, tipo in cadeia.items():
-        assert [d["tipo"] for d in gp[ev]] == [tipo], ev
+        assert tipo in [d["tipo"] for d in gp[ev]], ev
     dep = gp["arvore/documento_novo"][0]
     assert dep["payload"]["estagio"] == "E3" and dep["payload"]["concorrencia"] == ["sei_rj_ip"]
     assert ct["capturar"]["recursos"] == ["navegador"] and ct["expandir:texto"]["recursos"] == ["cpu_leve"]
@@ -94,7 +94,11 @@ def test_grafo_real_encadeia_os_nativos(real):
     assert alvo["tipo"] == "texto" and alvo["payload"]["estagio"] == "E4"
     assert "arquivar/arquivado" in term and "eco/concluido" in term
     assert all(f"{rid}/concluido" in term for rid in real.rotinas if rid not in gp)     # fim da cadeia legada
-    assert "texto/invalido" not in term and "texto/invalido" in real.dividas()
+    assert real.dividas() == {}                                           # toda rota em dívida virou rota
+    assert [d["tipo"] for d in gp["texto/invalido"]] == ["arvore"] and gp["texto/invalido"][0]["max_reaberturas"] == 3
+    assert [d["tipo"] for d in gp["sei_relacionado/citado"]] == ["arvore"]
+    assert sorted(d["tipo"] for d in gp["detectar/achados"]) == ["caso", "conferir"]
+    assert [d["tipo"] for d in gp["caso/versao"]] == ["entregar"] and "enviar" not in gp["caso/versao"][0]["payload"]
 
 
 def test_jobs_nativos_por_forma():
@@ -134,7 +138,7 @@ def test_evento_nativo_vira_job_do_estagio_seguinte(con, real):
     fila.emitir(con, "capturar", "versao_nova", p, {"aquisicao_id": "aq-1", "n": 3})
     fila.emitir(con, "texto", "pagina_escaneada", f"{p}|sei:1", {"sha256": SHA, "paginas": [2]})
     fila.emitir(con, "arquivar", "arquivado", f"{p}|sei:1", {"sha256": SHA})                 # terminal
-    fila.emitir(con, "sei_relacionado", "citado", "080002/000001/2026", {"de": p})          # dívida: sem rota
+    fila.emitir(con, "fora_do_grafo", "x", "k")                                             # ninguém consome
     assert P.propagar_eventos(con, gp, ct, terminais=term) == 4
     jobs = {c: (t, pl) for c, t, pl in con.execute("SELECT chave, tipo, payload FROM jobs")}
     assert set(jobs) == {f"capturar:{p}", "expandir:texto:aq-1", f"ocr:{p}|sei:1|{SHA[:16]}"}
@@ -143,12 +147,12 @@ def test_evento_nativo_vira_job_do_estagio_seguinte(con, real):
         "documento_novo"
     assert jobs["expandir:texto:aq-1"][1]["alvo"]["tipo"] == "texto"
     rec = con.execute("SELECT recursos, volta FROM jobs WHERE tipo = 'ocr'").fetchone()
-    assert rec[0] == ["gpu"] and rec[1]["nos"] == ["vm2"]
+    assert rec[0] == ["gpu"] and rec[1]["nos"] == ["vm2"] and rec[1]["recursos"] == ["cpu_pesado"]
     pend = con.execute("SELECT fonte || '/' || tipo FROM eventos WHERE processado_em IS NULL").fetchall()
-    assert pend == [("sei_relacionado/citado",)]                          # fica, não some
+    assert pend == [("fora_do_grafo/x",)]                                 # fica, não some
     s = P.saude(con, grafo=gp, terminais=term, dividas=div)
     assert s["estado"] == "BLOQUEADO"
-    assert any("evento sem consumidor: sei_relacionado/citado ×1 (dívida declarada" in m for m in s["motivos"])
+    assert any("evento sem consumidor: fora_do_grafo/x ×1" in m for m in s["motivos"])
 
 
 @precisa_pg
@@ -315,3 +319,120 @@ def test_sigterm_so_levanta_a_bandeira_e_o_laco_devolve_os_jobs(con, esquema_tmp
         assert con.execute("SELECT estado, erro_tipo FROM jobs WHERE chave = 'eco:t'").fetchone() == ("fila", "parada")
     finally:
         sup.fechar()
+
+
+# ── pendências fechadas (2ª rodada da F1): ritmo, volta com recursos, rotas que eram dívida, agenda E17/E18 ──
+def test_estagios_de_llm_levam_o_ritmo_e_todo_estagio_tem_slot(real):
+    """O ritmo da assinatura segura E8/E11/E12 NA RESERVA (antes o job rodava, relia o texto e adiava). E todo
+    estágio nativo tem slot num nó da lista ou da volta (com os recursos da volta): sem it-campo, o E5 roda na CPU."""
+    gp = real.grafo_planejador()
+    assert gp["texto/texto_novo"][0]["payload"]["ritmo"] == "leitura_integral"
+    assert gp["fatos/mudou"][0]["payload"]["ritmo"] == "pericia_integral"
+    assert gp["periciar/laudo"][0]["payload"]["ritmo"] == "conferencia_e12"
+    assert gp["detectar/achados"][0]["payload"]["alvo"]["payload"].get("ritmo") in (None, "conferencia_e12")
+    assert {"leitura_integral", "pericia_integral", "conferencia_e12"} <= real.ritmos()
+    from compliance_agent.aplicacao.estagios import conferir, fatos, periciar
+    assert (fatos.TAREFA, periciar.TAREFA, conferir.TAREFA) == ("leitura_integral", "pericia_integral",
+                                                                "conferencia_e12")
+    for ek, e in real.estagios.items():
+        c = real.contrato_do_estagio(ek)
+        na_lista = any(all(real.slots_do_no(n).get(r) for r in c["recursos"]) for n in c["nos"])
+        v = c["volta"] or {}
+        na_volta = any(all(real.slots_do_no(n).get(r) for r in (v.get("recursos") or c["recursos"]))
+                       for n in v.get("nos") or [])
+        assert na_lista, ek
+        assert not v or na_volta, f"{ek}: a volta {v} não tem slot (declare volta.recursos)"
+
+
+def test_formas_novas():
+    assert P.jobs_nativos({"tipo": "materializar", "forma": "fixo", "chave": "siafe_stats"}, "ob_siafe", {}) == [
+        ("materializar", "materializar:siafe_stats", {})]
+    assert P.jobs_nativos({"tipo": "conferir", "forma": "achados"}, "e10.x:todos", {}) == [
+        ("expandir:conferir", "expandir:conferir:e10.x:todos", {"rodada": "e10.x:todos"})]
+    assert P.jobs_nativos({"tipo": "arvore", "forma": "citado", "max_profundidade": 1}, "p2", {"de": "p1"}) == [
+        ("arvore", "arvore:p2", {"processo": "p2", "citado_por": "p1", "profundidade": 1})]
+    with pytest.raises(P._Encerrado):
+        P.jobs_nativos({"tipo": "arvore", "forma": "citado", "max_profundidade": 1}, "p3", {"de": "p2", "_prof_de": 1})
+    from compliance_agent.fluxo import expandir as X
+    res = {"itens": [{"processo": "270006/000236/2026", "cnpj": "12.345.678/0001-90", "descricao": "12345678000190"},
+                     {"processos": ["080002/013622/2026"], "credor": "12345678000190", "valor": "99999999999999"}]}
+    assert X.citados(res) == {"processo:270006/000236/2026", "processo:080002/013622/2026", "cnpj:12345678000190"}
+
+
+def test_agenda_nativa_entra_na_agenda_do_pg_com_simular(real):
+    linhas = {x["id"]: x for x in real.agenda_nativa()}
+    m = linhas["e17_backup_compliance"]
+    assert m["tipo_job"] == "manter" and m["payload"]["simular"] is True and m["payload"]["estagio"] == "E17"
+    assert linhas["e18_observar_vm2"]["tipo_job"] == "observar" and linhas["e18_observar_vm2"]["payload"]["nos"] == ["vm2"]
+    assert not set(linhas) & {x["id"] for x in real.agenda_linhas()}
+
+
+@precisa_pg
+def test_reserva_pela_volta_com_os_recursos_da_volta(con, real):
+    """§3.5: it-campo fora ⇒ o E5 (gpu) reserva na VM-2 pedindo cpu_pesado; it-campo vivo ⇒ espera por ele."""
+    gp, ct = real.grafo_planejador(), real.contrato()
+    con.execute("INSERT INTO nos(no, slots, heartbeat_em) VALUES ('vm2', %s, now())",
+                (json.dumps(real.slots_do_no("vm2")),))
+    fila.emitir(con, "texto", "pagina_escaneada", "p1|sei:1", {"sha256": SHA})
+    P.propagar_eventos(con, gp, ct)
+    s = P.saude(con, grafo=gp)
+    assert not any("gpu" in m for m in s["motivos"]), s                  # não é BLOQUEADO: a volta tem slot
+    con.execute("INSERT INTO nos(no, slots, heartbeat_em) VALUES ('itcampo', '{}', now())")
+    assert fila.reservar(con, "vm2", real.slots_do_no("vm2")) is None    # it-campo vivo: o E5 é dele
+    con.execute("DELETE FROM nos WHERE no = 'itcampo'")
+    j = fila.reservar(con, "vm2", real.slots_do_no("vm2"))
+    assert j.tipo == "ocr" and j.recursos == ["cpu_pesado"]
+
+
+@precisa_pg
+def test_ritmo_fechado_segura_na_reserva_e_nao_e_atrasado(con, real):
+    gp, ct = real.grafo_planejador(), real.contrato()
+    con.execute("INSERT INTO nos(no, slots, heartbeat_em) VALUES ('vm2', %s, now())",
+                (json.dumps(real.slots_do_no("vm2")),))
+    fila.emitir(con, "texto", "texto_novo", "p1|sei:1", {"sha256": SHA})
+    P.propagar_eventos(con, gp, ct)
+    con.execute("UPDATE jobs SET disponivel_em = now() - interval '1 hour'")
+    assert fila.reservar(con, "vm2", real.slots_do_no("vm2"), ritmo_bloqueado=["leitura_integral"]) is None
+    s = P.saude(con, grafo=gp, ritmo_bloqueado=["leitura_integral"])
+    assert s["estado"] == "SAUDAVEL" and s["ritmo_segura"] == {"leitura_integral": 1}, s
+    assert P.saude(con, grafo=gp)["estado"] == "ATRASADO"                # sem o ritmo medido, é fila parada
+    assert fila.reservar(con, "vm2", real.slots_do_no("vm2")).tipo == "fatos"
+
+
+@precisa_pg
+def test_recaptura_em_laco_e_citado_alem_da_profundidade(con, real):
+    gp, ct = real.grafo_planejador(), real.contrato()
+    for _ in range(5):                                   # a mesma tela de WAF 5×: 3 reaberturas, depois laço
+        fila.emitir(con, "texto", "invalido", "p1|sei:9", {"sha256": SHA, "motivo": "waf"})
+        P.propagar_eventos(con, gp, ct)
+        con.execute("UPDATE jobs SET estado = 'feito', concluido_em = now()")
+    desc = [d for (d,) in con.execute("SELECT detalhe->'descartado' FROM eventos ORDER BY id")]
+    assert desc[:3] == [None, None, None] and all("laço" in d[0] for d in desc[3:])
+    con.execute("TRUNCATE jobs, eventos")
+    fila.emitir(con, "sei_relacionado", "citado", "p2", {"de": "p1"})    # p1 veio da OB (sem profundidade)
+    P.propagar_eventos(con, gp, ct)
+    assert con.execute("SELECT payload->>'profundidade' FROM jobs WHERE chave = 'arvore:p2'").fetchone() == ("1",)
+    fila.emitir(con, "sei_relacionado", "citado", "p3", {"de": "p2"})    # citado do citado: para
+    P.propagar_eventos(con, gp, ct)
+    assert fila.estado_de(con, "arvore:p3") is None
+    enc = con.execute("SELECT detalhe->'encerrado', processado_em IS NOT NULL FROM eventos WHERE chave = 'p3'"
+                      ).fetchone()
+    assert enc[1] and "2 saltos" in enc[0][0]
+    assert not any("descartado" in m for m in P.saude(con, grafo=gp)["motivos"])   # regra, não defeito
+
+
+@precisa_pg
+def test_agenda_nativa_sem_sobreposicao_por_linha(con, real):
+    linhas = [x for x in real.agenda_nativa() if x["tipo_job"] == "manter"]
+    P.sincronizar_agenda(con, linhas)
+    con.execute("UPDATE agenda SET ativo = true, proximo = now() - interval '1 minute'")
+    assert P.materializar_agenda(con, real.contrato()) == len(linhas) == 5       # as 5 rotinas, não 1
+    assert P.materializar_agenda(con, real.contrato()) == 0
+
+
+def test_teto_de_memoria_do_filho_nao_mata_o_chromium():
+    """E16 (PDF) foi à quarentena na prova rf1b: Chromium não abre sob RLIMIT_AS (reserva dezenas de GB de VA)."""
+    import resource
+    assert S.RLIMIT_FILHO == resource.RLIMIT_DATA
+    src = Path(S.__file__).read_text(encoding="utf-8")
+    assert "setrlimit(resource.RLIMIT_AS" not in src

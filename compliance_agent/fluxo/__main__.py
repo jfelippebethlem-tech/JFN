@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         elif a.cmd == "agenda":
             from compliance_agent.fluxo import grafo
             r = {"esquema": fila.esquema_vigente(),
-                 **planejador.sincronizar_agenda(con, grafo.carregar(a.grafo).agenda_linhas())}
+                 **planejador.sincronizar_agenda(con, (g := grafo.carregar(a.grafo)).agenda_linhas() + g.agenda_nativa())}
         elif a.cmd == "ritmo":
             from compliance_agent.fluxo import ritmo
             if a.acao == "medir":

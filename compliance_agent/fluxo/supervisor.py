@@ -10,7 +10,7 @@ O laço SÓ ESCOLHE. Cada volta:
   5. reserva jobs enquanto houver slot livre e lança cada um em SUBPROCESSO ISOLADO:
      `systemd-run --user --scope --slice=jfn-coletor.slice -p MemoryMax=… -p CPUWeight=…` + `timeout` (a fatia do
      egress da O0.4: deploy/seguranca/nftables-egress.nft casa por cgroup v2 — job sem rede interna), quando o
-     systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_AS), nice e `timeout`. Na reserva: só
+     systemd do usuário responde; senão subprocess com `prlimit` (RLIMIT_DATA), nice e `timeout`. Na reserva: só
      estágio LIBERADO (O9.0), slot transitório do yaml só para as rotinas dele (D1) e o ritmo da assinatura lido
      do PG (fluxo/ritmo.py; sem medição = porta fechada) somado ao guarda local.
 Entre voltas espera `LISTEN jfn_jobs` (job novo acorda na hora), no máximo 60 s — 2 s com filho rodando.
@@ -50,6 +50,10 @@ LIMITES: dict[str, tuple[str, int, int]] = {
     "gpu": ("6G", 50, 7200), "llm": ("1G", 20, 1800), "materializar": ("1G", 200, 600), "disco": ("1G", 20, 3600),
 }
 LIMITE_CONFERIR = ("512M", 50, 120)
+# teto de memória do filho SEM systemd: RLIMIT_DATA (heap + mmap anônimo ≈ memória de fato). NÃO RLIMIT_AS: o Chromium
+# reserva dezenas de GB de espaço de endereço e morre ao abrir sob qualquer RLIMIT_AS (medido na VM-2 em 25/11 com 2 e
+# 8 GB; com RLIMIT_DATA de 2 GB gera o PDF) — o E16 (PDF) e o navegador real do E2/E3 caíam em quarentena.
+RLIMIT_FILHO = resource.RLIMIT_DATA
 PLANEJAR_A_CADA_S = 10.0
 ESPERA_OCIOSA_S = 60.0
 ESPERA_COM_FILHO_S = 2.0
@@ -234,7 +238,7 @@ class Supervisor:
         mem = _bytes(lim[0])
 
         def _teto():                                     # só no ramo sem systemd: prlimit + nice
-            resource.setrlimit(resource.RLIMIT_AS, (mem * 2, mem * 2))   # AS > RSS: folga para o mapa do Python
+            resource.setrlimit(RLIMIT_FILHO, (mem * 2, mem * 2))         # folga para o mapa do Python
             os.nice(10)
         with open(pasta / f"{fase}.stderr", "wb") as err:
             proc = subprocess.Popen(cmd, cwd=RAIZ, env=self._env_filho(), stdout=subprocess.DEVNULL, stderr=err,
@@ -365,10 +369,11 @@ class Supervisor:
 
     def uma_volta(self) -> dict:
         r: dict = {"no": self.no}
+        bloqueados = sorted(t for t in self.ritmos if self.ritmo(t))
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
             self._ultimo_plano = time.monotonic()
             r["planejador"] = planejador.ciclo(self.con, self.grafo, self.contrato, self.terminais,
-                                               self.nos_esperados, self.dividas)
+                                               self.nos_esperados, self.dividas, bloqueados)
         r["colhidos"] = self._colher()
         r["leases_perdidos"] = self._renovar()
         m = self.medir()
@@ -377,7 +382,6 @@ class Supervisor:
         self._aplicar_acao(d)
         self._registrar_no(m, d)
         livres, lancados = dict(d.livres), 0
-        bloqueados = sorted(t for t in self.ritmos if self.ritmo(t))
         if bloqueados:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:

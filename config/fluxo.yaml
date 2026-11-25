@@ -108,7 +108,8 @@ estagios:
     nos: [itcampo]
     volta:
       nos: [vm2]
-      nota: 'CPU (RapidOCR/Tesseract) na VM-2: mais lento, nunca parado (~19 PDFs/dia, §16.1)'
+      recursos: [cpu_pesado]
+      nota: 'CPU (RapidOCR/Tesseract) na VM-2: mais lento, nunca parado (~19 PDFs/dia, §16.1); a VM-2 não tem slot gpu'
     timeout_s: 7200
     prioridade: 55
     efeito: OCR gravado SÓ onde o texto estava vazio, com bbox e motor@versão
@@ -151,6 +152,7 @@ estagios:
     efeito: fatos com citação literal conferida (documento, versão, página, offset) + cobertura gravada
     concorrencia: [assinatura_claude, llm_batch]
     depende: [E4, E6]
+    ritmo: leitura_integral               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
     sem_itcampo: VM-2
   E9:
     tipo: elegibilidade
@@ -188,6 +190,7 @@ estagios:
     efeito: laudo v2 por eixo com release_ia, cobertura e abstenção gravados
     concorrencia: [assinatura_claude, llm_batch]
     depende: [E8, E10]
+    ritmo: pericia_integral               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
     sem_itcampo: VM-2
   E12:
     tipo: conferir
@@ -201,6 +204,7 @@ estagios:
     efeito: veredito do Opus gravado (confirma ou rebaixa) com a régua atualizada
     concorrencia: [assinatura_claude]
     depende: [E10, E11]
+    ritmo: conferencia_e12               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
     sem_itcampo: VM-2
   E13:
     tipo: calibrar
@@ -233,7 +237,8 @@ estagios:
     nos: [vm1]
     volta:
       nos: [vm2]
-      nota: só se a VM-1 cair; o painel mora na VM-1
+      recursos: [cpu_leve]
+      nota: só se a VM-1 cair; o painel mora na VM-1 (a VM-2 não tem slot materializar)
     timeout_s: 1800
     prioridade: 20
     efeito: chave do cache do painel (ou lente) regravada depois do início
@@ -2928,6 +2933,18 @@ nativos:
     - {evento: detectar/achado_processo, estagio: E11, forma: processo}
     - {evento: periciar/laudo, estagio: E12, forma: laudo}
     - {evento: conferir/veredito, estagio: E13, forma: agrupado}
+    - {evento: coleta/conferidos, estagio: E13, forma: agrupado, nota: veredito novo da triagem/Opus coletado pelo E1}
+    - {evento: coleta/fonte_mudou, estagio: E15, forma: fixo, chave: siafe_stats, payload: {visao: siafe_stats},
+       nota: 'a visão do painel que lê a OB do SIAFE (as demais visões ainda são do materializador legado)'}
+    - {evento: detectar/achados, estagio: E12, forma: achados, nota: 'um conferir por achado da rodada; o E12 decide por risco'}
+    - {evento: detectar/achados, estagio: E14, forma: casos, nota: 'caso por processo/CNPJ citado nos achados da rodada'}
+    - {evento: caso/versao, estagio: E16, forma: fixo, chave: 'dossie_orgao:couto', debounce_s: 600,
+       payload: {produto: dossie_orgao, lente: couto, justificativa: 'esteira: caso novo ou versão nova (E14 → E16)'},
+       nota: 'foco do dono no período Couto (memória foco-50-governo-couto); SEM envio: `enviar` ausente = não manda Telegram'}
+    - {evento: sei_relacionado/citado, estagio: E2, forma: citado, max_profundidade: 1,
+       nota: 'árvore do processo citado por um processo com OB; o citado do citado para (não varre o SEI inteiro)'}
+    - {evento: texto/invalido, estagio: E2, forma: processo, max_reaberturas: 3,
+       nota: 'tela de WAF/menu no lugar do PDF: o E2 trata a versão inválida como faltante (O3.5, 1.8) e o E3 recaptura; 3× em 24 h = laço, descartado'}
   terminais:
     arquivar/arquivado: 'original guardado com md5 conferido: nenhum estágio depende'
     calibrar/tier: 'o tier calibrado é configuração que o E10 lê (não é aresta: senão haveria ciclo E10→E13→E10)'
@@ -2935,8 +2952,16 @@ nativos:
     entregar/dossie: 'dossiê exportado: fim da cadeia'
     observar/metricas: 'métrica gravada em fluxo.metricas; a automelhoria (O8.4) lê a tabela, não o evento'
     eco/concluido: 'E0 de teste do motor'
-  sem_consumidor:
-    sei_relacionado/citado: 'processo citado por outro: a fila única do E2 ainda não decide quem entra (sem rota até a O3)'
-    texto/invalido: 'tela de WAF/menu do SEI no lugar do PDF: pede recaptura ao E3, rota não decidida (risco de laço)'
-    detectar/achados: 'E12 por achado e E14 por processo/CNPJ citado: a expansão por achado ainda não foi portada do ensaio'
-    caso/versao: 'E16: produto/lente do dossiê é decisão do dono (o ensaio usa dossie_orgao/couto)'
+  sem_consumidor: {}
+  # estágios sem evento de entrada: horário. Entram DESLIGADOS na agenda do PG (religar é a O9.0, uma a uma)
+  agenda:
+    - {id: e17_backup_compliance, estagio: E17, cron: '50 3 * * *', payload: {rotina: backup_compliance, simular: true},
+       nota: 'sombra da rotina legada backup_compliance: simula e confere pré-condições; executar = decisão da O9.0'}
+    - {id: e17_backup_evidencias_pg, estagio: E17, cron: '40 2 * * *', payload: {rotina: backup_evidencias_pg, simular: true}}
+    - {id: e17_wal_checkpoint, estagio: E17, cron: '25 */6 * * *', payload: {rotina: wal_checkpoint, simular: true}}
+    - {id: e17_vacuum, estagio: E17, cron: '0 3 * * 0', payload: {rotina: vacuum, simular: true}}
+    - {id: e17_zelador, estagio: E17, cron: '30 2 1-7 * *', payload: {rotina: zelador, simular: true}}
+    - {id: e18_observar_vm1, estagio: E18, cron: '*/10 * * * *', payload: {nos: [vm1]},
+       nota: 'sensores do nó → fluxo.metricas; nativo no lugar das legadas observar_<nó> (desligadas)'}
+    - {id: e18_observar_vm2, estagio: E18, cron: '3-59/10 * * * *', payload: {nos: [vm2]}}
+    - {id: e18_observar_itcampo, estagio: E18, cron: '6-59/10 * * * *', payload: {nos: [itcampo]}}

@@ -113,7 +113,10 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
         linhas = con.execute("SELECT id, cron_expr, proximo, tipo_job, payload, now() FROM agenda WHERE ativo AND "
                              "(proximo IS NULL OR proximo <= now()) FOR UPDATE SKIP LOCKED").fetchall()
         for ag_id, expr, proximo, tipo, payload, agora in linhas:
-            if proximo is not None and not _pendente(con, tipo):
+            # rotina legada: um tipo por rotina (rede fundida: evento e agenda juntos); estágio nativo (E17/E18): o
+            # tipo é do estágio, então a sobreposição é por LINHA da agenda (5 rotinas do manter não se barram)
+            pend = _pendente(con, tipo) if tipo.startswith("legado:") else _pendente_linha(con, tipo, ag_id)
+            if proximo is not None and not pend:
                 c = contrato.get(tipo, {})
                 novo = fila.enfileirar(con, tipo, f"{tipo}:agenda:{ag_id}:{proximo.isoformat()}", payload,
                                        prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
@@ -122,6 +125,12 @@ def materializar_agenda(con, contrato: Mapping[str, Mapping] | None = None) -> i
                 n += novo is not None
             con.execute("UPDATE agenda SET proximo = %s WHERE id = %s", (Cron(expr).proximo(agora), ag_id))
     return n
+
+
+def _pendente_linha(con, tipo: str, ag_id: str) -> str | None:
+    r = con.execute("SELECT max(estado) FROM jobs WHERE tipo = %s AND chave LIKE %s AND estado IN ('fila', "
+                    "'reservado')", (tipo, f"{tipo}:agenda:{ag_id}:%")).fetchone()
+    return r[0] if r else None
 
 
 def _pendente(con, tipo: str) -> str | None:
@@ -173,6 +182,8 @@ def jobs_nativos(dep: Mapping, chave: str | None, detalhe: Mapping | None) -> li
     tipo, forma, det, k = dep["tipo"], dep["forma"], dict(detalhe or {}), (chave or "").strip()
     if forma == "agrupado":
         return [(tipo, tipo, {})]
+    if forma == "fixo":
+        return [(tipo, f"{tipo}:{dep['chave']}", {})]
     if not k:
         raise ValueError(f"evento sem chave para a forma {forma}")
     if forma == "processo":
@@ -197,7 +208,25 @@ def jobs_nativos(dep: Mapping, chave: str | None, detalhe: Mapping | None) -> li
                  {"unidade": unidade, **({"exercicio": ex} if ex and ex != "todos" else {})})]
     if forma == "laudo":
         return [(tipo, f"{tipo}:laudo:{k}", {"alvo": "laudo", "ref": k})]
+    if forma in ("achados", "casos"):                 # k = '<detector>:<escopo>' da rodada do E10
+        return [(f"expandir:{tipo}", f"expandir:{tipo}:{k}", {"rodada": k})]
+    if forma == "citado":                             # `_prof_de` = profundidade do processo que citou (planejador)
+        prof = int(det.get("_prof_de") or 0) + 1
+        if prof > int(dep["max_profundidade"]):
+            raise _Encerrado(f"citado a {prof} saltos de um processo com OB (máximo {dep['max_profundidade']})")
+        return [(tipo, f"{tipo}:{k}", {"processo": k, "citado_por": det.get("de"), "profundidade": prof})]
     raise ValueError(f"forma desconhecida: {forma}")
+
+
+class _Encerrado(Exception):
+    """A regra da rota encerra o evento sem job (não é defeito: fica em `detalhe.encerrado`, fora da saúde)."""
+
+
+def _reaberturas(con, ev_id: int, fonte: str, tipo: str, chave: str | None) -> int:
+    """Quantos eventos iguais (fonte, tipo, chave) já foram processados nas últimas 24 h."""
+    return con.execute("SELECT count(*) FROM eventos WHERE fonte = %s AND tipo = %s AND chave IS NOT DISTINCT FROM %s "
+                       "AND id <> %s AND processado_em > now() - interval '24 hours'",
+                       (fonte, tipo, chave, ev_id)).fetchone()[0]
 
 
 def _consumo(grafo: Mapping[str, list], terminais: Mapping[str, str] | None) -> dict:
@@ -238,13 +267,26 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
                               f"{_CONSUMIVEL} ORDER BY id LIMIT %(limite)s FOR UPDATE SKIP LOCKED",
                               {**_consumo(grafo, terminais), "limite": limite}).fetchall()
         for ev_id, fonte, chave, tipo_ev, detalhe in eventos:
-            adiar, descartes = False, []
+            adiar, descartes, encerrados = False, [], []
             for dep in list(grafo.get(fonte, [])) + list(grafo.get(f"{fonte}/{tipo_ev}", [])):
                 dep = {"tipo": dep} if isinstance(dep, str) else dep
                 agrupar = bool(dep.get("agrupar"))
                 if dep.get("forma"):
+                    det = dict(detalhe or {})
+                    if dep.get("max_reaberturas") and _reaberturas(con, ev_id, fonte, tipo_ev, chave) >= \
+                            int(dep["max_reaberturas"]):
+                        descartes.append(f"{dep['tipo']}: laço — {fonte}/{tipo_ev} {chave} já reabriu "
+                                         f"{dep['max_reaberturas']}× em 24 h")
+                        continue
+                    if dep["forma"] == "citado":
+                        r = con.execute("SELECT (payload->>'profundidade')::int FROM jobs WHERE chave = %s",
+                                        (f"{dep['tipo']}:{det.get('de')}",)).fetchone()
+                        det["_prof_de"] = (r[0] if r else 0) or 0
                     try:
-                        alvos = jobs_nativos(dep, chave, detalhe)
+                        alvos = jobs_nativos(dep, chave, det)
+                    except _Encerrado as exc:
+                        encerrados.append(f"{dep['tipo']}: {exc}")
+                        continue
                     except ValueError as exc:
                         descartes.append(f"{dep['tipo']}: {exc}")
                         continue
@@ -281,11 +323,10 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
                         elif est in ("quarentena", "cancelado"):
                             descartes.append(f"{chave_dep} em {est} (não reabre: só por gente)")
             if not adiar:
-                con.execute("UPDATE eventos SET processado_em = now(), detalhe = CASE WHEN %s::jsonb IS NULL THEN "
-                            "detalhe ELSE coalesce(detalhe, '{}'::jsonb) || jsonb_build_object('descartado', "
-                            "%s::jsonb) END WHERE id = %s",
-                            (json.dumps(descartes) if descartes else None,
-                             json.dumps(descartes) if descartes else None, ev_id))
+                marca = {**({"descartado": descartes} if descartes else {}),
+                         **({"encerrado": encerrados} if encerrados else {})}
+                con.execute("UPDATE eventos SET processado_em = now(), detalhe = coalesce(detalhe, '{}'::jsonb) || "
+                            "%s::jsonb WHERE id = %s", (json.dumps(marca), ev_id))
                 feitos += 1
     return feitos
 
@@ -295,22 +336,33 @@ _ORDEM = ("SAUDAVEL", "DEGRADADO", "ATRASADO", "BLOQUEADO", "INDISPONIVEL")
 
 
 def saude(con, nos_esperados: tuple[str, ...] = (), grafo: Mapping[str, list] | None = None,
-          terminais: Mapping[str, str] | None = None, dividas: Mapping[str, str] | None = None) -> dict:
+          terminais: Mapping[str, str] | None = None, dividas: Mapping[str, str] | None = None,
+          ritmo_bloqueado=None) -> dict:
     """O pior estado vence. Cada motivo é medido aqui (nada é "SAUDAVEL" por falta de leitura):
     INDISPONIVEL nenhum nó vivo · BLOQUEADO job elegível pedindo recurso que nenhum nó vivo oferece, ou evento
     pendente que NINGUÉM consome (só medido com o `grafo`; `dividas` = o motivo declarado no yaml) ·
     ATRASADO fila elegível parada há mais de 15 min, ou agenda vencida sem virar job · DEGRADADO nó esperado fora,
-    TODA quarentena aberta, falhou_efeito aberto, ou evento descartado nas últimas 24 h."""
+    TODA quarentena aberta, falhou_efeito aberto, ou evento descartado nas últimas 24 h. Job com volta declarada
+    (`volta.recursos`) não é BLOQUEADO se a volta tem slot vivo; job segurado pelo ritmo da assinatura
+    (`ritmo_bloqueado`) não é ATRASADO — vai em `ritmo_segura`."""
     motivos: list[tuple[str, str]] = []
     vivos = {no: slots for no, slots in con.execute(
         "SELECT no, slots FROM nos WHERE heartbeat_em > now() - make_interval(secs => %s)", (NO_SEM_HEARTBEAT_S,))}
     if not vivos:
         motivos.append(("INDISPONIVEL", "nenhum nó com heartbeat nos últimos 5 min"))
     oferta = {r for slots in vivos.values() for r, n in (slots or {}).items() if n and n > 0}
-    for tipo, recursos in con.execute("SELECT DISTINCT tipo, recursos FROM jobs WHERE estado = 'fila' AND "
-                                      "disponivel_em <= now()"):
+
+    def oferta_de(nos) -> set[str]:
+        return {r for no in nos or () for r, n in (vivos.get(no) or {}).items() if n and n > 0}
+    vistos: set[str] = set()
+    for tipo, recursos, volta in con.execute("SELECT DISTINCT tipo, recursos, volta FROM jobs WHERE estado = 'fila' "
+                                             "AND disponivel_em <= now() ORDER BY tipo"):
         sem = sorted(set(recursos) - oferta)
-        if vivos and sem:
+        v = volta or {}
+        if sem and v.get("recursos") and set(v["recursos"]) <= oferta_de(v.get("nos")):
+            sem = []                                           # a volta declarada (GPU → CPU) tem slot vivo
+        if vivos and sem and tipo not in vistos:
+            vistos.add(tipo)
             motivos.append(("BLOQUEADO", f"{tipo} pede {','.join(sem)}, que nenhum nó vivo oferece"))
     if grafo is not None:
         dividas = dividas or {}
@@ -320,10 +372,15 @@ def saude(con, nos_esperados: tuple[str, ...] = (), grafo: Mapping[str, list] | 
             par = f"{fonte}/{tipo}"
             motivos.append(("BLOQUEADO", f"evento sem consumidor: {par} ×{n}"
                             + (f" (dívida declarada: {dividas[par]})" if par in dividas else "")))
+    # job segurado pelo ritmo da assinatura (porta fechada) NÃO é fila parada: espera conhecida, contada à parte
+    rit = sorted(set(ritmo_bloqueado or ()))
     espera = con.execute("SELECT extract(epoch FROM now() - min(disponivel_em)) FROM jobs WHERE estado = 'fila' "
-                         "AND disponivel_em <= now()").fetchone()[0]
+                         "AND disponivel_em <= now() AND NOT (payload ? 'ritmo' AND payload->>'ritmo' = ANY(%s))",
+                         (rit,)).fetchone()[0]
     if espera is not None and espera > FILA_ATRASADA_S:
         motivos.append(("ATRASADO", f"fila elegível parada há {int(espera)} s"))
+    segurados = dict(con.execute("SELECT payload->>'ritmo', count(*) FROM jobs WHERE estado = 'fila' AND payload ? "
+                                 "'ritmo' AND payload->>'ritmo' = ANY(%s) GROUP BY 1", (rit,)).fetchall())
     ag = con.execute("SELECT count(*) FROM agenda WHERE ativo AND proximo < now() - make_interval(secs => %s)",
                      (AGENDA_ATRASADA_S,)).fetchone()[0]
     if ag:
@@ -343,18 +400,18 @@ def saude(con, nos_esperados: tuple[str, ...] = (), grafo: Mapping[str, list] | 
                                      "quarentena/cancelado, ou evento malformado)"))
     estado = max((m[0] for m in motivos), key=_ORDEM.index, default="SAUDAVEL")
     return {"estado": estado, "motivos": [f"{e}: {t}" for e, t in motivos], "jobs": contagem,
-            "nos_vivos": sorted(vivos)}
+            "nos_vivos": sorted(vivos), "ritmo_segura": segurados}
 
 
 def ciclo(con, grafo: Mapping[str, list] | None = None, contrato: Mapping[str, Mapping] | None = None,
           terminais: Mapping[str, str] | None = None, nos_esperados: tuple[str, ...] = (),
-          dividas: Mapping[str, str] | None = None) -> dict:
+          dividas: Mapping[str, str] | None = None, ritmo_bloqueado=None) -> dict:
     """Uma rodada do planejador (só quem tem a liderança chama). `nos_esperados` = os nós do yaml (1.15)."""
     grafo = GRAFO_EXEMPLO if grafo is None else grafo
     r = {"agenda": materializar_agenda(con, contrato),
          "eventos": propagar_eventos(con, grafo, contrato, terminais=terminais),
          "recuperados": fila.recuperar_vencidos(con)}
-    r["saude"] = saude(con, tuple(nos_esperados), grafo, terminais, dividas)
+    r["saude"] = saude(con, tuple(nos_esperados), grafo, terminais, dividas, ritmo_bloqueado)
     con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'fluxo_saude', %s, %s)",
                 (_ORDEM.index(r["saude"]["estado"]), json.dumps({"estado": r["saude"]["estado"]})))
     return r

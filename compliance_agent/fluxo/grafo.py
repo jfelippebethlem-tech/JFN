@@ -53,6 +53,9 @@ class Concorrencia(_Base):
 class Volta(_Base):
     nos: list[str] = Field(default_factory=list)
     nota: str | None = None
+    # recursos que o job pede QUANDO roda num nó da volta (§3.5: GPU do it-campo → CPU da VM-2, mais lento, nunca
+    # parado). Sem isto, a volta pede os mesmos recursos do estágio.
+    recursos: list[str] | None = None
 
     @field_validator("nos")
     @classmethod
@@ -61,6 +64,11 @@ class Volta(_Base):
         if fora:
             raise ValueError(f"nó desconhecido na volta: {fora}")
         return v
+
+    @field_validator("recursos")
+    @classmethod
+    def _recursos(cls, v):
+        return None if v is None else _checar_recursos(v)
 
 
 class Estagio(_Base):
@@ -75,6 +83,7 @@ class Estagio(_Base):
     concorrencia: list[str] = Field(default_factory=list)
     depende: list[str] = Field(default_factory=list)
     sem_itcampo: str | None = None
+    ritmo: str | None = None                      # tarefa do guarda de ritmo da assinatura (estágio com LLM)
 
     @field_validator("recursos")
     @classmethod
@@ -230,8 +239,10 @@ class Transitorio(_Base):
         return v
 
 
-FORMAS = ("processo", "documento", "aquisicao", "unidade", "detectores", "laudo", "agrupado")
-EXPANDE = {"aquisicao": "texto", "detectores": "detectar"}   # forma → estágio cujos N jobs um job `expandir:` cria
+FORMAS = ("processo", "documento", "aquisicao", "unidade", "detectores", "laudo", "agrupado", "fixo", "citado",
+          "achados", "casos")
+# forma → estágio cujos N jobs um job `expandir:` cria (no filho: fluxo/expandir.py)
+EXPANDE = {"aquisicao": "texto", "detectores": "detectar", "achados": "conferir", "casos": "caso"}
 _RX_EVENTO = re.compile(r"^[a-z][a-z0-9_]*/[a-z][a-z0-9_]*$")
 
 
@@ -240,12 +251,29 @@ class RotaNativa(_Base):
     (planejador.jobs_nativos): `processo` `<tipo>:<processo>` · `documento` `<tipo>:<proc>|<doc>|<sha16>` (sha256 do
     detalhe) · `aquisicao` um job `expandir:texto` que cria um `texto:` por versão binária (texto.jobs_da_aquisicao,
     no filho) · `unidade` `<tipo>:<unidade>:todos` · `detectores` um `expandir:detectar` (detectores da unidade) ·
-    `laudo` `conferir:laudo:<processo>` · `agrupado` UM job do tipo (recálculo da base)."""
+    `laudo` `conferir:laudo:<processo>` · `agrupado` UM job do tipo (recálculo da base) · `fixo` `<tipo>:<chave>` com
+    o `payload` da rota · `citado` `arvore:<processo citado>` até `max_profundidade` saltos de um processo com OB ·
+    `achados` um `expandir:conferir` (um conferir por achado da rodada) · `casos` um `expandir:caso` (processos e
+    CNPJs que os achados da rodada citam). `max_reaberturas`: a mesma chave do evento mais que N vezes em 24 h é laço
+    (descartado, visível na saúde) — a recaptura de tela de WAF não gira para sempre."""
     evento: str
     estagio: str
     forma: str
     debounce_s: int = Field(default=0, ge=0)
+    chave: str | None = None
+    payload: dict = Field(default_factory=dict)
+    max_reaberturas: int | None = Field(default=None, ge=1)
+    max_profundidade: int | None = Field(default=None, ge=1)
     nota: str | None = None
+
+    @model_validator(mode="after")
+    def _campos(self):
+        if (self.forma == "fixo") != bool(self.chave):
+            raise ValueError(f"{self.evento}: `chave` é obrigatória na forma fixo (e só nela)")
+        if (self.forma == "citado") != (self.max_profundidade is not None):
+            raise ValueError(f"{self.evento}: `max_profundidade` é obrigatória na forma citado (e só nela)")
+        return self
+
 
     @field_validator("evento")
     @classmethod
@@ -262,6 +290,21 @@ class RotaNativa(_Base):
         return v
 
 
+class AgendaNativa(_Base):
+    """Horário de estágio nativo sem evento de entrada (E17 manter, E18 observar). Linha nova entra DESLIGADA na
+    agenda do PG (sincronizar_agenda), como as rotinas: religar é a O9.0."""
+    id: str
+    estagio: str
+    cron: str
+    payload: dict = Field(default_factory=dict)
+    nota: str | None = None
+
+    @field_validator("cron")
+    @classmethod
+    def _cron(cls, v):
+        Cron(v)
+        return v
+
 class Nativos(_Base):
     """Encadeamento dos estágios nativos (1.1 da revisão de 25/11): o que cada handler EMITE (a catraca
     tests/test_fluxo_encadeamento.py confere contra o código), as rotas, os terminais e a dívida declarada."""
@@ -269,6 +312,7 @@ class Nativos(_Base):
     rotas: list[RotaNativa] = Field(default_factory=list)
     terminais: dict[str, str] = Field(default_factory=dict)         # 'fonte/tipo' → por que ninguém consome
     sem_consumidor: dict[str, str] = Field(default_factory=dict)    # dívida: fica PENDENTE e a saúde diz BLOQUEADO
+    agenda: list[AgendaNativa] = Field(default_factory=list)
 
 
 class Grafo(_Base):
@@ -352,6 +396,13 @@ class Grafo(_Base):
             elif r.forma in EXPANDE and self.estagios.get(r.estagio) and \
                     self.estagios[r.estagio].tipo != EXPANDE[r.forma]:
                 erros.append(f"nativos: forma {r.forma} só serve ao estágio {EXPANDE[r.forma]} ({r.evento})")
+        for a in n.agenda:
+            if a.estagio not in ESTAGIOS:
+                erros.append(f"nativos.agenda {a.id}: estágio desconhecido {a.estagio}")
+            if not _RX_ID.match(a.id) or a.id in self.rotinas:
+                erros.append(f"nativos.agenda: id inválido ou igual a rotina: {a.id!r}")
+        if len({a.id for a in n.agenda}) != len(n.agenda):
+            erros.append("nativos.agenda: id repetido")
         vistos: set[tuple[str, str]] = set()
         for r in n.rotas:
             if (r.evento, r.estagio) in vistos:
@@ -367,8 +418,10 @@ class Grafo(_Base):
         if expansao:
             return {"recursos": ["cpu_leve"], "prioridade": e.prioridade, "volta": None, "nos": [],
                     "no_preferido": None, "timeout_s": 600}
-        return {"recursos": list(e.recursos), "prioridade": e.prioridade,
-                "volta": {"nos": list(e.volta.nos), "estagio": ek} if e.volta.nos else None,
+        volta = {"nos": list(e.volta.nos), "estagio": ek} if e.volta.nos else None
+        if volta and e.volta.recursos:
+            volta["recursos"] = list(e.volta.recursos)
+        return {"recursos": list(e.recursos), "prioridade": e.prioridade, "volta": volta,
                 "nos": list(e.nos), "no_preferido": e.nos[0] if e.nos else None, "timeout_s": e.timeout_s}
 
     def payload_do_estagio(self, ek: str, *, expansao: bool = False) -> dict:
@@ -381,6 +434,8 @@ class Grafo(_Base):
         conc = [f"por_fonte:{e.tipo}" if x == "por_fonte" else x for x in e.concorrencia]
         if conc and not expansao:
             p["concorrencia"] = conc
+        if e.ritmo and not expansao:              # a reserva segura o job com a porta da assinatura fechada
+            p["ritmo"] = e.ritmo
         return p
 
     def terminais(self, so_ativas: bool = True) -> dict[str, str]:
@@ -426,7 +481,9 @@ class Grafo(_Base):
         return {k: c.max for k, c in self.concorrencia.items()}
 
     def ritmos(self, so_ativas: bool = True) -> set[str]:
-        return {r.ritmo for r in self.rotinas.values() if r.ritmo and (r.ativa or not so_ativas)}
+        """Tarefas do guarda de ritmo que o supervisor mede a cada volta: as das rotinas e as dos estágios nativos."""
+        return ({r.ritmo for r in self.rotinas.values() if r.ritmo and (r.ativa or not so_ativas)}
+                | {e.ritmo for e in self.estagios.values() if e.ritmo})
 
     def slots_do_no(self, no: str) -> dict[str, int]:
         """Slots da §3.4 do nó MAIS o transitório declarado para ele (D1) — o supervisor sobe com isto."""
@@ -493,9 +550,14 @@ class Grafo(_Base):
                 payload = {**self.payload_do_estagio(r.estagio, expansao=True),
                            "alvo": {"tipo": e.tipo, "contrato": self.contrato_do_estagio(r.estagio),
                                     "payload": payload}}
-            g.setdefault(r.evento, []).append({"tipo": e.tipo, "forma": r.forma, "estagio": r.estagio,
-                                               "debounce_s": r.debounce_s, "agrupar": r.forma == "agrupado",
-                                               "abre_janela": True, "payload": payload})
+            if r.payload:
+                payload = {**payload, **r.payload}
+            dep = {"tipo": e.tipo, "forma": r.forma, "estagio": r.estagio, "debounce_s": r.debounce_s,
+                   "agrupar": r.forma == "agrupado", "abre_janela": True, "payload": payload}
+            for k in ("chave", "max_reaberturas", "max_profundidade"):
+                if getattr(r, k) is not None:
+                    dep[k] = getattr(r, k)
+            g.setdefault(r.evento, []).append(dep)
         return g
 
     def agenda_linhas(self, so_ativas: bool = True) -> list[dict]:
@@ -508,6 +570,12 @@ class Grafo(_Base):
                 out.append({"id": rid if len(r.agenda) == 1 else f"{rid}#{i + 1}", "cron_expr": item.cron,
                             "tipo_job": tipo_da_rotina(rid), "payload": self.payload(rid, item.args)})
         return out
+
+    def agenda_nativa(self) -> list[dict]:
+        """Linhas de `fluxo.agenda` dos estágios NATIVOS sem evento de entrada (E17 manter, E18 observar): tipo do
+        estágio, payload do estágio + o da linha. `agenda sincronizar` grava as duas listas (linha nova DESLIGADA)."""
+        return [{"id": a.id, "cron_expr": a.cron, "tipo_job": self.estagios[a.estagio].tipo,
+                 "payload": {**self.payload_do_estagio(a.estagio), **a.payload}} for a in self.nativos.agenda]
 
 
 def rotinas_sem_slot(g: "Grafo") -> list[tuple[str, list[str], list[str]]]:

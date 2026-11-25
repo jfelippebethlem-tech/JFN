@@ -280,9 +280,9 @@ def test_supervisor_carrega_o_grafo_real_e_passa_o_contrato(esquema_tmp, monkeyp
     visto = {}
     original = P.ciclo
 
-    def espiao(con, grafo=None, contrato=None, terminais=None, nos_esperados=(), dividas=None):
+    def espiao(con, grafo=None, contrato=None, terminais=None, nos_esperados=(), dividas=None, ritmo_bloqueado=None):
         visto.update(grafo=grafo, contrato=contrato, terminais=terminais, nos=nos_esperados, dividas=dividas)
-        return original(con, grafo, contrato, terminais, nos_esperados, dividas)
+        return original(con, grafo, contrato, terminais, nos_esperados, dividas, ritmo_bloqueado)
     monkeypatch.setattr(P, "ciclo", espiao)
     sup = S.Supervisor(no="teste", dsn=DSN, esquema=esquema_tmp, slots={"cpu_leve": 1}, isolamento="subprocesso",
                        chave_lideranca=chave_lock(), medir=lambda: governador.Medida(), ritmo=lambda t: None)

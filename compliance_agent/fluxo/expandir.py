@@ -7,7 +7,10 @@ mora no PG/código do estágio. As rotas que expandem estão em config/fluxo.yam
 `detectores`, grafo.EXPANDE):
   · `expandir:texto`    — `capturar/versao_nova` → um `texto:` por versão binária da aquisição (texto.jobs_da_aquisicao);
   · `expandir:detectar` — `elegibilidade/mudou` → um `detectar:<detector>:<exercício|todos>` por detector cuja
-    exigência da E9 é da unidade (detectar.exigencia).
+    exigência da E9 é da unidade (detectar.exigencia);
+  · `expandir:conferir` — `detectar/achados` → um `conferir:achado:<id>` por achado da rodada (o E12 decide por risco);
+  · `expandir:caso`     — `detectar/achados` → um `caso:processo:<p>` / `caso:cnpj:<c>` por processo/CNPJ que os
+    achados da rodada citam (campos nomeados, igualdade de valor — `citados`).
 O payload traz `alvo` = {tipo, contrato, payload base} dos jobs criados (o planejador os tirou do yaml). Idempotente
 pela chave (fila.enfileirar); efeito conferido em outra leitura: TODA chave declarada existe na fila com o tipo certo.
 """
@@ -44,7 +47,71 @@ def _gerar(tipo: str, payload: dict) -> list[tuple[str, dict]]:
                 continue
             out.append((f"detectar:{did}:{ex or 'todos'}", {"detector": did, **({"exercicio": ex} if ex else {})}))
         return out
+    if tipo in ("conferir", "caso"):
+        rodada = str(payload.get("rodada") or "").strip()
+        if ":" not in rodada:
+            raise ErroPermanente(f"expandir:{tipo} sem rodada '<detector>:<escopo>': {rodada!r}")
+        con = _con_achados(payload)
+        try:
+            if tipo == "conferir":
+                ids = sorted({i for (i,) in con.execute(
+                    "SELECT a.id FROM achado a JOIN execucao_regra e ON e.id = a.execucao_regra_id WHERE e.origem "
+                    "LIKE %s", (f"e10:{rodada}:%",))})
+                return [(f"conferir:achado:{i}", {"alvo": "achado", "ref": str(i)}) for i in ids]
+            chaves: set[str] = set()
+            for (res,) in con.execute("SELECT e.resultado FROM execucao_regra e WHERE e.origem LIKE %s AND EXISTS "
+                                      "(SELECT 1 FROM achado a WHERE a.execucao_regra_id = e.id)",
+                                      (f"e10:{rodada}:%",)):
+                chaves |= citados(res)
+            return [(f"caso:{c}", {"chave": c}) for c in sorted(chaves)]
+        finally:
+            con.close()
     raise ErroPermanente(f"expandir: estágio sem expansão declarada: {tipo!r}")
+
+
+CAMPOS_PROCESSO = ("processo", "processos", "processo_pagamento", "processo_contrato")
+CAMPOS_CNPJ = ("cnpj", "credor", "cnpj_credor", "fornecedor", "cnpj_fornecedor")
+
+
+def citados(resultado) -> set[str]:
+    """Chaves do E14 (`processo:<canônico>`, `cnpj:<14 dígitos>`) que o resultado de um achado cita: igualdade de
+    VALOR nos campos nomeados (nunca substring do JSON cru — lição casar-palavra-no-json-cru). Pura."""
+    import re
+
+    from compliance_agent.dominio import processo_id as PI
+    out: set[str] = set()
+
+    def anda(v, k=None):
+        if isinstance(v, dict):
+            for kk, vv in v.items():
+                anda(vv, kk)
+        elif isinstance(v, list):
+            for x in v:
+                anda(x, k)
+        elif isinstance(v, str) and k in CAMPOS_PROCESSO:
+            c = PI.chave_processo(v)
+            if c:
+                out.add(f"processo:{c}")
+        elif isinstance(v, (str, int)) and k in CAMPOS_CNPJ:
+            d = re.sub(r"\D", "", str(v))
+            if len(d) == 14 and (str(v) == d or re.fullmatch(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", str(v))):
+                out.add(f"cnpj:{d}")
+    anda(resultado)
+    return out
+
+
+def _con_achados(payload: dict):
+    """Conexão no esquema dos achados do E10 (`JFN_E10_ESQUEMA`, padrão `sombra`)."""
+    import os
+
+    import psycopg
+
+    from compliance_agent.aplicacao.estagios import detectar as D
+    from compliance_agent.evidencias import dsn_vigente
+    from compliance_agent.fluxo.schema import validar_esquema
+    con = psycopg.connect(payload.get("dsn") or dsn_vigente(), autocommit=True)
+    con.execute(f'SET search_path TO "{validar_esquema(os.environ.get(D.ENV_ESQUEMA) or D.ESQUEMA_PADRAO)}"')
+    return con
 
 
 def _handler(payload: dict, ctx) -> Resultado:
