@@ -58,6 +58,10 @@ _ALVOS = (
     ("caps", _REPO / "static" / "js" / "caps.js", _HTML, re.compile(r'(caps\.js\?v=)([0-9a-f]{8})')),
     ("icones", _REPO / "static" / "assets" / "jfn-icones.js", _HTML, re.compile(r'(jfn-icones\.js\?v=)([0-9a-f]{8})')),
     ("malha", _REPO / "static" / "assets" / "rj-malha.js", _MALHA_SRC, re.compile(r'(rj-malha\.js\?v=)([0-9a-f]{8})')),
+    # O10.7 (25/11/2026): o globo 3D é bundle TARDIO (import() ao ligar "Globo" em Orçamento por órgão); o `?v=` mora
+    # no fonte que o importa, como o da malha — por isso vem antes do painel virar hash.
+    ("globo", _REPO / "static" / "js" / "globo.bundle.js", _REPO / "static" / "js" / "src" / "v71" / "globo" / "index.js",
+     re.compile(r'(globo\.bundle\.js\?v=)([0-9a-f]{8})')),
     ("js", _BUNDLE, _HTML, re.compile(r'(painel\.bundle\.js\?v=)([0-9a-f]{8})')),
     ("css/controle", _REPO / "static" / "css" / "painel.css", _CONTROLE,
      re.compile(r'(painel\.css\?v=)([0-9a-f]{8})')),

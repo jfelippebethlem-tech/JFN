@@ -245,40 +245,55 @@ _RE_GUIA = re.compile(r"\d{4}GD\d+")
 _OB_ZERO = {"orc": 0.0, "rp": 0.0, "st": 0.0, "n": 0, "dev_n": 0, "dev_v": 0.0, "desc_n": 0, "desc_v": 0.0}
 
 
-def _ler_ob(con: sqlite3.Connection | None, ano: int) -> dict:
-    """OB Contabilizada do exercício por UG emitente e mês de emissão, já com a regra de devolução da casa."""
-    if not _tem(con, "ob_orcamentaria_siafe"):
-        return {"ugs": {}, "max_data": None, "sem_numero": [0, 0.0], "disponivel": False}
-    from compliance_agent.pericia_contabil import (DEVOLVIDA, DEVOLVIDA_SEM_VALOR, situacao_devolucao,
-                                                   valor_efetivo_ob)
+def _iter_ob(con: sqlite3.Connection, ano: int):
+    """Uma OB Contabilizada do exercício por vez, já com a regra de devolução da casa: (ug, mês de emissão, data ISO,
+    balde 'orc'|'rp'|'st', valor efetivo, marca de devolução, valor bruto, credor) — ou ('', 0, '', None, 0, None,
+    valor, '') para a linha-fantasma sem número. É a ÚNICA leitura das OB desta tela: `_ler_ob` (a tabela) e
+    `orcamento_globo` (os arcos, O10.7) passam por aqui, e por isso os dois dão o mesmo número."""
+    from compliance_agent.pericia_contabil import situacao_devolucao, valor_efetivo_ob
     from compliance_agent.siafe_gd import devolvido_por_ob
     cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
     c_gd = "gd" if "gd" in cols else "''"
     c_env = "status_envio" if "status_envio" in cols else "''"
     c_tipo = "tipo_ob" if "tipo_ob" in cols else "''"
+    c_cred = "credor" if "credor" in cols else "''"
     devolvido = devolvido_por_ob(con)            # {} sem a tabela `gd_siafe`: vale a regra de piso
-    ugs: dict[str, dict] = {}
-    sem_numero = [0, 0.0]
-    max_data = ""
-    for ug, num, data, tipo, valor, gd, env in con.execute(
-            f"SELECT ug_emitente, numero_ob, data_emissao, {c_tipo}, valor, {c_gd}, {c_env} "
+    for ug, num, data, tipo, valor, gd, env, credor in con.execute(
+            f"SELECT ug_emitente, numero_ob, data_emissao, {c_tipo}, valor, {c_gd}, {c_env}, {c_cred} "
             "FROM ob_orcamentaria_siafe WHERE exercicio=? AND status='Contabilizado'", (ano,)):
         valor = float(valor or 0)
         num = str(num or "").strip()
         if not num:                              # linha-fantasma da coleta: repete uma OB numerada — fora
-            sem_numero[0] += 1
-            sem_numero[1] += valor
+            yield "", 0, "", None, 0.0, None, valor, ""
             continue
         d = str(data or "")
         mes = int(d[3:5]) if len(d) == 10 and d[3:5].isdigit() and 1 <= int(d[3:5]) <= 12 else 0
-        if mes:
-            max_data = max(max_data, f"{d[6:10]}-{d[3:5]}-{d[0:2]}")
+        iso = f"{d[6:10]}-{d[3:5]}-{d[0:2]}" if mes else ""
         ug = str(ug or "").strip()
-        b = ugs.setdefault(ug, {}).setdefault(str(mes), dict(_OB_ZERO))   # mês "0" = data ilegível: conta sempre
         sit = situacao_devolucao(gd, env) or ("gd" if _RE_GUIA.search(str(gd or "")) else "")
         efetivo, marca = valor_efetivo_ob(valor, sit, devolvido=devolvido.get((num, ug)))
         t = str(tipo or "").strip()
-        b["orc" if t == "Orçamentária" else "rp" if t.startswith("RP") else "st"] += efetivo
+        balde = "orc" if t == "Orçamentária" else "rp" if t.startswith("RP") else "st"
+        yield ug, mes, iso, balde, efetivo, marca, valor, str(credor or "").strip()
+
+
+def _ler_ob(con: sqlite3.Connection | None, ano: int) -> dict:
+    """OB Contabilizada do exercício por UG emitente e mês de emissão, já com a regra de devolução da casa."""
+    if not _tem(con, "ob_orcamentaria_siafe"):
+        return {"ugs": {}, "max_data": None, "sem_numero": [0, 0.0], "disponivel": False}
+    from compliance_agent.pericia_contabil import DEVOLVIDA, DEVOLVIDA_SEM_VALOR
+    ugs: dict[str, dict] = {}
+    sem_numero = [0, 0.0]
+    max_data = ""
+    for ug, mes, iso, balde, efetivo, marca, valor, _credor in _iter_ob(con, ano):
+        if balde is None:
+            sem_numero[0] += 1
+            sem_numero[1] += valor
+            continue
+        if iso:
+            max_data = max(max_data, iso)
+        b = ugs.setdefault(ug, {}).setdefault(str(mes), dict(_OB_ZERO))   # mês "0" = data ilegível: conta sempre
+        b[balde] += efetivo
         b["n"] += 1
         if marca == DEVOLVIDA:
             b["dev_n"] += 1

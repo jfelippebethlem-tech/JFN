@@ -12,6 +12,7 @@ import {esc, card, kpi, sec, cover} from '../nucleo/dom.js';
 import {J, erroHumano} from '../nucleo/http.js';
 import {fmtN, fmtR, fmtData, normalizar} from '../nucleo/formato.js';
 import {periodoAtual} from './periodo.js';
+import {globoSecao, globoLigar, globoDepoisDePintar, globoFiltro} from '../v71/globo/index.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro',
   'novembro', 'dezembro'];
@@ -160,7 +161,9 @@ function _fontes(d){
 
 function _corpo(d){
   let h = _seletor(d);
-  h += sec('Estado do Rio de Janeiro — ' + esc(d.periodo)) + _placar(d) + _ranking(d);
+  h += sec('Estado do Rio de Janeiro — ' + esc(d.periodo)) + _placar(d);
+  h += sec('Para onde foi o pago — UG → sede de quem recebeu') + card(globoSecao());   // O10.7
+  h += _ranking(d);
   h += sec('Órgão a órgão', (d.orgaos || []).length) + card(`<label style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><b>Filtrar</b>
       <input type="search" data-oo-filtro value="${esc(_S.qTexto || '')}" placeholder="órgão, unidade ou código — ex.: Saúde, DETRAN, 296100" style="flex:1;min-width:200px"></label>
     <div data-oo-tabela>${_tabela(d)}</div>`);
@@ -175,6 +178,15 @@ async function _buscar(){
   return J('/api/orcamento_orgao' + (q.length ? '?' + q.join('&') : ''), {tetoMs: 120000});
 }
 
+// O10.7: os arcos do globo vêm da MESMA rota, no exercício e mês que a tabela está mostrando (`arcos=1`)
+const _buscarArcos = () => J(`/api/orcamento_orgao?ano=${encodeURIComponent(_D.exercicio)}${_D.mes ? '&mes=' + encodeURIComponent(_D.mes) : ''}&arcos=1`, {tetoMs: 120000});
+
+/* O globo só abre depois que o HTML da aba entrou no DOM (a troca de aba pode passar por View Transition). */
+function _globoQuandoMontar(n = 0){
+  if (document.querySelector('#oo-raiz [data-gl-raiz]')) { globoDepoisDePintar(); return; }
+  if (n < 40) setTimeout(() => _globoQuandoMontar(n + 1), 100);
+}
+
 const _erro = d => card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div><div class="dim" style="font-size:12px;margin-top:6px">Orçamento por órgão INDISPONÍVEL agora — não é zero.</div>`);
 
 async function _repintar(){
@@ -186,6 +198,7 @@ async function _repintar(){
   if (!d || d.ok === false || !d.orgaos) { r2.innerHTML = _erro(d); return; }
   _D = d; _aberto.clear();
   r2.innerHTML = _corpo(d);
+  globoDepoisDePintar();
 }
 
 function _repintarTabela(){
@@ -197,6 +210,7 @@ function _repintarTabela(){
 let _ligado = false;
 export function ligarOrcamentoOrgao(){
   if (_ligado) return; _ligado = true;
+  globoLigar({buscar: _buscarArcos, visiveis: () => (_D ? _visiveis(_D) : []), chave: () => (_D ? `${_D.exercicio}|${_D.mes || ''}` : '')});
   document.addEventListener('change', ev => {
     const t = ev.target; if (!t || !t.matches) return;
     if (t.matches('[data-oo-ano]')) { _S.ano = t.value; _S.mes = ''; _repintar(); }
@@ -208,7 +222,7 @@ export function ligarOrcamentoOrgao(){
     ev.preventDefault();
     if (b.dataset.ooCrit) {
       _S.crit = b.dataset.ooCrit;
-      const raiz = document.getElementById('oo-raiz'); if (raiz) raiz.innerHTML = _corpo(_D);
+      const raiz = document.getElementById('oo-raiz'); if (raiz) { raiz.innerHTML = _corpo(_D); globoDepoisDePintar(); }
       return;
     }
     const cod = b.dataset.ooAbrir || b.dataset.ooIr;
@@ -222,7 +236,7 @@ export function ligarOrcamentoOrgao(){
     const t = ev.target;
     if (!t || !t.matches || !t.matches('[data-oo-filtro]')) return;
     clearTimeout(tm);
-    tm = setTimeout(() => { _S.qTexto = t.value; _S.q = normalizar(t.value.trim()); _repintarTabela(); }, 180);
+    tm = setTimeout(() => { _S.qTexto = t.value; _S.q = normalizar(t.value.trim()); _repintarTabela(); globoFiltro(); }, 180);
   });
 }
 
@@ -235,5 +249,6 @@ export async function renderOrcamentoOrgao(){
     'Quanto cada órgão tem de orçamento e quanto executou: dotação, empenho, liquidação e pagamento, com as taxas de execução. Empenho não é pagamento; o pago é a Ordem Bancária do SIAFE. Taxa baixa é ponto de pergunta, não acusação.', '🏦');
   if (!d || d.ok === false || !d.orgaos) return h + `<div id="oo-raiz">${_erro(d)}</div>`;
   _D = d; _aberto.clear();
+  _globoQuandoMontar();
   return h + `<div id="oo-raiz">${_corpo(d)}</div>`;
 }

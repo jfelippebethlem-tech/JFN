@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "build:painel": "esbuild static/js/src/entrada.js --bundle --format=iife --target=es2020 --charset=utf8 --sourcemap=linked --outfile=static/js/painel.bundle.js",
-    "build:galaxia": "esbuild static/js/galaxia-src/pagina.js --bundle --format=esm --target=es2020 --charset=utf8 --minify --legal-comments=none --outfile=static/js/galaxia.bundle.js"
+    "build:galaxia": "esbuild static/js/galaxia-src/pagina.js --bundle --format=esm --target=es2020 --charset=utf8 --minify --legal-comments=none --outfile=static/js/galaxia.bundle.js",
+    "build:globo": "esbuild static/js/src/v71/globo/cena.js --bundle --format=esm --target=es2020 --charset=utf8 --minify --legal-comments=eof --alias:three/webgpu=./static/js/src/v71/globo/sem-webgpu.js --alias:three/tsl=./static/js/src/v71/globo/sem-webgpu.js --alias:h3-js=./static/js/src/v71/globo/sem-h3.js --outfile=static/js/globo.bundle.js"
   },
   "dependencies": {
     "puppeteer": "^25.1.0"
@@ -12,6 +13,8 @@
     "d3-geo": "^3.1.2",
     "esbuild": "^0.28.1",
     "three": "0.187.0",
-    "topojson-client": "^3.1.0"
+    "three-globe": "2.45.6",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "2.0.2"
   }
 }
