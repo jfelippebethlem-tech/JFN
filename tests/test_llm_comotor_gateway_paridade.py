@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import pytest
 import yaml
 
+from tests.autorizacao_paga_dubles import autorizar
 from compliance_agent import rotina_base as RB
 from compliance_agent.adaptadores.llm import gateway as G
 from compliance_agent.dominio import mascara as M
@@ -35,6 +36,8 @@ TAREFAS = ("triagem_alertas", "camada_subjetiva", "parecer_juridico", "pericia_f
 
 @pytest.fixture(autouse=True)
 def _isolado(tmp_path, monkeypatch):
+    # 24/11/2026: estes testes exercitam a camada paga COM dublê — o dono "autoriza" num livro temporário
+    autorizar(tmp_path, monkeypatch)
     for k, v in {"JFN_LLM_TRACE_DB": "trace.db", "JFN_CLAUDE_DADOS": "estado", "JFN_CLAUDE_CWD": "cwd",
                  "JFN_CRUZAMENTO_DB": "cruz.db", "JFN_CONFERENCIA_DB": "conf.db"}.items():
         monkeypatch.setenv(k, str(tmp_path / v))

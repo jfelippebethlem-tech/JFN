@@ -1,0 +1,18 @@
+# Livro de AUTORIZAÇÕES do dono para crédito de API PAGA (regra do dono, 24/11/2026: "créditos de API só quando eu
+# autorizar"). Lido por compliance_agent/llm/autorizacao_paga.py — gateway LLM (camadas pagas), claude_api (chamada
+# direta e lote) e openrouter_pago.
+#
+# SÓ O DONO acrescenta entradas (o commit cita a mensagem dele). Uma IA nunca escreve aqui por conta própria.
+# Livro vazio = NENHUM gasto pago (padrão). O lote autorizado roda com JFN_LLM_AUTORIZACAO_PAGA=<id>.
+#
+# Modelo de entrada (todos os campos obrigatórios; datas ISO COM fuso):
+#   - id: AUT-20261201-01
+#     quem: dono
+#     quando: "2026-12-01T21:00:00-03:00"
+#     ate: "2026-12-02T21:00:00-03:00"
+#     registro: "chat do Claude Code, 01/12/2026 21h"
+#     tarefas: [leitura_integral]
+#     provedores: [api_anthropic]          # api_anthropic | openrouter_pago | <provedor pago da política>
+#     teto_usd: 2.00
+#     motivo: "piloto li-2 com 20 processos"
+autorizacoes: []

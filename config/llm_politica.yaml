@@ -14,6 +14,17 @@
 #   4 — cascata grátis da casa (`llm/contingencia.gerar_cascata` → `direcionamento_cerebro.gerar_sync`, "DC"), a do
 #       co-motor e da contingência (24/11/2026, migração do co-motor). data_policy desconhecida ⇒ só classe `publico`.
 
+#
+# ASSINATURA PRIMEIRO, PAGA SÓ COM AUTORIZAÇÃO (24/11/2026 — dono: "priorizando SEMPRE usar a assinatura em tudo" e
+# "créditos de API só quando eu autorizar"; decisões D1/D2 em ~/vault/refatoracao/decisoes-delegadas-ia-20261124.md):
+#   · o gateway REORDENA as camadas de toda tarefa: assinatura (2) primeiro, grátis depois, PAGAS por último — a ordem
+#     escrita abaixo não consegue pôr uma paga na frente da assinatura;
+#   · camada PAGA (provedor sem `pago: false` explícito) fica DESLIGADA por padrão: só é tentada com autorização do
+#     dono por chamada/lote — id no livro `config/llm_autorizacoes_pagas.yaml`, passado em `JFN_LLM_AUTORIZACAO_PAGA`
+#     (ou `autorizacao_paga=`). Sem ela: "API paga não autorizada pelo dono", item NÃO JULGADO, pendente para a
+#     assinatura. O teto mensal abaixo continua valendo, mas NÃO autoriza gasto sozinho. Reabrir = o dono acrescenta
+#     uma entrada no livro (nenhuma chave/senha é lida ou mexida aqui).
+
 camadas:
   0: {nome: deterministica, provedor: null}
   1: {nome: gratis, provedor: free_llm}
@@ -102,7 +113,7 @@ tarefas:
   triagem_alertas: {camadas: [2, 3, 4], critica: false, classe_dado: interno}        # alertas: favorecidos, valores, evidências (#11)
   extracao_sei:       {camadas: [2, 3], critica: false}
   leitura_integral:   {camadas: [2, 3], critica: false}
-  normalizacao_itens: {camadas: [3], critica: false}
+  normalizacao_itens: {camadas: [2, 3], critica: false}     # 24/11/2026: assinatura antes da API (era só [3])
   classificacao:      {camadas: [1], critica: false}
   resumo:             {camadas: [1], critica: false}
   extracao_entidades: {camadas: [1], critica: false}

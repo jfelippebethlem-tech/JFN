@@ -7,6 +7,7 @@ import time
 import pytest
 import yaml
 
+from tests.autorizacao_paga_dubles import autorizar
 from compliance_agent.adaptadores.llm import gateway as G
 
 MSG = [{"role": "user", "content": "texto"}]
@@ -14,6 +15,8 @@ MSG = [{"role": "user", "content": "texto"}]
 
 @pytest.fixture(autouse=True)
 def _isolado(tmp_path, monkeypatch):
+    # 24/11/2026: estes testes exercitam a camada paga COM dublê — o dono "autoriza" num livro temporário
+    autorizar(tmp_path, monkeypatch)
     monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "trace.db"))
     monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))
     monkeypatch.setattr(G, "_pre_assinatura", lambda t: None)
@@ -166,9 +169,10 @@ def test_todas_falham_sem_provedor_com_motivos():
                  backends={"assinatura_claude": faz("assinatura_claude", falha=True),
                            "api_anthropic": faz("api_anthropic", falha=True)})
     # 24/11/2026: pericia_execucao ganhou a camada 4 (cascata_dc); sob pytest o backend real dela NÃO TENTA (pulada,
-    # sem contar falha no circuito) — o motivo aparece, explícito
+    # sem contar falha no circuito) — o motivo aparece, explícito. Assinatura primeiro: a grátis vem ANTES da paga.
     assert len(e.value.motivos) == 3 and "assinatura_claude caiu" in str(e.value)
-    assert e.value.motivos[2] == "cascata_dc: não tentou — cascata: sob pytest sem dublê"
+    assert e.value.motivos[1] == "cascata_dc: não tentou — cascata: sob pytest sem dublê"
+    assert e.value.motivos[2] == "api_anthropic: RuntimeError: api_anthropic caiu"
 
 
 def test_assinatura_desligada_e_pulada_sem_tentar(monkeypatch):

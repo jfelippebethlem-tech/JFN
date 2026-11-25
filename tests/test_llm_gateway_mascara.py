@@ -6,6 +6,7 @@ import sqlite3
 
 import pytest
 
+from tests.autorizacao_paga_dubles import autorizar
 from compliance_agent import leitura_integral as L
 from compliance_agent.adaptadores.llm import gateway as G
 from compliance_agent.adaptadores.llm import prompt_seguro as PS
@@ -31,6 +32,8 @@ assert cpf_valido(CPF_A) and cpf_valido(CPF_B)
 
 @pytest.fixture(autouse=True)
 def _isolado(tmp_path, monkeypatch):
+    # 24/11/2026: estes testes exercitam a camada paga COM dublê — o dono "autoriza" num livro temporário
+    autorizar(tmp_path, monkeypatch)
     monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "trace.db"))
     monkeypatch.setenv("JFN_LLM_CACHE_DB", str(tmp_path / "cache.db"))
     monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))

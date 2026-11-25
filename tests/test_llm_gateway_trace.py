@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.autorizacao_paga_dubles import autorizar
 from compliance_agent.adaptadores.llm import gateway as G
 
 CPF = "123.456.789-00"   # DV inválido de propósito: formato de CPF, de ninguém
@@ -14,6 +15,8 @@ CPF = "123.456.789-00"   # DV inválido de propósito: formato de CPF, de ningu�
 
 @pytest.fixture(autouse=True)
 def _isolado(tmp_path, monkeypatch):
+    # 24/11/2026: estes testes exercitam a camada paga COM dublê — o dono "autoriza" num livro temporário
+    autorizar(tmp_path, monkeypatch)
     monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "trace.db"))
     monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))
     monkeypatch.setenv("JFN_ANTHROPIC_ENV", str(tmp_path / "sem_chave.env"))
@@ -57,8 +60,9 @@ def test_escalonamento_grava_retry_e_motivo(_isolado, monkeypatch):
                      "ok", modelo="claude-haiku-5-5", tokens_in=1000, tokens_out=200, tokens_cache_lido=0,
                      tokens_cache_escrito=0)})
     assert r.camada == 3 and r.retry == 1 and "provedor caiu" in r.motivo_escalonamento
-    a, b = _linhas(_isolado)
+    a, pulada, b = _linhas(_isolado)       # 24/11/2026: assinatura primeiro, a grátis (pulada) antes da paga
     assert (a["provedor"], a["ok"], a["retry"]) == ("assinatura_claude", 0, 0) and "RuntimeError" in a["erro"]
+    assert pulada["provedor"] == "cascata_dc" and pulada["erro"].startswith("pulada")
     assert (b["provedor"], b["ok"], b["retry"], b["pago"]) == ("api_anthropic", 1, 1, 1)
     assert "provedor caiu" in b["motivo_escalonamento"]
     assert b["custo_usd"] == pytest.approx((1000 * 0.10 + 200 * 0.50) / 1e6) and b["custo_fonte"] == "tabela"

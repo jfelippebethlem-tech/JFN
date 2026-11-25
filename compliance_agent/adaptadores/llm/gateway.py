@@ -43,6 +43,17 @@ uma trava A MAIS (a mais apertada ganha). A estimativa conservadora de tokens é
       do `claude` da VM. Backend que NÃO TENTOU (trava ocupada, teto diário, sem chave, sob pytest sem dublê) levanta
       `CamadaPulada`: o motivo vai ao trace e a camada é pulada SEM contar falha no circuit breaker.
 
+  ASSINATURA PRIMEIRO E PAGA SÓ COM AUTORIZAÇÃO (24/11/2026 — dono: "priorizando SEMPRE usar a assinatura em tudo";
+      "créditos de API só quando eu autorizar"; decisões em ~/vault/refatoracao/decisoes-delegadas-ia-20261124.md):
+      (1) a ordem de tentativa é REFEITA no código, qualquer que seja a do YAML: a camada da assinatura primeiro, depois
+      as grátis, e as PAGAS por último (`ordem_assinatura_primeiro`); provedor sem `pago: false` explícito na política
+      conta como PAGO (falha fechada). (2) Camada paga só é tentada com autorização VÁLIDA do dono para aquela tarefa
+      e aquele provedor (`autorizacao_paga=<id>` ou `JFN_LLM_AUTORIZACAO_PAGA`, conferida no livro
+      `config/llm_autorizacoes_pagas.yaml` por `llm/autorizacao_paga`); o teto da autorização soma o gasto do trace
+      daquele id (coluna `autorizacao`, com `autorizacao_quem`/`autorizacao_quando`). Sem ela: recusa "API paga não
+      autorizada pelo dono", gravada no trace, e — se nada mais respondeu — `PagaNaoAutorizada` (um `SemProvedor`): o
+      item fica NÃO JULGADO, pendente para a assinatura. O teto mensal NÃO autoriza gasto sozinho.
+
 O QUE AINDA NÃO FAZ: Batch (`enviar_lote`/`colher_lote`), provedores hermes/nous/HTTP direto como camadas, preço do
 OpenRouter pago, conferência de `offset` da citação. Quem embute documento DENTRO de `mensagens` (em vez de
 `documentos`) fica sem datamarking — a migração dos chamadores precisa mover o documento para `documentos`.
@@ -74,6 +85,7 @@ from compliance_agent.adaptadores.llm.prompt_seguro import Documento
 from compliance_agent.adaptadores.llm.saida import ABSTEVE, INDETERMINADO_FALHA_CITACAO, RESPONDIDO  # noqa: F401
 from compliance_agent.dominio import mascara as M
 from compliance_agent.llm import arquivo_estado as arq
+from compliance_agent.llm import autorizacao_paga as AP
 from compliance_agent.qualidade import regua as RG
 
 logger = logging.getLogger(__name__)
@@ -119,6 +131,11 @@ class SemProvedor(GatewayErro):
     def __init__(self, msg: str, motivos: list[str]):
         super().__init__(msg)
         self.motivos = motivos
+
+
+class PagaNaoAutorizada(SemProvedor):
+    """Nada respondeu e a(s) camada(s) paga(s) foram recusadas por falta de autorização do dono: o item fica NÃO
+    JULGADO, pendente para a assinatura. É um `SemProvedor` (quem já trata a falta de provedor segue igual)."""
 
 
 # ── tipos ────────────────────────────────────────────────────────────────────────────────────────────
@@ -256,7 +273,9 @@ _COLUNAS = (("modelo", "TEXT"), ("tokens_in", "INT"), ("tokens_out", "INT"), ("u
             ("retry", "INT"), ("motivo_escalonamento", "TEXT"), ("release_ia", "TEXT"),
             # O6.1 (c)/(d), §3.11, O6.2
             ("cache", "TEXT"), ("estado", "TEXT"), ("injecao_suspeita", "INT"), ("citacoes_descartadas", "INT"),
-            ("mascarados", "INT"))
+            ("mascarados", "INT"),
+            # 24/11/2026: autorização do dono por chamada/lote para camada paga (llm/autorizacao_paga)
+            ("autorizacao", "TEXT"), ("autorizacao_quem", "TEXT"), ("autorizacao_quando", "TEXT"))
 
 
 def _trace_db() -> Path:
@@ -358,8 +377,23 @@ def motivo_orcamento(gasto_mais_reservado: float, est: float, teto: float, corte
     return None
 
 
-def _reservar(est: float | None, critica: bool, pol: dict) -> tuple[str | None, str | None]:
-    """(id_da_reserva, motivo_da_recusa). Sob trava de arquivo: paralelismo não fura o teto."""
+def gasto_autorizacao_usd(aut_id: str) -> float:
+    """Gasto do trace (chamadas pagas do gateway) sob uma autorização do dono. Ilegível ⇒ OrcamentoEsgotado."""
+    try:
+        con = _conectar()
+        try:
+            r = con.execute("SELECT COALESCE(SUM(custo_usd), 0) FROM llm_trace WHERE origem='gateway' AND pago=1 "
+                            "AND autorizacao=?", (aut_id,)).fetchone()
+        finally:
+            con.close()
+        return float(r[0] or 0.0)
+    except sqlite3.Error as e:
+        raise OrcamentoEsgotado(f"gasto da autorização ilegível ({type(e).__name__}) — sem prova de que cabe, nada pago")
+
+
+def _reservar(est: float | None, critica: bool, pol: dict, aut: dict | None = None) -> tuple[str | None, str | None]:
+    """(id_da_reserva, motivo_da_recusa). Sob trava de arquivo: paralelismo não fura o teto (nem o da autorização
+    `aut` do dono, quando dada: gasto do trace daquele id + reservas vivas dele + esta ≤ `teto_usd` dela)."""
     if est is None:
         return None, "custo da chamada paga não estimável (modelo sem preço em config/llm_precos.yaml)"
     o = pol.get("orcamento_mensal") or {}
@@ -377,7 +411,16 @@ def _reservar(est: float | None, critica: bool, pol: dict) -> tuple[str | None, 
         m = motivo_orcamento(gasto + sum(float(v["usd"]) for v in vivas.values()), est, teto, corte, critica)
         if m:
             return m
-        vivas[rid] = {"usd": est, "em": agora, "mes": mes}
+        if aut is not None:
+            try:
+                ja = gasto_autorizacao_usd(aut["id"])
+            except OrcamentoEsgotado as e:
+                return str(e)
+            ja += sum(float(v["usd"]) for v in vivas.values() if v.get("aut") == aut["id"])
+            if ja + est > float(aut["teto_usd"]):
+                return (f"teto da autorização '{aut['id']}' do dono: US$ {ja:.4f} + US$ {est:.4f} passam de "
+                        f"US$ {float(aut['teto_usd']):.2f}")
+        vivas[rid] = {"usd": est, "em": agora, "mes": mes, **({"aut": aut["id"]} if aut is not None else {})}
         return None
     motivo = arq.mutar_json(_arq_reservas(), f, espera=None)
     return (None, motivo) if motivo else (rid, None)
@@ -439,6 +482,21 @@ def motivo_classe(classe_dado: str, provedor: str, pol: dict) -> str | None:
         return None if (p.get("data_policy") == "conhecida" and p.get("aprovada_dono") is True) else \
             f"{provedor}: sem ✅ do dono para classe '{classe_dado}' (§3.11)"
     return f"exigência desconhecida '{exige}' para classe '{classe_dado}'"
+
+
+def provedor_pago(provedor: str, pol: dict) -> bool:
+    """Só `pago: false` EXPLÍCITO é grátis; provedor sem a marca (ou fora da política) conta como pago."""
+    return ((pol.get("provedores") or {}).get(provedor) or {}).get("pago") is not False
+
+
+def ordem_assinatura_primeiro(candidatos: list[tuple[int, str]], pol: dict) -> list[tuple[int, str]]:
+    """Assinatura primeiro, depois as grátis (na ordem da política), as pagas por ÚLTIMO — último recurso."""
+    def peso(cp):
+        c, prov = cp
+        if (pol.get("camadas") or {}).get(c, {}).get("nome") == "assinatura" or prov == "assinatura_claude":
+            return 0
+        return 2 if provedor_pago(prov, pol) else 1
+    return sorted(candidatos, key=peso)
 
 
 # ── mensagens ────────────────────────────────────────────────────────────────────────────────────────
@@ -616,7 +674,8 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
            backends: dict[str, Backend] | None = None, documentos: list[Documento] | None = None,
            exigir_citacao: bool = False, verificador: S.Verificador | None = None, regra: str | None = None,
            contexto=None, cache: bool = False, ferramentas=None, so_camadas=None,
-           modelo_por_camada: dict | None = None, espera: float | None = None) -> Resposta:
+           modelo_por_camada: dict | None = None, espera: float | None = None,
+           autorizacao_paga: str | None = None) -> Resposta:
     """Uma chamada de LLM pela política. Ver o docstring do módulo para o contrato.
 
     `documentos`: o que o modelo LÊ (entra com datamarking; nunca embuta documento em `mensagens`).
@@ -624,7 +683,9 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
     -> (ok, motivo)` troca o verificador padrão. `regra`/`contexto`: componentes extras da chave do cache.
     `ferramentas`: sempre recusado (dual-LLM). `so_camadas`: subconjunto das camadas da tarefa (na ordem da política;
     vazio ⇒ `CamadaForaDaPolitica`). `modelo_por_camada`: {camada: modelo} (None = o padrão do backend daquela
-    camada) — sobrepõe `modelo_pref` só nas camadas listadas. `espera`: trava do `claude` (só a assinatura)."""
+    camada) — sobrepõe `modelo_pref` só nas camadas listadas. `espera`: trava do `claude` (só a assinatura).
+    `autorizacao_paga`: id da autorização do dono no livro (`llm/autorizacao_paga`; sem ele vale
+    `JFN_LLM_AUTORIZACAO_PAGA`) — sem autorização válida nenhuma camada paga é tentada."""
     if not tarefa or not isinstance(tarefa, str):
         raise GatewayErro("tarefa obrigatória")
     if not prompt_version:
@@ -670,6 +731,7 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
             raise GatewayErro(f"camada {c} sem provedor na política")
         m = motivo_classe(classe_dado, prov, pol)
         (recusas_classe.append(f"camada {c}: {m}") if m else candidatos.append((c, prov)))
+    candidatos = ordem_assinatura_primeiro(candidatos, pol)
     if not candidatos:
         _gravar({**base, "ok": 0, "ms": 0, "erro": "recusado: classe de dado",
                  "motivo_escalonamento": " | ".join(recusas_classe)})
@@ -727,9 +789,12 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
 
     motivos: list[str] = list(recusas_classe)
     so_orcamento = True       # todas as camadas viáveis caíram por orçamento? (para o tipo da exceção)
+    nao_autorizada = False    # alguma camada paga recusada por falta de autorização do dono?
+    aut_id = autorizacao_paga or AP.id_do_ambiente()
     tentativa = 0
     for camada, prov in candidatos:
-        pago = bool(((pol.get("provedores") or {}).get(prov) or {}).get("pago"))
+        comuns = {k: v for k, v in comuns.items() if not k.startswith("autorizacao")}   # só na linha da camada paga
+        pago = provedor_pago(prov, pol)
         mp = mpc.get(camada, modelo_pref) if camada in mpc else modelo_pref
         aberto = circuito_aberto(prov, pol)
         if aberto:
@@ -742,7 +807,20 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
                 motivos.append(f"{prov}: {pre}")
                 so_orcamento = False
                 continue
-        rid, mt, modelo_est, est = None, max_tokens, None, None
+        rid, mt, modelo_est, est, aut = None, max_tokens, None, None, None
+        if pago:
+            # regra do dono (24/11/2026): crédito pago só com autorização explícita dele — antes de qualquer outra coisa
+            aut, recusa_aut = AP.verificar(aut_id, tarefa=tarefa, provedor=prov)
+            if recusa_aut:
+                m = f"{AP.RECUSA} — {recusa_aut}; item fica NÃO JULGADO, pendente para a assinatura"
+                motivos.append(f"{prov}: {m}")
+                so_orcamento, nao_autorizada = False, True
+                _gravar({**base, **comuns, "provedor": prov, "camada": camada, "ok": 0, "ms": 0, "pago": 1,
+                         "erro": f"recusado: {AP.RECUSA}", "autorizacao": aut_id,
+                         "motivo_escalonamento": m[:500]})
+                continue
+            comuns = {**comuns, "autorizacao": aut["id"], "autorizacao_quem": str(aut["quem"])[:120],
+                      "autorizacao_quando": aut["quando"]}
         if pago and backends.get(prov) is _backend_api and arq.sob_pytest():
             # o backend real recusaria de qualquer jeito: nem reserva no teto (o arquivo de reservas é de produção)
             motivos.append(f"{prov}: não tentou — API: sob pytest sem cliente dublê")
@@ -750,7 +828,7 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
             continue
         if pago:
             modelo_est, mt, est = _estimativa_api(tarefa, mp, sistema, prompt, max_tokens, tab)
-            rid, recusa = _reservar(est, pt["critica"], pol)
+            rid, recusa = _reservar(est, pt["critica"], pol, aut)
             if recusa:
                 motivos.append(f"{prov}: {recusa}")
                 _gravar({**base, **comuns, "provedor": prov, "camada": camada, "ok": 0, "ms": 0,
@@ -830,6 +908,9 @@ def chamar(tarefa: str, mensagens: list[dict], *, prompt_version: str, modelo_pr
         motivos.append(f"{prov}: {erro}")
         tentativa += 1
 
+    if nao_autorizada:
+        raise PagaNaoAutorizada(f"tarefa '{tarefa}': {AP.RECUSA} — nenhuma camada respondeu: " + " | ".join(motivos),
+                                motivos)
     if so_orcamento:
         raise OrcamentoEsgotado(f"tarefa '{tarefa}': " + " | ".join(motivos))
     raise SemProvedor(f"tarefa '{tarefa}': nenhuma camada respondeu — " + " | ".join(motivos), motivos)

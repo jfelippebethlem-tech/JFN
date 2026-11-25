@@ -419,6 +419,13 @@ def _falhas():
         return (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError)
 
 
+def _sem_autorizacao(tarefa: str) -> str | None:
+    """Regra do dono (24/11/2026): crédito pago só com autorização explícita dele (`llm/autorizacao_paga`, id em
+    `JFN_LLM_AUTORIZACAO_PAGA`). O caminho do gateway chega aqui com `cliente` (o gateway já conferiu)."""
+    from compliance_agent.llm import autorizacao_paga as AP
+    return AP.motivo_recusa(AP.id_do_ambiente(), tarefa=tarefa, provedor="api_anthropic")
+
+
 def pensar_api(tarefa: str, prompt: str, *, sistema: str = "", modelo: str | None = None, max_tokens: int | None = None,
                effort: str = "medium", formato: dict | None = None, timeout: float = 180.0, cliente=None):
     """Chamada SÍNCRONA (alguém espera a resposta), dentro do teto. `(texto, modelo, usd)` ou `None` com motivo
@@ -432,6 +439,9 @@ def pensar_api(tarefa: str, prompt: str, *, sistema: str = "", modelo: str | Non
         return None
     if cliente is None and not disponivel():
         ultimo_motivo = "API: sem chave (ou JFN_CLAUDE_API=0)"
+        return None
+    if cliente is None and (recusa := _sem_autorizacao(tarefa)):
+        ultimo_motivo = recusa
         return None
     memo = chave_memo(modelo, sistema, prompt, formato)
     if (ja := _memo_ler(memo)) is not None:
@@ -493,6 +503,9 @@ def enviar_lote(tarefa: str, itens: list[tuple[str, str]], *, sistema: str = "",
         return None
     if cliente is None and (arq.sob_pytest() or not disponivel()):
         ultimo_motivo = "API: indisponível para lote"
+        return None
+    if cliente is None and (recusa := _sem_autorizacao(tarefa)):
+        ultimo_motivo = recusa
         return None
     est = sum(estimativa(modelo, _tokens_aprox(sistema) + _tokens_aprox(p), max_tokens, lote=True) for _, p in itens)
     recusa = _reservar(tarefa, est)

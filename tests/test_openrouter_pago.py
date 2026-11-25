@@ -12,6 +12,7 @@ import pytest
 
 from compliance_agent.llm import free_llm as F
 from compliance_agent.llm import openrouter_pago as OP
+from tests.autorizacao_paga_dubles import autorizar
 
 
 class _R:
@@ -34,6 +35,8 @@ def pago(monkeypatch, tmp_path):
     monkeypatch.setenv("JFN_OR_PAGO_GASTO", str(tmp_path / "gasto.json"))
     monkeypatch.delenv("JFN_FICHA_OR_PAGO", raising=False)
     monkeypatch.delenv("JFN_FICHA_OR_PAGO_TETO_DIA_USD", raising=False)
+    # 24/11/2026: a porta paga só liga com autorização do dono — aqui, num livro temporário
+    autorizar(tmp_path, monkeypatch, tarefas=[OP.TAREFA], provedores=["openrouter_pago"])
     estado = {"conta": (50.0, 4.89), "restante": 35.0, "gets": 0, "posts": []}
 
     def get(url, headers=None, timeout=None):

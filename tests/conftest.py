@@ -86,6 +86,10 @@ def _isola_db(request, tmp_path, monkeypatch):
     # 24/11/2026 (O7.1): as rotas migradas leem a visão materializada (E15) — teste nunca lê a de produção
     # (data/visoes): pasta vazia por teste, a rota cai no cálculo legado sobre a base do próprio teste.
     monkeypatch.setenv("JFN_VISOES_DIR", str(tmp_path / "visoes_teste"))
+    # 24/11/2026: crédito pago só com autorização do dono (`llm/autorizacao_paga`) — teste nunca herda o id do shell
+    # nem lê o livro real; quem testa a camada paga grava um livro temporário (tests/autorizacao_paga_dubles.py).
+    monkeypatch.delenv("JFN_LLM_AUTORIZACAO_PAGA", raising=False)
+    monkeypatch.setenv("JFN_LLM_AUTORIZACOES", str(tmp_path / "sem_autorizacoes.yaml"))
     yield
 
 

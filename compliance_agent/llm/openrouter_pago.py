@@ -38,6 +38,7 @@ PISO_PADRAO = 10.0
 # teto de tempo do ciclo) — e um defeito (laço, prompt gigante) não queima mais que 1/7 dos ~US$ 34 utilizáveis num
 # dia. O dono sobe pelo env (`JFN_FICHA_OR_PAGO_TETO_DIA_USD`) se quiser ir mais rápido.
 TETO_DIA_PADRAO = 5.0
+TAREFA = "ficha_acervo"     # a única tarefa que usa esta porta (tools/sei_ficha_acervo) — chave da autorização
 TIMEOUT_S = 180
 
 
@@ -78,6 +79,12 @@ def ligado() -> tuple[bool, str]:
         return False, "desligado (JFN_FICHA_OR_PAGO=0)"
     if not _cfg().get("OPENROUTER_PAGO_API_KEY"):
         return False, "sem chave paga"
+    # regra do dono (24/11/2026): "créditos de API só quando eu autorizar" — a autorização de 22/11 só volta a valer
+    # se o dono a registrar no livro (`llm/autorizacao_paga`, id em JFN_LLM_AUTORIZACAO_PAGA)
+    from compliance_agent.llm import autorizacao_paga as AP
+    recusa = AP.motivo_recusa(AP.id_do_ambiente(), tarefa=TAREFA, provedor="openrouter_pago")
+    if recusa:
+        return False, recusa
     return True, ""
 
 

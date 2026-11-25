@@ -7,13 +7,18 @@ import sqlite3
 import pytest
 import yaml
 
+from tests.autorizacao_paga_dubles import autorizar
 from compliance_agent.adaptadores.llm import gateway as G
 
 MSG = [{"role": "user", "content": "texto curto"}]
+# 24/11/2026: normalizacao_itens passou a [2, 3] (assinatura primeiro); estes testes medem só a trava da camada PAGA,
+# por isso pedem `so_camadas=(3,)`.
 
 
 @pytest.fixture(autouse=True)
 def _isolado(tmp_path, monkeypatch):
+    # 24/11/2026: estes testes exercitam a camada paga COM dublê — o dono "autoriza" num livro temporário
+    autorizar(tmp_path, monkeypatch)
     monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "trace.db"))
     monkeypatch.setenv("JFN_CLAUDE_DADOS", str(tmp_path / "estado"))
     monkeypatch.setattr(G, "_pre_assinatura", lambda t: None)
@@ -56,7 +61,7 @@ def test_regra_do_corte_pura():
 def test_abaixo_do_corte_passa_e_soma_no_mes(_isolado):
     _semear_gasto(_isolado, 10.0)
     vistos, b = _api()
-    r = G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", backends={"api_anthropic": b})
+    r = G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,), backends={"api_anthropic": b})
     assert vistos == ["normalizacao_itens"] and r.custo_usd == pytest.approx((100 * 0.10 + 10 * 0.50) / 1e6)
     assert G.gasto_mes_usd() == pytest.approx(10.0 + r.custo_usd)
 
@@ -65,11 +70,11 @@ def test_entre_85_e_100_so_critica(_isolado, monkeypatch):
     _semear_gasto(_isolado, 86.0)
     vistos, b = _api()
     with pytest.raises(G.OrcamentoEsgotado, match="corte de 85%"):
-        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico",
+        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,),
                  backends={"api_anthropic": b})
     assert vistos == []
     _critica(_isolado, monkeypatch, "normalizacao_itens")
-    r = G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", backends={"api_anthropic": b})
+    r = G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,), backends={"api_anthropic": b})
     assert vistos == ["normalizacao_itens"] and r.camada == 3
 
 
@@ -78,7 +83,7 @@ def test_acima_de_100_nada_pago_nem_critica(_isolado, monkeypatch):
     _critica(_isolado, monkeypatch, "normalizacao_itens")
     vistos, b = _api()
     with pytest.raises(G.OrcamentoEsgotado, match="teto mensal"):
-        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", backends={"api_anthropic": b})
+        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,), backends={"api_anthropic": b})
     assert vistos == []
     con = sqlite3.connect(_isolado / "trace.db")
     assert con.execute("SELECT erro FROM llm_trace WHERE origem='gateway' AND ok=0").fetchall() == \
@@ -128,7 +133,7 @@ def test_custo_nao_estimavel_recusa_o_pago(_isolado, monkeypatch, tmp_path):
     monkeypatch.setenv("JFN_LLM_PRECOS", str(p))
     vistos, b = _api()
     with pytest.raises(G.OrcamentoEsgotado, match="não estimável"):
-        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", backends={"api_anthropic": b})
+        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,), backends={"api_anthropic": b})
     assert vistos == []
 
 
@@ -136,7 +141,7 @@ def test_falha_paga_conta_a_estimativa(_isolado):
     def cai(**kw):
         raise RuntimeError("API: falhou (APIConnectionError)")
     with pytest.raises(G.SemProvedor):
-        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico",
+        G.chamar("normalizacao_itens", MSG, prompt_version="v1", classe_dado="publico", so_camadas=(3,),
                  backends={"api_anthropic": cai})
     con = sqlite3.connect(_isolado / "trace.db")
     custo, fonte = con.execute("SELECT custo_usd, custo_fonte FROM llm_trace WHERE origem='gateway'").fetchone()

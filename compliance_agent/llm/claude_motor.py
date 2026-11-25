@@ -54,7 +54,11 @@ from compliance_agent.llm.json_resposta import chaves_faltando, instrucao_schema
 logger = logging.getLogger(__name__)
 
 # a sessão nunca usa chave de API: só a assinatura
-VARIAVEIS_PROIBIDAS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+# No `-p` a chave de API presente vence SEMPRE o login da assinatura, e as variáveis de nuvem desviam para Bedrock/
+# Vertex/Foundry — as duas formas cobram (doc do Claude Code "Authentication", lida em 24/11/2026; decisões
+# delegadas ~/vault/refatoracao/decisoes-delegadas-ia-20261124.md, D1). Nenhuma chega ao subprocesso.
+VARIAVEIS_PROIBIDAS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE", "CLAUDE_CODE_USE_BEDROCK",
+                       "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY")
 
 SISTEMA_PADRAO = (
     "Você é auditor de controle externo (TCE-RJ) do sistema JFN. Responda em português do Brasil. "
