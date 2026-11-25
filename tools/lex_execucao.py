@@ -40,7 +40,9 @@ _SINAIS = {
     "relatorio_fotografico": ["fotograf", "registro fotográfico", "reportagem fotográfica"],
     "atesto_recebimento": ["atesto", "atestad", "recebiment", "termo de recebimento", "aceite"],
     "nota_fiscal": ["nota fiscal", "nfe", "nf-e", "danfe"],
-    "medicao": ["medi", "boletim de medi"],
+    # O6.4 (24/11/2026): o radical "medi" casava "medicamento", "imediato", "intermediário" e "média" — o flag
+    # tem_medicao dizia que havia medição em processo de compra de remédio. Só as formas de "medição".
+    "medicao": ["mediç", "medicao", "medicoes", "boletim de medi"],
 }
 
 _SYS = (
@@ -160,12 +162,15 @@ def _regras_calibracao() -> str:
 
 
 def _chave_processo(p: str | None) -> str | None:
-    """'SEI-330002/031566/24', 'sei-330002/31566/2024' e '330002/031566/2024' são o MESMO processo."""
-    m = re.search(r"(\d{6})\s*/\s*0*(\d+)(?:-\d)?\s*/\s*(\d{4}|\d{2})(?!\d)", p or "")
-    if not m:
-        return None
-    ano = m.group(3) if len(m.group(3)) == 4 else "20" + m.group(3)
-    return f"{m.group(1)}/{int(m.group(2))}/{ano}"
+    """'SEI-330002/031566/24', 'sei-330002/31566/2024' e '330002/031566/2024' são o MESMO processo.
+
+    O6.4 (24/11/2026): delega a `dominio.processo_id` (a função única das grafias) e devolve a forma CURTA legada
+    (`UUUUUU/N/AAAA`, que ob_processo, foto_quantitativo e os bancos antigos usam). A regex antiga lia o 2º segmento
+    como unidade em 4 segmentos ('SEI-080007/010100/1/2023' → '010100/1/2023': 492 grafias distintas no SIAFE) e
+    aceitava unidade de 7 dígitos pelos 6 últimos — ver BUGS_DOCUMENTADOS em tests/test_dominio_processo_id.py."""
+    from compliance_agent.dominio.processo_id import analisar
+    pid = analisar(p)
+    return pid.curta if pid else None
 
 
 def mapa_obs_siafe(con: sqlite3.Connection, processos: list[str], *, autos: bool = True) -> dict[str, dict]:

@@ -98,6 +98,9 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "detectar":                                       # E10 (O5.3, sombra ⚖️): import tardio, como a E9
         from compliance_agent.aplicacao.estagios import detectar
         return detectar.ESTAGIO
+    if familia == "periciar":                                       # E11 (O6.4): perícia única, laudo v2 versionado
+        from compliance_agent.aplicacao.estagios import periciar
+        return periciar.ESTAGIO
     if familia == "arvore":                                         # E2 (O3.3): import tardio (playwright só no filho)
         from compliance_agent.aplicacao.estagios import arvore
         return arvore.ESTAGIO

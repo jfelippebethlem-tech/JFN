@@ -1446,6 +1446,21 @@ rotinas:
     - {cron: '50 */2 * * *'}
     origem: [leitura_integral_colher]
     efeito: {descricao: 'lotes prontos colhidos: fatos ancorados (texto[inicio:fim] = citação) gravados por chave de fatia e leituras com cobertura', so_rc: 'a colheita imprime o resumo por lote (gravadas/descartadas/inválidas/processos concluídos); a prova por processo é o efeito do job fatos:<processo> (recontagem + amostra de 20 reaberta no acervo)'}
+  periciar_e11:
+    estagio: E11
+    descricao: 'E11 periciar (O6.4): perícia única — laudo v2 VERSIONADO por processo nos eixos contratação, preço, execução (ex-lex_execucao), jurídico (ex-Lex), contábil, societário e benefícios (quando a lente pede); entrada = linha do tempo + fatos verificados do E8 + texto integral em fatias de 8–16k tokens, sem teto por processo; grau validado em {0,1,2}, eixo INCERTO não puxa o global, pecas_nao_lidas e cobertura, release_ia e cérebro fora dos marcadores; esquema sombra do PG'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.periciar, fila, --limite, '5']
+    recursos: [llm]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 45
+    concorrencia: [assinatura_claude]
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026) e custo: a assinatura está contida (53% da semana × ritmo 42%) e nenhuma chamada paga é permitida; sem ouro congelado (régua §3.10) todo laudo sai NÃO JULGADO — proposta; religar só com o ✅ do dono na estimativa do relatório ~/vault/refatoracao/o64-pericia-unica.md, com periciar_001.sql aplicado no esquema sombra e com o acervo na VM-2 pela porta única'
+    nota: 'O6.4. Por processo: job `periciar:<processo>` (handler + efeito do estágio nativo; idempotente pela chave processo|fatias|fatos|eixos|prompt|modelo|versão; chave nova = versão n+1 com supersedes). Esta rotina roda os 5 primeiros da ordem única do E8 sem laudo vigente. Substitui pericia_integral e lex_execucao_fila quando religar; todos os processos do fornecedor (sem o _MAX_SEI=3 do lex.py) saem de `periciar fornecedor --cnpj`'
+    evento: {depende: [fatos_e8, detectar_sombra], debounce_s: 900, agrupar: true}
+    origem: [pericia_integral, lex_execucao_fila]
+    efeito: {descricao: 'laudo vigente com a chave declarada, cadeia de versões fechada, global recalculado = gravado e amostra de 20 achados reaberta no acervo (texto[inicio:fim] = citação)', log_contem: 'periciar: [0-9]+ laudo\(s\) conferido\(s\) em [a-z_]+\.laudos_v2'}
   arvore_e2:
     estagio: E2
     descricao: 'E2 árvore (O3.3): árvore viva do processo SEI pelo leitor canônico itkava, paginada até o fim, com tree_hash (evidencias.hash_arvore dos ids da função única do domínio) gravado em arvore_leitura/arvores/documentos do PG; guarda de convergência: hash igual e nenhum documento sem versão = sem mudança e fim; fila única (fluxo.prioridade com os sinais do sei_sweep) e lentes (config/lentes.yaml) como filtro + prioridade'
