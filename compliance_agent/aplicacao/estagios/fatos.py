@@ -76,7 +76,7 @@ from compliance_agent import evidencias as EV
 from compliance_agent import leitura_integral as LI
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
 from compliance_agent.dominio import mascara as M
-from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo.fila import Adiado, Resultado
 from compliance_agent.llm.verificacao import _normal
 
 VERSAO = "e8-1"                                  # lógica do estágio (âncora, régua da citação, chaves)
@@ -135,7 +135,7 @@ def chave_processo(processo: str, texto_sha: str, prompt_version: str = PROMPT_V
     return _sha(f"{processo}|{texto_sha}|{prompt_version}|{modelo}")
 
 
-class SemCota(RuntimeError):
+class SemCota(Adiado):         # espera conhecida: volta sem gastar tentativa (fila.adiar)
     """O leitor não pôde ler agora (ritmo/teto/assinatura): o job tenta de novo com backoff; nada foi marcado como lido."""
 
 
