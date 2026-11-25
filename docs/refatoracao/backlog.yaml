@@ -79,7 +79,8 @@ itens:
   - {id: O8.3, dep: [O8.1], maq: todas, estado: bloqueado_dono, titulo: "6 runbooks + ensaio 24 h sem it-campo (dono em casa)"}
   - {id: O8.4, dep: [O8.1], maq: vm1, estado: pendente, titulo: "Automelhoria consumindo E18; uma fonte por lição; MEMORY.md enxuto"}
   # O9 — Religação e limpeza
-  - {id: O9.0, dep: [O8.1, O6.4, O5.3, O3.4], maq: todas, estado: pendente, titulo: "Religação em sequência verificada + recuperação da lacuna + 48 h"}
+  - {id: O8.5, dep: [O3.4, O4.9, O5.3, O6.4, O7.1, O7.5, O8.1], maq: vm2+itcampo, estado: pendente, titulo: "Ensaio ponta a ponta EM SEQUÊNCIA sobre o snapshot: E1→E18, cada estágio consumindo a saída real do anterior, efeito conferido em cada passagem e contagens batendo do início ao fim; só com ele verde a O9.0 começa (pedido do dono 24/11)"}
+  - {id: O9.0, dep: [O8.5, O8.1, O6.4, O5.3, O3.4], maq: todas, estado: pendente, titulo: "Religação em sequência verificada + recuperação da lacuna + 48 h"}
   - {id: O9.1, dep: [O9.0], maq: vm1, estado: pendente, titulo: "Remover esteiras por órgão e variantes (após 14 dias estáveis)"}
   - {id: O9.2, dep: [], maq: vm1, estado: bloqueado_dono, titulo: "Raiz/_SANDBOX/eleição fora", tags: [irreversivel]}
   - {id: O9.3, dep: [O4.1], maq: vm1, estado: pendente, titulo: "Estrangulamento dos módulos da raiz + extras de dependências + lock com hashes"}
