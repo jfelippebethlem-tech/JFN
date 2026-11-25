@@ -65,6 +65,18 @@ def motivo(con, tarefa: str) -> str | None:
     return trava
 
 
+def motivo_local(tarefa: str) -> str | None:
+    """O guarda LOCAL da assinatura (contingência: ritmo semanal, limite da conta, teto próprio, forçada) com a MESMA
+    exceção do `claude_motor.motivo_desligado`: SÓ a trava de ritmo semanal cede, SÓ no escopo do ensaio O8.5 com a
+    autorização do dono e a semana abaixo do teto. Os handlers de LLM (E8/E11) e o supervisor perguntam aqui — antes,
+    o handler barrava pela contingência crua e a autorização do dono nunca chegava ao E8/E11 (passada r3, 25/11)."""
+    from compliance_agent.llm import claude_motor
+    m = contingencia.motivo_bloqueio(tarefa)
+    if m and contingencia.estado().get("origem") == "ritmo_semanal" and claude_motor.ritmo_liberado_pelo_dono():
+        return None
+    return m
+
+
 def liberado_pelo_dono(semana_pct) -> bool:
     """A MESMA regra de `claude_motor.ritmo_liberado_pelo_dono`, com a semana medida no PG: a trava de ritmo do MOTOR
     cede à autorização do dono (`data/.assinatura_liberada_dono.json`, escopo O8.5 pela ASSINATURA) SÓ quando o

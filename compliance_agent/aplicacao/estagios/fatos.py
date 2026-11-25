@@ -660,13 +660,12 @@ Leitor = Callable[[str, str], "Leitura | None"]
 def motivo_assinatura(con_fluxo=None) -> str | None:
     """Por que NÃO usar a assinatura agora (None = pode): ritmo no PG (porta fechada sem medição) e a contingência
     local (ritmo semanal, limite da conta, kill-switch). "contido" ⇒ motivo."""
-    from compliance_agent.llm import contingencia
+    from compliance_agent.fluxo import ritmo
     if con_fluxo is not None:
-        from compliance_agent.fluxo import ritmo
         m = ritmo.motivo(con_fluxo, TAREFA)
         if m:
             return m
-    return contingencia.motivo_bloqueio(TAREFA)
+    return ritmo.motivo_local(TAREFA)               # contingência + a exceção do dono (só no escopo do ensaio O8.5)
 
 
 def leitor_assinatura(con_fluxo=None) -> Leitor:

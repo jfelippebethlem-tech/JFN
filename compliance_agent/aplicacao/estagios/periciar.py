@@ -807,13 +807,12 @@ Juiz = Callable[[str, str, list], "Julgamento | None"]     # (sistema, instruç�
 
 
 def motivo_assinatura(con_fluxo=None) -> str | None:
-    from compliance_agent.llm import contingencia
+    from compliance_agent.fluxo import ritmo
     if con_fluxo is not None:
-        from compliance_agent.fluxo import ritmo
         m = ritmo.motivo(con_fluxo, TAREFA)
         if m:
             return m
-    return contingencia.motivo_bloqueio(TAREFA)
+    return ritmo.motivo_local(TAREFA)               # contingência + a exceção do dono (só no escopo do ensaio O8.5)
 
 
 def juiz_assinatura(con_fluxo=None) -> Juiz:

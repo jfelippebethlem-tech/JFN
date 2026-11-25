@@ -474,3 +474,22 @@ def test_e11_e12_esperam_o_montante(real):
     assert gp["fatos/mudou"][0]["payload"]["montante"] == ["detectar", "fatos"]
     assert gp["periciar/laudo"][0]["payload"]["montante"] == ["detectar", "periciar"]
     assert "montante" not in gp["texto/texto_novo"][0]["payload"]
+
+
+def test_guarda_local_dos_handlers_de_llm_cede_so_no_escopo(monkeypatch):
+    """r3 (25/11): o E8/E11 barravam pela contingência crua — a autorização do dono não chegava a eles."""
+    from compliance_agent.aplicacao.estagios import fatos, periciar
+    from compliance_agent.fluxo import ritmo as R
+    from compliance_agent.llm import claude_motor, contingencia
+    monkeypatch.setattr(contingencia, "motivo_bloqueio", lambda t="": "ritmo semanal da assinatura — contido")
+    monkeypatch.setattr(contingencia, "estado", lambda: {"origem": "ritmo_semanal"})
+    monkeypatch.setattr(claude_motor, "ritmo_liberado_pelo_dono", lambda: False)
+    assert R.motivo_local("leitura_integral").startswith("ritmo semanal")
+    assert fatos.motivo_assinatura().startswith("ritmo semanal") and periciar.motivo_assinatura()
+    monkeypatch.setattr(claude_motor, "ritmo_liberado_pelo_dono", lambda: True)
+    assert R.motivo_local("leitura_integral") is None
+    assert fatos.motivo_assinatura() is None and periciar.motivo_assinatura() is None
+    monkeypatch.setattr(contingencia, "estado", lambda: {"origem": "limite_assinatura"})   # limite da conta: nunca
+    monkeypatch.setattr(contingencia, "motivo_bloqueio", lambda t="": "limite de uso da assinatura")
+    assert R.motivo_local("leitura_integral") == "limite de uso da assinatura"
+    assert S.motivo_ritmo("leitura_integral") == "limite de uso da assinatura"
