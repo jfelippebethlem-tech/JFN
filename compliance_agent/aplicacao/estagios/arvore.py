@@ -62,6 +62,7 @@ ENV_ESQUEMA = "JFN_CAPTURA_ESQUEMA"
 RAIZ = Path(__file__).resolve().parents[3]
 SQL_EVIDENCIAS = RAIZ / "deploy" / "vm2" / "postgres" / "evidencias_001.sql"
 SQL_CAPTURA = RAIZ / "deploy" / "vm2" / "postgres" / "captura_001.sql"
+SQL_CAPTURA_002 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_002.sql"   # versão com a identidade capturada
 FONTE_PARADA = Path.home() / "snapshot-20261124" / "compliance.db"
 ENV_FONTE = "JFN_CAPTURA_FONTE"
 MAX_PAGINAS = 500
@@ -87,7 +88,7 @@ def conectar(dsn: str | None = None, esquema: str | None = None):
 
 
 def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
-    """Esquema + tabelas do evidencias.py + evidencias_001 (aquisicao) + captura_001 — idempotente."""
+    """Esquema + tabelas do evidencias.py + evidencias_001 (aquisicao) + captura_001/002 — idempotente."""
     import psycopg
 
     from compliance_agent.fluxo.schema import renderizar
@@ -96,13 +97,42 @@ def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
         c.execute(f'CREATE SCHEMA IF NOT EXISTS "{esq}"')
     EV.conectar(dsn + ("&" if "?" in dsn else "?") + f"options=-csearch_path%3D{esq}").close()
     with psycopg.connect(dsn, autocommit=True) as c:
-        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA):
+        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA, SQL_CAPTURA_002):
             c.execute(renderizar(arq.read_text(encoding="utf-8"), esq))
 
 
 def capturados(con, processo: str) -> set[str]:
     """doc_id que já têm alguma versão (texto do legado ou binário do E3)."""
     return {r[0] for r in con.execute("SELECT DISTINCT doc_id FROM versoes WHERE processo = %s", (processo,))}
+
+
+def identidade_capturada(con, processo: str) -> dict[str, set[tuple[str, str]]]:
+    """doc_id → {(id_documento, título)} com que cada versão do E3 foi capturada (captura_002). O legado O3.1 não a
+    tem (nulo) e fica fora: sem identidade capturada não há o que comparar. Conjunto (e não "a mais recente"):
+    `vista_em` tem resolução de segundo e duas capturas no mesmo segundo empatariam."""
+    out: dict[str, set[tuple[str, str]]] = {}
+    for k, i, t in con.execute("SELECT doc_id, id_documento, titulo FROM versoes WHERE processo = %s AND "
+                               "(id_documento IS NOT NULL OR titulo IS NOT NULL)", (processo,)):
+        out.setdefault(k, set()).add((str(i or ""), str(t or "")))
+    return out
+
+
+def _norm(t) -> str:
+    return " ".join(str(t or "").split())
+
+
+def casa_identidade(idd: str, titulo: str, cap: set[tuple[str, str]]) -> bool:
+    """A identidade viva (id_documento, título) é a de alguma versão capturada? Lado vazio não discorda."""
+    return any((not ci or not idd or ci == idd) and (not ct or not _norm(titulo) or _norm(ct) == _norm(titulo))
+               for ci, ct in cap)
+
+
+def retificados(ids: list[str], docs: list[dict], ident: dict[str, set[tuple[str, str]]]) -> list[str]:
+    """doc_id com versão capturada, mas nenhuma com a identidade VIVA: id_documento trocado sob o mesmo nº
+    (numeração reaproveitada) ou título retificado. `docs` = nós da árvore ({t, u}) ou linhas gravadas
+    ({titulo, id_documento})."""
+    return [k for k, d in zip(ids, docs) if ident.get(k)
+            and not casa_identidade(id_documento(d), d.get("titulo", d.get("t", "")), ident[k])]
 
 
 def leitura_anterior(con, processo: str, antes_de: int | None = None) -> str | None:
@@ -253,14 +283,28 @@ def ler_arvore(nav: Navegador, processo: str, max_paginas: int = MAX_PAGINAS) ->
             "restrito": primeira.restrito if primeira and not docs else None}
 
 
+def hash_ids(ids: list[str]) -> str:
+    """O hash da carga dos manifestos (O3.1, `arvores` do legado): só os doc_id, sem o `#k`."""
+    return EV.hash_arvore([DI.sem_repeticao(x) for x in ids])
+
+
+def tree_hash(ids: list[str], idds: list[str]) -> str:
+    """tree_hash do E2 (O3.5): doc_id sem o `#k` E o id_documento (`sei:N@idd`) — trocar o documento sob o mesmo nº
+    muda o hash. Sem id_documento o elemento é o doc_id puro."""
+    return EV.hash_arvore([f"{DI.sem_repeticao(k)}@{i}" if i else DI.sem_repeticao(k) for k, i in zip(ids, idds)])
+
+
 def identidade(docs: list[dict]) -> tuple[list[str], str]:
-    """ids pela função única do domínio (posição = ordem da árvore) e o tree_hash (sem o `#k`)."""
-    ids = DI.ids_documentos([{"titulo": d.get("t", ""), "i": i} for i, d in enumerate(docs)])
-    return ids, EV.hash_arvore([DI.sem_repeticao(x) for x in ids])
+    """ids pela função única do domínio (posição = ordem da árvore) e o tree_hash (doc_id sem o `#k` + id_documento)."""
+    ids = DI.ids_documentos([{"titulo": d.get("t", d.get("titulo", "")), "i": i} for i, d in enumerate(docs)])
+    return ids, tree_hash(ids, [id_documento(d) for d in docs])
 
 
-def faltantes(ids: list[str], docs: list[dict], tem: set[str]) -> list[str]:
-    return [k for k, d in zip(ids, docs) if k not in tem and not d.get("restrito")]
+def faltantes(ids: list[str], docs: list[dict], tem: set[str],
+              ident: dict[str, set[tuple[str, str]]] | None = None) -> list[str]:
+    """Sem versão, ou com versão de OUTRA identidade (`retificados`), e não restrito."""
+    ret = set(retificados(ids, docs, ident or {}))
+    return [k for k, d in zip(ids, docs) if (k not in tem or k in ret) and not d.get("restrito")]
 
 
 _INS_LEIT = ("INSERT INTO arvore_leitura(processo, tree_hash, n_docs, ids, docs, relacionados, via, paginas, no, lente, "
@@ -277,8 +321,8 @@ def registrar(con, processo: str, lido: dict, ctx: Contexto, lente: list[str]) -
     docs = lido["docs"]
     ids, h = identidade(docs)
     anterior = leitura_anterior(con, processo)
-    igual = (h == anterior) if anterior is not None else (h in hashes_legado(con, processo))
-    falta = faltantes(ids, docs, capturados(con, processo))
+    igual = (h == anterior) if anterior is not None else (hash_ids(ids) in hashes_legado(con, processo))
+    falta = faltantes(ids, docs, capturados(con, processo), identidade_capturada(con, processo))
     estado = DOC_NOVO if falta else (SEM_MUDANCA if igual else SEM_DOC_NOVO)
     em = time.strftime("%Y-%m-%d %H:%M:%S")
     linhas = [{"doc_id": k, "i": i, "titulo": d.get("t", ""), "id_documento": id_documento(d),
@@ -311,13 +355,13 @@ def conferir(con, efeito: dict, ctx: Contexto) -> dict:
     if r is None:
         return {"ok": False, "motivo": "leitura desta posse não está no PG"}
     lid, proc, h, n, ids, docs = r
-    h2 = EV.hash_arvore([DI.sem_repeticao(x) for x in ids])
-    falta = faltantes(ids, [{"restrito": d.get("restrito")} for d in docs], capturados(con, proc))
+    h2 = tree_hash(ids, [str(d.get("id_documento") or "") for d in docs])
+    falta = faltantes(ids, docs, capturados(con, proc), identidade_capturada(con, proc))
     ant = leitura_anterior(con, proc, antes_de=lid)
     c = {"hash_recalculado": h2 == h == efeito.get("tree_hash"), "n_docs": n == len(ids) == efeito.get("n_docs") > 0,
          "faltantes": len(falta) == efeito.get("faltantes")}
     if efeito.get("estado") == SEM_MUDANCA:
-        c["sem_mudanca"] = not falta and (ant == h if ant is not None else h in hashes_legado(con, proc))
+        c["sem_mudanca"] = not falta and (ant == h if ant is not None else hash_ids(ids) in hashes_legado(con, proc))
     c["ok"] = all(c.values())
     return c
 

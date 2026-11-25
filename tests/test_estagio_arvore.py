@@ -41,7 +41,9 @@ def test_identidade_e_a_da_carga_dos_manifestos():
     ids, h = A.identidade(docs)
     assert ids == ["sei:90000000", "sei:90000001", "sei:90000002", "sei:90000001#2", "pos:4"]
     assert ids == DI.ids_documentos([{"titulo": d["t"], "i": i} for i, d in enumerate(docs)])
-    assert h == EV.hash_arvore([DI.sem_repeticao(x) for x in ids])
+    assert h == EV.hash_arvore([f"{DI.sem_repeticao(k)}@{A.id_documento(d)}" if A.id_documento(d) else
+                                DI.sem_repeticao(k) for k, d in zip(ids, docs)])           # O3.5: + id_documento
+    assert A.hash_ids(ids) == EV.hash_arvore([DI.sem_repeticao(x) for x in ids])           # o da carga O3.1
 
 
 def test_restrito_nao_conta_como_falta():
@@ -124,9 +126,9 @@ def test_mesma_posse_nao_duplica_e_efeito_pega_adulteracao(pg, monkeypatch):
 def test_legado_com_mesmo_hash_e_tudo_guardado_e_sem_mudanca(pg, monkeypatch):
     con, nome = pg
     docs = arvore_falsa(5)
-    ids, h = A.identidade(docs)
+    ids, _ = A.identidade(docs)
     con.execute("INSERT INTO arvores(processo, hash, n_docs, vista_em, origem) VALUES (%s,%s,5,'x','sei_arquivo')",
-                (PROC, h))
+                (PROC, A.hash_ids(ids)))                  # o legado (O3.1) tem o hash só dos doc_id
     for k in ids:
         con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, vista_em) VALUES "
                     "(%s,%s,%s,10,'sei_arquivo','x')", (PROC, k, "s" + k))

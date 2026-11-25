@@ -59,13 +59,21 @@ def sha256_arquivo(p: Path) -> str:
 
 
 def guardados_do_pg(con, processo: str) -> dict:
-    """O que o PG já tem do processo, no formato de `captura_delta.exportar_guardados` (chars > 0 = tem versão)."""
+    """O que o PG já tem do processo, no formato de `captura_delta.exportar_guardados` (chars > 0 = tem versão).
+    Título e id_documento: os de `documentos` (o E2 os regrava com a árvore VIVA) só se alguma versão foi capturada
+    com essa identidade (captura_002); senão, os CAPTURADOS — e o `retificado` do plano dispara. Legado sem
+    identidade capturada: os de `documentos`."""
     linhas = con.execute(
         "SELECT d.doc_id, COALESCE(d.titulo, ''), COALESCE(max(v.chars), 0), count(v.sha256), "
         "COALESCE(d.id_documento, '') FROM documentos d JOIN versoes v ON v.processo = d.processo AND "
         "v.doc_id = d.doc_id WHERE d.processo = %s GROUP BY d.doc_id, d.titulo, d.id_documento ORDER BY d.doc_id",
         (processo,)).fetchall()
-    docs = [[k, t, max(int(c or 0), 1 if n else 0), idd] for k, t, c, n, idd in linhas]
+    cap = A.identidade_capturada(con, processo)
+    docs = []
+    for k, t, c, n, idd in linhas:
+        if k in cap and not A.casa_identidade(idd, t, cap[k]):
+            idd, t = sorted(cap[k])[0]          # nenhuma versão com a identidade viva: o plano vê "retificado"
+        docs.append([k, t, max(int(c or 0), 1 if n else 0), idd])
     return {"tag": PI.pasta(processo), "processo": processo, "docs": docs}
 
 
@@ -136,8 +144,13 @@ def aquisicao_id(ctx: Contexto) -> str:
     return "e3:" + hashlib.sha256(f"{ctx.chave}|{ctx.ficha}".encode()).hexdigest()[:24]
 
 
-_INS_VER = ("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de, aquisicao_id) "
-            "VALUES (%s,%s,%s,0,%s,NULL,%s,'binario',%s) ON CONFLICT DO NOTHING")
+# a identidade capturada (captura_002) vai na versão; os mesmos bytes sob identidade nova (título retificado sem mudar
+# o PDF) atualizam a identidade — senão o E2 veria o documento "retificado" para sempre
+_INS_VER = ("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de, aquisicao_id, "
+            "id_documento, titulo) VALUES (%s,%s,%s,0,%s,NULL,%s,'binario',%s,%s,%s) "
+            "ON CONFLICT (processo, doc_id, sha256) DO UPDATE SET id_documento = excluded.id_documento, "
+            "titulo = excluded.titulo, vista_em = excluded.vista_em WHERE (versoes.id_documento, versoes.titulo) "
+            "IS DISTINCT FROM (excluded.id_documento, excluded.titulo)")
 _INS_DOC = ("INSERT INTO documentos(processo, doc_id, posicao, titulo, visto_em, id_documento) VALUES (%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (processo, doc_id) DO NOTHING")
 
@@ -160,7 +173,8 @@ def gravar(con, processo: str, ap: dict, ctx: Contexto, outdir: Path, inicio: st
         cur = con.cursor()
         cur.executemany(_INS_DOC, [(processo, v["doc_id"], v["i"], v["titulo"], em, v["id_documento"] or None)
                                    for v in ap["versoes"]])
-        cur.executemany(_INS_VER, [(processo, v["doc_id"], v["sha256"], ORIGEM, em, aid) for v in ap["versoes"]])
+        cur.executemany(_INS_VER, [(processo, v["doc_id"], v["sha256"], ORIGEM, em, aid, v["id_documento"] or None,
+                                    v["titulo"] or None) for v in ap["versoes"]])
     novas = con.execute("SELECT count(*) FROM versoes WHERE aquisicao_id = %s", (aid,)).fetchone()[0]
     return {"processo": processo, "aquisicao_id": aid, "outdir": str(outdir),
             "versoes": [[v["doc_id"], v["sha256"], v["arquivo"]] for v in ap["versoes"]],
@@ -186,7 +200,9 @@ def conferir(con, efeito: dict) -> dict:
     ids = DI.ids_documentos([{"titulo": e.get("titulo", ""), "i": e.get("i")} for e in entradas])
     tem = A.capturados(con, proc)
     restr = restritos_da_arvore(con, proc)
-    falta = [k for k, e in zip(ids, entradas) if k not in tem and str(e.get("id_documento") or "") not in restr]
+    ret = set(A.retificados(ids, entradas, A.identidade_capturada(con, proc)))   # versão de outra identidade
+    falta = [k for k, e in zip(ids, entradas) if (k not in tem or k in ret)
+             and str(e.get("id_documento") or "") not in restr]
     c = {"versoes_no_pg": declaradas <= no_pg, "sha256_recalculado": not divergentes, "faltas_recontadas": len(falta),
          "arvore_nao_vazia": bool(ids), "divergentes": divergentes[:20]}
     c["ok"] = c["versoes_no_pg"] and c["sha256_recalculado"] and not falta and c["arvore_nao_vazia"]
@@ -196,6 +212,10 @@ def conferir(con, efeito: dict) -> dict:
 def capturar(con, nav, processo: str, ctx: Contexto, raiz: Path, lente: list[str]) -> dict:
     inicio = time.strftime("%Y-%m-%d %H:%M:%S%z")
     ja = A.capturados(con, processo)
+    vig = con.execute("SELECT docs FROM arvore_leitura WHERE processo = %s ORDER BY id DESC LIMIT 1",
+                      (processo,)).fetchone()
+    if vig:                                     # retificado não "já tinha": se não vier agora, é omitido
+        ja -= set(A.retificados([d["doc_id"] for d in vig[0]], vig[0], A.identidade_capturada(con, processo)))
     outdir = nav.capturar(processo, guardados_do_pg(con, processo), raiz)
     ap = apurar(outdir, ja, restritos_da_arvore(con, processo))
     return gravar(con, processo, ap, ctx, outdir, inicio, lente)

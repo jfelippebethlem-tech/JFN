@@ -78,7 +78,9 @@ def test_classificar_abstencao_so_para_estagio_de_llm_sem_llm():
     assert E.classificar("texto", "feito", None, False) == "feito"
 
 
-def test_navegador_replay_so_baixa_o_que_falta(tmp_path):
+def test_navegador_replay_so_baixa_o_que_falta(tmp_path, monkeypatch):
+    """O3.5: o replay usa o MESMO encaixe do real com a chave do E3 — ligada só baixa o que falta; desligada (padrão)
+    é sombra e copia tudo."""
     import json
     src = tmp_path / "acervo" / "integra_270006_000001_2025"
     src.mkdir(parents=True)
@@ -92,10 +94,16 @@ def test_navegador_replay_so_baixa_o_que_falta(tmp_path):
     assert len(pg.docs) == 3 and pg.proxima is None and pg.via == "replay:acervo"
     from compliance_agent.dominio import documento_id as DI
     ids = DI.ids_documentos([{"titulo": d["titulo"], "i": d["i"]} for d in man["docs"]])
-    out = nav.capturar("270006/000001/2025", {"docs": [[ids[0], "Doc", 10, ""]]}, tmp_path / "cache")
+    g = {"docs": [[ids[0], "Doc (100)", 10, "100"]]}
+    monkeypatch.setenv("JFN_E3_DELTA", "1")
+    out = nav.capturar("270006/000001/2025", g, tmp_path / "cache")
     assert sorted(p.name for p in out.glob("*.pdf")) == ["001.pdf", "002.pdf"]       # o guardado não é "baixado"
-    assert json.loads((out / "manifest.json").read_text())["delta"] == {"modo": "replay", "baixados": 2,
-                                                                          "mantidos": 1, "ligados": 0}
+    assert json.loads((out / "manifest.json").read_text())["delta"] == {"modo": "replay", "chave_e3": "1",
+                                                                          "baixados": 2, "mantidos": 1, "ligados": 0}
+    monkeypatch.delenv("JFN_E3_DELTA")
+    out = nav.capturar("270006/000001/2025", g, tmp_path / "cache_sombra")
+    assert sorted(p.name for p in out.glob("*.pdf")) == ["000.pdf", "001.pdf", "002.pdf"]   # sombra: tudo
+    assert json.loads((out / "manifest.json").read_text())["delta"]["chave_e3"] == "sombra"
 
 
 def test_navegador_replay_anexo_repetido_e_um_download_so(tmp_path, monkeypatch):

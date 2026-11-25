@@ -3,8 +3,9 @@
 (`captura_delta.plano_de_captura`/`encaixe`) e a chave do E3 (`JFN_E3_DELTA`, desligada por padrão = sombra).
 Classes: recaptura sem novidade (0 a baixar), documento novo, id_documento trocado sob o mesmo nº SEI (numeração
 reaproveitada), título retificado, documento sem nº que muda de posição, restrito que aparece depois (guardado sem
-texto), nº repetido (#k) com a ordem trocada, documento removido da árvore. Lacuna conhecida (xfail estrito): o E2
-grava a identidade da árvore VIVA em `documentos` antes do E3, então o E3 não vê id_documento trocado."""
+texto), nº repetido (#k) com a ordem trocada, documento removido da árvore. E as 2 lacunas de identidade fechadas:
+o tree_hash inclui o id_documento e a versão grava a identidade CAPTURADA (captura_002), então id_documento trocado
+ou título retificado voltam a faltar no E2 e o E3 os rebaixa, mesmo quando a árvore também cresce."""
 import json
 import subprocess
 from pathlib import Path
@@ -142,32 +143,70 @@ def _k(idd: int, extra: bool = False) -> list[dict]:
     return d + ([{"t": "Nota Fiscal (33333333)", "u": URL.format(504), "restrito": False}] if extra else [])
 
 
-def _versao(con, doc_id):
+def _versao(con, doc_id, idd="501", titulo="Despacho (11111111)"):
+    """Versão como o E3 grava (captura_002): com o id_documento e o título CAPTURADOS."""
+    con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, vista_em, hash_de, id_documento, titulo) "
+                "VALUES (%s,%s,'s',0,'sei:e3','x','binario',%s,%s)", (PROC, doc_id, idd, titulo))
+
+
+
+
+@precisa_pg
+def test_legado_sem_identidade_capturada_nao_vira_retificado(pg):  # noqa: F811
+    con, _ = pg
+    _e2(con, _k(501), 1)
     con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, vista_em, hash_de) VALUES "
-                "(%s,%s,'s',0,'sei:e3','x','binario')", (PROC, doc_id))
-
-
-LACUNA = ("O3.5 lacuna (0 casos em 422 recapturas do replay): o tree_hash é só dos doc_id, e o E2 sobrescreve "
-          "título/id_documento de `documentos` quando a árvore muda — o id_documento CAPTURADO não fica guardado. "
-          "Conserto: a versão grava o id_documento capturado e o E2 compara com ele.")
+                "(%s,'sei:11111111','t',100,'sei_arquivo','x','texto')", (PROC,))   # O3.1: sem id_documento
+    assert _e2(con, _k(999), 2)["faltantes"] == 0                      # nada a comparar: segue como antes
 
 
 @precisa_pg
-@pytest.mark.xfail(strict=True, reason=LACUNA)
-def test_e2_ve_id_documento_trocado_sem_outra_mudanca(pg):  # noqa: F811
-    con, _ = pg
-    _e2(con, _k(501), 1)
-    _versao(con, "sei:11111111")
-    assert _e2(con, _k(999), 2)["estado"] == "documento_novo"        # hoje: sem_mudanca ⇒ o E3 nem é acionado
-
-
-@precisa_pg
-@pytest.mark.xfail(strict=True, reason=LACUNA)
-def test_e3_ve_id_documento_trocado_quando_a_arvore_tambem_cresce(pg):  # noqa: F811
+@pytest.mark.parametrize("mesmos_bytes", [False, True])
+def test_troca_de_id_ponta_a_ponta_rebaixa_so_ele_e_converge(pg, monkeypatch, tmp_path, mesmos_bytes):  # noqa: F811
+    """E2→E3 reais: id_documento trocado sob o mesmo nº ⇒ E2 documento_novo ⇒ E3 rebaixa SÓ ele ⇒ E2 sem mudança.
+    Com os MESMOS bytes (o PDF não mudou), a versão atualiza a identidade — senão o E2 pediria para sempre."""
+    from compliance_agent.aplicacao.estagios import Contexto
+    from compliance_agent.aplicacao.estagios import arvore as A
     from compliance_agent.aplicacao.estagios import capturar as C
-    con, _ = pg
-    _e2(con, _k(501), 1)
-    _versao(con, "sei:11111111")
-    assert _e2(con, _k(999, extra=True), 2)["estado"] == "documento_novo"   # a NF nova suja o processo
-    plano = D.plano_de_captura(_k(999, extra=True), D.carregar_guardados(C.guardados_do_pg(con, PROC)))
-    assert _motivos(plano) == {"sei:33333333": "novo", "sei:11111111": "retificado"}   # hoje: o Despacho é mantido
+    from tests.sei_falso import SEIFalso, arvore_falsa
+    con, nome = pg
+    monkeypatch.setenv("JFN_E3_DELTA", "1")
+    docs = arvore_falsa(5)
+    nav = SEIFalso(docs)
+    if mesmos_bytes:
+        orig = SEIFalso.capturar
+
+        def capturar(self, processo, guardados, raiz):
+            out = orig(self, processo, guardados, raiz)
+            for f in Path(out).glob("*.pdf"):
+                f.write_bytes(b"%PDF mesmo conteudo " + f.name.encode())
+            return out
+        monkeypatch.setattr(SEIFalso, "capturar", capturar)
+    monkeypatch.setattr(A, "obter_navegador", lambda: nav)
+
+    def e2(f):
+        ctx = Contexto("vm2", "arvore", f"arvore:{PROC}", f, 1)
+        r = A._handler({"processo": PROC, "esquema": nome}, ctx)
+        assert A._efeito({"esquema": nome}, ctx, r)
+        return r.efeito
+
+    def e3(f):
+        ctx = Contexto("vm2", "capturar", f"capturar:{PROC}", f, 1)
+        r = C._handler({"processo": PROC, "esquema": nome, "raiz": str(tmp_path)}, ctx)
+        return C._efeito({"esquema": nome}, ctx, r)
+
+    assert e2(1)["estado"] == A.DOC_NOVO and e3(1) and nav.baixados[-1] == [0, 1, 2, 3, 4]
+    assert e2(2)["estado"] == A.SEM_MUDANCA
+    docs[2] = dict(docs[2], u=docs[2]["u"].replace("500002", "777777"))   # numeração reaproveitada
+    ef = e2(3)
+    assert ef["estado"] == A.DOC_NOVO and ef["faltantes"] == 1
+    assert e3(3) and nav.baixados[-1] == [2]
+    assert e2(4)["estado"] == A.SEM_MUDANCA                                # convergiu (não pede de novo)
+    # título retificado no MESMO segundo da captura anterior (vista_em empata): ainda dispara e converge
+    docs[2] = dict(docs[2], t="Despacho RETIFICADO 2 (90000002)")
+    ef5 = e2(5)
+    assert ef5["estado"] == A.DOC_NOVO and ef5["faltantes"] == 1
+    # o arquivo do MESMO id_documento já está na pasta (retomada pelo id, como o sei_integra_completa): a versão
+    # passa a carregar a identidade nova sem novo download, e o E2 converge
+    assert e3(5) and nav.baixados[-1] == []
+    assert e2(6)["estado"] == A.SEM_MUDANCA

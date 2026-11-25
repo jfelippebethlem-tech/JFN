@@ -700,7 +700,7 @@ slos:
     dono: captura
     severidade: media
     fonte: 'PG aquisicao (fonte=sei:e3, detalhe.capturados) × versoes.aquisicao_id — inicial; sem captura do E3 na janela = INDISPONIVEL'
-    runbook: 'plano §7 delta: baixar só o que não está guardado (JFN_CAPTURA_DELTA=1)'
+    runbook: 'plano §7 delta: com JFN_E3_DELTA=1 o E3 só baixa o que não está guardado (desligada = sombra: baixa tudo e registra o plano; ligada na O9.0)'
     remediar: 'conferir o delta do E3 (captura_delta.plano_de_captura) e os guardados do PG antes de recapturar'
     origem: [sei_integra_fila, sweep-360-e-fila-do-fiscal]
   captura_duplicidade:

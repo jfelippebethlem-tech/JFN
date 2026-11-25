@@ -446,21 +446,26 @@ class NavegadorReplay:
         return A.PaginaArvore(docs=docs, via="replay:acervo")
 
     def capturar(self, processo: str, guardados: dict, raiz: Path) -> Path:
-        """Delta como o real (`JFN_CAPTURA_DELTA=1`): só "baixa" (copia) o documento que o PG ainda não tem."""
-        from compliance_agent.dominio import documento_id as DI
+        """Delta como o real: o MESMO encaixe do `sei_integra_completa` (`captura_delta.encaixe`) com a chave do E3
+        (`JFN_E3_DELTA` → `modo_e3()`: desligada = sombra, copia tudo; `=1` só "baixa" (copia) o não guardado)."""
+        from compliance_agent import captura_delta as CD
+        from compliance_agent.dominio import processo_id as PI
         from compliance_agent.fluxo import leituras
         src = self._pasta(processo)
         man = self._man(processo)
         out = Path(raiz) / src.name
         out.mkdir(parents=True, exist_ok=True)
         ent = [e for e in man.get("docs") or [] if isinstance(e, dict)]
-        ids = DI.ids_documentos([{"titulo": e.get("titulo", ""), "i": e.get("i")} for e in ent])
-        tem = {k for k, _t, chars, *_ in guardados.get("docs") or [] if int(chars or 0) > 0}
+        gd = Path(raiz) / "_guardados_delta"      # onde o real grava (captura_delta.GUARDADOS_DIR), aqui no run
+        gd.mkdir(parents=True, exist_ok=True)
+        (gd / f"{PI.pasta(processo)}.json").write_text(json.dumps(guardados, ensure_ascii=False), encoding="utf-8")
+        pular, _reg = CD.encaixe(PI.pasta(processo), [{"t": e.get("titulo", ""), "u": e.get("url", "")} for e in ent],
+                                 env={"JFN_CAPTURA_DELTA": CD.modo_e3()}, pasta_exportados=gd, arquivo=gd / "_sem")
         baixados = mantidos = ligados = 0
         ja: dict[str, Path] = {}                 # sha256 → 1º destino NESTE job (anexo repetido em 2 documentos)
-        for k, e in zip(ids, ent):
+        for i, e in enumerate(ent):
             alvo = out / str(e.get("arquivo") or "")
-            if k in tem:
+            if i in pular:
                 mantidos += 1
                 continue
             if e.get("ok") and (src / str(e.get("arquivo") or "_")).is_file():
@@ -474,7 +479,8 @@ class NavegadorReplay:
                 leituras.anotar("download", sha, arquivo=alvo.name)
                 ja[sha] = alvo
                 baixados += 1
-        man = dict(man, delta={"modo": "replay", "baixados": baixados, "mantidos": mantidos, "ligados": ligados})
+        man = dict(man, delta={"modo": "replay", "chave_e3": CD.modo_e3(), "baixados": baixados, "mantidos": mantidos,
+                               "ligados": ligados})
         (out / "manifest.json").write_text(json.dumps(man, ensure_ascii=False), encoding="utf-8")
         return out
 

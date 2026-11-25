@@ -1479,7 +1479,7 @@ rotinas:
     efeito: {descricao: 'a fila impressa na ordem única com os componentes de cada posição; a prova por processo é o efeito do job arvore:<processo> (hash recalculado dos ids gravados e faltas recontadas no PG)', so_rc: 'a CLI fila só lê (fonte só-leitura imutável); o efeito real é o do job nativo'}
   capturar_e3:
     estagio: E3
-    descricao: 'E3 capturar (O3.3): só os documentos novos (delta por id_documento sobre os guardados do PG) por tools/sei_integra_completa.py com JFN_CAPTURA_DELTA=1, Gerar PDF em lotes de 40 com conferência por marcador e laço até o fim; versões sha256 (hash_de binario) + aquisicao no PG; efeito só com 0 omitido recontado'
+    descricao: 'E3 capturar (O3.3): só os documentos novos (delta por id_documento sobre os guardados do PG) por tools/sei_integra_completa.py com o delta da chave JFN_E3_DELTA (desligada = sombra: baixa tudo e registra o plano; =1 só o novo/mudado — ligada na O9.0), Gerar PDF em lotes de 40 com conferência por marcador e laço até o fim; versões sha256 (hash_de binario) + aquisicao no PG; efeito só com 0 omitido recontado'
     comando: ['{py}', -m, compliance_agent.aplicacao.estagios.capturar, pendentes]
     recursos: [navegador]
     nos: [vm2]
