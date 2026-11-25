@@ -84,7 +84,7 @@ from compliance_agent.aplicacao.estagios import fatos as E8
 from compliance_agent.dominio import mascara as M
 from compliance_agent.dominio import processo_id as PID
 from compliance_agent.dominio.estados import EstadoSaida
-from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo.fila import Adiado, Resultado
 
 VERSAO = "e11-1"                                 # lógica do estágio (validação, agregação, chaves)
 PROMPT_VERSION = "pv2-1"                         # prompt do laudo v2 (`SISTEMA`)
@@ -793,7 +793,7 @@ def gravar_laudo(con, laudo: dict) -> dict:
 
 
 # ══ 6. juiz (LLM injetável) ═════════════════════════════════════════════════════════════════════════════════════
-class SemCota(RuntimeError):
+class SemCota(Adiado):         # espera conhecida: volta sem gastar tentativa (fila.adiar)
     """O juiz não pôde julgar agora (ritmo/teto/assinatura): o job tenta de novo; nada foi marcado como periciado."""
 
 

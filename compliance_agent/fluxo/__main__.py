@@ -2,7 +2,7 @@
 """CLI do motor de fluxo.
 
     python -m compliance_agent.fluxo supervisor --no vm1 [--uma-volta] [--isolamento auto|systemd|subprocesso]
-    python -m compliance_agent.fluxo saude [--esperados vm1,vm2,itcampo]
+    python -m compliance_agent.fluxo saude [--esperados vm1,vm2,itcampo]   # padrão: os nós do yaml
     python -m compliance_agent.fluxo eco <chave>        # enfileira um job E0 de teste (prova ponta a ponta)
     python -m compliance_agent.fluxo agenda sincronizar  # fluxo.agenda ← config/fluxo.yaml (linha nova: ativo=false)
     python -m compliance_agent.fluxo ritmo medir|status  # assinatura: mede e publica em fluxo.metricas / o que o motor lê
@@ -52,7 +52,10 @@ def main(argv: list[str] | None = None) -> int:
     con = fila.conectar()
     try:
         if a.cmd == "saude":
-            r = planejador.saude(con, tuple(n for n in a.esperados.split(",") if n))
+            from compliance_agent.fluxo import grafo
+            g = grafo.carregar()
+            r = planejador.saude(con, tuple(n for n in a.esperados.split(",") if n) or tuple(g.nos),
+                                 g.grafo_planejador(), g.terminais(), g.dividas())
         elif a.cmd == "agenda":
             from compliance_agent.fluxo import grafo
             r = {"esquema": fila.esquema_vigente(),

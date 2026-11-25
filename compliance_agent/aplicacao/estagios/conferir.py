@@ -38,7 +38,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
-from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo.fila import Adiado, Resultado
 
 TIPO = "conferir"
 VERSAO = "e12-2"                                               # 2: julgamento do Opus ligado
@@ -76,7 +76,7 @@ SISTEMA = ("Você é o conferente independente (E12) do controle externo do Esta
            'citando os fatos>", "hipotese_inocente": "<a mais provável ou vazio>"}')
 
 
-class SemCota(RuntimeError):
+class SemCota(Adiado):         # espera conhecida: volta sem gastar tentativa (fila.adiar)
     """O item precisa do Opus e a assinatura não pode agora (porta fechada, teto, ritmo, sem executor, recusa): o job
     volta com backoff; o que foi decidido sem LLM (motivos) fica gravado com o ABSTEVE e o motivo."""
 

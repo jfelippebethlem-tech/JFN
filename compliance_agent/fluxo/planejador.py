@@ -16,6 +16,7 @@ listas, dia da semana 0–7) com a regra do Vixie cron — dia do mês e dia da 
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timedelta
 from typing import Mapping
 from zoneinfo import ZoneInfo
@@ -162,12 +163,66 @@ def sincronizar_agenda(con, linhas: list[Mapping]) -> dict:
 
 
 # ── (b) eventos → dependentes ─────────────────────────────────────────────────────────────────────────
+_RX_SHA = re.compile(r"^[0-9a-f]{64}$")
+
+
+def jobs_nativos(dep: Mapping, chave: str | None, detalhe: Mapping | None) -> list[tuple[str, str, dict]]:
+    """Evento de estágio nativo → [(tipo do job, chave do job, payload próprio)], pela `forma` da rota
+    (config/fluxo.yaml `nativos.rotas`; formas em grafo.RotaNativa). Pura. ValueError = evento malformado (sem a
+    chave/detalhe que a forma exige): o planejador o registra como DESCARTADO, visível na saúde."""
+    tipo, forma, det, k = dep["tipo"], dep["forma"], dict(detalhe or {}), (chave or "").strip()
+    if forma == "agrupado":
+        return [(tipo, tipo, {})]
+    if not k:
+        raise ValueError(f"evento sem chave para a forma {forma}")
+    if forma == "processo":
+        p = k.split("|", 1)[0]
+        return [(tipo, f"{tipo}:{p}", {"processo": p})]
+    if forma == "documento":
+        proc, _, doc = k.partition("|")
+        sha = str(det.get("sha256") or "").strip().lower()
+        if not proc or not doc or not _RX_SHA.match(sha):
+            raise ValueError(f"documento sem processo|doc_id ou sha256 válido: {k!r} {sha[:16]!r}")
+        return [(tipo, f"{tipo}:{proc}|{doc}|{sha[:16]}", {"processo": proc, "doc_id": doc, "sha256": sha})]
+    if forma == "aquisicao":
+        aq = str(det.get("aquisicao_id") or "").strip()
+        if not aq:
+            raise ValueError(f"versao_nova sem aquisicao_id: {k!r}")
+        return [(f"expandir:{tipo}", f"expandir:{tipo}:{aq}", {"aquisicao_id": aq, "processo": k})]
+    if forma == "unidade":
+        return [(tipo, f"{tipo}:{k}:todos", {"unidade": k})]
+    if forma == "detectores":
+        unidade, _, ex = k.partition(":")
+        return [(f"expandir:{tipo}", f"expandir:{tipo}:{k}",
+                 {"unidade": unidade, **({"exercicio": ex} if ex and ex != "todos" else {})})]
+    if forma == "laudo":
+        return [(tipo, f"{tipo}:laudo:{k}", {"alvo": "laudo", "ref": k})]
+    raise ValueError(f"forma desconhecida: {forma}")
+
+
+def _consumo(grafo: Mapping[str, list], terminais: Mapping[str, str] | None) -> dict:
+    """Os eventos que ESTE grafo consome ou declara terminais: `fontes` (chave legada = fonte inteira) e `pares`
+    ('fonte/tipo' das rotas nativas e dos terminais). O resto não é tocado: fica pendente (saúde: BLOQUEADO)."""
+    t = terminais or {}
+    return {"fontes": sorted({k for k in grafo if "/" not in k} | {k[:-2] for k in t if k.endswith("/*")}),
+            "pares": sorted({k for k in grafo if "/" in k} | {k for k in t if not k.endswith("/*")})}
+
+
+_CONSUMIVEL = "(fonte = ANY(%(fontes)s) OR fonte || '/' || coalesce(tipo, '') = ANY(%(pares)s))"
+
+
 def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapping] | None = None,
-                     limite: int = 500) -> int:
-    """Cada evento pendente suja os estágios que dependem da sua `fonte`: job `<dep>:<chave do evento>` com
-    debounce. Vários eventos da mesma chave antes do job rodar viram UM job (a chave junta). Se o dependente estiver
-    RODANDO, o evento fica pendente e volta no próximo ciclo — senão a mudança que chegou durante a execução se
-    perderia. Devolve quantos eventos foram processados.
+                     limite: int = 500, terminais: Mapping[str, str] | None = None) -> int:
+    """Cada evento pendente suja os estágios que dependem dele: job `<dep>:<chave do evento>` com debounce. Vários
+    eventos da mesma chave antes do job rodar viram UM job (a chave junta). Se o dependente estiver RODANDO, o
+    evento fica pendente e volta no próximo ciclo — senão a mudança que chegou durante a execução se perderia.
+    Devolve quantos eventos foram processados.
+
+    Quem depende (grafo.grafo_planejador): a FONTE inteira (rotina legada) e/ou o par 'fonte/tipo' (rota de estágio
+    nativo, com `forma` — jobs_nativos). Evento sem dependente NÃO é marcado processado (achado 1.1, 25/11): só os
+    `terminais` declarados são; os outros nem são lidos aqui (não tomam o `limite`) e a saúde os mostra BLOQUEADO.
+    Dependente em quarentena/cancelado (não reabre) ou evento malformado: processado COM `detalhe.descartado`
+    (a saúde conta — 1.15).
 
     Campos do dependente (config/fluxo.yaml via grafo.grafo_planejador): `agrupar` — recálculo da base inteira, UM
     job por tipo (chave = o tipo), qualquer que seja a fonte; e, agrupado, QUALQUER job do tipo em fila (inclusive o
@@ -179,15 +234,22 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
     contrato = contrato or {}
     feitos = 0
     with con.transaction():
-        eventos = con.execute("SELECT id, fonte, chave, tipo, detalhe FROM eventos WHERE processado_em IS NULL "
-                              "ORDER BY id LIMIT %s FOR UPDATE SKIP LOCKED", (limite,)).fetchall()
+        eventos = con.execute("SELECT id, fonte, chave, tipo, detalhe FROM eventos WHERE processado_em IS NULL AND "
+                              f"{_CONSUMIVEL} ORDER BY id LIMIT %(limite)s FOR UPDATE SKIP LOCKED",
+                              {**_consumo(grafo, terminais), "limite": limite}).fetchall()
         for ev_id, fonte, chave, tipo_ev, detalhe in eventos:
-            adiar = False
-            for dep in grafo.get(fonte, []):
+            adiar, descartes = False, []
+            for dep in list(grafo.get(fonte, [])) + list(grafo.get(f"{fonte}/{tipo_ev}", [])):
                 dep = {"tipo": dep} if isinstance(dep, str) else dep
-                c = contrato.get(dep["tipo"], {})
                 agrupar = bool(dep.get("agrupar"))
-                chave_dep = dep["tipo"] if agrupar else f"{dep['tipo']}:{chave or fonte}"
+                if dep.get("forma"):
+                    try:
+                        alvos = jobs_nativos(dep, chave, detalhe)
+                    except ValueError as exc:
+                        descartes.append(f"{dep['tipo']}: {exc}")
+                        continue
+                else:
+                    alvos = [(dep["tipo"], dep["tipo"] if agrupar else f"{dep['tipo']}:{chave or fonte}", {})]
                 if agrupar:
                     pend = _pendente(con, dep["tipo"])
                     if pend == "reservado":
@@ -195,25 +257,35 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
                         continue
                     if pend == "fila":
                         continue                                    # junta no job que já espera
-                atraso = float(dep.get("debounce_s", 0)) if dep.get("abre_janela", True) else 0.0
-                if dep.get("intervalo_min_s"):
-                    ha = con.execute("SELECT extract(epoch FROM now() - max(concluido_em)) FROM jobs WHERE "
-                                     + ("tipo = %s" if agrupar else "chave = %s")
-                                     + " AND estado IN ('feito', 'falhou_efeito')",
-                                     (dep["tipo"] if agrupar else chave_dep,)).fetchone()
-                    if ha and ha[0] is not None:
-                        atraso = max(atraso, float(dep["intervalo_min_s"]) - float(ha[0]))
-                novo = fila.enfileirar(con, dep["tipo"], chave_dep,
-                                       {**(dep.get("payload") or {}),
-                                        "evento": {"id": ev_id, "fonte": fonte, "tipo": tipo_ev, "chave": chave}},
-                                       prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
-                                       volta=c.get("volta"), no_preferido=c.get("no_preferido"), atraso_s=atraso,
-                                       reabrir=True,
-                                       correlation_id=(detalhe or {}).get("correlation_id") or f"evento:{ev_id}")
-                if novo is None and fila.estado_de(con, chave_dep) == "reservado":
-                    adiar = True
+                for tipo_job, chave_dep, proprio in alvos:
+                    c = contrato.get(tipo_job, {})
+                    atraso = float(dep.get("debounce_s", 0)) if dep.get("abre_janela", True) else 0.0
+                    if dep.get("intervalo_min_s"):
+                        ha = con.execute("SELECT extract(epoch FROM now() - max(concluido_em)) FROM jobs WHERE "
+                                         + ("tipo = %s" if agrupar else "chave = %s")
+                                         + " AND estado IN ('feito', 'falhou_efeito')",
+                                         (tipo_job if agrupar else chave_dep,)).fetchone()
+                        if ha and ha[0] is not None:
+                            atraso = max(atraso, float(dep["intervalo_min_s"]) - float(ha[0]))
+                    novo = fila.enfileirar(con, tipo_job, chave_dep,
+                                           {**(dep.get("payload") or {}), **proprio,
+                                            "evento": {"id": ev_id, "fonte": fonte, "tipo": tipo_ev, "chave": chave}},
+                                           prioridade=c.get("prioridade", 100), recursos=c.get("recursos"),
+                                           volta=c.get("volta"), no_preferido=c.get("no_preferido"),
+                                           atraso_s=atraso, reabrir=True,
+                                           correlation_id=(detalhe or {}).get("correlation_id") or f"evento:{ev_id}")
+                    if novo is None:
+                        est = fila.estado_de(con, chave_dep)
+                        if est == "reservado":
+                            adiar = True
+                        elif est in ("quarentena", "cancelado"):
+                            descartes.append(f"{chave_dep} em {est} (não reabre: só por gente)")
             if not adiar:
-                con.execute("UPDATE eventos SET processado_em = now() WHERE id = %s", (ev_id,))
+                con.execute("UPDATE eventos SET processado_em = now(), detalhe = CASE WHEN %s::jsonb IS NULL THEN "
+                            "detalhe ELSE coalesce(detalhe, '{}'::jsonb) || jsonb_build_object('descartado', "
+                            "%s::jsonb) END WHERE id = %s",
+                            (json.dumps(descartes) if descartes else None,
+                             json.dumps(descartes) if descartes else None, ev_id))
                 feitos += 1
     return feitos
 
@@ -222,11 +294,13 @@ def propagar_eventos(con, grafo: Mapping[str, list], contrato: Mapping[str, Mapp
 _ORDEM = ("SAUDAVEL", "DEGRADADO", "ATRASADO", "BLOQUEADO", "INDISPONIVEL")
 
 
-def saude(con, nos_esperados: tuple[str, ...] = ()) -> dict:
+def saude(con, nos_esperados: tuple[str, ...] = (), grafo: Mapping[str, list] | None = None,
+          terminais: Mapping[str, str] | None = None, dividas: Mapping[str, str] | None = None) -> dict:
     """O pior estado vence. Cada motivo é medido aqui (nada é "SAUDAVEL" por falta de leitura):
-    INDISPONIVEL nenhum nó vivo · BLOQUEADO job elegível pedindo recurso que nenhum nó vivo oferece ·
+    INDISPONIVEL nenhum nó vivo · BLOQUEADO job elegível pedindo recurso que nenhum nó vivo oferece, ou evento
+    pendente que NINGUÉM consome (só medido com o `grafo`; `dividas` = o motivo declarado no yaml) ·
     ATRASADO fila elegível parada há mais de 15 min, ou agenda vencida sem virar job · DEGRADADO nó esperado fora,
-    ou quarentena/falhou_efeito nas últimas 24 h."""
+    TODA quarentena aberta, falhou_efeito aberto, ou evento descartado nas últimas 24 h."""
     motivos: list[tuple[str, str]] = []
     vivos = {no: slots for no, slots in con.execute(
         "SELECT no, slots FROM nos WHERE heartbeat_em > now() - make_interval(secs => %s)", (NO_SEM_HEARTBEAT_S,))}
@@ -238,6 +312,14 @@ def saude(con, nos_esperados: tuple[str, ...] = ()) -> dict:
         sem = sorted(set(recursos) - oferta)
         if vivos and sem:
             motivos.append(("BLOQUEADO", f"{tipo} pede {','.join(sem)}, que nenhum nó vivo oferece"))
+    if grafo is not None:
+        dividas = dividas or {}
+        for fonte, tipo, n in con.execute(
+                "SELECT fonte, tipo, count(*) FROM eventos WHERE processado_em IS NULL AND NOT "
+                f"{_CONSUMIVEL} GROUP BY 1, 2 ORDER BY 1, 2", _consumo(grafo, terminais)):
+            par = f"{fonte}/{tipo}"
+            motivos.append(("BLOQUEADO", f"evento sem consumidor: {par} ×{n}"
+                            + (f" (dívida declarada: {dividas[par]})" if par in dividas else "")))
     espera = con.execute("SELECT extract(epoch FROM now() - min(disponivel_em)) FROM jobs WHERE estado = 'fila' "
                          "AND disponivel_em <= now()").fetchone()[0]
     if espera is not None and espera > FILA_ATRASADA_S:
@@ -250,21 +332,29 @@ def saude(con, nos_esperados: tuple[str, ...] = ()) -> dict:
         if no not in vivos:
             motivos.append(("DEGRADADO", f"nó {no} sem heartbeat"))
     contagem = dict(con.execute("SELECT estado, count(*) FROM jobs GROUP BY estado").fetchall())
-    ruins = con.execute("SELECT count(*) FROM jobs WHERE estado IN ('quarentena', 'falhou_efeito') AND "
-                        "coalesce(concluido_em, criado_em) > now() - interval '24 hours'").fetchone()[0]
-    if ruins:
-        motivos.append(("DEGRADADO", f"{ruins} job(s) em quarentena/falhou_efeito nas últimas 24 h"))
+    if contagem.get("quarentena"):
+        motivos.append(("DEGRADADO", f"{contagem['quarentena']} job(s) em quarentena (só sai por gente)"))
+    if contagem.get("falhou_efeito"):
+        motivos.append(("DEGRADADO", f"{contagem['falhou_efeito']} job(s) em falhou_efeito (tentativas esgotadas)"))
+    desc = con.execute("SELECT count(*) FROM eventos WHERE detalhe ? 'descartado' AND processado_em > now() - "
+                       "interval '24 hours'").fetchone()[0]
+    if desc:
+        motivos.append(("DEGRADADO", f"{desc} evento(s) descartado(s) nas últimas 24 h (dependente em "
+                                     "quarentena/cancelado, ou evento malformado)"))
     estado = max((m[0] for m in motivos), key=_ORDEM.index, default="SAUDAVEL")
     return {"estado": estado, "motivos": [f"{e}: {t}" for e, t in motivos], "jobs": contagem,
             "nos_vivos": sorted(vivos)}
 
 
-def ciclo(con, grafo: Mapping[str, list] | None = None, contrato: Mapping[str, Mapping] | None = None) -> dict:
-    """Uma rodada do planejador (só quem tem a liderança chama)."""
+def ciclo(con, grafo: Mapping[str, list] | None = None, contrato: Mapping[str, Mapping] | None = None,
+          terminais: Mapping[str, str] | None = None, nos_esperados: tuple[str, ...] = (),
+          dividas: Mapping[str, str] | None = None) -> dict:
+    """Uma rodada do planejador (só quem tem a liderança chama). `nos_esperados` = os nós do yaml (1.15)."""
     grafo = GRAFO_EXEMPLO if grafo is None else grafo
-    r = {"agenda": materializar_agenda(con, contrato), "eventos": propagar_eventos(con, grafo, contrato),
+    r = {"agenda": materializar_agenda(con, contrato),
+         "eventos": propagar_eventos(con, grafo, contrato, terminais=terminais),
          "recuperados": fila.recuperar_vencidos(con)}
-    r["saude"] = saude(con)
+    r["saude"] = saude(con, tuple(nos_esperados), grafo, terminais, dividas)
     con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'fluxo_saude', %s, %s)",
                 (_ORDEM.index(r["saude"]["estado"]), json.dumps({"estado": r["saude"]["estado"]})))
     return r

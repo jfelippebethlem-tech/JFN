@@ -126,13 +126,55 @@ def test_erro_permanente_vai_direto_a_quarentena(con):
     assert _estado(con, "eco:p") == ("quarentena", 1, "permanente")
 
 
-def test_sem_efeito_conferido_e_falhou_efeito_e_nao_emite_evento(con):
-    fila.enfileirar(con, "eco", "eco:e")
+def test_sem_efeito_conferido_volta_com_backoff_e_esgotado_e_falhou_efeito(con):
+    """1.2 (revisão 25/11): sem conferência o job VOLTA (o E3 com omitido e o E5 com página pendente contam com
+    isso) gastando tentativa, com o motivo no erro_resumo; esgotadas, `falhou_efeito` com concluido_em. Sem evento."""
+    fila.enfileirar(con, "eco", "eco:e", max_tentativas=2)
     j = fila.reservar(con, "vm2", ["cpu_leve"])
     r = Resultado(efeito={"metrica_id": 7}, efeito_conferido=False, eventos=[{"fonte": "eco", "tipo": "concluido"}])
+    assert fila.concluir(con, j.ficha, r, "omitidos: 3") == "fila"
+    assert _estado(con, "eco:e") == ("fila", 1, "efeito")
+    espera, resumo, fim = con.execute("SELECT extract(epoch FROM disponivel_em - now()), erro_resumo, concluido_em "
+                                      "FROM jobs WHERE chave = 'eco:e'").fetchone()
+    assert 25 <= espera <= 31 and resumo == "omitidos: 3" and fim is None        # backoff de 30 s
+    con.execute("UPDATE jobs SET disponivel_em = now()")
+    j = fila.reservar(con, "vm2", ["cpu_leve"])
     assert fila.concluir(con, j.ficha, r) == "falhou_efeito"
-    assert _estado(con, "eco:e") == ("falhou_efeito", 1, "efeito")
+    assert _estado(con, "eco:e") == ("falhou_efeito", 2, "efeito")
+    assert con.execute("SELECT concluido_em IS NOT NULL FROM jobs WHERE chave = 'eco:e'").fetchone()[0]
     assert con.execute("SELECT count(*) FROM eventos").fetchone()[0] == 0
+
+
+def test_quarentena_grava_concluido_em(con):
+    """1.3: a quarentena tem concluido_em (a saúde conta toda quarentena aberta)."""
+    fila.enfileirar(con, "eco", "eco:q1")
+    j = fila.reservar(con, "vm2", ["cpu_leve"])
+    fila.falhar(con, j.ficha, "x", transitorio=False)
+    fila.enfileirar(con, "eco", "eco:q2", max_tentativas=1)
+    fila.reservar(con, "vm2", ["cpu_leve"])
+    _vencer_lease(con, "eco:q2")
+    assert fila.recuperar_vencidos(con) == 1
+    assert con.execute("SELECT count(*) FROM jobs WHERE estado = 'quarentena' AND concluido_em IS NOT NULL"
+                       ).fetchone()[0] == 2
+
+
+def test_adiado_volta_na_reabertura_sem_gastar_tentativa(con):
+    """1.12: espera conhecida (ritmo da assinatura) não leva à quarentena: devolve a tentativa e reabre na hora."""
+    from datetime import datetime, timedelta, timezone
+    fila.enfileirar(con, "eco", "eco:ad", max_tentativas=1)
+    reabre = datetime.now(timezone.utc) + timedelta(hours=2)
+    for _ in range(3):                                   # 3 adiamentos com max_tentativas=1: nunca quarentena
+        con.execute("UPDATE jobs SET disponivel_em = now()")
+        j = fila.reservar(con, "vm2", ["cpu_leve"])
+        assert fila.adiar(con, j.ficha, "SemCota: ritmo contido", reabre) == "fila"
+    assert _estado(con, "eco:ad") == ("fila", 0, "adiado")
+    espera = con.execute("SELECT extract(epoch FROM disponivel_em - now()) FROM jobs").fetchone()[0]
+    assert 7100 <= espera <= 7201
+    con.execute("UPDATE jobs SET disponivel_em = now()")
+    j = fila.reservar(con, "vm2", ["cpu_leve"])
+    assert fila.adiar(con, j.ficha, "sem reabertura informada") == "fila"
+    espera = con.execute("SELECT extract(epoch FROM disponivel_em - now()) FROM jobs").fetchone()[0]
+    assert 880 <= espera <= 901                          # padrão 15 min
 
 
 def test_feito_grava_os_eventos_na_mesma_transacao(con):

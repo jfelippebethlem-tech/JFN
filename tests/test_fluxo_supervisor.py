@@ -77,16 +77,22 @@ def test_eco_ponta_a_ponta_em_subprocesso(con, esquema_tmp):
 
 
 @precisa_pg
-def test_efeito_nao_conferido_vira_falhou_efeito(con, esquema_tmp):
-    fila.enfileirar(con, "eco", "eco:mente", {"falhar_efeito": True})
+def test_efeito_nao_conferido_volta_e_esgotado_vira_falhou_efeito(con, esquema_tmp):
+    fila.enfileirar(con, "eco", "eco:mente", {"falhar_efeito": True}, max_tentativas=2)
     sup = _sup(esquema_tmp)
     try:
+        sup.uma_volta()
+        tot = sup.drenar(120)
+        assert tot["volta_efeito"] == 1, tot                               # 1.2: volta com backoff
+        assert fila.estado_de(con, "eco:mente") == "fila"
+        con.execute("UPDATE jobs SET disponivel_em = now()")
         sup.uma_volta()
         tot = sup.drenar(120)
     finally:
         sup.fechar()
     assert tot["falhou_efeito"] == 1, tot
-    assert fila.estado_de(con, "eco:mente") == "falhou_efeito"
+    assert con.execute("SELECT estado, erro_tipo, erro_resumo FROM jobs").fetchone() == (
+        "falhou_efeito", "efeito", "efeito não conferido (a conferência não disse por quê)")
     assert con.execute("SELECT count(*) FROM eventos").fetchone()[0] == 0
 
 

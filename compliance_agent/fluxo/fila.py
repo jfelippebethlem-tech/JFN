@@ -11,8 +11,11 @@ Regras que este módulo garante (e os testes em esquema temporário medem):
   · lease (`prazo`) renovado por heartbeat; vencido, o job volta à fila (`recuperar_vencidos`);
   · ficha de posse (fencing): vem de uma sequência GLOBAL a cada reserva; quem tem a ficha velha — ou o lease
     vencido — é recusado ao concluir, falhar ou renovar, e não grava resultado velho por cima do novo;
-  · "feito" SÓ com efeito conferido; sem conferência é `falhou_efeito` (contrato de estágio, §3.2);
-  · erro transitório volta com backoff exponencial; esgotou `max_tentativas` ou erro permanente ⇒ `quarentena`;
+  · "feito" SÓ com efeito conferido; sem conferência o job VOLTA com backoff gastando a tentativa e, esgotadas,
+    é `falhou_efeito` (contrato de estágio, §3.2) — o motivo da conferência vai ao `erro_resumo`;
+  · erro transitório volta com backoff exponencial; esgotou `max_tentativas` ou erro permanente ⇒ `quarentena`
+    (com `concluido_em`: a saúde vê toda quarentena aberta);
+  · espera CONHECIDA (`Adiado`: ritmo da assinatura, porta fechada) volta à fila na reabertura SEM gastar tentativa;
   · eventos do job concluído entram na MESMA transação do "feito" (outbox: nada some entre um e outro).
 
 Todo SQL é sem schema: `conectar` fixa o search_path SÓ no esquema do fluxo (produção `fluxo`; teste, o temporário),
@@ -32,6 +35,18 @@ ENV_ESQUEMA = "JFN_FLUXO_ESQUEMA"       # o supervisor repassa ao filho: handler
 BACKOFF_BASE_S = 30.0
 BACKOFF_TETO_S = 3600.0
 TERMINAIS = ("feito", "falhou_efeito", "quarentena", "cancelado")
+ADIADO_PADRAO_S = 900.0                 # Adiado sem reabertura informada: volta em 15 min
+ADIADO_MIN_S, ADIADO_MAX_S = 30.0, 7 * 86400.0
+
+
+class Adiado(RuntimeError):
+    """Espera CONHECIDA (ritmo da assinatura, porta fechada, teto): o job não falhou — volta à fila em `reabre_em`
+    (datetime aware; None = ADIADO_PADRAO_S) sem gastar tentativa (fila.adiar). Herda de RuntimeError: quem já
+    capturava RuntimeError (CLI dos estágios) segue igual."""
+
+    def __init__(self, motivo: str = "", reabre_em=None):
+        super().__init__(motivo)
+        self.reabre_em = reabre_em
 
 
 def esquema_vigente() -> str:
@@ -195,25 +210,35 @@ def heartbeat(con, ficha: int, prazo_s: float = 300.0) -> bool:
 _POSSE = "ficha = %s AND estado = 'reservado' AND prazo >= now()"
 
 
-def concluir(con, ficha: int, resultado: Resultado) -> str | None:
-    """Fecha a reserva vigente: 'feito' SÓ se o efeito foi conferido, senão 'falhou_efeito' (nunca "feito" por
-    declaração). Os eventos só são gravados no 'feito', na mesma transação. None = ficha velha/lease vencido:
-    recusado, nada é gravado."""
-    estado = "feito" if resultado.efeito_conferido else "falhou_efeito"
+def concluir(con, ficha: int, resultado: Resultado, motivo: str | None = None) -> str | None:
+    """Fecha a reserva vigente: 'feito' SÓ se o efeito foi conferido. Sem conferência o job VOLTA à fila com backoff
+    (a tentativa já foi gasta na reserva) e, esgotadas as tentativas, fica em 'falhou_efeito' — o estágio que conta
+    com "o job volta" (E3 com omitido, E5 com página pendente) volta de fato. `motivo` (a conferência que reprovou)
+    vai ao `erro_resumo`. Os eventos só são gravados no 'feito', na mesma transação. Devolve 'feito' / 'fila' /
+    'falhou_efeito'; None = ficha velha/lease vencido: recusado, nada é gravado."""
+    ok = bool(resultado.efeito_conferido)
+    volta = "NOT %(ok)s AND tentativas < max_tentativas"
     with con.transaction():
         r = con.execute(
-            f"UPDATE jobs SET estado = %s, efeito = %s, concluido_em = now(), prazo = NULL, "
-            f"erro_tipo = CASE WHEN %s::text = 'falhou_efeito' THEN 'efeito' END, "
-            f"erro_resumo = CASE WHEN %s::text = 'falhou_efeito' THEN 'efeito declarado não conferido' END "
-            f"WHERE {_POSSE} RETURNING chave, correlation_id",
-            (estado, json.dumps(resultado.efeito or {}), estado, estado, ficha)).fetchone()
+            "UPDATE jobs SET estado = CASE WHEN %(ok)s THEN 'feito' WHEN tentativas < max_tentativas THEN 'fila' "
+            "ELSE 'falhou_efeito' END, efeito = %(efeito)s, prazo = NULL, "
+            f"concluido_em = CASE WHEN {volta} THEN NULL ELSE now() END, "
+            f"disponivel_em = CASE WHEN {volta} THEN now() + make_interval(secs => least(%(teto)s, %(base)s * "
+            "power(2, greatest(0, tentativas - 1)))) ELSE disponivel_em END, "
+            f"dono = CASE WHEN {volta} THEN NULL ELSE dono END, "
+            "erro_tipo = CASE WHEN %(ok)s THEN NULL ELSE 'efeito' END, "
+            "erro_resumo = CASE WHEN %(ok)s THEN NULL ELSE left(%(motivo)s, 2000) END "
+            "WHERE ficha = %(ficha)s AND estado = 'reservado' AND prazo >= now() RETURNING estado, chave, correlation_id",
+            {"ok": ok, "efeito": json.dumps(resultado.efeito or {}, default=str), "teto": BACKOFF_TETO_S,
+             "base": BACKOFF_BASE_S, "motivo": str(motivo or "efeito declarado não conferido"),
+             "ficha": ficha}).fetchone()
         if r is None:
             return None
-        if estado == "feito":
+        if r[0] == "feito":
             for ev in resultado.eventos:
-                emitir(con, ev["fonte"], ev["tipo"], ev.get("chave", r[0]),
-                       {**(ev.get("detalhe") or {}), "correlation_id": r[1]})
-    return estado
+                emitir(con, ev["fonte"], ev["tipo"], ev.get("chave", r[1]),
+                       {**(ev.get("detalhe") or {}), "correlation_id": r[2]})
+    return r[0]
 
 
 def falhar(con, ficha: int, erro: str, transitorio: bool = True, erro_tipo: str = "erro") -> str | None:
@@ -222,9 +247,25 @@ def falhar(con, ficha: int, erro: str, transitorio: bool = True, erro_tipo: str 
     r = con.execute(
         "UPDATE jobs SET estado = CASE WHEN %s::boolean AND tentativas < max_tentativas THEN 'fila' "
         "ELSE 'quarentena' END, "
+        "concluido_em = CASE WHEN %s::boolean AND tentativas < max_tentativas THEN NULL ELSE now() END, "
         f"disponivel_em = now() + {_BACKOFF_SQL}, prazo = NULL, dono = NULL, erro_tipo = %s, "
         f"erro_resumo = left(%s, 2000) WHERE {_POSSE} RETURNING estado",
-        (bool(transitorio), BACKOFF_TETO_S, BACKOFF_BASE_S, erro_tipo, str(erro), ficha)).fetchone()
+        (bool(transitorio), bool(transitorio), BACKOFF_TETO_S, BACKOFF_BASE_S, erro_tipo, str(erro),
+         ficha)).fetchone()
+    return r[0] if r else None
+
+
+def adiar(con, ficha: int, motivo: str, reabre_em=None) -> str | None:
+    """Espera conhecida (`Adiado`): devolve à fila com `disponivel_em` = reabertura (entre 30 s e 7 dias; sem ela,
+    15 min) e DEVOLVE a tentativa gasta na reserva — esperar o ritmo da assinatura não leva à quarentena.
+    None = recusado (ficha velha)."""
+    r = con.execute(
+        "UPDATE jobs SET estado = 'fila', tentativas = greatest(tentativas - 1, 0), prazo = NULL, dono = NULL, "
+        "concluido_em = NULL, erro_tipo = 'adiado', erro_resumo = left(%s, 2000), "
+        "disponivel_em = greatest(now() + make_interval(secs => %s), least(now() + make_interval(secs => %s), "
+        "coalesce(%s::timestamptz, now() + make_interval(secs => %s)))) "
+        f"WHERE {_POSSE} RETURNING estado",
+        (str(motivo), ADIADO_MIN_S, ADIADO_MAX_S, reabre_em, ADIADO_PADRAO_S, ficha)).fetchone()
     return r[0] if r else None
 
 
@@ -237,6 +278,7 @@ def recuperar_vencidos(con) -> int:
     as tentativas. A ficha antiga perde a posse (o estado deixa de ser 'reservado'). Devolve quantos."""
     cur = con.execute(
         "UPDATE jobs SET estado = CASE WHEN tentativas >= max_tentativas THEN 'quarentena' ELSE 'fila' END, "
+        "concluido_em = CASE WHEN tentativas >= max_tentativas THEN now() END, "
         "erro_tipo = 'lease_vencido', erro_resumo = 'lease vencido com ' || coalesce(dono, '?'), dono = NULL, "
         f"prazo = NULL, disponivel_em = now() + {_BACKOFF_SQL} WHERE estado = 'reservado' AND prazo < now()",
         (BACKOFF_TETO_S, BACKOFF_BASE_S))

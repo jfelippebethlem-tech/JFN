@@ -6,8 +6,10 @@ Entrada e saída por arquivo JSON (o stdout do handler fica livre para log):
     python -m compliance_agent.fluxo.executar rodar    <entrada.json> <saida.json>
     python -m compliance_agent.fluxo.executar conferir <entrada.json> <saida.json>
 `entrada` = {tipo, chave, ficha, no, tentativa, correlation_id, payload[, resultado]}.
-Saída de `rodar` = {efeito, eventos}; de `conferir` = {conferido}. Códigos: 0 ok · 3 ErroPermanente (quarentena) ·
-outro = falha transitória (traceback no stderr, que o supervisor resume no `erro_resumo`).
+Saída de `rodar` = {efeito, eventos}; de `conferir` = {conferido, conferencia} (`conferencia` = o que o efeito
+mediu — o motivo da reprovação vai ao `erro_resumo`). Códigos: 0 ok · 3 ErroPermanente (quarentena) · 4 `fila.Adiado`
+(espera conhecida: {adiado, reabre_em}, volta sem gastar tentativa) · outro = falha transitória (traceback no stderr,
+que o supervisor resume no `erro_resumo`). `expandir:<estágio>` (um evento → N jobs) roda aqui: fluxo/expandir.py.
 """
 from __future__ import annotations
 
@@ -16,15 +18,20 @@ import sys
 from pathlib import Path
 
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, estagio_de
-from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo.fila import Adiado, Resultado
 
 SAIDA_PERMANENTE = 3
+SAIDA_ADIADO = 4
 
 
 def main(argv: list[str] | None = None) -> int:
     modo, entrada, saida = (argv if argv is not None else sys.argv[1:])[:3]
     e = json.loads(Path(entrada).read_text(encoding="utf-8"))
-    estagio = estagio_de(e["tipo"])
+    if e["tipo"].startswith("expandir:"):
+        from compliance_agent.fluxo import expandir
+        estagio = expandir.ESTAGIO
+    else:
+        estagio = estagio_de(e["tipo"])
     if estagio is None:
         Path(saida).write_text(json.dumps({"erro": f"estágio desconhecido: {e['tipo']}"}), encoding="utf-8")
         return SAIDA_PERMANENTE
@@ -48,12 +55,19 @@ def _rodar(modo: str, e: dict, estagio, ctx: Contexto, saida: str) -> int:
             out = {"efeito": r.efeito, "eventos": r.eventos}
         else:
             res = e.get("resultado") or {}
-            out = {"conferido": bool(estagio.efeito(e.get("payload") or {}, ctx,
-                                                    Resultado(efeito=res.get("efeito") or {},
-                                                              eventos=res.get("eventos") or [])))}
+            r = Resultado(efeito=res.get("efeito") or {}, eventos=res.get("eventos") or [])
+            out = {"conferido": bool(estagio.efeito(e.get("payload") or {}, ctx, r)),
+                   "conferencia": r.efeito.get("conferencia")}
     except ErroPermanente as exc:
         Path(saida).write_text(json.dumps({"erro": str(exc)}, ensure_ascii=False), encoding="utf-8")
         return SAIDA_PERMANENTE
+    except Adiado as exc:
+        # o nome da classe vai ao stderr (SemCota dos estágios de LLM: o relatório do ensaio o reconhece)
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        reabre = exc.reabre_em.isoformat() if hasattr(exc.reabre_em, "isoformat") else exc.reabre_em
+        Path(saida).write_text(json.dumps({"adiado": f"{type(exc).__name__}: {exc}", "reabre_em": reabre},
+                                          ensure_ascii=False, default=str), encoding="utf-8")
+        return SAIDA_ADIADO
     Path(saida).write_text(json.dumps(out, ensure_ascii=False, default=str), encoding="utf-8")
     return 0
 

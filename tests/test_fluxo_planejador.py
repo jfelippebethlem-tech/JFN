@@ -101,10 +101,17 @@ def test_evento_vira_job_do_dependente_e_reabre_depois_do_feito(con):
 
 
 @precisa_pg
-def test_evento_sem_dependente_so_e_marcado(con):
+def test_evento_sem_dependente_fica_pendente_e_a_saude_diz_bloqueado(con):
+    """1.1 (revisão 25/11): evento que ninguém consome NÃO é marcado processado — some calado era o defeito."""
+    _no(con, "vm2", None)
     fila.emitir(con, "ninguem:depende", "x")
-    assert P.propagar_eventos(con, P.GRAFO_EXEMPLO) == 1
+    assert P.propagar_eventos(con, P.GRAFO_EXEMPLO) == 0
     assert con.execute("SELECT count(*) FROM jobs").fetchone()[0] == 0
+    assert con.execute("SELECT count(*) FROM eventos WHERE processado_em IS NULL").fetchone()[0] == 1
+    s = P.saude(con, grafo=P.GRAFO_EXEMPLO)
+    assert s["estado"] == "BLOQUEADO" and any("evento sem consumidor: ninguem:depende/x" in m for m in s["motivos"])
+    assert P.propagar_eventos(con, P.GRAFO_EXEMPLO, terminais={"ninguem:depende/x": "fim"}) == 1   # terminal: marca
+    assert P.saude(con, grafo=P.GRAFO_EXEMPLO)["estado"] == "SAUDAVEL"
 
 
 def _no(con, no, slots, idade_s=0):
@@ -127,6 +134,8 @@ def test_saude_saudavel_degradado_atrasado_bloqueado(con):
     fila.falhar(con, fila.reservar(con, "vm2", ["cpu_leve"]).ficha, "x", transitorio=False)
     s = P.saude(con)
     assert s["estado"] == "DEGRADADO" and any("quarentena" in m for m in s["motivos"])
+    con.execute("UPDATE jobs SET criado_em = now() - interval '3 days', concluido_em = now() - interval '3 days'")
+    assert P.saude(con)["estado"] == "DEGRADADO"                          # 1.3: toda quarentena aberta, sem janela
     fila.enfileirar(con, "eco", "eco:velho")
     con.execute("UPDATE jobs SET disponivel_em = now() - interval '1 hour' WHERE chave = 'eco:velho'")
     assert P.saude(con)["estado"] == "ATRASADO"

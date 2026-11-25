@@ -230,6 +230,47 @@ class Transitorio(_Base):
         return v
 
 
+FORMAS = ("processo", "documento", "aquisicao", "unidade", "detectores", "laudo", "agrupado")
+EXPANDE = {"aquisicao": "texto", "detectores": "detectar"}   # forma → estágio cujos N jobs um job `expandir:` cria
+_RX_EVENTO = re.compile(r"^[a-z][a-z0-9_]*/[a-z][a-z0-9_]*$")
+
+
+class RotaNativa(_Base):
+    """Evento de estágio NATIVO (`fonte/tipo`) → job do estágio seguinte. A `forma` diz como o evento vira job
+    (planejador.jobs_nativos): `processo` `<tipo>:<processo>` · `documento` `<tipo>:<proc>|<doc>|<sha16>` (sha256 do
+    detalhe) · `aquisicao` um job `expandir:texto` que cria um `texto:` por versão binária (texto.jobs_da_aquisicao,
+    no filho) · `unidade` `<tipo>:<unidade>:todos` · `detectores` um `expandir:detectar` (detectores da unidade) ·
+    `laudo` `conferir:laudo:<processo>` · `agrupado` UM job do tipo (recálculo da base)."""
+    evento: str
+    estagio: str
+    forma: str
+    debounce_s: int = Field(default=0, ge=0)
+    nota: str | None = None
+
+    @field_validator("evento")
+    @classmethod
+    def _evento(cls, v):
+        if not _RX_EVENTO.match(v):
+            raise ValueError(f"evento tem de ser 'fonte/tipo': {v!r}")
+        return v
+
+    @field_validator("forma")
+    @classmethod
+    def _forma(cls, v):
+        if v not in FORMAS:
+            raise ValueError(f"forma desconhecida {v!r} (válidas: {FORMAS})")
+        return v
+
+
+class Nativos(_Base):
+    """Encadeamento dos estágios nativos (1.1 da revisão de 25/11): o que cada handler EMITE (a catraca
+    tests/test_fluxo_encadeamento.py confere contra o código), as rotas, os terminais e a dívida declarada."""
+    emite: dict[str, list[str]] = Field(default_factory=dict)       # Ek → ['fonte/tipo', …]
+    rotas: list[RotaNativa] = Field(default_factory=list)
+    terminais: dict[str, str] = Field(default_factory=dict)         # 'fonte/tipo' → por que ninguém consome
+    sem_consumidor: dict[str, str] = Field(default_factory=dict)    # dívida: fica PENDENTE e a saúde diz BLOQUEADO
+
+
 class Grafo(_Base):
     versao: int
     nos: list[str]
@@ -240,10 +281,11 @@ class Grafo(_Base):
     duplicacoes: list[Duplicacao] = Field(default_factory=list)
     fora: list[Fora] = Field(default_factory=list)
     transitorios: dict[str, Transitorio] = Field(default_factory=dict)
+    nativos: Nativos = Field(default_factory=Nativos)
 
     @model_validator(mode="after")
     def _coerencia(self):
-        erros: list[str] = []
+        erros: list[str] = self._coerencia_nativos()
         for tid, t in self.transitorios.items():
             if SLOTS_INICIAIS.get(t.maquina, {}).get(t.recurso):
                 erros.append(f"transitório {tid}: {t.maquina} já tem {t.recurso} na §3.4 — transitório só onde o slot é 0")
@@ -287,7 +329,76 @@ class Grafo(_Base):
             raise ErroGrafo("ciclo de dependência entre rotinas: " + " → ".join(ciclo))
         return self
 
+    def _coerencia_nativos(self) -> list[str]:
+        """Portão do boot: todo evento que um estágio nativo emite tem consumidor (rota), é terminal declarado ou é
+        dívida declarada (`sem_consumidor`) — nunca some calado. Rota aponta para estágio que existe."""
+        n, erros = self.nativos, []
+        rotas = {r.evento for r in n.rotas}
+        for ek, evs in n.emite.items():
+            if ek not in ESTAGIOS:
+                erros.append(f"nativos.emite: estágio desconhecido {ek}")
+            for ev in evs:
+                if not _RX_EVENTO.match(ev):
+                    erros.append(f"nativos.emite.{ek}: evento tem de ser 'fonte/tipo': {ev!r}")
+                elif ev not in rotas and ev not in n.terminais and ev not in n.sem_consumidor:
+                    erros.append(f"nativos: {ek} emite {ev}, que não tem consumidor nem é terminal/dívida declarada")
+        for ev in sorted(rotas & (set(n.terminais) | set(n.sem_consumidor))):
+            erros.append(f"nativos: {ev} tem rota E é terminal/dívida")
+        for ev in sorted(set(n.terminais) & set(n.sem_consumidor)):
+            erros.append(f"nativos: {ev} é terminal E dívida")
+        for r in n.rotas:
+            if r.estagio not in ESTAGIOS:
+                erros.append(f"nativos: rota {r.evento} → estágio desconhecido {r.estagio}")
+            elif r.forma in EXPANDE and self.estagios.get(r.estagio) and \
+                    self.estagios[r.estagio].tipo != EXPANDE[r.forma]:
+                erros.append(f"nativos: forma {r.forma} só serve ao estágio {EXPANDE[r.forma]} ({r.evento})")
+        vistos: set[tuple[str, str]] = set()
+        for r in n.rotas:
+            if (r.evento, r.estagio) in vistos:
+                erros.append(f"nativos: rota repetida {r.evento} → {r.estagio}")
+            vistos.add((r.evento, r.estagio))
+        return erros
+
     # ── consumidores ──
+    def contrato_do_estagio(self, ek: str, *, expansao: bool = False) -> dict:
+        """Contrato do job NATIVO do estágio (tipo = `estagios.<Ek>.tipo`). O job `expandir:` só lê o PG e
+        enfileira: cpu_leve, em qualquer nó, com a prioridade do estágio que ele alimenta."""
+        e = self.estagios[ek]
+        if expansao:
+            return {"recursos": ["cpu_leve"], "prioridade": e.prioridade, "volta": None, "nos": [],
+                    "no_preferido": None, "timeout_s": 600}
+        return {"recursos": list(e.recursos), "prioridade": e.prioridade,
+                "volta": {"nos": list(e.volta.nos), "estagio": ek} if e.volta.nos else None,
+                "nos": list(e.nos), "no_preferido": e.nos[0] if e.nos else None, "timeout_s": e.timeout_s}
+
+    def payload_do_estagio(self, ek: str, *, expansao: bool = False) -> dict:
+        """Base do payload do job nativo: `estagio` (portão da liberação, O9.0), `nos` (restrição dura da reserva),
+        `concorrencia` (teto por fonte/provedor) e `timeout_s` (teto do subprocesso)."""
+        c, e = self.contrato_do_estagio(ek, expansao=expansao), self.estagios[ek]
+        p = {"estagio": ek, "timeout_s": c["timeout_s"] + 60}
+        if c["nos"]:
+            p["nos"] = c["nos"]
+        conc = [f"por_fonte:{e.tipo}" if x == "por_fonte" else x for x in e.concorrencia]
+        if conc and not expansao:
+            p["concorrencia"] = conc
+        return p
+
+    def terminais(self, so_ativas: bool = True) -> dict[str, str]:
+        """'fonte/tipo' (ou 'fonte/*') → motivo de NINGUÉM consumir, declarado: os terminais dos nativos, e no
+        legado a rotina/fonte sem dependente ativo (o fim da cadeia legada, `<rotina>/concluido`)."""
+        out = dict(self.nativos.terminais)
+        g = self.grafo_planejador(so_ativas)
+        for rid in self.rotinas:
+            if rid not in g:
+                out[f"{rid}/concluido"] = "rotina legada sem dependente ativo (fim da cadeia legada)"
+        for f in self.fontes:
+            if f not in g:
+                out[f"{f}/*"] = "fonte legada sem rotina ativa que dependa dela (bloqueio declarado na rotina)"
+        return out
+
+    def dividas(self) -> dict[str, str]:
+        return dict(self.nativos.sem_consumidor)
+
     def contrato_da_rotina(self, rid: str) -> dict:
         """`nos` = restrição DURA da reserva; `volta` só existe quando a ROTINA a declara — a rotina legada roda no
         nó em que rodava (compliance.db mora na VM-1) e a volta do estágio só vale quando o estágio for portado (O2.2)."""
@@ -331,8 +442,15 @@ class Grafo(_Base):
                 for t in self.transitorios.values() if t.maquina == no}
 
     def contrato(self) -> dict[str, dict]:
-        """tipo de job → recursos/prioridade/volta/no_preferido (o que o planejador grava em cada job)."""
-        return {tipo_da_rotina(rid): self.contrato_da_rotina(rid) for rid in self.rotinas}
+        """tipo de job → recursos/prioridade/volta/no_preferido (o que o planejador grava em cada job): as rotinas
+        legadas, os estágios nativos (tipo do estágio) e os `expandir:<tipo>` das rotas que expandem."""
+        out = {tipo_da_rotina(rid): self.contrato_da_rotina(rid) for rid in self.rotinas}
+        for ek, e in self.estagios.items():
+            out.setdefault(e.tipo, self.contrato_do_estagio(ek))
+        for r in self.nativos.rotas:
+            if r.forma in EXPANDE:
+                out[f"expandir:{self.estagios[r.estagio].tipo}"] = self.contrato_do_estagio(r.estagio, expansao=True)
+        return out
 
     def payload(self, rid: str, args: list[str] | None = None, *, evento: bool = False) -> dict:
         """Payload do job. Leva as restrições que `fila.reservar` aplica: `estagio` (portão da religação — só sai
@@ -367,6 +485,17 @@ class Grafo(_Base):
             for fonte in r.evento.depende:
                 # evento de DERIVADO (fonte que é rotina) não abre janela de junção (propagacao._sujos)
                 g.setdefault(fonte, []).append({**dep, "abre_janela": fonte not in self.rotinas})
+        # estágios NATIVOS: a chave é 'fonte/tipo' (o handler emite a fonte curta, ex. arvore/documento_novo)
+        for r in self.nativos.rotas:
+            e = self.estagios[r.estagio]
+            payload = self.payload_do_estagio(r.estagio)
+            if r.forma in EXPANDE:                   # o job `expandir:` leva o contrato/payload dos N que ele cria
+                payload = {**self.payload_do_estagio(r.estagio, expansao=True),
+                           "alvo": {"tipo": e.tipo, "contrato": self.contrato_do_estagio(r.estagio),
+                                    "payload": payload}}
+            g.setdefault(r.evento, []).append({"tipo": e.tipo, "forma": r.forma, "estagio": r.estagio,
+                                               "debounce_s": r.debounce_s, "agrupar": r.forma == "agrupado",
+                                               "abre_janela": True, "payload": payload})
         return g
 
     def agenda_linhas(self, so_ativas: bool = True) -> list[dict]:
@@ -468,7 +597,8 @@ def main(argv: list[str] | None = None) -> int:
                       "ativas": sum(r.ativa for r in g.rotinas.values()),
                       "agenda": len(g.agenda_linhas()), "fontes_com_dependentes": len(g.grafo_planejador()),
                       "sem_slot": [rid for rid, _f, _n in rotinas_sem_slot(g)],
-                      "efeito_so_rc": len(fracos)}, ensure_ascii=False))
+                      "efeito_so_rc": len(fracos), "rotas_nativas": len(g.nativos.rotas),
+                      "eventos_sem_consumidor": sorted(g.dividas())}, ensure_ascii=False))
     return 0
 
 

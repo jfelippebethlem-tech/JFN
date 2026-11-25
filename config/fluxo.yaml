@@ -2886,3 +2886,57 @@ fora:
   motivo: 'infra (serviço residente): fora da esteira (§16.6)'
 - origem: [vm1-svc-jfn-bombeiros-supervisor]
   motivo: 'supervisor residente da lente Bombeiros: vira jobs E3/E11 da lente (§3.6); não é horário'
+# ── ENCADEAMENTO DOS ESTÁGIOS NATIVOS (revisão de falhas caladas 25/11, achado 1.1) ───────────────────────────────
+# O handler nativo emite a FONTE CURTA (arvore, capturar, texto…), não o id de rotina: a chave aqui é 'fonte/tipo'.
+# Fonte única: este bloco + compliance_agent/fluxo/grafo.py (formas). O boot (grafo.carregar) recusa evento emitido
+# sem rota, terminal ou dívida declarada; a catraca tests/test_fluxo_encadeamento.py confere `emite` contra o código
+# dos handlers. Evento sem consumidor NÃO é marcado processado: fica pendente e a saúde mostra BLOQUEADO.
+nativos:
+  emite:
+    E2: [arvore/documento_novo, sei_relacionado/citado]
+    E3: [capturar/versao_nova]
+    E4: [texto/texto_novo, texto/pagina_escaneada, texto/sem_ocr, texto/invalido]
+    E5: [ocr/texto_novo, ocr/numero_ia, ocr/terminado]
+    E6: [confirmar_ocr/confirmado, confirmar_ocr/a_conferir]
+    E7: [arquivar/arquivado]
+    E8: [fatos/mudou]
+    E9: [elegibilidade/mudou]
+    E10: [detectar/achados, detectar/achado_processo]
+    E11: [periciar/laudo]
+    E12: [conferir/veredito]
+    E13: [calibrar/tier]
+    E14: [caso/versao]
+    E15: [materializar/visao]
+    E16: [entregar/dossie]
+    E18: [observar/metricas]
+  rotas:
+    # E1 ainda não é nativo (o coletor é legado); o contrato do evento dele já fica declarado (o ensaio O8.5 o emite)
+    - {evento: coleta/ob_nova, estagio: E2, forma: processo}
+    - {evento: coleta/fonte_mudou, estagio: E9, forma: unidade}
+    - {evento: arvore/documento_novo, estagio: E3, forma: processo}
+    - {evento: capturar/versao_nova, estagio: E4, forma: aquisicao, nota: um texto por versão binária da aquisição}
+    - {evento: texto/pagina_escaneada, estagio: E5, forma: documento}
+    - {evento: texto/sem_ocr, estagio: E7, forma: documento}
+    - {evento: texto/texto_novo, estagio: E8, forma: processo, debounce_s: 120, nota: junta os documentos do processo}
+    - {evento: ocr/numero_ia, estagio: E6, forma: documento}
+    - {evento: ocr/terminado, estagio: E7, forma: documento}
+    - {evento: ocr/texto_novo, estagio: E8, forma: processo, debounce_s: 120}
+    - {evento: confirmar_ocr/confirmado, estagio: E8, forma: processo, debounce_s: 120}
+    - {evento: confirmar_ocr/a_conferir, estagio: E8, forma: processo, debounce_s: 120}
+    - {evento: fatos/mudou, estagio: E11, forma: processo}
+    - {evento: elegibilidade/mudou, estagio: E10, forma: detectores, nota: um detectar por detector cuja exigência é da unidade}
+    - {evento: detectar/achado_processo, estagio: E11, forma: processo}
+    - {evento: periciar/laudo, estagio: E12, forma: laudo}
+    - {evento: conferir/veredito, estagio: E13, forma: agrupado}
+  terminais:
+    arquivar/arquivado: 'original guardado com md5 conferido: nenhum estágio depende'
+    calibrar/tier: 'o tier calibrado é configuração que o E10 lê (não é aresta: senão haveria ciclo E10→E13→E10)'
+    materializar/visao: 'visão pronta: a rota do painel só lê'
+    entregar/dossie: 'dossiê exportado: fim da cadeia'
+    observar/metricas: 'métrica gravada em fluxo.metricas; a automelhoria (O8.4) lê a tabela, não o evento'
+    eco/concluido: 'E0 de teste do motor'
+  sem_consumidor:
+    sei_relacionado/citado: 'processo citado por outro: a fila única do E2 ainda não decide quem entra (sem rota até a O3)'
+    texto/invalido: 'tela de WAF/menu do SEI no lugar do PDF: pede recaptura ao E3, rota não decidida (risco de laço)'
+    detectar/achados: 'E12 por achado e E14 por processo/CNPJ citado: a expansão por achado ainda não foi portada do ensaio'
+    caso/versao: 'E16: produto/lente do dossiê é decisão do dono (o ensaio usa dossie_orgao/couto)'

@@ -54,6 +54,7 @@ PLANEJAR_A_CADA_S = 10.0
 ESPERA_OCIOSA_S = 60.0
 ESPERA_COM_FILHO_S = 2.0
 SAIDA_PERMANENTE = 3                  # = executar.SAIDA_PERMANENTE (sem importar o filho: catraca)
+SAIDA_ADIADO = 4                      # = executar.SAIDA_ADIADO: espera conhecida, sem gastar tentativa
 
 
 def _bytes(txt: str) -> int:
@@ -142,6 +143,9 @@ class Supervisor:
     ritmos: set[str] | None = None
     ritmo: Callable[[str], str | None] | None = None   # None = PG (fluxo/ritmo.py) + guarda local (motivo_ritmo)
     restritos: Mapping[str, list[str]] | None = None   # slot transitório do nó → tipos que podem usá-lo (D1)
+    terminais: Mapping[str, str] | None = None         # 'fonte/tipo' sem consumidor DECLARADO (grafo.terminais)
+    dividas: Mapping[str, str] | None = None           # evento sem consumidor com motivo declarado (saúde)
+    nos_esperados: tuple[str, ...] | None = None       # nós do yaml: fora = DEGRADADO na saúde do ciclo (1.15)
     prazo_s: float = 120.0
     isolamento: str = "auto"                    # auto | systemd | subprocesso
     chave_lideranca: int = planejador.CHAVE_LIDERANCA
@@ -162,7 +166,13 @@ class Supervisor:
             self.contrato = g.contrato() if self.contrato is None else self.contrato
             self.tetos = g.tetos() if self.tetos is None else self.tetos
             self.ritmos = g.ritmos() if self.ritmos is None else self.ritmos
+            self.terminais = g.terminais() if self.terminais is None else self.terminais
+            self.dividas = g.dividas() if self.dividas is None else self.dividas
+            self.nos_esperados = tuple(g.nos) if self.nos_esperados is None else self.nos_esperados
         self.tetos = dict(self.tetos or {})
+        self.terminais = dict(self.terminais or {})
+        self.dividas = dict(self.dividas or {})
+        self.nos_esperados = tuple(self.nos_esperados or ())
         self.ritmos = set(self.ritmos or ())
         if self.isolamento == "auto":
             self.isolamento = "systemd" if systemd_disponivel() else "subprocesso"
@@ -253,7 +263,7 @@ class Supervisor:
             return ""
 
     def _colher(self) -> dict:
-        r = {"feito": 0, "falhou_efeito": 0, "falhou": 0, "recusado": 0}
+        r = {"feito": 0, "falhou_efeito": 0, "volta_efeito": 0, "falhou": 0, "adiado": 0, "recusado": 0}
         for f in list(self.filhos):
             rc = f.proc.poll()
             if rc is None:
@@ -263,29 +273,47 @@ class Supervisor:
                                                 True, "timeout"), "falhou")
                     self._encerrar(f)
                 continue
-            saida = f.pasta / f"{f.fase}.saida.json"
-            try:
-                dados = json.loads(saida.read_text(encoding="utf-8")) if saida.exists() else {}
-            except ValueError:
-                dados = {}
-            if rc == 0 and f.fase == "rodar":
+            dados = self._saida(f)
+            if rc == 0 and dados is None:
+                # S4: saída 0 sem o JSON (ou corrompido) não é "efeito vazio" — é falha do filho, transitória
+                self._contar(r, fila.falhar(self.con, f.job.ficha, f"fase {f.fase} saiu 0 sem {f.fase}.saida.json "
+                                            f"legível {self._stderr(f)}", True, "saida"), "falhou")
+            elif rc == 0 and f.fase == "rodar":
                 self.filhos.remove(f)                    # a mesma pasta segue para a conferência
                 self._lancar(f.job, "conferir", f.pasta, dados)
                 continue
-            if rc == 0:
-                res = Resultado(efeito=(f.resultado or {}).get("efeito") or {},
-                                efeito_conferido=bool(dados.get("conferido")),
-                                eventos=(f.resultado or {}).get("eventos") or [])
-                estado = fila.concluir(self.con, f.job.ficha, res)
-                self._contar(r, estado, estado or "recusado")
+            elif rc == 0:
+                conf = dados.get("conferencia")
+                ok = bool(dados.get("conferido"))
+                efeito = dict((f.resultado or {}).get("efeito") or {})
+                if conf is not None:
+                    efeito["conferencia"] = conf
+                res = Resultado(efeito=efeito, efeito_conferido=ok, eventos=(f.resultado or {}).get("eventos") or [])
+                motivo = None if ok else ("efeito não conferido: " + json.dumps(conf, ensure_ascii=False, default=str)
+                                          if conf is not None else "efeito não conferido (a conferência não disse por quê)")
+                estado = fila.concluir(self.con, f.job.ficha, res, motivo)
+                self._contar(r, estado, {"fila": "volta_efeito"}.get(estado or "", estado or "recusado"))
+            elif rc == SAIDA_ADIADO:
+                d = dados or {}
+                self._contar(r, fila.adiar(self.con, f.job.ficha, d.get("adiado") or self._stderr(f),
+                                           d.get("reabre_em")), "adiado")
             elif rc == SAIDA_PERMANENTE:
-                self._contar(r, fila.falhar(self.con, f.job.ficha, dados.get("erro") or self._stderr(f), False,
-                                            "permanente"), "falhou")
+                self._contar(r, fila.falhar(self.con, f.job.ficha, (dados or {}).get("erro") or self._stderr(f),
+                                            False, "permanente"), "falhou")
             else:
                 self._contar(r, fila.falhar(self.con, f.job.ficha, f"rc={rc} {self._stderr(f)}", True,
                                             "conferencia" if f.fase == "conferir" else "erro"), "falhou")
             self._encerrar(f)
         return r
+
+    @staticmethod
+    def _saida(f: Filho) -> dict | None:
+        """O JSON de saída do filho; None = ausente, ilegível ou não é objeto."""
+        try:
+            d = json.loads((f.pasta / f"{f.fase}.saida.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        return d if isinstance(d, dict) else None
 
     @staticmethod
     def _contar(r: dict, estado: str | None, chave: str) -> None:
@@ -339,7 +367,8 @@ class Supervisor:
         r: dict = {"no": self.no}
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
             self._ultimo_plano = time.monotonic()
-            r["planejador"] = planejador.ciclo(self.con, self.grafo, self.contrato)
+            r["planejador"] = planejador.ciclo(self.con, self.grafo, self.contrato, self.terminais,
+                                               self.nos_esperados, self.dividas)
         r["colhidos"] = self._colher()
         r["leases_perdidos"] = self._renovar()
         m = self.medir()
@@ -365,22 +394,30 @@ class Supervisor:
 
     def drenar(self, limite_s: float = 300.0) -> dict:
         """Espera os filhos desta volta terminarem e serem concluídos (modo --uma-volta e testes)."""
-        tot = {"feito": 0, "falhou_efeito": 0, "falhou": 0, "recusado": 0}
+        tot: dict[str, int] = {}
         fim = time.monotonic() + limite_s
         while self.filhos and time.monotonic() < fim:
             time.sleep(0.2)
             for k, v in self._colher().items():
-                tot[k] += v
+                tot[k] = tot.get(k, 0) + v
             self._renovar()
         return tot
 
     def parar(self, *_):
-        """SIGTERM: mata os filhos e devolve os jobs à fila já (sem esperar o lease vencer)."""
+        """SIGTERM: SÓ levanta a bandeira. O handler de sinal roda no meio do laço — talvez dentro de uma consulta na
+        MESMA conexão (psycopg não é reentrante: o lock da conexão travaria o processo). Quem mata os filhos e
+        devolve os jobs à fila é `encerrar_filhos`, chamado pelo laço ao sair (`rodar`)."""
         self._parar = True
+
+    def encerrar_filhos(self, motivo: str = "supervisor parado (SIGTERM)") -> int:
+        """Mata os filhos vivos e devolve os jobs à fila já (sem esperar o lease vencer). Fora do handler de sinal."""
+        n = 0
         for f in list(self.filhos):
             self._matar(f)
-            fila.falhar(self.con, f.job.ficha, "supervisor parado (SIGTERM)", True, "parada")
+            fila.falhar(self.con, f.job.ficha, motivo, True, "parada")
             self._encerrar(f)
+            n += 1
+        return n
 
     def rodar(self) -> None:
         import psycopg
@@ -395,6 +432,7 @@ class Supervisor:
                     pass
         finally:
             escuta.close()
+            self.encerrar_filhos()
             self.fechar()
 
     def fechar(self) -> None:
