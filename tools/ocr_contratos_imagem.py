@@ -19,7 +19,9 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 
-import httpx
+import requests
+
+from compliance_agent.adaptadores import rede_segura
 
 from compliance_agent.collectors.atas_julgamento import _ocr_pdf
 from compliance_agent.collectors.pncp import processos_sei_no_texto
@@ -56,34 +58,34 @@ def main() -> None:
                LIMIT ?""", [a.limite]).fetchall()
         logger.info("%d PDF(s) de imagem nesta passada", len(alvos))
         t0, ok = time.monotonic(), 0
-        with httpx.Client(timeout=180, follow_redirects=True,
-                          headers={"User-Agent": "JFN-Compliance/2.0"}) as cli:
-            for numero, fornecedor, url in alvos:
-                if time.monotonic() - t0 > a.segundos:
-                    logger.info("teto de tempo — encerrando a passada")
-                    break
-                try:
-                    blob = cli.get(url).content
-                except httpx.HTTPError as exc:
-                    logger.warning("  %s: download falhou: %s", numero, exc)
-                    continue
-                texto = _ocr_pdf(blob, max_paginas=a.paginas)
-                seis = processos_sei_no_texto(texto)
-                # estado só muda se o OCR de fato produziu texto — senão continua PDF_IMAGEM,
-                # que é a verdade: baixado, tentado, ilegível.
-                estado = "TEXTO_OK" if len(texto) >= MIN_CHARS_TEXTO else "PDF_IMAGEM"
-                con.execute(
-                    """UPDATE contrato_integra
-                       SET texto = ?, n_chars = ?, processos_sei = ?, estado = ?,
-                           fonte_texto = 'ocr', coletado_em = ?
-                       WHERE numero_controle_pncp = ?""",
-                    [texto, len(texto), json.dumps(seis), estado,
-                     datetime.now(timezone.utc).isoformat(), numero])
-                con.commit()
-                if estado == "TEXTO_OK":
-                    ok += 1
-                logger.info("  %s  %-26s %7d chars  %-11s SEI=%s",
-                            numero, (fornecedor or "")[:26], len(texto), estado, seis or "—")
+        for numero, fornecedor, url in alvos:
+            if time.monotonic() - t0 > a.segundos:
+                logger.info("teto de tempo — encerrando a passada")
+                break
+            try:
+                # URL do PNCP guardada no banco (dado externo): cliente seguro anti-SSRF (O0.4)
+                blob = rede_segura.obter(url, "pncp", timeout=180,
+                                         headers={"User-Agent": "JFN-Compliance/2.0"}).content
+            except (requests.RequestException, rede_segura.RedeBloqueada) as exc:
+                logger.warning("  %s: download falhou: %s", numero, exc)
+                continue
+            texto = _ocr_pdf(blob, max_paginas=a.paginas)
+            seis = processos_sei_no_texto(texto)
+            # estado só muda se o OCR de fato produziu texto — senão continua PDF_IMAGEM,
+            # que é a verdade: baixado, tentado, ilegível.
+            estado = "TEXTO_OK" if len(texto) >= MIN_CHARS_TEXTO else "PDF_IMAGEM"
+            con.execute(
+                """UPDATE contrato_integra
+                   SET texto = ?, n_chars = ?, processos_sei = ?, estado = ?,
+                       fonte_texto = 'ocr', coletado_em = ?
+                   WHERE numero_controle_pncp = ?""",
+                [texto, len(texto), json.dumps(seis), estado,
+                 datetime.now(timezone.utc).isoformat(), numero])
+            con.commit()
+            if estado == "TEXTO_OK":
+                ok += 1
+            logger.info("  %s  %-26s %7d chars  %-11s SEI=%s",
+                        numero, (fornecedor or "")[:26], len(texto), estado, seis or "—")
         por = dict(con.execute(
             "SELECT estado, count(*) FROM contrato_integra GROUP BY 1").fetchall())
         logger.info("\npassada: %d recuperado(s) pelo OCR · acervo: %s", ok, por)

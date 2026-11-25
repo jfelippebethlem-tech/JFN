@@ -11,6 +11,8 @@ import unicodedata
 
 import httpx
 
+from compliance_agent.adaptadores import rede_segura
+
 API = "https://dadosabertos.camara.leg.br/api/v2"
 _TIMEOUT = 30
 _TENTATIVAS = 4  # a API da Câmara devolve 504 esporádico; backoff resolve
@@ -58,6 +60,8 @@ def listar_deputados_rj(legislaturas: tuple[int, ...] = (56, 57)) -> dict:
                             d["_legs"] = {leg}
                             deputados[d["id"]] = d
                     url = next((l["href"] for l in j.get("links", []) if l["rel"] == "next"), None)
+                    if url:  # link vem do JSON da API (dado externo): só segue dentro da Câmara (O0.4)
+                        url = rede_segura.exigir_host(url, "camara")
     except (httpx.HTTPError, ValueError, KeyError) as e:
         return {"verificado": False, "deputados": [], "motivo": f"API Câmara: {e}"}
     return {"verificado": True, "deputados": list(deputados.values()), "motivo": None}

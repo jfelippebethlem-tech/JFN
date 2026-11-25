@@ -18,6 +18,7 @@ from pathlib import Path
 
 import httpx
 
+from compliance_agent.adaptadores import rede_segura
 from compliance_agent.collectors.arquivos import abrir_banco, dir_dados, gravar_atomico
 from compliance_agent.collectors.formato import valor_br
 
@@ -49,9 +50,10 @@ def baixar(force: bool = False) -> Path:
     if fp.exists() and not force and fp.stat().st_size > 1000:
         return fp
     url = url_recurso()
-    with httpx.stream("GET", url, timeout=120, follow_redirects=True) as r:
-        r.raise_for_status()
-        gravar_atomico(fp, b"".join(r.iter_bytes()))
+    # URL do recurso vem do JSON do CKAN (dado externo): cliente seguro anti-SSRF (O0.4)
+    r = rede_segura.obter(url, "ckan_rj", timeout=120, max_bytes=2 * 1024 ** 3)
+    r.raise_for_status()
+    gravar_atomico(fp, r.content)
     return fp
 
 

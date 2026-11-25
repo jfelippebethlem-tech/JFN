@@ -31,6 +31,8 @@ import asyncio
 
 import httpx
 
+from compliance_agent.adaptadores import rede_segura
+
 CKAN_BASE = "https://dadosabertos.rj.gov.br"
 _TIMEOUT = 30
 
@@ -214,11 +216,10 @@ async def baixar_recurso_csv(url: str, max_linhas: int = 500) -> dict:
     Útil quando o recurso NÃO tem datastore ativo (só o arquivo).
     """
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, headers=_HEADERS,
-                                     follow_redirects=True) as c:
-            r = await c.get(url)
-            r.raise_for_status()
-            texto = r.text
+        # URL de recurso CKAN (dado externo): cliente seguro anti-SSRF (O0.4)
+        r = await rede_segura.obter_async(url, "ckan_rj", timeout=_TIMEOUT, headers=_HEADERS)
+        r.raise_for_status()
+        texto = r.text
         linhas = texto.splitlines()
         return {
             "ok": True,

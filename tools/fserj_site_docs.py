@@ -102,7 +102,9 @@ def indexar() -> dict:
 def baixar(nome_like: str, max_docs: int = 12) -> list[dict]:
     """Baixa os PDFs do fornecedor (LIKE no nome normalizado) e grava o texto em data/fserj_site_docs/."""
     import fitz
-    import httpx
+    import requests
+
+    from compliance_agent.adaptadores import rede_segura
     DESTINO.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB, timeout=120)
     rows = con.execute("SELECT url, arquivo FROM fserj_site_docs WHERE fornecedor LIKE ? AND texto_path IS NULL LIMIT ?",
@@ -110,7 +112,8 @@ def baixar(nome_like: str, max_docs: int = 12) -> list[dict]:
     out = []
     for url, arquivo in rows:
         try:
-            r = httpx.get(url, headers={"User-Agent": "Mozilla/5.0 (JFN fiscalizacao)"}, timeout=120, follow_redirects=True)
+            # URL raspada de href do site da FSERJ (dado externo): cliente seguro anti-SSRF (O0.4)
+            r = rede_segura.obter(url, "governo_rj", headers={"User-Agent": "Mozilla/5.0 (JFN fiscalizacao)"}, timeout=120)
             if r.status_code != 200 or not r.content.startswith(b"%PDF"):
                 continue
             texto = "".join(p.get_text() for p in fitz.open(stream=r.content, filetype="pdf"))
@@ -118,7 +121,7 @@ def baixar(nome_like: str, max_docs: int = 12) -> list[dict]:
                 # contrato ESCANEADO (6 dos 8 da TUISE vieram com 0 chars): OCR bounded da casa
                 from compliance_agent.sei.ocr_docs import ocr_documento
                 texto = ocr_documento(r.content, tipo="pdf") or texto
-        except (httpx.HTTPError, OSError, RuntimeError, ValueError, ImportError) as exc:
+        except (requests.RequestException, OSError, RuntimeError, ValueError, ImportError) as exc:
             print(f"[fserj-site] {arquivo[:60]}: {exc}", flush=True)
             continue
         alvo = DESTINO / (re.sub(r"[^A-Za-z0-9._-]+", "_", arquivo)[:150] + ".txt")

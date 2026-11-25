@@ -21,6 +21,9 @@ from typing import Optional
 import logging
 
 import httpx
+import requests
+
+from compliance_agent.adaptadores import rede_segura
 from compliance_agent.collectors.arquivos import abrir_banco
 
 logger = logging.getLogger(__name__)
@@ -326,30 +329,31 @@ async def baixar_documentos(id_pncp: str, max_arquivos: int = 5,
     arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
     out: list[dict] = []
     total = 0
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        for a in (arquivos or [])[:max_arquivos]:
-            url = a.get("url") or a.get("uri")
-            if not url:
-                continue
-            try:
-                d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
-                blob = d.content if d.status_code == 200 else b""
-            except Exception:
-                blob = b""
-            texto = _extrair_texto(a.get("titulo", "") or "", blob) if blob else ""
-            if total < max_chars:
-                texto = texto[: max_chars - total]
-                total += len(texto)
-            else:
-                texto = ""
-            out.append({
-                "titulo": a.get("titulo"),
-                "tipo": a.get("tipoDocumentoNome"),
-                "url": url,
-                "n_chars": len(texto),
-                "texto": texto,
-            })
-            await asyncio.sleep(0.2)
+    for a in (arquivos or [])[:max_arquivos]:
+        url = a.get("url") or a.get("uri")
+        if not url:
+            continue
+        try:
+            # URL vem do JSON do PNCP (dado externo): cliente seguro anti-SSRF (O0.4)
+            d = await rede_segura.obter_async(url, "pncp", timeout=60,
+                                              headers={"User-Agent": "JFN-Compliance/2.0"})
+            blob = d.content if d.status_code == 200 else b""
+        except Exception:
+            blob = b""
+        texto = _extrair_texto(a.get("titulo", "") or "", blob) if blob else ""
+        if total < max_chars:
+            texto = texto[: max_chars - total]
+            total += len(texto)
+        else:
+            texto = ""
+        out.append({
+            "titulo": a.get("titulo"),
+            "tipo": a.get("tipoDocumentoNome"),
+            "url": url,
+            "n_chars": len(texto),
+            "texto": texto,
+        })
+        await asyncio.sleep(0.2)
     return out
 
 
@@ -373,27 +377,28 @@ async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3
     arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", [])
     out: list[dict] = []
     total = 0
-    async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
-        for a in (arquivos or [])[:max_arquivos]:
-            url = a.get("url") or a.get("uri")
-            if not url:
-                continue
-            nome = a.get("titulo") or a.get("nomeArquivo") or ""
-            try:
-                d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
-                blob = d.content if d.status_code == 200 else b""
-            except httpx.HTTPError as exc:      # rede/timeout/protocolo — a família real do client.get
-                logger.debug("PNCP contrato %s/%s/%s: falha em %s: %s", cnpj, ano, seq, url, exc)
-                blob = b""
-            texto = _extrair_texto(nome, blob) if blob else ""
-            if total < max_chars:
-                texto = texto[: max_chars - total]
-                total += len(texto)
-            else:
-                texto = ""
-            out.append({"titulo": nome, "tipo": a.get("tipoDocumentoNome"),
-                        "url": url, "n_chars": len(texto), "texto": texto})
-            await asyncio.sleep(0.2)
+    for a in (arquivos or [])[:max_arquivos]:
+        url = a.get("url") or a.get("uri")
+        if not url:
+            continue
+        nome = a.get("titulo") or a.get("nomeArquivo") or ""
+        try:
+            # URL vem do JSON do PNCP (dado externo): cliente seguro anti-SSRF (O0.4)
+            d = await rede_segura.obter_async(url, "pncp", timeout=90,
+                                              headers={"User-Agent": "JFN-Compliance/2.0"})
+            blob = d.content if d.status_code == 200 else b""
+        except (requests.RequestException, rede_segura.RedeBloqueada) as exc:  # rede/timeout/SSRF
+            logger.debug("PNCP contrato %s/%s/%s: falha em %s: %s", cnpj, ano, seq, url, exc)
+            blob = b""
+        texto = _extrair_texto(nome, blob) if blob else ""
+        if total < max_chars:
+            texto = texto[: max_chars - total]
+            total += len(texto)
+        else:
+            texto = ""
+        out.append({"titulo": nome, "tipo": a.get("tipoDocumentoNome"),
+                    "url": url, "n_chars": len(texto), "texto": texto})
+        await asyncio.sleep(0.2)
     return out
 
 

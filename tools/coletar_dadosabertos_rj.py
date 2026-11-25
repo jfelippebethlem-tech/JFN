@@ -26,6 +26,10 @@ import unicodedata
 from pathlib import Path
 
 import httpx
+import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # roda como script (cron) sem PYTHONPATH
+from compliance_agent.adaptadores import rede_segura  # noqa: E402
 
 API = "https://dadosabertos.rj.gov.br/api/3/action/package_show?id="
 PACOTES = {"tfe-despesa": "da_despesa", "tfe-receita": "da_receita"}
@@ -91,7 +95,9 @@ def rodar(forcar: bool = False) -> dict:
             for r in meta["resources"]:
                 rid, nome, url = r["id"], r.get("name") or "", r["url"]
                 try:
-                    raw = h.get(url).content
+                    # URL do recurso vem do JSON do CKAN (dado externo): cliente seguro (O0.4)
+                    raw = rede_segura.obter(url, "ckan_rj", timeout=300, headers=UA,
+                                            max_bytes=2 * 1024 ** 3).content
                     sha = hashlib.sha256(raw).hexdigest()
                     ant = c.execute("SELECT sha256 FROM da_recurso WHERE recurso_id=?", (rid,)).fetchone()
                     if ant and ant[0] == sha and not forcar:
@@ -125,7 +131,7 @@ def rodar(forcar: bool = False) -> dict:
                     res["baixados"] += 1
                     res["linhas"] += len(lote)
                     print(f"  {pacote}/{nome}: {len(lote)} linhas · {periodo}")
-                except (httpx.HTTPError, ValueError, KeyError, csv.Error, sqlite3.Error) as e:  # um recurso ruim não derruba os outros
+                except (httpx.HTTPError, requests.RequestException, ValueError, KeyError, csv.Error, sqlite3.Error) as e:  # um recurso ruim não derruba os outros
                     c.rollback()
                     res["erros"].append(f"{pacote}/{nome}: {type(e).__name__}: {e}")
                     print(f"  ERRO {pacote}/{nome}: {e}")

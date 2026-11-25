@@ -23,6 +23,8 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 import httpx
+
+from compliance_agent.adaptadores import rede_segura
 from compliance_agent.collectors.arquivos import dir_dados, gravar_atomico
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
@@ -325,38 +327,36 @@ async def ler_documento_sei(url: str, usar_cache: bool = True) -> str:
         if age < 86400 * 7:  # 7 dias
             return cache_file.read_text(encoding="utf-8")
 
-    async with httpx.AsyncClient(
-        timeout=30, follow_redirects=True, headers=_HEADERS
-    ) as client:
-        try:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                return f"[Erro HTTP {resp.status_code}]"
+    try:
+        # `url` veio de href do HTML do SEI (dado externo): cliente seguro anti-SSRF (O0.4)
+        resp = await rede_segura.obter_async(url, "sei", timeout=30, headers=_HEADERS)
+        if resp.status_code != 200:
+            return f"[Erro HTTP {resp.status_code}]"
 
-            soup = BeautifulSoup(resp.text, "lxml")
+        soup = BeautifulSoup(resp.text, "lxml")
 
-            # Remove scripts e styles
-            for tag in soup(["script", "style", "nav", "header", "footer"]):
-                tag.decompose()
+        # Remove scripts e styles
+        for tag in soup(["script", "style", "nav", "header", "footer"]):
+            tag.decompose()
 
-            # Tenta pegar o conteúdo principal
-            main = (
-                soup.find("div", id="divArvoreAcoes") or
-                soup.find("div", class_="infraAreaTelaD") or
-                soup.find("div", id="main-content") or
-                soup.find("main") or
-                soup.find("body")
-            )
+        # Tenta pegar o conteúdo principal
+        main = (
+            soup.find("div", id="divArvoreAcoes") or
+            soup.find("div", class_="infraAreaTelaD") or
+            soup.find("div", id="main-content") or
+            soup.find("main") or
+            soup.find("body")
+        )
 
-            texto = (main or soup).get_text("\n", strip=True)
-            texto = re.sub(r"\n{3,}", "\n\n", texto)[:10000]
+        texto = (main or soup).get_text("\n", strip=True)
+        texto = re.sub(r"\n{3,}", "\n\n", texto)[:10000]
 
-            if usar_cache:
-                gravar_atomico(cache_file, texto)
-            return texto
+        if usar_cache:
+            gravar_atomico(cache_file, texto)
+        return texto
 
-        except Exception as e:
-            return f"[Erro ao ler documento: {e}]"
+    except Exception as e:
+        return f"[Erro ao ler documento: {e}]"
 
 
 # ── Análise de processo ───────────────────────────────────────────────────────

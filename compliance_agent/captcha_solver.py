@@ -1,19 +1,18 @@
 """OCR local para captchas do SEI, sem depender de APIs externas."""
 from __future__ import annotations
 
-import ipaddress
 import os
 import platform
 import shutil
-import socket
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 import cv2
 import numpy as np
 import pytesseract
 import requests
+
+from compliance_agent.adaptadores import rede_segura
 
 
 def _resolver_tesseract() -> Optional[str]:
@@ -45,44 +44,13 @@ TMP.mkdir(parents=True, exist_ok=True)
 _MAX_CAPTCHA_BYTES = 5 * 1024 * 1024  # 5 MB — captcha é imagem pequena
 
 
-def _url_segura(url: str) -> None:
-    """Guard anti-SSRF: só http(s) e host que NÃO resolva p/ IP interno/metadata.
-
-    O captcha vem de um link da página do SEI (confiável), mas validamos mesmo
-    assim — defesa em profundidade contra redirecionamento p/ rede interna /
-    169.254.169.254 (metadata cloud). Levanta ValueError se inseguro.
-    """
-    p = urlparse(url)
-    if p.scheme not in ("http", "https"):
-        raise ValueError(f"esquema de URL não permitido: {p.scheme!r}")
-    host = p.hostname
-    if not host:
-        raise ValueError("URL sem host")
-    try:
-        infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80))
-    except socket.gaierror as e:
-        raise ValueError(f"host não resolve: {host}") from e
-    for fam, _t, _p, _c, sockaddr in infos:
-        ip = ipaddress.ip_address(sockaddr[0])
-        if (ip.is_private or ip.is_loopback or ip.is_link_local
-                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
-            raise ValueError(f"host resolve p/ IP interno ({ip}) — bloqueado (SSRF)")
-
-
 def _download(url: str, session: Optional[requests.Session] = None) -> bytes:
-    _url_segura(url)
-    sess = session or requests.Session()
-    # redirects no default (preserva o login SEI, que pode redirecionar a imagem do captcha);
-    # o guard valida a URL inicial — defesa principal contra SSRF direto.
-    r = sess.get(url, timeout=30, stream=True)
+    """Baixa o captcha pelo cliente seguro único (O0.4): allowlist do SEI, IP fixado e redirect
+    seguido à mão (≤ 3 saltos), cada salto revalidado — antes, o guard só olhava a URL inicial e
+    um 302 para 169.254.169.254 passava. A sessão do chamador (cookies do SEI) é preservada."""
+    r = rede_segura.obter(url, "sei", sessao=session, timeout=30, max_bytes=_MAX_CAPTCHA_BYTES)
     r.raise_for_status()
-    chunks, total = [], 0
-    for ch in r.iter_content(8192):
-        total += len(ch)
-        if total > _MAX_CAPTCHA_BYTES:
-            raise ValueError("captcha excede tamanho máximo")
-        chunks.append(ch)
-    return b"".join(chunks)
+    return r.content
 
 
 def _preprocess(image, *, gray=True, blur=True, threshold=True):
@@ -183,11 +151,11 @@ def solve_captcha_data_uri(
     """Resolve captcha embutido como `data:image/...;base64,...` no atributo src da <img>.
 
     O SEI da Prefeitura do Rio (`prefeitura.sei.rio`) serve o captcha assim — não há URL de
-    imagem para baixar. `solve_captcha_url` rejeita isso em `_url_segura` ("esquema de URL não
+    imagem para baixar. `solve_captcha_url` rejeita isso no cliente seguro ("esquema de URL não
     permitido: 'data'"), e o chamador engolia a exceção: **o OCR nunca chegava a rodar** nessa
     instância. Medido em 30/08/2026.
 
-    A guarda de `_url_segura` continua valendo para tudo que é URL de rede — aqui não há
+    A guarda de `rede_segura` continua valendo para tudo que é URL de rede — aqui não há
     requisição alguma, os bytes já vieram no DOM."""
     import base64
 

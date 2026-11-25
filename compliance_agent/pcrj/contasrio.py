@@ -21,6 +21,8 @@ from pathlib import Path
 
 import httpx
 
+from compliance_agent.adaptadores import rede_segura
+
 from compliance_agent.emendas.coletor import parse_brl
 
 BASE = "https://riotransparente.rio.rj.gov.br"
@@ -56,11 +58,8 @@ def baixar(url: str, destino: Path) -> Path:
     """Download em streaming (arquivos de ~50 MB; nada em memória)."""
     destino.parent.mkdir(parents=True, exist_ok=True)
     tmp = destino.with_suffix(".part")
-    with httpx.stream("GET", url, headers=_UA, timeout=_TIMEOUT) as r:
-        r.raise_for_status()
-        with open(tmp, "wb") as fh:
-            for chunk in r.iter_bytes(1 << 20):
-                fh.write(chunk)
+    # `url` vem de href da página de dados abertos (dado externo): cliente seguro anti-SSRF (O0.4)
+    rede_segura.obter_para_arquivo(url, "contasrio", tmp, headers=_UA, timeout=_TIMEOUT)
     tmp.replace(destino)
     return destino
 

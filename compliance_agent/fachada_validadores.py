@@ -95,18 +95,21 @@ _lock = threading.Lock()
 
 def _fetch_padrao(url: str) -> tuple[int | None, str]:
     """GET educado (1 req/s, 12 s, até 1,5 MB). Erro de rede → (None, '')."""
-    import httpx
+    import requests
+
+    from compliance_agent.adaptadores import rede_segura
     with _lock:
         espera = 1.0 - (time.monotonic() - _ult[0])
         if espera > 0:
             time.sleep(espera)
         _ult[0] = time.monotonic()
     try:
-        with httpx.Client(follow_redirects=True, timeout=12,
-                          headers={"User-Agent": "JFN-fiscalizacao/1.0 (gabinete RJ)"}) as cli:
-            r = cli.get(url)
-            return r.status_code, r.text[:1_500_000]
-    except (httpx.HTTPError, ValueError, UnicodeDecodeError) as exc:
+        # domínio vem do e-mail do cadastro CNPJ (qualquer host): sem allowlist de domínio, mas o
+        # cliente seguro barra IP interno/metadata e revalida cada redirect (O0.4)
+        r = rede_segura.obter(url, "web_aberta", timeout=12, max_bytes=8 * 1024 * 1024,
+                              headers={"User-Agent": "JFN-fiscalizacao/1.0 (gabinete RJ)"})
+        return r.status_code, r.text[:1_500_000]
+    except (requests.RequestException, ValueError, UnicodeDecodeError) as exc:
         logger.debug("site indisponível %s: %s", url, exc)
         return None, ""
 

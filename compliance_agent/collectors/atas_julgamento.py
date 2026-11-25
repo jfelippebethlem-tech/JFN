@@ -21,8 +21,9 @@ import logging
 import re
 import sqlite3
 
-import httpx
+import requests
 
+from compliance_agent.adaptadores import rede_segura
 from compliance_agent.collectors.arquivos import abrir_banco
 from compliance_agent.collectors.pncp import _get_pncp, _parse_id_pncp, _texto_de_pdf
 from compliance_agent.collectors.pncp_resultados import certames_da_esfera
@@ -191,81 +192,82 @@ async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
     if not pend:
         logger.info("atas_julgamento: fila esgotada — todo certame elegível examinado nos últimos %d dias",
                     _REEXAME_DIAS)
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        for idp, ocnpj in pend:
-            tot["certames"] += 1
-            pr = _parse_id_pncp(idp)
-            if not pr:
-                tot["sem_id_valido"] += 1
-                _marcar_exame(con, idp, "sem_id_valido")
-                continue
-            cnpj, ano, seq = pr
-            meta = await _get_pncp(f"/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos", {})
-            if meta is None:                       # falha da API: INDISPONÍVEL, não "sem arquivo"
-                tot["api_indisponivel"] += 1
-                _marcar_exame(con, idp, "api_indisponivel")
-                con.commit()
-                continue
-            arqs = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
-            if not arqs:
-                tot["sem_arquivo_no_pncp"] += 1
-            gravou_algum = False
-            motivos: list[str] = [] if arqs else ["sem_arquivo_no_pncp"]
-            for a in (arqs or []):
-                tit = a.get("titulo") or ""
-                tipo = a.get("tipoDocumentoNome") or ""
-                if not (_RX_ATA_TITULO.search(tit) or _RX_ATA_TITULO.search(tipo)):
-                    continue
-                url = a.get("url") or a.get("uri")
-                if not url:
-                    continue
-                if not gravou_algum:
-                    tot["com_arquivo_ata"] += 1
-                    gravou_algum = True
-                try:
-                    d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
-                    blob = d.content if d.status_code == 200 else b""
-                except httpx.HTTPError:
-                    blob = b""
-                if not blob:
-                    tot["download_falhou"] += 1
-                    _anotar(tot, idp, tit, "download falhou ou 4xx/5xx no arquivo")
-                    motivos.append("download_falhou")
-                    continue
-                texto, fonte = _extrair_texto_ata(blob, com_ocr)
-                if not (texto or "").strip():
-                    tot["texto_vazio"] += 1
-                    _anotar(tot, idp, tit, f"PDF sem camada de texto e OCR não produziu nada "
-                                           f"({len(blob) // 1024} KB, com_ocr={com_ocr})")
-                    motivos.append("texto_vazio")
-                    continue
-                if not _RX_ATA_CONTEUDO.search(texto):
-                    # NÃO é necessariamente "não é ata": pode ser ata cujo vocabulário o regex não
-                    # cobre. O trecho fica na amostra para que o padrão real seja visto, não suposto.
-                    tot["sem_marcador_conteudo"] += 1
-                    _anotar(tot, idp, tit,
-                            f"sem marcador de ata no conteúdo ({len(texto)} chars, fonte={fonte}): "
-                            + " ".join((texto or "")[:180].split()))
-                    motivos.append("sem_marcador_conteudo")
-                    continue
-                n_cnpj = len(set(re.sub(r"\D", "", m.group(0)) for m in _RX_CNPJ.finditer(texto)))
-                if n_cnpj < 2:
-                    tot["sem_perdedora"] += 1
-                    _anotar(tot, idp, tit, f"ata legível com {n_cnpj} CNPJ — sem disputa registrável")
-                    motivos.append("sem_perdedora")
-                    continue                       # <2 CNPJs → sem disputa registrável
-                con.execute(
-                    "INSERT OR REPLACE INTO ata_documento "
-                    "(certame, orgao_cnpj, titulo, fonte_texto, n_cnpj, texto) VALUES (?,?,?,?,?,?)",
-                    (idp, ocnpj, tit[:200], fonte, n_cnpj, texto[:400_000]))
-                tot["atas_gravadas"] += 1
-                motivos.append("ata_gravada")
-                if fonte == "ocr":
-                    tot["por_ocr"] += 1
-                await asyncio.sleep(pausa)
-            _marcar_exame(con, idp, _motivo_do_certame(motivos))
+    for idp, ocnpj in pend:
+        tot["certames"] += 1
+        pr = _parse_id_pncp(idp)
+        if not pr:
+            tot["sem_id_valido"] += 1
+            _marcar_exame(con, idp, "sem_id_valido")
+            continue
+        cnpj, ano, seq = pr
+        meta = await _get_pncp(f"/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos", {})
+        if meta is None:                       # falha da API: INDISPONÍVEL, não "sem arquivo"
+            tot["api_indisponivel"] += 1
+            _marcar_exame(con, idp, "api_indisponivel")
             con.commit()
+            continue
+        arqs = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
+        if not arqs:
+            tot["sem_arquivo_no_pncp"] += 1
+        gravou_algum = False
+        motivos: list[str] = [] if arqs else ["sem_arquivo_no_pncp"]
+        for a in (arqs or []):
+            tit = a.get("titulo") or ""
+            tipo = a.get("tipoDocumentoNome") or ""
+            if not (_RX_ATA_TITULO.search(tit) or _RX_ATA_TITULO.search(tipo)):
+                continue
+            url = a.get("url") or a.get("uri")
+            if not url:
+                continue
+            if not gravou_algum:
+                tot["com_arquivo_ata"] += 1
+                gravou_algum = True
+            try:
+                # URL vem do JSON do PNCP (dado externo): cliente seguro anti-SSRF (O0.4)
+                d = await rede_segura.obter_async(url, "pncp", timeout=60,
+                                                  headers={"User-Agent": "JFN-Compliance/2.0"})
+                blob = d.content if d.status_code == 200 else b""
+            except (requests.RequestException, rede_segura.RedeBloqueada):
+                blob = b""
+            if not blob:
+                tot["download_falhou"] += 1
+                _anotar(tot, idp, tit, "download falhou ou 4xx/5xx no arquivo")
+                motivos.append("download_falhou")
+                continue
+            texto, fonte = _extrair_texto_ata(blob, com_ocr)
+            if not (texto or "").strip():
+                tot["texto_vazio"] += 1
+                _anotar(tot, idp, tit, f"PDF sem camada de texto e OCR não produziu nada "
+                                       f"({len(blob) // 1024} KB, com_ocr={com_ocr})")
+                motivos.append("texto_vazio")
+                continue
+            if not _RX_ATA_CONTEUDO.search(texto):
+                # NÃO é necessariamente "não é ata": pode ser ata cujo vocabulário o regex não
+                # cobre. O trecho fica na amostra para que o padrão real seja visto, não suposto.
+                tot["sem_marcador_conteudo"] += 1
+                _anotar(tot, idp, tit,
+                        f"sem marcador de ata no conteúdo ({len(texto)} chars, fonte={fonte}): "
+                        + " ".join((texto or "")[:180].split()))
+                motivos.append("sem_marcador_conteudo")
+                continue
+            n_cnpj = len(set(re.sub(r"\D", "", m.group(0)) for m in _RX_CNPJ.finditer(texto)))
+            if n_cnpj < 2:
+                tot["sem_perdedora"] += 1
+                _anotar(tot, idp, tit, f"ata legível com {n_cnpj} CNPJ — sem disputa registrável")
+                motivos.append("sem_perdedora")
+                continue                       # <2 CNPJs → sem disputa registrável
+            con.execute(
+                "INSERT OR REPLACE INTO ata_documento "
+                "(certame, orgao_cnpj, titulo, fonte_texto, n_cnpj, texto) VALUES (?,?,?,?,?,?)",
+                (idp, ocnpj, tit[:200], fonte, n_cnpj, texto[:400_000]))
+            tot["atas_gravadas"] += 1
+            motivos.append("ata_gravada")
+            if fonte == "ocr":
+                tot["por_ocr"] += 1
             await asyncio.sleep(pausa)
+        _marcar_exame(con, idp, _motivo_do_certame(motivos))
+        con.commit()
+        await asyncio.sleep(pausa)
     return tot
 
 
