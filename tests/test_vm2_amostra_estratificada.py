@@ -15,6 +15,15 @@ from tests.test_vm2_conferencia import TEXTO, _isolar, _pasta
 ITC, VM2 = "Jorge", "JFN-Agent-2"
 
 
+@pytest.fixture(autouse=True)
+def _no_neutro(monkeypatch):
+    """25/11/2026: o hostname do WSL do it-campo É "Jorge" (= ITC) — lá a entrega "de outra máquina" virava a do
+    próprio nó e era pulada (3 testes falhavam só no it-campo). O teste roda como um nó que não é nenhum dos dois."""
+    real = os.uname()
+    neutro = type(real)((real.sysname, "no-de-teste", real.release, real.version, real.machine))
+    monkeypatch.setattr(os, "uname", lambda: neutro)
+
+
 @pytest.fixture
 def d(monkeypatch, tmp_path):
     base = _isolar(monkeypatch, tmp_path)
