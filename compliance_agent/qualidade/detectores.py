@@ -7,6 +7,7 @@ Cobra as regras COR-03 (controle positivo e negativo), COR-04 (falso positivo me
 """
 from __future__ import annotations
 
+import math
 import re
 from datetime import date, timedelta
 from functools import lru_cache
@@ -35,6 +36,13 @@ ESTADOS = ("ativo", "sem_varredura", "a_portar", "fundido")
 # cobertura ≥ 50%. Tier 2 (sinal complementar): há medida com n ≥ 1 e falta alguma condição. Tier 3 (oculto): sem
 # medida utilizável — ausente, incompleta, vencida ou sem contagem de decididos.
 TIER1_N_MIN, TIER1_PONTO_MAX, TIER1_IC_MAX, TIER1_COBERTURA_MIN = 30, 0.15, 0.25, 0.50
+# O66-P3 (decisão delegada 24/11/2026, ~/vault/refatoracao/decisoes-delegadas-20261124.md §3): FP medida > 50% COM
+# PROVA vai ao Tier 3 (oculto). "Com prova" = limite INFERIOR do IC95 EXATO de Clopper-Pearson > 50% — equivale ao
+# teste binomial exato unilateral de H0: FP ≤ 50% com p < 2,5%. O Wilson (proposta original) foi recusado como
+# portão: com n pequeno ele rebaixa 4/4 e 5/5 e o erro real de rebaixar indevidamente chega a 6,25% (n = 4), acima
+# do nominal (Agresti & Coull 1998; Brown, Cai & DasGupta 2001; statsmodels; Thulin 2014). O Wilson segue no
+# `fp_ic95` (exibição). n ≤ 5 nunca rebaixa por estatística: precisa de mais conferidos ou de decisão do dono.
+TIER3_FP_INF_MIN = 0.50
 CAMPOS_CALCULADOS = ("tier", "tier_motivo", "fp_ic95", "manchete_efetiva")   # gravados por tools/registro_tiers.py
 _Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -183,6 +191,29 @@ def wilson_ic95(falsos: int, n: int, z: float = 1.959964) -> tuple[float, float]
     return (round(max(0.0, centro - meia), 4), round(min(1.0, centro + meia), 4))
 
 
+def clopper_pearson_inferior(falsos: int, n: int, alfa: float = 0.05) -> float | None:
+    """Limite INFERIOR do IC (1 − alfa) exato de Clopper-Pearson para falsos/n: o p em que P(X ≥ falsos | n, p) =
+    alfa/2. Puro (sem scipy): bisseção sobre a cauda binomial. None sem n; 0 com falsos = 0."""
+    if not n or falsos is None or not 0 <= falsos <= n:
+        return None
+    if falsos == 0:
+        return 0.0
+    if falsos == n:
+        return round((alfa / 2) ** (1 / n), 6)
+
+    def cauda(p: float) -> float:                    # P(X ≥ falsos)
+        return 1.0 - sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(falsos))
+
+    lo, hi = 0.0, falsos / n
+    for _ in range(80):
+        mid = (lo + hi) / 2
+        if cauda(mid) < alfa / 2:
+            lo = mid
+        else:
+            hi = mid
+    return round((lo + hi) / 2, 6)
+
+
 def avaliar_tier(e: dict, hoje: date | None = None) -> dict:
     """Tier, motivo e IC95 de uma entrada pela régua da O5.1 (ver TIER1_* no topo). Função pura."""
     fp = e.get("fp_medida")
@@ -195,6 +226,10 @@ def avaliar_tier(e: dict, hoje: date | None = None) -> dict:
         return {"tier": 3, "tier_motivo": "medida_incompleta_ou_vencida", "fp_ic95": ic}
     if ic is None:
         return {"tier": 3, "tier_motivo": "medida_sem_contagem_de_decididos", "fp_ic95": None}
+    cp = clopper_pearson_inferior(k, n)
+    if cp is not None and cp > TIER3_FP_INF_MIN:        # O66-P3: FP > 50% comprovada → oculto
+        return {"tier": 3, "tier_motivo": f"fp_acima_de_50pct_comprovada (Clopper-Pearson inf. {cp:.1%})",
+                "fp_ic95": list(ic)}
     falta = []
     if n < TIER1_N_MIN:
         falta.append(f"n={n}<{TIER1_N_MIN}")

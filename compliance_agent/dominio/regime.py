@@ -177,10 +177,15 @@ def regime_contrato(*, contratante_estatal: bool | None = None, lei_declarada_te
         if d_ato and d_ato < FIM_ADAPTACAO_13303 and "13303" not in leis:
             return DecisaoRegime(Regime.INDETERMINADO, "estatal no prazo de adaptação de 24 meses (13.303 art. 91; "
                                  "§3º mantém a legislação anterior até o fim do prazo) sem lei declarada", "13303")
-        ress = () if d_ato else ("data ausente: se o ato for anterior a 01/07/2018 pode seguir a legislação anterior "
-                                 "(13.303 art. 91 §3º)",)
+        if not d_ato and "13303" not in leis:
+            # D3 (decisão delegada 24/11/2026): sem data não se afirma a 13.303 — o art. 91 §3º mantém na lei
+            # anterior o contrato celebrado até 30/06/2018, e contrato contínuo da 8.666 vai até 60 meses + 12.
+            # A 14.133 fica fora em qualquer caso (art. 1º §1º); a 13.303 é só a hipótese provável.
+            return DecisaoRegime(Regime.INDETERMINADO, "estatal sem data do ato: 13.303 provável, mas o art. 91 §3º "
+                                 "mantém na legislação anterior o contrato celebrado até 30/06/2018", "13303",
+                                 ("14.133 excluída (art. 1º §1º); 13.303 provável",))
         return DecisaoRegime(Regime.L13303, "contratante estatal: Lei 13.303/2016 (14.133 art. 1º §1º exclui as "
-                             "estatais), em qualquer exercício", "13303", ress)
+                             "estatais), em qualquer exercício", "13303")
 
     # 2. lei declarada no instrumento
     if leis:

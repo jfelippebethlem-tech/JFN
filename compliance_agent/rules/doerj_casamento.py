@@ -16,7 +16,9 @@ O conserto é estrutural, não de prompt:
   3. em ato SANCIONADOR em que o favorecido é a única empresa (nenhum outro CNPJ no ato), o termo
      vale no ato inteiro — a portaria que instaura o processo contra ela é sobre ela;
   4. ato de PESSOAL (nomeia/exonera/designa comissão/fiscais) não conta, salvo se for sancionador;
-  5. favorecido localizado por CNPJ (com ou sem pontuação) ou nome normalizado (sem acento,
+  5. termo em PREVISÃO (dever-ser: "sujeitará a contratada às sanções de … multa") não conta fora de
+     ato sancionador — cláusula não é ato praticado (24/11/2026);
+  6. favorecido localizado por CNPJ (com ou sem pontuação) ou nome normalizado (sem acento,
      pontuação, espaço duplo e hifenização de fim de linha — "INFORMÁ- TICA", "S/A" × "S.a").
 
 Sem banco (só `re`/`unicodedata` e o classificador leve `entidades_gov`), para ser testável sem banco.
@@ -67,6 +69,26 @@ _ATO_SANCIONADOR = re.compile(
     r"\b(SANCIONA(?:DOR|TORIO)|AUTO DE INFRACAO|NOTIFIQUE-SE|DECIDE PELA APLICACAO|APLICOU|"
     r"APLICA(?:-SE)? A (?:EMPRESA|CONTRATADA)|PENALIDADE:|RESCINDE|RESCISAO UNILATERAL|"
     r"DA CIENCIA .{0,300}? DA APLICACAO)")
+
+# Dever-ser (cláusula, não ato praticado — memória clausula-nao-e-ato-praticado): no extrato de contrato o
+# termo de risco aparece como PREVISÃO ("sujeitará a CONTRATADA às sanções de advertência e multa previstas na
+# cláusula décima"). Medido em 24/11/2026 (O5.4, ~/vault/refatoracao/decisoes-delegadas-20261124.md §2): 2 dos 4
+# falsos positivos graves conferidos pelo Opus eram exatamente isso (Agevap e Oncovit, "multa" em extrato de
+# contrato). Procurado na MESMA frase, antes do termo; não se aplica a ato sancionador (lá o termo é o dispositivo).
+_DEVER_SER = re.compile(
+    r"\b(SUJEIT\w*|PREVIST\w*|PODERA\w*|DEVERA\w*|SOB PENA|CLAUSULAS?|PASSIVE(?:L|IS)|ESTARA\w*|INCORRER\w*|"
+    r"ACARRETARA\w*|CABIVE(?:L|IS))\b")
+# "penalidades de"/"sanções de" NÃO são dever-ser: "DECIDO pela aplicação … as penalidades de Advertência e Multa"
+# é dispositivo (sanção real perdida na 1ª versão do replay de 24/11, CASSAROTTI FOODS).
+_DEVER_SER_RECUO = 160
+
+
+def eh_dever_ser(seg_norm: str, pos_termo: int) -> bool:
+    """O termo em `pos_termo` está numa PREVISÃO (cláusula) — mesma frase, marcador de dever-ser antes dele."""
+    antes = seg_norm[max(0, pos_termo - _DEVER_SER_RECUO):pos_termo]
+    frase = re.split(r"[.;:]\s", antes)[-1]
+    return bool(_DEVER_SER.search(frase))
+
 
 _CNPJ_QUALQUER = re.compile(r"(?<!\d)\d{2}[.\s]?\d{3}[.\s]?\d{3}\s*/\s*\d{4}\s*-?\s*\d{2}(?!\d)")
 
@@ -182,10 +204,13 @@ def ocorrencias(texto: str, nome: str, cpf_cnpj: str = "") -> list[dict]:
             continue
         alheios = [m.span() for m in _CNPJ_QUALQUER.finditer(seg)
                    if re.sub(r"\D", "", m.group()) != cnpj_fav]
-        unico_sancionador = not alheios and bool(_ATO_SANCIONADOR.search(seg))
+        sancionador = bool(_ATO_SANCIONADOR.search(seg))
+        unico_sancionador = not alheios and sancionador
         for termo, rx in termos:
             melhor = None  # (preferência, distância, pos_termo, pos_menção)
             for m in rx.finditer(seg):
+                if not sancionador and eh_dever_ser(seg, m.start()):
+                    continue  # cláusula ("sujeitará … a multa"), não ato praticado
                 for p in mencoes:
                     d = abs(m.start() - p)
                     antes = m.start() < p

@@ -49,7 +49,14 @@ def _ct(**kw) -> E.Fatos:
      "I:SEM_CONTRATO"),
     # ente público pela natureza jurídica 1xxx (art. 75 IX) — vence qualquer natureza
     (dict(natureza_pagamento="CONTRATACAO_NOVA", credor_e_fornecedor=True, credor_classe="ENTE_PUBLICO"),
-     "I:ENTE_PUBLICO", "I:ENTE_PUBLICO", "I:ENTE_PUBLICO"),
+     "I:ENTE_PUBLICO", "I:ENTE_PUBLICO", "I:SEM_CONTRATO"),
+    # E9-1/E9-2 (24/11): em `execucao` o ente público só sai com a natureza PROVADA de não contrato; sem ela, `?`
+    (dict(natureza_pagamento="INDETERMINADO", natureza_despesa=None, credor_classe="ENTE_PUBLICO"),
+     "I:ENTE_PUBLICO", "I:ENTE_PUBLICO", "?:ENTE_PUBLICO"),
+    (dict(natureza_pagamento="PARCELA_CONTRATO", nao_e_contratacao_nova=True, credor_e_fornecedor=True,
+          credor_classe="ENTE_PUBLICO", elemento="39"), "I:ENTE_PUBLICO", "I:ENTE_PUBLICO", "?:ENTE_PUBLICO"),
+    (dict(natureza_pagamento="TRANSFERENCIA", nao_e_contratacao_nova=True, credor_e_fornecedor=False,
+          credor_classe="UG_PROPRIA"), "I:UG_PROPRIA", "I:UG_PROPRIA", "I:TRANSFERENCIA"),
     (dict(natureza_pagamento="FOLHA_BENEFICIO", nao_e_contratacao_nova=True, credor_e_fornecedor=False,
           credor_classe="PF"), "I:FOLHA_BENEFICIO", "I:FOLHA_BENEFICIO", "I:FOLHA_BENEFICIO"),
     (dict(natureza_pagamento="INDETERMINADO", nao_e_contratacao_nova=True, credor_e_fornecedor=False),
@@ -69,14 +76,17 @@ def _ct(**kw) -> E.Fatos:
 def test_vereditos_ob(kw, soma, fornecedor, execucao):
     ex = _ob(**kw).exiges()
     # sem Guia de Devolução, o valor líquido segue a execução (decisão do dono 1 só muda a OB com GD)
+    # E9-9: o registro contábil vale para todo credor; E9-5: a ordem cronológica (art. 141) tira a OS/OSC
+    e14133 = "I:REGIME_PROPRIO_MROSC" if execucao == "E" and kw.get("credor_classe") == "OS_OSC" else execucao
     assert ex == {"universo": "E", "soma_art75": soma, "fornecedor": fornecedor, "execucao": execucao,
-                  "valor_liquido": execucao}
+                  "valor_liquido": execucao, "registro_liquido": "E", "execucao_14133": e14133}
 
 
 def test_tfe_sem_par_siafe_nao_vira_elegivel():
     f = _ob(unidade="ob_tfe", tem_par_siafe=False, natureza_pagamento=None)
     assert f.exiges() == {"universo": "E", "soma_art75": "?:TFE_SEM_PAR_SIAFE", "fornecedor": "?:TFE_SEM_PAR_SIAFE",
-                          "execucao": "?:TFE_SEM_PAR_SIAFE", "valor_liquido": "?:TFE_SEM_PAR_SIAFE"}
+                          "execucao": "?:TFE_SEM_PAR_SIAFE", "valor_liquido": "?:TFE_SEM_PAR_SIAFE",
+                          "registro_liquido": "E", "execucao_14133": "?:TFE_SEM_PAR_SIAFE"}
     # ente público pelo cadastro decide mesmo sem o par (fonte primária do credor)
     assert _ob(unidade="ob_tfe", tem_par_siafe=False, credor_classe="ENTE_PUBLICO").exiges()["fornecedor"] == \
         "I:ENTE_PUBLICO"
@@ -110,8 +120,8 @@ def test_classe_do_credor_pela_receita_nunca_pelo_nome():
     assert E.classe_credor("296100", nat) == ("UG_PROPRIA", None, None)
     assert E.classe_credor("CG0004700", nat) == ("INSCRICAO_GENERICA", None, None)
     assert _ob(credor_classe="UG_PROPRIA", natureza_pagamento="CONTRATACAO_NOVA").exiges() == {
-        "universo": "E", "fornecedor": "I:UG_PROPRIA", "execucao": "I:UG_PROPRIA", "soma_art75": "I:UG_PROPRIA",
-        "valor_liquido": "I:UG_PROPRIA"}
+        "universo": "E", "fornecedor": "I:UG_PROPRIA", "execucao": "I:SEM_CONTRATO", "soma_art75": "I:UG_PROPRIA",
+        "valor_liquido": "I:SEM_CONTRATO", "registro_liquido": "E", "execucao_14133": "I:SEM_CONTRATO"}
     assert _ob(credor_classe="INSCRICAO_GENERICA", natureza_pagamento="INDETERMINADO").exiges()["fornecedor"] == \
         "?:INSCRICAO_GENERICA"
 
@@ -213,7 +223,8 @@ def test_adaptador_ob_siafe_pela_cadeia_ob_nl_ne(fonte):
     assert por["2025OB1"].natureza_pagamento == "PARCELA_CONTRATO" and por["2025OB1"].vinculo_contrato is True
     assert por["2025OB1"].exiges()["soma_art75"] == "I:PARCELA_CONTRATO"
     assert por["2025OB2"].exiges() == {"universo": "E", "soma_art75": "I:REGIME_PROPRIO_MROSC", "fornecedor": "E",
-                                       "execucao": "E", "valor_liquido": "E"}             # OS/OSC
+                                       "execucao": "E", "valor_liquido": "E", "registro_liquido": "E",
+                                       "execucao_14133": "I:REGIME_PROPRIO_MROSC"}         # OS/OSC
     assert por["2025OB3"].origem_exercicio == "DEA" and por["2025OB3"].exiges()["soma_art75"] == "I:DEA"
     assert por["2025OB4"].exiges()["fornecedor"] == "I:ENTE_PUBLICO"
     assert por["2025OB5"].paga is False and por["2025OB5"].exiges()["fornecedor"] == "I:NAO_PAGA"

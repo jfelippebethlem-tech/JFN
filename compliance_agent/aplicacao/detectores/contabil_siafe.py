@@ -19,8 +19,14 @@ Honestidade (INDISPONÍVEL ≠ AUSENTE ≠ 0): a coleta de NL do SIAFE é PARCIA
 diferentes é identidade não resolvida (INCERTO, contado), não indício — no Lex o par nem se formava, porque ele lia
 OB e NL filtradas pelo mesmo credor.
 
-Elegibilidade (invariante 3): exigência `valor_liquido` (C-PAGO>NL — a OB com GD sem valor apurado é
-`?:DEVOLUCAO_NAO_APURADA`; a apurada entra pelo líquido) e `execucao` (C-OB<NL) da E9 sobre `ob_siafe`. A NL só é avaliada se TODAS as OB pagas
+Elegibilidade (invariante 3): exigência `registro_liquido` (C-PAGO>NL — todo credor; a OB com GD sem valor
+apurado é `?:DEVOLUCAO_NAO_APURADA`; a apurada entra pelo líquido) e `universo` (C-OB<NL) da E9 sobre `ob_siafe`.
+Decisão delegada E9-9 (24/11/2026): "pagamento só após a regular liquidação" (Lei 4.320 art. 62; Lei RJ 287/1979
+arts. 83 e 93) é integridade do REGISTRO e vale para toda despesa orçamentária — ente público, UG, folha e
+transferência incluídos. O texto do achado é neutro ("acima do liquidado", "antes da NL"): nunca "pagamento
+antecipado a fornecedor", que é regra de contrato (Decreto 93.872 art. 38). Hipóteses inocentes a declarar no juízo:
+OB lista/coletiva rateada entre NL (Lei 287 art. 94), retenção/dedução em OB separada, NL anulada após a OB,
+regularização posterior (bloqueio judicial, débito automático), RP/DEA reliquidados. A NL só é avaliada se TODAS as OB pagas
 que a citam são 'E' (uma 'I' torna a NL inelegível; uma '?' a deixa indeterminada); o C-OB<NL olha a OB elegível.
 """
 from __future__ import annotations
