@@ -27,3 +27,7 @@ onnxruntime>=1.16
 # barras" fica INDISPONIVEL (nunca "não tem"). Sistema: libzbar0 para o pyzbar.
 pyzbar>=0.1.9
 zxing-cpp>=2.2
+
+# tools/ocr_bancada_o36.py (O3.6, 25/11/2026) — bancada de motores; PP-OCRv6 é da série 3.x do PaddleOCR
+# (https://www.paddleocr.ai/latest/en/version3.x/). Só a bancada importa; o E5 de produção não depende dele.
+paddleocr>=3.0
