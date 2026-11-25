@@ -30,6 +30,27 @@ ambiente no código — nunca caminho fixo de SO.
 
 ---
 
+## 1a. Repositórios por projeto (dono, 25/11/2026: "quero organizado por projeto")
+
+Um repositório por projeto, cada um com UM ramo de trabalho: o `main`. Nada de trabalho em ramo solto.
+
+| Projeto | Repositório (GitHub `jfelippebethlem-tech/…`) | Onde mora |
+|---|---|---|
+| JFN — sistema de auditoria (este) | `JFN` (público) — ramo único `main` | VM-1 `~/JFN`; VM-2 e it-campo `~/JFN-worker` (puxam da VM-1) |
+| Atena | `atena` (privado) — `main` | VM-1 `~/atena`, VM-2 `~/atena` |
+| Massare | `Massare` (privado) — `main` | fora das VMs (regra antiga) |
+| Polimonitor | `Bond` (público) | VM-1 `~/polimonitor` — clone PRÓPRIO do Bond (não é mais worktree do JFN) |
+| Yoda/Hermes | `Yoda-Telegram-e-Agente-Hermes` (público) | código do Hermes em `~/.hermes`; registro de processo vivo `~/.hermes/process_documentation.md` |
+| Vault (memória) | `vault` (privado) — `master` | `~/vault` (Syncthing + backup diário) |
+| Quadro de sessões | `sessoes` (privado) | `~/sessoes` |
+
+Regras:
+- No JFN, todo push vai para `main`, **por SHA fixado antes do portão** (`S=$(git rev-parse HEAD); git push origin "$S:refs/heads/main"`),
+  nunca `HEAD:<ramo>` com agentes commitando (memória `push-por-sha-commit-carona`).
+- Os 32 ramos antigos do JFN e o `main` de agosto viraram etiquetas `arquivo/<nome>` no GitHub (recuperáveis:
+  `git checkout -b <nome> arquivo/<nome>`). O antigo ramo de trabalho `ui/painel-v61-tron-claro` é `arquivo/ui-painel-v61-tron-claro`.
+- Código de outro projeto não entra no JFN (a pasta `hermes-yoda/` saiu em 39c26e47 para o repositório do Yoda).
+
 ## 2. Os agentes e quem é quem
 
 ```
