@@ -117,5 +117,11 @@ def estagio_de(tipo: str) -> Estagio | None:
     if familia == "materializar":                                   # E15 (O7.1): visões do painel
         from compliance_agent.aplicacao.estagios import materializar
         return materializar.ESTAGIO
+    if familia == "caso":                                           # E14 (O7.4): caso + contestação + RBAC
+        from compliance_agent.aplicacao.estagios import caso
+        return caso.ESTAGIO
+    if familia == "entregar":                                       # E16 (O7.5): dossiê com manifesto e validador
+        from compliance_agent.aplicacao.estagios import entregar
+        return entregar.ESTAGIO
     return REGISTRO.get(familia)
 
