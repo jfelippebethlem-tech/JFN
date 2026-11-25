@@ -10,7 +10,7 @@ itens:
   - {id: O0.1, dep: [], maq: vm1, estado: feito, titulo: "Backlog + frente no quadro + notas às frentes vivas"}
   - {id: O0.2, dep: [O0.7], maq: vm2, estado: pendente, titulo: "Disco VM-2 < 75% + swap 4 GB"}
   - {id: O0.3, dep: [O0.7], maq: vm1, estado: em_curso, nota: "84d7d9e0 no ar: bind 127.0.0.1, Secure, epoch, rate limit SQLite, manutenção só leitura; FALTA JFN_ENV=producao (senha do dono tem 18 < 20) e /ws em manutenção", titulo: "Painel falha-fechado (bind local, Secure, epoch, rate limit) + modo só leitura"}
-  - {id: O0.4, dep: [O0.7], maq: vm1+vm2, estado: pendente, titulo: "SSRF (redirect manual validado) + egress nftables"}
+  - {id: O0.4, dep: [O0.7], maq: vm1+vm2, estado: bloqueado_dono, nota: "02707398: rede_segura (redirect manual, IP fixado, allowlist) + 13 pontos migrados; CAPTCHA 14/20→15/20; nftables por uid provado em netns (não aplicado). Metadata hoje responde nas 2 VMs. DONO: criar uid jfn-coletor (ou slice) e aplicar egress.sh. ACHADO: sweep vm2:~/sei-pcrj pode marcar privado quando o captcha falha (conferir)", titulo: "SSRF (redirect manual validado) + egress nftables"}
   - {id: O0.5, dep: [], maq: vm1, estado: em_curso, nota: "feito 78c6906a: scan_pii + hooks + workflows sem input e desligados; falta gitleaks", titulo: "Não piorar o repo: scan_pii + gitleaks nos hooks; workflows de coleta desligados"}
   - {id: O0.6, dep: [O0.5], maq: itcampo, estado: pendente, titulo: "Preparar (sem executar) a limpeza do histórico", tags: [irreversivel]}
   # O1 — Inventário, capacidade, motor de fluxo
