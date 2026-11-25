@@ -1492,6 +1492,65 @@ rotinas:
     evento: {depende: [arvore_e2], debounce_s: 60}
     origem: [sei_integra_fila, integra_fila_dinheiro, vm2_integras, sei_integra_vm2_precalcular]
     efeito: {descricao: 'aquisição da posse no PG, versões declaradas presentes, sha256 recalculado de cada arquivo e faltas (árvore − versões − restritos) recontadas = 0', so_rc: 'a CLI um imprime e2_efeito/e3_efeito; a prova por processo é o efeito do job nativo'}
+  texto_e4:
+    estagio: E4
+    descricao: 'E4 texto (O3.4): texto nativo por página + perfil (nativa/escaneada/branca; documento mista/invalida por WAF/menu do SEI) com o critério da casa (ocr_docs.paginas_escaneadas), transformacao texto_nativo + versão de texto no PG e lateral data/sei_texto/<pasta>/<doc>.<sha16>.e4.json'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.texto, pendentes, --estagio, E4]
+    recursos: [cpu_leve]
+    nos: [vm2, vm1]
+    timeout_s: 1800
+    prioridade: 60
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026); religar na O9.0 com texto_ocr_001.sql aplicado no esquema public (`texto schema aplicar`) e o planejador expandindo capturar/versao_nova em jobs texto:<processo>|<doc>|<sha16> (texto.jobs_da_aquisicao). Esta rotina só conta o que falta (só lê o PG)'
+    nota: 'O3.4. Por versão binária: job `texto:` (handler + efeito do estágio nativo; idempotente pela entrada+motor no UNIQUE da transformacao). Eventos: texto/texto_novo (E8), texto/pagina_escaneada (E5), texto/sem_ocr (E7), texto/invalido (recaptura). Absorve a extração do sei_arquivar (arquivar_cache_lane/arquivar_integra_lane continuam como legado até a O9.0)'
+    evento: {depende: [capturar_e3], debounce_s: 60}
+    origem: []
+    efeito: {descricao: 'transformacao texto_nativo no PG, lateral com o sha gravado, PDF relido com o mesmo perfil por página e o mesmo sha de texto, versão de texto quando há texto', so_rc: 'a CLI pendentes só lê; a prova por versão é o efeito do job texto:'}
+  ocr_e5:
+    estagio: E5
+    descricao: 'E5 ocr (O3.4): OCR SÓ onde está vazio (página escaneada do E4; o nativo nunca é lido nem trocado), bbox e motor@versão por página no lateral .e5.json, transformacao ocr + versão de texto composta; vazio só com 2º motor de outra família (vazia_conferida), senão nada é gravado e o job volta'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.texto, pendentes, --estagio, E5]
+    recursos: [cpu_pesado]
+    nos: [itcampo]
+    volta: {nos: [vm2]}
+    timeout_s: 7200
+    prioridade: 55
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026); religar na O9.0 com a fila legada migrada (`texto_ocr_legado replay` com 0 perda, depois aplicar no esquema fluxo) e o JFN-OCR-GPU do it-campo trocado pelo executor do estágio. O job pede cpu_pesado (não gpu) porque a reserva só troca de NÓ na volta: com gpu ele ficaria preso sem o it-campo'
+    nota: 'O3.4. Executor: Surya do ocr_gpu_worker no it-campo (trava de arquivo na GPU); volta = RapidOCR (tools/sei_ocr_reserva.motor_ocr) na CPU da VM-2; 2º motor da página vazia: RapidOCR (após GPU) ou Tesseract (após RapidOCR). Ensaio CPU 24/11 (20 páginas escaneadas reais, cópia): relatório ~/vault/refatoracao/o34-texto-ocr.md. Substitui sei_ocr_gpu, sei_ocr_gpu_fila, vm2_ocr_reserva, itcampo_ocr_cpu e ocr_contratos_imagem'
+    evento: {depende: [texto_e4], debounce_s: 60}
+    origem: [sei_ocr_gpu, sei_ocr_gpu_fila, vm2_ocr_reserva, itcampo_ocr_cpu, ocr_contratos_imagem]
+    efeito: {descricao: 'toda página pedida resolvida (texto com bbox ou vazia_conferida por dois motores), nenhuma nativa lida, composto começa pelo nativo de cada página, sha recalculado = transformacao, versão sei:e5 no PG', so_rc: 'a CLI pendentes só lê; a prova por documento é o efeito do job ocr:'}
+  confirmar_ocr_e6:
+    estagio: E6
+    descricao: 'E6 confirmar_ocr (O3.4): número do OCR (só das páginas lidas por OCR) confirmado SÓ com nível A — leitura independente de outra família (ocr_ia_prova.ler_pdf), SIAFE do mesmo processo (snapshot só-leitura) ou código de barras decodificado (chave NF-e válida) — senão a_conferir; ocr_numero + ocr_conferencia no PG'
+    comando: ['{py}', -m, compliance_agent.aplicacao.estagios.texto, pendentes, --estagio, E6]
+    recursos: [cpu_leve]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 60
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026); religar na O9.0 junto com o ocr_e5. Código de barras só com zxingcpp/pyzbar instalado (hoje em nenhum nó: a fonte é declarada indisponível e não confirma). Os leitores da trava de prova (ocr_ia_prova.vale_como_prova, leitura_integral.portao) ainda leem o registro JSONL legado: apontar para ocr_numero/ocr_conferencia antes de aposentar o sei_ocr_ia_conferir'
+    nota: 'O3.4. Por texto do E5: job `confirmar_ocr:`; reexecução substitui os números daquele texto (sem duplicar). Nível B do legado (outro documento do processo) não confirma aqui. Substitui sei_ocr_ia_conferir e sei_ocr_confirmacao'
+    evento: {depende: [ocr_e5], debounce_s: 300}
+    origem: [sei_ocr_confirmacao, sei_ocr_ia_conferir]
+    efeito: {descricao: 'números recontados = declarados, reextraídos do lateral do E5 = gravados, cada confirmado com nível A e o número presente na fonte guardada, estado do documento coerente', so_rc: 'a CLI pendentes só lê; a prova por documento é o efeito do job confirmar_ocr:'}
+  arquivar_e7:
+    estagio: E7
+    descricao: 'E7 arquivar (O3.4): original pela PORTA ÚNICA (compliance_agent/armazenamento, classe sei_pdf) com md5 conferido no índice antes de apagar; nada que o E5 ainda precisa sai da VM-2; arquivamento no PG; depois do lote, índice + 00-LEIAME do HD (tools.hd_indice --publicar)'
+    passos:
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.texto, pendentes, --estagio, E7]
+    - ['{py}', -m, compliance_agent.aplicacao.estagios.arquivar, indice]
+    recursos: [disco]
+    nos: [vm2]
+    timeout_s: 3600
+    prioridade: 80
+    ativa: false
+    bloqueio: 'parada de obras (24/11/2026); religar na O9.0 depois do ocr_e5 (o E7 nasce de ocr/terminado ou texto/sem_ocr) e com o O0.2 (frente do HD) fechado: o passo indice chama tools/hd_indice.py, que essa frente está mudando'
+    nota: 'O3.4. Por versão: job `arquivar:`; idempotente pela PK (processo, doc_id, sha256, destino). Sem destino (rede, cota do grátis): fica quente na VM-2 e tenta de novo. Substitui sei_arquivo_frio, sei_compactar, arquivar_cache_lane, arquivar_integra_lane e a migração manual do HD'
+    evento: {depende: [texto_e4, ocr_e5], debounce_s: 600}
+    origem: [sei_arquivo_frio, sei_compactar, arquivar_cache_lane, arquivar_integra_lane]
+    efeito: {descricao: 'arquivamento no PG, cópia conferida no índice da porta única com o md5 gravado, apagado ⇔ fora do disco (não apagado ⇒ mesmo md5)', so_rc: 'pendentes só lê e o indice republica o LEIAME; a prova por versão é o efeito do job arquivar:'}
   handoff_watcher:
     estagio: E18
     descricao: Vigia de passagem de sessão
