@@ -239,8 +239,35 @@ def test_paridade_obras_so_tira_falso_positivo(indice, fonte):
         assert L.e_obra(o) is e, o
 
 
-def test_paridade_emendas_fora_e_so_autor_sem_destino_rj(indice, fonte):
-    cfg = _cfg(indice, ["emendas"])
+def _lente_recorte(tmp_path, indice):
+    """O mecanismo de recorte (para uma futura tabela de emendas estaduais/municipais), numa lente só do teste."""
+    p = tmp_path / "l.yaml"
+    p.write_text("versao: 1\nlentes:\n  emendas:\n    esfera: emendas\n"
+                 "    filtro: {emendas: {recorte: [DESTINO_RJ, AMBOS]}}\n", encoding="utf-8")
+    return L.carregar(p, indice=indice)
+
+
+def test_lente_real_de_emendas_e_indisponivel_sem_somar_o_federal(indice, fonte):
+    # 25/11/2026: escopo só RJ — a tabela emendas é federal (SIAFI); a lente é estadual/municipal e não tem fonte
+    e = _cfg(indice, ["emendas"])["emendas"]
+    assert e.indisponivel and not e.emendas_recortes
+    assert L.casa(e, ["133100"], "080001/000001/2025") is None
+    d = R.calcular("emendas", fonte=fonte, lentes_cfg={"emendas": e})
+    assert d["estado"] == "INDISPONIVEL" and d["universo"] is None and "federal" in d["motivo"].lower()
+    r = P.emendas(e, fonte)
+    assert r["novo"]["emendas"] == 0 and r["antigo"]["emendas"] == 4 and r["contido"] is True
+
+
+def test_lente_indisponivel_nao_aceita_filtro(tmp_path, indice):
+    p = tmp_path / "l.yaml"
+    p.write_text("versao: 1\nlentes:\n  e:\n    esfera: emendas\n    indisponivel: sem fonte\n"
+                 "    filtro: {emendas: {recorte: [DESTINO_RJ]}}\n", encoding="utf-8")
+    with pytest.raises(L.ErroLente, match="não leva filtro"):
+        L.carregar(p, indice=indice)
+
+
+def test_paridade_emendas_fora_e_so_autor_sem_destino_rj(tmp_path, indice, fonte):
+    cfg = _lente_recorte(tmp_path, indice)
     r = P.emendas(cfg["emendas"], fonte)
     assert r["antigo"]["emendas"] == 4 and r["novo"]["emendas"] == 2
     assert r["diferencas"]["fora_por_recorte"] == {"AUTOR_RJ": 2}
@@ -337,13 +364,13 @@ def test_achados_de_lente_por_data_sao_indeterminaveis(indice, fonte):
     assert d["achados"]["estado"] == "INDETERMINAVEL" and d["fila"]["estado"] == "NAO_SE_APLICA"
 
 
-def test_recorte_prefeitura_e_emendas_separam_fases(indice, fonte, pcrj):
+def test_recorte_prefeitura_e_emendas_separam_fases(tmp_path, indice, fonte, pcrj):
     d = R.calcular("pcrj_saude", fonte_pcrj=pcrj, lentes_cfg=_cfg(indice))
     u = d["universo"]
     assert u["contratos"] == 3 and u["pago"] == 8.0 and u["empenhado"] == 15.0      # FASS (1433) fora
     assert d["indeterminado"]["contratos_sem_pago_informado"] == 1                    # INDISPONÍVEL ≠ R$ 0,00
     assert all("*" in x["doc"] for x in d["favorecidos_topo"] if x["tipo"] == "CPF")  # CPF mascarado
-    e = R.calcular("emendas", fonte=fonte, lentes_cfg=_cfg(indice))
+    e = R.calcular("emendas", fonte=fonte, lentes_cfg=_lente_recorte(tmp_path, indice))
     assert e["universo"] == {"n": 2, "emendas": 2, "empenhado": 150.0, "liquidado": 130.0, "pago": 100.0}
     assert "SIAFI" in e["fonte"] and e["fora_da_lente"]["emendas"] == 2
 

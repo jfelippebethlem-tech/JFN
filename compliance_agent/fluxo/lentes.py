@@ -73,6 +73,7 @@ class Lente:
     cota_ref: str | None = None
     eixos_extra: tuple[str, ...] = ()
     paridade: str = ""
+    indisponivel: str = ""                        # motivo: lente declarada sem fonte no escopo (nunca casa, sem número)
 
     @property
     def derivada(self) -> bool:
@@ -166,14 +167,18 @@ def carregar(caminho: Path | None = None, indice: Path | None = None) -> dict[st
         if orgaos and sorted(orgaos) != sorted(conf_pcrj):
             raise ErroLente(f"lente {nome}: cada órgão da Prefeitura precisa do nome em conferir_pcrj (e só eles)")
         recortes = tuple(str(r) for r in ((filtro.get("emendas") or {}).get("recorte") or []))
-        if esfera == "estado" and (orgaos or recortes):
-            raise ErroLente(f"lente {nome}: órgão da Prefeitura/recorte de emendas exige a esfera própria")
-        if esfera == "prefeitura" and not orgaos:
-            raise ErroLente(f"lente {nome}: esfera prefeitura sem filtro.orgao_pcrj")
-        if esfera == "emendas" and not recortes:
-            raise ErroLente(f"lente {nome}: esfera emendas sem filtro.emendas.recorte")
-        if esfera == "estado" and not (ugs or regra or desde or r_proc or r_cred):
-            raise ErroLente(f"lente {nome}: filtro vazio")
+        indisp = str(c.get("indisponivel") or "").strip()
+        if indisp and filtro:
+            raise ErroLente(f"lente {nome}: lente indisponível não leva filtro (não há fonte a filtrar)")
+        if not indisp:
+            if esfera == "estado" and (orgaos or recortes):
+                raise ErroLente(f"lente {nome}: órgão da Prefeitura/recorte de emendas exige a esfera própria")
+            if esfera == "prefeitura" and not orgaos:
+                raise ErroLente(f"lente {nome}: esfera prefeitura sem filtro.orgao_pcrj")
+            if esfera == "emendas" and not recortes:
+                raise ErroLente(f"lente {nome}: esfera emendas sem filtro.emendas.recorte")
+            if esfera == "estado" and not (ugs or regra or desde or r_proc or r_cred):
+                raise ErroLente(f"lente {nome}: filtro vazio")
         eixos = tuple(str(x) for x in c.get("eixos_extra") or [])
         out[nome] = Lente(nome=nome, ugs=frozenset(ugs), prioridade=float(pr), regra_orgao=regra,
                           produto=c.get("produto"), alerta=str(c.get("alerta") or "nenhum"),
@@ -181,7 +186,7 @@ def carregar(caminho: Path | None = None, indice: Path | None = None) -> dict[st
                           regra_processo=r_proc, regra_credor=r_cred, orgaos_pcrj=orgaos,
                           conferir_pcrj=tuple(sorted(conf_pcrj.items())), emendas_recortes=recortes,
                           cota_esforco=cota, cota_ref=cota_ref, eixos_extra=eixos,
-                          paridade=str(c.get("paridade") or "").strip())
+                          paridade=str(c.get("paridade") or "").strip(), indisponivel=indisp)
     return out
 
 
@@ -327,7 +332,7 @@ def casa(lente: Lente, ugs: Iterable[str], processo: str | None, credores: Itera
          data_fato: str | None = None) -> str | None:
     """Por que o item do Estado cai na lente (`ug:…`, `orgao_sei:…`, `processo:obra`, `credor:…`, `data:…`) ou None.
     Lente que exige derivação ainda não feita ⇒ `ErroLente` (nunca um "não casa" silencioso)."""
-    if lente.esfera != "estado" or (processo and str(processo).startswith("PCRJ:")):
+    if lente.indisponivel or lente.esfera != "estado" or (processo and str(processo).startswith("PCRJ:")):
         return None
     if not lente.derivada:
         raise ErroLente(f"lente {lente.nome}: derivação pendente — chame resolver(..., externas=True) com a fonte")

@@ -316,6 +316,11 @@ def calcular(nome: str, *, fonte: sqlite3.Connection | None = None, fonte_pcrj: 
     if nome not in cfg:
         raise KeyError(nome)
     lente = cfg[nome]
+    if lente.indisponivel:                          # sem fonte no escopo: nada é aberto nem somado (INDISPONÍVEL ≠ 0)
+        return {"ok": True, "versao": VERSAO, "lente": nome, "descricao": lente.descricao, "esfera": lente.esfera,
+                "estado": "INDISPONIVEL", "motivo": lente.indisponivel, "filtro": [], "paridade": lente.paridade,
+                "prioridade": lente.prioridade, "produto": lente.produto, "universo": None,
+                "segundos": round(time.monotonic() - t0, 2)}
     fechar = []
     if fonte is None and lente.esfera in ("estado", "emendas"):
         fonte = _ro(_caminho(ENV_FONTE, "compliance.db"))

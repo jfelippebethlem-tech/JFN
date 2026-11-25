@@ -185,6 +185,13 @@ def beneficios(lente: L.Lente) -> dict:
 # ── emendas: compliance_agent/emendas/pericia.py (tabela inteira) ───────────────────────────────────────────────
 def emendas(lente: L.Lente, fonte: sqlite3.Connection) -> dict:
     por = {r: n for r, n in fonte.execute("SELECT COALESCE(recorte,'(nulo)'), COUNT(*) FROM emendas GROUP BY 1")}
+    if lente.indisponivel:                          # a tabela é federal (Portal da Transparência/SIAFI): fica toda fora
+        return {"lente": lente.nome, "antigo": {"emendas": sum(por.values())}, "novo": {"emendas": 0},
+                "contido": True, "estado": "INDISPONIVEL",
+                "diferencas": {"fora_por_recorte": por,
+                               "causa": "a tabela emendas é só de emendas FEDERAIS (Portal da Transparência, pago = OB "
+                                        "SIAFI): escopo só RJ (decisão do dono de 19/11/2026); a lente é de emendas "
+                                        "estaduais e municipais, ainda sem coletor — " + lente.indisponivel}}
     fora = {r: n for r, n in por.items() if r not in lente.emendas_recortes}
     uf = {u or "(sem UF)": n for u, n in fonte.execute(
         f"SELECT uf_destino, COUNT(*) FROM emendas WHERE COALESCE(recorte,'') NOT IN "

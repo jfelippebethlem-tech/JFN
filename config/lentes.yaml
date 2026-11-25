@@ -17,6 +17,7 @@
 #   filtro.data_fato_desde  SÓ a referência `governo_couto.INICIO` (constante única); data escrita é recusada.
 #   filtro.orgao_pcrj  códigos de órgão da Prefeitura, conferidos contra o ContasRio (`conferir_pcrj`).
 #   filtro.emendas     {recorte: [...]} — valores da coluna `emendas.recorte`, conferidos contra a tabela.
+#   indisponivel       motivo: lente declarada SEM fonte no escopo — sem filtro, nunca casa, resumo INDISPONÍVEL.
 #   ug/orgao_sei/processo/credor combinam por OU; data_fato_desde é restrição (E).
 #   prioridade         soma ao ESCALAR de valor da fila única (degrau 7; nunca pula estrato). Só bombeiros tem bônus
 #                      (O3.3); as lentes da O7.2 entram com 0,0 — filtram e recortam, não reordenam, até o dono decidir.
@@ -142,19 +143,21 @@ lentes:
       dossiê do caso (E16), não pela lente. tools/pcrj_saude.py é homônimo: mede a SAÚDE DOS PIPELINES da Prefeitura,
       não é esteira de saúde (fica no E18).
   emendas:
-    descricao: 'Emendas parlamentares com destino no RJ (Portal da Transparência): empenhado, liquidado e pago em separado'
+    descricao: 'Emendas parlamentares estaduais (ALERJ) e municipais (Câmara do Rio): empenhado, liquidado e pago em separado'
     esfera: emendas
-    filtro:
-      emendas: {recorte: [DESTINO_RJ, AMBOS]}
+    indisponivel: >-
+      sem coletor de emendas estaduais (ALERJ/SIAFE) nem municipais (Câmara do Rio/ContasRio). A única tabela de
+      emendas da base é a FEDERAL (Portal da Transparência, pago = OB do SIAFI), fora do escopo só RJ.
     prioridade: 0.0
     detectores_extra: []
     produto: dossie_orgao
     alerta: nenhum
     paridade: >-
-      compliance_agent/emendas/pericia.py (D1–D6) lê a tabela emendas INTEIRA. A lente fica com destino no RJ
-      (DESTINO_RJ, AMBOS: 3.910 de 5.286); fora, explicado: recorte AUTOR_RJ sem destino no RJ (1.376 — 1.329 sem UF
-      de destino, 47 em outra UF), dinheiro federal fora do Estado (decisão do dono de 19/11: só RJ). Os planos PIX
-      (emendas_pix_planos, D1) seguem fora da lente até haver vínculo plano→emenda conferido.
+      compliance_agent/emendas/pericia.py (D1–D6) lê a tabela emendas INTEIRA (5.286 emendas FEDERAIS de autor ou
+      destino RJ, Portal da Transparência). Decisão de 25/11/2026 (delegada, escopo só RJ do dono de 19/11): dinheiro
+      federal não entra, nem com destino no RJ — a lente é só de emendas estaduais e municipais e fica INDISPONÍVEL
+      até haver coletor (nenhum número é mostrado; INDISPONÍVEL ≠ 0). Antes ela mostrava 3.910 federais (DESTINO_RJ,
+      AMBOS). Os planos PIX (emendas_pix_planos) também são federais e ficam fora.
   obras:
     descricao: 'Contratos de obra do TCE-RJ (construção, reforma, pavimentação, edificação, drenagem, obra) e as OB dos seus processos'
     filtro:
