@@ -132,6 +132,36 @@ class _PorPagina:
         return out
 
 
+class _GuardaVRAM:
+    """A GPU do it-campo é dividida com o Voicebox (outro agente): fica sempre `LIVRE_GB` livre. Antes de carregar o
+    modelo, espera ter `LIVRE_GB` + o que este processo vai ocupar; depois, se OUTRO processo subiu na GPU e a folga
+    caiu abaixo de `LIVRE_GB`, este processo SAI (devolve a VRAM) — recua, nunca disputa."""
+    LIVRE_GB = float(os.environ.get("JFN_GPU_LIVRE_GB", "4"))
+    PROPRIO_GB = 3.2                                             # medido: arena de 2 GB + contexto CUDA ≈ 3,0 GB
+
+    def __init__(self):
+        self.base = None                                         # VRAM usada antes de este processo carregar
+
+    @staticmethod
+    def _uso() -> tuple[float, float]:
+        r = subprocess.run(["nvidia-smi", "--query-gpu=memory.used,memory.total", "--format=csv,noheader,nounits"],
+                           capture_output=True, text=True, timeout=30, check=True)
+        usado, total = (float(x) / 1024 for x in r.stdout.split(",")[:2])
+        return usado, total
+
+    def antes_do_documento(self) -> None:
+        usado, total = self._uso()
+        if self.base is None:
+            while total - usado < self.LIVRE_GB + self.PROPRIO_GB:
+                time.sleep(60)
+                usado, total = self._uso()
+            self.base = usado
+            return
+        if total - usado < self.LIVRE_GB and usado - self.base > self.PROPRIO_GB + 0.5:
+            raise SystemExit(f"recuo da GPU: outro processo usa {usado - self.base - self.PROPRIO_GB:.1f} GB e a folga "
+                             f"caiu a {total - usado:.1f} GB (< {self.LIVRE_GB} GB)")
+
+
 # ── conferência do efeito do E5 sem PG ─────────────────────────────────────────────────────────────────────────
 class _PGDaSombra:
     """Responde às duas consultas do `ocr.conferir` com o que a sombra GRAVARIA (transformação desta versão e versão
@@ -179,6 +209,7 @@ def rodar(d: Path, modo: str, fatia: str, limite: int | None, dinamico: bool = F
     k_f, n_f = (int(x) for x in fatia.split("/"))
     cache = O.CacheImagem(d / O.PASTA_DEDUP)
     principal = _PorPagina(_executor_gpu() if modo == "gpu" else O.ExecutorCPU(), cache)
+    vram = _GuardaVRAM() if modo == "gpu" else None
     segundo = _PorPagina(O.ExecutorTesseract(), cache)
     leit = R.leitores_do_no()
     con = sqlite3.connect(f"file:{B.SNAPSHOT}?mode=ro&immutable=1", uri=True) if B.SNAPSHOT.exists() else None
@@ -196,6 +227,8 @@ def rodar(d: Path, modo: str, fatia: str, limite: int | None, dinamico: bool = F
         for m in xs:
             while _permitidos(d, n_f) <= k_f:                   # governador: este processo não pega documento novo
                 time.sleep(20)
+            if modo == "gpu":
+                vram.antes_do_documento()                        # GPU dividida com o Voicebox: espera ou recua
             if dinamico:
                 try:                                             # reserva atômica (O_EXCL) — o script limpa ao subir
                     os.close(os.open(reservas / B._h(m["hd"]), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
