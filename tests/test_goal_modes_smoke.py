@@ -1,4 +1,9 @@
-"""Smoke test do modo /goal."""
+"""Smoke MANUAL do modo /goal (não é teste do pytest: não tem test_*).
+
+25/11/2026: rodava `asyncio.run(main())` no IMPORT, então toda coleta do pytest (portão, CI, VM-2, it-campo) executava o
+HermesGoalAgent de verdade sobre o banco (init_db, definir_missao, ações que podem chamar LLM). Agora só roda à mão:
+    python tests/test_goal_modes_smoke.py
+"""
 import traceback
 import asyncio
 from compliance_agent.database.models import get_session, init_db
@@ -21,4 +26,5 @@ async def main():
     except Exception:
         traceback.print_exc()
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
