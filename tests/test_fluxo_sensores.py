@@ -71,6 +71,9 @@ def test_logs_de_backup():
     cb = ("[backup] ✓ off-box: b2:x/compliance/compliance-20261115-035001.db.gz (rotação)\n"
           "[backup] ✓ off-box: b2:x/compliance/compliance-20261122-035001.db.gz (rotação)\n")
     assert S.ultimo_backup_compliance(cb) == datetime(2026, 11, 22, 3, 50, 1)
+    # 25/11/2026: o backup sobe cifrado (.db.gz.age) — o sensor continua vendo a data
+    cb += "[backup] ✓ off-box: gdrive+r2:vm1/JFN/data/backups/compliance-20261125-031501.db.gz.age (porta única, cifrado)\n"
+    assert S.ultimo_backup_compliance(cb) == datetime(2026, 11, 25, 3, 15, 1)
 
 
 def test_restauracao_nunca_rodou_falhou_e_ok(tmp_path):

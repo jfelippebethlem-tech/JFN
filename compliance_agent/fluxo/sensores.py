@@ -246,7 +246,7 @@ def tendencia_pp_dia(pontos: Iterable[tuple[float, float]], minimo_s: float = 36
 
 _RX_DUMP_OK = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) dump ok")
 _RX_ARMAZ = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) armazenamento rc=(\d+)")
-_RX_OFFBOX = re.compile(r"✓ off-box: .*?compliance-(\d{8})-(\d{6})\.db\.gz")
+_RX_OFFBOX = re.compile(r"✓ off-box: .*?compliance-(\d{8})-(\d{6})\.db\.gz(?:\.age)?")   # .age desde 25/11/2026
 
 
 def ultimo_dump_guardado(texto: str) -> datetime | None:

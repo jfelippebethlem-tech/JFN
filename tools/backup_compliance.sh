@@ -9,7 +9,9 @@
 # Retenção (cabe no grátis: ~1,7 GB por cópia em 24/11): Drive guarda as 7 mais novas; cada outro remoto, as 2 mais
 # novas DELE. A poda não roda se o backup de hoje não cumpriu a política (o de ontem não some por causa de hoje).
 # Os 3 semanais antigos em b2:jfn-backup-jorge/compliance/ (rclone avulso) ficam como estão até a O8.2 decidir.
-# VM-safe: ionice idle + nice 19. Linha "✓ off-box: …compliance-AAAAMMDD-HHMMSS.db.gz" é o que o sensor
+# 25/11/2026: o .gz é cifrado com age para as chaves SSH das 3 máquinas antes de subir (tools/cifrar_backup.sh, que
+# prova a volta por sha256 antes de apagar o claro): sobe compliance-AAAAMMDD-HHMMSS.db.gz.age.
+# VM-safe: ionice idle + nice 19. Linha "✓ off-box: …compliance-AAAAMMDD-HHMMSS.db.gz.age" é o que o sensor
 # backup.compliance_idade_h lê (compliance_agent/fluxo/sensores.py) — não mudar o formato.
 set -uo pipefail
 cd /home/ubuntu/JFN || exit 1
@@ -35,8 +37,14 @@ snapshot_sqlite_gz(Path(sys.argv[1]), Path(sys.argv[2]))" "$DB" "$ARQ"; then
 fi
 rm -f "${ARQ%.gz}-shm" "${ARQ%.gz}-wal"    # sobras do quick_check do snapshot (o .db já virou .gz)
 # snapshots locais de dias que não subiram: o de hoje os substitui (cada um tem ~1,7 GB de disco)
-find "$PWD/data/backups" -maxdepth 1 -name 'compliance-*.db.gz' ! -name "$(basename "$ARQ")" -print -delete \
+find "$PWD/data/backups" -maxdepth 1 -name 'compliance-*.db.gz*' ! -name "$(basename "$ARQ")" -print -delete \
   | sed 's/^/[backup] snapshot local antigo removido: /'
+
+# 2b) cifra (age, 3 chaves SSH existentes) com a volta conferida; sem isso o backup não sobe (nunca em claro)
+if ! CIF=$(tools/cifrar_backup.sh "$ARQ"); then
+  echo "[backup] ⛔ cifragem falhou — snapshot local em claro mantido em $ARQ; nada subiu"; exit 1
+fi
+ARQ="$CIF"
 
 # 3) guardar pela porta única (2 provedores, hash conferido, só então apaga o local)
 OUT=$(nice -n 15 timeout 10800 $PY -m compliance_agent.armazenamento guardar "$ARQ" --classe backup_db --apagar-local)
@@ -53,7 +61,7 @@ if [ $RC -ne 0 ] || [ -z "$DEST" ]; then
   echo "[backup] ⚠️ política não cumprida (cópias acima) — snapshot local mantido em $ARQ; nada foi podado"
   exit 2
 fi
-echo "[backup] ✓ off-box: $DEST:$PREFIXO$TS.db.gz (porta única)"
+echo "[backup] ✓ off-box: $DEST:$PREFIXO$TS.db.gz.age (porta única, cifrado)"
 
 # 4) retenção pela porta (a trava da mais nova está DENTRO do podar)
 $PY -m compliance_agent.armazenamento podar --prefixo "$PREFIXO" --manter-principal "$MANTER_PRINCIPAL" \
