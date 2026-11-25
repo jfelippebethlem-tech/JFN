@@ -46,7 +46,6 @@ compliance_agent.vantajosidade  # [biblioteca] 17 funções de teste
 compliance_agent.database.migrations.001_extract_raw_json_data  # [morto] runner caseiro aposentado 24/11 (O4.2): absorvida na revisão Alembic 0001_base — apagar é do dono
 compliance_agent.database.migrations.002_categorize_ordens_bancarias  # [morto] idem 001 (O4.2)
 compliance_agent.database.migrations.003_missoes_auditoria  # [morto] idem 001 (O4.2)
-compliance_agent.credenciais  # CLI das sessões/agentes nas 3 máquinas (deploy/remote-control/LEIAME.md): `python -m compliance_agent.credenciais com NOME -- cmd`; não é chamada por código
 compliance_agent.aplicacao.estagios.texto_ocr_legado  # CLI de migração única das filas JSON → fluxo (O3.4; replay 30 d com 0 perda); roda uma vez na O9.0 por `python -m`, não é chamada por código
 compliance_agent.llm.integral_fora_da_fila  # 24/11/2026 D3: CLI sombra/aplicar dos pendentes da integral — o dono/religação roda `aplicar` uma vez (PARADA DE OBRAS); a regra de entrada vive em llm/conferencia_opus
 compliance_agent.aplicacao.lentes_paridade  # 25/11/2026 O7.2: CLI de paridade lente × script antigo sobre o snapshot da parada (`python -m …lentes_paridade --fonte ~/snapshot-20261124/compliance.db`); roda antes de apagar cada script (decisão do dono, PARADA DE OBRAS), não é chamada por código
