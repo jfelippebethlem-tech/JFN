@@ -1,24 +1,21 @@
 """
 Varredura simples de OBs (ciclo do Auditor 24h do Hermes, `hermes_goal._ciclo_auditor_completo`).
 
-Gera alertas `sem_sei`, `valor_redondo`, `concentracao_favorecido_ug`, `fracionamento_suspeito` e uma
-pendência fixa de investigação complementar (TCU 6.100/2022 — empresa irregular; TCU 3.654/2020 — conflito
-de interesse; publicação no PNCP), sem apontar culpado enquanto a base não tiver esses dados integrados.
+Gera alertas `sem_sei`, `valor_redondo`, `concentracao_favorecido_ug` (o antigo `fracionamento_suspeito` saiu na
+O4.8) e uma pendência fixa de investigação complementar (TCU 6.100/2022 — empresa irregular; TCU 3.654/2020 —
+conflito de interesse; publicação no PNCP), sem apontar culpado enquanto a base não tiver esses dados integrados.
 """
 from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import date
 
 from compliance_agent.database.models import get_session, init_db, Alerta
-from compliance_agent.limites_dispensa import limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
 
 # Limiares desta varredura (antes num `ConfiguracaoAuditoria` de 180 linhas do qual só estes três eram lidos).
 TOLERANCIA_VALOR_REDONDO = 50.0
 MIN_PAGAMENTOS_MESMO_FAVORECIDO_UG = 3
-MIN_PAGAMENTOS_FRACIONAMENTO = 2
 
 
 def gerar_alerta(tipo: str, severidade: str, id_ob: int | None, descricao: str, referencia: str | None = None):
@@ -116,27 +113,10 @@ def gerar_alertas(session=None) -> int:
             gerar_alerta("concentracao_favorecido_ug", "alta", itens[0]["id"], txt, referencia=chave)
             count += 1
 
-    # 4) Fracionamento suspeito por mês
-    chaves_mes = defaultdict(list)
-    for o in obs:
-        chave = f"{(o['favorecido_nome'] or '').strip()}|{(o['ug_codigo'] or '').strip()}|{o['data_emissao'][:7]}"
-        chaves_mes[chave].append(o)
-    for chave, itens in chaves_mes.items():
-        if len(itens) >= MIN_PAGAMENTOS_FRACIONAMENTO:
-            total = sum(i["valor"] for i in itens)
-            menor = min(i["valor"] for i in itens)
-            # Pagamentos que, um a um, cabem na dispensa e juntos a estouram. Aqui havia 60.000 (soma) e
-            # 50.000 (parcela) literais — o teto de 2021 congelado; o teto é do exercício da OB.
-            ano = itens[0]["data_emissao"][:4]
-            teto = limite_dispensa(int(ano) if ano.isdigit() else date.today().year, "compras")
-            if total > teto and menor < teto:
-                txt = (
-                    f"Possível fracionamento em {len(itens)} pagamentos para "
-                    f"'{chave}' no mês, totalizando R$ {moeda(total)}. "
-                    "Verificar fraude à licitação e dispensa indevida."
-                )
-                gerar_alerta("fracionamento_suspeito", "alta", itens[0]["id"], txt, referencia=chave)
-                count += 1
+    # 4) "Fracionamento suspeito por mês" — DEPRECATED e SEM emissão (O4.8, plano mestre v2 §4.5): somava OB por
+    #    favorecido × UG × mês contra o teto de dispensa (agregação por CREDOR × teto). Fracionamento é o mesmo
+    #    OBJETO em contratações distintas na mesma UG e exercício; só o P4 por objeto emite
+    #    (`aplicacao/detectores/fracionamento_objeto.py`). Catraca: tests/test_o48_fracionamento.py.
 
     # 5) Regras de empresa irregular e conflito de interesse via política
     #    Como ainda não temos base consolidada de empresas/CNPJs, sócios, doações e servidores,

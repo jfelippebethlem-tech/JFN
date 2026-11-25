@@ -551,3 +551,50 @@ def score_processo(resultados: Sequence[ResultadoDetector], pesos: dict[str, flo
         w = pesos.get(r.detector, 0.6)
         prod *= (1.0 - w * r.score)
     return round(1.0 - prod, 4)
+
+
+# ───────────────────────────── Convergência do PRODUTO (O4.8, plano mestre v2 §4 item 9) ─────────────────────────────
+# `score_processo` segue como era (agregador técnico). O que vai ao PRODUTO passa por `convergencia`:
+#   · Tier 3 (sem medida — onde todo detector entra no dia 1) e detector sem tier no registro ficam FORA;
+#   · sinal FRACO (score ≤ âncora "fraco", 0,30) só vale em convergência, e só fracos juntos chegam no máximo a
+#     ATENCAO: o score fica abaixo do degrau de ALTO, por mais fracos que se somem (1 − 0,7ⁿ passaria de 0,5 com 2).
+NIVEIS_CONVERGENCIA = ("BAIXO", "ATENCAO", "ALTO", "CRITICO")
+_DEGRAUS = ((0.75, "CRITICO"), (0.50, "ALTO"), (0.25, "ATENCAO"))     # as faixas do processo_360 (75/50/25)
+TETO_SO_FRACOS = 0.49
+
+
+def nivel_convergencia(score: float) -> str:
+    return next((nome for lim, nome in _DEGRAUS if score >= lim), "BAIXO")
+
+
+@dataclass(frozen=True)
+class Convergencia:
+    score: float
+    nivel: str
+    fortes: tuple[str, ...]
+    fracos: tuple[str, ...]
+    fora_tier: tuple[str, ...]
+    so_fracos: bool
+
+
+def convergencia(resultados: Sequence[ResultadoDetector], tiers: dict[str, int | None],
+                 pesos: dict[str, float] | None = None) -> Convergencia:
+    """Convergência que o PRODUTO pode mostrar. `tiers` = {detector_id: tier do registro} (obrigatório: sem ele
+    não há como saber quem tem medida — e quem não tem é Tier 3)."""
+    fraco = ancora("fraco")
+    entra, fora = [], []
+    for r in resultados:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        if tiers.get(r.detector) not in (1, 2):
+            fora.append(r.detector)
+            continue
+        entra.append(r)
+    fortes = tuple(r.detector for r in entra if float(r.score or 0) > fraco)
+    fracos = tuple(r.detector for r in entra if float(r.score or 0) <= fraco)
+    score = score_processo(entra, pesos)
+    so_fracos = bool(entra) and not fortes
+    if so_fracos:
+        score = min(score, TETO_SO_FRACOS)
+    return Convergencia(score=score, nivel=nivel_convergencia(score), fortes=fortes, fracos=fracos,
+                        fora_tier=tuple(fora), so_fracos=so_fracos)

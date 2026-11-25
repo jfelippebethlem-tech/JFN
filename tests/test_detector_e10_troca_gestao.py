@@ -166,8 +166,9 @@ def test_d01_negativo_regime_proprio_fora_da_conta(db):
 
 def test_d02_positivo_incumbente(db):
     con, p = db
-    _ct(con, "SEI-0", "S0", 1e6, "2025-05-01", "15151515000115", "ACME LTDA")     # contrato antes do corte
-    _ct(con, "SEI-9", "S9", 3e6, "2026-04-05", "15151515000115", "ACME LTDA")
+    # O4.8: o casamento passa por dominio.identidade — CNPJ com DV válido (o de antes não tinha DV válido)
+    _ct(con, "SEI-0", "S0", 1e6, "2025-05-01", "11222333000181", "ACME LTDA")     # contrato antes do corte
+    _ct(con, "SEI-9", "S9", 3e6, "2026-04-05", "11222333000181", "ACME LTDA")
     _cd(con, "S9", "Lei 14.133/2021, Art. 75, VIII")
     ds, _ = rodar(T._EmergencialIncumbente(corte=CORTE), con, p)
     assert [d.chave for d in ds] == ["SEI-9|1"] and ds[0].estado == "INDICIO"

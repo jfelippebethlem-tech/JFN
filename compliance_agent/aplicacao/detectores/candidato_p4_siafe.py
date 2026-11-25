@@ -17,6 +17,7 @@ marca a geração, a origem `e10:<detector>:<escopo>:<chave>` é única e a gera
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 import statistics
 from collections import Counter
@@ -25,6 +26,7 @@ from functools import lru_cache
 
 from compliance_agent.aplicacao.detectores import Carga, Disparo, elegivel
 from compliance_agent.dominio.achado import Fato, Papel
+from compliance_agent.dominio.identidade import resolver
 from compliance_agent.entidades_gov import eh_nao_fornecedor
 from compliance_agent.fracionamento_siafe import (_CREDOR_NAO_LICITAVEL, FAIXA_RENTE_AO_TETO, MIN_OBS, _data,
                                                   _nl_nao_contratacao, _pago, _prioridade)
@@ -33,7 +35,7 @@ from compliance_agent.reporting.intel_base import reais
 
 ID = "e10.candidato_p4_siafe"
 UNIDADE = "ob_siafe"
-VERSAO = "e10-cp4-1"
+VERSAO = "e10-cp4-2"   # 2: identidade do credor da série (O4.8)
 NATUREZA = "candidato_p4"
 RESSALVA = ("Candidato ao P4, não achado: o SIAFE não traz o OBJETO nem a MODALIDADE da contratação e o processo do "
             "SIAFE não casa com o do SEI. Só o P4 (mesmo objeto em contratações distintas) decide; pagamento repetido "
@@ -117,6 +119,20 @@ def _fato(c: dict) -> Fato:
                        "processo": c["processo"], "veredito_e9": c.get("e9")})
 
 
+def identidade(credor: str | None, nome: str | None) -> str:
+    """Nível de identidade (`dominio.identidade`) que junta as OB da série: o documento do credor (CNPJ/CPF completo
+    com DV válido = forte) ou, sem documento, só o nome (homônimo). Inscrição genérica do SIAFE = indeterminado."""
+    c = (credor or "").strip()
+    d = re.sub(r"\D", "", c)
+    if c and not re.search(r"[A-Za-z]", c) and len(d) in (11, 14):
+        reg = {"cnpj": d} if len(d) == 14 else {"cpf": d}
+    elif c and c == (nome or "").strip():
+        reg = {"nome": c}
+    else:
+        reg = {}
+    return resolver(reg, reg).match_level
+
+
 def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:
     grupos: dict[str, list[dict]] = {}
     for c in itens:
@@ -154,7 +170,7 @@ def detectar(itens: list[dict], contexto: dict | None = None) -> list[Disparo]:
                      "primeira_ob": datas[0].isoformat() if datas else None,
                      "ultima_ob": datas[-1].isoformat() if datas else None,
                      "fundamento": f"art. 75, §1º · {ato_normativo(ex)}"},
-            evidencias=[_fato(o) for o in obs[:50]]))
+            evidencias=[_fato(o) for o in obs[:50]], identidade=identidade(obs[0]["credor"], obs[0]["nome_credor"])))
     return out
 
 

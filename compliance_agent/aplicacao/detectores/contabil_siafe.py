@@ -73,7 +73,8 @@ def _nl_idx(con, where: str = "", par: tuple = ()) -> tuple[dict, int]:
             f"SELECT numero, ug_emitente, status, valor, data_emissao, credor FROM nl_siafe {where}", par):
         k = (num, str(ug))
         dup += k in idx
-        idx[k] = {"status": st or "", "valor": float(valor or 0), "data": _data(dt), "credor": _ident(credor)}
+        idx[k] = {"status": st or "", "valor": float(valor or 0), "data": _data(dt), "credor": _ident(credor),
+                  "doc": _doc(credor) if _ident(credor) else ""}
     return idx, dup
 
 
@@ -85,6 +86,7 @@ def _item(numero, ug, ex, dt, nl, credor, valor, n, dev: dict | None = None) -> 
             "devolvido": (dev or {}).get((str(numero or "").strip(), str(ug).strip())),
             "mesmo_credor": _ident(credor) is not None and _ident(credor) == n["credor"],
             "credor_raiz": doc[:8] if len(doc) == 14 else None,
+            "credor_doc": doc if _ident(credor) else "", "nl_credor_doc": n.get("doc", ""),
             "nl_status": n["status"], "nl_valor": n["valor"], "nl_data": n["data"]}
 
 
@@ -127,6 +129,22 @@ def carregar_grupo(con: sqlite3.Connection, grupo: str, exercicio: int | None = 
                        f"AND nl = ? AND ug_emitente = ? {filtro}", (nl, ug, *par)).fetchall()
     dev = devolvido_por_ob(con)
     return Carga(itens=[_item(*r, n, dev) for r in rows])
+
+
+_ORDEM_IDENTIDADE = ("forte", "parcial", "probabilistico", "homonimo", "indeterminado", "divergente")
+
+
+def _reg(doc: str) -> dict:
+    return {"cnpj": doc} if len(doc) == 14 else {"cpf": doc} if len(doc) == 11 else {}
+
+
+def identidade(obs: list[dict]) -> str:
+    """Nível de identidade (`dominio.identidade.resolver`) entre o credor da OB e o da NL, o MAIS FRACO entre as OB
+    do disparo. Mesmo documento completo com DV válido = forte; matriz × filial (mesma raiz, sem nome para conferir)
+    = indeterminado — casa para o detector (mesma pessoa jurídica), mas não sustenta grave (O4.8)."""
+    from compliance_agent.dominio.identidade import resolver
+    niveis = [resolver(_reg(c.get("credor_doc") or ""), _reg(c.get("nl_credor_doc") or "")).match_level for c in obs]
+    return max(niveis, key=_ORDEM_IDENTIDADE.index) if niveis else "indeterminado"
 
 
 def _fato_ob(c: dict, papel: Papel = Papel.SUPORTE) -> Fato:
@@ -172,7 +190,7 @@ def situacao_nl(obs: list[dict]) -> str:
 class _PagoAcima:
     ID: str = "e10.ob_paga_acima_liquidado"
     UNIDADE: str = UNIDADE
-    VERSAO: str = "e10-cpago-2"     # 2: exigência `valor_liquido` + devolução apurada abatida (decisão do dono 1)
+    VERSAO: str = "e10-cpago-3"     # 3: identidade do credor OB × NL (O4.8); 2: exigência `valor_liquido` + devolução apurada abatida (decisão do dono 1)
 
     carregar = staticmethod(carregar)
     carregar_grupo = staticmethod(carregar_grupo)
@@ -200,7 +218,7 @@ class _PagoAcima:
                 entradas={"nl": n0["nl"], "ug": n0["ug"], "nl_status": n0["nl_status"], "nl_valor": n0["nl_valor"],
                           "obs": [_entrada_ob(c) for c in obs]},
                 valores={"pago": pago, "liquidado": n0["nl_valor"], "excedente": exc, "n_ob": len(obs)},
-                processo=None, evidencias=[_fato_nl(n0)] + [_fato_ob(c) for c in obs]))
+                processo=None, evidencias=[_fato_nl(n0)] + [_fato_ob(c) for c in obs], identidade=identidade(obs)))
         return out
 
     @staticmethod
@@ -212,7 +230,7 @@ class _PagoAcima:
 class _ObAntes:
     ID: str = "e10.ob_antes_da_liquidacao"
     UNIDADE: str = UNIDADE
-    VERSAO: str = "e10-cob-1"
+    VERSAO: str = "e10-cob-2"       # 2: identidade do credor OB × NL (O4.8)
 
     carregar = staticmethod(carregar)
     carregar_grupo = staticmethod(carregar_grupo)
@@ -234,7 +252,7 @@ class _ObAntes:
                             f"{c['nl_data']:%d/%m/%Y}. Fonte: ob_orcamentaria_siafe × nl_siafe."),
                 entradas={**_entrada_ob(c), "nl": c["nl"], "nl_data": str(c["nl_data"]), "nl_status": c["nl_status"]},
                 valores={"dias_antes": dias, "valor": c["valor"]},
-                evidencias=[_fato_ob(c), _fato_nl(c)]))
+                evidencias=[_fato_ob(c), _fato_nl(c)], identidade=identidade([c])))
         return out
 
     @staticmethod

@@ -5538,6 +5538,8 @@ detectores:
       excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:dispensa_por_valor
     - hipotese: itens e grafias do mesmo processo contados mais de uma vez
       excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:_itens
+    - hipotese: manutenção de veículos da frota até o valor do §7º do art. 75 não entra no somatório do §1º
+      excluida_por: compliance_agent/aplicacao/detectores/fracionamento_objeto.py:frota_par7
     - hipotese: demandas imprevisíveis distintas (manutenção corretiva) ou unidades gestoras autônomas
       excluida_por: null
     dominio: dispensas por valor do espelho TCE-RJ (compras_diretas_tcerj) elegíveis na E9 (dispensa_valor = E)

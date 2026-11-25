@@ -34,12 +34,16 @@ import hashlib
 import json
 import os
 import random
+import re
 import sys
 import time
+from datetime import date, datetime
 
 from compliance_agent.aplicacao.detectores import MODULOS, carregar_detector, versao_execucao
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
 from compliance_agent.aplicacao.estagios import elegibilidade as E9
+from compliance_agent.dominio import identidade as ID
+from compliance_agent.dominio import regra_versao as RV
 from compliance_agent.dominio.achado import Achado, ExecucaoRegra, StatusAchado, hash_entradas
 from compliance_agent.dominio.estados import EstadoSaida
 from compliance_agent.fluxo.fila import Resultado
@@ -125,14 +129,78 @@ def origem(did: str, escopo: str, chave: str) -> str:
     return f"e10:{did}:{escopo}:{chave}"
 
 
+# ── regra temporal (O4.8): a versão da regra NA DATA DO FATO ─────────────────────────────────────────────────────
+_CHAVES_DATA = ("data", "data_ato", "nl_data", "primeira_ob", "ultima_ob")
+
+
+def _como_data(v) -> date | None:
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    t = str(v or "").strip()[:10]
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(t, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _datas(obj, out: list) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in _CHAVES_DATA and (dt := _como_data(v)):
+                out.append(dt)
+            elif isinstance(v, (dict, list)):
+                _datas(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            _datas(v, out)
+
+
+def data_fato(did: str, d) -> tuple[date | None, date | None, str | None, str]:
+    """(início, fim, lei do contrato ou None, precisão) do FATO do disparo. Ordem: o detector diz (`data_fato`);
+    datas nas entradas (OB, NL, ato); o exercício (entradas, valores ou grupo `…|AAAA`); o corte da regra. Nunca a
+    data de hoje."""
+    det = carregar_detector(did)
+    if callable(getattr(det, "data_fato", None)):
+        return det.data_fato(d)
+    ds: list[date] = []
+    _datas(d.entradas, ds)
+    if ds:
+        return min(ds), max(ds), None, "data"
+    ex = d.entradas.get("exercicio") or d.valores.get("exercicio")
+    m = re.search(r"\|((?:19|20)\d{2})(?:\||$)", str(d.grupo or ""))
+    ex = ex or (m.group(1) if m else None)
+    if ex:
+        ini, fim = RV.intervalo_do_exercicio(int(ex))
+        return ini, fim, None, "exercicio"
+    corte = _como_data(getattr(det, "corte", None))
+    return (corte, corte, None, "corte_da_regra") if corte else (None, None, None, "indisponivel")
+
+
+def vigencia(did: str, d) -> dict:
+    ini, fim, lei, precisao = data_fato(did, d)
+    v = RV.versao_na_data(did, ini, fim, lei=lei).como_dict()
+    return {**v, "precisao_data_fato": precisao, "lei_do_contrato": lei}
+
+
 def para_achado(did: str, versao: str, escopo: str, rodada: str, d) -> Achado:
     reg = _registro(did)
     afirma = str(reg.get("afirma") or did)
     hip = [h["hipotese"] for h in reg.get("hipoteses_inocentes") or [] if h.get("hipotese")]
+    penal = RV.texto_penal(" ".join((afirma, d.observacao, *hip)))
+    if penal:      # esfera do JFN é o controle externo: achado não qualifica crime nem dolo (plano §4 item 8)
+        raise ErroPermanente(f"{did}: texto do achado qualifica conduta penal/subjetiva ({', '.join(penal)})")
+    ident = {"identidade": d.identidade,
+             "sustenta_grave": ID.sustenta_grave(ID.Resolucao(d.identidade, "")) if d.identidade else None}
     exe = ExecucaoRegra(regra_id=did, versao=versao, entradas_hash=hash_entradas(d.entradas),
                         resultado={"geracao": "e10", "rodada": rodada, "escopo": escopo, "chave": d.chave,
                                    "grupo": d.grupo, "valores": d.valores, "entradas": d.entradas,
-                                   "e9_versao": E9.VERSAO, "tier": reg.get("tier")},
+                                   "e9_versao": E9.VERSAO, "tier": reg.get("tier"),
+                                   "regra_versao": vigencia(did, d), "esfera": RV.ESFERA_RESPONSABILIZACAO,
+                                   **ident},
                         processo=d.processo, origem=origem(did, escopo, d.chave))
     return Achado.de_regra(execucao=exe, status=StatusAchado.TRIAGEM, estado=EstadoSaida(d.estado),
                            motivo_estado=d.motivo_estado, observacao=d.observacao, inferencia=afirma,

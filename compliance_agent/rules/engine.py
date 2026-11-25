@@ -23,7 +23,7 @@ import logging
 from datetime import date as _date, timedelta
 from typing import Optional
 
-from sqlalchemy import Integer, case, func
+from sqlalchemy import Integer, func
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
@@ -32,7 +32,6 @@ from compliance_agent.database.models import (
 )
 from compliance_agent.acima_do_teto import TETO_CF_37_XI, classificar as classificar_teto
 from compliance_agent.credor_institucional import institucional
-from compliance_agent.limites_dispensa import LIMITES, ato_normativo, limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
 from compliance_agent.rules.alerta import LoteAlertas
 
@@ -250,52 +249,15 @@ class MotorCompliance:
                 pessoa = pessoa,
             )
 
-    # ── Regra 4: Fracionamento de contrato ───────────────────────────────────
+    # ── Regra 4: Fracionamento de contrato — DEPRECATED (O4.8, plano mestre v2 §4.5) ─────────────────
     def _regra_fracionamento_contrato(self):
-        """
-        Lei 14.133/21 art. 8º: proibido fracionar compras para fugir da licitação.
-        Detecta: mesmo órgão + mesma empresa com contratos por dispensa cuja soma supera o teto de dispensa.
-        """
-        # RESSALVA de precisão, declarada em vez de silenciada: o agrupamento abaixo NÃO tem
-        # janela temporal — soma todos os contratos por dispensa do par órgão×empresa, de
-        # qualquer ano. Enquanto a janela não existir, o teto usado é o do exercício MAIS RECENTE
-        # (o maior), que é a leitura conservadora:
-        # erra para menos achados, nunca para acusação indevida. Corrigir a janela é mudança de
-        # desenho do detector, não desta correção de fonte única.
-        _exercicio_ref = _date.today().year
-        _teto_dispensa = limite_dispensa(_exercicio_ref, "compras")
-
-        q = (
-            self.session.query(
-                Contrato.orgao_contrat,
-                Contrato.empresa_id,
-                func.sum(Contrato.valor_total).label("soma"),
-                func.count(Contrato.id).label("qtd"),
-            )
-            .filter(func.lower(Contrato.modalidade).in_(["dispensa", "dispensada"]))
-            .group_by(Contrato.orgao_contrat, Contrato.empresa_id)
-            .having(func.sum(Contrato.valor_total) > _teto_dispensa)
-        )
-
-        for row in q.all():
-            empresa = self.session.query(Empresa).get(row.empresa_id)
-            nome_emp = empresa.razao_social if empresa else f"ID {row.empresa_id}"
-            self._lote.criar(
-                tipo       = "fracionamento",
-                severidade = "alta",
-                titulo     = f"Possível fracionamento — {row.orgao_contrat} × {nome_emp}",
-                descricao  = (
-                    f"Órgão '{row.orgao_contrat}' possui {row.qtd} contratos por dispensa "
-                    f"com '{nome_emp}' totalizando R$ {moeda(row.soma)}, acima do limite de "
-                    f"dispensa de {_exercicio_ref} (R$ {moeda(_teto_dispensa)} — "
-                    f"{ato_normativo(_exercicio_ref)})."
-                ),
-                evidencias = {
-                    "orgao": row.orgao_contrat, "empresa": nome_emp,
-                    "total": row.soma, "qtd_contratos": row.qtd,
-                },
-                empresa = empresa,
-            )
+        """DEPRECATED e SEM emissão (O4.8). Somava os contratos por dispensa do par órgão × empresa, de qualquer
+        ano, contra o teto do ano corrente — agregação por CREDOR × teto, que não é o conceito legal: fracionamento
+        é o mesmo OBJETO (mesmo ramo, art. 75 §1º, II) em contratações distintas, na mesma unidade gestora e no
+        mesmo exercício (§1º, I). Só o P4 por objeto emite (`aplicacao/detectores/fracionamento_objeto.py`).
+        Mantido como no-op para o laço de `executar_todas_as_regras`; catraca em
+        `tests/test_o48_fracionamento.py` (zero emissão e nenhuma agregação credor × teto fora do P4)."""
+        logger.debug("rules.engine: _regra_fracionamento_contrato deprecated (O4.8) — só o P4 emite")
 
     # ── Regra 5: Empresa de parente/servidor recebendo contratos ─────────────
     def _regra_empresa_parente(self):
@@ -553,119 +515,12 @@ class MotorCompliance:
         return n.startswith(cls._PREFIXOS_ENTE)
 
     def _regra_ob_fracionamento(self):
-        """
-        Fracionamento de pagamentos via OB: mesmo favorecido recebe múltiplos
-        pagamentos em 30 dias cujo total ultrapassa o limite de dispensa de
-        licitação do EXERCÍCIO (Lei 14.133/21 art. 75, corrigido por decreto anual).
-
-        Padrão clássico para burlar obrigação de licitar.
-
-        O teto estava congelado em R$ 50.000 — o valor original de 2021 — aplicado a todos os
-        anos. Era mais uma cópia divergente da tabela que `limites_dispensa.py` centraliza: em
-        2026 o teto de compras é R$ 65.492,11, ou seja, a regra acusava fracionamento em grupos
-        até 31% abaixo do limite legal, com severidade "alta".
-        """
-        # O SQL não sabe o exercício de cada grupo, então filtra pelo MENOR teto conhecido (piso
-        # que não descarta nada) e o enquadramento exato é feito no laço, ano a ano.
-        LIMITE_DISPENSA = min(float(LIMITES[a]["compras"]) for a in LIMITES)
-        # 23/11/2026 — dos 107 alertas gravados, 106 tinham OB individual ACIMA do teto (Riocard: 2 OBs, R$ 136 mi;
-        # Amil, Barcas, Metrô, Agevap): parcela de contrato/concessão, não compra fatiada. Fatiar é caber EMBAIXO do
-        # teto — cada OB tem de ser inferior ao teto do SEU exercício (art. 75, II: "valores inferiores a"), e as
-        # OBs têm de vir de pelo menos 2 PROCESSOS distintos (várias OBs do mesmo processo são parcelas de um só).
-        teto_do_ano = case(
-            *[(func.strftime("%Y", OrdemBancaria.data_emissao) == str(a), float(LIMITES[a]["compras"]))
-              for a in LIMITES],
-            else_=float(limite_dispensa(_date.today().year, "compras")))
-
-        # Janela de ~30 dias aproximada pelo mês-calendário (strftime no group_by).
-        subq = (
-            self.session.query(
-                OrdemBancaria.favorecido_cpf,
-                OrdemBancaria.favorecido_nome,
-                OrdemBancaria.ug_codigo,
-                func.count(OrdemBancaria.id).label("n_obs"),
-                func.sum(OrdemBancaria.valor).label("total"),
-                func.min(OrdemBancaria.data_emissao).label("data_ini"),
-                func.max(OrdemBancaria.data_emissao).label("data_fim"),
-            )
-            .filter(
-                OrdemBancaria.favorecido_cpf.isnot(None),
-                OrdemBancaria.valor.isnot(None),
-                OrdemBancaria.valor > 0,
-                OrdemBancaria.valor < teto_do_ano,
-                OrdemBancaria.data_emissao >= self._desde(),
-            )
-            .group_by(
-                OrdemBancaria.favorecido_cpf,
-                OrdemBancaria.ug_codigo,
-                func.strftime("%Y-%m", OrdemBancaria.data_emissao),
-            )
-            .having(
-                func.count(OrdemBancaria.id) >= 2,
-                func.count(func.distinct(func.nullif(OrdemBancaria.numero_processo, ""))) >= 2,
-                func.sum(OrdemBancaria.valor) >= LIMITE_DISPENSA,
-            )
-            # sem janela e sem teto esta regra gravou 68.893 alertas "alta" numa execução (10/09) —
-            # o painel lista os 40 mais novos: o resto vira ruído que enterra os alertas de verdade
-            .order_by(func.sum(OrdemBancaria.valor).desc())
-            .limit(100)
-            .all()
-        )
-
-        from sqlalchemy import text as _text
-        from sqlalchemy.exc import SQLAlchemyError
-        from compliance_agent.entidades_gov import eh_administracao_publica, eh_nao_fornecedor
-        from compliance_agent.fracionamento_siafe import _CREDOR_NAO_LICITAVEL
-        try:    # natureza jurídica 1xxx da Receita = ente público, qualquer que seja a grafia ("Sec.de Estado Da ...")
-            publicos = set()
-            if self.session.execute(_text(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas_cadastro'")).first():
-                publicos = {r[0] for r in self.session.execute(_text(
-                    "SELECT cnpj_basico, natureza_cod FROM empresas_cadastro WHERE natureza_cod LIKE '1%'"))
-                    if eh_administracao_publica(r[1])}
-        except SQLAlchemyError:
-            logger.debug("empresas_cadastro indisponível — só a peneira de nome", exc_info=True)
-            publicos = set()
-        for row in subq:
-            nome = row.favorecido_nome or ""
-            # peneira fonte única (a mesma da triagem SIAFE e do P4): ente público, tributo, concessionária
-            if (self._eh_ente_publico(nome) or eh_nao_fornecedor(nome) or _CREDOR_NAO_LICITAVEL.search(nome)
-                    or (row.favorecido_cpf or "")[:8] in publicos):
-                continue
-            exercicio = getattr(row.data_ini, "year", None) or _date.today().year
-            teto = limite_dispensa(exercicio, "compras")
-            if row.total < teto:        # somar EXATAMENTE o teto já não cabe na dispensa ("inferiores a")
-                continue
-            empresa = (
-                self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
-                if row.favorecido_cpf else None
-            )
-            self._lote.criar(
-                tipo       = "fracionamento",
-                severidade = "média",   # soma mensal > teto de dispensa com 2+ OBs é INDÍCIO fraco; o detector de verdade é o P4/pcrj_d7
-                titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
-                descricao  = (
-                    f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
-                    f"na UG {row.ug_codigo} totalizaram R$ {moeda(row.total)} "
-                    f"entre {row.data_ini} e {row.data_fim}. "
-                    f"Valor ultrapassa o limite de dispensa de {exercicio} "
-                    f"(R$ {moeda(teto)} — {ato_normativo(exercicio)}), "
-                    f"sugerindo fracionamento para evitar licitação."
-                ),
-                evidencias = {
-                    "favorecido_cpf": row.favorecido_cpf,
-                    "favorecido_nome": row.favorecido_nome,
-                    "ug_codigo": row.ug_codigo,
-                    "n_obs": row.n_obs,
-                    "total": row.total,
-                    "data_ini": str(row.data_ini),
-                    "data_fim": str(row.data_fim),
-                    "exercicio": exercicio,
-                    "limite_dispensa": teto,
-                    "limite_dispensa_ato": ato_normativo(exercicio),
-                },
-                empresa = empresa,
-            )
+        """DEPRECATED e SEM emissão (O4.8, plano mestre v2 §4.5). Somava OB por favorecido × UG × mês contra o teto
+        de dispensa — o mesmo erro conceitual da Regra 4: pagamento repetido ao mesmo credor é, na maioria, execução
+        de contrato licitado ou ata. Os 175 alertas que ela gravou foram arquivados na O5.5 (`tools/limpeza_o55.py`).
+        O sinal pela ótica do pagamento vive em `aplicacao/detectores/candidato_p4_siafe.py` (só `candidato_p4`,
+        INCERTO); só o P4 por objeto emite."""
+        logger.debug("rules.engine: _regra_ob_fracionamento deprecated (O4.8) — só o P4 emite")
 
     def _regra_ob_sem_processo_sei(self):
         """

@@ -69,6 +69,9 @@ class Disparo:
     processo: str | None = None
     evidencias: list[Fato] = field(default_factory=list)
     motivo_estado: str = ""
+    # O4.8: nível de identidade (`dominio.identidade`) do vínculo entre pessoas/credores que sustenta o disparo —
+    # None quando o detector não liga pessoas; só 'forte' sustenta grave (`identidade.sustenta_grave`)
+    identidade: str | None = None
 
 
 @dataclass
@@ -98,9 +101,15 @@ def sha_modulo(modulo: str) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()[:12] if p and p.is_file() else "indisponivel"
 
 
+# Versão do CONTRATO do achado do E10 (campos que `detectar.para_achado` grava no resultado). Entra na versão da
+# execução: mudar o contrato regrava a rodada (a idempotência é por versão + entradas). o48 = regra_versao na data do
+# fato + esfera + identidade (O4.8).
+CONTRATO_ACHADO = "o48"
+
+
 def versao_execucao(did: str) -> str:
     det = carregar_detector(did)
-    return f"{det.VERSAO}@{sha_modulo(MODULOS[did])}"
+    return f"{det.VERSAO}@{sha_modulo(MODULOS[did])}+{CONTRATO_ACHADO}"
 
 
 def elegivel(item: dict) -> bool:

@@ -37,7 +37,7 @@ from compliance_agent.reporting.intel_base import reais
 
 ID = "e10.p4_fracionamento_objeto"
 UNIDADE = "compra_direta_tcerj"
-VERSAO = "e10-p4-2"   # 2: grafia do processo pela chave canônica do espelho (dominio.contrato_id)
+VERSAO = "e10-p4-3"   # 2: grafia do processo pela chave canônica do espelho; 3: frota do §7º fora da soma (O4.8)
 MAX_CLUSTERS_POR_GRUPO = 10      # o card devolve o MELHOR cluster: remove-o e re-roda até descartar (teto de segurança)
 TIPOS = ("compras", "obras")
 
@@ -57,6 +57,21 @@ _RE_NAO_CONTRATACAO = re.compile(
     r"reconhecimento\s+de\s+d[íi]vida|exerc[íi]cios?\s+anteriores|\bDEA\b|"
     r"consumo\s+de\s+(?:energia|[áa]gua)|fornecimento\s+de\s+energia|[áa]gua\s+e\s+(?:tratamento\s+de\s+)?esgoto",
     re.I)
+
+
+# art. 75, §7º: "Não se aplica o disposto no § 1º deste artigo às contratações de até [valor do §7º] de serviços de
+# manutenção de veículos automotores de propriedade do órgão ou entidade contratante, incluído o fornecimento de peças"
+# (valor atualizado por decreto: `limites_dispensa.limite_par7`). FROTA fica FORA da soma do ramo (O4.8).
+_RE_FROTA = re.compile(r"(?:manuten[çc][ãa]o|conserto|reparo|revis[ãa]o)\b.{0,60}?(?:ve[íi]culos?|viaturas?|frota|"
+                       r"autom[óo]ve(?:l|is)|motocicletas?)|pe[çc]as\b.{0,30}?(?:ve[íi]culos?|viaturas?|frota)", re.I)
+
+
+def frota_par7(objeto: str | None, valor: float, exercicio: int) -> bool:
+    """Manutenção de veículo (com peças) até o valor do §7º no exercício: não entra no somatório do §1º. Sem valor do
+    §7º para o exercício (antes de 2021; 2027+ sem ato) → False (fica na soma, como antes)."""
+    from compliance_agent.limites_dispensa import limite_par7
+    lim = limite_par7(exercicio)
+    return lim is not None and 0 < valor <= lim and bool(_RE_FROTA.search(objeto or ""))
 
 
 def tipo_objeto(objeto: str | None) -> str:
@@ -151,10 +166,13 @@ def _itens(linhas) -> list[dict]:
             "objeto": _sem_nome_da_unidade(r["objeto"], r["unidade"]), "objeto_original": r["objeto"],
             "modalidade": r["afastamento"], "enquadramento": r["enquadramento"], "fornecedor": r["fornecedor"],
             "tipo_obj": tipo,
+            "frota_par7": frota_par7(r["objeto"], valor, ano),
             "dispensa": (not nao_fornecedor(r["fornecedor"])
                          and dispensa_por_valor(r["afastamento"], r["enquadramento"], valor, ano, tipo,
                                                 r["objeto"])),
         })
+        if out[-1]["frota_par7"]:
+            out[-1]["dispensa"] = False     # §7º: fora da soma do ramo (continua no universo e no resumo)
     return out
 
 
@@ -257,6 +275,20 @@ def _disparo(grupo: str, tipo: str, it: int, restantes: list[dict], membros: lis
                    evidencias=fatos)
 
 
+def data_fato(d: Disparo) -> tuple:
+    """O espelho de dispensas não tem data: o fato é o EXERCÍCIO do grupo. A lei do contrato é a que o enquadramento
+    de TODOS os processos do cluster declara (a nova lei de licitações ou a antiga); declarações mistas ou ausentes → None (a regra
+    temporal decide INDETERMINADA na transição)."""
+    from compliance_agent.dominio.regime import lei_declarada
+    from compliance_agent.dominio.regra_versao import LEIS_LICITACAO, intervalo_do_exercicio
+    _, _, ano = d.grupo.rpartition("|")
+    ini, fim = intervalo_do_exercicio(int(ano)) if ano.isdigit() else (None, None)
+    leis = {tuple(x for x in lei_declarada(c.get("enquadramento")) if x in LEIS_LICITACAO)
+            for c in d.entradas.get("cluster") or []}
+    lei = next(iter(leis))[0] if len(leis) == 1 and len(next(iter(leis))) == 1 else None
+    return ini, fim, lei, "exercicio"
+
+
 def resumo(itens: list[dict], disparos: list[Disparo]) -> dict:
     """Universo, determinável e cobertura (invariante 2): o que a E9 deixou ver e o que ficou de fora, com R$."""
     from collections import Counter
@@ -271,6 +303,8 @@ def resumo(itens: list[dict], disparos: list[Disparo]) -> dict:
             "por_veredito": dict(sorted(por.items())), "valor_por_veredito": {k: round(v, 2) for k, v in
                                                                              sorted(valor.items())},
             "elegiveis_dispensa_sweep": sum(1 for c in eleg if c["dispensa"]),
+            "frota_par7_fora_da_soma": sum(1 for c in eleg if c.get("frota_par7")),
+            "frota_par7_fora_da_soma_valor": round(sum(c["valor"] for c in eleg if c.get("frota_par7")), 2),
             # cobertura = parte do universo que a E9 conseguiu DECIDIR (E ou I); '?' é o que não deu para olhar
             "cobertura": round(1 - sum(n for k, n in por.items() if k.startswith("?")) / len(itens), 4)
             if itens else None,

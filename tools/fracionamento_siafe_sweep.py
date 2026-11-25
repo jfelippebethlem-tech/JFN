@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Materializa a fila de candidatos a fracionamento (ótica do pagamento, SIAFE).
+"""Lista a fila de candidatos ao P4 (`candidato_p4`, ótica do pagamento, SIAFE) — gravação CONGELADA (O4.8).
 
 POR QUE ESTE ARQUIVO EXISTE. `compliance_agent/fracionamento_siafe.py` foi construído em
 2026-07-24, é sólido, e estava **órfão**: nenhum módulo o chamava e nada persistia o resultado.
@@ -10,10 +10,8 @@ HONESTIDADE HERDADA DO MÓDULO: isto é **triagem, não achado**. O SIAFE não t
 modalidade, e seu número de processo não casa com o do SEI. O grau é sempre `a_verificar`, e
 cada linha carrega os processos para o auditor puxar os autos.
 
-IDEMPOTENTE: `INSERT OR REPLACE` por (exercicio, ug, credor), mais uma retirada ESCOPADA das
-gerações anteriores do MESMO exercício (ver `persistir`) — sem ela, melhorar a régua não limpa
-a fila. Nunca um `DELETE` global — a lição de
-`anomalias.regras()`, que truncou a `ob_redflag` de 69.807 para 12.215 ao ser testada com amostra.
+CONGELADA (O4.8, plano mestre v2 §4.5): `siafe_fracionamento` não recebe escrita nova — a série é `candidato_p4`
+e vive no E10 `e10.candidato_p4_siafe`. O sweep só LISTA; `--gravar` sai com código 2 e `persistir` levanta.
 
     .venv/bin/python tools/fracionamento_siafe_sweep.py --exercicio 2026 [--gravar] [--top 15]
     .venv/bin/python tools/fracionamento_siafe_sweep.py --todos --gravar
@@ -36,59 +34,20 @@ from compliance_agent.collectors.arquivos import caminho_db  # noqa: E402
 DB = str(caminho_db())
 
 
-def init_schema(con: sqlite3.Connection) -> None:
-    con.executescript("""
-        CREATE TABLE IF NOT EXISTS siafe_fracionamento (
-            exercicio INTEGER, ug_emitente TEXT, credor TEXT, nome_credor TEXT,
-            n_obs INTEGER, n_processos INTEGER, soma REAL, limite_dispensa REAL,
-            razao_soma_limite REAL, intervalo_mediano_dias REAL, n_rente_ao_teto INTEGER,
-            primeira_ob TEXT, ultima_ob TEXT, prioridade REAL, grau TEXT,
-            processos TEXT, obs TEXT, resumo TEXT, acao TEXT, ressalva TEXT,
-            fundamento TEXT, gerado_em TEXT,
-            PRIMARY KEY (exercicio, ug_emitente, credor)
-        );
-        CREATE INDEX IF NOT EXISTS ix_frac_prio ON siafe_fracionamento(prioridade DESC);
-        CREATE INDEX IF NOT EXISTS ix_frac_credor ON siafe_fracionamento(credor);
-    """)
-    con.commit()
+class TabelaCongelada(RuntimeError):
+    """`siafe_fracionamento` está congelada (O4.8): nenhuma escrita nova."""
+
+
+CONGELADA = ("siafe_fracionamento CONGELADA na O4.8 (plano mestre v2 §4.5): a série de OB por credor × UG é "
+             "`candidato_p4`, não fracionamento, e vive no E10 `e10.candidato_p4_siafe` (PG, esquema sombra). "
+             "A tabela fica só-leitura como histórico; o sweep só lista (sem --gravar).")
 
 
 def persistir(con: sqlite3.Connection, candidatos: list[dict], *,
               exercicio: int | None = None) -> int:
-    """Grava a fila do exercício e RETIRA o que a régua atual já não considera candidato.
-
-    `INSERT OR REPLACE` sozinho só acrescenta e atualiza — nunca tira. Consequência medida em
-    2026-07-28: melhorei o filtro de entidade pública (49 dos 617 credores da fila eram Fundo
-    Municipal de Saúde, Prefeitura, Associação de Apoio à Escola — abreviados, que o padrão
-    antigo não pegava), reprocessei, e a fila continuou com 1.175 grupos. As linhas velhas
-    ficaram, e o analista seguiria abrindo processo de repasse achando que era compra.
-
-    A retirada é ESCOPADA e auditável: só o exercício reprocessado, e só linhas de gerações
-    ANTERIORES a esta execução. Não é o `DELETE` global de `anomalias.regras()`, que truncou
-    `ob_redflag` de 69.807 para 12.215 quando rodado com amostra — aqui, se a execução trouxer
-    zero candidatos, nada é apagado, porque não há geração nova para suceder a antiga.
-    """
-    init_schema(con)
-    agora = datetime.now().isoformat(timespec="seconds")
-    con.executemany(
-        "INSERT OR REPLACE INTO siafe_fracionamento VALUES "
-        "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        [(c["exercicio"], c["ug_emitente"], c["credor"], c["nome_credor"],
-          c["n_obs"], c["n_processos"], c["soma"], c["limite_dispensa"],
-          c["razao_soma_limite"], c["intervalo_mediano_dias"], c["n_rente_ao_teto"],
-          c["primeira_ob"], c["ultima_ob"], c["prioridade"], c["grau"],
-          " ".join(str(p) for p in c["processos"]), " ".join(str(o) for o in c["obs"]),
-          c["resumo"], c["acao"], c["ressalva"], c["fundamento"], agora)
-         for c in candidatos])
-    if exercicio is not None and candidatos:
-        removidas = con.execute(
-            "DELETE FROM siafe_fracionamento WHERE exercicio = ? AND gerado_em < ?",
-            (int(exercicio), agora)).rowcount
-        if removidas:
-            print(f"    retiradas {removidas} linha(s) de gerações anteriores do exercício "
-                  f"{exercicio} (a régua atual já não as considera candidatas)")
-    con.commit()
-    return len(candidatos)
+    """CONGELADA (O4.8): levanta `TabelaCongelada` sem tocar o banco. Até 24/11/2026 gravava a fila por
+    (exercicio, ug, credor) com retirada escopada das gerações anteriores; o histórico fica na tabela, só-leitura."""
+    raise TabelaCongelada(CONGELADA)
 
 
 def main() -> int:
@@ -99,6 +58,9 @@ def main() -> int:
     ap.add_argument("--gravar", action="store_true")
     ap.add_argument("--top", type=int, default=10)
     a = ap.parse_args()
+    if a.gravar:
+        print(CONGELADA, file=sys.stderr)
+        return 2
 
     anos = (list(range(2021, datetime.now().year + 1)) if a.todos
             else [a.exercicio or datetime.now().year])

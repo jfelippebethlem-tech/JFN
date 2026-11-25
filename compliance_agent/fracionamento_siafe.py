@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-"""FRACIONAMENTO pela ótica do PAGAMENTO (SIAFE) — triagem, não veredito.
+"""CANDIDATO AO P4 pela ótica do PAGAMENTO (SIAFE) — triagem, não veredito.
+
+O4.8 (plano mestre v2 §4.5): este módulo NÃO diz "fracionamento". Fracionamento é o mesmo OBJETO em contratações
+distintas na mesma UG e exercício (art. 75 §1º) e só o P4, por objeto, o afirma
+(`aplicacao/detectores/fracionamento_objeto.py`). A série de OB por credor × UG abaixo do teto é `candidato_p4`
+(processos[] a resolver), como o E10 `candidato_p4_siafe` já emite. O nome do módulo fica (17 importadores).
 
 O dono autorizou aproveitar a fonte SIAFE (2026-07-24: "já que temos esses dados, aproveite tudo"). O que
 ela adiciona, e ninguém mais tem:
@@ -13,7 +18,7 @@ contratação. E o número de processo do SIAFE ('2026-06041596') não casa com 
 ('SEI-120001/009348/2022') — os formatos são de sistemas diferentes, então não há cruzamento automático
 confiável com a fonte que tem objeto e modalidade.
 
-Consequência assumida: **isto é uma FILA DE CANDIDATOS, não um achado de fracionamento.** O grau é sempre
+Consequência assumida: **isto é uma FILA DE CANDIDATOS AO P4, não um achado.** O grau é sempre
 `a_verificar`, e cada candidato carrega os números de processo para o auditor puxar os autos e conferir o
 que falta. Afirmar fracionamento sem objeto nem modalidade seria inventar — o mesmo erro que a casa evita
 em toda parte (INDISPONÍVEL ≠ irregular).
@@ -69,6 +74,8 @@ _CREDOR_NAO_LICITAVEL = re.compile(f"{_SRC_ENCARGO_OU_ENTE}|{_SRC_CONCESSIONARIA
 # CONTRATAÇÃO. Motivo medido em 23/11: o `processo` da OB é, na SES, o processo de PAGAMENTO (um SEI por fatura) — dos 4
 # objetos lidos entre os 40 primeiros, 3 eram liquidação/parcela/fatura —, e dos 44 grupos de 2024–25 com empenho
 # conhecido, 35 eram DEA/indenização (elemento 92/93).
+NATUREZA = "candidato_p4"     # O4.8: o que esta fila É (nunca "fracionamento")
+FONTE = "candidato_p4 pela OB paga do SIAFE (§2)"
 SINAL = "sinal de onde puxar — agrega PAGAMENTO por credor/UG; não lê a contratação (processo-mãe a resolver)"
 
 # Elemento de despesa que NÃO é contratação (MCASP 11ª ed., pp. 96–97; Lei 4.320 art. 37): 91 sentença judicial,
@@ -130,7 +137,7 @@ def _prioridade(intervalo_mediano: float | None, razao_soma: float, n: int,
 
 def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
             min_obs: int = MIN_OBS, limite_ug: str | None = None) -> dict:
-    """Fila de candidatos a fracionamento no exercício, pela ótica do pagamento (OB do SIAFE).
+    """Fila de candidatos ao P4 (`candidato_p4`) no exercício, pela ótica do pagamento (OB do SIAFE).
 
     Retorna {candidatos:[...], obs_lidas, obs_descartadas_status, obs_descartadas_credor, limite, ato}.
     Cada candidato traz UG, credor, n_obs, soma, intervalo mediano, prioridade, processos e a ressalva
@@ -212,15 +219,15 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
                           is not None else "")
                        + (f". {len(rente)} pagamento(s) ficaram RENTES ao teto (≥80% do limite) — encaixe "
                           "no valor da dispensa é o sinal mais forte desta família" if rente else "") + "."),
-            "acao": ("puxar os processos listados (SEI) e verificar OBJETO e MODALIDADE: se forem do mesmo "
-                     "ramo de atividade e contratados por dispensa em razão do valor, há indício de "
-                     "fracionamento (art. 75, §1º); se forem contrato licitado, ata de registro de preços "
-                     "ou hipótese própria de dispensa/inexigibilidade, não há."),
-            "ressalva": ("TRIAGEM, não achado: o SIAFE não informa o OBJETO nem a MODALIDADE da "
-                         "contratação, e seu número de processo não casa com o do SEI — por isso não se "
-                         "afirma fracionamento aqui. Pagamento ≠ irregularidade; presunção de legitimidade."),
+            "natureza": NATUREZA,
+            "acao": ("puxar os processos listados (SEI) e verificar OBJETO e MODALIDADE; o P4 (mesmo objeto em "
+                     "contratações distintas, art. 75, §1º) decide. Contrato licitado, ata de registro de preços "
+                     "ou hipótese própria de dispensa/inexigibilidade encerram o candidato."),
+            "ressalva": ("CANDIDATO AO P4, não achado: o SIAFE não informa o OBJETO nem a MODALIDADE da "
+                         "contratação, e seu número de processo não casa com o do SEI — por isso nada se "
+                         "afirma aqui. Pagamento ≠ irregularidade; presunção de legitimidade."),
             "fundamento": f"art. 75, §1º, I e II, Lei 14.133/2021 · limite do exercício: {ato_normativo(exercicio)}",
-            "fonte": "fracionamento_siafe (OB paga — §2)",
+            "fonte": FONTE,
         })
     candidatos.sort(key=lambda c: (-c["prioridade"], -c["soma"]))
     return {"candidatos": candidatos, "obs_lidas": len(linhas),
@@ -228,7 +235,7 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
             "obs_descartadas_natureza": desc_natureza, "natureza_sinal": SINAL,
             "grupos_descartados_processo_unico": desc_processo_unico,
             "exercicio": exercicio, "limite_dispensa": limite, "ato": ato_normativo(exercicio),
-            "fonte": "fracionamento_siafe (OB paga — §2)"}
+            "fonte": FONTE, "natureza": NATUREZA}
 
 
 # ──────────────────────────────────────────────────────────────────────────────────────────

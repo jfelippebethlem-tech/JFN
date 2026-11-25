@@ -79,10 +79,8 @@ else
     say "varredura_certames rc=$?"
 fi
 
-# ── Fila de fracionamento do exercício corrente (leitura do SIAFE; sem IA).
-$PRIO timeout -k 60 900 $PY tools/fracionamento_siafe_sweep.py \
-      --exercicio "$ANO" --gravar --top 0 >> data/fracionamento_siafe.log 2>&1
-say "fracionamento_siafe rc=$?"
+# ── Tabela `siafe_fracionamento` CONGELADA na O4.8 (plano mestre v2 §4.5): a série de OB por credor × UG é
+#    `candidato_p4` e vive no E10 `e10.candidato_p4_siafe` (PG, esquema sombra). O sweep não grava mais.
 
 # ── Saúde do FALLBACK de IA. Sem isto, "a camada 2 rodou e nada achou" e "a camada 2 nunca
 # conseguiu chamar ninguém" são indistinguíveis no log — as duas produzem `nao_avaliavel`.

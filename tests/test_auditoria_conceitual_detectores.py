@@ -206,9 +206,9 @@ def test_parcelas_do_mesmo_processo_nao_sao_fracionamento():
     assert _alertas([(PRIVADO, "GESPED GESTAO LTDA", 40_000.0, "SEI-A")] * 3) == []
 
 
-def test_obs_pequenas_em_processos_distintos_acendem():
-    a = _alertas([(PRIVADO, "GESPED GESTAO LTDA", 40_000.0, f"SEI-{i}") for i in range(3)])
-    assert len(a) == 1
+def test_obs_pequenas_em_processos_distintos_nao_emitem_mais():
+    """O4.8: a regra por credor × teto está deprecated e não emite — só o P4, por objeto (tests/test_o48_*)."""
+    assert _alertas([(PRIVADO, "GESPED GESTAO LTDA", 40_000.0, f"SEI-{i}") for i in range(3)]) == []
 
 
 def test_ente_publico_nao_acende_no_motor():

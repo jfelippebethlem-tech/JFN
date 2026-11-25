@@ -278,8 +278,20 @@ class _DiretaSalto(_Regra):
                 "soma_disparos": round(sum(d.valores["valor_direta"] for d in disparos), 2)}
 
 
+def _nivel_incumbente(cnpj, forn, antes: set) -> str | None:
+    """Nível de identidade (`dominio.identidade`) do casamento com o contratado anterior da unidade: pelo CNPJ (forte
+    quando o DV confere) ou, sem CNPJ, só pelo nome — homônimo, que NÃO faz incumbente (O4.8: nome não liga
+    pessoas; antes casava e virava indício). None = sem contrato anterior com a mesma chave."""
+    from compliance_agent.dominio.identidade import resolver
+    d = dig(cnpj)
+    if (d or GC.norm_nome(forn)) not in antes:
+        return None
+    reg = {"cnpj": d} if d else {"nome": forn}
+    return resolver(reg, reg).match_level
+
+
 class _EmergencialIncumbente(_Regra):
-    ID, UNIDADE, VERSAO = "e10.tg_emergencial_incumbente", "contrato_tcerj", "e10-tg-d02-2"   # 2: espelho deduplicado
+    ID, UNIDADE, VERSAO = "e10.tg_emergencial_incumbente", "contrato_tcerj", "e10-tg-d02-3"   # 2: espelho deduplicado; 3: identidade (O4.8)
 
     def _ler(self, con, exercicio):
         from compliance_agent.fracionamento_emergencia import eh_emergencial
@@ -300,8 +312,9 @@ class _EmergencialIncumbente(_Regra):
                     n_emerg_fora += 1                 # transição decidida antes do corte não é ato posterior a ele
                     continue
                 c = _contrato(r, ato)
-                itens.append({**c, "grupo": c["chave_e9"],
-                              "incumbente": (dig(cnpj) or GC.norm_nome(forn)) in antes[uni]})
+                nivel = _nivel_incumbente(cnpj, forn, antes[uni])
+                itens.append({**c, "grupo": c["chave_e9"], "identidade": nivel,
+                              "incumbente": nivel in ("forte", "parcial")})
         finally:
             f.fechar()
         return Carga(itens=itens, contexto={"emergenciais_assinadas_antes_do_corte": n_emerg_fora,
@@ -320,11 +333,14 @@ class _EmergencialIncumbente(_Regra):
                             "compras_diretas_tcerj (enquadramento emergencial)."),
                 entradas={k: c[k] for k in ("chave_e9", "processo", "unidade", "valor", "data", "cnpj", "fornecedor")}
                 | {"e9": c.get("e9")},
-                valores={"valor_contrato": round(c["valor"], 2), "data_ato": c["data"]}, evidencias=[_fato_ct(c)]))
+                valores={"valor_contrato": round(c["valor"], 2), "data_ato": c["data"]}, evidencias=[_fato_ct(c)],
+                identidade=c["identidade"]))
         return out
 
     def resumo(self, itens, disparos):
         return {"emergenciais_posteriores": len(itens), "incumbentes": sum(c["incumbente"] for c in itens),
+                "casados_so_pelo_nome": sum(1 for c in itens if c.get("identidade") == "homonimo"),
+                "casados_por_cnpj_sem_dv_valido": sum(1 for c in itens if c.get("identidade") == "indeterminado"),
                 "por_veredito": _por_veredito(itens), "cobertura": _cobertura(itens), "disparos": len(disparos),
                 "soma_disparos": round(sum(d.valores["valor_contrato"] for d in disparos), 2)}
 

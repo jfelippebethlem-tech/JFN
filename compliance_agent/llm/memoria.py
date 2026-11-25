@@ -33,13 +33,21 @@ CONTEXTO_INICIAL = [
     # Sem número aqui de propósito: estes verbetes vão para dentro do prompt, e o teto do art. 75
     # muda por exercício (decreto anual). Os valores que estavam escritos eram os de 2024 e
     # envelheceram calados — quem resolve o teto é `compliance_agent/limites_dispensa.py`.
+    # O4.8 (plano mestre v2 §4.5): o verbete de compras dizia "múltiplas compras ao mesmo fornecedor somando acima
+    # disso = fracionamento" — agregação por CREDOR × teto, que não é o conceito legal. Reescrito aqui; o
+    # `garantir_contexto_inicial` versiona o valor antigo no histórico (supersedes) ao reaplicar.
     ("limite_dispensa_obras",
      "Lei 14.133/21 art. 75 I: dispensa de licitação para obras/serviços de engenharia até o "
-     "teto DO EXERCÍCIO (resolvido pelo sistema). Fracionamento para fugir disso é ilegal."),
+     "teto DO EXERCÍCIO (resolvido pelo sistema). Fracionamento = o mesmo OBJETO (mesmo ramo de "
+     "atividade) dividido em contratações distintas na mesma unidade gestora e no mesmo exercício "
+     "(art. 75 §1º, I e II); a soma por fornecedor não é o critério."),
     ("limite_dispensa_compras",
      "Lei 14.133/21 art. 75 II: dispensa para compras e outros serviços até o teto DO EXERCÍCIO "
-     "(resolvido pelo sistema). Múltiplas compras ao mesmo fornecedor somando acima disso = "
-     "fracionamento."),
+     "(resolvido pelo sistema). O somatório do §1º é por unidade gestora, exercício e objetos de "
+     "mesma natureza (mesmo ramo); pagamentos repetidos ao mesmo fornecedor NÃO são, por si, "
+     "fracionamento (costumam ser parcelas de contrato licitado ou ata de registro de preços). "
+     "Ficam fora transferência, serviço contínuo, despesa de exercício anterior e ente público; "
+     "manutenção de veículos até o valor do §7º não entra na soma."),
     ("limite_convite_antigo",
      "Lei 8.666/93 art. 23 (ainda aplicável a contratos antigos), valores do Decreto 9.412/2018: convite "
      "até R$ 330.000 para obras/serviços de engenharia e R$ 176.000 para compras e demais serviços "
