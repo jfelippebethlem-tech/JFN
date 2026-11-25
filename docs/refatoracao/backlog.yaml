@@ -29,7 +29,7 @@ itens:
   - {id: O2.2, dep: [O2.1], maq: vm1, estado: feito, nota: "1004e9a1: sombra 0,91x (slots) / 1,95x (capacidade legado, explicado); agenda sincronizar pronta e inativa", titulo: "Planejador corrigido pela sombra (cadeia, tetos, sem sobreposição, nó)"}
   - {id: O2.3, dep: [O2.1], maq: vm1, estado: feito, nota: "religar_o90 (--ensaio), ritmo no PG, reserva p95 11 ms, ponte de eventos, fluxo_002 (aplicar no R0)", nota: "navegador transitório VM-1 só p/ 15 legadas até O3.3; ritmo também na agenda; religar_o90 --ensaio", titulo: "Aposentar despachante-cron, pesado.sh, 14 vigias, scheduler.py, laço do orquestrador"}
   - {id: O2.4, dep: [O2.1], maq: vm2, estado: em_curso, nota: "c8a117bc: units reapontadas; falta mover dados vivos do ~/JFN da VM-2 antes do corte", titulo: "Uma árvore só na VM-2 + deploy por evento"}
-  - {id: O2.5, dep: [O2.1], maq: todas, estado: pendente, titulo: "Portão de push e catracas como jobs da VM-2 (push_divida)"}
+  - {id: O2.5, dep: [O2.1], maq: todas, estado: feito, nota: "695a75a4: seleção por grafo de import (pegaria as 2 falhas que o antigo deixou passar), VM-2 + it-campo (1:15), push_divida; pre-commit 410 s → 1 s (graphify para o pós-commit no it-campo). Liga com git config jfn.portaov2 1 — ligar quando o HEAD estiver verde", titulo: "Portão de push e catracas como jobs da VM-2 (push_divida)"}
   - {id: O2.6, dep: [O1.6], maq: todas, estado: pendente, titulo: "48 h de governador: metas de capacidade"}
   # O3 — Identidade e captura/texto
   - {id: O3.1, dep: [O1.7], maq: vm2, estado: feito, nota: "63e18bd2: 16.594 processos/595.092 docs/586.311 versões no PG; paridade 100%", titulo: "Carga dos 12,6 mil manifestos (identidade única)"}
