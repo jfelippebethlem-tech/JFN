@@ -315,6 +315,11 @@ def _script_arvore(sha: str, unit: str) -> str:
     """bash: a árvore do worker anda até o SHA exato e confere (ff-only; recusa código local mexido)."""
     return (f"set -e; cd ~/JFN-worker; test -z \"$(git status --porcelain --untracked-files=no -- . ':(exclude)data')\"; "
             f"git fetch -q origin; git merge --ff-only -q {sha}; test \"$(git rev-parse HEAD)\" = {sha}; "
+            # 25/11/2026: a 1ª execução parou no R2 — o venv dos workers não tinha psycopg (nunca seguira o lock).
+            # O venv anda junto com a árvore: o lock de produção com hashes (O9.3), por uv quando houver (venv sem pip).
+            f"if [ -x ~/.local/bin/uv ]; then ~/.local/bin/uv pip install -q --require-hashes -r requirements.lock "
+            f"--python .venv/bin/python; else .venv/bin/python -m pip install -q --require-hashes -r requirements.lock; fi; "
+            f".venv/bin/python -c 'import psycopg, yaml, pydantic'; "
             f"PYTHONPATH=. .venv/bin/python -m tools.deploy_worker --sha {sha} --sem-recarga; "
             f"PYTHONPATH=. .venv/bin/python -m compliance_agent.fluxo.grafo > /dev/null; echo arvore-ok {unit}")
 
