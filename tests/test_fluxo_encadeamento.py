@@ -493,3 +493,24 @@ def test_guarda_local_dos_handlers_de_llm_cede_so_no_escopo(monkeypatch):
     monkeypatch.setattr(contingencia, "motivo_bloqueio", lambda t="": "limite de uso da assinatura")
     assert R.motivo_local("leitura_integral") == "limite de uso da assinatura"
     assert S.motivo_ritmo("leitura_integral") == "limite de uso da assinatura"
+
+
+@precisa_pg
+def test_um_job_da_assinatura_por_no(con, esquema_tmp, tmp_path):
+    """r3: 3 jobs de LLM no mesmo nó brigavam pela trava do claude_motor (um claude por máquina), adiavam e reliam."""
+    sup = _sup(esquema_tmp)
+    try:
+        sup.ritmos = {"leitura_integral", "pericia_integral"}
+        assert sup._bloqueio_da_reserva([]) == []
+        f = _filho(con, tmp_path, "rodar", None, None, chave="eco:llm")
+        f.job.payload = {"ritmo": "leitura_integral"}
+        sup.filhos = [f]
+        assert sup._bloqueio_da_reserva(["triagem"]) == ["leitura_integral", "pericia_integral", "triagem"]
+        fila.enfileirar(con, "fatos", "fatos:p1", {"ritmo": "pericia_integral"})
+        assert fila.reservar(con, "teste", ["cpu_leve"], ritmo_bloqueado=sup._bloqueio_da_reserva([])) is None
+        f.job.payload = {}
+        assert fila.reservar(con, "teste", ["cpu_leve"], ritmo_bloqueado=sup._bloqueio_da_reserva([])).chave == \
+            "fatos:p1"
+    finally:
+        sup.filhos = []
+        sup.fechar()

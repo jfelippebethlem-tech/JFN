@@ -367,6 +367,15 @@ class Supervisor:
         from compliance_agent.fluxo import ritmo as ritmo_pg
         return ritmo_pg.motivo(self.con, tarefa) or motivo_ritmo(tarefa)
 
+    def _bloqueio_da_reserva(self, bloqueados: list[str]) -> list[str]:
+        """UM job da assinatura (payload com `ritmo`) por nó: o `claude_motor` roda um `claude` por vez na máquina
+        (flock em data/claude_motor.lock, espera 90 s). Um 2º job de LLM no mesmo nó esperava a trava, desistia
+        ("ocupado"), adiava e RELIA o texto ao voltar — passada r3 de 25/11: 36% de leitura repetida no E8/E11.
+        Com um rodando aqui, todas as tarefas de ritmo ficam fora desta reserva (outro nó pode pegá-las)."""
+        if any((f.job.payload or {}).get("ritmo") for f in self.filhos):
+            return sorted(set(bloqueados) | set(self.ritmos))
+        return bloqueados
+
     def uma_volta(self) -> dict:
         r: dict = {"no": self.no}
         bloqueados = sorted(t for t in self.ritmos if self.ritmo(t))
@@ -386,7 +395,8 @@ class Supervisor:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:
             job = fila.reservar(self.con, self.no, livres, self.prazo_s, tetos=self.tetos,
-                                ritmo_bloqueado=bloqueados, liberacao=True, restritos=self.restritos)
+                                ritmo_bloqueado=self._bloqueio_da_reserva(bloqueados), liberacao=True,
+                                restritos=self.restritos)
             if job is None:
                 break
             for rec in job.recursos:
