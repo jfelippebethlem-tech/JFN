@@ -164,6 +164,7 @@ def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
     ocr_reserva = {("rapidocr", "tools/sei_ocr_reserva.py"), ("psutil", "tools/sei_ocr_reserva.py")}
     outras_venvs = {("patchright", "tools/zelador/mediafire_sessao.py")}          # /opt/stealth/venv (23/11)
     outras_venvs |= {("surya", "compliance_agent/aplicacao/estagios/ocr.py")}   # venv da GPU do it-campo (E5, 24/11)
+    outras_venvs |= {("rapidocr", "tools/ocr_mistos_sombra.py")}           # venv de OCR do it-campo (mistos, 25/11)
     assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")} | render | ocr_reserva | outras_venvs, \
         "exceção nova em EXCECOES: justifique no comentário por que o pacote não é declarado"
 
