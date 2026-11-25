@@ -31,7 +31,7 @@
     "hermes_home": "/home/ubuntu/.hermes",
     "yoda_config": "/home/ubuntu/.hermes/config.yaml",
     "yoda_memory_dir": "/home/ubuntu/.hermes/memories",
-    "process_documentation": "/home/ubuntu/JFN/hermes-yoda/process_documentation.md",
+    "process_documentation": "/home/ubuntu/.hermes/process_documentation.md",
     "chrome_bin": "/snap/bin/chromium",
     "chrome_user_data_dir": "/home/ubuntu/chrome-jfn",
     "rclone_conf": "/home/ubuntu/.config/rclone/rclone.conf"

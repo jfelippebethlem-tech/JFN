@@ -23,11 +23,11 @@
 - Branch de trabalho: `claude/rj-finance-agent-BYlhJ`.
 
 ## 4. INFRA (proibições que já causaram estrago)
-- **NUNCA** `hermes update` / `--force` → já destruiu o venv. Use `hermes-yoda/scripts/atualizar-hermes.cmd`.
-- **NUNCA** `taskkill` solto nem matar por nome → use `hermes-yoda/scripts/bot-control.ps1`.
+- **NUNCA** `hermes update` / `--force` → já destruiu o venv. Use `scripts/atualizar-hermes.cmd` do repositório `Yoda-Telegram-e-Agente-Hermes`.
+- **NUNCA** `taskkill` solto nem matar por nome → use `scripts/bot-control.ps1` do repositório `Yoda-Telegram-e-Agente-Hermes`.
 - **NUNCA** editar `config.yaml` "no chute". Há a cópia-ouro em `_PROTEGIDO/config/config.golden.yaml`
   para restaurar se quebrar. Conferir o par provider/model/base_url certo.
-- Subir bot+painel: launchers em `hermes-yoda/scripts/` (com auto-retry, ocultos).
+- Subir bot+painel: launchers em `scripts/` do repositório `Yoda-Telegram-e-Agente-Hermes` (com auto-retry, ocultos).
 
 ## 5. SE ALGO QUEBRAR
 1. Não entre em pânico nem apague nada.
