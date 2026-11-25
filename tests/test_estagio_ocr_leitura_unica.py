@@ -1,0 +1,180 @@
+# -*- coding: utf-8 -*-
+"""Consertos do ensaio O8.5 no E5/E6 (frente A): (1) o Tesseract tira texto e bbox da MESMA imagem (o texto vinha da
+pré-processada e a bbox da crua, vazia ⇒ `texto_com_bbox: false`); (2) leitura única DENTRO do job: cada PDF aberto
+1× e cada (sha256, página, dpi) rasterizado 1× — hash da imagem, 1º e 2º motor (E5), leitura independente, barras e
+recorte (E6). Motores FALSOS (nenhum OCR de verdade); o `get_pixmap` e o `fitz.open` são contados."""
+import pytest
+
+from compliance_agent.aplicacao.estagios import ocr as O
+from compliance_agent.aplicacao.estagios import texto as T
+from tests.test_estagio_ocr import _pdf_repetido
+
+
+# ── (1) Tesseract: texto e bbox da mesma imagem ──────────────────────────────────────────────────────────────────
+def _tesseract_falso(monkeypatch, texto_pre: str, texto_cru: str):
+    """Pré-processada = 2D (cinza binarizada), crua = 3D (RGB). Cada imagem tem as SUAS palavras."""
+    pytesseract = pytest.importorskip("pytesseract")
+    from compliance_agent.sei import ocr_docs
+
+    def texto_de(img):
+        return texto_pre if img.ndim == 2 else texto_cru
+
+    def para_string(img, lang=None, **kw):
+        return texto_de(img)
+
+    def para_dados(img, lang=None, output_type=None, **kw):
+        ps = texto_de(img).split()
+        return {"text": ps, "left": [10 * i for i in range(len(ps))], "top": [5] * len(ps),
+                "width": [8] * len(ps), "height": [9] * len(ps), "conf": [90.0] * len(ps)}
+    monkeypatch.setattr(ocr_docs, "_preprocess_para_ocr", lambda img: img[:, :, 0].copy())
+    monkeypatch.setattr(pytesseract, "image_to_string", para_string)
+    monkeypatch.setattr(pytesseract, "image_to_data", para_dados)
+
+
+def test_tesseract_bbox_sai_da_imagem_que_deu_o_texto(monkeypatch):
+    """O caso do ensaio (030002/006189/2026 sei:132894206 p3): a pré-processada leu 35 caracteres, a crua nada."""
+    import numpy as np
+    _tesseract_falso(monkeypatch, "7 ainda de dat o Na Amada pra", "")
+    le = O.ExecutorTesseract().ler_img(np.zeros((40, 60, 3), dtype=np.uint8))
+    assert O.util(le.texto) and le.linhas                       # antes: texto com 35 chars e 0 linhas
+    assert [x["texto"] for x in le.linhas] == le.texto.split()
+
+
+def test_tesseract_crua_vence_e_a_bbox_e_da_crua(monkeypatch):
+    import numpy as np
+    _tesseract_falso(monkeypatch, "x", "NOTA FISCAL 123 VALOR TOTAL R$ 1.234,56 " * 3)
+    le = O.ExecutorTesseract().ler_img(np.zeros((40, 60, 3), dtype=np.uint8))
+    assert le.texto.startswith("NOTA FISCAL") and [x["texto"] for x in le.linhas] == le.texto.split()
+
+
+def test_ocr_tesseract_da_casa_devolve_o_mesmo_texto(monkeypatch):
+    """O `_ocr_tesseract` (usado fora do E5) devolve exatamente o texto do `_ocr_tesseract_lido`."""
+    import numpy as np
+
+    from compliance_agent.sei import ocr_docs
+    _tesseract_falso(monkeypatch, "lido na pré-processada", "")
+    img = np.zeros((40, 60, 3), dtype=np.uint8)
+    assert ocr_docs._ocr_tesseract(img, "por") == ocr_docs._ocr_tesseract_lido(img, "por")[0] == \
+        "lido na pré-processada"
+
+
+# ── (2) rasterização única no job ─────────────────────────────────────────────────────────────────────────────
+@pytest.fixture()
+def conta(monkeypatch):
+    """{"pix": {(arquivo, página, dpi): n}, "open": {arquivo: n}} de tudo que o código rasteriza/abre."""
+    import fitz
+    c = {"pix": {}, "open": {}}
+    orig_pix, orig_open = fitz.Page.get_pixmap, fitz.open
+
+    def get_pixmap(self, *a, **kw):
+        k = (self.parent.name.rsplit("/", 1)[-1], self.number + 1, kw.get("dpi"))
+        c["pix"][k] = c["pix"].get(k, 0) + 1
+        return orig_pix(self, *a, **kw)
+
+    def abrir(*a, **kw):
+        if a and str(a[0]).endswith(".pdf"):
+            c["open"][str(a[0]).rsplit("/", 1)[-1]] = c["open"].get(str(a[0]).rsplit("/", 1)[-1], 0) + 1
+        return orig_open(*a, **kw)
+    monkeypatch.setattr(fitz.Page, "get_pixmap", get_pixmap)
+    monkeypatch.setattr(fitz, "open", abrir)
+    return c
+
+
+class Motor:
+    """Executor que rasteriza de verdade (`O._imagens`, como os reais) e lê por tabela {cor do pixel: texto}."""
+
+    def __init__(self, familia, por_cor):
+        self.familia, self.por_cor, self.imagens = familia, por_cor, 0
+
+    def motor(self):
+        return f"{self.familia}@teste"
+
+    def ler(self, pdf, paginas):
+        return {n: self.ler_img(img) for n, img, _, _ in O._imagens(pdf, paginas)}
+
+    def ler_img(self, img):
+        self.imagens += 1
+        t = self.por_cor.get(int(img[img.shape[0] // 2, img.shape[1] // 2, 0]), "")
+        return O.Leitura(t, [{"texto": t, "bbox": [1, 2, 3, 4], "conf": 0.9}] if t else [], img.shape[1],
+                         img.shape[0])
+
+
+def test_e5_rasteriza_cada_pagina_uma_vez_e_o_resultado_nao_muda(tmp_path, conta):
+    pdf = _pdf_repetido(tmp_path / "e5.pdf", [200, 150, 100])
+    e4 = T.extrair(pdf)
+
+    def rodar():
+        conta["pix"].clear()
+        conta["open"].clear()
+        # a página de cor 150 sai vazia no 1º motor e o 2º lê (o caminho do caso do ensaio)
+        return O.ocr_documento(pdf, e4, Motor("rapidocr", {200: "NF 1 R$ 10,00", 100: "recibo"}),
+                               Motor("tesseract", {150: "lido pelo segundo"}), None)
+    antes = rodar()
+    assert conta["pix"][("e5.pdf", 2, O.DPI)] == 3 and conta["open"]["e5.pdf"] == 3     # o defeito: hash+m1+m2
+    with O.rasterizacao_unica() as ras:
+        depois = rodar()
+    assert set(conta["pix"].values()) == {1} and len(conta["pix"]) == 3 and conta["open"] == {"e5.pdf": 1}
+    assert depois == antes                                       # mesmas leituras, mesmos hashes, mesmo composto
+    assert ras.resumo() == {"rasterizacoes": 3, "rasterizacoes_distintas": 3, "rasterizacoes_repetidas": 0,
+                            "pdf_aberturas": 1}
+
+
+def test_e6_barras_leitura_e_recorte_uma_renderizacao_por_pagina_e_dpi(tmp_path, conta, monkeypatch):
+    import numpy as np
+
+    from compliance_agent.aplicacao.estagios import confirmar_ocr as C
+    from compliance_agent.aplicacao.estagios import ocr_recorte as R
+    from compliance_agent.sei import ocr_docs
+    from tests.test_ocr_recorte import NUM, LeitorFalso, _e5
+    pdf = _pdf_repetido(tmp_path / "e6.pdf", [230])
+    vistas = []
+    monkeypatch.setattr(ocr_docs, "_ocr_tesseract", lambda img, lang: vistas.append(np.asarray(img).copy()) or "")
+
+    def fontes():
+        list(C._paginas_cinza(pdf, [1]))                         # barras: 300 dpi, cinza
+        C.leitura_independente(pdf, [1], {1: "surya@a"})        # Tesseract da casa a 200 dpi
+        R.conferir(pdf, _e5(), NUM, {"rapidocr": LeitorFalso("rapidocr", "R$ 1.234,56")})   # recorte a 200 dpi
+    fontes()
+    assert conta["pix"][("e6.pdf", 1, O.DPI)] == 2 and conta["open"]["e6.pdf"] == 3     # o defeito
+    sem = vistas.pop()
+    conta["pix"].clear()
+    conta["open"].clear()
+    with O.rasterizacao_unica() as ras:
+        fontes()
+    assert conta["pix"] == {("e6.pdf", 1, C.DPI_BARRAS): 1, ("e6.pdf", 1, O.DPI): 1} and conta["open"] == {"e6.pdf": 1}
+    assert np.array_equal(vistas.pop(), sem)                     # o Tesseract recebe os mesmos pixels
+    assert ras.resumo()["rasterizacoes_repetidas"] == 0
+
+
+def test_imagem_guardada_e_so_leitura_e_orcamento_estourado_e_contado(tmp_path):
+    pdf = _pdf_repetido(tmp_path / "o.pdf", [10, 20])
+    with O.rasterizacao_unica(orcamento=0) as ras:
+        a = ras.imagem(pdf, 1)
+        ras.imagem(pdf, 1)
+        with pytest.raises(ValueError):
+            a[0, 0, 0] = 1                                       # quem mudasse a imagem no lugar corromperia o hash
+    assert ras.resumo() == {"rasterizacoes": 2, "rasterizacoes_distintas": 1, "rasterizacoes_repetidas": 1,
+                            "pdf_aberturas": 1}
+    assert O.raster_atual() is None
+
+
+# ── (3) todo OCR vai ao E6, com ou sem número (frente B1: a porta do E8 exige a conferência do E6) ────────────────
+from tests.fluxo_pg import precisa_pg  # noqa: E402
+from tests.test_estagio_texto import ctx, pg  # noqa: E402,F401 — fixture do esquema temporário
+
+
+@precisa_pg
+def test_ocr_sem_numero_vai_ao_e6_e_e6_confirma_com_zero(pg, tmp_path, monkeypatch):  # noqa: F811
+    """O caso 330002/028372/2026 sei:142180617: OCR sem número crítico não emitia `numero_ia` ⇒ o E6 nunca rodava ⇒
+    o processo ficava fora da porta do E8 para sempre."""
+    from compliance_agent.aplicacao.estagios import confirmar_ocr as C
+    from tests.test_estagio_confirmar_ocr import FontesFalsas, _e6, _preparar
+    con, nome = pg
+    pl, sha = _preparar(nome, tmp_path, monkeypatch, texto="Ofício de encaminhamento ao setor competente")
+    r = O._handler(pl, ctx("ocr", "sei:111", sha, 9))
+    ev = {e["tipo"]: e for e in r.eventos}
+    assert list(ev) == ["texto_novo", "numero_ia", "terminado"] and ev["numero_ia"]["detalhe"]["numeros"] == 0
+    r6, ok = _e6(pl, sha, FontesFalsas(), monkeypatch)
+    assert ok, r6.efeito.get("conferencia")
+    assert r6.efeito["estado"] == C.CONFIRMADO and r6.efeito["numeros"] == 0
+    assert con.execute("SELECT estado, numeros FROM ocr_conferencia").fetchall() == [("confirmado", 0)]

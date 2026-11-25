@@ -186,6 +186,13 @@ def _ocr_tesseract(img, lang: str) -> str:
     "ocr or texto_nativo". A 2ª passada só roda quando a 1ª veio fraca, então o
     custo extra é pago apenas nos casos em que o pré-processamento falhou.
     """
+    return _ocr_tesseract_lido(img, lang)[0]
+
+
+def _ocr_tesseract_lido(img, lang: str) -> tuple:
+    """(texto, imagem que deu o texto, idioma) — o `_ocr_tesseract` dizendo QUAL das duas imagens (a pré-processada ou
+    a crua) venceu, para a bbox sair da MESMA imagem do texto (E5, O8.5: o texto vinha da pré-processada e a bbox da
+    crua, vazia ⇒ página com texto e sem bbox). Mesmo resultado de texto do `_ocr_tesseract`."""
     import pytesseract
 
     alvo = _preprocess_para_ocr(img)
@@ -196,19 +203,19 @@ def _ocr_tesseract(img, lang: str) -> str:
             if len(cru.strip()) > len(saida.strip()):
                 log.debug("ocr: pré-processamento piorou (%d → %d chars) — usando original",
                           len(saida.strip()), len(cru.strip()))
-                return cru
-        return saida
+                return cru, img, lang
+        return saida, alvo, lang
     except pytesseract.TesseractError as exc:
         # ex.: traineddata do idioma ausente → tenta o default ('eng') uma vez.
         if lang != "eng":
             log.warning("ocr_documento: idioma '%s' falhou (%s) — tentando 'eng'", lang, exc)
             try:
-                return pytesseract.image_to_string(alvo) or ""
+                return pytesseract.image_to_string(alvo) or "", alvo, "eng"
             except Exception as exc2:  # pragma: no cover
                 log.warning("ocr_documento: OCR falhou também em 'eng' (%s)", exc2)
-                return ""
+                return "", alvo, "eng"
         log.warning("ocr_documento: OCR falhou (%s)", exc)
-        return ""
+        return "", alvo, lang
 
 
 # --------------------------------------------------------------------------- #

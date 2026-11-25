@@ -103,7 +103,7 @@ def leitura_independente(pdf: Path, paginas: list[int], motores) -> dict[str, st
         ex = O.ExecutorCPU()
         out[f"leitura:{ex.motor()}"] = "\n".join(le.texto for le in ex.ler(pdf, tess).values())
     if outras:
-        r = P.ler_pdf(pdf, outras, max_paginas=max(len(outras), 1))
+        r = P.ler_pdf(pdf, outras, max_paginas=max(len(outras), 1), raster=O.raster_atual())
         out.update({f"leitura:{k}": t for k, t in (r.get("leituras") or {}).items() if t.strip()})
     return out
 
@@ -126,6 +126,13 @@ def _decodificadores() -> list:
 
 
 def _paginas_cinza(pdf: Path, paginas: list[int]):
+    r = O.raster_atual()
+    if r is not None:                                  # leitura única no job (O8.5): o PDF já aberto pelo job
+        total = r.paginas(pdf)
+        for n in paginas:
+            if 1 <= n <= min(total, O.MAX_PAGINAS):
+                yield n, r.imagem(pdf, n, dpi=DPI_BARRAS, cinza=True)
+        return
     import fitz
     import numpy as np
     with fitz.open(pdf) as doc:
@@ -292,11 +299,16 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     try:
         leituras, bar, sia, rec = {}, {"disponivel": False, "motivo": "sem número", "chaves": []}, \
             {"disponivel": False, "motivo": "sem número", "chaves": {}}, []
+        rasterizacao = {}
         if numeros:
             pdf = O.localizar_pdf(con, processo, doc_id, sha, payload)
-            bar = fx.barras(pdf, paginas)                  # o código de barras ANTES da leitura da NF
-            leituras = fx.leitura(pdf, paginas, motores)
-            rec = fx.recorte(pdf, e5, numeros)
+            # uma abertura do PDF e uma rasterização por (página, dpi) no job: a leitura independente e o recorte
+            # usam a MESMA imagem a 200 dpi (antes, cada um renderizava e abria o PDF de novo)
+            with O.rasterizacao_unica() as ras:
+                bar = fx.barras(pdf, paginas)              # o código de barras ANTES da leitura da NF
+                leituras = fx.leitura(pdf, paginas, motores)
+                rec = fx.recorte(pdf, e5, numeros)
+            rasterizacao = ras.resumo()
             sia = fx.siafe(processo)
         externos = {k: {tuple(x) for x in v} for k, v in (sia.get("chaves") or {}).items()}
         if bar.get("chaves"):
@@ -315,7 +327,7 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         ef = gravar(con, processo, doc_id, e5["texto_sha"], dec, fontes, ctx)
     finally:
         con.close()
-    ef.update(lateral_e5=str(T.caminho_lateral(processo, doc_id, sha, "e5", raiz)), lateral_e6=str(e6))
+    ef.update(lateral_e5=str(T.caminho_lateral(processo, doc_id, sha, "e5", raiz)), lateral_e6=str(e6), **rasterizacao)
     return Resultado(efeito=ef, eventos=[{"fonte": "confirmar_ocr", "tipo": ef["estado"],
                                           "chave": f"{processo}|{doc_id}",
                                           "detalhe": {"texto_sha": ef["texto_sha"], "a_conferir": ef["a_conferir"]}}])

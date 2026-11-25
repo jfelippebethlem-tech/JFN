@@ -39,8 +39,9 @@ por uma trava de arquivo no próprio it-campo (`JFN_OCR_GPU_TRAVA`), não pelo s
 
 Saída (PG): `transformacao` tipo `ocr` (entrada = sha256 do binário, saída = sha256 do texto composto, motor e
 versão do motor principal; `parametros`: páginas por estado, motores usados, sha do lateral) e `versoes` (hash_de
-`texto`, origem `sei:e5`, `ocr` = motor@versão). Eventos: `ocr/texto_novo` (E8), `ocr/numero_ia` (E6, quando o OCR
-traz número crítico) e `ocr/terminado` (E7: o original já pode sair).
+`texto`, origem `sei:e5`, `ocr` = motor@versão). Eventos: `ocr/texto_novo` (E8), `ocr/numero_ia` (E6, SEMPRE — com
+`numeros` = 0 quando o OCR não traz número crítico: o E6 confirma com 0 números) e `ocr/terminado` (E7: o
+original já pode sair).
 
 Efeito conferido (outro processo): transformacao no PG; lateral com o sha gravado; TODA página pedida resolvida
 (`texto` com texto e bbox, ou `vazia_conferida` com dois motores); nenhuma página nativa lida; o composto de cada
@@ -69,7 +70,8 @@ from compliance_agent.aplicacao.estagios import arvore as A
 from compliance_agent.aplicacao.estagios import texto as T
 from compliance_agent.fluxo.fila import Resultado
 
-VERSAO = "e5-2"                              # e5-2 (O3.6): img_sha por página + dedup por hash de imagem
+VERSAO = "e5-3"                              # e5-2 (O3.6): img_sha por página + dedup por hash de imagem; e5-3
+#                                              (O8.5): bbox do Tesseract da MESMA imagem que deu o texto
 ORIGEM = "sei:e5"
 TIPO_TRANSFORMACAO = "ocr"
 DPI = 200                                    # = tools/sei_ocr_reserva.DPI e o worker da GPU (200 dpi)
@@ -80,6 +82,8 @@ ENV_TRAVA_GPU = "JFN_OCR_GPU_TRAVA"
 ENV_WORKER_GPU = "JFN_OCR_GPU_DIR"           # onde mora o ocr_gpu_worker.py no it-campo
 ENV_RAIZES = "JFN_OCR_RAIZES"                # raízes extras onde procurar o PDF legado (":"-separadas)
 PASTA_DEDUP = "_dedup_imagem"
+ORCAMENTO_RASTER = 1536 << 20                # bytes de páginas rasterizadas guardadas no job (120 págs A4 a 200 dpi
+#                                              ≈ 1,4 GB); acima, a página é renderizada de novo e CONTADA como repetida
 # rótulos de bloco do Surya que podem vir sem texto sem perda (figura, foto, logotipo, assinatura desenhada)
 ROTULOS_SEM_TEXTO = frozenset({"Picture", "Figure", "Image", "Logo", "Signature"})                # cache das leituras por hash de imagem, dentro da raiz do texto
 _RX_UTIL = re.compile(r"\w", re.UNICODE)
@@ -111,8 +115,104 @@ def util(texto: str) -> bool:
     return bool(_RX_UTIL.search(texto or ""))
 
 
+class Rasterizacao:
+    """LEITURA ÚNICA dentro do job (O8.5, plano §19): cada PDF é aberto UMA vez e cada (sha256 do documento, página,
+    dpi, cor) é rasterizado UMA vez; o hash da imagem, o 1º motor, o 2º motor (E5) e a leitura independente e o
+    recorte (E6) usam a mesma imagem. Antes, o E5 rasterizava cada página 2–3× (hash + motor 1 + motor 2) e o E6 2×
+    (leitura + recorte), cada vez com um `fitz.open` novo. A imagem guardada é só-leitura (quem a mudasse no lugar
+    corromperia o hash e o reuso). Acima de `ORCAMENTO_RASTER` a página não é guardada e a próxima vez renderiza de
+    novo — contada em `repetidas`, nunca calada."""
+
+    def __init__(self, orcamento: int | None = None):
+        self.orcamento = ORCAMENTO_RASTER if orcamento is None else orcamento
+        self._docs: dict[str, tuple] = {}            # caminho → (fitz.Document, sha256 do arquivo)
+        self._imgs: dict[tuple, object] = {}
+        self._bytes = 0
+        self.contagem: dict[tuple, int] = {}         # (sha, página, dpi, cor) → vezes renderizada
+        self.aberturas = 0
+
+    def _doc(self, pdf: Path):
+        k = str(Path(pdf).resolve())
+        if k not in self._docs:
+            import fitz
+            self._docs[k] = (fitz.open(pdf), T.sha256_arquivo(Path(pdf)))
+            self.aberturas += 1
+        return self._docs[k]
+
+    def documento(self, pdf: Path):
+        """O `fitz.Document` aberto do job (quem usa não fecha: `fechar` fecha)."""
+        return self._doc(pdf)[0]
+
+    def paginas(self, pdf: Path) -> int:
+        return self._doc(pdf)[0].page_count
+
+    def imagem(self, pdf: Path, n: int, dpi: int = DPI, cinza: bool = False):
+        """ndarray da página `n` (1-based): RGB (h, w, 3) ou cinza (h, w)."""
+        import fitz
+        import numpy as np
+        doc, sha = self._doc(pdf)
+        k = (sha, n, dpi, "cinza" if cinza else "rgb")
+        if k in self._imgs:
+            return self._imgs[k]
+        pg = doc.load_page(n - 1)
+        if cinza:
+            pix = pg.get_pixmap(dpi=dpi, colorspace=fitz.csGRAY)
+            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width).copy()
+        else:
+            pix = pg.get_pixmap(dpi=dpi)
+            img = np.ascontiguousarray(
+                np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)[:, :, :3])
+        self.contagem[k] = self.contagem.get(k, 0) + 1
+        img.setflags(write=False)
+        if self._bytes + img.nbytes <= self.orcamento:
+            self._imgs[k] = img
+            self._bytes += img.nbytes
+        return img
+
+    def resumo(self) -> dict:
+        n = sum(self.contagem.values())
+        return {"rasterizacoes": n, "rasterizacoes_distintas": len(self.contagem),
+                "rasterizacoes_repetidas": n - len(self.contagem), "pdf_aberturas": self.aberturas}
+
+    def fechar(self) -> None:
+        for doc, _ in self._docs.values():
+            doc.close()
+        self._docs.clear()
+        self._imgs.clear()
+        self._bytes = 0
+
+
+_RASTER: Rasterizacao | None = None
+
+
+@contextlib.contextmanager
+def rasterizacao_unica(orcamento: int | None = None):
+    """Liga a `Rasterizacao` do job: `_imagens` (executores, hash, recorte) e as páginas do E6 passam por ela."""
+    global _RASTER
+    anterior, _RASTER = _RASTER, Rasterizacao(orcamento)
+    try:
+        yield _RASTER
+    finally:
+        _RASTER.fechar()
+        _RASTER = anterior
+
+
+def raster_atual() -> Rasterizacao | None:
+    return _RASTER
+
+
 def _imagens(pdf: Path, paginas: list[int]):
-    """(página 1-based, ndarray RGB, largura, altura) a `DPI`, uma por vez (memória limitada)."""
+    """(página 1-based, ndarray RGB, largura, altura) a `DPI`, uma por vez (memória limitada). Com a
+    `rasterizacao_unica` ligada, a imagem vem dela (uma renderização por página no job)."""
+    r = _RASTER
+    if r is not None:
+        total = r.paginas(pdf)
+        for n in paginas:
+            if not 1 <= n <= min(total, MAX_PAGINAS):
+                raise ErroPermanente(f"{pdf.name}: página {n} fora do documento (ou acima do teto {MAX_PAGINAS})")
+            img = r.imagem(pdf, n)
+            yield n, img, img.shape[1], img.shape[0]
+        return
     import fitz
     import numpy as np
     with fitz.open(pdf) as doc:
@@ -231,7 +331,8 @@ class ExecutorCPU:
 
 
 class ExecutorTesseract:
-    """Tesseract da casa (`sei/ocr_docs._ocr_tesseract`, melhor dos dois pré-processamentos) + bbox por palavra."""
+    """Tesseract da casa (`sei/ocr_docs._ocr_tesseract`, melhor dos dois pré-processamentos) + bbox por palavra da
+    mesma imagem que deu o texto."""
     familia = "tesseract"
 
     def motor(self) -> str:
@@ -248,8 +349,10 @@ class ExecutorTesseract:
         import pytesseract
 
         from compliance_agent.sei import ocr_docs
-        texto = ocr_docs._ocr_tesseract(img, "por")
-        d = pytesseract.image_to_data(img, lang="por", output_type=pytesseract.Output.DICT)
+        # a bbox da MESMA imagem que deu o texto (O8.5): o texto vinha da pré-processada e a bbox da crua, que na
+        # página suja vem vazia ⇒ `texto_com_bbox: false` e o efeito recusava (030002/006189/2026 sei:132894206 p3)
+        texto, lida, lang = ocr_docs._ocr_tesseract_lido(img, "por")
+        d = pytesseract.image_to_data(lida, lang=lang, output_type=pytesseract.Output.DICT)
         linhas = [{"texto": t, "bbox": [d["left"][i], d["top"][i], d["left"][i] + d["width"][i],
                                         d["top"][i] + d["height"][i]], "conf": float(d["conf"][i])}
                   for i, t in enumerate(d["text"]) if str(t).strip()]
@@ -511,7 +614,9 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         e4 = e4_do(con, processo, doc_id, sha, pdf, raiz)
         principal, segundo = obter_executores(ctx.no)
         cache = CacheImagem((raiz or T.raiz_texto()) / PASTA_DEDUP)
-        ocr = ocr_documento(pdf, e4, principal, segundo, cache)
+        with rasterizacao_unica() as ras:
+            ocr = ocr_documento(pdf, e4, principal, segundo, cache)
+        rasterizacao = ras.resumo()
         cache_reusadas = ocr.pop("cache_reusadas")
         lat = T.caminho_lateral(processo, doc_id, sha, "e5", raiz)
         nat = {str(p["pagina"]): p.get("texto") or "" for p in e4["paginas"]}
@@ -522,19 +627,24 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
         if ocr["pendentes"]:
             # vazio NUNCA vira feito: nada no PG; o efeito falha e o job volta (ou vai à quarentena, visível)
             ef = {"processo": processo, "doc_id": doc_id, "entrada_sha": sha, "texto_sha": ocr["texto_sha"],
-                  "pendentes": ocr["pendentes"], "lateral": str(lat), "gravado": False, "versao": VERSAO}
+                  "pendentes": ocr["pendentes"], "lateral": str(lat), "gravado": False, "versao": VERSAO,
+                  **rasterizacao}
             return Resultado(efeito=ef, eventos=[])
         ef = registrar(con, processo, doc_id, sha, ocr, lat, lat_sha, ctx)
     finally:
         con.close()
     ef["pendentes"] = []
     ef["cache_reusadas"] = cache_reusadas
+    ef.update(rasterizacao)
     k = f"{processo}|{doc_id}"
     det = {"sha256": sha, "texto_sha": ocr["texto_sha"]}
     eventos = [{"fonte": "ocr", "tipo": "texto_novo", "chave": k, "detalhe": det}]
     from compliance_agent.sei import ocr_ia_prova as P
-    if any(P.extrair(v["texto"]) for v in ocr["paginas"].values() if v["estado"] == TEXTO):
-        eventos.append({"fonte": "ocr", "tipo": "numero_ia", "chave": k, "detalhe": det})
+    # SEMPRE vai ao E6 (O8.5, frente B1): a porta do E8 exige a conferência do E6 de todo documento com OCR; só com
+    # número crítico, o OCR sem número nunca era conferido e o processo ficava barrado para sempre (330002/028372/2026
+    # sei:142180617). Sem número, o E6 grava `confirmado` com 0 números (sem abrir o PDF)
+    n_num = sum(len(P.extrair(v["texto"])) for v in ocr["paginas"].values() if v["estado"] == TEXTO)
+    eventos.append({"fonte": "ocr", "tipo": "numero_ia", "chave": k, "detalhe": det | {"numeros": n_num}})
     eventos.append({"fonte": "ocr", "tipo": "terminado", "chave": k, "detalhe": det})
     return Resultado(efeito=ef, eventos=eventos)
 

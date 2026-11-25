@@ -177,7 +177,7 @@ def test_leitura_independente_por_pagina_nunca_a_mesma_familia(monkeypatch, tmp_
             return {n: O.Leitura(f"rapid p{n}") for n in paginas}
 
     monkeypatch.setattr(O, "ExecutorCPU", CPU)
-    monkeypatch.setattr(C.P, "ler_pdf", lambda pdf, pags, max_paginas: pedidas.setdefault("tesseract", list(pags))
+    monkeypatch.setattr(C.P, "ler_pdf", lambda pdf, pags, max_paginas, raster=None: pedidas.setdefault("tesseract", list(pags))
                         and {"leituras": {"tesseract": "tess"}})
     r = C.leitura_independente(tmp_path / "x.pdf", [1, 2, 3], {1: "surya@a", 2: "tesseract@b", 3: "rapidocr@c"})
     assert pedidas == {"rapidocr": [2], "tesseract": [1, 3]}

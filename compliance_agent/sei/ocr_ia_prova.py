@@ -35,6 +35,7 @@ fora dos documentos da IA.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -471,23 +472,27 @@ def _pagina_nativa(pg) -> bool:
 
 
 def ler_pdf(pdf: Path | str, paginas: list[int] | None = None, max_paginas: int = 20,
-            dpi: int = 200) -> dict:
+            dpi: int = 200, raster=None) -> dict:
     """Segunda leitura INDEPENDENTE do PDF: página nativa → texto do PDF; escaneada → Tesseract da casa (`por`,
     pré-processamento e melhor-dos-dois de `ocr_docs._ocr_tesseract`, 200 dpi como a GPU). Nunca a GPU (o
     `_ocr_pil` da casa a usaria quando `JFN_OCR_GPU_URL` existe — seria o mesmo motor confirmando a si mesmo).
-    Devolve {leituras: {fonte: texto}, paginas: [...], segundos: {pagina: s}}."""
+    Devolve {leituras: {fonte: texto}, paginas: [...], segundos: {pagina: s}}.
+    `raster` (a `Rasterizacao` do job do E6, O8.5): o PDF já aberto e a página já rasterizada no job são reusados
+    (os mesmos pixels RGB; o Tesseract recebe a mesma imagem)."""
     import fitz
     from PIL import Image
     from compliance_agent.sei.ocr_docs import _ocr_tesseract
     textos: dict[str, list[str]] = {"tesseract": [], "pdf_nativo": []}
     seg: dict[int, float] = {}
-    with fitz.open(pdf) as doc:
+    with contextlib.nullcontext(raster.documento(pdf)) if raster is not None else fitz.open(pdf) as doc:
         alvo = [p for p in (paginas or range(1, doc.page_count + 1)) if 1 <= p <= doc.page_count][:max_paginas]
         for p in alvo:
             t0 = time.monotonic()
             pg = doc.load_page(p - 1)
             if _pagina_nativa(pg):
                 textos["pdf_nativo"].append(pg.get_text())
+            elif raster is not None:
+                textos["tesseract"].append(_ocr_tesseract(raster.imagem(Path(pdf), p, dpi=dpi), "por"))
             else:
                 pix = pg.get_pixmap(dpi=dpi)
                 img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples) if pix.n < 4 else \
