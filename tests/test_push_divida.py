@@ -35,10 +35,16 @@ class FakeSSH:
             return 0, "PORTAO_VIVO 24\n"
         if e == "cai_no_meio":
             return 255, "PORTAO_LOTE 1 rc=0 3 passed\n"                     # sem PORTAO_FIM: não conta
+        coleta = _coleta(script)                                            # o nó diz o que de fato executou
         if e == "falha":
             return 0, ("PORTAO_LOTE 1 rc=1 1 failed, 2 passed\nPORTAO_FALHA FAILED tests/test_x.py::t - boom\n"
-                       "PORTAO_FIM rc=1\n")
-        return 0, "PORTAO_LOTE 1 rc=0 3 passed in 1.0s\nPORTAO_FIM rc=0\n"
+                       f"{coleta}PORTAO_FIM rc=1\n")
+        return 0, f"PORTAO_LOTE 1 rc=0 3 passed in 1.0s\n{coleta}PORTAO_FIM rc=0\n"
+
+
+def _coleta(script: str) -> str:
+    arqs = _testes_no_script(script)
+    return f"PORTAO_COLETA 1 {len(arqs)} {' '.join(arqs)}\n"
 
 
 @pytest.fixture

@@ -102,6 +102,34 @@ class Resultado:
     motivo: str = ""
     saida: str = ""
     segundos: float = 0.0
+    nao_medidos: list[str] = field(default_factory=list)   # enviados que nenhum lote terminado executou
+
+
+# resumo final do pytest ("3 passed, 1 failed in 2.0s"); "no tests ran" NÃO é resumo de lote medido
+_RESUMO_PYTEST = re.compile(r"\b\d+ (?:passed|failed|errors?|skipped|xfailed|xpassed)\b")
+_LOTE = re.compile(r"^PORTAO_LOTE (\d+) rc=(\S*)\s*(.*)$")
+
+
+def _lotes_medidos(testes: list[str], linhas: list[str]) -> tuple[list[str], bool]:
+    """0 execuções não é 0 erros (25/11/2026: o lote 5 do it-campo estourou o TETO com 173 arquivos, a falha dele não
+    tinha nodeid, a confirmação na VM-2 trocou as falhas pelas dela e o portão APROVOU sem rodar os 173). Um lote só
+    conta como medido com: rc ≠ 124 (TETO), linha de resumo do pytest e PORTAO_COLETA dizendo que TODO arquivo enviado
+    teve ao menos um caso executado. Devolve (enviados não medidos, algum lote medido saiu com rc de erro)."""
+    lotes = {m.group(1): (m.group(2), m.group(3)) for ln in linhas if (m := _LOTE.match(ln))}
+    medidos: set[str] = set()
+    rc_ruim = False
+    for ln in linhas:
+        if not ln.startswith("PORTAO_COLETA "):
+            continue
+        partes = ln.split()
+        if len(partes) < 4:
+            continue
+        k, n, arqs = partes[1], partes[2], partes[3:]
+        rc, resumo = lotes.get(k, ("", ""))
+        if rc != "124" and _RESUMO_PYTEST.search(resumo) and n.isdigit() and int(n) == len(set(arqs)):
+            medidos.update(arqs)
+            rc_ruim = rc_ruim or rc not in ("0", "5")
+    return [t for t in testes if t not in medidos], rc_ruim
 
 
 def interpretar(no: str, testes: list[str], rc: int, saida: str) -> Resultado:
@@ -115,10 +143,17 @@ def interpretar(no: str, testes: list[str], rc: int, saida: str) -> Resultado:
     if infra or not fim:
         motivo = infra[-1] if infra else f"saída sem PORTAO_FIM (rc do ssh {rc})"
         return Resultado("infra", no, testes, falhas, resumo, motivo, saida)
-    estado = "ok" if fim[-1].strip() == "PORTAO_FIM rc=0" else "falhou"
-    if estado == "falhou" and not falhas:
-        falhas = ["(lote falhou sem linha FAILED — ver o log)"]
-    return Resultado(estado, no, testes, falhas, resumo, "", saida)
+    nao_medidos, rc_ruim = _lotes_medidos(testes, linhas)
+    com_nodeid = [f for f in falhas if _NODEID.match(f)]
+    estado = "ok"
+    if com_nodeid:
+        estado = "falhou"
+    elif fim[-1].strip() != "PORTAO_FIM rc=0" and (rc_ruim or not nao_medidos):
+        # rc de erro que nenhum arquivo não medido explica: falha sem nodeid, nunca some
+        estado = "falhou"
+        falhas = falhas or ["(lote falhou sem linha FAILED — ver o log)"]
+    motivo = f"{len(nao_medidos)} arquivo(s) não medido(s) neste nó" if nao_medidos else ""
+    return Resultado(estado, no, testes, falhas, resumo, motivo, saida, nao_medidos=nao_medidos)
 
 
 def montar_script(sha: str, testes: list[str], paralelo: int, run: str, teto: int, ref: str) -> str:
@@ -186,8 +221,37 @@ def executar(sha: str, testes: list[str], custo: dict[str, int] | None = None,
             return Veredito("nao_medido", [*finais, r, r2], f"{r.no}: {r.motivo}; {outro.nome}: {r2.motivo}")
         finais.append(r2)
     finais = _confirmar_na_referencia(finais, vivos, sha, run, ref)
+    finais = _refazer_nao_medidos(finais, [n for n in vivos if n.nome not in caidos], sha, run, ref)
+    pendentes = sorted({t for r in finais for t in r.nao_medidos})
+    if pendentes:
+        return Veredito("reprovado", finais, f"não medido: {len(pendentes)} arquivo(s) — nenhum nó terminou "
+                                             + ", ".join(pendentes[:10]) + (" …" if len(pendentes) > 10 else ""))
     estado = "aprovado" if all(r.estado == "ok" for r in finais) else "reprovado"
     return Veredito(estado, finais)
+
+
+def _refazer_nao_medidos(finais: list[Resultado], vivos: list[No], sha: str, run: str, ref: str) -> list[Resultado]:
+    """A parte que um nó não mediu (TETO, lote sem resumo, coleta parcial) é refeita nos OUTROS nós vivos, em ordem
+    (a referência primeiro). O que sobra fica em `nao_medidos` e o `executar` reprova — nunca vira aprovação."""
+    saida: list[Resultado] = []
+    for r in finais:
+        saida.append(r)
+        pend, tentados = list(r.nao_medidos), {r.no}
+        while pend:
+            outro = next((n for n in sorted(vivos, key=lambda n: not n.referencia) if n.nome not in tentados), None)
+            if outro is None:
+                break
+            tentados.add(outro.nome)
+            print(f"[portão] {r.no} não mediu {len(pend)} arquivo(s) — refazendo no {outro.nome}", file=sys.stderr)
+            r2 = rodar_no(outro, sha, pend, f"{run}-refaz{len(tentados)}", ref)
+            if r2.estado == "infra":
+                continue
+            r2 = _confirmar_na_referencia([r2], vivos, sha, run, ref)[0]
+            r.nao_medidos, pend = [], r2.nao_medidos
+            r.motivo = (r.motivo + " · " if r.motivo else "") + f"refeitos no {outro.nome}"
+            saida.append(r2)
+            r = r2
+    return saida
 
 
 _NODEID = re.compile(r"^(?:FAILED|ERROR) (\S+?\.py)\b")
@@ -218,6 +282,10 @@ def _confirmar_na_referencia(finais: list[Resultado], vivos: list[No], sha: str,
         conf = rodar_no(ref_no, sha, arquivos, run + "-confirma", ref)
         if conf.estado == "infra":
             r.motivo = f"confirmação na {ref_no.nome} não mediu ({conf.motivo})"
+            saida.append(r)
+            continue
+        if conf.estado == "ok" and conf.nao_medidos:
+            r.motivo = f"confirmação na {ref_no.nome} não mediu {len(conf.nao_medidos)} arquivo(s)"
             saida.append(r)
             continue
         if conf.estado == "ok":
@@ -266,6 +334,8 @@ def _imprimir(v: Veredito) -> None:
               + " | ".join(r.resumo or [r.motivo]))
         for f in r.falhas[:15]:
             print(f"[portão]     {f}")
+        if r.nao_medidos:
+            print(f"[portão]     NÃO MEDIDOS ({len(r.nao_medidos)}): " + ", ".join(r.nao_medidos[:10]))
 
 
 def medir(repo: Path, base: str, sha: str) -> Veredito:
@@ -285,7 +355,7 @@ def medir(repo: Path, base: str, sha: str) -> Veredito:
         for r in v.resultados:
             fh.write(f"--- {r.no} ({r.estado}, {r.segundos:.0f} s) {r.motivo}\n{r.saida}\n")
     _imprimir(v)
-    print(f"[portão] {v.estado} em {time.time() - t0:.0f} s (log: {LOG})")
+    print(f"[portão] {v.estado} em {time.time() - t0:.0f} s (log: {LOG})" + (f" — {v.motivo}" if v.motivo else ""))
     return v
 
 
@@ -319,7 +389,7 @@ def pre_push(remoto: str, url: str, linhas: list[str], repo: Path) -> int:
             return 1
         v = medir(repo, base, sha)
         if v.estado == "reprovado":
-            print(f"[portão] ❌ BLOQUEADO — teste falhando em {sha[:10]} (o CI mandaria e-mail de falha)")
+            print(f"[portão] ❌ BLOQUEADO — {v.motivo or 'teste falhando'} em {sha[:10]} (o CI mandaria e-mail de falha)")
             return 1
         if v.estado == "nao_medido":
             push_divida.registrar(sha=sha, ref_local=ref_local, ref_remota=ref_remota, remoto=remoto, url=url,

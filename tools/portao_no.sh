@@ -17,6 +17,8 @@
 # Contrato de saída (o portao.py lê só estas linhas; o código de saída do ssh pelo `wsl` do it-campo não é confiável):
 #   PORTAO_INFRA <motivo>                — o nó não conseguiu medir (fetch, venv, disco): NÃO é falha de teste
 #   PORTAO_LOTE <k> rc=<n> <resumo>      — um por lote
+#   PORTAO_COLETA <k> <coletados> <arq…> — arquivos do lote e quantos deles o pytest REALMENTE executou (junit): o
+#                                          portao.py só dá o lote por medido com resumo do pytest e coletados = enviados
 #   PORTAO_FALHA <nodeid>                — linhas FAILED/ERROR do pytest
 #   PORTAO_LOG <k>| <linha>              — cauda do log de lote que falhou (diagnóstico)
 #   PORTAO_FIM rc=<n>                    — último; sem ele a rodada não conta
@@ -86,17 +88,33 @@ for k in $(seq 1 "$PAR"); do
   lote=()
   for i in "${!LISTA[@]}"; do [ $(( i % PAR )) -eq $(( k - 1 )) ] && lote+=("${LISTA[$i]}"); done
   [ "${#lote[@]}" -eq 0 ] && { echo 0 > "$BASE_RUN/rc$k"; : > "$BASE_RUN/log$k"; continue; }
+  rm -f "$BASE_RUN/junit$k.xml"
   ( cd "$BASE_RUN/w$k" && PYTHONPATH=. timeout "$TETO" nice -n 15 ionice -c3 "$VENV/bin/python" -m pytest \
-      -q -rfE -p no:cacheprovider -p no:randomly --timeout=900 "${lote[@]}" >"$BASE_RUN/log$k" 2>&1
+      -q -rfE -p no:cacheprovider -p no:randomly --timeout=900 --junitxml="$BASE_RUN/junit$k.xml" \
+      -o junit_family=xunit1 "${lote[@]}" >"$BASE_RUN/log$k" 2>&1
     echo $? > "$BASE_RUN/rc$k" ) &
 done
 wait
+
+# quantos arquivos do lote têm ao menos um caso no junit (passou, falhou, pulou ou deu erro de coleta): lote morto
+# pelo TETO não grava o junit (0); sessão interrompida por erro de coleta não chega aos arquivos seguintes
+_COLETA='import sys, xml.etree.ElementTree as ET
+try:
+    vistos = {c.get("file") for c in ET.parse(sys.argv[1]).iter("testcase")}
+except (OSError, ET.ParseError):
+    vistos = set()
+print(len(vistos & set(sys.argv[2:])))'
 
 final=0
 for k in $(seq 1 "$PAR"); do
   r=$(cat "$BASE_RUN/rc$k" 2>/dev/null || echo 99)
   resumo=$(grep -E "[0-9]+ (passed|failed|error)|no tests ran" "$BASE_RUN/log$k" | tail -1)
   echo "PORTAO_LOTE $k rc=$r $resumo"
+  lote=()
+  for i in "${!LISTA[@]}"; do [ $(( i % PAR )) -eq $(( k - 1 )) ] && lote+=("${LISTA[$i]}"); done
+  if [ "${#lote[@]}" -gt 0 ]; then
+    echo "PORTAO_COLETA $k $("$VENV/bin/python" -c "$_COLETA" "$BASE_RUN/junit$k.xml" "${lote[@]}") ${lote[*]}"
+  fi
   grep -E "^(FAILED|ERROR) " "$BASE_RUN/log$k" | sed 's/^/PORTAO_FALHA /'
   case "$r" in
     0|5) ;;
