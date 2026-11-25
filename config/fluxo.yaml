@@ -301,6 +301,20 @@ fontes: {siafe_ob: OB nova ou regravada no SIAFE, siafe_status: 'Status de envio
     de fracionamento por objeto (art. 75 §1º), codigo_commit: 'Commit novo no código do repositório canônico (VM-1) — sonda git da
     propagação, entregue pela ponte (propagacao_ponte)'}
 rotinas:
+  e1_eventos:
+    estagio: E1
+    descricao: 'E1 → estágios nativos (O9.0): emite coleta/ob_nova (OB emitida nova, por processo SEI-RJ), coleta/fonte_mudou (unidade do E9 cuja tabela mudou) e coleta/conferidos (veredito novo da triagem) a partir da coleta legada'
+    comando: ['{py}', -m, tools.e1_eventos]
+    recursos: [cpu_leve]
+    nos: [vm1]
+    timeout_s: 900
+    volta: {nos: [], nota: 'sem volta: o compliance.db só existe na VM-1'}
+    nota: 'O9.0 (25/11/2026). Sem este passo as rotas nativas que começam em coleta/* (E2, E9, E15 siafe_stats, E13) não teriam produtor em produção — só o ensaio O8.5 os emitia. OB nova = número acima do maior visto na (UG, exercício), não a data de coleta (a recoleta regrava coletado_em de tudo). Primeira volta da religação leva desde=parada (JFN_DESDE)'
+    evento: {depende: [siafe_ob, siafe_status, contratos_tcerj, compras_diretas_tcerj, triagem], debounce_s: 300, agrupar: true}
+    agenda:
+    - {cron: '12 * * * *'}
+    origem: [o90-religacao]
+    efeito: {descricao: 'eventos coleta/* gravados no fluxo.eventos e só depois a marca regravada', arquivo: data/e1_eventos_marca.json, log_contem: 'e1_eventos: (emitidos [0-9]+|sem novidade)'}
   manutencao_semanal:
     estagio: E17
     descricao: Manutenção semanal do compliance.db (VACUUM condicional, ANALYZE, WAL)
@@ -398,6 +412,9 @@ rotinas:
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   sweep_sei:
     estagio: E2
+    ativa: false
+    substituida_por: E2
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E2 arvore, paridade O3.3 (9d40ae78): lente bombeiros 3.859 capturados ⊆ 25.078 selecionados, 0 faltando; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Sweep SEI geral (sessão limitada, libera o navegador)
     comando: [bash, tools/sweep_sei.sh]
     concorrencia: [sei_rj_ip]
@@ -560,6 +577,9 @@ rotinas:
         até lá: rc 0 + log sem traceback'}
   sei_integra_fila:
     estagio: E3
+    ativa: false
+    substituida_por: E3
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E3 capturar (O3.3, 9d40ae78): nasce do evento arvore/documento_novo, delta por id_documento; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: 'Íntegras SEI: fila geral'
     comando: ['{py}', tools/sei_integra_fila.py, --geral, --segundos, '7200']
     concorrencia: [sei_rj_ip]
@@ -573,6 +593,9 @@ rotinas:
         até lá: rc 0 + log sem traceback'}
   integra_fila_dinheiro:
     estagio: E3
+    ativa: false
+    substituida_por: E3
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E3 capturar (O3.3, 9d40ae78): nasce do evento arvore/documento_novo, delta por id_documento; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: 'Íntegras SEI: fila por dinheiro (recalcula a fila e captura 2 lotes)'
     passos:
     - ['{py}', -m, tools.sei_fila_por_dinheiro, --gravar, --top, '800']
@@ -738,6 +761,9 @@ rotinas:
         o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   varredura_sei_lane:
     estagio: E2
+    ativa: false
+    substituida_por: E2
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E2 arvore, paridade O3.3 (9d40ae78): lente bombeiros 3.859 capturados ⊆ 25.078 selecionados, 0 faltando; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Varredura SEI (lane de 10 min)
     comando: [bash, tools/varredura_sei_lane.sh]
     concorrencia: [sei_rj_ip]
@@ -751,6 +777,9 @@ rotinas:
         (O3–O8); até lá: rc 0 + log sem traceback'}
   arquivar_cache_lane:
     estagio: E7
+    ativa: false
+    substituida_por: E7
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E7 arquivar (O3.4, 13c3935e; O0.2 fechado em cb01a5db): apaga só com md5 duplo. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Arquivar cache SEI (lane de 20 min)
     comando: [bash, tools/arquivar_cache_lane.sh]
     timeout_s: 1200
@@ -762,6 +791,9 @@ rotinas:
     nos: [vm1]
   arquivar_integra_lane:
     estagio: E7
+    ativa: false
+    substituida_por: E7
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E7 arquivar (O3.4, 13c3935e; O0.2 fechado em cb01a5db): apaga só com md5 duplo. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Arquivar íntegras (lane de 3 h)
     comando: [bash, tools/arquivar_integra_lane.sh]
     agenda:
@@ -785,6 +817,9 @@ rotinas:
         estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   ocr_contratos_imagem:
     estagio: E5
+    ativa: false
+    substituida_por: E5
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E5 ocr (O3.4, 13c3935e): filas JSON migradas, replay de 30 d com 219.032 itens e 0 perdido; volta = CPU na VM-2. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: OCR de contratos em imagem (40 por rodada)
     comando: ['{py}', tools/ocr_contratos_imagem.py, --limite, '40', --segundos, '3000']
     recursos: [cpu_pesado]
@@ -1143,6 +1178,9 @@ rotinas:
         até lá: rc 0 + log sem traceback'}
   sei_integra_vm2_precalcular:
     estagio: E3
+    ativa: false
+    substituida_por: E3
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E3 capturar (O3.3, 9d40ae78): nasce do evento arvore/documento_novo, delta por id_documento; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: 'Íntegras na VM-2: pré-cálculo da fila'
     comando: ['{py}', -m, tools.sei_integra_vm2, precalcular]
     recursos: [cpu_leve]
@@ -1256,6 +1294,9 @@ rotinas:
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   sei_arquivo_frio:
     estagio: E7
+    ativa: false
+    substituida_por: E7
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E7 arquivar (O3.4, 13c3935e; O0.2 fechado em cb01a5db): apaga só com md5 duplo. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Arquivo frio SEI (hora em hora)
     comando: [bash, tools/sei_arquivo_frio.sh]
     timeout_s: 3600
@@ -1308,6 +1349,9 @@ rotinas:
         o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   itcampo_ocr_cpu:
     estagio: E5
+    ativa: false
+    substituida_por: E5
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E5 ocr (O3.4, 13c3935e): filas JSON migradas, replay de 30 d com 219.032 itens e 0 perdido; volta = CPU na VM-2. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: OCR em CPU do it-campo (ao lado do Surya)
     comando: [bash, tools/itcampo_ocr_cpu.sh]
     recursos: [cpu_leve]
@@ -1424,6 +1468,9 @@ rotinas:
         portar a rotina para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   leitura_integral_assinatura:
     estagio: E8
+    ativa: false
+    substituida_por: E8
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E8 fatos (O6.3, fd858e01): citação literal conferida, mesma trava de ritmo da assinatura. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Leitura integral pela assinatura (200 fatias)
     comando: ['{py}', -m, compliance_agent.leitura_integral, assinatura, --limite-fatias, '200']
     timeout_s: 6600
@@ -1687,6 +1734,9 @@ rotinas:
         (O3–O8); até lá: rc 0 + log sem traceback'}
   sweep_sei_noturno:
     estagio: E2
+    ativa: false
+    substituida_por: E2
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E2 arvore, paridade O3.3 (9d40ae78): lente bombeiros 3.859 capturados ⊆ 25.078 selecionados, 0 faltando; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Sweep SEI noturno
     comando: [bash, tools/sweep_sei_noturno.sh]
     timeout_s: 28800
@@ -1737,6 +1787,9 @@ rotinas:
         (O3–O8); até lá: rc 0 + log sem traceback'}
   vm2_integras:
     estagio: E3
+    ativa: false
+    substituida_por: E3
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E3 capturar (O3.3, 9d40ae78): nasce do evento arvore/documento_novo, delta por id_documento; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Íntegras SEI na VM-2 (hora em hora)
     comando: [bash, tools/vm2_integras.sh]
     nos: [vm2]
@@ -1750,6 +1803,9 @@ rotinas:
         o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   vm2_ocr_reserva:
     estagio: E5
+    ativa: false
+    substituida_por: E5
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E5 ocr (O3.4, 13c3935e): filas JSON migradas, replay de 30 d com 219.032 itens e 0 perdido; volta = CPU na VM-2. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: OCR de reserva em CPU na VM-2
     comando: [bash, tools/vm2_ocr_reserva.sh]
     nos: [vm2]
@@ -1774,6 +1830,9 @@ rotinas:
         estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   vm2_sweep_geral:
     estagio: E2
+    ativa: false
+    substituida_por: E2
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E2 arvore, paridade O3.3 (9d40ae78): lente bombeiros 3.859 capturados ⊆ 25.078 selecionados, 0 faltando; uma porta de captura SEI. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Sweep SEI geral na VM-2 (8 por rodada)
     comando: [bash, tools/vm2_sweep_geral.sh, '8']
     nos: [vm2]
@@ -1805,9 +1864,7 @@ rotinas:
     nos: [vm2]
     timeout_s: 600
     prioridade: 15
-    ativa: false
-    bloqueio: 'parada de obras (24/11/2026): religa na O9.0 junto com o jfn-fluxo@vm2 (primeira etapa, E17); o produtor do evento codigo_commit é a sonda git da propagação via propagacao_ponte (VM-1); a agenda de 6 h é a rede de segurança se o evento se perder'
-    nota: 'O2.4. Substitui o `git pull --ff-only` do início de vm2_integras/vm2_sweep_geral/vm2_ocr_reserva, que seguia calado com código velho quando falhava (25 commits atrás na parada). A recarga é um timer transitório de 60 s fora do cgroup do job: o supervisor, ao parar, devolveria este job à fila'
+    nota: 'Religada na O9.0 (25/11/2026). Era o bloqueio da parada: «parada de obras (24/11/2026): religa na O9.0 junto com o jfn-fluxo@vm2 (primeira etapa, E17); o produtor do evento codigo_commit é a sonda git da propagação via propagacao_ponte (VM-1); a agenda de 6 h é a rede de segurança se o evento se perder». O2.4. Substitui o `git pull --ff-only` do início de vm2_integras/vm2_sweep_geral/vm2_ocr_reserva, que seguia calado com código velho quando falhava (25 commits atrás na parada). A recarga é um timer transitório de 60 s fora do cgroup do job: o supervisor, ao parar, devolveria este job à fila'
     evento: {depende: [codigo_commit], debounce_s: 60, agrupar: true}
     agenda:
     - {cron: '17 */6 * * *'}
@@ -1905,6 +1962,9 @@ rotinas:
     nos: [vm1]
   sei_ocr_gpu:
     estagio: E5
+    ativa: false
+    substituida_por: E5
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E5 ocr (O3.4, 13c3935e): filas JSON migradas, replay de 30 d com 219.032 itens e 0 perdido; volta = CPU na VM-2. volta ao legado: tools/religar_o90.py --desfazer'
     recursos: [cpu_leve]   # integra/enche a fila na VM-1 (peso leve); a GPU é do it-campo (O2.2)
     descricao: Aplica o OCR por IA ao arquivo SEI (preenche sem texto; relê o que o Tesseract leu; nativo intocado)
     comando: ['{py}', -m, tools.sei_ocr_gpu_integrar]
@@ -1921,6 +1981,9 @@ rotinas:
     nos: [vm1]
   sei_ocr_gpu_fila:
     estagio: E5
+    ativa: false
+    substituida_por: E5
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E5 ocr (O3.4, 13c3935e): filas JSON migradas, replay de 30 d com 219.032 itens e 0 perdido; volta = CPU na VM-2. volta ao legado: tools/religar_o90.py --desfazer'
     recursos: [cpu_leve]   # integra/enche a fila na VM-1 (peso leve); a GPU é do it-campo (O2.2)
     descricao: Fila do OCR por IA (o que o Tesseract leu ou ficou sem texto e ainda tem PDF no arquivo frio)
     comando: ['{py}', -m, tools.sei_ocr_gpu_fila, --itcampo-local]
@@ -1936,6 +1999,9 @@ rotinas:
     nos: [vm1]
   sei_ocr_confirmacao:
     estagio: E6
+    ativa: false
+    substituida_por: E6
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E6 confirmar_ocr (O3.4, 13c3935e). RESSALVA (falha fechada): ocr_ia_prova.vale_como_prova ainda lê data/sei_ocr_ia_conferencia.jsonl, então número novo do E5 fica a_conferir para os leitores legados até eles lerem ocr_numero/ocr_conferencia; o evento desta rotina (sei_ocr_gpu) também sai. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Confirmação do OCR por documento (qualquer motor) — porta da leitura integral
     comando: ['{py}', -m, compliance_agent.sei.ocr_confirmacao, --limite, '40']
     timeout_s: 3600
@@ -1951,6 +2017,9 @@ rotinas:
     nos: [vm1]
   sei_ocr_ia_conferir:
     estagio: E6
+    ativa: false
+    substituida_por: E6
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E6 confirmar_ocr (O3.4, 13c3935e). RESSALVA (falha fechada): ocr_ia_prova.vale_como_prova ainda lê data/sei_ocr_ia_conferencia.jsonl, então número novo do E5 fica a_conferir para os leitores legados até eles lerem ocr_numero/ocr_conferencia; o evento desta rotina (sei_ocr_gpu) também sai. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Confirmação dos números lidos pelo OCR por IA (2ª leitura independente — trava de prova)
     comando: ['{py}', -m, tools.sei_ocr_ia_conferir, confirmar, --limite, '40', --ler-em, vm2, --orcamento-s, '3000']
     timeout_s: 3600
@@ -2443,6 +2512,9 @@ rotinas:
     - {cron: 25 * * * *}
   sei_compactar:
     estagio: E7
+    ativa: false
+    substituida_por: E7
+    bloqueio: 'O9.0 (25/11/2026): substituída pelo nativo E7 arquivar (O3.4, 13c3935e; O0.2 fechado em cb01a5db): apaga só com md5 duplo. volta ao legado: tools/religar_o90.py --desfazer'
     descricao: Compactação das páginas escaneadas do arquivo SEI (WebP cinza local + original no it-campo)
     comando: ['{py}', -m, tools.sei_compactar, --limite, '40']
     timeout_s: 3300
@@ -2804,9 +2876,7 @@ rotinas:
     concorrencia: [painel]
     timeout_s: 1800
     prioridade: 20
-    ativa: false
-    bloqueio: 'parada de obras (24/11/2026): religa na O9.0. Até lá as visões só são regravadas à mão (`materializar rodar --todas`) e o sensor visoes.atrasadas declara o atraso; as rotas migradas servem a última visão (cabeçalho X-JFN-Visao-Gerado-Em) e, sem visão, caem no cálculo legado (X-JFN-Visao: ausente)'
-    nota: 'O7.1. Cada passo é o estágio nativo `materializar` pela CLI (handler + efeito no mesmo processo; a linha de prova só sai depois de conferir sha256 do corpo no disco = meta = declarado e o universo recontado). Quando o grafo agendar tipo nativo, cada passo vira um job `materializar:<visao>` sujo pelas fontes da visão (VISOES[...].fontes). O cálculo é pesado (conflito ~24–200 s): na VM-1 porque o compliance.db mora lá; volta VM-2 só com o snapshot conferido'
+    nota: 'Religada na O9.0 (25/11/2026). Era o bloqueio da parada: «parada de obras (24/11/2026): religa na O9.0. Até lá as visões só são regravadas à mão (`materializar rodar --todas`) e o sensor visoes.atrasadas declara o atraso; as rotas migradas servem a última visão (cabeçalho X-JFN-Visao-Gerado-Em) e, sem visão, caem no cálculo legado (X-JFN-Visao: ausente)». O7.1. Cada passo é o estágio nativo `materializar` pela CLI (handler + efeito no mesmo processo; a linha de prova só sai depois de conferir sha256 do corpo no disco = meta = declarado e o universo recontado). Quando o grafo agendar tipo nativo, cada passo vira um job `materializar:<visao>` sujo pelas fontes da visão (VISOES[...].fontes). O cálculo é pesado (conflito ~24–200 s): na VM-1 porque o compliance.db mora lá; volta VM-2 só com o snapshot conferido'
     agenda:
     - {cron: '20 * * * *'}
     evento: {depende: [siafe_ob, siafe_status, siafe_gd, contratos_tcerj, tcerj_licitante, pcrj_base, sancoes, sei_arquivado, sei_lote, sei_ficha, triagem, revisao_humana, memoria_claude, regra_detectores, codigo_commit], debounce_s: 600, intervalo_min_s: 1800, agrupar: true}

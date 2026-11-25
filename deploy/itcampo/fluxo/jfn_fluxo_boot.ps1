@@ -4,6 +4,8 @@
 # A captura SEI visivel (JFN-SEI-Paralelo) continua no LOGON - esta tarefa nao abre janela.
 # Passos: (1) sobe o WSL e confere/monta o D: (montar_d.sh, como root do WSL, sem sudo);
 #         (2) roda o supervisor em ~/JFN-worker e o religa se sair (o wsl.exe vivo segura a VM do WSL acordada).
+# Ambiente (O9.0): deploy/fluxo/producao.env da arvore do worker; JFN_ASSINATURA_ESCOPO sempre fora (so do ensaio).
+# Instalar/atualizar: tools/religar_o90.py passo R2 copia este arquivo da arvore para C:\JFN-Fluxo\ (md5 conferido).
 # Log: C:\JFN-Fluxo\boot.log    Pausar sem desabilitar: criar C:\JFN-Fluxo\PAUSA
 $ErrorActionPreference = 'Continue'
 $Base = 'C:\JFN-Fluxo'
@@ -15,7 +17,7 @@ Diga "montar_d saiu com $LASTEXITCODE (0 = D: montado e conferido; 3 = D: ausent
 while ($true) {
   if (Test-Path (Join-Path $Base 'PAUSA')) { Diga "PAUSA presente - espero 60 s"; Start-Sleep -Seconds 60; continue }
   Diga "supervisor: subindo (no itcampo, ~/JFN-worker)"
-  & wsl.exe -d Ubuntu --cd /home/iterj/JFN-worker -e bash -lc 'set -a; [ -f ~/.config/jfn/pg_evidencias.env ] && . ~/.config/jfn/pg_evidencias.env; set +a; PYTHONPATH=. exec .venv/bin/python -m compliance_agent.fluxo supervisor --no itcampo' 2>&1 | ForEach-Object { Diga "sup: $_" }
+  & wsl.exe -d Ubuntu --cd /home/iterj/JFN-worker -e bash -lc 'set -a; [ -f ~/.config/jfn/pg_evidencias.env ] && . ~/.config/jfn/pg_evidencias.env; . deploy/fluxo/producao.env || exit 3; set +a; unset JFN_ASSINATURA_ESCOPO; PYTHONPATH=. exec .venv/bin/python -m compliance_agent.fluxo supervisor --no itcampo' 2>&1 | ForEach-Object { Diga "sup: $_" }
   Diga "supervisor saiu (codigo $LASTEXITCODE) - religo em 30 s"
   Start-Sleep -Seconds 30
 }

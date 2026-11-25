@@ -122,10 +122,10 @@ def test_aposentados_avisam_que_foram_substituidos():
 # ── religação O9.0 (puro) ─────────────────────────────────────────────────────────────────────────────
 def test_plano_de_religacao_segue_a_ordem_da_secao_1_1():
     ids = [p.id for p in R.plano_religar(REAL, ["pausa"])]
-    assert ids[:4] == ["R0", "R1", "R2", "R3"]
-    assert [i[2:] for i in ids[4:]] == ["E17", "E18", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10",
+    assert ids[:6] == ["R0", "R1", "R2", "R3", "R4", "R5"]
+    assert [i[2:] for i in ids[6:]] == ["E17", "E18", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10",
                                         "E11", "E12", "E13", "E14", "E15", "E16"]
-    assert any("agenda sincronizar" in c for _n, c in R.plano_religar(REAL, [])[1].cmds)
+    assert any("agenda sincronizar" in c for _n, c in R.plano_religar(REAL, [])[3].cmds)
 
 
 def test_primeira_volta_nunca_roda_semanal_ou_mensal_fora_do_horario():

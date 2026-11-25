@@ -239,11 +239,11 @@ def test_paridade_certames_com_base_real(base_certames, caches_isolados, esfera)
 
 
 # ── configuração ───────────────────────────────────────────────────────────────────────────────────────────────────
-def test_rotina_inativa_cobre_toda_visao_e_fontes_existem():
+def test_rotina_religada_na_o90_cobre_toda_visao_e_fontes_existem():
     from compliance_agent.fluxo import grafo
     g = grafo.carregar()
     r = g.rotinas["materializar_painel"]
-    assert r.estagio == "E15" and r.ativa is False and r.bloqueio
+    assert r.estagio == "E15" and r.ativa is True and "Religada na O9.0" in r.nota      # O9.0 (25/11/2026)
     assert {p[p.index("--visao") + 1] for p in r.argvs()} == set(M.VISOES)
     for v in M.VISOES.values():
         assert set(v.fontes) <= set(g.fontes), (v.nome, set(v.fontes) - set(g.fontes))

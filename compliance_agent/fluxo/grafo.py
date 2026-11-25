@@ -166,6 +166,7 @@ class Rotina(_Base):
     efeito: Efeito
     ativa: bool = True
     bloqueio: str | None = None
+    substituida_por: str | None = None            # O9.0: estágio NATIVO que faz o trabalho (a rotina fica desligada)
     origem: list[str] = Field(default_factory=list)
     nota: str | None = None
 
@@ -199,6 +200,8 @@ class Rotina(_Base):
             raise ValueError("rotina sem gatilho: declare `agenda` e/ou `evento`")
         if not self.ativa and not self.bloqueio:
             raise ValueError("rotina inativa precisa de `bloqueio` (por que não religa)")
+        if self.substituida_por is not None and (self.substituida_por not in ESTAGIOS or self.ativa):
+            raise ValueError("`substituida_por` = estágio nativo E1–E18, e a rotina substituída fica `ativa: false`")
         if self.trava and (self.trava.startswith("/") or ".." in Path(self.trava).parts):
             raise ValueError("trava tem de ser relativa à raiz do repo")
         return self
@@ -362,6 +365,9 @@ class Grafo(_Base):
             if r.evento:
                 erros += [f"{rid}: depende de '{d}', que não é fonte nem rotina" for d in r.evento.depende
                           if d not in self.fontes and d not in self.rotinas]
+        com_nativo = {r.estagio for r in self.nativos.rotas} | {a.estagio for a in self.nativos.agenda}
+        erros += [f"{rid}: substituída por {r.substituida_por}, que não tem estágio nativo (rota ou agenda nativa)"
+                  for rid, r in self.rotinas.items() if r.substituida_por and r.substituida_por not in com_nativo]
         for d in self.duplicacoes:
             if d.mantida not in self.rotinas:
                 erros.append(f"duplicação: rotina mantida '{d.mantida}' não existe")

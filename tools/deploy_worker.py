@@ -76,18 +76,24 @@ def agendar_recarga(unit: str, sha: str) -> None:
                     "systemctl", "--user", "try-restart", unit], check=True, capture_output=True, timeout=60)
 
 
-def deploy(raiz: Path, unit: str | None, recarregar=agendar_recarga) -> dict:
+def deploy(raiz: Path, unit: str | None, recarregar=agendar_recarga, sha: str | None = None) -> dict:
+    """`sha` (religação O9.0): anda até ESTE commit (ff-only) e confere HEAD == sha — a janela fixa o SHA do main
+    antes de começar, e commit novo na VM-1 durante a janela não muda o que as 3 máquinas rodam."""
     sujos = _git(raiz, "status", "--porcelain", "--untracked-files=no", "--", ".", FORA)
     if sujos:
         raise RuntimeError(f"código local modificado (deploy recusado): {sujos.splitlines()[:5]}")
     antes = _git(raiz, "rev-parse", "HEAD")
     _git(raiz, "fetch", "-q", "origin")
-    _git(raiz, "merge", "--ff-only", "-q", "@{u}")
+    _git(raiz, "merge", "--ff-only", "-q", sha or "@{u}")
     head = _git(raiz, "rev-parse", "HEAD")
-    ramo = _git(raiz, "rev-parse", "--abbrev-ref", "@{u}").split("/", 1)[1]
-    anunciado = _git(raiz, "ls-remote", "origin", f"refs/heads/{ramo}").split()[0]
-    if head != anunciado:
-        raise RuntimeError(f"HEAD {head[:10]} ≠ origin/{ramo} {anunciado[:10]} (commit novo durante o deploy? repete)")
+    if sha:
+        if head != sha:
+            raise RuntimeError(f"HEAD {head[:10]} ≠ SHA pedido {sha[:10]}")
+    else:
+        ramo = _git(raiz, "rev-parse", "--abbrev-ref", "@{u}").split("/", 1)[1]
+        anunciado = _git(raiz, "ls-remote", "origin", f"refs/heads/{ramo}").split()[0]
+        if head != anunciado:
+            raise RuntimeError(f"HEAD {head[:10]} ≠ origin/{ramo} {anunciado[:10]} (commit novo durante o deploy? repete)")
     m_head, m_trab = md5_head(raiz), md5_trabalho(raiz)
     if m_head != m_trab:
         raise RuntimeError(f"md5 da árvore {m_trab} ≠ md5 do HEAD {m_head}: entrega NÃO confere")
@@ -101,9 +107,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tools.deploy_worker")
     ap.add_argument("--unit", help="supervisor a recarregar quando o HEAD muda (ex.: jfn-fluxo@vm2.service)")
     ap.add_argument("--sem-recarga", action="store_true")
+    ap.add_argument("--sha", help="anda até este commit exato (religação O9.0) em vez do anunciado pelo origin")
     a = ap.parse_args(argv)
     try:
-        r = deploy(RAIZ, None if a.sem_recarga else a.unit)
+        if a.sha and len(a.sha) != 40:
+            raise RuntimeError(f"--sha tem de ser o SHA completo (40 hex): {a.sha!r}")
+        r = deploy(RAIZ, None if a.sem_recarga else a.unit, sha=a.sha)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         print(f"deploy_worker: FALHOU — {e}")
         return 1

@@ -70,9 +70,23 @@ def test_md5_da_arvore_pega_arquivo_ausente(par):
     assert dw.md5_trabalho(worker) != m
 
 
-def test_rotina_deploy_vm2_no_grafo_real_inativa_ate_a_o90():
+def test_sha_fixo_para_no_commit_pedido_mesmo_com_origin_adiante(par):
+    """Religação O9.0: a janela fixa o SHA do main; commit novo na VM-1 durante a janela não entra no worker."""
+    canon, worker = par
+    (canon / "tools" / "a.py").write_text("x = 2\n")
+    _g(canon, "commit", "-qam", "c2")
+    alvo = subprocess.run(["git", "rev-parse", "HEAD"], cwd=canon, capture_output=True, text=True).stdout.strip()
+    (canon / "tools" / "a.py").write_text("x = 3\n")
+    _g(canon, "commit", "-qam", "c3")                         # o main andou depois do SHA fixado
+    r = dw.deploy(worker, None, sha=alvo)
+    assert r["head"] == alvo and r["mudou"] and (worker / "tools" / "a.py").read_text() == "x = 2\n"
+    assert dw.deploy(worker, None, sha=alvo)["mudou"] is False                 # idempotente
+    assert dw.main(["--sha", "abc"]) == 1                                       # SHA curto é recusado
+
+
+def test_rotina_deploy_vm2_no_grafo_real_religada_na_o90():
     g = grafo.carregar()
     r = g.rotinas["deploy_vm2"]
-    assert r.estagio == "E17" and r.nos == ["vm2"] and not r.ativa and "O9.0" in r.bloqueio
+    assert r.estagio == "E17" and r.nos == ["vm2"] and r.ativa and "Religada na O9.0" in r.nota
     assert r.evento and r.evento.depende == ["codigo_commit"] and "codigo_commit" in g.fontes
     assert r.comando[:3] == ["{py}", "-m", "tools.deploy_worker"]
