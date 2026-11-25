@@ -8,7 +8,7 @@
 --
 -- IDEMPOTENTE e ADITIVA: coluna nova (NULL nas linhas existentes = "antes da coluna"); a restrição é recriada com a
 -- coluna a mais SÓ se ainda não a tem. Chave mais larga ⇒ toda linha existente continua única: nenhuma linha é
--- apagada nem alterada. Quem não informa a versão (E4 hoje) grava NULL e se comporta como antes.
+-- apagada nem alterada. Quem não informa a versão grava NULL e se comporta como antes (E4 e E5 informam).
 --   Python: compliance_agent/aplicacao/estagios/texto.py `aplicar_schema` (depois do texto_ocr_001)
 BEGIN;
 SELECT pg_advisory_xact_lock(474752);

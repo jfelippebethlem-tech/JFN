@@ -229,14 +229,25 @@ def localizar_binario(con, processo: str, doc_id: str, sha: str, arquivo: str | 
 # ══ 5. registro no PG ═══════════════════════════════════════════════════════════════════════════════════════════
 _INS_TR = ("INSERT INTO transformacao(processo, doc_id, tipo, entrada_sha, saida_sha, motor, versao_motor, parametros) "
            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT ON CONSTRAINT transformacao_unica DO NOTHING")
+# o E4 grava a versão do ESTÁGIO na chave (texto_ocr_002): reprocessar com lógica nova grava linha nova (histórico)
+_INS_TR_VERSAO = ("INSERT INTO transformacao(processo, doc_id, tipo, entrada_sha, saida_sha, motor, versao_motor, "
+                  "parametros, versao_estagio) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                  "ON CONFLICT ON CONSTRAINT transformacao_unica DO NOTHING")
 _INS_VER = ("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,'texto') ON CONFLICT DO NOTHING")
 
 
-def transformacao_de(con, processo: str, doc_id: str, tipo: str, entrada_sha: str) -> dict | None:
-    r = con.execute("SELECT saida_sha, motor, versao_motor, parametros FROM transformacao WHERE processo = %s AND "
-                    "doc_id = %s AND tipo = %s AND entrada_sha = %s ORDER BY id DESC LIMIT 1",
-                    (processo, doc_id, tipo, entrada_sha)).fetchone()
+def transformacao_de(con, processo: str, doc_id: str, tipo: str, entrada_sha: str,
+                     versao_estagio: str | None = None) -> dict | None:
+    """A transformação mais recente desta entrada; com `versao_estagio`, só a gravada por ESSA versão do estágio (a
+    conferência do efeito compara com a linha da mesma versão)."""
+    sql = ("SELECT saida_sha, motor, versao_motor, parametros FROM transformacao WHERE processo = %s AND "
+           "doc_id = %s AND tipo = %s AND entrada_sha = %s")
+    par: list = [processo, doc_id, tipo, entrada_sha]
+    if versao_estagio is not None:
+        sql += " AND versao_estagio = %s"
+        par.append(versao_estagio)
+    r = con.execute(sql + " ORDER BY id DESC LIMIT 1", par).fetchone()
     return None if r is None else {"saida_sha": r[0], "motor": r[1], "versao_motor": r[2], "parametros": r[3]}
 
 
@@ -273,8 +284,8 @@ def registrar(con, processo: str, doc_id: str, sha: str, ex: dict, lateral: Path
               "invalido": ex["invalido"] or None, "versao": VERSAO, "job": ctx.chave, "ficha": ctx.ficha}
     com_texto = ex["chars"] > 0 and ex["perfil"] != INVALIDA
     with con.transaction():
-        con.execute(_INS_TR, (processo, doc_id, TIPO_TRANSFORMACAO, sha, ex["texto_sha"], MOTOR, vm,
-                              json.dumps(params, ensure_ascii=False)))
+        con.execute(_INS_TR_VERSAO, (processo, doc_id, TIPO_TRANSFORMACAO, sha, ex["texto_sha"], MOTOR, vm,
+                                     json.dumps(params, ensure_ascii=False), VERSAO))
         if com_texto:
             con.execute(_INS_VER, (processo, doc_id, ex["texto_sha"], ex["chars"], ORIGEM, None,
                                    time.strftime("%Y-%m-%d %H:%M:%S")))
@@ -340,9 +351,10 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
 
 
 def conferir(con, ef: dict) -> dict:
-    t = transformacao_de(con, ef["processo"], ef["doc_id"], TIPO_TRANSFORMACAO, ef["entrada_sha"])
+    t = transformacao_de(con, ef["processo"], ef["doc_id"], TIPO_TRANSFORMACAO, ef["entrada_sha"],
+                         ef.get("versao") or VERSAO)
     if t is None:
-        return {"ok": False, "motivo": "transformacao texto_nativo não está no PG"}
+        return {"ok": False, "motivo": "transformacao texto_nativo desta versão do estágio não está no PG"}
     lat = ler_lateral(Path(ef["lateral"]))
     c = {"lateral_existe": lat is not None,
          "lateral_sha": lat is not None and lat[1] == (t["parametros"] or {}).get("lateral_sha"),

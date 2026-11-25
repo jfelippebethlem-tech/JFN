@@ -213,3 +213,23 @@ def test_reprocessar_com_versao_nova_grava_linha_nova_e_efeito_ok(pg, tmp_path, 
     # a migração reaplicada não apaga nem muda linha
     T.aplicar_schema(DSN, nome)
     assert con.execute("SELECT count(*) FROM transformacao WHERE tipo = 'ocr'").fetchone()[0] == 2
+
+
+@precisa_pg
+def test_e4_reprocessar_com_versao_nova_grava_linha_nova_e_efeito_ok(pg, tmp_path, monkeypatch):  # noqa: F811
+    """O mesmo para o E4 (e4-x → e4-y, mesmo binário): antes, a linha velha ficava e o lateral_sha não conferia."""
+    from tests.test_estagio_texto import pdf_de, rodar_e4
+    con, nome = pg
+    pdf = pdf_de(tmp_path / "001.pdf", ["nativa", "escaneada"])
+    monkeypatch.setattr(T, "VERSAO", "e4-x")
+    r, ok, _, _ = rodar_e4(nome, tmp_path, pdf)
+    assert ok, r.efeito.get("conferencia")
+    monkeypatch.setattr(T, "VERSAO", "e4-y")
+    r, ok, _, _ = rodar_e4(nome, tmp_path, pdf, ficha=2)
+    assert ok, r.efeito.get("conferencia")
+    vs = [v for (v,) in con.execute("SELECT versao_estagio FROM transformacao WHERE tipo = %s ORDER BY id",
+                                    (T.TIPO_TRANSFORMACAO,))]
+    assert vs == ["e4-x", "e4-y"]
+    r, ok, _, _ = rodar_e4(nome, tmp_path, pdf, ficha=3)                  # mesma versão: idempotente
+    assert ok and con.execute("SELECT count(*) FROM transformacao WHERE tipo = %s",
+                              (T.TIPO_TRANSFORMACAO,)).fetchone()[0] == 2
