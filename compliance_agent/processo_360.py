@@ -178,8 +178,12 @@ def _contrato_registrado(numero_sei: str) -> dict:
     try:
         con = _sq.connect(f"file:{db}?mode=ro", uri=True)
         try:
+            # colunas do regime (O4.9) faltam em base/snapshot antigo: NULL com o mesmo nome (regime INDETERMINADO),
+            # nunca a consulta inteira caindo e levando junto a vigência que o X2 usa
+            cols = {r[1] for r in con.execute("PRAGMA table_info(contratos_tcerj)")}
+            opc = ", ".join(c if c in cols else f"NULL AS {c}" for c in ("data_contratacao", "criterio_julgamento"))
             row = con.execute(
-                "SELECT vig_inicio, vig_fim, valor_contrato, data_contratacao, criterio_julgamento FROM contratos_tcerj "
+                f"SELECT vig_inicio, vig_fim, valor_contrato, {opc} FROM contratos_tcerj "
                 "WHERE sei_norm = ? LIMIT 1", (chave,)).fetchone()
         finally:
             con.close()

@@ -41,6 +41,29 @@ def test_liga_vigencia_e_valor_pelo_numero_do_processo(tmp_path, monkeypatch):
     assert "contratos_tcerj" in r["fonte_contrato_registrado"]
 
 
+def test_base_sem_colunas_do_regime_mantem_vigencia_e_regime_indeterminado(tmp_path, monkeypatch):
+    """O4.9 passou a ler data_contratacao/criterio_julgamento; base antiga sem elas não pode derrubar a vigência."""
+    monkeypatch.setattr(P, "_DB", _db(tmp_path, [
+        ("0700020009912022", "10/02/2023", "10/05/2025", 1.0)]))
+    r = P._contrato_registrado("SEI-070002/000991/2022")
+    assert r["vigencia_inicio"] == "10/02/2023"
+    assert r["regime"] == "INDETERMINADO"
+
+
+def test_regime_pela_lei_declarada_no_criterio(tmp_path, monkeypatch):
+    p = tmp_path / "r.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE contratos_tcerj (sei_norm TEXT, vig_inicio TEXT, vig_fim TEXT, valor_contrato REAL, "
+                "data_contratacao TEXT, criterio_julgamento TEXT)")
+    con.execute("INSERT INTO contratos_tcerj VALUES (?,?,?,?,?,?)", ("0700020009912022", "10/02/2023", "10/05/2025",
+                1.0, "2023-02-01T00:00:00.000", "Menor preço (Lei nº 8.666/93)"))
+    con.commit(); con.close()
+    monkeypatch.setattr(P, "_DB", p)
+    r = P._contrato_registrado("SEI-070002/000991/2022")
+    assert r["vigencia_inicio"] == "10/02/2023"
+    assert r["regime"] == "L8666"
+
+
 def test_NAO_preenche_vigencia_fim_que_o_X8_espera(tmp_path, monkeypatch):
     """O X8 pede a vigência ORIGINAL; a tabela não a distingue da prorrogada. Alimentar o campo
     faria o detector medir retroatividade contra a baseline errada."""

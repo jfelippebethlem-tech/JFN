@@ -8,19 +8,32 @@ from compliance_agent.detectores.p6_direta_indevida import P6DiretaIndevida
 from compliance_agent.editais.flags import grau_flag
 
 
-def _sancao(categoria, ini="2024-01-01", fim="2026-12-31", cadastro="CEIS"):
+def _sancao(categoria, ini="2024-01-01", fim="2026-12-31", cadastro="CEIS", orgao="CGU"):
     return {"cadastro": cadastro, "categoria": categoria, "data_inicio": ini, "data_fim": fim,
-            "orgao": "CGU", "uf": "RJ"}
+            "orgao": orgao, "uf": "RJ"}
 
 
 def test_c7_impeditiva_vigente_e_flag_a():
+    # O4.9 (O49-6): o impedimento alcança só o ente que o aplicou (14.133 art. 156 §4º) — aplicado pelo próprio
+    # Estado do RJ, veda o comprador estadual: controle positivo do 1,0
     res = C7SancionadaContratada().avaliar({
         "processo": "X", "contratado_cnpj": "11.111.111/0001-11", "data_referencia": "2025-06-10",
-        "sancoes": [_sancao("Impedimento/proibição de contratar com prazo determinado")]})
+        "sancoes": [_sancao("Impedimento/proibição de contratar com prazo determinado",
+                            orgao="SECRETARIA DE ESTADO DE SAUDE")]})
     assert res.status == "confirmado" and res.score == 1.0
     assert res.valores["teste_objetivo"] == "violado"
     g = grau_flag(origem="deterministico", teste_status="violado", score=res.score)
     assert g["grau"] == "A"  # vedação objetiva → único caminho legítimo para flag CERTO
+
+
+def test_c7_impedimento_de_outro_ente_nao_veda_o_estado():
+    # mesmo impedimento aplicado pela CGU (União): fora da abrangência do Estado do RJ — 0,6, nunca 'violado'/flag A
+    res = C7SancionadaContratada().avaliar({
+        "processo": "X", "contratado_cnpj": "11.111.111/0001-11", "data_referencia": "2025-06-10",
+        "sancoes": [_sancao("Impedimento/proibição de contratar com prazo determinado")]})
+    assert res.status == "confirmado" and res.score == 0.6
+    assert res.valores["teste_objetivo"] == "fora_da_abrangencia"
+    assert "156 §4º" in res.evidencia[0]
 
 
 def test_c7_multa_nao_impede_e_sancao_expirada_descarta():

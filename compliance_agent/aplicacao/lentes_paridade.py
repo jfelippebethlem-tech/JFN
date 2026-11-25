@@ -72,14 +72,17 @@ def couto(lente: L.Lente, fonte: sqlite3.Connection) -> dict:
     cols = {r[1] for r in fonte.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
     base = (f"exercicio={int(lente.desde[:4])} AND {_OB_ISO} >= '{lente.desde}' AND status='Contabilizado' "
             "AND COALESCE(status_envio,'')<>'Erro no Pagamento' AND TRIM(COALESCE(numero_ob,''))<>''")
+    # ob-qualquer-status: decompõe a diferença antigo × novo — complementar e reemitida são justamente o que _ob_paga exclui
     comp = (fonte.execute(f"SELECT COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe WHERE {base} AND "
                           "COALESCE(tipo_regularizacao,'')='Pagamento Complementar'").fetchone()
             if "tipo_regularizacao" in cols else (0, 0.0))
     tem_re = fonte.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ob_reemitida'").fetchone()
+    # ob-qualquer-status: idem — 1ª OB reemitida, fora da soma de pago por definição
     reem = (fonte.execute(f"SELECT COUNT(*), SUM(valor) FROM ob_orcamentaria_siafe o WHERE {base} AND "
                           "COALESCE(tipo_regularizacao,'')<>'Pagamento Complementar' AND EXISTS (SELECT 1 FROM "
                           "ob_reemitida r WHERE r.ob=o.numero_ob AND r.ug=o.ug_emitente)").fetchone()
             if tem_re else (0, 0.0))
+    # ob-qualquer-status: contagem de cobertura (OB do período lançada em outro exercício), não soma
     fora_periodo = fonte.execute(f"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE {_OB_ISO} >= ? AND exercicio<>?",
                                  (lente.desde, int(lente.desde[:4]))).fetchone()[0]
     dn = (antigo.get("n_obs") or 0) - novo["obs_pagas"]
@@ -99,7 +102,21 @@ def couto(lente: L.Lente, fonte: sqlite3.Connection) -> dict:
 
 
 # ── mgs_iterj: tools/_arquivo/mgs_iterj_2021/relatorio_iterj_mgs_padrao.py ─────────────────────────────────────
-MGS = "19088605000104"
+_SCRIPT_MGS = RAIZ / "tools/_arquivo/mgs_iterj_2021/relatorio_iterj_mgs_padrao.py"
+
+
+def _constante_do_script(caminho: Path, nome: str) -> str:
+    """Valor literal de `nome = "..."` no script antigo (que roda no import e não pode ser importado): a paridade
+    usa o MESMO alvo que a régua antiga usava, sem copiar o CNPJ para cá (PAD-12)."""
+    import ast
+    for no in ast.walk(ast.parse(caminho.read_text(encoding="utf-8"))):
+        if isinstance(no, ast.Assign) and any(isinstance(t, ast.Name) and t.id == nome for t in no.targets) \
+                and isinstance(no.value, ast.Constant):
+            return str(no.value.value)
+    raise LookupError(f"{nome} não está em {caminho}")
+
+
+MGS = _constante_do_script(_SCRIPT_MGS, "CNPJ")
 
 
 def mgs_iterj(lente: L.Lente, fonte: sqlite3.Connection) -> dict:

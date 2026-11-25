@@ -282,6 +282,7 @@ def cobertura(con: sqlite3.Connection, col: Coleta, filtro: dict) -> list[dict] 
                        "ob_orcamentaria_siafe s WHERE s.numero_ob = o.numero_ob AND s.ug_emitente = o.ug_codigo)),0) "
                        f"FROM ordens_bancarias o WHERE ug_codigo IN ({ugs}) AND numero_ob IS NOT NULL{datas} "
                        "GROUP BY 1, 2 ORDER BY 1, 2", [*filtro["ug"], *pd])
+    # ob-qualquer-status: cobertura da coleta (nº de OB presente no SIAFE por UG × ano, régua de reporting.cobertura_siafe), não soma
     sia = {(u, a): n for u, a, n in col.consulta(
         con, "q.cobertura_siafe", f"SELECT ug_emitente, substr(data_emissao,7,4), COUNT(*) FROM ob_orcamentaria_siafe "
                                   f"WHERE ug_emitente IN ({ugs}) GROUP BY 1, 2 ORDER BY 1, 2", list(filtro["ug"]))}

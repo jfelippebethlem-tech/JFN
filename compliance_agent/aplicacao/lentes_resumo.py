@@ -83,6 +83,7 @@ def recorte_ob(fonte: sqlite3.Connection, lente: L.Lente) -> dict:
     for proc, ug, cred, nome, no_periodo, eh_pago, n, v, ult in fonte.execute(
             f"SELECT COALESCE(processo,''), ug_emitente, COALESCE(credor,''), MAX(nome_credor), {desde}, "
             f"CASE WHEN {pago} THEN 1 ELSE 0 END, COUNT(*), SUM(valor), MAX({_OB_ISO}) "
+            # ob-qualquer-status: paga/não paga classificada por {pago} (ob_paga_sql) na própria linha; só eh_pago soma
             "FROM ob_orcamentaria_siafe GROUP BY 1, 2, 3, 5, 6"):
         chave = PI.chave_processo(proc) if proc else None
         data = (lente.desde if no_periodo else "0000-00-00") if lente.desde else None
