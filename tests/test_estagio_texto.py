@@ -217,3 +217,12 @@ def test_lateral_fora_da_vm2_e_espelhado_e_o_que_falta_e_trazido(tmp_path, monke
     assert T.ler_lateral(falta) is None                               # na VM-2 não há de onde trazer
     monkeypatch.setenv("JFN_NO", "itcampo")
     assert T.ler_lateral(falta)[0] == {"ok": 1}                       # fora dela: trazido da VM-2
+
+
+def test_confirmar_ocr_pede_cpu_pesado():
+    """26/11/2026: o E6 rasteriza páginas (código de barras, leitura independente) e chegava a 850 MB com teto de 1 GB
+    do cpu_leve — encostado no próprio teto, a pressão de memória fazia o governador matá-lo (5 mortes em 2 h)."""
+    from compliance_agent.aplicacao.estagios import estagio_de
+    from compliance_agent.fluxo import supervisor as S
+    rec = estagio_de("confirmar_ocr").recursos
+    assert rec == ["cpu_pesado"] and S.limites_do_job(rec)[0] == "3G"

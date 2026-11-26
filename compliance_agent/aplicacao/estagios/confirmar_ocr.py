@@ -383,4 +383,4 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return bool(c["ok"])
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=55, volta={"nos": ["vm1"]})  # 26/11: à frente do E4 (60) — o de baixo drena primeiro
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado"], prioridade=55, volta={"nos": ["vm1"]})  # 26/11: à frente do E4 (60); cpu_pesado: rasteriza páginas (850 MB > teto 1G do cpu_leve)
