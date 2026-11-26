@@ -649,7 +649,7 @@ rotinas:
   sweep_atas_julgamento:
     estagio: E1
     descricao: Atas de julgamento (400 por rodada)
-    comando: [bash, tools/sweep_atas_julgamento.sh, '400']
+    comando: [bash, tools/sweep_atas_julgamento.sh, '400', coleta]   # 26/11: só o passo 1 (E1); os passos 2–4 gravavam casos (E14) por fora da liberação
     concorrencia: [por_fonte]
     agenda:
     - {cron: 40 1 * * *}
@@ -1412,6 +1412,7 @@ rotinas:
     descricao: Executor da automelhoria (2 por noite)
     comando: ['{py}', tools/automelhoria_executor.py, --max, '2']
     timeout_s: 6000
+    ritmo: automelhoria_executor          # 26/11: a reserva segura o job com a porta da assinatura fechada (frente B)
     path_extra: [~/.local/bin, ~/.npm-global/bin]
     recursos: [llm]
     concorrencia: [assinatura_claude]
@@ -2140,8 +2141,8 @@ rotinas:
     estagio: E1
     concorrencia: [siafe_sessao]   # siafe_agenda: nunca com o SIAFE ocupado (O2.2)
     descricao: Releitura do status das OB não finais (2024–2026) e consolidação dos últimos 60 dias no SIAFE
-    comando: ['{py}', -m, compliance_agent.siafe_agenda, status]
-    timeout_s: 300
+    comando: ['{py}', -m, compliance_agent.siafe_agenda, status, --esperar]   # 26/11: a coleta roda NO job (antes saía destacada, fora do teto e do slot siafe_sessao)
+    timeout_s: 6720                       # 80×60 + 1800 + 120 (frente B)
     recursos: [cpu_pesado]
     efeito: {descricao: data/siafe_agenda_status.json regravado depois do início, arquivo: data/siafe_agenda_status.json}
     prioridade: 70
@@ -2156,8 +2157,8 @@ rotinas:
     estagio: E1
     concorrencia: [siafe_sessao]   # siafe_agenda: nunca com o SIAFE ocupado (O2.2)
     descricao: NE e NL de todas as UGs (2024–2026), por valor pago, incremental no exercício corrente
-    comando: ['{py}', -m, compliance_agent.siafe_agenda, documentos]
-    timeout_s: 300
+    comando: ['{py}', -m, compliance_agent.siafe_agenda, documentos, --esperar]   # 26/11: idem
+    timeout_s: 7920                       # 100×60 + 1800 + 120 (frente B)
     recursos: [cpu_pesado]
     efeito: {descricao: data/siafe_agenda_documentos.json regravado depois do início, arquivo: data/siafe_agenda_documentos.json}
     prioridade: 75
