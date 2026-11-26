@@ -545,3 +545,20 @@ def test_fila_tolera_poucas_novas_tentativas_mas_barra_erro_sistematico(con):
     for i in range(3, 9):
         _job(con, f"e{i}", "fila", estagio="E2", erro="erro"); ch.append(f"e{i}")
     assert not R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)["ok"]   # 9 > 3
+
+
+@precisa_pg
+def test_fora_de_alcance_da_primeira_volta_conta_como_decidido(con):
+    """26/11/2026 12h25: o E2 não passava NUNCA — a soma feitos + pendentes não fechava com o total da 1ª volta porque
+    os processos RESTRITOS (ForaDeAlcance, em quarentena) da própria volta não entravam em nenhuma das duas contas."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E2', 't')")
+    for i in range(20):
+        _job(con, f"f{i}", "feito", estagio="E2")
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_resumo) VALUES ('arvore', 'r1', 'quarentena', %s, %s)",
+                (json.dumps({"estagio": "E2"}), "[fora_de_alcance] SEI respondeu RESTRITO"))
+    _job(con, "w", "fila", estagio="E2")
+    ch = [f"f{i}" for i in range(20)] + ["r1", "w"]
+    assert R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)["ok"]
+    con.execute("DELETE FROM jobs WHERE chave = 'w'")
+    r = R.conferir_estagio(con, "E2", [c for c in ch if c != "w"])
+    assert r["ok"] and r["pendentes"] == 0                                  # volta inteira: feitos + fora = total

@@ -663,12 +663,17 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
         (estagio, estagio)).fetchone()
     feitos = est.get("feito", 0)
     pendentes = sum(n for e, n in est.items() if e in ("fila", "reservado"))
-    inteira = ruins == 0 and pendentes == 0 and feitos == len(chaves)
+    # chave da 1ª volta que é ForaDeAlcance (quarentena declarada) está DECIDIDA — sem isto a soma nunca fechava e o
+    # E2 (com processos restritos na própria volta) não passava em caso nenhum (26/11/2026 12h25)
+    fora_da_volta = con.execute(
+        "SELECT count(*) FROM jobs WHERE chave = ANY(%s) AND estado IN ('quarentena', 'falhou_efeito') "
+        "AND coalesce(erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%'", (chaves,)).fetchone()[0] if chaves else 0
+    inteira = ruins == 0 and pendentes == 0 and feitos + fora_da_volta == len(chaves)
     com_erro = sum(1 for _c, e in esperando if e not in (None, "adiado"))
     # estágio de FILA (26/11/2026): nova tentativa isolada é normal numa fila de milhares (a falha real é a quarentena,
     # já em `ruins`); tolera até 10% dos feitos (mínimo 3). Erro sistemático passa disso e barra. LLM: zero.
     tolerancia = max(3, feitos // 10) if fila else 0
-    so_esperando = feitos + pendentes == len(chaves) and com_erro <= tolerancia
+    so_esperando = feitos + pendentes + fora_da_volta == len(chaves) and com_erro <= tolerancia
     meia = (parcial and not inteira and ruins == 0 and feitos >= 1 and so_esperando
             and decorrido_s >= espera_parcial_s)
     r = {"estagio": estagio, "feitos": feitos, "esperados": len(chaves), "pendentes": pendentes, "ruins": ruins,
