@@ -92,6 +92,11 @@ def montar_comando(fase: str, entrada: Path, saida: Path, limites: tuple[str, in
     return base
 
 
+def _hash_yaml() -> str:
+    import hashlib
+    return hashlib.sha256(Path(grafo_mod.CAMINHO).read_bytes()).hexdigest()
+
+
 def matar_escopo(unidade: str | None) -> None:
     """Mata o escopo INTEIRO do job (25/11/2026: neto destacado sobrevivia ao `timeout`/killpg — o despachante antigo
     ficou órfão horas com 1 GB). Escopo já vazio/inexistente: nada a fazer."""
@@ -185,7 +190,9 @@ class Supervisor:
         self.esquema = schema.validar_esquema(self.esquema or fila.esquema_vigente())
         slots_dados = self.slots is not None
         self.slots = dict(self.slots if slots_dados else governador.SLOTS_INICIAIS.get(self.no, {}))
+        self._hash_grafo = None                      # só o grafo REAL (lido do yaml) se recarrega a quente
         if self.grafo is None:                       # o grafo real: inválido ⇒ o supervisor não sobe (portão)
+            self._hash_grafo = _hash_yaml()
             g = grafo_mod.carregar()
             if not slots_dados:                      # §3.4 + o transitório declarado no yaml (D1), nada além
                 self.slots = g.slots_do_no(self.no)
@@ -409,8 +416,39 @@ class Supervisor:
             return sorted(set(bloqueados) | set(self.ritmos))
         return bloqueados
 
+    def recarregar_grafo_se_mudou(self, sincronizar: bool | None = None) -> dict | None:
+        """Yaml mudado ⇒ relê grafo, contrato, tetos, ritmos, terminais, dívidas, slots e restritos SEM reiniciar (job
+        longo segue vivo) e, no líder, ressincroniza `fluxo.agenda` (o payload leva `timeout_s`). Religação O9.0,
+        26/11/2026: o yaml só era lido no boot e 8 tetos corrigidos nunca chegaram às rodadas agendadas. Yaml inválido
+        ⇒ mantém o grafo anterior e devolve o erro (o portão do deploy já o recusa; aqui é defesa)."""
+        if self._hash_grafo is None:
+            return None
+        h = _hash_yaml()
+        if h == self._hash_grafo:
+            return None
+        try:
+            g = grafo_mod.carregar()
+        except Exception as exc:                     # noqa: BLE001 — qualquer yaml ruim: segue com o anterior
+            log.error("yaml do fluxo mudou e é INVÁLIDO — sigo com o grafo anterior: %s", exc)
+            self._hash_grafo = h
+            return {"erro": f"{type(exc).__name__}: {str(exc)[:300]}"}
+        self.slots, self.restritos = g.slots_do_no(self.no), dict(g.restritos_do_no(self.no) or {})
+        self.grafo, self.contrato, self.tetos = g.grafo_planejador(), g.contrato(), dict(g.tetos() or {})
+        self.ritmos, self.terminais = set(g.ritmos() or ()), dict(g.terminais() or {})
+        self.dividas, self.nos_esperados = dict(g.dividas() or {}), tuple(g.nos or ())
+        self._hash_grafo = h
+        r: dict = {"recarregado": True}
+        if self._lider if sincronizar is None else sincronizar:
+            r["agenda"] = planejador.sincronizar_agenda(self.con, g.agenda_linhas())
+        log.info("yaml do fluxo recarregado a quente: %s", r)
+        return r
+
     def uma_volta(self) -> dict:
         r: dict = {"no": self.no}
+        if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S:
+            rec = self.recarregar_grafo_se_mudou()
+            if rec:
+                r["grafo"] = rec
         bloqueados = sorted(t for t in self.ritmos if self.ritmo(t))
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S and self._liderar():
             self._ultimo_plano = time.monotonic()

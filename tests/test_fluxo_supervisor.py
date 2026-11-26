@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from compliance_agent.fluxo import fila, governador, supervisor as S
+from compliance_agent.fluxo import grafo as grafo_mod
 from tests.fluxo_pg import DSN, chave_lock, con, esquema_tmp, precisa_pg  # noqa: F401 — fixtures
 
 PACOTE = Path(S.__file__).resolve().parent
@@ -173,3 +174,31 @@ def test_escopo_com_nome_e_morto_inteiro(monkeypatch):
     chamadas.clear()
     S.matar_escopo(None)
     assert chamadas == []
+
+
+@precisa_pg
+def test_yaml_mudado_recarrega_a_quente_e_ressincroniza_a_agenda(con, esquema_tmp, tmp_path, monkeypatch):
+    """Religação O9.0 (26/11/2026): o supervisor lia o yaml só no boot e a agenda guardava `timeout_s` congelado no
+    payload — 8 tetos corrigidos no yaml nunca chegaram às rodadas agendadas (pcrj_sei_ingest 5× rc=124 com 960 s).
+    Yaml mudado ⇒ recarrega grafo/contrato/tetos/ritmos e ressincroniza a agenda, sem reiniciar (jobs longos vivos)."""
+    from compliance_agent.fluxo import planejador as PL
+    arq = tmp_path / "fluxo.yaml"
+    arq.write_text(Path(grafo_mod.CAMINHO).read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(grafo_mod, "CAMINHO", arq)
+    sup = S.Supervisor(no="vm1", dsn=DSN, esquema=esquema_tmp, isolamento="subprocesso",
+                       chave_lideranca=chave_lock(), medir=lambda: governador.Medida())
+    try:
+        PL.sincronizar_agenda(sup.con, grafo_mod.carregar(arq).agenda_linhas())
+        assert sup.recarregar_grafo_se_mudou() is None                         # nada mudou
+        texto = arq.read_text(encoding="utf-8")
+        arq.write_text(texto.replace("timeout_s: 2400 ", "timeout_s: 2401 ", 1), encoding="utf-8")
+        r = sup.recarregar_grafo_se_mudou(sincronizar=True)
+        assert r and r["agenda"]["atualizadas"] >= 1
+        t = con.execute(f'SELECT payload->>\'timeout_s\' FROM "{esquema_tmp}".agenda '
+                        "WHERE payload->>'rotina' = 'sei_rj_catalogo'").fetchone()[0]
+        assert t == "2461"
+        arq.write_text("isto: [não é yaml válido", encoding="utf-8")                # inválido: mantém o anterior
+        assert sup.recarregar_grafo_se_mudou()["erro"]
+        assert sup.grafo                                                        # o grafo anterior segue em uso
+    finally:
+        sup.fechar()
