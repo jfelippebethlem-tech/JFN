@@ -681,3 +681,22 @@ def test_sem_pedido_explicito_nao_lanca_remedio(tmp_path, monkeypatch):
 
 def test_remediar_so_com_a_bandeira(tmp_path, monkeypatch):
     assert len(_main_com_argv(tmp_path, monkeypatch, ["--remediar"])) == 1
+
+
+def test_sensor_do_motor_agrupa_falhas_e_aponta_a_familia():
+    """26/11/2026 (dono: «isso o módulo de automelhoria já deveria ter feito»): as falhas da religação eram de famílias
+    já conhecidas (SQLite travado, teto de memória/tempo, arquivo noutro nó, dependência ausente) e só apareceram
+    quando estouraram. O sensor `motor` agrupa as falhas do próprio motor e aponta a família e a 1ª providência."""
+    import tools.automelhoria_geral as AG
+    linhas = [("confirmar_ocr", "quarentena", "pressao", "morto pelo governador: ['mem full 6.9 > 5']")] * 3 + \
+             [("texto", "fila", "erro", "RuntimeError: 1/2/2026: manifesto da captura ilegível em /home/x/integra_1 "
+                                       "([Errno 2] No such file or directory)")] * 4 + \
+             [("arvore", "quarentena", "permanente", "[fora_de_alcance] SEI respondeu RESTRITO")] * 9 + \
+             [("arvore", "fila", "parada", "supervisor parado (SIGTERM)")] * 5 + \
+             [("ocr", "fila", "erro", "algo inédito 0xdeadbeef")]
+    ps = {p["assinatura"]: p for p in AG.problemas_motor(linhas)}
+    assert len(ps) == 2                                  # restrito, parada e caso único (sem quarentena) não entram
+    fam = {p["titulo"] for p in ps.values()}
+    assert any("teto do recurso" in t and "3×" in t for t in fam)
+    assert any("lido noutro" in t and "4×" in t for t in fam)
+    assert all(p["acao_humana"] and not p["remediar"] for p in ps.values())

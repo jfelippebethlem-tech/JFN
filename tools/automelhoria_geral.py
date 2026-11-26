@@ -32,6 +32,7 @@ import argparse
 import json
 import logging
 import os
+import hashlib
 import re
 import shutil
 import subprocess
@@ -1089,6 +1090,80 @@ def sensor_avisos() -> list[dict]:
 
 
 # nome → (sensor, o que ele vigia — a linha "Vigio:" do /melhorias). Sensor novo entra aqui e aparece lá.
+# ─────────────── falhas do PRÓPRIO motor (26/11/2026 — «isso o módulo de automelhoria já deveria ter feito») ──────────
+# As falhas da religação eram de famílias já catalogadas (~/vault/aprendizados/CATALOGO-DE-FALHAS.md) e só apareceram
+# quando estouraram. Agrupa as falhas do motor por (tipo de job, causa normalizada) e aponta a família e a providência.
+FAMILIAS_MOTOR = (
+    (re.compile(r"database is locked|SQLITE_BUSY", re.I), "SQLite travado",
+     "achar quem segura a trava (lsof/journal) e reiniciar o dono; a causa costuma ser transação presa"),
+    (re.compile(r"morto pelo governador", re.I), "pressão de memória / teto do recurso",
+     "medir a RSS do job contra o teto do recurso (supervisor.LIMITES) e declarar o recurso certo no estágio"),
+    (re.compile(r"estourou o teto|tempo estourado|rc=\[?124", re.I), "teto de tempo menor que a duração real",
+     "medir a duração no sistema antigo/logs e subir o timeout_s da rotina (o payload da agenda leva o valor)"),
+    (re.compile(r"manifest|não está no disco|No such file|sem lateral", re.I), "arquivo produzido num nó e lido noutro",
+     "conferir o nó do produtor × o do consumidor (nos/volta do yaml) e se a entrega até a VM-2 foi conferida"),
+    (re.compile(r"ModuleNotFoundError|ImportError|No module named", re.I), "dependência ausente na venv do nó",
+     "pôr no requirements + lock (tools/lock_dependencias.py) e instalar no worker pelo lock com hashes"),
+    (re.compile(r"Connection refused|ERR_CONNECTION|could not connect|connect to host", re.I), "rede / filtro de saída",
+     "sondar o destino de DENTRO do cgroup jfn-coletor.slice (systemd-run --scope) e conferir deploy/seguranca"),
+    (re.compile(r"OcrPendente|sem texto do E5", re.I), "ordem entre estágios (consumidor antes do produtor)",
+     "conferir a rota de eventos (config/fluxo.yaml `rotas`): o consumidor tem de nascer do evento do produtor"),
+    (re.compile(r"ADIADO por carga|seguiu saturada|aguardar_load", re.I), "guarda de carga antiga duplicando o governador",
+     "no motor quem segura carga é o governador (PSI); a guarda load_ok do sistema antigo adia à toa — desligá-la lá"),
+    (re.compile(r"SpawnError|is not reachable|docker nor podman", re.I), "serviço local de inferência fora (vLLM)",
+     "conferir o vLLM do it-campo (porta 8790; sobe na chamada do supervisor, deploy/itcampo/fluxo/jfn_fluxo_boot.ps1)"),
+    (re.compile(r"efeito não conferido", re.I), "efeito não conferido",
+     "ler a conferência gravada no job: pode ser dado de verdade faltando, não defeito do motor"),
+)
+_INTERRUPCAO = {"parada", "lease_vencido", "adiado"}
+_RX_VARIAVEL = re.compile(r"(/[\w./-]+|0x[0-9a-f]+|\b[0-9a-f]{12,}\b|\d+)", re.I)
+
+
+def _causa(erro: str) -> str:
+    linhas = [ln.strip() for ln in (erro or "").splitlines()
+              if ln.strip() and "Warning" not in ln and "warnings.warn" not in ln]
+    return _RX_VARIAVEL.sub("#", linhas[-1] if linhas else "?")[:160]
+
+
+def problemas_motor(linhas) -> list[dict]:
+    """[(tipo, estado, erro_tipo, erro_resumo)] das últimas 24 h → problemas por (tipo, causa). Puro. Fora: processo
+    restrito (ForaDeAlcance: rota do dono) e interrupção da infraestrutura. Entra o grupo com quarentena/falhou_efeito
+    ou com 3+ ocorrências."""
+    grupos: dict[tuple[str, str], list] = {}
+    for tipo, estado, et, er in linhas:
+        if (er or "").startswith("[fora_de_alcance]") or (et in _INTERRUPCAO and estado == "fila"):
+            continue
+        grupos.setdefault((tipo, _causa(er)), []).append((estado, er))
+    out = []
+    for (tipo, causa), itens in sorted(grupos.items(), key=lambda kv: -len(kv[1])):
+        grave = any(e in ("quarentena", "falhou_efeito") for e, _ in itens)
+        if not grave and len(itens) < 3:
+            continue
+        amostra = itens[0][1] or ""
+        fam, dica = next(((f, d) for rx, f, d in FAMILIAS_MOTOR if rx.search(amostra)),
+                         ("sem família no catálogo", "investigar a causa-raiz e CATALOGAR a família nova"))
+        out.append(_p("motor", f"{tipo}:{hashlib.sha1(causa.encode()).hexdigest()[:10]}",
+                      f"motor: {tipo} — {fam} ({len(itens)}× em 24 h)", f"causa: {causa}", acao_humana=dica))
+    return out
+
+
+def sensor_motor() -> list[dict]:
+    sys.path.insert(0, str(_REPO))
+    from compliance_agent.fluxo import fila
+    try:
+        con = fila.conectar()
+    except Exception as exc:                          # noqa: BLE001 — PG fora: o sensor está cego, não «tudo ok»
+        raise RuntimeError(f"fluxo.jobs ilegível: {type(exc).__name__}: {str(exc)[:120]}") from exc
+    try:
+        linhas = con.execute(
+            "SELECT tipo, estado, coalesce(erro_tipo, ''), coalesce(erro_resumo, '') FROM jobs "
+            "WHERE erro_resumo IS NOT NULL AND estado IN ('quarentena', 'falhou_efeito', 'fila') "
+            "AND coalesce(concluido_em, iniciado_em, criado_em) > now() - interval '24 hours'").fetchall()
+    finally:
+        con.close()
+    return problemas_motor(linhas)
+
+
 _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "catracas": (sensor_catracas, "catracas de código"), "systemd": (sensor_systemd, "serviços"),
              "voz": (sensor_voz, "voz do Yoda"), "ronda": (sensor_ronda, "API/LLM"), "siafe": (sensor_siafe, "SIAFE"),
@@ -1107,6 +1182,7 @@ _SENSORES = {"slo": (sensor_slo, "rotinas (SLO)"), "ci": (sensor_ci, "CI"),
              "plataforma": (sensor_plataforma, "plano de reescrita (cobertura de leitura, disco VM-2, fila do Opus, "
                                                "recaptura, cache)"),
              "e18": (sensor_e18, "SLOs do E18 (fluxo.metricas)"),
+             "motor": (sensor_motor, "falhas do próprio motor (fluxo.jobs)"),
              "avisos": (sensor_avisos, "avisos calados e quedas de serviço")}
 SENSORES = {nome: fn for nome, (fn, _) in _SENSORES.items()}
 _AREAS = tuple(rotulo for _, rotulo in _SENSORES.values())
