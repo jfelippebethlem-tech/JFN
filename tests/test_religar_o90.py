@@ -378,3 +378,10 @@ def test_semeador_enfileira_job_nativo_idempotente(con):
     tipo, p = con.execute("SELECT tipo, payload FROM jobs WHERE chave = 'arvore:010001/000001/2025'").fetchone()
     assert tipo == "arvore" and p["estagio"] == "E2" and p["processo"] == "010001/000001/2025"
     assert p["prioridade"]["posicao"] == 1 and p["origem"] == "e2_semear"
+
+
+def test_so_estagios_pula_os_passos_de_maquina():
+    """25/11/2026: repetir a conferência da janela 1 sem refazer R0–R5 (wsl --shutdown, deploy, cron → fluxo)."""
+    passos = [R.Passo("R0", "pré"), R.Passo("R4", "nós"), R.Passo("R-E17", "E17", estagio="E17"),
+              R.Passo("R-E1", "E1", estagio="E1")]
+    assert [p.id for p in R.so_estagios(passos)] == ["R-E17", "R-E1"]

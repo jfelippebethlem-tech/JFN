@@ -692,7 +692,7 @@ def rodar_cmd(no: str, cmd: str, rodar=subprocess.run) -> int:
 # ── ensaio: o que se consegue medir agora (só leitura) ───────────────────────────────────────────────────────
 def _ler(rodar, argv: list[str], timeout: int = 40) -> tuple[int, str]:
     try:
-        r = rodar(argv, capture_output=True, text=True, timeout=timeout)
+        r = rodar(argv, capture_output=True, text=True, errors="replace", timeout=timeout)  # schtasks pt-BR = CP-850 (Em execução)
         return r.returncode, (r.stdout or "").strip()
     except (OSError, subprocess.TimeoutExpired) as exc:
         return -1, type(exc).__name__
@@ -889,6 +889,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--desfazer", action="store_true", help="volta ao sistema antigo (crontab, timers, tarefas)")
     ap.add_argument("--confirmo-dono-avisado", action="store_true")
     ap.add_argument("--espera-max-s", type=float, default=ESPERA_MAX_S)
+    # 25/11/2026: a 1ª janela teve estágios BLOQUEADOS por defeitos já corrigidos (filtro de saída, governador, teto
+    # de 900 s); repetir só a liberação + conferência, sem refazer R0–R5 (wsl --shutdown, deploy, cron → fluxo).
+    ap.add_argument("--so-estagios", action="store_true",
+                    help="só os passos de estágio (liberar + conferir); pula os de máquina (R0–R5)")
     ap.add_argument("--backups", default=str(BACKUPS))
     ap.add_argument("--sha", help="SHA do main para a janela (padrão: HEAD da VM-1 agora)")
     ap.add_argument("--etapa", type=int, choices=(1, 2), help="1 = E17, E18, E1–E7 (1ª janela); 2 = E8–E16 (depois "
@@ -924,6 +928,9 @@ def main(argv: list[str] | None = None) -> int:
         pausas = ler_lista(backups / "vm1" / "pausas_criadas.txt")
         passos = plano_religar(g, pausas, a.sha or sha_main(), a.etapa)
         titulo = "RELIGAÇÃO O9.0" + (f" — ETAPA {a.etapa}" if a.etapa else "")
+        if a.so_estagios:
+            passos = so_estagios(passos)
+            titulo += " (só estágios)"
     if not a.executar:
         aviso = [f"aviso Telegram (DESLIGADO no ensaio; no --executar, ao começar e ao terminar): "
                  f"{AVISO_CMD.format(texto=chr(39) + '<texto>' + chr(39))}"]
@@ -995,6 +1002,11 @@ def avisar(texto: str, rodar=subprocess.run, log=print) -> bool:
     rc = rodar_cmd("vm1", AVISO_CMD.format(texto=shlex.quote(texto)), rodar)
     log(f"[aviso] {'entregue' if rc == 0 else 'NÃO entregue'}: {texto}")
     return rc == 0
+
+
+def so_estagios(passos: list[Passo]) -> list[Passo]:
+    """Repetição de uma janela: só os passos de estágio (liberar + conferir, idempotentes pela chave)."""
+    return [p for p in passos if p.estagio]
 
 
 def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, con=None, log=print,
