@@ -126,3 +126,34 @@ def test_legado_ja_guardado_nao_e_rebaixado(pg, monkeypatch, tmp_path):  # noqa:
                     "(%s,%s,%s,100,'sei_arquivo','x','texto')", (PROC, k, "t" + k))
     r, ok = _e3(nome, 1, tmp_path)
     assert ok and sorted(nav.baixados[0]) == list(range(45, 50)) and len(r.efeito["versoes"]) == 5
+
+
+def test_captura_fora_da_vm2_e_espelhada_e_conferida(tmp_path, monkeypatch):
+    """Religação O9.0 (26/11/2026): o E3 rodava no it-campo e gravava a captura no disco DELE; o E4 roda na VM-2 e não
+    achava o manifest.json (todos os jobs de texto falhavam em < 1 s). A captura fora da VM-2 é espelhada nela
+    (rsync --checksum) e conferida do outro lado (md5 do manifesto + nº de arquivos) — senão não conta como feita."""
+    out = tmp_path / "integra_1_2_2026"
+    out.mkdir()
+    (out / "manifest.json").write_text('{"docs": []}')
+    (out / "d1.pdf").write_bytes(b"%PDF")
+    import hashlib
+    md5 = hashlib.md5((out / "manifest.json").read_bytes()).hexdigest()
+    cmds = []
+
+    def rodar(argv, **k):
+        cmds.append(argv)
+        class R:
+            returncode = 0
+            stdout = f"{md5}\n2\n" if argv[0] == "ssh" else ""
+            stderr = ""
+        return R()
+    monkeypatch.setattr(C.subprocess, "run", rodar)
+    monkeypatch.setenv("JFN_E3_ESPELHO", "vm2-ts:JFN-worker/data/sei_cache")
+    r = C.espelhar(out, no="itcampo")
+    assert r["ok"] and r["destino"] == "vm2-ts:JFN-worker/data/sei_cache/integra_1_2_2026"
+    assert cmds[0][0] == "rsync" and "--checksum" in cmds[0] and cmds[1][0] == "ssh"
+    assert C.espelhar(out, no="vm2") is None                       # já está na VM-2: nada a espelhar
+    monkeypatch.setattr(C.subprocess, "run", lambda argv, **k: type("R", (), {"returncode": 0, "stdout": "x\n1\n",
+                                                                             "stderr": ""})())
+    with pytest.raises(RuntimeError, match="espelho"):
+        C.espelhar(out, no="itcampo")                                # md5 divergente: não conta como feita

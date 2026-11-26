@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -245,6 +246,35 @@ def afastar_invalidos(con, processo: str, outdir: Path) -> list[str]:
     return movidos
 
 
+NO_DO_ESPELHO = "vm2"                                    # onde a captura tem de morar (§3.5: o original fica na VM-2)
+
+
+def espelhar(outdir: Path, no: str | None) -> dict | None:
+    """Captura feita FORA da VM-2 (it-campo) é espelhada nela e conferida do outro lado — o E4 roda na VM-2 e lê dali
+    (26/11/2026: o E3 do it-campo gravava só no disco dele e todo job de texto falhava em < 1 s, «manifest.json
+    ausente»). Destino em JFN_E3_ESPELHO ("host:caminho/da/sei_cache"). Na VM-2, ou sem destino, nada a fazer (None).
+    Não conferiu (rsync falhou, md5 do manifesto ou nº de arquivos diferentes) ⇒ RuntimeError: a captura não conta."""
+    destino = os.environ.get("JFN_E3_ESPELHO")
+    if not destino or no == NO_DO_ESPELHO:
+        return None
+    host, _, base = destino.partition(":")
+    alvo = f"{base.rstrip('/')}/{outdir.name}"
+    r = subprocess.run(["rsync", "-a", "--checksum", "--timeout=120", f"{outdir}/", f"{host}:{alvo}/"],
+                       capture_output=True, text=True, timeout=900)
+    if r.returncode != 0:
+        raise RuntimeError(f"espelho da captura em {host} falhou (rsync rc={r.returncode}): {r.stderr[-300:]}")
+    md5 = hashlib.md5((outdir / "manifest.json").read_bytes()).hexdigest()
+    n = sum(1 for _ in outdir.iterdir())
+    v = subprocess.run(["ssh", "-o", "BatchMode=yes", host,
+                        f"cd {alvo} && md5sum manifest.json | cut -d' ' -f1 && ls -1A | wc -l"],
+                       capture_output=True, text=True, timeout=120)
+    lado = (v.stdout or "").split()
+    if v.returncode != 0 or lado[:2] != [md5, str(n)]:
+        raise RuntimeError(f"espelho da captura em {host} não conferiu: local md5={md5} n={n}, "
+                           f"lá {lado[:2]} (rc={v.returncode})")
+    return {"ok": True, "destino": f"{host}:{alvo}", "manifest_md5": md5, "arquivos": n}
+
+
 def capturar(con, nav, processo: str, ctx: Contexto, raiz: Path, lente: list[str]) -> dict:
     inicio = time.strftime("%Y-%m-%d %H:%M:%S%z")
     ja = A.capturados(con, processo)
@@ -255,7 +285,11 @@ def capturar(con, nav, processo: str, ctx: Contexto, raiz: Path, lente: list[str
     afastar_invalidos(con, processo, Path(raiz) / f"integra_{PI.pasta(processo)}")
     outdir = nav.capturar(processo, guardados_do_pg(con, processo), raiz)
     ap = apurar(outdir, ja, restritos_da_arvore(con, processo))
-    return gravar(con, processo, ap, ctx, outdir, inicio, lente)
+    esp = espelhar(outdir, ctx.no)              # antes de gravar: versão no PG só com o arquivo onde o E4 lê
+    ef = gravar(con, processo, ap, ctx, outdir, inicio, lente)
+    if esp:
+        ef["espelho"] = esp
+    return ef
 
 
 def _handler(payload: dict, ctx: Contexto) -> Resultado:

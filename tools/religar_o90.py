@@ -71,7 +71,8 @@ DROPIN = {"vm1": "deploy/systemd/drop-ins/jfn-fluxo@vm1.service.d/arvore.conf",
           "vm2": "deploy/vm2/jfn-fluxo@vm2.service.d/arvore.conf"}
 AMBIENTE = "deploy/fluxo/producao.env"
 PS1_ITCAMPO = "deploy/itcampo/fluxo/jfn_fluxo_boot.ps1"
-ENV_PRODUCAO = {"JFN_E3_DELTA": "1", "JFN_LEITURAS_REGISTRAR": "1", "JFN_NAVEGADOR_VAGAS": "6"}
+ENV_PRODUCAO = {"JFN_E3_DELTA": "1", "JFN_LEITURAS_REGISTRAR": "1", "JFN_NAVEGADOR_VAGAS": "6",
+                "JFN_E3_ESPELHO": "vm2-ts:JFN-worker/data/sei_cache"}
 ENV_PROIBIDA = "JFN_ASSINATURA_ESCOPO"           # autorização do dono para a assinatura: só no ensaio O8.5
 DSN_ARQ = "~/.config/jfn/pg_evidencias.env"
 # schemas dos estágios nativos (cada um idempotente) e a tabela que prova que o schema está lá (to_regclass)
