@@ -27,6 +27,7 @@ import argparse
 import json
 import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -47,6 +48,33 @@ def filas_antigas(pasta: Path = RAIZ / "data") -> dict[str, set[str]]:
             out[f"fila_antiga:{nome}"] = set()
             continue
         out[f"fila_antiga:{nome}"] = {str(x.get("sei") or "") for x in d if isinstance(x, dict) and x.get("sei")}
+    return out
+
+
+DIAS_RECONFERIR_RESTRITO = 90        # a mesma janela do sei_sweep (_DIAS_RECONFERIR_RESTRITO): a marca expira
+
+
+def restritos_confirmados(pasta: Path = None, agora: datetime | None = None) -> set[str]:
+    """Processos com RESTRITO **confirmado** (duas leituras 0-doc de processo que existe) visto há menos de 90 dias, no
+    registro do sei_sweep (data/sei_restritos.json) — regra portada (26/11/2026: na religação 14 de ~30 árvores
+    semeadas eram restritas). `RESTRITO?` (uma leitura só) volta à fila; registro ilegível = nenhum excluído."""
+    from compliance_agent.dominio import processo_id as PI
+    agora = agora or datetime.now()
+    try:
+        reg = json.loads(((pasta or RAIZ / "data") / "sei_restritos.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    out = set()
+    for e in reg.values() if isinstance(reg, dict) else []:
+        if not isinstance(e, dict) or e.get("status") != "RESTRITO":
+            continue
+        try:
+            visto = datetime.fromisoformat(str(e.get("ultima") or "").replace(" ", "T"))
+        except ValueError:
+            continue
+        k = PI.chave_processo(str(e.get("numero") or ""))
+        if k and (agora - visto).days < DIAS_RECONFERIR_RESTRITO:
+            out.add(k)
     return out
 
 
@@ -130,7 +158,8 @@ def main(argv: list[str] | None = None) -> int:
         extras = {**A.extras_locais(None), **filas_antigas()}
         if pg is not None and pg.execute("SELECT to_regclass('public.processos')").fetchone()[0]:
             extras["identidade_pg"] = {r[0] for r in pg.execute("SELECT processo FROM public.processos")}
-        excluir = ja_tem(pg)
+        restritos = restritos_confirmados()
+        excluir = ja_tem(pg) | restritos
         escolhidos = selecionar(fonte, excluir, a.teto, extras)
     finally:
         fonte.close()
