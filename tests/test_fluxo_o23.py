@@ -62,7 +62,8 @@ def test_d2_ritmo_nas_agendas_das_4_fundidas_e_estagio_em_todo_payload():
     ag = REAL.agenda_linhas()
     assert {x["payload"]["rotina"]: x["payload"]["ritmo"] for x in ag if "ritmo" in x["payload"]} == {
         "lex_execucao_fila": "lex_execucao", "sei_fichas_fila": "sei_ficha", "triagem_lote": "triagem",
-        "conferencia_opus_fila": "conferencia_opus"}
+        "conferencia_opus_fila": "conferencia_opus",
+        "automelhoria_executor": "automelhoria_executor"}   # 26/11: o executor (Opus) pela trava de ritmo
     assert all(x["payload"]["estagio"] == REAL.rotinas[x["payload"]["rotina"]].estagio for x in ag)
 
 

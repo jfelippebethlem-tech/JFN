@@ -92,7 +92,8 @@ def test_yaml_real_ritmo_e_sessao_siafe_declarados():
     g = G.carregar()
     ritmo = {rid: r.ritmo for rid, r in g.rotinas.items() if r.ritmo}
     assert ritmo == {"lex_execucao_fila": "lex_execucao", "sei_fichas_fila": "sei_ficha", "triagem_lote": "triagem",
-                     "conferencia_opus_fila": "conferencia_opus"}
+                     "conferencia_opus_fila": "conferencia_opus",
+                     "automelhoria_executor": "automelhoria_executor"}   # 26/11: o executor (Opus) pela trava de ritmo
     com_ritmo = {x["payload"]["rotina"] for x in g.agenda_linhas() if "ritmo" in x["payload"]}
     assert com_ritmo == set(ritmo)                                 # D2: as 4 fundidas levam o ritmo na agenda
     deps = {d["tipo"]: d for ds in g.grafo_planejador().values() for d in ds}
