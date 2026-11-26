@@ -1057,7 +1057,7 @@ rotinas:
   automelhoria_geral:
     estagio: E18
     descricao: Automelhoria geral (sensores → fila)
-    comando: ['{py}', tools/automelhoria_geral.py]
+    comando: ['{py}', tools/automelhoria_geral.py, --sem-remediar]
     agenda:
     - {cron: 40 */3 * * *}
     origem: [vm1-cron-automelhoria-geral-py]
