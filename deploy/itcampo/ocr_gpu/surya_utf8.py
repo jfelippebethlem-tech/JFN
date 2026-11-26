@@ -58,7 +58,7 @@ def texto_dos_ids(ids: list[int]) -> str:
     global _TK
     if _TK is None:
         _TK = _carregar_tokenizador()
-    tipo, tk = _TK
+    tipo, tk = _TK if isinstance(_TK, tuple) else ("transformers", _TK)   # _TK posto direto = tokenizador do transformers
     if tipo == "transformers":
         especiais = {int(k) for k in getattr(tk, "added_tokens_decoder", {})}
         tokens = tk.convert_ids_to_tokens(ids)
