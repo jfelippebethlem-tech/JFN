@@ -493,3 +493,29 @@ def test_fora_de_alcance_nao_bloqueia_o_estagio(con):
     con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_resumo) VALUES ('arvore', 'x', 'quarentena', %s, %s)",
                 (json.dumps({"estagio": "E2"}), "árvore vazia"))
     assert not R.conferir_estagio(con, "E2", ["a"])["ok"]
+
+
+def test_conexao_reconecta_quando_o_pg_reinicia():
+    """26/11/2026 03:04: o unattended-upgrades da VM-2 reiniciou o PG (needrestart) e a janela morreu com AdminShutdown
+    no meio da conferência do E1. As operações do religar são idempotentes: reconectar e repetir."""
+    import psycopg
+
+    class Falha:
+        def __init__(self, n):
+            self.n = n
+
+        def execute(self, *a, **k):
+            if self.n:
+                self.n -= 1
+                raise psycopg.errors.AdminShutdown("terminating connection due to administrator command")
+            return "ok"
+
+        def close(self):
+            pass
+    abertas = []
+
+    def abrir():
+        abertas.append(Falha(0))
+        return abertas[-1]
+    c = R.ConexaoResiliente(abrir, primeira=Falha(1), dormir=lambda s: None)
+    assert c.execute("SELECT 1") == "ok" and len(abertas) == 1

@@ -1046,6 +1046,43 @@ def avisar(texto: str, rodar=subprocess.run, log=print) -> bool:
     return rc == 0
 
 
+class ConexaoResiliente:
+    """Conexão do religar que sobrevive a reinício do PG (26/11/2026 03:04: o unattended-upgrades da VM-2 reiniciou o
+    PG e a janela morreu com AdminShutdown no meio do E1). Tudo que o religar executa é idempotente (SELECT, INSERT …
+    ON CONFLICT, enfileirar pela chave): na OperationalError reconecta e repete, até `tentativas` vezes."""
+
+    def __init__(self, abrir: Callable, primeira=None, tentativas: int = 12, pausa_s: float = 10.0,
+                 dormir: Callable[[float], None] = time.sleep):
+        self._abrir, self._con = abrir, primeira if primeira is not None else abrir()
+        self._tentativas, self._pausa_s, self._dormir = tentativas, pausa_s, dormir
+
+    def execute(self, *a, **k):
+        import psycopg
+        for n in range(self._tentativas):
+            try:
+                return self._con.execute(*a, **k)
+            except psycopg.OperationalError as exc:
+                if n == self._tentativas - 1:
+                    raise
+                print(f"[pg] conexão caiu ({type(exc).__name__}); reconectando ({n + 1}/{self._tentativas})",
+                      flush=True)
+                try:
+                    self._con.close()
+                except Exception as fechar:                        # noqa: BLE001 — conexão já morta
+                    print(f"[pg] fechar a conexão morta falhou ({type(fechar).__name__})", flush=True)
+                self._dormir(self._pausa_s)
+                try:
+                    self._con = self._abrir()
+                except psycopg.OperationalError as abrir_exc:      # PG ainda subindo: a volta seguinte tenta de novo
+                    print(f"[pg] reconexão falhou ({type(abrir_exc).__name__})", flush=True)
+
+    def close(self):
+        self._con.close()
+
+    def __getattr__(self, nome):
+        return getattr(self._con, nome)
+
+
 def so_estagios(passos: list[Passo]) -> list[Passo]:
     """Repetição de uma janela: só os passos de estágio (liberar + conferir, idempotentes pela chave)."""
     return [p for p in passos if p.estagio]
@@ -1059,7 +1096,7 @@ def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, 
     if not avisar(f"JFN {titulo}: começando ({len(passos)} passos). Volta: tools/religar_o90.py --desfazer", rodar, log):
         log("aviso de início NÃO entregue (sem message_id) — nada foi feito")
         return 1
-    con = con or fila.conectar()
+    con = con or ConexaoResiliente(fila.conectar)
     estagios = [p.estagio for p in passos if p.estagio]
     cmds_do = {p.estagio: p.cmds for p in passos if p.estagio and p.cmds}
     for p in passos:
