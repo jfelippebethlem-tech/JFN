@@ -637,7 +637,7 @@ rotinas:
   pipelines_slo:
     estagio: E18
     descricao: SLO dos pipelines (alerta)
-    comando: ['{py}', -m, tools.pipelines_slo, --alerta]
+    comando: ['{py}', -m, tools.pipelines_slo, --alerta, --rc-zero]   # 26/11: vermelho não é falha do job
     carregar_env: true
     agenda:
     - {cron: 7 * * * *}

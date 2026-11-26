@@ -185,7 +185,9 @@ def main() -> int:
             _incidente_vault(eventos)
         ESTADO.write_text(json.dumps({r["nome"]: r["status"] for r in res}, ensure_ascii=False))
 
-    return 1 if ruins else 0
+    # no motor (--rc-zero, religação O9.0 26/11/2026): SLO vermelho é o achado do monitor, não falha do job — rodar
+    # e registrar é o efeito; rc 1 mandava o job à quarentena e bloqueava o E18. Linha de comando: rc 1 continua.
+    return 0 if "--rc-zero" in sys.argv else (1 if ruins else 0)
 
 
 if __name__ == "__main__":
