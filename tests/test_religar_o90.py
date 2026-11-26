@@ -460,3 +460,21 @@ def test_log_do_religar_sai_na_hora_com_stdout_em_arquivo(monkeypatch, tmp_path)
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     R.main(["--avisar", "x"])
     assert (tmp_path / "log").read_text(encoding="utf-8").startswith("aviso: NÃO entregue")
+
+
+def test_e15_que_falha_recoloca_a_faixa(monkeypatch):
+    """Pré-mortem da etapa 2 (frente D, 26/11): se o comando do E15 falha depois do sed, a faixa de manutenção
+    VOLTA — nunca painel sem faixa com o estágio BLOQUEADO."""
+    rodados = []
+    monkeypatch.setattr(R, "avisar", lambda *a, **k: True)
+    monkeypatch.setattr(R, "rodar_cmd", lambda no, c, rodar: (rodados.append(c), 1 if c == "tirar-faixa" else 0)[1])
+    visto = {}
+
+    def religar(con, g, espera, so=None, log=print, apos=None, bloqueados_iniciais=None):
+        visto["E15"] = apos("E15", {})
+        return {"E15": {"ok": False}}
+    monkeypatch.setattr(R, "religar_estagios", religar)
+    passos = [R.Passo("R-E15", "E15", cmds=[("vm1", "tirar-faixa")], estagio="E15")]
+    R.executar(passos, None, 1, con=object(), log=lambda *_: None)
+    assert visto["E15"]["ok"] is False and visto["E15"]["faixa_voltou_rc"] == 0
+    assert rodados == ["tirar-faixa", R.manutencao_volta()]

@@ -1080,7 +1080,11 @@ def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, 
             rc = rodar_cmd(no, c, rodar)
             if rc != 0:
                 log(f"[R-{e}] FALHOU rc={rc} — estágio BLOQUEADO (o que depende dele não é liberado)")
-                return {"ok": False, "falhou_cmd": c[:200], "rc": rc}
+                volta = None
+                if e == "E15":                         # sem meio-estado: a faixa VOLTA (unit editada ou painel fora)
+                    volta = rodar_cmd("vm1", manutencao_volta(), rodar)
+                    log(f"[R-{e}] faixa de manutenção recolocada: rc={volta}")
+                return {"ok": False, "falhou_cmd": c[:200], "rc": rc, "faixa_voltou_rc": volta}
         return None
 
     if etapa == 2 and (porta := porta_llm(con, g)):
