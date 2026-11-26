@@ -31,9 +31,11 @@ table inet jfn_egress {
 	# Alvos da Tailnet LIBERADOS ao coletor (IP . porta). Todo o resto de 100.64.0.0/10 é recusado.
 	#   100.74.228.51:5432  PG da VM-2 (dominio/brain) — o coletor da VM-1 grava lá
 	#   100.74.228.51:2222  túnel vm1↔vm2 (rsync/ssh das entregas)
+	#   100.123.89.59:2222  túnel vm2→vm1: o origin git dos workers (deploy_worker do E17). Faltava: na religação
+	#                       O9.0 (25/11/2026) o deploy_vm2 foi à quarentena com «connection refused» (era este filtro)
 	set tailnet_v4 {
 		type ipv4_addr . inet_service
-		elements = { 100.74.228.51 . 5432, 100.74.228.51 . 2222 }
+		elements = { 100.74.228.51 . 5432, 100.74.228.51 . 2222, 100.123.89.59 . 2222 }
 	}
 	set tailnet_v6 {
 		type ipv6_addr . inet_service
