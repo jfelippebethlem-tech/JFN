@@ -84,7 +84,7 @@ estagios:
     volta:
       nos: [vm2]
     timeout_s: 3600
-    prioridade: 50
+    prioridade: 45                # 26/11: à frente do E2 (50) — no empate o E2 ganhava e o E3 ficou 2,5 h sem rodar (374 na fila)
     efeito: só os documentos novos (delta por id_documento) + versoes sha256; conferência por marcador com 0 omitido
     concorrencia: [sei_rj_ip]
     depende: [E2]

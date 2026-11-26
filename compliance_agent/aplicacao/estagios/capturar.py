@@ -315,7 +315,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return bool(c["ok"])
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["navegador"], prioridade=50, volta={"nos": ["vm2"]})
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["navegador"], prioridade=45, volta={"nos": ["vm2"]})
 
 
 def pendentes(con, limite: int = 50) -> dict:
