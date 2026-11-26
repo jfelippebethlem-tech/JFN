@@ -478,3 +478,18 @@ def test_e15_que_falha_recoloca_a_faixa(monkeypatch):
     R.executar(passos, None, 1, con=object(), log=lambda *_: None)
     assert visto["E15"]["ok"] is False and visto["E15"]["faixa_voltou_rc"] == 0
     assert rodados == ["tirar-faixa", R.manutencao_volta()]
+
+
+@precisa_pg
+def test_fora_de_alcance_nao_bloqueia_o_estagio(con):
+    """26/11/2026: o E2 ficou BLOQUEADO por 2 processos RESTRITOS à unidade (quarentena «só sai por gente»). É resultado
+    declarado do domínio (rota SIP/SeiWS do dono, P5), não falha do estágio: segue listado na quarentena."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E2', 't')")
+    _job(con, "a", "feito", estagio="E2")
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_resumo) VALUES ('arvore', 'r', 'quarentena', %s, %s)",
+                (json.dumps({"estagio": "E2"}), "[fora_de_alcance] SEI respondeu RESTRITO"))
+    r = R.conferir_estagio(con, "E2", ["a"])
+    assert r["ok"] and r["ruins"] == 0 and r["fora_de_alcance"] == 1
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_resumo) VALUES ('arvore', 'x', 'quarentena', %s, %s)",
+                (json.dumps({"estagio": "E2"}), "árvore vazia"))
+    assert not R.conferir_estagio(con, "E2", ["a"])["ok"]

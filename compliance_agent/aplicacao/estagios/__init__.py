@@ -31,6 +31,18 @@ class ErroPermanente(Exception):
     quarentena, sem gastar as tentativas."""
 
 
+MARCA_FORA_DE_ALCANCE = "[fora_de_alcance]"
+
+
+class ForaDeAlcance(ErroPermanente):
+    """Resultado DECLARADO do domínio, não falha do estágio (26/11/2026): processo RESTRITO à unidade ou em sigilo
+    integral — rota própria do dono (SIP/SeiWS, P5). Vai à quarentena (lista do dono) com a marca no texto, que a
+    conferência da religação não conta como erro do estágio."""
+
+    def __init__(self, msg: str):
+        super().__init__(f"{MARCA_FORA_DE_ALCANCE} {msg}")
+
+
 @dataclass
 class Contexto:
     no: str

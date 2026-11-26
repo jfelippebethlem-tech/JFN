@@ -134,3 +134,14 @@ def test_legado_com_mesmo_hash_e_tudo_guardado_e_sem_mudanca(pg, monkeypatch):
                     "(%s,%s,%s,10,'sei_arquivo','x')", (PROC, k, "s" + k))
     r, ok = _rodar(SEIFalso(docs), monkeypatch, nome, 1)
     assert ok and r.efeito["estado"] == A.SEM_MUDANCA and r.eventos == []
+
+
+def test_restrito_e_sigilo_sao_fora_de_alcance(monkeypatch):
+    """26/11/2026: RESTRITO/sigilo integral é resultado declarado (rota do dono), marcado para não bloquear o estágio."""
+    from compliance_agent.aplicacao.estagios import ForaDeAlcance
+    monkeypatch.setattr(A, "obter_navegador", lambda: None)
+    monkeypatch.setattr(A, "ler_arvore", lambda nav, p: {"docs": [], "restrito": "Unidade atual não possui acesso",
+                                                        "sem_resultado": False, "via": "t"})
+    with pytest.raises(ForaDeAlcance) as e:
+        A._handler({"processo": PROC}, _ctx(chave=f"arvore:{PROC}"))
+    assert str(e.value).startswith("[fora_de_alcance]") and isinstance(e.value, ErroPermanente)

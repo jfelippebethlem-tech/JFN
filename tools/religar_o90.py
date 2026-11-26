@@ -645,10 +645,13 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
     esperando = [(c, e) for c, e in con.execute(
         "SELECT chave, erro_tipo FROM jobs WHERE chave = ANY(%s) AND estado IN ('fila', 'reservado') ORDER BY chave",
         (chaves,)).fetchall()] if chaves else []
-    ruins = con.execute(
-        "SELECT count(*) FROM jobs j, liberacao l WHERE l.estagio = %s AND j.payload->>'estagio' = %s "
+    # resultado declarado do domínio (processo restrito/sigilo, ForaDeAlcance) não é erro do estágio (26/11/2026)
+    ruins, fora = con.execute(
+        "SELECT count(*) FILTER (WHERE coalesce(j.erro_resumo, '') NOT LIKE '[fora\\_de\\_alcance]%%'), "
+        "count(*) FILTER (WHERE coalesce(j.erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%') "
+        "FROM jobs j, liberacao l WHERE l.estagio = %s AND j.payload->>'estagio' = %s "
         "AND j.estado IN ('quarentena', 'falhou_efeito') AND coalesce(j.concluido_em, j.criado_em) >= l.liberado_em",
-        (estagio, estagio)).fetchone()[0]
+        (estagio, estagio)).fetchone()
     feitos = est.get("feito", 0)
     pendentes = sum(n for e, n in est.items() if e in ("fila", "reservado"))
     inteira = ruins == 0 and pendentes == 0 and feitos == len(chaves)
@@ -657,7 +660,7 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
     meia = (parcial and not inteira and ruins == 0 and feitos >= 1 and so_esperando
             and decorrido_s >= espera_parcial_s)
     r = {"estagio": estagio, "feitos": feitos, "esperados": len(chaves), "pendentes": pendentes, "ruins": ruins,
-         "ok": inteira or meia}
+         "fora_de_alcance": fora, "ok": inteira or meia}
     if parcial:
         r.update(parcial=meia, com_erro=com_erro, pendentes_chaves=[c for c, _e in esperando][:50])
     return r

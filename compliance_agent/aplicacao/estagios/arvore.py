@@ -51,7 +51,7 @@ from pathlib import Path
 from typing import Callable, Protocol
 
 from compliance_agent import evidencias as EV
-from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio
+from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagio, ForaDeAlcance
 from compliance_agent.dominio import documento_id as DI
 from compliance_agent.dominio import processo_id as PI
 from compliance_agent.fluxo.fila import Resultado
@@ -425,9 +425,9 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     lido = ler_arvore(obter_navegador(), processo)
     if not lido["docs"]:
         if lido["restrito"]:
-            raise ErroPermanente(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']})")
+            raise ForaDeAlcance(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']})")
         if lido["sem_resultado"] and lido.get("controle_positivo") is True:
-            raise ErroPermanente(f"{processo}: 'Nenhum resultado' com controle positivo na mesma sessão — invisível à "
+            raise ForaDeAlcance(f"{processo}: 'Nenhum resultado' com controle positivo na mesma sessão — invisível à "
                                  "pesquisa (sigilo integral); rota: requisição formal")
         if lido["sem_resultado"]:
             raise RuntimeError(f"{processo}: INDISPONIVEL — 'Nenhum resultado' SEM controle positivo na sessão "
