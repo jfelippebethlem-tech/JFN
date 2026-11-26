@@ -201,3 +201,15 @@ def test_sem_agrupar_mantem_um_job_por_chave(con, base):
     fila.emitir(con, "f1", "x", chave="p2")
     P.propagar_eventos(con, g.grafo_planejador(), g.contrato())
     assert sorted(r[0] for r in con.execute("SELECT chave FROM jobs")) == ["legado:rb:p1", "legado:rb:p2"]
+
+
+def test_chave_duplicada_no_yaml_e_recusada(tmp_path):
+    """Religação O9.0 (25/11/2026): `timeout_s` acrescentado numa rotina que já tinha `timeout_s: 900` mais abaixo —
+    o yaml.safe_load ficou calado com a ÚLTIMA (900) e o conserto não teve efeito. Chave repetida é erro."""
+    texto = Path(G.CAMINHO).read_text(encoding="utf-8")
+    alvo = "    comando: ['{py}', -m, tools.sei_rj_catalogo]\n"
+    assert alvo in texto
+    p = tmp_path / "fluxo.yaml"
+    p.write_text(texto.replace(alvo, alvo + "    timeout_s: 1\n"), encoding="utf-8")
+    with pytest.raises(G.ErroGrafo, match="duplicad"):
+        G.carregar(p)

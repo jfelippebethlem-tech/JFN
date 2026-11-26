@@ -707,7 +707,6 @@ rotinas:
     - {cron: 35 2 * * *}
     origem: [vm1-cron-tools-pcrj-sei-ingest]
     nos: [vm1]
-    timeout_s: 900
     efeito: {descricao: 'SEI Prefeitura: ingestão: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio (O3–O8);
         até lá: rc 0 + log sem traceback'}
   gitnexus_refresh:
@@ -1017,7 +1016,6 @@ rotinas:
     - {cron: 40 4 * * *}
     origem: [vm1-cron-tools-sei-rj-catalogo]
     nos: [vm1]
-    timeout_s: 900
     efeito: {descricao: 'Catálogo da pesquisa pública do SEI-RJ: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para
         o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   acervo_regras_e_familia:

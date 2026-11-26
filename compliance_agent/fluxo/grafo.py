@@ -654,9 +654,27 @@ def validar_dict(dados: dict) -> Grafo:
     return Grafo.model_validate(dados)
 
 
+class _CarregadorSemDuplicata(yaml.SafeLoader):
+    """safe_load que recusa chave repetida no mesmo mapa (25/11/2026: um `timeout_s` acrescentado sobre outro mais
+    abaixo ficou calado — valia o último, e o conserto não teve efeito)."""
+
+
+def _mapa_sem_duplicata(loader, node, deep=False):
+    vistas = set()
+    for k, _ in node.value:
+        chave = loader.construct_object(k, deep=deep)
+        if chave in vistas:
+            raise ErroGrafo(f"chave duplicada {chave!r} na linha {k.start_mark.line + 1} do yaml")
+        vistas.add(chave)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_CarregadorSemDuplicata.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapa_sem_duplicata)
+
+
 def carregar(caminho: Path | str | None = None) -> Grafo:
     """Lê e valida o yaml. Levanta ErroGrafo/ValidationError — nunca devolve grafo pela metade."""
-    dados = yaml.safe_load(Path(caminho or CAMINHO).read_text(encoding="utf-8")) or {}
+    dados = yaml.load(Path(caminho or CAMINHO).read_text(encoding="utf-8"), Loader=_CarregadorSemDuplicata) or {}
     return validar_dict(dados)
 
 
