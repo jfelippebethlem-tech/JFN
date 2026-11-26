@@ -84,3 +84,25 @@ def test_lock_com_nome_e_um_arquivo_a_parte_e_nao_bloqueia_o_padrao(tmp_path, mo
         assert not (tmp_path / "browser_siafe.lock").exists()   # soltou só o seu
         assert (tmp_path / "browser.lock").exists()
     assert not (tmp_path / "browser.lock").exists()
+
+
+def test_vagas_deixam_n_navegadores_e_o_seguinte_espera(monkeypatch, tmp_path):
+    """Religação O9.0 (26/11/2026): no it-campo o motor libera 6 árvores (slot `navegador` = 6), mas a trava de UM
+    navegador por máquina as enfileirava — as outras esperavam 1.800 s e estouravam (11 árvores em 30 min). Com
+    JFN_NAVEGADOR_VAGAS=N a trava aceita N navegadores; sem a variável segue 1 (painel e scripts fora do motor)."""
+    import asyncio
+    monkeypatch.setattr(recursos, "_LOCK", tmp_path / "browser.lock")
+
+    async def cenario():
+        async with recursos.browser_lock_async(espera_max=1, intervalo=0.05, vagas=2):
+            async with recursos.browser_lock_async(espera_max=1, intervalo=0.05, vagas=2):
+                try:
+                    async with recursos.browser_lock_async(espera_max=0.2, intervalo=0.05, vagas=2):
+                        return "terceiro entrou"
+                except TimeoutError:
+                    return "terceiro esperou"
+    assert asyncio.run(cenario()) == "terceiro esperou"
+    monkeypatch.setenv("JFN_NAVEGADOR_VAGAS", "3")
+    assert recursos.vagas_navegador() == 3
+    monkeypatch.delenv("JFN_NAVEGADOR_VAGAS")
+    assert recursos.vagas_navegador() == 1

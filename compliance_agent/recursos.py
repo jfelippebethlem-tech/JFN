@@ -137,14 +137,32 @@ def browser_lock(*, espera_max: float = 600.0, idade_max: float = 1800.0, interv
         _liberar(arq)
 
 
+def vagas_navegador() -> int:
+    """Quantos navegadores da mesma família a máquina aceita ao mesmo tempo. Padrão 1 (painel, scripts fora do motor,
+    VM-1 de 2 vCPU). O motor define JFN_NAVEGADOR_VAGAS no ambiente de produção (deploy/fluxo/producao.env): quem
+    limita de verdade é o slot `navegador` do nó (it-campo 6, VM-2 1, VM-1 0). Religação O9.0, 26/11/2026: com a trava
+    de 1 o it-campo enfileirava as 6 árvores que o motor liberava (as outras estouravam 1.800 s de espera)."""
+    try:
+        return max(1, int(os.environ.get("JFN_NAVEGADOR_VAGAS", "1")))
+    except ValueError:
+        return 1
+
+
 @asynccontextmanager
-async def browser_lock_async(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0, nome: str | None = None):
-    """Versão ASSÍNCRONA (não bloqueia o event loop) — p/ o reader SEI, que roda no server async."""
-    arq = _arquivo_lock(nome)
+async def browser_lock_async(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0,
+                             nome: str | None = None, vagas: int | None = None):
+    """Versão ASSÍNCRONA (não bloqueia o event loop) — p/ o reader SEI, que roda no server async. `vagas` = N
+    arquivos de trava da família (browser.lock, browser.lock.2 … .N): pega o primeiro livre."""
+    base = _arquivo_lock(nome)
+    n = vagas if vagas is not None else vagas_navegador()
+    arqs = [base] + [base.with_name(f"{base.name}.{i}") for i in range(2, n + 1)]
     fim = time.monotonic() + espera_max
-    while not _tentar_adquirir(idade_max, arq):
+    while True:
+        arq = next((a for a in arqs if _tentar_adquirir(idade_max, a)), None)
+        if arq is not None:
+            break
         if time.monotonic() >= fim:
-            raise TimeoutError(f"browser_lock_async: não adquiriu em {espera_max}s (outro browser ativo)")
+            raise TimeoutError(f"browser_lock_async: não adquiriu em {espera_max}s ({n} vaga(s) ocupada(s))")
         await asyncio.sleep(intervalo)
     try:
         yield
