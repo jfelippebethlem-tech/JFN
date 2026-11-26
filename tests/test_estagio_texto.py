@@ -4,6 +4,7 @@ versão de texto + lateral no PG (esquema temporário), efeito que relê o PDF e
 idempotência pela entrada e o binário achado pela aquisição do E3 (sha256 conferido). PDFs gerados aqui (PyMuPDF)."""
 import json
 import uuid
+from pathlib import Path
 
 import pytest
 import yaml
@@ -187,3 +188,32 @@ def test_estagio_de_baixo_passa_na_frente_do_texto():
     from compliance_agent.aplicacao.estagios import estagio_de
     p = {t: estagio_de(t).prioridade for t in ("texto", "ocr", "confirmar_ocr")}
     assert p["confirmar_ocr"] < p["texto"] and p["ocr"] < p["texto"], p
+
+
+def test_lateral_fora_da_vm2_e_espelhado_e_o_que_falta_e_trazido(tmp_path, monkeypatch):
+    """26/11/2026: o E5 rodava no it-campo e gravava o lateral do OCR lá; o E6 na VM-2 caía em quarentena «sem lateral
+    do E5». O lateral gravado fora da VM-2 é espelhado nela; o que falta no nó é trazido dela."""
+    from compliance_agent.aplicacao.estagios import texto as T
+    monkeypatch.setenv(T.ENV_RAIZ_TEXTO, str(tmp_path / "sei_texto"))
+    monkeypatch.setenv("JFN_TEXTO_ESPELHO", "vm2-ts:JFN-worker/data/sei_texto")
+    chamados = []
+
+    def rodar(argv, **k):
+        chamados.append(argv)
+        if argv[0] == "rsync" and argv[-1].endswith(".json") and not argv[-1].startswith("vm2-ts:"):
+            Path(argv[-1]).parent.mkdir(parents=True, exist_ok=True)
+            Path(argv[-1]).write_text('{"ok": 1}')
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+    monkeypatch.setattr(T.subprocess, "run", rodar)
+    p = T.caminho_lateral("1/2/2026", "sei:9", "a" * 64, "e5")
+    monkeypatch.setenv("JFN_NO", "itcampo")
+    T.gravar_lateral(p, {"x": 1})
+    assert chamados[-1][0] == "rsync" and chamados[-1][-1].startswith("vm2-ts:JFN-worker/data/sei_texto/")
+    chamados.clear()
+    monkeypatch.setenv("JFN_NO", "vm2")
+    T.gravar_lateral(p, {"x": 2})
+    assert chamados == []                                            # na própria VM-2: nada a espelhar
+    falta = T.caminho_lateral("1/2/2026", "sei:10", "b" * 64, "e5")
+    assert T.ler_lateral(falta) is None                               # na VM-2 não há de onde trazer
+    monkeypatch.setenv("JFN_NO", "itcampo")
+    assert T.ler_lateral(falta)[0] == {"ok": 1}                       # fora dela: trazido da VM-2

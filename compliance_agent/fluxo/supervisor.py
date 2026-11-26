@@ -246,6 +246,7 @@ class Supervisor:
         env = dict(os.environ)
         env[ENV_DSN] = self.dsn
         env[fila.ENV_ESQUEMA] = self.esquema
+        env["JFN_NO"] = self.no                  # o filho sabe em que nó roda (lateral/captura fora da VM-2, 26/11/2026)
         env["PYTHONPATH"] = os.pathsep.join(p for p in (str(RAIZ), env.get("PYTHONPATH", "")) if p)
         return env
 

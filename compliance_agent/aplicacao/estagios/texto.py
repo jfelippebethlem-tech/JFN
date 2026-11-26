@@ -113,13 +113,38 @@ def caminho_lateral(processo: str, doc_id: str, sha_binario: str, etapa: str, ra
         f"{_RX_SEGURO.sub('_', doc_id)}.{sha_binario[:16]}.{etapa}.json"
 
 
+NO_CANONICO = "vm2"                 # onde o texto mora (§3.5); fora dela o lateral é espelhado / trazido
+
+
+def _espelho_texto(p: Path) -> tuple[str, str] | None:
+    """(host, caminho remoto) do lateral na VM-2, ou None se não se aplica (sem JFN_TEXTO_ESPELHO, ou `p` fora da
+    raiz do texto). 26/11/2026: o E5 rodava no it-campo e o E6 na VM-2 caía em quarentena «sem lateral do E5»."""
+    destino = os.environ.get("JFN_TEXTO_ESPELHO")
+    if not destino:
+        return None
+    try:
+        rel = p.resolve().relative_to(raiz_texto().resolve())
+    except ValueError:
+        return None
+    host, _, base = destino.partition(":")
+    return host, f"{base.rstrip('/')}/{rel.as_posix()}"
+
+
 def gravar_lateral(p: Path, dados: dict) -> str:
-    """Grava atômico (tmp + rename) e devolve o sha256 do que ficou no disco."""
+    """Grava atômico (tmp + rename) e devolve o sha256 do que ficou no disco. Fora da VM-2 (JFN_NO), espelha o lateral
+    nela — o estágio seguinte pode rodar lá; sem espelho conferido (rsync falhou) não conta (RuntimeError)."""
     p.parent.mkdir(parents=True, exist_ok=True)
     corpo = json.dumps(dados, ensure_ascii=False, sort_keys=True).encode("utf-8")
     tmp = p.with_name(p.name + f".tmp{os.getpid()}")
     tmp.write_bytes(corpo)
     os.replace(tmp, p)
+    alvo = _espelho_texto(p) if os.environ.get("JFN_NO") not in (None, NO_CANONICO) else None
+    if alvo:
+        r = subprocess.run(["rsync", "--checksum", "--mkpath", "--timeout=60", str(p), f"{alvo[0]}:{alvo[1]}"],
+                           capture_output=True, text=True, timeout=180)
+        if r.returncode != 0:
+            raise RuntimeError(f"lateral {p.name} não espelhado em {alvo[0]} (rsync rc={r.returncode}): "
+                               f"{r.stderr[-200:]}")
     return sha256_bytes(corpo)
 
 
@@ -127,7 +152,16 @@ def ler_lateral(p: Path) -> tuple[dict, str] | None:
     try:
         corpo = p.read_bytes()
     except OSError:
-        return None
+        alvo = _espelho_texto(p) if os.environ.get("JFN_NO") != NO_CANONICO else None
+        if not alvo:
+            return None
+        p.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["rsync", "--checksum", "--timeout=60", f"{alvo[0]}:{alvo[1]}", str(p)],
+                       capture_output=True, text=True, timeout=180)
+        try:
+            corpo = p.read_bytes()
+        except OSError:
+            return None
     try:
         return json.loads(corpo.decode("utf-8")), sha256_bytes(corpo)
     except ValueError:
