@@ -59,10 +59,22 @@ FOLGA_REL = 0.2       # …mas no máximo 20% da linha: logo após a virada a li
                       # fixa de 5 pontos punha o motor em economia já com 0,3% usado (21/11)
 VALIDADE_S = 2 * 3600
 REAVALIAR_S = 15 * 60
+# 26/11/2026: o endpoint de uso devolve 429 (retry-after 300 s) com ~5 chamadas em poucos segundos; chamar de novo
+# dentro da espera renova o bloqueio. O 429 grava até quando esperar e `medir` não chama o endpoint antes disso.
+ESPERA_ARQ = "claude_assinatura_espera.json"
+RETRY_PADRAO_S = 300
+RETRY_MAX_S = 3600
 
 
 def arquivo() -> Path:
     return arq.dados() / "claude_assinatura_uso.json"
+
+
+def _retry_s(e: urllib.error.HTTPError) -> float:
+    try:
+        return min(RETRY_MAX_S, max(1.0, float((e.headers or {}).get("retry-after") or RETRY_PADRAO_S)))
+    except (TypeError, ValueError):
+        return RETRY_PADRAO_S
 
 
 def _iso(ts: float) -> str:
@@ -154,7 +166,17 @@ def medir(buscar=None) -> dict:
     """Mede, grava o último + histórico e devolve a classificação. Falha de rede ⇒ mantém o último (e diz)."""
     agora = time.time()
     try:
+        ate = float(arq.ler_json(arq.dados() / ESPERA_ARQ).get("ate") or 0)
+    except (TypeError, ValueError):
+        ate = 0.0
+    if agora < ate:
+        return dict(nivel(agora), erro="HTTPError 429 (esperando o retry-after)", retry_ate=_iso(ate))
+    try:
         m = extrair((buscar or _buscar)(), agora)
+    except urllib.error.HTTPError as e:                 # antes do OSError (subclasse): o código decide
+        if e.code == 429:
+            arq.gravar_json(arq.dados() / ESPERA_ARQ, {"ate": agora + _retry_s(e), "em": _iso(agora)})
+        return dict(nivel(agora), erro=f"HTTPError {e.code}")
     except (OSError, ValueError, RuntimeError, urllib.error.URLError) as e:
         return dict(nivel(agora), erro=type(e).__name__)
     c = classificar(m, agora)

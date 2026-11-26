@@ -385,3 +385,78 @@ def test_so_estagios_pula_os_passos_de_maquina():
     passos = [R.Passo("R0", "pré"), R.Passo("R4", "nós"), R.Passo("R-E17", "E17", estagio="E17"),
               R.Passo("R-E1", "E1", estagio="E1")]
     assert [p.id for p in R.so_estagios(passos)] == ["R-E17", "R-E1"]
+
+
+# ── etapa 2: estágios de LLM, porta do ritmo e log na hora (frente D, 26/11/2026) ─────────────────────────────
+def test_estagios_de_llm_da_etapa_2():
+    """LLM = o estágio pede `llm` ou alguma rotina da 1ª volta pede (E9 vinculo_ob_modelo, E10 cruzador/vm2_sweeps)."""
+    assert {e for e in R.ETAPAS[2] if R.estagio_de_llm(REAL, e)} == {"E8", "E9", "E10", "E11", "E12", "E13"}
+
+
+def _job(con, chave, estado, estagio="E8", erro=None):
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_tipo, concluido_em) VALUES (%s, %s, %s, %s, %s, "
+                "CASE WHEN %s = 'feito' THEN now() END)", ("t", chave, estado, json.dumps({"estagio": estagio}),
+                                                           erro, estado))
+
+
+@precisa_pg
+def test_llm_aceita_primeira_volta_parcial_sem_erro_depois_da_espera_minima(con):
+    """26/11/2026: na etapa 2 a 1ª volta INTEIRA não cabe em 7.200 s (E8 com dezenas de fatos retidos, ~58 fatias por
+    processo; E10 com ~20.000 s de cpu_pesado em 1 slot da VM-1) — o estágio virava BLOQUEADO e travava E9–E16."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E8', 't')")
+    _job(con, "a", "feito")
+    _job(con, "b", "fila")
+    _job(con, "c", "reservado")
+    ch = ["a", "b", "c"]
+    assert not R.conferir_estagio(con, "E8", ch)["ok"]                                       # não-LLM: inteira
+    assert not R.conferir_estagio(con, "E8", ch, parcial=True, decorrido_s=10)["ok"]         # cedo demais
+    r = R.conferir_estagio(con, "E8", ch, parcial=True, decorrido_s=R.ESPERA_PARCIAL_S)
+    assert r["ok"] and r["parcial"] and sorted(r["pendentes_chaves"]) == ["b", "c"]
+    _job(con, "d", "fila", erro="falhou")                                                    # voltou à fila com erro
+    assert not R.conferir_estagio(con, "E8", ch + ["d"], parcial=True, decorrido_s=1e9)["ok"]
+    _job(con, "e", "fila", erro="adiado")                                                    # SemCota/ritmo: espera
+    assert R.conferir_estagio(con, "E8", ch + ["e"], parcial=True, decorrido_s=1e9)["ok"]
+
+
+@precisa_pg
+def test_llm_parcial_exige_um_feito_e_zero_quarentena(con):
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E8', 't')")
+    _job(con, "b", "fila")
+    assert not R.conferir_estagio(con, "E8", ["b"], parcial=True, decorrido_s=1e9)["ok"]     # nada provado
+    _job(con, "a", "feito")
+    _job(con, "q", "quarentena")
+    assert not R.conferir_estagio(con, "E8", ["a", "b"], parcial=True, decorrido_s=1e9)["ok"]
+
+
+@precisa_pg
+def test_esperar_llm_decide_na_espera_minima_sem_estourar_o_prazo(con):
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E8', 't')")
+    _job(con, "a", "feito")
+    _job(con, "b", "fila")
+    t = [0.0]
+    r = R.esperar_estagio(con, "E8", ["a", "b"], 7200, poll_s=60, dormir=lambda s: t.__setitem__(0, t[0] + s),
+                          relogio=lambda: t[0], parcial=True)
+    assert r["ok"] and r["parcial"] and not r["esgotou"] and t[0] == R.ESPERA_PARCIAL_S
+
+
+def test_etapa_2_nao_libera_llm_com_a_porta_do_ritmo_fechada(monkeypatch):
+    """Logo depois da virada a medição ainda é a de antes (97% → contido) ou está velha: liberar o E8 assim queimava
+    7.200 s por estágio de LLM e (com um legado que roda pela cascata) podia até 'conferir' sem nenhuma leitura."""
+    chamou = []
+    monkeypatch.setattr(R, "avisar", lambda *a, **k: True)
+    monkeypatch.setattr(R, "porta_llm", lambda con, g: "porta fechada: medição da assinatura velha")
+    monkeypatch.setattr(R, "religar_estagios", lambda *a, **k: chamou.append(1) or {})
+    passos = [x for x in R.plano_religar(REAL, [], None, 2) if x.estagio]
+    assert R.executar(passos, REAL, 0, con=object(), log=lambda *a: 0, etapa=2) == 1
+    assert chamou == []
+
+
+def test_log_do_religar_sai_na_hora_com_stdout_em_arquivo(monkeypatch, tmp_path):
+    """Janela 1: `> arquivo` só mostrava os [E…] no fim (stdout em bloco)."""
+    import io
+    f = io.TextIOWrapper(io.FileIO(str(tmp_path / "log"), "w"), encoding="utf-8")
+    assert not f.line_buffering
+    monkeypatch.setattr("sys.stdout", f)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    R.main(["--avisar", "x"])
+    assert (tmp_path / "log").read_text(encoding="utf-8").startswith("aviso: NÃO entregue")

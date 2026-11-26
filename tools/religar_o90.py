@@ -90,6 +90,12 @@ VIRADA_ASSINATURA = "2026-11-28T19:00:00-03:00"
 MISTOS_PARAR = "bash ~/o36/sombra_parar.sh"          # OCR dos mistos (frente O3.6) — para antes do wsl --shutdown
 MISTOS_TAREFA = "JFN-O36-Mistos"
 ESPERA_MAX_S = 7200
+# 26/11/2026 (pré-mortem da etapa 2): estágio de LLM não cabe INTEIRO no prazo — o E8 recebe os fatos retidos da
+# janela 1 (mediana de 58 fatias por processo, 1 job da assinatura por nó) e o E10 tem ~20.000 s de cpu_pesado num
+# slot só da VM-1. Neles a 1ª volta é conferida PARCIAL: depois desta espera mínima, ≥ 1 job feito, 0 quarentena/
+# falhou_efeito e o resto só esperando (fila/reservado sem erro, ou `adiado` pelo ritmo). Os pendentes vão no rótulo
+# da métrica para as 48 h de observação. Estágio sem LLM continua exigindo a volta inteira.
+ESPERA_PARCIAL_S = 1800
 POLL_S = 30
 POR = "tools/religar_o90"
 PAINEL = "http://127.0.0.1:8000/"
@@ -474,7 +480,10 @@ def plano_religar(g, pausas: list[str], sha: str | None = None, etapa: int | Non
                            f"-- primeira volta: {len(pv)} job(s) legado:<rotina>:religar:{PARADA}"
                            + (f" (desde={PARADA})" if e == "E1" else "") + f": {', '.join(pv) or '—'}"],
                       efeito=f"{len(pv)} job(s) da primeira volta + os jobs do {e} retidos na fila até a liberação, "
-                             f"todos em feito, e 0 quarentena/falhou_efeito do {e} desde a liberação (até "
+                             + (f"≥ 1 em feito e o resto só esperando (sem erro) depois de {ESPERA_PARCIAL_S // 60} "
+                                "min — estágio de LLM: volta PARCIAL, pendentes no rótulo da métrica para as 48 h —"
+                                if estagio_de_llm(g, e) else "todos em feito,")
+                             + f" e 0 quarentena/falhou_efeito do {e} desde a liberação (até "
                              f"{ESPERA_MAX_S // 60} min); metricas religacao_estagio=1",
                       nota=(f"NATIVO `{nat['tipo']}` liberado (entrada: "
                             + (", ".join(sorted(nat["entradas"])) or "—")
@@ -620,30 +629,51 @@ def liberar_estagio(con, g, estagio: str, desde: str | None = None) -> list[str]
     return chaves + [c for c in retidos if c not in chaves]
 
 
-def conferir_estagio(con, estagio: str, chaves: list[str]) -> dict:
+def estagio_de_llm(g, estagio: str) -> bool:
+    """O estágio pede `llm` ou alguma rotina da primeira volta pede (o ritmo da assinatura segura o passo)."""
+    return "llm" in g.estagios[estagio].recursos or any("llm" in g.contrato_da_rotina(r)["recursos"]
+                                                        for r in primeira_volta(g, estagio))
+
+
+def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False, decorrido_s: float = 0.0,
+                     espera_parcial_s: float = ESPERA_PARCIAL_S) -> dict:
     """Efeito do estágio: primeira volta inteira em `feito` e nada do estágio em quarentena/falhou_efeito desde a
-    liberação. `pendentes` > 0 = ainda não dá para decidir."""
+    liberação. `pendentes` > 0 = ainda não dá para decidir. `parcial` (estágio de LLM): passada a espera mínima,
+    vale ≥ 1 feito com o resto só esperando, sem erro (ESPERA_PARCIAL_S)."""
     est = dict(con.execute("SELECT estado, count(*) FROM jobs WHERE chave = ANY(%s) GROUP BY estado",
                            (chaves,)).fetchall()) if chaves else {}
+    esperando = [(c, e) for c, e in con.execute(
+        "SELECT chave, erro_tipo FROM jobs WHERE chave = ANY(%s) AND estado IN ('fila', 'reservado') ORDER BY chave",
+        (chaves,)).fetchall()] if chaves else []
     ruins = con.execute(
         "SELECT count(*) FROM jobs j, liberacao l WHERE l.estagio = %s AND j.payload->>'estagio' = %s "
         "AND j.estado IN ('quarentena', 'falhou_efeito') AND coalesce(j.concluido_em, j.criado_em) >= l.liberado_em",
         (estagio, estagio)).fetchone()[0]
     feitos = est.get("feito", 0)
     pendentes = sum(n for e, n in est.items() if e in ("fila", "reservado"))
-    return {"estagio": estagio, "feitos": feitos, "esperados": len(chaves), "pendentes": pendentes, "ruins": ruins,
-            "ok": ruins == 0 and pendentes == 0 and feitos == len(chaves)}
+    inteira = ruins == 0 and pendentes == 0 and feitos == len(chaves)
+    com_erro = sum(1 for _c, e in esperando if e not in (None, "adiado"))
+    so_esperando = feitos + pendentes == len(chaves) and com_erro == 0
+    meia = (parcial and not inteira and ruins == 0 and feitos >= 1 and so_esperando
+            and decorrido_s >= espera_parcial_s)
+    r = {"estagio": estagio, "feitos": feitos, "esperados": len(chaves), "pendentes": pendentes, "ruins": ruins,
+         "ok": inteira or meia}
+    if parcial:
+        r.update(parcial=meia, com_erro=com_erro, pendentes_chaves=[c for c, _e in esperando][:50])
+    return r
 
 
 def esperar_estagio(con, estagio: str, chaves: list[str], espera_max_s: float = ESPERA_MAX_S,
                     poll_s: float = POLL_S, dormir: Callable[[float], None] = time.sleep,
-                    relogio: Callable[[], float] = time.monotonic) -> dict:
+                    relogio: Callable[[], float] = time.monotonic, parcial: bool = False,
+                    espera_parcial_s: float = ESPERA_PARCIAL_S) -> dict:
     """Espera a decisão (o script é a janela da religação, com o dono olhando — não um laço residente)."""
-    fim = relogio() + espera_max_s
+    ini = relogio()
+    fim = ini + espera_max_s
     while True:
-        r = conferir_estagio(con, estagio, chaves)
-        if r["ruins"] or r["pendentes"] == 0 or relogio() >= fim:
-            r["esgotou"] = r["pendentes"] > 0          # passou do teto ainda pendente = BLOQUEADO (ok já é False)
+        r = conferir_estagio(con, estagio, chaves, parcial, relogio() - ini, espera_parcial_s)
+        if r["ok"] or r["ruins"] or r["pendentes"] == 0 or relogio() >= fim:
+            r["esgotou"] = r["pendentes"] > 0 and not r["ok"]   # passou do teto ainda pendente = BLOQUEADO
             return r
         dormir(poll_s)
 
@@ -671,7 +701,7 @@ def religar_estagios(con, g, espera_max_s: float = ESPERA_MAX_S, so: list[str] |
             continue
         chaves = liberar_estagio(con, g, e, PARADA if e == "E1" else None)
         log(f"[{e}] liberado; primeira volta: {len(chaves)} job(s)")
-        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir)
+        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir, parcial=estagio_de_llm(g, e))
         if r["ok"] and apos is not None:
             extra = apos(e, r)
             if extra:
@@ -900,6 +930,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--avisar", metavar="TEXTO", help="manda TEXTO ao Telegram (env TELEGRAM_BOT_TOKEN/CHAT_ID); "
                                                      "rc 0 só com message_id")
     a = ap.parse_args(argv)
+    for f in (sys.stdout, sys.stderr):                 # janela 1: `> arquivo` só mostrava os [E…] no fim
+        if hasattr(f, "reconfigure"):
+            f.reconfigure(line_buffering=True)
     if a.avisar:
         mid = avisar_telegram(a.avisar)
         print(f"aviso: message_id={mid}" if mid else "aviso: NÃO entregue (sem message_id)")
@@ -959,6 +992,12 @@ def main(argv: list[str] | None = None) -> int:
             print("recusado: pré-condição aberta — " + "; ".join(abertas), file=sys.stderr)
             return 2
     return executar(passos, g, a.espera_max_s, titulo=titulo, etapa=a.etapa)
+
+
+def porta_llm(con, g) -> str | None:
+    """O que o supervisor leria agora para o E8 (fluxo/ritmo.py: medição no PG, ausente/velha = fechada)."""
+    from compliance_agent.fluxo import ritmo
+    return ritmo.motivo(con, g.estagios["E8"].ritmo)
 
 
 def virou_assinatura(agora=None) -> bool:
@@ -1044,6 +1083,10 @@ def executar(passos: list[Passo], g, espera_max_s: float, rodar=subprocess.run, 
                 return {"ok": False, "falhou_cmd": c[:200], "rc": rc}
         return None
 
+    if etapa == 2 and (porta := porta_llm(con, g)):
+        log(f"[etapa 2] porta da assinatura FECHADA — nada liberado: {porta}")
+        avisar(f"JFN {titulo}: PAROU antes do E8 — {porta[:200]}. Repetir com --so-estagios quando abrir", rodar, log)
+        return 1
     ini = bloqueados_da_etapa1(con) if etapa == 2 else set()
     if ini:
         log(f"[etapa 2] da etapa 1 sem efeito conferido (BLOQUEADOS): {sorted(ini)}")

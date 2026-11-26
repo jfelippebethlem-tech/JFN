@@ -122,3 +122,35 @@ def test_logo_apos_a_virada_a_faixa_de_economia_e_proporcional():
     assert R.classificar(m(1), agora)["nivel"] == "normal"
     assert R.classificar(m(ln - 0.3), agora)["nivel"] == "economia"
     assert R.classificar(m(ln + 0.5), agora)["nivel"] == "contido"
+
+
+def test_429_respeita_o_retry_after_e_nao_renova_o_bloqueio(_dados, monkeypatch):
+    """26/11/2026 (pré-mortem O9.0 etapa 2): o HTTPError da medição na VM-2 era 429 do `api/oauth/usage` (medido: 5
+    chamadas em 5 s → 429 com retry-after 300). O ensaio media a cada ~2 s (antes/depois de cada job): cada nova
+    tentativa caía dentro dos 300 s e o bloqueio nunca vencia — a porta do ritmo ficou fechada e 32 conferências do
+    E12 foram adiadas. Agora o 429 grava até quando esperar e ninguém no nó chama o endpoint antes disso."""
+    import email.message
+    import urllib.error
+    chamadas = []
+
+    def limitado():
+        chamadas.append(1)
+        h = email.message.Message()
+        h["retry-after"] = "300"
+        raise urllib.error.HTTPError(R.URL, 429, "Too Many Requests", h, None)
+    agora = [1_000_000.0]
+    monkeypatch.setattr(R.time, "time", lambda: agora[0])
+    assert R.medir(limitado)["erro"] == "HTTPError 429"
+    agora[0] += 120
+    r = R.medir(lambda: chamadas.append(1) or _bruto(10.0))
+    assert len(chamadas) == 1 and r["erro"].startswith("HTTPError 429") and r["retry_ate"]   # não chamou
+    agora[0] += 181
+    assert "erro" not in R.medir(lambda: chamadas.append(1) or _bruto(10.0)) and len(chamadas) == 2
+
+
+def test_http_erro_diz_o_codigo(_dados):
+    import urllib.error
+
+    def negado():
+        raise urllib.error.HTTPError(R.URL, 401, "Unauthorized", {}, None)
+    assert R.medir(negado)["erro"] == "HTTPError 401"
