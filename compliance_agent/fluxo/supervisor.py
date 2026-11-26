@@ -439,7 +439,7 @@ class Supervisor:
         self._hash_grafo = h
         r: dict = {"recarregado": True}
         if self._lider if sincronizar is None else sincronizar:
-            r["agenda"] = planejador.sincronizar_agenda(self.con, g.agenda_linhas())
+            r["agenda"] = planejador.sincronizar_agenda(self.con, g.agenda_linhas() + g.agenda_nativa())
         log.info("yaml do fluxo recarregado a quente: %s", r)
         return r
 

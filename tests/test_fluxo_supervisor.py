@@ -188,7 +188,9 @@ def test_yaml_mudado_recarrega_a_quente_e_ressincroniza_a_agenda(con, esquema_tm
     sup = S.Supervisor(no="vm1", dsn=DSN, esquema=esquema_tmp, isolamento="subprocesso",
                        chave_lideranca=chave_lock(), medir=lambda: governador.Medida())
     try:
-        PL.sincronizar_agenda(sup.con, grafo_mod.carregar(arq).agenda_linhas())
+        g0 = grafo_mod.carregar(arq)
+        PL.sincronizar_agenda(sup.con, g0.agenda_linhas() + g0.agenda_nativa())
+        sup.con.execute("UPDATE agenda SET ativo = true")
         assert sup.recarregar_grafo_se_mudou() is None                         # nada mudou
         texto = arq.read_text(encoding="utf-8")
         arq.write_text(texto.replace("timeout_s: 2400 ", "timeout_s: 2401 ", 1), encoding="utf-8")
@@ -197,6 +199,9 @@ def test_yaml_mudado_recarrega_a_quente_e_ressincroniza_a_agenda(con, esquema_tm
         t = con.execute(f'SELECT payload->>\'timeout_s\' FROM "{esquema_tmp}".agenda '
                         "WHERE payload->>'rotina' = 'sei_rj_catalogo'").fetchone()[0]
         assert t == "2461"
+        # 26/11: a recarga desativava as agendas dos estágios NATIVOS (e18_observar_*, e17_*) — fora de agenda_linhas()
+        assert r["agenda"]["desativadas"] == 0
+        assert con.execute(f'SELECT bool_and(ativo) FROM "{esquema_tmp}".agenda').fetchone()[0]
         arq.write_text("isto: [não é yaml válido", encoding="utf-8")                # inválido: mantém o anterior
         assert sup.recarregar_grafo_se_mudou()["erro"]
         assert sup.grafo                                                        # o grafo anterior segue em uso
