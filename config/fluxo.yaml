@@ -118,12 +118,12 @@ estagios:
   E6:
     tipo: confirmar_ocr
     nome: Confirmar número do OCR
-    recursos: [cpu_leve]
+    recursos: [cpu_pesado]        # 26/11: rasteriza páginas (850 MB > teto 1G do cpu_leve) — o governador matava
     nos: [vm2]
     volta:
       nos: [vm1]
     timeout_s: 3600
-    prioridade: 60
+    prioridade: 55                # 26/11: à frente do E4 (60), senão o E6 esperava atrás de 900 textos
     efeito: 'número do OCR por IA confirmado (nível A: SIAFE, código de barras ou leitura independente) ou marcado a_conferir'
     depende: [E5]
     sem_itcampo: VM-2

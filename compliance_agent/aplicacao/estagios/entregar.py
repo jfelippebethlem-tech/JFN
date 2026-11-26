@@ -889,7 +889,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return efeito_ok(c)
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=60)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=35)
 
 
 # ══ 10. CLI ═════════════════════════════════════════════════════════════════════════════════════════════════════

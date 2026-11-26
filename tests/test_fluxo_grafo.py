@@ -221,3 +221,25 @@ def test_rotina_sem_dependente_e_terminal_tambem_no_vocabulario_antigo(real):
     fim da cadeia nos dois vocabulários."""
     t = real.terminais()
     assert "ob_reemitida/concluido" in t and "ob_reemitida/mudou" in t
+
+
+def test_estagio_do_codigo_bate_com_o_yaml():
+    """26/11/2026: recursos/prioridade do estágio existiam em DUAS cópias — `ESTAGIO` no código e `estagios:` do
+    config/fluxo.yaml — e o motor só lê o yaml. Mudei o E6 para cpu_pesado/55 no código e nada mudou: o governador
+    seguiu matando o job (cpu_leve, teto 1G) até mandá-lo à quarentena. Cópia que diverge é proibida."""
+    import importlib
+    import pkgutil
+
+    import compliance_agent.aplicacao.estagios as E
+    g = G.carregar()
+    ct = g.contrato()
+    divergem = []
+    for m in pkgutil.iter_modules(E.__path__):
+        est = getattr(importlib.import_module(f"{E.__name__}.{m.name}"), "ESTAGIO", None)
+        if est is None or m.name not in ct:
+            continue
+        c = ct[m.name]
+        if list(est.recursos or []) != list(c.get("recursos") or []) or est.prioridade != c.get("prioridade"):
+            divergem.append(f"{m.name}: código {est.recursos} p{est.prioridade} × yaml {c.get('recursos')} "
+                            f"p{c.get('prioridade')}")
+    assert not divergem, divergem

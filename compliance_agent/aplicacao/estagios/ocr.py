@@ -747,7 +747,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return bool(c["ok"])
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado"], prioridade=55,
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["gpu"], prioridade=55,
                   volta={"nos": ["vm2"], "nota": "GPU (Surya) no it-campo; sem ele, RapidOCR na CPU da VM-2 (§3.5 b)"})
 NOS = ["itcampo"]                                  # nó preferido do job (payload.nos); a volta acima é a VM-2
 

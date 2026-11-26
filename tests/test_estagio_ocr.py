@@ -84,7 +84,7 @@ def test_escolha_do_executor_e_volta_cpu(monkeypatch):
     assert isinstance(p, O.ExecutorCPU) and isinstance(s, O.ExecutorTesseract)
     monkeypatch.setenv(O.ENV_EXECUTOR, "cpu")                          # it-campo forçado à CPU (ensaio)
     assert isinstance(O.escolher("itcampo")[0], O.ExecutorCPU)
-    assert estagio_de("ocr:x") is O.ESTAGIO and O.ESTAGIO.recursos == ["cpu_pesado"]
+    assert estagio_de("ocr:x") is O.ESTAGIO and O.ESTAGIO.recursos == ["gpu"]  # = estagios.E5 do yaml (a volta à CPU é do yaml)
     assert O.ESTAGIO.volta["nos"] == ["vm2"] and O.NOS == ["itcampo"]
 
 
