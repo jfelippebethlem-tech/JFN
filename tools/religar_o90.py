@@ -482,7 +482,7 @@ def plano_religar(g, pausas: list[str], sha: str | None = None, etapa: int | Non
                       efeito=f"{len(pv)} job(s) da primeira volta + os jobs do {e} retidos na fila até a liberação, "
                              + (f"≥ 1 em feito e o resto só esperando (sem erro) depois de {ESPERA_PARCIAL_S // 60} "
                                 "min — estágio de LLM: volta PARCIAL, pendentes no rótulo da métrica para as 48 h —"
-                                if estagio_de_llm(g, e) else "todos em feito,")
+                                if estagio_parcial(g, e) else "todos em feito,")
                              + f" e 0 quarentena/falhou_efeito do {e} desde a liberação (até "
                              f"{ESPERA_MAX_S // 60} min); metricas religacao_estagio=1",
                       nota=(f"NATIVO `{nat['tipo']}` liberado (entrada: "
@@ -635,6 +635,15 @@ def estagio_de_llm(g, estagio: str) -> bool:
                                                         for r in primeira_volta(g, estagio))
 
 
+# estágios que DRENAM fila alimentada por eventos (26/11/2026: o E2 da janela 1 tinha 2.239 árvores na 1ª volta)
+ESTAGIOS_DE_FILA = frozenset({"E2", "E3", "E4", "E5", "E6", "E7"})
+
+
+def estagio_parcial(g, estagio: str) -> bool:
+    """Confere pela volta parcial (≥ 1 feito, 0 erro, o resto esperando): estágio de LLM ou estágio de fila."""
+    return estagio in ESTAGIOS_DE_FILA or estagio_de_llm(g, estagio)
+
+
 def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False, decorrido_s: float = 0.0,
                      espera_parcial_s: float = ESPERA_PARCIAL_S) -> dict:
     """Efeito do estágio: primeira volta inteira em `feito` e nada do estágio em quarentena/falhou_efeito desde a
@@ -704,7 +713,7 @@ def religar_estagios(con, g, espera_max_s: float = ESPERA_MAX_S, so: list[str] |
             continue
         chaves = liberar_estagio(con, g, e, PARADA if e == "E1" else None)
         log(f"[{e}] liberado; primeira volta: {len(chaves)} job(s)")
-        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir, parcial=estagio_de_llm(g, e))
+        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir, parcial=estagio_parcial(g, e))
         if r["ok"] and apos is not None:
             extra = apos(e, r)
             if extra:

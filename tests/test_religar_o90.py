@@ -519,3 +519,11 @@ def test_conexao_reconecta_quando_o_pg_reinicia():
         return abertas[-1]
     c = R.ConexaoResiliente(abrir, primeira=Falha(1), dormir=lambda s: None)
     assert c.execute("SELECT 1") == "ok" and len(abertas) == 1
+
+
+def test_estagios_de_fila_conferem_pela_volta_parcial():
+    """26/11/2026: a 1ª volta do E2 tinha 2.239 árvores (eventos das coletas do E1 recuperando a lacuna da parada) —
+    31 feitas, 72 fora de alcance, 0 erro, e mesmo assim BLOQUEADO por não drenar tudo em 7.200 s. Estágio que DRENA
+    fila (E2–E7) confere como o de LLM: ≥ 1 feito, 0 erro, o resto esperando. E1/E17/E18/E14–E16: volta inteira."""
+    assert {e for e in R.ETAPAS[1] if R.estagio_parcial(REAL, e)} == {"E2", "E3", "E4", "E5", "E6", "E7", "E18"}  # E18: LLM
+    assert {e for e in R.ETAPAS[2] if R.estagio_parcial(REAL, e)} == {"E8", "E9", "E10", "E11", "E12", "E13"}
