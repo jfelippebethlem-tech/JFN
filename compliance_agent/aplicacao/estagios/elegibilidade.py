@@ -1057,7 +1057,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return declaradas > 0 and n == declaradas and am["amostra"] > 0 and not am["divergentes"]
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=40)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=35)
 
 
 # ══ CLI ════════════════════════════════════════════════════════════════════════════════════════════════════════

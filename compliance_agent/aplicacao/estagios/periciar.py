@@ -1000,7 +1000,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return efeito_ok(c)
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["llm"], prioridade=45)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["llm"], prioridade=40)
 
 
 # ══ 8. Lex sem o limite de 3 processos: todos os processos do fornecedor viram jobs `periciar:<p>` ═══════════════

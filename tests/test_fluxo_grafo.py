@@ -243,3 +243,23 @@ def test_estagio_do_codigo_bate_com_o_yaml():
             divergem.append(f"{m.name}: código {est.recursos} p{est.prioridade} × yaml {c.get('recursos')} "
                             f"p{c.get('prioridade')}")
     assert not divergem, divergem
+
+
+def test_estagio_de_baixo_vem_antes_quando_disputa_o_mesmo_recurso():
+    """26/11/2026 (dono: «tem que fazer sentido no projeto todo»): regra ÚNICA de prioridade do pipeline — quando um
+    estágio depende de outro e os dois disputam o mesmo recurso (recursos, recursos da volta ou teto de concorrência),
+    o de BAIXO tem prioridade ESTRITAMENTE maior (número menor): esvaziar antes de encher. Empate deixa o trabalho
+    preso no meio — o E3 ficou 2,5 h parado atrás do E2 (mesma prioridade, a reserva pega o mais antigo)."""
+    g = G.carregar()
+
+    def disputa(e):
+        return set(e.recursos) | set(e.volta.recursos or []) | set(e.concorrencia)
+
+    erros = []
+    for bk, b in g.estagios.items():
+        for ak in getattr(b, "depende", []) or []:
+            a = g.estagios[ak]
+            comum = disputa(a) & disputa(b)
+            if comum and not b.prioridade < a.prioridade:
+                erros.append(f"{ak}({a.prioridade}) → {bk}({b.prioridade}) disputam {sorted(comum)}")
+    assert not erros, erros

@@ -123,7 +123,7 @@ estagios:
     volta:
       nos: [vm1]
     timeout_s: 3600
-    prioridade: 55                # 26/11: à frente do E4 (60), senão o E6 esperava atrás de 900 textos
+    prioridade: 50                # 26/11: regra única — o de baixo vem antes do de cima que disputa o mesmo recurso (catraca test_estagio_de_baixo_vem_antes…)
     efeito: 'número do OCR por IA confirmado (nível A: SIAFE, código de barras ou leitura independente) ou marcado a_conferir'
     depende: [E5]
     sem_itcampo: VM-2
@@ -162,7 +162,7 @@ estagios:
     volta:
       nos: [vm1]
     timeout_s: 3600
-    prioridade: 40
+    prioridade: 35                # 26/11: regra única — o de baixo vem antes do de cima que disputa o mesmo recurso (catraca test_estagio_de_baixo_vem_antes…)
     efeito: regime, natureza do pagamento, origem do exercício, natureza do credor e elegibilidade por detector gravados
     depende: [E1, E8]
     sem_itcampo: igual
@@ -186,7 +186,7 @@ estagios:
     volta:
       nos: [vm2]
     timeout_s: 3600
-    prioridade: 45
+    prioridade: 40                # 26/11: regra única — o de baixo vem antes do de cima que disputa o mesmo recurso (catraca test_estagio_de_baixo_vem_antes…)
     efeito: laudo v2 por eixo com release_ia, cobertura e abstenção gravados
     concorrencia: [assinatura_claude, llm_batch]
     depende: [E8, E10]
