@@ -9,9 +9,9 @@ swap em 100%. As decisões são funções PURAS (recebem o texto do /proc): o te
 |----------------------------------------------------|-----------|--------------------------------------------|
 | cpu some < 40 e mem full < 1                       | folga     | reserva tudo o que o slot permitir         |
 | entre os dois                                      | neutro    | leve sim, pesado novo não                  |
-| cpu some > 60 ou mem some > 10 ou swap > 50 %      | contido   | só o que não gasta CPU (llm, materializar) |
+| cpu some > 60 ou mem some > 10                     | contido   | só o que não gasta CPU (llm, materializar) |
 | contido por N leituras seguidas                    | (ação)    | suspender o maior job (SIGSTOP)            |
-| mem full > 5                                       | (ação)    | matar o maior job (SIGKILL)                |
+| mem full > 5                                       | (ação)    | matar o maior job (SIGKILL) se ≥ 512 MB    |
 | disco livre < 10 %                                 | (recurso) | nada de pesado nem disco                   |
 """
 from __future__ import annotations
@@ -34,9 +34,15 @@ SEM_CPU = frozenset({"llm", "materializar"})        # espera de rede / painel: s
 CPU_FOLGA, MEM_FULL_FOLGA = 40.0, 1.0
 CPU_CONTIDO, MEM_SOME_CONTIDO = 60.0, 10.0
 MEM_FULL_MATAR = 5.0
-SWAP_CONTIDO_PCT = 50.0
 DISCO_MIN_PCT = 10.0
 LEITURAS_PARA_SUSPENDER = 3
+# SIGKILL só vale num job que pesa (RSS do grupo de processos): com a pressão vinda de fora dos jobs, matar filho de
+# 15 MB não alivia nada e virava uma fila de mortes (25/11/2026: 12 em 3 min).
+MATAR_MIN_KB = 512 * 1024
+
+
+def vale_matar(rss_kb: int) -> bool:
+    return rss_kb >= MATAR_MIN_KB
 
 
 @dataclass
@@ -112,8 +118,8 @@ def classificar(m: Medida) -> tuple[str, list[str]]:
         motivos.append(f"cpu some {m.cpu_some:.1f} > {CPU_CONTIDO:.0f}")
     if m.mem_some > MEM_SOME_CONTIDO:
         motivos.append(f"mem some {m.mem_some:.1f} > {MEM_SOME_CONTIDO:.0f}")
-    if m.swap_pct > SWAP_CONTIDO_PCT:
-        motivos.append(f"swap {m.swap_pct:.0f}% > {SWAP_CONTIDO_PCT:.0f}%")
+    # swap OCUPADO não contém (25/11/2026, religação O9.0): páginas velhas no swap com RAM livre e PSI 0 seguraram a
+    # fila >1 h. A pressão real de memória é o PSI (mem some acima); swap_pct segue medido e exibido no nó.
     if motivos:
         return "contido", motivos
     if m.cpu_some < CPU_FOLGA and m.mem_full < MEM_FULL_FOLGA:

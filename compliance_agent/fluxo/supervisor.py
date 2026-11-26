@@ -123,6 +123,20 @@ def _rss_kb(pid: int) -> int:
     return 0
 
 
+def _rss_grupo_kb(pgid: int) -> int:
+    """RSS somada do grupo de processos do job (o filho direto é só o invólucro `timeout`; o trabalho está nos netos)."""
+    total = 0
+    for d in Path("/proc").iterdir():
+        if not d.name.isdigit():
+            continue
+        try:
+            if os.getpgid(int(d.name)) == pgid:
+                total += _rss_kb(int(d.name))
+        except (OSError, ValueError):
+            continue
+    return total
+
+
 @dataclass
 class Filho:
     job: Job
@@ -335,8 +349,13 @@ class Supervisor:
 
     def _aplicar_acao(self, d: governador.Decisao) -> None:
         if d.acao in ("matar", "suspender") and self.filhos:
-            alvo = max((f for f in self.filhos if not f.parado), key=lambda f: _rss_kb(f.proc.pid), default=None)
-            if alvo and d.acao == "matar":
+            rss = {id(f): _rss_grupo_kb(f.proc.pid) for f in self.filhos if not f.parado}
+            alvo = max((f for f in self.filhos if not f.parado), key=lambda f: rss[id(f)], default=None)
+            if alvo and d.acao == "matar" and not governador.vale_matar(rss[id(alvo)]):
+                log.warning("governador: pressão de memória (%s) sem job que pese ≥ %d MB aqui — nada a matar "
+                            "(maior: %s, %d MB)", d.motivos, governador.MATAR_MIN_KB // 1024, alvo.job.chave,
+                            rss[id(alvo)] // 1024)
+            elif alvo and d.acao == "matar":
                 log.warning("governador: SIGKILL em %s (%s)", alvo.job.chave, d.motivos)
                 self._matar(alvo)
                 fila.falhar(self.con, alvo.job.ficha, f"morto pelo governador: {d.motivos}", True, "pressao")

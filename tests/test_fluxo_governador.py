@@ -49,8 +49,8 @@ def test_neutro_nao_reserva_pesado_novo():
     assert d.livres["cpu_leve"] == 2 and d.livres["llm"] == 3
 
 
-def test_contido_por_cpu_mem_ou_swap_so_deixa_o_que_nao_gasta_cpu():
-    for m in (G.Medida(cpu_some=60.1), G.Medida(mem_some=10.1), G.Medida(swap_pct=51)):
+def test_contido_por_cpu_ou_mem_so_deixa_o_que_nao_gasta_cpu():
+    for m in (G.Medida(cpu_some=60.1), G.Medida(mem_some=10.1)):
         d = G.decidir(m, BASE)
         assert d.estado == "contido", m
         assert {r for r, n in d.livres.items() if n} == {"llm", "materializar"}
@@ -100,3 +100,17 @@ def test_medir_le_a_maquina_sem_quebrar(tmp_path):
     (tmp_path / "meminfo").write_text(MEMINFO)
     m = G.medir(proc=str(tmp_path), disco=str(tmp_path))
     assert m.cpu_some == 1.68 and m.mem_some == 0.0 and m.swap_pct == 75.0 and 0 < m.disco_livre_pct <= 100
+
+
+def test_swap_ocupado_sem_pressao_nao_contem():
+    """Religação O9.0 (25/11/2026): swap 96% de páginas velhas com 8,7 GB de RAM livre e PSI 0 segurou a fila >1 h.
+    Swap ocupado não é pressão; a pressão de memória real é o PSI (mem some/full), que já decide."""
+    d = G.decidir(G.Medida(swap_pct=96), BASE)
+    assert d.estado == "folga" and d.livres["cpu_leve"] == 2
+    assert G.decidir(G.Medida(swap_pct=96, mem_some=10.1), BASE).estado == "contido"
+
+
+def test_so_mata_job_que_pesa():
+    """25/11: com a pressão vinda de fora dos jobs, o SIGKILL caía em jobs de 15 MB, um atrás do outro (12 em 3 min),
+    sem aliviar nada. Abaixo do piso, matar não alivia: o governador não mata."""
+    assert G.vale_matar(G.MATAR_MIN_KB) and not G.vale_matar(G.MATAR_MIN_KB - 1) and not G.vale_matar(0)
