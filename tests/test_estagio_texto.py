@@ -179,3 +179,11 @@ def test_captura_ausente_no_no_e_trazida_da_vm2(tmp_path, monkeypatch):
     assert chamados[0][0] == "rsync" and chamados[0][-2] == "vm2-ts:JFN-worker/data/sei_cache/integra_9_9_2026/"
     monkeypatch.delenv("JFN_E3_ESPELHO")
     assert T.trazer_captura(tmp_path / "outra") is False               # sem destino canônico: não tenta
+
+
+def test_estagio_de_baixo_passa_na_frente_do_texto():
+    """26/11/2026: o E6 (confirmar_ocr) tinha a prioridade do E4 (60) e, com 1.448 textos mais antigos na fila da VM-2,
+    ficava parado horas. Num fluxo, o estágio de baixo termina o que está em curso antes de o de cima puxar mais."""
+    from compliance_agent.aplicacao.estagios import estagio_de
+    p = {t: estagio_de(t).prioridade for t in ("texto", "ocr", "confirmar_ocr")}
+    assert p["confirmar_ocr"] < p["texto"] and p["ocr"] < p["texto"], p
