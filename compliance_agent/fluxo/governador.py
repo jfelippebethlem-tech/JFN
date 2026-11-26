@@ -34,6 +34,9 @@ SEM_CPU = frozenset({"llm", "materializar"})        # espera de rede / painel: s
 CPU_FOLGA, MEM_FULL_FOLGA = 40.0, 1.0
 CPU_CONTIDO, MEM_SOME_CONTIDO = 60.0, 10.0
 MEM_FULL_MATAR = 5.0
+# 26/11/2026: matar job só alivia quando a memória está acabando. Com mais que isto disponível, a pressão vem de outra
+# coisa (brain-index fora do motor, reclaim de cache): o governador para de reservar pesado, não mata.
+MEM_DISP_MATAR_PCT = 20.0
 DISCO_MIN_PCT = 10.0
 LEITURAS_PARA_SUSPENDER = 3
 # SIGKILL só vale num job que pesa (RSS do grupo de processos): com a pressão vinda de fora dos jobs, matar filho de
@@ -54,6 +57,7 @@ class Medida:
     io_full: float = 0.0
     swap_pct: float = 0.0
     disco_livre_pct: float = 100.0
+    mem_disp_pct: float = 0.0          # MemAvailable/MemTotal; 0 = desconhecido (vale a regra antiga: pode matar)
 
     def como_dict(self) -> dict:
         return asdict(self)
@@ -94,7 +98,17 @@ def ler_swap_pct(meminfo: str) -> float:
 def montar_medida(psi_cpu: str, psi_mem: str, psi_io: str, meminfo: str, disco_livre_pct: float) -> Medida:
     c, m, i = ler_psi(psi_cpu), ler_psi(psi_mem), ler_psi(psi_io)
     return Medida(cpu_some=c["some"], mem_some=m["some"], mem_full=m["full"], io_some=i["some"], io_full=i["full"],
-                  swap_pct=ler_swap_pct(meminfo), disco_livre_pct=disco_livre_pct)
+                  swap_pct=ler_swap_pct(meminfo), disco_livre_pct=disco_livre_pct, mem_disp_pct=ler_disp_pct(meminfo))
+
+
+def ler_disp_pct(meminfo: str) -> float:
+    v = {}
+    for ln in meminfo.splitlines():
+        k, _, resto = ln.partition(":")
+        if resto.strip():
+            v[k.strip()] = float(resto.split()[0])
+    tot = v.get("MemTotal", 0.0)
+    return round(100.0 * v.get("MemAvailable", 0.0) / tot, 1) if tot else 0.0
 
 
 def medir(proc: str = "/proc", disco: str = "/") -> Medida:
@@ -146,7 +160,12 @@ def decidir(m: Medida, base: Mapping[str, int], ocupados: Mapping[str, int] | No
         for r in PESADOS & livres.keys():
             livres[r] = 0
     acao = None
-    if m.mem_full > MEM_FULL_MATAR:
+    if m.mem_full > MEM_FULL_MATAR and m.mem_disp_pct and m.mem_disp_pct >= MEM_DISP_MATAR_PCT:
+        motivos.append(f"mem full {m.mem_full:.1f} > {MEM_FULL_MATAR:.0f} com {m.mem_disp_pct:.0f}% disponível: "
+                       "pressão de fora dos jobs — não mata, só segura pesado")
+        for r in PESADOS & livres.keys():
+            livres[r] = 0
+    elif m.mem_full > MEM_FULL_MATAR:
         acao = "matar"
         motivos.append(f"mem full {m.mem_full:.1f} > {MEM_FULL_MATAR:.0f}")
     elif estado == "contido" and contido_seguidas + 1 >= LEITURAS_PARA_SUSPENDER:

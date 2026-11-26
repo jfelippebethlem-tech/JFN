@@ -63,6 +63,19 @@ def test_disco_baixo_corta_pesado_mesmo_com_folga():
     assert any("disco" in m for m in d.motivos)
 
 
+def test_pressao_com_memoria_sobrando_nao_mata_job():
+    """26/11/2026: o governador da VM-2 matou 3 jobs do E6 (5× cada, até a quarentena) com 9 GB DISPONÍVEIS: a pressão
+    vinha do brain-index (2,5 GB a cada 10 min, fora do motor) — 8 s depois da morte a pressão seguia. Matar job só
+    alivia quando a memória está de fato acabando; com folga, só para de reservar pesado."""
+    d = G.decidir(G.Medida(mem_full=9.5, mem_disp_pct=78.0), BASE)
+    assert d.acao is None and any("disponível" in x for x in d.motivos)
+    assert d.livres.get("cpu_pesado", 0) == 0                     # não reserva pesado sob pressão
+    assert G.decidir(G.Medida(mem_full=9.5, mem_disp_pct=12.0), BASE).acao == "matar"
+    m = G.montar_medida("", "full avg10=6.00 avg60=0 avg300=0 total=0",  "",
+                        "MemTotal: 1000 kB\nMemAvailable: 250 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n", 50.0)
+    assert m.mem_disp_pct == 25.0
+
+
 def test_memoria_full_acima_de_5_pede_matar():
     assert G.decidir(G.Medida(mem_full=5.1), BASE).acao == "matar"
     assert G.decidir(G.Medida(mem_full=5.0), BASE).acao is None
