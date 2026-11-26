@@ -1,6 +1,6 @@
 # LOCK GERADO por tools/lock_dependencias.py — não editar à mão; regenerar: python tools/lock_dependencias.py
 # Instalar: pip install --require-hashes -r <este arquivo>   (torch CPU vem pelos --find-links abaixo)
-# entrada: requirements.txt sha256=ebedf02ca8686233c90ce223badaa1419eb01089faf073896a7c96fe7f149d93
+# entrada: requirements.txt sha256=8da27ce8a2b2bc69453468dc29f02cb033b3d6d87770552ac30c8ee04261b7dd
 --find-links https://download.pytorch.org/whl/torch/
 --find-links https://download.pytorch.org/whl/torchvision/
 
@@ -37,6 +37,7 @@ anyio==4.16.0 \
     #   fastapi
     #   httpx
     #   httpx2
+    #   openai
     #   starlette
     #   watchfiles
 apsw==3.54.1.0 \
@@ -150,6 +151,7 @@ beautifulsoup4==4.15.0 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   surya-ocr
 certifi==2026.11.20 \
     --hash=sha256:7422df25243767b9877031a2248cb14d09ddac9beee846f4cef3d5c9191d488f \
     --hash=sha256:af1cb240a8133f105aa52684a3a3258339d7f2fd0bd4e2812698ff5cf5588c4e
@@ -444,6 +446,8 @@ click==8.5.1 \
     --hash=sha256:9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4
     # via
     #   -c requirements-sei.lock
+    #   huggingface-hub
+    #   surya-ocr
     #   uvicorn
 cloudpickle==3.1.3 \
     --hash=sha256:1654f4f18e416447210a63c5c25a135d65a292156aa5fa519dfa4baf7726dddb \
@@ -609,6 +613,12 @@ cycler==0.12.1 \
     # via
     #   -c requirements-sei.lock
     #   matplotlib
+distro==1.9.0 \
+    --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
+    --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
+    # via
+    #   -c requirements-sei.lock
+    #   openai
 docstring-parser==0.18.0 \
     --hash=sha256:292510982205c12b1248696f44959db3cdd1740237a968ea1e2e7a900eeb2015 \
     --hash=sha256:b3fcbed555c47d8479be0796ef7e19c2670d428d72e96da63f3a40122860374b
@@ -663,7 +673,15 @@ filelock==4.3.1 \
     --hash=sha256:79e43df8e9fe509cd83a3899a7c186c8077cbbe4d200a1ed3705c2f3bb6bc487
     # via
     #   -c requirements-sei.lock
+    #   huggingface-hub
+    #   surya-ocr
     #   torch
+filetype==1.2.0 \
+    --hash=sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb \
+    --hash=sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25
+    # via
+    #   -c requirements-sei.lock
+    #   surya-ocr
 flatbuffers==25.12.19 \
     --hash=sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4
     # via
@@ -750,6 +768,7 @@ fsspec==2026.9.0 \
     --hash=sha256:8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f
     # via
     #   -c requirements-sei.lock
+    #   huggingface-hub
     #   torch
 greenlet==3.0.3 \
     --hash=sha256:01bc7ea167cf943b4c802068e178bbf70ae2e8c080467070d01bfa02f337ee67 \
@@ -821,6 +840,27 @@ h11==0.16.0 \
     #   httpcore
     #   httpcore2
     #   uvicorn
+hf-xet==1.8.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64' \
+    --hash=sha256:07a06d7481702616726c2d8578cfb00052a5b3f21beed6a674592bc837a10330 \
+    --hash=sha256:10ed23b51dacf7917d64f335c25048deb470efa755e9989b218fc0531386138e \
+    --hash=sha256:1ebaf248c9bef8bb0c9d1d8d71db1fdf0cac14f922cc7a936a81adbf12eb5f01 \
+    --hash=sha256:23c262e9f5e137b18dadbce60becfeea84156b0d43119c320bffe260d32cd2fa \
+    --hash=sha256:29dab7c904cd1914a0439c6e1306c12c7497c8bd32290fbe563ebf51ca4b6d6d \
+    --hash=sha256:3e8934784425781f0f779b91044df441f3a7af4dab47375d7e3aeaecbb8eecb4 \
+    --hash=sha256:3ecfe2934448cca55a4c42732b60f985266aecb241905945219b3d388aceb7ba \
+    --hash=sha256:42b66fdc688eaa4ff3eb77dc9275e5a0f1258ecc9fdd083ddaf43bb49bec925b \
+    --hash=sha256:56735c2d4f416d7473fc986586b26a8756e067832ca4b7fdaad32a0d6f2ce740 \
+    --hash=sha256:62b056aedb89ac809f78940baf465fe553b70c8b25ee56890fbab3039fffec1b \
+    --hash=sha256:7edeb21c5d381903ee5f4857fc746fa7b52a4b374035e8811ecfb67ee27add0c \
+    --hash=sha256:8800e3444770f2c630b361bc6d5c6ebb770b7830646cf632fbb79d0e5bbc9e7f \
+    --hash=sha256:92188598dedc1e1f5609bd718d4db8687a6c89915553912571e2f587892eecec \
+    --hash=sha256:a584a7b3268da62f23c3187cc7201ca01f7b610985a36b1b6119c66bccb0383c \
+    --hash=sha256:c74e3751cbcdae9222c5170e8d788e83201a03dc5e5f4308a20f17a5b6023b56 \
+    --hash=sha256:e00d8f60170cd3dd55d98306e41dbaf28b27ff1bcfefbfa84279d197221be83e \
+    --hash=sha256:f42940869572dc2b05dfe06f4cc398c6291503e086ddc4eddfb7a6ab9409ad01
+    # via
+    #   -c requirements-sei.lock
+    #   huggingface-hub
 hmmlearn==0.3.3 \
     --hash=sha256:06abdc7f1905c1c10132e62d4e9d6bdf88bf17d267cae68b6ad834b0c2efef0b \
     --hash=sha256:0a174a1bf9db0971161c778b451ec8236a13c8fe9b0d1779e922179200f04de4 \
@@ -996,7 +1036,10 @@ httpx==0.28.1 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   huggingface-hub
+    #   openai
     #   python-bcb
+    #   surya-ocr
 httpx2==2.16.2 \
     --hash=sha256:748b615678f07d8e3b183efe81ad13b655ca88bfc56ce4589219b2d442860574 \
     --hash=sha256:f05c13aade4c45dbf1c9060647a1058f0acad62398fad96e741269edb33d46f5
@@ -1009,6 +1052,12 @@ httpx2-jsfetch==1.0 ; sys_platform == 'emscripten' \
     # via
     #   -c requirements-sei.lock
     #   httpx2
+huggingface-hub==1.33.0 \
+    --hash=sha256:04e434b06e100eddbce9a6e817d72693a7884b10a79bd67ab48080d5c07eb899 \
+    --hash=sha256:367be21a201db9523eddf8aeac7048f2602c1b308691c97640d5e72ed188007e
+    # via
+    #   -c requirements-sei.lock
+    #   surya-ocr
 idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
@@ -1179,6 +1228,7 @@ jiter==0.19.0 \
     # via
     #   -c requirements-sei.lock
     #   anthropic
+    #   openai
 joblib==1.6.0 \
     --hash=sha256:2ccc96785b12046c08fd6d55839c12857831b54a3c1673ffadd2f04bfc4eda03 \
     --hash=sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba
@@ -1991,6 +2041,7 @@ numpy==2.5.5 \
     #   scikit-learn
     #   scipy
     #   shapely
+    #   surya-ocr
     #   tifffile
     #   torchvision
     #   xgboost
@@ -2034,6 +2085,12 @@ onnxruntime==1.32.0 \
     # via
     #   -c requirements-sei.lock
     #   pymupdf
+openai==2.54.0 \
+    --hash=sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b \
+    --hash=sha256:e3e6f8bc1ba30ddf381ace1a14340eed381cb984a1a59bd0f34b5be3b5d49cfa
+    # via
+    #   -c requirements-sei.lock
+    #   surya-ocr
 opencv-python-headless==5.1.0.95 \
     --hash=sha256:1193ffb8a60d0496dbac652f052791dc0f0da6a298e215c93d1d8c9dd67b89e9 \
     --hash=sha256:11d9753e15b8b3c56e6aa765139f722ca19ff26016d43bc81035f5d122731a81 \
@@ -2068,6 +2125,7 @@ packaging==26.4 \
     --hash=sha256:c4b671c41ddb9bf26e543c37723610d28fb6bf7affc4da17cf048d419d2c062a
     # via
     #   -c requirements-sei.lock
+    #   huggingface-hub
     #   lazy-loader
     #   matplotlib
     #   onnxruntime
@@ -2256,7 +2314,14 @@ pillow==13.0.0 \
     #   pytesseract
     #   rapidocr
     #   scikit-image
+    #   surya-ocr
     #   torchvision
+platformdirs==4.14.8 \
+    --hash=sha256:1e34af590de4d978631b751eb2202f2fee4497537a17c1720b12fcf57b331392 \
+    --hash=sha256:96893d686e84e9e6f358a9ea41a8de544df66dbf2ba6cda250e7dc73acf85b9b
+    # via
+    #   -c requirements-sei.lock
+    #   surya-ocr
 playwright==1.44.0 \
     --hash=sha256:235e37832deaa9af8a629d09955396259ab757533cc1922f9b0308b4ee0d9cdf \
     --hash=sha256:29161b1fae71f7c402df5b15f0bd3deaeecd8b3d1ecd9ff01271700c66210e7b \
@@ -2509,6 +2574,9 @@ pydantic==2.14.4 \
     #   -r requirements.txt
     #   anthropic
     #   fastapi
+    #   openai
+    #   pydantic-settings
+    #   surya-ocr
 pydantic-core==2.50.5 \
     --hash=sha256:004c784d4642bd1112a9fa9a022543aa17793fd32004f7e903ee97df2086bad4 \
     --hash=sha256:00598ae680c6e4a17cda01910e49c0da8ce15610505e6c57cec3f15d83daef88 \
@@ -2653,6 +2721,12 @@ pydantic-core==2.50.5 \
     # via
     #   -c requirements-sei.lock
     #   pydantic
+pydantic-settings==2.16.3 \
+    --hash=sha256:10e36f616623ebb586c05ca3d3cd22927146869db413d4f14c20c514442a1337 \
+    --hash=sha256:d1db16a2d34006323a1b42c0640898da58adfbad7ec30baaa9e2b18aafc08999
+    # via
+    #   -c requirements-sei.lock
+    #   surya-ocr
 pyee==11.1.0 \
     --hash=sha256:5d346a7d0f861a4b2e6c47960295bd895f816725b27d656181947346be98d7c1 \
     --hash=sha256:b53af98f6990c810edd9b56b87791021a8f54fd13db4edd1142438d44ba2263f
@@ -2735,6 +2809,7 @@ pypdfium2==5.15.2 \
     # via
     #   -c requirements-sei.lock
     #   pdfplumber
+    #   surya-ocr
 pytesseract==0.3.13 \
     --hash=sha256:4bf5f880c99406f52a3cfc2633e42d9dc67615e69d8a509d74867d3baddb5db9 \
     --hash=sha256:7a99c6c2ac598360693d83a416e36e0b33a67638bb9d77fdcac094a3589d4b34
@@ -2895,6 +2970,8 @@ python-dotenv==1.2.4 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   pydantic-settings
+    #   surya-ocr
     #   uvicorn
 python-louvain==0.16 \
     --hash=sha256:b7ba2df5002fd28d3ee789a49532baad11fe648e4f2117cf0798e7520a1da56b
@@ -2970,6 +3047,7 @@ pyyaml==6.0.2 \
     #   -c requirements-sei.lock
     #   -r requirements.txt
     #   easyocr
+    #   huggingface-hub
     #   omegaconf
     #   pymupdf
     #   rapidocr
@@ -3358,6 +3436,7 @@ sniffio==1.3.1 \
     # via
     #   -c requirements-sei.lock
     #   anthropic
+    #   openai
 soupsieve==4.1.3 \
     --hash=sha256:13f70186c8f40bf8d0ff7bbab09a18fb149600b465269207b5e5b588f55fda08 \
     --hash=sha256:7a390d1a57d1ab7bb228531e9b8a750a5ebf87db774e0ef6faeeac057d22a5bf
@@ -3466,6 +3545,12 @@ starlette==1.10.0 \
     #   -c requirements-sei.lock
     #   -r requirements.txt
     #   fastapi
+surya-ocr==0.24.0 \
+    --hash=sha256:4d4e79ff77cd3e7f2bbb66761ca1edc14eede995363d50ddbd22441f89e70189 \
+    --hash=sha256:cb3bc7575a442c447aa22d05fcc5233ee91b4a4bbbce7612c8da78bd90aef425
+    # via
+    #   -c requirements-sei.lock
+    #   -r requirements.txt
 sympy==1.14.0 \
     --hash=sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517 \
     --hash=sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5
@@ -3526,7 +3611,10 @@ tqdm==4.70.1 \
     --hash=sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4
     # via
     #   -c requirements-sei.lock
+    #   huggingface-hub
+    #   openai
     #   rapidocr
+    #   surya-ocr
 traitlets==5.16.1 \
     --hash=sha256:ed900c2b631aa3a112811139fa97b8d2c3bad5e989656bba4b7e52c7852c18c1 \
     --hash=sha256:f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b
@@ -3552,10 +3640,13 @@ typing-extensions==4.16.0 \
     #   beautifulsoup4
     #   fastapi
     #   httpx2
+    #   huggingface-hub
+    #   openai
     #   opentelemetry-api
     #   psycopg
     #   pydantic
     #   pydantic-core
+    #   pydantic-settings
     #   pyee
     #   python-docx
     #   sqlalchemy
@@ -3569,6 +3660,7 @@ typing-inspection==0.4.5 \
     #   -c requirements-sei.lock
     #   fastapi
     #   pydantic
+    #   pydantic-settings
 tzdata==2026.6 \
     --hash=sha256:0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec \
     --hash=sha256:85d2cd9c09f81f0bb29db27759fc83af4f1e620efb814f8c5bf8b4cc4feece6d

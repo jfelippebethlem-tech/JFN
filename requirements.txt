@@ -73,3 +73,5 @@ psycopg[binary]==3.3.9   # Fase 3 (23/11/2026): estado canônico da plataforma d
 # e o E6 declarava o código de barras INDISPONÍVEL. Versão = a do ~/ocr-reserva/.venv da VM-2 (bancada de 18/11).
 rapidocr==3.10.0     # tools/sei_ocr_reserva.motor_ocr (ExecutorCPU do E5, recorte do E6)
 zxing-cpp>=2.2       # E6: código de barras/QR como prova nível A (wheel puro, sem lib de sistema)
+surya-ocr==0.24.0    # E5 ExecutorGPU no it-campo (26/11/2026): só o CLIENTE do vLLM local (openai/httpx, sem torch) — o
+                     # modelo roda no servidor vLLM (deploy/itcampo/ocr_gpu/vllm_surya.sh, porta 8790); versão = a de ~/jfn-gpu
