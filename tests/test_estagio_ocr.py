@@ -313,3 +313,20 @@ def test_e5_documento_acima_do_teto_grava_e_emite_os_eventos(pg, tmp_path, monke
     assert ok, r.efeito.get("conferencia")
     assert g.pedidas == [[2], [3]] and r.efeito["paginas"] == {O.TEXTO: [2, 3]}
     assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia"]
+
+
+def test_bloco_com_erro_do_surya_vira_pagina_incompleta_e_nao_derruba_o_job(monkeypatch):
+    """26/11/2026: a GPU voltou e o 1º OCR pelo Surya caiu inteiro: um bloco com `error` e sem texto lançava
+    ErroInferencia e o job voltava à fila — com temperatura 0 o resultado se repete, ia à quarentena sem OCR nenhum.
+    Bloco com erro conta como bloco vazio: a página fica incompleta e o 2º motor (CPU) a relê."""
+    import numpy as np
+    from types import SimpleNamespace as NS
+    from compliance_agent.aplicacao.estagios import ocr as O
+    g = O.ExecutorGPU()
+    g._w = NS(_txt=lambda h: h or "", _texto=lambda res: "algum texto útil da página")
+    blocos = [NS(html="Contrato 123", bbox=[0, 0, 1, 1], confidence=0.9, label="Text", skipped=False, error=False,
+                 reading_order=0),
+              NS(html="", bbox=[0, 1, 1, 2], confidence=None, label="Text", skipped=False, error=True, reading_order=1)]
+    g._rec = lambda imgs: [NS(blocks=blocos)]
+    le = g.ler_imgs([np.zeros((10, 10, 3), dtype=np.uint8)])[0]
+    assert le.blocos_vazios == 1                         # incompleta: o lote manda ao 2º motor

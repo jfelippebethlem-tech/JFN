@@ -412,9 +412,11 @@ class ExecutorGPU:
             self._rec = RecognitionPredictor(SuryaInferenceManager())
         out = []
         for img, res in zip(imgs, self._rec([Image.fromarray(i) for i in imgs])):
-            if any(getattr(b, "error", False) and not getattr(b, "html", "") for b in res.blocks):
-                raise ErroInferencia("bloco com erro de inferência (Surya devolveu vazio)")
-            linhas = [{"texto": W._txt(b.html), "bbox": [round(float(x), 1) for x in (b.bbox or [])],
+            # bloco com `error` e sem texto conta como bloco VAZIO (página incompleta → o lote manda ao 2º motor, CPU).
+            # 26/11/2026: antes lançava ErroInferencia e derrubava o job inteiro; com temperatura 0 o resultado se
+            # repete a cada tentativa e a página nunca era lida (ia à quarentena sem OCR nenhum).
+            linhas = [{"texto": "" if (getattr(b, "error", False) and not getattr(b, "html", "")) else W._txt(b.html),
+                       "bbox": [round(float(x), 1) for x in (b.bbox or [])],
                        "conf": getattr(b, "confidence", None), "rotulo": getattr(b, "label", None),
                        "pulado": bool(getattr(b, "skipped", False))}
                       for b in sorted(res.blocks, key=lambda b: b.reading_order or 0)]
