@@ -527,3 +527,21 @@ def test_estagios_de_fila_conferem_pela_volta_parcial():
     fila (E2–E7) confere como o de LLM: ≥ 1 feito, 0 erro, o resto esperando. E1/E17/E18/E14–E16: volta inteira."""
     assert {e for e in R.ETAPAS[1] if R.estagio_parcial(REAL, e)} == {"E2", "E3", "E4", "E5", "E6", "E7", "E18"}  # E18: LLM
     assert {e for e in R.ETAPAS[2] if R.estagio_parcial(REAL, e)} == {"E8", "E9", "E10", "E11", "E12", "E13"}
+
+
+@precisa_pg
+def test_fila_tolera_poucas_novas_tentativas_mas_barra_erro_sistematico(con):
+    """26/11/2026: numa fila de 2.200 leituras no SEI sempre há alguma nova tentativa por rede (transitória; a falha
+    real é a quarentena). Estágio de FILA tolera erro em nova tentativa até 10% dos feitos (mínimo 3); erro
+    sistemático (a trava de navegador: 9 erros para 11 feitos) continua barrando. LLM segue com zero."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E2', 't')")
+    ch = []
+    for i in range(30):
+        _job(con, f"f{i}", "feito", estagio="E2"); ch.append(f"f{i}")
+    for i in range(3):
+        _job(con, f"e{i}", "fila", estagio="E2", erro="erro"); ch.append(f"e{i}")
+    _job(con, "w", "fila", estagio="E2"); ch.append("w")
+    assert R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)["ok"]
+    for i in range(3, 9):
+        _job(con, f"e{i}", "fila", estagio="E2", erro="erro"); ch.append(f"e{i}")
+    assert not R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)["ok"]   # 9 > 3

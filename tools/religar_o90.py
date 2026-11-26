@@ -645,7 +645,7 @@ def estagio_parcial(g, estagio: str) -> bool:
 
 
 def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False, decorrido_s: float = 0.0,
-                     espera_parcial_s: float = ESPERA_PARCIAL_S) -> dict:
+                     espera_parcial_s: float = ESPERA_PARCIAL_S, fila: bool = False) -> dict:
     """Efeito do estágio: primeira volta inteira em `feito` e nada do estágio em quarentena/falhou_efeito desde a
     liberação. `pendentes` > 0 = ainda não dá para decidir. `parcial` (estágio de LLM): passada a espera mínima,
     vale ≥ 1 feito com o resto só esperando, sem erro (ESPERA_PARCIAL_S)."""
@@ -665,7 +665,10 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
     pendentes = sum(n for e, n in est.items() if e in ("fila", "reservado"))
     inteira = ruins == 0 and pendentes == 0 and feitos == len(chaves)
     com_erro = sum(1 for _c, e in esperando if e not in (None, "adiado"))
-    so_esperando = feitos + pendentes == len(chaves) and com_erro == 0
+    # estágio de FILA (26/11/2026): nova tentativa isolada é normal numa fila de milhares (a falha real é a quarentena,
+    # já em `ruins`); tolera até 10% dos feitos (mínimo 3). Erro sistemático passa disso e barra. LLM: zero.
+    tolerancia = max(3, feitos // 10) if fila else 0
+    so_esperando = feitos + pendentes == len(chaves) and com_erro <= tolerancia
     meia = (parcial and not inteira and ruins == 0 and feitos >= 1 and so_esperando
             and decorrido_s >= espera_parcial_s)
     r = {"estagio": estagio, "feitos": feitos, "esperados": len(chaves), "pendentes": pendentes, "ruins": ruins,
@@ -678,12 +681,12 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
 def esperar_estagio(con, estagio: str, chaves: list[str], espera_max_s: float = ESPERA_MAX_S,
                     poll_s: float = POLL_S, dormir: Callable[[float], None] = time.sleep,
                     relogio: Callable[[], float] = time.monotonic, parcial: bool = False,
-                    espera_parcial_s: float = ESPERA_PARCIAL_S) -> dict:
+                    espera_parcial_s: float = ESPERA_PARCIAL_S, fila: bool = False) -> dict:
     """Espera a decisão (o script é a janela da religação, com o dono olhando — não um laço residente)."""
     ini = relogio()
     fim = ini + espera_max_s
     while True:
-        r = conferir_estagio(con, estagio, chaves, parcial, relogio() - ini, espera_parcial_s)
+        r = conferir_estagio(con, estagio, chaves, parcial, relogio() - ini, espera_parcial_s, fila)
         if r["ok"] or r["ruins"] or r["pendentes"] == 0 or relogio() >= fim:
             r["esgotou"] = r["pendentes"] > 0 and not r["ok"]   # passou do teto ainda pendente = BLOQUEADO
             return r
@@ -713,7 +716,8 @@ def religar_estagios(con, g, espera_max_s: float = ESPERA_MAX_S, so: list[str] |
             continue
         chaves = liberar_estagio(con, g, e, PARADA if e == "E1" else None)
         log(f"[{e}] liberado; primeira volta: {len(chaves)} job(s)")
-        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir, parcial=estagio_parcial(g, e))
+        r = esperar_estagio(con, e, chaves, espera_max_s, dormir=dormir, parcial=estagio_parcial(g, e),
+                            fila=e in ESTAGIOS_DE_FILA)
         if r["ok"] and apos is not None:
             extra = apos(e, r)
             if extra:
