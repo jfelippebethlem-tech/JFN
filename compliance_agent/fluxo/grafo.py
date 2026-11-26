@@ -457,6 +457,8 @@ class Grafo(_Base):
         for rid in self.rotinas:
             if rid not in g:
                 out[f"{rid}/concluido"] = "rotina legada sem dependente ativo (fim da cadeia legada)"
+                # o mesmo fim no vocabulário do despachante antigo, que a ponte retransmite do propagacao.db (26/11/2026)
+                out[f"{rid}/mudou"] = "rotina legada sem dependente ativo (evento do despachante antigo via ponte)"
         for f in self.fontes:
             if f not in g:
                 out[f"{f}/*"] = "fonte legada sem rotina ativa que dependa dela (bloqueio declarado na rotina)"

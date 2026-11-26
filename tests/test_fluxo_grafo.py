@@ -213,3 +213,11 @@ def test_chave_duplicada_no_yaml_e_recusada(tmp_path):
     p.write_text(texto.replace(alvo, alvo + "    timeout_s: 1\n"), encoding="utf-8")
     with pytest.raises(G.ErroGrafo, match="duplicad"):
         G.carregar(p)
+
+
+def test_rotina_sem_dependente_e_terminal_tambem_no_vocabulario_antigo(real):
+    """26/11/2026: a ponte retransmitiu do propagacao.db um `ob_reemitida/mudou` (vocabulário do despachante antigo,
+    que rodou no vazamento de 25/11) e a saúde ficou BLOQUEADO por evento sem consumidor. Rotina sem dependente é o
+    fim da cadeia nos dois vocabulários."""
+    t = real.terminais()
+    assert "ob_reemitida/concluido" in t and "ob_reemitida/mudou" in t
