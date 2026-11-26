@@ -188,7 +188,7 @@ def test_ocr_sem_numero_vai_ao_e6_e_e6_confirma_com_zero(pg, tmp_path, monkeypat
     pl, sha = _preparar(nome, tmp_path, monkeypatch, texto="Ofício de encaminhamento ao setor competente")
     r = O._handler(pl, ctx("ocr", "sei:111", sha, 9))
     ev = {e["tipo"]: e for e in r.eventos}
-    assert list(ev) == ["texto_novo", "numero_ia", "terminado"] and ev["numero_ia"]["detalhe"]["numeros"] == 0
+    assert list(ev) == ["texto_novo", "numero_ia"] and ev["numero_ia"]["detalhe"]["numeros"] == 0
     r6, ok = _e6(pl, sha, FontesFalsas(), monkeypatch)
     assert ok, r6.efeito.get("conferencia")
     assert r6.efeito["estado"] == C.CONFIRMADO and r6.efeito["numeros"] == 0

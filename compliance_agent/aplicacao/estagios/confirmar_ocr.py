@@ -330,7 +330,8 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     ef.update(lateral_e5=str(T.caminho_lateral(processo, doc_id, sha, "e5", raiz)), lateral_e6=str(e6), **rasterizacao)
     return Resultado(efeito=ef, eventos=[{"fonte": "confirmar_ocr", "tipo": ef["estado"],
                                           "chave": f"{processo}|{doc_id}",
-                                          "detalhe": {"texto_sha": ef["texto_sha"], "a_conferir": ef["a_conferir"]}}])
+                                          "detalhe": {"texto_sha": ef["texto_sha"], "a_conferir": ef["a_conferir"],
+                                                      "sha256": sha}}])   # o E7 (forma documento) nasce daqui
 
 
 def conferir(con, ef: dict) -> dict:

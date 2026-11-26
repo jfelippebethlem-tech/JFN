@@ -2987,7 +2987,7 @@ nativos:
     E2: [arvore/documento_novo, sei_relacionado/citado]
     E3: [capturar/versao_nova]
     E4: [texto/texto_novo, texto/pagina_escaneada, texto/sem_ocr, texto/invalido]
-    E5: [ocr/texto_novo, ocr/numero_ia, ocr/terminado]
+    E5: [ocr/texto_novo, ocr/numero_ia]
     E6: [confirmar_ocr/confirmado, confirmar_ocr/a_conferir]
     E7: [arquivar/arquivado]
     E8: [fatos/mudou]
@@ -3010,7 +3010,8 @@ nativos:
     - {evento: texto/sem_ocr, estagio: E7, forma: documento}
     - {evento: texto/texto_novo, estagio: E8, forma: processo, debounce_s: 120, nota: junta os documentos do processo}
     - {evento: ocr/numero_ia, estagio: E6, forma: documento}
-    - {evento: ocr/terminado, estagio: E7, forma: documento}
+    - {evento: confirmar_ocr/confirmado, estagio: E7, forma: documento, nota: '26/11: o original sai DEPOIS do E6 conferir (corrida E6 × E7)'}
+    - {evento: confirmar_ocr/a_conferir, estagio: E7, forma: documento}
     - {evento: ocr/texto_novo, estagio: E8, forma: processo, debounce_s: 120}
     - {evento: confirmar_ocr/confirmado, estagio: E8, forma: processo, debounce_s: 120}
     - {evento: confirmar_ocr/a_conferir, estagio: E8, forma: processo, debounce_s: 120}

@@ -81,12 +81,16 @@ def test_grafo_real_encadeia_os_nativos(real):
     gp, ct, term = real.grafo_planejador(), real.contrato(), real.terminais()
     cadeia = {"coleta/ob_nova": "arvore", "arvore/documento_novo": "capturar", "capturar/versao_nova": "texto",
               "texto/pagina_escaneada": "ocr", "ocr/numero_ia": "confirmar_ocr", "texto/sem_ocr": "arquivar",
-              "ocr/terminado": "arquivar", "texto/texto_novo": "fatos", "confirmar_ocr/confirmado": "fatos",
+              "texto/texto_novo": "fatos", "confirmar_ocr/confirmado": "fatos",
               "coleta/fonte_mudou": "elegibilidade", "elegibilidade/mudou": "detectar",
               "detectar/achado_processo": "periciar", "fatos/mudou": "periciar", "periciar/laudo": "conferir",
               "conferir/veredito": "calibrar"}
     for ev, tipo in cadeia.items():
         assert tipo in [d["tipo"] for d in gp[ev]], ev
+    # 26/11/2026: o original só sai (E7) DEPOIS de o E6 conferir — nunca direto do E5 (corrida E6 × E7)
+    assert "ocr/terminado" not in gp
+    for ev in ("confirmar_ocr/confirmado", "confirmar_ocr/a_conferir"):
+        assert "arquivar" in [d["tipo"] for d in gp[ev]], ev
     dep = gp["arvore/documento_novo"][0]
     assert dep["payload"]["estagio"] == "E3" and dep["payload"]["concorrencia"] == ["sei_rj_ip"]
     assert ct["capturar"]["recursos"] == ["navegador"] and ct["expandir:texto"]["recursos"] == ["cpu_leve"]

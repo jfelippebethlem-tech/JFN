@@ -143,7 +143,7 @@ def test_e5_grava_so_com_todas_resolvidas_e_vazio_nao_vira_feito(pg, tmp_path, m
     texto = {2: "CNPJ 11.222.333/0001-81 valor R$ 1.234,56"}
     r, ok = _e5(nome, tmp_path, pdf, sha, (Falso("rapidocr", texto), None), monkeypatch, ficha=2)
     assert ok, r.efeito["conferencia"]
-    assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia", "terminado"]
+    assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia"]
     r, ok = _e5(nome, tmp_path, pdf, sha, (Falso("rapidocr", texto), None), monkeypatch, ficha=3)
     assert ok, r.efeito.get("conferencia")
     assert con.execute("SELECT count(*) FROM transformacao WHERE tipo = 'ocr'").fetchone()[0] == 1
@@ -312,4 +312,4 @@ def test_e5_documento_acima_do_teto_grava_e_emite_os_eventos(pg, tmp_path, monke
     r, ok = _e5(nome, tmp_path, pdf, sha, (g, None), monkeypatch)
     assert ok, r.efeito.get("conferencia")
     assert g.pedidas == [[2], [3]] and r.efeito["paginas"] == {O.TEXTO: [2, 3]}
-    assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia", "terminado"]
+    assert [e["tipo"] for e in r.eventos] == ["texto_novo", "numero_ia"]

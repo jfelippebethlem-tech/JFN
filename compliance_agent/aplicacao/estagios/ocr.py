@@ -40,8 +40,8 @@ por uma trava de arquivo no próprio it-campo (`JFN_OCR_GPU_TRAVA`), não pelo s
 Saída (PG): `transformacao` tipo `ocr` (entrada = sha256 do binário, saída = sha256 do texto composto, motor e
 versão do motor principal; `parametros`: páginas por estado, motores usados, sha do lateral) e `versoes` (hash_de
 `texto`, origem `sei:e5`, `ocr` = motor@versão). Eventos: `ocr/texto_novo` (E8), `ocr/numero_ia` (E6, SEMPRE — com
-`numeros` = 0 quando o OCR não traz número crítico: o E6 confirma com 0 números) e `ocr/terminado` (E7: o
-original já pode sair).
+`numeros` = 0 quando o OCR não traz número crítico: o E6 confirma com 0 números). O E7 (o original pode sair) nasce
+da conclusão do E6, não daqui (26/11/2026: corrida E6 × E7).
 
 Efeito conferido (outro processo): transformacao no PG; lateral com o sha gravado; TODA página pedida resolvida
 (`texto` com texto e bbox, ou `vazia_conferida` com dois motores); nenhuma página nativa lida; o composto de cada
@@ -680,7 +680,8 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     # sei:142180617). Sem número, o E6 grava `confirmado` com 0 números (sem abrir o PDF)
     n_num = sum(len(P.extrair(v["texto"])) for v in ocr["paginas"].values() if v["estado"] == TEXTO)
     eventos.append({"fonte": "ocr", "tipo": "numero_ia", "chave": k, "detalhe": det | {"numeros": n_num}})
-    eventos.append({"fonte": "ocr", "tipo": "terminado", "chave": k, "detalhe": det})
+    # 26/11/2026: sem `ocr/terminado` — o E7 nascia dele ao mesmo tempo que o E6 e arquivava o original ANTES de o E6
+    # conferir o número no PDF («binário não está no disco»); o E7 agora nasce da conclusão do E6 (confirmar_ocr/*)
     return Resultado(efeito=ef, eventos=eventos)
 
 

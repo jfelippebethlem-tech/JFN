@@ -5,7 +5,7 @@ medido (plano mestre v2 §3.2 E7, §3.5 "o PDF pendente de OCR nunca sai da VM-2
 `compliance_agent/armazenamento` (rclone, política por classe, pré-voo do grátis, índice único), nunca rsync/rclone
 avulso (CLAUDE.md, NÃO REINVENTAR 11).
 
-Entrada: `arquivar:<processo>|<doc_id>|<sha16>` — o evento `ocr/terminado` (E5) ou `texto/sem_ocr` (E4). Payload
+Entrada: `arquivar:<processo>|<doc_id>|<sha16>` — o evento `confirmar_ocr/*` (E6 concluído — 26/11/2026, antes era `ocr/terminado` e corria com o E6) ou `texto/sem_ocr` (E4). Payload
 `{processo, doc_id, sha256, arquivo? | rel?, apagar? (padrão sim)}`.
 
 TRAVAS, na ordem (cada uma testada):
