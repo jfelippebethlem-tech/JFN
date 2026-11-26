@@ -23,7 +23,7 @@ nos: [vm1, vm2, itcampo]
 concorrencia:
   por_fonte: {max: 1, motivo: 'uma coleta por fonte externa ao mesmo tempo (circuit breaker por fonte, §3.4)'}
   siafe_sessao: {max: 1, motivo: 'uma sessão SIAFE por vez; na VM-2, SEI ou SIAFE, nunca os dois (memória vm2-sweeps-e-siafe-sessao-unica)'}
-  sei_rj_ip: {max: 6, motivo: 'teto do SEI-RJ por IP, medido (§3.4 it-campo navegador 6)'}
+  sei_rj_ip: {max: 2, motivo: 'logins SIMULTÂNEOS no SEI-RJ pelo mesmo IP; medido 26/11: serial 0 conexão fechada, 6 em paralelo (login novo por árvore) 10 ERR_CONNECTION_CLOSED em 45 — o 6 da §3.4 era com sessões persistentes'}
   doerj: {max: 1, motivo: uma leitura do Diário Oficial por vez}
   pncp: {max: 1, motivo: 'API PNCP: uma coleta por vez (limite de taxa)'}
   tcerj: {max: 1, motivo: 'portal aberto do TCE-RJ: uma coleta por vez'}
