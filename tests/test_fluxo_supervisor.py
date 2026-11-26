@@ -2,6 +2,7 @@
 """Supervisor do motor de fluxo (O1.8): o job "eco" ponta a ponta em ESQUEMA TEMPORÁRIO, com o handler em
 subprocesso, e a CATRACA — o supervisor nunca roda handler no próprio processo (§3.3, lição do lane contínuo)."""
 import ast
+import json
 import os
 from pathlib import Path
 
@@ -205,5 +206,20 @@ def test_yaml_mudado_recarrega_a_quente_e_ressincroniza_a_agenda(con, esquema_tm
         arq.write_text("isto: [não é yaml válido", encoding="utf-8")                # inválido: mantém o anterior
         assert sup.recarregar_grafo_se_mudou()["erro"]
         assert sup.grafo                                                        # o grafo anterior segue em uso
+    finally:
+        sup.fechar()
+
+
+@precisa_pg
+def test_teto_adaptativo_vigente_limita_o_do_yaml(con, esquema_tmp):
+    """26/11/2026: o teto de logins no SEI é decidido pela medida (fluxo.teto_adaptativo); o supervisor usa o MENOR
+    entre o do yaml e o vigente — sem decisão vigente vale o yaml."""
+    sup = _sup(esquema_tmp, tetos={"sei_rj_ip": 6})
+    try:
+        assert sup.tetos_efetivos()["sei_rj_ip"] == 6
+        con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'teto_adaptativo', 2, %s)",
+                    (json.dumps({"etiqueta": "sei_rj_ip"}),))
+        sup._teto_lido_em = 0.0
+        assert sup.tetos_efetivos()["sei_rj_ip"] == 2
     finally:
         sup.fechar()

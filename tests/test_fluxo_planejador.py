@@ -151,3 +151,15 @@ def test_ciclo_recupera_lease_vencido(con):
     con.execute("UPDATE jobs SET prazo = now() - interval '1 second'")
     r = P.ciclo(con, grafo={})
     assert r["recuperados"] == 1 and fila.estado_de(con, "eco:l") == "fila"
+
+
+@precisa_pg
+def test_linha_nova_de_estagio_ja_liberado_entra_ativa(con):
+    """26/11/2026: linha nova da agenda entrava SEMPRE desativada (a liberação é quem ativa) — rotina criada depois da
+    religação, num estágio já liberado, ficava parada para sempre. Estágio liberado ⇒ a linha nova já entra ativa."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E18', 't')")
+    linhas = [{"id": "nova_e18", "cron_expr": "*/15 * * * *", "tipo_job": "legado:x", "payload": {"estagio": "E18"}},
+              {"id": "nova_e10", "cron_expr": "*/15 * * * *", "tipo_job": "legado:y", "payload": {"estagio": "E10"}}]
+    P.sincronizar_agenda(con, linhas)
+    at = dict(con.execute("SELECT id, ativo FROM agenda WHERE id IN ('nova_e18', 'nova_e10')").fetchall())
+    assert at == {"nova_e18": True, "nova_e10": False}

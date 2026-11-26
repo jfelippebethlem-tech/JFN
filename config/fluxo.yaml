@@ -23,7 +23,7 @@ nos: [vm1, vm2, itcampo]
 concorrencia:
   por_fonte: {max: 1, motivo: 'uma coleta por fonte externa ao mesmo tempo (circuit breaker por fonte, §3.4)'}
   siafe_sessao: {max: 1, motivo: 'uma sessão SIAFE por vez; na VM-2, SEI ou SIAFE, nunca os dois (memória vm2-sweeps-e-siafe-sessao-unica)'}
-  sei_rj_ip: {max: 2, motivo: 'logins SIMULTÂNEOS no SEI-RJ pelo mesmo IP; medido 26/11: serial 0 conexão fechada, 6 em paralelo (login novo por árvore) 10 ERR_CONNECTION_CLOSED em 45 — o 6 da §3.4 era com sessões persistentes'}
+  sei_rj_ip: {max: 6, motivo: 'TETO do controle ADAPTATIVO (compliance_agent/fluxo/teto_adaptativo.py, rotina teto_adaptativo_sei a cada 15 min): a sessão vigente sobe/desce pela taxa de falha de conexão medida (< 2 % +1, > 5 % metade). Medido 26/11: serial 0 conexão fechada em 74; 6 com login novo por árvore, 10 em 45'}
   doerj: {max: 1, motivo: uma leitura do Diário Oficial por vez}
   pncp: {max: 1, motivo: 'API PNCP: uma coleta por vez (limite de taxa)'}
   tcerj: {max: 1, motivo: 'portal aberto do TCE-RJ: uma coleta por vez'}
@@ -634,6 +634,16 @@ rotinas:
     timeout_s: 900
     efeito: {descricao: 'Triagem semanal dos amarelos (envio ao dono): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  teto_adaptativo_sei:
+    estagio: E18
+    descricao: 'Teto adaptativo de logins simultâneos no SEI-RJ (AIMD pela taxa de falha de conexão de E2/E3)'
+    comando: ['{py}', -m, compliance_agent.fluxo.teto_adaptativo]
+    agenda:
+    - {cron: '*/15 * * * *'}
+    origem: [o90-teto-adaptativo-26-11]
+    nos: [vm1]
+    timeout_s: 120
+    efeito: {descricao: 'gravou a decisão em fluxo.metricas (teto_adaptativo)', log_contem: 'teto_adaptativo: '}
   pipelines_slo:
     estagio: E18
     descricao: SLO dos pipelines (alerta)

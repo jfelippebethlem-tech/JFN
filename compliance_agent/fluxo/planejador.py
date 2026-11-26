@@ -154,8 +154,11 @@ def sincronizar_agenda(con, linhas: list[Mapping]) -> dict:
             Cron(x["cron_expr"])                                       # cron inválido não entra
             novo = (x["cron_expr"], x["tipo_job"], dict(x.get("payload") or {}))
             if x["id"] not in atuais:
+                # estágio JÁ liberado ⇒ a linha nova entra ativa (26/11/2026: rotina criada depois da religação
+                # ficava parada para sempre — só a liberação ativava); estágio não liberado segue esperando por ela
                 con.execute("INSERT INTO agenda(id, cron_expr, tipo_job, payload, ativo) VALUES (%s, %s, %s, %s, "
-                            "false)", (x["id"], novo[0], novo[1], json.dumps(novo[2])))
+                            "EXISTS (SELECT 1 FROM liberacao WHERE estagio = %s))",
+                            (x["id"], novo[0], novo[1], json.dumps(novo[2]), str(novo[2].get("estagio") or "")))
                 out["novas"] += 1
             elif atuais[x["id"]] == novo:
                 out["iguais"] += 1

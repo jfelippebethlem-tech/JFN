@@ -191,6 +191,8 @@ class Supervisor:
         slots_dados = self.slots is not None
         self.slots = dict(self.slots if slots_dados else governador.SLOTS_INICIAIS.get(self.no, {}))
         self._hash_grafo = None                      # só o grafo REAL (lido do yaml) se recarrega a quente
+        self._teto_vivo: dict[str, int] = {}         # teto adaptativo vigente (fluxo.teto_adaptativo), relido a cada 60 s
+        self._teto_lido_em = 0.0
         if self.grafo is None:                       # o grafo real: inválido ⇒ o supervisor não sobe (portão)
             self._hash_grafo = _hash_yaml()
             g = grafo_mod.carregar()
@@ -444,6 +446,20 @@ class Supervisor:
         log.info("yaml do fluxo recarregado a quente: %s", r)
         return r
 
+    def tetos_efetivos(self) -> dict[str, int]:
+        """Tetos de concorrência da reserva: o do yaml, limitado pelo ADAPTATIVO vigente onde houver (26/11/2026: os
+        logins simultâneos no SEI são decididos pela medida — fluxo/teto_adaptativo.py). Relido a cada 60 s."""
+        from compliance_agent.fluxo import teto_adaptativo as TA
+        if time.monotonic() - self._teto_lido_em >= 60.0:
+            self._teto_lido_em = time.monotonic()
+            maximo = int(self.tetos.get(TA.ETIQUETA) or 0)
+            if maximo:
+                v = TA.vigente(self.con, maximo=maximo)
+                self._teto_vivo = {TA.ETIQUETA: v} if v else {}
+            else:
+                self._teto_vivo = {}
+        return {**self.tetos, **{k: min(v, self.tetos.get(k, v)) for k, v in self._teto_vivo.items()}}
+
     def uma_volta(self) -> dict:
         r: dict = {"no": self.no}
         if time.monotonic() - self._ultimo_plano >= PLANEJAR_A_CADA_S:
@@ -466,7 +482,7 @@ class Supervisor:
         if bloqueados:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:
-            job = fila.reservar(self.con, self.no, livres, self.prazo_s, tetos=self.tetos,
+            job = fila.reservar(self.con, self.no, livres, self.prazo_s, tetos=self.tetos_efetivos(),
                                 ritmo_bloqueado=self._bloqueio_da_reserva(bloqueados), liberacao=True,
                                 restritos=self.restritos)
             if job is None:
