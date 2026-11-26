@@ -132,8 +132,9 @@ pipelines:
       fila de automelhoria (sensor `rem`).
 
   - nome: propagacao
-    remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.propagacao ciclo >> data/propagacao_cron.log 2>&1"
+    remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.propagacao ponte-fluxo"   # 26/11: o ciclo antigo (despachante) furava a liberação do motor
     arquivo: data/propagacao_cron.log
+    rotina: propagacao_ponte        # no motor (O9.0) o ciclo virou a ponte; o log dela é data/logs/fluxo/propagacao_ponte.log
     max_stale_h: 1
     grupo: base
     nota: >-

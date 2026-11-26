@@ -32,6 +32,17 @@ def _idade_h(p: Path) -> float | None:
         return None
 
 
+def idade_saida(it: dict) -> float | None:
+    """Idade da saída mais recente da etapa: o `arquivo` declarado (log do cron, antes da religação) OU o log da
+    rotina no motor, data/logs/fluxo/<rotina>.log (desde a O9.0, 26/11/2026 — o SLO olhava só o do cron, parado, e
+    dava stale de 55 h com a rotina rodando no motor). <rotina> = `rotina:` declarada ou o nome com '-' → '_'."""
+    arq = Path(it["arquivo"])
+    arq = arq if arq.is_absolute() else BASE / arq
+    rotina = it.get("rotina") or it["nome"].replace("-", "_")
+    idades = [i for i in (_idade_h(arq), _idade_h(BASE / "data" / "logs" / "fluxo" / f"{rotina}.log")) if i is not None]
+    return min(idades) if idades else None
+
+
 def _idade_consulta(db: str, sql: str) -> float | None:
     """Horas desde o registro mais recente que a consulta devolve. `None` = não deu para saber.
 
@@ -98,7 +109,7 @@ def checar() -> list[dict]:
             idade = _idade_consulta(str(BASE / it.get("db", "data/compliance.db")),
                                     it["consulta"])
         else:
-            idade = _idade_h(arq)
+            idade = idade_saida(it)
         # SOB DEMANDA não tem frescor a vigiar. O DataJud é consulta por número CNJ conhecido —
         # não coleta em lote, não tem tabela e nunca teve log; ficava como `ausente` (⚠️) para
         # sempre, e alarme permanente é alarme desligado. Declarar a natureza da fonte é mais
