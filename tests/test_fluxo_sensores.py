@@ -272,3 +272,17 @@ def test_conectar_leitura_recusa_escrita(con, esquema_tmp):
 def test_idade_h():
     agora = datetime(2026, 11, 24, 12, 0)
     assert S.idade_h(agora - timedelta(hours=5), agora) == 5.0 and S.idade_h(None, agora) is None
+
+
+def test_backup_lido_tambem_do_log_do_motor(tmp_path):
+    """26/11/2026: na religação a rotina grava em data/logs/fluxo/<rotina>.log; o sensor lia só o log do cron
+    (parado desde 25/11) e acusava backup de 31 h com o backup de hoje feito, cifrado e conferido."""
+    (tmp_path / "logs" / "fluxo").mkdir(parents=True)
+    (tmp_path / "backup_compliance_cron.log").write_text(
+        "[backup] ✓ off-box: gdrive:vm1/compliance-20261125-031501.db.gz.age (porta única, cifrado)\n", encoding="utf-8")
+    (tmp_path / "logs" / "fluxo" / "backup_compliance.log").write_text(
+        "[backup] ✓ off-box: dropbox+gdrive:vm1/compliance-20261126-035008.db.gz.age (porta única, cifrado)\n",
+        encoding="utf-8")
+    txt = S.texto_dos_logs(tmp_path, "backup_compliance_cron.log", "backup_compliance")
+    assert S.ultimo_backup_compliance(txt) == datetime(2026, 11, 26, 3, 50, 8)
+    assert S.texto_dos_logs(tmp_path, "nao_existe.log", "nao_existe") is None

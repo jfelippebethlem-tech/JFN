@@ -699,16 +699,24 @@ def g_opus(ctx: Ctx) -> list[Leitura]:
             Leitura("opus.pendentes", float(pend))]
 
 
+def texto_dos_logs(data: Path, arq: str, rotina: str) -> str | None:
+    """O log do cron (antes da religação) + o log da rotina no motor (data/logs/fluxo/<rotina>.log, desde a O9.0):
+    26/11/2026 o sensor lia só o do cron, parado, e acusava 31 h com o backup do dia feito. Nenhum dos dois = None."""
+    partes = [_ler(p) for p in (data / arq, data / "logs" / "fluxo" / f"{rotina}.log") if p.exists()]
+    return "\n".join(partes) if partes else None
+
+
 def g_backup(ctx: Ctx) -> list[Leitura]:
     agora = ctx.agora_local
     out = []
-    for nome, arq, fn in (("backup.compliance_idade_h", "backup_compliance_cron.log", ultimo_backup_compliance),
-                          ("backup.evidencias_pg_idade_h", "backup_evidencias_pg.log", ultimo_dump_guardado)):
-        p = ctx.data / arq
-        if not p.exists():
-            out.append(nao_mediu(nome, f"{arq} ausente: nenhum backup registrado"))
+    for nome, arq, rotina, fn in (
+            ("backup.compliance_idade_h", "backup_compliance_cron.log", "backup_compliance", ultimo_backup_compliance),
+            ("backup.evidencias_pg_idade_h", "backup_evidencias_pg.log", "backup_evidencias_pg", ultimo_dump_guardado)):
+        txt = texto_dos_logs(ctx.data, arq, rotina)
+        if txt is None:
+            out.append(nao_mediu(nome, f"{arq} e logs/fluxo/{rotina}.log ausentes: nenhum backup registrado"))
             continue
-        h = idade_h(fn(_ler(p)), agora)
+        h = idade_h(fn(txt), agora)
         out.append(Leitura(nome, h, rotulos={"log": arq}) if h is not None else
                    nao_mediu(nome, f"{arq} sem backup concluído reconhecível"))
     rm = _restauracao_metricas(ctx.con, ctx.agora.timestamp()) if ctx.con is not None else None
