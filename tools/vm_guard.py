@@ -23,7 +23,16 @@ import subprocess
 import time
 
 # Limiares p/ 2 vCPU + ~11GB RAM (ecossistema sempre-on já usa ~2GB/1 core).
-MAX_LOAD1 = float(os.environ.get("VM_GUARD_MAX_LOAD", "1.7"))   # load 1min; >1.7 em 2 vCPU = saturando
+MAX_LOAD1 = float(os.environ.get("VM_GUARD_MAX_LOAD", "1.7"))   # load 1min; >1.7 em 2 vCPU = saturando (legado)
+
+
+def limite_carga() -> float:
+    """Load1 acima do qual a máquina satura: 0,85 × núcleos (1,7 na VM-1 de 2 vCPU, como sempre). 26/11/2026: o limite
+    fixo de 1,7 adiava à toa a captura do it-campo (24 núcleos) — o sensor `motor` da automelhoria contou 15× em 24 h.
+    VM_GUARD_MAX_LOAD explícito continua valendo."""
+    if os.environ.get("VM_GUARD_MAX_LOAD"):
+        return float(os.environ["VM_GUARD_MAX_LOAD"])
+    return round(0.85 * (os.cpu_count() or 2), 2)
 MIN_FREE_GB = float(os.environ.get("VM_GUARD_MIN_FREE_GB", "2.5"))
 PRESERVE = "chrome-jfn"   # o chromium persistente do ecossistema (porta 9222) — NUNCA matar
 # navegador FIXO das sessões do it-campo (tools/itcampo_sei_paralelo.comando_navegador): fica aberto e logado entre
@@ -97,16 +106,41 @@ def cleanup_orphans() -> int:
             os.kill(pid, signal.SIGKILL); n += 1
         except OSError as e:                       # processo já saiu ou não é nosso: registra e segue
             print(f"vm_guard: não matei {pid}: {e}", file=sys.stderr)
-    try:
-        subprocess.run("rm -rf /tmp/playwright_chromiumdev_profile-* /tmp/.org.chromium.* 2>/dev/null",
-                       shell=True, timeout=10)
-    except Exception:
-        logging.getLogger(__name__).debug("exceção tolerada em vm_guard", exc_info=True)
+    limpar_perfis_orfaos()
     return n
 
 
-def preflight(max_load: float = MAX_LOAD1, min_free_gb: float = MIN_FREE_GB) -> tuple[bool, str]:
+def _cmdlines_vivas() -> list[str]:
+    out = []
+    for d in os.listdir("/proc"):
+        if d.isdigit():
+            try:
+                with open(f"/proc/{d}/cmdline", "rb") as f:
+                    out.append(f.read().replace(b"\0", b" ").decode("utf-8", "ignore"))
+            except OSError:
+                continue
+    return out
+
+
+def limpar_perfis_orfaos(base: str = "/tmp") -> int:
+    """Apaga perfis temporários do Chromium que NENHUM processo vivo usa. 26/11/2026: o rm -rf de todos os
+    `/tmp/playwright_chromiumdev_profile-*` apagava o perfil de um navegador VIVO de outra captura simultânea."""
+    import glob
+    import shutil
+    vivas = " ".join(_cmdlines_vivas())
+    n = 0
+    for p in glob.glob(os.path.join(base, "playwright_chromiumdev_profile-*")) + \
+            glob.glob(os.path.join(base, ".org.chromium.*")):
+        if p in vivas:
+            continue
+        shutil.rmtree(p, ignore_errors=True) if os.path.isdir(p) else os.path.exists(p) and os.remove(p)
+        n += 1
+    return n
+
+
+def preflight(max_load: float | None = None, min_free_gb: float = MIN_FREE_GB) -> tuple[bool, str]:
     """True se for seguro lançar trabalho pesado de browser/OCR agora."""
+    max_load = limite_carga() if max_load is None else max_load
     load = _load1()
     free = _meminfo_available_gb()
     if load > max_load:
