@@ -75,7 +75,7 @@ def limites_do_job(recursos: list[str], payload: Mapping | None = None) -> tuple
 
 
 def montar_comando(fase: str, entrada: Path, saida: Path, limites: tuple[str, int, int], isolamento: str,
-                   python: str = sys.executable) -> list[str]:
+                   python: str = sys.executable, unidade: str | None = None) -> list[str]:
     """Função pura: o argv exato do filho. `isolamento` = 'systemd' ou 'subprocesso'."""
     mem, peso, tempo = limites
     base = [python, "-m", MODULO_FILHO, fase, str(entrada), str(saida)]
@@ -87,8 +87,17 @@ def montar_comando(fase: str, entrada: Path, saida: Path, limites: tuple[str, in
         # não existe (it-campo), Wants/After de unit ausente não bloqueiam.
         return ["systemd-run", "--user", "--scope", "--quiet", "--slice=jfn-coletor.slice",
                 "-p", "Wants=jfn-egress.service", "-p", "After=jfn-egress.service",
-                "-p", f"MemoryMax={mem}", "-p", f"CPUWeight={peso}", "--"] + base
+                "-p", f"MemoryMax={mem}", "-p", f"CPUWeight={peso}"] + ([f"--unit={unidade}"] if unidade else []) \
+            + ["--"] + base
     return base
+
+
+def matar_escopo(unidade: str | None) -> None:
+    """Mata o escopo INTEIRO do job (25/11/2026: neto destacado sobrevivia ao `timeout`/killpg — o despachante antigo
+    ficou órfão horas com 1 GB). Escopo já vazio/inexistente: nada a fazer."""
+    if unidade:
+        subprocess.run(["systemctl", "--user", "kill", "--signal=SIGKILL", f"{unidade}.scope"],
+                       capture_output=True, timeout=15)
 
 
 def systemd_disponivel() -> bool:
@@ -147,6 +156,7 @@ class Filho:
     tempo_max: float
     resultado: dict | None = None
     parado: bool = False                        # SIGSTOP do governador
+    unidade: str | None = None                  # escopo systemd nomeado (morto inteiro ao encerrar)
 
 
 @dataclass
@@ -248,7 +258,8 @@ class Supervisor:
                                        "payload": job.payload, "resultado": resultado}, default=str),
                            encoding="utf-8")
         lim = LIMITE_CONFERIR if fase == "conferir" else limites_do_job(job.recursos, job.payload)
-        cmd = montar_comando(fase, entrada, saida, lim, self.isolamento)
+        unidade = f"jfn-job-{job.id}-{job.ficha}-{fase}" if self.isolamento == "systemd" else None
+        cmd = montar_comando(fase, entrada, saida, lim, self.isolamento, unidade=unidade)
         mem = _bytes(lim[0])
 
         def _teto():                                     # só no ramo sem systemd: prlimit + nice
@@ -259,7 +270,7 @@ class Supervisor:
                                     start_new_session=True,
                                     preexec_fn=_teto if self.isolamento != "systemd" else None)
         self.filhos.append(Filho(job=job, fase=fase, proc=proc, pasta=pasta, inicio=time.monotonic(),
-                                 tempo_max=lim[2] + 15, resultado=resultado))
+                                 tempo_max=lim[2] + 15, resultado=resultado, unidade=unidade))
         log.info("lançou %s %s (ficha %s, pid %s)", fase, job.chave, job.ficha, proc.pid)
 
     @staticmethod
@@ -268,9 +279,11 @@ class Supervisor:
             os.killpg(f.proc.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+        matar_escopo(f.unidade)
         f.proc.wait(timeout=30)
 
     def _encerrar(self, f: Filho) -> None:
+        matar_escopo(f.unidade)                          # o que sobrou no escopo depois do job é órfão
         self.filhos.remove(f)
         shutil.rmtree(f.pasta, ignore_errors=True)
 
@@ -297,6 +310,7 @@ class Supervisor:
                 self._contar(r, fila.falhar(self.con, f.job.ficha, f"fase {f.fase} saiu 0 sem {f.fase}.saida.json "
                                             f"legível {self._stderr(f)}", True, "saida"), "falhou")
             elif rc == 0 and f.fase == "rodar":
+                matar_escopo(f.unidade)                  # o rodar acabou: neto que ficou no escopo é órfão
                 self.filhos.remove(f)                    # a mesma pasta segue para a conferência
                 self._lancar(f.job, "conferir", f.pasta, dados)
                 continue

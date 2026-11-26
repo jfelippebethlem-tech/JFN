@@ -157,3 +157,19 @@ def test_eco_ponta_a_ponta_em_escopo_systemd(con, esquema_tmp):
     finally:
         sup.fechar()
     assert tot["feito"] == 1, tot
+
+
+def test_escopo_com_nome_e_morto_inteiro(monkeypatch):
+    """Religação O9.0 (25/11/2026): o `timeout` matou só o executar e o despachante antigo, lançado destacado por um
+    remédio, ficou órfão no escopo (1 GB, horas). O escopo do job ganha nome e é morto INTEIRO ao encerrar o job."""
+    lim = S.limites_do_job(["cpu_leve"])
+    c = S.montar_comando("rodar", Path("/t/e.json"), Path("/t/s.json"), lim, "systemd", python="/py",
+                         unidade="jfn-job-7-3-rodar")
+    assert "--unit=jfn-job-7-3-rodar" in c and c.index("--unit=jfn-job-7-3-rodar") < c.index("--")
+    chamadas = []
+    monkeypatch.setattr(S.subprocess, "run", lambda argv, **k: chamadas.append(argv))
+    S.matar_escopo("jfn-job-7-3-rodar")
+    assert chamadas == [["systemctl", "--user", "kill", "--signal=SIGKILL", "jfn-job-7-3-rodar.scope"]]
+    chamadas.clear()
+    S.matar_escopo(None)
+    assert chamadas == []
