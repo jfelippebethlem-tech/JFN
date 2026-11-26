@@ -33,21 +33,33 @@ table inet jfn_egress {
 	#   100.74.228.51:2222  túnel vm1↔vm2 (rsync/ssh das entregas)
 	#   100.123.89.59:2222  túnel vm2→vm1: o origin git dos workers (deploy_worker do E17). Faltava: na religação
 	#                       O9.0 (25/11/2026) o deploy_vm2 foi à quarentena com «connection refused» (era este filtro)
+	#   100.74.228.51:8443  segundo cérebro (jfn-brain, MCP/HTTPS) — O9.0 (26/11/2026): as rotinas legadas que gravam
+	#                       nele rodam AGORA na fatia (handoff_watcher, propagacao_ponte, cerebro_ponte/bateria/
+	#                       consolidacao_noite, vault_retratos, conferencia_opus_fila); medido: propagacao_ponte
+	#                       «URLError [Errno 111] Connection refused» em toda volta, com rc 0 (falha calada)
+	#   100.75.118.110:22   ssh VM-1→it-campo (indeterminados, padroes, dossie_couto, itcampo_vigia da automelhoria)
 	set tailnet_v4 {
 		type ipv4_addr . inet_service
-		elements = { 100.74.228.51 . 5432, 100.74.228.51 . 2222, 100.123.89.59 . 2222 }
+		elements = { 100.74.228.51 . 5432, 100.74.228.51 . 2222, 100.123.89.59 . 2222, 100.74.228.51 . 8443,
+			     100.75.118.110 . 22 }
 	}
 	set tailnet_v6 {
 		type ipv6_addr . inet_service
-		elements = { fd7a:115c:a1e0::c938:e434 . 5432, fd7a:115c:a1e0::c938:e434 . 2222 }
+		elements = { fd7a:115c:a1e0::c938:e434 . 5432, fd7a:115c:a1e0::c938:e434 . 2222,
+			     fd7a:115c:a1e0::c938:e434 . 8443 }
 	}
 
 	# Loopback liberado ao coletor (porta TCP em 127.0.0.1). 5432 = PG local (na VM-2);
-	# 9222/9333 = CDP do Chromium que o próprio coletor dirige. O painel (8000), Yoda, VNC e o
-	# resto do 127/8 ficam FORA.
+	# 9222/9333 = CDP do Chromium que o próprio coletor dirige. Yoda, VNC e o resto do 127/8 ficam FORA.
+	# O9.0 (26/11/2026), medido na VM-1 (sonda TCP dentro × fora da fatia):
+	#   8000 = painel: ronda/keepalive/remediar_painel_*/prewarm_painel/materializar_painel/vault_retratos/
+	#          automelhoria rodam na fatia — sem ele a ronda dizia «api=FORA» com o painel no ar e o remédio
+	#          painel_shm respondia «nada» sem ter lido rota nenhuma (cego, rc 0)
+	#   5244 = OpenList (WebDAV local das nuvens terabox/proton/mediafire): nuvens_manter_vivas rc=1 por
+	#          «dial tcp 127.0.0.1:5244: connect: connection refused»
 	set loopback_tcp {
 		type inet_service
-		elements = { 5432, 9222, 9333 }
+		elements = { 5432, 8000, 5244, 9222, 9333 }
 	}
 
 	chain saida {

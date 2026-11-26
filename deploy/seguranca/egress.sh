@@ -106,11 +106,12 @@ case "$ACAO" in
       printf '%-38s fatia=%-5s (esperado %-5s) fora=%-5s\n' "$r" "$(s na_fatia "$@")" "$e" "$(s fora "$@")"
     }
     linha "metadata 169.254.169.254"     falha curl -s -o /dev/null -m 3 http://169.254.169.254/
-    linha "painel 127.0.0.1:8000"         falha timeout 3 bash -c '</dev/tcp/127.0.0.1/8000'
+    linha "painel 127.0.0.1:8000"         passa timeout 3 bash -c '</dev/tcp/127.0.0.1/8000'
     linha "DNS pelo stub"                 passa getent ahosts www.google.com
     linha "HTTPS externo www.google.com"   passa curl -s -o /dev/null -m 10 https://www.google.com/
     linha "PG VM-2 100.74.228.51:5432"    passa timeout 3 bash -c '</dev/tcp/100.74.228.51/5432'
-    linha "brain VM-2 100.74.228.51:8443" falha timeout 3 bash -c '</dev/tcp/100.74.228.51/8443'
+    linha "brain VM-2 100.74.228.51:8443" passa timeout 3 bash -c '</dev/tcp/100.74.228.51/8443'
+    linha "Yoda/VNC 127.0.0.1:6080"       falha timeout 3 bash -c '</dev/tcp/127.0.0.1/6080'
     linha "SSH 10.0.0.1:22 RFC1918"       falha timeout 3 bash -c '</dev/tcp/10.0.0.1/22'
     echo "contadores:"; nft list chain $TABELA coletor | grep 'counter' || true ;;
   *) uso ;;

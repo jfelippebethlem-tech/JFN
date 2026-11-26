@@ -68,3 +68,8 @@ urllib3>=2.0.0       # uso direto (retry/pool) nos coletores
 # (provisionamento de VM, fora do caminho de análise). Instale sob demanda: pip install oci
 apsw>=3.53  # file controls do SQLite (PERSIST_WAL) — a stdlib nao expoe; ver compliance_agent/database/guarda_wal.py
 psycopg[binary]==3.3.9   # Fase 3 (23/11/2026): estado canônico da plataforma de evidências no PostgreSQL da VM-2
+# E5 ocr / E6 confirmar_ocr NATIVOS (O9.0, 26/11/2026): o handler roda na venv do WORKER (jfn-fluxo@vm2/@itcampo),
+# não mais nas venvs próprias de OCR — sem estes, o E5 caía em ModuleNotFoundError na VM-2 e no it-campo (medido 26/11)
+# e o E6 declarava o código de barras INDISPONÍVEL. Versão = a do ~/ocr-reserva/.venv da VM-2 (bancada de 18/11).
+rapidocr==3.10.0     # tools/sei_ocr_reserva.motor_ocr (ExecutorCPU do E5, recorte do E6)
+zxing-cpp>=2.2       # E6: código de barras/QR como prova nível A (wheel puro, sem lib de sistema)

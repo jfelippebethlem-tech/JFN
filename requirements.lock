@@ -1,6 +1,6 @@
 # LOCK GERADO por tools/lock_dependencias.py — não editar à mão; regenerar: python tools/lock_dependencias.py
 # Instalar: pip install --require-hashes -r <este arquivo>   (torch CPU vem pelos --find-links abaixo)
-# entrada: requirements.txt sha256=7267ba59aea660cd73b495f04bd50ae6497ed34c2268571f1dff6ddc7f716158
+# entrada: requirements.txt sha256=ebedf02ca8686233c90ce223badaa1419eb01089faf073896a7c96fe7f149d93
 --find-links https://download.pytorch.org/whl/torch/
 --find-links https://download.pytorch.org/whl/torchvision/
 
@@ -456,7 +456,15 @@ colorama==0.4.6 ; sys_platform == 'win32' \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
     # via
     #   -c requirements-sei.lock
+    #   colorlog
     #   ipython
+    #   tqdm
+colorlog==6.12.0 \
+    --hash=sha256:2a7924c1dadf18b22a0eb8b06d1c7b01d5341707ec1641eb6fcc4fde0c3e8e5f \
+    --hash=sha256:30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e
+    # via
+    #   -c requirements-sei.lock
+    #   rapidocr
 contourpy==1.4.0 \
     --hash=sha256:018227e134b73090b06f911e773a526c77c9af426be29065500ce096a5accd4c \
     --hash=sha256:072a702e2e178f4fcf96f04775d0c059e4c917925abf0d3208ebb6865df3c23d \
@@ -1978,6 +1986,7 @@ numpy==2.5.5 \
     #   pymupdf
     #   pyod
     #   python-louvain
+    #   rapidocr
     #   scikit-image
     #   scikit-learn
     #   scipy
@@ -1991,6 +2000,12 @@ nvidia-nccl-cu13==2.32.6 ; sys_platform == 'linux' \
     # via
     #   -c requirements-sei.lock
     #   xgboost
+omegaconf==2.4.0 \
+    --hash=sha256:7e219a70bea371da250285b9c01c7db027bc421722799c2cc4ff14bc4a2a753b \
+    --hash=sha256:f141a664c777582405e3cc6e0545ecc79429e79f844995b1a6e71c35946a025c
+    # via
+    #   -c requirements-sei.lock
+    #   rapidocr
 onnxruntime==1.32.0 \
     --hash=sha256:02ea12a28c069ea8510093d95a7f6ff8126bfd9fc5c0d3381c03b80fb2b424ba \
     --hash=sha256:2303372a85299b6757b0e11e1cbf13e410ddf7e10c37f4b37e99d1c90e7daf7c \
@@ -2034,6 +2049,7 @@ opencv-python-headless==5.1.0.95 \
     #   -c requirements-sei.lock
     #   -r requirements.txt
     #   easyocr
+    #   rapidocr
 openpyxl==3.1.5 \
     --hash=sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2 \
     --hash=sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050
@@ -2238,6 +2254,7 @@ pillow==13.0.0 \
     #   matplotlib
     #   pdfplumber
     #   pytesseract
+    #   rapidocr
     #   scikit-image
     #   torchvision
 playwright==1.44.0 \
@@ -2477,6 +2494,7 @@ pyclipper==1.4.0 \
     # via
     #   -c requirements-sei.lock
     #   easyocr
+    #   rapidocr
 pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e \
     --hash=sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6
@@ -2952,7 +2970,9 @@ pyyaml==6.0.2 \
     #   -c requirements-sei.lock
     #   -r requirements.txt
     #   easyocr
+    #   omegaconf
     #   pymupdf
+    #   rapidocr
     #   uvicorn
 rapidfuzz==3.14.6 \
     --hash=sha256:07c7aa0b1e4b9999a54f9e73317d6743ff85442c8ef7b7fbbe6b190fd37d9e75 \
@@ -3061,12 +3081,18 @@ rapidfuzz==3.14.6 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+rapidocr==3.10.0 \
+    --hash=sha256:2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050
+    # via
+    #   -c requirements-sei.lock
+    #   -r requirements.txt
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   rapidocr
 rich==15.0.0 \
     --hash=sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb \
     --hash=sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36
@@ -3319,6 +3345,13 @@ shapely==2.2.0 \
     # via
     #   -c requirements-sei.lock
     #   easyocr
+    #   rapidocr
+six==1.17.0 \
+    --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
+    --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
+    # via
+    #   -c requirements-sei.lock
+    #   rapidocr
 sniffio==1.3.1 \
     --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2 \
     --hash=sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc
@@ -3488,6 +3521,12 @@ torchvision==0.29.2+cpu \
     #   -c torch CPU (tools/lock_dependencias.py)
     #   -c requirements-sei.lock
     #   easyocr
+tqdm==4.70.1 \
+    --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73 \
+    --hash=sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4
+    # via
+    #   -c requirements-sei.lock
+    #   rapidocr
 traitlets==5.16.1 \
     --hash=sha256:ed900c2b631aa3a112811139fa97b8d2c3bad5e989656bba4b7e52c7852c18c1 \
     --hash=sha256:f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b
@@ -3859,6 +3898,35 @@ xgboost==3.4.1 \
 xlrd==2.0.2 \
     --hash=sha256:08b5e25de58f21ce71dc7db3b3b8106c1fa776f3024c54e45b45b374e89234c9 \
     --hash=sha256:ea762c3d29f4cca48d82df517b6d89fbce4db3107f9d78713e48cd321d5c9aa9
+    # via
+    #   -c requirements-sei.lock
+    #   -r requirements.txt
+zxing-cpp==3.2.0 \
+    --hash=sha256:28b2d211ef6ffb9424b6732a54bba78db2e91cc2a87afbd6bb1352d9352bef49 \
+    --hash=sha256:3aec9b37eb7fc2cd8a3ca212327fe5b94e0661e8e176dd3870ec36b82bb991d0 \
+    --hash=sha256:3d59cba83b6d6dd583dd2a35d81636dcffb91655ad8d1d4f998d2ed4426b9702 \
+    --hash=sha256:4e352683c0810130aab1285f7889334efd5052faca35a876861d45ef45acc97f \
+    --hash=sha256:4e4731740113992feb35601c5c322aac7c96a7d89c5b956337c95ff53c8a3a65 \
+    --hash=sha256:4f3bc9e00a9c67d775849bbe439b4679b494d38e60f264d42947d567eb3c2c79 \
+    --hash=sha256:52abd4ff88cbea2337a887aeb30422e3a0c0b517054272186cf1ae06fae47b5b \
+    --hash=sha256:56c879b4b072451dcc9cbec10ea7e8081fb5e4e25d061ae5f50172504d511b1d \
+    --hash=sha256:662ce77e74c3556fb9282fa897ea9afb1b8bae2b5b64d33f531baf8dda9f2f92 \
+    --hash=sha256:741ad1fe7ec4b621a370cad4b855beb08ef13e662804ef83d560ff73ee64f395 \
+    --hash=sha256:7a6bf41bcbf6cb1a732e88778e0763eb2e2bacae349b4abb825b653beefa3a9f \
+    --hash=sha256:81574c97c88c38072c979c2e776f77b35e14f2e0d4f1d7a5bfe2d965cfb63e61 \
+    --hash=sha256:9e0f8a222adb024df01872e6eb8ef3a41ab0612c212798a3e6d6fa42aa597ef1 \
+    --hash=sha256:a752ca5226d786ab32a3ca648e3b6834ff8309c4741434e3b7438343bf33ad2a \
+    --hash=sha256:a93f3effeff84930cabb93a45ced818e79bdf8704ebc0eba2c39ad26d712050e \
+    --hash=sha256:a99daa429f2277e7b1ca19362ff11c762174a463940edbb1d8e9612904c3732f \
+    --hash=sha256:b725089a63c8b141fb9e001da10acacdc0e8604cfd4c8a6f2257723f3fab2348 \
+    --hash=sha256:b8fa11c6f3c2e70f5199523cd6d9ea6c8bb3da5458b6f839d25d817e3672f15a \
+    --hash=sha256:baa4779ea4d023bd2fa917e4204889e90887dd3726b2fa0183e310ef3d4dade3 \
+    --hash=sha256:bf492e300c079f25a36c98c470250525455b6102e4811334d92e54c88addea75 \
+    --hash=sha256:c9006c69bce7195ff3bb25532012cc2c0351fe6860a3bb0f730ae3d7b87a605d \
+    --hash=sha256:cdaf1cfa26377d597e7707d2e2334a8fb2e06d69f6e76761848a33e8e7043a2c \
+    --hash=sha256:ea86d10615c012ff36e31f0b89ca379c297d8b3a65c81c809ff1b0a51553e961 \
+    --hash=sha256:ede3c87e84be140e85c9f323f5a98626127e3f0819064d930aeb5dae96fd10bd \
+    --hash=sha256:ff1f90d2f24af90e84907b0dc252bd4e1bd782933f4bbd27b1383af2d1bee95b
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
