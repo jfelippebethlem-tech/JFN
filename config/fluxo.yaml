@@ -420,7 +420,7 @@ rotinas:
     - {cron: 0 6 * * *}
     origem: [vm1-cron-compliance-agent-collectors-folha-orquestrador]
     nos: [vm1]
-    timeout_s: 900
+    timeout_s: 1200            # medido no sistema antigo: 713 s (cron 06:00 → mtime de folha_orquestrador_cron.log 06:11:53, 24/11; n=1); janela 1 da religação: 259 s (fluxo.jobs) — ×1,5 = 1.070 > 900 (O9.0)
     efeito: {descricao: 'Folha de pagamento: orquestrador de coletas: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
   sweep_sei:
@@ -702,7 +702,7 @@ rotinas:
     estagio: E1
     descricao: 'SEI Prefeitura: ingestão'
     comando: ['{py}', -m, tools.pcrj_sei_ingest]
-    timeout_s: 7200            # medido no sistema antigo: ~80 min (cron 02:35 → log até 03:57, 24/11); o padrão de 900 s estourava (religação O9.0)
+    timeout_s: 7500            # medido no sistema antigo: 4.970 s (cron 02:35 → mtime de pcrj_sei_ingest.log 03:57:50, 24/11; n=1) — ×1,5 = 7.455; o padrão de 900 s estourava (religação O9.0)
     agenda:
     - {cron: 35 2 * * *}
     origem: [vm1-cron-tools-pcrj-sei-ingest]
@@ -763,7 +763,7 @@ rotinas:
     estagio: E1
     descricao: TCE-RJ dados abertos (ingestão semanal)
     comando: ['{py}', -m, compliance_agent.collectors.tcerj_aberto, --ingerir]
-    timeout_s: 3000
+    timeout_s: 3700            # medido no sistema antigo: 2.414 s (cron sáb 07/11 03:30 → mtime de tcerj_aberto_cron.log 04:10:14; n=1; o cron tinha timeout 3000) — ×1,5 = 3.621 > 3.000 (O9.0)
     concorrencia: [tcerj]
     nota: a pausa data/_pausa_tcerj do cron antigo vira agenda.ativo=false
     agenda:
@@ -1026,7 +1026,7 @@ rotinas:
     - {cron: 30 5 * * *}
     origem: [vm1-cron-tools-acervo-regras-e-familia]
     nos: [vm1]
-    timeout_s: 900
+    timeout_s: 13200           # medido no sistema antigo: p50 742 s, p95 8.762 s, máx 10.611 s (n=59, duração que o próprio job imprime em data/acervo_regras_e_familia.log; crescente: últimas 4 ≥ 8.240 s) — ×1,5 = 13.142 > 900 (O9.0)
     efeito: {descricao: 'Acervo: regras E e família: rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina para o estágio
         (O3–O8); até lá: rc 0 + log sem traceback'}
   sweep_beneficios:
@@ -1645,7 +1645,7 @@ rotinas:
     estagio: E1
     descricao: 'Fiscalização: coletar tudo (incremental, semanal)'
     comando: ['{py}', tools/fisc_coletar_tudo.py, --incremental, --pausa, '1.0']
-    timeout_s: 21600
+    timeout_s: 26000           # medido no sistema antigo: 17.187 s (n=1, journal VM-1 jfn-fisc-refresh.service; o timer tinha teto 28.800) — ×1,5 = 25.781 > 21.600 (O9.0)
     agenda:
     - {cron: 30 0 * * 1}
     origem: [vm1-timer-jfn-fisc-refresh]
@@ -2109,7 +2109,7 @@ rotinas:
     estagio: E13
     descricao: Ciclo da automelhoria da perícia (lição → portão → sombra → campeão), 1×/dia
     comando: ['{py}', -m, compliance_agent.autoaprimoramento, ciclo]
-    timeout_s: 900
+    timeout_s: 1300            # medido no sistema antigo: p50 576 s, p95/máx 833 s (n=4, propagacao.db execucao 19–22/11) — ×1,5 = 1.250 > 900 (O9.0)
     recursos: [cpu_pesado]
     efeito: {descricao: 'Ciclo da automelhoria da perícia (lição → portão → sombra → campeão), 1×/dia: rodou até o fim sem traceback', so_rc: o derivado
         não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
