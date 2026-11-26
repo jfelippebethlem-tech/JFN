@@ -562,3 +562,17 @@ def test_fora_de_alcance_da_primeira_volta_conta_como_decidido(con):
     con.execute("DELETE FROM jobs WHERE chave = 'w'")
     r = R.conferir_estagio(con, "E2", [c for c in ch if c != "w"])
     assert r["ok"] and r["pendentes"] == 0                                  # volta inteira: feitos + fora = total
+
+
+@precisa_pg
+def test_interrupcao_da_infraestrutura_nao_conta_como_erro_do_job(con):
+    """26/11/2026 13h30: o E2 não fechava com 16 "erros" — 15 eram o próprio supervisor reiniciando (parada) e
+    posse vencida nos reinícios (lease_vencido). Interrupção da infraestrutura não é falha do job."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E2', 't')")
+    ch = []
+    for i in range(10):
+        _job(con, f"f{i}", "feito", estagio="E2"); ch.append(f"f{i}")
+    for i, t in enumerate(["parada"] * 9 + ["lease_vencido"] * 6 + ["pressao"] * 2):
+        _job(con, f"i{i}", "fila", estagio="E2", erro=t); ch.append(f"i{i}")
+    r = R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)
+    assert r["ok"] and r["com_erro"] == 0

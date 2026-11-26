@@ -669,7 +669,9 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
         "SELECT count(*) FROM jobs WHERE chave = ANY(%s) AND estado IN ('quarentena', 'falhou_efeito') "
         "AND coalesce(erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%'", (chaves,)).fetchone()[0] if chaves else 0
     inteira = ruins == 0 and pendentes == 0 and feitos + fora_da_volta == len(chaves)
-    com_erro = sum(1 for _c, e in esperando if e not in (None, "adiado"))
+    # interrupção da INFRAESTRUTURA não é falha do job (26/11/2026: reinícios do supervisor e do PG deixaram 15 jobs
+    # com `parada`/`lease_vencido` e o E2 não fechava): espera (adiado), supervisor parado, posse vencida, governador
+    com_erro = sum(1 for _c, e in esperando if e not in (None, "adiado", "parada", "lease_vencido", "pressao"))
     # estágio de FILA (26/11/2026): nova tentativa isolada é normal numa fila de milhares (a falha real é a quarentena,
     # já em `ruins`); tolera até 10% dos feitos (mínimo 3). Erro sistemático passa disso e barra. LLM: zero.
     tolerancia = max(3, feitos // 10) if fila else 0
