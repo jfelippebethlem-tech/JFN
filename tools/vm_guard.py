@@ -139,7 +139,13 @@ def limpar_perfis_orfaos(base: str = "/tmp") -> int:
 
 
 def preflight(max_load: float | None = None, min_free_gb: float = MIN_FREE_GB) -> tuple[bool, str]:
-    """True se for seguro lançar trabalho pesado de browser/OCR agora."""
+    """True se for seguro lançar trabalho pesado de browser/OCR agora.
+
+    Dentro do motor (job lançado pelo supervisor, que põe JFN_NO no filho) a decisão de carga JÁ FOI do governador
+    (PSI, cgroup por job): não decide de novo. 26/11/2026: esta guarda adiava a captura da VM-2 18× em 24 h depois
+    de o governador ter reservado — dois controladores da mesma coisa."""
+    if os.environ.get("JFN_NO"):
+        return True, f"sob o governador do motor (nó {os.environ['JFN_NO']}): a carga já foi decidida na reserva"
     max_load = limite_carga() if max_load is None else max_load
     load = _load1()
     free = _meminfo_available_gb()

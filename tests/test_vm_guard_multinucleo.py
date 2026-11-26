@@ -22,3 +22,16 @@ def test_perfil_em_uso_nao_e_apagado(tmp_path, monkeypatch):
     monkeypatch.setattr(G, "_cmdlines_vivas", lambda: [f"chrome --user-data-dir={vivo} --headless"])
     apagados = G.limpar_perfis_orfaos(str(tmp_path))
     assert vivo.exists() and not morto.exists() and apagados == 1
+
+
+def test_dentro_do_motor_quem_decide_a_carga_e_o_governador(monkeypatch):
+    """26/11/2026: a guarda de load antiga ADIAVA 18× em 24 h a captura (E3) na VM-2 (load 2,6–3,8 > 1,7) DEPOIS que o
+    governador do motor (PSI) já tinha decidido reservar — dois controladores da mesma coisa. Job do motor (o
+    supervisor põe JFN_NO no filho) não espera de novo; fora do motor a guarda segue igual."""
+    monkeypatch.setattr(G, "_load1", lambda: 9.9)
+    monkeypatch.setattr(G, "_meminfo_available_gb", lambda: 8.0)
+    monkeypatch.setenv("JFN_NO", "vm2")
+    ok, motivo = G.preflight()
+    assert ok and "governador" in motivo
+    monkeypatch.delenv("JFN_NO")
+    assert G.preflight()[0] is False
