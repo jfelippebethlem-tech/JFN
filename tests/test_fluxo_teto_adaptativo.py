@@ -13,7 +13,11 @@ def test_decidir_aimd():
     assert T.decidir(6, 45, 10, maximo=6)[0] == 3                 # 22 % de conexão fechada: metade
     assert T.decidir(1, 45, 10, maximo=6)[0] == 1                 # nunca abaixo de 1
     assert T.decidir(3, 40, 1, maximo=6)[0] == 3                  # 2,5 %: zona morta, mantém
-    assert T.decidir(3, 5, 0, maximo=6)[0] == 3                   # amostra pequena: não mexe
+    assert T.decidir(3, 5, 0, maximo=6)[0] == 3                   # amostra pequena: não SOBE
+    # 26/11 17h15: 3 sessões derrubaram os logins e a vazão caiu a 9 jobs na janela — a amostra mínima travava a
+    # DESCIDA. Falha em massa não espera amostra: 3+ falhas de conexão acima de 5 % cortam já.
+    assert T.decidir(3, 9, 5, maximo=6)[0] == 1
+    assert T.decidir(3, 4, 2, maximo=6)[0] == 3                   # 2 falhas soltas em amostra pequena: mantém
 
 
 def test_erro_de_conexao_reconhecido():
@@ -35,3 +39,18 @@ def test_medir_e_vigente(con):
     assert T.vigente(con, maximo=6) is None
     r = T.rodar(con, maximo=6, atual_padrao=2)
     assert r["novo"] == 2 and T.vigente(con, maximo=6) == 2       # 1/31 = 3,2 %: zona morta, mantém o 2
+
+
+@precisa_pg
+def test_nao_volta_ao_nivel_que_falhou(con):
+    """Sem memória o controle oscilava 2→3→corte→2→3 a cada ~45 min, derrubando os logins a cada subida. O nível que
+    sofreu corte nas últimas 6 h vira teto: sobe até ele − 1."""
+    con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'teto_adaptativo', 1, %s)",
+                (json.dumps({"etiqueta": "sei_rj_ip", "corte_de": 3}),))
+    con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'teto_adaptativo', 2, %s)",
+                (json.dumps({"etiqueta": "sei_rj_ip"}),))
+    for i in range(30):
+        con.execute("INSERT INTO jobs(tipo, chave, estado, payload, concluido_em) VALUES ('arvore', %s, 'feito', '{}', "
+                    "now())", (f"arvore:m{i}",))
+    r = T.rodar(con, maximo=6)
+    assert r["novo"] == 2 and "falhou" in r["motivo"]
