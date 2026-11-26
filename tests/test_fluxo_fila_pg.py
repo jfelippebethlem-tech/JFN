@@ -177,6 +177,17 @@ def test_adiado_volta_na_reabertura_sem_gastar_tentativa(con):
     assert 880 <= espera <= 901                          # padrão 15 min
 
 
+def test_parada_do_supervisor_nao_gasta_tentativa(con):
+    """26/11/2026: 2 jobs do E6 foram à quarentena com «supervisor parado (SIGTERM)» depois de 5 reinícios de deploy —
+    cada reserva gastava uma tentativa e a parada não a devolvia. Interrupção da infraestrutura não é falha do job."""
+    fila.enfileirar(con, "eco", "eco:pa", max_tentativas=1)
+    for _ in range(5):
+        j = fila.reservar(con, "vm2", ["cpu_leve"])
+        assert fila.devolver_parada(con, j.ficha, "supervisor parado (SIGTERM)") == "fila"
+    assert _estado(con, "eco:pa") == ("fila", 0, "parada")
+    assert con.execute("SELECT disponivel_em <= now() FROM jobs").fetchone()[0]     # volta já, sem backoff
+
+
 def test_feito_grava_os_eventos_na_mesma_transacao(con):
     fila.enfileirar(con, "eco", "eco:ev", correlation_id="cid-1")
     j = fila.reservar(con, "vm2", ["cpu_leve"])

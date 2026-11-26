@@ -263,6 +263,16 @@ def falhar(con, ficha: int, erro: str, transitorio: bool = True, erro_tipo: str 
     return r[0] if r else None
 
 
+def devolver_parada(con, ficha: int, motivo: str) -> str | None:
+    """Interrupção da infraestrutura (supervisor parado por deploy/reinício): devolve à fila JÁ e DEVOLVE a tentativa
+    gasta na reserva (26/11/2026: 5 reinícios de deploy mandaram 2 jobs do E6 à quarentena). None = ficha velha."""
+    r = con.execute(
+        "UPDATE jobs SET estado = 'fila', tentativas = greatest(tentativas - 1, 0), prazo = NULL, dono = NULL, "
+        "concluido_em = NULL, erro_tipo = 'parada', erro_resumo = left(%s, 2000), disponivel_em = now() "
+        f"WHERE {_POSSE} RETURNING estado", (str(motivo), ficha)).fetchone()
+    return r[0] if r else None
+
+
 def adiar(con, ficha: int, motivo: str, reabre_em=None) -> str | None:
     """Espera conhecida (`Adiado`): devolve à fila com `disponivel_em` = reabertura (entre 30 s e 7 dias; sem ela,
     15 min) e DEVOLVE a tentativa gasta na reserva — esperar o ritmo da assinatura não leva à quarentena.

@@ -516,7 +516,7 @@ class Supervisor:
         n = 0
         for f in list(self.filhos):
             self._matar(f)
-            fila.falhar(self.con, f.job.ficha, motivo, True, "parada")
+            fila.devolver_parada(self.con, f.job.ficha, motivo)
             self._encerrar(f)
             n += 1
         return n
