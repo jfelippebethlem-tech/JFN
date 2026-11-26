@@ -1914,7 +1914,7 @@ rotinas:
     estagio: E9
     descricao: Vínculo OB↔contrato (regra determinística)
     comando: ['{py}', -m, compliance_agent.vinculo_ob_contrato, regra, --gravar, --cache, data/vinculo_ob_modelo_cache.json]
-    timeout_s: 3600
+    timeout_s: 5400    # máx medido 3.601 s (2 de 65 batiam no teto de 3.600; frente A, 26/11) × 1,5
     recursos: [cpu_pesado]
     efeito: {descricao: 'Vínculo OB↔contrato (regra determinística): rodou até o fim sem traceback', so_rc: o derivado não declara arquivo de efeito no
         propagacao.yaml; declarar ao portar}
@@ -2094,7 +2094,7 @@ rotinas:
     estagio: E10
     descricao: Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio)
     comando: [bash, tools/padroes_no_itcampo.sh]
-    timeout_s: 5400
+    timeout_s: 8100    # máx medido 5.400 s (1 de 19 batia no teto; frente A, 26/11) × 1,5
     efeito: {descricao: 'Padrões de irregularidade — cada achado varrido no acervo inteiro (25 detectores, rodízio): rodou até o fim sem traceback', so_rc: o
         derivado não declara arquivo de efeito no propagacao.yaml; declarar ao portar}
     prioridade: 75
