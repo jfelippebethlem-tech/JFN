@@ -75,3 +75,4 @@ rapidocr==3.10.0     # tools/sei_ocr_reserva.motor_ocr (ExecutorCPU do E5, recor
 zxing-cpp>=2.2       # E6: código de barras/QR como prova nível A (wheel puro, sem lib de sistema)
 surya-ocr==0.24.0    # E5 ExecutorGPU no it-campo (26/11/2026): só o CLIENTE do vLLM local (openai/httpx, sem torch) — o
                      # modelo roda no servidor vLLM (deploy/itcampo/ocr_gpu/vllm_surya.sh, porta 8790); versão = a de ~/jfn-gpu
+tokenizers==0.23.3   # surya_utf8 (26/11/2026): refaz o texto acentuado pelos IDs dos tokens sem o transformers inteiro

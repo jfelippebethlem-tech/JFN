@@ -42,14 +42,31 @@ _DEC = {c: b for b, c in _bytes_to_unicode().items()}
 _TK = None
 
 
+def _carregar_tokenizador():
+    """(tipo, tokenizador): o `transformers` quando existe (venv da GPU); senão a biblioteca `tokenizers`, leve, sem
+    torch (venv do worker do motor). 26/11/2026: no worker o transformers não existe e a importação falhava DENTRO da
+    chamada do Surya — todo bloco acentuado voltava vazio/com erro, calado."""
+    try:
+        from transformers import AutoTokenizer
+        return "transformers", AutoTokenizer.from_pretrained(_MODELO)
+    except ImportError:
+        from tokenizers import Tokenizer
+        return "tokenizers", Tokenizer.from_pretrained(_MODELO)
+
+
 def texto_dos_ids(ids: list[int]) -> str:
     global _TK
     if _TK is None:
-        from transformers import AutoTokenizer
-        _TK = AutoTokenizer.from_pretrained(_MODELO)
-    especiais = {int(k) for k in getattr(_TK, "added_tokens_decoder", {})}
+        _TK = _carregar_tokenizador()
+    tipo, tk = _TK
+    if tipo == "transformers":
+        especiais = {int(k) for k in getattr(tk, "added_tokens_decoder", {})}
+        tokens = tk.convert_ids_to_tokens(ids)
+    else:
+        especiais = {int(k) for k in tk.get_added_tokens_decoder()}
+        tokens = [tk.id_to_token(i) for i in ids]
     out, buf = [], bytearray()
-    for i, t in zip(ids, _TK.convert_ids_to_tokens(ids)):
+    for i, t in zip(ids, tokens):
         if i in especiais:
             out.append(utf8_com_recuo(bytes(buf)))
             buf.clear()
