@@ -158,3 +158,24 @@ def test_binario_achado_pela_aquisicao_do_e3_e_sha_conferido(pg, tmp_path):
     pdf.write_bytes(pdf.read_bytes() + b"%lixo")                        # outro arquivo no lugar
     with pytest.raises(ErroPermanente, match="não é a versão"):
         T.localizar_binario(con, PROC, "sei:90000000", sha)
+
+
+def test_captura_ausente_no_no_e_trazida_da_vm2(tmp_path, monkeypatch):
+    """26/11/2026: o E4 tem a VM-1 de volta e o E5 prefere o it-campo, mas a captura canônica mora na VM-2; fora dela a
+    pasta faltava («manifest.json ausente»). Pasta ausente no nó ⇒ traz da VM-2 (rsync --checksum) e segue; o sha256
+    da versão continua conferido depois."""
+    from compliance_agent.aplicacao.estagios import texto as T
+    out = tmp_path / "data" / "sei_cache" / "integra_9_9_2026"
+    chamados = []
+
+    def rodar(argv, **k):
+        chamados.append(argv)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "manifest.json").write_text('{"docs": []}')
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+    monkeypatch.setattr(T.subprocess, "run", rodar)
+    monkeypatch.setenv("JFN_E3_ESPELHO", "vm2-ts:JFN-worker/data/sei_cache")
+    assert T.trazer_captura(out) is True
+    assert chamados[0][0] == "rsync" and chamados[0][-2] == "vm2-ts:JFN-worker/data/sei_cache/integra_9_9_2026/"
+    monkeypatch.delenv("JFN_E3_ESPELHO")
+    assert T.trazer_captura(tmp_path / "outra") is False               # sem destino canônico: não tenta

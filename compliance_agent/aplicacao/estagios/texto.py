@@ -39,6 +39,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -197,6 +198,20 @@ def versao_motor() -> str:
 
 
 # ══ 4. onde está o binário ══════════════════════════════════════════════════════════════════════════════════════
+def trazer_captura(outdir: Path) -> bool:
+    """A pasta da captura não está neste nó: traz da cópia canônica na VM-2 (JFN_E3_ESPELHO, a mesma do E3) —
+    26/11/2026: o E4 tem a VM-1 de volta e o E5 prefere o it-campo, mas a captura mora na VM-2 (§3.5). Sem destino
+    configurado ou rsync falhou ⇒ False (o chamador segue com o erro de antes). O sha256 da versão é conferido depois."""
+    destino = os.environ.get("JFN_E3_ESPELHO")
+    if not destino:
+        return False
+    host, _, base = destino.partition(":")
+    outdir.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(["rsync", "-a", "--checksum", "--timeout=120", f"{host}:{base.rstrip('/')}/{outdir.name}/",
+                        f"{outdir}/"], capture_output=True, text=True, timeout=900)
+    return r.returncode == 0 and (outdir / "manifest.json").is_file()
+
+
 def localizar_binario(con, processo: str, doc_id: str, sha: str, arquivo: str | None = None) -> Path:
     """O PDF da versão: o `arquivo` do payload ou, sem ele, o do manifesto da aquisição do E3 que gravou a versão.
     Em qualquer caso o sha256 recalculado TEM de ser o da versão (senão é outro arquivo no lugar)."""
@@ -211,6 +226,8 @@ def localizar_binario(con, processo: str, doc_id: str, sha: str, arquivo: str | 
         if r is None or not r[0]:
             raise ErroPermanente(f"{processo} {doc_id}: versão binária {sha[:12]} sem aquisição no PG")
         outdir = Path(r[0]) if Path(r[0]).is_absolute() else A.RAIZ / r[0]
+        if not (outdir / "manifest.json").is_file():
+            trazer_captura(outdir)
         try:
             man = json.loads((outdir / "manifest.json").read_text(encoding="utf-8"))
         except (OSError, ValueError) as e:
