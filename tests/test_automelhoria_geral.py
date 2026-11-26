@@ -653,3 +653,31 @@ def test_cache_do_opus_desperdicado():
     assert p and p[0]["assinatura"] == "plataforma:cache_opus"
     assert A.avaliar_cache_opus(cache_escrito=100_000, cache_lido=900_000, chamadas=12) == []
     assert A.avaliar_cache_opus(cache_escrito=1_000, cache_lido=0, chamadas=3) == []          # amostra pequena
+
+
+# ─── O9.0 frente B (26/11/2026): remédio antigo só com pedido explícito ───────────────────────────────────────────
+# O `/melhorias agora` do Yoda (~/.hermes/plugins/jfn-automelhoria) chama `automelhoria_geral.py --sem-aviso`, SEM o
+# `--sem-remediar` do job do fluxo: lançava destacados os remédios do pipelines.yaml (despachante `propagacao ciclo`
+# → E9/E10, `qualidade juiz` → assinatura, siafe_runner…) por fora da liberação e do ritmo. Remediar virou opt-in.
+def _main_com_argv(tmp_path, monkeypatch, argv):
+    import sys
+    monkeypatch.setattr(A, "FILA", tmp_path / "fila.json")
+    monkeypatch.setattr(A, "RELATORIOS", tmp_path / "rel")
+    monkeypatch.setattr(A, "dispensados_dono", lambda: set())
+    monkeypatch.setattr(A, "sentir", lambda: ([_rem("x")], {}))
+    monkeypatch.setattr(A, "avisar_escalados", lambda fila: [])
+    chamadas = []
+    monkeypatch.setattr(A, "remediar", lambda f: chamadas.append(f) or {"feitos": [], "escalados": [], "adiados": []})
+    monkeypatch.setattr(sys, "argv", ["automelhoria_geral", *argv])
+    assert A.main() == 0
+    return chamadas
+
+
+def test_sem_pedido_explicito_nao_lanca_remedio(tmp_path, monkeypatch):
+    assert _main_com_argv(tmp_path, monkeypatch, ["--sem-aviso"]) == []          # o /melhorias agora do Yoda
+    assert _main_com_argv(tmp_path, monkeypatch, []) == []                       # chamada à mão / cron antigo
+    assert _main_com_argv(tmp_path, monkeypatch, ["--sem-remediar"]) == []       # o job do fluxo (compatível)
+
+
+def test_remediar_so_com_a_bandeira(tmp_path, monkeypatch):
+    assert len(_main_com_argv(tmp_path, monkeypatch, ["--remediar"])) == 1

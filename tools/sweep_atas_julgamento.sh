@@ -9,6 +9,9 @@ source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 set -u
 cd /home/ubuntu/JFN || exit 1
 LIMITE="${1:-400}"
+# 2º argumento `coleta` (O9.0, 26/11/2026): só o passo 1. É o que o job E1 do fluxo deve chamar — os passos 2–4
+# derivam (certame_julgamento, proposta_item e `caso` direcionamento = E10/E14) e furavam a liberação por estágio.
+MODO="${2:-tudo}"
 LOG=data/sweep_atas.log
 # VM de 2 vCPU: sweep cede CPU/IO p/ qualquer outro trabalho (painel, crons)
 RUN="nice -n 10 ionice -c 3"
@@ -17,7 +20,10 @@ flock -n 9 || { echo "$(date -Is) já rodando — pulo" >> "$LOG"; exit 0; }
 {
   echo "═══ $(date -Is) sweep atas (limite $LIMITE) ═══"
   # 1) baixa atas novas do PNCP (só certames competitivos sem ata; OCR cap 8 pág)
-  PYTHONPATH=. $RUN .venv/bin/python -m compliance_agent.collectors.atas_julgamento "$LIMITE"
+  PYTHONPATH=. $RUN .venv/bin/python -m compliance_agent.collectors.atas_julgamento "$LIMITE"; RC_COLETA=$?
+  if [ "$MODO" = "coleta" ]; then   # o rc da coleta vai ao job (o modo antigo sempre saía 0)
+    echo "─── $(date -Is) fim (só coleta, rc=$RC_COLETA; derivação fica com E10/E14)"; exit "$RC_COLETA"
+  fi
   # 2) ata → certame_julgamento (decisões/inabilitações/trivialidade) + recálculo do índice
   PYTHONPATH=. $RUN .venv/bin/python -m tools.backfill_dossie_mestre --fases julgamento_pncp
   # 3) lances literais → proposta_item (screens de conluio)

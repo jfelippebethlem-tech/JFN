@@ -198,10 +198,26 @@ def ambiente_limpo() -> dict:
     return {k: v for k, v in os.environ.items() if k not in VARIAVEIS_PROIBIDAS}
 
 
+_PR_SET_PDEATHSIG = 1
+
+
+def _morrer_com_o_chamador(pai: int):
+    """preexec do CLI (Linux): SIGKILL quando o chamador morrer. Em sessão própria, o CLI escapava do SIGKILL que o
+    governador/lease/parada/teto do `legado` dão no grupo do JOB e seguia órfão gastando a assinatura (O9.0, 26/11)."""
+    def _pre():
+        import ctypes
+        ctypes.CDLL(None, use_errno=True).prctl(_PR_SET_PDEATHSIG, signal.SIGKILL)
+        if os.getppid() != pai:              # o chamador morreu antes do prctl: não nasce órfão
+            os._exit(137)
+    return _pre
+
+
 def _executar_cli(cmd: list[str], entrada: str, env: dict, cwd: Path, timeout: float) -> tuple[int, str, str]:
-    """Roda o CLI em grupo de processo próprio; no prazo estourado mata o GRUPO (por PID, nunca pkill)."""
+    """Roda o CLI em grupo de processo próprio; no prazo estourado mata o GRUPO (por PID, nunca pkill). No Linux o CLI
+    morre junto com o chamador (PR_SET_PDEATHSIG)."""
+    pre = _morrer_com_o_chamador(os.getpid()) if os.uname().sysname == "Linux" else None
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, env=env, cwd=cwd, start_new_session=True)
+                            text=True, env=env, cwd=cwd, start_new_session=True, preexec_fn=pre)
     try:
         out, err = proc.communicate(entrada, timeout=timeout)
         return proc.returncode, out or "", err or ""

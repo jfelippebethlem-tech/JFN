@@ -13,6 +13,7 @@ GUARDAS (sessão única do SIAFE, cron 05:00, MFA):
   • SIAFE ocupado (lock do runner ou browser_lock(siafe) vivos) → não dispara; a próxima volta tenta.
 
 Uso (o despachante chama): python -m compliance_agent.siafe_agenda status|documentos
+      (o job do fluxo chama com `--esperar`: a coleta roda no grupo do job, sem destacar)
 """
 from __future__ import annotations
 
@@ -85,7 +86,7 @@ def decidir(nome: str, agora: datetime, _logou=_diario_logou_hoje, _ocupado=_sia
     return minutos, None
 
 
-def disparar(nome: str, agora: datetime | None = None, _popen=subprocess.Popen) -> dict:
+def disparar(nome: str, agora: datetime | None = None, _popen=subprocess.Popen, esperar: bool = False) -> dict:
     agora = agora or datetime.now()
     minutos, motivo = decidir(nome, agora)
     res: dict = {"tarefa": nome, "em": agora.isoformat(timespec="seconds")}
@@ -95,22 +96,33 @@ def disparar(nome: str, agora: datetime | None = None, _popen=subprocess.Popen) 
         argv = [sys.executable, *TAREFAS[nome]["argv"], "--minutos", str(minutos)]
         teto = minutos * 60 + 1800            # o coletor para ENTRE dias/fatias; o teto só pega o travado
         log = (_REPO / "data" / f"siafe_agenda_{nome}.log").open("ab")
-        # close_fds=False: o filho herda a trava da tarefa que o despachante passou (pass_fds) e a segura até o fim
-        p = _popen(["timeout", "-k", "120", str(teto), "nice", "-n", "10", *argv], cwd=_REPO, stdout=log,
-                   stderr=subprocess.STDOUT, start_new_session=True, close_fds=False)
-        res.update({"disparado": True, "pid": p.pid, "minutos": minutos,
-                    "ate": (agora + timedelta(minutes=minutos)).isoformat(timespec="minutes")})
+        cmd = ["timeout", "-k", "120", str(teto), "nice", "-n", "10", *argv]
+        if esperar:
+            # O9.0 (26/11/2026, frente B): pelo motor (`--esperar`) a coleta roda NO grupo do job — o teto do job, o
+            # governador e a parada a alcançam, e o slot `siafe_sessao` fica preso até ela acabar. Destacada, o job
+            # saía em segundos ("feito") e 80–130 min de navegador SIAFE seguiam fora da reserva e do teto.
+            p = _popen(cmd, cwd=_REPO, stdout=log, stderr=subprocess.STDOUT)
+            res.update({"disparado": True, "pid": p.pid, "minutos": minutos, "esperou": True, "rc": p.wait()})
+        else:
+            # close_fds=False: o filho herda a trava da tarefa que o despachante passou (pass_fds) e a segura até o fim
+            p = _popen(cmd, cwd=_REPO, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, close_fds=False)
+            res.update({"disparado": True, "pid": p.pid, "minutos": minutos,
+                        "ate": (agora + timedelta(minutes=minutos)).isoformat(timespec="minutes")})
     _estado(nome).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     return res
 
 
 def main() -> None:
-    nome = sys.argv[1] if len(sys.argv) > 1 else ""
-    if nome not in TAREFAS:
-        raise SystemExit(f"uso: python -m compliance_agent.siafe_agenda {'|'.join(TAREFAS)}")
+    args = sys.argv[1:]
+    nome = args[0] if args else ""
+    if nome not in TAREFAS or any(a != "--esperar" for a in args[1:]):
+        raise SystemExit(f"uso: python -m compliance_agent.siafe_agenda {'|'.join(TAREFAS)} [--esperar]")
     from compliance_agent import host_siafe
     host_siafe.exigir_autorizacao()
-    print(json.dumps(disparar(nome), ensure_ascii=False))
+    res = disparar(nome, esperar="--esperar" in args[1:])
+    print(json.dumps(res, ensure_ascii=False))
+    if res.get("rc"):
+        raise SystemExit(res["rc"])            # coleta que falhou no job do fluxo = job que falhou
 
 
 if __name__ == "__main__":

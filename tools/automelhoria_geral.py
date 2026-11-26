@@ -24,6 +24,7 @@ Uso:
   python tools/automelhoria_geral.py                # sente, concilia, relata, avisa se houver novidade
   python tools/automelhoria_geral.py --resumo       # só lê a fila (rápido) — é o que o /melhorias mostra
   python tools/automelhoria_geral.py --sem-aviso
+  python tools/automelhoria_geral.py --remediar     # SÓ à mão: lança os remédios antigos (destacados, fora do fluxo)
 """
 from __future__ import annotations
 
@@ -1301,7 +1302,10 @@ def main() -> int:
     # O9.0 (25/11/2026): no fluxo, os remédios antigos (shell destacado: despachante `propagacao ciclo`, siafe_runner,
     # sei_integra_fila…) furavam a liberação estágio por estágio e o ritmo — rodaram E9/E10 com só E17/E18 liberados.
     # Com --sem-remediar a rodada mede, concilia e reporta; quem refaz trabalho atrasado é o planejador.
+    # 26/11/2026 (frente B): o `/melhorias agora` do Yoda chamava sem a bandeira e lançava os mesmos remédios. Remediar
+    # virou OPT-IN (`--remediar`); `--sem-remediar` segue aceito (é o argv do job no config/fluxo.yaml) e é o padrão.
     ap.add_argument("--sem-remediar", action="store_true")
+    ap.add_argument("--remediar", action="store_true")
     a = ap.parse_args()
     if a.resumo:
         try:
@@ -1311,7 +1315,8 @@ def main() -> int:
         return 0
     problemas, medidos = sentir()
     r = conciliar(problemas, dispensados=dispensados_dono())
-    rem = ({"feitos": [], "escalados": [], "adiados": []} if a.sem_remediar else remediar(r["fila"]))
+    rem = (remediar(r["fila"]) if a.remediar and not a.sem_remediar
+           else {"feitos": [], "escalados": [], "adiados": []})
     avisados = [] if a.sem_aviso else avisar_escalados(r["fila"])
     FILA.write_text(json.dumps(r["fila"], ensure_ascii=False, indent=1), encoding="utf-8")
     txt = resumo(r["fila"], max_itens=60)
