@@ -15,13 +15,13 @@ function Diga($m) { Add-Content -Path $Log -Value ("[{0}] {1}" -f (Get-Date -For
 Diga "boot: subindo o WSL (Ubuntu)"
 & wsl.exe -d Ubuntu -u root -e bash /mnt/c/JFN-Fluxo/montar_d.sh 2>&1 | ForEach-Object { Diga "montar_d: $_" }
 Diga "montar_d saiu com $LASTEXITCODE (0 = D: montado e conferido; 3 = D: ausente, segue sem o HD)"
-# 26/11/2026: o servidor vLLM do Surya (GPU) sobe antes do supervisor — o E5 (ExecutorGPU) e so o CLIENTE dele; sem o
-# servidor a GPU ficava parada e o OCR caia na CPU. vllm_surya.sh nao sobe de novo se a porta 8790 ja responde.
-& wsl.exe -d Ubuntu -e bash /home/iterj/JFN-worker/deploy/itcampo/ocr_gpu/vllm_surya.sh 2>&1 | ForEach-Object { Diga "vllm: $_" }
 while ($true) {
   if (Test-Path (Join-Path $Base 'PAUSA')) { Diga "PAUSA presente - espero 60 s"; Start-Sleep -Seconds 60; continue }
   Diga "supervisor: subindo (no itcampo, ~/JFN-worker)"
-  & wsl.exe -d Ubuntu --cd /home/iterj/JFN-worker -e bash -lc 'set -a; . deploy/fluxo/producao.env || exit 3; set +a; unset JFN_ASSINATURA_ESCOPO; PYTHONPATH=. exec .venv/bin/python -m compliance_agent.fluxo supervisor --no itcampo' 2>&1 | ForEach-Object { Diga "sup: $_" }
+  # 26/11/2026: o vLLM do Surya (GPU) sobe NESTA mesma chamada do wsl.exe, antes do supervisor: processo lancado por
+  # uma chamada curta do wsl.exe morre quando ela termina (SIGTERM medido as 15h27). O E5 (ExecutorGPU) e so o
+  # CLIENTE dele; sem o servidor a GPU fica parada e o OCR cai na CPU. vllm_surya.sh nao religa se a 8790 responde.
+  & wsl.exe -d Ubuntu --cd /home/iterj/JFN-worker -e bash -lc 'bash deploy/itcampo/ocr_gpu/vllm_surya.sh | grep -E "PRONTO|checkpoint"; set -a; . deploy/fluxo/producao.env || exit 3; set +a; unset JFN_ASSINATURA_ESCOPO; PYTHONPATH=. exec .venv/bin/python -m compliance_agent.fluxo supervisor --no itcampo' 2>&1 | ForEach-Object { Diga "sup: $_" }
   Diga "supervisor saiu (codigo $LASTEXITCODE) - religo em 30 s"
   Start-Sleep -Seconds 30
 }
