@@ -85,8 +85,9 @@ def transferencias(con, paga: str, publicos: set, ibge: list[dict]) -> dict:
         "por_municipio": sorted(mun.values(), key=lambda x: -x["valor"]),
         "municipios_sem_casar": sem_casar,
         "ressalvas": ["2016–2020 com cobertura parcial (coleta do SIAFE 1): comparação entre anos só a partir de 2021",
-                      "«Ministério da Fazenda» é o CNPJ 00.394.460/0108-80 (Receita Federal): recolhimento mensal por competência, "
-                      "provável tributo/contribuição federal — a confirmar no processo SEI; não é repasse a município"],
+                      "«Ministério da Fazenda» é o CNPJ 00.394.460/0108-80 (Receita Federal): TRIBUTO pago por DARF, não repasse a "
+                      "município — confirmado em amostra (SEI-030001/036633/2026: Auto de Infração RFB 10872.720148/2019-77, "
+                      "R$ 8.833.111,94); os recolhimentos mensais restantes seguem a confirmar por amostra maior"],
     }
 
 
