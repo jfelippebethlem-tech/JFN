@@ -161,6 +161,29 @@ def test_binario_achado_pela_aquisicao_do_e3_e_sha_conferido(pg, tmp_path):
         T.localizar_binario(con, PROC, "sei:90000000", sha)
 
 
+@precisa_pg
+def test_manifesto_antigo_no_no_nao_impede_trazer_a_captura_nova(pg, tmp_path, monkeypatch):
+    """27/11/2026: 46 jobs do E4 em quarentena. A VM-1 tinha o manifesto de uma captura ANTERIOR (PDFs já no frio);
+    como o manifesto existia, a captura nova da VM-2 nunca era trazida. O que decide é a versão estar no disco."""
+    con, nome = pg
+    out = tmp_path / "integra_y"
+    out.mkdir()
+    (out / "manifest.json").write_text(json.dumps({"docs": [{"i": 0, "arquivo": "000.pdf", "titulo": "Despacho 90000001"}]}))
+    canonico = pdf_de(tmp_path / "canon.pdf", ["nativa"])
+    sha = T.sha256_arquivo(canonico)
+    con.execute("INSERT INTO aquisicao(id, fonte, detalhe) VALUES ('e3:y', 'sei:e3', %s)", (json.dumps({"outdir": str(out)}),))
+    con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, vista_em, hash_de, aquisicao_id) VALUES "
+                "(%s, 'sei:90000001', %s, 0, 'sei:e3', 'x', 'binario', 'e3:y')", (PROC, sha))
+    trazidas = []
+
+    def trazer(d):                                                      # a cópia canônica (VM-2) tem o PDF
+        trazidas.append(d); (d / "000.pdf").write_bytes(canonico.read_bytes()); return True
+    monkeypatch.setattr(T, "trazer_captura", trazer)
+    assert T.localizar_binario(con, PROC, "sei:90000001", sha) == out / "000.pdf"
+    assert trazidas == [out]                                            # uma vez só
+    assert T.localizar_binario(con, PROC, "sei:90000001", sha) == out / "000.pdf" and len(trazidas) == 1
+
+
 def test_captura_ausente_no_no_e_trazida_da_vm2(tmp_path, monkeypatch):
     """26/11/2026: o E4 tem a VM-1 de volta e o E5 prefere o it-campo, mas a captura canônica mora na VM-2; fora dela a
     pasta faltava («manifest.json ausente»). Pasta ausente no nó ⇒ traz da VM-2 (rsync --checksum) e segue; o sha256

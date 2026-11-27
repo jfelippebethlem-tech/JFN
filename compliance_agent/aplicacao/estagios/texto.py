@@ -246,6 +246,17 @@ def trazer_captura(outdir: Path) -> bool:
     return r.returncode == 0 and (outdir / "manifest.json").is_file()
 
 
+def _do_manifesto(outdir: Path, processo: str, doc_id: str) -> list[Path]:
+    """Os arquivos que o manifesto da captura dá para este documento."""
+    try:
+        man = json.loads((outdir / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise RuntimeError(f"{processo}: manifesto da captura ilegível em {outdir} ({e})") from e
+    ent = [e for e in (man.get("docs") or []) if isinstance(e, dict)]
+    ids = DI.ids_documentos([{"titulo": e.get("titulo", ""), "i": e.get("i")} for e in ent])
+    return [outdir / str(e.get("arquivo") or "") for k, e in zip(ids, ent) if k == doc_id]
+
+
 def localizar_binario(con, processo: str, doc_id: str, sha: str, arquivo: str | None = None) -> Path:
     """O PDF da versão: o `arquivo` do payload ou, sem ele, o do manifesto da aquisição do E3 que gravou a versão.
     Em qualquer caso o sha256 recalculado TEM de ser o da versão (senão é outro arquivo no lugar)."""
@@ -260,15 +271,15 @@ def localizar_binario(con, processo: str, doc_id: str, sha: str, arquivo: str | 
         if r is None or not r[0]:
             raise ErroPermanente(f"{processo} {doc_id}: versão binária {sha[:12]} sem aquisição no PG")
         outdir = Path(r[0]) if Path(r[0]).is_absolute() else A.RAIZ / r[0]
+        trouxe = False
         if not (outdir / "manifest.json").is_file():
-            trazer_captura(outdir)
-        try:
-            man = json.loads((outdir / "manifest.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError) as e:
-            raise RuntimeError(f"{processo}: manifesto da captura ilegível em {outdir} ({e})") from e
-        ent = [e for e in (man.get("docs") or []) if isinstance(e, dict)]
-        ids = DI.ids_documentos([{"titulo": e.get("titulo", ""), "i": e.get("i")} for e in ent])
-        candidatos += [outdir / str(e.get("arquivo") or "") for k, e in zip(ids, ent) if k == doc_id]
+            trouxe = trazer_captura(outdir)
+        candidatos = _do_manifesto(outdir, processo, doc_id)
+        # 27/11/2026: um manifesto ANTIGO neste nó (captura anterior, PDFs já no frio) não é a captura que gravou
+        # esta versão — 46 jobs do E4 em quarentena por isso. Regra: o que decide é a VERSÃO estar no disco, não o
+        # manifesto existir; não achou (ou achou outro sha) ⇒ traz a cópia canônica UMA vez e procura de novo.
+        if not trouxe and not any(p.is_file() and sha256_arquivo(p) == sha for p in candidatos) and trazer_captura(outdir):
+            candidatos = _do_manifesto(outdir, processo, doc_id)
     for p in candidatos:
         if p.is_file():
             if sha256_arquivo(p) != sha:
