@@ -28,3 +28,16 @@ def test_so_fornecedor_privado_entra(tmp_path, monkeypatch):
     assert [f["nome"] for f in d["orgao"]["fornecedores"]] == ["EMPRESA REAL LTDA"]
     assert d["inicio"]["siafe_ultima_ob"]["valor"] == "2026-11-26"               # data TEXTO convertida, não ordenada crua
     assert d["dinheiro"]["empenhado"]["estado"] == "INDISPONIVEL"
+
+
+def test_repasse_a_municipio_casa_com_ibge_e_fora_do_rj_fica_listado(tmp_path, monkeypatch):
+    monkeypatch.setattr(S.ug_nomes, "subordinacao", lambda u, a: "FUNDACAO SAUDE")
+    con = _con()
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('6','296100','01/11/2026','Contabilizado','','',"
+                "'44.555.666/0001-81','Fundo Municipal De Saude De Duque De Caxias',500.0,2026)")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('7','296100','01/11/2026','Contabilizado','','',"
+                "'55.666.777/0001-81','FUNDO MUN. DE SAUDE DE S. PEDRO DA ALDEIA',300.0,2026)")
+    t = S.gerar(con, tmp_path)["transferencias"]
+    nomes = {m["nome_oficial"]: m["valor"] for m in t["por_municipio"]}
+    assert nomes["Duque de Caxias"] == 500.0 and nomes["São Pedro da Aldeia"] == 300.0     # abreviação «S.» expandida
+    assert "X" in t["municipios_sem_casar"]                                                  # o «fundo de X» não some

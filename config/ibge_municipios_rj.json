@@ -1,0 +1,557 @@
+{
+"fonte": "IBGE API localidades (nomes, códigos) + kelvins/municipios-brasileiros (coordenadas, MIT)",
+"municipios": [
+{
+"ibge": 3300100,
+"nome": "Angra dos Reis",
+"lat": -23.0011,
+"lon": -44.3196
+},
+{
+"ibge": 3300159,
+"nome": "Aperibé",
+"lat": -21.6252,
+"lon": -42.1017
+},
+{
+"ibge": 3300209,
+"nome": "Araruama",
+"lat": -22.8697,
+"lon": -42.3326
+},
+{
+"ibge": 3300225,
+"nome": "Areal",
+"lat": -22.2283,
+"lon": -43.1118
+},
+{
+"ibge": 3300233,
+"nome": "Armação dos Búzios",
+"lat": -22.7528,
+"lon": -41.8846
+},
+{
+"ibge": 3300258,
+"nome": "Arraial do Cabo",
+"lat": -22.9774,
+"lon": -42.0267
+},
+{
+"ibge": 3300308,
+"nome": "Barra do Piraí",
+"lat": -22.4715,
+"lon": -43.8269
+},
+{
+"ibge": 3300407,
+"nome": "Barra Mansa",
+"lat": -22.5481,
+"lon": -44.1752
+},
+{
+"ibge": 3300456,
+"nome": "Belford Roxo",
+"lat": -22.764,
+"lon": -43.3992
+},
+{
+"ibge": 3300506,
+"nome": "Bom Jardim",
+"lat": -22.1545,
+"lon": -42.4251
+},
+{
+"ibge": 3300605,
+"nome": "Bom Jesus do Itabapoana",
+"lat": -21.1449,
+"lon": -41.6822
+},
+{
+"ibge": 3300704,
+"nome": "Cabo Frio",
+"lat": -22.8894,
+"lon": -42.0286
+},
+{
+"ibge": 3300803,
+"nome": "Cachoeiras de Macacu",
+"lat": -22.4658,
+"lon": -42.6523
+},
+{
+"ibge": 3300902,
+"nome": "Cambuci",
+"lat": -21.5691,
+"lon": -41.9187
+},
+{
+"ibge": 3300936,
+"nome": "Carapebus",
+"lat": -22.1821,
+"lon": -41.663
+},
+{
+"ibge": 3300951,
+"nome": "Comendador Levy Gasparian",
+"lat": -22.0404,
+"lon": -43.214
+},
+{
+"ibge": 3301009,
+"nome": "Campos dos Goytacazes",
+"lat": -21.7622,
+"lon": -41.3181
+},
+{
+"ibge": 3301108,
+"nome": "Cantagalo",
+"lat": -21.9797,
+"lon": -42.3664
+},
+{
+"ibge": 3301157,
+"nome": "Cardoso Moreira",
+"lat": -21.4846,
+"lon": -41.6165
+},
+{
+"ibge": 3301207,
+"nome": "Carmo",
+"lat": -21.931,
+"lon": -42.6046
+},
+{
+"ibge": 3301306,
+"nome": "Casimiro de Abreu",
+"lat": -22.4812,
+"lon": -42.2066
+},
+{
+"ibge": 3301405,
+"nome": "Conceição de Macabu",
+"lat": -22.0834,
+"lon": -41.8719
+},
+{
+"ibge": 3301504,
+"nome": "Cordeiro",
+"lat": -22.0267,
+"lon": -42.3648
+},
+{
+"ibge": 3301603,
+"nome": "Duas Barras",
+"lat": -22.0536,
+"lon": -42.5232
+},
+{
+"ibge": 3301702,
+"nome": "Duque de Caxias",
+"lat": -22.7858,
+"lon": -43.3049
+},
+{
+"ibge": 3301801,
+"nome": "Engenheiro Paulo de Frontin",
+"lat": -22.5498,
+"lon": -43.6827
+},
+{
+"ibge": 3301850,
+"nome": "Guapimirim",
+"lat": -22.5347,
+"lon": -42.9895
+},
+{
+"ibge": 3301876,
+"nome": "Iguaba Grande",
+"lat": -22.8495,
+"lon": -42.2299
+},
+{
+"ibge": 3301900,
+"nome": "Itaboraí",
+"lat": -22.7565,
+"lon": -42.8639
+},
+{
+"ibge": 3302007,
+"nome": "Itaguaí",
+"lat": -22.8636,
+"lon": -43.7798
+},
+{
+"ibge": 3302056,
+"nome": "Italva",
+"lat": -21.4296,
+"lon": -41.7014
+},
+{
+"ibge": 3302106,
+"nome": "Itaocara",
+"lat": -21.6748,
+"lon": -42.0758
+},
+{
+"ibge": 3302205,
+"nome": "Itaperuna",
+"lat": -21.1997,
+"lon": -41.8799
+},
+{
+"ibge": 3302254,
+"nome": "Itatiaia",
+"lat": -22.4897,
+"lon": -44.5675
+},
+{
+"ibge": 3302270,
+"nome": "Japeri",
+"lat": -22.6435,
+"lon": -43.6602
+},
+{
+"ibge": 3302304,
+"nome": "Laje do Muriaé",
+"lat": -21.2091,
+"lon": -42.1271
+},
+{
+"ibge": 3302403,
+"nome": "Macaé",
+"lat": -22.3768,
+"lon": -41.7848
+},
+{
+"ibge": 3302452,
+"nome": "Macuco",
+"lat": -21.9813,
+"lon": -42.2533
+},
+{
+"ibge": 3302502,
+"nome": "Magé",
+"lat": -22.6632,
+"lon": -43.0315
+},
+{
+"ibge": 3302601,
+"nome": "Mangaratiba",
+"lat": -22.9594,
+"lon": -44.0409
+},
+{
+"ibge": 3302700,
+"nome": "Maricá",
+"lat": -22.9354,
+"lon": -42.8246
+},
+{
+"ibge": 3302809,
+"nome": "Mendes",
+"lat": -22.5245,
+"lon": -43.7312
+},
+{
+"ibge": 3302858,
+"nome": "Mesquita",
+"lat": -22.8028,
+"lon": -43.4601
+},
+{
+"ibge": 3302908,
+"nome": "Miguel Pereira",
+"lat": -22.4572,
+"lon": -43.4803
+},
+{
+"ibge": 3303005,
+"nome": "Miracema",
+"lat": -21.4148,
+"lon": -42.1938
+},
+{
+"ibge": 3303104,
+"nome": "Natividade",
+"lat": -21.039,
+"lon": -41.9697
+},
+{
+"ibge": 3303203,
+"nome": "Nilópolis",
+"lat": -22.8057,
+"lon": -43.4233
+},
+{
+"ibge": 3303302,
+"nome": "Niterói",
+"lat": -22.8832,
+"lon": -43.1034
+},
+{
+"ibge": 3303401,
+"nome": "Nova Friburgo",
+"lat": -22.2932,
+"lon": -42.5377
+},
+{
+"ibge": 3303500,
+"nome": "Nova Iguaçu",
+"lat": -22.7556,
+"lon": -43.4603
+},
+{
+"ibge": 3303609,
+"nome": "Paracambi",
+"lat": -22.6078,
+"lon": -43.7108
+},
+{
+"ibge": 3303708,
+"nome": "Paraíba do Sul",
+"lat": -22.1585,
+"lon": -43.304
+},
+{
+"ibge": 3303807,
+"nome": "Paraty",
+"lat": -23.2221,
+"lon": -44.7175
+},
+{
+"ibge": 3303856,
+"nome": "Paty do Alferes",
+"lat": -22.4309,
+"lon": -43.4285
+},
+{
+"ibge": 3303906,
+"nome": "Petrópolis",
+"lat": -22.52,
+"lon": -43.1926
+},
+{
+"ibge": 3303955,
+"nome": "Pinheiral",
+"lat": -22.5172,
+"lon": -44.0022
+},
+{
+"ibge": 3304003,
+"nome": "Piraí",
+"lat": -22.6215,
+"lon": -43.9081
+},
+{
+"ibge": 3304102,
+"nome": "Porciúncula",
+"lat": -20.9632,
+"lon": -42.0465
+},
+{
+"ibge": 3304110,
+"nome": "Porto Real",
+"lat": -22.4175,
+"lon": -44.2952
+},
+{
+"ibge": 3304128,
+"nome": "Quatis",
+"lat": -22.4045,
+"lon": -44.2597
+},
+{
+"ibge": 3304144,
+"nome": "Queimados",
+"lat": -22.7102,
+"lon": -43.5518
+},
+{
+"ibge": 3304151,
+"nome": "Quissamã",
+"lat": -22.1031,
+"lon": -41.4693
+},
+{
+"ibge": 3304201,
+"nome": "Resende",
+"lat": -22.4705,
+"lon": -44.4509
+},
+{
+"ibge": 3304300,
+"nome": "Rio Bonito",
+"lat": -22.7181,
+"lon": -42.6276
+},
+{
+"ibge": 3304409,
+"nome": "Rio Claro",
+"lat": -22.72,
+"lon": -44.1419
+},
+{
+"ibge": 3304508,
+"nome": "Rio das Flores",
+"lat": -22.1692,
+"lon": -43.5856
+},
+{
+"ibge": 3304524,
+"nome": "Rio das Ostras",
+"lat": -22.5174,
+"lon": -41.9475
+},
+{
+"ibge": 3304557,
+"nome": "Rio de Janeiro",
+"lat": -22.9129,
+"lon": -43.2003
+},
+{
+"ibge": 3304607,
+"nome": "Santa Maria Madalena",
+"lat": -21.9547,
+"lon": -42.0098
+},
+{
+"ibge": 3304706,
+"nome": "Santo Antônio de Pádua",
+"lat": -21.541,
+"lon": -42.1832
+},
+{
+"ibge": 3304755,
+"nome": "São Francisco de Itabapoana",
+"lat": -21.4702,
+"lon": -41.1091
+},
+{
+"ibge": 3304805,
+"nome": "São Fidélis",
+"lat": -21.6551,
+"lon": -41.756
+},
+{
+"ibge": 3304904,
+"nome": "São Gonçalo",
+"lat": -22.8268,
+"lon": -43.0634
+},
+{
+"ibge": 3305000,
+"nome": "São João da Barra",
+"lat": -21.638,
+"lon": -41.0446
+},
+{
+"ibge": 3305109,
+"nome": "São João de Meriti",
+"lat": -22.8058,
+"lon": -43.3729
+},
+{
+"ibge": 3305133,
+"nome": "São José de Ubá",
+"lat": -21.3661,
+"lon": -41.9511
+},
+{
+"ibge": 3305158,
+"nome": "São José do Vale do Rio Preto",
+"lat": -22.1525,
+"lon": -42.9327
+},
+{
+"ibge": 3305208,
+"nome": "São Pedro da Aldeia",
+"lat": -22.8429,
+"lon": -42.1026
+},
+{
+"ibge": 3305307,
+"nome": "São Sebastião do Alto",
+"lat": -21.9578,
+"lon": -42.1328
+},
+{
+"ibge": 3305406,
+"nome": "Sapucaia",
+"lat": -21.9949,
+"lon": -42.9142
+},
+{
+"ibge": 3305505,
+"nome": "Saquarema",
+"lat": -22.9292,
+"lon": -42.5099
+},
+{
+"ibge": 3305554,
+"nome": "Seropédica",
+"lat": -22.7526,
+"lon": -43.7155
+},
+{
+"ibge": 3305604,
+"nome": "Silva Jardim",
+"lat": -22.6574,
+"lon": -42.3961
+},
+{
+"ibge": 3305703,
+"nome": "Sumidouro",
+"lat": -22.0485,
+"lon": -42.6761
+},
+{
+"ibge": 3305752,
+"nome": "Tanguá",
+"lat": -22.7423,
+"lon": -42.7202
+},
+{
+"ibge": 3305802,
+"nome": "Teresópolis",
+"lat": -22.4165,
+"lon": -42.9752
+},
+{
+"ibge": 3305901,
+"nome": "Trajano de Moraes",
+"lat": -22.0638,
+"lon": -42.0643
+},
+{
+"ibge": 3306008,
+"nome": "Três Rios",
+"lat": -22.1165,
+"lon": -43.2185
+},
+{
+"ibge": 3306107,
+"nome": "Valença",
+"lat": -22.2445,
+"lon": -43.7129
+},
+{
+"ibge": 3306156,
+"nome": "Varre-Sai",
+"lat": -20.9276,
+"lon": -41.8701
+},
+{
+"ibge": 3306206,
+"nome": "Vassouras",
+"lat": -22.4059,
+"lon": -43.6686
+},
+{
+"ibge": 3306305,
+"nome": "Volta Redonda",
+"lat": -22.5202,
+"lon": -44.0996
+}
+]
+}
