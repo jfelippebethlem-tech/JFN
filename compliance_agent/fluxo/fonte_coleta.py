@@ -86,7 +86,13 @@ def instalar_gz(gz: Path, md5_esperado: str, destino: Path = RENOVADA) -> str:
     tmp = destino.with_suffix(".db.tmp")
     with gzip.open(gz, "rb") as f, open(tmp, "wb") as o:
         shutil.copyfileobj(f, o, 1 << 20)
-    chk = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True).execute("PRAGMA quick_check(1)").fetchone()[0]
+    c = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)
+    try:
+        chk = c.execute("PRAGMA quick_check(1)").fetchone()[0]
+    finally:
+        c.close()
+    for lado in ("-shm", "-wal"):                     # sobras da conferência (base em WAL aberta só para ler)
+        Path(str(tmp) + lado).unlink(missing_ok=True)
     if chk != "ok":
         tmp.unlink(missing_ok=True)
         return f"quick_check {chk}: cópia anterior mantida"
