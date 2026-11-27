@@ -711,8 +711,13 @@ def _rodando_destacado(con: sqlite3.Connection, cfg: dict) -> set[str]:
         if _pid_vivo(pid, did):
             vivos.add(did)
         elif did in cfg["derivados"]:
-            _concluir(con, cfg, did, cfg["derivados"][did], -1, ini or time.time(), [], False,
-                      f"processo destacado (pid {pid}) morreu sem registrar o fim")
+            # relê ANTES de declarar a morte: entre o SELECT e o teste do PID o filho pode ter gravado o próprio fim e
+            # saído (26/11/2026: «código 1» virava «morreu sem registrar o fim» — o teste «instável» do portão)
+            ainda = con.execute("SELECT 1 FROM derivado WHERE id=? AND ultimo_estado='rodando' AND pid=?",
+                                (did, pid)).fetchone()
+            if ainda:
+                _concluir(con, cfg, did, cfg["derivados"][did], -1, ini or time.time(), [], False,
+                          f"processo destacado (pid {pid}) morreu sem registrar o fim")
     return vivos
 
 

@@ -699,3 +699,28 @@ def test_cache_espera_o_deploy_e_comando_nao(con, tmp_path):
     import os
     os.utime(tmp_path / ".deploy_em_curso", (time.time() - 700, time.time() - 700))   # marca velha: não segura
     assert [x["id"] for x in P.despachar(con, cfg, carga=lambda: (0.0,), executar=lambda *_: (True, None))] == ["cache"]
+
+
+def test_filho_que_registrou_o_fim_na_corrida_nao_e_dado_como_morto(tmp_path, monkeypatch):
+    """26/11/2026 (o «teste instável» do portão era corrida real): o conferidor lia a linha 'rodando', o filho gravava o
+    próprio fim («código 1») e saía, e o conferidor via o PID morto e SOBRESCREVIA com «morreu sem registrar o fim».
+    Antes de declarar a morte, relê: só conclui se ainda é o mesmo filho em 'rodando'."""
+    import yaml
+    cfg = {"fontes": {"f": {"nome": "Fonte", "sonda": {}}},
+           "derivados": {"pes": _der(["f"], peso="pesado", comando=["false"])}, "cerebro": []}
+    (tmp_path / "p.yaml").write_text(yaml.safe_dump(cfg))
+    monkeypatch.setattr(P, "CONFIG", tmp_path / "p.yaml")
+    monkeypatch.setattr(P, "DATA", tmp_path)
+    con = P.conectar(tmp_path / "p.db")
+    con.execute("INSERT OR REPLACE INTO derivado(id, ultimo_estado, pid, ultimo_inicio) VALUES ('pes', 'rodando', 4242, 1)")
+    con.commit()
+
+    def filho_termina_na_corrida(pid, did):
+        con.execute("UPDATE derivado SET ultimo_estado='falhou', ultimo_erro='saiu com código 1', pid=NULL "
+                    "WHERE id='pes'")
+        con.commit()
+        return False
+    monkeypatch.setattr(P, "_pid_vivo", filho_termina_na_corrida)
+    assert P._rodando_destacado(con, cfg) == set()
+    assert con.execute("SELECT ultimo_erro FROM derivado WHERE id='pes'").fetchone()[0] == "saiu com código 1"
+    con.close()
