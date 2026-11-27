@@ -42,6 +42,7 @@ FOTO_ADVERSA = ("terreno_baldio", "casa_residencial", "predio_residencial", "con
                 "via_sem_lote_visivel", "area_aberta_rural", "estabelecimento_fechado_abandonado")
 FOTO_CONTRA = ("comercial_industrial", "galpao_logistico")
 FOTO_RESIDENCIAL = ("casa_residencial", "predio_residencial")
+FOTO_NAO_CONFIAVEL = "sem_foto_confiavel"            # prefixo de `visual_fonte` que a captura grava (endereço impreciso)
 SEDE_RESIDENCIAL = "complemento_residencial"       # id do sinal de `verificacao_sede_real.sinais`
 
 
@@ -99,7 +100,9 @@ def sinais(c: dict) -> dict:
     s, e, v = c["sede"], c["endereco"], c["foto"]
     base = None if not s or not s["apuravel"] else s["veredito"] in SEDE_SINAL
     ende = None if not e or e["status"] not in ("INDICIO", "AFASTADO") else e["status"] == "INDICIO"
-    classe = (v or {}).get("classe") or ""
+    # 27/11/2026 — regra única #70 (força da evidência): foto que a captura declarou NÃO confiável (endereço impreciso:
+    # pode nem ser do imóvel) não acusa nem afasta — INDISPONÍVEL
+    classe = "" if str((v or {}).get("fonte") or "").startswith(FOTO_NAO_CONFIAVEL) else ((v or {}).get("classe") or "")
     foto = (False if classe in FOTO_CONTRA else
             (v["coerencia"] != "confirma") if classe in FOTO_ADVERSA else None)
     return {"sede": base, "endereco": ende, "foto": foto}

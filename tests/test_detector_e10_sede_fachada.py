@@ -75,3 +75,18 @@ def test_inelegivel_na_e9_nao_dispara(fonte):
     con.execute("INSERT INTO verificacao_sede_real VALUES (?,?,?,?,?)", (A, "suspeita", 1, 60, ""))
     con.execute("INSERT INTO verificacao_sede VALUES (?,?,?,?,?)", (A, "casa_residencial", None, "k", "sv"))
     assert SF.detectar(_carga(con, p)) and SF.detectar(_carga(con, p, "I:ENTE_PUBLICO")) == []
+
+
+def test_foto_sem_endereco_confiavel_nao_e_sinal(fonte):
+    """27/11/2026 — regra única #70 (força da evidência, ex-`fachada_visual_sweep`): só imagem confiável do endereço
+    acusa. A captura marca `sem_foto_confiavel:endereco_impreciso` (67 CNPJs com classe adversa assim, medido) — a
+    foto pode nem ser do imóvel: INDISPONÍVEL, nunca 2º sinal."""
+    con, p = fonte
+    con.execute("INSERT INTO verificacao_sede_real VALUES (?,?,?,?,?)", (A, "forte_suspeita", 1, 80, "sala"))
+    con.execute("INSERT INTO verificacao_sede VALUES (?,?,?,?,?)",
+                (A, "terreno_baldio", None, "p1", "sem_foto_confiavel:endereco_impreciso"))
+    (c,) = [x for x in _carga(con, p) if x["cnpj"] == A]
+    assert SF.sinais(c)["foto"] is None and SF.detectar([c]) == []
+    con.execute("UPDATE verificacao_sede SET visual_fonte = 'Google Street View' WHERE cnpj = ?", (A,))
+    (c,) = [x for x in _carga(con, p) if x["cnpj"] == A]
+    assert SF.sinais(c)["foto"] is True and SF.detectar([c])                   # controle: a confiável dispara
