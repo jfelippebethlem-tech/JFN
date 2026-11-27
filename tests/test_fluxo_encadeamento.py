@@ -338,11 +338,14 @@ def test_estagios_de_llm_levam_o_ritmo_e_todo_estagio_tem_slot(real):
     from compliance_agent.aplicacao.estagios import conferir, fatos, periciar
     assert (fatos.TAREFA, periciar.TAREFA, conferir.TAREFA) == ("leitura_integral", "pericia_integral",
                                                                 "conferencia_e12")
+    from compliance_agent.fluxo.fonte_coleta import CAPACIDADES      # presença do arquivo: decidida em tempo real
     for ek, e in real.estagios.items():
         c = real.contrato_do_estagio(ek)
-        na_lista = any(all(real.slots_do_no(n).get(r) for r in c["recursos"]) for n in c["nos"])
+        rec = [r for r in c["recursos"] if r not in CAPACIDADES]
+        na_lista = any(all(real.slots_do_no(n).get(r) for r in rec) for n in c["nos"])
         v = c["volta"] or {}
-        na_volta = any(all(real.slots_do_no(n).get(r) for r in (v.get("recursos") or c["recursos"]))
+        na_volta = any(all(real.slots_do_no(n).get(r) for r in [x for x in (v.get("recursos") or rec)
+                                                                  if x not in CAPACIDADES])
                        for n in v.get("nos") or [])
         assert na_lista, ek
         assert not v or na_volta, f"{ek}: a volta {v} não tem slot (declare volta.recursos)"

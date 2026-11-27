@@ -68,6 +68,7 @@ from compliance_agent.aplicacao.estagios import caso as E14
 from compliance_agent.dominio import acesso as AC
 from compliance_agent.dominio import mascara as M
 from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo import fonte_coleta
 
 VERSAO = "e16-1"
 PRODUTOS = ("dossie_orgao",)
@@ -160,8 +161,7 @@ def resolver_filtro(payload: dict, lentes: dict | None = None) -> dict:
 
 def abrir_fonte(caminho: str | Path | None) -> tuple[sqlite3.Connection, dict]:
     """A coleta em SÓ-LEITURA (`immutable=1`) e a identidade dela para o manifesto (sem relógio)."""
-    from compliance_agent.aplicacao.estagios import elegibilidade as E9
-    p = Path(caminho or os.environ.get("JFN_ENTREGAR_FONTE") or E9.FONTE_PARADA)
+    p = Path(caminho or os.environ.get("JFN_ENTREGAR_FONTE") or fonte_coleta.caminho())
     if not p.exists():
         raise ErroPermanente(f"fonte inexistente: {p}")
     md5 = None
@@ -889,7 +889,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return efeito_ok(c)
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=35)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve", "fonte_coleta"], prioridade=35)
 
 
 # ══ 10. CLI ═════════════════════════════════════════════════════════════════════════════════════════════════════

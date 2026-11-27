@@ -225,4 +225,4 @@ def test_confirmar_ocr_pede_cpu_pesado():
     from compliance_agent.aplicacao.estagios import estagio_de
     from compliance_agent.fluxo import supervisor as S
     rec = estagio_de("confirmar_ocr").recursos
-    assert rec == ["cpu_pesado"] and S.limites_do_job(rec)[0] == "3G"
+    assert "cpu_pesado" in rec and S.limites_do_job(rec)[0] == "3G"    # + fonte_coleta (presença do SIAFE, 26/11)

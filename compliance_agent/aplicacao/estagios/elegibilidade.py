@@ -60,6 +60,7 @@ from compliance_agent.fluxo.fila import Resultado
 from compliance_agent.limites_dispensa import situacao_no_teto, teto_dispensa, teto_para_valor
 from compliance_agent.pericia_contabil import situacao_devolucao
 from compliance_agent.siafe_gd import devolvido_por_ob
+from compliance_agent.fluxo import fonte_coleta
 
 VERSAO = "e9-sombra-5"   # 2: credor = código de UG (UG_PROPRIA) e inscrição genérica do SIAFE
 # 3 (decisões do dono, 24/11/2026 noite — o53-paridade-fatia2.md): OB com GD sem valor apurado =
@@ -545,7 +546,7 @@ def inciso_dispensa_valor(texto) -> str | None:
 
 def abrir_fonte(caminho: str | Path | None = None) -> sqlite3.Connection:
     """A coleta bruta em SOMENTE LEITURA (`immutable=1`: nem trava, nem WAL — o snapshot não muda)."""
-    p = Path(caminho or os.environ.get(ENV_FONTE) or FONTE_PARADA)
+    p = Path(caminho or os.environ.get(ENV_FONTE) or fonte_coleta.caminho())
     if not p.is_file():
         raise ErroPermanente(f"fonte da E9 ausente: {p}")
     return sqlite3.connect(f"file:{p}?mode=ro&immutable=1", uri=True)
@@ -1057,7 +1058,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return declaradas > 0 and n == declaradas and am["amostra"] > 0 and not am["divergentes"]
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=35)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve", "fonte_coleta"], prioridade=35)
 
 
 # ══ CLI ════════════════════════════════════════════════════════════════════════════════════════════════════════

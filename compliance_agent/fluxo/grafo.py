@@ -26,12 +26,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from compliance_agent.fluxo.governador import SLOTS_INICIAIS
 from compliance_agent.fluxo.planejador import Cron
+from compliance_agent.fluxo import fonte_coleta as _fonte_coleta
 
 RAIZ = Path(__file__).resolve().parents[2]
 CAMINHO = RAIZ / "config" / "fluxo.yaml"
 PREFIXO_LEGADO = "legado:"
 ESTAGIOS = tuple(f"E{i}" for i in range(1, 19))
-RECURSOS = frozenset(r for slots in SLOTS_INICIAIS.values() for r in slots)
+# vagas do governador + capacidades de PRESENÇA do nó (fonte_coleta: o arquivo da coleta está aqui — 26/11/2026)
+RECURSOS = frozenset(r for slots in SLOTS_INICIAIS.values() for r in slots) | _fonte_coleta.CAPACIDADES
 NOS = frozenset(SLOTS_INICIAIS)
 LOG_SEM_PADRAO = r"Traceback \(most recent call last\)"
 _RX_ID = re.compile(r"^[a-z][a-z0-9_]{1,62}$")

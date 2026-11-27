@@ -78,6 +78,7 @@ from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagi
 from compliance_agent.dominio import mascara as M
 from compliance_agent.fluxo.fila import Adiado, Resultado
 from compliance_agent.llm.verificacao import _normal
+from compliance_agent.fluxo import fonte_coleta
 
 VERSAO = "e8-1"                                  # lógica do estágio (âncora, régua da citação, chaves)
 PROMPT_VERSION = LI.VERSAO_PROMPT                # li-2: o MESMO prompt do piloto (`LI.SISTEMA`)
@@ -829,7 +830,7 @@ class Candidato:
 
 
 def abrir_fonte(caminho: str | Path | None = None) -> sqlite3.Connection:
-    p = Path(caminho or os.environ.get(ENV_FONTE) or FONTE_PARADA)
+    p = Path(caminho or os.environ.get(ENV_FONTE) or fonte_coleta.caminho())
     if not p.exists():
         raise ErroPermanente(f"fonte só-leitura ausente: {p}")
     return sqlite3.connect(f"file:{p}?mode=ro&immutable=1", uri=True)

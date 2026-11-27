@@ -470,7 +470,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
             and (am["amostra"] > 0 or declarados == 0))
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado"], prioridade=45)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado", "fonte_coleta"], prioridade=45)
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────────────────────────────────────────

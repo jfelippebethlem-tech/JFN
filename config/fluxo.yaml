@@ -118,7 +118,7 @@ estagios:
   E6:
     tipo: confirmar_ocr
     nome: Confirmar número do OCR
-    recursos: [cpu_pesado]        # 26/11: rasteriza páginas (850 MB > teto 1G do cpu_leve) — o governador matava
+    recursos: [cpu_pesado, fonte_coleta]        # 26/11: rasteriza páginas (850 MB > teto 1G do cpu_leve) — o governador matava
     nos: [vm2]
     volta:
       nos: [vm1]
@@ -157,7 +157,7 @@ estagios:
   E9:
     tipo: elegibilidade
     nome: Elegibilidade da contratação
-    recursos: [cpu_leve]
+    recursos: [cpu_leve, fonte_coleta]
     nos: [vm2]
     volta:
       nos: [vm1]
@@ -169,7 +169,7 @@ estagios:
   E10:
     tipo: detectar
     nome: Detectar
-    recursos: [cpu_pesado]
+    recursos: [cpu_pesado, fonte_coleta]
     nos: [vm2, itcampo]
     volta:
       nos: [vm2]
@@ -181,7 +181,7 @@ estagios:
   E11:
     tipo: periciar
     nome: Periciar processo
-    recursos: [llm]
+    recursos: [llm, fonte_coleta]
     nos: [vm2, itcampo]
     volta:
       nos: [vm2]
@@ -249,7 +249,7 @@ estagios:
   E16:
     tipo: entregar
     nome: Entregar produto
-    recursos: [cpu_leve]
+    recursos: [cpu_leve, fonte_coleta]
     nos: [vm1, vm2]
     volta:
       nos: [vm2]

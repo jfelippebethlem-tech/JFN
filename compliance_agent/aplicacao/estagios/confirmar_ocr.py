@@ -48,6 +48,7 @@ from compliance_agent.aplicacao.estagios import ocr_recorte as R
 from compliance_agent.aplicacao.estagios import texto as T
 from compliance_agent.fluxo.fila import Resultado
 from compliance_agent.sei import ocr_ia_prova as P
+from compliance_agent.fluxo import fonte_coleta
 
 VERSAO = "e6-2"                              # e6-2 (O3.6): recorte, concordantes, precedência, barras primeiro
 NIVEL_A = "A"
@@ -174,7 +175,7 @@ def barras(pdf: Path, paginas: list[int]) -> dict:
 
 def siafe(processo: str, caminho: Path | None = None) -> dict:
     """{disponivel, chaves: {fonte: [(tipo, norma)]}} do SIAFE do mesmo processo, no snapshot só-leitura imutável."""
-    p = Path(caminho or os.environ.get(ENV_FONTE) or FONTE_PARADA)
+    p = Path(caminho or os.environ.get(ENV_FONTE) or fonte_coleta.caminho())
     if not p.is_file():
         return {"disponivel": False, "motivo": f"fonte SIAFE ausente: {p}", "chaves": {}}
     con = sqlite3.connect(f"file:{p}?mode=ro&immutable=1", uri=True, timeout=60)
@@ -383,4 +384,4 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return bool(c["ok"])
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado"], prioridade=50, volta={"nos": ["vm1"]})  # 26/11: à frente do E4 (60); cpu_pesado: rasteriza páginas (850 MB > teto 1G do cpu_leve)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_pesado", "fonte_coleta"], prioridade=50, volta={"nos": ["vm1"]})  # 26/11: à frente do E4 (60); cpu_pesado: rasteriza páginas (850 MB > teto 1G do cpu_leve)

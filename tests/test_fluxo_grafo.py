@@ -252,8 +252,10 @@ def test_estagio_de_baixo_vem_antes_quando_disputa_o_mesmo_recurso():
     preso no meio — o E3 ficou 2,5 h parado atrás do E2 (mesma prioridade, a reserva pega o mais antigo)."""
     g = G.carregar()
 
+    from compliance_agent.fluxo.fonte_coleta import CAPACIDADES      # presença (não é vaga disputada)
+
     def disputa(e):
-        return set(e.recursos) | set(e.volta.recursos or []) | set(e.concorrencia)
+        return (set(e.recursos) | set(e.volta.recursos or []) | set(e.concorrencia)) - CAPACIDADES
 
     erros = []
     for bk, b in g.estagios.items():

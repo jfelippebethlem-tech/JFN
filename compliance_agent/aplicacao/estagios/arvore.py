@@ -55,6 +55,7 @@ from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, Estagi
 from compliance_agent.dominio import documento_id as DI
 from compliance_agent.dominio import processo_id as PI
 from compliance_agent.fluxo.fila import Resultado
+from compliance_agent.fluxo import fonte_coleta
 
 VERSAO = "e2-1"
 ESQUEMA_PADRAO = "public"
@@ -476,7 +477,7 @@ class Item:
 
 def abrir_fonte(caminho: str | Path | None = None) -> sqlite3.Connection:
     """A coleta em modo só-leitura imutável (padrão: snapshot da parada de obras) — nunca o compliance.db vivo."""
-    p = Path(caminho or os.environ.get(ENV_FONTE) or FONTE_PARADA)
+    p = Path(caminho or os.environ.get(ENV_FONTE) or fonte_coleta.caminho())
     if not p.exists():
         raise ErroPermanente(f"fonte só-leitura ausente: {p}")
     return sqlite3.connect(f"file:{p}?mode=ro&immutable=1", uri=True)

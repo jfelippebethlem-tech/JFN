@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from compliance_agent.evidencias import ENV_DSN, dsn_vigente
-from compliance_agent.fluxo import fila, governador, planejador, schema
+from compliance_agent.fluxo import fila, fonte_coleta, governador, planejador, schema
 from compliance_agent.fluxo import grafo as grafo_mod
 from compliance_agent.fluxo.fila import Job, Resultado
 
@@ -487,6 +487,7 @@ class Supervisor:
         self._aplicar_acao(d)
         self._registrar_no(m, d)
         livres, lancados = dict(d.livres), 0
+        livres.update(fonte_coleta.capacidades())   # presença da fonte da coleta neste nó (26/11/2026)
         if bloqueados:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:
