@@ -64,6 +64,7 @@ RAIZ = Path(__file__).resolve().parents[3]
 SQL_EVIDENCIAS = RAIZ / "deploy" / "vm2" / "postgres" / "evidencias_001.sql"
 SQL_CAPTURA = RAIZ / "deploy" / "vm2" / "postgres" / "captura_001.sql"
 SQL_CAPTURA_002 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_002.sql"   # versão com a identidade capturada
+SQL_CAPTURA_003 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_003.sql"   # recaptura pedida (regra única #58)
 FONTE_PARADA = Path.home() / "snapshot-20261124" / "compliance.db"
 ENV_FONTE = "JFN_CAPTURA_FONTE"
 MAX_PAGINAS = 500
@@ -99,7 +100,7 @@ def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
         c.execute(f'CREATE SCHEMA IF NOT EXISTS "{esq}"')
     EV.conectar(dsn + ("&" if "?" in dsn else "?") + f"options=-csearch_path%3D{esq}").close()
     with psycopg.connect(dsn, autocommit=True) as c:
-        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA, SQL_CAPTURA_002):
+        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA, SQL_CAPTURA_002, SQL_CAPTURA_003):
             c.execute(renderizar(arq.read_text(encoding="utf-8"), esq))
 
 
@@ -109,11 +110,18 @@ _INVALIDA = ("COALESCE(v.hash_de, '') = 'binario' AND (SELECT t.parametros->>'pe
              "t.processo = v.processo AND t.doc_id = v.doc_id AND t.tipo = 'texto_nativo' AND t.entrada_sha = v.sha256 "
              "ORDER BY t.criada_em DESC, t.id DESC LIMIT 1) = 'invalida'")
 
+# versão LEGADA de documento com recaptura pedida (captura_003: relatório fotográfico que veio só com o texto do cache)
+_RECAPTURA = ("COALESCE(v.origem, '') = 'sei_arquivo' AND EXISTS (SELECT 1 FROM recaptura_pedida r WHERE "
+              "r.processo = v.processo AND r.doc_id = v.doc_id)")
+# o que NÃO conta como captura: binário inválido OU legado com recaptura pedida
+_FORA = f"(({_INVALIDA}) OR ({_RECAPTURA}))"
+
 
 def capturados(con, processo: str) -> set[str]:
-    """doc_id que já têm alguma versão VÁLIDA (texto do legado ou binário do E3 que o E4 não declarou inválido)."""
+    """doc_id que já têm alguma versão VÁLIDA (texto do legado ou binário do E3 que o E4 não declarou inválido; o
+    legado com recaptura pedida não vale)."""
     return {r[0] for r in con.execute(f"SELECT DISTINCT v.doc_id FROM versoes v WHERE v.processo = %s AND NOT "
-                                      f"COALESCE(({_INVALIDA}), false)", (processo,))}
+                                      f"COALESCE({_FORA}, false)", (processo,))}
 
 
 def versoes_invalidas(con, processo: str) -> list[tuple[str, str, str]]:
@@ -130,7 +138,7 @@ def identidade_capturada(con, processo: str) -> dict[str, set[tuple[str, str]]]:
     out: dict[str, set[tuple[str, str]]] = {}
     for k, i, t in con.execute("SELECT v.doc_id, v.id_documento, v.titulo FROM versoes v WHERE v.processo = %s AND "
                                "(v.id_documento IS NOT NULL OR v.titulo IS NOT NULL) AND NOT "
-                               f"COALESCE(({_INVALIDA}), false)", (processo,)):     # inválido não é captura
+                               f"COALESCE({_FORA}, false)", (processo,)):     # inválido não é captura
         out.setdefault(k, set()).add((str(i or ""), str(t or "")))
     return out
 

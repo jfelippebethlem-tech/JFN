@@ -226,3 +226,25 @@ def test_invalido_sob_identidade_nova_com_versao_antiga_valida_ainda_falta(pg, m
                 "VALUES (%s,'sei:90000001','texto_nativo',%s,'x','pymupdf','{\"perfil\": \"invalida\"}')", (PROC, sha))
     ef = _e2(nome, 3)
     assert ef["estado"] == A.DOC_NOVO and ef["faltantes"] == 1
+
+
+@precisa_pg
+def test_relatorio_fotografico_so_com_texto_do_cache_volta_a_faltar(pg, monkeypatch):  # noqa: F811
+    """27/11/2026 — regra única #58 (ex-`sei_integra_fila`): o caminho antigo do CACHE trazia só o texto; relatório
+    fotográfico chegava sem foto e o processo «tinha texto», então a íntegra nunca era pedida (175 processos / 252
+    relatórios medidos). A versão LEGADA de documento com recaptura pedida não conta como captura."""
+    con, nome = pg
+    nav = SEIFalso(arvore_falsa(4))
+    monkeypatch.setattr(A, "obter_navegador", lambda: nav)
+    assert _e2(nome, 1)["estado"] == A.DOC_NOVO
+    for (k,) in con.execute("SELECT doc_id FROM documentos WHERE processo = %s", (PROC,)).fetchall():
+        con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de) "
+                    "VALUES (%s, %s, %s, 100, 'sei_arquivo', NULL, '2026-09-24', 'texto')", (PROC, k, "t" + k))
+    assert _e2(nome, 2)["faltantes"] == 0                                # o legado conta como captura…
+    con.execute("INSERT INTO recaptura_pedida(processo, doc_id, motivo) VALUES (%s, 'sei:90000001', "
+                "'relatório fotográfico só com o texto do cache')", (PROC,))
+    ef = _e2(nome, 3)
+    assert ef["estado"] == A.DOC_NOVO and ef["faltantes"] == 1          # …menos o que pediu recaptura
+    con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de) "
+                "VALUES (%s, 'sei:90000001', 'binario-novo', 100, 'sei:e3', NULL, '2026-11-27', 'binario')", (PROC,))
+    assert _e2(nome, 4)["faltantes"] == 0                                # a versão nova do E3 vale: auto-limitante

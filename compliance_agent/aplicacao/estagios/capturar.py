@@ -67,7 +67,7 @@ def guardados_do_pg(con, processo: str) -> dict:
     linhas = con.execute(
         "SELECT d.doc_id, COALESCE(d.titulo, ''), COALESCE(max(v.chars), 0), count(v.sha256), "
         "COALESCE(d.id_documento, '') FROM documentos d JOIN versoes v ON v.processo = d.processo AND "
-        f"v.doc_id = d.doc_id AND NOT COALESCE(({A._INVALIDA}), false) WHERE d.processo = %s "
+        f"v.doc_id = d.doc_id AND NOT COALESCE({A._FORA}, false) WHERE d.processo = %s "
         "GROUP BY d.doc_id, d.titulo, d.id_documento ORDER BY d.doc_id", (processo,)).fetchall()
     cap = A.identidade_capturada(con, processo)
     docs = []
