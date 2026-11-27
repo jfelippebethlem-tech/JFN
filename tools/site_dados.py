@@ -107,6 +107,8 @@ def gerar(con: sqlite3.Connection, vault: Path) -> dict:
     ano_ini = min(r[4] for r in forn_all); ano_fim = max(r[5] for r in forn_all)
     ultima = con.execute(f"SELECT max({DATA_ISO}) FROM ob_orcamentaria_siafe WHERE {paga} AND data_emissao GLOB '[0-3][0-9]/[01][0-9]/[12][0-9][0-9][0-9]'").fetchone()[0]
     recorte = f"credores com CNPJ que não são entes públicos, exercícios {ano_ini}–{ano_fim}"
+    n_base = con.execute(f"SELECT count(*) FROM ob_orcamentaria_siafe WHERE {paga}").fetchone()[0]
+    n_ultimo = con.execute(f"SELECT count(*) FROM ob_orcamentaria_siafe WHERE {paga} AND {DATA_ISO} = ?", (ultima,)).fetchone()[0]
 
     # órgão em destaque: a UG que mais pagou a FORNECEDORES no exercício mais recente
     por_ug = {}
@@ -134,6 +136,8 @@ def gerar(con: sqlite3.Connection, vault: Path) -> dict:
             "fora_por_ser_ente_publico": _n(excl, FONTE_OB, "OB a credores com CNPJ que são entes públicos (repasses), excluídas do total"),
             "casos_no_acervo": _n(len(casos), "Acervo de casos do JFN (vault/casos)", "todos os dossiês, abertos e fechados"),
             "siafe_ultima_ob": _n(ultima, FONTE_OB, "data de emissão mais recente na base"),
+            "ob_pagas_na_base": _n(n_base, FONTE_OB, "todas as OB pagas, qualquer credor"),
+            "ob_no_ultimo_dia": _n(n_ultimo, FONTE_OB, "OB pagas emitidas na data mais recente da base"),
         },
         "orgao": {
             "ug": ug, "nome": ug_nomes.subordinacao(ug, ano_fim) or ug, "exercicio": ano_fim,

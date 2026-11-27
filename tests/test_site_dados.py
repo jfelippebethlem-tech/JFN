@@ -41,3 +41,9 @@ def test_repasse_a_municipio_casa_com_ibge_e_fora_do_rj_fica_listado(tmp_path, m
     nomes = {m["nome_oficial"]: m["valor"] for m in t["por_municipio"]}
     assert nomes["Duque de Caxias"] == 500.0 and nomes["São Pedro da Aldeia"] == 300.0     # abreviação «S.» expandida
     assert "X" in t["municipios_sem_casar"]                                                  # o «fundo de X» não some
+
+
+def test_contagem_de_ob_da_base_e_do_ultimo_dia(tmp_path, monkeypatch):
+    monkeypatch.setattr(S.ug_nomes, "subordinacao", lambda u, a: "FUNDACAO SAUDE")
+    i = S.gerar(_con(), tmp_path)["inicio"]
+    assert i["ob_pagas_na_base"]["valor"] == 5 and i["ob_no_ultimo_dia"]["valor"] == 1      # só a de 26/11
