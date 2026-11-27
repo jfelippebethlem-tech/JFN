@@ -664,6 +664,26 @@ rotinas:
     nos: [vm1]
     timeout_s: 4200
     efeito: {descricao: 'linha de resultado da atualização (pendentes, restam, versão do Claude, reinício, erros)', log_contem: 'atualizar_no: '}
+  claude_sessoes_vm1:
+    estagio: E17
+    descricao: 'REGRA do dono (27/11): Claude Code sempre atualizado em todas as máquinas — atualiza o executável (6 h) e reinicia sessão DESATUALIZADA e OCIOSA, retomando (VM-1)'
+    comando: ['bash', tools/claude_atualizar_sessoes.sh]
+    agenda:
+    - {cron: '*/15 * * * *'}
+    origem: [dono-27-11-claudes-atualizados]
+    nos: [vm1]
+    timeout_s: 900
+    efeito: {descricao: 'linha de resultado (ações e o que esperou, com o motivo)', log_contem: 'claude_sessoes: '}
+  claude_sessoes_vm2:
+    estagio: E17
+    descricao: 'REGRA do dono (27/11): Claude Code sempre atualizado em todas as máquinas — atualiza o executável (6 h) e reinicia sessão DESATUALIZADA e OCIOSA, retomando (VM-2)'
+    comando: ['bash', tools/claude_atualizar_sessoes.sh]
+    agenda:
+    - {cron: '*/15 * * * *'}
+    origem: [dono-27-11-claudes-atualizados]
+    nos: [vm2]
+    timeout_s: 900
+    efeito: {descricao: 'linha de resultado (ações e o que esperou, com o motivo)', log_contem: 'claude_sessoes: '}
   teto_adaptativo_sei:
     estagio: E18
     descricao: 'Teto adaptativo de logins simultâneos no SEI-RJ (AIMD pela taxa de falha de conexão de E2/E3)'
