@@ -11,6 +11,7 @@ Uso: python -m tools.folha_pcrj_mensal [--de 202001]"""
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import json
 from datetime import date
 
@@ -36,7 +37,7 @@ def main(argv=None) -> int:
     con = _db.conectar()
     try:
         tem = {r[0] for r in con.execute("SELECT DISTINCT competencia FROM pcrj_folha_pref")}
-    except Exception:  # noqa: BLE001 — tabela ainda não existe: tudo falta
+    except sqlite3.OperationalError:          # tabela ainda não existe: tudo falta
         tem = set()
     con.close()
     faltam = [c for c in alvo if c not in tem]
