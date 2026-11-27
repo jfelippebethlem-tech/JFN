@@ -58,6 +58,7 @@ class Medida:
     swap_pct: float = 0.0
     disco_livre_pct: float = 100.0
     mem_disp_pct: float = 0.0          # MemAvailable/MemTotal; 0 = desconhecido (vale a regra antiga: pode matar)
+    cpu_some_sistema: float = 0.0      # o PSI de CPU da máquina inteira (registro); a decisão usa o dos jobs
 
     def como_dict(self) -> dict:
         return asdict(self)
@@ -111,9 +112,19 @@ def ler_disp_pct(meminfo: str) -> float:
     return round(100.0 * v.get("MemAvailable", 0.0) / tot, 1) if tot else 0.0
 
 
-def medir(proc: str = "/proc", disco: str = "/") -> Medida:
+def fatia_dos_jobs() -> str:
+    """A fatia systemd (do usuário) onde o supervisor põe os jobs: jfn.slice ⊃ jfn-coletor.slice/jfn-jobs.slice."""
+    uid = os.getuid()
+    return f"/sys/fs/cgroup/user.slice/user-{uid}.slice/user@{uid}.service/jfn.slice"
+
+
+def medir(proc: str = "/proc", disco: str = "/", cgroup: str | None = None) -> Medida:
     """A única função que toca a máquina. PSI ausente (kernel sem CONFIG_PSI) cai em 0 — e o supervisor registra
-    no nó que a medida não existe, em vez de fingir folga calado."""
+    no nó que a medida não existe, em vez de fingir folga calado.
+
+    CPU: a pressão sobre os JOBS DO MOTOR (PSI da fatia jfn.slice), não a da máquina — 26/11/2026: a VM-2 ficou
+    contida com 0 job rodando (sistema 79,5 % por um processo de fora freado pela cota; fatia 0,5 %). Painel e PG se
+    protegem por peso de cgroup (§3.4). Sem a fatia legível, vale o PSI do sistema (regra antiga)."""
     def ler(caminho: str) -> str:
         try:
             with open(caminho, encoding="ascii") as f:
@@ -121,9 +132,14 @@ def medir(proc: str = "/proc", disco: str = "/") -> Medida:
         except OSError:
             return ""
     u = shutil.disk_usage(disco)
-    return montar_medida(ler(os.path.join(proc, "pressure", "cpu")), ler(os.path.join(proc, "pressure", "memory")),
-                         ler(os.path.join(proc, "pressure", "io")), ler(os.path.join(proc, "meminfo")),
-                         round(100.0 * u.free / u.total, 1))
+    cpu_sis = ler(os.path.join(proc, "pressure", "cpu"))
+    cg = cgroup or (fatia_dos_jobs() if proc == "/proc" else None)      # /proc de teste: não lê a fatia real
+    cpu_jobs = ler(os.path.join(cg, "cpu.pressure")) if cg else ""
+    m = montar_medida(cpu_jobs or cpu_sis, ler(os.path.join(proc, "pressure", "memory")),
+                      ler(os.path.join(proc, "pressure", "io")), ler(os.path.join(proc, "meminfo")),
+                      round(100.0 * u.free / u.total, 1))
+    m.cpu_some_sistema = ler_psi(cpu_sis)["some"]
+    return m
 
 
 def classificar(m: Medida) -> tuple[str, list[str]]:

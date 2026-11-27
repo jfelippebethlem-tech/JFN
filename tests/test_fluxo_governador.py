@@ -127,3 +127,24 @@ def test_so_mata_job_que_pesa():
     """25/11: com a pressão vinda de fora dos jobs, o SIGKILL caía em jobs de 15 MB, um atrás do outro (12 em 3 min),
     sem aliviar nada. Abaixo do piso, matar não alivia: o governador não mata."""
     assert G.vale_matar(G.MATAR_MIN_KB) and not G.vale_matar(G.MATAR_MIN_KB - 1) and not G.vale_matar(0)
+
+
+
+def test_cpu_mede_a_pressao_dos_jobs_do_motor_nao_a_do_sistema(tmp_path):
+    """26/11/2026: VM-2 contida com 0 job do motor rodando — sistema «cpu some 79,5» (o brain-index, fora do motor,
+    freado pela cota, conta como pressão) contra 0,5 % na fatia dos jobs. A proteção do painel/PG é por peso de cgroup
+    (§3.4); o governador pergunta se O TRABALHO DO MOTOR está sofrendo. Sem a fatia legível, vale o sistema (antigo)."""
+    proc = tmp_path / "proc"
+    (proc / "pressure").mkdir(parents=True)
+    (proc / "pressure" / "cpu").write_text("some avg10=79.50 avg60=0 avg300=0 total=0\n")
+    for n in ("memory", "io"):
+        (proc / "pressure" / n).write_text("some avg10=0.00 avg60=0 avg300=0 total=0\nfull avg10=0.00 avg60=0 avg300=0 total=0\n")
+    (proc / "meminfo").write_text("MemTotal: 100 kB\nMemAvailable: 80 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
+    cg = tmp_path / "jfn.slice"
+    cg.mkdir()
+    (cg / "cpu.pressure").write_text("some avg10=0.53 avg60=0 avg300=0 total=0\nfull avg10=0.00 avg60=0 avg300=0 total=0\n")
+    m = G.medir(str(proc), str(tmp_path), cgroup=str(cg))
+    assert m.cpu_some == 0.53 and m.cpu_some_sistema == 79.5
+    assert G.decidir(m, BASE).estado == "folga"
+    m2 = G.medir(str(proc), str(tmp_path), cgroup=str(tmp_path / "nao_existe"))
+    assert m2.cpu_some == 79.5                                    # sem a fatia: a regra antiga
