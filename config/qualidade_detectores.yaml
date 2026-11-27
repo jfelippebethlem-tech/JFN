@@ -5607,6 +5607,34 @@ detectores:
     tier_motivo: sem_medida
     fp_ic95: null
     manchete_efetiva: false
+  e10.c_concentracao_nicho:
+    modulo: compliance_agent/aplicacao/detectores/concentracao_nicho.py
+    simbolo: detectar
+    afirma: 'Concentração por nicho: um fornecedor com mais de 60% do valor contratado de um nicho de objeto acima de
+      R$ 5.000.000,00, na mesma unidade e exercício, com ao menos 3 contratos (regra única #14, ex-_triagem_bombeiros)'
+    fonte:
+    - contratos_tcerj
+    - dominio.elegibilidade (E9, exigência fornecedor)
+    grava: PG jfn_evidencias, esquema sombra (execucao_regra + achado), via estágio E10 detectar
+    consome:
+    - auditoria de regras únicas (vault refatoracao/auditoria-regras-unicas-20261127.md)
+    manchete: false
+    controle_positivo: tests/test_detector_e10_concentracao_nicho.py::test_positivo_dominante_acima_de_60_por_cento_num_nicho_grande
+    controle_negativo: tests/test_detector_e10_concentracao_nicho.py::test_negativo_monopolio_legitimo_nicho_pequeno_poucos_contratos_e_outros
+    hipoteses_inocentes:
+    - hipotese: monopólio legítimo (concessionária, Correios, imprensa oficial)
+      excluida_por: compliance_agent/aplicacao/detectores/concentracao_nicho.py:monopolio_legitimo
+    - hipotese: dominância aritmética em nicho com 1 ou 2 contratos
+      excluida_por: compliance_agent/aplicacao/detectores/concentracao_nicho.py:detectar
+    - hipotese: mercado restrito com único habilitado ou contrato guarda-chuva
+      excluida_por: null
+    dominio: contratos do espelho TCE-RJ elegíveis na E9 (fornecedor = E), por unidade × exercício × nicho de objeto
+    fp_medida: null
+    estado: ativo
+    tier: 3
+    tier_motivo: sem_medida
+    fp_ic95: null
+    manchete_efetiva: false
   e10.ob_paga_acima_liquidado:
     modulo: compliance_agent/aplicacao/detectores/contabil_siafe.py
     simbolo: _PagoAcima

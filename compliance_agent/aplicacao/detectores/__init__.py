@@ -27,6 +27,9 @@ Fatia 2 (fracionamento_siafe_sweep, governo_couto_regras com data de corte, fam�
                                 nunca "fracionamento" (plano §4 item 5: só o P4, por objeto, emite)
   e10.tg_*                      troca de gestão com `corte` parametrizado (D01, D02, D05, D09, D10, D16, D20)
   e10.c_sede_fachada            sede real × endereço × Street View gravados: indício só com 2 sinais convergentes
+
+Regras únicas perdidas que a auditoria de 27/11/2026 achou (mapa O1.2 × sistema novo):
+  e10.c_concentracao_nicho      fornecedor com > 60% de um nicho de objeto > R$ 5 mi na unidade/exercício (#14)
 """
 from __future__ import annotations
 
@@ -53,6 +56,8 @@ MODULOS = {
     "e10.tg_ob_anulada": "compliance_agent.aplicacao.detectores.troca_gestao:OB_ANULADA",
     "e10.tg_tac_aceleracao": "compliance_agent.aplicacao.detectores.troca_gestao:TAC_ACELERACAO",
     "e10.c_sede_fachada": "compliance_agent.aplicacao.detectores.sede_fachada",
+    # 27/11/2026: regras únicas que a auditoria achou perdidas (mapa O1.2 × sistema novo)
+    "e10.c_concentracao_nicho": "compliance_agent.aplicacao.detectores.concentracao_nicho",
 }
 
 

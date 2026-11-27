@@ -201,6 +201,7 @@ DETECTORES: dict[str, dict] = {
     "e10.tg_ob_anulada": {"ob_siafe": "universo"},
     "e10.tg_tac_aceleracao": {"ob_siafe": "fornecedor"},      # o TAC lê o veredito do credor na OB paga dele
     "e10.c_sede_fachada": {"ob_siafe": "fornecedor"},
+    "e10.c_concentracao_nicho": {"contrato_tcerj": "fornecedor"},
     # emendas: o objeto É a transferência (PIX, convênio) — a exigência é o universo, não o fornecedor
     "emendas.D1": {"ob_siafe": "universo"},
     "emendas.D2": {"ob_siafe": "universo"},
