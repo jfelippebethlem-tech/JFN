@@ -28,11 +28,11 @@ tailscale status >/dev/null 2>&1 || tailscale up --authkey="$TS_AUTHKEY" --hostn
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 if ! grep -q "# ponte-tailscale" ~/.ssh/config 2>/dev/null; then
   cat >> ~/.ssh/config <<'EOF'
-# ponte-tailscale (sessão na nuvem → máquinas do dono). A nuvem NÃO guarda chave: entra só na VM-1 pelo Tailscale SSH
+# ponte-tailscale (sessão na nuvem → máquinas do dono). A nuvem NÃO guarda chave: entra só no NÓ-PONTE da VM-1 (jfn-ponte, tag:jfn; tools/nuvem/no_ponte_vm1.sh) pelo Tailscale SSH
 # (autenticação pela identidade do nó + regra de acesso da tag:claude-cloud); VM-2 e it-campo pelas chaves da VM-1:
 #   ssh vm1 'ssh vm2-ts <comando>'    |    ssh vm1 'ssh it-campo <comando>'
-Host vm1 jfn-core
-  HostName jfn-core
+Host vm1 jfn-ponte
+  HostName jfn-ponte
   User ubuntu
   ProxyCommand tailscale nc %h %p
   StrictHostKeyChecking accept-new
@@ -41,7 +41,7 @@ EOF
 fi
 export ALL_PROXY="socks5h://$SOCKS"
 tailscale status --peers=false 2>/dev/null | head -1
-for h in jfn-core jfn-agent-2 jorge; do          # VM-1, VM-2, it-campo («jorge» na rede)
+for h in jfn-ponte jfn-agent-2 jorge; do          # VM-1, VM-2, it-campo («jorge» na rede)
   if timeout 8 tailscale ping -c 1 "$h" >/dev/null 2>&1; then echo "ok  $h"; else echo "SEM RESPOSTA  $h"; fi
 done
 echo "ponte pronta: ssh vm1 · ssh vm1 'ssh vm2-ts …' · ssh vm1 'ssh it-campo …'   (HTTP: ALL_PROXY=socks5h://$SOCKS)"
