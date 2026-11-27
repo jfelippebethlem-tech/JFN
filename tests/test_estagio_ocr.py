@@ -78,8 +78,13 @@ def test_erro_de_inferencia_e_erro_nao_vazio(tmp_path):
 def test_escolha_do_executor_e_volta_cpu(monkeypatch):
     monkeypatch.delenv(O.ENV_EXECUTOR, raising=False)
     monkeypatch.setattr(O, "_gpu_disponivel", lambda: True)
+    # 27/11/2026: isolado do ambiente — no it-campo o servidor PP-OCRv6 real responde e o teste dependia da máquina
+    monkeypatch.setattr(O, "_ppocrv6_disponivel", lambda: True)
     p, s = O.escolher("itcampo")
-    assert isinstance(p, O.ExecutorGPU) and isinstance(s, O.ExecutorCPU)
+    assert isinstance(p, O.ExecutorPPOCRv6) and isinstance(s, O.ExecutorCPU)      # PP-OCRv6 primeiro no it-campo
+    monkeypatch.setattr(O, "_ppocrv6_disponivel", lambda: False)
+    p, s = O.escolher("itcampo")
+    assert isinstance(p, O.ExecutorGPU) and isinstance(s, O.ExecutorCPU)           # sem ele, a GPU de sempre
     p, s = O.escolher("vm2")
     assert isinstance(p, O.ExecutorCPU) and isinstance(s, O.ExecutorTesseract)
     monkeypatch.setenv(O.ENV_EXECUTOR, "cpu")                          # it-campo forçado à CPU (ensaio)

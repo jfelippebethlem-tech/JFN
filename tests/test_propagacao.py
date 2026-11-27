@@ -735,3 +735,17 @@ def test_filho_que_registrou_o_fim_na_corrida_nao_e_dado_como_morto(tmp_path, mo
     assert P._rodando_destacado(con, cfg) == set()
     assert con.execute("SELECT ultimo_erro FROM derivado WHERE id='pes'").fetchone()[0] == "saiu com código 1"
     con.close()
+
+
+def test_filho_recem_lancado_com_cmdline_do_pai_ainda_vive(tmp_path, monkeypatch):
+    """27/11/2026: antes do exec o /proc/<pid>/cmdline é o do pai — o filho vivo era declarado morto sob carga."""
+    import os
+    cfg = {"fontes": {"f": {"nome": "Fonte", "sonda": {}}}, "derivados": {"pes": _der(["f"], peso="pesado")}, "cerebro": []}
+    con = P.conectar(tmp_path / "p.db")
+    P.emitir(con, cfg, "f", "mudou")
+    con.execute("INSERT OR IGNORE INTO derivado(id) VALUES ('pes')")
+    con.execute("UPDATE derivado SET ultimo_estado='rodando', pid=?, ultimo_inicio=? WHERE id='pes'",
+                (os.getpid(), time.time()))                        # o pytest: existe, mas o cmdline não é «executar pes»
+    assert P._rodando_destacado(con, cfg) == {"pes"}
+    con.execute("UPDATE derivado SET ultimo_inicio=? WHERE id='pes'", (time.time() - 60,))
+    assert P._rodando_destacado(con, cfg) == set()                 # passada a carência, cmdline alheio = morto

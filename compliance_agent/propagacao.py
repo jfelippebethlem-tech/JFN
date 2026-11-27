@@ -691,6 +691,9 @@ def _concluir(con: sqlite3.Connection, cfg: dict, did: str, d: dict, max_id: int
     con.commit()
 
 
+CARENCIA_EXEC_S = 15.0
+
+
 def _pid_vivo(pid: int | None, did: str) -> bool:
     """O PID ainda é o NOSSO filho (`propagacao executar <did>`)? PID reaproveitado por outro processo = morto."""
     if not pid:
@@ -708,7 +711,10 @@ def _rodando_destacado(con: sqlite3.Connection, cfg: dict) -> set[str]:
     vivos = set()
     for did, pid, ini in con.execute("SELECT id, pid, ultimo_inicio FROM derivado WHERE ultimo_estado='rodando' "
                                      "AND pid IS NOT NULL").fetchall():
-        if _pid_vivo(pid, did):
+        # 27/11/2026: logo depois do lançamento o /proc/<pid>/cmdline ainda é o do PAI (o exec não terminou); com a
+        # máquina carregada a janela cresce e o filho vivo era declarado MORTO (falha registrada, dependente rodando
+        # antes dele — o teste «instável» do portão no it-campo). Processo que EXISTE e foi lançado há < carência vive.
+        if _pid_vivo(pid, did) or (Path(f"/proc/{pid}").exists() and time.time() - (ini or 0) < CARENCIA_EXEC_S):
             vivos.add(did)
         elif did in cfg["derivados"]:
             # relê ANTES de declarar a morte: entre o SELECT e o teste do PID o filho pode ter gravado o próprio fim e
