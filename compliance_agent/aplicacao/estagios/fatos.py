@@ -352,7 +352,11 @@ def acervo_do_estagio(con_cap, processo: str, textos_lidos: dict | None = None) 
             r = con_cap.execute("SELECT estado FROM ocr_conferencia WHERE processo = %s AND doc_id = %s AND "
                                 "texto_sha = %s", (processo, doc_id, e5["saida_sha"])).fetchone()
             conf = r is not None and r[0] == "confirmado"
-            if not conf:
+            # 27/11/2026: «a_conferir» é DECISÃO do E6 (número sem confirmação nível A), não espera — barrar o
+            # processo inteiro deixava 518 documentos travando para sempre a leitura dos seus processos. O documento
+            # segue SEM ser enviado (o fatiador o separa: `ocr_confirmado` False ⇒ peça não lida, com o motivo) e o
+            # resto é lido; confirmado depois, o evento do E6 muda a chave e ele entra. Sem conferência = espera.
+            if not conf and (r is None or r[0] != "a_conferir"):
                 pend.append({"doc_id": doc_id, "motivo": "OCR ainda não confirmado pelo E6: " + (
                     f"conferência '{r[0]}'" if r else "sem conferência do E6 para este texto")})
         elif escaneada:

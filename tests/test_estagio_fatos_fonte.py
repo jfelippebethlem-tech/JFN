@@ -135,7 +135,6 @@ def test_porta_abre_com_a_confirmacao_do_e6_e_le_o_texto_do_e4_e5(cap, sem_legad
 # ── 2. a regra de segurança: o que o E6 não confirmou continua barrado ──────────────────────────────────────
 @precisa_pg
 @pytest.mark.parametrize("e6, motivo", [
-    ("a_conferir", "conferência 'a_conferir'"),
     (None, "sem conferência do E6 para este texto"),
     ("outra_versao", "sem conferência do E6 para este texto"),      # confirmado, mas de OUTRO texto (sha) do doc
 ])
@@ -151,6 +150,17 @@ def test_porta_barra_o_que_o_e6_nao_confirmou(cap, sem_legado, e6, motivo):
     assert p.fora_da_porta == "documento de OCR ainda não confirmado" and not p.fatias
     assert p.pecas_nao_lidas == [{"doc_id": "sei:222", "motivo": f"OCR ainda não confirmado pelo E6: {motivo}"}]
     assert lidos == []                                     # barrado pelo PG: nenhum texto aberto à toa
+
+
+@precisa_pg
+def test_a_conferir_nao_vai_ao_modelo_mas_nao_trava_o_processo(cap, sem_legado):
+    """27/11/2026: «a_conferir» é a DECISÃO do E6 (número sem confirmação nível A). O documento não é enviado nem vira
+    fato — vai para as peças não lidas com o motivo — e o resto do processo é lido (antes: processo barrado para sempre)."""
+    _semear(cap, sem_legado / "texto", _dois(e6="a_conferir"))
+    p = F.preparar(PROC, set(), set(), con_cap=cap)
+    assert p.fora_da_porta is None and p.fatias
+    assert all("sei:222" not in f.docs and OCR_P2[:40] not in f.texto for f in p.fatias)   # nada do não confirmado sai
+    assert {"doc_id": "sei:222", "motivo": "OCR ainda não confirmado"} in p.pecas_nao_lidas
 
 
 @precisa_pg
