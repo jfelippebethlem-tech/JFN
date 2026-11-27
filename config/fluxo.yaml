@@ -644,6 +644,16 @@ rotinas:
     nos: [vm2]
     timeout_s: 4200
     efeito: {descricao: 'linha de resultado da atualização (pendentes, restam, versão do Claude, reinício, erros)', log_contem: 'atualizar_no: '}
+  beneficios_sociais_mensal:
+    estagio: E1
+    descricao: 'Benefícios sociais (Novo Bolsa Família, Auxílio Brasil, Bolsa Família — dados abertos da CGU, mês a mês) × sócios de fornecedores (nome + 6 dígitos; ponte por NIS nos anos sem CPF) e × servidores/nomeados (nome + 5 dígitos, concomitância no mesmo mês da folha). Dono 27/11: «tem que entrar no fluxo»; download pelo it-campo (IP residencial)'
+    comando: ['bash', tools/beneficios_mensal.sh]
+    agenda:
+    - {cron: '0 3 12 * *'}
+    origem: [dono-27-11-beneficios-sociais]
+    nos: [vm1]
+    timeout_s: 21600
+    efeito: {descricao: 'histórico atualizado no it-campo e resultados trazidos com md5 conferido', log_contem: 'beneficios_mensal: ok'}
   atualizar_itcampo:
     estagio: E17
     descricao: 'Atualização SEMANAL do it-campo (WSL como root pelo Windows + Claude Code do Windows): apt, Claude Code e plugins; reinício só se o kernel pedir (dono 27/11: «uma vez por semana sem eu precisar pedir»)'
