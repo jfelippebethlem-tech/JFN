@@ -26,7 +26,9 @@ from typing import Mapping
 SLOTS_INICIAIS: dict[str, dict[str, int]] = {
     "vm1": {"cpu_leve": 2, "cpu_pesado": 1, "llm": 2, "materializar": 1, "disco": 1},
     "vm2": {"cpu_leve": 2, "cpu_pesado": 1, "navegador": 1, "llm": 3, "disco": 1},
-    "itcampo": {"cpu_leve": 10, "cpu_pesado": 8, "navegador": 6, "gpu": 1, "llm": 4, "disco": 1},
+    # disco 1→4 (27/11): E7 arquivar levava ~40 s/job, limitado pela VAGA (entravam ~590/h, saíam ~175/h, fila
+    # 7.906→9.031); o trabalho é rede (Drive) e o índice é SQLite WAL com timeout 60 s. A VM-2 fica com 1 (PG).
+    "itcampo": {"cpu_leve": 10, "cpu_pesado": 8, "navegador": 6, "gpu": 1, "llm": 4, "disco": 4},
 }
 PESADOS = frozenset({"cpu_pesado", "navegador", "gpu", "disco"})
 SEM_CPU = frozenset({"llm", "materializar"})        # espera de rede / painel: seguem mesmo contido
