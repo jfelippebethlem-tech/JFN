@@ -418,3 +418,29 @@ def ciclo(con, grafo: Mapping[str, list] | None = None, contrato: Mapping[str, M
     con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (NULL, 'fluxo_saude', %s, %s)",
                 (_ORDEM.index(r["saude"]["estado"]), json.dumps({"estado": r["saude"]["estado"]})))
     return r
+
+
+_CHAVES_DO_CONTRATO = ("nos", "timeout_s", "concorrencia", "ritmo", "montante", "estagio")
+
+
+def reaplicar_contrato(con, g) -> dict[str, int]:
+    """O contrato ATUAL do yaml vale para os jobs nativos que ainda esperam ('fila'): recursos, prioridade, volta, nó
+    preferido e as chaves de contrato do payload (nos, timeout_s, concorrencia, ritmo, montante). Reservado/feito não
+    mudam; o resto do payload (chave do trabalho, evento) fica. Chamada pelo líder na recarga do yaml.
+    26/11/2026: 4 mudanças de contrato do E6 no dia não chegavam à fila (payload.nos=['vm2'] congelado). Idempotente."""
+    out: dict[str, int] = {}
+    for ek, e in g.estagios.items():
+        c, base = g.contrato_do_estagio(ek), g.payload_do_estagio(ek)
+        n = con.execute(
+            "UPDATE jobs SET recursos = %(rec)s, prioridade = %(pr)s, volta = %(volta)s, no_preferido = %(np)s, "
+            "payload = (payload - %(chaves)s::text[]) || %(base)s::jsonb "
+            "WHERE tipo = %(tipo)s AND estado = 'fila' AND (recursos IS DISTINCT FROM %(rec)s "
+            "OR prioridade IS DISTINCT FROM %(pr)s OR volta IS DISTINCT FROM %(volta)s::jsonb "
+            "OR no_preferido IS DISTINCT FROM %(np)s "
+            "OR (payload - %(chaves)s::text[]) || %(base)s::jsonb IS DISTINCT FROM payload)",
+            {"rec": list(c["recursos"]), "pr": c["prioridade"], "volta": json.dumps(c["volta"]) if c["volta"] else None,
+             "np": c["no_preferido"], "chaves": list(_CHAVES_DO_CONTRATO), "base": json.dumps(base),
+             "tipo": e.tipo}).rowcount
+        if n:
+            out[e.tipo] = n
+    return out

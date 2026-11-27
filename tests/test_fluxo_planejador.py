@@ -163,3 +163,24 @@ def test_linha_nova_de_estagio_ja_liberado_entra_ativa(con):
     P.sincronizar_agenda(con, linhas)
     at = dict(con.execute("SELECT id, ativo FROM agenda WHERE id IN ('nova_e18', 'nova_e10')").fetchall())
     assert at == {"nova_e18": True, "nova_e10": False}
+
+
+@precisa_pg
+def test_contrato_novo_vale_para_quem_ainda_espera_na_fila(con):
+    """26/11/2026: recurso, prioridade e nós do E6 mudaram no yaml 4 vezes no dia, e os jobs JÁ na fila seguiam com o
+    contrato da criação (payload.nos=['vm2'] congelado — o it-campo nunca pegava o E6); corrigi à mão com UPDATE 4×.
+    Regra: na recarga do yaml o líder reaplica o contrato atual a quem está em 'fila' (reservado/feito não mudam)."""
+    from compliance_agent.fluxo import grafo as G
+    g = G.carregar()
+    ek = next(k for k, e in g.estagios.items() if e.tipo == "confirmar_ocr")
+    velho = {**g.payload_do_estagio(ek), "nos": ["vm2"], "x": 1}
+    fila.enfileirar(con, "confirmar_ocr", "confirmar_ocr:a", velho, prioridade=99, recursos=["cpu_leve"])
+    fila.enfileirar(con, "confirmar_ocr", "confirmar_ocr:b", velho, prioridade=99, recursos=["cpu_leve"])
+    con.execute("UPDATE jobs SET estado = 'reservado' WHERE chave = 'confirmar_ocr:b'")
+    n = P.reaplicar_contrato(con, g)
+    assert n.get("confirmar_ocr") == 1
+    c = g.contrato_do_estagio(ek)
+    pr, rec, pay = con.execute("SELECT prioridade, recursos, payload FROM jobs WHERE chave = 'confirmar_ocr:a'").fetchone()
+    assert pr == c["prioridade"] and rec == c["recursos"] and pay["nos"] == c["nos"] and pay["x"] == 1
+    assert con.execute("SELECT prioridade FROM jobs WHERE chave = 'confirmar_ocr:b'").fetchone()[0] == 99
+    assert P.reaplicar_contrato(con, g) == {}                        # idempotente: nada mais a mudar

@@ -452,6 +452,7 @@ class Supervisor:
         r: dict = {"recarregado": True}
         if self._lider if sincronizar is None else sincronizar:
             r["agenda"] = planejador.sincronizar_agenda(self.con, g.agenda_linhas() + g.agenda_nativa())
+            r["fila_recontratada"] = planejador.reaplicar_contrato(self.con, g)   # contrato novo vale para quem espera
         log.info("yaml do fluxo recarregado a quente: %s", r)
         return r
 
