@@ -576,3 +576,23 @@ def test_interrupcao_da_infraestrutura_nao_conta_como_erro_do_job(con):
         _job(con, f"i{i}", "fila", estagio="E2", erro=t); ch.append(f"i{i}")
     r = R.conferir_estagio(con, "E2", ch, parcial=True, decorrido_s=1e9, fila=True)
     assert r["ok"] and r["com_erro"] == 0
+
+
+@precisa_pg
+def test_fora_da_porta_do_e8_e_espera_na_origem_nao_erro(con):
+    """27/11/2026: a etapa 2 ficou BLOQUEADA com 75 de 382 jobs do E8 em «fora da porta do E8» (documento à espera do
+    OCR/conferência de estágio anterior) — espera declarada pelo próprio E8, não erro. Na fila (nova tentativa) ou
+    esgotado (falhou_efeito, a propagação reabre), não barra; outro erro de efeito continua barrando."""
+    con.execute("INSERT INTO liberacao(estagio, por) VALUES ('E8', 't')")
+    _job(con, "a", "feito")
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_tipo, erro_resumo) VALUES ('fatos', 'p', 'fila', "
+                "%s, 'efeito', %s)", (json.dumps({"estagio": "E8"}), 'efeito não conferido: {"motivo": "fora da porta do '
+                'E8: documento de OCR ainda não confirmado — nada lido"}'))
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_tipo, erro_resumo) VALUES ('fatos', 'q', "
+                "'falhou_efeito', %s, 'efeito', %s)", (json.dumps({"estagio": "E8"}), "fora da porta do E8: documento "
+                                                                                       "sem texto — nada lido"))
+    r = R.conferir_estagio(con, "E8", ["a", "p", "q"], parcial=True, decorrido_s=1e9)
+    assert r["ok"] and r["ruins"] == 0 and r["com_erro"] == 0
+    con.execute("INSERT INTO jobs(tipo, chave, estado, payload, erro_tipo, erro_resumo) VALUES ('fatos', 'x', 'fila', "
+                "%s, 'efeito', 'efeito não conferido: recontados 3 ≠ 5')", (json.dumps({"estagio": "E8"}),))
+    assert not R.conferir_estagio(con, "E8", ["a", "p", "q", "x"], parcial=True, decorrido_s=1e9)["ok"]

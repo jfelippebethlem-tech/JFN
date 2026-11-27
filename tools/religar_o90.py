@@ -98,6 +98,7 @@ ESPERA_MAX_S = 7200
 # falhou_efeito e o resto só esperando (fila/reservado sem erro, ou `adiado` pelo ritmo). Os pendentes vão no rótulo
 # da métrica para as 48 h de observação. Estágio sem LLM continua exigindo a volta inteira.
 ESPERA_PARCIAL_S = 1800
+ESPERA_ORIGEM = "fora da porta do E8"      # fatos.conferir: espera declarada de estágio anterior (não é erro do E8)
 POLL_S = 30
 POR = "tools/religar_o90"
 PAINEL = "http://127.0.0.1:8000/"
@@ -653,23 +654,29 @@ def conferir_estagio(con, estagio: str, chaves: list[str], parcial: bool = False
     vale ≥ 1 feito com o resto só esperando, sem erro (ESPERA_PARCIAL_S)."""
     est = dict(con.execute("SELECT estado, count(*) FROM jobs WHERE chave = ANY(%s) GROUP BY estado",
                            (chaves,)).fetchall()) if chaves else {}
-    esperando = [(c, e) for c, e in con.execute(
-        "SELECT chave, erro_tipo FROM jobs WHERE chave = ANY(%s) AND estado IN ('fila', 'reservado') ORDER BY chave",
-        (chaves,)).fetchall()] if chaves else []
+    # 27/11/2026: «fora da porta do E8» (documento à espera do OCR/conferência de um estágio ANTERIOR) é espera na
+    # origem declarada pelo próprio E8 (achado 1.13: falhou_efeito com motivo, a propagação reabre) — não é erro do
+    # estágio. Contado aqui como erro, bloqueou a etapa 2 inteira com 75 de 382.
+    esperando = [(c, None if ESPERA_ORIGEM in (r or "") else e) for c, e, r in con.execute(
+        "SELECT chave, erro_tipo, erro_resumo FROM jobs WHERE chave = ANY(%s) AND estado IN ('fila', 'reservado') "
+        "ORDER BY chave", (chaves,)).fetchall()] if chaves else []
     # resultado declarado do domínio (processo restrito/sigilo, ForaDeAlcance) não é erro do estágio (26/11/2026)
     ruins, fora = con.execute(
-        "SELECT count(*) FILTER (WHERE coalesce(j.erro_resumo, '') NOT LIKE '[fora\\_de\\_alcance]%%'), "
-        "count(*) FILTER (WHERE coalesce(j.erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%') "
+        "SELECT count(*) FILTER (WHERE coalesce(j.erro_resumo, '') NOT LIKE '[fora\\_de\\_alcance]%%' AND "
+        "coalesce(j.erro_resumo, '') NOT LIKE %s), "
+        "count(*) FILTER (WHERE coalesce(j.erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%' OR "
+        "coalesce(j.erro_resumo, '') LIKE %s) "
         "FROM jobs j, liberacao l WHERE l.estagio = %s AND j.payload->>'estagio' = %s "
         "AND j.estado IN ('quarentena', 'falhou_efeito') AND coalesce(j.concluido_em, j.criado_em) >= l.liberado_em",
-        (estagio, estagio)).fetchone()
+        (f"%{ESPERA_ORIGEM}%", f"%{ESPERA_ORIGEM}%", estagio, estagio)).fetchone()
     feitos = est.get("feito", 0)
     pendentes = sum(n for e, n in est.items() if e in ("fila", "reservado"))
     # chave da 1ª volta que é ForaDeAlcance (quarentena declarada) está DECIDIDA — sem isto a soma nunca fechava e o
     # E2 (com processos restritos na própria volta) não passava em caso nenhum (26/11/2026 12h25)
     fora_da_volta = con.execute(
         "SELECT count(*) FROM jobs WHERE chave = ANY(%s) AND estado IN ('quarentena', 'falhou_efeito') "
-        "AND coalesce(erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%'", (chaves,)).fetchone()[0] if chaves else 0
+        "AND (coalesce(erro_resumo, '') LIKE '[fora\\_de\\_alcance]%%' OR coalesce(erro_resumo, '') LIKE %s)",
+        (chaves, f"%{ESPERA_ORIGEM}%")).fetchone()[0] if chaves else 0
     inteira = ruins == 0 and pendentes == 0 and feitos + fora_da_volta == len(chaves)
     # interrupção da INFRAESTRUTURA não é falha do job (26/11/2026: reinícios do supervisor e do PG deixaram 15 jobs
     # com `parada`/`lease_vencido` e o E2 não fechava): espera (adiado), supervisor parado, posse vencida, governador
