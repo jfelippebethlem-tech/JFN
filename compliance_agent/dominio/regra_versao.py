@@ -148,7 +148,8 @@ VERSOES: dict[str, tuple[RegraVersao, ...]] = {
            "liquidação)", EXECUCAO_4320, None, SHA_L4320, "4320", _TRECHO_62),),
     **{rid: _sinal(rid) for rid in (
         "e10.tg_direta_salto", "e10.tg_emergencial_incumbente", "e10.tg_concentracao", "e10.tg_pico_vespera",
-        "e10.tg_credor_estreante", "e10.tg_ob_anulada", "e10.tg_tac_aceleracao", "e10.c_sede_fachada")},
+        "e10.tg_credor_estreante", "e10.tg_ob_anulada", "e10.tg_tac_aceleracao", "e10.c_sede_fachada",
+        "e10.c_concentracao_nicho")},
 }
 
 
