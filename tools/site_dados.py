@@ -20,6 +20,7 @@ from pathlib import Path
 from compliance_agent import ug_nomes
 from compliance_agent.entidades_gov import eh_administracao_publica, eh_nao_fornecedor
 from compliance_agent.cruzamentos_intel import _ob_paga
+from compliance_agent.reporting.intel_base import moeda
 
 CNPJ = "length(replace(replace(replace(credor,'.',''),'/',''),'-','')) = 14"
 DATA_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
@@ -31,7 +32,7 @@ def _n(valor, fonte: str, recorte: str, estado: str = "VERIFICADO") -> dict:
 
 
 def gerar(con: sqlite3.Connection, vault: Path) -> dict:
-    f = _ob_paga(con)
+    paga = _ob_paga(con)
     # ente público NÃO é fornecedor (regra da casa): nome (entidades_gov.eh_nao_fornecedor — fundos, prefeituras, AAE,
     # tributos) OU natureza jurídica 1xxx da Receita (orgao_esfera). 27/11: sem isso o «maior fornecedor» do Fundo
     # Estadual de Saúde eram FUNDOS MUNICIPAIS DE SAÚDE (repasse a município).
@@ -39,18 +40,18 @@ def gerar(con: sqlite3.Connection, vault: Path) -> dict:
     def eh_fornecedor(credor, nome):
         return re.sub(r"\D", "", credor or "") not in publicos and not eh_nao_fornecedor(nome or "")
     por_credor = con.execute(f"SELECT credor, max(nome_credor), sum(valor), count(*), min(exercicio), max(exercicio) "
-                             f"FROM ob_orcamentaria_siafe WHERE {f} AND {CNPJ} GROUP BY credor").fetchall()
+                             f"FROM ob_orcamentaria_siafe WHERE {paga} AND {CNPJ} GROUP BY credor").fetchall()
     forn_all = [r for r in por_credor if eh_fornecedor(r[0], r[1])]
     tot = round(sum(r[2] for r in forn_all), 2); n = sum(r[3] for r in forn_all); nforn = len(forn_all)
     excl = round(sum(r[2] for r in por_credor) - tot, 2)
     ano_ini = min(r[4] for r in forn_all); ano_fim = max(r[5] for r in forn_all)
-    ultima = con.execute(f"SELECT max({DATA_ISO}) FROM ob_orcamentaria_siafe WHERE {f} AND data_emissao GLOB '[0-3][0-9]/[01][0-9]/[12][0-9][0-9][0-9]'").fetchone()[0]
+    ultima = con.execute(f"SELECT max({DATA_ISO}) FROM ob_orcamentaria_siafe WHERE {paga} AND data_emissao GLOB '[0-3][0-9]/[01][0-9]/[12][0-9][0-9][0-9]'").fetchone()[0]
     recorte = f"credores com CNPJ que não são entes públicos, exercícios {ano_ini}–{ano_fim}"
 
     # órgão em destaque: a UG que mais pagou a FORNECEDORES no exercício mais recente
     por_ug = {}
     linhas = con.execute(f"SELECT ug_pagadora, credor, max(nome_credor), sum(valor), count(*) FROM ob_orcamentaria_siafe "
-                         f"WHERE {f} AND {CNPJ} AND exercicio = ? GROUP BY ug_pagadora, credor", (ano_fim,)).fetchall()
+                         f"WHERE {paga} AND {CNPJ} AND exercicio = ? GROUP BY ug_pagadora, credor", (ano_fim,)).fetchall()
     for u, c, nm, v, k in linhas:
         if eh_fornecedor(c, nm):
             por_ug.setdefault(u, []).append({"cnpj": c, "nome": (nm or "").strip(), "valor": round(v, 2), "obs": k})
@@ -87,7 +88,7 @@ def main(argv: list[str]) -> int:
     d = gerar(con, Path.home() / "vault" / "casos")
     Path(argv[1]).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
     i = d["inicio"]
-    print(f"site_dados: ok — pago a fornecedores R$ {i['pago_fornecedores']['valor']:,.2f} ({i['pago_fornecedores']['recorte']}); "
+    print(f"site_dados: ok — pago a fornecedores R$ {moeda(i['pago_fornecedores']['valor'])} ({i['pago_fornecedores']['recorte']}); "
           f"órgão {d['orgao']['nome']} com {len(d['orgao']['fornecedores'])} fornecedores; última OB {i['siafe_ultima_ob']['valor']}")
     return 0
 
