@@ -34,6 +34,9 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 DPI = 200
+# os motores que a `medir` compara; oxr/paddlevl vêm do leitor EXTERNO (tools/ocr_bancada_externo.py, ambientes
+# isolados no it-campo) e ppocrv6_arm é o PP-OCRv6 em CPU na VM-2 (ARM) — a volta sem it-campo (26/11/2026)
+MOTORES_MEDIDOS = ("surya", "rapidocr", "ppocrv6", "tesseract", "oxr", "paddlevl", "ppocrv6_arm")
 ERROS_PDF = (RuntimeError, ValueError, OSError)            # fitz.FileDataError ⊂ RuntimeError
 # o snapshot só-leitura de 24/11 (o do HD passa pelo 9P: a consulta do SIAFE travava em D-state); cópia local primeiro
 SNAPSHOT = Path(os.environ.get("JFN_O36_SNAPSHOT") or "/mnt/d/JFN-Frio/snapshot-20261124/compliance.db")
@@ -826,7 +829,7 @@ def medir(d: Path, congelado: str | None) -> dict:
     from compliance_agent.qualidade import ouro_ocr as OO
     out: dict = {"controle_nativo": {}, "ouro": {}, "tempos": {}}
     verdade = _controle_verdade(d)
-    for m in ("surya", "rapidocr", "ppocrv6", "tesseract"):
+    for m in MOTORES_MEDIDOS:
         for nome, lista in (("controle_nativo", "controle"), ("ouro", "ocr")):
             rs = leituras(d, m, lista)
             if not rs:
@@ -860,7 +863,7 @@ def medir(d: Path, congelado: str | None) -> dict:
                                 "paginas_<50%": sum(1 for x in por_pag if x < 0.5)}
     if congelado:
         pags = OO.ler_congelado(Path(congelado))
-        for m in ("surya", "rapidocr", "ppocrv6", "tesseract"):
+        for m in MOTORES_MEDIDOS:
             lt = {s: {r["motor"]: r["texto"]} for s, r in leituras(d, m).items()}
             if lt:
                 out["ouro"][m] = OO.medir(pags, lt) | {"por_grupo": {
