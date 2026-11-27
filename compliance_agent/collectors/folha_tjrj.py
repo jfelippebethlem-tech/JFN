@@ -57,12 +57,22 @@ def baixar_mes(ano: int, mes: int, cli: httpx.Client) -> list[dict]:
         or re.search(r'href="([^"]+GEDID=[^"]+)"', h2)
     if not m:
         return []
-    blob = cli.get(m.group(1)).content
-    if blob[:2] != b"PK":
-        return []
-    zf = zipfile.ZipFile(io.BytesIO(blob))
-    txt = zf.read(zf.namelist()[0]).decode("latin-1", errors="replace")
-    comp = f"{ano}-{mes:02d}"
+    return parsear(_texto_do_arquivo(cli.get(m.group(1)).content), f"{ano}-{mes:02d}")
+
+
+def _texto_do_arquivo(blob: bytes) -> str:
+    """O GED entregava um ZIP com 1 HTML; desde 2026 entrega o HTML direto (37 MB). 27/11/2026: o coletor só aceitava
+    ZIP, descartava o HTML e concluía «sem publicação» — 06 e 08/2026 existiam e nunca entraram. Outro formato = ''."""
+    if blob[:2] == b"PK":
+        zf = zipfile.ZipFile(io.BytesIO(blob))
+        return zf.read(zf.namelist()[0]).decode("latin-1", errors="replace")
+    if blob.lstrip()[:1] == b"<":
+        return blob.decode("latin-1", errors="replace")
+    return ""
+
+
+def parsear(txt: str, comp: str) -> list[dict]:
+    """Linhas de servidor da tabela Anexo VIII (puro, sem rede)."""
     out: list[dict] = []
     for row in re.findall(r"<tr[^>]*>(.*?)</tr>", txt, re.S):
         cs = _cells(row)
@@ -74,6 +84,8 @@ def baixar_mes(ano: int, mes: int, cli: httpx.Client) -> list[dict]:
             continue
         # total de créditos = maior valor monetário da linha (proxy robusto do bruto)
         bruto = max(((valor_br(x) or 0.0) for x in cs[3:] if "," in x), default=0.0)
+        if not cargo and not lotacao and not bruto:      # título de seção da planilha («ANEXO VIII», «MAGISTRADOS»…)
+            continue
         out.append({"nome": nome, "lotacao": lotacao, "cargo": cargo, "competencia": comp,
                     "bruto": bruto})
     return out
@@ -86,14 +98,16 @@ def ingerir(regs: list[dict]) -> int:
     con = abrir_banco()
     con.execute("PRAGMA busy_timeout=60000")
     try:
-        existentes = {(n, c) for n, c in con.execute(
-            "SELECT nome, cargo FROM registros_folha WHERE fonte=?", (_FONTE,))}
-        novos = [r for r in regs if (r["nome"], r["cargo"]) not in existentes]
+        # 27/11/2026: a chave NÃO tinha o mês — quem já aparecera nunca era gravado nos meses seguintes (só os novos
+        # entravam, com o mês da 1ª aparição). Agora é foto por competência.
+        existentes = {(n, c, k) for n, c, k in con.execute(
+            "SELECT nome, cargo, competencia FROM registros_folha WHERE fonte=?", (_FONTE,))}
+        novos = [r for r in regs if (r["nome"], r["cargo"], r["competencia"]) not in existentes]
         # dedup interno do lote (o Anexo VIII repete nome em várias faixas)
         vistos: set = set()
         linhas = []
         for r in novos:
-            k = (r["nome"], r["cargo"])
+            k = (r["nome"], r["cargo"], r["competencia"])
             if k in vistos:
                 continue
             vistos.add(k)
@@ -109,19 +123,36 @@ def ingerir(regs: list[dict]) -> int:
         con.close()
 
 
-def coletar(meses_tentar: int = 4) -> dict:
-    """Coleta a folha do TJRJ do mês mais recente disponível (a folha atual = todos os servidores).
-    Tenta do mês corrente para trás até achar um arquivo. Idempotente (dedup fonte+nome+cargo)."""
+ANO_INICIAL = 2023          # o seletor do portal começa em 2023: antes disso a fonte não publica (INDISPONÍVEL)
+
+
+def coletar(max_meses: int = 6) -> dict:
+    """Folha por competência desde 2023-01 até o mês corrente (dono 27/11/2026: «desde 2020» — o TJRJ só publica a
+    partir de 2023). Coleta os meses que FALTAM no banco, do mais recente para trás, no máximo `max_meses` com
+    arquivo por execução (cada um ~37 MB). Mês sem publicação («Não existem dados») é declarado, nunca zero."""
     hoje = date.today()
-    with httpx.Client(verify=False, timeout=40, headers=_H, follow_redirects=True) as cli:
-        y, mth = hoje.year, hoje.month
-        for _ in range(meses_tentar):
-            regs = baixar_mes(y, mth, cli)
+    con = abrir_banco()
+    try:
+        tem = {c for (c,) in con.execute("SELECT DISTINCT competencia FROM registros_folha WHERE fonte=?", (_FONTE,))}
+    finally:
+        con.close()
+    alvo, y, m = [], hoje.year, hoje.month
+    while (y, m) >= (ANO_INICIAL, 1):
+        if f"{y}-{m:02d}" not in tem:
+            alvo.append((y, m))
+        y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+    res = {"ok": True, "coletadas": [], "sem_publicacao": [], "faltam": 0}
+    with httpx.Client(verify=False, timeout=180, headers=_H, follow_redirects=True) as cli:
+        for (y, m) in alvo:
+            if len(res["coletadas"]) >= max_meses:
+                break
+            regs = baixar_mes(y, m, cli)
             if regs:
-                ins = ingerir(regs)
-                return {"ok": True, "competencia": f"{y}-{mth:02d}", "linhas": len(regs), "inseridas": ins}
-            y, mth = (y - 1, 12) if mth == 1 else (y, mth - 1)
-    return {"ok": False, "nota": "Nenhum mês recente retornou arquivo (portal fora do ar ou sem publicação)."}
+                res["coletadas"].append(f"{y}-{m:02d}:{ingerir(regs)}")
+            else:
+                res["sem_publicacao"].append(f"{y}-{m:02d}")
+    res["faltam"] = len(alvo) - len(res["coletadas"]) - len(res["sem_publicacao"])
+    return res
 
 
 if __name__ == "__main__":
