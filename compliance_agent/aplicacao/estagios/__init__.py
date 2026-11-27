@@ -79,6 +79,9 @@ def _eco(payload: dict, ctx: Contexto) -> Resultado:
 
 
 def _eco_efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
+    if payload.get("parcial_com_progresso"):          # simula um estágio por janela que avançou mas não terminou
+        resultado.efeito["conferencia"] = {"ok": False, "continua": True, "faltam": 1, "novas_nesta_posse": 1}
+        return False
     con = fila.conectar()
     try:
         r = con.execute("SELECT rotulos->>'ficha' FROM metricas WHERE id = %s AND nome = 'eco'",

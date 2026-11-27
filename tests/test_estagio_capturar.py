@@ -81,6 +81,8 @@ def test_mais_de_40_omitido_calado_volta_e_so_ele_e_recapturado(pg, monkeypatch,
     assert nav.lotes[0] == [40, 40, 14]                                  # lotes de 40 até o fim, nunca só o 1º
     assert not ok1 and r1.efeito["omitidos"] == 1 and r1.efeito["restritos"] == 1
     assert r1.efeito["conferencia"]["faltas_recontadas"] == 1 and len(r1.efeito["versoes"]) == 93
+    # 26/11/2026: incompleto MAS com progresso nesta posse ⇒ `continua` (o motor reabre sem gastar tentativa)
+    assert r1.efeito["conferencia"]["novas_nesta_posse"] == 93 and r1.efeito["conferencia"]["continua"] is True
     assert r1.efeito["marcador"]["omitidos_pelo_pdf"] == 1
     # a tentativa seguinte só busca o que faltou (delta + retomada pelo id)
     r2, ok2 = _e3(nome, 2, tmp_path)
@@ -157,3 +159,13 @@ def test_captura_fora_da_vm2_e_espelhada_e_conferida(tmp_path, monkeypatch):
                                                                              "stderr": ""})())
     with pytest.raises(RuntimeError, match="espelho"):
         C.espelhar(out, no="itcampo")                                # md5 divergente: não conta como feita
+
+
+def test_continua_so_com_progresso_e_sem_defeito():
+    """Parcial sem nada novo nesta posse, ou com sha divergente/versão fora do PG, NÃO continua: é falha de verdade."""
+    base = {"versoes_no_pg": True, "sha256_recalculado": True, "faltas_recontadas": 5, "arvore_nao_vazia": True,
+            "ok": False}
+    assert C.continua({**base, "novas_nesta_posse": 3}) is True
+    assert C.continua({**base, "novas_nesta_posse": 0}) is False
+    assert C.continua({**base, "novas_nesta_posse": 3, "sha256_recalculado": False}) is False
+    assert C.continua({**base, "novas_nesta_posse": 3, "ok": True}) is False

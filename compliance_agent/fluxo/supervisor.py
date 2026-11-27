@@ -333,8 +333,16 @@ class Supervisor:
                 res = Resultado(efeito=efeito, efeito_conferido=ok, eventos=(f.resultado or {}).get("eventos") or [])
                 motivo = None if ok else ("efeito não conferido: " + json.dumps(conf, ensure_ascii=False, default=str)
                                           if conf is not None else "efeito não conferido (a conferência não disse por quê)")
-                estado = fila.concluir(self.con, f.job.ficha, res, motivo)
-                self._contar(r, estado, {"fila": "volta_efeito"}.get(estado or "", estado or "recusado"))
+                if not ok and isinstance(conf, dict) and conf.get("continua"):
+                    # parcial COM progresso nesta posse (estágio por janela, ex. E3 em lotes de 40): continua já,
+                    # sem gastar tentativa — 26/11/2026: processo grande ia à quarentena avançando a cada volta
+                    from datetime import datetime, timedelta, timezone
+                    self._contar(r, fila.adiar(self.con, f.job.ficha, "parcial com progresso: " + motivo,
+                                               datetime.now(timezone.utc) + timedelta(seconds=fila.ADIADO_MIN_S)),
+                                 "adiado")
+                else:
+                    estado = fila.concluir(self.con, f.job.ficha, res, motivo)
+                    self._contar(r, estado, {"fila": "volta_efeito"}.get(estado or "", estado or "recusado"))
             elif rc == SAIDA_ADIADO:
                 d = dados or {}
                 self._contar(r, fila.adiar(self.con, f.job.ficha, d.get("adiado") or self._stderr(f),

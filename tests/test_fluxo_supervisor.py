@@ -79,6 +79,26 @@ def test_eco_ponta_a_ponta_em_subprocesso(con, esquema_tmp):
 
 
 @precisa_pg
+def test_parcial_com_progresso_continua_sem_gastar_tentativa(con, esquema_tmp):
+    """26/11/2026: a captura do SEI é por janela (lotes de 40, 30 min); processo de 868 documentos leva várias voltas,
+    e cada volta parcial contava como falha — 5 voltas e ia à quarentena AVANÇANDO. Regra do motor: a conferência que
+    diz `continua` (incompleto, mas com progresso nesta posse) reabre o job já, sem gastar tentativa. Sem progresso,
+    vale a regra antiga (volta com backoff e esgota)."""
+    fila.enfileirar(con, "eco", "eco:parcial", {"parcial_com_progresso": True}, max_tentativas=1)
+    sup = _sup(esquema_tmp)
+    try:
+        for _ in range(3):                                               # 3 voltas parciais com max_tentativas=1
+            con.execute("UPDATE jobs SET disponivel_em = now()")
+            sup.uma_volta()
+            tot = sup.drenar(120)
+            assert tot["adiado"] == 1, tot
+    finally:
+        sup.fechar()
+    est, tent, et, er = con.execute("SELECT estado, tentativas, erro_tipo, erro_resumo FROM jobs").fetchone()
+    assert (est, tent, et) == ("fila", 0, "adiado") and er.startswith("parcial com progresso")
+
+
+@precisa_pg
 def test_efeito_nao_conferido_volta_e_esgotado_vira_falhou_efeito(con, esquema_tmp):
     fila.enfileirar(con, "eco", "eco:mente", {"falhar_efeito": True}, max_tentativas=2)
     sup = _sup(esquema_tmp)

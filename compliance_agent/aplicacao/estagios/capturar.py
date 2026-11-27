@@ -213,10 +213,21 @@ def conferir(con, efeito: dict) -> dict:
         vd = [d for d in vig[0] if d["doc_id"] not in no_man and not d.get("restrito")]
         rv = set(A.retificados([d["doc_id"] for d in vd], vd, A.identidade_capturada(con, proc)))
         falta += [d["doc_id"] for d in vd if d["doc_id"] not in tem or d["doc_id"] in rv]
+    novas = con.execute("SELECT count(*) FROM versoes WHERE processo = %s AND aquisicao_id = %s",
+                        (proc, aid)).fetchone()[0]
     c = {"versoes_no_pg": declaradas <= no_pg, "sha256_recalculado": not divergentes, "faltas_recontadas": len(falta),
-         "arvore_nao_vazia": bool(ids), "divergentes": divergentes[:20]}
+         "arvore_nao_vazia": bool(ids), "divergentes": divergentes[:20], "novas_nesta_posse": int(novas)}
     c["ok"] = c["versoes_no_pg"] and c["sha256_recalculado"] and not falta and c["arvore_nao_vazia"]
+    c["continua"] = continua(c)
     return c
+
+
+def continua(c: dict) -> bool:
+    """Incompleto MAS com progresso nesta posse e sem defeito (sha, PG, árvore): a captura é por janela (lotes de 40,
+    30 min) e o processo grande leva várias voltas — o motor reabre sem gastar tentativa (26/11/2026). Sem nada novo
+    nesta posse é falha de verdade: volta com backoff e esgota, como sempre."""
+    return (not c.get("ok") and c.get("faltas_recontadas", 0) > 0 and c.get("novas_nesta_posse", 0) > 0
+            and bool(c.get("versoes_no_pg")) and bool(c.get("sha256_recalculado")) and bool(c.get("arvore_nao_vazia")))
 
 
 def afastar_invalidos(con, processo: str, outdir: Path) -> list[str]:
