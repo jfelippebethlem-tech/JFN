@@ -136,3 +136,14 @@ def test_pessoal_e_restrito_continuam_recusados_mesmo_com_mascara(classe):
         G.chamar("classificacao", [{"role": "user", "content": f"cpf {CPF_A}"}], prompt_version="v1",
                  classe_dado=classe, backends={"free_llm": b, "assinatura_claude": b, "api_anthropic": b})
     assert vistos == []
+
+
+def test_estrito_nao_deixa_sobrar_nada_que_o_detector_acusa():
+    """27/11/2026 (E8, processo 030001/110836/2026 em quarentena): o detector aceita separador MISTURADO (espaço numa
+    posição, nada na outra) e a máscara não — o gateway barrou certo (nada saiu), mas o processo nunca seria lido.
+    No modo estrito, tudo o que `cpfs_expostos` contaria vira marcador."""
+    d = _cpf("274185963", "cru")
+    for txt in (f"{d[:3]} {d[3:]}", f"{d[:3]}.{d[3:6]} {d[6:9]}-{d[9:]}", f"{d[:9]} {d[9:]}", f"{d[:3]} {d[3:6]}.{d[6:]}"):
+        assert M.cpfs_expostos(txt) == 1
+        m, mapa = M.mascarar(f"CPF {txt} fim", estrito=True)
+        assert M.cpfs_expostos(m) == 0 and M.desmascarar(m, mapa) == f"CPF {txt} fim"

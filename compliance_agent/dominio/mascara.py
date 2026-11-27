@@ -45,6 +45,9 @@ def mascarar(texto: str, mapa: dict | None = None, *, estrito: bool = False) -> 
     t = _RE_CPF.sub(lambda m: marca("CPF", m[0]), texto)
     if estrito:
         t = _RE_CPF_ESPACO.sub(lambda m: marca("CPF", m[0]) if cpf_valido(m[0]) else m[0], t)
+        # 27/11/2026: separador MISTURADO (espaço numa posição, nada na outra) — o detector acusa e a máscara não
+        # cobria; o gateway barrava (certo) e o processo nunca era lido. Estrito = nada sobra que o detector conte.
+        t = _RE_CPF_EXPOSTO.sub(lambda m: marca("CPF", m[0]) if cpf_valido(m[1]) else m[0], t)
     t = _RE_CONTA.sub(lambda m: m[1] + m[2] + marca("CONTA", m[3]), t)
     return t, mapa
 
