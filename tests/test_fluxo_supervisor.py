@@ -243,3 +243,18 @@ def test_teto_adaptativo_vigente_limita_o_do_yaml(con, esquema_tmp):
         assert sup.tetos_efetivos()["sei_rj_ip"] == 2
     finally:
         sup.fechar()
+
+
+
+@precisa_pg
+def test_no_publica_a_capacidade_de_presenca(con, esquema_tmp, monkeypatch):
+    """26/11/2026: a capacidade `fonte_coleta` entrava só na reserva; o planejador lê as vagas PUBLICADAS em `nos` e
+    declarou o E6 BLOQUEADO («nenhum nó vivo oferece»). O nó publica vagas + capacidades."""
+    from compliance_agent.fluxo import fonte_coleta as FC
+    monkeypatch.setattr(FC, "capacidades", lambda: {"fonte_coleta": FC.VAGAS})
+    sup = _sup(esquema_tmp)
+    try:
+        sup.uma_volta()
+    finally:
+        sup.fechar()
+    assert con.execute("SELECT (slots->>'fonte_coleta')::int FROM nos WHERE no = 'teste'").fetchone()[0] == FC.VAGAS

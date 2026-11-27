@@ -408,7 +408,8 @@ class Supervisor:
             "INSERT INTO nos(no, capacidades, slots, psi, versao_codigo, heartbeat_em) VALUES (%s, %s, %s, %s, %s, "
             "now()) ON CONFLICT (no) DO UPDATE SET capacidades = EXCLUDED.capacidades, slots = EXCLUDED.slots, "
             "psi = EXCLUDED.psi, versao_codigo = EXCLUDED.versao_codigo, heartbeat_em = now()",
-            (self.no, json.dumps({"isolamento": self.isolamento, "lider": self._lider}), json.dumps(self.slots),
+            (self.no, json.dumps({"isolamento": self.isolamento, "lider": self._lider}),
+             json.dumps({**self.slots, **fonte_coleta.capacidades()}),        # vagas + presença (o planejador lê)
              json.dumps({**m.como_dict(), "estado": d.estado, "motivos": d.motivos, "livres": d.livres}),
              self.versao))
 
