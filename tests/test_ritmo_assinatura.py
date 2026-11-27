@@ -154,3 +154,17 @@ def test_http_erro_diz_o_codigo(_dados):
     def negado():
         raise urllib.error.HTTPError(R.URL, 401, "Unauthorized", {}, None)
     assert R.medir(negado)["erro"] == "HTTPError 401"
+
+
+def test_liberacao_do_dono_vale_ate_a_virada_e_depois_some(monkeypatch):
+    """27/11/2026: dono liberou até 100% nesta semana. Com 91% (acima do teto 90) o motor volta a andar; depois da data
+    `ate` a regra de sempre volta sozinha; a liberação que chega pela medição (PG) vale nos outros nós."""
+    monkeypatch.setattr(R, "liberacao_local", lambda: None)
+    agora = VOLTA - 86400 * 1.0                                         # véspera
+    m = {"medido_ts": agora, "semana_pct": 91.0, "semana_volta": R._iso(VOLTA)}
+    assert R.classificar(m, agora)["nivel"] == "contido"
+    lib = {"teto_pct": 100, "ate": R._iso(VOLTA)}
+    assert R.classificar(dict(m, liberacao=lib), agora)["nivel"] != "contido"
+    assert R.classificar(dict(m, semana_pct=100.0, liberacao=lib), agora)["nivel"] == "contido"   # 100% é 100%
+    vencida = {"teto_pct": 100, "ate": R._iso(agora - 60)}
+    assert R.classificar(dict(m, liberacao=vencida), agora)["nivel"] == "contido"

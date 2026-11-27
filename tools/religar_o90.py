@@ -1007,8 +1007,9 @@ def main(argv: list[str] | None = None) -> int:
     if not a.desfazer and a.etapa is None:
         print("recusado: --executar exige --etapa 1 ou 2 (religação em duas janelas)", file=sys.stderr)
         return 2
-    if a.etapa == 2 and not virou_assinatura():
-        print(f"recusado: etapa 2 só depois da virada da assinatura ({VIRADA_ASSINATURA})", file=sys.stderr)
+    if a.etapa == 2 and not virou_assinatura() and not cota_liberada_pelo_dono():
+        print(f"recusado: etapa 2 só depois da virada da assinatura ({VIRADA_ASSINATURA}) ou com a liberação do dono "
+              f"da semana (data/claude_assinatura_liberacao_semana.json)", file=sys.stderr)
         return 2
     if not a.desfazer:
         abertas = [t for t, dono in pendencias(g, estado_nos(a.sha or sha_main()), a.sha or sha_main(), None)
@@ -1023,6 +1024,14 @@ def porta_llm(con, g) -> str | None:
     """O que o supervisor leria agora para o E8 (fluxo/ritmo.py: medição no PG, ausente/velha = fechada)."""
     from compliance_agent.fluxo import ritmo
     return ritmo.motivo(con, g.estagios["E8"].ritmo)
+
+
+def cota_liberada_pelo_dono(agora=None) -> bool:
+    """27/11/2026, dono: «pode continuar tudo até 100% se preciso da cota» — a liberação datada da semana substitui a
+    espera pela virada (a porta da assinatura no PG continua sendo conferida pelo `executar`)."""
+    import time as _t
+    from compliance_agent.llm import ritmo_assinatura as RA
+    return RA._liberacao_valida(RA.liberacao_local(), agora or _t.time()) is not None
 
 
 def virou_assinatura(agora=None) -> bool:

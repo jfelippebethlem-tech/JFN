@@ -29,6 +29,9 @@ def publicar(con, medida: Mapping, no: str = "vm1") -> int:
     if medida.get("semana_pct") is None or not medida.get("semana_volta"):
         raise ValueError("medição sem semana_pct/semana_volta não é publicada")
     rot = {k: medida.get(k) for k in CAMPOS}
+    lib = medida.get("liberacao") or ritmo_assinatura.liberacao_local()
+    if lib:
+        rot["liberacao"] = {k: lib.get(k) for k in ("teto_pct", "ate", "por")}   # vale em todos os nós, até `ate`
     return con.execute("INSERT INTO metricas(no, nome, valor, rotulos) VALUES (%s, %s, %s, %s) RETURNING id",
                        (no, NOME, float(medida["semana_pct"]), json.dumps(rot))).fetchone()[0]
 

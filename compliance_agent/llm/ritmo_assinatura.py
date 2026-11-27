@@ -122,6 +122,28 @@ def linha(volta_ts: float, agora: float) -> float:
     return PISO + (ALVO_SEMANA - PISO) * frac
 
 
+LIBERACAO_ARQ = "claude_assinatura_liberacao_semana.json"
+
+
+def liberacao_local() -> dict | None:
+    """Liberação do dono para ESTA semana (27/11/2026: «pode continuar tudo até 100% se preciso da cota»):
+    {"teto_pct": 100, "ate": "<virada ISO>", "por": "...", "motivo": "..."} em data/. Vale só até `ate` (a virada):
+    depois a regra de sempre volta sozinha. Viaja com a medição para o PG (fluxo/ritmo.publicar)."""
+    d = arq.ler_json(arq.dados() / LIBERACAO_ARQ)
+    return d if isinstance(d, dict) and d.get("teto_pct") is not None and d.get("ate") else None
+
+
+def _liberacao_valida(lib: dict | None, agora: float) -> float | None:
+    if not isinstance(lib, dict):
+        return None
+    ate = _ts(lib.get("ate"))
+    try:
+        teto = float(lib.get("teto_pct"))
+    except (TypeError, ValueError):
+        return None
+    return min(teto, 100.0) if ate is not None and agora < ate else None
+
+
 def classificar(m: dict | None, agora: float | None = None) -> dict:
     agora = time.time() if agora is None else agora
     base = {"nivel": "normal", "medido": False, "semana_pct": None, "linha_pct": None, "semana_volta": None,
@@ -136,6 +158,9 @@ def classificar(m: dict | None, agora: float | None = None) -> dict:
     teto = (TETO_FIM if volta - agora <= FIM_S else TETO_FINAL) if final else TETO_DURO
     vespera = not final and 0 <= volta - agora <= 2 * 86400   # sexta (véspera): motor até o teto (dono 20/11)
     ln = 100.0 if final else (TETO_DURO if vespera else round(linha(volta, agora), 1))
+    lib = _liberacao_valida(m.get("liberacao") or liberacao_local(), agora)
+    if lib is not None:                                   # dono liberou a semana até `lib` %: teto e linha sobem
+        teto, ln = max(teto, lib), max(ln, lib)
     out = dict(base, medido=True, semana_pct=pct, linha_pct=ln, semana_volta=m.get("semana_volta"),
                janela_final=final)
     if pct >= teto:
