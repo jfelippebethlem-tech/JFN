@@ -11,6 +11,7 @@ Uso: python -m tools.site_dados <saida.json>"""
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -156,7 +157,23 @@ def gerar(con: sqlite3.Connection, vault: Path) -> dict:
 def main(argv: list[str]) -> int:
     con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True, timeout=60)
     d = gerar(con, Path.home() / "vault" / "casos")
-    Path(argv[1]).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    texto = json.dumps(d, ensure_ascii=False, indent=1)
+    site = Path(os.environ.get("JFN_SITE_DIR") or Path.home() / "jfn-site")   # topologia fora do yaml (repo público)
+    destinos = argv[1:] or [site / "public" / "dados.json", site / "dist" / "dados.json"]
+    gravados = []
+    for destino in destinos:                     # 27/11: fonte (public/) e o que está no ar (dist/), troca atômica
+        alvo = Path(destino).expanduser()
+        if not alvo.parent.is_dir():
+            print(f"site_dados: destino sem pasta, pulado: {alvo}", file=sys.stderr)
+            continue
+        tmp = alvo.with_suffix(".json.tmp")
+        tmp.write_text(texto, encoding="utf-8")
+        tmp.replace(alvo)
+        gravados.append(str(alvo))
+    if not gravados:
+        print("site_dados: nenhum destino gravado", file=sys.stderr)
+        return 1
+    Path("data/site_dados_marca.json").write_text(json.dumps({"gerado_em": d["gerado_em"], "destinos": gravados}))
     i = d["inicio"]
     print(f"site_dados: ok — pago a fornecedores R$ {moeda(i['pago_fornecedores']['valor'])} ({i['pago_fornecedores']['recorte']}); "
           f"órgão {d['orgao']['nome']} com {len(d['orgao']['fornecedores'])} fornecedores; última OB {i['siafe_ultima_ob']['valor']}")

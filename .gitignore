@@ -292,3 +292,4 @@ data/peso_sonnet_medicao.json
 # O8.5 — dados do ensaio ponta a ponta (amostra, extrato do snapshot, passagens): nunca no repo público
 data/ensaio_o85/
 data/e1_eventos_marca.json
+data/site_dados_marca.json

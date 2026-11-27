@@ -47,3 +47,14 @@ def test_contagem_de_ob_da_base_e_do_ultimo_dia(tmp_path, monkeypatch):
     monkeypatch.setattr(S.ug_nomes, "subordinacao", lambda u, a: "FUNDACAO SAUDE")
     i = S.gerar(_con(), tmp_path)["inicio"]
     assert i["ob_pagas_na_base"]["valor"] == 5 and i["ob_no_ultimo_dia"]["valor"] == 1      # só a de 26/11
+
+
+def test_main_grava_atomico_nos_destinos_e_a_marca(tmp_path, monkeypatch):
+    monkeypatch.setattr(S, "gerar", lambda con, vault: {"gerado_em": "x", "inicio": {
+        "pago_fornecedores": {"valor": 1.0, "recorte": "r"}, "siafe_ultima_ob": {"valor": "2026-11-26"}},
+        "orgao": {"nome": "O", "fornecedores": []}})
+    monkeypatch.setattr(S.sqlite3, "connect", lambda *a, **k: None)
+    monkeypatch.chdir(tmp_path); (tmp_path / "data").mkdir(); (tmp_path / "pub").mkdir()
+    assert S.main(["x", str(tmp_path / "pub" / "dados.json"), str(tmp_path / "sem_pasta" / "dados.json")]) == 0
+    assert (tmp_path / "pub" / "dados.json").exists() and not list((tmp_path / "pub").glob("*.tmp"))
+    assert "pub" in (tmp_path / "data" / "site_dados_marca.json").read_text()

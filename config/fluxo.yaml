@@ -2320,6 +2320,20 @@ rotinas:
       agrupar: true
     origem: [vm1-deriv-territorio]
     nos: [vm1]
+  site_dados:
+    estagio: E15
+    descricao: 'Dados do site público (~/jfn-site): números reais do SIAFE (OB paga, entes públicos fora, repasses por município) regenerados ao fim do fluxo — dono 27/11: «tudo ao vivo, dados do sistema automaticamente no painel ao fim do fluxo»'
+    comando: ['{py}', -m, tools.site_dados]
+    timeout_s: 1800
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'dados.json do site regravado depois do início', arquivo: data/site_dados_marca.json, log_contem: 'site_dados: ok'}
+    prioridade: 60
+    evento:
+      depende: [siafe_ob, vault_casos_md]
+      debounce_s: 900
+      intervalo_min_s: 3600
+      agrupar: true
+    nos: [vm1]
   iss_nao_retido:
     estagio: E10
     descricao: ISS declarado retido na NFS-e × OB paga sem a retenção
