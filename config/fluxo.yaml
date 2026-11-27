@@ -634,6 +634,36 @@ rotinas:
     timeout_s: 900
     efeito: {descricao: 'Triagem semanal dos amarelos (envio ao dono): rodou até o fim sem traceback', so_rc: 'efeito próprio a declarar ao portar a rotina
         para o estágio (O3–O8); até lá: rc 0 + log sem traceback'}
+  atualizar_vm2:
+    estagio: E17
+    descricao: 'Atualização SEMANAL do VM-2: apt, Claude Code e plugins; reinício só se o kernel pedir (dono 27/11: «uma vez por semana sem eu precisar pedir»)'
+    comando: ['bash', tools/atualizar_no.sh, vm2]
+    agenda:
+    - {cron: '30 4 * * 0'}
+    origem: [dono-27-11-atualizacao-semanal]
+    nos: [vm2]
+    timeout_s: 4200
+    efeito: {descricao: 'linha de resultado da atualização (pendentes, restam, versão do Claude, reinício, erros)', log_contem: 'atualizar_no: '}
+  atualizar_itcampo:
+    estagio: E17
+    descricao: 'Atualização SEMANAL do it-campo (WSL como root pelo Windows + Claude Code do Windows): apt, Claude Code e plugins; reinício só se o kernel pedir (dono 27/11: «uma vez por semana sem eu precisar pedir»)'
+    comando: ['bash', tools/atualizar_itcampo.sh]
+    agenda:
+    - {cron: '50 4 * * 0'}
+    origem: [dono-27-11-atualizacao-semanal]
+    nos: [vm1]
+    timeout_s: 4200
+    efeito: {descricao: 'linha de resultado da atualização (pendentes, restam, versão do Claude, reinício, erros)', log_contem: 'atualizar_no: '}
+  atualizar_vm1:
+    estagio: E17
+    descricao: 'Atualização SEMANAL do VM-1: apt, Claude Code e plugins; reinício só se o kernel pedir (dono 27/11: «uma vez por semana sem eu precisar pedir»)'
+    comando: ['bash', tools/atualizar_no.sh, vm1]
+    agenda:
+    - {cron: '10 5 * * 0'}
+    origem: [dono-27-11-atualizacao-semanal]
+    nos: [vm1]
+    timeout_s: 4200
+    efeito: {descricao: 'linha de resultado da atualização (pendentes, restam, versão do Claude, reinício, erros)', log_contem: 'atualizar_no: '}
   teto_adaptativo_sei:
     estagio: E18
     descricao: 'Teto adaptativo de logins simultâneos no SEI-RJ (AIMD pela taxa de falha de conexão de E2/E3)'
