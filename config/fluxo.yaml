@@ -654,6 +654,26 @@ rotinas:
     nos: [vm1]
     timeout_s: 21600
     efeito: {descricao: 'histórico atualizado no it-campo e resultados trazidos com md5 conferido', log_contem: 'beneficios_mensal: ok'}
+  folha_pcrj_mensal:
+    estagio: E1
+    descricao: 'Folha da Prefeitura do Rio em dia desde 2020 (contrachequedoc.rio.gov.br, CSV mensal em bloco): coleta toda competência que falta, recoleta as 2 mais recentes (correções), declara INDISPONÍVEL o que o site não tem mais; o guardado nunca é apagado (dono 27/11)'
+    comando: ['{py}', -m, tools.folha_pcrj_mensal]
+    agenda:
+    - {cron: '40 5 * * 1'}
+    origem: [dono-27-11-folhas-desde-2020]
+    nos: [vm1]
+    timeout_s: 7200
+    efeito: {descricao: 'competências no banco, coletadas, indisponíveis e erros declarados', log_contem: 'folha_pcrj_mensal: ok'}
+  folha_estado_historico:
+    estagio: E1
+    descricao: 'Folha do Executivo do RJ (GESPERJ) desde 2020-01 no it-campo (~/folhas, um arquivo por competência): no máximo 6 pendentes por execução; competência só COMPLETA com todos os cargos lidos e o total batendo com o da API (±0,5%) — senão é refeita; alimenta a concomitância servidor × benefício (dono 27/11)'
+    comando: [bash, tools/folha_estado_historico.sh]
+    agenda:
+    - {cron: '0 1 * * *'}
+    origem: [dono-27-11-folhas-desde-2020]
+    nos: [vm1]
+    timeout_s: 21600
+    efeito: {descricao: 'competências completas nesta execução e no histórico', log_contem: 'folha_estado_historico: ok'}
   atualizar_itcampo:
     estagio: E17
     descricao: 'Atualização SEMANAL do it-campo (WSL como root pelo Windows + Claude Code do Windows): apt, Claude Code e plugins; reinício só se o kernel pedir (dono 27/11: «uma vez por semana sem eu precisar pedir»)'

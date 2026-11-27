@@ -12,8 +12,24 @@ import unicodedata
 from pathlib import Path
 
 D = Path(os.environ.get("BENEF_DIR", Path.home() / "beneficios"))
-CH = json.load(open(D / "chaves_servidores.json"))      # "NOME|12345" -> {vinc:[...], meses:{"2026-06": bruta}}
 def norm(s): return re.sub(r"\s+", " ", unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().upper()).strip()
+CH = json.load(open(D / "chaves_servidores.json"))      # "NOME|12345" -> {vinc:[...], meses:{"2026-06": bruta}}
+# histórico da folha do Estado desde 2020 (tools/folha_estado_historico.py, mesmo it-campo): só competência COMPLETA
+FOLHAS = Path(os.environ.get("FOLHAS_DIR", Path.home() / "folhas"))
+for arq in sorted(FOLHAS.glob("gesperj_*.jsonl.gz")):
+    comp = arq.name[8:15]
+    if not (FOLHAS / f"ok_{comp}").exists():
+        continue
+    with gzip.open(arq, "rt", encoding="utf-8") as fh:
+        for ln in fh:
+            r = json.loads(ln); d6 = re.sub(r"\D", "", r.get("cpf") or "")
+            if len(d6) != 6:
+                continue
+            e = CH.setdefault(f"{norm(r['nome'])}|{d6}", {"vinc": [], "meses": {}})      # GESPERJ: janela 4–9
+            if len(e["vinc"]) < 4:
+                v = f"{r['orgao']} · {r['cargo']} · {r['vinculo']}"[:160]
+                if v not in e["vinc"]: e["vinc"].append(v)
+            e["meses"][comp] = round(r.get("bruta") or 0, 2)
 def col(cab, *ks):
     for i, c in enumerate(cab):
         if all(k in norm(c) for k in ks): return i
