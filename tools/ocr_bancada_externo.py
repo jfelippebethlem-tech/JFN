@@ -104,7 +104,8 @@ def main(argv=None) -> int:
             t0 = time.monotonic()
             try:
                 texto = ler(png)
-            except Exception as exc:                      # noqa: BLE001 — a página falha, a bancada segue (contada)
+            except (OSError, ValueError, RuntimeError, KeyError) as exc:   # rede/HTTP (URLError ⊂ OSError), JSON, motor
+                # a página falha, a bancada segue — e a falha é CONTADA no resumo (nunca some calada)
                 falhas += 1
                 print(f"falhou {r['img_sha'][:12]}: {type(exc).__name__}: {str(exc)[:160]}", file=sys.stderr)
                 continue

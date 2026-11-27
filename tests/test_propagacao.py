@@ -624,8 +624,18 @@ def test_pesado_roda_destacado_e_o_leve_anda_enquanto_isso(tmp_path, monkeypatch
     _esperar_fim(con, "pes")
     assert con.execute("SELECT ultimo_estado, pid FROM derivado WHERE id='pes'").fetchone() == ("ok", None)
     assert "pes" not in P._sujos(con) and P._motivos(con, "dep")[0].startswith("pes: recalculado")   # o filho emitiu
-    with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:          # e soltou o semáforo ao sair
-        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    # e soltou o semáforo ao sair. O filho grava o fim no banco e SÓ DEPOIS sai (é a saída que solta o flock):
+    # espera a CONDIÇÃO com prazo, em vez de supor que é instantâneo (26/11/2026: falhava no portão de vez em quando)
+    prazo = time.time() + 10
+    while True:
+        with open(tmp_path / "locks" / "pesado_vm1.lock", "w") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.time() > prazo:
+                    raise
+        time.sleep(0.05)
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999)
     assert [x["id"] for x in feitos] == ["dep"]
     con.close()
@@ -683,7 +693,8 @@ def test_leve_destacado_roda_sem_o_semaforo_de_pesado(tmp_path, monkeypatch):
     feitos = P.despachar(con, cfg, carga=lambda: (0.0,), memoria=lambda: 9999, ritmo=lambda t: None)
     assert feitos and feitos[0]["id"] == "fila" and feitos[0]["destacado"]
     _esperar_fim(con, "fila")
-    assert con.execute("SELECT ultimo_estado FROM derivado WHERE id='fila'").fetchone()[0] == "ok"
+    est, erro = con.execute("SELECT ultimo_estado, ultimo_erro FROM derivado WHERE id='fila'").fetchone()
+    assert est == "ok", f"falhou de vez em quando no portão (26/11) SEM o motivo à vista — agora ele aparece: {erro!r}"
     cron.close()
     con.close()
 
