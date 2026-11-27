@@ -62,10 +62,37 @@ def logrotate(perfil: str) -> tuple[int, str]:
         (r.returncode, f"logrotate rc={r.returncode}: {(r.stderr or '').strip()[-200:]}")
 
 
+MEDIAFIRE_PY = Path("/opt/stealth/venv/bin/python")          # navegador furtivo da casa (fora do repo)
+
+
+def renovar_mediafire() -> str:
+    """27/11/2026: o token do MediaFire (OpenList) vence em <2 h; renovado às 04:20 para o zelador, a verificação das
+    06:17 achava a sessão vencida (500) e a rotina ia para a quarentena. A renovação é PASSO desta rotina, logo antes
+    da verificação (fluxo, não um cron a mais). Falha aqui não esconde nada: a verificação abaixo acusa o MediaFire."""
+    if not MEDIAFIRE_PY.exists():
+        return "mediafire: interpretador do navegador furtivo ausente — sem renovação prévia"
+    # trava recorrente (24, 26 e 27/11): SQLite do OpenList preso (journal + SQLITE_BUSY) responde 500/401 e a
+    # renovação nem chega ao MediaFire. Conserto medido = reiniciar o serviço (NUNCA relogar/trocar senha).
+    log = Path.home() / ".local/share/openlist/data/log/log.log"
+    journal = Path.home() / ".local/share/openlist/data/data.db-journal"
+    try:
+        cauda = log.read_text(encoding="utf-8", errors="replace")[-20000:] if log.exists() else ""
+    except OSError:
+        cauda = ""
+    if journal.exists() and "SQLITE_BUSY" in cauda[-4000:]:
+        subprocess.run(["systemctl", "--user", "restart", "openlist-terabox.service"], timeout=120)
+        print("mediafire: OpenList com o banco travado — serviço reiniciado", flush=True)
+    r = subprocess.run(["flock", "-w", "300", "/tmp/navegador-headless.lock", "xvfb-run", "-a", str(MEDIAFIRE_PY),
+                        "tools/zelador/mediafire_sessao.py"], capture_output=True, text=True, timeout=700,
+                       cwd=Path(__file__).resolve().parent.parent)
+    return f"mediafire: renovação rc={r.returncode}"
+
+
 def nuvens() -> tuple[int, str]:
     script = Path.home() / "bin" / "nuvens-manter-vivas.sh"
     if not script.is_file():
         return 1, "nuvens-manter-vivas.sh ausente"
+    print(renovar_mediafire(), flush=True)
     r = subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=1800)
     return (0, "sessões renovadas (detalhe no log próprio do script)") if r.returncode == 0 else \
         (r.returncode, f"script rc={r.returncode}")
