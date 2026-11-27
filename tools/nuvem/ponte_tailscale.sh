@@ -23,7 +23,14 @@ if ! pgrep -x tailscaled >/dev/null 2>&1; then
     --state=mem: >/tmp/tailscaled.log 2>&1 &
   sleep 3
 fi
-tailscale status >/dev/null 2>&1 || tailscale up --authkey="$TS_AUTHKEY" --hostname="$NOME" --accept-dns=false
+# TS_AUTHKEY pode ser (a) chave comum (tskey-auth-…, validade máx. 90 dias) ou (b) SEGREDO DE CLIENTE OAuth
+# (tskey-client-…, não expira; 27/11/2026): com (b) o nó é criado na hora, efêmero e com a tag
+if [[ "$TS_AUTHKEY" == tskey-client-* ]]; then
+  CHAVE="${TS_AUTHKEY}?ephemeral=true&preauthorized=true"; TAGS="--advertise-tags=tag:claude-cloud"
+else
+  CHAVE="$TS_AUTHKEY"; TAGS=""
+fi
+tailscale status >/dev/null 2>&1 || tailscale up --authkey="$CHAVE" $TAGS --hostname="$NOME" --accept-dns=false
 # ssh pelo nome (MagicDNS resolvido pelo próprio tailscale), nunca por IP
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 if ! grep -q "# ponte-tailscale" ~/.ssh/config 2>/dev/null; then
