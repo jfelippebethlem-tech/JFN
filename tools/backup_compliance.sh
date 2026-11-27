@@ -40,6 +40,12 @@ rm -f "${ARQ%.gz}-shm" "${ARQ%.gz}-wal"    # sobras do quick_check do snapshot (
 find "$PWD/data/backups" -maxdepth 1 -name 'compliance-*.db.gz*' ! -name "$(basename "$ARQ")" -print -delete \
   | sed 's/^/[backup] snapshot local antigo removido: /'
 
+# 2a) a MESMA cópia consistente vira a fonte da coleta dos nós (E6/E9/E10/E11/E16 fora da VM-1): o .gz já conferido
+# vai à VM-2 e ao it-campo, que conferem o md5, descompactam, quick_check e trocam atomicamente
+# (compliance_agent/fluxo/fonte_coleta.py, 26/11/2026). Falha aqui NÃO derruba o backup: fica no log, e a cópia de
+# cada nó vence em 48 h (o nó deixa de anunciar fonte_coleta → BLOQUEADO visível, nunca dado velho calado).
+PUB=$(ionice -c3 nice -n15 timeout 7200 $PY -m compliance_agent.fluxo.fonte_coleta publicar "$ARQ" 2>&1); echo "[backup] ${PUB##*$'\n'}"
+
 # 2b) cifra (age, 3 chaves SSH existentes) com a volta conferida; sem isso o backup não sobe (nunca em claro)
 if ! CIF=$(tools/cifrar_backup.sh "$ARQ"); then
   echo "[backup] ⛔ cifragem falhou — snapshot local em claro mantido em $ARQ; nada subiu"; exit 1

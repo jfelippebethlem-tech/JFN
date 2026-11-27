@@ -409,7 +409,7 @@ class Supervisor:
             "now()) ON CONFLICT (no) DO UPDATE SET capacidades = EXCLUDED.capacidades, slots = EXCLUDED.slots, "
             "psi = EXCLUDED.psi, versao_codigo = EXCLUDED.versao_codigo, heartbeat_em = now()",
             (self.no, json.dumps({"isolamento": self.isolamento, "lider": self._lider}),
-             json.dumps({**self.slots, **fonte_coleta.capacidades()}),        # vagas + presença (o planejador lê)
+             json.dumps({**self.slots, **fonte_coleta.capacidades(self.no)}),        # vagas + presença (o planejador lê)
              json.dumps({**m.como_dict(), "estado": d.estado, "motivos": d.motivos, "livres": d.livres}),
              self.versao))
 
@@ -489,7 +489,7 @@ class Supervisor:
         self._aplicar_acao(d)
         self._registrar_no(m, d)
         livres, lancados = dict(d.livres), 0
-        livres.update(fonte_coleta.capacidades())   # presença da fonte da coleta neste nó (26/11/2026)
+        livres.update(fonte_coleta.capacidades(self.no))   # presença da fonte da coleta neste nó (26/11/2026)
         if bloqueados:
             r["ritmo_bloqueado"] = bloqueados
         while not self._parar:

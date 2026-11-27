@@ -32,6 +32,11 @@ PARADA = Path.home() / "snapshot-20261124" / "compliance.db"
 RENOVADA = Path.home() / "jfn-fonte-coleta" / "compliance.db"
 VIVO = Path.home() / "JFN" / "data" / "compliance.db"
 NOS_DESTINO = {"vm2": "vm2-ts", "itcampo": "it-campo"}
+NO_PRODUTOR = "vm1"          # tem o compliance.db VIVO e gera a cópia; não guarda nem anuncia (disco 86%, 26/11)
+VALIDADE_RENOVADA_S = 48 * 3600
+# como cada nó recebe dados (stdin) e roda um script: o it-campo é Windows → WSL
+_REMOTO = {"vm2": (["ssh", "vm2-ts"], "bash -s", "bash -c"),
+           "itcampo": (["ssh", "it-campo"], "wsl -d Ubuntu bash -s", "wsl -d Ubuntu -- bash -c")}
 
 
 def candidatos() -> list[Path]:
@@ -49,9 +54,64 @@ def disponivel() -> bool:
     return caminho().is_file()
 
 
-def capacidades() -> dict[str, int]:
-    """O que este nó anuncia na reserva: `fonte_coleta` só se o arquivo está aqui."""
-    return {CAPACIDADE: VAGAS} if disponivel() else {}
+def fresca(p: Path) -> bool:
+    """A cópia RENOVADA vale por VALIDADE_RENOVADA_S; o snapshot da parada vale enquanto não houver renovada."""
+    if not p.is_file():
+        return False
+    if p == RENOVADA:
+        import time
+        return time.time() - p.stat().st_mtime <= VALIDADE_RENOVADA_S
+    return True
+
+
+def capacidades(no: str | None = None) -> dict[str, int]:
+    """O que este nó anuncia na reserva: `fonte_coleta` só se a fonte está aqui E fresca. O produtor (VM-1) não
+    anuncia. Renovada vencida → não anuncia (o planejador mostra BLOQUEADO) — nunca lê dado velho calado."""
+    if (no or os.environ.get("JFN_NO")) == NO_PRODUTOR:
+        return {}
+    if os.environ.get(ENV):
+        return {CAPACIDADE: VAGAS} if Path(os.environ[ENV]).is_file() else {}
+    if RENOVADA.exists():
+        return {CAPACIDADE: VAGAS} if fresca(RENOVADA) else {}
+    return {CAPACIDADE: VAGAS} if PARADA.is_file() else {}
+
+
+def instalar_gz(gz: Path, md5_esperado: str, destino: Path = RENOVADA) -> str:
+    """No NÓ: confere o md5 do .gz recebido, descompacta, quick_check e troca atômica. 'ok' ou o motivo."""
+    import gzip
+    import shutil
+    if _md5(gz) != md5_esperado:
+        return f"md5 divergente ({_md5(gz)[:12]} ≠ {md5_esperado[:12]}): cópia anterior mantida"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destino.with_suffix(".db.tmp")
+    with gzip.open(gz, "rb") as f, open(tmp, "wb") as o:
+        shutil.copyfileobj(f, o, 1 << 20)
+    chk = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True).execute("PRAGMA quick_check(1)").fetchone()[0]
+    if chk != "ok":
+        tmp.unlink(missing_ok=True)
+        return f"quick_check {chk}: cópia anterior mantida"
+    os.replace(tmp, destino)
+    return "ok"
+
+
+def publicar(gz: Path, nos: dict | None = None) -> dict:
+    """VM-1, dentro do E17 do backup diário: manda o .gz JÁ conferido (≈1/4 do cru) a cada nó e roda `instalar`
+    lá. Nó que falha fica com a cópia anterior e o motivo é devolvido (a cópia vence em 48 h → BLOQUEADO visível)."""
+    md5 = _md5(gz)
+    out = {"md5": md5, "bytes_gz": gz.stat().st_size, "nos": {}}
+    for no, (ssh, sh, shc) in (_REMOTO if nos is None else nos).items():
+        alvo = "jfn-fonte-coleta/compliance.db.gz.tmp"
+        try:
+            with open(gz, "rb") as f:
+                subprocess.run([*ssh, f"{shc} 'mkdir -p ~/jfn-fonte-coleta && cat > ~/{alvo}'"], stdin=f,
+                               check=True, timeout=7200)
+            script = (f"cd ~/JFN-worker && .venv/bin/python -m compliance_agent.fluxo.fonte_coleta instalar "
+                      f"~/{alvo} {md5}; rm -f ~/{alvo}\n")
+            r = subprocess.run([*ssh, sh], input=script, capture_output=True, text=True, timeout=3600)
+            out["nos"][no] = (r.stdout.strip().splitlines() or [f"sem saída rc={r.returncode} {r.stderr[-200:]}"])[-1]
+        except (subprocess.SubprocessError, OSError) as exc:
+            out["nos"][no] = f"falhou: {type(exc).__name__}: {str(exc)[:160]}"
+    return out
 
 
 def _md5(p: Path) -> str:
@@ -97,6 +157,14 @@ def distribuir(origem: Path = VIVO, nos: dict[str, str] | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["instalar"] and len(argv) == 3:
+        r = instalar_gz(Path(argv[1]).expanduser(), argv[2])
+        print(r)
+        return 0 if r == "ok" else 1
+    if argv[:1] == ["publicar"] and len(argv) == 2:
+        r = publicar(Path(argv[1]))
+        print(f"fonte_coleta: {json.dumps(r, ensure_ascii=False)}")
+        return 0 if all(v == "ok" for v in r["nos"].values()) else 1
     if argv[:1] == ["distribuir"]:
         r = distribuir()
         print(f"fonte_coleta: {json.dumps(r, ensure_ascii=False)}")

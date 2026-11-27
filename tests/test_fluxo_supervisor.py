@@ -251,7 +251,7 @@ def test_no_publica_a_capacidade_de_presenca(con, esquema_tmp, monkeypatch):
     """26/11/2026: a capacidade `fonte_coleta` entrava só na reserva; o planejador lê as vagas PUBLICADAS em `nos` e
     declarou o E6 BLOQUEADO («nenhum nó vivo oferece»). O nó publica vagas + capacidades."""
     from compliance_agent.fluxo import fonte_coleta as FC
-    monkeypatch.setattr(FC, "capacidades", lambda: {"fonte_coleta": FC.VAGAS})
+    monkeypatch.setattr(FC, "capacidades", lambda no=None: {"fonte_coleta": FC.VAGAS})
     sup = _sup(esquema_tmp)
     try:
         sup.uma_volta()
