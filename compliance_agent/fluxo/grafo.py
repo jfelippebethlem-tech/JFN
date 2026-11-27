@@ -474,7 +474,9 @@ class Grafo(_Base):
         nó em que rodava (compliance.db mora na VM-1) e a volta do estágio só vale quando o estágio for portado (O2.2)."""
         r, e = self.rotinas[rid], self.estagios[self.rotinas[rid].estagio]
         nos = r.nos or e.nos
-        return {"recursos": list(r.recursos or e.recursos),
+        # a rotina LEGADA lê o compliance.db vivo no seu nó: herda as vagas do estágio, não a capacidade de presença
+        # da cópia só-leitura (fonte_coleta, 26/11/2026) — esta é só dos handlers nativos
+        return {"recursos": list(r.recursos or [x for x in e.recursos if x not in _fonte_coleta.CAPACIDADES]),
                 "prioridade": r.prioridade if r.prioridade is not None else e.prioridade,
                 "volta": {"nos": list(r.volta.nos), "estagio": r.estagio} if r.volta else None,
                 "nos": list(nos),
@@ -605,8 +607,8 @@ def rotinas_sem_slot(g: "Grafo") -> list[tuple[str, list[str], list[str]]]:
         c = g.contrato_da_rotina(rid)
         nos = list(c["nos"]) + list((c["volta"] or {}).get("nos") or [])
         trans = {(t.maquina, t.recurso) for t in g.transitorios.values() if rid in t.rotinas}
-        falta = [x for x in c["recursos"]
-                 if not any(SLOTS_INICIAIS.get(n, {}).get(x) or (n, x) in trans for n in nos)]
+        falta = [x for x in c["recursos"] if x not in _fonte_coleta.CAPACIDADES     # presença: decidida ao vivo
+                 and not any(SLOTS_INICIAIS.get(n, {}).get(x) or (n, x) in trans for n in nos)]
         if falta:
             out.append((rid, falta, nos))
     return out
