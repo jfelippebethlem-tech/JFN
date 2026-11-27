@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import psycopg
 
 from compliance_agent.aplicacao.estagios import Contexto, ErroPermanente, estagio_de
 from compliance_agent.fluxo.fila import Adiado, Resultado
@@ -61,6 +64,18 @@ def _rodar(modo: str, e: dict, estagio, ctx: Contexto, saida: str) -> int:
     except ErroPermanente as exc:
         Path(saida).write_text(json.dumps({"erro": str(exc)}, ensure_ascii=False), encoding="utf-8")
         return SAIDA_PERMANENTE
+    except psycopg.OperationalError as exc:
+        # regra 3 do motor: interrupção da INFRAESTRUTURA não gasta tentativa. 27/11/2026: a conexão it-campo → PG da
+        # VM-2 caiu e um job do E6 queimou as 5 tentativas na quarentena. Só conexão PERDIDA vira espera; erro real do
+        # banco (ex.: QueryCanceled por tempo, também OperationalError) segue gastando tentativa — não esconder defeito.
+        if not _conexao_caiu(exc):
+            raise
+        exc = Adiado(f"infra: conexão com o PostgreSQL caiu ({str(exc).splitlines()[0][:160]})",
+                     reabre_em=datetime.now(timezone.utc) + timedelta(minutes=2))
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        Path(saida).write_text(json.dumps({"adiado": f"{type(exc).__name__}: {exc}", "reabre_em": exc.reabre_em.isoformat()},
+                                          ensure_ascii=False, default=str), encoding="utf-8")
+        return SAIDA_ADIADO
     except Adiado as exc:
         # o nome da classe vai ao stderr (SemCota dos estágios de LLM: o relatório do ensaio o reconhece)
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
@@ -70,6 +85,17 @@ def _rodar(modo: str, e: dict, estagio, ctx: Contexto, saida: str) -> int:
         return SAIDA_ADIADO
     Path(saida).write_text(json.dumps(out, ensure_ascii=False, default=str), encoding="utf-8")
     return 0
+
+
+_CONEXAO_PERDIDA = ("server closed the connection", "connection failed", "consuming input failed",
+                    "could not receive data", "could not send data", "connection to server", "terminating connection")
+
+
+def _conexao_caiu(exc: Exception) -> bool:
+    if isinstance(exc, psycopg.errors.QueryCanceled):
+        return False
+    m = str(exc).lower()
+    return any(k in m for k in _CONEXAO_PERDIDA)
 
 
 if __name__ == "__main__":
