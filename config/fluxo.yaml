@@ -119,7 +119,7 @@ estagios:
     tipo: confirmar_ocr
     nome: Confirmar número do OCR
     recursos: [cpu_pesado, fonte_coleta]        # 26/11: rasteriza páginas (850 MB > teto 1G do cpu_leve) — o governador matava
-    nos: [vm2]
+    nos: [itcampo, vm2]          # 26/11: a VM-2 (2 vCPU + PG) não dá conta (34/h × OCR 94/h); o it-campo só reserva com a fonte (capacidade fonte_coleta)
     volta:
       nos: [vm1]
     timeout_s: 3600
