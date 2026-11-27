@@ -4,7 +4,7 @@
 #
 # Requisito (uma vez, pelo dono, no painel do Tailscale): chave de autenticação REUTILIZÁVEL + EFÊMERA + PRÉ-APROVADA
 # com a tag `tag:claude-cloud`, guardada no ambiente do claude.ai/code como variável TS_AUTHKEY (nunca no repositório).
-# Uso no «setup script» do ambiente:  curl -fsSL <raw deste arquivo> | bash
+# Uso no «setup script» do ambiente: baixar este arquivo para ponte.sh (curl -fsSL <raw> -o ponte.sh) e rodar bash ponte.sh
 # Idempotente: se já estiver conectado, só confere.
 set -euo pipefail
 : "${TS_AUTHKEY:?defina TS_AUTHKEY (chave efêmera/reutilizável/tag:claude-cloud) nas variáveis do ambiente}"
@@ -12,7 +12,9 @@ NOME="${TS_NOME:-claude-cloud}"
 SOCKS=localhost:1055
 
 if ! command -v tailscale >/dev/null 2>&1; then
-  curl -fsSL https://tailscale.com/install.sh | sh >/dev/null
+  # baixa para ARQUIVO e só então executa (regra da casa: nada de baixar-e-executar às cegas por pipe)
+  curl -fsSL https://tailscale.com/install.sh -o /tmp/tailscale-install.sh
+  sh /tmp/tailscale-install.sh >/dev/null
 fi
 # a nuvem não tem /dev/net/tun: modo userspace + proxy SOCKS5 para ssh/http chegarem às máquinas
 if ! pgrep -x tailscaled >/dev/null 2>&1; then
