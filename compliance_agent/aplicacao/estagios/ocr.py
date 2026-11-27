@@ -78,7 +78,8 @@ DPI = 200                                    # = tools/sei_ocr_reserva.DPI e o w
 MAX_PAGINAS = 120                            # páginas por LOTE do E5 (= MAX_PAG do worker da GPU e da reserva); o
 #                                              documento maior é lido inteiro, um lote por vez (achado 1.10)
 TEXTO, VAZIA_CONFERIDA, VAZIA_PENDENTE = "texto", "vazia_conferida", "vazia_pendente"
-ENV_EXECUTOR = "JFN_OCR_EXECUTOR"            # gpu | cpu | tesseract (força; padrão = pelo nó)
+ENV_EXECUTOR = "JFN_OCR_EXECUTOR"            # ppocrv6 | gpu | cpu | tesseract (força; padrão = pelo nó)
+ENV_PPOCRV6_URL = "JFN_PPOCRV6_URL"         # servidor local do PP-OCRv6 (padrão http://127.0.0.1:8792)
 ENV_TRAVA_GPU = "JFN_OCR_GPU_TRAVA"
 ENV_WORKER_GPU = "JFN_OCR_GPU_DIR"           # onde mora o ocr_gpu_worker.py no it-campo
 ENV_RAIZES = "JFN_OCR_RAIZES"                # raízes extras onde procurar o PDF legado (":"-separadas)
@@ -428,6 +429,64 @@ class ExecutorGPU:
         return out
 
 
+class ExecutorPPOCRv6:
+    """PP-OCRv6 medium (GPU do it-campo) pelo servidor local `deploy/itcampo/ocr_gpu/ppocrv6_servidor.py` — o motor
+    principal desde 27/11/2026: no controle nativo (200 páginas, verdade = texto do PDF) acerta 97,07% dos números
+    contra 69,42% do Surya, a 1,19 s/página (p50). Este executor é só o CLIENTE (o paddle com CUDA vive no ambiente
+    isolado ~/ocr-ppocrv6). Falha do servidor = ErroInferencia (o job tenta de novo), nunca página vazia."""
+    familia = "ppocrv6"
+
+    def __init__(self, url: str | None = None):
+        self.url = (url or os.environ.get(ENV_PPOCRV6_URL) or "http://127.0.0.1:8792").rstrip("/")
+        self._motor: str | None = None
+
+    def motor(self) -> str:
+        if self._motor is None:
+            import urllib.request
+            with urllib.request.urlopen(f"{self.url}/saude", timeout=10) as r:
+                self._motor = json.loads(r.read().decode())["motor"]
+        return self._motor
+
+    def ler(self, pdf: Path, paginas: list[int]) -> dict[int, Leitura]:
+        out = {}
+        with _trava_gpu():
+            for n, img, _, _ in _imagens(pdf, paginas):
+                try:
+                    out[n] = self.ler_img(img)
+                except ErroInferencia as e:
+                    raise ErroInferencia(f"{pdf.name} p{n}: {e}") from e
+        return out
+
+    def ler_img(self, img) -> Leitura:
+        import io
+        import urllib.error
+        import urllib.request
+
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.fromarray(img).save(buf, format="PNG")
+        req = urllib.request.Request(f"{self.url}/ler", data=buf.getvalue(), headers={"Content-Type": "image/png"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                d = json.loads(r.read().decode())
+        except (urllib.error.URLError, OSError, ValueError) as e:      # servidor fora/erro HTTP/JSON: tenta de novo
+            raise ErroInferencia(f"PP-OCRv6: {type(e).__name__}: {str(e)[:200]}") from e
+        if "texto" not in d:
+            raise ErroInferencia(f"PP-OCRv6: resposta sem texto ({str(d)[:200]})")
+        return Leitura(d["texto"], d.get("linhas") or [], int(d.get("largura") or img.shape[1]),
+                       int(d.get("altura") or img.shape[0]))
+
+
+def _ppocrv6_disponivel(url: str | None = None) -> bool:
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"{(url or os.environ.get(ENV_PPOCRV6_URL) or 'http://127.0.0.1:8792').rstrip('/')}/saude",
+                                    timeout=3) as r:
+            return bool(json.loads(r.read().decode()).get("pronto"))
+    except (OSError, ValueError):
+        return False
+
+
 @contextlib.contextmanager
 def _trava_gpu():
     """Uma leitura por vez na GPU deste nó (a mesma placa serve as sessões SEI e o lote)."""
@@ -451,13 +510,17 @@ def _gpu_disponivel() -> bool:
 
 
 def escolher(no: str | None = None) -> tuple[Executor, Executor | None]:
-    """(principal, segundo motor para a página vazia). Forçado por `JFN_OCR_EXECUTOR`; senão GPU só no it-campo com
-    o Surya importável; senão CPU (a volta declarada)."""
+    """(principal, segundo motor para a página vazia). Forçado por `JFN_OCR_EXECUTOR`; senão, no it-campo: PP-OCRv6 na
+    GPU quando o servidor dele responde (27/11/2026: 97,07% contra 69,42% do Surya no controle nativo), Surya se só ele
+    estiver de pé; fora do it-campo, CPU (a volta declarada)."""
     forcado = (os.environ.get(ENV_EXECUTOR) or "").strip().lower()
     no = no or os.environ.get("JFN_NO") or socket.gethostname()
     if forcado == "tesseract":
         return ExecutorTesseract(), ExecutorCPU()
-    if forcado == "gpu" or (not forcado and "itcampo" in str(no).replace("-", "") and _gpu_disponivel()):
+    no_itcampo = "itcampo" in str(no).replace("-", "")
+    if forcado == "ppocrv6" or (not forcado and no_itcampo and _ppocrv6_disponivel()):
+        return ExecutorPPOCRv6(), ExecutorCPU()
+    if forcado == "gpu" or (not forcado and no_itcampo and _gpu_disponivel()):
         return ExecutorGPU(), ExecutorCPU()
     return ExecutorCPU(), ExecutorTesseract()
 

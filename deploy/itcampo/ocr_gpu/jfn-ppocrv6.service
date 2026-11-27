@@ -1,0 +1,17 @@
+# Servidor do PP-OCRv6 na GPU do it-campo (motor principal do E5 desde 27/11/2026). Unidade de USUÁRIO do systemd no
+# WSL (linger ligado para iterj): sobrevive ao fim da chamada do wsl.exe e se religa sozinha.
+# Instalar: cp deploy/itcampo/ocr_gpu/jfn-ppocrv6.service ~/.config/systemd/user/ && systemctl --user daemon-reload &&
+#           systemctl --user enable --now jfn-ppocrv6   (ambiente: ~/ocr-ppocrv6, paddlepaddle-gpu cu129 + paddleocr 3.7.0)
+[Unit]
+Description=JFN — servidor PP-OCRv6 (GPU) na 127.0.0.1:8792
+
+[Service]
+Environment=PYTHONPATH=%h/JFN-worker
+WorkingDirectory=%h/JFN-worker
+ExecStart=%h/ocr-ppocrv6/bin/python deploy/itcampo/ocr_gpu/ppocrv6_servidor.py
+Restart=always
+RestartSec=15
+Nice=5
+
+[Install]
+WantedBy=default.target

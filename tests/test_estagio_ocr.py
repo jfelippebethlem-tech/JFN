@@ -330,3 +330,51 @@ def test_bloco_com_erro_do_surya_vira_pagina_incompleta_e_nao_derruba_o_job(monk
     g._rec = lambda imgs: [NS(blocks=blocos)]
     le = g.ler_imgs([np.zeros((10, 10, 3), dtype=np.uint8)])[0]
     assert le.blocos_vazios == 1                         # incompleta: o lote manda ao 2º motor
+
+
+# ── 27/11/2026: PP-OCRv6 na GPU vira o motor principal no it-campo (97,07% × 69,42% do Surya no controle nativo) ──
+def test_escolher_prefere_ppocrv6_no_itcampo_e_volta_ao_surya_sem_ele(monkeypatch):
+    from compliance_agent.aplicacao.estagios import ocr as O
+    monkeypatch.delenv(O.ENV_EXECUTOR, raising=False)
+    monkeypatch.setattr(O, "_gpu_disponivel", lambda: True)
+    monkeypatch.setattr(O, "_ppocrv6_disponivel", lambda url=None: True)
+    p, s = O.escolher("itcampo")
+    assert isinstance(p, O.ExecutorPPOCRv6) and isinstance(s, O.ExecutorCPU) and p.familia != s.familia
+    monkeypatch.setattr(O, "_ppocrv6_disponivel", lambda url=None: False)
+    assert isinstance(O.escolher("itcampo")[0], O.ExecutorGPU)                # servidor fora: Surya, como antes
+    monkeypatch.setattr(O, "_ppocrv6_disponivel", lambda url=None: True)
+    assert isinstance(O.escolher("vm2")[0], O.ExecutorCPU)                    # fora do it-campo: CPU (volta declarada)
+
+
+def test_ppocrv6_servidor_fora_e_erro_de_inferencia_nunca_pagina_vazia():
+    import numpy as np
+    from compliance_agent.aplicacao.estagios import ocr as O
+    ex = O.ExecutorPPOCRv6(url="http://127.0.0.1:9")                          # porta sem ninguém
+    with pytest.raises(O.ErroInferencia):
+        ex.ler_img(np.zeros((10, 10, 3), dtype=np.uint8))
+
+
+def test_ppocrv6_le_a_resposta_do_servidor():
+    import json as J
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    import numpy as np
+    from compliance_agent.aplicacao.estagios import ocr as O
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            corpo = J.dumps({"texto": "Valor R$ 1.234,56", "linhas": [{"texto": "Valor", "bbox": [1, 2, 3, 4], "conf": 0.99}],
+                             "largura": 10, "altura": 10, "motor": "ppocrv6@teste"}).encode()
+            self.send_response(200); self.send_header("Content-Length", str(len(corpo))); self.end_headers(); self.wfile.write(corpo)
+
+        def log_message(self, *a):
+            pass
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        le = O.ExecutorPPOCRv6(url=f"http://127.0.0.1:{srv.server_port}").ler_img(np.zeros((10, 10, 3), dtype=np.uint8))
+        assert le.texto == "Valor R$ 1.234,56" and le.linhas[0]["conf"] == 0.99 and le.largura == 10
+    finally:
+        srv.shutdown()
