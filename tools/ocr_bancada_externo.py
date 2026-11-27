@@ -23,6 +23,7 @@ import uuid
 from pathlib import Path
 
 _TAG = re.compile(r"<[^>]+>")
+MODELO_PADDLEVL = "PaddleOCR-VL-1.6-0.9B"
 
 
 def _texto_de(obj) -> str:
@@ -67,7 +68,13 @@ def leitor_oxr(url: str):
 def leitor_paddlevl(url: str):
     from paddleocr import PaddleOCRVL
     from importlib.metadata import version
-    pipe = PaddleOCRVL(vl_rec_backend="vllm-server", vl_rec_server_url=url)
+    kw = dict(vl_rec_backend="vllm-server", vl_rec_server_url=url, vl_rec_model_name=MODELO_PADDLEVL,
+              vl_rec_api_model_name=MODELO_PADDLEVL)
+    try:
+        pipe, versao = PaddleOCRVL(pipeline_version="v1.6", **kw), "v1.6"
+    except (ValueError, KeyError, TypeError) as exc:      # versão de pipeline que o pacote não conhece: padrão, DECLARADO
+        print(f"pipeline_version v1.6 recusada ({exc}); uso o padrão", file=sys.stderr)
+        pipe, versao = PaddleOCRVL(**kw), "padrão"
 
     def ler(png: Path) -> str:
         partes = []
@@ -75,7 +82,7 @@ def leitor_paddlevl(url: str):
             md = getattr(res, "markdown", None) or {}
             partes.append(md.get("markdown_texts", "") if isinstance(md, dict) else str(md))
         return html.unescape(_TAG.sub(" ", "\n".join(partes)))
-    return f"paddleocr-vl@paddleocr{version('paddleocr')} (vLLM, GPU it-campo) dpi200", ler
+    return f"{MODELO_PADDLEVL} pipeline {versao} @paddleocr{version('paddleocr')} (vLLM, GPU it-campo) dpi200", ler
 
 
 def main(argv=None) -> int:
