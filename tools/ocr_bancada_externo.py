@@ -4,11 +4,12 @@ código do JFN: só biblioteca padrão + a do motor) e escreve `leituras_<motor>
 `tools/ocr_bancada_o36.py` ({img_sha, motor, texto, linhas, s}), para a `medir` de lá comparar no controle nativo.
 
 Motores:
-  oxr       OXR-1.0 (SoMark) pela API de documentos local (`/v1/parse/sync`, porta 8000; vLLM + layout atrás)
   paddlevl  PaddleOCR-VL pelo pipeline `PaddleOCRVL` (reconhecimento num servidor vLLM local)
+  (oxr REMOVIDO em 27/11/2026: inventava 21,37% dos números no controle nativo; leituras preservadas em
+   /mnt/c/o36/leituras_oxr_controle.jsonl, reinstalação no it-campo:~/ocrbench/REMOVIDO-OXR-LEIAME.md)
 
 Retoma: página já lida não é relida. Nada aqui toca PG, acervo ou compliance.db.
-Uso: python ocr_bancada_externo.py --motor oxr --dir /mnt/c/o36 [--lista controle] [--url http://127.0.0.1:8000]
+Uso: python ocr_bancada_externo.py --motor paddlevl --dir /mnt/c/o36 [--lista controle] [--url http://127.0.0.1:8118/v1]
 """
 from __future__ import annotations
 
@@ -18,51 +19,10 @@ import json
 import re
 import sys
 import time
-import urllib.request
-import uuid
 from pathlib import Path
 
 _TAG = re.compile(r"<[^>]+>")
 MODELO_PADDLEVL = "PaddleOCR-VL-1.6-0.9B"
-
-
-def _texto_de(obj) -> str:
-    """O markdown da resposta (procura a chave em qualquer nível); HTML de tabela vira texto (as células ficam)."""
-    achados: list[str] = []
-
-    def andar(x):
-        if isinstance(x, dict):
-            for k, v in x.items():
-                if isinstance(v, str) and k.lower() in ("markdown", "md", "markdown_texts", "content"):
-                    achados.append(v)
-                else:
-                    andar(v)
-        elif isinstance(x, list):
-            for v in x:
-                andar(v)
-    andar(obj)
-    t = "\n".join(achados)
-    return html.unescape(_TAG.sub(" ", t))
-
-
-def _multipart(campos: list[tuple[str, str]], arquivo: Path) -> tuple[bytes, str]:
-    b = uuid.uuid4().hex
-    partes = []
-    for k, v in campos:
-        partes.append(f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
-    partes.append(f'--{b}\r\nContent-Disposition: form-data; name="file"; filename="{arquivo.name}"\r\n'
-                  f"Content-Type: image/png\r\n\r\n".encode() + arquivo.read_bytes() + b"\r\n")
-    partes.append(f"--{b}--\r\n".encode())
-    return b"".join(partes), f"multipart/form-data; boundary={b}"
-
-
-def leitor_oxr(url: str):
-    def ler(png: Path) -> str:
-        corpo, tipo = _multipart([("api_key", "dummy"), ("output_formats", "markdown")], png)
-        req = urllib.request.Request(f"{url.rstrip('/')}/v1/parse/sync", data=corpo, headers={"Content-Type": tipo})
-        with urllib.request.urlopen(req, timeout=600) as r:
-            return _texto_de(json.loads(r.read().decode("utf-8")))
-    return "oxr@1.0 (SoMark; vLLM+layout, GPU it-campo) dpi200", ler
 
 
 def leitor_paddlevl(url: str):
@@ -87,14 +47,13 @@ def leitor_paddlevl(url: str):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--motor", required=True, choices=["oxr", "paddlevl"])
+    ap.add_argument("--motor", required=True, choices=["paddlevl"])
     ap.add_argument("--dir", required=True, type=Path)
     ap.add_argument("--lista", default="controle")
     ap.add_argument("--url", default=None)
     ap.add_argument("--limite", type=int, default=None)
     a = ap.parse_args(argv)
-    url = a.url or {"oxr": "http://127.0.0.1:8000", "paddlevl": "http://127.0.0.1:8118/v1"}[a.motor]
-    nome, ler = (leitor_oxr if a.motor == "oxr" else leitor_paddlevl)(url)
+    nome, ler = leitor_paddlevl(a.url or "http://127.0.0.1:8118/v1")
     saida = a.dir / f"leituras_{a.motor}_{a.lista}.jsonl"
     feitos = set()
     if saida.exists():

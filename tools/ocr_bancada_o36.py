@@ -34,7 +34,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 DPI = 200
-# os motores que a `medir` compara; oxr/paddlevl vêm do leitor EXTERNO (tools/ocr_bancada_externo.py, ambientes
+# os motores que a `medir` compara (oxr: só o HISTÓRICO, ambiente removido 27/11); paddlevl vem do leitor EXTERNO (tools/ocr_bancada_externo.py, ambientes
 # isolados no it-campo) e ppocrv6_arm é o PP-OCRv6 em CPU na VM-2 (ARM) — a volta sem it-campo (26/11/2026)
 MOTORES_MEDIDOS = ("surya", "rapidocr", "ppocrv6", "tesseract", "oxr", "paddlevl", "ppocrv6_arm")
 ERROS_PDF = (RuntimeError, ValueError, OSError)            # fitz.FileDataError ⊂ RuntimeError
