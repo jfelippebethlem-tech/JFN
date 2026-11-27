@@ -134,6 +134,8 @@ MOTIVO_ESTAGIO = {
            "na O2.3 (tests/test_fluxo_o23.py::test_os_14_vigias_viram_sensores_e18_ou_tem_motivo)",
 }
 MOTIVO_ROTINA = {
+    "sei_cpf": "regra única #62 (auditoria 27/11): o SEI como 3ª fonte do resolvedor de CPF não existe no E8 nativo "
+               "(que lê fatos, não extrai CPF) — legado ligado até virar fato do E8",
     "pcrj_sei_busca_termos": "SEI.RIO (Prefeitura): o E2 nativo só lê SEI-RJ (processo_do recusa outro formato)",
     "sei_busca_credor": "descoberta de nº de processo por CNPJ na PESQUISA do SEI (não captura); ATENÇÃO: a fila que "
                         "ela alimenta (sei_fila_captura) era lida pelo sweep_sei, que saiu — ver ressalva do backlog",
