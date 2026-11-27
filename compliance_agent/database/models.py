@@ -425,7 +425,14 @@ def _pragmas_sqlite(conn, _registro):
 
 
 def get_engine(db_path=None):
+    padrao = db_path is None and not os.environ.get("JFN_DB")
     db_path = _resolver_db(db_path)
+    no = os.environ.get("JFN_NO")
+    if padrao and no and no != "vm1" and not db_path.exists():
+        # 26/11/2026: num worker, criar o banco padrão gerava um compliance.db FANTASMA (vazio) que respondia zero
+        # calado. A coleta lida fora da VM-1 vem de compliance_agent.fluxo.fonte_coleta (cópia só-leitura).
+        raise FileNotFoundError(f"{db_path}: o compliance.db só existe na VM-1 (nó {no}); para ler a coleta use "
+                                "compliance_agent.fluxo.fonte_coleta")
     chave = (os.getpid(), str(db_path.resolve()))
     with _ENGINES_LOCK:
         engine = _ENGINES.get(chave)
