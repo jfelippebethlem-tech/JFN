@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -173,6 +174,21 @@ def main(argv: list[str]) -> int:
     if not gravados:
         print("site_dados: nenhum destino gravado", file=sys.stderr)
         return 1
+    # espelhos (site no ar em outra máquina): «host:caminho» por linha em ~/.config/jfn/site_espelhos — topologia fora
+    # do repo público. Espelho que falha = rotina falha (o site público velho nunca passa calado como «ok»).
+    arq_esp = Path(os.environ.get("JFN_SITE_ESPELHOS") or Path.home() / ".config" / "jfn" / "site_espelhos")
+    espelhos = [x.strip() for x in arq_esp.read_text().splitlines() if x.strip() and not x.startswith("#")] \
+        if arq_esp.is_file() else []
+    for esp in espelhos:
+        try:
+            subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", gravados[0], esp + ".tmp"],
+                           check=True, timeout=120)
+            host, caminho = esp.split(":", 1)
+            subprocess.run(["ssh", "-o", "BatchMode=yes", host, "mv", caminho + ".tmp", caminho], check=True, timeout=60)
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
+            print(f"site_dados: espelho FALHOU {esp}: {e}", file=sys.stderr)
+            return 1
+        gravados.append(esp)
     Path("data/site_dados_marca.json").write_text(json.dumps({"gerado_em": d["gerado_em"], "destinos": gravados}))
     i = d["inicio"]
     print(f"site_dados: ok — pago a fornecedores R$ {moeda(i['pago_fornecedores']['valor'])} ({i['pago_fornecedores']['recorte']}); "

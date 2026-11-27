@@ -54,7 +54,23 @@ def test_main_grava_atomico_nos_destinos_e_a_marca(tmp_path, monkeypatch):
         "pago_fornecedores": {"valor": 1.0, "recorte": "r"}, "siafe_ultima_ob": {"valor": "2026-11-26"}},
         "orgao": {"nome": "O", "fornecedores": []}})
     monkeypatch.setattr(S.sqlite3, "connect", lambda *a, **k: None)
+    monkeypatch.setenv("JFN_SITE_ESPELHOS", str(tmp_path / "sem_espelhos"))     # nunca o arquivo real da máquina
     monkeypatch.chdir(tmp_path); (tmp_path / "data").mkdir(); (tmp_path / "pub").mkdir()
     assert S.main(["x", str(tmp_path / "pub" / "dados.json"), str(tmp_path / "sem_pasta" / "dados.json")]) == 0
     assert (tmp_path / "pub" / "dados.json").exists() and not list((tmp_path / "pub").glob("*.tmp"))
     assert "pub" in (tmp_path / "data" / "site_dados_marca.json").read_text()
+
+
+def test_espelho_que_falha_falha_a_rotina_sem_marca(tmp_path, monkeypatch):
+    monkeypatch.setattr(S, "gerar", lambda con, vault: {"gerado_em": "x", "inicio": {
+        "pago_fornecedores": {"valor": 1.0, "recorte": "r"}, "siafe_ultima_ob": {"valor": "2026-11-26"}},
+        "orgao": {"nome": "O", "fornecedores": []}})
+    monkeypatch.setattr(S.sqlite3, "connect", lambda *a, **k: None)
+    (tmp_path / "esp").write_text("host:/x/dados.json\n")
+    monkeypatch.setenv("JFN_SITE_ESPELHOS", str(tmp_path / "esp"))
+    def falha(*a, **k):
+        raise S.subprocess.CalledProcessError(1, a[0])
+    monkeypatch.setattr(S.subprocess, "run", falha)
+    monkeypatch.chdir(tmp_path); (tmp_path / "data").mkdir(); (tmp_path / "pub").mkdir()
+    assert S.main(["x", str(tmp_path / "pub" / "dados.json")]) == 1
+    assert not (tmp_path / "data" / "site_dados_marca.json").exists()       # site velho nunca passa como «ok»
