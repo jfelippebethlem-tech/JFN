@@ -2320,6 +2320,23 @@ rotinas:
       agrupar: true
     origem: [vm1-deriv-territorio]
     nos: [vm1]
+  sei_cpf:
+    estagio: E8
+    descricao: 'SEI como 3ª fonte do resolvedor de CPF (regra única #62 do mapa O1.2; auditoria 27/11: só era chamado pelo sweep_sei.sh aposentado, parado desde 24/11): CPF com DV válido + nome dos documentos de habilitação/contrato social/procuração já capturados → sei_cpf (casamento nome + 6 dígitos centrais 1:1). Incremental (pula pasta sem mudança).'
+    comando: ['{py}', -m, tools.sei_cpf_sweep, --acervo]
+    timeout_s: 900
+    recursos: [cpu_leve]
+    efeito: {descricao: 'acervo varrido até o fim (linha do resumo do sweep)', so_rc: 'rc 0 + log com a linha do resumo', log_contem: 'sei_cpf_sweep\] ACERVO: '}
+    prioridade: 70
+    evento:
+      depende: [sei_arquivado, sei_lote]
+      debounce_s: 1800
+      intervalo_min_s: 3600
+      agrupar: true
+    agenda:
+    - {cron: 40 */6 * * *}
+    nota: 'agenda de rede: as fontes legadas sei_arquivado/sei_lote podem silenciar com a captura nativa (ressalva da etapa 1)'
+    nos: [vm1]
   site_dados:
     estagio: E15
     descricao: 'Dados do site público (~/jfn-site): números reais do SIAFE (OB paga, entes públicos fora, repasses por município) regenerados ao fim do fluxo — dono 27/11: «tudo ao vivo, dados do sistema automaticamente no painel ao fim do fluxo»'
