@@ -97,13 +97,23 @@ def main(argv=None) -> int:
     ap.add_argument("--paralelo", type=int, default=3)
     a = ap.parse_args(argv)
     a.dir.mkdir(parents=True, exist_ok=True)
+    # instância única (27/11: após o reboot da VM-1, a cópia remota sobreviveu à queda do ssh e o motor disparou outra —
+    # duas gravando os mesmos arquivos de mês). Outra em curso ⇒ não toca em nada e o job volta depois.
+    import fcntl
+    trava = open(a.dir / ".lock", "w")  # noqa: SIM115 — vive até o fim do processo
+    try:
+        fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("folha_estado_historico: OUTRA EXECUÇÃO EM CURSO — nada feito")
+        return 1
     todas = meses(a.de, a.ate)
     pendentes = [c for c in todas if not (a.dir / f"ok_{c}").exists()][:a.max]
     with ThreadPoolExecutor(a.paralelo) as ex:
         res = list(ex.map(lambda c: competencia(a.dir, c), pendentes))
     ok = [r for r in res if "erro" not in r]
     feitas = sum(1 for c in todas if (a.dir / f"ok_{c}").exists())
-    print(f"folha_estado_historico: ok — nesta execução {len(ok)}/{len(res)} completas, {sum(r['linhas'] for r in ok)} linhas; "
+    estado = "ok" if len(ok) == len(res) else "INCOMPLETO"
+    print(f"folha_estado_historico: {estado} — nesta execução {len(ok)}/{len(res)} completas, {sum(r['linhas'] for r in ok)} linhas; "
           f"histórico {feitas}/{len(todas)} competências; incompletas={[r['competencia'] for r in res if 'erro' in r]}")
     with open(a.dir / "resumo.json", "w") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)

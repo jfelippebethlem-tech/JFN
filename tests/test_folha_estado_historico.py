@@ -41,3 +41,20 @@ def test_competencia_integra_marca_e_nao_e_refeita(tmp_path, monkeypatch):
     assert linha["cpf"] == "XX456789XXX"                  # a máscara no formato da casa (janela 4–9)
     monkeypatch.setattr(H.F, "_get", lambda *a: (_ for _ in ()).throw(AssertionError("refez mês completo")))
     assert H.competencia(tmp_path, "2020-01")["linhas"] == 6
+
+
+def test_segunda_instancia_nao_grava_por_cima(tmp_path, monkeypatch, capsys):
+    """27/11/2026: duas execuções gravaram os mesmos arquivos de mês após o reboot da VM-1."""
+    import fcntl
+    _api(monkeypatch, 6)
+    tmp_path.mkdir(exist_ok=True)
+    trava = open(tmp_path / ".lock", "w")
+    fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)                  # a "outra" execução
+    assert H.main([str(tmp_path), "--de", "2020-01", "--ate", "2020-01"]) == 1
+    assert "OUTRA EXECUÇÃO" in capsys.readouterr().out and not (tmp_path / "gesperj_2020-01.jsonl.gz").exists()
+
+
+def test_incompleta_nao_imprime_ok(tmp_path, monkeypatch, capsys):
+    _api(monkeypatch, 100)                                             # total da API diverge ⇒ incompleta
+    assert H.main([str(tmp_path), "--de", "2020-01", "--ate", "2020-01"]) == 1
+    assert "folha_estado_historico: INCOMPLETO" in capsys.readouterr().out
