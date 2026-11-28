@@ -2320,6 +2320,18 @@ rotinas:
       agrupar: true
     origem: [vm1-deriv-territorio]
     nos: [vm1]
+  licitacao_relacionada:
+    estagio: E2
+    descricao: 'Contrato → processo da LICITAÇÃO (regra única #53 do mapa O1.2, ex-bombeiros_achar_edital; auditoria 27/11): nº SEI citado no MESMO documento que fala de pregão/edital/concorrência/tomada de preços, menos o próprio, vai a data/sei_fila_licitacao.json — fonte de nº do semeador do E2 (a ordem é a da prioridade única).'
+    comando: ['{py}', -m, tools.e2_licitacao_relacionada]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'fila de licitações regravada (linha do resumo)', arquivo: data/sei_fila_licitacao.json, log_contem: 'e2_licitacao_relacionada: [0-9]+ processo'}
+    prioridade: 75
+    agenda:
+    - {cron: 20 2 * * *}
+    nota: 'varre ~16,6 mil pastas do arquivo SEI (disco da VM-1, > 10 min): noturna, cpu_pesado'
+    nos: [vm1]
   sei_cpf:
     estagio: E8
     descricao: 'SEI como 3ª fonte do resolvedor de CPF (regra única #62 do mapa O1.2; auditoria 27/11: só era chamado pelo sweep_sei.sh aposentado, parado desde 24/11): CPF com DV válido + nome dos documentos de habilitação/contrato social/procuração já capturados → sei_cpf (casamento nome + 6 dígitos centrais 1:1). Incremental (pula pasta sem mudança).'

@@ -32,7 +32,8 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 DB = RAIZ / "data" / "compliance.db"
-FILAS_ANTIGAS = ("sei_fila_dinheiro.json", "sei_fila_vinculo_ob.json", "bombeiros_sei_fila.json")
+FILAS_ANTIGAS = ("sei_fila_dinheiro.json", "sei_fila_vinculo_ob.json", "bombeiros_sei_fila.json",
+                 "sei_fila_licitacao.json")   # 27/11: processo da licitação citado (tools/e2_licitacao_relacionada)
 TETO = 40
 CORRELACAO = "e2_semear"
 

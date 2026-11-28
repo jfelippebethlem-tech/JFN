@@ -134,6 +134,8 @@ MOTIVO_ESTAGIO = {
            "na O2.3 (tests/test_fluxo_o23.py::test_os_14_vigias_viram_sensores_e18_ou_tem_motivo)",
 }
 MOTIVO_ROTINA = {
+    "licitacao_relacionada": "regra única #53 (auditoria 27/11): a expansão contrato → processo da licitação não existe "
+                             "no E2 nativo — legado ligado; alimenta o semeador do E2 como fonte de nº",
     "sei_cpf": "regra única #62 (auditoria 27/11): o SEI como 3ª fonte do resolvedor de CPF não existe no E8 nativo "
                "(que lê fatos, não extrai CPF) — legado ligado até virar fato do E8",
     "pcrj_sei_busca_termos": "SEI.RIO (Prefeitura): o E2 nativo só lê SEI-RJ (processo_do recusa outro formato)",
