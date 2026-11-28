@@ -110,22 +110,26 @@ def consultar(sessao, processo: str) -> tuple[str, Arvore | None]:
 
 # ── a pesquisa pública como NAVEGADOR do E2/E3 (mesma interface do NavegadorSEI: arvore / capturar) ─────────────────
 VIA = "pesquisa_publica"
+VIA_CONFERENCIA = "conferencia_autenticidade"
 
 
-def _doc_arvore(d: Documento) -> dict:
+def _doc_arvore(d: Documento, pares: dict[str, str] | None = None) -> dict:
     """Documento público no formato da árvore do E2 (`{t, u, restrito, id_documento}`): o título com o nº entre
     parênteses dá o MESMO doc_id do domínio que a árvore do SEI daria; `id_documento` = `p<nº>` (a página pública não
     expõe o id interno — o prefixo deixa claro de onde veio e muda a identidade se a via logada um dia abrir)."""
-    return {"t": f"{d.tipo} ({d.numero})", "u": d.url or "", "restrito": d.url is None,
-            "id_documento": f"p{d.numero}"}
+    crc = (pares or {}).get(d.numero) if d.url is None else None
+    # O3.8 d: sem link mas com o par verificador+CRC no acervo = obtível pela Conferência de Autenticidade
+    return {"t": f"{d.tipo} ({d.numero})", "u": d.url or "", "restrito": d.url is None and not crc,
+            "id_documento": f"p{d.numero}", **({"crc": crc, "verificador": d.numero} if crc else {})}
 
 
 class NavegadorPublico:
     """O E2 e o E3 pela pesquisa pública (só HTTP). `sessao` = tools.sei_rj_catalogo.Sessao (aberta na 1ª chamada);
     `baixar(url) -> bytes` injetável nos testes."""
 
-    def __init__(self, sessao=None, baixar=None, consultar_fn=None):
+    def __init__(self, sessao=None, baixar=None, consultar_fn=None, pares=None, conferir_fn=None):
         self._sessao, self._baixar, self._consultar = sessao, baixar, consultar_fn or consultar
+        self._pares, self._conferir = dict(pares or {}), conferir_fn
         self._docs: dict[str, list[dict]] = {}
 
     def _s(self):
@@ -138,13 +142,25 @@ class NavegadorPublico:
     def _arvore(self, processo: str) -> list[dict]:
         if processo not in self._docs:
             _classe, arv = self._consultar(self._s(), processo)
-            self._docs[processo] = [_doc_arvore(d) for d in (arv.documentos if arv else [])]
+            self._docs[processo] = [_doc_arvore(d, self._pares) for d in (arv.documentos if arv else [])]
         return self._docs[processo]
 
     def arvore(self, processo: str, pagina: int):
         from compliance_agent.aplicacao.estagios.arvore import PaginaArvore
         docs = self._arvore(processo)
         return PaginaArvore(docs=list(docs), proxima=None, via=VIA, sem_resultado=not docs)
+
+    def _original(self, processo: str, x: dict) -> bytes:
+        """O ORIGINAL pela Conferência de Autenticidade (par do acervo). b"" = o SEI não confirmou (fica omitido)."""
+        from compliance_agent.sei import conferencia_autenticidade as CA
+        par = CA.Par(x["verificador"], x["crc"], processo)
+        if self._conferir is not None:
+            o = self._conferir(par)
+        else:
+            import ddddocr
+            self._ocr = getattr(self, "_ocr", None) or ddddocr.DdddOcr(show_ad=False)
+            o = CA.conferir(self._s().c, self._ocr, par)
+        return o.conteudo if o else b""
 
     def capturar(self, processo: str, guardados: dict, raiz):
         """Baixa os documentos com link que faltam (delta pelos guardados) e grava a pasta no FORMATO da íntegra
@@ -166,16 +182,17 @@ class NavegadorPublico:
             ok, nome, v = False, "", None
             if i in manter:
                 v = "delta_guardado"
-            elif x["u"]:
+            elif x["u"] or x.get("crc"):
+                via_doc = VIA if x["u"] else VIA_CONFERENCIA
                 try:
-                    corpo = baixar(x["u"])
+                    corpo = baixar(x["u"]) if x["u"] else self._original(processo, x)
                 except (OSError, RuntimeError, ValueError) as e:      # rede: o documento fica omitido (recaptura)
                     corpo, v = b"", f"falhou: {type(e).__name__}"
                 if corpo:
                     nome = f"{i:03d}{'.pdf' if corpo[:4] == b'%PDF' else '.html'}"
                     (outdir / nome).write_bytes(corpo)
                     donos[nome] = idd
-                    ok, v = True, VIA
+                    ok, v = True, via_doc
                 else:
                     falhas += 1
             manifest.append({"i": i, "arquivo": nome, "titulo": x["t"], "contexto": "", "url": x["u"],

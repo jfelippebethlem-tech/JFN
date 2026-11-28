@@ -65,6 +65,7 @@ SQL_EVIDENCIAS = RAIZ / "deploy" / "vm2" / "postgres" / "evidencias_001.sql"
 SQL_CAPTURA = RAIZ / "deploy" / "vm2" / "postgres" / "captura_001.sql"
 SQL_CAPTURA_002 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_002.sql"   # versão com a identidade capturada
 SQL_CAPTURA_003 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_003.sql"   # recaptura pedida (regra única #58)
+SQL_CAPTURA_005 = RAIZ / "deploy" / "vm2" / "postgres" / "captura_005.sql"   # pares verificador+CRC (O3.8 d)
 FONTE_PARADA = Path.home() / "snapshot-20261124" / "compliance.db"
 ENV_FONTE = "JFN_CAPTURA_FONTE"
 MAX_PAGINAS = 500
@@ -100,7 +101,7 @@ def aplicar_schema(dsn: str, esquema: str | None = None) -> None:
         c.execute(f'CREATE SCHEMA IF NOT EXISTS "{esq}"')
     EV.conectar(dsn + ("&" if "?" in dsn else "?") + f"options=-csearch_path%3D{esq}").close()
     with psycopg.connect(dsn, autocommit=True) as c:
-        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA, SQL_CAPTURA_002, SQL_CAPTURA_003):
+        for arq in (SQL_EVIDENCIAS, SQL_CAPTURA, SQL_CAPTURA_002, SQL_CAPTURA_003, SQL_CAPTURA_005):
             c.execute(renderizar(arq.read_text(encoding="utf-8"), esq))
 
 
@@ -294,11 +295,17 @@ def obter_navegador() -> Navegador:
     return NavegadorSEI()
 
 
-def obter_navegador_publico() -> Navegador:
+def obter_navegador_publico(pares: dict[str, str] | None = None) -> Navegador:
     """A pesquisa PÚBLICA do SEI-RJ (O3.8, 27/11/2026): para o processo que a unidade logada vê como RESTRITO.
-    Ponto de injeção (os testes trocam por um fake)."""
+    `pares` = {verificador: crc} do processo (crc_par): o documento sem link com par conhecido sai pela Conferência de
+    Autenticidade. Ponto de injeção (os testes trocam por um fake)."""
     from compliance_agent.sei.pesquisa_publica import NavegadorPublico
-    return NavegadorPublico()
+    return NavegadorPublico(pares=pares)
+
+
+def pares_crc(con, processo: str) -> dict[str, str]:
+    """{verificador: crc} colhidos do acervo para documentos DESTE processo (captura_005)."""
+    return {v: c for v, c in con.execute("SELECT verificador, crc FROM crc_par WHERE processo = %s", (processo,))}
 
 
 def via_vigente(con, processo: str) -> str | None:
@@ -448,8 +455,13 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     if not lido["docs"] and lido["restrito"]:
         # O3.8 (27/11/2026): RESTRITO é da UNIDADE logada, não do público — a pesquisa pública abre árvore e documentos
         # de boa parte deles. Só vira ForaDeAlcance se nem ela tiver documento com link.
-        pub = ler_arvore(obter_navegador_publico(), processo)
-        if not any(d.get("u") for d in pub["docs"]):
+        c0 = conectar(payload.get("dsn"), payload.get("esquema"))
+        try:
+            pares = pares_crc(c0, processo)
+        finally:
+            c0.close()
+        pub = ler_arvore(obter_navegador_publico(pares), processo)
+        if not any(d.get("u") or d.get("crc") for d in pub["docs"]):
             raise ForaDeAlcance(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']}) e a pesquisa pública "
                                 f"{'só mostra a árvore' if pub['docs'] else 'não o encontra'} ({len(pub['docs'])} doc)"
                                 " — rota: conferência de autenticidade ou ofício")

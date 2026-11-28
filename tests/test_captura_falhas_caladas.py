@@ -33,6 +33,8 @@ class _NavVazio:
 
 def _e2_vazio(monkeypatch, **kw):
     monkeypatch.setattr(A, "obter_navegador", lambda: _NavVazio(**kw))
+    monkeypatch.setattr(A, "conectar", _con_falsa)                # sem esquema de teste: nunca o PG de produção
+    monkeypatch.setattr(A, "pares_crc", lambda c, p: {})
     return A._handler({"processo": PROC}, Contexto("vm2", "arvore", f"arvore:{PROC}", 1, 1))
 
 
@@ -46,7 +48,7 @@ def test_nenhum_resultado_com_controle_positivo_e_permanente(monkeypatch):
     with pytest.raises(ErroPermanente, match="controle positivo"):
         _e2_vazio(monkeypatch, sem_resultado=True, controle_positivo=True)
     from compliance_agent.sei import pesquisa_publica as PP
-    monkeypatch.setattr(A, "obter_navegador_publico", lambda: PP.NavegadorPublico(
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda pares=None: PP.NavegadorPublico(
         sessao=object(), consultar_fn=lambda s, p: (PP.NAO_ACHADO, None)))       # O3.8: nem a pesquisa pública o acha
     with pytest.raises(ErroPermanente, match="RESTRITO.*não o encontra"):
         _e2_vazio(monkeypatch, restrito="Unidade atual não possui acesso")
@@ -253,6 +255,15 @@ def test_relatorio_fotografico_so_com_texto_do_cache_volta_a_faltar(pg, monkeypa
     assert _e2(nome, 4)["faltantes"] == 0                                # a versão nova do E3 vale: auto-limitante
 
 
+class _ConFalsa:
+    def close(self):
+        pass
+
+
+def _con_falsa(*a, **k):
+    return _ConFalsa()
+
+
 class _NavRestrito:
     """A unidade logada vê o processo como RESTRITO (sem documento)."""
     def arvore(self, processo, pagina):
@@ -279,7 +290,7 @@ def test_restrito_da_unidade_le_e_captura_pela_pesquisa_publica(pg, monkeypatch,
     baixados = []
     pub = _publico(baixados)
     monkeypatch.setattr(A, "obter_navegador", lambda: _NavRestrito())
-    monkeypatch.setattr(A, "obter_navegador_publico", lambda: pub)
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda pares=None: pub)
     ef = _e2(nome, 1)
     assert ef["estado"] == A.DOC_NOVO and ef["via"] == "pesquisa_publica" and ef["faltantes"] == 2 and ef["restritos"] == 1
     r, ok = _e3(nome, 1, tmp_path)
@@ -294,8 +305,38 @@ def test_restrito_sem_link_publico_continua_fora_de_alcance(pg, monkeypatch):  #
     from compliance_agent.sei import pesquisa_publica as PP
     so = PP.Arvore([PP.Documento("90000003", "Parecer", "01/02/2025", "01/02/2025", "U", None)])
     monkeypatch.setattr(A, "obter_navegador", lambda: _NavRestrito())
-    monkeypatch.setattr(A, "obter_navegador_publico", lambda: PP.NavegadorPublico(
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda pares=None: PP.NavegadorPublico(
         sessao=object(), consultar_fn=lambda s, p: (PP.classificar(so), so)))
     con, nome = pg
+    monkeypatch.setattr(A, "pares_crc", lambda c, p: {})
     with pytest.raises(A.ForaDeAlcance, match="só mostra a árvore"):
         A._handler({"processo": PROC, "dsn": DSN, "esquema": nome}, Contexto("vm2", "arvore", f"arvore:{PROC}", 1, 1))
+
+
+@precisa_pg
+def test_documento_sem_link_com_par_do_acervo_sai_pela_conferencia(pg, monkeypatch, tmp_path):  # noqa: F811
+    """O3.8 d (27/11/2026): o documento que a árvore pública lista SEM link, com o par verificador+CRC colhido do
+    acervo (crc_par), é obtível — o E3 baixa o ORIGINAL pela Conferência de Autenticidade, no mesmo contrato."""
+    from compliance_agent.sei import pesquisa_publica as PP
+    con, nome = pg
+    con.execute("INSERT INTO crc_par(verificador, crc, processo, restrito) VALUES ('90000003', '05E0B8EB', %s, true)",
+                (PROC,))
+    arv = PP.Arvore([PP.Documento("90000001", "Despacho", "01/02/2025", "01/02/2025", "U", PP.BASE + "d1"),
+                     PP.Documento("90000003", "Parecer", "01/02/2025", "01/02/2025", "U", None)])
+    conferidos = []
+
+    def conferir(par):
+        conferidos.append((par.verificador, par.crc))
+        from compliance_agent.sei.conferencia_autenticidade import Original
+        return Original(par=par, conteudo=b"<html>ORIGINAL</html>", assinaturas="X", n_assinaturas=1)
+
+    def nav(pares=None):
+        return PP.NavegadorPublico(sessao=object(), baixar=lambda u: b"%PDF pub", pares=pares,
+                                   consultar_fn=lambda s, p: (PP.classificar(arv), arv), conferir_fn=conferir)
+    monkeypatch.setattr(A, "obter_navegador", lambda: _NavRestrito())
+    monkeypatch.setattr(A, "obter_navegador_publico", nav)
+    ef = _e2(nome, 1)
+    assert ef["faltantes"] == 2 and ef["restritos"] == 0                    # o sem-link com par não é restrito
+    r, ok = _e3(nome, 1, tmp_path)
+    assert ok and conferidos == [("90000003", "05E0B8EB")]
+    assert _e2(nome, 2)["faltantes"] == 0

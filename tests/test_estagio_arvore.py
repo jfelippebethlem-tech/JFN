@@ -142,6 +142,10 @@ def test_restrito_e_sigilo_sao_fora_de_alcance(monkeypatch):
     monkeypatch.setattr(A, "obter_navegador", lambda: None)
     monkeypatch.setattr(A, "ler_arvore", lambda nav, p: {"docs": [], "restrito": "Unidade atual não possui acesso",
                                                         "sem_resultado": False, "via": "t"})
+    # O3.8: antes do ForaDeAlcance o E2 tenta a pesquisa pública (aqui: nada) — sem tocar o PG de produção
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda pares=None: None)
+    monkeypatch.setattr(A, "pares_crc", lambda c, p: {})
+    monkeypatch.setattr(A, "conectar", lambda *a, **k: type("C", (), {"close": lambda self: None})())
     with pytest.raises(ForaDeAlcance) as e:
         A._handler({"processo": PROC}, _ctx(chave=f"arvore:{PROC}"))
     assert str(e.value).startswith("[fora_de_alcance]") and isinstance(e.value, ErroPermanente)
