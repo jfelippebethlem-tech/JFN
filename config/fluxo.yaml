@@ -28,7 +28,7 @@ concorrencia:
   pncp: {max: 1, motivo: 'API PNCP: uma coleta por vez (limite de taxa)'}
   tcerj: {max: 1, motivo: 'portal aberto do TCE-RJ: uma coleta por vez'}
   receita_cadastro: {max: 1, motivo: 'consulta cadastral (dump/sweep de empresas): uma por vez'}
-  assinatura_claude: {max: 4, motivo: 'CLI da assinatura (it-campo 4 + VM-2), com a trava de ritmo semanal (llm/ritmo_assinatura)'}
+  assinatura_claude: {max: 6, motivo: 'CLI da assinatura (it-campo 4 + VM-2), com a trava de ritmo semanal (llm/ritmo_assinatura); 4→6 em 27/11 (dono: «use todo o poder de todas as máquinas»)'}
   llm_batch: {max: 2, motivo: lotes Batch (Haiku) em voo ao mesmo tempo}
   api_paga: {max: 1, motivo: 'API paga com teto de US$ 100/mês: um consumidor por vez (nunca assumir free tier)'}
   painel: {max: 1, motivo: 'recálculo do cache do painel: um pedido por vez (o painel entrega o anterior e recalcula em 2º plano)'}
@@ -150,7 +150,7 @@ estagios:
     timeout_s: 3600
     prioridade: 45
     efeito: fatos com citação literal conferida (documento, versão, página, offset) + cobertura gravada
-    concorrencia: [assinatura_claude, llm_batch]
+    concorrencia: [assinatura_claude]        # 27/11: llm_batch (máx 2, lotes da API) saiu — o handler lê pela ASSINATURA
     depende: [E4, E6]
     ritmo: leitura_integral               # a tarefa do handler (TAREFA): a reserva segura o job com a porta fechada
     sem_itcampo: VM-2
