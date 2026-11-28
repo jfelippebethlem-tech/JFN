@@ -157,6 +157,14 @@ def gerar(con: sqlite3.Connection, vault: Path, sistema_fn=None) -> dict:
     ug = max(por_ug, key=lambda u: sum(x["valor"] for x in por_ug[u]))
     ug_total = sum(x["valor"] for x in por_ug[ug])
     forn = sorted(por_ug[ug], key=lambda x: -x["valor"])[:24]
+    def _cob(tab):
+        try:
+            n, ugs, a0, a1 = con.execute(f"SELECT count(*), count(DISTINCT ug_emitente), min(exercicio), max(exercicio) "
+                                         f"FROM {tab}").fetchone()
+        except sqlite3.OperationalError:
+            return "coleta ausente nesta base"
+        return f"coleta parcial: {n} notas de {ugs} UG(s), exercícios {a0}–{a1}" if n else "coleta ausente nesta base"
+    cobertura_ne, cobertura_nl = _cob("ne_siafe"), _cob("nl_siafe")
     casos = sorted(vault.glob("*.md"))
     ibge = json.loads((Path(__file__).resolve().parent.parent / "config" / "ibge_municipios_rj.json").read_text())["municipios"]
     for m in ibge:
@@ -184,9 +192,12 @@ def gerar(con: sqlite3.Connection, vault: Path, sistema_fn=None) -> dict:
             "nota": "altura do prédio = OB paga no exercício; indício não é marcado aqui (ver Casos)",
         },
         "dinheiro": {
-            "empenhado": _n(None, "SIAFE-Rio · Nota de Empenho", "por contrato", "INDISPONIVEL"),
-            "liquidado": _n(None, "SIAFE-Rio · Nota de Liquidação", "por contrato", "INDISPONIVEL"),
-            "nota": "NE e NL por contrato ainda não coletadas (plano: coleta NE/NL por UG); o pago (OB) existe",
+            "orgao": ug_nomes.subordinacao(ug, ano_fim) or ug, "exercicio": ano_fim,
+            "pago": _n(round(ug_total, 2), FONTE_OB, f"UG {ug}, exercício {ano_fim}, credores com CNPJ"),
+            "empenhado": _n(None, "SIAFE-Rio · Nota de Empenho", cobertura_ne, "INDISPONIVEL"),
+            "liquidado": _n(None, "SIAFE-Rio · Nota de Liquidação", cobertura_nl, "INDISPONIVEL"),
+            "nota": ("empenho e liquidação ainda não são exibidos: a coleta de NE/NL cobre poucas UGs e a régua do valor "
+                     "líquido (reforço soma, anulação subtrai, restos a pagar) aguarda o lote contábil do dono"),
         },
     }
 
