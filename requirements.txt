@@ -26,6 +26,7 @@ xgboost>=2.0.0       # Massare (massare/ml.py)
 hmmlearn>=0.3.0      # Massare (regimes de mercado)
 # --- OCR do SEI (CAPTCHA) ---
 pytesseract>=0.3.10  # caminho principal (sei_cdp/captcha_solver) — requer Tesseract no SO
+ddddocr>=1.6         # 27/11: captcha da pesquisa PÚBLICA do SEI-RJ (O3.8, sei/pesquisa_publica) nos workers do E2/E3
 opencv-python-headless>=4.9.0
 easyocr>=1.7.0       # caminho alternativo do SEI (sei_driver/sei_sei_direct). Puxa torch+torchvision.
 # torch/torchvision: instalar SEMPRE a versão CPU para não baixar CUDA (vários GB):

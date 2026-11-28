@@ -45,7 +45,10 @@ def test_nenhum_resultado_sem_controle_positivo_e_transitorio(monkeypatch):
 def test_nenhum_resultado_com_controle_positivo_e_permanente(monkeypatch):
     with pytest.raises(ErroPermanente, match="controle positivo"):
         _e2_vazio(monkeypatch, sem_resultado=True, controle_positivo=True)
-    with pytest.raises(ErroPermanente, match="RESTRITO"):
+    from compliance_agent.sei import pesquisa_publica as PP
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda: PP.NavegadorPublico(
+        sessao=object(), consultar_fn=lambda s, p: (PP.NAO_ACHADO, None)))       # O3.8: nem a pesquisa pública o acha
+    with pytest.raises(ErroPermanente, match="RESTRITO.*não o encontra"):
         _e2_vazio(monkeypatch, restrito="Unidade atual não possui acesso")
 
 
@@ -248,3 +251,51 @@ def test_relatorio_fotografico_so_com_texto_do_cache_volta_a_faltar(pg, monkeypa
     con.execute("INSERT INTO versoes(processo, doc_id, sha256, chars, origem, ocr, vista_em, hash_de) "
                 "VALUES (%s, 'sei:90000001', 'binario-novo', 100, 'sei:e3', NULL, '2026-11-27', 'binario')", (PROC,))
     assert _e2(nome, 4)["faltantes"] == 0                                # a versão nova do E3 vale: auto-limitante
+
+
+class _NavRestrito:
+    """A unidade logada vê o processo como RESTRITO (sem documento)."""
+    def arvore(self, processo, pagina):
+        return A.PaginaArvore(docs=[], restrito="Unidade atual não possui acesso ao processo restrito", via="teste")
+
+
+def _publico(baixados):
+    from compliance_agent.sei import pesquisa_publica as PP
+    arv = PP.Arvore([PP.Documento("90000001", "Despacho", "01/02/2025", "01/02/2025", "U", PP.BASE + "d1"),
+                     PP.Documento("90000002", "Nota fiscal", "01/02/2025", "01/02/2025", "U", PP.BASE + "d2"),
+                     PP.Documento("90000003", "Parecer", "01/02/2025", "01/02/2025", "U", None)])   # sem link
+
+    def baixar(u):
+        baixados.append(u)
+        return b"%PDF documento publico " + u.encode()
+    return PP.NavegadorPublico(sessao=object(), baixar=baixar, consultar_fn=lambda s, p: (PP.classificar(arv), arv))
+
+
+@precisa_pg
+def test_restrito_da_unidade_le_e_captura_pela_pesquisa_publica(pg, monkeypatch, tmp_path):  # noqa: F811
+    """O3.8 (27/11/2026): RESTRITO é da unidade logada, não do público. O E2 lê a árvore pública (o sem-link fica
+    restrito, declarado) e o E3 baixa por HTTP só os com link, no MESMO contrato (versão, sha256, faltas = 0)."""
+    con, nome = pg
+    baixados = []
+    pub = _publico(baixados)
+    monkeypatch.setattr(A, "obter_navegador", lambda: _NavRestrito())
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda: pub)
+    ef = _e2(nome, 1)
+    assert ef["estado"] == A.DOC_NOVO and ef["via"] == "pesquisa_publica" and ef["faltantes"] == 2 and ef["restritos"] == 1
+    r, ok = _e3(nome, 1, tmp_path)
+    assert ok and sorted(baixados) == [pub._docs[PROC][0]["u"], pub._docs[PROC][1]["u"]]
+    assert con.execute("SELECT count(*) FROM versoes WHERE processo = %s AND origem LIKE 'sei:e3%%'",
+                       (PROC,)).fetchone()[0] == 2
+    assert _e2(nome, 2)["faltantes"] == 0                                # convergiu: nada falta, o restrito não é falta
+
+
+@precisa_pg
+def test_restrito_sem_link_publico_continua_fora_de_alcance(pg, monkeypatch):  # noqa: F811
+    from compliance_agent.sei import pesquisa_publica as PP
+    so = PP.Arvore([PP.Documento("90000003", "Parecer", "01/02/2025", "01/02/2025", "U", None)])
+    monkeypatch.setattr(A, "obter_navegador", lambda: _NavRestrito())
+    monkeypatch.setattr(A, "obter_navegador_publico", lambda: PP.NavegadorPublico(
+        sessao=object(), consultar_fn=lambda s, p: (PP.classificar(so), so)))
+    con, nome = pg
+    with pytest.raises(A.ForaDeAlcance, match="só mostra a árvore"):
+        A._handler({"processo": PROC, "dsn": DSN, "esquema": nome}, Contexto("vm2", "arvore", f"arvore:{PROC}", 1, 1))

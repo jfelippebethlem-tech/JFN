@@ -294,6 +294,19 @@ def obter_navegador() -> Navegador:
     return NavegadorSEI()
 
 
+def obter_navegador_publico() -> Navegador:
+    """A pesquisa PÚBLICA do SEI-RJ (O3.8, 27/11/2026): para o processo que a unidade logada vê como RESTRITO.
+    Ponto de injeção (os testes trocam por um fake)."""
+    from compliance_agent.sei.pesquisa_publica import NavegadorPublico
+    return NavegadorPublico()
+
+
+def via_vigente(con, processo: str) -> str | None:
+    """A via da leitura vigente do E2 (`pesquisa_publica` = o E3 captura pela mesma via)."""
+    r = con.execute("SELECT via FROM arvore_leitura WHERE processo = %s ORDER BY id DESC LIMIT 1", (processo,)).fetchone()
+    return r[0] if r else None
+
+
 # ══ 3. leitura e gravação ═══════════════════════════════════════════════════════════════════════════════════════
 def ler_arvore(nav: Navegador, processo: str, max_paginas: int = MAX_PAGINAS) -> dict:
     """Pede páginas até o fim. Dedup por id_documento (senão url+título). Página sem documento novo antes do fim,
@@ -432,9 +445,16 @@ def _lente(payload: dict) -> list[str]:
 def _handler(payload: dict, ctx: Contexto) -> Resultado:
     processo = processo_do(payload, ctx)
     lido = ler_arvore(obter_navegador(), processo)
+    if not lido["docs"] and lido["restrito"]:
+        # O3.8 (27/11/2026): RESTRITO é da UNIDADE logada, não do público — a pesquisa pública abre árvore e documentos
+        # de boa parte deles. Só vira ForaDeAlcance se nem ela tiver documento com link.
+        pub = ler_arvore(obter_navegador_publico(), processo)
+        if not any(d.get("u") for d in pub["docs"]):
+            raise ForaDeAlcance(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']}) e a pesquisa pública "
+                                f"{'só mostra a árvore' if pub['docs'] else 'não o encontra'} ({len(pub['docs'])} doc)"
+                                " — rota: conferência de autenticidade ou ofício")
+        lido = pub
     if not lido["docs"]:
-        if lido["restrito"]:
-            raise ForaDeAlcance(f"{processo}: SEI respondeu RESTRITO ({lido['restrito']})")
         if lido["sem_resultado"] and lido.get("controle_positivo") is True:
             raise ForaDeAlcance(f"{processo}: 'Nenhum resultado' com controle positivo na mesma sessão — invisível à "
                                  "pesquisa (sigilo integral); rota: requisição formal")

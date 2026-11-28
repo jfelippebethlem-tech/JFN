@@ -1,6 +1,6 @@
 # LOCK GERADO por tools/lock_dependencias.py — não editar à mão; regenerar: python tools/lock_dependencias.py
 # Instalar: pip install --require-hashes -r <este arquivo>   (torch CPU vem pelos --find-links abaixo)
-# entrada: requirements.txt sha256=e87e2ed2b1c391990932d97af2018b57a696e1854c6a500c799d49bc34de9d3a
+# entrada: requirements.txt sha256=c541ce1b5d56025ff9683e03f7d4d3e0d444d303c3ad14ea5a3aede45b22b3dc
 # entrada: requirements-sei.txt sha256=9cffcee024fc216e9e2bd5c7c053f78455361bf65931373cf34b757cce303ec4
 --find-links https://download.pytorch.org/whl/torch/
 --find-links https://download.pytorch.org/whl/torchvision/
@@ -772,7 +772,9 @@ cycler==0.12.1 \
 ddddocr==1.6.1 \
     --hash=sha256:1c59d84d63d8703c6c486465a32389c9e41dd92852c794c5e4c0181a5f82d43a \
     --hash=sha256:c7c70f4ae2d0335440ae8b272eea48c9f6888ecef46785fe2311f0c97a133935
-    # via -r requirements-sei.txt
+    # via
+    #   -r requirements-sei.txt
+    #   -r requirements.txt
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2

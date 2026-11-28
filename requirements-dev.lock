@@ -1,6 +1,6 @@
 # LOCK GERADO por tools/lock_dependencias.py — não editar à mão; regenerar: python tools/lock_dependencias.py
 # Instalar: pip install --require-hashes -r <este arquivo>   (torch CPU vem pelos --find-links abaixo)
-# entrada: requirements.txt sha256=e87e2ed2b1c391990932d97af2018b57a696e1854c6a500c799d49bc34de9d3a
+# entrada: requirements.txt sha256=c541ce1b5d56025ff9683e03f7d4d3e0d444d303c3ad14ea5a3aede45b22b3dc
 # entrada: requirements-dev.txt sha256=4adb9e19bb29bf739e252ea1975f6dbdb5381032d727f320a36c47dceb63d262
 --find-links https://download.pytorch.org/whl/torch/
 --find-links https://download.pytorch.org/whl/torchvision/
@@ -615,6 +615,12 @@ cycler==0.12.1 \
     # via
     #   -c requirements-sei.lock
     #   matplotlib
+ddddocr==1.6.1 \
+    --hash=sha256:1c59d84d63d8703c6c486465a32389c9e41dd92852c794c5e4c0181a5f82d43a \
+    --hash=sha256:c7c70f4ae2d0335440ae8b272eea48c9f6888ecef46785fe2311f0c97a133935
+    # via
+    #   -c requirements-sei.lock
+    #   -r requirements.txt
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
@@ -2032,12 +2038,14 @@ numpy==2.5.5 \
     #   -c requirements-sei.lock
     #   -r requirements.txt
     #   contourpy
+    #   ddddocr
     #   easyocr
     #   hmmlearn
     #   imageio
     #   matplotlib
     #   numba
     #   onnxruntime
+    #   opencv-python
     #   opencv-python-headless
     #   pandas
     #   pymupdf
@@ -2091,6 +2099,7 @@ onnxruntime==1.32.0 \
     --hash=sha256:efe7456952c243a05a53d5b8732953625144642c2f3989094277f6217f0c0c40
     # via
     #   -c requirements-sei.lock
+    #   ddddocr
     #   pymupdf
 openai==2.54.0 \
     --hash=sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b \
@@ -2098,6 +2107,20 @@ openai==2.54.0 \
     # via
     #   -c requirements-sei.lock
     #   surya-ocr
+opencv-python==5.1.0.95 ; sys_platform == 'darwin' or sys_platform == 'win32' \
+    --hash=sha256:0b62fb3c71086ea96369e0f47e3b11949345b2f301b88dff97c92c5118176d7b \
+    --hash=sha256:1c6714e81ddae43726cfd438eb8ae025585f35852e71e9e474620c2eafed71be \
+    --hash=sha256:3d4a901a458e9503c92610f237850cfc970c66b3f1cc94f45f2942715280ebab \
+    --hash=sha256:4764e8da33b82ccacaf1e6601224d3d1570e97fbdb8343834415260bd5afcbd4 \
+    --hash=sha256:54e3be8acbda657c51227379a657a706a4e88032ce4a070728a8d6531e7c9ffc \
+    --hash=sha256:63ad2b9e34c8ee4acde30fd93a162bc91f53480273f595667fedb5bb65ce6069 \
+    --hash=sha256:6438ef9bfbd15b9ff6474115d836932d24fba80f693f6b1b53b8e0a7a4b387a6 \
+    --hash=sha256:a36fc15cb1ccf31dc2883ff9f13b214340267ff1ff4c51f198ea3d6a4a6cbdbb \
+    --hash=sha256:ab505983b1c1e21e89b5c43bf59cccc805b8aa7981f4385a17812efa63ceccb9 \
+    --hash=sha256:c752bbfd6f5e343e039dcedcdbc3832b4f75f0c4f7d1c084e446b911ad97f44a
+    # via
+    #   -c requirements-sei.lock
+    #   ddddocr
 opencv-python-headless==5.1.0.95 \
     --hash=sha256:1193ffb8a60d0496dbac652f052791dc0f0da6a298e215c93d1d8c9dd67b89e9 \
     --hash=sha256:11d9753e15b8b3c56e6aa765139f722ca19ff26016d43bc81035f5d122731a81 \
@@ -2112,6 +2135,7 @@ opencv-python-headless==5.1.0.95 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   ddddocr
     #   easyocr
     #   rapidocr
 openpyxl==3.1.5 \
@@ -2314,6 +2338,7 @@ pillow==13.0.0 \
     # via
     #   -c requirements-sei.lock
     #   -r requirements.txt
+    #   ddddocr
     #   easyocr
     #   fpdf2
     #   imageio

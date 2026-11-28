@@ -106,3 +106,82 @@ def consultar(sessao, processo: str) -> tuple[str, Arvore | None]:
         return NAO_ACHADO, None
     arv = ler_arvore(sessao.c.get(url).text)
     return classificar(arv), arv
+
+
+# ── a pesquisa pública como NAVEGADOR do E2/E3 (mesma interface do NavegadorSEI: arvore / capturar) ─────────────────
+VIA = "pesquisa_publica"
+
+
+def _doc_arvore(d: Documento) -> dict:
+    """Documento público no formato da árvore do E2 (`{t, u, restrito, id_documento}`): o título com o nº entre
+    parênteses dá o MESMO doc_id do domínio que a árvore do SEI daria; `id_documento` = `p<nº>` (a página pública não
+    expõe o id interno — o prefixo deixa claro de onde veio e muda a identidade se a via logada um dia abrir)."""
+    return {"t": f"{d.tipo} ({d.numero})", "u": d.url or "", "restrito": d.url is None,
+            "id_documento": f"p{d.numero}"}
+
+
+class NavegadorPublico:
+    """O E2 e o E3 pela pesquisa pública (só HTTP). `sessao` = tools.sei_rj_catalogo.Sessao (aberta na 1ª chamada);
+    `baixar(url) -> bytes` injetável nos testes."""
+
+    def __init__(self, sessao=None, baixar=None, consultar_fn=None):
+        self._sessao, self._baixar, self._consultar = sessao, baixar, consultar_fn or consultar
+        self._docs: dict[str, list[dict]] = {}
+
+    def _s(self):
+        if self._sessao is None:
+            from tools.sei_rj_catalogo import Sessao
+            self._sessao = Sessao()
+            self._sessao.abrir()
+        return self._sessao
+
+    def _arvore(self, processo: str) -> list[dict]:
+        if processo not in self._docs:
+            _classe, arv = self._consultar(self._s(), processo)
+            self._docs[processo] = [_doc_arvore(d) for d in (arv.documentos if arv else [])]
+        return self._docs[processo]
+
+    def arvore(self, processo: str, pagina: int):
+        from compliance_agent.aplicacao.estagios.arvore import PaginaArvore
+        docs = self._arvore(processo)
+        return PaginaArvore(docs=list(docs), proxima=None, via=VIA, sem_resultado=not docs)
+
+    def capturar(self, processo: str, guardados: dict, raiz):
+        """Baixa os documentos com link que faltam (delta pelos guardados) e grava a pasta no FORMATO da íntegra
+        (`manifest.json` + `donos.json` + `NNN.pdf|.html`): o E3 apura, grava e confere pelo mesmo contrato."""
+        from pathlib import Path
+
+        from compliance_agent import captura_delta as CD
+        from compliance_agent.dominio import processo_id as PI
+        docs = self._arvore(processo)
+        outdir = Path(raiz) / f"integra_{PI.pasta(processo)}"
+        outdir.mkdir(parents=True, exist_ok=True)
+        manter = {e["i"] for e in CD.plano_de_captura(docs, CD.carregar_guardados(guardados))["manter"]}
+        donos_p = outdir / "donos.json"
+        donos = json.loads(donos_p.read_text(encoding="utf-8")) if donos_p.exists() else {}
+        baixar = self._baixar or (lambda u: self._s().c.get(u).content)
+        manifest, falhas = [], 0
+        for i, x in enumerate(docs):
+            idd = x["id_documento"]
+            ok, nome, v = False, "", None
+            if i in manter:
+                v = "delta_guardado"
+            elif x["u"]:
+                try:
+                    corpo = baixar(x["u"])
+                except (OSError, RuntimeError, ValueError) as e:      # rede: o documento fica omitido (recaptura)
+                    corpo, v = b"", f"falhou: {type(e).__name__}"
+                if corpo:
+                    nome = f"{i:03d}{'.pdf' if corpo[:4] == b'%PDF' else '.html'}"
+                    (outdir / nome).write_bytes(corpo)
+                    donos[nome] = idd
+                    ok, v = True, VIA
+                else:
+                    falhas += 1
+            manifest.append({"i": i, "arquivo": nome, "titulo": x["t"], "contexto": "", "url": x["u"],
+                             "id_documento": idd, "ok": ok, **({"via": v} if v else {})})
+        donos_p.write_text(json.dumps(donos), encoding="utf-8")
+        (outdir / "manifest.json").write_text(json.dumps({
+            "processo": processo, "total_arvore": len(docs), "completo": falhas == 0, "origem": VIA,
+            "pdf_lotes": {}, "docs": manifest}, ensure_ascii=False), encoding="utf-8")
+        return outdir

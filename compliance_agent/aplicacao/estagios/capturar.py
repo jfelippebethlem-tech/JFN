@@ -308,7 +308,10 @@ def _handler(payload: dict, ctx: Contexto) -> Resultado:
     raiz = Path(payload.get("raiz") or RAIZ_PADRAO)
     con = A.conectar(payload.get("dsn"), payload.get("esquema"))
     try:
-        ef = capturar(con, A.obter_navegador(), processo, ctx, raiz, A._lente(payload))
+        from compliance_agent.sei.pesquisa_publica import VIA as VIA_PUBLICA
+        # O3.8: processo lido pela pesquisa pública é capturado pela mesma via (HTTP), no mesmo contrato
+        nav = A.obter_navegador_publico() if A.via_vigente(con, processo) == VIA_PUBLICA else A.obter_navegador()
+        ef = capturar(con, nav, processo, ctx, raiz, A._lente(payload))
     finally:
         con.close()
     ev = [{"fonte": "capturar", "tipo": "versao_nova", "chave": processo,
